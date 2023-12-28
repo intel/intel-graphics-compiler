@@ -51,7 +51,7 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_ro_
     return SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_ro_v2f32_i32_f32, _Rfloat4)(SampledImage, floatCoords, ImageOperands, Lod);
 }
 
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img2d_ro_v2f32_i32_f32, _Rint4)(__spirv_SampledImage_2D SampledImage, float2 Coordinate, int ImageOperands, float Lod)
+uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_2D SampledImage, float2 Coordinate, int ImageOperands, float Lod)
 {
     int image_id = (int)__builtin_IB_get_image(SampledImage);
     int sampler_id = (int)__builtin_IB_get_sampler(SampledImage);
@@ -69,11 +69,11 @@ int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img2d_ro_v2
                 coords = coords * dim;
             }
             int2 intCoords = SPIRV_BUILTIN(ConvertFToS, _v2i32_v2f32, _Rint2)(SPIRV_OCL_BUILTIN(floor, _v2f32, )(coords));
-            return as_int4(__builtin_IB_OCL_2d_ldui(image_id, intCoords, 0));
+            return __builtin_IB_OCL_2d_ldui(image_id, intCoords, 0);
         }
         else
         {
-            return as_int4(__builtin_IB_OCL_2d_sample_l(image_id, sampler_id, Coordinate, 0.0f));
+            return as_uint4(__builtin_IB_OCL_2d_sample_l(image_id, sampler_id, Coordinate, 0.0f));
         }
     }
     else
@@ -83,11 +83,17 @@ int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img2d_ro_v2
             Coordinate.x = (Coordinate.x < 0) ? -1.0f : Coordinate.x;
             Coordinate.y = (Coordinate.y < 0) ? -1.0f : Coordinate.y;
         }
-        return as_int4(__builtin_IB_OCL_2d_sample_l(image_id, sampler_id, Coordinate, Lod));
+        return as_uint4(__builtin_IB_OCL_2d_sample_l(image_id, sampler_id, Coordinate, Lod));
     }
 }
 
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img2d_ro_v2i32_i32_f32, _Rint4)(__spirv_SampledImage_2D SampledImage, int2 Coordinate, int ImageOperands, float Lod)
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img2d_ro_v2f32_i32_f32, _Rint4)(__spirv_SampledImage_2D SampledImage, float2 Coordinate, int ImageOperands, float Lod)
+{
+    uint4 res = __spirv_ImageSampleExplicitLod_Ruint4(SampledImage, Coordinate, ImageOperands, Lod);
+    return as_int4(res);
+}
+
+uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_2D SampledImage, int2 Coordinate, int ImageOperands, float Lod)
 {
     int image_id = (int)__builtin_IB_get_image(SampledImage);
     int sampler_id = (int)__builtin_IB_get_sampler(SampledImage);
@@ -96,13 +102,19 @@ int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img2d_ro_v2
     if ((__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP_TO_EDGE)
     {
         float2 floatCoords = convert_float2((Coordinate));
-        return as_int4(__builtin_IB_OCL_2d_sample_l(image_id, sampler_id, floatCoords, Lod));
+        return as_uint4(__builtin_IB_OCL_2d_sample_l(image_id, sampler_id, floatCoords, Lod));
     }
     else
     {
         float float_lod = SPIRV_BUILTIN(ConvertFToS, _i32_f32, _Rint)(Lod);
-        return as_int4(__builtin_IB_OCL_2d_ldui(image_id, Coordinate, float_lod));
+        return __builtin_IB_OCL_2d_ldui(image_id, Coordinate, float_lod);
     }
+}
+
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img2d_ro_v2i32_i32_f32, _Rint4)(__spirv_SampledImage_2D SampledImage, int2 Coordinate, int ImageOperands, float Lod)
+{
+    uint4 res = __spirv_ImageSampleExplicitLod_Ruint4(SampledImage, Coordinate, ImageOperands, Lod);
+    return as_int4(res);
 }
 
 #ifdef cl_khr_fp16
@@ -142,7 +154,7 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img3d_ro_
     return SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img3d_ro_v4f32_i32_f32, _Rfloat4)(SampledImage, floatCoords, ImageOperands, Lod);
 }
 
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img3d_ro_v4f32_i32_f32, _Rint4)(__spirv_SampledImage_3D SampledImage, float4 Coordinate, int ImageOperands, float Lod)
+uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_3D SampledImage, float4 Coordinate, int ImageOperands, float Lod)
 {
     int image_id = (int)__builtin_IB_get_image(SampledImage);
     int sampler_id = (int)__builtin_IB_get_sampler(SampledImage);
@@ -158,11 +170,11 @@ int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img3d_ro_v4
                 Coordinate = Coordinate * dim;
             }
             int4 intCoords = SPIRV_BUILTIN(ConvertFToS, _v4i32_v4f32, _Rint4)(SPIRV_OCL_BUILTIN(floor, _v4f32, )(Coordinate));
-            return as_int4(__builtin_IB_OCL_3d_ldui(image_id, intCoords, 0));
+            return __builtin_IB_OCL_3d_ldui(image_id, intCoords, 0);
         }
         else
         {
-            return as_int4(__builtin_IB_OCL_3d_sample_l(image_id, sampler_id, Coordinate, 0.0f));
+            return as_uint4(__builtin_IB_OCL_3d_sample_l(image_id, sampler_id, Coordinate, 0.0f));
         }
     }
     else
@@ -173,11 +185,17 @@ int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img3d_ro_v4
             Coordinate.y = (Coordinate.y < 0) ? -1.0f : Coordinate.y;
             Coordinate.z = (Coordinate.z < 0) ? -1.0f : Coordinate.z;
         }
-        return as_int4(__builtin_IB_OCL_3d_sample_l(image_id, sampler_id, Coordinate, Lod));
+        return as_uint4(__builtin_IB_OCL_3d_sample_l(image_id, sampler_id, Coordinate, Lod));
     }
 }
 
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img3d_ro_v4i32_i32_f32, _Rint4)(__spirv_SampledImage_3D SampledImage, int4 Coordinate, int ImageOperands, float Lod)
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img3d_ro_v4f32_i32_f32, _Rint4)(__spirv_SampledImage_3D SampledImage, float4 Coordinate, int ImageOperands, float Lod)
+{
+    uint4 res = __spirv_ImageSampleExplicitLod_Ruint4(SampledImage, Coordinate, ImageOperands, Lod);
+    return as_int4(res);
+}
+
+uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_3D SampledImage, int4 Coordinate, int ImageOperands, float Lod)
 {
     int image_id = (int)__builtin_IB_get_image(SampledImage);
     int sampler_id = (int)__builtin_IB_get_sampler(SampledImage);
@@ -185,13 +203,19 @@ int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img3d_ro_v4
     if ((__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP_TO_EDGE)
     {
         float4 floatCoords = convert_float4((Coordinate));
-        return as_int4(__builtin_IB_OCL_3d_sample_l(image_id, sampler_id, floatCoords, Lod));
+        return as_uint4(__builtin_IB_OCL_3d_sample_l(image_id, sampler_id, floatCoords, Lod));
     }
     else
     {
         float float_lod = SPIRV_BUILTIN(ConvertFToS, _i32_f32, _Rint)(Lod);
-        return as_int4(__builtin_IB_OCL_3d_ldui(image_id, Coordinate.xyzw, float_lod));
+        return __builtin_IB_OCL_3d_ldui(image_id, Coordinate.xyzw, float_lod);
     }
+}
+
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img3d_ro_v4i32_i32_f32, _Rint4)(__spirv_SampledImage_3D SampledImage, int4 Coordinate, int ImageOperands, float Lod)
+{
+    uint4 res = __spirv_ImageSampleExplicitLod_Ruint4(SampledImage, Coordinate, ImageOperands, Lod);
+    return as_int4(res);
 }
 
 #ifdef cl_khr_fp16
@@ -231,7 +255,7 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_arr
     return SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_array_ro_v4f32_i32_f32, _Rfloat4)(SampledImage, floatCoords, ImageOperands, Lod);
 }
 
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img2d_array_ro_v4f32_i32_f32, _Rint4)(__spirv_SampledImage_2D_array SampledImage, float4 Coordinate, int ImageOperands, float Lod)
+uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_2D_array SampledImage, float4 Coordinate, int ImageOperands, float Lod)
 {
     int image_id = (int)__builtin_IB_get_image(SampledImage);
     int sampler_id = (int)__builtin_IB_get_sampler(SampledImage);
@@ -249,7 +273,7 @@ int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img2d_array
                 tmpCoords = Coordinate.xy * dim;
             }
             int4 intCoords = SPIRV_BUILTIN(ConvertFToS, _v4i32_v4f32, _Rint4)((float4)(SPIRV_OCL_BUILTIN(floor, _v2f32, )(tmpCoords), layer, 0.0f));
-            return as_int4(__builtin_IB_OCL_2darr_ldui(image_id, intCoords, 0));
+            return __builtin_IB_OCL_2darr_ldui(image_id, intCoords, 0);
         }
         else
         {
@@ -258,7 +282,7 @@ int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img2d_array
                 Coordinate.x = (Coordinate.x < 0) ? -1.0f : Coordinate.x;
                 Coordinate.y = (Coordinate.y < 0) ? -1.0f : Coordinate.y;
             }
-            return as_int4(__builtin_IB_OCL_2darr_sample_l(image_id, sampler_id, Coordinate, 0.0f));
+            return as_uint4(__builtin_IB_OCL_2darr_sample_l(image_id, sampler_id, Coordinate, 0.0f));
         }
     }
     else
@@ -268,11 +292,17 @@ int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img2d_array
             Coordinate.x = (Coordinate.x < 0) ? -1.0f : Coordinate.x;
             Coordinate.y = (Coordinate.y < 0) ? -1.0f : Coordinate.y;
         }
-        return as_int4(__builtin_IB_OCL_2darr_sample_l(image_id, sampler_id, Coordinate, Lod));
+        return as_uint4(__builtin_IB_OCL_2darr_sample_l(image_id, sampler_id, Coordinate, Lod));
     }
 }
 
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img2d_array_ro_v4i32_i32_f32, _Rint4)(__spirv_SampledImage_2D_array SampledImage, int4 Coordinate, int ImageOperands, float Lod)
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img2d_array_ro_v4f32_i32_f32, _Rint4)(__spirv_SampledImage_2D_array SampledImage, float4 Coordinate, int ImageOperands, float Lod)
+{
+    uint4 res = __spirv_ImageSampleExplicitLod_Ruint4(SampledImage, Coordinate, ImageOperands, Lod);
+    return as_int4(res);
+}
+
+uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_2D_array SampledImage, int4 Coordinate, int ImageOperands, float Lod)
 {
     int image_id = (int)__builtin_IB_get_image(SampledImage);
     int sampler_id = (int)__builtin_IB_get_sampler(SampledImage);
@@ -283,15 +313,21 @@ int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img2d_array
         int dt = __builtin_IB_get_image_array_size(image_id);
         float layer = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(SPIRV_OCL_BUILTIN(rint, _f32, )((float)Coordinate.z), 0.0f, (float)(dt - 1));
         float2 floatCoords = SPIRV_BUILTIN(ConvertSToF, _v2f32_v2i32, _Rfloat2)(Coordinate.xy);
-        return as_int4(__builtin_IB_OCL_2darr_sample_l(image_id, sampler_id, (float4)(floatCoords, layer, 0.0f), Lod));
+        return as_uint4(__builtin_IB_OCL_2darr_sample_l(image_id, sampler_id, (float4)(floatCoords, layer, 0.0f), Lod));
     }
     else
     {
         float float_lod = SPIRV_BUILTIN(ConvertFToS, _i32_f32, _Rint)(Lod);
         int dt = __builtin_IB_get_image_array_size(image_id);
         float layer = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(SPIRV_OCL_BUILTIN(rint, _f32, )((float)Coordinate.z), 0.0f, (float)(dt - 1));
-        return as_int4(__builtin_IB_OCL_2darr_ldui(image_id, (int4)(Coordinate.xy, (int)layer, 0), float_lod));
+        return __builtin_IB_OCL_2darr_ldui(image_id, (int4)(Coordinate.xy, (int)layer, 0), float_lod);
     }
+}
+
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img2d_array_ro_v4i32_i32_f32, _Rint4)(__spirv_SampledImage_2D_array SampledImage, int4 Coordinate, int ImageOperands, float Lod)
+{
+    uint4 res = __spirv_ImageSampleExplicitLod_Ruint4(SampledImage, Coordinate, ImageOperands, Lod);
+    return as_int4(res);
 }
 
 #ifdef cl_khr_fp16
@@ -329,7 +365,7 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img1d_ro_
     return SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img1d_ro_f32_i32_f32, _Rfloat4)(SampledImage, floatCoords, ImageOperands, Lod);
 }
 
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img1d_ro_f32_i32_f32, _Rint4)(__spirv_SampledImage_1D SampledImage, float Coordinate, int ImageOperands, float Lod)
+uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_1D SampledImage, float Coordinate, int ImageOperands, float Lod)
 {
     int image_id = (int)__builtin_IB_get_image(SampledImage);
     int sampler_id = (int)__builtin_IB_get_sampler(SampledImage);
@@ -348,11 +384,11 @@ int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img1d_ro_f3
                 Coordinate4 = Coordinate4 * dim;
             }
             int4 intCoords = SPIRV_BUILTIN(ConvertFToS, _v4i32_v4f32, _Rint4)(SPIRV_OCL_BUILTIN(floor, _v4f32, )(Coordinate4));
-            return as_int4(__builtin_IB_OCL_3d_ldui(image_id, intCoords, 0));
+            return __builtin_IB_OCL_3d_ldui(image_id, intCoords, 0);
         }
         else
         {
-            return as_int4(__builtin_IB_OCL_3d_sample_l(image_id, sampler_id, Coordinate4, 0.0f));
+            return as_uint4(__builtin_IB_OCL_3d_sample_l(image_id, sampler_id, Coordinate4, 0.0f));
         }
     }
     else
@@ -363,11 +399,17 @@ int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img1d_ro_f3
             Coordinate4.y = (Coordinate4.y < 0) ? -1.0f : Coordinate4.y;
             Coordinate4.z = (Coordinate4.z < 0) ? -1.0f : Coordinate4.z;
         }
-        return as_int4(__builtin_IB_OCL_3d_sample_l(image_id, sampler_id, Coordinate4, Lod));
+        return as_uint4(__builtin_IB_OCL_3d_sample_l(image_id, sampler_id, Coordinate4, Lod));
     }
 }
 
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img1d_ro_i32_i32_f32, _Rint4)(__spirv_SampledImage_1D SampledImage, int Coordinate, int ImageOperands, float Lod)
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img1d_ro_f32_i32_f32, _Rint4)(__spirv_SampledImage_1D SampledImage, float Coordinate, int ImageOperands, float Lod)
+{
+    uint4 res = __spirv_ImageSampleExplicitLod_Ruint4(SampledImage, Coordinate, ImageOperands, Lod);
+    return as_int4(res);
+}
+
+uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_1D SampledImage, int Coordinate, int ImageOperands, float Lod)
 {
     int image_id = (int)__builtin_IB_get_image(SampledImage);
     int sampler_id = (int)__builtin_IB_get_sampler(SampledImage);
@@ -375,13 +417,19 @@ int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img1d_ro_i3
     if ((__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP_TO_EDGE)
     {
         float floatCoords = convert_float((Coordinate));
-        return as_int4(__builtin_IB_OCL_1d_sample_l(image_id, sampler_id, floatCoords, Lod));
+        return as_uint4(__builtin_IB_OCL_1d_sample_l(image_id, sampler_id, floatCoords, Lod));
     }
     else
     {
         float float_lod = SPIRV_BUILTIN(ConvertFToS, _i32_f32, _Rint)(Lod);
-        return as_int4(__builtin_IB_OCL_1d_ldui(image_id, Coordinate, float_lod));
+        return __builtin_IB_OCL_1d_ldui(image_id, Coordinate, float_lod);
     }
+}
+
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img1d_ro_i32_i32_f32, _Rint4)(__spirv_SampledImage_1D SampledImage, int Coordinate, int ImageOperands, float Lod)
+{
+    uint4 res = __spirv_ImageSampleExplicitLod_Ruint4(SampledImage, Coordinate, ImageOperands, Lod);
+    return as_int4(res);
 }
 
 #ifdef cl_khr_fp16
@@ -421,7 +469,7 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img1d_arr
     return SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img1d_array_ro_v2f32_i32_f32, _Rfloat4)(SampledImage, floatCoords, ImageOperands, Lod);
 }
 
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img1d_array_ro_v2f32_i32_f32, _Rint4)(__spirv_SampledImage_1D_array SampledImage, float2 Coordinate, int ImageOperands, float Lod)
+uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_1D_array SampledImage, float2 Coordinate, int ImageOperands, float Lod)
 {
     int image_id = (int)__builtin_IB_get_image(SampledImage);
     int sampler_id = (int)__builtin_IB_get_sampler(SampledImage);
@@ -439,7 +487,7 @@ int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img1d_array
                 tmpCoords = (float)(width * Coordinate.x);
             }
             int2 intCoords = SPIRV_BUILTIN(ConvertFToS, _v2i32_v2f32, _Rint2)((float2)(SPIRV_OCL_BUILTIN(floor, _f32, )(tmpCoords), layer));
-            return as_int4(__builtin_IB_OCL_1darr_ldui(image_id, intCoords, 0));
+            return __builtin_IB_OCL_1darr_ldui(image_id, intCoords, 0);
         }
         else
         {
@@ -447,7 +495,7 @@ int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img1d_array
             {
                 Coordinate.x = (Coordinate.x < 0) ? -1.0f : Coordinate.x;
             }
-            return as_int4(__builtin_IB_OCL_1darr_sample_l(image_id, sampler_id, Coordinate.xy, 0.0f));
+            return as_uint4(__builtin_IB_OCL_1darr_sample_l(image_id, sampler_id, Coordinate.xy, 0.0f));
         }
     }
     else
@@ -456,11 +504,17 @@ int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img1d_array
         {
             Coordinate.x = (Coordinate.x < 0) ? -1.0f : Coordinate.x;
         }
-        return as_int4(__builtin_IB_OCL_1darr_sample_l(image_id, sampler_id, Coordinate.xy, Lod));
+        return as_uint4(__builtin_IB_OCL_1darr_sample_l(image_id, sampler_id, Coordinate.xy, Lod));
     }
 }
 
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img1d_array_ro_v2i32_i32_f32, _Rint4)(__spirv_SampledImage_1D_array SampledImage, int2 Coordinate, int ImageOperands, float Lod)
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img1d_array_ro_v2f32_i32_f32, _Rint4)(__spirv_SampledImage_1D_array SampledImage, float2 Coordinate, int ImageOperands, float Lod)
+{
+    uint4 res = __spirv_ImageSampleExplicitLod_Ruint4(SampledImage, Coordinate, ImageOperands, Lod);
+    return as_int4(res);
+}
+
+uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_1D_array SampledImage, int2 Coordinate, int ImageOperands, float Lod)
 {
     int image_id = (int)__builtin_IB_get_image(SampledImage);
     int sampler_id = (int)__builtin_IB_get_sampler(SampledImage);
@@ -471,15 +525,21 @@ int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img1d_array
         int dt = __builtin_IB_get_image_array_size(image_id);
         float layer = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(SPIRV_OCL_BUILTIN(rint, _f32, )((float)Coordinate.y), 0.0f, (float)(dt - 1));
         float floatCoords = SPIRV_BUILTIN(ConvertSToF, _f32_i32, _Rfloat)(Coordinate.x);
-        return as_int4(__builtin_IB_OCL_1darr_sample_l(image_id, sampler_id, (float2)(floatCoords, layer), Lod));
+        return as_uint4(__builtin_IB_OCL_1darr_sample_l(image_id, sampler_id, (float2)(floatCoords, layer), Lod));
     }
     else
     {
         float float_lod = SPIRV_BUILTIN(ConvertFToS, _i32_f32, _Rint)(Lod);
         int dt = __builtin_IB_get_image_array_size(image_id);
         float layer = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(SPIRV_OCL_BUILTIN(rint, _f32, )((float)Coordinate.y), 0.0f, (float)(dt - 1));
-        return as_int4(__builtin_IB_OCL_1darr_ldui(image_id, (int2)(Coordinate.x, (int)layer), float_lod));
+        return __builtin_IB_OCL_1darr_ldui(image_id, (int2)(Coordinate.x, (int)layer), float_lod);
     }
+}
+
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img1d_array_ro_v2i32_i32_f32, _Rint4)(__spirv_SampledImage_1D_array SampledImage, int2 Coordinate, int ImageOperands, float Lod)
+{
+    uint4 res = __spirv_ImageSampleExplicitLod_Ruint4(SampledImage, Coordinate, ImageOperands, Lod);
+    return as_int4(res);
 }
 
 #ifdef cl_khr_fp16
@@ -562,6 +622,28 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_ro_
     return __builtin_IB_OCL_2d_sample_d(image_id, sampler_id, Coordinate.xy, dx, dy);
 }
 
+#ifdef cl_khr_fp16
+half4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f16_img2d_ro_v2f32_i32_v2f32_v2f32, _Rhalf4)(
+    __spirv_SampledImage_2D SampledImage,
+    float2 Coordinate,
+    int ImageOperands,
+    float2 dx,
+    float2 dy)
+{
+    return convert_half4(SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_ro_v2f32_i32_v2f32_v2f32, _Rfloat4)(SampledImage, Coordinate, ImageOperands, dx, dy));
+}
+#endif // cl_khr_fp16
+
+uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(
+    __spirv_SampledImage_2D SampledImage,
+    float2 Coordinate,
+    int ImageOperands,
+    float2 dx,
+    float2 dy)
+{
+    return as_uint4(SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_ro_v2f32_i32_v2f32_v2f32, _Rfloat4)(SampledImage, Coordinate, ImageOperands, dx, dy));
+}
+
 int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img2d_ro_v2f32_i32_v2f32_v2f32, _Rint4)(
     __spirv_SampledImage_2D SampledImage,
     float2 Coordinate,
@@ -590,6 +672,39 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img3d_ro_
     }
 
     return __builtin_IB_OCL_3d_sample_d(image_id, sampler_id, Coordinate, dx, dy);
+}
+
+#ifdef cl_khr_fp16
+half4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f16_img3d_ro_v4f32_i32_v4f32_v4f32, _Rhalf4)(
+    __spirv_SampledImage_3D SampledImage,
+    float4 Coordinate,
+    int ImageOperands,
+    float4 dx,
+    float4 dy)
+{
+    int image_id = (int)__builtin_IB_get_image(SampledImage);
+    int sampler_id = (int)__builtin_IB_get_sampler(SampledImage);
+
+    if (__builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
+    {
+        Coordinate.x = (Coordinate.x < 0) ? -1.0f : Coordinate.x;
+        Coordinate.y = (Coordinate.y < 0) ? -1.0f : Coordinate.y;
+        Coordinate.z = (Coordinate.z < 0) ? -1.0f : Coordinate.z;
+    }
+
+    float4 res = __builtin_IB_OCL_3d_sample_d(image_id, sampler_id, Coordinate, dx, dy);
+    return SPIRV_BUILTIN(FConvert, _v4f16_v4f32, _Rhalf4)(res);
+}
+#endif // cl_khr_fp16
+
+uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(
+    __spirv_SampledImage_3D SampledImage,
+    float4 Coordinate,
+    int ImageOperands,
+    float4 dx,
+    float4 dy)
+{
+    return as_uint4(SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img3d_ro_v4f32_i32_v4f32_v4f32, _Rfloat4)(SampledImage, Coordinate, ImageOperands, dx, dy));
 }
 
 int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img3d_ro_v4f32_i32_v4f32_v4f32, _Rint4)(
@@ -621,6 +736,16 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_arr
     return __builtin_IB_OCL_2darr_sample_d(image_id, sampler_id, Coordinate, dx, dy);
 }
 
+uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(
+    __spirv_SampledImage_2D SampledImage,
+    float4 Coordinate,
+    int ImageOperands,
+    float2 dx,
+    float2 dy)
+{
+    return as_uint4(SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_array_ro_v4f32_i32_v2f32_v2f32, _Rfloat4)(SampledImage, Coordinate, ImageOperands, dx, dy));
+}
+
 int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img2d_array_ro_v4f32_i32_v2f32_v2f32, _Rint4)(
     __spirv_SampledImage_2D SampledImage,
     float4 Coordinate,
@@ -649,6 +774,28 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img1d_ro_
     return __builtin_IB_OCL_1d_sample_d(image_id, sampler_id, Coordinate, dx, dy);
 }
 
+#ifdef cl_khr_fp16
+half4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f16_img1d_ro_f32_i32_f32_f32, _Rhalf4)(
+    __spirv_SampledImage_1D SampledImage,
+    float Coordinate,
+    int ImageOperands,
+    float dx,
+    float dy)
+{
+    return convert_half4(SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img1d_ro_f32_i32_f32_f32, _Rfloat4)(SampledImage, Coordinate, ImageOperands, dx, dy));
+}
+#endif // cl_khr_fp16
+
+uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(
+    __spirv_SampledImage_1D SampledImage,
+    float Coordinate,
+    int ImageOperands,
+    float dx,
+    float dy)
+{
+    return as_uint4(SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img1d_ro_f32_i32_f32_f32, _Rfloat4)(SampledImage, Coordinate, ImageOperands, dx, dy));
+}
+
 int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img1d_ro_f32_i32_f32_f32, _Rint4)(
     __spirv_SampledImage_1D SampledImage,
     float Coordinate,
@@ -675,6 +822,16 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img1d_arr
     }
 
     return __builtin_IB_OCL_1darr_sample_d(image_id, sampler_id, Coordinate, dx, dy);
+}
+
+uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(
+    __spirv_SampledImage_1D_array SampledImage,
+    float2 Coordinate,
+    int ImageOperands,
+    float dx,
+    float dy)
+{
+    return as_uint4(SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img1d_array_ro_v2f32_i32_f32_f32, _Rfloat4)(SampledImage, Coordinate, ImageOperands, dx, dy));
 }
 
 int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img1d_array_ro_v2f32_i32_f32_f32, _Rint4)(
@@ -742,10 +899,19 @@ __attribute__((inline)) float4 __flush_denormals(float4 in)
 #endif
 
 #define DEF_IMAGE_READ_2D(ACC_QUAL)                                                                                 \
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img2d_##ACC_QUAL##_v2i32, _Rint4)(global Img2d_##ACC_QUAL* Image, int2 Coordinate)   \
+uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img2d_##ACC_QUAL* Image, int2 Coordinate)                        \
 {                                                                                                                   \
     int id = (int)__builtin_astype(Image, __global void*);                                                          \
-    return as_int4(__builtin_IB_OCL_2d_ldui(id, Coordinate, 0));                                                    \
+    return __builtin_IB_OCL_2d_ldui(id, Coordinate, 0);                                                             \
+}                                                                                                                   \
+uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img2d_##ACC_QUAL* Image, int2 Coordinate, int ImageOperands)     \
+{                                                                                                                   \
+    return __spirv_ImageRead_Ruint4(Image, Coordinate);                                                             \
+}                                                                                                                   \
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img2d_##ACC_QUAL##_v2i32, _Rint4)(global Img2d_##ACC_QUAL* Image, int2 Coordinate)   \
+{                                                                                                                   \
+    uint4 res = __spirv_ImageRead_Ruint4(Image, Coordinate);                                                        \
+    return as_int4(res);                                                                                            \
 }                                                                                                                   \
 int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img2d_##ACC_QUAL##_v2i32_i32, _Rint4)(global Img2d_##ACC_QUAL* Image, int2 Coordinate, int ImageOperands)   \
 {                                                                                                                   \
@@ -763,10 +929,19 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img2d_##ACC_QUAL##_v2i
 }
 
 #define DEF_IMAGE_READ_3D(ACC_QUAL)                                                                                 \
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img3d_##ACC_QUAL##_v4i32, _Rint4)(global Img3d_##ACC_QUAL* Image, int4 Coordinate)   \
+uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img3d_##ACC_QUAL* Image, int4 Coordinate)                        \
 {                                                                                                                   \
     int id = (int)__builtin_astype(Image, __global void*);                                                          \
-    return as_int4(__builtin_IB_OCL_3d_ldui( id, Coordinate, 0 ));                                                  \
+    return __builtin_IB_OCL_3d_ldui( id, Coordinate, 0);                                                            \
+}                                                                                                                   \
+uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img3d_##ACC_QUAL* Image, int4 Coordinate, int ImageOperands)     \
+{                                                                                                                   \
+    return __spirv_ImageRead_Ruint4(Image, Coordinate);                                                             \
+}                                                                                                                   \
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img3d_##ACC_QUAL##_v4i32, _Rint4)(global Img3d_##ACC_QUAL* Image, int4 Coordinate)   \
+{                                                                                                                   \
+    uint4 res = __spirv_ImageRead_Ruint4(Image, Coordinate);                                                        \
+    return as_int4(res);                                                                                            \
 }                                                                                                                   \
 int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img3d_##ACC_QUAL##_v4i32_i32, _Rint4)(global Img3d_##ACC_QUAL* Image, int4 Coordinate, int ImageOperands)   \
 {                                                                                                                   \
@@ -784,14 +959,23 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img3d_##ACC_QUAL##_v4i
 }
 
 #define DEF_IMAGE_READ_2D_ARRAY(ACC_QUAL)                                                                                        \
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img2d_array_##ACC_QUAL##_v4i32, _Rint4)(global Img2d_array_##ACC_QUAL* Image, int4 Coordinate)    \
+uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img2d_array_##ACC_QUAL* Image, int4 Coordinate)                               \
 {                                                                                                                                \
     int id = (int)__builtin_astype(Image, __global void*);                                                                       \
-    return as_int4(__builtin_IB_OCL_2darr_ldui( id, Coordinate, 0 ));                                                            \
+    return __builtin_IB_OCL_2darr_ldui(id, Coordinate, 0);                                                                       \
+}                                                                                                                                \
+uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img2d_array_##ACC_QUAL* Image, int4 Coordinate, int ImageOperands)            \
+{                                                                                                                                \
+    return __spirv_ImageRead_Ruint4(Image, Coordinate);                                                                          \
+}                                                                                                                                \
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img2d_array_##ACC_QUAL##_v4i32, _Rint4)(global Img2d_array_##ACC_QUAL* Image, int4 Coordinate)    \
+{                                                                                                                                \
+    uint4 res = __spirv_ImageRead_Ruint4(Image, Coordinate);                                                                     \
+    return as_int4(res);                                                                                                         \
 }                                                                                                                                \
 int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img2d_array_##ACC_QUAL##_v4i32_i32, _Rint4)(global Img2d_array_##ACC_QUAL* Image, int4 Coordinate, int ImageOperands) \
 {                                                                                                                                \
-    return SPIRV_BUILTIN(ImageRead, _v4i32_img2d_array_##ACC_QUAL##_v4i32, _Rint4)(Image, Coordinate);                          \
+    return SPIRV_BUILTIN(ImageRead, _v4i32_img2d_array_##ACC_QUAL##_v4i32, _Rint4)(Image, Coordinate);                           \
 }                                                                                                                                \
 float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img2d_array_##ACC_QUAL##_v4i32, _Rfloat4)(global Img2d_array_##ACC_QUAL* Image, int4 Coordinate)  \
 {                                                                                                                                \
@@ -805,10 +989,19 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img2d_array_##ACC_QUAL
 }
 
 #define DEF_IMAGE_READ_1D(ACC_QUAL)                                                                               \
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img1d_##ACC_QUAL##_i32, _Rint4)(global Img1d_##ACC_QUAL* Image, int Coordinate)    \
+uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img1d_##ACC_QUAL* Image, int Coordinate)                       \
 {                                                                                                                 \
     int id = (int)__builtin_astype(Image, __global void*);                                                        \
-    return as_int4(__builtin_IB_OCL_1d_ldui( id, Coordinate, 0 ));                                                \
+    return __builtin_IB_OCL_1d_ldui( id, Coordinate, 0);                                                          \
+}                                                                                                                 \
+uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img1d_##ACC_QUAL* Image, int Coordinate, int ImageOperands)    \
+{                                                                                                                 \
+    return __spirv_ImageRead_Ruint4(Image, Coordinate);                                                           \
+}                                                                                                                 \
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img1d_##ACC_QUAL##_i32, _Rint4)(global Img1d_##ACC_QUAL* Image, int Coordinate)    \
+{                                                                                                                 \
+    uint4 res = __spirv_ImageRead_Ruint4(Image, Coordinate);                                                      \
+    return as_int4(res);                                                                                          \
 }                                                                                                                 \
 int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img1d_##ACC_QUAL##_i32_i32, _Rint4)(global Img1d_##ACC_QUAL* Image, int Coordinate, int ImageOperands)    \
 {                                                                                                                 \
@@ -826,10 +1019,19 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img1d_##ACC_QUAL##_i32
 }
 
 #define DEF_IMAGE_READ_1D_BUFFER(ACC_QUAL)                                                                                      \
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img1d_buffer_##ACC_QUAL##_i32, _Rint4)(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate)    \
+uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate)                              \
 {                                                                                                                               \
     int id = (int)__builtin_astype(Image, __global void*);                                                                      \
-    return as_int4(__builtin_IB_OCL_1d_ldui( id, Coordinate, 0 ));                                                              \
+    return __builtin_IB_OCL_1d_ldui( id, Coordinate, 0);                                                                        \
+}                                                                                                                               \
+uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate, int ImageOperands)           \
+{                                                                                                                               \
+    return __spirv_ImageRead_Ruint4(Image, Coordinate);                                                                         \
+}                                                                                                                               \
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img1d_buffer_##ACC_QUAL##_i32, _Rint4)(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate)    \
+{                                                                                                                               \
+    uint4 res = __spirv_ImageRead_Ruint4(Image, Coordinate);                                                                    \
+    return as_int4(res);                                                                                                        \
 }                                                                                                                               \
 int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img1d_buffer_##ACC_QUAL##_i32_i32, _Rint4)(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate, int ImageOperands) \
 {                                                                                                                               \
@@ -847,10 +1049,19 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img1d_buffer_##ACC_QUA
 }
 
 #define DEF_IMAGE_READ_1D_ARRAY(ACC_QUAL)                                                                                       \
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img1d_array_##ACC_QUAL##_v2i32, _Rint4)(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate)   \
+uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate)                              \
 {                                                                                                                               \
     int id = (int)__builtin_astype(Image, __global void*);                                                                      \
-    return as_int4(__builtin_IB_OCL_1darr_ldui( id, Coordinate, 0 ));                                                           \
+    return __builtin_IB_OCL_1darr_ldui( id, Coordinate, 0);                                                                     \
+}                                                                                                                               \
+uint4 OVERLOADABLE __spirv_ImageRead_Ruint4(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate, int ImageOperands)           \
+{                                                                                                                               \
+    return __spirv_ImageRead_Ruint4(Image, Coordinate);                                                                         \
+}                                                                                                                               \
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img1d_array_##ACC_QUAL##_v2i32, _Rint4)(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate)   \
+{                                                                                                                               \
+    uint4 res = __spirv_ImageRead_Ruint4(Image, Coordinate);                                                                    \
+    return as_int4(res);                                                                                                        \
 }                                                                                                                               \
 int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img1d_array_##ACC_QUAL##_v2i32_i32, _Rint4)(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate, int ImageOperands) \
 {                                                                                                                               \
@@ -974,58 +1185,138 @@ float SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _f32_img2d_array_msaa_depth_ro
 // Image Write
 
 #define DEF_IMAGE_WRITE_2D(ACC_QUAL)                                                                                              \
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_##ACC_QUAL##_v2i32_v4i32, )(global Img2d_##ACC_QUAL* Image, int2 Coordinate, int4 Texel)     \
+void OVERLOADABLE __spirv_ImageWrite(global Img2d_##ACC_QUAL* Image, int2 Coordinate, uint4 Texel)                                \
 {                                                                                                                                 \
     int id = (int)__builtin_astype(Image, __global void*);                                                                        \
-    __builtin_IB_write_2d_ui(id, Coordinate, as_uint4(Texel), 0);                                                                 \
+    __builtin_IB_write_2d_ui(id, Coordinate, Texel, 0);                                                                           \
+}                                                                                                                                 \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_##ACC_QUAL##_v2i32_v4i32, )(global Img2d_##ACC_QUAL* Image, int2 Coordinate, int4 Texel)     \
+{                                                                                                                                 \
+    __spirv_ImageWrite(Image, Coordinate, as_uint4(Texel));                                                                       \
 }                                                                                                                                 \
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_##ACC_QUAL##_v2i32_v4f32, )(global Img2d_##ACC_QUAL* Image, int2 Coordinate, float4 Texel)   \
 {                                                                                                                                 \
-    SPIRV_BUILTIN(ImageWrite, _img2d_##ACC_QUAL##_v2i32_v4i32, )(Image, Coordinate, as_int4(Texel));                              \
+    __spirv_ImageWrite(Image, Coordinate, as_uint4(Texel));                                                                       \
+}                                                                                                                                 \
+void OVERLOADABLE __spirv_ImageWrite(global Img2d_##ACC_QUAL* Image, int2 Coordinate, uint4 Texel, int ImageOperands)             \
+{                                                                                                                                 \
+    __spirv_ImageWrite(Image, Coordinate, Texel);                                                                                 \
+}                                                                                                                                 \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_##ACC_QUAL##_v2i32_v4i32_i32, )(global Img2d_##ACC_QUAL* Image, int2 Coordinate, int4 Texel, int ImageOperands)   \
+{                                                                                                                                 \
+    SPIRV_BUILTIN(ImageWrite, _img2d_##ACC_QUAL##_v2i32_v4i32, )(Image, Coordinate, Texel);                                       \
+}                                                                                                                                 \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_##ACC_QUAL##_v2i32_v4f32_i32, )(global Img2d_##ACC_QUAL* Image, int2 Coordinate, float4 Texel, int ImageOperands) \
+{                                                                                                                                 \
+    SPIRV_BUILTIN(ImageWrite, _img2d_##ACC_QUAL##_v2i32_v4f32, )(Image, Coordinate, Texel);                                       \
 }
 
 #define DEF_IMAGE_WRITE_2D_ARRAY(ACC_QUAL)                                                                                                   \
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_array_##ACC_QUAL##_v4i32_v4i32, )(global Img2d_array_##ACC_QUAL* Image, int4 Coordinate, int4 Texel)    \
+void OVERLOADABLE __spirv_ImageWrite(global Img2d_array_##ACC_QUAL* Image, int4 Coordinate, uint4 Texel)                                     \
 {                                                                                                                                            \
     int id = (int)__builtin_astype(Image, __global void*);                                                                                   \
-    __builtin_IB_write_2darr_ui(id, Coordinate, as_uint4(Texel), 0);                                                                         \
+    __builtin_IB_write_2darr_ui(id, Coordinate, Texel, 0);                                                                                   \
+}                                                                                                                                            \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_array_##ACC_QUAL##_v4i32_v4i32, )(global Img2d_array_##ACC_QUAL* Image, int4 Coordinate, int4 Texel)    \
+{                                                                                                                                            \
+    __spirv_ImageWrite(Image, Coordinate, as_uint4(Texel));                                                                                  \
 }                                                                                                                                            \
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_array_##ACC_QUAL##_v4i32_v4f32, )(global Img2d_array_##ACC_QUAL* Image, int4 Coordinate, float4 Texel)  \
 {                                                                                                                                            \
-    SPIRV_BUILTIN(ImageWrite, _img2d_array_##ACC_QUAL##_v4i32_v4i32, )(Image, Coordinate, as_int4(Texel));                                   \
+    __spirv_ImageWrite(Image, Coordinate, as_uint4(Texel));                                                                                  \
+}                                                                                                                                            \
+void OVERLOADABLE __spirv_ImageWrite(global Img2d_array_##ACC_QUAL* Image, int4 Coordinate, uint4 Texel, int ImageOperands)                  \
+{                                                                                                                                            \
+    __spirv_ImageWrite(Image, Coordinate, Texel);                                                                                            \
+}                                                                                                                                            \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_array_##ACC_QUAL##_v4i32_v4i32_i32, )(global Img2d_array_##ACC_QUAL* Image, int4 Coordinate, int4 Texel, int ImageOperands)   \
+{                                                                                                                                            \
+    SPIRV_BUILTIN(ImageWrite, _img2d_array_##ACC_QUAL##_v4i32_v4i32, )(Image, Coordinate, Texel);                                            \
+}                                                                                                                                            \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_array_##ACC_QUAL##_v4i32_v4f32_i32, )(global Img2d_array_##ACC_QUAL* Image, int4 Coordinate, float4 Texel, int ImageOperands) \
+{                                                                                                                                            \
+    SPIRV_BUILTIN(ImageWrite, _img2d_array_##ACC_QUAL##_v4i32_v4f32, )(Image, Coordinate, Texel);                                            \
 }
 
 #define DEF_IMAGE_WRITE_1D(ACC_QUAL)                                                                                         \
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_##ACC_QUAL##_i32_v4i32, )(global Img1d_##ACC_QUAL* Image, int Coordinate, int4 Texel)   \
+void OVERLOADABLE __spirv_ImageWrite(global Img1d_##ACC_QUAL* Image, int Coordinate, uint4 Texel)                            \
 {                                                                                                                            \
     int id = (int)__builtin_astype(Image, __global void*);                                                                   \
-    __builtin_IB_write_1d_ui(id, Coordinate, as_uint4(Texel), 0);                                                            \
+    __builtin_IB_write_1d_ui(id, Coordinate, Texel, 0);                                                                      \
+}                                                                                                                            \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_##ACC_QUAL##_i32_v4i32, )(global Img1d_##ACC_QUAL* Image, int Coordinate, int4 Texel)   \
+{                                                                                                                            \
+    __spirv_ImageWrite(Image, Coordinate, as_uint4(Texel));                                                                  \
 }                                                                                                                            \
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_##ACC_QUAL##_i32_v4f32, )(global Img1d_##ACC_QUAL* Image, int Coordinate, float4 Texel) \
 {                                                                                                                            \
-    SPIRV_BUILTIN(ImageWrite, _img1d_##ACC_QUAL##_i32_v4i32, )(Image, Coordinate, as_int4(Texel));                           \
+    __spirv_ImageWrite(Image, Coordinate, as_uint4(Texel));                                                                  \
+}                                                                                                                            \
+void OVERLOADABLE __spirv_ImageWrite(global Img1d_##ACC_QUAL* Image, int Coordinate, uint4 Texel, int ImageOperands)         \
+{                                                                                                                            \
+    __spirv_ImageWrite(Image, Coordinate, Texel);                                                                            \
+}                                                                                                                            \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_##ACC_QUAL##_i32_v4i32_i32, )(global Img1d_##ACC_QUAL* Image, int Coordinate, int4 Texel, int ImageOperands)   \
+{                                                                                                                            \
+    SPIRV_BUILTIN(ImageWrite, _img1d_##ACC_QUAL##_i32_v4i32, )(Image, Coordinate, Texel);                                    \
+}                                                                                                                            \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_##ACC_QUAL##_i32_v4f32_i32, )(global Img1d_##ACC_QUAL* Image, int Coordinate, float4 Texel, int ImageOperands) \
+{                                                                                                                            \
+    SPIRV_BUILTIN(ImageWrite, _img1d_##ACC_QUAL##_i32_v4f32, )(Image, Coordinate, Texel);                                    \
 }
 
 #define DEF_IMAGE_WRITE_1D_BUFFER(ACC_QUAL)                                                                                                \
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_buffer_##ACC_QUAL##_i32_v4i32, )(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate, int4 Texel)   \
+void OVERLOADABLE __spirv_ImageWrite(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate, uint4 Texel)                                   \
 {                                                                                                                                          \
     int id = (int)__builtin_astype(Image, __global void*);                                                                                 \
-    __builtin_IB_write_1d_ui(id, Coordinate, as_uint4(Texel), 0);                                                                          \
+    __builtin_IB_write_1d_ui(id, Coordinate, Texel, 0);                                                                                    \
+}                                                                                                                                          \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_buffer_##ACC_QUAL##_i32_v4i32, )(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate, int4 Texel)   \
+{                                                                                                                                          \
+    __spirv_ImageWrite(Image, Coordinate, as_uint4(Texel));                                                                                \
 }                                                                                                                                          \
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_buffer_##ACC_QUAL##_i32_v4f32, )(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate, float4 Texel) \
 {                                                                                                                                          \
-    SPIRV_BUILTIN(ImageWrite, _img1d_buffer_##ACC_QUAL##_i32_v4i32, )(Image, Coordinate, as_int4(Texel));                                  \
+    __spirv_ImageWrite(Image, Coordinate, as_uint4(Texel));                                                                                \
+}                                                                                                                                          \
+void OVERLOADABLE __spirv_ImageWrite(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate, uint4 Texel, int ImageOperands)                \
+{                                                                                                                                          \
+    __spirv_ImageWrite(Image, Coordinate, Texel);                                                                                          \
+}                                                                                                                                          \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_buffer_##ACC_QUAL##_i32_v4i32_i32, )(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate, int4 Texel, int ImageOperands)   \
+{                                                                                                                                          \
+    SPIRV_BUILTIN(ImageWrite, _img1d_buffer_##ACC_QUAL##_i32_v4i32, )(Image, Coordinate, Texel);                                           \
+}                                                                                                                                          \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_buffer_##ACC_QUAL##_i32_v4f32_i32, )(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate, float4 Texel, int ImageOperands) \
+{                                                                                                                                          \
+    SPIRV_BUILTIN(ImageWrite, _img1d_buffer_##ACC_QUAL##_i32_v4f32, )(Image, Coordinate, Texel);                                           \
 }
 
 #define DEF_IMAGE_WRITE_1D_ARRAY(ACC_QUAL)                                                                                                  \
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_array_##ACC_QUAL##_v2i32_v4i32, )(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate, int4 Texel)   \
+void OVERLOADABLE __spirv_ImageWrite(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate, uint4 Texel)                                    \
 {                                                                                                                                           \
     int id = (int)__builtin_astype(Image, __global void*);                                                                                  \
-    __builtin_IB_write_1darr_ui(id, Coordinate, as_uint4(Texel), 0);                                                                        \
+    __builtin_IB_write_1darr_ui(id, Coordinate, Texel, 0);                                                                                  \
+}                                                                                                                                           \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_array_##ACC_QUAL##_v2i32_v4i32, )(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate, int4 Texel)   \
+{                                                                                                                                           \
+    __spirv_ImageWrite(Image, Coordinate, as_uint4(Texel));                                                                                 \
 }                                                                                                                                           \
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_array_##ACC_QUAL##_v2i32_v4f32, )(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate, float4 Texel) \
 {                                                                                                                                           \
-    SPIRV_BUILTIN(ImageWrite, _img1d_array_##ACC_QUAL##_v2i32_v4i32, )(Image, Coordinate, as_int4(Texel));                                  \
+    __spirv_ImageWrite(Image, Coordinate, as_uint4(Texel));                                                                                 \
+}                                                                                                                                           \
+void OVERLOADABLE __spirv_ImageWrite(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate, uint4 Texel, int ImageOperands)                 \
+{                                                                                                                                           \
+    __spirv_ImageWrite(Image, Coordinate, Texel);                                                                                           \
+}                                                                                                                                           \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_array_##ACC_QUAL##_v2i32_v4i32_i32, )(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate, int4 Texel, int ImageOperands)  \
+{                                                                                                                                           \
+    SPIRV_BUILTIN(ImageWrite, _img1d_array_##ACC_QUAL##_v2i32_v4i32, )(Image, Coordinate, Texel);                                           \
+}                                                                                                                                           \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_array_##ACC_QUAL##_v2i32_v4f32_i32, )(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate, float4 Texel, int ImageOperands) \
+{                                                                                                                                           \
+    SPIRV_BUILTIN(ImageWrite, _img1d_array_##ACC_QUAL##_v2i32_v4f32, )(Image, Coordinate, Texel);                                           \
 }
 
 #define DEF_IMAGE_WRITE_2D_DEPTH(ACC_QUAL)                                                                                                  \
@@ -1033,6 +1324,10 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_depth_##ACC_QUAL##_v2i3
 {                                                                                                                                           \
     int id = (int)__builtin_astype(Image, __global void*);                                                                                  \
     __builtin_IB_write_2d_ui(id, Coordinate, (uint4)(as_uint(Texel), 0, 0, 0), 0);                                                          \
+}                                                                                                                                           \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_depth_##ACC_QUAL##_v2i32_f32_i32, )(global Img2d_depth_##ACC_QUAL * Image, int2 Coordinate, float Texel, int ImageOperands) \
+{                                                                                                                                           \
+    SPIRV_BUILTIN(ImageWrite, _img2d_depth_##ACC_QUAL##_v2i32_f32, )(Image, Coordinate, Texel);                                             \
 }
 
 #define DEF_IMAGE_WRITE_2D_ARRAY_DEPTH(ACC_QUAL)                                                                                            \
@@ -1040,18 +1335,38 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_array_depth_##ACC_QUAL#
 {                                                                                                                                           \
     int id = (int)__builtin_astype(Image, __global void*);                                                                                  \
     __builtin_IB_write_2darr_ui(id, Coordinate, (uint4)(as_uint(Texel), 0, 0, 0), 0);                                                       \
+}                                                                                                                                           \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_array_depth_##ACC_QUAL##_v4i32_f32_i32, )(global Img2d_array_depth_##ACC_QUAL * Image, int4 Coordinate, float Texel, int ImageOperands) \
+{                                                                                                                                           \
+    SPIRV_BUILTIN(ImageWrite, _img2d_array_depth_##ACC_QUAL##_v4i32_f32, )(Image, Coordinate, Texel);                                       \
 }
 
 #define DEF_IMAGE_WRITE_3D(ACC_QUAL)                                                                                                                  \
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img3d_##ACC_QUAL##_v4i32_v4i32, )(global Img3d_##ACC_QUAL* Image, int4 Coordinate, int4 Texel)     \
+void OVERLOADABLE __spirv_ImageWrite(global Img3d_##ACC_QUAL* Image, int4 Coordinate, uint4 Texel)                                                    \
 {                                                                                                                                                     \
     int id = (int)__builtin_astype(Image, __global void*);                                                                                            \
-    __builtin_IB_write_3d_ui(id, Coordinate, as_uint4(Texel), 0);                                                                                     \
+    __builtin_IB_write_3d_ui(id, Coordinate, Texel, 0);                                                                                               \
+}                                                                                                                                                     \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img3d_##ACC_QUAL##_v4i32_v4i32, )(global Img3d_##ACC_QUAL* Image, int4 Coordinate, int4 Texel)     \
+{                                                                                                                                                     \
+    __spirv_ImageWrite(Image, Coordinate, as_uint4(Texel));                                                                                           \
 }                                                                                                                                                     \
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img3d_##ACC_QUAL##_v4i32_v4f32, )(global Img3d_##ACC_QUAL* Image, int4 Coordinate, float4 Texel)   \
 {                                                                                                                                                     \
-    SPIRV_BUILTIN(ImageWrite, _img3d_##ACC_QUAL##_v4i32_v4i32, )(Image, Coordinate, as_int4(Texel));                                                  \
-}
+    __spirv_ImageWrite(Image, Coordinate, as_uint4(Texel));                                                                                           \
+}                                                                                                                                                     \
+void OVERLOADABLE __spirv_ImageWrite(global Img3d_##ACC_QUAL* Image, int4 Coordinate, uint4 Texel, int ImageOperands)                                 \
+{                                                                                                                                                     \
+    __spirv_ImageWrite(Image, Coordinate, Texel);                                                                                                     \
+}                                                                                                                                                     \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img3d_##ACC_QUAL##_v4i32_v4i32_i32, )(global Img3d_##ACC_QUAL* Image, int4 Coordinate, int4 Texel, int ImageOperands)   \
+{                                                                                                                                                     \
+    SPIRV_BUILTIN(ImageWrite, _img3d_##ACC_QUAL##_v4i32_v4i32, )(Image, Coordinate, Texel);                                                           \
+}                                                                                                                                                     \
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img3d_##ACC_QUAL##_v4i32_v4f32_i32, )(global Img3d_##ACC_QUAL* Image, int4 Coordinate, float4 Texel, int ImageOperands) \
+{                                                                                                                                                     \
+    SPIRV_BUILTIN(ImageWrite, _img3d_##ACC_QUAL##_v4i32_v4f32, )(Image, Coordinate, Texel);                                                           \
+}                                                                                                                                                     \
 
 DEF_IMAGE_WRITE_2D(wo)
 DEF_IMAGE_WRITE_2D(rw)
@@ -1072,15 +1387,20 @@ DEF_IMAGE_WRITE_3D(rw)
 
 // Level of details versions
 
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_wo_v2i32_v4i32_i32_i32, )(global Img2d_wo* Image, int2 Coordinate, int4 Texel, int ImageOperands, int Lod)
+void OVERLOADABLE __spirv_ImageWrite(global Img2d_wo* Image, int2 Coordinate, uint4 Texel, int ImageOperands, int Lod)
 {
     int id = (int)__builtin_astype(Image, __global void*);
-    __builtin_IB_write_2d_ui(id, Coordinate, as_uint4(Texel), Lod);
+    __builtin_IB_write_2d_ui(id, Coordinate, Texel, Lod);
+}
+
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_wo_v2i32_v4i32_i32_i32, )(global Img2d_wo* Image, int2 Coordinate, int4 Texel, int ImageOperands, int Lod)
+{
+    __spirv_ImageWrite(Image, Coordinate, as_uint4(Texel), Lod);
 }
 
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_wo_v2i32_v4f32_i32_i32, )(global Img2d_wo* Image, int2 Coordinate, float4 Texel, int ImageOperands, int Lod)
 {
-    SPIRV_BUILTIN(ImageWrite, _img2d_wo_v2i32_v4i32_i32_i32, )(Image, Coordinate, as_int4(Texel), ImageOperands, Lod);
+    __spirv_ImageWrite(Image, Coordinate, as_uint4(Texel), ImageOperands, Lod);
 }
 
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_depth_wo_v2i32_f32_i32_i32, )(global Img2d_depth_wo* Image, int2 Coordinate, float Texel, int ImageOperands, int Lod)
@@ -1089,37 +1409,52 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_depth_wo_v2i32_f32_i32_
     __builtin_IB_write_2d_f(id, Coordinate, Texel, Lod);
 }
 
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_wo_i32_v4i32_i32_i32, )(global Img1d_wo* Image, int Coordinate, int4 Texel, int ImageOperands, int Lod)
+void OVERLOADABLE __spirv_ImageWrite(global Img1d_wo* Image, int Coordinate, uint4 Texel, int ImageOperands, int Lod)
 {
     int id = (int)__builtin_astype(Image, __global void*);
-    __builtin_IB_write_1d_ui(id, Coordinate, as_uint4(Texel), Lod);
+    __builtin_IB_write_1d_ui(id, Coordinate, Texel, Lod);
+}
+
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_wo_i32_v4i32_i32_i32, )(global Img1d_wo* Image, int Coordinate, int4 Texel, int ImageOperands, int Lod)
+{
+    __spirv_ImageWrite(Image, Coordinate, as_uint4(Texel), Lod);
 }
 
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_wo_i32_v4f32_i32_i32, )(global Img1d_wo* Image, int Coordinate, float4 Texel, int ImageOperands, int Lod)
 {
-    SPIRV_BUILTIN(ImageWrite, _img1d_wo_i32_v4i32_i32_i32, )(Image, Coordinate, as_int4(Texel), ImageOperands, Lod);
+    __spirv_ImageWrite(Image, Coordinate, as_uint4(Texel), ImageOperands, Lod);
+}
+
+void OVERLOADABLE __spirv_ImageWrite(global Img1d_array_wo* Image, int2 Coordinate, uint4 Texel, int ImageOperands, int Lod)
+{
+    int id = (int)__builtin_astype(Image, __global void*);
+    __builtin_IB_write_1darr_ui(id, Coordinate, Texel, Lod);
 }
 
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_array_wo_v2i32_v4i32_i32_i32, )(global Img1d_array_wo* Image, int2 Coordinate, int4 Texel, int ImageOperands, int Lod)
 {
-    int id = (int)__builtin_astype(Image, __global void*);
-    __builtin_IB_write_1darr_ui(id, Coordinate, as_uint4(Texel), Lod);
+    __spirv_ImageWrite(Image, Coordinate, as_uint4(Texel), Lod);
 }
 
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_array_wo_v2i32_v4f32_i32_i32, )(global Img1d_array_wo* Image, int2 Coordinate, float4 Texel, int ImageOperands, int Lod)
 {
-    SPIRV_BUILTIN(ImageWrite, _img1d_array_wo_v2i32_v4i32_i32_i32, )(Image, Coordinate, as_int4(Texel), ImageOperands, Lod);
+    __spirv_ImageWrite(Image, Coordinate, as_uint4(Texel), ImageOperands, Lod);
+}
+
+void OVERLOADABLE __spirv_ImageWrite(global Img2d_array_wo* Image, int4 Coordinate, uint4 Texel, int ImageOperands, int Lod)
+{
+    int id = (int)__builtin_astype(Image, __global void*);
+    __builtin_IB_write_2darr_ui(id, Coordinate, Texel, Lod);
 }
 
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_array_wo_v4i32_v4i32_i32_i32, )(global Img2d_array_wo* Image, int4 Coordinate, int4 Texel, int ImageOperands, int Lod)
 {
-    int id = (int)__builtin_astype(Image, __global void*);
-    __builtin_IB_write_2darr_ui(id, Coordinate, as_uint4(Texel), Lod);
+    __spirv_ImageWrite(Image, Coordinate, as_uint4(Texel), Lod);
 }
 
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_array_wo_v4i32_v4f32_i32_i32, )(global Img2d_array_wo* Image, int4 Coordinate, float4 Texel, int ImageOperands, int Lod)
 {
-    SPIRV_BUILTIN(ImageWrite, _img2d_array_wo_v4i32_v4i32_i32_i32, )(Image, Coordinate, as_int4(Texel), ImageOperands, Lod);
+    __spirv_ImageWrite(Image, Coordinate, as_uint4(Texel), ImageOperands, Lod);
 }
 
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_array_depth_wo_v4i32_f32_i32_i32, )(global Img2d_array_depth_wo* Image, int4 Coordinate, float Texel, int ImageOperands, int Lod)
@@ -1128,144 +1463,20 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_array_depth_wo_v4i32_f3
     __builtin_IB_write_2darr_f(id, Coordinate, Texel, Lod);
 }
 
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img3d_wo_v4i32_v4i32_i32_i32, )(global Img3d_wo* Image, int4 Coordinate, int4 Texel, int ImageOperands, int Lod)
+void OVERLOADABLE __spirv_ImageWrite(global Img3d_wo* Image, int4 Coordinate, uint4 Texel, int ImageOperands, int Lod)
 {
     int id = (int)__builtin_astype(Image, __global void*);
-    __builtin_IB_write_3d_ui(id, Coordinate, as_uint4(Texel), Lod);
+    __builtin_IB_write_3d_ui(id, Coordinate, Texel, Lod);
+}
+
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img3d_wo_v4i32_v4i32_i32_i32, )(global Img3d_wo* Image, int4 Coordinate, int4 Texel, int ImageOperands, int Lod)
+{
+    __spirv_ImageWrite(Image, Coordinate, as_uint4(Texel), Lod);
 }
 
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img3d_wo_v4i32_v4f32_i32_i32, )(global Img3d_wo* Image, int4 Coordinate, float4 Texel, int ImageOperands, int Lod)
 {
-    SPIRV_BUILTIN(ImageWrite, _img3d_wo_v4i32_v4i32_i32_i32, )(Image, Coordinate, as_int4(Texel), ImageOperands, Lod);
-}
-
-
-
-// Image Write with unused ImageOperands
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_wo_v2i32_v4i32_i32, )(global Img2d_wo* Image, int2 Coordinate, int4 Texel, int ImageOperands)
-{
-    SPIRV_BUILTIN(ImageWrite, _img2d_wo_v2i32_v4i32_i32_i32, )(Image, Coordinate, Texel, ImageOperands, 0);
-}
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_rw_v2i32_v4i32_i32, )(global Img2d_rw* Image, int2 Coordinate, int4 Texel, int ImageOperands)
-{
-    SPIRV_BUILTIN(ImageWrite, _img2d_rw_v2i32_v4i32, )(Image, Coordinate, Texel);
-}
-
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_wo_v2i32_v4f32_i32, )(global Img2d_wo* Image, int2 Coordinate, float4 Texel, int ImageOperands)
-{
-    SPIRV_BUILTIN(ImageWrite, _img2d_wo_v2i32_v4i32_i32, )(Image, Coordinate, as_int4(Texel), ImageOperands);
-}
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_rw_v2i32_v4f32_i32, )(global Img2d_rw* Image, int2 Coordinate, float4 Texel, int ImageOperands)
-{
-    SPIRV_BUILTIN(ImageWrite, _img2d_rw_v2i32_v4i32, )(Image, Coordinate, as_int4(Texel));
-}
-
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_depth_wo_v2i32_f32_i32, )(global Img2d_depth_wo* Image, int2 Coordinate, float Texel, int ImageOperands)
-{
-    SPIRV_BUILTIN(ImageWrite, _img2d_depth_wo_v2i32_f32_i32_i32, )(Image, Coordinate, Texel, ImageOperands, 0);
-}
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_depth_rw_v2i32_f32_i32, )(global Img2d_depth_rw* Image, int2 Coordinate, float Texel, int ImageOperands)
-{
-    SPIRV_BUILTIN(ImageWrite, _img2d_depth_rw_v2i32_f32, )(Image, Coordinate, Texel);
-}
-
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_wo_i32_v4i32_i32, )(global Img1d_wo* Image, int Coordinate, int4 Texel, int ImageOperands)
-{
-    SPIRV_BUILTIN(ImageWrite, _img1d_wo_i32_v4i32_i32_i32, )(Image, Coordinate, Texel, ImageOperands, 0);
-}
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_rw_i32_v4i32_i32, )(global Img1d_rw* Image, int Coordinate, int4 Texel, int ImageOperands)
-{
-    SPIRV_BUILTIN(ImageWrite, _img1d_rw_i32_v4i32, )(Image, Coordinate, Texel);
-}
-
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_wo_i32_v4f32_i32, )(global Img1d_wo* Image, int Coordinate, float4 Texel, int ImageOperands)
-{
-    SPIRV_BUILTIN(ImageWrite, _img1d_wo_i32_v4i32_i32, )(Image, Coordinate, as_int4(Texel), ImageOperands);
-}
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_rw_i32_v4f32_i32, )(global Img1d_rw* Image, int Coordinate, float4 Texel, int ImageOperands)
-{
-    SPIRV_BUILTIN(ImageWrite, _img1d_rw_i32_v4i32, )(Image, Coordinate, as_int4(Texel));
-}
-
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_array_wo_v2i32_v4i32_i32, )(global Img1d_array_wo* Image, int2 Coordinate, int4 Texel, int ImageOperands)
-{
-    SPIRV_BUILTIN(ImageWrite, _img1d_array_wo_v2i32_v4i32_i32_i32, )(Image, Coordinate, Texel, ImageOperands, 0);
-}
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_array_rw_v2i32_v4i32_i32, )(global Img1d_array_rw* Image, int2 Coordinate, int4 Texel, int ImageOperands)
-{
-    SPIRV_BUILTIN(ImageWrite, _img1d_array_rw_v2i32_v4i32, )(Image, Coordinate, Texel);
-}
-
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_array_wo_v2i32_v4f32_i32, )(global Img1d_array_wo* Image, int2 Coordinate, float4 Texel, int ImageOperands)
-{
-    SPIRV_BUILTIN(ImageWrite, _img1d_array_wo_v2i32_v4i32_i32, )(Image, Coordinate, as_int4(Texel), ImageOperands);
-}
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_array_rw_v2i32_v4f32_i32, )(global Img1d_array_rw* Image, int2 Coordinate, float4 Texel, int ImageOperands)
-{
-    SPIRV_BUILTIN(ImageWrite, _img1d_array_rw_v2i32_v4i32, )(Image, Coordinate, as_int4(Texel));
-}
-
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_buffer_wo_i32_v4i32_i32, )(global Img1d_buffer_wo* Image, int Coordinate, int4 Texel, int ImageOperands)
-{
-    SPIRV_BUILTIN(ImageWrite, _img1d_buffer_wo_i32_v4i32, )(Image, Coordinate, Texel);
-}
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_buffer_rw_i32_v4i32_i32, )(global Img1d_buffer_rw* Image, int Coordinate, int4 Texel, int ImageOperands)
-{
-    SPIRV_BUILTIN(ImageWrite, _img1d_buffer_rw_i32_v4i32, )(Image, Coordinate, Texel);
-}
-
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_buffer_wo_i32_v4f32_i32, )(global Img1d_buffer_wo* Image, int Coordinate, float4 Texel, int ImageOperands)
-{
-    SPIRV_BUILTIN(ImageWrite, _img1d_buffer_wo_i32_v4i32_i32, )(Image, Coordinate, as_int4(Texel), ImageOperands);
-}
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_buffer_rw_i32_v4f32_i32, )(global Img1d_buffer_rw* Image, int Coordinate, float4 Texel, int ImageOperands)
-{
-    SPIRV_BUILTIN(ImageWrite, _img1d_buffer_rw_i32_v4i32, )(Image, Coordinate, as_int4(Texel));
-}
-
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_array_wo_v4i32_v4i32_i32, )(global Img2d_array_wo* Image, int4 Coordinate, int4 Texel, int ImageOperands)
-{
-    SPIRV_BUILTIN(ImageWrite, _img2d_array_wo_v4i32_v4i32_i32_i32, )(Image, Coordinate, Texel, ImageOperands, 0);
-}
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_array_rw_v4i32_v4i32_i32, )(global Img2d_array_rw* Image, int4 Coordinate, int4 Texel, int ImageOperands)
-{
-    SPIRV_BUILTIN(ImageWrite, _img2d_array_rw_v4i32_v4i32, )(Image, Coordinate, Texel);
-}
-
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_array_wo_v4i32_v4f32_i32, )(global Img2d_array_wo* Image, int4 Coordinate, float4 Texel, int ImageOperands)
-{
-    SPIRV_BUILTIN(ImageWrite, _img2d_array_wo_v4i32_v4i32_i32, )(Image, Coordinate, as_int4(Texel), ImageOperands);
-}
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_array_rw_v4i32_v4f32_i32, )(global Img2d_array_rw* Image, int4 Coordinate, float4 Texel, int ImageOperands)
-{
-    SPIRV_BUILTIN(ImageWrite, _img2d_array_rw_v4i32_v4i32, )(Image, Coordinate, as_int4(Texel));
-}
-
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_array_depth_wo_v4i32_f32_i32, )(global Img2d_array_depth_wo* Image, int4 Coordinate, float Texel, int ImageOperands)
-{
-    SPIRV_BUILTIN(ImageWrite, _img2d_array_depth_wo_v4i32_f32_i32_i32, )(Image, Coordinate, Texel, ImageOperands, 0);
-}
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_array_depth_rw_v4i32_f32_i32, )(global Img2d_array_depth_rw* Image, int4 Coordinate, float Texel, int ImageOperands)
-{
-    SPIRV_BUILTIN(ImageWrite, _img2d_array_depth_rw_v4i32_f32, )(Image, Coordinate, Texel);
-}
-
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img3d_wo_v4i32_v4i32_i32, )(global Img3d_wo* Image, int4 Coordinate, int4 Texel, int ImageOperands)
-{
-    SPIRV_BUILTIN(ImageWrite, _img3d_wo_v4i32_v4i32_i32_i32, )(Image, Coordinate, Texel, ImageOperands, 0);
-}
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img3d_rw_v4i32_v4i32_i32, )(global Img3d_rw* Image, int4 Coordinate, int4 Texel, int ImageOperands)
-{
-    SPIRV_BUILTIN(ImageWrite, _img3d_rw_v4i32_v4i32, )(Image, Coordinate, Texel);
-}
-
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img3d_wo_v4i32_v4f32_i32, )(global Img3d_wo* Image, int4 Coordinate, float4 Texel, int ImageOperands)
-{
-    SPIRV_BUILTIN(ImageWrite, _img3d_wo_v4i32_v4i32_i32, )(Image, Coordinate, as_int4(Texel), ImageOperands);
-}
-void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img3d_rw_v4i32_v4f32_i32, )(global Img3d_rw* Image, int4 Coordinate, float4 Texel, int ImageOperands)
-{
-    SPIRV_BUILTIN(ImageWrite, _img3d_rw_v4i32_v4i32, )(Image, Coordinate, as_int4(Texel));
+    __spirv_ImageWrite(Image, Coordinate, as_uint4(Texel), ImageOperands, Lod);
 }
 
 #ifdef cl_khr_fp16
@@ -1273,6 +1484,10 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img3d_rw_v4i32_v4f32_i32, )(g
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img##IMAGE_TYPE##_##COORDS_TYPE_ABBR##_v4f16, )(global Img##IMAGE_TYPE* Image, COORDS_TYPE Coordinate, half4 Texel) \
 {                                                                                                                                                                      \
     SPIRV_BUILTIN(ImageWrite, _img##IMAGE_TYPE##_##COORDS_TYPE_ABBR##_v4f32, )(Image, Coordinate, SPIRV_BUILTIN(FConvert, _v4f32_v4f16, _Rfloat4)(Texel));             \
+}                                                                                                                                                                      \
+void OVERLOADABLE __spirv_ImageWrite(global Img##IMAGE_TYPE* Image, COORDS_TYPE Coordinate, half4 Texel, int ImageOperands)                                            \
+{                                                                                                                                                                      \
+    SPIRV_BUILTIN(ImageWrite, _img##IMAGE_TYPE##_##COORDS_TYPE_ABBR##_v4f16, )(Image, Coordinate, Texel);                                                              \
 }
 
 DEF_HALF_IMAGE_WRITE(2d_wo, int2, v2i32)
