@@ -2160,7 +2160,7 @@ int CISA_IR_Builder::verifyVISAIR() {
       if (asmNameEnd != std::string::npos) {
         testName = asmName.substr(0, asmNameEnd);
       } else {
-        testName = asmName;
+        testName = std::move(asmName);
       }
       break;
     }

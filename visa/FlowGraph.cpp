@@ -3401,7 +3401,7 @@ void FlowGraph::findNestedDivergentBBs(
         }
       }
 
-      workset = newWorkset;
+      workset = std::move(newWorkset);
     }
   };
 

@@ -132,7 +132,7 @@ class DIEAbbrev : public llvm::FoldingSetNode {
 
   /// Unique number for node.
   ///
-  unsigned Number;
+  unsigned Number{};
 
   /// Data - Raw data bytes for abbreviation.
   ///

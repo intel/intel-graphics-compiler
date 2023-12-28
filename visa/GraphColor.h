@@ -1256,7 +1256,7 @@ public:
     bbLabels.clear();
     BBLexId.clear();
   }
-  void loadAugData(AllIntervals &s, const LiveRangeVec &l, CALL_DECL_MAP c,
+  void loadAugData(AllIntervals &s, const LiveRangeVec &l, const CALL_DECL_MAP& c,
                    unsigned n, const Interference *i, GlobalRA &g);
   void dump(const char *dclName);
   bool isClobbered(LiveRange *lr, std::string &msg);
@@ -1748,7 +1748,7 @@ public:
     return getVar(dcl).mask;
   }
 
-  void setMask(const G4_Declare *dcl, std::vector<unsigned char> m) {
+  void setMask(const G4_Declare *dcl, const std::vector<unsigned char>& m) {
     allocVar(dcl).mask = m;
   }
 

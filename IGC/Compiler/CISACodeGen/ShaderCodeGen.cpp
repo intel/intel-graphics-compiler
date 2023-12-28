@@ -630,7 +630,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
                 IGC_GET_REGKEYSTRING(ForcePrivateMemoryToSLMOnBuffers));
 
             mpm.add(new PrivateMemoryToSLM(
-                forcedBuffers,
+                std::move(forcedBuffers),
                 IGC_IS_FLAG_ENABLED(EnableOptReportPrivateMemoryToSLM)));
             mpm.add(createInferAddressSpacesPass());
         }

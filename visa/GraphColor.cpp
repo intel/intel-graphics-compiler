@@ -3930,7 +3930,7 @@ void Augmentation::handleDstOpnd(FuncInfo *funcInfo, G4_BB *curBB,
     const REGVAR_VECTOR &pointsToSet =
         liveAnalysis.getPointsToAnalysis().getAllInPointsToOrIndrUse(dst,
                                                                      curBB);
-    for (auto pointsToVar : pointsToSet) {
+    for (auto& pointsToVar : pointsToSet) {
       if (pointsToVar.var->isRegAllocPartaker()) {
         updateStartInterval(pointsToVar.var->getDeclare()->getRootDeclare(),
                             inst);

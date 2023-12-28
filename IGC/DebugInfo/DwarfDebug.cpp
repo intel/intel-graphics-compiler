@@ -2130,7 +2130,7 @@ void DwarfDebug::beginFunction(const Function *MF, IGC::VISAModule *v) {
 
   for (auto II = m_pModule->begin(), IE = m_pModule->end(); II != IE; ++II) {
     const Instruction *MI = *II;
-    auto Loc = MI->getDebugLoc();
+    const auto &Loc = MI->getDebugLoc();
 
     if (Loc && Loc.getScope() != prevIAT) {
       SameIATInsts[Loc.getInlinedAt()].push_back(MI);

@@ -959,7 +959,7 @@ bool VerifyAugmentation::isClobbered(LiveRange *lr, std::string &msg) {
 }
 
 void VerifyAugmentation::loadAugData(AllIntervals &s, const LiveRangeVec &l,
-                                     CALL_DECL_MAP c, unsigned n,
+                                     const CALL_DECL_MAP& c, unsigned n,
                                      const Interference *i, GlobalRA &g) {
   reset();
   sortedLiveRanges = s;

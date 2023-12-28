@@ -426,7 +426,7 @@ void *gtPinData::getGTPinInfoBuffer(unsigned &bufferSize) {
 
       std::ofstream ofInfo;
       std::stringstream ssInfo;
-      ssInfo << std::string(asmName) << ".gtpin_igc_info";
+      ssInfo << asmName << ".gtpin_igc_info";
       ofInfo.open(ssInfo.str(), std::ofstream::binary);
       if (gtpinBuffer) {
         ofInfo.write((const char *)gtpinBuffer, bufferSize);
@@ -1837,7 +1837,7 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(std::ostream &os,
   // tryPrintLable - check if the given label is already printed with the given
   // pc. Print it if not, and skip it if yes.
   auto tryPrintLabel = [&os, &printedLabels](int32_t label_pc,
-                                             std::string label_name) {
+                                             const std::string& label_name) {
     auto label_pair = std::make_pair(label_pc, label_name);
     // skip if the same label in the set
     if (printedLabels.find(label_pair) != printedLabels.end())
