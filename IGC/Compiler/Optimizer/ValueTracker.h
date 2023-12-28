@@ -27,8 +27,9 @@ namespace IGC
     class ValueTracker
     {
     private:
-        ValueTracker(llvm::Function* F, const IGC::IGCMD::MetaDataUtils* pMdUtils, const IGC::ModuleMetaData* pModMD) :
-            m_pMDUtils(pMdUtils), m_pModMD(pModMD), m_Function(F) {};
+        ValueTracker(llvm::Function* F, const IGC::IGCMD::MetaDataUtils* pMdUtils, const IGC::ModuleMetaData* pModMD,
+                     llvm::function_ref<bool(llvm::Value *)> predicate) :
+            m_pMDUtils(pMdUtils), m_pModMD(pModMD), m_Function(F), m_predicate(predicate) {};
         // The first step of the algorithm
         llvm::Value* trackValue(llvm::Value* I);
         llvm::Value* handleGenIntrinsic(llvm::GenIntrinsicInst* I);
@@ -43,6 +44,10 @@ namespace IGC
         const IGC::ModuleMetaData* m_pModMD;
         llvm::Function* m_Function;
 
+        // Used for evaluating if currently processed value is the final value.
+        // Value tracker will return the value if predicate is true.
+        llvm::function_ref<bool(llvm::Value *)> m_predicate;
+
         std::vector<llvm::ConstantInt*> gepIndices;
         std::vector<llvm::CallInst*> callInsts;
         llvm::SmallPtrSet<llvm::Value*, 10> visitedValues;
@@ -53,6 +58,7 @@ namespace IGC
             llvm::CallInst* CI,
             const uint index,
             const IGC::IGCMD::MetaDataUtils* pMdUtils = nullptr,
-            const IGC::ModuleMetaData* pModMD = nullptr);
+            const IGC::ModuleMetaData* pModMD = nullptr,
+            llvm::function_ref<bool(llvm::Value *)> predicate = nullptr);
     };
 }
