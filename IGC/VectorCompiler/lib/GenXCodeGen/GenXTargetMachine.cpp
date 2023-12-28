@@ -325,7 +325,6 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
 
   vc::addPass(PM, createGenXInitBiFConstantsPass());
   vc::addPass(PM, createGenXFixInvalidFuncNamePass());
-  vc::addPass(PM, createGenXLegalizeGVLoadUsesPass());
 
   // Install GenX-specific TargetTransformInfo for passes such as
   // LowerAggrCopies and InfoAddressSpace
@@ -690,7 +689,6 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
       PassManagerBuilder::EP_EarlyAsPossible,
       [](const PassManagerBuilder &Builder, PassManagerBase &PM) {
         PM.add(createGenXFixInvalidFuncNamePass());
-        PM.add(createGenXLegalizeGVLoadUsesPass());
       });
 
   // Lower aggr copies.
@@ -703,6 +701,7 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
   // Packetize.
   auto AddPacketize = [](const PassManagerBuilder &Builder,
                          PassManagerBase &PM) {
+    PM.add(createGenXLegalizeGVLoadUsesPass());
 #ifndef NDEBUG
     PM.add(createGenXVerifyPass(GenXVerifyStage::PostSPIRVReader));
 #endif

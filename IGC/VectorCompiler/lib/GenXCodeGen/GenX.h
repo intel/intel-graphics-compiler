@@ -148,7 +148,7 @@ ModulePass *createGenXStructSplitterPass();
 FunctionPass *createGenXPredRegionLoweringPass();
 FunctionPass *createGenXDebugLegalizationPass();
 FunctionPass *createGenXFixInvalidFuncNamePass();
-FunctionPass *createGenXLegalizeGVLoadUsesPass();
+ModulePass *createGenXLegalizeGVLoadUsesPass();
 ModulePass *createGenXGASCastWrapperPass();
 FunctionPass *createGenXGASDynamicResolutionPass();
 ModulePass *createGenXInitBiFConstantsPass();

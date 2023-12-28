@@ -20,7 +20,6 @@ SPDX-License-Identifier: MIT
 #include "vc/Support/GenXDiagnostic.h"
 
 #include <llvm/IR/InstVisitor.h>
-#include <llvm/IR/Verifier.h>
 
 #define DEBUG_TYPE "GENX_VERIFY"
 
