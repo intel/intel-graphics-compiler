@@ -142,7 +142,7 @@ protected:
   typedef std::map<Ty1, Ty2> MapTy;
   typedef std::map<Ty2, Ty1> RevMapTy;
 
-  void add(Ty1 V1, Ty2 V2) {
+  void add(const Ty1& V1, const Ty2& V2) {
     if (IsReverse) {
       RevMap[V2] = V1;
       return;

@@ -1491,10 +1491,10 @@ void SWSB::SWSBInitializeGlobalNodesInBuckets(
     }
 
     if (setDstBucket) {
-      dstGlobalIDs[curBucket] = dstBitSet;
+      dstGlobalIDs[curBucket] = std::move(dstBitSet);
     }
     if (setSrcBucket) {
-      srcGlobalIDs[curBucket] = srcBitSet;
+      srcGlobalIDs[curBucket] = std::move(srcBitSet);
     }
   }
 }
@@ -1877,7 +1877,7 @@ void SWSB::getDominators(ImmDominator *dom) {
 
       if (currDoms != BBVector[i]->dominators) {
         changed = true;
-        BBVector[i]->dominators = currDoms;
+        BBVector[i]->dominators = std::move(currDoms);
       }
     }
   }
@@ -7173,7 +7173,7 @@ void G4_BB_SB::dumpLiveInfo(const SBBUCKET_VECTOR *globalSendOpndList,
 
   std::cerr << "Scalar Killed:   ";
   std::cerr << "\n";
-  if (!send_live_out.isEmpty()) {
+  if (!send_kill_scalar.isEmpty()) {
     std::cerr << "\tdst:  ";
     for (const SBBucketNode *sNode : *globalSendOpndList) {
       if (sNode->opndNum == Opnd_dst &&

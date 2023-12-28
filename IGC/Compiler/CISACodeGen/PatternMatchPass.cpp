@@ -62,7 +62,8 @@ namespace IGC
         LI(nullptr),
         m_DL(0),
         m_WI(nullptr),
-        m_LivenessInfo(nullptr)
+        m_LivenessInfo(nullptr),
+        m_PosDep(nullptr)
     {
         initializeCodeGenPatternMatchPass(*PassRegistry::getPassRegistry());
     }

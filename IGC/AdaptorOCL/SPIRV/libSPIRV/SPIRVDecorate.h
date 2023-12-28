@@ -101,7 +101,7 @@ public:
   SPIRVDecorate():SPIRVDecorateGeneric(OC){}
 
   _SPIRV_DCL_DEC
-  void setWordCount(SPIRVWord);
+  void setWordCount(SPIRVWord) override;
 };
 
 class SPIRVMemberDecorate:public SPIRVDecorateGeneric{
@@ -124,7 +124,7 @@ public:
   }
 
   _SPIRV_DCL_DEC
-  void setWordCount(SPIRVWord);
+  void setWordCount(SPIRVWord) override;
 protected:
   SPIRVWord MemberNumber;
 };
@@ -155,7 +155,7 @@ public:
 
 protected:
   SPIRVDecorateSet Decorations;
-  void validate()const {
+  void validate() const override {
     IGC_ASSERT(OpCode == OC);
     IGC_ASSERT(WordCount == WC);
   }
@@ -175,7 +175,7 @@ public:
   SPIRVGroupDecorateGeneric(Op OC)
     :SPIRVEntryNoIdGeneric(OC), DecorationGroup(nullptr){}
 
-  void setWordCount(SPIRVWord WC) {
+  void setWordCount(SPIRVWord WC) override {
     SPIRVEntryNoIdGeneric::setWordCount(WC);
     Targets.resize(WC - FixedWC);
   }

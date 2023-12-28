@@ -3485,7 +3485,7 @@ bool EarlyOutPatterns::canOptimizeNdotL(SmallVector<Instruction*, 4> & Values, F
     Scheduled.clear();
     BasicBlock* BB = FC->getParent();
     Instruction* InsertPos = &*BB->getFirstInsertionPt();
-    safeScheduleUp(BB, cast<Value>(FC), InsertPos, Scheduled);
+    safeScheduleUp(BB, cast<Value>(FC), InsertPos, std::move(Scheduled));
 
     return true;
 }

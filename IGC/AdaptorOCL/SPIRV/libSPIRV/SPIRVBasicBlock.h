@@ -64,7 +64,7 @@ public:
     setAttr();
   }
 
-  SPIRVDecoder getDecoder(std::istream &IS);
+  SPIRVDecoder getDecoder(std::istream &IS) override;
   SPIRVFunction *getParent() const { return ParentF;}
   size_t getNumInst() const { return InstVec.size();}
   SPIRVInstruction *getInst(size_t I) const { return InstVec[I];}
@@ -88,7 +88,7 @@ public:
     return InstVec.empty() ? nullptr : InstVec.back();
   }
 
-  void setScope(SPIRVEntry *Scope);
+  void setScope(SPIRVEntry *Scope) override;
   void setParent(SPIRVFunction *F) { ParentF = F;}
   SPIRVInstruction *
   addInstruction(SPIRVInstruction *I,
@@ -96,7 +96,7 @@ public:
 
   void setAttr() { setHasNoType();}
   _SPIRV_DCL_DEC
-  void validate()const {
+  void validate() const override {
     SPIRVValue::validate();
     IGC_ASSERT_MESSAGE(ParentF, "Invalid parent function");
   }

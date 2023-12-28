@@ -606,7 +606,7 @@ void DefEscapeBBAnalysis::analyzeBB(G4_BB *bb) {
       escapedDefs.push_back(I);
     }
   }
-  escapedInsts[bb] = escapedDefs;
+  escapedInsts[bb] = std::move(escapedDefs);
 }
 
 void DefEscapeBBAnalysis::print(std::ostream &OS) const {

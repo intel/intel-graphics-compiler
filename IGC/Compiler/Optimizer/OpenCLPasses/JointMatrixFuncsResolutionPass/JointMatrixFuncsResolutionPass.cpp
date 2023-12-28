@@ -1273,14 +1273,14 @@ static Value *packFillValue
     if (ConstantInt *Constant = dyn_cast<ConstantInt>(V)) {
         uint64_t value = Constant->getLimitedValue();
         if (value == 0) {
-            return ConstantInt::get(TargetType, 0, "matrix.fill.zero");
+            return ConstantInt::get(TargetType, 0);
         }
 
         uint64_t packedValue = 0;
         for (unsigned i = 0; i < packFactor; i++) {
             packedValue |= value << (sourceBitWidth * i);
         }
-        return ConstantInt::get(TargetType, packedValue, "matrix.fill.packedconst");
+        return ConstantInt::get(TargetType, packedValue);
     }
 
     Value *extendedValue = Builder->CreateZExt(V, TargetType);

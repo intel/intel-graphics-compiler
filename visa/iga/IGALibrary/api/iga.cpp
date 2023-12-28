@@ -138,7 +138,7 @@ struct PlatformNameMap {
           break;
         nmlist.push_back(str);
       }
-      names[me.platform] = nmlist;
+      names[me.platform] = std::move(nmlist);
       exts[me.platform] = me.extension.str();
     }
   }
@@ -276,6 +276,8 @@ public:
     memset(m_empty_string, 0, sizeof(m_empty_string));
   }
 
+  IGAContext(const IGAContext&) = delete;
+  IGAContext& operator=(const IGAContext&) = delete;
   ~IGAContext() {
     m_validToken = 0xDEADDEADDEADDEADull;
     clearDiagnostics(m_warnings);

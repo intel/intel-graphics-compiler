@@ -54,9 +54,9 @@ namespace {
         bool runOnFunction(Function& F) override;
 
     private:
-        CodeGenContext* m_cgCtx;
-        ModuleMetaData* m_modMD;
-        Module* m_module;
+        CodeGenContext* m_cgCtx = nullptr;
+        ModuleMetaData* m_modMD = nullptr;
+        Module* m_module = nullptr;
 
         bool discardOnAlpha(GenIntrinsicInst* out);
 

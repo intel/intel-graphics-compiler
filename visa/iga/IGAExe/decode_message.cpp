@@ -129,7 +129,7 @@ static bool tryParseInt(const char *which, std::string inp, uint64_t &val) {
     fatalExitWithMessage("-Xdsd: ", which, ": ", inp, ": value out of range");
   }
 }
-static uint64_t parseInt(const char *which, std::string inp) {
+static uint64_t parseInt(const char *which, const std::string &inp) {
   uint64_t val = 0;
   if (!tryParseInt(which, inp, val)) {
     fatalExitWithMessage("-Xdsd: ", which, ": ", inp, ": malformed value");

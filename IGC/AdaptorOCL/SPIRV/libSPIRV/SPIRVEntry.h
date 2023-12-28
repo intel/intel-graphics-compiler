@@ -75,7 +75,7 @@ class SPIRVExtInst;
 // Add declaration of decode functions to a class.
 // Used inside class definition.
 #define _SPIRV_DCL_DEC \
-    void decode(std::istream &I);
+    void decode(std::istream &I) override;
 
 #define _SPIRV_DCL_DEC_OVERRIDE \
     void decode(std::istream &I) override;
@@ -120,7 +120,7 @@ class SPIRVExtInst;
 #define _SPIRV_DEF_DEC3_OVERRIDE(x,y,z)                                                  \
     void decode(std::istream &I) override { getDecoder(I) >> x >> y >> z;}
 #define _SPIRV_DEF_DEC4(x,y,z,u)                                                         \
-    void decode(std::istream &I) { getDecoder(I) >> x >> y >> z >> u;}
+    void decode(std::istream &I) override { getDecoder(I) >> x >> y >> z >> u;}
 #define _SPIRV_DEF_DEC4_OVERRIDE(x,y,z,u)                                                \
     void decode(std::istream &I) override { getDecoder(I) >> x >> y >> z >> u;}
 #define _SPIRV_DEF_DEC5(x,y,z,u,v)                                                       \
@@ -302,14 +302,14 @@ public:
   void validateValues(const std::vector<SPIRVId> &)const;
   void validateBuiltin(SPIRVWord, SPIRVWord)const;
 
-  virtual bool hasNoScope() { return false; }
-  virtual bool isOpLine() { return false; }
-  virtual bool isOpNoLine() { return false; }
-  virtual bool isScope() { return false; }
-  virtual bool startsScope() { return false; }
-  virtual bool endsScope() { return false; }
-  virtual bool isString() { return false; }
-  virtual bool isConstant() { return false; }
+  virtual bool hasNoScope() const { return false; }
+  virtual bool isOpLine() const { return false; }
+  virtual bool isOpNoLine() const { return false; }
+  virtual bool isScope() const { return false; }
+  virtual bool startsScope() const { return false; }
+  virtual bool endsScope() const { return false; }
+  virtual bool isString() const { return false; }
+  virtual bool isConstant() const { return false; }
 
 protected:
   /// An entry may have multiple FuncParamAttr decorations.
@@ -417,7 +417,7 @@ public:
 protected:
   SPIRVExecutionModelKind ExecModel;
   std::string Name;
-  CapVec getRequiredCapability() const {
+  CapVec getRequiredCapability() const override {
     return getVec(getCapability(ExecModel));
   }
 private:
@@ -433,7 +433,7 @@ public:
   SPIRVName(){}
 protected:
   _SPIRV_DCL_DEC
-  void validate() const;
+  void validate() const override;
 
   std::string Str;
 };
@@ -452,7 +452,7 @@ public:
   SPIRVMemberName():MemberNumber(SPIRVWORD_MAX){}
 protected:
   _SPIRV_DCL_DEC
-  void validate() const;
+  void validate() const override;
   SPIRVWord MemberNumber;
   std::string Str;
 };
@@ -466,7 +466,7 @@ public:
   SPIRVString():SPIRVEntry(OC){}
   _SPIRV_DCL_DEC
   const std::string &getStr()const { return Str;}
-  bool isString() { return true; }
+  bool isString() const override { return true; }
 protected:
   std::string Str;
 };
@@ -513,11 +513,11 @@ public:
     Line = line;
   }
 
-  bool isOpLine() { return true; }
+  bool isOpLine() const override { return true; }
 
 protected:
   _SPIRV_DCL_DEC
-  void validate() const;
+  void validate() const override;
   SPIRVId FileName;
   SPIRVWord Line;
   SPIRVWord Column;
@@ -535,11 +535,11 @@ public:
     // Incomplete constructor
     SPIRVNoLine() : SPIRVEntryNoIdGeneric(OpNoLine) {}
 
-    bool isOpLine() { return true; }
+    bool isOpLine() const override { return true; }
 
 protected:
     _SPIRV_DCL_DEC
-        void validate() const;
+        void validate() const override;
 };
 
 class SPIRVExecutionMode:public SPIRVAnnotation<OpExecutionMode> {
@@ -566,7 +566,7 @@ public:
   SPIRVExecutionMode():ExecMode(ExecutionModeCount){}
   SPIRVExecutionModeKind getExecutionMode()const { return ExecMode;}
   const std::vector<SPIRVWord>& getLiterals()const { return WordLiterals;}
-  CapVec getRequiredCapability() const {
+  CapVec getRequiredCapability() const override {
     return getVec(getCapability(ExecMode));
   }
 protected:
@@ -603,7 +603,7 @@ public:
   SPIRVExtInstImport():SPIRVEntry(OC){}
 protected:
   _SPIRV_DCL_DEC
-  void validate() const;
+  void validate() const override;
 
   std::string Str;
 };
@@ -613,7 +613,7 @@ public:
   SPIRVMemoryModel(SPIRVModule *M):SPIRVEntryNoId(M, 3){}
   SPIRVMemoryModel(){}
   _SPIRV_DCL_DEC
-  void validate() const;
+  void validate() const override;
 };
 
 class SPIRVSource:public SPIRVEntryNoId<OpSource> {

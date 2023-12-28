@@ -25,7 +25,7 @@ namespace IGC {
 class AddressArithmeticSinking : public llvm::FunctionPass {
 
 private:
-    llvm::DominatorTree* DT;
+    llvm::DominatorTree* DT = nullptr;
 
 public:
     static char ID;

@@ -3743,7 +3743,7 @@ void KernelParser::ParseLdStOpControls(Loc mneLoc,
     return true;
   };
   //
-  auto tryParseDataType = [&](Loc dtLoc, std::string dt) {
+  auto tryParseDataType = [&](Loc dtLoc, const std::string& dt) {
     if (dt.size() < 2 || dt[0] != 'd' || !isdigit(dt[1])) {
       return false;
     }
@@ -3875,7 +3875,7 @@ void KernelParser::ParseLdStOpControls(Loc mneLoc,
     return true;
   };
   //
-  auto tryCachingSymbol = [](std::string cc, CacheOpt &co) {
+  auto tryCachingSymbol = [](const std::string& cc, CacheOpt &co) {
     if (cc == "df") {
       co = CacheOpt::DEFAULT;
     } else if (cc == "ri") {

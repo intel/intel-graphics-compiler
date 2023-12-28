@@ -1580,17 +1580,17 @@ public:
   Value *getTranslatedValue(SPIRVValue *BV);
 
 private:
-  IGCLLVM::Module *M;
+  IGCLLVM::Module *M = nullptr;
   BuiltinVarMap BuiltinGVMap;
-  LLVMContext *Context;
-  SPIRVModule *BM;
+  LLVMContext *Context = nullptr;
+  SPIRVModule *BM = nullptr;
   SPIRVToLLVMTypeMap TypeMap;
   SPIRVToLLVMValueMap ValueMap;
   SPIRVToLLVMFunctionMap FuncMap;
   SPIRVToLLVMPlaceholderMap PlaceholderMap;
   SPIRVToLLVMDbgTran DbgTran;
-  GlobalVariable *m_NamedBarrierVar;
-  GlobalVariable *m_named_barrier_id;
+  GlobalVariable *m_NamedBarrierVar = nullptr;
+  GlobalVariable *m_named_barrier_id = nullptr;
   DICompileUnit* compileUnit = nullptr;
 
   // These storages are used to prevent duplication of alias.scope/noalias

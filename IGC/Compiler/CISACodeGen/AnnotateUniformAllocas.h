@@ -43,7 +43,7 @@ namespace IGC
         void visitCallInst(llvm::CallInst& I);
 
     private:
-        WIAnalysis* WI;
+        WIAnalysis* WI = nullptr;
         bool m_changed = false;
         llvm::SmallVector<llvm::Instruction*, 4> AssumeToErase;
     };

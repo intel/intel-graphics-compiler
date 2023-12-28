@@ -5784,7 +5784,6 @@ namespace IGC
                 IGC_ASSERT(name.size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
 
                 vISA::GenSymEntry sEntry;
-                memset(sEntry.s_name, '0', vISA::MAX_SYMBOL_NAME_LENGTH);
                 strcpy_s(sEntry.s_name, vISA::MAX_SYMBOL_NAME_LENGTH, name.str().c_str());
                 MDNode* md = pGlobal->getMetadata("ConstSampler");
                 if (md)
@@ -5997,10 +5996,7 @@ namespace IGC
                 StringRef deviceName = pGlobal->getName();
                 StringRef hostName = pGlobal->getAttribute("host_var_name").getValueAsString();
 
-                memset(sEntry.device_name, '0', vISA::MAX_SYMBOL_NAME_LENGTH);
                 strcpy_s(sEntry.device_name, vISA::MAX_SYMBOL_NAME_LENGTH, deviceName.str().c_str());
-
-                memset(sEntry.host_name, '0', vISA::MAX_SYMBOL_NAME_LENGTH);
                 strcpy_s(sEntry.host_name, vISA::MAX_SYMBOL_NAME_LENGTH, hostName.str().c_str());
 
                 hostAccessList.push_back(sEntry);

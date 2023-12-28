@@ -582,7 +582,7 @@ private:
 
     if (!subfunc.empty()) {
       emit('.');
-      emitAnsi(ANSI_SUBFUNCTION, subfunc);
+      emitAnsi(ANSI_SUBFUNCTION, std::move(subfunc));
     }
 
     emit(' ');

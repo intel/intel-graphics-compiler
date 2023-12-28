@@ -106,6 +106,8 @@ public:
   Context(Platform p) : Context(static_cast<iga_gen_t>(p)) {}
   Context(iga_gen_t p) : Context(IGA_CONTEXT_OPTIONS_INIT(p)) {}
   ~Context();
+  Context(const Context&) = delete;
+  Context& operator=(const Context&) = delete;
 
   Platform getPlatform() const { return platform; }
 
@@ -251,7 +253,7 @@ static inline std::vector<PlatformInfo> QueryPlatforms() {
     auto &pi = pis.back();
     pi.platform = static_cast<igax::Platform>(gens[piIx]);
     pi.suffix = suffix;
-    pi.names = names;
+    pi.names = std::move(names);
   }
   //
   return pis;

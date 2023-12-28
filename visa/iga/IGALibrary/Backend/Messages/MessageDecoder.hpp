@@ -187,7 +187,7 @@ struct MessageDecoder {
   // normally use getDescBitsField, but in cases where you've already
   // decoded, the meaning and just want to record the result
   void addField(const char *fieldName, int off, int len, uint32_t val,
-                std::string meaning) {
+                const std::string& meaning) {
     Fragment f(fieldName, off, len);
     for (const auto &fvs : result.fields) {
       const auto &f1 = std::get<0>(fvs);
@@ -252,7 +252,7 @@ struct MessageDecoder {
   }
 
   void
-  setScatterGatherOp(std::string msgSym, std::string msgDesc, SendOp op,
+  setScatterGatherOp(const std::string& msgSym, const std::string& msgDesc, SendOp op,
                      AddrType addrType, SendDesc surfaceId, int addrSize,
                      int bitsPerElem, int elemsPerAddr, int simd,
                      MessageInfo::Attr extraAttrs = MessageInfo::Attr::NONE) {
@@ -265,7 +265,7 @@ struct MessageDecoder {
   // for miscellaneous stuff such as fences and whatnot
   //
   // treat the payloads as full register units and set the op to SIMD1
-  void setSpecialOpX(std::string msgSym, std::string msgDesc, SendOp op,
+  void setSpecialOpX(const std::string& msgSym, const std::string& msgDesc, SendOp op,
                      AddrType addrType, SendDesc surfaceId, int mlen, int rlen,
                      MessageInfo::Attr extraAttrs = MessageInfo::Attr::NONE) {
     MessageInfo &mi = result.info;

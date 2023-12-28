@@ -806,7 +806,7 @@ public:
     inline void ContextSwitchShaderBody(bool last = true);
 
 private:
-    uint m_labelForDMaskJmp = 0xffffffff;
+    uint m_labelForDMaskJmp = 0;
 
     llvm::DenseMap<llvm::Instruction*, bool> instrMap;
 

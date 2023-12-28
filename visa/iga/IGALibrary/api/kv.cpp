@@ -32,6 +32,7 @@ class KernelViewImpl {
 private:
   KernelViewImpl(const KernelViewImpl &k)
       : m_model(*Model::LookupModel(k.m_model.platform)) {}
+  KernelViewImpl& operator=(const KernelViewImpl&) = delete;
 
 public:
   const Model &m_model;

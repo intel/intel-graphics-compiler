@@ -20,7 +20,7 @@ SPDX-License-Identifier: MIT
 class FunctionUpgrader
 {
 private:
-    llvm::Function* m_pFunction;
+    llvm::Function* m_pFunction = nullptr;
 
     // map place holder argument with the real argument
     llvm::MapVector<llvm::LoadInst*, llvm::Argument*> m_pNewArguments;

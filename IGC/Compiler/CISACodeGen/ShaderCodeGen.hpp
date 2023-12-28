@@ -539,7 +539,7 @@ public:
 
     static unsigned GetIMEReturnPayloadSize(llvm::GenIntrinsicInst* I);
 
-    void addCVarsForVectorBC(llvm::BitCastInst* BCI, llvm::SmallVector<CVariable*, 8> CVars)
+    void addCVarsForVectorBC(llvm::BitCastInst* BCI, const llvm::SmallVector<CVariable*, 8>& CVars)
     {
         IGC_ASSERT_MESSAGE(m_VectorBCItoCVars.find(BCI) == std::end(m_VectorBCItoCVars), "a variable already exists for this vector bitcast");
         m_VectorBCItoCVars.try_emplace(BCI, CVars);

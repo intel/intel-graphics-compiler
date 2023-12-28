@@ -89,7 +89,7 @@ namespace IGC
             newOp->copyIRFlags(oldOp);
 
             llvm::DebugLoc dbg = ((llvm::Instruction*)oldOp)->getDebugLoc();
-            newOp->setDebugLoc(dbg);
+            newOp->setDebugLoc(std::move(dbg));
 
             return newOp;
         }

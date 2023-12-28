@@ -75,26 +75,26 @@ public:
   //////////////////////////////////////////////////////////////////////
   // WARNINGS and ERRORS
   template <typename... Ts> void WarningT(Ts... ts) {
-    WarningS(NextLoc(), iga::format(ts...));
+    WarningS(NextLoc(), iga::format(std::move(ts)...));
   }
   template <typename... Ts> void WarningAtT(const Loc &loc, Ts... ts) {
-    WarningS(loc, iga::format(ts...));
+    WarningS(loc, iga::format(std::move(ts)...));
   }
   void WarningS(const Loc &loc, const std::string &msg);
 
   template <typename... Ts> void ErrorT(Ts... ts) {
-    ErrorAtS(NextLoc(), iga::format(ts...));
+    ErrorAtS(NextLoc(), iga::format(std::move(ts)...));
   }
   template <typename... Ts> void ErrorAtT(const Loc &loc, Ts... ts) {
-    ErrorAtS(loc, iga::format(ts...));
+    ErrorAtS(loc, iga::format(std::move(ts)...));
   }
   void ErrorAtS(const Loc &loc, const std::string &smsg);
 
   template <typename... Ts> void FailT(Ts... ts) {
-    FailS(NextLoc(), iga::format(ts...));
+    FailS(NextLoc(), iga::format(std::move(ts)...));
   }
   template <typename... Ts> void FailAtT(const Loc &loc, Ts... ts) {
-    FailS(loc, iga::format(ts...));
+    FailS(loc, iga::format(std::move(ts)...));
   }
   void FailS(const Loc &loc, const std::string &msg);
   void FailAfterPrev(const char *msg);

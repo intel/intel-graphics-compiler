@@ -399,7 +399,7 @@ void readNode(std::array<T, s> &arr, MDNode* node)
     {
         T vecEle;
         readNode(vecEle, cast<MDNode>(node->getOperand(k)));
-        arr[k - 1] = vecEle;
+        arr[k - 1] = std::move(vecEle);
     }
     return;
 }

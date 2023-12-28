@@ -292,7 +292,7 @@ public:
 
 protected:
   _SPIRV_DCL_DEC
-  void validate()const;
+  void validate() const override;
 private:
   SPIRVType *ElemType;                // Element Type
   SPIRVId Length;                     // Array Length
@@ -525,11 +525,11 @@ public:
   }
 
 protected:
-  void setWordCount(SPIRVWord WordCount) { MemberTypeVec.resize(WordCount - FixedWC);}
+  void setWordCount(SPIRVWord WordCount) override { MemberTypeVec.resize(WordCount - FixedWC); }
 
   _SPIRV_DCL_DEC
 
-  void validate()const {
+  void validate() const override {
     SPIRVEntry::validate();
   }
 private:

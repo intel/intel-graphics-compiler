@@ -444,7 +444,7 @@ private:
   bool twoBanksRA;
 
 public:
-  PhyRegsManager(const IR_Builder &irb, PhyRegsLocalRA pregs, bool _twoBanksRA)
+  PhyRegsManager(const IR_Builder &irb, const PhyRegsLocalRA& pregs, bool _twoBanksRA)
       : builder(irb), availableRegs(pregs), twoBanksRA(_twoBanksRA) {
     availableRegs.setTwoBanksRA(_twoBanksRA);
   }

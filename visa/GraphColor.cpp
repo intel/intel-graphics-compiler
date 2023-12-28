@@ -3933,7 +3933,7 @@ void Augmentation::handleDstOpnd(FuncInfo *funcInfo, G4_BB *curBB,
     const REGVAR_VECTOR &pointsToSet =
         liveAnalysis.getPointsToAnalysis().getAllInPointsToOrIndrUse(dst,
                                                                      curBB);
-    for (auto& pointsToVar : pointsToSet) {
+    for (const auto& pointsToVar : pointsToSet) {
       if (pointsToVar.var->isRegAllocPartaker()) {
         updateStartInterval(pointsToVar.var->getDeclare()->getRootDeclare(),
                             inst);
@@ -3988,7 +3988,7 @@ void Augmentation::handleSrcOpnd(FuncInfo *funcInfo, G4_BB *curBB,
     const REGVAR_VECTOR &pointsToSet =
         liveAnalysis.getPointsToAnalysis().getAllInPointsToOrIndrUse(srcRegion,
                                                                      curBB);
-    for (auto pointsToVar : pointsToSet) {
+    for (const auto& pointsToVar : pointsToSet) {
       if (pointsToVar.var->isRegAllocPartaker()) {
         updateEndInterval(pointsToVar.var->getDeclare()->getRootDeclare(),
                           inst);
@@ -4316,7 +4316,7 @@ void Augmentation::buildLiveIntervals() {
         const REGVAR_VECTOR &pointsToSet =
             liveAnalysis.getPointsToAnalysis().getAllInPointsToOrIndrUse(dst,
                                                                          curBB);
-        for (auto &pointsToVar : pointsToSet) {
+        for (const auto &pointsToVar : pointsToSet) {
           if (pointsToVar.var->isRegAllocPartaker()) {
             updateStartInterval(pointsToVar.var->getDeclare()->getRootDeclare(),
                                 inst);
@@ -4363,7 +4363,7 @@ void Augmentation::buildLiveIntervals() {
           const REGVAR_VECTOR &pointsToSet =
               liveAnalysis.getPointsToAnalysis().getAllInPointsToOrIndrUse(
                   srcRegion, curBB);
-          for (auto &pointsToVar : pointsToSet) {
+          for (const auto &pointsToVar : pointsToSet) {
             if (pointsToVar.var->isRegAllocPartaker()) {
               updateEndInterval(pointsToVar.var->getDeclare()->getRootDeclare(),
                                 inst);

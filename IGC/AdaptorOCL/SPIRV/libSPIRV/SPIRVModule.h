@@ -199,7 +199,7 @@ public:
 
   virtual SPIRVInstruction *addLoopMergeInst(
     SPIRVId MergeBlock, SPIRVId ContinueTarget, SPIRVWord LoopControl,
-    std::vector<SPIRVWord> LoopControlParameters, SPIRVBasicBlock *BB) = 0;
+    const std::vector<SPIRVWord>& LoopControlParameters, SPIRVBasicBlock *BB) = 0;
   virtual SPIRVEntry *addAsmTargetINTEL(const std::string &) = 0;
   virtual SPIRVValue *addAsmINTEL(SPIRVTypeFunction *, SPIRVAsmTargetINTEL *,
                                   const std::string &, const std::string &) = 0;

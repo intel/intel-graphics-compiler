@@ -93,8 +93,8 @@ protected:
     IGC_ASSERT(WordCount > FixedWC);
     IGC_ASSERT(OpCode == OC);
   }
-  SPIRVAsmTargetINTEL *Target;
-  SPIRVTypeFunction *FunctionType;
+  SPIRVAsmTargetINTEL *Target = nullptr;
+  SPIRVTypeFunction *FunctionType = nullptr;
   std::string Instructions;
   std::string Constraints;
 };

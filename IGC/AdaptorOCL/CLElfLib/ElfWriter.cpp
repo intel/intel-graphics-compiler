@@ -153,16 +153,13 @@ E_RETVAL CElfWriter::AddSection(
         else
         {
             // cleanup allocations
-            if( pNode )
+            if( pNode->pData )
             {
-                if( pNode->pData )
-                {
-                    delete[] pNode->pData;
-                    pNode->pData = NULL;
-                }
-
-                delete pNode;
+                delete[] pNode->pData;
+                pNode->pData = NULL;
             }
+
+            delete pNode;
         }
     }
 
@@ -239,16 +236,13 @@ E_RETVAL CElfWriter::ResolveBinary(
                 *(pCurString++) = '\0';
 
                 // delete the node and it's data
-                if( pNode )
+                if( pNode->pData )
                 {
-                    if( pNode->pData )
-                    {
-                        delete[] pNode->pData;
-                        pNode->pData = NULL;
-                    }
-
-                    delete pNode;
+                    delete[] pNode->pData;
+                    pNode->pData = NULL;
                 }
+
+                delete pNode;
             }
         }
 

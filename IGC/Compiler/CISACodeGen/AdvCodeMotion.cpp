@@ -63,11 +63,11 @@ namespace {
     class AdvCodeMotion : public FunctionPass {
         unsigned ControlMask;
 
-        DominatorTree* DT;
-        LoopInfo* LI;
-        PostDominatorTree* PDT;
-        ScalarEvolution* SE;
-        WIAnalysis* WI;
+        DominatorTree* DT = nullptr;
+        LoopInfo* LI = nullptr;
+        PostDominatorTree* PDT = nullptr;
+        ScalarEvolution* SE = nullptr;
+        WIAnalysis* WI = nullptr;
 
         WorkItemSetting WIS;
 

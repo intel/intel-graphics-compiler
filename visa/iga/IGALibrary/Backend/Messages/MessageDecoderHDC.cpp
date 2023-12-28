@@ -324,7 +324,7 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
   //
 
   // allows different data sizes in mem and reg
-  void setHdcMessageX(std::string msgSym, std::string msgDesc, SendOp op,
+  void setHdcMessageX(const std::string& msgSym, const std::string& msgDesc, SendOp op,
                       int addrSizeBits, int bitsPerElemReg, int bitsPerElemMem,
                       int elemsPerAddr, int execSize,
                       MessageInfo::Attr extraAttrs) {
@@ -422,14 +422,14 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
     result.info.channelsEnabled = chEnMask;
   }
   // data size is same in mem and reg (typical case)
-  void setHdcMessage(std::string msgSym, std::string msgDesc, SendOp op,
+  void setHdcMessage(const std::string& msgSym, const std::string& msgDesc, SendOp op,
                      int addrSize, int bitsPerElem, int elemsPerAddr,
                      int execSize, MessageInfo::Attr extraAttrs) {
     setHdcMessageX(msgSym, msgDesc, op, addrSize, bitsPerElem, bitsPerElem,
                    elemsPerAddr, execSize, extraAttrs);
   }
 
-  void setHdcOwBlock(std::string msgSym, std::string msgDesc, SendOp op,
+  void setHdcOwBlock(const std::string& msgSym, const std::string& msgDesc, SendOp op,
                      int addrSize, MessageInfo::Attr extraAttrs) {
     enum MDC_A64_DB_OW {
       OW1L = 0x0,
@@ -450,9 +450,8 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
     ss << msgDesc << " x" << elems;
     if (owBits == OW1H)
       ss << "H";
-    msgDesc = ss.str();
 
-    setHdcMessageX(msgSym, msgDesc, op, addrSize, 128, 128, elems,
+    setHdcMessageX(msgSym, ss.str(), op, addrSize, 128, 128, elems,
                    1, // SIMD
                    extraAttrs);
   }
@@ -1375,7 +1374,7 @@ void MessageDecoderHDC::tryDecodeDC1() {
       setDoc(isRead ? "7037" : "33440", isRead ? "44740" : "44751",
              nullptr); // MSD1R_A64_OWAB|MSD1W_A64_OWAB
     } else if (!isHword && !isUnaligned) {
-      setDoc(isRead ? "7039" : "7039", isRead ? "44741" : "44752",
+      setDoc("7039", isRead ? "44741" : "44752",
              nullptr); // MSD1R_A64_OWB|MSD1W_A64_OWB
     } else if (subType == 2) {
       setDoc(isRead ? "7036" : "7040");

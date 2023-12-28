@@ -16444,10 +16444,7 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
             {
                 if (destMask.isSet(i))
                 {
-                    m_encoder->SetSrcRegion(0,
-                        srcUniform ? 0 : 1,
-                        srcUniform ? 1 : 1,
-                        srcUniform ? 0 : 0);
+                    m_encoder->SetSrcRegion(0, (srcUniform ? 0 : 1), 1, 0);
                     m_encoder->SetSrcSubReg(0, srcUniform ? i : i * width);
                     m_encoder->SetDstRegion(1);
                     m_encoder->SetDstSubReg(dstUniform ? offset : offset * width);
@@ -17096,12 +17093,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
 
         eOffset = ReAlignUniformVariable(eOffset, align);
 
-        bool needTemporary = (totalBytes < 4) || !IsGRFAligned(m_destination, EALIGN_GRF);
-        CVariable* gatherDst = m_destination;
-        if (needTemporary)
-        {
-            gatherDst = m_currShader->GetNewVariable(nbelts, ISA_TYPE_UD, align, srcUniform, CName::NONE);
-        }
+        CVariable* gatherDst = m_currShader->GetNewVariable(nbelts, ISA_TYPE_UD, align, srcUniform, CName::NONE);
 
         if (srcUniform)
         {
@@ -17120,14 +17112,11 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
 
         m_encoder->Push();
 
-        if (needTemporary)
-        {
-            gatherDst = m_currShader->GetNewAlias(gatherDst, destType, 0, 0);
-            uint32_t vStride = srcUniform ? 0 : ((totalBytes == 1) ? 4 : 2);
-            m_encoder->SetSrcRegion(0, vStride, 1, 0);
-            m_encoder->Copy(m_destination, gatherDst);
-            m_encoder->Push();
-        }
+        gatherDst = m_currShader->GetNewAlias(gatherDst, destType, 0, 0);
+        uint32_t vStride = srcUniform ? 0 : ((totalBytes == 1) ? 4 : 2);
+        m_encoder->SetSrcRegion(0, vStride, 1, 0);
+        m_encoder->Copy(m_destination, gatherDst);
+        m_encoder->Push();
         return;
     }
 

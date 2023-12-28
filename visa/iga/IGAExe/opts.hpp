@@ -161,7 +161,7 @@ template <typename O> struct Opt {
   DefaultSetter<O> noDefault() const {
     std::string optStr = optName();
     return
-        [=](const ErrorHandler &eh, O &) { eh(concat(optStr, " undefined")); };
+        [=](const ErrorHandler &eh, O &) { eh(concat(std::move(optStr), " undefined")); };
   }
 
   bool hasAttribute(OptAttrs attr) const { return (attributes & attr) != 0; }
@@ -386,6 +386,7 @@ template <typename O> struct Group {
   }
   Group(const Group &copy) = delete;
   Group operator=(const Group &) = delete;
+  Group& operator=(Group&&) = delete;
 
   // a flag requires no argument, but allows for one
   void defineFlag(const char *sNm, const char *lNm, const char *desc,
@@ -409,7 +410,7 @@ template <typename O> struct Group {
   void defineOpt(const char *sNm, const char *lNm, const char *type,
                  const char *desc, const char *extDesc,
                  int attrs, // OptAttrs
-                 Setter<O> setVal) {
+                 const Setter<O>& setVal) {
     // TODO: validateOptNames(sNm, lNm); have to link to parent
     validateOptPrefix(sNm);
     validateOptPrefix(lNm);
@@ -419,7 +420,7 @@ template <typename O> struct Group {
   void defineOpt(const char *sNm, const char *lNm, const char *type,
                  const char *desc, const char *extDesc,
                  int attrs, // OptAttrs
-                 Setter<O> setVal, DefaultSetter<O> setDftVal) {
+                 const Setter<O>& setVal, const DefaultSetter<O>& setDftVal) {
     validateOptPrefix(sNm);
     validateOptPrefix(lNm);
     Opt<O> temp(prefix, sNm, lNm, type, desc, extDesc, attrs, setVal,
@@ -548,14 +549,14 @@ public:
   void defineOpt(const char *sNm, const char *lNm, const char *type,
                  const char *desc, const char *extDesc,
                  int attrs, // OptAttrs
-                 Setter<O> setter) {
+                 const Setter<O>& setter) {
     opts.defineOpt(sNm, lNm, type, desc, extDesc, attrs, setter);
   }
 
   void defineOpt(const char *sNm, const char *lNm, const char *type,
                  const char *desc, const char *extDesc,
                  int attrs, // OptAttrs
-                 Setter<O> setter, DefaultSetter<O> defaultSetter) {
+                 const Setter<O>& setter, const DefaultSetter<O>& defaultSetter) {
     opts.defineOpt(sNm, lNm, type, desc, extDesc, attrs, setter, defaultSetter);
   }
 

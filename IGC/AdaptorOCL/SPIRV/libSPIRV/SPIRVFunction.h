@@ -107,7 +107,7 @@ public:
   SPIRVFunction():SPIRVValue(OpFunction),FuncType(NULL),
      FCtrlMask(SPIRVFunctionControlMaskKind::FunctionControlMaskNone){}
 
-  SPIRVDecoder getDecoder(std::istream &IS);
+  SPIRVDecoder getDecoder(std::istream &IS) override;
   SPIRVTypeFunction *getFunctionType() const { return FuncType;}
   SPIRVWord getFuncCtlMask() const { return FCtrlMask;}
   SPIRVToLLVMLoopMetadataMap& getFuncLoopMetadataMap() { return FuncLoopMetadataMap; }
@@ -144,7 +144,7 @@ public:
   }
 
   _SPIRV_DCL_DEC
-  void validate()const {
+  void validate() const override {
     SPIRVValue::validate();
     IGC_ASSERT_MESSAGE(FuncType, "Invalid func type");
   }

@@ -210,8 +210,8 @@ public:
   // emit(foo, bar, baz, ...);
   template <typename T, typename... Ts> void emit(T t) { emitT(t); }
   template <typename T, typename... Ts> void emit(T t, Ts... ts) {
-    emitT(t);
-    emit(ts...);
+    emitT(std::move(t));
+    emit(std::move(ts)...);
   }
 
   // emits an sequence conditionally surrounded by an ANSI color
@@ -220,14 +220,14 @@ public:
     if (z)
       emitT(esc);
 
-    emit(t0, ts...);
+    emit(std::move(t0), std::move(ts)...);
 
     if (z)
       emitT(ANSI_RESET);
   }
   template <typename T, typename... Ts>
   void emitAnsi(ansi_esc esc, T t, Ts... ts) {
-    emitAnsi(true, esc, t, ts...);
+    emitAnsi(true, esc, std::move(t), std::move(ts)...);
   }
 
   void emitSpaces(size_t n) {

@@ -455,7 +455,7 @@ public:
     IGC_ASSERT_EXIT(Initializer.size() == 1);
     return getValue(Initializer[0]);
   }
-  bool isConstant() const {
+  bool isConstant() const override {
     return hasDecorate(DecorationConstant);
   }
   bool isBuiltin(SPIRVBuiltinVariableKind *BuiltinKind = nullptr) const {
@@ -478,12 +478,12 @@ public:
       eraseDecorate(DecorationConstant);
   }
 protected:
-  void validate() const {
+  void validate() const override {
     SPIRVValue::validate();
     IGC_ASSERT(isValid(StorageClass));
     IGC_ASSERT(Initializer.size() == 1 || Initializer.empty());
   }
-  void setWordCount(SPIRVWord TheWordCount) {
+  void setWordCount(SPIRVWord TheWordCount) override {
     SPIRVEntry::setWordCount(TheWordCount);
     Initializer.resize(WordCount - 4);
   }
@@ -732,12 +732,12 @@ public:
     return SPIRVEntry::get<SPIRVLabel>(FalseLabelId);
   }
 protected:
-  void setWordCount(SPIRVWord TheWordCount) {
+  void setWordCount(SPIRVWord TheWordCount) override {
     SPIRVEntry::setWordCount(TheWordCount);
     BranchWeights.resize(TheWordCount - 4);
   }
   _SPIRV_DEF_DEC4(ConditionId, TrueLabelId, FalseLabelId, BranchWeights)
-  void validate()const {
+  void validate() const override {
     SPIRVInstruction::validate();
     IGC_ASSERT(WordCount == 4 || WordCount == 6);
     IGC_ASSERT(WordCount == BranchWeights.size() + 4);
@@ -906,7 +906,7 @@ public:
 
   SPIRVLoopMerge(SPIRVId TheMergeBlock, SPIRVId TheContinueTarget,
     SPIRVWord TheLoopControl,
-    std::vector<SPIRVWord> TheLoopControlParameters,
+    const std::vector<SPIRVWord>& TheLoopControlParameters,
     SPIRVBasicBlock *BB)
     : SPIRVInstruction(FixedWordCount + TheLoopControlParameters.size(), OC,
       BB),
@@ -979,7 +979,7 @@ public:
           for (unsigned i = 0; i < getLiteralsCount(); ++i) {
               Literals.push_back(Pairs.at(PairSize*I + i));
           }
-          Func(Literals, static_cast<SPIRVBasicBlock *>(BB));
+          Func(std::move(Literals), static_cast<SPIRVBasicBlock *>(BB));
       }
   }
 
@@ -1192,8 +1192,8 @@ public:
     return SPIRVEntry::get<SPIRVFunction>(FunctionId);
   }
   _SPIRV_DEF_DEC4(Type, Id, FunctionId, Args)
-  void validate()const;
-  bool isOperandLiteral(unsigned Index) const { return false;}
+  void validate() const override;
+  bool isOperandLiteral(unsigned Index) const override { return false;}
 protected:
   SPIRVId FunctionId;
 };
@@ -1237,7 +1237,7 @@ public:
     IGC_ASSERT_MESSAGE((ExtSetKind == SPIRVEIS_OpenCL) || (ExtSetKind == SPIRVEIS_DebugInfo) ||
         (ExtSetKind == SPIRVEIS_OpenCL_DebugInfo_100), "not supported");
   }
-  void decode(std::istream &I) {
+  void decode(std::istream &I) override {
     getDecoder(I) >> Type >> Id >> ExtSetId;
     setExtSetKindById();
     switch(ExtSetKind) {
@@ -1255,11 +1255,11 @@ public:
     }
     getDecoder(I) >> Args;
   }
-  void validate()const {
+  void validate() const override {
     SPIRVFunctionCallGeneric::validate();
     validateBuiltin(ExtSetId, ExtOp);
   }
-  bool isOperandLiteral(unsigned Index) const {
+  bool isOperandLiteral(unsigned Index) const override {
     IGC_ASSERT_MESSAGE(ExtSetKind == SPIRVEIS_OpenCL, "Unsupported extended instruction set");
     auto EOC = static_cast<OCLExtOpKind>(ExtOp);
     switch(EOC) {
@@ -1275,11 +1275,11 @@ public:
       return Index == 3;
     }
   }
-  SPIRVExtInstSetKind getExtSetKind()
+  SPIRVExtInstSetKind getExtSetKind() const
   {
       return ExtSetKind;
   }
-  bool hasNoScope()
+  bool hasNoScope() const override
   {
       if ((getExtSetKind() == SPIRVExtInstSetKind::SPIRVEIS_DebugInfo ||
           getExtSetKind() == SPIRVExtInstSetKind::SPIRVEIS_OpenCL_DebugInfo_100) &&
@@ -1290,9 +1290,9 @@ public:
           return false;
   }
 
-  bool isScope() { return startsScope() || endsScope(); }
+  bool isScope() const override { return startsScope() || endsScope(); }
 
-  bool startsScope()
+  bool startsScope() const override
   {
       if ((getExtSetKind() == SPIRVExtInstSetKind::SPIRVEIS_DebugInfo ||
           getExtSetKind() == SPIRVExtInstSetKind::SPIRVEIS_OpenCL_DebugInfo_100) &&
@@ -1301,7 +1301,7 @@ public:
       return false;
   }
 
-  bool endsScope()
+  bool endsScope() const override
   {
       if ((getExtSetKind() == SPIRVExtInstSetKind::SPIRVEIS_DebugInfo ||
           getExtSetKind() == SPIRVExtInstSetKind::SPIRVEIS_OpenCL_DebugInfo_100) &&
@@ -1497,7 +1497,7 @@ public:
   SPIRVValue *getIndex()const { return getValue(IndexId);}
 protected:
   _SPIRV_DEF_DEC4(Type, Id, VectorId, IndexId)
-  void validate()const {
+  void validate() const override {
     SPIRVInstruction::validate();
     if (getValue(VectorId)->isForward())
       return;

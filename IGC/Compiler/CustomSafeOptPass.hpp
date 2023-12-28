@@ -233,7 +233,6 @@ namespace IGC
         llvm::Constant* ConstantFoldCallInstruction(llvm::CallInst* inst);
         bool simplifyAdd(llvm::BinaryOperator* BO);
         bool simplifyGEP(llvm::GetElementPtrInst* GEP);
-        bool m_enableMathConstProp;
         bool m_enableSimplifyGEP;
         const llvm::DataLayout* m_TD;
         llvm::TargetLibraryInfo* m_TLI;

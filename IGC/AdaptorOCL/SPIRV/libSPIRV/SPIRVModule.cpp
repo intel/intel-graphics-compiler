@@ -192,7 +192,7 @@ public:
   virtual SPIRVInstruction *addLoopMergeInst(
       SPIRVId MergeBlock, SPIRVId ContinueTarget,
       SPIRVWord LoopControl,
-      std::vector<SPIRVWord> LoopControlParameters,
+      const std::vector<SPIRVWord>& LoopControlParameters,
       SPIRVBasicBlock *BB) override;
   virtual SPIRVInstruction *
   addInstruction(SPIRVInstruction *Inst, SPIRVBasicBlock *BB,
@@ -724,7 +724,7 @@ SPIRVModuleImpl::addAsmCallINTELInst(SPIRVAsmINTEL *TheAsm,
 
 SPIRVInstruction *SPIRVModuleImpl::addLoopMergeInst(
   SPIRVId MergeBlock, SPIRVId ContinueTarget, SPIRVWord LoopControl,
-  std::vector<SPIRVWord> LoopControlParameters, SPIRVBasicBlock *BB) {
+  const std::vector<SPIRVWord>& LoopControlParameters, SPIRVBasicBlock *BB) {
    return addInstruction(
      new SPIRVLoopMerge(MergeBlock, ContinueTarget, LoopControl,
        LoopControlParameters, BB),

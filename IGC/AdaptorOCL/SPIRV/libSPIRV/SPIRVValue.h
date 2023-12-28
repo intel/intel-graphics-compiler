@@ -173,22 +173,22 @@ public:
   uint64_t getZExtIntValue() const { return Union.UInt64Val;}
   float getFloatValue() const { return Union.FloatVal;}
   double getDoubleValue() const { return Union.DoubleVal;}
-  bool isConstant() { return true; }
+  bool isConstant() const override { return true; }
 protected:
   void recalculateWordCount() {
     NumWords = (Type->getBitWidth() + 31) / 32;
     WordCount = 3 + NumWords;
   }
-  void validate() const {
+  void validate() const override {
     SPIRVValue::validate();
     IGC_ASSERT_EXIT_MESSAGE(1 <= NumWords, "Invalid constant size");
     IGC_ASSERT_EXIT_MESSAGE(NumWords <= 32, "Invalid constant size");
   }
-  void setWordCount(SPIRVWord WordCount) {
+  void setWordCount(SPIRVWord WordCount) override {
     SPIRVValue::setWordCount(WordCount);
     NumWords = WordCount - 3;
   }
-  void decode(std::istream &I) {
+  void decode(std::istream &I) override {
     getDecoder(I) >> Type >> Id;
     validate();
     for (unsigned i = 0; i < NumWords; ++i)
@@ -407,9 +407,9 @@ public:
     uint32_t GetCapacity() { return Capacity; }
 private:
     _SPIRV_DEF_DEC5(Type, Id, PacketSize, PacketAlignment, Capacity)
-    uint32_t PacketSize;
-    uint32_t PacketAlignment;
-    uint32_t Capacity;
+    uint32_t PacketSize = 0;
+    uint32_t PacketAlignment = 0;
+    uint32_t Capacity = 0;
 };
 
 }
