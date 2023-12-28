@@ -503,6 +503,21 @@ public:
                                                   LSC_SCOPE scope) = 0;
 
 
+  VISA_BUILDER_API virtual int AppendVISALscTypedBlock2DInst(
+      LSC_OP subOpcode, LSC_CACHE_OPTS cacheOpts, LSC_ADDR_TYPE addrModel,
+      LSC_DATA_SHAPE_TYPED_BLOCK2D dataShape,
+      VISA_VectorOpnd *surface, unsigned surfaceIndex,
+      VISA_RawOpnd *dstData, VISA_VectorOpnd *blockStartX,
+      VISA_VectorOpnd *blockStartY, int xImmOffset, int yImmOffset,
+      VISA_RawOpnd *src1Data) = 0;
+
+  VISA_BUILDER_API virtual int AppendVISALscUntypedAppendCounterAtomicInst(
+      LSC_OP op, VISA_PredOpnd *pred, VISA_Exec_Size execSize,
+      VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts, LSC_ADDR_TYPE addrType,
+      LSC_DATA_SHAPE data,
+      VISA_VectorOpnd *surface, unsigned surfaceIndex,
+      VISA_RawOpnd *dst, VISA_RawOpnd *src1Data) = 0;
+
   ///////////////////////////////////////////////////////////////////////////
   // Named barriers functions
   //

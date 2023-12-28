@@ -4161,6 +4161,42 @@ bool CISA_IR_Builder::CISA_create_nbarrier(bool isWait, VISA_opnd *barrierId,
 }
 
 
+bool CISA_IR_Builder::CISA_create_lsc_typed_block2d_inst(
+    LSC_OP opcode, LSC_CACHE_OPTS caching, LSC_ADDR_TYPE addrModel,
+    LSC_DATA_SHAPE_TYPED_BLOCK2D dataShape2d,
+    VISA_opnd *surface, unsigned surfaceIndex,
+    VISA_opnd *dstData, VISA_opnd *xOffset, VISA_opnd *yOffset,
+    int xImmOffset, int yImmOffset, VISA_opnd *src1Data, int lineNum) {
+  if (surfaceIndex != 0)
+    RecordParseError(lineNum,
+                     "non-zero SS_IDX not yet supported on this message");
+  VISA_CALL_TO_BOOL(AppendVISALscTypedBlock2DInst, opcode, caching, addrModel,
+                    dataShape2d,
+                    static_cast<VISA_VectorOpnd *>(surface),
+                    surfaceIndex,
+                    static_cast<VISA_RawOpnd *>(dstData),
+                    static_cast<VISA_VectorOpnd *>(xOffset),
+                    static_cast<VISA_VectorOpnd *>(yOffset),
+                    xImmOffset, yImmOffset,
+                    static_cast<VISA_RawOpnd *>(src1Data));
+  return true;
+}
+
+bool CISA_IR_Builder::CISA_create_lsc_untyped_append_counter_atomic_inst(
+    LSC_OP opcode, VISA_opnd *pred, VISA_Exec_Size execSize,
+    VISA_EMask_Ctrl emask,
+    LSC_CACHE_OPTS caching, LSC_ADDR_TYPE addr, LSC_DATA_SHAPE dataShape,
+    VISA_opnd *surface, unsigned surfaceIndex,
+    VISA_opnd *dst, VISA_opnd *srcData, int lineNum) {
+  VISA_CALL_TO_BOOL(
+      AppendVISALscUntypedAppendCounterAtomicInst, opcode,
+      static_cast<VISA_PredOpnd *>(pred), execSize, emask,
+      caching, addr, dataShape,
+      static_cast<VISA_VectorOpnd *>(surface), surfaceIndex,
+      static_cast<VISA_RawOpnd *>(dst), static_cast<VISA_RawOpnd *>(srcData));
+  return true;
+}
+
 const VISAKernelImpl *
 CISA_IR_Builder::getKernel(const std::string &name) const {
   auto it = m_nameToKernel.find(name);

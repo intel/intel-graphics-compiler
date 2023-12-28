@@ -709,7 +709,8 @@ int IR_Builder::translateLscUntypedBlock2DInst(
 
   int emuImmOffX = 0, emuImmOffY = 0;
   auto immOffNeedsEmu = [&](int off) {
-    return true;
+    return getPlatform() < Xe2 ||
+           off < -(1 << 9) || off > (1 << 9) - 1;
   };
 
   bool needsWaExDesc15_12 =
@@ -1823,4 +1824,273 @@ G4_SrcRegRegion *IR_Builder::lscMul64Aos(G4_Predicate *pred,
     return src0;
     vISA_ASSERT_UNREACHABLE("mul64-aos not supported yet");
   return nullptr;
+}
+
+static int
+lscTypedBlock2dComputeDataRegs(LSC_OP op,
+                               LSC_DATA_SHAPE_TYPED_BLOCK2D dataShape2d,
+                               unsigned BYTES_PER_REG) {
+  // If Block Width is not a power of 2 number, the allocated GRF space for
+  // Width is padded up to the next power-of-two value . E.g. if the 2D block
+  // width (in  bytes) is 12, the space allocated in the GRF will be 16 bytes
+  // per row (next power-of-two number)
+  int alignWidthInBytes = 0;
+  int widthInBytes = dataShape2d.width;
+  if (widthInBytes <= 0 || widthInBytes > 64) {
+    vISA_ASSERT_INPUT(false, "block width must be [1,64]");
+  } else if (widthInBytes <= 4) {
+    // Minimum bytes per row in the GRF is 4 bytes.
+    alignWidthInBytes = 4;
+  } else {
+    // round up to power of 2
+    alignWidthInBytes = RoundUpToPowerOf2(widthInBytes);
+  }
+
+  int blockSizeInBytes = alignWidthInBytes * dataShape2d.height;
+  vISA_ASSERT_INPUT(blockSizeInBytes <= 256, "block size can not exceed 256");
+  int dataRegs = (int)std::ceil((double)blockSizeInBytes / BYTES_PER_REG);
+
+  return dataRegs;
+}
+
+int IR_Builder::translateLscTypedBlock2DInst(
+    LSC_OP op, LSC_CACHE_OPTS cacheOpts, LSC_ADDR_TYPE addrModel,
+    LSC_DATA_SHAPE_TYPED_BLOCK2D dataShape2D,
+    G4_Operand *surface,      // surface/bti
+    unsigned ssIdx,           // surface offset
+    G4_DstRegRegion *dstRead, // dst can be NULL reg (e.g store)
+    G4_Operand *xOffset,      // block start offset x
+    G4_Operand *yOffset,      // block start offset y
+    int xImmOffset,           // immediate x offset
+    int yImmOffset,           // immediate y offset
+    G4_SrcRegRegion *src1Data // store data
+) {
+  TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
+  int status = VISA_SUCCESS;
+  auto check = [&](bool z, const char *what) {
+    if (!z) {
+      vISA_ASSERT_INPUT(false, std::string(what));
+      status = VISA_FAILURE;
+    }
+  };
+
+  const auto opInfo = LscOpInfoGet(op);
+  vISA_ASSERT_INPUT(opInfo.isBlock2D(), "not an LSC block2d op");
+
+  const G4_ExecSize execSize = g4::SIMD1;
+  const G4_InstOpts instOpt = Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1);
+
+  G4_SrcRegRegion *src0Addr =
+      lscBuildTypedBlock2DPayload(dataShape2D, xOffset, yOffset,
+                                  xImmOffset, yImmOffset);
+  xImmOffset = yImmOffset = 0; // emulate on all platforms
+
+  G4_InstSend *sendInst = nullptr;
+
+  // send descriptor
+  //       [5:0]    Operation
+  //       [19:17]  cache
+  //       [24:20]  Dest Length
+  //       [28:25]  Src0 Length
+  //       [30:29]  Address Type
+  uint32_t desc = 0;
+  uint32_t exDesc = 0;
+  surface = lscTryPromoteSurfaceImmToExDesc(surface, addrModel, exDesc);
+
+  desc |= opInfo.encoding;                               // Desc[5:0]
+  lscEncodeCachingOpts(opInfo, cacheOpts, desc, status); // Desc[19:17]
+  lscEncodeAddrType(addrModel, desc, status);            // Desc[30:29]
+
+  uint32_t dataRegs =
+      lscTypedBlock2dComputeDataRegs(op, dataShape2D, getGRFSize());
+
+  uint32_t src0Len = 1; // address payload size
+  int src1Len = 0;
+  uint32_t dstLen = 0;
+  if (opInfo.isLoad()) {
+    if (isNullOperand(dstRead)) {
+      dstLen = 0; // prefetch
+    } else {
+      dstLen = dataRegs;
+    }
+    src1Len = 0;
+  } else if (opInfo.isStore()) {
+    dstLen = 0;
+    src1Len = (int)dataRegs;
+  } else {
+    check(false, "unexpected message type");
+  }
+
+  desc |= dstLen << 20;  // Desc[24:20]  dst len
+  desc |= src0Len << 25; // Desc[29:25]  src0 len
+
+  G4_SendDescRaw *msgDesc =
+      createLscDesc(SFID::TGM, desc, exDesc, src1Len,
+                    getSendAccessType(opInfo.isLoad(), opInfo.isStore()),
+                    surface, LdStAttrs::NONE);
+
+  sendInst = createLscSendInst(nullptr, dstRead, src0Addr, src1Data, execSize,
+                               msgDesc, instOpt, addrModel, ssIdx, true);
+  (void)sendInst;
+
+  return status;
+}
+
+G4_SrcRegRegion *IR_Builder::lscBuildTypedBlock2DPayload(
+    LSC_DATA_SHAPE_TYPED_BLOCK2D dataShape2D, G4_Operand *xOffset,
+    G4_Operand *yOffset, int immOffX, int immOffY) {
+  // https://gfxspecs.intel.com/Predator/Home/Index/65282
+  // Typed2DBlockPayload:
+  //   [159:0]:   reserved (160)
+  //   [191:160]: block start X (32b)
+  //   [223:192]: block start Y (32b)
+  //   [231:224]: block width (8b)
+  //   [239:232]: block height (8b)
+  //   [255:240]: UNDEFINED
+
+  // [StartX:s32, StartY:s32, Width:u8, Height:u8]
+  const uint32_t BYTES_PER_REG = getGRFSize();
+  G4_Declare *addrTmpDeclUD = createSendPayloadDcl(BYTES_PER_REG / 4, Type_UD);
+  G4_Declare *addrTmpDeclUW = createSendPayloadDcl(BYTES_PER_REG / 2, Type_UW);
+  addrTmpDeclUW->setAliasDeclare(addrTmpDeclUD, 0);
+
+  auto movD = [&](int dstSubReg, G4_Operand *src, const char *comm) {
+    G4_DstRegRegion *payloadDstAddr_UD =
+        createDst(addrTmpDeclUD->getRegVar(), 0, dstSubReg, 1, Type_UD);
+    auto *inst =
+        createMov(g4::SIMD1, payloadDstAddr_UD, src, InstOpt_WriteEnable,
+                  true);
+    if (comm)
+      inst->addComment(comm);
+  };
+  auto movUW = [&](int dstSubReg, G4_Operand *src, const char *comm) {
+    G4_DstRegRegion *payloadDstAddr_UW =
+        createDst(addrTmpDeclUW->getRegVar(), 0, dstSubReg, 1, Type_UW);
+    auto *inst =
+        createMov(g4::SIMD1, payloadDstAddr_UW, src, InstOpt_WriteEnable, true);
+    if (comm)
+      inst->addComment(comm);
+  };
+  auto addD = [&](int dstSubReg, G4_Operand *src, int addend,
+                  const char *comm) {
+    if (addend == 0) {
+      movD(dstSubReg, src, comm);
+      return;
+    }
+    G4_DstRegRegion *payloadDst =
+        createDst(addrTmpDeclUD->getRegVar(), 0, dstSubReg, 1, Type_D);
+    auto *inst =
+        createInst(nullptr, G4_add, nullptr, g4::NOSAT, g4::SIMD1, payloadDst,
+                   src, createImmWithLowerType(addend, Type_D),
+                   Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1), true);
+    if (comm)
+      inst->addComment(comm);
+  };
+
+  //   .decl VADDR_REG_UD v_type=G type=D num_elts=NUM_PER_GRF(T) align=GRF
+  //   .decl ADDR type=UW alias=<VADDR_REG_UD,0>
+  //   mov (M1_NM,1) ADDR(0,5):ud   src0AddrBase[0]:ud
+  //   mov (M1_NM,1) ADDR(0,6):ud   src0AddrBase[1]:ud
+  //   mov (M1_NM,1) ADDR(0,14):uw  (width x height):uw
+  addD(5, xOffset, immOffX, "blk2d.X"); // block x
+  addD(6, yOffset, immOffY, "blk2d.Y"); // block y
+  uint32_t blockSize =
+      (dataShape2D.width - 1) | ((dataShape2D.height - 1) << 8);
+  std::stringstream ss;
+  ss << "blk2d.shape = " << dataShape2D.width << "x" << dataShape2D.height;
+  movUW(14, createImmWithLowerType(blockSize, Type_UW), ss.str().c_str());
+
+  return createSrc(addrTmpDeclUD->getRegVar(), 0, 0, getRegionScalar(),
+                   Type_UD);
+}
+
+int IR_Builder::translateLscUntypedAppendCounterAtomicInst(
+    LSC_OP op, G4_Predicate *pred, VISA_Exec_Size visaExecSize,
+    VISA_EMask_Ctrl execCtrl, LSC_CACHE_OPTS cacheOpts,
+    LSC_ADDR_TYPE addrType, LSC_DATA_SHAPE dataShape,
+    G4_Operand *surface, unsigned ssIdx,
+    G4_DstRegRegion *dst, G4_SrcRegRegion *src0Data)
+{
+  TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
+  int status = VISA_SUCCESS;
+  auto check = [&](bool z, const char *what) {
+    if (!z) {
+      vISA_ASSERT_INPUT(false, std::string(what));
+      status = VISA_FAILURE;
+    }
+  };
+
+  const G4_ExecSize execSize = toExecSize(visaExecSize);
+  const G4_InstOpts instOpt = Get_Gen4_Emask(execCtrl, execSize);
+
+  const uint32_t BYTES_PER_REG = getGRFSize();
+
+  const auto opInfo = LscOpInfoGet(op);
+  check(opInfo.isApndCtrAtomic(), "not a append counter atomic op");
+
+  // send descriptor
+  //       [5:0]    Operation
+  //       [11:9]   data size
+  //       [14:12]  vector size V1
+  //       [15:15]  no transpose
+  //       [19:17]  cache
+  //       [24:20]  Dest Length
+  //       [28:25]  Src0 Length
+  //       [30:29]  Address Type
+  uint32_t desc = 0;
+  uint32_t exDesc = 0;
+
+  // try and promote the surface identifier (e.g. BTI or SS obj) to ex desc
+  surface = lscTryPromoteSurfaceImmToExDesc(surface, addrType, exDesc);
+
+  desc |= opInfo.encoding; // Desc[5:0]
+
+  // data size must be D32
+  check(dataShape.size == LSC_DATA_SIZE_32b,
+        "data size for append counter atomic must be D32");
+  const int dataSizeBits =
+      lscEncodeDataSize(dataShape.size, desc, status); // Desc[11:9]
+
+  // vector size must be 1
+  int vecSize = lscEncodeDataElems(dataShape.elems, desc, status); // Desc[14:12]
+  check(vecSize == 1, "vector size for append counter atomic must be 1");
+
+  check(dataShape.order == LSC_DATA_ORDER_NONTRANSPOSE,
+        "append counter atomic must be no tranpose");
+  lscEncodeDataOrder(dataShape.order, desc, status); // Desc[15:15]
+
+  lscEncodeCachingOpts(opInfo, cacheOpts, desc, status); // Desc[19:17]
+
+  check(addrType != LSC_ADDR_TYPE_FLAT,
+        "address type for append counter atomic must be stateful");
+  lscEncodeAddrType(addrType, desc, status); // Desc[30:29]
+
+  // src0Data can't be null
+  check(!isNullOperand(src0Data),
+        "append counter atomic must have no-null src0");
+
+  G4_ExecSize minExecSize = lscMinExecSize(LSC_UGM);
+  uint32_t width = std::max(execSize, minExecSize);
+  uint32_t src0Len = static_cast<uint32_t>(
+      std::ceil((double)(dataSizeBits / 8) * vecSize * width / BYTES_PER_REG));
+  uint32_t dstLen = 0;
+  if (!dst->isNullReg()) {
+    dstLen = src0Len;
+  }
+  check(src0Len <= 2, "too many src0 registers");
+  check(dstLen <= 2, "too many destination registers");
+  desc |= dstLen << 20;  // Desc[24:20]  dst len
+  desc |= src0Len << 25; // Desc[29:25]  src0 len
+
+  G4_SendDescRaw *msgDesc =
+      createLscDesc(SFID::UGM, desc, exDesc,
+                    0, // src1Len
+                    getSendAccessType(opInfo.isLoad(), opInfo.isStore()),
+                    surface, LdStAttrs::NONE);
+  createLscSendInst(pred, dst, src0Data, nullptr, execSize, msgDesc, instOpt,
+                    addrType, ssIdx, true);
+
+  return status;
 }

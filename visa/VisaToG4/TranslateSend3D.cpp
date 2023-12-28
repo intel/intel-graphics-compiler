@@ -15,6 +15,26 @@ static const unsigned MESSAGE_PRECISION_SUBTYPE_OFFSET = 30;
 static const unsigned SIMD_MODE_2_OFFSET = 29;
 
 static bool isSamplerMsgWithPO(VISASampler3DSubOpCode samplerOp) {
+  switch (samplerOp) {
+  case VISA_3D_SAMPLE_PO:
+  case VISA_3D_SAMPLE_PO_B:
+  case VISA_3D_SAMPLE_PO_L:
+  case VISA_3D_SAMPLE_PO_C:
+  case VISA_3D_SAMPLE_PO_D:
+  case VISA_3D_SAMPLE_PO_L_C:
+  case VISA_3D_SAMPLE_PO_LZ:
+  case VISA_3D_SAMPLE_PO_C_LZ:
+  case VISA_3D_GATHER4_PO_PACKED:
+  case VISA_3D_GATHER4_PO_PACKED_L:
+  case VISA_3D_GATHER4_PO_PACKED_B:
+  case VISA_3D_GATHER4_PO_PACKED_I:
+  case VISA_3D_GATHER4_PO_PACKED_C:
+  case VISA_3D_GATHER4_PO_PACKED_I_C:
+  case VISA_3D_GATHER4_PO_PACKED_L_C:
+    return true;
+  default:
+    return false;
+  }
   return false;
 }
 
@@ -36,16 +56,66 @@ static MsgOp ConvertSamplerOpToMsgOp(VISASampler3DSubOpCode op) {
     return MsgOp::SAMPLE_L_C;
   case VISASampler3DSubOpCode::VISA_3D_GATHER4:
     return MsgOp::GATHER4;
+  case VISASampler3DSubOpCode::VISA_3D_GATHER4_L:
+    return MsgOp::GATHER4_L;
+  case VISASampler3DSubOpCode::VISA_3D_GATHER4_B:
+    return MsgOp::GATHER4_B;
+  case VISASampler3DSubOpCode::VISA_3D_GATHER4_I:
+    return MsgOp::GATHER4_I;
   case VISASampler3DSubOpCode::VISA_3D_GATHER4_C:
     return MsgOp::GATHER4_C;
+  case VISASampler3DSubOpCode::VISA_3D_GATHER4_I_C:
+    return MsgOp::GATHER4_I_C;
+  case VISASampler3DSubOpCode::VISA_3D_GATHER4_L_C:
+    return MsgOp::GATHER4_L_C;
+  case VISASampler3DSubOpCode::VISA_3D_GATHER4_PO_PACKED:
+    // case VISASampler3DSubOpCode::VISA_3D_GATHER4_PO:
+    return MsgOp::GATHER4_PO;
+  case VISASampler3DSubOpCode::VISA_3D_GATHER4_PO_PACKED_L:
+    return MsgOp::GATHER4_PO_L;
+  case VISASampler3DSubOpCode::VISA_3D_GATHER4_PO_PACKED_B:
+    return MsgOp::GATHER4_PO_B;
+  case VISASampler3DSubOpCode::VISA_3D_GATHER4_PO_PACKED_I:
+    return MsgOp::GATHER4_PO_I;
+  case VISASampler3DSubOpCode::VISA_3D_GATHER4_PO_PACKED_C:
+    // case VISASampler3DSubOpCode::VISA_3D_GATHER4_PO_C:
+    return MsgOp::GATHER4_PO_C;
+  case VISASampler3DSubOpCode::VISA_3D_GATHER4_PO_PACKED_I_C:
+    return MsgOp::GATHER4_PO_I_C;
+  case VISASampler3DSubOpCode::VISA_3D_GATHER4_PO_PACKED_L_C:
+    return MsgOp::GATHER4_PO_L_C;
+  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_D_C_MLOD:
+    return MsgOp::SAMPLE_D_C_MLOD;
+  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_MLOD:
+    return MsgOp::SAMPLE_MLOD;
+  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_C_MLOD:
+    return MsgOp::SAMPLE_C_MLOD;
   case VISASampler3DSubOpCode::VISA_3D_SAMPLE_D_C:
     return MsgOp::SAMPLE_D_C;
   case VISASampler3DSubOpCode::VISA_3D_SAMPLE_LZ:
     return MsgOp::SAMPLE_LZ;
   case VISASampler3DSubOpCode::VISA_3D_SAMPLE_C_LZ:
     return MsgOp::SAMPLE_C_LZ;
+  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_PO:
+    return MsgOp::SAMPLE_PO;
+  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_PO_B:
+    return MsgOp::SAMPLE_PO_B;
+  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_PO_L:
+    return MsgOp::SAMPLE_PO_L;
+  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_PO_C:
+    return MsgOp::SAMPLE_PO_C;
+  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_PO_L_C:
+    return MsgOp::SAMPLE_PO_L_C;
+  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_PO_D:
+    return MsgOp::SAMPLE_PO_D;
+  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_PO_LZ:
+    return MsgOp::SAMPLE_PO_LZ;
+  case VISASampler3DSubOpCode::VISA_3D_SAMPLE_PO_C_LZ:
+    return MsgOp::SAMPLE_PO_C_LZ;
   case VISASampler3DSubOpCode::VISA_3D_LD_LZ:
     return MsgOp::LD_LZ;
+  case VISASampler3DSubOpCode::VISA_3D_LD_L:
+    return MsgOp::LD_L;
   case VISASampler3DSubOpCode::VISA_3D_LD2DMS_W:
     return MsgOp::LD_2DMS_W;
   case VISASampler3DSubOpCode::VISA_3D_LD_MCS:
@@ -77,6 +147,12 @@ uint32_t IR_Builder::createSamplerMsgDesc(VISASampler3DSubOpCode samplerOp,
 
   fc |= ((uint32_t)samplerOp & 0x1f) << 12;
 
+  if (!getOption(vISA_EnableProgrammableOffsetsMessageBitInHeader)) {
+    // set bit 31 for sampler messages with positional offsets
+    if (isSamplerMsgWithPO(samplerOp)) {
+      fc |= 1UL << 31;
+    }
+  }
 
   if (isNativeSIMDSize) {
     fc |= (1 << 17);
@@ -1103,6 +1179,443 @@ int IR_Builder::translateVISARTWrite3DInst(
   return VISA_SUCCESS;
 }
 
+/*****************************************************************************\
+ENUM: EU_PVC_DATA_PORT_RENDER_TARGET_WRITE_SUBTYPE
+\*****************************************************************************/
+enum EU_XE2_DATA_PORT_RENDER_TARGET_WRITE_SUBTYPE {
+  EU_XE2_DATA_PORT_RENDER_TARGET_WRITE_SUBTYPE_SIMD16_SINGLE_SOURCE = 0,
+  EU_XE2_DATA_PORT_RENDER_TARGET_WRITE_SUBTYPE_SIMD32 = 1,
+  EU_XE2_DATA_PORT_RENDER_TARGET_WRITE_SUBTYPE_SIMD16_DUAL_SOURCE = 2
+};
+
+// TODO: combine this with constructSrcPayloadDualRenderTarget function
+std::tuple<G4_SrcRegRegion *, uint32_t, uint32_t>
+IR_Builder::constructSrcPayloadDualRenderTarget(vISA_RT_CONTROLS cntrls,
+                                                G4_SrcRegRegion **msgOpnds,
+                                                unsigned int numMsgOpnds,
+                                                G4_ExecSize execSize,
+                                                G4_InstOpts instOpt) {
+  uint8_t varOffset = 0;
+  G4_SrcRegRegion *oM = nullptr;
+  if (cntrls.oMPresent) {
+    oM = msgOpnds[varOffset];
+    ++varOffset;
+  }
+
+  G4_SrcRegRegion *s0R = msgOpnds[varOffset++];
+  G4_SrcRegRegion *s0G = msgOpnds[varOffset++];
+  G4_SrcRegRegion *s0B = msgOpnds[varOffset++];
+  G4_SrcRegRegion *s0A = msgOpnds[varOffset++];
+  G4_SrcRegRegion *s1R = msgOpnds[varOffset++];
+  G4_SrcRegRegion *s1G = msgOpnds[varOffset++];
+  G4_SrcRegRegion *s1B = msgOpnds[varOffset++];
+  G4_SrcRegRegion *s1A = msgOpnds[varOffset++];
+
+  // depth
+  G4_SrcRegRegion *Z = nullptr;
+  if (cntrls.zPresent)
+    Z = msgOpnds[varOffset++];
+
+  // stencil
+  G4_SrcRegRegion *S = nullptr;
+  if (cntrls.isStencil) {
+    S = msgOpnds[varOffset++];
+  }
+
+  if (varOffset != numMsgOpnds) {
+    vASSERT(false);
+    return std::make_tuple(nullptr, 0, 0);
+  }
+
+  auto checkType = [](G4_SrcRegRegion *src) {
+    return src->getType() == Type_F || src->isNullReg();
+  };
+  vISA_ASSERT_INPUT(checkType(s0R) && checkType(s0G) && checkType(s0B) && checkType(s0A) &&
+         checkType(s1R) && checkType(s1G) && checkType(s1B) && checkType(s1A),
+         "RGBA type must be F");
+
+  // compute payload size sans header
+  uint32_t numRows = 8; // s0R, s0G, s0B, s0A, s1R, s1G, s1B, s1A
+
+  if (cntrls.zPresent) {
+    // Depth is always Float
+    numRows++;
+  }
+
+  if (cntrls.oMPresent) {
+    numRows++;
+  }
+
+  if (cntrls.isStencil) {
+    numRows++;
+  }
+
+  // creating payload
+  unsigned int numElts = numRows * getGRFSize() / TypeSize(Type_F);
+  auto payloadUD = createSendPayloadDcl(numElts, Type_UD);
+  auto payloadUW = createSendPayloadDcl(numElts, Type_UW);
+  auto payloadF = createSendPayloadDcl(numElts, Type_F);
+
+  payloadUW->setAliasDeclare(payloadUD, 0);
+  payloadF->setAliasDeclare(payloadUD, 0);
+
+  // Check whether coalescing is possible
+  // coalesc payload by checking whether the source is already prepared in a
+  // continuous region. If so, we could reuse the source region directly
+  // instead of copying it again.
+  bool canCoalesce = true;
+  G4_SrcRegRegion *leadingParam = cntrls.oMPresent ? oM : s0R;
+
+  if (s0R->isNullReg() || s0G->isNullReg() || s0B->isNullReg() ||
+      s0A->isNullReg() || s1R->isNullReg() || s1G->isNullReg() ||
+      s1B->isNullReg() || s1A->isNullReg()) {
+    canCoalesce = false;
+  }
+
+  if (canCoalesce) {
+    auto payloadDcl = leadingParam->getTopDcl()->getRootDeclare();
+    uint32_t nextOffset = getByteOffsetSrcRegion(leadingParam);
+
+    // oM is leading param if present, so no need to check for its
+    // contiguousness
+    auto isContiguous = [this](G4_SrcRegRegion *src, uint32_t offset,
+                               G4_Declare *dcl) {
+      auto srcDcl = src->getTopDcl()->getRootDeclare();
+      if (srcDcl != dcl) {
+        return false; // different declares are not contiguous
+      }
+      return offset ==
+             getByteOffsetSrcRegion(
+                 src); // offset must be equal to the src's byte offset
+    };
+
+    if (canCoalesce) {
+      canCoalesce = isContiguous(s0R, nextOffset, payloadDcl);
+      nextOffset += getGRFSize();
+      if (canCoalesce) {
+        canCoalesce = isContiguous(s0G, nextOffset, payloadDcl);
+        nextOffset += getGRFSize();
+      }
+      if (canCoalesce) {
+        canCoalesce = isContiguous(s0B, nextOffset, payloadDcl);
+        nextOffset += getGRFSize();
+      }
+      if (canCoalesce) {
+        canCoalesce = isContiguous(s0A, nextOffset, payloadDcl);
+        nextOffset += getGRFSize();
+      }
+      if (canCoalesce) {
+        canCoalesce = isContiguous(s1R, nextOffset, payloadDcl);
+        nextOffset += getGRFSize();
+      }
+      if (canCoalesce) {
+        canCoalesce = isContiguous(s1G, nextOffset, payloadDcl);
+        nextOffset += getGRFSize();
+      }
+      if (canCoalesce) {
+        canCoalesce = isContiguous(s1B, nextOffset, payloadDcl);
+        nextOffset += getGRFSize();
+      }
+      if (canCoalesce) {
+        canCoalesce = isContiguous(s1A, nextOffset, payloadDcl);
+        nextOffset += getGRFSize();
+      }
+    }
+
+    if (canCoalesce && cntrls.zPresent) {
+      canCoalesce = isContiguous(Z, nextOffset, payloadDcl);
+      nextOffset += getGRFSize();
+    }
+
+    // last element is stencil
+    if (canCoalesce && cntrls.isStencil) {
+      canCoalesce = isContiguous(S, nextOffset, payloadDcl);
+    }
+  }
+
+  G4_SrcRegRegion *srcToUse = nullptr;
+  if (!canCoalesce) {
+    // Copy parameters to payload
+    // ToDo: optimize to generate split send
+    unsigned regOff = 0;
+
+    if (cntrls.oMPresent) {
+      Copy_SrcRegRegion_To_Payload(payloadUW, regOff, oM, execSize, instOpt);
+    }
+
+    if (!s0R->isNullReg())
+      Copy_SrcRegRegion_To_Payload(payloadF, regOff, s0R, execSize, instOpt);
+    else
+      regOff++;
+
+    if (!s0G->isNullReg())
+      Copy_SrcRegRegion_To_Payload(payloadF, regOff, s0G, execSize, instOpt);
+    else
+      regOff++;
+
+    if (!s0B->isNullReg())
+      Copy_SrcRegRegion_To_Payload(payloadF, regOff, s0B, execSize, instOpt);
+    else
+      regOff++;
+
+    if (!s0A->isNullReg())
+      Copy_SrcRegRegion_To_Payload(payloadF, regOff, s0A, execSize, instOpt);
+    else
+      regOff++;
+    if (!s1R->isNullReg())
+      Copy_SrcRegRegion_To_Payload(payloadF, regOff, s1R, execSize, instOpt);
+    else
+      regOff++;
+
+    if (!s1G->isNullReg())
+      Copy_SrcRegRegion_To_Payload(payloadF, regOff, s1G, execSize, instOpt);
+    else
+      regOff++;
+
+    if (!s1B->isNullReg())
+      Copy_SrcRegRegion_To_Payload(payloadF, regOff, s1B, execSize, instOpt);
+    else
+      regOff++;
+
+    if (!s1A->isNullReg())
+      Copy_SrcRegRegion_To_Payload(payloadF, regOff, s1A, execSize, instOpt);
+    else
+      regOff++;
+
+    if (cntrls.zPresent) {
+      Copy_SrcRegRegion_To_Payload(payloadF, regOff, Z, execSize, instOpt);
+    }
+
+    if (cntrls.isStencil) {
+      Copy_SrcRegRegion_To_Payload(payloadUW, regOff, S, execSize, instOpt);
+    }
+
+    srcToUse = createSrcRegRegion(payloadUD, getRegionStride1());
+  } else {
+    // Coalesce and directly use original raw operand
+    leadingParam->setType(*this,
+                          s0R->getType()); // it shouldn't matter, but change it
+                                           // in case leading param is oM
+    srcToUse = leadingParam;
+  }
+  // set chmask
+  // TODO: is chmask based on src0 or src1? For now assuming it is based on
+  // src0 or src1
+  uint32_t chMask =
+      (!(s0R->isNullReg() && s1R->isNullReg()) ? 0x1 : 0) |
+      ((!(s0G->isNullReg() && s1G->isNullReg()) ? 0x1 : 0) << 0x1) |
+      ((!(s0B->isNullReg() && s1B->isNullReg()) ? 0x1 : 0) << 0x2) |
+      (((!(s0A->isNullReg() && s1A->isNullReg()) || cntrls.s0aPresent) ? 0x1 : 0) << 0x3);
+
+  return std::make_tuple(srcToUse, numRows, chMask);
+}
+
+std::tuple<G4_SrcRegRegion *, uint32_t, uint32_t>
+IR_Builder::constructSrcPayloadRenderTarget(vISA_RT_CONTROLS cntrls,
+                                            G4_SrcRegRegion **msgOpnds,
+                                            unsigned int numMsgOpnds,
+                                            G4_ExecSize execSize,
+                                            G4_InstOpts instOpt) {
+  uint8_t varOffset = 0;
+  G4_SrcRegRegion *s0a = nullptr;
+  G4_SrcRegRegion *oM = nullptr;
+  if (cntrls.s0aPresent) {
+    s0a = msgOpnds[varOffset];
+    ++varOffset;
+  }
+  if (cntrls.oMPresent) {
+    oM = msgOpnds[varOffset];
+    ++varOffset;
+  }
+
+  G4_SrcRegRegion *R = msgOpnds[varOffset++];
+  G4_SrcRegRegion *G = msgOpnds[varOffset++];
+  G4_SrcRegRegion *B = msgOpnds[varOffset++];
+  G4_SrcRegRegion *A = msgOpnds[varOffset++];
+  // depth
+  G4_SrcRegRegion *Z = nullptr;
+
+  if (cntrls.zPresent)
+    Z = msgOpnds[varOffset++];
+
+  // stencil
+  G4_SrcRegRegion *S = nullptr;
+  if (cntrls.isStencil) {
+    S = msgOpnds[varOffset++];
+  }
+
+  if (varOffset != numMsgOpnds) {
+    vASSERT(false);
+    return std::make_tuple(nullptr, 0, 0);
+  }
+
+  auto checkType = [](G4_SrcRegRegion *src) {
+    return src->getType() == Type_F || src->isNullReg();
+  };
+  vISA_ASSERT_INPUT(checkType(R) && checkType(G) && checkType(B) && checkType(A),
+         "RGBA type must be F");
+
+  // mult is the size of s0a, R, G, B, A, Z(1 or 2 GRF)
+  auto mult = (execSize == getNativeExecSize() ? 1 : 2);
+
+  // compute payload size sans header
+
+  uint32_t numRows = 4 * mult; // RGBA
+
+  if (cntrls.s0aPresent) {
+    // s0a has same type as RGBA
+    numRows += mult;
+  }
+
+  if (cntrls.zPresent) {
+    // Depth is always Float
+    numRows += mult;
+  }
+
+  if (cntrls.oMPresent) {
+    numRows++;
+  }
+
+  if (cntrls.isStencil) {
+    numRows++;
+  }
+
+  G4_SrcRegRegion *srcToUse = nullptr;
+
+  // creating payload
+  unsigned int numElts = numRows * getGRFSize() / TypeSize(Type_F);
+  auto payloadUD = createSendPayloadDcl(numElts, Type_UD);
+  auto payloadUW = createSendPayloadDcl(numElts, Type_UW);
+  auto payloadF = createSendPayloadDcl(numElts, Type_F);
+  auto payloadUB = createSendPayloadDcl(numElts, Type_UB);
+
+  payloadUW->setAliasDeclare(payloadUD, 0);
+  payloadF->setAliasDeclare(payloadUD, 0);
+  payloadUB->setAliasDeclare(payloadUD, 0);
+
+  // Check whether coalescing is possible
+  // coalesc payload by checking whether the source is already prepared in a
+  // continuous region. If so, we could reuse the source region directly
+  // instead of copying it again.
+  bool canCoalesce = true;
+  G4_SrcRegRegion *leadingParam =
+      cntrls.s0aPresent ? s0a : (cntrls.oMPresent ? oM : R);
+
+  if (R->isNullReg() || G->isNullReg() || B->isNullReg() || A->isNullReg()) {
+    canCoalesce = false;
+  }
+
+  if (canCoalesce) {
+    auto payloadDcl = leadingParam->getTopDcl()->getRootDeclare();
+    uint32_t nextOffset = getByteOffsetSrcRegion(leadingParam);
+
+    // s0a is leading param if present, so no need to check for its
+    // contiguousness
+    auto isContiguous = [this](G4_SrcRegRegion *src, uint32_t offset,
+                               G4_Declare *dcl) {
+      auto srcDcl = src->getTopDcl()->getRootDeclare();
+      if (srcDcl != dcl) {
+        return false; // different declares are not contiguous
+      }
+      return offset ==
+             getByteOffsetSrcRegion(
+                 src); // offset must be equal to the src's byte offset
+    };
+
+    if (canCoalesce && cntrls.oMPresent) {
+      canCoalesce = isContiguous(oM, nextOffset, payloadDcl);
+      nextOffset += getGRFSize();
+    }
+
+    if (canCoalesce) {
+      canCoalesce = isContiguous(R, nextOffset, payloadDcl);
+      nextOffset += getGRFSize() * mult;
+      if (canCoalesce) {
+        canCoalesce = isContiguous(G, nextOffset, payloadDcl);
+        nextOffset += getGRFSize() * mult;
+      }
+      if (canCoalesce) {
+        canCoalesce = isContiguous(B, nextOffset, payloadDcl);
+        nextOffset += getGRFSize() * mult;
+      }
+      if (canCoalesce) {
+        canCoalesce = isContiguous(A, nextOffset, payloadDcl);
+        nextOffset += getGRFSize() * mult;
+      }
+    }
+
+    if (canCoalesce && cntrls.zPresent) {
+      canCoalesce = isContiguous(Z, nextOffset, payloadDcl);
+      nextOffset += getGRFSize() * mult;
+    }
+
+    // last element is stencil
+    if (canCoalesce && cntrls.isStencil) {
+      canCoalesce = isContiguous(S, nextOffset, payloadDcl);
+    }
+  }
+
+  if (!canCoalesce) {
+    // Copy parameters to payload
+    // ToDo: optimize to generate split send
+    unsigned regOff = 0;
+
+    if (cntrls.s0aPresent) {
+      Copy_SrcRegRegion_To_Payload(payloadF, regOff, s0a, execSize, instOpt);
+    }
+
+    if (cntrls.oMPresent) {
+      Copy_SrcRegRegion_To_Payload(payloadUW, regOff, oM, execSize, instOpt);
+    }
+
+    auto offIncrement = mult;
+
+    if (!R->isNullReg())
+      Copy_SrcRegRegion_To_Payload(payloadF, regOff, R, execSize, instOpt);
+    else
+      regOff += offIncrement;
+
+    if (!G->isNullReg())
+      Copy_SrcRegRegion_To_Payload(payloadF, regOff, G, execSize, instOpt);
+    else
+      regOff += offIncrement;
+
+    if (!B->isNullReg())
+      Copy_SrcRegRegion_To_Payload(payloadF, regOff, B, execSize, instOpt);
+    else
+      regOff += offIncrement;
+
+    if (!A->isNullReg())
+      Copy_SrcRegRegion_To_Payload(payloadF, regOff, A, execSize, instOpt);
+    else
+      regOff += offIncrement;
+
+    if (cntrls.zPresent) {
+      Copy_SrcRegRegion_To_Payload(payloadF, regOff, Z, execSize, instOpt);
+    }
+
+    if (cntrls.isStencil) {
+      Copy_SrcRegRegion_To_Payload(payloadUB, regOff, S, execSize, instOpt);
+    }
+
+    srcToUse = createSrcRegRegion(payloadUD, getRegionStride1());
+  } else {
+    // Coalesce and directly use original raw operand
+    leadingParam->setType(*this,
+                          R->getType()); // it shouldn't matter, but change it
+                                         // in case leading param is oM
+    srcToUse = leadingParam;
+  }
+  // set chmask
+  uint32_t chMask = (!R->isNullReg() ? 0x1 : 0) |
+                    ((!G->isNullReg() ? 0x1 : 0) << 0x1) |
+                    ((!B->isNullReg() ? 0x1 : 0) << 0x2) |
+                    (((!A->isNullReg() || cntrls.s0aPresent) ? 0x1 : 0) << 0x3);
+
+  return std::make_tuple(srcToUse, numRows, chMask);
+}
+
+
 
 // Bit 15 of aoffimmi is set in messages with sampler index >= 16.
 static bool IsSamplerIndexGE16(G4_Operand *aoffimmi) {
@@ -1123,6 +1636,13 @@ static uint32_t createSampleHeader0Dot2(VISASampler3DSubOpCode op,
   uint32_t secondDword = aoffimmi & 0xfff;
   switch (op) {
   case VISA_3D_GATHER4:
+  case VISA_3D_GATHER4_L:
+  case VISA_3D_GATHER4_B:
+  case VISA_3D_GATHER4_I:
+  case VISA_3D_GATHER4_PO_PACKED:
+  case VISA_3D_GATHER4_PO_PACKED_L:
+  case VISA_3D_GATHER4_PO_PACKED_B:
+  case VISA_3D_GATHER4_PO_PACKED_I:
        // gather4 source channel select
     secondDword |= (channels.getSingleChannel() << 16);
     break;
@@ -1130,10 +1650,29 @@ static uint32_t createSampleHeader0Dot2(VISASampler3DSubOpCode op,
     if (builder->hasGather4PO()) {
       secondDword |= (channels.getSingleChannel() << 16);
     }
+    static_assert(VISA_3D_SAMPLE_D_C_MLOD == VISA_3D_GATHER4_PO,
+                  "Code below needs update");
+    if (builder->hasSampleMlod()) {
+      vASSERT(!builder->hasGather4PO());
+      // RGBA write channel mask
+      secondDword |= (channels.getHWEncoding() << 12);
+    }
     break;
   case VISA_3D_GATHER4_PO_C:
+    static_assert(VISA_3D_SAMPLE_MLOD == VISA_3D_GATHER4_PO_C,
+                  "Code below needs update");
+    if (builder->hasSampleMlod()) {
+      vASSERT(!builder->hasGather4PO());
+      // RGBA write channel mask
+      secondDword |= (channels.getHWEncoding() << 12);
+    }
     break;
   case VISA_3D_GATHER4_C:
+  case VISA_3D_GATHER4_I_C:
+  case VISA_3D_GATHER4_L_C:
+  case VISA_3D_GATHER4_PO_PACKED_C:
+  case VISA_3D_GATHER4_PO_PACKED_I_C:
+  case VISA_3D_GATHER4_PO_PACKED_L_C:
        // do nothing as channle must be Red (0)
     break;
   default:
@@ -1148,6 +1687,12 @@ static uint32_t createSampleHeader0Dot2(VISASampler3DSubOpCode op,
     secondDword |= 1 << 23;
   }
 
+  if (builder->getOption(vISA_EnableProgrammableOffsetsMessageBitInHeader)) {
+    // M0.2:24 message type encoding bit 6
+    if (op > 31) {
+      secondDword |= 1 << 24;
+    }
+  }
   return secondDword;
 }
 
@@ -1171,6 +1716,8 @@ static void checkCPSEnable(VISASampler3DSubOpCode op, unsigned reponseLength,
 
   bool isCPSAvailable = op == VISA_3D_SAMPLE || op == VISA_3D_SAMPLE_B ||
                         op == VISA_3D_SAMPLE_C || op == VISA_3D_SAMPLE_B_C ||
+                        op == VISA_3D_SAMPLE_PO || op == VISA_3D_SAMPLE_PO_B ||
+                        op == VISA_3D_SAMPLE_PO_C ||
                         op == VISA_3D_LOD;
 
   vISA_ASSERT(isCPSAvailable, "CPD LOD Compensation Enable only available for "
@@ -1220,6 +1767,13 @@ static G4_Operand *createSampleHeader(IR_Builder *builder, G4_Declare *header,
 static bool needsNoMaskCoordinates(VISASampler3DSubOpCode opcode) {
   return opcode == VISA_3D_SAMPLE || opcode == VISA_3D_SAMPLE_B ||
          opcode == VISA_3D_SAMPLE_C ||
+         opcode == VISA_3D_SAMPLE_MLOD || opcode == VISA_3D_SAMPLE_C_MLOD ||
+         opcode == VISA_3D_GATHER4_B || opcode == VISA_3D_GATHER4_I ||
+         opcode == VISA_3D_GATHER4_I_C || opcode == VISA_3D_SAMPLE_PO ||
+         opcode == VISA_3D_SAMPLE_PO_B || opcode == VISA_3D_SAMPLE_PO_C ||
+         opcode == VISA_3D_GATHER4_PO_PACKED_B ||
+         opcode == VISA_3D_GATHER4_PO_PACKED_I ||
+         opcode == VISA_3D_GATHER4_PO_PACKED_I_C ||
          opcode == VISA_3D_SAMPLE_B_C || opcode == VISA_3D_LOD ||
          opcode == VISA_3D_SAMPLE_KILLPIX;
 }
@@ -1232,6 +1786,10 @@ static uint8_t getUPosition(VISASampler3DSubOpCode opcode) {
   case VISA_3D_SAMPLE_D:
   case VISA_3D_SAMPLE_LZ:
   case VISA_3D_SAMPLE_KILLPIX:
+  case VISA_3D_GATHER4_I:
+  case VISA_3D_SAMPLE_PO:
+  case VISA_3D_SAMPLE_PO_D:
+  case VISA_3D_GATHER4_PO_PACKED_I:
     position = 0;
     break;
   case VISA_3D_SAMPLE_B:
@@ -1239,10 +1797,21 @@ static uint8_t getUPosition(VISASampler3DSubOpCode opcode) {
   case VISA_3D_SAMPLE_C:
   case VISA_3D_SAMPLE_D_C:
   case VISA_3D_SAMPLE_C_LZ:
+  case VISA_3D_SAMPLE_D_C_MLOD:
+  case VISA_3D_SAMPLE_MLOD:
+  case VISA_3D_GATHER4_B:
+  case VISA_3D_GATHER4_I_C:
+  case VISA_3D_SAMPLE_PO_B:
+  case VISA_3D_SAMPLE_PO_L:
+  case VISA_3D_SAMPLE_PO_C:
+  case VISA_3D_GATHER4_PO_PACKED_B:
+  case VISA_3D_GATHER4_PO_PACKED_I_C:
     position = 1;
     break;
   case VISA_3D_SAMPLE_B_C:
   case VISA_3D_SAMPLE_L_C:
+  case VISA_3D_SAMPLE_C_MLOD:
+  case VISA_3D_SAMPLE_PO_L_C:
     position = 2;
     break;
   default:

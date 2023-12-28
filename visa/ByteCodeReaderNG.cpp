@@ -2366,6 +2366,74 @@ static void readInstructionLscFence(unsigned &bytePos, const char *buf,
 
   container.kernelBuilder->AppendVISALscFence(sfid, fenceOp, scope);
 }
+
+static void readInstructionLscTypedBlock2D(LSC_OP subOpcode, unsigned &bytePos,
+                                           const char *buf,
+                                           RoutineContainer &container) {
+  VISA_EMask_Ctrl execMask = vISA_EMASK_M1;
+  VISA_Exec_Size execSize = EXEC_SIZE_ILLEGAL;
+  readExecSizeNG(bytePos, buf, execSize, execMask, container);
+  VISA_PredOpnd *pred = readPredicateOperandNG(bytePos, buf, container);
+  (void)pred;
+
+  LSC_CACHE_OPTS caching = readLscCacheOpts(bytePos, buf);
+
+  auto addrModel = (LSC_ADDR_TYPE)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+
+  LSC_DATA_SHAPE_TYPED_BLOCK2D dataShape2D{};
+  dataShape2D.width = (int)readPrimitiveOperandNG<uint16_t>(bytePos, buf);
+  dataShape2D.height = (int)readPrimitiveOperandNG<uint16_t>(bytePos, buf);
+
+  VISA_VectorOpnd *surface =
+      readVectorOperandNG(bytePos, buf, container, false);
+  unsigned surfaceIndex = readPrimitiveOperandNG<uint32_t>(bytePos, buf);
+
+  VISA_RawOpnd *dstData = readRawOperandNG(bytePos, buf, container);
+
+  VISA_VectorOpnd *xOffset =
+      readVectorOperandNG(bytePos, buf, container, false);
+  VISA_VectorOpnd *yOffset =
+      readVectorOperandNG(bytePos, buf, container, false);
+
+  VISA_RawOpnd *src1Data = readRawOperandNG(bytePos, buf, container);
+
+  container.kernelBuilder->AppendVISALscTypedBlock2DInst(
+      subOpcode, caching, addrModel, dataShape2D,
+      surface, surfaceIndex,
+      dstData,
+      xOffset, yOffset, 0, 0, src1Data);
+}
+
+static void
+readInstructionLscUntypedAppendCounterAtomic(LSC_OP subOpcode,
+                                             unsigned &bytePos, const char *buf,
+                                             RoutineContainer &container) {
+  const LscOpInfo opInfo = LscOpInfoGet(subOpcode);
+
+  VISA_EMask_Ctrl execMask = vISA_EMASK_M1;
+  VISA_Exec_Size execSize = EXEC_SIZE_ILLEGAL;
+
+  readExecSizeNG(bytePos, buf, execSize, execMask, container);
+  VISA_PredOpnd *pred = readPredicateOperandNG(bytePos, buf, container);
+
+  auto lscSfid = (LSC_SFID)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+  (void)lscSfid;
+
+  LSC_CACHE_OPTS caching = readLscCacheOpts(bytePos, buf);
+  auto addrModel = (LSC_ADDR_TYPE)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+  LSC_DATA_SHAPE dataInfo = readLscDataShape(bytePos, buf, false);
+
+  VISA_VectorOpnd *surface =
+      readVectorOperandNG(bytePos, buf, container, false);
+  auto surfaceIndex = readPrimitiveOperandNG<uint32_t>(bytePos, buf);
+  VISA_RawOpnd *dst = readRawOperandNG(bytePos, buf, container);
+  VISA_RawOpnd *srcData = readRawOperandNG(bytePos, buf, container);
+
+  container.kernelBuilder->AppendVISALscUntypedAppendCounterAtomicInst(
+      subOpcode, pred, execSize, execMask, caching, addrModel, dataInfo,
+      surface, surfaceIndex, dst, srcData);
+}
+
 static void readInstructionLSC(unsigned &bytePos, const char *buf,
                                ISA_Opcode opcode, RoutineContainer &container) {
   if (opcode == ISA_Opcode::ISA_LSC_FENCE) {
@@ -2374,12 +2442,18 @@ static void readInstructionLSC(unsigned &bytePos, const char *buf,
     auto subOpcode = (LSC_OP)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
     if (subOpcode == LSC_LOAD_BLOCK2D || subOpcode == LSC_STORE_BLOCK2D) {
       readInstructionLscUntypedBlock2D(subOpcode, bytePos, buf, container);
+    } else if (subOpcode == LSC_APNDCTR_ATOMIC_ADD ||
+               subOpcode == LSC_APNDCTR_ATOMIC_SUB) {
+      readInstructionLscUntypedAppendCounterAtomic(subOpcode, bytePos, buf,
+                                                   container);
     } else {
       readInstructionLscUntyped(subOpcode, bytePos, buf, container);
     }
   } else if (opcode == ISA_Opcode::ISA_LSC_TYPED) {
     auto subOpcode = (LSC_OP)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
-    {
+    if (subOpcode == LSC_LOAD_BLOCK2D || subOpcode == LSC_STORE_BLOCK2D) {
+      readInstructionLscTypedBlock2D(subOpcode, bytePos, buf, container);
+    } else {
       readInstructionLscTyped(subOpcode, bytePos, buf, container);
     }
   } else {

@@ -1774,6 +1774,31 @@ public:
                                  G4_SrcRegRegion **msgOpnds);
 
 
+
+  int translateLscTypedBlock2DInst(LSC_OP op, LSC_CACHE_OPTS cacheOpts,
+                                   LSC_ADDR_TYPE addrModel,
+                                   LSC_DATA_SHAPE_TYPED_BLOCK2D shape,
+                                   G4_Operand *surface,
+                                   unsigned ssIdx,
+                                   G4_DstRegRegion *dstData,
+                                   G4_Operand *xOffset, // block start offset x
+                                   G4_Operand *yOffset, // block start offset y
+                                   int xImmOffset, // x immediate offset
+                                   int yImmOffset, // y immediate offset
+                                   G4_SrcRegRegion *src1Data);
+
+  G4_SrcRegRegion *
+  lscBuildTypedBlock2DPayload(LSC_DATA_SHAPE_TYPED_BLOCK2D dataShape2D,
+                              G4_Operand *xOffset, G4_Operand *yOffset,
+                              int immOffX, int immOffY);
+
+  int translateLscUntypedAppendCounterAtomicInst(
+      LSC_OP op, G4_Predicate *pred, VISA_Exec_Size visaExecSize,
+      VISA_EMask_Ctrl execCtrl, LSC_CACHE_OPTS cacheOpts,
+      LSC_ADDR_TYPE addrType, LSC_DATA_SHAPE dataShape,
+      G4_Operand *surface, unsigned ssIdx,
+      G4_DstRegRegion *dst, G4_SrcRegRegion *srcData);
+
   int splitSampleInst(VISASampler3DSubOpCode actualop, bool pixelNullMask,
                       bool cpsEnable, G4_Predicate *pred,
                       ChannelMask srcChannel, int numChannels,
@@ -1845,6 +1870,13 @@ public:
                                   G4_SrcRegRegion **msgOpnds,
                                   unsigned int numMsgOpnds,
                                   G4_ExecSize execSize, G4_InstOpts instOpt);
+
+  std::tuple<G4_SrcRegRegion *, uint32_t, uint32_t>
+  constructSrcPayloadDualRenderTarget(vISA_RT_CONTROLS cntrls,
+                                      G4_SrcRegRegion **msgOpnds,
+                                      unsigned int numMsgOpnds,
+                                      G4_ExecSize execSize,
+                                      G4_InstOpts instOpt);
 
   int translateVISAQWGatherInst(VISA_Exec_Size executionSize,
                                 VISA_EMask_Ctrl emask, G4_Predicate *pred,

@@ -8046,6 +8046,153 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedInst(
   return status;
 }
 
+
+VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedBlock2DInst(
+    LSC_OP op, LSC_CACHE_OPTS cacheOpts, LSC_ADDR_TYPE addrModel,
+    LSC_DATA_SHAPE_TYPED_BLOCK2D dataShape2D,
+    VISA_VectorOpnd *surface, unsigned surfaceIndex,
+    VISA_RawOpnd *dstData, VISA_VectorOpnd *blockStartX,
+    VISA_VectorOpnd *blockStartY, int xImmOffset, int yImmOffset,
+    VISA_RawOpnd *src1Data) {
+  TIME_SCOPE(VISA_BUILDER_APPEND_INST);
+
+  AppendVISAInstCommon();
+
+  int status = VISA_SUCCESS;
+
+  LSC_CHECK_NULL_DST(dstData);
+  LSC_CHECK_NULL_SRC(src1Data);
+
+  if (IS_GEN_BOTH_PATH) {
+    CreateGenRawDstOperand(dstData);
+    CreateGenRawSrcOperand(src1Data);
+
+    status |= m_builder->translateLscTypedBlock2DInst(
+        op, cacheOpts, addrModel, dataShape2D, surface->g4opnd, surfaceIndex,
+        dstData->g4opnd->asDstRegRegion(), blockStartX->g4opnd,
+        blockStartY->g4opnd, xImmOffset, yImmOffset,
+        src1Data->g4opnd->asSrcRegRegion());
+  }
+
+  if (IS_VISA_BOTH_PATH) {
+    const VISA_INST_Desc *instDesc = &CISA_INST_table[ISA_LSC_TYPED];
+    VISA_opnd *opnds[MAX_OPNDS_PER_INST]{};
+    int numOpnds = 0;
+
+    // op
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(op, ISA_TYPE_UB));
+    // cache
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(cacheOpts.l1, ISA_TYPE_UB));
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(cacheOpts.l3, ISA_TYPE_UB));
+    // addrMode
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(addrModel, ISA_TYPE_UB));
+    // blockWdith/blockHeight
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(dataShape2D.width, ISA_TYPE_UW));
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(dataShape2D.height, ISA_TYPE_UW));
+    // surface
+    ADD_OPND(numOpnds, opnds, surface);
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(surfaceIndex, ISA_TYPE_UD));
+    // dst
+    ADD_OPND(numOpnds, opnds, dstData);
+    // X offset
+    ADD_OPND(numOpnds, opnds, blockStartX);
+    // xImm offset
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(xImmOffset, ISA_TYPE_D));
+
+    // Y offset
+    ADD_OPND(numOpnds, opnds, blockStartY);
+    // yImm offset
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(yImmOffset, ISA_TYPE_D));
+
+    // src1
+    ADD_OPND(numOpnds, opnds, src1Data);
+
+    CisaFramework::CisaInst *inst = new (m_mem) CisaFramework::CisaInst(m_mem);
+
+    status = inst->createCisaInstruction(ISA_LSC_TYPED, EXEC_SIZE_1, 0,
+                                         PredicateOpnd::getNullPred(), opnds,
+                                         numOpnds, instDesc, verifier);
+    addInstructionToEnd(inst);
+  }
+
+  return status;
+}
+
+VISA_BUILDER_API int
+VISAKernelImpl::AppendVISALscUntypedAppendCounterAtomicInst(
+    LSC_OP op, VISA_PredOpnd *pred, VISA_Exec_Size execSize,
+    VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
+    LSC_ADDR_TYPE addrType, LSC_DATA_SHAPE data,
+    VISA_VectorOpnd *surface, unsigned surfaceIndex,
+    VISA_RawOpnd *dst, VISA_RawOpnd *srcData) {
+  TIME_SCOPE(VISA_BUILDER_APPEND_INST);
+
+  AppendVISAInstCommon();
+
+  int status = VISA_SUCCESS;
+
+  LSC_CHECK_NULL_VECTOR_OPERAND(surface);
+  LSC_CHECK_NULL_DST(dst);
+  LSC_CHECK_NULL_SRC(srcData);
+
+  if (IS_GEN_BOTH_PATH) {
+    CreateGenRawDstOperand(dst);
+    CreateGenRawSrcOperand(srcData);
+    status = m_builder->translateLscUntypedAppendCounterAtomicInst(
+        op, pred ? pred->g4opnd->asPredicate() : nullptr, execSize, emask,
+        cacheOpts, addrType, data, surface->g4opnd, surfaceIndex,
+        dst->g4opnd->asDstRegRegion(), srcData->g4opnd->asSrcRegRegion());
+  }
+
+  if (IS_VISA_BOTH_PATH) {
+    const VISA_INST_Desc *instDesc = &CISA_INST_table[ISA_LSC_UNTYPED];
+    VISA_opnd *opnds[MAX_OPNDS_PER_INST]{};
+    int numOpnds = 0;
+
+    // op
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(op, ISA_TYPE_UB));
+    // sfid
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(LSC_UGM, ISA_TYPE_UB));
+    // cache
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(cacheOpts.l1, ISA_TYPE_UB));
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(cacheOpts.l3, ISA_TYPE_UB));
+    // addr type
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(addrType, ISA_TYPE_UB));
+
+    // data shape
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(data.size, ISA_TYPE_UB));
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(data.order, ISA_TYPE_UB));
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(data.elems, ISA_TYPE_UB));
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(data.chmask, ISA_TYPE_UB));
+    // surface
+    ADD_OPND(numOpnds, opnds, surface);
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(surfaceIndex, ISA_TYPE_UD));
+    // dst
+    ADD_OPND(numOpnds, opnds, dst);
+    // src0 address
+    VISA_RawOpnd *src0Addr = nullptr;
+    int nullOperandCreateStatus = CreateVISANullRawOperand(src0Addr, false);
+    vISA_ASSERT(nullOperandCreateStatus == VISA_SUCCESS, "not able to create null operand");
+    ADD_OPND(numOpnds, opnds, src0Addr);
+    // src1 data
+    ADD_OPND(numOpnds, opnds, srcData);
+
+    CisaFramework::CisaInst *inst = new (m_mem) CisaFramework::CisaInst(m_mem);
+    PredicateOpnd predOpnd =
+        pred ? pred->convertToPred() : PredicateOpnd::getNullPred();
+    // Pack execution size & mask
+    unsigned size = execSize;
+    PACK_EXEC_SIZE(size, emask);
+
+    status =
+        inst->createCisaInstruction(ISA_LSC_UNTYPED, (uint8_t)size, 0, predOpnd,
+                                    opnds, numOpnds, instDesc, verifier);
+    addInstructionToEnd(inst);
+  }
+
+  return status;
+}
+
 VISA_BUILDER_API int VISAKernelImpl::AppendVISALscFence(LSC_SFID lscSfid,
                                                         LSC_FENCE_OP fenceOp,
                                                         LSC_SCOPE scope) {

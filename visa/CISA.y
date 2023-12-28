@@ -658,6 +658,9 @@ std::vector<attr_gen_struct*> AttrOptVar;
 // fence is a top-level op (not a subop)
 %token <lsc_opcode>            LSC_FENCE_MNEMONIC
 %token <opcode>                FCVT_OP
+%type <lsc_block2d_addr_operand> LscTypedBlock2dAddrOperand
+%type <lsc_data_operand_typed2d> LscDataOperandTyped2D
+%token <lsc_data_shape_typed2d>  LSC_DATA_SHAPE_TK_TYPED_BLOCK2D
 
 
 
@@ -977,6 +980,7 @@ Instruction:
         | QwScatterInstruction
         | LscInstruction
         | FCvtInstruction
+        | LscInstructionXe2
         | BreakpointInstruction
 
 Label: LABEL {pBuilder->CISA_create_label($1, CISAlineno);}
@@ -2219,6 +2223,127 @@ LscPayloadNonNullReg:
     // TODO: remove this rule once RawOperand handles no-suffix case
     VarNonNull {
         ABORT_ON_FAIL($$ = pBuilder->CISA_create_RAW_operand($1, 0, CISAlineno));
+    }
+////////////////////////////////////////////////
+LscInstructionXe2:
+  // untyped*
+    LscUntypedApndCtrAtomic
+  // typed*
+  | LscTypedBlock2dLoad
+  | LscTypedBlock2dStore
+
+//
+// EXAMPLES:
+// BTI:
+//     lsc_load_block2d.tgm   V53:64x4  bti(0x10)[V_X,V_Y]
+//     lsc_load_block2d.tgm   V53:64x4  bti(V10.2)[V_X,V_Y]
+// BSS:
+//     lsc_load_block2d.tgm   V53:64x4  bss(V10)[V_X,V_Y]
+//
+LscTypedBlock2dLoad:
+//  1                 2                      3                     4
+  Predicate LSC_LOAD_BLOCK2D_MNEMONIC   LSC_SFID_TYPED_TOKEN   LscCacheOpts
+//  5                            6
+    LscDataOperandTyped2D  LscTypedBlock2dAddrOperand
+    {
+        pBuilder->CISA_create_lsc_typed_block2d_inst(
+            $2,  // subop
+            $4,  // caching settings
+            $6.addr.type, // address model
+            $5.shape_typed2d,  // data shape
+            $6.surface,  //surface
+            $6.surfaceIndex, // surface index
+            $5.reg,      // dst
+            $6.regs[0],     // src0 addrs(block start offset x)
+            $6.regs[1],     // src0 addrs(block start offset y)
+            $6.immOffsets[0], // x immediate offset
+            $6.immOffsets[1], // y immediate offset
+            nullptr,     // src1
+            CISAlineno);
+   }
+
+//
+// EXAMPLES:
+// BTI:
+//     lsc_load_block2d.tgm   bti(0x0)[V_X,V_Y]    V53
+//     lsc_load_block2d.tgm   bti(V10.2)[V_X,V_Y]    V53
+// BSS:
+//     lsc_load_block2d.tgm   bss(V10)[V_X,V_Y]    V53
+LscTypedBlock2dStore:
+//  1                                2           3                   4
+    Predicate LSC_STORE_BLOCK2D_MNEMONIC   LSC_SFID_TYPED_TOKEN  LscCacheOpts
+//  5                                 6
+    LscTypedBlock2dAddrOperand  LscDataOperandTyped2D
+    {
+        pBuilder->CISA_create_lsc_typed_block2d_inst(
+            $2,  // subop
+            $4,  // caching settings
+            $5.addr.type, // address model
+            $6.shape_typed2d,  // data shape
+            $5.surface,  //surface
+            $5.surfaceIndex,
+            nullptr,     // dst
+            $5.regs[0],     // src0 addrs(block start offset x)
+            $5.regs[1],     // src0 addrs(block start offset y)
+            $5.immOffsets[0], // x immediate offset
+            $5.immOffsets[1], // y immediate offset
+            $6.reg,      // src1
+            CISAlineno);
+    }
+
+LscTypedBlock2dAddrOperand:
+//  1                     2
+    LscAddrModelStateful  LBRACK
+//      3 (BlockStartX)
+        LscVectorOpImm32
+//      4      5 (BlockStartY)
+        COMMA LscVectorOpImm32
+//      6
+        RBRACK
+    {
+        $$ = {$1.surface, 0, {$3,$5},{0,0},{$1.type,1,0,LSC_ADDR_SIZE_64b}};
+    }
+    |
+//  1                     2
+    LscAddrModelStateful  LBRACK
+//      3 (BlockStartX)  4
+        LscVectorOpReg   LscAddrImmOffsetOpt
+//      5       6 (BlockStartY)   7                    8
+        COMMA   LscVectorOpReg    LscAddrImmOffsetOpt  RBRACK
+    {
+        $$ = {$1.surface, $1.surfaceIndex, {$3, $6}, {(int)$4, (int)$7}, {$1.type, 1, 0, LSC_ADDR_SIZE_64b}};
+    }
+
+LscDataOperandTyped2D:
+//  1             2
+    LscPayloadReg LSC_DATA_SHAPE_TK_TYPED_BLOCK2D {
+        $$ = {$1,$2};
+    }
+
+// EXAMPLES:
+//     lsc_apndctr_atomic_add.ugm  VRESULT:d32 bti(0xA0) V0:d32
+//     lsc_apndctr_atomic_sub.ugm  VRESULT:d32 bti(0xA0) V0:d32
+LscUntypedApndCtrAtomic:
+//  1         2                    3                       4             5
+    Predicate LSC_ATOMIC_MNEMONIC  LSC_SFID_UNTYPED_TOKEN  LscCacheOpts  ExecSize
+//  6                  7                       8
+    LscDataOperand     LscAddrModelStateful    LscDataOperand
+    {
+        $5.exec_size =
+            lscCheckExecSize(pBuilder, $3, $2, $6.shape.order, $5.exec_size);
+        pBuilder->CISA_create_lsc_untyped_append_counter_atomic_inst(
+            $2,          // op
+            $1,          // predicate
+            Get_VISA_Exec_Size_From_Raw_Size($5.exec_size),
+            $5.emask,    // execution mask
+            $4,          // caching settings
+            $7.type,     // address type
+            $6.shape,    // data shape
+            $7.surface,  // surface
+            $7.surfaceIndex,
+            $6.reg,      // dst data
+            $8.reg,      // src1 data
+            CISAlineno);
     }
 
 SwitchLabels:

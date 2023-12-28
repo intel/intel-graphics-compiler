@@ -664,6 +664,20 @@ public:
                             VISA_opnd *threadCount, int lineNum);
 
 
+  bool CISA_create_lsc_typed_block2d_inst(
+      LSC_OP opcode, LSC_CACHE_OPTS caching, LSC_ADDR_TYPE addrModel,
+      LSC_DATA_SHAPE_TYPED_BLOCK2D dataShape,
+      VISA_opnd *surface, unsigned surfaceIndex,
+      VISA_opnd *dstData, VISA_opnd *xOffset, VISA_opnd *yOffset,
+      int xImmOffset, int yImmOffset, VISA_opnd *src1Data, int lineNum);
+
+  bool CISA_create_lsc_untyped_append_counter_atomic_inst(
+      LSC_OP opcode, VISA_opnd *pred, VISA_Exec_Size execSize,
+      VISA_EMask_Ctrl emask, LSC_CACHE_OPTS caching,
+      LSC_ADDR_TYPE addr, LSC_DATA_SHAPE dataShape,
+      VISA_opnd *surface, unsigned surfaceIndex,
+      VISA_opnd *dst, VISA_opnd *srcData, int lineNum);
+
 private:
   const vISA::PlatformInfo *m_platformInfo;
 
