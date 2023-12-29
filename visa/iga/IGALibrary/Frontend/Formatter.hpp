@@ -208,10 +208,10 @@ public:
   // enables you emit a list of things
   //
   // emit(foo, bar, baz, ...);
-  template <typename T, typename... Ts> void emit(T t) { emitT(t); }
-  template <typename T, typename... Ts> void emit(T t, Ts... ts) {
-    emitT(std::move(t));
-    emit(std::move(ts)...);
+  template <typename T, typename... Ts> void emit(const T& t) { emitT(t); }
+  template <typename T, typename... Ts> void emit(const T& t, const Ts&... ts) {
+    emitT(t);
+    emit(ts...);
   }
 
   // emits an sequence conditionally surrounded by an ANSI color

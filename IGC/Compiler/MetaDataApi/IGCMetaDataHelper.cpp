@@ -38,7 +38,7 @@ void IGCMetaDataHelper::moveFunction(
     {
         auto funcInfo = loc->second;
         FuncMD.erase(OldFunc);
-        FuncMD[NewFunc] = funcInfo;
+        FuncMD[NewFunc] = std::move(funcInfo);
     }
 }
 

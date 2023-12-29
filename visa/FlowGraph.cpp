@@ -382,14 +382,16 @@ int64_t FlowGraph::insertDummyUUIDMov() {
           builder->createMov(g4::SIMD1, nullDst, randImm, InstOpt_NoOpt, false);
 
       auto instItEnd = bb->end();
-      for (auto it = bb->begin(); it != instItEnd; it++) {
-        if ((*it)->isLabel()) {
-          bb->insertBefore(++it, movInst);
-          return uuID;
-        }
+      auto it = bb->begin();
 
-        bb->push_front(movInst);
-        return uuID;
+      if (it != instItEnd) {
+          if ((*it)->isLabel()) {
+              bb->insertBefore(++it, movInst);
+              return uuID;
+          }
+
+          bb->push_front(movInst);
+          return uuID;
       }
     }
   }

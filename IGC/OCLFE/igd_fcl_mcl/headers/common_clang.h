@@ -36,6 +36,8 @@ namespace Intel { namespace OpenCL { namespace ClangFE {
     //
     struct IOCLFEBinaryResult
     {
+        IOCLFEBinaryResult(const IOCLFEBinaryResult& cm) = delete;
+        IOCLFEBinaryResult& operator=(const IOCLFEBinaryResult& cm) = delete;
         // Returns the size in bytes of the IR buffer
         virtual size_t      GetIRSize() const = 0;
         // Returns the pointer to the IR buffer or NULL if no IR buffer is present
