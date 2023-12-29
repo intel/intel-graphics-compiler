@@ -1,0 +1,26 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2020-2023 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
+#    Description              : Don't try to upgrade struct return of non-intrinsic
+#                             : This is LLVM change: a87738f86b1, submited on 12/2023.
+diff --git a/llvm/lib/IR/AutoUpgrade.cpp b/llvm/lib/IR/AutoUpgrade.cpp
+index 75594f90c92..77ef9e94ba7 100755
+--- a/llvm/lib/IR/AutoUpgrade.cpp
++++ b/llvm/lib/IR/AutoUpgrade.cpp
+@@ -1023,7 +1023,8 @@ static bool UpgradeIntrinsicFunction1(Function *F, Function *&NewFn) {
+   }
+ 
+   auto *ST = dyn_cast<StructType>(F->getReturnType());
+-  if (ST && (!ST->isLiteral() || ST->isPacked())) {
++  if (ST && (!ST->isLiteral() || ST->isPacked()) &&
++      F->getIntrinsicID() != Intrinsic::not_intrinsic) {
+     // Replace return type with literal non-packed struct. Only do this for
+     // intrinsics declared to return a struct, not for intrinsics with
+     // overloaded return type, in which case the exact struct type will be
+
+
