@@ -260,14 +260,14 @@ namespace IGC
 
         // Check if subroutine call is needed and set it if so.
         void checkAndSetEnableSubroutine();
-        CodeGenContext* m_pCtx;
-        int m_enableCallForEmulation; // subroutine/stackcall
+        CodeGenContext* m_pCtx = nullptr;
+        int m_enableCallForEmulation{}; // subroutine/stackcall
 
-        IGCMD::MetaDataUtils* m_pMdUtils;
-        llvm::Module* m_pModule;
+        IGCMD::MetaDataUtils* m_pMdUtils = nullptr;
+        llvm::Module* m_pModule = nullptr;
 
         /// @brief  Indicates if the pass changed the processed function
-        bool m_changed;
+        bool m_changed{};
 
         const static char* m_Int64DivRemFunctionNames[NUM_FUNCTIONS][NUM_TYPES];
         const static char* m_Int64SpDivRemFunctionNames[NUM_FUNCTIONS][NUM_TYPES];

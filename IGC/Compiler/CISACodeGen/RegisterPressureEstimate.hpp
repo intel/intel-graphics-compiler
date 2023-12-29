@@ -65,8 +65,8 @@ namespace IGC
         /// \brief Describe a value is live at Begin and dead right after End.
         struct Segment
         {
-            unsigned Begin;
-            unsigned End;
+            unsigned Begin{};
+            unsigned End{};
             Segment() {}
             Segment(unsigned Begin, unsigned End) : Begin(Begin), End(End) {}
             bool operator<(const Segment& Other) const

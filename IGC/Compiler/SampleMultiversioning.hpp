@@ -29,7 +29,7 @@ namespace IGC {
     public:
         static char ID;
         CodeGenContext* pContext;
-        DominatorTree* DT;
+        DominatorTree* DT = nullptr;
 
         SampleMultiversioning(CodeGenContext* pContext);
         SampleMultiversioning();

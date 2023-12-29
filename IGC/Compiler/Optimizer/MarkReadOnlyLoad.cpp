@@ -45,8 +45,8 @@ namespace {
         void visitLoadInst(LoadInst& LI);
 
     private:
-        MDNode* m_mdNode;
-        bool m_changed;
+        MDNode* m_mdNode = nullptr;
+        bool m_changed{};
     };
 
 } // namespace

@@ -46,9 +46,9 @@ namespace IGC
         void addImplictArgs(llvm::Type* type, uint64_t baseAllocaOffset);
 
     private:
-        const llvm::DataLayout* m_pDL;
+        const llvm::DataLayout* m_pDL{};
         ImplicitArg::StructArgList m_argList;
-        IGCMD::MetaDataUtils* m_pMdUtils;
+        IGCMD::MetaDataUtils* m_pMdUtils = nullptr;
 
     };
 

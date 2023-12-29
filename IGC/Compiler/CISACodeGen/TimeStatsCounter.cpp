@@ -18,10 +18,10 @@ using namespace IGC;
 
 namespace {
     class TimeStatsCounter : public ModulePass {
-        CodeGenContext* ctx;
-        COMPILE_TIME_INTERVALS interval;
-        TimeStatsCounterStartEndMode mode;
-        std::string igcPass;
+        CodeGenContext* ctx = nullptr;
+        COMPILE_TIME_INTERVALS interval{};
+        TimeStatsCounterStartEndMode mode{};
+        std::string igcPass{};
         TimeStatsCounterType type;
 
     public:

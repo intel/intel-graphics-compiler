@@ -34,7 +34,7 @@ namespace IGC
         void visitCastInst(llvm::CastInst& I);
 
     private:
-        llvm::IRBuilder<>* m_builder;
+        llvm::IRBuilder<>* m_builder = nullptr;
     };
 }
 

@@ -89,8 +89,8 @@ namespace IGC
         /// @param  alignment  Required alignment in bytes.
         void alignBuffer(DataVector& buffer, alignment_t alignment);
 
-        const llvm::DataLayout* m_DL;
-        ModuleMetaData* m_pModuleMd;
+        const llvm::DataLayout* m_DL = nullptr;
+        ModuleMetaData* m_pModuleMd = nullptr;
 
         // Used to patch offsets for zero initialized globals
         struct ZeroInitPatchInfo {

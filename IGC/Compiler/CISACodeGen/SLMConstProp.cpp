@@ -66,10 +66,10 @@ namespace
         struct StoreInfo {
             PatternType  ty;  // Pattern type if this store is part of
                               // a pattern.
-            int  ix;          // ix into m_storeInsts vector
-            SymExpr* SE;      // Store's address
-            Constant* Val;    // Store's value if it is constant.
-            int offset;       // offset relative to a particular SymExpr. Its meaning
+            int  ix{};          // ix into m_storeInsts vector
+            SymExpr* SE = nullptr;      // Store's address
+            Constant* Val = nullptr;    // Store's value if it is constant.
+            int offset{};       // offset relative to a particular SymExpr. Its meaning
                               // is based on the context in which it is used.
 
             StoreInfo() : ty(PATTERN_UNDEFINED) {}
@@ -91,11 +91,11 @@ namespace
         }
 
     private:
-        CodeGenContext* m_Ctx;
-        Function* m_F;
-        LoopInfo* m_LI;
-        DominatorTree* m_DT;
-        const DataLayout* m_DL;
+        CodeGenContext* m_Ctx = nullptr;
+        Function* m_F = nullptr;
+        LoopInfo* m_LI = nullptr;
+        DominatorTree* m_DT = nullptr;
+        const DataLayout* m_DL = nullptr;
         SymbolicEvaluation m_SymEval;
 
         // All SLM loads

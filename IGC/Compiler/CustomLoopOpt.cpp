@@ -692,10 +692,10 @@ public:
     }
 
 private:
-    CodeGenContext* m_cgCtx;
-    llvm::LoopInfo* m_LI;
-    llvm::DominatorTree* m_DT;
-    llvm::Function* m_function;
+    CodeGenContext* m_cgCtx = nullptr;
+    llvm::LoopInfo* m_LI = nullptr;
+    llvm::DominatorTree* m_DT = nullptr;
+    llvm::Function* m_function = nullptr;
 };
 #undef PASS_FLAG
 #undef PASS_DESC

@@ -53,7 +53,7 @@ namespace IGC
         const unsigned FLAG_LOAD = 1;
         const unsigned FLAG_RESINFO = 2;
 
-        CodeGenContext* m_ctx;
+        CodeGenContext* m_ctx = nullptr;
 
         // For each instruction in m_CbUpadteMap, we record whether it's
         // coming from a load or resinfo.

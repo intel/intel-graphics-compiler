@@ -71,10 +71,10 @@ namespace {
             StringRef FN, int StartPos, int* pRM, int* pVecLen, bool* pIsSat);
 
         /// Indicates if the pass changed the processed function
-        bool m_changed;
+        bool m_changed{};
 
-        CodeGenContext* m_pCtx;
-        std::string m_ErrorMsg;
+        CodeGenContext* m_pCtx = nullptr;
+        std::string m_ErrorMsg{};
 
         ///  XeHP_SDV's simd8 intrinsics
         ///

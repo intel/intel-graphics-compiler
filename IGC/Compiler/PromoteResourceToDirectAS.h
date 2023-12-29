@@ -47,8 +47,8 @@ namespace IGC
         void PromoteBufferToDirectAS(llvm::Instruction* inst, llvm::Value* resourcePtr);
         llvm::Value* getOffsetValue(llvm::Value* srcPtr, int& bufferoffset);
 
-        CodeGenContext* m_pCodeGenContext;
-        IGCMD::MetaDataUtils* m_pMdUtils;
+        CodeGenContext* m_pCodeGenContext = nullptr;
+        IGCMD::MetaDataUtils* m_pMdUtils = nullptr;
         std::unordered_map<llvm::Value*, llvm::Value*> m_SrcPtrToBufferOffsetMap;
     };
 

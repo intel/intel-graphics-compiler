@@ -68,7 +68,7 @@ public:
   virtual ~CisaInst() {}
 
   CISA_INST m_cisa_instruction;
-  const VISA_INST_Desc *m_inst_desc;
+  const VISA_INST_Desc* m_inst_desc = nullptr;
 
   int createCisaInstruction(ISA_Opcode opcode, unsigned char exec_size,
                             unsigned char modifier, PredicateOpnd pred,

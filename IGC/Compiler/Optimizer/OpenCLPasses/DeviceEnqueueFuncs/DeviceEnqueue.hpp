@@ -52,7 +52,7 @@ namespace IGC
         bool m_hasDeviceEnqueue;
         llvm::SmallVector< ImplicitArg::ArgType, ImplicitArg::NUM_IMPLICIT_ARGS > m_newImplicitArgs;
         ImplicitArg::ArgMap m_newNumberedImplicitArgs;
-        IGCMD::MetaDataUtils* m_pMDUtils;
+        IGCMD::MetaDataUtils* m_pMDUtils = nullptr;
     };
 
 

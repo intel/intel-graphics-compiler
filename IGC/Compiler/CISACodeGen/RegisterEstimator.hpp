@@ -216,7 +216,7 @@ namespace IGC
 
     private:
 
-        bool m_RPEComputed;
+        bool m_RPEComputed{};
         const llvm::DataLayout* m_DL;
         LivenessAnalysis* m_LVA;
         llvm::Function* m_F;
@@ -236,7 +236,7 @@ namespace IGC
 
         // Set it to true when the GRF needed is low even we assume all values are
         // live from the entry to the end. This is used to skip RPE calucation entirely.
-        bool m_noGRFPressure;
+        bool m_noGRFPressure{};
 
         // Register needed for each value. Computed once for each value.
         // Used to avoid recomputing the same value again. It is also

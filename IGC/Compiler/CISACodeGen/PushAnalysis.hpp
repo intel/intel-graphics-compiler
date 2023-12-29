@@ -42,7 +42,7 @@ namespace IGC
         bool m_funcTypeChanged;
         std::map <llvm::Function*, bool> m_isFuncTypeChanged;
 
-        llvm::Function* m_pFunction;
+        llvm::Function* m_pFunction = nullptr;
         IGCMD::MetaDataUtils* m_pMdUtils;
         llvm::PostDominatorTree* m_PDT;
         llvm::DominatorTree* m_DT;

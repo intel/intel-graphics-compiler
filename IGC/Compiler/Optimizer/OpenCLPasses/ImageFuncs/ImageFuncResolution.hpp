@@ -140,10 +140,10 @@ namespace IGC
         ImplicitArgs m_implicitArgs;
 
         /// @brief  Indicates if the pass changed the processed function
-        bool m_changed;
+        bool m_changed{};
 
         /// @brief provides access to CodeGenContext
-        CodeGenContext* m_pCtx;
+        CodeGenContext* m_pCtx = nullptr;
     };
 
 } // namespace IGC

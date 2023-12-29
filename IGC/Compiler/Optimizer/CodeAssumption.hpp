@@ -59,9 +59,9 @@ namespace IGC
         static bool IsSGIdUniform(IGCMD::MetaDataUtils* pMDU, ModuleMetaData* modMD, llvm::Function* F);
 
     private:
-        bool m_changed;
+        bool m_changed{};
 
-        IGCMD::MetaDataUtils* m_pMDUtils;
+        IGCMD::MetaDataUtils* m_pMDUtils = nullptr;
 
         // Simple change to help uniform analysis (later).
         void uniformHelper(llvm::Module* M);

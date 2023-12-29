@@ -225,9 +225,9 @@ namespace IGC
         static const std::array<std::pair<std::string, WaveOps>, 13> m_spvOpToWaveOpMap;
 
         /// @brief  Indicates if the pass changed the processed function
-        bool m_changed;
+        bool m_changed{};
 
-        CodeGenContext* m_pCtx;
+        CodeGenContext* m_pCtx = nullptr;
 
         /// @brief examine metadata for intel_reqd_sub_group_size
         int32_t GetSIMDSize(llvm::Function* F);

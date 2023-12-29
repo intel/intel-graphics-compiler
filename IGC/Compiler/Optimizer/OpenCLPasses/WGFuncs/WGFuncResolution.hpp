@@ -45,10 +45,10 @@ namespace IGC
         void visitCallInst(llvm::CallInst& callInst);
 
     private:
-        llvm::Module* m_pModule;
+        llvm::Module* m_pModule = nullptr;
 
         /// @brief  Indicates if the pass changed the processed function
-        bool m_changed;
+        bool m_changed{};
     };
 
 } // namespace IGC

@@ -39,10 +39,10 @@ namespace IGC
         // Pass identification, replacement for typeid
         static char ID;
     protected:
-        llvm::Module* m_pModule;
+        llvm::Module* m_pModule = nullptr;
 
         /// @brief  Indicates if the pass changed the processed function
-        bool m_changed;
+        bool m_changed{};
     };
 
 } // namespace IGC

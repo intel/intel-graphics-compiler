@@ -168,7 +168,7 @@ namespace IGC {
         const llvm::BasicBlock* full_join;
         llvm::DenseSet<llvm::BasicBlock*> influence_region;
         llvm::SmallPtrSet<llvm::BasicBlock*, 4> partial_joins;
-        llvm::BasicBlock* fork_blk;
+        llvm::BasicBlock* fork_blk = nullptr;
     };
 } // namespace IGC
 

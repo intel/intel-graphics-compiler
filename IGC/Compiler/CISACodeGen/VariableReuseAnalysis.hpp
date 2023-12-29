@@ -439,14 +439,14 @@ namespace IGC {
         DeSSA* m_DeSSA;
         CodeGenPatternMatch* m_PatternMatch;
         CoalescingEngine* m_coalescingEngine;
-        llvm::DominatorTree* m_DT;
-        const llvm::DataLayout* m_DL;
+        llvm::DominatorTree* m_DT = nullptr;
+        const llvm::DataLayout* m_DL = nullptr;
 
         llvm::BumpPtrAllocator Allocator;
 
         /// Current Function; set on entry to runOnFunction
         /// and unset on exit to runOnFunction
-        llvm::Function* m_F;
+        llvm::Function* m_F = nullptr;
 
         // The register pressure estimator (optional).
         RegisterEstimator* m_RPE;

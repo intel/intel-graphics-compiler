@@ -21,8 +21,8 @@ namespace IGC
 {
     class ConvertMSAAPayloadTo16Bit : public llvm::FunctionPass, public llvm::InstVisitor<ConvertMSAAPayloadTo16Bit>
     {
-        llvm::IRBuilder<>* m_builder;
-        CodeGenContextWrapper* m_pCtxWrapper;
+        llvm::IRBuilder<>* m_builder = nullptr;
+        CodeGenContextWrapper* m_pCtxWrapper = nullptr;
     public:
 
         static char ID;

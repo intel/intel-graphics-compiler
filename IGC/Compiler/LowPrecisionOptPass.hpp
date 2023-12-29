@@ -33,13 +33,13 @@ namespace IGC
     class LowPrecisionOpt : public llvm::FunctionPass, public llvm::InstVisitor<LowPrecisionOpt>
     {
     private:
-        llvm::IGCIRBuilder<>* m_builder;
-        bool m_changed;
+        llvm::IGCIRBuilder<>* m_builder = nullptr;
+        bool m_changed{};
         llvm::Function* m_func_llvm_GenISA_DCL_inputVec_f16;
         llvm::Function* m_func_llvm_GenISA_DCL_inputVec_f32;
         llvm::Function* m_currFunction;
         llvm::Function* func_llvm_floor_f32;
-        ShaderType shdrType;
+        ShaderType shdrType{};
         typedef struct _moveBundle
         {
             uint index;

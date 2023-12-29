@@ -732,7 +732,7 @@ namespace IGC::IGCMD
     private:
         // data members
         NamedMetaDataMap<llvm::Function, FunctionInfoMetaDataHandle> m_FunctionsInfo;
-        llvm::Module* m_pModule;
+        llvm::Module* m_pModule = nullptr;
         std::vector<llvm::NamedMDNode*> m_nodesToDelete;
     };
 }

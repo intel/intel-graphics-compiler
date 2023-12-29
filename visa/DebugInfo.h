@@ -191,7 +191,7 @@ public:
 
 class KernelDebugInfo {
 private:
-  G4_Kernel *kernel;
+  G4_Kernel *kernel = nullptr;
   VISAKernelImpl *visaKernel;
   std::unordered_map<G4_Declare *, LiveIntervalInfo *> debugInfoLiveIntervalMap;
 
@@ -366,7 +366,7 @@ public:
 };
 
 class SaveRestoreInfo {
-  G4_INST *i;
+    G4_INST* i = nullptr;
 
 public:
   // Map src GRF->GRF/Memory

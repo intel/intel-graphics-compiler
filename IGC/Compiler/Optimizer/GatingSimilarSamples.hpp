@@ -51,15 +51,15 @@ namespace IGC
         }
 
     private:
-        llvm::BasicBlock* BB;
-        llvm::Instruction* motionSample;
-        llvm::Instruction* texelSample;
-        llvm::Instruction* resultInst;
+        llvm::BasicBlock* BB = nullptr;
+        llvm::Instruction* motionSample = nullptr;
+        llvm::Instruction* texelSample = nullptr;
+        llvm::Instruction* resultInst = nullptr;
 
         //motion.xy will be the gating value
-        llvm::Value* gatingValue_mul1; //motion.x
-        llvm::Value* gatingValue_mul2; //motion.y
-        std::vector<llvm::Instruction*> similarSampleInsts;
+        llvm::Value* gatingValue_mul1 = nullptr; //motion.x
+        llvm::Value* gatingValue_mul2 = nullptr; //motion.y
+        std::vector<llvm::Instruction*> similarSampleInsts{};
         bool areSampleInstructionsSimilar(llvm::Instruction*, llvm::Instruction*);
         bool checkAndSaveSimilarSampleInsts();
         bool setOrCmpGatingValue(llvm::Value*& gatingValueToCmp1, llvm::Instruction* mulInst, const llvm::Instruction* texelSampleInst);

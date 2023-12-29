@@ -261,17 +261,17 @@ namespace IGC
 
         /// Iteratively one set holds the changed from the previous iteration and
         /// the other holds the new changed values from the current iteration.
-        std::vector<const llvm::Value*> m_changed1;
-        std::vector<const llvm::Value*> m_changed2;
+        std::vector<const llvm::Value*> m_changed1{};
+        std::vector<const llvm::Value*> m_changed2{};
         /// ptr to m_changed1, m_changed2
-        std::vector<const llvm::Value*>* m_pChangedOld = {};
-        std::vector<const llvm::Value*>* m_pChangedNew = {};
+        std::vector<const llvm::Value*>* m_pChangedOld = nullptr;
+        std::vector<const llvm::Value*>* m_pChangedNew = nullptr;
 
         /// <summary>
         ///  hold the vector-defs that are promoted from an uniform alloca
         ///  therefore, need to be forced into uniform no matter what.
         /// </summary>
-        std::vector<const llvm::Value*> m_forcedUniforms;
+        std::vector<const llvm::Value*> m_forcedUniforms{};
 
         llvm::Function* m_func = nullptr;
         llvm::LoopInfo *LI = nullptr;

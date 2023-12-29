@@ -41,8 +41,8 @@ namespace IGC
 
         const llvm::DataLayout* m_DL;
         std::vector<llvm::Instruction*> m_instructionsToRemove;
-        llvm::IRBuilder<>* m_builder;
-        IGC::CodeGenContext* m_ctx;
+        llvm::IRBuilder<>* m_builder = nullptr;
+        IGC::CodeGenContext* m_ctx = nullptr;
     public:
 
         static char ID;

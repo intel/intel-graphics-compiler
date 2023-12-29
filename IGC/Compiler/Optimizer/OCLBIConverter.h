@@ -53,9 +53,9 @@ namespace IGC
 
         CImagesBI::ParamMap m_argIndexMap;
         CImagesBI::InlineMap m_inlineIndexMap;
-        int m_nextSampler;
+        int m_nextSampler{};
 
-        CBuiltinsResolver* m_pResolve;
+        CBuiltinsResolver* m_pResolve = nullptr;
     };
 
 } // namespace IGC

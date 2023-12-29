@@ -101,7 +101,7 @@ namespace IGC
 
         static const alignment_t MinimumAlignment = 1;
 
-        const llvm::DataLayout* m_DL;
+        const llvm::DataLayout* m_DL = nullptr;
     };
 
 } // namespace IGC

@@ -26,7 +26,7 @@ namespace IGC
     class WorkaroundAnalysis : public llvm::FunctionPass,
         public llvm::InstVisitor<WorkaroundAnalysis>
     {
-        LLVM3DBuilder<>* m_builder;
+        LLVM3DBuilder<>* m_builder = nullptr;
     public:
         static char ID;
 
@@ -53,9 +53,9 @@ namespace IGC
         void processDeferredInstruction(llvm::Instruction* I);
         void GatherOffsetWorkaround(llvm::SamplerGatherIntrinsic* gatherpo);
         void ldmsOffsetWorkaournd(llvm::LdMSIntrinsic* ldms);
-        const llvm::DataLayout* m_pDataLayout;
-        llvm::Module* m_pModule;
-        CodeGenContextWrapper* m_pCtxWrapper;
+        const llvm::DataLayout* m_pDataLayout = nullptr;
+        llvm::Module* m_pModule = nullptr;
+        CodeGenContextWrapper* m_pCtxWrapper = nullptr;
         llvm::SmallVector<llvm::Instruction*, 4> m_DeferredInstructions;
     };
 
@@ -82,8 +82,8 @@ namespace IGC
         void visitCallInst(llvm::CallInst& I);
 
     private:
-        llvm::IGCIRBuilder<>* m_builder;
-        CodeGenContext* m_ctx;
+        llvm::IGCIRBuilder<>* m_builder = nullptr;
+        CodeGenContext* m_ctx = nullptr;
     };
 
 } // namespace IGC

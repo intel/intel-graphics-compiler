@@ -21,10 +21,10 @@ namespace IGC
     class MSAAInsertDiscard : public llvm::FunctionPass, public llvm::InstVisitor<MSAAInsertDiscard>
     {
     private:
-        bool done;
-        llvm::IRBuilder<>* m_builder;
-        CodeGenContextWrapper* m_pCtxWrapper;
-        unsigned int m_kernelSize;
+        bool done{};
+        llvm::IRBuilder<>* m_builder = nullptr;
+        CodeGenContextWrapper* m_pCtxWrapper = nullptr;
+        unsigned int m_kernelSize{};
 
         int getiCMPValue();
 

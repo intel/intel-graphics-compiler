@@ -303,65 +303,65 @@ namespace IGC
 
     struct SInstrTypes
     {
-        bool CorrelatedValuePropagationEnable;
-        bool hasMultipleBB;
-        bool hasCmp;
-        bool hasSwitch;
-        bool hasPhi;
-        bool hasLoadStore;
-        bool hasIndirectCall;
-        bool hasInlineAsm;
-        bool hasInlineAsmPointerAccess;
-        bool hasIndirectBranch;
-        bool hasFunctionAddressTaken;
-        bool hasSel;
-        bool hasPointer;
-        bool hasLocalLoadStore;
-        bool hasGlobalLoad; // has (stateless) loads from global addresspace
-        bool hasGlobalStore; // has (stateless) stores to global addresspace
-        bool hasStorageBufferLoad; // has (stateful) loads from storage buffers (UAV/SSBO)
-        bool hasStorageBufferStore; // has (stateful) stores to storage buffers (UAV/SSBO)
-        bool hasSubroutines;
-        bool hasPrimitiveAlloca;
-        bool hasNonPrimitiveAlloca;
-        bool hasReadOnlyArray;
-        bool hasBuiltin;
-        bool hasFRem;
-        bool psHasSideEffect;     //<! only relevant to pixel shader, has other memory writes besides RTWrite
-        bool hasGenericAddressSpacePointers;
-        bool hasDebugInfo;        //<! true only if module contains debug info !llvm.dbg.cu
-        bool hasAtomics;
-        bool hasDiscard;
-        bool hasTypedRead;
-        bool hasTypedwrite;
-        bool mayHaveIndirectOperands;  //<! true if code may have indirect operands like r5[a0].
+        bool CorrelatedValuePropagationEnable{};
+        bool hasMultipleBB{};
+        bool hasCmp{};
+        bool hasSwitch{};
+        bool hasPhi{};
+        bool hasLoadStore{};
+        bool hasIndirectCall{};
+        bool hasInlineAsm{};
+        bool hasInlineAsmPointerAccess{};
+        bool hasIndirectBranch{};
+        bool hasFunctionAddressTaken{};
+        bool hasSel{};
+        bool hasPointer{};
+        bool hasLocalLoadStore{};
+        bool hasGlobalLoad{}; // has (stateless) loads from global addresspace
+        bool hasGlobalStore{}; // has (stateless) stores to global addresspace
+        bool hasStorageBufferLoad{}; // has (stateful) loads from storage buffers (UAV/SSBO)
+        bool hasStorageBufferStore{}; // has (stateful) stores to storage buffers (UAV/SSBO)
+        bool hasSubroutines{};
+        bool hasPrimitiveAlloca{};
+        bool hasNonPrimitiveAlloca{};
+        bool hasReadOnlyArray{};
+        bool hasBuiltin{};
+        bool hasFRem{};
+        bool psHasSideEffect{};     //<! only relevant to pixel shader, has other memory writes besides RTWrite
+        bool hasGenericAddressSpacePointers{};
+        bool hasDebugInfo{};        //<! true only if module contains debug info !llvm.dbg.cu
+        bool hasAtomics{};
+        bool hasDiscard{};
+        bool hasTypedRead{};
+        bool hasTypedwrite{};
+        bool mayHaveIndirectOperands{};  //<! true if code may have indirect operands like r5[a0].
         // true if shader may have indirect texture or buffer.
         // Note: does not check for indirect sampler
-        bool mayHaveIndirectResources;
-        bool hasUniformAssumptions;
-        bool hasPullBary;
-        bool sampleCmpToDiscardOptimizationPossible;
-        bool hasRuntimeValueVector;
-        bool hasDynamicGenericLoadStore;
-        bool hasUnmaskedRegion;
-        unsigned int numCall;
-        unsigned int numBarrier;
-        unsigned int numLoadStore;
-        unsigned int numWaveIntrinsics;
-        unsigned int numAtomics;
-        unsigned int numTypedReadWrite;
-        unsigned int numAllInsts;
-        unsigned int sampleCmpToDiscardOptimizationSlot;
-        unsigned int numSample;
-        unsigned int numBB;
-        unsigned int numLoopInsts;
-        unsigned int numOfLoop;
-        unsigned int numInsts;    //<! measured after optimization, used as a compiler heuristic
-        unsigned int numAllocaInsts;
-        unsigned int numPsInputs;
-        unsigned int numGlobalInsts;
-        unsigned int numLocalInsts;
-        unsigned int numSamplesVaryingResource; //<! measured before CodeGen for scheduling heuristic
+        bool mayHaveIndirectResources{};
+        bool hasUniformAssumptions{};
+        bool hasPullBary{};
+        bool sampleCmpToDiscardOptimizationPossible{};
+        bool hasRuntimeValueVector{};
+        bool hasDynamicGenericLoadStore{};
+        bool hasUnmaskedRegion{};
+        unsigned int numCall{};
+        unsigned int numBarrier{};
+        unsigned int numLoadStore{};
+        unsigned int numWaveIntrinsics{};
+        unsigned int numAtomics{};
+        unsigned int numTypedReadWrite{};
+        unsigned int numAllInsts{};
+        unsigned int sampleCmpToDiscardOptimizationSlot{};
+        unsigned int numSample{};
+        unsigned int numBB{};
+        unsigned int numLoopInsts{};
+        unsigned int numOfLoop{};
+        unsigned int numInsts{};    //<! measured after optimization, used as a compiler heuristic
+        unsigned int numAllocaInsts{};
+        unsigned int numPsInputs{};
+        unsigned int numGlobalInsts{};
+        unsigned int numLocalInsts{};
+        unsigned int numSamplesVaryingResource{}; //<! measured before CodeGen for scheduling heuristic
     };
 
     struct SSimplePushInfo

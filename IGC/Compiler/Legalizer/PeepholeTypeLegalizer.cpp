@@ -44,7 +44,7 @@ IGC_INITIALIZE_PASS_END(PeepholeTypeLegalizer, PASS_FLAG, PASS_DESC, PASS_CFG_ON
 PeepholeTypeLegalizer::PeepholeTypeLegalizer() : FunctionPass(ID),
 TheModule(nullptr), TheFunction(nullptr), NonBitcastInstructionsLegalized(false), CastInst_ZExtWithIntermediateIllegalsEliminated(false),
 CastInst_TruncWithIntermediateIllegalsEliminated(false),
-Bitcast_BitcastWithIntermediateIllegalsEliminated(false), Changed(false), DL(nullptr) {
+Bitcast_BitcastWithIntermediateIllegalsEliminated(false), Changed(false), DL(nullptr), m_builder(nullptr) {
     initializePeepholeTypeLegalizerPass(*PassRegistry::getPassRegistry());
 }
 

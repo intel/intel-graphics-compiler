@@ -74,8 +74,8 @@ namespace TC
   class CClangTranslationBlock
       : public CTranslationBlock
   {
-    TB_DATA_FORMAT m_InputFormat;
-    TB_DATA_FORMAT m_OutputFormat;
+      TB_DATA_FORMAT m_InputFormat{};
+      TB_DATA_FORMAT m_OutputFormat{};
 #ifdef _WIN32
     CCModuleStruct m_CCModule;
 #endif
@@ -113,12 +113,12 @@ namespace TC
     // vector of supported OpenCL extensions for current device
     std::vector<std::string> m_Extensions;
 
-    PRODUCT_FAMILY m_HWPlatform;   // The HW platform that the device is running on
-    GFXCORE_FAMILY m_CoreFamily;
-    SGlobalData m_GlobalData;
+    PRODUCT_FAMILY m_HWPlatform{};   // The HW platform that the device is running on
+    GFXCORE_FAMILY m_CoreFamily{};
+    SGlobalData m_GlobalData{};
 
     // Using auto pointer to get CTH MemoryBuffer from LoadBuffer
-    char *m_cthBuffer;
+    char *m_cthBuffer = nullptr;
 
   protected:
       CClangTranslationBlock( void );

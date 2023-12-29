@@ -24,7 +24,7 @@ namespace IGC {
             TypeLegalizer* TL;
             BuilderType* IRB;
 
-            Value* Promoted;
+            Value* Promoted = nullptr;
 
         public:
             InstPromoter(TypeLegalizer* L, BuilderType* B) : TL(L), IRB(B) {}

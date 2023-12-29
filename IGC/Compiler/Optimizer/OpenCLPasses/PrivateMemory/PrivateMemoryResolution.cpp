@@ -84,10 +84,10 @@ namespace IGC {
         ModuleAllocaAnalysis* m_ModAllocaInfo;
 
         /// @brief - Metadata API
-        IGCMD::MetaDataUtils* m_pMdUtils;
+        IGCMD::MetaDataUtils* m_pMdUtils = nullptr;
 
         /// @brief - Current processed function
-        llvm::Function* m_currFunction;
+        llvm::Function* m_currFunction = nullptr;
     };
 
     ModulePass* CreatePrivateMemoryResolution()

@@ -72,7 +72,7 @@ namespace IGC
         std::unordered_set < llvm::Function*> m_hasPrintfs;
 
         /// @brief  MetaData utils used to generate LLVM metadata
-        IGCMD::MetaDataUtils* m_pMDUtils;
+        IGCMD::MetaDataUtils* m_pMDUtils = nullptr;
     };
 
 } // namespace IGC

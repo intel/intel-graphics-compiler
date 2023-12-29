@@ -194,7 +194,7 @@ namespace IGC
         bool m_hasOverflow;
         bool considerOverflow() const { return m_hasOverflow; }
 
-        const llvm::DataLayout* m_DL;
+        const llvm::DataLayout* m_DL = nullptr;
         // This struct is to hold info about symbol (Value), such as its ID,
         // and its equivalent symbolic expression.
         typedef struct {

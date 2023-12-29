@@ -647,14 +647,14 @@ public:
     }
 
 protected:
-    MetaDataUtils* m_pMdUtils;
-    ModuleMetaData* m_modMD;
-    Value* m_gradXX;
-    Value* m_gradXY;
-    Value* m_gradXZ;
-    Value* m_gradYX;
-    Value* m_gradYY;
-    Value* m_gradYZ;
+    MetaDataUtils* m_pMdUtils = nullptr;
+    ModuleMetaData* m_modMD = nullptr;
+    Value* m_gradXX = nullptr;
+    Value* m_gradXY = nullptr;
+    Value* m_gradXZ = nullptr;
+    Value* m_gradYX = nullptr;
+    Value* m_gradYY = nullptr;
+    Value* m_gradYZ = nullptr;
 };
 
 class COCL_sample_l : public COCL_sample

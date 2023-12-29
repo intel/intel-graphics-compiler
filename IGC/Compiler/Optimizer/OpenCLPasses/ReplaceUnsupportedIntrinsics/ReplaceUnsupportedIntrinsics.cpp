@@ -64,7 +64,7 @@ namespace
         void visitIntrinsicInst(llvm::IntrinsicInst& I);
 
     private:
-        CodeGenContext* m_Ctx;
+        CodeGenContext* m_Ctx = nullptr;
         std::vector<llvm::IntrinsicInst*> m_instsToReplace;
 
         /// Helper

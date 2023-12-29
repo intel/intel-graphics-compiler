@@ -80,7 +80,7 @@ namespace IGC
         bool m_hasDPDivSqrtEmu = false;
 
         /// @brief  MetaData utils used to generate LLVM metadata
-        IGCMD::MetaDataUtils* m_pMDUtils;
+        IGCMD::MetaDataUtils* m_pMDUtils = nullptr;
     };
 
 } // namespace IGC

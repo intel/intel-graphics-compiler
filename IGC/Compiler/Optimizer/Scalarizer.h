@@ -137,11 +137,11 @@ namespace IGC
         /*! \} */
 
         /// @brief Pointer to current function's context
-        llvm::LLVMContext* m_moduleContext;
+        llvm::LLVMContext* m_moduleContext = nullptr;
         /// @brief Accessor to current function's context
         llvm::LLVMContext& context() { return *m_moduleContext; }
         /// @brief Pointer to current function
-        llvm::Function* m_currFunc;
+        llvm::Function* m_currFunc{};
 
         /// @brief Set containing all the removed instructions in the function.
         llvm::SmallDenseSet<llvm::Instruction*, ESTIMATED_INST_NUM> m_removedInsts;
@@ -240,7 +240,7 @@ namespace IGC
         bool m_SelectiveScalarization;
 
         /// @brief This holds DataLayout of processed module
-        const llvm::DataLayout* m_pDL;
+        const llvm::DataLayout* m_pDL{};
 
         /// @brief This holds all the created dummy functions throughout the lifetime of the pass, and manages their memory
         llvm::MapVector<llvm::Type*, llvm::Function*> createdDummyFunctions;

@@ -133,16 +133,16 @@ namespace IGC
             llvm::Value* writeOffset, llvm::BasicBlock* bblock);
 
     private:
-        IGCLLVM::Module* m_module;
-        llvm::LLVMContext* m_context;
-        llvm::Function* m_atomicAddFunc;
-        unsigned int         m_stringIndex;
-        std::map<std::string, unsigned int> m_MapStringStringIndex;
-        llvm::IntegerType* m_ptrSizeIntType;
-        llvm::IntegerType* m_int32Type;
-        llvm::DebugLoc       m_DL;
-        IGC::CodeGenContext* m_CGContext;
-        bool                 m_fp64Supported;
+        IGCLLVM::Module* m_module = nullptr;
+        llvm::LLVMContext* m_context = nullptr;
+        llvm::Function* m_atomicAddFunc = nullptr;
+        unsigned int         m_stringIndex{};
+        std::map<std::string, unsigned int> m_MapStringStringIndex{};
+        llvm::IntegerType* m_ptrSizeIntType = nullptr;
+        llvm::IntegerType* m_int32Type = nullptr;
+        llvm::DebugLoc       m_DL{};
+        IGC::CodeGenContext* m_CGContext = nullptr;
+        bool                 m_fp64Supported{};
 
         std::vector<llvm::CallInst*>        m_printfCalls;
         std::vector<SPrintfArgDescriptor>   m_argDescriptors;

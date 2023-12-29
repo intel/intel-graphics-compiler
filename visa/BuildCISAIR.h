@@ -109,7 +109,7 @@ public:
   common_isa_header m_header{};
 
   // the current vISA kernel/function being processed
-  VISAKernelImpl *m_kernel;
+  VISAKernelImpl* m_kernel = nullptr;
   VISAKernelImpl *m_prevKernel = nullptr;
   VISAKernelImpl *get_kernel() const { return m_kernel; }
 

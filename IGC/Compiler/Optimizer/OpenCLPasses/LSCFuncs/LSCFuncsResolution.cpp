@@ -155,14 +155,14 @@ namespace {
         }
 
         /// Indicates if the pass changed the processed function
-        bool m_changed;
-        bool isHalfSimdMode;
+        bool m_changed{};
+        bool isHalfSimdMode{};
 
         /// state valid under visitCallInst(...)
         std::stringstream m_ErrorMsg;
-        CodeGenContext* m_pCtx;
-        CallInst* m_pCurrInst;
-        Function* m_pCurrInstFunc;
+        CodeGenContext* m_pCtx = nullptr;
+        CallInst* m_pCurrInst = nullptr;
+        Function* m_pCurrInstFunc = nullptr;
 
         static const StringRef PREFIX_LSC_STORE_local;
         static const StringRef PREFIX_LSC_STORE_global;

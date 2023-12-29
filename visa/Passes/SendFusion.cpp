@@ -49,10 +49,10 @@ private:
   // that would be moved in order to keep two sends together
   // for fusion. Note that the 1st entry is the send instruction
   // to be moved (so the size has +1).
-  int numToBeSinked;
-  int numToBeHoisted;
-  G4_INST *InstToBeSinked[SEND_FUSION_MAX_INST_TOBEMOVED + 1];
-  G4_INST *InstToBeHoisted[SEND_FUSION_MAX_INST_TOBEMOVED + 1];
+  int numToBeSinked{};
+  int numToBeHoisted{};
+  G4_INST* InstToBeSinked[SEND_FUSION_MAX_INST_TOBEMOVED + 1]{};
+  G4_INST *InstToBeHoisted[SEND_FUSION_MAX_INST_TOBEMOVED + 1]{};
 
   //
   // For Both doSink() and doHoist(), all instructions to be moved
@@ -66,7 +66,7 @@ private:
                INST_LIST_ITER InsertBeforePos);
 
   // If this optimization does any change to the code, set it to true.
-  bool changed;
+  bool changed{};
 
   // Check if this instruction is a candidate, might do simplification.
   // Return true if it is an candidate for send fusion.
