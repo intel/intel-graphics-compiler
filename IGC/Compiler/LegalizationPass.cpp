@@ -2273,20 +2273,31 @@ void Legalization::PromoteFp16ToFp32OnGenSampleCall(llvm::CallInst& I)
 
     llvm::SmallVector<Type*, 5> types;
 
+    llvm::Value* pairedTexture = nullptr;
     llvm::Value* texture = nullptr;
     llvm::Value* sampler = nullptr;
 
     if (SampleIntrinsic * inst = llvm::dyn_cast<SampleIntrinsic>(&I))
     {
+        pairedTexture = inst->getPairedTextureValue();
         texture = inst->getTextureValue();
         sampler = inst->getSamplerValue();
     }
     else if (SamplerGatherIntrinsic * inst = llvm::dyn_cast<SamplerGatherIntrinsic>(&I))
     {
+        pairedTexture = inst->getPairedTextureValue();
         texture = inst->getTextureValue();
         sampler = inst->getSamplerValue();
     }
-    if (texture && texture->getType()->isPointerTy())
+    if (pairedTexture && pairedTexture->getType()->isPointerTy() &&
+        texture && texture->getType()->isPointerTy())
+    {
+        types.resize(5);
+        types[2] = pairedTexture->getType();
+        types[3] = texture->getType();
+        types[4] = sampler->getType();
+    }
+    else if (texture && texture->getType()->isPointerTy())
     {
         types.resize(4);
         types[2] = texture->getType();

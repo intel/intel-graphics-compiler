@@ -1728,6 +1728,7 @@ static G4_Operand *createSampleHeader(IR_Builder *builder, G4_Declare *header,
                                       VISASampler3DSubOpCode actualop,
                                       bool pixelNullMask, G4_Operand *aoffimmi,
                                       ChannelMask srcChannel,
+                                      G4_Operand *pairedResource,
                                       G4_Operand *sampler) {
   G4_Operand *retSampler = sampler;
   uint16_t aoffimmiVal =
@@ -1760,6 +1761,7 @@ static G4_Operand *createSampleHeader(IR_Builder *builder, G4_Declare *header,
     }
   }
 
+  builder->doPairedResourceHeaderMove(header, pairedResource);
   return retSampler;
 }
 
@@ -1839,6 +1841,7 @@ int IR_Builder::splitSampleInst(
     VISASampler3DSubOpCode actualop, bool pixelNullMask, bool cpsEnable,
     G4_Predicate *pred, ChannelMask srcChannel, int numChannels,
     G4_Operand *aoffimmi, G4_Operand *sampler, G4_Operand *surface,
+    G4_Operand *pairedResource,
     G4_DstRegRegion *dst, VISA_EMask_Ctrl emask, bool useHeader,
     unsigned numRows, // msg length for each simd8
     unsigned int numParms, G4_SrcRegRegion **params, bool uniformSampler) {
@@ -1901,6 +1904,7 @@ int IR_Builder::splitSampleInst(
     header = getSamplerHeader(bindlessSampler, samplerIndexGE16);
     sampler = createSampleHeader(this, header, actualop, pixelNullMask,
                                  aoffimmi, srcChannel,
+                                 pairedResource,
                                  sampler);
     createMovInst(payloadUD, 0, 0, g4::SIMD8, nullptr, nullptr,
                   createSrcRegRegion(header, getRegionStride1()), true);
@@ -2178,6 +2182,31 @@ void IR_Builder::doSamplerHeaderMove(G4_Declare *headerDcl,
 }
 
 
+void vISA::IR_Builder::doPairedResourceHeaderMove(G4_Declare *headerDcl,
+                                                  G4_Operand *pairedResource) {
+  if (hasSamplerFeedbackSurface()) {
+    if (pairedResource->isNullReg() == false) {
+      G4_DstRegRegion *dstDword4 =
+          createDst(headerDcl->getRegVar(), 0, 4, 1, Type_UD);
+      // mov (1) M0.4<1>:ud pairedResource<0;1,0>:ud
+      createMov(g4::SIMD1, dstDword4, pairedResource, InstOpt_WriteEnable,
+                true);
+      // or (1) M0.4<1>:ud M0.4<1>:ud 0x1
+      dstDword4 = createDst(headerDcl->getRegVar(), 0, 4, 1, Type_UD);
+      G4_SrcRegRegion *srcDword4 =
+          createSrc(headerDcl->getRegVar(), 0, 4, getRegionScalar(), Type_UD);
+      createBinOp(G4_or, g4::SIMD1, dstDword4, srcDword4,
+                  createImm(0x1, Type_UD), InstOpt_WriteEnable, true);
+    } else {
+      // Clear sampler feedback surface data - dword #4 in header.
+      G4_DstRegRegion *dst =
+          createDst(headerDcl->getRegVar(), 0, 4, 1, Type_UD);
+      createMov(g4::SIMD1, dst, createImm(0, Type_UD), InstOpt_WriteEnable,
+                true);
+    }
+  }
+}
+
 //
 // generate the r0 move for the sampler message header, and return the dcl
 // for CNL+, also set SSP to dynamic if message is not bindless
@@ -2263,11 +2292,11 @@ uint32_t IR_Builder::getSamplerResponseLength(int numChannels, bool isFP16,
 
 static bool needSamplerHeader(IR_Builder *builder, bool pixelNullMask,
                               bool nonZeroAoffImmi, bool needHeaderForChannels,
-                              bool bindlessSampler,
+                              bool bindlessSampler, bool hasPairedSurface,
                               bool simd16HFReturn) {
   return builder->forceSamplerHeader() ||
          (pixelNullMask && builder->hasPixelNullMask()) || nonZeroAoffImmi ||
-         needHeaderForChannels || bindlessSampler ||
+         needHeaderForChannels || bindlessSampler || hasPairedSurface ||
          (simd16HFReturn && VISA_WA_CHECK(builder->getPWaTable(),
                                           WaHeaderRequiredOnSimd16Sample16bit));
 }
@@ -2278,7 +2307,7 @@ int IR_Builder::translateVISASampler3DInst(
     VISASampler3DSubOpCode actualop, bool pixelNullMask, bool cpsEnable,
     bool uniformSampler, G4_Predicate *pred, VISA_Exec_Size executionSize,
     VISA_EMask_Ctrl emask, ChannelMask chMask, G4_Operand *aoffimmi,
-    G4_Operand *sampler, G4_Operand *surface,
+    G4_Operand *sampler, G4_Operand *surface, G4_Operand *pairedSurface,
     G4_DstRegRegion *dst, unsigned int numParms, G4_SrcRegRegion **params) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
@@ -2311,6 +2340,7 @@ int IR_Builder::translateVISASampler3DInst(
   bool simd16HFReturn = FP16Return && execSize == 16;
   if (needSamplerHeader(this, pixelNullMask, nonZeroAoffImmi,
                         needHeaderForChannels, isBindlessSampler(sampler),
+                        !pairedSurface->isNullReg(),
                         simd16HFReturn) ||
       samplerHeaderPreemptionWA()) {
     useHeader = true;
@@ -2330,8 +2360,8 @@ int IR_Builder::translateVISASampler3DInst(
 
     return splitSampleInst(actualop, pixelNullMask, cpsEnable, pred, chMask,
                            numChannels, aoffimmi, sampler, surface,
-                           dst, emask, useHeader, numRows, numParms, params,
-                           uniformSampler);
+                           pairedSurface, dst, emask, useHeader, numRows,
+                           numParms, params, uniformSampler);
   }
 
   bool useSplitSend = useSends();
@@ -2345,6 +2375,7 @@ int IR_Builder::translateVISASampler3DInst(
           getSamplerHeader(isBindlessSampler(sampler), samplerIndexGE16);
       samplerIdx = createSampleHeader(this, dcl, actualop, pixelNullMask,
                                       aoffimmi, chMask,
+                                      pairedSurface,
                                       sampler);
       header = createSrcRegRegion(dcl, getRegionStride1());
     }
@@ -2419,7 +2450,8 @@ int IR_Builder::translateVISALoad3DInst(
     VISASampler3DSubOpCode actualop, bool pixelNullMask,
     G4_Predicate *pred_opnd, VISA_Exec_Size executionSize, VISA_EMask_Ctrl em,
     ChannelMask channelMask, G4_Operand *aoffimmi, G4_Operand *surface,
-    G4_DstRegRegion *dst, uint8_t numParms, G4_SrcRegRegion **opndArray) {
+    G4_Operand *pairedSurface, G4_DstRegRegion *dst, uint8_t numParms,
+    G4_SrcRegRegion **opndArray) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   bool useHeader = false;
@@ -2447,6 +2479,7 @@ int IR_Builder::translateVISALoad3DInst(
   bool simd16HFReturn = halfReturn && execSize == 16;
   if (needSamplerHeader(this, pixelNullMask, nonZeroAoffImmi,
                         needHeaderForChannels, false,
+                        !pairedSurface->isNullReg(),
                         simd16HFReturn)) {
     useHeader = true;
     ++numRows;
@@ -2461,8 +2494,8 @@ int IR_Builder::translateVISALoad3DInst(
     }
     return splitSampleInst(actualop, pixelNullMask, /*cpsEnable*/ false,
                            pred_opnd, channelMask, numChannels, aoffimmi, NULL,
-                           surface,
-                           dst, em, useHeader, numRows, numParms, opndArray);
+                           surface, pairedSurface, dst, em, useHeader, numRows,
+                           numParms, opndArray);
   }
 
   bool useSplitSend = useSends();
@@ -2473,8 +2506,7 @@ int IR_Builder::translateVISALoad3DInst(
                                        false /*samperIndexGE16*/);
     {
       (void)createSampleHeader(this, dcl, actualop, pixelNullMask, aoffimmi,
-                               channelMask,
-                               nullptr);
+                               channelMask, pairedSurface, nullptr);
     }
     header = createSrcRegRegion(dcl, getRegionStride1());
   }
@@ -2533,7 +2565,8 @@ int IR_Builder::translateVISAGather3dInst(
     VISASampler3DSubOpCode actualop, bool pixelNullMask, G4_Predicate *pred,
     VISA_Exec_Size executionSize, VISA_EMask_Ctrl em, ChannelMask channelMask,
     G4_Operand *aoffimmi, G4_Operand *sampler, G4_Operand *surface,
-    G4_DstRegRegion *dst, unsigned int numOpnds, G4_SrcRegRegion **opndArray) {
+    G4_Operand *pairedSurface, G4_DstRegRegion *dst, unsigned int numOpnds,
+    G4_SrcRegRegion **opndArray) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   bool useHeader = false;
@@ -2555,7 +2588,7 @@ int IR_Builder::translateVISAGather3dInst(
 
   if (needSamplerHeader(this, pixelNullMask, nonZeroAoffImmi,
                         needHeaderForChannels, isBindlessSampler(sampler),
-                        simd16HFReturn) ||
+                        !pairedSurface->isNullReg(), simd16HFReturn) ||
       samplerHeaderPreemptionWA()) {
     useHeader = true;
     ++numRows;
@@ -2571,6 +2604,7 @@ int IR_Builder::translateVISAGather3dInst(
 
     return splitSampleInst(actualop, pixelNullMask, /*cpsEnable*/ false, pred,
                            channelMask, 4, aoffimmi, sampler, surface,
+                           pairedSurface,
                            dst, em, useHeader, numRows, numOpnds, opndArray);
   }
 
@@ -2586,6 +2620,7 @@ int IR_Builder::translateVISAGather3dInst(
     {
       samplerIdx = createSampleHeader(this, dcl, actualop, pixelNullMask,
                                       aoffimmi, channelMask,
+                                      pairedSurface,
                                       sampler);
     }
     header = createSrcRegRegion(dcl, getRegionStride1());

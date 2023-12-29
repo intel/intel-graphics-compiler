@@ -1026,6 +1026,7 @@ public:
   /// [8:11] - U offset
   /// @sampler sampler index
   /// @surface surface index
+  /// @pairedSurface paired surface index
   /// @dst return value.  Type may be either 32-bit or 16-bit
   /// @numMsgSepcificOpnds.  Number of payload arguments
   /// @opndArray.  payload arguments.  All operands must have the same type,
@@ -1036,6 +1037,7 @@ public:
       VISA_Exec_Size executionSize, VISAChannelMask channelMask,
       VISA_VectorOpnd *aoffimmi, VISA_StateOpndHandle *sampler,
       VISA_StateOpndHandle *surface,
+      VISA_RawOpnd *pairedSurface,
       VISA_RawOpnd *dst, int numMsgSpecificOpnds, VISA_RawOpnd **opndArray) = 0;
 
   VISA_BUILDER_API virtual int AppendVISA3dSampler(
@@ -1044,6 +1046,7 @@ public:
       VISA_Exec_Size executionSize, VISAChannelMask channelMask,
       VISA_VectorOpnd *aoffimmi, VISA_StateOpndHandle *sampler, unsigned int samplerIdx,
       VISA_StateOpndHandle *surface, unsigned int surfaceIdx,
+      VISA_RawOpnd *pairedSurface,
       VISA_RawOpnd *dst, int numMsgSpecificOpnds, VISA_RawOpnd **opndArray) = 0;
 
   /// AppendVISA3dLoad -- create a vISA sampler load message
@@ -1056,6 +1059,7 @@ public:
   /// @aoffimmi Dx10 _aoffimmi modifier. [0:3] - R offset, [4:7] - V offset,
   /// [8:11] - U offset
   /// @surface surface index
+  /// @pairedSurface paired surface index
   /// @dst return value.  Type may be either 32-bit or 16-bit
   /// @numMsgSepcificOpnds.  Number of payload arguments
   /// @opndArray.  payload arguments.  All operands must have the type UD
@@ -1064,6 +1068,7 @@ public:
                    VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
                    VISA_Exec_Size executionSize, VISAChannelMask channelMask,
                    VISA_VectorOpnd *aoffimmi, VISA_StateOpndHandle *surface,
+                   VISA_RawOpnd *pairedSurface,
                    VISA_RawOpnd *dst, int numMsgSpecificOpnds,
                    VISA_RawOpnd **opndArray) = 0;
 
@@ -1073,6 +1078,7 @@ public:
                    VISA_Exec_Size executionSize, VISAChannelMask channelMask,
                    VISA_VectorOpnd *aoffimmi,
                    VISA_StateOpndHandle *surface, unsigned int surfaceIndex,
+                   VISA_RawOpnd *pairedSurface,
                    VISA_RawOpnd *dst, int numMsgSpecificOpnds,
                    VISA_RawOpnd **opndArray) = 0;
   /// AppendVISA3dGather4 -- create a vISA sampler gather4 message
@@ -1086,6 +1092,7 @@ public:
   /// [8:11] - U offset
   /// @sampler sampler index
   /// @surface surface index
+  /// @pairedSurface paired surface index
   /// @dst return value.  Type may be either 32-bit or 16-bit
   /// @numMsgSepcificOpnds.  Number of payload arguments
   /// @opndArray.  payload arguments.  All operands must have the same type,
@@ -1095,6 +1102,7 @@ public:
       VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
       VISASourceSingleChannel srcChannel, VISA_VectorOpnd *aoffimmi,
       VISA_StateOpndHandle *sampler, VISA_StateOpndHandle *surface,
+      VISA_RawOpnd *pairedSurface,
       VISA_RawOpnd *dst, int numMsgSpecificOpnds, VISA_RawOpnd **opndArray) = 0;
 
   VISA_BUILDER_API virtual int AppendVISA3dGather4(
@@ -1103,6 +1111,7 @@ public:
       VISASourceSingleChannel srcChannel, VISA_VectorOpnd *aoffimmi,
       VISA_StateOpndHandle *sampler, unsigned int samplerIndex,
       VISA_StateOpndHandle *surface, unsigned int surfaceIndex,
+      VISA_RawOpnd *pairedSurface,
       VISA_RawOpnd *dst, int numMsgSpecificOpnds, VISA_RawOpnd **opndArray) = 0;
 
   VISA_BUILDER_API virtual int

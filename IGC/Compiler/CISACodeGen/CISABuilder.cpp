@@ -2157,6 +2157,22 @@ namespace IGC
         return srcOpnd;
     }
 
+    VISA_RawOpnd* CEncoder::GetPairedResourceOperand(const ResourceDescriptor& pairedResource)
+    {
+        VISA_RawOpnd* pairedResourceBSSOOpnd = nullptr;
+        if (m_program->m_Platform->hasSamplerFeedbackSurface() &&
+            pairedResource.m_surfaceType == ESURFACE_BINDLESS &&
+            IGC_IS_FLAG_ENABLED(EnableInsertingPairedResourcePointer))
+        {
+            pairedResourceBSSOOpnd = GetRawSource(pairedResource.m_resource);
+        }
+        else
+        {
+            V(vKernel->CreateVISANullRawOperand(pairedResourceBSSOOpnd, false));
+        }
+        return pairedResourceBSSOOpnd;
+    }
+
     VISA_RawOpnd* CEncoder::GetRawDestination(CVariable* var, unsigned offset)
     {
         VISA_RawOpnd* dstOpnd = nullptr;
@@ -2469,6 +2485,7 @@ namespace IGC
         uint writeMask,
         CVariable* offset,
         const ResourceDescriptor& resource,
+        const ResourceDescriptor& pairedResource,
         const SamplerDescriptor& sampler,
         uint numSources,
         CVariable* dst,
@@ -2491,6 +2508,7 @@ namespace IGC
         bool isIdxLT16;
         VISA_StateOpndHandle* samplerOpnd = GetSamplerOperand(sampler, isIdxLT16);
         VISA_StateOpndHandle* btiOpnd = GetVISASurfaceOpnd(resource);
+        VISA_RawOpnd* pairedResourceBSSOOpnd = GetPairedResourceOperand(pairedResource);
         VISA_RawOpnd* dstVar = GetRawDestination(dst);
         VISA_RawOpnd* opndArray[11];
         for (int i = 0; i < numMsgSpecificOpnds; i++)
@@ -2522,6 +2540,7 @@ namespace IGC
                 aoffimmi,
                 samplerOpnd,
                 btiOpnd,
+                pairedResourceBSSOOpnd,
                 dstVar,
                 numSources,
                 opndArray);
@@ -2535,6 +2554,7 @@ namespace IGC
         uint writeMask,
         CVariable* offset,
         const ResourceDescriptor& resource,
+        const ResourceDescriptor& pairedResource,
         uint numSources,
         CVariable* dst,
         SmallVector<CVariable*, 4>& payload,
@@ -2550,6 +2570,7 @@ namespace IGC
 
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
         VISA_StateOpndHandle* surfOpnd = GetVISASurfaceOpnd(resource);
+        VISA_RawOpnd* pairedResourceBSSOOpnd = GetPairedResourceOperand(pairedResource);
         VISA_RawOpnd* dstVar = GetRawDestination(dst);
 
         VISA_RawOpnd* opndArray[11];
@@ -2572,6 +2593,7 @@ namespace IGC
                 ConvertChannelMaskToVisaType(writeMask),
                 aoffimmi,
                 surfOpnd,
+                pairedResourceBSSOOpnd,
                 dstVar,
                 numSources,
                 opndArray);
@@ -2649,6 +2671,7 @@ namespace IGC
         EOPCODE subOpcode,
         CVariable* offset,
         const ResourceDescriptor& resource,
+        const ResourceDescriptor& pairedResource,
         const SamplerDescriptor& sampler,
         uint numSources,
         CVariable* dst,
@@ -2670,6 +2693,7 @@ namespace IGC
         VISA_StateOpndHandle* surfOpnd = GetVISASurfaceOpnd(resource);
         uint32_t samplerImmIndex = 0;
         uint32_t surfaceImmIndex = 0;
+        VISA_RawOpnd* pairedResourceBSSOOpnd = GetPairedResourceOperand(pairedResource);
         VISA_RawOpnd* dstVar = GetRawDestination(dst);
         VISA_RawOpnd* opndArray[11];
         for (unsigned int i = 0; i < numSources; i++)
@@ -2697,6 +2721,7 @@ namespace IGC
                 samplerImmIndex,
                 surfOpnd,
                 surfaceImmIndex,
+                pairedResourceBSSOOpnd,
                 dstVar,
                 numSources,
                 opndArray);

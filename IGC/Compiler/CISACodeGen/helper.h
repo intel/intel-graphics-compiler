@@ -157,6 +157,7 @@ namespace IGC
     llvm::StoreRawIntrinsic* CreateStoreRawIntrinsic(llvm::StoreInst* inst, llvm::Value* bufPtr, llvm::Value* offsetVal);
 
     void getTextureAndSamplerOperands(llvm::GenIntrinsicInst* pIntr, llvm::Value*& pTextureValue, llvm::Value*& pSamplerValue);
+    void getTextureAndSamplerOperands(llvm::GenIntrinsicInst* pIntr, llvm::Value*& pPairedTextureValue, llvm::Value*& pTextureValue, llvm::Value*& pSamplerValue);
     void ChangePtrTypeInIntrinsic(llvm::GenIntrinsicInst*& pIntr, llvm::Value* oldPtr, llvm::Value* newPtr);
 
     llvm::Value* TracePointerSource(llvm::Value* resourcePtr);
