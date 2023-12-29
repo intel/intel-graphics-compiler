@@ -764,7 +764,7 @@ void GenXRegionCollapsing::processWrRegionElim(Instruction *OuterWr)
       InnerWr->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
 
   if (auto *I = dyn_cast<Instruction>(InnerWrOldV);
-      I && !genx::isSafeToUse_CheckAVLoadKill(I, OuterWr, DT))
+      I && !genx::isSafeToUse_CheckAVLoadKillOrForbiddenUser(I, OuterWr, DT))
     return;
 
   Region InnerR = genx::makeRegionFromBaleInfo(InnerWr, BaleInfo(),

@@ -44,6 +44,21 @@ unsigned vc::getAnyIntrinsicID(const llvm::Value *V) {
   return getAnyIntrinsicID(Callee);
 }
 
+bool vc::isAnyVcIntrinsic(unsigned ID) {
+  return InternalIntrinsic::isInternalNonTrivialIntrinsic(ID) ||
+         GenXIntrinsic::isGenXNonTrivialIntrinsic(ID);
+}
+
+bool vc::isAnyVcIntrinsic(const Function *F) {
+  return InternalIntrinsic::isInternalNonTrivialIntrinsic(F) ||
+         GenXIntrinsic::isGenXNonTrivialIntrinsic(F);
+}
+
+bool vc::isAnyVcIntrinsic(const Value *V) {
+  return InternalIntrinsic::isInternalNonTrivialIntrinsic(V) ||
+         GenXIntrinsic::isGenXNonTrivialIntrinsic(V);
+}
+
 bool vc::isAnyNonTrivialIntrinsic(unsigned ID) {
   return InternalIntrinsic::isInternalNonTrivialIntrinsic(ID) ||
          GenXIntrinsic::isAnyNonTrivialIntrinsic(ID);

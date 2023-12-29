@@ -26,6 +26,11 @@ bool isOverloadedRet(unsigned ID);
 // Note: input of LLVM intrinsic not expected
 bool isOverloadedArg(unsigned ID, unsigned ArgumentNum);
 
+// Is any of GenX or Internal VC BE intrinsic not equal to not_any_intrinsic
+bool isAnyVcIntrinsic(unsigned ID);
+bool isAnyVcIntrinsic(const llvm::Function *F);
+bool isAnyVcIntrinsic(const llvm::Value *V);
+
 /// isAnyNonTrivialIntrinsic(id) - Is Internal, GenX or LLVM intrinsic, which is
 /// not equal to not_any_intrinsic
 bool isAnyNonTrivialIntrinsic(unsigned ID);

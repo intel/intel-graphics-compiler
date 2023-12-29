@@ -2370,11 +2370,27 @@ Instruction *genx::getAVLoadKillOrNull(
   IGC_ASSERT(FromVLoad->getFunction() == ToPosI->getFunction());
 
   auto isAKill = [VLoadSrc, KillCallSites](Instruction &I) {
-    return isAVStore(&I, VLoadSrc) ||
-           (KillCallSites
-                ? llvm::find(*KillCallSites, &I) != KillCallSites->end()
-                : isa<CallInst>(I) &&
-                      !vc::isAnyNonTrivialIntrinsic(vc::getAnyIntrinsicID(&I)));
+    if (isAVStore(&I, VLoadSrc))
+      return true;
+
+    const auto *Call = dyn_cast<CallInst>(&I);
+    if (!Call)
+      return false;
+
+    const bool IsAnIntrinsic =
+        vc::isAnyNonTrivialIntrinsic(vc::getAnyIntrinsicID(Call));
+
+    if (LLVM_LIKELY(!KillCallSites))
+      return !IsAnIntrinsic;
+
+    const bool KillCallSiteMatch =
+        llvm::find(*KillCallSites, Call) != KillCallSites->end();
+    const auto *CalledFunction = Call->getCalledFunction();
+    const bool IsAnIndirectCall = !CalledFunction;
+    const bool IsDeclaration =
+        CalledFunction && CalledFunction->isDeclaration();
+    return KillCallSiteMatch || IsAnIndirectCall ||
+           (!IsAnIntrinsic && IsDeclaration);
   };
 
   if (DT && ChangeSearchDirectionBasedOnDominance &&
@@ -2493,18 +2509,19 @@ bool genx::isSafeToSink_CheckAVLoadKill(Instruction *I, Instruction *To,
   return isSafeToSink_CheckAVLoadKill(Bale, To, DT);
 }
 
-bool genx::isSafeToUse_CheckAVLoadKill(Instruction *UseSrc,
-                                       Instruction *UseTarget,
-                                       const DominatorTree *DT) {
+bool genx::isSafeToUse_CheckAVLoadKillOrForbiddenUser(Instruction *UseSrc,
+                                                      Instruction *UseTarget,
+                                                      const DominatorTree *DT) {
   IGC_ASSERT(UseSrc != UseTarget);
   IGC_ASSERT(DT->dominates(UseSrc, UseTarget));
-  if (genx::isAVLoad(UseSrc))
-    return !getAVLoadKillOrNull(UseSrc, UseTarget, false, false);
-  return GenXIntrinsic::isGenXNonTrivialIntrinsic(UseTarget) ||
-         !hasVLoadSource(UseSrc) ||
-         llvm::all_of(getSrcVLoads(UseSrc), [UseTarget](Instruction *VLoad) {
-           return !getAVLoadKillOrNull(VLoad, UseTarget, false, false);
-         });
+  if (isAVLoad(UseSrc)) {
+    if (!isAGVLoad(UseSrc)) // Non genx_volatile-related genx.vloads are allowed
+                            // to have any users.
+      return true;
+    return !isAGVLoadForbiddenUser(UseTarget) &&
+           !getAVLoadKillOrNull(UseSrc, UseTarget, false, false);
+  }
+  return true;
 }
 
 bool genx::isSafeToMove_CheckAVLoadKill(Instruction *I, Instruction *To,
@@ -2527,43 +2544,54 @@ bool genx::isSafeToReplace_CheckAVLoadKillOrForbiddenUser(
                      "both instructions must be placed in IR.");
   return isSafeToMove_CheckAVLoadKill(NewI, OldI, DT) &&
          (!genx::isAVLoad(NewI) ||
-          llvm::all_of(OldI->users(), [NewI, DT](User *U) {
-            return !isAGVLoadForbiddenUser(U) &&
-                   !getAVLoadKillOrNull(NewI, cast<Instruction>(U));
-          }));
+          llvm::all_of(
+              OldI->users(), [NewI, DT, IsAGVLoad = isAGVLoad(NewI)](User *U) {
+                return (!IsAGVLoad || !isAGVLoadForbiddenUser(U)) &&
+                       !getAVLoadKillOrNull(NewI, cast<Instruction>(U));
+              }));
 }
 
-bool genx::legalizeGVLoadForbiddenUses(Instruction *GVLoad) {
+bool genx::legalizeGVLoadForbiddenUsers(Instruction *GVLoad) {
   IGC_ASSERT(isAGVLoad(GVLoad));
 
   bool Changed = false;
-  for (auto &Use_ : GVLoad->uses()) {
-    User *User_ = genx::peelBitCastsInSingleUseChain(Use_.getUser());
-    IGC_ASSERT(isa<Instruction>(User_));
-    IGC_ASSERT(
-        !genx::isABitCast(User_)); // Only single-use-chain is expected, but can
-                                   // support the tree if such use case arises.
-    if (genx::isAGVLoadForbiddenUser(User_)) {
+
+  Instruction *Rdr = nullptr;
+
+  for (auto UserI = GVLoad->user_begin(), E = GVLoad->user_end(); UserI != E;) {
+    auto *User_ = *UserI++;
+
+    User_ = genx::peelBitCastsWhileSingleUserChain(User_);
+
+    if (!genx::isAGVLoadForbiddenUser(User_))
+      continue;
+
+    if (!Rdr) {
       const auto *GVLoadMaybeVT =
           dyn_cast<IGCLLVM::FixedVectorType>(GVLoad->getType());
       const unsigned ElsCount =
           GVLoadMaybeVT ? GVLoadMaybeVT->getNumElements() : 1;
       genx::Region R(GVLoad);
       R.getSubregion(0, ElsCount);
-      auto *Rdr =
+      Rdr =
           R.createRdRegion(GVLoad, GVLoad->getName() + "._gvload_legalized_rdr",
                            GVLoad->getNextNode(), GVLoad->getDebugLoc(), true);
-      IGCLLVM::replaceUsesWithIf(GVLoad, Rdr, [&](Use &U) {
-        return cast<Instruction>(U.getUser()) != Rdr;
-      });
-      Use_.set(Rdr);
-      LLVM_DEBUG(vc::diagnose(GVLoad->getContext(),
-                              "genx::legalizeGVLoadForbiddenUses: ",
-                              "illegal genx.vload user found, "
-                              "fixing it by inserting rdregion in between.",
-                              DS_Warning, vc::WarningName::Generic, GVLoad););
-      Changed |= true;
     }
+
+    IGC_ASSERT(Rdr);
+
+    IGCLLVM::replaceUsesWithIf(GVLoad, Rdr, [&](Use &U) {
+      return U.getUser() != Rdr && U.getUser() == User_;
+    });
+
+#ifndef NDEBUG
+    vc::diagnose(GVLoad->getContext(), "genx::legalizeGVLoadForbiddenUsers: ",
+                 "illegal genx.vload user found, fixing it by inserting "
+                 "rdregion in between.",
+                 DS_Warning, vc::WarningName::Generic, GVLoad);
+#endif
+
+    Changed |= true;
   }
   return Changed;
 }

@@ -135,8 +135,11 @@ inline bool isABitCast(Value *V) {
           cast<ConstantExpr>(V)->getOpcode() == CastInst::BitCast);
 }
 
-inline User *peelBitCastsInSingleUseChain(User *U) {
-  while (isABitCast(U) && U->hasOneUse())
+// Peels off bitcasts in single-user chain until a non-bitcast user is found or
+// a bitcast user has multiple users. Hence, if a bitcast gets returned from
+// this function, this means it has multiple users.
+inline User *peelBitCastsWhileSingleUserChain(User *U) {
+  while (isABitCast(U) && std::distance(U->user_begin(), U->user_end()) == 1)
     U = *U->user_begin();
   return U;
 }
@@ -776,18 +779,25 @@ bool isRdRWithOldValueVLoadSrc(Value *V);
 bool isWrRWithOldValueVLoadSrc(Value *V);
 
 //----------------------------------------------------------
-// Check that a Store potentially clobbers Load's Use.
-//----------------------------------------------------------
-// G = global value, L = load(G), S = store(G), U = use(L)
-// S clobbers L if there's a path from S to U not through
-// L: { S -> U } != { S -> L -> U }
-//----------------------------------------------------------
-// NB: This function may return a call to a user function as a potential
+// If there's a genx.vload kill on the path (if this path exists) from
+// LI to PosI, return it, otherwize returns nullptr.
+// + NB: In VC BE semantics genx.vload value is not translated to any VISA
+// instruction, rather it signifies either a reference to an object pinned in
+// the register file (if genx.vload loads from a global value with genx_volatile
+// attribute) or a kernel parameter passed by reference (in which case
+// genx.vload is lowered early in pipeline to simple load and later converted to
+// ssa form by mem2reg).
+// + NB: This function may return a call to a user function as a potential
 //     intervening store. If CallSites is supplied, we'll limit our lookup to
 //     the call instructions mentioned in this list.
-// NB: There may be multiple intervening stores, for now we don't have
+// + NB/TBD: There may be multiple intervening stores, for now we don't have
 //     a use case where we want the whole list, hence this variant
-//     only returns the first found.
+//     only returns the first one found.
+//----------------------------------------------------------
+// P = value pointer, L = genx.vload(P), S = genx.vstore(P), U = use(L)
+// S clobbers L if there's a path from S to U not through L:
+// { S -> U } != { S -> L -> U }
+//----------------------------------------------------------
 Instruction *getAVLoadKillOrNull(
     Instruction *LI, Instruction *PosI,
     bool ChangeSearchDirectionBasedOnDominance = false,
@@ -804,14 +814,33 @@ llvm::SmallPtrSet<Instruction *, 1> getSrcVLoads(Instruction *I);
 Instruction *getSrcVLoadOrNull(Instruction *I);
 bool hasVLoadSource(Instruction *I);
 
-// VLoad's users sanity check. In current design to avoid genx_volatile-related
-// clobbering we have to allow only GenX intrinsics to use (ignoring
-// intermediate bitcasts) a VLoad's value.
+// genx_volatile genx.vload's users sanity check.
+// + A genx_volatile genx.vload's "forbidden use" is defined as a use on IR
+// instruction whos optimization can not be controlled by VC backend-owned
+// codebase and can result in clobbering after standard LLVM optimizations.
+// Example:
+// ------ mem2reg can optimize this sequence ------
+// L=genx.vload(@genx_volatile_global*)
+// store(L,%simple_global.localized*)
+// <... no stores into %simple_global.localized* ...>
+// <... possible genx.vstore(Y, @genx_volatile_global*) ...>
+// L2 = load(%simple_global.localized*)
+// use(L2)
+//-------- into --------------
+// L=genx.vload(@genx_volatile_global*)
+// <... possible genx.vstore(Y, @genx_volatile_global*) ...>
+// use(L)
+// ---------------------------
+// Which is clobbering situation, since L is not a VISA instruction in VC BE
+// semantics, but only signifies a pointer to an object pinned in the register
+// file.
 inline bool isAGVLoadForbiddenUser(User *U) {
-  U = genx::peelBitCastsInSingleUseChain(U);
-  IGC_ASSERT(
-      !isABitCast(U)); // Only single-use chain, not a use tree is expected.
-  return !GenXIntrinsic::isGenXNonTrivialIntrinsic(U);
+  U = genx::peelBitCastsWhileSingleUserChain(
+      U); // For simplicity a bitcast having multiple users is considered
+          // forbidden, but bitcasts in single-use chain are not.
+  return !vc::isAnyVcIntrinsic(U) &&
+         !isa<PHINode>(U); // Currently PHI nodes are handeled by GenXCoalescing
+                           // by inserting phicopy
 }
 
 // Safety checks for vloads clobbering when sinking a bale of instructions.
@@ -821,6 +850,7 @@ bool isSafeToSink_CheckAVLoadKill(const Bale &B, Instruction *To,
 bool isSafeToSink_CheckAVLoadKill(Instruction *I, Instruction *To,
                                   GenXBaling *Baling_,
                                   const DominatorTree *DT = nullptr);
+
 // Safety checks for vloads clobbering when looking to hoist or sink an
 // instruction.
 // + NB: Is also reused by isSafeToReplace_CheckAVLoadKillOrForbiddenUser(...).
@@ -832,24 +862,29 @@ bool isSafeToSink_CheckAVLoadKill(Instruction *I, Instruction *To,
 // potential VLoad sources of "I" dominate "To".
 bool isSafeToMove_CheckAVLoadKill(Instruction *I, Instruction *To,
                                   const DominatorTree *DT);
+
 // Safety checks for vloads clobbering when replacing an instruction.
-// + NB: Make sure all the users are valid VLoad users
-// (!isAGVLoadForbiddenUser(...))
 // + NB: When used for checks on hoisting, const DominatorTree* is mandatory and
 // must not be nullptr.
 bool isSafeToReplace_CheckAVLoadKillOrForbiddenUser(Instruction *OldI,
                                                     Instruction *NewI,
                                                     const DominatorTree *DT);
-// Safety checks for vloads clobbering when targeting to modify a use of an
-// instruction.
-// + WARNING: Only checking for VLoad clobbering aspect in the context of value
-// usage. If moving/merging/splitting an instruction or checking in a
-// bale context use isSafeTo(Sink|Move)<...>CheckAVLoadKill variants.
-// + NB: UseSrc must dominate UseTarget.
-bool isSafeToUse_CheckAVLoadKill(Instruction *UseSrc, Instruction *UseTarget,
-                                 const DominatorTree *DT);
 
-bool legalizeGVLoadForbiddenUses(Instruction *GVLoad);
+// Safety checks for genx_volatile genx.vloads clobbering when
+// targeting to modify a use on a UseTarget instruction.
+// + NB: UseSrc must dominate UseTarget.
+// + NB: This API can be augmented to optionally avoid the "forbidden user"
+// check on certain pipeline stages when we know that no further standard LLVM
+// optimizations shall be run.
+// + NB: This API can be augmented by returning metadata
+// differentiating between "kill" and "forbidden user" cases,
+// returning "forbidden user" to make further legalization on the caller side.
+bool isSafeToUse_CheckAVLoadKillOrForbiddenUser(Instruction *UseSrc,
+                                                Instruction *UseTarget,
+                                                const DominatorTree *DT);
+
+// See isAGVLoadForbiddenUser(...) description.
+bool legalizeGVLoadForbiddenUsers(Instruction *GVLoad);
 
 bool vloadsReadSameValue(Instruction *L1, Instruction *L2,
                          const DominatorTree *DT);

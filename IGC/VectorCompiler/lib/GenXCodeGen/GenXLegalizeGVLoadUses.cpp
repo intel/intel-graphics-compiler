@@ -42,7 +42,7 @@ bool GenXLegalizeGVLoadUses::runOnModule(Module &M) {
       continue;
     for (auto UI = GV.user_begin(), E = GV.user_end(); UI != E;)
       if (auto *I = dyn_cast<Instruction>(*UI++); I && genx::isAVLoad(I))
-        Changed |= genx::legalizeGVLoadForbiddenUses(I);
+        Changed |= genx::legalizeGVLoadForbiddenUsers(I);
   }
   return Changed;
 }

@@ -301,7 +301,7 @@ bool GenXGVClobberChecker::checkGVClobberingByInterveningStore(
     Detected |= CheckUserInst(
         CheckGVClobbOpt_ChkWithBales
             ? Baling->getBaleHead(dyn_cast<Instruction>(U))
-            : dyn_cast<Instruction>(genx::peelBitCastsInSingleUseChain(U)));
+            : dyn_cast<Instruction>(genx::peelBitCastsWhileSingleUserChain(U)));
 
   return Detected;
 };
