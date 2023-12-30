@@ -1940,30 +1940,44 @@ auto sizeToSIMDMode = [](uint32_t size)
 };
 
 // Struct layout in GRF
-//   Struct elements are laid out in SOA, ie, two consecutive elements
-//   of the struct are strided and not consecutive in GRF, just like
-//   the layout for vector value.
+//   The description is based on the assumption that insertvalue/extractvalue
+//   emit functions have on struct layout.
 //
-//   For SIMD16 example, given the following with natural alignment,
-//   'a' will take 2 bytes, 'b' 4 bytes, 'c' 4 bytes. The total is
-//   160 bytes of GRF.
+//   A struct is laid out in SOA form, just like a vector. It starts from the
+//   1st member and crosses all simd lanes; then goes to 2nd member and crosses
+//   all simd lanes; and continues until the last member. The consecutive
+//   members are no longer consecutive and are laid out strided in GRF.
+//
+//   Take the following example, assuming SIMD16.
 //      struct {
 //        i8    a;
 //        i16   b;
 //        i32   c;
 //      } V;
+//   where assuming that V is aligned at 4 bytes and that each type has natural
+//   alignment. Thus, there is 1 byte gap between 'a' and 'b' as 'b' must be
+//   aligned at 2 bytes. The total size will be
+//     sizeof(V) * 16 (simd16) = 8 * 16 = 128 bytes of GRF.
 //
-//    0 1 2 3 4 ...        29 30 32 31    (GRF bytes)
+//    0 1 2 3 4 ...15      29 30 32 31    (GRF bytes)
 //    ================================
-//    a   a   a            a     a        // 2 bytes for a
-//    b       b            b              // 4 bytes for b
-//    b       b            b
-//    c       c            c              // 4 bytes for c
+//    a a a a a ...a   <16 bytes gap>     // a: 16 bytes
+//    b   b   b            b     b        // b: 32 bytes
+//    c       c            c              // c: 64 bytes
 //    c       c            c
 //
+//  Note: if a struct is packed, there is no gap in GRF, but it could have
+//        a mis-aligned member that needs to be handled specially in
+//        insertvalue/extractvalue emit functions.
+//
+//        Also, this does not apply to how to pass struct to callee as the
+//        calling convension will control that.
+//
 //  Besides, the following rules apply for now:
-//    1.  types of struct elements cannot be aggregate (no array, not struct);
-//    2.  value of vector type are laid out like a normal vector type
+//    1.  types of struct elements cannot be aggregate (no array, no struct)
+//        except special layout struct. Layout struct can have struct-typed
+//        member.
+//    2.  a member of vector type are laid out like a normal vector type
 //        (Can also be viewed as spliting vector into consecutive scalar
 //         elements. 4xi32 -> {i32, i32, i32, i32})
 //
