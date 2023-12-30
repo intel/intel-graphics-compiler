@@ -4356,6 +4356,9 @@ void LdStCombine::scatterCopy(
     Type* LoadedValTy = generateLoadType(Vals, LoadedValEBytes, LoadedValNElts);
     Value* LoadedVal = LoadedVecVal;
     if (LoadedValTy->isStructTy()) {
+        // Set loadedVecVal's name to "StructV" so that both load/store
+        // will have names start with "StructV" for layout struct.
+        LoadedVecVal->setName("StructV");
         Type* ITys[2] = { LoadedValTy, LoadedVecVal->getType() };
         Function* IntrDcl = GenISAIntrinsic::getDeclaration(
             m_F->getParent(), GenISAIntrinsic::ID::GenISA_bitcasttostruct, ITys);
