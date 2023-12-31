@@ -2408,6 +2408,9 @@ namespace {
         // Valid for bundle_eltBytes = 1. It indicates whether D64 or
         // D32(including D8U32 and D16U32) is used as data size.
         bool useD64;
+
+        void print(raw_ostream& O, int BundleID = 0) const;
+        void dump() const;
     };
 
     typedef SmallVector<uint32_t, 8> BundleSize_t;
@@ -2761,6 +2764,13 @@ const BundleSize_t BundleConfig::m_d8VecSizes = { 2,4,8 };
 const BundleSize_t BundleConfig::m_d64VecSizes_u = { 2,3,4,8,16,32,64 };
 const BundleSize_t BundleConfig::m_d32VecSizes_u = { 2,3,4,8,16,32,64 };
 const BundleSize_t BundleConfig::m_d8VecSizes_u = { 2,4,8,16,32 };
+
+// Debugging
+// #define _LDST_DEBUG 1
+#undef _LDST_DEBUG
+#if defined(_LDST_DEBUG)
+static int _bundleid = 0;
+#endif
 
 bool IGC::doLdStCombine(const CodeGenContext* CGC) {
     if (CGC->type == ShaderType::OPENCL_SHADER) {
@@ -4295,6 +4305,7 @@ Type* LdStCombine::generateLoadType(
                     Type* eltStTy =
                         getOrCreateUniqueIdentifiedStructType(subEltTys, false, true);
                     tys.push_back(eltStTy);
+                    subEltTys.clear();
                     isStructTy = true;
                     remainingBytes = ValEltBytes;
                 }
@@ -4718,7 +4729,13 @@ void LdStCombine::createCombinedLoads(Function& F)
     {
         InstAndOffsetPairs& Loads = bundle.LoadStores;
         IGC_ASSERT(bundle.LoadStores.size() >= 2);
-
+#if defined(_LDST_DEBUG)
+        {
+            BundleInfo* pBundle = &bundle;
+            pBundle->print(dbgs(), _bundleid);
+            ++_bundleid;
+        }
+#endif
         // The new load will be inserted at the place of the first load in the
         // program order in this bundle, called the anchor load. The lead load
         // is the load with the smallest offset in the bundle.
@@ -4817,6 +4834,26 @@ void LdStCombine::eraseDeadInsts()
 {
     RecursivelyDeleteDeadInstructions(m_combinedInsts);
     m_combinedInsts.clear();
+}
+
+void BundleInfo::print(raw_ostream& O, int BundleID) const
+{
+    O << "\nBundle Info " << BundleID << "\n"
+      << "  Element bytes = " << bundle_eltBytes << "    "
+      << "num of elements = " << bundle_numElts << "    "
+      << "useD64 = " << (useD64 ? "true" : "false") << "\n\n";
+
+    for (const auto II : LoadStores) {
+        const LdStInfo& LSI = II;
+        O << "  (" << format_decimal(LSI.ByteOffset, 3) << ")   ";
+        O << *LSI.Inst << "\n";
+    }
+    O << "\n";
+}
+
+void BundleInfo::dump() const
+{
+    print(dbgs());
 }
 
 

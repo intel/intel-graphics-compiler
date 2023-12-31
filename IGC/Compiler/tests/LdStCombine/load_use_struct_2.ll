@@ -13,9 +13,7 @@
 ; %__StructAOSLayout_ = type <{ <2 x i16> }>
 ; %__StructSOALayout_.1 = type <{ %__StructAOSLayout_.0, i32, i32 }>
 ; %__StructAOSLayout_.0 = type <{ i16, i16 }>
-; %__StructSOALayout_.4 = type <{ %__StructAOSLayout_.0, %__StructAOSLayout_.2, %__StructAOSLayout_.3 }>
-; %__StructAOSLayout_.2 = type <{ i16, i16, i16, i16 }>
-; %__StructAOSLayout_.3 = type <{ i16, i16, i16, i16, i16, i16 }>
+; %__StructSOALayout_.2 = type <{ %__StructAOSLayout_.0, %__StructAOSLayout_.0, %__StructAOSLayout_.0 }>
 ;
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
@@ -97,7 +95,7 @@ entry:
 ;
 ; CHECK-LABEL: c2.base
 ; CHECK: [[T2:%.*]] = load <3 x i32>
-; CHECK: {{.*}} = call %__StructSOALayout_.4 @llvm.genx.GenISA.bitcasttostruct.__StructSOALayout_.4.v3i32(<3 x i32> [[T2]])
+; CHECK: {{.*}} = call %__StructSOALayout_.2 @llvm.genx.GenISA.bitcasttostruct.__StructSOALayout_.2.v3i32(<3 x i32> [[T2]])
 ; ret void
 ;
   %c2.base = add i64 %conv.i.i.i, 64

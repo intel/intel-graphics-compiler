@@ -2042,6 +2042,19 @@ CVariable* CShader::GetStructVariable(llvm::Value* v)
     }
     else if (isa<CallInst>(v) || isa<Argument>(v))
     {
+        // For now, special handling of bitcasttostruct intrinsic
+        GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(v);
+        if (IGC_IS_FLAG_ENABLED(EnableDeSSA) && m_deSSA && GII &&
+            GII->getIntrinsicID() == GenISAIntrinsic::GenISA_bitcasttostruct)
+        {
+            e_alignment pAlign = EALIGN_GRF;
+            Value* rVal = m_deSSA->getRootValue(v, &pAlign);
+            if (rVal && rVal != v) {
+                CVariable* rV = GetSymbol(rVal);
+                CVariable* aliasV = GetNewAlias(rV, ISA_TYPE_B, 0, 0);
+                return aliasV;
+            }
+        }
         // Check for function argument symbols, and return value from calls
         auto it = symbolMapping.find(v);
         if (it != symbolMapping.end())
@@ -2053,18 +2066,6 @@ CVariable* CShader::GetStructVariable(llvm::Value* v)
     {
         // Const cannot be mapped
         IGC_ASSERT(symbolMapping.find(v) == symbolMapping.end());
-    }
-
-    if (!isa<Constant>(v) &&
-        IGC_IS_FLAG_ENABLED(EnableDeSSA) && m_deSSA)
-    {
-        e_alignment pAlign = EALIGN_GRF;
-        Value* rVal = m_deSSA->getRootValue(v, &pAlign);
-        if (rVal && rVal != v) {
-            CVariable* rV = GetSymbol(rVal);
-            CVariable* aliasV = GetNewAlias(rV, ISA_TYPE_B, 0, 0);
-            return aliasV;
-        }
     }
 
     bool isUniform = m_WI->isUniform(v);
