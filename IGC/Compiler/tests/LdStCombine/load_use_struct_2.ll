@@ -9,12 +9,14 @@
 
 ;
 ; CHECK-LABEL: target datalayout
+; Those are new struct types, skip check them as their names are not fixed and checking isn't critical
 ; %__StructSOALayout_ = type <{ i32, i32, %__StructAOSLayout_, i32 }>
 ; %__StructAOSLayout_ = type <{ <2 x i16> }>
 ; %__StructSOALayout_.1 = type <{ %__StructAOSLayout_.0, i32, i32 }>
 ; %__StructAOSLayout_.0 = type <{ i16, i16 }>
 ; %__StructSOALayout_.2 = type <{ %__StructAOSLayout_.0, %__StructAOSLayout_.0, %__StructAOSLayout_.0 }>
-;
+; %__StructSOALayout_.4 = type <{ %__StructAOSLayout_.3, %__StructAOSLayout_.3 }>
+; %__StructAOSLayout_.3 = type <{ i8, i8, i8, i8 }>
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
 target triple = "spir64-unknown-unknown"
@@ -118,6 +120,52 @@ entry:
   %c2.outidx = getelementptr inbounds i32, i32 addrspace(1)* %d, i64 %c2.base
   %c2.addr.1 = bitcast i32 addrspace(1)* %c2.outidx to <3 x i32> addrspace(1)*
   store <3 x i32> %c2.v.2, <3 x i32> addrspace(1)* %c2.addr.1, align 4
+
+;
+; case 3:
+;
+; case 3: load i8; load <2xi8>; load <3xi8>; load <2xi8> -> load <2 x i32>
+;     note: <3xi8> is split into {i8, i8, i8} and the first i8 is in the 1st
+;           AOS struct <{i8, <2xi8>, i8}>, and the remaining two are in the
+;           second and different AOS struct <{i8, i8, <2xi8>}>.
+;           (This test is actually from OCL conformance basic/vector_creation)
+;
+; CHECK-LABEL: c3.base
+; CHECK: [[T3:%.*]] = load <2 x i32>
+; CHECK: {{.*}} = call %__StructSOALayout_.4 @llvm.genx.GenISA.bitcasttostruct.__StructSOALayout_.4.v2i32(<2 x i32> [[T3]])
+; ret void
+;
+  %c3.base = add i64 %conv.i.i.i, 96
+  %c3.arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %si, i64 %c3.base
+  %c3.si.i8 = bitcast i32 addrspace(1)* %c3.arrayidx to i8 addrspace(1)*
+  %c3.0 = load i8, i8 addrspace(1)* %c3.si.i8, align 4
+  %c3.arrayidx.1 = getelementptr inbounds i8, i8 addrspace(1)* %c3.si.i8, i64 1
+  %c3.si.2i8 = bitcast i8 addrspace(1)* %c3.arrayidx.1 to <2 x i8> addrspace(1)*
+  %c3.1 = load <2 x i8>, <2 x i8> addrspace(1)* %c3.si.2i8, align 1
+  %c3.arrayidx.2 = getelementptr inbounds i8, i8 addrspace(1)* %c3.si.i8, i64 3
+  %c3.si.3i8 = bitcast i8 addrspace(1)* %c3.arrayidx.2 to <3 x i8> addrspace(1)*
+  %c3.2 = load <3 x i8>, <3 x i8> addrspace(1)* %c3.si.3i8, align 1
+  %c3.arrayidx.3 = getelementptr inbounds i8, i8 addrspace(1)* %c3.si.i8, i64 6
+  %c3.si.2i8.0 = bitcast i8 addrspace(1)* %c3.arrayidx.3 to <2 x i8> addrspace(1)*
+  %c3.3 = load <2 x i8>, <2 x i8> addrspace(1)* %c3.si.2i8.0, align 1
+  %c3.1.0 = extractelement <2 x i8> %c3.1, i64 0
+  %c3.1.1 = extractelement <2 x i8> %c3.1, i64 1
+  %c3.2.0 = extractelement <3 x i8> %c3.2, i64 0
+  %c3.2.1 = extractelement <3 x i8> %c3.2, i64 1
+  %c3.2.2 = extractelement <3 x i8> %c3.2, i64 2
+  %c3.3.0 = extractelement <2 x i8> %c3.3, i64 0
+  %c3.3.1 = extractelement <2 x i8> %c3.3, i64 1
+  %c3.v.0 = insertelement <8 x i8> undef,   i8 %c3.0,   i32 0
+  %c3.v.1 = insertelement <8 x i8> %c3.v.0, i8 %c3.1.0, i32 1
+  %c3.v.2 = insertelement <8 x i8> %c3.v.1, i8 %c3.1.1, i32 2
+  %c3.v.3 = insertelement <8 x i8> %c3.v.2, i8 %c3.2.0, i32 3
+  %c3.v.4 = insertelement <8 x i8> %c3.v.3, i8 %c3.2.1, i32 4
+  %c3.v.5 = insertelement <8 x i8> %c3.v.4, i8 %c3.2.2, i32 5
+  %c3.v.6 = insertelement <8 x i8> %c3.v.5, i8 %c3.3.0, i32 6
+  %c3.v.7 = insertelement <8 x i8> %c3.v.6, i8 %c3.3.1, i32 7
+  %c3.outidx = getelementptr inbounds i32, i32 addrspace(1)* %d, i64 %c3.base
+  %c3.addr.1 = bitcast i32 addrspace(1)* %c3.outidx to <8 x i8> addrspace(1)*
+  store <8 x i8> %c3.v.2, <8 x i8> addrspace(1)* %c3.addr.1, align 4
 
   ret void
 }

@@ -2766,7 +2766,7 @@ const BundleSize_t BundleConfig::m_d32VecSizes_u = { 2,3,4,8,16,32,64 };
 const BundleSize_t BundleConfig::m_d8VecSizes_u = { 2,4,8,16,32 };
 
 // Debugging
-// #define _LDST_DEBUG 1
+//#define _LDST_DEBUG 1
 #undef _LDST_DEBUG
 #if defined(_LDST_DEBUG)
 static int _bundleid = 0;
@@ -4365,6 +4365,10 @@ void LdStCombine::scatterCopy(
     IRBuilder<> irBuilder(InsertBefore);
 
     Type* LoadedValTy = generateLoadType(Vals, LoadedValEBytes, LoadedValNElts);
+    {
+        int newTyBytes = (int)m_DL->getTypeStoreSize(LoadedValTy);
+        IGC_ASSERT(newTyBytes == (LoadedValNElts * LoadedValEBytes));
+    }
     Value* LoadedVal = LoadedVecVal;
     if (LoadedValTy->isStructTy()) {
         // Set loadedVecVal's name to "StructV" so that both load/store
@@ -4456,8 +4460,8 @@ void LdStCombine::scatterCopy(
                 return V;
             }
 
-            // Original scalar type (either element type if the original is
-            // or itself) could be split into into smaller same-typed scalars.
+            // Original scalar type (if the original is a vector, it's its
+            // element type) could be split into smaller same-typed scalars.
             Type* eTy = Ty->getScalarType();
             uint32_t nelts = getNumElements(Ty);
             uint32_t ebytes = (uint32_t)m_DL->getTypeStoreSize(eTy);
@@ -4466,7 +4470,8 @@ void LdStCombine::scatterCopy(
                 int eltRemainingBytes = (int)ebytes;
                 SmallVector<Value*, 8> subElts;
                 do {
-                    IGC_ASSERT(Ty0);
+                    // Ty0 is type at Idx[0]
+                    // stTy0 is dyn_cast<StructType>(Ty0).
                     Value* V;
                     uint32_t currBytes;
                     // type of matching struct member
@@ -4492,6 +4497,9 @@ void LdStCombine::scatterCopy(
                         // already last element
                         break;
                     }
+                    // update Ty0/stTy0
+                    Ty0 = StTy->getElementType(Idx[0]);
+                    stTy0 = dyn_cast<StructType>(Ty0);
                 } while (eltRemainingBytes > 0);
                 IGC_ASSERT(eltRemainingBytes == 0);
                 Value* V = createValueFromElements(subElts, eTy);

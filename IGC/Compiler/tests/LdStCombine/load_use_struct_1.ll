@@ -12,10 +12,13 @@ target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f3
 target triple = "spir64-unknown-unknown"
 
 ; CHECK-LABEL: target datalayout
+; layout struct generated. The test needs to be adjusted if their names are different
+;
 ; %__StructSOALayout_ = type <{ float, %__StructAOSLayout_ }>
 ; %__StructAOSLayout_ = type <{ i8, i8, i8, i8 }>
 ; %__StructSOALayout_.1 = type <{ i32, %__StructAOSLayout_.0, float }>
 ; %__StructAOSLayout_.0 = type <{ i16, i16 }>
+; %__StructSOALayout_.2 = type <{ %__StructAOSLayout_, %__StructAOSLayout_ }>
 ;
 
  ; Function Attrs: convergent nounwind
@@ -66,16 +69,15 @@ entry:
 ; CHECK-LABEL: %c1.base
 ; CHECK: [[T1:%.*]] = load <3 x i32>
 ; CHECK: {{.*}} = call %__StructSOALayout_.1 @llvm.genx.GenISA.bitcasttostruct.__StructSOALayout_.1.v3i32(<3 x i32> [[T1]])
-; CHECK: ret void
 ;
   %c1.base = add i64 %conv.i.i.i, 64
   %c1.arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %si, i64 %c1.base
   %c1.0 = load i32, i32 addrspace(1)* %c1.arrayidx, align 4
   %c1.add = add nuw nsw i64 %c1.base, 1
   %c1.arrayidx1 = getelementptr inbounds i32, i32 addrspace(1)* %si, i64 %c1.add
-  %c1.sf.i16 = bitcast i32 addrspace(1)* %c1.arrayidx1 to i16 addrspace(1)*
-  %c1.1 = load i16, i16 addrspace(1)* %c1.sf.i16, align 4
-  %c1.arrayidx1.2 = getelementptr inbounds i16, i16 addrspace(1)* %c1.sf.i16, i64 1
+  %c1.si.i16 = bitcast i32 addrspace(1)* %c1.arrayidx1 to i16 addrspace(1)*
+  %c1.1 = load i16, i16 addrspace(1)* %c1.si.i16, align 4
+  %c1.arrayidx1.2 = getelementptr inbounds i16, i16 addrspace(1)* %c1.si.i16, i64 1
   %c1.2 = load i16, i16 addrspace(1)* %c1.arrayidx1.2, align 2
   %c1.add.0 = add nuw nsw i64 %c1.base, 2
   %c1.arrayidx1.1 = getelementptr inbounds i32, i32 addrspace(1)* %si, i64 %c1.add.0
@@ -92,6 +94,46 @@ entry:
   %c1.outidx = getelementptr inbounds i32, i32 addrspace(1)* %d, i64 %c1.base
   %c1.addr.1 = bitcast i32 addrspace(1)* %c1.outidx to <3 x i32> addrspace(1)*
   store <3 x i32> %c1.v.2, <3 x i32> addrspace(1)* %c1.addr.1, align 4
+
+; case 2: load i8; load <2xi16>; load <3xi8> -> load <2 x i32>
+;         Manually created to handle mis-aligned load that could come from packed struct.
+;         Note: <2xi16> is split into {i8, i8, i8, i8} and the first three i8's are in the first AOS
+;               struct <{i8, i8, i8, i8}>, where the last i8 is in the second AOS struct <{i8, <3xi8>}>
+;
+; CHECK-LABEL: %c2.base
+; CHECK: [[T2:%.*]] = load <2 x i32>
+; CHECK: {{.*}} = call %__StructSOALayout_.2 @llvm.genx.GenISA.bitcasttostruct.__StructSOALayout_.2.v2i32(<2 x i32> [[T2]])
+; CHECK: ret void
+;
+  %c2.base = add i64 %conv.i.i.i, 96
+  %c2.arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %si, i64 %c2.base
+  %c2.si.i8 = bitcast i32 addrspace(1)* %c2.arrayidx to i8 addrspace(1)*
+  %c2.0 = load i8, i8 addrspace(1)* %c2.si.i8, align 4
+  %c2.arrayidx.1 = getelementptr inbounds i8, i8 addrspace(1)* %c2.si.i8, i64 1
+  %c2.si.i16 = bitcast i8 addrspace(1)* %c2.arrayidx.1 to <2 x i16> addrspace(1)*
+  %c2.1 = load <2 x i16>, <2 x i16> addrspace(1)* %c2.si.i16, align 1
+  %c2.arrayidx.2 = getelementptr inbounds i8, i8 addrspace(1)* %c2.si.i8, i64 5
+  %c2.si.3i8 = bitcast i8 addrspace(1)* %c2.arrayidx.2 to <3 x i8> addrspace(1)*
+  %c2.2 = load <3 x i8>, <3 x i8> addrspace(1)* %c2.si.3i8, align 1
+  %c2.1.0 = bitcast <2 x i16> %c2.1 to <4 x i8>
+  %c2.1.0.0 = extractelement <4 x i8> %c2.1.0, i64 0
+  %c2.1.0.1 = extractelement <4 x i8> %c2.1.0, i64 1
+  %c2.1.0.2 = extractelement <4 x i8> %c2.1.0, i64 2
+  %c2.1.0.3 = extractelement <4 x i8> %c2.1.0, i64 3
+  %c2.2.0 = extractelement <3 x i8> %c2.2, i64 0
+  %c2.2.1 = extractelement <3 x i8> %c2.2, i64 1
+  %c2.2.2 = extractelement <3 x i8> %c2.2, i64 2
+  %c2.v.0 = insertelement <8 x i8> undef,   i8 %c2.0,     i32 0
+  %c2.v.1 = insertelement <8 x i8> %c2.v.0, i8 %c2.1.0.0, i32 1
+  %c2.v.2 = insertelement <8 x i8> %c2.v.1, i8 %c2.1.0.1, i32 2
+  %c2.v.3 = insertelement <8 x i8> %c2.v.2, i8 %c2.1.0.2, i32 3
+  %c2.v.4 = insertelement <8 x i8> %c2.v.3, i8 %c2.1.0.3, i32 4
+  %c2.v.5 = insertelement <8 x i8> %c2.v.4, i8 %c2.2.0,   i32 5
+  %c2.v.6 = insertelement <8 x i8> %c2.v.5, i8 %c2.2.1,   i32 6
+  %c2.v.7 = insertelement <8 x i8> %c2.v.6, i8 %c2.2.2,   i32 7
+  %c2.outidx = getelementptr inbounds i32, i32 addrspace(1)* %d, i64 %c2.base
+  %c2.addr.1 = bitcast i32 addrspace(1)* %c2.outidx to <8 x i8> addrspace(1)*
+  store <8 x i8> %c2.v.2, <8 x i8> addrspace(1)* %c2.addr.1, align 4
 
   ret void
 }
