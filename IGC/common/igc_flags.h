@@ -794,7 +794,7 @@ DECLARE_IGC_REGKEY(bool, OverrideCsTileLayoutEnable, false, "Enable overriding c
 DECLARE_IGC_REGKEY(bool, OverrideCsTileLayout,       0,     "Override compute walker tile layout. False is linear. True is TileY", true)
 DECLARE_IGC_REGKEY(DWORD, MemCpyLoweringUnrollThreshold, 12, "Min number of mem instructions that require non-unrolled loop when lowering memcpy", false)
 DECLARE_IGC_REGKEY(bool, EnableSOAPromotionDisablingHeuristic, false, "Enable heuristic to disable SOA promotion when it may be not beneficial", false)
-DECLARE_IGC_REGKEY(bool, EnableCSContentCheck, false, "Enable CS content check to force SIMD32", true)
+DECLARE_IGC_REGKEY(bool, DisableCSContentCheck, false, "Disable CS content check that can force SIMD32", true)
 DECLARE_IGC_REGKEY(bool, DisableFastMathConstantHandling, false, "Disable Fast Math Constant Handling", true)
 
 DECLARE_IGC_GROUP("Generating precompiled headers")
