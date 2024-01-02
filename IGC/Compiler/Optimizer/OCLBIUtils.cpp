@@ -223,7 +223,7 @@ static bool isBindlessImageLoad(Value *v)
         return false;
 
     auto *ptrOp = load->getPointerOperand()->stripPointerCasts();
-    if (!isa<Argument>(ptrOp) && !isa<GetElementPtrInst>(ptrOp) && !isa<AllocaInst>(ptrOp))
+    if (!isa<Argument>(ptrOp) && !isa<GetElementPtrInst>(ptrOp) && !isa<AllocaInst>(ptrOp) && !isa<CallInst>(ptrOp))
         return false;
 
     return load->getType()->isIntegerTy(64);
