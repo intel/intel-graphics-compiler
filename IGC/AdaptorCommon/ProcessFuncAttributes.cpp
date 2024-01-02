@@ -138,6 +138,23 @@ static void getContainedStructType(Type *T, SmallPtrSetImpl<StructType *> &Tys)
     }
 }
 
+static bool isImageType(llvm::Type *Ty)
+{
+    if (auto *STy = dyn_cast<StructType>(Ty); STy && STy->isOpaque())
+    {
+        auto typeName = STy->getName();
+        llvm::SmallVector<llvm::StringRef, 3> buf;
+        typeName.split(buf, ".");
+        if (buf.size() < 2) return false;
+        bool isOpenCLImage = buf[0].equals("opencl") && buf[1].startswith("image") && buf[1].endswith("_t");
+        bool isSPIRVImage = buf[0].equals("spirv") && (buf[1].startswith("Image") || buf[1].startswith("SampledImage"));
+
+        if (isOpenCLImage || isSPIRVImage)
+            return true;
+    }
+    return false;
+}
+
 // Check the existence of an image type.
 static bool containsImageType(llvm::Type *T)
 {
@@ -145,24 +162,7 @@ static bool containsImageType(llvm::Type *T)
     SmallPtrSet<StructType *, 8> StructTys;
     getContainedStructType(T, StructTys);
 
-    for (auto I = StructTys.begin(), E = StructTys.end(); I != E; ++I)
-    {
-        StructType *ST = *I;
-        if (ST->isOpaque())
-        {
-            auto typeName = ST->getName();
-            llvm::SmallVector<llvm::StringRef, 3> buf;
-            typeName.split(buf, ".");
-            if (buf.size() < 2) return false;
-            bool isOpenCLImage = buf[0].equals("opencl") && buf[1].startswith("image") && buf[1].endswith("_t");
-            bool isSPIRVImage = buf[0].equals("spirv") && buf[1].startswith("Image");
-
-            if (isOpenCLImage || isSPIRVImage)
-                return true;
-        }
-    }
-
-    return false;
+    return llvm::any_of(StructTys, [](StructType *STy) { return isImageType(STy); });
 }
 
 static bool isOptNoneBuiltin(StringRef name)
@@ -235,7 +235,7 @@ static DenseSet<Function*> collectMemPoolUsage(const Module &M)
     return FuncsToInline;
 }
 
-void addFnAttrRecursive(Function* F, StringRef Attr, StringRef Val)
+static void addFnAttrRecursive(Function* F, StringRef Attr, StringRef Val)
 {
     F->addFnAttr(Attr, Val);
     for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
@@ -245,6 +245,96 @@ void addFnAttrRecursive(Function* F, StringRef Attr, StringRef Val)
                 addFnAttrRecursive(Callee, Attr, Val);
             }
         }
+    }
+}
+
+static void setAlwaysInline(Function* F)
+{
+    F->addFnAttr(llvm::Attribute::AlwaysInline);
+    F->removeFnAttr(llvm::Attribute::NoInline);
+    // optnone requires noinline and is incompatible with alwaysinline
+    F->removeFnAttr(llvm::Attribute::OptimizeNone);
+};
+
+static void setAlwaysInlineRecursive(Function* F)
+{
+    if (F->hasFnAttribute(llvm::Attribute::AlwaysInline))
+        return;
+    setAlwaysInline(F);
+    for (auto &I : instructions(F))
+    {
+        if (CallInst* CI = dyn_cast<CallInst>(&I))
+        {
+            if (Function* Callee = CI->getCalledFunction())
+            {
+                setAlwaysInlineRecursive(Callee);
+            }
+        }
+    }
+}
+
+static void addAlwaysInlineForImageBuiltinUserFunctions(Module &M)
+{
+    StringRef ImageBuiltinPrefixes[] = {
+        "__builtin_IB_get_image",        "__builtin_IB_get_sampler",
+        "__builtin_IB_get_snap_wa_reqd", "__builtin_IB_OCL_1d_",
+        "__builtin_IB_OCL_2d_",          "__builtin_IB_OCL_3d_"};
+    SmallVector<Function *, 16> ImageBuiltins;
+    SmallVector<Function *, 16> SampledImageFunctions;
+    for (auto &F : M)
+    {
+        if (F.isDeclaration())
+        {
+            for (StringRef Prefix : ImageBuiltinPrefixes)
+            {
+                if (F.getName().startswith(Prefix))
+                {
+                    ImageBuiltins.push_back(&F);
+                    break;
+                }
+            }
+            continue;
+        }
+        // Check if return type is image.
+        if (auto *PTy = dyn_cast<PointerType>(F.getReturnType()))
+        {
+            if (isImageType(IGCLLVM::getNonOpaquePtrEltTy(PTy)))
+            {
+                SampledImageFunctions.push_back(&F);
+            }
+        }
+    }
+
+    // Add always inline recursively for user functions of each image builtin.
+    DenseSet<Function *> Visited;
+    for (auto *Builtin : ImageBuiltins)
+    {
+        SmallVector<Function *, 16> WorkList{Builtin};
+        Visited.insert(Builtin);
+        while (!WorkList.empty())
+        {
+            Function *F = WorkList.pop_back_val();
+            for (User *U : F->users())
+            {
+                if (auto *CI = dyn_cast<CallInst>(U))
+                {
+                    auto *Caller = CI->getFunction();
+                    if (Visited.insert(Caller).second)
+                    {
+                        setAlwaysInline(Caller);
+                        WorkList.push_back(Caller);
+                    }
+                }
+            }
+        }
+    }
+
+    // Operand of __builtin_IB_get_image/__builtin_IB_get_sampler could be
+    // result of a call instruction. The call should be inlined as well,
+    // otherwise ResolveSampledImageBuiltins isn't able to resolve the two builtins.
+    for (auto *F : SampledImageFunctions)
+    {
+        setAlwaysInlineRecursive(F);
     }
 }
 
@@ -281,13 +371,6 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
     {
         F->addFnAttr(llvm::Attribute::NoInline);
         F->removeFnAttr(llvm::Attribute::AlwaysInline);
-    };
-    auto SetAlwaysInline = [](Function* F)->void
-    {
-        F->addFnAttr(llvm::Attribute::AlwaysInline);
-        F->removeFnAttr(llvm::Attribute::NoInline);
-        // optnone requires noinline and is incompatible with alwaysinline
-        F->removeFnAttr(llvm::Attribute::OptimizeNone);
     };
 
     // Returns true if a function is either import or export and requires external linking
@@ -378,7 +461,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             pCtx->type != ShaderType::RAYTRACING_SHADER &&
             pCtx->type != ShaderType::COMPUTE_SHADER)
         {
-            SetAlwaysInline(F);
+            setAlwaysInline(F);
             continue;
         }
         // Set noinline on optnone user functions.
@@ -461,7 +544,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         if (!isKernel && (F->getCallingConv() == CallingConv::SPIR_KERNEL))
         {
             // WA for callable kernels, always inline these.
-            SetAlwaysInline(F);
+            setAlwaysInline(F);
             continue;
         }
 
@@ -616,7 +699,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
 
         if (mustAlwaysInline)
         {
-            SetAlwaysInline(F);
+            setAlwaysInline(F);
             continue;
         }
 
@@ -678,7 +761,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                     }
                     else
                     {
-                        SetAlwaysInline(F);
+                        setAlwaysInline(F);
                     }
                 }
             }
@@ -686,7 +769,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         else if (FCtrl == FLAG_FCALL_FORCE_INLINE)
         {
             // Forced inlining all functions
-            SetAlwaysInline(F);
+            setAlwaysInline(F);
         }
         else
         {
@@ -782,7 +865,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                         {
                             F->removeFnAttr("referenced-indirectly");
                             F->removeFnAttr("visaStackCall");
-                            SetAlwaysInline(F);
+                            setAlwaysInline(F);
                         }
                         else if (FunctionControlMode == FLAG_FCALL_FORCE_SUBROUTINE)
                         {
@@ -863,6 +946,14 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             }
         }
     }
+
+    // Curently, ExtensionArgAnalysis assumes that for all functions that use
+    // image builtins directly or indirectly, we add alwaysinline attribute.
+    // For SYCL bindless image, checking function argument isn't enough because
+    // * image handle could be an integer.
+    // * image handle could be from a call instead of function argument.
+    // Therefore, we explore all users functions of image builtin recursively.
+    addAlwaysInlineForImageBuiltinUserFunctions(M);
 
     return true;
 }
