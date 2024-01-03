@@ -2403,6 +2403,7 @@ namespace {
         uint32_t getAlignment() const;
         AddressModel getAddressModel(CodeGenContext* Ctx) const;
         Value* getValueOperand() const;
+        bool isStore() const { return isa<StoreInst>(Inst); }
     };
 
     typedef SmallVector<LdStInfo, 8> InstAndOffsetPairs;
@@ -2634,23 +2635,32 @@ namespace {
         // If true, IGC needs to emulate I64.
         bool m_hasI64Emu = false;
 
-        // All insts that have been combined and will be deleted at the end.
-        SmallVector<Instruction*, 16> m_combinedInsts;
         //
         // Temporary reused for each BB.
         //
         // Inst order within a BB.
         DenseMap<const Instruction*, int> m_instOrder;
+        // Per-BB: all insts that have been combined and will be deleted.
+        DenseMap<const Instruction*, int> m_combinedInsts;
+        // All root instructions (ie their uses are empty, including stores)
+        // that are to be deleted at the end of each BB.
+        SmallVector<Instruction*, 16> m_toBeDeleted;
+        void appendToBeDeleted(Instruction* I) {
+            if (I != nullptr)
+                m_toBeDeleted.push_back(I);
+        }
+        // Control the way that a load/store is handled.
+        // [more for future improvement]
+        DenseMap<const Instruction*, int> m_visited;
 
         // a bundle : a group of loads or a group of store.
         // Each bundle will be combined into a single load or single store.
         std::list<BundleInfo> m_bundles;
 
-        DenseMap<const Instruction*, int> m_visited;
-
         void init(BasicBlock* BB) {
             m_visited.clear();
             m_instOrder.clear();
+            m_combinedInsts.clear();
         }
         void setInstOrder(BasicBlock* BB);
         void setVisited(Instruction* I) { m_visited[I] = 1; }
@@ -3499,13 +3509,13 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& LoadStores)
         return;
     }
 
-    auto isBundled = [](const LdStInfo* LSI, SmallVector<Instruction*, 16>& L) {
-        return (std::find(L.begin(), L.end(), LSI->Inst) != L.end());
+    auto isBundled = [](const LdStInfo* LSI, DenseMap<const Instruction*, int>& L) {
+        return (L.count(LSI->Inst) > 0);
     };
     auto setBundled = [&isBundled](LdStInfo* LSI,
-        SmallVector<Instruction*, 16>& L) {
+        DenseMap<const Instruction*, int>& L) {
         if (!isBundled(LSI, L)) {
-            L.push_back(LSI->Inst);
+            L[LSI->Inst] = 1;
         }
     };
 
@@ -3666,6 +3676,9 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& LoadStores)
                     LdStInfo& tlsi = LoadStores[k];
                     newBundle.LoadStores.push_back(tlsi);
                     setBundled(&tlsi, m_combinedInsts);
+                    if (tlsi.isStore()) {
+                        appendToBeDeleted(tlsi.Inst);
+                    }
                     setVisited(tlsi.Inst);
                 }
                 i = e + 1;
@@ -4531,14 +4544,7 @@ void LdStCombine::scatterCopy(
                 Type* aTy = nV->getType();
                 Value* newV = getValueFromStruct(aTy);
                 nV->replaceAllUsesWith(newV);
-
-                // V (all Vals) will be deleted at the end. Here, only delete
-                // its uses so that V will have empty use later.
-                if (Instruction* tI = dyn_cast<Instruction>(nV)) {
-                    if (tI != V) {
-                        tI->eraseFromParent();
-                    }
-                }
+                appendToBeDeleted(dyn_cast<Instruction>(nV));
             }
         }
     } else {
@@ -4595,14 +4601,7 @@ void LdStCombine::scatterCopy(
                 }
                 Value* newV = createValueFromElements(vecElts, aTy);
                 nV->replaceAllUsesWith(newV);
-
-                // V (all Vals) will be deleted at the end.
-                // Here, just delete its uses so that V will have empty use.
-                if (Instruction* tI = dyn_cast<Instruction>(nV)) {
-                    if (tI != V) {
-                        tI->eraseFromParent();
-                    }
-                }
+                appendToBeDeleted(dyn_cast<Instruction>(nV));
             }
         }
     }
@@ -4868,8 +4867,8 @@ void LdStCombine::createCombinedLoads(Function& F)
 
 void LdStCombine::eraseDeadInsts()
 {
-    RecursivelyDeleteDeadInstructions(m_combinedInsts);
-    m_combinedInsts.clear();
+    RecursivelyDeleteDeadInstructions(m_toBeDeleted);
+    m_toBeDeleted.clear();
 }
 
 void BundleInfo::print(raw_ostream& O, int BundleID) const
