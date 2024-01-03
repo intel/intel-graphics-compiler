@@ -748,7 +748,8 @@ public:
 private:
   void encodeRange(CompileUnit *TheCU, DIE *ScopeDIE,
                    const llvm::SmallVectorImpl<InsnRange> *Ranges);
-  void encodeScratchAddrSpace(std::vector<uint8_t> &data);
+  void emitNarrowestUConst(std::vector<uint8_t> &data1, uint64_t value);
+  void encodeScratchAddrSpace(std::vector<uint8_t> &data, uint64_t offset);
   uint32_t writeSubroutineCIE();
   uint32_t writeStackcallCIE();
   void writeFDESubroutine(VISAModule *m);

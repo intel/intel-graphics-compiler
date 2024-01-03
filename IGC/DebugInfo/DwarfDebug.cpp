@@ -2784,7 +2784,29 @@ void DwarfDebug::emitDebugMacInfo() {
   }
 }
 
-void DwarfDebug::encodeScratchAddrSpace(std::vector<uint8_t> &data) {
+// Given a number value, decide which UConst DWARF opcode
+// should be emitted for minimizing size.
+void DwarfDebug::emitNarrowestUConst(std::vector<uint8_t> &data1,
+                                     uint64_t value) {
+  if (value <= 31) {
+    write(data1, (uint8_t)llvm::dwarf::DW_OP_lit0 + value);
+  } else if (value < 0xff) {
+    write(data1, (uint8_t)llvm::dwarf::DW_OP_const1u);
+    write(data1, (uint8_t)(value));
+  } else if (value < 0xffff) {
+    write(data1, (uint8_t)llvm::dwarf::DW_OP_const2u);
+    write(data1, (uint16_t)(value));
+  } else if (value < 0xffffffff) {
+    write(data1, (uint8_t)llvm::dwarf::DW_OP_const4u);
+    write(data1, (uint32_t)(value));
+  } else {
+    write(data1, (uint8_t)llvm::dwarf::DW_OP_const8u);
+    write(data1, (uint64_t)(value));
+  }
+}
+
+void DwarfDebug::encodeScratchAddrSpace(std::vector<uint8_t> &data,
+                                        uint64_t offset) {
   uint32_t scratchBaseAddrEncoded = 0;
   if (m_pModule->usesSlot1ScratchSpill()) {
     scratchBaseAddrEncoded =
@@ -2796,7 +2818,7 @@ void DwarfDebug::encodeScratchAddrSpace(std::vector<uint8_t> &data) {
   }
 
   write(data, (uint8_t)scratchBaseAddrEncoded);
-  writeULEB128(data, 0);
+  writeULEB128(data, offset);
   write(data, (uint8_t)llvm::dwarf::DW_OP_plus);
 }
 
@@ -2939,10 +2961,8 @@ uint32_t DwarfDebug::writeStackcallCIE() {
   // The DW_CFA_def_cfa_expression instruction takes a single operand
   // encoded as a DW_FORM_exprloc.
   auto DWRegEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(specialGRF);
-  write(data1, (uint8_t)llvm::dwarf::DW_OP_const4u);
-  write(data1, (uint32_t)(DWRegEncoded));
-  write(data1, (uint8_t)llvm::dwarf::DW_OP_const2u);
-  write(data1, (uint16_t)(getBEFPSubReg() * 4 * 8));
+  emitNarrowestUConst(data1, DWRegEncoded);
+  emitNarrowestUConst(data1, getBEFPSubReg() * 4 * 8);
   write(data1, (uint8_t)DW_OP_INTEL_regval_bits);
   write(data1, (uint8_t)32);
 
@@ -2950,13 +2970,12 @@ uint32_t DwarfDebug::writeStackcallCIE() {
     // when scratch offset is in OW, be_fp has to be multiplied by 16
     // to normalize and generate byte offset for complete address
     // computation.
-    write(data1, (uint8_t)llvm::dwarf::DW_OP_const1u);
-    write(data1, (uint8_t)16);
+    emitNarrowestUConst(data1, 16);
     write(data1, (uint8_t)llvm::dwarf::DW_OP_mul);
   }
 
   // indicate that the resulting address is on BE stack
-  encodeScratchAddrSpace(data1);
+  encodeScratchAddrSpace(data1, 0);
 
   writeULEB128(data, data1.size());
   for (auto item : data1)
@@ -3152,10 +3171,8 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
 
     auto DWRegEncoded =
         GetEncodedRegNum<RegisterNumbering::GRFBase>(specialGRF);
-    write(data1, (uint8_t)llvm::dwarf::DW_OP_const4u);
-    write(data1, (uint32_t)(DWRegEncoded));
-    write(data1, (uint8_t)llvm::dwarf::DW_OP_const2u);
-    write(data1, (uint16_t)(getBEFPSubReg() * 4 * 8));
+    emitNarrowestUConst(data1, DWRegEncoded);
+    emitNarrowestUConst(data1, getBEFPSubReg() * 4 * 8);
     write(data1, (uint8_t)DW_OP_INTEL_regval_bits);
     write(data1, (uint8_t)32);
 
@@ -3163,40 +3180,28 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
       // when scratch offset is in OW, be_fp has to be multiplied by 16
       // to normalize and generate byte offset for complete address
       // computation.
-      write(data1, (uint8_t)llvm::dwarf::DW_OP_const1u);
-      write(data1, (uint8_t)16);
+      emitNarrowestUConst(data1, 16);
       write(data1, (uint8_t)llvm::dwarf::DW_OP_mul);
     }
 
-    write(data1, (uint8_t)llvm::dwarf::DW_OP_constu);
-    writeULEB128(data1, offset);
-    write(data1, (uint8_t)llvm::dwarf::DW_OP_plus);
-
     // indicate that the resulting address is on BE stack
-    encodeScratchAddrSpace(data1);
+    encodeScratchAddrSpace(data1, offset);
 
     if (deref) {
-      write(data1, (uint8_t)llvm::dwarf::DW_OP_deref);
-      // DW_OP_deref reads as many bytes as size of address on target machine.
-      // We set address size to 64 bits in CIE. However, this expression
-      // refers to a slot in scratch space which uses 32-bit addressing. So
-      // mask upper 32 bits read from VISA frame descriptor.
-      write(data1, (uint8_t)llvm::dwarf::DW_OP_const4u);
-      write(data1, (uint32_t)0xffffffff);
-      write(data1, (uint8_t)llvm::dwarf::DW_OP_and);
+      write(data1, (uint8_t)llvm::dwarf::DW_OP_deref_size);
+      write(data1, (uint8_t)4);
     }
 
     if (EmitSettings.ScratchOffsetInOW && normalizeResult) {
       // since data stored in scratch space is also in oword units, normalize it
-      write(data1, (uint8_t)llvm::dwarf::DW_OP_const1u);
-      write(data1, (uint8_t)16);
+      emitNarrowestUConst(data1, 16);
       write(data1, (uint8_t)llvm::dwarf::DW_OP_mul);
     }
 
     if (deref) {
       // DW_OP_deref earlier causes CFA to be put on top of dwarf stack.
       // Indicate that the address space of CFA is scratch.
-      encodeScratchAddrSpace(data1);
+      encodeScratchAddrSpace(data1, 0);
     }
 
     writeULEB128(data, data1.size());

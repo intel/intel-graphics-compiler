@@ -1019,13 +1019,11 @@ void CompileUnit::addBE_FP(IGC::DIEBlock *Block) {
 
   addRegOrConst(Block, BE_FP_RegNum); // Register ID will be shifted by offset
 
-  addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const2u);
-  addUInt(Block, dwarf::DW_FORM_data2,
-          BE_FP_SubRegNum * 8u); // sub-reg offset in bits
+  addConstantUValue(Block, BE_FP_SubRegNum * 8u); // sub-reg offset in bits
+
   extractSubRegValue(Block, 32);
   if (EmitSettings.ScratchOffsetInOW) {
-    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);
-    addUInt(Block, dwarf::DW_FORM_data1, 16);
+    addConstantUValue(Block, 16);
     addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_mul);
   }
 
@@ -2504,10 +2502,12 @@ bool CompileUnit::buildFpBasedLoc(const DbgVariable &var, IGC::DIEBlock *Block,
       bitOffsetToFPReg); // 2 DW_OP_const1u/2u <bit-offset to Frame Pointer reg>
   extractSubRegValue(Block, 64);
 
-  addUInt(Block, dwarf::DW_FORM_data1,
-          dwarf::DW_OP_plus_uconst); // 5 DW_OP_plus_uconst  SIZE_OWORD (taken
-                                     // from getFPOffset())
-  addUInt(Block, dwarf::DW_FORM_udata, VISAMod->getFPOffset());
+  if (VISAMod->getFPOffset()) {
+    addUInt(Block, dwarf::DW_FORM_data1,
+            dwarf::DW_OP_plus_uconst); // 5 DW_OP_plus_uconst  SIZE_OWORD (taken
+                                       // from getFPOffset())
+    addUInt(Block, dwarf::DW_FORM_udata, VISAMod->getFPOffset());
+  }
 
   addUInt(Block, dwarf::DW_FORM_data1,
           DW_OP_INTEL_push_simd_lane);   // 6 DW_OP_INTEL_push_simd_lane
@@ -2515,9 +2515,11 @@ bool CompileUnit::buildFpBasedLoc(const DbgVariable &var, IGC::DIEBlock *Block,
   addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_mul);  // 8 DW_OP_mul
   addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus); // 9 DW_OP_plus
 
-  addUInt(Block, dwarf::DW_FORM_data1,
-          dwarf::DW_OP_plus_uconst); // 10 DW_OP_plus_uconst storageOffset
-  addUInt(Block, dwarf::DW_FORM_udata, storageOffset); // storageOffset
+  if (storageOffset) {
+    addUInt(Block, dwarf::DW_FORM_data1,
+            dwarf::DW_OP_plus_uconst); // 10 DW_OP_plus_uconst storageOffset
+    addUInt(Block, dwarf::DW_FORM_udata, storageOffset); // storageOffset
+  }
 
   var.emitExpression(this, Block);
 
