@@ -132,7 +132,6 @@ entry:
 ;
 ; CHECK-LABEL:  store <2 x i64>
 ; CHECK: load <4 x i32>
-; CHECK-LABEL: ret void
 ;
   %c5.baseidx = add i64 %conv.i.i, 512
   %c5.arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %si, i64 %c5.baseidx
@@ -155,6 +154,31 @@ entry:
   %c5.arrayidx1 = getelementptr inbounds i32, i32 addrspace(1)* %d, i64 %c5.idx
   %c5.addr = bitcast i32 addrspace(1)* %c5.arrayidx1 to <4 x i32> addrspace(1)*
   store <4 x i32> %c5.e0.3, <4 x i32> addrspace(1)* %c5.addr, align 4
+
+;
+; case 6: load i32 p+1; load i32 p -> load <2 x i32>
+;    This is to test that lead load is not the first and therefore, an address of
+;    of anchor load is used instead.
+;
+; CHECK-LABEL:  c6.baseidx
+; CHECK:        %c6.arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %si, i64 %c6.baseidx
+; CHECK:        [[T6_0:%.*]] = bitcast i32 addrspace(1)* %c6.arrayidx to i8 addrspace(1)*
+; CHECK:        [[T6_1:%.*]] = getelementptr inbounds i8, i8 addrspace(1)* [[T6_0]], i64 -4
+; CHECK:        [[T6_2:%.*]] = bitcast i8 addrspace(1)* [[T6_1]] to <2 x i32> addrspace(1)*
+; CHECK:        {{.*}} = load <2 x i32>, <2 x i32> addrspace(1)* [[T6_2]], align 4
+; CHECK-LABEL: ret void
+;
+  %c6.baseidx = add i64 %conv.i.i, 577
+  %c6.arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %si, i64 %c6.baseidx
+  %c6.0 = load i32, i32 addrspace(1)* %c6.arrayidx, align 4
+  %c6.baseidx.1 = add i64 %conv.i.i, 576
+  %c6.arrayidx.1 = getelementptr inbounds i32, i32 addrspace(1)* %si, i64 %c6.baseidx.1
+  %c6.1 = load i32, i32 addrspace(1)* %c6.arrayidx.1, align 4
+  %c6.v.0 = insertelement <2 x i32> undef,    i32 %c6.0, i64 0
+  %c6.v.1 = insertelement <2 x i32> %c6.v.0, i32 %c6.1, i64 1
+  %c6.arrayidx1 = getelementptr inbounds i32, i32 addrspace(1)* %d, i64 %c6.baseidx
+  %c6.addr = bitcast i32 addrspace(1)* %c6.arrayidx1 to <2 x i32> addrspace(1)*
+  store <2 x i32> %c6.v.1, <2 x i32> addrspace(1)* %c6.addr, align 4
 
   ret void
 }

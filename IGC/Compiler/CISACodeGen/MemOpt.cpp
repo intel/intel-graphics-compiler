@@ -2377,6 +2377,14 @@ SymbolicPointer::decomposePointer(const Value* Ptr, SymbolicPointer& SymPtr,
     return true;
 }
 
+
+// Debugging
+//#define _LDST_DEBUG 1
+#undef _LDST_DEBUG
+#if defined(_LDST_DEBUG)
+static int _bundleid = 0;
+#endif
+
 namespace {
     enum class AddressModel {
         BTS, A32, SLM, A64
@@ -2764,13 +2772,6 @@ const BundleSize_t BundleConfig::m_d8VecSizes = { 2,4,8 };
 const BundleSize_t BundleConfig::m_d64VecSizes_u = { 2,3,4,8,16,32,64 };
 const BundleSize_t BundleConfig::m_d32VecSizes_u = { 2,3,4,8,16,32,64 };
 const BundleSize_t BundleConfig::m_d8VecSizes_u = { 2,4,8,16,32 };
-
-// Debugging
-//#define _LDST_DEBUG 1
-#undef _LDST_DEBUG
-#if defined(_LDST_DEBUG)
-static int _bundleid = 0;
-#endif
 
 bool IGC::doLdStCombine(const CodeGenContext* CGC) {
     if (CGC->type == ShaderType::OPENCL_SHADER) {
@@ -4753,7 +4754,10 @@ void LdStCombine::createCombinedLoads(Function& F)
 
         // find anchor load.
         LoadInst* anchorLoad = leadLoad;
-        int n = m_instOrder[anchorLoad];
+        const int leadLoadNum = m_instOrder[leadLoad];
+        const int leadOffset = (int)Loads[0].ByteOffset;
+        int anchorOffset = leadOffset;
+        int n = leadLoadNum;
         // insts are assigned order number starting from 0. Anchor load is
         // one with the smallest inst order number.
         for (int i = 1, sz = (int)bundle.LoadStores.size(); i < sz; ++i) {
@@ -4763,9 +4767,11 @@ void LdStCombine::createCombinedLoads(Function& F)
             {
                 n = LI_no;
                 anchorLoad = LI;
+                anchorOffset = (int)Loads[i].ByteOffset;
             }
             loadedValues.push_back(LI);
         }
+        const int anchorLoadNum = n;
 
         int eltBytes = bundle.bundle_eltBytes;
         int nelts = bundle.bundle_numElts;
@@ -4796,6 +4802,28 @@ void LdStCombine::createCombinedLoads(Function& F)
 
         IRBuilder<> irBuilder(anchorLoad);
         Value* Addr = leadLoad->getPointerOperand();
+        // If leadLoad is different from anchorLoad and leadLoad's addr is
+        // an instruction after anchorLoad, need to re-generate the address
+        // of LeadLoad at anchorLoad place.
+        if (anchorLoad != leadLoad && isa<Instruction>(Addr)) {
+            Instruction* aI = cast<Instruction>(Addr);
+            auto MI = m_instOrder.find(aI);
+            if (MI != m_instOrder.end() && MI->second > anchorLoadNum)
+            {
+                Value* anchorAddr = anchorLoad->getPointerOperand();
+                Type* bTy = Type::getInt8Ty(leadLoad->getContext());
+                Type* nTy = PointerType::get(bTy, leadLoad->getPointerAddressSpace());
+                Value* nAddr = irBuilder.CreateBitCast(anchorAddr, nTy);
+                Value* aIdx = irBuilder.getInt64(leadOffset - anchorOffset);
+                GEPOperator* aGEP = dyn_cast<GEPOperator>(anchorAddr);
+                if (aGEP && aGEP->isInBounds()) {
+                    Addr = irBuilder.CreateInBoundsGEP(bTy, nAddr, aIdx, "anchorLoad");
+                }
+                else {
+                    Addr = irBuilder.CreateGEP(bTy, nAddr, aIdx, "anchorLoad");
+                }
+            };
+        }
         PointerType* PTy = cast<PointerType>(Addr->getType());
         PointerType* nPTy = PointerType::get(VTy, PTy->getAddressSpace());
         Value* nAddr = irBuilder.CreateBitCast(Addr, nPTy);
