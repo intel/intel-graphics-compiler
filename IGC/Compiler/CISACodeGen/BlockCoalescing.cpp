@@ -169,7 +169,17 @@ namespace IGC
         while (IsEmptyBlock(block))
         {
             IGC_ASSERT(block->getTerminator()->getNumSuccessors() == 1);
+            Instruction &last = *block->getTerminator();
             block = block->getNextNode();
+            Instruction &first = *block->begin();
+
+            // If the debug loc is set on an empty BB, move it to the first instruction of the successor.
+            // This will not work if the first instruction of BB already has a loc.
+            if (last.getDebugLoc().get() && !first.getDebugLoc().get())
+            {
+                first.setDebugLoc(last.getDebugLoc());
+                last.setDebugLoc(DebugLoc());
+            }
         }
         return block;
     }
