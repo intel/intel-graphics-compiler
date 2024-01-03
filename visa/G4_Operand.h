@@ -121,6 +121,7 @@ class G4_InstDpas;
 // Forward declarations for the concrete operand classes. We need them here
 // because the base class has APIs that perform downcasts to the concrete type.
 class G4_Imm;
+class G4_Reloc_Imm;
 class G4_Label;
 class G4_AddrExp;
 class G4_DstRegRegion;
@@ -303,6 +304,18 @@ public:
     return const_cast<G4_Imm *>(((const G4_Operand *)this)->asImm());
   }
 
+  const G4_Reloc_Imm *asRelocImm() const {
+#ifdef _DEBUG
+    if (!isRelocImm()) {
+      return nullptr;
+    }
+#endif
+    return reinterpret_cast<const G4_Reloc_Imm *>(this);
+  }
+  G4_Reloc_Imm *asRelocImm() {
+    return const_cast<G4_Reloc_Imm *>(((const G4_Operand *)this)->asRelocImm());
+  }
+
   const G4_Predicate *asPredicate() const {
 #ifdef _DEBUG
     if (!isPredicate()) {
@@ -477,6 +490,9 @@ class G4_Reloc_Imm : public G4_Imm {
 
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
 public:
+
+  G4_CmpRelation compareOperand(G4_Operand *opnd,
+                                const IR_Builder &builder) override;
 
   bool isRelocImm() const override { return true; }
 

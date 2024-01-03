@@ -5580,6 +5580,22 @@ int64_t G4_Imm::typecastVals(int64_t value, G4_Type type) {
   return retVal;
 }
 
+G4_CmpRelation G4_Reloc_Imm::compareOperand(G4_Operand *opnd,
+                                            const IR_Builder &builder) {
+  if (!opnd->isRelocImm())
+    return Rel_disjoint;
+
+  const auto *relocImmOpnd = opnd->asRelocImm();
+  if (llvm::StringRef(symbol) != llvm::StringRef(relocImmOpnd->symbol))
+    return Rel_disjoint;
+  if (relocKind != relocImmOpnd->relocKind)
+    return Rel_disjoint;
+  if (getType() != opnd->getType())
+    return Rel_disjoint;
+
+  return Rel_eq;
+}
+
 void G4_Reloc_Imm::emit(std::ostream &output) {
   // @RelocTy(Symbol):OpType
   // @RelocTy(Symbol+Imm):OpType
