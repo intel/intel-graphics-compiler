@@ -1844,6 +1844,16 @@ void DDD::createAddEdge(Node *pred, Node *succ, DepType d) {
   uint32_t edgeLatency = getEdgeLatency(pred, d);
   pred->succs.emplace_back(succ, d, edgeLatency);
 
+  uint32_t dumpSendDep = getOptions()->getuInt32Option(vISA_DumpSendDepLatency);
+  if (dumpSendDep) {
+    G4_INST *inst = *pred->getInstructions()->begin();
+    if (inst->isSend() && (d == dumpSendDep)) {
+      std::stringstream comment;
+      comment << "D" << d << ":" << edgeLatency;
+      inst->addComment(comment.str());
+    }
+  }
+
   // Set the node priority
   setPriority(pred, pred->succs.back());
   // Count SUCC's predecessors (used to tell when SUCC is ready to issue)
@@ -2808,12 +2818,16 @@ uint32_t DDD::getEdgeLatency_old(Node *node, DepType depT) const {
   // If from different pipelines, getLatency() is the right latency
   case WAW:
   case WAR:
-    latency = UNCOMPR_LATENCY;
+    if (kernel->fg.builder->modelSendSrcReadLatency() && inst->isSend()) {
+      latency = LT.getSendSrcReadLatency(inst);
+    } else {
+      latency = UNCOMPR_LATENCY;
+    }
     break;
 
   case WAR_MEMORY:
   case WAW_MEMORY:
-    if (kernel->getOption(vISA_schedWithSendSrcReadCycle)) {
+    if (kernel->fg.builder->modelSendSrcReadLatency()) {
       latency = LT.getSendSrcReadLatency(inst);
     } else {
       latency = UNCOMPR_LATENCY;
