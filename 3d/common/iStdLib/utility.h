@@ -61,7 +61,7 @@ MACRO: QWBITMASK
 PURPOSE: Creates a mask of n bits
 \*****************************************************************************/
 #ifndef QWBITMASK
-#define QWBITMASK( n )    ( ~( (0xffffffffffffffffull) << (n) ) )
+#define QWBITMASK( n ) ((n) >= 64 ? 0xffffffffffffffffull : (~((0xffffffffffffffffull) << (n))))
 #endif
 
 #ifndef QWBITMASK_RANGE
