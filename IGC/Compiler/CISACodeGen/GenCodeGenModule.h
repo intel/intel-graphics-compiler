@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -127,6 +127,9 @@ namespace IGC {
                 delete F;
             }
         }
+        FunctionGroup() = default;
+        FunctionGroup(const FunctionGroup&) = delete;
+        FunctionGroup& operator=(const FunctionGroup&) = delete;
 
         /// \brief The entry kernel function of group.
         llvm::Function* getHead() const {
@@ -225,6 +228,8 @@ namespace IGC {
         static char ID;
         explicit GenXFunctionGroupAnalysis();
         ~GenXFunctionGroupAnalysis() { clear(); }
+        GenXFunctionGroupAnalysis(const GenXFunctionGroupAnalysis&) = delete;
+        GenXFunctionGroupAnalysis& operator=(const GenXFunctionGroupAnalysis&) = delete;
 
         virtual llvm::StringRef getPassName() const  override { return "FunctionGroup analysis"; }
 

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -735,6 +735,8 @@ namespace IGC
     public:
         RetryManager();
         ~RetryManager();
+        RetryManager(const RetryManager&) = delete;
+        RetryManager& operator=(const RetryManager&) = delete;
 
         bool AdvanceState();
         bool AllowLICM(llvm::Function* F = nullptr) const;
@@ -1074,6 +1076,8 @@ namespace IGC
         void checkDPEmulationEnabled();
         virtual void InitVarMetaData();
         virtual ~CodeGenContext();
+        CodeGenContext(const CodeGenContext&) = delete;
+        CodeGenContext& operator=(const CodeGenContext&) = delete;
         void clear();
         void clearMD();
         void EmitMessage(std::ostream &OS, const char* errorstr, const llvm::Value *context) const;

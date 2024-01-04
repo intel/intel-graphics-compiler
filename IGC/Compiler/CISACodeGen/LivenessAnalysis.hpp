@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -53,6 +53,8 @@ namespace IGC
         }
 
         ~LivenessAnalysis();
+        LivenessAnalysis(const LivenessAnalysis&) = delete;
+        LivenessAnalysis& operator=(const LivenessAnalysis&) = delete;
 
         // Liveness is computed on demand, by explicitly calling calculate().
         // runOnFunction does not calculate it!

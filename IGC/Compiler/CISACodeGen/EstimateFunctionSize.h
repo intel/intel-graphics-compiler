@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -40,6 +40,8 @@ namespace IGC {
 
         explicit EstimateFunctionSize(AnalysisLevel = AL_Module);
         ~EstimateFunctionSize();
+        EstimateFunctionSize(const EstimateFunctionSize&) = delete;
+        EstimateFunctionSize& operator=(const EstimateFunctionSize&) = delete;
         virtual llvm::StringRef getPassName() const  override { return "Estimate Function Sizes"; }
         void getAnalysisUsage(llvm::AnalysisUsage& AU) const override;
         bool runOnModule(llvm::Module& M) override;

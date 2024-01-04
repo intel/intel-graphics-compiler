@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -413,16 +413,19 @@ void PayloadMapping::ValidateNumberofSources(EOPCODE opCode, bool isCube, uint& 
         {
         case 2:
             numberofSrcs++;
+            [[fallthrough]];
         case 3:
             numberofSrcs++;
             break;
         case 5:
             numberofSrcs++;
+            [[fallthrough]];
         case 6:
             numberofSrcs++;
             break;
         case 8:
             numberofSrcs++;
+            [[fallthrough]];
         case 9:
             numberofSrcs++;
             break;

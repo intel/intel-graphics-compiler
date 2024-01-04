@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -145,10 +145,6 @@ namespace IGC {
                 value(_value), rank(0)
             {
                 parent.setPointer(this);
-            }
-
-            ~ElementNode()
-            {
             }
 
             ElementNode* getLeader();

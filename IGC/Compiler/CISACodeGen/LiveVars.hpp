@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -63,6 +63,8 @@ namespace IGC
 
         LiveVars() {}
         ~LiveVars();
+        LiveVars(const LiveVars&) = delete;
+        LiveVars& operator=(const LiveVars&) = delete;
 
         /// LVInfo - This represents the regions where a virtual register is live in
         /// the program.  We represent this with three different pieces of

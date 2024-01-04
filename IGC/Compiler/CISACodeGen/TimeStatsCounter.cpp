@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2021 Intel Corporation
+Copyright (C) 2019-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -36,7 +36,7 @@ namespace {
             initializeTimeStatsCounterPass(*PassRegistry::getPassRegistry());
         }
 
-        TimeStatsCounter(CodeGenContext* _ctx, std::string _igcPass, TimeStatsCounterStartEndMode _mode)
+        TimeStatsCounter(CodeGenContext* _ctx, const std::string& _igcPass, TimeStatsCounterStartEndMode _mode)
             : ModulePass(ID), ctx(_ctx), mode(_mode), igcPass(_igcPass), type(STATS_COUNTER_LLVM_PASS) {
             initializeTimeStatsCounterPass(*PassRegistry::getPassRegistry());
         }

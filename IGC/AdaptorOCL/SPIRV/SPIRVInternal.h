@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -920,14 +920,14 @@ Function *getOrCreateFunction(Module *M, Type *RetTy,
 std::vector<Value *> getArguments(CallInst* CI);
 
 void decorateSPIRVBuiltin(std::string &S);
-void decorateSPIRVBuiltin(std::string &S, std::vector<Type*> ArgTypes);
-void decorateSPIRVExtInst(std::string &S, std::vector<Type*> ArgTypes);
+void decorateSPIRVBuiltin(std::string &S, const std::vector<Type*>& ArgTypes);
+void decorateSPIRVExtInst(std::string &S, const std::vector<Type*>& ArgTypes);
 
 /// Check if a builtin function
 bool isFunctionBuiltin(llvm::Function* F);
 
 /// Get a canonical function name for a SPIR-V op code.
-std::string getSPIRVBuiltinName(Op OC, SPIRVInstruction *BI, std::vector<Type*> ArgTypes, const std::string& suffix);
+std::string getSPIRVBuiltinName(Op OC, SPIRVInstruction *BI, const std::vector<Type*>& ArgTypes, const std::string& suffix);
 
 /// Mutates function call instruction by changing the arguments.
 /// \param ArgMutate mutates the function arguments.

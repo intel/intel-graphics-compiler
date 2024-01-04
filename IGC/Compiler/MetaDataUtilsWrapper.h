@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -48,6 +48,8 @@ namespace IGC
         MetaDataUtilsWrapper(IGCMD::MetaDataUtils* pMdUtils, ModuleMetaData* moduleMD = nullptr);
 
         ~MetaDataUtilsWrapper();
+        MetaDataUtilsWrapper(const MetaDataUtilsWrapper&) = delete;
+        MetaDataUtilsWrapper& operator=(const MetaDataUtilsWrapper&) = delete;
 
         IGCMD::MetaDataUtils* getMetaDataUtils();
         ModuleMetaData* getModuleMetaData();

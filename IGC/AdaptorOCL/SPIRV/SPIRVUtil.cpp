@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -259,12 +259,12 @@ decorateSPIRVBuiltin(std::string &S)
 }
 
 void
-decorateSPIRVBuiltin(std::string &S, std::vector<Type*> ArgTypes) {
+decorateSPIRVBuiltin(std::string &S, const std::vector<Type*>& ArgTypes) {
    S.assign(std::string(kLLVMName::builtinPrefix) + Mangler(S,ArgTypes));
 }
 
 void
-decorateSPIRVExtInst(std::string &S, std::vector<Type*> ArgTypes) {
+decorateSPIRVExtInst(std::string &S, const std::vector<Type*>& ArgTypes) {
    S.assign(std::string(kLLVMName::builtinExtInstPrefixOpenCL) + Mangler(S,ArgTypes));
 }
 
@@ -274,7 +274,7 @@ isFunctionBuiltin(llvm::Function* F) {
 }
 
 std::string
-getSPIRVBuiltinName(Op OC, SPIRVInstruction *BI, std::vector<Type*> ArgTypes, const std::string& suffix) {
+getSPIRVBuiltinName(Op OC, SPIRVInstruction *BI, const std::vector<Type*>& ArgTypes, const std::string& suffix) {
   std::string name = OCLSPIRVBuiltinMap::map(OC);
 
   if (!name.empty()) {

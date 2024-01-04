@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -145,6 +145,8 @@ namespace IGC
         friend class CShaderProgram;
         COpenCLKernel(OpenCLProgramContext* ctx, llvm::Function*, CShaderProgram* pProgram);
         ~COpenCLKernel();
+        COpenCLKernel(const COpenCLKernel&) = delete;
+        COpenCLKernel& operator=(const COpenCLKernel&) = delete;
 
         void PreCompile() override;
         void AllocatePayload() override;

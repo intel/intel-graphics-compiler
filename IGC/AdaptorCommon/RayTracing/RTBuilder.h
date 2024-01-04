@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2022 Intel Corporation
+Copyright (C) 2019-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -215,6 +215,8 @@ public:
     }
 
     ~RTBuilder() {}
+    RTBuilder(const RTBuilder&) = delete;
+    RTBuilder& operator=(const RTBuilder&) = delete;
 
 
     inline Value* get32BitLaneID(void)

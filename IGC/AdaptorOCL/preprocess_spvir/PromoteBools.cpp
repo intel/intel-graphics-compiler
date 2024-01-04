@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022 Intel Corporation
+Copyright (C) 2022-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -543,7 +543,7 @@ void PromoteBools::setPromotedAttributes(Function* newFunction, AttributeList& a
         }
 
         attrBuilder.clear();
-        for (auto attr : IGCLLVM::getParamAttrs(attributeList, i))
+        for (const auto& attr : IGCLLVM::getParamAttrs(attributeList, i))
         {
             attrBuilder.addAttribute(getPromoted(attr));
         }

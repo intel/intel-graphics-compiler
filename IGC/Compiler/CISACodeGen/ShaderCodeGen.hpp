@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -96,6 +96,8 @@ public:
 
     CShader(llvm::Function*, CShaderProgram* pProgram);
     virtual ~CShader();
+    CShader(const CShader&) = delete;
+    CShader& operator=(const CShader&) = delete;
     void        Destroy();
     virtual void InitEncoder(SIMDMode simdMode, bool canAbortOnSpill, ShaderDispatchMode shaderMode = ShaderDispatchMode::NOT_APPLICABLE);
     virtual void PreCompile() {}

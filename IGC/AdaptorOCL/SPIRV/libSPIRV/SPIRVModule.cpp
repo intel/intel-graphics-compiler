@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -76,6 +76,8 @@ public:
     AddrModel = sizeof(size_t) == 32 ? AddressingModelPhysical32 : AddressingModelPhysical64;
   };
   virtual ~SPIRVModuleImpl();
+  SPIRVModuleImpl(const SPIRVModuleImpl&) = delete;
+  SPIRVModuleImpl& operator=(const SPIRVModuleImpl&) = delete;
 
   // Object query functions
   bool exist(SPIRVId) const override;

@@ -883,7 +883,7 @@ private:
     // computation.
     CVariable* getOrCreatePerLaneOffsetVariable(unsigned TypeSizeInBytes)
     {
-        for (auto Item : PerLaneOffsetVars)
+        for (const auto& Item : PerLaneOffsetVars)
         {
             if (Item.first == TypeSizeInBytes)
             {

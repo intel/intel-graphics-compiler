@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -114,13 +114,22 @@ namespace IGC
         RegUse allUses[REGISTER_CLASS_TOTAL];
 
         RegUsage() { clear(); }
+        ~RegUsage() = default;
 
-        RegUsage& operator = (const RegUsage& rhs) {
-            for (int i = 0; i < REGISTER_CLASS_TOTAL; ++i) {
-                allUses[(RegClass)i] = rhs.allUses[(RegClass)i];
+        RegUsage(const RegUsage& copy_value)
+        {
+            copy(copy_value);
+        }
 
-            }
+        RegUsage& operator=(const RegUsage& rhs)
+        {
+            copy(rhs);
             return *this;
+        }
+
+        void copy(const RegUsage& copy_value)
+        {
+            std::copy(copy_value.allUses, copy_value.allUses + REGISTER_CLASS_TOTAL, allUses);
         }
 
         void clear()

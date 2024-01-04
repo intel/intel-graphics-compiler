@@ -55,7 +55,8 @@ namespace IGC
         static char ID; // Pass identification, replacement for typeid
 
         ScalarizeFunction(bool selectiveScalarization = false);
-
+        ScalarizeFunction(const ScalarizeFunction&) = delete;
+        ScalarizeFunction& operator=(const ScalarizeFunction&) = delete;
         ~ScalarizeFunction();
 
         /// @brief Provides name of pass

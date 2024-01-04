@@ -515,7 +515,7 @@ bool EmitPass::isSymbolTableRequired(llvm::Function* F)
         // Check has global symbols attached
         else if (!m_moduleMD->inlineProgramScopeOffsets.empty())
         {
-            for (auto it : m_moduleMD->inlineProgramScopeOffsets)
+            for (const auto& it : m_moduleMD->inlineProgramScopeOffsets)
             {
                 GlobalVariable* pGlobal = it.first;
                 // Export the symbol if global is external/common linkage
@@ -2774,7 +2774,7 @@ void EmitPass::EmitInsertValueToStruct(InsertValueInst* inst)
             //
             std::list<ArrayRef<unsigned>> toBeCopied;
             getAllDefinedMembers(src0, toBeCopied);
-            for (auto II : toBeCopied)
+            for (const auto& II : toBeCopied)
             {
                 // skip one that will be written by this inst
                 auto theIdx = inst->getIndices();
@@ -2941,7 +2941,7 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst* IVI)
             // handling here to avoid copy undefined values.
             std::list<ArrayRef<unsigned>> toBeCopied;
             getAllDefinedMembers(src0, toBeCopied);
-            for (auto II : toBeCopied)
+            for (const auto& II : toBeCopied)
             {
                 Type* ty0;
                 Type* ty1;

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -382,6 +382,8 @@ public:
     init();
   }
   virtual ~SPIRVInstTemplate(){}
+  SPIRVInstTemplate(const SPIRVInstTemplate&) = delete;
+  SPIRVInstTemplate& operator=(const SPIRVInstTemplate&) = delete;
   virtual void init() {
     this->initImpl(OC, HasId, WC, HasVariableWC, Literal1, Literal2, Literal3);
   }
@@ -919,6 +921,7 @@ public:
 
   SPIRVLoopMerge()
     : SPIRVInstruction(OC), MergeBlock(SPIRVID_MAX),
+    ContinueTarget(SPIRVWORD_MAX),
     LoopControl(SPIRVWORD_MAX) {
     setHasNoId();
     setHasNoType();
