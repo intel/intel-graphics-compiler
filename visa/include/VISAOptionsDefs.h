@@ -324,7 +324,7 @@ DEF_VISA_OPTION(vISA_forceBCR, ET_BOOL, "-forceBCR", UNUSED, false)
 DEF_VISA_OPTION(vISA_NewAugmentation, ET_BOOL_TRUE, "-newaugmentation",
                 "USAGE: -newaugmentation "
                 "enable using augmentation with holes",
-                false)
+                true)
 
 
 // clang-format off
