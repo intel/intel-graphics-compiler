@@ -8677,7 +8677,7 @@ namespace IGC
         LSC_OP subOp = getLSCAtomicOpCode(atomic_op);
 
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
-        LSC_ADDR addr;
+        LSC_ADDR addr = {};
         VISA_VectorOpnd* globalOffsetOpnd = nullptr;
         addr.type = LSC_ADDR_TYPE_FLAT;
 

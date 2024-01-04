@@ -1002,11 +1002,11 @@ void RebuildGlobalAnnotations(IGC::OpenCLProgramContext& oclContext, Module* pKe
     };
 
     std::vector<Constant*> newGlobalAnnotations;
-    auto annotations_array = dyn_cast<ConstantArray>(globalAnnotations->getOperand(0));
+    auto annotations_array = cast<ConstantArray>(globalAnnotations->getOperand(0));
     for (const auto& op : annotations_array->operands())
     {
-        auto annotation_struct = dyn_cast<ConstantStruct>(op.get());
-        auto annotated_function = dyn_cast<Function>(annotation_struct->getOperand(0)->getOperand(0));
+        auto annotation_struct = cast<ConstantStruct>(op.get());
+        auto annotated_function = cast<Function>(annotation_struct->getOperand(0)->getOperand(0));
 
         if (requiresRecompilation(annotated_function))
         {

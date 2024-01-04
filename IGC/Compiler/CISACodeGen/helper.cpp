@@ -2686,7 +2686,7 @@ namespace IGC
 
         for (auto UI = ptr->user_begin(), E = ptr->user_end(); UI != E; ++UI)
         {
-            Instruction* inst = dyn_cast<Instruction>(*UI);
+            Instruction* inst = cast<Instruction>(*UI);
             PointerType* instType = nullptr;
             if (isa<BitCastInst>(inst) || isa<GetElementPtrInst>(inst) ||
                 isa<AddrSpaceCastInst>(inst) || isa<PHINode>(inst))

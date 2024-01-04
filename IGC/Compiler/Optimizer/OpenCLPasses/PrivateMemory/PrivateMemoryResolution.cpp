@@ -482,7 +482,7 @@ static void sinkAllocaSingleUse(SmallVectorImpl<AllocaInst*>& Allocas) {
         {
             bool Skip = false;
             SmallVector<Instruction*, 8> UInsts;
-            auto UI = dyn_cast<Instruction>(A);
+            auto UI = cast<Instruction>(A);
             // can't sink phi nodes to other BBs
             // can't sink loads since we don't check for stores on the way
             if (isa<PHINode>(UI) || UI->mayReadFromMemory())

@@ -1699,7 +1699,7 @@ Type *JointMatrixFuncsResolutionPass::ResolveArrayType(Type *oldType)
     if (ResolvedTypes.count(oldType) > 0)
         return ResolvedTypes[oldType];
 
-    ArrayType *arrayType = dyn_cast<ArrayType>(oldType);
+    ArrayType *arrayType = cast<ArrayType>(oldType);
     Type *elemType = arrayType->getElementType();
     if (!isOrContainsMatrixType(elemType))
         return oldType;

@@ -166,7 +166,7 @@ void Legalization::visitInstruction(llvm::Instruction& I)
     BasicBlock* dBB = I.getParent();
 
     for (auto U : I.users()) {
-        auto UI = dyn_cast<Instruction>(U);
+        auto UI = cast<Instruction>(U);
         BasicBlock* uBB = UI->getParent();
         if (uBB != dBB)
         {

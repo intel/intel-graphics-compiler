@@ -676,7 +676,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorExtractCommonMultiplier(BinaryOpera
                             previousRoot = currentRoot;
                             if (removeCommonMultiplier(sumComponent, commonMultiplier))
                             {
-                                currentRoot = dyn_cast<Instruction>(*currentRoot->user_begin());
+                                currentRoot = llvm::cast<Instruction>(*currentRoot->user_begin());
                                 sumComponent = llvm::dyn_cast<llvm::Instruction>(currentRoot->getOperand(1));
                                 patternFound = true;
                             }

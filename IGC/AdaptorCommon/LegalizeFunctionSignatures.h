@@ -26,8 +26,6 @@ public:
 
     LegalizeFunctionSignatures();
 
-    ~LegalizeFunctionSignatures() {}
-
     virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const
     {
         AU.addRequired<IGC::CodeGenContextWrapper>();
