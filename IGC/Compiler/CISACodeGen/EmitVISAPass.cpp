@@ -20538,7 +20538,7 @@ void EmitPass::emitSetStackCallsBaseAddress(llvm::GenIntrinsicInst* I)
 
 void EmitPass::emitSaveInReservedArgSpace(llvm::SaveInReservedArgSpaceIntrinsic* I)
 {
-    if (!m_currShader->HasStackCalls() || m_encoder->IsSecondHalf())
+    if (m_encoder->IsSecondHalf())
         return;
 
     m_encoder->Copy(

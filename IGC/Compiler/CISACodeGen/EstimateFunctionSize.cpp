@@ -855,7 +855,8 @@ void EstimateFunctionSize::checkSubroutine() {
     EnableSubroutine = true;
     CodeGenContext* pContext = CGW->getCodeGenContext();
     if (pContext->type != ShaderType::OPENCL_SHADER &&
-        pContext->type != ShaderType::COMPUTE_SHADER)
+        pContext->type != ShaderType::COMPUTE_SHADER &&
+        pContext->type != ShaderType::RAYTRACING_SHADER)
         EnableSubroutine = false;
 
     if (EnableSubroutine)
