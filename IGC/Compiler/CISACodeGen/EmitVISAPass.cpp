@@ -14507,6 +14507,12 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *dstAddr,
     if (pllbuffer->getType()->getPointerAddressSpace() == ADDRESS_SPACE_GLOBAL)
     {
         m_currShader->SetHasGlobalAtomics();
+
+        // Global atomics with nullptr lead to GPU hang. Emit warning to avoid time-consuming debugging process.
+        if (resource.m_surfaceType == ESURFACE_STATELESS && isa<llvm::ConstantPointerNull>(pllbuffer))
+        {
+            m_pCtx->EmitWarning("Possible null pointer dereference! Atomic instruction operates on a nullptr.", pInst);
+        }
     }
 
     CVariable* pSrc0 = nullptr;
@@ -15300,7 +15306,9 @@ static void divergentBarrierCheck(
             I->print(SS, true);
             SS.flush();
             OS << '\n' << Repr;
-            Ctx.EmitError(OS, "Possible divergent barrier found", I);
+            OS << "\nerror: ";
+            Ctx.EmitMessage(OS, "Possible divergent barrier found", I);
+            OS << "\nerror: backend compiler failed build.\n";
         }
     }
 }

@@ -1076,9 +1076,9 @@ namespace IGC
         virtual ~CodeGenContext();
         void clear();
         void clearMD();
-        void EmitError(std::ostream &OS, const char* errorstr, const llvm::Value *context) const;
+        void EmitMessage(std::ostream &OS, const char* errorstr, const llvm::Value *context) const;
         void EmitError(const char* errorstr, const llvm::Value *context);
-        void EmitWarning(const char* warningstr);
+        void EmitWarning(const char* warningstr, const llvm::Value *context = nullptr);
         inline bool HasError() const { return !this->oclErrorMessage.str().empty(); }
         inline bool HasWarning() const { return !this->oclWarningMessage.str().empty(); }
         inline const std::string GetWarning() { return this->oclWarningMessage.str(); }

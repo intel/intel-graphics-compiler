@@ -718,10 +718,9 @@ namespace IGC
 #endif
     }
 
-    void CodeGenContext::EmitError(std::ostream &OS, const char* errorstr, const llvm::Value* context) const
+    void CodeGenContext::EmitMessage(std::ostream &OS, const char* messagestr, const llvm::Value* context) const
     {
-        OS << "\nerror: ";
-        OS << errorstr;
+        OS << messagestr;
         // Try to get debug location to print out the relevant info.
         if (const llvm::Instruction *I = llvm::dyn_cast_or_null<llvm::Instruction>(context)) {
             if (const llvm::DILocation *DL = I->getDebugLoc()) {
@@ -755,18 +754,19 @@ namespace IGC
                 }
             }
         }
-        OS << "\nerror: backend compiler failed build.\n";
     }
 
     void CodeGenContext::EmitError(const char* errorstr, const llvm::Value *context)
     {
-        EmitError(this->oclErrorMessage, errorstr, context);
+        this->oclErrorMessage << "\nerror: ";
+        EmitMessage(this->oclErrorMessage, errorstr, context);
+        this->oclErrorMessage << "\nerror: backend compiler failed build.\n";
     }
 
-    void CodeGenContext::EmitWarning(const char* warningstr)
+    void CodeGenContext::EmitWarning(const char* warningstr, const llvm::Value* context)
     {
         this->oclWarningMessage << "\nwarning: ";
-        this->oclWarningMessage << warningstr;
+        EmitMessage(this->oclWarningMessage, warningstr, context);
         this->oclWarningMessage << "\n";
     }
 
