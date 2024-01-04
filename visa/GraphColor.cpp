@@ -3856,7 +3856,14 @@ void Augmentation::handleCallSite(G4_BB *curBB, unsigned int &funcCnt) {
     // If a function has multiple call sites to same
     // callee then there would be as many trivial
     // live-intervals for corresponding RET__loc dcl.
-    gra.pushBackNewInterval(retLocDcl);
+
+    // RET__loc dcl in entryBB is identified as LiveThrough
+    // rather than DefBeforeEachCall. LiveThrough variable's
+    // interference is fully handled by SIMT. So we don't
+    // need to create the short interval for RET__loc at
+    // call site.
+    if (isDefBeforeEachCallArg(retLocDcl))
+      gra.pushBackNewInterval(retLocDcl);
 
     auto *callee = curBB->getCalleeInfo();
     vISA_ASSERT(argsPerSub.count(callee) > 0, "didnt find entry for sub");
@@ -5628,8 +5635,8 @@ void Augmentation::augmentIntfGraph() {
       dclIntervals.reserve(sortedIntervals.size());
       for (auto &interval : sortedIntervals) {
         auto dcl = interval.dcl;
-        dclIntervals.push_back(std::make_tuple(
-            dcl, gra.getLastStartInterval(dcl), gra.getLastEndInterval(dcl)));
+        dclIntervals.push_back(std::make_tuple(dcl, interval.interval.start,
+                                               interval.interval.end));
       }
       updateDebugInfo(kernel, dclIntervals);
     }
