@@ -161,7 +161,7 @@ class LiveRange final {
   unsigned numRegNeeded;
   unsigned degree = 0;
   unsigned refCount = 0;
-  unsigned parentLRID;
+  unsigned parentLRID = 0;
   AssignedReg reg;
   float spillCost = 0.0f;
   BankConflict bc = BANK_CONFLICT_NONE;

@@ -252,7 +252,7 @@ struct MessageDecoder {
   }
 
   void
-  setScatterGatherOp(const std::string& msgSym, const std::string& msgDesc, SendOp op,
+  setScatterGatherOp(const std::string &msgSym, const std::string &msgDesc, SendOp op,
                      AddrType addrType, SendDesc surfaceId, int addrSize,
                      int bitsPerElem, int elemsPerAddr, int simd,
                      MessageInfo::Attr extraAttrs = MessageInfo::Attr::NONE) {

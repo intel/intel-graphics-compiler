@@ -271,6 +271,9 @@ public:
       delete ds;
   }
 
+  DepSetBuilder(const DepSetBuilder &) = delete;
+  DepSetBuilder &operator=(const DepSetBuilder &) = delete;
+
 public:
   // DepSet creater
   /// createSrcDepSet - create DepSet for src operands of instruction i

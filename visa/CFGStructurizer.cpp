@@ -73,7 +73,7 @@ typedef std::map<ANode *, ANode *> ANodeMap;
 // ANode base, abstract class
 class ANode {
 public:
-  uint32_t anodeId;
+  uint32_t anodeId = 0;
   ANodeType type;
   ANList preds;
   ANList succs;
@@ -140,8 +140,8 @@ public:
 
 private:
   // copy-ctor and assignment operator are not allowed
-  ANode(const ANode &);
-  ANode &operator=(const ANode &);
+  ANode(const ANode &) = delete;
+  ANode &operator=(const ANode &) = delete;
 };
 
 // ANodeBB : ANode for a single BB
@@ -160,10 +160,10 @@ public:
   //                                      endif (join)
   //                                    label0:
   //
-  bool isJmpiTarget;
+  bool isJmpiTarget = false;
 
   explicit ANodeBB()
-      : ANode(AN_BB), bb(nullptr), type(ANODEBB_NORMAL), isJmpiTarget(false) {}
+      : ANode(AN_BB), bb(nullptr), type(ANODEBB_NORMAL) {}
   explicit ANodeBB(G4_BB *b) : ANode(AN_BB), bb(b), type(ANODEBB_NORMAL) {}
   virtual ~ANodeBB() {}
 

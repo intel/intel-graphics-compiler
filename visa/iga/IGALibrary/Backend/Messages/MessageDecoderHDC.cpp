@@ -324,7 +324,7 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
   //
 
   // allows different data sizes in mem and reg
-  void setHdcMessageX(const std::string& msgSym, const std::string& msgDesc, SendOp op,
+  void setHdcMessageX(const std::string &msgSym, const std::string &msgDesc, SendOp op,
                       int addrSizeBits, int bitsPerElemReg, int bitsPerElemMem,
                       int elemsPerAddr, int execSize,
                       MessageInfo::Attr extraAttrs) {
@@ -429,7 +429,7 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
                    elemsPerAddr, execSize, extraAttrs);
   }
 
-  void setHdcOwBlock(const std::string& msgSym, const std::string& msgDesc, SendOp op,
+  void setHdcOwBlock(const std::string &msgSym, const std::string &msgDesc, SendOp op,
                      int addrSize, MessageInfo::Attr extraAttrs) {
     enum MDC_A64_DB_OW {
       OW1L = 0x0,

@@ -45,7 +45,7 @@ class StaticCycleProfiling {
   G4_Kernel &kernel;
   std::vector<InstCycle> tokenInsts;
   std::vector<DistPipeInsts> distInsts;
-  LatencyTable *LT;
+  LatencyTable *LT = nullptr;
 
   unsigned BBStaticCycleProfiling(G4_BB *bb);
 

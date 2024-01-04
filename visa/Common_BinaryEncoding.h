@@ -128,7 +128,7 @@ public:
   uint32_t instNumber;      // Global instruction number
   bool compacted = false;
 
-  uint64_t genOffset;
+  uint64_t genOffset = 0;
 
   BinInst() {
     DWords[0] = 0;

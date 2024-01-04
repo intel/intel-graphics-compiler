@@ -580,6 +580,9 @@ public:
             uint32_t funcId, unsigned char major, unsigned char minor);
   ~G4_Kernel();
 
+  G4_Kernel(const G4_Kernel &) = delete;
+  G4_Kernel& operator=(const G4_Kernel &) = delete;
+
   TARGET_PLATFORM getPlatform() const { return platformInfo.platform; }
   PlatformGen getPlatformGeneration() const { return platformInfo.family; }
   const char *getGenxPlatformString() const {

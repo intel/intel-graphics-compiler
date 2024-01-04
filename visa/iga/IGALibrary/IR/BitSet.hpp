@@ -71,6 +71,23 @@ public:
     return *this;
   }
 
+  BitSet<I> &operator=(BitSet<I> &&rhs) {
+    if (this == &rhs) {
+      return *this;
+    }
+    if (words) {
+      delete[] words;
+    }
+
+    N = rhs.N;
+    wordsSize = rhs.wordsSize;
+    words = rhs.words;
+
+    rhs.words = nullptr;
+
+    return *this;
+  }
+
   ~BitSet() {
     if (words) {
       delete[] words;

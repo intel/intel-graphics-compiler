@@ -366,7 +366,7 @@ public:
 };
 
 class SaveRestoreInfo {
-    G4_INST* i = nullptr;
+  G4_INST *i = nullptr;
 
 public:
   // Map src GRF->GRF/Memory
