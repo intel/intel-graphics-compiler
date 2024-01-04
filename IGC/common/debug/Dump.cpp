@@ -66,6 +66,8 @@ const char* GetShaderTypeAcronym(ShaderType shaderType)
         return "CS"; break;
     case ShaderType::RAYTRACING_SHADER:
         return "RT"; break;
+    case ShaderType::BINDLESS_SHADER:
+        return "RTMS"; break;
     case ShaderType::UNKNOWN:
     default:
         IGC_ASSERT_MESSAGE(0, "Unknown Shader Type");
