@@ -8353,7 +8353,7 @@ void VISAKernelImpl::finalizeAttributes() {
   if (!m_kernelAttrs->isKernelAttrSet(Attributes::ATTR_Target)) {
     VISATarget target = m_options->getTarget();
     uint8_t val = (uint8_t)target;
-    AddKernelAttribute("Target", 1, &val);
+    AddKernelAttribute("Target", sizeof(val), &val);
   }
 }
 

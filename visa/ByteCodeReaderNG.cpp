@@ -2984,7 +2984,7 @@ static void readRoutineNG(unsigned &bytePos, const char *buf,
   if (!kernelBuilderImpl->getKernelAttributes()->isKernelAttrSet(
           vISA::Attributes::ATTR_Target)) {
     VISATarget target = kernelBuilderImpl->getOptions()->getTarget();
-    kernelBuilderImpl->AddKernelAttribute("Target", 1, &target);
+    kernelBuilderImpl->AddKernelAttribute("Target", sizeof(target), &target);
   }
 
   unsigned kernelEntry = kernelStart + header.entry;

@@ -972,7 +972,7 @@ void addKernelAttrsFromMetadata(VISAKernel &Kernel,
   if (Subtarget->hasNBarrier()) {
     uint8_t BarrierCnt =
         static_cast<uint8_t>(KM.getAlignedBarrierCnt(HasBarrier));
-    Kernel.AddKernelAttribute("NBarrierCnt", 1, &BarrierCnt);
+    Kernel.AddKernelAttribute("NBarrierCnt", sizeof(BarrierCnt), &BarrierCnt);
   }
 }
 
@@ -5569,17 +5569,17 @@ void GenXKernelBuilder::beginFunctionLight(Function *Func) {
   if (vc::isIndirect(Func) &&
       !BackendConfig->directCallsOnly(Func->getName())) {
     int ExtVal = 1;
-    Kernel->AddKernelAttribute("Extern", 4, &ExtVal);
+    Kernel->AddKernelAttribute("Extern", sizeof(ExtVal), &ExtVal);
   }
   // stack function prologue
   auto *MDArg = Func->getMetadata(vc::InstMD::FuncArgSize);
   auto *MDRet = Func->getMetadata(vc::InstMD::FuncRetSize);
   IGC_ASSERT(MDArg && MDRet);
-  auto ArgSize =
+  uint32_t ArgSize =
       cast<ConstantInt>(
           cast<ConstantAsMetadata>(MDArg->getOperand(0).get())->getValue())
           ->getZExtValue();
-  auto RetSize =
+  uint32_t RetSize =
       cast<ConstantInt>(
           cast<ConstantAsMetadata>(MDRet->getOperand(0).get())->getValue())
           ->getZExtValue();
@@ -5587,8 +5587,8 @@ void GenXKernelBuilder::beginFunctionLight(Function *Func) {
   auto *StackCallee = Func2Kern[Func];
   StackCallee->SetFunctionInputSize(ArgSize);
   StackCallee->SetFunctionReturnSize(RetSize);
-  StackCallee->AddKernelAttribute("ArgSize", 1, &ArgSize);
-  StackCallee->AddKernelAttribute("RetValSize", 1, &RetSize);
+  StackCallee->AddKernelAttribute("ArgSize", sizeof(ArgSize), &ArgSize);
+  StackCallee->AddKernelAttribute("RetValSize", sizeof(RetSize), &RetSize);
 }
 
 void GenXKernelBuilder::buildStackCallLight(CallInst *CI,

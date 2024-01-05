@@ -2537,7 +2537,9 @@ namespace IGC
                 {
                     perThreadInputSize *= 2;
                 }
-                encoder.GetVISAKernel()->AddKernelAttribute("PerThreadInputSize", sizeof(uint16_t), &perThreadInputSize);
+                encoder.GetVISAKernel()->AddKernelAttribute(
+                    "PerThreadInputSize", sizeof(perThreadInputSize),
+                    &perThreadInputSize);
             }
         }
 

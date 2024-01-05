@@ -2538,7 +2538,7 @@ bool CISA_IR_Builder::CISA_attr_directive(const char *input_name,
       RecordParseError(lineNum, "invalid kernel target attribute");
       return false;
     }
-    m_kernel->AddKernelAttribute(input_name, 1, &visa_target);
+    m_kernel->AddKernelAttribute(input_name, sizeof(visa_target), &visa_target);
   } else {
     m_kernel->AddKernelAttribute(
         input_name,

@@ -914,7 +914,9 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
     if (m_moduleMD->NBarrierCnt > 0)
     {
-        m_encoder->GetVISAKernel()->AddKernelAttribute("NBarrierCnt", 1, &m_moduleMD->NBarrierCnt);
+        m_encoder->GetVISAKernel()->AddKernelAttribute(
+            "NBarrierCnt", sizeof(m_moduleMD->NBarrierCnt),
+            &m_moduleMD->NBarrierCnt);
         m_currShader->SetBarrierNumber(
             NamedBarriersResolution::AlignNBCnt2BarrierNumber(
                 m_moduleMD->NBarrierCnt + 1 /* +1 for TG barrier */));

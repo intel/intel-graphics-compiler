@@ -5373,7 +5373,7 @@ namespace IGC
     {
         IGC_ASSERT(nullptr != vKernel);
         uint8_t dispatchSIMD = (uint8_t)numLanes(m_program->m_dispatchSize);
-        V(vKernel->AddKernelAttribute("SimdSize", 1, &dispatchSIMD));
+        V(vKernel->AddKernelAttribute("SimdSize", sizeof(dispatchSIMD), &dispatchSIMD));
     }
 
     void CEncoder::SetSpillMemOffset()
@@ -5399,7 +5399,8 @@ namespace IGC
         }
         else
         {
-            V(vKernel->AddKernelAttribute("SpillMemOffset", 4, &scratchSpaceSizeTemp));
+            V(vKernel->AddKernelAttribute("SpillMemOffset", sizeof(scratchSpaceSizeTemp),
+                                          &scratchSpaceSizeTemp));
         }
     }
 
@@ -5418,14 +5419,14 @@ namespace IGC
     {
         uint8_t sz = (uint8_t)size;
         IGC_ASSERT(nullptr != vKernel);
-        V(vKernel->AddKernelAttribute("ArgSize", 1, &sz));
+        V(vKernel->AddKernelAttribute("ArgSize", sizeof(sz), &sz));
     }
 
     void CEncoder::SetStackFunctionRetSize(uint size)
     {
         uint8_t sz = (uint8_t)size;
         IGC_ASSERT(nullptr != vKernel);
-        V(vKernel->AddKernelAttribute("RetValSize", 1, &sz));
+        V(vKernel->AddKernelAttribute("RetValSize", sizeof(sz), &sz));
     }
 
     void CEncoder::SetExternFunctionFlag()
@@ -6129,7 +6130,7 @@ namespace IGC
                             auto vFunc = vAsmTextBuilder->GetVISAKernel(F.getName().data());
                             IGC_ASSERT(vFunc);
                             bool enabled = true;
-                            vFunc->AddKernelAttribute("LTO_InvokeOptTarget", 1, &enabled);
+                            vFunc->AddKernelAttribute("LTO_InvokeOptTarget", sizeof(enabled), &enabled);
                         }
                     }
                 }
