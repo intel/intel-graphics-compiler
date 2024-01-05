@@ -1132,9 +1132,12 @@ StoreInst* PromoteBools::promoteStore(StoreInst* store)
         return store;
     }
 
+    auto promotedSrc = convertI1ToI8(getOrCreatePromotedValue(src), store);
+    auto promotedDst = convertI1ToI8(getOrCreatePromotedValue(dst), store);
+
     auto newStore = new StoreInst(
-        getOrCreatePromotedValue(src),
-        getOrCreatePromotedValue(dst),
+        promotedSrc,
+        promotedDst,
         store->isVolatile(),
         store
     );
