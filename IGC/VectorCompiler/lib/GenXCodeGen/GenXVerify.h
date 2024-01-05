@@ -67,7 +67,7 @@ private:
       cl::desc("Do not display non-fatal warnings.")};
 
   static inline const StringRef DbgPrefix = "GenXVerify";
-  LLVMContext *Ctx;
+  LLVMContext *Ctx = nullptr;
   bool IsBroken = false;
   GenXVerifyStage Stage;
   enum class IsFatal { No = 0, Yes = 1 };

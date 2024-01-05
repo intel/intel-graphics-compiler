@@ -183,7 +183,7 @@ Value *GenXLoadStoreLegalization::splitMemoryOperation(Value *InsertTo,
                                                        unsigned SplitWidth,
                                                        unsigned &Index) const {
   const auto ExecSize = vc::InternalIntrinsic::getMemorySimdWidth(&CI);
-  const auto VectorSize =
+  const uint64_t VectorSize =
       vc::InternalIntrinsic::getMemoryVectorSizePerLane(&CI);
 
   auto *Func = getMemoryIntrinsic(CI, SplitWidth);
@@ -219,7 +219,7 @@ Value *GenXLoadStoreLegalization::extendMemoryOperation(Value *InsertTo,
                                                         unsigned ExtendWidth,
                                                         unsigned Index) const {
   const auto ExecSize = vc::InternalIntrinsic::getMemorySimdWidth(&CI);
-  const auto VectorSize =
+  const uint64_t VectorSize =
       vc::InternalIntrinsic::getMemoryVectorSizePerLane(&CI);
   const auto RestSize = ExecSize - Index;
   if (RestSize == 0)
