@@ -726,6 +726,9 @@ bool InternalIntrinsic::isInternalMemoryIntrinsic(InternalIntrinsic::ID id) {
   case InternalIntrinsic::lsc_store_quad_bss:
   case InternalIntrinsic::lsc_store_quad_slm:
   case InternalIntrinsic::lsc_store_quad_ugm:
+  case InternalIntrinsic::lsc_load_quad_tgm:
+  case InternalIntrinsic::lsc_prefetch_quad_tgm:
+  case InternalIntrinsic::lsc_store_quad_tgm:
   case InternalIntrinsic::lsc_load_block_2d_ugm:
   case InternalIntrinsic::lsc_load_block_2d_ugm_transposed:
   case InternalIntrinsic::lsc_load_block_2d_ugm_vnni:
@@ -758,6 +761,9 @@ bool InternalIntrinsic::isMemoryBlockIntrinsic(const llvm::Instruction *I) {
   case InternalIntrinsic::lsc_store_quad_bss:
   case InternalIntrinsic::lsc_store_quad_slm:
   case InternalIntrinsic::lsc_store_quad_ugm:
+  case InternalIntrinsic::lsc_load_quad_tgm:
+  case InternalIntrinsic::lsc_prefetch_quad_tgm:
+  case InternalIntrinsic::lsc_store_quad_tgm:
     return false;
   }
 
@@ -809,6 +815,9 @@ InternalIntrinsic::getMemoryVectorSizePerLane(const llvm::Instruction *I) {
 
     IGC_ASSERT_UNREACHABLE();
   }
+  case InternalIntrinsic::lsc_load_quad_tgm:
+  case InternalIntrinsic::lsc_prefetch_quad_tgm:
+  case InternalIntrinsic::lsc_store_quad_tgm:
   case InternalIntrinsic::lsc_load_quad_bti:
   case InternalIntrinsic::lsc_load_quad_bss:
   case InternalIntrinsic::lsc_load_quad_slm:
@@ -852,6 +861,11 @@ InternalIntrinsic::getMemoryRegisterElementSize(const llvm::Instruction *I) {
   switch (IID) {
   default:
     break;
+  // All typed intrinsics work with 32-bit elements
+  case InternalIntrinsic::lsc_load_quad_tgm:
+  case InternalIntrinsic::lsc_prefetch_quad_tgm:
+  case InternalIntrinsic::lsc_store_quad_tgm:
+    return 32;
   case InternalIntrinsic::lsc_atomic_bti:
   case InternalIntrinsic::lsc_atomic_slm:
   case InternalIntrinsic::lsc_atomic_ugm:

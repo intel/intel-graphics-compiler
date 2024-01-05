@@ -579,6 +579,52 @@
       "Offset": ["INT", 9],
       "Data": ["RAW", 10]
     },
+    "vc::InternalIntrinsic::lsc_load_quad_tgm" : {
+      "opc": "ISA_LSC_TYPED",
+      "gen_opc": "ISA_LSC_TYPED_LOAD",
+      "exec_size": ["EXECSIZE_FROM_ARG", 1],
+      "pred": ["PREDICATION", 1],
+      "L1_Hints": ["BYTE", 2],
+      "L3_Hints": ["BYTE", 3],
+      "ChMask": ["BYTE", 4],
+      "Surface": ["GENERAL", "UNSIGNED", 5],
+      "Dst": ["RAW", 0],
+      "AddrsU": ["RAW", "UNSIGNED", "RAW_NULLALLOWED", 6],
+      "AddrsV": ["RAW", "UNSIGNED", "RAW_NULLALLOWED", 7],
+      "AddrsR": ["RAW", "UNSIGNED", "RAW_NULLALLOWED", 8],
+      "AddrsLOD": ["RAW", "UNSIGNED", "RAW_NULLALLOWED", 9],
+      "twoaddr": ["TWOADDR", 10]
+    },
+    "vc::InternalIntrinsic::lsc_store_quad_tgm" : {
+      "opc": "ISA_LSC_TYPED",
+      "gen_opc": "ISA_LSC_TYPED_STORE",
+      "exec_size": ["EXECSIZE_FROM_ARG", 1],
+      "pred": ["PREDICATION", 1],
+      "L1_Hints": ["BYTE", 2],
+      "L3_Hints": ["BYTE", 3],
+      "ChMask": ["BYTE", 4],
+      "Surface": ["GENERAL", "UNSIGNED", 5],
+      "AddrsU": ["RAW", "UNSIGNED", "RAW_NULLALLOWED", 6],
+      "AddrsV": ["RAW", "UNSIGNED", "RAW_NULLALLOWED", 7],
+      "AddrsR": ["RAW", "UNSIGNED", "RAW_NULLALLOWED", 8],
+      "AddrsLOD": ["RAW", "UNSIGNED", "RAW_NULLALLOWED", 9],
+      "Src": ["RAW", 10]
+    },
+    "vc::InternalIntrinsic::lsc_prefetch_quad_tgm" : {
+      "opc": "ISA_LSC_TYPED",
+      "gen_opc": "ISA_LSC_TYPED_LOAD",
+      "exec_size": ["EXECSIZE_FROM_ARG", 1],
+      "pred": ["PREDICATION", 1],
+      "L1_Hints": ["BYTE", 2],
+      "L3_Hints": ["BYTE", 3],
+      "ChMask": ["BYTE", 4],
+      "Surface": ["GENERAL", "UNSIGNED", 5],
+      "Dst": ["NULLRAW"],
+      "AddrsU": ["RAW", "UNSIGNED", "RAW_NULLALLOWED", 6],
+      "AddrsV": ["RAW", "UNSIGNED", "RAW_NULLALLOWED", 7],
+      "AddrsR": ["RAW", "UNSIGNED", "RAW_NULLALLOWED", 8],
+      "AddrsLOD": ["RAW", "UNSIGNED", "RAW_NULLALLOWED", 9]
+    },
     "vc::InternalIntrinsic::lsc_load_block_2d_ugm" : {
       "opc": "ISA_LSC_UNTYPED",
       "gen_opc": "ISA_LSC_UNTYPED_BLOCK_2D",
@@ -3644,6 +3690,36 @@
       "barrier_id": [ "GENERAL", 2 ],
       "thread_count": [ "GENERAL", 3 ]
     },
+    "genx_lsc_load2d_typed_bti" : {
+      "opc": "ISA_LSC_TYPED",
+      "gen_opc": "ISA_LSC_TYPED_2D",
+      "sub_opc": [ "LITERAL", "LSC_LOAD_BLOCK2D" ],
+      "address_model": [ "LITERAL", "LSC_ADDR_TYPE_BTI" ],
+      "Dst": [ "RAW", 0 ],
+      "L1_Hints": [ "BYTE", 1 ],
+      "L3_Hints": [ "BYTE", 2 ],
+      "Surface": [ "GENERAL", "UNSIGNED", 3 ],
+      "BlockHeight": [ "BYTE", 4 ],
+      "BlockWidth": [ "BYTE", 5 ],
+      "XOff": [ "GENERAL", "UNSIGNED", 6 ],
+      "YOff": [ "GENERAL", "UNSIGNED", 7 ],
+      "Src": [ "NULLRAW" ]
+    },
+    "genx_lsc_store2d_typed_bti" : {
+      "opc": "ISA_LSC_TYPED",
+      "gen_opc": "ISA_LSC_TYPED_2D",
+      "sub_opc": [ "LITERAL", "LSC_STORE_BLOCK2D" ],
+      "address_model": [ "LITERAL", "LSC_ADDR_TYPE_BTI" ],
+      "Dst": [ "NULLRAW" ],
+      "L1_Hints": [ "BYTE", 1 ],
+      "L3_Hints": [ "BYTE", 2 ],
+      "Surface": [ "GENERAL", "UNSIGNED", 3 ],
+      "BlockHeight": [ "BYTE", 4 ],
+      "BlockWidth": [ "BYTE", 5 ],
+      "XOff": [ "GENERAL", "UNSIGNED", 6 ],
+      "YOff": [ "GENERAL", "UNSIGNED", 7 ],
+      "Src": [ "RAW", 8 ]
+    },
     "genx_lsc_fence": {
       "opc": "ISA_LSC_FENCE",
       "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
@@ -3752,6 +3828,55 @@
         "(LSC_SFID)LscSFID",
         "(LSC_FENCE_OP)LscFenceOp",
         "(LSC_SCOPE)LscScope"
+      ]
+    ],
+    "ISA_LSC_TYPED_LOAD": [
+      "LSC_CACHE_OPTS cache {(LSC_CACHE_OPT) L1_Hints, (LSC_CACHE_OPT) L3_Hints}",
+      [ "CreateLscTypedLoadQuad",
+        "pred",
+        "exec_size",
+        "exec_mask",
+        "cache",
+        "(LSC_DATA_CHMASK)ChMask",
+        "Surface",
+        "Dst",
+        "AddrsU",
+        "AddrsV",
+        "AddrsR",
+        "AddrsLOD"
+      ]
+    ],
+    "ISA_LSC_TYPED_STORE": [
+      "LSC_CACHE_OPTS cache {(LSC_CACHE_OPT) L1_Hints, (LSC_CACHE_OPT) L3_Hints}",
+      [ "CreateLscTypedStoreQuad",
+        "pred",
+        "exec_size",
+        "exec_mask",
+        "cache",
+        "(LSC_DATA_CHMASK)ChMask",
+        "Surface",
+        "AddrsU",
+        "AddrsV",
+        "AddrsR",
+        "AddrsLOD",
+        "Src"
+      ]
+    ],
+    "ISA_LSC_TYPED_2D": [
+      "LSC_DATA_SHAPE_TYPED_BLOCK2D dataShape2D",
+      "LSC_CACHE_OPTS cache {(LSC_CACHE_OPT) L1_Hints, (LSC_CACHE_OPT) L3_Hints}",
+      "dataShape2D.height = BlockHeight",
+      "dataShape2D.width = BlockWidth",
+      [ "CreateLscTyped2D",
+        "sub_opc",
+        "cache",
+        "address_model",
+        "Surface",
+        "dataShape2D",
+        "Dst",
+        "Src",
+        "XOff",
+        "YOff"
       ]
     ],
     "ISA_LSC_ATOMIC": [

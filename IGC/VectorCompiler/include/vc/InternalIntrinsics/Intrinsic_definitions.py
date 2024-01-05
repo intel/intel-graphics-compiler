@@ -724,6 +724,63 @@ Imported_Intrinsics = {
                                 ],
                                 "attributes": "WriteMem", },
 
+## ``llvm.vc.internal.lsc.*.quad.tgm`` : Typed LSC load intrinsic
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+## * arg0: vNi1 Predicate (overloaded)
+## * arg1: i8 L1 cache controls [MBC]
+## * arg2: i8 L3 cache controls [MBC]
+## * arg3: i8 Channel mask [MBC]
+## * arg4: i32 BTI
+## * arg5: vNi32 U pixel indices (overloaded)
+## * arg6: vNi32 V pixel indices
+## * arg7: vNi32 R pixel indices
+## * arg8: vNi32 LOD pixel indices
+## * arg9: vector to take values for masked simd lanes from (load)
+##         vector to take values to write (store)
+##
+## * Return value: the value read from memory (load) or void (store, prefetch)
+##
+    "lsc_load_quad_tgm": { "result": "anyvector",
+                           "arguments": [
+                               "anyint", # vNxi1, predicate
+                               "char",   # L1 cache control
+                               "char",   # L3 cache control
+                               "char",   # channel mask
+                               "int",    # i32 BTI
+                               "anyint", # vNi32 U pixel index
+                               2,        # vNi32 V pixel index
+                               2,        # vNi32 R pixel index
+                               2,        # vNi32 LOD pixel index
+                               0,        # passthru value
+                           ],
+                           "attributes": "ReadMem", },
+    "lsc_store_quad_tgm": { "result": "void",
+                            "arguments": [
+                                "anyint",    # vNxi1, predicate
+                                "char",      # L1 cache control
+                                "char",      # L3 cache control
+                                "char",      # channel mask
+                                "int",       # i32 BTI
+                                "anyint",    # vNi32 U pixel index
+                                1,           # vNi32 V pixel index
+                                1,           # vNi32 R pixel index
+                                1,           # vNi32 LOD pixel index
+                                "anyvector", # data to write
+                            ],
+                            "attributes": "WriteMem", },
+    "lsc_prefetch_quad_tgm": { "result": "void",
+                               "arguments": [
+                                   "anyint",    # vNxi1, predicate
+                                   "char",      # L1 cache control
+                                   "char",      # L3 cache control
+                                   "char",      # channel mask
+                                   "int",       # i32 BTI
+                                   "anyint",    # vNi32 U pixel index
+                                   1,           # vNi32 V pixel index
+                                   1,           # vNi32 R pixel index
+                                   1,           # vNi32 LOD pixel index
+                               ],
+                               "attributes": "SideEffects", },
 
 ### --------------------
 ### Thread ID intrinsics

@@ -61,8 +61,10 @@ void GenXSubtarget::initSubtargetFeatures(StringRef CPU, StringRef FS) {
                  .Case("XeHP", XeHP)
                  .Case("XeHPG", XeHPG)
                  .Case("XeLPG", XeLPG)
+                 .Case("XeLPGPlus", XeLPGPlus)
                  .Case("XeHPC", XeHPC)
                  .Case("XeHPCVG", XeHPCVG)
+                 .Case("Xe2", Xe2)
                  .Default(Invalid);
 
   std::string CPUName(CPU);
@@ -98,9 +100,12 @@ uint32_t GenXSubtarget::getMaxThreadsNumPerSubDevice() const {
   case XeHP:
   case XeHPG:
   case XeLPG:
+  case XeLPGPlus:
   case XeHPC:
   case XeHPCVG:
     return 1 << 12;
+  case Xe2:
+    return 1 << 13;
   }
   return 0;
 }
@@ -110,7 +115,8 @@ ArrayRef<std::pair<int, int>> GenXSubtarget::getThreadIdReservedBits() const {
   switch (TargetId) {
   case GenXSubtarget::XeHP:
   case GenXSubtarget::XeHPG:
-  case GenXSubtarget::XeLPG: {
+  case GenXSubtarget::XeLPG:
+  case GenXSubtarget::XeLPGPlus: {
     // [13:11] Slice ID.
     // [10:9] Dual - SubSlice ID
     // [8] SubSlice ID.
@@ -134,6 +140,17 @@ ArrayRef<std::pair<int, int>> GenXSubtarget::getThreadIdReservedBits() const {
     static const std::pair<int, int> Bits[] = {{6, 2}, {3, 1}};
     return Bits;
   }
+  case GenXSubtarget::Xe2: {
+    // [15:11] Slice ID.
+    // [10] : Reserved MBZ
+    // [9:8] SubSlice ID
+    // [7] : Reserved MBZ
+    // [6:4] : EUID
+    // [3] : Reserved MBZ
+    // [2:0] : TID
+    static const std::pair<int, int> Bits[] = {{10, 1}, {7, 1}, {3, 1}};
+    return Bits;
+  }
   default:
     // All other platforms have pre-defined Thread ID register
     return {};
@@ -151,7 +168,8 @@ ArrayRef<std::pair<int, int>> GenXSubtarget::getSubsliceIdBits() const {
   switch (TargetId) {
   case GenXSubtarget::XeHP:
   case GenXSubtarget::XeHPG:
-  case GenXSubtarget::XeLPG: {
+  case GenXSubtarget::XeLPG:
+  case GenXSubtarget::XeLPGPlus: {
     // [13:11] Slice ID.
     // [10:9] Dual - SubSlice ID
     // [8] SubSlice ID.
@@ -174,7 +192,8 @@ ArrayRef<std::pair<int, int>> GenXSubtarget::getEUIdBits() const {
   switch (TargetId) {
   case GenXSubtarget::XeHP:
   case GenXSubtarget::XeHPG:
-  case GenXSubtarget::XeLPG: {
+  case GenXSubtarget::XeLPG:
+  case GenXSubtarget::XeLPGPlus: {
     // [7] : EUID[2]
     // [6] : Reserved
     // [5:4] EUID[1:0]
@@ -187,6 +206,11 @@ ArrayRef<std::pair<int, int>> GenXSubtarget::getEUIdBits() const {
     // [7:6] : Reserved
     // [5:4] EUID[1:0]
     static const std::pair<int, int> Bits[] = {{4, 2}, {8, 1}};
+    return Bits;
+  }
+  case GenXSubtarget::Xe2: {
+    // [6:4] : EUID
+    static const std::pair<int, int> Bits[] = {{4, 3}};
     return Bits;
   }
   default:
@@ -221,12 +245,16 @@ TARGET_PLATFORM GenXSubtarget::getVisaPlatform() const {
     return TARGET_PLATFORM::Xe_DG2;
   case XeLPG:
     return TARGET_PLATFORM::Xe_MTL;
+  case XeLPGPlus:
+    return TARGET_PLATFORM::Xe_ARL;
   case XeHPC:
     if (!partialI64Emulation())
       return TARGET_PLATFORM::Xe_PVC;
     LLVM_FALLTHROUGH;
   case XeHPCVG:
     return TARGET_PLATFORM::Xe_PVCXT;
+  case Xe2:
+    return TARGET_PLATFORM::Xe2;
   default:
     return TARGET_PLATFORM::GENX_NONE;
   }

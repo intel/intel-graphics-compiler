@@ -92,6 +92,12 @@ inline const char *getPlatformStr(PLATFORM Platform, unsigned &RevId) {
     return "pvc";
   case IGFX_METEORLAKE:
     return "mtl";
+  case IGFX_ARROWLAKE:
+    if (GFX_IS_ARL_S(DeviceId))
+      return "arl-s";
+    return "arl-h";
+  case IGFX_LUNARLAKE:
+    return "lnl";
   default:
     break;
   }

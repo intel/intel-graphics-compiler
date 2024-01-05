@@ -178,6 +178,8 @@ private:
   bool flipBoolNot(Instruction *Inst);
   // foldBoolAnd : fold a (vector) bool and into sel/wrregion if beneficial
   bool matchInverseSqrt(Instruction *I);
+  bool foldLscAddrCalculation(CallInst *Inst);
+  Value *applyLscAddrFolding(Value *Offsets, APInt &Scale, APInt &Offset);
   bool foldBoolAnd(Instruction *Inst);
   bool simplifyPredRegion(CallInst *Inst);
   bool simplifyWrRegion(CallInst *Inst);
@@ -549,6 +551,29 @@ void GenXPatternMatch::visitCallInst(CallInst &I) {
   case GenXIntrinsic::genx_uutrunc_sat:
     Changed |= simplifyTruncSat(&I);
     break;
+  case vc::InternalIntrinsic::lsc_atomic_ugm:
+  case vc::InternalIntrinsic::lsc_load_ugm:
+  case vc::InternalIntrinsic::lsc_load_quad_ugm:
+  case vc::InternalIntrinsic::lsc_prefetch_ugm:
+  case vc::InternalIntrinsic::lsc_prefetch_quad_ugm:
+  case vc::InternalIntrinsic::lsc_store_ugm:
+  case vc::InternalIntrinsic::lsc_store_quad_ugm:
+  case vc::InternalIntrinsic::lsc_atomic_bti:
+  case vc::InternalIntrinsic::lsc_load_bti:
+  case vc::InternalIntrinsic::lsc_load_quad_bti:
+  case vc::InternalIntrinsic::lsc_prefetch_bti:
+  case vc::InternalIntrinsic::lsc_prefetch_quad_bti:
+  case vc::InternalIntrinsic::lsc_store_bti:
+  case vc::InternalIntrinsic::lsc_store_quad_bti:
+  case vc::InternalIntrinsic::lsc_atomic_slm:
+  case vc::InternalIntrinsic::lsc_load_slm:
+  case vc::InternalIntrinsic::lsc_load_quad_slm:
+  case vc::InternalIntrinsic::lsc_store_slm:
+  case vc::InternalIntrinsic::lsc_store_quad_slm:
+    if (ST->hasLSCOffset())
+      Changed |= foldLscAddrCalculation(&I);
+    LLVM_FALLTHROUGH;
+  case vc::InternalIntrinsic::lsc_load_quad_tgm:
   case GenXIntrinsic::genx_dword_atomic_fadd:
   case GenXIntrinsic::genx_dword_atomic_fsub:
   case GenXIntrinsic::genx_dword_atomic_add:
@@ -942,6 +967,93 @@ bool GenXPatternMatch::matchInverseSqrt(Instruction *I) {
 
   OpInst->eraseFromParent();
   return true;
+}
+
+// applyLscAddrFolding : fold address calculation of LSC intriniscs
+//
+// Addr = Offsets * Scale + Offsets
+//
+// If Offsets is add-like operation (Offsets = Offsets0 + Imm0), it can be
+// folded in new ImmOffset.
+//
+//
+// This folding is done iteratively for chains of such operations.
+//
+Value *GenXPatternMatch::applyLscAddrFolding(Value *Offsets, APInt &Scale,
+                                             APInt &Offset) {
+  if (!isa<BinaryOperator>(Offsets))
+    return nullptr;
+  auto *BinOp = cast<BinaryOperator>(Offsets);
+  unsigned ConstIdx;
+  if (isa<Constant>(BinOp->getOperand(0)))
+    ConstIdx = 0;
+  else if (isa<Constant>(BinOp->getOperand(1)))
+    ConstIdx = 1;
+  else
+    return nullptr;
+  auto *ConstOp = cast<Constant>(BinOp->getOperand(ConstIdx));
+  if (!isa<ConstantInt>(ConstOp) &&
+      (!ConstOp->getType()->isVectorTy() || !ConstOp->getSplatValue()))
+    return nullptr;
+  auto Imm = ConstOp->getUniqueInteger();
+
+  auto NewScale(Scale);
+  auto NewOffset(Offset);
+  bool Overflow = false;
+  switch (BinOp->getOpcode()) {
+  case Instruction::Add:
+  case Instruction::Sub:
+    if (!ST->hasLSCOffset())
+      return nullptr;
+    if (Imm.getMinSignedBits() > Offset.getBitWidth())
+      return nullptr;
+    Imm = Imm.sextOrTrunc(Offset.getBitWidth())
+              .smul_ov(Scale.zext(Offset.getBitWidth()), Overflow);
+    if (Overflow)
+      return nullptr;
+    if (BinOp->getOpcode() == Instruction::Add)
+      NewOffset = Offset.sadd_ov(Imm, Overflow);
+    else if (BinOp->getOpcode() == Instruction::Sub)
+      NewOffset = Offset.ssub_ov(Imm, Overflow);
+    break;
+  default:
+    return nullptr;
+  }
+
+  if (Overflow)
+    return nullptr;
+  Scale = std::move(NewScale);
+  Offset = std::move(NewOffset);
+  return BinOp->getOperand(1 - ConstIdx);
+}
+
+bool GenXPatternMatch::foldLscAddrCalculation(CallInst *Inst) {
+  constexpr unsigned AddrIndex = 6, ScaleIndex = 7, OffsetIndex = 8;
+  IGC_ASSERT_MESSAGE(isa<ConstantInt>(Inst->getOperand(ScaleIndex)) &&
+                         isa<ConstantInt>(Inst->getOperand(OffsetIndex)),
+                     "Scale and Offset must be constant");
+  auto *Index = Inst->getOperand(AddrIndex);
+  auto Scale = cast<ConstantInt>(Inst->getOperand(ScaleIndex))->getValue();
+  auto Offset = cast<ConstantInt>(Inst->getOperand(OffsetIndex))->getValue();
+
+  bool Changed = false;
+  while (auto *NewIndex = applyLscAddrFolding(Index, Scale, Offset)) {
+    Index = NewIndex;
+    Changed = true;
+    LLVM_DEBUG(dbgs() << "LSC address folding found, index: " << *Index
+                      << ", scale: " << Scale.getZExtValue()
+                      << ", offset: " << Offset.getSExtValue() << "\n");
+  }
+  if (Changed) {
+    IRBuilder<> Builder(Inst);
+    LLVM_DEBUG(dbgs() << "Folding LSC address calculation for instruction: "
+                      << *Inst << "\n");
+    Inst->setOperand(AddrIndex, Index);
+    Inst->setOperand(ScaleIndex, Builder.getInt16(Scale.getZExtValue()));
+    Inst->setOperand(OffsetIndex, Builder.getInt32(Offset.getZExtValue()));
+    LLVM_DEBUG(dbgs() << "Updated instruction: " << *Inst << "\n");
+  }
+  return Changed;
 }
 
 /***********************************************************************
@@ -3072,6 +3184,7 @@ bool GenXPatternMatch::mergeApply(CallInst *CI) {
   case vc::InternalIntrinsic::lsc_load_quad_bss:
   case vc::InternalIntrinsic::lsc_load_quad_slm:
   case vc::InternalIntrinsic::lsc_load_quad_ugm:
+  case vc::InternalIntrinsic::lsc_load_quad_tgm:
     break;
   }
 

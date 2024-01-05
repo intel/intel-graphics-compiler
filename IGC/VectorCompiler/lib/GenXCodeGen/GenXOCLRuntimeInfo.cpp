@@ -200,6 +200,8 @@ KernelArgBuilder::getOCLArgKind(ArrayRef<StringRef> Tokens,
     if (any_of(Tokens, getStrPred(OCLAttributes::Image1dBuffer)))
       return ArgKindType::Image1D;
     if (any_of(Tokens, getStrPred(OCLAttributes::Image2d))) {
+      if (ST.noLegacyDataport())
+        return ArgKindType::Image2D;
       if (BC.usePlain2DImages())
         return ArgKindType::Image2D;
       // Legacy behavior to treat all 2d images as media block.

@@ -115,6 +115,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/Debug.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 
+#include "llvmWrapper/IR/Constants.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/TypeSize.h"
@@ -202,6 +203,7 @@ public:
 
 private:
   bool widenSIMD8GatherScatter(CallInst *CI, unsigned IID);
+  bool lowerLSCTyped2DBlock(CallInst *CI, unsigned IID);
   bool lowerMediaWalkerAPIs(CallInst *CI, unsigned IID);
   bool translateSLMOWord(CallInst *CI, unsigned IID);
   bool splitGatherScatter(CallInst *CI, unsigned IID);
@@ -1776,6 +1778,99 @@ bool GenXLowering::widenSIMD8GatherScatter(CallInst *CI, unsigned IID) {
 }
 
 /***********************************************************************
+ * lowerLSCTyped2DBlock : handle padding for the typed 2d block messages
+ */
+bool GenXLowering::lowerLSCTyped2DBlock(CallInst *CI, unsigned IID) {
+  IGC_ASSERT(IID == GenXIntrinsic::genx_lsc_load2d_typed_bti ||
+             IID == GenXIntrinsic::genx_lsc_store2d_typed_bti);
+
+  auto *L1V = CI->getOperand(0);
+  auto *L3V = CI->getOperand(1);
+  auto *BTIV = CI->getOperand(2);
+  auto *HeightV = cast<ConstantInt>(CI->getOperand(3));
+  auto *WidthV = cast<ConstantInt>(CI->getOperand(4));
+  auto *XOffV = CI->getOperand(5);
+  auto *YOffV = CI->getOperand(6);
+  Value *StoreDataV = nullptr;
+  if (IID == GenXIntrinsic::genx_lsc_store2d_typed_bti)
+    StoreDataV = CI->getOperand(7);
+
+  auto *DataTy = StoreDataV ? StoreDataV->getType() : CI->getType();
+  auto *VTy = cast<IGCLLVM::FixedVectorType>(DataTy);
+  auto *ElementTy = VTy->getElementType();
+  auto NElements = VTy->getNumElements();
+
+  // Block width in elements
+  auto Width = WidthV->getZExtValue();
+  auto Height = HeightV->getZExtValue();
+
+  auto ElementSize = DL->getTypeSizeInBits(ElementTy) / genx::ByteBits;
+
+  auto WidthBytes = Width * ElementSize;
+  auto PitchBytes = genx::roundedVal(WidthBytes, (decltype(WidthBytes))4);
+
+  IGC_ASSERT_EXIT_MESSAGE(PitchBytes >= 4 && PitchBytes <= 64,
+                          "Invalid 2d block width");
+
+  auto Pitch = PitchBytes / ElementSize;
+  auto TargetElements = Height * Pitch;
+
+  // Load writes the whole register
+  auto GRFElements = 64u / ElementSize;
+  if (TargetElements % GRFElements)
+    TargetElements = (TargetElements + GRFElements) & ~(GRFElements - 1);
+
+  if (NElements == TargetElements) // no padding
+    return false;
+
+  auto *TargetVTy = IGCLLVM::FixedVectorType::get(ElementTy, TargetElements);
+  auto IntrinsicID = static_cast<GenXIntrinsic::ID>(IID);
+  auto *Decl = GenXIntrinsic::getGenXDeclaration(CI->getModule(), IntrinsicID,
+                                                 {TargetVTy});
+
+  vc::CMRegion R(ElementTy);
+  R.NumElements = NElements;
+  R.Stride = 1;
+  R.Offset = 0;
+
+  if (NElements == Width * Height) {
+    R.Width = Width;
+    R.VStride = Pitch;
+  } else {
+    R.Width = NElements;
+    R.VStride = 0;
+  }
+
+  SmallVector<Value *, 8> Args = {L1V,    L3V,   BTIV, HeightV,
+                                  WidthV, XOffV, YOffV};
+
+  switch (IID) {
+  case GenXIntrinsic::genx_lsc_load2d_typed_bti: {
+    auto *NewLoad = CallInst::Create(
+        Decl, Args, CI->getName() + VALUE_NAME(".padding"), CI);
+    NewLoad->setDebugLoc(CI->getDebugLoc());
+    auto *RdRgn =
+        R.createRdRegion(NewLoad, CI->getName() + VALUE_NAME(".rdregion"), CI,
+                         CI->getDebugLoc());
+    CI->replaceAllUsesWith(RdRgn);
+  } break;
+  case GenXIntrinsic::genx_lsc_store2d_typed_bti: {
+    IGC_ASSERT_EXIT(StoreDataV);
+    auto *WrRgn = R.createWrRegion(UndefValue::get(TargetVTy), StoreDataV,
+                                   StoreDataV->getName() + ".wrregion", CI,
+                                   CI->getDebugLoc());
+    Args.push_back(WrRgn);
+    auto *NewStore = CallInst::Create(Decl, Args, "", CI);
+    NewStore->setDebugLoc(CI->getDebugLoc());
+  } break;
+  }
+
+  ToErase.push_back(CI);
+
+  return true;
+}
+
+/***********************************************************************
  * lowerMediaIntrinsic : lower media walker intrinsic calls
  */
 bool GenXLowering::lowerMediaWalkerAPIs(CallInst *CI, unsigned IID) {
@@ -1950,6 +2045,9 @@ bool GenXLowering::processInst(Instruction *Inst) {
       ToErase.push_back(Inst);
       return true;
     }
+    case GenXIntrinsic::genx_lsc_load2d_typed_bti:
+    case GenXIntrinsic::genx_lsc_store2d_typed_bti:
+      return lowerLSCTyped2DBlock(CI, IntrinsicID);
     case GenXIntrinsic::genx_ssmul:
     case GenXIntrinsic::genx_sumul:
     case GenXIntrinsic::genx_usmul:

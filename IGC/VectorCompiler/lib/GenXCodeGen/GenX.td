@@ -47,12 +47,14 @@ def FeaturePartialI64Emulation : SubtargetFeature<"lightweight_i64_emulation",
                                        "PartialI64Emulation",
                                        "true",
                                        "emulate subset of 64-bit operations">;
-
+def FeatureNoLegacyDataport : SubtargetFeature<"no_legacy_dataport",
+                                               "NoLegacyDataport",
+                                               "true",
+                                               "true if platform has no legacy dataport">;
 def FeatureUseMulDDQ : SubtargetFeature<"mul_ddq",
                                         "UseMulDDQ",
                                         "true",
                                         "use native support for mul [U]Dx[U]D->Q">;
-
 def FeatureLongLongEmulation : SubtargetFeature<"emulate_i64",
                                         "EmulateLongLong",
                                         "true",
@@ -74,6 +76,9 @@ def FeatureSwitchjmp : SubtargetFeature<"switchjmp", "HasSwitchjmp", "true",
 
 def FeaturePreemption : SubtargetFeature<"preemption", "HasPreemption", "true",
                                          "supports preemption">;
+def FeatureSystolicDenormControl : SubtargetFeature<
+  "systolic_denorm_control", "HasSystolicDenormControl", "true",
+  "supports control for systolic pipeline types denormal values">;
 
 def FeatureWAFusedEUNoMask : SubtargetFeature<
     "wa_nomask_fusedEU", "WaNoMaskFusedEU", "true",
@@ -152,7 +157,10 @@ def FeatureThreadPayloadInMemory : SubtargetFeature<"thread_payload_in_memory",
 def FeatureHasLSC : SubtargetFeature<"feature_has_lsc",
                                      "HasLSCMessages", "true",
                                      "Target supports LSC messages">;
-
+def FeatureHasLSCOffset : SubtargetFeature<"feature_has_lsc_offset",
+                                           "HasLSCOffset", "true",
+                                           "Target supports constant offset for LSC messages",
+                                           [FeatureHasLSC]>;
 def FeatureHasAdd3 : SubtargetFeature<"feature_has_add3",
                                       "HasAdd3", "true",
                                       "Target supports 3-way addition">;
@@ -196,8 +204,6 @@ def FeatureSLM64K : SubtargetFeature<"slm_64k",
 def FeatureSLM128K : SubtargetFeature<"slm_128k",
                                       "MaxSLMSize", "128",
                                       "Target supports up to 128k of SLM">;
-
-
 def FeatureHasSad2 : SubtargetFeature<"feature_has_sad2",
                                       "HasSad2", "true",
                                       "Target supports sad2/sad2a instructions">;
@@ -395,6 +401,27 @@ def : Proc<"XeLPG", [
   FeatureThreadPayloadInMemory,
 ]>;
 
+def : Proc<"XeLPGPlus", [
+  FeatureFDivFSqrt64Emulation,
+  FeatureFP64,
+  FeatureFusedEU,
+  FeatureHas8ThreadsPerEU,
+  FeatureHasAdd3,
+  FeatureHasBfn,
+  FeatureHasLSC,
+  FeatureHasLargeGRF,
+  FeatureHasMadSimd32,
+  FeatureHasOWordSLM,
+  FeatureHasPackedFloat,
+  FeatureIndirectByteGRFCrossing,
+  FeatureIndirectGRFCrossing,
+  FeatureInstrBitRotate,
+  FeatureLongLongEmulation,
+  FeatureMultiIndirectByteRegioning,
+  FeatureSLM128K,
+  FeatureThreadPayloadInMemory,
+]>;
+
 def : Proc<"XeHPC", [
   FeatureFP64,
   FeatureGRFByteSize64,
@@ -444,6 +471,35 @@ def : Proc<"XeHPCVG", [
   FeaturePartialI64Emulation,
   FeatureSLM128K,
   FeatureSwitchjmp,
+  FeatureThreadPayloadInMemory,
+]>;
+
+def : Proc<"Xe2", [
+  FeatureFP64,
+  FeatureGRFByteSize64,
+  FeatureHas8ThreadsPerEU,
+  FeatureHasAdd3,
+  FeatureHasBfn,
+  FeatureHasLSC,
+  FeatureHasLSCOffset,
+  FeatureHasLargeGRF,
+  FeatureHasMadSimd32,
+  FeatureHasNamedBarriers,
+  FeatureHasOWordSLM,
+  FeatureIEEEDivSqrt,
+  FeatureIndirectGRFCrossing,
+  FeatureInstr64BitRotate,
+  FeatureInstrAdd64,
+  FeatureInstrGlobalAtomicAddF64,
+  FeatureInstrLocalIntegerCas64,
+  FeatureLSCMaxWidth32,
+  FeatureLongLong,
+  FeatureNoLegacyDataport,
+  FeaturePartialI64Emulation,
+  FeaturePreemption,
+  FeatureSLM128K,
+  FeatureSwitchjmp,
+  FeatureSystolicDenormControl,
   FeatureThreadPayloadInMemory,
 ]>;
 

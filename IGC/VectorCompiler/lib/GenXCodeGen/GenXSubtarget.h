@@ -55,8 +55,10 @@ public:
     XeHP,
     XeHPG,
     XeLPG,
+    XeLPGPlus,
     XeHPC,
     XeHPCVG,
+    Xe2,
     Invalid,
   };
 
@@ -104,6 +106,10 @@ private:
 
   // Currenly used for PVC B-stepping (some i64 operations are unsupported)
   bool PartialI64Emulation = false;
+
+  // True if there is no legacy dataport shared function.
+  bool NoLegacyDataport = false;
+
   // Some targets do not support i64 ops natively, we have an option to emulate
   bool EmulateLongLong = false;
 
@@ -156,6 +162,9 @@ private:
   /// True if subtarget supports LSC messages
   bool HasLSCMessages = false;
 
+  /// True if subtarget supports constant offset for LSC message address
+  bool HasLSCOffset = false;
+
   /// True if subtarget supports half SIMD LSC messages
   bool HasHalfSIMDLSC = false;
 
@@ -167,6 +176,9 @@ private:
 
   /// Has L3 flush on GPU-scope invalidate.
   bool HasL3FlushOnGPUScopeInvalidate = false;
+
+  /// Has denormal control for BF16 and TF32 types on DPAS
+  bool HasSystolicDenormControl = false;
 
   /// True if Vx1 and VxH indirect addressing are allowed for Byte datatypes
   bool HasMultiIndirectByteRegioning = false;
@@ -270,6 +282,8 @@ public:
 
   bool hasLSCMessages() const { return HasLSCMessages; }
 
+  bool hasLSCOffset() const { return HasLSCOffset; }
+
   bool translateLegacyMessages() const {
     return (HasLSCMessages && TranslateLegacyMessages);
   }
@@ -277,6 +291,8 @@ public:
   bool hasHalfSIMDLSC() const { return HasHalfSIMDLSC; }
 
   bool partialI64Emulation() const { return PartialI64Emulation; }
+
+  bool noLegacyDataport() const { return NoLegacyDataport; }
 
   /// * hasPackedFloat - true if packed float immediate vector operands are
   /// supported
@@ -389,6 +405,8 @@ public:
   /// * getsHWTIDFromPredef - some subtargets get HWTID from
   // predefined variable instead of sr0, returns *true* for such ones.
   bool getsHWTIDFromPredef() const { return GetsHWTIDFromPredef; }
+
+  bool hasSystolicDenormControl() const { return HasSystolicDenormControl; }
 
   uint32_t getMaxThreadsNumPerSubDevice() const;
   ArrayRef<std::pair<int, int>> getThreadIdReservedBits() const;

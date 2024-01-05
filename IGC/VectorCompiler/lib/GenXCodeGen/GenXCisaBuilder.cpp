@@ -397,6 +397,7 @@ class GenXKernelBuilder {
     DoublePrecisionDenorm = 1 << 6,
     SinglePrecisionDenorm = 1 << 7,
     HalfPrecisionDenorm = 1 << 10,
+    SystolicDenorm = 1 << 30,
   };
 
   uint32_t CRMask = 0;
@@ -1129,6 +1130,8 @@ bool GenXKernelBuilder::run() {
            CRBits::DoublePrecisionDenorm | CRBits::SinglePrecisionDenorm |
            CRBits::HalfPrecisionDenorm;
 
+  if (Subtarget->hasSystolicDenormControl())
+    CRMask |= CRBits::SystolicDenorm;
 
   StackCallExecSize =
       getExecSizeFromValue(BackendConfig->getInteropSubgroupSize());
@@ -3763,6 +3766,74 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
                                    UNSIGNED, Mod, true /* Dst */);
       };
 
+  auto CreateLscTypedLoadQuad =
+      [&](VISA_PredOpnd *Pred, VISA_Exec_Size ExecSize,
+          VISA_EMask_Ctrl ExecMask, LSC_CACHE_OPTS CacheOpts,
+          LSC_DATA_CHMASK ChMask, VISA_VectorOpnd *Surface, VISA_RawOpnd *Dst,
+          VISA_RawOpnd *AddrsU, VISA_RawOpnd *AddrsV, VISA_RawOpnd *AddrsR,
+          VISA_RawOpnd *AddrsLOD) {
+        LLVM_DEBUG(dbgs() << "CreateLscTypedLoadQuad:\n");
+        LLVM_DEBUG(CI->dump());
+        LLVM_DEBUG(dbgs() << "\n");
+        LSC_DATA_SHAPE Shape = {LSC_DATA_SIZE_32b, LSC_DATA_ORDER_NONTRANSPOSE};
+        Shape.chmask = ChMask;
+        CISA_CALL(Kernel->AppendVISALscTypedLoad(
+            LSC_OP::LSC_LOAD_QUAD, Pred, ExecSize, ExecMask, CacheOpts,
+            LSC_ADDR_TYPE_BTI, LSC_ADDR_SIZE_32b, Shape, Surface, 0, Dst,
+            AddrsU, 0, AddrsV, 0, AddrsR, 0, AddrsLOD));
+      };
+  auto CreateLscTypedStoreQuad =
+      [&](VISA_PredOpnd *Pred, VISA_Exec_Size ExecSize,
+          VISA_EMask_Ctrl ExecMask, LSC_CACHE_OPTS CacheOpts,
+          LSC_DATA_CHMASK ChMask, VISA_VectorOpnd *Surface,
+          VISA_RawOpnd *AddrsU, VISA_RawOpnd *AddrsV, VISA_RawOpnd *AddrsR,
+          VISA_RawOpnd *AddrsLOD, VISA_RawOpnd *Data) {
+        LLVM_DEBUG(dbgs() << "CreateLscTypedStoreQuad:\n");
+        LLVM_DEBUG(CI->dump());
+        LLVM_DEBUG(dbgs() << "\n");
+        LSC_DATA_SHAPE Shape = {LSC_DATA_SIZE_32b, LSC_DATA_ORDER_NONTRANSPOSE};
+        Shape.chmask = ChMask;
+        CISA_CALL(Kernel->AppendVISALscTypedStore(
+            LSC_OP::LSC_STORE_QUAD, Pred, ExecSize, ExecMask, CacheOpts,
+            LSC_ADDR_TYPE_BTI, LSC_ADDR_SIZE_32b, Shape, Surface, 0,
+            AddrsU, 0, AddrsV, 0, AddrsR, 0, AddrsLOD, Data));
+      };
+
+  auto CreateLscTyped2D = [&](LSC_OP SubOpcode, LSC_CACHE_OPTS CacheOpts,
+                              LSC_ADDR_TYPE AddrType, VISA_VectorOpnd *Surface,
+                              LSC_DATA_SHAPE_TYPED_BLOCK2D DataShape,
+                              VISA_RawOpnd *Dst, VISA_RawOpnd *Src,
+                              VISA_VectorOpnd *XOff, VISA_VectorOpnd *YOff) {
+    LLVM_DEBUG(dbgs() << "CreateLscTyped2D:\n");
+    LLVM_DEBUG(CI->dump());
+    LLVM_DEBUG(dbgs() << "\n");
+
+    // work around VISA spec pecularity: for typed messages width is in bytes
+    // not in elements
+    VectorType *VT;
+    constexpr int SrcOperandNum = 7; // to be in sync with json
+    switch (SubOpcode) {
+    case LSC_LOAD_BLOCK2D:
+      VT = cast<VectorType>(CI->getType());
+      break;
+    case LSC_STORE_BLOCK2D:
+      VT = cast<VectorType>(CI->getArgOperand(SrcOperandNum)->getType());
+      break;
+    default:
+      vc::fatal(getContext(), "GenXCisaBuilder",
+                "Unsupported typed 2D operation", CI);
+    }
+
+    auto *ElementType = VT->getElementType();
+    unsigned EltSize = DL.getTypeSizeInBits(ElementType) / genx::ByteBits;
+
+    LLVM_DEBUG(dbgs() << "Multiplying by: " << EltSize << "\n");
+    DataShape.width *= EltSize;
+
+    CISA_CALL(Kernel->AppendVISALscTypedBlock2DInst(
+        SubOpcode, CacheOpts, AddrType, DataShape, Surface, 0, Dst, XOff, YOff,
+        0, 0, Src));
+  };
 
   auto CheckLscOp = [&](LSC_SFID LscSfid, LSC_ADDR_TYPE AddressType,
                         LSC_ADDR_SIZE AddressSize, LSC_DATA_SIZE ElementSize) {

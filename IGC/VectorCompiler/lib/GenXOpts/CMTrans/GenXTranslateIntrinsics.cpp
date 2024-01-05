@@ -56,6 +56,7 @@ private:
   Value *translateLscAtomic(CallInst &I) const;
   Value *translateLscLoadStore(CallInst &I) const;
   Value *translateLscLoadStoreBlock2D(CallInst &I) const;
+  Value *translateLscTyped(CallInst &I) const;
 };
 } // namespace
 
@@ -140,6 +141,11 @@ void GenXTranslateIntrinsics::visitCallInst(CallInst &I) const {
   case GenXIntrinsic::genx_lsc_prefetch2d_stateless:
   case GenXIntrinsic::genx_lsc_store2d_stateless:
     NewI = translateLscLoadStoreBlock2D(I);
+    break;
+  case GenXIntrinsic::genx_lsc_load_merge_quad_typed_bti:
+  case GenXIntrinsic::genx_lsc_prefetch_quad_typed_bti:
+  case GenXIntrinsic::genx_lsc_store_quad_typed_bti:
+    NewI = translateLscTyped(I);
     break;
   }
 
@@ -563,6 +569,46 @@ GenXTranslateIntrinsics::translateLscLoadStoreBlock2D(CallInst &I) const {
   if (Src)
     Args.push_back(Src);
 
+  auto *NewI = Builder.CreateCall(Func, Args);
+  LLVM_DEBUG(dbgs() << "New intrinsic generated: " << *NewI);
+
+  return NewI;
+}
+
+Value *GenXTranslateIntrinsics::translateLscTyped(CallInst &I) const {
+  auto IID = GenXIntrinsic::getGenXIntrinsicID(&I);
+  LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
+  IRBuilder<> Builder(&I);
+  Module *M = I.getModule();
+
+  auto NewIID = vc::InternalIntrinsic::not_internal_intrinsic;
+
+  switch (IID) {
+  default:
+    IGC_ASSERT_UNREACHABLE();
+  case GenXIntrinsic::genx_lsc_load_merge_quad_typed_bti:
+    NewIID = vc::InternalIntrinsic::lsc_load_quad_tgm;
+    break;
+  case GenXIntrinsic::genx_lsc_prefetch_quad_typed_bti:
+    NewIID = vc::InternalIntrinsic::lsc_prefetch_quad_tgm;
+    break;
+  case GenXIntrinsic::genx_lsc_store_quad_typed_bti:
+    NewIID = vc::InternalIntrinsic::lsc_store_quad_tgm;
+    break;
+  }
+
+  SmallVector<Type *, 3> Types;
+
+  if (vc::InternalIntrinsic::isOverloadedRet(NewIID))
+    Types.push_back(I.getType());
+
+  for (unsigned Idx = 0; Idx < I.arg_size(); Idx++)
+    if (vc::InternalIntrinsic::isOverloadedArg(NewIID, Idx))
+      Types.push_back(I.getArgOperand(Idx)->getType());
+
+  auto *Func = vc::InternalIntrinsic::getInternalDeclaration(M, NewIID, Types);
+
+  SmallVector<Value *, 10> Args(I.args());
   auto *NewI = Builder.CreateCall(Func, Args);
   LLVM_DEBUG(dbgs() << "New intrinsic generated: " << *NewI);
 

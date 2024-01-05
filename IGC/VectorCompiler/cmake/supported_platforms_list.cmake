@@ -15,6 +15,8 @@ set(SUPPORTED_VC_PLATFORMS
     "XeHP"
     "XeHPG"
     "XeLPG"
+    "XeLPGPlus"
     "XeHPC"
     "XeHPCVG"
+    "Xe2"
     )

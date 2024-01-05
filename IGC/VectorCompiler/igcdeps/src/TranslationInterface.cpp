@@ -170,6 +170,11 @@ getPlatformName(const PLATFORM &Platform) {
       return {"XeHPG", RevId};
     if (Product == IGFX_METEORLAKE)
       return {"XeLPG", RevId};
+    if (Product == IGFX_ARROWLAKE) {
+      if (GFX_IS_ARL_S(DevId))
+        return {"XeLPG", RevId};
+      return {"XeLPGPlus", RevId};
+    }
     break;
   case IGFX_XE_HPC_CORE:
     if (Product == IGFX_PVC) {
@@ -177,6 +182,10 @@ getPlatformName(const PLATFORM &Platform) {
         return {"XeHPCVG", RevId & ComputeTileMaskPVC};
       return {"XeHPC", RevId & ComputeTileMaskPVC};
     }
+    break;
+  case IGFX_XE2_LPG_CORE:
+    if (Product == IGFX_LUNARLAKE)
+      return {"Xe2", RevId};
     break;
   default:
     break;

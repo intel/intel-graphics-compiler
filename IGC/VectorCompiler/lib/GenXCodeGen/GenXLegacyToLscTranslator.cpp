@@ -50,6 +50,7 @@ private:
   Value *translateSVMGatherScatter(CallInst &CI) const;
   Value *translateQuadGatherScatter(CallInst &CI) const;
   Value *translateAtomic(CallInst &CI) const;
+  Value *translateMediaLoadStore(CallInst &CI) const;
 
   const GenXSubtarget *ST = nullptr;
 };
@@ -211,6 +212,10 @@ void GenXLegacyToLscTranslator::visitCallInst(CallInst &CI) {
   case GenXIntrinsic::genx_svm_block_ld_unaligned:
   case GenXIntrinsic::genx_svm_block_st:
     NewCI = translateOWordLoadStore(CI);
+    break;
+  case GenXIntrinsic::genx_media_ld:
+  case GenXIntrinsic::genx_media_st:
+    NewCI = translateMediaLoadStore(CI);
     break;
   }
 
@@ -786,6 +791,75 @@ Value *GenXLegacyToLscTranslator::translateAtomic(CallInst &CI) const {
   auto *Func = vc::InternalIntrinsic::getInternalDeclaration(
       CI.getModule(), NewIID,
       {Ty, Pred->getType(), CacheOpts->getType(), Addr->getType()});
+  auto *I = Builder.CreateCall(Func, Args);
+  LLVM_DEBUG(dbgs() << "New intrinsic generated: " << *I);
+  return I;
+}
+
+Value *GenXLegacyToLscTranslator::translateMediaLoadStore(CallInst &CI) const {
+  LLVM_DEBUG(dbgs() << "Translate intrinsic: " << CI);
+  IRBuilder<> Builder(&CI);
+  auto IID = vc::getAnyIntrinsicID(&CI);
+
+  IGC_ASSERT(IID == GenXIntrinsic::genx_media_ld ||
+             IID == GenXIntrinsic::genx_media_st);
+  auto IsLoad = IID == GenXIntrinsic::genx_media_ld;
+  auto NewIID = IsLoad ? GenXIntrinsic::genx_lsc_load2d_typed_bti
+                       : GenXIntrinsic::genx_lsc_store2d_typed_bti;
+
+  auto *Modifier = cast<ConstantInt>(CI.getArgOperand(0));
+  auto *BTI = CI.getArgOperand(1);
+  auto *Plane = cast<ConstantInt>(CI.getArgOperand(2));
+  auto *BlockWidth = cast<ConstantInt>(CI.getArgOperand(3));
+  auto *AddrX = CI.getArgOperand(4);
+  auto *AddrY = CI.getArgOperand(5);
+  Value *Data = nullptr;
+  IGCLLVM::FixedVectorType *VTy = nullptr;
+
+  if (IsLoad) {
+    VTy = cast<IGCLLVM::FixedVectorType>(CI.getType());
+  } else {
+    Data = CI.getArgOperand(6);
+    VTy = cast<IGCLLVM::FixedVectorType>(Data->getType());
+  }
+
+  if (Modifier->getZExtValue() != 0) {
+    LLVM_DEBUG(dbgs() << "Modifiers are not supported for media block "
+                         "intrinsic translations: "
+                      << CI);
+    return nullptr;
+  }
+  if (Plane->getZExtValue() != 0) {
+    LLVM_DEBUG(dbgs() << "Non-zero plane is not supported for media block "
+                         "intrinsic translations: "
+                      << CI);
+    return nullptr;
+  }
+
+  auto *ETy = VTy->getElementType();
+  unsigned ESize = ETy->getScalarSizeInBits() / ByteBits;
+  auto DataSize = ESize * VTy->getNumElements();
+
+  unsigned Width = BlockWidth->getZExtValue();
+  unsigned RoundedWidth = roundedVal(Width, 4u);
+  unsigned Height = DataSize / RoundedWidth;
+  IGC_ASSERT(Width > 0 && Width <= 64);
+  IGC_ASSERT(Width % ESize == 0);
+  IGC_ASSERT(DataSize % RoundedWidth == 0);
+
+  SmallVector<Value *, 8> Args = {
+      Builder.getInt8(0), // L1 cache control (default)
+      Builder.getInt8(0), // L3 cache control (default)
+      BTI,
+      Builder.getInt32(Height),
+      Builder.getInt32(Width / ESize),
+      AddrX,
+      AddrY,
+  };
+  if (!IsLoad)
+    Args.push_back(Data);
+
+  auto *Func = GenXIntrinsic::getGenXDeclaration(CI.getModule(), NewIID, {VTy});
   auto *I = Builder.CreateCall(Func, Args);
   LLVM_DEBUG(dbgs() << "New intrinsic generated: " << *I);
   return I;
