@@ -2546,26 +2546,20 @@ bool genx::isSafeToReplace_CheckAVLoadKillOrForbiddenUser(
          (!genx::isAVLoad(NewI) ||
           llvm::all_of(
               OldI->users(), [NewI, DT, IsAGVLoad = isAGVLoad(NewI)](User *U) {
-                return (!IsAGVLoad || !isAGVLoadForbiddenUser(U)) &&
-                       !getAVLoadKillOrNull(NewI, cast<Instruction>(U));
+                auto *UserInst = dyn_cast<Instruction>(U);
+                return UserInst && (!IsAGVLoad || !isAGVLoadForbiddenUser(U)) &&
+                       !getAVLoadKillOrNull(NewI, UserInst);
               }));
 }
 
 bool genx::legalizeGVLoadForbiddenUsers(Instruction *GVLoad) {
   IGC_ASSERT(isAGVLoad(GVLoad));
-
   bool Changed = false;
-
   Instruction *Rdr = nullptr;
-
   for (auto UserI = GVLoad->user_begin(), E = GVLoad->user_end(); UserI != E;) {
-    auto *User_ = *UserI++;
-
-    User_ = genx::peelBitCastsWhileSingleUserChain(User_);
-
-    if (!genx::isAGVLoadForbiddenUser(User_))
+    auto *GVLoadUser = *UserI++;
+    if (!genx::isAGVLoadForbiddenUser(GVLoadUser))
       continue;
-
     if (!Rdr) {
       const auto *GVLoadMaybeVT =
           dyn_cast<IGCLLVM::FixedVectorType>(GVLoad->getType());
@@ -2575,22 +2569,18 @@ bool genx::legalizeGVLoadForbiddenUsers(Instruction *GVLoad) {
       R.getSubregion(0, ElsCount);
       Rdr =
           R.createRdRegion(GVLoad, GVLoad->getName() + "._gvload_legalized_rdr",
-                           GVLoad->getNextNode(), GVLoad->getDebugLoc(), true);
+                           GVLoad->getNextNode(), GVLoad->getDebugLoc(), false);
     }
-
     IGC_ASSERT(Rdr);
-
-    IGCLLVM::replaceUsesWithIf(GVLoad, Rdr, [&](Use &U) {
-      return U.getUser() != Rdr && U.getUser() == User_;
-    });
-
 #ifndef NDEBUG
     vc::diagnose(GVLoad->getContext(), "genx::legalizeGVLoadForbiddenUsers: ",
                  "illegal genx.vload user found, fixing it by inserting "
                  "rdregion in between.",
                  DS_Warning, vc::WarningName::Generic, GVLoad);
 #endif
-
+    IGCLLVM::replaceUsesWithIf(GVLoad, Rdr, [Rdr, GVLoadUser](Use &U) {
+      return U.getUser() != Rdr && U.getUser() == GVLoadUser;
+    });
     Changed |= true;
   }
   return Changed;

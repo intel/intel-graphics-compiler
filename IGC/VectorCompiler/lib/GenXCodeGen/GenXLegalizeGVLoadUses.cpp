@@ -41,7 +41,7 @@ bool GenXLegalizeGVLoadUses::runOnModule(Module &M) {
     if (!GV.hasAttribute(genx::FunctionMD::GenXVolatile))
       continue;
     for (auto UI = GV.user_begin(), E = GV.user_end(); UI != E;)
-      if (auto *I = dyn_cast<Instruction>(*UI++); I && genx::isAVLoad(I))
+      if (auto *I = dyn_cast<Instruction>(*UI++); I && genx::isAGVLoad(I))
         Changed |= genx::legalizeGVLoadForbiddenUsers(I);
   }
   return Changed;
