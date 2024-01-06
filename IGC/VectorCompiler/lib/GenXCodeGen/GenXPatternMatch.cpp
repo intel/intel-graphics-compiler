@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -198,7 +198,6 @@ private:
   bool simplifyCmp(CmpInst *Cmp);
   CmpInst *reduceCmpWidth(CmpInst *Cmp);
   bool simplifyNullDst(CallInst *Inst);
-  bool simplifyDpasNullSrc(CallInst *Inst);
   // Transform logic operation with a mask from <N x iM> to <N/(32/M) x i32>
   bool extendMask(BinaryOperator *BO);
   bool mergeApply(CallInst *CI);
@@ -524,20 +523,11 @@ void GenXPatternMatch::visitBinaryOperator(BinaryOperator &I) {
 }
 
 void GenXPatternMatch::visitCallInst(CallInst &I) {
-  auto IID = vc::getAnyIntrinsicID(&I);
-
-  switch (IID) {
-  default:
-    break;
-  case GenXIntrinsic::genx_dpas:
-  case GenXIntrinsic::genx_dpas2:
-    Changed |= simplifyDpasNullSrc(&I);
-    break;
+  if (Kind == PatternMatchKind::PostLegalization) {
+    return;
   }
 
-  if (Kind == PatternMatchKind::PostLegalization)
-    return;
-
+  auto IID = vc::getAnyIntrinsicID(&I);
   switch (IID) {
   default:
     break;
@@ -3731,47 +3721,6 @@ bool GenXPatternMatch::simplifyNullDst(CallInst *Inst) {
   }
 
   return false;
-}
-
-bool GenXPatternMatch::simplifyDpasNullSrc(CallInst *Inst) {
-  auto IID = vc::getAnyIntrinsicID(Inst);
-  IGC_ASSERT_EXIT(IID == GenXIntrinsic::genx_dpas ||
-                  IID == GenXIntrinsic::genx_dpas2);
-
-  auto *Acc = dyn_cast<Constant>(Inst->getArgOperand(0));
-  if (!Acc || !Acc->isZeroValue())
-    return false;
-
-  IRBuilder<> Builder(Inst);
-
-  // Accumulator input is constant zero, so we could use dpas_nosrc0 intrinsic
-  auto *Src1 = Inst->getArgOperand(1);
-  auto *Src2 = Inst->getArgOperand(2);
-
-  Value *Desc = Inst->getArgOperand(3);
-  if (IID == GenXIntrinsic::genx_dpas2) {
-    auto Src1Precision =
-        cast<ConstantInt>(Inst->getArgOperand(3))->getZExtValue() & 0xff;
-    auto Src2Precision =
-        cast<ConstantInt>(Inst->getArgOperand(4))->getZExtValue() & 0xff;
-    auto SystolicDepth =
-        cast<ConstantInt>(Inst->getArgOperand(5))->getZExtValue() & 0xff;
-    auto RepeatCount =
-        cast<ConstantInt>(Inst->getArgOperand(6))->getZExtValue() & 0xff;
-
-    Desc = Builder.getInt32(Src1Precision | Src2Precision << 8 |
-                            SystolicDepth << 16 | RepeatCount << 24);
-  }
-
-  auto *Func = vc::getAnyDeclaration(
-      Inst->getModule(), GenXIntrinsic::genx_dpas_nosrc0,
-      {Inst->getType(), Src1->getType(), Src2->getType()});
-  auto *NewCI = Builder.CreateCall(Func, {Src1, Src2, Desc});
-  NewCI->takeName(Inst);
-  Inst->replaceAllUsesWith(NewCI);
-  Inst->eraseFromParent();
-
-  return true;
 }
 
 bool canExtendMask(BinaryOperator *BO) {
