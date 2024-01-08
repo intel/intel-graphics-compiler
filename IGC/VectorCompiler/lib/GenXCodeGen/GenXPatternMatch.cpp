@@ -2000,20 +2000,20 @@ bool MinMaxMatcher::matchMinMax() {
     case llvm::CmpInst::FCMP_OGE:
     case llvm::CmpInst::FCMP_OGT:
       if (Inverse) {
-        ID = GenXIntrinsic::genx_fmin;
+        ID = Intrinsic::minnum;
         Annotation = "min";
       } else {
-        ID = GenXIntrinsic::genx_fmax;
+        ID = Intrinsic::maxnum;
         Annotation = "max";
       }
       break;
     case llvm::CmpInst::FCMP_OLE:
     case llvm::CmpInst::FCMP_OLT:
       if (Inverse) {
-        ID = GenXIntrinsic::genx_fmax;
+        ID = Intrinsic::maxnum;
         Annotation = "max";
       } else {
-        ID = GenXIntrinsic::genx_fmin;
+        ID = Intrinsic::minnum;
         Annotation = "min";
       }
       break;
@@ -2068,8 +2068,8 @@ Type *MinMaxMatcher::getMinMaxType() const {
   switch (ID) {
   default:
     break;
-  case GenXIntrinsic::genx_fmin:
-  case GenXIntrinsic::genx_fmax:
+  case Intrinsic::minnum:
+  case Intrinsic::maxnum:
     return CmpInst->getOperand(0)->getType();
   case GenXIntrinsic::genx_smax:
   case GenXIntrinsic::genx_smin:
@@ -2091,7 +2091,11 @@ bool MinMaxMatcher::emit() {
   auto *Ty = getMinMaxType();
   IGC_ASSERT_EXIT(Ty);
 
-  auto *Func = GenXIntrinsic::getAnyDeclaration(M, ID, {Ty, Ty});
+  SmallVector<Type *, 2> Types = {Ty};
+  if (GenXIntrinsic::isGenXIntrinsic(ID))
+    Types.push_back(Ty);
+  auto *Func = GenXIntrinsic::getAnyDeclaration(M, ID, Types);
+
   SmallVector<Value *, 2> Args = {Builder.CreateBitCast(Srcs[0], Ty),
                                   Builder.CreateBitCast(Srcs[1], Ty)};
 

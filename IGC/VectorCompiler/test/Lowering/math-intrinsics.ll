@@ -9,18 +9,6 @@
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeLP -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s --check-prefix CHECK-NO-IEEE
 
-declare double @llvm.minnum.f64(double, double)
-declare double @llvm.maxnum.f64(double, double)
-
-; CHECK-LABEL: min_max
-define internal spir_func void @min_max(double %arg1, double %arg2) {
-; CHECK: @llvm.genx.fmin.f64.f64(double %arg1, double %arg2)
-  %1 = call double @llvm.minnum.f64(double %arg1, double %arg2)
-; CHECK: @llvm.genx.fmax.f64.f64(double %arg1, double %arg2)
-  %2 = call double @llvm.maxnum.f64(double %arg1, double %arg2)
-  ret void
-}
-
 declare <8 x double> @llvm.sqrt.v8f64(<8 x double>)
 declare <8 x float> @llvm.sqrt.v8f32(<8 x float>)
 

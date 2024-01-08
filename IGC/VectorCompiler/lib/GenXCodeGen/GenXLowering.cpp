@@ -2075,8 +2075,6 @@ bool GenXLowering::processInst(Instruction *Inst) {
     case Intrinsic::umin:
     case Intrinsic::umax:
 #endif
-    case Intrinsic::minnum:
-    case Intrinsic::maxnum:
       return lowerMinMax(CI, IntrinsicID);
     case Intrinsic::sqrt:
       return lowerSqrt(CI);
@@ -3608,8 +3606,10 @@ bool GenXLowering::lowerUnorderedFCmpInst(FCmpInst *Inst) {
 }
 
 static GenXIntrinsic::ID convertMinMaxIntrinsic(unsigned ID) {
-  switch (ID) {
 #if LLVM_VERSION_MAJOR >= 12
+  switch (ID) {
+  default:
+    break;
   case Intrinsic::smin:
     return GenXIntrinsic::genx_smin;
   case Intrinsic::smax:
@@ -3618,12 +3618,8 @@ static GenXIntrinsic::ID convertMinMaxIntrinsic(unsigned ID) {
     return GenXIntrinsic::genx_umin;
   case Intrinsic::umax:
     return GenXIntrinsic::genx_umax;
-#endif
-  case Intrinsic::minnum:
-    return GenXIntrinsic::genx_fmin;
-  case Intrinsic::maxnum:
-    return GenXIntrinsic::genx_fmax;
   };
+#endif
   IGC_ASSERT_EXIT_MESSAGE(0, "unknown min/max intrinsic");
   return GenXIntrinsic::not_any_intrinsic;
 }

@@ -105,12 +105,12 @@ BIConvert::BIConvert() {
   OneMap["__builtin_IB_fma"] = Intrinsic::fma;
   OneMap["__builtin_IB_fmah"] = Intrinsic::fma;
   OneMap["__builtin_IB_bfrev"] = GenXIntrinsic::genx_bfrev;
-  OneMap["__builtin_IB_fmax"] = GenXIntrinsic::genx_fmax;
-  OneMap["__builtin_IB_fmin"] = GenXIntrinsic::genx_fmin;
-  OneMap["__builtin_IB_HMAX"] = GenXIntrinsic::genx_fmax;
-  OneMap["__builtin_IB_HMIN"] = GenXIntrinsic::genx_fmin;
-  OneMap["__builtin_IB_dmin"] = GenXIntrinsic::genx_fmin;
-  OneMap["__builtin_IB_dmax"] = GenXIntrinsic::genx_fmax;
+  OneMap["__builtin_IB_fmax"] = Intrinsic::maxnum;
+  OneMap["__builtin_IB_fmin"] = Intrinsic::minnum;
+  OneMap["__builtin_IB_HMAX"] = Intrinsic::maxnum;
+  OneMap["__builtin_IB_HMIN"] = Intrinsic::minnum;
+  OneMap["__builtin_IB_dmax"] = Intrinsic::maxnum;
+  OneMap["__builtin_IB_dmin"] = Intrinsic::minnum;
   // ieee
   OneMap["__builtin_IB_ieee_sqrt"] = GenXIntrinsic::genx_ieee_sqrt;
   OneMap["__builtin_IB_ieee_divide"] = GenXIntrinsic::genx_ieee_div;
@@ -236,8 +236,17 @@ void BIConvert::runOnModule(Module &M) {
           const SmallVector<llvm::Value *, 3> Args{InstCall->args()};
           Instruction *const IntrinCall =
               CallInst::Create(IntrinFunc, Args, InstCall->getName(), InstCall);
-          if (!GenXIntrinsic::isGenXIntrinsic(IID) && IID != Intrinsic::fma)
-            IntrinCall->setHasApproxFunc(true);
+          if (!GenXIntrinsic::isGenXIntrinsic(IID)) {
+            switch (IID) {
+            default:
+              IntrinCall->setHasApproxFunc(true);
+              break;
+            case Intrinsic::fma:
+            case Intrinsic::maxnum:
+            case Intrinsic::minnum:
+              break;
+            }
+          }
           IntrinCall->setDebugLoc(InstCall->getDebugLoc());
           InstCall->replaceAllUsesWith(IntrinCall);
           ListDelete.push_back(InstCall);

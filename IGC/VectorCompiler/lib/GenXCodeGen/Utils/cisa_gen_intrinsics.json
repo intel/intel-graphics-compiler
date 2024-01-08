@@ -62,6 +62,24 @@
       "dst": [ "GENERAL", 0 ],
       "src0": [ "GENERAL", 1 ]
     },
+    "maxnum": {
+      "opc": "ISA_FMINMAX",
+      "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
+      "flag_for_max": [ "LITERAL", 1 ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "MODIFIER_ARITH", 2 ]
+    },
+    "minnum": {
+      "opc": "ISA_FMINMAX",
+      "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
+      "flag_for_max": [ "LITERAL", 0 ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "MODIFIER_ARITH", 2 ]
+    },
     // Internal vc intrinsics
     "vc::InternalIntrinsic::cast_from_bf16": {
       "opc": "ISA_MOV",
@@ -1696,15 +1714,6 @@
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
       "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ]
     },
-    "genx_fmax": {
-      "opc": "ISA_FMINMAX",
-      "exec_size": [ "EXECSIZE" ],
-      "elementwise": [ "ELEMENTWISE" ],
-      "flag_for_max": [ "LITERAL", 1 ],
-      "dst": [ "GENERAL", 0 ],
-      "src0": [ "GENERAL", "MODIFIER_ARITH", 1 ],
-      "src1": [ "GENERAL", "MODIFIER_ARITH", 2 ]
-    },
     "genx_smin": {
       "opc": "ISA_FMINMAX",
       "exec_size": [ "EXECSIZE" ],
@@ -1722,15 +1731,6 @@
       "dst": [ "GENERAL", "UNSIGNED", "SATURATION_INTALLOWED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
       "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ]
-    },
-    "genx_fmin": {
-      "opc": "ISA_FMINMAX",
-      "exec_size": [ "EXECSIZE" ],
-      "elementwise": [ "ELEMENTWISE" ],
-      "flag_for_max": [ "LITERAL", 0 ],
-      "dst": [ "GENERAL", 0 ],
-      "src0": [ "GENERAL", "MODIFIER_ARITH", 1 ],
-      "src1": [ "GENERAL", "MODIFIER_ARITH", 2 ]
     },
     "genx_add_addr": {
       "opc": "ISA_ADDR_ADD",
