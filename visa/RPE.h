@@ -30,7 +30,6 @@ public:
   }
 
   unsigned int getMaxRP() const { return maxRP; }
-  void resetMaxRP() { maxRP = 0; }
 
   const LivenessAnalysis *getLiveness() const { return liveAnalysis; }
 
