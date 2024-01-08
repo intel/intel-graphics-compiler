@@ -372,7 +372,10 @@ struct RegisterPressure {
   }
 
   void recompute(G4_BB *BB) { rpe->runBB(BB); }
-  void recompute() { rpe->run(); }
+  void recompute() {
+    rpe->resetMaxRP();
+    rpe->run();
+  }
 
   // Return the register pressure in GRF for an instruction.
   unsigned getPressure(G4_INST *Inst) const {
