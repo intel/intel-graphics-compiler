@@ -35,9 +35,7 @@ namespace {
         AddressSpaceAAResult& operator=(AddressSpaceAAResult&&) = delete;
 
         IGCLLVM::AliasResultEnum alias(const MemoryLocation& LocA, const MemoryLocation& LocB
-#if LLVM_VERSION_MAJOR >= 9
             , AAQueryInfo & AAQI
-#endif
         ) {
             // DO NOT strip any casting as the address space is encoded in pointer
             // type. For `addrspacecast`, the current implementation in LLVM is too
@@ -132,16 +130,12 @@ namespace {
 
 
             return AAResultBase::alias(LocA, LocB
-#if LLVM_VERSION_MAJOR >= 9
                 , AAQI
-#endif
             );
         }
 
         bool pointsToConstantMemory(const llvm::MemoryLocation& Loc,
-#if LLVM_VERSION_MAJOR >= 9
             AAQueryInfo & AAQI,
-#endif
             bool OrLocal) {
             // Pointers to constant address space memory, well, point to constant memory
             PointerType* ptrType = dyn_cast<PointerType>(Loc.Ptr->getType());
@@ -158,9 +152,7 @@ namespace {
             }
 
             return AAResultBase::pointsToConstantMemory(Loc,
-#if LLVM_VERSION_MAJOR >= 9
                 AAQI,
-#endif
                 OrLocal);
         }
     };
@@ -227,3 +219,17 @@ void IGC::addAddressSpaceAAResult(Pass& P, Function&, AAResults& AAR) {
     if (auto * WrapperPass = P.getAnalysisIfAvailable<RayTracingAddressSpaceAAWrapperPass>())
         AAR.addAAResult(WrapperPass->getResult());
 }
+
+// Wrapper around LLVM's ExternalAAWrapperPass so that the default constructor
+// gets the callback.
+class IGCExternalAAWrapper : public ExternalAAWrapperPass {
+public:
+  static char ID;
+
+  IGCExternalAAWrapper() : ExternalAAWrapperPass(&addAddressSpaceAAResult) {}
+};
+
+char IGCExternalAAWrapper::ID = 0;
+
+IGC_INITIALIZE_PASS_BEGIN(IGCExternalAAWrapper, "igc-aa-wrapper", "IGC Address space alias analysis Wrapper", PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(IGCExternalAAWrapper, "igc-aa-wrapper", "IGC Address space alias analysis Wrapper", PASS_CFG_ONLY, PASS_ANALYSIS)

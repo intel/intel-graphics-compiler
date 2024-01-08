@@ -16,7 +16,7 @@
 ;
 ; 1. Test EmulationFunctionControl=1, forcing inline
 ; RUN: igc_opt %s -regkey TestIGCPreCompiledFunctions=1,EmulationFunctionControl=1 \
-; RUN:            --platformdg2 --print-codegencontext --igc-precompiled-import -S 2>&1 \
+; RUN:            --platformdg2 --igc-precompiled-import --print-codegencontext -S 2>&1 \
 ; RUN:   | FileCheck %s --check-prefix=FC1
 ;
 ; FC1: m_enableSubroutine: 1
@@ -29,7 +29,7 @@
 ;
 ; 2. Test EmulationFunctionControl=2, forcing subroutine
 ; RUN: igc_opt %s -regkey TestIGCPreCompiledFunctions=1,EmulationFunctionControl=2 \
-; RUN:            --platformdg2 --print-codegencontext --igc-precompiled-import -S 2>&1 \
+; RUN:            --platformdg2 --igc-precompiled-import --print-codegencontext -S 2>&1 \
 ; RUN:   | FileCheck %s --check-prefix=FC2
 ;
 ; FC2: m_enableSubroutine: 1
@@ -44,7 +44,7 @@
 ; 3. Test EmulationFunctionControl=3, forcing subroutine
 ;
 ; RUN: igc_opt %s -regkey TestIGCPreCompiledFunctions=1,EmulationFunctionControl=3 \
-; RUN:            --platformdg2 --print-codegencontext --igc-precompiled-import -S 2>&1 \
+; RUN:            --platformdg2 --igc-precompiled-import --print-codegencontext -S 2>&1 \
 ; RUN:   | FileCheck %s --check-prefix=FC3
 ;
 ; FC3: m_enableSubroutine: 1

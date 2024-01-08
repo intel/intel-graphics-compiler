@@ -59,9 +59,7 @@ bool RayTracingAddressSpaceAAResult::noRTASAlias(unsigned AS1, unsigned AS2) con
 
 IGCLLVM::AliasResultEnum RayTracingAddressSpaceAAResult::alias(
     const MemoryLocation& LocA, const MemoryLocation& LocB
-#if LLVM_VERSION_MAJOR >= 9
     , AAQueryInfo & AAQI
-#endif
 )
 {
     PointerType* PtrTy1 = dyn_cast<PointerType>(LocA.Ptr->getType());
@@ -79,9 +77,7 @@ IGCLLVM::AliasResultEnum RayTracingAddressSpaceAAResult::alias(
 
     // Forward the query to the next analysis.
     return AAResultBase::alias(LocA, LocB
-#if LLVM_VERSION_MAJOR >= 9
         , AAQI
-#endif
     );
 }
 

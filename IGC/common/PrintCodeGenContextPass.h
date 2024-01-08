@@ -23,6 +23,7 @@ class PrintCodeGenContextPass : public llvm::ModulePass {
 public:
     static char ID;
 
+    PrintCodeGenContextPass();
     PrintCodeGenContextPass(llvm::raw_ostream &Stream);
     bool runOnModule(llvm::Module &M) override;
 
@@ -34,4 +35,5 @@ public:
 private:
     llvm::raw_ostream& Stream;
 };
+void initializePrintCodeGenContextPassPass(llvm::PassRegistry&);
 } // namespace IGC

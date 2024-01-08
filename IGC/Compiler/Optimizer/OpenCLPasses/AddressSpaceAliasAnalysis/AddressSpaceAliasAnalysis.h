@@ -23,3 +23,4 @@ namespace IGC {
 } // End IGC namespace
 
 void initializeAddressSpaceAAWrapperPassPass(llvm::PassRegistry&);
+void initializeIGCExternalAAWrapperPass(llvm::PassRegistry&);
