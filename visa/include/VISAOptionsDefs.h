@@ -258,7 +258,7 @@ DEF_VISA_OPTION(vISA_lscEnableImmOffsFor, ET_INT32, "-lscEnableImmOffsFor",
                 "Confer with the type VISALscImmOffOpts.",
                 0x3003E)
 DEF_VISA_OPTION(vISA_PreserveR0InR0, ET_BOOL, "-preserver0", UNUSED, false)
-DEF_VISA_OPTION(vISA_StackCallABIVer, ET_INT32, "-abiver", UNUSED, 1)
+DEF_VISA_OPTION(vISA_StackCallABIVer, ET_INT32, "-abiver", "DEPRECATED, is a nop", 1)
 // override spill/fill cache control. 0 is default (no override). Its values are
 // enum LSC_L1_L3_CC, defined in igc/common/igc_regkeys_enums_defs.h or
 // visa_igc_common_headers.h

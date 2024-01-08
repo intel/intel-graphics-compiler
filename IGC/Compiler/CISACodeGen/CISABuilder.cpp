@@ -4550,14 +4550,6 @@ namespace IGC
             SaveOption(vISA_TotalGRFNum, NumGRFSetting);
         }
 
-        if (m_program->HasStackCalls() ||
-            m_program->IsIntelSymbolTableVoidProgram()) {
-          // pass higher ABI version when using ZEBinary
-          if (context->enableZEBinary())
-            SaveOption(vISA_StackCallABIVer,
-                       m_program->m_Platform->getVISAABIVersion());
-        }
-
         if (context->getModuleMetaData()->compOpt.WaEnableALTModeVisaWA)
         {
             SaveOption(vISA_ALTMode, true);

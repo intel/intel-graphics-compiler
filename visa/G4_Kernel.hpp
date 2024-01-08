@@ -351,7 +351,10 @@ private:
   };
 
 public:
-  StackCallABIVersion getVersion() const { return version; }
+  StackCallABIVersion getVersion() const {
+    vISA_ASSERT(kernel != nullptr, "uninitialized class");
+    return version;
+  }
   void setVersion();
 
   SubRegs_Stackcall subRegs;
@@ -359,7 +362,7 @@ public:
   unsigned int argReg = std::numeric_limits<unsigned int>::max();
   unsigned int retReg = std::numeric_limits<unsigned int>::max();
 
-  StackCallABI(G4_Kernel *k);
+  void init(G4_Kernel *k);
 
 private:
   // Following constexprs describe layout of various subregs on entry to a
@@ -614,7 +617,10 @@ public:
 
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
 
-  void setBuilder(IR_Builder *pBuilder) { fg.setBuilder(pBuilder); }
+  void setBuilder(IR_Builder *pBuilder) {
+    fg.setBuilder(pBuilder);
+    stackCall.init(this);
+  }
 
   bool useAutoGRFSelection() const {
     // Register sharing not enabled in presence of stack calls

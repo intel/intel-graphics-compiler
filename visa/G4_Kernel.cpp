@@ -461,7 +461,7 @@ G4_Kernel::G4_Kernel(const PlatformInfo &pInfo, INST_LIST_NODE_ALLOCATOR &alloc,
     : platformInfo(pInfo), m_options(options), m_kernelAttrs(anAttr),
       m_function_id(funcId), RAType(RA_Type::UNKNOWN_RA), asmInstCount(0),
       kernelID(0), fg(alloc, this, m), major_version(major),
-      minor_version(minor), grfMode(pInfo.platform, options), stackCall(this) {
+      minor_version(minor), grfMode(pInfo.platform, options) {
   vISA_ASSERT(major < COMMON_ISA_MAJOR_VER || (major == COMMON_ISA_MAJOR_VER &&
                                                minor <= COMMON_ISA_MINOR_VER),
               "CISA version not supported by this JIT-compiler");
@@ -769,16 +769,13 @@ KernelDebugInfo* G4_Kernel::getKernelDebugInfo() {
 }
 
 void StackCallABI::setVersion() {
-  uint32_t ABIVersion = kernel->getuInt32Option(vISA_StackCallABIVer);
-  if (ABIVersion == 1)
-    version = StackCallABIVersion::VER_1;
-  else if (ABIVersion == 2)
-    version = StackCallABIVersion::VER_2;
-  else if (ABIVersion == 3)
-    version = StackCallABIVersion::VER_3;
+  // VISA ABI version 1 is deprecated so default version to use is version 2
+  version = StackCallABIVersion::VER_2;
 }
 
-StackCallABI::StackCallABI(G4_Kernel *k) : kernel(k) {
+void StackCallABI::init(G4_Kernel *k) {
+  vISA_ASSERT(!kernel, "init called multiple times");
+  kernel = k;
   setVersion();
   if (version == StackCallABIVersion::VER_3) {
     vISA_ASSERT(kernel->getGRFSize() == 64, "require 64-byte GRF for ABI v3");
