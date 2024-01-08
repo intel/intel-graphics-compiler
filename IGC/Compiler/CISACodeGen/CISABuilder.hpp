@@ -660,6 +660,20 @@ namespace IGC
             return ExecSize == EXEC_SIZE_16;
         }
 
+        // Denorm mode bits in CR0.0.
+        // Define the values which can be used to set
+        // denorm mode for 4 float data types.
+        enum DenormModeEncoding : uint32_t
+        {
+            Float16DenormRetain = 0x400,
+            Float32DenormRetain = 0x80,
+            Float64DenormRetain = 0x40,
+            FloatBFTFDenormRetain = 0x40000000,
+            DenormFlushToZero = 0x0,
+        };
+
+        void SetDenormMode(uint32_t newDenormMode);
+
         // Note that GEN can set both fpCvtInt_rtz and any of FP rounding modes
         // at the same time. If fpCvtInt uses a rounding mode other than rtz,
         // they both uses FP rounding bits.
@@ -750,6 +764,9 @@ namespace IGC
         // vISA needs its own Wa-table as some of the W/A are applicable
         // only to certain APIs/shader types/reg key settings/etc.
         WA_TABLE m_vISAWaTable = {};
+
+        // Keeps current state of denorm mode set in cr0 register.
+        uint32_t m_fpDenormMode;
 
         enum OpType
         {

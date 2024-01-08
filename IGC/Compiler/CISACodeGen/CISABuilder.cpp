@@ -1766,6 +1766,7 @@ namespace IGC
 
     void CEncoder::Arithmetic(ISA_Opcode opcode, CVariable* dst, CVariable* src0, CVariable* src1, CVariable* src2)
     {
+
         VISA_VectorOpnd* srcOpnd0 = GetSourceOperand(src0, m_encoderState.m_srcOperand[0]);
         VISA_VectorOpnd* srcOpnd1 = GetSourceOperand(src1, m_encoderState.m_srcOperand[1]);
         VISA_VectorOpnd* srcOpnd2 = GetSourceOperand(src2, m_encoderState.m_srcOperand[2]);
@@ -1781,6 +1782,8 @@ namespace IGC
             srcOpnd0,
             srcOpnd1,
             srcOpnd2));
+
+
     }
 
     void CEncoder::Bfn(uint8_t booleanFuncCtrl, CVariable* dst, CVariable* src0, CVariable* src1, CVariable* src2)
@@ -2839,13 +2842,17 @@ namespace IGC
 
         CodeGenContext* pCtx = m_program->GetContext();
         if (pCtx->m_floatDenormMode16 == FLOAT_DENORM_RETAIN)
-            imm_data |= 0x400;
+            imm_data |= DenormModeEncoding::Float16DenormRetain;
         if (pCtx->m_floatDenormMode32 == FLOAT_DENORM_RETAIN)
-            imm_data |= 0x80;
+            imm_data |= DenormModeEncoding::Float32DenormRetain;
         if (pCtx->m_floatDenormMode64 == FLOAT_DENORM_RETAIN)
-            imm_data |= 0x40;
+            imm_data |= DenormModeEncoding::Float64DenormRetain;
         if (pCtx->m_floatDenormModeBFTF == FLOAT_DENORM_RETAIN)
-            imm_data |= (0x1 << 30);
+            imm_data |= DenormModeEncoding::FloatBFTFDenormRetain;
+
+        // Store current denorm mode in the encoder for easier handling
+        // its temporary changes.
+        m_fpDenormMode = imm_data;
 
         uint RM_bits = 0;
         ERoundingMode RM_FPCvtInt = static_cast<ERoundingMode>(pCtx->getModuleMetaData()->compOpt.FloatCvtIntRoundingMode);
@@ -2904,6 +2911,51 @@ namespace IGC
         V(vKernel->CreateVISADstOperand(dst_Opnd, cr0_var, 1, 0, 0));
         V(vKernel->AppendVISAArithmeticInst(
             VMask ? ISA_OR : ISA_AND,
+            nullptr,
+            false,
+            vISA_EMASK_M1_NM,
+            EXEC_SIZE_1,
+            dst_Opnd,
+            src0_Opnd,
+            src1_Opnd));
+    }
+
+    // Update denorm mode in CR0 register.
+    // Set only the 4 bits controlling the state of denorm
+    // handling.
+    void CEncoder::SetDenormMode(uint32_t newDenormMode)
+    {
+        // Do not update if current denorm state is the same
+        // as a target one.
+        if ((m_fpDenormMode && newDenormMode) != 0)
+        {
+            return;
+        }
+
+        VISA_VectorOpnd* src0_Opnd = nullptr;
+        VISA_VectorOpnd* src1_Opnd = nullptr;
+        VISA_VectorOpnd* dst_Opnd = nullptr;
+        VISA_GenVar* cr0_var = nullptr;
+
+        // Prepare data for the update.
+        // Xor current denorm mode with a new mode.
+        // The result will be xored with the CR register.
+        // This way CR will be updated only on bits related to
+        // denorm mode.
+        // To keep m_fpDenormMode in sync with CR0, xor it
+        // also with the same value CR0 will be xored with.
+        uint32_t value = m_fpDenormMode ^ newDenormMode;
+        m_fpDenormMode = m_fpDenormMode ^ value;
+
+        IGC_ASSERT(nullptr != vKernel);
+
+        V(vKernel->GetPredefinedVar(cr0_var, PREDEFINED_CR0));
+        V(vKernel->CreateVISASrcOperand(src0_Opnd, cr0_var, MODIFIER_NONE, 0, 1, 0, 0, 0));
+        V(vKernel->CreateVISAImmediate(src1_Opnd, &value, ISA_TYPE_UD));
+        V(vKernel->CreateVISADstOperand(dst_Opnd, cr0_var, 1, 0, 0));
+
+        V(vKernel->AppendVISAArithmeticInst(
+            ISA_XOR,
             nullptr,
             false,
             vISA_EMASK_M1_NM,
