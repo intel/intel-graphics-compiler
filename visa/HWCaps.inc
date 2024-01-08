@@ -857,4 +857,13 @@ bool supports4GRFAlign() const {
   return false;
 }
 
+bool alwaysAllowGlobalFlagOpt() const {
+  // We shouldn't add this kind of ugly platform check. However, there's
+  // a complicated bug found in TGLLP when disabling a flagopt case. There
+  // might be some random behavior that creates non-deterministic visa inputs
+  // making debugging extremely difficult. Given that TGLLP and other old
+  // platforms are not the top priority so here we add this WA to keep the
+  // behavior for now.
+  return getPlatform() <= GENX_TGLLP;
+}
 // end HW capabilities
