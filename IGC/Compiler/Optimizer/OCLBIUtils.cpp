@@ -244,6 +244,7 @@ ConstantInt* CImagesBI::CImagesUtils::getImageIndex(
     ConstantInt* imageIndex = nullptr;
 
     imageParam = ValueTracker::track(pCallInst, paramIndex, nullptr, nullptr, isBindlessImageLoad);
+    IGC_ASSERT(imageParam);
     IGC_ASSERT(isa<Argument>(imageParam) || isa<LoadInst>(imageParam));
     int i = (*pParamMap)[imageParam].index;
     imageIndex = ConstantInt::get(Type::getInt32Ty(pCallInst->getContext()), i);
@@ -253,6 +254,7 @@ ConstantInt* CImagesBI::CImagesUtils::getImageIndex(
 BufferType CImagesBI::CImagesUtils::getImageType(ParamMap* pParamMap, CallInst* pCallInst, unsigned int paramIndex)
 {
     Value *imageParam = ValueTracker::track(pCallInst, paramIndex, nullptr, nullptr, isBindlessImageLoad);
+    IGC_ASSERT(imageParam);
     IGC_ASSERT(isa<Argument>(imageParam) || isa<LoadInst>(imageParam));
     return isa<LoadInst>(imageParam) ? BufferType::BINDLESS : (*pParamMap)[imageParam].type;
 }
