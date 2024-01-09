@@ -104,13 +104,6 @@ class G4_Declare {
   // its subroutine when doing liveness analysis.
   unsigned scopeID;
 
-  // For a GRF declare, store the linearized byte offset of its allocated GRF
-  // (r0.0 = 0). This is only valid after RA.
-  // TODO: This just caches the result of regVar.regNum * GRF_size +
-  // regVar.subregNum * sizeof(dcl_type). We should remove this assuming it
-  // doesn't affect compile time.
-  uint16_t GRFOffsetFromR0;
-
   // TODO: they should be moved out of G4_Declare and stored as maps in RA/spill
   G4_Declare *spillDCL; // if an addr/flag var is spilled, SpillDCL is the
                         // location (GRF) holding spilled value
@@ -122,8 +115,7 @@ public:
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
   uint8_t getGRFByteSize() const { return GRFByteSize; }
 
-  void setGRFOffsetFromR0(uint16_t offset) { GRFOffsetFromR0 = offset; }
-  unsigned int getGRFOffsetFromR0() const { return GRFOffsetFromR0; }
+  unsigned int getGRFOffsetFromR0() const;
 
   void setBuiltin() { builtin = true; }
   bool isBuiltin() const { return builtin; }

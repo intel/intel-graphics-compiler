@@ -1344,7 +1344,6 @@ private:
   void detectUndefinedUses(LivenessAnalysis &liveAnalysis, G4_Kernel &kernel);
   void markBlockLocalVar(G4_RegVar *var, unsigned bbId);
   void markBlockLocalVars();
-  void computePhyReg();
   void fixAlignment();
   // Updates `slot1SetR0` and `slot1ResetR0` with hword spill/fill instructions
   // that need to update r0.5 to address slot 1 scratch space.

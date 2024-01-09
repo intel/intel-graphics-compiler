@@ -57,7 +57,6 @@ void Optimizer::createR0Copy() {
 
   G4_DstRegRegion *R0CopyOpnd =
       builder.createDst(builder.getBuiltinR0()->getRegVar(), 0, 0, 1, Type_UD);
-  R0CopyOpnd->computePReg(builder);
 
   unsigned int options = InstOpt_WriteEnable;
   G4_INST *movInst =

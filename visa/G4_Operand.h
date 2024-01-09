@@ -625,8 +625,6 @@ public:
   unsigned short ExIndSubRegNum(bool &);
   short ExIndImmVal(void);
 
-  void computePReg(const IR_Builder &builder);
-
   bool isIndirect() const { return acc != Direct; }
 
   bool isVxHIndirect() const {
@@ -778,7 +776,6 @@ public:
   unsigned short ExSubRegNum(bool &);
   unsigned short ExIndSubRegNum(bool &);
   short ExIndImmVal(void);
-  void computePReg(const IR_Builder &builder);
 
   bool isIndirect() const { return acc != Direct; }
 

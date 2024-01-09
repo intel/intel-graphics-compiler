@@ -245,7 +245,6 @@ set(GenX_Common_Sources_External_Other
   Lowered_IR.cpp
   MetadataDumpRA.cpp
   Optimizer.cpp
-  PhyRegCompute.cpp
   PhyRegUsage.cpp
   PointsToAnalysis.cpp
   PreDefinedVars.cpp

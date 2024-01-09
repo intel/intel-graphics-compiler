@@ -1099,11 +1099,6 @@ G4_Declare *IR_Builder::createHardwiredDeclare(uint32_t numElements,
                                                G4_Type type, uint32_t regNum,
                                                uint32_t regOff) {
   G4_Declare *dcl = createTempVar(numElements, type, Any);
-  unsigned int linearizedStart =
-      (regNum * numEltPerGRF<Type_UB>()) + (regOff * TypeSize(type));
-  // since it's called post RA (specifically post computePReg) we have to
-  // manually set the GRF's byte offset
-  dcl->setGRFOffsetFromR0(linearizedStart);
   dcl->getRegVar()->setPhyReg(phyregpool.getGreg(regNum), regOff);
   return dcl;
 }

@@ -10163,7 +10163,6 @@ bool GlobalRA::hybridRA(LocalRA &lra) {
 
     if (verifyAugmentation) {
       assignRegForAliasDcl();
-      computePhyReg();
       verifyAugmentation->verify();
     }
   }
@@ -10277,7 +10276,6 @@ int GlobalRA::doGlobalLinearScanRA() {
   if (ret == VISA_SUCCESS) {
     expandSpillFillIntrinsics(nextSpillOffset);
     assignRegForAliasDcl();
-    computePhyReg();
     if (builder.getOption(vISA_verifyLinearScan)) {
       resetGlobalRAStates();
       markGraphBlockLocalVars();
@@ -10851,7 +10849,6 @@ int GlobalRA::coloringRegAlloc() {
   } else if (useLocalRA && !hasStackCall) {
     if (tryHybridRA()) {
       assignRegForAliasDcl();
-      computePhyReg();
       return VISA_SUCCESS;
     }
   }
@@ -11069,7 +11066,6 @@ int GlobalRA::coloringRegAlloc() {
 
       if (kernel.getOption(vISA_DumpRegChart)) {
         assignRegForAliasDcl();
-        computePhyReg();
         // invoke before expanding spill/fill since
         // it modifies IR
         regChart->dumpRegChart(std::cerr, {}, 0);
@@ -11104,14 +11100,12 @@ int GlobalRA::coloringRegAlloc() {
 
       if (verifyAugmentation) {
         assignRegForAliasDcl();
-        computePhyReg();
         verifyAugmentation->verify();
       }
       break; // done
     }
   }
   assignRegForAliasDcl();
-  computePhyReg();
 
   stopTimer(TimerID::GRF_GLOBAL_RA);
   //
@@ -11230,53 +11224,6 @@ void GlobalRA::insertPhyRegDecls() {
   }
 
   VISA_DEBUG(std::cout << "Local RA used " << numGRFsUsed << " GRFs\n");
-}
-
-// compute physical register info and adjust foot print
-// find indexed GRFs and construct a foot print for them
-// set live operand in each instruction
-void GlobalRA::computePhyReg() {
-  auto &fg = kernel.fg;
-  for (auto bb : fg) {
-    for (auto inst : *bb) {
-      if (inst->isPseudoKill() || inst->isLifeTimeEnd() ||
-          inst->isPseudoUse()) {
-        continue;
-      }
-
-      if (inst->getDst() && !(inst->hasNULLDst())) {
-        G4_DstRegRegion *currDstRegion = inst->getDst();
-        if (currDstRegion->getBase()->isRegVar() &&
-            currDstRegion->getBase()
-                    ->asRegVar()
-                    ->getDeclare()
-                    ->getGRFOffsetFromR0() == 0) {
-          // Need to compute linearized offset only once per dcl
-          currDstRegion->computePReg(builder);
-        }
-      }
-
-      for (unsigned j = 0, size = inst->getNumSrc(); j < size; j++) {
-        G4_Operand *curr_src = inst->getSrc(j);
-        if (!curr_src || curr_src->isImm() ||
-            (inst->opcode() == G4_math && j == 1 && curr_src->isNullReg()) ||
-            curr_src->isLabel()) {
-          continue;
-        }
-
-        if (curr_src->isSrcRegRegion() &&
-            curr_src->asSrcRegRegion()->getBase() &&
-            curr_src->asSrcRegRegion()->getBase()->isRegVar() &&
-            curr_src->asSrcRegRegion()
-                    ->getBase()
-                    ->asRegVar()
-                    ->getDeclare()
-                    ->getGRFOffsetFromR0() == 0) {
-          curr_src->asSrcRegRegion()->computePReg(builder);
-        }
-      }
-    }
-  }
 }
 
 void GraphColor::dumpRegisterPressure() {

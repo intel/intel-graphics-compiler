@@ -3861,7 +3861,6 @@ static G4_INST *emitRetiringMov(IR_Builder &builder, G4_BB *BB, G4_INST *SI,
   unsigned RegNum =
       Src0->getLinearizedStart() / builder.numEltPerGRF<Type_UB>();
   G4_Declare *Dcl = builder.createTempVar(16, Type_F, Any);
-  Dcl->setGRFOffsetFromR0(RegNum * builder.numEltPerGRF<Type_UB>());
   Dcl->getRegVar()->setPhyReg(builder.phyregpool.getGreg(RegNum), 0);
 
   G4_DstRegRegion *MovDst =

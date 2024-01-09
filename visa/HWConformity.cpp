@@ -303,7 +303,6 @@ G4_SrcRegRegion *HWConformity::insertCopyAtBBEntry(G4_BB *bb,
   G4_SrcModifier modifier = origSrc->getModifier();
   origSrc->setModifier(Mod_src_undef);
   G4_DstRegRegion *dst = builder.createDstRegRegion(dcl, 1);
-  dst->computePReg(builder);
 
   G4_INST *movInst =
       builder.createMov(execSize, dst, origSrc, InstOpt_WriteEnable, false);
@@ -319,7 +318,6 @@ G4_SrcRegRegion *HWConformity::insertCopyAtBBEntry(G4_BB *bb,
       modifier, Direct, dcl->getRegVar(), 0, 0,
       execSize == 1 ? builder.getRegionScalar() : builder.getRegionStride1(),
       dcl->getElemType());
-  newSrc->asSrcRegRegion()->computePReg(builder);
   return newSrc;
 }
 

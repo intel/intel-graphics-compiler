@@ -5028,9 +5028,23 @@ G4_Declare::G4_Declare(const IR_Builder &builder, const char *n,
   forceSpilled = false;
   scopeID = 0;
 
-  GRFOffsetFromR0 = 0;
   declId = (unsigned)dcllist.size();
   dcllist.push_back(this);
+}
+
+unsigned int G4_Declare::getGRFOffsetFromR0() const {
+  auto phyReg = getRegVar()->getPhyReg();
+  // TODO: Unfortunately, there are invocations of this method from
+  // HWConformity that runs before RA. Return 0 here to preserve
+  // functionality.
+  if (!phyReg || !phyReg->isGreg())
+    return 0;
+  vISA_ASSERT(phyReg && phyReg->isGreg(), "expecting GRF allocation");
+  auto regNum = phyReg->asGreg()->getRegNum();
+  auto regOff = getRegVar()->getPhyRegOff();
+  unsigned int linearizedStart =
+      (regNum * GRFByteSize) + (regOff * TypeSize(elemInfo.getType()));
+  return linearizedStart;
 }
 
 void G4_Declare::setEvenAlign() { regVar->setEvenAlign(); }
