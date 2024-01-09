@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -185,27 +185,18 @@ public:
   void getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
                                TTI::UnrollingPreferences &UP
 #if LLVM_VERSION_MAJOR >= 14
-                             , OptimizationRemarkEmitter* ORE
+                               ,
+                               OptimizationRemarkEmitter *ORE
 #endif
-                               ) {
-    if (BC.ignoreLoopUnrollThresholdOnPragma()) {
-      if (GetUnrollMetadataForLoop(L, "llvm.loop.unroll.enable"))
-        UP.Threshold = UP.PartialThreshold =
-            std::numeric_limits<unsigned>::max();
-    }
+  );
 
-    if (unsigned VCUnrollThreshold = BC.getLoopUnrollThreshold()) {
-      UP.Threshold = VCUnrollThreshold;
-      UP.PartialThreshold = VCUnrollThreshold;
-      UP.Partial = true;
-    }
-
-    if (GetUnrollMetadataForLoop(L, "llvm.loop.unroll.full")) {
-      UP.Threshold = std::numeric_limits<unsigned>::max();
-      UP.Partial = false;
-      UP.Runtime = false;
-    }
-  }
+#if LLVM_VERSION_MAJOR >= 14
+  void getPeelingPreferences(Loop *, ScalarEvolution &,
+                             TTI::PeelingPreferences &) const;
+#else  // LLVM_VERSION_MAJOR >= 14
+  void getPeelingPreferences(Loop *, ScalarEvolution &,
+                             TTI::UnrollingPreferences &) const;
+#endif // LLVM_VERSION_MAJOR >= 14
 };
 
 /// Initialize all GenX passes for opt tool.

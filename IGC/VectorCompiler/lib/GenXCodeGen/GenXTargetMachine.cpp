@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -77,6 +77,19 @@ static cl::opt<bool>
 static cl::opt<bool> EmitVLoadStore(
     "genx-emit-vldst", cl::init(true), cl::Hidden,
     cl::desc("Emit load/store intrinsic calls for pass-by-ref arguments"));
+
+static cl::opt<bool> PeelLoopsDpasNullAcc(
+    "vc-peel-loops-dpas-null-acc", cl::init(true), cl::Hidden,
+    cl::desc("Peel first iteration of a loop with dpas instructions, when dpas "
+             "accumulator operand is zero-initialized"));
+static cl::opt<unsigned> PeelLoopDpasNullAccMaxBlocks(
+    "vc-peel-loops-dpas-null-acc-max-blocks", cl::init(16), cl::Hidden,
+    cl::desc("Max number of a loop basic blocks to peel, when the loop has "
+             "dpas instructions with zero-initialized accumulator operand"));
+static cl::opt<unsigned> PeelLoopDpasNullAccMaxInstr(
+    "vc-peel-loops-dpas-null-acc-max-instr", cl::init(128), cl::Hidden,
+    cl::desc("Max number of a loop instructions to peel, when the loop has "
+             "dpas instructions with zero-initialized accumulator operand"));
 
 // There's another copy of DL string in clang/lib/Basic/Targets.cpp
 static std::string getDL(bool Is64Bit) {
@@ -182,6 +195,94 @@ TargetTransformInfo GenXTargetMachine::getTargetTransformInfo(const Function& F)
 {
   GenXTTIImpl GTTI(F.getParent()->getDataLayout(), *BC);
   return TargetTransformInfo(std::move(GTTI));
+}
+void GenXTTIImpl::getUnrollingPreferences(
+    Loop *L, ScalarEvolution &SE, TargetTransformInfo::UnrollingPreferences &UP
+#if LLVM_VERSION_MAJOR >= 14
+    , OptimizationRemarkEmitter *ORE
+#endif
+) {
+  if (BC.ignoreLoopUnrollThresholdOnPragma() &&
+      GetUnrollMetadataForLoop(L, "llvm.loop.unroll.enable"))
+    UP.Threshold = UP.PartialThreshold = std::numeric_limits<unsigned>::max();
+
+  if (unsigned VCUnrollThreshold = BC.getLoopUnrollThreshold()) {
+    UP.Threshold = VCUnrollThreshold;
+    UP.PartialThreshold = VCUnrollThreshold;
+    UP.Partial = true;
+  }
+
+  if (GetUnrollMetadataForLoop(L, "llvm.loop.unroll.full")) {
+    UP.Threshold = std::numeric_limits<unsigned>::max();
+    UP.Partial = false;
+    UP.Runtime = false;
+  }
+
+#if LLVM_VERSION_MAJOR < 14
+  getPeelingPreferences(L, SE, UP);
+#endif // LLVM_VERSION_MAJOR < 14
+}
+
+void GenXTTIImpl::getPeelingPreferences(
+    Loop *L, ScalarEvolution &SE,
+#if LLVM_VERSION_MAJOR >= 14
+    TargetTransformInfo::PeelingPreferences &PP) const {
+#else  // LLVM_VERSION_MAJOR >= 14
+    TargetTransformInfo::UnrollingPreferences &PP) const {
+#endif // LLVM_VERSION_MAJOR >= 14
+  if (!PeelLoopsDpasNullAcc)
+    return;
+
+  // Only analyze the inner-most loops
+  if (!L->getSubLoops().empty())
+    return;
+
+  // Limit loop size to the specific number of basic blocks
+  if (L->getNumBlocks() > PeelLoopDpasNullAccMaxBlocks)
+    return;
+
+  const auto PhiNodes = L->getHeader()->phis();
+  const bool HasDpasZeroAcc = llvm::any_of(PhiNodes, [](const auto &Phi) {
+    // Check vector Phi nodes
+    if (!Phi.getType()->isVectorTy() || !Phi.hasOneUse() ||
+        Phi.getNumIncomingValues() != 2)
+      return false;
+
+    // The only user of the Phi node must be dpas intrinsic
+    const auto *User = Phi.user_back();
+
+    // Only check dpas intrinsics
+    switch (vc::getAnyIntrinsicID(User)) {
+    default:
+      return false;
+    case GenXIntrinsic::genx_dpas:
+    case GenXIntrinsic::genx_dpas2:
+      break;
+    }
+
+    // Only allow dpas accumulator
+    if (const auto *CI = cast<CallInst>(User); CI->getArgOperand(0) != &Phi)
+      return false;
+
+    // Check if one of the Phi inputs is constant zero
+    return llvm::any_of(Phi.incoming_values(), [](const auto &V) {
+      const auto *C = dyn_cast<Constant>(&V);
+      return C && C->isZeroValue();
+    });
+  });
+
+  if (!HasDpasZeroAcc)
+    return;
+
+  // Don't peel too large loops
+  const auto Blocks = L->getBlocks();
+  const auto NumInstr = std::accumulate(
+      std::begin(Blocks), std::end(Blocks), 0u,
+      [](unsigned Acc, const auto *BB) { return Acc + BB->size(); });
+  if (NumInstr > PeelLoopDpasNullAccMaxInstr)
+    return;
+
+  PP.PeelCount = 1;
 }
 
 } // namespace llvm
