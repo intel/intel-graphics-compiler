@@ -129,26 +129,47 @@ bool splitStructPhis(Function *F);
 bool splitStructPhi(PHINode *Phi);
 
 // Is an instruction or contant expression bitcast.
-inline bool isABitCast(Value *V) {
+inline bool isABitCast(const Value *const V) {
   return isa<BitCastInst>(V) ||
          (isa<ConstantExpr>(V) &&
           cast<ConstantExpr>(V)->getOpcode() == CastInst::BitCast);
 }
 
-// Peels off bitcasts in single-user chain until a non-bitcast user is found or
-// a bitcast user has multiple users. Hence, if a bitcast gets returned from
-// this function, this means it has multiple users.
-inline User *peelBitCastsWhileSingleUserChain(User *U) {
+// Get the first User found after traversing possible single-user chain of
+// bitcasts.
+inline const User *peelBitCastsWhileSingleUserChain(const User *U) {
   while (isABitCast(U) && std::distance(U->user_begin(), U->user_end()) == 1)
     U = *U->user_begin();
   return U;
 }
 
-// Get user values peeling off intermittent bitcasts chains.
-llvm::SmallPtrSet<Value *, 4> peelBitCastsGetUserValues(Value *V);
+// Get the first User found after traversing possible single-user chain of
+// bitcasts.
+inline User *peelBitCastsWhileSingleUserChain(User *U) {
+  return const_cast<User *>(
+      peelBitCastsWhileSingleUserChain(const_cast<const User *>(U)));
+}
 
-// Get original value before bit-casting chain.
-Value *getBitCastedValue(Value *V);
+// Get Users set ignoring possible intermediate bitcast chains.
+llvm::SmallPtrSet<const User *, 4> peelBitCastsGetUsers(const Value *const V);
+// Get Users set ignoring possible intermediate bitcast chains.
+llvm::SmallPtrSet<User *, 4> peelBitCastsGetUsers(Value *const V);
+
+// Get Value def ignoring possible bitcasts chain.
+inline const Value *getBitCastedValue(const Value *V) {
+  IGC_ASSERT_MESSAGE(V, "non-null value expected");
+  while (isa<BitCastInst>(V) ||
+         (isa<ConstantExpr>(V) &&
+          cast<ConstantExpr>(V)->getOpcode() == CastInst::BitCast))
+    V = isa<BitCastInst>(V) ? cast<Instruction>(V)->getOperand(0)
+                            : cast<ConstantExpr>(V)->getOperand(0);
+  return V;
+}
+
+// Get Value def ignoring possible bitcasts chain.
+inline Value *getBitCastedValue(Value *V) {
+  return const_cast<Value *>(getBitCastedValue(const_cast<const Value *>(V)));
+}
 
 // normalize g_load with bitcasts.
 //
@@ -166,17 +187,22 @@ bool isGlobalStore(StoreInst *ST);
 bool isGlobalLoad(Instruction *I);
 bool isGlobalLoad(LoadInst* LI);
 
-Value *getAVLoadSrcOrNull(Instruction *I, Value *CmpSrc = nullptr);
-Value *getAGVLoadSrcOrNull(Instruction *I, Value *CmpSrc = nullptr);
-bool isAVLoad(Instruction *I);
-bool isAVLoad(Instruction *I, Value *CmpSrc);
-bool isAGVLoad(Instruction *I, Value *CmpGvSrc = nullptr);
+Value *getAVLoadSrcOrNull(const Instruction *const I,
+                          const Value *const CmpSrc = nullptr);
+Value *getAGVLoadSrcOrNull(const Instruction *const I,
+                           const Value *const CmpSrc = nullptr);
+bool isAVLoad(const Instruction *const I);
+bool isAVLoad(const Instruction *I, const Value *const CmpSrc);
+bool isAGVLoad(const Instruction *I, const Value *const CmpGvSrc = nullptr);
 
-Value *getAVStoreDstOrNull(Instruction *I, Value *CmpDst = nullptr);
-Value *getAGVStoreDstOrNull(Instruction *I, Value *CmpDst = nullptr);
-bool isAVStore(Instruction *I);
-bool isAVStore(Instruction *I, Value *CmpDst);
-bool isAGVStore(Instruction *I, Value *CmpGvDst = nullptr);
+Value *getAVStoreDstOrNull(const Instruction *const I,
+                           const Value *const CmpDst = nullptr);
+Value *getAGVStoreDstOrNull(const Instruction *const I,
+                            const Value *const CmpDst = nullptr);
+bool isAVStore(const Instruction *const I);
+bool isAVStore(const Instruction *const I, const Value *const CmpDst);
+bool isAGVStore(const Instruction *const I,
+                const Value *const CmpGvDst = nullptr);
 
 // Check that V is correct as value for global store to StorePtr.
 // This implies:
@@ -798,21 +824,21 @@ bool isWrRWithOldValueVLoadSrc(Value *V);
 // S clobbers L if there's a path from S to U not through L:
 // { S -> U } != { S -> L -> U }
 //----------------------------------------------------------
-Instruction *getAVLoadKillOrNull(
-    Instruction *LI, Instruction *PosI,
-    bool ChangeSearchDirectionBasedOnDominance = false,
-    bool PosIsReachableFromLI = false, const DominatorTree *DT = nullptr,
-    const SmallPtrSet<BasicBlock *, 2> *ExcludeBlocksOnCfgTraversal = nullptr,
-    const llvm::SmallVector<Instruction *, 8> *KillCallSites = nullptr);
+const Instruction *getAVLoadKillOrNull(
+    const Instruction *FromVLoad, const Instruction *PosI,
+    const bool ChangeSearchDirectionBasedOnDominance = false,
+    bool PosProvedReachableFromVLoad = false,
+    const DominatorTree *const DT = nullptr,
+    const SmallPtrSet<const BasicBlock *, 2>
+        *const ExcludeBlocksOnCfgTraversal = nullptr,
+    const llvm::SmallVector<const Instruction *, 8> *const KillCallSites =
+        nullptr);
 
-bool checkGVClobberingByInterveningStore(
-    Instruction *LI, llvm::GenXBaling *Baling, llvm::GenXLiveness *Liveness,
-    const llvm::StringRef PassName,
-    llvm::SetVector<Instruction *> *SIs = nullptr);
-
+llvm::SmallPtrSet<const Instruction *, 1> getSrcVLoads(const Instruction *I);
 llvm::SmallPtrSet<Instruction *, 1> getSrcVLoads(Instruction *I);
-Instruction *getSrcVLoadOrNull(Instruction *I);
-bool hasVLoadSource(Instruction *I);
+const Instruction *getSrcVLoadOrNull(const Instruction *const I);
+Instruction *getSrcVLoadOrNull(Instruction *const I);
+bool hasVLoadSource(const Instruction *const I);
 
 // genx_volatile genx.vload's users sanity check.
 // + A genx_volatile genx.vload's "forbidden use" is defined as a use on IR
@@ -834,7 +860,7 @@ bool hasVLoadSource(Instruction *I);
 // Which is clobbering situation, since L is not a VISA instruction in VC BE
 // semantics, but only signifies a pointer to an object pinned in the register
 // file.
-inline bool isAGVLoadForbiddenUser(User *U) {
+inline bool isAGVLoadForbiddenUser(const User *U) {
   U = genx::peelBitCastsWhileSingleUserChain(
       U); // For simplicity a bitcast having multiple users is considered
           // forbidden, but bitcasts in single-use chain are not.
@@ -844,12 +870,13 @@ inline bool isAGVLoadForbiddenUser(User *U) {
 }
 
 // Safety checks for vloads clobbering when sinking a bale of instructions.
-bool isSafeToSink_CheckAVLoadKill(const Bale &B, Instruction *To,
-                                  const DominatorTree *DT = nullptr);
+bool isSafeToSink_CheckAVLoadKill(const Bale &B, const Instruction *const To,
+                                  const DominatorTree *const DT = nullptr);
 // Safety checks for vloads clobbering when sinking a bale of instructions..
-bool isSafeToSink_CheckAVLoadKill(Instruction *I, Instruction *To,
-                                  GenXBaling *Baling_,
-                                  const DominatorTree *DT = nullptr);
+bool isSafeToSink_CheckAVLoadKill(const Instruction *const I,
+                                  const Instruction *const To,
+                                  const GenXBaling *const Baling,
+                                  const DominatorTree *const DT = nullptr);
 
 // Safety checks for vloads clobbering when looking to hoist or sink an
 // instruction.
@@ -860,15 +887,16 @@ bool isSafeToSink_CheckAVLoadKill(Instruction *I, Instruction *To,
 // any, all of them dominate "To" position by the time this check is called.
 // + NB: If const DominatorTree * is not passed we assume that both "I" and
 // potential VLoad sources of "I" dominate "To".
-bool isSafeToMove_CheckAVLoadKill(Instruction *I, Instruction *To,
-                                  const DominatorTree *DT);
+bool isSafeToMove_CheckAVLoadKill(const Instruction *const I,
+                                  const Instruction *const To,
+                                  const DominatorTree *const DT);
 
 // Safety checks for vloads clobbering when replacing an instruction.
 // + NB: When used for checks on hoisting, const DominatorTree* is mandatory and
 // must not be nullptr.
-bool isSafeToReplace_CheckAVLoadKillOrForbiddenUser(Instruction *OldI,
-                                                    Instruction *NewI,
-                                                    const DominatorTree *DT);
+bool isSafeToReplace_CheckAVLoadKillOrForbiddenUser(
+    const Instruction *const OldI, const Instruction *const NewI,
+    const DominatorTree *const DT);
 
 // Safety checks for genx_volatile genx.vloads clobbering when
 // targeting to modify a use on a UseTarget instruction.
@@ -879,20 +907,20 @@ bool isSafeToReplace_CheckAVLoadKillOrForbiddenUser(Instruction *OldI,
 // + NB: This API can be augmented by returning metadata
 // differentiating between "kill" and "forbidden user" cases,
 // returning "forbidden user" to make further legalization on the caller side.
-bool isSafeToUse_CheckAVLoadKillOrForbiddenUser(Instruction *UseSrc,
-                                                Instruction *UseTarget,
-                                                const DominatorTree *DT);
+bool isSafeToUse_CheckAVLoadKillOrForbiddenUser(
+    const Instruction *const UseSrc, const Instruction *const UseTarget,
+    const DominatorTree *const DT);
 
 // See isAGVLoadForbiddenUser(...) description.
 bool legalizeGVLoadForbiddenUsers(Instruction *GVLoad);
 
-bool vloadsReadSameValue(Instruction *L1, Instruction *L2,
-                         const DominatorTree *DT);
+bool vloadsReadSameValue(const Instruction *L1, const Instruction *L2,
+                         const DominatorTree *const DT);
 
 // TBD: there's another, a bit different, isBitwiseIdentical in CMABI, make it
 // common.
-bool isBitwiseIdentical(Value *V1, Value *V2,
-                        const DominatorTree *DT = nullptr);
+bool isBitwiseIdentical(const Value *V1, const Value *V2,
+                        const DominatorTree *const DT = nullptr);
 
 } // namespace genx
 } // namespace llvm

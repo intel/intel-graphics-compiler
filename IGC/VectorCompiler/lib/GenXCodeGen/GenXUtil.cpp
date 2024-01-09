@@ -1600,36 +1600,44 @@ void genx::LayoutBlocks(Function &func)
   }
 }
 
-llvm::SmallPtrSet<Value *, 4> genx::peelBitCastsGetUserValues(Value *V) {
+namespace {
+
+template <class RetT, class ArgT,
+          std::enable_if_t<std::is_same_v<std::remove_cv_t<RetT>, User> &&
+                               std::is_same_v<std::remove_cv_t<ArgT>, Value>,
+                           int> = 0>
+inline llvm::SmallPtrSet<RetT *, 4>
+genx_peelBitCastsGetUsers__impl(ArgT *const V) {
   // V = ...
   // A = bitcast (V)
   // B = use (bitcast (A))
   // C = use (A)
   // Provided with V argument returns set containing C and B for the particular
   // example above.
-  llvm::SmallVector<Value *, 4> BitCasts;
-  llvm::SmallPtrSet<Value *, 4> Res;
+  llvm::SmallVector<RetT *, 4> BitCasts;
+  llvm::SmallPtrSet<RetT *, 4> Res;
   for (const auto &UI : V->users())
     BitCasts.push_back(&*UI);
   while (!BitCasts.empty()) {
-    V = BitCasts.pop_back_val();
-    if (isABitCast(V))
-      for (const auto &UI : V->users())
+    auto *U = BitCasts.pop_back_val();
+    if (isABitCast(U))
+      for (const auto &UI : U->users())
         BitCasts.push_back(&*UI);
     else
-      Res.insert(V);
+      Res.insert(U);
   }
   return Res;
 }
 
-Value *genx::getBitCastedValue(Value *V) {
-  IGC_ASSERT_MESSAGE(V, "non-null value expected");
-  while (isa<BitCastInst>(V) ||
-         (isa<ConstantExpr>(V) &&
-          cast<ConstantExpr>(V)->getOpcode() == CastInst::BitCast))
-    V = isa<BitCastInst>(V) ? cast<Instruction>(V)->getOperand(0)
-                            : cast<ConstantExpr>(V)->getOperand(0);
-  return V;
+}; // namespace
+
+llvm::SmallPtrSet<const User *, 4>
+genx::peelBitCastsGetUsers(const Value *const V) {
+  return ::genx_peelBitCastsGetUsers__impl<const User>(V);
+}
+
+llvm::SmallPtrSet<User *, 4> genx::peelBitCastsGetUsers(Value *const V) {
+  return ::genx_peelBitCastsGetUsers__impl<User>(V);
 }
 
 // normalize g_load with bitcasts.
@@ -1763,12 +1771,13 @@ bool genx::isGlobalLoad(LoadInst *LI) {
   return vc::getUnderlyingGlobalVariable(LI->getPointerOperand()) != nullptr;
 }
 
-bool genx::isAVLoad(Instruction *I) {
-  auto *LI = dyn_cast_or_null<LoadInst>(I);
+bool genx::isAVLoad(const Instruction *const I) {
+  const auto *LI = dyn_cast_or_null<LoadInst>(I);
   return (LI && LI->isVolatile()) || GenXIntrinsic::isVLoad(I);
 }
 
-Value *genx::getAVLoadSrcOrNull(Instruction *I, Value *CmpSrc) {
+Value *genx::getAVLoadSrcOrNull(const Instruction *const I,
+                                const Value *const CmpSrc) {
   if (genx::isAVLoad(I))
     if (auto *Src = getBitCastedValue(I->getOperand(0));
         !CmpSrc || Src == CmpSrc)
@@ -1776,16 +1785,17 @@ Value *genx::getAVLoadSrcOrNull(Instruction *I, Value *CmpSrc) {
   return nullptr;
 }
 
-bool genx::isAVLoad(Instruction *I, Value *CmpSrc) {
+bool genx::isAVLoad(const Instruction *I, const Value *const CmpSrc) {
   return getAVLoadSrcOrNull(I, CmpSrc);
 }
 
-bool genx::isAVStore(Instruction *I) {
+bool genx::isAVStore(const Instruction *const I) {
   return (isa_and_nonnull<StoreInst>(I) && cast<StoreInst>(I)->isVolatile()) ||
          GenXIntrinsic::isVStore(I);
 }
 
-Value *genx::getAVStoreDstOrNull(Instruction *I, Value *CmpDst) {
+Value *genx::getAVStoreDstOrNull(const Instruction *const I,
+                                 const Value *const CmpDst) {
   if (genx::isAVStore(I)) {
     if (auto *Dst = getBitCastedValue(I->getOperand(1));
         !CmpDst || Dst == CmpDst)
@@ -1794,11 +1804,12 @@ Value *genx::getAVStoreDstOrNull(Instruction *I, Value *CmpDst) {
   return nullptr;
 }
 
-bool genx::isAVStore(Instruction *I, Value *CmpDst) {
+bool genx::isAVStore(const Instruction *const I, const Value *const CmpDst) {
   return getAVStoreDstOrNull(I, CmpDst);
 }
 
-Value *genx::getAGVLoadSrcOrNull(Instruction *I, Value *CmpGvSrc) {
+Value *genx::getAGVLoadSrcOrNull(const Instruction *const I,
+                                 const Value *const CmpGvSrc) {
   auto *Src = getAVLoadSrcOrNull(I, CmpGvSrc);
   if (!Src)
     return nullptr;
@@ -1806,11 +1817,12 @@ Value *genx::getAGVLoadSrcOrNull(Instruction *I, Value *CmpGvSrc) {
   return GV && GV->hasAttribute(genx::FunctionMD::GenXVolatile) ? GV : nullptr;
 }
 
-bool genx::isAGVLoad(Instruction *I, Value *CmpGvSrc) {
+bool genx::isAGVLoad(const Instruction *I, const Value *const CmpGvSrc) {
   return genx::getAGVLoadSrcOrNull(I, CmpGvSrc);
 }
 
-Value *genx::getAGVStoreDstOrNull(Instruction *I, Value *CmpDst) {
+Value *genx::getAGVStoreDstOrNull(const Instruction *const I,
+                                  const Value *const CmpDst) {
   auto *Dst = getAVStoreDstOrNull(I, CmpDst);
   if (!Dst)
     return nullptr;
@@ -1818,7 +1830,7 @@ Value *genx::getAGVStoreDstOrNull(Instruction *I, Value *CmpDst) {
   return GV && GV->hasAttribute(genx::FunctionMD::GenXVolatile) ? GV : nullptr;
 }
 
-bool genx::isAGVStore(Instruction *I, Value *CmpGvDst) {
+bool genx::isAGVStore(const Instruction *const I, const Value *const CmpGvDst) {
   return genx::getAGVStoreDstOrNull(I, CmpGvDst);
 }
 
@@ -2357,19 +2369,19 @@ bool genx::isWrRWithOldValueVLoadSrc(Value *V) {
   return I && isAVLoad(I);
 };
 
-Instruction *genx::getAVLoadKillOrNull(
-    Instruction *FromVLoad, Instruction *ToPosI,
-    bool ChangeSearchDirectionBasedOnDominance, bool PosIsReachableFromLI,
-    const DominatorTree *DT,
-    const SmallPtrSet<BasicBlock *, 2> *ExcludeBlocksOnCfgTraversal,
-    const llvm::SmallVector<Instruction *, 8> *KillCallSites) {
+const Instruction *genx::getAVLoadKillOrNull(
+    const Instruction *FromVLoad, const Instruction *ToPosI,
+    const bool ChangeSearchDirectionBasedOnDominance,
+    bool PosProvedReachableFromVLoad, const DominatorTree *const DT,
+    const SmallPtrSet<const BasicBlock *, 2> *const ExcludeBlocksOnCfgTraversal,
+    const llvm::SmallVector<const Instruction *, 8> *const KillCallSites) {
 
-  auto *VLoadSrc = genx::getAVLoadSrcOrNull(FromVLoad);
+  const auto *VLoadSrc = genx::getAVLoadSrcOrNull(FromVLoad);
 
   IGC_ASSERT(VLoadSrc);
   IGC_ASSERT(FromVLoad->getFunction() == ToPosI->getFunction());
 
-  auto isAKill = [VLoadSrc, KillCallSites](Instruction &I) {
+  auto isAKill = [VLoadSrc, KillCallSites](const Instruction &I) {
     if (isAVStore(&I, VLoadSrc))
       return true;
 
@@ -2397,8 +2409,8 @@ Instruction *genx::getAVLoadKillOrNull(
       DT->dominates(ToPosI, FromVLoad))
     std::swap(ToPosI, FromVLoad);
 
-  auto *VLoadBB = FromVLoad->getParent();
-  auto *PosBB = ToPosI->getParent();
+  const auto *VLoadBB = FromVLoad->getParent();
+  const auto *PosBB = ToPosI->getParent();
 
   if (VLoadBB == PosBB) {
     if (auto KII = std::find_if(FromVLoad->getIterator(), ToPosI->getIterator(),
@@ -2408,42 +2420,44 @@ Instruction *genx::getAVLoadKillOrNull(
     return nullptr;
   }
 
-  llvm::SmallPtrSet<BasicBlock *, 16> Visited = {VLoadBB};
-  llvm::SmallVector<BasicBlock *, 16> BBs;
+  llvm::SmallPtrSet<const BasicBlock *, 16> Visited = {VLoadBB};
+  llvm::SmallVector<const BasicBlock *, 16> BBs;
 
-  if (!PosIsReachableFromLI) {
-    PosIsReachableFromLI =
+  if (!PosProvedReachableFromVLoad) {
+    PosProvedReachableFromVLoad =
         llvm::find(FromVLoad->users(), ToPosI) != FromVLoad->users().end();
 
-    if (!PosIsReachableFromLI && DT)
-      PosIsReachableFromLI = DT->dominates(FromVLoad, ToPosI);
+    if (!PosProvedReachableFromVLoad && DT)
+      PosProvedReachableFromVLoad = DT->dominates(FromVLoad, ToPosI);
 
-    if (!PosIsReachableFromLI) {
+    if (!PosProvedReachableFromVLoad) {
       std::copy(succ_begin(VLoadBB), succ_end(VLoadBB),
                 std::back_inserter(BBs));
 
-      while (!PosIsReachableFromLI && !BBs.empty()) {
-        auto *BB = BBs.pop_back_val();
+      while (!PosProvedReachableFromVLoad && !BBs.empty()) {
+        const auto *BB = BBs.pop_back_val();
         Visited.insert(BB);
         if (BB == PosBB)
-          PosIsReachableFromLI = true;
+          PosProvedReachableFromVLoad = true;
         else
-          std::copy_if(succ_begin(BB), succ_end(BB), std::back_inserter(BBs),
-                       [&](BasicBlock *BB) { return !Visited.count(BB); });
+          std::copy_if(
+              succ_begin(BB), succ_end(BB), std::back_inserter(BBs),
+              [&](const BasicBlock *BB) { return !Visited.count(BB); });
       }
 
-      if (!PosIsReachableFromLI)
+      if (!PosProvedReachableFromVLoad)
         return nullptr;
 
       BBs.clear();
     }
   }
 
-  if (auto KII = std::find_if(PosBB->begin(), ToPosI->getIterator(), isAKill);
+  if (const auto KII =
+          std::find_if(PosBB->begin(), ToPosI->getIterator(), isAKill);
       KII != ToPosI->getIterator())
     return &*KII;
 
-  if (auto KII =
+  if (const auto KII =
           std::find_if(FromVLoad->getIterator(), VLoadBB->end(), isAKill);
       KII != VLoadBB->end())
     return &*KII;
@@ -2453,45 +2467,68 @@ Instruction *genx::getAVLoadKillOrNull(
     Visited.insert(ExcludeBlocksOnCfgTraversal->begin(),
                    ExcludeBlocksOnCfgTraversal->end());
   std::copy_if(pred_begin(PosBB), pred_end(PosBB), std::back_inserter(BBs),
-               [&](BasicBlock *BB) { return !Visited.count(BB); });
+               [&](const BasicBlock *BB) { return !Visited.count(BB); });
 
   while (!BBs.empty()) {
-    auto *BB = BBs.pop_back_val();
+    const auto *BB = BBs.pop_back_val();
 
-    if (auto KII = std::find_if(BB->begin(), BB->end(), isAKill);
+    if (const auto KII = std::find_if(BB->begin(), BB->end(), isAKill);
         KII != BB->end())
       return &*KII;
 
     Visited.insert(BB);
     std::copy_if(pred_begin(BB), pred_end(BB), std::back_inserter(BBs),
-                 [&](BasicBlock *BB) { return !Visited.count(BB); });
+                 [&](const BasicBlock *BB) { return !Visited.count(BB); });
   }
 
   return nullptr;
 }
 
-llvm::SmallPtrSet<Instruction *, 1> genx::getSrcVLoads(Instruction *I) {
+namespace {
+template <
+    class T,
+    std::enable_if_t<std::is_same_v<std::remove_cv_t<T>, Instruction>, int> = 0>
+inline llvm::SmallPtrSet<T *, 1> genx_getSrcVLoads__impl(T *I) {
   IGC_ASSERT(I);
-  I = dyn_cast<Instruction>(genx::getBitCastedValue(I));
-  llvm::SmallPtrSet<Instruction *, 1> res;
+  I = dyn_cast<T>(genx::getBitCastedValue(I));
+  llvm::SmallPtrSet<T *, 1> Res;
   if (!I)
-    return res;
-  for (auto &OU : I->operands())
-    if (auto *OI = dyn_cast<Instruction>(genx::getBitCastedValue(OU.get())))
-      if (genx::isAVLoad(OI))
-        res.insert(OI);
-  return res;
+    return Res;
+  for (const auto &Opnd : I->operands())
+    if (auto *OpndSrc =
+            dyn_cast<Instruction>(genx::getBitCastedValue(Opnd.get())))
+      if (genx::isAVLoad(OpndSrc))
+        Res.insert(OpndSrc);
+  return Res;
+};
+}; // namespace
+
+llvm::SmallPtrSet<Instruction *, 1> genx::getSrcVLoads(Instruction *I) {
+  return ::genx_getSrcVLoads__impl(I);
 };
 
-Instruction *genx::getSrcVLoadOrNull(Instruction *I) {
-  const auto res = getSrcVLoads(I);
-  return res.size() ? *res.begin() : nullptr;
+llvm::SmallPtrSet<const Instruction *, 1>
+genx::getSrcVLoads(const Instruction *I) {
+  return ::genx_getSrcVLoads__impl(I);
+};
+
+Instruction *genx::getSrcVLoadOrNull(Instruction *const I) {
+  const auto Res = getSrcVLoads(I);
+  return Res.size() ? *Res.begin() : nullptr;
 }
 
-bool genx::hasVLoadSource(Instruction *I) { return getSrcVLoadOrNull(I); }
+const Instruction *genx::getSrcVLoadOrNull(const Instruction *const I) {
+  const auto Res = getSrcVLoads(I);
+  return Res.size() ? *Res.begin() : nullptr;
+}
 
-bool genx::isSafeToSink_CheckAVLoadKill(const Bale &B, Instruction *To,
-                                        const DominatorTree *DT) {
+bool genx::hasVLoadSource(const Instruction *const I) {
+  return getSrcVLoadOrNull(I);
+}
+
+bool genx::isSafeToSink_CheckAVLoadKill(const Bale &B,
+                                        const Instruction *const To,
+                                        const DominatorTree *const DT) {
   IGC_ASSERT(!DT || DT->dominates(B.getHead()->Inst, To));
   for (auto *LI : B.getVLoadSources()) {
     if (getAVLoadKillOrNull(LI, To))
@@ -2500,18 +2537,25 @@ bool genx::isSafeToSink_CheckAVLoadKill(const Bale &B, Instruction *To,
   return true;
 }
 
-bool genx::isSafeToSink_CheckAVLoadKill(Instruction *I, Instruction *To,
-                                        GenXBaling *Baling,
-                                        const DominatorTree *DT) {
+bool genx::isSafeToSink_CheckAVLoadKill(const Instruction *const I,
+                                        const Instruction *const To,
+                                        const GenXBaling *const Baling,
+                                        const DominatorTree *const DT) {
   IGC_ASSERT(I && To && Baling);
   Bale Bale;
-  Baling->buildBale(I, &Bale);
+  Baling->buildBale(
+      const_cast<Instruction *>(I), // TBD: buildBale API is not const-correct
+                                    // with regard to Instruction* argument.
+      &Bale); // TBD!: recheck IncludeAddr=false here, we may want to take
+              // address calculation into consideration when sinking, since
+              // we'll most likely move the bale along with address calculation
+              // (e.g. GenXUnbaling).
   return isSafeToSink_CheckAVLoadKill(Bale, To, DT);
 }
 
-bool genx::isSafeToUse_CheckAVLoadKillOrForbiddenUser(Instruction *UseSrc,
-                                                      Instruction *UseTarget,
-                                                      const DominatorTree *DT) {
+bool genx::isSafeToUse_CheckAVLoadKillOrForbiddenUser(
+    const Instruction *const UseSrc, const Instruction *const UseTarget,
+    const DominatorTree *const DT) {
   IGC_ASSERT(UseSrc != UseTarget);
   IGC_ASSERT(DT->dominates(UseSrc, UseTarget));
   if (isAVLoad(UseSrc)) {
@@ -2524,8 +2568,9 @@ bool genx::isSafeToUse_CheckAVLoadKillOrForbiddenUser(Instruction *UseSrc,
   return true;
 }
 
-bool genx::isSafeToMove_CheckAVLoadKill(Instruction *I, Instruction *To,
-                                        const DominatorTree *DT) {
+bool genx::isSafeToMove_CheckAVLoadKill(const Instruction *const I,
+                                        const Instruction *const To,
+                                        const DominatorTree *const DT) {
   IGC_ASSERT(I != To);
   if (LLVM_UNLIKELY(genx::isAVLoad(I)))
     return !getAVLoadKillOrNull(I, To, true, false, DT);
@@ -2539,17 +2584,18 @@ bool genx::isSafeToMove_CheckAVLoadKill(Instruction *I, Instruction *To,
 }
 
 bool genx::isSafeToReplace_CheckAVLoadKillOrForbiddenUser(
-    Instruction *OldI, Instruction *NewI, const DominatorTree *DT) {
+    const Instruction *const OldI, const Instruction *const NewI,
+    const DominatorTree *const DT) {
   IGC_ASSERT_MESSAGE(OldI->getParent() && NewI->getParent(),
                      "both instructions must be placed in IR.");
   return isSafeToMove_CheckAVLoadKill(NewI, OldI, DT) &&
          (!genx::isAVLoad(NewI) ||
-          llvm::all_of(
-              OldI->users(), [NewI, DT, IsAGVLoad = isAGVLoad(NewI)](User *U) {
-                auto *UserInst = dyn_cast<Instruction>(U);
-                return UserInst && (!IsAGVLoad || !isAGVLoadForbiddenUser(U)) &&
-                       !getAVLoadKillOrNull(NewI, UserInst);
-              }));
+          llvm::all_of(OldI->users(), [NewI, DT, IsAGVLoad = isAGVLoad(NewI)](
+                                          const User *const U) {
+            const auto *const UserInst = dyn_cast<Instruction>(U);
+            return UserInst && (!IsAGVLoad || !isAGVLoadForbiddenUser(U)) &&
+                   !getAVLoadKillOrNull(NewI, UserInst);
+          }));
 }
 
 bool genx::legalizeGVLoadForbiddenUsers(Instruction *GVLoad) {
@@ -2586,8 +2632,8 @@ bool genx::legalizeGVLoadForbiddenUsers(Instruction *GVLoad) {
   return Changed;
 }
 
-bool genx::vloadsReadSameValue(Instruction *L1, Instruction *L2,
-                               const DominatorTree *DT) {
+bool genx::vloadsReadSameValue(const Instruction *L1, const Instruction *L2,
+                               const DominatorTree *const DT) {
   IGC_ASSERT_MESSAGE(
       genx::isAVLoad(L1) && genx::isAVLoad(L2),
       "L1 and L2 are expected to be genx.vload or a load volatile");
@@ -2601,7 +2647,8 @@ bool genx::vloadsReadSameValue(Instruction *L1, Instruction *L2,
   return false;
 }
 
-bool genx::isBitwiseIdentical(Value *V1, Value *V2, const DominatorTree *DT) {
+bool genx::isBitwiseIdentical(const Value *V1, const Value *V2,
+                              const DominatorTree *const DT) {
   IGC_ASSERT_MESSAGE(V1 && V2, "values must not be null");
 
   V1 = genx::getBitCastedValue(V1);

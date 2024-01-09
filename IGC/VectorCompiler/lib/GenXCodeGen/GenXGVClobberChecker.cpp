@@ -147,18 +147,19 @@ private:
   GenXLiveness *Liveness = nullptr;
   llvm::DenseMap<const Function *, GenXBaling *> BalingPerFunc;
   llvm::DenseMap<const Function *, GenXLiveness *> LivenessPerFunc;
-  llvm::SmallPtrSet<BasicBlock *, 2> PhiUserExcludeBlocksOnCfgTraversal;
+  llvm::SmallPtrSet<const BasicBlock *, 2> PhiUserExcludeBlocksOnCfgTraversal;
 
   StringRef DbgPrefix = "[gvload clobber checker] ";
 
-  bool
-  checkGVClobberingByInterveningStore(Instruction *LI,
-                                      llvm::SmallVector<Instruction *, 8> *SIs);
+  bool checkGVClobberingByInterveningStore(
+      Instruction *const LI,
+      const llvm::SmallVector<const Instruction *, 8> *const SIs);
 
   using CallSitesPerFunctionT =
-      llvm::DenseMap<Function *, llvm::SmallVector<Instruction *, 8>>;
+      llvm::DenseMap<const Function *,
+                     llvm::SmallVector<const Instruction *, 8>>;
   void collectKillCallSites(
-      Function *Func,
+      const Function *Func,
       GenXGVClobberChecker::CallSitesPerFunctionT &CallSitesPerFunction);
 
 public:
@@ -210,7 +211,8 @@ ModulePass *llvm::createGenXGVClobberCheckerPass() {
 }
 
 bool GenXGVClobberChecker::checkGVClobberingByInterveningStore(
-    Instruction *LI, llvm::SmallVector<Instruction *, 8> *SIs) {
+    Instruction *const LI,
+    const llvm::SmallVector<const Instruction *, 8> *const SIs) {
 
   auto CheckUserInst = [&](Instruction *UI) -> bool {
     // TODO: this is an exceptional case. Maybe change GenXArgIndirectionWrapper
@@ -307,10 +309,10 @@ bool GenXGVClobberChecker::checkGVClobberingByInterveningStore(
 };
 
 void GenXGVClobberChecker::collectKillCallSites(
-    Function *Func,
+    const Function *Func,
     GenXGVClobberChecker::CallSitesPerFunctionT &CallSitesPerFunction) {
-  llvm::SmallPtrSet<Function *, 4> VisitedFuncs;
-  llvm::SmallVector<Function *, 32> Stack;
+  llvm::SmallPtrSet<const Function *, 4> VisitedFuncs;
+  llvm::SmallVector<const Function *, 32> Stack;
   Stack.push_back(Func);
   while (!Stack.empty()) {
     auto *CurrFunc = Stack.pop_back_val();
@@ -329,7 +331,7 @@ void GenXGVClobberChecker::collectKillCallSites(
 
 bool GenXGVClobberChecker::runOnModule(Module &M) {
   llvm::SetVector<Instruction *> Loads;
-  std::unordered_map<Value *, CallSitesPerFunctionT> KillCallSites;
+  std::unordered_map<const Value *, CallSitesPerFunctionT> KillCallSites;
 
   if (CheckGVClobbOpt_CollectKillCallSites)
     LLVM_DEBUG(dbgs() << DbgPrefix
@@ -385,13 +387,16 @@ bool GenXGVClobberChecker::runOnModule(Module &M) {
     }
   }
 
-  for (auto &G : M.globals()) {
+  for (const auto &G : M.globals()) {
     if (!G.hasAttribute(genx::FunctionMD::GenXVolatile))
       continue;
-    for (auto *V : genx::peelBitCastsGetUserValues(&G)) {
-      if (auto *I = dyn_cast<Instruction>(V)) {
+    for (const auto *V : genx::peelBitCastsGetUsers(&G)) {
+      if (const auto *I = dyn_cast<Instruction>(V)) {
         if (genx::isAVLoad(I))
-          Loads.insert(I);
+          Loads.insert(const_cast<Instruction *>(
+              I)); // Loads can be modified further if fixup mode is enabled, so
+                   // we are intentionally storing a pointer to non-const load
+                   // here.
         else if (CheckGVClobbOpt_CollectKillCallSites && genx::isAVStore(I))
           collectKillCallSites(I->getFunction(), KillCallSites[&G]);
       }
@@ -402,7 +407,7 @@ bool GenXGVClobberChecker::runOnModule(Module &M) {
     return false;
 
   bool ChangedOrNeedToAbort = false;
-  for (const auto &LI : Loads)
+  for (auto &LI : Loads)
     ChangedOrNeedToAbort |= checkGVClobberingByInterveningStore(
         LI, CheckGVClobbOpt_CollectKillCallSites
                 ? &KillCallSites[genx::getBitCastedValue(LI->getOperand(0))]

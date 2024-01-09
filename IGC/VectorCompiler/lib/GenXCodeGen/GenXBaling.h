@@ -332,7 +332,7 @@ public:
   BaleInst *getHeadIgnoreGStore() {
     return &*getHeadIgnoreGStoreIt();
   }
-  llvm::SmallPtrSet<Instruction *, 2> getVLoadSources() const;
+  llvm::SmallPtrSet<const Instruction *, 2> getVLoadSources() const;
   bool hasVLoadSources() const;
   bool endsWithGStore() const {
     return !empty() && rbegin()->Info.Type == BaleInfo::GSTORE;

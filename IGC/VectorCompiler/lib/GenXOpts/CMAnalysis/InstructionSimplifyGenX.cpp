@@ -49,9 +49,9 @@ using namespace llvm;
 
 namespace llvm {
 namespace genx {
-bool isSafeToReplace_CheckAVLoadKillOrForbiddenUser(Instruction *I,
-                                                    Instruction *To,
-                                                    const DominatorTree *DT);
+bool isSafeToReplace_CheckAVLoadKillOrForbiddenUser(
+    const Instruction *const I, const Instruction *const To,
+    const DominatorTree *const DT);
 };
 }; // namespace llvm
 

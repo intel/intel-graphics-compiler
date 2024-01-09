@@ -2645,8 +2645,8 @@ bool Bale::isGStoreBaleLegal() const {
   return isGlobalStoreLegal(ST);
 }
 
-llvm::SmallPtrSet<Instruction *, 2> Bale::getVLoadSources() const {
-  llvm::SmallPtrSet<Instruction *, 2> res;
+llvm::SmallPtrSet<const Instruction *, 2> Bale::getVLoadSources() const {
+  llvm::SmallPtrSet<const Instruction *, 2> res;
   for (const auto &Inst : Insts)
     for (const auto &VLoad : genx::getSrcVLoads(Inst.Inst))
       res.insert(VLoad);
