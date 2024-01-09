@@ -277,6 +277,12 @@ public:
   bool isEndWithFCCall() const { return getLastOpcode() == G4_pseudo_fc_call; }
   bool isEndWithFRet() const { return getLastOpcode() == G4_pseudo_fret; }
   bool isEndWithGoto() const { return getLastOpcode() == G4_goto; }
+  bool isEndWithBranch() const { //Not include if/else/endif/join which mostly will do fall through
+    G4_opcode op = getLastOpcode();
+    return op == G4_jmpi || op == G4_break || op == G4_cont || op == G4_while ||
+           op == G4_brc || op == G4_brd || op == G4_goto || op == G4_call ||
+           op == G4_return;
+  }
 
   G4_Label *getLabel();
 

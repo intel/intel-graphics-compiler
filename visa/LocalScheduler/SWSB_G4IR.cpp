@@ -6867,7 +6867,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
 
         if (!builder.WARLocalization() || !validWARLocalizeBB ||
             opndNum == Opnd_dst || node->getLastInstruction()->isDpas() ||
-            bb->isEndWithCall() || bb->isEndWithFCall()) {
+            bb->isEndWithCall() || bb->isEndWithFCall() || !bb->isEndWithBranch()) {
           if (liveBN->getSendID() == INVALID_ID) {
             if (send_start == INVALID_ID) {
               send_start = static_cast<int>(globalSendOpndList->size());
