@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
+#include "Compiler/MetaDataUtilsWrapper.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Metadata.h"
@@ -17,16 +18,21 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC {
-class PrintMetaDataPass : public llvm::ModulePass {
+class SerializePrintMetaDataPass : public llvm::ModulePass {
 private:
-  llvm::raw_ostream &Stream;
+  llvm::raw_ostream *Stream;
   std::vector<llvm::MDNode *> allMD;
 
 public:
   static char ID;
 
-  PrintMetaDataPass(llvm::raw_ostream &Stream);
+  SerializePrintMetaDataPass(llvm::raw_ostream *Stream = nullptr);
   bool runOnModule(llvm::Module &M) override;
+
+  void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {
+    AU.setPreservesCFG();
+    AU.addPreserved<MetaDataUtilsWrapper>();
+  }
 
 private:
   void PrintAllMD(llvm::Module *pM);

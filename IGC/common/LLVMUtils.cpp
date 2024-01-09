@@ -14,7 +14,7 @@ SPDX-License-Identifier: MIT
 #include "common/Stats.hpp"
 #include "common/IntrinsicAnnotator.hpp"
 #include "common/LLVMUtils.h"
-#include "common/PrintMetaDataPass.h"
+#include "common/SerializePrintMetaDataPass.h"
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -755,15 +755,13 @@ void IGCPassManager::addPrintPass(Pass* P, bool isBefore)
     if (!name.allow())
         return;
 
-    // The dump object needs to be on the Heap because it owns the stream, and the stream
-    // is taken by reference into the printer pass. If the Dump object had been on the
-    // stack, then that reference would go bad as soon as we exit this scope, and then
-    // the printer pass would access an invalid pointer later on when we call PassManager::run()
+    // The dump object needs to be on the Heap because it owns the stream, so
+    // that the stream passed into the printer pass is valid during
+    // PassManager::run() call.
     m_irDumps.emplace_front(name, IGC::Debug::DumpType::PASS_IR_TEXT);
-    if (IGC_IS_FLAG_ENABLED(PrintMDBeforeModule))
-    {
-        PassManager::add(new PrintMetaDataPass(m_irDumps.front().stream()));
-    }
+    auto *stream = IGC_IS_FLAG_ENABLED(PrintMDBeforeModule) ? &m_irDumps.front().stream() : nullptr;
+    PassManager::add(new SerializePrintMetaDataPass(stream));
+
     auto printerPass = P->createPrinterPass(m_irDumps.front().stream(), "");
     if (printerPass->getPassKind() == PT_Function) //Enabling debug info for -O2
         printerPass = llvm::createPrintModulePass(m_irDumps.front().stream(), "");

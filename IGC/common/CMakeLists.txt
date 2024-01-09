@@ -32,8 +32,8 @@ set(IGC_BUILD__SRC__common
     "${CMAKE_CURRENT_SOURCE_DIR}/FunctionUpgrader.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/IntrinsicAnnotator.cpp"
 
+    "${CMAKE_CURRENT_SOURCE_DIR}/SerializePrintMetaDataPass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/PrintCodeGenContextPass.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/PrintMetaDataPass.cpp"
   )
 
 # Add generated source files
@@ -83,8 +83,9 @@ set(IGC_BUILD__HDR__common
     "${CMAKE_CURRENT_SOURCE_DIR}/FunctionUpgrader.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/IntrinsicAnnotator.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/StringMacros.hpp"
+
+    "${CMAKE_CURRENT_SOURCE_DIR}/SerializePrintMetaDataPass.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/PrintCodeGenContextPass.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/PrintMetaDataPass.h"
   )
 if(LLVM_ON_WIN32)
   set(IGC_BUILD__HDR_Win__common
