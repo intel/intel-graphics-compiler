@@ -83,7 +83,7 @@ public:
   StringRef getPassName() const override;
   void getAnalysisUsage(AnalysisUsage &) const override;
   bool runOnModule(Module &) override;
-  bool doInitialization(Module &);
+  bool doInitialization(Module &) override;
   void visitCallInst(const CallInst &);
   void visitGlobalVariable(const GlobalVariable &);
 };
