@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -262,13 +262,6 @@ private:
 
   Value *swapLowHighHalves(IRBuilder<> &Builder, Value *Arg) const;
   bool lowerByteSwap(CallInst *CI);
-
-  template <typename BuilderOp>
-  bool lowerReduction(CallInst *CI, Value *Src, Value *Start,
-                      BuilderOp Builder);
-
-  bool lowerReduction(CallInst *CI, Instruction::BinaryOps Opcode);
-  bool lowerReduction(CallInst *CI, Intrinsic::ID);
 
   bool generatePredicatedWrrForNewLoad(CallInst *CI);
 };
@@ -2135,33 +2128,6 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerStackSave(CI);
     case Intrinsic::stackrestore:
       return lowerStackRestore(CI);
-#if LLVM_VERSION_MAJOR >= 12
-    case Intrinsic::vector_reduce_add:
-      return lowerReduction(CI, Instruction::Add);
-    case Intrinsic::vector_reduce_mul:
-      return lowerReduction(CI, Instruction::Mul);
-    case Intrinsic::vector_reduce_fadd:
-      return lowerReduction(CI, Instruction::FAdd);
-    case Intrinsic::vector_reduce_fmul:
-      return lowerReduction(CI, Instruction::FMul);
-    case Intrinsic::vector_reduce_fmax:
-      return lowerReduction(CI, Intrinsic::maxnum);
-    case Intrinsic::vector_reduce_fmin:
-      return lowerReduction(CI, Intrinsic::minnum);
-#else  // LLVM_VERSION_MAJOR >= 12
-    case Intrinsic::experimental_vector_reduce_add:
-      return lowerReduction(CI, Instruction::Add);
-    case Intrinsic::experimental_vector_reduce_mul:
-      return lowerReduction(CI, Instruction::Mul);
-    case Intrinsic::experimental_vector_reduce_v2_fadd:
-      return lowerReduction(CI, Instruction::FAdd);
-    case Intrinsic::experimental_vector_reduce_v2_fmul:
-      return lowerReduction(CI, Instruction::FMul);
-    case Intrinsic::experimental_vector_reduce_fmax:
-      return lowerReduction(CI, Intrinsic::maxnum);
-    case Intrinsic::experimental_vector_reduce_fmin:
-      return lowerReduction(CI, Intrinsic::minnum);
-#endif // LLVM_VERSION_MAJOR >= 12
     case GenXIntrinsic::genx_get_hwid:
       return lowerHardwareThreadID(CI);
     case vc::InternalIntrinsic::logical_thread_id:
@@ -4583,112 +4549,6 @@ bool GenXLowering::lowerLogicalThreadID(CallInst *CI) {
   CI->replaceAllUsesWith(Res);
   ToErase.push_back(CI);
   return true;
-}
-
-template <typename BuilderOp>
-bool GenXLowering::lowerReduction(CallInst *CI, Value *Src, Value *Start,
-                                  BuilderOp Builder) {
-  const auto &DebugLoc = CI->getDebugLoc();
-
-  auto *Ty = CI->getType();
-  // VC doesn't support lowering of ordered floating-point reduction
-  if (Ty->isFloatingPointTy() && !CI->hasAllowReassoc())
-    return false;
-
-  auto *SrcVTy = cast<IGCLLVM::FixedVectorType>(Src->getType());
-  auto SrcWidth = SrcVTy->getNumElements();
-
-  const uint64_t MaxSimd = 2 * ST->getGRFByteSize() * genx::ByteBits /
-                           DL->getTypeStoreSizeInBits(Ty);
-  const auto LinearGrain = std::min<uint64_t>(32, MaxSimd);
-  auto TailWidth = SrcWidth % LinearGrain;
-  const auto LinearWidth = SrcWidth - TailWidth;
-  auto TailIndex = LinearWidth;
-
-  auto *Acc = Src;
-
-  if (LinearWidth > LinearGrain) {
-    IGC_ASSERT(LinearWidth % LinearGrain == 0);
-    auto *AccTy = IGCLLVM::FixedVectorType::get(Ty, LinearGrain);
-
-    vc::CMRegion R(AccTy, DL);
-    R.Offset = 0;
-
-    Acc = R.createRdRegion(Src, "", CI, DebugLoc);
-
-    const auto GrainBytes = LinearGrain * R.ElementBytes;
-    R.Offset = GrainBytes;
-    for (; R.getOffsetInElements() < LinearWidth; R.Offset += GrainBytes) {
-      auto *NewRgn = R.createRdRegion(Src, "", CI, DebugLoc);
-      Acc = Builder(Acc, NewRgn);
-    }
-    SrcWidth = LinearGrain;
-  } else if (!isPowerOf2_32(SrcWidth)) {
-    TailIndex = PowerOf2Floor(SrcWidth);
-    TailWidth = SrcWidth % TailIndex;
-    SrcWidth = TailIndex;
-  }
-
-  for (SrcWidth /= 2; SrcWidth > 0; SrcWidth /= 2) {
-    auto *OpTy = IGCLLVM::FixedVectorType::get(Ty, SrcWidth);
-    vc::CMRegion R(OpTy, DL);
-
-    R.Offset = 0;
-    auto *Op0 = R.createRdRegion(Acc, "", CI, DebugLoc);
-
-    R.Offset = R.ElementBytes * SrcWidth;
-    auto *Op1 = R.createRdRegion(Acc, "", CI, DebugLoc);
-
-    Acc = Builder(Op0, Op1);
-
-    if ((TailWidth & SrcWidth) != 0) {
-      vc::CMRegion RTail(OpTy, DL);
-      R.Offset = TailIndex * R.ElementBytes;
-      auto *Tail = R.createRdRegion(Src, "", CI, DebugLoc);
-
-      Acc = Builder(Acc, Tail);
-      TailIndex += SrcWidth;
-      TailWidth -= SrcWidth;
-    }
-  }
-
-  IGC_ASSERT(TailWidth == 0);
-
-  IRBuilder<> IRB(CI);
-  auto *Res = IRB.CreateBitCast(Acc, Ty);
-  if (Start)
-    Res = Builder(Res, Start);
-
-  CI->replaceAllUsesWith(Res);
-  ToErase.push_back(CI);
-  return true;
-}
-
-bool GenXLowering::lowerReduction(CallInst *CI, Instruction::BinaryOps Opcode) {
-  Value *Start = nullptr;
-  auto *Src = CI->getArgOperand(0);
-
-  if (Opcode == Instruction::FAdd || Opcode == Instruction::FMul) {
-    Start = CI->getArgOperand(0);
-    Src = CI->getArgOperand(1);
-  }
-
-  IRBuilder<> Builder(CI);
-
-  return lowerReduction(CI, Src, Start, [&](Value *LHS, Value *RHS) {
-    return Builder.CreateBinOp(Opcode, LHS, RHS);
-  });
-}
-
-bool GenXLowering::lowerReduction(CallInst *CI, Intrinsic::ID IID) {
-  Value *Start = nullptr;
-  auto *Src = CI->getArgOperand(0);
-
-  IRBuilder<> Builder(CI);
-
-  return lowerReduction(CI, Src, Start, [&](Value *LHS, Value *RHS) {
-    return Builder.CreateBinaryIntrinsic(IID, LHS, RHS);
-  });
 }
 
 /***********************************************************************
