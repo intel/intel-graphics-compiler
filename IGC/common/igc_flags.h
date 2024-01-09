@@ -702,8 +702,6 @@ DECLARE_IGC_REGKEY(bool, DisableFastestLinearScan,      false,   "Disable Linear
 DECLARE_IGC_REGKEY(bool, DisableFastestGopt,            false,   "Disable global optimizations for stage 1 shaders.", false)
 DECLARE_IGC_REGKEY(bool, ForceFastestSIMD, false,  "Force pixel shader to return SIMD8 as fast as possible.", false)
 DECLARE_IGC_REGKEY(bool, EnableFastestSingleCSSIMD,     true,  "Enable selecting single CS SIMD in staged compilation.", false)
-DECLARE_IGC_REGKEY(bool, EnableFastestForAllWaveIntrinsicsCS,     false,  "Enable staged compilation for all CS that use wave intrinsics.", false)
-DECLARE_IGC_REGKEY(bool, EnableFastestForAllWaveIntrinsicsPS,     false,  "Enable staged compilation for all PS that use wave intrinsics.", false)
 DECLARE_IGC_REGKEY(bool, ForceBestSIMD, false,  "Force pixel shader to return the best SIMD, either SIMD16 or SIMD8.", false)
 DECLARE_IGC_REGKEY(bool, SkipTREarlyExitCheck, false, "Skip SIMD16 early exit check in ShaderCodeGen", false)
 DECLARE_IGC_REGKEY(bool, EnableTCSHWBarriers, false,  "Enable TCS pass with HW barriers support. Default TCS pass is TCS pass with multiple continuation functions.", false)
