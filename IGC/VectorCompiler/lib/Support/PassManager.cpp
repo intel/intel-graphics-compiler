@@ -290,7 +290,7 @@ void addExtraPass(PMT &PM, const PassInfo *CurrentPI, PassKind PassKindID,
 
 // Adds pass \p P to \p PM plus some additional passes.
 // Passes are added by \p Adder functor.
-// AdderT: (PMT &, Pass &) -> void
+// AdderT: (PMT &, Pass &)
 template <typename PMT, typename AdderT>
 void addPassImpl(PMT &PM, Pass &P, AdderT Adder) {
   if (AllOptionsAreEmpty())

@@ -47,7 +47,7 @@ void RuntimeValueLegalizationPass::getAnalysisUsage(llvm::AnalysisUsage& AU) con
 ////////////////////////////////////////////////////////////////////////////
 // @brief RuntimeValue comaprator function
 static std::function<bool(const std::pair<uint32_t, uint32_t>&, const std::pair<uint32_t, uint32_t>&)>
-RuntimeValueComparator = [](const std::pair<uint32_t, uint32_t>& lhs, const std::pair<uint32_t, uint32_t>& rhs) -> bool
+RuntimeValueComparator = [](const std::pair<uint32_t, uint32_t>& lhs, const std::pair<uint32_t, uint32_t>& rhs)
 {
     return (lhs.first < rhs.first) || ((lhs.first == rhs.first) && (lhs.second > rhs.second));
 };

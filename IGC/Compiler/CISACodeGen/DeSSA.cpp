@@ -119,7 +119,7 @@ void DeSSA::print(raw_ostream& OS, const Module*) const
 
     bool doSort = (!Val2IntMap.empty());
 
-    auto valCmp = [&](const Value* V0, const Value* V1) -> bool {
+    auto valCmp = [&](const Value* V0, const Value* V1) {
         int n0 = Val2IntMap[V0];
         int n1 = Val2IntMap[V1];
         return n0 < n1;
@@ -257,7 +257,7 @@ void DeSSA::print(raw_ostream& OS, const Module*) const
         }
     }
 
-    auto nodeCmp = [&](const Node* N0, const Node* N1) -> bool {
+    auto nodeCmp = [&](const Node* N0, const Node* N1) {
         const Value* V0 = N0->value;
         const Value* V1 = N1->value;
         return valCmp(V0, V1);

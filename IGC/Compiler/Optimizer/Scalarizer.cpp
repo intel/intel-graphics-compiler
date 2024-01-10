@@ -1290,7 +1290,7 @@ void ScalarizeFunction::resolveDeferredInstructions()
     llvm::MapVector<Value*, Value*> dummyToScalarMap;
 
     // lambda to check if a value is a dummy instruction
-    auto isDummyValue = [this](Value* val) -> bool
+    auto isDummyValue = [this](Value* val)
     {
         auto* call = dyn_cast<CallInst>(val);
         if (!call) return false;

@@ -257,7 +257,7 @@ private: // data
     ///         add it to the map.
     void updateVariableMap(VariableMap& map, std::initializer_list<const std::string> keys, bool isKeyPrefix, bool isCaseSensitive)
     {
-        auto toLower = [](std::string str)->std::string
+        auto toLower = [](std::string str)
         {
             std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) { return std::tolower(c); });
             return str;

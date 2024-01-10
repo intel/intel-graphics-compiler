@@ -787,7 +787,7 @@ BasicBlock *GenXPredToSimdCF::getIfExitFromElseBranch(BranchInst &BrInst) {
   auto *IfElseEntry = getIfElseEntry(BrInst);
   auto IfExit =
       std::find_if(BrInst.successors().begin(), BrInst.successors().end(),
-                   [IfElseEntry, this](BasicBlock *BB) -> bool {
+                   [IfElseEntry, this](BasicBlock *BB) {
                      return BB != IfElseEntry;
                    });
   return IfExit != BrInst.successors().end() ? *IfExit : nullptr;
@@ -814,7 +814,7 @@ BasicBlock *GenXPredToSimdCF::getIfThenEnd(BranchInst &BrInst) {
     return nullptr;
   auto IfThenEnd = std::find_if(
       pred_begin(IfExit), pred_end(IfExit),
-      [&BrInst](BasicBlock *BB) -> bool { return BB != BrInst.getParent(); });
+      [&BrInst](BasicBlock *BB) { return BB != BrInst.getParent(); });
   return IfThenEnd != pred_end(IfExit) ? *IfThenEnd : nullptr;
 }
 
@@ -836,7 +836,7 @@ BasicBlock *GenXPredToSimdCF::getIfElseEnd(BranchInst &BrInst) {
     return nullptr;
   auto IfExitPos =
       std::find_if(BrInst.successors().begin(), BrInst.successors().end(),
-                   [&BrInst, this](BasicBlock *BB) -> bool {
+                   [&BrInst, this](BasicBlock *BB) {
                      return BB != getIfElseEntry(BrInst);
                    });
   if (IfExitPos == BrInst.successors().end())
@@ -844,7 +844,7 @@ BasicBlock *GenXPredToSimdCF::getIfElseEnd(BranchInst &BrInst) {
   auto *IfExit = *IfExitPos;
   auto IfElseEnd = std::find_if(
       pred_begin(IfExit), pred_end(IfExit),
-      [&BrInst](BasicBlock *BB) -> bool { return BB != BrInst.getParent(); });
+      [&BrInst](BasicBlock *BB) { return BB != BrInst.getParent(); });
   return IfElseEnd != pred_end(IfExit) ? *IfElseEnd : nullptr;
 }
 

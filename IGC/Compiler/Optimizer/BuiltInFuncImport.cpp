@@ -331,7 +331,7 @@ std::unique_ptr<llvm::Module> BIImport::Construct(Module& M, CLElfLib::CElfReade
     unsigned numOfHeaders = pElfReader->GetElfHeader()->NumSectionHeaderEntries;
     std::vector<std::unique_ptr<llvm::Module>> elf_index(numOfHeaders);
 
-    std::function<void(Function*)> Explore = [&](Function* pRoot) -> void
+    std::function<void(Function*)> Explore = [&](Function* pRoot)
     {
         TFunctionsVec calledFuncs;
         GetCalledFunctions(pRoot, calledFuncs);
@@ -629,7 +629,7 @@ bool BIImport::runOnModule(Module& M)
         }
     }
 
-    std::function<void(Function*)> Explore = [&](Function* pRoot) -> void
+    std::function<void(Function*)> Explore = [&](Function* pRoot)
     {
         TFunctionsVec calledFuncs;
         GetCalledFunctions(pRoot, calledFuncs);
@@ -1320,7 +1320,7 @@ bool PreBIImportAnalysis::runOnModule(Module& M)
         std::string sinPiBuiltinName = "__builtin_spirv_OpenCL_sinpi_f32";
         std::string cosPiBuiltinName = "__builtin_spirv_OpenCL_cospi_f32";
 #endif
-        auto violatesPromotionConds = [&](Instruction* inst) -> bool{
+        auto violatesPromotionConds = [&](Instruction* inst) {
             IGC_ASSERT(inst->getOpcode() == Instruction::FMul || inst->getOpcode() == Instruction::Load);
             if (inst && inst->hasNUsesOrMore(2)) {
                 Value::use_iterator instUse = inst->use_begin();

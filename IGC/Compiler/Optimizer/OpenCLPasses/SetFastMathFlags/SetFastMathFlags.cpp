@@ -51,7 +51,7 @@ SetFastMathFlags::SetFastMathFlags(FastMathFlags Mask, bool skipUnsafeFpMathAttr
 
 bool SetFastMathFlags::runOnModule(Module& M)
 {
-    auto hasFnAttributeSet = [](Function& F, StringRef Attr) -> bool
+    auto hasFnAttributeSet = [](Function& F, StringRef Attr)
     {
         return F.hasFnAttribute(Attr) && F.getFnAttribute(Attr).getValueAsString() == "true";
     };

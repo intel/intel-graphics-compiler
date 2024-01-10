@@ -435,7 +435,7 @@ namespace IGC
         Value* baseValue = resourcePtr;
 
         // Returns true if resource pointers describe the same resource.
-        auto ResourcePointersEq = [](Value* a, Value* b)->bool
+        auto ResourcePointersEq = [](Value* a, Value* b)
         {
             if (a == b)
             {

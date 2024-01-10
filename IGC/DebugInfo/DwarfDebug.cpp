@@ -1410,18 +1410,18 @@ void DwarfDebug::collectVariableInfo(
       [this](IntervalTy start,
              IntervalTy end) -> std::pair<IntervalTy, IntervalTy> {
     if (start >= end)
-      return std::make_pair(0, 0);
+      return {0, 0};
     const auto &Map = VisaDbgInfo->getVisaToGenLUT();
     auto LB = Map.lower_bound(start);
     auto UB = Map.upper_bound(end);
     if (LB == Map.end() || UB == Map.end())
-      return std::make_pair(0, 0);
+      return {0, 0};
 
     start = LB->second.front();
     end = UB->second.front();
     if (start >= end)
-      return std::make_pair(0, 0);
-    return std::make_pair(start, end);
+      return {0, 0};
+    return {start, end};
   };
 
   auto encodeImm = [&](IGC::DotDebugLocEntry &dotLoc, uint32_t &offset,

@@ -612,7 +612,7 @@ void VariableReuseAnalysis::printAlias(raw_ostream& OS, const Function* F) const
         }
     }
 
-    auto SubVecCmp = [&](const SSubVecDesc* SV0, const SSubVecDesc* SV1) -> bool {
+    auto SubVecCmp = [&](const SSubVecDesc* SV0, const SSubVecDesc* SV1) {
         int n0 = Val2IntMap[SV0->Aliaser];
         int n1 = Val2IntMap[SV1->Aliaser];
         return n0 < n1;
@@ -1072,7 +1072,7 @@ bool VariableReuseAnalysis::processInsertTo(VecInsEltInfoTy& AllIEIs)
     int SubStartIx = 0;
     SmallVector<std::pair<Value*, int>, 8> SubVecs;
 
-    auto IsInSubVecs = [&](Value* Val) -> bool {
+    auto IsInSubVecs = [&](Value* Val) {
         for (int j = 0, sz = (int)SubVecs.size(); j < sz; ++j) {
             if (SubVecs[j].first == Val)
                 return true;

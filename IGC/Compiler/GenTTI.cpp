@@ -417,7 +417,7 @@ namespace llvm {
         int instCount = instructionList.size();
 
         // Check if the specific basic block has block read or write.
-        auto hasBlockReadWrite = [](BasicBlock* BB) -> bool {
+        auto hasBlockReadWrite = [](BasicBlock* BB) {
             for (auto I = BB->begin(), E = BB->end(); I != E; ++I)
                 if (auto GII = dyn_cast<GenIntrinsicInst>(I))
                     switch (GII->getIntrinsicID()) {

@@ -181,7 +181,7 @@ void GenXCodeGenModule::detectUnpromotableFunctions(Module* pM)
     }
 
     // Recursively add callers, as the whole chain of calls cannot be promoted
-    std::function<void(Function*)> AddCallerRecursive = [&](Function* F)->void
+    std::function<void(Function*)> AddCallerRecursive = [&](Function* F)
     {
         m_UnpromotableFuncs.insert(F);
         for (auto user : F->users())
@@ -236,7 +236,7 @@ void GenXCodeGenModule::processFunction(Function& F)
     auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
 
-    auto CanMakeIndirectFunc = [&](llvm::Function* F)->bool
+    auto CanMakeIndirectFunc = [&](llvm::Function* F)
     {
         // Don't convert subroutines, builtins, or invoke_simd_target
         if (F->hasFnAttribute("visaStackCall") == false ||
@@ -1005,7 +1005,7 @@ void GenXFunctionGroupAnalysis::CloneFunctionGroupForMultiSIMDCompile(llvm::Modu
         }
     }
 
-    auto hasIndirectCaller = [this](Function* F, FunctionGroup* ICG)->bool
+    auto hasIndirectCaller = [this](Function* F, FunctionGroup* ICG)
     {
         for (auto U : F->users()) {
             if (Instruction* I = dyn_cast<Instruction>(U)) {

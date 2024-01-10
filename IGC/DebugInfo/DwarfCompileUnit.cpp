@@ -1999,7 +1999,7 @@ void CompileUnit::constructSubrangeDIE(DIE &Buffer, DISubrange *SR,
 
 #if LLVM_VERSION_MAJOR >= 13
   auto AddBoundTypeEntry = [&](dwarf::Attribute Attr,
-                               DISubrange::BoundType Bound) -> void {
+                               DISubrange::BoundType Bound) {
     if (auto *BV = Bound.dyn_cast<DIVariable *>()) {
       if (auto *VarDIE = getDIE(BV))
         addDIEEntry(DW_Subrange, Attr, VarDIE);

@@ -104,7 +104,7 @@ struct OpType {
   Type *FirstArgType;
 };
 static std::function<bool(const OpType &, const OpType &)> OpTypeComparator =
-    [](const OpType &ot1, const OpType &ot2) -> bool {
+    [](const OpType &ot1, const OpType &ot2) {
   if (ot1.Opcode < ot2.Opcode)
     return true;
   if (ot2.Opcode < ot1.Opcode)

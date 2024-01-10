@@ -366,7 +366,7 @@ void ModuleAllocaAnalysis::analyze(Function* F, unsigned& Offset, alignment_t& M
         return;
 
     // Group by alignment and smallest first.
-    auto getAlignment = [=](AllocaInst* AI) -> alignment_t {
+    auto getAlignment = [=](AllocaInst* AI) {
         alignment_t Alignment = IGCLLVM::getAlignmentValue(AI);
         if (Alignment == 0)
             Alignment = DL->getABITypeAlignment(AI->getAllocatedType());

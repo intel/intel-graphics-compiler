@@ -524,7 +524,7 @@ void LowerGEPForPrivMem::MarkNotPromtedAllocas(llvm::AllocaInst& I, IGC::StatusP
 
     UserAddrSpaceMD& userASMD = m_ctx->getUserAddrSpaceMD();
     std::function<void(Instruction*, MDNode*)> markAS_PRIV;
-    markAS_PRIV = [&markAS_PRIV, &userASMD](Instruction* instr, MDNode* node) -> void
+    markAS_PRIV = [&markAS_PRIV, &userASMD](Instruction* instr, MDNode* node)
     {
         // Avoid instruction which has already md set
         if (!userASMD.Has(instr, LSC_DOC_ADDR_SPACE::PRIVATE))

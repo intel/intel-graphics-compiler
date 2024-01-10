@@ -2410,7 +2410,7 @@ namespace IGC
                     return false;
             }
 
-            auto isByteOrWordValue = [](Value* V) -> bool {
+            auto isByteOrWordValue = [](Value* V) {
                 if (isa<ConstantInt>(V))
                 {
                     // only 16-bit int immediate is supported
@@ -2429,7 +2429,7 @@ namespace IGC
                     )
                 return false;
 
-            auto isQWordValue = [](Value* V) -> bool {
+            auto isQWordValue = [](Value* V) {
                 while (isa<ZExtInst>(V) || isa<SExtInst>(V) || isa<BitCastInst>(V))
                     V = cast<Instruction>(V)->getOperand(0);
                 Type* T = V->getType();

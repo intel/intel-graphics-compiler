@@ -1437,7 +1437,7 @@ auto GetIterationFunc(
     std::vector<const llvm::Instruction*>& instructions)
 {
     IterationCallbackT IterateFunc{};
-    IterateFunc = [&](auto it, auto end) -> void
+    IterateFunc = [&](auto it, auto end)
     {
         if (it == end)
         {
@@ -1474,7 +1474,7 @@ auto GetIterationFunc(
     std::vector<const llvm::Instruction*>& instructions)
 {
     IterationCallbackT IterateFunc{};
-    IterateFunc = [&](auto it, auto end) -> void
+    IterateFunc = [&](auto it, auto end)
     {
         if (it == end)
         {
@@ -1512,7 +1512,7 @@ IterationCallbackT GetIterationFunc(
     InstructionMask& instructionMask)
 {
     IterationCallbackT IterateFunc{};
-    IterateFunc = [&container, &lookupTable, &instMaskLookupTable, &bbLookupTable, &instructionMask](auto it, auto end) -> void
+    IterateFunc = [&container, &lookupTable, &instMaskLookupTable, &bbLookupTable, &instructionMask](auto it, auto end)
     {
         if (it == end)
         {
@@ -1563,6 +1563,7 @@ void SynchronizationObjectCoalescing::GetVisibleMemoryInstructions(
     {
         return IsSubsituteInstruction(pEvaluatedInst, pSourceInst);
     };
+
     std::function<bool(const llvm::Instruction*)> IsMemoryInst = [this, memoryInstructionMask](const llvm::Instruction* pEvaluatedInst)
     {
         return (m_InstMaskLookupTable.lookup(pEvaluatedInst) & memoryInstructionMask) != 0;

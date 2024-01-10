@@ -47,7 +47,7 @@ unsigned PressureTracker::getSizeInBytes(LiveRange *LR, bool AllowWidening) {
   // - non-of values will be used in indirect regions
   // - all uses are in the same block (local variables only)
   //
-  auto toWiden = [=]() -> bool {
+  auto toWiden = [=]() {
     if (!Ty->isVectorTy() ||
         !cast<VectorType>(Ty)->getElementType()->isIntegerTy(8))
       return false;

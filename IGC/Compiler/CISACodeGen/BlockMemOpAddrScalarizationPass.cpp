@@ -164,7 +164,7 @@ InstType BlockMemOpAddrScalarizationPass::checkInst(Instruction *I) {
         Check = true;
 
     // Skip intrinsics that don't actually represent code after lowering.
-    auto canSkipCall = [](Instruction *I) -> bool {
+    auto canSkipCall = [](Instruction *I) {
         if (IntrinsicInst *Intr = dyn_cast<IntrinsicInst>(I)) {
             switch (Intr->getIntrinsicID()) {
                 default:

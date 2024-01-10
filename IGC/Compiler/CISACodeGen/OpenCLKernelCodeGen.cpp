@@ -497,7 +497,7 @@ namespace IGC
     {
         IGC_ASSERT(m_Context->enableZEBinary());
 
-        auto getZESamplerAddrMode = [](int addrMode) -> zebin::PreDefinedAttrGetter::ArgSamplerAddrMode
+        auto getZESamplerAddrMode = [](int addrMode)
         {
             switch (addrMode) {
             case LEGACY_CLK_ADDRESS_NONE:
@@ -516,7 +516,7 @@ namespace IGC
             }
         };
 
-        auto getZESamplerFilterMode = [](int filterMode) -> zebin::PreDefinedAttrGetter::ArgSamplerFilterMode
+        auto getZESamplerFilterMode = [](int filterMode)
         {
             switch (filterMode) {
             case iOpenCL::SAMPLER_MAPFILTER_POINT:

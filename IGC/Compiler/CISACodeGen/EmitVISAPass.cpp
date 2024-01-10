@@ -4202,7 +4202,7 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool 
     IGC_ASSERT(dst->IsUniform() || dst->GetNumberElement() >= numLanes(simdMode));
     simdMode = dst->IsUniform() ? SIMDMode::SIMD1 : simdMode;
 
-    auto EncoderInit = [this, simdMode, noMask]()->void
+    auto EncoderInit = [this, simdMode, noMask]()
     {
         m_encoder->SetSimdSize(simdMode);
         if (noMask)
@@ -8823,7 +8823,7 @@ bool EmitPass::validateInlineAsmConstraints(llvm::CallInst* inst, SmallVector<St
     if (constraintStr.empty()) return true;
 
     //lambda for checking constraint types
-    auto CheckConstraintTypes = [this](StringRef str, CVariable* cv = nullptr)->bool
+    auto CheckConstraintTypes = [this](StringRef str, CVariable* cv = nullptr)
     {
         unsigned matchVal;
         if (str.equals("=rw"))
@@ -11121,7 +11121,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     WriteStackDataBlocks(argBlkData, offsetS);
 
     // lamda to copy arguments to arg register block
-    auto CopyArgBlkVariables = [&](void)->void
+    auto CopyArgBlkVariables = [&](void)
     {
         for (auto& I : argsOnRegister)
         {
@@ -11133,7 +11133,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     };
 
     // lambda to read the return value
-    auto CopyReturnValue = [&](CallInst* inst)->void
+    auto CopyReturnValue = [&](CallInst* inst)
     {
         // Don't copy if it's not used
         if (inst->use_empty()) return;
@@ -13452,7 +13452,7 @@ void EmitPass::emitPreOrPostFixOp(
         const uint src1SubReg,
         const uint src1Region[3],
         const uint dstSubReg,
-        const uint dstRegion)->void
+        const uint dstRegion)
     {
         if (isInt64Mul)
         {
@@ -15916,7 +15916,7 @@ ERoundingMode EmitPass::GetRoundingMode_FP(Instruction* inst)
 
 bool EmitPass::ignoreRoundingMode(llvm::Instruction* inst) const
 {
-    auto isFZero = [](Value* V)->bool {
+    auto isFZero = [](Value* V) {
         if (ConstantFP* FCST = dyn_cast<ConstantFP>(V))
         {
             return FCST->isZero();
@@ -18588,7 +18588,7 @@ void EmitPass::emitLSCVectorStore(Value *Ptr,
     // todo: simplilfy close-tie b/w instances and uniform store.
     // For now, make sure simd instance setting is consistent with store here,
     // that is, must do uniform store if isUniformStoreOCL() returns true
-    auto checkOCLUniformStore = [&](bool doUniformStore, bool doUniformSimdInstance) -> void {
+    auto checkOCLUniformStore = [&](bool doUniformStore, bool doUniformSimdInstance) {
         if (m_currShader->GetShaderType() != ShaderType::OPENCL_SHADER) return;
         IGC_ASSERT((doUniformStore && doUniformSimdInstance) ||
                    (!doUniformStore && !doUniformSimdInstance));

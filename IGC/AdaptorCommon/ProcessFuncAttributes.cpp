@@ -367,14 +367,14 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         }
     }
 
-    auto SetNoInline = [](Function* F)->void
+    auto SetNoInline = [](Function* F)
     {
         F->addFnAttr(llvm::Attribute::NoInline);
         F->removeFnAttr(llvm::Attribute::AlwaysInline);
     };
 
     // Returns true if a function is either import or export and requires external linking
-    auto NeedsLinking = [](Function* F)->bool
+    auto NeedsLinking = [](Function* F)
     {
         // SPIRV FE translate import/export linkage to "ExternalLinkage" in LLVMIR
         // Check all "ExternalLinkage" functions. Func declarations = Import, Func definition = Export
@@ -419,7 +419,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
     // Returns true if a function is built-in double math function
     // Our implementations of double math built-in functions are precise only
     // if we don't make any fast relaxed math optimizations.
-    auto IsBuiltinFP64 = [&IsBuiltinFP64WithPrefix](Function* F)->bool
+    auto IsBuiltinFP64 = [&IsBuiltinFP64WithPrefix](Function* F)
     {
         StringRef buildinPrefixOpenCL = igc_spv::kLLVMName::builtinExtInstPrefixOpenCL;
         return IsBuiltinFP64WithPrefix(F, buildinPrefixOpenCL);

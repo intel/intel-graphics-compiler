@@ -988,7 +988,7 @@ bool VectorPreProcess::splitLoadStore(
 
     Value* V = ALI ? ALI->getInst() : ASI->getInst();
 
-    auto InMap = [&vecToSubVec](Value* V)->bool
+    auto InMap = [&vecToSubVec](Value* V)
     {
         return vecToSubVec.find(V) != vecToSubVec.end();
     };
@@ -1792,7 +1792,7 @@ bool VectorPreProcess::runOnFunction(Function& F)
     {
         changed = true;
         auto new_end = std::remove_if(m_WorkList.begin(), m_WorkList.end(),
-            [](Value* V) -> bool {
+            [](Value* V) {
             return !V || (!isAbstractStoreInst(V) && !isAbstractLoadInst(V));
         });
         m_WorkList.erase(new_end, m_WorkList.end());

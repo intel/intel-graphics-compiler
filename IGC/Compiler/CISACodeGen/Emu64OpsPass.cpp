@@ -1889,7 +1889,7 @@ bool InstExpander::visitPHI(PHINode& PN) {
 bool InstExpander::visitCall(CallInst& Call) {
 
     // lambdas for splitting and combining i64 to <2 x i32>
-    auto Combine2xi32Toi64 = [this](Value* val)->Value*
+    auto Combine2xi32Toi64 = [this](Value* val)
     {
         IGC_ASSERT(nullptr != Emu);
         IGC_ASSERT(Emu->isInt64(val));
@@ -1902,7 +1902,7 @@ bool InstExpander::visitCall(CallInst& Call) {
         NewVal = IRB->CreateBitCast(NewVal, IRB->getInt64Ty());
         return NewVal;
     };
-    auto Spliti64To2xi32 = [this](Value* retVal, Value*& OutputLo, Value*& OutputHi)->void
+    auto Spliti64To2xi32 = [this](Value* retVal, Value*& OutputLo, Value*& OutputHi)
     {
         IGC_ASSERT(nullptr != Emu);
         IGC_ASSERT(Emu->isInt64(retVal));

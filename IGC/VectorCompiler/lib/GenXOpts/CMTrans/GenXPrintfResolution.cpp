@@ -407,7 +407,7 @@ void GenXPrintfResolution::updatePrintfImplDeclarations(Module &M) {
   std::transform(
       std::begin(PrintfImplFunc::Name), std::end(PrintfImplFunc::Name),
       PrintfImplDecl.begin(),
-      [&M](const char *Name) -> FunctionCallee { return M.getFunction(Name); });
+      [&M](const char *Name) { return M.getFunction(Name); });
 }
 
 using ArgsInfoStorage = std::array<unsigned, ArgsInfoVector::Size>;

@@ -135,7 +135,7 @@ namespace IGC {
 void WorkItemSetting::collect(Function* F) {
     // Extract individual elements from a vec3.
     auto getXYZ = [](Value* V3,
-        unsigned IdX, unsigned IdY, unsigned IdZ) -> Vec3 {
+        unsigned IdX, unsigned IdY, unsigned IdZ) {
         if (!V3) return Vec3{ nullptr, nullptr, nullptr };
         Value* X = nullptr;
         Value* Y = nullptr;

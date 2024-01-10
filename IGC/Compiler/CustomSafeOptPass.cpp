@@ -334,7 +334,7 @@ void CustomSafeOptPass::visitShuffleIndex(llvm::CallInst* I)
 
     auto insertShuffleXor = [](IRBuilder<>& builder,
                                     Value* value,
-                                    uint32_t xorValue)->Value*
+                                    uint32_t xorValue)
     {
         Function* simdShuffleXorFunc = GenISAIntrinsic::getDeclaration(
             builder.GetInsertBlock()->getParent()->getParent(),
@@ -2580,7 +2580,7 @@ void GenSpecificPattern::createBitcastExtractInsertPattern(BinaryOperator& I, Va
     Value* elemLow = nullptr;
     Value* elemHi = nullptr;
 
-    auto zeroextorNot = [&](Value* Op, unsigned num) -> Value *
+    auto zeroextorNot = [&](Value* Op, unsigned num)
     {
         Value* elem = nullptr;
         if (auto ZextInst = dyn_cast<ZExtInst>(Op))

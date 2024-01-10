@@ -691,7 +691,7 @@ void EstimateFunctionSize::runStaticAnalysis()
     return;
 }
 void EstimateFunctionSize::analyze() {
-    auto getSize = [](llvm::Function& F) -> std::size_t {
+    auto getSize = [](llvm::Function& F) {
         std::size_t Size = 0;
         for (auto& BB : F.getBasicBlockList())
             Size += IGCLLVM::sizeWithoutDebug(&BB);

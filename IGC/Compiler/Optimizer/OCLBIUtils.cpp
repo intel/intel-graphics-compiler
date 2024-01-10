@@ -323,7 +323,7 @@ bool CImagesBI::derivedFromInt(const Value* pVal)
 {
     SmallPtrSet<const Value*, 16> visitedPHIs;
 
-    std::function<bool(const Value*)> go = [&](const Value* val) -> bool
+    std::function<bool(const Value*)> go = [&](const Value* val)
     {
         if (val->getType()->getScalarType()->isIntegerTy() || isa<UndefValue>(val))
         {

@@ -304,7 +304,7 @@ private:
   // mad on i64 is restricted.
   // Checks if add/sub/mul/shl/.. operates on i64 or <n x i64>.
   bool isOperationOnI64() const {
-    auto isI64 = [this](Value *Val) -> bool {
+    auto isI64 = [this](Value *Val) {
       return Val->getType()->getScalarType()->isIntegerTy(64);
     };
 
@@ -1268,7 +1268,7 @@ bool MadMatcher::isProfitable() const {
   // Do not match unless both of multiplicants are of type *B/*W
   bool IsProfitable = true;
 
-  auto Checker = [](Value *V) -> bool {
+  auto Checker = [](Value *V) {
     // TODO, handle constants more accurately.
     if (isa<Constant>(V))
       return true;
@@ -1276,7 +1276,7 @@ bool MadMatcher::isProfitable() const {
     return (V->getType()->getScalarSizeInBits() < DWordSizeInBits);
   };
 
-  auto HasKnownShAmtLT16 = [](Value *V) -> bool {
+  auto HasKnownShAmtLT16 = [](Value *V) {
     ConstantInt *C = dyn_cast<ConstantInt>(V);
     if (!C) {
       if (!isa<Constant>(V))
@@ -2728,7 +2728,7 @@ static bool mergeToWrRegion(SelectInst *SI) {
     Inverted = Val == SI->getTrueValue();
     auto RdReg = makeRegionFromBaleInfo(Rd, BaleInfo());
 
-    auto CanMergeToWrRegion = [&](const Use &U) -> bool {
+    auto CanMergeToWrRegion = [&](const Use &U) {
       if (!GenXIntrinsic::isWrRegion(U.getUser()))
         return false;
       if (U.getOperandNo() != NewValueOperandNum)
@@ -3247,7 +3247,7 @@ bool GenXPatternMatch::mergeLscLoad(Function *F) {
 }
 
 bool GenXPatternMatch::reassociateIntegerMad(Function *F) {
-  auto isSingleUsedAdd = [](Value *V) -> bool {
+  auto isSingleUsedAdd = [](Value *V) {
     auto BO = dyn_cast<BinaryOperator>(V);
     if (!BO || !BO->hasOneUse())
       return false;
@@ -3255,7 +3255,7 @@ bool GenXPatternMatch::reassociateIntegerMad(Function *F) {
     return BO->getOpcode() == Instruction::Add;
   };
 
-  auto isSingleUsedMul = [](Value *V) -> bool {
+  auto isSingleUsedMul = [](Value *V) {
     auto BO = dyn_cast<BinaryOperator>(V);
     if (!BO || !BO->hasOneUse())
       return false;
@@ -3370,7 +3370,7 @@ bool GenXPatternMatch::distributeIntegerMul(Function *F) {
       if (isa<ExtOperator>(RHS))
         continue;
 
-      auto collect = [](Value *V, SmallVectorImpl<Value *> &Ops) -> bool {
+      auto collect = [](Value *V, SmallVectorImpl<Value *> &Ops) {
         SmallVector<Value *, 32> CheckList;
         CheckList.push_back(V);
 

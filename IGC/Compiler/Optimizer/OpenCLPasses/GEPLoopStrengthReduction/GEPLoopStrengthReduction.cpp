@@ -728,7 +728,7 @@ int Scorer::estimateIndexInstructions(const Loop &L, GetElementPtrInst *GEP)
     // Keep track of visited instructions (don't go into cycles).
     SmallPtrSet<Instruction*, 8> Visited;
 
-    std::function<int(Instruction*)> Visit = [&](Instruction *I) -> int
+    std::function<int(Instruction*)> Visit = [&](Instruction *I)
     {
         if (Visited.insert(I).second == false)
             return 0;
@@ -878,7 +878,7 @@ bool Analyzer::doInitialValidation(GetElementPtrInst *GEP)
     // TODO: These accesses could be modified to also use pointer induction variable
     // added by this pass.
     SmallPtrSet<Value*, 8> Visited = { GEP }; // keep track of visited instructions
-    std::function<bool(Value*)> CheckOutsideAccess = [&](Value *V) -> bool
+    std::function<bool(Value*)> CheckOutsideAccess = [&](Value *V)
     {
         if (Visited.insert(V).second == false)
             return false;

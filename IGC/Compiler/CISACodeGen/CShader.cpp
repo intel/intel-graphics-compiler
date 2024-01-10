@@ -3052,14 +3052,14 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
         // Check for function and global symbols
         {
             // Function Pointer
-            auto isFunctionType = [this](Value* value)->bool
+            auto isFunctionType = [this](Value* value)
             {
                 return isa<GlobalValue>(value) &&
                     value->getType()->isPointerTy() &&
                     IGCLLVM::getNonOpaquePtrEltTy(value->getType())->isFunctionTy();
             };
             // Global Variable/Constant
-            auto isGlobalVarType = [this](Value* value)->bool
+            auto isGlobalVarType = [this](Value* value)
             {
                 return isa<GlobalVariable>(value) &&
                     m_ModuleMetadata->inlineProgramScopeOffsets.count(cast<GlobalVariable>(value)) > 0;

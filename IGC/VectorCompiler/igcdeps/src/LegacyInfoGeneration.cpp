@@ -29,7 +29,7 @@ template <typename InputIter>
 void appendLegacySymbolTable(InputIter First, InputIter Last,
                              vISA::GenSymEntry *OutIt) {
   std::transform(
-      First, Last, OutIt, [](const vISA::ZESymEntry &SI) -> vISA::GenSymEntry {
+      First, Last, OutIt, [](const vISA::ZESymEntry &SI) {
         vISA::GenSymEntry Entry;
         Entry.s_offset = SI.s_offset;
         Entry.s_size = SI.s_size;

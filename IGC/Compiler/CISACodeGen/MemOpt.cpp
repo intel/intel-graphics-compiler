@@ -2444,7 +2444,7 @@ namespace {
             else
                 maxBytes = getMaxLoadBytes(Ctx);
 
-            auto calculateSize = [=](bool Uniform) -> uint32_t
+            auto calculateSize = [=](bool Uniform)
             {
                 int sz = (int)m_currVecSizeVar->size();
                 if (Uniform) {

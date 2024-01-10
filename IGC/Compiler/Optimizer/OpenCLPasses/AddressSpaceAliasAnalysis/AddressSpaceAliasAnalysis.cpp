@@ -114,7 +114,7 @@ namespace {
 
                 /// Returns true if resource type is a texture, constant buffer or a storage buffer.
                 auto IsBufferOrTexture = [](
-                    BufferType type)->bool
+                    BufferType type)
                 {
                     return (type == BufferType::CONSTANT_BUFFER || type == BufferType::UAV || type == BufferType::RESOURCE);
                 };

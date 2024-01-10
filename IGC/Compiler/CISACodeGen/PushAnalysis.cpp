@@ -129,7 +129,7 @@ namespace IGC
         }
 
         std::function<bool(Value*)> isPushable;
-        isPushable = [this, &grfOffset, &cbIdx, &isPushable](Value* v)->bool
+        isPushable = [this, &grfOffset, &cbIdx, &isPushable](Value* v)
         {
             // Matches the following patterns:
             // Pattern 1:
@@ -211,7 +211,7 @@ namespace IGC
         SmallVector<Value*, 4> potentialPushableAddresses;
         std::function<void(Value*)> GetPotentialPushableAddresses;
         GetPotentialPushableAddresses = [&potentialPushableAddresses, &offset, &GetPotentialPushableAddresses](
-            Value* pAddress)->void
+            Value* pAddress)
         {
             BinaryOperator* pAdd = dyn_cast<BinaryOperator>(pAddress);
             if (pAdd && pAdd->getOpcode() == llvm::Instruction::Add)

@@ -3861,7 +3861,7 @@ bool EarlyOutPatterns::trackAddSources(BinaryOperator* addInst)
 DenseSet<const Value*> EarlyOutPatterns::tryAndFoldValues(ArrayRef<Instruction*> Values)
 {
     std::function<void(const Instruction*, DenseSet<const Value*>&)> fold =
-        [&fold](const Instruction* inst, DenseSet<const Value*>& FoldedVals) -> void
+        [&fold](const Instruction* inst, DenseSet<const Value*>& FoldedVals)
     {
         for (auto UI : inst->users())
         {

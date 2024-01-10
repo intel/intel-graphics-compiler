@@ -1528,7 +1528,7 @@ namespace IGC {
             }
         };
 
-        auto isUsedInLoop = [](Value *V, Loop *L) -> bool {
+        auto isUsedInLoop = [](Value *V, Loop *L) {
             if (isa<Constant>(V))
             {
                 // Ignore constant
@@ -1545,7 +1545,7 @@ namespace IGC {
             return false;
         };
 
-        auto isSameSet = [](SmallPtrSet <Value *, 4> &S0, SmallPtrSet <Value *, 4> &S1) -> bool {
+        auto isSameSet = [](SmallPtrSet <Value *, 4> &S0, SmallPtrSet <Value *, 4> &S1) {
             if (S0.size() == S1.size())
             {
                 for (auto I : S1)
@@ -1563,7 +1563,7 @@ namespace IGC {
         // Check if it's beneficial to sink it in the loop
         auto isBeneficialToSink = [&](OperandUseGroup *OUG)-> bool
         {
-            auto getDstSize = [this](Value *V) -> int
+            auto getDstSize = [this](Value *V)
             {
                 int DstSize = 0;
                 Type* Ty = V->getType();
