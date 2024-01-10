@@ -375,7 +375,7 @@ public:
     CVariable* GetVMaskPred(CVariable*& predicate);
     void createVMaskPred(CVariable*& predicate);
     void UseVMaskPred();
-    CVariable* GetCombinedVMaskPred(CVariable* basePredicate);
+    CVariable* GetCombinedVMaskPred(CVariable* basePredicate = nullptr);
     CVariable* m_vMaskPredForSubplane = nullptr;
 
     void emitGradientX(const SSource& source, const DstModifier& modifier);

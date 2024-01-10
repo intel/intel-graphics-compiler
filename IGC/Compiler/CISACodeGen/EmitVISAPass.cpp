@@ -4713,11 +4713,11 @@ CVariable* EmitPass::GetCombinedVMaskPred(CVariable* basePredicate)
         return basePredicate;
 
     bool subspan = m_encoder->IsSubSpanDestination();
-    if ((IGC_IS_FLAG_ENABLED(UseVMaskPredicate) || IGC_IS_FLAG_ENABLED(UseVMaskPredicateForLoads)) &&
+    if ((IGC_IS_FLAG_ENABLED(UseVMaskPredicate) || IGC_IS_FLAG_ENABLED(UseVMaskPredicateForLoads) || IGC_IS_FLAG_ENABLED(UseVMaskPredicateForIndirectMove)) &&
         subspan && !m_destination->IsUniform())
     {
         CVariable* vmaskPredicate = m_vMaskPredForSubplane;
-        if (IGC_IS_FLAG_ENABLED(UseVMaskPredicateForLoads))
+        if (IGC_IS_FLAG_ENABLED(UseVMaskPredicateForLoads) || IGC_IS_FLAG_ENABLED(UseVMaskPredicateForIndirectMove))
         {
             vmaskPredicate = m_currShader->GetNewVariable(
                 numLanes(m_SimdMode),
@@ -9995,9 +9995,15 @@ void EmitPass::emitExtract(llvm::Instruction* inst)
                 m_encoder->Push();
 
                 dstAlias[i] = m_currShader->GetNewAlias(m_destination, m_destination->GetType(), (dstNElts / 2) * vecTypeSize * i, dstNElts / 2);
+                CVariable* predicate = IGC_IS_FLAG_ENABLED(UseVMaskPredicateForIndirectMove) ? GetCombinedVMaskPred() : nullptr;
+
                 // finally, we move the indirectly addressed values to the destination register
                 m_encoder->SetMask(i == 0 ? EMASK_H1 : EMASK_H2);
                 m_encoder->SetSimdSize(SIMDMode::SIMD16);
+
+                // to avoid out-of-bounds indirect access (exceeding the maximum number of GRFs)
+                m_encoder->SetPredicate(predicate);
+
                 m_encoder->Copy(dstAlias[i], pDstArrElm);
                 m_encoder->Push();
             }
@@ -10015,6 +10021,9 @@ void EmitPass::emitExtract(llvm::Instruction* inst)
             // we add offsets to the base that is the beginning of the vector variable
             m_encoder->AddrAdd(pDstArrElm, vector, pOffset3);
             m_encoder->Push();
+
+            // to avoid out-of-bounds indirect access (exceeding the maximum number of GRFs)
+            m_encoder->SetPredicate(IGC_IS_FLAG_ENABLED(UseVMaskPredicateForIndirectMove) ? GetCombinedVMaskPred() : nullptr);
 
             // finally, we move the indirectly addressed values to the destination register
             m_encoder->Copy(m_destination, pDstArrElm);
@@ -18118,7 +18127,7 @@ void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32,
         if (doUniformLoad)
             m_encoder->SetNoMask();
         else
-            m_encoder->SetPredicate(GetCombinedVMaskPred(flag));
+            m_encoder->SetPredicate(IGC_IS_FLAG_ENABLED(UseVMaskPredicateForLoads) ? GetCombinedVMaskPred(flag) : flag);
 
         emitLSCLoad(CacheOpts, gatherDst,
                     eOffset, EltBytes * 8, 1, 0, &Resource, AddrSize,
@@ -18361,7 +18370,7 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
                     dVisaTy, (uint16_t)eltOffBytes, (uint16_t)nbelts);
             }
 
-            m_encoder->SetPredicate(GetCombinedVMaskPred(flag));
+            m_encoder->SetPredicate(IGC_IS_FLAG_ENABLED(UseVMaskPredicateForLoads) ? GetCombinedVMaskPred(flag) : flag);
 
             VectorMessage::MESSAGE_KIND messageType = VecMessInfo.insts[i].kind;
             IGC_ASSERT_MESSAGE(
