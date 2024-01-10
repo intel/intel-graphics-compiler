@@ -6419,11 +6419,9 @@ void GraphColor::determineColorOrdering() {
   //
   // sort the live range array
   //
-  if (builder.getOption(vISA_FreqBasedSpillCost))
-    builder.getFreqInfoManager().sortBasedOnFreq(sorted);
-  else
-    std::sort(sorted.begin(), sorted.end(), compareSpillCost);
-
+  std::sort(sorted.begin(), sorted.end(), compareSpillCost);
+  //This will not change the order unless SPGSS is turned on
+  builder.getFreqInfoManager().sortBasedOnFreq(sorted);
 
   for (unsigned i = 0; i < numUnassignedVar; i++) {
     LiveRange *lr = sorted[i];
@@ -7248,6 +7246,8 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
   intf.init();
   intf.computeInterference();
 
+  builder.getFreqInfoManager().initForRegAlloc(&liveAnalysis);
+
   // If option is true, try to get extra interference info from file
   if (liveAnalysis.livenessClass(G4_GRF) &&
       kernel.getOption(vISA_AddExtraIntfInfo)) {
@@ -7267,13 +7267,8 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
     computeDegreeForARF();
   }
 
-  if (builder.getOption(vISA_FreqBasedSpillCost))
-  {
-    builder.getFreqInfoManager().computeFreqSpillCosts(gra,liveAnalysis,lrs,numVar);
-  }
-  else {
-    computeSpillCosts(useSplitLLRHeuristic, rpe);
-  }
+  computeSpillCosts(useSplitLLRHeuristic, rpe);
+  builder.getFreqInfoManager().computeFreqSpillCosts(gra, useSplitLLRHeuristic, rpe);
 
   if (kernel.getOption(vISA_DumpRAIntfGraph))
     intf.dumpInterference();
@@ -10567,6 +10562,10 @@ GlobalRA::abortOnSpill(unsigned int GRFSpillFillCount,
 
   unsigned int instNum = instCount();
   bool isUnderThreshold = underSpillThreshold(GRFSpillFillCount, instNum);
+  isUnderThreshold = builder.getFreqInfoManager().underFreqSpillThreshold(
+      coloring.getSpilledLiveRanges(), instNum, GRFSpillFillCount,
+      isUnderThreshold);
+
   if (isUnderThreshold) {
     if (auto jitInfo = builder.getJitInfo()) {
       jitInfo->avoidRetry = true;
@@ -10877,6 +10876,9 @@ int GlobalRA::coloringRegAlloc() {
       builder.getOption(vISA_SpillSpaceCompression);
 
   uint32_t GRFSpillFillCount = 0;
+  if (kernel.getOption(vISA_FreqBasedSpillCost))
+    builder.getFreqInfoManager().initGRFSpillFillFreq();
+
   unsigned fastCompileIter = 1;
   bool fastCompile =
     (useFastRA || useHybridRAwithSpill) &&

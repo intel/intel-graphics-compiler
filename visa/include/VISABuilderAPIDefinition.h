@@ -1241,8 +1241,7 @@ public:
 
   /// set or get current block frequency information
   VISA_BUILDER_API virtual int
-  encodeBlockFrequency(uint64_t digits, int16_t scale,
-                       bool beginEncoding) = 0;
+  encodeBlockFrequency(uint64_t digits, int16_t scale) = 0;
 };
 
 class VISAFunction : public VISAKernel {

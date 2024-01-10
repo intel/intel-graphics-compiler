@@ -14,76 +14,80 @@ SPDX-License-Identifier: MIT
 #include "G4_IR.hpp"
 #include "GraphColor.h"
 #include "RegAlloc.h"
+#include "RPE.h"
+
+#include <cmath>
 
 using Scaled64 = llvm::ScaledNumber<uint64_t>;
 namespace vISA {
 FrequencyInfo::FrequencyInfo(IR_Builder *builder, G4_Kernel &k)
-    : irb(builder), curFreq(Scaled64::getZero()), kernel(k),
-      lastInstMarked(nullptr), dumpEnabled(irb->getOption(vISA_DumpFreqBasedSpillCost)) {}
-
-void FrequencyInfo::setCurrentStaticFreq(uint64_t digits, int16_t scale) {
-  curFreq = llvm::ScaledNumber<uint64_t>(digits, scale);
-  lastInstMarked = !irb->instAllocList.empty() ? irb->instAllocList.back() : nullptr;
-  return;
+    : kernel(k), irb(builder), lastInstMarked(nullptr), liveAnalysis(nullptr) {
+  dumpEnabled = irb->getOptions()->getuInt32Option(vISA_DumpFreqBasedSpillCost);
+  GRFSpillFillFreq = Scaled64::getZero();
+  freqScale = Scaled64::get(
+      irb->getOptions()->getuInt32Option(vISA_FreqBasedSpillCostScale));
 }
-void FrequencyInfo::transferFreqToG4Inst()
-{
+
+void FrequencyInfo::transferFreqToG4Inst(uint64_t digits, int16_t scale) {
+  if (irb->instAllocList.empty())
+    return;
+  G4_INST *lastInst = irb->instAllocList.back();
+  Scaled64 curFreq = llvm::ScaledNumber<uint64_t>(digits, scale);
+  InstFreqInfo[lastInst] = curFreq;
+  storeStaticFrequencyAsMetadata(lastInst,curFreq);
   for (auto itr = irb->instAllocList.rbegin();
-    itr != irb->instAllocList.rend() || *itr != lastInstMarked; itr++)
+    itr != irb->instAllocList.rend() && *itr != lastInstMarked; itr++)
   {
-    if ((*itr)->isCFInst())
-      storeStaticFrequencyAsMetadata(*itr);
+    G4_INST *inst = *itr;
+    tailInsts[inst] = lastInst;
   }
+  lastInstMarked =
+      !irb->instAllocList.empty() ? irb->instAllocList.back() : nullptr;
   return;
 }
 
-void FrequencyInfo::storeStaticFrequencyAsMetadata(G4_INST* i)
-{
+void FrequencyInfo::storeStaticFrequencyAsMetadata(G4_INST *i,
+                                                   Scaled64 curFreq) {
   MDNode *md_digits =
       irb->allocateMDString(std::to_string(curFreq.getDigits()));
-  MDNode *md_scale = irb->allocateMDString(std::to_string(curFreq.getDigits()));
+  MDNode *md_scale = irb->allocateMDString(std::to_string(curFreq.getScale()));
   i->setMetadata("stats.blockFrequency.digits", md_digits);
   i->setMetadata("stats.blockFrequency.scale", md_scale);
 
-  if (dumpEnabled) {
-    if (hasFreqMetaData(i)) {
-      std::cerr << "G4_Inst - Frequency data: digits=";
-      md_digits->dump();
-      std::cerr << " scale=";
-      md_scale->dump();
-      std::cerr << " ";
-      i->dump();
-    } else {
-      std::cerr << "G4_Inst - No frequency data available";
-      i->dump();
-    }
+  if (dumpEnabled & 0x10) {
+    std::cerr << "LLVM to G4_Inst - Frequency data: ";
+    std::cerr << curFreq.toString();
+    std::cerr << " digits=";
+    md_digits->dump();
+    std::cerr << " scale=";
+    md_scale->dump();
+    std::cerr << " ";
+    i->dump();
   }
+  return;
 }
 
 void FrequencyInfo::updateStaticFrequencyForBasicBlock(G4_BB *bb) {
   G4_INST *lastInst =
       !bb->getInstList().empty() ? bb->getInstList().back() : nullptr;
-  if (lastInst && hasFreqMetaData(lastInst)) {
-    MDNode *mn_digits = lastInst->getMetadata("stats.blockFrequency.digits");
-    MDNode *mn_scale = lastInst->getMetadata("stats.blockFrequency.scale");
-    Scaled64 freq =
-        Scaled64(stoull((mn_digits->asMDString())->getData()),
-                 (int16_t)stoi((mn_scale->asMDString())->getData()));
+  if (lastInst) {
+    Scaled64 freq = getFreqInfoFromInst(lastInst);
     BlockFreqInfo[bb] = freq;
-    if (dumpEnabled) {
-      std::cerr << "G4_BB - Frequency data: digits =";
-      mn_digits->dump();
-      std::cerr << " scale =";
-      mn_scale->dump();
+    if (dumpEnabled & 0x10) {
+      std::cerr << "G4_Inst to G4_BB - Frequency data: ";
+      std::cerr << freq.toString();
+      std::cerr << " digits =" << freq.getDigits();
+      std::cerr << " scale =" << freq.getScale();
       std::cerr << " ";
-      bb->getLabel()->dump();
+      bb->getInstList().back()->dump();
       std::cerr << "\n";
     }
   } else {
-    if (dumpEnabled) {
-      std::cerr << "G4_BB - No frequency data available ";
-      bb->getLabel()->dump();
-      std::cerr << "\n";
+    // A block with no instructions have zero frequency
+    // Fixme: infer frequency number from Pres
+    BlockFreqInfo[bb] = Scaled64::getZero();
+    if (dumpEnabled & 0x10) {
+      std::cerr << "G4_Inst to G4_BB - No instructions in a basic block\n";
     }
   }
   return;
@@ -98,66 +102,112 @@ void FrequencyInfo::updateStaticFrequency(
   return;
 }
 
-bool FrequencyInfo::underSpillFreqThreshold(const std::list<vISA::LiveRange*> &spilledLRs, int instNum)
-{
-  Scaled64 GRFSpillFillFreq = Scaled64::getZero();
-  for (auto spilled : spilledLRs) {
-    GRFSpillFillFreq += freqSpillCost[spilled];
+bool FrequencyInfo::underFreqSpillThreshold(
+    const std::list<vISA::LiveRange *> &spilledLRs, int instNum,
+    unsigned int legacySpillFillCount, bool legacyUnderThreshold) {
+
+  int threshold = std::min(
+      irb->getOptions()->getuInt32Option(vISA_AbortOnSpillThreshold), 200u);
+  Scaled64 const_val = Scaled64::get(200);
+
+  if (dumpEnabled & 0x80) {
+    if (!irb->getOption(vISA_FreqBasedSpillCost)) {
+      for (auto spilledLR : spilledLRs) {
+        std::cerr << "Spill threshold - spilled LR";
+        spilledLR->emit(std::cerr);
+        std::cerr << " Ref Cnt: " << spilledLR->getRefCount() << "\n";
+      }
+    }
+    std::cerr << "Spill threshold - Kernel " << kernel.getName() << std::endl;
+    std::cerr << "Spill threshold - Spilled LR count: " << spilledLRs.size() << std::endl;
+    std::cerr << "Spill threshold - Inst cnt: " << instNum
+              << " abortThreshold: " << threshold << " cont(C): " << const_val.toString()
+              << std::endl;
+    if (legacyUnderThreshold) {
+      std::cerr
+          << "Spill threshold - (Legacy) Low total spill count(no retry): "
+          << legacySpillFillCount << ", total_spill_count * C ("
+          << legacySpillFillCount * const_val.toInt<uint32_t>() << ") < inst_count * threshold ("
+          << instNum * threshold << ")\n";
+    } else {
+      std::cerr << "Spill threshold - (Legacy) high total spill count(retry): "
+                << legacySpillFillCount << ", total_spill_count * C ("
+                << legacySpillFillCount * const_val.toInt<uint32_t>()
+                << ") > inst_count*threshold (" << instNum * threshold
+                << ")\n";
+    }
+    std::cerr << std::endl;
   }
-  auto underSpillFreqThreshold = [this](Scaled64& spillFreq, int asmCount) {
-    int threshold = std::min(
-      irb->getOptions()->getuInt32Option(vISA_AbortOnSpillThreshold),
-      200u);
-    return (spillFreq * Scaled64::get(200)) < Scaled64::get(threshold * asmCount);
+
+  if (!irb->getOption(vISA_FreqBasedSpillCost))
+    return legacyUnderThreshold;
+
+  for (auto spilled : spilledLRs) {
+    GRFSpillFillFreq += getRefFreq(spilled);
+    if (dumpEnabled & 0x80) {
+      std::cerr << "Spill threshold - spilled LR";
+      spilled->emit(std::cerr);
+      std::cerr << " Ref Cnt: " << spilled->getRefCount();
+      std::cerr << " Static Ref Cnt: " << getStaticRefCnt(spilled);
+      std::cerr << " Ref Freq: " << getRefFreq(spilled).toString();
+      std::cerr << " Freq Spill cost: " << getFreqSpillCost(spilled);
+      std::cerr << " Total GRFSpillFillFreq: " << GRFSpillFillFreq.toString()
+                << "\n";
+    }
+  }
+
+  auto underSpillFreqThreshold = [&](Scaled64 &spillFreq, int asmCount) {
+    return spillFreq * const_val * freqScale <
+           Scaled64::get(threshold * asmCount);
   };
   bool isUnderThreshold = underSpillFreqThreshold(GRFSpillFillFreq, instNum);
-  if (dumpEnabled)
-  {
-    if (isUnderThreshold)
-      std::cerr << "GraphColor - Low spill (not retry): " << GRFSpillFillFreq.toString() << "\n";
-    else
-      std::cerr << "GraphColor - High spill (retry): " << GRFSpillFillFreq.toString() << "\n";
+  if (dumpEnabled & 0x80) {
+    std::cerr << "Spill threshold - Scale * C: "
+              << freqScale.toString()
+              << "*" << const_val.toString()
+              << " = " << (freqScale*const_val).toString() << "\n";
+    if (isUnderThreshold) {
+      std::cerr << "Spill threshold - (Static Profile) Low total spill "
+                   "frequency(no retry): "
+                << GRFSpillFillFreq.toString() << ", total_spill_freq * C * scale ("
+                << (GRFSpillFillFreq * const_val * freqScale).toString()
+                << ") < inst_count*threshold (" << instNum * threshold
+                << ")\n";
+    } else {
+      std::cerr << "Spill threshold - (Static Profile) High total spill "
+                   "frequency(retry): "
+                << GRFSpillFillFreq.toString() << ", total_spill_freq * C * scale ("
+                << (GRFSpillFillFreq * const_val * freqScale).toString()
+                << ") > inst_count*threshold (" << instNum * threshold
+                << ")\n";
+    }
+    std::cerr << std::endl;
   }
   return isUnderThreshold;
 }
 
-void FrequencyInfo::computeFreqSpillCosts(GlobalRA &gra, LivenessAnalysis &liveAnalysis, std::vector<LiveRange*> &lrs, unsigned int numVar) {
+void FrequencyInfo::computeFreqSpillCosts(GlobalRA &gra,
+                                          bool useSplitLLRHeuristic,
+                                          const RPE *rpe) {
   LiveRangeVec addressSensitiveVars;
-  Scaled64 maxNormalFreqCost = Scaled64::getZero();
+  float maxNormalFreqCost = 0;
   VarReferences directRefs(kernel, true, false);
   std::unordered_map<G4_Declare*, std::list<std::pair<G4_INST*, G4_BB*>>> indirectRefs;
+  unsigned numVar = liveAnalysis->getNumSelectedVar();
+  std::vector<LiveRange *> &lrs = liveAnalysis->gra.incRA.getLRs();
 
-  auto getWeightedRefFreq = [&](G4_Declare* dcl) {
-      auto defs = directRefs.getDefs(dcl);
-      auto uses = directRefs.getUses(dcl);
-      Scaled64 refFreq = Scaled64::getZero();
+  unsigned costFunc = irb->getOptions()->getuInt32Option(vISA_FreqBasedSpillCostFunc);
+  if (dumpEnabled & 0x20) {
+    //std::cerr << "Spill cost analysis - Norm factor: "
+              //<< freqNormFactor.toString() << std::endl;
+    std::cerr << "Spill cost analysis - Selected var cnt: " << numVar
+              << std::endl;
+    std::cerr << "Spill cost analysis - Live range cnt: " << lrs.size()
+              << std::endl;
+  }
 
-      if (defs) {
-        for (auto& def : *defs) {
-          auto* bb = std::get<1>(def);
-          refFreq += BlockFreqInfo[bb];
-        }
-      }
-
-      if (uses) {
-        for (auto& use : *uses) {
-          auto* bb = std::get<1>(use);
-          refFreq += BlockFreqInfo[bb];
-        }
-      }
-
-      if (dcl->getAddressed()) {
-        auto indirectRefsIt = indirectRefs.find(dcl);
-        if (indirectRefsIt != indirectRefs.end()) {
-          auto& dclIndirRefs = (*indirectRefsIt).second;
-          for (auto& item : dclIndirRefs) {
-            auto bb = item.second;
-            refFreq += BlockFreqInfo[bb];
-          }
-        }
-      }
-      return refFreq == Scaled64::getZero() ? Scaled64::getOne() : refFreq;
-  };
+  if (!irb->getOption(vISA_FreqBasedSpillCost))
+    return;
 
   std::unordered_map<const G4_Declare*, std::vector<G4_Declare*>>
     addrTakenMap;
@@ -168,9 +218,9 @@ void FrequencyInfo::computeFreqSpillCosts(GlobalRA &gra, LivenessAnalysis &liveA
     if (kernel.getOption(vISA_IncSpillCostAllAddrTaken))
       return true;
     if (!addrMapsComputed) {
-      const_cast<PointsToAnalysis&>(liveAnalysis.getPointsToAnalysis())
+      const_cast<PointsToAnalysis&>(liveAnalysis->getPointsToAnalysis())
         .getPointsToMap(addrTakenMap);
-      const_cast<PointsToAnalysis&>(liveAnalysis.getPointsToAnalysis())
+      const_cast<PointsToAnalysis&>(liveAnalysis->getPointsToAnalysis())
         .getRevPointsToMap(revAddrTakenMap);
       addrMapsComputed = true;
     }
@@ -188,8 +238,15 @@ void FrequencyInfo::computeFreqSpillCosts(GlobalRA &gra, LivenessAnalysis &liveA
   };
 
   for (unsigned i = 0; i < numVar; i++) {
-    G4_Declare* dcl = lrs[i]->getDcl();
-
+    LiveRange *lr = lrs[i];
+    G4_Declare *dcl = lr->getDcl();
+    Scaled64 refFreq = getRefFreq(lr);
+    double refFreqDouble = refFreq.getDigits() * (double)std::pow(2,refFreq.getScale());
+    if (dumpEnabled & 0x20) {
+      std::cerr << "Spill cost analysis - reference frequency: "
+                << refFreqDouble
+                << std::endl;
+    }
     if (dcl->getIsPartialDcl()) {
       continue;
     }
@@ -200,56 +257,98 @@ void FrequencyInfo::computeFreqSpillCosts(GlobalRA &gra, LivenessAnalysis &liveA
     //
     if (kernel.fg.isPseudoDcl(dcl)) {
       if (kernel.fg.isPseudoVCADcl(dcl)) {
-        freqSpillCost[lrs[i]] = Scaled64(1, INT16_MIN);
-      }
-      else {
-        freqSpillCost[lrs[i]] = Scaled64::getZero();
+        setFreqSpillCost(lr, MINSPILLCOST + 1);
+      } else {
+        setFreqSpillCost(lr, MINSPILLCOST);
       }
     }
 
     auto dclLR = gra.getLocalLR(dcl);
     if (dclLR != NULL && dclLR->getSplit()) {
-        freqSpillCost[lrs[i]] = Scaled64(2, INT16_MIN);
-    }
-    else if (gra.isAddrFlagSpillDcl(dcl) || lrs[i]->isRetIp() ||
-      lrs[i]->getIsInfiniteSpillCost() == true ||
-      ((lrs[i]->getVar()->isRegVarTransient() == true ||
-        lrs[i]->getVar()->isRegVarTmp() == true) &&
-        lrs[i]->getVar()->isSpilled() == false) ||
-      dcl == gra.getOldFPDcl() ||
-      (!irb->canReadR0() && dcl == irb->getBuiltinR0())) {
-      freqSpillCost[lrs[i]] = Scaled64::getLargest();
-    }
-    else if (dcl->isDoNotSpill()) {
-      freqSpillCost[lrs[i]] = Scaled64::getLargest();
+      setFreqSpillCost(lr, MINSPILLCOST + 2);
+    } else if (gra.isAddrFlagSpillDcl(dcl) || lrs[i]->isRetIp() ||
+               lrs[i]->getIsInfiniteSpillCost() == true ||
+               ((lrs[i]->getVar()->isRegVarTransient() == true ||
+                 lrs[i]->getVar()->isRegVarTmp() == true) &&
+                lrs[i]->getVar()->isSpilled() == false) ||
+               dcl == gra.getOldFPDcl() ||
+               (!irb->canReadR0() && dcl == irb->getBuiltinR0())) {
+      setFreqSpillCost(lr, MAXSPILLCOST);
+    } else if (dcl->isDoNotSpill()) {
+      setFreqSpillCost(lr, MAXSPILLCOST);
     }
     //
     // Calculate spill costs of regular nodes.
     //
     else {
-      Scaled64 refFreq = getWeightedRefFreq(lrs[i]->getDcl());
-      Scaled64 spillCost = refFreq * refFreq * refFreq /
-        (Scaled64::get(lrs[i]->getDegree() + 1) * Scaled64::get(lrs[i]->getDegree() + 1));
+      float spillCost = 0.0f;
+      unsigned refCount = lrs[i]->getRefCount();
+      unsigned degree = lrs[i]->getDegree() + 1;
+      unsigned int byteSize = lrs[i]->getDcl()->getByteSize();
+      unsigned short numRows = lrs[i]->getDcl()->getNumRows();
+      unsigned short metric = -1;
+      // NOTE: Add 1 to degree to avoid divide-by-0, as a live range may have no
+      // neighbors
+      if (irb->kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D) {
+        if (useSplitLLRHeuristic) {
+          metric = 1;
+          spillCost =
+              (float)refFreqDouble * refCount / degree; // 1.0f * refCount / degree;
+        } else {
+          vASSERT(lrs[i]->getDcl()->getTotalElems() > 0);
+          if (costFunc == 1) {
+            metric = 2;
+            // address or flag variables
+            spillCost = (float)std::sqrt(refFreqDouble) * refCount * refCount *
+                        byteSize * // 1.0f * refCount * refCount * byteSize *
+                        (float)sqrt(byteSize) /
+                        ((float)sqrt(degree) * (float)(sqrt(sqrt(numRows))));
+          } else {
+            metric = 3;
+            // GRF variables
+            spillCost = (float)refFreqDouble * refCount * refCount *
+                        refCount / // 1.0f * refCount * refCount * refCount /
+                        ((float)degree * (float)degree);
+          }
+        }
+      } else {
+        if (costFunc == 1) {
+          metric = 4;
+          spillCost = liveAnalysis->livenessClass(G4_GRF)
+                          ? lrs[i]->getDegree()
+                          : (float)refFreqDouble * refCount * refCount /
+                                degree; // 1.0f * refCount * refCount / degree;
+        } else {
+          metric = 5;
+          spillCost = (float)refFreqDouble * refCount * refCount *
+                      refCount / // 1.0f * refCount * refCount * refCount /
+                      ((float)degree * (float)degree);
+        }
+      }
+      setFreqSpillCost(lr, spillCost);
 
-      freqSpillCost[lrs[i]] = spillCost;
-      if (dumpEnabled)
-      {
-        std::cerr << "GraphColor -  a live range "; lrs[i]->emit(std::cerr); std::cerr << "\n";
-        std::cerr << "GraphColor - Freq Spill cost: " << spillCost.toString() << "\n";
+      if (dumpEnabled & 0x20) {
+        std::cerr << "Spill cost analysis - ";
+        lr->emit(std::cerr);
+        std::cerr << " Metric: " << metric;
+        std::cerr << " Ref Cnt: " << lr->getRefCount();
+        std::cerr << " Static Ref Cnt: " << getStaticRefCnt(lr);
+        std::cerr << " Ref Freq: " << getRefFreq(lr).toString();
+        std::cerr << " Freq Spill cost: " << spillCost << "\n";
       }
 
       // Track address sensitive live range.
-      if (liveAnalysis.isAddressSensitive(i) && incSpillCostCandidate(lrs[i])) {
-        addressSensitiveVars.push_back(lrs[i]);
-      }
-      else {
+      if (liveAnalysis->isAddressSensitive(i) && incSpillCostCandidate(lr)) {
+        addressSensitiveVars.push_back(lr);
+      } else {
         // Set the spill cost of all other normal live ranges, and
         // track the max normal cost.
         if (maxNormalFreqCost < spillCost)
-        {
           maxNormalFreqCost = spillCost;
-        }
       }
+    }
+    if (dumpEnabled & 0x20) {
+      std::cerr << "\n";
     }
   }
 
@@ -258,34 +357,203 @@ void FrequencyInfo::computeFreqSpillCosts(GlobalRA &gra, LivenessAnalysis &liveA
   // normal live ranges, so that they get colored before all the normal
   // live ranges.
   //
-  for (LiveRange* lr : addressSensitiveVars) {
-    Scaled64 fsc = freqSpillCost[lr];
-    if (fsc != Scaled64::getLargest())
-    {
+  for (LiveRange* asv : addressSensitiveVars) {
+    float fsc = getFreqSpillCost(asv);
+    if (fsc != MAXSPILLCOST) {
       fsc += maxNormalFreqCost;
-      freqSpillCost[lr] = fsc;
+      setFreqSpillCost(asv, fsc);
     }
   }
 }
 
 void FrequencyInfo::sortBasedOnFreq(std::vector<LiveRange*>& lrs)
 {
+  if (dumpEnabled & 0x40) {
+    std::cerr << "Sort based on freq - Kernel " << kernel.getName() << std::endl;
+    for (auto lr : lrs) {
+      std::cerr << "Sort based on freq - (Legacy) ";
+      lr->emit(std::cerr);
+      std::cerr << " Ref Cnt: " << lr->getRefCount();
+      std::cerr << "\n";
+    }
+    std::cerr << std::endl;
+  }
+
+  if (!irb->getOption(vISA_FreqBasedSpillCost)) {
+    return;
+  }
   std::sort(lrs.begin(), lrs.end(), [&](LiveRange* lr1, LiveRange* lr2) {
-    Scaled64 sp1 = freqSpillCost[lr1];
-    Scaled64 sp2 = freqSpillCost[lr2];
+    float sp1 = getFreqSpillCost(lr1);
+    float sp2 = getFreqSpillCost(lr2);
     return sp1 < sp2 ||
       (sp1 == sp2 &&
         lr1->getVar()->getId() < lr2->getVar()->getId());
     }
   );
+
+  if (dumpEnabled & 0x40) {
+
+    for (auto lr : lrs) {
+        std::cerr << "Sort based on freq - (Frequency) ";
+        lr->emit(std::cerr);
+        std::cerr << " Ref Cnt: " << lr->getRefCount();
+        std::cerr << " Ref Freq: " << getRefFreq(lr).toString();
+        std::cerr << " Freq Spill cost: "
+                  << getFreqSpillCost(lr) << "\n";
+    }
+    std::cerr << std::endl;
+  }
+
   return;
 }
 
-bool FrequencyInfo::hasFreqMetaData(G4_INST *i) {
-  MDNode *md_digits = i->getMetadata("stats.blockFrequency.digits");
-  MDNode *md_scale = i->getMetadata("stats.blockFrequency.scale");
+bool FrequencyInfo::hasFreqMetaData(G4_INST* i) {
+  MDNode* md_digits = i->getMetadata("stats.blockFrequency.digits");
+  MDNode* md_scale = i->getMetadata("stats.blockFrequency.scale");
   return md_digits && md_scale && (md_digits->asMDString()->getData() != "") &&
-         (md_scale->asMDString()->getData() != "");
+    (md_scale->asMDString()->getData() != "");
+}
+
+Scaled64 FrequencyInfo::getFreqInfoFromInst(G4_INST *inst) {
+  if (tailInsts.find(inst) == tailInsts.end()) {
+    if (dumpEnabled & 0x100) {
+      std::cerr << "The instruction doesn't have a registered tail "
+                   "instruction, possible generateed after encoding\n";
+    }
+    return Scaled64::getZero(); // return 0 freqeuncy for unknown frequency
+  }
+
+  G4_INST *lastInst = tailInsts[inst];
+  vISA_ASSERT(InstFreqInfo.find(lastInst) != InstFreqInfo.end(),
+              "last instruction should have frequency data");
+  return InstFreqInfo[lastInst];
+}
+
+Scaled64 FrequencyInfo::getBlockFreqInfo(G4_BB *bb) {
+  if (BlockFreqInfo.find(bb) == BlockFreqInfo.end()) {
+    if (dumpEnabled & 0x100) {
+      std::cerr << "The basicblock doesn't have frequency information, "
+                   "possibly generated after flow graph construction\n";
+      bb->dump();
+    }
+    return Scaled64::getZero(); // return 0 freqeuncy for unknown frequency
+  }
+  return BlockFreqInfo[bb];
+};
+
+void FrequencyInfo::deriveRefFreq(G4_BB *bb) {
+  Scaled64 blockFreq = getBlockFreqInfo(bb);
+  std::vector<LiveRange *> &lrs = liveAnalysis->gra.incRA.getLRs();
+  bool incSpillCostAddrTaken = kernel.getOption(vISA_IncSpillCostAllAddrTaken);
+
+  for (auto i = bb->rbegin(); i != bb->rend(); i++) {
+    G4_INST *inst = (*i);
+    auto dst = inst->getDst();
+    if (dst) {
+      if (dst->getBase()->isRegAllocPartaker()) {
+        unsigned id = dst->getBase()->asRegVar()->getId();
+        LiveRange * lr = lrs[id];
+        if (!inst->isPseudoKill() && !inst->isLifeTimeEnd()) {
+          addupRefFreq(lr, blockFreq); //Update reference frequency
+        }
+      } else if (dst->isIndirect() && liveAnalysis->livenessClass(G4_GRF)) {
+        const REGVAR_VECTOR &pointsToSet =
+            liveAnalysis->getPointsToAnalysis().getAllInPointsToOrIndrUse(dst,
+                                                                          bb);
+        for (auto &pt : pointsToSet) {
+          if (!pt.var->isRegAllocPartaker() || !incSpillCostAddrTaken)
+            continue;
+          unsigned id = pt.var->getId();
+          LiveRange *lr = lrs[id];
+          addupRefFreq(lr, blockFreq);
+        }
+      }
+    }
+
+    if (inst->opcode() == G4_pseudo_fcall &&
+        liveAnalysis->livenessClass(G4_GRF)) {
+      auto fcall = kernel.fg.builder->getFcallInfo(bb->back());
+      G4_Declare *ret = kernel.fg.builder->getStackCallRet();
+      vISA_ASSERT(fcall != std::nullopt, "fcall info not found");
+      uint16_t retSize = fcall->getRetSize();
+      if (ret && retSize > 0 && ret->getRegVar() &&
+          ret->getRegVar()->isRegAllocPartaker()) {
+        unsigned id = ret->getRegVar()->getId();
+        LiveRange *lr = lrs[id];
+        addupRefFreq(lr, blockFreq);
+      }
+    }
+
+    //
+    // process each source operand
+    //
+    for (unsigned j = 0, numSrc = inst->getNumSrc(); j < numSrc; j++) {
+      G4_Operand *src = inst->getSrc(j);
+      if (!src || !src->isSrcRegRegion())
+        continue;
+
+      G4_SrcRegRegion *srcRegion = src->asSrcRegRegion();
+      if (srcRegion->getBase()->isRegAllocPartaker()) {
+        unsigned id = srcRegion->getBase()->asRegVar()->getId();
+        LiveRange *lr = lrs[id];
+        addupRefFreq(lr, blockFreq);
+      } else if (srcRegion->isIndirect() &&
+                 liveAnalysis->livenessClass(G4_GRF)) {
+        // make every var in points-to set live
+        const REGVAR_VECTOR &pointsToSet =
+            liveAnalysis->getPointsToAnalysis().getAllInPointsToOrIndrUse(
+                srcRegion, bb);
+        for (auto &pt : pointsToSet) {
+          if (!pt.var->isRegAllocPartaker() || !incSpillCostAddrTaken)
+            continue;
+          unsigned id = pt.var->getId();
+          LiveRange *lr = lrs[id];
+          addupRefFreq(lr, blockFreq);
+        }
+      }
+    }
+
+    //
+    // Process condMod
+    //
+    if (auto mod = inst->getCondMod()) {
+      G4_VarBase *flagReg = mod->getBase();
+      if (flagReg) {
+        if (flagReg->asRegVar()->isRegAllocPartaker()) {
+          unsigned id = flagReg->asRegVar()->getId();
+          LiveRange *lr = lrs[id];
+          addupRefFreq(lr, blockFreq);
+        }
+      } else {
+        vISA_ASSERT((inst->opcode() == G4_sel || inst->opcode() == G4_csel) &&
+                        inst->getCondMod() != NULL,
+                    "Invalid CondMod");
+      }
+    }
+
+    //
+    // Process predicate
+    //
+    if (auto predicate = inst->getPredicate()) {
+      G4_VarBase *flagReg = predicate->getBase();
+      if (flagReg->asRegVar()->isRegAllocPartaker()) {
+        unsigned id = flagReg->asRegVar()->getId();
+        LiveRange *lr = lrs[id];
+        addupRefFreq(lr, blockFreq);
+      }
+    }
+  }
+  return;
+}
+void FrequencyInfo::initForRegAlloc(LivenessAnalysis  *l) {
+  freqSpillCosts.clear();
+  refFreqs.clear();
+  liveAnalysis = l;
+  if (!kernel.getOption(vISA_FreqBasedSpillCost))
+    return;
+  for (auto bb : kernel.fg)
+    deriveRefFreq(bb);
+  return;
 }
 
 } // namespace vISA

@@ -646,6 +646,8 @@ DECLARE_IGC_REGKEY(bool, ControlUnitSize,               false, "Control compilat
 DECLARE_IGC_REGKEY(DWORD, ExpandedUnitSizeThreshold,    50000, "Trimming target of compilation unit size", true)
 DECLARE_IGC_REGKEY(DWORD, PrintControlUnitSize,             0, "Print information about unit trimming", true)
 DECLARE_IGC_REGKEY(bool, StaticProfileGuidedSpillCostAnalysis,  false, "Use static profile information to estimate spill cost", true)
+DECLARE_IGC_REGKEY(DWORD, StaticProfileGuidedSpillCostAnalysisScale, 4, "Scale adjustment for static profile guided spill cost analysis", true)
+DECLARE_IGC_REGKEY(DWORD, StaticProfileGuidedSpillCostAnalysisFunc, 2, "Normalization factor for too low frequency lower than C/1000", true)
 DECLARE_IGC_REGKEY(DWORD, PrintStaticProfileGuidedSpillCostAnalysis,        0, "Print debug messages for profile embedding", true)
 DECLARE_IGC_REGKEY(bool, EnableConstantPromotion,       true, "Enable global constant data to register promotion", false)
 DECLARE_IGC_REGKEY(bool, AllowNonLoopConstantPromotion, false, "Allows promotion for constants not in loop (e.g. used once)", false)

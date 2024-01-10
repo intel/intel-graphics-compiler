@@ -5195,10 +5195,18 @@ namespace IGC
         if (IGC_IS_FLAG_ENABLED(StaticProfileGuidedSpillCostAnalysis))
         {
           SaveOption(vISA_FreqBasedSpillCost, true);
+          uint32_t scale_val = (uint32_t)IGC_GET_FLAG_VALUE(
+              StaticProfileGuidedSpillCostAnalysisScale);
+          SaveOption(vISA_FreqBasedSpillCostScale,scale_val);
+          uint32_t func_val = (uint32_t)IGC_GET_FLAG_VALUE(
+              StaticProfileGuidedSpillCostAnalysisFunc);
+          SaveOption(vISA_FreqBasedSpillCostFunc, func_val);
         }
         if (IGC_IS_FLAG_ENABLED(PrintStaticProfileGuidedSpillCostAnalysis))
         {
-          SaveOption(vISA_DumpFreqBasedSpillCost, true);
+          uint32_t print_val = (uint32_t)IGC_GET_FLAG_VALUE(
+              PrintStaticProfileGuidedSpillCostAnalysis);
+          SaveOption(vISA_DumpFreqBasedSpillCost, print_val);
         }
     } // InitVISABuilderOptions
 
