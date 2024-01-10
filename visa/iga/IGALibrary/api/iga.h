@@ -12,8 +12,6 @@ SPDX-License-Identifier: MIT
 #ifndef IGA_H
 #define IGA_H
 
-#include "iga_types_swsb.hpp"
-
 #include <stddef.h>
 #include <stdint.h>
 #ifdef _WIN32
@@ -257,7 +255,7 @@ typedef struct {
    * Force the swsb_encode_mode.  If not given (SWSBInvalidMode),
    * then encode mode will be derived from platform.
    */
-  iga::SWSB_ENCODE_MODE swsb_encode_mode;
+  uint32_t swsb_encode_mode; /* use iga::SWSB_ENCODE_MODE */
 } iga_assemble_options_t;
 
 /* detects screwups where someone adds a field and the compiler pads
@@ -320,7 +318,7 @@ static_assert(sizeof(iga_assemble_options_t) == 8 * 4,
         0,                                          /* reserved */             \
         0,                                          /* reserved */             \
         16,                                         /* sbid_count */           \
-        iga::SWSB_ENCODE_MODE::SWSBInvalidMode                                 \
+        0,                                          /* SWSBInvalidMode */      \
   }
 
 /*
