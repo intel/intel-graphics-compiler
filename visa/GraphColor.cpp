@@ -739,7 +739,7 @@ void BankConflictPass::setupBankConflictsforDPAS(G4_INST *inst) {
     gra.addBundleConflictDcl(dcls[2], dcls[1], offset[2] - offset[1]);
     gra.addBundleConflictDcl(dcls[1], dcls[2], offset[1] - offset[2]);
   }
-  // In case (src0) src1 and src2 use same declare, i.e. use same register
+  // In case src0 and src2 are null or use same declare, i.e. use same register
   if (dcls[0] == dcls[2] || !dcls[0] || !dcls[2]) {
     return;
   }
