@@ -469,7 +469,7 @@ bool TranslateSPIRVToLLVM(
             Opts.setSpecConst(SC.first, SC.second);
     }
 
-    // Actual translation from SPIR-V to LLLVM
+    // Actual translation from SPIR-V to LLVM
     success = llvm::readSpirv(Context, Opts, IS, LLVMModule, stringErrMsg);
 #else // IGC Legacy SPIRV Translator
     success = igc_spv::ReadSPIRV(Context, IS, LLVMModule, stringErrMsg, &specIDToSpecValueMap);
@@ -541,7 +541,7 @@ bool ProcessElfInput(
                 const std::string suffix = spvHashSuffix.str();
                 const char* pOutputFolder = IGC::Debug::GetShaderOutputFolder();
 
-                // Remove any already exising SPIR-V dumps from GetSpecConstantsInfo
+                // Remove any already existing SPIR-V dumps from GetSpecConstantsInfo
                 // and dump new ones with correct names
                 std::string spvHashString = suffix.c_str();
                 spvHashString.erase(0, 1);
@@ -912,7 +912,7 @@ bool ParseInput(
 
     // IGC does not handle legacy ocl binary for now (legacy ocl binary
     // is the binary that contains text LLVM IR (2.7 or 3.0).
-    if (strInput.size() > 1 && !(strInput[0] == 'B' && strInput[1] == 'C'))
+    if (!strInput.startswith("BC"))
     {
         bool isLLVM27IR = false, isLLVM30IR = false;
 
@@ -1384,7 +1384,7 @@ bool TranslateBuildSPMD(
                 // When llvm reads in multiple modules, say, M0, M1, under the same llvmcontext, if both
                 // M0 and M1 has the same struct type,  M0 will have the original name and M1 the derived
                 // name for that type.  For example, clk_event_t,  M0 will have clk_event_t, while M1 will
-                // have clk_event_t.2 (number is arbitary). After linking, those two named types should be
+                // have clk_event_t.2 (number is arbitrary). After linking, those two named types should be
                 // mapped to the same type, otherwise, we could have type-mismatch (for example, OCL GAS
                 // builtin_functions tests will assertion fail during inlining due to type-mismatch).  Furthermore,
                 // when linking M1 into M0 (M0 : dstModule, M1 : srcModule), the final type is the type
@@ -1611,7 +1611,7 @@ bool TranslateBuildSPMD(
     }
     else
     {
-        // ze binary foramt
+        // ze binary format
         llvm::SmallVector<char, 64> buf;
         llvm::raw_svector_ostream llvm_os(buf);
         const bool excludeIRFromZEBinary = IGC_IS_FLAG_ENABLED(ExcludeIRFromZEBinary) || oclContext.getModuleMetaData()->compOpt.ExcludeIRFromZEBinary;
