@@ -582,6 +582,7 @@ DECLARE_IGC_REGKEY(bool, ForceFormatConversionDG2Plus,  false,
 DECLARE_IGC_REGKEY(bool, EnableDivergentBarrierWA, false, "Generate continuation code to handle shaders that places barriers in divergent control flow", false)
 DECLARE_IGC_REGKEY(bool, ForcePrefetchToL1Cache, false, "Forces standard builtin prefetch to use L1 cache", true)
 DECLARE_IGC_REGKEY(bool, DisablePrefetchToL1Cache, false, "Disable prefetch to L1 cache", true)
+DECLARE_IGC_REGKEY(bool, ForceXYZworkGroupWalkOrder, true, "Force X/Y/Z WorkGroup walk order", true)
 
 DECLARE_IGC_GROUP("Performance experiments")
 DECLARE_IGC_REGKEY(bool, ForceNonCoherentStatelessBTI,  false, "Enable gneeration of non cache coherent stateless messages", false)
