@@ -1246,6 +1246,23 @@ bool PreBIImportAnalysis::runOnModule(Module& M)
     {
         Function* pFunc = &(*I);
 
+        // To make the behavior predictable, fix the workgroup XYZ walk order here.
+        if (IGC_IS_FLAG_ENABLED(ForceXYZworkGroupWalkOrder))
+        {
+            MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+            ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+            if (isEntryFunc(pMdUtils, pFunc)) {
+                uint32_t WGSize = IGCMetaDataHelper::getThreadGroupSize(*pMdUtils, pFunc);
+                uint32_t WGSizeHint = IGCMetaDataHelper::getThreadGroupSizeHint(*pMdUtils, pFunc);
+                if (WGSize != 1 && WGSizeHint != 1)
+                {
+                    modMD->FuncMD[pFunc].workGroupWalkOrder.dim0 = 0;
+                    modMD->FuncMD[pFunc].workGroupWalkOrder.dim1 = 1;
+                    modMD->FuncMD[pFunc].workGroupWalkOrder.dim2 = 2;
+                }
+            }
+        }
+
         StringRef funcName = pFunc->getName();
         bool isFuncNameToSearch = (funcName == OCL_GET_GLOBAL_OFFSET ||
             funcName == OCL_GET_LOCAL_ID ||
