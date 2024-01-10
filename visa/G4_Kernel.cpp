@@ -2088,6 +2088,11 @@ GRFMode::GRFMode(const TARGET_PLATFORM platform, Options *op) : options(op) {
   }
   currentMode = defaultMode;
 
+  // Set lower bound GRF
+  unsigned minGRF = op->getuInt32Option(vISA_MinGRFNum);
+  lowerBoundGRF = minGRF > 0 ? minGRF : configs.front().numGRF;
+  vISA_ASSERT(isValidNumGRFs(lowerBoundGRF), "Invalid lower bound for GRF number");
+
   // Set upper bound GRF
   unsigned maxGRF = op->getuInt32Option(vISA_MaxGRFNum);
   upperBoundGRF = maxGRF > 0 ? maxGRF : configs.back().numGRF;
@@ -2099,7 +2104,8 @@ unsigned GRFMode::setModeByRegPressure(unsigned maxRP,
   unsigned size = configs.size(), i = 0;
   // find appropiate GRF based on reg pressure
   for (; i < size; i++) {
-    if (configs[i].VRTEnable && configs[i].numGRF <= upperBoundGRF) {
+    if (configs[i].VRTEnable && configs[i].numGRF >= lowerBoundGRF &&
+        configs[i].numGRF <= upperBoundGRF) {
       currentMode = i;
       if (maxRP <= configs[i].numGRF &&
           // Check that we've at least 8 GRFs over and above

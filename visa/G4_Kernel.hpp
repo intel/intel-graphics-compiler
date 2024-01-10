@@ -239,6 +239,7 @@ private:
   std::vector<Config> configs;
   unsigned defaultMode;
   unsigned currentMode;
+  unsigned lowerBoundGRF;
   unsigned upperBoundGRF;
   Options *options;
 };
