@@ -1222,8 +1222,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
     if (isFuncGroupHead && !isDummyKernel)
     {
-        if (!needKernelArgOverrideWA
-            )
+        if (!needKernelArgOverrideWA)
         {
             // Cache the arguments list into a vector for faster access
             m_currShader->CacheArgumentsList();
