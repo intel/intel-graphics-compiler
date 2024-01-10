@@ -4671,11 +4671,6 @@ namespace IGC
                     SaveOption(vISA_AutoGRFSelection, true);
                 }
 
-                if (m_program->m_Platform->supportsAutoGRFSelection() && m_program->m_dispatchSize == SIMDMode::SIMD16)
-                {
-                    SaveOption(vISA_MaxGRFNum, unsigned(128));
-                }
-
                 // Emit warnings if mismatch is found in user input
                 // Mismatch between number of threads and GRF size (per module)
                 if (ClContext->getNumThreadsPerEU() > 0 &&  ClContext->getExpGRFSize() > 0 &&
