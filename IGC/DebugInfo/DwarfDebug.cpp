@@ -2099,6 +2099,11 @@ void DwarfDebug::beginFunction(const Function *MF, IGC::VISAModule *v) {
   isStmtSet.clear();
   m_pModule = v;
 
+  // Emit a label for the function so that we have a beginning address.
+  FunctionBeginSym = Asm->GetTempSymbol("func_begin", m_pModule->GetFuncId());
+  // Assumes in correct section after the entry point.
+  Asm->EmitLabel(FunctionBeginSym);
+
   // Grab the lexical scopes for the function, if we don't have any of those
   // then we're not going to be able to do anything.
   LScopes.initialize(m_pModule);
@@ -2120,11 +2125,6 @@ void DwarfDebug::beginFunction(const Function *MF, IGC::VISAModule *v) {
   CompileUnit *TheCU = SPMap.lookup(FnScope->getScopeNode());
   IGC_ASSERT_MESSAGE(TheCU, "Unable to find compile unit!");
   Asm->SetDwarfCompileUnitID(TheCU->getUniqueID());
-
-  // Emit a label for the function so that we have a beginning address.
-  FunctionBeginSym = Asm->GetTempSymbol("func_begin", m_pModule->GetFuncId());
-  // Assumes in correct section after the entry point.
-  Asm->EmitLabel(FunctionBeginSym);
 
   llvm::MDNode *prevIAT = nullptr;
 
@@ -2248,64 +2248,62 @@ void DwarfDebug::addScopeVariable(LexicalScope *LS, DbgVariable *Var) {
 
 // Gather and emit post-function debug information.
 void DwarfDebug::endFunction(const Function *MF) {
-  if (LScopes.empty()) {
-    LLVM_DEBUG(dbgs() << "[DwarfDebug] no lexical scopes detected\n");
-    return;
-  }
-
   // Define end label for subprogram.
   FunctionEndSym = Asm->GetTempSymbol("func_end", m_pModule->GetFuncId());
   // Assumes in correct section after the entry point.
   Asm->EmitLabel(FunctionEndSym);
 
   Asm->EmitELFDiffSize(FunctionBeginSym, FunctionEndSym, FunctionBeginSym);
+  if (!LScopes.empty()) {
 
-  // Set DwarfCompileUnitID in MCContext to default value.
-  Asm->SetDwarfCompileUnitID(0);
+    // Set DwarfCompileUnitID in MCContext to default value.
+    Asm->SetDwarfCompileUnitID(0);
 
-  SmallPtrSet<const MDNode *, 16> ProcessedVars;
-  LLVM_DEBUG(dbgs() << "[DwarfDebug] collecting variables ---\n");
-  collectVariableInfo(MF, ProcessedVars);
-  LLVM_DEBUG(dbgs() << "[DwarfDebug] variables collected ***\n");
+    SmallPtrSet<const MDNode *, 16> ProcessedVars;
+    LLVM_DEBUG(dbgs() << "[DwarfDebug] collecting variables ---\n");
+    collectVariableInfo(MF, ProcessedVars);
+    LLVM_DEBUG(dbgs() << "[DwarfDebug] variables collected ***\n");
 
-  LexicalScope *FnScope = LScopes.getCurrentFunctionScope();
-  CompileUnit *TheCU = SPMap.lookup(FnScope->getScopeNode());
-  IGC_ASSERT_MESSAGE(TheCU, "Unable to find compile unit!");
+    LexicalScope *FnScope = LScopes.getCurrentFunctionScope();
+    CompileUnit *TheCU = SPMap.lookup(FnScope->getScopeNode());
+    IGC_ASSERT_MESSAGE(TheCU, "Unable to find compile unit!");
 
-  // Construct abstract scopes.
-  LLVM_DEBUG(dbgs() << "[DwarfDebug] constructing abstract scopes ---\n");
-  ArrayRef<LexicalScope *> AList = LScopes.getAbstractScopesList();
-  for (unsigned i = 0, e = AList.size(); i != e; ++i) {
-    LexicalScope *AScope = AList[i];
-    const DISubprogram *SP = cast_or_null<DISubprogram>(AScope->getScopeNode());
-    if (SP) {
-      // Collect info for variables that were optimized out.
-      auto Variables = SP->getRetainedNodes();
-      for (unsigned i = 0, e = Variables.size(); i != e; ++i) {
-        DILocalVariable *DV = cast_or_null<DILocalVariable>(Variables[i]);
-        if (!DV || !ProcessedVars.insert(DV).second)
-          continue;
-        // Check that DbgVariable for DV wasn't created earlier, when
-        // findAbstractVariable() was called for inlined instance of DV.
-        // LLVMContext &Ctx = DV->getContext();
-        // DIVariable CleanDV = cleanseInlinedVariable(DV, Ctx);
-        // if (AbstractVariables.lookup(CleanDV)) continue;
-        if (LexicalScope *Scope = LScopes.findAbstractScope(DV->getScope())) {
-          auto *Var = createDbgVariable(DV);
-          LLVM_DEBUG(dbgs() << "  optimized-out variable: "; Var->dump());
-          addScopeVariable(Scope, Var);
+    // Construct abstract scopes.
+    LLVM_DEBUG(dbgs() << "[DwarfDebug] constructing abstract scopes ---\n");
+    ArrayRef<LexicalScope *> AList = LScopes.getAbstractScopesList();
+    for (unsigned i = 0, e = AList.size(); i != e; ++i) {
+      LexicalScope *AScope = AList[i];
+      const DISubprogram *SP =
+          cast_or_null<DISubprogram>(AScope->getScopeNode());
+      if (SP) {
+        // Collect info for variables that were optimized out.
+        auto Variables = SP->getRetainedNodes();
+        for (unsigned i = 0, e = Variables.size(); i != e; ++i) {
+          DILocalVariable *DV = cast_or_null<DILocalVariable>(Variables[i]);
+          if (!DV || !ProcessedVars.insert(DV).second)
+            continue;
+          // Check that DbgVariable for DV wasn't created earlier, when
+          // findAbstractVariable() was called for inlined instance of DV.
+          // LLVMContext &Ctx = DV->getContext();
+          // DIVariable CleanDV = cleanseInlinedVariable(DV, Ctx);
+          // if (AbstractVariables.lookup(CleanDV)) continue;
+          if (LexicalScope *Scope = LScopes.findAbstractScope(DV->getScope())) {
+            auto *Var = createDbgVariable(DV);
+            LLVM_DEBUG(dbgs() << "  optimized-out variable: "; Var->dump());
+            addScopeVariable(Scope, Var);
+          }
         }
       }
+      if (ProcessedSPNodes.count(AScope->getScopeNode()) == 0) {
+        constructScopeDIE(TheCU, AScope);
+      }
     }
-    if (ProcessedSPNodes.count(AScope->getScopeNode()) == 0) {
-      constructScopeDIE(TheCU, AScope);
-    }
-  }
-  LLVM_DEBUG(dbgs() << "[DwarfDebug] abstract scopes constructed ***\n");
+    LLVM_DEBUG(dbgs() << "[DwarfDebug] abstract scopes constructed ***\n");
 
-  LLVM_DEBUG(dbgs() << "[DwarfDebug] constructing FnScope ---\n");
-  constructScopeDIE(TheCU, FnScope);
-  LLVM_DEBUG(dbgs() << "[DwarfDebug] FnScope constructed ***\n");
+    LLVM_DEBUG(dbgs() << "[DwarfDebug] constructing FnScope ---\n");
+    constructScopeDIE(TheCU, FnScope);
+    LLVM_DEBUG(dbgs() << "[DwarfDebug] FnScope constructed ***\n");
+  }
 
   Asm->SwitchSection(Asm->GetDwarfFrameSection());
   if (m_pModule->getSubroutines(*VisaDbgInfo)->empty()) {
