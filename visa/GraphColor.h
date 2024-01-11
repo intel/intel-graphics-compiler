@@ -1882,7 +1882,7 @@ public:
 
   void forceQuadAlign(const G4_Declare *dcl) { setAugAlign(dcl, 4); }
 
-  void resetAlign(const G4_Declare *dcl) { setAugAlign(dcl, 0); }
+  void resetAugAlign(const G4_Declare *dcl) { setAugAlign(dcl, 0); }
 
   // Due to legacy usage, this method takes a boolean that, when set,
   // causes alignment to be set to Even (2). When boolean flag is
