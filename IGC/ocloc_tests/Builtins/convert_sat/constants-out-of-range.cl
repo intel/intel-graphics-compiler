@@ -5,11 +5,7 @@ Copyright (C) 2023 Intel Corporation
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
-
-// REQUIRES: regkeys
-
-// No pvc device
-// UNSUPPORTED: system-windows
+// REQUIRES: regkeys, pvc-supported
 
 /// Check if correct result values are inlined into the kernel
 /// when out-of-dest-range inputs are known at compile time

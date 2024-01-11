@@ -5,11 +5,7 @@ Copyright (C) 2023 Intel Corporation
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
-
-// REQUIRES: regkeys
-
-// No pvc device
-// UNSUPPORTED: system-windows
+// REQUIRES: regkeys, pvc-supported
 
 // Partial i64 emulation
 // RUN: ocloc compile -file %s -device pvc \

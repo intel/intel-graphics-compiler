@@ -5,7 +5,8 @@ Copyright (C) 2023 Intel Corporation
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
-// REQUIRES: regkeys
+// REQUIRES: regkeys, pvc-supported
+
 // windows unsupported due to issues on 32bit build, to be debugged.
 // UNSUPPORTED: system-windows
 

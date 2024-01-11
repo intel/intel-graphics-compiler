@@ -5,8 +5,7 @@ Copyright (C) 2023 Intel Corporation
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
-// UNSUPPORTED: system-windows
-// REQUIRES: regkeys
+// REQUIRES: regkeys, pvc-supported
 
 // RUN: ocloc compile -file %s -device pvc -options "-igc_opts 'DumpVISAASMToConsole=1' \
 // RUN: -DINPUT_TYPE=ulong -DOUTPUT_TYPE=ulong4 -DFUNCTION=intel_subgroup_block_read_transpose_u64_k4 -DINPUT_WIDTH=512 -DINPUT_HEIGHT=46 -DPITCH=512" \

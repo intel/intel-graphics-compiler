@@ -8,6 +8,7 @@
 
 # -*- Python -*-
 
+import subprocess
 import lit.formats
 import lit.util
 
@@ -41,12 +42,39 @@ llvm_config.with_environment('LD_LIBRARY_PATH', [config.ocloc_lib_dir,
 
 tool_dirs = [config.ocloc_dir, config.llvm_tools_dir, config.spirv_as_dir]
 
-if llvm_config.add_tool_substitutions([ToolSubst('ocloc', unresolved='break')], tool_dirs) is False:
+if llvm_config.add_tool_substitutions([ToolSubst('ocloc', unresolved='break')], tool_dirs) :
+  ocloc_path = llvm_config.config.substitutions[-1][1]
+else :
   lit_config.note('Did not find ocloc in %s, ocloc will be used from system paths' % tool_dirs)
+  ocloc_path = 'ocloc'
 
 llvm_config.add_tool_substitutions([ToolSubst('llvm-dwarfdump')], tool_dirs)
 llvm_config.add_tool_substitutions([ToolSubst('opt')], tool_dirs)
 llvm_config.add_tool_substitutions([ToolSubst('not')], tool_dirs)
+
+
+def get_available_devices(tool_path, ld_path):
+    set_of_devices = set()
+    # ocloc executable is expected to be present for these tests
+    ocloc_cmd = subprocess.Popen(
+        [tool_path, 'ids', '--help'], stdout=subprocess.PIPE, env={'LD_LIBRARY_PATH': ld_path})
+    ocloc_out = ocloc_cmd.stdout.read().decode()
+    ocloc_cmd.wait()
+    for line in ocloc_out.split('\n') :
+        if 'All supported acronyms:' in line :
+            fields = line.split(':')
+            for dev in fields[1].rstrip('.').split(','):
+               acronym = dev.strip()
+               if acronym :
+                  set_of_devices.add(acronym + '-supported')
+            break
+    return set_of_devices
+
+# Get supported acronyms for ocloc
+# Deprecated acronyms are not added
+devices = get_available_devices(ocloc_path, config.environment['LD_LIBRARY_PATH'])
+lit_config.note('Supported device acronyms(to be used with REQUIRES:): \n%s' % ' '.join(sorted(devices)))
+config.available_features.update(devices)
 
 if not config.regkeys_disabled:
   config.available_features.add('regkeys')
