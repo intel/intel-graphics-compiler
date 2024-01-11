@@ -1034,7 +1034,7 @@ bool typedReadSupportsAllRenderableFormats() const
 
 bool EnableNewTileYCheckDefault() const
 {
-    return (m_platformInfo.eRenderCoreFamily == IGFX_XE_HPG_CORE);
+    return true;
 }
 
 bool EnableKeepTileYForFlattenedDefault() const
