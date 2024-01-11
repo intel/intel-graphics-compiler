@@ -2679,8 +2679,11 @@ int GlobalRA::getAlignFromAugBucket(G4_Declare *dcl) {
 
       if (!(!builder.canReadR0() && dcl == kernel.fg.builder->getBuiltinR0())) {
         if (use4GRFAlign) {
-          if (topdclAugMask == AugmentationMasks::Default16Bit ||
-              topdclAugMask == AugmentationMasks::Default32Bit) {
+          // The only time it's safe to do 2GRF align is when augmentation
+          // bucket is known to be Default32Bit, otherwise we need to align
+          // 4GRF. It isn't enough to simply check elemSize * GRF size to
+          // decide alignment.
+          if (topdclAugMask == AugmentationMasks::Default32Bit) {
             if (bucketSpans2GRFs())
               return 2;
           } else if (topdclAugMask == AugmentationMasks::Default64Bit) {
@@ -2690,7 +2693,7 @@ int GlobalRA::getAlignFromAugBucket(G4_Declare *dcl) {
 
             // :df SIMD32
             return 4;
-          } else if (topdclAugMask == AugmentationMasks::Undetermined) {
+          } else {
             // Local RA will take this path as augmentation buckets are set
             // to Undetermined. Although this is conservative, hybrid RA
             // will run augmentation and compute buckets to fill in "holes".
@@ -2734,20 +2737,16 @@ void GlobalRA::augAlign() {
     if (dcl->getRegFile() & G4_GRF) {
       unsigned int align = getAlignFromAugBucket(dcl);
       if (align == 4) {
-        if (incRA.isEnabled() && !isQuadAligned(dcl)) {
+        if (!isQuadAligned(dcl)) {
           incRA.evenAlignUpdate(dcl);
         }
         forceQuadAlign(dcl);
-      } else if (align == 2) {
-        if (incRA.isEnabled() && !isEvenAligned(dcl)) {
+      }
+      else if (align == 2) {
+        if (!isEvenAligned(dcl)) {
           incRA.evenAlignUpdate(dcl);
         }
         setEvenAligned(dcl, true);
-      } else if (align == 0) {
-        if (incRA.isEnabled() && !getAugAlign(dcl)) {
-          incRA.evenAlignUpdate(dcl);
-        }
-        resetAugAlign(dcl);
       }
     }
   }
@@ -3411,16 +3410,16 @@ void Augmentation::markNonDefaultDstRgn(G4_INST *inst, G4_Operand *opnd) {
         } else if (isDefaultMaskDcl(dcl, kernel.getSimdSize(),
                                     AugmentationMasks::Default64Bit)) {
           bool useNonDefault = false;
-
-          // TODO: Why?
           useNonDefault |=
               (kernel.getSimdSize() >= g4::SIMD16 && dcl->getTotalElems() > 8);
           useNonDefault |=
               (kernel.getSimdSize() == g4::SIMD8 && dcl->getTotalElems() > 4);
 
-          gra.setAugmentationMask(dcl, useNonDefault
-                                           ? AugmentationMasks::NonDefault
-                                           : AugmentationMasks::Default64Bit);
+          if (useNonDefault) {
+            gra.setAugmentationMask(dcl, AugmentationMasks::NonDefault);
+          } else {
+            gra.setAugmentationMask(dcl, AugmentationMasks::Default64Bit);
+          }
         } else {
           gra.setAugmentationMask(dcl, AugmentationMasks::NonDefault);
           return;
@@ -10094,6 +10093,7 @@ void GlobalRA::fastRADecision()
   }
 
 }
+
 
 bool GlobalRA::tryHybridRA() {
   copyMissingAlignment();
