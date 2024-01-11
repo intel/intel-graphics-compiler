@@ -1342,7 +1342,7 @@ void Encoder::encodeBasicSource(const Instruction &inst,
         encodeSrcSubRegNum<S>(subReg);
       }
     } else { // (src.getKind() == Operand::Kind::MACRO)
-      encodeSrcReg<S>(RegName::GRF_R, src.getDirRegRef().regNum);
+      encodeSrcReg<S>(src.getDirRegName(), src.getDirRegRef().regNum);
       encodeSrcMathMacroReg<S>(src.getMathMacroExt());
       if (accessMode == GED_ACCESS_MODE_Align16) {
         // vertical stride has to be halved for 8B types

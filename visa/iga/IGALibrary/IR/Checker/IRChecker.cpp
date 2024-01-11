@@ -187,6 +187,20 @@ struct SemanticChecker : LOCChecker {
         instSpec.implicitSrcType(srcIx, lblArg) != srcType) {
       warning("src type is not binary normal form");
     }
+    checkMathSource(i, srcIx);
+  }
+
+  // Math can only have grf source with mme
+  void checkMathSource(const Instruction &i, int srcIx) {
+    if (!i.isMacro())
+      return;
+
+    auto& src = i.getSource(srcIx);
+    if (src.getKind() != Operand::Kind::MACRO)
+      return;
+
+    if (src.getDirRegName() != RegName::GRF_R)
+      error("Invalid register: math must have grf sources");
   }
 
 
