@@ -1542,6 +1542,40 @@ bool CustomUnsafeOptPass::visitBinaryOperatorAddDiv(BinaryOperator& I)
     return false;
 }
 
+bool CustomUnsafeOptPass::visitBinaryOperatorFDivFMulCancellation(llvm::BinaryOperator& I)
+{
+    Instruction* fMulInst = (Instruction*)(&I);
+
+    ///    example:
+    ///    id192 = id187(op0) /(FDiv) id779(op1)
+    ///    id498 = id779(op0) *(FMul) id192(op1) => id498 = id187(FDiv op0)
+    /// or id498 = id192(op0) *(FMul) id779(op1) => id498 = id187(FDiv op0)
+    if (fMulInst->getOpcode() == BinaryOperator::FMul)
+    {
+        Instruction* s0 = dyn_cast<Instruction>(fMulInst->getOperand(0));
+        Instruction* s1 = dyn_cast<Instruction>(fMulInst->getOperand(1));
+
+        if (s0 && s0->getOpcode() == BinaryOperator::FDiv)
+        {
+            if (s0->getOperand(1) == fMulInst->getOperand(1))
+            {
+                fMulInst->replaceAllUsesWith(s0->getOperand(0));
+                return true;
+            }
+        }
+        else if (s1 && s1->getOpcode() == BinaryOperator::FDiv)
+        {
+            if (s1->getOperand(1) == fMulInst->getOperand(0))
+            {
+                fMulInst->replaceAllUsesWith(s1->getOperand(0));
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 bool CustomUnsafeOptPass::visitExchangeCB(llvm::BinaryOperator& I)
 {
     // a = b x CB0
@@ -1938,6 +1972,18 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator& I)
         if (I.getOpcode() == Instruction::Xor)
         {
             m_isChanged |= visitBinaryOperatorXor(I);
+        }
+    }
+    else if (I.getType()->isFloatingPointTy())
+    {
+        // c = a / b
+        // d = b * c => d = a
+        // or
+        // d = c * b => d = a
+        if (visitBinaryOperatorFDivFMulCancellation(I))
+        {
+            collectForErase(I);
+            m_isChanged = true;
         }
     }
 }

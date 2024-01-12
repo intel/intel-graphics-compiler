@@ -68,6 +68,7 @@ namespace IGC
         bool visitBinaryOperatorToFmad(llvm::BinaryOperator& I);
         bool visitBinaryOperatorAddSubOp(llvm::BinaryOperator& I);
         bool visitBinaryOperatorDivAddDiv(llvm::BinaryOperator& I);
+        bool visitBinaryOperatorFDivFMulCancellation(llvm::BinaryOperator& I);
         bool isFDiv(llvm::Value* I, llvm::Value*& numerator, llvm::Value*& denominator);
         bool possibleForFmadOpt(llvm::Instruction* inst);
         bool visitFCmpInstFCmpFAddOp(llvm::FCmpInst& FC);
