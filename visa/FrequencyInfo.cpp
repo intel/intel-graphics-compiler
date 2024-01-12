@@ -299,7 +299,7 @@ void FrequencyInfo::computeFreqSpillCosts(GlobalRA &gra,
           if (costFunc == 1) {
             metric = 2;
             // address or flag variables
-            spillCost = (float)std::sqrt(refFreqDouble) * refCount * refCount *
+            spillCost = std::sqrt((float)refFreqDouble) * refCount * refCount *
                         byteSize * // 1.0f * refCount * refCount * byteSize *
                         (float)sqrt(byteSize) /
                         ((float)sqrt(degree) * (float)(sqrt(sqrt(numRows))));
