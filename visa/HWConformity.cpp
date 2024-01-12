@@ -8038,6 +8038,13 @@ bool HWConformity::fixBFMove(INST_LIST_ITER i, G4_BB *bb) {
   if (src0->getType() == Type_BF) {
     vISA_ASSERT(inst->getDst()->getType() == Type_F,
            "Only BF->F conversion is supported");
+
+    if (builder.hasBFMixMode()) {
+      // No need to emulate bf->f conversion for those platforms supporting
+      // BF mix mode
+      return false;
+    }
+
     vISA_ASSERT(!inst->getPredicate() && !inst->getCondMod() &&
            !inst->getSaturate(),
            "BF->F move does not support pred/cond mod/sat");
