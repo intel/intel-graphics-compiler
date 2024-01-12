@@ -42,7 +42,6 @@ void HandleFRemInstructions::visitFRem(llvm::BinaryOperator& I)
     auto Val2 = I.getOperand(1);
     auto ValType = Val1->getType();
     auto ScalarType = ValType->getScalarType();
-    SmallVector<Type*, 2> ArgsTypes{ ValType, ValType };
 
     IGC_ASSERT_MESSAGE(Val1->getType() == Val2->getType(), "Operands of frem instruction must have same type");
     IGC_ASSERT_MESSAGE(ScalarType->isFloatingPointTy(), "Operands of frem instruction must have floating point type");
@@ -55,10 +54,29 @@ void HandleFRemInstructions::visitFRem(llvm::BinaryOperator& I)
         auto TypeWidth = ScalarType->getScalarSizeInBits();
         FpTypeStr = "f" + std::to_string(TypeWidth);
     }
+#if LLVM_VERSION_MAJOR >= 14
+    else if (ScalarType->isBFloatTy())
+    {
+        FpTypeStr = "f32";
+        Type *FloatTy = Type::getFloatTy(I.getContext());
+        ValType = ValType->isVectorTy()
+                      ? VectorType::get(FloatTy, cast<VectorType>(ValType))
+                      : FloatTy;
+
+        auto Val1Float = new FPExtInst(Val1, ValType, "", &I);
+        Val1Float->setDebugLoc(I.getDebugLoc());
+        auto Val2Float = new FPExtInst(Val2, ValType, "", &I);
+        Val2Float->setDebugLoc(I.getDebugLoc());
+        Val1 = Val1Float;
+        Val2 = Val2Float;
+    }
+#endif
     else
     {
         IGC_ASSERT_MESSAGE(0, "Unsupported type");
     }
+
+    SmallVector<Type *, 2> ArgsTypes{ValType, ValType};
 
     if (ValType->isVectorTy())
     {
@@ -77,8 +95,15 @@ void HandleFRemInstructions::visitFRem(llvm::BinaryOperator& I)
     auto FT = FunctionType::get(Val1->getType(), ArgsTypes, false);
     auto Callee = m_module->getOrInsertFunction(FuncName, FT);
     SmallVector<Value*, 2> FuncArgs{ Val1, Val2 };
-    auto Call = CallInst::Create(Callee, FuncArgs, "");
-    ReplaceInstWithInst(&I, Call);
+    Instruction* NewFRem = CallInst::Create(Callee, FuncArgs, "");
+#if LLVM_VERSION_MAJOR >= 14
+    if (ScalarType->isBFloatTy()) {
+        NewFRem->insertBefore(&I);
+        NewFRem->setDebugLoc(I.getDebugLoc());
+        NewFRem = new FPTruncInst(NewFRem, I.getOperand(0)->getType());
+    }
+#endif
+    ReplaceInstWithInst(&I, NewFRem);
     m_changed = true;
 }
 
