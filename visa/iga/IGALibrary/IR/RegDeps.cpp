@@ -539,7 +539,6 @@ size_t DepSetBuilder::DpasMacroBuilder::getNumberOfSuppresionGroups(
   return 0;
 }
 
-
 size_t DepSetBuilder::DpasMacroBuilder::formSrcSuppressionBlock(
     InstListIterator startIt, uint32_t srcIdx) {
   // get the candidate block
@@ -743,10 +742,9 @@ const Instruction &DepSetBuilder::DpasMacroBuilder::formMacro(size_t &dpasCnt) {
     return **cur;
   }
 
-  bool formMacroForSrc1 = false;
 
-  if (!formMacroForSrc1)
-    dpasCnt = std::max(dpasCnt, formSrcSuppressionBlock(m_firstDpasIt, 1));
+
+  dpasCnt = std::max(dpasCnt, formSrcSuppressionBlock(m_firstDpasIt, 1));
   dpasCnt = std::max(dpasCnt, formSrcSuppressionBlock(m_firstDpasIt, 2));
 
   if (dpasCnt == 1) {

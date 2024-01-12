@@ -572,7 +572,6 @@ private:
     // instructions found
     size_t formSrcSuppressionBlock(InstListIterator startIt, uint32_t srcIdx);
 
-
     // return the candidate SuppressBlock that is found fulfilling read
     // suppression requirement of given src index, start from the give
     // instruction. This block is the first candidate block of instructions
