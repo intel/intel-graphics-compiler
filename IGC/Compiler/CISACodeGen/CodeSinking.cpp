@@ -32,6 +32,7 @@ See LICENSE.TXT for details.
   * - Register-pressure threshold, undo code-sinking when live-out pressure is high
   */
 
+#include <fstream>
 #include "common/debug/Debug.hpp"
 #include "common/debug/Dump.hpp"
 #include "common/Stats.hpp"
@@ -73,7 +74,7 @@ namespace IGC {
         IGC_INITIALIZE_PASS_DEPENDENCY(IGCLivenessAnalysis)
         IGC_INITIALIZE_PASS_END(CodeSinking, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-        CodeSinking::CodeSinking(bool generalSinking) : FunctionPass(ID) {
+        CodeSinking::CodeSinking(bool generalSinking) : FunctionPass(ID), LogStream(Log) {
         generalCodeSinking = generalSinking || IGC_IS_FLAG_ENABLED(ForceLoopSink);
         initializeCodeSinkingPass(*PassRegistry::getPassRegistry());
     }
@@ -81,6 +82,12 @@ namespace IGC {
 // Sink in the loop if loop preheader's potential to sink covers at least 20% of registers delta
 // between grf number and max estimated pressure in the loop
 #define LOOPSINK_PREHEADER_IMPACT_THRESHOLD 0.2
+
+// Helper functions for loop sink debug dumps
+#define PrintDump(Contents) if (IGC_IS_FLAG_ENABLED(DumpLoopSink)) {LogStream << Contents;}
+#define PrintInstructionDump(Inst) if (IGC_IS_FLAG_ENABLED(DumpLoopSink)) {Inst->print(LogStream, false); LogStream << "\n";}
+#define PrintOUGDump(OUG) if (IGC_IS_FLAG_ENABLED(DumpLoopSink)) {OUG->print(LogStream); LogStream << "\n";}
+
 
     /// AllUsesDominatedByBlock - Return true if all uses of the specified value
     /// occur in blocks dominated by the specified block.
@@ -267,6 +274,13 @@ namespace IGC {
             return false;
         }
 
+        if (IGC_IS_FLAG_ENABLED(DumpLoopSink))
+        {
+            Log.clear();
+            PrintDump("=====================================\n");
+            PrintDump("Function " << F.getName() << "\n");
+        }
+
         DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
         PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
         LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
@@ -296,6 +310,24 @@ namespace IGC {
             {
                 IGC_ASSERT(false == verifyFunction(F, &dbgs()));
             }
+        }
+
+        if (IGC_IS_FLAG_ENABLED(DumpLoopSink))
+        {
+            auto Name = Debug::DumpName(IGC::Debug::GetShaderOutputName())
+                                        .Hash(CTX->hash)
+                                        .Type(CTX->type)
+                                        .Retry(CTX->m_retryManager.GetRetryId())
+                                        .Pass("loopsink")
+                                        .Extension("txt");
+            IGC::Debug::DumpLock();
+            std::ofstream OutputFile(Name.str(), std::ios_base::app);
+            if (OutputFile.is_open())
+            {
+                OutputFile << Log;
+            }
+            OutputFile.close();
+            IGC::Debug::DumpUnlock();
         }
 
         return Changed;
@@ -1312,6 +1344,26 @@ namespace IGC {
         bool MayHaveCallerRegpressure = !isEntryFunc(CTX->getMetaDataUtils(), F) &&
             !F->hasFnAttribute("visaStackCall");
 
+        PrintDump("\n");
+        if (!Preheader->getName().empty())
+        {
+            PrintDump("Checking loop with preheader " << Preheader->getName() << ": \n");
+        }
+        else if (!Preheader->empty())
+        {
+            PrintDump("Checking loop with unnamed preheader. First preheader instruction:\n");
+            Instruction* First = &Preheader->front();
+            PrintInstructionDump(First);
+        }
+        else
+        {
+            PrintDump("Checking loop with unnamed empty preheader.");
+        }
+
+        PrintDump("Threshold to sink = " << NGRF + GRFThresholdDelta << "\n");
+        PrintDump("MaxLoopPressure = " << MaxLoopPressure << "\n");
+        PrintDump("MayHaveCallerRegpressure? = " << (MayHaveCallerRegpressure ? "YES" : "no") << "\n");
+
         // If loop pressure induced in this function only is enough for the criteria, return immediately
         // Otherwise try to add pressure from callsite as the real regpressure may be higher
         if (isSinkCriteriaMet(MaxLoopPressure))
@@ -1322,6 +1374,7 @@ namespace IGC {
         // Look just for the direct callers while there is no cross-procedure regpressure analysis
         if (MayHaveCallerRegpressure)
         {
+            PrintDump("Checking callsites:" << "\n");
             for (llvm::User *U : F->users()) {
                 CallInst *CI = llvm::dyn_cast<llvm::CallInst>(U);
                 if (CI == nullptr)
@@ -1332,6 +1385,8 @@ namespace IGC {
 
                 BasicBlock *CallerBB = CI->getParent();
                 Function *CallerFunction = CallerBB->getParent();
+                PrintDump("Call from function " << CallerFunction->getName() << ":\n");
+                PrintInstructionDump(CI);
 
                 // Augment liveness analysis with blocks from the caller function
                 bool RPEHasCallerFunctionInfo = RPE->getOutSet().count(&CallerFunction->getEntryBlock());
@@ -1342,11 +1397,14 @@ namespace IGC {
                 auto CallerBBPressureMap = RPE->getPressureMapForBB(*CallerBB, SIMD);
                 uint CallSitePressure = RPE->bytesToRegisters(CallerBBPressureMap[CI]);
 
+                PrintDump("MaxLoopPressure + CallSitePressure = " << MaxLoopPressure + CallSitePressure << "\n");
+
                 if (isSinkCriteriaMet(MaxLoopPressure + CallSitePressure))
                     return LoopSinkMode::FullSink;
             }
         }
 
+        PrintDump(">> No sinking.\n");
         return LoopSinkMode::NoSink;
     }
 
@@ -1361,6 +1419,8 @@ namespace IGC {
         BasicBlock *Preheader = L->getLoopPreheader();
         if (!Preheader)
             return false;
+
+        PrintDump(">> Sinking in the loop with preheader" << Preheader->getName() << "\n");
 
         Function *F = Preheader->getParent();
         uint NGRF = CTX->getNumGRFPerThread();
@@ -1393,6 +1453,8 @@ namespace IGC {
             // loop:
             //   ...
             IterChanged = false;
+
+            PrintDump("Starting sinking iteration...\n");
 
             for (auto II = Preheader->rbegin(), IE = Preheader->rend(); II != IE;)
             {
@@ -1430,15 +1492,18 @@ namespace IGC {
                 uint SIMD = numLanes(RPE->bestGuessSIMDSize());
                 RPE->rerunLivenessAnalysis(*F);
                 uint MaxLoopPressure = RPE->getMaxRegCountForLoop(*L, SIMD);
+                PrintDump("New max loop pressure = " << MaxLoopPressure << "\n");
                 if (MaxLoopPressure < (NGRF - IGC_GET_FLAG_VALUE(LoopSinkRegpressureMargin))
                         && (Mode == LoopSinkMode::SinkWhileRegpressureIsHigh))
                 {
                     if (IGC_IS_FLAG_ENABLED(EnableLoadChainLoopSink) && !LoadChains.empty())
                     {
+                        PrintDump("Allowing only chain sinking...\n");
                         AllowOnlyLoadChainSinking = true;
                     }
                     else
                     {
+                        PrintDump("Achieved needed regpressure, finished.\n");
                         break;
                     }
                 }
@@ -1447,10 +1512,12 @@ namespace IGC {
             {
                 if (!AllowLoadSinking && IGC_IS_FLAG_ENABLED(EnableLoadsLoopSink))
                 {
+                    PrintDump("Allowing loads...\n");
                     AllowLoadSinking = true;
                 }
                 else
                 {
+                    PrintDump("Nothing to sink, finished.\n");
                     break;
                 }
             }
@@ -1721,19 +1788,29 @@ namespace IGC {
                 if (!OUG)
                     continue;
 
+                PrintDump("Checking if sinking the group is beneficial:\n");
+                PrintOUGDump(OUG);
+
                 if (!isBeneficialToSink(OUG))
                     continue;
+                PrintDump(">> Beneficial to sink.\n\n");
 
                 bool GroupChanged = false;
                 for (int j = 0; j < (int)(OUG->Users.size()); ++j)
                 {
                     Instruction *I = OUG->Users[j];
                     bool UserChanged = SinkInstruction(I, Stores, true);
-                    if (UserChanged && (isa<LoadInst>(I) || isLoadChain(I, LoadChains)))
+                    if (UserChanged)
                     {
-                        LoadChains.insert(I);
+                        PrintDump("Sinking instruction:\n");
+                        PrintInstructionDump(I);
+
+                        GroupChanged = true;
+                        if (isa<LoadInst>(I) || isLoadChain(I, LoadChains))
+                        {
+                            LoadChains.insert(I);
+                        }
                     }
-                    GroupChanged |= UserChanged;
                 }
                 if (GroupChanged) {
                     IterChanged = true;

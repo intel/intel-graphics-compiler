@@ -94,6 +94,9 @@ namespace IGC {
         bool generalCodeSinking;
         // diagnosis variable: int numChanges;
 
+        std::string Log;
+        llvm::raw_string_ostream LogStream;
+
         // try to hoist phi nodes with congruent incoming values
         typedef std::pair<llvm::Instruction*, llvm::Instruction*> InstPair;
         typedef smallvector<llvm::Instruction*, 4> InstVec;
