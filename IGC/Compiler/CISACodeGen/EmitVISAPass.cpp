@@ -1150,7 +1150,9 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                 };
 
                 if (IGC_IS_FLAG_ENABLED(StaticProfileGuidedSpillCostAnalysis) &&
-                    llvmInst->isTerminator() && hasBlockFreq(llvmInst)) {
+                    llvmInst->isTerminator()) {
+                    IGC_ASSERT(hasBlockFreq(
+                        llvmInst)); // terminator should have freeq info
                     auto getFreqDigit = [&](Instruction *inst) {
                       MDNode *mn_digits =
                           llvmInst->getMetadata("stats.blockFrequency.digits");
