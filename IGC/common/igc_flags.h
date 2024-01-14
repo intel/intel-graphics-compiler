@@ -654,7 +654,7 @@ DECLARE_IGC_REGKEY(bool, EnableConstantPromotion,       true, "Enable global con
 DECLARE_IGC_REGKEY(bool, AllowNonLoopConstantPromotion, false, "Allows promotion for constants not in loop (e.g. used once)", false)
 DECLARE_IGC_REGKEY(DWORD, ConstantPromotionSize,        2, "Threshold in number of GRFs", false)
 DECLARE_IGC_REGKEY(DWORD, ConstantPromotionCmpSelSize,  4, "Array size threshold for cmp-sel transform", false)
-DECLARE_IGC_REGKEY(bool, FuseResourceLoop,              true, "Enable fusing resource loops", false)
+DECLARE_IGC_REGKEY(bool, FuseResourceLoop,              false, "Enable fusing resource loops", false)
 DECLARE_IGC_REGKEY(bool, EnableVariableReuse,           true, "Enable local variable reuse", false)
 DECLARE_IGC_REGKEY(bool, EnableVariableAlias,           true, "Enable variable aliases (part of VariableReuse Pass, but separate functionality)", false)
 DECLARE_IGC_REGKEY(DWORD, VATemp,                       0, "[temp]New code to replace code under EnableVATemp (removed already). Once stable, remove this.", false)
