@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1776,13 +1776,19 @@ bool genx::isAVLoad(const Instruction *const I) {
   return (LI && LI->isVolatile()) || GenXIntrinsic::isVLoad(I);
 }
 
-Value *genx::getAVLoadSrcOrNull(const Instruction *const I,
-                                const Value *const CmpSrc) {
+const Value *genx::getAVLoadSrcOrNull(const Instruction *const I,
+                                      const Value *const CmpSrc) {
   if (genx::isAVLoad(I))
-    if (auto *Src = getBitCastedValue(I->getOperand(0));
+    if (const auto *Src = getBitCastedValue(I->getOperand(0));
         !CmpSrc || Src == CmpSrc)
       return Src;
   return nullptr;
+}
+
+Value *genx::getAVLoadSrcOrNull(Instruction *const I,
+                                const Value *const CmpSrc) {
+  return const_cast<Value *>(
+      getAVLoadSrcOrNull(const_cast<const Instruction *>(I), CmpSrc));
 }
 
 bool genx::isAVLoad(const Instruction *I, const Value *const CmpSrc) {
@@ -1794,40 +1800,58 @@ bool genx::isAVStore(const Instruction *const I) {
          GenXIntrinsic::isVStore(I);
 }
 
-Value *genx::getAVStoreDstOrNull(const Instruction *const I,
-                                 const Value *const CmpDst) {
+const Value *genx::getAVStoreDstOrNull(const Instruction *const I,
+                                       const Value *const CmpDst) {
   if (genx::isAVStore(I)) {
-    if (auto *Dst = getBitCastedValue(I->getOperand(1));
+    if (const auto *Dst = getBitCastedValue(I->getOperand(1));
         !CmpDst || Dst == CmpDst)
       return Dst;
   }
   return nullptr;
 }
 
+Value *genx::getAVStoreDstOrNull(Instruction *const I,
+                                 const Value *const CmpDst) {
+  return const_cast<Value *>(
+      getAVStoreDstOrNull(const_cast<const Instruction *>(I), CmpDst));
+}
+
 bool genx::isAVStore(const Instruction *const I, const Value *const CmpDst) {
   return getAVStoreDstOrNull(I, CmpDst);
 }
 
-Value *genx::getAGVLoadSrcOrNull(const Instruction *const I,
-                                 const Value *const CmpGvSrc) {
-  auto *Src = getAVLoadSrcOrNull(I, CmpGvSrc);
+const Value *genx::getAGVLoadSrcOrNull(const Instruction *const I,
+                                       const Value *const CmpGvSrc) {
+  const auto *Src = getAVLoadSrcOrNull(I, CmpGvSrc);
   if (!Src)
     return nullptr;
-  auto *GV = vc::getUnderlyingGlobalVariable(Src);
+  const auto *GV = vc::getUnderlyingGlobalVariable(Src);
   return GV && GV->hasAttribute(genx::FunctionMD::GenXVolatile) ? GV : nullptr;
 }
 
-bool genx::isAGVLoad(const Instruction *I, const Value *const CmpGvSrc) {
+Value *genx::getAGVLoadSrcOrNull(Instruction *const I,
+                                 const Value *const CmpGvSrc) {
+  return const_cast<Value *>(
+      getAGVLoadSrcOrNull(const_cast<const Instruction *>(I), CmpGvSrc));
+}
+
+bool genx::isAGVLoad(const Instruction *const I, const Value *const CmpGvSrc) {
   return genx::getAGVLoadSrcOrNull(I, CmpGvSrc);
 }
 
-Value *genx::getAGVStoreDstOrNull(const Instruction *const I,
-                                  const Value *const CmpDst) {
-  auto *Dst = getAVStoreDstOrNull(I, CmpDst);
+const Value *genx::getAGVStoreDstOrNull(const Instruction *const I,
+                                        const Value *const CmpDst) {
+  const auto *Dst = getAVStoreDstOrNull(I, CmpDst);
   if (!Dst)
     return nullptr;
-  auto *GV = vc::getUnderlyingGlobalVariable(Dst);
+  const auto *GV = vc::getUnderlyingGlobalVariable(Dst);
   return GV && GV->hasAttribute(genx::FunctionMD::GenXVolatile) ? GV : nullptr;
+}
+
+Value *genx::getAGVStoreDstOrNull(Instruction *const I,
+                                  const Value *const CmpGvDst) {
+  return const_cast<Value *>(
+      getAGVStoreDstOrNull(const_cast<const Instruction *>(I), CmpGvDst));
 }
 
 bool genx::isAGVStore(const Instruction *const I, const Value *const CmpGvDst) {
@@ -2544,8 +2568,9 @@ bool genx::isSafeToSink_CheckAVLoadKill(const Instruction *const I,
   IGC_ASSERT(I && To && Baling);
   Bale Bale;
   Baling->buildBale(
-      const_cast<Instruction *>(I), // TBD: buildBale API is not const-correct
-                                    // with regard to Instruction* argument.
+      const_cast<Instruction *>(
+          I), // The baling API is mostly used in non-const context, so it has
+              // no const-ok overloads.
       &Bale); // TBD!: recheck IncludeAddr=false here, we may want to take
               // address calculation into consideration when sinking, since
               // we'll most likely move the bale along with address calculation

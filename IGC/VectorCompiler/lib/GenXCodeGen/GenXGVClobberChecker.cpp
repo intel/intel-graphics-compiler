@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2023 Intel Corporation
+Copyright (C) 2023-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -10,59 +10,63 @@ SPDX-License-Identifier: MIT
 // GenXClobberChecker
 //===----------------------------------------------------------------------===//
 //
-// Read access to GENX_VOLATILE variable yields vload + a user(most of the time
-// rdregion, but can be anything including vstore). During internal
-// optimizations the user can be (baled in (and or) collapsed (and or) moved
-// away) to a position in which it potentially gets affected by a store to the
-// same GENX_VOLATILE variable. This situation must be avoided (ideally - only
-// when the high-level program employed by-copy semantics, see below).
+// Read access to GENX_VOLATILE global (a global value having "genx_volatile"
+// attribute) is signified by genx.vload(@GENX_VOLATILE_GLOBAL*) and a
+// user (most of the time rdregion, but can be anything including genx.vstore or
+// even a phi (the case is known after simplifycfg pass merging genx.vloads
+// users)). In VC BE semantics during VISA code generation
+// genx.vload(@GENX_VOLATILE_GLOBAL*) IR value does not constitute any VISA
+// instruction by itself, instead it signifies a register address of an object
+// (simd/vector/matrix) pinned in the register file. The VISA instruction is
+// generated from the genx.vload user (or a broader bale sourcing it). The VISA
+// instruction therefore appears at the program text position of a genx.vload
+// user (or a broader bale sourcing it) and not the position of a genx.vload
+// intrinsic itself. During VC BE or standard LLVM optimizations a user
+// instruction (or a broader bale) can be transformed in a way that results in a
+// position "after" genx.vstore to the same GENX_VOLATILE variable, becoming
+// potentially clobbered by it. This situation must be avoided both in VC BE and
+// standard LLVM optimizations. Although we do control VC BE optimizations
+// codebase the issue is subtle and potentially reappearent. VC BE optimizations
+// use genx::isSafeTo<...>CheckAVLoadKill<...> API to avoid the abovementioned
+// situation during transformations performed. Cases when standard LLVM
+// optimizations break the intended VC BE semantics resulting in clobbering are
+// also known (e.g. mem2reg before allowed users subset for genx.vload was
+// defined (see genx::isAGVLoadForbiddenUser(...) routine and
+// GenXLegalizeGVLoadUses pass)).
 //
-// This pass implements a checker/fixup (available under
-// -check-gv-clobbering=true option, turned on by default in Debug build)
-// introduced late in pipeline. It is used to identify situations when we have
-// potentially clobbered the global volatile value.
+// This pass implements the checker (available under -check-gv-clobbering=true
+// option, turned on by default in Debug build) introduced late in pipeline. It
+// is used to identify situations when we have used the potentially clobbered
+// GENX_VOLATILE value.
 //
 // The checker warning about potential clobbering means that some optimization
-// pass has overlooked the aspect of vload/vstore semantics and must be fixed to
-// take it into account. Current list of affected passes:
-//
-// RegionCollapsing
-// FuncBaling
-// IMadLegalization
-// FuncGroupBaling
-// Depressurizer
-// ...
-//
-//----------------------------------------------------------------
-// TODO/IMPORTANT: presently there's no way to differentiate by-copy vs
-// by-reference semantics, so we try to avoid moving vload users "after" vstores
-// for all the cases, which results in less efficient code generation. The way
-// to differentiate by-copy vs by-reference access must be implemented and
-// optimizations restricted only for those use cases. By-reference accesses must
-// be allowed for optimization as before to provide with most efficient code
-// possible.
-//----------------------------------------------------------------
+// pass has overlooked the aspect of genx.vload/genx.vstore semantics described
+// above and must be fixed to take it into account by utilizing
+// genx::isSafeTo<...>CheckAVLoadKill<...>(...) API.
 //
 //-------------------------------
-// Pseudocode example
+// Simplified example, pseudocode:
 //-------------------------------
-// GENX_VOLATILE g = VALID_VALUE
-// funN() {  g = INVALID_VALUE }
+// GENX_VOLATILE g = EXPECTED_VALUE
+// funN() {  g = UNEXPECTED_VALUE }
 // fun1() {  funN()  }
 // kernel () {
 //     cpy = g  // Copy the value of g.
 //     fun1()   // Either store down function call changes g
-//     g = INVALID_VALUE // or store in the same function.
-//     use(cpy) // cpy == VALID_VALUE; use should see the copied value,
-//     // ... including complex control flow cases.
+//     g = UNEXPECTED_VALUE // or store in the same function.
+//     use(cpy) // cpy == EXPECTED_VALUE; use should see the copied value,
+//     // ... including any control flow cases.
 //   }
 // }
 //===----------------------------------------------------------------------===//
 //
-// This pass can be used as a standalone tool (under an opt utility) to check
-// the intermediate IR dumps acquired by the usage of -vc-dump-ir-split
-// -vc-dump-ir-before-pass='*' -vc-dump-ir-after-pass='*' options and/or
-// IGC_ShaderDumpEnable="1" and/or during an interactive debugging session.
+// To instantly identify the optimization pass at which problematic situation
+// occurs this pass can be used as a standalone tool (under an opt utility)
+// by checking intermediate IR dumps acquired with the usage of
+// -vc-dump-ir-split -vc-dump-ir-before-pass='*' -vc-dump-ir-after-pass='*'
+// compiler options and/or IGC_ShaderDumpEnable="1".
+//
+//===----------------------------------------------------------------------===//
 //
 // How to run the checker on individual IR dump (for individual options see
 // options descriptions below in this file:

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2023 Intel Corporation
+Copyright (C) 2020-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -187,18 +187,27 @@ bool isGlobalStore(StoreInst *ST);
 bool isGlobalLoad(Instruction *I);
 bool isGlobalLoad(LoadInst* LI);
 
-Value *getAVLoadSrcOrNull(const Instruction *const I,
+const Value *getAVLoadSrcOrNull(const Instruction *const I,
+                                const Value *const CmpSrc = nullptr);
+Value *getAVLoadSrcOrNull(Instruction *const I,
                           const Value *const CmpSrc = nullptr);
-Value *getAGVLoadSrcOrNull(const Instruction *const I,
+const Value *getAGVLoadSrcOrNull(const Instruction *const I,
+                                 const Value *const CmpSrc = nullptr);
+Value *getAGVLoadSrcOrNull(Instruction *const I,
                            const Value *const CmpSrc = nullptr);
 bool isAVLoad(const Instruction *const I);
-bool isAVLoad(const Instruction *I, const Value *const CmpSrc);
-bool isAGVLoad(const Instruction *I, const Value *const CmpGvSrc = nullptr);
+bool isAVLoad(const Instruction *const I, const Value *const CmpSrc);
+bool isAGVLoad(const Instruction *const I,
+               const Value *const CmpGvSrc = nullptr);
 
-Value *getAVStoreDstOrNull(const Instruction *const I,
+const Value *getAVStoreDstOrNull(const Instruction *const I,
+                                 const Value *const CmpDst = nullptr);
+Value *getAVStoreDstOrNull(Instruction *const I,
                            const Value *const CmpDst = nullptr);
-Value *getAGVStoreDstOrNull(const Instruction *const I,
-                            const Value *const CmpDst = nullptr);
+const Value *getAGVStoreDstOrNull(const Instruction *const I,
+                                  const Value *const CmpGvDst = nullptr);
+Value *getAGVStoreDstOrNull(Instruction *const I,
+                            const Value *const CmpGvDst = nullptr);
 bool isAVStore(const Instruction *const I);
 bool isAVStore(const Instruction *const I, const Value *const CmpDst);
 bool isAGVStore(const Instruction *const I,
