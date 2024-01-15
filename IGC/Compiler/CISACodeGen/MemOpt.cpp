@@ -321,7 +321,16 @@ namespace {
             return true;
         }
 
+        // This is for enabling the mergeload improvement (comparing GEP's last
+        // index instead) as it requires to turn off GEP canonicalization.
         bool EnableCanonicalizeGEP() const {
+            // The new mergeload improvement is intended for PVC+ for now.
+            if (CGC->platform.getPlatformInfo().eProductFamily != IGFX_PVC &&
+                !CGC->platform.isProductChildOf(IGFX_PVC)) {
+                // No mergeload improvement
+                return true;
+            }
+
             switch (IGC_GET_FLAG_VALUE(MemOptGEPCanon)) {
             case 1:
                 return false;
