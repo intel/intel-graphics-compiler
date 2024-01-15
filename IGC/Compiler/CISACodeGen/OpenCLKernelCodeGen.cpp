@@ -897,7 +897,7 @@ namespace IGC
                     : zebin::PreDefinedAttrGetter::ArgAddrSpace::constant;
             auto access_type = zebin::PreDefinedAttrGetter::ArgAccessType::readwrite;
             if (kernelArg->getArgType() == KernelArg::ArgType::PTR_CONSTANT ||
-                funcMD.m_OpenCLArgTypeQualifiers[arg_idx] == "const")
+                funcMD.m_OpenCLArgTypeQualifiers.size() > arg_idx && funcMD.m_OpenCLArgTypeQualifiers[arg_idx] == "const")
                 access_type = zebin::PreDefinedAttrGetter::ArgAccessType::readonly;
 
             // FIXME: do not set bti if the number is 0xffffffff (?)
