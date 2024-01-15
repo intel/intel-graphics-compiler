@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2023 Intel Corporation
+Copyright (C) 2019-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1126,9 +1126,8 @@ bool GenXKernelBuilder::run() {
   GrfByteSize = Subtarget->getGRFByteSize();
   StackSurf = Subtarget->stackSurface();
 
-  CRMask = CRBits::SinglePrecisionMode | CRBits::RoundingMode |
-           CRBits::DoublePrecisionDenorm | CRBits::SinglePrecisionDenorm |
-           CRBits::HalfPrecisionDenorm;
+  CRMask = CRBits::RoundingMode | CRBits::DoublePrecisionDenorm |
+           CRBits::SinglePrecisionDenorm | CRBits::HalfPrecisionDenorm;
 
   if (Subtarget->hasSystolicDenormControl())
     CRMask |= CRBits::SystolicDenorm;
