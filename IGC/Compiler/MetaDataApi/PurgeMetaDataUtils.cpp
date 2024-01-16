@@ -36,18 +36,17 @@ PurgeMetaDataUtils::PurgeMetaDataUtils() : ModulePass(ID)
 // metadata util object.
 bool PurgeMetaDataUtils::runOnModule(Module& M)
 {
-    m_pModule = &M;
-    m_changed = false;
+    return purgeMetaDataUtils(M, &getAnalysis<MetaDataUtilsWrapper>());
+}
 
-    CodeGenContext* pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    IGCMD::MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-
-    auto shouldRemoveFunction = [=](llvm::Module* M, void* ptr)
+bool IGC::purgeMetaDataUtils(Module& M, MetaDataUtilsWrapper* MDUW) {
+    IGCMD::MetaDataUtils* MDUtils = MDUW->getMetaDataUtils();
+    auto shouldRemoveFunction = [=](llvm::Module& M, void* ptr)
     {
         llvm::Function* F = nullptr;
 
         // Function may have been removed already.
-        for (auto& G : M->getFunctionList())
+        for (auto& G : M.getFunctionList())
         {
             if (&G == ptr)
             {
@@ -62,7 +61,7 @@ bool PurgeMetaDataUtils::runOnModule(Module& M)
             return true;
         }
 
-        if (F->use_empty() && !isEntryFunc(pMdUtils, F))
+        if (F->use_empty() && !isEntryFunc(MDUtils, F))
         {
             if (F->hasFnAttribute("referenced-indirectly") &&
                 GlobalValue::isExternalLinkage(F->getLinkage()))
@@ -96,24 +95,24 @@ bool PurgeMetaDataUtils::runOnModule(Module& M)
     auto checkFuncRange = [&](auto beginIt, auto endIt) {
         for (auto it = beginIt, e = endIt; it != e; ++it)
         {
-            if (shouldRemoveFunction(pContext->getModule(), it->first))
+            if (shouldRemoveFunction(M, it->first))
             {
                 ToBeDeleted.insert(it->first);
             }
         }
     };
 
-    auto& FuncMD = pContext->getModuleMetaData()->FuncMD;
-    checkFuncRange(pMdUtils->begin_FunctionsInfo(), pMdUtils->end_FunctionsInfo());
+    auto& FuncMD = MDUW->getModuleMetaData()->FuncMD;
+    checkFuncRange(MDUtils->begin_FunctionsInfo(), MDUtils->end_FunctionsInfo());
     checkFuncRange(FuncMD.begin(), FuncMD.end());
 
     // Remove them.
     for (auto F : ToBeDeleted)
     {
-        auto Iter = pMdUtils->findFunctionsInfoItem(F);
-        if (Iter != pMdUtils->end_FunctionsInfo())
+        auto Iter = MDUtils->findFunctionsInfoItem(F);
+        if (Iter != MDUtils->end_FunctionsInfo())
         {
-            pMdUtils->eraseFunctionsInfoItem(Iter);
+            MDUtils->eraseFunctionsInfoItem(Iter);
         }
 
         if (FuncMD.find(F) != FuncMD.end())
@@ -125,9 +124,8 @@ bool PurgeMetaDataUtils::runOnModule(Module& M)
     // Update when there is any change.
     if (!ToBeDeleted.empty())
     {
-        pMdUtils->save(*pContext->getLLVMContext());
-        m_changed = true;
+        MDUtils->save(M.getContext());
     }
 
-    return m_changed;
+    return !ToBeDeleted.empty();
 }

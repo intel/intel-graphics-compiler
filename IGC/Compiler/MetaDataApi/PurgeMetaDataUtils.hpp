@@ -12,11 +12,9 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
-#include "Compiler/CodeGenContextWrapper.hpp"
 
 namespace IGC
 {
-    class MetaDataUtilsWrapper;
     class PurgeMetaDataUtils : public llvm::ModulePass
     {
     public:
@@ -33,16 +31,11 @@ namespace IGC
 
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {
             AU.addRequired<MetaDataUtilsWrapper>();
-            AU.addRequired<CodeGenContextWrapper>();
         }
 
         // Pass identification, replacement for typeid
         static char ID;
-    protected:
-        llvm::Module* m_pModule = nullptr;
-
-        /// @brief  Indicates if the pass changed the processed function
-        bool m_changed{};
     };
 
+    bool purgeMetaDataUtils(llvm::Module& M, MetaDataUtilsWrapper* MDUW);
 } // namespace IGC

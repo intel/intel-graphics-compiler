@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/DebugInfo/ScalarVISAModule.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/IGCPassSupport.h"
+#include "Compiler/MetaDataApi/PurgeMetaDataUtils.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "common/igc_regkeys.hpp"
 #include "common/LLVMWarningsPush.hpp"
@@ -1259,6 +1260,7 @@ namespace {
     class SubroutineInliner : public LegacyInlinerBase, public llvm::InstVisitor<SubroutineInliner>
     {
         EstimateFunctionSize* FSA;
+        MetaDataUtilsWrapper* MDUW;
     public:
         static char ID; // Pass identification, replacement for typeid
 
@@ -1277,7 +1279,9 @@ namespace {
 
         using llvm::Pass::doFinalization;
         bool doFinalization(CallGraph& CG) override {
-            return removeDeadFunctions(CG);
+            bool Changed = removeDeadFunctions(CG);
+            Changed |= purgeMetaDataUtils(CG.getModule(), MDUW);
+            return Changed;
         }
     };
 
@@ -1286,6 +1290,7 @@ namespace {
 IGC_INITIALIZE_PASS_BEGIN(SubroutineInliner, "SubroutineInliner", "SubroutineInliner", false, false)
 IGC_INITIALIZE_PASS_DEPENDENCY(EstimateFunctionSize)
 IGC_INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
+IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_END(SubroutineInliner, "SubroutineInliner", "SubroutineInliner", false, false)
 
 char SubroutineInliner::ID = 0;
@@ -1294,6 +1299,7 @@ void SubroutineInliner::getAnalysisUsage(AnalysisUsage& AU) const
 {
     AU.addRequired<EstimateFunctionSize>();
     AU.addRequired<CodeGenContextWrapper>();
+    AU.addRequired<MetaDataUtilsWrapper>();
     LegacyInlinerBase::getAnalysisUsage(AU);
 }
 
@@ -1374,6 +1380,7 @@ void SubroutineInliner::verifyAddrSpaceMismatch(CallGraphSCC& SCC)
 bool SubroutineInliner::runOnSCC(CallGraphSCC& SCC)
 {
     FSA = &getAnalysis<EstimateFunctionSize>();
+    MDUW = &getAnalysis<MetaDataUtilsWrapper>();
     bool changed = LegacyInlinerBase::runOnSCC(SCC);
     if (changed) verifyAddrSpaceMismatch(SCC);
 
