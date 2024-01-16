@@ -137,6 +137,8 @@ public:
                         unsigned char offset);
 
   void removeFromPointsTo(G4_RegVar *addr, G4_RegVar *vartoremove);
+
+  void fixupUnresolvedAddrVars();
 };
 } // namespace vISA
 #endif

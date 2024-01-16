@@ -195,10 +195,10 @@ void PointsToAnalysis::getRevPointsToMap(
 }
 
 //
-//  A flow-insensitive algroithm to compute the register usage for indirect
+//  A flow-insensitive algorithm to compute the register usage for indirect
 //  accesses. The algorithm is divided into two parts:
 //  1. We go through every basic block computing the points-to set for each
-//  adddress
+//  address
 //     variable.  This happens when we see an instruction like
 //     mov (8) A0 &R0
 //
@@ -207,7 +207,7 @@ void PointsToAnalysis::getRevPointsToMap(
 //
 //  The algorithm is conservative but should work well for our inputs since
 //  the front end pretty much always uses a fresh address variable when taking
-//  the address of a GRF variable, wtih the exception of call-by-reference
+//  the address of a GRF variable, with the exception of call-by-reference
 //  parameters It's performed only once at the beginning of RA, at the point
 //  where all variables are virtual and no spill code (either for address or
 //  GRF) has been inserted.
@@ -315,7 +315,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
                 // 2. A2 = V1 <-- In this case, we copy pointer from V1 to
                 //                address register A2. Prior to this, there
                 //                could've been an instruction that did V1 = A1
-                //                which transferrred pointer from A1 to V1. So
+                //                which transferred pointer from A1 to V1. So
                 //                we need to transfer A1's pointee to A2 in
                 //                that case.
                 //
@@ -537,6 +537,16 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
       }
     }
   }
+
+  // From the perspective of this analysis pass, if the pass cannot link an
+  // address var to any address taken, we have to assume the var link to all
+  // address takens to be safe. The approach is conservative, so other
+  // optimization passes that deal with address variables can assist the
+  // analysis to produce a more accurate result. For example, currently address
+  // RA might clean up "redundant" ARF fill code without replacing the
+  // corresponding uses with the correct values making this analysis pass leave
+  // address var unresolved.
+  fixupUnresolvedAddrVars();
 
   VISA_DEBUG_VERBOSE({
     std::cout << "Results of points-to analysis:\n";
@@ -828,5 +838,37 @@ void PointsToAnalysis::removeFromPointsTo(G4_RegVar *addr,
         break;
       }
     }
+  }
+}
+
+void PointsToAnalysis::fixupUnresolvedAddrVars() {
+  // Group resolved and unresolved address variables separately.
+  std::vector<const G4_RegVar *> resolvedAddrs, unresolvedAddrs;
+  for (auto &rv : regVars) {
+    const G4_RegVar *var = rv.first;
+    unsigned addrPTId = addrPointsToSetIndex[getIndexOfRegVar(var)];
+    if (!pointsToSets[addrPTId].empty())
+      resolvedAddrs.push_back(var);
+    else
+      unresolvedAddrs.push_back(var);
+  }
+
+  if (unresolvedAddrs.empty())
+    return;
+
+  // Copy all address takens to the pointsToSets of the 1st unresolved.
+  const G4_RegVar *first = unresolvedAddrs.front();
+  for (const G4_RegVar *var : resolvedAddrs) {
+    unsigned addrPTId = addrPointsToSetIndex[getIndexOfRegVar(var)];
+    for (const auto& addrInfo : addrExpSets[addrPTId])
+      addToPointsToSet(first, addrInfo.exp, addrInfo.off);
+  }
+  // Update the points-to-set indexes of all remaining unresolved address
+  // variables to the index of 1st unresolved variable.
+  unsigned firstAddrPTId = addrPointsToSetIndex[getIndexOfRegVar(first)];;
+  for (auto it = unresolvedAddrs.begin() + 1, ie = unresolvedAddrs.end();
+       it != ie; ++it) {
+    const G4_RegVar *var = *it;
+    addrPointsToSetIndex[getIndexOfRegVar(var)] = firstAddrPTId;
   }
 }
