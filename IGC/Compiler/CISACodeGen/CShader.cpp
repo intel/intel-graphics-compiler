@@ -329,6 +329,7 @@ void CShader::InitializeStackVariables()
         {
             auto aligned_offset = iSTD::Align(m_ARGVReservedVariablesTotalSize, reservationSize);
             m_ARGVReservedVariables[i] = GetNewAlias(GetARGV(), ISA_TYPE_W, aligned_offset, reservationSize, true);
+            encoder.MarkAsOutput(m_ARGVReservedVariables[i]);
             m_ARGVReservedVariablesTotalSize = aligned_offset + reservationSize;
         }
     }
