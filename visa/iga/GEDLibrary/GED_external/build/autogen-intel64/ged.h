@@ -44,12 +44,6 @@ typedef struct
 } ged_ins_t;
 
 /*!
- * Enable tracing of GED calls
- */
-extern int GED_TraceAPICalls;
-#define GED_TraceAPI(msg) (GED_TraceAPICalls ? (std::cout << (msg) << std::endl),false : false)
-
-/*!
  * This enumeration holds the models supported by GED.
  */
 typedef enum
@@ -155,10 +149,7 @@ typedef enum
  *
  * @return      The requested string, otherwise an empty string.
  */
-extern const char* GED_CALLCONV _GED_GetModelVersionString(GED_MODEL model);
-#define GED_GetModelVersionString(model) ( \
-    GED_TraceAPI("GED_GetModelVersionString(" #model ")"), \
-    _GED_GetModelVersionString(model))
+extern const char* GED_CALLCONV GED_GetModelVersionString(GED_MODEL model);
 
 #ifdef __cplusplus
 extern "C"
@@ -173,10 +164,7 @@ extern "C"
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetReturnValueString(GED_RETURN_VALUE returnValue);
-#define GED_GetReturnValueString(returnValue) ( \
-    GED_TraceAPI("GED_GetReturnValueString(" #returnValue ")"), \
-    _GED_GetReturnValueString(returnValue))
+extern const char* GED_CALLCONV GED_GetReturnValueString(GED_RETURN_VALUE returnValue);
 
 /*!
  * Get the padding of the GED_RETURN_VALUE enum's string representation in order for it to be aligned column-wise.
@@ -186,10 +174,7 @@ extern const char* GED_CALLCONV _GED_GetReturnValueString(GED_RETURN_VALUE retur
  *
  * @return      The requested pad.
  */
-extern const char* GED_CALLCONV _GED_GetReturnValuePad(GED_RETURN_VALUE returnValue);
-#define GED_GetReturnValuePad(returnValue) ( \
-    GED_TraceAPI("GED_GetReturnValuePad(" #returnValue ")"), \
-    _GED_GetReturnValuePad(returnValue))
+extern const char* GED_CALLCONV GED_GetReturnValuePad(GED_RETURN_VALUE returnValue);
 
 /*!
  * Initialize an empty ged_ins_t object and set its opcode. Can be called to initialize a newly allocated object or to clear an
@@ -202,10 +187,7 @@ extern const char* GED_CALLCONV _GED_GetReturnValuePad(GED_RETURN_VALUE returnVa
  *
  * @return      GED_RETURN_VALUE indicating success or invalid opcode.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_InitEmptyIns(const GED_MODEL modelId, ged_ins_t* ins, GED_OPCODE opcode);
-#define GED_InitEmptyIns(modelId, ins, opcode) ( \
-    GED_TraceAPI("GED_InitEmptyIns(" #modelId ", " #ins ", " #opcode ")"), \
-    _GED_InitEmptyIns(modelId, ins, opcode))
+extern GED_RETURN_VALUE GED_CALLCONV GED_InitEmptyIns(const GED_MODEL modelId, ged_ins_t* ins, GED_OPCODE opcode);
 
 /*!
  * Decode a single instruction. If the array of raw bytes includes several instructions, only one instruction will be decoded and the
@@ -218,11 +200,8 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_InitEmptyIns(const GED_MODEL modelId, 
  *
  * @return      GED_RETURN_VALUE indicating success or decoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_DecodeIns(const GED_MODEL modelId, const unsigned char* rawBytes, const uint32_t size,
-                                                    ged_ins_t* ins);
-#define GED_DecodeIns(modelId, rawBytes, size, ins) ( \
-    GED_TraceAPI("GED_DecodeIns(" #modelId ", " #rawBytes ", " #size ", " #ins ")"), \
-    _GED_DecodeIns(modelId, rawBytes, size, ins))
+extern GED_RETURN_VALUE GED_CALLCONV GED_DecodeIns(const GED_MODEL modelId, const unsigned char* rawBytes, const uint32_t size,
+                                                   ged_ins_t* ins);
 
 /*!
  * Encode the given instruction and store the raw bytes in the given array. If the instruction cannot be encoded as requested, the
@@ -239,10 +218,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_DecodeIns(const GED_MODEL modelId, con
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_EncodeIns(ged_ins_t* ins, const GED_INS_TYPE insType, unsigned char* rawBytes);
-#define GED_EncodeIns(ins, insType, rawBytes) ( \
-    GED_TraceAPI("GED_EncodeIns(" #ins ", " #insType ", " #rawBytes ")"), \
-    _GED_EncodeIns(ins, insType, rawBytes))
+extern GED_RETURN_VALUE GED_CALLCONV GED_EncodeIns(ged_ins_t* ins, const GED_INS_TYPE insType, unsigned char* rawBytes);
 
 /*!
  * Get the size (in bytes) of the given instruction. See @ref GED_IsCompact for details.
@@ -251,10 +227,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_EncodeIns(ged_ins_t* ins, const GED_IN
  *
  * @return      The size (in bytes) of the given instruction.
  */
-extern uint32_t GED_CALLCONV _GED_InsSize(const ged_ins_t* ins);
-#define GED_InsSize(ins) ( \
-    GED_TraceAPI("GED_InsSize(" #ins ")"), \
-    _GED_InsSize(ins))
+extern uint32_t GED_CALLCONV GED_InsSize(const ged_ins_t* ins);
 
 /*!
  * Check if the given instruction was modified (i.e. on of the instruction field setter APIs was called) since it was last
@@ -264,10 +237,7 @@ extern uint32_t GED_CALLCONV _GED_InsSize(const ged_ins_t* ins);
  *
  * @return      TRUE if the instruction was modified since the last decode/encode operation.
  */
-extern bool GED_CALLCONV _GED_InsModified(const ged_ins_t* ins);
-#define GED_InsModified(ins) ( \
-    GED_TraceAPI("GED_InsModified(" #ins ")"), \
-    _GED_InsModified(ins))
+extern bool GED_CALLCONV GED_InsModified(const ged_ins_t* ins);
 
 #if GED_VALIDATION_API
 
@@ -280,10 +250,7 @@ extern bool GED_CALLCONV _GED_InsModified(const ged_ins_t* ins);
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_CountCompactEncodings(ged_ins_t* ins, unsigned int& count);
-#define GED_CountCompactEncodings(ins, count) ( \
-    GED_TraceAPI("GED_CountCompactEncodings(" #ins ", " #count ")"), \
-    _GED_CountCompactEncodings(ins, count))
+extern GED_RETURN_VALUE GED_CALLCONV GED_CountCompactEncodings(ged_ins_t* ins, unsigned int& count);
 
 /*!
  * Generate all valid compact encodings of the instruction. The buffer is expected to be preallocated and large enough to hold the
@@ -296,11 +263,8 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_CountCompactEncodings(ged_ins_t* ins, 
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_GetCompactEncodings(ged_ins_t* ins, const unsigned int size, unsigned char*
-                                                              compactBytesArray);
-#define GED_GetCompactEncodings(ins, size, compactBytesArray) ( \
-    GED_TraceAPI("GED_GetCompactEncodings(" #ins ", " #size ", " #compactBytesArray ")"), \
-    _GED_GetCompactEncodings(ins, size, compactBytesArray))
+extern GED_RETURN_VALUE GED_CALLCONV GED_GetCompactEncodings(ged_ins_t* ins, const unsigned int size, unsigned char*
+                                                             compactBytesArray);
 
 /*!
  * Print all bit positions and their mapping of given field in the instruction.If a field is invalid, print accordingly. If a fragment
@@ -311,10 +275,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_GetCompactEncodings(ged_ins_t* ins, co
  *
  * @return      GED_RETURN_VALUE indicating success or decoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_PrintFieldBitLocation(const ged_ins_t* ins, const GED_INS_FIELD field);
-#define GED_PrintFieldBitLocation(ins, field) ( \
-    GED_TraceAPI("GED_PrintFieldBitLocation(" #ins ", " #field ")"), \
-    _GED_PrintFieldBitLocation(ins, field))
+extern GED_RETURN_VALUE GED_CALLCONV GED_PrintFieldBitLocation(const ged_ins_t* ins, const GED_INS_FIELD field);
 #endif // GED_VALIDATION_API
 
 /*!
@@ -327,11 +288,8 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_PrintFieldBitLocation(const ged_ins_t*
  *
  * @return      GED_RETURN_VALUE indicating success or decoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_QueryFieldBitLocation(const ged_ins_t* ins, const GED_INS_FIELD field, uint32_t * fragments,
-                                                                uint32_t * length);
-#define GED_QueryFieldBitLocation(ins, field, fragments, length) ( \
-    GED_TraceAPI("GED_QueryFieldBitLocation(" #ins ", " #field ", " #fragments ", " #length ")"), \
-    _GED_QueryFieldBitLocation(ins, field, fragments, length))
+extern GED_RETURN_VALUE GED_CALLCONV GED_QueryFieldBitLocation(const ged_ins_t* ins, const GED_INS_FIELD field, uint32_t * fragments,
+                                                               uint32_t * length);
 
 /*!
  * Get the size (in bits) of the given field within the given instruction. If the field is invalid for the given instruction, the
@@ -342,10 +300,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_QueryFieldBitLocation(const ged_ins_t*
  *
  * @return      The field's size (in bits) if it is valid, 0 otherwise.
  */
-extern uint32_t GED_CALLCONV _GED_FieldSize(const ged_ins_t* ins, const GED_INS_FIELD field);
-#define GED_FieldSize(ins, field) ( \
-    GED_TraceAPI("GED_FieldSize(" #ins ", " #field ")"), \
-    _GED_FieldSize(ins, field))
+extern uint32_t GED_CALLCONV GED_FieldSize(const ged_ins_t* ins, const GED_INS_FIELD field);
 
 /*!
  * Get the given instruction's opcode. The function returns an enumeration value, use @ref GED_GetMnemonic to obtain the instruction's
@@ -355,10 +310,7 @@ extern uint32_t GED_CALLCONV _GED_FieldSize(const ged_ins_t* ins, const GED_INS_
  *
  * @return      Opcode enumeration value as defined in ged_enumerations.h.
  */
-extern GED_OPCODE GED_CALLCONV _GED_GetOpcode(const ged_ins_t* ins);
-#define GED_GetOpcode(ins) ( \
-    GED_TraceAPI("GED_GetOpcode(" #ins ")"), \
-    _GED_GetOpcode(ins))
+extern GED_OPCODE GED_CALLCONV GED_GetOpcode(const ged_ins_t* ins);
 
 /*!
  * Get the given instruction's mnemonic.
@@ -367,10 +319,7 @@ extern GED_OPCODE GED_CALLCONV _GED_GetOpcode(const ged_ins_t* ins);
  *
  * @return      String representation of the instruction's mnemonic.
  */
-extern const char* GED_CALLCONV _GED_GetMnemonic(const ged_ins_t* ins);
-#define GED_GetMnemonic(ins) ( \
-    GED_TraceAPI("GED_GetMnemonic(" #ins ")"), \
-    _GED_GetMnemonic(ins))
+extern const char* GED_CALLCONV GED_GetMnemonic(const ged_ins_t* ins);
 
 /*!
  * Set a new opcode in the given instruction. If the instruction layout changes due to the new opcode, all other bits will be cleared
@@ -382,10 +331,7 @@ extern const char* GED_CALLCONV _GED_GetMnemonic(const ged_ins_t* ins);
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetOpcode(ged_ins_t* ins, const GED_OPCODE opcode);
-#define GED_SetOpcode(ins, opcode) ( \
-    GED_TraceAPI("GED_SetOpcode(" #ins ", " #opcode ")"), \
-    _GED_SetOpcode(ins, opcode))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetOpcode(ged_ins_t* ins, const GED_OPCODE opcode);
 
 /*!
  * Check if the given instruction is compacted. For decoded instructions it reflects the state of the CmptCtrl bit. For Encoded
@@ -399,10 +345,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetOpcode(ged_ins_t* ins, const GED_OP
  *
  * @return      TRUE if the instruction is compacted i.e. in its compact form, FALSE, otherwise.
  */
-extern bool GED_CALLCONV _GED_IsCompact(const ged_ins_t* ins);
-#define GED_IsCompact(ins) ( \
-    GED_TraceAPI("GED_IsCompact(" #ins ")"), \
-    _GED_IsCompact(ins))
+extern bool GED_CALLCONV GED_IsCompact(const ged_ins_t* ins);
 
 /*!
  * The function returns GED model of the specified instruction.
@@ -411,10 +354,7 @@ extern bool GED_CALLCONV _GED_IsCompact(const ged_ins_t* ins);
  *
  * @return      Model ID
  */
-extern GED_MODEL GED_CALLCONV _GED_GetModel(const ged_ins_t* ins);
-#define GED_GetModel(ins) ( \
-    GED_TraceAPI("GED_GetModel(" #ins ")"), \
-    _GED_GetModel(ins))
+extern GED_MODEL GED_CALLCONV GED_GetModel(const ged_ins_t* ins);
 
 /*!
  * Get the value of the ___SrcImm field in the given instruction. See @ref GED_INS_FIELD____SrcImm for the field's description.
@@ -428,10 +368,7 @@ extern GED_MODEL GED_CALLCONV _GED_GetModel(const ged_ins_t* ins);
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_Get___SrcImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_Get___SrcImm(ins, result) ( \
-    GED_TraceAPI("GED_Get___SrcImm(" #ins ", " #result ")"), \
-    _GED_Get___SrcImm(ins, result))
+extern uint32_t GED_CALLCONV GED_Get___SrcImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the ___SrcImm field in the given instruction. See @ref GED_INS_FIELD____SrcImm for the field's description.
@@ -441,10 +378,7 @@ extern uint32_t GED_CALLCONV _GED_Get___SrcImm(ged_ins_t* ins, GED_RETURN_VALUE*
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_Set___SrcImm(ged_ins_t* ins, const uint32_t value);
-#define GED_Set___SrcImm(ins, value) ( \
-    GED_TraceAPI("GED_Set___SrcImm(" #ins ", " #value ")"), \
-    _GED_Set___SrcImm(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_Set___SrcImm(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the NumOfSourceOperands field in the given instruction. See @ref GED_INS_FIELD_NumOfSourceOperands for the field's
@@ -459,10 +393,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_Set___SrcImm(ged_ins_t* ins, const uin
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetNumOfSourceOperands(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetNumOfSourceOperands(ins, result) ( \
-    GED_TraceAPI("GED_GetNumOfSourceOperands(" #ins ", " #result ")"), \
-    _GED_GetNumOfSourceOperands(ins, result))
+extern uint32_t GED_CALLCONV GED_GetNumOfSourceOperands(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Get the value of the HasDestinationOperand field in the given instruction. See @ref GED_INS_FIELD_HasDestinationOperand for the
@@ -477,10 +408,7 @@ extern uint32_t GED_CALLCONV _GED_GetNumOfSourceOperands(ged_ins_t* ins, GED_RET
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetHasDestinationOperand(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetHasDestinationOperand(ins, result) ( \
-    GED_TraceAPI("GED_GetHasDestinationOperand(" #ins ", " #result ")"), \
-    _GED_GetHasDestinationOperand(ins, result))
+extern uint32_t GED_CALLCONV GED_GetHasDestinationOperand(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Get the value of the AccessMode field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -494,10 +422,7 @@ extern uint32_t GED_CALLCONV _GED_GetHasDestinationOperand(ged_ins_t* ins, GED_R
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_ACCESS_MODE GED_CALLCONV _GED_GetAccessMode(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetAccessMode(ins, result) ( \
-    GED_TraceAPI("GED_GetAccessMode(" #ins ", " #result ")"), \
-    _GED_GetAccessMode(ins, result))
+extern GED_ACCESS_MODE GED_CALLCONV GED_GetAccessMode(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the AccessMode field in the given instruction. See @ref GED_INS_FIELD_AccessMode for the field's description.
@@ -507,10 +432,7 @@ extern GED_ACCESS_MODE GED_CALLCONV _GED_GetAccessMode(ged_ins_t* ins, GED_RETUR
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetAccessMode(ged_ins_t* ins, const GED_ACCESS_MODE value);
-#define GED_SetAccessMode(ins, value) ( \
-    GED_TraceAPI("GED_SetAccessMode(" #ins ", " #value ")"), \
-    _GED_SetAccessMode(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetAccessMode(ged_ins_t* ins, const GED_ACCESS_MODE value);
 
 /*!
  * Get the value of the MaskCtrl field in the given instruction. The function returns an enumeration value. To obtain the enum entry's
@@ -524,10 +446,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetAccessMode(ged_ins_t* ins, const GE
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_MASK_CTRL GED_CALLCONV _GED_GetMaskCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetMaskCtrl(ins, result) ( \
-    GED_TraceAPI("GED_GetMaskCtrl(" #ins ", " #result ")"), \
-    _GED_GetMaskCtrl(ins, result))
+extern GED_MASK_CTRL GED_CALLCONV GED_GetMaskCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the MaskCtrl field in the given instruction. See @ref GED_INS_FIELD_MaskCtrl for the field's description.
@@ -537,10 +456,7 @@ extern GED_MASK_CTRL GED_CALLCONV _GED_GetMaskCtrl(ged_ins_t* ins, GED_RETURN_VA
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMaskCtrl(ged_ins_t* ins, const GED_MASK_CTRL value);
-#define GED_SetMaskCtrl(ins, value) ( \
-    GED_TraceAPI("GED_SetMaskCtrl(" #ins ", " #value ")"), \
-    _GED_SetMaskCtrl(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMaskCtrl(ged_ins_t* ins, const GED_MASK_CTRL value);
 
 /*!
  * Get the value of the DepCtrl field in the given instruction. The function returns an enumeration value. To obtain the enum entry's
@@ -554,10 +470,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMaskCtrl(ged_ins_t* ins, const GED_
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_DEP_CTRL GED_CALLCONV _GED_GetDepCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetDepCtrl(ins, result) ( \
-    GED_TraceAPI("GED_GetDepCtrl(" #ins ", " #result ")"), \
-    _GED_GetDepCtrl(ins, result))
+extern GED_DEP_CTRL GED_CALLCONV GED_GetDepCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DepCtrl field in the given instruction. See @ref GED_INS_FIELD_DepCtrl for the field's description.
@@ -567,10 +480,7 @@ extern GED_DEP_CTRL GED_CALLCONV _GED_GetDepCtrl(ged_ins_t* ins, GED_RETURN_VALU
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDepCtrl(ged_ins_t* ins, const GED_DEP_CTRL value);
-#define GED_SetDepCtrl(ins, value) ( \
-    GED_TraceAPI("GED_SetDepCtrl(" #ins ", " #value ")"), \
-    _GED_SetDepCtrl(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDepCtrl(ged_ins_t* ins, const GED_DEP_CTRL value);
 
 /*!
  * Get the value of the ExecMaskOffsetCtrl field in the given instruction. The function returns an enumeration value. To obtain the
@@ -585,10 +495,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDepCtrl(ged_ins_t* ins, const GED_D
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_EXEC_MASK_OFFSET_CTRL GED_CALLCONV _GED_GetExecMaskOffsetCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetExecMaskOffsetCtrl(ins, result) ( \
-    GED_TraceAPI("GED_GetExecMaskOffsetCtrl(" #ins ", " #result ")"), \
-    _GED_GetExecMaskOffsetCtrl(ins, result))
+extern GED_EXEC_MASK_OFFSET_CTRL GED_CALLCONV GED_GetExecMaskOffsetCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the ExecMaskOffsetCtrl field in the given instruction. See @ref GED_INS_FIELD_ExecMaskOffsetCtrl for the field's
@@ -599,10 +506,7 @@ extern GED_EXEC_MASK_OFFSET_CTRL GED_CALLCONV _GED_GetExecMaskOffsetCtrl(ged_ins
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetExecMaskOffsetCtrl(ged_ins_t* ins, const GED_EXEC_MASK_OFFSET_CTRL value);
-#define GED_SetExecMaskOffsetCtrl(ins, value) ( \
-    GED_TraceAPI("GED_SetExecMaskOffsetCtrl(" #ins ", " #value ")"), \
-    _GED_SetExecMaskOffsetCtrl(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetExecMaskOffsetCtrl(ged_ins_t* ins, const GED_EXEC_MASK_OFFSET_CTRL value);
 
 /*!
  * Get the value of the ChannelOffset field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -617,10 +521,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetExecMaskOffsetCtrl(ged_ins_t* ins, 
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_CHANNEL_OFFSET GED_CALLCONV _GED_GetChannelOffset(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetChannelOffset(ins, result) ( \
-    GED_TraceAPI("GED_GetChannelOffset(" #ins ", " #result ")"), \
-    _GED_GetChannelOffset(ins, result))
+extern GED_CHANNEL_OFFSET GED_CALLCONV GED_GetChannelOffset(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the ChannelOffset field in the given instruction. See @ref GED_INS_FIELD_ChannelOffset for the field's
@@ -631,10 +532,7 @@ extern GED_CHANNEL_OFFSET GED_CALLCONV _GED_GetChannelOffset(ged_ins_t* ins, GED
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetChannelOffset(ged_ins_t* ins, const GED_CHANNEL_OFFSET value);
-#define GED_SetChannelOffset(ins, value) ( \
-    GED_TraceAPI("GED_SetChannelOffset(" #ins ", " #value ")"), \
-    _GED_SetChannelOffset(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetChannelOffset(ged_ins_t* ins, const GED_CHANNEL_OFFSET value);
 
 /*!
  * Get the value of the ThreadCtrl field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -648,10 +546,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetChannelOffset(ged_ins_t* ins, const
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_THREAD_CTRL GED_CALLCONV _GED_GetThreadCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetThreadCtrl(ins, result) ( \
-    GED_TraceAPI("GED_GetThreadCtrl(" #ins ", " #result ")"), \
-    _GED_GetThreadCtrl(ins, result))
+extern GED_THREAD_CTRL GED_CALLCONV GED_GetThreadCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the ThreadCtrl field in the given instruction. See @ref GED_INS_FIELD_ThreadCtrl for the field's description.
@@ -661,10 +556,7 @@ extern GED_THREAD_CTRL GED_CALLCONV _GED_GetThreadCtrl(ged_ins_t* ins, GED_RETUR
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetThreadCtrl(ged_ins_t* ins, const GED_THREAD_CTRL value);
-#define GED_SetThreadCtrl(ins, value) ( \
-    GED_TraceAPI("GED_SetThreadCtrl(" #ins ", " #value ")"), \
-    _GED_SetThreadCtrl(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetThreadCtrl(ged_ins_t* ins, const GED_THREAD_CTRL value);
 
 /*!
  * Get the value of the PredCtrl field in the given instruction. The function returns an enumeration value. To obtain the enum entry's
@@ -678,10 +570,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetThreadCtrl(ged_ins_t* ins, const GE
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_PRED_CTRL GED_CALLCONV _GED_GetPredCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetPredCtrl(ins, result) ( \
-    GED_TraceAPI("GED_GetPredCtrl(" #ins ", " #result ")"), \
-    _GED_GetPredCtrl(ins, result))
+extern GED_PRED_CTRL GED_CALLCONV GED_GetPredCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the PredCtrl field in the given instruction. See @ref GED_INS_FIELD_PredCtrl for the field's description.
@@ -691,10 +580,7 @@ extern GED_PRED_CTRL GED_CALLCONV _GED_GetPredCtrl(ged_ins_t* ins, GED_RETURN_VA
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetPredCtrl(ged_ins_t* ins, const GED_PRED_CTRL value);
-#define GED_SetPredCtrl(ins, value) ( \
-    GED_TraceAPI("GED_SetPredCtrl(" #ins ", " #value ")"), \
-    _GED_SetPredCtrl(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetPredCtrl(ged_ins_t* ins, const GED_PRED_CTRL value);
 
 /*!
  * Get the value of the PredInv field in the given instruction. The function returns an enumeration value. To obtain the enum entry's
@@ -708,10 +594,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetPredCtrl(ged_ins_t* ins, const GED_
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_PRED_INV GED_CALLCONV _GED_GetPredInv(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetPredInv(ins, result) ( \
-    GED_TraceAPI("GED_GetPredInv(" #ins ", " #result ")"), \
-    _GED_GetPredInv(ins, result))
+extern GED_PRED_INV GED_CALLCONV GED_GetPredInv(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the PredInv field in the given instruction. See @ref GED_INS_FIELD_PredInv for the field's description.
@@ -721,10 +604,7 @@ extern GED_PRED_INV GED_CALLCONV _GED_GetPredInv(ged_ins_t* ins, GED_RETURN_VALU
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetPredInv(ged_ins_t* ins, const GED_PRED_INV value);
-#define GED_SetPredInv(ins, value) ( \
-    GED_TraceAPI("GED_SetPredInv(" #ins ", " #value ")"), \
-    _GED_SetPredInv(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetPredInv(ged_ins_t* ins, const GED_PRED_INV value);
 
 /*!
  * Get the value of the ExecSize field in the given instruction. See @ref GED_INS_FIELD_ExecSize for the field's description.
@@ -740,10 +620,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetPredInv(ged_ins_t* ins, const GED_P
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetExecSize(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetExecSize(ins, result) ( \
-    GED_TraceAPI("GED_GetExecSize(" #ins ", " #result ")"), \
-    _GED_GetExecSize(ins, result))
+extern uint32_t GED_CALLCONV GED_GetExecSize(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the ExecSize field in the given instruction. See @ref GED_INS_FIELD_ExecSize for the field's description.
@@ -753,10 +630,7 @@ extern uint32_t GED_CALLCONV _GED_GetExecSize(ged_ins_t* ins, GED_RETURN_VALUE* 
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetExecSize(ged_ins_t* ins, const uint32_t value);
-#define GED_SetExecSize(ins, value) ( \
-    GED_TraceAPI("GED_SetExecSize(" #ins ", " #value ")"), \
-    _GED_SetExecSize(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetExecSize(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the CondModifier field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -770,10 +644,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetExecSize(ged_ins_t* ins, const uint
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_COND_MODIFIER GED_CALLCONV _GED_GetCondModifier(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetCondModifier(ins, result) ( \
-    GED_TraceAPI("GED_GetCondModifier(" #ins ", " #result ")"), \
-    _GED_GetCondModifier(ins, result))
+extern GED_COND_MODIFIER GED_CALLCONV GED_GetCondModifier(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the CondModifier field in the given instruction. See @ref GED_INS_FIELD_CondModifier for the field's description.
@@ -783,10 +654,7 @@ extern GED_COND_MODIFIER GED_CALLCONV _GED_GetCondModifier(ged_ins_t* ins, GED_R
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetCondModifier(ged_ins_t* ins, const GED_COND_MODIFIER value);
-#define GED_SetCondModifier(ins, value) ( \
-    GED_TraceAPI("GED_SetCondModifier(" #ins ", " #value ")"), \
-    _GED_SetCondModifier(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetCondModifier(ged_ins_t* ins, const GED_COND_MODIFIER value);
 
 /*!
  * Get the value of the AccWrCtrl field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -800,10 +668,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetCondModifier(ged_ins_t* ins, const 
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_ACC_WR_CTRL GED_CALLCONV _GED_GetAccWrCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetAccWrCtrl(ins, result) ( \
-    GED_TraceAPI("GED_GetAccWrCtrl(" #ins ", " #result ")"), \
-    _GED_GetAccWrCtrl(ins, result))
+extern GED_ACC_WR_CTRL GED_CALLCONV GED_GetAccWrCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the AccWrCtrl field in the given instruction. See @ref GED_INS_FIELD_AccWrCtrl for the field's description.
@@ -813,10 +678,7 @@ extern GED_ACC_WR_CTRL GED_CALLCONV _GED_GetAccWrCtrl(ged_ins_t* ins, GED_RETURN
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetAccWrCtrl(ged_ins_t* ins, const GED_ACC_WR_CTRL value);
-#define GED_SetAccWrCtrl(ins, value) ( \
-    GED_TraceAPI("GED_SetAccWrCtrl(" #ins ", " #value ")"), \
-    _GED_SetAccWrCtrl(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetAccWrCtrl(ged_ins_t* ins, const GED_ACC_WR_CTRL value);
 
 /*!
  * Get the value of the DebugCtrl field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -830,10 +692,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetAccWrCtrl(ged_ins_t* ins, const GED
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_DEBUG_CTRL GED_CALLCONV _GED_GetDebugCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetDebugCtrl(ins, result) ( \
-    GED_TraceAPI("GED_GetDebugCtrl(" #ins ", " #result ")"), \
-    _GED_GetDebugCtrl(ins, result))
+extern GED_DEBUG_CTRL GED_CALLCONV GED_GetDebugCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DebugCtrl field in the given instruction. See @ref GED_INS_FIELD_DebugCtrl for the field's description.
@@ -843,10 +702,7 @@ extern GED_DEBUG_CTRL GED_CALLCONV _GED_GetDebugCtrl(ged_ins_t* ins, GED_RETURN_
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDebugCtrl(ged_ins_t* ins, const GED_DEBUG_CTRL value);
-#define GED_SetDebugCtrl(ins, value) ( \
-    GED_TraceAPI("GED_SetDebugCtrl(" #ins ", " #value ")"), \
-    _GED_SetDebugCtrl(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDebugCtrl(ged_ins_t* ins, const GED_DEBUG_CTRL value);
 
 /*!
  * Get the value of the Saturate field in the given instruction. The function returns an enumeration value. To obtain the enum entry's
@@ -860,10 +716,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDebugCtrl(ged_ins_t* ins, const GED
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_SATURATE GED_CALLCONV _GED_GetSaturate(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSaturate(ins, result) ( \
-    GED_TraceAPI("GED_GetSaturate(" #ins ", " #result ")"), \
-    _GED_GetSaturate(ins, result))
+extern GED_SATURATE GED_CALLCONV GED_GetSaturate(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Saturate field in the given instruction. See @ref GED_INS_FIELD_Saturate for the field's description.
@@ -873,10 +726,7 @@ extern GED_SATURATE GED_CALLCONV _GED_GetSaturate(ged_ins_t* ins, GED_RETURN_VAL
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSaturate(ged_ins_t* ins, const GED_SATURATE value);
-#define GED_SetSaturate(ins, value) ( \
-    GED_TraceAPI("GED_SetSaturate(" #ins ", " #value ")"), \
-    _GED_SetSaturate(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSaturate(ged_ins_t* ins, const GED_SATURATE value);
 
 /*!
  * Get the value of the DstRegFile field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -890,10 +740,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSaturate(ged_ins_t* ins, const GED_
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_REG_FILE GED_CALLCONV _GED_GetDstRegFile(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetDstRegFile(ins, result) ( \
-    GED_TraceAPI("GED_GetDstRegFile(" #ins ", " #result ")"), \
-    _GED_GetDstRegFile(ins, result))
+extern GED_REG_FILE GED_CALLCONV GED_GetDstRegFile(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DstRegFile field in the given instruction. See @ref GED_INS_FIELD_DstRegFile for the field's description.
@@ -903,10 +750,7 @@ extern GED_REG_FILE GED_CALLCONV _GED_GetDstRegFile(ged_ins_t* ins, GED_RETURN_V
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDstRegFile(ged_ins_t* ins, const GED_REG_FILE value);
-#define GED_SetDstRegFile(ins, value) ( \
-    GED_TraceAPI("GED_SetDstRegFile(" #ins ", " #value ")"), \
-    _GED_SetDstRegFile(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDstRegFile(ged_ins_t* ins, const GED_REG_FILE value);
 
 /*!
  * Get the value of the DstDataType field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -920,10 +764,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDstRegFile(ged_ins_t* ins, const GE
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_DATA_TYPE GED_CALLCONV _GED_GetDstDataType(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetDstDataType(ins, result) ( \
-    GED_TraceAPI("GED_GetDstDataType(" #ins ", " #result ")"), \
-    _GED_GetDstDataType(ins, result))
+extern GED_DATA_TYPE GED_CALLCONV GED_GetDstDataType(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DstDataType field in the given instruction. See @ref GED_INS_FIELD_DstDataType for the field's description.
@@ -933,10 +774,7 @@ extern GED_DATA_TYPE GED_CALLCONV _GED_GetDstDataType(ged_ins_t* ins, GED_RETURN
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDstDataType(ged_ins_t* ins, const GED_DATA_TYPE value);
-#define GED_SetDstDataType(ins, value) ( \
-    GED_TraceAPI("GED_SetDstDataType(" #ins ", " #value ")"), \
-    _GED_SetDstDataType(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDstDataType(ged_ins_t* ins, const GED_DATA_TYPE value);
 
 /*!
  * Get the value of the Src0RegFile field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -950,10 +788,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDstDataType(ged_ins_t* ins, const G
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_REG_FILE GED_CALLCONV _GED_GetSrc0RegFile(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc0RegFile(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc0RegFile(" #ins ", " #result ")"), \
-    _GED_GetSrc0RegFile(ins, result))
+extern GED_REG_FILE GED_CALLCONV GED_GetSrc0RegFile(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src0RegFile field in the given instruction. See @ref GED_INS_FIELD_Src0RegFile for the field's description.
@@ -963,10 +798,7 @@ extern GED_REG_FILE GED_CALLCONV _GED_GetSrc0RegFile(ged_ins_t* ins, GED_RETURN_
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0RegFile(ged_ins_t* ins, const GED_REG_FILE value);
-#define GED_SetSrc0RegFile(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc0RegFile(" #ins ", " #value ")"), \
-    _GED_SetSrc0RegFile(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc0RegFile(ged_ins_t* ins, const GED_REG_FILE value);
 
 /*!
  * Get the value of the Src0DataType field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -980,10 +812,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0RegFile(ged_ins_t* ins, const G
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_DATA_TYPE GED_CALLCONV _GED_GetSrc0DataType(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc0DataType(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc0DataType(" #ins ", " #result ")"), \
-    _GED_GetSrc0DataType(ins, result))
+extern GED_DATA_TYPE GED_CALLCONV GED_GetSrc0DataType(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src0DataType field in the given instruction. See @ref GED_INS_FIELD_Src0DataType for the field's description.
@@ -993,10 +822,7 @@ extern GED_DATA_TYPE GED_CALLCONV _GED_GetSrc0DataType(ged_ins_t* ins, GED_RETUR
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0DataType(ged_ins_t* ins, const GED_DATA_TYPE value);
-#define GED_SetSrc0DataType(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc0DataType(" #ins ", " #value ")"), \
-    _GED_SetSrc0DataType(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc0DataType(ged_ins_t* ins, const GED_DATA_TYPE value);
 
 /*!
  * Get the value of the Src1RegFile field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -1010,10 +836,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0DataType(ged_ins_t* ins, const 
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_REG_FILE GED_CALLCONV _GED_GetSrc1RegFile(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc1RegFile(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc1RegFile(" #ins ", " #result ")"), \
-    _GED_GetSrc1RegFile(ins, result))
+extern GED_REG_FILE GED_CALLCONV GED_GetSrc1RegFile(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src1RegFile field in the given instruction. See @ref GED_INS_FIELD_Src1RegFile for the field's description.
@@ -1023,10 +846,7 @@ extern GED_REG_FILE GED_CALLCONV _GED_GetSrc1RegFile(ged_ins_t* ins, GED_RETURN_
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1RegFile(ged_ins_t* ins, const GED_REG_FILE value);
-#define GED_SetSrc1RegFile(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc1RegFile(" #ins ", " #value ")"), \
-    _GED_SetSrc1RegFile(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc1RegFile(ged_ins_t* ins, const GED_REG_FILE value);
 
 /*!
  * Get the value of the Src1DataType field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -1040,10 +860,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1RegFile(ged_ins_t* ins, const G
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_DATA_TYPE GED_CALLCONV _GED_GetSrc1DataType(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc1DataType(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc1DataType(" #ins ", " #result ")"), \
-    _GED_GetSrc1DataType(ins, result))
+extern GED_DATA_TYPE GED_CALLCONV GED_GetSrc1DataType(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src1DataType field in the given instruction. See @ref GED_INS_FIELD_Src1DataType for the field's description.
@@ -1053,10 +870,7 @@ extern GED_DATA_TYPE GED_CALLCONV _GED_GetSrc1DataType(ged_ins_t* ins, GED_RETUR
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1DataType(ged_ins_t* ins, const GED_DATA_TYPE value);
-#define GED_SetSrc1DataType(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc1DataType(" #ins ", " #value ")"), \
-    _GED_SetSrc1DataType(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc1DataType(ged_ins_t* ins, const GED_DATA_TYPE value);
 
 /*!
  * Get the value of the DstChanEn field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -1070,10 +884,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1DataType(ged_ins_t* ins, const 
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_DST_CHAN_EN GED_CALLCONV _GED_GetDstChanEn(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetDstChanEn(ins, result) ( \
-    GED_TraceAPI("GED_GetDstChanEn(" #ins ", " #result ")"), \
-    _GED_GetDstChanEn(ins, result))
+extern GED_DST_CHAN_EN GED_CALLCONV GED_GetDstChanEn(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DstChanEn field in the given instruction. See @ref GED_INS_FIELD_DstChanEn for the field's description.
@@ -1083,10 +894,7 @@ extern GED_DST_CHAN_EN GED_CALLCONV _GED_GetDstChanEn(ged_ins_t* ins, GED_RETURN
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDstChanEn(ged_ins_t* ins, const GED_DST_CHAN_EN value);
-#define GED_SetDstChanEn(ins, value) ( \
-    GED_TraceAPI("GED_SetDstChanEn(" #ins ", " #value ")"), \
-    _GED_SetDstChanEn(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDstChanEn(ged_ins_t* ins, const GED_DST_CHAN_EN value);
 
 /*!
  * Get the value of the DstSubRegNum field in the given instruction. See @ref GED_INS_FIELD_DstSubRegNum for the field's description.
@@ -1100,10 +908,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDstChanEn(ged_ins_t* ins, const GED
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetDstSubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetDstSubRegNum(ins, result) ( \
-    GED_TraceAPI("GED_GetDstSubRegNum(" #ins ", " #result ")"), \
-    _GED_GetDstSubRegNum(ins, result))
+extern uint32_t GED_CALLCONV GED_GetDstSubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DstSubRegNum field in the given instruction. See @ref GED_INS_FIELD_DstSubRegNum for the field's description.
@@ -1113,10 +918,7 @@ extern uint32_t GED_CALLCONV _GED_GetDstSubRegNum(ged_ins_t* ins, GED_RETURN_VAL
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDstSubRegNum(ged_ins_t* ins, const uint32_t value);
-#define GED_SetDstSubRegNum(ins, value) ( \
-    GED_TraceAPI("GED_SetDstSubRegNum(" #ins ", " #value ")"), \
-    _GED_SetDstSubRegNum(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDstSubRegNum(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the DstAddrImm field in the given instruction. See @ref GED_INS_FIELD_DstAddrImm for the field's description.
@@ -1130,10 +932,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDstSubRegNum(ged_ins_t* ins, const 
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern int32_t GED_CALLCONV _GED_GetDstAddrImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetDstAddrImm(ins, result) ( \
-    GED_TraceAPI("GED_GetDstAddrImm(" #ins ", " #result ")"), \
-    _GED_GetDstAddrImm(ins, result))
+extern int32_t GED_CALLCONV GED_GetDstAddrImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DstAddrImm field in the given instruction. See @ref GED_INS_FIELD_DstAddrImm for the field's description.
@@ -1143,10 +942,7 @@ extern int32_t GED_CALLCONV _GED_GetDstAddrImm(ged_ins_t* ins, GED_RETURN_VALUE*
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDstAddrImm(ged_ins_t* ins, const int32_t value);
-#define GED_SetDstAddrImm(ins, value) ( \
-    GED_TraceAPI("GED_SetDstAddrImm(" #ins ", " #value ")"), \
-    _GED_SetDstAddrImm(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDstAddrImm(ged_ins_t* ins, const int32_t value);
 
 /*!
  * Get the value of the DstRegNum field in the given instruction. See @ref GED_INS_FIELD_DstRegNum for the field's description.
@@ -1160,10 +956,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDstAddrImm(ged_ins_t* ins, const in
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetDstRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetDstRegNum(ins, result) ( \
-    GED_TraceAPI("GED_GetDstRegNum(" #ins ", " #result ")"), \
-    _GED_GetDstRegNum(ins, result))
+extern uint32_t GED_CALLCONV GED_GetDstRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DstRegNum field in the given instruction. See @ref GED_INS_FIELD_DstRegNum for the field's description.
@@ -1173,10 +966,7 @@ extern uint32_t GED_CALLCONV _GED_GetDstRegNum(ged_ins_t* ins, GED_RETURN_VALUE*
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDstRegNum(ged_ins_t* ins, const uint32_t value);
-#define GED_SetDstRegNum(ins, value) ( \
-    GED_TraceAPI("GED_SetDstRegNum(" #ins ", " #value ")"), \
-    _GED_SetDstRegNum(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDstRegNum(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the DstAddrSubRegNum field in the given instruction. See @ref GED_INS_FIELD_DstAddrSubRegNum for the field's
@@ -1191,10 +981,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDstRegNum(ged_ins_t* ins, const uin
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetDstAddrSubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetDstAddrSubRegNum(ins, result) ( \
-    GED_TraceAPI("GED_GetDstAddrSubRegNum(" #ins ", " #result ")"), \
-    _GED_GetDstAddrSubRegNum(ins, result))
+extern uint32_t GED_CALLCONV GED_GetDstAddrSubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DstAddrSubRegNum field in the given instruction. See @ref GED_INS_FIELD_DstAddrSubRegNum for the field's
@@ -1205,10 +992,7 @@ extern uint32_t GED_CALLCONV _GED_GetDstAddrSubRegNum(ged_ins_t* ins, GED_RETURN
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDstAddrSubRegNum(ged_ins_t* ins, const uint32_t value);
-#define GED_SetDstAddrSubRegNum(ins, value) ( \
-    GED_TraceAPI("GED_SetDstAddrSubRegNum(" #ins ", " #value ")"), \
-    _GED_SetDstAddrSubRegNum(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDstAddrSubRegNum(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the DstHorzStride field in the given instruction. See @ref GED_INS_FIELD_DstHorzStride for the field's
@@ -1225,10 +1009,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDstAddrSubRegNum(ged_ins_t* ins, co
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetDstHorzStride(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetDstHorzStride(ins, result) ( \
-    GED_TraceAPI("GED_GetDstHorzStride(" #ins ", " #result ")"), \
-    _GED_GetDstHorzStride(ins, result))
+extern uint32_t GED_CALLCONV GED_GetDstHorzStride(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DstHorzStride field in the given instruction. See @ref GED_INS_FIELD_DstHorzStride for the field's
@@ -1239,10 +1020,7 @@ extern uint32_t GED_CALLCONV _GED_GetDstHorzStride(ged_ins_t* ins, GED_RETURN_VA
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDstHorzStride(ged_ins_t* ins, const uint32_t value);
-#define GED_SetDstHorzStride(ins, value) ( \
-    GED_TraceAPI("GED_SetDstHorzStride(" #ins ", " #value ")"), \
-    _GED_SetDstHorzStride(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDstHorzStride(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the DstAddrMode field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -1256,10 +1034,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDstHorzStride(ged_ins_t* ins, const
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_ADDR_MODE GED_CALLCONV _GED_GetDstAddrMode(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetDstAddrMode(ins, result) ( \
-    GED_TraceAPI("GED_GetDstAddrMode(" #ins ", " #result ")"), \
-    _GED_GetDstAddrMode(ins, result))
+extern GED_ADDR_MODE GED_CALLCONV GED_GetDstAddrMode(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DstAddrMode field in the given instruction. See @ref GED_INS_FIELD_DstAddrMode for the field's description.
@@ -1269,10 +1044,7 @@ extern GED_ADDR_MODE GED_CALLCONV _GED_GetDstAddrMode(ged_ins_t* ins, GED_RETURN
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDstAddrMode(ged_ins_t* ins, const GED_ADDR_MODE value);
-#define GED_SetDstAddrMode(ins, value) ( \
-    GED_TraceAPI("GED_SetDstAddrMode(" #ins ", " #value ")"), \
-    _GED_SetDstAddrMode(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDstAddrMode(ged_ins_t* ins, const GED_ADDR_MODE value);
 
 /*!
  * Get the value of the Src0ChanSel field in the given instruction. See @ref GED_INS_FIELD_Src0ChanSel for the field's description.
@@ -1286,10 +1058,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDstAddrMode(ged_ins_t* ins, const G
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSrc0ChanSel(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc0ChanSel(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc0ChanSel(" #ins ", " #result ")"), \
-    _GED_GetSrc0ChanSel(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSrc0ChanSel(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src0ChanSel field in the given instruction. See @ref GED_INS_FIELD_Src0ChanSel for the field's description.
@@ -1299,10 +1068,7 @@ extern uint32_t GED_CALLCONV _GED_GetSrc0ChanSel(ged_ins_t* ins, GED_RETURN_VALU
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0ChanSel(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSrc0ChanSel(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc0ChanSel(" #ins ", " #value ")"), \
-    _GED_SetSrc0ChanSel(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc0ChanSel(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the Src0SubRegNum field in the given instruction. See @ref GED_INS_FIELD_Src0SubRegNum for the field's
@@ -1317,10 +1083,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0ChanSel(ged_ins_t* ins, const u
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSrc0SubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc0SubRegNum(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc0SubRegNum(" #ins ", " #result ")"), \
-    _GED_GetSrc0SubRegNum(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSrc0SubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src0SubRegNum field in the given instruction. See @ref GED_INS_FIELD_Src0SubRegNum for the field's
@@ -1331,10 +1094,7 @@ extern uint32_t GED_CALLCONV _GED_GetSrc0SubRegNum(ged_ins_t* ins, GED_RETURN_VA
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0SubRegNum(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSrc0SubRegNum(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc0SubRegNum(" #ins ", " #value ")"), \
-    _GED_SetSrc0SubRegNum(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc0SubRegNum(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the Src0AddrImm field in the given instruction. See @ref GED_INS_FIELD_Src0AddrImm for the field's description.
@@ -1348,10 +1108,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0SubRegNum(ged_ins_t* ins, const
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern int32_t GED_CALLCONV _GED_GetSrc0AddrImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc0AddrImm(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc0AddrImm(" #ins ", " #result ")"), \
-    _GED_GetSrc0AddrImm(ins, result))
+extern int32_t GED_CALLCONV GED_GetSrc0AddrImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src0AddrImm field in the given instruction. See @ref GED_INS_FIELD_Src0AddrImm for the field's description.
@@ -1361,10 +1118,7 @@ extern int32_t GED_CALLCONV _GED_GetSrc0AddrImm(ged_ins_t* ins, GED_RETURN_VALUE
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0AddrImm(ged_ins_t* ins, const int32_t value);
-#define GED_SetSrc0AddrImm(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc0AddrImm(" #ins ", " #value ")"), \
-    _GED_SetSrc0AddrImm(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc0AddrImm(ged_ins_t* ins, const int32_t value);
 
 /*!
  * Get the value of the Src0RegNum field in the given instruction. See @ref GED_INS_FIELD_Src0RegNum for the field's description.
@@ -1378,10 +1132,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0AddrImm(ged_ins_t* ins, const i
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSrc0RegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc0RegNum(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc0RegNum(" #ins ", " #result ")"), \
-    _GED_GetSrc0RegNum(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSrc0RegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src0RegNum field in the given instruction. See @ref GED_INS_FIELD_Src0RegNum for the field's description.
@@ -1391,10 +1142,7 @@ extern uint32_t GED_CALLCONV _GED_GetSrc0RegNum(ged_ins_t* ins, GED_RETURN_VALUE
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0RegNum(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSrc0RegNum(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc0RegNum(" #ins ", " #value ")"), \
-    _GED_SetSrc0RegNum(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc0RegNum(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the Src0AddrSubRegNum field in the given instruction. See @ref GED_INS_FIELD_Src0AddrSubRegNum for the field's
@@ -1409,10 +1157,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0RegNum(ged_ins_t* ins, const ui
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSrc0AddrSubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc0AddrSubRegNum(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc0AddrSubRegNum(" #ins ", " #result ")"), \
-    _GED_GetSrc0AddrSubRegNum(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSrc0AddrSubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src0AddrSubRegNum field in the given instruction. See @ref GED_INS_FIELD_Src0AddrSubRegNum for the field's
@@ -1423,10 +1168,7 @@ extern uint32_t GED_CALLCONV _GED_GetSrc0AddrSubRegNum(ged_ins_t* ins, GED_RETUR
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0AddrSubRegNum(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSrc0AddrSubRegNum(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc0AddrSubRegNum(" #ins ", " #value ")"), \
-    _GED_SetSrc0AddrSubRegNum(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc0AddrSubRegNum(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the Src0SrcMod field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -1440,10 +1182,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0AddrSubRegNum(ged_ins_t* ins, c
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_SRC_MOD GED_CALLCONV _GED_GetSrc0SrcMod(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc0SrcMod(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc0SrcMod(" #ins ", " #result ")"), \
-    _GED_GetSrc0SrcMod(ins, result))
+extern GED_SRC_MOD GED_CALLCONV GED_GetSrc0SrcMod(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src0SrcMod field in the given instruction. See @ref GED_INS_FIELD_Src0SrcMod for the field's description.
@@ -1453,10 +1192,7 @@ extern GED_SRC_MOD GED_CALLCONV _GED_GetSrc0SrcMod(ged_ins_t* ins, GED_RETURN_VA
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0SrcMod(ged_ins_t* ins, const GED_SRC_MOD value);
-#define GED_SetSrc0SrcMod(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc0SrcMod(" #ins ", " #value ")"), \
-    _GED_SetSrc0SrcMod(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc0SrcMod(ged_ins_t* ins, const GED_SRC_MOD value);
 
 /*!
  * Get the value of the Src0AddrMode field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -1470,10 +1206,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0SrcMod(ged_ins_t* ins, const GE
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_ADDR_MODE GED_CALLCONV _GED_GetSrc0AddrMode(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc0AddrMode(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc0AddrMode(" #ins ", " #result ")"), \
-    _GED_GetSrc0AddrMode(ins, result))
+extern GED_ADDR_MODE GED_CALLCONV GED_GetSrc0AddrMode(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src0AddrMode field in the given instruction. See @ref GED_INS_FIELD_Src0AddrMode for the field's description.
@@ -1483,10 +1216,7 @@ extern GED_ADDR_MODE GED_CALLCONV _GED_GetSrc0AddrMode(ged_ins_t* ins, GED_RETUR
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0AddrMode(ged_ins_t* ins, const GED_ADDR_MODE value);
-#define GED_SetSrc0AddrMode(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc0AddrMode(" #ins ", " #value ")"), \
-    _GED_SetSrc0AddrMode(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc0AddrMode(ged_ins_t* ins, const GED_ADDR_MODE value);
 
 /*!
  * Get the value of the Src0HorzStride field in the given instruction. See @ref GED_INS_FIELD_Src0HorzStride for the field's
@@ -1503,10 +1233,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0AddrMode(ged_ins_t* ins, const 
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSrc0HorzStride(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc0HorzStride(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc0HorzStride(" #ins ", " #result ")"), \
-    _GED_GetSrc0HorzStride(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSrc0HorzStride(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src0HorzStride field in the given instruction. See @ref GED_INS_FIELD_Src0HorzStride for the field's
@@ -1517,10 +1244,7 @@ extern uint32_t GED_CALLCONV _GED_GetSrc0HorzStride(ged_ins_t* ins, GED_RETURN_V
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0HorzStride(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSrc0HorzStride(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc0HorzStride(" #ins ", " #value ")"), \
-    _GED_SetSrc0HorzStride(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc0HorzStride(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the Src0Width field in the given instruction. See @ref GED_INS_FIELD_Src0Width for the field's description.
@@ -1536,10 +1260,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0HorzStride(ged_ins_t* ins, cons
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSrc0Width(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc0Width(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc0Width(" #ins ", " #result ")"), \
-    _GED_GetSrc0Width(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSrc0Width(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src0Width field in the given instruction. See @ref GED_INS_FIELD_Src0Width for the field's description.
@@ -1549,10 +1270,7 @@ extern uint32_t GED_CALLCONV _GED_GetSrc0Width(ged_ins_t* ins, GED_RETURN_VALUE*
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0Width(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSrc0Width(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc0Width(" #ins ", " #value ")"), \
-    _GED_SetSrc0Width(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc0Width(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the Src0VertStride field in the given instruction. See @ref GED_INS_FIELD_Src0VertStride for the field's
@@ -1569,10 +1287,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0Width(ged_ins_t* ins, const uin
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSrc0VertStride(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc0VertStride(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc0VertStride(" #ins ", " #result ")"), \
-    _GED_GetSrc0VertStride(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSrc0VertStride(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src0VertStride field in the given instruction. See @ref GED_INS_FIELD_Src0VertStride for the field's
@@ -1583,10 +1298,7 @@ extern uint32_t GED_CALLCONV _GED_GetSrc0VertStride(ged_ins_t* ins, GED_RETURN_V
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0VertStride(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSrc0VertStride(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc0VertStride(" #ins ", " #value ")"), \
-    _GED_SetSrc0VertStride(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc0VertStride(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the FlagSubRegNum field in the given instruction. See @ref GED_INS_FIELD_FlagSubRegNum for the field's
@@ -1601,10 +1313,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0VertStride(ged_ins_t* ins, cons
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetFlagSubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetFlagSubRegNum(ins, result) ( \
-    GED_TraceAPI("GED_GetFlagSubRegNum(" #ins ", " #result ")"), \
-    _GED_GetFlagSubRegNum(ins, result))
+extern uint32_t GED_CALLCONV GED_GetFlagSubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the FlagSubRegNum field in the given instruction. See @ref GED_INS_FIELD_FlagSubRegNum for the field's
@@ -1615,10 +1324,7 @@ extern uint32_t GED_CALLCONV _GED_GetFlagSubRegNum(ged_ins_t* ins, GED_RETURN_VA
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetFlagSubRegNum(ged_ins_t* ins, const uint32_t value);
-#define GED_SetFlagSubRegNum(ins, value) ( \
-    GED_TraceAPI("GED_SetFlagSubRegNum(" #ins ", " #value ")"), \
-    _GED_SetFlagSubRegNum(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetFlagSubRegNum(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the FlagRegNum field in the given instruction. See @ref GED_INS_FIELD_FlagRegNum for the field's description.
@@ -1632,10 +1338,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetFlagSubRegNum(ged_ins_t* ins, const
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetFlagRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetFlagRegNum(ins, result) ( \
-    GED_TraceAPI("GED_GetFlagRegNum(" #ins ", " #result ")"), \
-    _GED_GetFlagRegNum(ins, result))
+extern uint32_t GED_CALLCONV GED_GetFlagRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the FlagRegNum field in the given instruction. See @ref GED_INS_FIELD_FlagRegNum for the field's description.
@@ -1645,10 +1348,7 @@ extern uint32_t GED_CALLCONV _GED_GetFlagRegNum(ged_ins_t* ins, GED_RETURN_VALUE
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetFlagRegNum(ged_ins_t* ins, const uint32_t value);
-#define GED_SetFlagRegNum(ins, value) ( \
-    GED_TraceAPI("GED_SetFlagRegNum(" #ins ", " #value ")"), \
-    _GED_SetFlagRegNum(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetFlagRegNum(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the Src1ChanSel field in the given instruction. See @ref GED_INS_FIELD_Src1ChanSel for the field's description.
@@ -1662,10 +1362,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetFlagRegNum(ged_ins_t* ins, const ui
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSrc1ChanSel(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc1ChanSel(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc1ChanSel(" #ins ", " #result ")"), \
-    _GED_GetSrc1ChanSel(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSrc1ChanSel(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src1ChanSel field in the given instruction. See @ref GED_INS_FIELD_Src1ChanSel for the field's description.
@@ -1675,10 +1372,7 @@ extern uint32_t GED_CALLCONV _GED_GetSrc1ChanSel(ged_ins_t* ins, GED_RETURN_VALU
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1ChanSel(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSrc1ChanSel(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc1ChanSel(" #ins ", " #value ")"), \
-    _GED_SetSrc1ChanSel(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc1ChanSel(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the Src1SubRegNum field in the given instruction. See @ref GED_INS_FIELD_Src1SubRegNum for the field's
@@ -1693,10 +1387,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1ChanSel(ged_ins_t* ins, const u
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSrc1SubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc1SubRegNum(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc1SubRegNum(" #ins ", " #result ")"), \
-    _GED_GetSrc1SubRegNum(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSrc1SubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src1SubRegNum field in the given instruction. See @ref GED_INS_FIELD_Src1SubRegNum for the field's
@@ -1707,10 +1398,7 @@ extern uint32_t GED_CALLCONV _GED_GetSrc1SubRegNum(ged_ins_t* ins, GED_RETURN_VA
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1SubRegNum(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSrc1SubRegNum(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc1SubRegNum(" #ins ", " #value ")"), \
-    _GED_SetSrc1SubRegNum(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc1SubRegNum(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the Src1AddrImm field in the given instruction. See @ref GED_INS_FIELD_Src1AddrImm for the field's description.
@@ -1724,10 +1412,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1SubRegNum(ged_ins_t* ins, const
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern int32_t GED_CALLCONV _GED_GetSrc1AddrImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc1AddrImm(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc1AddrImm(" #ins ", " #result ")"), \
-    _GED_GetSrc1AddrImm(ins, result))
+extern int32_t GED_CALLCONV GED_GetSrc1AddrImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src1AddrImm field in the given instruction. See @ref GED_INS_FIELD_Src1AddrImm for the field's description.
@@ -1737,10 +1422,7 @@ extern int32_t GED_CALLCONV _GED_GetSrc1AddrImm(ged_ins_t* ins, GED_RETURN_VALUE
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1AddrImm(ged_ins_t* ins, const int32_t value);
-#define GED_SetSrc1AddrImm(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc1AddrImm(" #ins ", " #value ")"), \
-    _GED_SetSrc1AddrImm(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc1AddrImm(ged_ins_t* ins, const int32_t value);
 
 /*!
  * Get the value of the Src1RegNum field in the given instruction. See @ref GED_INS_FIELD_Src1RegNum for the field's description.
@@ -1754,10 +1436,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1AddrImm(ged_ins_t* ins, const i
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSrc1RegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc1RegNum(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc1RegNum(" #ins ", " #result ")"), \
-    _GED_GetSrc1RegNum(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSrc1RegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src1RegNum field in the given instruction. See @ref GED_INS_FIELD_Src1RegNum for the field's description.
@@ -1767,10 +1446,7 @@ extern uint32_t GED_CALLCONV _GED_GetSrc1RegNum(ged_ins_t* ins, GED_RETURN_VALUE
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1RegNum(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSrc1RegNum(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc1RegNum(" #ins ", " #value ")"), \
-    _GED_SetSrc1RegNum(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc1RegNum(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the Src1AddrSubRegNum field in the given instruction. See @ref GED_INS_FIELD_Src1AddrSubRegNum for the field's
@@ -1785,10 +1461,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1RegNum(ged_ins_t* ins, const ui
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSrc1AddrSubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc1AddrSubRegNum(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc1AddrSubRegNum(" #ins ", " #result ")"), \
-    _GED_GetSrc1AddrSubRegNum(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSrc1AddrSubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src1AddrSubRegNum field in the given instruction. See @ref GED_INS_FIELD_Src1AddrSubRegNum for the field's
@@ -1799,10 +1472,7 @@ extern uint32_t GED_CALLCONV _GED_GetSrc1AddrSubRegNum(ged_ins_t* ins, GED_RETUR
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1AddrSubRegNum(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSrc1AddrSubRegNum(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc1AddrSubRegNum(" #ins ", " #value ")"), \
-    _GED_SetSrc1AddrSubRegNum(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc1AddrSubRegNum(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the Src1SrcMod field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -1816,10 +1486,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1AddrSubRegNum(ged_ins_t* ins, c
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_SRC_MOD GED_CALLCONV _GED_GetSrc1SrcMod(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc1SrcMod(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc1SrcMod(" #ins ", " #result ")"), \
-    _GED_GetSrc1SrcMod(ins, result))
+extern GED_SRC_MOD GED_CALLCONV GED_GetSrc1SrcMod(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src1SrcMod field in the given instruction. See @ref GED_INS_FIELD_Src1SrcMod for the field's description.
@@ -1829,10 +1496,7 @@ extern GED_SRC_MOD GED_CALLCONV _GED_GetSrc1SrcMod(ged_ins_t* ins, GED_RETURN_VA
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1SrcMod(ged_ins_t* ins, const GED_SRC_MOD value);
-#define GED_SetSrc1SrcMod(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc1SrcMod(" #ins ", " #value ")"), \
-    _GED_SetSrc1SrcMod(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc1SrcMod(ged_ins_t* ins, const GED_SRC_MOD value);
 
 /*!
  * Get the value of the Src1AddrMode field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -1846,10 +1510,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1SrcMod(ged_ins_t* ins, const GE
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_ADDR_MODE GED_CALLCONV _GED_GetSrc1AddrMode(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc1AddrMode(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc1AddrMode(" #ins ", " #result ")"), \
-    _GED_GetSrc1AddrMode(ins, result))
+extern GED_ADDR_MODE GED_CALLCONV GED_GetSrc1AddrMode(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src1AddrMode field in the given instruction. See @ref GED_INS_FIELD_Src1AddrMode for the field's description.
@@ -1859,10 +1520,7 @@ extern GED_ADDR_MODE GED_CALLCONV _GED_GetSrc1AddrMode(ged_ins_t* ins, GED_RETUR
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1AddrMode(ged_ins_t* ins, const GED_ADDR_MODE value);
-#define GED_SetSrc1AddrMode(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc1AddrMode(" #ins ", " #value ")"), \
-    _GED_SetSrc1AddrMode(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc1AddrMode(ged_ins_t* ins, const GED_ADDR_MODE value);
 
 /*!
  * Get the value of the Src1HorzStride field in the given instruction. See @ref GED_INS_FIELD_Src1HorzStride for the field's
@@ -1879,10 +1537,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1AddrMode(ged_ins_t* ins, const 
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSrc1HorzStride(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc1HorzStride(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc1HorzStride(" #ins ", " #result ")"), \
-    _GED_GetSrc1HorzStride(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSrc1HorzStride(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src1HorzStride field in the given instruction. See @ref GED_INS_FIELD_Src1HorzStride for the field's
@@ -1893,10 +1548,7 @@ extern uint32_t GED_CALLCONV _GED_GetSrc1HorzStride(ged_ins_t* ins, GED_RETURN_V
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1HorzStride(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSrc1HorzStride(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc1HorzStride(" #ins ", " #value ")"), \
-    _GED_SetSrc1HorzStride(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc1HorzStride(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the Src1Width field in the given instruction. See @ref GED_INS_FIELD_Src1Width for the field's description.
@@ -1912,10 +1564,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1HorzStride(ged_ins_t* ins, cons
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSrc1Width(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc1Width(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc1Width(" #ins ", " #result ")"), \
-    _GED_GetSrc1Width(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSrc1Width(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src1Width field in the given instruction. See @ref GED_INS_FIELD_Src1Width for the field's description.
@@ -1925,10 +1574,7 @@ extern uint32_t GED_CALLCONV _GED_GetSrc1Width(ged_ins_t* ins, GED_RETURN_VALUE*
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1Width(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSrc1Width(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc1Width(" #ins ", " #value ")"), \
-    _GED_SetSrc1Width(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc1Width(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the Src1VertStride field in the given instruction. See @ref GED_INS_FIELD_Src1VertStride for the field's
@@ -1945,10 +1591,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1Width(ged_ins_t* ins, const uin
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSrc1VertStride(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc1VertStride(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc1VertStride(" #ins ", " #result ")"), \
-    _GED_GetSrc1VertStride(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSrc1VertStride(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src1VertStride field in the given instruction. See @ref GED_INS_FIELD_Src1VertStride for the field's
@@ -1959,10 +1602,7 @@ extern uint32_t GED_CALLCONV _GED_GetSrc1VertStride(ged_ins_t* ins, GED_RETURN_V
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1VertStride(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSrc1VertStride(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc1VertStride(" #ins ", " #value ")"), \
-    _GED_SetSrc1VertStride(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc1VertStride(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the Imm field in the given instruction. See @ref GED_INS_FIELD_Imm for the field's description.
@@ -1976,10 +1616,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1VertStride(ged_ins_t* ins, cons
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint64_t GED_CALLCONV _GED_GetImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetImm(ins, result) ( \
-    GED_TraceAPI("GED_GetImm(" #ins ", " #result ")"), \
-    _GED_GetImm(ins, result))
+extern uint64_t GED_CALLCONV GED_GetImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Imm field in the given instruction. See @ref GED_INS_FIELD_Imm for the field's description.
@@ -1989,10 +1626,7 @@ extern uint64_t GED_CALLCONV _GED_GetImm(ged_ins_t* ins, GED_RETURN_VALUE* resul
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetImm(ged_ins_t* ins, const uint64_t value);
-#define GED_SetImm(ins, value) ( \
-    GED_TraceAPI("GED_SetImm(" #ins ", " #value ")"), \
-    _GED_SetImm(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetImm(ged_ins_t* ins, const uint64_t value);
 
 /*!
  * Get the value of the Src2SrcMod field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -2006,10 +1640,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetImm(ged_ins_t* ins, const uint64_t 
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_SRC_MOD GED_CALLCONV _GED_GetSrc2SrcMod(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc2SrcMod(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc2SrcMod(" #ins ", " #result ")"), \
-    _GED_GetSrc2SrcMod(ins, result))
+extern GED_SRC_MOD GED_CALLCONV GED_GetSrc2SrcMod(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src2SrcMod field in the given instruction. See @ref GED_INS_FIELD_Src2SrcMod for the field's description.
@@ -2019,10 +1650,7 @@ extern GED_SRC_MOD GED_CALLCONV _GED_GetSrc2SrcMod(ged_ins_t* ins, GED_RETURN_VA
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2SrcMod(ged_ins_t* ins, const GED_SRC_MOD value);
-#define GED_SetSrc2SrcMod(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc2SrcMod(" #ins ", " #value ")"), \
-    _GED_SetSrc2SrcMod(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc2SrcMod(ged_ins_t* ins, const GED_SRC_MOD value);
 
 /*!
  * Get the value of the SrcDataType field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -2036,10 +1664,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2SrcMod(ged_ins_t* ins, const GE
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_DATA_TYPE GED_CALLCONV _GED_GetSrcDataType(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrcDataType(ins, result) ( \
-    GED_TraceAPI("GED_GetSrcDataType(" #ins ", " #result ")"), \
-    _GED_GetSrcDataType(ins, result))
+extern GED_DATA_TYPE GED_CALLCONV GED_GetSrcDataType(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the SrcDataType field in the given instruction. See @ref GED_INS_FIELD_SrcDataType for the field's description.
@@ -2049,10 +1674,7 @@ extern GED_DATA_TYPE GED_CALLCONV _GED_GetSrcDataType(ged_ins_t* ins, GED_RETURN
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrcDataType(ged_ins_t* ins, const GED_DATA_TYPE value);
-#define GED_SetSrcDataType(ins, value) ( \
-    GED_TraceAPI("GED_SetSrcDataType(" #ins ", " #value ")"), \
-    _GED_SetSrcDataType(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrcDataType(ged_ins_t* ins, const GED_DATA_TYPE value);
 
 /*!
  * Get the value of the Src0RepCtrl field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -2066,10 +1688,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrcDataType(ged_ins_t* ins, const G
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_REP_CTRL GED_CALLCONV _GED_GetSrc0RepCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc0RepCtrl(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc0RepCtrl(" #ins ", " #result ")"), \
-    _GED_GetSrc0RepCtrl(ins, result))
+extern GED_REP_CTRL GED_CALLCONV GED_GetSrc0RepCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src0RepCtrl field in the given instruction. See @ref GED_INS_FIELD_Src0RepCtrl for the field's description.
@@ -2079,10 +1698,7 @@ extern GED_REP_CTRL GED_CALLCONV _GED_GetSrc0RepCtrl(ged_ins_t* ins, GED_RETURN_
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0RepCtrl(ged_ins_t* ins, const GED_REP_CTRL value);
-#define GED_SetSrc0RepCtrl(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc0RepCtrl(" #ins ", " #value ")"), \
-    _GED_SetSrc0RepCtrl(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc0RepCtrl(ged_ins_t* ins, const GED_REP_CTRL value);
 
 /*!
  * Get the value of the Src1RepCtrl field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -2096,10 +1712,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0RepCtrl(ged_ins_t* ins, const G
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_REP_CTRL GED_CALLCONV _GED_GetSrc1RepCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc1RepCtrl(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc1RepCtrl(" #ins ", " #result ")"), \
-    _GED_GetSrc1RepCtrl(ins, result))
+extern GED_REP_CTRL GED_CALLCONV GED_GetSrc1RepCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src1RepCtrl field in the given instruction. See @ref GED_INS_FIELD_Src1RepCtrl for the field's description.
@@ -2109,10 +1722,7 @@ extern GED_REP_CTRL GED_CALLCONV _GED_GetSrc1RepCtrl(ged_ins_t* ins, GED_RETURN_
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1RepCtrl(ged_ins_t* ins, const GED_REP_CTRL value);
-#define GED_SetSrc1RepCtrl(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc1RepCtrl(" #ins ", " #value ")"), \
-    _GED_SetSrc1RepCtrl(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc1RepCtrl(ged_ins_t* ins, const GED_REP_CTRL value);
 
 /*!
  * Get the value of the Src2RepCtrl field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -2126,10 +1736,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1RepCtrl(ged_ins_t* ins, const G
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_REP_CTRL GED_CALLCONV _GED_GetSrc2RepCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc2RepCtrl(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc2RepCtrl(" #ins ", " #result ")"), \
-    _GED_GetSrc2RepCtrl(ins, result))
+extern GED_REP_CTRL GED_CALLCONV GED_GetSrc2RepCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src2RepCtrl field in the given instruction. See @ref GED_INS_FIELD_Src2RepCtrl for the field's description.
@@ -2139,10 +1746,7 @@ extern GED_REP_CTRL GED_CALLCONV _GED_GetSrc2RepCtrl(ged_ins_t* ins, GED_RETURN_
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2RepCtrl(ged_ins_t* ins, const GED_REP_CTRL value);
-#define GED_SetSrc2RepCtrl(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc2RepCtrl(" #ins ", " #value ")"), \
-    _GED_SetSrc2RepCtrl(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc2RepCtrl(ged_ins_t* ins, const GED_REP_CTRL value);
 
 /*!
  * Get the value of the Src2ChanSel field in the given instruction. See @ref GED_INS_FIELD_Src2ChanSel for the field's description.
@@ -2156,10 +1760,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2RepCtrl(ged_ins_t* ins, const G
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSrc2ChanSel(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc2ChanSel(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc2ChanSel(" #ins ", " #result ")"), \
-    _GED_GetSrc2ChanSel(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSrc2ChanSel(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src2ChanSel field in the given instruction. See @ref GED_INS_FIELD_Src2ChanSel for the field's description.
@@ -2169,10 +1770,7 @@ extern uint32_t GED_CALLCONV _GED_GetSrc2ChanSel(ged_ins_t* ins, GED_RETURN_VALU
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2ChanSel(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSrc2ChanSel(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc2ChanSel(" #ins ", " #value ")"), \
-    _GED_SetSrc2ChanSel(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc2ChanSel(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the Src2SubRegNum field in the given instruction. See @ref GED_INS_FIELD_Src2SubRegNum for the field's
@@ -2187,10 +1785,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2ChanSel(ged_ins_t* ins, const u
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSrc2SubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc2SubRegNum(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc2SubRegNum(" #ins ", " #result ")"), \
-    _GED_GetSrc2SubRegNum(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSrc2SubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src2SubRegNum field in the given instruction. See @ref GED_INS_FIELD_Src2SubRegNum for the field's
@@ -2201,10 +1796,7 @@ extern uint32_t GED_CALLCONV _GED_GetSrc2SubRegNum(ged_ins_t* ins, GED_RETURN_VA
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2SubRegNum(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSrc2SubRegNum(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc2SubRegNum(" #ins ", " #value ")"), \
-    _GED_SetSrc2SubRegNum(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc2SubRegNum(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the Src2RegNum field in the given instruction. See @ref GED_INS_FIELD_Src2RegNum for the field's description.
@@ -2218,10 +1810,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2SubRegNum(ged_ins_t* ins, const
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSrc2RegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc2RegNum(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc2RegNum(" #ins ", " #result ")"), \
-    _GED_GetSrc2RegNum(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSrc2RegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src2RegNum field in the given instruction. See @ref GED_INS_FIELD_Src2RegNum for the field's description.
@@ -2231,10 +1820,7 @@ extern uint32_t GED_CALLCONV _GED_GetSrc2RegNum(ged_ins_t* ins, GED_RETURN_VALUE
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2RegNum(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSrc2RegNum(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc2RegNum(" #ins ", " #value ")"), \
-    _GED_SetSrc2RegNum(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc2RegNum(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the Src2RegFile field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -2248,10 +1834,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2RegNum(ged_ins_t* ins, const ui
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_REG_FILE GED_CALLCONV _GED_GetSrc2RegFile(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc2RegFile(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc2RegFile(" #ins ", " #result ")"), \
-    _GED_GetSrc2RegFile(ins, result))
+extern GED_REG_FILE GED_CALLCONV GED_GetSrc2RegFile(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src2RegFile field in the given instruction. See @ref GED_INS_FIELD_Src2RegFile for the field's description.
@@ -2261,10 +1844,7 @@ extern GED_REG_FILE GED_CALLCONV _GED_GetSrc2RegFile(ged_ins_t* ins, GED_RETURN_
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2RegFile(ged_ins_t* ins, const GED_REG_FILE value);
-#define GED_SetSrc2RegFile(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc2RegFile(" #ins ", " #value ")"), \
-    _GED_SetSrc2RegFile(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc2RegFile(ged_ins_t* ins, const GED_REG_FILE value);
 
 /*!
  * Get the value of the Src2AddrMode field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -2278,10 +1858,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2RegFile(ged_ins_t* ins, const G
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_ADDR_MODE GED_CALLCONV _GED_GetSrc2AddrMode(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc2AddrMode(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc2AddrMode(" #ins ", " #result ")"), \
-    _GED_GetSrc2AddrMode(ins, result))
+extern GED_ADDR_MODE GED_CALLCONV GED_GetSrc2AddrMode(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src2AddrMode field in the given instruction. See @ref GED_INS_FIELD_Src2AddrMode for the field's description.
@@ -2291,10 +1868,7 @@ extern GED_ADDR_MODE GED_CALLCONV _GED_GetSrc2AddrMode(ged_ins_t* ins, GED_RETUR
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2AddrMode(ged_ins_t* ins, const GED_ADDR_MODE value);
-#define GED_SetSrc2AddrMode(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc2AddrMode(" #ins ", " #value ")"), \
-    _GED_SetSrc2AddrMode(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc2AddrMode(ged_ins_t* ins, const GED_ADDR_MODE value);
 
 /*!
  * Get the value of the Src2VertStride field in the given instruction. See @ref GED_INS_FIELD_Src2VertStride for the field's
@@ -2311,10 +1885,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2AddrMode(ged_ins_t* ins, const 
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSrc2VertStride(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc2VertStride(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc2VertStride(" #ins ", " #result ")"), \
-    _GED_GetSrc2VertStride(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSrc2VertStride(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src2VertStride field in the given instruction. See @ref GED_INS_FIELD_Src2VertStride for the field's
@@ -2325,10 +1896,7 @@ extern uint32_t GED_CALLCONV _GED_GetSrc2VertStride(ged_ins_t* ins, GED_RETURN_V
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2VertStride(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSrc2VertStride(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc2VertStride(" #ins ", " #value ")"), \
-    _GED_SetSrc2VertStride(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc2VertStride(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the SFID field in the given instruction. The function returns an enumeration value. To obtain the enum entry's
@@ -2342,10 +1910,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2VertStride(ged_ins_t* ins, cons
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_SFID GED_CALLCONV _GED_GetSFID(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSFID(ins, result) ( \
-    GED_TraceAPI("GED_GetSFID(" #ins ", " #result ")"), \
-    _GED_GetSFID(ins, result))
+extern GED_SFID GED_CALLCONV GED_GetSFID(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the SFID field in the given instruction. See @ref GED_INS_FIELD_SFID for the field's description.
@@ -2355,10 +1920,7 @@ extern GED_SFID GED_CALLCONV _GED_GetSFID(ged_ins_t* ins, GED_RETURN_VALUE* resu
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSFID(ged_ins_t* ins, const GED_SFID value);
-#define GED_SetSFID(ins, value) ( \
-    GED_TraceAPI("GED_SetSFID(" #ins ", " #value ")"), \
-    _GED_SetSFID(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSFID(ged_ins_t* ins, const GED_SFID value);
 
 /*!
  * Get the value of the DescRegFile field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -2372,10 +1934,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSFID(ged_ins_t* ins, const GED_SFID
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_REG_FILE GED_CALLCONV _GED_GetDescRegFile(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetDescRegFile(ins, result) ( \
-    GED_TraceAPI("GED_GetDescRegFile(" #ins ", " #result ")"), \
-    _GED_GetDescRegFile(ins, result))
+extern GED_REG_FILE GED_CALLCONV GED_GetDescRegFile(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DescRegFile field in the given instruction. See @ref GED_INS_FIELD_DescRegFile for the field's description.
@@ -2385,10 +1944,7 @@ extern GED_REG_FILE GED_CALLCONV _GED_GetDescRegFile(ged_ins_t* ins, GED_RETURN_
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDescRegFile(ged_ins_t* ins, const GED_REG_FILE value);
-#define GED_SetDescRegFile(ins, value) ( \
-    GED_TraceAPI("GED_SetDescRegFile(" #ins ", " #value ")"), \
-    _GED_SetDescRegFile(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDescRegFile(ged_ins_t* ins, const GED_REG_FILE value);
 
 /*!
  * Get the value of the DescDataType field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -2402,10 +1958,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDescRegFile(ged_ins_t* ins, const G
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_DATA_TYPE GED_CALLCONV _GED_GetDescDataType(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetDescDataType(ins, result) ( \
-    GED_TraceAPI("GED_GetDescDataType(" #ins ", " #result ")"), \
-    _GED_GetDescDataType(ins, result))
+extern GED_DATA_TYPE GED_CALLCONV GED_GetDescDataType(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DescDataType field in the given instruction. See @ref GED_INS_FIELD_DescDataType for the field's description.
@@ -2415,10 +1968,7 @@ extern GED_DATA_TYPE GED_CALLCONV _GED_GetDescDataType(ged_ins_t* ins, GED_RETUR
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDescDataType(ged_ins_t* ins, const GED_DATA_TYPE value);
-#define GED_SetDescDataType(ins, value) ( \
-    GED_TraceAPI("GED_SetDescDataType(" #ins ", " #value ")"), \
-    _GED_SetDescDataType(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDescDataType(ged_ins_t* ins, const GED_DATA_TYPE value);
 
 /*!
  * Get the value of the DescAddrSubRegNum field in the given instruction. See @ref GED_INS_FIELD_DescAddrSubRegNum for the field's
@@ -2433,10 +1983,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDescDataType(ged_ins_t* ins, const 
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetDescAddrSubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetDescAddrSubRegNum(ins, result) ( \
-    GED_TraceAPI("GED_GetDescAddrSubRegNum(" #ins ", " #result ")"), \
-    _GED_GetDescAddrSubRegNum(ins, result))
+extern uint32_t GED_CALLCONV GED_GetDescAddrSubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DescAddrSubRegNum field in the given instruction. See @ref GED_INS_FIELD_DescAddrSubRegNum for the field's
@@ -2447,10 +1994,7 @@ extern uint32_t GED_CALLCONV _GED_GetDescAddrSubRegNum(ged_ins_t* ins, GED_RETUR
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDescAddrSubRegNum(ged_ins_t* ins, const uint32_t value);
-#define GED_SetDescAddrSubRegNum(ins, value) ( \
-    GED_TraceAPI("GED_SetDescAddrSubRegNum(" #ins ", " #value ")"), \
-    _GED_SetDescAddrSubRegNum(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDescAddrSubRegNum(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the DescRegNum field in the given instruction. See @ref GED_INS_FIELD_DescRegNum for the field's description.
@@ -2464,10 +2008,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDescAddrSubRegNum(ged_ins_t* ins, c
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetDescRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetDescRegNum(ins, result) ( \
-    GED_TraceAPI("GED_GetDescRegNum(" #ins ", " #result ")"), \
-    _GED_GetDescRegNum(ins, result))
+extern uint32_t GED_CALLCONV GED_GetDescRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DescRegNum field in the given instruction. See @ref GED_INS_FIELD_DescRegNum for the field's description.
@@ -2477,10 +2018,7 @@ extern uint32_t GED_CALLCONV _GED_GetDescRegNum(ged_ins_t* ins, GED_RETURN_VALUE
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDescRegNum(ged_ins_t* ins, const uint32_t value);
-#define GED_SetDescRegNum(ins, value) ( \
-    GED_TraceAPI("GED_SetDescRegNum(" #ins ", " #value ")"), \
-    _GED_SetDescRegNum(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDescRegNum(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the DescHorzStride field in the given instruction. See @ref GED_INS_FIELD_DescHorzStride for the field's
@@ -2497,10 +2035,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDescRegNum(ged_ins_t* ins, const ui
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetDescHorzStride(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetDescHorzStride(ins, result) ( \
-    GED_TraceAPI("GED_GetDescHorzStride(" #ins ", " #result ")"), \
-    _GED_GetDescHorzStride(ins, result))
+extern uint32_t GED_CALLCONV GED_GetDescHorzStride(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DescHorzStride field in the given instruction. See @ref GED_INS_FIELD_DescHorzStride for the field's
@@ -2511,10 +2046,7 @@ extern uint32_t GED_CALLCONV _GED_GetDescHorzStride(ged_ins_t* ins, GED_RETURN_V
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDescHorzStride(ged_ins_t* ins, const uint32_t value);
-#define GED_SetDescHorzStride(ins, value) ( \
-    GED_TraceAPI("GED_SetDescHorzStride(" #ins ", " #value ")"), \
-    _GED_SetDescHorzStride(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDescHorzStride(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the DescWidth field in the given instruction. See @ref GED_INS_FIELD_DescWidth for the field's description.
@@ -2530,10 +2062,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDescHorzStride(ged_ins_t* ins, cons
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetDescWidth(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetDescWidth(ins, result) ( \
-    GED_TraceAPI("GED_GetDescWidth(" #ins ", " #result ")"), \
-    _GED_GetDescWidth(ins, result))
+extern uint32_t GED_CALLCONV GED_GetDescWidth(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DescWidth field in the given instruction. See @ref GED_INS_FIELD_DescWidth for the field's description.
@@ -2543,10 +2072,7 @@ extern uint32_t GED_CALLCONV _GED_GetDescWidth(ged_ins_t* ins, GED_RETURN_VALUE*
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDescWidth(ged_ins_t* ins, const uint32_t value);
-#define GED_SetDescWidth(ins, value) ( \
-    GED_TraceAPI("GED_SetDescWidth(" #ins ", " #value ")"), \
-    _GED_SetDescWidth(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDescWidth(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the DescVertStride field in the given instruction. See @ref GED_INS_FIELD_DescVertStride for the field's
@@ -2563,10 +2089,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDescWidth(ged_ins_t* ins, const uin
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetDescVertStride(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetDescVertStride(ins, result) ( \
-    GED_TraceAPI("GED_GetDescVertStride(" #ins ", " #result ")"), \
-    _GED_GetDescVertStride(ins, result))
+extern uint32_t GED_CALLCONV GED_GetDescVertStride(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DescVertStride field in the given instruction. See @ref GED_INS_FIELD_DescVertStride for the field's
@@ -2577,10 +2100,7 @@ extern uint32_t GED_CALLCONV _GED_GetDescVertStride(ged_ins_t* ins, GED_RETURN_V
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDescVertStride(ged_ins_t* ins, const uint32_t value);
-#define GED_SetDescVertStride(ins, value) ( \
-    GED_TraceAPI("GED_SetDescVertStride(" #ins ", " #value ")"), \
-    _GED_SetDescVertStride(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDescVertStride(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the MsgDesc field in the given instruction. See @ref GED_INS_FIELD_MsgDesc for the field's description.
@@ -2594,10 +2114,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDescVertStride(ged_ins_t* ins, cons
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetMsgDesc(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetMsgDesc(ins, result) ( \
-    GED_TraceAPI("GED_GetMsgDesc(" #ins ", " #result ")"), \
-    _GED_GetMsgDesc(ins, result))
+extern uint32_t GED_CALLCONV GED_GetMsgDesc(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the MsgDesc field in the given instruction. See @ref GED_INS_FIELD_MsgDesc for the field's description.
@@ -2607,10 +2124,7 @@ extern uint32_t GED_CALLCONV _GED_GetMsgDesc(ged_ins_t* ins, GED_RETURN_VALUE* r
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMsgDesc(ged_ins_t* ins, const uint32_t value);
-#define GED_SetMsgDesc(ins, value) ( \
-    GED_TraceAPI("GED_SetMsgDesc(" #ins ", " #value ")"), \
-    _GED_SetMsgDesc(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMsgDesc(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the ExMsgDescImm field in the given instruction. See @ref GED_INS_FIELD_ExMsgDescImm for the field's description.
@@ -2624,10 +2138,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMsgDesc(ged_ins_t* ins, const uint3
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetExMsgDescImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetExMsgDescImm(ins, result) ( \
-    GED_TraceAPI("GED_GetExMsgDescImm(" #ins ", " #result ")"), \
-    _GED_GetExMsgDescImm(ins, result))
+extern uint32_t GED_CALLCONV GED_GetExMsgDescImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the ExMsgDescImm field in the given instruction. See @ref GED_INS_FIELD_ExMsgDescImm for the field's description.
@@ -2637,10 +2148,7 @@ extern uint32_t GED_CALLCONV _GED_GetExMsgDescImm(ged_ins_t* ins, GED_RETURN_VAL
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetExMsgDescImm(ged_ins_t* ins, const uint32_t value);
-#define GED_SetExMsgDescImm(ins, value) ( \
-    GED_TraceAPI("GED_SetExMsgDescImm(" #ins ", " #value ")"), \
-    _GED_SetExMsgDescImm(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetExMsgDescImm(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the EOT field in the given instruction. The function returns an enumeration value. To obtain the enum entry's
@@ -2654,10 +2162,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetExMsgDescImm(ged_ins_t* ins, const 
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_EOT GED_CALLCONV _GED_GetEOT(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetEOT(ins, result) ( \
-    GED_TraceAPI("GED_GetEOT(" #ins ", " #result ")"), \
-    _GED_GetEOT(ins, result))
+extern GED_EOT GED_CALLCONV GED_GetEOT(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the EOT field in the given instruction. See @ref GED_INS_FIELD_EOT for the field's description.
@@ -2667,10 +2172,7 @@ extern GED_EOT GED_CALLCONV _GED_GetEOT(ged_ins_t* ins, GED_RETURN_VALUE* result
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetEOT(ged_ins_t* ins, const GED_EOT value);
-#define GED_SetEOT(ins, value) ( \
-    GED_TraceAPI("GED_SetEOT(" #ins ", " #value ")"), \
-    _GED_SetEOT(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetEOT(ged_ins_t* ins, const GED_EOT value);
 
 /*!
  * Get the value of the MathFC field in the given instruction. The function returns an enumeration value. To obtain the enum entry's
@@ -2684,10 +2186,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetEOT(ged_ins_t* ins, const GED_EOT v
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_MATH_FC GED_CALLCONV _GED_GetMathFC(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetMathFC(ins, result) ( \
-    GED_TraceAPI("GED_GetMathFC(" #ins ", " #result ")"), \
-    _GED_GetMathFC(ins, result))
+extern GED_MATH_FC GED_CALLCONV GED_GetMathFC(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the MathFC field in the given instruction. See @ref GED_INS_FIELD_MathFC for the field's description.
@@ -2697,10 +2196,7 @@ extern GED_MATH_FC GED_CALLCONV _GED_GetMathFC(ged_ins_t* ins, GED_RETURN_VALUE*
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMathFC(ged_ins_t* ins, const GED_MATH_FC value);
-#define GED_SetMathFC(ins, value) ( \
-    GED_TraceAPI("GED_SetMathFC(" #ins ", " #value ")"), \
-    _GED_SetMathFC(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMathFC(ged_ins_t* ins, const GED_MATH_FC value);
 
 /*!
  * Get the value of the JIP field in the given instruction. See @ref GED_INS_FIELD_JIP for the field's description.
@@ -2714,10 +2210,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMathFC(ged_ins_t* ins, const GED_MA
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern int32_t GED_CALLCONV _GED_GetJIP(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetJIP(ins, result) ( \
-    GED_TraceAPI("GED_GetJIP(" #ins ", " #result ")"), \
-    _GED_GetJIP(ins, result))
+extern int32_t GED_CALLCONV GED_GetJIP(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the JIP field in the given instruction. See @ref GED_INS_FIELD_JIP for the field's description.
@@ -2727,10 +2220,7 @@ extern int32_t GED_CALLCONV _GED_GetJIP(ged_ins_t* ins, GED_RETURN_VALUE* result
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetJIP(ged_ins_t* ins, const int32_t value);
-#define GED_SetJIP(ins, value) ( \
-    GED_TraceAPI("GED_SetJIP(" #ins ", " #value ")"), \
-    _GED_SetJIP(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetJIP(ged_ins_t* ins, const int32_t value);
 
 /*!
  * Get the value of the UIP field in the given instruction. See @ref GED_INS_FIELD_UIP for the field's description.
@@ -2744,10 +2234,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetJIP(ged_ins_t* ins, const int32_t v
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern int32_t GED_CALLCONV _GED_GetUIP(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetUIP(ins, result) ( \
-    GED_TraceAPI("GED_GetUIP(" #ins ", " #result ")"), \
-    _GED_GetUIP(ins, result))
+extern int32_t GED_CALLCONV GED_GetUIP(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the UIP field in the given instruction. See @ref GED_INS_FIELD_UIP for the field's description.
@@ -2757,10 +2244,7 @@ extern int32_t GED_CALLCONV _GED_GetUIP(ged_ins_t* ins, GED_RETURN_VALUE* result
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetUIP(ged_ins_t* ins, const int32_t value);
-#define GED_SetUIP(ins, value) ( \
-    GED_TraceAPI("GED_SetUIP(" #ins ", " #value ")"), \
-    _GED_SetUIP(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetUIP(ged_ins_t* ins, const int32_t value);
 
 /*!
  * Get the value of the ControlIndex field in the given instruction. See @ref GED_INS_FIELD_ControlIndex for the field's description.
@@ -2774,10 +2258,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetUIP(ged_ins_t* ins, const int32_t v
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetControlIndex(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetControlIndex(ins, result) ( \
-    GED_TraceAPI("GED_GetControlIndex(" #ins ", " #result ")"), \
-    _GED_GetControlIndex(ins, result))
+extern uint32_t GED_CALLCONV GED_GetControlIndex(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the ControlIndex field in the given instruction. See @ref GED_INS_FIELD_ControlIndex for the field's description.
@@ -2787,10 +2268,7 @@ extern uint32_t GED_CALLCONV _GED_GetControlIndex(ged_ins_t* ins, GED_RETURN_VAL
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetControlIndex(ged_ins_t* ins, const uint32_t value);
-#define GED_SetControlIndex(ins, value) ( \
-    GED_TraceAPI("GED_SetControlIndex(" #ins ", " #value ")"), \
-    _GED_SetControlIndex(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetControlIndex(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the DataTypeIndex field in the given instruction. See @ref GED_INS_FIELD_DataTypeIndex for the field's
@@ -2805,10 +2283,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetControlIndex(ged_ins_t* ins, const 
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetDataTypeIndex(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetDataTypeIndex(ins, result) ( \
-    GED_TraceAPI("GED_GetDataTypeIndex(" #ins ", " #result ")"), \
-    _GED_GetDataTypeIndex(ins, result))
+extern uint32_t GED_CALLCONV GED_GetDataTypeIndex(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DataTypeIndex field in the given instruction. See @ref GED_INS_FIELD_DataTypeIndex for the field's
@@ -2819,10 +2294,7 @@ extern uint32_t GED_CALLCONV _GED_GetDataTypeIndex(ged_ins_t* ins, GED_RETURN_VA
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDataTypeIndex(ged_ins_t* ins, const uint32_t value);
-#define GED_SetDataTypeIndex(ins, value) ( \
-    GED_TraceAPI("GED_SetDataTypeIndex(" #ins ", " #value ")"), \
-    _GED_SetDataTypeIndex(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDataTypeIndex(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the SubRegIndex field in the given instruction. See @ref GED_INS_FIELD_SubRegIndex for the field's description.
@@ -2836,10 +2308,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDataTypeIndex(ged_ins_t* ins, const
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSubRegIndex(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSubRegIndex(ins, result) ( \
-    GED_TraceAPI("GED_GetSubRegIndex(" #ins ", " #result ")"), \
-    _GED_GetSubRegIndex(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSubRegIndex(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the SubRegIndex field in the given instruction. See @ref GED_INS_FIELD_SubRegIndex for the field's description.
@@ -2849,10 +2318,7 @@ extern uint32_t GED_CALLCONV _GED_GetSubRegIndex(ged_ins_t* ins, GED_RETURN_VALU
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSubRegIndex(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSubRegIndex(ins, value) ( \
-    GED_TraceAPI("GED_SetSubRegIndex(" #ins ", " #value ")"), \
-    _GED_SetSubRegIndex(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSubRegIndex(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the Src0Index field in the given instruction. See @ref GED_INS_FIELD_Src0Index for the field's description.
@@ -2866,10 +2332,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSubRegIndex(ged_ins_t* ins, const u
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSrc0Index(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc0Index(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc0Index(" #ins ", " #result ")"), \
-    _GED_GetSrc0Index(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSrc0Index(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src0Index field in the given instruction. See @ref GED_INS_FIELD_Src0Index for the field's description.
@@ -2879,10 +2342,7 @@ extern uint32_t GED_CALLCONV _GED_GetSrc0Index(ged_ins_t* ins, GED_RETURN_VALUE*
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0Index(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSrc0Index(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc0Index(" #ins ", " #value ")"), \
-    _GED_SetSrc0Index(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc0Index(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the Src1Index field in the given instruction. See @ref GED_INS_FIELD_Src1Index for the field's description.
@@ -2896,10 +2356,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0Index(ged_ins_t* ins, const uin
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSrc1Index(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc1Index(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc1Index(" #ins ", " #result ")"), \
-    _GED_GetSrc1Index(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSrc1Index(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src1Index field in the given instruction. See @ref GED_INS_FIELD_Src1Index for the field's description.
@@ -2909,10 +2366,7 @@ extern uint32_t GED_CALLCONV _GED_GetSrc1Index(ged_ins_t* ins, GED_RETURN_VALUE*
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1Index(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSrc1Index(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc1Index(" #ins ", " #value ")"), \
-    _GED_SetSrc1Index(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc1Index(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the DescIndex field in the given instruction. See @ref GED_INS_FIELD_DescIndex for the field's description.
@@ -2926,10 +2380,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1Index(ged_ins_t* ins, const uin
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetDescIndex(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetDescIndex(ins, result) ( \
-    GED_TraceAPI("GED_GetDescIndex(" #ins ", " #result ")"), \
-    _GED_GetDescIndex(ins, result))
+extern uint32_t GED_CALLCONV GED_GetDescIndex(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DescIndex field in the given instruction. See @ref GED_INS_FIELD_DescIndex for the field's description.
@@ -2939,10 +2390,7 @@ extern uint32_t GED_CALLCONV _GED_GetDescIndex(ged_ins_t* ins, GED_RETURN_VALUE*
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDescIndex(ged_ins_t* ins, const uint32_t value);
-#define GED_SetDescIndex(ins, value) ( \
-    GED_TraceAPI("GED_SetDescIndex(" #ins ", " #value ")"), \
-    _GED_SetDescIndex(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDescIndex(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the ExDescRegFile field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -2956,10 +2404,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDescIndex(ged_ins_t* ins, const uin
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_REG_FILE GED_CALLCONV _GED_GetExDescRegFile(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetExDescRegFile(ins, result) ( \
-    GED_TraceAPI("GED_GetExDescRegFile(" #ins ", " #result ")"), \
-    _GED_GetExDescRegFile(ins, result))
+extern GED_REG_FILE GED_CALLCONV GED_GetExDescRegFile(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the ExDescRegFile field in the given instruction. See @ref GED_INS_FIELD_ExDescRegFile for the field's
@@ -2970,10 +2415,7 @@ extern GED_REG_FILE GED_CALLCONV _GED_GetExDescRegFile(ged_ins_t* ins, GED_RETUR
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetExDescRegFile(ged_ins_t* ins, const GED_REG_FILE value);
-#define GED_SetExDescRegFile(ins, value) ( \
-    GED_TraceAPI("GED_SetExDescRegFile(" #ins ", " #value ")"), \
-    _GED_SetExDescRegFile(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetExDescRegFile(ged_ins_t* ins, const GED_REG_FILE value);
 
 /*!
  * Get the value of the DstMathMacroExt field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -2988,10 +2430,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetExDescRegFile(ged_ins_t* ins, const
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_MATH_MACRO_EXT GED_CALLCONV _GED_GetDstMathMacroExt(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetDstMathMacroExt(ins, result) ( \
-    GED_TraceAPI("GED_GetDstMathMacroExt(" #ins ", " #result ")"), \
-    _GED_GetDstMathMacroExt(ins, result))
+extern GED_MATH_MACRO_EXT GED_CALLCONV GED_GetDstMathMacroExt(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DstMathMacroExt field in the given instruction. See @ref GED_INS_FIELD_DstMathMacroExt for the field's
@@ -3002,10 +2441,7 @@ extern GED_MATH_MACRO_EXT GED_CALLCONV _GED_GetDstMathMacroExt(ged_ins_t* ins, G
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDstMathMacroExt(ged_ins_t* ins, const GED_MATH_MACRO_EXT value);
-#define GED_SetDstMathMacroExt(ins, value) ( \
-    GED_TraceAPI("GED_SetDstMathMacroExt(" #ins ", " #value ")"), \
-    _GED_SetDstMathMacroExt(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDstMathMacroExt(ged_ins_t* ins, const GED_MATH_MACRO_EXT value);
 
 /*!
  * Get the value of the Src0MathMacroExt field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -3020,10 +2456,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDstMathMacroExt(ged_ins_t* ins, con
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_MATH_MACRO_EXT GED_CALLCONV _GED_GetSrc0MathMacroExt(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc0MathMacroExt(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc0MathMacroExt(" #ins ", " #result ")"), \
-    _GED_GetSrc0MathMacroExt(ins, result))
+extern GED_MATH_MACRO_EXT GED_CALLCONV GED_GetSrc0MathMacroExt(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src0MathMacroExt field in the given instruction. See @ref GED_INS_FIELD_Src0MathMacroExt for the field's
@@ -3034,10 +2467,7 @@ extern GED_MATH_MACRO_EXT GED_CALLCONV _GED_GetSrc0MathMacroExt(ged_ins_t* ins, 
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0MathMacroExt(ged_ins_t* ins, const GED_MATH_MACRO_EXT value);
-#define GED_SetSrc0MathMacroExt(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc0MathMacroExt(" #ins ", " #value ")"), \
-    _GED_SetSrc0MathMacroExt(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc0MathMacroExt(ged_ins_t* ins, const GED_MATH_MACRO_EXT value);
 
 /*!
  * Get the value of the Src1MathMacroExt field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -3052,10 +2482,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0MathMacroExt(ged_ins_t* ins, co
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_MATH_MACRO_EXT GED_CALLCONV _GED_GetSrc1MathMacroExt(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc1MathMacroExt(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc1MathMacroExt(" #ins ", " #result ")"), \
-    _GED_GetSrc1MathMacroExt(ins, result))
+extern GED_MATH_MACRO_EXT GED_CALLCONV GED_GetSrc1MathMacroExt(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src1MathMacroExt field in the given instruction. See @ref GED_INS_FIELD_Src1MathMacroExt for the field's
@@ -3066,10 +2493,7 @@ extern GED_MATH_MACRO_EXT GED_CALLCONV _GED_GetSrc1MathMacroExt(ged_ins_t* ins, 
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1MathMacroExt(ged_ins_t* ins, const GED_MATH_MACRO_EXT value);
-#define GED_SetSrc1MathMacroExt(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc1MathMacroExt(" #ins ", " #value ")"), \
-    _GED_SetSrc1MathMacroExt(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc1MathMacroExt(ged_ins_t* ins, const GED_MATH_MACRO_EXT value);
 
 /*!
  * Get the value of the Src2MathMacroExt field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -3084,10 +2508,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1MathMacroExt(ged_ins_t* ins, co
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_MATH_MACRO_EXT GED_CALLCONV _GED_GetSrc2MathMacroExt(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc2MathMacroExt(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc2MathMacroExt(" #ins ", " #result ")"), \
-    _GED_GetSrc2MathMacroExt(ins, result))
+extern GED_MATH_MACRO_EXT GED_CALLCONV GED_GetSrc2MathMacroExt(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src2MathMacroExt field in the given instruction. See @ref GED_INS_FIELD_Src2MathMacroExt for the field's
@@ -3098,10 +2519,7 @@ extern GED_MATH_MACRO_EXT GED_CALLCONV _GED_GetSrc2MathMacroExt(ged_ins_t* ins, 
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2MathMacroExt(ged_ins_t* ins, const GED_MATH_MACRO_EXT value);
-#define GED_SetSrc2MathMacroExt(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc2MathMacroExt(" #ins ", " #value ")"), \
-    _GED_SetSrc2MathMacroExt(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc2MathMacroExt(ged_ins_t* ins, const GED_MATH_MACRO_EXT value);
 
 /*!
  * Get the value of the BranchCtrl field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -3115,10 +2533,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2MathMacroExt(ged_ins_t* ins, co
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_BRANCH_CTRL GED_CALLCONV _GED_GetBranchCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetBranchCtrl(ins, result) ( \
-    GED_TraceAPI("GED_GetBranchCtrl(" #ins ", " #result ")"), \
-    _GED_GetBranchCtrl(ins, result))
+extern GED_BRANCH_CTRL GED_CALLCONV GED_GetBranchCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the BranchCtrl field in the given instruction. See @ref GED_INS_FIELD_BranchCtrl for the field's description.
@@ -3128,10 +2543,7 @@ extern GED_BRANCH_CTRL GED_CALLCONV _GED_GetBranchCtrl(ged_ins_t* ins, GED_RETUR
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetBranchCtrl(ged_ins_t* ins, const GED_BRANCH_CTRL value);
-#define GED_SetBranchCtrl(ins, value) ( \
-    GED_TraceAPI("GED_SetBranchCtrl(" #ins ", " #value ")"), \
-    _GED_SetBranchCtrl(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetBranchCtrl(ged_ins_t* ins, const GED_BRANCH_CTRL value);
 
 /*!
  * Get the value of the SourceIndex field in the given instruction. See @ref GED_INS_FIELD_SourceIndex for the field's description.
@@ -3145,10 +2557,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetBranchCtrl(ged_ins_t* ins, const GE
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSourceIndex(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSourceIndex(ins, result) ( \
-    GED_TraceAPI("GED_GetSourceIndex(" #ins ", " #result ")"), \
-    _GED_GetSourceIndex(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSourceIndex(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the SourceIndex field in the given instruction. See @ref GED_INS_FIELD_SourceIndex for the field's description.
@@ -3158,10 +2567,7 @@ extern uint32_t GED_CALLCONV _GED_GetSourceIndex(ged_ins_t* ins, GED_RETURN_VALU
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSourceIndex(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSourceIndex(ins, value) ( \
-    GED_TraceAPI("GED_SetSourceIndex(" #ins ", " #value ")"), \
-    _GED_SetSourceIndex(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSourceIndex(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the Src2DataType field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -3175,10 +2581,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSourceIndex(ged_ins_t* ins, const u
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_DATA_TYPE GED_CALLCONV _GED_GetSrc2DataType(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc2DataType(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc2DataType(" #ins ", " #result ")"), \
-    _GED_GetSrc2DataType(ins, result))
+extern GED_DATA_TYPE GED_CALLCONV GED_GetSrc2DataType(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src2DataType field in the given instruction. See @ref GED_INS_FIELD_Src2DataType for the field's description.
@@ -3188,10 +2591,7 @@ extern GED_DATA_TYPE GED_CALLCONV _GED_GetSrc2DataType(ged_ins_t* ins, GED_RETUR
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2DataType(ged_ins_t* ins, const GED_DATA_TYPE value);
-#define GED_SetSrc2DataType(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc2DataType(" #ins ", " #value ")"), \
-    _GED_SetSrc2DataType(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc2DataType(ged_ins_t* ins, const GED_DATA_TYPE value);
 
 /*!
  * Get the value of the NoSrcDepSet field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -3205,10 +2605,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2DataType(ged_ins_t* ins, const 
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_NO_SRC_DEP_SET GED_CALLCONV _GED_GetNoSrcDepSet(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetNoSrcDepSet(ins, result) ( \
-    GED_TraceAPI("GED_GetNoSrcDepSet(" #ins ", " #result ")"), \
-    _GED_GetNoSrcDepSet(ins, result))
+extern GED_NO_SRC_DEP_SET GED_CALLCONV GED_GetNoSrcDepSet(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the NoSrcDepSet field in the given instruction. See @ref GED_INS_FIELD_NoSrcDepSet for the field's description.
@@ -3218,10 +2615,7 @@ extern GED_NO_SRC_DEP_SET GED_CALLCONV _GED_GetNoSrcDepSet(ged_ins_t* ins, GED_R
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetNoSrcDepSet(ged_ins_t* ins, const GED_NO_SRC_DEP_SET value);
-#define GED_SetNoSrcDepSet(ins, value) ( \
-    GED_TraceAPI("GED_SetNoSrcDepSet(" #ins ", " #value ")"), \
-    _GED_SetNoSrcDepSet(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetNoSrcDepSet(ged_ins_t* ins, const GED_NO_SRC_DEP_SET value);
 
 /*!
  * Get the value of the ExFuncCtrl field in the given instruction. See @ref GED_INS_FIELD_ExFuncCtrl for the field's description.
@@ -3235,10 +2629,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetNoSrcDepSet(ged_ins_t* ins, const G
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetExFuncCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetExFuncCtrl(ins, result) ( \
-    GED_TraceAPI("GED_GetExFuncCtrl(" #ins ", " #result ")"), \
-    _GED_GetExFuncCtrl(ins, result))
+extern uint32_t GED_CALLCONV GED_GetExFuncCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the ExFuncCtrl field in the given instruction. See @ref GED_INS_FIELD_ExFuncCtrl for the field's description.
@@ -3248,10 +2639,7 @@ extern uint32_t GED_CALLCONV _GED_GetExFuncCtrl(ged_ins_t* ins, GED_RETURN_VALUE
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetExFuncCtrl(ged_ins_t* ins, const uint32_t value);
-#define GED_SetExFuncCtrl(ins, value) ( \
-    GED_TraceAPI("GED_SetExFuncCtrl(" #ins ", " #value ")"), \
-    _GED_SetExFuncCtrl(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetExFuncCtrl(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the ExMsgLength field in the given instruction. See @ref GED_INS_FIELD_ExMsgLength for the field's description.
@@ -3265,10 +2653,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetExFuncCtrl(ged_ins_t* ins, const ui
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetExMsgLength(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetExMsgLength(ins, result) ( \
-    GED_TraceAPI("GED_GetExMsgLength(" #ins ", " #result ")"), \
-    _GED_GetExMsgLength(ins, result))
+extern uint32_t GED_CALLCONV GED_GetExMsgLength(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the ExMsgLength field in the given instruction. See @ref GED_INS_FIELD_ExMsgLength for the field's description.
@@ -3278,10 +2663,7 @@ extern uint32_t GED_CALLCONV _GED_GetExMsgLength(ged_ins_t* ins, GED_RETURN_VALU
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetExMsgLength(ged_ins_t* ins, const uint32_t value);
-#define GED_SetExMsgLength(ins, value) ( \
-    GED_TraceAPI("GED_SetExMsgLength(" #ins ", " #value ")"), \
-    _GED_SetExMsgLength(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetExMsgLength(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the ExDescAddrSubRegNum field in the given instruction. See @ref GED_INS_FIELD_ExDescAddrSubRegNum for the field's
@@ -3296,10 +2678,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetExMsgLength(ged_ins_t* ins, const u
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetExDescAddrSubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetExDescAddrSubRegNum(ins, result) ( \
-    GED_TraceAPI("GED_GetExDescAddrSubRegNum(" #ins ", " #result ")"), \
-    _GED_GetExDescAddrSubRegNum(ins, result))
+extern uint32_t GED_CALLCONV GED_GetExDescAddrSubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the ExDescAddrSubRegNum field in the given instruction. See @ref GED_INS_FIELD_ExDescAddrSubRegNum for the field's
@@ -3310,10 +2689,7 @@ extern uint32_t GED_CALLCONV _GED_GetExDescAddrSubRegNum(ged_ins_t* ins, GED_RET
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetExDescAddrSubRegNum(ged_ins_t* ins, const uint32_t value);
-#define GED_SetExDescAddrSubRegNum(ins, value) ( \
-    GED_TraceAPI("GED_SetExDescAddrSubRegNum(" #ins ", " #value ")"), \
-    _GED_SetExDescAddrSubRegNum(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetExDescAddrSubRegNum(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the ExDescRegNum field in the given instruction. See @ref GED_INS_FIELD_ExDescRegNum for the field's description.
@@ -3327,10 +2703,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetExDescAddrSubRegNum(ged_ins_t* ins,
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetExDescRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetExDescRegNum(ins, result) ( \
-    GED_TraceAPI("GED_GetExDescRegNum(" #ins ", " #result ")"), \
-    _GED_GetExDescRegNum(ins, result))
+extern uint32_t GED_CALLCONV GED_GetExDescRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the ExDescRegNum field in the given instruction. See @ref GED_INS_FIELD_ExDescRegNum for the field's description.
@@ -3340,10 +2713,7 @@ extern uint32_t GED_CALLCONV _GED_GetExDescRegNum(ged_ins_t* ins, GED_RETURN_VAL
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetExDescRegNum(ged_ins_t* ins, const uint32_t value);
-#define GED_SetExDescRegNum(ins, value) ( \
-    GED_TraceAPI("GED_SetExDescRegNum(" #ins ", " #value ")"), \
-    _GED_SetExDescRegNum(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetExDescRegNum(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the MsgDescCategory field in the given instruction. See @ref GED_INS_FIELD_MsgDescCategory for the field's
@@ -3358,10 +2728,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetExDescRegNum(ged_ins_t* ins, const 
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetMsgDescCategory(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetMsgDescCategory(ins, result) ( \
-    GED_TraceAPI("GED_GetMsgDescCategory(" #ins ", " #result ")"), \
-    _GED_GetMsgDescCategory(ins, result))
+extern uint32_t GED_CALLCONV GED_GetMsgDescCategory(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the MsgDescCategory field in the given instruction. See @ref GED_INS_FIELD_MsgDescCategory for the field's
@@ -3372,10 +2739,7 @@ extern uint32_t GED_CALLCONV _GED_GetMsgDescCategory(ged_ins_t* ins, GED_RETURN_
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMsgDescCategory(ged_ins_t* ins, const uint32_t value);
-#define GED_SetMsgDescCategory(ins, value) ( \
-    GED_TraceAPI("GED_SetMsgDescCategory(" #ins ", " #value ")"), \
-    _GED_SetMsgDescCategory(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMsgDescCategory(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the MsgDescScratchAddrOffset field in the given instruction. See @ref GED_INS_FIELD_MsgDescScratchAddrOffset for
@@ -3390,10 +2754,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMsgDescCategory(ged_ins_t* ins, con
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetMsgDescScratchAddrOffset(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetMsgDescScratchAddrOffset(ins, result) ( \
-    GED_TraceAPI("GED_GetMsgDescScratchAddrOffset(" #ins ", " #result ")"), \
-    _GED_GetMsgDescScratchAddrOffset(ins, result))
+extern uint32_t GED_CALLCONV GED_GetMsgDescScratchAddrOffset(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the MsgDescScratchAddrOffset field in the given instruction. See @ref GED_INS_FIELD_MsgDescScratchAddrOffset for
@@ -3404,10 +2765,7 @@ extern uint32_t GED_CALLCONV _GED_GetMsgDescScratchAddrOffset(ged_ins_t* ins, GE
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMsgDescScratchAddrOffset(ged_ins_t* ins, const uint32_t value);
-#define GED_SetMsgDescScratchAddrOffset(ins, value) ( \
-    GED_TraceAPI("GED_SetMsgDescScratchAddrOffset(" #ins ", " #value ")"), \
-    _GED_SetMsgDescScratchAddrOffset(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMsgDescScratchAddrOffset(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the MsgDescScratchBlockSize field in the given instruction. See @ref GED_INS_FIELD_MsgDescScratchBlockSize for the
@@ -3424,10 +2782,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMsgDescScratchAddrOffset(ged_ins_t*
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetMsgDescScratchBlockSize(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetMsgDescScratchBlockSize(ins, result) ( \
-    GED_TraceAPI("GED_GetMsgDescScratchBlockSize(" #ins ", " #result ")"), \
-    _GED_GetMsgDescScratchBlockSize(ins, result))
+extern uint32_t GED_CALLCONV GED_GetMsgDescScratchBlockSize(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the MsgDescScratchBlockSize field in the given instruction. See @ref GED_INS_FIELD_MsgDescScratchBlockSize for the
@@ -3438,10 +2793,7 @@ extern uint32_t GED_CALLCONV _GED_GetMsgDescScratchBlockSize(ged_ins_t* ins, GED
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMsgDescScratchBlockSize(ged_ins_t* ins, const uint32_t value);
-#define GED_SetMsgDescScratchBlockSize(ins, value) ( \
-    GED_TraceAPI("GED_SetMsgDescScratchBlockSize(" #ins ", " #value ")"), \
-    _GED_SetMsgDescScratchBlockSize(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMsgDescScratchBlockSize(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the MsgDescScratchInvalidateAfterRead field in the given instruction. See @ref
@@ -3456,10 +2808,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMsgDescScratchBlockSize(ged_ins_t* 
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetMsgDescScratchInvalidateAfterRead(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetMsgDescScratchInvalidateAfterRead(ins, result) ( \
-    GED_TraceAPI("GED_GetMsgDescScratchInvalidateAfterRead(" #ins ", " #result ")"), \
-    _GED_GetMsgDescScratchInvalidateAfterRead(ins, result))
+extern uint32_t GED_CALLCONV GED_GetMsgDescScratchInvalidateAfterRead(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the MsgDescScratchInvalidateAfterRead field in the given instruction. See @ref
@@ -3470,10 +2819,7 @@ extern uint32_t GED_CALLCONV _GED_GetMsgDescScratchInvalidateAfterRead(ged_ins_t
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMsgDescScratchInvalidateAfterRead(ged_ins_t* ins, const uint32_t value);
-#define GED_SetMsgDescScratchInvalidateAfterRead(ins, value) ( \
-    GED_TraceAPI("GED_SetMsgDescScratchInvalidateAfterRead(" #ins ", " #value ")"), \
-    _GED_SetMsgDescScratchInvalidateAfterRead(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMsgDescScratchInvalidateAfterRead(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the MsgDescScratchChannelMode field in the given instruction. The function returns an enumeration value. To obtain
@@ -3488,10 +2834,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMsgDescScratchInvalidateAfterRead(g
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_CHANNEL_MODE GED_CALLCONV _GED_GetMsgDescScratchChannelMode(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetMsgDescScratchChannelMode(ins, result) ( \
-    GED_TraceAPI("GED_GetMsgDescScratchChannelMode(" #ins ", " #result ")"), \
-    _GED_GetMsgDescScratchChannelMode(ins, result))
+extern GED_CHANNEL_MODE GED_CALLCONV GED_GetMsgDescScratchChannelMode(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the MsgDescScratchChannelMode field in the given instruction. See @ref GED_INS_FIELD_MsgDescScratchChannelMode for
@@ -3502,10 +2845,7 @@ extern GED_CHANNEL_MODE GED_CALLCONV _GED_GetMsgDescScratchChannelMode(ged_ins_t
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMsgDescScratchChannelMode(ged_ins_t* ins, const GED_CHANNEL_MODE value);
-#define GED_SetMsgDescScratchChannelMode(ins, value) ( \
-    GED_TraceAPI("GED_SetMsgDescScratchChannelMode(" #ins ", " #value ")"), \
-    _GED_SetMsgDescScratchChannelMode(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMsgDescScratchChannelMode(ged_ins_t* ins, const GED_CHANNEL_MODE value);
 
 /*!
  * Get the value of the MsgDescScratchMessageType field in the given instruction. The function returns an enumeration value. To obtain
@@ -3520,10 +2860,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMsgDescScratchChannelMode(ged_ins_t
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_MESSAGE_TYPE GED_CALLCONV _GED_GetMsgDescScratchMessageType(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetMsgDescScratchMessageType(ins, result) ( \
-    GED_TraceAPI("GED_GetMsgDescScratchMessageType(" #ins ", " #result ")"), \
-    _GED_GetMsgDescScratchMessageType(ins, result))
+extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMsgDescScratchMessageType(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the MsgDescScratchMessageType field in the given instruction. See @ref GED_INS_FIELD_MsgDescScratchMessageType for
@@ -3534,10 +2871,7 @@ extern GED_MESSAGE_TYPE GED_CALLCONV _GED_GetMsgDescScratchMessageType(ged_ins_t
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMsgDescScratchMessageType(ged_ins_t* ins, const GED_MESSAGE_TYPE value);
-#define GED_SetMsgDescScratchMessageType(ins, value) ( \
-    GED_TraceAPI("GED_SetMsgDescScratchMessageType(" #ins ", " #value ")"), \
-    _GED_SetMsgDescScratchMessageType(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMsgDescScratchMessageType(ged_ins_t* ins, const GED_MESSAGE_TYPE value);
 
 /*!
  * Get the value of the ExecutionDataType field in the given instruction. The function returns an enumeration value. To obtain the
@@ -3552,10 +2886,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMsgDescScratchMessageType(ged_ins_t
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_EXECUTION_DATA_TYPE GED_CALLCONV _GED_GetExecutionDataType(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetExecutionDataType(ins, result) ( \
-    GED_TraceAPI("GED_GetExecutionDataType(" #ins ", " #result ")"), \
-    _GED_GetExecutionDataType(ins, result))
+extern GED_EXECUTION_DATA_TYPE GED_CALLCONV GED_GetExecutionDataType(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the ExecutionDataType field in the given instruction. See @ref GED_INS_FIELD_ExecutionDataType for the field's
@@ -3566,10 +2897,7 @@ extern GED_EXECUTION_DATA_TYPE GED_CALLCONV _GED_GetExecutionDataType(ged_ins_t*
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetExecutionDataType(ged_ins_t* ins, const GED_EXECUTION_DATA_TYPE value);
-#define GED_SetExecutionDataType(ins, value) ( \
-    GED_TraceAPI("GED_SetExecutionDataType(" #ins ", " #value ")"), \
-    _GED_SetExecutionDataType(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetExecutionDataType(ged_ins_t* ins, const GED_EXECUTION_DATA_TYPE value);
 
 /*!
  * Get the value of the Src0TernaryImm field in the given instruction. See @ref GED_INS_FIELD_Src0TernaryImm for the field's
@@ -3584,10 +2912,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetExecutionDataType(ged_ins_t* ins, c
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint64_t GED_CALLCONV _GED_GetSrc0TernaryImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc0TernaryImm(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc0TernaryImm(" #ins ", " #result ")"), \
-    _GED_GetSrc0TernaryImm(ins, result))
+extern uint64_t GED_CALLCONV GED_GetSrc0TernaryImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src0TernaryImm field in the given instruction. See @ref GED_INS_FIELD_Src0TernaryImm for the field's
@@ -3598,10 +2923,7 @@ extern uint64_t GED_CALLCONV _GED_GetSrc0TernaryImm(ged_ins_t* ins, GED_RETURN_V
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0TernaryImm(ged_ins_t* ins, const uint64_t value);
-#define GED_SetSrc0TernaryImm(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc0TernaryImm(" #ins ", " #value ")"), \
-    _GED_SetSrc0TernaryImm(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc0TernaryImm(ged_ins_t* ins, const uint64_t value);
 
 /*!
  * Get the value of the Src2TernaryImm field in the given instruction. See @ref GED_INS_FIELD_Src2TernaryImm for the field's
@@ -3616,10 +2938,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0TernaryImm(ged_ins_t* ins, cons
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint64_t GED_CALLCONV _GED_GetSrc2TernaryImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc2TernaryImm(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc2TernaryImm(" #ins ", " #result ")"), \
-    _GED_GetSrc2TernaryImm(ins, result))
+extern uint64_t GED_CALLCONV GED_GetSrc2TernaryImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src2TernaryImm field in the given instruction. See @ref GED_INS_FIELD_Src2TernaryImm for the field's
@@ -3630,10 +2949,7 @@ extern uint64_t GED_CALLCONV _GED_GetSrc2TernaryImm(ged_ins_t* ins, GED_RETURN_V
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2TernaryImm(ged_ins_t* ins, const uint64_t value);
-#define GED_SetSrc2TernaryImm(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc2TernaryImm(" #ins ", " #value ")"), \
-    _GED_SetSrc2TernaryImm(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc2TernaryImm(ged_ins_t* ins, const uint64_t value);
 
 /*!
  * Get the value of the Src2HorzStride field in the given instruction. See @ref GED_INS_FIELD_Src2HorzStride for the field's
@@ -3650,10 +2966,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2TernaryImm(ged_ins_t* ins, cons
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSrc2HorzStride(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc2HorzStride(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc2HorzStride(" #ins ", " #result ")"), \
-    _GED_GetSrc2HorzStride(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSrc2HorzStride(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src2HorzStride field in the given instruction. See @ref GED_INS_FIELD_Src2HorzStride for the field's
@@ -3664,10 +2977,7 @@ extern uint32_t GED_CALLCONV _GED_GetSrc2HorzStride(ged_ins_t* ins, GED_RETURN_V
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2HorzStride(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSrc2HorzStride(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc2HorzStride(" #ins ", " #value ")"), \
-    _GED_SetSrc2HorzStride(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc2HorzStride(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the SWSB field in the given instruction. See @ref GED_INS_FIELD_SWSB for the field's description.
@@ -3681,10 +2991,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2HorzStride(ged_ins_t* ins, cons
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSWSB(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSWSB(ins, result) ( \
-    GED_TraceAPI("GED_GetSWSB(" #ins ", " #result ")"), \
-    _GED_GetSWSB(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSWSB(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the SWSB field in the given instruction. See @ref GED_INS_FIELD_SWSB for the field's description.
@@ -3694,10 +3001,7 @@ extern uint32_t GED_CALLCONV _GED_GetSWSB(ged_ins_t* ins, GED_RETURN_VALUE* resu
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSWSB(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSWSB(ins, value) ( \
-    GED_TraceAPI("GED_SetSWSB(" #ins ", " #value ")"), \
-    _GED_SetSWSB(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSWSB(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the Src1IsImm field in the given instruction. See @ref GED_INS_FIELD_Src1IsImm for the field's description.
@@ -3711,10 +3015,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSWSB(ged_ins_t* ins, const uint32_t
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSrc1IsImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc1IsImm(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc1IsImm(" #ins ", " #result ")"), \
-    _GED_GetSrc1IsImm(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSrc1IsImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src1IsImm field in the given instruction. See @ref GED_INS_FIELD_Src1IsImm for the field's description.
@@ -3724,10 +3025,7 @@ extern uint32_t GED_CALLCONV _GED_GetSrc1IsImm(ged_ins_t* ins, GED_RETURN_VALUE*
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1IsImm(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSrc1IsImm(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc1IsImm(" #ins ", " #value ")"), \
-    _GED_SetSrc1IsImm(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc1IsImm(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the Src0IsImm field in the given instruction. See @ref GED_INS_FIELD_Src0IsImm for the field's description.
@@ -3741,10 +3039,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1IsImm(ged_ins_t* ins, const uin
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSrc0IsImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc0IsImm(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc0IsImm(" #ins ", " #result ")"), \
-    _GED_GetSrc0IsImm(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSrc0IsImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src0IsImm field in the given instruction. See @ref GED_INS_FIELD_Src0IsImm for the field's description.
@@ -3754,10 +3049,7 @@ extern uint32_t GED_CALLCONV _GED_GetSrc0IsImm(ged_ins_t* ins, GED_RETURN_VALUE*
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0IsImm(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSrc0IsImm(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc0IsImm(" #ins ", " #value ")"), \
-    _GED_SetSrc0IsImm(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc0IsImm(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the Src0SubRegNumByte field in the given instruction. See @ref GED_INS_FIELD_Src0SubRegNumByte for the field's
@@ -3772,10 +3064,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0IsImm(ged_ins_t* ins, const uin
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSrc0SubRegNumByte(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc0SubRegNumByte(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc0SubRegNumByte(" #ins ", " #result ")"), \
-    _GED_GetSrc0SubRegNumByte(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSrc0SubRegNumByte(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src0SubRegNumByte field in the given instruction. See @ref GED_INS_FIELD_Src0SubRegNumByte for the field's
@@ -3786,10 +3075,7 @@ extern uint32_t GED_CALLCONV _GED_GetSrc0SubRegNumByte(ged_ins_t* ins, GED_RETUR
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0SubRegNumByte(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSrc0SubRegNumByte(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc0SubRegNumByte(" #ins ", " #value ")"), \
-    _GED_SetSrc0SubRegNumByte(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc0SubRegNumByte(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the SyncFC field in the given instruction. The function returns an enumeration value. To obtain the enum entry's
@@ -3803,10 +3089,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc0SubRegNumByte(ged_ins_t* ins, c
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_SYNC_FC GED_CALLCONV _GED_GetSyncFC(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSyncFC(ins, result) ( \
-    GED_TraceAPI("GED_GetSyncFC(" #ins ", " #result ")"), \
-    _GED_GetSyncFC(ins, result))
+extern GED_SYNC_FC GED_CALLCONV GED_GetSyncFC(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the SyncFC field in the given instruction. See @ref GED_INS_FIELD_SyncFC for the field's description.
@@ -3816,10 +3099,7 @@ extern GED_SYNC_FC GED_CALLCONV _GED_GetSyncFC(ged_ins_t* ins, GED_RETURN_VALUE*
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSyncFC(ged_ins_t* ins, const GED_SYNC_FC value);
-#define GED_SetSyncFC(ins, value) ( \
-    GED_TraceAPI("GED_SetSyncFC(" #ins ", " #value ")"), \
-    _GED_SetSyncFC(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSyncFC(ged_ins_t* ins, const GED_SYNC_FC value);
 
 /*!
  * Get the value of the FusionCtrl field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -3833,10 +3113,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSyncFC(ged_ins_t* ins, const GED_SY
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_FUSION_CTRL GED_CALLCONV _GED_GetFusionCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetFusionCtrl(ins, result) ( \
-    GED_TraceAPI("GED_GetFusionCtrl(" #ins ", " #result ")"), \
-    _GED_GetFusionCtrl(ins, result))
+extern GED_FUSION_CTRL GED_CALLCONV GED_GetFusionCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the FusionCtrl field in the given instruction. See @ref GED_INS_FIELD_FusionCtrl for the field's description.
@@ -3846,10 +3123,7 @@ extern GED_FUSION_CTRL GED_CALLCONV _GED_GetFusionCtrl(ged_ins_t* ins, GED_RETUR
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetFusionCtrl(ged_ins_t* ins, const GED_FUSION_CTRL value);
-#define GED_SetFusionCtrl(ins, value) ( \
-    GED_TraceAPI("GED_SetFusionCtrl(" #ins ", " #value ")"), \
-    _GED_SetFusionCtrl(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetFusionCtrl(ged_ins_t* ins, const GED_FUSION_CTRL value);
 
 /*!
  * Get the value of the DataTypeIndexNoDep field in the given instruction. See @ref GED_INS_FIELD_DataTypeIndexNoDep for the field's
@@ -3864,10 +3138,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetFusionCtrl(ged_ins_t* ins, const GE
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetDataTypeIndexNoDep(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetDataTypeIndexNoDep(ins, result) ( \
-    GED_TraceAPI("GED_GetDataTypeIndexNoDep(" #ins ", " #result ")"), \
-    _GED_GetDataTypeIndexNoDep(ins, result))
+extern uint32_t GED_CALLCONV GED_GetDataTypeIndexNoDep(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DataTypeIndexNoDep field in the given instruction. See @ref GED_INS_FIELD_DataTypeIndexNoDep for the field's
@@ -3878,10 +3149,7 @@ extern uint32_t GED_CALLCONV _GED_GetDataTypeIndexNoDep(ged_ins_t* ins, GED_RETU
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDataTypeIndexNoDep(ged_ins_t* ins, const uint32_t value);
-#define GED_SetDataTypeIndexNoDep(ins, value) ( \
-    GED_TraceAPI("GED_SetDataTypeIndexNoDep(" #ins ", " #value ")"), \
-    _GED_SetDataTypeIndexNoDep(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDataTypeIndexNoDep(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the CompactedImm field in the given instruction. See @ref GED_INS_FIELD_CompactedImm for the field's description.
@@ -3895,10 +3163,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDataTypeIndexNoDep(ged_ins_t* ins, 
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetCompactedImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetCompactedImm(ins, result) ( \
-    GED_TraceAPI("GED_GetCompactedImm(" #ins ", " #result ")"), \
-    _GED_GetCompactedImm(ins, result))
+extern uint32_t GED_CALLCONV GED_GetCompactedImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the CompactedImm field in the given instruction. See @ref GED_INS_FIELD_CompactedImm for the field's description.
@@ -3908,10 +3173,7 @@ extern uint32_t GED_CALLCONV _GED_GetCompactedImm(ged_ins_t* ins, GED_RETURN_VAL
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetCompactedImm(ged_ins_t* ins, const uint32_t value);
-#define GED_SetCompactedImm(ins, value) ( \
-    GED_TraceAPI("GED_SetCompactedImm(" #ins ", " #value ")"), \
-    _GED_SetCompactedImm(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetCompactedImm(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the RepeatCount field in the given instruction. See @ref GED_INS_FIELD_RepeatCount for the field's description.
@@ -3927,10 +3189,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetCompactedImm(ged_ins_t* ins, const 
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetRepeatCount(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetRepeatCount(ins, result) ( \
-    GED_TraceAPI("GED_GetRepeatCount(" #ins ", " #result ")"), \
-    _GED_GetRepeatCount(ins, result))
+extern uint32_t GED_CALLCONV GED_GetRepeatCount(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the RepeatCount field in the given instruction. See @ref GED_INS_FIELD_RepeatCount for the field's description.
@@ -3940,10 +3199,7 @@ extern uint32_t GED_CALLCONV _GED_GetRepeatCount(ged_ins_t* ins, GED_RETURN_VALU
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetRepeatCount(ged_ins_t* ins, const uint32_t value);
-#define GED_SetRepeatCount(ins, value) ( \
-    GED_TraceAPI("GED_SetRepeatCount(" #ins ", " #value ")"), \
-    _GED_SetRepeatCount(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetRepeatCount(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the SystolicDepth field in the given instruction. See @ref GED_INS_FIELD_SystolicDepth for the field's
@@ -3960,10 +3216,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetRepeatCount(ged_ins_t* ins, const u
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSystolicDepth(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSystolicDepth(ins, result) ( \
-    GED_TraceAPI("GED_GetSystolicDepth(" #ins ", " #result ")"), \
-    _GED_GetSystolicDepth(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSystolicDepth(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the SystolicDepth field in the given instruction. See @ref GED_INS_FIELD_SystolicDepth for the field's
@@ -3974,10 +3227,7 @@ extern uint32_t GED_CALLCONV _GED_GetSystolicDepth(ged_ins_t* ins, GED_RETURN_VA
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSystolicDepth(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSystolicDepth(ins, value) ( \
-    GED_TraceAPI("GED_SetSystolicDepth(" #ins ", " #value ")"), \
-    _GED_SetSystolicDepth(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSystolicDepth(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the Src2Precision field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -3991,10 +3241,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSystolicDepth(ged_ins_t* ins, const
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_PRECISION GED_CALLCONV _GED_GetSrc2Precision(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc2Precision(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc2Precision(" #ins ", " #result ")"), \
-    _GED_GetSrc2Precision(ins, result))
+extern GED_PRECISION GED_CALLCONV GED_GetSrc2Precision(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src2Precision field in the given instruction. See @ref GED_INS_FIELD_Src2Precision for the field's
@@ -4005,10 +3252,7 @@ extern GED_PRECISION GED_CALLCONV _GED_GetSrc2Precision(ged_ins_t* ins, GED_RETU
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2Precision(ged_ins_t* ins, const GED_PRECISION value);
-#define GED_SetSrc2Precision(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc2Precision(" #ins ", " #value ")"), \
-    _GED_SetSrc2Precision(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc2Precision(ged_ins_t* ins, const GED_PRECISION value);
 
 /*!
  * Get the value of the Src2SubBytePrecision field in the given instruction. The function returns an enumeration value. To obtain the
@@ -4023,10 +3267,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2Precision(ged_ins_t* ins, const
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_SUB_BYTE_PRECISION GED_CALLCONV _GED_GetSrc2SubBytePrecision(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc2SubBytePrecision(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc2SubBytePrecision(" #ins ", " #result ")"), \
-    _GED_GetSrc2SubBytePrecision(ins, result))
+extern GED_SUB_BYTE_PRECISION GED_CALLCONV GED_GetSrc2SubBytePrecision(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src2SubBytePrecision field in the given instruction. See @ref GED_INS_FIELD_Src2SubBytePrecision for the
@@ -4037,10 +3278,7 @@ extern GED_SUB_BYTE_PRECISION GED_CALLCONV _GED_GetSrc2SubBytePrecision(ged_ins_
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2SubBytePrecision(ged_ins_t* ins, const GED_SUB_BYTE_PRECISION value);
-#define GED_SetSrc2SubBytePrecision(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc2SubBytePrecision(" #ins ", " #value ")"), \
-    _GED_SetSrc2SubBytePrecision(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc2SubBytePrecision(ged_ins_t* ins, const GED_SUB_BYTE_PRECISION value);
 
 /*!
  * Get the value of the Src1Precision field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -4054,10 +3292,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2SubBytePrecision(ged_ins_t* ins
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_PRECISION GED_CALLCONV _GED_GetSrc1Precision(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc1Precision(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc1Precision(" #ins ", " #result ")"), \
-    _GED_GetSrc1Precision(ins, result))
+extern GED_PRECISION GED_CALLCONV GED_GetSrc1Precision(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src1Precision field in the given instruction. See @ref GED_INS_FIELD_Src1Precision for the field's
@@ -4068,10 +3303,7 @@ extern GED_PRECISION GED_CALLCONV _GED_GetSrc1Precision(ged_ins_t* ins, GED_RETU
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1Precision(ged_ins_t* ins, const GED_PRECISION value);
-#define GED_SetSrc1Precision(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc1Precision(" #ins ", " #value ")"), \
-    _GED_SetSrc1Precision(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc1Precision(ged_ins_t* ins, const GED_PRECISION value);
 
 /*!
  * Get the value of the Src1SubBytePrecision field in the given instruction. The function returns an enumeration value. To obtain the
@@ -4086,10 +3318,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1Precision(ged_ins_t* ins, const
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_SUB_BYTE_PRECISION GED_CALLCONV _GED_GetSrc1SubBytePrecision(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc1SubBytePrecision(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc1SubBytePrecision(" #ins ", " #result ")"), \
-    _GED_GetSrc1SubBytePrecision(ins, result))
+extern GED_SUB_BYTE_PRECISION GED_CALLCONV GED_GetSrc1SubBytePrecision(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src1SubBytePrecision field in the given instruction. See @ref GED_INS_FIELD_Src1SubBytePrecision for the
@@ -4100,10 +3329,7 @@ extern GED_SUB_BYTE_PRECISION GED_CALLCONV _GED_GetSrc1SubBytePrecision(ged_ins_
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1SubBytePrecision(ged_ins_t* ins, const GED_SUB_BYTE_PRECISION value);
-#define GED_SetSrc1SubBytePrecision(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc1SubBytePrecision(" #ins ", " #value ")"), \
-    _GED_SetSrc1SubBytePrecision(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc1SubBytePrecision(ged_ins_t* ins, const GED_SUB_BYTE_PRECISION value);
 
 /*!
  * Get the value of the BfnFC field in the given instruction. See @ref GED_INS_FIELD_BfnFC for the field's description.
@@ -4117,10 +3343,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1SubBytePrecision(ged_ins_t* ins
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetBfnFC(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetBfnFC(ins, result) ( \
-    GED_TraceAPI("GED_GetBfnFC(" #ins ", " #result ")"), \
-    _GED_GetBfnFC(ins, result))
+extern uint32_t GED_CALLCONV GED_GetBfnFC(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the BfnFC field in the given instruction. See @ref GED_INS_FIELD_BfnFC for the field's description.
@@ -4130,10 +3353,7 @@ extern uint32_t GED_CALLCONV _GED_GetBfnFC(ged_ins_t* ins, GED_RETURN_VALUE* res
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetBfnFC(ged_ins_t* ins, const uint32_t value);
-#define GED_SetBfnFC(ins, value) ( \
-    GED_TraceAPI("GED_SetBfnFC(" #ins ", " #value ")"), \
-    _GED_SetBfnFC(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetBfnFC(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the ExBSO field in the given instruction. See @ref GED_INS_FIELD_ExBSO for the field's description.
@@ -4147,10 +3367,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetBfnFC(ged_ins_t* ins, const uint32_
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetExBSO(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetExBSO(ins, result) ( \
-    GED_TraceAPI("GED_GetExBSO(" #ins ", " #result ")"), \
-    _GED_GetExBSO(ins, result))
+extern uint32_t GED_CALLCONV GED_GetExBSO(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the ExBSO field in the given instruction. See @ref GED_INS_FIELD_ExBSO for the field's description.
@@ -4160,10 +3377,7 @@ extern uint32_t GED_CALLCONV _GED_GetExBSO(ged_ins_t* ins, GED_RETURN_VALUE* res
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetExBSO(ged_ins_t* ins, const uint32_t value);
-#define GED_SetExBSO(ins, value) ( \
-    GED_TraceAPI("GED_SetExBSO(" #ins ", " #value ")"), \
-    _GED_SetExBSO(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetExBSO(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the CPS field in the given instruction. See @ref GED_INS_FIELD_CPS for the field's description.
@@ -4177,10 +3391,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetExBSO(ged_ins_t* ins, const uint32_
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetCPS(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetCPS(ins, result) ( \
-    GED_TraceAPI("GED_GetCPS(" #ins ", " #result ")"), \
-    _GED_GetCPS(ins, result))
+extern uint32_t GED_CALLCONV GED_GetCPS(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the CPS field in the given instruction. See @ref GED_INS_FIELD_CPS for the field's description.
@@ -4190,10 +3401,7 @@ extern uint32_t GED_CALLCONV _GED_GetCPS(ged_ins_t* ins, GED_RETURN_VALUE* resul
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetCPS(ged_ins_t* ins, const uint32_t value);
-#define GED_SetCPS(ins, value) ( \
-    GED_TraceAPI("GED_SetCPS(" #ins ", " #value ")"), \
-    _GED_SetCPS(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetCPS(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the Src1Length field in the given instruction. See @ref GED_INS_FIELD_Src1Length for the field's description.
@@ -4207,10 +3415,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetCPS(ged_ins_t* ins, const uint32_t 
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSrc1Length(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc1Length(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc1Length(" #ins ", " #result ")"), \
-    _GED_GetSrc1Length(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSrc1Length(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src1Length field in the given instruction. See @ref GED_INS_FIELD_Src1Length for the field's description.
@@ -4220,10 +3425,7 @@ extern uint32_t GED_CALLCONV _GED_GetSrc1Length(ged_ins_t* ins, GED_RETURN_VALUE
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1Length(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSrc1Length(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc1Length(" #ins ", " #value ")"), \
-    _GED_SetSrc1Length(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc1Length(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the Src2IsImm field in the given instruction. See @ref GED_INS_FIELD_Src2IsImm for the field's description.
@@ -4237,10 +3439,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc1Length(ged_ins_t* ins, const ui
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetSrc2IsImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
-#define GED_GetSrc2IsImm(ins, result) ( \
-    GED_TraceAPI("GED_GetSrc2IsImm(" #ins ", " #result ")"), \
-    _GED_GetSrc2IsImm(ins, result))
+extern uint32_t GED_CALLCONV GED_GetSrc2IsImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the Src2IsImm field in the given instruction. See @ref GED_INS_FIELD_Src2IsImm for the field's description.
@@ -4250,10 +3449,7 @@ extern uint32_t GED_CALLCONV _GED_GetSrc2IsImm(ged_ins_t* ins, GED_RETURN_VALUE*
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2IsImm(ged_ins_t* ins, const uint32_t value);
-#define GED_SetSrc2IsImm(ins, value) ( \
-    GED_TraceAPI("GED_SetSrc2IsImm(" #ins ", " #value ")"), \
-    _GED_SetSrc2IsImm(ins, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc2IsImm(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the AddrImm field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4269,10 +3465,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSrc2IsImm(ged_ins_t* ins, const uin
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern int32_t GED_CALLCONV _GED_GetIndexedSrcAddrImm(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
-#define GED_GetIndexedSrcAddrImm(ins, result, index) ( \
-    GED_TraceAPI("GED_GetIndexedSrcAddrImm(" #ins ", " #result ", " #index ")"), \
-    _GED_GetIndexedSrcAddrImm(ins, result, index))
+extern int32_t GED_CALLCONV GED_GetIndexedSrcAddrImm(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
 
 /*!
  * Set the value of the AddrImm field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4284,10 +3477,7 @@ extern int32_t GED_CALLCONV _GED_GetIndexedSrcAddrImm(ged_ins_t* ins, GED_RETURN
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcAddrImm(ged_ins_t* ins, const int32_t value, const uint8_t index);
-#define GED_SetIndexedSrcAddrImm(ins, value, index) ( \
-    GED_TraceAPI("GED_SetIndexedSrcAddrImm(" #ins ", " #value ", " #index ")"), \
-    _GED_SetIndexedSrcAddrImm(ins, value, index))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcAddrImm(ged_ins_t* ins, const int32_t value, const uint8_t index);
 
 /*!
  * Get the value of the AddrMode field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4302,10 +3492,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcAddrImm(ged_ins_t* ins, c
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_ADDR_MODE GED_CALLCONV _GED_GetIndexedSrcAddrMode(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
-#define GED_GetIndexedSrcAddrMode(ins, result, index) ( \
-    GED_TraceAPI("GED_GetIndexedSrcAddrMode(" #ins ", " #result ", " #index ")"), \
-    _GED_GetIndexedSrcAddrMode(ins, result, index))
+extern GED_ADDR_MODE GED_CALLCONV GED_GetIndexedSrcAddrMode(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
 
 /*!
  * Set the value of the AddrMode field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4317,10 +3504,7 @@ extern GED_ADDR_MODE GED_CALLCONV _GED_GetIndexedSrcAddrMode(ged_ins_t* ins, GED
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcAddrMode(ged_ins_t* ins, const GED_ADDR_MODE value, const uint8_t index);
-#define GED_SetIndexedSrcAddrMode(ins, value, index) ( \
-    GED_TraceAPI("GED_SetIndexedSrcAddrMode(" #ins ", " #value ", " #index ")"), \
-    _GED_SetIndexedSrcAddrMode(ins, value, index))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcAddrMode(ged_ins_t* ins, const GED_ADDR_MODE value, const uint8_t index);
 
 /*!
  * Get the value of the AddrSubRegNum field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4336,10 +3520,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcAddrMode(ged_ins_t* ins, 
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetIndexedSrcAddrSubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
-#define GED_GetIndexedSrcAddrSubRegNum(ins, result, index) ( \
-    GED_TraceAPI("GED_GetIndexedSrcAddrSubRegNum(" #ins ", " #result ", " #index ")"), \
-    _GED_GetIndexedSrcAddrSubRegNum(ins, result, index))
+extern uint32_t GED_CALLCONV GED_GetIndexedSrcAddrSubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
 
 /*!
  * Set the value of the AddrSubRegNum field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4351,10 +3532,7 @@ extern uint32_t GED_CALLCONV _GED_GetIndexedSrcAddrSubRegNum(ged_ins_t* ins, GED
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcAddrSubRegNum(ged_ins_t* ins, const uint32_t value, const uint8_t index);
-#define GED_SetIndexedSrcAddrSubRegNum(ins, value, index) ( \
-    GED_TraceAPI("GED_SetIndexedSrcAddrSubRegNum(" #ins ", " #value ", " #index ")"), \
-    _GED_SetIndexedSrcAddrSubRegNum(ins, value, index))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcAddrSubRegNum(ged_ins_t* ins, const uint32_t value, const uint8_t index);
 
 /*!
  * Get the value of the ChanSel field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4370,10 +3548,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcAddrSubRegNum(ged_ins_t* 
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetIndexedSrcChanSel(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
-#define GED_GetIndexedSrcChanSel(ins, result, index) ( \
-    GED_TraceAPI("GED_GetIndexedSrcChanSel(" #ins ", " #result ", " #index ")"), \
-    _GED_GetIndexedSrcChanSel(ins, result, index))
+extern uint32_t GED_CALLCONV GED_GetIndexedSrcChanSel(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
 
 /*!
  * Set the value of the ChanSel field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4385,10 +3560,7 @@ extern uint32_t GED_CALLCONV _GED_GetIndexedSrcChanSel(ged_ins_t* ins, GED_RETUR
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcChanSel(ged_ins_t* ins, const uint32_t value, const uint8_t index);
-#define GED_SetIndexedSrcChanSel(ins, value, index) ( \
-    GED_TraceAPI("GED_SetIndexedSrcChanSel(" #ins ", " #value ", " #index ")"), \
-    _GED_SetIndexedSrcChanSel(ins, value, index))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcChanSel(ged_ins_t* ins, const uint32_t value, const uint8_t index);
 
 /*!
  * Get the value of the DataType field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4403,10 +3575,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcChanSel(ged_ins_t* ins, c
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_DATA_TYPE GED_CALLCONV _GED_GetIndexedSrcDataType(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
-#define GED_GetIndexedSrcDataType(ins, result, index) ( \
-    GED_TraceAPI("GED_GetIndexedSrcDataType(" #ins ", " #result ", " #index ")"), \
-    _GED_GetIndexedSrcDataType(ins, result, index))
+extern GED_DATA_TYPE GED_CALLCONV GED_GetIndexedSrcDataType(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
 
 /*!
  * Set the value of the DataType field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4418,10 +3587,7 @@ extern GED_DATA_TYPE GED_CALLCONV _GED_GetIndexedSrcDataType(ged_ins_t* ins, GED
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcDataType(ged_ins_t* ins, const GED_DATA_TYPE value, const uint8_t index);
-#define GED_SetIndexedSrcDataType(ins, value, index) ( \
-    GED_TraceAPI("GED_SetIndexedSrcDataType(" #ins ", " #value ", " #index ")"), \
-    _GED_SetIndexedSrcDataType(ins, value, index))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcDataType(ged_ins_t* ins, const GED_DATA_TYPE value, const uint8_t index);
 
 /*!
  * Get the value of the HorzStride field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4439,10 +3605,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcDataType(ged_ins_t* ins, 
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetIndexedSrcHorzStride(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
-#define GED_GetIndexedSrcHorzStride(ins, result, index) ( \
-    GED_TraceAPI("GED_GetIndexedSrcHorzStride(" #ins ", " #result ", " #index ")"), \
-    _GED_GetIndexedSrcHorzStride(ins, result, index))
+extern uint32_t GED_CALLCONV GED_GetIndexedSrcHorzStride(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
 
 /*!
  * Set the value of the HorzStride field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4454,10 +3617,7 @@ extern uint32_t GED_CALLCONV _GED_GetIndexedSrcHorzStride(ged_ins_t* ins, GED_RE
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcHorzStride(ged_ins_t* ins, const uint32_t value, const uint8_t index);
-#define GED_SetIndexedSrcHorzStride(ins, value, index) ( \
-    GED_TraceAPI("GED_SetIndexedSrcHorzStride(" #ins ", " #value ", " #index ")"), \
-    _GED_SetIndexedSrcHorzStride(ins, value, index))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcHorzStride(ged_ins_t* ins, const uint32_t value, const uint8_t index);
 
 /*!
  * Get the value of the Index field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4473,10 +3633,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcHorzStride(ged_ins_t* ins
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetIndexedSrcIndex(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
-#define GED_GetIndexedSrcIndex(ins, result, index) ( \
-    GED_TraceAPI("GED_GetIndexedSrcIndex(" #ins ", " #result ", " #index ")"), \
-    _GED_GetIndexedSrcIndex(ins, result, index))
+extern uint32_t GED_CALLCONV GED_GetIndexedSrcIndex(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
 
 /*!
  * Set the value of the Index field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4488,10 +3645,7 @@ extern uint32_t GED_CALLCONV _GED_GetIndexedSrcIndex(ged_ins_t* ins, GED_RETURN_
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcIndex(ged_ins_t* ins, const uint32_t value, const uint8_t index);
-#define GED_SetIndexedSrcIndex(ins, value, index) ( \
-    GED_TraceAPI("GED_SetIndexedSrcIndex(" #ins ", " #value ", " #index ")"), \
-    _GED_SetIndexedSrcIndex(ins, value, index))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcIndex(ged_ins_t* ins, const uint32_t value, const uint8_t index);
 
 /*!
  * Get the value of the IsImm field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4507,10 +3661,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcIndex(ged_ins_t* ins, con
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetIndexedSrcIsImm(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
-#define GED_GetIndexedSrcIsImm(ins, result, index) ( \
-    GED_TraceAPI("GED_GetIndexedSrcIsImm(" #ins ", " #result ", " #index ")"), \
-    _GED_GetIndexedSrcIsImm(ins, result, index))
+extern uint32_t GED_CALLCONV GED_GetIndexedSrcIsImm(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
 
 /*!
  * Set the value of the IsImm field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4522,10 +3673,7 @@ extern uint32_t GED_CALLCONV _GED_GetIndexedSrcIsImm(ged_ins_t* ins, GED_RETURN_
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcIsImm(ged_ins_t* ins, const uint32_t value, const uint8_t index);
-#define GED_SetIndexedSrcIsImm(ins, value, index) ( \
-    GED_TraceAPI("GED_SetIndexedSrcIsImm(" #ins ", " #value ", " #index ")"), \
-    _GED_SetIndexedSrcIsImm(ins, value, index))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcIsImm(ged_ins_t* ins, const uint32_t value, const uint8_t index);
 
 /*!
  * Get the value of the MathMacroExt field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4541,10 +3689,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcIsImm(ged_ins_t* ins, con
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_MATH_MACRO_EXT GED_CALLCONV _GED_GetIndexedSrcMathMacroExt(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
-#define GED_GetIndexedSrcMathMacroExt(ins, result, index) ( \
-    GED_TraceAPI("GED_GetIndexedSrcMathMacroExt(" #ins ", " #result ", " #index ")"), \
-    _GED_GetIndexedSrcMathMacroExt(ins, result, index))
+extern GED_MATH_MACRO_EXT GED_CALLCONV GED_GetIndexedSrcMathMacroExt(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
 
 /*!
  * Set the value of the MathMacroExt field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4557,11 +3702,8 @@ extern GED_MATH_MACRO_EXT GED_CALLCONV _GED_GetIndexedSrcMathMacroExt(ged_ins_t*
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcMathMacroExt(ged_ins_t* ins, const GED_MATH_MACRO_EXT value, const uint8_t
-                                                                    index);
-#define GED_SetIndexedSrcMathMacroExt(ins, value, index) ( \
-    GED_TraceAPI("GED_SetIndexedSrcMathMacroExt(" #ins ", " #value ", " #index ")"), \
-    _GED_SetIndexedSrcMathMacroExt(ins, value, index))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcMathMacroExt(ged_ins_t* ins, const GED_MATH_MACRO_EXT value, const uint8_t
+                                                                   index);
 
 /*!
  * Get the value of the RegFile field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4576,10 +3718,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcMathMacroExt(ged_ins_t* i
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_REG_FILE GED_CALLCONV _GED_GetIndexedSrcRegFile(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
-#define GED_GetIndexedSrcRegFile(ins, result, index) ( \
-    GED_TraceAPI("GED_GetIndexedSrcRegFile(" #ins ", " #result ", " #index ")"), \
-    _GED_GetIndexedSrcRegFile(ins, result, index))
+extern GED_REG_FILE GED_CALLCONV GED_GetIndexedSrcRegFile(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
 
 /*!
  * Set the value of the RegFile field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4591,10 +3730,7 @@ extern GED_REG_FILE GED_CALLCONV _GED_GetIndexedSrcRegFile(ged_ins_t* ins, GED_R
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcRegFile(ged_ins_t* ins, const GED_REG_FILE value, const uint8_t index);
-#define GED_SetIndexedSrcRegFile(ins, value, index) ( \
-    GED_TraceAPI("GED_SetIndexedSrcRegFile(" #ins ", " #value ", " #index ")"), \
-    _GED_SetIndexedSrcRegFile(ins, value, index))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcRegFile(ged_ins_t* ins, const GED_REG_FILE value, const uint8_t index);
 
 /*!
  * Get the value of the RegNum field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4610,10 +3746,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcRegFile(ged_ins_t* ins, c
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetIndexedSrcRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
-#define GED_GetIndexedSrcRegNum(ins, result, index) ( \
-    GED_TraceAPI("GED_GetIndexedSrcRegNum(" #ins ", " #result ", " #index ")"), \
-    _GED_GetIndexedSrcRegNum(ins, result, index))
+extern uint32_t GED_CALLCONV GED_GetIndexedSrcRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
 
 /*!
  * Set the value of the RegNum field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4625,10 +3758,7 @@ extern uint32_t GED_CALLCONV _GED_GetIndexedSrcRegNum(ged_ins_t* ins, GED_RETURN
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcRegNum(ged_ins_t* ins, const uint32_t value, const uint8_t index);
-#define GED_SetIndexedSrcRegNum(ins, value, index) ( \
-    GED_TraceAPI("GED_SetIndexedSrcRegNum(" #ins ", " #value ", " #index ")"), \
-    _GED_SetIndexedSrcRegNum(ins, value, index))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcRegNum(ged_ins_t* ins, const uint32_t value, const uint8_t index);
 
 /*!
  * Get the value of the RepCtrl field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4643,10 +3773,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcRegNum(ged_ins_t* ins, co
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_REP_CTRL GED_CALLCONV _GED_GetIndexedSrcRepCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
-#define GED_GetIndexedSrcRepCtrl(ins, result, index) ( \
-    GED_TraceAPI("GED_GetIndexedSrcRepCtrl(" #ins ", " #result ", " #index ")"), \
-    _GED_GetIndexedSrcRepCtrl(ins, result, index))
+extern GED_REP_CTRL GED_CALLCONV GED_GetIndexedSrcRepCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
 
 /*!
  * Set the value of the RepCtrl field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4658,10 +3785,7 @@ extern GED_REP_CTRL GED_CALLCONV _GED_GetIndexedSrcRepCtrl(ged_ins_t* ins, GED_R
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcRepCtrl(ged_ins_t* ins, const GED_REP_CTRL value, const uint8_t index);
-#define GED_SetIndexedSrcRepCtrl(ins, value, index) ( \
-    GED_TraceAPI("GED_SetIndexedSrcRepCtrl(" #ins ", " #value ", " #index ")"), \
-    _GED_SetIndexedSrcRepCtrl(ins, value, index))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcRepCtrl(ged_ins_t* ins, const GED_REP_CTRL value, const uint8_t index);
 
 /*!
  * Get the value of the SrcMod field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4676,10 +3800,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcRepCtrl(ged_ins_t* ins, c
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_SRC_MOD GED_CALLCONV _GED_GetIndexedSrcSrcMod(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
-#define GED_GetIndexedSrcSrcMod(ins, result, index) ( \
-    GED_TraceAPI("GED_GetIndexedSrcSrcMod(" #ins ", " #result ", " #index ")"), \
-    _GED_GetIndexedSrcSrcMod(ins, result, index))
+extern GED_SRC_MOD GED_CALLCONV GED_GetIndexedSrcSrcMod(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
 
 /*!
  * Set the value of the SrcMod field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4691,10 +3812,7 @@ extern GED_SRC_MOD GED_CALLCONV _GED_GetIndexedSrcSrcMod(ged_ins_t* ins, GED_RET
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcSrcMod(ged_ins_t* ins, const GED_SRC_MOD value, const uint8_t index);
-#define GED_SetIndexedSrcSrcMod(ins, value, index) ( \
-    GED_TraceAPI("GED_SetIndexedSrcSrcMod(" #ins ", " #value ", " #index ")"), \
-    _GED_SetIndexedSrcSrcMod(ins, value, index))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcSrcMod(ged_ins_t* ins, const GED_SRC_MOD value, const uint8_t index);
 
 /*!
  * Get the value of the SubRegNum field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4710,10 +3828,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcSrcMod(ged_ins_t* ins, co
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetIndexedSrcSubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
-#define GED_GetIndexedSrcSubRegNum(ins, result, index) ( \
-    GED_TraceAPI("GED_GetIndexedSrcSubRegNum(" #ins ", " #result ", " #index ")"), \
-    _GED_GetIndexedSrcSubRegNum(ins, result, index))
+extern uint32_t GED_CALLCONV GED_GetIndexedSrcSubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
 
 /*!
  * Set the value of the SubRegNum field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4725,10 +3840,7 @@ extern uint32_t GED_CALLCONV _GED_GetIndexedSrcSubRegNum(ged_ins_t* ins, GED_RET
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcSubRegNum(ged_ins_t* ins, const uint32_t value, const uint8_t index);
-#define GED_SetIndexedSrcSubRegNum(ins, value, index) ( \
-    GED_TraceAPI("GED_SetIndexedSrcSubRegNum(" #ins ", " #value ", " #index ")"), \
-    _GED_SetIndexedSrcSubRegNum(ins, value, index))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcSubRegNum(ged_ins_t* ins, const uint32_t value, const uint8_t index);
 
 /*!
  * Get the value of the SubRegNumByte field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4744,10 +3856,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcSubRegNum(ged_ins_t* ins,
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetIndexedSrcSubRegNumByte(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
-#define GED_GetIndexedSrcSubRegNumByte(ins, result, index) ( \
-    GED_TraceAPI("GED_GetIndexedSrcSubRegNumByte(" #ins ", " #result ", " #index ")"), \
-    _GED_GetIndexedSrcSubRegNumByte(ins, result, index))
+extern uint32_t GED_CALLCONV GED_GetIndexedSrcSubRegNumByte(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
 
 /*!
  * Set the value of the SubRegNumByte field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4759,10 +3868,7 @@ extern uint32_t GED_CALLCONV _GED_GetIndexedSrcSubRegNumByte(ged_ins_t* ins, GED
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcSubRegNumByte(ged_ins_t* ins, const uint32_t value, const uint8_t index);
-#define GED_SetIndexedSrcSubRegNumByte(ins, value, index) ( \
-    GED_TraceAPI("GED_SetIndexedSrcSubRegNumByte(" #ins ", " #value ", " #index ")"), \
-    _GED_SetIndexedSrcSubRegNumByte(ins, value, index))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcSubRegNumByte(ged_ins_t* ins, const uint32_t value, const uint8_t index);
 
 /*!
  * Get the value of the VertStride field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4780,10 +3886,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcSubRegNumByte(ged_ins_t* 
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetIndexedSrcVertStride(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
-#define GED_GetIndexedSrcVertStride(ins, result, index) ( \
-    GED_TraceAPI("GED_GetIndexedSrcVertStride(" #ins ", " #result ", " #index ")"), \
-    _GED_GetIndexedSrcVertStride(ins, result, index))
+extern uint32_t GED_CALLCONV GED_GetIndexedSrcVertStride(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
 
 /*!
  * Set the value of the VertStride field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4795,10 +3898,7 @@ extern uint32_t GED_CALLCONV _GED_GetIndexedSrcVertStride(ged_ins_t* ins, GED_RE
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcVertStride(ged_ins_t* ins, const uint32_t value, const uint8_t index);
-#define GED_SetIndexedSrcVertStride(ins, value, index) ( \
-    GED_TraceAPI("GED_SetIndexedSrcVertStride(" #ins ", " #value ", " #index ")"), \
-    _GED_SetIndexedSrcVertStride(ins, value, index))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcVertStride(ged_ins_t* ins, const uint32_t value, const uint8_t index);
 
 /*!
  * Get the value of the Width field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4816,10 +3916,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcVertStride(ged_ins_t* ins
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV _GED_GetIndexedSrcWidth(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
-#define GED_GetIndexedSrcWidth(ins, result, index) ( \
-    GED_TraceAPI("GED_GetIndexedSrcWidth(" #ins ", " #result ", " #index ")"), \
-    _GED_GetIndexedSrcWidth(ins, result, index))
+extern uint32_t GED_CALLCONV GED_GetIndexedSrcWidth(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
 
 /*!
  * Set the value of the Width field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4831,10 +3928,7 @@ extern uint32_t GED_CALLCONV _GED_GetIndexedSrcWidth(ged_ins_t* ins, GED_RETURN_
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcWidth(ged_ins_t* ins, const uint32_t value, const uint8_t index);
-#define GED_SetIndexedSrcWidth(ins, value, index) ( \
-    GED_TraceAPI("GED_SetIndexedSrcWidth(" #ins ", " #value ", " #index ")"), \
-    _GED_SetIndexedSrcWidth(ins, value, index))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcWidth(ged_ins_t* ins, const uint32_t value, const uint8_t index);
 
 /*!
  * Get the value of the ArchReg field from the given register number (as obtained by @ref GED_GetDstRegNum, @ref GED_GetSrc0RegNum or
@@ -4848,10 +3942,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetIndexedSrcWidth(ged_ins_t* ins, con
  *
  * @return      ArchReg's enumeration if the field is valid, GED_ARCH_REG_INVALID otherwise.
  */
-extern GED_ARCH_REG GED_CALLCONV _GED_GetArchReg(const uint32_t regNum, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetArchReg(regNum, modelId, result) ( \
-    GED_TraceAPI("GED_GetArchReg(" #regNum ", " #modelId ", " #result ")"), \
-    _GED_GetArchReg(regNum, modelId, result))
+extern GED_ARCH_REG GED_CALLCONV GED_GetArchReg(const uint32_t regNum, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the ArchReg field in the given register number. The latter can then be set to its appropriate fields (@ref
@@ -4863,10 +3954,7 @@ extern GED_ARCH_REG GED_CALLCONV _GED_GetArchReg(const uint32_t regNum, const GE
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetArchReg(uint32_t* regNum, const GED_MODEL modelId, const GED_ARCH_REG archReg);
-#define GED_SetArchReg(regNum, modelId, archReg) ( \
-    GED_TraceAPI("GED_SetArchReg(" #regNum ", " #modelId ", " #archReg ")"), \
-    _GED_SetArchReg(regNum, modelId, archReg))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetArchReg(uint32_t* regNum, const GED_MODEL modelId, const GED_ARCH_REG archReg);
 
 /*!
  * Get the value of the ArchRegNum field from the given register number (as obtained by @ref GED_GetDstRegNum, @ref GED_GetSrc0RegNum
@@ -4879,10 +3967,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetArchReg(uint32_t* regNum, const GED
  *
  * @return      The architectural register number if the field is valid, the unchanged regNum value otherwise.
  */
-extern uint32_t GED_CALLCONV _GED_GetArchRegNum(const uint32_t regNum, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetArchRegNum(regNum, modelId, result) ( \
-    GED_TraceAPI("GED_GetArchRegNum(" #regNum ", " #modelId ", " #result ")"), \
-    _GED_GetArchRegNum(regNum, modelId, result))
+extern uint32_t GED_CALLCONV GED_GetArchRegNum(const uint32_t regNum, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the ArchRegNum field in the given register number. The latter can then be set to its appropriate fields (@ref
@@ -4895,10 +3980,7 @@ extern uint32_t GED_CALLCONV _GED_GetArchRegNum(const uint32_t regNum, const GED
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetArchRegNum(uint32_t* regNum, const GED_MODEL modelId, const uint32_t archRegNum);
-#define GED_SetArchRegNum(regNum, modelId, archRegNum) ( \
-    GED_TraceAPI("GED_SetArchRegNum(" #regNum ", " #modelId ", " #archRegNum ")"), \
-    _GED_SetArchRegNum(regNum, modelId, archRegNum))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetArchRegNum(uint32_t* regNum, const GED_MODEL modelId, const uint32_t archRegNum);
 
 /*!
  * Get the value of the SwizzleX field from the given channel select (as obtained by @ref GED_GetSrc0ChanSel, @ref GED_GetSrc1ChanSel
@@ -4912,10 +3994,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetArchRegNum(uint32_t* regNum, const 
  *
  * @return      SwizzleX's enumeration if the field is valid, GED_SWIZZLE_INVALID otherwise.
  */
-extern GED_SWIZZLE GED_CALLCONV _GED_GetSwizzleX(const uint32_t chanSel, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetSwizzleX(chanSel, modelId, result) ( \
-    GED_TraceAPI("GED_GetSwizzleX(" #chanSel ", " #modelId ", " #result ")"), \
-    _GED_GetSwizzleX(chanSel, modelId, result))
+extern GED_SWIZZLE GED_CALLCONV GED_GetSwizzleX(const uint32_t chanSel, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the SwizzleX field in the given channel select. The latter can then be set to its appropriate fields (@ref
@@ -4928,10 +4007,7 @@ extern GED_SWIZZLE GED_CALLCONV _GED_GetSwizzleX(const uint32_t chanSel, const G
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSwizzleX(uint32_t* chanSel, const GED_MODEL modelId, const GED_SWIZZLE swizzle);
-#define GED_SetSwizzleX(chanSel, modelId, swizzle) ( \
-    GED_TraceAPI("GED_SetSwizzleX(" #chanSel ", " #modelId ", " #swizzle ")"), \
-    _GED_SetSwizzleX(chanSel, modelId, swizzle))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSwizzleX(uint32_t* chanSel, const GED_MODEL modelId, const GED_SWIZZLE swizzle);
 
 /*!
  * Get the value of the SwizzleY field from the given channel select (as obtained by @ref GED_GetSrc0ChanSel, @ref GED_GetSrc1ChanSel
@@ -4945,10 +4021,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSwizzleX(uint32_t* chanSel, const G
  *
  * @return      SwizzleY's enumeration if the field is valid, GED_SWIZZLE_INVALID otherwise.
  */
-extern GED_SWIZZLE GED_CALLCONV _GED_GetSwizzleY(const uint32_t chanSel, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetSwizzleY(chanSel, modelId, result) ( \
-    GED_TraceAPI("GED_GetSwizzleY(" #chanSel ", " #modelId ", " #result ")"), \
-    _GED_GetSwizzleY(chanSel, modelId, result))
+extern GED_SWIZZLE GED_CALLCONV GED_GetSwizzleY(const uint32_t chanSel, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the SwizzleY field in the given channel select. The latter can then be set to its appropriate fields (@ref
@@ -4961,10 +4034,7 @@ extern GED_SWIZZLE GED_CALLCONV _GED_GetSwizzleY(const uint32_t chanSel, const G
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSwizzleY(uint32_t* chanSel, const GED_MODEL modelId, const GED_SWIZZLE swizzle);
-#define GED_SetSwizzleY(chanSel, modelId, swizzle) ( \
-    GED_TraceAPI("GED_SetSwizzleY(" #chanSel ", " #modelId ", " #swizzle ")"), \
-    _GED_SetSwizzleY(chanSel, modelId, swizzle))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSwizzleY(uint32_t* chanSel, const GED_MODEL modelId, const GED_SWIZZLE swizzle);
 
 /*!
  * Get the value of the SwizzleZ field from the given channel select (as obtained by @ref GED_GetSrc0ChanSel, @ref GED_GetSrc1ChanSel
@@ -4978,10 +4048,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSwizzleY(uint32_t* chanSel, const G
  *
  * @return      SwizzleZ's enumeration if the field is valid, GED_SWIZZLE_INVALID otherwise.
  */
-extern GED_SWIZZLE GED_CALLCONV _GED_GetSwizzleZ(const uint32_t chanSel, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetSwizzleZ(chanSel, modelId, result) ( \
-    GED_TraceAPI("GED_GetSwizzleZ(" #chanSel ", " #modelId ", " #result ")"), \
-    _GED_GetSwizzleZ(chanSel, modelId, result))
+extern GED_SWIZZLE GED_CALLCONV GED_GetSwizzleZ(const uint32_t chanSel, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the SwizzleZ field in the given channel select. The latter can then be set to its appropriate fields (@ref
@@ -4994,10 +4061,7 @@ extern GED_SWIZZLE GED_CALLCONV _GED_GetSwizzleZ(const uint32_t chanSel, const G
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSwizzleZ(uint32_t* chanSel, const GED_MODEL modelId, const GED_SWIZZLE swizzle);
-#define GED_SetSwizzleZ(chanSel, modelId, swizzle) ( \
-    GED_TraceAPI("GED_SetSwizzleZ(" #chanSel ", " #modelId ", " #swizzle ")"), \
-    _GED_SetSwizzleZ(chanSel, modelId, swizzle))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSwizzleZ(uint32_t* chanSel, const GED_MODEL modelId, const GED_SWIZZLE swizzle);
 
 /*!
  * Get the value of the SwizzleW field from the given channel select (as obtained by @ref GED_GetSrc0ChanSel, @ref GED_GetSrc1ChanSel
@@ -5011,10 +4075,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSwizzleZ(uint32_t* chanSel, const G
  *
  * @return      SwizzleW's enumeration if the field is valid, GED_SWIZZLE_INVALID otherwise.
  */
-extern GED_SWIZZLE GED_CALLCONV _GED_GetSwizzleW(const uint32_t chanSel, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetSwizzleW(chanSel, modelId, result) ( \
-    GED_TraceAPI("GED_GetSwizzleW(" #chanSel ", " #modelId ", " #result ")"), \
-    _GED_GetSwizzleW(chanSel, modelId, result))
+extern GED_SWIZZLE GED_CALLCONV GED_GetSwizzleW(const uint32_t chanSel, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the SwizzleW field in the given channel select. The latter can then be set to its appropriate fields (@ref
@@ -5027,10 +4088,7 @@ extern GED_SWIZZLE GED_CALLCONV _GED_GetSwizzleW(const uint32_t chanSel, const G
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSwizzleW(uint32_t* chanSel, const GED_MODEL modelId, const GED_SWIZZLE swizzle);
-#define GED_SetSwizzleW(chanSel, modelId, swizzle) ( \
-    GED_TraceAPI("GED_SetSwizzleW(" #chanSel ", " #modelId ", " #swizzle ")"), \
-    _GED_SetSwizzleW(chanSel, modelId, swizzle))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSwizzleW(uint32_t* chanSel, const GED_MODEL modelId, const GED_SWIZZLE swizzle);
 
 /*!
  * Get the value of the MessageLength field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). See @ref
@@ -5043,10 +4101,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSwizzleW(uint32_t* chanSel, const G
  *
  * @return      The message length if the field is valid, the unchanged msgDesc value otherwise.
  */
-extern uint32_t GED_CALLCONV _GED_GetMessageLength(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetMessageLength(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetMessageLength(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetMessageLength(msgDesc, modelId, result))
+extern uint32_t GED_CALLCONV GED_GetMessageLength(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the MessageLength field in the given message descriptor. The latter can then be set to its appropriate field (@ref
@@ -5058,10 +4113,7 @@ extern uint32_t GED_CALLCONV _GED_GetMessageLength(const uint32_t msgDesc, const
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMessageLength(uint32_t* msgDesc, const GED_MODEL modelId, const uint32_t length);
-#define GED_SetMessageLength(msgDesc, modelId, length) ( \
-    GED_TraceAPI("GED_SetMessageLength(" #msgDesc ", " #modelId ", " #length ")"), \
-    _GED_SetMessageLength(msgDesc, modelId, length))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMessageLength(uint32_t* msgDesc, const GED_MODEL modelId, const uint32_t length);
 
 /*!
  * Get the value of the ResponseLength field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). See @ref
@@ -5074,10 +4126,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMessageLength(uint32_t* msgDesc, co
  *
  * @return      The response length if the field is valid, the unchanged msgDesc value otherwise.
  */
-extern uint32_t GED_CALLCONV _GED_GetResponseLength(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetResponseLength(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetResponseLength(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetResponseLength(msgDesc, modelId, result))
+extern uint32_t GED_CALLCONV GED_GetResponseLength(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the ResponseLength field in the given message descriptor. The latter can then be set to its appropriate field
@@ -5089,10 +4138,7 @@ extern uint32_t GED_CALLCONV _GED_GetResponseLength(const uint32_t msgDesc, cons
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetResponseLength(uint32_t* msgDesc, const GED_MODEL modelId, const uint32_t length);
-#define GED_SetResponseLength(msgDesc, modelId, length) ( \
-    GED_TraceAPI("GED_SetResponseLength(" #msgDesc ", " #modelId ", " #length ")"), \
-    _GED_SetResponseLength(msgDesc, modelId, length))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetResponseLength(uint32_t* msgDesc, const GED_MODEL modelId, const uint32_t length);
 
 /*!
  * Get the value of the HeaderPresent field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function
@@ -5106,11 +4152,8 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetResponseLength(uint32_t* msgDesc, c
  *
  * @return      HeaderPresent's enumeration if the field is valid, GED_HEADER_PRESENT_INVALID otherwise.
  */
-extern GED_HEADER_PRESENT GED_CALLCONV _GED_GetHeaderPresent(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
-                                                             result);
-#define GED_GetHeaderPresent(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetHeaderPresent(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetHeaderPresent(msgDesc, modelId, result))
+extern GED_HEADER_PRESENT GED_CALLCONV GED_GetHeaderPresent(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                            result);
 
 /*!
  * Set the value of the HeaderPresent field in the given message descriptor. The latter can then be set to its appropriate field (@ref
@@ -5122,11 +4165,8 @@ extern GED_HEADER_PRESENT GED_CALLCONV _GED_GetHeaderPresent(const uint32_t msgD
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetHeaderPresent(uint32_t* msgDesc, const GED_MODEL modelId, const GED_HEADER_PRESENT
-                                                           headerPresent);
-#define GED_SetHeaderPresent(msgDesc, modelId, headerPresent) ( \
-    GED_TraceAPI("GED_SetHeaderPresent(" #msgDesc ", " #modelId ", " #headerPresent ")"), \
-    _GED_SetHeaderPresent(msgDesc, modelId, headerPresent))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetHeaderPresent(uint32_t* msgDesc, const GED_MODEL modelId, const GED_HEADER_PRESENT
+                                                          headerPresent);
 
 /*!
  * Get the value of the MessageTypeDP_SAMPLER field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The
@@ -5140,11 +4180,8 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetHeaderPresent(uint32_t* msgDesc, co
  *
  * @return      MessageTypeDP_SAMPLER's enumeration if the field is valid, GED_MESSAGE_TYPE_INVALID otherwise.
  */
-extern GED_MESSAGE_TYPE GED_CALLCONV _GED_GetMessageTypeDP_SAMPLER(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
-                                                                   result);
-#define GED_GetMessageTypeDP_SAMPLER(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetMessageTypeDP_SAMPLER(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetMessageTypeDP_SAMPLER(msgDesc, modelId, result))
+extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_SAMPLER(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                                  result);
 
 /*!
  * Set the value of the MessageTypeDP_SAMPLER field in the given message descriptor. The latter can then be set to its appropriate
@@ -5156,11 +4193,8 @@ extern GED_MESSAGE_TYPE GED_CALLCONV _GED_GetMessageTypeDP_SAMPLER(const uint32_
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMessageTypeDP_SAMPLER(uint32_t* msgDesc, const GED_MODEL modelId, const GED_MESSAGE_TYPE
-                                                                   messageType);
-#define GED_SetMessageTypeDP_SAMPLER(msgDesc, modelId, messageType) ( \
-    GED_TraceAPI("GED_SetMessageTypeDP_SAMPLER(" #msgDesc ", " #modelId ", " #messageType ")"), \
-    _GED_SetMessageTypeDP_SAMPLER(msgDesc, modelId, messageType))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMessageTypeDP_SAMPLER(uint32_t* msgDesc, const GED_MODEL modelId, const GED_MESSAGE_TYPE
+                                                                  messageType);
 
 /*!
  * Get the value of the MessageTypeDP_RC field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function
@@ -5174,11 +4208,8 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMessageTypeDP_SAMPLER(uint32_t* msg
  *
  * @return      MessageTypeDP_RC's enumeration if the field is valid, GED_MESSAGE_TYPE_INVALID otherwise.
  */
-extern GED_MESSAGE_TYPE GED_CALLCONV _GED_GetMessageTypeDP_RC(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
-                                                              result);
-#define GED_GetMessageTypeDP_RC(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetMessageTypeDP_RC(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetMessageTypeDP_RC(msgDesc, modelId, result))
+extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_RC(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                             result);
 
 /*!
  * Set the value of the MessageTypeDP_RC field in the given message descriptor. The latter can then be set to its appropriate field
@@ -5190,11 +4221,8 @@ extern GED_MESSAGE_TYPE GED_CALLCONV _GED_GetMessageTypeDP_RC(const uint32_t msg
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMessageTypeDP_RC(uint32_t* msgDesc, const GED_MODEL modelId, const GED_MESSAGE_TYPE
-                                                              messageType);
-#define GED_SetMessageTypeDP_RC(msgDesc, modelId, messageType) ( \
-    GED_TraceAPI("GED_SetMessageTypeDP_RC(" #msgDesc ", " #modelId ", " #messageType ")"), \
-    _GED_SetMessageTypeDP_RC(msgDesc, modelId, messageType))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMessageTypeDP_RC(uint32_t* msgDesc, const GED_MODEL modelId, const GED_MESSAGE_TYPE
+                                                             messageType);
 
 /*!
  * Get the value of the MessageTypeDP_CC field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function
@@ -5208,11 +4236,8 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMessageTypeDP_RC(uint32_t* msgDesc,
  *
  * @return      MessageTypeDP_CC's enumeration if the field is valid, GED_MESSAGE_TYPE_INVALID otherwise.
  */
-extern GED_MESSAGE_TYPE GED_CALLCONV _GED_GetMessageTypeDP_CC(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
-                                                              result);
-#define GED_GetMessageTypeDP_CC(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetMessageTypeDP_CC(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetMessageTypeDP_CC(msgDesc, modelId, result))
+extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_CC(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                             result);
 
 /*!
  * Set the value of the MessageTypeDP_CC field in the given message descriptor. The latter can then be set to its appropriate field
@@ -5224,11 +4249,8 @@ extern GED_MESSAGE_TYPE GED_CALLCONV _GED_GetMessageTypeDP_CC(const uint32_t msg
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMessageTypeDP_CC(uint32_t* msgDesc, const GED_MODEL modelId, const GED_MESSAGE_TYPE
-                                                              messageType);
-#define GED_SetMessageTypeDP_CC(msgDesc, modelId, messageType) ( \
-    GED_TraceAPI("GED_SetMessageTypeDP_CC(" #msgDesc ", " #modelId ", " #messageType ")"), \
-    _GED_SetMessageTypeDP_CC(msgDesc, modelId, messageType))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMessageTypeDP_CC(uint32_t* msgDesc, const GED_MODEL modelId, const GED_MESSAGE_TYPE
+                                                             messageType);
 
 /*!
  * Get the value of the MessageTypeDP_DC0 field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function
@@ -5242,11 +4264,8 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMessageTypeDP_CC(uint32_t* msgDesc,
  *
  * @return      MessageTypeDP_DC0's enumeration if the field is valid, GED_MESSAGE_TYPE_INVALID otherwise.
  */
-extern GED_MESSAGE_TYPE GED_CALLCONV _GED_GetMessageTypeDP_DC0(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
-                                                               result);
-#define GED_GetMessageTypeDP_DC0(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetMessageTypeDP_DC0(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetMessageTypeDP_DC0(msgDesc, modelId, result))
+extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_DC0(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                              result);
 
 /*!
  * Set the value of the MessageTypeDP_DC0 field in the given message descriptor. The latter can then be set to its appropriate field
@@ -5258,11 +4277,8 @@ extern GED_MESSAGE_TYPE GED_CALLCONV _GED_GetMessageTypeDP_DC0(const uint32_t ms
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMessageTypeDP_DC0(uint32_t* msgDesc, const GED_MODEL modelId, const GED_MESSAGE_TYPE
-                                                               messageType);
-#define GED_SetMessageTypeDP_DC0(msgDesc, modelId, messageType) ( \
-    GED_TraceAPI("GED_SetMessageTypeDP_DC0(" #msgDesc ", " #modelId ", " #messageType ")"), \
-    _GED_SetMessageTypeDP_DC0(msgDesc, modelId, messageType))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMessageTypeDP_DC0(uint32_t* msgDesc, const GED_MODEL modelId, const GED_MESSAGE_TYPE
+                                                              messageType);
 
 /*!
  * Get the value of the TypedSurfaceSlotGroup field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The
@@ -5276,11 +4292,8 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMessageTypeDP_DC0(uint32_t* msgDesc
  *
  * @return      TypedSurfaceSlotGroup's enumeration if the field is valid, GED_SLOT_GROUP_INVALID otherwise.
  */
-extern GED_SLOT_GROUP GED_CALLCONV _GED_GetTypedSurfaceSlotGroup(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
-                                                                 result);
-#define GED_GetTypedSurfaceSlotGroup(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetTypedSurfaceSlotGroup(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetTypedSurfaceSlotGroup(msgDesc, modelId, result))
+extern GED_SLOT_GROUP GED_CALLCONV GED_GetTypedSurfaceSlotGroup(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                                result);
 
 /*!
  * Set the value of the TypedSurfaceSlotGroup field in the given message descriptor. The latter can then be set to its appropriate
@@ -5292,11 +4305,8 @@ extern GED_SLOT_GROUP GED_CALLCONV _GED_GetTypedSurfaceSlotGroup(const uint32_t 
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetTypedSurfaceSlotGroup(uint32_t* msgDesc, const GED_MODEL modelId, const GED_SLOT_GROUP
-                                                                   slotGroup);
-#define GED_SetTypedSurfaceSlotGroup(msgDesc, modelId, slotGroup) ( \
-    GED_TraceAPI("GED_SetTypedSurfaceSlotGroup(" #msgDesc ", " #modelId ", " #slotGroup ")"), \
-    _GED_SetTypedSurfaceSlotGroup(msgDesc, modelId, slotGroup))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetTypedSurfaceSlotGroup(uint32_t* msgDesc, const GED_MODEL modelId, const GED_SLOT_GROUP
+                                                                  slotGroup);
 
 /*!
  * Get the value of the TypedAtomicSlotGroup field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The
@@ -5310,11 +4320,8 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetTypedSurfaceSlotGroup(uint32_t* msg
  *
  * @return      TypedAtomicSlotGroup's enumeration if the field is valid, GED_SLOT_GROUP_INVALID otherwise.
  */
-extern GED_SLOT_GROUP GED_CALLCONV _GED_GetTypedAtomicSlotGroup(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
-                                                                result);
-#define GED_GetTypedAtomicSlotGroup(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetTypedAtomicSlotGroup(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetTypedAtomicSlotGroup(msgDesc, modelId, result))
+extern GED_SLOT_GROUP GED_CALLCONV GED_GetTypedAtomicSlotGroup(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                               result);
 
 /*!
  * Set the value of the TypedAtomicSlotGroup field in the given message descriptor. The latter can then be set to its appropriate
@@ -5326,11 +4333,8 @@ extern GED_SLOT_GROUP GED_CALLCONV _GED_GetTypedAtomicSlotGroup(const uint32_t m
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetTypedAtomicSlotGroup(uint32_t* msgDesc, const GED_MODEL modelId, const GED_SLOT_GROUP
-                                                                  slotGroup);
-#define GED_SetTypedAtomicSlotGroup(msgDesc, modelId, slotGroup) ( \
-    GED_TraceAPI("GED_SetTypedAtomicSlotGroup(" #msgDesc ", " #modelId ", " #slotGroup ")"), \
-    _GED_SetTypedAtomicSlotGroup(msgDesc, modelId, slotGroup))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetTypedAtomicSlotGroup(uint32_t* msgDesc, const GED_MODEL modelId, const GED_SLOT_GROUP
+                                                                 slotGroup);
 
 /*!
  * Get the value of the UntypedSurfaceSIMDMode field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The
@@ -5344,11 +4348,8 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetTypedAtomicSlotGroup(uint32_t* msgD
  *
  * @return      UntypedSurfaceSIMDMode's enumeration if the field is valid, GED_SIMDMODE_INVALID otherwise.
  */
-extern GED_SIMDMODE GED_CALLCONV _GED_GetUntypedSurfaceSIMDMode(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
-                                                                result);
-#define GED_GetUntypedSurfaceSIMDMode(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetUntypedSurfaceSIMDMode(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetUntypedSurfaceSIMDMode(msgDesc, modelId, result))
+extern GED_SIMDMODE GED_CALLCONV GED_GetUntypedSurfaceSIMDMode(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                               result);
 
 /*!
  * Set the value of the UntypedSurfaceSIMDMode field in the given message descriptor. The latter can then be set to its appropriate
@@ -5360,11 +4361,8 @@ extern GED_SIMDMODE GED_CALLCONV _GED_GetUntypedSurfaceSIMDMode(const uint32_t m
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetUntypedSurfaceSIMDMode(uint32_t* msgDesc, const GED_MODEL modelId, const GED_SIMDMODE
-                                                                    simdMode);
-#define GED_SetUntypedSurfaceSIMDMode(msgDesc, modelId, simdMode) ( \
-    GED_TraceAPI("GED_SetUntypedSurfaceSIMDMode(" #msgDesc ", " #modelId ", " #simdMode ")"), \
-    _GED_SetUntypedSurfaceSIMDMode(msgDesc, modelId, simdMode))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetUntypedSurfaceSIMDMode(uint32_t* msgDesc, const GED_MODEL modelId, const GED_SIMDMODE
+                                                                   simdMode);
 
 /*!
  * Get the value of the UntypedAtomicSIMDMode field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The
@@ -5378,11 +4376,8 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetUntypedSurfaceSIMDMode(uint32_t* ms
  *
  * @return      UntypedAtomicSIMDMode's enumeration if the field is valid, GED_SIMDMODE_INVALID otherwise.
  */
-extern GED_SIMDMODE GED_CALLCONV _GED_GetUntypedAtomicSIMDMode(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
-                                                               result);
-#define GED_GetUntypedAtomicSIMDMode(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetUntypedAtomicSIMDMode(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetUntypedAtomicSIMDMode(msgDesc, modelId, result))
+extern GED_SIMDMODE GED_CALLCONV GED_GetUntypedAtomicSIMDMode(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                              result);
 
 /*!
  * Set the value of the UntypedAtomicSIMDMode field in the given message descriptor. The latter can then be set to its appropriate
@@ -5394,11 +4389,8 @@ extern GED_SIMDMODE GED_CALLCONV _GED_GetUntypedAtomicSIMDMode(const uint32_t ms
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetUntypedAtomicSIMDMode(uint32_t* msgDesc, const GED_MODEL modelId, const GED_SIMDMODE
-                                                                   simdMode);
-#define GED_SetUntypedAtomicSIMDMode(msgDesc, modelId, simdMode) ( \
-    GED_TraceAPI("GED_SetUntypedAtomicSIMDMode(" #msgDesc ", " #modelId ", " #simdMode ")"), \
-    _GED_SetUntypedAtomicSIMDMode(msgDesc, modelId, simdMode))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetUntypedAtomicSIMDMode(uint32_t* msgDesc, const GED_MODEL modelId, const GED_SIMDMODE
+                                                                  simdMode);
 
 /*!
  * Get the value of the InvalidateAfterRead field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). See @ref
@@ -5411,10 +4403,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetUntypedAtomicSIMDMode(uint32_t* msg
  *
  * @return      The invalidate after read enable if the field is valid, the unchanged msgDesc value otherwise.
  */
-extern uint32_t GED_CALLCONV _GED_GetInvalidateAfterRead(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetInvalidateAfterRead(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetInvalidateAfterRead(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetInvalidateAfterRead(msgDesc, modelId, result))
+extern uint32_t GED_CALLCONV GED_GetInvalidateAfterRead(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the InvalidateAfterRead field in the given message descriptor. The latter can then be set to its appropriate field
@@ -5426,11 +4415,8 @@ extern uint32_t GED_CALLCONV _GED_GetInvalidateAfterRead(const uint32_t msgDesc,
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetInvalidateAfterRead(uint32_t* msgDesc, const GED_MODEL modelId, const uint32_t
-                                                                 invalidateAfterReadEnable);
-#define GED_SetInvalidateAfterRead(msgDesc, modelId, invalidateAfterReadEnable) ( \
-    GED_TraceAPI("GED_SetInvalidateAfterRead(" #msgDesc ", " #modelId ", " #invalidateAfterReadEnable ")"), \
-    _GED_SetInvalidateAfterRead(msgDesc, modelId, invalidateAfterReadEnable))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetInvalidateAfterRead(uint32_t* msgDesc, const GED_MODEL modelId, const uint32_t
+                                                                invalidateAfterReadEnable);
 
 /*!
  * Get the value of the BlockSize field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function returns
@@ -5444,10 +4430,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetInvalidateAfterRead(uint32_t* msgDe
  *
  * @return      BlockSize's enumeration if the field is valid, GED_BLOCK_SIZE_INVALID otherwise.
  */
-extern GED_BLOCK_SIZE GED_CALLCONV _GED_GetBlockSize(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetBlockSize(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetBlockSize(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetBlockSize(msgDesc, modelId, result))
+extern GED_BLOCK_SIZE GED_CALLCONV GED_GetBlockSize(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the BlockSize field in the given message descriptor. The latter can then be set to its appropriate field (@ref
@@ -5459,10 +4442,7 @@ extern GED_BLOCK_SIZE GED_CALLCONV _GED_GetBlockSize(const uint32_t msgDesc, con
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetBlockSize(uint32_t* msgDesc, const GED_MODEL modelId, const GED_BLOCK_SIZE blockSize);
-#define GED_SetBlockSize(msgDesc, modelId, blockSize) ( \
-    GED_TraceAPI("GED_SetBlockSize(" #msgDesc ", " #modelId ", " #blockSize ")"), \
-    _GED_SetBlockSize(msgDesc, modelId, blockSize))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetBlockSize(uint32_t* msgDesc, const GED_MODEL modelId, const GED_BLOCK_SIZE blockSize);
 
 /*!
  * Get the value of the RedChannel field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function returns
@@ -5476,10 +4456,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetBlockSize(uint32_t* msgDesc, const 
  *
  * @return      RedChannel's enumeration if the field is valid, GED_CHANNEL_MASK_INVALID otherwise.
  */
-extern GED_CHANNEL_MASK GED_CALLCONV _GED_GetRedChannel(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetRedChannel(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetRedChannel(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetRedChannel(msgDesc, modelId, result))
+extern GED_CHANNEL_MASK GED_CALLCONV GED_GetRedChannel(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the RedChannel field in the given message descriptor. The latter can then be set to its appropriate field (@ref
@@ -5491,10 +4468,7 @@ extern GED_CHANNEL_MASK GED_CALLCONV _GED_GetRedChannel(const uint32_t msgDesc, 
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetRedChannel(uint32_t* msgDesc, const GED_MODEL modelId, const GED_CHANNEL_MASK channel);
-#define GED_SetRedChannel(msgDesc, modelId, channel) ( \
-    GED_TraceAPI("GED_SetRedChannel(" #msgDesc ", " #modelId ", " #channel ")"), \
-    _GED_SetRedChannel(msgDesc, modelId, channel))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetRedChannel(uint32_t* msgDesc, const GED_MODEL modelId, const GED_CHANNEL_MASK channel);
 
 /*!
  * Get the value of the GreenChannel field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function
@@ -5508,10 +4482,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetRedChannel(uint32_t* msgDesc, const
  *
  * @return      GreenChannel's enumeration if the field is valid, GED_CHANNEL_MASK_INVALID otherwise.
  */
-extern GED_CHANNEL_MASK GED_CALLCONV _GED_GetGreenChannel(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetGreenChannel(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetGreenChannel(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetGreenChannel(msgDesc, modelId, result))
+extern GED_CHANNEL_MASK GED_CALLCONV GED_GetGreenChannel(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the GreenChannel field in the given message descriptor. The latter can then be set to its appropriate field (@ref
@@ -5523,10 +4494,7 @@ extern GED_CHANNEL_MASK GED_CALLCONV _GED_GetGreenChannel(const uint32_t msgDesc
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetGreenChannel(uint32_t* msgDesc, const GED_MODEL modelId, const GED_CHANNEL_MASK channel);
-#define GED_SetGreenChannel(msgDesc, modelId, channel) ( \
-    GED_TraceAPI("GED_SetGreenChannel(" #msgDesc ", " #modelId ", " #channel ")"), \
-    _GED_SetGreenChannel(msgDesc, modelId, channel))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetGreenChannel(uint32_t* msgDesc, const GED_MODEL modelId, const GED_CHANNEL_MASK channel);
 
 /*!
  * Get the value of the BlueChannel field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function returns
@@ -5540,10 +4508,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetGreenChannel(uint32_t* msgDesc, con
  *
  * @return      BlueChannel's enumeration if the field is valid, GED_CHANNEL_MASK_INVALID otherwise.
  */
-extern GED_CHANNEL_MASK GED_CALLCONV _GED_GetBlueChannel(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetBlueChannel(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetBlueChannel(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetBlueChannel(msgDesc, modelId, result))
+extern GED_CHANNEL_MASK GED_CALLCONV GED_GetBlueChannel(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the BlueChannel field in the given message descriptor. The latter can then be set to its appropriate field (@ref
@@ -5555,10 +4520,7 @@ extern GED_CHANNEL_MASK GED_CALLCONV _GED_GetBlueChannel(const uint32_t msgDesc,
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetBlueChannel(uint32_t* msgDesc, const GED_MODEL modelId, const GED_CHANNEL_MASK channel);
-#define GED_SetBlueChannel(msgDesc, modelId, channel) ( \
-    GED_TraceAPI("GED_SetBlueChannel(" #msgDesc ", " #modelId ", " #channel ")"), \
-    _GED_SetBlueChannel(msgDesc, modelId, channel))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetBlueChannel(uint32_t* msgDesc, const GED_MODEL modelId, const GED_CHANNEL_MASK channel);
 
 /*!
  * Get the value of the AlphaChannel field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function
@@ -5572,10 +4534,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetBlueChannel(uint32_t* msgDesc, cons
  *
  * @return      AlphaChannel's enumeration if the field is valid, GED_CHANNEL_MASK_INVALID otherwise.
  */
-extern GED_CHANNEL_MASK GED_CALLCONV _GED_GetAlphaChannel(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetAlphaChannel(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetAlphaChannel(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetAlphaChannel(msgDesc, modelId, result))
+extern GED_CHANNEL_MASK GED_CALLCONV GED_GetAlphaChannel(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the AlphaChannel field in the given message descriptor. The latter can then be set to its appropriate field (@ref
@@ -5587,10 +4546,7 @@ extern GED_CHANNEL_MASK GED_CALLCONV _GED_GetAlphaChannel(const uint32_t msgDesc
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetAlphaChannel(uint32_t* msgDesc, const GED_MODEL modelId, const GED_CHANNEL_MASK channel);
-#define GED_SetAlphaChannel(msgDesc, modelId, channel) ( \
-    GED_TraceAPI("GED_SetAlphaChannel(" #msgDesc ", " #modelId ", " #channel ")"), \
-    _GED_SetAlphaChannel(msgDesc, modelId, channel))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetAlphaChannel(uint32_t* msgDesc, const GED_MODEL modelId, const GED_CHANNEL_MASK channel);
 
 /*!
  * Get the value of the ReturnDataControl field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function
@@ -5604,11 +4560,8 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetAlphaChannel(uint32_t* msgDesc, con
  *
  * @return      ReturnDataControl's enumeration if the field is valid, GED_RETURN_DATA_CONTROL_INVALID otherwise.
  */
-extern GED_RETURN_DATA_CONTROL GED_CALLCONV _GED_GetReturnDataControl(const uint32_t msgDesc, const GED_MODEL modelId,
-                                                                      GED_RETURN_VALUE* result);
-#define GED_GetReturnDataControl(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetReturnDataControl(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetReturnDataControl(msgDesc, modelId, result))
+extern GED_RETURN_DATA_CONTROL GED_CALLCONV GED_GetReturnDataControl(const uint32_t msgDesc, const GED_MODEL modelId,
+                                                                     GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the ReturnDataControl field in the given message descriptor. The latter can then be set to its appropriate field
@@ -5620,11 +4573,8 @@ extern GED_RETURN_DATA_CONTROL GED_CALLCONV _GED_GetReturnDataControl(const uint
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetReturnDataControl(uint32_t* msgDesc, const GED_MODEL modelId, const
-                                                               GED_RETURN_DATA_CONTROL returnDataControl);
-#define GED_SetReturnDataControl(msgDesc, modelId, returnDataControl) ( \
-    GED_TraceAPI("GED_SetReturnDataControl(" #msgDesc ", " #modelId ", " #returnDataControl ")"), \
-    _GED_SetReturnDataControl(msgDesc, modelId, returnDataControl))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetReturnDataControl(uint32_t* msgDesc, const GED_MODEL modelId, const
+                                                              GED_RETURN_DATA_CONTROL returnDataControl);
 
 /*!
  * Get the value of the AtomicOperationType field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function
@@ -5638,11 +4588,8 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetReturnDataControl(uint32_t* msgDesc
  *
  * @return      AtomicOperationType's enumeration if the field is valid, GED_ATOMIC_OPERATION_TYPE_INVALID otherwise.
  */
-extern GED_ATOMIC_OPERATION_TYPE GED_CALLCONV _GED_GetAtomicOperationType(const uint32_t msgDesc, const GED_MODEL modelId,
-                                                                          GED_RETURN_VALUE* result);
-#define GED_GetAtomicOperationType(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetAtomicOperationType(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetAtomicOperationType(msgDesc, modelId, result))
+extern GED_ATOMIC_OPERATION_TYPE GED_CALLCONV GED_GetAtomicOperationType(const uint32_t msgDesc, const GED_MODEL modelId,
+                                                                         GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the AtomicOperationType field in the given message descriptor. The latter can then be set to its appropriate field
@@ -5654,11 +4601,8 @@ extern GED_ATOMIC_OPERATION_TYPE GED_CALLCONV _GED_GetAtomicOperationType(const 
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetAtomicOperationType(uint32_t* msgDesc, const GED_MODEL modelId, const
-                                                                 GED_ATOMIC_OPERATION_TYPE operationType);
-#define GED_SetAtomicOperationType(msgDesc, modelId, operationType) ( \
-    GED_TraceAPI("GED_SetAtomicOperationType(" #msgDesc ", " #modelId ", " #operationType ")"), \
-    _GED_SetAtomicOperationType(msgDesc, modelId, operationType))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetAtomicOperationType(uint32_t* msgDesc, const GED_MODEL modelId, const
+                                                                GED_ATOMIC_OPERATION_TYPE operationType);
 
 /*!
  * Get the value of the AtomicCounterOperationType field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The
@@ -5672,11 +4616,8 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetAtomicOperationType(uint32_t* msgDe
  *
  * @return      AtomicCounterOperationType's enumeration if the field is valid, GED_ATOMIC_OPERATION_TYPE_INVALID otherwise.
  */
-extern GED_ATOMIC_OPERATION_TYPE GED_CALLCONV _GED_GetAtomicCounterOperationType(const uint32_t msgDesc, const GED_MODEL modelId,
-                                                                                 GED_RETURN_VALUE* result);
-#define GED_GetAtomicCounterOperationType(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetAtomicCounterOperationType(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetAtomicCounterOperationType(msgDesc, modelId, result))
+extern GED_ATOMIC_OPERATION_TYPE GED_CALLCONV GED_GetAtomicCounterOperationType(const uint32_t msgDesc, const GED_MODEL modelId,
+                                                                                GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the AtomicCounterOperationType field in the given message descriptor. The latter can then be set to its
@@ -5688,11 +4629,8 @@ extern GED_ATOMIC_OPERATION_TYPE GED_CALLCONV _GED_GetAtomicCounterOperationType
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetAtomicCounterOperationType(uint32_t* msgDesc, const GED_MODEL modelId, const
-                                                                        GED_ATOMIC_OPERATION_TYPE operationType);
-#define GED_SetAtomicCounterOperationType(msgDesc, modelId, operationType) ( \
-    GED_TraceAPI("GED_SetAtomicCounterOperationType(" #msgDesc ", " #modelId ", " #operationType ")"), \
-    _GED_SetAtomicCounterOperationType(msgDesc, modelId, operationType))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetAtomicCounterOperationType(uint32_t* msgDesc, const GED_MODEL modelId, const
+                                                                       GED_ATOMIC_OPERATION_TYPE operationType);
 
 /*!
  * Get the value of the SubFuncID field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function returns
@@ -5706,10 +4644,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetAtomicCounterOperationType(uint32_t
  *
  * @return      SubFuncID's enumeration if the field is valid, GED_SUB_FUNC_ID_INVALID otherwise.
  */
-extern GED_SUB_FUNC_ID GED_CALLCONV _GED_GetSubFuncID(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetSubFuncID(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetSubFuncID(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetSubFuncID(msgDesc, modelId, result))
+extern GED_SUB_FUNC_ID GED_CALLCONV GED_GetSubFuncID(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the SubFuncID field in the given message descriptor. The latter can then be set to its appropriate field (@ref
@@ -5721,10 +4656,7 @@ extern GED_SUB_FUNC_ID GED_CALLCONV _GED_GetSubFuncID(const uint32_t msgDesc, co
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSubFuncID(uint32_t* msgDesc, const GED_MODEL modelId, const GED_SUB_FUNC_ID subFuncID);
-#define GED_SetSubFuncID(msgDesc, modelId, subFuncID) ( \
-    GED_TraceAPI("GED_SetSubFuncID(" #msgDesc ", " #modelId ", " #subFuncID ")"), \
-    _GED_SetSubFuncID(msgDesc, modelId, subFuncID))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSubFuncID(uint32_t* msgDesc, const GED_MODEL modelId, const GED_SUB_FUNC_ID subFuncID);
 
 /*!
  * Get the value of the BindingTableIndex field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). See @ref
@@ -5737,10 +4669,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetSubFuncID(uint32_t* msgDesc, const 
  *
  * @return      The binding table index if the field is valid, the unchanged msgDesc value otherwise.
  */
-extern uint32_t GED_CALLCONV _GED_GetBindingTableIndex(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetBindingTableIndex(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetBindingTableIndex(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetBindingTableIndex(msgDesc, modelId, result))
+extern uint32_t GED_CALLCONV GED_GetBindingTableIndex(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the BindingTableIndex field in the given message descriptor. The latter can then be set to its appropriate field
@@ -5752,10 +4681,7 @@ extern uint32_t GED_CALLCONV _GED_GetBindingTableIndex(const uint32_t msgDesc, c
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetBindingTableIndex(uint32_t* msgDesc, const GED_MODEL modelId, const uint32_t bti);
-#define GED_SetBindingTableIndex(msgDesc, modelId, bti) ( \
-    GED_TraceAPI("GED_SetBindingTableIndex(" #msgDesc ", " #modelId ", " #bti ")"), \
-    _GED_SetBindingTableIndex(msgDesc, modelId, bti))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetBindingTableIndex(uint32_t* msgDesc, const GED_MODEL modelId, const uint32_t bti);
 
 /*!
  * Get the value of the FuncControl field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). See @ref
@@ -5768,10 +4694,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetBindingTableIndex(uint32_t* msgDesc
  *
  * @return      The function control if the field is valid, the unchanged msgDesc value otherwise.
  */
-extern uint32_t GED_CALLCONV _GED_GetFuncControl(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetFuncControl(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetFuncControl(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetFuncControl(msgDesc, modelId, result))
+extern uint32_t GED_CALLCONV GED_GetFuncControl(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the FuncControl field in the given message descriptor. The latter can then be set to its appropriate field (@ref
@@ -5783,10 +4706,7 @@ extern uint32_t GED_CALLCONV _GED_GetFuncControl(const uint32_t msgDesc, const G
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetFuncControl(uint32_t* msgDesc, const GED_MODEL modelId, const uint32_t fc);
-#define GED_SetFuncControl(msgDesc, modelId, fc) ( \
-    GED_TraceAPI("GED_SetFuncControl(" #msgDesc ", " #modelId ", " #fc ")"), \
-    _GED_SetFuncControl(msgDesc, modelId, fc))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetFuncControl(uint32_t* msgDesc, const GED_MODEL modelId, const uint32_t fc);
 
 /*!
  * Get the value of the MessageTypeDP_DC1 field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function
@@ -5800,11 +4720,8 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetFuncControl(uint32_t* msgDesc, cons
  *
  * @return      MessageTypeDP_DC1's enumeration if the field is valid, GED_MESSAGE_TYPE_INVALID otherwise.
  */
-extern GED_MESSAGE_TYPE GED_CALLCONV _GED_GetMessageTypeDP_DC1(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
-                                                               result);
-#define GED_GetMessageTypeDP_DC1(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetMessageTypeDP_DC1(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetMessageTypeDP_DC1(msgDesc, modelId, result))
+extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_DC1(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                              result);
 
 /*!
  * Set the value of the MessageTypeDP_DC1 field in the given message descriptor. The latter can then be set to its appropriate field
@@ -5816,11 +4733,8 @@ extern GED_MESSAGE_TYPE GED_CALLCONV _GED_GetMessageTypeDP_DC1(const uint32_t ms
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMessageTypeDP_DC1(uint32_t* msgDesc, const GED_MODEL modelId, const GED_MESSAGE_TYPE
-                                                               messageType);
-#define GED_SetMessageTypeDP_DC1(msgDesc, modelId, messageType) ( \
-    GED_TraceAPI("GED_SetMessageTypeDP_DC1(" #msgDesc ", " #modelId ", " #messageType ")"), \
-    _GED_SetMessageTypeDP_DC1(msgDesc, modelId, messageType))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMessageTypeDP_DC1(uint32_t* msgDesc, const GED_MODEL modelId, const GED_MESSAGE_TYPE
+                                                              messageType);
 
 /*!
  * Get the value of the MessageTypeDP0Category field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). See @ref
@@ -5833,11 +4747,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMessageTypeDP_DC1(uint32_t* msgDesc
  *
  * @return      The category of the data cache data port 0 message if the field is valid, the unchanged msgDesc value otherwise.
  */
-extern uint32_t GED_CALLCONV _GED_GetMessageTypeDP0Category(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
-                                                            result);
-#define GED_GetMessageTypeDP0Category(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetMessageTypeDP0Category(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetMessageTypeDP0Category(msgDesc, modelId, result))
+extern uint32_t GED_CALLCONV GED_GetMessageTypeDP0Category(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the MessageTypeDP0Category field in the given message descriptor. The latter can then be set to its appropriate
@@ -5849,11 +4759,8 @@ extern uint32_t GED_CALLCONV _GED_GetMessageTypeDP0Category(const uint32_t msgDe
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMessageTypeDP0Category(uint32_t* msgDesc, const GED_MODEL modelId, const uint32_t
-                                                                    category);
-#define GED_SetMessageTypeDP0Category(msgDesc, modelId, category) ( \
-    GED_TraceAPI("GED_SetMessageTypeDP0Category(" #msgDesc ", " #modelId ", " #category ")"), \
-    _GED_SetMessageTypeDP0Category(msgDesc, modelId, category))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMessageTypeDP0Category(uint32_t* msgDesc, const GED_MODEL modelId, const uint32_t
+                                                                   category);
 
 /*!
  * Get the value of the MessageTypeDP_DC0Legacy field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The
@@ -5867,11 +4774,8 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMessageTypeDP0Category(uint32_t* ms
  *
  * @return      MessageTypeDP_DC0Legacy's enumeration if the field is valid, GED_MESSAGE_TYPE_INVALID otherwise.
  */
-extern GED_MESSAGE_TYPE GED_CALLCONV _GED_GetMessageTypeDP_DC0Legacy(const uint32_t msgDesc, const GED_MODEL modelId,
-                                                                     GED_RETURN_VALUE* result);
-#define GED_GetMessageTypeDP_DC0Legacy(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetMessageTypeDP_DC0Legacy(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetMessageTypeDP_DC0Legacy(msgDesc, modelId, result))
+extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_DC0Legacy(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                                    result);
 
 /*!
  * Set the value of the MessageTypeDP_DC0Legacy field in the given message descriptor. The latter can then be set to its appropriate
@@ -5883,11 +4787,8 @@ extern GED_MESSAGE_TYPE GED_CALLCONV _GED_GetMessageTypeDP_DC0Legacy(const uint3
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMessageTypeDP_DC0Legacy(uint32_t* msgDesc, const GED_MODEL modelId, const
-                                                                     GED_MESSAGE_TYPE messageType);
-#define GED_SetMessageTypeDP_DC0Legacy(msgDesc, modelId, messageType) ( \
-    GED_TraceAPI("GED_SetMessageTypeDP_DC0Legacy(" #msgDesc ", " #modelId ", " #messageType ")"), \
-    _GED_SetMessageTypeDP_DC0Legacy(msgDesc, modelId, messageType))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMessageTypeDP_DC0Legacy(uint32_t* msgDesc, const GED_MODEL modelId, const GED_MESSAGE_TYPE
+                                                                    messageType);
 
 /*!
  * Get the value of the MessageTypeDP_DC0ScratchBlock field from the given message descriptor (as obtained by @ref GED_GetMsgDesc).
@@ -5901,11 +4802,8 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMessageTypeDP_DC0Legacy(uint32_t* m
  *
  * @return      MessageTypeDP_DC0ScratchBlock's enumeration if the field is valid, GED_MESSAGE_TYPE_INVALID otherwise.
  */
-extern GED_MESSAGE_TYPE GED_CALLCONV _GED_GetMessageTypeDP_DC0ScratchBlock(const uint32_t msgDesc, const GED_MODEL modelId,
-                                                                           GED_RETURN_VALUE* result);
-#define GED_GetMessageTypeDP_DC0ScratchBlock(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetMessageTypeDP_DC0ScratchBlock(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetMessageTypeDP_DC0ScratchBlock(msgDesc, modelId, result))
+extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_DC0ScratchBlock(const uint32_t msgDesc, const GED_MODEL modelId,
+                                                                          GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the MessageTypeDP_DC0ScratchBlock field in the given message descriptor. The latter can then be set to its
@@ -5917,11 +4815,8 @@ extern GED_MESSAGE_TYPE GED_CALLCONV _GED_GetMessageTypeDP_DC0ScratchBlock(const
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMessageTypeDP_DC0ScratchBlock(uint32_t* msgDesc, const GED_MODEL modelId, const
-                                                                           GED_MESSAGE_TYPE messageType);
-#define GED_SetMessageTypeDP_DC0ScratchBlock(msgDesc, modelId, messageType) ( \
-    GED_TraceAPI("GED_SetMessageTypeDP_DC0ScratchBlock(" #msgDesc ", " #modelId ", " #messageType ")"), \
-    _GED_SetMessageTypeDP_DC0ScratchBlock(msgDesc, modelId, messageType))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMessageTypeDP_DC0ScratchBlock(uint32_t* msgDesc, const GED_MODEL modelId, const
+                                                                          GED_MESSAGE_TYPE messageType);
 
 /*!
  * Get the value of the MessageTypeDP_DC2 field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function
@@ -5935,11 +4830,8 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMessageTypeDP_DC0ScratchBlock(uint3
  *
  * @return      MessageTypeDP_DC2's enumeration if the field is valid, GED_MESSAGE_TYPE_INVALID otherwise.
  */
-extern GED_MESSAGE_TYPE GED_CALLCONV _GED_GetMessageTypeDP_DC2(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
-                                                               result);
-#define GED_GetMessageTypeDP_DC2(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetMessageTypeDP_DC2(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetMessageTypeDP_DC2(msgDesc, modelId, result))
+extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_DC2(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                              result);
 
 /*!
  * Set the value of the MessageTypeDP_DC2 field in the given message descriptor. The latter can then be set to its appropriate field
@@ -5951,11 +4843,8 @@ extern GED_MESSAGE_TYPE GED_CALLCONV _GED_GetMessageTypeDP_DC2(const uint32_t ms
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMessageTypeDP_DC2(uint32_t* msgDesc, const GED_MODEL modelId, const GED_MESSAGE_TYPE
-                                                               messageType);
-#define GED_SetMessageTypeDP_DC2(msgDesc, modelId, messageType) ( \
-    GED_TraceAPI("GED_SetMessageTypeDP_DC2(" #msgDesc ", " #modelId ", " #messageType ")"), \
-    _GED_SetMessageTypeDP_DC2(msgDesc, modelId, messageType))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMessageTypeDP_DC2(uint32_t* msgDesc, const GED_MODEL modelId, const GED_MESSAGE_TYPE
+                                                              messageType);
 
 /*!
  * Get the value of the MessageTypeDP_DCRO field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function
@@ -5969,11 +4858,8 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMessageTypeDP_DC2(uint32_t* msgDesc
  *
  * @return      MessageTypeDP_DCRO's enumeration if the field is valid, GED_MESSAGE_TYPE_INVALID otherwise.
  */
-extern GED_MESSAGE_TYPE GED_CALLCONV _GED_GetMessageTypeDP_DCRO(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
-                                                                result);
-#define GED_GetMessageTypeDP_DCRO(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetMessageTypeDP_DCRO(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetMessageTypeDP_DCRO(msgDesc, modelId, result))
+extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_DCRO(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                               result);
 
 /*!
  * Set the value of the MessageTypeDP_DCRO field in the given message descriptor. The latter can then be set to its appropriate field
@@ -5985,11 +4871,8 @@ extern GED_MESSAGE_TYPE GED_CALLCONV _GED_GetMessageTypeDP_DCRO(const uint32_t m
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMessageTypeDP_DCRO(uint32_t* msgDesc, const GED_MODEL modelId, const GED_MESSAGE_TYPE
-                                                                messageType);
-#define GED_SetMessageTypeDP_DCRO(msgDesc, modelId, messageType) ( \
-    GED_TraceAPI("GED_SetMessageTypeDP_DCRO(" #msgDesc ", " #modelId ", " #messageType ")"), \
-    _GED_SetMessageTypeDP_DCRO(msgDesc, modelId, messageType))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMessageTypeDP_DCRO(uint32_t* msgDesc, const GED_MODEL modelId, const GED_MESSAGE_TYPE
+                                                               messageType);
 
 /*!
  * Get the value of the ExMessageLength field from the given extended message descriptor (as obtained by @ref GED_GetExMsgDescImm).
@@ -6002,10 +4885,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMessageTypeDP_DCRO(uint32_t* msgDes
  *
  * @return      The exmessage length if the field is valid, the unchanged exMsgDesc value otherwise.
  */
-extern uint32_t GED_CALLCONV _GED_GetExMessageLength(const uint32_t exMsgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetExMessageLength(exMsgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetExMessageLength(" #exMsgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetExMessageLength(exMsgDesc, modelId, result))
+extern uint32_t GED_CALLCONV GED_GetExMessageLength(const uint32_t exMsgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the ExMessageLength field in the given extended message descriptor. The latter can then be set to its appropriate
@@ -6017,10 +4897,7 @@ extern uint32_t GED_CALLCONV _GED_GetExMessageLength(const uint32_t exMsgDesc, c
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetExMessageLength(uint32_t* exMsgDesc, const GED_MODEL modelId, const uint32_t length);
-#define GED_SetExMessageLength(exMsgDesc, modelId, length) ( \
-    GED_TraceAPI("GED_SetExMessageLength(" #exMsgDesc ", " #modelId ", " #length ")"), \
-    _GED_SetExMessageLength(exMsgDesc, modelId, length))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetExMessageLength(uint32_t* exMsgDesc, const GED_MODEL modelId, const uint32_t length);
 
 /*!
  * Get the value of the DPOpcode field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function returns an
@@ -6034,10 +4911,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetExMessageLength(uint32_t* exMsgDesc
  *
  * @return      DPOpcode's enumeration if the field is valid, GED_DP_OPCODE_INVALID otherwise.
  */
-extern GED_DP_OPCODE GED_CALLCONV _GED_GetDPOpcode(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetDPOpcode(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetDPOpcode(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetDPOpcode(msgDesc, modelId, result))
+extern GED_DP_OPCODE GED_CALLCONV GED_GetDPOpcode(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DPOpcode field in the given message descriptor. The latter can then be set to its appropriate field (@ref
@@ -6049,10 +4923,7 @@ extern GED_DP_OPCODE GED_CALLCONV _GED_GetDPOpcode(const uint32_t msgDesc, const
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPOpcode(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_OPCODE opcode);
-#define GED_SetDPOpcode(msgDesc, modelId, opcode) ( \
-    GED_TraceAPI("GED_SetDPOpcode(" #msgDesc ", " #modelId ", " #opcode ")"), \
-    _GED_SetDPOpcode(msgDesc, modelId, opcode))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDPOpcode(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_OPCODE opcode);
 
 /*!
  * Get the value of the DPAddrSurfaceType field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function
@@ -6066,11 +4937,8 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPOpcode(uint32_t* msgDesc, const G
  *
  * @return      DPAddrSurfaceType's enumeration if the field is valid, GED_DP_ADDR_SURFACE_TYPE_INVALID otherwise.
  */
-extern GED_DP_ADDR_SURFACE_TYPE GED_CALLCONV _GED_GetDPAddrSurfaceType(const uint32_t msgDesc, const GED_MODEL modelId,
-                                                                       GED_RETURN_VALUE* result);
-#define GED_GetDPAddrSurfaceType(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetDPAddrSurfaceType(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetDPAddrSurfaceType(msgDesc, modelId, result))
+extern GED_DP_ADDR_SURFACE_TYPE GED_CALLCONV GED_GetDPAddrSurfaceType(const uint32_t msgDesc, const GED_MODEL modelId,
+                                                                      GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DPAddrSurfaceType field in the given message descriptor. The latter can then be set to its appropriate field
@@ -6082,11 +4950,8 @@ extern GED_DP_ADDR_SURFACE_TYPE GED_CALLCONV _GED_GetDPAddrSurfaceType(const uin
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPAddrSurfaceType(uint32_t* msgDesc, const GED_MODEL modelId, const
-                                                               GED_DP_ADDR_SURFACE_TYPE AddrType);
-#define GED_SetDPAddrSurfaceType(msgDesc, modelId, AddrType) ( \
-    GED_TraceAPI("GED_SetDPAddrSurfaceType(" #msgDesc ", " #modelId ", " #AddrType ")"), \
-    _GED_SetDPAddrSurfaceType(msgDesc, modelId, AddrType))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDPAddrSurfaceType(uint32_t* msgDesc, const GED_MODEL modelId, const
+                                                              GED_DP_ADDR_SURFACE_TYPE AddrType);
 
 /*!
  * Get the value of the DPVectSize field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function returns
@@ -6100,10 +4965,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPAddrSurfaceType(uint32_t* msgDesc
  *
  * @return      DPVectSize's enumeration if the field is valid, GED_DP_VECT_SIZE_INVALID otherwise.
  */
-extern GED_DP_VECT_SIZE GED_CALLCONV _GED_GetDPVectSize(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetDPVectSize(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetDPVectSize(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetDPVectSize(msgDesc, modelId, result))
+extern GED_DP_VECT_SIZE GED_CALLCONV GED_GetDPVectSize(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DPVectSize field in the given message descriptor. The latter can then be set to its appropriate field (@ref
@@ -6115,10 +4977,7 @@ extern GED_DP_VECT_SIZE GED_CALLCONV _GED_GetDPVectSize(const uint32_t msgDesc, 
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPVectSize(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_VECT_SIZE VectSize);
-#define GED_SetDPVectSize(msgDesc, modelId, VectSize) ( \
-    GED_TraceAPI("GED_SetDPVectSize(" #msgDesc ", " #modelId ", " #VectSize ")"), \
-    _GED_SetDPVectSize(msgDesc, modelId, VectSize))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDPVectSize(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_VECT_SIZE VectSize);
 
 /*!
  * Get the value of the DPFlushType field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function returns
@@ -6132,10 +4991,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPVectSize(uint32_t* msgDesc, const
  *
  * @return      DPFlushType's enumeration if the field is valid, GED_DP_FLUSH_TYPE_INVALID otherwise.
  */
-extern GED_DP_FLUSH_TYPE GED_CALLCONV _GED_GetDPFlushType(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetDPFlushType(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetDPFlushType(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetDPFlushType(msgDesc, modelId, result))
+extern GED_DP_FLUSH_TYPE GED_CALLCONV GED_GetDPFlushType(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DPFlushType field in the given message descriptor. The latter can then be set to its appropriate field (@ref
@@ -6147,11 +5003,8 @@ extern GED_DP_FLUSH_TYPE GED_CALLCONV _GED_GetDPFlushType(const uint32_t msgDesc
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPFlushType(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_FLUSH_TYPE
-                                                         FlushType);
-#define GED_SetDPFlushType(msgDesc, modelId, FlushType) ( \
-    GED_TraceAPI("GED_SetDPFlushType(" #msgDesc ", " #modelId ", " #FlushType ")"), \
-    _GED_SetDPFlushType(msgDesc, modelId, FlushType))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDPFlushType(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_FLUSH_TYPE
+                                                        FlushType);
 
 /*!
  * Get the value of the DPTranspose field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function returns
@@ -6165,10 +5018,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPFlushType(uint32_t* msgDesc, cons
  *
  * @return      DPTranspose's enumeration if the field is valid, GED_DP_TRANSPOSE_INVALID otherwise.
  */
-extern GED_DP_TRANSPOSE GED_CALLCONV _GED_GetDPTranspose(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetDPTranspose(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetDPTranspose(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetDPTranspose(msgDesc, modelId, result))
+extern GED_DP_TRANSPOSE GED_CALLCONV GED_GetDPTranspose(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DPTranspose field in the given message descriptor. The latter can then be set to its appropriate field (@ref
@@ -6180,11 +5030,7 @@ extern GED_DP_TRANSPOSE GED_CALLCONV _GED_GetDPTranspose(const uint32_t msgDesc,
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPTranspose(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_TRANSPOSE
-                                                         Transpose);
-#define GED_SetDPTranspose(msgDesc, modelId, Transpose) ( \
-    GED_TraceAPI("GED_SetDPTranspose(" #msgDesc ", " #modelId ", " #Transpose ")"), \
-    _GED_SetDPTranspose(msgDesc, modelId, Transpose))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDPTranspose(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_TRANSPOSE Transpose);
 
 /*!
  * Get the value of the DPFlushRange field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). See @ref
@@ -6197,10 +5043,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPTranspose(uint32_t* msgDesc, cons
  *
  * @return      The flush range if the field is valid, the unchanged msgDesc value otherwise.
  */
-extern uint32_t GED_CALLCONV _GED_GetDPFlushRange(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetDPFlushRange(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetDPFlushRange(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetDPFlushRange(msgDesc, modelId, result))
+extern uint32_t GED_CALLCONV GED_GetDPFlushRange(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DPFlushRange field in the given message descriptor. The latter can then be set to its appropriate field (@ref
@@ -6212,10 +5055,7 @@ extern uint32_t GED_CALLCONV _GED_GetDPFlushRange(const uint32_t msgDesc, const 
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPFlushRange(uint32_t* msgDesc, const GED_MODEL modelId, const uint32_t range);
-#define GED_SetDPFlushRange(msgDesc, modelId, range) ( \
-    GED_TraceAPI("GED_SetDPFlushRange(" #msgDesc ", " #modelId ", " #range ")"), \
-    _GED_SetDPFlushRange(msgDesc, modelId, range))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDPFlushRange(uint32_t* msgDesc, const GED_MODEL modelId, const uint32_t range);
 
 /*!
  * Get the value of the DPDataSize field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function returns
@@ -6229,10 +5069,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPFlushRange(uint32_t* msgDesc, con
  *
  * @return      DPDataSize's enumeration if the field is valid, GED_DP_DATA_SIZE_INVALID otherwise.
  */
-extern GED_DP_DATA_SIZE GED_CALLCONV _GED_GetDPDataSize(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetDPDataSize(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetDPDataSize(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetDPDataSize(msgDesc, modelId, result))
+extern GED_DP_DATA_SIZE GED_CALLCONV GED_GetDPDataSize(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DPDataSize field in the given message descriptor. The latter can then be set to its appropriate field (@ref
@@ -6244,10 +5081,7 @@ extern GED_DP_DATA_SIZE GED_CALLCONV _GED_GetDPDataSize(const uint32_t msgDesc, 
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPDataSize(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_DATA_SIZE DataSize);
-#define GED_SetDPDataSize(msgDesc, modelId, DataSize) ( \
-    GED_TraceAPI("GED_SetDPDataSize(" #msgDesc ", " #modelId ", " #DataSize ")"), \
-    _GED_SetDPDataSize(msgDesc, modelId, DataSize))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDPDataSize(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_DATA_SIZE DataSize);
 
 /*!
  * Get the value of the DPFenceScope field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function
@@ -6261,11 +5095,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPDataSize(uint32_t* msgDesc, const
  *
  * @return      DPFenceScope's enumeration if the field is valid, GED_DP_FENCE_SCOPE_INVALID otherwise.
  */
-extern GED_DP_FENCE_SCOPE GED_CALLCONV _GED_GetDPFenceScope(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
-                                                            result);
-#define GED_GetDPFenceScope(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetDPFenceScope(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetDPFenceScope(msgDesc, modelId, result))
+extern GED_DP_FENCE_SCOPE GED_CALLCONV GED_GetDPFenceScope(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DPFenceScope field in the given message descriptor. The latter can then be set to its appropriate field (@ref
@@ -6277,11 +5107,8 @@ extern GED_DP_FENCE_SCOPE GED_CALLCONV _GED_GetDPFenceScope(const uint32_t msgDe
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPFenceScope(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_FENCE_SCOPE
-                                                          FenceScope);
-#define GED_SetDPFenceScope(msgDesc, modelId, FenceScope) ( \
-    GED_TraceAPI("GED_SetDPFenceScope(" #msgDesc ", " #modelId ", " #FenceScope ")"), \
-    _GED_SetDPFenceScope(msgDesc, modelId, FenceScope))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDPFenceScope(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_FENCE_SCOPE
+                                                         FenceScope);
 
 /*!
  * Get the value of the DPAddrSize field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function returns
@@ -6295,10 +5122,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPFenceScope(uint32_t* msgDesc, con
  *
  * @return      DPAddrSize's enumeration if the field is valid, GED_DP_ADDR_SIZE_INVALID otherwise.
  */
-extern GED_DP_ADDR_SIZE GED_CALLCONV _GED_GetDPAddrSize(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetDPAddrSize(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetDPAddrSize(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetDPAddrSize(msgDesc, modelId, result))
+extern GED_DP_ADDR_SIZE GED_CALLCONV GED_GetDPAddrSize(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DPAddrSize field in the given message descriptor. The latter can then be set to its appropriate field (@ref
@@ -6310,10 +5134,7 @@ extern GED_DP_ADDR_SIZE GED_CALLCONV _GED_GetDPAddrSize(const uint32_t msgDesc, 
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPAddrSize(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_ADDR_SIZE AddrSize);
-#define GED_SetDPAddrSize(msgDesc, modelId, AddrSize) ( \
-    GED_TraceAPI("GED_SetDPAddrSize(" #msgDesc ", " #modelId ", " #AddrSize ")"), \
-    _GED_SetDPAddrSize(msgDesc, modelId, AddrSize))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDPAddrSize(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_ADDR_SIZE AddrSize);
 
 /*!
  * Get the value of the DPCacheStore field from the given  (as obtained by @ref GED_GetMsgDesc). The function returns an enumeration
@@ -6327,10 +5148,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPAddrSize(uint32_t* msgDesc, const
  *
  * @return      DPCacheStore's enumeration if the field is valid, GED_DPCACHE_STORE_INVALID otherwise.
  */
-extern GED_DPCACHE_STORE GED_CALLCONV _GED_GetDPCacheStore(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetDPCacheStore(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetDPCacheStore(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetDPCacheStore(msgDesc, modelId, result))
+extern GED_DPCACHE_STORE GED_CALLCONV GED_GetDPCacheStore(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DPCacheStore field in the given . The latter can then be set to its appropriate field (@ref GED_SetMsgDesc).
@@ -6342,11 +5160,8 @@ extern GED_DPCACHE_STORE GED_CALLCONV _GED_GetDPCacheStore(const uint32_t msgDes
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPCacheStore(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DPCACHE_STORE
-                                                          CacheStore);
-#define GED_SetDPCacheStore(msgDesc, modelId, CacheStore) ( \
-    GED_TraceAPI("GED_SetDPCacheStore(" #msgDesc ", " #modelId ", " #CacheStore ")"), \
-    _GED_SetDPCacheStore(msgDesc, modelId, CacheStore))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDPCacheStore(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DPCACHE_STORE
+                                                         CacheStore);
 
 /*!
  * Get the value of the DPCacheLoad field from the given  (as obtained by @ref GED_GetMsgDesc). The function returns an enumeration
@@ -6360,10 +5175,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPCacheStore(uint32_t* msgDesc, con
  *
  * @return      DPCacheLoad's enumeration if the field is valid, GED_DPCACHE_LOAD_INVALID otherwise.
  */
-extern GED_DPCACHE_LOAD GED_CALLCONV _GED_GetDPCacheLoad(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetDPCacheLoad(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetDPCacheLoad(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetDPCacheLoad(msgDesc, modelId, result))
+extern GED_DPCACHE_LOAD GED_CALLCONV GED_GetDPCacheLoad(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DPCacheLoad field in the given . The latter can then be set to its appropriate field (@ref GED_SetMsgDesc).
@@ -6375,11 +5187,7 @@ extern GED_DPCACHE_LOAD GED_CALLCONV _GED_GetDPCacheLoad(const uint32_t msgDesc,
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPCacheLoad(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DPCACHE_LOAD
-                                                         CacheLoad);
-#define GED_SetDPCacheLoad(msgDesc, modelId, CacheLoad) ( \
-    GED_TraceAPI("GED_SetDPCacheLoad(" #msgDesc ", " #modelId ", " #CacheLoad ")"), \
-    _GED_SetDPCacheLoad(msgDesc, modelId, CacheLoad))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDPCacheLoad(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DPCACHE_LOAD CacheLoad);
 
 /*!
  * Get the value of the DPAddrRegSize field from the given  (as obtained by @ref GED_GetMsgDesc). The function returns an enumeration
@@ -6393,11 +5201,8 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPCacheLoad(uint32_t* msgDesc, cons
  *
  * @return      DPAddrRegSize's enumeration if the field is valid, GED_DPADDR_REG_SIZE_INVALID otherwise.
  */
-extern GED_DPADDR_REG_SIZE GED_CALLCONV _GED_GetDPAddrRegSize(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
-                                                              result);
-#define GED_GetDPAddrRegSize(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetDPAddrRegSize(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetDPAddrRegSize(msgDesc, modelId, result))
+extern GED_DPADDR_REG_SIZE GED_CALLCONV GED_GetDPAddrRegSize(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                             result);
 
 /*!
  * Set the value of the DPAddrRegSize field in the given . The latter can then be set to its appropriate field (@ref GED_SetMsgDesc).
@@ -6409,11 +5214,8 @@ extern GED_DPADDR_REG_SIZE GED_CALLCONV _GED_GetDPAddrRegSize(const uint32_t msg
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPAddrRegSize(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DPADDR_REG_SIZE
-                                                           AddrRegSize);
-#define GED_SetDPAddrRegSize(msgDesc, modelId, AddrRegSize) ( \
-    GED_TraceAPI("GED_SetDPAddrRegSize(" #msgDesc ", " #modelId ", " #AddrRegSize ")"), \
-    _GED_SetDPAddrRegSize(msgDesc, modelId, AddrRegSize))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDPAddrRegSize(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DPADDR_REG_SIZE
+                                                          AddrRegSize);
 
 /*!
  * Get the value of the DPOneAddrReg field from the given  (as obtained by @ref GED_GetMsgDesc). The function returns an enumeration
@@ -6427,11 +5229,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPAddrRegSize(uint32_t* msgDesc, co
  *
  * @return      DPOneAddrReg's enumeration if the field is valid, GED_DPONE_ADDR_REG_INVALID otherwise.
  */
-extern GED_DPONE_ADDR_REG GED_CALLCONV _GED_GetDPOneAddrReg(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
-                                                            result);
-#define GED_GetDPOneAddrReg(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetDPOneAddrReg(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetDPOneAddrReg(msgDesc, modelId, result))
+extern GED_DPONE_ADDR_REG GED_CALLCONV GED_GetDPOneAddrReg(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DPOneAddrReg field in the given . The latter can then be set to its appropriate field (@ref GED_SetMsgDesc).
@@ -6443,11 +5241,8 @@ extern GED_DPONE_ADDR_REG GED_CALLCONV _GED_GetDPOneAddrReg(const uint32_t msgDe
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPOneAddrReg(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DPONE_ADDR_REG
-                                                          OneAddrReg);
-#define GED_SetDPOneAddrReg(msgDesc, modelId, OneAddrReg) ( \
-    GED_TraceAPI("GED_SetDPOneAddrReg(" #msgDesc ", " #modelId ", " #OneAddrReg ")"), \
-    _GED_SetDPOneAddrReg(msgDesc, modelId, OneAddrReg))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDPOneAddrReg(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DPONE_ADDR_REG
+                                                         OneAddrReg);
 
 /*!
  * Get the value of the DPCmask field from the given  (as obtained by @ref GED_GetMsgDesc). The function returns an enumeration value.
@@ -6461,10 +5256,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPOneAddrReg(uint32_t* msgDesc, con
  *
  * @return      DPCmask's enumeration if the field is valid, GED_DPCMASK_INVALID otherwise.
  */
-extern GED_DPCMASK GED_CALLCONV _GED_GetDPCmask(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetDPCmask(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetDPCmask(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetDPCmask(msgDesc, modelId, result))
+extern GED_DPCMASK GED_CALLCONV GED_GetDPCmask(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * Set the value of the DPCmask field in the given . The latter can then be set to its appropriate field (@ref GED_SetMsgDesc). See
@@ -6476,10 +5268,7 @@ extern GED_DPCMASK GED_CALLCONV _GED_GetDPCmask(const uint32_t msgDesc, const GE
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPCmask(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DPCMASK Cmask);
-#define GED_SetDPCmask(msgDesc, modelId, Cmask) ( \
-    GED_TraceAPI("GED_SetDPCmask(" #msgDesc ", " #modelId ", " #Cmask ")"), \
-    _GED_SetDPCmask(msgDesc, modelId, Cmask))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDPCmask(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DPCMASK Cmask);
 
 /*!
  * Get the value of the MessageTypeDP_CONST field from the given  (as obtained by @ref GED_GetMsgDesc). The function returns an
@@ -6493,11 +5282,8 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetDPCmask(uint32_t* msgDesc, const GE
  *
  * @return      MessageTypeDP_CONST's enumeration if the field is valid, GED_MESSAGE_TYPE_INVALID otherwise.
  */
-extern GED_MESSAGE_TYPE GED_CALLCONV _GED_GetMessageTypeDP_CONST(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
-                                                                 result);
-#define GED_GetMessageTypeDP_CONST(msgDesc, modelId, result) ( \
-    GED_TraceAPI("GED_GetMessageTypeDP_CONST(" #msgDesc ", " #modelId ", " #result ")"), \
-    _GED_GetMessageTypeDP_CONST(msgDesc, modelId, result))
+extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_CONST(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                                result);
 
 /*!
  * Set the value of the MessageTypeDP_CONST field in the given . The latter can then be set to its appropriate field (@ref
@@ -6509,11 +5295,8 @@ extern GED_MESSAGE_TYPE GED_CALLCONV _GED_GetMessageTypeDP_CONST(const uint32_t 
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMessageTypeDP_CONST(uint32_t* msgDesc, const GED_MODEL modelId, const GED_MESSAGE_TYPE
-                                                                 messageType);
-#define GED_SetMessageTypeDP_CONST(msgDesc, modelId, messageType) ( \
-    GED_TraceAPI("GED_SetMessageTypeDP_CONST(" #msgDesc ", " #modelId ", " #messageType ")"), \
-    _GED_SetMessageTypeDP_CONST(msgDesc, modelId, messageType))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMessageTypeDP_CONST(uint32_t* msgDesc, const GED_MODEL modelId, const GED_MESSAGE_TYPE
+                                                                messageType);
 
 #if GED_EXPERIMENTAL
 
@@ -6529,10 +5312,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetMessageTypeDP_CONST(uint32_t* msgDe
  *
  * @note        Calling this function prevents the application of encoding masks when calling @ref GED_EncodeIns
  */
-extern GED_RETURN_VALUE GED_CALLCONV _GED_SetRawBits(ged_ins_t* ins, uint8_t low, uint8_t high, const uint64_t value);
-#define GED_SetRawBits(ins, low, high, value) ( \
-    GED_TraceAPI("GED_SetRawBits(" #ins ", " #low ", " #high ", " #value ")"), \
-    _GED_SetRawBits(ins, low, high, value))
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetRawBits(ged_ins_t* ins, uint8_t low, uint8_t high, const uint64_t value);
 #endif // GED_EXPERIMENTAL
 
 /*!
@@ -6543,10 +5323,7 @@ extern GED_RETURN_VALUE GED_CALLCONV _GED_SetRawBits(ged_ins_t* ins, uint8_t low
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetAccessModeString(GED_ACCESS_MODE AccessModeValue);
-#define GED_GetAccessModeString(AccessModeValue) ( \
-    GED_TraceAPI("GED_GetAccessModeString(" #AccessModeValue ")"), \
-    _GED_GetAccessModeString(AccessModeValue))
+extern const char* GED_CALLCONV GED_GetAccessModeString(GED_ACCESS_MODE AccessModeValue);
 
 /*!
  * Get the string representation for the given GED_ACC_WR_CTRL enumerator. The function returns a NULL pointer for
@@ -6556,10 +5333,7 @@ extern const char* GED_CALLCONV _GED_GetAccessModeString(GED_ACCESS_MODE AccessM
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetAccWrCtrlString(GED_ACC_WR_CTRL AccWrCtrlValue);
-#define GED_GetAccWrCtrlString(AccWrCtrlValue) ( \
-    GED_TraceAPI("GED_GetAccWrCtrlString(" #AccWrCtrlValue ")"), \
-    _GED_GetAccWrCtrlString(AccWrCtrlValue))
+extern const char* GED_CALLCONV GED_GetAccWrCtrlString(GED_ACC_WR_CTRL AccWrCtrlValue);
 
 /*!
  * Get the string representation for the given GED_ADDR_MODE enumerator. The function returns a NULL pointer for
@@ -6569,10 +5343,7 @@ extern const char* GED_CALLCONV _GED_GetAccWrCtrlString(GED_ACC_WR_CTRL AccWrCtr
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetAddrModeString(GED_ADDR_MODE AddrModeValue);
-#define GED_GetAddrModeString(AddrModeValue) ( \
-    GED_TraceAPI("GED_GetAddrModeString(" #AddrModeValue ")"), \
-    _GED_GetAddrModeString(AddrModeValue))
+extern const char* GED_CALLCONV GED_GetAddrModeString(GED_ADDR_MODE AddrModeValue);
 
 /*!
  * Get the string representation for the given GED_ARCH_REG enumerator. The function returns a NULL pointer for GED_ARCH_REG_INVALID.
@@ -6581,10 +5352,7 @@ extern const char* GED_CALLCONV _GED_GetAddrModeString(GED_ADDR_MODE AddrModeVal
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetArchRegString(GED_ARCH_REG ArchRegValue);
-#define GED_GetArchRegString(ArchRegValue) ( \
-    GED_TraceAPI("GED_GetArchRegString(" #ArchRegValue ")"), \
-    _GED_GetArchRegString(ArchRegValue))
+extern const char* GED_CALLCONV GED_GetArchRegString(GED_ARCH_REG ArchRegValue);
 
 /*!
  * Get the string representation for the given GED_ATOMIC_OPERATION_TYPE enumerator. The function returns a NULL pointer for
@@ -6594,10 +5362,7 @@ extern const char* GED_CALLCONV _GED_GetArchRegString(GED_ARCH_REG ArchRegValue)
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetAtomicOperationTypeString(GED_ATOMIC_OPERATION_TYPE AtomicOperationTypeValue);
-#define GED_GetAtomicOperationTypeString(AtomicOperationTypeValue) ( \
-    GED_TraceAPI("GED_GetAtomicOperationTypeString(" #AtomicOperationTypeValue ")"), \
-    _GED_GetAtomicOperationTypeString(AtomicOperationTypeValue))
+extern const char* GED_CALLCONV GED_GetAtomicOperationTypeString(GED_ATOMIC_OPERATION_TYPE AtomicOperationTypeValue);
 
 /*!
  * Get the string representation for the given GED_BLOCK_SIZE enumerator. The function returns a NULL pointer for
@@ -6607,10 +5372,7 @@ extern const char* GED_CALLCONV _GED_GetAtomicOperationTypeString(GED_ATOMIC_OPE
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetBlockSizeString(GED_BLOCK_SIZE BlockSizeValue);
-#define GED_GetBlockSizeString(BlockSizeValue) ( \
-    GED_TraceAPI("GED_GetBlockSizeString(" #BlockSizeValue ")"), \
-    _GED_GetBlockSizeString(BlockSizeValue))
+extern const char* GED_CALLCONV GED_GetBlockSizeString(GED_BLOCK_SIZE BlockSizeValue);
 
 /*!
  * Get the string representation for the given GED_BRANCH_CTRL enumerator. The function returns a NULL pointer for
@@ -6620,10 +5382,7 @@ extern const char* GED_CALLCONV _GED_GetBlockSizeString(GED_BLOCK_SIZE BlockSize
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetBranchCtrlString(GED_BRANCH_CTRL BranchCtrlValue);
-#define GED_GetBranchCtrlString(BranchCtrlValue) ( \
-    GED_TraceAPI("GED_GetBranchCtrlString(" #BranchCtrlValue ")"), \
-    _GED_GetBranchCtrlString(BranchCtrlValue))
+extern const char* GED_CALLCONV GED_GetBranchCtrlString(GED_BRANCH_CTRL BranchCtrlValue);
 
 /*!
  * Get the string representation for the given GED_CHANNEL_MASK enumerator. The function returns a NULL pointer for
@@ -6633,10 +5392,7 @@ extern const char* GED_CALLCONV _GED_GetBranchCtrlString(GED_BRANCH_CTRL BranchC
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetChannelMaskString(GED_CHANNEL_MASK ChannelMaskValue);
-#define GED_GetChannelMaskString(ChannelMaskValue) ( \
-    GED_TraceAPI("GED_GetChannelMaskString(" #ChannelMaskValue ")"), \
-    _GED_GetChannelMaskString(ChannelMaskValue))
+extern const char* GED_CALLCONV GED_GetChannelMaskString(GED_CHANNEL_MASK ChannelMaskValue);
 
 /*!
  * Get the string representation for the given GED_CHANNEL_MODE enumerator. The function returns a NULL pointer for
@@ -6646,10 +5402,7 @@ extern const char* GED_CALLCONV _GED_GetChannelMaskString(GED_CHANNEL_MASK Chann
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetChannelModeString(GED_CHANNEL_MODE ChannelModeValue);
-#define GED_GetChannelModeString(ChannelModeValue) ( \
-    GED_TraceAPI("GED_GetChannelModeString(" #ChannelModeValue ")"), \
-    _GED_GetChannelModeString(ChannelModeValue))
+extern const char* GED_CALLCONV GED_GetChannelModeString(GED_CHANNEL_MODE ChannelModeValue);
 
 /*!
  * Get the string representation for the given GED_CHANNEL_OFFSET enumerator. The function returns a NULL pointer for
@@ -6659,10 +5412,7 @@ extern const char* GED_CALLCONV _GED_GetChannelModeString(GED_CHANNEL_MODE Chann
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetChannelOffsetString(GED_CHANNEL_OFFSET ChannelOffsetValue);
-#define GED_GetChannelOffsetString(ChannelOffsetValue) ( \
-    GED_TraceAPI("GED_GetChannelOffsetString(" #ChannelOffsetValue ")"), \
-    _GED_GetChannelOffsetString(ChannelOffsetValue))
+extern const char* GED_CALLCONV GED_GetChannelOffsetString(GED_CHANNEL_OFFSET ChannelOffsetValue);
 
 /*!
  * Get the string representation for the given GED_COND_MODIFIER enumerator. The function returns a NULL pointer for
@@ -6672,10 +5422,7 @@ extern const char* GED_CALLCONV _GED_GetChannelOffsetString(GED_CHANNEL_OFFSET C
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetCondModifierString(GED_COND_MODIFIER CondModifierValue);
-#define GED_GetCondModifierString(CondModifierValue) ( \
-    GED_TraceAPI("GED_GetCondModifierString(" #CondModifierValue ")"), \
-    _GED_GetCondModifierString(CondModifierValue))
+extern const char* GED_CALLCONV GED_GetCondModifierString(GED_COND_MODIFIER CondModifierValue);
 
 /*!
  * Get the string representation for the given GED_DATA_TYPE enumerator. The function returns a NULL pointer for
@@ -6685,10 +5432,7 @@ extern const char* GED_CALLCONV _GED_GetCondModifierString(GED_COND_MODIFIER Con
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetDataTypeString(GED_DATA_TYPE DataTypeValue);
-#define GED_GetDataTypeString(DataTypeValue) ( \
-    GED_TraceAPI("GED_GetDataTypeString(" #DataTypeValue ")"), \
-    _GED_GetDataTypeString(DataTypeValue))
+extern const char* GED_CALLCONV GED_GetDataTypeString(GED_DATA_TYPE DataTypeValue);
 
 /*!
  * Get the string representation for the given GED_DEBUG_CTRL enumerator. The function returns a NULL pointer for
@@ -6698,10 +5442,7 @@ extern const char* GED_CALLCONV _GED_GetDataTypeString(GED_DATA_TYPE DataTypeVal
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetDebugCtrlString(GED_DEBUG_CTRL DebugCtrlValue);
-#define GED_GetDebugCtrlString(DebugCtrlValue) ( \
-    GED_TraceAPI("GED_GetDebugCtrlString(" #DebugCtrlValue ")"), \
-    _GED_GetDebugCtrlString(DebugCtrlValue))
+extern const char* GED_CALLCONV GED_GetDebugCtrlString(GED_DEBUG_CTRL DebugCtrlValue);
 
 /*!
  * Get the string representation for the given GED_DEP_CTRL enumerator. The function returns a NULL pointer for GED_DEP_CTRL_INVALID.
@@ -6710,10 +5451,7 @@ extern const char* GED_CALLCONV _GED_GetDebugCtrlString(GED_DEBUG_CTRL DebugCtrl
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetDepCtrlString(GED_DEP_CTRL DepCtrlValue);
-#define GED_GetDepCtrlString(DepCtrlValue) ( \
-    GED_TraceAPI("GED_GetDepCtrlString(" #DepCtrlValue ")"), \
-    _GED_GetDepCtrlString(DepCtrlValue))
+extern const char* GED_CALLCONV GED_GetDepCtrlString(GED_DEP_CTRL DepCtrlValue);
 
 /*!
  * Get the string representation for the given GED_DPADDR_REG_SIZE enumerator. The function returns a NULL pointer for
@@ -6723,10 +5461,7 @@ extern const char* GED_CALLCONV _GED_GetDepCtrlString(GED_DEP_CTRL DepCtrlValue)
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetDPAddrRegSizeString(GED_DPADDR_REG_SIZE DPAddrRegSizeValue);
-#define GED_GetDPAddrRegSizeString(DPAddrRegSizeValue) ( \
-    GED_TraceAPI("GED_GetDPAddrRegSizeString(" #DPAddrRegSizeValue ")"), \
-    _GED_GetDPAddrRegSizeString(DPAddrRegSizeValue))
+extern const char* GED_CALLCONV GED_GetDPAddrRegSizeString(GED_DPADDR_REG_SIZE DPAddrRegSizeValue);
 
 /*!
  * Get the string representation for the given GED_DP_ADDR_SIZE enumerator. The function returns a NULL pointer for
@@ -6736,10 +5471,7 @@ extern const char* GED_CALLCONV _GED_GetDPAddrRegSizeString(GED_DPADDR_REG_SIZE 
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetDpAddrSizeString(GED_DP_ADDR_SIZE DpAddrSizeValue);
-#define GED_GetDpAddrSizeString(DpAddrSizeValue) ( \
-    GED_TraceAPI("GED_GetDpAddrSizeString(" #DpAddrSizeValue ")"), \
-    _GED_GetDpAddrSizeString(DpAddrSizeValue))
+extern const char* GED_CALLCONV GED_GetDpAddrSizeString(GED_DP_ADDR_SIZE DpAddrSizeValue);
 
 /*!
  * Get the string representation for the given GED_DP_ADDR_SURFACE_TYPE enumerator. The function returns a NULL pointer for
@@ -6749,10 +5481,7 @@ extern const char* GED_CALLCONV _GED_GetDpAddrSizeString(GED_DP_ADDR_SIZE DpAddr
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetDpAddrSurfaceTypeString(GED_DP_ADDR_SURFACE_TYPE DpAddrSurfaceTypeValue);
-#define GED_GetDpAddrSurfaceTypeString(DpAddrSurfaceTypeValue) ( \
-    GED_TraceAPI("GED_GetDpAddrSurfaceTypeString(" #DpAddrSurfaceTypeValue ")"), \
-    _GED_GetDpAddrSurfaceTypeString(DpAddrSurfaceTypeValue))
+extern const char* GED_CALLCONV GED_GetDpAddrSurfaceTypeString(GED_DP_ADDR_SURFACE_TYPE DpAddrSurfaceTypeValue);
 
 /*!
  * Get the string representation for the given GED_DPCACHE_LOAD enumerator. The function returns a NULL pointer for
@@ -6762,10 +5491,7 @@ extern const char* GED_CALLCONV _GED_GetDpAddrSurfaceTypeString(GED_DP_ADDR_SURF
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetDPCacheLoadString(GED_DPCACHE_LOAD DPCacheLoadValue);
-#define GED_GetDPCacheLoadString(DPCacheLoadValue) ( \
-    GED_TraceAPI("GED_GetDPCacheLoadString(" #DPCacheLoadValue ")"), \
-    _GED_GetDPCacheLoadString(DPCacheLoadValue))
+extern const char* GED_CALLCONV GED_GetDPCacheLoadString(GED_DPCACHE_LOAD DPCacheLoadValue);
 
 /*!
  * Get the string representation for the given GED_DPCACHE_STORE enumerator. The function returns a NULL pointer for
@@ -6775,10 +5501,7 @@ extern const char* GED_CALLCONV _GED_GetDPCacheLoadString(GED_DPCACHE_LOAD DPCac
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetDPCacheStoreString(GED_DPCACHE_STORE DPCacheStoreValue);
-#define GED_GetDPCacheStoreString(DPCacheStoreValue) ( \
-    GED_TraceAPI("GED_GetDPCacheStoreString(" #DPCacheStoreValue ")"), \
-    _GED_GetDPCacheStoreString(DPCacheStoreValue))
+extern const char* GED_CALLCONV GED_GetDPCacheStoreString(GED_DPCACHE_STORE DPCacheStoreValue);
 
 /*!
  * Get the string representation for the given GED_DPCMASK enumerator. The function returns a NULL pointer for GED_DPCMASK_INVALID.
@@ -6787,10 +5510,7 @@ extern const char* GED_CALLCONV _GED_GetDPCacheStoreString(GED_DPCACHE_STORE DPC
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetDPCmaskString(GED_DPCMASK DPCmaskValue);
-#define GED_GetDPCmaskString(DPCmaskValue) ( \
-    GED_TraceAPI("GED_GetDPCmaskString(" #DPCmaskValue ")"), \
-    _GED_GetDPCmaskString(DPCmaskValue))
+extern const char* GED_CALLCONV GED_GetDPCmaskString(GED_DPCMASK DPCmaskValue);
 
 /*!
  * Get the string representation for the given GED_DP_DATA_SIZE enumerator. The function returns a NULL pointer for
@@ -6800,10 +5520,7 @@ extern const char* GED_CALLCONV _GED_GetDPCmaskString(GED_DPCMASK DPCmaskValue);
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetDpDataSizeString(GED_DP_DATA_SIZE DpDataSizeValue);
-#define GED_GetDpDataSizeString(DpDataSizeValue) ( \
-    GED_TraceAPI("GED_GetDpDataSizeString(" #DpDataSizeValue ")"), \
-    _GED_GetDpDataSizeString(DpDataSizeValue))
+extern const char* GED_CALLCONV GED_GetDpDataSizeString(GED_DP_DATA_SIZE DpDataSizeValue);
 
 /*!
  * Get the string representation for the given GED_DP_FENCE_SCOPE enumerator. The function returns a NULL pointer for
@@ -6813,10 +5530,7 @@ extern const char* GED_CALLCONV _GED_GetDpDataSizeString(GED_DP_DATA_SIZE DpData
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetDpFenceScopeString(GED_DP_FENCE_SCOPE DpFenceScopeValue);
-#define GED_GetDpFenceScopeString(DpFenceScopeValue) ( \
-    GED_TraceAPI("GED_GetDpFenceScopeString(" #DpFenceScopeValue ")"), \
-    _GED_GetDpFenceScopeString(DpFenceScopeValue))
+extern const char* GED_CALLCONV GED_GetDpFenceScopeString(GED_DP_FENCE_SCOPE DpFenceScopeValue);
 
 /*!
  * Get the string representation for the given GED_DP_FLUSH_TYPE enumerator. The function returns a NULL pointer for
@@ -6826,10 +5540,7 @@ extern const char* GED_CALLCONV _GED_GetDpFenceScopeString(GED_DP_FENCE_SCOPE Dp
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetDpFlushTypeString(GED_DP_FLUSH_TYPE DpFlushTypeValue);
-#define GED_GetDpFlushTypeString(DpFlushTypeValue) ( \
-    GED_TraceAPI("GED_GetDpFlushTypeString(" #DpFlushTypeValue ")"), \
-    _GED_GetDpFlushTypeString(DpFlushTypeValue))
+extern const char* GED_CALLCONV GED_GetDpFlushTypeString(GED_DP_FLUSH_TYPE DpFlushTypeValue);
 
 /*!
  * Get the string representation for the given GED_DPONE_ADDR_REG enumerator. The function returns a NULL pointer for
@@ -6839,10 +5550,7 @@ extern const char* GED_CALLCONV _GED_GetDpFlushTypeString(GED_DP_FLUSH_TYPE DpFl
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetDPOneAddrRegString(GED_DPONE_ADDR_REG DPOneAddrRegValue);
-#define GED_GetDPOneAddrRegString(DPOneAddrRegValue) ( \
-    GED_TraceAPI("GED_GetDPOneAddrRegString(" #DPOneAddrRegValue ")"), \
-    _GED_GetDPOneAddrRegString(DPOneAddrRegValue))
+extern const char* GED_CALLCONV GED_GetDPOneAddrRegString(GED_DPONE_ADDR_REG DPOneAddrRegValue);
 
 /*!
  * Get the string representation for the given GED_DP_OPCODE enumerator. The function returns a NULL pointer for
@@ -6852,10 +5560,7 @@ extern const char* GED_CALLCONV _GED_GetDPOneAddrRegString(GED_DPONE_ADDR_REG DP
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetDpOpcodeString(GED_DP_OPCODE DpOpcodeValue);
-#define GED_GetDpOpcodeString(DpOpcodeValue) ( \
-    GED_TraceAPI("GED_GetDpOpcodeString(" #DpOpcodeValue ")"), \
-    _GED_GetDpOpcodeString(DpOpcodeValue))
+extern const char* GED_CALLCONV GED_GetDpOpcodeString(GED_DP_OPCODE DpOpcodeValue);
 
 /*!
  * Get the string representation for the given GED_DP_TRANSPOSE enumerator. The function returns a NULL pointer for
@@ -6865,10 +5570,7 @@ extern const char* GED_CALLCONV _GED_GetDpOpcodeString(GED_DP_OPCODE DpOpcodeVal
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetDpTransposeString(GED_DP_TRANSPOSE DpTransposeValue);
-#define GED_GetDpTransposeString(DpTransposeValue) ( \
-    GED_TraceAPI("GED_GetDpTransposeString(" #DpTransposeValue ")"), \
-    _GED_GetDpTransposeString(DpTransposeValue))
+extern const char* GED_CALLCONV GED_GetDpTransposeString(GED_DP_TRANSPOSE DpTransposeValue);
 
 /*!
  * Get the string representation for the given GED_DP_VECT_SIZE enumerator. The function returns a NULL pointer for
@@ -6878,10 +5580,7 @@ extern const char* GED_CALLCONV _GED_GetDpTransposeString(GED_DP_TRANSPOSE DpTra
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetDpVectSizeString(GED_DP_VECT_SIZE DpVectSizeValue);
-#define GED_GetDpVectSizeString(DpVectSizeValue) ( \
-    GED_TraceAPI("GED_GetDpVectSizeString(" #DpVectSizeValue ")"), \
-    _GED_GetDpVectSizeString(DpVectSizeValue))
+extern const char* GED_CALLCONV GED_GetDpVectSizeString(GED_DP_VECT_SIZE DpVectSizeValue);
 
 /*!
  * Get the string representation for the given GED_DST_CHAN_EN enumerator. The function returns a NULL pointer for
@@ -6891,10 +5590,7 @@ extern const char* GED_CALLCONV _GED_GetDpVectSizeString(GED_DP_VECT_SIZE DpVect
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetDstChanEnString(GED_DST_CHAN_EN DstChanEnValue);
-#define GED_GetDstChanEnString(DstChanEnValue) ( \
-    GED_TraceAPI("GED_GetDstChanEnString(" #DstChanEnValue ")"), \
-    _GED_GetDstChanEnString(DstChanEnValue))
+extern const char* GED_CALLCONV GED_GetDstChanEnString(GED_DST_CHAN_EN DstChanEnValue);
 
 /*!
  * Get the string representation for the given GED_EOT enumerator. The function returns a NULL pointer for GED_EOT_INVALID.
@@ -6903,10 +5599,7 @@ extern const char* GED_CALLCONV _GED_GetDstChanEnString(GED_DST_CHAN_EN DstChanE
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetEOTString(GED_EOT EOTValue);
-#define GED_GetEOTString(EOTValue) ( \
-    GED_TraceAPI("GED_GetEOTString(" #EOTValue ")"), \
-    _GED_GetEOTString(EOTValue))
+extern const char* GED_CALLCONV GED_GetEOTString(GED_EOT EOTValue);
 
 /*!
  * Get the string representation for the given GED_EXEC_MASK_OFFSET_CTRL enumerator. The function returns a NULL pointer for
@@ -6916,10 +5609,7 @@ extern const char* GED_CALLCONV _GED_GetEOTString(GED_EOT EOTValue);
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetExecMaskOffsetCtrlString(GED_EXEC_MASK_OFFSET_CTRL ExecMaskOffsetCtrlValue);
-#define GED_GetExecMaskOffsetCtrlString(ExecMaskOffsetCtrlValue) ( \
-    GED_TraceAPI("GED_GetExecMaskOffsetCtrlString(" #ExecMaskOffsetCtrlValue ")"), \
-    _GED_GetExecMaskOffsetCtrlString(ExecMaskOffsetCtrlValue))
+extern const char* GED_CALLCONV GED_GetExecMaskOffsetCtrlString(GED_EXEC_MASK_OFFSET_CTRL ExecMaskOffsetCtrlValue);
 
 /*!
  * Get the string representation for the given GED_EXECUTION_DATA_TYPE enumerator. The function returns a NULL pointer for
@@ -6929,10 +5619,7 @@ extern const char* GED_CALLCONV _GED_GetExecMaskOffsetCtrlString(GED_EXEC_MASK_O
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetExecutionDataTypeString(GED_EXECUTION_DATA_TYPE ExecutionDataTypeValue);
-#define GED_GetExecutionDataTypeString(ExecutionDataTypeValue) ( \
-    GED_TraceAPI("GED_GetExecutionDataTypeString(" #ExecutionDataTypeValue ")"), \
-    _GED_GetExecutionDataTypeString(ExecutionDataTypeValue))
+extern const char* GED_CALLCONV GED_GetExecutionDataTypeString(GED_EXECUTION_DATA_TYPE ExecutionDataTypeValue);
 
 /*!
  * Get the string representation for the given GED_FUSION_CTRL enumerator. The function returns a NULL pointer for
@@ -6942,10 +5629,7 @@ extern const char* GED_CALLCONV _GED_GetExecutionDataTypeString(GED_EXECUTION_DA
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetFusionCtrlString(GED_FUSION_CTRL FusionCtrlValue);
-#define GED_GetFusionCtrlString(FusionCtrlValue) ( \
-    GED_TraceAPI("GED_GetFusionCtrlString(" #FusionCtrlValue ")"), \
-    _GED_GetFusionCtrlString(FusionCtrlValue))
+extern const char* GED_CALLCONV GED_GetFusionCtrlString(GED_FUSION_CTRL FusionCtrlValue);
 
 /*!
  * Get the string representation for the given GED_HEADER_PRESENT enumerator. The function returns a NULL pointer for
@@ -6955,10 +5639,7 @@ extern const char* GED_CALLCONV _GED_GetFusionCtrlString(GED_FUSION_CTRL FusionC
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetHeaderPresentString(GED_HEADER_PRESENT HeaderPresentValue);
-#define GED_GetHeaderPresentString(HeaderPresentValue) ( \
-    GED_TraceAPI("GED_GetHeaderPresentString(" #HeaderPresentValue ")"), \
-    _GED_GetHeaderPresentString(HeaderPresentValue))
+extern const char* GED_CALLCONV GED_GetHeaderPresentString(GED_HEADER_PRESENT HeaderPresentValue);
 
 /*!
  * Get the string representation for the given GED_MASK_CTRL enumerator. The function returns a NULL pointer for
@@ -6968,10 +5649,7 @@ extern const char* GED_CALLCONV _GED_GetHeaderPresentString(GED_HEADER_PRESENT H
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetMaskCtrlString(GED_MASK_CTRL MaskCtrlValue);
-#define GED_GetMaskCtrlString(MaskCtrlValue) ( \
-    GED_TraceAPI("GED_GetMaskCtrlString(" #MaskCtrlValue ")"), \
-    _GED_GetMaskCtrlString(MaskCtrlValue))
+extern const char* GED_CALLCONV GED_GetMaskCtrlString(GED_MASK_CTRL MaskCtrlValue);
 
 /*!
  * Get the string representation for the given GED_MATH_FC enumerator. The function returns a NULL pointer for GED_MATH_FC_INVALID.
@@ -6980,10 +5658,7 @@ extern const char* GED_CALLCONV _GED_GetMaskCtrlString(GED_MASK_CTRL MaskCtrlVal
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetMathFCString(GED_MATH_FC MathFCValue);
-#define GED_GetMathFCString(MathFCValue) ( \
-    GED_TraceAPI("GED_GetMathFCString(" #MathFCValue ")"), \
-    _GED_GetMathFCString(MathFCValue))
+extern const char* GED_CALLCONV GED_GetMathFCString(GED_MATH_FC MathFCValue);
 
 /*!
  * Get the string representation for the given GED_MATH_MACRO_EXT enumerator. The function returns a NULL pointer for
@@ -6993,10 +5668,7 @@ extern const char* GED_CALLCONV _GED_GetMathFCString(GED_MATH_FC MathFCValue);
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetMathMacroExtString(GED_MATH_MACRO_EXT MathMacroExtValue);
-#define GED_GetMathMacroExtString(MathMacroExtValue) ( \
-    GED_TraceAPI("GED_GetMathMacroExtString(" #MathMacroExtValue ")"), \
-    _GED_GetMathMacroExtString(MathMacroExtValue))
+extern const char* GED_CALLCONV GED_GetMathMacroExtString(GED_MATH_MACRO_EXT MathMacroExtValue);
 
 /*!
  * Get the string representation for the given GED_MESSAGE_TYPE enumerator. The function returns a NULL pointer for
@@ -7006,10 +5678,7 @@ extern const char* GED_CALLCONV _GED_GetMathMacroExtString(GED_MATH_MACRO_EXT Ma
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetMessageTypeString(GED_MESSAGE_TYPE MessageTypeValue);
-#define GED_GetMessageTypeString(MessageTypeValue) ( \
-    GED_TraceAPI("GED_GetMessageTypeString(" #MessageTypeValue ")"), \
-    _GED_GetMessageTypeString(MessageTypeValue))
+extern const char* GED_CALLCONV GED_GetMessageTypeString(GED_MESSAGE_TYPE MessageTypeValue);
 
 /*!
  * Get the string representation for the given GED_NO_SRC_DEP_SET enumerator. The function returns a NULL pointer for
@@ -7019,10 +5688,7 @@ extern const char* GED_CALLCONV _GED_GetMessageTypeString(GED_MESSAGE_TYPE Messa
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetNoSrcDepSetString(GED_NO_SRC_DEP_SET NoSrcDepSetValue);
-#define GED_GetNoSrcDepSetString(NoSrcDepSetValue) ( \
-    GED_TraceAPI("GED_GetNoSrcDepSetString(" #NoSrcDepSetValue ")"), \
-    _GED_GetNoSrcDepSetString(NoSrcDepSetValue))
+extern const char* GED_CALLCONV GED_GetNoSrcDepSetString(GED_NO_SRC_DEP_SET NoSrcDepSetValue);
 
 /*!
  * Get the string representation for the given GED_OPCODE enumerator. The function returns a NULL pointer for GED_OPCODE_INVALID.
@@ -7031,10 +5697,7 @@ extern const char* GED_CALLCONV _GED_GetNoSrcDepSetString(GED_NO_SRC_DEP_SET NoS
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetOpcodeString(GED_OPCODE OpcodeValue);
-#define GED_GetOpcodeString(OpcodeValue) ( \
-    GED_TraceAPI("GED_GetOpcodeString(" #OpcodeValue ")"), \
-    _GED_GetOpcodeString(OpcodeValue))
+extern const char* GED_CALLCONV GED_GetOpcodeString(GED_OPCODE OpcodeValue);
 
 /*!
  * Get the string representation for the given GED_PRECISION enumerator. The function returns a NULL pointer for
@@ -7044,10 +5707,7 @@ extern const char* GED_CALLCONV _GED_GetOpcodeString(GED_OPCODE OpcodeValue);
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetPrecisionString(GED_PRECISION PrecisionValue);
-#define GED_GetPrecisionString(PrecisionValue) ( \
-    GED_TraceAPI("GED_GetPrecisionString(" #PrecisionValue ")"), \
-    _GED_GetPrecisionString(PrecisionValue))
+extern const char* GED_CALLCONV GED_GetPrecisionString(GED_PRECISION PrecisionValue);
 
 /*!
  * Get the string representation for the given GED_PRED_CTRL enumerator. The function returns a NULL pointer for
@@ -7057,10 +5717,7 @@ extern const char* GED_CALLCONV _GED_GetPrecisionString(GED_PRECISION PrecisionV
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetPredCtrlString(GED_PRED_CTRL PredCtrlValue);
-#define GED_GetPredCtrlString(PredCtrlValue) ( \
-    GED_TraceAPI("GED_GetPredCtrlString(" #PredCtrlValue ")"), \
-    _GED_GetPredCtrlString(PredCtrlValue))
+extern const char* GED_CALLCONV GED_GetPredCtrlString(GED_PRED_CTRL PredCtrlValue);
 
 /*!
  * Get the string representation for the given GED_PRED_INV enumerator. The function returns a NULL pointer for GED_PRED_INV_INVALID.
@@ -7069,10 +5726,7 @@ extern const char* GED_CALLCONV _GED_GetPredCtrlString(GED_PRED_CTRL PredCtrlVal
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetPredInvString(GED_PRED_INV PredInvValue);
-#define GED_GetPredInvString(PredInvValue) ( \
-    GED_TraceAPI("GED_GetPredInvString(" #PredInvValue ")"), \
-    _GED_GetPredInvString(PredInvValue))
+extern const char* GED_CALLCONV GED_GetPredInvString(GED_PRED_INV PredInvValue);
 
 /*!
  * Get the string representation for the given GED_REG_FILE enumerator. The function returns a NULL pointer for GED_REG_FILE_INVALID.
@@ -7081,10 +5735,7 @@ extern const char* GED_CALLCONV _GED_GetPredInvString(GED_PRED_INV PredInvValue)
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetRegFileString(GED_REG_FILE RegFileValue);
-#define GED_GetRegFileString(RegFileValue) ( \
-    GED_TraceAPI("GED_GetRegFileString(" #RegFileValue ")"), \
-    _GED_GetRegFileString(RegFileValue))
+extern const char* GED_CALLCONV GED_GetRegFileString(GED_REG_FILE RegFileValue);
 
 /*!
  * Get the string representation for the given GED_REP_CTRL enumerator. The function returns a NULL pointer for GED_REP_CTRL_INVALID.
@@ -7093,10 +5744,7 @@ extern const char* GED_CALLCONV _GED_GetRegFileString(GED_REG_FILE RegFileValue)
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetRepCtrlString(GED_REP_CTRL RepCtrlValue);
-#define GED_GetRepCtrlString(RepCtrlValue) ( \
-    GED_TraceAPI("GED_GetRepCtrlString(" #RepCtrlValue ")"), \
-    _GED_GetRepCtrlString(RepCtrlValue))
+extern const char* GED_CALLCONV GED_GetRepCtrlString(GED_REP_CTRL RepCtrlValue);
 
 /*!
  * Get the string representation for the given GED_RETURN_DATA_CONTROL enumerator. The function returns a NULL pointer for
@@ -7106,10 +5754,7 @@ extern const char* GED_CALLCONV _GED_GetRepCtrlString(GED_REP_CTRL RepCtrlValue)
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetReturnDataControlString(GED_RETURN_DATA_CONTROL ReturnDataControlValue);
-#define GED_GetReturnDataControlString(ReturnDataControlValue) ( \
-    GED_TraceAPI("GED_GetReturnDataControlString(" #ReturnDataControlValue ")"), \
-    _GED_GetReturnDataControlString(ReturnDataControlValue))
+extern const char* GED_CALLCONV GED_GetReturnDataControlString(GED_RETURN_DATA_CONTROL ReturnDataControlValue);
 
 /*!
  * Get the string representation for the given GED_SATURATE enumerator. The function returns a NULL pointer for GED_SATURATE_INVALID.
@@ -7118,10 +5763,7 @@ extern const char* GED_CALLCONV _GED_GetReturnDataControlString(GED_RETURN_DATA_
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetSaturateString(GED_SATURATE SaturateValue);
-#define GED_GetSaturateString(SaturateValue) ( \
-    GED_TraceAPI("GED_GetSaturateString(" #SaturateValue ")"), \
-    _GED_GetSaturateString(SaturateValue))
+extern const char* GED_CALLCONV GED_GetSaturateString(GED_SATURATE SaturateValue);
 
 /*!
  * Get the string representation for the given GED_SFID enumerator. The function returns a NULL pointer for GED_SFID_INVALID.
@@ -7130,10 +5772,7 @@ extern const char* GED_CALLCONV _GED_GetSaturateString(GED_SATURATE SaturateValu
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetSFIDString(GED_SFID SFIDValue);
-#define GED_GetSFIDString(SFIDValue) ( \
-    GED_TraceAPI("GED_GetSFIDString(" #SFIDValue ")"), \
-    _GED_GetSFIDString(SFIDValue))
+extern const char* GED_CALLCONV GED_GetSFIDString(GED_SFID SFIDValue);
 
 /*!
  * Get the string representation for the given GED_SIMDMODE enumerator. The function returns a NULL pointer for GED_SIMDMODE_INVALID.
@@ -7142,10 +5781,7 @@ extern const char* GED_CALLCONV _GED_GetSFIDString(GED_SFID SFIDValue);
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetSIMDModeString(GED_SIMDMODE SIMDModeValue);
-#define GED_GetSIMDModeString(SIMDModeValue) ( \
-    GED_TraceAPI("GED_GetSIMDModeString(" #SIMDModeValue ")"), \
-    _GED_GetSIMDModeString(SIMDModeValue))
+extern const char* GED_CALLCONV GED_GetSIMDModeString(GED_SIMDMODE SIMDModeValue);
 
 /*!
  * Get the string representation for the given GED_SLOT_GROUP enumerator. The function returns a NULL pointer for
@@ -7155,10 +5791,7 @@ extern const char* GED_CALLCONV _GED_GetSIMDModeString(GED_SIMDMODE SIMDModeValu
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetSlotGroupString(GED_SLOT_GROUP SlotGroupValue);
-#define GED_GetSlotGroupString(SlotGroupValue) ( \
-    GED_TraceAPI("GED_GetSlotGroupString(" #SlotGroupValue ")"), \
-    _GED_GetSlotGroupString(SlotGroupValue))
+extern const char* GED_CALLCONV GED_GetSlotGroupString(GED_SLOT_GROUP SlotGroupValue);
 
 /*!
  * Get the string representation for the given GED_SRC_MOD enumerator. The function returns a NULL pointer for GED_SRC_MOD_INVALID.
@@ -7167,10 +5800,7 @@ extern const char* GED_CALLCONV _GED_GetSlotGroupString(GED_SLOT_GROUP SlotGroup
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetSrcModString(GED_SRC_MOD SrcModValue);
-#define GED_GetSrcModString(SrcModValue) ( \
-    GED_TraceAPI("GED_GetSrcModString(" #SrcModValue ")"), \
-    _GED_GetSrcModString(SrcModValue))
+extern const char* GED_CALLCONV GED_GetSrcModString(GED_SRC_MOD SrcModValue);
 
 /*!
  * Get the string representation for the given GED_SUB_BYTE_PRECISION enumerator. The function returns a NULL pointer for
@@ -7180,10 +5810,7 @@ extern const char* GED_CALLCONV _GED_GetSrcModString(GED_SRC_MOD SrcModValue);
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetSubBytePrecisionString(GED_SUB_BYTE_PRECISION SubBytePrecisionValue);
-#define GED_GetSubBytePrecisionString(SubBytePrecisionValue) ( \
-    GED_TraceAPI("GED_GetSubBytePrecisionString(" #SubBytePrecisionValue ")"), \
-    _GED_GetSubBytePrecisionString(SubBytePrecisionValue))
+extern const char* GED_CALLCONV GED_GetSubBytePrecisionString(GED_SUB_BYTE_PRECISION SubBytePrecisionValue);
 
 /*!
  * Get the string representation for the given GED_SUB_FUNC_ID enumerator. The function returns a NULL pointer for
@@ -7193,10 +5820,7 @@ extern const char* GED_CALLCONV _GED_GetSubBytePrecisionString(GED_SUB_BYTE_PREC
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetSubFuncIDString(GED_SUB_FUNC_ID SubFuncIDValue);
-#define GED_GetSubFuncIDString(SubFuncIDValue) ( \
-    GED_TraceAPI("GED_GetSubFuncIDString(" #SubFuncIDValue ")"), \
-    _GED_GetSubFuncIDString(SubFuncIDValue))
+extern const char* GED_CALLCONV GED_GetSubFuncIDString(GED_SUB_FUNC_ID SubFuncIDValue);
 
 /*!
  * Get the string representation for the given GED_SWIZZLE enumerator. The function returns a NULL pointer for GED_SWIZZLE_INVALID.
@@ -7205,10 +5829,7 @@ extern const char* GED_CALLCONV _GED_GetSubFuncIDString(GED_SUB_FUNC_ID SubFuncI
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetSwizzleString(GED_SWIZZLE SwizzleValue);
-#define GED_GetSwizzleString(SwizzleValue) ( \
-    GED_TraceAPI("GED_GetSwizzleString(" #SwizzleValue ")"), \
-    _GED_GetSwizzleString(SwizzleValue))
+extern const char* GED_CALLCONV GED_GetSwizzleString(GED_SWIZZLE SwizzleValue);
 
 /*!
  * Get the string representation for the given GED_SYNC_FC enumerator. The function returns a NULL pointer for GED_SYNC_FC_INVALID.
@@ -7217,10 +5838,7 @@ extern const char* GED_CALLCONV _GED_GetSwizzleString(GED_SWIZZLE SwizzleValue);
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetSyncFCString(GED_SYNC_FC SyncFCValue);
-#define GED_GetSyncFCString(SyncFCValue) ( \
-    GED_TraceAPI("GED_GetSyncFCString(" #SyncFCValue ")"), \
-    _GED_GetSyncFCString(SyncFCValue))
+extern const char* GED_CALLCONV GED_GetSyncFCString(GED_SYNC_FC SyncFCValue);
 
 /*!
  * Get the string representation for the given GED_THREAD_CTRL enumerator. The function returns a NULL pointer for
@@ -7230,10 +5848,7 @@ extern const char* GED_CALLCONV _GED_GetSyncFCString(GED_SYNC_FC SyncFCValue);
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV _GED_GetThreadCtrlString(GED_THREAD_CTRL ThreadCtrlValue);
-#define GED_GetThreadCtrlString(ThreadCtrlValue) ( \
-    GED_TraceAPI("GED_GetThreadCtrlString(" #ThreadCtrlValue ")"), \
-    _GED_GetThreadCtrlString(ThreadCtrlValue))
+extern const char* GED_CALLCONV GED_GetThreadCtrlString(GED_THREAD_CTRL ThreadCtrlValue);
 
 /*!
  * Determine whether the given vertical stride represents Vx1 or VxH.
@@ -7257,10 +5872,7 @@ GED_INLINE bool GED_CALLCONV GED_IsVx1VxH(uint32_t vertstride)
  *
  * @return      The requested value.
  */
-extern uint32_t GED_CALLCONV _GED_GetOperandWidth(const GED_DATA_TYPE datatype, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-#define GED_GetOperandWidth(datatype, modelId, result) ( \
-    GED_TraceAPI("GED_GetOperandWidth(" #datatype ", " #modelId ", " #result ")"), \
-    _GED_GetOperandWidth(datatype, modelId, result))
+extern uint32_t GED_CALLCONV GED_GetOperandWidth(const GED_DATA_TYPE datatype, const GED_MODEL modelId, GED_RETURN_VALUE* result);
 
 /*!
  * The numeric type in which to display an operand, based on its data type. Relevant only for immediate operands.
@@ -7272,11 +5884,8 @@ extern uint32_t GED_CALLCONV _GED_GetOperandWidth(const GED_DATA_TYPE datatype, 
  *
  * @return      The requested value.
  */
-extern uint32_t GED_CALLCONV _GED_GetOperandNumericType(const GED_DATA_TYPE datatype, const GED_MODEL modelId, GED_RETURN_VALUE*
-                                                        result);
-#define GED_GetOperandNumericType(datatype, modelId, result) ( \
-    GED_TraceAPI("GED_GetOperandNumericType(" #datatype ", " #modelId ", " #result ")"), \
-    _GED_GetOperandNumericType(datatype, modelId, result))
+extern uint32_t GED_CALLCONV GED_GetOperandNumericType(const GED_DATA_TYPE datatype, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                       result);
 
 /*!
  *
@@ -7292,11 +5901,8 @@ extern uint32_t GED_CALLCONV _GED_GetOperandNumericType(const GED_DATA_TYPE data
  *
  * @return      The requested value.
  */
-extern uint32_t GED_CALLCONV _GED_GetNibCtrl(const GED_EXEC_MASK_OFFSET_CTRL execmaskoffsetctrl, const GED_MODEL modelId,
-                                             GED_RETURN_VALUE* result);
-#define GED_GetNibCtrl(execmaskoffsetctrl, modelId, result) ( \
-    GED_TraceAPI("GED_GetNibCtrl(" #execmaskoffsetctrl ", " #modelId ", " #result ")"), \
-    _GED_GetNibCtrl(execmaskoffsetctrl, modelId, result))
+extern uint32_t GED_CALLCONV GED_GetNibCtrl(const GED_EXEC_MASK_OFFSET_CTRL execmaskoffsetctrl, const GED_MODEL modelId,
+                                            GED_RETURN_VALUE* result);
 
 #ifdef __cplusplus
 }// extern "C"
