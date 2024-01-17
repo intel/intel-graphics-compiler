@@ -859,7 +859,11 @@ int SamplerMessageDescription::countParams() const {
 
 std::string SamplerMessageDescription::describe(int srcsLen) const {
   std::stringstream ss;
-  ss << mnemonic;
+  ss << mnemonic << ":" << describeParams(srcsLen);
+  return ss.str();
+}
+std::string SamplerMessageDescription::describeParams(int srcsLen) const {
+  std::stringstream ss;
   bool first = true;
   int n = 0;
   for (SamplerParam sp : params) {
@@ -867,9 +871,8 @@ std::string SamplerMessageDescription::describe(int srcsLen) const {
       break;
     if (first) {
       first = false;
-      ss << ":";
     } else {
-      ss << "+";
+      ss << ",";
     }
     ss << ToSymbol(sp);
     // for optional parameters

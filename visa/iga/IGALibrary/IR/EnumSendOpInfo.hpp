@@ -181,8 +181,7 @@ DEFINE_SAMPLE_OP(SAMPLE_KILLPIX, "sample_killpix", "sampler kill pixel",
                  ATTRS_NONE)
 DEFINE_SAMPLE_OP(LD_2DMS_W, "ld_2dms_w", "ld mcs4", ATTRS_NONE)
 DEFINE_SAMPLE_OP(LD_MCS, "ld_mcs", "load MCS", ATTRS_NONE)
-DEFINE_SAMPLE_OP(SAMPLE_FLUSH, "sample_flush",
-                 "sample with UVR offsets and compare", ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_FLUSH, "sample_flush", "sampler flush", ATTRS_NONE)
 DEFINE_SAMPLE_OP(SAMPLE_MLOD, "sample_mlod", "sample with LoD", ATTRS_NONE)
 DEFINE_SAMPLE_OP(SAMPLE_C_MLOD, "sample_c_mlod",
                  "sample with mlod and compare", ATTRS_NONE)
@@ -200,8 +199,10 @@ DEFINE_SAMPLE_OP(SAMPLE_PO_D, "sample_po_d",
                  "sample with derivatives and offsets", ATTRS_NONE)
 DEFINE_SAMPLE_OP(SAMPLE_PO_L_C, "sample_po_l_c",
                  "sample with offsets, LoD, and compare", ATTRS_NONE)
-DEFINE_SAMPLE_OP(SAMPLE_PO_LZ, "sample_po_lz", "sampler lz with pos. offset", ATTRS_NONE)
-DEFINE_SAMPLE_OP(SAMPLE_PO_C_LZ, "sample_po_c_lz", "sampler pos. offset compare ld", ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_PO_LZ, "sample_po_lz", "sampler lz with pos. offset",
+                 ATTRS_NONE)
+DEFINE_SAMPLE_OP(SAMPLE_PO_C_LZ, "sample_po_c_lz",
+                 "sampler pos. offset compare ld", ATTRS_NONE)
 //
 DEFINE_SAMPLE_OP(SAMPLE_LD_L, "sample_ld_l", "sampler ld LoD", ATTRS_NONE)
 //
@@ -236,7 +237,8 @@ DEFINE_SAMPLE_OP(GATHER4_PO_L_C, "gather4_po_l_c",
 //
 DEFINE_OTHER_OP(RENDER_READ, "render_read", "render read", ATTRS_NONE)
 DEFINE_OTHER_OP(RENDER_WRITE, "render_write", "render write", ATTRS_NONE)
-DEFINE_OTHER_OP(RENDER_DWRITE, "render_dual_write", "render dual write", ATTRS_NONE)
+DEFINE_OTHER_OP(RENDER_DWRITE, "render_dual_write", "render dual write",
+                ATTRS_NONE)
 
 DEFINE_OTHER_OP(SAVE_BARRIER, "save_barrier", "save barrier", ATTRS_NONE)
 DEFINE_OTHER_OP(RESTORE_BARRIER, "restore_barrier", "restore barrier",

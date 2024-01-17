@@ -432,6 +432,7 @@ struct SamplerMessageDescription {
   int countParams() const;
 
   std::string describe(int srcsLen) const;
+  std::string describeParams(int srcsLen) const;
 }; // SamplerMessageDescription
 
 std::string ToSymbol(SamplerParam sp);
