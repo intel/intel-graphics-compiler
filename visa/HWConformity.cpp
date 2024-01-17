@@ -8038,13 +8038,20 @@ bool HWConformity::fixBFMove(INST_LIST_ITER i, G4_BB *bb) {
   if (src0->getType() == Type_BF) {
     vISA_ASSERT(inst->getDst()->getType() == Type_F,
            "Only BF->F conversion is supported");
-    vISA_ASSERT(!inst->getPredicate() && !inst->getCondMod() &&
-           !inst->getSaturate(),
-           "BF->F move does not support pred/cond mod/sat");
+
+    vISA_ASSERT(!inst->getPredicate() && !inst->getCondMod(),
+           "BF->F move does not support pred/cond mod");
     // don't support BF imm for now
     vISA_ASSERT(src0->isSrcRegRegion() &&
            src0->asSrcRegRegion()->getModifier() == Mod_src_undef,
            "F->BF move does not support source modifier");
+
+    if (inst->getSaturate()) {
+      replaceDst(i, inst->getDst()->getType());
+      G4_INST *newMov = *(std::next(i));
+      newMov->setSaturate(inst->getSaturate());
+      inst->setSaturate(g4::NOSAT);
+    }
 
     auto src0RR = src0->asSrcRegRegion();
 
