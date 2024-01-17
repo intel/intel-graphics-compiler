@@ -230,27 +230,16 @@ struct InstDecoder {
         else if (fr.isEncoded())
           encodedFragments++;
       }
-      bool multipleFragments = false;
-      int fragIx = 0;
       for (const Fragment &fr : f.fragments) {
         if (fr.isInvalid())
           break;
         else if (fr.isEncoded()) {
-          std::string fragMeaning;
-          if (multipleFragments) {
-            std::stringstream ss;
-            ss << "[frag. " << fragIx << "]: " << meaning;
-            fragMeaning = ss.str();
-            fragIx++;
-          } else {
-            fragMeaning = meaning;
-          }
-          addDecodedFragment(fr, fragMeaning);
+          addDecodedFragment(fr, meaning);
         }
       }
     }
   }
-  void addDecodedFragment(const Fragment &fr, std::string val) {
+  void addDecodedFragment(const Fragment &fr, const std::string& val) {
     if (fields)
       fields->emplace_back(fr, val);
   }

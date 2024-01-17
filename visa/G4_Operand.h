@@ -968,6 +968,7 @@ class G4_CondMod final : public G4_Operand {
 public:
   G4_CondMod(G4_CondMod &cMod);
   G4_CondMod(const G4_CondMod&) = delete;
+  G4_CondMod& operator=(G4_CondMod cMod) = delete;
   ~G4_CondMod() = default;
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
   G4_CondModifier getMod() const { return mod; }

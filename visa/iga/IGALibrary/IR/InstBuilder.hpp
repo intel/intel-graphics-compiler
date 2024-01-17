@@ -843,7 +843,7 @@ public:
 
 
   // sets Instruction::setComment(...)
-  void InstComment(std::string comment) { m_comment = comment; }
+  void InstComment(const std::string& comment) { m_comment = comment; }
 
   // set inline binary instruction
   void InstInlineBinary(const Instruction::InlineBinaryType &binary) {
