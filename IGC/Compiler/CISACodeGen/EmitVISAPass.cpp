@@ -18326,18 +18326,21 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
             uint32_t nbelts = instElts * width;
 
             CVariable* rawAddrVar;
+            int currImmOffsetInt = immOffsetInt;
             if (i > 0)
             {
                 // Calculate the new element offset
+              {
                 rawAddrVar = m_currShader->GetNewVariable(eOffset);
-                CVariable* ImmVar = m_currShader->ImmToVariable(VecMessInfo.insts[i].startByte, ISA_TYPE_UD);
+                CVariable *ImmVar = m_currShader->ImmToVariable(
+                    VecMessInfo.insts[i].startByte, ISA_TYPE_UD);
                 if (!useA32 && !m_currShader->m_Platform->hasInt64Add()) {
-                    emitAddPair(rawAddrVar, eOffset, ImmVar);
+                  emitAddPair(rawAddrVar, eOffset, ImmVar);
+                } else {
+                  m_encoder->Add(rawAddrVar, eOffset, ImmVar);
+                  m_encoder->Push();
                 }
-                else {
-                    m_encoder->Add(rawAddrVar, eOffset, ImmVar);
-                    m_encoder->Push();
-                }
+              }
             }
             else
             {
@@ -18369,7 +18372,7 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
             emitLSCLoad(cacheOpts, gatherDst,
                         rawAddrVar, blkBits, numBlks, 0, &resource,
                         addrSize, LSC_DATA_ORDER_NONTRANSPOSE,
-                        immOffsetInt, immScaleInt, addrSpace);
+                        currImmOffsetInt, immScaleInt, addrSpace);
             m_encoder->Push();
 
             if (needTemp)
@@ -18654,20 +18657,21 @@ void EmitPass::emitLSCVectorStore(Value *Ptr,
             uint32_t nbelts = instElts * width;
 
             CVariable* rawAddrVar;
+            int currImmOffsetVal = immOffsetVal;
             if (i > 0)
             {
                 // Calculate the new element offset
+              {
                 rawAddrVar = m_currShader->GetNewVariable(eOffset);
-                CVariable* ImmVar = m_currShader->ImmToVariable(
-                    VecMessInfo.insts[i].startByte,
-                    ISA_TYPE_UD);
+                CVariable *ImmVar = m_currShader->ImmToVariable(
+                    VecMessInfo.insts[i].startByte, ISA_TYPE_UD);
                 if (!useA32 && !m_currShader->m_Platform->hasInt64Add()) {
-                    emitAddPair(rawAddrVar, eOffset, ImmVar);
+                  emitAddPair(rawAddrVar, eOffset, ImmVar);
+                } else {
+                  m_encoder->Add(rawAddrVar, eOffset, ImmVar);
+                  m_encoder->Push();
                 }
-                else {
-                    m_encoder->Add(rawAddrVar, eOffset, ImmVar);
-                    m_encoder->Push();
-                }
+              }
             }
             else
             {
@@ -18696,7 +18700,7 @@ void EmitPass::emitLSCVectorStore(Value *Ptr,
             emitLSCStore(cacheOpts,
                          subStoredVar, rawAddrVar, blkBits, numBlks, 0,
                          &resource, addrSize, LSC_DATA_ORDER_NONTRANSPOSE,
-                         immOffsetVal, immScaleVal, addrSpace);
+                         currImmOffsetVal, immScaleVal, addrSpace);
 
             m_encoder->Push();
         }
