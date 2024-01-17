@@ -634,7 +634,8 @@ void FlowGraph::constructFlowGraph(INST_LIST &instlist) {
   setCurrentDebugPass("CFG");
   VISA_DEBUG(std::cout << "Entering CFG construction\n");
 
-  if (builder->hasScratchSurface() && (isStackCallFunc || hasStackCalls)) {
+  bool scratchUse = false;
+  if (builder->hasScratchSurface() && (isStackCallFunc || hasStackCalls || scratchUse)) {
     // unfortunately we can't put this in stack call prolog since this has to be
     // done before RA ToDo: just hard-wire the scratch-surface offset register?
     builder->initScratchSurfaceOffset();
