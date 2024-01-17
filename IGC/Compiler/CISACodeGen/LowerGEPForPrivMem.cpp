@@ -384,16 +384,16 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* 
     return StatusPrivArr2Reg::OK;
 }
 
-static bool CheckUsesForSOAAlyout(Instruction* I, bool& vectorSOA, bool& allUsesAreVector)
+static bool CheckUsesForSOALayout(Instruction* I, bool& vectorSOA, bool& allUsesAreVector)
 {
     for (Value::user_iterator use_it = I->user_begin(), use_e = I->user_end(); use_it != use_e; ++use_it)
     {
-        if (GetElementPtrInst * gep = dyn_cast<GetElementPtrInst>(*use_it))
+        if (auto* pGEP = dyn_cast<GetElementPtrInst>(*use_it))
         {
-            if (CheckUsesForSOAAlyout(gep, vectorSOA, allUsesAreVector))
-                continue;
+            if (!CheckUsesForSOALayout(pGEP, vectorSOA, allUsesAreVector))
+                return false;
         }
-        if (llvm::LoadInst * pLoad = llvm::dyn_cast<llvm::LoadInst>(*use_it))
+        else if (auto* pLoad = llvm::dyn_cast<llvm::LoadInst>(*use_it))
         {
             bool isVectorLoad = pLoad->getType()->isVectorTy();
             vectorSOA &= isVectorLoad;
@@ -401,7 +401,7 @@ static bool CheckUsesForSOAAlyout(Instruction* I, bool& vectorSOA, bool& allUses
             if (!pLoad->isSimple())
                 return false;
         }
-        else if (llvm::StoreInst * pStore = llvm::dyn_cast<llvm::StoreInst>(*use_it))
+        else if (auto* pStore = llvm::dyn_cast<llvm::StoreInst>(*use_it))
         {
             if (!pStore->isSimple())
                 return false;
@@ -415,7 +415,7 @@ static bool CheckUsesForSOAAlyout(Instruction* I, bool& vectorSOA, bool& allUses
                 return false;
             }
         }
-        else if (llvm::BitCastInst * pBitCast = llvm::dyn_cast<llvm::BitCastInst>(*use_it))
+        else if (auto* pBitCast = llvm::dyn_cast<llvm::BitCastInst>(*use_it))
         {
             Type* baseT = GetBaseType(IGCLLVM::getNonOpaquePtrEltTy(pBitCast->getType()));
             Type* sourceType = GetBaseType(IGCLLVM::getNonOpaquePtrEltTy(pBitCast->getOperand(0)->getType()));
@@ -428,7 +428,7 @@ static bool CheckUsesForSOAAlyout(Instruction* I, bool& vectorSOA, bool& allUses
                 baseT->getScalarSizeInBits() == sourceType->getScalarSizeInBits())
             {
                 vectorSOA &= (unsigned int)baseT->getPrimitiveSizeInBits() == sourceType->getPrimitiveSizeInBits();
-                if (CheckUsesForSOAAlyout(pBitCast, vectorSOA, allUsesAreVector))
+                if (CheckUsesForSOALayout(pBitCast, vectorSOA, allUsesAreVector))
                     continue;
             }
             else if (IsBitCastForLifetimeMark(pBitCast))
@@ -438,9 +438,9 @@ static bool CheckUsesForSOAAlyout(Instruction* I, bool& vectorSOA, bool& allUses
             // Not a candidate.
             return false;
         }
-        else if (IntrinsicInst * intr = dyn_cast<IntrinsicInst>(*use_it))
+        else if (auto* pIntr = dyn_cast<IntrinsicInst>(*use_it))
         {
-            llvm::Intrinsic::ID  IID = intr->getIntrinsicID();
+            llvm::Intrinsic::ID  IID = pIntr->getIntrinsicID();
             if (IID == llvm::Intrinsic::lifetime_start ||
                 IID == llvm::Intrinsic::lifetime_end)
             {
@@ -484,7 +484,7 @@ bool IGC::CanUseSOALayout(AllocaInst* I, Type*& base, bool& allUsesAreVector)
         return false;
     bool vectorSOA = true;
     allUsesAreVector = true;
-    bool useSOA = CheckUsesForSOAAlyout(I, vectorSOA, allUsesAreVector);
+    bool useSOA = CheckUsesForSOALayout(I, vectorSOA, allUsesAreVector);
     if (!vectorSOA)
     {
         base = base->getScalarType();
