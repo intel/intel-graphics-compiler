@@ -770,7 +770,7 @@ namespace IGC
         WA_TABLE m_vISAWaTable = {};
 
         // Keeps current state of denorm mode set in cr0 register.
-        uint32_t m_fpDenormMode;
+        uint32_t m_fpDenormMode{};
 
         enum OpType
         {

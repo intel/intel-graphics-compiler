@@ -620,7 +620,7 @@ void CoalesceSpillFills::keepConsecutiveSpills(
     }
   }
 
-  instList = origInstList;
+  instList = std::move(origInstList);
   for (auto coalIt = coalescable.begin(), instIt = instList.begin();
        coalIt != coalescable.end(); coalIt++) {
     if (*instIt == *coalIt)
@@ -699,7 +699,7 @@ CoalesceSpillFills::analyzeFillCoalescing(std::list<INST_LIST_ITER> &instList,
       fillHeuristic(coalesceableFills, instList, origInstList, min, max);
   if (!heuristic) {
     coalesceableFills.clear();
-    instList = origInstList;
+    instList = std::move(origInstList);
     instList.pop_front();
   }
 

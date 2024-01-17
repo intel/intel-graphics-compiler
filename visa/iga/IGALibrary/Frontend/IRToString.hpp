@@ -787,19 +787,19 @@ static inline std::string ToSyntax(const InstOptSet &instOpts) {
 
 /////////////////////////////////////////////////////
 // manually defined enumerations from BXML
-template <typename T> T FromSyntax(std::string str);
+template <typename T> T FromSyntax(const std::string& str);
 
 std::string ToSyntax(MathFC sfc);
-template <> MathFC FromSyntax<MathFC>(std::string str);
+template <> MathFC FromSyntax<MathFC>(const std::string& str);
 
 std::string ToSyntax(SFID sfid);
-template <> SFID FromSyntax<SFID>(std::string str);
+template <> SFID FromSyntax<SFID>(const std::string& str);
 
 std::string ToSyntax(SyncFC sfc);
-template <> SyncFC FromSyntax<SyncFC>(std::string str);
+template <> SyncFC FromSyntax<SyncFC>(const std::string& str);
 
 std::string ToSyntax(DpasFC sfc);
-template <> DpasFC FromSyntax<DpasFC>(std::string str);
+template <> DpasFC FromSyntax<DpasFC>(const std::string& str);
 
 } // namespace iga
 

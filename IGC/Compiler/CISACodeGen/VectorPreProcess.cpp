@@ -1007,7 +1007,7 @@ bool VectorPreProcess::splitLoadStore(
     // so that the stored value will be directly from loaded values
     // without adding insert/extract instructions.
     Optional<AbstractLoadInst> aALI = ASI && !InMap(ASI->getValueOperand()) ?
-        AbstractLoadInst::get(ASI->getValueOperand(), *m_DL) : ALI;
+        AbstractLoadInst::get(ASI->getValueOperand(), *m_DL) : std::move(ALI);
 
     if (aALI)
     {

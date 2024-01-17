@@ -324,6 +324,7 @@ namespace {
         // This is for enabling the mergeload improvement (comparing GEP's last
         // index instead) as it requires to turn off GEP canonicalization.
         bool EnableCanonicalizeGEP() const {
+            IGC_ASSERT(CGC != nullptr);
             // The new mergeload improvement is intended for PVC+ for now.
             if (CGC->platform.getPlatformInfo().eProductFamily != IGFX_PVC &&
                 !CGC->platform.isProductChildOf(IGFX_PVC)) {
@@ -336,7 +337,7 @@ namespace {
                 return false;
             case 2:
             {
-                if (CGC && CGC->type == ShaderType::OPENCL_SHADER)
+                if (CGC->type == ShaderType::OPENCL_SHADER)
                     return false;
                 break;
             }
@@ -4951,7 +4952,7 @@ void BundleInfo::print(raw_ostream& O, int BundleID) const
       << "num of elements = " << bundle_numElts << "    "
       << "useD64 = " << (useD64 ? "true" : "false") << "\n\n";
 
-    for (const auto II : LoadStores) {
+    for (const auto& II : LoadStores) {
         const LdStInfo& LSI = II;
         O << "  (" << format_decimal(LSI.ByteOffset, 3) << ")   ";
         O << *LSI.Inst << "\n";

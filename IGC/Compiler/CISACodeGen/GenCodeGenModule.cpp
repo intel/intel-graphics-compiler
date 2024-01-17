@@ -1287,8 +1287,8 @@ namespace {
     /// \brief Custom inliner for subroutines.
     class SubroutineInliner : public LegacyInlinerBase, public llvm::InstVisitor<SubroutineInliner>
     {
-        EstimateFunctionSize* FSA;
-        MetaDataUtilsWrapper* MDUW;
+        EstimateFunctionSize* FSA = nullptr;
+        MetaDataUtilsWrapper* MDUW = nullptr;
     public:
         static char ID; // Pass identification, replacement for typeid
 

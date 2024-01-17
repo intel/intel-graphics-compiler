@@ -1451,7 +1451,7 @@ auto GetIterationFunc(
             return;
         }
         auto currBBInstsRange = GetMapRange(currBBInstsIt->second, lookupTable, it, end);
-        for (auto [index, val] : currBBInstsRange.first)
+        for (const auto& [index, val] : currBBInstsRange.first)
         {
             if (IsExpectedInst(val))
             {
@@ -1488,7 +1488,7 @@ auto GetIterationFunc(
             return;
         }
         auto currBBInstsRange = GetMapRange(currBBInstsIt->second, lookupTable, it, end);
-        for (auto [index, val] : currBBInstsRange.first)
+        for (const auto& [index, val] : currBBInstsRange.first)
         {
             instructions.push_back(val);
         }

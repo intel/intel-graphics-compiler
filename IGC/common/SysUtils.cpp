@@ -127,7 +127,7 @@ namespace IGC
             }
 
             if (full_path != nullptr)
-                *full_path = basedir;
+                *full_path = std::move(basedir);
 
             return true;
         }

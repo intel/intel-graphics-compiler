@@ -2231,7 +2231,7 @@ bool CISA_IR_Builder::CISA_lookup_builtin_constant(int lineNum,
     val = m_dispatchSimdSize;
     return true;
   } else {
-    RecordParseError(lineNum, sym, ": invalid built-in symbol");
+    RecordParseError(lineNum, std::move(sym), ": invalid built-in symbol");
     val = -1;
     return false;
   }

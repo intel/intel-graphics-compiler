@@ -72,7 +72,7 @@ std::string iga::ToSyntax(MathFC sf) {
     return fmtHex(static_cast<uint32_t>(sf)) + "?";
   }
 }
-template <> MathFC iga::FromSyntax<MathFC>(std::string syn) {
+template <> MathFC iga::FromSyntax<MathFC>(const std::string& syn) {
   for (auto sf : ALL_MathFCs) {
     if (syn == ToSyntax(sf))
       return sf;
@@ -126,7 +126,7 @@ std::string iga::ToSyntax(SFID sfid) {
     return ss.str();
   }
 }
-template <> SFID iga::FromSyntax<SFID>(std::string syn) {
+template <> SFID iga::FromSyntax<SFID>(const std::string& syn) {
   for (SFID sf : ALL_SFIDS) {
     if (syn == ToSyntax(sf))
       return sf;
@@ -155,7 +155,7 @@ std::string iga::ToSyntax(SyncFC sfc) {
     return fmtHex(static_cast<uint32_t>(sfc)) + "?";
   }
 }
-template <> SyncFC iga::FromSyntax<SyncFC>(std::string syn) {
+template <> SyncFC iga::FromSyntax<SyncFC>(const std::string& syn) {
   for (auto sf : ALL_SyncFCs) {
     if (syn == ToSyntax(sf))
       return sf;
@@ -237,7 +237,7 @@ std::string iga::ToSyntax(DpasFC sfc) {
     return fmtHex(static_cast<uint32_t>(sfc)) + "?";
   }
 }
-template <> DpasFC iga::FromSyntax<DpasFC>(std::string syn) {
+template <> DpasFC iga::FromSyntax<DpasFC>(const std::string& syn) {
   for (auto sf : ALL_DpasFCs) {
     if (syn == ToSyntax(sf))
       return sf;

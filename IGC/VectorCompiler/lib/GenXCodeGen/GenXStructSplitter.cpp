@@ -1783,7 +1783,7 @@ bool Substituter::processPTIsUses(Instruction &I,
                                   uint64_t /*OUT*/ &MaxPtrOffset) {
   uint64_t LocalPtrOffset{0};
   for (const auto &U : I.uses()) {
-    Instruction *User = dyn_cast<Instruction>(U.getUser());
+    Instruction *User = cast<Instruction>(U.getUser());
     auto Opcode = User->getOpcode();
     if (Opcode == Instruction::Add || Opcode == Instruction::Or) {
       IGC_ASSERT_EXIT(dyn_cast<BinaryOperator>(User));

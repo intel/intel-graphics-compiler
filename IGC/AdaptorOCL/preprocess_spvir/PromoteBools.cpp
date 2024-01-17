@@ -520,7 +520,7 @@ void PromoteBools::setPromotedAttributes(Function* newFunction, AttributeList& a
 
     // set function attributes
     AttrBuilder attrBuilder(newFunction->getContext());
-    for (auto attr : IGCLLVM::getFnAttrs(attributeList))
+    for (const auto& attr : IGCLLVM::getFnAttrs(attributeList))
     {
         attrBuilder.addAttribute(getPromoted(attr));
     }

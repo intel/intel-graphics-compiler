@@ -113,7 +113,7 @@ void putAddrSpaceCastClose(Function &F) {
             auto User = U->getUser();
             auto UserInst = llvm::dyn_cast<Instruction>(User);
 
-            if(llvm::isa<PHINode>(UserInst)) continue;
+            if(llvm::isa_and_nonnull<PHINode>(UserInst)) continue;
 
             if(UserInst) {
                 auto Clone = I->clone();

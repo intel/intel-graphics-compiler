@@ -871,9 +871,8 @@ bool GenXPredToSimdCF::analizeInsts(BBContainer *Container, Value *Cond) {
   std::function<void(User *, Value *, MatcherType)> TryToFindBlock;
   TryToFindBlock = [&](User *Usr, Value *PredInst, MatcherType Matcher) {
     if (Matcher(Usr, PredInst)) {
-      auto *Inst = dyn_cast<Instruction>(Usr);
-      LLVM_DEBUG(dbgs() << Inst->getFunction()->getName() << " - "
-                        << Inst->getName() << "\n");
+      auto *Inst = cast<Instruction>(Usr);
+      LLVM_DEBUG(dbgs() << Inst->getFunction()->getName() << " - " << Inst->getName() << "\n");
       BBs.insert(Inst->getParent());
     }
     if (auto *Inst = dyn_cast<PHINode>(Usr))
@@ -1423,7 +1422,7 @@ void GenXPredToSimdCF::insertLoopGotoJoin(SimdCFLoopRegion *R) {
 
 void GenXPredToSimdCF::replaceUses(Use *Ui, bool BuildEM) {
   auto *Use = Ui->getUser();
-  auto *Inst = dyn_cast<Instruction>(Use);
+  auto *Inst = cast<Instruction>(Use);
   LLVM_DEBUG(dbgs() << "replaceUses: for instruction " << *Inst);
   auto OpNo = Ui->getOperandNo();
   auto *CondTy = Inst->getOperand(OpNo)->getType();
@@ -1468,7 +1467,7 @@ void GenXPredToSimdCF::replaceUses(Use *Ui, bool BuildEM) {
 bool GenXPredToSimdCF::TryReplace(SimdCFRegionBase *Reg, Use *Ui, bool IsEm) {
   if (!Reg)
     return false;
-  auto *Inst = dyn_cast<Instruction>(Ui->getUser());
+  auto *Inst = cast<Instruction>(Ui->getUser());
   auto *Par = Inst->getParent();
   if (isa<SelectInst>(Inst) && (Ui->getOperandNo() == 0)) {
     auto Exit = Reg->getExit();

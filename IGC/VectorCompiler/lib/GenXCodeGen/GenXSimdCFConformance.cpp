@@ -1421,7 +1421,7 @@ bool GenXSimdCFConformance::hoistGotoUser(Instruction *Inst, CallInst *Goto,
   std::map<BasicBlock *, Value *> foundVals;
   std::vector<Value *> newOperands;
   for (auto ui = Inst->use_begin(), ue = Inst->use_end(); ui != ue; ++ui) {
-    auto User = dyn_cast<Instruction>(ui->getUser());
+    auto User = cast<Instruction>(ui->getUser());
     // TODO: it can be solved with duplicated instructions.
     // Currently we are not going to duplicate them.
     if (User->getParent() == Inst->getParent()) {
@@ -2080,7 +2080,7 @@ void GenXSimdCFConformance::lowerUnsuitableGetEMs() {
   std::vector<Instruction *> ToDelete;
   for (auto ui = GetEMDecl->use_begin(); ui != GetEMDecl->use_end();) {
     std::set<Value *> Visited;
-    auto GetEM = dyn_cast<Instruction>(ui->getUser());
+    auto GetEM = cast<Instruction>(ui->getUser());
     ++ui;
     auto GetEMPred = GetEM->getOperand(0);
 
