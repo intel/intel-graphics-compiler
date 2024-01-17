@@ -987,6 +987,7 @@ namespace {
         }
     private:
         void updateBuiltinFunctionMetaData(llvm::Function*);
+        bool removeDeletedFunctionsMetaData(Module& M, MetaDataUtils* MdUtil);
 
         MetaDataUtils *m_pMdUtil;
     };
@@ -1041,6 +1042,9 @@ bool ProcessBuiltinMetaData::runOnModule(Module& M)
         }
         Changed = true;
     }
+
+    Changed |= removeDeletedFunctionsMetaData(M, m_pMdUtil);
+
     if (Changed)
       m_pMdUtil->save(M.getContext());
 
@@ -1065,6 +1069,38 @@ void ProcessBuiltinMetaData::updateBuiltinFunctionMetaData(llvm::Function* pFunc
         funcMD->m_OpenCLArgBaseTypes.push_back(x.str());
     }
     m_pMdUtil->setFunctionsInfoItem(pFunc, fHandle);
+}
+
+bool ProcessBuiltinMetaData::removeDeletedFunctionsMetaData(Module& M, MetaDataUtils* MdUtil)
+{
+    bool changed = false;
+
+    MetaDataUtils::FunctionsInfoMap::iterator i = MdUtil->begin_FunctionsInfo();
+    MetaDataUtils::FunctionsInfoMap::iterator e = MdUtil->end_FunctionsInfo();
+    while (i != e)
+    {
+        Function* F_meta = (*i).first;
+
+        bool deleted = true;
+        for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
+        {
+            Function* F = &(*I);
+            if (F_meta == F)
+            {
+                deleted = false;
+                break;
+            }
+        }
+
+        MetaDataUtils::FunctionsInfoMap::iterator prev = i++;
+
+        if (deleted)
+            MdUtil->eraseFunctionsInfoItem(prev);
+
+        changed |= deleted;
+    }
+
+    return changed;
 }
 
 //
