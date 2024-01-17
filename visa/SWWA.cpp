@@ -53,6 +53,19 @@ void Optimizer::insertDummyCompactInst() {
   bb->push_back(movInst);
 }
 
+// add (1|M0)   null<1>:uw   null<0;1,0>:uw       0x0:uw
+void Optimizer::insertDummyAdd(G4_BB *bb, INST_LIST_ITER inst_it, int imm) {
+  // Dst
+  auto nullDst = builder.createNullDst(Type_UW);
+  auto nullSrc0 = builder.createNullSrc(Type_UW);
+  auto immSrc1 = builder.createImm(imm, Type_UW);
+
+  auto addInst = builder.createBinOp(G4_add, g4::SIMD1, nullDst, nullSrc0,
+                                     immSrc1, InstOpt_WriteEnable, false);
+
+  bb->insertBefore(inst_it, addInst);
+}
+
 // Float and DP share same GRF cache.
 // Integer and Math shader same GRF cache.
 void Optimizer::insertDummyMad(G4_BB *bb, INST_LIST_ITER inst_it) {
@@ -3504,6 +3517,135 @@ void Optimizer::clearARFDependencies() {
     }
   }
 }
+void Optimizer::mulMacRSWA() {
+  auto hasGRFOverlap = [=](G4_Operand *A, G4_Operand *B) {
+    if (A->isNullReg() || !A->isGreg())
+      return false;
+    if (B->isNullReg() || !B->isGreg())
+      return false;
+
+    unsigned LB1 =
+        A->getLinearizedStart() / fg.builder->numEltPerGRF<Type_UB>();
+    unsigned RB1 = A->getLinearizedEnd() / fg.builder->numEltPerGRF<Type_UB>();
+    unsigned LB2 =
+        B->getLinearizedStart() / fg.builder->numEltPerGRF<Type_UB>();
+    unsigned RB2 = B->getLinearizedEnd() / fg.builder->numEltPerGRF<Type_UB>();
+
+    return (RB2 >= LB1 && RB1 >= LB2);
+  };
+
+  auto isBothMulClass = [](G4_INST *inst1, G4_INST *inst2) {
+    return (inst1->opcode() == G4_mul || inst1->opcode() == G4_mac) &&
+           (inst2->opcode() == G4_mul || inst2->opcode() == G4_mac);
+  };
+
+  auto isBothMaclClass = [](G4_INST *inst1, G4_INST *inst2) {
+    // In vISA, only G4_mach will be used. IGA will change it G4_macl according
+    // to certain conditions.
+    return (inst1->opcode() == G4_mach) &&
+           (inst2->opcode() == G4_mach);
+  };
+
+  auto checkFlatRegRegionFunc =
+      [](uint8_t dstStrideInBytes, uint8_t dstSubRegOffInBytes,
+         uint8_t srcStrideInBytes, uint8_t srcSubRegOffInBytes,
+         uint8_t exChannelWidth) -> bool {
+    return ((dstSubRegOffInBytes == srcSubRegOffInBytes) &&
+            (dstStrideInBytes == srcStrideInBytes) &&
+            (dstStrideInBytes % exChannelWidth == 0));
+  };
+
+  for (auto bb : fg) {
+    G4_INST *prevInst = nullptr;
+    INST_LIST_ITER ii = bb->begin();
+
+    while (ii != bb->end()) {
+      G4_INST *inst = *ii;
+
+      if (inst->getNumSrc() != 2 || inst->tokenHonourInstruction() ||
+          inst->isIntrinsic()) {
+        prevInst = nullptr;
+        ii++;
+        continue;
+      }
+
+      if (!prevInst) {
+        prevInst = inst;
+        ii++;
+        continue;
+      }
+
+      uint8_t exChannelWidth = (uint8_t)TypeSize(inst->getExecType());
+
+      // Issue 1:
+      // MUL opcode class = {MUL, MAC}
+      // MACL opcode class = {MACL, MACH}
+      //
+      // Issue is present for MUL opcode class  OR MACL opcode class (both
+      // prev/current instruction should belong to the same opcode class)
+      // 1. prev instructions src1 has REGIONING/SCALAR
+      // 2. current instruction src1 is FLAT and shares the same src1 as prev
+      //
+      // instruction Issue is not present for below cases.
+      // 1. prev instruction is FLAT and current instruction has
+      // REGIONING/SCALAR
+      // 2. prev/current both are FLAT
+      // 3. prev/current both has REGIONING/SCALAR
+      // 4. One instruction is in MUL opcode class and the other instruction
+      // is in MACL opcode class
+      if (isBothMulClass(prevInst, inst) || isBothMaclClass(prevInst, inst)) {
+        G4_Operand *prevSrc1 = prevInst->getSrc(1);
+        G4_Operand *curSrc1 = inst->getSrc(1);
+
+        if (prevSrc1->isGreg() &&
+            prevSrc1->isSrcRegRegion() && curSrc1 != nullptr &&
+            curSrc1->isGreg() && curSrc1->isSrcRegRegion()) { // All regions
+
+          if (!prevSrc1->asSrcRegRegion()->isFlatRegRegion(
+                  exChannelWidth, checkFlatRegRegionFunc) &&
+              curSrc1->asSrcRegRegion()->isFlatRegRegion(
+                  exChannelWidth, checkFlatRegRegionFunc) &&
+              hasGRFOverlap(
+                  prevSrc1,
+                  curSrc1)) { // none flat vs flat regions, and overlap
+            // WorkAround: Insert dummy instruction that can break src1 RS
+            // chain between regioning MUL instruction and FLAT MULK
+            // instruction (IMMEDIATE operand can be used  for src1 to break
+            // the RS chain)
+            insertDummyAdd(bb, ii);
+          }
+        }
+      }
+
+      // Issue 2
+      // prev.instruction is non-MUL opcode class instruction AND non-MACL
+      // opcode class instruction has(FLAT or Regioning / Scalar) src1 and
+      // current Instruction is MACL opcode class
+      // instruction AND has FLAT regioning AND shares the same src1 has the
+      // prev.instruction,
+      if (inst->opcode() == G4_mach) {
+        G4_Operand *prevSrc1 = prevInst->getSrc(1);
+        G4_Operand *curSrc1 = inst->getSrc(1);
+
+        if (prevSrc1->isGreg() &&
+            prevSrc1->isSrcRegRegion() && curSrc1 != nullptr &&
+            curSrc1->isGreg() && curSrc1->isSrcRegRegion()) {
+          if (prevInst->opcode() != G4_mach && prevInst->opcode() != G4_mul &&
+              prevInst->opcode() != G4_mac) {
+            if (curSrc1->asSrcRegRegion()->isFlatRegRegion(
+                    exChannelWidth, checkFlatRegRegionFunc) &&
+                hasGRFOverlap(prevSrc1, curSrc1)) {
+              insertDummyAdd(bb, ii, 1);
+            }
+          }
+        }
+      }
+
+      prevInst = inst;
+      ii++;
+    }
+  }
+}
 
 // change the send src0 region to be consistent with assembler expectation
 // We do it here instead of HW conformity since they only affect binary encoding
@@ -3776,6 +3918,10 @@ void Optimizer::HWWorkaround() {
   }
   if (VISA_WA_CHECK(builder.getPWaTable(), Wa_2201674230)) {
     clearSendDependencies();
+  }
+
+  if (builder.hasMulMacRSIssue()) {
+    mulMacRSWA();
   }
 
   if (builder.needResetA0forVxHA0()) {

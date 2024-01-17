@@ -239,6 +239,7 @@ private:
   void linePlaneWA(G4_INST *inst);
   void fixSendSrcRegion(G4_INST *inst);
   void clearARFDependencies();
+  void mulMacRSWA();
   void clearSendDependencies();
   void loadThreadPayload();
   void addFFIDProlog();
@@ -283,6 +284,8 @@ private:
   //       its dst is used. No change to the mov instruction.
   // In both case, the dst of inst_with_ip is used to save IP.
   void replaceIPWithCall(InstListType &insts, G4_INST *inst_with_ip);
+
+  void insertDummyAdd(G4_BB *bb, INST_LIST_ITER inst_it, int imm = 0);
 
   void insertDummyMad(G4_BB *bb, INST_LIST_ITER inst_it);
 

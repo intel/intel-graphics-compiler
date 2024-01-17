@@ -4780,6 +4780,16 @@ static bool regionHasFixedSubreg(const IR_Builder &builder, G4_Operand *opnd,
 
   G4_VarBase *base = opnd->getBase();
 
+  if (base->isAccReg()) {
+    if (opnd->isDstRegRegion()) {
+      offset = opnd->asDstRegRegion()->getSubRegOff();
+    }
+    if (opnd->isSrcRegRegion()) {
+      offset = opnd->asSrcRegRegion()->getSubRegOff();
+    }
+    return true;
+  }
+
   if (base == NULL || !base->isRegVar() ||
       !base->asRegVar()->getDeclare()->useGRF()) {
     return false;
@@ -6084,6 +6094,44 @@ bool G4_SrcRegRegion::checkGRFAlign(const IR_Builder &builder) {
   }
 
   return GRF_aligned;
+}
+
+// Flat reg region: starting bit position of a channel in a register is not
+// shifted between src and dst, or limited shift of bit position e.g. big
+// int mul/mad upper dword src's or when dst-type is smaller than exec-type
+// and the dst is written to upper parts of a exec channel.
+// Return true if src region is flat region
+bool G4_SrcRegRegion::isFlatRegRegion(
+    uint8_t exChannelWidth,
+    std::function<bool(uint8_t dstStrideInBytes, uint8_t dstSubRegOffInBytes,
+                       uint8_t srcStrideInBytes, uint8_t srcSubRegOffInBytes,
+                       uint8_t exChannelWidth)> checkFlatRegRegionFunc) {
+  auto dst = inst->getDst();
+  uint32_t dstSubRegOff = 0, srcSubRegOff = 0;
+  bool dstHasFixedSubregOffset = false;
+  if (dst->isNullReg())
+    dstHasFixedSubregOffset = true;
+  else
+    dstHasFixedSubregOffset =
+        dst->hasFixedSubregOffset(inst->getBuilder(), dstSubRegOff);
+
+  bool srcHasFixedSubregOffset = false;
+  if (isNullReg())
+    srcHasFixedSubregOffset = true;
+  else
+    srcHasFixedSubregOffset =
+        hasFixedSubregOffset(inst->getBuilder(), srcSubRegOff);
+
+  if (dstHasFixedSubregOffset && srcHasFixedSubregOffset) {
+    uint8_t dstStrideInBytes = (uint8_t)dst->getExecTypeSize();
+    uint16_t srcStride = 0;
+    getRegion()->isSingleStride(inst->getExecSize(), srcStride);
+    uint8_t srcStrideInBytes = (uint8_t)(srcStride * getTypeSize());
+    return checkFlatRegRegionFunc(dstStrideInBytes, (uint8_t)dstSubRegOff,
+                                    srcStrideInBytes,
+                                    (uint8_t)srcSubRegOff, exChannelWidth);
+  }
+  return false;
 }
 
 //

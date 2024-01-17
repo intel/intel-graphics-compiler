@@ -873,4 +873,10 @@ bool alwaysAllowGlobalFlagOpt() const {
   // behavior for now.
   return getPlatform() <= GENX_TGLLP;
 }
+bool hasMulMacRSIssue() const {
+  if (getOption(vISA_hasMulMacRSIssue))
+    return true;
+
+  return VISA_WA_CHECK(getPWaTable(), Wa_18035690555);
+}
 // end HW capabilities

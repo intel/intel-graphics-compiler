@@ -619,6 +619,11 @@ public:
   bool isDirectA0() const { return acc == Direct && base->isA0(); }
   bool isDirectAddress() const { return acc == Direct && base->isAddress(); }
   bool isScalar() const;
+  bool isFlatRegRegion(
+      uint8_t exChannelWidth,
+      std::function<bool(uint8_t dstStrideInBytes, uint8_t dstSubRegOffInBytes,
+                         uint8_t srcStrideInBytes, uint8_t srcSubRegOffInBytes,
+                         uint8_t exChannelWidth)> checkFlatRegRegionFunc);
 
   unsigned short ExRegNum(bool &) const;
   unsigned short ExSubRegNum(bool &);
