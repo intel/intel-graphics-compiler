@@ -326,8 +326,8 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     // collect stats after all the optimization. This info can be dumped to the cos file
     mpm.add(new CheckInstrTypes(true, false));
 
-    if (IGC_IS_FLAG_ENABLED(StaticProfileGuidedSpillCostAnalysis))
-    {
+    if ((IGC_GET_FLAG_VALUE(StaticProfileGuidedSpillCostAnalysis) &
+         FrequencyDataDS::PGSS_IGC_GEN) != 0) {
         mpm.add(createGenerateFrequencyDataPass());
     }
 

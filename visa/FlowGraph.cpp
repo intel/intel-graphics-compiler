@@ -810,7 +810,7 @@ void FlowGraph::constructFlowGraph(INST_LIST &instlist) {
     addToSubroutine(curr_BB, currSubroutine);
   }
 
-  if (builder->getOption(vISA_FreqBasedSpillCost))
+  if (builder->getFreqInfoManager().isProfileEmbeddingEnabled())
     builder->getFreqInfoManager().updateStaticFrequency(subroutines);
 
   // we can do this only after fg is constructed

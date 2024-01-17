@@ -32,6 +32,10 @@ using namespace llvm;
 using Scaled64 = ScaledNumber<uint64_t>;
 
 class GenerateFrequencyData : public ModulePass {
+  typedef enum {
+    PGSS_IGC_DUMP_BLK = 0x1,
+    PGSS_IGC_DUMP_FUNC = 0x2,
+  } PGSS_DUMP_t;
 
 public:
     static char ID;
@@ -99,7 +103,8 @@ void GenerateFrequencyData::runStaticAnalysis()
         auto& BFI = getAnalysis<BlockFrequencyInfoWrapperPass>(F).getBFI();
         Scaled64 EntryFreq(BFI.getEntryFreq(), 0);
 
-        if ((IGC_GET_FLAG_VALUE(PrintStaticProfileGuidedSpillCostAnalysis) & 0x1) != 0)
+        if ((IGC_GET_FLAG_VALUE(PrintStaticProfileGuidedSpillCostAnalysis) &
+             PGSS_IGC_DUMP_BLK) != 0)
             dbgs() << "Function frequency of " << F.getName().str() << ": " << F_freqs[&F].toString() << "\n";
 
         for (auto& B : F.getBasicBlockList())
@@ -108,7 +113,8 @@ void GenerateFrequencyData::runStaticAnalysis()
             BBCount /= EntryFreq;
             BBCount *= F_freqs[&F];
             B_freqs[&B] = BBCount;
-            if ((IGC_GET_FLAG_VALUE(PrintStaticProfileGuidedSpillCostAnalysis) & 0x1) != 0)
+            if ((IGC_GET_FLAG_VALUE(PrintStaticProfileGuidedSpillCostAnalysis) &
+                 PGSS_IGC_DUMP_BLK) != 0)
                 dbgs() << "Block frequency of " << B.getName().str() << " " <<  &B << ": " << BBCount.toString() << "\n";
 
             Instruction* last_inst = B.getTerminator();
@@ -209,13 +215,14 @@ void GenerateFrequencyData::updateStaticFuncFreq(DenseMap<Function*, ScaledNumbe
             Counts[F] += New;
         });
 
-    for (auto& F : M->getFunctionList()) {
+    for (auto &F : M->getFunctionList()) {
         if (F.empty())
             continue;
-        if (Counts.find(&F) != Counts.end())
-        {
-            if((IGC_GET_FLAG_VALUE(PrintStaticProfileGuidedSpillCostAnalysis) & 0x2) != 0)
-                dbgs() << F.getName().str() << " Freq: " << Counts[&F].toString() << "\n";
+        if (Counts.find(&F) != Counts.end()) {
+            if ((IGC_GET_FLAG_VALUE(PrintStaticProfileGuidedSpillCostAnalysis) &
+                 PGSS_IGC_DUMP_FUNC) != 0)
+                dbgs() << F.getName().str()
+                       << " Freq: " << Counts[&F].toString() << "\n";
         }
     }
     return;

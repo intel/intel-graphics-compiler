@@ -5194,7 +5194,9 @@ namespace IGC
         }
         if (IGC_IS_FLAG_ENABLED(StaticProfileGuidedSpillCostAnalysis))
         {
-          SaveOption(vISA_FreqBasedSpillCost, true);
+          uint32_t spss_step = (uint32_t)IGC_GET_FLAG_VALUE(
+              StaticProfileGuidedSpillCostAnalysis);
+          SaveOption(vISA_FreqBasedSpillCost, spss_step);
           uint32_t scale_val = (uint32_t)IGC_GET_FLAG_VALUE(
               StaticProfileGuidedSpillCostAnalysisScale);
           SaveOption(vISA_FreqBasedSpillCostScale,scale_val);

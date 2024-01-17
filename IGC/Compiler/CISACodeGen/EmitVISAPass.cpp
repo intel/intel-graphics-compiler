@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "OpenCLKernelCodeGen.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/NamedBarriers/NamedBarriersResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/StackOverflowDetection/StackOverflowDetection.hpp"
+#include "Compiler/CISACodeGen/GenerateFrequencyData.hpp"
 #include "AdaptorCommon/RayTracing/RTStackFormat.h"
 #include "DeSSA.hpp"
 #include "messageEncoding.hpp"
@@ -1149,10 +1150,9 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                          inst->getMetadata("stats.blockFrequency.scale");
                 };
 
-                if (IGC_IS_FLAG_ENABLED(StaticProfileGuidedSpillCostAnalysis) &&
-                    llvmInst->isTerminator()) {
-                    IGC_ASSERT(hasBlockFreq(
-                        llvmInst)); // terminator should have freeq info
+                if ((IGC_GET_FLAG_VALUE(StaticProfileGuidedSpillCostAnalysis) &
+                     FrequencyDataDS::PGSS_IGC_TRANS) != 0 &&
+                    llvmInst->isTerminator() && hasBlockFreq(llvmInst)) {
                     auto getFreqDigit = [&](Instruction *inst) {
                       MDNode *mn_digits =
                           llvmInst->getMetadata("stats.blockFrequency.digits");

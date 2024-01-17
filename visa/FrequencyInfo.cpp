@@ -23,6 +23,7 @@ namespace vISA {
 FrequencyInfo::FrequencyInfo(IR_Builder *builder, G4_Kernel &k)
     : kernel(k), irb(builder), lastInstMarked(nullptr), liveAnalysis(nullptr) {
   dumpEnabled = irb->getOptions()->getuInt32Option(vISA_DumpFreqBasedSpillCost);
+  enabledSteps = irb->getOptions()->getuInt32Option(vISA_FreqBasedSpillCost);
   GRFSpillFillFreq = Scaled64::getZero();
   freqScale = Scaled64::get(
       irb->getOptions()->getuInt32Option(vISA_FreqBasedSpillCostScale));
@@ -54,7 +55,7 @@ void FrequencyInfo::storeStaticFrequencyAsMetadata(G4_INST *i,
   i->setMetadata("stats.blockFrequency.digits", md_digits);
   i->setMetadata("stats.blockFrequency.scale", md_scale);
 
-  if (dumpEnabled & 0x10) {
+  if (willDumpLLVMToG4()) {
     std::cerr << "LLVM to G4_Inst - Frequency data: ";
     std::cerr << curFreq.toString();
     std::cerr << " digits=";
@@ -73,7 +74,7 @@ void FrequencyInfo::updateStaticFrequencyForBasicBlock(G4_BB *bb) {
   if (lastInst) {
     Scaled64 freq = getFreqInfoFromInst(lastInst);
     BlockFreqInfo[bb] = freq;
-    if (dumpEnabled & 0x10) {
+    if (willDumpLLVMToG4()) {
       std::cerr << "G4_Inst to G4_BB - Frequency data: ";
       std::cerr << freq.toString();
       std::cerr << " digits =" << freq.getDigits();
@@ -86,7 +87,7 @@ void FrequencyInfo::updateStaticFrequencyForBasicBlock(G4_BB *bb) {
     // A block with no instructions have zero frequency
     // Fixme: infer frequency number from Pres
     BlockFreqInfo[bb] = Scaled64::getZero();
-    if (dumpEnabled & 0x10) {
+    if (willDumpLLVMToG4()) {
       std::cerr << "G4_Inst to G4_BB - No instructions in a basic block\n";
     }
   }
@@ -110,8 +111,8 @@ bool FrequencyInfo::underFreqSpillThreshold(
       irb->getOptions()->getuInt32Option(vISA_AbortOnSpillThreshold), 200u);
   Scaled64 const_val = Scaled64::get(200);
 
-  if (dumpEnabled & 0x80) {
-    if (!irb->getOption(vISA_FreqBasedSpillCost)) {
+  if (willDumpOnSpilThreshold()) {
+    if (!isFreqBasedSpillSelectionEnabled()) {
       for (auto spilledLR : spilledLRs) {
         std::cerr << "Spill threshold - spilled LR";
         spilledLR->emit(std::cerr);
@@ -139,12 +140,12 @@ bool FrequencyInfo::underFreqSpillThreshold(
     std::cerr << std::endl;
   }
 
-  if (!irb->getOption(vISA_FreqBasedSpillCost))
+  if (!isFreqBasedSpillSelectionEnabled())
     return legacyUnderThreshold;
 
   for (auto spilled : spilledLRs) {
     GRFSpillFillFreq += getRefFreq(spilled);
-    if (dumpEnabled & 0x80) {
+    if (willDumpOnSpilThreshold()) {
       std::cerr << "Spill threshold - spilled LR";
       spilled->emit(std::cerr);
       std::cerr << " Ref Cnt: " << spilled->getRefCount();
@@ -161,7 +162,7 @@ bool FrequencyInfo::underFreqSpillThreshold(
            Scaled64::get(threshold * asmCount);
   };
   bool isUnderThreshold = underSpillFreqThreshold(GRFSpillFillFreq, instNum);
-  if (dumpEnabled & 0x80) {
+  if (willDumpOnSpilThreshold()) {
     std::cerr << "Spill threshold - Scale * C: "
               << freqScale.toString()
               << "*" << const_val.toString()
@@ -197,7 +198,7 @@ void FrequencyInfo::computeFreqSpillCosts(GlobalRA &gra,
   std::vector<LiveRange *> &lrs = liveAnalysis->gra.incRA.getLRs();
 
   unsigned costFunc = irb->getOptions()->getuInt32Option(vISA_FreqBasedSpillCostFunc);
-  if (dumpEnabled & 0x20) {
+  if (willDumpSpillCostAnalysis()) {
     //std::cerr << "Spill cost analysis - Norm factor: "
               //<< freqNormFactor.toString() << std::endl;
     std::cerr << "Spill cost analysis - Selected var cnt: " << numVar
@@ -206,7 +207,7 @@ void FrequencyInfo::computeFreqSpillCosts(GlobalRA &gra,
               << std::endl;
   }
 
-  if (!irb->getOption(vISA_FreqBasedSpillCost))
+  if (!isSpillCostComputationEnabled())
     return;
 
   std::unordered_map<const G4_Declare*, std::vector<G4_Declare*>>
@@ -242,7 +243,7 @@ void FrequencyInfo::computeFreqSpillCosts(GlobalRA &gra,
     G4_Declare *dcl = lr->getDcl();
     Scaled64 refFreq = getRefFreq(lr);
     double refFreqDouble = refFreq.getDigits() * (double)std::pow(2,refFreq.getScale());
-    if (dumpEnabled & 0x20) {
+    if (willDumpSpillCostAnalysis()) {
       std::cerr << "Spill cost analysis - reference frequency: "
                 << refFreqDouble
                 << std::endl;
@@ -327,7 +328,7 @@ void FrequencyInfo::computeFreqSpillCosts(GlobalRA &gra,
       }
       setFreqSpillCost(lr, spillCost);
 
-      if (dumpEnabled & 0x20) {
+      if (willDumpSpillCostAnalysis()) {
         std::cerr << "Spill cost analysis - ";
         lr->emit(std::cerr);
         std::cerr << " Metric: " << metric;
@@ -347,7 +348,7 @@ void FrequencyInfo::computeFreqSpillCosts(GlobalRA &gra,
           maxNormalFreqCost = spillCost;
       }
     }
-    if (dumpEnabled & 0x20) {
+    if (willDumpSpillCostAnalysis()) {
       std::cerr << "\n";
     }
   }
@@ -368,7 +369,7 @@ void FrequencyInfo::computeFreqSpillCosts(GlobalRA &gra,
 
 void FrequencyInfo::sortBasedOnFreq(std::vector<LiveRange*>& lrs)
 {
-  if (dumpEnabled & 0x40) {
+  if (willDumpColoringOrder()) {
     std::cerr << "Sort based on freq - Kernel " << kernel.getName() << std::endl;
     for (auto lr : lrs) {
       std::cerr << "Sort based on freq - (Legacy) ";
@@ -379,7 +380,7 @@ void FrequencyInfo::sortBasedOnFreq(std::vector<LiveRange*>& lrs)
     std::cerr << std::endl;
   }
 
-  if (!irb->getOption(vISA_FreqBasedSpillCost)) {
+  if (!isFreqBasedSpillSelectionEnabled()) {
     return;
   }
   std::sort(lrs.begin(), lrs.end(), [&](LiveRange* lr1, LiveRange* lr2) {
@@ -391,7 +392,7 @@ void FrequencyInfo::sortBasedOnFreq(std::vector<LiveRange*>& lrs)
     }
   );
 
-  if (dumpEnabled & 0x40) {
+  if (willDumpColoringOrder()) {
 
     for (auto lr : lrs) {
         std::cerr << "Sort based on freq - (Frequency) ";
@@ -416,7 +417,7 @@ bool FrequencyInfo::hasFreqMetaData(G4_INST* i) {
 
 Scaled64 FrequencyInfo::getFreqInfoFromInst(G4_INST *inst) {
   if (tailInsts.find(inst) == tailInsts.end()) {
-    if (dumpEnabled & 0x100) {
+    if (willDumpNoFreqReport()) {
       std::cerr << "The instruction doesn't have a registered tail "
                    "instruction, possible generateed after encoding\n";
     }
@@ -431,7 +432,7 @@ Scaled64 FrequencyInfo::getFreqInfoFromInst(G4_INST *inst) {
 
 Scaled64 FrequencyInfo::getBlockFreqInfo(G4_BB *bb) {
   if (BlockFreqInfo.find(bb) == BlockFreqInfo.end()) {
-    if (dumpEnabled & 0x100) {
+    if (willDumpNoFreqReport()) {
       std::cerr << "The basicblock doesn't have frequency information, "
                    "possibly generated after flow graph construction\n";
       bb->dump();
@@ -549,7 +550,7 @@ void FrequencyInfo::initForRegAlloc(LivenessAnalysis  *l) {
   freqSpillCosts.clear();
   refFreqs.clear();
   liveAnalysis = l;
-  if (!kernel.getOption(vISA_FreqBasedSpillCost))
+  if (!isSpillCostComputationEnabled())
     return;
   for (auto bb : kernel.fg)
     deriveRefFreq(bb);

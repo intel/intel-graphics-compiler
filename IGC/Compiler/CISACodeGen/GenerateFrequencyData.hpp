@@ -19,8 +19,16 @@ SPDX-License-Identifier: MIT
 #pragma once
 
 namespace IGC {
-    llvm::ModulePass* createGenerateFrequencyDataPass();
-    void initializeGenerateFrequencyDataPass(llvm::PassRegistry&);
+
+  llvm::ModulePass* createGenerateFrequencyDataPass();
+  void initializeGenerateFrequencyDataPass(llvm::PassRegistry&);
+}
+
+namespace FrequencyDataDS {
+typedef enum {
+  PGSS_IGC_GEN = 0x1F,
+  PGSS_IGC_TRANS = 0x1E,
+} PGSS_STEP_t;
 }
 
 #endif // _CISA_GENERATEFREQUENCYDATA_HPP_

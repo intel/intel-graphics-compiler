@@ -10873,7 +10873,7 @@ int GlobalRA::coloringRegAlloc() {
       builder.getOption(vISA_SpillSpaceCompression);
 
   uint32_t GRFSpillFillCount = 0;
-  if (kernel.getOption(vISA_FreqBasedSpillCost))
+  if (builder.getFreqInfoManager().isFreqBasedSpillSelectionEnabled())
     builder.getFreqInfoManager().initGRFSpillFillFreq();
 
   unsigned fastCompileIter = 1;

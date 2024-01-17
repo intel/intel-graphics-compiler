@@ -28,6 +28,21 @@ class G4_Label;
 class RPE;
 
 class FrequencyInfo {
+
+  typedef enum {
+    PGSS_VISA_EMBED = 0x1C,
+    PGSS_VISA_COMP = 0x18,
+    PGSS_VISA_ENABLE = 0x10,
+  } PGSS_STEP_t;
+
+  typedef enum {
+    PGSS_VISA_DUMP_TRANS = 0x10,
+    PGSS_VISA_DUMP_ANAL = 0x20,
+    PGSS_VISA_DUMP_COLOR = 0x40,
+    PGSS_VISA_DUMP_THR = 0x80,
+    PGSS_VISA_DUMP_NOFREQ = 0x100,
+  } PGSS_DUMP_t;
+
 public:
   FrequencyInfo(IR_Builder *builder, G4_Kernel &k);
   void transferFreqToG4Inst(uint64_t digits, int16_t scale);
@@ -51,8 +66,39 @@ public:
     GRFSpillFillFreq = llvm::ScaledNumber<uint64_t>::getZero();
   };
 
+  bool isProfileEmbeddingEnabled() {
+    return (enabledSteps & PGSS_VISA_EMBED) != 0;
+  }
+
+  bool isSpillCostComputationEnabled() {
+    return (enabledSteps & PGSS_VISA_COMP) != 0;
+  }
+
+  bool isFreqBasedSpillSelectionEnabled() {
+    return (enabledSteps & PGSS_VISA_ENABLE) != 0;
+  }
+
+  bool willDumpLLVMToG4() { return (dumpEnabled & PGSS_VISA_DUMP_TRANS) != 0; }
+
+  bool willDumpSpillCostAnalysis() {
+    return (dumpEnabled & PGSS_VISA_DUMP_ANAL) != 0;
+  }
+
+  bool willDumpColoringOrder() {
+    return (dumpEnabled & PGSS_VISA_DUMP_COLOR) != 0;
+  }
+
+  bool willDumpOnSpilThreshold() {
+    return (dumpEnabled & PGSS_VISA_DUMP_THR) != 0;
+  }
+
+  bool willDumpNoFreqReport() {
+    return (dumpEnabled & PGSS_VISA_DUMP_NOFREQ) != 0;
+  }
+
 private:
   unsigned dumpEnabled;
+  unsigned enabledSteps;
   G4_Kernel &kernel;
   IR_Builder *irb;
   G4_INST *lastInstMarked;
