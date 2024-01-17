@@ -8746,6 +8746,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         break;
     case GenISAIntrinsic::GenISA_bitcastfromstruct:
       emitBitcastfromstruct(inst);
+      break;
     case GenISAIntrinsic::GenISA_bitcasttostruct:
         emitBitcasttostruct(inst);
       break;

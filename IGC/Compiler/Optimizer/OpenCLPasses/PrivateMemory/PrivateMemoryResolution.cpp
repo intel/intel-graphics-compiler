@@ -81,7 +81,7 @@ namespace IGC {
         static bool testTransposedMemory(const Type* pTmpType, const Type* const pTypeOfAccessedObject, uint64_t tmpAllocaSize, const uint64_t bufferSizeLimit);
 
         /// @brief  The module level alloca information
-        ModuleAllocaAnalysis* m_ModAllocaInfo;
+        ModuleAllocaAnalysis* m_ModAllocaInfo = nullptr;
 
         /// @brief - Metadata API
         IGCMD::MetaDataUtils* m_pMdUtils = nullptr;
