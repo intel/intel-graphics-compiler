@@ -677,6 +677,8 @@ iga_status_t iga::DebugCompaction(Platform p, int /* verbosity */,
 
   CompactionStats cs;
 
+  std::ios_base::fmtflags osFlags = os.flags();
+
   bool success = true;
   size_t pc = 0;
   while (pc < bitsLen) {
@@ -797,6 +799,8 @@ iga_status_t iga::DebugCompaction(Platform p, int /* verbosity */,
       }
     }
   }
+
+  os.flags(osFlags);
 
   return IGA_SUCCESS;
 }
