@@ -1649,7 +1649,7 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img##IMAGE_TYPE##_##COORDS_TY
 }
 
 DEF_IMAGE_WRITE_LOD(2d_wo,       2d,    int2, v2i32)
-DEF_IMAGE_WRITE_LOD(1d_wo,       2d,    int,  v1i32)
+DEF_IMAGE_WRITE_LOD(1d_wo,       1d,    int,  i32)
 DEF_IMAGE_WRITE_LOD(1d_array_wo, 1darr, int2, v2i32)
 DEF_IMAGE_WRITE_LOD(2d_array_wo, 2darr, int4, v4i32)
 DEF_IMAGE_WRITE_LOD(3d_wo,       3d,    int4, v4i32)
