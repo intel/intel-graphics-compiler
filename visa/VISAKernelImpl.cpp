@@ -2123,9 +2123,7 @@ int VISAKernelImpl::CreateVISADstOperand(VISA_VectorOpnd *&cisa_opnd,
 
     // replace vISA %null variable with a null dst to avoid confusing later
     // passes
-    G4_Declare *nullVar = m_builder->preDefVars.getPreDefinedVar(
-        PreDefinedVarsInternal::VAR_NULL);
-    if (dcl == nullVar) {
+    if (cisa_decl->type == GENERAL_VAR && cisa_decl->index == 0) {
       cisa_opnd->g4opnd = m_builder->createNullDst(dcl->getElemType());
     } else {
       cisa_opnd->g4opnd = m_builder->createDst(
