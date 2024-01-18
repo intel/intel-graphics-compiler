@@ -589,6 +589,20 @@ namespace llvm {
         , const User* U
 #endif
     ) {
+        // The extra cost of speculative execution for math intrinsics
+        if (auto *II = dyn_cast_or_null<IntrinsicInst>(U)) {
+            if (Intrinsic::ID IID = II->getIntrinsicID()) {
+                switch (IID) {
+                    case Intrinsic::cos:
+                    case Intrinsic::sin:
+                    case Intrinsic::sqrt:
+                        return TTI::TCC_Expensive;
+                    default:
+                        break;
+                }
+            }
+        }
+
         IGC::CodeGenContext* CGC = this->ctx;
         if (!CGC->enableFunctionCall() && !GenISAIntrinsic::isIntrinsic(F) &&
             !F->isIntrinsic()) {
@@ -621,6 +635,20 @@ namespace llvm {
     llvm::InstructionCost GenIntrinsicsTTIImpl::getUserCost(const User* U, ArrayRef<const Value*> Operands, TTI::TargetCostKind CostKind)
 #endif
     {
+        // The extra cost of speculative execution for math intrinsics
+        if (auto *II = dyn_cast_or_null<IntrinsicInst>(U)) {
+            if (Intrinsic::ID IID = II->getIntrinsicID()) {
+                switch (IID) {
+                    case Intrinsic::cos:
+                    case Intrinsic::sin:
+                    case Intrinsic::sqrt:
+                        return TTI::TCC_Expensive;
+                    default:
+                        break;
+                }
+            }
+        }
+
         const Function* F = dyn_cast<Function>(U);
         if (F != nullptr)
         {
