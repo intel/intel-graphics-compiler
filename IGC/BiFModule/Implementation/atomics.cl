@@ -1916,14 +1916,29 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p1f64_i32_i32_f64, )( __
 
 double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p3f64_i32_i32_f64, )( __local double *Pointer, int Scope, int Semantics, double Value)
 {
-    double orig;
-    FENCE_PRE_OP(Scope, Semantics, false)
-    LOCAL_SPINLOCK_START()
-    orig = *Pointer;
-    *Pointer = orig + Value;
-    LOCAL_SPINLOCK_END()
-    FENCE_POST_OP(Scope, Semantics, false)
-    return orig;
+    if(BIF_FLAG_CTRL_GET(PlatformType) == IGFX_PVC)
+    {
+        double orig;
+        double desired;
+        do {
+            orig = as_double(SPIRV_BUILTIN(AtomicLoad, _p3i64_i32_i32, )((__local long*)Pointer, Scope, Semantics));
+            desired = orig + Value;
+        } while(as_long(orig) != SPIRV_BUILTIN(AtomicCompareExchange, _p3i64_i32_i32_i32_i64_i64, )(
+                                (__local long*)Pointer, Scope, Semantics, Semantics,
+                                as_long(desired), as_long(orig)));
+        return orig;
+    }
+    else
+    {
+        double orig;
+        FENCE_PRE_OP(Scope, Semantics, false)
+        LOCAL_SPINLOCK_START()
+        orig = *Pointer;
+        *Pointer = orig + Value;
+        LOCAL_SPINLOCK_END()
+        FENCE_POST_OP(Scope, Semantics, false)
+        return orig;
+    }
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
