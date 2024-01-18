@@ -55,13 +55,13 @@ namespace IGC
         llvm::Instruction *ResolveLoad(llvm::CallInst *CI);
         llvm::Instruction *ResolveStore(llvm::CallInst *CI);
         llvm::Instruction *ResolveMad(llvm::CallInst *CI, unsigned OperationType);
-        int getSliceSize(const JointMatrixTypeDescription *desc, llvm::Type *matTy);
+        int getSliceSize(const JointMatrixTypeDescription *desc);
         llvm::Value *ResolveFill(llvm::CallInst *CI);
         llvm::Value *ResolveWILength(llvm::CallInst *CI);
         llvm::Value *ResolveSliceInsert(llvm::CallInst *CI);
         llvm::Value *ResolveSliceExtract(llvm::CallInst *CI);
         llvm::Instruction *ResolveGetCoord(llvm::CallInst *CI);
-        llvm::Value *createSliceExtract(llvm::IRBuilder<> *builder, llvm::Value *matrix, llvm::Value *index, const JointMatrixTypeDescription *desc, llvm::Type *matTy);
+        llvm::Value *createSliceExtract(llvm::IRBuilder<> *builder, llvm::Value *matrix, llvm::Value *index, const JointMatrixTypeDescription *desc);
         llvm::Value *ResolveCall(llvm::CallInst *CI);
         llvm::Value *ResolveGeneric(llvm::Instruction *OldInst);
         llvm::Value *Resolve(llvm::Value *value);

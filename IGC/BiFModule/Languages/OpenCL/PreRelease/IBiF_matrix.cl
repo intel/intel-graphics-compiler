@@ -352,6 +352,8 @@ DEFINE_LOAD(PackedA_RowMajor, _SG16, char, 8, short, 16, 2, 32, 2x32, ROW_MAJOR,
 
 /* A load tf32 SG16 */
 DEFINE_LOAD(PackedA_RowMajor, _SG16, int, 32, int, 32, 8, 8, 8x8, ROW_MAJOR, , 4, 8)
+/* A load tf32 SG16 for sub group size 32*/
+DEFINE_LOAD(PackedA_RowMajor, _SG16, int, 32, int, 32, 8, 8, 8x8, ROW_MAJOR, , 2, 8)
 
 /* PackedB load i16 */
 DEFINE_LOAD(PackedB_ColumnMajor, , short, 16, int, 32, 8, 16,  16x8,  COL_MAJOR, , 8, -1)
@@ -574,6 +576,8 @@ DEFINE_STORE(PackedA_RowMajor, _SG16, short, 16, short, 16, 8, 16, 8x16, ROW_MAJ
 
 /* A store tf32 SG16 */
 DEFINE_STORE(PackedA_RowMajor, _SG16, int, 32, int, 32, 8, 8, 8x8, ROW_MAJOR, , 4, 8, false)
+/* A store tf32 SG16 for sub group size 32*/
+DEFINE_STORE(PackedA_RowMajor, _SG16, int, 32, int, 32, 8, 8, 8x8, ROW_MAJOR, , 2, 8, false)
 
 /* PackedB store i16*/
 DEFINE_STORE(PackedB_ColumnMajor, , short, 16, int, 32, 8, 16, 16x8, COL_MAJOR, , 8, -1, false)
@@ -600,6 +604,9 @@ DEFINE_STORE(PackedB_PackedB,     _SG16, char, 8, int, 32, 8, 64, 32x16, ROW_MAJ
 
 /* B store tf32 SG16 */
 DEFINE_STORE(PackedB_RowMajor, _SG16, int, 32, int, 32, 8, 16, 8x16, ROW_MAJOR, , 8, 16, true)
+
+/* B store tf32 SG16 for sub group size 32 */
+DEFINE_STORE(PackedB_RowMajor, _SG16, int, 32, int, 32, 8, 16, 8x16, ROW_MAJOR, , 4, 16, true)
 
 /* Acc i32 */
 DEFINE_STORE(Accumulator_RowMajor, , int, 32, int, 32, 8, 8, 8x8, ROW_MAJOR, , 8, 8, true)
@@ -874,7 +881,7 @@ DEFINE_LOAD_LARGE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 16, 16, 16x16, 
 DEFINE_LOAD_LARGE(PackedA_RowMajor, _SG16, short, 16, short, 16, 16, 16, 16x16, ROW_MAJOR, , 16)
 
 #define DEFINE_ACC_ROW_MAJOR_32x64(address_space) \
-  INLINE void __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_32x64_i32_32_##address_space##_v8i8_pi32_i32(__private char *dst, char *mem, long stride) { \
+  INLINE void __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_32x64_i32_128_##address_space##_v8i8_pi32_i32(__private char *dst, char *mem, long stride) { \
       __private char *c0 = dst + 0 * 16 * (sizeof (int)); \
       __private char *c1 = dst + 1 * 16 * (sizeof (int)); \
       __private char *c2 = dst + 2 * 16 * (sizeof (int)); \
@@ -924,7 +931,7 @@ DEFINE_A_ROW_MAJOR_32x16(global)
 DEFINE_A_ROW_MAJOR_32x16(local)
 
 #define DEFINE_B_B_16x64(address_space) \
-  INLINE void __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_SG16_16x64_i16_8_##address_space##_v8i8_pi32_i32(__private char *dst, char *mem, long stride) { \
+  INLINE void __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_SG16_16x64_i16_32_##address_space##_v8i8_pi32_i32(__private char *dst, char *mem, long stride) { \
       __private char *b0 = dst; \
       __private char *b1 = dst + 1 * 16 * (sizeof (short)); \
       __private char *b2 = dst + 2 * 16 * (sizeof (short)); \
@@ -973,7 +980,7 @@ DEFINE_B_B_16x64(local)
 DEFINE_STORE_LARGE(Accumulator_RowMajor, _SG16, int, 32, int, 32, 16, 16, 16x16, ROW_MAJOR, , 16)
 
 #define DEFINE_STORE_ACC_ROW_MAJOR_32x64(address_space) \
-  INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_32x64_i32_32_##address_space##_pi64_v8i8(char *mem, __private char *src, long stride) { \
+  INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_32x64_i32_128_##address_space##_pi64_v8i8(char *mem, __private char *src, long stride) { \
       __private char *c0 = src + 0 * 16 * (sizeof (int)); \
       __private char *c1 = src + 1 * 16 * (sizeof (int)); \
       __private char *c2 = src + 2 * 16 * (sizeof (int)); \
