@@ -33,9 +33,9 @@ public:
 template <PlatformGen Gen>
 class LatencyTableXe: public LatencyTable {
   // Select latency information based on platform generation.
-  using LI2 = void;
-  using LI = typename std::conditional<Gen == PlatformGen::XE,
-                                       XELatencyInfo, LI2>::type;
+  using LI = typename std::conditional<Gen >= PlatformGen::XE,
+                                       XELatencyInfo,
+                                       void>::type;
 public:
   LatencyTableXe(const IR_Builder& builder) : LatencyTable(builder) {
     static_assert(Gen >= PlatformGen::XE);
@@ -53,14 +53,11 @@ public:
 
 private:
   uint16_t getMsgLatency(const G4_INST *Inst) const;
-  uint16_t getSamplerLatency() const;
-  uint16_t getDPL3Latency() const;
-  uint16_t getLSCL3Latency(bool typed) const;
   uint16_t getMathLatency(const G4_INST *inst) const;
-  uint16_t getBranchLatency() const;
+  uint16_t getBranchLatency(const G4_INST *inst) const;
   uint16_t getIntrinsicLatency(const G4_INST *inst) const;
   uint16_t getDPASLatency(const G4_InstDpas *dpas) const;
-  uint16_t getARFAccessLatency() const;
+  uint16_t getARFAccessLatency(const G4_INST *inst) const;
   uint16_t getArithmeticLatency(const G4_INST *inst) const;
 };
 
@@ -171,14 +168,14 @@ uint16_t LatencyTableXe<Gen>::getLatency(const G4_INST *Inst) const {
   if (Inst->isMath())
     return getMathLatency(Inst);
   if (Inst->isFlowControl())
-    return getBranchLatency();
+    return getBranchLatency(Inst);
   if (Inst->isIntrinsic())
     return getIntrinsicLatency(Inst);
   if (Inst->isDpas())
     return getDPASLatency(Inst->asDpasInst());
   if (Inst->writesFlag() ||
       (Inst->getDst() && Inst->getDst()->isDirectA0()))
-    return getARFAccessLatency();
+    return getARFAccessLatency(Inst);
   if (Inst->isArithmetic())
     return getArithmeticLatency(Inst);
 
@@ -220,12 +217,12 @@ uint16_t LatencyTableXe<Gen>::getMsgLatency(const G4_INST *Inst) const {
       bool isCachedInL1 = MsgDesc->getCachingL1() == Caching::CA ||
                           (MsgDesc->getCachingL1() != Caching::UC &&
                            m_builder.getOption(vISA_assumeL1Hit));
-      bool typed = MsgDesc->isTyped();
-      if (isCachedInL1) {
-        return typed ? value_of(LI::LSC_TYPED_L1)
-                     : value_of(LI::LSC_UNTYPED_L1);
+      if (MsgDesc->isTyped()) {
+        return isCachedInL1 ? value_of(LI::LSC_TYPED_L1)
+                            : value_of(LI::LSC_TYPED_L3);
       } else {
-        return getLSCL3Latency(typed);
+        return isCachedInL1 ? value_of(LI::LSC_UNTYPED_L1)
+                            : value_of(LI::LSC_UNTYPED_L3);
       }
     }
   }
@@ -233,27 +230,12 @@ uint16_t LatencyTableXe<Gen>::getMsgLatency(const G4_INST *Inst) const {
     return Inst->asSendInst()->isFence() ? value_of(LI::SLM_FENCE)
                                          : value_of(LI::SLM16);
   if (MsgDesc->isSampler())
-    return getSamplerLatency();
+    return value_of(LI::SAMPLER_L3);
   if (MsgDesc->isHDC())
-    return getDPL3Latency();
+    return value_of(LI::DP_L3);
   if (MsgDesc->isBarrier())
     return value_of(LI::BARRIER);
   return value_of(LI::SEND_OTHERS);
-}
-
-template<PlatformGen Gen>
-uint16_t LatencyTableXe<Gen>::getSamplerLatency() const {
-  return value_of(LI::SAMPLER_L3);
-}
-
-template<PlatformGen Gen>
-uint16_t LatencyTableXe<Gen>::getLSCL3Latency(bool typed) const {
-  return value_of(typed ? LI::LSC_TYPED_L3 : LI::LSC_UNTYPED_L3);
-}
-
-template<PlatformGen Gen>
-uint16_t LatencyTableXe<Gen>::getDPL3Latency() const {
-  return value_of(LI::DP_L3);
 }
 
 template<PlatformGen Gen>
@@ -263,7 +245,8 @@ uint16_t LatencyTableXe<Gen>::getMathLatency(const G4_INST *Inst) const {
 }
 
 template<PlatformGen Gen>
-uint16_t LatencyTableXe<Gen>::getBranchLatency() const {
+uint16_t LatencyTableXe<Gen>::getBranchLatency(const G4_INST *Inst) const {
+  vASSERT(Inst->isFlowControl());
   return value_of(LI::BRANCH);
 }
 
@@ -281,7 +264,9 @@ uint16_t LatencyTableXe<Gen>::getDPASLatency(const G4_InstDpas *dpas) const {
 }
 
 template<PlatformGen Gen>
-uint16_t LatencyTableXe<Gen>::getARFAccessLatency() const {
+uint16_t LatencyTableXe<Gen>::getARFAccessLatency(const G4_INST *Inst) const {
+  vASSERT(Inst->writesFlag() ||
+          (Inst->getDst() && Inst->getDst()->isDirectA0()));
   return value_of(LI::ARF);
 }
 
@@ -347,6 +332,7 @@ LatencyTableXe<PlatformGen::XE>::getDPASLatency(uint8_t repeatCount) const {
     return value_of(LI::DPAS) + repeatCount - 1;
   case Xe_PVCXT:
     return value_of(LI::DPAS) + repeatCount;
+  case Xe2:
     switch (repeatCount) {
     case 1:
       return 22;
@@ -358,8 +344,8 @@ LatencyTableXe<PlatformGen::XE>::getDPASLatency(uint8_t repeatCount) const {
       return 33;
     }
   default: // Not supported platform
-    vISA_ASSERT_UNREACHABLE("Unsupported platform");
-    return value_of(LI::UNKNOWN);
+    // TODO: Add vISA_ASSERT_UNREACHABLE.
+    return 46;
   }
 }
 template<>
