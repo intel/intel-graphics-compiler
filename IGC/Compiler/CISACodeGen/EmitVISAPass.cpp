@@ -5078,7 +5078,8 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
                 PackSIMD8HFRet(dst);
             }
 
-            if (feedbackEnable)
+            if (feedbackEnable
+                )
             {
                 emitFeedbackEnable();
             }
@@ -7622,7 +7623,8 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
             PackSIMD8HFRet(dst);
         }
 
-        if (hasMaskResponse)
+        if (hasMaskResponse
+            )
         {
             CVariable* flag = m_currShader->GetNewVariable(
                 numLanes(m_currShader->m_dispatchSize), ISA_TYPE_BOOL, EALIGN_BYTE, CName::NONE);
@@ -8072,7 +8074,8 @@ void EmitPass::emitLdmsInstruction(llvm::Instruction* inst)
         PackSIMD8HFRet(dst);
     }
 
-    if (feedbackEnable)
+    if (feedbackEnable
+        )
     {
         emitFeedbackEnable();
     }
