@@ -2082,30 +2082,21 @@ GRFMode::GRFMode(const TARGET_PLATFORM platform, Options *op) : options(op) {
     defaultMode = 0;
   }
   currentMode = defaultMode;
-
-  // Set upper bound GRF
-  unsigned maxGRF = op->getuInt32Option(vISA_MaxGRFNum);
-  upperBoundGRF = maxGRF > 0 ? maxGRF : configs.back().numGRF;
-  vISA_ASSERT(isValidNumGRFs(upperBoundGRF), "Invalid upper bound for GRF number");
 }
 
-unsigned GRFMode::setModeByRegPressure(unsigned maxRP,
-                                       unsigned largestInputReg) {
+unsigned GRFMode::setModeByRegPressure(unsigned maxRP, unsigned largestInputReg) {
   unsigned size = configs.size(), i = 0;
   // find appropiate GRF based on reg pressure
   for (; i < size; i++) {
-    if (configs[i].VRTEnable && configs[i].numGRF <= upperBoundGRF) {
+    if (configs[i].VRTEnable && maxRP <= configs[i].numGRF &&
+        // Check that we've at least 8 GRFs over and above
+        // those blocked for kernel input. This helps cases
+        // where an 8 GRF variable shows up in entry BB.
+        (largestInputReg + 8) <= configs[i].numGRF) {
       currentMode = i;
-      if (maxRP <= configs[i].numGRF &&
-          // Check that we've at least 8 GRFs over and above
-          // those blocked for kernel input. This helps cases
-          // where an 8 GRF variable shows up in entry BB.
-          (largestInputReg + 8) <= configs[i].numGRF)
-        return configs[currentMode].numGRF;
+      break;
     }
   }
-  // RP is greater than the maximum GRF available, so set the largest GRF
-  // available
   return configs[currentMode].numGRF;
 }
 

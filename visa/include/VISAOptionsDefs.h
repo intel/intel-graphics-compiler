@@ -281,9 +281,6 @@ DEF_VISA_OPTION(vISA_ReservedGRFNum, ET_INT32, "-reservedGRFNum",
                 "USAGE: -reservedGRFNum <regNum>\n", 0)
 DEF_VISA_OPTION(vISA_TotalGRFNum, ET_INT32, "-TotalGRFNum",
                 "USAGE: -TotalGRFNum <regNum>\n", 128)
-DEF_VISA_OPTION(vISA_MaxGRFNum, ET_INT32, "-maxGRFNum",
-                "Set the upper bound GRF for auto GRF selection."
-                "USAGE: -maxGRFNum <regNum>. 0 means no maximum number.\n", 0)
 DEF_VISA_OPTION(vISA_RATrace, ET_BOOL, "-ratrace", UNUSED, false)
 DEF_VISA_OPTION(vISA_FastSpill, ET_BOOL, "-fasterRA", UNUSED, false)
 DEF_VISA_OPTION(vISA_AbortOnSpillThreshold, ET_INT32, "-abortOnSpill", UNUSED,
