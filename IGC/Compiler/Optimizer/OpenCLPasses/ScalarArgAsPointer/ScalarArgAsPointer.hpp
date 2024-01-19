@@ -68,6 +68,7 @@ namespace IGC
 
         void visitStoreInst(llvm::StoreInst& I);
         void visitLoadInst(llvm::LoadInst& I);
+        void visitCallInst(llvm::CallInst& I);
 
     private:
 
@@ -82,6 +83,8 @@ namespace IGC
         ///         arguments and saves them to common list.
         /// @param  V destination pointer.
         void analyzePointer(llvm::Value* V);
+
+        void analyzeValue(llvm::Value* V);
 
         /// @brief    Returns a set of matching kernel arguments. Returns null if load/store:
         ///             (1) is indirect, or

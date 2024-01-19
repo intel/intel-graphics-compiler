@@ -101,6 +101,33 @@ void ScalarArgAsPointerAnalysis::visitLoadInst(llvm::LoadInst& I)
     analyzePointer(I.getPointerOperand());
 }
 
+void ScalarArgAsPointerAnalysis::visitCallInst(CallInst& CI)
+{
+    auto I = dyn_cast<GenIntrinsicInst>(&CI);
+    if (!I)
+        return;
+
+    GenISAIntrinsic::ID const id = I->getIntrinsicID();
+
+    if (id == GenISAIntrinsic::GenISA_LSC2DBlockRead ||
+        id == GenISAIntrinsic::GenISA_LSC2DBlockWrite)
+    {
+        return analyzeValue(I->getOperand(0));
+    }
+
+    if (IsStatelessMemLoadIntrinsic(id) ||
+        IsStatelessMemStoreIntrinsic(id) ||
+        IsStatelessMemAtomicIntrinsic(*I, id))
+    {
+        Value* V = GetBufferOperand(I);
+
+        if (!V || !isa<PointerType>(V->getType()))
+            return;
+
+        return analyzePointer(V);
+    }
+}
+
 void ScalarArgAsPointerAnalysis::analyzePointer(llvm::Value* V)
 {
     auto* type = dyn_cast<PointerType>(V->getType());
@@ -110,12 +137,23 @@ void ScalarArgAsPointerAnalysis::analyzePointer(llvm::Value* V)
     if (type->getAddressSpace() != ADDRESS_SPACE_GLOBAL && type->getAddressSpace() != ADDRESS_SPACE_GENERIC)
         return;
 
-    // If scalar is going to be used as pointer, it has to be an instruction, like casting.
-    auto* inst = dyn_cast<Instruction>(V);
-    if (!inst)
-        return;
+    analyzeValue(V);
+}
 
-    if (auto args = findArgs(inst))
+void ScalarArgAsPointerAnalysis::analyzeValue(llvm::Value* V)
+{
+    std::shared_ptr<ScalarArgAsPointerAnalysis::ArgSet> args;
+
+    if (auto* I = dyn_cast<Instruction>(V))
+    {
+        args = findArgs(I);
+    }
+    else
+    {
+        args = analyzeOperand(V);
+    }
+
+    if (args)
     {
         LLVM_DEBUG(
             for (auto a : *args)
