@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2023 Intel Corporation
+Copyright (C) 2020-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -45,7 +45,7 @@ struct zeInfoExecutionEnv
 {
     bool operator==(const zeInfoExecutionEnv& other) const
     {
-        return barrier_count == other.barrier_count && disable_mid_thread_preemption == other.disable_mid_thread_preemption && grf_count == other.grf_count && has_4gb_buffers == other.has_4gb_buffers && has_device_enqueue == other.has_device_enqueue && has_dpas == other.has_dpas && has_fence_for_image_access == other.has_fence_for_image_access && has_global_atomics == other.has_global_atomics && has_multi_scratch_spaces == other.has_multi_scratch_spaces && has_no_stateless_write == other.has_no_stateless_write && has_stack_calls == other.has_stack_calls && require_disable_eufusion == other.require_disable_eufusion && indirect_stateless_count == other.indirect_stateless_count && inline_data_payload_size == other.inline_data_payload_size && offset_to_skip_per_thread_data_load == other.offset_to_skip_per_thread_data_load && offset_to_skip_set_ffid_gp == other.offset_to_skip_set_ffid_gp && required_sub_group_size == other.required_sub_group_size && required_work_group_size == other.required_work_group_size && simd_size == other.simd_size && slm_size == other.slm_size && subgroup_independent_forward_progress == other.subgroup_independent_forward_progress && thread_scheduling_mode == other.thread_scheduling_mode && work_group_walk_order_dimensions == other.work_group_walk_order_dimensions && eu_thread_count == other.eu_thread_count && has_sample == other.has_sample && has_rtcalls == other.has_rtcalls;
+        return barrier_count == other.barrier_count && disable_mid_thread_preemption == other.disable_mid_thread_preemption && grf_count == other.grf_count && has_4gb_buffers == other.has_4gb_buffers && has_device_enqueue == other.has_device_enqueue && has_dpas == other.has_dpas && has_fence_for_image_access == other.has_fence_for_image_access && has_global_atomics == other.has_global_atomics && has_multi_scratch_spaces == other.has_multi_scratch_spaces && has_no_stateless_write == other.has_no_stateless_write && has_stack_calls == other.has_stack_calls && require_disable_eufusion == other.require_disable_eufusion && indirect_stateless_count == other.indirect_stateless_count && inline_data_payload_size == other.inline_data_payload_size && offset_to_skip_per_thread_data_load == other.offset_to_skip_per_thread_data_load && offset_to_skip_set_ffid_gp == other.offset_to_skip_set_ffid_gp && required_sub_group_size == other.required_sub_group_size && required_work_group_size == other.required_work_group_size && simd_size == other.simd_size && slm_size == other.slm_size && private_size == other.private_size && spill_size == other.spill_size && subgroup_independent_forward_progress == other.subgroup_independent_forward_progress && thread_scheduling_mode == other.thread_scheduling_mode && work_group_walk_order_dimensions == other.work_group_walk_order_dimensions && eu_thread_count == other.eu_thread_count && has_sample == other.has_sample && has_rtcalls == other.has_rtcalls;
     }
     zeinfo_int32_t barrier_count = 0;
     zeinfo_bool_t disable_mid_thread_preemption = false;
@@ -67,6 +67,8 @@ struct zeInfoExecutionEnv
     std::vector<zeinfo_int32_t> required_work_group_size;
     zeinfo_int32_t simd_size = 0;
     zeinfo_int32_t slm_size = 0;
+    zeinfo_int32_t private_size = 0;
+    zeinfo_int32_t spill_size = 0;
     zeinfo_bool_t subgroup_independent_forward_progress = false;
     zeinfo_str_t thread_scheduling_mode;
     std::vector<zeinfo_int32_t> work_group_walk_order_dimensions;
@@ -238,7 +240,7 @@ struct zeInfoContainer
     KernelsMiscInfoTy kernels_misc_info;
 };
 struct PreDefinedAttrGetter{
-    static zeinfo_str_t getVersionNumber() { return "1.38"; }
+    static zeinfo_str_t getVersionNumber() { return "1.39"; }
 
     enum class ArgThreadSchedulingMode {
         age_based,

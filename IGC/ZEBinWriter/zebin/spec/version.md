@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZEBIN Version
-Version 1.38
+Version 1.39
 
 ## Versioning
 Format: \<_Major number_\>.\<_Minor number_\>
@@ -15,6 +15,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.39**: Add private_size and spill_size to execution_env.
 - **Version 1.38**: Add new enum value NT_INTELGT_INDIRECT_ACCESS_DETECTION_VERSION to .note.intelgt.compat section.
 - **Version 1.37**: Specify bindless addrmode for const_base and global_base arguments.
 - **Version 1.36**: Specify values for EI_ABIVERSION field.

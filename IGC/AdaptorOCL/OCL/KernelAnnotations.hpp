@@ -332,6 +332,8 @@ struct ExecutionEnvironment
     DWORD numThreads                                  = 0;
     bool  HasStackCalls                               = false;
     bool  RequireDisableEUFusion                      = false;
+    DWORD PerThreadSpillMemoryUsage                   = 0;
+    DWORD PerThreadPrivateMemoryUsage                 = 0;
 };
 
 struct KernelTypeProgramBinaryInfo

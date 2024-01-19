@@ -565,6 +565,8 @@ void ZEBinaryBuilder::addKernelExecEnv(const SOpenCLKernelInfo& annotations,
     env.simd_size = annotations.m_executionEnvironment.CompiledSIMDSize;
     // set slm size to inline local size
     env.slm_size = annotations.m_executionEnvironment.SumFixedTGSMSizes ;
+    env.private_size = annotations.m_executionEnvironment.PerThreadPrivateMemoryUsage;
+    env.spill_size = annotations.m_executionEnvironment.PerThreadSpillMemoryUsage;
     env.subgroup_independent_forward_progress = annotations.m_executionEnvironment.SubgroupIndependentForwardProgressRequired;
     if (annotations.m_executionEnvironment.WorkgroupWalkOrder[0] ||
         annotations.m_executionEnvironment.WorkgroupWalkOrder[1] ||

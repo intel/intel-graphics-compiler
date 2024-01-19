@@ -2726,6 +2726,11 @@ namespace IGC
         m_kernelInfo.m_executionEnvironment.CompiledSIMDSize = numLanes(simdMode);
         m_kernelInfo.m_executionEnvironment.SIMDInfo = m_Context->GetSIMDInfo();
 
+        m_kernelInfo.m_executionEnvironment.PerThreadPrivateMemoryUsage =
+            pOutput->m_UseScratchSpacePrivateMemory ?
+                pOutput->m_scratchSpaceUsedByShader : m_perWIStatelessPrivateMemSize * numLanes(simdMode);
+        m_kernelInfo.m_executionEnvironment.PerThreadSpillMemoryUsage = pOutput->m_scratchSpaceUsedBySpills;
+
         m_kernelInfo.m_executionEnvironment.PerThreadScratchSpace = pOutput->getScratchSpaceUsageInSlot0();
         m_kernelInfo.m_executionEnvironment.PerThreadScratchSpaceSlot1 = pOutput->getScratchSpaceUsageInSlot1();
         m_kernelInfo.m_executionEnvironment.PerThreadPrivateOnStatelessSize = m_perWIStatelessPrivateMemSize;
