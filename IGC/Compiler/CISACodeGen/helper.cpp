@@ -1755,6 +1755,7 @@ namespace IGC
         case GenISAIntrinsic::GenISA_LSCStore:
         case GenISAIntrinsic::GenISA_LSCStoreBlock:
         case GenISAIntrinsic::GenISA_simdBlockWrite:
+        case GenISAIntrinsic::GenISA_LSC2DBlockWrite:
             return true;
         default:
             break;
