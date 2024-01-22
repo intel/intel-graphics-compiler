@@ -10594,7 +10594,7 @@ void EmitPass::emitVLAStackAlloca(llvm::GenIntrinsicInst* intrinsic)
     }
 
     if (IGC_IS_FLAG_ENABLED(StackOverflowDetection)) {
-        emitStackOverflowDetectionCall(intrinsic->getFunction());
+        emitStackOverflowDetectionCall(intrinsic->getFunction(), false);
     }
 }
 
@@ -10733,8 +10733,12 @@ void EmitPass::InitializeKernelStack(Function* pKernel, CVariable* stackBufferBa
     CVariable* pSP = m_currShader->GetSP();
     emitAddPointer(pSP, pStackBufferBase, pThreadOffset);
 
+    if (IGC_IS_FLAG_ENABLED(StackOverflowDetection)) {
+        emitStackOverflowDetectionCall(pKernel, true);
+    }
+
     // Push a new stack frame
-    emitPushFrameToStack(totalAllocaSize);
+    emitPushFrameToStack(pKernel, totalAllocaSize);
 
     // Set the total alloca size for the entry function
     m_encoder->SetFunctionAllocaStackSize(pKernel, totalAllocaSize);
@@ -11130,7 +11134,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
         emitAddPointer(pSP, pSP, pPushSize);
 
         if (IGC_IS_FLAG_ENABLED(StackOverflowDetection)) {
-            emitStackOverflowDetectionCall(inst->getFunction());
+            emitStackOverflowDetectionCall(inst->getFunction(), false);
         }
     }
 
@@ -11421,11 +11425,7 @@ void EmitPass::emitStackFuncEntry(Function* F)
     m_currShader->SaveStackState();
 
     // Push a new stack frame
-    emitPushFrameToStack(totalAllocaSize);
-
-    if (IGC_IS_FLAG_ENABLED(StackOverflowDetection)) {
-        emitStackOverflowDetectionCall(F);
-    }
+    emitPushFrameToStack(F, totalAllocaSize);
 
     // Set the per-function private mem size
     m_encoder->SetFunctionAllocaStackSize(F, totalAllocaSize);
@@ -18969,7 +18969,7 @@ void EmitPass::emitVectorCopyToOrFromAOS(uint32_t AOSBytes,
 //  Update FP to the current SP
 //  Increment SP by pushSize
 //  Store value of previous frame's FP to the address of updated FP (for stack-walk)
-void EmitPass::emitPushFrameToStack(unsigned& pushSize)
+void EmitPass::emitPushFrameToStack(Function* ParentFunction, unsigned& pushSize)
 {
     CVariable* pFP = m_currShader->GetFP();
     CVariable* pSP = m_currShader->GetSP();
@@ -18985,6 +18985,10 @@ void EmitPass::emitPushFrameToStack(unsigned& pushSize)
     {
         // Update SP by pushSize
         emitAddPointer(pSP, pSP, m_currShader->ImmToVariable(pushSize, ISA_TYPE_UD));
+
+        if (IGC_IS_FLAG_ENABLED(StackOverflowDetection)) {
+            emitStackOverflowDetectionCall(ParentFunction, false);
+        }
 
         if (IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack) && m_pCtx->type != ShaderType::RAYTRACING_SHADER) // RTX provides own stack memory, storing the FP at this point is invalid
         {
@@ -22697,24 +22701,32 @@ CVariable* EmitPass::getStackSizePerThread(Function* parentFunc) {
     return pSize;
 }
 
-void EmitPass::emitStackOverflowDetectionCall(Function* ParentFunction) {
+void EmitPass::emitStackOverflowDetectionCall(Function* ParentFunction, bool EmitInitFunction) {
+    const char *FunctionNames[] = {
+        "__stackoverflow_init",
+        "__stackoverflow_detection"
+    };
+    const char *FunctionName = (EmitInitFunction ? FunctionNames[0] : FunctionNames[1]);
+
     auto FG = m_FGA->getGroup(ParentFunction);
-    Function *StackOverflowDetectionFunction = nullptr;
+    Function *StackOverflowFunction = nullptr;
     // Function subgroup can contain clones of the subroutine.
     for (auto F : *FG) {
-        if (F->getName().contains("__stackoverflow_detection") &&
+        if (F->getName().startswith(FunctionName) &&
             m_FGA->getSubGroupMap(ParentFunction) ==
                 m_FGA->getSubGroupMap(F)) {
-            StackOverflowDetectionFunction = F;
+            StackOverflowFunction = F;
             break;
         }
     }
-    m_currFuncHasSubroutine = true;
-    IGC_ASSERT_MESSAGE(
-        StackOverflowDetectionFunction,
-        "Couldn't find __stackoverflow_detection function in the module!");
 
-    m_encoder->SubroutineCall(nullptr, StackOverflowDetectionFunction);
-    m_encoder->Push();
+    if (StackOverflowFunction) {
+        m_currFuncHasSubroutine = true;
+
+        m_encoder->SubroutineCall(nullptr, StackOverflowFunction);
+        m_encoder->Push();
+    } else if (!EmitInitFunction) {
+        IGC_ASSERT_MESSAGE(false,
+            "Couldn't find %s function in the module!", FunctionName);
+    }
 }
-

@@ -32,10 +32,72 @@ IGC_INITIALIZE_PASS_END(StackOverflowDetectionPass, PASS_FLAG, PASS_DESCRIPTION,
 
 char StackOverflowDetectionPass::ID = 0;
 
-StackOverflowDetectionPass::StackOverflowDetectionPass()
-    : ModulePass(ID) {
+StackOverflowDetectionPass::StackOverflowDetectionPass() : ModulePass(ID) {
   initializeStackOverflowDetectionPassPass(
       *PassRegistry::getPassRegistry());
+}
+
+StackOverflowDetectionPass::StackOverflowDetectionPass(Mode mode_)
+  : StackOverflowDetectionPass() {
+  mode = mode_;
+}
+
+bool StackOverflowDetectionPass::removeDummyCalls(Module &M) {
+  std::vector<llvm::Instruction *> ToDeleteInstructions;
+
+  for (Function &F : M) {
+    for (auto&& BB : F) {
+      for (auto& I : BB) {
+        if (auto callI = llvm::dyn_cast<llvm::CallInst>(&I)) {
+          Function *callFunction = callI->getCalledFunction();
+          if (callFunction) {
+            auto callFunctionName = callFunction->getName();
+            if (callFunctionName.startswith(STACK_OVERFLOW_INIT_BUILTIN_NAME) ||
+                callFunctionName.startswith(STACK_OVERFLOW_DETECTION_BUILTIN_NAME)) {
+              ToDeleteInstructions.push_back(&I);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  for (auto I : ToDeleteInstructions) {
+    I->eraseFromParent();
+  }
+  return !ToDeleteInstructions.empty();
+}
+
+bool StackOverflowDetectionPass::removeCallsAndFunctionsIfNoStackCallsOrVLA(
+    Module &M, IGCMD::MetaDataUtils *pMdUtils, ModuleMetaData *pModMD) {
+  bool changed = false;
+  bool HasStackCallsOrVLA = std::any_of(
+    M.getFunctionList().begin(), M.getFunctionList().end(), [](auto &F) {
+      return F.hasFnAttribute("visaStackCall") ||
+             F.hasFnAttribute("hasVLA");
+    });
+  if (!HasStackCallsOrVLA) {
+    for (auto FuncName : {STACK_OVERFLOW_INIT_BUILTIN_NAME,
+                          STACK_OVERFLOW_DETECTION_BUILTIN_NAME}) {
+      if (auto F = M.getFunction(FuncName)) {
+        std::vector<llvm::CallInst *> CallersToDelete;
+        for (auto User : F->users()) {
+          if (auto I = dyn_cast<llvm::CallInst>(User)) {
+            CallersToDelete.push_back(I);
+          }
+        }
+        std::for_each(CallersToDelete.begin(), CallersToDelete.end(),
+                      [](auto CallInst) { CallInst->eraseFromParent(); });
+
+        changed = true;
+
+        IGCMD::IGCMetaDataHelper::removeFunction(*pMdUtils, *pModMD, F);
+        F->removeDeadConstantUsers();
+        F->eraseFromParent();
+      }
+    }
+  }
+  return changed;
 }
 
 bool StackOverflowDetectionPass::runOnModule(Module &M) {
@@ -50,43 +112,28 @@ bool StackOverflowDetectionPass::runOnModule(Module &M) {
   const bool isLibraryCompilation = pModMD->compOpt.IsLibraryCompilation;
 
   // The pass is designed to be run at least two times.
-  // In the first run it inserts the detection functions
+  // In the first run (Mode::Initialize) it inserts the detection functions
   // to entry points without analysis if they are really needed,
   // as it is not possible at this stage - it is meant to be called before BIImport
   // and PrintfResoulution passes, as the implementation of the detection functions is in the
   // builtin module. So the first run is before inlining and we are not sure if stack calls will be present.
   // Also VLAs can be optimized later in the compilation.
   //
-  // The next run of this pass is meant to cleanup the calls if they are not really needed.
-  if (M.getFunction(STACK_OVERFLOW_INIT_BUILTIN_NAME) ||
-      M.getFunction(STACK_OVERFLOW_DETECTION_BUILTIN_NAME)) {
-    // If the functions are already present in the module, this is the cleanup
-    // pass.
-    bool HasStackCallsOrVLA = std::any_of(
-        M.getFunctionList().begin(), M.getFunctionList().end(), [](auto &F) {
-          return F.hasFnAttribute("visaStackCall") ||
-                 F.hasFnAttribute("hasVLA");
-        });
-    if (!HasStackCallsOrVLA) {
-      for (auto FuncName : {STACK_OVERFLOW_INIT_BUILTIN_NAME,
-                            STACK_OVERFLOW_DETECTION_BUILTIN_NAME}) {
-        if (auto F = M.getFunction(FuncName)) {
-          std::vector<CallInst *> CallersToDelete;
-          for (auto User : F->users()) {
-            if (auto I = dyn_cast<CallInst>(User)) {
-              CallersToDelete.push_back(I);
-            }
-          }
-          std::for_each(CallersToDelete.begin(), CallersToDelete.end(),
-                        [](auto CallInst) { CallInst->eraseFromParent(); });
+  // The next run (Mode::AnalyzeAndCleanup) of this pass is meant to cleanup the calls if they are not really needed.
+  //
+  // Third run (Mode::RemoveDummyCalls) removes previously inserted calls to __stackoverflow_init and
+  // __stackoverflow_detection. These will be inserted again in EmitVisaPass and it's impossible to do it
+  // correctly before this pass.
+  // Two dummy calls that we insterted in Mode::Initialize run were there to prevent dead code elimination
+  // of __stackoverflow_init and __stackoverflow_detection implementations before reaching EmitVisaPass.
 
-          changed = true;
-
-          IGCMD::IGCMetaDataHelper::removeFunction(*pMdUtils, *pModMD, F);
-          F->removeDeadConstantUsers();
-          F->eraseFromParent();
-        }
-      }
+  if (mode == Mode::RemoveDummyCalls ||
+      mode == Mode::AnalyzeAndCleanup)
+  {
+    if (mode == Mode::RemoveDummyCalls) {
+      changed = removeDummyCalls(M);
+    } else {
+       changed = removeCallsAndFunctionsIfNoStackCallsOrVLA(M, pMdUtils, pModMD);
     }
 
     if (changed) {
@@ -97,6 +144,7 @@ bool StackOverflowDetectionPass::runOnModule(Module &M) {
     return changed;
   }
 
+  IGC_ASSERT(mode == Mode::Initialize);
   for (Function &F : M) {
     const bool isEntryFunction = isEntryFunc(pMdUtils, &F);
     if (isEntryFunction || isLibraryCompilation) {

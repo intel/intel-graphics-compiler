@@ -331,6 +331,10 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
         mpm.add(createGenerateFrequencyDataPass());
     }
 
+    if (IGC_IS_FLAG_ENABLED(StackOverflowDetection)) {
+        mpm.add(new StackOverflowDetectionPass(StackOverflowDetectionPass::Mode::RemoveDummyCalls));
+    }
+
     //
     // Generally, passes that change IR should be prior to this place!
     //
@@ -645,7 +649,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
 
     if (IGC_IS_FLAG_ENABLED(StackOverflowDetection)) {
         // Cleanup stack overflow detection calls if necessary.
-        mpm.add(new StackOverflowDetectionPass());
+        mpm.add(new StackOverflowDetectionPass(StackOverflowDetectionPass::Mode::AnalyzeAndCleanup));
     }
 
     if  (ctx.enableFunctionCall() || ctx.type == ShaderType::RAYTRACING_SHADER)

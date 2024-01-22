@@ -454,7 +454,7 @@ public:
         uint32_t DstSubRegOffset = 0, uint32_t SrcSubRegOffset = 0);
     void emitCopyAll(CVariable* Dst, CVariable* Src, llvm::Type* Ty);
 
-    void emitPushFrameToStack(unsigned& pushSize);
+    void emitPushFrameToStack(Function* ParentFunction, unsigned& pushSize);
     // emitMul64 - emulate 64bit multiply by 32-bit operations.
     // Dst must be a 64-bit type variable.
     // Src0 and Src1 must be in 32-bit type variable/immediate
@@ -632,7 +632,7 @@ public:
 
     void emitMayUnalignedVectorCopy(
         CVariable* D, uint32_t D_off, CVariable* S, uint32_t S_off, llvm::Type* Ty);
-    void emitStackOverflowDetectionCall(llvm::Function* ParentFunction);
+    void emitStackOverflowDetectionCall(llvm::Function* ParentFunction, bool EmitInitFunction);
 
     std::pair<llvm::Value*, llvm::Value*> getPairOutput(llvm::Value*) const;
 

@@ -20,14 +20,22 @@ namespace IGC {
 ///
 class StackOverflowDetectionPass : public llvm::ModulePass {
 public:
+  enum class Mode {
+    Initialize,
+    AnalyzeAndCleanup,
+    RemoveDummyCalls,
+  };
+
   /// @brief  Pass identification.
   static char ID;
 
   static constexpr const char* STACK_OVERFLOW_INIT_BUILTIN_NAME = "__stackoverflow_init";
   static constexpr const char* STACK_OVERFLOW_DETECTION_BUILTIN_NAME = "__stackoverflow_detection";
 
+  Mode mode = Mode::Initialize;
+
   StackOverflowDetectionPass();
-  ~StackOverflowDetectionPass() {}
+  StackOverflowDetectionPass(Mode mode_);
 
   virtual llvm::StringRef getPassName() const override {
     return "StackOverflowDetectionPass";
@@ -39,6 +47,9 @@ public:
     AU.addRequired<CodeGenContextWrapper>();
     AU.addRequired<MetaDataUtilsWrapper>();
   }
+
+  bool removeDummyCalls(llvm::Module &M);
+  bool removeCallsAndFunctionsIfNoStackCallsOrVLA(llvm::Module &M, IGCMD::MetaDataUtils *pMdUtils, ModuleMetaData *pModMD);
 };
 
 } // namespace IGC

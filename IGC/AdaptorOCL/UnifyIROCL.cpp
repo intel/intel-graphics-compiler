@@ -381,7 +381,7 @@ static void CommonOCLBasedPasses(
 
     mpm.add(new HandleDevicelibAssert());
     if (IGC_IS_FLAG_ENABLED(StackOverflowDetection)) {
-        mpm.add(new StackOverflowDetectionPass());
+        mpm.add(new StackOverflowDetectionPass(StackOverflowDetectionPass::Mode::Initialize));
     }
 
     mpm.add(new NamedBarriersResolution(pContext->platform.getPlatformInfo().eRenderCoreFamily));
