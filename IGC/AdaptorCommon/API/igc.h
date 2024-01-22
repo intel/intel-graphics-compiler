@@ -31,6 +31,7 @@ enum {
     FLAG_PS_SIMD_MODE_FORCE_SIMD32 = 4,            // Force SIMD32 compilation
 };
 
+
 enum {
     // VISAPreSchedRPThreshold
     FLAG_VISA_PRE_SCHED_RP_THRESHOLD = 0,                 // 0 means use the default
