@@ -1620,8 +1620,9 @@ VISA_VectorOpnd *
 GenXKernelBuilder::createDestination(Value *Dest, genx::Signedness Signed,
                                      unsigned Mod, const DstOpndDesc &DstDesc,
                                      Signedness *SignedRes, unsigned *Offset) {
-  auto IID = vc::InternalIntrinsic::getInternalIntrinsicID(Dest);
-  bool IsBF = IID == vc::InternalIntrinsic::cast_to_bf16;
+  auto ID = vc::getAnyIntrinsicID(Dest);
+  bool IsBF = ID == vc::InternalIntrinsic::cast_to_bf16;
+  bool IsRdtsc = ID == Intrinsic::readcyclecounter;
 
   LLVM_DEBUG(dbgs() << "createDest for value: "
                     << (IsBF ? " brain " : " non-brain ") << *Dest
@@ -1672,6 +1673,9 @@ GenXKernelBuilder::createDestination(Value *Dest, genx::Signedness Signed,
           !GenXIntrinsic::isIntegerSat(Dest) && GenXIntrinsic::isIntegerSat(Dest->user_back()))
         Dest = cast<Instruction>(Dest->user_back());
     }
+    if (IsRdtsc)
+      OverrideType = IGCLLVM::FixedVectorType::get(
+          Type::getInt32Ty(Dest->getContext()), 2);
     Register *Reg =
         getRegForValueAndSaveAlias(Dest, Signed, OverrideType, IsBF);
     if (SignedRes)

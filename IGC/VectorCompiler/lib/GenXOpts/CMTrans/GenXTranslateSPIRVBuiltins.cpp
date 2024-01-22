@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2023 Intel Corporation
+Copyright (C) 2021-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -154,6 +154,12 @@ Value *SPIRVExpander::visitCallInst(CallInst &CI) {
     auto *Intr = emitIntrinsic(Builder, vc::InternalIntrinsic::round_to_tf32,
                                {ResTy, ArgTy}, {Arg});
     return Builder.CreateBitCast(Intr, Ty);
+  }
+  // SPV_KHR_shader_clock extension.
+  if (CalleeName.startswith("ReadClockKHR")) {
+    auto *Intr =
+        emitIntrinsic(Builder, Intrinsic::readcyclecounter, llvm::None, {});
+    return Builder.CreateBitCast(Intr, CI.getType());
   }
 
   // OpenCL extended instruction set

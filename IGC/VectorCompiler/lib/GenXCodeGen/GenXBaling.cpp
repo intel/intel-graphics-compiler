@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -672,6 +672,11 @@ void GenXBaling::processWrRegion(Instruction *Inst)
       V = nullptr;
     }
   }
+
+  // Do not bale rdtsc instruction to prevent the reordering and
+  // extra region casting later.
+  if (vc::getAnyIntrinsicID(V) == Intrinsic::readcyclecounter)
+    V = nullptr;
 
   if (V &&
       isBalableNewValueIntoWrr(V, makeRegionFromBaleInfo(Inst, BaleInfo())) &&

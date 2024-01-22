@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -143,10 +143,12 @@ unsigned GenXIntrinsicInfo::getOverridedExecSize(CallInst *CI,
                                                  const GenXSubtarget *ST) {
   auto CalledF = CI->getCalledFunction();
   IGC_ASSERT(CalledF);
-  auto ID = GenXIntrinsic::getGenXIntrinsicID(CalledF);
+  auto ID = vc::getAnyIntrinsicID(CalledF);
   switch (ID) {
   default:
     break;
+  case Intrinsic::readcyclecounter:
+    return 2;
   // Exec size of intrinsics with channels are inferred from address operand.
   case GenXIntrinsic::genx_gather4_scaled2:
   case GenXIntrinsic::genx_gather4_masked_scaled2:
