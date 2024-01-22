@@ -7687,7 +7687,7 @@ void GlobalRA::stackCallProlog() {
 
   // Emit frame descriptor
   if (kernel.fg.getIsStackCallFunc()) {
-    if (kernel.getOption(vISA_skipFDE))
+    if (canSkipFDE())
       return;
 
     auto payload = builder.createHardwiredDeclare(
@@ -8923,7 +8923,14 @@ void GlobalRA::addStoreRestoreToReturn() {
   auto iter = std::prev(fretBB->end());
   vISA_ASSERT((*iter)->isFReturn(), "fret BB must end with fret");
 
-  if (!EUFusionCallWANeeded()) {
+  // Following 4 cases exist for combination of EU fusion WA value, -skipFDE:
+  // 1. No WA needed, no -skipFDE: restore r127 from r59
+  // 2. No WA needed, -skipFDE: restore r127 from r59 and skip FDE store in
+  //    leaf function
+  // 3. WA needed, no -skipFDE: restore r127 using load reading FDE
+  // 4. WA needed, -skipFDE: restore r127 from r59 in leaf function. In
+  //    non-lead, use load to read stored FDE.
+  if (!EUFusionCallWANeeded() || canSkipFDE()) {
     restoreBE_FPInst =
         builder.createMov(size == 4 ? g4::SIMD4 : g4::SIMD8, FPdst, oldFPSrc,
                           InstOpt_WriteEnable, false);

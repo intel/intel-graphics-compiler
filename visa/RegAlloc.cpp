@@ -2074,6 +2074,19 @@ void GlobalRA::resetGlobalRAStates() {
   return;
 }
 
+// We emit FDE so that:
+// 1. Debug information can easily point to previous frame state,
+// 2. We can restore caller frame state before returning.
+//
+// -skipFDE option skips emission of store in stack call function prolog.
+// As an optimization, it's okay to skip this store when the function is a
+// leaf function. If it's not a leaf function then we emit the store,
+// irrespective of -skipFDE. When the switch is not specified (default)
+// we emit the store even for leaf functions (in case debugger connects).
+bool GlobalRA::canSkipFDE() const {
+  return !kernel.fg.getHasStackCalls() && kernel.getOption(vISA_skipFDE);
+}
+
 //
 // Mark block local (temporary) variables.
 //

@@ -2001,6 +2001,7 @@ public:
   void verifyRA(LivenessAnalysis &liveAnalysis);
   void verifySpillFill();
   void resetGlobalRAStates();
+  bool canSkipFDE() const;
 
   void insertPhyRegDecls();
 
