@@ -264,6 +264,7 @@ void GenXCodeGenModule::processFunction(Function& F)
             if (IGC_IS_FLAG_DISABLED(EnableSIMDVariantCompilation) && simd_size != sz)
                 return false;
         }
+
         if (IGC_IS_FLAG_ENABLED(EnableSIMDVariantCompilation))
         {
             // For MultiSIMD compile, check profitability.
@@ -303,6 +304,32 @@ void GenXCodeGenModule::processFunction(Function& F)
         auto IFG = FGA->getOrCreateIndirectCallGroup(F.getParent());
         if (IFG)
         {
+            // If EnableSIMDVariantCompilation=0, we only compile a single variant of the dummy kernel.
+            // By default, getOrCreateIndirectCallGroup will create a dummy kernel with the lowest allowed SIMD size,
+            // but if only a single variant exists, and we determine that the caller has a required subgroup size
+            // different from the default size, we need to change the default subgroup size here to match the caller.
+            if (IGC_IS_FLAG_DISABLED(EnableSIMDVariantCompilation))
+            {
+                int req_subgroup = 0;
+                for (auto FG : CallerFGs)
+                {
+                    auto FHead = FG.first->getHead();
+                    auto subGrpSz = pMdUtils->getFunctionsInfoItem(FHead)->getSubGroupSize();
+                    if (subGrpSz->isSIMDSizeHasValue())
+                    {
+                        // We can assume all callers have the same subgroup size requirement, otherwise
+                        // CanMakeIndirectFunc will return false when EnableSIMDVariantCompilation=0
+                        req_subgroup = subGrpSz->getSIMDSize();
+                        break;
+                    }
+                }
+                if (req_subgroup)
+                {
+                    auto defaultKernel = IFG->getHead();
+                    pMdUtils->getFunctionsInfoItem(defaultKernel)->getSubGroupSize()->setSIMDSize(req_subgroup);
+                    pMdUtils->save(pCtx->getModule()->getContext());
+                }
+            }
             if (IGC_IS_FLAG_ENABLED(PrintStackCallDebugInfo))
             {
                 dbgs() << "Make Indirect: " << F.getName().str() << "\n";
