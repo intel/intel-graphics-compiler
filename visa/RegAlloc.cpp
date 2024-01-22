@@ -2097,6 +2097,11 @@ void GlobalRA::markGraphBlockLocalVars() {
   });
 }
 
+unsigned int IR_Builder::getCallRetOpndSize() const {
+  unsigned int numElems = 2;
+  return numElems;
+}
+
 //
 // Pre-assign phy regs to stack call function return variable as per ABI.
 //
@@ -2115,7 +2120,7 @@ void FlowGraph::setABIForStackCallFunctionCalls() {
       G4_INST *fcall = bb->back();
       // Set call dst to fpspGRF
       G4_Declare *r1_dst = builder->createDeclare(
-          n, G4_GRF, builder->numEltPerGRF<Type_UD>(), 1, Type_UD);
+          n, G4_GRF, builder->getCallRetOpndSize(), 1, Type_UD);
       r1_dst->getRegVar()->setPhyReg(
           builder->phyregpool.getGreg(builder->kernel.stackCall.getFPSPGRF()),
           builder->kernel.stackCall.subRegs.Ret_IP);
@@ -2129,7 +2134,7 @@ void FlowGraph::setABIForStackCallFunctionCalls() {
       G4_INST *fret = bb->back();
       const RegionDesc *rd = builder->createRegionDesc(2, 2, 1);
       G4_Declare *r1_src = builder->createDeclare(
-          n, G4_INPUT, builder->numEltPerGRF<Type_UD>(), 1, Type_UD);
+          n, G4_INPUT, builder->getCallRetOpndSize(), 1, Type_UD);
       r1_src->getRegVar()->setPhyReg(
           builder->phyregpool.getGreg(builder->kernel.stackCall.getFPSPGRF()),
           builder->kernel.stackCall.subRegs.Ret_IP);

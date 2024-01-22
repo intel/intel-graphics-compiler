@@ -1529,7 +1529,8 @@ public:
     }
 
     const char *name = builder.getNameString(24, "RET__loc%d", retLoc);
-    G4_Declare *dcl = builder.createDeclare(name, G4_GRF, 2, 1, Type_UD);
+    G4_Declare *dcl = builder.createDeclare(
+        name, G4_GRF, builder.getCallRetOpndSize(), 1, Type_UD);
 
     // call destination must still be QWord aligned
     dcl->setSubRegAlign(Four_Word);

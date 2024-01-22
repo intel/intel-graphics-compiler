@@ -611,6 +611,7 @@ public:
   unsigned short getArgSize() const { return arg_size; }
   void setRetVarSize(unsigned short size) { return_var_size = size; }
   unsigned short getRetVarSize() const { return return_var_size; }
+  unsigned int getCallRetOpndSize() const;
 
   FCPatchingInfo *getFCPatchInfo();
 
