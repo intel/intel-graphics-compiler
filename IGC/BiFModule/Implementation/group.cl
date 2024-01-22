@@ -2332,51 +2332,128 @@ DEFN_ARITH_OPERATIONS(double)
 DEFN_ARITH_OPERATIONS(half)
 #endif // defined(cl_khr_fp16)
 
-#define DEFN_WORK_GROUP_REDUCE(func, type_abbr, type, op, identity)                                        \
-type __builtin_IB_WorkGroupReduce_##func##_##type_abbr(type X)                                             \
-{                                                                                                          \
-    type sg_x = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationReduce, X);     \
-    GET_MEMPOOL_PTR(scratch, type, true, 0)                                                                \
-    uint sg_id = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupId, , )();                                             \
-    uint num_sg = SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )();                                          \
-    uint sg_lid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                             \
-    uint sg_size = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();                                         \
-    uint sg_max_size = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )();                                  \
-                                                                                                           \
-    if (sg_lid == 0) {                                                                                     \
-        scratch[sg_id] = sg_x;                                                                             \
-    }                                                                                                      \
-    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);         \
-                                                                                                           \
-    uint global_id = sg_id * sg_max_size + sg_lid;                                                         \
-    uint values_num = num_sg;                                                                              \
-    while(values_num > sg_max_size) {                                                                      \
-        uint max_id = ((values_num + sg_max_size - 1) / sg_max_size) * sg_max_size;                        \
-        type value = global_id < values_num ? scratch[global_id] : identity;                               \
-        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);     \
-        if (global_id < max_id) {                                                                          \
-            sg_x = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationReduce, value);\
-            if (sg_lid == 0) {                                                                             \
-                scratch[sg_id] = sg_x;                                                                     \
-            }                                                                                              \
-        }                                                                                                  \
-        values_num = max_id / sg_max_size;                                                                 \
-        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);     \
-    }                                                                                                      \
-                                                                                                           \
-    type result;                                                                                           \
-    if (values_num > sg_size) {                                                                            \
-        type sg_aggregate = scratch[0];                                                                    \
-        for (int s = 1; s < values_num; ++s) {                                                             \
-            sg_aggregate = op(sg_aggregate, scratch[s]);                                                   \
-        }                                                                                                  \
-        result = sg_aggregate;                                                                             \
-    } else {                                                                                               \
-        type value = sg_lid < values_num ? scratch[sg_lid] : identity;                                     \
-        result = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationReduce, value); \
-    }                                                                                                      \
-    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);         \
-    return result;                                                                                         \
+#define DEFN_WORK_GROUP_REDUCE(func, type_abbr, type, op, identity)                                                                         \
+type __builtin_IB_WorkGroupReduce_##func##_##type_abbr(type X)                                                                              \
+{                                                                                                                                           \
+    if(BIF_FLAG_CTRL_GET(PlatformType) == IGFX_PVC)                                                                                         \
+    {                                                                                                                                       \
+        type sg_x = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationReduce, X); /* 1 step */                     \
+        /* If we wanted just check if we have one workgroup it's simpler to use simple operation to boost on small kernels */               \
+        bool isOneWorkgroup = (__builtin_IB_get_local_size(0) + __builtin_IB_get_local_size(1) + __builtin_IB_get_local_size(2)) == 3;      \
+                                                                                                                                            \
+        /* In case we have only one small wg - return the ready value quick */                                                              \
+        if(isOneWorkgroup) {                                                                                                                \
+            return sg_x;                                                                                                                    \
+        }                                                                                                                                   \
+        else {                                                                                                                              \
+            GET_MEMPOOL_PTR(scratch, type, true, 0)                                                                                         \
+            uint sg_id = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupId, , )();                                                                      \
+            uint sg_lid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                                                      \
+            uint sg_size = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )();                                                               \
+            /* number of values to reduce */                                                                                                \
+            uint values_num = SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )();                                                               \
+                                                                                                                                            \
+            if (sg_lid == 0) {                                                                                                              \
+                scratch[sg_id] = sg_x;                                                                                                      \
+            }                                                                                                                               \
+            SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);                                  \
+                                                                                                                                            \
+            if(sg_size == 32) /* SIMD32 */                                                                                                  \
+            {                                                                                                                               \
+                if (sg_id == 0)                                                                                                             \
+                {                                                                                                                           \
+                    type low_data = sg_lid < values_num ? scratch[sg_lid] : identity;                                                       \
+                    type high_data = sg_lid + 32 < values_num ? scratch[sg_lid + 32] : identity;                                            \
+                    type reduce =  op(low_data, high_data);                                                                                 \
+                    sg_x = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationReduce, reduce);                      \
+                    if (sg_lid == 0)                                                                                                        \
+                    {                                                                                                                       \
+                        scratch[0] = sg_x;                                                                                                  \
+                    }                                                                                                                       \
+                }                                                                                                                           \
+                SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);                              \
+            }                                                                                                                               \
+            else /* SIMD16 and SIMD8 */                                                                                                     \
+            {                                                                                                                               \
+                /* Log2(8) = 3, log2(16) = 4 */                                                                                             \
+                uint sg_size_shifts = sg_size == 16 ? 4 : 3;                                                                                \
+                /* gloabal ID for work-items across all subgroups */                                                                        \
+                uint global_id = (sg_id << sg_size_shifts) + sg_lid;                                                                        \
+                uint SWG_shift = 0;                                                                                                         \
+                /* With subgroup reduce it will only take maximally 3 steps to get reduction. */                                            \
+                for (int i = 0; i < 2; ++i)                                                                                                 \
+                {                                                                                                                           \
+                    uint cntNeededSWG = (values_num >> sg_size_shifts) + !!(values_num & (sg_size - 1));                                    \
+                    bool allowSWG =                                                                                                         \
+                    /* Allow only those subgroups which will continue reduction */                                                          \
+                    sg_id < cntNeededSWG &&                                                                                                 \
+                    /* Allow reduction if we have more than 1 value */                                                                      \
+                    values_num > 1;                                                                                                         \
+                                                                                                                                            \
+                    if(allowSWG)                                                                                                            \
+                    {                                                                                                                       \
+                        uint shift_global_id = global_id << SWG_shift;                                                                      \
+                        type value = global_id < values_num ? scratch[shift_global_id] : identity;                                          \
+                        sg_x = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationReduce, value); /* 2 & 3 step */  \
+                        SWG_shift += sg_size_shifts;                                                                                        \
+                        if (sg_lid == 0)                                                                                                    \
+                        {                                                                                                                   \
+                            scratch[sg_id << SWG_shift] = sg_x;                                                                             \
+                        }                                                                                                                   \
+                    }                                                                                                                       \
+                    values_num = cntNeededSWG;                                                                                              \
+                    /* barier for work-items, with mem sync. */                                                                             \
+                    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);                          \
+                }                                                                                                                           \
+            }                                                                                                                               \
+            return scratch[0];                                                                                                              \
+        }                                                                                                                                   \
+    }                                                                                                                                       \
+    else                                                                                                                                    \
+    {                                                                                                                                       \
+        type sg_x = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationReduce, X);                                  \
+        GET_MEMPOOL_PTR(scratch, type, true, 0)                                                                                             \
+        uint sg_id = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupId, , )();                                                                          \
+        uint num_sg = SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )();                                                                       \
+        uint sg_lid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                                                          \
+        uint sg_size = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();                                                                      \
+        uint sg_max_size = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )();                                                               \
+                                                                                                                                            \
+        if (sg_lid == 0) {                                                                                                                  \
+            scratch[sg_id] = sg_x;                                                                                                          \
+        }                                                                                                                                   \
+        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);                                      \
+                                                                                                                                            \
+        uint global_id = sg_id * sg_max_size + sg_lid;                                                                                      \
+        uint values_num = num_sg;                                                                                                           \
+        while(values_num > sg_max_size) {                                                                                                   \
+            uint max_id = ((values_num + sg_max_size - 1) / sg_max_size) * sg_max_size;                                                     \
+            type value = global_id < values_num ? scratch[global_id] : identity;                                                            \
+            SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);                                  \
+            if (global_id < max_id) {                                                                                                       \
+                sg_x = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationReduce, value);                           \
+                if (sg_lid == 0) {                                                                                                          \
+                    scratch[sg_id] = sg_x;                                                                                                  \
+                }                                                                                                                           \
+            }                                                                                                                               \
+            values_num = max_id / sg_max_size;                                                                                              \
+            SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);                                  \
+        }                                                                                                                                   \
+                                                                                                                                            \
+        type result;                                                                                                                        \
+        if (values_num > sg_size) {                                                                                                         \
+            type sg_aggregate = scratch[0];                                                                                                 \
+            for (int s = 1; s < values_num; ++s) {                                                                                          \
+                sg_aggregate = op(sg_aggregate, scratch[s]);                                                                                \
+            }                                                                                                                               \
+            result = sg_aggregate;                                                                                                          \
+        } else {                                                                                                                            \
+            type value = sg_lid < values_num ? scratch[sg_lid] : identity;                                                                  \
+            result = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationReduce, value);                             \
+        }                                                                                                                                   \
+        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);                                      \
+        return result;                                                                                                                      \
+    }                                                                                                                                       \
 }
 
 
