@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// REQUIRES: regkeys
+// REQUIRES: regkeys, pvc-supported
 
 // RUN: ocloc compile -file %s -options " -igc_opts 'PrintToConsole=1 PrintMDBeforeModule=1 PrintAfter=BIFFlagCtrlResolution'" -device tgllp 2>&1 | FileCheck %s --check-prefix=CHECK-BASE
 // RUN: ocloc compile -file %s -options " -cl-fast-relaxed-math -igc_opts 'PrintToConsole=1 PrintMDBeforeModule=1 PrintAfter=BIFFlagCtrlResolution'" -device tgllp 2>&1 | FileCheck %s --check-prefix=CHECK-FastRelaxedMath
