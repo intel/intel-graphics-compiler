@@ -6076,7 +6076,10 @@ void EmitPass::emitLegacySimdBlockWrite(llvm::Instruction* inst, llvm::Value* pt
                 activelanes, eOffset->GetType(), eOffset->GetAlign(), true, "ScatterOff");
 
             CVariable* immVar = m_currShader->ImmToVariable(0x40, ISA_TYPE_UV);
-            if (!IGC_COUNT_FLAG_IN_LIMIT(DelayEmuInt64AddLimit) && useA64 && !m_currShader->m_Platform->hasInt64Add()) {
+            if ((!IGC_COUNT_FLAG_IN_LIMIT(DelayEmuInt64AddLimit) ||
+                 simdmode != SIMDMode::SIMD1) &&
+                useA64 &&
+                !m_currShader->m_Platform->hasInt64Add()) {
                 emitAddPair(ScatterOff, eOffset, immVar);
             }
             else {
@@ -6276,7 +6279,10 @@ void EmitPass::emitLegacySimdBlockRead(llvm::Instruction* inst, llvm::Value* ptr
                 activelanes, eOffset->GetType(), eOffset->GetAlign(), true, "GatherOff");
 
             CVariable* immVar = m_currShader->ImmToVariable(0x40, ISA_TYPE_UV);
-            if (!IGC_COUNT_FLAG_IN_LIMIT(DelayEmuInt64AddLimit) && useA64 && !m_currShader->m_Platform->hasInt64Add()) {
+            if ((!IGC_COUNT_FLAG_IN_LIMIT(DelayEmuInt64AddLimit) ||
+                 simdmode != SIMDMode::SIMD1) &&
+                useA64 &&
+                !m_currShader->m_Platform->hasInt64Add()) {
                 emitAddPair(gatherOff, eOffset, immVar);
             }
             else {
