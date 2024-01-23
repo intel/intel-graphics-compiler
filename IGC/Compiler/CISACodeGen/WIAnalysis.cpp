@@ -280,12 +280,14 @@ void WIAnalysisRunner::init(
     IGC::IGCMD::MetaDataUtils* MDUtils,
     IGC::CodeGenContext* CGCtx,
     IGC::ModuleMetaData* ModMD,
-    IGC::TranslationTable* TransTable)
+    IGC::TranslationTable* TransTable,
+    bool ForCodegen)
 {
     m_func = F;
     this->LI = LI;
     this->DT = DT;
     this->PDT = PDT;
+    this->ForCodegen = ForCodegen;
     m_pMdUtils = MDUtils;
     m_CGCtx = CGCtx;
     m_ModMD = ModMD;
@@ -865,7 +867,7 @@ void WIAnalysisRunner::calculate_dep(const Value* val)
         if (!hasOriginal || dep != orig)
         {
             // i1 instructions used in phi cannot be uniform as it may prevent us from removing the phi of 1
-            if (inst->getType()->isIntegerTy(1) && WIAnalysis::isDepUniform(dep) && HasPhiUse(inst))
+            if (ForCodegen && inst->getType()->isIntegerTy(1) && WIAnalysis::isDepUniform(dep) && HasPhiUse(inst))
             {
                 dep = WIAnalysis::RANDOM;
             }

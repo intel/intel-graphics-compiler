@@ -78,7 +78,8 @@ namespace IGC
             IGCMD::MetaDataUtils* MDUtils,
             CodeGenContext* CGCtx,
             ModuleMetaData* ModMD,
-            TranslationTable* TransTable);
+            TranslationTable* TransTable,
+            bool ForCodegen = true);
 
         WIAnalysisRunner(
             llvm::Function* F,
@@ -88,9 +89,10 @@ namespace IGC
             IGCMD::MetaDataUtils* MDUtils,
             CodeGenContext* CGCtx,
             ModuleMetaData* ModMD,
-            TranslationTable* TransTable)
+            TranslationTable* TransTable,
+            bool ForCodegen = true)
         {
-            init(F, LI, DT, PDT, MDUtils, CGCtx, ModMD, TransTable);
+            init(F, LI, DT, PDT, MDUtils, CGCtx, ModMD, TransTable, ForCodegen);
         }
 
         WIAnalysisRunner() {}
@@ -291,6 +293,10 @@ namespace IGC
 
         // For dumpping WIA info per each invocation
         static llvm::DenseMap<const llvm::Function*, int> m_funcInvocationId;
+
+        // Is this analysis providing information that could be used for late
+        // stage codegen, or is it just used to determine uniformity early on?
+        bool ForCodegen = true;
     };
 
     /// @brief Work Item Analysis class used to provide information on

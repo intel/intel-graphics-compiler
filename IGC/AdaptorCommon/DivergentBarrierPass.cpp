@@ -101,7 +101,7 @@ bool DivergentBarrierPass::hasDivergentBarrier(
 
     TranslationTable TT;
     TT.run(*F);
-    WIAnalysisRunner WI(F, &LI, &DT, &PDT, m_MDUtils, m_CGCtx, ModMD, &TT);
+    WIAnalysisRunner WI(F, &LI, &DT, &PDT, m_MDUtils, m_CGCtx, ModMD, &TT, false);
     WI.run();
 
     return llvm::any_of(Barriers, [&](Instruction* I) {
