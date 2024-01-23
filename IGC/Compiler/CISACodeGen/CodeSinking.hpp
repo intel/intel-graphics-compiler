@@ -79,14 +79,17 @@ namespace IGC {
         bool isAlwaysSinkInstruction(llvm::Instruction* I);
         bool isLoadChain(llvm::Instruction* I, SmallPtrSet<Instruction *, 32> &LoadChains);
 
+        /// rollback sinking. Uses MovedInsts and UndoLocas members implicitly
+        void rollbackSinking(bool ReverseOrder, llvm::BasicBlock* BB);
+
         /// local processing
         bool LocalSink(llvm::BasicBlock* blk);
         /// data members for local-sinking
         llvm::SmallPtrSet<llvm::BasicBlock*, 8> LocalBlkSet;
         llvm::SmallPtrSet<llvm::Instruction*, 8> LocalInstSet;
         /// data members for undo
-        std::vector<llvm::Instruction*> movedInsts;
-        std::vector<llvm::Instruction*> undoLocas;
+        std::vector<llvm::Instruction*> MovedInsts;
+        std::vector<llvm::Instruction*> UndoLocas;
         /// counting the number of gradient/sample operation sinked into CF
         unsigned totalGradientMoved;
         unsigned numGradientMovedOutBB;

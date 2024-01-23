@@ -141,6 +141,7 @@ DECLARE_IGC_REGKEY(DWORD, CodeSinkingLoadSchedulingInstr, 20,  "Instructions num
 DECLARE_IGC_REGKEY(DWORD, LoopSinkMinSaveUniform,       6,  "If loop sink can have save more scalar (uniform) values than this Minimum, do it; otherwise, skip", false)
 DECLARE_IGC_REGKEY(DWORD, LoopSinkMinSave,              1,  "If loop sink can have save more 32-bit values than this Minimum, do it; otherwise, skip", false)
 DECLARE_IGC_REGKEY(DWORD, LoopSinkThresholdDelta,       30,  "Do loop sink If the estimated register pressure is higher than this + #avaialble registers", false)
+DECLARE_IGC_REGKEY(DWORD, LoopSinkRollbackThreshold,    15,  "Rollback loop sinking if the estimated regpressure after the sinking is still higher than this + #available registers, and the number of registers can be increased", false)
 DECLARE_IGC_REGKEY(bool, EnableLoopHoistConstant,       false, "Enables pass to check for specific loop patterns where variables are constant across all but the last iteration, and hoist them out of the loop.", false)
 DECLARE_IGC_REGKEY(bool, DisableCodeHoisting,           false, "Setting this to 1/true adds a compiler switch to disable code-hoisting", false)
 DECLARE_IGC_REGKEY(bool, EnableDeSSA,                   true,  "Setting this to 0/false adds a compiler switch to disable De-SSA", false)

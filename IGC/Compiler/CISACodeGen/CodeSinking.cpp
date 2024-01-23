@@ -426,8 +426,8 @@ namespace IGC {
         bool processedBegin = false;
         bool metDbgValueIntrinsic = false;
         SmallPtrSet<Instruction*, 16> stores;
-        undoLocas.clear();
-        movedInsts.clear();
+        UndoLocas.clear();
+        MovedInsts.clear();
         Instruction* prevLoca = 0x0;
         do {
             Instruction* inst = &(*I);  // The instruction to sink.
@@ -460,8 +460,8 @@ namespace IGC {
                 if (SinkInstruction(inst, stores, false))
                 {
                     madeChange = true;
-                    movedInsts.push_back(inst);
-                    undoLocas.push_back(undoLoca);
+                    MovedInsts.push_back(inst);
+                    UndoLocas.push_back(undoLoca);
                     // diagnosis code: numChanges++;
                 }
             }
@@ -476,14 +476,7 @@ namespace IGC {
                 uint pressure1 = EstimateLiveOutPressure(&blk, DL);
                 if (pressure1 > pressure0 + registerPressureThreshold)
                 {
-                    // undo code motion
-                    int numChanges = movedInsts.size();
-                    for (int i = 0; i < numChanges; ++i)
-                    {
-                        Instruction* undoLoca = undoLocas[i];
-                        IGC_ASSERT(undoLoca);
-                        movedInsts[i]->moveBefore(undoLoca);
-                    }
+                    rollbackSinking(false, &blk);
                     madeChange = false;
                 }
                 else
@@ -497,6 +490,20 @@ namespace IGC {
         }
 
         return madeChange;
+    }
+
+    void CodeSinking::rollbackSinking(bool ReverseOrder, BasicBlock* BB)
+    {
+        // undo code motion
+        int NumChanges = MovedInsts.size();
+        for (int i = 0; i < NumChanges; ++i)
+        {
+            int Index = ReverseOrder ? NumChanges - i - 1 : i;
+            Instruction* UndoLoca = UndoLocas[Index];
+            if (BB)
+                IGC_ASSERT(UndoLoca->getParent() == BB);
+            MovedInsts[Index]->moveBefore(UndoLoca);
+        }
     }
 
     static bool isCastInstrReducingPressure(Instruction* Inst, bool FlagPressureAware)
@@ -841,9 +848,6 @@ namespace IGC {
         {
             numGradientMovedOutBB++;
         }
-
-        if (IsLoopSink)
-            InstToSink->setName("sink_" + InstToSink->getName());
 
         if (!ReducePressure || (!IsLoopSink && HasAliasConcern))
         {
@@ -1433,9 +1437,16 @@ namespace IGC {
         SmallVector<Instruction *, 64> SinkCandidates;
         SmallPtrSet<Instruction *, 32> LoadChains;
 
+        MovedInsts.clear();
+        UndoLocas.clear();
+
         bool AllowLoadSinking = IGC_IS_FLAG_ENABLED(ForceLoadsLoopSink);
         bool AllowOnlyLoadChainSinking = false;
         bool IterChanged = false;
+
+        uint MaxLoopPressure = 0;
+        bool AchievedNeededRegpressure = false;
+
         do
         {
             Stores.clear();
@@ -1476,7 +1487,6 @@ namespace IGC {
             if (IterChanged)
             {
                 EverChanged = true;
-                ProcessDbgValueInst(*Preheader);
                 // Invoke LocalSink() to move def to its first use
                 if (LocalBlkSet.size() > 0)
                 {
@@ -1491,11 +1501,12 @@ namespace IGC {
 
                 uint SIMD = numLanes(RPE->bestGuessSIMDSize());
                 RPE->rerunLivenessAnalysis(*F);
-                uint MaxLoopPressure = RPE->getMaxRegCountForLoop(*L, SIMD);
+                MaxLoopPressure = RPE->getMaxRegCountForLoop(*L, SIMD);
                 PrintDump("New max loop pressure = " << MaxLoopPressure << "\n");
                 if (MaxLoopPressure < (NGRF - IGC_GET_FLAG_VALUE(LoopSinkRegpressureMargin))
                         && (Mode == LoopSinkMode::SinkWhileRegpressureIsHigh))
                 {
+                    AchievedNeededRegpressure = true;
                     if (IGC_IS_FLAG_ENABLED(EnableLoadChainLoopSink) && !LoadChains.empty())
                     {
                         PrintDump("Allowing only chain sinking...\n");
@@ -1522,6 +1533,39 @@ namespace IGC {
                 }
             }
         } while (true);
+
+        // If we haven't achieved the needed regpressure, it's possible that even if the sinking
+        // would be beneficial for small GRF, there still will be spills.
+        // In this case there is a chance that just choosing
+        // more GRF will be enough to eliminate spills and we would degrade performance
+        // if we sinked. So we rollback the changes if autoGRF is provided
+        if (Mode == LoopSinkMode::SinkWhileRegpressureIsHigh &&
+            !AchievedNeededRegpressure &&
+            (NGRF <= 128 && CTX->isAutoGRFSelectionEnabled()) &&
+            MaxLoopPressure >= (NGRF + IGC_GET_FLAG_VALUE(LoopSinkRollbackThreshold))
+            )
+        {
+            PrintDump("AutoGRF is enabled and the needed regpressure is not achieved:\n");
+            PrintDump("New max loop pressure = " << MaxLoopPressure << "\n");
+            PrintDump("Threshold to rollback = " <<
+                NGRF + IGC_GET_FLAG_VALUE(LoopSinkRollbackThreshold) << "\n");
+            PrintDump(">> Reverting the changes.\n");
+
+            rollbackSinking(true, Preheader);
+
+            return false;
+        }
+
+        if (EverChanged)
+        {
+            ProcessDbgValueInst(*Preheader);
+
+            // We decided we don't rollback, change the names of the instructions in IR
+            for (Instruction *I : MovedInsts)
+            {
+                I->setName("sink_" + I->getName());
+            }
+        }
 
         return EverChanged;
     }
@@ -1799,11 +1843,15 @@ namespace IGC {
                 for (int j = 0; j < (int)(OUG->Users.size()); ++j)
                 {
                     Instruction *I = OUG->Users[j];
+                    Instruction *PrevLoc = I->getNextNode();
                     bool UserChanged = SinkInstruction(I, Stores, true);
                     if (UserChanged)
                     {
                         PrintDump("Sinking instruction:\n");
                         PrintInstructionDump(I);
+
+                        UndoLocas.push_back(PrevLoc);
+                        MovedInsts.push_back(I);
 
                         GroupChanged = true;
                         if (isa<LoadInst>(I) || isLoadChain(I, LoadChains))
