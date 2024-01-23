@@ -18994,7 +18994,6 @@ void EmitPass::emitPushFrameToStack(unsigned& pushSize)
             }
 
             pFP = ReAlignUniformVariable(pFP, EALIGN_GRF);
-            pOldFP = ReAlignUniformVariable(pOldFP, EALIGN_GRF);
             bool useA64 = (pFP->GetSize() == 8);
             if (shouldGenerateLSC())
             {
