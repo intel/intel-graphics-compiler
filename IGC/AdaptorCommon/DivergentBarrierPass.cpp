@@ -22,9 +22,9 @@ SPDX-License-Identifier: MIT
 #include "ImplicitArgs.hpp"
 #include "RayTracing/CrossingAnalysis.h"
 #include "RayTracing/SplitAsyncUtils.h"
-#include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
+#include "LLVM3DBuilder/BuiltinsFrontend.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvm/IR/Module.h"
@@ -87,22 +87,10 @@ CallInst* DivergentBarrierPass::insertFence(
 }
 
 bool DivergentBarrierPass::hasDivergentBarrier(
-    const std::vector<Instruction*>& Barriers) const
+    const std::vector<Instruction*>& Barriers, WIAnalysisRunner& WI) const
 {
     if (Barriers.empty())
         return false;
-
-    auto* ModMD = m_CGCtx->getModuleMetaData();
-    auto* F = Barriers[0]->getFunction();
-
-    PostDominatorTree PDT(*F);
-    DominatorTree DT(*F);
-    LoopInfo LI(DT);
-
-    TranslationTable TT;
-    TT.run(*F);
-    WIAnalysisRunner WI(F, &LI, &DT, &PDT, m_MDUtils, m_CGCtx, ModMD, &TT, false);
-    WI.run();
 
     return llvm::any_of(Barriers, [&](Instruction* I) {
         return WI.insideWorkgroupDivergentCF(I);
@@ -434,11 +422,13 @@ void DivergentBarrierPass::generateBody(
     Entry->eraseFromParent();
 }
 
-void DivergentBarrierPass::handleSpillFill(Function* F) const
+void DivergentBarrierPass::handleSpillFill(Function* F, SlotDepMap& depMap)
 {
-    DenseMap<uint64_t, AllocaInst*> IdxToAlloca;
+    DenseMap<uint64_t, Value*> IdxToAlloca;
 
-    IRBuilder<> IRB(F->getContext());
+    LLVMContext& context = F->getContext();
+    PLATFORM platform;
+    LLVM3DBuilder<> Builder(context, platform);
 
     for (auto II = inst_begin(F), E = inst_end(F); II != E; /* empty */)
     {
@@ -453,13 +443,13 @@ void DivergentBarrierPass::handleSpillFill(Function* F) const
             }
             else
             {
-                IRB.SetInsertPoint(&*F->getEntryBlock().getFirstInsertionPt());
-                auto *AI = IRB.CreateAlloca(SI->getData()->getType());
+                Builder.SetInsertPoint(&*F->getEntryBlock().getFirstInsertionPt());
+                auto* AI = Builder.CreateAlloca(SI->getData()->getType());
                 IdxToAlloca[Offset] = AI;
                 Ptr = AI;
             }
-            IRB.SetInsertPoint(SI);
-            IRB.CreateStore(SI->getData(), Ptr);
+            Builder.SetInsertPoint(SI);
+            Builder.CreateStore(SI->getData(), Ptr);
             SI->eraseFromParent();
         }
         else if (auto* FI = dyn_cast<FillValueIntrinsic>(I))
@@ -472,15 +462,36 @@ void DivergentBarrierPass::handleSpillFill(Function* F) const
             }
             else
             {
-                IRB.SetInsertPoint(&*F->getEntryBlock().getFirstInsertionPt());
-                auto *AI = IRB.CreateAlloca(FI->getType());
+                Builder.SetInsertPoint(&*F->getEntryBlock().getFirstInsertionPt());
+                auto * AI = Builder.CreateAlloca(FI->getType());
                 IdxToAlloca[Offset] = AI;
                 Ptr = AI;
             }
-            IRB.SetInsertPoint(FI);
-            auto *LI = IRB.CreateLoad(
+            Builder.SetInsertPoint(FI);
+            Instruction* LI = Builder.CreateLoad(
                 IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType()), Ptr);
             LI->takeName(FI);
+
+            // If the values spilled to this slot are all uniform, then force uniform load on fill via readFirstLane.
+            // BE does not handle shuffle for aggregate or opaque types, so only promote for single value types.
+            if (IGC_IS_FLAG_ENABLED(DivergentBarrierUniformLoad) &&
+                FI->getType()->isSingleValueType())
+            {
+                if (auto it = depMap.find(Offset); it != depMap.end())
+                {
+                    WIAnalysis::WIDependancy dep = it->second;
+                    if (dep == WIAnalysis::UNIFORM_GLOBAL ||
+                        dep == WIAnalysis::UNIFORM_WORKGROUP ||
+                        dep == WIAnalysis::UNIFORM_THREAD)
+                    {
+                        Value* helperLaneMode = Builder.getInt32(0);
+                        Builder.SetInsertPoint(FI);
+                        Value* RFL = Builder.readFirstLane(LI, helperLaneMode);
+                        RFL->setName("uniformLoad_" + std::to_string(dep));
+                        LI = cast<Instruction>(RFL);
+                    }
+                }
+            }
             FI->replaceAllUsesWith(LI);
             FI->eraseFromParent();
         }
@@ -539,7 +550,18 @@ bool DivergentBarrierPass::processShader(Function* F)
         }
     }
 
-    if (!hasDivergentBarrier(Barriers))
+    auto* ModMD = m_CGCtx->getModuleMetaData();
+
+    PostDominatorTree PDT(*F);
+    DominatorTree DT(*F);
+    LoopInfo LI(DT);
+
+    TranslationTable TT;
+    TT.run(*F);
+    WIAnalysisRunner WI(F, &LI, &DT, &PDT, m_MDUtils, m_CGCtx, ModMD, &TT, false);
+    WI.run();
+
+    if (!hasDivergentBarrier(Barriers, WI))
         return false;
 
     FenceArgs FA;
@@ -573,11 +595,32 @@ bool DivergentBarrierPass::processShader(Function* F)
         for (User* U : I.users())
         {
             if (Checker.isDefinitionAcrossSuspend(I, U))
+            {
                 Spills.emplace_back(&I, U);
+            }
         }
     }
 
     insertSpills(m_CGCtx, *F, Spills);
+
+    // Store the dependency for each spilled value
+    // This will be used to optimize loads to uniform loads
+    SlotDepMap SpillValDepMap;
+    if (IGC_IS_FLAG_ENABLED(DivergentBarrierUniformLoad))
+    {
+        for (Instruction& I : instructions(*F))
+        {
+            if (auto* SI = dyn_cast<SpillValueIntrinsic>(&I))
+            {
+                uint64_t Offset = SI->getOffset();
+                auto dep = WI.whichDepend(SI->getData());
+                if (SpillValDepMap.find(Offset) == SpillValDepMap.end() ||
+                    dep > SpillValDepMap[Offset]) {
+                    SpillValDepMap[Offset] = dep;
+                }
+            }
+        }
+    }
 
     /// build continuations
     IRBuilder<> IRB(F->getContext());
@@ -640,7 +683,7 @@ bool DivergentBarrierPass::processShader(Function* F)
     F->eraseFromParent();
 
     generateBody(Wrapper, Entry, Continuations, FA);
-    handleSpillFill(Wrapper);
+    handleSpillFill(Wrapper, SpillValDepMap);
 
     return true;
 }

@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
+#include "Compiler/CISACodeGen/WIAnalysis.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/PassManager.h>
@@ -50,11 +51,13 @@ namespace IGC
             bool L1_Evict               = false;
         };
 
+        typedef llvm::DenseMap<uint64_t, WIAnalysis::WIDependancy> SlotDepMap;
+
         CodeGenContext* m_CGCtx = nullptr;
         IGCMD::MetaDataUtils* m_MDUtils = nullptr;
         bool processShader(llvm::Function* F);
         bool hasDivergentBarrier(
-            const std::vector<llvm::Instruction*>& Barriers) const;
+            const std::vector<llvm::Instruction*>& Barriers, WIAnalysisRunner& WI) const;
         llvm::Function* createContinuation(llvm::BasicBlock* EntryBB);
         void updateFenceArgs(
             const llvm::GenIntrinsicInst* I, FenceArgs& Args) const;
@@ -66,7 +69,7 @@ namespace IGC
         llvm::Value* getGroupSize(llvm::Function& F) const;
         llvm::Value* allocateSLM(llvm::IRBuilder<> &IRB);
         llvm::CallInst* insertFence(llvm::IRBuilder<>& IRB, const FenceArgs& FA) const;
-        void handleSpillFill(llvm::Function* F) const;
+        void handleSpillFill(llvm::Function* F, SlotDepMap &depMap);
 
         void* Ctx = nullptr;
     };
