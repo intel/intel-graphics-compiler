@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -461,9 +461,12 @@ CallGraphNode *CMABI::ProcessNode(CallGraphNode *CGN) {
   }
 
   // Check transformable arguments.
-  vc::TypeSizeWrapper MaxStructSize = vc::ByteSize * MaxCMABIByvalSize;
-  SmallPtrSet<Argument *, 8> ArgsToTransform =
-      vc::collectArgsToTransform(*F, MaxStructSize);
+  // Do not transform anything in case of stackcall
+  SmallPtrSet<Argument *, 8> ArgsToTransform;
+  if (!F->hasFnAttribute(genx::FunctionMD::CMStackCall)) {
+    vc::TypeSizeWrapper MaxStructSize = vc::ByteSize * MaxCMABIByvalSize;
+    ArgsToTransform = vc::collectArgsToTransform(*F, MaxStructSize);
+  }
 
   if (ArgsToTransform.empty() && LI.empty())
     return 0;

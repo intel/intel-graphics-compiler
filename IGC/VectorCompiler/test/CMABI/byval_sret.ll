@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -311,7 +311,7 @@ define spir_kernel void @kern(float* %RET, float* %aFOO, i64 %privBase) #1 {
   ret void
 }
 
-attributes #0 = { noinline nounwind "CMStackCall" }
+attributes #0 = { noinline nounwind }
 attributes #1 = { noinline nounwind "CMGenxMain" "oclrt"="1" }
 
 !llvm.module.flags = !{!0}
