@@ -9,10 +9,8 @@
 
 
 ; CHECK-LABEL: target datalayout
-; %__StructSOALayout_ = type <{ %__StructAOSLayout_ }>
-; %__StructAOSLayout_ = type <{ i8, i8, i8, i8 }>
-; %__StructSOALayout_.1 = type <{ %__StructAOSLayout_.0 }>
-; %__StructAOSLayout_.0 = type <{ i16, i16 }>
+; %__StructSOALayout_{{.*}} = type <{ %__StructAOSLayout_{{.*}} }>
+; %__StructAOSLayout_{{.*}} = type <{ i8, i8, i8, i8 }>
 ;
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
@@ -45,11 +43,11 @@ entry:
   %c0.arrayidx1 = getelementptr inbounds i16, i16 addrspace(1)* %c0.d, i64 %c0.idx
   store i16 %c0.e0, i16 addrspace(1)* %c0.arrayidx1, align 4
 ;
-; case 1: load i8; load i8; load i8; load i8 --> load <4 x i8>
+; case 1: load i8; load i8; load i8; load i8 --> load i32 --> bitcast to <4 x i8>
 ;
 ; CHECK-LABEL: store i16
 ; CHECK: [[T1:%.*]] = load i32
-; CHECK: call %__StructSOALayout_ @llvm.genx.GenISA.bitcasttostruct.__StructSOALayout_.i32(i32 [[T1]])
+; CHECK: bitcast i32 [[T1]] to <4 x i8>
 ;
   %c1.si = bitcast i32 addrspace(1)* %si to i8 addrspace(1)*
   %c1.arrayidx = getelementptr inbounds i8, i8 addrspace(1)* %c1.si, i64 %conv.i.i
@@ -72,11 +70,11 @@ entry:
   %c1.addr = bitcast i32 addrspace(1)* %c1.arrayidx1 to <4 x i8> addrspace(1)*
   store <4 x i8> %c1.e0.2, <4 x i8> addrspace(1)* %c1.addr, align 4
 ;
-; case 2: load i16; load i16 -> load i32
+; case 2: load i16; load i16 -> load i32 --> bitcast to <2 x i16>
 ;
 ; CHECK-LABEL: store <4 x i8>
 ; CHECK: [[T2:%.*]] = load i32
-; CHECK: call %__StructSOALayout_.1 @llvm.genx.GenISA.bitcasttostruct.__StructSOALayout_.1.i32(i32 [[T2]])
+; CHECK: bitcast i32 [[T2]] to <2 x i16>
 ;
 
   %c2.si = bitcast i32 addrspace(1)* %si to i16 addrspace(1)*
@@ -166,7 +164,6 @@ entry:
 ; CHECK:        [[T6_1:%.*]] = getelementptr inbounds i8, i8 addrspace(1)* [[T6_0]], i64 -4
 ; CHECK:        [[T6_2:%.*]] = bitcast i8 addrspace(1)* [[T6_1]] to <2 x i32> addrspace(1)*
 ; CHECK:        {{.*}} = load <2 x i32>, <2 x i32> addrspace(1)* [[T6_2]], align 4
-; CHECK-LABEL: ret void
 ;
   %c6.baseidx = add i64 %conv.i.i, 577
   %c6.arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %si, i64 %c6.baseidx
@@ -180,5 +177,35 @@ entry:
   %c6.addr = bitcast i32 addrspace(1)* %c6.arrayidx1 to <2 x i32> addrspace(1)*
   store <2 x i32> %c6.v.1, <2 x i32> addrspace(1)* %c6.addr, align 4
 
+;
+; case 7: load i8; load i8; load i16; --> load i32 --> bitcast to struct
+;
+; CHECK-LABEL: c7.baseidx
+; CHECK: [[T7:%.*]] = load i32
+; CHECK: call %__StructSOALayout_{{.*}} @llvm.genx.GenISA.bitcasttostruct.__StructSOALayout_{{.*}}.i32(i32 [[T7]])
+;
+  %c7.baseidx = add i64 %conv.i.i, 1000
+  %c7.si = bitcast i32 addrspace(1)* %si to i8 addrspace(1)*
+  %c7.arrayidx = getelementptr inbounds i8, i8 addrspace(1)* %c7.si, i64 %c7.baseidx
+  %c7.0 = load i8, i8 addrspace(1)* %c7.arrayidx, align 4
+  %c7.add.1= add nuw nsw i64 %c7.baseidx, 1
+  %c7.arrayidx.1 = getelementptr inbounds i8, i8 addrspace(1)* %c7.si, i64 %c7.add.1
+  %c7.1 = load i8, i8 addrspace(1)* %c7.arrayidx.1, align 1
+  %c7.add.2 = add nuw nsw i64 %c7.baseidx, 2
+  %c7.arrayidx.2 = getelementptr inbounds i8, i8 addrspace(1)* %c7.si, i64 %c7.add.2
+  %c7.arrayidx.3 = bitcast i8 addrspace(1)* %c7.arrayidx.2 to i16 addrspace(1)*
+  %c7.2 = load i16, i16 addrspace(1)* %c7.arrayidx.3, align 2
+  %c7.2.0 = bitcast i16 %c7.2 to <2 x i8>
+  %c7.2.1 = extractelement <2 x i8> %c7.2.0, i32 0
+  %c7.2.2 = extractelement <2 x i8> %c7.2.0, i32 1
+  %c7.e0.0 = insertelement <4 x i8> undef,    i8 %c7.0,   i32 0
+  %c7.e0.1 = insertelement <4 x i8> %c7.e0.0, i8 %c7.1,   i32 1
+  %c7.e0.2 = insertelement <4 x i8> %c7.e0.1, i8 %c7.2.1, i32 2
+  %c7.e0.3 = insertelement <4 x i8> %c7.e0.2, i8 %c7.2.2, i32 3
+  %c7.arrayidx1 = getelementptr inbounds i32, i32 addrspace(1)* %d, i64 %c7.baseidx
+  %c7.addr = bitcast i32 addrspace(1)* %c7.arrayidx1 to <4 x i8> addrspace(1)*
+  store <4 x i8> %c7.e0.2, <4 x i8> addrspace(1)* %c7.addr, align 4
+
+; CHECK-LABEL: ret void
   ret void
 }

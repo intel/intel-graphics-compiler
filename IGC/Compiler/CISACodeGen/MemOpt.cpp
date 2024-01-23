@@ -2678,18 +2678,18 @@ namespace {
         }
 
         // store combining top function
-        void combineStores(Function& F);
+        void combineStores();
 
         // load combining top function
-        void combineLoads(Function& F);
+        void combineLoads();
 
         void createBundles(BasicBlock* BB, InstAndOffsetPairs& Stores);
 
         // Actually combining stores.
-        void createCombinedStores(Function& F);
+        void createCombinedStores(BasicBlock* BB);
 
         // Actually combining loads.
-        void createCombinedLoads(Function& F);
+        void createCombinedLoads(BasicBlock* BB);
 
         // If V is vector, get all its elements (may generate extractElement
         //   insts; if V is not vector, just V itself.
@@ -2718,7 +2718,7 @@ namespace {
         //   multiple values (arg: Vals)
         void scatterCopy(
             SmallVector<Value*, 16>& Vals,
-            const uint32_t DstEltBytes,
+            int DstEltBytes,
             int NElts,
             Value* CompositeVal,
             Instruction* InsertBefore);
@@ -2767,7 +2767,7 @@ namespace {
         }
 
         // For generating better code
-        void getAllVectorElements(Value* V, SmallVector<Value*, 16>& EltV);
+        bool getVecEltIfConstExtract(Value* V, SmallVector<Value*, 8>& EltV);
         void mergeConstElements(
             SmallVector<Value*, 4>& EltVals, uint32_t MaxMergeBytes);
 
@@ -3034,9 +3034,9 @@ bool LdStCombine::runOnFunction(Function& F)
             (IGC_GET_FLAG_VALUE(Enable64BitEmulation) ||
              IGC_GET_FLAG_VALUE(Enable64BitEmulationOnSelectedPlatform)));
 
-    combineStores(F);
+    combineStores();
 
-    combineLoads(F);
+    combineLoads();
 
     bool changed = (m_hasLoadCombined || m_hasStoreCombined);
     return changed;
@@ -3113,37 +3113,51 @@ void LdStCombine::getOrCreateElements(
     }
 }
 
-// If V is a vector, return all its elements if all V's uses are extElt with
-// constant index; otherwise, return V itself.
-void LdStCombine::getAllVectorElements(Value* V, SmallVector<Value*, 16>& EltV)
+// Return value:
+//   true:
+//     if V is a vector and it is only used in ExtractElement with const index.
+//     'EltV has all its elements.
+//   false: otherwise.  'EltV' has 'V' only.
+// Note: unused elements are returned as UndefValue.
+bool LdStCombine::getVecEltIfConstExtract(Value* V, SmallVector<Value*, 8>& EltV)
 {
+    auto useOrigVector = [&EltV, V]() {
+        EltV.clear();
+        EltV.push_back(V);
+    };
+
     Type* Ty = V->getType();
     VectorType* VTy = dyn_cast<VectorType>(Ty);
     if (!VTy) {
-        EltV.push_back(V);
-        return;
+        useOrigVector();
+        return false;
     }
 
     uint32_t N = getNumElements(VTy);
-    SmallVector< SmallVector<ExtractElementInst*, 1>, 4> allExtracts(N);
-    if (!VectorUsedByConstExtractOnly(V, allExtracts)) {
-        EltV.push_back(V);
-        return;
+    Value* undef = UndefValue::get(Ty->getScalarType());
+    EltV.assign(N, undef);
+    for (auto UI : V->users()) {
+        ExtractElementInst *EEI = dyn_cast<ExtractElementInst>(UI);
+        if (!EEI) {
+            useOrigVector();
+            return false;
+        }
+        ConstantInt *CI = dyn_cast<ConstantInt>(EEI->getIndexOperand());
+        if (!CI) {
+            useOrigVector();
+            return false;
+        }
+        uint32_t ix = (uint32_t)CI->getZExtValue();
+        if (!isa<UndefValue>(EltV[ix])) {
+            useOrigVector();
+            return false;
+        }
+        EltV[ix] = EEI;
     }
-
-    // For now, handle a single extElt per each constant index
-    if (std::find_if(allExtracts.begin(), allExtracts.end(),
-        [](auto& II) { return II.size() > 1; }) != allExtracts.end()) {
-        EltV.push_back(V);
-        return;
-    }
-
-    std::for_each(allExtracts.begin(), allExtracts.end(),
-        [&EltV](auto II) { EltV.push_back(II[0]); });
-    return;
+    return true;
 }
 
-void LdStCombine::combineStores(Function& F)
+void LdStCombine::combineStores()
 {
     // All store candidates with addr = common-base + const-offset
     //   All stores have the same common-base but different const-offset.
@@ -3194,7 +3208,7 @@ void LdStCombine::combineStores(Function& F)
     // Only handle stores within the given instruction window.
     constexpr uint32_t WINDOWSIZE = 150;
     m_hasStoreCombined = false;
-    for (auto& BB : F)
+    for (auto& BB : *m_F)
     {
         init(&BB);
 
@@ -3245,11 +3259,11 @@ void LdStCombine::combineStores(Function& F)
         }
 
         // Actually combining them.
-        createCombinedStores(F);
+        createCombinedStores(&BB);
     }
 }
 
-void LdStCombine::combineLoads(Function& F)
+void LdStCombine::combineLoads()
 {
     // this check's for testing, and to be removed when stable.
     if ((IGC_GET_FLAG_VALUE(EnableLdStCombine) & 0x4) == 0)
@@ -3298,7 +3312,7 @@ void LdStCombine::combineLoads(Function& F)
     // Only handle loads within the given instruction window.
     constexpr uint32_t LDWINDOWSIZE = 150;
     m_hasLoadCombined = false;
-    for (auto& BB : F)
+    for (auto& BB : *m_F)
     {
         init(&BB);
 
@@ -3360,7 +3374,7 @@ void LdStCombine::combineLoads(Function& F)
         }
 
         // Actually combining them.
-        createCombinedLoads(F);
+        createCombinedLoads(&BB);
     }
 }
 
@@ -4278,7 +4292,10 @@ Value* LdStCombine::gatherCopy(
 }
 
 // Given a list of values in order (arg: Vals), return a new packed type
-// that is composed of Vals' types. This new type is either
+// that is composed of Vals' types. This new type is one of the following:
+//   0. if all Vals have the same size of element, the new type will be
+//      a vector type with element size = that same size. This is to take
+//      advantage of extensive vector optimization in IGC; or
 //   1. a vector type with element size = ValEltBytes and the number of
 //      elements = ValNElts; or
 //   2. a struct type whose direct members are all the same size and are
@@ -4290,6 +4307,32 @@ Type* LdStCombine::generateLoadType(
     SmallVector<Value*, 16>& Vals,
     uint32_t ValEltBytes, uint32_t ValNElts)
 {
+    // case 0: Optimization
+    //   For now, use vector if elements of all Vals are the same size.
+    //   Prefer using vector as vector has been well optimized.
+    const bool OptimPreferVec = true;
+    if (OptimPreferVec && Vals.size() > 1) {
+        Type* ETy = Vals[0]->getType()->getScalarType();
+        int eBytes = (int)m_DL->getTypeStoreSize(ETy);
+        bool isSameEltSize = true;
+        for (int i = 1, sz = (int)Vals.size(); i < sz; ++i) {
+            Type* ty = Vals[i]->getType()->getScalarType();
+            int tBytes = (int)m_DL->getTypeStoreSize(ty);
+            if (eBytes != tBytes) {
+                isSameEltSize = false;
+                break;
+            }
+        }
+
+        if (isSameEltSize) {
+            Type* newETy = Type::getIntNTy(m_F->getContext(), eBytes * 8);
+            uint32_t nElts = (ValNElts * ValEltBytes) / eBytes;
+            Type* retTy = VectorType::get(newETy, nElts, false);
+            return retTy;
+        }
+    }
+
+    // case 1 and 2
     bool isStructTy = false;
     SmallVector<Type*, 16> tys;
     SmallVector<Type*, 16> subEltTys;
@@ -4376,8 +4419,8 @@ Type* LdStCombine::generateLoadType(
 //
 void LdStCombine::scatterCopy(
     SmallVector<Value*, 16>& Vals,
-    const uint32_t LoadedValEBytes,
-    int   LoadedValNElts,
+    int LoadedValEBytes,
+    int LoadedValNElts,
     Value* LoadedVecVal,
     Instruction* InsertBefore)
 {
@@ -4386,23 +4429,23 @@ void LdStCombine::scatterCopy(
     //   2. for each V in Vals, its replacement value is created by mapping
     //    corresponding components of LoadedVal to itself.
     IRBuilder<> irBuilder(InsertBefore);
-
     Type* LoadedValTy = generateLoadType(Vals, LoadedValEBytes, LoadedValNElts);
     {
         int newTyBytes = (int)m_DL->getTypeStoreSize(LoadedValTy);
         IGC_ASSERT(newTyBytes == (LoadedValNElts * LoadedValEBytes));
     }
     Value* LoadedVal = LoadedVecVal;
+
     if (LoadedValTy->isStructTy()) {
-        // Set loadedVecVal's name to "StructV" so that both load/store
+        // Set loadedVal's name to "StructV" so that both load/store
         // will have names start with "StructV" for layout struct.
-        LoadedVecVal->setName("StructV");
-        Type* ITys[2] = { LoadedValTy, LoadedVecVal->getType() };
+        LoadedVal->setName("StructV");
+        Type* ITys[2] = { LoadedValTy, LoadedVal->getType() };
         Function* IntrDcl = GenISAIntrinsic::getDeclaration(
             m_F->getParent(), GenISAIntrinsic::ID::GenISA_bitcasttostruct, ITys);
-        LoadedVal = irBuilder.CreateCall(IntrDcl, LoadedVecVal);
-    } else if (LoadedValTy != LoadedVecVal->getType()) {
-        LoadedVal = irBuilder.CreateBitCast(LoadedVecVal, LoadedValTy);
+        LoadedVal = irBuilder.CreateCall(IntrDcl, LoadedVal);
+    } else if (LoadedValTy != LoadedVal->getType()) {
+        LoadedVal = irBuilder.CreateBitCast(LoadedVal, LoadedValTy);
     }
 
     auto createValueFromElements = [this, &irBuilder] (
@@ -4540,26 +4583,32 @@ void LdStCombine::scatterCopy(
         //      size(mTy) <= size(Ty's element type)
         for (auto& V : Vals) {
             Type* memTy = getCurrMemberTy();
-            SmallVector<Value*, 16> allUses;
+            SmallVector<Value*, 8> allUses;
             if (memTy->isVectorTy()) {
                 IGC_ASSERT(memTy == V->getType());
                 allUses.push_back(V);
             }
             else {
                 // Optimization: If V's elements are available, use them.
-                getAllVectorElements(V, allUses);
+                getVecEltIfConstExtract(V, allUses);
             }
             for (auto& nV : allUses) {
                 Type* aTy = nV->getType();
                 Value* newV = getValueFromStruct(aTy);
-                nV->replaceAllUsesWith(newV);
-                appendToBeDeleted(dyn_cast<Instruction>(nV));
+                if (isa<UndefValue>(nV)) {
+                    appendToBeDeleted(dyn_cast<Instruction>(newV));
+                }
+                else {
+                    nV->replaceAllUsesWith(newV);
+                    appendToBeDeleted(dyn_cast<Instruction>(nV));
+                }
             }
         }
     } else {
         // vector type or scalar type
         uint32_t Idx = 0;
         Type* LoadedEltTy = LoadedValTy->getScalarType();
+        uint32_t LoadedEltBytes = (uint32_t)m_DL->getTypeStoreSize(LoadedEltTy);
 
         // Return a value of type Ty at the given Idx and advance Idx.
         //   If Ty is larger than the element type of LoadedVal, it means to
@@ -4569,9 +4618,9 @@ void LdStCombine::scatterCopy(
         auto collectValueFromVector = [&](Type* Ty)
         {
             uint32_t TyBytes = (uint32_t)m_DL->getTypeStoreSize(Ty);
-            IGC_ASSERT(TyBytes >= LoadedValEBytes);
-            int n = TyBytes / LoadedValEBytes;
-            IGC_ASSERT((TyBytes % LoadedValEBytes) == 0);
+            IGC_ASSERT(TyBytes >= LoadedEltBytes);
+            int n = TyBytes / LoadedEltBytes;
+            IGC_ASSERT((TyBytes % LoadedEltBytes) == 0);
             Value* retVal;
             if (n == 1) {
                 retVal = irBuilder.CreateExtractElement(LoadedVal, Idx);
@@ -4595,28 +4644,33 @@ void LdStCombine::scatterCopy(
         // Given ty = V's type, the algorithm gurantees that size of ty's
         // element is no smaller than LoadedValEBytes
         for (auto& V : Vals) {
-            SmallVector<Value*, 16> allUses;
-            getAllVectorElements(V, allUses);
+            SmallVector<Value*, 8> allUses;
+            getVecEltIfConstExtract(V, allUses);
             for (auto& nV : allUses) {
                 Type* aTy = nV->getType();
                 Type* eTy = aTy->getScalarType();
                 uint32_t nelts = getNumElements(aTy);
 
-                IGC_ASSERT(m_DL->getTypeStoreSize(eTy) >= LoadedValEBytes);
+                IGC_ASSERT(m_DL->getTypeStoreSize(eTy) >= LoadedEltBytes);
                 SmallVector<Value*, 8> vecElts;
                 for (uint32_t i = 0; i < nelts; ++i) {
                     Value* V = collectValueFromVector(eTy);
                     vecElts.push_back(V);
                 }
                 Value* newV = createValueFromElements(vecElts, aTy);
-                nV->replaceAllUsesWith(newV);
-                appendToBeDeleted(dyn_cast<Instruction>(nV));
+                if (isa<UndefValue>(nV)) {
+                    appendToBeDeleted(dyn_cast<Instruction>(newV));
+                }
+                else {
+                    nV->replaceAllUsesWith(newV);
+                    appendToBeDeleted(dyn_cast<Instruction>(nV));
+                }
             }
         }
     }
 }
 
-void LdStCombine::createCombinedStores(Function& F)
+void LdStCombine::createCombinedStores(BasicBlock* BB)
 {
     for (auto& bundle : m_bundles)
     {
@@ -4687,17 +4741,18 @@ void LdStCombine::createCombinedStores(Function& F)
             // Use special bitcast from struct to int vec to use vector emit.
             if (totalBytes < 4) {
                 // <{i8, i8}>, use i16, not 2xi8
-                eltTy = Type::getIntNTy(F.getContext(), totalBytes * 8);
+                eltTy = Type::getIntNTy(BB->getContext(), totalBytes * 8);
             }
             else {
-                eltTy = Type::getIntNTy(F.getContext(), eltBytes * 8);
+                eltTy = Type::getIntNTy(BB->getContext(), eltBytes * 8);
             }
             // Use an int vector type as VTy
             VTy = (nelts == 1 || totalBytes < 4)
                 ? eltTy : VectorType::get(eltTy, nelts, false);
             Type* ITys[2] = { VTy, nV->getType() };
             Function* IntrDcl = GenISAIntrinsic::getDeclaration(
-                F.getParent(), GenISAIntrinsic::ID::GenISA_bitcastfromstruct, ITys);
+                BB->getParent()->getParent(),
+                GenISAIntrinsic::ID::GenISA_bitcastfromstruct, ITys);
             storedVal = irBuilder.CreateCall(IntrDcl, nV);
         }
 
@@ -4740,7 +4795,7 @@ void LdStCombine::createCombinedStores(Function& F)
     m_bundles.clear();
 }
 
-void LdStCombine::createCombinedLoads(Function& F)
+void LdStCombine::createCombinedLoads(BasicBlock* BB)
 {
     for (auto& bundle : m_bundles)
     {
@@ -4805,7 +4860,7 @@ void LdStCombine::createCombinedLoads(Function& F)
         }
 
         // Create the new vector type for these combined loads.
-        Type* eltTy = Type::getIntNTy(F.getContext(), eltBytes * 8);
+        Type* eltTy = Type::getIntNTy(BB->getContext(), eltBytes * 8);
         Type* VTy = (nelts == 1 ? eltTy : VectorType::get(eltTy, nelts, false));
 
         IRBuilder<> irBuilder(anchorLoad);

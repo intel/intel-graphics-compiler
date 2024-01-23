@@ -15,8 +15,9 @@
 ; %__StructSOALayout_.1 = type <{ %__StructAOSLayout_.0, i32, i32 }>
 ; %__StructAOSLayout_.0 = type <{ i16, i16 }>
 ; %__StructSOALayout_.2 = type <{ %__StructAOSLayout_.0, %__StructAOSLayout_.0, %__StructAOSLayout_.0 }>
-; %__StructSOALayout_.4 = type <{ %__StructAOSLayout_.3, %__StructAOSLayout_.3 }>
+; %__StructSOALayout_.5 = type <{ %__StructAOSLayout_.3, %__StructAOSLayout_.4 }>
 ; %__StructAOSLayout_.3 = type <{ i8, i8, i8, i8 }>
+; %__StructAOSLayout_.4 = type <{ i8, i8, i16 }>
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
 target triple = "spir64-unknown-unknown"
@@ -124,15 +125,15 @@ entry:
 ;
 ; case 3:
 ;
-; case 3: load i8; load <2xi8>; load <3xi8>; load <2xi8> -> load <2 x i32>
+; case 3: load i8; load <2xi8>; load <3xi8>; load <i16> -> load <2 x i32>
 ;     note: <3xi8> is split into {i8, i8, i8} and the first i8 is in the 1st
 ;           AOS struct <{i8, <2xi8>, i8}>, and the remaining two are in the
-;           second and different AOS struct <{i8, i8, <2xi8>}>.
+;           second and different AOS struct <{i8, i8, i16}>.
 ;           (This test is actually from OCL conformance basic/vector_creation)
 ;
 ; CHECK-LABEL: c3.base
 ; CHECK: [[T3:%.*]] = load <2 x i32>
-; CHECK: {{.*}} = call %__StructSOALayout_.4 @llvm.genx.GenISA.bitcasttostruct.__StructSOALayout_.4.v2i32(<2 x i32> [[T3]])
+; CHECK: {{.*}} = call %__StructSOALayout_.5 @llvm.genx.GenISA.bitcasttostruct.__StructSOALayout_.5.v2i32(<2 x i32> [[T3]])
 ; ret void
 ;
   %c3.base = add i64 %conv.i.i.i, 96
@@ -146,8 +147,9 @@ entry:
   %c3.si.3i8 = bitcast i8 addrspace(1)* %c3.arrayidx.2 to <3 x i8> addrspace(1)*
   %c3.2 = load <3 x i8>, <3 x i8> addrspace(1)* %c3.si.3i8, align 1
   %c3.arrayidx.3 = getelementptr inbounds i8, i8 addrspace(1)* %c3.si.i8, i64 6
-  %c3.si.2i8.0 = bitcast i8 addrspace(1)* %c3.arrayidx.3 to <2 x i8> addrspace(1)*
-  %c3.3 = load <2 x i8>, <2 x i8> addrspace(1)* %c3.si.2i8.0, align 1
+  %c3.si.i16.0 = bitcast i8 addrspace(1)* %c3.arrayidx.3 to i16 addrspace(1)*
+  %c3.3.i16 = load i16, i16 addrspace(1)* %c3.si.i16.0, align 1
+  %c3.3   = bitcast i16 %c3.3.i16 to <2 x i8>
   %c3.1.0 = extractelement <2 x i8> %c3.1, i64 0
   %c3.1.1 = extractelement <2 x i8> %c3.1, i64 1
   %c3.2.0 = extractelement <3 x i8> %c3.2, i64 0
