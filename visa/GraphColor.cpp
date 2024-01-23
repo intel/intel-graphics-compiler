@@ -9911,6 +9911,9 @@ void GlobalRA::addrRegAlloc() {
     iterationNo++;
   }
 
+  // Addr spill/fill
+  addVarToRA(kernel.Declares.back());
+
   vISA_ASSERT(iterationNo < maxRAIterations, "Address RA has failed.");
 }
 
@@ -9997,6 +10000,9 @@ void GlobalRA::flagRegAlloc() {
     kernel.dumpToFile("after.Flag_RA." + std::to_string(iterationNo));
     iterationNo++;
   }
+
+  // Flag spill/fill
+  addVarToRA(kernel.Declares.back());
 
   vISA_ASSERT(iterationNo < maxRAIterations, "Flag RA has failed.");
 }
@@ -10806,6 +10812,8 @@ int GlobalRA::coloringRegAlloc() {
 
   {
     TIME_SCOPE(ADDR_FLAG_RA);
+
+    addVarToRA(kernel.Declares.back());
 
     addrRegAlloc();
 
@@ -11847,6 +11855,7 @@ void GlobalRA::fixSrc0IndirFcall() {
         continue;
 
       auto src0Rgn = fcall->getSrc(0)->asSrcRegRegion();
+      auto src0TypeSize = src0Rgn->getTypeSize();
       auto src0Dcl = src0Rgn->getBase()->asRegVar()->getDeclare();
       auto src0TopDcl = src0Rgn->getTopDcl();
 
@@ -11855,7 +11864,7 @@ void GlobalRA::fixSrc0IndirFcall() {
         // create a copy
         auto tmpDcl = kernel.fg.builder->createHardwiredDeclare(
             1, src0Rgn->getType(), kernel.stackCall.getFPSPGRF(),
-            kernel.stackCall.subRegs.Ret_IP);
+            kernel.stackCall.subRegs.Ret_IP * TypeSize(Type_UD) / src0TypeSize);
         auto dst = kernel.fg.builder->createDst(tmpDcl->getRegVar(),
                                                 src0Rgn->getType());
         auto src = kernel.fg.builder->duplicateOperand(src0Rgn);
@@ -11866,12 +11875,15 @@ void GlobalRA::fixSrc0IndirFcall() {
         bb->insertBefore(iter, copy);
         auto newSrc = kernel.fg.builder->createSrc(
             tmpDcl->getRegVar(), 0, 0, kernel.fg.builder->getRegionScalar(),
-            src0Rgn->getType());
+            Type_UD);
         fcall->setSrc(newSrc, 0);
       } else {
+        auto fcallDstTypeSize = fcall->getDst()->getTypeSize();
+        vISA_ASSERT(fcallDstTypeSize == 4, "expecting DW type dst");
         src0TopDcl->getRegVar()->setPhyReg(
             fcall->getDst()->getBase()->asRegVar()->getPhyReg(),
-            fcall->getDst()->getBase()->asRegVar()->getPhyRegOff());
+            fcall->getDst()->getBase()->asRegVar()->getPhyRegOff() *
+                fcallDstTypeSize / src0TypeSize);
       }
     }
   }

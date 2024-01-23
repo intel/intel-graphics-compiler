@@ -11225,11 +11225,10 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             // Set the predicate to true for all lanes with the same address
             CVariable* callPred = m_currShader->ImmToVariable(0, ISA_TYPE_BOOL);
 
-            for (unsigned i = 0; i < funcAddr->GetNumberInstance(); i++)
-            {
-                m_encoder->SetSecondHalf(i == 1);
-                m_encoder->Cmp(EPREDICATE_EQ, callPred, uniformAddr, funcAddr);
-                m_encoder->Push();
+            for (unsigned i = 0; i < funcAddr->GetNumberInstance(); i++) {
+              m_encoder->SetSecondHalf(i == 1);
+              m_encoder->Cmp(EPREDICATE_EQ, callPred, uniformAddr, funcAddr);
+              m_encoder->Push();
             }
             m_encoder->SetSecondHalf(false);
 
