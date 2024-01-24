@@ -51,16 +51,6 @@ namespace IGC
             return noLocalToGenericOptionEnabled;
         }
 
-        GASInfo& operator= (GASInfo&& rhs) noexcept {
-            if (this == &rhs) {
-                return *this;
-            }
-            noLocalToGenericOptionEnabled = rhs.noLocalToGenericOptionEnabled;
-            allocatePrivateAsGlobalBuffer = rhs.allocatePrivateAsGlobalBuffer;
-            FunctionMap = std::move(rhs.FunctionMap);
-            return *this;
-        }
-
     private:
         using FunctionMapTy = llvm::DenseMap<const llvm::Function*, unsigned>;
         FunctionMapTy FunctionMap;
