@@ -67,6 +67,7 @@ public:
     }
 
     bool runOnFunction(Function&) override;
+    void countUses(Function&);
     void rematWholeChain(llvm::IntToPtrInst *I);
     bool isRegPressureLow(Function &F);
     std::unordered_map<llvm::Value*, unsigned int> Uses;
@@ -236,6 +237,21 @@ bool CloneAddressArithmetic::isRegPressureLow(Function &F) {
     return Result;
 }
 
+
+void CloneAddressArithmetic::countUses(Function &F) {
+    for (BasicBlock &BB : F) {
+        for (auto &I : BB) {
+            unsigned int NonDebugUses = 0;
+            for (auto U : I.users()) {
+                auto *Inst = llvm::dyn_cast<llvm::Instruction>(U);
+                if(!llvm::isa<DbgInfoIntrinsic>(Inst))
+                    NonDebugUses += 1;
+            }
+            Uses[&I] = NonDebugUses;
+        }
+    }
+}
+
 bool CloneAddressArithmetic::greedyRemat(Function &F) {
 
     bool Result = false;
@@ -243,9 +259,7 @@ bool CloneAddressArithmetic::greedyRemat(Function &F) {
     if (isRegPressureLow(F))
         return Result;
 
-    for (BasicBlock &BB : F) {
-        for (auto &I : BB) { Uses[&I] = I.getNumUses(); }
-    }
+    countUses(F);
 
     // At times, addrspace casts end up far away from their direct users.
     if(IGC_IS_FLAG_ENABLED(RematMoveAddrSpaceCast)) putAddrSpaceCastClose(F);
