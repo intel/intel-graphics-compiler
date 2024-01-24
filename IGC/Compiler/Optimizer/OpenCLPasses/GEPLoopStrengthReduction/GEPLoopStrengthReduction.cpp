@@ -144,6 +144,10 @@ struct ReductionCandidate
         return GEP == RHS.GEP && S == RHS.S && Delta == RHS.Delta;
     }
 
+    bool isValidForReduction(const Loop *L, const DominatorTree *DT);
+
+    bool isBetterForReduction(const ReductionCandidate &Other);
+
     void print(raw_ostream &OS);
 
     // Instruction to reduce
@@ -183,12 +187,14 @@ friend class Scorer;
 
 public:
 
-    ReductionCandidateGroup(const Loop *L, GetElementPtrInst *GEP, const SCEV *S, int64_t Step)
-        : L(L), Step(Step), Base(GEP, S, 0), RT(REDUCE_TO_PREHEADER) {}
+    ReductionCandidateGroup(const Loop *L, const DominatorTree *DT, GetElementPtrInst *GEP, const SCEV *S, int64_t Step)
+        : L(L), DT(DT), Step(Step), Base(GEP, S, 0), RT(REDUCE_TO_PREHEADER) {}
 
     bool addToGroup(ScalarEvolution &SE, GetElementPtrInst *GEP, const SCEV *S, int64_t Step);
 
     void transform(IGCLLVM::IRBuilder<> &IRB, SCEVExpander &E);
+
+    bool isValid();
 
     // Return how many GEP instructions will be reduced.
     uint32_t getGEPCount() { return 1 + Others.size(); }
@@ -228,6 +234,8 @@ private:
     std::optional<ReductionCandidate> Cheapest;
 
     const Loop *L;
+
+    const DominatorTree *DT;
 
     Score Score;
 
@@ -422,6 +430,8 @@ void ReductionCandidate::print(raw_ostream &OS)
 {
     OS << "{gep=";
     GEP->printAsOperand(OS, false);
+    OS << ", ptr=";
+    GEP->getPointerOperand()->printAsOperand(OS, false);
     OS << ", scev=";
     S->print(OS);
     OS << ", delta=";
@@ -434,6 +444,7 @@ void ReductionCandidateGroup::print(raw_ostream &OS)
 {
     OS << "{loop=";
     OS << L->getName();
+    OS << ", geps=" << Others.size() + 1;
     OS << ", base=";
     Base.print(OS);
     OS << ", others=[";
@@ -447,6 +458,34 @@ void ReductionCandidateGroup::print(raw_ostream &OS)
     OS << "], step=";
     OS << Step;
     OS << "}";
+}
+
+
+// Considering loop:
+//
+//   for (i ...)
+//   {
+//     if (cond)
+//     {
+//       x[i - 1] = ...
+//     }
+//     x[i] = ...
+//   }
+//
+// If address is calculated in if-case, if there is no guarantee it would be calculated on the
+// first iteration, it can't be reduced to preheader, as value could be invalid.
+bool ReductionCandidate::isValidForReduction(const Loop* L, const DominatorTree* DT)
+{
+    return DT->dominates(GEP->getParent(), L->getLoopLatch());
+}
+
+
+bool ReductionCandidate::isBetterForReduction(const ReductionCandidate &Other)
+{
+    // If lowest delta is selected as base, remaining GEPs in the group will use
+    // positive indices only. This should make other load/store optimizations easier.
+    return (Delta < Other.Delta) ||
+           (Delta == Other.Delta && S->getExpressionSize() < Other.S->getExpressionSize());
 }
 
 
@@ -529,23 +568,36 @@ ReductionCandidate &ReductionCandidateGroup::getCheapestCandidate()
     if (Cheapest)
         return Cheapest.value();
 
-    if (Others.empty())
-        return Cheapest.emplace(Base);
-
-    auto *BestCandidate = &Base;
+    ReductionCandidate *BestCandidate = nullptr;
 
     for (auto It = Others.begin(); It != Others.end(); ++It)
     {
-        // If lowest delta is selected as base, remaining GEPs in the group will use
-        // positive indices only. This should make other load/store optimizations easier.
-        if ((It->Delta < BestCandidate->Delta) ||
-            (It->Delta == BestCandidate->Delta && It->S->getExpressionSize() < BestCandidate->S->getExpressionSize()))
-        {
+        if (!It->isValidForReduction(L, DT))
+            continue;
+
+        if (!BestCandidate || It->isBetterForReduction(*BestCandidate))
             BestCandidate = It;
-        }
     }
 
-    return Cheapest.emplace(*BestCandidate);
+    if (BestCandidate && (!Base.isValidForReduction(L, DT) || BestCandidate->isBetterForReduction(Base)))
+        return Cheapest.emplace(*BestCandidate);
+
+    return Cheapest.emplace(Base);
+}
+
+
+bool ReductionCandidateGroup::isValid()
+{
+    if (Base.isValidForReduction(L, DT))
+        return true;
+
+    for (auto It = Others.begin(); It != Others.end(); ++It)
+    {
+        if (It->isValidForReduction(L, DT))
+            return true;
+    }
+
+    return false;
 }
 
 
@@ -782,7 +834,8 @@ void Scorer::scoreRegisterPressure(ReductionCandidateGroup &Candidate)
 
 void Analyzer::analyze(SmallVectorImpl<ReductionCandidateGroup> &Result)
 {
-    if (!IGCLLVM::isInnermost(&L) || !L.isLoopSimplifyForm())
+    // Require simple loop with one entry and one latch.
+    if (!IGCLLVM::isInnermost(&L) || !L.isLoopSimplifyForm() || !L.getLoopLatch())
         return;
 
     Candidates.clear();
@@ -793,6 +846,13 @@ void Analyzer::analyze(SmallVectorImpl<ReductionCandidateGroup> &Result)
                 analyzeGEP(GEP);
         }
     }
+
+    // After grouping candidates together, it's possible some groups don't have
+    // at least one valid pointer to use as a base for reduction.
+    Candidates.erase(
+        std::remove_if(Candidates.begin(), Candidates.end(),
+            [](ReductionCandidateGroup& C) { return !C.isValid(); }),
+        Candidates.end());
 
     Result.append(Candidates.begin(), Candidates.end());
 }
@@ -832,7 +892,7 @@ void Analyzer::analyzeGEP(GetElementPtrInst *GEP)
         }
     }
 
-    Candidates.emplace_back(&L, GEP, Start, Step);
+    Candidates.emplace_back(&L, &DT, GEP, Start, Step);
     LLVM_DEBUG(
         dbgs() << "  found new candidate to optimize: ";
         Candidates.back().print(dbgs());
