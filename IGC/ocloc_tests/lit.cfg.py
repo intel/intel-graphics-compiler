@@ -40,7 +40,7 @@ llvm_config.with_environment('LD_LIBRARY_PATH', [config.ocloc_lib_dir,
                                                  config.cclang_lib_dir], append_path=True)
 
 
-tool_dirs = [config.ocloc_dir, config.llvm_tools_dir, config.spirv_as_dir]
+tool_dirs = [config.ocloc_dir, config.llvm_tools_dir, config.spirv_as_dir, config.llvm_spirv_dir]
 
 if llvm_config.add_tool_substitutions([ToolSubst('ocloc', unresolved='break')], tool_dirs) :
   ocloc_path = llvm_config.config.substitutions[-1][1]
@@ -49,7 +49,7 @@ else :
   ocloc_path = 'ocloc'
 
 llvm_config.add_tool_substitutions([ToolSubst('llvm-dwarfdump')], tool_dirs)
-llvm_config.add_tool_substitutions([ToolSubst('opt')], tool_dirs)
+llvm_config.add_tool_substitutions([ToolSubst('llvm-as')], tool_dirs)
 llvm_config.add_tool_substitutions([ToolSubst('not')], tool_dirs)
 
 
@@ -82,6 +82,10 @@ if not config.regkeys_disabled:
 if config.spirv_as_enabled:
   config.available_features.add('spirv-as')
   llvm_config.add_tool_substitutions([ToolSubst('spirv-as', unresolved='fatal')], tool_dirs)
+
+if config.llvm_spirv_enabled:
+  config.available_features.add('llvm-spirv')
+  llvm_config.add_tool_substitutions([ToolSubst('llvm-spirv', unresolved='fatal')], tool_dirs)
 
 if config.is32b == "1":
   config.available_features.add('sys32')

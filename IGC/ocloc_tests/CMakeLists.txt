@@ -26,9 +26,13 @@ endif()
   if (NOT SPIRV_SKIP_EXECUTABLES)
     set(IGC_BUILD__PROJ__spirv_as "spirv-as")
     set(IGC_SPIRV_AS_DIR "$<TARGET_FILE_DIR:spirv-as>")
+    set(IGC_BUILD__PROJ__llvm_spirv "llvm-spirv")
+    set(IGC_LLVM_SPIRV_DIR "$<TARGET_FILE_DIR:llvm-spirv>")
   else()
     set(IGC_BUILD__PROJ__spirv_as "")
     set(IGC_SPIRV_AS_DIR "")
+    set(IGC_BUILD__PROJ__spirv_as "")
+    set(IGC_LLVM_SPIRV_DIR "")
   endif()
 
   # If any new tool is required by any of the LIT tests add it here:
@@ -36,12 +40,14 @@ endif()
     FileCheck
     count
     not
+    llvm-as
     llvm-dwarfdump
     "${IGC_BUILD__PROJ__ocloc}"
     "${IGC_BUILD__PROJ__ocloc_lib}"
     "${IGC_BUILD__PROJ__igc_dll}"
     "${IGC_BUILD__PROJ__fcl_dll}"
     "${IGC_BUILD__PROJ__spirv_as}"
+    "${IGC_BUILD__PROJ__llvm_spirv}"
     "${COMMON_CLANG}"
     )
 
