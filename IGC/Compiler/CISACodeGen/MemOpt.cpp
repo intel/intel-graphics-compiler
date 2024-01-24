@@ -2802,10 +2802,14 @@ bool IGC::doLdStCombine(const CodeGenContext* CGC) {
        case 0:
            return false;
        case 1:
+           return CGC->platform.LSCEnabled();
+       case 2:
            return true;
        }
     }
     uint32_t keyval = IGC_GET_FLAG_VALUE(EnableLdStCombine);
+    if ((keyval & 0x3) == 1 && !CGC->platform.LSCEnabled())
+        return false;
     return ((keyval & 0x3) != 0);
 }
 

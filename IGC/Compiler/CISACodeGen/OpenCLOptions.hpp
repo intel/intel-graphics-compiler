@@ -99,7 +99,8 @@ public:
      // LdStCombine
      //   EnableLdStCombine:
      //      0: disable LdStCombine
-     //      1: enable LdStCombine
+     //      1: enable LdStCombine for LSC
+     //      2: enable LdStCombine for LSC and Non-LSC
      //      otherwise: ignored
      //   MaxStoreBytes:
      //   MaxLoadBytes:

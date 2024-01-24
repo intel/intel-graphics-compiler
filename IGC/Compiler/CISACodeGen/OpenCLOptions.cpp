@@ -308,10 +308,10 @@ void InternalOptions::parseOptions(const char* internalOpts)
 
     if (const llvm::opt::Arg* arg = internalOptions.getLastArg(OPT_ldstcombine_common))
     {
-        // Valid value: 0|1
+        // Valid value: 0|1|2
         llvm::StringRef valStr = arg->getValue();
         int val = 0;
-        if (valStr.getAsInteger(10, val) || (val !=0 && val != 1))
+        if (valStr.getAsInteger(10, val) || (val !=0 && val != 1 && val != 2))
         {
             IGC_ASSERT_MESSAGE(false, "-ldstcombine: invalid and ignored!");
         }
