@@ -1533,8 +1533,9 @@ public:
         name, G4_GRF, builder.getCallRetOpndSize(), 1, Type_UD);
 
     // call destination must still be QWord aligned
-    dcl->setSubRegAlign(Four_Word);
-    setSubRegAlign(dcl, Four_Word);
+    auto callDstAlign = Four_Word;
+    dcl->setSubRegAlign(callDstAlign);
+    setSubRegAlign(dcl, callDstAlign);
 
     retDecls[retLoc] = dcl;
     return dcl;
