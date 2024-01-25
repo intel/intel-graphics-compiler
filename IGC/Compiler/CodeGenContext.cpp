@@ -436,10 +436,12 @@ namespace IGC
     }
 
     IGCLLVM::Module* CodeGenContext::getModule() const { return module; }
+    std::vector<std::string> CodeGenContext::getEntryNames() const { return entry_names; }
 
     static void initCompOptionFromRegkey(CodeGenContext* ctx)
     {
         SetCurrentDebugHash(ctx->hash);
+        SetCurrentEntryPoints(ctx->entry_names);
 
         CompOptions& opt = ctx->getModuleMetaData()->compOpt;
 
@@ -452,11 +454,30 @@ namespace IGC
     void CodeGenContext::setModule(llvm::Module* m)
     {
         module = (IGCLLVM::Module*)m;
+        this->setEntryNames(module);
         m_pMdUtils = new IGC::IGCMD::MetaDataUtils(m);
         modMD = new IGC::ModuleMetaData();
         initCompOptionFromRegkey(this);
     }
 
+    //get the entry point names from the root entrypoint node
+    void CodeGenContext::setEntryNames(llvm::Module* m)
+    {
+        for (auto& func : *m)
+        {
+            if (func.isDeclaration())
+                continue;
+
+            const auto funcName = func.getName().str();
+            if (!funcName.empty())
+            {
+                this->entry_names.emplace_back(funcName);
+            }
+        }
+    }
+    void CodeGenContext::clearEntryNames() {
+        this->entry_names.clear();
+    }
     // Several clients explicitly delete module without resetting module to null.
     // This causes the issue later when the dtor is invoked (trying to delete a
     // dangling pointer again). This function is used to replace any explicit

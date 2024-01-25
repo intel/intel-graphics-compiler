@@ -1730,7 +1730,9 @@ bool TranslateBuild(
 
     // set g_CurrentShaderHash in igc_regkeys.cpp
     SetCurrentDebugHash(inputShHash);
-
+    StringRef inputBin(pInputArgs->pInput, pInputArgs->InputSize);
+    const std::vector<std::string>& entryPoints = IGC::SPIRVParser::getEntryPointNames(inputBin);
+    SetCurrentEntryPoints(entryPoints);
     // on wrong spec constants, vc::translateBuild may fail
     // so lets dump those early
     if (pInputArgs->SpecConstantsSize > 0 && IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
