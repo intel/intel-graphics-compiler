@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -96,8 +96,8 @@ unsigned GenXNumbering::numberInstructionsInFunc(Function *Func, unsigned Num)
       // coalescing needs to insert, and nothing after.
       unsigned PreReserve = 1, PostReserve = 0;
       if (auto CI = dyn_cast<CallInst>(Inst)) {
-        if (!GenXIntrinsic::isAnyNonTrivialIntrinsic(CI) &&
-            !CI->isInlineAsm()) {
+        auto IID = vc::getAnyIntrinsicID(CI);
+        if (!vc::isAnyNonTrivialIntrinsic(IID) && !CI->isInlineAsm()) {
           // For a non-intrinsic call, reserve enough numbers before the call
           // for:
           //  - a slot for each element of the args, two numbers per element:
@@ -369,4 +369,3 @@ void GenXNumbering::print(raw_ostream &OS) const
   }
   OS << "\n";
 }
-
