@@ -104,7 +104,7 @@ void BIFFlagCtrlResolution::FillFlagCtrl() {
 
 bool BIFFlagCtrlResolution::runOnModule(Module &M) {
   if (PtrCGC == nullptr) {
-    IGC_ASSERT_EXIT_MESSAGE(0, "Not propper initialized BIFFlagCtrlResolution pass");
+    IGC_ASSERT_EXIT_MESSAGE(0, "[BIF_IGC] Not propper initialized BIFFlagCtrlResolution pass");
   }
 
   pModule = &M;
@@ -126,7 +126,7 @@ bool BIFFlagCtrlResolution::runOnModule(Module &M) {
       // it's executing the delegate function
       wasModuleUpdated |= iter->second();
     } else {
-      IGC_ASSERT_MESSAGE(0, "Cannot find the BiF control flag");
+      IGC_ASSERT_EXIT_MESSAGE(0, "[BIF_IGC] Missing setup for flag %s in FillFlagCtrl function", bif_flag.str().c_str());
     }
   }
 
@@ -152,7 +152,7 @@ bool BIFFlagCtrlResolution::replace(T Value, llvm::GlobalVariable *GV) {
         llvm::ConstantFP::get(GV->getValueType(), (double)Value));
     Changed = true;
   } else {
-    IGC_ASSERT_MESSAGE(0, "Not supported BiF flag control type");
+    IGC_ASSERT_EXIT_MESSAGE(0, "[BIF_IGC] Not supported BiF flag control type");
   }
 
   return Changed;

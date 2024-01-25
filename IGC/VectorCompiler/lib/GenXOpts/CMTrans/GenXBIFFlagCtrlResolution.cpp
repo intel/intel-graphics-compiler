@@ -77,6 +77,17 @@ void GenXBIFFlagCtrlResolution::FillFlagCtrl() {
   // FIXME: target specific, but subtarget cannot be reached in middle-end.
   BIF_FLAG_CTRL_SET(HasInt64SLMAtomicCAS, false);
   BIF_FLAG_CTRL_SET(JointMatrixLoadStoreOpt, 3);
+  BIF_FLAG_CTRL_SET(OptDisable, false);
+  BIF_FLAG_CTRL_SET(UseNativeFP32GlobalAtomicAdd, false);
+  BIF_FLAG_CTRL_SET(UseNativeFP16AtomicMinMax, false);
+  BIF_FLAG_CTRL_SET(UseNativeFP64GlobalAtomicAdd, false);
+  BIF_FLAG_CTRL_SET(HasThreadPauseSupport, false);
+  BIF_FLAG_CTRL_SET(hasHWLocalThreadID, false);
+  BIF_FLAG_CTRL_SET(APIRS, false);
+  BIF_FLAG_CTRL_SET(UseLSC, false);
+  BIF_FLAG_CTRL_SET(ForceL1Prefetch, false);
+  BIF_FLAG_CTRL_SET(UseNativeFP64GlobalAtomicAdd, false);
+  BIF_FLAG_CTRL_SET(MaxHWThreadIDPerSubDevice, 1);
 }
 
 #undef BIF_FLAG_CTRL_SET
@@ -101,7 +112,7 @@ bool GenXBIFFlagCtrlResolution::runOnModule(Module &M) {
       // it's executing the delegate function
       wasModuleUpdated |= iter->second();
     } else {
-      IGC_ASSERT_MESSAGE(0, "Cannot find the BiF control flag");
+      IGC_ASSERT_EXIT_MESSAGE(0, "[BIF_VC] Missing setup for flag %s in FillFlagCtrl function", bif_flag.str().c_str());
     }
   }
 
@@ -126,7 +137,7 @@ bool GenXBIFFlagCtrlResolution::replace(T Value, GlobalVariable *GV) {
     GV->setInitializer(ConstantFP::get(GV->getValueType(), (double)Value));
     Changed = true;
   } else {
-    IGC_ASSERT_MESSAGE(0, "Not supported BiF flag control type");
+    IGC_ASSERT_EXIT_MESSAGE(0, "[BIF_VC] Not supported BiF flag control type");
   }
 
   return Changed;
