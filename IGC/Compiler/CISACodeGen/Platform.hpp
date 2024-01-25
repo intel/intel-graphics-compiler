@@ -891,9 +891,6 @@ bool LSCEnabled(SIMDMode m = SIMDMode::UNKNOWN) const
                      GFX_IS_DG2_G12_CONFIG(m_platformInfo.usDeviceID)
                 ) && m == SIMDMode::SIMD8) ||
                 m == SIMDMode::SIMD16;
-        case IGFX_METEORLAKE:
-        case IGFX_ARROWLAKE:
-            return m == SIMDMode::SIMD8 || m == SIMDMode::SIMD16;
         default:
             return true;
         }
