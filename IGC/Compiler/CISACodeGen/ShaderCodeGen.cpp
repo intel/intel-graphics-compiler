@@ -101,7 +101,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/GenUpdateCB.h"
 #include "Compiler/PromoteResourceToDirectAS.h"
 #include "Compiler/PromoteStatelessToBindless.h"
-#include "Compiler/ShrinkArrayAlloca.h"
 #if defined(_DEBUG) && !defined(ANDROID)
 #include "Compiler/VerificationPass.hpp"
 #endif
@@ -1589,7 +1588,6 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.add(llvm::createEarlyCSEPass());
             if (pContext->m_instrTypes.hasNonPrimitiveAlloca)
             {
-                mpm.add(new ShrinkArrayAllocaPass());
                 // run custom safe opts to potentially get rid of indirect
                 // addressing of private arrays, see visitLoadInst
                 mpm.add(new CustomSafeOptPass());
