@@ -719,23 +719,6 @@ parseHashType(llvm::StringRef line)
     return { std::make_pair(*Ty, line.substr(Loc + 1)) };
 }
 
-static
-std::optional<std::pair<bool, llvm::StringRef>>
-detectEntryPoints(llvm::StringRef line)
-{
-    using namespace llvm;
-    size_t Loc = line.find_first_of(':');
-    if (Loc == StringRef::npos)
-        return {};
-    auto key = line.substr(0, Loc);
-
-    bool isEntryPoint = false;
-    if (key == "entry_point") {
-        isEntryPoint = true;
-    }
-
-    return { std::make_pair(isEntryPoint, line.substr(Loc + 1)) };
-}
 // parses this syntax:
 // Each hash may be optionally prefixed with "0x" (e.g., 0xaaaaaaaaaaaaaaaa)
 // hash:abcdabcdabcdabcd-ffffffffffffffff,aaaaaaaaaaaaaaaa
@@ -772,27 +755,6 @@ static void ParseHashRange(llvm::StringRef line, std::vector<HashRange>& ranges)
     } while (!vString.empty());
 }
 
-// parses this syntax:
-// each seperated by comma
-// entry_point:MicropolyRasterize, CS
-static void ParseEntryPoint(llvm::StringRef line, std::vector<EntryPoint>& entry_points)
-{
-    auto Result = detectEntryPoints(line);
-    if (!Result)
-        return;
-    auto [isEntryPoint, vString] = *Result;
-    if (!isEntryPoint)
-        return;
-    // re-initialize entries
-    entry_points.clear();
-    do {
-        auto [token, RHS] = vString.split(',');
-        EntryPoint entry_point  = {};
-        entry_point.entry_point_name = token.str();
-        entry_points.push_back(entry_point);
-        vString = RHS;
-    } while (!vString.empty());
-}
 static void setIGCKeyOnHash(
     std::vector<HashRange>& hashes, const unsigned value,
     SRegKeyVariableMetaData* var)
@@ -803,16 +765,7 @@ static void setIGCKeyOnHash(
     var->Set();
     var->m_Value = value;
 }
-static void setIGCKeyOnEntryPoints(
-    std::vector<EntryPoint>& entry_points, const unsigned value,
-    SRegKeyVariableMetaData* var)
-{
-    // hashes can be empty if the var is not set via Options.txt
-    for (size_t i = 0; i < entry_points.size(); i++)
-        var->entry_points.push_back(entry_points[i]);
-    var->Set();
-    var->m_Value = value;
-}
+
 // Implicitly set the subkeys
 static void setImpliedIGCKeys()
 {
@@ -902,13 +855,12 @@ void setImpliedRegkey(SRegKeyVariableMetaData& name,
     if (set)
     {
         setIGCKeyOnHash(name.hashes, subvalue, &subname);
-        setIGCKeyOnEntryPoints(name.entry_points, subvalue, &subname);
     }
 }
 
 static void declareIGCKey(
     const std::string& line, const char* dataType, const char* regkeyName,
-    std::vector<HashRange>& hashes, std::vector<EntryPoint>& entry_points, SRegKeyVariableMetaData* regKey)
+    std::vector<HashRange>& hashes, SRegKeyVariableMetaData* regKey)
 {
     bool isSet = false;
     debugString value = { 0 };
@@ -916,29 +868,13 @@ static void declareIGCKey(
     if (isSet && !hashes.empty())
     {
         std::cout << std::endl << "** hashes ";
-        for (size_t i = 0; i < hashes.size(); i++)
-        {
+        for (size_t i = 0; i < hashes.size(); i++) {
             memcpy_s(hashes[i].m_string, sizeof(value), value, sizeof(value));
             regKey->hashes.push_back(hashes[i]);
             if (hashes[i].end == hashes[i].start)
                 std::cout << std::hex << std::showbase << hashes[i].start << ", ";
             else
                 std::cout << std::hex << std::showbase << hashes[i].start << "-" << hashes[i].end << ", ";
-        }
-        std::cout << std::endl;
-
-        std::cout << "** regkey " << line << std::endl;
-        regKey->Set();
-        memcpy_s(regKey->m_string, sizeof(value), value, sizeof(value));
-    }
-    if (isSet && !entry_points.empty())
-    {
-        std::cout << std::endl << "** entry point ";
-        for (size_t i = 0; i < entry_points.size(); i++)
-        {
-            memcpy_s(entry_points[i].m_string, sizeof(value), value, sizeof(value));
-            regKey->entry_points.push_back(entry_points[i]);
-            std::cout << entry_points[i].entry_point_name << ", ";
         }
         std::cout << std::endl;
 
@@ -953,7 +889,6 @@ static void LoadDebugFlagsFromFile()
     std::ifstream input(GetOptionFile());
     std::string line;
     std::vector<HashRange> hashes;
-    std::vector<EntryPoint> entry_points;
 
     if (input.is_open())
         std::cout << std::endl << "** DebugFlags " << GetOptionFile() << " is opened" << std::endl;
@@ -962,14 +897,11 @@ static void LoadDebugFlagsFromFile()
         if (line.empty() || line.front() == '#')
             continue;
         ParseHashRange(line, hashes);
-        ParseEntryPoint(line, entry_points);
 #define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)         \
 {                                                                                   \
-    declareIGCKey(line, #dataType, #regkeyName, hashes, entry_points, &(g_RegKeyList.regkeyName));\
+    declareIGCKey(line, #dataType, #regkeyName, hashes, &(g_RegKeyList.regkeyName));\
 }
 #include "igc_regkeys.h"
-DECLARE_IGC_REGKEY(bool, ShaderDumpEnable, false, "dump LLVM IR, visaasm, and GenISA", true)
-
 #undef DECLARE_IGC_REGKEY
 
     }
@@ -984,7 +916,6 @@ static void LoadDebugFlagsFromString(const char* input)
     std::istringstream istream(input);
     std::string line;
     std::vector<HashRange> hashes;
-    std::vector<EntryPoint>entry_points;
 
     std::cout << std::endl << "** DebugFlags " << input << " is applied" << std::endl;
 
@@ -992,14 +923,11 @@ static void LoadDebugFlagsFromString(const char* input)
         if (line.empty())
             continue;
         ParseHashRange(line, hashes);
-        ParseEntryPoint(line, entry_points);
 #define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)         \
 {                                                                                   \
-    declareIGCKey(line, #dataType, #regkeyName, hashes, entry_points, &(g_RegKeyList.regkeyName));\
+    declareIGCKey(line, #dataType, #regkeyName, hashes, &(g_RegKeyList.regkeyName));\
 }
 #include "igc_regkeys.h"
-
-
 #undef DECLARE_IGC_REGKEY
 
     }
@@ -1023,33 +951,15 @@ void appendToOptionsLogFile(std::string const &message)
 }
 
 static thread_local ShaderHash g_CurrentShaderHash;
-static thread_local std::vector<std::string> g_CurrentEntryPointNames;
 void SetCurrentDebugHash(const ShaderHash& hash)
 {
     g_CurrentShaderHash = hash;
 }
 
-//ray tracing shader can have multiple access point
-void SetCurrentEntryPoints(const std::vector<std::string>& entry_points)
-{
-    g_CurrentEntryPointNames = entry_points;
-}
-
-void ClearCurrentEntryPoints()
-{
-    g_CurrentEntryPointNames.clear();
-}
-
 bool CheckHashRange(SRegKeyVariableMetaData& varname)
 {
-    if (varname.hashes.empty()) {
-        if (varname.entry_points.empty()) {
-            return true;
-        }
-        else {
-            return false;
-        }
-    }
+    if (varname.hashes.empty())
+        return true;
     if (!g_CurrentShaderHash.is_set())
     {
         std::string msg = "Warning: hash not calculated yet; IGC_GET_FLAG_VALUE(" + std::string(varname.GetName()) + ") returned default value";
@@ -1071,42 +981,6 @@ bool CheckHashRange(SRegKeyVariableMetaData& varname)
             }
 
             return true;
-        }
-    }
-    return false;
-}
-
-bool CheckEntryPoint(SRegKeyVariableMetaData& varname)
-{
-    //return false;
-    if (varname.entry_points.empty())
-    {
-        if (varname.hashes.empty())
-        {
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
-
-    if (g_CurrentEntryPointNames.size() == 0)
-    {
-        std::string msg = "Warning: entry point not set yet; IGC_GET_FLAG_VALUE(" + std::string(varname.GetName()) + ") returned default value";
-        appendToOptionsLogFile(msg);
-    }
-    //looping entry point recorded by regkey metadata
-    for (auto& it : varname.entry_points)
-    {
-        //looping each entry point of current shader
-        for (std::string& CurrEntryPoint : g_CurrentEntryPointNames)
-        {
-            if (CurrEntryPoint == it.entry_point_name)
-            {
-                varname.m_Value = it.m_Value;
-                return true;
-            }
         }
     }
     return false;
