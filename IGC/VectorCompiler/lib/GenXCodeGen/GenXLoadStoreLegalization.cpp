@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2023 Intel Corporation
+Copyright (C) 2023-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -277,8 +277,8 @@ GenXLoadStoreLegalization::getMemoryIntrinsic(CallInst &CI,
                                               unsigned NewWidth) const {
   const auto IID = vc::InternalIntrinsic::getInternalIntrinsicID(&CI);
   IGC_ASSERT_EXIT(IID != vc::InternalIntrinsic::not_internal_intrinsic);
-  const auto ExecSize = vc::InternalIntrinsic::getMemorySimdWidth(&CI);
-  const auto VectorSize =
+  const uint64_t ExecSize = vc::InternalIntrinsic::getMemorySimdWidth(&CI);
+  const uint64_t VectorSize =
       vc::InternalIntrinsic::getMemoryVectorSizePerLane(&CI);
 
   SmallVector<Type *, 3> OverloadedTypes;
