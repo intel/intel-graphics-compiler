@@ -4191,9 +4191,7 @@ namespace IGC
             SaveOption(vISA_setFFID, ffid[unsigned(context->type)]);
         }
 
-        {
-            SaveOption(vISA_hasRNEandDenorm, true);
-        }
+        SaveOption(vISA_hasRNEandDenorm, true);
 
         // need to fold ret into the previous RTWrite/URBWrite/etc
         if (context->type != ShaderType::OPENCL_SHADER && context->type != ShaderType::COMPUTE_SHADER)
