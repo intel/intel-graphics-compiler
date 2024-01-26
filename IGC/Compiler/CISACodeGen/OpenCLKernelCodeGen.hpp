@@ -131,6 +131,7 @@ namespace IGC
         bool needsDivergentBarrierHandling() const;
         unsigned GetSlmSizePerSubslice();
         float GetSpillThreshold(SIMDMode dispatchSize);
+        bool isAutoGRFSelectionEnabled() const override;
 
         void clearBeforeRetry() {
             m_programOutput.clearBeforeRetry();

@@ -4644,32 +4644,18 @@ namespace IGC
                     SaveOption(vISA_TotalGRFNum, unsigned(0));
                     SaveOption(vISA_AutoGRFSelection, true);
                 }
+                else if (ClContext->getExpGRFSize() > 0) {
+                    // Explicit GRF size set per module (by compiler option)
+                    SaveOption(vISA_TotalGRFNum, ClContext->getExpGRFSize());
+                }
                 else if (ClContext->getNumThreadsPerEU() > 0)
                 {
                     // Number of threads per EU is set per module (by compiler option)
                     SaveOption(vISA_HWThreadNumberPerEU, unsigned(ClContext->getNumThreadsPerEU()));
                 }
-                else if (ClContext->getNumThreadsPerEU() == 0)
-                {
+                else if (ClContext->isAutoGRFSelectionEnabled()) {
                     // "Auto" mode per module (by compiler option) - use compiler heuristics to determine number of threads per EU
                     SaveOption(vISA_TotalGRFNum, unsigned(0));
-                    SaveOption(vISA_AutoGRFSelection, true);
-                }
-                else if (ClContext->getExpGRFSize() > 0) {
-                    // Explicit GRF size set per module (by compiler option)
-                    SaveOption(vISA_TotalGRFNum, ClContext->getExpGRFSize());
-                }
-                else if ((m_program->m_Platform->supportsAutoGRFSelection() &&
-                    (context->m_DriverInfo.supportsAutoGRFSelection() ||
-                      ClContext->m_InternalOptions.IntelEnableAutoLargeGRF ||
-                      ClContext->m_Options.IntelEnableAutoLargeGRF)
-                    ) && !ClContext->m_InternalOptions.Intel128GRFPerThread &&
-                    !ClContext->m_Options.Intel128GRFPerThread &&
-                    !ClContext->m_InternalOptions.Intel256GRFPerThread &&
-                    !ClContext->m_Options.Intel256GRFPerThread
-                    )
-                {
-                    // When user hasn't specified number of threads, we can rely on compiler heuristics
                     SaveOption(vISA_AutoGRFSelection, true);
                 }
 

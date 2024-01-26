@@ -113,6 +113,27 @@ namespace IGC
         return CodeGenContext::getNumGRFPerThread(returnDefault);
     }
 
+    bool OpenCLProgramContext::isAutoGRFSelectionEnabled() const
+    {
+        if (getNumThreadsPerEU() == 0)
+            return true;
+
+        if ((platform.supportsAutoGRFSelection() &&
+            (m_DriverInfo.supportsAutoGRFSelection() ||
+                m_InternalOptions.IntelEnableAutoLargeGRF ||
+                m_Options.IntelEnableAutoLargeGRF)
+            ) && !m_InternalOptions.Intel128GRFPerThread &&
+            !m_Options.Intel128GRFPerThread &&
+            !m_InternalOptions.Intel256GRFPerThread &&
+            !m_Options.Intel256GRFPerThread
+            )
+        {
+            return true;
+        }
+
+        return false;
+    }
+
     bool OpenCLProgramContext::forceGlobalMemoryAllocation() const
     {
         return m_InternalOptions.ForceGlobalMemoryAllocation ||

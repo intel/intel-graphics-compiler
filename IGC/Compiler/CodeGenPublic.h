@@ -1095,6 +1095,7 @@ namespace IGC
         virtual uint32_t getExpGRFSize() const;
         virtual uint32_t getNumGRFPerThread(bool returnDefault = true);
         virtual void setNumGRFPerThread(uint32_t value) { m_NumGRFPerThread = value; }
+        virtual bool isAutoGRFSelectionEnabled() const { return false; };
         virtual bool forceGlobalMemoryAllocation() const;
         virtual bool allocatePrivateAsGlobalBuffer() const;
         virtual bool noLocalToGenericOptionEnabled() const;
