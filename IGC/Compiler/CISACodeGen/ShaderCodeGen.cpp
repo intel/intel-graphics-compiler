@@ -1417,6 +1417,15 @@ void OptimizeIR(CodeGenContext* const pContext)
                 mpm.add(llvm::createLCSSAPass());
                 mpm.add(llvm::createLoopSimplifyPass());
 
+                if (pContext->type == ShaderType::OPENCL_SHADER &&
+                    pContext->platform.getPlatformInfo().eProductFamily == IGFX_PVC &&
+                    !useStatelessToStateful(*pContext) &&
+                    pContext->m_retryManager.IsFirstTry())
+                {
+                    mpm.add(createGEPLoopStrengthReductionPass(IGC_IS_FLAG_ENABLED(allowLICM) &&
+                            pContext->m_retryManager.AllowLICM()));
+                }
+
                 if (IGC_IS_FLAG_ENABLED(allowLICM) && pContext->m_retryManager.AllowLICM())
                 {
                     mpm.add(createDisableLICMForSpecificLoops());
@@ -1501,15 +1510,6 @@ void OptimizeIR(CodeGenContext* const pContext)
                     {
                         mpm.add(createSROAPass());
                     }
-                }
-
-                if (pContext->type == ShaderType::OPENCL_SHADER &&
-                    pContext->platform.getPlatformInfo().eProductFamily == IGFX_PVC &&
-                    !useStatelessToStateful(*pContext) &&
-                    pContext->m_retryManager.IsFirstTry())
-                {
-                    mpm.add(createGEPLoopStrengthReductionPass(IGC_IS_FLAG_ENABLED(allowLICM) &&
-                            pContext->m_retryManager.AllowLICM()));
                 }
             }
 
