@@ -197,7 +197,13 @@ void FrequencyInfo::computeFreqSpillCosts(GlobalRA &gra,
   unsigned numVar = liveAnalysis->getNumSelectedVar();
   std::vector<LiveRange *> &lrs = liveAnalysis->gra.incRA.getLRs();
 
-  unsigned costFunc = irb->getOptions()->getuInt32Option(vISA_FreqBasedSpillCostFunc);
+  bool useNewSpillCost =
+      (irb->getOption(vISA_NewSpillCostFunctionISPC) ||
+       irb->getOption(vISA_NewSpillCostFunction)) &&
+      rpe &&
+      !(gra.getIterNo() == 0 &&
+        (float)rpe->getMaxRP() < (float)kernel.getNumRegTotal() * 0.80f);
+
   if (willDumpSpillCostAnalysis()) {
     //std::cerr << "Spill cost analysis - Norm factor: "
               //<< freqNormFactor.toString() << std::endl;
@@ -209,6 +215,139 @@ void FrequencyInfo::computeFreqSpillCosts(GlobalRA &gra,
 
   if (!isSpillCostComputationEnabled())
     return;
+
+
+  if (useNewSpillCost && liveAnalysis->livenessClass(G4_GRF)) {
+    // gather all instructions with indirect operands
+    // for ref count computation once.
+    for (auto bb : kernel.fg.getBBList()) {
+      for (auto inst : bb->getInstList()) {
+        auto dst = inst->getDst();
+        if (dst && dst->isIndirect()) {
+          auto pointsTo = liveAnalysis->getPointsToAnalysis().getAllInPointsTo(
+              dst->getBase()
+                  ->asRegVar()
+                  ->getDeclare()
+                  ->getRootDeclare()
+                  ->getRegVar());
+          if (pointsTo) {
+            for (auto &pointee : *pointsTo)
+              indirectRefs[pointee.var->getDeclare()->getRootDeclare()]
+                  .push_back(std::make_pair(inst, bb));
+          }
+          continue;
+        }
+
+        for (unsigned int i = 0; i != inst->getNumSrc(); ++i) {
+          auto src = inst->getSrc(i);
+          if (!src || !src->isSrcRegRegion() ||
+              !src->asSrcRegRegion()->isIndirect()) {
+            continue;
+          }
+          auto pointsTo = liveAnalysis->getPointsToAnalysis().getAllInPointsTo(
+              src->asSrcRegRegion()
+                  ->getBase()
+                  ->asRegVar()
+                  ->getDeclare()
+                  ->getRootDeclare()
+                  ->getRegVar());
+          if (pointsTo) {
+            for (auto &pointee : *pointsTo)
+              indirectRefs[pointee.var->getDeclare()->getRootDeclare()]
+                  .push_back(std::make_pair(inst, bb));
+          }
+          continue;
+        }
+      }
+    }
+  }
+
+  auto getWeightedRefCount = [&](G4_Declare *dcl, unsigned int useWt = 1,
+                                 unsigned int defWt = 1) {
+    auto defs = directRefs.getDefs(dcl);
+    auto uses = directRefs.getUses(dcl);
+    auto &loops = kernel.fg.getLoops();
+    unsigned int refCount = 0;
+    const unsigned int assumeLoopIter = 10;
+
+    if (defs) {
+      for (auto &def : *defs) {
+        auto *bb = std::get<1>(def);
+        auto *innerMostLoop = loops.getInnerMostLoop(bb);
+        if (innerMostLoop) {
+          auto nestingLevel = innerMostLoop->getNestingLevel();
+          refCount += (unsigned int)std::pow(assumeLoopIter, nestingLevel);
+        } else
+          refCount += defWt;
+      }
+    }
+
+    if (uses) {
+      for (auto &use : *uses) {
+        auto *bb = std::get<1>(use);
+        auto *innerMostLoop = loops.getInnerMostLoop(bb);
+        if (innerMostLoop) {
+          auto nestingLevel = innerMostLoop->getNestingLevel();
+          refCount += (unsigned int)std::pow(assumeLoopIter, nestingLevel);
+        } else
+          refCount += useWt;
+      }
+    }
+
+    if (dcl->getAddressed()) {
+      auto indirectRefsIt = indirectRefs.find(dcl);
+      if (indirectRefsIt != indirectRefs.end()) {
+        auto &dclIndirRefs = (*indirectRefsIt).second;
+        for (auto &item : dclIndirRefs) {
+          auto bb = item.second;
+
+          auto *innerMostLoop = loops.getInnerMostLoop(bb);
+          if (innerMostLoop) {
+            auto nestingLevel = innerMostLoop->getNestingLevel();
+            refCount += (unsigned int)std::pow(assumeLoopIter, nestingLevel);
+          } else
+            refCount += useWt;
+        }
+      }
+    }
+
+    return refCount == 0 ? 1 : refCount;
+  };
+
+  auto getWeightedStaticFreq = [&](G4_Declare *dcl) {
+    auto defs = directRefs.getDefs(dcl);
+    auto uses = directRefs.getUses(dcl);
+    Scaled64 refFreq = Scaled64::getZero();
+
+    if (defs) {
+      for (auto &def : *defs) {
+        auto *bb = std::get<1>(def);
+        refFreq += getBlockFreqInfo(bb);
+      }
+    }
+
+    if (uses) {
+      for (auto &use : *uses) {
+        auto *bb = std::get<1>(use);
+        refFreq += getBlockFreqInfo(bb);
+      }
+    }
+
+    if (dcl->getAddressed()) {
+      auto indirectRefsIt = indirectRefs.find(dcl);
+      if (indirectRefsIt != indirectRefs.end()) {
+        auto &dclIndirRefs = (*indirectRefsIt).second;
+        for (auto &item : dclIndirRefs) {
+          auto bb = item.second;
+          refFreq += getBlockFreqInfo(bb);
+        }
+      }
+    }
+    refFreq += Scaled64::getOne();
+    double refFreqDouble =
+        refFreq.getDigits() * (double)std::pow(2, refFreq.getScale());
+    return refFreqDouble;
+  };
 
   std::unordered_map<const G4_Declare*, std::vector<G4_Declare*>>
     addrTakenMap;
@@ -297,7 +436,7 @@ void FrequencyInfo::computeFreqSpillCosts(GlobalRA &gra,
               (float)refFreqDouble * refCount / degree; // 1.0f * refCount / degree;
         } else {
           vASSERT(lrs[i]->getDcl()->getTotalElems() > 0);
-          if (costFunc == 1) {
+          if (!liveAnalysis->livenessClass(G4_GRF) || !useNewSpillCost) {
             metric = 2;
             // address or flag variables
             spillCost = (float)std::sqrt(refFreqDouble) * refCount * refCount *
@@ -306,14 +445,15 @@ void FrequencyInfo::computeFreqSpillCosts(GlobalRA &gra,
                         ((float)sqrt(degree) * (float)(sqrt(sqrt(numRows))));
           } else {
             metric = 3;
-            // GRF variables
+            refCount = getWeightedRefCount(lrs[i]->getDcl());
+            refFreqDouble = getWeightedStaticFreq(lrs[i]->getDcl());
             spillCost = (float)refFreqDouble * refCount * refCount *
                         refCount / // 1.0f * refCount * refCount * refCount /
                         ((float)degree * (float)degree);
           }
         }
       } else {
-        if (costFunc == 1) {
+        if (!useNewSpillCost) {
           metric = 4;
           spillCost = liveAnalysis->livenessClass(G4_GRF)
                           ? lrs[i]->getDegree()
@@ -321,6 +461,8 @@ void FrequencyInfo::computeFreqSpillCosts(GlobalRA &gra,
                                 degree; // 1.0f * refCount * refCount / degree;
         } else {
           metric = 5;
+          refCount = getWeightedRefCount(lrs[i]->getDcl());
+          refFreqDouble = getWeightedStaticFreq(lrs[i]->getDcl());
           spillCost = (float)refFreqDouble * refCount * refCount *
                       refCount / // 1.0f * refCount * refCount * refCount /
                       ((float)degree * (float)degree);

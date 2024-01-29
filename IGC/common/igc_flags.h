@@ -656,7 +656,7 @@ DECLARE_IGC_REGKEY(DWORD, StaticProfileGuidedSpillCostAnalysis,  0, "Use static 
   "1 for profile generation, 2 for profile transfer, 4 for profile embedding, " \
   "8 for spill computation, and 16 for enabling frequency-based spill selection ", true)
 DECLARE_IGC_REGKEY(DWORD, StaticProfileGuidedSpillCostAnalysisScale, 4, "Scale adjustment for static profile guided spill cost analysis", true)
-DECLARE_IGC_REGKEY(DWORD, StaticProfileGuidedSpillCostAnalysisFunc, 0, "Spill cost function where 0 is based on a new spill cost and 1 the existing one", true)
+DECLARE_IGC_REGKEY(DWORD, StaticProfileGuidedSpillCostAnalysisFunc, 1, "Spill cost function where 0 is based on a new spill cost and 1 the existing one", true)
 DECLARE_IGC_REGKEY(DWORD, PrintStaticProfileGuidedSpillCostAnalysis,        0, "Print debug messages for profile embedding", true)
 DECLARE_IGC_REGKEY(bool, EnableConstantPromotion,       true, "Enable global constant data to register promotion", false)
 DECLARE_IGC_REGKEY(bool, AllowNonLoopConstantPromotion, false, "Allows promotion for constants not in loop (e.g. used once)", false)
