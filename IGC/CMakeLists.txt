@@ -1416,7 +1416,7 @@ set(IGC_BUILD__MAIN_IGC_LIB_SUFFIXES
     "__igc_dll"
 )
 
-set(IGC_BUILD__PROJ__igc_dll              "${IGC_BUILD__PROJ_NAME_PREFIX}igc_dll")
+set(IGC_BUILD__PROJ__igc_dll              "${IGC_BUILD__PROJ_NAME_PREFIX}${IGC_LIBRARY_NAME}_dll")
 set(IGC_BUILD__PROJ_LABEL__igc_dll        "${IGC_BUILD__PROJ__igc_dll}")
 
 #FCL
