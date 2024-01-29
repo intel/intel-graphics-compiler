@@ -3047,8 +3047,7 @@ void EmitPass::EmitExtractValueFromLayoutStruct(ExtractValueInst* EVI)
 }
 
 void EmitPass::EmitAddPair(GenIntrinsicInst* GII, const SSource Sources[4], const DstModifier& DstMod) {
-    Value* L=nullptr, * H=nullptr;
-    std::tie(L, H) = getPairOutput(GII);
+    auto [L, H] = getPairOutput(GII);
     CVariable* Lo = L ? GetSymbol(L) : nullptr;
     CVariable* Hi = H ? GetSymbol(H) : nullptr;
     IGC_ASSERT(Lo == m_destination || Hi == m_destination);
@@ -3066,8 +3065,7 @@ void EmitPass::EmitAddPair(GenIntrinsicInst* GII, const SSource Sources[4], cons
 }
 
 void EmitPass::EmitSubPair(GenIntrinsicInst* GII, const SSource Sources[4], const DstModifier& DstMod) {
-    Value* L = nullptr, * H = nullptr;
-    std::tie(L, H) = getPairOutput(GII);
+    auto [L, H] = getPairOutput(GII);
     CVariable* Lo = L ? GetSymbol(L) : nullptr;
     CVariable* Hi = H ? GetSymbol(H) : nullptr;
     IGC_ASSERT(Lo == m_destination || Hi == m_destination);
@@ -3083,8 +3081,7 @@ void EmitPass::EmitSubPair(GenIntrinsicInst* GII, const SSource Sources[4], cons
 
 void EmitPass::EmitMulPair(GenIntrinsicInst* GII, const SSource Sources[4], const DstModifier& DstMod)
 {
-    Value* L = nullptr, * H = nullptr;
-    std::tie(L, H) = getPairOutput(GII);
+    auto [L, H] = getPairOutput(GII);
     CVariable* Lo = L ? GetSymbol(L) : nullptr;
     CVariable* Hi = H ? GetSymbol(H) : nullptr;
     IGC_ASSERT(Lo == m_destination || Hi == m_destination);
@@ -3205,8 +3202,7 @@ void EmitPass::EmitMulPair(GenIntrinsicInst* GII, const SSource Sources[4], cons
 }
 
 void EmitPass::EmitPtrToPair(GenIntrinsicInst* GII, const SSource Sources[1], const DstModifier& DstMod) {
-    Value* L = nullptr, * H = nullptr;
-    std::tie(L, H) = getPairOutput(GII);
+    auto [L, H] = getPairOutput(GII);
     CVariable* Lo = L ? GetSymbol(L) : nullptr;
     CVariable* Hi = H ? GetSymbol(H) : nullptr;
     IGC_ASSERT(Lo == m_destination || Hi == m_destination);
@@ -10804,13 +10800,8 @@ void EmitPass::ReadStackDataBlocks(StackDataBlocks& blkData, uint offsetS)
     bool useA64 = (pSP->GetSize() == 8);
 
     // Load each OWORD block from stack
-    for (auto& I : blkData)
+    for (auto& [Arg, StackOffset, BlkSize, ArgOffset, IsSecondHalf] : blkData)
     {
-        CVariable* Arg = std::get<0>(I);
-        uint32_t StackOffset = std::get<1>(I);
-        uint32_t BlkSize = std::get<2>(I);
-        uint32_t ArgOffset = std::get<3>(I);
-        bool IsSecondHalf = std::get<4>(I);
         // spOffset is a negative offset from SP
         int32_t spOffset = StackOffset - offsetS;
         IGC_ASSERT(spOffset < 0);
@@ -10892,13 +10883,8 @@ void EmitPass::WriteStackDataBlocks(StackDataBlocks& blkData, uint offsetS)
     bool useA64 = (pSP->GetSize() == 8);
 
     // Load or store each OWORD block to stack
-    for (auto& I : blkData)
+    for (auto& [Arg, StackOffset, BlkSize, ArgOffset, IsSecondHalf] : blkData)
     {
-        CVariable* Arg = std::get<0>(I);
-        uint32_t StackOffset = std::get<1>(I);
-        uint32_t BlkSize = std::get<2>(I);
-        uint32_t ArgOffset = std::get<3>(I);
-        bool IsSecondHalf = std::get<4>(I);
         // spOffset is a negative offset from SP
         int32_t spOffset = StackOffset - offsetS;
         IGC_ASSERT(spOffset < 0);
@@ -11142,13 +11128,10 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     WriteStackDataBlocks(argBlkData, offsetS);
 
     // lamda to copy arguments to arg register block
-    auto CopyArgBlkVariables = [&](void)
+    auto CopyArgBlkVariables = [&]()
     {
-        for (auto& I : argsOnRegister)
+        for (auto& [Src, argType, offset] : argsOnRegister)
         {
-            CVariable* Src = std::get<0>(I);
-            Type* argType = std::get<1>(I);
-            uint32_t offset = std::get<2>(I);
             emitCopyGRFBlock(ArgBlkVar, Src, argType, offset, hasSecondHalf ? 2 : 1, true);
         }
     };
@@ -11403,11 +11386,8 @@ void EmitPass::emitStackFuncEntry(Function* F)
     ReadStackDataBlocks(argBlkData, offsetS);
 
     // Reshuffle any struct args from SoA to 2-instance variables for SIMD32
-    for (auto &I : StructShuffleVector)
+    for (auto& [Dst, Src, argTy] : StructShuffleVector)
     {
-        CVariable* Dst = std::get<0>(I);
-        CVariable* Src = std::get<1>(I);
-        Type* argTy = std::get<2>(I);
         emitCopyGRFBlock(Dst, Src, argTy, 0, Dst->GetNumberInstance(), false);
     }
 
@@ -17446,9 +17426,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
         return;
     }
 
-    bool HasEM;
-    unsigned Mask;
-    std::tie(HasEM, Mask) = m_currShader->getExtractMask(inst);
+    auto [HasEM, Mask] = m_currShader->getExtractMask(inst);
     if (!HasEM) {
         // Ensure 'Mask' is cleared.
         Mask = 0;

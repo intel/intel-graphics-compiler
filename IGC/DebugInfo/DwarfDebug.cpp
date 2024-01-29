@@ -1717,11 +1717,8 @@ void DwarfDebug::collectVariableInfo(
         p.t = PrevLoc::Type::Empty;
       };
       for (auto &range : d.second) {
-        auto startIp = std::get<0>(range);
-        auto endIp = std::get<1>(range);
         // TODO do we really need this variables in tuple
-        auto RegVar = std::get<2>(range);
-        auto pInst = std::get<3>(range);
+        auto [startIp, endIp, RegVar, pInst] = range;
 
         auto CurLoc = m_pModule->GetVariableLocation(pInst);
 

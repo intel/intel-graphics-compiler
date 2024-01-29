@@ -507,9 +507,7 @@ bool Emu64Ops::runOnFunction(Function& F) {
 }
 
 ValuePair Emu64Ops::getExpandedValues(Value* V) {
-    ValueMapTy::iterator VMI;
-    bool New = false;
-    std::tie(VMI, New) = ValueMap.insert(std::make_pair(V, ValuePair()));
+    auto [VMI, New] = ValueMap.insert(std::make_pair(V, ValuePair()));
     if (!New)
         return VMI->second;
 
@@ -624,8 +622,7 @@ bool Emu64Ops::populatePHIs(Function& F) {
         for (auto BI = BB.begin(); (PN = dyn_cast<PHINode>(BI)) != nullptr; ++BI) {
             if (!isInt64(PN))
                 continue;
-            Value* L = nullptr, * H = nullptr;
-            std::tie(L, H) = getExpandedValues(PN);
+            auto [L, H] = getExpandedValues(PN);
 
             PHINode* Lo = cast<PHINode>(L);
             PHINode* Hi = cast<PHINode>(H);
@@ -682,8 +679,7 @@ bool InstExpander::visitRet(ReturnInst& RI) {
         IGC_ASSERT(nullptr != Emu);
         if (Emu->isInt64(V))
         {
-            Value* Lo = nullptr, *Hi = nullptr;
-            std::tie(Lo, Hi) = Emu->getExpandedValues(V);
+            auto [Lo, Hi] = Emu->getExpandedValues(V);
             Type* V2I32Ty = Emu->getV2Int32Ty();
             Value* NewVal = UndefValue::get(V2I32Ty);
             NewVal = IRB->CreateInsertElement(NewVal, Lo, IRB->getInt32(0));
@@ -708,8 +704,7 @@ bool InstExpander::visitFreeze(FreezeInst& FI) {
     Value* Src = FI.getOperand(0);
     IGC_ASSERT(nullptr != Src);
 
-    Value* Lo = nullptr, * Hi = nullptr;
-    std::tie(Lo, Hi) = Emu->getExpandedValues(Src);
+    auto [Lo, Hi] = Emu->getExpandedValues(Src);
 
     Value* newLo = IRB->CreateFreezeIfSupported(Lo);
     Value* newHi = IRB->CreateFreezeIfSupported(Hi);
@@ -729,10 +724,8 @@ bool InstExpander::visitAdd(BinaryOperator& BinOp) {
             return false;
     }
 
-    Value* L0 = nullptr, * H0 = nullptr;
-    std::tie(L0, H0) = Emu->getExpandedValues(BinOp.getOperand(0));
-    Value* L1 = nullptr, * H1 = nullptr;
-    std::tie(L1, H1) = Emu->getExpandedValues(BinOp.getOperand(1));
+    auto [L0, H0] = Emu->getExpandedValues(BinOp.getOperand(0));
+    auto [L1, H1] = Emu->getExpandedValues(BinOp.getOperand(1));
 
     GenISAIntrinsic::ID GIID = GenISAIntrinsic::GenISA_add_pair;
     Function* IFunc = GenISAIntrinsic::getDeclaration(Emu->getModule(), GIID);
@@ -755,10 +748,8 @@ bool InstExpander::visitSub(BinaryOperator& BinOp) {
             return false;
     }
 
-    Value* L0 = nullptr, * H0 = nullptr;
-    std::tie(L0, H0) = Emu->getExpandedValues(BinOp.getOperand(0));
-    Value* L1 = nullptr, * H1 = nullptr;
-    std::tie(L1, H1) = Emu->getExpandedValues(BinOp.getOperand(1));
+    auto [L0, H0] = Emu->getExpandedValues(BinOp.getOperand(0));
+    auto [L1, H1] = Emu->getExpandedValues(BinOp.getOperand(1));
 
     GenISAIntrinsic::ID GIID = GenISAIntrinsic::GenISA_sub_pair;
     Function* IFunc = GenISAIntrinsic::getDeclaration(Emu->getModule(), GIID);
@@ -776,10 +767,8 @@ bool InstExpander::visitMul(BinaryOperator& BinOp) {
     if (!Emu->isInt64(&BinOp))
         return false;
 
-    Value* L0 = nullptr, * H0 = nullptr;
-    std::tie(L0, H0) = Emu->getExpandedValues(BinOp.getOperand(0));
-    Value* L1 = nullptr, * H1 = nullptr;
-    std::tie(L1, H1) = Emu->getExpandedValues(BinOp.getOperand(1));
+    auto [L0, H0] = Emu->getExpandedValues(BinOp.getOperand(0));
+    auto [L1, H1] = Emu->getExpandedValues(BinOp.getOperand(1));
 
     GenISAIntrinsic::ID GIID = GenISAIntrinsic::GenISA_mul_pair;
     Function* IFunc = GenISAIntrinsic::getDeclaration(Emu->getModule(), GIID);
@@ -824,8 +813,7 @@ bool InstExpander::visitShl(BinaryOperator& BinOp) {
     if (hasHWSupport(BinOp))
         return false;
 
-    Value* Lo = nullptr, * Hi = nullptr;
-    std::tie(Lo, Hi) = Emu->getExpandedValues(BinOp.getOperand(0));
+    auto [Lo, Hi] = Emu->getExpandedValues(BinOp.getOperand(0));
     Value* ShAmt = nullptr;
     std::tie(ShAmt, std::ignore) = Emu->getExpandedValues(BinOp.getOperand(1));
 
@@ -953,8 +941,7 @@ bool InstExpander::visitLShr(BinaryOperator& BinOp) {
     if (hasHWSupport(BinOp))
         return false;
 
-    Value* Lo = nullptr, * Hi = nullptr;
-    std::tie(Lo, Hi) = Emu->getExpandedValues(BinOp.getOperand(0));
+    auto [Lo, Hi] = Emu->getExpandedValues(BinOp.getOperand(0));
     Value* ShAmt = nullptr;
     std::tie(ShAmt, std::ignore) = Emu->getExpandedValues(BinOp.getOperand(1));
 
@@ -1087,8 +1074,7 @@ bool InstExpander::visitAShr(BinaryOperator& BinOp) {
     if (hasHWSupport(BinOp))
         return false;
 
-    Value* Lo = nullptr, * Hi = nullptr;
-    std::tie(Lo, Hi) = Emu->getExpandedValues(BinOp.getOperand(0));
+    auto [Lo, Hi] = Emu->getExpandedValues(BinOp.getOperand(0));
     Value* ShAmt = nullptr;
     std::tie(ShAmt, std::ignore) = Emu->getExpandedValues(BinOp.getOperand(1));
 
@@ -1209,10 +1195,8 @@ bool InstExpander::visitAnd(BinaryOperator& BinOp) {
     if (!Emu->isInt64(&BinOp))
         return false;
 
-    Value* L0 = nullptr, * H0 = nullptr;
-    std::tie(L0, H0) = Emu->getExpandedValues(BinOp.getOperand(0));
-    Value* L1 = nullptr, * H1 = nullptr;
-    std::tie(L1, H1) = Emu->getExpandedValues(BinOp.getOperand(1));
+    auto [L0, H0] = Emu->getExpandedValues(BinOp.getOperand(0));
+    auto [L1, H1] = Emu->getExpandedValues(BinOp.getOperand(1));
 
     Value* Lo = IRB->CreateAnd(L0, L1);
     Value* Hi = IRB->CreateAnd(H0, H1);
@@ -1226,10 +1210,8 @@ bool InstExpander::visitOr(BinaryOperator& BinOp) {
     if (!Emu->isInt64(&BinOp))
         return false;
 
-    Value* L0 = nullptr, * H0 = nullptr;
-    std::tie(L0, H0) = Emu->getExpandedValues(BinOp.getOperand(0));
-    Value* L1 = nullptr, * H1 = nullptr;
-    std::tie(L1, H1) = Emu->getExpandedValues(BinOp.getOperand(1));
+    auto [L0, H0] = Emu->getExpandedValues(BinOp.getOperand(0));
+    auto [L1, H1] = Emu->getExpandedValues(BinOp.getOperand(1));
 
     Value* Lo = IRB->CreateOr(L0, L1);
     Value* Hi = IRB->CreateOr(H0, H1);
@@ -1243,10 +1225,8 @@ bool InstExpander::visitXor(BinaryOperator& BinOp) {
     if (!Emu->isInt64(&BinOp))
         return false;
 
-    Value* L0 = nullptr, * H0 = nullptr;
-    std::tie(L0, H0) = Emu->getExpandedValues(BinOp.getOperand(0));
-    Value* L1 = nullptr, * H1 = nullptr;
-    std::tie(L1, H1) = Emu->getExpandedValues(BinOp.getOperand(1));
+    auto [L0, H0] = Emu->getExpandedValues(BinOp.getOperand(0));
+    auto [L1, H1] = Emu->getExpandedValues(BinOp.getOperand(1));
 
     Value* Lo = IRB->CreateXor(L0, L1);
     Value* Hi = IRB->CreateXor(H0, H1);
@@ -1282,8 +1262,7 @@ bool InstExpander::visitStore(StoreInst& ST) {
     if (!Emu->isInt64(V))
         return false;
 
-    Value* Lo = nullptr, * Hi = nullptr;
-    std::tie(Lo, Hi) = Emu->getExpandedValues(V);
+    auto [Lo, Hi] = Emu->getExpandedValues(V);
 
     Type* V2I32Ty = Emu->getV2Int32Ty();
     Value* NewVal = UndefValue::get(V2I32Ty);
@@ -1611,8 +1590,7 @@ bool InstExpander::visitUIToFP(UIToFPInst& U2F) {
     if (!Emu->isInt64(Src))
         return false;
 
-    Value* Lo = nullptr, * Hi = nullptr;
-    std::tie(Lo, Hi) = Emu->getExpandedValues(Src);
+    auto [Lo, Hi] = Emu->getExpandedValues(Src);
 
     Type* DstTy = U2F.getType();
     Value* NewVal = nullptr;
@@ -1654,8 +1632,7 @@ bool InstExpander::visitSIToFP(SIToFPInst& S2F) {
     if (!Emu->isInt64(Src))
         return false;
 
-    Value* Lo = nullptr, * Hi = nullptr;
-    std::tie(Lo, Hi) = Emu->getExpandedValues(Src);
+    auto [Lo, Hi] = Emu->getExpandedValues(Src);
 
     Type* DstTy = S2F.getType();
     Value* NewVal = nullptr;
@@ -1731,8 +1708,7 @@ bool InstExpander::visitIntToPtr(IntToPtrInst& I2P) {
     if (!Emu->isInt64(Src))
         return false;
 
-    Value* Lo = nullptr, * Hi = nullptr;
-    std::tie(Lo, Hi) = Emu->getExpandedValues(Src);
+    auto [Lo, Hi] = Emu->getExpandedValues(Src);
 
     GenISAIntrinsic::ID GIID = GenISAIntrinsic::GenISA_pair_to_ptr;
     Function* IFunc = GenISAIntrinsic::getDeclaration(Emu->getModule(), GIID, I2P.getType());
@@ -1753,8 +1729,7 @@ bool InstExpander::visitBitCast(BitCastInst& BC) {
         if (Emu->isInt64(Src)) {
             // Somehow there are still 'bitcast's from i64 to i64. Directly
             // re-use the already expanded values.
-            Value *Lo = nullptr, *Hi = nullptr;
-            std::tie(Lo, Hi) = Emu->getExpandedValues(Src);
+            auto [Lo, Hi] = Emu->getExpandedValues(Src);
             Emu->setExpandedValues(&BC, Lo, Hi);
             return true;
         }
@@ -1772,8 +1747,7 @@ bool InstExpander::visitBitCast(BitCastInst& BC) {
     if (Emu->isArg64Cast(&BC))
         return false;
 
-    Value* Lo = nullptr, * Hi = nullptr;
-    std::tie(Lo, Hi) = Emu->getExpandedValues(Src);
+    auto [Lo, Hi] = Emu->getExpandedValues(Src);
 
     Type* V2I32Ty = Emu->getV2Int32Ty();
     Value* NewVal = UndefValue::get(V2I32Ty);
@@ -1791,10 +1765,8 @@ bool InstExpander::visitICmp(ICmpInst& Cmp) {
         return false;
 
     auto Pred = Cmp.getPredicate();
-    Value* L0 = nullptr, * H0 = nullptr;
-    std::tie(L0, H0) = Emu->getExpandedValues(Cmp.getOperand(0));
-    Value* L1 = nullptr, * H1 = nullptr;
-    std::tie(L1, H1) = Emu->getExpandedValues(Cmp.getOperand(1));
+    auto [L0, H0] = Emu->getExpandedValues(Cmp.getOperand(0));
+    auto [L1, H1] = Emu->getExpandedValues(Cmp.getOperand(1));
 
     Value* T0 = nullptr, * T1 = nullptr, * T2 = nullptr, * T3 = nullptr, * Res = nullptr;
     switch (Pred) {
@@ -1879,8 +1851,7 @@ bool InstExpander::visitPHI(PHINode& PN) {
     IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&PN))
         return false;
-    Value* Lo = nullptr, * Hi = nullptr;
-    std::tie(Lo, Hi) = Emu->getExpandedValues(&PN);
+    auto [Lo, Hi] = Emu->getExpandedValues(&PN);
     IGC_ASSERT(nullptr != Lo);
     IGC_ASSERT(nullptr != Hi);
     return false;
@@ -1893,8 +1864,7 @@ bool InstExpander::visitCall(CallInst& Call) {
     {
         IGC_ASSERT(nullptr != Emu);
         IGC_ASSERT(Emu->isInt64(val));
-        Value* InputLo = nullptr, * InputHi = nullptr;
-        std::tie(InputLo, InputHi) = Emu->getExpandedValues(val);
+        auto [InputLo, InputHi] = Emu->getExpandedValues(val);
         Type* V2I32Ty = Emu->getV2Int32Ty();
         Value* NewVal = UndefValue::get(V2I32Ty);
         NewVal = IRB->CreateInsertElement(NewVal, InputLo, IRB->getInt32(0));
@@ -1902,13 +1872,14 @@ bool InstExpander::visitCall(CallInst& Call) {
         NewVal = IRB->CreateBitCast(NewVal, IRB->getInt64Ty());
         return NewVal;
     };
-    auto Spliti64To2xi32 = [this](Value* retVal, Value*& OutputLo, Value*& OutputHi)
+    auto Spliti64To2xi32 = [this](Value* retVal)
     {
         IGC_ASSERT(nullptr != Emu);
         IGC_ASSERT(Emu->isInt64(retVal));
         Value* V = IRB->CreateBitCast(retVal, Emu->getV2Int32Ty());
-        OutputLo = IRB->CreateExtractElement(V, IRB->getInt32(0));
-        OutputHi = IRB->CreateExtractElement(V, IRB->getInt32(1));
+        auto Lo = IRB->CreateExtractElement(V, IRB->getInt32(0));
+        auto Hi = IRB->CreateExtractElement(V, IRB->getInt32(1));
+        return std::make_pair(Lo, Hi);
     };
 
     IGC_ASSERT(nullptr != Emu);
@@ -1949,8 +1920,7 @@ bool InstExpander::visitCall(CallInst& Call) {
         case Intrinsic::abs:
         {
             Value* OldVal = Call.getArgOperand(0);
-            Value* Lo = nullptr, * Hi = nullptr;
-            std::tie(Lo, Hi) = Emu->getExpandedValues(OldVal);
+            auto [Lo, Hi] = Emu->getExpandedValues(OldVal);
 
             Value* Cmp = IRB->CreateICmpSLT(Hi, IRB->getInt32(0));
 
@@ -2055,8 +2025,7 @@ bool InstExpander::visitCall(CallInst& Call) {
     if (Emu->isInt64(&Call))
     {
         IRB->SetInsertPoint(&Call);
-        Value* OutputLo = nullptr, * OutputHi = nullptr;
-        Spliti64To2xi32(CallCopy, OutputLo, OutputHi);
+        auto [OutputLo, OutputHi] = Spliti64To2xi32(CallCopy);
         Emu->setExpandedValues(CallCopy, OutputLo, OutputHi);
     }
     Call.replaceAllUsesWith(CallCopy);
@@ -2070,10 +2039,8 @@ bool InstExpander::visitSelect(SelectInst& SI) {
         return false;
 
     Value* Cond = SI.getOperand(0);
-    Value* H0 = nullptr, * L0 = nullptr;
-    std::tie(L0, H0) = Emu->getExpandedValues(SI.getOperand(1));
-    Value* L1 = nullptr, * H1 = nullptr;
-    std::tie(L1, H1) = Emu->getExpandedValues(SI.getOperand(2));
+    auto [L0, H0] = Emu->getExpandedValues(SI.getOperand(1));
+    auto [L1, H1] = Emu->getExpandedValues(SI.getOperand(2));
 
     IGC_ASSERT(nullptr != IRB);
     Value* Lo = IRB->CreateSelect(Cond, L0, L1);
@@ -2139,8 +2106,7 @@ bool InstExpander::visitInsertElement(InsertElementInst& IEI) {
     // NOTE: This is NOT the efficient way to handle that and needs revising
     // later.
 
-    Value* Lo = nullptr, * Hi = nullptr;
-    std::tie(Lo, Hi) = Emu->getExpandedValues(V);
+    auto [Lo, Hi] = Emu->getExpandedValues(V);
 
     // Create the emulated vector.
     Value* NewVal = IEI.getOperand(0);
@@ -2188,8 +2154,7 @@ bool InstExpander::visitInsertValue(InsertValueInst& IVI) {
     IVICopy->insertBefore(&IVI);
     IRB->SetInsertPoint(IVICopy);
     Value* In64 = IVI.getOperand(1);
-    Value* InputLo = nullptr, * InputHi = nullptr;
-    std::tie(InputLo, InputHi) = Emu->getExpandedValues(In64);
+    auto [InputLo, InputHi] = Emu->getExpandedValues(In64);
     Type* V2I32Ty = Emu->getV2Int32Ty();
     Value* NewVal = UndefValue::get(V2I32Ty);
     NewVal = IRB->CreateInsertElement(NewVal, InputLo, IRB->getInt32(0));
@@ -2225,8 +2190,7 @@ bool InstExpander::hasHWSupport(BinaryOperator& BinOp) {
             // reconstruct the 64b operands
             for (uint operandId = 0; operandId < 2; operandId++)
             {
-                Value* Lo = nullptr, * Hi = nullptr;
-                std::tie(Lo, Hi)   = Emu->getExpandedValues(BinOp.getOperand(operandId));
+                auto [Lo, Hi] = Emu->getExpandedValues(BinOp.getOperand(operandId));
                 Type* V2I32Ty = Emu->getV2Int32Ty();
                 Value* reconstrut64bOperands = UndefValue::get(V2I32Ty);
                 reconstrut64bOperands = IRB->CreateInsertElement(reconstrut64bOperands, Lo, IRB->getInt32(0));

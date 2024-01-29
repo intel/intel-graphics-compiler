@@ -1398,9 +1398,7 @@ bool PreBIImportAnalysis::runOnModule(Module& M)
 
     for (const auto &InstTuple : InstToModify)
     {
-      auto inst = std::get<0>(InstTuple);
-      auto value = std::get<1>(InstTuple);
-      auto srcPos = std::get<2>(InstTuple);
+      auto [inst, value, srcPos] = InstTuple;
       inst->setOperand(
           srcPos,
           ConstantFP::get(

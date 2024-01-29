@@ -86,20 +86,19 @@ bool BlockMemOpAddrScalarizationPass::canInstBeScalarized(Instruction *InstForCh
     }
 
     while (UseStack.size()) {
-        if (Steps.back() != std::get<1>(UseStack.back()))
+        auto &[CurrUse, CurrRoot, Analized] = UseStack.back();
+
+        if (Steps.back() != CurrRoot)
             Steps.pop_back();
 
-        Instruction *CurrUse = std::get<0>(UseStack.back());
-        Instruction *CurrRoot = std::get<1>(UseStack.back());
-
         // If we have already analyzed this instruction.
-        if (std::get<2>(UseStack.back())) {
+        if (Analized) {
             UseStack.pop_back();
             continue;
         }
 
         // Mark use as visited.
-        std::get<2>(UseStack.back()) = true;
+        Analized = true;
 
         InstType Res = checkInst(CurrUse);
         if (Res == InstType::BlcokMemOp) {
@@ -250,11 +249,10 @@ bool BlockMemOpAddrScalarizationPass::scalarizeAddrArithmForBlockRdWr(GenIntrins
     SmallVector<std::tuple<Instruction*, SmallVector<Instruction*, 2>>, 2> InstrVector = {{BlockInstr, V}};
     while (InstrVector.size()) {
         // Data structure for further iterations.
-        SmallVector<std::tuple<Instruction*, SmallVector<Instruction*, 2>>, 2> NewInstrVector;
-        for (const auto &T : InstrVector) {
-            Instruction *Root = std::get<0>(T);
-            for (Instruction *I : std::get<1>(T)) {
-                std::tuple<Instruction*, SmallVector<Instruction*, 2>> NewTuple = {I, SmallVector<Instruction*, 2>()};
+        decltype(InstrVector) NewInstrVector;
+
+        for (const auto& [Root, Insts] : InstrVector) {
+            for (Instruction *I : Insts) {
                 if (InstCanBeScalarized.count(I))
                     continue;
 
@@ -263,16 +261,17 @@ bool BlockMemOpAddrScalarizationPass::scalarizeAddrArithmForBlockRdWr(GenIntrins
                     InstCanBeScalarized.insert(I);
 
                     // Now lets check its arguments.
+                    SmallVector<Instruction*, 2> newInsts;
                     for (auto Op = I->op_begin(), E = I->op_end(); Op != E; Op++) {
                         if (Instruction *InOp = dyn_cast<Instruction>(*Op)) {
                             if (WI->isUniform(InOp))
                                 continue;
 
-                            std::get<1>(NewTuple).push_back(InOp);
+                            newInsts.push_back(InOp);
                         }
                     }
 
-                    NewInstrVector.push_back(NewTuple);
+                    NewInstrVector.emplace_back(I, newInsts);
                 } else {
                     // Terminate the algorithm if the address is NOT used in any instructions other than BlockWrite/BlockRead.
                     if (I == BlockInstr->getOperand(0))

@@ -205,25 +205,19 @@ bool AtomicOptPass::runOnFunction(Function &F)
         }
     }
 
-    for (const auto &T : AtomicsEmulationToProcess)
+    for (auto& [AtomicInstr, BackBb, FinishBb, AtomicMain, MainInstrArgPos] : AtomicsEmulationToProcess)
     {
-        Instruction *AtomicInstr = std::get<0>(T);
-        BasicBlock *BackBb = std::get<1>(T);
-        BasicBlock *FinishBb = std::get<2>(T);
-        Instruction *AtomicMain = std::get<3>(T);
-        size_t MainInstrArgPos = std::get<4>(T);
-
         BasicBlock *Bb = AtomicInstr->getParent();
         BasicBlock *Bb1 = Bb->splitBasicBlock(AtomicInstr);
 
         Instruction *BbTerm = Bb->getTerminator();
-        Value *ReduceVal = AtomicMain->getOperand(MainInstrArgPos);
+        Value *ReduceVal = AtomicMain->getOperand((unsigned int)MainInstrArgPos);
         Instruction *NewReduce = createReduce(BbTerm, ReduceVal);
         if (!NewReduce)
             continue;
 
         IRBuilder<> Builder(BbTerm);
-        AtomicMain->setOperand(MainInstrArgPos, NewReduce);
+        AtomicMain->setOperand((unsigned int)MainInstrArgPos, NewReduce);
 
         Value *Id = getSubgroupLocalIdBI(NewReduce);
         Value *ConstInt = Builder.getInt32(0);

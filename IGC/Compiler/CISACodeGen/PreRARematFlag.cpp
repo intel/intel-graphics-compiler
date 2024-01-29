@@ -229,9 +229,7 @@ bool PreRARematFlag::runOnFunction(Function& F) {
         SmallVector<std::pair<Value*, User*>, 16> WorkList;
         WorkList.push_back(std::make_pair(BI->getCondition(), nullptr));
         while (!WorkList.empty()) {
-            Value* V;
-            User* LocalUser;
-            std::tie(V, LocalUser) = WorkList.back();
+            auto [V, LocalUser] = WorkList.back();
             WorkList.pop_back();
             if (CmpInst * Cmp = dyn_cast<CmpInst>(V)) {
                 Changed |= reMaterialize(Cmp, LocalUser);

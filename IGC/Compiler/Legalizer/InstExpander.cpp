@@ -456,8 +456,7 @@ bool InstExpander::visitTruncInst(TruncInst& I) {
     std::tie(ValSeq, std::ignore) = TL->getLegalizedValues(I.getOperand(0));
     IGC_ASSERT(ValSeq->size() > 1);
 
-    TypeSeq* TySeq; LegalizeAction Act;
-    std::tie(TySeq, Act) = TL->getLegalizedTypes(I.getDestTy());
+    auto [TySeq, Act] = TL->getLegalizedTypes(I.getDestTy());
 
     if (Act == Legal) {
         Value* Val = ValSeq->front();
@@ -489,8 +488,7 @@ bool InstExpander::visitTruncInst(TruncInst& I) {
 }
 
 bool InstExpander::visitZExtInst(ZExtInst& I) {
-    ValueSeq* ValSeq; LegalizeAction Act;
-    std::tie(ValSeq, Act) = TL->getLegalizedValues(I.getOperand(0));
+    auto [ValSeq, Act] = TL->getLegalizedValues(I.getOperand(0));
 
     ValueSeq LegalVal;
     switch (Act) {
@@ -530,8 +528,7 @@ bool InstExpander::visitZExtInst(ZExtInst& I) {
 }
 
 bool InstExpander::visitBitCastInst(BitCastInst& I) {
-    ValueSeq* ValSeq; LegalizeAction ValAct;
-    std::tie(ValSeq, ValAct) = TL->getLegalizedValues(I.getOperand(0));
+    auto [ValSeq, ValAct] = TL->getLegalizedValues(I.getOperand(0));
 
     ValueSeq LegalVal;
     if (ValAct == Legal) {
@@ -539,8 +536,7 @@ bool InstExpander::visitBitCastInst(BitCastInst& I) {
         ValSeq = &LegalVal;
     }
 
-    TypeSeq* TySeq; LegalizeAction Act;
-    std::tie(TySeq, Act) = TL->getLegalizedTypes(I.getDestTy());
+    auto [TySeq, Act] = TL->getLegalizedTypes(I.getDestTy());
 
     TypeSeq LegalTy;
     if (Act == Legal) {

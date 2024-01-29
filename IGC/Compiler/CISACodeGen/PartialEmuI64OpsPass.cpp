@@ -514,9 +514,7 @@ bool PartialEmuI64Ops::runOnFunction(Function& F) {
 }
 
 ValuePair PartialEmuI64Ops::getExpandedValues(Value* V) {
-    ValueMapTy::iterator VMI;
-    bool New = false;
-    std::tie(VMI, New) = ValueMap.insert(std::make_pair(V, ValuePair()));
+    auto [VMI, New] = ValueMap.insert(std::make_pair(V, ValuePair()));
     if (!New)
         return VMI->second;
 
@@ -789,10 +787,8 @@ bool InstExpander::visitAdd(BinaryOperator& BinOp) {
         return false;
 
     setCurrentInstruction(&BinOp);
-    Value* L0 = nullptr, * H0 = nullptr;
-    Value* L1 = nullptr, * H1 = nullptr;
-    std::tie(L0, H0) = getExpandedValues(BinOp.getOperand(0));
-    std::tie(L1, H1) = getExpandedValues(BinOp.getOperand(1));
+    auto [L0, H0] = getExpandedValues(BinOp.getOperand(0));
+    auto [L1, H1] = getExpandedValues(BinOp.getOperand(1));
 
     GenISAIntrinsic::ID GIID = GenISAIntrinsic::GenISA_add_pair;
     Function* IFunc = GenISAIntrinsic::getDeclaration(Emu->getModule(), GIID);
@@ -815,10 +811,8 @@ bool InstExpander::visitSub(BinaryOperator& BinOp) {
         return false;
 
     setCurrentInstruction(&BinOp);
-    Value* L0 = nullptr, * H0 = nullptr;
-    Value* L1 = nullptr, * H1 = nullptr;
-    std::tie(L0, H0) = getExpandedValues(BinOp.getOperand(0));
-    std::tie(L1, H1) = getExpandedValues(BinOp.getOperand(1));
+    auto [L0, H0] = getExpandedValues(BinOp.getOperand(0));
+    auto [L1, H1] = getExpandedValues(BinOp.getOperand(1));
 
     GenISAIntrinsic::ID GIID = GenISAIntrinsic::GenISA_sub_pair;
     Function* IFunc = GenISAIntrinsic::getDeclaration(Emu->getModule(), GIID);
@@ -838,10 +832,8 @@ bool InstExpander::visitMul(BinaryOperator& BinOp) {
         return false;
 
     setCurrentInstruction(&BinOp);
-    Value* L0 = nullptr, * H0 = nullptr;
-    Value* L1 = nullptr, * H1 = nullptr;
-    std::tie(L0, H0) = getExpandedValues(BinOp.getOperand(0));
-    std::tie(L1, H1) = getExpandedValues(BinOp.getOperand(1));
+    auto [L0, H0] = getExpandedValues(BinOp.getOperand(0));
+    auto [L1, H1] = getExpandedValues(BinOp.getOperand(1));
 
     GenISAIntrinsic::ID GIID = GenISAIntrinsic::GenISA_mul_pair;
     Function* IFunc = GenISAIntrinsic::getDeclaration(Emu->getModule(), GIID);
@@ -861,10 +853,8 @@ bool InstExpander::visitAnd(BinaryOperator& BinOp) {
         return false;
 
     setCurrentInstruction(&BinOp);
-    Value* L0 = nullptr, * H0 = nullptr;
-    Value* L1 = nullptr, * H1 = nullptr;
-    std::tie(L0, H0) = getExpandedValues(BinOp.getOperand(0));
-    std::tie(L1, H1) = getExpandedValues(BinOp.getOperand(1));
+    auto [L0, H0] = getExpandedValues(BinOp.getOperand(0));
+    auto [L1, H1] = getExpandedValues(BinOp.getOperand(1));
 
     Value* Lo = IRB->CreateAnd(L0, L1);
     Value* Hi = IRB->CreateAnd(H0, H1);
@@ -880,10 +870,8 @@ bool InstExpander::visitOr(BinaryOperator& BinOp) {
         return false;
 
     setCurrentInstruction(&BinOp);
-    Value* L0 = nullptr, * H0 = nullptr;
-    Value* L1 = nullptr, * H1 = nullptr;
-    std::tie(L0, H0) = getExpandedValues(BinOp.getOperand(0));
-    std::tie(L1, H1) = getExpandedValues(BinOp.getOperand(1));
+    auto [L0, H0] = getExpandedValues(BinOp.getOperand(0));
+    auto [L1, H1] = getExpandedValues(BinOp.getOperand(1));
 
     Value* Lo = IRB->CreateOr(L0, L1);
     Value* Hi = IRB->CreateOr(H0, H1);
@@ -899,10 +887,8 @@ bool InstExpander::visitXor(BinaryOperator& BinOp) {
         return false;
 
     setCurrentInstruction(&BinOp);
-    Value* L0 = nullptr, * H0 = nullptr;
-    Value* L1 = nullptr, * H1 = nullptr;
-    std::tie(L0, H0) = getExpandedValues(BinOp.getOperand(0));
-    std::tie(L1, H1) = getExpandedValues(BinOp.getOperand(1));
+    auto [L0, H0] = getExpandedValues(BinOp.getOperand(0));
+    auto [L1, H1] = getExpandedValues(BinOp.getOperand(1));
 
     Value* Lo = IRB->CreateXor(L0, L1);
     Value* Hi = IRB->CreateXor(H0, H1);
@@ -919,10 +905,8 @@ bool InstExpander::visitICmp(ICmpInst& Cmp) {
 
     setCurrentInstruction(&Cmp);
     auto Pred = Cmp.getPredicate();
-    Value* L0 = nullptr, * H0 = nullptr;
-    Value* L1 = nullptr, * H1 = nullptr;
-    std::tie(L0, H0) = getExpandedValues(Cmp.getOperand(0));
-    std::tie(L1, H1) = getExpandedValues(Cmp.getOperand(1));
+    auto [L0, H0] = getExpandedValues(Cmp.getOperand(0));
+    auto [L1, H1] = getExpandedValues(Cmp.getOperand(1));
 
     Value* T0 = nullptr, * T1 = nullptr, * T2 = nullptr, * T3 = nullptr, * Res = nullptr;
     switch (Pred) {
@@ -1010,10 +994,8 @@ bool InstExpander::visitSelect(SelectInst& SI) {
 
     setCurrentInstruction(&SI);
     Value* Cond = SI.getOperand(0);
-    Value* L0 = nullptr, * H0 = nullptr;
-    Value* L1 = nullptr, * H1 = nullptr;
-    std::tie(L0, H0) = getExpandedValues(SI.getOperand(1));
-    std::tie(L1, H1) = getExpandedValues(SI.getOperand(2));
+    auto [L0, H0] = getExpandedValues(SI.getOperand(1));
+    auto [L1, H1] = getExpandedValues(SI.getOperand(2));
 
     IGC_ASSERT(nullptr != IRB);
     Value* Lo = IRB->CreateSelect(Cond, L0, L1);

@@ -397,10 +397,7 @@ bool AdvCodeMotion::hoistMost(bool InvPred, BasicBlock* IfBB,
 bool AdvCodeMotion::hoistMost2(bool InvPred, BasicBlock* IfBB,
     BasicBlock* TBB, BasicBlock* FBB,
     BasicBlock* JBB) const {
-    bool InvPred2 = false;
-    BasicBlock* TBB2 = 0x0, * FBB2 = 0x0, * JBB2 = 0x0;
-    std::tie(InvPred2, TBB2, FBB2, JBB2) =
-        getIfStatementBlock(PDT, TBB);
+    auto [InvPred2, TBB2, FBB2, JBB2] = getIfStatementBlock(PDT, TBB);
     if (!JBB2)
         return false;
     // Check whether it's safe to hoist TBB.
@@ -546,18 +543,14 @@ bool AdvCodeMotion::runOnFunction(Function& F) {
         DFE = df_end(DT->getRootNode()); DFI != DFE; ++DFI) {
         // Record if-endif structure.
         auto* IfBB = (*DFI)->getBlock();
-        bool InvPred;
-        BasicBlock* TBB, * FBB, * JBB;
-        std::tie(InvPred, TBB, FBB, JBB) = getIfStatementBlock(PDT, IfBB);
+        auto [InvPred, TBB, FBB, JBB] = getIfStatementBlock(PDT, IfBB);
         if (!JBB)
             continue;
         Candidates.push_back(std::make_tuple(InvPred, IfBB, TBB, FBB, JBB));
     }
 
     while (!Candidates.empty()) {
-        bool InvPred;
-        BasicBlock* IfBB, * TBB, * FBB, * JBB;
-        std::tie(InvPred, IfBB, TBB, FBB, JBB) = Candidates.pop_back_val();
+        auto [InvPred, IfBB, TBB, FBB, JBB] = Candidates.pop_back_val();
         auto Cond = cast<BranchInst>(IfBB->getTerminator())->getCondition();
         if (!isUniformlyAlwaysTaken(InvPred, Cond))
             continue;

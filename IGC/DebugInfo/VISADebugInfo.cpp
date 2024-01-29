@@ -56,9 +56,7 @@ VISAObjectDebugInfo::VISAObjectDebugInfo(const CompiledObjectInfo &COIn)
                                      std::prev(GenISAToVISAIndex.end()));
     auto NextRange = llvm::make_range(std::next(GenISAToVISAIndex.begin()),
                                       GenISAToVISAIndex.end());
-    for (const auto &IndexPair : llvm::zip(CurRange, NextRange)) {
-      IDX_Gen2Visa &CurGenIdx = std::get<0>(IndexPair);
-      IDX_Gen2Visa &NextGenIdx = std::get<1>(IndexPair);
+    for (const auto &[CurGenIdx, NextGenIdx] : llvm::zip(CurRange, NextRange)) {
       IGC_ASSERT(NextGenIdx.GenOffset >= CurGenIdx.GenOffset);
       auto Size = NextGenIdx.GenOffset - CurGenIdx.GenOffset;
       GenISAInstSizeBytes.insert(std::make_pair(CurGenIdx.GenOffset, Size));

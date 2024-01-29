@@ -218,8 +218,7 @@ TypeSeq* TypeLegalizer::getPromotedTypeSeq(Type* Ty, bool legalizeToScalar) {
     IGC_ASSERT(Ty->isIntOrIntVectorTy());
     IGC_ASSERT(getTypeLegalizeAction(Ty) == Promote);
 
-    TypeMapTy::iterator TMI; bool New = false;
-    std::tie(TMI, New) = TypeMap.insert(std::make_pair(Ty, TypeSeq()));
+    auto [TMI, New] = TypeMap.insert(std::make_pair(Ty, TypeSeq()));
     if (!New) {
         IGC_ASSERT(TMI->second.size() == 1);
         return &TMI->second;
@@ -249,8 +248,7 @@ TypeSeq* TypeLegalizer::getSoftenedTypeSeq(Type* Ty) {
     IGC_ASSERT(Ty->isFloatingPointTy());
     IGC_ASSERT(getTypeLegalizeAction(Ty) == SoftenFloat);
 
-    TypeMapTy::iterator TMI; bool New = false;
-    std::tie(TMI, New) = TypeMap.insert(std::make_pair(Ty, TypeSeq()));
+    auto [TMI, New] = TypeMap.insert(std::make_pair(Ty, TypeSeq()));
     if (!New) {
         IGC_ASSERT(TMI->second.size() == 1);
         return &TMI->second;
@@ -278,8 +276,7 @@ TypeSeq* TypeLegalizer::getExpandedTypeSeq(Type* Ty) {
     IGC_ASSERT(Ty->isIntegerTy());
     IGC_ASSERT(getTypeLegalizeAction(Ty) == Expand);
 
-    TypeMapTy::iterator TMI; bool New = false;
-    std::tie(TMI, New) = TypeMap.insert(std::make_pair(Ty, TypeSeq()));
+    auto [TMI, New] = TypeMap.insert(std::make_pair(Ty, TypeSeq()));
     if (!New)
         return &TMI->second;
 
@@ -302,8 +299,7 @@ TypeSeq* TypeLegalizer::getScalarizedTypeSeq(Type* Ty) {
     IGC_ASSERT(Ty->isVectorTy());
     IGC_ASSERT(getTypeLegalizeAction(Ty) == Scalarize);
 
-    TypeMapTy::iterator TMI; bool New = false;
-    std::tie(TMI, New) = TypeMap.insert(std::make_pair(Ty, TypeSeq()));
+    auto [TMI, New] = TypeMap.insert(std::make_pair(Ty, TypeSeq()));
     if (!New) {
       IGC_ASSERT(TMI->second.size() ==
                  cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements());
@@ -323,8 +319,7 @@ TypeSeq* TypeLegalizer::getElementizedTypeSeq(Type* Ty) {
     IGC_ASSERT(Ty->isAggregateType());
     IGC_ASSERT(getTypeLegalizeAction(Ty) == Elementize);
 
-    TypeMapTy::iterator TMI; bool New = false;
-    std::tie(TMI, New) = TypeMap.insert(std::make_pair(Ty, TypeSeq()));
+    auto [TMI, New] = TypeMap.insert(std::make_pair(Ty, TypeSeq()));
     if (!New)
         return &TMI->second;
 
@@ -357,8 +352,7 @@ TypeLegalizer::getLegalizedValues(Value* V, bool isSigned) {
     if (C != nullptr)
         ValueMap.erase(V);
 
-    ValueMapTy::iterator VMI; bool New = false;
-    std::tie(VMI, New) = ValueMap.insert(std::make_pair(V, ValueSeq()));
+    auto [VMI, New] = ValueMap.insert(std::make_pair(V, ValueSeq()));
     if (!New)
         return std::make_pair(&VMI->second, Act);
 
@@ -403,8 +397,7 @@ TypeLegalizer::getLegalizedValues(Value* V, bool isSigned) {
 void
 TypeLegalizer::setLegalizedValues(Value* OVal,
     ArrayRef<Value*> LegalizedVals) {
-    ValueMapTy::iterator VMI; bool New = false;
-    std::tie(VMI, New) = ValueMap.insert(std::make_pair(OVal, ValueSeq()));
+    auto [VMI, New] = ValueMap.insert(std::make_pair(OVal, ValueSeq()));
     IGC_ASSERT(New);
 
     for (auto* V : LegalizedVals)
@@ -521,10 +514,8 @@ bool TypeLegalizer::legalizeArguments(Function& F) {
     // - llvm.val.trim.<OriginalTy>(...)
     for (auto AI = F.arg_begin(), AE = F.arg_end(); AI != AE; ++AI) {
         Argument* Arg = &(*AI);
-        TypeSeq* TySeq = nullptr;
-        LegalizeAction Act = Legal;
         Type* Ty = Arg->getType();
-        std::tie(TySeq, Act) = getLegalizedTypes(Ty);
+        auto [TySeq, Act] = getLegalizedTypes(Ty);
 
         switch (Act) {
         case Legal:
@@ -582,8 +573,7 @@ bool TypeLegalizer::preparePHIs(Function& F) {
             if (!PN) break;
 
             Type* Ty = PN->getType();
-            TypeSeq* TySeq; LegalizeAction Act;
-            std::tie(TySeq, Act) = getLegalizedTypes(Ty);
+            auto [TySeq, Act] = getLegalizedTypes(Ty);
             switch (Act) {
             case Legal:
                 // Skip legal PHI node.

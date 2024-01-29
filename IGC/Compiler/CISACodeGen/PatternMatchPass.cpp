@@ -924,9 +924,7 @@ namespace IGC
         // Only match BYTE or WORD.
         if (!I.getType()->isIntegerTy(8) && !I.getType()->isIntegerTy(16))
             return false;
-        Value* Src = nullptr;
-        bool isSignedDst = false, isSignedSrc = false;
-        std::tie(Src, isSignedDst, isSignedSrc) = isIntegerSatTrunc(&I);
+        auto [Src, isSignedDst, isSignedSrc] = isIntegerSatTrunc(&I);
         if (!Src)
             return false;
 
@@ -1634,9 +1632,7 @@ namespace IGC
             }
         };
 
-        PairOutputMapTy::iterator MI;
-        bool New = false;
-        std::tie(MI, New) = PairOutputMap.insert(std::make_pair(GII, PairOutputTy()));
+        auto [MI, New] = PairOutputMap.insert(std::make_pair(GII, PairOutputTy()));
         if (New) {
             AddPairPattern* Pat = new (m_allocator) AddPairPattern();
             Pat->GII = GII;
@@ -1684,9 +1680,7 @@ namespace IGC
             }
         };
 
-        PairOutputMapTy::iterator MI;
-        bool New = false;
-        std::tie(MI, New) = PairOutputMap.insert(std::make_pair(GII, PairOutputTy()));
+        auto [MI, New] = PairOutputMap.insert(std::make_pair(GII, PairOutputTy()));
         if (New) {
             SubPairPattern* Pat = new (m_allocator) SubPairPattern();
             Pat->GII = GII;
@@ -1734,9 +1728,7 @@ namespace IGC
             }
         };
 
-        PairOutputMapTy::iterator MI;
-        bool New = false;
-        std::tie(MI, New) = PairOutputMap.insert(std::make_pair(GII, PairOutputTy()));
+        auto [MI, New] = PairOutputMap.insert(std::make_pair(GII, PairOutputTy()));
         if (New) {
             MulPairPattern* Pat = new (m_allocator) MulPairPattern();
             Pat->GII = GII;
@@ -1784,9 +1776,7 @@ namespace IGC
             }
         };
 
-        PairOutputMapTy::iterator MI;
-        bool New = false;
-        std::tie(MI, New) = PairOutputMap.insert(std::make_pair(GII, PairOutputTy()));
+        auto [MI, New] = PairOutputMap.insert(std::make_pair(GII, PairOutputTy()));
         if (New) {
             PtrToPairPattern* Pat = new (m_allocator) PtrToPairPattern();
             Pat->GII = GII;

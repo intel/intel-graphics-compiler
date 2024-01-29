@@ -1267,10 +1267,7 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
     else
     {
         IGC_ASSERT_MESSAGE((SIPIndex < SIPKernelInfo.size()), "Invalid SIPIndex while loading");
-        m_LinearAddress = std::get<0>(SIPKernelInfo[SIPIndex]);
-        m_ProgramSize   = std::get<1>(SIPKernelInfo[SIPIndex]);
-        m_StateSaveHeaderAddress = std::get<2>(SIPKernelInfo[SIPIndex]);
-        m_StateSaveHeaderSize = std::get<3>(SIPKernelInfo[SIPIndex]);
+        std::tie(m_LinearAddress, m_ProgramSize, m_StateSaveHeaderAddress, m_StateSaveHeaderSize) = SIPKernelInfo[SIPIndex];
     }
 
     if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable) && m_LinearAddress && (m_ProgramSize > 0))

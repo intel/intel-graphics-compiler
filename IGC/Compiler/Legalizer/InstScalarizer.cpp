@@ -359,8 +359,7 @@ bool InstScalarizer::visitGetElementPtrInst(GetElementPtrInst& I) {
 ///
 
 bool InstScalarizer::visitBitCastInst(BitCastInst& I) {
-    ValueSeq* ValSeq; LegalizeAction ValAct;
-    std::tie(ValSeq, ValAct) = TL->getLegalizedValues(I.getOperand(0));
+    auto [ValSeq, ValAct] = TL->getLegalizedValues(I.getOperand(0));
 
     ValueSeq LegalVal;
     if (ValAct == Legal) {
@@ -368,8 +367,7 @@ bool InstScalarizer::visitBitCastInst(BitCastInst& I) {
         ValSeq = &LegalVal;
     }
 
-    TypeSeq* TySeq; LegalizeAction Act;
-    std::tie(TySeq, Act) = TL->getLegalizedTypes(I.getDestTy());
+    auto [TySeq, Act] = TL->getLegalizedTypes(I.getDestTy());
 
     TypeSeq LegalTy;
     if (Act == Legal) {
@@ -470,9 +468,7 @@ bool InstScalarizer::visitInsertElementInst(InsertElementInst& I) {
     // and previously received ValueSeq objects will become invalid.
     ValueSeq VecSeqCopy(*VecSeq);
 
-    ValueSeq* EltSeq = nullptr;
-    LegalizeAction Act;
-    std::tie(EltSeq, Act) = TL->getLegalizedValues(I.getOperand(1));
+    auto [EltSeq, Act] = TL->getLegalizedValues(I.getOperand(1));
 
     ValueSeq LegalVal;
     if (Act == Legal) {

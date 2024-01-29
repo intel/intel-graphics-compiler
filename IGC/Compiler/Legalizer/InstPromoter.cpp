@@ -355,15 +355,13 @@ bool InstPromoter::visitStoreInst(StoreInst& I) {
 /// Cast operators
 
 bool InstPromoter::visitTruncInst(TruncInst& I) {
-    ValueSeq* ValSeq; LegalizeAction ValAct;
-    std::tie(ValSeq, ValAct) = TL->getLegalizedValues(I.getOperand(0));
+    auto [ValSeq, ValAct] = TL->getLegalizedValues(I.getOperand(0));
 
     Value* Val = I.getOperand(0);
     if (ValAct != Legal)
         Val = ValSeq->front();
 
-    TypeSeq* TySeq; LegalizeAction Act;
-    std::tie(TySeq, Act) = TL->getLegalizedTypes(I.getDestTy());
+    auto [TySeq, Act] = TL->getLegalizedTypes(I.getDestTy());
     IGC_ASSERT(Act == Legal || Act == Promote);
 
     if (Act == Legal) {
@@ -417,14 +415,12 @@ bool InstPromoter::visitZExtInst(ZExtInst& I) {
         }
     }
 
-    ValueSeq* ValSeq; LegalizeAction ValAct;
-    std::tie(ValSeq, ValAct) = TL->getLegalizedValues(I.getOperand(0));
+    auto [ValSeq, ValAct] = TL->getLegalizedValues(I.getOperand(0));
 
     if (ValAct != Legal)
         Val = ValSeq->front();
 
-    TypeSeq* TySeq; LegalizeAction Act;
-    std::tie(TySeq, Act) = TL->getLegalizedTypes(I.getDestTy());
+    auto [TySeq, Act] = TL->getLegalizedTypes(I.getDestTy());
     IGC_ASSERT(Act == Legal || Act == Promote);
 
     if (Act == Legal) {
@@ -459,16 +455,12 @@ bool InstPromoter::visitZExtInst(ZExtInst& I) {
 }
 
 bool InstPromoter::visitBitCastInst(BitCastInst& I) {
-    ValueSeq* ValSeq;
-    LegalizeAction ValAct;
-    std::tie(ValSeq, ValAct) = TL->getLegalizedValues(I.getOperand(0));
+    auto [ValSeq, ValAct] = TL->getLegalizedValues(I.getOperand(0));
     Value* Val = I.getOperand(0);
     if (ValAct != Legal && ValSeq != nullptr)
         Val = ValSeq->front();
 
-    TypeSeq* TySeq;
-    LegalizeAction Act;
-    std::tie(TySeq, Act) = TL->getLegalizedTypes(I.getDestTy(), true);
+    auto [TySeq, Act] = TL->getLegalizedTypes(I.getDestTy(), true);
     IGC_ASSERT(Act == Legal || Act == Promote);
 
     // Promote bitcast i24 %0 to <3 x i8>
@@ -533,15 +525,13 @@ bool InstPromoter::visitBitCastInst(BitCastInst& I) {
 }
 
 bool InstPromoter::visitExtractElementInst(ExtractElementInst& I) {
-    ValueSeq* ValSeq; LegalizeAction ValAct;
     Value* Val = I.getOperand(0);
-    std::tie(ValSeq, ValAct) = TL->getLegalizedValues(Val);
+    auto [ValSeq, ValAct] = TL->getLegalizedValues(Val);
 
     if (ValAct != Legal)
         Val = ValSeq->front();
 
-    TypeSeq* TySeq; LegalizeAction Act;
-    std::tie(TySeq, Act) = TL->getLegalizedTypes(I.getType(), true);
+    auto [TySeq, Act] = TL->getLegalizedTypes(I.getType(), true);
     IGC_ASSERT(Act == Legal || Act == Promote);
 
     auto SetBits = [](uint64_t& Data, uint32_t From, uint32_t To) {
@@ -605,24 +595,21 @@ bool InstPromoter::visitExtractElementInst(ExtractElementInst& I) {
 }
 
 bool InstPromoter::visitInsertElementInst(InsertElementInst& I) {
-    ValueSeq* ValSeq; LegalizeAction ValAct;
     Value* Val = I.getOperand(1);
-    std::tie(ValSeq, ValAct) = TL->getLegalizedValues(Val);
+    auto [ValSeq, ValAct] = TL->getLegalizedValues(Val);
 
     if (ValAct != Legal)
         Val = ValSeq->front();
 
     Value* VecVal = I.getOperand(0);
     if (!isa<UndefValue>(VecVal) && !isa<Constant>(VecVal)) {
-        ValueSeq* VecValSeq; LegalizeAction VecValAct;
-        std::tie(VecValSeq, VecValAct) = TL->getLegalizedValues(VecVal);
+        auto [VecValSeq, VecValAct] = TL->getLegalizedValues(VecVal);
 
         if (VecValAct != Legal)
             VecVal = VecValSeq->front();
     }
 
-    TypeSeq* TySeq; LegalizeAction Act;
-    std::tie(TySeq, Act) = TL->getLegalizedTypes(I.getType(), true);
+    auto [TySeq, Act] = TL->getLegalizedTypes(I.getType(), true);
     IGC_ASSERT(Act == Legal || Act == Promote);
 
     if (Act == Promote && Val->getType()->isIntegerTy()) {
@@ -663,15 +650,13 @@ bool InstPromoter::visitGenIntrinsicInst(GenIntrinsicInst& I) {
 bool InstPromoter::visitLLVMIntrinsicInst(IntrinsicInst& I) {
     switch (I.getIntrinsicID()) {
     case Intrinsic::bitreverse: {
-        ValueSeq* ValSeq; LegalizeAction ValAct;
-        std::tie(ValSeq, ValAct) = TL->getLegalizedValues(I.getOperand(0));
+        auto [ValSeq, ValAct] = TL->getLegalizedValues(I.getOperand(0));
 
         Value* Val = I.getOperand(0);
         if (ValAct != Legal)
             Val = ValSeq->front();
 
-        TypeSeq* TySeq; LegalizeAction Act;
-        std::tie(TySeq, Act) = TL->getLegalizedTypes(I.getType());
+        auto [TySeq, Act] = TL->getLegalizedTypes(I.getType());
         IGC_ASSERT(Act == Promote);
         IGC_ASSERT(TySeq->size() == 1);
         Type* PromotedTy = TySeq->front();

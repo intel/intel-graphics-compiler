@@ -105,10 +105,7 @@ unsigned int PullConstantHeuristics::getPSDBottleNeckThreshold(const Function& F
     const unsigned roofLineIPC = 16;
     const unsigned pixelRate = 2;
 
-    unsigned EstimatedEUInstCnt = 0;
-    unsigned SendMsgInstCnt = 0;
-    unsigned RTWriteInstCnt = 0;
-    std::tie(EstimatedEUInstCnt, SendMsgInstCnt, RTWriteInstCnt) = getInstStats(F);
+    auto [EstimatedEUInstCnt, SendMsgInstCnt, RTWriteInstCnt] = getInstStats(F);
 
     unsigned shaderLifetime = estimateShaderLifetime(EstimatedEUInstCnt, SendMsgInstCnt, RTWriteInstCnt);
 

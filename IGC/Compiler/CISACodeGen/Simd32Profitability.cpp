@@ -220,8 +220,7 @@ countOperands(Value* V, Value* LHS, Value* RHS) {
         ConstantInt* CI = dyn_cast<ConstantInt>(BO->getOperand(1));
         if (!CI)
             return std::make_tuple(0, 0);
-        int L = 0, R = 0;
-        std::tie(L, R) = countOperands(BO->getOperand(0), LHS, RHS);
+        auto [L, R] = countOperands(BO->getOperand(0), LHS, RHS);
         uint64_t ShAmt = CI->getZExtValue();
         return std::make_tuple((L << ShAmt), (R << ShAmt));
     }
@@ -230,8 +229,7 @@ countOperands(Value* V, Value* LHS, Value* RHS) {
         ConstantInt* CI = dyn_cast<ConstantInt>(BO->getOperand(1));
         if (!CI || CI->getSExtValue() != -1)
             return std::make_tuple(0, 0);
-        int L = 0, R = 0;
-        std::tie(L, R) = countOperands(BO->getOperand(0), LHS, RHS);
+        auto [L, R] = countOperands(BO->getOperand(0), LHS, RHS);
         return std::make_tuple(-L, -R);
     }
 
@@ -240,10 +238,8 @@ countOperands(Value* V, Value* LHS, Value* RHS) {
 
     if (isa<Constant>(BO->getOperand(1)))
         return countOperands(BO->getOperand(0), LHS, RHS);
-    int L0 = 0, L1 = 0;
-    std::tie(L0, L1) = countOperands(BO->getOperand(0), LHS, RHS);
-    int R0 = 0, R1 = 0;
-    std::tie(R0, R1) = countOperands(BO->getOperand(1), LHS, RHS);
+    auto [L0, L1] = countOperands(BO->getOperand(0), LHS, RHS);
+    auto [R0, R1] = countOperands(BO->getOperand(1), LHS, RHS);
     if (BO->getOpcode() == Instruction::Add)
         return std::make_tuple(L0 + R0, L1 + R1);
 
@@ -253,15 +249,13 @@ countOperands(Value* V, Value* LHS, Value* RHS) {
 
 static bool isNegatedByLB(Value* V, Value* X, Value* LB) {
     // Check if `V` is calculated as LB - X +/- C, where C is constant.
-    int L = 0, R = 0;
-    std::tie(L, R) = countOperands(V, LB, X);
+    auto [L, R] = countOperands(V, LB, X);
     return (L == 1) && (R == -1);
 }
 
 static bool isNegatedBy2UB(Value* V, Value* X, Value* UB) {
     // Check if `V` is calculated as 2UB - X +/- C, where C is constant.
-    int L = 0, R = 0;
-    std::tie(L, R) = countOperands(V, UB, X);
+    auto [L, R] = countOperands(V, UB, X);
     return (L == 2) && (R == -1);
 }
 
@@ -276,9 +270,7 @@ unsigned Simd32ProfitabilityAnalysis::estimateLoopCount_CASE1(Loop* L) {
     if (!L->contains(Br->getSuccessor(0)))
         return LOOPCOUNT_UNKNOWN;
 
-    Value* X = nullptr, * LB = nullptr, * UB = nullptr;
-    bool Signed = false;
-    std::tie(X, LB, UB, Signed) = isOutOfRangeComparison(Br->getCondition());
+    auto [X, LB, UB, Signed] = isOutOfRangeComparison(Br->getCondition());
     if (!X) {
         ICmpInst* Cmp = dyn_cast<ICmpInst>(Br->getCondition());
         if (!Cmp)
@@ -370,10 +362,8 @@ unsigned Simd32ProfitabilityAnalysis::estimateLoopCount_CASE1(Loop* L) {
             return LOOPCOUNT_UNKNOWN;
         if (RHS != LB)
             return LOOPCOUNT_UNKNOWN;
-        int L0 = 0, R0 = 0;
-        std::tie(L0, R0) = countOperands(X0, LB, nullptr);
-        int L1 = 0, R1 = 0;
-        std::tie(L1, R1) = countOperands(X1, UB, nullptr);
+        auto [L0, R0] = countOperands(X0, LB, nullptr);
+        auto [L1, R1] = countOperands(X1, UB, nullptr);
         if (L0 != 1 || L1 != 2)
             return LOOPCOUNT_UNKNOWN;
     }
@@ -400,8 +390,7 @@ unsigned Simd32ProfitabilityAnalysis::estimateLoopCount_CASE2(Loop* L) {
     SmallVector<BasicBlock*, 8> ExitingBBs;
     L->getExitingBlocks(ExitingBBs);
 
-    Value* Init = nullptr, * Curr= nullptr, * Next= nullptr, * Step= nullptr;
-    std::tie(Init, Curr, Step, Next) = getInductionVariable(L);
+    auto [Init, Curr, Step, Next] = getInductionVariable(L);
     if (!Init || !Curr || !Step || !Next)
         return LOOPCOUNT_UNKNOWN;
     ConstantInt* I0 = dyn_cast<ConstantInt>(Init);
@@ -672,9 +661,7 @@ bool Simd32ProfitabilityAnalysis::checkSimd32Profitable(CodeGenContext* ctx)
                 if (Br && Br->isConditional()) {
                     auto ICmp = dyn_cast<ICmpInst>(Br->getCondition());
                     if (ICmp) {
-                        Value* Init = nullptr, * Curr = nullptr, * Step= nullptr, * Next = nullptr;
-                        std::tie(Init, Curr, Step, Next)
-                            = getInductionVariable(loop);
+                        auto [Init, Curr, Step, Next] = getInductionVariable(loop);
                         if (Init && Curr && Next && Step &&
                             WI->isUniform(Step)) {
                             auto Op0 = ICmp->getOperand(0);
