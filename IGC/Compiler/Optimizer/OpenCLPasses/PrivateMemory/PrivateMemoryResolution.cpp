@@ -571,7 +571,7 @@ public:
         IRB.SetInsertPoint(pLoad);
         if (!vectorIO && pLoad->getType()->isVectorTy())
         {
-            Type *scalarType = pLoad->getType()->getScalarType();
+            Type* scalarType = IGCLLVM::getNonOpaquePtrEltTy(pLoad->getPointerOperand()->getType())->getScalarType();
             IGC_ASSERT(nullptr != scalarType);
             Type* scalarptrTy = PointerType::get(scalarType, pLoad->getPointerAddressSpace());
             IGC_ASSERT(scalarType->getPrimitiveSizeInBits() / 8 == elementSize);
@@ -609,7 +609,7 @@ public:
         IRB.SetInsertPoint(pStore);
         if (!vectorIO && pStore->getValueOperand()->getType()->isVectorTy())
         {
-            Type *scalarType = pStore->getValueOperand()->getType()->getScalarType();
+            Type* scalarType = IGCLLVM::getNonOpaquePtrEltTy(pStore->getPointerOperand()->getType())->getScalarType();
             IGC_ASSERT(nullptr != scalarType);
             Type* scalarptrTy = PointerType::get(scalarType, pStore->getPointerAddressSpace());
             IGC_ASSERT(scalarType->getPrimitiveSizeInBits() / 8 == elementSize);
@@ -997,7 +997,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
                 // possibility to use large loads/stores, so cancel the transformation.
                 // Currently it is only enabled by option
                 bool isSOABeneficial = pTypeOfAccessedObject->isVectorTy() || !allUsesAreVector;
-                Type *allocaType = pAI->getAllocatedType();
+                Type* allocaType = GetBaseType(IGCLLVM::getNonOpaquePtrEltTy(pAI->getType()));
                 if (VectorType* vectorType = dyn_cast<VectorType>(allocaType))
                 {
                     bool baseTypeIsSmall = (unsigned)(vectorType->getElementType()->getScalarSizeInBits()) < 32;
@@ -1011,7 +1011,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
             {
                 auto DL = &m_currFunction->getParent()->getDataLayout();
                 bufferSize = (unsigned)DL->getTypeAllocSize(pTypeOfAccessedObject);
-                IGC_ASSERT(testTransposedMemory(pAI->getAllocatedType(), pTypeOfAccessedObject, bufferSize, (m_ModAllocaInfo->getConstBufferSize(pAI))));
+                IGC_ASSERT(testTransposedMemory(IGCLLVM::getNonOpaquePtrEltTy(pAI->getType()), pTypeOfAccessedObject, bufferSize, (m_ModAllocaInfo->getConstBufferSize(pAI))));
             }
             else
             {

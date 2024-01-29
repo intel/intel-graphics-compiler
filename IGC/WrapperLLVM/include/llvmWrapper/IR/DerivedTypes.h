@@ -15,8 +15,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Module.h"
 #include "common/CommonMacros.h"
 
-#include "Type.h"
-
 namespace IGCLLVM
 {
 
@@ -72,23 +70,6 @@ namespace IGCLLVM
       return EltTy;
 #else
       return Ty->getWithNewBitWidth(NewBitWidth);
-#endif
-    }
-
-    inline llvm::PointerType *getWithSamePointeeType(llvm::PointerType *PT, unsigned AddressSpace) {
-#if LLVM_VERSION_MAJOR < 14
-        return llvm::PointerType::get(PT->getElementType(), AddressSpace);
-#else
-        return llvm::PointerType::getWithSamePointeeType(PT, AddressSpace);
-#endif
-    }
-
-    inline bool isOpaqueOrPointeeTypeEquals(llvm::Type *tyA, llvm::Type *tyB) {
-#if LLVM_VERSION_MAJOR < 14
-        return IGCLLVM::getNonOpaquePtrEltTy(tyA) == IGCLLVM::getNonOpaquePtrEltTy(tyB);
-#else
-        llvm::PointerType *pTyA = llvm::dyn_cast<llvm::PointerType>(tyA);
-        return pTyA && pTyA->isOpaqueOrPointeeTypeMatches(tyB);
 #endif
     }
 }

@@ -192,7 +192,8 @@ namespace IGC
             unsigned int offset = 0;
             for (const auto &offsets : ModuleMD->FuncMD[F].localOffsets)
             {
-                Type* varType = offsets.m_Var->getValueType();
+                PointerType* ptrType = dyn_cast<PointerType>(offsets.m_Var->getType());
+                Type* varType = IGCLLVM::getNonOpaquePtrEltTy(ptrType);
                 offset = iSTD::Align(offset, IGCLLVM::getPreferredAlignValue(&DL, offsets.m_Var));
                 offset += (unsigned int) DL.getTypeAllocSize(varType);
             }
@@ -228,7 +229,7 @@ namespace IGC
 
                 if (m_ForceAll || isForcedBuffer)
                 {
-                    Type *origType = pAI->getAllocatedType();
+                    Type* origType = IGCLLVM::getNonOpaquePtrEltTy(pAI->getType());
                     bool isArray = origType->isArrayTy();
                     Type* eltType = isArray ? origType->getArrayElementType() : origType;
                     uint64_t numEltsPerThread = isArray ? origType->getArrayNumElements() : 1;

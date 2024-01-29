@@ -196,7 +196,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         offset = iSTD::Align(offset, (unsigned)m_DL->getPreferredAlign(globalVar).value());
 #endif
         inlineProgramScopeOffsets[globalVar] = offset;
-        offset += (unsigned)(m_DL->getTypeAllocSize(globalVar->getValueType()));
+        offset += (unsigned)(m_DL->getTypeAllocSize(IGCLLVM::getNonOpaquePtrEltTy(globalVar->getType())));
     }
 
     // Patch the offsets for usages of zero initialized globals after those offsets have been calculated in the previous step.

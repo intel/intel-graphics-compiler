@@ -17,7 +17,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/BinaryFormat/Dwarf.h"
 #include "common/LLVMWarningsPop.hpp"
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include "DebugInfo/DwarfDebug.hpp"
 
 #define PASS_FLAG "igc-gas-ret-value-propagator"
@@ -153,10 +152,8 @@ PointerType* GASRetValuePropagator::getRetValueNonGASType(Function* F)
         originAddrSpace.emplace(AS);
     }
 
-    PointerType *retTy = cast<PointerType>(F->getReturnType());
-
     return originAddrSpace ?
-        IGCLLVM::getWithSamePointeeType(retTy, originAddrSpace.value()) :
+        PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(F->getReturnType()), originAddrSpace.value()) :
         nullptr;
 }
 

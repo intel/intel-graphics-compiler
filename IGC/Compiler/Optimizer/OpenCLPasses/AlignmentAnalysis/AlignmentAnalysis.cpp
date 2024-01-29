@@ -132,7 +132,8 @@ auto AlignmentAnalysis::getAlignValue(Value* V) const
             // If the globalvariable uses the default alignment, pull it from the datalayout
             if (!align)
             {
-                return m_DL->getABITypeAlignment(GV->getValueType());
+                Type* gvType = GV->getType();
+                return m_DL->getABITypeAlignment(IGCLLVM::getNonOpaquePtrEltTy(gvType));
             }
             else
             {
@@ -224,7 +225,8 @@ alignment_t AlignmentAnalysis::visitAllocaInst(AllocaInst& I)
     // If the alloca uses the default alignment, pull it from the datalayout
     if (!newAlign)
     {
-        newAlign = m_DL->getABITypeAlignment(I.getAllocatedType());
+        Type* allocaType = I.getType();
+        newAlign = m_DL->getABITypeAlignment(IGCLLVM::getNonOpaquePtrEltTy(allocaType));
     }
 
     return newAlign;

@@ -16,7 +16,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/Support/Alignment.h"
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/DataLayout.h>
@@ -273,7 +272,7 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
     {
         BasicBlock* BB = BasicBlock::Create(I.getContext(), BlockName, convergeBlock->getParent(), convergeBlock);
         builder.SetInsertPoint(BB);
-        PointerType* ptrType = IGCLLVM::getWithSamePointeeType(pointerType, addressSpace);
+        PointerType* ptrType = IGCLLVM::getNonOpaquePtrEltTy(pointerType)->getPointerTo(addressSpace);
         Value* ptr = builder.CreateAddrSpaceCast(pointerOperand, ptrType);
 
         if (LoadInst* LI = dyn_cast<LoadInst>(&I))
@@ -350,7 +349,7 @@ void GenericAddressDynamicResolution::resolveGASWithoutBranches(Instruction& I, 
 
     Value* nonLocalLoad = nullptr;
 
-    PointerType* ptrType = IGCLLVM::getWithSamePointeeType(pointerType, ADDRESS_SPACE_GLOBAL);
+    PointerType* ptrType = IGCLLVM::getNonOpaquePtrEltTy(pointerType)->getPointerTo(ADDRESS_SPACE_GLOBAL);
     Value* globalPtr = builder.CreateAddrSpaceCast(pointerOperand, ptrType);
 
     if (LoadInst* LI = dyn_cast<LoadInst>(&I))
@@ -439,7 +438,7 @@ bool GenericAddressDynamicResolution::visitIntrinsicCall(CallInst& I)
         // If Block
         {
             IRBuilder<> ifBuilder(ifBlock);
-            PointerType *ptrType = IGCLLVM::getWithSamePointeeType(pointerType, targetAS);
+            PointerType* ptrType = IGCLLVM::getNonOpaquePtrEltTy(pointerType)->getPointerTo(targetAS);
             newPtr = ifBuilder.CreateAddrSpaceCast(arg, ptrType);
             ifBuilder.CreateBr(convergeBlock);
         }

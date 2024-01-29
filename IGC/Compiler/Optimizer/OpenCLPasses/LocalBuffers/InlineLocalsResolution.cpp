@@ -519,7 +519,8 @@ void InlineLocalsResolution::computeOffsetList(Module& M, llvm::MapVector<Functi
             offsetMap[F][G] = (offset & 0xFFFF);
 
             // And the total size after this local is added
-            Type *varType = G->getValueType();
+            PointerType* ptrType = dyn_cast<PointerType>(G->getType());
+            Type* varType = IGCLLVM::getNonOpaquePtrEltTy(ptrType);
             if (G == m_pGV)
             {
                 // it is GetMemPoolPtr usage
