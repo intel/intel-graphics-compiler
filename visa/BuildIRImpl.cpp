@@ -3474,7 +3474,8 @@ G4_Type IR_Builder::findConstFoldCommonType(G4_Type type1, G4_Type type2) {
 }
 
 IR_Builder::R0_ACCESS IR_Builder::getR0AccessFromOptions() const {
-  if (getOption(vISA_enablePreemption))
+  if (getOption(vISA_enablePreemption) ||
+      getOption(vISA_enablePreemptionR0Only))
     return R0_ACCESS::NONE;
   if (getOption(vISA_AvoidUsingR0R1))
     return R0_ACCESS::NONE;
