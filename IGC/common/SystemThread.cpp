@@ -39,6 +39,10 @@ SPDX-License-Identifier: MIT
 #include "common/SIPKernels/XeHPGSIPCSRDebugBindless.h"
 #include "common/SIPKernels/XeHPCSIPCSRDebugBindless.h"
 #include "common/SIPKernels/Xe2SIPCSRDebugBindless.h"
+#include "common/SIPKernels/wmtp/XE2_LNL_1x4_128.h"
+#include "common/SIPKernels/wmtp/XE2_LNL_2x4_128.h"
+#include "common/SIPKernels/wmtp/XE2_LNL_1x4_160.h"
+#include "common/SIPKernels/wmtp/XE2_LNL_2x4_160.h"
 
 using namespace llvm;
 using namespace USC;
@@ -863,7 +867,7 @@ bool CSystemThread::CreateSystemThreadKernel(
 
         if( pKernelProgram )
         {
-            pKernelProgram->Create( platform, mode, bindlessMode );
+            pKernelProgram->Create( platform, mode, bindlessMode, SLM_ANY);
 
             pSystemThreadKernelOutput->m_KernelProgramSize = pKernelProgram->GetProgramSize();
             pSystemThreadKernelOutput->m_StateSaveAreaHeaderSize = pKernelProgram->GetStateSaveHeaderSize();
@@ -951,6 +955,108 @@ void CSystemThread::DeleteSystemThreadKernel(
         IGC::aligned_free(pSystemThreadKernelOutput->m_pStateSaveAreaHeader);
     delete pSystemThreadKernelOutput;
     pSystemThreadKernelOutput = nullptr;
+}
+
+bool
+CSystemThread::CreateSystemThreadKernel_v2(const PLATFORM &platform, const IGC::SCompilerHwCaps &Caps,
+                                           const GT_SYSTEM_INFO &sysInfo, const SYSTEM_THREAD_MODE mode,
+                                           USC::SSystemThreadKernelOutput *&pSystemThreadKernelOutput,
+                                           SLM_SIZE_SUPPORTED slmSize)
+{
+    if (!SIPSuppoertedOnPlatformFamily(platform.eRenderCoreFamily))
+    {
+        return false;
+    }
+
+    bool success = true;
+
+    // Check if the System Thread mode in the correct range.
+    // SYSTEM_THREAD_MODE_CSR_64B is not yet supported.
+    if (!(mode & SYSTEM_THREAD_MODE_CSR))
+    {
+        success = false;
+    }
+
+    // Create System Thread kernel program.
+    if (success)
+    {
+        CGenSystemInstructionKernelProgram *pKernelProgram = new CGenSystemInstructionKernelProgram(mode);
+        success = pKernelProgram ? true : false;
+        // Allocate memory for SSystemThreadKernelOutput.
+        if (success)
+        {
+            pSystemThreadKernelOutput = new SSystemThreadKernelOutput;
+
+            success = (pSystemThreadKernelOutput != nullptr);
+
+            if (success)
+            {
+                memset(pSystemThreadKernelOutput, 0, sizeof(SSystemThreadKernelOutput));
+            }
+        }
+
+        const unsigned int DQWORD_SIZE = 2 * sizeof(unsigned long long);
+
+        if (pKernelProgram)
+        {
+            pKernelProgram->Create(platform, mode, true, slmSize);
+
+            pSystemThreadKernelOutput->m_KernelProgramSize = pKernelProgram->GetProgramSize();
+            pSystemThreadKernelOutput->m_StateSaveAreaHeaderSize = pKernelProgram->GetStateSaveHeaderSize();
+
+            if (mode & SYSTEM_THREAD_MODE_CSR)
+                pSystemThreadKernelOutput->m_SystemThreadScratchSpace =
+                    Caps.KernelHwCaps.CsrSizeInMb * sizeof(MEGABYTE);
+
+            if (mode & (SYSTEM_THREAD_MODE_DEBUG | SYSTEM_THREAD_MODE_DEBUG_LOCAL))
+                pSystemThreadKernelOutput->m_SystemThreadResourceSize =
+                    Caps.KernelHwCaps.CsrSizeInMb * 2 * sizeof(MEGABYTE);
+
+            pSystemThreadKernelOutput->m_pKernelProgram =
+                IGC::aligned_malloc(pSystemThreadKernelOutput->m_KernelProgramSize, DQWORD_SIZE);
+
+            if (pSystemThreadKernelOutput->m_StateSaveAreaHeaderSize)
+                pSystemThreadKernelOutput->m_pStateSaveAreaHeader =
+                    IGC::aligned_malloc(pSystemThreadKernelOutput->m_StateSaveAreaHeaderSize, DQWORD_SIZE);
+
+            success = (pSystemThreadKernelOutput->m_pKernelProgram != nullptr);
+            if (pSystemThreadKernelOutput->m_StateSaveAreaHeaderSize)
+                success &= (pSystemThreadKernelOutput->m_pStateSaveAreaHeader != nullptr);
+        }
+
+        if (success)
+        {
+            const void *pStartAddress = pKernelProgram->GetLinearAddress();
+            const void *pStateSaveAddress = pKernelProgram->GetStateSaveHeaderAddress();
+
+            if (!pStartAddress || (pSystemThreadKernelOutput->m_StateSaveAreaHeaderSize && !pStateSaveAddress))
+            {
+                success = false;
+            }
+
+            if (success)
+            {
+                memcpy_s(pSystemThreadKernelOutput->m_pKernelProgram, pSystemThreadKernelOutput->m_KernelProgramSize,
+                         pStartAddress, pSystemThreadKernelOutput->m_KernelProgramSize);
+
+                if (pSystemThreadKernelOutput->m_StateSaveAreaHeaderSize)
+                    memcpy_s(pSystemThreadKernelOutput->m_pStateSaveAreaHeader,
+                             pSystemThreadKernelOutput->m_StateSaveAreaHeaderSize, pStateSaveAddress,
+                             pSystemThreadKernelOutput->m_StateSaveAreaHeaderSize);
+            }
+        }
+        else
+        {
+            success = false;
+        }
+
+        if (pKernelProgram)
+        {
+            pKernelProgram->Delete(pKernelProgram);
+            delete pKernelProgram;
+        }
+    }
+    return success;
 }
 
 //populate the SIPKernelInfo map with starting address and size of every SIP kernels
@@ -1085,16 +1191,46 @@ void populateSIPKernelInfo(const IGC::CPlatform &platform,
             (sysInfo.MaxSlicesSupported > 0 ? (sysInfo.MaxSubSlicesSupported / sysInfo.MaxSlicesSupported) : sysInfo.MaxSubSlicesSupported);
     Xe2SIPCSRDebugBindlessDebugHeader.regHeader.num_eus_per_subslice = sysInfo.MaxEuPerSubSlice;
 
+    // wmtp Xe2 SIP
+    {
+        // LNL 1x4 128
+        SIPKernelInfo[XE2_CSR_DEBUG_BINDLESS_LNL_1x4_128] = std::make_tuple(
+            (void *)&XE2_LNL_1x4_128, (int)sizeof(XE2_LNL_1x4_128),
+            (void *)&XE2_LNL_1x4_128, XE2_CSR_DEBUG_BINDLESS_LNL_1x4_128_WMTP_DATA_SIZE);
+
+        // LNL 1x4 160
+        SIPKernelInfo[XE2_CSR_DEBUG_BINDLESS_LNL_1x4_160] = std::make_tuple(
+            (void *)&XE2_LNL_1x4_160, (int)sizeof(XE2_LNL_1x4_160),
+            (void *)&XE2_LNL_1x4_160, XE2_CSR_DEBUG_BINDLESS_LNL_1x4_160_WMTP_DATA_SIZE);
+
+
+
+        // LNL 2x4 128
+        SIPKernelInfo[XE2_CSR_DEBUG_BINDLESS_LNL_2x4_128] =
+            std::make_tuple((void *)&XE2_LNL_2x4_128,
+                            (int)sizeof(XE2_LNL_2x4_128),
+            (void *)&XE2_LNL_2x4_128, XE2_CSR_DEBUG_BINDLESS_LNL_2x4_128_WMTP_DATA_SIZE);
+
+        // LNL 2x4 160
+        SIPKernelInfo[XE2_CSR_DEBUG_BINDLESS_LNL_2x4_160] = std::make_tuple(
+            (void *)&XE2_LNL_2x4_160, (int)sizeof(XE2_LNL_2x4_160),
+            (void *)&XE2_LNL_2x4_160, XE2_CSR_DEBUG_BINDLESS_LNL_2x4_160_WMTP_DATA_SIZE);
+
+     }
+
 }
 
 CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
     const IGC::CPlatform &platform,
     const SYSTEM_THREAD_MODE mode,
-    const bool bindlessMode)
+    const bool bindlessMode,
+    SLM_SIZE_SUPPORTED slmSize)
 {
     unsigned char SIPIndex = 0;
     std::map< unsigned char, std::tuple<void*, unsigned int, void*, unsigned int> > SIPKernelInfo;
     populateSIPKernelInfo(platform, SIPKernelInfo);
+
+    GT_SYSTEM_INFO sysInfo = platform.GetGTSystemInfo();
 
     switch( platform.getPlatformInfo().eRenderCoreFamily )
     {
@@ -1235,10 +1371,43 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
             case IGFX_PVC:
             case IGFX_METEORLAKE:
             case IGFX_ARROWLAKE:
+            case IGFX_LUNARLAKE:
+                if (sysInfo.SliceCount == 1 && sysInfo.SubSliceCount == 4)
+                {
+                    if (slmSize == SLM_128)
+                    {
+                        SIPIndex = XE2_CSR_DEBUG_BINDLESS_LNL_1x4_128;
+                    }
+                    else if (slmSize == SLM_160)
+                    {
+                        SIPIndex = XE2_CSR_DEBUG_BINDLESS_LNL_1x4_160;
+                    }
+                    else
+                        break;
+                }
+                else if (sysInfo.SliceCount == 2 && sysInfo.SubSliceCount == 4)
+                {
+                    if (slmSize == SLM_128)
+                    {
+                        SIPIndex = XE2_CSR_DEBUG_BINDLESS_LNL_2x4_128;
+                    }
+                    else if (slmSize == SLM_160)
+                    {
+                        SIPIndex = XE2_CSR_DEBUG_BINDLESS_LNL_2x4_160;
+                    }
+                    else
+                        break;
+                }
+                else
+                    break;
 
             default:
                 break;
             }
+        }
+        else if (mode == SYSTEM_THREAD_MODE_CSR_64B)
+        {
+            break;
         }
         break;
     }

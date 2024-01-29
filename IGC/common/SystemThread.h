@@ -65,7 +65,26 @@ namespace SIP
         XE_HPG_CSR_DEBUG_BINDLESS,
         XE_HPC_CSR_DEBUG_BINDLESS,
         XE2_CSR_DEBUG_BINDLESS,
-        GEN_SIP_MAX_INDEX
+        XE2_CSR_DEBUG_BINDLESS_LNL_1x4_128,
+        XE2_CSR_DEBUG_BINDLESS_LNL_1x4_160,
+        XE2_CSR_DEBUG_BINDLESS_LNL_2x4_128,
+        XE2_CSR_DEBUG_BINDLESS_LNL_2x4_160,
+       GEN_SIP_MAX_INDEX
+    };
+
+    enum WMTP_DATA_SIZE
+    {
+        XE2_CSR_DEBUG_BINDLESS_LNL_1x4_128_WMTP_DATA_SIZE = 6296192,
+        XE2_CSR_DEBUG_BINDLESS_LNL_1x4_160_WMTP_DATA_SIZE = 6428288,
+        XE2_CSR_DEBUG_BINDLESS_LNL_2x4_128_WMTP_DATA_SIZE = 12588160,
+        XE2_CSR_DEBUG_BINDLESS_LNL_2x4_160_WMTP_DATA_SIZE = 12852352,
+    };
+
+    enum SLM_SIZE_SUPPORTED
+    {
+        SLM_ANY,
+        SLM_128,
+        SLM_160
     };
 
     class CSystemThread
@@ -76,6 +95,13 @@ namespace SIP
             const USC::SYSTEM_THREAD_MODE mode,
             USC::SSystemThreadKernelOutput* &pSystemThread,
             bool bindlessmode = false);
+
+        static bool CreateSystemThreadKernel_v2(const PLATFORM &platform,
+            const IGC::SCompilerHwCaps &Caps,
+            const GT_SYSTEM_INFO &sysInfo,
+            const USC::SYSTEM_THREAD_MODE mode,
+            USC::SSystemThreadKernelOutput *&pSystemThread,
+            SLM_SIZE_SUPPORTED slmSize);
 
         static void   DeleteSystemThreadKernel(
             USC::SSystemThreadKernelOutput* &pSystemThread );
@@ -91,7 +117,8 @@ namespace SIP
         CGenSystemInstructionKernelProgram* Create(
             const IGC::CPlatform &platform,
             const USC::SYSTEM_THREAD_MODE mode,
-            const bool bindlessMode);
+            const bool bindlessMode,
+            SLM_SIZE_SUPPORTED slmSize);
 
             void Delete(CGenSystemInstructionKernelProgram* &pKernelProgram );
 
