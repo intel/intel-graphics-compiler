@@ -79,7 +79,8 @@ static cl::opt<bool> EmitVLoadStore(
     cl::desc("Emit load/store intrinsic calls for pass-by-ref arguments"));
 
 static cl::opt<bool> PeelLoopsDpasNullAcc(
-    "vc-peel-loops-dpas-null-acc", cl::init(true), cl::Hidden,
+    "vc-peel-loops-dpas-null-acc", cl::init(LLVM_VERSION_MAJOR >= 14),
+    cl::Hidden,
     cl::desc("Peel first iteration of a loop with dpas instructions, when dpas "
              "accumulator operand is zero-initialized"));
 static cl::opt<unsigned> PeelLoopDpasNullAccMaxBlocks(
