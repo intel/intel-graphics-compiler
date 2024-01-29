@@ -11,7 +11,6 @@ SPDX-License-Identifier: MIT
 #include "BitSet.h"
 #include "G4_BB.hpp"
 #include "G4_Kernel.hpp"
-#include "PointsToAnalysis.h"
 
 using namespace vISA;
 
@@ -1033,17 +1032,6 @@ void VarReferences::run() {
           auto &Defs = VarRefs[topdcl].first;
           Defs.push_back(std::make_tuple(inst, bb, lb, rb));
         }
-
-        if (p2a && dst->isIndirect()) {
-          auto *pointees = p2a->getAllInPointsTo(topdcl->getRegVar());
-          vISA_ASSERT(pointees, "expecting valid pointee list");
-          for (const auto& pointee : *pointees) {
-            auto &Defs = VarRefs[pointee.var->getDeclare()->getRootDeclare()].first;
-            // lb, rb are both unknown for indirects
-            Defs.push_back(
-                std::make_tuple(inst, bb, UnknownBound, UnknownBound));
-          }
-        }
       }
 
       if (!onlyGRF) {
@@ -1068,16 +1056,6 @@ void VarReferences::run() {
           if (topdcl) {
             auto &Uses = VarRefs[topdcl].second;
             Uses.push_back(std::make_tuple(inst, bb));
-          }
-
-          if (p2a && src->isIndirect()) {
-            auto *pointees = p2a->getAllInPointsTo(topdcl->getRegVar());
-            vISA_ASSERT(pointees, "expecting valid pointee list");
-            for (const auto &pointee : *pointees) {
-              auto &Uses =
-                  VarRefs[pointee.var->getDeclare()->getRootDeclare()].second;
-              Uses.push_back(std::make_tuple(inst, bb));
-            }
           }
         }
       }

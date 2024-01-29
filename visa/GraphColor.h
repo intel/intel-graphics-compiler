@@ -429,17 +429,6 @@ private:
   std::unordered_map<G4_Declare *, std::unordered_set<FuncInfo *>> unknownArgRetvalRefs;
   std::unordered_map<G4_Declare *, std::unordered_set<FuncInfo *>> nonGRFRefs;
   std::unordered_map<G4_BB *, FuncInfo *> bbToFunc;
-  // Store home function for given variable. Home function is defined as
-  // function that contains explicit def or use of the variable. Each regular
-  // variable has a unique home function. Arg/retval don't have a unique home
-  // function as they're usually defined in caller and used in callee, ie
-  // they're referenced in different functions.
-  //
-  // This vector is indexed by G4_Declare's dclId.
-  //
-  // It's assumed that augmentation doesn't require resizing this vector
-  // despite inserting new SCALL dcls as they're all function local.
-  std::vector<FuncInfo *> homeFunc;
   // Sadly, we don't have a way to map G4_INST to containing G4_BB.
   // So we create it in Augmentation using below vector. To get
   // FuncInfo* for a G4_INST, we dereference instToFunc using
@@ -450,7 +439,6 @@ private:
   const bool hasSubroutines = false;
 
   void populateFuncMaps();
-  void populateHomeFunc();
   bool isSubroutineArg(G4_Declare *dcl) const {
     auto it = argsRetVal.find(dcl);
     if (it == argsRetVal.end())
@@ -496,11 +484,6 @@ private:
   bool isUnknownRetVal(G4_Declare *dcl) const;
   bool isRegularRetVal(G4_Declare *dcl) const;
   bool isUnknownArgOrRetval(G4_Declare *dcl) const;
-  FuncInfo *computeHomeFunc(G4_Declare *dcl);
-  bool hasUniqueFuncHome(G4_Declare *dcl) const;
-  FuncInfo *getUniqueFuncHome(G4_Declare *dcl) const;
-
-  void verifyHomeLocation();
 
   bool updateDstMaskForGather(G4_INST *inst, std::vector<unsigned char> &mask);
   bool updateDstMaskForGatherRaw(G4_INST *inst,
@@ -539,12 +522,12 @@ private:
   void handleCallSite(G4_BB *curBB, unsigned int &funcCnt);
   void handleDstOpnd(FuncInfo *funcInfo, G4_BB *curBB, G4_INST *inst);
   void handleCondMod(FuncInfo* funcInfo, G4_INST *inst);
-  void endIntervalForLiveOut(FuncInfo *funcInfo, G4_BB *bb);
+  void endIntervalForLiveOut(G4_BB *bb);
   void handleSrcOpnd(FuncInfo *funcInfo, G4_BB *curBB, G4_Operand *src);
   void handlePred(FuncInfo* funcInfo, G4_INST *inst);
   void handleNonReducibleExtension(FuncInfo *funcInfo);
   void handleLoopExtension(FuncInfo *funcInfo);
-  void extendVarLiveness(FuncInfo *funcInfo, G4_BB *bb, G4_INST *inst);
+  void extendVarLiveness(G4_BB *bb, G4_INST *inst);
   unsigned getEnd(const G4_Declare *dcl) const;
   bool isNoMask(const G4_Declare *dcl, unsigned size) const;
   bool isConsecutiveBits(const G4_Declare *dcl, unsigned size) const;

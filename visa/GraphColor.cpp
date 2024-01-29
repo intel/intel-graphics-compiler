@@ -2770,56 +2770,6 @@ void GlobalRA::getBankAlignment(LiveRange *lr, BankAlign &align) {
   }
 }
 
-// Compute homeFunc for dcl.  Following rules are used:
-// 1. A variable that's defined or used in a single function has
-//    that function as its home function.
-// 2. A variable that's defined or used across functions (eg,
-//    args, retval) have their home function set to nullptr.
-// 3. homeFunc is set only on root G4_Declare.
-FuncInfo *Augmentation::computeHomeFunc(G4_Declare *dcl) {
-  vISA_ASSERT(!dcl->getAliasDeclare(), "root dcl expected");
-  // If there are no subroutines then all dcls have kernel as home function
-  if (!hasSubroutines)
-    return kernel.fg.kernelInfo;
-
-  if (hasUniqueFuncHome(dcl))
-    return getUniqueFuncHome(dcl);
-
-  FuncInfo *homeFunction = nullptr;
-  // Live-ins to kernel are modeled as being implicitly defined in kernel.
-  if (dcl->isInput())
-    homeFunction = kernel.fg.kernelInfo;
-  auto *defs = refs.getDefs(dcl);
-  if (defs) {
-    for (auto &def : *defs) {
-      auto *bb = std::get<1>(def);
-      auto *curDefFunc = bbToFunc.at(bb);
-      if (!homeFunction) {
-        homeFunction = curDefFunc;
-        continue;
-      } else if (homeFunction != curDefFunc) {
-        return nullptr;
-      }
-    }
-  }
-
-  auto *uses = refs.getUses(dcl);
-  if (uses) {
-    for (auto &use : *uses) {
-      auto *bb = std::get<1>(use);
-      auto *curUseFunc = bbToFunc.at(bb);
-      if (!homeFunction) {
-        homeFunction = curUseFunc;
-        continue;
-      } else if (homeFunction != curUseFunc) {
-        return nullptr;
-      }
-    }
-  }
-
-  return homeFunction;
-}
-
 void Augmentation::populateFuncMaps() {
   vISA_ASSERT(kernel.fg.getBBList().back()->size() > 0, "last BB empty");
   instToFunc.resize(kernel.fg.getBBList().back()->back()->getLexicalId() + 1);
@@ -2833,24 +2783,10 @@ void Augmentation::populateFuncMaps() {
   }
 }
 
-void Augmentation::populateHomeFunc() {
-  // Assume last G4_Declare has max declId
-  homeFunc.resize(kernel.Declares.back()->getDeclId() + 1);
-  for (auto dcl : kernel.Declares) {
-    if (dcl->getAliasDeclare())
-      dcl = dcl->getRootDeclare();
-    auto *func = computeHomeFunc(dcl);
-    vISA_ASSERT(!hasUniqueFuncHome(dcl) || getUniqueFuncHome(dcl) == func,
-                "different home func set");
-    homeFunc[dcl->getDeclId()] = func;
-  }
-}
-
 Augmentation::Augmentation(Interference &i, const LivenessAnalysis &l,
                            GlobalRA &g)
     : kernel(g.kernel), intf(i), gra(g), liveAnalysis(l), lrs(g.incRA.getLRs()),
-      fcallRetMap(g.fcallRetMap),
-      refs(g.kernel, false, false, true, &g.pointsToAnalysis),
+      fcallRetMap(g.fcallRetMap), refs(g.kernel, false, false, true),
       hasSubroutines(kernel.fg.sortedFuncTable.size() > 0 &&
                      g.kernel.getOption(vISA_NewAugmentation)) {
   useGenericAugAlign =
@@ -3877,25 +3813,12 @@ void Augmentation::buildUnknownArgRetval() {
   }
 }
 
-bool Augmentation::hasUniqueFuncHome(G4_Declare *dcl) const {
-  auto *homeFunction = homeFunc[dcl->getDeclId()];
-  return homeFunction != nullptr;
-}
-
-FuncInfo* Augmentation::getUniqueFuncHome(G4_Declare* dcl) const {
-  vISA_ASSERT(hasUniqueFuncHome(dcl), "expecting unique home func");
-  return homeFunc[dcl->getDeclId()];
-}
-
 void Augmentation::startIntervalForLiveIn(FuncInfo *funcInfo, G4_BB *bb) {
   // Start live-in intervals
   auto liveInBB = liveAnalysis.getLiveAtEntry(bb) & liveAnalysis.globalVars;
   for (auto i : liveInBB) {
     G4_Declare *dcl = lrs[i]->getDcl()->getRootDeclare();
     if (isUnknownArgOrRetval(dcl))
-      continue;
-
-    if (hasUniqueFuncHome(dcl) && getUniqueFuncHome(dcl) != funcInfo)
       continue;
 
     vISA_ASSERT(bb->size() > 0, "empty instlist");
@@ -4099,7 +4022,7 @@ void Augmentation::handlePred(FuncInfo* funcInfo, G4_INST *inst) {
   }
 }
 
-void Augmentation::endIntervalForLiveOut(FuncInfo* funcInfo, G4_BB *bb) {
+void Augmentation::endIntervalForLiveOut(G4_BB *bb) {
   auto liveOutBB = liveAnalysis.getLiveAtExit(bb) & liveAnalysis.globalVars;
   if (bb->isEndWithCall() && liveAnalysis.livenessClass(G4_GRF)) {
     // reset bit for RET__loc as we handle it specially later to
@@ -4127,10 +4050,6 @@ void Augmentation::endIntervalForLiveOut(FuncInfo* funcInfo, G4_BB *bb) {
     G4_Declare *dcl = lrs[i]->getDcl()->getRootDeclare();
     if (isUnknownArgOrRetval(dcl))
       continue;
-
-    if (hasUniqueFuncHome(dcl) && getUniqueFuncHome(dcl) != funcInfo)
-      continue;
-
     vISA_ASSERT(bb->size() > 0, "empty instlist");
     updateEndInterval(dcl, bb->back());
   }
@@ -4160,7 +4079,7 @@ void Augmentation::handleNonReducibleExtension(FuncInfo *funcInfo) {
       }
     }
     for (auto exitBB : SCCSucc) {
-      extendVarLiveness(funcInfo, exitBB, headBB->front());
+      extendVarLiveness(exitBB, headBB->front());
     }
   }
 }
@@ -4199,7 +4118,7 @@ void Augmentation::handleLoopExtension(FuncInfo *funcInfo) {
             std::cout << "==> Extend live-in for BB" << exitBB->getId() << "\n";
             exitBB->emit(std::cout);
           });
-          extendVarLiveness(funcInfo, exitBB, startInst);
+          extendVarLiveness(exitBB, startInst);
         }
       }
     }
@@ -4214,10 +4133,6 @@ void Augmentation::handleLoopExtension(FuncInfo *funcInfo) {
 
     for (auto i : globalsLiveInAndLiveOut) {
       auto *dcl = lrs[i]->getDcl()->getRootDeclare();
-      // If dcl has non-nullptr home function then extend liveness only
-      // in same function.
-      if (hasUniqueFuncHome(dcl) && getUniqueFuncHome(dcl) != funcInfo)
-        continue;
 
       updateEndInterval(dcl, endBB->back());
       VISA_DEBUG_VERBOSE({
@@ -4235,16 +4150,11 @@ void Augmentation::handleLoopExtension(FuncInfo *funcInfo) {
 }
 
 // Extend all variables that are live at bb entry to the given inst
-void Augmentation::extendVarLiveness(FuncInfo *funcInfo, G4_BB *bb,
-                                     G4_INST *inst) {
+void Augmentation::extendVarLiveness(G4_BB *bb, G4_INST *inst) {
   auto liveAtEntryBB =
       liveAnalysis.getLiveAtEntry(bb) & liveAnalysis.globalVars;
   for (auto i : liveAtEntryBB) {
     G4_Declare *dcl = lrs[i]->getDcl()->getRootDeclare();
-    // If dcl has non-nullptr home function then extend liveness only
-    // in same function.
-    if (hasUniqueFuncHome(dcl) && getUniqueFuncHome(dcl) != funcInfo)
-      continue;
 
     if (!kernel.fg.isPseudoDcl(dcl)) {
       // Extend ith live-interval
@@ -4271,7 +4181,7 @@ void Augmentation::buildLiveIntervals(FuncInfo* funcInfo) {
   for (G4_BB *curBB : funcInfo->getBBList()) {
     if (!curBB->empty()) {
       startIntervalForLiveIn(funcInfo, curBB);
-      endIntervalForLiveOut(funcInfo, curBB);
+      endIntervalForLiveOut(curBB);
     }
 
     for (G4_INST *inst : *curBB) {
@@ -5131,8 +5041,6 @@ void Augmentation::discoverRetVal(FuncInfo *func) {
     retValPerSub[func].insert(dcl);
     if (retValInfo.subroutines.size() > 1)
       retValInfo.retValType = RetValType::Unknown;
-    vISA_ASSERT(!hasUniqueFuncHome(dcl),
-                "retval cannot have non-nullptr home function");
   }
 
   if (kernel.getOption(vISA_VerifyAugmentation)) {
@@ -5149,8 +5057,7 @@ void Augmentation::discoverArgs(FuncInfo *func) {
 
   SparseBitVector subArgs;
   if (func == kernel.fg.kernelInfo)
-    subArgs = liveAnalysis.use_in[kernel.fg.getEntryBB()->getId()] &
-              liveAnalysis.def_in[kernel.fg.getEntryBB()->getId()];
+    subArgs = liveAnalysis.use_in[kernel.fg.getEntryBB()->getId()];
   else
     subArgs = liveAnalysis.args.at(func);
 
@@ -5167,10 +5074,6 @@ void Augmentation::discoverArgs(FuncInfo *func) {
     if (argInfo.subroutines.size() > 1 &&
         argInfo.argType == ArgType::DefBeforeEachCall)
       argInfo.argType = ArgType::Unknown;
-    vISA_ASSERT(
-        argInfo.argType != ArgType::DefBeforeEachCall ||
-            !hasUniqueFuncHome(dcl),
-        "def before each call arg cannot have non-nullptr home function");
   }
 
 
@@ -5210,16 +5113,6 @@ void Augmentation::dumpSortedIntervals() {
       std::cout << " (LiveThroughArg)";
     else if (isRegularRetVal(dcl))
       std::cout << " (RegularRetVal)";
-    if (dcl->getDeclId() >= homeFunc.size()) {
-      std::cout << " @ (new var)";
-    }
-    else {
-      auto *homeFunction = homeFunc[dcl->getDeclId()];
-      if (!homeFunction)
-        std::cout << " @ (global)";
-      else
-        std::cout << " @ (func " << (int)homeFunction->getId() << ")";
-    }
     std::cout << " - (" << gra.getIntervalStart(interval)->getLexicalId()
               << ", " << gra.getIntervalEnd(interval)->getLexicalId() << "]";
     if (intervalsPerVar[dcl].size() > 1) {
@@ -5679,17 +5572,16 @@ void Augmentation::augmentIntfGraph() {
   bool nonDefaultMaskDef = markNonDefaultMaskDef();
 
   if (nonDefaultMaskDef == true) {
+    if (augWithHoles && kernel.fg.getNumFuncs() > 0)
+      populateFuncMaps();
+
     if (augWithHoles) {
-      if (kernel.fg.getNumFuncs() > 0)
-        populateFuncMaps();
-
-      populateHomeFunc();
-
       // Atleast one definition with non-default mask was found so
       // perform steps to augment intf graph with such defs
 
       // Discover and store subroutine arguments
       if (hasSubroutines) {
+
         for (auto &subroutine : kernel.fg.sortedFuncTable) {
           discoverArgs(subroutine);
           discoverRetVal(subroutine);
