@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt %s -S -o - -serialize-igc-metadata -igc-dpas-scan -platformpvc | FileCheck %s
+; RUN: igc_opt %s -S -o - -igc-dpas-scan -igc-serialize-metadata -platformpvc | FileCheck %s
 ; CHECK: !{!"DisableEUFusion", i1 false}
 
 ; .cl source

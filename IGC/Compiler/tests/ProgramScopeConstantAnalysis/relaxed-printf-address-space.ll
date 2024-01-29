@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
-; RUN: igc_opt --serialize-igc-metadata -igc-programscope-constant-analysis \
+; RUN: igc_opt -igc-programscope-constant-analysis -igc-serialize-metadata \
 ; RUN:   -S -regkey EnableZEBinary=1 < %s | FileCheck %s
 ; ------------------------------------------------
 ; ProgramScopeConstantAnalysis

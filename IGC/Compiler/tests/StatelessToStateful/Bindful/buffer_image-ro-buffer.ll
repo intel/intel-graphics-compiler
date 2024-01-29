@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt %s -S -o - -serialize-igc-metadata -igc-stateless-to-stateful-resolution -platformpvc | FileCheck %s
+; RUN: igc_opt %s -S -o - -igc-stateless-to-stateful-resolution -igc-serialize-metadata -platformpvc | FileCheck %s
 
 ; This test verifies the scenario where there are three kernel arguments. The 0th and 2nd are global
 ; buffers that are expected to be promoted to stateful. The 1st argument is a read_only image which is already promoted

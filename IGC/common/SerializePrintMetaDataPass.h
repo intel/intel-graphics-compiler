@@ -44,4 +44,5 @@ private:
   void CollectInsideMD(llvm::MDNode *Node);
   void CollectInsideMD(llvm::Metadata *Node);
 };
+void initializeSerializePrintMetaDataPassPass(llvm::PassRegistry&);
 } // namespace IGC

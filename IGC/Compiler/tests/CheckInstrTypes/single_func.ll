@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: regkeys
-; RUN: igc_opt --regkey PrintToConsole --serialize-igc-metadata --CheckInstrTypes --enable-instrtypes-print -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --regkey PrintToConsole --CheckInstrTypes -igc-serialize-metadata --enable-instrtypes-print -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; CheckInstrTypes
 ; ------------------------------------------------

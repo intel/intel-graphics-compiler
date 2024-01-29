@@ -15,9 +15,9 @@ SPDX-License-Identifier: MIT
 #include <Probe/Assertion.h>
 
 using namespace llvm;
-using namespace IGC;
+namespace IGC {
 
-#define PASS_FLAG "igc-serialize-print-metadata"
+#define PASS_FLAG "igc-serialize-metadata"
 #define PASS_DESCRIPTION "Serialize metadata to module and print metadata"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
@@ -161,3 +161,4 @@ void SerializePrintMetaDataPass::CollectInsideMD(llvm::Metadata *Node) {
     }
   }
 }
+} // namespace IGC

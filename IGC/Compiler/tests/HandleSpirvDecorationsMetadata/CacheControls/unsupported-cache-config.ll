@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt %s -S -o - -serialize-igc-metadata -igc-handle-spirv-decoration-metadata --igc-error-check < %s 2>&1 | FileCheck %s
+; RUN: igc_opt %s -S -o - -igc-handle-spirv-decoration-metadata --igc-error-check -igc-serialize-metadata < %s 2>&1 | FileCheck %s
 
 ; The below test tries to set { L1 cached, L3 streaming } cache controls configuration that is not supported on PVC.
 

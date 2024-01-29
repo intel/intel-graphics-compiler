@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt %s -S -o - -serialize-igc-metadata -igc-stateless-to-stateful-resolution -platformdg2 | FileCheck %s
+; RUN: igc_opt %s -S -o - -igc-stateless-to-stateful-resolution -igc-serialize-metadata -platformdg2 | FileCheck %s
 
 ; This test verifies if raytracing implicit global buffer is not promoted to stateful, as only stateless mode is supported in the runtime.
 

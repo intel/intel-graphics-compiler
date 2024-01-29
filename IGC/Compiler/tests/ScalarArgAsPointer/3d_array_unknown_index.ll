@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt --igc-agg-arg-analysis --igc-add-implicit-args --igc-agg-arg --igc-scalar-arg-as-pointer-analysis --serialize-igc-metadata -S %s | FileCheck %s
+; RUN: igc_opt --igc-agg-arg-analysis --igc-add-implicit-args --igc-agg-arg --igc-scalar-arg-as-pointer-analysis -igc-serialize-metadata -S %s | FileCheck %s
 ;
 ; Struct provided by value has 3D array of pointers. Some indices are variable, pass must
 ; mark all potential matches (producing false positives, but this is an acceptable outcome).

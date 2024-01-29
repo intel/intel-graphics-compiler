@@ -7,8 +7,8 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: regkeys
-; RUN: igc_opt --regkey PrintToConsole --serialize-igc-metadata --igc-inst-stat-sroa --igc-inst-stat-th 4 --sroa --enable-instrstat-print -S < %s 2>&1 | FileCheck %s --check-prefix=EXCEEDED
-; RUN: igc_opt --regkey PrintToConsole --serialize-igc-metadata --igc-inst-stat-sroa --igc-inst-stat-th 5 --sroa --enable-instrstat-print -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --regkey PrintToConsole --igc-inst-stat-sroa --igc-inst-stat-th 4 --sroa --enable-instrstat-print -igc-serialize-metadata -S < %s 2>&1 | FileCheck %s --check-prefix=EXCEEDED
+; RUN: igc_opt --regkey PrintToConsole --igc-inst-stat-sroa --igc-inst-stat-th 5 --sroa --enable-instrstat-print -igc-serialize-metadata -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; InstrStatistic
 ; ------------------------------------------------

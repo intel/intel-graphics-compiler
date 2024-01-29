@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt --igc-scalar-arg-as-pointer-analysis --serialize-igc-metadata -S %s | FileCheck %s
+; RUN: igc_opt --igc-scalar-arg-as-pointer-analysis -igc-serialize-metadata -S %s | FileCheck %s
 ;
 ; Decomposed struct (implicit arguments) can be copied into local alloca. Pass must keep trace
 ; of all stored kernel args, so when access to global memory traces back to alloca instruction,

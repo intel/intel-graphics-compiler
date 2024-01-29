@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt --igc-scalar-arg-as-pointer-analysis --serialize-igc-metadata -S %s | FileCheck %s
+; RUN: igc_opt --igc-scalar-arg-as-pointer-analysis -igc-serialize-metadata -S %s | FileCheck %s
 ;
 ; Tests "select" instruction, when first path leads to scalar as pointer.
 ;

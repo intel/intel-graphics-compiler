@@ -8,7 +8,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: regkeys
-; RUN: igc_opt --regkey DumpHasNonKernelArgLdSt=1 --regkey EnableOptionalBufferOffset=1 --regkey EnableSupportBufferOffset=1 -serialize-igc-metadata -enable-debugify -igc-stateless-to-stateful-resolution -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --regkey DumpHasNonKernelArgLdSt=1 --regkey EnableOptionalBufferOffset=1 --regkey EnableSupportBufferOffset=1 -enable-debugify -igc-stateless-to-stateful-resolution -igc-serialize-metadata -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; StatelessToStateful
 ; ------------------------------------------------
