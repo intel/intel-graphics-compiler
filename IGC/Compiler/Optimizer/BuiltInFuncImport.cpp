@@ -28,6 +28,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/Error.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Bitcode/BitcodeReader.h>
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPop.hpp"
 #include <unordered_set>
 #include <unordered_map>
@@ -570,8 +571,7 @@ void BIImport::fixInvalidBitcasts(llvm::Module &M)
 
             // New bitcast
             PointerType *FinalBitCastType =
-                PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(DstPtrType),
-                                 SrcPtrType->getAddressSpace());
+                IGCLLVM::getWithSamePointeeType(DstPtrType, SrcPtrType->getAddressSpace());
             BitCastInst *NewBitCastI = new BitCastInst(
                 BitCastI->getOperand(0), FinalBitCastType, "bcast", BitCastI);
 
@@ -888,7 +888,7 @@ bool BIImport::runOnModule(Module& M)
                     // Load function address from the table index
                     Value* FP = builder.CreateGEP(FPTablePtr, builder.getInt32(tableIndex));
                     FP = builder.CreateLoad(FP);
-                    IGC_ASSERT(FP->getType()->isPointerTy() && IGCLLVM::getNonOpaquePtrEltTy(FP->getType())->isFunctionTy());
+                    IGC_ASSERT(FP->getType()->isPointerTy());
                     // Call the loaded function address
                     SmallVector<Value*, 8> Args;
                     for (unsigned i = 1; i < IGCLLVM::getNumArgOperands(CI); i++)
@@ -1008,7 +1008,7 @@ void BIImport::removeFunctionBitcasts(Module& M)
                                         castInsts.push_back(newASC);
                                         destVal = newASC;
                                     }
-                                    if (IGCLLVM::getNonOpaquePtrEltTy(srcType) != IGCLLVM::getNonOpaquePtrEltTy(destType))
+                                    if (!IGCLLVM::isOpaqueOrPointeeTypeEquals(srcType, destType))
                                     {
                                         BitCastInst *newBT = new BitCastInst(destVal, srcType, destVal->getName() + ".bcast");
                                         castInsts.push_back(newBT);

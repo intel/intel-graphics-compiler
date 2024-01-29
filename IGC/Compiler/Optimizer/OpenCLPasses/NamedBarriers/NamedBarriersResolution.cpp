@@ -332,7 +332,7 @@ void NamedBarriersResolution::HandleNamedBarrierInitSW(CallInst& NBarrierInitCal
         m_NamedBarrierType->getPointerTo(SPIRAS_Local),
         Type::getInt32PtrTy(context, SPIRAS_Local)
     };
-    Type *BaseTy = IGCLLVM::getNonOpaquePtrEltTy(m_NamedBarrierArray->getType());
+    Type *BaseTy = m_NamedBarrierArray->getValueType();
     auto pointerNBarrier = GetElementPtrInst::Create(BaseTy, m_NamedBarrierArray, { getInt64(module, 0), getInt32(module, 0) }, "", &(NBarrierInitCall));
     auto bitcastPointerNBarrier = BitCastInst::CreatePointerBitCastOrAddrSpaceCast(pointerNBarrier, m_NamedBarrierType->getPointerTo(SPIRAS_Local), "", &(NBarrierInitCall));
     SmallVector<Value*, 3> ArgsVal

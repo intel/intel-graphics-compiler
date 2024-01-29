@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/InitializePasses.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 
 FunctionPass* IGC::createStaticGASResolution() { return new StaticGASResolution(); }
 
@@ -59,8 +60,7 @@ bool StaticGASResolution::runOnFunction(llvm::Function& F)
             if (!toSkip(Ptr))
             {
                 PointerType* PtrTy = cast<PointerType>(Ptr->getType());
-                Type* eltTy = IGCLLVM::getNonOpaquePtrEltTy(PtrTy);
-                PointerType* glbPtrTy = PointerType::get(eltTy, ADDRESS_SPACE_GLOBAL);
+                PointerType *glbPtrTy = IGCLLVM::getWithSamePointeeType(PtrTy, ADDRESS_SPACE_GLOBAL);
 
                 IRB.SetInsertPoint(I);
                 Value* NewPtr = IRB.CreateAddrSpaceCast(Ptr, glbPtrTy);

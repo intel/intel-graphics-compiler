@@ -90,7 +90,7 @@ bool PoisonFP64Kernels::runOnSCC(CallGraphSCC &SCC) {
     return modified;
 }
 
-static Constant *createPoisonMessage(Module *M, Function *Kernel) {
+static GlobalVariable *createPoisonMessage(Module *M, Function *Kernel) {
     std::string message = "[CRITICAL ERROR] Kernel '" + Kernel->getName().str()
                         + "' removed due to usage of FP64 instructions unsupported by the targeted hardware. "
                         + "Running this kernel may result in unexpected results.\n";
@@ -162,8 +162,8 @@ static void poisonKernel(Function *Kernel) {
 
     Function *Printf = getOrDeclareFunction(M, "printf", FunctionType::get(Int32Ty, { Type::getInt8PtrTy(Ctx, 2) }, true));
 
-    Constant *PoisonMessage = createPoisonMessage(M, Kernel);
-    Type *MessageType = IGCLLVM::getNonOpaquePtrEltTy(PoisonMessage->getType());
+    GlobalVariable *PoisonMessage = createPoisonMessage(M, Kernel);
+    Type *MessageType = PoisonMessage->getValueType();
 
     std::vector<Value *> Indices = {
         ConstantInt::getSigned(Type::getInt32Ty(Ctx), 0),

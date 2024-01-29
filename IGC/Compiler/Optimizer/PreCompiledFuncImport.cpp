@@ -549,8 +549,9 @@ bool PreCompiledFuncImport::preProcessDouble()
             else if (Inst->getOpcode() == Instruction::FNeg)
             {
                 // check if Inst is double instruction or vector of double instructions
-                if (Inst->getType()->isDoubleTy() ||
-                    (Inst->getType()->isVectorTy() && IGCLLVM::getNonOpaquePtrEltTy(Inst->getType())->isDoubleTy()))
+                Type *instType = Inst->getType();
+                IGCLLVM::FixedVectorType *instVecType = dyn_cast<IGCLLVM::FixedVectorType>(instType);
+                if (instType->isDoubleTy() || (instVecType && instVecType->getElementType()->isDoubleTy()))
                 {
                     IGCLLVM::IRBuilder<> builder(Inst);
                     Value* fsub = nullptr;
