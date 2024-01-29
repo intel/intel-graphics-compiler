@@ -50,6 +50,7 @@ IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenPatternMatch)
 IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(DeSSA)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(ResourceLoopAnalysis)
 IGC_INITIALIZE_PASS_END(CoalescingEngine, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 namespace IGC
@@ -70,6 +71,7 @@ namespace IGC
         AU.addRequired<DeSSA>();
         AU.addRequired<MetaDataUtilsWrapper>();
         AU.addRequired<CodeGenContextWrapper>();
+        AU.addRequired<ResourceLoopAnalysis>();
     }
 
     void CoalescingEngine::CCTuple::print(raw_ostream& OS, const Module*) const
@@ -127,6 +129,7 @@ namespace IGC
         WIA = &getAnalysis<WIAnalysis>();
         CG = &getAnalysis<CodeGenPatternMatch>();
         LV = &getAnalysis<LiveVarsAnalysis>().getLiveVars();
+        RLA = &getAnalysis<ResourceLoopAnalysis>();
         if (IGC_IS_FLAG_ENABLED(EnableDeSSA)) {
             m_DeSSA = &getAnalysis<DeSSA>();
         }
@@ -239,7 +242,19 @@ namespace IGC
             }
 
         }
-
+#if 0
+        // turn off coalescing when inst is inside a fused resource-loop
+        // feels like this approach may not be strong enough.
+        // So opt to the solution of disabling coalescing in whole BB
+        auto loopMarker =
+            RLA->GetResourceLoopMarker(tupleGeneratingInstruction);
+        if ((loopMarker & ResourceLoopAnalysis::MarkResourceLoopInside) ||
+            ((loopMarker & ResourceLoopAnalysis::MarkResourceLoopStart) &&
+             !(loopMarker & ResourceLoopAnalysis::MarkResourceLoopEnd)))
+        {
+            return;
+        }
+#endif
         IGC_ASSERT(numOperands >= 2);
 
         //No result, but has side effects of updating the split mapping.
@@ -1422,6 +1437,17 @@ namespace IGC
         //Loop through instructions top to bottom
         for (I = instructionList.begin(), E = instructionList.end(); I != E; ++I) {
             llvm::Instruction& inst = (*I);
+            auto loopMarker =
+                RLA->GetResourceLoopMarker(&inst);
+            // turn off coalescing in this block when there is a fused resource-loop
+            if ((loopMarker & ResourceLoopAnalysis::MarkResourceLoopInside) ||
+                ((loopMarker & ResourceLoopAnalysis::MarkResourceLoopStart) &&
+                 !(loopMarker & ResourceLoopAnalysis::MarkResourceLoopEnd)))
+            {
+                BBProcessingDefs[bb].clear();
+                return;
+            }
+
             visit(inst);
         }
     }

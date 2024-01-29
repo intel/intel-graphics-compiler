@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #pragma once
 
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
+#include "Compiler/CISACodeGen/ResourceLoopAnalysis.h"
 #include "Compiler/CISACodeGen/PatternMatchPass.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/CISACodeGen/PayloadMapping.hpp"
@@ -958,6 +959,7 @@ namespace IGC {
         LiveVars* LV;
         WIAnalysis* WIA;
         DeSSA* m_DeSSA;
+        ResourceLoopAnalysis* RLA;
         CodeGenPatternMatch* CG;
         llvm::DenseMap<llvm::Value*, ElementNode*> ValueNodeMap;
         llvm::DenseMap<ElementNode*, CCTuple*> NodeCCTupleMap;
