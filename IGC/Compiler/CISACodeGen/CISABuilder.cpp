@@ -3190,6 +3190,8 @@ namespace IGC
                     return Xe_PVC; // PVC XL A0 RevID=0x0
                 }
             }
+        case IGFX_XE2_LPG_CORE:
+            return Xe2;
             // fall-through
         default:
             IGC_ASSERT_MESSAGE(0, "unsupported platform");

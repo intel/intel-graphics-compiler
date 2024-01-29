@@ -1448,6 +1448,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         GII_id == GenISAIntrinsic::GenISA_add_rtz  ||
         GII_id == GenISAIntrinsic::GenISA_slice_id ||
         GII_id == GenISAIntrinsic::GenISA_subslice_id  ||
+        GII_id == GenISAIntrinsic::GenISA_logical_subslice_id ||
         GII_id == GenISAIntrinsic::GenISA_dual_subslice_id ||
         GII_id == GenISAIntrinsic::GenISA_eu_id        ||
         GII_id == GenISAIntrinsic::GenISA_eu_thread_id ||
@@ -1495,6 +1496,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
             return WIAnalysis::UNIFORM_THREAD;
         case GenISAIntrinsic::GenISA_slice_id:
         case GenISAIntrinsic::GenISA_subslice_id:
+        case GenISAIntrinsic::GenISA_logical_subslice_id:
         case GenISAIntrinsic::GenISA_dual_subslice_id:
             // Make sure they are UNIFORM_WORKGROUP
             //return WIAnalysis::UNIFORM_WORKGROUP;

@@ -187,6 +187,19 @@ namespace IGC
                 }
                 InitGt_12_70SwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
             }
+            case IGFX_XE2_LPG_CORE:
+            {
+                switch (GFX_GET_GMD_RELEASE_VERSION_RENDER(platform->getPlatformInfo()))
+                {
+                case GFX_GMD_ARCH_20_RELEASE_XE2_LPG:
+                    InitGt_20_04HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+                    break;
+                default:
+                    IGC_ASSERT(0);
+                    break;
+                }
+                break;
+            }
             break;
             default:
                 // SKUs with no GT IP. So do nothing.

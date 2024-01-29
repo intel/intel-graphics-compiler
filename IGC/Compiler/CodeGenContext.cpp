@@ -177,6 +177,10 @@ namespace IGC
             (stateId < RetryTableSize && RetryTable[stateId].nextState >= RetryTableSize));
     }
 
+    bool RetryManager::Trigger2xGRFRetry() const
+    {
+        return (lastSpillSize > IGC_GET_FLAG_VALUE(CSSpillThreshold2xGRFRetry));
+    }
     unsigned RetryManager::GetRetryId() const
     {
         return stateId;
@@ -811,6 +815,15 @@ namespace IGC
         }
         if (getModuleMetaData()->csInfo.forceTotalGRFNum != 0)
         {
+            if ((this->type == ShaderType::RAYTRACING_SHADER ||
+                this->type == ShaderType::BINDLESS_SHADER) &&
+                platform.isCoreChildOf(IGFX_XE2_LPG_CORE) &&
+                getModuleMetaData()->csInfo.forceTotalGRFNum > DEFAULT_TOTAL_GRF_NUM)
+            {
+                m_NumGRFPerThread = DEFAULT_TOTAL_GRF_NUM;
+                return m_NumGRFPerThread;
+            }
+            else
             {
                 m_NumGRFPerThread = getModuleMetaData()->csInfo.forceTotalGRFNum;
                 return m_NumGRFPerThread;

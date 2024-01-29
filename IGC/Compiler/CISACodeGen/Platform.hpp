@@ -157,6 +157,22 @@ bool canSupportWMTPWithoutBTD() const {
 }
 
 
+
+bool supportsWMTPForShaderType(ShaderType type) const {
+
+    if (isCoreChildOf(IGFX_XE2_LPG_CORE)) {
+        switch(type) {
+        case ShaderType::COMPUTE_SHADER:
+        case ShaderType::OPENCL_SHADER:
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    return false;
+}
+
 bool supportDisableMidThreadPreemptionSwitch() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
 
 bool needSWStencil() const
@@ -1574,6 +1590,10 @@ bool supportLargeGRF() const
 }
 
 bool supportCheckCSThreadsLimit() const
+{
+    return (m_platformInfo.eRenderCoreFamily == IGFX_XE2_LPG_CORE);
+}
+bool supportTriggerLargeGRFRetry() const
 {
     return (m_platformInfo.eRenderCoreFamily == IGFX_XE2_LPG_CORE);
 }
