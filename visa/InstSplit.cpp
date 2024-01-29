@@ -245,6 +245,41 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it,
     }
   }
 
+  // Special handling for vISA ADDC (SUBB) instruction,
+  // which is translated to addc (subb)/mov acc pair
+  // and should be splitted together.
+  G4_INST *carryMovInst = nullptr;
+  G4_Predicate* newCarryMovPred = NULL;
+  G4_CondMod* newCarryMovCondMod = NULL;
+  INST_LIST_ITER nextIter = std::next(it);
+  if (inst->opcode() == G4_addc || inst->opcode() == G4_subb) {
+    G4_INST *nextInst = *nextIter;
+    if (nextInst->opcode() == G4_mov && nextInst->isAccSrcInst() &&
+        nextInst->getExecSize() == inst->getExecSize()) {
+      carryMovInst = nextInst;
+
+      if (carryMovInst->getPredicate()) {
+        newCarryMovPred = carryMovInst->getPredicate();
+        newCarryMovPred->splitPred();
+      }
+
+      if (carryMovInst->getCondMod()) {
+        newCarryMovCondMod = carryMovInst->getCondMod();
+        newCarryMovCondMod->splitCondMod();
+      }
+    }
+  }
+
+  G4_SrcRegRegion* accSrcRegion = NULL;
+  if (inst->getImplAccSrc()) {
+    accSrcRegion = inst->getImplAccSrc()->asSrcRegRegion();
+  }
+
+  G4_DstRegRegion* accDstRegion = NULL;
+  if (inst->getImplAccDst()) {
+    accDstRegion = inst->getImplAccDst();
+  }
+
   // Create new predicate
   G4_Predicate *newPred = NULL;
   if (inst->getPredicate()) {
@@ -319,12 +354,47 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it,
       newInst->setMaskOption(newMask);
     }
 
-    // Call recursive splitting function
-    newInstIterator = splitInstruction(newInstIterator, instList);
+    if (accDstRegion)
+      newInst->setImplAccDst(m_builder->duplicateOperand(accDstRegion));
+
+    if (accSrcRegion)
+      newInst->setImplAccSrc(m_builder->duplicateOperand(accSrcRegion));
+
+    if (carryMovInst) {
+      G4_INST* newCarryMovInst = m_builder->makeSplittingInst(carryMovInst, newExecSize);
+
+      G4_DstRegRegion* carryMovDst = carryMovInst->getDst();
+      G4_DstRegRegion* newCarryMovDst;
+      if (carryMovDst && !carryMovInst->hasNULLDst()) {
+        newCarryMovDst = m_builder->createSubDstOperand(carryMovDst, (uint16_t)i, newExecSize);
+      }
+      else {
+        newCarryMovDst = newCarryMovDst;
+      }
+
+      newCarryMovInst->setDest(newCarryMovDst);
+      newCarryMovInst->setPredicate(m_builder->duplicateOperand(newCarryMovPred));
+      newCarryMovInst->setCondMod(m_builder->duplicateOperand(newCarryMovCondMod));
+      newCarryMovInst->setSrc(m_builder->duplicateOperand(carryMovInst->getSrc(0)), 0);
+      auto prevInstIterator = newInstIterator;
+      newInstIterator = instList.insert(it, newCarryMovInst);
+
+      // Call recursive splitting function
+      newInstIterator = splitInstruction(prevInstIterator, instList);
+    }
+    else {
+      // Call recursive splitting function
+      newInstIterator = splitInstruction(newInstIterator, instList);
+    }
   }
 
   // remove original instruction
   instList.erase(it);
+
+  if (carryMovInst) {
+    instList.erase(nextIter);
+  }
+
   return newInstIterator;
 }
 
