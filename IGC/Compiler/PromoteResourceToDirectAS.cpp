@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvmWrapper/IR/Type.h>
 #include <llvmWrapper/Support/Alignment.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -280,7 +281,7 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
         }
 
         addrSpace = IGC::EncodeAS4GFXResource(*bufferId, bufTy);
-        PointerType* newptrType = PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(resourcePtr->getType()), addrSpace);
+        PointerType* newptrType = IGCLLVM::getWithSamePointeeType(dyn_cast<PointerType>(resourcePtr->getType()), addrSpace);
 
         Value* mutePtr = nullptr;
         if (llvm::isa<llvm::ConstantInt>(bufferId))
@@ -364,7 +365,7 @@ bool PatchGetElementPtr(const std::vector<Value*>& instList, Type* dstTy, unsign
         }
         else if (BitCastInst * cast = dyn_cast<BitCastInst>(inst))
         {
-            PointerType* newptrType = PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(cast->getType()), directAS);
+            PointerType* newptrType = IGCLLVM::getWithSamePointeeType(dyn_cast<PointerType>(cast->getType()), directAS);
             patchedInst = BitCastInst::Create(Instruction::BitCast, patchedInst, newptrType, "", cast);
             if (BitCastInst* castPathedInst = dyn_cast<BitCastInst>(patchedInst))
             {
@@ -447,7 +448,7 @@ bool PatchInstructionAddressSpace(const std::vector<Value*>& instList, Type* dst
     }
     else if (phiNode)
     {
-        PointerType* newPhiTy = PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(phiNode->getType()), directAS);
+        PointerType* newPhiTy = IGCLLVM::getWithSamePointeeType(dyn_cast<PointerType>(phiNode->getType()), directAS);
         PHINode* pNewPhi = PHINode::Create(newPhiTy, phiNode->getNumIncomingValues(), "", phiNode);
         for (unsigned int i = 0; i < phiNode->getNumIncomingValues(); ++i)
         {

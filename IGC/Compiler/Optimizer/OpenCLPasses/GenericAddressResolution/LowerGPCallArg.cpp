@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/PostOrderIterator.h"
 #include <llvm/IR/DIBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 
 // (1)
 // Optimization pass to lower generic pointers in function arguments.
@@ -157,7 +158,7 @@ Function* LowerGPCallArg::createFuncWithLoweredArgs(Function* F, GenericPointerA
     std::vector<Type*> newParamTypes(pFuncType->param_begin(), pFuncType->param_end());
     for (auto& argInfo : argsInfo)
     {
-        PointerType* ptrType = PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(newParamTypes[argInfo.argNo]),
+        PointerType* ptrType = IGCLLVM::getWithSamePointeeType(dyn_cast<PointerType>(newParamTypes[argInfo.argNo]),
             argInfo.addrSpace);
         newParamTypes[argInfo.argNo] = ptrType;
     }

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "common/Stats.hpp"
 #include "common/secure_string.h"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include <llvm/IR/Function.h>
@@ -557,7 +558,7 @@ void StatelessToStateful::promoteIntrinsic(InstructionInfo& II)
     Module* M = m_F->getParent();
     const DebugLoc& DL = I->getDebugLoc();
     GenISAIntrinsic::ID const intrinID = I->getIntrinsicID();
-    PointerType* pTy = PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(II.ptr->getType()), II.getStatefulAddrSpace());
+    PointerType* pTy = IGCLLVM::getWithSamePointeeType(dyn_cast<PointerType>(II.ptr->getType()), II.getStatefulAddrSpace());
 
     if (m_targetAddressing == TargetAddressing::BINDLESS)
     {
@@ -663,7 +664,7 @@ void StatelessToStateful::promoteLoad(InstructionInfo& II)
     {
         auto newBasePtr = IntToPtrInst::Create(Instruction::IntToPtr, II.offset, pTy, "", I);
         auto bindfulLoad = new LoadInst(
-            IGCLLVM::getNonOpaquePtrEltTy(newBasePtr->getType()),
+            I->getType(),
             newBasePtr,
             "",
             I->isVolatile(),

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2021 Intel Corporation
+Copyright (C) 2019-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Function.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -225,7 +226,7 @@ void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function& F) 
             Value* resourcePtr = IGC::GetBufferOperand(accessInst);
             IGC_ASSERT(resourcePtr);
             unsigned bindlessAS = IGC::EncodeAS4GFXResource(*UndefValue::get(builder.getInt32Ty()), IGC::BINDLESS);
-            PointerType* basePointerType = PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(resourcePtr->getType()), bindlessAS);
+            PointerType* basePointerType = IGCLLVM::getWithSamePointeeType(dyn_cast<PointerType>(resourcePtr->getType()), bindlessAS);
             Value* bufferOffset = builder.CreatePtrToInt(resourcePtr, builder.getInt32Ty());
 
             Value* basePointer = nullptr;

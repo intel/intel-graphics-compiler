@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -31,6 +31,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/InstVisitor.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/Inliner.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DIBuilder.h"
@@ -1371,14 +1372,14 @@ void SubroutineInliner::visitMemCpyInst(MemCpyInst& I)
         if (origSrc->getType()->getPointerAddressSpace() != Src->getType()->getPointerAddressSpace())
         {
             Value* SrcCast = BitCastInst::Create(Instruction::BitCast, origSrc,
-                PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(Src->getType()), origSrc->getType()->getPointerAddressSpace()),
+                IGCLLVM::getWithSamePointeeType(dyn_cast<PointerType>(Src->getType()), origSrc->getType()->getPointerAddressSpace()),
                 "", &I);
             I.replaceUsesOfWith(Src, SrcCast);
         }
         if (origDst->getType()->getPointerAddressSpace() != Dst->getType()->getPointerAddressSpace())
         {
             Value* DstCast = BitCastInst::Create(Instruction::BitCast, origDst,
-                PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(Dst->getType()), origDst->getType()->getPointerAddressSpace()),
+                IGCLLVM::getWithSamePointeeType(dyn_cast<PointerType>(Dst->getType()), origDst->getType()->getPointerAddressSpace()),
                 "", &I);
             I.replaceUsesOfWith(Dst, DstCast);
         }
