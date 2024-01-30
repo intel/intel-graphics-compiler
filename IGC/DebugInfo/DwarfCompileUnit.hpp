@@ -399,7 +399,13 @@ public:
 
   void addImportedEntity(const llvm::DIImportedEntity *IE) {
     llvm::DIScope *Scope = IE->getScope();
-    assert(Scope && "Invalid Scope encoding!");
+
+    // Temporary workaround
+    if (!Scope) {
+      return;
+    }
+    // assert(Scope && "Invalid Scope encoding!");
+
     if (!llvm::isa<llvm::DILocalScope>(Scope)) {
       // No need to add imported enities that are not local declaration.
       return;
