@@ -714,8 +714,14 @@ bool LiveVars::hasInterference(llvm::Value* V0, llvm::Value* V1)
 // updated to reflect such a merging.
 void LiveVars::mergeUseFrom(Value* V, Value* fromV)
 {
-    IGC_ASSERT_MESSAGE(VirtRegInfo.count(V), "MergeUseFrom should be used after LVInfo has been contructed!");
-    IGC_ASSERT_MESSAGE(VirtRegInfo.count(fromV), "MergeUseFrom should be used after LVInfo has been contructed!");
+    // Normally, both VitrRegInfo.count(V) and VirtRegInfo.count(fromV) are
+    // non-zero, meaning their LVInfo have been constructed (they are not
+    // dead). However, we see inline asm case in which fromV is dead in term
+    // of llvm value usage and therefore no LVInfo (as inline asm call has
+    // side-effect, the inline asm is not dead). For this reason, we relax
+    // assertion to require at least one has LVInfo.
+    IGC_ASSERT_MESSAGE(VirtRegInfo.count(V) || VirtRegInfo.count(fromV),
+        "MergeUseFrom should be used after LVInfo have been constructed!");
 
     LVInfo& LVI = getLVInfo(V);
     LVInfo& fromLVI = getLVInfo(fromV);
