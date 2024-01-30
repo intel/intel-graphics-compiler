@@ -71,7 +71,7 @@ bool BlockMemOpAddrScalarizationPass::canInstBeScalarized(Instruction *InstForCh
         return false;
 
     // This check showes that InstForCheck is used only the address calculation chain.
-    if (InstForCheck->getNumUses() == 1)
+    if (InstForCheck->hasOneUse())
         return true;
 
     SmallVector<std::tuple<Instruction*, Instruction*, bool>, 32> UseStack;
@@ -111,7 +111,7 @@ bool BlockMemOpAddrScalarizationPass::canInstBeScalarized(Instruction *InstForCh
             return false;
         }
 
-        if (CurrUse->getNumUses()) {
+        if (!CurrUse->use_empty()) {
             Steps.push_back(CurrUse);
             for (auto U : CurrUse->users()) {
                 if (Instruction *I = dyn_cast<Instruction>(U)) {
