@@ -38,17 +38,11 @@ IGC_INITIALIZE_PASS_END(IGCLivenessAnalysis, PASS_FLAG2, PASS_DESCRIPTION2,
                         PASS_CFG_ONLY2, PASS_ANALYSIS2)
 #define PRINT(str) llvm::errs() << str
 
-IGCLivenessAnalysis::IGCLivenessAnalysis() : FunctionPass(ID) { UseWIAnalysis = true; };
-
-IGCLivenessAnalysis::IGCLivenessAnalysis(bool UseWiAnalysisVar /* = false */,
-                                         bool DumpToFileVar /* = false */,
-                                         const std::string &DumpFileNameVar)
-    : FunctionPass(ID) {
-    UseWIAnalysis = UseWiAnalysisVar;
-    DumpToFile = DumpToFileVar;
-    DumpFileName = DumpFileNameVar;
+IGCLivenessAnalysis::IGCLivenessAnalysis() : FunctionPass(ID) {
     initializeIGCLivenessAnalysisPass(*PassRegistry::getPassRegistry());
-}
+    UseWIAnalysis = true;
+};
+
 
 unsigned int IGCLivenessAnalysis::registerSizeInBytes() {
     if (CGCtx->platform.isProductChildOf(IGFX_PVC))
@@ -73,60 +67,6 @@ SIMDMode IGCLivenessAnalysis::bestGuessSIMDSize() {
     return SIMDMode::SIMD8;
 }
 
-void IGCLivenessAnalysis::printNames(const ValueSet &Set, std::string &Name) {
-    for (auto *val : Set) {
-        llvm::raw_string_ostream Rso(Name);
-        // false means don't print type
-        val->printAsOperand(Rso, false);
-        Rso << ", ";
-    }
-}
-
-int getAmountOfBB(llvm::Value *Val) {
-    llvm::SmallPtrSet<llvm::BasicBlock *, 16> BBSet;
-    for (auto U : Val->users()) {
-
-        auto UserInst = llvm::dyn_cast<Instruction>(U);
-        if (!UserInst)
-            continue;
-        auto UserBB = UserInst->getParent();
-        BBSet.insert(UserBB);
-    }
-    return BBSet.size();
-}
-
-void IGCLivenessAnalysis::printDefNames(const ValueSet &Set,
-                                        std::string &Name) {
-
-    for (auto *Val : Set) {
-        llvm::raw_string_ostream Rso(Name);
-        // false means don't print type
-        Val->printAsOperand(Rso, false);
-        int HowManyBB = getAmountOfBB(Val);
-        Rso << "(" << std::to_string(Val->getNumUses())
-            << ")[" + std::to_string(HowManyBB) << "], ";
-    }
-}
-
-void IGCLivenessAnalysis::printPhi(const PhiSet &Set, std::string &Output) {
-
-    if (Set.empty())
-        return;
-
-    Output += "PHIS:\t[\t" + std::to_string(Set.size()) + "\t] ";
-    for (const auto& Elem : Set) {
-        auto &OneBBSet = Elem.second;
-        unsigned int Size = OneBBSet.size();
-        if (PrinterType > 1) {
-            Output += "{ ";
-            printNames(OneBBSet, Output);
-            Output += "} ";
-            Output += "(" + std::to_string(Size) + ")";
-        }
-    }
-    Output += "\n";
-}
-
 ValueSet IGCLivenessAnalysis::getDefs(llvm::BasicBlock &BB) {
 
     ValueSet &BBIn = In[&BB];
@@ -138,72 +78,6 @@ ValueSet IGCLivenessAnalysis::getDefs(llvm::BasicBlock &BB) {
             Difference.insert(elem);
 
     return Difference;
-}
-
-void IGCLivenessAnalysis::printDefs(const ValueSet &In, const ValueSet &Out,
-                                    std::string &Output) {
-    ValueSet Difference, Common, Kills;
-
-    for (auto *elem : Out)
-        if (!In.count(elem))
-            Difference.insert(elem);
-
-    for (auto *elem : Out)
-        if (In.count(elem))
-            Common.insert(elem);
-
-    for (auto *elem : In)
-        if (!Common.count(elem))
-            Kills.insert(elem);
-
-    if (!Kills.empty()) {
-        Output += "KILL:\t[\t" + std::to_string(Kills.size()) + "\t] ";
-        if (PrinterType > 2)
-            printNames(Kills, Output);
-        Output += "\n";
-    }
-
-    if (!Difference.empty()) {
-        Output += "DEF:\t[\t" + std::to_string(Difference.size()) + "\t] ";
-        if (PrinterType > 2)
-            printDefNames(Difference, Output);
-        Output += "\n";
-    }
-}
-
-void IGCLivenessAnalysis::printName(llvm::Value *Val, std::string &String) {
-    llvm::raw_string_ostream Rso(String);
-    // false means don't print type
-    Val->printAsOperand(Rso, false);
-}
-
-void IGCLivenessAnalysis::printSets(llvm::BasicBlock *BB, std::string &Output,
-                                    unsigned int SIMD) {
-    if (PrinterType <= 0)
-        return;
-
-    Output += "block: " + BB->getName().str() + " ";
-    Output += "function: " + BB->getParent()->getName().str() + "\n";
-
-    ValueSet &PtrSetIn = In[BB];
-    ValueSet &PtrSetOut = Out[BB];
-    PhiSet &PtrSetPhi = InPhi[BB];
-
-    printPhi(PtrSetPhi, Output);
-
-    Output += "IN: \t[\t" + std::to_string(PtrSetIn.size()) + "\t] ";
-    if (PrinterType > 2)
-        printNames(PtrSetIn, Output);
-    Output += "\n";
-
-    printDefs(PtrSetIn, PtrSetOut, Output);
-
-    Output += "OUT:\t[\t" + std::to_string(PtrSetOut.size()) + "\t] ";
-    if (PrinterType > 2)
-        printNames(PtrSetOut, Output);
-    Output += "\n";
-
-    intraBlock(*BB, Output, SIMD);
 }
 
 // for every successor we take all of it's IN values
@@ -325,30 +199,6 @@ unsigned int IGCLivenessAnalysis::estimateSizeInBytes(ValueSet &Set,
     return Result;
 }
 
-void IGCLivenessAnalysis::printInstruction(llvm::Instruction *Inst,
-                                           std::string &Str) {
-    llvm::raw_string_ostream rso(Str);
-    Inst->print(rso, false);
-    rso << "\n";
-}
-
-void IGCLivenessAnalysis::printIntraBlock(llvm::BasicBlock &BB,
-                                          std::string &Output,
-                                          InsideBlockPressureMap &BBListing) {
-    for (auto &I : BB) {
-        llvm::Instruction *Inst = &I;
-        if (UseWIAnalysis && WI->isUniform(Inst)) {
-            Output += "U: ";
-        } else {
-            Output += "N: ";
-        }
-        unsigned int SizeInBytes = BBListing[Inst];
-        unsigned int AmountOfRegistersRoundUp = bytesToRegisters(SizeInBytes);
-        Output += std::to_string(SizeInBytes) + " (" +
-                  std::to_string(AmountOfRegistersRoundUp) + ")" + "    \t";
-        printInstruction(Inst, Output);
-    }
-}
 
 void IGCLivenessAnalysis::collectPressureForBB(
     llvm::BasicBlock &BB, InsideBlockPressureMap &BBListing,
@@ -373,21 +223,83 @@ void IGCLivenessAnalysis::collectPressureForBB(
     }
 }
 
-void IGCLivenessAnalysis::intraBlock(llvm::BasicBlock &BB, std::string &Output,
+bool IGCLivenessAnalysis::runOnFunction(llvm::Function &F) {
+
+    if (UseWIAnalysis)
+        WI = &getAnalysis<WIAnalysis>();
+    CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    livenessAnalysis(F);
+
+    return true;
+}
+
+char IGCRegisterPressurePrinter::ID = 0;
+// Register pass to igc-opt
+#define PASS_FLAG1 "igc-pressure-printer"
+#define PASS_DESCRIPTION1 "prints register pressure estimation"
+#define PASS_CFG_ONLY1 false
+#define PASS_ANALYSIS1 false
+IGC_INITIALIZE_PASS_BEGIN(IGCRegisterPressurePrinter, PASS_FLAG2, PASS_DESCRIPTION2,
+                          PASS_CFG_ONLY2, PASS_ANALYSIS2)
+IGC_INITIALIZE_PASS_DEPENDENCY(WIAnalysis)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(IGCFunctionExternalRegPressureAnalysis)
+IGC_INITIALIZE_PASS_DEPENDENCY(IGCLivenessAnalysis)
+IGC_INITIALIZE_PASS_END(IGCRegisterPressurePrinter, PASS_FLAG1, PASS_DESCRIPTION1,
+                        PASS_CFG_ONLY1, PASS_ANALYSIS1)
+#define PRINT(str) llvm::errs() << str
+
+IGCRegisterPressurePrinter::IGCRegisterPressurePrinter() : FunctionPass(ID) {
+    initializeIGCRegisterPressurePrinterPass(*PassRegistry::getPassRegistry());
+};
+
+IGCRegisterPressurePrinter::IGCRegisterPressurePrinter(const std::string& FileName) : FunctionPass(ID) {
+    initializeIGCRegisterPressurePrinterPass(*PassRegistry::getPassRegistry());
+    DumpFileName = FileName;
+    DumpToFile = true;
+};
+
+void IGCRegisterPressurePrinter::printInstruction(llvm::Instruction *Inst,
+                                           std::string &Str) {
+    llvm::raw_string_ostream rso(Str);
+    Inst->print(rso, false);
+    rso << "\n";
+}
+
+void IGCRegisterPressurePrinter::printIntraBlock(llvm::BasicBlock &BB,
+                                          std::string &Output,
+                                          InsideBlockPressureMap &BBListing) {
+    for (auto &I : BB) {
+        llvm::Instruction *Inst = &I;
+        if (WI->isUniform(Inst)) {
+            Output += "U: ";
+        } else {
+            Output += "N: ";
+        }
+        unsigned int SizeInBytes = BBListing[Inst];
+        unsigned int AmountOfRegistersRoundUp = RPE->bytesToRegisters(SizeInBytes);
+        Output += std::to_string(SizeInBytes) + " (" +
+                  std::to_string(AmountOfRegistersRoundUp) + ")" + "    \t";
+        printInstruction(Inst, Output);
+    }
+}
+
+
+void IGCRegisterPressurePrinter::intraBlock(llvm::BasicBlock &BB, std::string &Output,
                                      unsigned int SIMD) {
     InsideBlockPressureMap BBListing;
-    collectPressureForBB(BB, BBListing, SIMD);
+    RPE->collectPressureForBB(BB, BBListing, SIMD);
     printIntraBlock(BB, Output, BBListing);
 }
 
-void IGCLivenessAnalysis::dumpRegPressure(llvm::Function &F,
+void IGCRegisterPressurePrinter::dumpRegPressure(llvm::Function &F,
                                           unsigned int SIMD) {
     const char *Filter = IGC_GET_REGKEYSTRING(DumpRegPressureEstimateFilter);
     if (Filter && *Filter != '\0' && !std::regex_search(F.getName().str(), std::regex(Filter)))
         return;
 
     // force print all
-    PrinterType = 5;
+    PrinterType = 2;
 
     std::string Output;
     Output.reserve(32768);
@@ -395,7 +307,7 @@ void IGCLivenessAnalysis::dumpRegPressure(llvm::Function &F,
     IGC::Debug::DumpLock();
     {
         std::stringstream ss;
-        ss << F.getName().str() << DumpFileName << "_RegEst";
+        ss << F.getName().str() << "_" << DumpFileName << "_RegEst";
         auto Name = Debug::DumpName(IGC::Debug::GetShaderOutputName())
                         .Hash(CGCtx->hash)
                         .Type(CGCtx->type)
@@ -404,6 +316,8 @@ void IGCLivenessAnalysis::dumpRegPressure(llvm::Function &F,
                         .Extension("ll");
 
         std::ofstream OutputFile(Name.str());
+        OutputFile << "SIMD: " << SIMD << ", external pressure: " << ExternalPressure << "\n";
+
         for (BasicBlock &BB : F) {
             // prints information for one BB
             printSets(&BB, Output, SIMD);
@@ -417,15 +331,139 @@ void IGCLivenessAnalysis::dumpRegPressure(llvm::Function &F,
     IGC::Debug::DumpUnlock();
 }
 
-bool IGCLivenessAnalysis::runOnFunction(llvm::Function &F) {
-    if (UseWIAnalysis)
-        WI = &getAnalysis<WIAnalysis>();
-    CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    livenessAnalysis(F);
 
-    unsigned int SIMD = numLanes(bestGuessSIMDSize());
+
+void IGCRegisterPressurePrinter::printDefs(const ValueSet &In, const ValueSet &Out,
+                                    std::string &Output) {
+    ValueSet Difference, Common, Kills;
+
+    for (auto *elem : Out)
+        if (!In.count(elem))
+            Difference.insert(elem);
+
+    for (auto *elem : Out)
+        if (In.count(elem))
+            Common.insert(elem);
+
+    for (auto *elem : In)
+        if (!Common.count(elem))
+            Kills.insert(elem);
+
+    if (!Kills.empty()) {
+        Output += "KILL:\t[\t" + std::to_string(Kills.size()) + "\t] ";
+        if (PrinterType > 2)
+            printNames(Kills, Output);
+        Output += "\n";
+    }
+
+    if (!Difference.empty()) {
+        Output += "DEF:\t[\t" + std::to_string(Difference.size()) + "\t] ";
+        if (PrinterType > 2)
+            printDefNames(Difference, Output);
+        Output += "\n";
+    }
+}
+
+void IGCRegisterPressurePrinter::printName(llvm::Value *Val, std::string &String) {
+    llvm::raw_string_ostream Rso(String);
+    // false means don't print type
+    Val->printAsOperand(Rso, false);
+}
+
+void IGCRegisterPressurePrinter::printSets(llvm::BasicBlock *BB, std::string &Output,
+                                    unsigned int SIMD) {
+    if (PrinterType <= 0)
+        return;
+
+    Output += "block: " + BB->getName().str() + " ";
+    Output += "function: " + BB->getParent()->getName().str() + "\n";
+
+    ValueSet &PtrSetIn = RPE->getInSet()[BB];
+    ValueSet &PtrSetOut = RPE->getOutSet()[BB];
+    PhiSet &PtrSetPhi = RPE->getInPhiSet()[BB];
+
+    printPhi(PtrSetPhi, Output);
+
+    Output += "IN: \t[\t" + std::to_string(PtrSetIn.size()) + "\t] ";
+    if (PrinterType > 2)
+        printNames(PtrSetIn, Output);
+    Output += "\n";
+
+    printDefs(PtrSetIn, PtrSetOut, Output);
+
+    Output += "OUT:\t[\t" + std::to_string(PtrSetOut.size()) + "\t] ";
+    if (PrinterType > 2)
+        printNames(PtrSetOut, Output);
+    Output += "\n";
+
+    intraBlock(*BB, Output, SIMD);
+}
+
+void IGCRegisterPressurePrinter::printNames(const ValueSet &Set, std::string &Name) {
+    for (auto *val : Set) {
+        llvm::raw_string_ostream Rso(Name);
+        // false means don't print type
+        val->printAsOperand(Rso, false);
+        Rso << ", ";
+    }
+}
+
+int getAmountOfBB(llvm::Value *Val) {
+    llvm::SmallPtrSet<llvm::BasicBlock *, 16> BBSet;
+    for (auto U : Val->users()) {
+
+        auto UserInst = llvm::dyn_cast<Instruction>(U);
+        if (!UserInst)
+            continue;
+        auto UserBB = UserInst->getParent();
+        BBSet.insert(UserBB);
+    }
+    return BBSet.size();
+}
+
+void IGCRegisterPressurePrinter::printDefNames(const ValueSet &Set,
+                                        std::string &Name) {
+
+    for (auto *Val : Set) {
+        llvm::raw_string_ostream Rso(Name);
+        // false means don't print type
+        Val->printAsOperand(Rso, false);
+        int HowManyBB = getAmountOfBB(Val);
+        Rso << "(" << std::to_string(Val->getNumUses())
+            << ")[" + std::to_string(HowManyBB) << "], ";
+    }
+}
+
+void IGCRegisterPressurePrinter::printPhi(const PhiSet &Set, std::string &Output) {
+
+    if (Set.empty())
+        return;
+
+    Output += "PHIS:\t[\t" + std::to_string(Set.size()) + "\t] ";
+    for (auto Elem : Set) {
+        auto &OneBBSet = Elem.second;
+        unsigned int Size = OneBBSet.size();
+        if (PrinterType > 1) {
+            Output += "{ ";
+            printNames(OneBBSet, Output);
+            Output += "} ";
+            Output += "(" + std::to_string(Size) + ")";
+        }
+    }
+    Output += "\n";
+}
+
+bool IGCRegisterPressurePrinter::runOnFunction(llvm::Function &F) {
+
+    unsigned int ExternalPressure = getAnalysis<IGCFunctionExternalRegPressureAnalysis>().getExternalPressureForFunction(&F);
+    RPE = &getAnalysis<IGCLivenessAnalysis>();
+    WI = &getAnalysis<WIAnalysis>();
+    CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
+    unsigned int SIMD = numLanes(RPE->bestGuessSIMDSize());
 
     if (DumpToFile) {
+        PrinterType = 1;
         dumpRegPressure(F, SIMD);
     } else {
         // basically only for LIT testing
@@ -434,9 +472,9 @@ bool IGCLivenessAnalysis::runOnFunction(llvm::Function &F) {
         // helps to reduce printing time, by preemptively allocating
         // memory
         Output.reserve(32768);
+        Output += "SIMD: " + std::to_string(SIMD) + ", external pressure: " + std::to_string(ExternalPressure) + "\n";
         for (BasicBlock &BB : F) {
-            // why 16? because test is written for 16
-            printSets(&BB, Output, 16);
+            printSets(&BB, Output, SIMD);
         }
         PRINT(Output);
         Output.clear();
@@ -445,8 +483,3 @@ bool IGCLivenessAnalysis::runOnFunction(llvm::Function &F) {
     return true;
 }
 
-FunctionPass *IGC::createIGCEarlyRegEstimator(bool UseWIAnalysis /*= false*/,
-                                              bool DumpToFile /* = false */,
-                                              std::string DumpFileName) {
-    return new IGCLivenessAnalysis(UseWIAnalysis, DumpToFile, DumpFileName);
-}

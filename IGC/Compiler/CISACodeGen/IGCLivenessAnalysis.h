@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "DebugInfo/VISAModule.hpp"
 #include "Probe/Assertion.h"
 #include "ShaderCodeGen.hpp"
+#include "IGCFunctionExternalPressure.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/DIBuilder.h"
@@ -19,17 +20,7 @@ SPDX-License-Identifier: MIT
 
 using namespace IGC;
 
-typedef std::unordered_map<llvm::Value *, unsigned int> InclusionSet;
-typedef llvm::SmallPtrSet<llvm::Value *, 16> ValueSet;
-typedef std::unordered_map<llvm::BasicBlock *, ValueSet> DFSet;
-typedef std::unordered_map<llvm::BasicBlock *, ValueSet> PhiSet;
-typedef std::unordered_map<llvm::BasicBlock *, PhiSet> InPhiSet;
-typedef std::unordered_map<llvm::Value *, unsigned int> InsideBlockPressureMap;
-
 namespace IGC {
-FunctionPass *
-createIGCEarlyRegEstimator(bool UseWIAnalysis = false, bool DumpToFIle = false,
-                           std::string DumpFileName = "RegPressureEstimate.ll");
 
 class IGCLivenessAnalysis : public llvm::FunctionPass {
     // contains all values that liveIn into this block
@@ -44,26 +35,11 @@ class IGCLivenessAnalysis : public llvm::FunctionPass {
     // but sometimes it can be useful to collect at least some
     // pressure information before
     bool UseWIAnalysis = false;
-    bool DumpToFile = false;
-    std::string DumpFileName = "default";
-    // controls verbocity of
-    unsigned PrinterType = IGC_GET_FLAG_VALUE(RegPressureVerbocity);
 
     WIAnalysis *WI = nullptr;
     IGC::CodeGenContext *CGCtx = nullptr;
 
   public:
-    static char ID;
-    llvm::StringRef getPassName() const override {
-        return "IGCLivenessAnalysis";
-    }
-
-    IGCLivenessAnalysis();
-    IGCLivenessAnalysis(
-        bool UseWIAnalysis, bool DumpToFile,
-        const std::string &DumpFileName);
-
-    virtual ~IGCLivenessAnalysis() {}
 
     // returns all definitions that were made in the block
     // computed by taking difference between In and Out,
@@ -75,6 +51,11 @@ class IGCLivenessAnalysis : public llvm::FunctionPass {
     const InPhiSet &getInPhiSet() const { return InPhi; }
     DFSet &getOutSet() { return Out; }
     const DFSet &getOutSet() const { return Out; }
+
+    unsigned int estimateSizeInBytes(ValueSet &Set, llvm::Function &F, unsigned int SIMD);
+    void collectPressureForBB(llvm::BasicBlock &BB,
+                              InsideBlockPressureMap &BBListing,
+                              unsigned int SIMD);
 
     SIMDMode bestGuessSIMDSize();
     // I expect it to be used as
@@ -140,14 +121,12 @@ class IGCLivenessAnalysis : public llvm::FunctionPass {
         return HottestBB;
     }
 
-    unsigned int estimateSizeInBytes(ValueSet &Set, llvm::Function &F,
-                                     unsigned int SIMD);
-
     void releaseMemory() override {
         In.clear();
         InPhi.clear();
         Out.clear();
     }
+
 
     // if you need to recompute pressure analysis after modifications were made
     // that can potentially change In Out sets, we need to update them, it's fast
@@ -163,38 +142,68 @@ class IGCLivenessAnalysis : public llvm::FunctionPass {
     }
     void livenessAnalysis(llvm::Function &F);
 
-  private:
-    void dumpRegPressure(llvm::Function &F, unsigned int SIMD);
-    void printInstruction(llvm::Instruction *Inst, std::string &Str);
-    void printNames(const ValueSet &Set, std::string &name);
-    void printName(llvm::Value *Val, std::string &String);
-    void printDefNames(const ValueSet &Set, std::string &name);
-    void printSets(llvm::BasicBlock *BB, std::string &Output,
-                   unsigned int SIMD);
-    void printDefs(const ValueSet &In, const ValueSet &Out,
-                   std::string &Output);
-    void printPhi(const PhiSet &Set, std::string &Output);
-    void printIntraBlock(llvm::BasicBlock &BB, std::string &Output,
-                         InsideBlockPressureMap &BBListing);
-
-    unsigned int registerSizeInBytes();
-    void collectPressureForBB(llvm::BasicBlock &BB,
-                              InsideBlockPressureMap &BBListing,
-                              unsigned int SIMD);
-    void intraBlock(llvm::BasicBlock &BB, std::string &Output,
-                    unsigned int SIMD);
-    void computeHeatMap();
-
-    void mergeSets(ValueSet *OutSet, llvm::BasicBlock *Succ);
-    void combineOut(llvm::BasicBlock *BB, ValueSet *Set);
-    void addToPhiSet(llvm::PHINode *Phi, PhiSet *InPhiSet);
-    void processBlock(llvm::BasicBlock *BB, ValueSet &Set, PhiSet *PhiSet);
-
+    static char ID;
+    llvm::StringRef getPassName() const override { return "IGCLivenessAnalysis"; }
+    IGCLivenessAnalysis();
+    virtual ~IGCLivenessAnalysis() {}
     virtual bool runOnFunction(llvm::Function &F) override;
     virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
         AU.setPreservesAll();
         AU.addRequired<CodeGenContextWrapper>();
         AU.addRequired<WIAnalysis>();
     }
+  private:
+
+    unsigned int registerSizeInBytes();
+    void mergeSets(ValueSet *OutSet, llvm::BasicBlock *Succ);
+    void combineOut(llvm::BasicBlock *BB, ValueSet *Set);
+    void addToPhiSet(llvm::PHINode *Phi, PhiSet *InPhiSet);
+    void processBlock(llvm::BasicBlock *BB, ValueSet &Set, PhiSet *PhiSet);
+
 };
+
+
+class IGCRegisterPressurePrinter : public llvm::FunctionPass {
+
+    IGCLivenessAnalysis *RPE = nullptr;
+    WIAnalysis *WI = nullptr;
+    CodeGenContext *CGCtx = nullptr;
+
+    bool DumpToFile = false;
+    std::string DumpFileName = "default";
+    // controls printer verbocity
+    // 1 -> print instruction dump
+    // 2 -> print with phi listing
+    // 3 -> print with ssa value names DEF, KILL, IN, OUT
+    unsigned int PrinterType = IGC_GET_FLAG_VALUE(RegPressureVerbocity);
+    // maximum potential calling context pressure of a function
+    unsigned int ExternalPressure = 0;
+
+    void intraBlock(llvm::BasicBlock &BB, std::string &Output, unsigned int SIMD);
+    void dumpRegPressure(llvm::Function &F, unsigned int SIMD);
+    void printInstruction(llvm::Instruction *Inst, std::string &Str);
+    void printNames(const ValueSet &Set, std::string &name);
+    void printName(llvm::Value *Val, std::string &String);
+    void printDefNames(const ValueSet &Set, std::string &name);
+    void printSets(llvm::BasicBlock *BB, std::string &Output, unsigned int SIMD);
+    void printDefs(const ValueSet &In, const ValueSet &Out, std::string &Output);
+    void printPhi(const PhiSet &Set, std::string &Output);
+    void printIntraBlock(llvm::BasicBlock &BB, std::string &Output, InsideBlockPressureMap &BBListing);
+
+    public:
+    llvm::StringRef getPassName() const override { return "IGCRegPressurePrinter"; }
+    virtual ~IGCRegisterPressurePrinter() {}
+    virtual bool runOnFunction(llvm::Function &F) override;
+    virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+        AU.setPreservesAll();
+        AU.addRequired<IGCLivenessAnalysis>();
+        AU.addRequired<CodeGenContextWrapper>();
+        AU.addRequired<WIAnalysis>();
+        AU.addRequired<IGCFunctionExternalRegPressureAnalysis>();
+    }
+    IGCRegisterPressurePrinter();
+    IGCRegisterPressurePrinter(const std::string& FileName);
+    static char ID;
+};
+
 }; // namespace IGC
