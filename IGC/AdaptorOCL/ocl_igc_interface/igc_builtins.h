@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "cif/common/cif.h"
 
 #include "cif/macros/enable.h"
+#include "OCLAPI/oclapi.h"
 
 namespace IGC {
 
@@ -50,7 +51,7 @@ CIF_DEFINE_INTERFACE_VER(IgcBuiltins, 1) {
     CIF_INHERIT_CONSTRUCTOR();
 
     // Returns whether default work-group or sub-group sort is present in builtins
-    virtual bool DefaultGroupSortSupported(GroupSortMemoryScope::MemoryScope_t scope,
+    OCL_API_CALL virtual bool DefaultGroupSortSupported(GroupSortMemoryScope::MemoryScope_t scope,
                                            GroupSortKeyType::KeyType_t keyType,
                                            bool isKeyValue,
                                            bool isJointSort) const;
@@ -63,7 +64,7 @@ CIF_DEFINE_INTERFACE_VER(IgcBuiltins, 1) {
     // rangeSize -- work-group or sub-group size respectively
     //
     // For key-only sort pass valueTypeSizeInBytes = 0
-    virtual long DefaultGroupJointSortMemoryRequired(GroupSortMemoryScope::MemoryScope_t scope,
+    OCL_API_CALL virtual long DefaultGroupJointSortMemoryRequired(GroupSortMemoryScope::MemoryScope_t scope,
                                                      long totalItems,
                                                      long rangeSize,
                                                      long keyTypeSizeInBytes,
@@ -77,7 +78,7 @@ CIF_DEFINE_INTERFACE_VER(IgcBuiltins, 1) {
     // rangeSize -- work-group or sub-group size respectively
     //
     // For key-only sort pass valueTypeSizeInBytes = 0
-    virtual long DefaultGroupPrivateSortMemoryRequired(GroupSortMemoryScope::MemoryScope_t scope,
+    OCL_API_CALL virtual long DefaultGroupPrivateSortMemoryRequired(GroupSortMemoryScope::MemoryScope_t scope,
                                                        long itemsPerWorkItem,
                                                        long rangeSize,
                                                        long keyTypeSizeInBytes,
