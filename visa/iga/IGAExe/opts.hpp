@@ -144,7 +144,7 @@ template <typename O> struct Opt {
   Opt(const char *g, const char *s, const char *l, const char *t, const char *d,
       const char *xd,
       int attrs, // OptAttrs
-      Setter<O> setVal, DefaultSetter<O> setDflt)
+      const Setter<O>& setVal, const DefaultSetter<O>& setDflt)
       : groupPrefix(g), shortName(s), longName(l), typeName(t), description(d),
         extendedDescription(xd), attributes((OptAttrs)attrs), setValue(setVal),
         setDefault(setDflt), timesMatched(0) {}
@@ -153,7 +153,7 @@ template <typename O> struct Opt {
   Opt(const char *g, const char *s, const char *l, const char *t, const char *d,
       const char *xd,
       int attrs, // OptAttrs
-      Setter<O> setVal)
+      const Setter<O>& setVal)
       : groupPrefix(g), shortName(s), longName(l), typeName(t), description(d),
         extendedDescription(xd), setValue(setVal), setDefault(noDefault()),
         timesMatched(0), attributes((OptAttrs)attrs) {}
@@ -571,14 +571,14 @@ public:
 
   void defineArg(const char *type, const char *desc, const char *extDesc,
                  int attrs, // OptAttrs
-                 Setter<O> setter) {
+                 const Setter<O>& setter) {
     Opt<O> temp(nullptr, nullptr, nullptr, type, desc, extDesc, attrs, setter);
     args.emplace_back(temp);
   }
 
   void defineArg(const char *type, const char *desc, const char *extDesc,
                  int attrs, // OptAttrs
-                 Setter<O> setter, DefaultSetter<O> defaultSetter) {
+                 const Setter<O>& setter, const DefaultSetter<O>& defaultSetter) {
     Opt<O> temp(nullptr, nullptr, nullptr, type, desc, extDesc, attrs, setter,
                 defaultSetter);
     args.emplace_back(temp);

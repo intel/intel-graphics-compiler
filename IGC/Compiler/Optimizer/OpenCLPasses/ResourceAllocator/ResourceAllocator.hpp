@@ -29,9 +29,6 @@ namespace IGC
         /// @brief  Constructor
         ResourceAllocator();
 
-        /// @brief  Destructor
-        ~ResourceAllocator() {}
-
         /// @brief  Provides name of pass
         virtual llvm::StringRef getPassName() const override
         {

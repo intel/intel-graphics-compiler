@@ -35,10 +35,10 @@ using namespace IGC::IGCMD;
 namespace {
 
     class AdvMemOpt : public FunctionPass {
-        DominatorTree* DT;
-        LoopInfo* LI;
-        PostDominatorTree* PDT;
-        WIAnalysis* WI;
+        DominatorTree* DT = nullptr;
+        LoopInfo* LI = nullptr;
+        PostDominatorTree* PDT = nullptr;
+        WIAnalysis* WI = nullptr;
 
     public:
         static char ID;

@@ -194,10 +194,6 @@ bool ResourceLoopAnalysis::runOnFunction(Function &F) {
             auto PI = &*prevMemIter;
             IGC_ASSERT(LoopMap.find(PI) != LoopMap.end());
             LoopMap[PI] |= MarkResourceLoopEnd;
-            prevMemIter = BB->end();
-            loopRes = nullptr;
-            loopSamp = nullptr;
-            loopOpTy = 0;
           }
           LoopMap[I] = MarkResourceLoopStart;
           loopRes = curRes;

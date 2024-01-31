@@ -5749,8 +5749,8 @@ namespace IGC
 
                     vISA::GenSymEntry fEntry;
                     IGC_ASSERT(F.getName().size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
-                    memset(fEntry.s_name, '0', vISA::MAX_SYMBOL_NAME_LENGTH);
                     strcpy_s(fEntry.s_name, vISA::MAX_SYMBOL_NAME_LENGTH, F.getName().str().c_str());
+                    fEntry.s_name[vISA::MAX_SYMBOL_NAME_LENGTH - 1] = 0; // ensure null termination when buffer is too small
 
                     // Query vISA for the function's byte offset within the compiled module
                     // The actual binary offset data should point to the function definition
@@ -5778,8 +5778,8 @@ namespace IGC
 
                 vISA::GenSymEntry fEntry;
                 IGC_ASSERT(F.getName().size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
-                memset(fEntry.s_name, '0', vISA::MAX_SYMBOL_NAME_LENGTH);
                 strcpy_s(fEntry.s_name, vISA::MAX_SYMBOL_NAME_LENGTH, F.getName().str().c_str());
+                fEntry.s_name[vISA::MAX_SYMBOL_NAME_LENGTH - 1] = 0; // ensure null termination when buffer is too small
 
                 if (F.isDeclaration())
                 {

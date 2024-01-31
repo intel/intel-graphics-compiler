@@ -386,6 +386,7 @@ void PayloadMapping::ValidateNumberofSources(EOPCODE opCode, bool isCube, uint& 
         {
         case 1:
             numberofSrcs++;
+            [[fallthrough]];
         case 2:
             numberofSrcs++;
             break;
@@ -445,6 +446,7 @@ void PayloadMapping::ValidateNumberofSources(EOPCODE opCode, bool isCube, uint& 
         {
         case 1:
             numberofSrcs++;
+            [[fallthrough]];
         case 2:
             numberofSrcs++;
             break;

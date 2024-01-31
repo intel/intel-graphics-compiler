@@ -1729,7 +1729,7 @@ void GEDIns::RecordSingleFragment(vector<ged_ins_field_mapping_fragment_t> &mapp
                                   const ged_ins_field_position_fragment_t &position) const
 {
     const uint8_t normalizedLowBit = position._lowBit - position._dwordIndex * GED_DWORD_BITS - position._shift;
-    ged_ins_field_mapping_fragment_t fragment;
+    ged_ins_field_mapping_fragment_t fragment = {};
     fragment._fixed = false;
     fragment._from._lowBit = normalizedLowBit;
     fragment._from._highBit = normalizedLowBit + position._highBit - position._lowBit;

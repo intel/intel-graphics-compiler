@@ -456,7 +456,7 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
                    extraAttrs);
   }
 
-  void setHdcHwBlock(const std::string& msgSym, std::string msgDesc, SendOp op,
+  void setHdcHwBlock(const std::string& msgSym, const std::string& msgDesc, SendOp op,
                      int addrSize, int blockCountOffset, int blockCountLen,
                      MessageInfo::Attr extraAttrs) {
     extraAttrs |= MessageInfo::Attr::TRANSPOSED;
@@ -466,9 +466,8 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
                     : decodeMDC_DB_HW(blockCountOffset, blockCountLen);
     std::stringstream ss;
     ss << msgDesc << " x" << elems;
-    msgDesc = ss.str();
 
-    setHdcMessageX(msgSym, msgDesc, op, addrSize, 256, 256, elems,
+    setHdcMessageX(msgSym, ss.str(), op, addrSize, 256, 256, elems,
                    1, // SIMD
                    extraAttrs);
   }
@@ -1363,9 +1362,17 @@ void MessageDecoderHDC::tryDecodeDC1() {
           }
         });
 
-    if (isHword && isUnaligned)
+    if (subType == 2) {
+      setDoc(isRead ? "7036" : "7040");
+      result.info.description = "a64 dual block ";
+      result.info.description += (isRead ? " read" : " write");
+      result.info.symbol = isRead ? "MSD1R_A64_OWDB" : "MSD1W_A64_OWDB";
+      result.info.addrSizeBits = 64;
+      decodeMDC_HR();
+      break; // dual block (error)
+    } else if (isHword && isUnaligned) {
       setDoc(isRead ? "7034" : "7038", isRead ? "44739" : "44750", nullptr);
-    else if (isHword && !isUnaligned) {
+    } else if (isHword && !isUnaligned) {
       bool supported = platform() >= Platform::XE_HPG;
       setDoc(isRead ? "20861" : "20862");
       if (!supported)
@@ -1376,14 +1383,6 @@ void MessageDecoderHDC::tryDecodeDC1() {
     } else if (!isHword && !isUnaligned) {
       setDoc("7039", isRead ? "44741" : "44752",
              nullptr); // MSD1R_A64_OWB|MSD1W_A64_OWB
-    } else if (subType == 2) {
-      setDoc(isRead ? "7036" : "7040");
-      result.info.description = "a64 dual block ";
-      result.info.description += (isRead ? " read" : " write");
-      result.info.symbol = isRead ? "MSD1R_A64_OWDB" : "MSD1W_A64_OWDB";
-      result.info.addrSizeBits = 64;
-      decodeMDC_HR();
-      break; // dual block (error)
     }
     //
     std::string msgSym = isRead ? "load_block" : "store_block";

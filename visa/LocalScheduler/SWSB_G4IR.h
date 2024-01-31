@@ -291,7 +291,7 @@ public:
   SBNode *tokenReusedNode =
       nullptr; // For global token reuse optimization, the node whose token is
                // reused by current one.
-  SB_INST_PIPE ALUPipe;
+  SB_INST_PIPE ALUPipe = PIPE_NONE;
   SBDISTDEP_VECTOR distDep;
   union {
     DISTDEPINFO info;
@@ -304,12 +304,14 @@ public:
 
   // FIXME: This needs to be removed, default ctor doesn't make sense at all for
   // this class.
-  SBNode() {}
+  SBNode()
+  {
+    clearAllDistInfo();
+  }
 
   SBNode(uint32_t id, int ALUId, uint32_t BBId, G4_INST *i)
       : nodeID(id), ALUID(ALUId), BBID(BBId),
         footprints(Opnd_total_num, nullptr) {
-    ALUPipe = PIPE_NONE;
     clearAllDistInfo();
     if (i->isDpas()) {
       G4_InstDpas *dpasInst = i->asDpasInst();

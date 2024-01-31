@@ -73,18 +73,18 @@ struct ModelString {
 template <typename... Ts>
 static inline void iga_format_to_helper(std::ostream &) {}
 template <typename T, typename... Ts>
-static inline void iga_format_to_helper(std::ostream &os, T t, Ts... ts) {
+static inline void iga_format_to_helper(std::ostream &os, const T& t, const Ts&... ts) {
   os << t;
   iga_format_to_helper(os, ts...);
 }
-template <typename... Ts> static inline std::string format(Ts... ts) {
+template <typename... Ts> static inline std::string format(const Ts&... ts) {
   std::stringstream ss;
-  iga_format_to_helper(ss, std::move(ts)...);
+  iga_format_to_helper(ss, ts...);
   return ss.str();
 }
 template <typename... Ts>
-static inline void formatTo(std::ostream &os, Ts... ts) {
-  iga_format_to_helper(os, std::move(ts)...);
+static inline void formatTo(std::ostream &os, const Ts&... ts) {
+  iga_format_to_helper(os, ts...);
 }
 
 ///////////////////////////////////////////////////////////////////////////

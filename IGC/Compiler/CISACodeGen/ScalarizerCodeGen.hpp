@@ -22,7 +22,6 @@ namespace IGC
         static char ID;
 
         ScalarizerCodeGen();
-        ~ScalarizerCodeGen() {}
 
         virtual llvm::StringRef getPassName() const
         {

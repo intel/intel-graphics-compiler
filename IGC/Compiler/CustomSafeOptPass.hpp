@@ -226,7 +226,7 @@ namespace IGC
         }
 
     private:
-        llvm::Module* module;
+        llvm::Module* module = nullptr;
         llvm::Constant* replaceShaderConstant(llvm::Instruction* inst);
         llvm::Constant* ConstantFoldCmpInst(llvm::CmpInst* inst);
         llvm::Constant* ConstantFoldExtractElement(llvm::ExtractElementInst* inst);
