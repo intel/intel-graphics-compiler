@@ -730,14 +730,12 @@ bool preRA_Scheduler::runWithGRFSelection(unsigned &KernelPressure) {
     KernelPressure = rp.getMaxRP();
   }
 
-  unsigned ExtraRegs = 0;
-  if (kernel.grfMode.hasLargerGRFSameThreads()) {
-    // In RA extra registers might be needed to satisfy some restrictions,
-    // e.g. alignment, SIMD size, etc. So in order to avoid spill in GRF
-    // modes smaller than default, extra registers are added to reg pressure.
-    ExtraRegs =
-        (unsigned)(kernel.getNumRegTotal() * EXTRA_REGISTERS_FOR_RA / 100.0f);
-  }
+  // In RA extra registers might be needed to satisfy some restrictions,
+  // e.g. alignment, SIMD size, etc. So in order to avoid spill in GRF
+  // modes smaller than default, extra registers are added to reg pressure.
+  unsigned ExtraRegs =
+      (unsigned)(kernel.getNumRegTotal() * EXTRA_REGISTERS_FOR_RA / 100.0f);
+
   kernel.updateKernelByRegPressure(KernelPressure + ExtraRegs);
 
   return Changed;
