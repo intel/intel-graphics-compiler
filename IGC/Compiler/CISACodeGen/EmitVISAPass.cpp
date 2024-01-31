@@ -270,7 +270,7 @@ bool EmitPass::IsNoMaskAllowed(SDAG& sdag)
 {
     if (auto* I = dyn_cast<LoadInst>(sdag.m_root))
     {
-        if (IGC_IS_FLAG_ENABLED(UseVMaskPredicateForLoads))
+        if (IGC_IS_FLAG_ENABLED(UseVMaskPredicateForLoads) && shouldGenerateLSC(I))
             return true;
 
         BufferType bufType = DecodeBufferType(I->getPointerAddressSpace());
