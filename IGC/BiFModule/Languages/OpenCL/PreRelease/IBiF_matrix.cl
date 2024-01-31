@@ -172,7 +172,7 @@ SPDX-License-Identifier: MIT
   /* not supported, fallthrough */
 #define IMPLEMENT_BLOCK2D_LOAD_VNNI_TX(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, stride_opt) \
   /* not supported, fallthrough */
-#define IMPLEMENT_BLOCK2D_STORE(element_type, contrib_type, contrib_bitwidth, M, K, vec) \
+#define IMPLEMENT_BLOCK2D_STORE(element_type, contrib_type, contrib_bitwidth, M, K) \
   /* not supported, fallthrough */
 
 #define IMPLEMENT_BLOCK2D_LOAD_SG16_ROW_MAJOR(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, stride_opt) \
@@ -216,7 +216,7 @@ SPDX-License-Identifier: MIT
     *(__private OUT_VEC##M(u##contrib_type) *)dst = res; \
     return;
 
-#define IMPLEMENT_BLOCK2D_STORE_SG16(element_type, contrib_type, contrib_bitwidth, M, K, vec) \
+#define IMPLEMENT_BLOCK2D_STORE_SG16(element_type, contrib_type, contrib_bitwidth, M, K) \
     long offset = as_long(mem); \
     long baseoffset = offset & (~0x3f); /* align to 64-byte */ \
     int width = (sizeof (element_type)) * stride - 1; /* in bytes */ \
@@ -470,7 +470,7 @@ DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, 32, int, 32, 2, 16, 2x16, COL_M
       if (WI_rows == M && BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8) \
           && order == _ROW_MAJOR && address_space == AS_GLOBAL && elem_bitwidth > 8 \
           ) { \
-          IMPLEMENT_BLOCK2D_STORE##sg(element_type, contrib_type, contrib_bitwidth, M, K, src) \
+          IMPLEMENT_BLOCK2D_STORE##sg(element_type, contrib_type, contrib_bitwidth, M, K) \
       } \
       if (WI_rows == M && BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_CONT_IMPL && stride == stride_opt \
           && (M == 2 || M == 4 || M == 8) && order == _ROW_MAJOR \
@@ -955,10 +955,17 @@ DEFINE_B_B_16x64(local)
 #define DEFINE_STORE_IMPL_LARGE(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, stride_opt, address_space) \
   INLINE void MANGLE_STORE_NAME_##address_space(layout, sg, elem_bitwidth, shape, M) (char *mem, __private char *src, long stride) { \
       int sg_size = get_sub_group_size(); \
-      if (BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8) \
-          && order == _ROW_MAJOR && address_space == AS_GLOBAL && elem_bitwidth > 8 \
-          ) { \
-          IMPLEMENT_BLOCK2D_STORE##sg(element_type, contrib_type, contrib_bitwidth, M, K, src) \
+      if (BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= BLOCK2D_IMPL && M == 16 \
+          && order == _ROW_MAJOR && address_space == AS_GLOBAL && elem_bitwidth > 8) { \
+          __private char *c0 = src + 0 * 8 * (sizeof (int)); \
+          __private char *c1 = src + 1 * 8 * (sizeof (int)); \
+\
+          char *mem0 = mem; \
+          char *mem1 = mem + 8 * (sizeof (int)) * stride; \
+\
+          __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_global_pi64_v8i8(mem0, c0, stride); \
+          __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_global_pi64_v8i8(mem1, c1, stride); \
+          return; \
       } \
       contrib_type *ptr = (contrib_type *)mem; \
       int slid = get_sub_group_local_id(); \

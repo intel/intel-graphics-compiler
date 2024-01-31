@@ -8830,7 +8830,7 @@ namespace IGC
         LSC_CACHE_OPTS cacheOpts)
     {
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
-        VISA_Exec_Size execSize = visaExecSize(m_program->m_dispatchSize);
+        VISA_Exec_Size execSize = EXEC_SIZE_1;
         VISA_EMask_Ctrl mask = ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask);
         LSC_DATA_SHAPE_BLOCK2D dataShape2D{};
         dataShape2D.size = LSC_GetElementSize(elemSize, true);
