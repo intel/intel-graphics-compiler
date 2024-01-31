@@ -1419,13 +1419,6 @@ set(IGC_BUILD__MAIN_IGC_LIB_SUFFIXES
 set(IGC_BUILD__PROJ__igc_dll              "${IGC_BUILD__PROJ_NAME_PREFIX}${IGC_LIBRARY_NAME}_dll")
 set(IGC_BUILD__PROJ_LABEL__igc_dll        "${IGC_BUILD__PROJ__igc_dll}")
 
-set(IGC_BUILD__PROJ__igc_dll_SYMBOL_SCRIPT_NAME "igc_create_linker_script.sh")
-set(IGC_BUILD__PROJ__igc_dll_SYMBOL_SCRIPT_FULL_PATH ${CMAKE_CURRENT_SOURCE_DIR}/Scripts/${IGC_BUILD__PROJ__igc_dll_SYMBOL_SCRIPT_NAME})
-set(IGC_BUILD__PROJ__igc_dll_SYMBOL_SCRIPT_COPY_PATH ${CMAKE_CURRENT_SOURCE_DIR}/${IGC_BUILD__PROJ__igc_dll_SYMBOL_SCRIPT_NAME})
-
-set(IGC_BUILD__PROJ__igc_dll_LINKER_SCRIPT_NAME igc_symbols.ld)
-set(IGC_BUILD__PROJ__igc_dll_LINKER_SCRIPT_FULL_PATH ${CMAKE_CURRENT_SOURCE_DIR}/${IGC_BUILD__PROJ__igc_dll_LINKER_SCRIPT_NAME})
-
 #FCL
 set(IGC_BUILD__PROJ__fcl_dll              "${IGC_BUILD__PROJ_NAME_PREFIX}fcl_dll")
 set(IGC_BUILD__PROJ_LABEL__fcl_dll        "${IGC_BUILD__PROJ__fcl_dll}")
@@ -1595,35 +1588,7 @@ add_library("${IGC_BUILD__PROJ__igc_dll}" SHARED
     ${IGC_BUILD__SRC__IGC__igc_dll}
     ${IGC_BUILD__HDR__IGC__igc_dll}
     ${IGC_BUILD__RES__IGC__igc_dll}
-)
-
-if(UNIX)
-
-  #Copying script to current directory to elevate permissions - replaces file if already exists
-  file(
-      COPY ${IGC_BUILD__PROJ__igc_dll_SYMBOL_SCRIPT_FULL_PATH}
-      FILE_PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
-      DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}
   )
-
-  if(CMAKE_WDDM_LINUX OR CMAKE_WDDM_ANDROID)
-      set(IGC_BUILD__PROJ__igc_dll_BIF_LIBRARY_NAME "")
-  else()
-      set(IGC_BUILD__PROJ__igc_dll_BIF_LIBRARY_NAME "$<TARGET_FILE:${IGC_BUILD__PROJ__BiFLib_OCL}>")
-  endif()
-
-  add_custom_command(
-      TARGET "${IGC_BUILD__PROJ__igc_dll}"
-      PRE_LINK
-      COMMAND ${IGC_BUILD__PROJ__igc_dll_SYMBOL_SCRIPT_COPY_PATH} ${IGC_BUILD__PROJ__igc_dll_LINKER_SCRIPT_NAME} ${IGC_BUILD__PROJ__igc_dll_BIF_LIBRARY_NAME} $<TARGET_OBJECTS:${IGC_BUILD__PROJ__igc_dll}> --
-      COMMAND_EXPAND_LISTS
-      COMMENT "Creating linker script for custom symbol exporting"
-  )
-
-  #Using just created linker script from add_custom_command
-  target_link_libraries("${IGC_BUILD__PROJ__igc_dll}" PRIVATE -Wl,--version-script="${IGC_BUILD__PROJ__igc_dll_LINKER_SCRIPT_FULL_PATH}")
-
-endif()
 
 if(IGC_OPTION__LINK_KHRONOS_SPIRV_TRANSLATOR)
   target_link_libraries("${IGC_BUILD__PROJ__igc_dll}" PRIVATE LLVMSPIRVLib)
@@ -2074,7 +2039,6 @@ if(UNIX)
   endif()
   install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/ocl_igc_shared DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/igc COMPONENT igc-opencl-devel)
   install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/ocl_igc_interface DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/igc COMPONENT igc-opencl-devel)
-  install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/OCLAPI DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/igc COMPONENT igc-opencl-devel)
   install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/cif DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/igc COMPONENT igc-opencl-devel)
   install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/common/StateSaveAreaHeader.h DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/igc/common COMPONENT igc-opencl-devel)
 

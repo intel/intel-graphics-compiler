@@ -15,11 +15,10 @@ SPDX-License-Identifier: MIT
 #include "cif/export/pimpl_base.h"
 
 #include "cif/macros/enable.h"
-#include "OCLAPI/oclapi.h"
 
 namespace IGC{
 
-struct OCL_API_CALL TranslationErrorType
+struct TranslationErrorType
 {
     using ErrorCode_t = uint64_t;
     using ErrorCodeCoder = CIF::Coder<ErrorCode_t>;
@@ -35,7 +34,7 @@ struct OCL_API_CALL TranslationErrorType
 
 CIF_DECLARE_INTERFACE_PIMPL(OclTranslationOutput) : CIF::PimplBase
 {
-    OCL_API_CALL CIF_PIMPL_DECLARE_CONSTRUCTOR(CodeType::CodeType_t OutputType)
+    CIF_PIMPL_DECLARE_CONSTRUCTOR(CodeType::CodeType_t OutputType)
         : OutputType(OutputType), Error(TranslationErrorType::Unused)
     {
         BuildLog.CreateImpl();
@@ -43,37 +42,37 @@ CIF_DECLARE_INTERFACE_PIMPL(OclTranslationOutput) : CIF::PimplBase
         DebugData.CreateImpl();
     }
 
-    OCL_API_CALL bool Successful() const
+    bool Successful() const
     {
         return Error == TranslationErrorType::Success;
     }
 
-    OCL_API_CALL bool HasWarnings() const
+    bool HasWarnings() const
     {
         return false;
     }
 
-    OCL_API_CALL CIF::Builtins::BufferBase * GetBuildLog(CIF::Version_t bufferVersion)
+    CIF::Builtins::BufferBase * GetBuildLog(CIF::Version_t bufferVersion)
     {
         return BuildLog.GetVersion(bufferVersion);
     }
 
-    OCL_API_CALL CIF::Builtins::BufferBase * GetOutput(CIF::Version_t bufferVersion)
+    CIF::Builtins::BufferBase * GetOutput(CIF::Version_t bufferVersion)
     {
         return Output.GetVersion(bufferVersion);
     }
 
-    OCL_API_CALL CIF::Builtins::BufferBase * GetDebugData(CIF::Version_t bufferVersion)
+    CIF::Builtins::BufferBase * GetDebugData(CIF::Version_t bufferVersion)
     {
         return DebugData.GetVersion(bufferVersion);
     }
 
-    OCL_API_CALL CodeType::CodeType_t GetOutputType() const
+    CodeType::CodeType_t GetOutputType() const
     {
         return OutputType;
     }
 
-    OCL_API_CALL bool SetError(TranslationErrorType::ErrorCode_t e, const char * errString = nullptr)
+    bool SetError(TranslationErrorType::ErrorCode_t e, const char * errString = nullptr)
     {
         this->Error = e;
 
@@ -85,12 +84,12 @@ CIF_DECLARE_INTERFACE_PIMPL(OclTranslationOutput) : CIF::PimplBase
         return BuildLog->PushBackRawBytes(errString, len + 1);
     }
 
-    OCL_API_CALL bool AddWarning(const std::string & warnString)
+    bool AddWarning(const std::string & warnString)
     {
         return AddWarning(warnString.c_str(), warnString.size());
     }
 
-    OCL_API_CALL bool AddWarning(const char * warn, size_t warnLength)
+    bool AddWarning(const char * warn, size_t warnLength)
     {
         if((warn == nullptr) || (warnLength == 0)){
             return true;
@@ -118,13 +117,13 @@ CIF_DECLARE_INTERFACE_PIMPL(OclTranslationOutput) : CIF::PimplBase
     }
 
     template<typename T>
-    OCL_API_CALL bool SetSuccessfulAndCloneOutput(const T * data, size_t size)
+    bool SetSuccessfulAndCloneOutput(const T * data, size_t size)
     {
         this->Error = TranslationErrorType::Success;
         return Output->PushBackRawBytes(data, size);
     }
 
-    OCL_API_CALL bool CloneDebugData(const char * data, size_t size)
+    bool CloneDebugData(const char * data, size_t size)
     {
         return DebugData->PushBackRawBytes(data, size);
     }
