@@ -740,7 +740,8 @@ namespace IGC
         /// create symbol tables and GlobalHostAccessTable according to if it's zebin
         /// or patch-token formats
         void createSymbolAndGlobalHostAccessTables(bool hasSymbolTable,
-                                                   VISAKernel &pMainKernel);
+                                                   VISAKernel &pMainKernel,
+                                                   unsigned int scratchOffset);
 
         /// create relocation according to if it's zebin or patch-token formats
         void createRelocationTables(VISAKernel &pMainKernel);

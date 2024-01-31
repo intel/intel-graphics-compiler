@@ -8601,7 +8601,8 @@ int VISAKernelImpl::SetGTPinInit(void *buffer) {
   return VISA_SUCCESS;
 }
 
-int VISAKernelImpl::GetGTPinBuffer(void *&buffer, unsigned int &size) {
+int VISAKernelImpl::GetGTPinBuffer(void *&buffer, unsigned int &size,
+                                   unsigned int scratchOffset) {
   buffer = nullptr;
   size = 0;
 
@@ -8610,7 +8611,7 @@ int VISAKernelImpl::GetGTPinBuffer(void *&buffer, unsigned int &size) {
 
   auto gtpin = m_kernel->getGTPinData();
   if (gtpin) {
-    buffer = gtpin->getGTPinInfoBuffer(size);
+    buffer = gtpin->getGTPinInfoBuffer(size, scratchOffset);
   }
 
   return VISA_SUCCESS;

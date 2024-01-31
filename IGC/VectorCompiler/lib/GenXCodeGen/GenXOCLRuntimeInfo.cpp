@@ -876,7 +876,8 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
 
   void *GTPinBuffer = nullptr;
   unsigned GTPinBufferSize = 0;
-  CISA_CALL(VK->GetGTPinBuffer(GTPinBuffer, GTPinBufferSize));
+  CISA_CALL(VK->GetGTPinBuffer(GTPinBuffer, GTPinBufferSize,
+                               JitInfo->stats.spillMemUsed));
 
   auto *GTPinBytes = static_cast<char *>(GTPinBuffer);
   GTPinInfo gtpin{GTPinBytes, GTPinBytes + GTPinBufferSize};

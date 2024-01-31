@@ -6557,17 +6557,22 @@ namespace IGC
         pOutput->m_InstructionCount = jitInfo->stats.numAsmCountUnweighted;
         pOutput->m_BasicBlockCount = jitInfo->BBNum;
 
-        pMainKernel->GetGTPinBuffer(pOutput->m_gtpinBuffer, pOutput->m_gtpinBufferSize);
+        pOutput->m_scratchSpaceUsedBySpills =
+            IGC_IS_FLAG_SET(ForceScratchSpaceSize)
+                ? IGC_GET_FLAG_VALUE(ForceScratchSpaceSize)
+                : getSpillMemSizeWithFG(*m_program->entry,
+                                        jitInfo->stats.spillMemUsed, pFGA);
 
-        createSymbolAndGlobalHostAccessTables(hasSymbolTable, *pMainKernel);
+        pMainKernel->GetGTPinBuffer(pOutput->m_gtpinBuffer,
+                                    pOutput->m_gtpinBufferSize,
+                                    pOutput->m_scratchSpaceUsedBySpills);
+
+        createSymbolAndGlobalHostAccessTables(
+            hasSymbolTable, *pMainKernel, pOutput->m_scratchSpaceUsedBySpills);
         createRelocationTables(*pMainKernel);
         if (context->enableZEBinary())
             CreateFuncAttributeTable(pMainKernel, pFGA);
 
-        pOutput->m_scratchSpaceUsedBySpills =
-            IGC_IS_FLAG_SET(ForceScratchSpaceSize) ?
-            IGC_GET_FLAG_VALUE(ForceScratchSpaceSize) :
-            getSpillMemSizeWithFG(*m_program->entry, jitInfo->stats.spillMemUsed, pFGA);
         pOutput->m_numGRFSpillFill = jitInfo->stats.numGRFSpillFillWeighted;
 
         pOutput->setScratchSpaceUsedByShader(m_program->m_ScratchSpaceSize);
@@ -6636,7 +6641,7 @@ namespace IGC
         }
     }
 
-    void CEncoder::createSymbolAndGlobalHostAccessTables(bool hasSymbolTable, VISAKernel& pMainKernel)
+    void CEncoder::createSymbolAndGlobalHostAccessTables(bool hasSymbolTable, VISAKernel& pMainKernel, unsigned int scratchOffset)
     {
         CodeGenContext *context = m_program->GetContext();
         SProgramOutput *pOutput = m_program->ProgramOutput();
@@ -6658,7 +6663,8 @@ namespace IGC
                     unsigned size = 0;
                     if (sym.s_type != vISA::GenSymType::S_UNDEF) {
                         IGC_ASSERT(vbuilder->GetVISAKernel(sym.s_name) != nullptr);
-                        vbuilder->GetVISAKernel(sym.s_name)->GetGTPinBuffer(buffer, size);
+                      vbuilder->GetVISAKernel(sym.s_name)
+                          ->GetGTPinBuffer(buffer, size, scratchOffset);
                         pOutput->m_FuncGTPinInfoList.push_back({sym.s_name, buffer, size});
                     }
                 }
@@ -6712,7 +6718,7 @@ namespace IGC
                 // functions as well.
                 void* buffer = nullptr;
                 unsigned size = 0;
-                visaFunc->GetGTPinBuffer(buffer, size);
+                visaFunc->GetGTPinBuffer(buffer, size, 0);
                 pOutput->m_FuncGTPinInfoList.push_back({funcName, buffer, size});
             }
         }

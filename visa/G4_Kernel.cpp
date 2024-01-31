@@ -235,7 +235,8 @@ static void writeBuffer(std::vector<unsigned char> &buffer,
   bufferSize += numBytes;
 }
 
-void *gtPinData::getGTPinInfoBuffer(unsigned &bufferSize) {
+void *gtPinData::getGTPinInfoBuffer(unsigned &bufferSize,
+                                    unsigned int scratchOffset) {
   if (!gtpin_init && !gtpinInitFromL0) {
     bufferSize = 0;
     return nullptr;
@@ -370,7 +371,8 @@ void *gtPinData::getGTPinInfoBuffer(unsigned &bufferSize) {
   if (t.scratch_area_size) {
     gtpin::igc::igc_token_scratch_area_info_t scratchSlotData;
     scratchSlotData.scratch_area_size = t.scratch_area_size;
-    scratchSlotData.scratch_area_offset = nextScratchFree;
+    vISA_ASSERT(scratchOffset >= nextScratchFree, "scratch offset mismatch");
+    scratchSlotData.scratch_area_offset = scratchOffset;
 
     // gtpin scratch slots are beyond spill memory
     scratchSlotData.token = gtpin::igc::GTPIN_IGC_TOKEN_SCRATCH_AREA_INFO;

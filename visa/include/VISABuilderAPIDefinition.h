@@ -1198,8 +1198,11 @@ public:
   VISA_BUILDER_API virtual int SetGTPinInit(void *buffer) = 0;
 
   /// GetGTPinBuffer -- returns data buffer for gtpin (eg, free GRF info)
-  VISA_BUILDER_API virtual int GetGTPinBuffer(void *&buffer,
-                                              unsigned int &size) = 0;
+  /// scratchOffset - passed by IGC. This argument contains offset at which
+  /// gtpin can store its data. IGC computes total scratch space when
+  /// stack calls are used, therefore, this is passed as argument.
+  VISA_BUILDER_API virtual int GetGTPinBuffer(void *&buffer, unsigned int &size,
+                                              unsigned int scratchOffset) = 0;
 
   /// GetFreeGRFInfo -- returns free GRF information for gtpin
   VISA_BUILDER_API virtual int GetFreeGRFInfo(void *&buffer,

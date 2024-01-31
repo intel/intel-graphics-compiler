@@ -110,7 +110,7 @@ int JITCompileAllOptions(const char *kernelName, const void *kernelIsa,
   if (gtpin_init) {
     // Return free GRF info
     kernel->GetGTPinBuffer(tempJitInfo->freeGRFInfo,
-                           tempJitInfo->freeGRFInfoSize);
+                           tempJitInfo->freeGRFInfoSize, 0);
   }
 
   if (jitInfo != NULL)

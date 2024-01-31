@@ -1021,8 +1021,8 @@ public:
   /// This get the same information as GetGenRelocEntryBuffer, but in different
   /// foramt
   VISA_BUILDER_API int GetRelocations(RelocListType &relocs) override;
-  VISA_BUILDER_API int GetGTPinBuffer(void *&buffer,
-                                      unsigned int &size) override;
+  VISA_BUILDER_API int GetGTPinBuffer(void *&buffer, unsigned int &size,
+                                      unsigned int scratchOffset) override;
   VISA_BUILDER_API int SetGTPinInit(void *buffer) override;
   VISA_BUILDER_API int GetFreeGRFInfo(void *&buffer,
                                       unsigned int &size) override;

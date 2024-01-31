@@ -83,7 +83,9 @@ public:
   gtpin::igc::igc_init_t *getGTPinInit() { return gtpin_init; }
 
   // return igc_info_t format buffer. caller casts it to igc_info_t.
-  void *getGTPinInfoBuffer(unsigned &bufferSize);
+  // scratchOffset argument is passed in as IGC knows how much scratch space
+  // is required for kernels, especially when stack calls are used.
+  void *getGTPinInfoBuffer(unsigned &bufferSize, unsigned int scratchOffset);
 
   void setScratchNextFree(unsigned next);
   unsigned int getScratchNextFree() const;
