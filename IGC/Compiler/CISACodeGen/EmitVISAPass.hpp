@@ -632,6 +632,7 @@ public:
 
     void emitMayUnalignedVectorCopy(
         CVariable* D, uint32_t D_off, CVariable* S, uint32_t S_off, llvm::Type* Ty);
+    Function* findStackOverflowDetectionFunction(Function* ParentFunction, bool FindInitFunction);
     void emitStackOverflowDetectionCall(llvm::Function* ParentFunction, bool EmitInitFunction);
 
     std::pair<llvm::Value*, llvm::Value*> getPairOutput(llvm::Value*) const;

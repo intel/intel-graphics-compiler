@@ -650,12 +650,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
     bool isDummyKernel = IGC::isIntelSymbolTableVoidProgram(&F);
     bool isFuncGroupHead = !m_FGA || m_FGA->isGroupHead(&F);
-    bool hasStackCall = m_FGA && m_FGA->getGroup(&F) && m_FGA->getGroup(&F)->hasStackCall();
-
-    if (IGC_IS_FLAG_ENABLED(ForceAddingStackcallKernelPrerequisites))
-    {
-        hasStackCall = true;
-    }
 
     // Dummy program is only used for symbol table info, so skip compilation if no symbol table is needed
     if (isDummyKernel && !isSymbolTableRequired(&F) && m_pCtx->type == ShaderType::OPENCL_SHADER)
@@ -686,6 +680,11 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     m_currShader->SetShaderSpecificHelper(this);
     m_currShader->SetDataLayout(m_DL);
     m_currShader->SetFunctionGroupAnalysis(m_FGA);
+    if (IGC_IS_FLAG_ENABLED(StackOverflowDetection)) {
+        if (findStackOverflowDetectionFunction(&F, true)) {
+            m_currShader->SetHasStackCalls(true);
+        }
+    }
     m_currShader->SetPushInfoHelper(&(m_moduleMD->pushInfo));
     m_currShader->SetVariableReuseAnalysis(m_VRA);
     m_currShader->SetResourceLoopAnalysis(m_RLA);
@@ -821,7 +820,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                 F.getFnAttribute("num-thread-per-eu").getValueAsString().str());
         }
         // call builder after pre-analysis pass where scratchspace offset to VISA is calculated
-        m_encoder->InitEncoder(m_canAbortOnSpill, hasStackCall, hasInlineAsmCall, hasAdditionalVisaAsmToLink, numThreadsPerEU, prevKernel);
+        m_encoder->InitEncoder(m_canAbortOnSpill, m_currShader->HasStackCalls(), hasInlineAsmCall, hasAdditionalVisaAsmToLink, numThreadsPerEU, prevKernel);
 
         if (!m_encoder->IsCodePatchCandidate())
             createVMaskPred(m_vMaskPredForSubplane);
@@ -833,7 +832,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         {
             // initialize stack if having stack usage
             bool hasVLA = (m_FGA && m_FGA->getGroup(&F) && m_FGA->getGroup(&F)->hasVariableLengthAlloca()) || F.hasFnAttribute("hasVLA");
-            if (hasStackCall || hasVLA)
+            if (m_currShader->HasStackCalls() || hasVLA)
             {
                 m_encoder->InitFuncAttribute(&F, true);
                 InitializeKernelStack(&F);
@@ -871,7 +870,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
     // Only apply WA to OCL shaders with stackcall enabled
     // TODO: Remove this WA once vISA handles the register copy
-    bool needKernelArgOverrideWA = isFuncGroupHead && hasStackCall && m_currShader->GetShaderType() == ShaderType::OPENCL_SHADER;
+    bool needKernelArgOverrideWA = isFuncGroupHead && m_currShader->HasStackCalls() && m_currShader->GetShaderType() == ShaderType::OPENCL_SHADER;
     if (needKernelArgOverrideWA)
     {
         // Requires early payload allocation to know the kernel arg offsets
@@ -926,7 +925,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     if (IGC_IS_FLAG_ENABLED(DumpHasNonKernelArgLdSt)) {
         ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
         FunctionMetaData* funcMD = &modMD->FuncMD[&F];
-        if (hasStackCall || m_currFuncHasSubroutine) {
+        if (m_currShader->HasStackCalls() || m_currFuncHasSubroutine) {
             // conservative set the hasNonKernelArgLoad/Store to true
             funcMD->hasNonKernelArgLoad = true;
             funcMD->hasNonKernelArgStore = true;
@@ -989,7 +988,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         m_currShader->GetShaderType() != ShaderType::COMPUTE_SHADER ||
         m_currShader->GetContext()->getModuleMetaData()->csInfo.disableSimd32Slicing ||
         m_pattern->m_samplertoRenderTargetEnable ||
-        hasStackCall || isDummyKernel;
+        m_currShader->HasStackCalls() || isDummyKernel;
 
     IGC::Debug::Dump* llvmtoVISADump = nullptr;
     if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
@@ -22706,12 +22705,12 @@ CVariable* EmitPass::getStackSizePerThread(Function* parentFunc) {
     return pSize;
 }
 
-void EmitPass::emitStackOverflowDetectionCall(Function* ParentFunction, bool EmitInitFunction) {
+Function* EmitPass::findStackOverflowDetectionFunction(Function* ParentFunction, bool FindInitFunction) {
     const char *FunctionNames[] = {
         "__stackoverflow_init",
         "__stackoverflow_detection"
     };
-    const char *FunctionName = (EmitInitFunction ? FunctionNames[0] : FunctionNames[1]);
+    const char *FunctionName = (FindInitFunction ? FunctionNames[0] : FunctionNames[1]);
 
     auto FG = m_FGA->getGroup(ParentFunction);
     Function *StackOverflowFunction = nullptr;
@@ -22724,6 +22723,11 @@ void EmitPass::emitStackOverflowDetectionCall(Function* ParentFunction, bool Emi
             break;
         }
     }
+    return StackOverflowFunction;
+}
+
+void EmitPass::emitStackOverflowDetectionCall(Function* ParentFunction, bool EmitInitFunction) {
+    Function *StackOverflowFunction = findStackOverflowDetectionFunction(ParentFunction, EmitInitFunction);
 
     if (StackOverflowFunction) {
         m_currFuncHasSubroutine = true;
@@ -22732,6 +22736,6 @@ void EmitPass::emitStackOverflowDetectionCall(Function* ParentFunction, bool Emi
         m_encoder->Push();
     } else if (!EmitInitFunction) {
         IGC_ASSERT_MESSAGE(false,
-            "Couldn't find %s function in the module!", FunctionName);
+            "Couldn't find __stackoverflow_detection function in the module!");
     }
 }

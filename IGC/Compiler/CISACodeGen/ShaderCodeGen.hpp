@@ -319,6 +319,7 @@ public:
 
     GenXFunctionGroupAnalysis* GetFGA() { return m_FGA; }
     bool HasStackCalls() const { return m_HasStackCall; }
+    void SetHasStackCalls(bool hasStackCall) { m_HasStackCall = hasStackCall; }
     bool HasNestedCalls() const { return m_HasNestedCall; }
     bool HasIndirectCalls() const { return m_HasIndirectCall; }
     bool IsIntelSymbolTableVoidProgram() const { return m_IsIntelSymbolTableVoidProgram; }
