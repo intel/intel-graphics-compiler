@@ -487,9 +487,10 @@ void SWSBAnalyzer::setSbidDependency(DepSet &dep, const Instruction &currInst,
   for (auto &aSBID : activeSBID) {
     if (aSBID.sbid == depSBID.sbid) {
       // write takes longer then read
-      // so we only need to check on one.
-      // so this either sets a write or resets back to read
-      if (aSBID.dType == DEP_TYPE::READ) {
+      // force the SBID to WRITE type (e.g. $10.dst) if the newly added
+      // dependency is a write dependency.
+      if (depSBID.dType == DEP_TYPE::WRITE ||
+          depSBID.dType == DEP_TYPE::WRITE_ALWAYS_INTERFERE) {
         aSBID.dType = depSBID.dType;
       }
       push_back = false;
