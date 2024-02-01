@@ -161,6 +161,7 @@ unsigned GenXIntrinsicInfo::getOverridedExecSize(CallInst *CI,
   case GenXIntrinsic::genx_raw_send_noresult:
   case GenXIntrinsic::genx_raw_sends_noresult:
     return 16;
+  case GenXIntrinsic::genx_add3c:
   case GenXIntrinsic::genx_subb:
   case GenXIntrinsic::genx_addc:
     if (auto *VT =

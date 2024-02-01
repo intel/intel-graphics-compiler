@@ -2465,7 +2465,7 @@
       "dst0": "MakeSubbAddcDestination(GenXIntrinsic::GenXResult::IdxSubb_Sub)",
       "dst1": "MakeSubbAddcDestination(GenXIntrinsic::GenXResult::IdxSubb_Borrow)",
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
-      "src1": [ "GENERAL", "UNSIGNED",  "MODIFIER_ARITH", 2 ]
+      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ]
     },
     "genx_add3": {
       "opc": "ISA_ADD3",
@@ -2514,6 +2514,16 @@
       "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ],
+      "src2": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 3 ]
+    },
+    "genx_add3c": {
+      "opc": "ISA_ADD3O",
+      "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
+      "dst0": "MakeSubbAddcDestination(GenXIntrinsic::GenXResult::IdxAdd3c_Add)",
+      "dst1": "MakeAdd3oPredicate()",
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
       "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ],
       "src2": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 3 ]
@@ -4596,6 +4606,21 @@
           "exec_mask",
           "exec_size",
           "dst",
+          "src0",
+          "src1",
+          "src2"
+        ]
+      ]
+    ],
+    "ISA_ADD3O": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "dst1",
+          "Mod",
+          "exec_mask",
+          "exec_size",
+          "dst0",
           "src0",
           "src1",
           "src2"

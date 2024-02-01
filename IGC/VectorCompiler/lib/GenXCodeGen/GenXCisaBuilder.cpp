@@ -3742,13 +3742,27 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     return src;
   };
 
+  auto MakeAdd3oPredicate = [&]() {
+    LLVM_DEBUG(dbgs() << "MakeAdd30Destination\n");
+    IGC_ASSERT(GenXIntrinsic::getGenXIntrinsicID(CI) ==
+               llvm::GenXIntrinsic::genx_add3c);
+    auto SV = SimpleValue(CI, GenXIntrinsic::GenXResult::IdxAdd3c_Carry);
+    VISA_PredVar *PredVar = getPredicateVar(CI);
+    VISA_PREDICATE_STATE State = PredState_NO_INVERSE;
+    VISA_PREDICATE_CONTROL Control = PRED_CTRL_NON;
+    VISA_PredOpnd *PredOperand = createPredOperand(PredVar, State, Control);
+    return PredOperand;
+  };
+
   auto MakeSubbAddcDestination =
       [&](GenXIntrinsic::GenXResult::ResultIndexes MemberIdx) {
         LLVM_DEBUG(dbgs() << "MakeSubbAddcDestination\n");
         IGC_ASSERT(GenXIntrinsic::getGenXIntrinsicID(CI) ==
                        llvm::GenXIntrinsic::genx_addc ||
                    GenXIntrinsic::getGenXIntrinsicID(CI) ==
-                       llvm::GenXIntrinsic::genx_subb);
+                       llvm::GenXIntrinsic::genx_subb ||
+                   GenXIntrinsic::getGenXIntrinsicID(CI) ==
+                       llvm::GenXIntrinsic::genx_add3c);
         IGC_ASSERT(IndexFlattener::getNumElements(CI->getType()) == 2);
 
         auto SV = SimpleValue(CI, MemberIdx);
