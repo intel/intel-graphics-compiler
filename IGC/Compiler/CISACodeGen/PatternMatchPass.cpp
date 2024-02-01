@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/PatternMatch.h>
 #include <llvmWrapper/IR/Instructions.h>
+#include "llvmWrapper/Support/Alignment.h"
 #include <llvm/IR/IntrinsicInst.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
