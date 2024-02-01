@@ -7975,6 +7975,10 @@ bool G4_INST::canSrcBeFlagForPropagation(Gen4_Operand_Number opndNum) const {
   if (!isLogic())
     return false;
 
+  // flag register is not allowed in ternary instruction
+  if (getNumSrc() == 3)
+    return false;
+
   // For non-commutative opcodes, only src0 can be flag. Otherwise, HWConformity
   // may generate more mov instructions to fix the illegal flag reg operand.
   // For commutative opcodes, it is fine to have flag reg on non-src0 sources as

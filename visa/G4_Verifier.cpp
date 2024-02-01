@@ -465,6 +465,12 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
       }
     }
   } else {
+    // Only valid ARF type are NULL and Accumulator for ternary instructions
+    if (inst->getNumSrc() == 3) {
+      if (opnd->isAreg() && !opnd->isNullReg() && !opnd->isAccReg())
+        vISA_ASSERT(false, "Not allowed ARF in ternary instruction");
+    }
+
     if (opnd->isSrcRegRegion() && opnd->isRightBoundSet()) {
       G4_SrcRegRegion newRgn(*(opnd->asSrcRegRegion()));
 
