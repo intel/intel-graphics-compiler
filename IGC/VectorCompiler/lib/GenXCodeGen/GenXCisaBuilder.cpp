@@ -5646,8 +5646,12 @@ static void dumpGlobalAnnotations(Module &M) {
   if (!GV)
     return;
   auto *Array = dyn_cast<ConstantArray>(GV->getOperand(0));
+  if (!Array)
+    return;
   for (const auto &Op : Array->operands()) {
     auto *Struct = dyn_cast<ConstantStruct>(Op.get());
+    if (!Struct)
+      continue;
     auto *Func = dyn_cast<Function>(Struct->getOperand(0)->getOperand(0));
     if (!Func)
       continue;
@@ -5655,7 +5659,11 @@ static void dumpGlobalAnnotations(Module &M) {
     assert(!FuncName.empty() && "Annotated function must have a name");
     auto *GlobalStr =
         dyn_cast<GlobalVariable>(Struct->getOperand(1)->getOperand(0));
+    if (!GlobalStr)
+      continue;
     auto *Str = dyn_cast<ConstantDataArray>(GlobalStr->getInitializer());
+    if (!Str)
+      continue;
     auto FuncAnnotation = Str->getAsString();
     errs() << "Warning: Annotation \"" << FuncAnnotation << "\" for function "
            << FuncName << " is ignored\n";

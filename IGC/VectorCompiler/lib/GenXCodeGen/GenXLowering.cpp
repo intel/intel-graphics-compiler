@@ -2081,8 +2081,8 @@ bool GenXLowering::processInst(Instruction *Inst) {
     case Intrinsic::smax:
     case Intrinsic::umin:
     case Intrinsic::umax:
-#endif
       return lowerMinMax(CI, IntrinsicID);
+#endif
     case Intrinsic::sqrt:
       return lowerSqrt(CI);
     case Intrinsic::sadd_sat:
@@ -4625,6 +4625,7 @@ bool GenXLowering::lowerReduction(CallInst *CI, Value *Src, Value *Start,
     SrcWidth = LinearGrain;
   } else if (!isPowerOf2_32(SrcWidth)) {
     TailIndex = PowerOf2Floor(SrcWidth);
+    IGC_ASSERT_EXIT(TailIndex);
     TailWidth = SrcWidth % TailIndex;
     SrcWidth = TailIndex;
   }

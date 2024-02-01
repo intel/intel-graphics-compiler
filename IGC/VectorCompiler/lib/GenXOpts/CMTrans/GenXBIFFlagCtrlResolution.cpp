@@ -43,7 +43,7 @@ public:
   virtual bool runOnModule(Module &M) override;
 
 private:
-  Module *pModule;
+  Module *pModule = nullptr;
   std::map<StringRef, std::function<bool()>> ListDelegates;
 
   template <typename T> bool replace(T Value, GlobalVariable *GV);

@@ -593,8 +593,12 @@ bool StructFilter::checkForElementOfBannedStruct(StructType &STy) const {
 //  If STy is not plain then tries to use getBaseTy().
 //
 Type *DependencyGraph::getPlainSubTy(StructType &STy) const {
-  return isPlain(STy) ? AllStructs.find(&STy)->second.begin()->first
-                      : getBaseTy(&STy);
+  if (isPlain(STy)) {
+    auto It = AllStructs.find(&STy);
+    IGC_ASSERT_EXIT(It != AllStructs.end());
+    return It->second.begin()->first;
+  } else
+    return getBaseTy(&STy);
 }
 
 //

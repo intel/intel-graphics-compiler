@@ -138,7 +138,7 @@ void GenXLoadStoreLegalization::visitCallInst(CallInst &CI) {
   LLVM_DEBUG(dbgs() << "Trying: " << CI << "\n");
 
   const auto ExecSize = vc::InternalIntrinsic::getMemorySimdWidth(&CI);
-  const auto VectorSize =
+  const uint64_t VectorSize =
       vc::InternalIntrinsic::getMemoryVectorSizePerLane(&CI);
 
   const auto MaxWidth = getMaxLegalSimdWidth(CI);
