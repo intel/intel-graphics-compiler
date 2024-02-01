@@ -124,7 +124,11 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(int Execut
         __intel_atomic_work_item_fence( Memory, Semantics );
     }
 
-    if( Execution <= Workgroup )
+    if (Execution == Device)
+    {
+        global_barrier();
+    }
+    else  if( Execution <= Workgroup )
     {
         __builtin_IB_thread_group_barrier();
     }
@@ -282,15 +286,18 @@ void __builtin_spirv_OpMemoryNamedBarrierWrapperOCL_p3__namedBarrier_i32_i32(loc
 }
 
 __global volatile uchar* __builtin_IB_get_sync_buffer();
+uint __intel_get_local_linear_id( void );
+uint __intel_get_local_size( void );
 
 void global_barrier()
 {
     //Make sure each WKG item hit the barrier.
-    barrier(CLK_GLOBAL_MEM_FENCE);
+    __intel_atomic_work_item_fence(Device, AcquireRelease | CrossWorkgroupMemory);
+    __builtin_IB_thread_group_barrier();
 
     __global volatile uchar* syncBuffer = __builtin_IB_get_sync_buffer();
-    bool firstThreadPerWg = (get_local_id(0) == 0) && (get_local_id(1) == 0) && (get_local_id(2) == 0);
-    size_t groupLinearId = (get_group_id(2) * get_num_groups(1) * get_num_groups(0)) + (get_group_id(1) * get_num_groups(0)) + get_group_id(0);
+    bool firstThreadPerWg = __intel_is_first_work_group_item();
+    uint groupLinearId = (__builtin_IB_get_group_id(2) * __builtin_IB_get_num_groups(1) * __builtin_IB_get_num_groups(0)) + (__builtin_IB_get_group_id(1) * __builtin_IB_get_num_groups(0)) + __builtin_IB_get_group_id(0);
 
     //Now first thread of each wkg writes to designated place in syncBuffer
     if (firstThreadPerWg)
@@ -299,26 +306,27 @@ void global_barrier()
         atomic_work_item_fence(CLK_GLOBAL_MEM_FENCE, memory_order_release, memory_scope_device); // == write_mem_fence(CLK_GLOBAL_MEM_FENCE);
     }
 
-    size_t numGroups = get_num_groups(0) * get_num_groups(1) * get_num_groups(2);
+    uint numGroups = __builtin_IB_get_num_groups(0) * __builtin_IB_get_num_groups(1) * __builtin_IB_get_num_groups(2);
     //Higher wkg ids tend to not have work to do in all cases, therefore I choose last wkg to wait for the others, as it is most likely it will hit this code sooner.
     if (groupLinearId == (numGroups - 1))
     {
-        size_t localSize = get_local_size(0) * get_local_size(1) * get_local_size(2);
+        uint localSize = __intel_get_local_size();
         //24 -48 case
         volatile uchar Value;
         do
         {
             atomic_work_item_fence(CLK_GLOBAL_MEM_FENCE, memory_order_acquire, memory_scope_device); // == read_mem_fence(CLK_GLOBAL_MEM_FENCE);
             Value = 1;
-            for (size_t i = get_local_linear_id(); i < numGroups; i += localSize)
+            for (uint i = __intel_get_local_linear_id(); i < numGroups; i += localSize)
             {
                 Value = Value & syncBuffer[i];
             }
 
         } while (Value == 0);
-        barrier(CLK_GLOBAL_MEM_FENCE);
+        __intel_atomic_work_item_fence(Device, AcquireRelease | CrossWorkgroupMemory);
+        __builtin_IB_thread_group_barrier();
 
-        for (size_t i = get_local_linear_id(); i < numGroups; i += localSize)
+        for (uint i = __intel_get_local_linear_id(); i < numGroups; i += localSize)
         {
             syncBuffer[i] = 0;
         }
@@ -331,7 +339,8 @@ void global_barrier()
            atomic_work_item_fence(CLK_GLOBAL_MEM_FENCE, memory_order_acquire, memory_scope_device); // == read_mem_fence(CLK_GLOBAL_MEM_FENCE);
         };
     }
-    barrier(CLK_GLOBAL_MEM_FENCE);
+    __intel_atomic_work_item_fence(Device, AcquireRelease | CrossWorkgroupMemory);
+    __builtin_IB_thread_group_barrier();
 }
 
 void system_memfence(char fence_typed_memory)
