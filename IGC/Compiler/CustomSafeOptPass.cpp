@@ -63,7 +63,6 @@ cmp+sel to avoid expensive VxH mov.
 #include "common/IGCConstantFolder.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
-#include "WrapperLLVM/Utils.h"
 #include "llvmWrapper/IR/IntrinsicInst.h"
 #include <llvmWrapper/IR/DIBuilder.h>
 #include <llvmWrapper/IR/DerivedTypes.h>

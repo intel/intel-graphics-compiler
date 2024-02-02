@@ -15,7 +15,6 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
-#include "WrapperLLVM/Utils.h"
 
 #include "llvm/Analysis/CodeMetrics.h"
 #include "llvm/Analysis/LoopInfo.h"
@@ -304,7 +303,7 @@ namespace llvm {
         if (!ExitingBlock || !L->isLoopExiting(ExitingBlock))
             ExitingBlock = L->getExitingBlock();
         if (ExitingBlock)
-            TripCount = IGCLLVM::getref(SE).getSmallConstantTripCount(L, ExitingBlock);
+            TripCount = SE.getSmallConstantTripCount(L, ExitingBlock);
 
         // Do not enable partial unrolling if the loop counter is float. It can cause precision issue.
         if (ExitingBlock) {

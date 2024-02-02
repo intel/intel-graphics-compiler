@@ -10,8 +10,6 @@ set(IGC_BUILD__PROJ__WrapperLLVM       "${IGC_BUILD__PROJ_NAME_PREFIX}WrapperLLV
 set(IGC_BUILD__PROJ__WrapperLLVM       "${IGC_BUILD__PROJ__WrapperLLVM}" PARENT_SCOPE)
 
 set(IGC_WrapperLLVM_HDR
-    "${CMAKE_CURRENT_SOURCE_DIR}/Utils.h"
-
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/ADT/APInt.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/ADT/Optional.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/ADT/STLExtras.h"
