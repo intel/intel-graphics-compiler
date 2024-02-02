@@ -41,6 +41,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/PromoteConstantStructs.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/AlignmentAnalysis/AlignmentAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GASResolving.h"
+#include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/LowerByValAttribute.hpp"
 #include "Compiler/CISACodeGen/ResolvePredefinedConstant.h"
 #include "Compiler/CISACodeGen/Simd32Profitability.hpp"
 #include "Compiler/CISACodeGen/SimplifyConstant.h"
@@ -294,6 +295,8 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
             }
         }
         mpm.add(createPromoteMemoryToRegisterPass());
+        if (ctx.type == ShaderType::OPENCL_SHADER)
+            mpm.add(new LowerByValAttribute());
         // Resolving private memory allocas
         mpm.add(CreatePrivateMemoryResolution());
     }
@@ -666,6 +669,8 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
     if (!(IGC_IS_FLAG_ENABLED(EnableUnmaskedFunctions) &&
           IGC_IS_FLAG_ENABLED(LateInlineUnmaskedFunc)))
     {
+        if (ctx.type == ShaderType::OPENCL_SHADER)
+            mpm.add(new LowerByValAttribute());
         mpm.add(CreatePrivateMemoryResolution());
     }
     // Should help MemOpt pass to merge more loads

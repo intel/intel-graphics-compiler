@@ -438,6 +438,7 @@ DECLARE_IGC_REGKEY(bool, DisableDSDualPatch,            false, "Setting it to tr
 DECLARE_IGC_REGKEY(bool, DisableMemOpt,                 false, "Disable MemOpt, merging load/store", true)
 DECLARE_IGC_REGKEY(DWORD, MemOptGEPCanon,               2,     "[test] GEP canonicalization in MemOpt. 0 : enable; 1: disable; 2: disable only for OCL;", true)
 DECLARE_IGC_REGKEY(bool, DisableMemOpt2,                false, "Disable MemOpt2", false)
+DECLARE_IGC_REGKEY(bool, EnableExplicitCopyForByVal,    false, "Enable generating an explicit copy (alloca + memcpy) in a caller for aggregate argumentes with byval attribute", true)
 DECLARE_IGC_REGKEY(DWORD, EnableLdStCombine,            1,     "Enable load/store combine pass if set to 1 (lsc message only) or 2; bit 3 = 1 [tmp for testing] : enabled load combine (intend to replace memopt)", true)
 DECLARE_IGC_REGKEY(DWORD, MaxStoreVectorSizeInBytes,    0,     "[LdStCombine] the max non-uniform vector size for the coalesced store. 0: compiler choice (default, 16(4DW)); others: 4/8/16/32", true)
 DECLARE_IGC_REGKEY(DWORD, MaxLoadVectorSizeInBytes,     0,     "[LdStCombine] the max non-uniform vector size for the coalesced load.  0: compiler choice (default, 16(4DW)); others: 4/8/16/32", true)
