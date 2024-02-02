@@ -1,11 +1,12 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 #include "GASPropagator.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 
 using namespace IGC;
 
@@ -104,7 +105,7 @@ bool GASPropagator::visitAddrSpaceCastInst(AddrSpaceCastInst& I) {
         return false;
 
     Value* Src = TheVal;
-    if (IGCLLVM::getNonOpaquePtrEltTy(SrcPtrTy) != IGCLLVM::getNonOpaquePtrEltTy(DstPtrTy)) {
+    if (!IGCLLVM::isOpaqueOrPointeeTypeEquals(SrcPtrTy, DstPtrTy)) {
         BuilderType::InsertPointGuard Guard(IRB);
         IRB.SetInsertPoint(&I);
         Src = IRB.CreateBitCast(Src, DstPtrTy);
@@ -150,7 +151,7 @@ bool GASPropagator::visitGetElementPtrInst(GetElementPtrInst& I) {
     IRB.SetInsertPoint(I.getNextNode());
     // Push `getelementptr` forward by replacing this `bitcast` on GAS with the
     // one on non-GAS followed by a new `addrspacecast` to GAS.
-    Type* DstTy = IGCLLVM::getNonOpaquePtrEltTy(DstPtrTy);
+    Type* DstTy = I.getSourceElementType();
     PointerType* TransPtrTy =
         PointerType::get(DstTy, SrcPtrTy->getAddressSpace());
     TheUse->set(TheVal);
@@ -275,7 +276,7 @@ bool GASPropagator::visitSelect(SelectInst& I) {
 
     // Push 'addrspacecast' forward by changing the select return type to non-GAS pointer
     // followed by a new 'addrspacecast' to GAS
-    PointerType* TransPtrTy = PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(DstPtrTy), NonGASPtrTy->getAddressSpace());
+    PointerType* TransPtrTy = IGCLLVM::getWithSamePointeeType(DstPtrTy, NonGASPtrTy->getAddressSpace());
     I.mutateType(TransPtrTy);
     Value* NewPtr = IRB.CreateAddrSpaceCast(&I, DstPtrTy);
 

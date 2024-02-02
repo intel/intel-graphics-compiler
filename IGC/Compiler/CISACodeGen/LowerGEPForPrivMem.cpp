@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -468,7 +468,7 @@ bool IGC::CanUseSOALayout(AllocaInst* I, Type*& base, bool& allUsesAreVector)
 
     // Don't even look at non-array allocas.
     // (extractAllocaDim can not handle them anyway, causing a crash)
-    llvm::Type* pType = IGCLLVM::getNonOpaquePtrEltTy(I->getType());
+    llvm::Type* pType = I->getAllocatedType();
     if (pType->isStructTy() && pType->getStructNumElements() == 1)
     {
         pType = pType->getStructElementType(0);
@@ -650,7 +650,7 @@ public:
 void LowerGEPForPrivMem::handleAllocaInst(llvm::AllocaInst* pAlloca)
 {
     // Extract the Alloca size and the base Type
-    Type* pType = IGCLLVM::getNonOpaquePtrEltTy(pAlloca->getType());
+    Type* pType = pAlloca->getAllocatedType();
     Type* pBaseType = GetBaseType(pType)->getScalarType();
     IGC_ASSERT(pBaseType);
     llvm::AllocaInst* pVecAlloca = createVectorForAlloca(pAlloca, pBaseType);

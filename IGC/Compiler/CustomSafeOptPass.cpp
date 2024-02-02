@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -510,7 +510,7 @@ void CustomSafeOptPass::visitAllocaInst(AllocaInst& I)
     // %44 = getelementptr[356 x float] * %outarray_x1, i32 0, i32 %43      %51 = getelementptr[2 x float] * %31, i32 0, i32 %selRes_s
     // %45 = load float* %44, align 4                                       %52 = load float* %51, align 4
 
-    llvm::Type* pType = IGCLLVM::getNonOpaquePtrEltTy(I.getType());
+    llvm::Type* pType = I.getAllocatedType();
     if (!pType->isArrayTy() ||
         static_cast<ADDRESS_SPACE>(I.getType()->getAddressSpace()) != ADDRESS_SPACE_PRIVATE)
     {
@@ -585,7 +585,7 @@ void CustomSafeOptPass::visitAllocaInst(AllocaInst& I)
     // found a case to optimize
     IGCLLVM::IRBuilder<> IRB(&I);
     llvm::ArrayType* allocaArraySize = llvm::ArrayType::get(pType->getArrayElementType(), newSize);
-    llvm::Value* newAlloca = IRB.CreateAlloca(allocaArraySize, nullptr);
+    llvm::AllocaInst* newAlloca = IRB.CreateAlloca(allocaArraySize, nullptr);
     llvm::Value* gepArg1 = nullptr;
 
     llvm::Function* userFunc = I.getParent()->getParent();
@@ -626,7 +626,7 @@ void CustomSafeOptPass::visitAllocaInst(AllocaInst& I)
                 gepArg1 = BinaryOperator::CreateSub(pGEP->getOperand(2), IRB.getInt32(index_lb), "reducedIndex", pGEP);
             }
             llvm::Value* gepArg[] = { pGEP->getOperand(1), gepArg1 };
-            Type *BaseTy = IGCLLVM::getNonOpaquePtrEltTy(newAlloca->getType());
+            Type *BaseTy = newAlloca->getAllocatedType();
             llvm::Value* pGEPnew = GetElementPtrInst::Create(BaseTy, newAlloca, gepArg, "", pGEP);
 
             pGEP->replaceAllUsesWith(pGEPnew);
