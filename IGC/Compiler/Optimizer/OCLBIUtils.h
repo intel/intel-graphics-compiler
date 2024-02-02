@@ -241,9 +241,6 @@ namespace IGC
         /// @brief  push the image index into the function argument list
         void prepareImageBTI(void);
 
-        /// @brief  push the paired resource pointer into the function argument list
-        void preparePairedResource(void);
-
         // m_pParamMap - maps image and sampler kernel parameters to BTIs
         //               and sampler array indexes, respecitvely
         ParamMap* m_pParamMap;

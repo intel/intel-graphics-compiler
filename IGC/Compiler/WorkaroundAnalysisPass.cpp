@@ -355,7 +355,6 @@ void WorkaroundAnalysis::GatherOffsetWorkaround(SamplerGatherIntrinsic* gatherpo
         // only apply the WA if all the immediate offsets are zero
         return;
     }
-    Value* pairedResource = gatherpo->getPairedTextureValue();
     Value* resource = gatherpo->getTextureValue();
     Value* sampler = gatherpo->getSamplerValue();
 
@@ -378,7 +377,6 @@ void WorkaroundAnalysis::GatherOffsetWorkaround(SamplerGatherIntrinsic* gatherpo
     arg.push_back(nullptr);                  // v
     arg.push_back(gatherpo->getOperand(4 + extraBeginArgsNo)); // r
     arg.push_back(ConstantFP::get(gatherpo->getOperand(0)->getType(), 0.0));   // ai
-    arg.push_back(pairedResource);
     arg.push_back(resource);
     arg.push_back(sampler);
     arg.push_back(zero);
@@ -408,7 +406,6 @@ void WorkaroundAnalysis::GatherOffsetWorkaround(SamplerGatherIntrinsic* gatherpo
     {
         gatherpo->getType(),
         gatherpo->getOperand(0)->getType(),
-        pairedResource->getType(),
         resource->getType(),
         sampler->getType(),
     };

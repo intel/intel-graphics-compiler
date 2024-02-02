@@ -3377,8 +3377,8 @@ bool CISA_IR_Builder::createSample4Instruction(
     ChannelMask channel, VISA_EMask_Ctrl emask, unsigned exec_size,
     VISA_opnd *aoffimmi, const char *samplerName, unsigned int samplerIndex,
     const char *surfaceName, unsigned int surfaceIndex,
-    VISA_opnd *pairedSurface, VISA_opnd *dst, unsigned int numParameters,
-    VISA_RawOpnd **params, int lineNum) {
+    VISA_opnd *dst, unsigned int numParameters, VISA_RawOpnd **params,
+    int lineNum) {
   VISA_StateOpndHandle *surface = nullptr;
 
   surface = CISA_get_surface_variable(surfaceName, lineNum);
@@ -3399,8 +3399,8 @@ bool CISA_IR_Builder::createSample4Instruction(
   }
   int status = m_kernel->AppendVISA3dGather4(
       subOpcode, pixelNullMask, (VISA_PredOpnd *)pred, emask, executionSize,
-      channel.getSingleChannel(), (VISA_VectorOpnd *)aoffimmi, sampler,
-      samplerIndex, surface, surfaceIndex, (VISA_RawOpnd *)pairedSurface,
+      channel.getSingleChannel(), (VISA_VectorOpnd *)aoffimmi,
+      sampler, samplerIndex, surface, surfaceIndex,
       (VISA_RawOpnd *)dst, numParameters, params);
   VISA_RESULT_CALL_TO_BOOL(status);
   return true;
@@ -3410,8 +3410,8 @@ bool CISA_IR_Builder::create3DLoadInstruction(
     VISA_opnd *pred, VISASampler3DSubOpCode subOpcode, bool pixelNullMask,
     ChannelMask channels, VISA_EMask_Ctrl emask, unsigned exec_size,
     VISA_opnd *aoffimmi, const char *surfaceName, unsigned int surfaceIndex,
-    VISA_opnd *pairedSurface, VISA_opnd *dst, unsigned int numParameters,
-    VISA_RawOpnd **params, int lineNum) {
+    VISA_opnd *dst, unsigned int numParameters, VISA_RawOpnd **params,
+    int lineNum) {
   VISA_StateOpndHandle *surface = nullptr;
   surface = CISA_get_surface_variable(surfaceName, lineNum);
   if (!surface)
@@ -3421,8 +3421,7 @@ bool CISA_IR_Builder::create3DLoadInstruction(
   int status = m_kernel->AppendVISA3dLoad(
       subOpcode, pixelNullMask, (VISA_PredOpnd *)pred, emask, executionSize,
       channels.getAPI(), (VISA_VectorOpnd *)aoffimmi, surface, surfaceIndex,
-      (VISA_RawOpnd *)pairedSurface, (VISA_RawOpnd *)dst, numParameters,
-      params);
+      (VISA_RawOpnd *)dst, numParameters, params);
   VISA_RESULT_CALL_TO_BOOL(status);
   return true;
 }
@@ -3431,9 +3430,10 @@ bool CISA_IR_Builder::create3DSampleInstruction(
     VISA_opnd *pred, VISASampler3DSubOpCode subOpcode, bool pixelNullMask,
     bool cpsEnable, bool uniformSampler, ChannelMask channels,
     VISA_EMask_Ctrl emask, unsigned exec_size, VISA_opnd *aoffimmi,
-    const char *samplerName, unsigned int samplerIdx, const char *surfaceName,
-    unsigned int surfaceIdx, VISA_opnd *pairedSurface, VISA_opnd *dst,
-    unsigned int numParameters, VISA_RawOpnd **params, int lineNum) {
+    const char *samplerName, unsigned int samplerIdx,
+    const char *surfaceName, unsigned int surfaceIdx,
+    VISA_opnd *dst, unsigned int numParameters, VISA_RawOpnd **params,
+    int lineNum) {
   VISA_StateOpndHandle *surface = nullptr;
   vISA_ASSERT_INPUT(samplerIdx == 0 && surfaceIdx == 0,
       "sampler and surface index must be 0");
@@ -3455,8 +3455,7 @@ bool CISA_IR_Builder::create3DSampleInstruction(
       subOpcode, pixelNullMask, cpsEnable, uniformSampler,
       (VISA_PredOpnd *)pred, emask, executionSize, channels.getAPI(),
       (VISA_VectorOpnd *)aoffimmi, sampler, samplerIdx, surface, surfaceIdx,
-      (VISA_RawOpnd *)pairedSurface, (VISA_RawOpnd *)dst, numParameters,
-      params);
+      (VISA_RawOpnd *)dst, numParameters, params);
   VISA_RESULT_CALL_TO_BOOL(status);
   return true;
 }

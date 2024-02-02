@@ -1805,7 +1805,6 @@ public:
                       ChannelMask srcChannel, int numChannels,
                       G4_Operand *aoffimmi, G4_Operand *sampler,
                       G4_Operand *surface,
-                      G4_Operand *pairedResource,
                       G4_DstRegRegion *dst, VISA_EMask_Ctrl emask,
                       bool useHeader,
                       unsigned numRows, // msg length for each simd8
@@ -1813,8 +1812,6 @@ public:
                       bool uniformSampler = true);
 
   void doSamplerHeaderMove(G4_Declare *header, G4_Operand *sampler);
-  void doPairedResourceHeaderMove(G4_Declare *header,
-                                  G4_Operand *pairedResource);
   G4_Declare *getSamplerHeader(bool isBindlessSampler, bool samplerIndexGE16);
   uint32_t getSamplerResponseLength(int numChannels, bool isFP16, int execSize,
                                     bool pixelNullMask, bool nullDst);
@@ -1824,7 +1821,6 @@ public:
       bool uniformSampler, G4_Predicate *pred, VISA_Exec_Size executionSize,
       VISA_EMask_Ctrl emask, ChannelMask srcChannel, G4_Operand *aoffimmi,
       G4_Operand *sampler, G4_Operand *surface,
-      G4_Operand *pairedSurface,
       G4_DstRegRegion *dst, unsigned int numParms, G4_SrcRegRegion **params);
 
 
@@ -1832,18 +1828,15 @@ public:
                               bool pixelNullMask, G4_Predicate *pred,
                               VISA_Exec_Size exeuctionSize, VISA_EMask_Ctrl em,
                               ChannelMask channelMask, G4_Operand *aoffimmi,
-                              G4_Operand *surface, G4_Operand *pairedSurface,
+                              G4_Operand *surface,
                               G4_DstRegRegion *dst, uint8_t numOpnds,
                               G4_SrcRegRegion **opndArray);
 
-  int translateVISAGather3dInst(VISASampler3DSubOpCode actualop,
-                                bool pixelNullMask, G4_Predicate *pred,
-                                VISA_Exec_Size exeuctionSize,
-                                VISA_EMask_Ctrl em, ChannelMask channelMask,
-                                G4_Operand *aoffimmi, G4_Operand *sampler,
-                                G4_Operand *surface, G4_Operand *pairedSurface,
-                                G4_DstRegRegion *dst, unsigned int numOpnds,
-                                G4_SrcRegRegion **opndArray);
+  int translateVISAGather3dInst(
+      VISASampler3DSubOpCode actualop, bool pixelNullMask, G4_Predicate *pred,
+      VISA_Exec_Size exeuctionSize, VISA_EMask_Ctrl em, ChannelMask channelMask,
+      G4_Operand *aoffimmi, G4_Operand *sampler, G4_Operand *surface,
+      G4_DstRegRegion *dst, unsigned int numOpnds, G4_SrcRegRegion **opndArray);
 
   int translateVISASamplerNormInst(G4_Operand *surface, G4_Operand *sampler,
                                    ChannelMask channel,

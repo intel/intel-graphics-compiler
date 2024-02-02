@@ -282,11 +282,9 @@ public:
     }
 
 
-    inline unsigned int getPairedTextureIndex() const { return getNumOperands() - 8; }
     inline unsigned int getTextureIndex() const { return getNumOperands() - 7; }
     inline unsigned int getSamplerIndex() const { return getNumOperands() - 6; }
     inline Value* getTextureValue() const { return getOperand(getTextureIndex()); }
-    inline Value* getPairedTextureValue() const { return getOperand(getPairedTextureIndex()); }
     inline Value* getSamplerValue() const { return getOperand(getSamplerIndex()); }
 
     static inline bool classof(const GenIntrinsicInst *I) {
@@ -345,9 +343,7 @@ public:
     {
         return 5;
     }
-    inline unsigned int getPairedTextureIndex() const { return hasPairedTextureArg() ? getNumOperands() - 6 : UINT_MAX;  }
     inline Value* getTextureValue() const { return getOperand(getTextureIndex()); }
-    inline Value* getPairedTextureValue() const { return hasPairedTextureArg() ? getOperand(getPairedTextureIndex()) : nullptr; }
     inline Value* getCoordinateValue(unsigned int i) const { return getOperand(getCoordinateIndex(i)); }
     inline void   setCoordinateValue(unsigned int i, Value* val) { setOperand(getCoordinateIndex(i), val); }
 
@@ -374,15 +370,6 @@ public:
 
     static inline bool classof(const Value *V) {
         return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
-    }
-
-    bool hasPairedTextureArg() const {
-        switch (getIntrinsicID()) {
-        case GenISAIntrinsic::GenISA_ldptr:
-            return true;
-        default:
-            return false;
-        }
     }
 };
 
@@ -545,12 +532,6 @@ public:
         return getOperand(index);
     }
 
-    inline Value* getPairedTextureValue() const
-    {
-        unsigned int index = getPairedTextureIndex();
-        return hasPairedTextureArg() ? getOperand(index) : nullptr;
-    }
-
     inline Value* getTextureValue() const
     {
         unsigned int index = getTextureIndex();
@@ -564,14 +545,6 @@ public:
         {
             index = getNumOperands() - 3;
         }
-
-        return index;
-    }
-
-    inline unsigned int getPairedTextureIndex() const
-    {
-        unsigned int index = IsLODInst() ? getNumOperands() - 4 :
-            hasPairedTextureArg() ? getNumOperands() - 7 : UINT_MAX;
 
         return index;
     }
@@ -650,9 +623,6 @@ public:
         return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
     }
 
-    bool hasPairedTextureArg() const {
-        return false;
-    }
 };
 
 class LdRawIntrinsic : public GenIntrinsicInst {

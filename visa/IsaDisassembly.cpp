@@ -1521,8 +1521,6 @@ printInstructionSampler(const print_format_provider_t *header,
 
     // dst
     sstr << printOperand(header, inst, i++, opt);
-    // paired resource
-    sstr << printOperand(header, inst, i++, opt);
     // skip the param count
     i++;
 
@@ -1566,10 +1564,7 @@ printInstructionSampler(const print_format_provider_t *header,
 
     // dst
     sstr << printOperand(header, inst, i++, opt);
-    // paired resource
-    sstr << printOperand(header, inst, i++, opt);
-
-    // skip the param count
+       // skip the param count
     i++;
 
     while (i < inst->opnd_num) {
@@ -1622,9 +1617,7 @@ printInstructionSampler(const print_format_provider_t *header,
 
     // dst
     sstr << printOperand(header, inst, i++, opt);
-    // paired resource
-    sstr << printOperand(header, inst, i++, opt);
-    // skip the param count
+       // skip the param count
     i++;
 
     while (i < inst->opnd_num) {

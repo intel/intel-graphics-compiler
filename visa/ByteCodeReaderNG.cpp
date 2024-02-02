@@ -1735,7 +1735,6 @@ static void readInstructionSampler(unsigned &bytePos, const char *buf,
   case ISA_3D_SAMPLE: {
     // 0x6D <op> <pixel_null_mask> <cps_enable> <exec_size> <pred>
     // <channels> <aoffimmi> <sampler> <surface> <dst> <numParams> <params>
-    // <paired_surface>
        // The vISA version that widens the opcode field is 4
        // the below check is necessary to pick the correct
        // width during decoding based on input binary version
@@ -1755,16 +1754,6 @@ static void readInstructionSampler(unsigned &bytePos, const char *buf,
     uint8_t surface = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
 
     VISA_RawOpnd *dst = readRawOperandNG(bytePos, buf, container);
-    bool isPairedSurfaceAvailable =
-        getVersionAsInt(container.majorVersion, container.minorVersion) >=
-        getVersionAsInt(3, 8);
-    VISA_RawOpnd *pairedSurface =
-        isPairedSurfaceAvailable ? readRawOperandNG(bytePos, buf, container)
-                                 : nullptr;
-    if (pairedSurface == nullptr) {
-      kernelBuilder->CreateVISANullRawOperand(pairedSurface, false /*isDst*/);
-    }
-
     uint8_t numParams = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
 
     vISA_ASSERT_INPUT(numParams < 16,
@@ -1783,14 +1772,13 @@ static void readInstructionSampler(unsigned &bytePos, const char *buf,
     kernelBuilderImpl->AppendVISA3dSampler(
         op.opcode, op.pixelNullMask, op.cpsEnable, !op.nonUniformSampler, pred,
         emask, esize, ChannelMask::createAPIFromBinary(opcode, channelMask),
-        aoffimmi, samplerHnd, 0, surfaceHnd, 0, pairedSurface, dst, numParams,
-        params);
+        aoffimmi, samplerHnd, 0, surfaceHnd, 0,
+        dst, numParams, params);
     break;
   }
   case ISA_3D_LOAD: {
     // 0x6E <op> <pixel_null_mask> <exec_size> <pred> <channels>
     // <aoffimmi> <surface> <dst> <numParams> <params>
-    // <paired_surface>
        // same as 3D_SAMPLE, except that sampler is missing.
 
     // The vISA version that widens the opcode field is 4
@@ -1811,16 +1799,6 @@ static void readInstructionSampler(unsigned &bytePos, const char *buf,
     uint8_t surface = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
 
     VISA_RawOpnd *dst = readRawOperandNG(bytePos, buf, container);
-    bool isPairedSurfaceAvailable =
-        getVersionAsInt(container.majorVersion, container.minorVersion) >=
-        getVersionAsInt(3, 8);
-    VISA_RawOpnd *pairedSurface =
-        isPairedSurfaceAvailable ? readRawOperandNG(bytePos, buf, container)
-                                 : nullptr;
-    if (pairedSurface == nullptr) {
-      kernelBuilder->CreateVISANullRawOperand(pairedSurface, false /*isDst*/);
-    }
-
     uint8_t numParams = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
 
     vISA_ASSERT_INPUT(numParams < 16,
@@ -1837,7 +1815,6 @@ static void readInstructionSampler(unsigned &bytePos, const char *buf,
         op.opcode, op.pixelNullMask, pred, emask, esize,
         ChannelMask::createAPIFromBinary(opcode, channelMask), aoffimmi,
         surfaceHnd, 0,
-        pairedSurface,
         dst, numParams, params);
     break;
   }
@@ -1862,16 +1839,6 @@ static void readInstructionSampler(unsigned &bytePos, const char *buf,
     uint8_t surface = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
 
     VISA_RawOpnd *dst = readRawOperandNG(bytePos, buf, container);
-    bool isPairedSurfaceAvailable =
-        getVersionAsInt(container.majorVersion, container.minorVersion) >=
-        getVersionAsInt(3, 8);
-    VISA_RawOpnd *pairedSurface =
-        isPairedSurfaceAvailable ? readRawOperandNG(bytePos, buf, container)
-                                 : nullptr;
-    if (pairedSurface == nullptr) {
-      kernelBuilder->CreateVISANullRawOperand(pairedSurface, false /*isDst*/);
-    }
-
     uint8_t numParams = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
 
     vISA_ASSERT_INPUT(numParams < 8,
@@ -1890,7 +1857,6 @@ static void readInstructionSampler(unsigned &bytePos, const char *buf,
     kernelBuilder->AppendVISA3dGather4(op.opcode, op.pixelNullMask, pred, emask,
                                        esize, (VISASourceSingleChannel)channel,
                                        aoffimmi, samplerHnd, 0, surfaceHnd, 0,
-                                       pairedSurface,
                                        dst, numParams, params);
     break;
   }

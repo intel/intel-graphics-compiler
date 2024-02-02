@@ -1809,12 +1809,6 @@ void IGC::CustomSafeOptPass::visitLdptr(llvm::SamplerLoadIntrinsic* inst)
         return;
     }
 
-    // Sampler feedback (GenISA_evaluateSampler) supports GenISA_ldptr and not GenISA_typedread
-    llvm::Value* pairedTexture = inst->getPairedTextureValue();
-    if (pairedTexture != nullptr && !isa<UndefValue>(pairedTexture))
-    {
-        return;
-    }
     // change
     // % 10 = call fast <4 x float> @llvm.genx.GenISA.ldptr.v4f32.p196608v4f32(i32 %_s1.i, i32 %_s14.i, i32 0, i32 0, <4 x float> addrspace(196608)* null, i32 0, i32 0, i32 0), !dbg !123
     // to
@@ -1950,7 +1944,6 @@ void IGC::CustomSafeOptPass::visitSampleBptr(llvm::SampleIntrinsic* sampleInst)
         llvm::SmallVector<llvm::Type*, 4> overloadedTys;
         overloadedTys.push_back(sampleInst->getCalledFunction()->getReturnType());
         overloadedTys.push_back(sampleInst->getOperand(0)->getType());
-        overloadedTys.push_back(sampleInst->getPairedTextureValue()->getType());
         overloadedTys.push_back(sampleInst->getTextureValue()->getType());
         overloadedTys.push_back(sampleInst->getSamplerValue()->getType());
 

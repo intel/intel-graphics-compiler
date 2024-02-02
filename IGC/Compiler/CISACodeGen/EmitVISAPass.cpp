@@ -4915,15 +4915,15 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
 {
     uint numOperands = inst->getNumOperands();
     IGC_ASSERT_MESSAGE(7 < numOperands, "Wrong number of operands");
-    IGC_ASSERT_MESSAGE(numOperands < 11, "Wrong number of operands");
+    IGC_ASSERT_MESSAGE(numOperands < 10, "Wrong number of operands");
 
     EOPCODE opCode = GetOpCode(inst);
     //Subtract the offsets, resource sources to get
     //the number of texture coordinates and index to texture source
-    uint numSources = numOperands - 6;
+    uint numSources = numOperands - 5;
     uint textureArgIdx = numOperands - 5;
 
-    uint offsetSourceIndex = numSources + 2;
+    uint offsetSourceIndex = numSources + 1;
 
     SmallVector<CVariable*, 4> payload;
 
@@ -5027,11 +5027,6 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
         m_encoder->SetUniformSIMDSize(m_currShader->m_Platform->getMinDispatchMode());
     }
 
-    SamplerLoadIntrinsic* samplerLoadIntrinsic = llvm::cast<llvm::SamplerLoadIntrinsic>(inst);
-    ResourceDescriptor pairedResource = samplerLoadIntrinsic->hasPairedTextureArg() &&
-        llvm::isa<llvm::UndefValue>(samplerLoadIntrinsic->getPairedTextureValue()) == false ?
-        GetResourceVariable(samplerLoadIntrinsic->getPairedTextureValue()) :
-        ResourceDescriptor();
 
     CVariable* offset = ComputeSampleIntOffset(inst, offsetSourceIndex);
 
@@ -5040,7 +5035,6 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
         writeMask.getEM(),
         offset,
         resource,
-        pairedResource,
         numSources,
         dst,
         payload,
@@ -7498,10 +7492,6 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
 
     m_currShader->SetHasSample();
     ResourceDescriptor resource = GetSampleResourceHelper(inst);
-    bool isEval = isUsedOnlyByEval(inst);
-    ResourceDescriptor pairedResource = inst->hasPairedTextureArg() && llvm::isa<llvm::UndefValue>(inst->getPairedTextureValue()) == false ?
-        GetResourceVariable(inst->getPairedTextureValue()) :
-        ResourceDescriptor();
 
 
     //Get sampler index in the array of operands
@@ -7608,7 +7598,6 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
         writeMask.getEM(),
         immOffset,
         resource,
-        pairedResource,
         sampler,
         numSources,
         dst,
@@ -7920,10 +7909,6 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic* inst)
     ResourceDescriptor resource = GetResourceVariable(textureValue);
 
     bool isEval = isUsedOnlyByEval(inst);
-    ResourceDescriptor pairedResource = llvm::isa<llvm::UndefValue>(inst->getPairedTextureValue()) == false ?
-        GetResourceVariable(inst->getPairedTextureValue()) :
-        ResourceDescriptor();
-
     SamplerDescriptor sampler;
     Value* samplerValue = inst->getSamplerValue();
 
@@ -7989,7 +7974,6 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic* inst)
         opCode,
         offset,
         resource,
-        pairedResource,
         sampler,
         numSources,
         dst,

@@ -1363,15 +1363,13 @@ Sample3dInstruction: Predicate SAMPLE_3D_OP PixelNullMaskEnableOpt CPSEnableOpt 
            //        8                     9                    10                    11
                    VecSrcOperand_G_I_IMM SamplerAddrOperand SamplerAddrOperand RawOperand
            //        12
-                     RawOperand
-           //        13
                      RawOperandArray
    {
        const bool success = pBuilder->create3DSampleInstruction(
            $1, $2, $3, $4, $5, ChannelMask::createFromAPI($6),
            $7.emask, $7.exec_size, $8.cisa_gen_opnd, $9.base, $9.offset,
            $10.base, $10.offset,
-           $12, $11, (unsigned int)$13, rawOperandArray, CISAlineno);
+           $11, (unsigned int)$12, rawOperandArray, CISAlineno);
 
     ABORT_ON_FAIL(success);
    }
@@ -1385,14 +1383,12 @@ Load3dInstruction: Predicate LOAD_3D_OP PixelNullMaskEnableOpt SAMPLER_CHANNEL
            //      5        6                     7                 8
                  ExecSize VecSrcOperand_G_I_IMM SamplerAddrOperand RawOperand
            //      9
-                   RawOperand
-           //      10
                    RawOperandArray
    {
        const bool success = pBuilder->create3DLoadInstruction(
            $1, $2, $3, ChannelMask::createFromAPI($4),
            $5.emask, $5.exec_size, $6.cisa_gen_opnd, $7.base, $7.offset,
-           $9, $8, (unsigned int)$10, rawOperandArray, CISAlineno);
+           $8, (unsigned int)$9, rawOperandArray, CISAlineno);
 
     ABORT_ON_FAIL(success);
    }
@@ -1402,15 +1398,12 @@ Gather43dInstruction: Predicate SAMPLE4_3D_OP PixelNullMaskEnableOpt SAMPLER_CHA
            //         7                 8                   9
                     SamplerAddrOperand SamplerAddrOperand RawOperand
            //      10
-                   RawOperand
-           //      11
                    RawOperandArray
    {
        const bool success = pBuilder->createSample4Instruction(
           $1, $2, $3, ChannelMask::createFromAPI($4), $5.emask, $5.exec_size,
           $6.cisa_gen_opnd, $7.base, $7.offset, $8.base, $8.offset,
-           $10, $9,
-          (unsigned int)$11, rawOperandArray, CISAlineno);
+          $9, (unsigned int)$10, rawOperandArray, CISAlineno);
 
     ABORT_ON_FAIL(success);
    }

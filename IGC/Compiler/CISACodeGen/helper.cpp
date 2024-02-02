@@ -979,12 +979,7 @@ namespace IGC
         case llvm::GenISAIntrinsic::GenISA_ldmsptr:
         {
             llvm::Value* pTextureValue = cast<SamplerLoadIntrinsic>(pIntr)->getTextureValue();
-            llvm::Value* pPairedTextureValue = cast<SamplerLoadIntrinsic>(pIntr)->getPairedTextureValue();
             overloadedTys.push_back(pCalledFunc->getReturnType());
-            if (pPairedTextureValue != nullptr)
-            {
-                overloadedTys.push_back(pPairedTextureValue == oldPtr ? newPtr->getType() : pPairedTextureValue->getType());
-            }
             overloadedTys.push_back(pTextureValue == oldPtr ? newPtr->getType() : pTextureValue->getType());
             break;
         }
@@ -1008,22 +1003,15 @@ namespace IGC
         case llvm::GenISAIntrinsic::GenISA_lodptr:
         {
             // Figure out the intrinsic operands for texture & sampler
-            // & paired texture
-            llvm::Value* pPairedTextureValue = nullptr;
             llvm::Value* pTextureValue = nullptr;
             llvm::Value* pSamplerValue = nullptr;
             IGC::getTextureAndSamplerOperands(
                 pIntr,
-                pPairedTextureValue,
                 pTextureValue,
                 pSamplerValue);
 
             overloadedTys.push_back(pCalledFunc->getReturnType());
             overloadedTys.push_back(pIntr->getOperand(0)->getType());
-            if (pPairedTextureValue != nullptr)
-            {
-                overloadedTys.push_back(pPairedTextureValue == oldPtr ? newPtr->getType() : pPairedTextureValue->getType());
-            }
             overloadedTys.push_back(pTextureValue == oldPtr ? newPtr->getType() : pTextureValue->getType());
             if (pSamplerValue != nullptr)
             {
@@ -1131,40 +1119,23 @@ namespace IGC
         llvm::Value*& pTextureValue,
         llvm::Value*& pSamplerValue)
     {
-        llvm::Value* pUnusedPairedTextureValue;
-        getTextureAndSamplerOperands(pIntr, pUnusedPairedTextureValue, pTextureValue, pSamplerValue);
-    }
-
-    ///
-    /// Returns the sampler/texture/paired texture pointers for resource access intrinsics
-    ///
-    void getTextureAndSamplerOperands(
-        llvm::GenIntrinsicInst* pIntr,
-        llvm::Value*& pPairedTextureValue,
-        llvm::Value*& pTextureValue,
-        llvm::Value*& pSamplerValue)
-    {
         if (llvm::SamplerLoadIntrinsic * pSamplerLoadInst = llvm::dyn_cast<llvm::SamplerLoadIntrinsic>(pIntr))
         {
-            pPairedTextureValue = pSamplerLoadInst->getPairedTextureValue();
             pTextureValue = pSamplerLoadInst->getTextureValue();
             pSamplerValue = nullptr;
         }
         else if (llvm::SampleIntrinsic * pSampleInst = llvm::dyn_cast<llvm::SampleIntrinsic>(pIntr))
         {
-            pPairedTextureValue = pSampleInst->getPairedTextureValue();
             pTextureValue = pSampleInst->getTextureValue();
             pSamplerValue = pSampleInst->getSamplerValue();
         }
         else if (llvm::SamplerGatherIntrinsic * pGatherInst = llvm::dyn_cast<llvm::SamplerGatherIntrinsic>(pIntr))
         {
-            pPairedTextureValue = pGatherInst->getPairedTextureValue();
             pTextureValue = pGatherInst->getTextureValue();
             pSamplerValue = pGatherInst->getSamplerValue();
         }
         else
         {
-            pPairedTextureValue = nullptr;
             pTextureValue = nullptr;
             pSamplerValue = nullptr;
             switch (pIntr->getIntrinsicID())

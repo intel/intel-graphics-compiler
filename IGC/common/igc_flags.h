@@ -549,7 +549,6 @@ DECLARE_IGC_REGKEY(bool, EnableMadLoopSlice, true, "Enables the slicing of mad l
 DECLARE_IGC_REGKEY(bool, EnableGEPSimplification, true, "Enable GEP simplification", true)
 DECLARE_IGC_REGKEY(bool, TestGEPSimplification,         false, "[Test] Testing GEP simplification without actually lowering GEP. Used in lit test", false)
 DECLARE_IGC_REGKEY(bool, DisableSystemMemoryCachingInGPUForConstantBuffers, false, "Disables caching system memory in GPU for loads from constant buffers", false)
-DECLARE_IGC_REGKEY(bool, EnableInsertingPairedResourcePointer, true, "Enable to insert a bindless paired resource address into sampler headers in context of sampling feedback resources", true)
 DECLARE_IGC_REGKEY(bool, EnableTileYForExperiments, false, "Enable TileY heuristics for experiments", false)
 DECLARE_IGC_REGKEY(bool, EnableDG2LSCSIMD8WA, true, "Enables WA for DG2 LSC simd8 d32-v8/d64-v3/d64-v4. [temp, should be replaced with WA id", false)
 DECLARE_IGC_REGKEY(bool, EnableScratchMessageD64WA, false, "Enables WA to legalize D64 scratch messages to D32", false)

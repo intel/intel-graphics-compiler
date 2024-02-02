@@ -1755,7 +1755,6 @@
       "aoffimmi_value": [ "GENERAL", "UNSIGNED", 4 ],
       "sampler": [ "SAMPLER", 5 ],
       "surface": [ "SURFACE", 6 ],
-      "paired_surface": [ "NULLRAW" ],
       "dst": [ "RAW", 0 ],
       "number_of_additional_operands": [ "ARGCOUNT", "ARGCOUNTMIN1", 7 ],
       "raw_operands": [ "RAW_OPERANDS", "RAW", 7 ]
@@ -3071,7 +3070,6 @@
       "channel_mask": [ "BYTE", 3 ],
       "aoffimmi_value": [ "GENERAL", "UNSIGNED", 4 ],
       "surface": [ "SURFACE", 5 ],
-      "paired_surface": [ "NULLRAW" ],
       "dst": [ "RAW", 0 ],
       "number_of_additional_operands": [ "ARGCOUNT", "ARGCOUNTMIN1", 6 ],
       "raw_operands": [ "RAW_OPERANDS", "RAW", 6 ]
@@ -4195,7 +4193,6 @@
           "aoffimmi_value",
           "sampler",
           "surface",
-          "paired_surface",
           "dst",
           "number_of_additional_operands",
           "raw_operands"
@@ -5036,7 +5033,6 @@
           "convertChannelMaskToVisaType(channel_mask)",
           "aoffimmi_value",
           "surface",
-          "paired_surface",
           "dst",
           "number_of_additional_operands",
           "raw_operands"
