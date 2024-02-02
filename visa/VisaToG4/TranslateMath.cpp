@@ -924,17 +924,29 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
                  tmpCR0ForRoundRestore, tmpCR0ForRoundDenormRestore);
   }; // for loop
 
-  if (!noDstMove) {
-    // make final copy to dst
-    // dst = r8:df     mov (instExecSize) dstOpnd, t8_src_opnd_final {Q1/N1}
-    // final result is at r8.noacc
-    G4_SrcRegRegion tsrc8_final(*this, Mod_src_undef, Direct, t8->getRegVar(),
-                                0, 0, getRegionStride1(), Type_DF);
+  // make final copy to dst
+  if (!noDstMove || !hasDefaultRoundDenorm) {
+    G4_SrcRegRegion tsrc8_final(
+        *this, Mod_src_undef, Direct,
+        noDstMove ? dstOpnd->getBase() : t8->getRegVar(),
+        noDstMove ? dstOpnd->getRegOff() : 0, 0, getRegionStride1(), Type_DF);
     G4_SrcRegRegion *t8_src_opnd_final = createSrcRegRegion(tsrc8_final);
     t8_src_opnd_final->setAccRegSel(ACC_UNDEFINED);
-    inst = createInst(predOpnd, G4_mov, nullptr, saturate, instExecSize,
-                      dstOpnd, t8_src_opnd_final, NULL,
-                      Get_Gen4_Emask(emask, instExecSize), true);
+    if (hasDefaultRoundDenorm) {
+      // mov(instExecSize) dstOpnd, t8_src_opnd_final
+      inst = createInst(predOpnd, G4_mov, nullptr, saturate, instExecSize,
+                        dstOpnd, t8_src_opnd_final, nullptr,
+                        Get_Gen4_Emask(emask, instExecSize), true);
+    } else {
+      // If hasDefaultRoundDenorm is false, denorm mode may be flush to zero.
+      // When denorm flush-to-zero is set, mov instructions with the same source
+      // and destination data type may retain denorm as output. So, we need to
+      // use add instruction instead.
+      // add(instExecSize) dstOpnd, t8_src_opnd_final 0.0:df
+      inst = createInst(predOpnd, G4_add, nullptr, saturate, instExecSize,
+                        dstOpnd, t8_src_opnd_final, createImm(0, Type_DF),
+                        Get_Gen4_Emask(emask, instExecSize), true);
+    }
   }
 
   return VISA_SUCCESS;
@@ -1280,11 +1292,22 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
   };
 
   // make final copy to dst
-  // dst = r8:f  mov (instExecSize) r20.0<1>:f r110.0<8;8,1>:f {Q1/H1}
   t8_src_opnd_final->setAccRegSel(ACC_UNDEFINED);
-  inst = createInst(predOpnd, G4_mov, condMod, saturate, instExecSize, dstOpnd,
-                    t8_src_opnd_final, NULL,
-                    Get_Gen4_Emask(emask, instExecSize), true);
+  if (hasDefaultRoundDenorm) {
+    // mov (instExecSize) r86.0<1>:f r8.0<8;8,1>:f
+    inst = createInst(predOpnd, G4_mov, condMod, saturate, instExecSize,
+                      dstOpnd, t8_src_opnd_final, nullptr,
+                      Get_Gen4_Emask(emask, instExecSize), true);
+  } else {
+    // If hasDefaultRoundDenorm is false, denorm mode may be flush to zero.
+    // When denorm flush-to-zero is set, mov instructions with the same source
+    // and destination data type may retain denorm as output. So, we need to
+    // use add instruction instead.
+    // add (instExecSize) r86.0<1>:f r8.0<8;8,1>:f 0.0:f
+    inst = createInst(predOpnd, G4_add, condMod, saturate, instExecSize,
+                      dstOpnd, t8_src_opnd_final, createImm(0, Type_F),
+                      Get_Gen4_Emask(emask, instExecSize), true);
+  }
 
   return VISA_SUCCESS;
 }
@@ -1595,11 +1618,22 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
   };
 
   // make final copy to dst
-  // dst = r8:df   mov (instExecSize) r86.0<1>:f r8.0<8;8,1>:f {Q1/H1}
   t7_src_opnd_final->setAccRegSel(ACC_UNDEFINED);
-  inst = createInst(predOpnd, G4_mov, condMod, saturate, instExecSize, dstOpnd,
-                    t7_src_opnd_final, NULL,
-                    Get_Gen4_Emask(emask, instExecSize), true);
+  if (hasDefaultRoundDenorm) {
+    // mov (instExecSize) r86.0<1>:f r7.0<8;8,1>:f
+    inst = createInst(predOpnd, G4_mov, condMod, saturate, instExecSize,
+                      dstOpnd, t7_src_opnd_final, nullptr,
+                      Get_Gen4_Emask(emask, instExecSize), true);
+  } else {
+    // If hasDefaultRoundDenorm is false, denorm mode may be flush to zero.
+    // When denorm flush-to-zero is set, mov instructions with the same source
+    // and destination data type may retain denorm as output. So, we need to
+    // use add instruction instead.
+    // add (instExecSize) r86.0<1>:f r7.0<8;8,1>:f 0.0:f
+    inst = createInst(predOpnd, G4_add, condMod, saturate, instExecSize,
+                      dstOpnd, t7_src_opnd_final, createImm(0, Type_F),
+                      Get_Gen4_Emask(emask, instExecSize), true);
+  }
 
   return VISA_SUCCESS;
 }
@@ -2156,18 +2190,30 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
                  tmpCR0ForRoundRestore, tmpCR0ForRoundDenormRestore);
   };
 
-  if (!noDstMove) {
-    // make final copy to dst
-    // src = r7:df
-    // final result is at r7.noacc
-    G4_SrcRegRegion tsrc7_final(*this, Mod_src_undef, Direct, t7->getRegVar(),
-                                0, 0, getRegionStride1(), t7->getElemType());
+  // make final copy to dst
+  if (!noDstMove || !hasDefaultRoundDenorm) {
+    G4_SrcRegRegion tsrc7_final(*this, Mod_src_undef, Direct,
+                                noDstMove ? dstOpnd->getBase()
+                                          : t7->getRegVar(),
+                                noDstMove ? dstOpnd->getRegOff() : 0, 0,
+                                getRegionStride1(), t7->getElemType());
     G4_SrcRegRegion *t7_src_opnd_final = createSrcRegRegion(tsrc7_final);
     t7_src_opnd_final->setAccRegSel(ACC_UNDEFINED);
-    // mov (instExecSize) r20.0<1>:df r7.0<8;8,1>:df {Q1/H1}
-    inst = createInst(predOpnd, G4_mov, condMod, saturate, instExecSize,
-                      dstOpnd, t7_src_opnd_final, nullptr,
-                      Get_Gen4_Emask(emask, instExecSize), true);
+    if (hasDefaultRoundDenorm) {
+      // mov (instExecSize) r20.0<1>:df r7.0<8;8,1>:df
+      inst = createInst(predOpnd, G4_mov, condMod, saturate, instExecSize,
+                        dstOpnd, t7_src_opnd_final, nullptr,
+                        Get_Gen4_Emask(emask, instExecSize), true);
+    } else {
+      // If hasDefaultRoundDenorm is false, denorm mode may be flush to zero.
+      // When denorm flush-to-zero is set, mov instructions with the same source
+      // and destination data type may retain denorm as output. So, we need to
+      // use add instruction instead.
+      // add (instExecSize) r20.0<1>:df r7.0<8;8,1>:df 0.0:df
+      inst = createInst(predOpnd, G4_add, condMod, saturate, instExecSize,
+                        dstOpnd, t7_src_opnd_final, createImm(0, Type_DF),
+                        Get_Gen4_Emask(emask, instExecSize), true);
+    }
   }
 
   return VISA_SUCCESS;
