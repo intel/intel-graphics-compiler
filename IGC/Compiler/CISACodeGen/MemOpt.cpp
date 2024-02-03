@@ -3210,34 +3210,6 @@ void LdStCombine::combineStores()
         return true;
     };
 
-    // If 'aI' with offset 'aStart' overlaps with any store in aStores,
-    // return true; otherwise, return false.
-    // Note: once we know the offset is constant, this checking is precise
-    //       and better than using alias analysis (basicaa).
-    auto hasOverlap = [this](InstAndOffsetPairs& aStores,
-        Instruction* aI, int64_t aStart) {
-        StoreInst* aSI = dyn_cast<StoreInst>(aI);
-        if (aSI == nullptr)
-            return true;
-        Type* Ty = aSI->getValueOperand()->getType();
-        uint32_t TyBytes = (uint32_t)m_DL->getTypeStoreSize(Ty);
-        int64_t aEnd = aStart + TyBytes;
-        // 'aSI' byte range [aStart, aEnd)
-        for (auto& lsinfo : aStores) {
-            if (!lsinfo.isStore())
-                return true;
-            Type* thisTy = lsinfo.getLdStType();
-            uint32_t thisTyBytes = (uint32_t)m_DL->getTypeStoreSize(thisTy);
-            // 'lsinfo' byte range: [thisStart, thisEnd)
-            int64_t thisStart = lsinfo.ByteOffset;
-            int64_t thisEnd = thisStart + thisTyBytes;
-            if ((aStart >= thisStart && aStart < thisEnd) ||
-                (thisStart >= aStart && thisStart < aEnd))
-                return true;
-        }
-        return false;
-    };
-
     // Only handle stores within the given instruction window.
     constexpr uint32_t WINDOWSIZE = 150;
     m_hasStoreCombined = false;
@@ -3262,21 +3234,15 @@ void LdStCombine::combineStores()
                 Instruction* I = &*JI;
                 if (!skipCounting(I))
                     ++numInsts;
-                if (numInsts > WINDOWSIZE)
+                if (!canCombineStoresAcross(I) || numInsts > WINDOWSIZE) {
+                    // Cannot add more stores.
                     break;
-
+                }
                 int64_t offset;
                 if (isStoreCandidate(I) &&
                     getAddressDiffIfConstant(base, I, offset)) {
-                    if (hasOverlap(Stores, I, offset)) {
-                        // overlaping stores block merging
-                        break;
-                    }
                     Stores.push_back(LdStInfo(I, offset));
                     AST.add(I);
-                }
-                else if (!canCombineStoresAcross(I)) {
-                    break;
                 }
             }
 
