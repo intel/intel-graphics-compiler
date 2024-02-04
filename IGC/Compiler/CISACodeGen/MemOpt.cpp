@@ -520,9 +520,6 @@ bool MemOpt::runOnFunction(Function& F) {
     if (ProfitVectorLengths.empty())
         buildProfitVectorLengths(F);
 
-    // If LdStCombining is on, no need to do memopt.
-    const bool LdStCombineOn = doLdStCombine(CGC);
-
     bool Changed = false;
 
     IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = MDU->getFunctionsInfoItem(&F);
@@ -571,10 +568,8 @@ bool MemOpt::runOnFunction(Function& F) {
 
             if (LoadInst * LI = dyn_cast<LoadInst>(I))
                 Changed |= mergeLoad(LI, MI, MemRefs, MemRefsToOptimize);
-            else if (StoreInst* SI = dyn_cast<StoreInst>(I)) {
-                if (!LdStCombineOn)
-                    Changed |= mergeStore(SI, MI, MemRefs, MemRefsToOptimize);
-            }
+            else if (StoreInst * SI = dyn_cast<StoreInst>(I))
+                Changed |= mergeStore(SI, MI, MemRefs, MemRefsToOptimize);
             else if (EnableRemoveRedBlockreads) {
                 if (GenIntrinsicInst* GInst = dyn_cast<GenIntrinsicInst>(I)) {
                     if (GInst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockRead) {
