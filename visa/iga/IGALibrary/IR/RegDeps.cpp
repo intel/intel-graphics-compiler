@@ -969,11 +969,11 @@ void DepSet::setInputsSendDescDep() {
   // set up reg footprint for desc and exdesc if they are registers
   auto desc = m_instruction->getMsgDescriptor();
   if (desc.isReg()) {
-    addA_D(desc.reg); // e.g. a0.0
+    addABytesAndBukets(desc.reg.regNum);
   }
   auto exDesc = m_instruction->getExtMsgDescriptor();
   if (exDesc.isReg()) {
-    addA_D(exDesc.reg); // e.g. a0.0
+    addABytesAndBukets(desc.reg.regNum);
   }
 }
 
@@ -1679,18 +1679,22 @@ void DepSet::addGrfBytes(size_t reg, size_t subRegBytes, size_t num_bytes) {
   bits->set(grf_addr, num_bytes);
 }
 
-void DepSet::addABytes(size_t reg, size_t subregBytes, size_t num_bytes) {
+void DepSet::addABytesAndBukets(size_t reg) {
   IGA_ASSERT(reg >= 0 && reg < m_DB.getARF_A_REGS(),
              "a# register out of bounds");
-  IGA_ASSERT(subregBytes >= 0 && subregBytes < m_DB.getARF_A_BYTES_PER_REG(),
-             "a# sub register byte out of bounds");
-  IGA_ASSERT(subregBytes >= 0 && subregBytes < m_DB.getARF_A_BYTES_PER_REG(),
-             "a# sub register byte out of bounds");
-  size_t addr =
-      m_DB.getARF_A_START() + m_DB.getARF_A_BYTES_PER_REG() * reg + subregBytes;
+  size_t addr =  m_DB.getARF_A_START() + m_DB.getARF_A_BYTES_PER_REG() * reg;
   IGA_ASSERT(addr < (size_t)m_DB.getARF_A_START() + m_DB.getARF_A_LEN(),
              "a# byte address out of bounds");
+
+  // ARF_A's swsb is tracked at per register base. sub-register number
+  // doesn't matter.
+  auto num_bytes = m_DB.getARF_A_BYTES_PER_REG();
   bits->set(addr, num_bytes);
+  // set the corresponding buckets
+  for (auto i = addr / m_DB.getBYTES_PER_BUCKET();
+       i <= (addr + num_bytes - 1) / m_DB.getBYTES_PER_BUCKET(); i++) {
+    addToBucket(i);
+  }
 }
 void DepSet::addFBytes(size_t fByteOff, size_t num_bytes) {
   bits->set(fByteOff, num_bytes);

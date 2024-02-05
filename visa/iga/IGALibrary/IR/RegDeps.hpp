@@ -136,9 +136,7 @@ public:
 
   void addGrf(size_t reg);
   void addGrfBytes(size_t reg, size_t subRegBytes, size_t bytes);
-  void addA_W(RegRef rr) { addABytes(rr.regNum, 2 * (size_t)rr.subRegNum, 2); }
-  void addA_D(RegRef rr) { addABytes(rr.regNum, 4 * (size_t)rr.subRegNum, 4); }
-  void addABytes(size_t reg, size_t subregBytes, size_t bytes);
+  void addABytesAndBukets(size_t reg);
   void addFBytes(size_t fByteOff, size_t bytes);
   void addToBucket(uint32_t regNum) { m_bucketList.push_back(regNum); }
   void setDepPipe(DEP_PIPE pipe) { m_dPipe = pipe; }
@@ -263,6 +261,8 @@ public:
 
   DepSetBuilder(const Model &model)
       : GRF_REGS(model.getNumGRF()), GRF_BYTES_PER_REG(model.getGRFByteSize()),
+        ARF_A_BYTES_PER_REG(model.getBytesPerReg(RegName::ARF_A)),
+        ARF_A_REGS(model.getRegCount(RegName::ARF_A)),
         ARF_F_REGS(model.getNumFlagReg()), mPlatformModel(model) {
   }
 
@@ -393,8 +393,8 @@ private:
   const uint32_t GRF_REGS;
   const uint32_t GRF_BYTES_PER_REG;
 
-  const uint32_t ARF_A_BYTES_PER_REG = 32;
-  const uint32_t ARF_A_REGS = 1;
+  const uint32_t ARF_A_BYTES_PER_REG;
+  const uint32_t ARF_A_REGS;
 
   const uint32_t ARF_ACC_REGS = 12;
   const uint32_t ARF_ACC_BYTES_PER_REG = 32;
