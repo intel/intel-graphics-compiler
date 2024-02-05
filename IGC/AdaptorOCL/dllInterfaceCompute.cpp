@@ -1704,6 +1704,7 @@ bool TranslateBuildSPMD(
 
     COMPILER_TIME_END(&oclContext, TIME_TOTAL);
 
+    COMPILER_TIME_PER_PASS_PRINT(&oclContext, ShaderType::OPENCL_SHADER, oclContext.hash);
     COMPILER_TIME_PRINT(&oclContext, ShaderType::OPENCL_SHADER, oclContext.hash);
 
     COMPILER_TIME_DEL(&oclContext, m_compilerTimeStats);

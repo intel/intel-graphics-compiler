@@ -434,7 +434,7 @@ char MemOpt2::ID = 0;
 FunctionPass *createMemOpt2Pass(int MLT) { return new MemOpt2(MLT); }
 
 #define PASS_FLAG "igc-memopt2"
-#define PASS_DESC "IGC Memory Optimization, the 2nd"
+#define PASS_DESC "IGC Memory Optimization the 2nd"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(MemOpt2, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY,

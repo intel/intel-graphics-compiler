@@ -218,6 +218,8 @@ public:
     void printTime( ShaderType type, ShaderHash hash, UINT64 psoDDIHash) const;
     void printTime( ShaderType type, ShaderHash hash, void* context, UINT64 psoDDIHash) const;
 
+    void printTimePerPass( ShaderType type, ShaderHash hash ) const;
+
     /// Print the aggregated times for multiple shaders
     void printSumTime() const;
     /// Print the times for all passes
@@ -421,6 +423,19 @@ private:
             if ( IGC::Debug::GetDebugFlag( IGC::Debug::DebugFlag::TIME_STATS_PER_SHADER ) ) \
             { \
                 (pointer)->m_compilerTimeStats->printTime( \
+                    __VA_ARGS__ ); \
+            } \
+        } \
+    } while (0)
+
+#define COMPILER_TIME_PER_PASS_PRINT( pointer, ...) \
+    do \
+    { \
+        if( (pointer) && (pointer)->m_compilerTimeStats ) \
+        { \
+            if ( IGC_REGKEY_OR_FLAG_ENABLED(DumpTimeStatsPerPass, TIME_STATS_PER_PASS ) ) \
+            { \
+                (pointer)->m_compilerTimeStats->printTimePerPass( \
                     __VA_ARGS__ ); \
             } \
         } \

@@ -531,8 +531,6 @@ void TimeStats::printTime(ShaderType type, ShaderHash hash, void* context, UINT6
 
     pp.printTimeCSV( shaderName, psoDDIHash);
 
-    // Skip printing PerPass info to CSV for now
-    //pp.printPerPassTimeCSV( shaderName );
     // Avoid printing the timestats for each shader to screen
     // pp.printSumTimeTable(llvm::dbgs());
 }
@@ -570,6 +568,19 @@ void TimeStats::printSumTime() const
     }
 
     pp.printSumTimeTable(llvm::dbgs());
+}
+
+void TimeStats::printTimePerPass(ShaderType type, ShaderHash hash) const
+{
+    TimeStats pp = postProcess();
+
+    std::string shaderName = IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName()).Type(type).Hash(hash).StagedInfo(nullptr).str().c_str();
+    if (shaderName.find_last_of("\\") != std::string::npos)
+    {
+        shaderName = shaderName.substr(shaderName.find_last_of("\\") + 1, shaderName.size());
+    }
+
+    pp.printPerPassTimeCSV(shaderName);
 }
 
 bool TimeStats::skipTimer( int i ) const
