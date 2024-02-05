@@ -650,7 +650,8 @@ namespace IGC
             }
             // Caller is not a kernel, try to check which kerneles might
             // be calling it:
-            findCallingKernels(ctx, caller, kernels);
+            if (F != caller)
+                findCallingKernels(ctx, caller, kernels);
         }
     }
 
