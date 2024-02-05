@@ -2821,18 +2821,47 @@ uint32_t IGC::getMaxStoreBytes(const CodeGenContext* CGC) {
        if (oclCtx->m_InternalOptions.MaxStoreBytes != 0)
            return oclCtx->m_InternalOptions.MaxStoreBytes;
     }
+
     uint32_t bytes = IGC_GET_FLAG_VALUE(MaxStoreVectorSizeInBytes);
-    // Use default if bytes from the key is not set or invalid
-    if (!(bytes >= 4 && bytes <= 32 && isPowerOf2_32(bytes)))
+    if (bytes == 0 &&
+        (IGC_IS_FLAG_ENABLED(EnableVector8LoadStore) ||
+         CGC->type == ShaderType::RAYTRACING_SHADER ||
+         CGC->hasSyncRTCalls()) &&
+        CGC->platform.supports8DWLSCMessage()) {
+        // MaxStoreVectorSizeInBytes isn't set and it is RT
+        // EnableVector8LoadStore from memopt is supported as well
+        bytes = 32; // 8 DW
+    }
+    else if (!(bytes >= 4 && bytes <= 32 && isPowerOf2_32(bytes))) {
+        // Use default if bytes from the key is not set or invalid
         bytes = BundleConfig::STORE_DEFAULT_BYTES_PER_LANE;
+    }
     return bytes;
 }
 
 uint32_t IGC::getMaxLoadBytes(const CodeGenContext* CGC) {
+    if (CGC->type == ShaderType::OPENCL_SHADER) {
+        auto oclCtx = (const OpenCLProgramContext*)CGC;
+        // internal flag overrides IGC key
+        if (oclCtx->m_InternalOptions.MaxLoadBytes != 0)
+            return oclCtx->m_InternalOptions.MaxLoadBytes;
+    }
+
     uint32_t bytes = IGC_GET_FLAG_VALUE(MaxLoadVectorSizeInBytes);
+    if (bytes == 0 &&
+        (IGC_IS_FLAG_ENABLED(EnableVector8LoadStore) ||
+         CGC->type == ShaderType::RAYTRACING_SHADER ||
+         CGC->hasSyncRTCalls()) &&
+        CGC->platform.supports8DWLSCMessage()) {
+        // MaxLoadVectorSizeInBytes isn't set and it is RT
+        // EnableVector8LoadStore from memopt is supported as well
+        bytes = 32; // 8 DW
+    }
     // Use default if bytes from the key is not set or invalid
-    if (!(bytes >=4 && bytes <= 32 && isPowerOf2_32(bytes)))
+    else if (!(bytes >= 4 && bytes <= 32 && isPowerOf2_32(bytes))) {
+        // Use default if bytes from the key is not set or invalid
         bytes = BundleConfig::LOAD_DEFAULT_BYTES_PER_LANE;
+    }
     return bytes;
 }
 
