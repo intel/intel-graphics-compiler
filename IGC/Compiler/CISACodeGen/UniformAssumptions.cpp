@@ -86,10 +86,13 @@ namespace IGC {
                 }
             }
             // Figure out the intrinsic operands for texture & sampler
+            // & paired texture
+            llvm::Value* pPairedTextureValue = nullptr;
             llvm::Value* pTextureValue = nullptr;
             llvm::Value*pSamplerValue = nullptr;
             IGC::getTextureAndSamplerOperands(
                 pIntr,
+                pPairedTextureValue,
                 pTextureValue,
                 pSamplerValue);
 
@@ -100,6 +103,16 @@ namespace IGC {
                 if (m_forceUniformTexture || IsAssumedUniform(pTextureValue))
                 {
                     MakeUniformResourceOperand(pTextureValue, &CI);
+                }
+            }
+
+            if (pPairedTextureValue && pPairedTextureValue->getType()->isPointerTy() &&
+                !m_WIAnalysis->isUniform(pPairedTextureValue))
+            {
+                // Check assumptions for texture:
+                if (m_forceUniformTexture || IsAssumedUniform(pPairedTextureValue))
+                {
+                    MakeUniformResourceOperand(pPairedTextureValue, &CI);
                 }
             }
 

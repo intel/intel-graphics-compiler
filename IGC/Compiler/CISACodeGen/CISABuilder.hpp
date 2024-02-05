@@ -191,6 +191,7 @@ namespace IGC
             uint writeMask,
             CVariable* offset,
             const ResourceDescriptor& bindingTableIndex,
+            const ResourceDescriptor& pairedesource,
             const SamplerDescriptor& SamplerIdx,
             uint numSources,
             CVariable* dst,
@@ -204,6 +205,7 @@ namespace IGC
             uint writeMask,
             CVariable* offset,
             const ResourceDescriptor& resource,
+            const ResourceDescriptor& pairedesource,
             uint numSources,
             CVariable* dst,
             llvm::SmallVector<CVariable*, 4> & payload,
@@ -216,6 +218,7 @@ namespace IGC
             EOPCODE subOpcode,
             CVariable* offset,
             const ResourceDescriptor& resource,
+            const ResourceDescriptor& pairedesource,
             const SamplerDescriptor& sampler,
             uint numSources,
             CVariable* dst,
@@ -524,6 +527,7 @@ namespace IGC
         VISA_VectorOpnd* GetSourceOperandNoModifier(CVariable* var);
         VISA_VectorOpnd* GetDestinationOperand(CVariable* var, const SModifier& mod);
         VISA_RawOpnd* GetRawSource(CVariable* var, uint offset = 0);
+        VISA_RawOpnd* GetPairedResourceOperand(const ResourceDescriptor& pairedResource);
         VISA_RawOpnd* GetRawDestination(CVariable* var, unsigned offset = 0);
         VISA_PredOpnd* GetFlagOperand(const SFlag& flag);
         VISA_StateOpndHandle* GetVISASurfaceOpnd(e_predefSurface surfaceType, CVariable* bti);
@@ -1088,11 +1092,13 @@ namespace IGC
         const ResourceDescriptor& resource, uint numSources, CVariable* dst,
         llvm::SmallVector<CVariable*, 4> & payload, bool feedbackEnable)
     {
+        ResourceDescriptor pairedResource{};
         Load(
             subOpcode,
             writeMask,
             offset,
             resource,
+            pairedResource,
             numSources,
             dst,
             payload,

@@ -2241,6 +2241,13 @@ void vISAVerifier::verifyInstructionSampler(const CISA_INST *inst) {
                          "CPS LOD Compensation Enable is only supported for"
                          " sample, sample_b, sample_b_c, sample_c and LOD");
     }
+    bool isPairedSurface = isNotNullRawOperand(inst, 8);
+    REPORT_INSTRUCTION(
+        options,
+        (isPairedSurface && irBuilder->getPlatform() >= Xe2) ||
+            !isPairedSurface,
+        "Paired surface can not be defined on this platform");
+
     break;
   }
   case ISA_3D_LOAD:
@@ -2252,6 +2259,15 @@ void vISAVerifier::verifyInstructionSampler(const CISA_INST *inst) {
       REPORT_INSTRUCTION(options, irBuilder->getPlatform() >= GENX_SKL,
                          "Pixel Null Mask Enable only valid for SKL+");
     }
+
+    bool isPairedSurface =
+        isNotNullRawOperand(inst, opcode == ISA_3D_LOAD ? 6 : 8);
+
+    REPORT_INSTRUCTION(
+        options,
+        (isPairedSurface && irBuilder->getPlatform() >= Xe2) ||
+            !isPairedSurface,
+        "Paired surface can not be defined on this platform");
     break;
   }
   case ISA_3D_INFO:

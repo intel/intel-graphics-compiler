@@ -917,6 +917,7 @@ public:
                       VISAChannelMask srcChannel, VISA_VectorOpnd *aoffimmi,
                       VISA_StateOpndHandle *sampler,
                       VISA_StateOpndHandle *surface,
+                      VISA_RawOpnd *pairedSurface,
                       VISA_RawOpnd *dst, int numMsgSpecificOpnds,
                       VISA_RawOpnd **opndArray) override;
 
@@ -927,6 +928,7 @@ public:
                       VISAChannelMask srcChannel, VISA_VectorOpnd *aoffimmi,
                       VISA_StateOpndHandle *sampler, unsigned int samplerIdx,
                       VISA_StateOpndHandle *surface, unsigned int surfaceIdx,
+                      VISA_RawOpnd *pairedSurface,
                       VISA_RawOpnd *dst, int numMsgSpecificOpnds,
                       VISA_RawOpnd **opndArray) override;
 
@@ -935,6 +937,7 @@ public:
                    VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
                    VISA_Exec_Size executionSize, VISAChannelMask srcChannel,
                    VISA_VectorOpnd *aoffimmi, VISA_StateOpndHandle *surface,
+                   VISA_RawOpnd *pairedSurface,
                    VISA_RawOpnd *dst, int numMsgSpecificOpnds,
                    VISA_RawOpnd **opndArray) override;
 
@@ -944,6 +947,7 @@ public:
                    VISA_Exec_Size executionSize, VISAChannelMask srcChannel,
                    VISA_VectorOpnd *aoffimmi,
                    VISA_StateOpndHandle *surface, unsigned int surfaceIndex,
+                   VISA_RawOpnd *pairedSurface,
                    VISA_RawOpnd *dst, int numMsgSpecificOpnds,
                    VISA_RawOpnd **opndArray) override;
 
@@ -952,6 +956,7 @@ public:
       VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
       VISASourceSingleChannel srcChannel, VISA_VectorOpnd *aoffimmi,
       VISA_StateOpndHandle *sampler, VISA_StateOpndHandle *surface,
+      VISA_RawOpnd *pairedSurface,
       VISA_RawOpnd *dst, int numMsgSpecificOpnds,
       VISA_RawOpnd **opndArray) override;
 
@@ -961,10 +966,9 @@ public:
       VISASourceSingleChannel srcChannel, VISA_VectorOpnd *aoffimmi,
       VISA_StateOpndHandle *sampler, unsigned samplerIndex,
       VISA_StateOpndHandle *surface, unsigned surfaceIndex,
+      VISA_RawOpnd *pairedSurface,
       VISA_RawOpnd *dst, int numMsgSpecificOpnds,
       VISA_RawOpnd **opndArray) override;
-
-
 
   VISA_BUILDER_API int
   AppendVISA3dInfo(VISASampler3DSubOpCode subOpcode, VISA_EMask_Ctrl emask,
@@ -1104,6 +1108,7 @@ public:
       ChannelMask srcChannel, VISA_VectorOpnd *aoffimmi,
       VISA_StateOpndHandle *sampler, unsigned int samplerIdx,
       VISA_StateOpndHandle *surface, unsigned int surfaceIdx,
+      VISA_RawOpnd *pairedSurface,
       VISA_RawOpnd *dst, unsigned int numMsgSpecificOpnds,
       VISA_RawOpnd **opndArray);
 
