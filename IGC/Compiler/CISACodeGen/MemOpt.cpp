@@ -2939,6 +2939,8 @@ bool LdStCombine::hasAlias(AliasSetTracker& AST, MemoryLocation& MemLoc)
 {
     for (auto& AS : AST)
     {
+        if (AS.isForwardingAliasSet())
+            continue;
         AliasResult aresult = AS.aliasesPointer(MemLoc.Ptr, MemLoc.Size, MemLoc.AATags, AST.getAliasAnalysis());
         if (aresult != AliasResult::NoAlias) {
             return true;
@@ -3168,10 +3170,6 @@ void LdStCombine::combineStores()
     //   All stores have the same common-base but different const-offset.
     InstAndOffsetPairs Stores;
 
-    // Keep store candidates for checking alias to see if those
-    // stores can be moved to the place of the last store.
-    AliasSetTracker AST(*m_AA);
-
     auto isStoreCandidate = [&](Instruction* I)
     {
         if (StoreInst* SI = dyn_cast<StoreInst>(I))
@@ -3195,7 +3193,7 @@ void LdStCombine::combineStores()
 
     // If all Stores can move down across I, return true;
     // otherwise, return false.
-    auto canCombineStoresAcross = [&](Instruction* I)
+    auto canCombineStoresAcross = [this](AliasSetTracker& aAST, Instruction* I)
     {
         // Can't combine for non-debug fence like instructions
         if (I->isFenceLike() && !IsDebugInst(I))
@@ -3205,7 +3203,7 @@ void LdStCombine::combineStores()
             isa<StoreInst>(I) ||
             I->mayReadOrWriteMemory()) {
             MemoryLocation memloc = MemoryLocation::get(I);
-            return !hasAlias(AST, memloc);
+            return !hasAlias(aAST, memloc);
         }
         return true;
     };
@@ -3228,13 +3226,16 @@ void LdStCombine::combineStores()
 
             uint32_t numInsts = 1;
             Stores.push_back(LdStInfo(base, 0));
-            AST.clear();
+
+            // Keep store candidates for checking alias to see if those
+            // stores can be moved to the place of the last store.
+            AliasSetTracker AST(*m_AA);
             AST.add(base);
             for (auto JI = std::next(II); JI != IE; ++JI) {
                 Instruction* I = &*JI;
                 if (!skipCounting(I))
                     ++numInsts;
-                if (!canCombineStoresAcross(I) || numInsts > WINDOWSIZE) {
+                if (!canCombineStoresAcross(AST, I) || numInsts > WINDOWSIZE) {
                     // Cannot add more stores.
                     break;
                 }
@@ -3281,10 +3282,6 @@ void LdStCombine::combineLoads()
     // All load candidates with addr = common-base + const-offset
     InstAndOffsetPairs Loads;
 
-    // Keep store/maywritemem/fence insts for checking alias to see if those
-    // stores block load candidates from moving to the first (leading) load.
-    AliasSetTracker AST(*m_AA);
-
     auto isLoadCandidate = [&](Instruction* I)
     {
         if (LoadInst* LI = dyn_cast<LoadInst>(I))
@@ -3304,12 +3301,12 @@ void LdStCombine::combineLoads()
         return false;
     };
 
-    // If 'I' can be moved up accross all inst in AST, return true.
-    auto canMoveUp = [&](Instruction* I)
+    // If 'I' can be moved up accross all inst in aAST, return true.
+    auto canMoveUp = [this](AliasSetTracker& aAST, Instruction* I)
     {
         if (isa<LoadInst>(I)) {
             MemoryLocation memloc = MemoryLocation::get(I);
-            return !hasAlias(AST, memloc);
+            return !hasAlias(aAST, memloc);
         }
         return true;
     };
@@ -3331,7 +3328,11 @@ void LdStCombine::combineLoads()
 
             uint32_t numInsts = 1;
             Loads.push_back(LdStInfo(base, 0));
-            AST.clear();
+
+            // Keep store/maywritemem/fence insts for checking alias to see if those
+            // stores block load candidates from moving to the first (leading) load.
+            AliasSetTracker AST(*m_AA);
+
             for (auto JI = std::next(II); JI != IE; ++JI) {
                 Instruction* I = &*JI;
 
@@ -3351,7 +3352,7 @@ void LdStCombine::combineLoads()
                 if (isLoadCandidate(I)) {
                     int64_t offset;
                     if (getAddressDiffIfConstant(base, I, offset)) {
-                        if (canMoveUp(I)) {
+                        if (canMoveUp(AST, I)) {
                             Loads.push_back(LdStInfo(I, offset));
                         } else {
                             // If it cannot be moved up, either keep going or
