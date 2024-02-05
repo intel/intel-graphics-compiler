@@ -170,16 +170,7 @@ int IR_Builder::translateVISACFSymbolInst(const std::string &symbolName,
                                           G4_DstRegRegion *dst) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-  if (symbolName.compare("INTEL_PATCH_PRIVATE_MEMORY_SIZE") == 0) {
-    // Relocation for runtime-calculated private memory size
-    auto *privateMemPatch =
-        createRelocImm(GenRelocType::R_SYM_ADDR_32, symbolName, Type_UD);
-    dst->setType(*this, Type_UD);
-    G4_INST *mov =
-        createMov(g4::SIMD1, dst, privateMemPatch, InstOpt_WriteEnable, true);
-    RelocationEntry::createRelocation(kernel, *mov, 0, symbolName,
-                                      GenRelocType::R_SYM_ADDR_32);
-  } else if (Type_D == dst->getType()) {
+  if (Type_D == dst->getType()) {
     auto patchImm =
         createRelocImm(GenRelocType::R_GLOBAL_IMM_32, symbolName,
                        dst->getType());

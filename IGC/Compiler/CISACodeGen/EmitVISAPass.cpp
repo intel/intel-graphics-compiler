@@ -22681,19 +22681,10 @@ CVariable* EmitPass::getStackSizePerThread(Function* parentFunc) {
     IGC_ASSERT(stackMemIter != pModMD->PrivateMemoryPerFG.end());
     unsigned MaxPrivateSize = stackMemIter->second;
 
-    if (IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching)) {
-        // Experimental: Patch private memory size
-        std::string patchName = "INTEL_PATCH_PRIVATE_MEMORY_SIZE";
-        pSize = m_currShader->GetNewVariable(
-            1, ISA_TYPE_UD, CVariable::getAlignment(getGRFSize()), true,
-            CName(patchName));
-        m_encoder->AddVISASymbol(patchName, pSize);
-    } else {
-        // hard-code per-workitem private-memory size to max size
-        pSize = m_currShader->ImmToVariable(
-            MaxPrivateSize * numLanes(m_currShader->m_dispatchSize),
-            ISA_TYPE_UD);
-    }
+    // hard-code per-workitem private-memory size to max size
+    pSize = m_currShader->ImmToVariable(
+        MaxPrivateSize * numLanes(m_currShader->m_dispatchSize),
+        ISA_TYPE_UD);
 
     return pSize;
 }
