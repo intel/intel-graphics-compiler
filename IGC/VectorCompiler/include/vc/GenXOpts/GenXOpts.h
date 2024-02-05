@@ -88,6 +88,9 @@ void initializeGenXLinkageCorruptorPass(PassRegistry &);
 FunctionPass *createGenXTranslateIntrinsicsPass();
 void initializeGenXTranslateIntrinsicsPass(PassRegistry &);
 
+FunctionPass *createGenXTypeLegalizationPass();
+void initializeGenXTypeLegalizationPass(PassRegistry &);
+
 } // End llvm namespace
 
 #endif // VC_GENXOPTS_GENXOPTS_H

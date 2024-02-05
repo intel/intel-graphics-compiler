@@ -99,7 +99,7 @@ static cl::opt<unsigned> PeelLoopDpasNullAccMin(
 // There's another copy of DL string in clang/lib/Basic/Targets.cpp
 static std::string getDL(bool Is64Bit) {
   return Is64Bit ? "e-p:64:64-p3:32:32-p6:32:32-i64:64-n8:16:32:64"
-                 : "e-p:32:32-p3:32:32-p6:32:32-i64:64-n8:16:32";
+                 : "e-p:32:32-p3:32:32-p6:32:32-i64:64-n8:16:32:64";
 }
 
 namespace llvm {
@@ -190,6 +190,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXBuiltinFunctionsPass(registry);
   initializeGenXLegacyToLscTranslatorPass(registry);
   initializeGenXSLMResolutionPass(registry);
+  initializeGenXTypeLegalizationPass(registry);
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
 
@@ -826,6 +827,7 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
     PM.add(createGenXPrintfResolutionPass());
     PM.add(createGenXImportOCLBiFPass());
     PM.add(createGenXBIFFlagCtrlResolutionPass());
+    PM.add(createGenXTypeLegalizationPass());
     PM.add(createGenXPacketizePass());
     PM.add(createAlwaysInlinerLegacyPass());
     PM.add(createGenXPrintfLegalizationPass());
