@@ -250,6 +250,7 @@ private:
   bool lowerTrap(CallInst *CI);
   bool lowerDebugTrap(CallInst *CI);
   bool lowerFMulAdd(CallInst *CI);
+  bool lowerAddcSubb(CallInst *CI, unsigned IntrinsicID);
   bool lowerBitreverse(CallInst *CI);
   bool lowerFunnelShift(CallInst *CI, unsigned IntrinsicID);
   bool lowerMathIntrinsic(CallInst *CI, GenXIntrinsic::ID GenXID,
@@ -2060,6 +2061,9 @@ bool GenXLowering::processInst(Instruction *Inst) {
     case GenXIntrinsic::genx_usmul:
     case GenXIntrinsic::genx_uumul:
       return lowerGenXMul(CI, IntrinsicID);
+    case GenXIntrinsic::genx_addc:
+    case GenXIntrinsic::genx_subb:
+      return lowerAddcSubb(CI, IntrinsicID);
     case GenXIntrinsic::genx_ssmul_sat:
     case GenXIntrinsic::genx_sumul_sat:
     case GenXIntrinsic::genx_usmul_sat:
@@ -4395,6 +4399,195 @@ bool GenXLowering::lowerFMulAdd(CallInst *CI) {
   CI->replaceAllUsesWith(FMA);
 
   ToErase.push_back(CI);
+  return true;
+}
+
+constexpr unsigned AIdx = 0;
+constexpr unsigned BIdx = 1;
+
+// Get structure index for value
+static inline auto getXId(unsigned IntrinsicID) {
+  switch (IntrinsicID) {
+  case GenXIntrinsic::genx_addc:
+    return llvm::GenXIntrinsic::GenXResult::IdxAddc_Add;
+  case GenXIntrinsic::genx_subb:
+    return llvm::GenXIntrinsic::GenXResult::IdxSubb_Sub;
+  case GenXIntrinsic::genx_add3c:
+    return llvm::GenXIntrinsic::GenXResult::IdxAdd3c_Add;
+  default:
+    IGC_ASSERT_UNREACHABLE();
+  }
+}
+
+// Get structure index for carry/borrow
+static inline auto getCId(unsigned IntrinsicID) {
+  switch (IntrinsicID) {
+  case GenXIntrinsic::genx_addc:
+    return llvm::GenXIntrinsic::GenXResult::IdxAddc_Carry;
+  case GenXIntrinsic::genx_subb:
+    return llvm::GenXIntrinsic::GenXResult::IdxSubb_Borrow;
+  case GenXIntrinsic::genx_add3c:
+    return llvm::GenXIntrinsic::GenXResult::IdxAdd3c_Carry;
+  default:
+    IGC_ASSERT_UNREACHABLE();
+  }
+}
+
+/*
+  VISA inst expected sequence:
+  [addc|subb].32 x1 c1 a1 b1     (1)
+  [addc|subb].32 x2 c2 a2 b2     (2)
+  [addc|subb].32 x2 c3 x2 c1     (2)
+  or.32       c  c2 c3        (3)
+
+  {a1, a2} = rdregion.32 a
+  {b1, b2} = rdregion.32 b
+  {x1, c1} = [addc|subb].32 a1 b1
+  {x_, c_} = [addc|subb].32 a2 b2
+  {x2, c2} = [addc|subb].32 x_ c1
+  c32 = or.32 c2 c_
+  c = zextend.64 c32
+  // Result
+  x = wrregion.64 {x1, x2}
+  result = struct {x, c}
+*/
+
+struct AddcRes {
+  Value *X;
+  Value *C;
+};
+
+AddcRes GenExtractFromStruct(IRBuilder<> &IRB, CallInst *Addc, unsigned idxX,
+                             unsigned idxC) {
+  auto *X1 = IRB.CreateExtractValue(Addc, {idxX}, Addc->getName() + ".X.");
+  auto *C1 = IRB.CreateExtractValue(Addc, {idxC}, Addc->getName() + ".C.");
+  return {X1, C1};
+}
+
+auto *Generate32bitSequence(CallInst *CI, unsigned IntrinsicID) {
+  auto *A = CI->getOperand(0);
+  auto *B = CI->getOperand(1);
+  auto *InType = A->getType();
+
+  IRBuilder<> IRB{CI};
+  auto Size = cast<IGCLLVM::FixedVectorType>(InType)->getNumElements();
+  auto Opc = GenXIntrinsic::ID(IntrinsicID);
+  auto *RetTy = CI->getType();
+  auto *ConvertTy = IGCLLVM::FixedVectorType::get(IRB.getInt32Ty(), Size);
+
+  auto ASplit = IVSplitter(*CI, &AIdx).splitValueLoHi(*A);
+  auto BSplit = IVSplitter(*CI, &BIdx).splitValueLoHi(*B);
+
+  auto *Decl = GenXIntrinsic::getGenXDeclaration(CI->getModule(), Opc,
+                                                 {ConvertTy, ConvertTy});
+  // {x1, c1} = addc.32 a1 b1
+  auto AddcLo = GenExtractFromStruct(
+      IRB,
+      IRB.CreateCall(Decl, {ASplit.Lo, BSplit.Lo}, CI->getName() + "addc.1."),
+      getXId(Opc), getCId(Opc));
+  // {x_, c_} = addc.32 a2 b2
+  auto Addc_ = GenExtractFromStruct(
+      IRB,
+      IRB.CreateCall(Decl, {ASplit.Hi, BSplit.Hi}, CI->getName() + "addc.2."),
+      getXId(Opc), getCId(Opc));
+  // {x2, c2} = addc.32 x_ c1
+  auto AddcHi = GenExtractFromStruct(
+      IRB, IRB.CreateCall(Decl, {Addc_.X, AddcLo.C}, CI->getName() + "addc.3."),
+      getXId(Opc), getCId(Opc));
+  // c = or.32 c2 c_
+  auto *C = cast<llvm::Instruction>(IRB.CreateOr(AddcHi.C, Addc_.C));
+  // ==> Pack result to structure
+  Value *Result =
+      IVSplitter(*C).combineLoHiSplit({AddcLo.X, AddcHi.X}, "Result", false);
+  // Struct = CI->getType()
+  auto *PrevVal = UndefValue::get(RetTy);
+  C = cast<llvm::Instruction>(IRB.CreateZExt(C, Result->getType()));
+
+  auto *ArrResult = IRB.CreateInsertValue(PrevVal, Result, getXId(Opc));
+  ArrResult = IRB.CreateInsertValue(ArrResult, C, getCId(Opc));
+  return ArrResult;
+}
+
+/*
+  VISA inst expected sequence:
+
+  [addc|subb].32 x1 c1 a1 b1
+  add3o.32 x2 pc2  a2 [-]b2 [-]c1
+  zext.64 c pc
+  Result = {{x1, x2}, c}
+*/
+auto *GenerateAdd3Sequence(CallInst *CI, unsigned IntrinsicID) {
+
+  auto *A = CI->getOperand(0);
+  auto *B = CI->getOperand(1);
+  auto *InType = A->getType();
+
+  IRBuilder<> IRB{CI};
+  auto Size = cast<IGCLLVM::FixedVectorType>(InType)->getNumElements();
+  auto Opc = GenXIntrinsic::ID(IntrinsicID);
+  auto *RetTy = CI->getType();
+
+  IVSplitter SplitBuilderA(*CI, &AIdx);
+  IVSplitter SplitBuilderB(*CI, &BIdx);
+  auto ASplit = SplitBuilderA.splitValueLoHi(*A);
+  auto BSplit = SplitBuilderB.splitValueLoHi(*B);
+
+  auto *ConvertTy = IGCLLVM::FixedVectorType::get(IRB.getInt32Ty(), Size);
+
+  auto *Decl = GenXIntrinsic::getGenXDeclaration(CI->getModule(), Opc,
+                                                 {ConvertTy, ConvertTy});
+  // {x1, c1} = [addc|subb].32 a1 b1
+  auto AddcLo = GenExtractFromStruct(
+      IRB, CallInst::Create(Decl, {ASplit.Lo, BSplit.Lo}, CI->getName(), CI),
+      getXId(Opc), getCId(Opc));
+
+  auto *MaskTy = IGCLLVM::FixedVectorType::get(IRB.getInt1Ty(), Size);
+  auto IntrOpc = GenXIntrinsic::genx_add3c;
+  auto *Add3Funct = GenXIntrinsic::getGenXDeclaration(CI->getModule(), IntrOpc,
+                                                      {MaskTy, ConvertTy});
+
+  auto *BHI = BSplit.Hi;
+  auto *LoC = AddcLo.C;
+  if (Opc == GenXIntrinsic::genx_subb) {
+    BHI = IRB.CreateNeg(BHI, BHI->getName() + ".neg");
+    LoC = IRB.CreateNeg(LoC, LoC->getName() + ".neg");
+  }
+
+  // add3o.32 x2 pc2   a2 [-]b2 [-]c1
+  auto Add3c = GenExtractFromStruct(
+      IRB,
+      IRB.CreateCall(Add3Funct, {ASplit.Hi, BHI, LoC}, CI->getName() + ".add3"),
+      getXId(IntrOpc), getCId(IntrOpc));
+
+  Value *Result = IVSplitter(*cast<Instruction>(Add3c.C))
+                      .combineLoHiSplit({AddcLo.X, Add3c.X}, "Result", false);
+
+  // zext.64 c pc
+  auto *C = IRB.CreateZExt(Add3c.C, InType);
+
+  auto *PrevVal = UndefValue::get(RetTy);
+  auto *ArrResult = IRB.CreateInsertValue(PrevVal, Result, getXId(Opc));
+  ArrResult = IRB.CreateInsertValue(ArrResult, C, getCId(Opc));
+  return ArrResult;
+}
+
+bool GenXLowering::lowerAddcSubb(CallInst *CI, unsigned IntrinsicID) {
+  IGC_ASSERT(CI);
+
+  auto *InType = (cast<Instruction>(CI->getOperand(0)))->getType();
+  if (!InType->getScalarType()->isIntegerTy(64) ||
+      !dyn_cast<IGCLLVM::FixedVectorType>(InType))
+    return false;
+
+  IGC_ASSERT(InType->getScalarType()->isIntegerTy(64));
+
+  if (ST->hasAdd3Bfn())
+    CI->replaceAllUsesWith(GenerateAdd3Sequence(CI, IntrinsicID));
+  else
+    CI->replaceAllUsesWith(Generate32bitSequence(CI, IntrinsicID));
+
+  ToErase.push_back(CI);
+
   return true;
 }
 
