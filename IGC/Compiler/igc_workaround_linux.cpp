@@ -187,6 +187,7 @@ namespace IGC
                 }
                 InitGt_12_70SwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
             }
+            break;
             case IGFX_XE2_LPG_CORE:
             {
                 switch (GFX_GET_GMD_RELEASE_VERSION_RENDER(platform->getPlatformInfo()))
