@@ -3918,6 +3918,7 @@ namespace IGC
                 params.push_back(param_uptr("-emitCrossThreadOffR0Reloc", literal_deleter));
             }
         }
+
         // Ensure VISA_Opts has the same scope as CreateVISABuilder so that valid
         // strings are checked by vISA and freed out of this function.
         if (IGC_IS_FLAG_ENABLED(VISAOptions))
@@ -4106,6 +4107,11 @@ namespace IGC
         if (IGC_IS_FLAG_ENABLED(EnableVISADebug) || isOptDisabled)
         {
             SaveOption(vISA_Compaction, false);
+        }
+
+        if (context->getModuleMetaData()->compOpt.spillCompression)
+        {
+            SaveOption(vISA_ForceSpillSpaceCompression, true);
         }
 
         // Set up options. This must be done before creating any variable/instructions

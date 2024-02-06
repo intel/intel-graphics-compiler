@@ -409,6 +409,7 @@ namespace IGC
         bool UseLegacyBindlessMode                      = true;
         bool disableMathRefactoring                     = false;
         bool atomicBranch                               = false;
+        bool spillCompression                           = false;
         bool ForceInt32DivRemEmu                        = false;
         bool ForceInt32DivRemEmuSP                      = false;
         bool DisableFastestSingleCSSIMD                 = false;
@@ -484,6 +485,8 @@ namespace IGC
         bool forceTileYWalk = false;
         // enable atomic branch optimization
         bool atomicBranch = false;
+        // enable spill compression
+        bool spillCompression = false;
         // enable compute walk order optimization
         bool walkOrderEnabled = false;
         unsigned int walkOrderOverride = 0;
