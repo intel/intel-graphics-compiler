@@ -84,6 +84,17 @@ typedef struct {
 #define SetSimdSpill(MODE, stats)    (stats = (stats | (BIT_CG_SIMD##MODE) |  (BIT_CG_SPILL##MODE)))
 #define SetSimdNoSpill(MODE, stats)  (stats = (stats | (BIT_CG_SIMD##MODE) & ~(BIT_CG_SPILL##MODE)))
 
+#define IGC_SHIM_LEGACY_LLVM_VERSION 9
+#define IGC_SHIM_DEFAULT_LLVM_VERSION 14
+#define IGC_SHIM_NEXT_LLVM_VERSION 15
+
+#if defined(_WIN64) || defined(__x86_64__) // 64-bit
+#define IGC_DLL_POSTFIX "64.dll"
+#else // 32-bit
+#define IGC_DLL_POSTFIX "32.dll"
+#endif
+
+
 typedef enum CG_FLAG_t {
     FLAG_CG_ALL_SIMDS = 0,
     FLAG_CG_STAGE1_FAST_COMPILE = 1,
