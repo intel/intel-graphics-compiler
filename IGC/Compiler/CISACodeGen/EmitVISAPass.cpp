@@ -4762,11 +4762,11 @@ void EmitPass::emitPlnInterpolation(CVariable* baryVar, CVariable* inputvar)
 
 void EmitPass::emitcycleCounter(llvm::Instruction* inst)
 {
+    // Must move 2 DW at the same time, so use "(W) mov (2|M0)"
     CVariable* dst = m_destination;
-    m_encoder->Copy(dst, m_currShader->GetTSC());
-    m_encoder->Push();
-    m_encoder->SetSrcSubReg(0, 1);
-    m_encoder->SetDstSubReg(1);
+    m_encoder->SetNoMask();
+    m_encoder->SetSrcRegion(0, 1, 1, 0);
+    m_encoder->SetUniformSIMDSize(SIMDMode::SIMD2);
     m_encoder->Copy(dst, m_currShader->GetTSC());
     m_encoder->Push();
 }
