@@ -980,14 +980,15 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
             // Get buffer information from the analysis
             unsigned int scalarBufferOffset = m_ModAllocaInfo->getConstBufferOffset(pAI);
             // If we can use SOA layout transpose the memory
-            Type* pTypeOfAccessedObject = nullptr;
-            bool allUsesAreVector = false;
-
+            IGC::SOALayoutChecker SOAChecker(*pAI);
+            IGC::SOALayoutInfo SOAInfo = SOAChecker.getOrGatherInfo();
             // TransposeMemLayout is not prepared to work on 64-bit pointers (originally, the private address space is expressed by 32-bit pointers).
             // Address space casting
             bool TransposeMemLayout =
                 ADDRESS_SPACE_PRIVATE == scratchMemoryAddressSpace &&
-                CanUseSOALayout(pAI, pTypeOfAccessedObject, allUsesAreVector);
+                SOAInfo.canUseSOALayout;
+            Type* pTypeOfAccessedObject = SOAInfo.baseType;
+            bool allUsesAreVector = SOAInfo.allUsesAreVector;
 
             if (TransposeMemLayout && IGC_IS_FLAG_ENABLED(EnableSOAPromotionDisablingHeuristic))
             {

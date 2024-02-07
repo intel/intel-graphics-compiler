@@ -18,7 +18,6 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
 #include <llvm/IR/Function.h>
-#include <llvm/IR/Instructions.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/Transforms/Utils/Local.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -307,13 +306,13 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* 
 
         allowedAllocaSizeInBytes = (allowedAllocaSizeInBytes * 8) / SIMDSize;
     }
-    Type* baseType = nullptr;
-    bool allUsesAreVector = false;
-    if (!CanUseSOALayout(pAlloca, baseType, allUsesAreVector))
+    SOALayoutChecker checker(*pAlloca);
+    SOALayoutInfo SOAInfo = checker.getOrGatherInfo();
+    if (!SOAInfo.canUseSOALayout)
     {
         return StatusPrivArr2Reg::CannotUseSOALayout;
     }
-    if (!IsNativeType(baseType))
+    if (!IsNativeType(SOAInfo.baseType))
     {
         return StatusPrivArr2Reg::IsNotNativeType;
     }
@@ -384,112 +383,119 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* 
     return StatusPrivArr2Reg::OK;
 }
 
-static bool CheckUsesForSOALayout(Instruction* I, bool& vectorSOA, bool& allUsesAreVector)
+SOALayoutInfo SOALayoutChecker::getOrGatherInfo()
 {
-    for (Value::user_iterator use_it = I->user_begin(), use_e = I->user_end(); use_it != use_e; ++use_it)
-    {
-        if (auto* pGEP = dyn_cast<GetElementPtrInst>(*use_it))
-        {
-            if (!CheckUsesForSOALayout(pGEP, vectorSOA, allUsesAreVector))
-                return false;
-        }
-        else if (auto* pLoad = llvm::dyn_cast<llvm::LoadInst>(*use_it))
-        {
-            bool isVectorLoad = pLoad->getType()->isVectorTy();
-            vectorSOA &= isVectorLoad;
-            allUsesAreVector &= isVectorLoad;
-            if (!pLoad->isSimple())
-                return false;
-        }
-        else if (auto* pStore = llvm::dyn_cast<llvm::StoreInst>(*use_it))
-        {
-            if (!pStore->isSimple())
-                return false;
-            llvm::Value* pValueOp = pStore->getValueOperand();
-            bool isVectorStore = pStore->getValueOperand()->getType()->isVectorTy();
-            vectorSOA &= isVectorStore;
-            allUsesAreVector &= isVectorStore;
-            if (pValueOp == I)
-            {
-                // GEP instruction is the stored value of the StoreInst (not supported case)
-                return false;
-            }
-        }
-        else if (auto* pBitCast = llvm::dyn_cast<llvm::BitCastInst>(*use_it))
-        {
-            Type* baseT = GetBaseType(IGCLLVM::getNonOpaquePtrEltTy(pBitCast->getType()));
-            Type* sourceType = GetBaseType(IGCLLVM::getNonOpaquePtrEltTy(pBitCast->getOperand(0)->getType()));
-            if (pBitCast->use_empty())
-            {
-                continue;
-            }
-            else if (baseT != nullptr &&
-                baseT->getScalarSizeInBits() != 0 &&
-                baseT->getScalarSizeInBits() == sourceType->getScalarSizeInBits())
-            {
-                vectorSOA &= (unsigned int)baseT->getPrimitiveSizeInBits() == sourceType->getPrimitiveSizeInBits();
-                if (CheckUsesForSOALayout(pBitCast, vectorSOA, allUsesAreVector))
-                    continue;
-            }
-            else if (IsBitCastForLifetimeMark(pBitCast))
-            {
-                continue;
-            }
-            // Not a candidate.
-            return false;
-        }
-        else if (auto* pIntr = dyn_cast<IntrinsicInst>(*use_it))
-        {
-            llvm::Intrinsic::ID  IID = pIntr->getIntrinsicID();
-            if (IID == llvm::Intrinsic::lifetime_start ||
-                IID == llvm::Intrinsic::lifetime_end)
-            {
-                continue;
-            }
-            return false;
-        }
-        else
-        {
-            // This is some other instruction. Right now we don't want to handle these
-            return false;
-        }
-    }
-    return true;
-}
+    if (pInfo)
+        return *pInfo;
+    pInfo = std::make_unique<SOALayoutInfo>(false, nullptr, false);
 
-
-bool IGC::CanUseSOALayout(AllocaInst* I, Type*& base, bool& allUsesAreVector)
-{
     // Do not allow SOA layout for vla which will be stored on the stack.
     // We don't support SOA layout for privates on stack at all so this is just to make
     // the implementation simpler.
-    if (LowerGEPForPrivMem::IsVariableSizeAlloca(*I))
-        return false;
+    if (LowerGEPForPrivMem::IsVariableSizeAlloca(allocaRef))
+        return *pInfo;
 
     // Don't even look at non-array allocas.
     // (extractAllocaDim can not handle them anyway, causing a crash)
-    llvm::Type* pType = I->getAllocatedType();
+    llvm::Type* pType = allocaRef.getAllocatedType();
     if (pType->isStructTy() && pType->getStructNumElements() == 1)
     {
         pType = pType->getStructElementType(0);
     }
-    if ((!pType->isArrayTy() && !pType->isVectorTy()) || I->isArrayAllocation())
-        return false;
+    if ((!pType->isArrayTy() && !pType->isVectorTy()) || allocaRef.isArrayAllocation())
+        return *pInfo;
 
-    base = GetBaseType(pType);
-    if (base == nullptr)
-        return false;
+    pInfo->baseType = GetBaseType(pType);
+    if (!pInfo->baseType)
+        return *pInfo;
     // only handle case with a simple base type
-    if (!(base->getScalarType()->isFloatingPointTy() || base->getScalarType()->isIntegerTy()))
-        return false;
-    bool vectorSOA = true;
-    allUsesAreVector = true;
-    bool useSOA = CheckUsesForSOALayout(I, vectorSOA, allUsesAreVector);
-    if (!vectorSOA)
+    if (!(pInfo->baseType->getScalarType()->isFloatingPointTy() ||
+        pInfo->baseType->getScalarType()->isIntegerTy()))
+        return *pInfo;
+
+    // Now that we've confirmed our alloca to be a valid candidate, assume that
+    // all memory instructions are vector unless proven otherwise.
+    pInfo->allUsesAreVector = true;
+    // Start the traversal: each specified visitor function will delegate its
+    // checked instruction to the same method if need be.
+    pInfo->canUseSOALayout = checkUsers(allocaRef);
+    if (!isVectorSOA)
     {
-        base = base->getScalarType();
+        pInfo->baseType = pInfo->baseType->getScalarType();
     }
-    return useSOA;
+    return *pInfo;
+}
+
+// TODO: Consider a worklist-based implementation instead.
+bool SOALayoutChecker::checkUsers(Instruction& I)
+{
+    parentLevelInst = &I;
+    for (Value::user_iterator userIt = I.user_begin(), userE = I.user_end(); userIt != userE; ++userIt)
+    {
+        auto& userInst = *cast<Instruction>(*userIt);
+        if (!visit(userInst))
+            return false;
+    }
+    return true;
+}
+
+bool SOALayoutChecker::visitBitCastInst(BitCastInst& BI)
+{
+    Type* baseT = GetBaseType(IGCLLVM::getNonOpaquePtrEltTy(BI.getType()));
+    Type* sourceType = GetBaseType(IGCLLVM::getNonOpaquePtrEltTy(BI.getOperand(0)->getType()));
+    if (BI.use_empty())
+    {
+        return true;
+    }
+    else if (baseT != nullptr &&
+        baseT->getScalarSizeInBits() != 0 &&
+        baseT->getScalarSizeInBits() == sourceType->getScalarSizeInBits())
+    {
+        isVectorSOA &= (unsigned int)baseT->getPrimitiveSizeInBits() == sourceType->getPrimitiveSizeInBits();
+        return checkUsers(BI);
+    }
+    else if (IsBitCastForLifetimeMark(&BI))
+    {
+        return true;
+    }
+    // Not a candidate.
+    return false;
+}
+
+bool SOALayoutChecker::visitGetElementPtrInst(GetElementPtrInst& GEP)
+{
+    return checkUsers(GEP);
+}
+
+bool SOALayoutChecker::visitIntrinsicInst(IntrinsicInst& II)
+{
+    llvm::Intrinsic::ID IID = II.getIntrinsicID();
+    return IID == llvm::Intrinsic::lifetime_start ||
+           IID == llvm::Intrinsic::lifetime_end;
+}
+
+bool SOALayoutChecker::visitLoadInst(LoadInst& LI)
+{
+    bool isVectorLoad = LI.getType()->isVectorTy();
+    isVectorSOA &= isVectorLoad;
+    pInfo->allUsesAreVector &= isVectorLoad;
+    return LI.isSimple();
+}
+
+bool SOALayoutChecker::visitStoreInst(StoreInst& SI)
+{
+    if (!SI.isSimple())
+        return false;
+    llvm::Value* pValueOp = SI.getValueOperand();
+    bool isVectorStore = pValueOp->getType()->isVectorTy();
+    isVectorSOA &= isVectorStore;
+    pInfo->allUsesAreVector &= isVectorStore;
+    if (pValueOp == parentLevelInst)
+    {
+        // GEP instruction is the stored value of the StoreInst (unsupported case)
+        return false;
+    }
+    return true;
 }
 
 void LowerGEPForPrivMem::MarkNotPromtedAllocas(llvm::AllocaInst& I, IGC::StatusPrivArr2Reg status)
