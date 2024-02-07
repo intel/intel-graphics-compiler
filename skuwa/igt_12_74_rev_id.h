@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022-2023 Intel Corporation
+Copyright (C) 2022-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 // This is an auto-generated file. Please do not edit!
 // If changes are needed here please reach out to the codeowners, thanks.
+
 
 #include "wa_def.h"
 
