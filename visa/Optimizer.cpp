@@ -392,10 +392,17 @@ void Optimizer::insertHashMovs() {
         // but vISA_HashVal1 is still optional.
         uint64_t hashVal = builder.getOptions()->getuInt64Option(vISA_HashVal);
         insertHashMovInsts(hashVal);
+        // vISA_HashVal1 is an extra hash value used to distinguish each entry
+        // in the module. That works for IGC as IGC invokes vISA for each
+        // kernel. However, VC invokes vISA for the whole module, so here we use
+        // an unique id for the purpose. Note that if vISA_HashVal1 is given,
+        // the value would still be used to emit the extra hash.
         if (builder.getOptions()->isOptionSetByUser(vISA_HashVal1)) {
           uint64_t hashVal1 =
             builder.getOptions()->getuInt64Option(vISA_HashVal1);
           insertHashMovInsts(hashVal1);
+        } else if (kernel.getKernelType() == VISA_CM) {
+          insertHashMovInsts(kernel.getFunctionId());
         }
         return;
       }
