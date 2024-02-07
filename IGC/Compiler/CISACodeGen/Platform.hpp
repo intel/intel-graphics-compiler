@@ -950,15 +950,6 @@ bool L3CacheCoherentCrossTiles() const {
     return isCoreChildOf(IGFX_XE_HPC_CORE);
 }
 
-bool AllowFenceOpt() const
-{
-    return ((m_platformInfo.eProductFamily == IGFX_DG2
-        || m_platformInfo.eProductFamily == IGFX_METEORLAKE
-        || m_platformInfo.eProductFamily == IGFX_ARROWLAKE
-        || m_platformInfo.eProductFamily == IGFX_PVC) &&
-        IGC_IS_FLAG_ENABLED(EnablePlatformFenceOpt));
-}
-
 //if RayTracing fence WA for LSCBackupMode (DG2.A0 only actually) is enabled.
 //In case of RayQuery of DG2.A0, we have to flush L1 after RTWrite and before shader read.
 //The reason is, for RT writes, write - completion must guarantee that
