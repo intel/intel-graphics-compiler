@@ -179,9 +179,8 @@ namespace IGC
 
                 if (GenIntrinsicInst * intrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(DefMI))
                 {
-                    if ((isURBWriteIntrinsic(intrinsic) && !IGC_IS_FLAG_ENABLED(DisablePayloadCoalescing_URB)) ||
-                        (llvm::isa<llvm::RTWriteIntrinsic>(intrinsic) && !IGC_IS_FLAG_ENABLED(DisablePayloadCoalescing_RT)) ||
-                        (llvm::isa<llvm::RTDualBlendSourceIntrinsic>(intrinsic) && !IGC_IS_FLAG_ENABLED(DisablePayloadCoalescing_RT) && m_Platform.hasDualKSPPS()))
+                    if ((isURBWriteIntrinsic(intrinsic) && !(IGC_IS_FLAG_ENABLED(DisablePayloadCoalescing_URB))) ||
+                        (llvm::isa<llvm::RTWriteIntrinsic>(intrinsic) && !(IGC_IS_FLAG_ENABLED(DisablePayloadCoalescing_RT))))
                     {
                         ProcessTuple(DefMI);
                     }
@@ -1458,8 +1457,7 @@ namespace IGC
         if (isSampleInstruction(inst) ||
             isLdInstruction(inst) ||
             isURBWriteIntrinsic(inst) ||
-            llvm::isa<llvm::RTWriteIntrinsic>(inst) ||
-            (llvm::isa<llvm::RTDualBlendSourceIntrinsic>(inst) && m_Platform.hasDualKSPPS()))
+            llvm::isa<llvm::RTWriteIntrinsic>(inst))
         {
             uint numOperands = inst->getNumOperands();
             for (uint i = 0; i < numOperands; i++)

@@ -6879,7 +6879,6 @@ void InsertBranchOpt::atomicSpiltOpt(Function& F)
 
             Value* resourcePtr = inst->getOperand(0);
             types.push_back(IGCLLVM::FixedVectorType::get(builder.getFloatTy(), 4));
-            types.push_back(resourcePtr->getType());//Paired resource
             types.push_back(resourcePtr->getType());//Resource
 
 
@@ -6892,7 +6891,6 @@ void InsertBranchOpt::atomicSpiltOpt(Function& F)
             ld_FunctionArgList.push_back(zero);                   //coordinates y
             ld_FunctionArgList.push_back(zero);                   //coordinates z
             ld_FunctionArgList.push_back(zero);                   //lod
-            ld_FunctionArgList.push_back(llvm::UndefValue::get(inst->getOperand(0)->getType()));
             ld_FunctionArgList.push_back(inst->getOperand(0));    //src buffer
             ld_FunctionArgList.push_back(zero);                   //immediate offset u
             ld_FunctionArgList.push_back(zero);                   //immediate offset v

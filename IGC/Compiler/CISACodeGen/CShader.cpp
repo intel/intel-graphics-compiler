@@ -916,25 +916,6 @@ CVariable* CShader::GetHWTID()
     {
         if (m_Platform->getHWTIDFromSR0())
         {
-            if (m_Platform->getPlatformInfo().eProductFamily == IGFX_LUNARLAKE)
-            {
-
-                uint32_t bitmask = BITMASK(16);
-                m_HW_TID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1, "HWTID");
-                encoder.SetNoMask();
-                encoder.SetSrcSubReg(0, 0);
-                encoder.And(m_HW_TID, GetSR0(), ImmToVariable(bitmask, ISA_TYPE_D));
-                encoder.Push();
-
-                // Remove bit [10]
-                RemoveBitRange(m_HW_TID, 10, 1);
-                // Remove bit [7]
-                RemoveBitRange(m_HW_TID, 7, 1);
-                // Remove bit [3]
-                RemoveBitRange(m_HW_TID, 3, 1);
-
-                return m_HW_TID;
-            }
             if (m_Platform->getPlatformInfo().eProductFamily == IGFX_PVC)
             {
                 // [14:12] Slice ID.

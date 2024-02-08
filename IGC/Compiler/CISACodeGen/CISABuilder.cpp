@@ -1766,69 +1766,6 @@ namespace IGC
 
     void CEncoder::Arithmetic(ISA_Opcode opcode, CVariable* dst, CVariable* src0, CVariable* src1, CVariable* src2)
     {
-        // Single Precision or Double precision denorm mode in
-        // control register must be set to retain denorm mode
-        // when executing Math Macro instruction sequence.
-        // It applies to the platforms which has correctly implemented
-        // macros and INV and SQRT instructions.
-        // 1. Set appropriate bit in control register.
-        // 2. Execute inv or sqrt instruction
-        // 3. Flush denorm in the result if flushing was enabled.
-        // 4. Restore original denorm mode in control register.
-        bool forceRetainDenorms =
-            m_program->m_Platform->hasCorrectlyRoundedMacros() &&
-            ((opcode == ISA_Opcode::ISA_INV) || (opcode == ISA_Opcode::ISA_SQRT)) &&
-            IsFloat(src0->GetType()) &&
-            (src1 == nullptr);
-
-        // Save original denorm mode. This value is a mask of bits
-        // corresponding to the denorm bits in Control register.
-        uint32_t oldDenormMode = m_fpDenormMode;
-
-        if (forceRetainDenorms)
-        {
-            IGC_ASSERT_MESSAGE(src1 == nullptr, "Unsupported opcode for Forcing Retain Denorm Mode.");
-
-            DenormModeEncoding denormMode = DenormModeEncoding::DenormFlushToZero;
-
-            // Check the type of src0, currently the restrictions applied only
-            // to unary instructions.
-            // Get the denorm mode mask for that data type.
-            switch (src0->GetType())
-            {
-            case ISA_TYPE_DF:
-                denormMode = DenormModeEncoding::Float64DenormRetain;
-                break;
-
-            case ISA_TYPE_F:
-                denormMode = DenormModeEncoding::Float32DenormRetain;
-                break;
-
-            case ISA_TYPE_HF:
-                denormMode = DenormModeEncoding::Float16DenormRetain;
-                break;
-
-            case ISA_TYPE_BF:
-                denormMode = DenormModeEncoding::FloatBFTFDenormRetain;
-                break;
-
-            default:
-                IGC_ASSERT_MESSAGE(0, "Incorrect Float type.");
-            }
-
-            // Check if the original denorm mode for the src0 data type
-            // was 0 (flush to zero).
-            // denormMode will always have a bit set for the given data
-            // type. If currently set mode is 0 (flush to zero), the
-            // ANDing these values will give 0, thus cr must be temporarily
-            // updated and flushing the destination must be added,
-            forceRetainDenorms &= (m_fpDenormMode && denormMode) == 0;
-
-            if (forceRetainDenorms)
-            {
-                SetDenormMode(denormMode);
-            }
-        }
 
         VISA_VectorOpnd* srcOpnd0 = GetSourceOperand(src0, m_encoderState.m_srcOperand[0]);
         VISA_VectorOpnd* srcOpnd1 = GetSourceOperand(src1, m_encoderState.m_srcOperand[1]);
@@ -1846,15 +1783,6 @@ namespace IGC
             srcOpnd1,
             srcOpnd2));
 
-        if (forceRetainDenorms)
-        {
-            // Restore the original denorm mode.
-            SetDenormMode(oldDenormMode);
-
-            // Force flushing the destination to zero by adding -0 to it.
-            CVariable* negativeZero = m_program->ImmToVariable((uint64_t)-0.0, dst->GetType());
-            Add(dst, dst, negativeZero);
-        }
 
     }
 
@@ -3846,50 +3774,6 @@ namespace IGC
             return VISA_3D_LOD;
         case llvm_sample_killpix:
             return VISA_3D_SAMPLE_KILLPIX;
-        case llvm_sample_mlodptr:
-            return VISA_3D_SAMPLE_MLOD;
-        case llvm_sample_c_mlodptr:
-            return VISA_3D_SAMPLE_C_MLOD;
-        case llvm_sample_bc_mlodptr:
-            return VISA_3D_SAMPLE_B_C;
-        case llvm_sample_dc_mlodptr:
-            return VISA_3D_SAMPLE_D_C_MLOD;
-        case llvm_gather4Iptr:
-            return VISA_3D_GATHER4_I;
-        case llvm_gather4Bptr:
-            return VISA_3D_GATHER4_B;
-        case llvm_gather4ICptr:
-            return VISA_3D_GATHER4_I_C;
-        case llvm_gather4LCptr:
-            return VISA_3D_GATHER4_L_C;
-        case llvm_ldlptr:
-            return VISA_3D_LD_L;
-        case llvm_sample_poptr:
-            return VISA_3D_SAMPLE_PO;
-        case llvm_sample_pobptr:
-            return VISA_3D_SAMPLE_PO_B;
-        case llvm_sample_polptr:
-            return VISA_3D_SAMPLE_PO_L;
-        case llvm_sample_pocptr:
-            return VISA_3D_SAMPLE_PO_C;
-        case llvm_sample_podptr:
-            return VISA_3D_SAMPLE_PO_D;
-        case llvm_sample_polcptr:
-            return VISA_3D_SAMPLE_PO_L_C;
-        case llvm_gather4POPackedptr:
-            return VISA_3D_GATHER4_PO_PACKED;
-        case llvm_gather4POPackedLptr:
-            return VISA_3D_GATHER4_PO_PACKED_L;
-        case llvm_gather4POPackedBptr:
-            return VISA_3D_GATHER4_PO_PACKED_B;
-        case llvm_gather4POPackedIptr:
-            return VISA_3D_GATHER4_PO_PACKED_I;
-        case llvm_gather4POPackedCptr:
-            return VISA_3D_GATHER4_PO_PACKED_C;
-        case llvm_gather4POPackedICptr:
-            return VISA_3D_GATHER4_PO_PACKED_I_C;
-        case llvm_gather4POPackedLCptr:
-            return VISA_3D_GATHER4_PO_PACKED_L_C;
         default:
             IGC_ASSERT_MESSAGE(0, "wrong sampler subopcode");
             return VISA_3D_SAMPLE;
@@ -4509,8 +4393,7 @@ namespace IGC
             SaveOption(vISA_ActiveThreadsOnlyBarrier, true);
         }
 
-        if ((context->type == ShaderType::OPENCL_SHADER || context->type == ShaderType::COMPUTE_SHADER
-            || context->type == ShaderType::RAYTRACING_SHADER ||  context->type == ShaderType::BINDLESS_SHADER) &&
+        if ((context->type == ShaderType::OPENCL_SHADER || context->type == ShaderType::COMPUTE_SHADER) &&
             (m_program->m_Platform->preemptionSupported() || IGC_IS_FLAG_ENABLED(ForcePreemptionWA)) &&
             IGC_IS_FLAG_ENABLED(EnablePreemption))
         {
@@ -9219,133 +9102,6 @@ namespace IGC
             pIndex,
             pSrc,
             nullptr));
-    }
-
-    void CEncoder::LSC_TypedAtomic(
-        AtomicOp atomic_op, ResourceDescriptor* resource,
-        CVariable* pU, CVariable* pV, CVariable* pR,
-        CVariable* pSrc0, CVariable* pSrc1, CVariable* pDst,
-        unsigned elemSize, LSC_ADDR_SIZE addr_size)
-    {
-        // DG2: SIMD8, PVC: SIMD16, Xe2: SIMD32
-        VISA_Exec_Size execSize = visaExecSize(m_encoderState.m_simdSize);
-
-        // convert to LSC_OP
-        LSC_OP subOp = getLSCAtomicOpCode(atomic_op);
-
-        VISA_RawOpnd* dstOpnd = GetRawSource(pDst, 0);
-        // TODO unify the way we calculate offset for raw sources, maybe we shouldn't use offset at all
-        VISA_RawOpnd* pUOpnd = GetRawSource(pU, m_encoderState.m_srcOperand[0].subVar * getGRFSize());
-        VISA_RawOpnd* pVOpnd = GetRawSource(pV, m_encoderState.m_srcOperand[0].subVar * getGRFSize());
-        VISA_RawOpnd* pROpnd = GetRawSource(pR, m_encoderState.m_srcOperand[0].subVar * getGRFSize());
-        VISA_RawOpnd* pSrc0Opnd = GetRawSource(pSrc0, m_encoderState.m_srcOperand[1].subVar * getGRFSize());
-        VISA_RawOpnd* pSrc1Opnd = GetRawSource(pSrc1, m_encoderState.m_srcOperand[1].subVar * getGRFSize());
-
-        VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
-        IGC_ASSERT(m_encoderState.m_dstOperand.subVar == 0);
-
-        VISA_EMask_Ctrl mask = ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask);
-        VISA_VectorOpnd* globalOffsetOpnd = GetVISALSCSurfaceOpnd(resource->m_surfaceType, resource->m_resource);
-        LSC_CACHE_OPTS cache{ LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT };
-        LSC_DATA_SHAPE dataShape{};
-        dataShape.size = LSC_GetElementSize(elemSize);
-        dataShape.order = LSC_DATA_ORDER_NONTRANSPOSE;
-        dataShape.elems = LSC_GetElementNum(1);
-
-        V(vKernel->AppendVISALscTypedAtomic(
-            subOp,
-            predOpnd,
-            execSize,
-            mask,
-            cache,
-            getLSCAddrType(resource),
-            addr_size,
-            dataShape,
-            globalOffsetOpnd, 0,
-            dstOpnd,
-            pUOpnd, 0,
-            pVOpnd, 0,
-            pROpnd, 0,
-            nullptr,
-            pSrc0Opnd,
-            pSrc1Opnd));
-    }
-
-    void CEncoder::LSC_Typed2dBlock(
-        LSC_OP subOpcode,
-        CVariable* srcDst,
-        e_predefSurface surfaceType,
-        CVariable* bufId,
-        CVariable* xOffset,
-        CVariable* yOffset,
-        int blockWidth,
-        int blockHeight)
-    {
-        LSC_CACHE_OPTS cache{ LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT };
-        LSC_DATA_SHAPE_TYPED_BLOCK2D dataShape2D{};
-        dataShape2D.height = blockHeight;
-        dataShape2D.width = blockWidth;
-
-        VISA_VectorOpnd* surfOpnd = GetVISALSCSurfaceOpnd(surfaceType, bufId);
-        VISA_VectorOpnd* xOffsetOpnd = GetUniformSource(xOffset);
-        VISA_VectorOpnd* yOffsetOpnd = GetUniformSource(yOffset);
-        VISA_RawOpnd* dstOpnd = nullptr;
-        VISA_RawOpnd* srcOpnd = nullptr;
-        if (subOpcode == LSC_LOAD_BLOCK2D)
-        {
-            dstOpnd = GetRawDestination(srcDst);
-        }
-        else if (subOpcode == LSC_STORE_BLOCK2D)
-        {
-            srcOpnd = GetRawSource(srcDst);
-        }
-
-        V(vKernel->AppendVISALscTypedBlock2DInst(
-            subOpcode,
-            cache,
-            getLSCAddrType(surfaceType),
-            dataShape2D,
-            surfOpnd,
-            0,
-            dstOpnd,
-            xOffsetOpnd,
-            yOffsetOpnd,
-            0,
-            0,
-            srcOpnd));
-    }
-
-    void CEncoder::LSC_UntypedAppendCounterAtomic(
-        LSC_OP lscOp,
-        ResourceDescriptor* resource,
-        CVariable* dst,
-        CVariable* src0)
-    {
-
-        LSC_ADDR_TYPE AddrType = getLSCAddrType(resource);
-        LSC_CACHE_OPTS cache{ LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT };
-        VISA_VectorOpnd* surface = GetVISALSCSurfaceOpnd(resource->m_surfaceType, resource->m_resource);
-
-        LSC_DATA_SHAPE dataShape{};
-        dataShape.size = LSC_GetElementSize(32);
-        dataShape.order = LSC_DATA_ORDER_NONTRANSPOSE;
-        dataShape.elems = LSC_GetElementNum(1);
-
-        VISA_RawOpnd* dstOpnd = GetRawDestination(dst);
-        VISA_RawOpnd* srcOpnd = GetRawSource(src0);
-        V(vKernel->AppendVISALscUntypedAppendCounterAtomicInst(
-            lscOp,
-            GetFlagOperand(m_encoderState.m_flag),
-            visaExecSize(m_encoderState.m_simdSize),
-            ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask),
-            cache,
-            AddrType,
-            dataShape,
-            surface,
-            0x0,
-            dstOpnd,
-            srcOpnd));
-
     }
 
     void CEncoder::AppendBreakpoint() {

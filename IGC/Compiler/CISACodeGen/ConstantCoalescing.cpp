@@ -2458,7 +2458,7 @@ Instruction* ConstantCoalescing::CreateSamplerLoad(
         cast<PointerType>(resourcePtr->getType()) :
         PointerType::get(irBuilder->getFloatTy(), addrSpace);
 
-    Type* types[] = { IGCLLVM::FixedVectorType::get(irBuilder->getFloatTy(), 4), resourceType, resourceType };
+    Type* types[] = { IGCLLVM::FixedVectorType::get(irBuilder->getFloatTy(), 4), resourceType };
     Function* l = GenISAIntrinsic::getDeclaration(curFunc->getParent(),
         llvm::GenISAIntrinsic::GenISA_ldptr,
         types);
@@ -2468,7 +2468,6 @@ Instruction* ConstantCoalescing::CreateSamplerLoad(
         irBuilder->getInt32(0),
         irBuilder->getInt32(0),
         irBuilder->getInt32(0),
-        UndefValue::get(resourceType),
         resourcePtr ? resourcePtr : ConstantPointerNull::get(resourceType),
         irBuilder->getInt32(0),
         irBuilder->getInt32(0),

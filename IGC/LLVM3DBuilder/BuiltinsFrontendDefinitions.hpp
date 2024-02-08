@@ -1025,38 +1025,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLE(
     bool feedback_enabled,
     llvm::Type* returnType)
 {
-    return Create_SAMPLE(
-        coordinate_u,
-        coordinate_v,
-        coordinate_r,
-        coordinate_ai,
-        llvm::UndefValue::get(ptr_textureIdx->getType()),
-        ptr_textureIdx,
-        ptr_sampler,
-        offsetU,
-        offsetV,
-        offsetW,
-        minlod,
-        feedback_enabled,
-        returnType);
-}
-
-template<bool preserveNames, typename T, typename Inserter>
-inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLE(
-    llvm::Value* coordinate_u,
-    llvm::Value* coordinate_v,
-    llvm::Value* coordinate_r,
-    llvm::Value* coordinate_ai,
-    llvm::Value* ptr_pairedTextureIdx,
-    llvm::Value* ptr_textureIdx,
-    llvm::Value* ptr_sampler,
-    llvm::Value* offsetU,
-    llvm::Value* offsetV,
-    llvm::Value* offsetW,
-    llvm::Value* minlod,
-    bool feedback_enabled,
-    llvm::Type* returnType)
-{
     if (minlod == nullptr)
     {
         minlod = llvm::ConstantFP::get(coordinate_u->getType(), 0.0);
@@ -1068,7 +1036,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLE(
         coordinate_r,
         coordinate_ai,
         minlod,
-        ptr_pairedTextureIdx,
         ptr_textureIdx,
         ptr_sampler,
         offsetU,
@@ -1082,7 +1049,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLE(
     llvm::Type* types[] = {
         IGCLLVM::FixedVectorType::get(dstType, 4),
         coordinate_u->getType(),
-        ptr_pairedTextureIdx->getType(),
         ptr_textureIdx->getType(),
         ptr_sampler->getType()
     };
@@ -1112,40 +1078,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEC
     bool feedback_enabled,
     llvm::Type* returnType)
 {
-    return Create_SAMPLEC(
-        float_reference_0,
-        float_address_0,
-        float_address_1,
-        float_address_2,
-        float_address_3,
-        llvm::UndefValue::get(int32_textureIdx->getType()),
-        int32_textureIdx,
-        int32_sampler,
-        int32_offsetU,
-        int32_offsetV,
-        int32_offsetR,
-        minlod,
-        feedback_enabled,
-        returnType);
-}
-
-template<bool preserveNames, typename T, typename Inserter>
-inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEC(
-    llvm::Value* float_reference_0,
-    llvm::Value* float_address_0,
-    llvm::Value* float_address_1,
-    llvm::Value* float_address_2,
-    llvm::Value* float_address_3,
-    llvm::Value* int32_pairedTextureIdx,
-    llvm::Value* int32_textureIdx,
-    llvm::Value* int32_sampler,
-    llvm::Value* int32_offsetU,
-    llvm::Value* int32_offsetV,
-    llvm::Value* int32_offsetR,
-    llvm::Value* minlod,
-    bool feedback_enabled,
-    llvm::Type* returnType)
-{
     if (minlod == nullptr)
     {
         minlod = llvm::ConstantFP::get(float_address_0->getType(), 0.0);
@@ -1158,7 +1090,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEC
         float_address_2,
         float_address_3,
         minlod,
-        int32_pairedTextureIdx,
         int32_textureIdx,
         int32_sampler,
         int32_offsetU,
@@ -1172,7 +1103,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEC
     llvm::Type* types[] = {
         IGCLLVM::FixedVectorType::get(dstType, 4),
         float_reference_0->getType(),
-        int32_pairedTextureIdx->getType(),
         int32_textureIdx->getType(),
         int32_sampler->getType()
     };
@@ -1202,40 +1132,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEL
     bool feedback_enabled,
     llvm::Type* returnType)
 {
-    return Create_SAMPLELC(
-        float_reference_0,
-        float_address_0,
-        float_address_1,
-        float_address_2,
-        float_address_3,
-        float_lod,
-        llvm::UndefValue::get(int32_textureIdx->getType()),
-        int32_textureIdx,
-        int32_sampler,
-        int32_offsetU,
-        int32_offsetV,
-        int32_offsetW,
-        feedback_enabled,
-        returnType);
-}
-
-template<bool preserveNames, typename T, typename Inserter>
-inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLELC(
-    llvm::Value* float_reference_0,
-    llvm::Value* float_address_0,
-    llvm::Value* float_address_1,
-    llvm::Value* float_address_2,
-    llvm::Value* float_address_3,
-    llvm::Value* float_lod,
-    llvm::Value* int32_pairedTextureIdx,
-    llvm::Value* int32_textureIdx,
-    llvm::Value* int32_sampler,
-    llvm::Value* int32_offsetU,
-    llvm::Value* int32_offsetV,
-    llvm::Value* int32_offsetW,
-    bool feedback_enabled,
-    llvm::Type* returnType)
-{
     llvm::Value * packed_tex_params[] = {
         float_reference_0,
         float_lod,
@@ -1243,7 +1139,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEL
         float_address_1,
         float_address_2,
         float_address_3,
-        int32_pairedTextureIdx,
         int32_textureIdx,
         int32_sampler,
         int32_offsetU,
@@ -1257,7 +1152,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEL
     llvm::Type* types[] = {
         IGCLLVM::FixedVectorType::get(dstType, 4),
         float_reference_0->getType(),
-        int32_pairedTextureIdx->getType(),
         int32_textureIdx->getType(),
         int32_sampler->getType()
     };
@@ -1278,38 +1172,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEC
     llvm::Value* float_address_1,
     llvm::Value* float_address_2,
     llvm::Value* float_address_3,
-    llvm::Value* int32_textureIdx,
-    llvm::Value* int32_sampler,
-    llvm::Value* int32_offsetU,
-    llvm::Value* int32_offsetV,
-    llvm::Value* int32_offsetW,
-    bool feedback_enabled,
-    llvm::Type* returnType)
-{
-    return Create_SAMPLEC_LZ(
-        float_reference_0,
-        float_address_0,
-        float_address_1,
-        float_address_2,
-        float_address_3,
-        llvm::UndefValue::get(int32_textureIdx->getType()),
-        int32_textureIdx,
-        int32_sampler,
-        int32_offsetU,
-        int32_offsetV,
-        int32_offsetW,
-        feedback_enabled,
-        returnType);
-}
-
-template<bool preserveNames, typename T, typename Inserter>
-inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEC_LZ(
-    llvm::Value* float_reference_0,
-    llvm::Value* float_address_0,
-    llvm::Value* float_address_1,
-    llvm::Value* float_address_2,
-    llvm::Value* float_address_3,
-    llvm::Value* int32_pairedTextureIdx,
     llvm::Value* int32_textureIdx,
     llvm::Value* int32_sampler,
     llvm::Value* int32_offsetU,
@@ -1325,7 +1187,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEC
         float_address_1,
         float_address_2,
         float_address_3,
-        int32_pairedTextureIdx,
         int32_textureIdx,
         int32_sampler,
         int32_offsetU,
@@ -1339,7 +1200,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEC
     llvm::Type* types[] = {
         IGCLLVM::FixedVectorType::get(dstType, 4),
         float_reference_0->getType(),
-        int32_pairedTextureIdx->getType(),
         int32_textureIdx->getType(),
         int32_sampler->getType()
     };
@@ -1368,45 +1228,12 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4
     bool feedback_enabled,
     llvm::Type* returnType)
 {
-    return Create_gather4C(
-        float_reference_0,
-        float_address_0,
-        float_address_1,
-        float_address_2,
-        float_address_3,
-        llvm::UndefValue::get(int32_textureIdx->getType()),
-        int32_textureIdx,
-        int32_sampler,
-        int32_offsetU,
-        int32_offsetV,
-        int32_srcChannel,
-        feedback_enabled,
-        returnType);
-}
-
-template<bool preserveNames, typename T, typename Inserter>
-inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4C(
-    llvm::Value* float_reference_0,
-    llvm::Value* float_address_0,
-    llvm::Value* float_address_1,
-    llvm::Value* float_address_2,
-    llvm::Value* float_address_3,
-    llvm::Value* int32_pairedTextureIdx,
-    llvm::Value* int32_textureIdx,
-    llvm::Value* int32_sampler,
-    llvm::Value* int32_offsetU,
-    llvm::Value* int32_offsetV,
-    llvm::Value* int32_srcChannel,
-    bool feedback_enabled,
-    llvm::Type* returnType)
-{
     llvm::Value * packed_tex_params[] = {
         float_reference_0,
         float_address_0,
         float_address_1,
         float_address_2,
         float_address_3,
-        int32_pairedTextureIdx,
         int32_textureIdx,
         int32_sampler,
         int32_offsetU,
@@ -1421,7 +1248,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4
     llvm::Type* types[] = {
         IGCLLVM::FixedVectorType::get(dstType, 4),
         float_reference_0->getType(),
-        int32_pairedTextureIdx->getType(),
         int32_textureIdx->getType(),
         int32_sampler->getType()
     };
@@ -1451,40 +1277,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4
     bool feedback_enabled,
     llvm::Type* returnType)
 {
-    return Create_gather4POC(
-        float_address_0,
-        float_address_1,
-        float_address_2,
-        int_src_offset_0,
-        int_src_offset_1,
-        float_src_reference_0,
-        llvm::UndefValue::get(int32_textureIdx->getType()),
-        int32_textureIdx,
-        int32_sampler,
-        int32_offsetU,
-        int32_offsetV,
-        int32_srcChannel,
-        feedback_enabled,
-        returnType);
-}
-
-template<bool preserveNames, typename T, typename Inserter>
-inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4POC(
-    llvm::Value* float_address_0,
-    llvm::Value* float_address_1,
-    llvm::Value* float_address_2,
-    llvm::Value* int_src_offset_0,
-    llvm::Value* int_src_offset_1,
-    llvm::Value* float_src_reference_0,
-    llvm::Value* int32_pairedTextureIdx,
-    llvm::Value* int32_textureIdx,
-    llvm::Value* int32_sampler,
-    llvm::Value* int32_offsetU,
-    llvm::Value* int32_offsetV,
-    llvm::Value* int32_srcChannel,
-    bool feedback_enabled,
-    llvm::Type* returnType)
-{
     llvm::Value * packed_tex_params[] = {
         float_src_reference_0,
         float_address_0,
@@ -1492,7 +1284,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4
         int_src_offset_0,
         int_src_offset_1,
         float_address_2,
-        int32_pairedTextureIdx,
         int32_textureIdx,
         int32_sampler,
         int32_offsetU,
@@ -1507,7 +1298,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4
     llvm::Type* types[] = {
         IGCLLVM::FixedVectorType::get(dstType, 4),
         float_src_reference_0->getType(),
-        int32_pairedTextureIdx->getType(),
         int32_textureIdx->getType(),
         int32_sampler->getType()
     };
@@ -1536,45 +1326,12 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4
     bool feedback_enabled,
     llvm::Type* returnType)
 {
-    return Create_gather4PO(
-        float_address_0,
-        float_address_1,
-        float_address_2,
-        int_src_offset_0,
-        int_src_offset_1,
-        llvm::UndefValue::get(int32_textureIdx->getType()),
-        int32_textureIdx,
-        int32_sampler,
-        int32_offsetU,
-        int32_offsetV,
-        int32_srcChannel,
-        feedback_enabled,
-        returnType);
-}
-
-template<bool preserveNames, typename T, typename Inserter>
-inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4PO(
-    llvm::Value* float_address_0,
-    llvm::Value* float_address_1,
-    llvm::Value* float_address_2,
-    llvm::Value* int_src_offset_0,
-    llvm::Value* int_src_offset_1,
-    llvm::Value* int32_pairedTextureIdx,
-    llvm::Value* int32_textureIdx,
-    llvm::Value* int32_sampler,
-    llvm::Value* int32_offsetU,
-    llvm::Value* int32_offsetV,
-    llvm::Value* int32_srcChannel,
-    bool feedback_enabled,
-    llvm::Type* returnType)
-{
     llvm::Value * packed_tex_params[] = {
         float_address_0,
         float_address_1,
         int_src_offset_0,
         int_src_offset_1,
         float_address_2,
-        int32_pairedTextureIdx,
         int32_textureIdx,
         int32_sampler,
         int32_offsetU,
@@ -1589,7 +1346,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4
     llvm::Type* types[] = {
         IGCLLVM::FixedVectorType::get(dstType, 4),
         float_address_0->getType(),
-        int32_pairedTextureIdx->getType(),
         int32_textureIdx->getType(),
         int32_sampler->getType()
     };
@@ -1749,40 +1505,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEB
     bool feedback_enabled,
     llvm::Type* returnType)
 {
-    return Create_SAMPLEB(
-        float_bias_0,
-        float_address_0,
-        float_address_1,
-        float_address_2,
-        float_address_3,
-        llvm::UndefValue::get(int32_textureIdx->getType()),
-        int32_textureIdx,
-        int32_sampler,
-        int32_offsetU,
-        int32_offsetV,
-        int32_offsetW,
-        minlod,
-        feedback_enabled,
-        returnType);
-}
-
-template<bool preserveNames, typename T, typename Inserter>
-inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEB(
-    llvm::Value* float_bias_0,
-    llvm::Value* float_address_0,
-    llvm::Value* float_address_1,
-    llvm::Value* float_address_2,
-    llvm::Value* float_address_3,
-    llvm::Value* int32_pairedTextureIdx,
-    llvm::Value* int32_textureIdx,
-    llvm::Value* int32_sampler,
-    llvm::Value* int32_offsetU,
-    llvm::Value* int32_offsetV,
-    llvm::Value* int32_offsetW,
-    llvm::Value* minlod,
-    bool feedback_enabled,
-    llvm::Type* returnType)
-{
     if (minlod == nullptr)
     {
         minlod = llvm::ConstantFP::get(float_address_0->getType(), 0.0);
@@ -1796,7 +1518,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEB
         float_address_2,
         float_address_3,
         minlod,
-        int32_pairedTextureIdx,
         int32_textureIdx,
         int32_sampler,
         int32_offsetU,
@@ -1810,7 +1531,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEB
     llvm::Type* types[] = {
         IGCLLVM::FixedVectorType::get(dstType, 4),
         float_bias_0->getType(),
-        int32_pairedTextureIdx->getType(),
         int32_textureIdx->getType(),
         int32_sampler->getType()
     };
@@ -1840,45 +1560,12 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEL
     bool feedback_enabled,
     llvm::Type* returnType)
 {
-    return Create_SAMPLEL(
-        float_lod_0,
-        float_address_0,
-        float_address_1,
-        float_address_2,
-        float_address_3,
-        llvm::UndefValue::get(ptr_textureIdx->getType()),
-        ptr_textureIdx,
-        ptr_sampler,
-        int32_offsetU,
-        int32_offsetV,
-        int32_offsetW,
-        feedback_enabled,
-        returnType);
-}
-
-template<bool preserveNames, typename T, typename Inserter>
-inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEL(
-    llvm::Value* float_lod_0,
-    llvm::Value* float_address_0,
-    llvm::Value* float_address_1,
-    llvm::Value* float_address_2,
-    llvm::Value* float_address_3,
-    llvm::Value* ptr_pairedTextureIdx,
-    llvm::Value* ptr_textureIdx,
-    llvm::Value* ptr_sampler,
-    llvm::Value* int32_offsetU,
-    llvm::Value* int32_offsetV,
-    llvm::Value* int32_offsetW,
-    bool feedback_enabled,
-    llvm::Type* returnType)
-{
     llvm::Value * packed_tex_params[] = {
         float_lod_0,
         float_address_0,
         float_address_1,
         float_address_2,
         float_address_3,
-        ptr_pairedTextureIdx,
         ptr_textureIdx,
         ptr_sampler,
         int32_offsetU,
@@ -1892,7 +1579,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEL
     llvm::Type* types[] = {
         IGCLLVM::FixedVectorType::get(dstType, 4),
         float_lod_0->getType(),
-        ptr_pairedTextureIdx->getType(),
         ptr_textureIdx->getType(),
         ptr_sampler->getType()
     };
@@ -1925,7 +1611,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLED
         sampleParams.get_dyv(),
         sampleParams.get_dyr(),
         sampleParams.get_float_src_ai(),
-        sampleParams.get_int32_pairedTextureIdx(),
         sampleParams.get_int32_textureIdx(),
         sampleParams.get_int32_sampler(),
         sampleParams.get_int32_offsetU(),
@@ -1958,50 +1643,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLED
     bool feedback_enabled,
     llvm::Type* returnType)
 {
-    return Create_SAMPLED(
-        float_src1_s_chan0,
-        float_src1_s_chan1,
-        float_src1_s_chan2,
-        float_src2_s_chan0,
-        float_src2_s_chan1,
-        float_src2_s_chan2,
-        float_src3_s_chan0,
-        float_src3_s_chan1,
-        float_src3_s_chan2,
-        float_src1_s_chan3,
-        llvm::UndefValue::get(ptr_textureIdx->getType()),
-        ptr_textureIdx,
-        ptr_sampler,
-        int32_offsetU_358,
-        int32_offsetV_359,
-        int32_offsetW_359,
-        minlod,
-        feedback_enabled,
-        returnType);
-}
-
-template<bool preserveNames, typename T, typename Inserter>
-inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLED(
-    llvm::Value* float_src1_s_chan0,
-    llvm::Value* float_src1_s_chan1,
-    llvm::Value* float_src1_s_chan2,
-    llvm::Value* float_src2_s_chan0,
-    llvm::Value* float_src2_s_chan1,
-    llvm::Value* float_src2_s_chan2,
-    llvm::Value* float_src3_s_chan0,
-    llvm::Value* float_src3_s_chan1,
-    llvm::Value* float_src3_s_chan2,
-    llvm::Value* float_src1_s_chan3,
-    llvm::Value* ptr_pairedTextureIdx,
-    llvm::Value* ptr_textureIdx,
-    llvm::Value* ptr_sampler,
-    llvm::Value* int32_offsetU_358,
-    llvm::Value* int32_offsetV_359,
-    llvm::Value* int32_offsetW_359,
-    llvm::Value* minlod,
-    bool feedback_enabled,
-    llvm::Type* returnType)
-{
     if (minlod == nullptr)
     {
         minlod = llvm::ConstantFP::get(float_src1_s_chan0->getType(), 0.0);
@@ -2020,7 +1661,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLED
         float_src3_s_chan2,
         float_src1_s_chan3,
         minlod,
-        ptr_pairedTextureIdx,
         ptr_textureIdx,
         ptr_sampler,
         int32_offsetU_358,
@@ -2034,7 +1674,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLED
     llvm::Type* types[] = {
         IGCLLVM::FixedVectorType::get(dstType, 4),
         float_src1_s_chan0->getType(),
-        ptr_pairedTextureIdx->getType(),
         ptr_textureIdx->getType(),
         ptr_sampler->getType()
     };
@@ -2051,76 +1690,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLED
 }
 
 template<bool preserveNames, typename T, typename Inserter>
-inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEDCMlod(
-    llvm::Value* float_ref,
-    llvm::Value* float_src_u,
-    llvm::Value* dxu,
-    llvm::Value* dyu,
-    llvm::Value* float_src_v,
-    llvm::Value* dxv,
-    llvm::Value* dyv,
-    llvm::Value* float_src_r,
-    llvm::Value* dxr,
-    llvm::Value* dyr,
-    llvm::Value* float_src_ai,
-    llvm::Value* minlod,
-    llvm::Value* int32_pairedTextureIdx,
-    llvm::Value* int32_textureIdx,
-    llvm::Value* int32_sampler,
-    llvm::Value* int32_offsetU,
-    llvm::Value* int32_offsetV,
-    llvm::Value* int32_offsetW,
-    bool feedback_enabled,
-    llvm::Type* returnType)
-{
-    //   %tex = call <4 x float> @llvm.GenISA.sample.v4f32.f32D(float %float_ref, float %float_src_u, float %dxu, float %dxu, float %dyu, float float_src_v,
-    //                           float %dxv, float %dyv, float %float_src_r, float %dxr, float %dyr, flaot %minlod, float 0.000000e+00,
-    //                           i32 %textureIdx, i32 %sampler, i32 %offsetU, i32 %offsetV, i32 %offsetW)
-    llvm::Value* packed_tex_params[] = {
-        float_ref,
-        float_src_u,
-        dxu,
-        dyu,
-        float_src_v,
-        dxv,
-        dyv,
-        float_src_r,
-        dxr,
-        dyr,
-        float_src_ai,
-        minlod,
-        int32_pairedTextureIdx,
-        int32_textureIdx,
-        int32_sampler,
-        int32_offsetU,
-        int32_offsetV,
-        int32_offsetW
-    };
-
-    llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
-
-    llvm::Type* dstType = (returnType != nullptr) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = {
-        IGCLLVM::FixedVectorType::get(dstType, 4),
-        float_ref->getType(),
-        minlod->getType(),
-        int32_pairedTextureIdx->getType(),
-        int32_textureIdx->getType(),
-        int32_sampler->getType()
-    };
-    if (feedback_enabled)
-    {
-        types[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
-    }
-    llvm::Function* func_llvm_GenISA_sampleDCMlodptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
-    (module, llvm::GenISAIntrinsic::GenISA_sampleDCMlodptr, types);
-
-    llvm::CallInst* packed_tex_call = this->CreateCall(func_llvm_GenISA_sampleDCMlodptr_v4f32_f32, packed_tex_params);
-
-    return packed_tex_call;
-}
-
-template<bool preserveNames, typename T, typename Inserter>
 inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEDC(
     llvm::Value* float_ref,
     llvm::Value* float_src_u,
@@ -2133,50 +1702,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLED
     llvm::Value* dxr,
     llvm::Value* dyr,
     llvm::Value* float_src_ai,
-    llvm::Value* int32_textureIdx,
-    llvm::Value* int32_sampler,
-    llvm::Value* int32_offsetU,
-    llvm::Value* int32_offsetV,
-    llvm::Value* int32_offsetW,
-    bool feedback_enabled,
-    llvm::Type* returnType)
-{
-    return Create_SAMPLEDC(
-        float_ref,
-        float_src_u,
-        dxu,
-        dyu,
-        float_src_v,
-        dxv,
-        dyv,
-        float_src_r,
-        dxr,
-        dyr,
-        float_src_ai,
-        llvm::UndefValue::get(int32_textureIdx->getType()),
-        int32_textureIdx,
-        int32_sampler,
-        int32_offsetU,
-        int32_offsetV,
-        int32_offsetW,
-        feedback_enabled,
-        returnType);
-}
-
-template<bool preserveNames, typename T, typename Inserter>
-inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEDC(
-    llvm::Value* float_ref,
-    llvm::Value* float_src_u,
-    llvm::Value* dxu,
-    llvm::Value* dyu,
-    llvm::Value* float_src_v,
-    llvm::Value* dxv,
-    llvm::Value* dyv,
-    llvm::Value* float_src_r,
-    llvm::Value* dxr,
-    llvm::Value* dyr,
-    llvm::Value* float_src_ai,
-    llvm::Value* int32_pairedTextureIdx,
     llvm::Value* int32_textureIdx,
     llvm::Value* int32_sampler,
     llvm::Value* int32_offsetU,
@@ -2200,7 +1725,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLED
         dxr,
         dyr,
         float_src_ai,
-        int32_pairedTextureIdx,
         int32_textureIdx,
         int32_sampler,
         int32_offsetU,
@@ -2214,7 +1738,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLED
     llvm::Type* types[] = {
         IGCLLVM::FixedVectorType::get(dstType, 4),
         float_ref->getType(),
-        int32_pairedTextureIdx->getType(),
         int32_textureIdx->getType(),
         int32_sampler->getType()
     };
@@ -2286,44 +1809,11 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4
     bool feedback_enabled,
     llvm::Type* returnType)
 {
-    return Create_gather4(
-        float_address_0,
-        float_address_1,
-        float_address_2,
-        float_address_3,
-        llvm::UndefValue::get(int32_textureIdx_356->getType()),
-        int32_textureIdx_356,
-        int32_sampler_357,
-        int32_offsetU,
-        int32_offsetV,
-        int32_offsetW,
-        int32_srcChannel,
-        feedback_enabled,
-        returnType);
-}
-
-template<bool preserveNames, typename T, typename Inserter>
-inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4(
-    llvm::Value* float_address_0,
-    llvm::Value* float_address_1,
-    llvm::Value* float_address_2,
-    llvm::Value* float_address_3,
-    llvm::Value* int32_pairedTextureIdx_356,
-    llvm::Value* int32_textureIdx_356,
-    llvm::Value* int32_sampler_357,
-    llvm::Value* int32_offsetU,
-    llvm::Value* int32_offsetV,
-    llvm::Value* int32_offsetW,
-    llvm::Value* int32_srcChannel,
-    bool feedback_enabled,
-    llvm::Type* returnType)
-{
     llvm::Value * packed_tex_params[] = {
         float_address_0,
         float_address_1,
         float_address_2,
         float_address_3,
-        int32_pairedTextureIdx_356,
         int32_textureIdx_356,
         int32_sampler_357,
         int32_offsetU,
@@ -2338,7 +1828,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_gather4
     llvm::Type* types[] = {
         IGCLLVM::FixedVectorType::get(dstType, 4),
         float_address_0->getType(),
-        int32_pairedTextureIdx_356->getType(),
         int32_textureIdx_356->getType(),
         int32_sampler_357->getType()
     };
@@ -2367,40 +1856,11 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_load(
     bool feedback_enabled,
     llvm::Type* returnType)
 {
-    return Create_load(
-        int32_sampleIdxU,
-        int32_sampleIdxV,
-        int32_sampleIdxR,
-        int32_lod,
-        llvm::UndefValue::get(ptr_textureIdx->getType()),
-        ptr_textureIdx,
-        int32_offsetU,
-        int32_offsetV,
-        int32_offsetR,
-        feedback_enabled,
-        returnType);
-}
-
-template<bool preserveNames, typename T, typename Inserter>
-inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_load(
-    llvm::Value* int32_sampleIdxU,
-    llvm::Value* int32_sampleIdxV,
-    llvm::Value* int32_sampleIdxR,
-    llvm::Value* int32_lod,
-    llvm::Value* ptr_pairedTextureIdx,
-    llvm::Value* ptr_textureIdx,
-    llvm::Value* int32_offsetU,
-    llvm::Value* int32_offsetV,
-    llvm::Value* int32_offsetR,
-    bool feedback_enabled,
-    llvm::Type* returnType)
-{
     llvm::Value * packed_tex_params[] = {
         int32_sampleIdxU,
         int32_sampleIdxV,
         int32_lod,
         int32_sampleIdxR,
-        ptr_pairedTextureIdx,
         ptr_textureIdx,
         int32_offsetU,
         int32_offsetV,
@@ -2412,7 +1872,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_load(
     llvm::Type* dstType = ( returnType != nullptr ) ? returnType : this->getFloatTy();
     llvm::Type* types[] = {
         IGCLLVM::FixedVectorType::get(dstType, feedback_enabled ? 5 : 4),
-        ptr_pairedTextureIdx->getType(),
         ptr_textureIdx->getType()
     };
 
@@ -2696,7 +2155,6 @@ inline SampleD_DC_FromCubeParams LLVM3DBuilder<preserveNames, T, Inserter>::Prep
         params.dyu,
         params.dyv,
         params.dyr,
-        params.int32_pairedTextureIdx,
         params.int32_textureIdx,
         params.int32_sampler,
         params.int32_offsetU,
@@ -2717,44 +2175,6 @@ inline SampleD_DC_FromCubeParams LLVM3DBuilder<preserveNames, T, Inserter>::Prep
     llvm::Value* float_drdy,
     llvm::Value* float_dsdy,
     llvm::Value* float_dtdy,
-    llvm::Value* int32_textureIdx,
-    llvm::Value* int32_sampler,
-    llvm::Value* int32_offsetU,
-    llvm::Value* int32_offsetV,
-    llvm::Value* int32_offsetW)
-{
-    return Prepare_SAMPLE_D_DC_Cube_Params(
-        float_src_r,
-        float_src_s,
-        float_src_t,
-        float_src_ai,
-        float_drdx,
-        float_dsdx,
-        float_dtdx,
-        float_drdy,
-        float_dsdy,
-        float_dtdy,
-        llvm::UndefValue::get(int32_textureIdx->getType()),
-        int32_textureIdx,
-        int32_sampler,
-        int32_offsetU,
-        int32_offsetV,
-        int32_offsetW);
-}
-
-template<bool preserveNames, typename T, typename Inserter>
-inline SampleD_DC_FromCubeParams LLVM3DBuilder<preserveNames, T, Inserter>::Prepare_SAMPLE_D_DC_Cube_Params(
-    llvm::Value* float_src_r,
-    llvm::Value* float_src_s,
-    llvm::Value* float_src_t,
-    llvm::Value* float_src_ai,
-    llvm::Value* float_drdx,
-    llvm::Value* float_dsdx,
-    llvm::Value* float_dtdx,
-    llvm::Value* float_drdy,
-    llvm::Value* float_dsdy,
-    llvm::Value* float_dtdy,
-    llvm::Value* int32_pairedTextureIdx_356,
     llvm::Value* int32_textureIdx,
     llvm::Value* int32_sampler,
     llvm::Value* int32_offsetU,
@@ -3165,7 +2585,6 @@ inline SampleD_DC_FromCubeParams LLVM3DBuilder<preserveNames, T, Inserter>::Prep
         D_DC_CUBE_params.dxr = zero;
         D_DC_CUBE_params.dyr = zero;
         D_DC_CUBE_params.float_src_ai = float_src_ai;
-        D_DC_CUBE_params.int32_pairedTextureIdx = int32_pairedTextureIdx_356;
         D_DC_CUBE_params.int32_textureIdx = int32_textureIdx;
         D_DC_CUBE_params.int32_sampler = int32_sampler;
         D_DC_CUBE_params.int32_offsetU = m_int0;
@@ -4021,62 +3440,6 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreatePow(llvm::Value* s
 }
 
 template<bool preserveNames, typename T, typename Inserter>
-inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEBCMlod(
-    llvm::Value* float_ref_value,
-    llvm::Value* bias_value,
-    llvm::Value* address_u,
-    llvm::Value* address_v,
-    llvm::Value* address_r,
-    llvm::Value* address_ai,
-    llvm::Value* minlod,
-    llvm::Value* int32_pairedTextureIdx,
-    llvm::Value* int32_textureIdx,
-    llvm::Value* int32_sampler,
-    llvm::Value* int32_offsetU,
-    llvm::Value* int32_offsetV,
-    llvm::Value* int32_offsetW,
-    bool feedback_enabled,
-    llvm::Type* returnType)
-{
-    llvm::Value* packed_tex_params[] = {
-        float_ref_value,
-        bias_value,
-        address_u,
-        address_v,
-        address_r,
-        address_ai,
-        minlod,
-        int32_pairedTextureIdx,
-        int32_textureIdx,
-        int32_sampler,
-        int32_offsetU,
-        int32_offsetV,
-        int32_offsetW
-    };
-
-    llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
-
-    llvm::Type* dstType = (returnType != nullptr) ? returnType : this->getFloatTy();
-    llvm::Type* types[] = {
-        IGCLLVM::FixedVectorType::get(dstType, 4),
-        float_ref_value->getType(),
-        minlod->getType(),
-        int32_pairedTextureIdx->getType(),
-        int32_textureIdx->getType(),
-        int32_sampler->getType()
-    };
-    if (feedback_enabled)
-    {
-        types[0] = IGCLLVM::FixedVectorType::get(dstType, 5);
-    }
-    llvm::Function* func_llvm_GenISA_sampleBCMlodptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
-    (module, llvm::GenISAIntrinsic::GenISA_sampleBCMlodptr, types);
-
-    llvm::CallInst* packed_tex_call = this->CreateCall(func_llvm_GenISA_sampleBCMlodptr_v4f32_f32, packed_tex_params);
-    return packed_tex_call;
-}
-
-template<bool preserveNames, typename T, typename Inserter>
 inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEBC(
     llvm::Value* float_ref_value,
     llvm::Value* bias_value,
@@ -4084,40 +3447,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEB
     llvm::Value* address_v,
     llvm::Value* address_r,
     llvm::Value* address_ai,
-    llvm::Value* int32_textureIdx,
-    llvm::Value* int32_sampler,
-    llvm::Value* int32_offsetU,
-    llvm::Value* int32_offsetV,
-    llvm::Value* int32_offsetW,
-    bool feedback_enabled,
-    llvm::Type* returnType)
-{
-    return Create_SAMPLEBC(
-        float_ref_value,
-        bias_value,
-        address_u,
-        address_v,
-        address_r,
-        address_ai,
-        llvm::UndefValue::get(int32_textureIdx->getType()),
-        int32_textureIdx,
-        int32_sampler,
-        int32_offsetU,
-        int32_offsetV,
-        int32_offsetW,
-        feedback_enabled,
-        returnType);
-}
-
-template<bool preserveNames, typename T, typename Inserter>
-inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEBC(
-    llvm::Value* float_ref_value,
-    llvm::Value* bias_value,
-    llvm::Value* address_u,
-    llvm::Value* address_v,
-    llvm::Value* address_r,
-    llvm::Value* address_ai,
-    llvm::Value* int32_pairedTextureIdx,
     llvm::Value* int32_textureIdx,
     llvm::Value* int32_sampler,
     llvm::Value* int32_offsetU,
@@ -4133,7 +3462,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEB
         address_v,
         address_r,
         address_ai,
-        int32_pairedTextureIdx,
         int32_textureIdx,
         int32_sampler,
         int32_offsetU,
@@ -4147,7 +3475,6 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEB
     llvm::Type* types[] = {
         IGCLLVM::FixedVectorType::get(dstType, 4),
         float_ref_value->getType(),
-        int32_pairedTextureIdx->getType(),
         int32_textureIdx->getType(),
         int32_sampler->getType()
     };

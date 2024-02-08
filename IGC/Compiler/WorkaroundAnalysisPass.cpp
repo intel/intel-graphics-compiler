@@ -251,11 +251,6 @@ void WorkaroundAnalysis::visitCallInst(llvm::CallInst& I)
         {
         case llvm::GenISAIntrinsic::GenISA_gather4POCptr:
         case llvm::GenISAIntrinsic::GenISA_gather4POptr:
-        case GenISAIntrinsic::GenISA_gather4IPOptr:
-        case GenISAIntrinsic::GenISA_gather4BPOptr:
-        case GenISAIntrinsic::GenISA_gather4LPOptr:
-        case GenISAIntrinsic::GenISA_gather4ICPOptr:
-        case GenISAIntrinsic::GenISA_gather4LCPOptr:
             GatherOffsetWorkaround(cast<SamplerGatherIntrinsic>(&I));
             break;
         case GenISAIntrinsic::GenISA_ldmsptr:
@@ -341,28 +336,17 @@ void WorkaroundAnalysis::GatherOffsetWorkaround(SamplerGatherIntrinsic* gatherpo
     }
     Value* const zero = m_builder->getInt32(0);
     Value* const zeroFP = llvm::ConstantFP::get(gatherpo->getOperand(0)->getType(), 0);
-    const bool hasRef = gatherpo->getIntrinsicID() == GenISAIntrinsic::GenISA_gather4POCptr ||
-        gatherpo->getIntrinsicID() == GenISAIntrinsic::GenISA_gather4ICPOptr ||
-        gatherpo->getIntrinsicID() == GenISAIntrinsic::GenISA_gather4LCPOptr;
-    const bool hasImplicitLod = gatherpo->getIntrinsicID() == GenISAIntrinsic::GenISA_gather4IPOptr ||
-        gatherpo->getIntrinsicID() == GenISAIntrinsic::GenISA_gather4ICPOptr; // does not include gather4 with bias here
-    const bool hasBias = gatherpo->getIntrinsicID() == GenISAIntrinsic::GenISA_gather4BPOptr; // it has implicit lod
-    const bool hasLod = gatherpo->getIntrinsicID() == GenISAIntrinsic::GenISA_gather4LPOptr ||
-        gatherpo->getIntrinsicID() == GenISAIntrinsic::GenISA_gather4LCPOptr;
-    // Implicit lod adjusted with optional bias needs to be fetched for resinfo, and gather4_l[_c] will be used
-    // with this lod value
-    const bool fetchLod = hasImplicitLod || hasBias;
-    // Extra args preceding coords and other remained args
-    const uint extraBeginArgsNo = (hasRef ? 1 : 0) + (hasLod || fetchLod ? 1 : 0);
+    const bool hasRef = gatherpo->getIntrinsicID() == GenISAIntrinsic::GenISA_gather4POCptr;
+    const uint extraBeginArgsNo = hasRef ? 1 : 0;
 
     if (m_pCtxWrapper->getCodeGenContext()->platform.supportsGather4PO() && !hasRef)
     {
         return;
     }
     unsigned int offsetArgumentIndices[] = {
+        7u + extraBeginArgsNo,
         8u + extraBeginArgsNo,
-        9u + extraBeginArgsNo,
-        10u + extraBeginArgsNo
+        9u + extraBeginArgsNo
     };
     if (gatherpo->getOperand(offsetArgumentIndices[0]) != zero ||
         gatherpo->getOperand(offsetArgumentIndices[1]) != zero ||
@@ -375,56 +359,7 @@ void WorkaroundAnalysis::GatherOffsetWorkaround(SamplerGatherIntrinsic* gatherpo
     Value* resource = gatherpo->getTextureValue();
     Value* sampler = gatherpo->getSamplerValue();
 
-    // Obtain fp32 LOD for resinfo and gather4_l
-    Value* lod = nullptr;
-    if (hasLod)
-    {
-        IGC_ASSERT_MESSAGE(!(hasImplicitLod || hasBias),
-            "An instruction with explicit lod cannot be marked as implicit lod at the same time.");
-        // Gather4 with offsets and explicit (float) lod needs new messages to be added in the future.
-        // This implementation is correct only for simple cases, like existing tests for AMD_texture_gather_bias_lod.
-        lod = gatherpo->getOperand(hasRef ? 1 : 0);
-    }
-    else
-    {
-        if (fetchLod)
-        {
-            llvm::Type* funcTypes[] =
-            {
-                IGCLLVM::FixedVectorType::get(m_builder->getFloatTy(), 4),
-                gatherpo->getOperand(extraBeginArgsNo)->getType(), // r coord's type
-                resource->getType(),
-                sampler->getType()
-            };
-
-            Function* lodInfo =
-                GenISAIntrinsic::getDeclaration(m_pModule, GenISAIntrinsic::GenISA_lodptr, funcTypes);
-            m_builder->SetInsertPoint(gatherpo);
-
-            Value* args[] =
-            {
-                gatherpo->getOperand(extraBeginArgsNo), // u
-                gatherpo->getOperand(extraBeginArgsNo + 1), // v
-                gatherpo->getOperand(extraBeginArgsNo + 4), // r
-                zeroFP, // ai
-                resource,
-                sampler
-            };
-            Value* info = m_builder->CreateCall(lodInfo, args);
-
-            constexpr uint32_t lodArg = 1; // lod message returns fp32 lod in DW1
-            lod = m_builder->CreateExtractElement(info, m_builder->getInt32(lodArg));
-            if (hasBias)
-            {
-                lod = m_builder->CreateFAdd(lod, gatherpo->getOperand(0 /* bias as fp32 */));
-            }
-        }
-        else
-        {
-            lod = zeroFP;
-        }
-    }
-    IGC_ASSERT(lod);
+    Value* lod = zeroFP;
 
     Function* resInfo =
         GenISAIntrinsic::getDeclaration(m_pModule, GenISAIntrinsic::GenISA_resinfoptr, resource->getType());
@@ -435,18 +370,9 @@ void WorkaroundAnalysis::GatherOffsetWorkaround(SamplerGatherIntrinsic* gatherpo
     if (extraBeginArgsNo > 0)
     {
         arg.push_back(gatherpo->getOperand(0));
-        IGC_ASSERT(extraBeginArgsNo <= 2);
-        if (extraBeginArgsNo == 2)
-        {
-            arg.push_back(gatherpo->getOperand(1));
-        }
+        IGC_ASSERT(extraBeginArgsNo == 1);
     }
 
-    if (fetchLod)
-    {
-        IGC_ASSERT(extraBeginArgsNo == 1 + (hasRef ? 1 : 0));
-        arg[hasRef ? 1 : 0] = lod;
-    }
 
     arg.push_back(nullptr);                  // u
     arg.push_back(nullptr);                  // v
@@ -488,7 +414,6 @@ void WorkaroundAnalysis::GatherOffsetWorkaround(SamplerGatherIntrinsic* gatherpo
     };
     Function* gather4Func = GenISAIntrinsic::getDeclaration(
         m_pModule,
-        fetchLod || hasLod ? (hasRef ? GenISAIntrinsic::GenISA_gather4LCptr : GenISAIntrinsic::GenISA_gather4Lptr) :
         hasRef ? GenISAIntrinsic::GenISA_gather4Cptr : GenISAIntrinsic::GenISA_gather4ptr,
         types);
     Value* gather4c = m_builder->CreateCall(gather4Func, arg);

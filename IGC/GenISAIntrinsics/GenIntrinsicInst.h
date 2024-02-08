@@ -274,13 +274,6 @@ public:
         {
         case GenISAIntrinsic::GenISA_gather4Cptr:
         case GenISAIntrinsic::GenISA_gather4POCptr:
-        case GenISAIntrinsic::GenISA_gather4ICptr:
-        case GenISAIntrinsic::GenISA_gather4ICPOptr:
-        case GenISAIntrinsic::GenISA_gather4LCptr:
-        case GenISAIntrinsic::GenISA_gather4LCPOptr:
-        case GenISAIntrinsic::GenISA_gather4POPackedCptr:
-        case GenISAIntrinsic::GenISA_gather4POPackedICptr:
-        case GenISAIntrinsic::GenISA_gather4POPackedLCptr:
             return true;
         default:
             break;
@@ -288,95 +281,6 @@ public:
         return false;
     }
 
-    bool hasBias() const
-    {
-        switch (getIntrinsicID())
-        {
-        case GenISAIntrinsic::GenISA_gather4Bptr:
-        case GenISAIntrinsic::GenISA_gather4BPOptr:
-        case GenISAIntrinsic::GenISA_gather4POPackedBptr:
-            return true;
-        default:
-            break;
-        }
-        return false;
-    }
-    unsigned int getBiasIndex() const
-    {
-        return hasBias() ? 0 : std::numeric_limits<unsigned int>::max();
-    }
-
-    Value* getBiasValue() const
-    {
-        unsigned int index = getBiasIndex();
-        return hasBias() ? getOperand(index) : nullptr;
-    }
-
-    bool hasLod() const
-    {
-        switch (getIntrinsicID())
-        {
-        case GenISAIntrinsic::GenISA_gather4Lptr:
-        case GenISAIntrinsic::GenISA_gather4LPOptr:
-        case GenISAIntrinsic::GenISA_gather4LCptr:
-        case GenISAIntrinsic::GenISA_gather4LCPOptr:
-        case GenISAIntrinsic::GenISA_gather4POPackedLptr:
-        case GenISAIntrinsic::GenISA_gather4POPackedLCptr:
-            return true;
-        default:
-            break;
-        }
-        return false;
-    }
-
-    unsigned int getLodIndex() const
-    {
-        unsigned int shift = hasRef() ? 1 : 0;
-        return hasLod() ? shift : std::numeric_limits<unsigned int>::max();
-    }
-
-    Value* getLodValue() const
-    {
-        unsigned int index = getLodIndex();
-        return hasLod() ? getOperand(index) : nullptr;
-    }
-
-    bool hasImmediateOffsets() const
-    {
-        return true;
-    }
-
-    unsigned int getImmediateOffsetsIndex() const
-    {
-        return hasImmediateOffsets() ?
-            getNumOperands() - 5 : std::numeric_limits<unsigned int>::max();
-    }
-
-    Value* getImmediateOffsetsValue(unsigned int coordIndex) const
-    {
-        unsigned int operandCoordIndex = getImmediateOffsetsIndex() + coordIndex;
-        return hasImmediateOffsets() ? getOperand(operandCoordIndex) : nullptr;
-    }
-
-    bool IsDerivative() const
-    {
-        switch (getIntrinsicID())
-        {
-        case GenISAIntrinsic::GenISA_gather4Iptr:
-        case GenISAIntrinsic::GenISA_gather4IPOptr:
-        case GenISAIntrinsic::GenISA_gather4Bptr:
-        case GenISAIntrinsic::GenISA_gather4BPOptr:
-        case GenISAIntrinsic::GenISA_gather4ICptr:
-        case GenISAIntrinsic::GenISA_gather4ICPOptr:
-        case GenISAIntrinsic::GenISA_gather4POPackedBptr:
-        case GenISAIntrinsic::GenISA_gather4POPackedIptr:
-        case GenISAIntrinsic::GenISA_gather4POPackedICptr:
-            return true;
-        default:
-            break;
-        }
-        return false;
-    }
 
     inline unsigned int getPairedTextureIndex() const { return getNumOperands() - 8; }
     inline unsigned int getTextureIndex() const { return getNumOperands() - 7; }
@@ -391,23 +295,6 @@ public:
         case GenISAIntrinsic::GenISA_gather4Cptr:
         case GenISAIntrinsic::GenISA_gather4POptr:
         case GenISAIntrinsic::GenISA_gather4POCptr:
-        case GenISAIntrinsic::GenISA_gather4Iptr:
-        case GenISAIntrinsic::GenISA_gather4IPOptr:
-        case GenISAIntrinsic::GenISA_gather4Bptr:
-        case GenISAIntrinsic::GenISA_gather4BPOptr:
-        case GenISAIntrinsic::GenISA_gather4Lptr:
-        case GenISAIntrinsic::GenISA_gather4LPOptr:
-        case GenISAIntrinsic::GenISA_gather4ICptr:
-        case GenISAIntrinsic::GenISA_gather4ICPOptr:
-        case GenISAIntrinsic::GenISA_gather4LCptr:
-        case GenISAIntrinsic::GenISA_gather4LCPOptr:
-        case GenISAIntrinsic::GenISA_gather4POPackedptr:
-        case GenISAIntrinsic::GenISA_gather4POPackedLptr:
-        case GenISAIntrinsic::GenISA_gather4POPackedBptr:
-        case GenISAIntrinsic::GenISA_gather4POPackedIptr:
-        case GenISAIntrinsic::GenISA_gather4POPackedCptr:
-        case GenISAIntrinsic::GenISA_gather4POPackedICptr:
-        case GenISAIntrinsic::GenISA_gather4POPackedLCptr:
             return true;
         default: return false;
         }
@@ -456,7 +343,7 @@ public:
     inline unsigned int getTextureIndex() const { return getNumOperands() - 5; }
     inline unsigned int getImmediateOffsetsIndex() const
     {
-        return 6;
+        return 5;
     }
     inline unsigned int getPairedTextureIndex() const { return hasPairedTextureArg() ? getNumOperands() - 6 : UINT_MAX;  }
     inline Value* getTextureValue() const { return getOperand(getTextureIndex()); }
@@ -480,7 +367,6 @@ public:
         case GenISAIntrinsic::GenISA_ldptr:
         case GenISAIntrinsic::GenISA_ldmsptr:
         case GenISAIntrinsic::GenISA_ldmcsptr:
-        case GenISAIntrinsic::GenISA_ldlptr:
             return true;
         default: return false;
         }
@@ -493,7 +379,6 @@ public:
     bool hasPairedTextureArg() const {
         switch (getIntrinsicID()) {
         case GenISAIntrinsic::GenISA_ldptr:
-        case GenISAIntrinsic::GenISA_ldlptr:
             return true;
         default:
             return false;
@@ -580,11 +465,6 @@ public:
         case GenISAIntrinsic::GenISA_sampleDCptr:
         case GenISAIntrinsic::GenISA_sampleLCptr:
         case GenISAIntrinsic::GenISA_sampleBCptr:
-        case GenISAIntrinsic::GenISA_sampleCMlodptr:
-        case GenISAIntrinsic::GenISA_sampleBCMlodptr:
-        case GenISAIntrinsic::GenISA_sampleDCMlodptr:
-        case GenISAIntrinsic::GenISA_samplePOCptr:
-        case GenISAIntrinsic::GenISA_samplePOLCptr:
             return true;
         default:
             break;
@@ -598,8 +478,6 @@ public:
         {
         case GenISAIntrinsic::GenISA_sampleBptr:
         case GenISAIntrinsic::GenISA_sampleBCptr:
-        case GenISAIntrinsic::GenISA_sampleBCMlodptr:
-        case GenISAIntrinsic::GenISA_samplePOBptr:
             return true;
         default:
             break;
@@ -625,8 +503,6 @@ public:
         {
         case GenISAIntrinsic::GenISA_sampleLptr:
         case GenISAIntrinsic::GenISA_sampleLCptr:
-        case GenISAIntrinsic::GenISA_samplePOLptr:
-        case GenISAIntrinsic::GenISA_samplePOLCptr:
             return true;
         default:
             break;
@@ -744,12 +620,6 @@ public:
         case GenISAIntrinsic::GenISA_sampleBptr:
         case GenISAIntrinsic::GenISA_sampleCptr:
         case GenISAIntrinsic::GenISA_sampleBCptr:
-        case GenISAIntrinsic::GenISA_sampleMlodptr:
-        case GenISAIntrinsic::GenISA_sampleCMlodptr:
-        case GenISAIntrinsic::GenISA_sampleBCMlodptr:
-        case GenISAIntrinsic::GenISA_samplePOptr:
-        case GenISAIntrinsic::GenISA_samplePOBptr:
-        case GenISAIntrinsic::GenISA_samplePOCptr:
         case GenISAIntrinsic::GenISA_lodptr:
             return true;
         default:
@@ -771,16 +641,6 @@ public:
         case GenISAIntrinsic::GenISA_sampleBCptr:
         case GenISAIntrinsic::GenISA_lodptr:
         case GenISAIntrinsic::GenISA_sampleKillPix:
-        case GenISAIntrinsic::GenISA_sampleMlodptr:
-        case GenISAIntrinsic::GenISA_sampleCMlodptr:
-        case GenISAIntrinsic::GenISA_sampleBCMlodptr:
-        case GenISAIntrinsic::GenISA_sampleDCMlodptr:
-        case GenISAIntrinsic::GenISA_samplePOptr:
-        case GenISAIntrinsic::GenISA_samplePOBptr:
-        case GenISAIntrinsic::GenISA_samplePOLptr:
-        case GenISAIntrinsic::GenISA_samplePOCptr:
-        case GenISAIntrinsic::GenISA_samplePODptr:
-        case GenISAIntrinsic::GenISA_samplePOLCptr:
             return true;
         default: return false;
         }
@@ -800,16 +660,6 @@ public:
         case GenISAIntrinsic::GenISA_sampleLptr:
         case GenISAIntrinsic::GenISA_sampleLCptr:
         case GenISAIntrinsic::GenISA_sampleBCptr:
-        case GenISAIntrinsic::GenISA_sampleMlodptr:
-        case GenISAIntrinsic::GenISA_sampleCMlodptr:
-        case GenISAIntrinsic::GenISA_sampleBCMlodptr:
-        case GenISAIntrinsic::GenISA_sampleDCMlodptr:
-        case GenISAIntrinsic::GenISA_samplePOptr:
-        case GenISAIntrinsic::GenISA_samplePOBptr:
-        case GenISAIntrinsic::GenISA_samplePOLptr:
-        case GenISAIntrinsic::GenISA_samplePOCptr:
-        case GenISAIntrinsic::GenISA_samplePODptr:
-        case GenISAIntrinsic::GenISA_samplePOLCptr:
             return true;
         default:
             break;

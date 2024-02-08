@@ -288,11 +288,6 @@ uint EmitPass::DecideInstanceAndSlice(const llvm::BasicBlock& blk, SDAG& sdag, b
     m_encoder->SetSubSpanDestination(false);
     uint numInstance = m_currShader->m_numberInstance;
 
-    if (m_pCtx->platform.getMinDispatchMode() == SIMDMode::SIMD16)
-    {
-        slicing = false;
-    }
-    else
     {
         slicing = (m_SimdMode == SIMDMode::SIMD32);
     }
@@ -4947,7 +4942,7 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
     bool zeroLOD = false;
 
     CVariable* lodSrc =
-        opCode == llvm_ldlptr ? GetSymbol(inst->getOperand(3)) : GetSymbol(inst->getOperand(2));
+        GetSymbol(inst->getOperand(2));
 
     if (m_currShader->m_Platform->supportSampleAndLd_lz() && lodSrc->IsImmediate() && lodSrc->GetImmediateValue() == 0)
     {
@@ -6705,11 +6700,6 @@ void EmitPass::emitMediaBlockIO(const llvm::GenIntrinsicInst* inst, bool isRead)
         BlockCopy(pDst, pData, pSecondHalf, pData, 1, 2);
     }
 
-    if (m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_LPG_CORE))
-    {
-        m_encoder->LSC_Typed2dBlock(LSC_STORE_BLOCK2D, pDst, ESURFACE_NORMAL, pImgBTI, pXOffset, pYOffset, (int)widthInBytes, (int)blockHeight);
-    }
-    else
     {
         m_encoder->MediaBlockMessage(
             isRead ? ISA_Opcode::ISA_MEDIA_LD : ISA_Opcode::ISA_MEDIA_ST,
@@ -6755,11 +6745,6 @@ void EmitPass::emitMediaBlockRectangleRead(llvm::Instruction* inst)
 
     IGC_ASSERT(blockWidth * blockHeight == pDst->GetSize());
 
-    if (m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_LPG_CORE))
-    {
-        m_encoder->LSC_Typed2dBlock(LSC_LOAD_BLOCK2D, pDst, ESURFACE_NORMAL, srcbti, xOffset, yOffset, (int)blockWidth, (int)blockHeight);
-    }
-    else
     {
         m_encoder->MediaBlockMessage(
             ISA_Opcode::ISA_MEDIA_LD,
@@ -6988,19 +6973,6 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
 
             CVariable* dstVar = numPasses_axisX == 1 ? m_destination : pTempDest;
 
-            if (m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_LPG_CORE))
-            {
-                m_encoder->LSC_Typed2dBlock(
-                    LSC_LOAD_BLOCK2D,
-                    dstVar,
-                    ESURFACE_NORMAL,
-                    srcbti,
-                    pTempVar_axis_X_offset,
-                    pTempVar_axis_Y_offset,
-                    (int)blockWidth,
-                    (int)blockHeight2Load);
-            }
-            else
             {
                 m_encoder->MediaBlockMessage(
                     ISA_Opcode::ISA_MEDIA_LD,
@@ -7367,19 +7339,6 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
                 // For normal case
                 blockHeight;
 
-            if (m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_LPG_CORE))
-            {
-                m_encoder->LSC_Typed2dBlock(
-                    LSC_STORE_BLOCK2D,
-                    tempdst,
-                    ESURFACE_NORMAL,
-                    srcbti,
-                    pTempVar_axis_X_offset,
-                    pTempVar_axis_Y_offset,
-                    (int)blockWidth,
-                    (int)blockHeight2Store);
-            }
-            else
             {
                 m_encoder->MediaBlockMessage(
                     ISA_Opcode::ISA_MEDIA_ST,
@@ -7956,7 +7915,7 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic* inst)
 
     //Subtract the offsets, resource and sampler sources to get
     //the number of texture coordinates, src channel select and index to texture source
-    uint numSources = numOperands - 8;
+    uint numSources = numOperands - 7;
 
     Value* textureValue = inst->getTextureValue();
     ResourceDescriptor resource = GetResourceVariable(textureValue);
@@ -7994,7 +7953,6 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic* inst)
     uint channel = int_cast<uint>(GetImmediateVal(inst->getOperand(channelIndx)));
     SmallVector<CVariable*, 4> payload;
 
-    const bool derivativeSample = inst->IsDerivative();
 
     //create send payload for numSources
     for (uint i = 0; i < numSources; i++)
@@ -8006,10 +7964,6 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic* inst)
                 numLanes(m_currShader->m_SIMDSize), ISA_TYPE_F,
                 m_currShader->getGRFAlignment(),
                 src->getName());
-            if (derivativeSample)
-            {
-                m_encoder->SetNoMask();
-            }
             m_encoder->Copy(srcReg, src);
             m_encoder->Push();
             src = srcReg;
@@ -8345,7 +8299,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         emitSetMessagePhase(inst);
         break;
     case GenISAIntrinsic::GenISA_ldptr:
-    case GenISAIntrinsic::GenISA_ldlptr:
         emitLdInstruction(inst);
         break;
     case GenISAIntrinsic::GenISA_sampleptr:
@@ -8358,16 +8311,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_sampleBCptr:
     case GenISAIntrinsic::GenISA_lodptr:
     case GenISAIntrinsic::GenISA_sampleKillPix:
-    case GenISAIntrinsic::GenISA_sampleMlodptr:
-    case GenISAIntrinsic::GenISA_sampleCMlodptr:
-    case GenISAIntrinsic::GenISA_sampleBCMlodptr:
-    case GenISAIntrinsic::GenISA_sampleDCMlodptr:
-    case GenISAIntrinsic::GenISA_samplePOptr:
-    case GenISAIntrinsic::GenISA_samplePOBptr:
-    case GenISAIntrinsic::GenISA_samplePOLptr:
-    case GenISAIntrinsic::GenISA_samplePOCptr:
-    case GenISAIntrinsic::GenISA_samplePODptr:
-    case GenISAIntrinsic::GenISA_samplePOLCptr:
         emitSampleInstruction(cast<SampleIntrinsic>(inst));
         break;
     case GenISAIntrinsic::GenISA_discard:
@@ -8377,29 +8320,10 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_sampleinfoptr:
         emitInfoInstruction(cast<InfoIntrinsic>(inst));
         break;
-    case GenISAIntrinsic::GenISA_gather4IPOptr:
-    case GenISAIntrinsic::GenISA_gather4BPOptr:
-    case GenISAIntrinsic::GenISA_gather4LPOptr:
-    case GenISAIntrinsic::GenISA_gather4ICPOptr:
-    case GenISAIntrinsic::GenISA_gather4LCPOptr:
-        IGC_ASSERT_MESSAGE(false, "These Gather4 PO messages are expected to be replaced with their non-PO counterparts.");
-        break;
     case GenISAIntrinsic::GenISA_gather4ptr:
     case GenISAIntrinsic::GenISA_gather4Cptr:
     case GenISAIntrinsic::GenISA_gather4POptr:
     case GenISAIntrinsic::GenISA_gather4POCptr:
-    case GenISAIntrinsic::GenISA_gather4Iptr:
-    case GenISAIntrinsic::GenISA_gather4Bptr:
-    case GenISAIntrinsic::GenISA_gather4Lptr:
-    case GenISAIntrinsic::GenISA_gather4ICptr:
-    case GenISAIntrinsic::GenISA_gather4LCptr:
-    case GenISAIntrinsic::GenISA_gather4POPackedptr:
-    case GenISAIntrinsic::GenISA_gather4POPackedLptr:
-    case GenISAIntrinsic::GenISA_gather4POPackedBptr:
-    case GenISAIntrinsic::GenISA_gather4POPackedIptr:
-    case GenISAIntrinsic::GenISA_gather4POPackedCptr:
-    case GenISAIntrinsic::GenISA_gather4POPackedICptr:
-    case GenISAIntrinsic::GenISA_gather4POPackedLCptr:
         emitGather4Instruction(cast<SamplerGatherIntrinsic>(inst));
         break;
     case GenISAIntrinsic::GenISA_ldmcsptr:
@@ -8408,21 +8332,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         emitLdmsInstruction(inst);
         break;
     case GenISAIntrinsic::GenISA_typedread:
-        if (shouldGenerateLSC(inst, true) &&
-            IGC_IS_FLAG_DISABLED(DisableLSCForTypedUAV))
-        {
-            emitLSCTypedRead(inst);
-            break;
-        }
         emitTypedRead(inst);
         break;
     case GenISAIntrinsic::GenISA_typedwrite:
-        if (shouldGenerateLSC(inst, true) &&
-            IGC_IS_FLAG_DISABLED(DisableLSCForTypedUAV))
-        {
-            emitLSCTypedWrite(inst);
-            break;
-        }
         emitTypedWrite(inst);
         break;
     case GenISAIntrinsic::GenISA_threadgroupbarrier:
@@ -8469,13 +8381,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         break;
     case GenISAIntrinsic::GenISA_intatomictyped:
     case GenISAIntrinsic::GenISA_icmpxchgatomictyped:
-    case GenISAIntrinsic::GenISA_floatatomictyped:
-    case GenISAIntrinsic::GenISA_fcmpxchgatomictyped:
-        if (shouldGenerateLSC(inst))
-        {
-            emitLSCAtomicTyped(inst);
-            break;
-        }
         emitAtomicTyped(inst);
         break;
     case GenISAIntrinsic::GenISA_atomiccounterinc:
@@ -8625,8 +8530,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
             emitStateRegID(11, 13);
         else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE_HPC_CORE)
             emitStateRegID(12, 14);
-        else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE2_LPG_CORE)
-            emitStateRegID(11, 15);
         else
             emitStateRegID(12, 14);
         break;
@@ -8640,8 +8543,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
                  IGFX_XE_HPC_CORE) {
           emitStateRegID(9, 11);
         }
-        else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE2_LPG_CORE)
-            emitStateRegID(8, 9);
         else
             emitStateRegID(8, 8);
         break;
@@ -8690,8 +8591,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
                  IGFX_XE_HPC_CORE) {
           emitStateRegID(4, 5);
         }
-        else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE2_LPG_CORE)
-            emitStateRegID(4, 6);
         else
             emitStateRegID(4, 7);
         break;
@@ -14312,31 +14211,6 @@ void EmitPass::emitScalarAtomics(llvm::Instruction *pInst,
         m_encoder->Cast(pCastAtomicSrcVal, pFinalAtomicSrcVal);
         pFinalAtomicSrcVal = pCastAtomicSrcVal;
     }
-    if (shouldGenerateLSC(pInst))
-    {
-        if (pU || pV || pR)
-        {
-            m_encoder->LSC_TypedAtomic(uniformAtomicOp, &resource, pU, pV, pR,
-                                       pFinalAtomicSrcVal, nullptr /*src1*/,
-                                       pReturnVal, bitWidth, LSC_ADDR_SIZE_32b);
-        }
-        else
-        {
-            m_encoder->LSC_AtomicRaw(
-                uniformAtomicOp,
-                pReturnVal,
-                pDstAddr,
-                pFinalAtomicSrcVal,
-                nullptr,
-                bitWidth,
-                &resource,
-                addrSize,
-                immOffset,
-                immScale,
-                LSC_DEFAULT_CACHING);
-        }
-    }
-    else
     {
         if (isA64)
         {
@@ -14450,39 +14324,6 @@ void EmitPass::emitScalarAtomicLoad(
             isA64 ? EALIGN_2GRF : EALIGN_GRF,
             true,
             pDstAddr ? pDstAddr->getName() : CName::NONE) : nullptr;
-    if (shouldGenerateLSC(pInst))
-    {
-        if (pU || pV || pR)
-        {
-            m_encoder->LSC_TypedAtomic(
-                EATOMIC_OR,
-                &resource,
-                pU,
-                pV,
-                pR,
-                pSrc,
-                nullptr /*src1*/,
-                atomicDst,
-                bitWidth,
-                LSC_ADDR_SIZE_32b);
-        }
-        else
-        {
-            m_encoder->LSC_AtomicRaw(
-                EATOMIC_OR,
-                atomicDst,
-                pDstAddr,
-                pSrc,
-                nullptr,
-                bitWidth,
-                &resource,
-                addrSize,
-                immOffset,
-                immScale,
-                LSC_DEFAULT_CACHING);
-        }
-    }
-    else
     {
 
         if (isA64)
@@ -15165,7 +15006,6 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
 
     uint numChannels = iSTD::BitCount(writeMask.getEM());
     auto doLSC = shouldGenerateLSC(pInsn, true);
-    doLSC = doLSC && IGC_IS_FLAG_DISABLED(DisableLSCForTypedUAV);
     LSC_ADDR_SIZE addrSize = LSC_ADDR_SIZE_32b;
     if (m_currShader->GetIsUniform(pInsn))
     {
@@ -15336,7 +15176,6 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
         bool needsSplit = m_currShader->m_SIMDSize > instWidth;
 
         auto doLSC = shouldGenerateLSC(pInsn, true);
-        doLSC &= IGC_IS_FLAG_DISABLED(DisableLSCForTypedUAV);
 
         if (doLSC)  // Reset if the SIMD32 is enabled
         {
@@ -15374,14 +15213,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
                 m_currShader->CopyVariable(pPayload, pSrc_W, 3);
             }
             m_encoder->SetPredicate(flag);
-            if (doLSC)
-            {
-                m_encoder->LSC_TypedReadWrite(LSC_STORE_QUAD, &resource, pU, pV, pR, pLOD, pPayload, 4 * 8, parameterLength * numLanes(SIMDMode::SIMD16), addrSize, writeMask, cacheOpts);
-            }
-            else
-            {
-                m_encoder->TypedWrite4(resource, pU, pV, pR, pLOD, pPayload, writeMask);
-            }
+            m_encoder->TypedWrite4(resource, pU, pV, pR, pLOD, pPayload, writeMask);
 
             m_encoder->Push();
         }
@@ -15441,14 +15273,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
                     m_encoder->SetSrcSubVar(2, i);
                     m_encoder->SetSrcSubVar(3, i);
                     m_encoder->SetPredicate(flag);
-                    if (doLSC)
-                    {
-                        m_encoder->LSC_TypedReadWrite(LSC_STORE_QUAD, &resource, pU, pV, pR, pLOD, pPayload[i], 4 * 8, parameterLength * numLanes(SIMDMode::SIMD16), addrSize, writeMask, cacheOpts);
-                    }
-                    else
-                    {
-                        m_encoder->TypedWrite4(resource, pU, pV, pR, pLOD, pPayload[i], writeMask);
-                    }
+                    m_encoder->TypedWrite4(resource, pU, pV, pR, pLOD, pPayload[i], writeMask);
                     m_encoder->Push();
                 }
             }
@@ -15462,14 +15287,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
                     m_encoder->SetSrcSubVar(2, i);
                     m_encoder->SetSrcSubVar(3, i);
                     m_encoder->SetPredicate(flag);
-                    if (doLSC)
-                    {
-                        m_encoder->LSC_TypedReadWrite(LSC_STORE_QUAD, &resource, pU, pV, pR, pLOD, pPayload[i], 4 * 8, parameterLength * numLanes(SIMDMode::SIMD16), addrSize, writeMask, cacheOpts);
-                    }
-                    else
-                    {
-                        m_encoder->TypedWrite4(resource, pU, pV, pR, pLOD, pPayload[i], writeMask);
-                    }
+                    m_encoder->TypedWrite4(resource, pU, pV, pR, pLOD, pPayload[i], writeMask);
                     m_encoder->Push();
                 }
             }
@@ -15759,10 +15577,6 @@ void EmitPass::emitFlushSamplerCache()
 
 void EmitPass::emitUniformAtomicCounter(llvm::GenIntrinsicInst* pInsn)
 {
-    if (m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_LPG_CORE))
-    {
-        return emitLscUniformAtomicCounter(pInsn);
-    }
     ForceDMask();
     IGC_ASSERT(pInsn->getNumOperands() == 2);
     GenISAIntrinsic::ID IID = pInsn->getIntrinsicID();
@@ -18931,466 +18745,6 @@ void EmitPass::emitLSCVectorStore(Value *Ptr,
     }
 }
 
-void EmitPass::emitLSCTypedRead(llvm::Instruction* pInsn)
-{
-    const CShader::ExtractMaskWrapper writeMask(m_currShader, pInsn);
-    IGC_ASSERT_MESSAGE(writeMask.hasEM() && writeMask.getEM() != 0, "Wrong write mask");
-
-    llvm::Value* pllSrcBuffer = pInsn->getOperand(0);
-    llvm::Value* pllU = pInsn->getOperand(1);
-    llvm::Value* pllV = pInsn->getOperand(2);
-    llvm::Value* pllR = pInsn->getOperand(3);
-    llvm::Value* pllLOD = getOperandIfExist(pInsn, 4);
-
-    CVariable* pLOD = isUndefOrConstInt0(pllLOD) ? nullptr : GetSymbol(pllLOD);
-    CVariable* pR = (pLOD == nullptr && isUndefOrConstInt0(pllR)) ? nullptr : GetSymbol(pllR);
-    CVariable* pV = (pR == nullptr && isUndefOrConstInt0(pllV)) ? nullptr : GetSymbol(pllV);
-    CVariable* pU = GetSymbol(pllU);
-
-    pU = BroadcastIfUniform(pU, m_currShader->GetIsUniform(pInsn));
-    pV = pV ? BroadcastIfUniform(pV, m_currShader->GetIsUniform(pInsn)) : nullptr;
-    pR = pR ? BroadcastIfUniform(pR, m_currShader->GetIsUniform(pInsn)) : nullptr;
-    pLOD = pLOD ? BroadcastIfUniform(pLOD, m_currShader->GetIsUniform(pInsn)) : nullptr;
-
-    ResourceDescriptor resource = GetResourceVariable(pllSrcBuffer);
-
-    LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(pInsn, true, true);
-
-    uint numChannels = iSTD::BitCount(writeMask.getEM());
-    auto eltBitSize = 4 * 8;
-    LSC_ADDR_SIZE addrSize = LSC_ADDR_SIZE_32b;
-    if (m_currShader->GetIsUniform(pInsn))
-    {
-        SIMDMode nativeDispatchMode = m_currShader->m_Platform->getMinDispatchMode();
-        CVariable* tempdst = nullptr;
-        tempdst = m_currShader->GetNewVariable(
-            numChannels * numLanes(nativeDispatchMode),
-            ISA_TYPE_F,
-            EALIGN_GRF,
-            CName("tyReadDest"));
-        m_encoder->SetSimdSize(nativeDispatchMode);
-        m_encoder->SetPredicate(nullptr);
-        m_encoder->SetNoMask();
-        m_encoder->LSC_TypedReadWrite(LSC_LOAD_QUAD, &resource, pU, pV, pR, pLOD, tempdst, eltBitSize,
-            numLanes(nativeDispatchMode), addrSize, writeMask.getEM(), cacheOpts);
-        m_encoder->Push();
-
-        // Mov the required channel values to m_destination
-        m_encoder->SetSimdSize(SIMDMode::SIMD1);
-        m_encoder->SetNoMask();
-
-        for (uint i = 0; i < numChannels; ++i)
-        {
-            m_encoder->SetSrcSubReg(0, i * numLanes(nativeDispatchMode));
-            m_encoder->SetDstSubReg(i);
-            m_encoder->Copy(m_destination, tempdst);
-            m_encoder->Push();
-        }
-    }
-    else
-    {
-        uint label = 0;
-        CVariable* flag = nullptr;
-        bool needLoop = ResourceLoopHeader(resource, flag, label);
-        CVariable* tempdst[4] = { nullptr, nullptr, nullptr, nullptr };
-        auto instWidth = m_currShader->m_Platform->getMaxLSCTypedMessageSize();
-        bool needsSplit = m_currShader->m_SIMDSize > instWidth;
-
-        if (!needsSplit)
-        {
-            m_encoder->SetPredicate(flag);
-            m_encoder->LSC_TypedReadWrite(LSC_LOAD_QUAD, &resource, pU, pV, pR, pLOD, m_destination, eltBitSize,
-                numLanes(instWidth), addrSize, writeMask.getEM(), cacheOpts);
-            m_encoder->Push();
-        }
-        else
-        {
-            const unsigned int numLanesForInstWidth = numLanes(instWidth);
-            IGC_ASSERT(numLanesForInstWidth);
-            const unsigned int splitInstCount = numLanes(m_currShader->m_SIMDSize) / numLanesForInstWidth;
-
-            for (uint i = 0; i < splitInstCount; ++i)
-            {
-                tempdst[i] = m_currShader->GetNewVariable(
-                    numChannels * numLanes(instWidth),
-                    ISA_TYPE_F,
-                    EALIGN_GRF,
-                    CName::NONE);
-
-                setSIMDSizeMask(m_encoder, m_currShader, i);
-                m_encoder->SetSrcSubVar(0, i);
-                m_encoder->SetSrcSubVar(1, i);
-                m_encoder->SetSrcSubVar(2, i);
-                m_encoder->SetSrcSubVar(3, i);
-                m_encoder->SetPredicate(flag);
-                m_encoder->LSC_TypedReadWrite(LSC_LOAD_QUAD, &resource, pU, pV, pR, pLOD, tempdst[i], eltBitSize,
-                    numLanes(instWidth), addrSize, writeMask.getEM(), cacheOpts);
-                m_encoder->Push();
-            }
-        }
-        ResourceLoopBackEdge(needLoop, flag, label);
-
-        if (m_currShader->m_SIMDSize != instWidth)
-        {
-            JoinSIMD(tempdst, numChannels, instWidth);
-        }
-    }
-    m_currShader->isMessageTargetDataCacheDataPort = true;
-}
-
-void EmitPass::emitLSCTypedWrite(llvm::Instruction* pInsn)
-{
-    ForceDMask();
-    llvm::Value* pllDstBuffer = pInsn->getOperand(0);
-    llvm::Value* pllU = pInsn->getOperand(1);
-    llvm::Value* pllV = pInsn->getOperand(2);
-    llvm::Value* pllR = pInsn->getOperand(3);
-    llvm::Value* pllLOD = pInsn->getOperand(4);
-    llvm::Value* pllSrc_X = pInsn->getOperand(5);
-    llvm::Value* pllSrc_Y = pInsn->getOperand(6);
-    llvm::Value* pllSrc_Z = pInsn->getOperand(7);
-    llvm::Value* pllSrc_W = pInsn->getOperand(8);
-
-    CVariable* pLOD = isUndefOrConstInt0(pllLOD) ? nullptr : GetSymbol(pllLOD);
-    CVariable* pR = (pLOD == nullptr && isUndefOrConstInt0(pllR)) ? nullptr : GetSymbol(pllR);
-    CVariable* pV = (pR == nullptr && isUndefOrConstInt0(pllV)) ? nullptr : GetSymbol(pllV);
-    CVariable* pU = GetSymbol(pllU);
-
-    CVariable* pSrc_X = GetSymbol(pllSrc_X);
-    CVariable* pSrc_Y = GetSymbol(pllSrc_Y);
-    CVariable* pSrc_Z = GetSymbol(pllSrc_Z);
-    CVariable* pSrc_W = GetSymbol(pllSrc_W);
-
-    pU = BroadcastIfUniform(pU);
-    pV = pV ? BroadcastIfUniform(pV) : nullptr;
-    pR = pR ? BroadcastIfUniform(pR) : nullptr;
-    pLOD = pLOD ? BroadcastIfUniform(pLOD) : nullptr;
-
-    ResourceDescriptor resource = GetResourceVariable(pllDstBuffer);
-    LSC_ADDR_SIZE addrSize = LSC_ADDR_SIZE_32b;
-    LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(pInsn, false, true);
-    m_currShader->HasLscStoreCacheControls(cacheOpts);
-
-    if (m_currShader->GetIsUniform(pInsn))
-    {
-        IGC_ASSERT_MESSAGE(0, "Uniform store_uav_typed not implemented yet");
-        return;
-    }
-
-    uint label = 0;
-    CVariable* flag = nullptr;
-    bool needLoop = ResourceLoopHeader(resource, flag, label);
-    uint parameterLength = 4;
-
-    bool needsSplit = m_currShader->m_SIMDSize > m_currShader->m_Platform->getMaxLSCTypedMessageSize();
-    auto eltBitSize = 4 * 8;
-    // exec size for each lsc store
-    auto instWidth = std::min(m_currShader->m_SIMDSize, m_currShader->m_Platform->getMaxLSCTypedMessageSize());
-
-    if (!needsSplit)
-    {
-        const unsigned int GRFSizeBy4 = (getGRFSize() / 4);
-        IGC_ASSERT(GRFSizeBy4);
-        const unsigned int numEltGRF = numLanes(instWidth) / GRFSizeBy4;
-
-        Constant* p_X = dyn_cast<Constant>(pllSrc_X);
-        Constant* p_Y = dyn_cast<Constant>(pllSrc_Y);
-        Constant* p_Z = dyn_cast<Constant>(pllSrc_Z);
-        Constant* p_W = dyn_cast<Constant>(pllSrc_W);
-
-        CVariable* pPayload = nullptr;
-        if (p_X && p_Y && p_Z && p_W) {
-          // if x, y, z, w are constants, find opportunities to reuse
-          std::vector<Constant*> xyzwPayload{ p_X, p_Y, p_Z, p_W };
-          llvm::Constant* payloadConstant = llvm::ConstantVector::get(xyzwPayload);
-          pPayload = tryReusingXYZWPayload(payloadConstant, pInsn->getParent(),
-                parameterLength * numLanes(m_currShader->m_SIMDSize), ISA_TYPE_F,
-                pSrc_X, pSrc_Y, pSrc_Z, pSrc_W, numEltGRF);
-        }
-
-        if (!pPayload) {
-          // create payload variable
-          pPayload = m_currShader->GetNewVariable(
-                      parameterLength * numLanes(m_currShader->m_SIMDSize),
-                      ISA_TYPE_F,
-                      EALIGN_GRF,
-                      CName::NONE);
-
-          m_currShader->CopyVariable(pPayload, pSrc_X, 0);
-          m_currShader->CopyVariable(pPayload, pSrc_Y, numEltGRF);
-          m_currShader->CopyVariable(pPayload, pSrc_Z, 2 * numEltGRF);
-          m_currShader->CopyVariable(pPayload, pSrc_W, 3 * numEltGRF);
-        }
-
-        m_encoder->SetPredicate(flag);
-        m_encoder->LSC_TypedReadWrite(LSC_STORE_QUAD, &resource, pU, pV, pR, pLOD, pPayload, eltBitSize, parameterLength, addrSize, 0xF, cacheOpts);
-        m_encoder->Push();
-    }
-    else
-    {
-        for (uint i = 0; i < 2; ++i)
-        {
-            CVariable* pPayload = nullptr;
-            pPayload = m_currShader->GetNewVariable(
-                parameterLength * numLanes(instWidth),
-                ISA_TYPE_F,
-                EALIGN_GRF, CName::NONE);
-            setSIMDSizeMask(m_encoder, m_currShader, i);
-            if (!pSrc_X->IsUniform())
-            {
-                m_encoder->SetSrcSubVar(0, i);
-            }
-            m_encoder->SetDstSubVar(0);
-            m_encoder->Copy(pPayload, pSrc_X);
-            m_encoder->Push();
-
-            setSIMDSizeMask(m_encoder, m_currShader, i);
-            if (!pSrc_Y->IsUniform())
-            {
-                m_encoder->SetSrcSubVar(0, i);
-            }
-            m_encoder->SetDstSubVar(1);
-            m_encoder->Copy(pPayload, pSrc_Y);
-            m_encoder->Push();
-
-            setSIMDSizeMask(m_encoder, m_currShader, i);
-            if (!pSrc_Z->IsUniform())
-            {
-                m_encoder->SetSrcSubVar(0, i);
-            }
-            m_encoder->SetDstSubVar(2);
-            m_encoder->Copy(pPayload, pSrc_Z);
-            m_encoder->Push();
-
-            setSIMDSizeMask(m_encoder, m_currShader, i);
-            if (!pSrc_W->IsUniform())
-            {
-                m_encoder->SetSrcSubVar(0, i);
-            }
-            m_encoder->SetDstSubVar(3);
-            m_encoder->Copy(pPayload, pSrc_W);
-            m_encoder->Push();
-
-            setSIMDSizeMask(m_encoder, m_currShader, i);
-            m_encoder->SetSrcSubVar(0, i);
-            m_encoder->SetSrcSubVar(1, i);
-            m_encoder->SetSrcSubVar(2, i);
-            m_encoder->SetSrcSubVar(3, i);
-            m_encoder->SetPredicate(flag);
-            m_encoder->LSC_TypedReadWrite(LSC_STORE_QUAD, &resource, pU, pV, pR, pLOD, pPayload, eltBitSize, parameterLength, addrSize, 0xF, cacheOpts);
-            m_encoder->Push();
-        }
-    }
-    ResourceLoopBackEdge(needLoop, flag, label);
-
-    ResetVMask();
-    m_currShader->isMessageTargetDataCacheDataPort = true;
-}
-
-void EmitPass::emitLSCAtomicTyped(llvm::GenIntrinsicInst* inst)
-{
-    ForceDMask();
-    // Currently, Dword Atomics can be called by matching 2 intrinsics. One is the DwordAtomicRaw
-    // and AtomicCmpXchg (which has 2 srcs unlike the other atomics).
-    IGC_ASSERT(IGCLLVM::getNumArgOperands(inst) == 6);
-
-    /// Immediate Atomics return the value before the atomic operation is performed. So that flag
-    /// needs to be set for this.
-    bool returnsImmValue = !inst->user_empty();
-
-    llvm::Value* pllbuffer = inst->getOperand(0);
-    llvm::Value* pllU = inst->getOperand(1);
-    llvm::Value* pllV = inst->getOperand(2);
-    llvm::Value* pllR = inst->getOperand(3);
-    llvm::Value* pllSrc0 = inst->getOperand(4);
-
-    CVariable* pSrc0 = nullptr;
-    CVariable* pSrc1 = nullptr;
-    AtomicOp atomic_op = EATOMIC_UNDEF;
-    if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_icmpxchgatomictyped ||
-        inst->getIntrinsicID() == GenISAIntrinsic::GenISA_fcmpxchgatomictyped)
-    {
-        llvm::Value* pllSrc1 = inst->getOperand(5);
-        pSrc1 = GetSymbol(pllSrc1);
-        pSrc1 = UnpackOrBroadcastIfUniform(pSrc1);
-        atomic_op = EATOMIC_CMPXCHG;
-        atomic_op = inst->getIntrinsicID() == GenISAIntrinsic::GenISA_icmpxchgatomictyped ? EATOMIC_CMPXCHG : EATOMIC_FCMPWR;
-    }
-    else
-    {
-        atomic_op = static_cast<AtomicOp>(cast<ConstantInt>(inst->getOperand(5))->getZExtValue());
-    }
-
-    const bool hasNoDataOperand =
-        atomic_op == EATOMIC_INC64 || atomic_op == EATOMIC_DEC64 ||
-        atomic_op == EATOMIC_INC || atomic_op == EATOMIC_DEC;
-    if (hasNoDataOperand == false)
-    {
-        pSrc0 = GetSymbol(pllSrc0);
-    }
-
-    ResourceDescriptor resource = GetResourceVariable(pllbuffer);
-
-    CVariable* pR = isUndefOrConstInt0(pllR) ? nullptr : GetSymbol(pllR);
-    CVariable* pV = (pR == nullptr && isUndefOrConstInt0(pllV)) ? nullptr : GetSymbol(pllV);
-    CVariable* pU = GetSymbol(pllU);
-    auto eltSizeInBits = inst->getType()->getScalarSizeInBits();
-
-    if (IsUniformAtomic(inst))
-    {
-        pU = ReAlignUniformVariable(pU, EALIGN_GRF);
-        pV = pV ? ReAlignUniformVariable(pV, EALIGN_GRF) : pV;
-        pR = pR ? ReAlignUniformVariable(pR, EALIGN_GRF) : pR;
-
-        if (atomic_op == EATOMIC_OR && OrWith0Atomic(inst, 4))
-        {
-            // special case of atomic_load
-            emitScalarAtomicLoad(inst, resource,
-                                 nullptr /*pDstAddr*/, pU, pV, pR, pSrc0,
-                                 false /*isA64*/, eltSizeInBits, 0, 1,
-                                 LSC_ADDR_SIZE_32b);
-        }
-        else
-        {
-            emitScalarAtomics(inst, resource, atomic_op,
-                              nullptr /*pDstAddr*/, pU, pV, pR, pSrc0,
-                              false /*isA64*/, eltSizeInBits, 0, 1,
-                              LSC_ADDR_SIZE_32b);
-        }
-    }
-    else
-    {
-        pU = BroadcastIfUniform(pU);
-        pV = pV ? BroadcastIfUniform(pV) : nullptr;
-        pR = pR ? BroadcastIfUniform(pR) : nullptr;
-
-        if (pSrc0)
-        {
-            pSrc0 = UnpackOrBroadcastIfUniform(pSrc0);
-        }
-
-        uint label = 0;
-        CVariable* flag = nullptr;
-        bool needLoop = ResourceLoopHeader(resource, flag, label);
-        CVariable* tempdst[4] = { nullptr, nullptr, nullptr, nullptr };
-        auto instWidth = m_currShader->m_Platform->getMaxLSCTypedMessageSize();
-        bool needsSplit = m_currShader->m_SIMDSize > instWidth;
-        uint regsPerAddrChannel = 32 * numLanes(instWidth) / 8 / getGRFSize();
-        uint regsPerDataChannel = eltSizeInBits * numLanes(instWidth) / 8 / getGRFSize();
-        LSC_ADDR_SIZE addrSize = LSC_ADDR_SIZE_32b;
-        if (!needsSplit)
-        {
-            m_encoder->SetPredicate(flag);
-            m_encoder->LSC_TypedAtomic(atomic_op, &resource, pU, pV, pR, pSrc0, pSrc1, returnsImmValue ? m_destination : nullptr, eltSizeInBits, addrSize);
-            m_encoder->Push();
-        }
-        else
-        {
-            const unsigned int numLanesForInstWidth = numLanes(instWidth);
-            IGC_ASSERT(numLanesForInstWidth);
-            const unsigned int splitInstCount = numLanes(m_currShader->m_SIMDSize) / numLanesForInstWidth;
-
-            for (uint i = 0; i < splitInstCount; ++i)
-            {
-                tempdst[i] = returnsImmValue ? m_currShader->GetNewVariable(
-                    numLanes(instWidth),
-                    eltSizeInBits != 64 ? ISA_TYPE_UD : ISA_TYPE_UQ,
-                    EALIGN_GRF,
-                    CName::NONE) : nullptr;
-
-                m_encoder->SetPredicate(flag);
-                setSIMDSizeMask(m_encoder, m_currShader, i);
-                m_encoder->SetSrcSubVar(0, i * regsPerAddrChannel);
-                m_encoder->SetSrcSubVar(1, i * regsPerDataChannel);
-                m_encoder->LSC_TypedAtomic(atomic_op, &resource, pU, pV, pR, pSrc0, pSrc1, tempdst[i], eltSizeInBits, addrSize);
-                m_encoder->Push();
-            }
-        }
-
-        ResourceLoopBackEdge(needLoop, flag, label);
-
-        if (returnsImmValue && m_currShader->m_SIMDSize != instWidth)
-        {
-            JoinSIMD(tempdst, regsPerDataChannel, instWidth);
-        }
-    }
-    ResetVMask();
-    m_currShader->isMessageTargetDataCacheDataPort = true;
-}
-
-void EmitPass::emitLscUniformAtomicCounter(llvm::GenIntrinsicInst* pInst)
-{
-    ForceDMask();
-    IGC_ASSERT(pInst->getNumOperands() == 2);
-
-    GenISAIntrinsic::ID IID = pInst->getIntrinsicID();
-
-    llvm::Value* pllbuffer = pInst->getOperand(0);
-    ResourceDescriptor resource = GetResourceVariable(pllbuffer);
-
-    // It is more efficient to emit a SIMD1 atomic
-    CVariable* prefixVar[2] = { nullptr, nullptr };
-    CVariable* src = m_currShader->ImmToVariable(1, ISA_TYPE_D);
-    emitPreOrPostFixOp(EOPCODE_ADD, 0, ISA_TYPE_D, false, src, prefixVar);
-    CVariable* pSrcCopy = prefixVar[0];
-    if (m_currShader->m_numberInstance == 2)
-    {
-        pSrcCopy = prefixVar[1];
-    }
-
-    // prepare data payload
-    CVariable* pPayload = m_currShader->GetNewVariable(1, ISA_TYPE_D, EALIGN_GRF,true, CName::NONE);
-    m_encoder->SetSimdSize(SIMDMode::SIMD1);
-    m_encoder->SetSrcRegion(0, 0, 1, 0);
-    m_encoder->SetSrcSubReg(0, numLanes(m_currShader->m_SIMDSize) - 1);
-    m_encoder->Copy(pPayload, pSrcCopy);
-    m_encoder->Push();
-
-    // prepare dst if requires return value
-    CVariable* dst = nullptr;
-    bool returnsImmValue = !pInst->user_empty();
-    if (returnsImmValue)
-    {
-        dst = m_currShader->GetNewVariable(1, ISA_TYPE_D, EALIGN_GRF, true, CName::NONE);
-    }
-
-    m_encoder->SetSimdSize(SIMDMode::SIMD1);
-    m_encoder->SetNoMask();
-    m_encoder->LSC_UntypedAppendCounterAtomic(
-        IID == GenISAIntrinsic::GenISA_atomiccounterinc ? LSC_APNDCTR_ATOMIC_ADD : LSC_APNDCTR_ATOMIC_SUB,
-        &resource,
-        dst,
-        pPayload);
-    m_encoder->Push();
-
-    if (returnsImmValue)
-    {
-        unsigned int counter = m_currShader->m_numberInstance;
-        for (unsigned int i = 0; i < counter; ++i)
-        {
-            m_encoder->SetSecondHalf(i == 1);
-
-            if (IID == GenISAIntrinsic::GenISA_atomiccounterinc)
-            {
-                m_encoder->Add(m_destination, prefixVar[i], dst);
-                m_encoder->Push();
-
-                CVariable* src = m_currShader->ImmToVariable(-1, ISA_TYPE_D);
-                m_encoder->Add(m_destination, m_destination, src);
-                m_encoder->Push();
-            }
-            else if (IID == GenISAIntrinsic::GenISA_atomiccounterpredec)
-            {
-                m_encoder->SetSrcModifier(1, EMOD_NEG);
-                m_encoder->Add(m_destination, dst, prefixVar[i]);
-                m_encoder->Push();
-            }
-        }
-    }
-
-    ResetVMask();
-    m_currShader->isMessageTargetDataCacheDataPort = true;
-}
 
 // DstSubRegOffset and SrcSubRegOffset are in unit of element size.
 void EmitPass::emitUniformVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
@@ -20402,12 +19756,6 @@ ResourceDescriptor EmitPass::GetResourceVariable(Value* resourcePtr)
         }
     }
 
-    if ((bufType == BINDLESS_CONSTANT_BUFFER) ||
-        (bufType == CONSTANT_BUFFER) ||
-        (as == ADDRESS_SPACE_CONSTANT))
-    {
-        resource.m_isConstant = true;
-    }
 
     if (IsBindless(bufType))
     {
@@ -20545,7 +19893,6 @@ bool EmitPass::ResourceLoopHeader(
         resourceFlag = m_currShader->GetNewVariable(numLanes(m_SimdMode), ISA_TYPE_BOOL, EALIGN_BYTE, CName::NONE);
         uniformResource.m_surfaceType = resource.m_surfaceType;
         uniformResource.m_resource = UniformCopy(resource.m_resource, offset);
-        uniformResource.m_isConstant = resource.m_isConstant;
         m_encoder->Cmp(EPREDICATE_EQ, resourceFlag, uniformResource.m_resource, resource.m_resource);
         m_encoder->Push();
         resource = uniformResource;
@@ -21741,23 +21088,6 @@ static LSC_CACHE_OPTS translateLSCCacheControlsEnum(
         else
             cacheOpts = {LSC_CACHING_WRITEBACK, LSC_CACHING_WRITEBACK};
         break;
-    case LSC_L1UC_L3CC:
-        if (isLoad) {
-            cacheOpts = {LSC_CACHING_UNCACHED,
-                LSC_CACHING_CONSTCACHED};
-            break;
-        }
-    case LSC_L1C_L3CC:
-        if (isLoad) {
-            cacheOpts = {LSC_CACHING_CACHED,
-                LSC_CACHING_CONSTCACHED};
-            break;
-        }
-    case LSC_L1IAR_L3IAR:
-        if (isLoad) {
-            cacheOpts = {LSC_CACHING_READINVALIDATE, LSC_CACHING_READINVALIDATE};
-            break;
-        }
     default:
         IGC_ASSERT_EXIT_MESSAGE(0, "unsupported caching option");
         break;
@@ -21798,13 +21128,6 @@ Optional<LSC_CACHE_OPTS>
 EmitPass::setCacheOptionsForConstantBufferLoads(Instruction& inst) const
 {
     Optional<LSC_CACHE_OPTS> cacheOpts;
-    if (IGC_IS_FLAG_DISABLED(DisableSystemMemoryCachingInGPUForConstantBuffers) &&
-        m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_LPG_CORE))
-    {
-        if (auto Opts = ::setCacheOptionsForConstantBufferLoads(inst, LSC_L1C_L3CC
-        ))
-            cacheOpts = *Opts;
-    }
     if (m_pCtx->type == ShaderType::RAYTRACING_SHADER &&
         IGC_IS_FLAG_ENABLED(ForceRTConstantBufferCacheCtrl))
     {
@@ -22559,7 +21882,7 @@ void EmitPass::emitLSCFence(llvm::GenIntrinsicInst* inst)
         }*/
     }
 
-    if ((memoryPort != LSC_UGM) && (memoryPort != LSC_TGM) &&
+    if ((memoryPort != LSC_UGM) &&
         (scope == LSC_SCOPE_SYSREL || scope == LSC_SCOPE_SYSACQ))
     {
         // Does this restriction apply also to LSC_UGML ?
@@ -23309,11 +22632,6 @@ void EmitPass::emitUrbFence()
 
 void EmitPass::emitHDCuncompressedwrite(llvm::GenIntrinsicInst* inst)
 {
-    if (shouldGenerateLSC())
-    {
-        emitLSCSimdBlockWrite(inst);
-        return;
-    }
     emitLegacySimdBlockWrite(inst);
 }
 

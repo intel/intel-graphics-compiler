@@ -264,10 +264,6 @@ public:
     void emitThreadGroupBarrier(llvm::Instruction* inst);
     void emitThreadGroupNamedBarriersInit(llvm::Instruction* inst);
     void emitThreadGroupNamedBarriersBarrier(llvm::Instruction* inst);
-    void emitLSCTypedRead(llvm::Instruction* inst);
-    void emitLSCTypedWrite(llvm::Instruction* inst);
-    void emitLSCAtomicTyped(llvm::GenIntrinsicInst* inst);
-    void emitLscUniformAtomicCounter(llvm::GenIntrinsicInst* pInst);
     void emitCastSelect(CVariable* flag, CVariable* dst, CVariable* src0, CVariable* src1);
     void emitMemoryFence(llvm::Instruction* inst);
     void emitMemoryFence(void);

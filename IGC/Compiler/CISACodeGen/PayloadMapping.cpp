@@ -324,7 +324,7 @@ uint PayloadMapping::GetNumPayloadElements_LDMS(const GenIntrinsicInst* inst)
 
     //Subtract the offsets, and texture resource, lod to get
     //the number of texture coordinates and index to texture source
-    uint numSources = numOperands - 6;
+    uint numSources = numOperands - 5;
 
     for (uint i = numSources - 1; i > 0; i--)
     {
@@ -466,13 +466,13 @@ void PayloadMapping::ValidateNumberofSources(EOPCODE opCode, bool isCube, uint& 
 uint PayloadMapping::GetNonAdjustedNumPayloadElements_Sample(const SampleIntrinsic* inst)
 {
     const unsigned int  numOperands = inst->getNumOperands();
-    unsigned int numSources = numOperands - 7;
+    unsigned int numSources = numOperands - 6;
 
     if (inst->IsLODInst())
     {
         //Subtract resource and sampler sources to get
         //the number of texture coordinates and index to texture source
-        numSources = numOperands - 4;
+        numSources = numOperands - 3;
     }
 
     //Check for valid number of sources from the end of the list

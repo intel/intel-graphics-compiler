@@ -316,28 +316,6 @@ namespace IGC
             LSC_ADDR_SIZE addr_size, int chMask,
             LSC_CACHE_OPTS cacheOpts = { LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT });
 
-
-        void LSC_TypedAtomic(
-            AtomicOp subOp, ResourceDescriptor* resource,
-            CVariable* pU, CVariable* pV, CVariable* pR,
-            CVariable* pSrc0, CVariable* pSrc1, CVariable* pSrcDst,
-            unsigned elemSize, LSC_ADDR_SIZE addr_size);
-
-
-        void LSC_Typed2dBlock(
-            LSC_OP subOpcode,
-            CVariable* dst,
-            e_predefSurface surfaceType,
-            CVariable* bufId,
-            CVariable* xOffset,
-            CVariable* yOffset,
-            int blockWidth,
-            int blockHeight);
-        void LSC_UntypedAppendCounterAtomic(
-            LSC_OP lscOp,
-            ResourceDescriptor* resource,
-            CVariable* dst,
-            CVariable* src0);
         void AppendBreakpoint();
         void ScatterA64(CVariable* val, CVariable* offset, unsigned elementSize, unsigned numElems);
         void ByteGather(CVariable* dst, const ResourceDescriptor& resource, CVariable* offset, unsigned elementSize, unsigned numElems);
