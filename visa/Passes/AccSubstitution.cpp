@@ -791,7 +791,7 @@ bool AccSubPass::replaceDstWithAcc(G4_INST *inst, int accNum) {
     if (kernel.fg.builder->removedAccRestrictionsAsGRF()) {
       accSrc = builder.createSrcRegRegion(
           oldSrc->getModifier(), Direct, accReg, (short)accNum, 0,
-          builder.getRegionStride1(), oldSrc->getType());
+          oldSrc->getRegion(), oldSrc->getType());
     } else {
       accSrc = builder.createSrcRegRegion(
           oldSrc->getModifier(), Direct, accReg, (short)accNum, 0,
