@@ -553,13 +553,22 @@ DECLARE_IGC_REGKEY(bool, EnableGEPSimplification, true, "Enable GEP simplificati
 DECLARE_IGC_REGKEY(bool, TestGEPSimplification,         false, "[Test] Testing GEP simplification without actually lowering GEP. Used in lit test", false)
 DECLARE_IGC_REGKEY(bool, DisableSystemMemoryCachingInGPUForConstantBuffers, false, "Disables caching system memory in GPU for loads from constant buffers", false)
 DECLARE_IGC_REGKEY(bool, EnableInsertingPairedResourcePointer, true, "Enable to insert a bindless paired resource address into sampler headers in context of sampling feedback resources", true)
+DECLARE_IGC_REGKEY(bool, EnablePromotionToSampleMlod,          true,
+    "Enables promotion of sample and sample_c to sample_mlod and sample_c_mlod instructions when min lod is present", false)
+DECLARE_IGC_REGKEY(bool, EnableLscSamplerRouting, false, "Enables conversion of LD to LD_L instructions.", false)
+DECLARE_IGC_REGKEY(bool, EnableSIMD16ForXe2, false, "Enable SIMD16 for Xe2", false)
+DECLARE_IGC_REGKEY(DWORD, CheckCSSLMLimit, 2, "Check SLM or threads limit on compute shader to turn on Enable2xGRF on DG2+"\
+    "0 - off, 1 - SLM limit heuristic, 2 - platform based heuristic (XE2 - threads limit, others - SLM limit)", false)
+DECLARE_IGC_REGKEY(DWORD, Enable2xGRF,                         2,     "Enable 2x GRF for high SLM or high threads usage"\
+    "0 - off, 1 - on, 2 - platform default", false)
 DECLARE_IGC_REGKEY(bool, EnableTileYForExperiments, false, "Enable TileY heuristics for experiments", false)
 DECLARE_IGC_REGKEY(bool, EnableDG2LSCSIMD8WA, true, "Enables WA for DG2 LSC simd8 d32-v8/d64-v3/d64-v4. [temp, should be replaced with WA id", false)
 DECLARE_IGC_REGKEY(bool, EnableScratchMessageD64WA, false, "Enables WA to legalize D64 scratch messages to D32", false)
 DECLARE_IGC_REGKEY(DWORD, LscImmOffsMatch, 1, \
     "Match address patterns that have an immediate offset for the vISA LSC API" \
     "(0 means off/no matching," \
-    " 2 means force on for all platforms (vISA will emulate the addition);" \
+    " 1 means on/match for supported platforms (Xe2+) and APIs," \
+    " 2 means force on for all platforms (vISA will emulate the addition if HW lacks support) and APIs;" \
     " also see LscImmOffsVisaOpts", true)
 DECLARE_IGC_REGKEY(DWORD, LscImmOffsVisaOpts,           0x3003E, \
     "This maps to vISA_lscEnableImmOffsFor" \
@@ -574,7 +583,7 @@ DECLARE_IGC_REGKEY(bool, Enable_Wa1507979211,  false, "Enable Wa_1507979211 rega
 DECLARE_IGC_REGKEY(bool, Enable_Wa14010017096, false, "Enable Wa_14010017096 regardless of the platfrom stepping", true)
 DECLARE_IGC_REGKEY(bool, Enable_Wa22010487853, false, "Enable Wa_22010487853 regardless of the platfrom stepping", true)
 DECLARE_IGC_REGKEY(bool, Enable_Wa22010493955, false, "Enable Wa_22010493955 regardless of the platfrom stepping", true)
-DECLARE_IGC_REGKEY(bool, EnablePartialEmuI64,  true,  "Enable the partial I64 emulation for PVC-B", true)
+DECLARE_IGC_REGKEY(bool, EnablePartialEmuI64,  true,  "Enable the partial I64 emulation for PVC-B, Xe2", true)
 DECLARE_IGC_REGKEY_ENUM(LscLoadCacheControlOverride, 0, "Overrides cache-control options for non-intrinsic LSC loads.", LSC_CACHE_CTRL_OPTIONS, true)
 DECLARE_IGC_REGKEY_ENUM(LscStoreCacheControlOverride, 0, "Overrides cache-control options for non-intrinsic LSC stores.", LSC_CACHE_CTRL_OPTIONS, true)
 DECLARE_IGC_REGKEY_ENUM(TgmLoadCacheControlOverride, 0, "Overrides cache-control options for non-intrinsic LSC tgm loads.", LSC_CACHE_CTRL_OPTIONS, true)

@@ -116,6 +116,7 @@ public:
     llvm::Value* dxr;
     llvm::Value* dyr;
     llvm::Value* float_src_ai;
+    llvm::Value* int32_pairedTextureIdx;
     llvm::Value* int32_textureIdx;
     llvm::Value* int32_sampler;
     llvm::Value* int32_offsetU;
@@ -132,6 +133,7 @@ public:
     llvm::Value* get_dxr() { return dxr; }
     llvm::Value* get_dyr() { return dyr; }
     llvm::Value* get_float_src_ai() { return float_src_ai; }
+    llvm::Value* get_int32_pairedTextureIdx() { return int32_pairedTextureIdx; }
     llvm::Value* get_int32_textureIdx() { return int32_textureIdx; }
     llvm::Value* get_int32_sampler() { return int32_sampler; }
     llvm::Value* get_int32_offsetU() { return int32_offsetU; }
@@ -150,6 +152,7 @@ public:
         dxr = D_DC_CUBE_params.dxr;
         dyr = D_DC_CUBE_params.dyr;
         float_src_ai = D_DC_CUBE_params.float_src_ai;
+        int32_pairedTextureIdx = D_DC_CUBE_params.int32_pairedTextureIdx;
         int32_textureIdx = D_DC_CUBE_params.int32_textureIdx;
         int32_sampler = D_DC_CUBE_params.int32_sampler;
         int32_offsetU = D_DC_CUBE_params.int32_offsetU;
@@ -400,6 +403,21 @@ public:
         bool feedback_enabled = false,
         llvm::Type* returnType = nullptr);
 
+    llvm::CallInst* Create_SAMPLE(
+        llvm::Value* coordinate_u,
+        llvm::Value* coordinate_v,
+        llvm::Value* coordinate_r,
+        llvm::Value* coordinate_ai,
+        llvm::Value* ptr_pairedTextureIdx,
+        llvm::Value* ptr_textureIdx,
+        llvm::Value* ptr_sampler,
+        llvm::Value* offsetU,
+        llvm::Value* offsetV,
+        llvm::Value* offsetW,
+        llvm::Value* minlod,
+        bool feedback_enabled = false,
+        llvm::Type* returnType = nullptr);
+
     SampleParamsFromCube Prepare_SAMPLE_Cube_ParamsFromUnormalizedCoords(
         llvm::Value* int32_lod,
         llvm::Value* int32_textureIdx,
@@ -444,6 +462,27 @@ public:
         bool feedback_enabled = false,
         llvm::Type* returnType = nullptr);
 
+    llvm::CallInst* Create_SAMPLED(
+        llvm::Value* float_src1_s_chan0,
+        llvm::Value* float_src1_s_chan1,
+        llvm::Value* float_src1_s_chan2,
+        llvm::Value* float_src2_s_chan0,
+        llvm::Value* float_src2_s_chan1,
+        llvm::Value* float_src2_s_chan2,
+        llvm::Value* float_src3_s_chan0,
+        llvm::Value* float_src3_s_chan1,
+        llvm::Value* float_src3_s_chan2,
+        llvm::Value* float_src1_s_chan3,
+        llvm::Value* int32_pairedTextureIdx_356,
+        llvm::Value* int32_textureIdx_356,
+        llvm::Value* int32_sampler_357,
+        llvm::Value* int32_offsetU_358,
+        llvm::Value* int32_offsetV_359,
+        llvm::Value* int32_offsetW_359,
+        llvm::Value* minlod,
+        bool feedback_enabled = false,
+        llvm::Type* returnType = nullptr);
+
     llvm::CallInst* Create_SAMPLEDC(
         llvm::Value* float_ref,
         llvm::Value* float_src_u,
@@ -456,6 +495,49 @@ public:
         llvm::Value* dxr,
         llvm::Value* dyr,
         llvm::Value* float_src_ai,
+        llvm::Value* int32_textureIdx,
+        llvm::Value* int32_sampler,
+        llvm::Value* int32_offsetU,
+        llvm::Value* int32_offsetV,
+        llvm::Value* int32_offsetW,
+        bool feedback_enabled = false,
+        llvm::Type* returnType = nullptr);
+
+    llvm::CallInst* Create_SAMPLEDC(
+        llvm::Value* float_ref,
+        llvm::Value* float_src_u,
+        llvm::Value* dxu,
+        llvm::Value* dyu,
+        llvm::Value* float_src_v,
+        llvm::Value* dxv,
+        llvm::Value* dyv,
+        llvm::Value* float_src_r,
+        llvm::Value* dxr,
+        llvm::Value* dyr,
+        llvm::Value* float_src_ai,
+        llvm::Value* int32_pairedTextureIdx,
+        llvm::Value* int32_textureIdx,
+        llvm::Value* int32_sampler,
+        llvm::Value* int32_offsetU,
+        llvm::Value* int32_offsetV,
+        llvm::Value* int32_offsetW,
+        bool feedback_enabled = false,
+        llvm::Type* returnType = nullptr);
+
+    llvm::CallInst* Create_SAMPLEDCMlod(
+        llvm::Value* float_ref,
+        llvm::Value* float_src_u,
+        llvm::Value* dxu,
+        llvm::Value* dyu,
+        llvm::Value* float_src_v,
+        llvm::Value* dxv,
+        llvm::Value* dyv,
+        llvm::Value* float_src_r,
+        llvm::Value* dxr,
+        llvm::Value* dyr,
+        llvm::Value* float_src_ai,
+        llvm::Value* minlod,
+        llvm::Value* int32_pairedTextureIdx,
         llvm::Value* int32_textureIdx,
         llvm::Value* int32_sampler,
         llvm::Value* int32_offsetU,
@@ -483,12 +565,46 @@ public:
         llvm::Value* int32_offsetV_359,
         llvm::Value* int32_offsetW_359);
 
+    SampleD_DC_FromCubeParams Prepare_SAMPLE_D_DC_Cube_Params(
+        llvm::Value* float_src_x,
+        llvm::Value* float_src_y,
+        llvm::Value* float_src_z,
+        llvm::Value* float_src_ai,
+        llvm::Value* dxu,
+        llvm::Value* dyu,
+        llvm::Value* dzu,
+        llvm::Value* dxv,
+        llvm::Value* dyv,
+        llvm::Value* dzv,
+        llvm::Value* int32_pairedTextureIdx_356,
+        llvm::Value* int32_textureIdx_356,
+        llvm::Value* int32_sampler_357,
+        llvm::Value* int32_offsetU_358,
+        llvm::Value* int32_offsetV_359,
+        llvm::Value* int32_offsetW_359);
+
     llvm::CallInst* Create_SAMPLEB(
         llvm::Value* float_bias_0,
         llvm::Value* float_address_0,
         llvm::Value* float_address_1,
         llvm::Value* float_address_2,
         llvm::Value* float_address_3,
+        llvm::Value* int32_textureIdx,
+        llvm::Value* int32_sampler,
+        llvm::Value* int32_offsetU,
+        llvm::Value* int32_offsetV,
+        llvm::Value* int32_offsetW,
+        llvm::Value* minlod,
+        bool feedback_enabled = false,
+        llvm::Type* returnType = nullptr);
+
+    llvm::CallInst* Create_SAMPLEB(
+        llvm::Value* float_bias_0,
+        llvm::Value* float_address_0,
+        llvm::Value* float_address_1,
+        llvm::Value* float_address_2,
+        llvm::Value* float_address_3,
+        llvm::Value* int32_pairedTextureIdx,
         llvm::Value* int32_textureIdx,
         llvm::Value* int32_sampler,
         llvm::Value* int32_offsetU,
@@ -512,12 +628,43 @@ public:
         bool feedback_enabled = false,
         llvm::Type* returnType = nullptr);
 
+    llvm::CallInst* Create_SAMPLEL(
+        llvm::Value* float_lod_0,
+        llvm::Value* float_address_0,
+        llvm::Value* float_address_1,
+        llvm::Value* float_address_2,
+        llvm::Value* float_address_3,
+        llvm::Value* int32_textureIdx,
+        llvm::Value* int32_pairedTextureIdx,
+        llvm::Value* int32_sampler,
+        llvm::Value* int32_offsetU,
+        llvm::Value* int32_offsetV,
+        llvm::Value* int32_offsetW,
+        bool feedback_enabled = false,
+        llvm::Type* returnType = nullptr);
+
     llvm::CallInst* Create_SAMPLEC(
         llvm::Value* float_reference_0,
         llvm::Value* float_address_0,
         llvm::Value* float_address_1,
         llvm::Value* float_address_2,
         llvm::Value* float_address_3,
+        llvm::Value* int32_textureIdx,
+        llvm::Value* int32_sampler,
+        llvm::Value* int32_offsetU,
+        llvm::Value* int32_offsetV,
+        llvm::Value* int32_offsetR,
+        llvm::Value* minlod,
+        bool feedback_enabled = false,
+        llvm::Type* returnType = nullptr);
+
+    llvm::CallInst* Create_SAMPLEC(
+        llvm::Value* float_reference_0,
+        llvm::Value* float_address_0,
+        llvm::Value* float_address_1,
+        llvm::Value* float_address_2,
+        llvm::Value* float_address_3,
+        llvm::Value* int32_pairedTextureIdx,
         llvm::Value* int32_textureIdx,
         llvm::Value* int32_sampler,
         llvm::Value* int32_offsetU,
@@ -542,12 +689,43 @@ public:
         bool feedback_enabled = false,
         llvm::Type* returnType = nullptr);
 
+    llvm::CallInst* Create_SAMPLELC(
+        llvm::Value* float_reference_0,
+        llvm::Value* float_address_0,
+        llvm::Value* float_address_1,
+        llvm::Value* float_address_2,
+        llvm::Value* float_address_3,
+        llvm::Value* float_lod,
+        llvm::Value* int32_pairedTextureIdx,
+        llvm::Value* int32_textureIdx,
+        llvm::Value* int32_sampler,
+        llvm::Value* int32_offsetU,
+        llvm::Value* int32_offsetV,
+        llvm::Value* int32_offsetW,
+        bool feedback_enabled = false,
+        llvm::Type* returnType = nullptr);
+
     llvm::CallInst* Create_SAMPLEC_LZ(
         llvm::Value* float_reference_0,
         llvm::Value* float_address_0,
         llvm::Value* float_address_1,
         llvm::Value* float_address_2,
         llvm::Value* float_address_3,
+        llvm::Value* int32_textureIdx,
+        llvm::Value* int32_sampler,
+        llvm::Value* int32_offsetU,
+        llvm::Value* int32_offsetV,
+        llvm::Value* int32_offsetW,
+        bool feedback_enabled = false,
+        llvm::Type* returnType = nullptr);
+
+    llvm::CallInst* Create_SAMPLEC_LZ(
+        llvm::Value* float_reference_0,
+        llvm::Value* float_address_0,
+        llvm::Value* float_address_1,
+        llvm::Value* float_address_2,
+        llvm::Value* float_address_3,
+        llvm::Value* int32_pairedTextureIdx,
         llvm::Value* int32_textureIdx,
         llvm::Value* int32_sampler,
         llvm::Value* int32_offsetU,
@@ -580,11 +758,39 @@ public:
         bool feedback_enabled = false,
         llvm::Type* returnType = nullptr);
 
+    llvm::CallInst* Create_gather4(
+        llvm::Value* float_address_0,
+        llvm::Value* float_address_1,
+        llvm::Value* float_address_2,
+        llvm::Value* float_address_3,
+        llvm::Value* int32_pairedTextureIdx_356,
+        llvm::Value* int32_textureIdx_356,
+        llvm::Value* int32_sampler_357,
+        llvm::Value* int32_offsetU,
+        llvm::Value* int32_offsetV,
+        llvm::Value* int32_offsetW,
+        llvm::Value* int32_srcChannel,
+        bool feedback_enabled = false,
+        llvm::Type* returnType = nullptr);
+
     llvm::CallInst* Create_load(
         llvm::Value* int32_sampleIdxU,
         llvm::Value* int32_sampleIdxV,
         llvm::Value* int32_sampleIdxR,
         llvm::Value* int32_lod,
+        llvm::Value* ptr_textureIdx,
+        llvm::Value* int32_offsetU,
+        llvm::Value* int32_offsetV,
+        llvm::Value* int32_offsetR,
+        bool feedback_enabled = false,
+        llvm::Type* returnType = nullptr);
+
+    llvm::CallInst* Create_load(
+        llvm::Value* int32_sampleIdxU,
+        llvm::Value* int32_sampleIdxV,
+        llvm::Value* int32_sampleIdxR,
+        llvm::Value* int32_lod,
+        llvm::Value* ptr_pairedTextureIdx,
         llvm::Value* ptr_textureIdx,
         llvm::Value* int32_offsetU,
         llvm::Value* int32_offsetV,
@@ -618,12 +824,42 @@ public:
         bool feedback_enabled = false,
         llvm::Type* returnType = nullptr);
 
+    llvm::CallInst* Create_gather4C(
+        llvm::Value* float_reference_0,
+        llvm::Value* float_address_0,
+        llvm::Value* float_address_1,
+        llvm::Value* float_address_2,
+        llvm::Value* float_address_3,
+        llvm::Value* int32_pairedTextureIdx,
+        llvm::Value* int32_textureIdx,
+        llvm::Value* int32_sampler,
+        llvm::Value* int32_offsetU,
+        llvm::Value* int32_offsetV,
+        llvm::Value* int32_srcChannel,
+        bool feedback_enabled = false,
+        llvm::Type* returnType = nullptr);
+
     llvm::CallInst* Create_gather4PO(
         llvm::Value* float_address_0,
         llvm::Value* float_address_1,
         llvm::Value* float_address_2,
         llvm::Value* float_src_offset_0,
         llvm::Value* float_src_offset_1,
+        llvm::Value* int32_textureIdx,
+        llvm::Value* int32_sampler,
+        llvm::Value* int32_offsetU,
+        llvm::Value* int32_offsetV,
+        llvm::Value* int32_srcChannel,
+        bool feedback_enabled = false,
+        llvm::Type* returnType = nullptr);
+
+    llvm::CallInst* Create_gather4PO(
+        llvm::Value* float_address_0,
+        llvm::Value* float_address_1,
+        llvm::Value* float_address_2,
+        llvm::Value* float_src_offset_0,
+        llvm::Value* float_src_offset_1,
+        llvm::Value* int32_pairedTextureIdx,
         llvm::Value* int32_textureIdx,
         llvm::Value* int32_sampler,
         llvm::Value* int32_offsetU,
@@ -639,6 +875,22 @@ public:
         llvm::Value* int_src_offset_0,
         llvm::Value* int_src_offset_1,
         llvm::Value* float_src_reference_0,
+        llvm::Value* int32_textureIdx,
+        llvm::Value* int32_sampler,
+        llvm::Value* int32_offsetU,
+        llvm::Value* int32_offsetV,
+        llvm::Value* int32_srcChannel,
+        bool feedback_enabled = false,
+        llvm::Type* returnType = nullptr);
+
+    llvm::CallInst* Create_gather4POC(
+        llvm::Value* float_address_0,
+        llvm::Value* float_address_1,
+        llvm::Value* float_address_2,
+        llvm::Value* int_src_offset_0,
+        llvm::Value* int_src_offset_1,
+        llvm::Value* float_src_reference_0,
+        llvm::Value* int32_pairedTextureIdx,
         llvm::Value* int32_textureIdx,
         llvm::Value* int32_sampler,
         llvm::Value* int32_offsetU,
@@ -679,6 +931,39 @@ public:
         llvm::Value* address_v,
         llvm::Value* address_r,
         llvm::Value* address_ai,
+        llvm::Value* int32_textureIdx,
+        llvm::Value* int32_sampler,
+        llvm::Value* int32_offsetU,
+        llvm::Value* int32_offsetV,
+        llvm::Value* int32_offsetW,
+        bool feedback_enabled = false,
+        llvm::Type* returnType = nullptr);
+
+    llvm::CallInst* Create_SAMPLEBC(
+        llvm::Value* float_ref_value,
+        llvm::Value* bias_value,
+        llvm::Value* address_u,
+        llvm::Value* address_v,
+        llvm::Value* address_r,
+        llvm::Value* address_ai,
+        llvm::Value* int32_pairedTextureIdx,
+        llvm::Value* int32_textureIdx,
+        llvm::Value* int32_sampler,
+        llvm::Value* int32_offsetU,
+        llvm::Value* int32_offsetV,
+        llvm::Value* int32_offsetW,
+        bool feedback_enabled = false,
+        llvm::Type* returnType = nullptr);
+
+    llvm::CallInst* Create_SAMPLEBCMlod(
+        llvm::Value* float_ref_value,
+        llvm::Value* bias_value,
+        llvm::Value* address_u,
+        llvm::Value* address_v,
+        llvm::Value* address_r,
+        llvm::Value* address_ai,
+        llvm::Value* minlod,
+        llvm::Value* int32_pairedTextureIdx,
         llvm::Value* int32_textureIdx,
         llvm::Value* int32_sampler,
         llvm::Value* int32_offsetU,

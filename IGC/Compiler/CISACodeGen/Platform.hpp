@@ -1366,6 +1366,11 @@ bool hasDualKSPPS() const
     return isCoreChildOf(IGFX_XE2_LPG_CORE);
 }
 
+bool hasLSCSamplerRouting() const
+{
+    return isCoreChildOf(IGFX_XE2_LPG_CORE);
+}
+
 // ***** Below go accessor methods for testing WA data from WA_TABLE *****
 
 bool WaDoNotPushConstantsForAllPulledGSTopologies() const

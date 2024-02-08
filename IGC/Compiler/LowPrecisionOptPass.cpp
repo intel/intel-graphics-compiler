@@ -285,6 +285,7 @@ bool LowPrecisionOpt::propagateSamplerType(llvm::GenIntrinsicInst& I)
         overloadTys.push_back(cast<SampleIntrinsic>(&I)->getSamplerValue()->getType());
         break;
     case GenISAIntrinsic::GenISA_ldptr:
+    case GenISAIntrinsic::GenISA_ldlptr:
         overloadTys.push_back(cast<SamplerLoadIntrinsic>(&I)->getPairedTextureValue()->getType());
         overloadTys.push_back(cast<SamplerLoadIntrinsic>(&I)->getTextureValue()->getType());
         break;
@@ -295,6 +296,16 @@ bool LowPrecisionOpt::propagateSamplerType(llvm::GenIntrinsicInst& I)
     case GenISAIntrinsic::GenISA_gather4Cptr:
     case GenISAIntrinsic::GenISA_gather4POptr:
     case GenISAIntrinsic::GenISA_gather4POCptr:
+    case GenISAIntrinsic::GenISA_gather4Iptr:
+    case GenISAIntrinsic::GenISA_gather4IPOptr:
+    case GenISAIntrinsic::GenISA_gather4Bptr:
+    case GenISAIntrinsic::GenISA_gather4BPOptr:
+    case GenISAIntrinsic::GenISA_gather4Lptr:
+    case GenISAIntrinsic::GenISA_gather4LPOptr:
+    case GenISAIntrinsic::GenISA_gather4ICptr:
+    case GenISAIntrinsic::GenISA_gather4ICPOptr:
+    case GenISAIntrinsic::GenISA_gather4LCptr:
+    case GenISAIntrinsic::GenISA_gather4LCPOptr:
         // 4 overloaded tys: ret, arg0, resource, sampler
         overloadTys.push_back(I.getArgOperand(0)->getType());
         overloadTys.push_back(cast<SamplerGatherIntrinsic>(&I)->getPairedTextureValue()->getType());
