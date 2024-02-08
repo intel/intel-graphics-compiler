@@ -10141,8 +10141,19 @@ bool GlobalRA::hybridRA(LocalRA &lra) {
                          << rpe.getMaxRP() << "\n");
       kernel.Declares.resize(numOrigDcl);
       lra.undoLocalRAAssignments(false);
-      // Restore alignment in case LRA modified it
-      copyAlignment();
+      // We check src/dst overlap WA because here to keep intf graph simple.
+      // When LRA is run, it sets augmentation alignment conservatively so
+      // that LRA assignments can co-exist with HRA assignments after
+      // augmentation is run. If we reset alignment here, it means that
+      // augmentation buckets are reset and alignment is copied over
+      // from original G4_Declare. This is correct behavior. However, when
+      // avoidSrcDstOverlap WA sees that src/dst of an instruction have no
+      // alignment, it forces an interference edge between them. This causes
+      // extra interferences in graph compared to case when we use conservative
+      // alignment computed in LRA. So when the WA is enabled, we avoid
+      // resetting alignment as it may produce better code.
+      if (!builder.avoidDstSrcOverlap() || use4GRFAlign)
+        copyAlignment();
       return false;
     }
 
