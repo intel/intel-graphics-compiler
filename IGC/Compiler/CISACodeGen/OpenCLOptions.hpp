@@ -142,6 +142,7 @@ public:
     bool UniformWGS                         = false;
     bool EnableTakeGlobalAddress            = false;
     bool IsLibraryCompilation               = false;
+    uint32_t LibraryCompileSIMDSize         = 0;
     bool IntelRequiredEUThreadCount         = false;
     bool EmitErrorsForLibCompilation        = false;
     uint32_t requiredEUThreadCount          = 0;

@@ -456,6 +456,16 @@ void Options::parseOptions(const char* opts)
         IsLibraryCompilation = true;
     }
 
+    if (const llvm::opt::Arg* arg = apiOptions.getLastArg(OPT_library_compile_simd_common))
+    {
+        llvm::StringRef valStr = arg->getValue();
+        unsigned simdsz = 0;
+        if (!valStr.getAsInteger(10, simdsz) && (simdsz == 8 || simdsz == 16 || simdsz == 32))
+            LibraryCompileSIMDSize = simdsz;
+        else
+            IGC_ASSERT_MESSAGE(false, "Library selected with invalid SIMD size");
+    }
+
     if (apiOptions.hasArg(OPT_emit_lib_compile_errors_common))
     {
         EmitErrorsForLibCompilation = true;

@@ -3818,8 +3818,13 @@ namespace IGC
         bool isIndirectGroup = FG && m_FGA->isIndirectCallGroup(FG);
         bool hasSubroutine = FG && !FG->isSingle() && !hasStackCall && !isIndirectGroup;
 
+        // Library compilation size is forced to a specific SIMD size, don't change it
+        bool forceLibSize = pCtx->getModuleMetaData()->compOpt.IsLibraryCompilation &&
+            pCtx->getModuleMetaData()->compOpt.LibraryCompileSIMDSize != 0;
+
         // If stack calls are present, disable simd32 in order to do CallWA in visa
-        if (pCtx->platform.requireCallWA() && simdMode == SIMDMode::SIMD32)
+        if (!forceLibSize &&
+            pCtx->platform.requireCallWA() && simdMode == SIMDMode::SIMD32)
         {
             bool hasNestedCall = FG && FG->hasNestedCall();
             bool hasIndirectCall = FG && FG->hasIndirectCall();

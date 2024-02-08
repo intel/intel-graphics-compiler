@@ -737,16 +737,13 @@ static inline int getDefaultSIMDSize(CodeGenContext* ctx)
     SIMDMode simdMode = ctx->platform.getMinDispatchMode();
     int defaultSz = numLanes(simdMode);
 
-    // Library Compilation requires functions to be exported externally, so we should always compile to the default size.
-    // Otherwise, use the sub_group_size set for the dummy kernel (in InsertDummyKernelForSymbolTable pass) if available.
-    if (ctx->getModuleMetaData()->compOpt.IsLibraryCompilation == false)
+    if (ctx->getModuleMetaData()->compOpt.IsLibraryCompilation)
     {
-        Function* defaultDummyKernel = IGC::getIntelSymbolTableVoidProgram(ctx->getModule());
-        if (defaultDummyKernel)
+        unsigned sz = ctx->getModuleMetaData()->compOpt.LibraryCompileSIMDSize;
+        if (sz > 0)
         {
-            auto subGrpSz = ctx->getMetaDataUtils()->getFunctionsInfoItem(defaultDummyKernel)->getSubGroupSize();
-            if (subGrpSz->isSIMDSizeHasValue())
-                defaultSz = subGrpSz->getSIMDSize();
+            IGC_ASSERT(sz == 8 || sz == 16 || sz == 32);
+            defaultSz = sz;
         }
     }
     return defaultSz;

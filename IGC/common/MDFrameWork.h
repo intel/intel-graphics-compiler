@@ -420,6 +420,7 @@ namespace IGC
         bool UseStatelessforPrivateMemory               = false;
         bool EnableTakeGlobalAddress                    = false;
         bool IsLibraryCompilation                       = false;
+        unsigned LibraryCompileSIMDSize                 = 0;
         bool FastVISACompile                            = false;
         bool MatchSinCosPi                              = false;
         bool ExcludeIRFromZEBinary                      = false;

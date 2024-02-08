@@ -36,7 +36,12 @@ def emit_debug : PlainFlag<"g">,
 defm opt_disable : CommonFlag<"opt-disable">,
   HelpText<"Turns off optimizations">;
 
+// -library-compilation
 defm library_compilation : CommonFlag<"library-compilation">;
+
+// -library-compile-simd=[8|16|32]
+defm library_compile_simd : CommonSeparate<"library-compile-simd">;
+defm : CommonJoined<"library-compile-simd=">, Alias<library_compile_simd_common>;
 
 // -cl-enable-zebin, -ze-enable-zebin
 defm enable_zebin : CommonFlag<"enable-zebin">,
