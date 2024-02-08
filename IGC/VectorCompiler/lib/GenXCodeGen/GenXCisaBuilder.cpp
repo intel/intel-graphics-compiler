@@ -3113,6 +3113,12 @@ void GenXKernelBuilder::buildVariables() {
     case vc::RegCategory::General:
       if (Reg->Num >= visa::VISA_NUM_RESERVED_REGS)
         AddGenVar(*Reg);
+      else {
+        VISA_GenVar *Decl = nullptr;
+        CISA_CALL(Kernel->GetPredefinedVar(
+            Decl, static_cast<PreDefined_Vars>(Reg->Num)));
+        Reg->SetVar(Kernel, Decl);
+      }
       break;
 
     case vc::RegCategory::Address: {

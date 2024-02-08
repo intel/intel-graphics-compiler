@@ -15,9 +15,8 @@ target triple = "genx64-unknown-unknown"
 declare void @llvm.genx.oword.st.v4i32(i32, i32, <4 x i32>)
 declare void @llvm.debugtrap()
 
-; CHECK: .decl [[REG:V[0-9]+]] v_type=G type=d num_elts=4 alias=<%cr0, 0>
 ; CHECK: test_trap
-; CHECK: or (M1, 1) [[REG]](0,1)<1> [[REG]](0,1)<0;1,0> 0x20000000:d
+; CHECK: or (M1, 1) %cr0(0,1)<1> %cr0(0,1)<0;1,0> 0x20000000:d
 
 define spir_kernel void @test_trap(<4 x i32> %arg) local_unnamed_addr #0 {
   %1 = shl <4 x i32> %arg, <i32 3, i32 3, i32 3, i32 3>

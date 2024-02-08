@@ -780,6 +780,10 @@ GenXVisaRegAlloc::getRegForValueOrNull(SimpleValue V, Signedness Signed,
   LLVM_DEBUG(dbgs() << "Found reg " << R->Num << "\n");
 
   OverrideType = calcOverrideType(OverrideType, V, R, DL);
+  if (!R->canBeAliased()) {
+    IGC_ASSERT(OverrideType == R->Ty);
+    return R;
+  }
   auto [AliasFound, LastAlias] = calcAlias(OverrideType, Signed, IsBF, R);
   if (AliasFound)
     return LastAlias;
