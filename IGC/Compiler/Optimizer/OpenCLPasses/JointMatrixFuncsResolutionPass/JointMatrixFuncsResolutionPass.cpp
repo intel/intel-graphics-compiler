@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2023 Intel Corporation
+Copyright (C) 2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -22,6 +22,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/Sequence.h>
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/PostOrderIterator.h>
+#include <llvmWrapper/ADT/Optional.h>
+#include <llvmWrapper/Analysis/ValueTracking.h>
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Module.h"
@@ -765,12 +767,12 @@ static bool isMatrixType(const Type *type)
     return false;
 }
 
-static void PreOrderTypeTraversal(const Type *t, std::unordered_set<const Type *> &set)
+static void PreOrderTypeTraversal(Type *t, std::unordered_set<Type *> &set)
 {
     if (set.find(t) != set.end())
         return;
 
-    if (const StructType *ST = dyn_cast<StructType>(t))
+    if (StructType *ST = dyn_cast<StructType>(t))
     {
         set.insert(t);
         for (auto subT : ST->elements())
@@ -778,13 +780,13 @@ static void PreOrderTypeTraversal(const Type *t, std::unordered_set<const Type *
         return;
     }
 
-    if (const ArrayType *AT = dyn_cast<ArrayType>(t))
+    if (ArrayType *AT = dyn_cast<ArrayType>(t))
     {
         set.insert(t);
         return PreOrderTypeTraversal(AT->getElementType(), set);
     }
 
-    if (const PointerType *PT = dyn_cast<PointerType>(t))
+    if (PointerType *PT = dyn_cast<PointerType>(t))
     {
         set.insert(t);
         return PreOrderTypeTraversal(IGCLLVM::getNonOpaquePtrEltTy(PT), set);
@@ -793,18 +795,23 @@ static void PreOrderTypeTraversal(const Type *t, std::unordered_set<const Type *
     return;
 }
 
-static bool isOrContainsMatrixType(const Type *root)
+static Type* getContainedMatrixType(Type *root)
 {
-    std::unordered_set<const Type *> set;
+    std::unordered_set<Type *> set;
     PreOrderTypeTraversal(root, set);
 
-    for (const auto &t : set)
+    for (auto &t : set)
     {
         if (isMatrixType(t))
-            return true;
+            return t;
     }
 
-    return false;
+    return nullptr;
+}
+
+static bool isOrContainsMatrixType(Type *root)
+{
+    return getContainedMatrixType(root) != nullptr;
 }
 
 // As both float and tf32 types are represented as float, the TF32 type info
@@ -1732,6 +1739,7 @@ void JointMatrixFuncsResolutionPass::visitCallInst(CallInst& CI)
       return;
 
     StringRef funcName = func->getName();
+
     /* Resolve calls to JointMatrix BIs that haven't been resolved yet. In
      * future when returning and passing matrices by argument is
      * supported also basic block terminators should be used as
@@ -1741,9 +1749,41 @@ void JointMatrixFuncsResolutionPass::visitCallInst(CallInst& CI)
         ResolveCall(&CI);
         return;
     }
+
     if (funcName.startswith("_Z") && funcName.contains("__spirv_JointMatrix")) {
         ResolveSIMDSize(CI.getParent()->getParent());
         ResolveCall(&CI);
+        return;
+    }
+
+    // Update size of allocated element in llvm.lifetime.start/end intrincics
+    if (auto II = dyn_cast<IntrinsicInst>(&CI)) {
+        if (II->getIntrinsicID() == Intrinsic::lifetime_start ||
+            II->getIntrinsicID() == Intrinsic::lifetime_end) {
+
+            // track pointer operand to alloca instr
+            auto &DL = CI.getModule()->getDataLayout();
+            Value *obj = IGCLLVM::getUnderlyingObject(II->getOperand(1), DL);
+
+            if (AllocaInst *AI = dyn_cast_or_null<AllocaInst>(obj)) {
+                // if alloca requires resolving, resolve alloca, otherwise do not touch intrinsic
+                // as it is not related to Joint Matrix type
+                if (!isOrContainsMatrixType(AI->getAllocatedType()))
+                    return;
+
+                ResolveSIMDSize(CI.getParent()->getParent());
+                AllocaInst *NAI = cast<AllocaInst>(Resolve(AI));
+                auto allocaSizeInBits = IGCLLVM::wrapOptional(NAI->getAllocationSizeInBits(DL));
+                if (!allocaSizeInBits.hasValue())
+                    return;
+                uint64_t newSize = (uint64_t)(allocaSizeInBits.getValue() / 8);
+
+                // update first argument, if it is constant int
+                if (auto *ConstInt = dyn_cast<ConstantInt>(CI.getOperand(0))) {
+                    CI.setOperand(0, ConstantInt::get(ConstInt->getType(), newSize));
+                }
+            }
+        }
     }
 }
 
@@ -1758,15 +1798,57 @@ void JointMatrixFuncsResolutionPass::visitAllocaInst(AllocaInst &I)
     ResolveGeneric(&I);
 }
 
-void JointMatrixFuncsResolutionPass::visitGetElementPtrInst(GetElementPtrInst &I)
+void JointMatrixFuncsResolutionPass::visitGetElementPtrInst(GetElementPtrInst &GEP)
 {
-    if (ResolvedValues.count(&I) > 0)
+    if (ResolvedValues.count(&GEP) > 0)
         return;
 
-    if (!isOrContainsMatrixType(I.getSourceElementType()))
+    Type *GEPEltType = GEP.getSourceElementType();
+
+    // After constant GEPs are canonicalized to i8 types, we may get patterns like below:
+    //
+    // %8 = bitcast [4 x [4 x %"struct.sycl::_V1::ext::oneapi::experimental::matrix::joint_matrix"]]* %tC.i to i8*
+    // %arrayctor.end.i = getelementptr inbounds i8, i8* %8, i64 128
+    //
+    // It is not correct, because
+    // original offset was 16 elements of matrix type. Matrix type before resolution is represented as pointer
+    // Pointer is typically 8 bytes, hence offset of 128 bytes is calculated as 16 x 8 = 128
+    // The real offset would be 16 matrix types after resolution, not pointer types.
+    // So to fix the offset, we need calculate the offset in matrix type, taking into account pointer type size
+    // Then we need calculate real matrix type size after resolution in bytes
+    // Then real offset in bytes will be multiplicaiton of offset in matrix types and size of matrix type in bytes
+    //
+    // For example, if matrix type was resolved like that:
+    // %"struct.sycl::_V1::ext::oneapi::experimental::matrix::joint_matrix.resolved" = type { <8 x float> }
+    // offset will be 16 * (8 * 4) = 512:
+    //
+    // %arrayctor.end.i = getelementptr inbounds i8, i8* %8, i64 512
+    BitCastInst *BC = dyn_cast<BitCastInst>(GEP.getOperand(0));
+
+    if (GEPEltType->isIntegerTy(8) && BC && (GEP.getNumIndices() == 1) && GEP.hasAllConstantIndices()) {
+        if (Type *BCSrcTy = BC->getSrcTy(); BCSrcTy->isPointerTy()){
+            if (Type *unresolvedMatTy = getContainedMatrixType(BCSrcTy)) {
+
+                // Calculate offset based on matrix type
+                ConstantInt *index = cast<ConstantInt>(GEP.getOperand(1));
+                auto &DL = GEP.getModule()->getDataLayout();
+                uint64_t pointerSizeInBytes = DL.getPointerSizeInBits(GEP.getPointerAddressSpace()) / 8;
+                uint64_t offsetInElements = index->getZExtValue() / pointerSizeInBytes;
+
+                // Calculate correct offset in bytes and update GEP
+                uint64_t elementSize = (uint64_t) DL.getTypeAllocSize(ResolveTypes(unresolvedMatTy));
+                uint64_t correctOffset = offsetInElements * elementSize;
+                GEP.idx_begin()->set(ConstantInt::get(index->getType(), correctOffset));
+                return;
+            }
+        }
+    }
+
+    if (!isOrContainsMatrixType(GEPEltType))
         return;
-    ResolveSIMDSize(I.getParent()->getParent());
-    ResolveGeneric(&I);
+
+    ResolveSIMDSize(GEP.getParent()->getParent());
+    ResolveGeneric(&GEP);
 }
 
 void JointMatrixFuncsResolutionPass::visitStoreInst(StoreInst &I)
