@@ -60,5 +60,12 @@ namespace IGC
             const IGC::IGCMD::MetaDataUtils* pMdUtils = nullptr,
             const IGC::ModuleMetaData* pModMD = nullptr,
             llvm::function_ref<bool(llvm::Value *)> predicate = nullptr);
+
+        static llvm::Value* track(
+            llvm::Value* value,
+            llvm::Function* function,
+            const IGC::IGCMD::MetaDataUtils* pMdUtils,
+            const IGC::ModuleMetaData* pModMD,
+            llvm::function_ref<bool(llvm::Value *)> predicate = nullptr);
     };
 }

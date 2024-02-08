@@ -1108,6 +1108,7 @@ namespace IGC
         virtual uint32_t getIntelScratchSpacePrivateMemoryMinimalSizePerThread() const;
         virtual bool enableZEBinary() const;
         bool isPOSH() const;
+        virtual bool isBufferBoundsChecking() const;
 
         UserAddrSpaceMD& getUserAddrSpaceMD() {
             IGC_ASSERT(llvmCtxWrapper);

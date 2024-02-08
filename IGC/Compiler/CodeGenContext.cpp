@@ -904,6 +904,12 @@ namespace IGC
             "IGC::PositionOnlyVertexShader") != nullptr;
     }
 
+
+    bool CodeGenContext::isBufferBoundsChecking() const
+    {
+        return false;
+    }
+
     void CodeGenContext::setFlagsPerCtx()
     {
     }

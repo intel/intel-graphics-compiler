@@ -108,6 +108,9 @@ namespace IGC
 
             IMPLICIT_LOCAL_IDS,
 
+            // Buffer bounds checking
+            IMPLICIT_BUFFER_SIZE,
+
             // Raytracing args
             RT_STACK_ID,
 

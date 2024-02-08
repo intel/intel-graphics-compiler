@@ -418,6 +418,10 @@ Value* ValueTracker::trackValue(Value* I)
         }
         else if (auto* I = dyn_cast<AllocaInst>(baseValue))
         {
+            // To track alloca, all indices must be constant.
+            if (std::any_of(gepIndices.begin(), gepIndices.end(), [](const auto& it) { return !isa<ConstantInt>(it); }))
+                return nullptr;
+
             // As alloca has been found, proceed with the second step of the algorithm.
             baseValue = findAllocaValue(I, gepIndices.size());
         }
@@ -447,9 +451,6 @@ Value* ValueTracker::trackValue(Value* I)
         }
         else if (auto* I = dyn_cast<GetElementPtrInst>(baseValue))
         {
-            if (!I->hasAllConstantIndices())
-                return nullptr;
-
             for (unsigned int i = I->getNumIndices(); i > 1; --i)
                 gepIndices.push_back(cast<ConstantInt>(I->getOperand(i)));
 
@@ -517,4 +518,15 @@ Value* ValueTracker::track(
     ValueTracker VT(pCallInst->getParent()->getParent(), pMdUtils, pModMD, predicate);
     Value* baseValue = pCallInst->getOperand(index);
     return VT.trackValue(baseValue);
+}
+
+Value* ValueTracker::track(
+    Value* value,
+    Function* function,
+    const MetaDataUtils* pMdUtils,
+    const IGC::ModuleMetaData* pModMD,
+    function_ref<bool(Value *)> predicate)
+{
+    ValueTracker VT(function, pMdUtils, pModMD, predicate);
+    return VT.trackValue(value);
 }

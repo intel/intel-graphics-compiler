@@ -100,6 +100,9 @@ static const std::vector<ImplicitArg> IMPLICIT_ARGS = {
     ImplicitArg(ImplicitArg::IMPLICIT_ARG_BUFFER_PTR, "implicitArgBuffer", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_PTR, true),
 
     ImplicitArg(ImplicitArg::ASSERT_BUFFER_POINTER, "assertBufferPointer", ImplicitArg::GLOBALPTR, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_GRF, false, GenISAIntrinsic::GenISA_getAssertBufferPtr),
+
+    // BufferBoundsChecking
+    ImplicitArg(ImplicitArg::BUFFER_SIZE, "bufferSize", ImplicitArg::LONG, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_QWORD, true),
 };
 
 ImplicitArg::ImplicitArg(

@@ -240,7 +240,7 @@ struct zeInfoContainer
     KernelsMiscInfoTy kernels_misc_info;
 };
 struct PreDefinedAttrGetter{
-    static zeinfo_str_t getVersionNumber() { return "1.39"; }
+    static zeinfo_str_t getVersionNumber() { return "1.40"; }
 
     enum class ArgThreadSchedulingMode {
         age_based,
@@ -283,7 +283,8 @@ struct PreDefinedAttrGetter{
         sampler_normalized,
         sampler_snap_wa,
         const_base,
-        global_base
+        global_base,
+        buffer_size,
     };
     enum class ArgAddrMode {
         stateless,
@@ -441,6 +442,8 @@ struct PreDefinedAttrGetter{
             return "const_base";
         case ArgType::global_base:
             return "global_base";
+        case ArgType::buffer_size:
+            return "buffer_size";
         default:
             break;
         }

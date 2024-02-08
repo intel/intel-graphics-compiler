@@ -126,6 +126,9 @@ namespace IGC
 
             ASSERT_BUFFER_POINTER,
 
+            // BufferBoundsChecking
+            BUFFER_SIZE,
+
             NUM_IMPLICIT_ARGS
         };
 

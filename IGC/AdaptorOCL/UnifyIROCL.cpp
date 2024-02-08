@@ -126,6 +126,8 @@ SPDX-License-Identifier: MIT
 #include "LowerInvokeSIMD.hpp"
 #include "ResolveConstExprCalls.h"
 #include "Compiler/Optimizer/IGCInstCombiner/IGCInstructionCombining.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/BufferBoundsChecking/BufferBoundsChecking.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/BufferBoundsChecking/BufferBoundsCheckingPatcher.hpp"
 
 #include "common/debug/Debug.hpp"
 #include "common/igc_regkeys.hpp"
@@ -387,6 +389,11 @@ static void CommonOCLBasedPasses(
         mpm.add(new StackOverflowDetectionPass(StackOverflowDetectionPass::Mode::Initialize));
     }
 
+    if (IGC_IS_FLAG_ENABLED(BufferBoundsChecking) || pContext->isBufferBoundsChecking())
+    {
+        mpm.add(new BufferBoundsChecking());
+    }
+
     mpm.add(new NamedBarriersResolution(pContext->platform.getPlatformInfo().eRenderCoreFamily));
     mpm.add(new PreBIImportAnalysis());
     mpm.add(createTimeStatsCounterPass(pContext, TIME_Unify_BuiltinImport, STATS_COUNTER_START));
@@ -532,6 +539,12 @@ static void CommonOCLBasedPasses(
     mpm.add(createRayTracingIntrinsicAnalysisPass());
     // Adding implicit args based on Analysis passes
     mpm.add(new AddImplicitArgs());
+
+    if (IGC_IS_FLAG_ENABLED(BufferBoundsChecking) || pContext->isBufferBoundsChecking())
+    {
+        mpm.add(new BufferBoundsCheckingPatcher());
+    }
+
     mpm.add(createRayTracingIntrinsicResolutionPass());
 
     // Resolution passes

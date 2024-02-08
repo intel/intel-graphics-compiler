@@ -409,6 +409,11 @@ void InternalOptions::parseOptions(const char* internalOpts)
     {
         IntelGreaterThan4GBBufferRequired = false;
     }
+
+    if (internalOptions.hasArg(OPT_buffer_bounds_checking_common))
+    {
+        EnableBufferBoundsChecking = true;
+    }
 }
 
 void Options::parseOptions(const char* opts)

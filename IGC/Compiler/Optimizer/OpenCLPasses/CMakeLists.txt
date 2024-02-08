@@ -29,6 +29,7 @@ add_subdirectory(ImageFuncs)
 add_subdirectory(JointMatrixFuncsResolutionPass)
 add_subdirectory(KernelArgs)
 add_subdirectory(KernelFunctionCloning)
+add_subdirectory(BufferBoundsChecking)
 add_subdirectory(LSCFuncs)
 add_subdirectory(LocalBuffers)
 add_subdirectory(NamedBarriers)
@@ -75,6 +76,7 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses_JointMatrixFuncsResolutionPass}
     ${IGC_BUILD__SRC__OpenCLPasses_KernelArgs}
     ${IGC_BUILD__SRC__OpenCLPasses_KernelFunctionCloning}
+    ${IGC_BUILD__SRC__OpenCLPasses_BufferBoundsChecking}
     ${IGC_BUILD__SRC__OpenCLPasses_LSCFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_LocalBuffers}
     ${IGC_BUILD__SRC__OpenCLPasses_NamedBarriers}
@@ -127,6 +129,7 @@ set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses_JointMatrixFuncsResolutionPass}
     ${IGC_BUILD__HDR__OpenCLPasses_KernelArgs}
     ${IGC_BUILD__HDR__OpenCLPasses_KernelFunctionCloning}
+    ${IGC_BUILD__HDR__OpenCLPasses_BufferBoundsChecking}
     ${IGC_BUILD__HDR__OpenCLPasses_LSCFuncs}
     ${IGC_BUILD__HDR__OpenCLPasses_LocalBuffers}
     ${IGC_BUILD__HDR__OpenCLPasses_NamedBarriers}
@@ -179,6 +182,7 @@ set(IGC_BUILD_Compiler_OpenCLPasses_Groups
     Compiler__OpenCLPasses_ImageFuncs
     Compiler__OpenCLPasses_KernelArgs
     Compiler__OpenCLPasses_KernelFunctionCloning
+    Compiler__OpenCLPasses_BufferBoundsChecking
     Compiler__OpenCLPasses_LSCFuncs
     Compiler__OpenCLPasses_LocalBuffers
     Compiler__OpenCLPasses_NamedBarriers

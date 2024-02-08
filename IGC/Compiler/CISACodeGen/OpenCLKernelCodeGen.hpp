@@ -127,6 +127,7 @@ namespace IGC
         int16_t getVectorCoalescingControl() const override;
         uint32_t getPrivateMemoryMinimalSizePerThread() const override;
         uint32_t getIntelScratchSpacePrivateMemoryMinimalSizePerThread() const override;
+        bool isBufferBoundsChecking() const override;
         void failOnSpills();
         bool needsDivergentBarrierHandling() const;
         unsigned GetSlmSizePerSubslice();

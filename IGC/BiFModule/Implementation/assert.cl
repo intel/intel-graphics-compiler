@@ -25,7 +25,8 @@ SPDX-License-Identifier: MIT
 enum ERROR_TYPE {
   ERROR_TYPE_NONE = 0,
   ERROR_TYPE_ASSERT = 1,
-  ERROR_TYPE_STACK_OVERFLOW = 2
+  ERROR_TYPE_STACK_OVERFLOW = 2,
+  ERROR_TYPE_BUFFER_OUTOFBOUNDS = 3,
 };
 
 __global volatile uchar* __builtin_IB_get_assert_buffer();
@@ -82,4 +83,26 @@ void __stackoverflow_detection() {
         header->flag = ERROR_TYPE_STACK_OVERFLOW;
         __builtin_IB_software_exception();
     }
+}
+
+// TODO(mateuszchudyk): Add globalID.
+void __bufferoutofbounds_assert(const char* file, int line, int column, const char* bufferName, long bufferOffsetInBytes) {
+    printf("[ERROR] Buffer offset is out of bounds!\n"
+           "   Location:    %s:%d:%d\n"
+           "   Address:     %s + 0x%X\n",
+           file, line, column, bufferName, bufferOffsetInBytes);
+
+    AssertBufferHeader* header = __builtin_IB_get_assert_buffer();
+    header->flag = ERROR_TYPE_BUFFER_OUTOFBOUNDS;
+    __builtin_IB_software_exception();
+}
+
+void __bufferoutofbounds_assert_nodebug(long bufferAddress, long bufferOffsetInBytes) {
+    printf("[ERROR] Buffer offset is out of bounds!\n"
+           "   Address:     0x%X + 0x%X\n",
+           bufferAddress, bufferOffsetInBytes);
+
+    AssertBufferHeader* header = __builtin_IB_get_assert_buffer();
+    header->flag = ERROR_TYPE_BUFFER_OUTOFBOUNDS;
+    __builtin_IB_software_exception();
 }

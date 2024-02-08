@@ -269,6 +269,8 @@ KernelArg::ArgType KernelArg::calcArgType(const ImplicitArg& arg) const
         // fall through until LOCAL_ID_Z
     case ImplicitArg::LOCAL_ID_Z:
         return KernelArg::ArgType::IMPLICIT_LOCAL_IDS;
+    case ImplicitArg::BUFFER_SIZE:
+        return KernelArg::ArgType::IMPLICIT_BUFFER_SIZE;
     case ImplicitArg::STAGE_IN_GRID_ORIGIN:
         return KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_ORIGIN;
     case ImplicitArg::STAGE_IN_GRID_SIZE:
@@ -841,6 +843,8 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::RT_STACK_ID,
             KernelArg::ArgType::IMPLICIT_LOCAL_IDS,
 
+            KernelArg::ArgType::IMPLICIT_BUFFER_SIZE,
+
             KernelArg::ArgType::IMPLICIT_ARG_BUFFER,
             KernelArg::ArgType::IMPLICIT_ASSERT_BUFFER,
 
@@ -960,6 +964,8 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::IMPLICIT_LOCAL_MEMORY_STATELESS_WINDOW_START_ADDRESS,
             KernelArg::ArgType::IMPLICIT_LOCAL_MEMORY_STATELESS_WINDOW_SIZE,
             KernelArg::ArgType::IMPLICIT_PRIVATE_MEMORY_STATELESS_SIZE,
+
+            KernelArg::ArgType::IMPLICIT_BUFFER_SIZE,
 
             KernelArg::ArgType::STRUCT,
             KernelArg::ArgType::SAMPLER,

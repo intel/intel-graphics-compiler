@@ -184,6 +184,11 @@ namespace IGC
         return m_InternalOptions.IntelPrivateMemoryMinimalSizePerThread;
     }
 
+    bool OpenCLProgramContext::isBufferBoundsChecking() const
+    {
+        return m_InternalOptions.EnableBufferBoundsChecking;
+    }
+
     uint32_t OpenCLProgramContext::getIntelScratchSpacePrivateMemoryMinimalSizePerThread() const
     {
         return m_InternalOptions.IntelScratchSpacePrivateMemoryMinimalSizePerThread;
@@ -1383,6 +1388,13 @@ namespace IGC
             }
             break;
         }
+        case KernelArg::ArgType::IMPLICIT_BUFFER_SIZE: {
+            zebin::zeInfoPayloadArgument& arg = zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                zebin::PreDefinedAttrGetter::ArgType::buffer_size,
+                payloadPosition, kernelArg->getAllocateSize());
+            arg.arg_index = kernelArg->getAssociatedArgNo();
+            break;
+        }
 
         // We don't need these in ZEBinary, can safely skip them
         case KernelArg::ArgType::IMPLICIT_R0:
@@ -1744,6 +1756,7 @@ namespace IGC
         case KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_DATA_PARAMETER_OBJECT_ID:
         case KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_DISPATCHER_SIMD_SIZE:
         case KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET:
+        case KernelArg::ArgType::IMPLICIT_BUFFER_SIZE:
             constantType = kernelArg->getDataParamToken();
             IGC_ASSERT(constantType != iOpenCL::DATA_PARAMETER_TOKEN_UNKNOWN);
             {
@@ -2362,7 +2375,8 @@ namespace IGC
             // skip unused arguments
             bool IsUnusedArg =
                 (arg.getArgType() == KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET ||
-                arg.getArgType() == KernelArg::ArgType::IMPLICIT_BINDLESS_OFFSET) &&
+                arg.getArgType() == KernelArg::ArgType::IMPLICIT_BINDLESS_OFFSET ||
+                arg.getArgType() == KernelArg::ArgType::IMPLICIT_BUFFER_SIZE) &&
                 arg.getArg()->use_empty();
 
             // Runtime Values should not be processed any further. No annotations shall be created for them.

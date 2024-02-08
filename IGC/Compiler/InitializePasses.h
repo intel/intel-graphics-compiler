@@ -250,3 +250,5 @@ void initializeHandleSpirvDecorationMetadataPass(llvm::PassRegistry&);
 void initializeNontemporalLoadsAndStoresInAssertPass(llvm::PassRegistry&);
 void initializeHandleDevicelibAssertPass(llvm::PassRegistry&);
 void initializeStackOverflowDetectionPassPass(llvm::PassRegistry &);
+void initializeBufferBoundsCheckingPass(llvm::PassRegistry&);
+void initializeBufferBoundsCheckingPatcherPass(llvm::PassRegistry&);

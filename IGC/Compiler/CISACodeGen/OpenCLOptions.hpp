@@ -115,6 +115,7 @@ public:
 
      bool EnableDivergentBarrierHandling             = false;
      std::optional<bool> EnableZEBinary;
+     bool EnableBufferBoundsChecking                 = false;
 
      // Compile only up to vISA stage.
      bool EmitVisaOnly                               = false;

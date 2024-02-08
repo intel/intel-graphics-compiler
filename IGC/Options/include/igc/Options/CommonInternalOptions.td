@@ -31,5 +31,8 @@ defm allow_zebin : CommonFlag<"allow-zebin">,
 defm disable_zebin : CommonFlag<"disable-zebin">,
   HelpText<"Emit binary in legacy format">;
 
+defm buffer_bounds_checking : CommonFlag<"buffer-bounds-checking">,
+  HelpText<"Enable buffer bounds checking">;
+
 }
 // }} Common internal options
