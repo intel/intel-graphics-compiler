@@ -469,6 +469,7 @@ namespace IGC
         unsigned int forceTotalGRFNum = 0; // 0 means not forced
         unsigned int VISAPreSchedRPThreshold = 0; // 0 means use the default
         unsigned int SetLoopUnrollThreshold = 0; // 0 means use the default
+        bool forceSpillCompression = false;
         bool allowLowerSimd = false;
         bool disableSimd32Slicing = false;
         bool disableSplitOnSpill = false;

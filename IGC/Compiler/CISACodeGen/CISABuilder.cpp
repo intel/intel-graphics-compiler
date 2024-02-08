@@ -3944,6 +3944,10 @@ namespace IGC
             }
         }
 
+        if (context->type == ShaderType::COMPUTE_SHADER && context->getModuleMetaData()->csInfo.forceSpillCompression)
+        {
+            params.push_back(param_uptr("-forcespillcompression", literal_deleter));
+        }
         // Ensure VISA_Opts has the same scope as CreateVISABuilder so that valid
         // strings are checked by vISA and freed out of this function.
         if (IGC_IS_FLAG_ENABLED(VISAOptions))
