@@ -151,7 +151,7 @@ bool GASPropagator::visitGetElementPtrInst(GetElementPtrInst& I) {
     IRB.SetInsertPoint(I.getNextNode());
     // Push `getelementptr` forward by replacing this `bitcast` on GAS with the
     // one on non-GAS followed by a new `addrspacecast` to GAS.
-    Type* DstTy = I.getSourceElementType();
+    Type* DstTy = IGCLLVM::getNonOpaquePtrEltTy(DstPtrTy);
     PointerType* TransPtrTy =
         PointerType::get(DstTy, SrcPtrTy->getAddressSpace());
     TheUse->set(TheVal);
