@@ -972,8 +972,12 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
 
     InstsToErase.insert(CI);
 
-    IRBuilder builder(CI);
+    // Create alloca in the entry node of the function
+    IRBuilder<> builder(&*CI->getFunction()->getEntryBlock().getFirstInsertionPt());
+    builder.SetCurrentDebugLocation(CI->getDebugLoc());
     Value *sliceArray = builder.CreateAlloca(matTy, ADDRESS_SPACE_PRIVATE);
+
+    builder.SetInsertPoint(CI);
     Value *dst = builder.CreateBitCast(sliceArray, arrayTy);
 
     std::vector<Value *> Args = { dst, ptrVal, strideVal };
@@ -1002,7 +1006,6 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveStore(CallInst *CI)
     Type *arrayTy = Type::getInt8PtrTy(ctx, ADDRESS_SPACE_PRIVATE);
 
     Module *M = CI->getParent()->getModule();
-    IRBuilder builder(CI);
 
     Value *matVal = Resolve(matrixVal);
 
@@ -1018,7 +1021,12 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveStore(CallInst *CI)
 
     InstsToErase.insert(CI);
 
+    // Create alloca in the entry node of the function
+    IRBuilder<> builder(&*CI->getFunction()->getEntryBlock().getFirstInsertionPt());
+    builder.SetCurrentDebugLocation(CI->getDebugLoc());
     Value *sliceArray = builder.CreateAlloca(matVal->getType(), ADDRESS_SPACE_PRIVATE);
+
+    builder.SetInsertPoint(CI);
     builder.CreateStore(matVal, sliceArray);
     Value *src = builder.CreateBitCast(sliceArray, arrayTy);
 
@@ -1136,12 +1144,16 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveMad(CallInst *CI, unsigned O
         Value *bMat = Resolve(bMatVal);
         Value *cMat = Resolve(cMatVal);
 
-        IRBuilder builder(CI);
+        // Create alloca in the entry node of the function
+        IRBuilder<> builder(&*CI->getFunction()->getEntryBlock().getFirstInsertionPt());
+        builder.SetCurrentDebugLocation(CI->getDebugLoc());
 
         Value *sliceA = builder.CreateAlloca(aMat->getType(), ADDRESS_SPACE_PRIVATE);
         Value *sliceB = builder.CreateAlloca(bMat->getType(), ADDRESS_SPACE_PRIVATE);
         Value *sliceC = builder.CreateAlloca(cMat->getType(), ADDRESS_SPACE_PRIVATE);
         Value *sliceD = builder.CreateAlloca(cMat->getType(), ADDRESS_SPACE_PRIVATE);
+
+        builder.SetInsertPoint(CI);
 
         builder.CreateStore(aMat, sliceA);
         builder.CreateStore(bMat, sliceB);
