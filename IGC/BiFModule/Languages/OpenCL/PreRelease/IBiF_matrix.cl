@@ -144,10 +144,30 @@ SPDX-License-Identifier: MIT
 
 
 #define SUB_GROUP_LOAD(readop, M, src, dst, stride, contrib_type) \
-    contrib_type *ptr = (contrib_type *)mem; \
     __private contrib_type *wi_contrib = (__private contrib_type *)dst; \
     for (int i = 0; i < M; i++) \
         wi_contrib[i] = readop((src) + i * (stride));
+
+#define SUB_GROUP_LOAD_PACK_32(M, src, dst, stride) \
+    /* empty */
+
+#define SUB_GROUP_LOAD_PACK_16(M, src, dst, stride) \
+    __private int *wi_contrib = (__private int *)dst; \
+    for (int i = 0; i < M; i++) { \
+      ushort row0 = intel_sub_group_block_read_us((src) + 2 * i * (stride)); \
+      ushort row1 = intel_sub_group_block_read_us((src) + (2 * i + 1) * (stride)); \
+      wi_contrib[i] = as_int((ushort2)(row0, row1)); \
+    }
+
+#define SUB_GROUP_LOAD_PACK_8(M, src, dst, stride) \
+    __private int *wi_contrib = (__private int *)dst; \
+    for (int i = 0; i < M; i++) { \
+      uchar row0 = intel_sub_group_block_read_uc((src) + 4 * i * (stride)); \
+      uchar row1 = intel_sub_group_block_read_uc((src) + (4 * i + 1) * (stride)); \
+      uchar row2 = intel_sub_group_block_read_uc((src) + (4 * i + 2) * (stride)); \
+      uchar row3 = intel_sub_group_block_read_uc((src) + (4 * i + 3) * (stride)); \
+      wi_contrib[i] = as_int((uchar4)(row0, row1, row2, row3)); \
+    }
 
 // variants for 7,6,5,3 and 1 are only used to make the code compilable
 #define DEFINE_BLOCK_RW_NAME16(rw, us) intel_sub_group_block_##rw##us##16
@@ -234,15 +254,15 @@ SPDX-License-Identifier: MIT
 // element_type is char for i8, short for i16 and int for i32
 // elem_bitwidth is the bitwidth of the elem_type, expected values are 8, 16 or 32
 // contrib_type is int or short depending on available OpenCL extension API
-// contrib_bitwidth is the bitwidth of the contrib_type, expected values are 8, 16 or 32
+// contrib_bitwidth is the bitwidth of the contrib_type, expected values are 16 or 32
 // M is number of rows
 // K is number of columns
 // shape is shape of the matrix, like 8x16. We can not replace shape with M and stride_opt parameters,
-//      in case of vnni'd B, so we keep it.
+//      in case of vnni'd B, so we keep it. Equal to (M * vnni_factor)x(K / vnni_factor).
 // order is ROW_MAJOR or COL_MAJOR
 // us is empty for int contrib type and _us for short contrib type.
 // WI_rows is the number of rows owned by each WI, which can be different from M e.g. for tf32
-// stride_opt should be either equal to N or vnni_factor*N in case of matrix B, since matrix B is vnni'ed
+// stride_opt should be either equal to M or vnni_factor*M in case of matrix B, since matrix B is vnni'ed
 #define DEFINE_LOAD_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows, stride_opt, address_space) \
   INLINE void MANGLE_LOAD_NAME_##address_space(layout, sg, elem_bitwidth, shape, WI_rows) (__private char *dst, char *mem, long stride) { \
       int sg_size = get_sub_group_size(); \
@@ -262,12 +282,16 @@ SPDX-License-Identifier: MIT
           *(__private OUT_VEC##M(u##contrib_type) *)dst = *(__private OUT_VEC##M(u##contrib_type) *)&res; \
           return; \
       } \
-      if (WI_rows == M && BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_IMPL && order == _ROW_MAJOR \
+      if (WI_rows == M && BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_IMPL && (order == _ROW_MAJOR || order == _VNNI_TX) \
           && (address_space == AS_GLOBAL || address_space == AS_LOCAL) && (M != 1 || sg_size != 32) \
           ) { \
           int pack_factor = sizeof (u##contrib_type) / sizeof (element_type); \
           stride = stride / pack_factor; \
-          SUB_GROUP_LOAD(intel_sub_group_block_read##us, M, (ATTRIBUTE_##address_space u##contrib_type *)mem, dst, stride, contrib_type) \
+          if (order == _VNNI_TX) { /* for VNNI_TX contrib_type should be int and elem_type should be char or short */ \
+            SUB_GROUP_LOAD_PACK_##elem_bitwidth(M, (ATTRIBUTE_##address_space uint *)mem, dst, stride); \
+            return; \
+          } \
+          SUB_GROUP_LOAD(intel_sub_group_block_read##us, M, (ATTRIBUTE_##address_space u##contrib_type *)mem, dst, stride, contrib_type); \
           return; \
       } \
       contrib_type *ptr = (contrib_type *)mem; \
@@ -358,10 +382,12 @@ DEFINE_LOAD(PackedA_RowMajor, _SG16, int, 32, int, 32, 8, 8, 8x8, ROW_MAJOR, , 2
 /* PackedB load i16 */
 DEFINE_LOAD(PackedB_ColumnMajor, , short, 16, int, 32, 8, 16,  16x8,  COL_MAJOR, , 8, -1)
 DEFINE_LOAD(PackedB_PackedB, ,     short, 16, int, 32, 8, 16,  16x8,  ROW_MAJOR, , 8, 16)
+DEFINE_LOAD(PackedB_RowMajor, ,    short, 16, int, 32, 8, 16,  16x8,  VNNI_TX,   , 8, 16)
 
 /* PackedB load i8 */
 DEFINE_LOAD(PackedB_ColumnMajor, , char, 8, int, 32, 8, 32,  32x8,  COL_MAJOR, , 8, -1)
-DEFINE_LOAD(PackedB_PackedB,     , char, 8, int, 32, 8, 32,  32x8,  ROW_MAJOR, , 8, 16)
+DEFINE_LOAD(PackedB_PackedB,     , char, 8, int, 32, 8, 32,  32x8,  ROW_MAJOR, , 8, 32)
+DEFINE_LOAD(PackedB_RowMajor, ,    char, 8, int, 32, 8, 32,  32x8,  VNNI_TX,   , 8, 32)
 
 /* PackedB load i16 SG16 */
 DEFINE_LOAD(PackedB_ColumnMajor, _SG16, short, 16, int, 32, 8, 32, 16x16, COL_MAJOR, , 8, -1)
