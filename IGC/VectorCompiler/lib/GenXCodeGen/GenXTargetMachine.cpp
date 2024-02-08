@@ -88,7 +88,7 @@ static cl::opt<unsigned> PeelLoopDpasNullAccMaxBlocks(
     cl::desc("Max number of a loop basic blocks to peel, when the loop has "
              "dpas instructions with zero-initialized accumulator operand"));
 static cl::opt<unsigned> PeelLoopDpasNullAccMaxInstr(
-    "vc-peel-loops-dpas-null-acc-max-instr", cl::init(128), cl::Hidden,
+    "vc-peel-loops-dpas-null-acc-max-instr", cl::init(192), cl::Hidden,
     cl::desc("Max number of a loop instructions to peel, when the loop has "
              "dpas instructions with zero-initialized accumulator operand"));
 static cl::opt<unsigned> PeelLoopDpasNullAccMin(
@@ -101,6 +101,23 @@ static std::string getDL(bool Is64Bit) {
   return Is64Bit ? "e-p:64:64-p3:32:32-p6:32:32-i64:64-n8:16:32:64"
                  : "e-p:32:32-p3:32:32-p6:32:32-i64:64-n8:16:32:64";
 }
+
+namespace {
+bool isDpasAccumulator(const Value *V) {
+  if (!V->hasOneUse())
+    return false;
+
+  const auto *User = V->user_back();
+  const auto IID = vc::getAnyIntrinsicID(User);
+
+  if (IID != GenXIntrinsic::genx_dpas && IID != GenXIntrinsic::genx_dpas2)
+    return true;
+
+  const auto *CI = cast<CallInst>(User);
+  return CI->getArgOperand(0) == V;
+}
+
+} // namespace
 
 namespace llvm {
 
@@ -255,35 +272,60 @@ void GenXTTIImpl::getPeelingPreferences(
   if (L->getNumBlocks() > PeelLoopDpasNullAccMaxBlocks)
     return;
 
+  // Match the following two cases:
+  // 1. Dpas accumulator is a phi node with a zero value came from the pre-loop
+  // basic block.
+  //   %acc = phi <N x Ty> [ zeroinitializer, %entry ], [ %dst, %loop ]
+  //   %dst = call @llvm.genx.dpas(%acc, ...)
+  // 2. Dpas accumulator is a rdregion taking a piece of a large vector. The
+  // large vector is a phi node with a zero value taken from the pre-loop basic
+  // block.
+  //   %phi = phi <N x ty>
+  //   %acc = call @llvm.genx.rdregion(%phi, ...)
+  //   %dst = call @llvm.genx.dpas(%acc, ...)
+  //   %wrregion = call @llvm.genx.wrregion(%phi, %dst, ...)
+
   const auto PhiNodes = L->getHeader()->phis();
-  const unsigned NumDpasZeroAcc = llvm::count_if(PhiNodes, [](const auto &Phi) {
-    // Check vector Phi nodes
-    if (!Phi.getType()->isVectorTy() || !Phi.hasOneUse() ||
-        Phi.getNumIncomingValues() != 2)
-      return false;
+  const uint64_t NumDpasZeroAcc = std::accumulate(
+      std::begin(PhiNodes), std::end(PhiNodes), 0ull,
+      [this](uint64_t Acc, const auto &Phi) {
+        // Check vector Phi nodes
+        const auto *PhiVTy = dyn_cast<IGCLLVM::FixedVectorType>(Phi.getType());
+        if (!PhiVTy || Phi.getNumIncomingValues() != 2)
+          return Acc;
 
-    // The only user of the Phi node must be dpas intrinsic
-    const auto *User = Phi.user_back();
+        // Check if one of the Phi inputs is constant zero
+        bool IsZeroAcc = llvm::any_of(Phi.incoming_values(), [](const auto &V) {
+          const auto *C = dyn_cast<Constant>(&V);
+          return C && C->isZeroValue();
+        });
+        if (!IsZeroAcc)
+          return Acc;
 
-    // Only check dpas intrinsics
-    switch (vc::getAnyIntrinsicID(User)) {
-    default:
-      return false;
-    case GenXIntrinsic::genx_dpas:
-    case GenXIntrinsic::genx_dpas2:
-      break;
-    }
+        // Simple case. The only user of the Phi node must be dpas intrinsic.
+        if (isDpasAccumulator(&Phi))
+          return Acc + 1;
 
-    // Only allow dpas accumulator
-    if (const auto *CI = cast<CallInst>(User); CI->getArgOperand(0) != &Phi)
-      return false;
+        // If vector decomposition is disabled, we unable to simplify the region
+        // access chain. So, it doesn't make sense to peel the loop.
+        if (ST.disableVectorDecomposition())
+          return Acc;
 
-    // Check if one of the Phi inputs is constant zero
-    return llvm::any_of(Phi.incoming_values(), [](const auto &V) {
-      const auto *C = dyn_cast<Constant>(&V);
-      return C && C->isZeroValue();
-    });
-  });
+        if (!Phi.hasNUses(2))
+          return Acc;
+
+        // Find the rdregion used as a dpas accumulator
+        const auto It = llvm::find_if(Phi.users(), [](const Value *V) {
+          return GenXIntrinsic::isRdRegion(V) && isDpasAccumulator(V);
+        });
+        if (It == Phi.user_end())
+          return Acc;
+
+        // Assume that the whole phi node value is used as an accumulator source
+        // for multiple similar dpas instructions.
+        const auto *DpasVTy = cast<IGCLLVM::FixedVectorType>((*It)->getType());
+        return Acc + (PhiVTy->getNumElements() / DpasVTy->getNumElements());
+      });
 
   if (NumDpasZeroAcc < PeelLoopDpasNullAccMin)
     return;
