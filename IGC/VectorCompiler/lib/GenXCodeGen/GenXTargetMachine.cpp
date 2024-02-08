@@ -191,6 +191,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXLegacyToLscTranslatorPass(registry);
   initializeGenXSLMResolutionPass(registry);
   initializeGenXTypeLegalizationPass(registry);
+  initializeGenXFloatControlWrapperPass(registry);
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
 
@@ -709,6 +710,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   vc::addPass(PM, createGlobalDCEPass());
   /// .. include:: GenXModule.h
   vc::addPass(PM, createGenXModulePass());
+  vc::addPass(PM, createGenXFloatControlWrapperPass());
   /// .. include:: GenXLiveness.h
   vc::addPass(PM, createGenXGroupBalingWrapperPass(BalingKind::BK_Analysis,
                                                    &Subtarget));
