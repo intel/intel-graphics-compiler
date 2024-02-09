@@ -6,9 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: regkeys
-;
-; RUN: igc_opt %s -S -o - --igc-lower-byval-attribute -regkey EnableExplicitCopyForByVal | FileCheck %s
+; RUN: igc_opt %s -S -o - --igc-lower-byval-attribute | FileCheck %s
 
 ; ------------------------------------------------
 ; LegalizeFunctionSignatures
