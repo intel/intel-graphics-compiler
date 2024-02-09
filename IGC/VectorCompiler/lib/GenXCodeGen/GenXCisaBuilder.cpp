@@ -386,6 +386,22 @@ class GenXKernelBuilder {
   std::map<Function *, VISA_GenVar *> FPMap;
   SmallVector<InsertValueInst *, 10> RetvInserts;
 
+  // The default float control from kernel attribute. Each subroutine may
+  // overrride this control mask, but it should revert back to the default float
+  // control mask before exiting from the subroutine.
+  uint32_t DefaultFloatControl = 0;
+
+  enum CRBits {
+    SinglePrecisionMode = 1,
+    RoundingMode = 3 << 4,
+    DoublePrecisionDenorm = 1 << 6,
+    SinglePrecisionDenorm = 1 << 7,
+    HalfPrecisionDenorm = 1 << 10,
+    SystolicDenorm = 1 << 30,
+  };
+
+  uint32_t CRMask = 0;
+
   // normally false, set to true if there is any SIMD CF in the func or this is
   // (indirectly) called inside any SIMD CF.
   bool NoMask = false;
@@ -418,6 +434,7 @@ private:
   bool buildInstruction(Instruction *Inst);
   bool buildMainInst(Instruction *Inst, genx::BaleInfo BI, unsigned Mod,
                      const DstOpndDesc &DstDesc);
+  void buildControlRegUpdate(unsigned Mask, bool Clear);
   void buildJoin(CallInst *Join, BranchInst *Branch);
   bool buildBranch(BranchInst *Branch);
   void buildIndirectBr(IndirectBrInst *Br);
@@ -1109,6 +1126,12 @@ bool GenXKernelBuilder::run() {
   GrfByteSize = Subtarget->getGRFByteSize();
   StackSurf = Subtarget->stackSurface();
 
+  CRMask = CRBits::RoundingMode | CRBits::DoublePrecisionDenorm |
+           CRBits::SinglePrecisionDenorm | CRBits::HalfPrecisionDenorm;
+
+  if (Subtarget->hasSystolicDenormControl())
+    CRMask |= CRBits::SystolicDenorm;
+
   StackCallExecSize =
       getExecSizeFromValue(BackendConfig->getInteropSubgroupSize());
 
@@ -1300,6 +1323,28 @@ void GenXKernelBuilder::buildInstructions() {
 
     beginFunctionLight(Func);
     CurrentPadding = 0;
+
+    // If a float control is specified, emit code to make that happen.
+    // Float control contains rounding mode, denorm behaviour and single
+    // precision float mode (ALT or IEEE) Relevant bits are already set as
+    // defined for VISA control reg in header definition on enums
+    if (Func->hasFnAttribute(genx::FunctionMD::CMFloatControl)) {
+      uint32_t FloatControl = 0;
+      Func->getFnAttribute(genx::FunctionMD::CMFloatControl)
+          .getValueAsString()
+          .getAsInteger(0, FloatControl);
+
+      // Clear current float control bits to known zero state
+      buildControlRegUpdate(CRMask, true);
+
+      // Set rounding mode to required state if that isn't zero
+      FloatControl &= CRMask;
+      if (FloatControl) {
+        if (FG->getHead() == Func)
+          DefaultFloatControl = FloatControl;
+        buildControlRegUpdate(FloatControl, false);
+      }
+    }
 
     // Only output a label for the initial basic block if it is used from
     // somewhere else.
@@ -3970,6 +4015,39 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
 #include "GenXIntrinsicsBuildMap.inc"
 }
 
+/**************************************************************************************************
+ * buildControlRegUpdate : generate an instruction to apply a mask to
+ *                         the control register (V14).
+ *
+ * Enter:   Mask = the mask to apply
+ *          Clear = false if bits set in Mask should be set in V14,
+ *                  true if bits set in Mask should be cleared in V14.
+ */
+void GenXKernelBuilder::buildControlRegUpdate(unsigned Mask, bool Clear) {
+  ISA_Opcode Opcode;
+  // write opcode
+  if (Clear) {
+    Opcode = ISA_AND;
+    Mask = ~Mask;
+  } else
+    Opcode = ISA_OR;
+
+  Region Single = Region(1, 4);
+
+  VISA_GenVar *Decl = nullptr;
+  CISA_CALL(Kernel->GetPredefinedVar(Decl, PREDEFINED_CR0));
+  VISA_VectorOpnd *dst =
+      createRegionOperand(&Single, Decl, DONTCARESIGNED, 0, true);
+  VISA_VectorOpnd *src0 =
+      createRegionOperand(&Single, Decl, DONTCARESIGNED, 0, false);
+
+  VISA_VectorOpnd *src1 = nullptr;
+  CISA_CALL(Kernel->CreateVISAImmediate(src1, &Mask, ISA_TYPE_UD));
+
+  appendVISALogicOrShiftInst(Opcode, nullptr, false, vISA_EMASK_M1, EXEC_SIZE_1,
+                             dst, src0, src1);
+}
+
 /***********************************************************************
  * buildBranch : build a conditional or unconditional branch
  *
@@ -5369,6 +5447,17 @@ void GenXKernelBuilder::buildCall(CallInst *CI, const DstOpndDesc &DstDesc) {
 }
 
 void GenXKernelBuilder::buildRet(ReturnInst *RI) {
+  uint32_t FloatControl = 0;
+  auto F = RI->getFunction();
+  F->getFnAttribute(genx::FunctionMD::CMFloatControl)
+      .getValueAsString()
+      .getAsInteger(0, FloatControl);
+  FloatControl &= CRMask;
+  if (FloatControl != DefaultFloatControl) {
+    buildControlRegUpdate(CRMask, true);
+    if (DefaultFloatControl)
+      buildControlRegUpdate(DefaultFloatControl, false);
+  }
   if (vc::requiresStackCall(Func)) {
     appendVISACFFunctionRetInst(nullptr, vISA_EMASK_M1, StackCallExecSize);
   } else {

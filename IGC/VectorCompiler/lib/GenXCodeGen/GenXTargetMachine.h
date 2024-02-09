@@ -271,8 +271,6 @@ void initializeGenXInitBiFConstantsPass(PassRegistry &);
 void initializeGenXFinalizerPass(PassRegistry &);
 void initializeGenXBuiltinFunctionsPass(PassRegistry &);
 void initializeGenXSLMResolutionPass(PassRegistry &);
-void initializeGenXFloatControlWrapperPass(PassRegistry &);
-
 } // End llvm namespace
 
 #endif
