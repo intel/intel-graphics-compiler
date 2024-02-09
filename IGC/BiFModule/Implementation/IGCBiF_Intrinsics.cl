@@ -133,7 +133,7 @@ half      __builtin_IB_ftoh_rtz(float)  __attribute__((const));
 #endif // defined(cl_khr_fp64)
 
 // Debug/Testing Built-In Functions
-uint2     __builtin_IB_read_cycle_counter(void) __attribute__((const));
+ulong     __builtin_IB_read_cycle_counter(void) __attribute__((const));
 void      __builtin_IB_source_value(uint reg);
 uint      __builtin_IB_set_dbg_register(uint dgb0_0);
 uint      __builtin_IB_movreg(uint reg) __attribute__((const));
