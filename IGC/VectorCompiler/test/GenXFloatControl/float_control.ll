@@ -13,7 +13,7 @@
 ; CHECK-NEXT: [[VAR1:[^ ]+]] = call <4 x i32> @llvm.genx.read.predef.reg.v4i32.v4i32(i32 14, <4 x i32> undef)
 ; CHECK-NEXT: [[VAR2:[^ ]+]] = call i32 @llvm.genx.rdregioni.i32.v4i32.i16(<4 x i32> [[VAR1]], i32 0, i32 1, i32 1, i16 0, i32 undef)
 ; CHECK-NEXT: [[VAR3:[^ ]+]] = and i32 [[VAR2]], -1265
-; CHECK-NEXT: [[VAR4:[^ ]+]] = or i32 [[VAR3]], 0
+; CHECK-NEXT: [[VAR4:[^ ]+]] = or i32 [[VAR3]], 1216
 ; CHECK-NEXT: [[VAR5:[^ ]+]] = call <4 x i32> @llvm.genx.wrregioni.v4i32.i32.i16.i1(<4 x i32> [[VAR1]], i32 [[VAR4]], i32 0, i32 1, i32 1, i16 0, i32 undef, i1 true)
 ; CHECK-NEXT: call <4 x i32> @llvm.genx.write.predef.reg.v4i32.v4i32(i32 14, <4 x i32> [[VAR5]])
 define dllexport spir_kernel void @kernel(i32 %arg, i64 %privBase) #0 {

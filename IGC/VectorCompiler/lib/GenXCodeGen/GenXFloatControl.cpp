@@ -36,7 +36,7 @@ class GenXFloatControl : public FGPassImplInterface, IDMixin<GenXFloatControl> {
 
   bool getFloatControl(Function *F, uint32_t *Val);
 
-  Value *buildCr0Update(Value* V, Instruction *InsertBefore);
+  Value *buildCr0Update(Value *V, Instruction *InsertBefore);
 
 public:
   void releaseMemory() {}
@@ -72,14 +72,21 @@ ModulePass *llvm::createGenXFloatControlWrapperPass() {
 }
 
 bool GenXFloatControl::runOnFunctionGroup(FunctionGroup &FG) {
+  // By default retain all denormals, rounding mode - RTNE (both FPU and float
+  // to integer conversion)
+  DefaultFloatControl = Bits::DoublePrecisionDenorm |
+                        Bits::SinglePrecisionDenorm |
+                        Bits::HalfPrecisionDenorm | Bits::FPToIntRoundingMode;
+
   // By default allow to specify with the attribute only rounding and denorm
   // modes
   Mask = Bits::RoundingMode | Bits::DoublePrecisionDenorm |
-             Bits::SinglePrecisionDenorm | Bits::HalfPrecisionDenorm;
+         Bits::SinglePrecisionDenorm | Bits::HalfPrecisionDenorm;
   const auto *Subtarget = &getAnalysis<TargetPassConfig>()
                                .getTM<GenXTargetMachine>()
                                .getGenXSubtarget();
   if (Subtarget->hasSystolicDenormControl()) {
+    DefaultFloatControl |= Bits::SystolicDenorm;
     Mask |= Bits::SystolicDenorm;
   }
 
@@ -134,9 +141,9 @@ Value *GenXFloatControl::buildCr0Update(Value *V, Instruction *InsertBefore) {
   auto *Or = B.CreateOr(AndOld, AndNew);
   auto *WrR = R.createWrRegion(Cr0, Or, "cr0.0.updated", InsertBefore, DL);
 
-  B.CreateCall(
-      vc::getAnyDeclaration(M, GenXIntrinsic::genx_write_predef_reg, {VTy, VTy}),
-      {Id, WrR});
+  B.CreateCall(vc::getAnyDeclaration(M, GenXIntrinsic::genx_write_predef_reg,
+                                     {VTy, VTy}),
+               {Id, WrR});
 
   return RdR;
 }
