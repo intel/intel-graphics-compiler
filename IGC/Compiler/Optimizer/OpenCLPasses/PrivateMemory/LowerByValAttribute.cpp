@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/LowerByValAttribute.hpp"
 #include "Compiler/IGCPassSupport.h"
-#include "common/igc_regkeys.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
@@ -49,9 +48,6 @@ LowerByValAttribute::LowerByValAttribute(void) : FunctionPass(ID)
 
 bool LowerByValAttribute::runOnFunction(Function& F)
 {
-    if (IGC_IS_FLAG_DISABLED(EnableExplicitCopyForByVal))
-        return false;
-
     visit(F);
 
     return m_changed;

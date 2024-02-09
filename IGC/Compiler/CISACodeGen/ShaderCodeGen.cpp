@@ -295,8 +295,13 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
             }
         }
         mpm.add(createPromoteMemoryToRegisterPass());
-        if (ctx.type == ShaderType::OPENCL_SHADER)
+        if (ctx.type == ShaderType::OPENCL_SHADER &&
+            !isOptDisabled &&
+            IGC_IS_FLAG_ENABLED(EnableExplicitCopyForByVal))
+        {
             mpm.add(new LowerByValAttribute());
+            mpm.add(createReplaceUnsupportedIntrinsicsPass());
+        }
         // Resolving private memory allocas
         mpm.add(CreatePrivateMemoryResolution());
     }
@@ -669,8 +674,13 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
     if (!(IGC_IS_FLAG_ENABLED(EnableUnmaskedFunctions) &&
           IGC_IS_FLAG_ENABLED(LateInlineUnmaskedFunc)))
     {
-        if (ctx.type == ShaderType::OPENCL_SHADER)
+        if (ctx.type == ShaderType::OPENCL_SHADER &&
+            !isOptDisabled &&
+            IGC_IS_FLAG_ENABLED(EnableExplicitCopyForByVal))
+        {
             mpm.add(new LowerByValAttribute());
+            mpm.add(createReplaceUnsupportedIntrinsicsPass());
+        }
         mpm.add(CreatePrivateMemoryResolution());
     }
     // Should help MemOpt pass to merge more loads
