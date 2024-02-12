@@ -382,14 +382,15 @@ static bool ReadIGCEnv(
 /*****************************************************************************\
 ReadIGCRegistry
 \*****************************************************************************/
-static bool ReadIGCRegistry(
+bool ReadIGCRegistry(
     const char*  pName,
     void*        pValue,
     unsigned int size ,
-    std::string registrykeypath)
+    const char * registrykeypath,
+    bool readFromEnv)
 {
     // All platforms can retrieve settings from environment
-    if( ReadIGCEnv( pName, pValue, size ) )
+    if( readFromEnv && ReadIGCEnv( pName, pValue, size ))
     {
         return true;
     }
@@ -400,7 +401,7 @@ static bool ReadIGCRegistry(
 
     success = RegOpenKeyExA(
         HKEY_LOCAL_MACHINE,
-        registrykeypath.c_str(),
+        registrykeypath,
         0,
         KEY_READ,
         &uscKey );
@@ -1127,7 +1128,7 @@ static void LoadFromRegKeyOrEnvVarOrOptions(
         bool isSet = ReadIGCRegistry(
             name,
             &value,
-            sizeof(value), registrykeypath);
+            sizeof(value), registrykeypath.c_str());
 
         if (isSet)
         {

@@ -27,6 +27,17 @@ using namespace std;
 
 #endif // _WIN32
 
+
+#if ((defined(_DEBUG) || defined(_INTERNAL)) && defined(_WIN32)) //private heap for igc windows
+#include <heapapi.h>
+#include "igc_regkeys.hpp"
+static HANDLE g_heap = NULL;
+static std::atomic<unsigned int> g_alloc_cnt = 0;
+static bool ReadingRegkey = true;
+static bool PHEnabled = false;
+static const char * regkeyPath =  "SOFTWARE\\INTEL\\IGFX\\IGC";
+#endif // _WIN32 || _WIN64
+
 #include "Probe/Assertion.h"
 
 #if ( defined ( _DEBUG ) || defined ( _INTERNAL ) )
@@ -47,6 +58,7 @@ public:
 
     static void*   AlignedAllocate(size_t size, size_t alignment);
     static void    AlignedDeallocate(void* ptr);
+
 
 protected:
     static void*   Malloc(size_t size);
@@ -239,7 +251,6 @@ inline void CAllocator::AlignedDeallocate(void* ptr)
         CAllocator::Free(alloc_ptr);
     }
 }
-
 /*****************************************************************************\
 
 Function:
@@ -257,10 +268,39 @@ void*
 \*****************************************************************************/
 inline void* CAllocator::Malloc(size_t size)
 {
+#if ((defined(_DEBUG) || defined(_INTERNAL)) && defined(_WIN32))//private heap for igc windows
+    //read regkey for once
+    if (ReadingRegkey)
+    {
+        typedef char debugString[4];
+        DWORD value = 0;
+        if (ReadIGCRegistry("EnableIGCPrivateHeap", &value, sizeof(value), regkeyPath, false)) {
+            PHEnabled = value;
+        }
+        ReadingRegkey = false;
+    }
+    //private heap activated
+    if (PHEnabled)
+    {
+        void* mem = NULL;
+        if (!g_heap)
+        {
+            //create heap here
+            g_heap = HeapCreate(0, 0, 0);
+            IGC_ASSERT_EXIT_MESSAGE(g_heap != NULL, "Could not createglobal heap");
+        }
+        //allocate memory
+        g_alloc_cnt++;
+        mem = HeapAlloc(g_heap, 0, size);
+        IGC_ASSERT_EXIT_MESSAGE(mem != NULL, "Could not allocate the required memory to Heap");
+        return mem;
+    }
+#endif //end of debug internal
+
     void* const ptr = malloc(size);
 
 #ifdef _DEBUG
-    if(nullptr != ptr)
+    if (nullptr != ptr)
     {
         std::memset(ptr, 0xcc, size);
     }
@@ -270,7 +310,6 @@ inline void* CAllocator::Malloc(size_t size)
 #endif
     return ptr;
 }
-
 /*****************************************************************************\
 
 Function:
@@ -288,6 +327,26 @@ none
 \*****************************************************************************/
 inline void CAllocator::Free(void* ptr)
 {
+#if ((defined(_DEBUG) || defined(_INTERNAL)) && defined(_WIN32)) //private heap malloc for igc windows
+    if (PHEnabled)
+    {
+        if (ptr)
+        {
+            //free pointer here
+            BOOL free_success = HeapFree(g_heap, 0, ptr);
+            IGC_ASSERT_EXIT_MESSAGE(free_success, "Could not free require memory from heap");
+            g_alloc_cnt--;
+        }
+        if (g_alloc_cnt <= 0)
+        {
+            //destroy heap here
+            BOOL des_success = HeapDestroy(g_heap);
+            g_heap = NULL;
+            IGC_ASSERT_EXIT_MESSAGE(des_success, "Could not destroy heap");
+        }
+        return;
+    }
+#endif //end of windows and debug internal
     if(ptr)
     {
        free( ptr );

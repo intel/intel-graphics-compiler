@@ -214,6 +214,7 @@ void GetKeysSetExplicitly(std::string* KeyValuePairs, std::string* OptionKeys);
 void DumpIGCRegistryKeyDefinitions();
 void DumpIGCRegistryKeyDefinitions3(std::string driverRegistryPath, unsigned long pciBus, unsigned long pciDevice, unsigned long pciFunction);
 void LoadRegistryKeys(const std::string& options = "", bool *RegFlagNameError = nullptr);
+bool ReadIGCRegistry(const char* pName, void* pValue, unsigned int size, const char * registrykeypath, bool readFromEnv = true);
 void SetCurrentDebugHash(const ShaderHash &hash);
 void SetCurrentEntryPoints(const std::vector<std::string> &entry_points);
 void ClearCurrentEntryPoints();
