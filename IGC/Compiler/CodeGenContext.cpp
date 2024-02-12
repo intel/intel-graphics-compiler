@@ -629,11 +629,18 @@ namespace IGC
         return MD->functionType == KernelFunction;
     }
 
-    static void findCallingKernels
-        (const CodeGenContext *ctx, const llvm::Function *F, llvm::SmallPtrSetImpl<const llvm::Function *> &kernels)
+    static void findCallingKernels( const CodeGenContext *ctx,
+                                    const llvm::Function *F,
+                                    llvm::SmallPtrSetImpl<const llvm::Function *> &kernels,
+                                    SmallPtrSet<const llvm::Function*, 32>& visited)
     {
         if (F == nullptr || kernels.count(F))
             return;
+
+        // Check if function was already visited during search
+        if (visited.find(F) != visited.end())
+            return;
+        visited.insert(F);
 
         for (const llvm::User *U : F->users()) {
             auto *CI = llvm::dyn_cast<llvm::CallInst>(U);
@@ -650,8 +657,7 @@ namespace IGC
             }
             // Caller is not a kernel, try to check which kerneles might
             // be calling it:
-            if (F != caller)
-                findCallingKernels(ctx, caller, kernels);
+            findCallingKernels(ctx, caller, kernels, visited);
         }
     }
 
@@ -742,7 +748,8 @@ namespace IGC
             // might be using this function.
             } else {
                 llvm::SmallPtrSet<const llvm::Function *, 16> kernels;
-                findCallingKernels(this, F, kernels);
+                llvm::SmallPtrSet<const llvm::Function*, 32> visited;
+                findCallingKernels(this, F, kernels, visited);
 
                 const size_t kernelsCount = kernels.size();
                 OS << "\nin function: '" << demangleFuncName(std::string(F->getName())) << "' ";
