@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -196,7 +196,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         offset = iSTD::Align(offset, (unsigned)m_DL->getPreferredAlign(globalVar).value());
 #endif
         inlineProgramScopeOffsets[globalVar] = offset;
-        offset += (unsigned)(m_DL->getTypeAllocSize(IGCLLVM::getNonOpaquePtrEltTy(globalVar->getType())));
+        offset += (unsigned)(m_DL->getTypeAllocSize(globalVar->getValueType()));
     }
 
     // Patch the offsets for usages of zero initialized globals after those offsets have been calculated in the previous step.

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/Support/Alignment.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/DataLayout.h>
@@ -272,7 +273,7 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
     {
         BasicBlock* BB = BasicBlock::Create(I.getContext(), BlockName, convergeBlock->getParent(), convergeBlock);
         builder.SetInsertPoint(BB);
-        PointerType* ptrType = IGCLLVM::getNonOpaquePtrEltTy(pointerType)->getPointerTo(addressSpace);
+        PointerType* ptrType = IGCLLVM::getWithSamePointeeType(pointerType, addressSpace);
         Value* ptr = builder.CreateAddrSpaceCast(pointerOperand, ptrType);
 
         if (LoadInst* LI = dyn_cast<LoadInst>(&I))
@@ -349,7 +350,7 @@ void GenericAddressDynamicResolution::resolveGASWithoutBranches(Instruction& I, 
 
     Value* nonLocalLoad = nullptr;
 
-    PointerType* ptrType = IGCLLVM::getNonOpaquePtrEltTy(pointerType)->getPointerTo(ADDRESS_SPACE_GLOBAL);
+    PointerType* ptrType = IGCLLVM::getWithSamePointeeType(pointerType, ADDRESS_SPACE_GLOBAL);
     Value* globalPtr = builder.CreateAddrSpaceCast(pointerOperand, ptrType);
 
     if (LoadInst* LI = dyn_cast<LoadInst>(&I))
@@ -438,7 +439,7 @@ bool GenericAddressDynamicResolution::visitIntrinsicCall(CallInst& I)
         // If Block
         {
             IRBuilder<> ifBuilder(ifBlock);
-            PointerType* ptrType = IGCLLVM::getNonOpaquePtrEltTy(pointerType)->getPointerTo(targetAS);
+            PointerType* ptrType = IGCLLVM::getWithSamePointeeType(pointerType, targetAS);
             newPtr = ifBuilder.CreateAddrSpaceCast(arg, ptrType);
             ifBuilder.CreateBr(convergeBlock);
         }
