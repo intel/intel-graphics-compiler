@@ -918,7 +918,7 @@ namespace IGC
                     : zebin::PreDefinedAttrGetter::ArgAddrSpace::constant;
             auto access_type = zebin::PreDefinedAttrGetter::ArgAccessType::readwrite;
             if (kernelArg->getArgType() == KernelArg::ArgType::PTR_CONSTANT ||
-                funcMD.m_OpenCLArgTypeQualifiers.size() > arg_idx && funcMD.m_OpenCLArgTypeQualifiers[arg_idx] == "const")
+                arg_idx < funcMD.m_OpenCLArgTypeQualifiers.size() && funcMD.m_OpenCLArgTypeQualifiers[arg_idx] == "const")
                 access_type = zebin::PreDefinedAttrGetter::ArgAccessType::readonly;
 
             // FIXME: do not set bti if the number is 0xffffffff (?)
@@ -997,7 +997,7 @@ namespace IGC
                 zebin::ZEInfoBuilder::addPayloadArgumentByPointer(m_kernelInfo.m_zePayloadArgs,
                     payloadPosition, kernelArg->getAllocateSize(), arg_idx, addr_mode,
                     addr_space, access_type);
-            arg.is_pipe = funcMD.m_OpenCLArgTypeQualifiers[arg_idx] == "pipe";
+            arg.is_pipe = arg_idx < funcMD.m_OpenCLArgTypeQualifiers.size() && funcMD.m_OpenCLArgTypeQualifiers[arg_idx] == "pipe";
             break;
         }
         case KernelArg::ArgType::PTR_LOCAL:
