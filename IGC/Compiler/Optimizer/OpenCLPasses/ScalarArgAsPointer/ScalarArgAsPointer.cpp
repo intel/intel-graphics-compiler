@@ -110,6 +110,7 @@ void ScalarArgAsPointerAnalysis::visitCallInst(CallInst& CI)
     GenISAIntrinsic::ID const id = I->getIntrinsicID();
 
     if (id == GenISAIntrinsic::GenISA_LSC2DBlockRead ||
+        id == GenISAIntrinsic::GenISA_LSC2DBlockPrefetch ||
         id == GenISAIntrinsic::GenISA_LSC2DBlockWrite)
     {
         return analyzeValue(I->getOperand(0));

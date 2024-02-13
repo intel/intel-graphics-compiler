@@ -374,8 +374,11 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
     unsigned int subGrpSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
 
     funcName.consume_front("_flat");
+    bool isPrefetch = funcName.consume_front("_prefetch");
+    bool hasCacheOpts = funcName.consume_front("_cacheopts") || isPrefetch;
     uint32_t isTranspose = funcName.consume_front("_transpose") ? 1 : 0;
     uint32_t isVnniTransform = funcName.consume_front("_transform") ? 1 : 0;
+    hasCacheOpts |= funcName.consume_front("_cacheopts");
 
     uint32_t elemSize = 0;
     if (funcName.consume_front("_u8"))
@@ -597,24 +600,37 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
     args.push_back(isVnniTransformConstant);
 
 
-    args.push_back(getConstantInt32(LSC_L1DEF_L3DEF));
+    if (hasCacheOpts)
+    {
+        unsigned cacheOptsId = isRead ? 5 : 6;
+        args.push_back(getCacheControlOpts(cacheOptsId));
+    }
+    else
+    {
+        args.push_back(getConstantInt32(LSC_L1DEF_L3DEF));
+    }
 
     Function* BlockFunc = nullptr;
     if (isRead)
     {
         BlockFunc = GenISAIntrinsic::getDeclaration(
             CI.getCalledFunction()->getParent(),
-            GenISAIntrinsic::GenISA_LSC2DBlockRead,
+            isPrefetch ? GenISAIntrinsic::GenISA_LSC2DBlockPrefetch : GenISAIntrinsic::GenISA_LSC2DBlockRead,
             CI.getCalledFunction()->getReturnType());
     }
     else
     {
         uint32_t blockWriteDstOperandId = 5;
-        args.push_back(CI.getArgOperand(blockWriteDstOperandId));
+        if (hasCacheOpts)
+        {
+            blockWriteDstOperandId = 6;
+        }
+        Value *dst = CI.getArgOperand(blockWriteDstOperandId);
+        args.push_back(dst);
         BlockFunc = GenISAIntrinsic::getDeclaration(
             CI.getCalledFunction()->getParent(),
             GenISAIntrinsic::GenISA_LSC2DBlockWrite,
-            CI.getArgOperand(5)->getType());
+            dst->getType());
     }
 
     Instruction* BlockOp = CallInst::Create(BlockFunc, args, "", &CI);

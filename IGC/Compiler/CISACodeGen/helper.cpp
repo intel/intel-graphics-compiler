@@ -1794,6 +1794,7 @@ namespace IGC
         {
         case GenISAIntrinsic::GenISA_simdBlockRead:
         case GenISAIntrinsic::GenISA_LSC2DBlockRead:
+        case GenISAIntrinsic::GenISA_LSC2DBlockPrefetch:
         case GenISAIntrinsic::GenISA_LSCLoad:
         case GenISAIntrinsic::GenISA_LSCLoadBlock:
         case GenISAIntrinsic::GenISA_LSCPrefetch:
