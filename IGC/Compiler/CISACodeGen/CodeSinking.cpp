@@ -1440,8 +1440,11 @@ namespace IGC {
         MovedInsts.clear();
         UndoLocas.clear();
 
+        if (IGC_IS_FLAG_ENABLED(PrepopulateLoadChainLoopSink))
+            prepopulateLoadChains(L, LoadChains);
+
         bool AllowLoadSinking = IGC_IS_FLAG_ENABLED(ForceLoadsLoopSink);
-        bool AllowOnlyLoadChainSinking = false;
+        bool AllowOnlySingleUseLoadChainSinking = false;
         bool IterChanged = false;
 
         uint MaxLoopPressure = 0;
@@ -1476,7 +1479,7 @@ namespace IGC {
 
                 if (isLoopSinkCandidate(I, L, AllowLoadSinking))
                 {
-                    if (!AllowOnlyLoadChainSinking || isLoadChain(I, LoadChains))
+                    if (!AllowOnlySingleUseLoadChainSinking || isLoadChain(I, LoadChains, true))
                     {
                         SinkCandidates.push_back(I);
                     }
@@ -1510,7 +1513,7 @@ namespace IGC {
                     if (IGC_IS_FLAG_ENABLED(EnableLoadChainLoopSink) && !LoadChains.empty())
                     {
                         PrintDump("Allowing only chain sinking...\n");
-                        AllowOnlyLoadChainSinking = true;
+                        AllowOnlySingleUseLoadChainSinking = true;
                     }
                     else
                     {
@@ -1580,15 +1583,54 @@ namespace IGC {
 
     // Check that this instruction is a part of address calc
     // chain of an already sinked load
-    bool CodeSinking::isLoadChain(Instruction *I, SmallPtrSet<Instruction *, 32> &LoadChains)
+    bool CodeSinking::isLoadChain(Instruction *I, SmallPtrSet<Instruction *, 32> &LoadChains, bool EnsureSingleUser)
     {
         if (!isa<BinaryOperator>(I) && !isa<CastInst>(I))
             return false;
         User *InstrUser = IGCLLVM::getUniqueUndroppableUser(I);
-        if (!InstrUser)
+        if (EnsureSingleUser && !InstrUser)
             return false;
-        Instruction *UI = dyn_cast<Instruction>(InstrUser);
-        return UI && LoadChains.count(UI);
+
+        return std::all_of(I->user_begin(), I->user_end(),
+            [&](User *U)
+            {
+                Instruction *UI = dyn_cast<Instruction>(U);
+                return UI && LoadChains.count(UI);
+            });
+    }
+
+    // Prepopulate load chain with the loads that are already in the loop
+    void CodeSinking::prepopulateLoadChains(Loop *L, SmallPtrSet<Instruction *, 32> &LoadChains)
+    {
+        std::function<void(Value *)> addInstructionIfLoadChain = [&](Value *V)-> void
+        {
+            Instruction *I = dyn_cast<Instruction>(V);
+            if (!I)
+                return;
+
+            if (!L->contains(I))
+                return;
+
+            if (!isLoadChain(I, LoadChains))
+                return;
+
+            LoadChains.insert(I);
+            for (auto &U : I->operands()) {
+                addInstructionIfLoadChain(U);
+            }
+        };
+
+        for (BasicBlock *BB: L->blocks())
+        {
+            for (Instruction &I : *BB)
+            {
+                if (LoadInst *LI = dyn_cast<LoadInst>(&I))
+                {
+                    LoadChains.insert(&I);
+                    addInstructionIfLoadChain(LI->getPointerOperand());
+                }
+            }
+        }
     }
 
     bool CodeSinking::isLoopSinkCandidate(Instruction *I, Loop *L, bool AllowLoadSinking)

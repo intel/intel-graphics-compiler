@@ -77,7 +77,9 @@ namespace IGC {
             llvm::SmallPtrSetImpl<llvm::Instruction*>& Stores);
         bool isSafeToLoopSinkLoad(llvm::Instruction* I, llvm::Loop* Loop, llvm::AliasAnalysis* AA);
         bool isAlwaysSinkInstruction(llvm::Instruction* I);
-        bool isLoadChain(llvm::Instruction* I, SmallPtrSet<Instruction *, 32> &LoadChains);
+        bool isLoadChain(llvm::Instruction* I, SmallPtrSet<Instruction*, 32>& LoadChains, bool EnsureSingleUser=false);
+        void prepopulateLoadChains(llvm::Loop* I, SmallPtrSet<Instruction*, 32>& LoadChains);
+
 
         /// rollback sinking. Uses MovedInsts and UndoLocas members implicitly
         void rollbackSinking(bool ReverseOrder, llvm::BasicBlock* BB);
