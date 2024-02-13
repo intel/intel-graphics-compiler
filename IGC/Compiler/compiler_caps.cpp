@@ -117,7 +117,7 @@ namespace IGC
 
     }
 
-    static void DumpCaps(const GT_SYSTEM_INFO &sysinfo, PLATFORM platformInfo, Debug::Dump const& dump)
+    static void DumpCaps(const GT_SYSTEM_INFO sysinfo, PLATFORM platformInfo, Debug::Dump const& dump)
     {
         std::string outputString;
         CreateCompilerCapsString(&sysinfo, platformInfo, outputString);

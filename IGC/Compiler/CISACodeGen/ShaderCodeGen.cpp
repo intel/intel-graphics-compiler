@@ -434,7 +434,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
             GenIntrinsicsTTIImpl GTTI(&ctx);
             return TargetTransformInfo(GTTI);
             });
-        mpm.add(new TargetTransformInfoWrapperPass(std::move(GenTTgetIIRAnalysis)));
+        mpm.add(new TargetTransformInfoWrapperPass(GenTTgetIIRAnalysis));
     }
 
     // Disable all target library functions.

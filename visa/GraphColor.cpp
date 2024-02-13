@@ -5550,7 +5550,7 @@ void Augmentation::buildSummaryForCallees() {
         }
       }
     }
-    localSummaryOfCallee[func] = std::move(funcSummary);
+    localSummaryOfCallee[func] = funcSummary;
   }
 }
 
@@ -5634,7 +5634,7 @@ void Augmentation::augmentIntfGraph() {
         dclIntervals.push_back(std::make_tuple(dcl, interval.interval.start,
                                                interval.interval.end));
       }
-      updateDebugInfo(kernel, std::move(dclIntervals));
+      updateDebugInfo(kernel, dclIntervals);
     }
 
     // Perform linear scan to augment graph
@@ -9696,7 +9696,9 @@ void VarSplit::localSplit(IR_Builder &builder, G4_BB *bb) {
         if (topdcl && (topdclLR = gra.getLocalLR(topdcl)) &&
             topdcl->getIsRefInSendDcl() && topdclLR->isLiveRangeLocal() &&
             topdcl->getRegFile() == G4_GRF) {
-          G4_VarBase *base = src->asSrcRegRegion()->getBase();
+          G4_VarBase *base =
+              (topdcl != NULL ? topdcl->getRegVar()
+                              : src->asSrcRegRegion()->getBase());
 
           INST_LIST_ITER iterToInsert = rit.base();
           iterToInsert--;

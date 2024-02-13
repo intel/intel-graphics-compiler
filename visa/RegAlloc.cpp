@@ -670,7 +670,7 @@ void LivenessAnalysis::computeLiveness() {
   //
   // initialize entry block with payload input
   //
-  def_in[fg.getEntryBB()->getId()] = std::move(inputDefs);
+  def_in[fg.getEntryBB()->getId()] = inputDefs;
 
   //
   // forward flow analysis to propagate defs (locate first defs)
