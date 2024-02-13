@@ -8721,6 +8721,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_LSCAtomicFP32:
     case GenISAIntrinsic::GenISA_LSCAtomicInts:
     case GenISAIntrinsic::GenISA_LSC2DBlockRead:
+    case GenISAIntrinsic::GenISA_LSC2DBlockPrefetch:
     case GenISAIntrinsic::GenISA_LSC2DBlockWrite:
         emitLSCIntrinsic(inst);
         break;

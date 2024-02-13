@@ -870,6 +870,60 @@ DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_FLAT(intel_subgroup_block_read_transpose_u64
 
 #endif // defined(cl_intel_subgroup_extended_block_read)
 
+#if defined(cl_intel_subgroup_extended_block_read_cacheopts)
+#define  DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_CACHEOPTS(FUNC_NAME, TYPE, INTERNAL_FUNC)                  \
+INLINE TYPE FUNC_NAME( __global void* base_address, int width, int height, int pitch, int2 coord, enum LSC_LDCC cache_control ) \
+{                                                                                                  \
+    long baseoffset = as_long(base_address);                                                       \
+    int width_minus_one = width - 1;                                                               \
+    int height_minus_one = height - 1;                                                             \
+    int pitch_minus_one = pitch - 1;                                                               \
+    return INTERNAL_FUNC(baseoffset, width_minus_one, height_minus_one, pitch_minus_one, coord, cache_control);   \
+}
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_CACHEOPTS(intel_subgroup_block_read_cacheopts_u8_m1k32v2,   ushort2,  __builtin_IB_subgroup_block_read_cacheopts_u8_m1k32v2)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_CACHEOPTS(intel_subgroup_block_read_cacheopts_u8_m2k32v2,   ushort4,  __builtin_IB_subgroup_block_read_cacheopts_u8_m2k32v2)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_CACHEOPTS(intel_subgroup_block_read_cacheopts_u8_m4k32v2,   ushort8,  __builtin_IB_subgroup_block_read_cacheopts_u8_m4k32v2)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_CACHEOPTS(intel_subgroup_block_read_cacheopts_u8_m8k32v2,   ushort16, __builtin_IB_subgroup_block_read_cacheopts_u8_m8k32v2)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_CACHEOPTS(intel_subgroup_block_read_cacheopts_u16_m1k16v2,  ushort2,  __builtin_IB_subgroup_block_read_cacheopts_u16_m1k16v2)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_CACHEOPTS(intel_subgroup_block_read_cacheopts_u16_m2k16v2,  ushort4,  __builtin_IB_subgroup_block_read_cacheopts_u16_m2k16v2)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_CACHEOPTS(intel_subgroup_block_read_cacheopts_u16_m4k16v2,  ushort8,  __builtin_IB_subgroup_block_read_cacheopts_u16_m4k16v2)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_CACHEOPTS(intel_subgroup_block_read_cacheopts_u16_m8k16v2,  ushort16, __builtin_IB_subgroup_block_read_cacheopts_u16_m8k16v2)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_CACHEOPTS(intel_subgroup_block_read_cacheopts_transform_u8_k32,  uint8, __builtin_IB_subgroup_block_read_cacheopts_transform_u8_k32)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_CACHEOPTS(intel_subgroup_block_read_cacheopts_transform_u16_k16, uint8, __builtin_IB_subgroup_block_read_cacheopts_transform_u16_k16)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_CACHEOPTS(intel_subgroup_block_read_cacheopts_transpose_u32_k8,  uint8, __builtin_IB_subgroup_block_read_cacheopts_transpose_u32_k8)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_CACHEOPTS(intel_subgroup_block_read_cacheopts_transpose_u64_k4,  ulong4,__builtin_IB_subgroup_block_read_cacheopts_transpose_u64_k4)
+
+#define  DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LSC_CACHEOPTS(FUNC_NAME, TYPE, INTERNAL_FUNC)                  \
+INLINE void FUNC_NAME( __global void* base_address, int width, int height, int pitch, int2 coord, TYPE val, enum LSC_STCC cache_control ) \
+{                                                                                                  \
+    long baseoffset = as_long(base_address);                                                       \
+    int width_minus_one = width - 1;                                                               \
+    int height_minus_one = height - 1;                                                             \
+    int pitch_minus_one = pitch - 1;                                                               \
+    INTERNAL_FUNC(baseoffset, width_minus_one, height_minus_one, pitch_minus_one, coord, val, cache_control);   \
+}
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LSC_CACHEOPTS(intel_subgroup_block_write_cacheopts_u8_m1k32v1,   ushort,  __builtin_IB_subgroup_block_write_cacheopts_u8_m1k32v1)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LSC_CACHEOPTS(intel_subgroup_block_write_cacheopts_u8_m2k32v1,   ushort2, __builtin_IB_subgroup_block_write_cacheopts_u8_m2k32v1)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LSC_CACHEOPTS(intel_subgroup_block_write_cacheopts_u8_m4k32v1,   ushort4, __builtin_IB_subgroup_block_write_cacheopts_u8_m4k32v1)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LSC_CACHEOPTS(intel_subgroup_block_write_cacheopts_u8_m8k32v1,   ushort8, __builtin_IB_subgroup_block_write_cacheopts_u8_m8k32v1)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LSC_CACHEOPTS(intel_subgroup_block_write_cacheopts_u16_m1k16v1,  ushort,  __builtin_IB_subgroup_block_write_cacheopts_u16_m1k16v1)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LSC_CACHEOPTS(intel_subgroup_block_write_cacheopts_u16_m2k16v1,  ushort2, __builtin_IB_subgroup_block_write_cacheopts_u16_m2k16v1)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LSC_CACHEOPTS(intel_subgroup_block_write_cacheopts_u16_m4k16v1,  ushort4, __builtin_IB_subgroup_block_write_cacheopts_u16_m4k16v1)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LSC_CACHEOPTS(intel_subgroup_block_write_cacheopts_u16_m8k16v1,  ushort8, __builtin_IB_subgroup_block_write_cacheopts_u16_m8k16v1)
+
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_CACHEOPTS(intel_subgroup_block_prefetch_u8_m1k32v2,   void,  __builtin_IB_subgroup_block_read_prefetch_u8_m1k32v2)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_CACHEOPTS(intel_subgroup_block_prefetch_u8_m2k32v2,   void,  __builtin_IB_subgroup_block_read_prefetch_u8_m2k32v2)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_CACHEOPTS(intel_subgroup_block_prefetch_u8_m4k32v2,   void,  __builtin_IB_subgroup_block_read_prefetch_u8_m4k32v2)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_CACHEOPTS(intel_subgroup_block_prefetch_u8_m8k32v2,   void,  __builtin_IB_subgroup_block_read_prefetch_u8_m8k32v2)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_CACHEOPTS(intel_subgroup_block_prefetch_u16_m1k16v2,  void,  __builtin_IB_subgroup_block_read_prefetch_u16_m1k16v2)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_CACHEOPTS(intel_subgroup_block_prefetch_u16_m2k16v2,  void,  __builtin_IB_subgroup_block_read_prefetch_u16_m2k16v2)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_CACHEOPTS(intel_subgroup_block_prefetch_u16_m4k16v2,  void,  __builtin_IB_subgroup_block_read_prefetch_u16_m4k16v2)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_CACHEOPTS(intel_subgroup_block_prefetch_u16_m8k16v2,  void,  __builtin_IB_subgroup_block_read_prefetch_u16_m8k16v2)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_CACHEOPTS(intel_subgroup_block_prefetch_transform_u8_k32,  void, __builtin_IB_subgroup_block_read_prefetch_transform_u8_k32)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_CACHEOPTS(intel_subgroup_block_prefetch_transform_u16_k16, void, __builtin_IB_subgroup_block_read_prefetch_transform_u16_k16)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_CACHEOPTS(intel_subgroup_block_prefetch_transpose_u32_k8,  void, __builtin_IB_subgroup_block_read_prefetch_transpose_u32_k8)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_LSC_CACHEOPTS(intel_subgroup_block_prefetch_transpose_u64_k4,  void, __builtin_IB_subgroup_block_read_prefetch_transpose_u64_k4)
+#endif // defined(cl_intel_subgroup_extended_block_read_cacheopts)
 
 #if defined(cl_khr_subgroup_shuffle)
 #define DEFN_SUB_GROUP_SHUFFLE(TYPE, SPV_TYPE, TYPE_ABBR)                                                             \

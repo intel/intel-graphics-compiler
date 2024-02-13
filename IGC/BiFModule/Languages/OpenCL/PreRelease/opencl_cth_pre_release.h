@@ -2566,6 +2566,46 @@ ulong4   intel_subgroup_block_read_transpose_u64_k4(__global void *base_address,
 
 #endif //defined(cl_intel_subgroup_extended_block_read)
 
+#ifdef cl_intel_subgroup_extended_block_read_cacheopts
+extern enum LSC_LDCC;
+extern enum LSC_STCC;
+
+ushort2 intel_subgroup_block_read_cacheopts_u8_m1k32v2(__global void *base_address, int width, int height, int pitch, int2 coord, enum LSC_LDCC cache_control);
+ushort4 intel_subgroup_block_read_cacheopts_u8_m2k32v2(__global void *base_address, int width, int height, int pitch, int2 coord, enum LSC_LDCC cache_control);
+ushort8 intel_subgroup_block_read_cacheopts_u8_m4k32v2(__global void *base_address, int width, int height, int pitch, int2 coord, enum LSC_LDCC cache_control);
+ushort16 intel_subgroup_block_read_cacheopts_u8_m8k32v2(__global void *base_address, int width, int height, int pitch, int2 coord, enum LSC_LDCC cache_control);
+ushort2 intel_subgroup_block_read_cacheopts_u16_m1k16v2(__global void *base_address, int width, int height, int pitch, int2 coord, enum LSC_LDCC cache_control);
+ushort4 intel_subgroup_block_read_cacheopts_u16_m2k16v2(__global void *base_address, int width, int height, int pitch, int2 coord, enum LSC_LDCC cache_control);
+ushort8 intel_subgroup_block_read_cacheopts_u16_m4k16v2(__global void *base_address, int width, int height, int pitch, int2 coord, enum LSC_LDCC cache_control);
+ushort16 intel_subgroup_block_read_cacheopts_u16_m8k16v2(__global void *base_address, int width, int height, int pitch, int2 coord, enum LSC_LDCC cache_control);
+uint8 intel_subgroup_block_read_cacheopts_transform_u8_k32(__global void *base_address, int width, int height, int pitch, int2 coord, enum LSC_LDCC cache_control);
+uint8 intel_subgroup_block_read_cacheopts_transform_u16_k16(__global void *base_address, int width, int height, int pitch, int2 coord, enum LSC_LDCC cache_control);
+uint8 intel_subgroup_block_read_cacheopts_transpose_u32_k8(__global void *base_address, int width, int height, int pitch, int2 coord, enum LSC_LDCC cache_control);
+ulong4 intel_subgroup_block_read_cacheopts_transpose_u64_k4(__global void *base_address, int width, int height, int pitch, int2 coord, enum LSC_LDCC cache_control);
+
+void intel_subgroup_block_write_cacheopts_u8_m1k32v1(__global void *base_address, int width, int height, int pitch, int2 coord, ushort  val, enum LSC_STCC cache_control);
+void intel_subgroup_block_write_cacheopts_u8_m2k32v1(__global void *base_address, int width, int height, int pitch, int2 coord, ushort2 val, enum LSC_STCC cache_control);
+void intel_subgroup_block_write_cacheopts_u8_m4k32v1(__global void *base_address, int width, int height, int pitch, int2 coord, ushort4 val, enum LSC_STCC cache_control);
+void intel_subgroup_block_write_cacheopts_u8_m8k32v1(__global void *base_address, int width, int height, int pitch, int2 coord, ushort8 val, enum LSC_STCC cache_control);
+void intel_subgroup_block_write_cacheopts_u16_m1k16v1(__global void *base_address, int width, int height, int pitch, int2 coord, ushort  val, enum LSC_STCC cache_control);
+void intel_subgroup_block_write_cacheopts_u16_m2k16v1(__global void *base_address, int width, int height, int pitch, int2 coord, ushort2 val, enum LSC_STCC cache_control);
+void intel_subgroup_block_write_cacheopts_u16_m4k16v1(__global void *base_address, int width, int height, int pitch, int2 coord, ushort4 val, enum LSC_STCC cache_control);
+void intel_subgroup_block_write_cacheopts_u16_m8k16v1(__global void *base_address, int width, int height, int pitch, int2 coord, ushort8 val, enum LSC_STCC cache_control);
+
+void intel_subgroup_block_prefetch_u8_m1k32v2(__global void *base_address, int width, int height, int pitch, int2 coord, enum LSC_LDCC cache_control);
+void intel_subgroup_block_prefetch_u8_m2k32v2(__global void *base_address, int width, int height, int pitch, int2 coord, enum LSC_LDCC cache_control);
+void intel_subgroup_block_prefetch_u8_m4k32v2(__global void *base_address, int width, int height, int pitch, int2 coord, enum LSC_LDCC cache_control);
+void intel_subgroup_block_prefetch_u8_m8k32v2(__global void *base_address, int width, int height, int pitch, int2 coord, enum LSC_LDCC cache_control);
+void intel_subgroup_block_prefetch_u16_m1k16v2(__global void *base_address, int width, int height, int pitch, int2 coord, enum LSC_LDCC cache_control);
+void intel_subgroup_block_prefetch_u16_m2k16v2(__global void *base_address, int width, int height, int pitch, int2 coord, enum LSC_LDCC cache_control);
+void intel_subgroup_block_prefetch_u16_m4k16v2(__global void *base_address, int width, int height, int pitch, int2 coord, enum LSC_LDCC cache_control);
+void intel_subgroup_block_prefetch_u16_m8k16v2(__global void *base_address, int width, int height, int pitch, int2 coord, enum LSC_LDCC cache_control);
+void intel_subgroup_block_prefetch_transform_u8_k32(__global void *base_address, int width, int height, int pitch, int2 coord, enum LSC_LDCC cache_control);
+void intel_subgroup_block_prefetch_transform_u16_k16(__global void *base_address, int width, int height, int pitch, int2 coord, enum LSC_LDCC cache_control);
+void intel_subgroup_block_prefetch_transpose_u32_k8(__global void *base_address, int width, int height, int pitch, int2 coord, enum LSC_LDCC cache_control);
+void intel_subgroup_block_prefetch_transpose_u64_k4(__global void *base_address, int width, int height, int pitch, int2 coord, enum LSC_LDCC cache_control);
+#endif //defined(cl_intel_subgroup_extended_block_read_cacheopts)
+
 void global_barrier();
 
 //
