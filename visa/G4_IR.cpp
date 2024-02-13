@@ -2772,6 +2772,7 @@ bool G4_INST::isRAWdep(G4_INST *inst) {
   G4_Operand *dst0 = inst->getDst();
   G4_CondMod *cMod0 = inst->getCondMod();
   G4_Operand *implicitDst0 = inst->getImplAccDst();
+  G4_Operand *msg1 = NULL;
   G4_Predicate *pred1 = getPredicate();
   G4_Operand *src1_0 = getSrc(0);
   G4_Operand *src1_1 = getSrc(1);
@@ -2789,6 +2790,7 @@ bool G4_INST::isRAWdep(G4_INST *inst) {
          src1_2->compareOperand(dst0, getBuilder()) != Rel_disjoint) ||
         (src1_3 &&
          src1_3->compareOperand(dst0, getBuilder()) != Rel_disjoint) ||
+        (msg1 && msg1->compareOperand(dst0, getBuilder()) != Rel_disjoint) ||
         (pred1 && pred1->compareOperand(dst0, getBuilder()) != Rel_disjoint) ||
         (implicitSrc1 &&
          implicitSrc1->compareOperand(dst0, getBuilder()) != Rel_disjoint)) {
@@ -3893,7 +3895,7 @@ uint8_t G4_SrcRegRegion::getMaxExecSize(const IR_Builder &builder, int pos,
   // conservative.
   // Here we assume that no cross width if row size is larger than width
   // mul (16) V112(0,0)<1>:f V111(0,0)<16;16,1>:f r1.0<1;4,0>:f
-  if (!alignToRow && desc->vertStride != 0 &&
+  if (!alignToRow && !contRegion && desc->vertStride != 0 &&
       desc->horzStride != 0) {
     wd = vs =
         (uint16_t)roundDownPow2((pos / desc->width + 1) * desc->width - pos);
@@ -3926,7 +3928,7 @@ uint8_t G4_SrcRegRegion::getMaxExecSize(const IR_Builder &builder, int pos,
           eleInFirstRow = desc->width - posInFirstRow;
   uint8_t pow2 = roundDownPow2(eleInFirstRow);
 
-  if (eleInFirstRow != pow2) {
+  if (eleInFirstRow != pow2 && !contRegion) {
     wd = pow2;
     vs = wd * desc->horzStride;
     return pow2;
@@ -3950,7 +3952,7 @@ uint8_t G4_SrcRegRegion::getMaxExecSize(const IR_Builder &builder, int pos,
         elSize;
 
     // check cross row boundary
-    if (posInRow == 0) {
+    if ((!contRegion || desc->vertStride == 0) && posInRow == 0) {
       uint8_t pow2Val = roundDownPow2(eleInRow);
       if (pow2Val != eleInRow ||
           ((desc->vertStride == 0 || negVS) && !alignToRow)) {
@@ -3984,7 +3986,7 @@ uint8_t G4_SrcRegRegion::getMaxExecSize(const IR_Builder &builder, int pos,
         // subregister offset of two GRFs are different and not contiguous(too
         // conservative?)
         if (pow2Val != maxSize ||
-            (!(alignToRow && maxSize <= desc->width) &&
+            (!contRegion && !(alignToRow && maxSize <= desc->width) &&
              newLB % builder.numEltPerGRF<Type_UB>() !=
                  (getLeftBound() + currPos) %
                      builder.numEltPerGRF<Type_UB>())) {
@@ -4006,7 +4008,7 @@ uint8_t G4_SrcRegRegion::getMaxExecSize(const IR_Builder &builder, int pos,
     maxSize++;
     eleInRow++;
     // make sure the number of elements in two rows are the same
-    if (crossRow && eleInRow == eleInFirstRow && !alignToRow) {
+    if (crossRow && eleInRow == eleInFirstRow && !alignToRow && !contRegion) {
       break;
     }
 
@@ -5308,7 +5310,7 @@ unsigned G4_Predicate::computeRightBound(uint8_t exec_size) {
 
     right_bound = left_bound + totalBits - 1;
 
-    bitVec[0] = exec_size >= 32 ? 0xFFFFFFFF : (1 << exec_size) - 1;
+    bitVec[0] = exec_size == 32 ? 0xFFFFFFFF : (1 << exec_size) - 1;
   }
 
   return right_bound;
