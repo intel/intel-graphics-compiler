@@ -161,22 +161,22 @@ extern __constant int __JointMatrixLoadStoreOpt;
 #define DEFINE_BLOCK_RW_NAME2(rw, us) intel_sub_group_block_##rw##us##2
 #define DEFINE_BLOCK_RW_NAME1(rw, us) intel_sub_group_block_##rw##us
 
-#define DEFINE_BLOCK2D_RW_NAME(rw, tx, contrib_bitwidth, M, K) __builtin_IB_subgroup_block_##rw##_flat##tx##_u##contrib_bitwidth##_m##M##k##K##v1
+#define DEFINE_BLOCK2D_RW_NAME(rw, tx, contrib_bitwidth, WI_rows, M, K) __builtin_IB_subgroup_block_##rw##_flat##tx##_u##contrib_bitwidth##_wi##WI_rows##_m##M##k##K##v1
 #define DEFINE_BLOCK2D_TRANSPOSE_NAME(contrib_bitwidth, K) __builtin_IB_subgroup_block_read_flat_transpose_u##contrib_bitwidth##_k##K
 #define DEFINE_BLOCK2D_VNNI_NAME(contrib_bitwidth, K) __builtin_IB_subgroup_block_read_flat_transform_u##contrib_bitwidth##_k##K
 
 /* For platforms without SG16 JointMatrix support block2d is not available. The
  * implementation remains empty, will fallthrough to vector implementation. */
-#define IMPLEMENT_BLOCK2D_LOAD_ROW_MAJOR(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, stride_opt) \
+#define IMPLEMENT_BLOCK2D_LOAD_ROW_MAJOR(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, stride_opt) \
   /* not supported, fallthrough */
-#define IMPLEMENT_BLOCK2D_LOAD_COL_MAJOR(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, stride_opt) \
+#define IMPLEMENT_BLOCK2D_LOAD_COL_MAJOR(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, stride_opt) \
   /* not supported, fallthrough */
-#define IMPLEMENT_BLOCK2D_LOAD_VNNI_TX(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, stride_opt) \
+#define IMPLEMENT_BLOCK2D_LOAD_VNNI_TX(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, stride_opt) \
   /* not supported, fallthrough */
 #define IMPLEMENT_BLOCK2D_STORE(element_type, contrib_type, contrib_bitwidth, M, K, vec) \
   /* not supported, fallthrough */
 
-#define IMPLEMENT_BLOCK2D_LOAD_SG16_ROW_MAJOR(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, stride_opt) \
+#define IMPLEMENT_BLOCK2D_LOAD_SG16_ROW_MAJOR(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, stride_opt) \
     long offset = as_long(mem); \
     long baseoffset = offset & (~0x3f); /* align to 64-byte */ \
     int width = (sizeof (element_type)) * stride - 1; /* in bytes */ \
@@ -184,12 +184,12 @@ extern __constant int __JointMatrixLoadStoreOpt;
     int height = M - 1; /* row count */ \
     long x = (offset - baseoffset) / (sizeof (contrib_type)); /* in elements */ \
     int2 coords = (int2)(x, 0); \
-    OUT_VEC##M(u##contrib_type) DEFINE_BLOCK2D_RW_NAME(read, , contrib_bitwidth, M, K)(long, int, int, int, int2); \
-    OUT_VEC##M(u##contrib_type) res = DEFINE_BLOCK2D_RW_NAME(read, , contrib_bitwidth, M, K)(baseoffset, width, height, pitch, coords); \
-    *(__private OUT_VEC##M(u##contrib_type) *)dst = res; \
+    OUT_VEC##WI_rows(u##contrib_type) DEFINE_BLOCK2D_RW_NAME(read, , contrib_bitwidth, WI_rows, M, K)(long, int, int, int, int2); \
+    OUT_VEC##WI_rows(u##contrib_type) res = DEFINE_BLOCK2D_RW_NAME(read, , contrib_bitwidth, WI_rows, M, K)(baseoffset, width, height, pitch, coords); \
+    *(__private OUT_VEC##WI_rows(u##contrib_type) *)dst = res; \
     return;
 
-#define IMPLEMENT_BLOCK2D_LOAD_SG16_COL_MAJOR(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, stride_opt) \
+#define IMPLEMENT_BLOCK2D_LOAD_SG16_COL_MAJOR(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, stride_opt) \
     long offset = as_long(mem); \
     long baseoffset = offset & (~0x3f); /* align to 64-byte */ \
     int width = (sizeof (element_type)) * stride - 1; /* in bytes */ \
@@ -204,7 +204,7 @@ extern __constant int __JointMatrixLoadStoreOpt;
     *(__private OUT_VEC##M(u##contrib_type) *)dst = *(__private OUT_VEC##M(u##contrib_type) *)&res; \
     return;
 
-#define IMPLEMENT_BLOCK2D_LOAD_SG16_VNNI_TX(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, stride_opt) \
+#define IMPLEMENT_BLOCK2D_LOAD_SG16_VNNI_TX(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, stride_opt) \
     long offset = as_long(mem); \
     long baseoffset = offset & (~0x3f); /* align to 64-byte */ \
     int width = (sizeof (element_type)) * stride - 1; /* in bytes */ \
@@ -225,9 +225,9 @@ extern __constant int __JointMatrixLoadStoreOpt;
     int height = M - 1; /* row count */ \
     long x = (offset - baseoffset) / (sizeof (contrib_type)); /* in elements */ \
     int2 coords = (int2)(x, 0); \
-    void DEFINE_BLOCK2D_RW_NAME(write, , contrib_bitwidth, M, K)(long, int, int, int, int2, OUT_VEC##M(u##contrib_type)); \
+    void DEFINE_BLOCK2D_RW_NAME(write, , contrib_bitwidth, M, M, K)(long, int, int, int, int2, OUT_VEC##M(u##contrib_type)); \
     OUT_VEC##M(u##contrib_type) val = *(OUT_VEC##M(u##contrib_type) *)src; \
-    DEFINE_BLOCK2D_RW_NAME(write, , contrib_bitwidth, M, K)(baseoffset, width, height, pitch, coords, val); \
+    DEFINE_BLOCK2D_RW_NAME(write, , contrib_bitwidth, M, M, K)(baseoffset, width, height, pitch, coords, val); \
     return;
 
 // layout can be PackedA_RowMajor, PackedB_ColumnMajor, PackedB_PackedB, etc.
@@ -247,13 +247,19 @@ extern __constant int __JointMatrixLoadStoreOpt;
 #define DEFINE_LOAD_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows, stride_opt, address_space) \
   INLINE void MANGLE_LOAD_NAME_##address_space(layout, sg, elem_bitwidth, shape, WI_rows) (__private char *dst, char *mem, long stride) { \
       int sg_size = get_sub_group_size(); \
-      if (WI_rows == M && __JointMatrixLoadStoreOpt >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8) \
+      /* When M != WI_rows, only scenarios limited to i32 row major are supported */ \
+      bool is32bitElemHalfMRowMajor = elem_bitwidth == 32 && WI_rows == M / 2 && order == _ROW_MAJOR; \
+      if ((WI_rows == M || is32bitElemHalfMRowMajor) && __JointMatrixLoadStoreOpt >= BLOCK2D_IMPL && (M == 2 || M == 4 || M == 8) \
           && (order == _ROW_MAJOR || order == _VNNI_TX || (order == _COL_MAJOR && contrib_bitwidth == 32)) \
           && address_space == AS_GLOBAL \
           ) { \
+          if (is32bitElemHalfMRowMajor) \
+          { \
+              IMPLEMENT_BLOCK2D_LOAD##sg##order(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, stride_opt) \
+          } \
           /* It seems __builtin_IB_subgroup_block_rw always needs k=16 \
              Maybe it is number of columns divided by pack factor which always gives 16 on SG16 HW */ \
-          IMPLEMENT_BLOCK2D_LOAD##sg##order(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, 16, stride_opt) \
+          IMPLEMENT_BLOCK2D_LOAD##sg##order(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, 16, WI_rows, stride_opt) \
       } \
       if (WI_rows == M && __JointMatrixLoadStoreOpt >= VECTOR_CONT_IMPL \
           && stride == stride_opt && (M == 2 || M == 4 || M == 8) && order == _ROW_MAJOR \
@@ -849,7 +855,7 @@ INLINE void __builtin_spriv_OpJointMatrixMadINTEL_32x64x16_bf16_bf16_fp32(__priv
           ) { \
           /* It seems __builtin_IB_subgroup_block_rw always needs k=16 \
              Maybe it is number of columns divided by pack factor which always gives 16 on SG16 HW */ \
-          IMPLEMENT_BLOCK2D_LOAD##sg##order(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, 16, stride_opt) \
+          IMPLEMENT_BLOCK2D_LOAD##sg##order(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, 16, M, stride_opt) \
       } \
       contrib_type *ptr = (contrib_type *)mem; \
       int slid = get_sub_group_local_id(); \
