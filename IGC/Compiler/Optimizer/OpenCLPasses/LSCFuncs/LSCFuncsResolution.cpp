@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2023 Intel Corporation
+Copyright (C) 2019-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -402,6 +402,14 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
     {
         IGC_ASSERT_MESSAGE(0, "Invalid element size settings for subgroup_block_read/write.");
         return nullptr;
+    }
+
+    // Optional number of elements per work item. If not present, the value is
+    // assumed to be equal to dimension M. The actual value is not needed here;
+    // only used to differentiate builtins.
+    if (funcName.consume_front("_wi"))
+    {
+        funcName = funcName.drop_until([](char c) { return c == '_' || c == '\0'; });
     }
 
     uint32_t tileWidth = 0;
