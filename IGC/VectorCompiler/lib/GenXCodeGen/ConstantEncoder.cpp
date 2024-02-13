@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2023 Intel Corporation
+Copyright (C) 2021-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -92,6 +92,23 @@ encodeConstExprImpl(const IGCLLVM::AddrSpaceCastOperator &ASC,
                        "Global and generic pointer sizes should match");
     return {Data, Relocs};
   }
+
+  // The invalid addrspace conversions may appear in @llvm.used or
+  // @llvm.compiler.used arrays until LLVM17: https://reviews.llvm.org/D144518.
+  // Just skip them.
+  bool IsOnlyInLLVMUsed = llvm::all_of(ASC.uses(), [](const Use &U) {
+    const auto *C = dyn_cast<Constant>(U.getUser());
+    if (!C)
+      return false;
+    return llvm::all_of(C->uses(), [](const Use &UU) {
+      if (const auto *GV = dyn_cast<GlobalVariable>(UU.getUser()))
+        return GV->getName() == "llvm.used" ||
+               GV->getName() == "llvm.compiler.used";
+      return false;
+    });
+  });
+  if (IsOnlyInLLVMUsed)
+    return {Data, Relocs};
 
   vc::diagnose(
       ASC.getContext(), "ConstantEncoder",
