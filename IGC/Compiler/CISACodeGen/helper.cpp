@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -2787,8 +2787,7 @@ namespace IGC
 
             if (instType && instType->getAddressSpace() == oldAS)
             {
-                Type* eltType = IGCLLVM::getNonOpaquePtrEltTy(instType);
-                PointerType* ptrType = PointerType::get(eltType, newAS);
+                PointerType* ptrType = IGCLLVM::getWithSamePointeeType(dyn_cast<PointerType>(instType), newAS);
                 inst->mutateType(ptrType);
                 FixAddressSpaceInAllUses(inst, newAS, oldAS);
             }

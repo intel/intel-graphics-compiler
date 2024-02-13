@@ -3076,7 +3076,7 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
             {
                 return isa<GlobalValue>(value) &&
                     value->getType()->isPointerTy() &&
-                    IGCLLVM::getNonOpaquePtrEltTy(value->getType())->isFunctionTy();
+                    cast<GlobalValue>(value)->getValueType()->isFunctionTy();
             };
             // Global Variable/Constant
             auto isGlobalVarType = [this](Value* value)

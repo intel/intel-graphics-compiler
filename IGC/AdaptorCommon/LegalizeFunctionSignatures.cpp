@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -205,7 +205,6 @@ inline void StoreToStruct(IGCLLVM::IRBuilder<>& builder, Value* strVal, Value* s
 {
     IGC_ASSERT(strPtr->getType()->isPointerTy());
     IGC_ASSERT(strVal->getType()->isStructTy());
-    IGC_ASSERT(IGCLLVM::getNonOpaquePtrEltTy(strPtr->getType()) == strVal->getType());
 
     StructType* sTy = cast<StructType>(strVal->getType());
     for (unsigned i = 0; i < sTy->getNumElements(); i++)
