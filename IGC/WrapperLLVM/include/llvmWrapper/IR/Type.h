@@ -22,6 +22,14 @@ namespace IGCLLVM {
         return PtrTy->getNonOpaquePointerElementType();
 #endif
     }
+
+    inline bool isBFloatTy(llvm::Type* type) {
+#if LLVM_VERSION_MAJOR < 14
+        return false;
+#else
+        return type->getTypeID() == llvm::Type::TypeID::BFloatTyID;
+#endif
+    }
 }
 
 #endif // IGCLLVM_IR_TYPE_H

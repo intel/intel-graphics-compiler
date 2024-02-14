@@ -146,10 +146,11 @@ TypeLegalizer::getTypeLegalizeAction(Type* Ty) const {
     // Floating point types always need native support; otherwise, they needs
     // software emulation.
     if (Ty->isFloatingPointTy()) {
-        // Only support 'half', 'float', and 'double'.
+        // Only support 'half', 'float', 'bfloat' and 'double'.
         if (Ty->isHalfTy()) return Legal;
         if (Ty->isFloatTy()) return Legal;
         if (Ty->isDoubleTy()) return Legal;
+        if (IGCLLVM::isBFloatTy(Ty)) return Legal;
 
         return SoftenFloat;
     }
