@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022-2024 Intel Corporation
+Copyright (C) 2022-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -658,7 +658,7 @@ GlobalVariable* PromoteBools::promoteGlobalVariable(GlobalVariable* globalVariab
 
     auto newGlobalVariable = new GlobalVariable(
         *globalVariable->getParent(),
-        getOrCreatePromotedType(globalVariable->getValueType()),
+        getOrCreatePromotedType(IGCLLVM::getNonOpaquePtrEltTy(globalVariable->getType())),
         globalVariable->isConstant(),
         globalVariable->getLinkage(),
         promoteConstant(globalVariable->getInitializer()),

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2018-2024 Intel Corporation
+Copyright (C) 2018-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -166,9 +166,10 @@ namespace IGCLLVM
 #endif
 
 #if LLVM_VERSION_MAJOR >= 11
-         inline llvm::CallInst* CreateCall(llvm::Value* Callee, llvm::ArrayRef<llvm::Value*> Args = llvm::None,
+      inline llvm::CallInst* CreateCall(llvm::Value* Callee, llvm::ArrayRef<llvm::Value*> Args = llvm::None,
                                            const llvm::Twine& Name = "", llvm::MDNode* FPMathTag = nullptr) {
-            return llvm::IRBuilder<T, InserterTyDef()>::CreateCall(llvm::cast<llvm::Function>(Callee)->getFunctionType(), Callee,
+            return llvm::IRBuilder<T, InserterTyDef()>::CreateCall(
+                                                           llvm::cast<llvm::FunctionType>(IGCLLVM::getNonOpaquePtrEltTy(Callee->getType())), Callee,
             Args, Name, FPMathTag);
         }
 
@@ -177,7 +178,9 @@ namespace IGCLLVM
                    llvm::ArrayRef<llvm::OperandBundleDef> OpBundles,
                    const llvm::Twine &Name = "",
                    llvm::MDNode *FPMathTag = nullptr) {
-          return llvm::IRBuilder<T, InserterTyDef()>::CreateCall(llvm::cast<llvm::Function>(Callee)->getFunctionType(),
+          return llvm::IRBuilder<T, InserterTyDef()>::CreateCall(
+              llvm::cast<llvm::FunctionType>(
+                  IGCLLVM::getNonOpaquePtrEltTy(Callee->getType())),
               Callee, Args, OpBundles, Name, FPMathTag);
         }
 
