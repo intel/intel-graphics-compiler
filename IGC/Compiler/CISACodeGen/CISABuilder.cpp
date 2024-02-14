@@ -6118,22 +6118,15 @@ namespace IGC
 
         // We need to update stackFuncMap for the symbol table for the overridden
         // object, because stackFuncMap contains information about functions for
-        // original object. Only the IndirectlyCalled functions should be updated,
-        // because these functions can be used in CreateSymbolTable.
-        // Other normal stack call functions aren't used in CreateSymbolTable.
-        if (hasSymbolTable && stackFuncMap.size() > 0) {
-            Module *pModule = m_program->GetContext()->getModule();
-            for (auto &F : pModule->getFunctionList()) {
-                if (F.hasFnAttribute("referenced-indirectly") &&
-                    (!F.isDeclaration() || !F.use_empty())) {
-                  auto Iter = stackFuncMap.find(&F);
-                  IGC_ASSERT_MESSAGE(Iter != stackFuncMap.end(),
-                                     "vISA function not found");
-
-                  VISAFunction *original = Iter->second;
-                  stackFuncMap[&F] = static_cast<VISAFunction *>(
-                      vAsmTextBuilder->GetVISAKernel(original->getFunctionName()));
-              }
+        // the original object.
+        for (auto &Iter : stackFuncMap)
+        {
+            Function* F = Iter.first;
+            if (F->hasFnAttribute("visaStackCall") && !F->isDeclaration())
+            {
+                VISAFunction* original = Iter.second;
+                stackFuncMap[F] = static_cast<VISAFunction*>(
+                    vAsmTextBuilder->GetVISAKernel(original->getFunctionName()));
             }
         }
 
