@@ -187,8 +187,6 @@ DEF_VISA_OPTION(vISA_noncoherentStateless, ET_BOOL, "-ncstateless", UNUSED,
                 false)
 DEF_VISA_OPTION(vISA_enablePreemption, ET_BOOL, "-enablePreemption", UNUSED,
                 false)
-DEF_VISA_OPTION(vISA_enablePreemptionR0Only, ET_BOOL, "-enablePreemptionR0Only",
-                UNUSED, false)
 DEF_VISA_OPTION(VISA_EnableBarrierInstCounterBits, ET_BOOL,
                 "-enableBarrierInstCounterBits", UNUSED, false)
 DEF_VISA_OPTION(vISA_forceFPMAD, ET_BOOL, "-forcefmad", UNUSED, true)

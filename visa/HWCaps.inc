@@ -32,9 +32,7 @@ bool forceSamplerHeader() const {
 }
 
 bool samplerHeaderPreemptionWA() const {
-  // vISA_enablePreemptionR0Only is used as preeemption for the special platform
-  return (m_options->getOption(vISA_enablePreemption) ||
-          m_options->getOption(vISA_enablePreemptionR0Only)) &&
+  return m_options->getOption(vISA_enablePreemption) &&
          m_options->getOption(vISA_samplerHeaderWA);
 }
 
