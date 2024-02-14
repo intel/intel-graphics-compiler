@@ -1,6 +1,6 @@
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2017-2024 Intel Corporation
+# Copyright (C) 2017-2023 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -43,7 +43,6 @@ set(CODEGEN_SOURCES
   GenXEmulate.cpp
   GenXExtractVectorizer.cpp
   GenXFixInvalidFuncName.cpp
-  GenXFloatControl.cpp
   GenXLegalizeGVLoadUses.cpp
   GenXGASCastAnalyzer.cpp
   GenXGASDynamicResolution.cpp

@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2024 Intel Corporation
+; Copyright (C) 2021 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -13,15 +13,17 @@
 ; RUN: -vc-fg-dump-prefix=%basename_t_ \
 ; RUN: -finalizer-opts='-generateDebugInfo' -o /dev/null
 
+; COM: These checks are brittle and differ between LLVM versions.
+; COM: Currently accounted for with {{(<pre-llvm11-val>|<llvm11-val>)}} regexp syntax.
+; FIXME: Return unconditional checks once LLVM version is unified for IGC.
+
 ; RUN: FileCheck %s --input-file=%basename_t_M_.regalloc --check-prefix=CHECK_NOCOALESC
-; CHECK_NOCOALESC:      [t7] (4 bytes, length 25) arg1:[0,25)
-; CHECK_NOCOALESC-NEXT: [t6] (4 bytes, length 19) arg:[0,19)
-; CHECK_NOCOALESC-NEXT: [v34] (64 bytes, length 6) :[17,23)
-; CHECK_NOCOALESC-NEXT: [v32] (4 bytes, length 4) :[9,13)
-; CHECK_NOCOALESC-NEXT: [v33] (16 bytes, length 3) :[12,15)
-; CHECK_NOCOALESC-NEXT: [v35] (64 bytes, length 2) :[19,21)
-; CHECK_NOCOALESC-NEXT: [v36] (64 bytes, length 2) :[21,23)
-; CHECK_NOCOALESC-NEXT: [v37] (64 bytes, length 2) :[23,25)
+; CHECK_NOCOALESC: [t7] (4 bytes, length 13) arg1:[0,13)
+; CHECK_NOCOALESC-NEXT: [t6] (4 bytes, length 7) arg:[0,7)
+; CHECK_NOCOALESC-NEXT: [v32] (64 bytes, length {{(4|6)}}) :[5,{{(9|11)}})
+; CHECK_NOCOALESC-NEXT: [v33] (64 bytes, length {{(4|2)}}) :[7,{{(11|9)}})
+; CHECK_NOCOALESC-NEXT: [v34] (64 bytes, length 2) :[9,11)
+; CHECK_NOCOALESC-NEXt: [v35] (64 bytes, length 2) :[11,13)
 ; CHECK_NOCOALESC: Register pressure (bytes):
 ; CHECK_NOCOALESC: Flag pressure (bytes):
 
@@ -32,13 +34,11 @@
 ; RUN: -finalizer-opts='-generateDebugInfo' -o /dev/null
 
 ; RUN: FileCheck %s --input-file=%basename_t_M_.regalloc --check-prefix=CHECK_COALESC
-; CHECK_COALESC:      [t7] (4 bytes, length 25) arg1:[0,25)
-; CHECK_COALESC-NEXT: [t6] (4 bytes, length 19) arg:[0,19)
-; CHECK_COALESC-NEXT: [v34] (64 bytes, length 6) :[17,23)
-; CHECK_COALESC-NEXT: [v32] (4 bytes, length 4) :[9,13)
-; CHECK_COALESC-NEXT: [v35] (64 bytes, length 4) :[19,23)
-; CHECK_COALESC-NEXT: [v33] (16 bytes, length 3) :[12,15)
-; CHECK_COALESC-NEXT: [v36] (64 bytes, length 2) :[23,25)
+; CHECK_COALESC: [t7] (4 bytes, length 13) arg1:[0,13)
+; CHECK_COALESC-NEXT: [t6] (4 bytes, length 7) arg:[0,7)
+; CHECK_COALESC-NEXT: [v{{(33|32)}}] (64 bytes, length 6) :[5,11)
+; CHECK_COALESC-NEXT: [v{{(32|33)}}] (64 bytes, length 4) :[7,11)
+; CHECK_COALESC-NEXt: [v34] (64 bytes, length 2) :[11,13)
 ; CHECK_COALESC: Register pressure (bytes):
 ; CHECK_COALESC: Flag pressure (bytes):
 
