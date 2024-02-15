@@ -581,12 +581,20 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
     // both memory and real temporary files
     if (isMemFile)
         InputArgs.InputText = src->GetMemory<char>();
-    auto FEOutput = FE.translate(InputArgs);
-    if (!FEOutput)
-    {
-        ErrFn("Null output in CMFE");
-        return outputInterface;
+
+    // CM frontend option parser is not thread-safe, so guard the frontend call
+    // with a mutex.
+    auto FEOutput = [&]() {
+      static std::mutex M;
+      const std::lock_guard<std::mutex> Lock(M);
+      return FE.translate(InputArgs);
+    }();
+
+    if (!FEOutput) {
+      ErrFn("Null output in CMFE");
+      return outputInterface;
     }
+
     const auto& TargetFeatures = Drv->getTargetFeaturesStr();
     const auto& [VCLLVMOpts, VCFinalizerOpts] =
         IGC::AdaptorCM::Frontend::convertBackendArgsToVcAndFinalizerOpts(
