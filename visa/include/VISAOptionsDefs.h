@@ -312,6 +312,8 @@ DEF_VISA_OPTION(vISA_ReservedGRFNum, ET_INT32, "-reservedGRFNum",
                 "USAGE: -reservedGRFNum <regNum>\n", 0)
 DEF_VISA_OPTION(vISA_TotalGRFNum, ET_INT32, "-TotalGRFNum",
                 "USAGE: -TotalGRFNum <regNum>\n", 0)
+DEF_VISA_OPTION(vISA_MaxRAIterations, ET_INT32, "-maxRAIterations",
+                "USAGE: -maxRAIterations <iterationNum>\n", 10)
 DEF_VISA_OPTION(vISA_MinGRFNum, ET_INT32, "-minGRFNum",
                 "Set the lower bound GRF for auto GRF selection."
                 "USAGE: -minGRFNum <regNum>. 0 means no minimum GRF number.\n",

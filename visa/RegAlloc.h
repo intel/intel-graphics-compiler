@@ -23,7 +23,7 @@ SPDX-License-Identifier: MIT
 
 namespace vISA {
 
-#if defined(_DEBUG) || !defined(DLL_MODE)
+#if defined(_DEBUG) || defined(_INTERNAL)
 // Flag to control whether RA trace is on. This should be set to
 // builder.getOption(vISA_RATrace) at RA entry.
 extern bool RATraceFlag;

@@ -9856,7 +9856,7 @@ void VarSplit::localSplit(IR_Builder &builder, G4_BB *bb) {
 
 void GlobalRA::addrRegAlloc() {
   uint32_t addrSpillId = 0;
-  unsigned maxRAIterations = 10;
+  unsigned maxRAIterations = builder.getuint32Option(vISA_MaxRAIterations);
   unsigned iterationNo = 0;
 
   while (iterationNo < maxRAIterations) {
@@ -9919,7 +9919,7 @@ void GlobalRA::addrRegAlloc() {
 
 void GlobalRA::flagRegAlloc() {
   uint32_t flagSpillId = 0;
-  unsigned maxRAIterations = 10;
+  unsigned maxRAIterations = builder.getuint32Option(vISA_MaxRAIterations);
   uint32_t iterationNo = 0;
   bool spillingFlag = false;
 
@@ -10877,7 +10877,7 @@ int GlobalRA::coloringRegAlloc() {
   }
 
   startTimer(TimerID::GRF_GLOBAL_RA);
-  unsigned maxRAIterations = 10;
+  unsigned maxRAIterations = builder.getuint32Option(vISA_MaxRAIterations);
   unsigned iterationNo = 0;
 
   int globalScratchOffset =

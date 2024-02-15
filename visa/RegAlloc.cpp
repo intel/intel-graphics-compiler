@@ -26,7 +26,7 @@ using namespace vISA;
 
 #define GRAPH_COLOR
 
-#if defined (_DEBUG) || !defined(DLL_MODE)
+#if defined (_DEBUG) || defined(_INTERNAL)
 bool vISA::RATraceFlag = false;
 #endif
 
@@ -2925,7 +2925,7 @@ int regAlloc(IR_Builder &builder, PhyRegPool &regPool, G4_Kernel &kernel) {
   kernel.fg.callerSaveAreaOffset = kernel.fg.calleeSaveAreaOffset =
       kernel.fg.frameSizeInOWord = 0;
 
-#if defined(_DEBUG) || !defined(DLL_MODE)
+#if defined(_DEBUG) || defined(_INTERNAL)
   vISA::RATraceFlag = builder.getOption(vISA_RATrace);
 #endif
 
