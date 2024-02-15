@@ -171,7 +171,8 @@ namespace IGC
         // to access thread arguments. we need to lower such messages
         // using special addressing mode.
         bool m_isThreadArg = false;
-        ResourceDescriptor() : m_resource(nullptr), m_surfaceType(ESURFACE_NORMAL),
+        bool m_isConstant;
+        ResourceDescriptor() : m_resource(nullptr), m_surfaceType(ESURFACE_NORMAL), m_isConstant(false),
             m_isThreadArg(false) {}
     };
 

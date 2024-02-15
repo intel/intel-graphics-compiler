@@ -281,6 +281,7 @@ void DynamicTextureFolding::visitCallInst(CallInst& I)
         if (!IGC_IS_FLAG_ENABLED(DisableDynamicTextureFolding) && modMD->inlineDynTextures.size() != 0)
         {
             if (ID == GenISAIntrinsic::GenISA_ldptr
+                || ID == GenISAIntrinsic::GenISA_ldlptr
                 )
             {
                 FoldSingleTextureValue(I);

@@ -42,6 +42,8 @@ private:
     bool FixCubeHFPrecisionBug(SampleIntrinsic* sampleInst);
     template<typename SampleOrGather4Intrinsic>
     bool DoAIParameterCombiningWithLODBias(SampleOrGather4Intrinsic* inst);
+    bool ConvertToSampleMlod(SampleIntrinsic* inst);
+    bool ConvertLdToLdl(SamplerLoadIntrinsic* inst);
 };
 
 char SamplerPerfOptPass::ID = 0;
@@ -72,9 +74,12 @@ template<typename SampleOrGather4Intrinsic>
 bool SamplerPerfOptPass::isSampleLorBAndIsNotHalfType(SampleOrGather4Intrinsic* inst)
 {
     if (
+        inst->getIntrinsicID() == GenISAIntrinsic::GenISA_gather4Bptr ||
+        inst->getIntrinsicID() == GenISAIntrinsic::GenISA_gather4Lptr ||
         inst->getIntrinsicID() == GenISAIntrinsic::GenISA_sampleLptr ||
         inst->getIntrinsicID() == GenISAIntrinsic::GenISA_sampleBptr ||
         inst->getIntrinsicID() == GenISAIntrinsic::GenISA_sampleBCptr ||
+        inst->getIntrinsicID() == GenISAIntrinsic::GenISA_sampleBCMlodptr ||
         inst->getIntrinsicID() == GenISAIntrinsic::GenISA_sampleLCptr)
     {
         for (uint srcOp = 0; srcOp < inst->getNumOperands(); srcOp++)
@@ -206,6 +211,8 @@ bool SamplerPerfOptPass::DoAIParameterCombiningWithLODBias(SampleOrGather4Intrin
         // sample_l      lod     u       v    r    ai    --
         // sample_b_c    ref     bias    u    v    r     ai
         // sample_l_c    ref     lod     u    v    r     ai
+        // gather4_l     lod     u       v    r    ai    --
+        // gather4_b     bias    u       v    r    ai    --
 
         uint aiOffset = inst->hasRef() ? 5 : 4;
         uint lodOrBiasOffset = inst->hasRef() ? 1 : 0;
@@ -229,6 +236,99 @@ bool SamplerPerfOptPass::DoAIParameterCombiningWithLODBias(SampleOrGather4Intrin
     return false;
 }
 
+// Converts sample/sample_c to sample_mlod/sample_c_mlod if the mlod parameter
+// is present.
+bool SamplerPerfOptPass::ConvertToSampleMlod(SampleIntrinsic* inst)
+{
+    IGC_ASSERT(inst->getIntrinsicID() == GenISAIntrinsic::GenISA_sampleptr ||
+        inst->getIntrinsicID() == GenISAIntrinsic::GenISA_sampleCptr);
+
+    // We cannot convert instructions with non-const offsets because there is no po versions of
+    // mlod instrinsics.
+    bool hasNonConstOffset = false;
+    for (uint i = 0; i < 3; ++i)
+    {
+        hasNonConstOffset |= !isa<Constant>(inst->getImmediateOffsetsValue(i));
+    }
+
+    if (hasNonConstOffset)
+    {
+        return false;
+    }
+
+    Value* mlod = inst->getOperand(inst->hasRef() ? 5 : 4);
+    if (isa<Constant>(mlod) &&
+        cast<Constant>(mlod)->isNullValue())
+    {
+        return false;
+    }
+
+    GenISAIntrinsic::ID id = inst->hasRef() ?
+        GenISAIntrinsic::GenISA_sampleCMlodptr : GenISAIntrinsic::GenISA_sampleMlodptr;
+    llvm::Type* types[] = {
+        inst->getType(),
+        inst->getOperand(0)->getType(),
+        inst->getPairedTextureValue()->getType(),
+        inst->getTextureValue()->getType(),
+        inst->getSamplerValue()->getType()
+    };
+    Function* newFunc = GenISAIntrinsic::getDeclaration(
+        inst->getModule(),
+        id,
+        types);
+    IGC_ASSERT(newFunc->getType() == inst->getCalledFunction()->getType());
+    inst->setCalledFunction(newFunc);
+    // sample        U    V     R   Ai  MLOD
+    // sample_mlod   MLOD U     V   R   AI
+    // sample_c      Ref  U     V   R   Ai   MLOD
+    // sample_c_mlod MLOD Ref   U   V   R    AI
+    // Move mlod before coordinates or the reference value:
+    uint operandIndex = 0;
+    Value* ref = inst->hasRef() ? inst->getOperand(operandIndex++) : nullptr;
+    Value* u = inst->getOperand(operandIndex++);
+    Value* v = inst->getOperand(operandIndex++);
+    Value* r = inst->getOperand(operandIndex++);
+    Value* ai = inst->getOperand(operandIndex++);
+    operandIndex = 0;
+    inst->setOperand(operandIndex++, mlod);
+    if (inst->hasRef())
+    {
+        inst->setOperand(operandIndex++, ref);
+    }
+    inst->setOperand(operandIndex++, u);
+    inst->setOperand(operandIndex++, v);
+    inst->setOperand(operandIndex++, r);
+    inst->setOperand(operandIndex++, ai);
+    return true;
+}
+
+// Converts LD to LD_L instruction (to match LSC parameter order)
+bool SamplerPerfOptPass::ConvertLdToLdl(SamplerLoadIntrinsic* inst)
+{
+    IGC_ASSERT(inst->getIntrinsicID() == GenISAIntrinsic::GenISA_ldptr);
+
+    GenISAIntrinsic::ID id = GenISAIntrinsic::GenISA_ldlptr;
+    llvm::Type* types[] = {
+        inst->getType(),
+        inst->getPairedTextureValue()->getType(),
+        inst->getTextureValue()->getType(),
+        inst->getOperand(0)->getType()
+    };
+    Function* newFunc = GenISAIntrinsic::getDeclaration(
+        inst->getModule(),
+        id,
+        types);
+    IGC_ASSERT(newFunc->getType() == inst->getCalledFunction()->getType());
+    inst->setCalledFunction(newFunc);
+    // LD     U   V   LOD R
+    // LD_L   U   V   R   LOD
+    // move R before LOD
+    Value* lod = inst->getOperand(2);
+    Value* r   = inst->getOperand(3);
+    inst->setOperand(2, r);
+    inst->setOperand(3, lod);
+    return true;
+}
 
 bool SamplerPerfOptPass::runOnFunction(Function& F)
 {
@@ -255,7 +355,57 @@ bool SamplerPerfOptPass::runOnFunction(Function& F)
                             changed = DoAIParameterCombiningWithLODBias(sampleInst) ? true : changed;
                         }
                     }
+                    // sample_b           bias    u       v    r    ai    mlod
+                    // sample_b_c_mlod    ref     bias    u    v    r     ai    mlod
+                    // For sample_b* the mlod parameter must be shifted left as
+                    // 32bit versions of messages no longer have the AI param:
+                    if (!sampleInst->getOperand(0)->getType()->isHalfTy() &&
+                        ctx->platform.supportAIParameterCombiningWithLODBiasEnabled() &&
+                        (sampleInst->getIntrinsicID() == GenISAIntrinsic::GenISA_sampleBptr ||
+                         sampleInst->getIntrinsicID() == GenISAIntrinsic::GenISA_sampleBCMlodptr))
+                    {
+                        uint mlodOffset = sampleInst->hasRef() ? 6 : 5;
+                        uint aiOffset = sampleInst->hasRef() ? 5 : 4;
+                        Value* mlod = sampleInst->getOperand(mlodOffset);
+                        sampleInst->setOperand(aiOffset, mlod);
+                        if (!(ctx->platform.getWATable().Wa_14014595444 &&
+                              sampleInst->getIntrinsicID() == GenISAIntrinsic::GenISA_sampleBptr &&
+                              IGC_IS_FLAG_ENABLED(EnableSampleBMLODWA)))
+                        {
+                            Value* zero = ConstantFP::getNullValue(mlod->getType());
+                            sampleInst->setOperand(mlodOffset, zero);
+                        }
+                    }
+                    // sample/sample_c to sample_mlod/sample_c_mlod
+                    if (ctx->platform.hasSampleMlodMessage() &&
+                        IGC_IS_FLAG_ENABLED(EnablePromotionToSampleMlod) &&
+                        (sampleInst->getIntrinsicID() == GenISAIntrinsic::GenISA_sampleptr ||
+                         sampleInst->getIntrinsicID() == GenISAIntrinsic::GenISA_sampleCptr))
+                    {
+                        changed |= ConvertToSampleMlod(sampleInst);
+                    }
                     // Insert here the next sampler specific performance optimization.
+                }
+                if (SamplerGatherIntrinsic* gatherInst = dyn_cast<SamplerGatherIntrinsic>(II))
+                {
+                    if (ctx->platform.isCoreChildOf(IGFX_XE2_LPG_CORE) && isSamplingFromCubeSurface(gatherInst))
+                    {
+                        IGC_ASSERT_MESSAGE(!ctx->platform.WaCubeHFPrecisionBug(),
+                            "This WA should be absent on this platform.");
+                        if (ctx->platform.supportAIParameterCombiningWithLODBiasEnabled())
+                        {
+                            changed = DoAIParameterCombiningWithLODBias(gatherInst) ? true : changed;
+                        }
+                    }
+                }
+                if (SamplerLoadIntrinsic* loadInst = dyn_cast<SamplerLoadIntrinsic>(II))
+                {
+                    if (ctx->platform.hasLSCSamplerRouting() &&
+                        IGC_IS_FLAG_ENABLED(EnableLscSamplerRouting) &&
+                        loadInst->getIntrinsicID() == GenISAIntrinsic::GenISA_ldptr)
+                    {
+                        changed = ConvertLdToLdl(loadInst);
+                    }
                 }
             }
         }

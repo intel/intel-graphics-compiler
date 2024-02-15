@@ -238,6 +238,7 @@ bool RematChecker::materializable(const Instruction& I) const
         case GenISAIntrinsic::GenISA_ldrawvector_indexed:
             return isReadOnly(cast<LdRawIntrinsic>(GII)->getResourceValue());
         case GenISAIntrinsic::GenISA_ldptr:
+        case GenISAIntrinsic::GenISA_ldlptr:
             return true;
         default:
             return false;

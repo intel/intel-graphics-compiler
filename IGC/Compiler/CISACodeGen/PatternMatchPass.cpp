@@ -1284,6 +1284,7 @@ namespace IGC
             case GenISAIntrinsic::GenISA_typedwrite:
             case GenISAIntrinsic::GenISA_floatatomictyped:
             case GenISAIntrinsic::GenISA_fcmpxchgatomictyped:
+            case GenISAIntrinsic::GenISA_ldlptr:
             case GenISAIntrinsic::GenISA_ldstructured:
             case GenISAIntrinsic::GenISA_storestructured1:
             case GenISAIntrinsic::GenISA_storestructured2:
@@ -1313,6 +1314,21 @@ namespace IGC
             case GenISAIntrinsic::GenISA_sampleBptr:
             case GenISAIntrinsic::GenISA_sampleBCptr:
             case GenISAIntrinsic::GenISA_sampleCptr:
+            case GenISAIntrinsic::GenISA_gather4Bptr:
+            case GenISAIntrinsic::GenISA_gather4BPOptr:
+            case GenISAIntrinsic::GenISA_gather4Iptr:
+            case GenISAIntrinsic::GenISA_gather4IPOptr:
+            case GenISAIntrinsic::GenISA_gather4ICptr:
+            case GenISAIntrinsic::GenISA_gather4ICPOptr:
+            case GenISAIntrinsic::GenISA_sampleMlodptr:
+            case GenISAIntrinsic::GenISA_sampleCMlodptr:
+            case GenISAIntrinsic::GenISA_sampleBCMlodptr:
+            case GenISAIntrinsic::GenISA_samplePOptr:
+            case GenISAIntrinsic::GenISA_samplePOBptr:
+            case GenISAIntrinsic::GenISA_samplePOCptr:
+            case GenISAIntrinsic::GenISA_gather4POPackedBptr:
+            case GenISAIntrinsic::GenISA_gather4POPackedIptr:
+            case GenISAIntrinsic::GenISA_gather4POPackedICptr:
             case GenISAIntrinsic::GenISA_lodptr:
             case GenISAIntrinsic::GenISA_sampleKillPix:
                 match = MatchSampleDerivative(*GII);
@@ -5319,6 +5335,45 @@ namespace IGC
             HandleSubspanUse(I.getOperand(2), true);
             HandleSubspanUse(I.getOperand(3), true);
             HandleSubspanUse(I.getOperand(4), true);
+            break;
+        case GenISAIntrinsic::GenISA_gather4Iptr:
+        case GenISAIntrinsic::GenISA_gather4IPOptr:
+        case GenISAIntrinsic::GenISA_gather4POPackedIptr:
+            HandleSubspanUse(I.getOperand(0), true);
+            HandleSubspanUse(I.getOperand(1), true);
+            HandleSubspanUse(I.getOperand(2), true);
+            break;
+        case GenISAIntrinsic::GenISA_samplePOptr:
+            HandleSubspanUse(I.getOperand(0), true);
+            HandleSubspanUse(I.getOperand(1), true);
+            HandleSubspanUse(I.getOperand(2), true);
+            break;
+        case GenISAIntrinsic::GenISA_gather4Bptr:
+        case GenISAIntrinsic::GenISA_gather4BPOptr:
+        case GenISAIntrinsic::GenISA_gather4ICptr:
+        case GenISAIntrinsic::GenISA_gather4ICPOptr:
+        case GenISAIntrinsic::GenISA_gather4POPackedBptr:
+        case GenISAIntrinsic::GenISA_gather4POPackedICptr:
+            HandleSubspanUse(I.getOperand(1), true);
+            HandleSubspanUse(I.getOperand(2), true);
+            HandleSubspanUse(I.getOperand(3), true);
+            break;
+        case GenISAIntrinsic::GenISA_sampleMlodptr:
+            HandleSubspanUse(I.getOperand(1), true);
+            HandleSubspanUse(I.getOperand(2), true);
+            HandleSubspanUse(I.getOperand(3), true);
+            break;
+        case GenISAIntrinsic::GenISA_sampleCMlodptr:
+        case GenISAIntrinsic::GenISA_sampleBCMlodptr:
+            HandleSubspanUse(I.getOperand(2), true);
+            HandleSubspanUse(I.getOperand(3), true);
+            HandleSubspanUse(I.getOperand(4), true);
+            break;
+        case GenISAIntrinsic::GenISA_samplePOBptr:
+        case GenISAIntrinsic::GenISA_samplePOCptr:
+            HandleSubspanUse(I.getOperand(1), true);
+            HandleSubspanUse(I.getOperand(2), true);
+            HandleSubspanUse(I.getOperand(3), true);
             break;
         default:
             break;

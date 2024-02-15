@@ -441,6 +441,7 @@ namespace IGC
         SIMD8_OFFSET = 0,
         SIMD16_OFFSET = SIMD_INFO_RESERVED,
         SIMD32_OFFSET = SIMD_INFO_RESERVED*2,
+        DUAL_SIMD8_OFFSET = SIMD_INFO_RESERVED * 3,
     };
 
     struct SKernelProgram
@@ -1136,6 +1137,10 @@ namespace IGC
                 default:
                     break;
                 }
+                break;
+
+            case ShaderDispatchMode::DUAL_SIMD8:
+                offset = DUAL_SIMD8_OFFSET;
                 break;
 
             default:

@@ -976,6 +976,7 @@ namespace IGC
             break;
         }
         case llvm::GenISAIntrinsic::GenISA_ldptr:
+        case llvm::GenISAIntrinsic::GenISA_ldlptr:
         case llvm::GenISAIntrinsic::GenISA_ldmsptr:
         {
             llvm::Value* pTextureValue = cast<SamplerLoadIntrinsic>(pIntr)->getTextureValue();
@@ -1005,6 +1006,33 @@ namespace IGC
         case llvm::GenISAIntrinsic::GenISA_gather4POptr:
         case llvm::GenISAIntrinsic::GenISA_gather4Cptr:
         case llvm::GenISAIntrinsic::GenISA_gather4POCptr:
+        case llvm::GenISAIntrinsic::GenISA_sampleMlodptr:
+        case llvm::GenISAIntrinsic::GenISA_sampleCMlodptr:
+        case llvm::GenISAIntrinsic::GenISA_sampleBCMlodptr:
+        case llvm::GenISAIntrinsic::GenISA_sampleDCMlodptr:
+        case llvm::GenISAIntrinsic::GenISA_samplePOptr:
+        case llvm::GenISAIntrinsic::GenISA_samplePOBptr:
+        case llvm::GenISAIntrinsic::GenISA_samplePOLptr:
+        case llvm::GenISAIntrinsic::GenISA_samplePOCptr:
+        case llvm::GenISAIntrinsic::GenISA_samplePODptr:
+        case llvm::GenISAIntrinsic::GenISA_samplePOLCptr:
+        case llvm::GenISAIntrinsic::GenISA_gather4Iptr:
+        case llvm::GenISAIntrinsic::GenISA_gather4IPOptr:
+        case llvm::GenISAIntrinsic::GenISA_gather4Bptr:
+        case llvm::GenISAIntrinsic::GenISA_gather4BPOptr:
+        case llvm::GenISAIntrinsic::GenISA_gather4Lptr:
+        case llvm::GenISAIntrinsic::GenISA_gather4LPOptr:
+        case llvm::GenISAIntrinsic::GenISA_gather4ICptr:
+        case llvm::GenISAIntrinsic::GenISA_gather4ICPOptr:
+        case llvm::GenISAIntrinsic::GenISA_gather4LCptr:
+        case llvm::GenISAIntrinsic::GenISA_gather4LCPOptr:
+        case llvm::GenISAIntrinsic::GenISA_gather4POPackedptr:
+        case llvm::GenISAIntrinsic::GenISA_gather4POPackedLptr:
+        case llvm::GenISAIntrinsic::GenISA_gather4POPackedBptr:
+        case llvm::GenISAIntrinsic::GenISA_gather4POPackedIptr:
+        case llvm::GenISAIntrinsic::GenISA_gather4POPackedCptr:
+        case llvm::GenISAIntrinsic::GenISA_gather4POPackedICptr:
+        case llvm::GenISAIntrinsic::GenISA_gather4POPackedLCptr:
         case llvm::GenISAIntrinsic::GenISA_lodptr:
         {
             // Figure out the intrinsic operands for texture & sampler
@@ -1365,8 +1393,19 @@ namespace IGC
             case GenISAIntrinsic::GenISA_sampleLptr:
             case GenISAIntrinsic::GenISA_sampleLCptr:
             case GenISAIntrinsic::GenISA_sampleBCptr:
+            case GenISAIntrinsic::GenISA_sampleMlodptr:
+            case GenISAIntrinsic::GenISA_sampleCMlodptr:
+            case GenISAIntrinsic::GenISA_sampleBCMlodptr:
+            case GenISAIntrinsic::GenISA_sampleDCMlodptr:
+            case GenISAIntrinsic::GenISA_samplePOptr:
+            case GenISAIntrinsic::GenISA_samplePOBptr:
+            case GenISAIntrinsic::GenISA_samplePOLptr:
+            case GenISAIntrinsic::GenISA_samplePOCptr:
+            case GenISAIntrinsic::GenISA_samplePODptr:
+            case GenISAIntrinsic::GenISA_samplePOLCptr:
             case GenISAIntrinsic::GenISA_lodptr:
             case GenISAIntrinsic::GenISA_ldptr:
+            case GenISAIntrinsic::GenISA_ldlptr:
             case GenISAIntrinsic::GenISA_ldmsptr:
             case GenISAIntrinsic::GenISA_ldmsptr16bit:
             case GenISAIntrinsic::GenISA_ldmcsptr:
@@ -1376,6 +1415,23 @@ namespace IGC
             case GenISAIntrinsic::GenISA_gather4Cptr:
             case GenISAIntrinsic::GenISA_gather4POptr:
             case GenISAIntrinsic::GenISA_gather4POCptr:
+            case GenISAIntrinsic::GenISA_gather4Iptr:
+            case GenISAIntrinsic::GenISA_gather4IPOptr:
+            case GenISAIntrinsic::GenISA_gather4Bptr:
+            case GenISAIntrinsic::GenISA_gather4BPOptr:
+            case GenISAIntrinsic::GenISA_gather4Lptr:
+            case GenISAIntrinsic::GenISA_gather4LPOptr:
+            case GenISAIntrinsic::GenISA_gather4ICptr:
+            case GenISAIntrinsic::GenISA_gather4ICPOptr:
+            case GenISAIntrinsic::GenISA_gather4LCptr:
+            case GenISAIntrinsic::GenISA_gather4LCPOptr:
+            case GenISAIntrinsic::GenISA_gather4POPackedptr:
+            case GenISAIntrinsic::GenISA_gather4POPackedLptr:
+            case GenISAIntrinsic::GenISA_gather4POPackedBptr:
+            case GenISAIntrinsic::GenISA_gather4POPackedIptr:
+            case GenISAIntrinsic::GenISA_gather4POPackedCptr:
+            case GenISAIntrinsic::GenISA_gather4POPackedICptr:
+            case GenISAIntrinsic::GenISA_gather4POPackedLCptr:
                 return true;
             default:
                 return false;
@@ -1799,6 +1855,11 @@ namespace IGC
     {
         llvm::SampleIntrinsic* sampleInst = dyn_cast<llvm::SampleIntrinsic>(inst);
         if (sampleInst && sampleInst->IsDerivative())
+        {
+            return true;
+        }
+        llvm::SamplerGatherIntrinsic* gatherInst = dyn_cast<llvm::SamplerGatherIntrinsic>(inst);
+        if (gatherInst && gatherInst->IsDerivative())
         {
             return true;
         }
@@ -2740,6 +2801,9 @@ namespace IGC
     // The function is used to combine:
     // - LOD and AI params in sample_l and sample_l_c
     // - BIAS and AI params in sample_b and sample_b_c
+    //  - LOD and AI in gather4_l
+    //  - BIAS and AI in gather4_b
+    //  - MLOD and R params in sample_d_c_mlod
     Value* CombineSampleOrGather4Params(
         IRBuilder<>& builder,
         Value* param1, // first param to be copied into the second param
