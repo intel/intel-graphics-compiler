@@ -5335,7 +5335,7 @@ namespace IGC
         }
     }
 
-    void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall, bool hasInlineAsmCall, bool hasAdditionalVisaAsmToLink, int numThreadsPerEU, VISAKernel* prevKernel)
+    void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall, bool hasInlineAsmCall, bool hasAdditionalVisaAsmToLink, int numThreadsPerEU, uint lowerBoundGRF, VISAKernel* prevKernel)
     {
         m_aliasesMap.clear();
         m_encoderState.m_SubSpanDestination = false;
@@ -5397,6 +5397,11 @@ namespace IGC
         {
             // "Auto" mode per kernel function - use compiler heuristics to determin number of threads per EU
             SaveOption(vISA_AutoGRFSelection, true);
+        }
+
+        if (lowerBoundGRF > 0)
+        {
+            SaveOption(vISA_MinGRFNum, lowerBoundGRF);
         }
 
         // Pass all build options to builder

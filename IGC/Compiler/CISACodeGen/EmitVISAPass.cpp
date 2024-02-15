@@ -813,6 +813,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                 hasAdditionalVisaAsmToLink = true;
             }
         }
+
+        uint lowerBoundGRF = 0;
         int numThreadsPerEU = -1;
         if (F.hasFnAttribute("num-thread-per-eu"))
         {
@@ -820,7 +822,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                 F.getFnAttribute("num-thread-per-eu").getValueAsString().str());
         }
         // call builder after pre-analysis pass where scratchspace offset to VISA is calculated
-        m_encoder->InitEncoder(m_canAbortOnSpill, m_currShader->HasStackCalls(), hasInlineAsmCall, hasAdditionalVisaAsmToLink, numThreadsPerEU, prevKernel);
+        m_encoder->InitEncoder(m_canAbortOnSpill, m_currShader->HasStackCalls(), hasInlineAsmCall, hasAdditionalVisaAsmToLink,
+            numThreadsPerEU, lowerBoundGRF, prevKernel);
 
         if (!m_encoder->IsCodePatchCandidate())
             createVMaskPred(m_vMaskPredForSubplane);
