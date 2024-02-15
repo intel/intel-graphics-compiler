@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -416,6 +416,7 @@ bool genx::loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
         }
       }
       break;
+    case GenXIntrinsic::genx_wrpredregion:
     case GenXIntrinsic::genx_wrpredpredregion:
       // wrpredpred: disallow constant "old vector" input unless undef
       U = &CI->getOperandUse(0);
