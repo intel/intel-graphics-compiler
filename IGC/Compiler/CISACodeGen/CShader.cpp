@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -3076,7 +3076,7 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
             {
                 return isa<GlobalValue>(value) &&
                     value->getType()->isPointerTy() &&
-                    IGCLLVM::getNonOpaquePtrEltTy(value->getType())->isFunctionTy();
+                    cast<GlobalValue>(value)->getValueType()->isFunctionTy();
             };
             // Global Variable/Constant
             auto isGlobalVarType = [this](Value* value)

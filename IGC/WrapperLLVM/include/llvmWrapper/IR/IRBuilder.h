@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2018-2021 Intel Corporation
+Copyright (C) 2018-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -166,11 +166,12 @@ namespace IGCLLVM
 #endif
 
 #if LLVM_VERSION_MAJOR >= 11
-      inline llvm::CallInst* CreateCall(llvm::Value* Callee, llvm::ArrayRef<llvm::Value*> Args = llvm::None,
-                                           const llvm::Twine& Name = "", llvm::MDNode* FPMathTag = nullptr) {
+
+        inline llvm::CallInst* CreateCall(llvm::Value* Callee, llvm::ArrayRef<llvm::Value*> Args = llvm::None,
+                                          const llvm::Twine& Name = "", llvm::MDNode* FPMathTag = nullptr) {
             return llvm::IRBuilder<T, InserterTyDef()>::CreateCall(
-                                                           llvm::cast<llvm::FunctionType>(IGCLLVM::getNonOpaquePtrEltTy(Callee->getType())), Callee,
-            Args, Name, FPMathTag);
+                llvm::cast<llvm::Function>(Callee)->getFunctionType(),
+                Callee, Args, Name, FPMathTag);
         }
 
         inline llvm::CallInst *
@@ -178,10 +179,9 @@ namespace IGCLLVM
                    llvm::ArrayRef<llvm::OperandBundleDef> OpBundles,
                    const llvm::Twine &Name = "",
                    llvm::MDNode *FPMathTag = nullptr) {
-          return llvm::IRBuilder<T, InserterTyDef()>::CreateCall(
-              llvm::cast<llvm::FunctionType>(
-                  IGCLLVM::getNonOpaquePtrEltTy(Callee->getType())),
-              Callee, Args, OpBundles, Name, FPMathTag);
+            return llvm::IRBuilder<T, InserterTyDef()>::CreateCall(
+                llvm::cast<llvm::Function>(Callee)->getFunctionType(),
+                Callee, Args, OpBundles, Name, FPMathTag);
         }
 
         inline llvm::CallInst *
@@ -189,8 +189,7 @@ namespace IGCLLVM
                    llvm::ArrayRef<llvm::Value *> Args = llvm::None,
                    const llvm::Twine &Name = "",
                    llvm::MDNode *FPMathTag = nullptr) {
-          return llvm::IRBuilder<T, InserterTyDef()>::CreateCall(FTy, Callee, Args,
-                                                          Name, FPMathTag);
+            return llvm::IRBuilder<T, InserterTyDef()>::CreateCall(FTy, Callee, Args, Name, FPMathTag);
         }
 #endif
 

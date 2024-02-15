@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2023 Intel Corporation
+Copyright (C) 2023-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -125,7 +125,7 @@ void LowerInvokeSIMD::visitCallInst(CallInst &CI) {
         FTy,
         cast<PointerType>(CI.getArgOperand(0)->getType())->getAddressSpace());
     auto CastedPointer = m_Builder->CreateBitCast(CI.getArgOperand(0), PTy);
-    NewCall = m_Builder->CreateCall(CastedPointer, ArgVals);
+    NewCall = m_Builder->CreateCall(FTy, CastedPointer, ArgVals);
   }
 
   NewCall->setCallingConv(CI.getCallingConv());

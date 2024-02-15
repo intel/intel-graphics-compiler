@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1931,7 +1931,7 @@ bool SPIRVToLLVM::transOCLBuiltinFromVariable(GlobalVariable *GV,
   decorateSPIRVBuiltin(FuncName);
   Function *Func = M->getFunction(FuncName);
   if (!Func) {
-    Type *ReturnTy = IGCLLVM::getNonOpaquePtrEltTy(GV->getType());
+    Type *ReturnTy = GV->getValueType();
     FunctionType *FT = FunctionType::get(ReturnTy, false);
     Func = Function::Create(FT, GlobalValue::ExternalLinkage, FuncName, M);
     Func->setCallingConv(CallingConv::SPIR_FUNC);
@@ -1974,7 +1974,7 @@ bool SPIRVToLLVM::transOCLBuiltinFromVariable(GlobalVariable *GV,
     Value* substitution = call;
     // Check if an ExtractElement instruction is needed.
     if (Func->getFunctionType()->getReturnType()->isVectorTy() &&
-        !IGCLLVM::getNonOpaquePtrEltTy(load->getPointerOperandType())->isVectorTy()) {
+        !load->getType()->isVectorTy()) {
       auto gep = cast<GetElementPtrInst>(load->getOperand(0));
       IGC_ASSERT_MESSAGE(gep, "Expected GetElementrPtr instruction");
       IGC_ASSERT_MESSAGE(gep->getNumIndices() == 2, "Expected GetElementrPtr with exactly two indices");
@@ -3367,7 +3367,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
         0, GlobalVariable::NotThreadLocal, 0);
 
     auto LD = new LoadInst(
-      IGCLLVM::getNonOpaquePtrEltTy(GV->getType()),
+      GV->getValueType(),
       GV, BV->getName(), BB);
     PlaceholderMap[BV] = LD;
     return mapValue(BV, LD);

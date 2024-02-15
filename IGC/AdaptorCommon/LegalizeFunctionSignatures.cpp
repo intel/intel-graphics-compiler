@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -205,7 +205,6 @@ inline void StoreToStruct(IGCLLVM::IRBuilder<>& builder, Value* strVal, Value* s
 {
     IGC_ASSERT(strPtr->getType()->isPointerTy());
     IGC_ASSERT(strVal->getType()->isStructTy());
-    IGC_ASSERT(IGCLLVM::getNonOpaquePtrEltTy(strPtr->getType()) == strVal->getType());
 
     StructType* sTy = cast<StructType>(strVal->getType());
     for (unsigned i = 0; i < sTy->getNumElements(); i++)
@@ -617,6 +616,7 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
     {
         IGCLLVM::IRBuilder<> builder(callInst);
         Value* newCalledValue = nullptr;
+        FunctionType* newFnTy = nullptr;
         if (!calledFunc)
         {
             // Indirect call, cast the pointer type
@@ -628,7 +628,7 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
             Type* retType = legalizeReturnType ? Type::getVoidTy(callInst->getContext()) :
                 promoteSRetType ? PromotedStructValueType(M, callInst->getArgOperand(0)->getType()) :
                 callInst->getType();
-            FunctionType* newFnTy = FunctionType::get(retType, argTypes, false);
+            newFnTy = FunctionType::get(retType, argTypes, false);
             Value* calledValue = IGCLLVM::getCalledValue(callInst);
             newCalledValue = builder.CreatePointerCast(calledValue, PointerType::get(newFnTy, 0));
         }
@@ -637,10 +637,11 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
             // Directly call the new function pointer
             IGC_ASSERT(oldToNewFuncMap.find(calledFunc) != oldToNewFuncMap.end());
             newCalledValue = oldToNewFuncMap[calledFunc];
+            newFnTy = cast<Function>(newCalledValue)->getFunctionType();
         }
 
         // Create the new call instruction
-        CallInst* newCallInst = builder.CreateCall(newCalledValue, callArgs);
+        CallInst* newCallInst = builder.CreateCall(newFnTy, newCalledValue, callArgs);
         newCallInst->setCallingConv(callInst->getCallingConv());
         newCallInst->setAttributes(AttributeList::get(M.getContext(), IGCLLVM::getFnAttrs(PAL), IGCLLVM::getRetAttrs(PAL), ArgAttrVec));
         newCallInst->setDebugLoc(callInst->getDebugLoc());

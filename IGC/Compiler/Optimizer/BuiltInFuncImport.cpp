@@ -795,7 +795,7 @@ bool BIImport::runOnModule(Module& M)
                     FunctionType* funcTy = FunctionType::get(builder.getVoidTy(), { argBuffer->getType() }, false);
                     Value* funcPtr = builder.CreatePointerCast(CI->getArgOperand(0), PointerType::get(funcTy, 0));
                     // Replace builtin with the function call
-                    CallInst* callFunc = builder.CreateCall(funcPtr, argBuffer);
+                    CallInst* callFunc = builder.CreateCall(funcTy, funcPtr, argBuffer);
                     callFunc->setCallingConv(llvm::CallingConv::SPIR_FUNC);
                     CI->replaceAllUsesWith(callFunc);
                     InstToRemove.push_back(CI);
