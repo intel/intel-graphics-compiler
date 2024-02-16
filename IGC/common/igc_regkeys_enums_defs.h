@@ -30,6 +30,7 @@ SPDX-License-Identifier: MIT
 ///
 //===----------------------------------------------------------------------===//
 
+#define LSC_CACHE_CTRL_NUM 12
 #ifdef LSC_CACHE_CTRL_OPTION
     #define LSC_CACHE_CTRL_OPTIONS                                                                                                      \
         LSC_CACHE_CTRL_OPTION(LSC_L1DEF_L3DEF,     0,  "default")                                                                       \
@@ -44,7 +45,8 @@ SPDX-License-Identifier: MIT
         LSC_CACHE_CTRL_OPTION(LSC_L1C_L3CC,        9,  "Load: L1 cached     L3 const-cached # Store: N/A")                              \
         LSC_CACHE_CTRL_OPTION(LSC_L1IAR_L3IAR,     10, "Load: L1 invalidate after read L3 invalidate after read # Store: N/A")          \
                                                                                                                                         \
-        LSC_CACHE_CTRL_OPTION(LSC_CC_INVALID,      11, "Invalid")
+        LSC_CACHE_CTRL_OPTION(LSC_CC_INVALID,      11, "Invalid") \
+        LSC_CACHE_CTRL_OPTION(LSC_CC_NUM,          LSC_CACHE_CTRL_NUM, "Invalid")
 #endif // LSC_CACHE_CTRL_OPTION
 
 #ifdef EARLY_OUT_CS_PATTERN
