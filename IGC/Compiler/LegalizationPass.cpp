@@ -2680,7 +2680,11 @@ static bool isCandidateFDiv(Instruction* Inst)
         return false;
 
     Type* Ty = Inst->getType();
-    if (!Ty->isFloatTy() && !Ty->isHalfTy())
+    if (!Ty->isFloatTy() && !Ty->isHalfTy()
+#if LLVM_VERSION_MAJOR >= 14
+        && !Ty->isBFloatTy()
+#endif
+    )
         return false;
 
     auto Op = dyn_cast<FPMathOperator>(Inst);
@@ -2735,17 +2739,29 @@ bool IGC::expandFDIVInstructions(llvm::Function& F)
             Value* Y = Inst->getOperand(1);
             Value* V = nullptr;
 
-            if (Inst->getType()->isHalfTy()) {
+            if (Inst->getType()->isHalfTy()
+#if LLVM_VERSION_MAJOR >= 14
+                || Inst->getType()->isBFloatTy()
+#endif
+            ) {
                 if (Inst->hasAllowReciprocal()) {
                     APFloat Val(1.0f);
                     bool ignored;
-                    Val.convert(APFloat::IEEEhalf(), APFloat::rmTowardZero, &ignored);
+#if LLVM_VERSION_MAJOR >= 14
+                    Val.convert((Inst->getType()->isHalfTy())
+                                    ? APFloat::IEEEhalf()
+                                    : APFloat::BFloat(),
+                                APFloat::rmTowardZero, &ignored);
+#else
+                    Val.convert(APFloat::IEEEhalf(), APFloat::rmTowardZero,
+                                &ignored);
+#endif
                     ConstantFP* C1 = ConstantFP::get(Ctx, Val);
                     Y = Builder.CreateFDiv(C1, Y);
                     V = Builder.CreateFMul(Y, X);
                 }
                 else {
-                    // Up cast to float, do rcp+mul in float, and down cast to half.
+                    // Up cast to float, do rcp+mul in float, and down cast to half / bfloat.
                     Y = Builder.CreateFPExt(Y, Builder.getFloatTy());
                     Y = Builder.CreateFDiv(ConstantFP::get(Ctx, APFloat(1.0f)), Y);
                     X = Builder.CreateFPExt(X, Builder.getFloatTy());

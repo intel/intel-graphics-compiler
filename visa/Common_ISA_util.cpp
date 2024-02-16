@@ -1448,7 +1448,8 @@ int64_t typecastVals(const void *value, VISA_Type isaType) {
     retVal = (int64_t)(*((int8_t *)value));
     break;
   }
-  case ISA_TYPE_HF: {
+  case ISA_TYPE_HF:
+  case ISA_TYPE_BF: {
     // clear higher bits
     retVal = (int64_t)(*((uint16_t *)value));
     break;

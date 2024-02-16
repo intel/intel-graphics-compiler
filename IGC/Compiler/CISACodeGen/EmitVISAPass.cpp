@@ -2076,6 +2076,7 @@ static VISA_Type GetUnsignedIntegerType(VISA_Type type)
     case ISA_TYPE_F:
         return ISA_TYPE_UD;
     case ISA_TYPE_HF:
+    case ISA_TYPE_BF:
         return ISA_TYPE_UW;
     default:
         IGC_ASSERT(0);
