@@ -31,12 +31,7 @@ class IGCLivenessAnalysis : public llvm::FunctionPass {
     InPhiSet InPhi;
     // contains all of the values that liveOut out of this block
     DFSet Out;
-    // we can use WIAnalysis only in codegen part of pipeline
-    // but sometimes it can be useful to collect at least some
-    // pressure information before
-    bool UseWIAnalysis = false;
 
-    WIAnalysis *WI = nullptr;
     IGC::CodeGenContext *CGCtx = nullptr;
 
   public:
@@ -52,10 +47,11 @@ class IGCLivenessAnalysis : public llvm::FunctionPass {
     DFSet &getOutSet() { return Out; }
     const DFSet &getOutSet() const { return Out; }
 
-    unsigned int estimateSizeInBytes(ValueSet &Set, llvm::Function &F, unsigned int SIMD);
+    unsigned int estimateSizeInBytes(ValueSet &Set, llvm::Function &F, unsigned int SIMD, WIAnalysisRunner* WI = nullptr);
     void collectPressureForBB(llvm::BasicBlock &BB,
                               InsideBlockPressureMap &BBListing,
-                              unsigned int SIMD);
+                              unsigned int SIMD,
+                              WIAnalysisRunner* WI = nullptr);
 
     SIMDMode bestGuessSIMDSize();
     // I expect it to be used as
@@ -64,9 +60,9 @@ class IGCLivenessAnalysis : public llvm::FunctionPass {
     // to get SIMD, you can use bestGuessSIMDSize()
     // if you know better, put your own value
     InsideBlockPressureMap getPressureMapForBB(llvm::BasicBlock &BB,
-                                               unsigned int SIMD) {
+                                               unsigned int SIMD, WIAnalysisRunner* WI = nullptr) {
         InsideBlockPressureMap PressureMap;
-        collectPressureForBB(BB, PressureMap, SIMD);
+        collectPressureForBB(BB, PressureMap, SIMD, WI);
         return PressureMap;
     }
 
@@ -77,9 +73,9 @@ class IGCLivenessAnalysis : public llvm::FunctionPass {
         return AmountOfRegistersRoundUp;
     }
 
-    unsigned int getMaxRegCountForBB(llvm::BasicBlock &BB, unsigned int SIMD) {
+    unsigned int getMaxRegCountForBB(llvm::BasicBlock &BB, unsigned int SIMD, WIAnalysisRunner* WI = nullptr) {
         InsideBlockPressureMap PressureMap;
-        collectPressureForBB(BB, PressureMap, SIMD);
+        collectPressureForBB(BB, PressureMap, SIMD, WI);
 
         unsigned int MaxSizeInBytes = 0;
         for (const auto &Pair : PressureMap) {
@@ -91,30 +87,31 @@ class IGCLivenessAnalysis : public llvm::FunctionPass {
     // be aware, for now, it doesn't count properly nested functions, and their
     // register pressure
     unsigned int getMaxRegCountForFunction(llvm::Function &F,
-                                           unsigned int SIMD) {
+                                           unsigned int SIMD, WIAnalysisRunner* WI = nullptr) {
         unsigned int Max = 0;
         for (BasicBlock &BB : F) {
-            Max = std::max(getMaxRegCountForBB(BB, SIMD), Max);
+            Max = std::max(getMaxRegCountForBB(BB, SIMD, WI), Max);
         }
         return Max;
     }
 
     unsigned int getMaxRegCountForLoop(llvm::Loop &L,
-                                       unsigned int SIMD) {
+                                       unsigned int SIMD,
+                                       WIAnalysisRunner* WI = nullptr) {
         unsigned int Max = 0;
         for (BasicBlock *BB : L.getBlocks())
         {
-            unsigned int BBPressure = getMaxRegCountForBB(*BB, SIMD);
+            unsigned int BBPressure = getMaxRegCountForBB(*BB, SIMD, WI);
             Max = std::max(BBPressure, Max);
         }
         return Max;
     }
 
-    llvm::BasicBlock *getMaxRegCountBBForFunction(llvm::Function &F) {
+    llvm::BasicBlock *getMaxRegCountBBForFunction(llvm::Function &F, WIAnalysisRunner* WI = nullptr) {
         llvm::BasicBlock *HottestBB = NULL;
         unsigned int Max = 0;
         for (BasicBlock &BB : F) {
-            unsigned int BBPressure = getMaxRegCountForBB(BB, 8);
+            unsigned int BBPressure = getMaxRegCountForBB(BB, 8, WI);
             HottestBB = BBPressure > Max ? &BB : HottestBB;
             Max = std::max(BBPressure, Max);
         }
@@ -150,7 +147,6 @@ class IGCLivenessAnalysis : public llvm::FunctionPass {
     virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
         AU.setPreservesAll();
         AU.addRequired<CodeGenContextWrapper>();
-        AU.addRequired<WIAnalysis>();
     }
   private:
 

@@ -32,7 +32,6 @@ char IGCLivenessAnalysis::ID = 0;
 #define PASS_ANALYSIS2 true
 IGC_INITIALIZE_PASS_BEGIN(IGCLivenessAnalysis, PASS_FLAG2, PASS_DESCRIPTION2,
                           PASS_CFG_ONLY2, PASS_ANALYSIS2)
-IGC_INITIALIZE_PASS_DEPENDENCY(WIAnalysis)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(IGCLivenessAnalysis, PASS_FLAG2, PASS_DESCRIPTION2,
                         PASS_CFG_ONLY2, PASS_ANALYSIS2)
@@ -40,7 +39,6 @@ IGC_INITIALIZE_PASS_END(IGCLivenessAnalysis, PASS_FLAG2, PASS_DESCRIPTION2,
 
 IGCLivenessAnalysis::IGCLivenessAnalysis() : FunctionPass(ID) {
     initializeIGCLivenessAnalysisPass(*PassRegistry::getPassRegistry());
-    UseWIAnalysis = true;
 };
 
 
@@ -182,7 +180,8 @@ void IGCLivenessAnalysis::livenessAnalysis(llvm::Function &F) {
 
 unsigned int IGCLivenessAnalysis::estimateSizeInBytes(ValueSet &Set,
                                                       Function &F,
-                                                      unsigned int SIMD) {
+                                                      unsigned int SIMD,
+                                                      WIAnalysisRunner* WI) {
     const DataLayout &DL = F.getParent()->getDataLayout();
 
     unsigned int Result = 0;
@@ -190,7 +189,7 @@ unsigned int IGCLivenessAnalysis::estimateSizeInBytes(ValueSet &Set,
         auto Type = El->getType();
         unsigned int TypeSizeInBits = (unsigned int) DL.getTypeSizeInBits(Type);
         unsigned int Multiplier = SIMD;
-        if (UseWIAnalysis && WI->isUniform(El))
+        if (WI && WI->isUniform(El))
             Multiplier = 1;
         unsigned int SizeInBytes = TypeSizeInBits * Multiplier / 8;
         Result += SizeInBytes;
@@ -202,7 +201,7 @@ unsigned int IGCLivenessAnalysis::estimateSizeInBytes(ValueSet &Set,
 
 void IGCLivenessAnalysis::collectPressureForBB(
     llvm::BasicBlock &BB, InsideBlockPressureMap &BBListing,
-    unsigned int SIMD) {
+    unsigned int SIMD, WIAnalysisRunner* WI) {
     ValueSet &BBOut = Out[&BB];
     // this should be a copy
     ValueSet BBSet = BBOut;
@@ -211,7 +210,7 @@ void IGCLivenessAnalysis::collectPressureForBB(
 
         llvm::Instruction *Inst = &(*RI);
 
-        unsigned int Size = estimateSizeInBytes(BBSet, *BB.getParent(), SIMD);
+        unsigned int Size = estimateSizeInBytes(BBSet, *BB.getParent(), SIMD, WI);
 
         auto Phi = llvm::dyn_cast<llvm::PHINode>(Inst);
         if (!Phi) {
@@ -225,8 +224,6 @@ void IGCLivenessAnalysis::collectPressureForBB(
 
 bool IGCLivenessAnalysis::runOnFunction(llvm::Function &F) {
 
-    if (UseWIAnalysis)
-        WI = &getAnalysis<WIAnalysis>();
     CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     livenessAnalysis(F);
 
@@ -288,7 +285,7 @@ void IGCRegisterPressurePrinter::printIntraBlock(llvm::BasicBlock &BB,
 void IGCRegisterPressurePrinter::intraBlock(llvm::BasicBlock &BB, std::string &Output,
                                      unsigned int SIMD) {
     InsideBlockPressureMap BBListing;
-    RPE->collectPressureForBB(BB, BBListing, SIMD);
+    RPE->collectPressureForBB(BB, BBListing, SIMD, &WI->Runner);
     printIntraBlock(BB, Output, BBListing);
 }
 

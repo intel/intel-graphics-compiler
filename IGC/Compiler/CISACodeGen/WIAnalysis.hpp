@@ -381,7 +381,6 @@ namespace IGC
                 Dep == WIDependancy::UNIFORM_WORKGROUP ||
                 Dep == WIDependancy::UNIFORM_THREAD;
         }
-    private:
         WIAnalysisRunner Runner;
     };
 
