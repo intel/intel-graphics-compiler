@@ -1,12 +1,15 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
 ; RUN: %opt %use_old_pass_manager% -GenXLegalization -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+
+declare <16 x float> @llvm.genx.ieee.sqrt.v16f32(<16 x float>)
+declare <16 x float> @llvm.genx.ieee.div.v16f32(<16 x float>, <16 x float>)
 
 ; NO SPLIT
 ; CHECK-LABEL: @test1
@@ -153,3 +156,14 @@ define <16 x i16> @test15(<16 x half> %arg) {
   ret <16 x i16> %and
 }
 
+; NO SPLIT FOR IEEE INTRINSICS
+; CHECK-LABEL: @test16
+; CHECK:       call <16 x float> @llvm.genx.ieee.sqrt.v16f32
+; CHECK-NEXT:  call <16 x float> @llvm.genx.ieee.div.v16f32
+define <16 x i16> @test16(<16 x float> %arg) {
+  %sqrt = call <16 x float> @llvm.genx.ieee.sqrt.v16f32(<16 x float> %arg)
+  %div = call <16 x float> @llvm.genx.ieee.div.v16f32(<16 x float> %arg, <16 x float> %sqrt)
+  %int = fptoui <16 x float> %div to <16 x i16>
+  %and = and <16 x i16> %int, <i16 1, i16 0, i16 0, i16 0, i16 0, i16 0, i16 0, i16 0, i16 0, i16 0, i16 0, i16 0, i16 0, i16 0, i16 0, i16 0>
+  ret <16 x i16> %and
+}

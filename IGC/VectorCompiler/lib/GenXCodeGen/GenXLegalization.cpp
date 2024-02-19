@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1124,10 +1124,20 @@ unsigned GenXLegalization::splitDeadElements(unsigned Width,
   auto *V = getExecWidthValue();
   auto *ElemTy = V->getType()->getScalarType();
   // The most math instructions require exec size to be 8 or 16 in case of half
-  // float. Even if we reduce the width here, it will be very likely set back to
-  // the 'native' width by finalizer
+  // float. And some of them require it even for other float types. Even if we
+  // reduce the width here, it will be very likely set back to the 'native'
+  // width by finalizer
   if (ElemTy->isHalfTy())
     return Width;
+  if (ElemTy->isFloatTy()) {
+    auto Main = B.getMainInst();
+    if (Main) {
+      unsigned IID = vc::getAnyIntrinsicID(Main->Inst);
+      if (IID == GenXIntrinsic::genx_ieee_div ||
+          IID == GenXIntrinsic::genx_ieee_sqrt)
+        return Width;
+    }
+  }
   const auto &LiveElems = LE->getLiveElements(V);
   if (LiveElems.size() > 1 || LiveElems.isAllDead() || !LiveElems.isAnyDead())
     return Width;
