@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -91,7 +91,7 @@ namespace IGC
         llvm::Type* LegalAllocaType(llvm::Type* type) const;
         llvm::Type* LegalStructAllocaType(llvm::Type* type) const;
 
-        void RecursivelyChangePointerType(llvm::Instruction* oldPtr, llvm::Instruction* newPtr);
+        void RecursivelyChangePointerType(llvm::Instruction* oldPtr, llvm::Type* Ty, llvm::Instruction* newPtr);
         void PromoteFp16ToFp32OnGenSampleCall(llvm::CallInst& I);
         void PromoteInsertElement(llvm::Value* I, llvm::Value* newVec);
 

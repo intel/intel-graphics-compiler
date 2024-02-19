@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -53,7 +53,7 @@ static LoadInst* legalizeLoad(LoadInst* LI)
     PointerType* I8PtrTy = IRB.getInt8PtrTy(addressSpace);
     Value* I8PtrOp = IRB.CreateBitCast(LI->getPointerOperand(), I8PtrTy);
 
-    LoadInst* pNewLoadInst = IGC::cloneLoad(LI, I8PtrOp);
+    LoadInst* pNewLoadInst = IGC::cloneLoad(LI, IRB.getInt8Ty(), I8PtrOp);
     Value* newVal = IRB.CreateTrunc(pNewLoadInst, LI->getType());
     LI->replaceAllUsesWith(newVal);
     LI->eraseFromParent();

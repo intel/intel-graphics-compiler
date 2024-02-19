@@ -107,7 +107,7 @@ std::unique_ptr<IGCLLVM::Module> LocalCloneModule(
         if (VMap.find(&*I) == VMap.end())
         {
             GlobalVariable *GV = new GlobalVariable(*New,
-                IGCLLVM::getNonOpaquePtrEltTy(I->getType()),
+                I->getValueType(),
                 I->isConstant(), I->getLinkage(),
                 (Constant*) nullptr, I->getName(),
                 (GlobalVariable*) nullptr,

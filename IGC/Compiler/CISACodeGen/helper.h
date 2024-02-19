@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -150,7 +150,7 @@ namespace IGC
     llvm::Value* getTextureIndexArgBasedOnOpcode(llvm::Instruction* inst);
     llvm::Value* GetBufferOperand(llvm::Instruction* inst);
 
-    llvm::LoadInst* cloneLoad(llvm::LoadInst* Orig, llvm::Value* Ptr);
+    llvm::LoadInst* cloneLoad(llvm::LoadInst* Orig, llvm::Type* Ty, llvm::Value* Ptr);
     llvm::StoreInst* cloneStore(llvm::StoreInst* Orig, llvm::Value* Val, llvm::Value* Ptr);
 
     llvm::LdRawIntrinsic* CreateLoadRawIntrinsic(llvm::LoadInst* inst, llvm::Value* bufPtr, llvm::Value* offsetVal);

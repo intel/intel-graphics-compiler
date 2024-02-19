@@ -585,7 +585,7 @@ void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value
     bool canpromote = false;
     if (LoadInst * load = dyn_cast<LoadInst>(inst))
     {
-        LoadInst* newload = IGC::cloneLoad(load, pBuffer);
+        LoadInst* newload = IGC::cloneLoad(load, pBufferType, pBuffer);
         load->replaceAllUsesWith(newload);
         load->eraseFromParent();
         canpromote = true;

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1399,7 +1399,7 @@ void Legalization::visitLoadInst(LoadInst& I)
         PointerType* I8PtrTy = m_builder->getInt8PtrTy(addressSpace);
         Value* I8PtrOp = m_builder->CreateBitCast(I.getPointerOperand(), I8PtrTy);
 
-        LoadInst* pNewLoadInst = IGC::cloneLoad(&I, I8PtrOp);
+        LoadInst* pNewLoadInst = IGC::cloneLoad(&I, m_builder->getInt8Ty(), I8PtrOp);
         Value* newVal = m_builder->CreateTrunc(pNewLoadInst, I.getType());
         I.replaceAllUsesWith(newVal);
     }
@@ -1716,7 +1716,7 @@ Value* Cast(Value* val, Type* type, Instruction* insertBefore)
     return newVal;
 }
 
-void Legalization::RecursivelyChangePointerType(Instruction* oldPtr, Instruction* newPtr)
+void Legalization::RecursivelyChangePointerType(Instruction* oldPtr, llvm::Type* Ty, Instruction* newPtr)
 {
     for (auto II = oldPtr->user_begin(), IE = oldPtr->user_end(); II != IE; ++II)
     {
@@ -1724,14 +1724,14 @@ void Legalization::RecursivelyChangePointerType(Instruction* oldPtr, Instruction
         if (GetElementPtrInst * gep = dyn_cast<GetElementPtrInst>(*II))
         {
             SmallVector<Value*, 8> Idx(gep->idx_begin(), gep->idx_end());
-            Type *BaseTy = IGCLLVM::getNonOpaquePtrEltTy(newPtr->getType());
+            Type *BaseTy = Ty;
             GetElementPtrInst* newGep = GetElementPtrInst::Create(BaseTy, newPtr, Idx, "", gep);
             newGep->setDebugLoc(gep->getDebugLoc());
-            RecursivelyChangePointerType(gep, newGep);
+            RecursivelyChangePointerType(gep, IGCLLVM::getNonOpaquePtrEltTy(newGep->getType()), newGep);
         }
         else if (LoadInst * load = dyn_cast<LoadInst>(*II))
         {
-            Instruction* newLoad = IGC::cloneLoad(load, newPtr);
+            Instruction* newLoad = IGC::cloneLoad(load, Ty, newPtr);
             newVal = Cast(newLoad, load->getType(), load->getNextNode());
             auto tempInst = dyn_cast<Instruction>(newVal);
             if (tempInst)
@@ -1741,7 +1741,7 @@ void Legalization::RecursivelyChangePointerType(Instruction* oldPtr, Instruction
         else if (StoreInst * store = dyn_cast<StoreInst>(*II))
         {
             Value* StoredValue = store->getValueOperand();
-            Value* newData = Cast(StoredValue, IGCLLVM::getNonOpaquePtrEltTy(newPtr->getType()), store);
+            Value* newData = Cast(StoredValue, Ty, store);
             IGC::cloneStore(store, newData, newPtr);
         }
         else if (CastInst * cast = dyn_cast<CastInst>(*II))
@@ -1822,7 +1822,7 @@ void Legalization::visitAlloca(AllocaInst& I)
     {
         // Remaining alloca of i1 need to be promoted
         AllocaInst* newAlloca = new AllocaInst(legalAllocaType, 0, "", &I);
-        RecursivelyChangePointerType(&I, newAlloca);
+        RecursivelyChangePointerType(&I, legalAllocaType, newAlloca);
         m_instructionsToRemove.push_back(&I);
     }
 }
@@ -2566,7 +2566,7 @@ void GenOptLegalizer::visitLoadInst(LoadInst& I) {
         Type* I8x3Ty = IGCLLVM::FixedVectorType::get(m_Builder->getInt8Ty(), 3);
         Type* I8x3PtrTy = PointerType::get(I8x3Ty, I.getPointerAddressSpace());
         Value* NewPtr = m_Builder->CreateBitCast(I.getPointerOperand(), I8x3PtrTy);
-        Value* NewLD = IGC::cloneLoad(&I, NewPtr);
+        Value* NewLD = IGC::cloneLoad(&I, I8x3Ty, NewPtr);
         Type* NewTy = ZEI->getType();
         Value* NewVal = Constant::getNullValue(NewTy);
         Value* L0 = m_Builder->CreateExtractElement(NewLD, uint64_t(0));
@@ -2616,7 +2616,7 @@ void GenOptLegalizer::visitStoreInst(StoreInst& I) {
             // Replace load of i24 to load of <3 x i8>
             m_Builder->SetInsertPoint(LD);
             Value* NewPtr = m_Builder->CreateBitCast(LD->getPointerOperand(), I8x3PtrTy);
-            Value* NewLD = IGC::cloneLoad(LD, NewPtr);
+            Value* NewLD = IGC::cloneLoad(LD, I8x3Ty, NewPtr);
             // Replace store of i24 to load of <3 x i8>
             m_Builder->SetInsertPoint(&I);
             I8x3PtrTy = PointerType::get(I8x3Ty, I.getPointerAddressSpace());

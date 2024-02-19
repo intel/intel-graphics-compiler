@@ -3470,7 +3470,7 @@ void GenSpecificPattern::visitLoadInst(LoadInst &LI) {
     IRBuilder<> builder(VectorLoadInst);
     auto CastedPointer =
         builder.CreateBitCast(PointerOperand, newLoadPointerType);
-    auto NewLoadInst = IGC::cloneLoad(VectorLoadInst, CastedPointer);
+    auto NewLoadInst = IGC::cloneLoad(VectorLoadInst, LI.getPointerOperand()->getType(), CastedPointer);
 
     LI.setOperand(0, NewLoadInst);
 }

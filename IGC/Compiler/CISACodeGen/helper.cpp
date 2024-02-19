@@ -303,11 +303,9 @@ namespace IGC
         return false;
     }
 
-    llvm::LoadInst* cloneLoad(llvm::LoadInst* Orig, llvm::Value* Ptr)
+    llvm::LoadInst* cloneLoad(llvm::LoadInst* Orig, llvm::Type* Ty, llvm::Value* Ptr)
     {
-        llvm::LoadInst* LI = new llvm::LoadInst(
-            IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType()),
-            Ptr, "", false, Orig);
+        llvm::LoadInst* LI = new llvm::LoadInst(Ty, Ptr, "", false, Orig);
         LI->setVolatile(Orig->isVolatile());
         LI->setAlignment(IGCLLVM::getAlign(*Orig));
         if (LI->isAtomic())
