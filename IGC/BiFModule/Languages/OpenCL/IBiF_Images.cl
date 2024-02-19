@@ -188,7 +188,7 @@ INLINE uint4 OVERLOADABLE read_imageui(read_only image2d_t image, sampler_t samp
 // 3D reads
 INLINE float4 OVERLOADABLE read_imagef(read_only image3d_t image, sampler_t sampler, int4 coords) {
     int id = (int)__builtin_astype(image, __global void*);
-    float4 floatCoords = convert_float4(coords);
+    float3 floatCoords = convert_float3(coords.xyz);
     return __builtin_IB_OCL_3d_sample_l(id, __builtin_IB_convert_sampler_to_int(sampler), floatCoords, 0.0f);
 }
 
@@ -201,7 +201,7 @@ INLINE float4 OVERLOADABLE read_imagef(read_only image3d_t image, sampler_t samp
         coords.y = ( coords.y < 0) ? -1.0f :  coords.y;
         coords.z = ( coords.z < 0) ? -1.0f :  coords.z;
     }
-    return __builtin_IB_OCL_3d_sample_l(id, __builtin_IB_convert_sampler_to_int(sampler), coords, 0.0f);
+    return __builtin_IB_OCL_3d_sample_l(id, __builtin_IB_convert_sampler_to_int(sampler), coords.xyz, 0.0f);
 }
 
 INLINE int4 OVERLOADABLE read_imagei(read_only image3d_t image, sampler_t sampler, int4 coords) {
@@ -216,12 +216,12 @@ INLINE uint4 OVERLOADABLE read_imageui(read_only image3d_t image, sampler_t samp
     int id = (int)__builtin_astype(image, __global void*);
     if ((__builtin_IB_get_address_mode(__builtin_IB_convert_sampler_to_int(sampler)) & 0x07) == CLK_ADDRESS_CLAMP_TO_EDGE)
     {
-        float4 floatCoords = convert_float4(coords);
+        float3 floatCoords = convert_float3(coords.xyz);
         return as_uint4(__builtin_IB_OCL_3d_sample_l(id, __builtin_IB_convert_sampler_to_int(sampler), floatCoords, 0.0f));
     }
     else
     {
-        return __builtin_IB_OCL_3d_ldui(id, coords, 0);
+        return __builtin_IB_OCL_3d_ldui(id, coords.xyz, 0);
     }
 
 }
@@ -236,11 +236,11 @@ INLINE uint4 OVERLOADABLE read_imageui(read_only image3d_t image, sampler_t samp
           coords = coords*dim;
         }
         int4 intCoords = convert_int4(floor(coords));
-        return __builtin_IB_OCL_3d_ldui(id, intCoords, 0);
+        return __builtin_IB_OCL_3d_ldui(id, intCoords.xyz, 0);
     }
     else
     {
-        return as_uint4(__builtin_IB_OCL_3d_sample_l(id, __builtin_IB_convert_sampler_to_int(sampler), coords, 0.0f));
+        return as_uint4(__builtin_IB_OCL_3d_sample_l(id, __builtin_IB_convert_sampler_to_int(sampler), coords.xyz, 0.0f));
     }
 }
 
@@ -711,7 +711,7 @@ INLINE float4 OVERLOADABLE read_imagef(read_only image3d_t image, sampler_t samp
         coords.y = ( coords.y < 0) ? -1.0f :  coords.y;
         coords.z = ( coords.z < 0) ? -1.0f :  coords.z;
     }
-    return __builtin_IB_OCL_3d_sample_l(id, __builtin_IB_convert_sampler_to_int(sampler), coords, lod);
+    return __builtin_IB_OCL_3d_sample_l(id, __builtin_IB_convert_sampler_to_int(sampler), coords.xyz, lod);
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -728,7 +728,7 @@ INLINE uint4 OVERLOADABLE read_imageui(read_only image3d_t image, sampler_t samp
         coords.y = ( coords.y < 0) ? -1.0f :  coords.y;
         coords.z = ( coords.z < 0) ? -1.0f :  coords.z;
     }
-    return as_uint4(__builtin_IB_OCL_3d_sample_l(id, __builtin_IB_convert_sampler_to_int(sampler), coords, lod));
+    return as_uint4(__builtin_IB_OCL_3d_sample_l(id, __builtin_IB_convert_sampler_to_int(sampler), coords.xyz, lod));
 }
 
 // 3D reads with mipmap support using gradients for LOD computation
@@ -741,7 +741,7 @@ INLINE float4 OVERLOADABLE read_imagef(read_only image3d_t image, sampler_t samp
         coords.y = ( coords.y < 0) ? -1.0f :  coords.y;
         coords.z = ( coords.z < 0) ? -1.0f :  coords.z;
     }
-    return __builtin_IB_OCL_3d_sample_d(id, __builtin_IB_convert_sampler_to_int(sampler), coords, gradientX, gradientY);
+    return __builtin_IB_OCL_3d_sample_d(id, __builtin_IB_convert_sampler_to_int(sampler), coords.xyz, gradientX, gradientY);
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -758,7 +758,7 @@ INLINE uint4 OVERLOADABLE read_imageui(read_only image3d_t image, sampler_t samp
         coords.y = ( coords.y < 0) ? -1.0f :  coords.y;
         coords.z = ( coords.z < 0) ? -1.0f :  coords.z;
     }
-    return as_uint4(__builtin_IB_OCL_3d_sample_d(id, __builtin_IB_convert_sampler_to_int(sampler), coords, gradientX, gradientY));
+    return as_uint4(__builtin_IB_OCL_3d_sample_d(id, __builtin_IB_convert_sampler_to_int(sampler), coords.xyz, gradientX, gradientY));
 }
 
 // Sampler less image access
@@ -907,7 +907,7 @@ INLINE uint4 OVERLOADABLE read_imageui(read_write image2d_t image, int2 coord) {
 
 #ifdef __IGC_BUILD__
 INLINE float4 OVERLOADABLE static __read_imagef_3d(int id, int4 coord) {
-    float4 res = __builtin_IB_OCL_3d_ld(id, coord, 0);
+    float4 res = __builtin_IB_OCL_3d_ld(id, coord.xyz, 0);
     return __flush_denormals(res);
 }
 #endif
@@ -968,7 +968,7 @@ INLINE int4 OVERLOADABLE read_imagei(read_write image3d_t image, int4 coord) {
 
 INLINE uint4 OVERLOADABLE read_imageui(read_only image3d_t image, int4 coord) {
     int id = (int)__builtin_astype(image, __global void*);
-    return __builtin_IB_OCL_3d_ldui(id, coord, 0);
+    return __builtin_IB_OCL_3d_ldui(id, coord.xyz, 0);
 }
 
 #if SUPPORT_ACCESS_QUAL_OVERLOAD
@@ -1250,7 +1250,7 @@ INLINE void OVERLOADABLE write_imagei(read_write image3d_t image, int4 coords, i
 
 INLINE void OVERLOADABLE write_imageui(write_only image3d_t image, int4 coords, uint4 color) {
     int id = (int)__builtin_astype(image, __global void*);
-    __builtin_IB_write_3d_ui(id, coords, color, 0);
+    __builtin_IB_write_3d_ui(id, coords.xyz, color, 0);
 }
 
 #if SUPPORT_ACCESS_QUAL_OVERLOAD
@@ -1474,7 +1474,7 @@ INLINE void OVERLOADABLE write_imagei(write_only image3d_t image, int4 coords, i
 
 INLINE void OVERLOADABLE write_imageui(write_only image3d_t image, int4 coords, int lod, uint4 color) {
     int id = (int)__builtin_astype(image, __global void*);
-    __builtin_IB_write_3d_ui(id, coords, color, lod);
+    __builtin_IB_write_3d_ui(id, coords.xyz, color, lod);
 }
 
 // Depth Writes

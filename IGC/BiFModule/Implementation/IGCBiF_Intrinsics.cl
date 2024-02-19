@@ -41,38 +41,38 @@ float4 __builtin_IB_OCL_1d_sample_l(int, int, float,  float);
 float4 __builtin_IB_OCL_1darr_sample_l(int, int, float2,  float);
 float4 __builtin_IB_OCL_2d_sample_l(int, int, float2, float);
 float4 __builtin_IB_OCL_2darr_sample_l(int, int, float4, float);
-float4 __builtin_IB_OCL_3d_sample_l(int, int, float4, float);
+float4 __builtin_IB_OCL_3d_sample_l(int, int, float3, float);
 
 float4 __builtin_IB_OCL_1d_sample_d(int, int, float,  float, float);
 float4 __builtin_IB_OCL_1darr_sample_d(int, int, float2,  float, float);
 float4 __builtin_IB_OCL_2d_sample_d(int, int, float2, float2, float2);
 float4 __builtin_IB_OCL_2darr_sample_d(int, int, float4, float2, float2);
-float4 __builtin_IB_OCL_3d_sample_d(int, int, float4, float4, float4);
+float4 __builtin_IB_OCL_3d_sample_d(int, int, float3, float4, float4);
 
 // versions that return uint for read_imageui
 uint4 __builtin_IB_OCL_1d_sample_lui(int, int, float,  float);
 uint4 __builtin_IB_OCL_1darr_sample_lui(int, int, float2,  float);
 uint4 __builtin_IB_OCL_2d_sample_lui(int, int, float2, float);
 uint4 __builtin_IB_OCL_2darr_sample_lui(int, int, float4, float);
-uint4 __builtin_IB_OCL_3d_sample_lui(int, int, float4, float);
+uint4 __builtin_IB_OCL_3d_sample_lui(int, int, float3, float);
 
 uint4 __builtin_IB_OCL_1d_sample_dui(int, int, float,  float, float);
 uint4 __builtin_IB_OCL_1darr_sample_dui(int, int, float2,  float, float);
 uint4 __builtin_IB_OCL_2d_sample_dui(int, int, float2, float2, float2);
 uint4 __builtin_IB_OCL_2darr_sample_dui(int, int, float4, float2, float2);
-uint4 __builtin_IB_OCL_3d_sample_dui(int, int, float4, float4, float4);
+uint4 __builtin_IB_OCL_3d_sample_dui(int, int, float3, float4, float4);
 
 uint4 __builtin_IB_OCL_1d_ldui(int, int,  int);
 uint4 __builtin_IB_OCL_1darr_ldui(int, int2,  int);
 uint4 __builtin_IB_OCL_2d_ldui(int, int2, int);
 uint4 __builtin_IB_OCL_2darr_ldui(int, int4, int);
-uint4 __builtin_IB_OCL_3d_ldui(int, int4, int);
+uint4 __builtin_IB_OCL_3d_ldui(int, int3, int);
 
 float4 __builtin_IB_OCL_1d_ld(int, int,  int);
 float4 __builtin_IB_OCL_1darr_ld(int, int2,  int);
 float4 __builtin_IB_OCL_2d_ld(int, int2, int);
 float4 __builtin_IB_OCL_2darr_ld(int, int4, int);
-float4 __builtin_IB_OCL_3d_ld(int, int4, int);
+float4 __builtin_IB_OCL_3d_ld(int, int3, int);
 
 float4 __builtin_IB_OCL_2d_ldmcs(int, int2);
 float4 __builtin_IB_OCL_2darr_ldmcs(int, int4);
@@ -94,7 +94,7 @@ void     __builtin_IB_write_1darr_ui(int, int2, uint4, int);
 void     __builtin_IB_write_1d_ui(int, int, uint4, int);
 void     __builtin_IB_write_2darr_ui(int, int4, uint4, int);
 void     __builtin_IB_write_2d_ui(int, int2, uint4, int);
-void     __builtin_IB_write_3d_ui(int, int4, uint4, int);
+void     __builtin_IB_write_3d_ui(int, int3, uint4, int);
 void     __builtin_IB_write_2darr_f(int, int4, float4, int);
 void     __builtin_IB_write_2d_f(int, int2, float4, int);
 
