@@ -928,6 +928,7 @@ DECLARE_IGC_GROUP("Raytracing Options")
     DECLARE_IGC_REGKEY(bool, EnableFillScheduling, false, "Schedule fills for reduced register pressure", false)
     DECLARE_IGC_REGKEY(bool, DisableSWStackOffsetElision, false, "Avoid loading offseting when known at compile-time", false)
     DECLARE_IGC_REGKEY_ENUM(RTMemoryStyleOptions, -1, "Select layout of RT memory", RTMEMORY_STYLE_OPTIONS, true)
+    DECLARE_IGC_REGKEY(bool, EnableSupportRaytracingSIMD32, false, "Allow SIMD32 testing on platforms that don't support it", false)
     DECLARE_IGC_REGKEY(DWORD, OverrideTMax, 0, "Force TMax to the given value. When 0, do nothing.", false)
 
 DECLARE_IGC_GROUP("VectorCompiler Options")

@@ -297,6 +297,7 @@ void TraceRayInlineLoweringPass::LowerTraceRayInline(Function& F)
                 builder.getRootNodePtr(trace->getBVH()),
                 trace->getFlag(),
                 trace->getMask(),
+                trace->getComparisonValue(),
                 trace->getTMax());
         }
 

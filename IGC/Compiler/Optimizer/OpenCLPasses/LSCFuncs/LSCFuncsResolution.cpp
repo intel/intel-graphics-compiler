@@ -62,9 +62,11 @@ namespace {
     private:
         /// LSC Load intrinsics call method
         Instruction* CreateLSCLoadIntrinsicCallInst(GenISAIntrinsic::ID op, bool isLocalMem);
+        Instruction* CreateLSCLoadCmaskIntrinsicCallInst(bool isLocalMem);
 
         /// LSC Store intrinsics call method
         Instruction* CreateLSCStoreIntrinsicCallInst(GenISAIntrinsic::ID op, bool isLocalMem);
+        Instruction* CreateLSCStoreCmaskIntrinsicCallInst(bool isLocalMem);
 
         /// LSC Prefetch and load status intrinsics
         Instruction* CreateLSCLoadStatusPreftchIntrinsicCallInst(
@@ -168,6 +170,8 @@ namespace {
         static const StringRef PREFIX_LSC_STORE_global;
         static const StringRef PREFIX_LSC_STORE_BLOCK_global;
 
+        static const StringRef PREFIX_LSC_STORE_CMASK_local;
+        static const StringRef PREFIX_LSC_STORE_CMASK_global;
         static const StringRef PREFIX_LSC_LOAD_local;
         static const StringRef PREFIX_LSC_LOAD_global;
         static const StringRef PREFIX_LSC_LOAD_BLOCK_global;
@@ -176,6 +180,8 @@ namespace {
         static const StringRef PREFIX_SUBGROUP_BLOCK_READ;
         static const StringRef PREFIX_SUBGROUP_BLOCK_WRITE;
 
+        static const StringRef PREFIX_LSC_LOAD_CMASK_local;
+        static const StringRef PREFIX_LSC_LOAD_CMASK_global;
         static const StringRef PREFIX_LSC_FENCE;
         static const StringRef PREFIX_LSC_FENCE_EVICT_TO_MEMORY;
         static const StringRef PREFIX_LSC_ATOMIC;
@@ -189,6 +195,8 @@ const StringRef LSCFuncsResolution::PREFIX_LSC_STORE_local  = "__builtin_IB_lsc_
 const StringRef LSCFuncsResolution::PREFIX_LSC_STORE_global = "__builtin_IB_lsc_store_global_";
 const StringRef LSCFuncsResolution::PREFIX_LSC_STORE_BLOCK_global = "__builtin_IB_lsc_store_block_global_";
 
+const StringRef LSCFuncsResolution::PREFIX_LSC_STORE_CMASK_local = "__builtin_IB_lsc_store_cmask_local_";
+const StringRef LSCFuncsResolution::PREFIX_LSC_STORE_CMASK_global = "__builtin_IB_lsc_store_cmask_global_";
 const StringRef LSCFuncsResolution::PREFIX_LSC_LOAD_local  = "__builtin_IB_lsc_load_local_";
 const StringRef LSCFuncsResolution::PREFIX_LSC_LOAD_global = "__builtin_IB_lsc_load_global_";
 const StringRef LSCFuncsResolution::PREFIX_LSC_LOAD_BLOCK_global = "__builtin_IB_lsc_load_block_global_";
@@ -197,6 +205,8 @@ const StringRef LSCFuncsResolution::PREFIX_LSC_LOAD_status = "__builtin_IB_lsc_l
 const StringRef LSCFuncsResolution::PREFIX_SUBGROUP_BLOCK_READ = "__builtin_IB_subgroup_block_read";
 const StringRef LSCFuncsResolution::PREFIX_SUBGROUP_BLOCK_WRITE = "__builtin_IB_subgroup_block_write";
 
+const StringRef LSCFuncsResolution::PREFIX_LSC_LOAD_CMASK_local = "__builtin_IB_lsc_load_cmask_local_";
+const StringRef LSCFuncsResolution::PREFIX_LSC_LOAD_CMASK_global = "__builtin_IB_lsc_load_cmask_global_";
 const StringRef LSCFuncsResolution::PREFIX_LSC_FENCE  = "__builtin_IB_lsc_fence_";
 const StringRef LSCFuncsResolution::PREFIX_LSC_FENCE_EVICT_TO_MEMORY = "__builtin_IB_lsc_fence_evict_to_memory";
 const StringRef LSCFuncsResolution::PREFIX_LSC_ATOMIC = "__builtin_IB_lsc_atomic_";
@@ -275,6 +285,12 @@ void LSCFuncsResolution::visitCallInst(CallInst &CI)
     } else if (FN.startswith(LSCFuncsResolution::PREFIX_LSC_LOAD_local)) {
         lscCall = CreateLSCLoadIntrinsicCallInst(
             GenISAIntrinsic::GenISA_LSCLoad, true);
+    }
+    else if (FN.startswith(LSCFuncsResolution::PREFIX_LSC_LOAD_CMASK_global)) {
+        lscCall = CreateLSCLoadCmaskIntrinsicCallInst(false);
+    }
+    else if (FN.startswith(LSCFuncsResolution::PREFIX_LSC_LOAD_CMASK_local)) {
+        lscCall = CreateLSCLoadCmaskIntrinsicCallInst(true);
     //////////////
     // prefetches
     } else if (FN.startswith(LSCFuncsResolution::PREFIX_LSC_LOAD_status)) {
@@ -294,6 +310,12 @@ void LSCFuncsResolution::visitCallInst(CallInst &CI)
     } else if (FN.startswith(LSCFuncsResolution::PREFIX_LSC_STORE_local)) {
         lscCall = CreateLSCStoreIntrinsicCallInst(
             GenISAIntrinsic::GenISA_LSCStore, true);
+    }
+    else if (FN.startswith(LSCFuncsResolution::PREFIX_LSC_STORE_CMASK_global)) {
+        lscCall = CreateLSCStoreCmaskIntrinsicCallInst(false);
+    }
+    else if (FN.startswith(LSCFuncsResolution::PREFIX_LSC_STORE_CMASK_local)) {
+        lscCall = CreateLSCStoreCmaskIntrinsicCallInst(true);
     //////////////
     // 2d block intrinsics
     }
@@ -645,6 +667,32 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
     return BlockOp;
 }
 
+Instruction* LSCFuncsResolution::CreateLSCLoadCmaskIntrinsicCallInst(
+    bool isLocalMem)
+{
+    auto typeInfo = decodeTypeInfoFromName();
+    if (hasError()) {
+        return nullptr;
+    }
+
+    Value* args[5]{
+        m_pCurrInst->getArgOperand(0),  // base address
+        getImmediateElementOffset(1, typeInfo), // imm element offset
+        getConstantInt32(typeInfo.dataSize),   // e.g. D32
+        getConstantInt32(typeInfo.vectorSize), // e.g. V4
+        isLocalMem ?  // cache options (default value for SLM)
+            getConstantInt32(LSC_L1DEF_L3DEF) : getCacheControlOpts(2)
+    };
+
+    Type* OvldTys[2]{
+        m_pCurrInstFunc->getReturnType(),
+        args[0]->getType()
+    };
+    Function* lscFunc = GenISAIntrinsic::getDeclaration(
+        m_pCurrInstFunc->getParent(), GenISAIntrinsic::GenISA_LSCLoadCmask, OvldTys);
+    Instruction* lscCall = CallInst::Create(lscFunc, args, "", m_pCurrInst);
+    return lscCall;
+}
 
 Instruction* LSCFuncsResolution::CreateLSCLoadStatusPreftchIntrinsicCallInst(
     GenISAIntrinsic::ID prefetchOp)
@@ -708,6 +756,34 @@ Instruction* LSCFuncsResolution::CreateLSCStoreIntrinsicCallInst(
     return lscCall;
 }
 
+Instruction* LSCFuncsResolution::CreateLSCStoreCmaskIntrinsicCallInst(
+    bool isLocalMem)
+{
+    auto typeInfo = decodeTypeInfoFromName();
+    if (hasError()) {
+        return nullptr;
+    }
+
+    Value* args[6]{
+        m_pCurrInst->getArgOperand(0),      // memory address where the data is stored to
+        getImmediateElementOffset(1, typeInfo),  // LSC immediate offset
+        m_pCurrInst->getArgOperand(2),      // data to store
+        getConstantInt32(typeInfo.dataSize),
+        getConstantInt32(typeInfo.vectorSize),
+        isLocalMem ?  // cache options (must be default for local)
+            getConstantInt32(LSC_L1DEF_L3DEF) : getCacheControlOpts(3)
+    };
+
+    Type* OvldTys[2]{
+        args[0]->getType(), // memory addr
+        args[2]->getType(), // data to store
+    };
+
+    Function* lscFunc = GenISAIntrinsic::getDeclaration(
+        m_pCurrInstFunc->getParent(), GenISAIntrinsic::GenISA_LSCStoreCmask, OvldTys);
+    Instruction* lscCall = CallInst::Create(lscFunc, args, "", m_pCurrInst);
+    return lscCall;
+}
 
 Instruction* LSCFuncsResolution::CreateLSCFenceIntrinsicCallInst() {
     LSC_SFID memPort = decodeSfidFromName();

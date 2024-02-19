@@ -7402,7 +7402,6 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
 }
 
 
-
 void EmitPass::interceptSamplePayloadCoalescing(
     llvm::SampleIntrinsic* inst,
     uint numPart,
@@ -8798,6 +8797,18 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_getAssertBufferPtr:
         emitImplicitArgIntrinsic(inst);
         break;
+    case GenISAIntrinsic::GenISA_RayQueryCheck:
+        emitRayQueryCheckRelease(inst, true, false);
+        break;
+    case GenISAIntrinsic::GenISA_RayQueryRelease:
+        emitRayQueryCheckRelease(inst, false, true);
+        break;
+    case GenISAIntrinsic::GenISA_PreemptionDisable:
+        emitPreemptionDisable();
+        break;
+    case GenISAIntrinsic::GenISA_PreemptionEnable:
+        emitPreemptionEnable(cast<PreemptionEnableIntrinsic>(inst));
+        break;
     case GenISAIntrinsic::GenISA_AsyncStackID:
         emitAsyncStackID(inst);
         break;
@@ -8838,6 +8849,8 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_LSCStoreBlock:
     case GenISAIntrinsic::GenISA_LSCLoad:
     case GenISAIntrinsic::GenISA_LSCLoadBlock:
+    case GenISAIntrinsic::GenISA_LSCStoreCmask:
+    case GenISAIntrinsic::GenISA_LSCLoadCmask:
     case GenISAIntrinsic::GenISA_LSCLoadStatus:
     case GenISAIntrinsic::GenISA_LSCPrefetch:
     case GenISAIntrinsic::GenISA_LSCFence:
@@ -22191,6 +22204,112 @@ void EmitPass::emitLscIntrinsicLoad(llvm::GenIntrinsicInst* inst)
         });
 }
 
+void EmitPass::emitLscIntrinsicLoadCmask(llvm::GenIntrinsicInst* inst)
+{
+    // Intrinsic format:
+    //  gatherDst - [non-uniform] data,vector read/prefetch from memory
+    //              tgm - flat,stateless,buffer,scratch,null
+    //
+    //  Operand 0 - [non-uniform] memory address where the data,vector is read/prefetch from
+    //  Operand 1 - [immediate] bytes offset (an int)
+    //  Operand 2 - [immediate] data size,    (LSC_DATA_SIZE enum)
+    //  Operand 3 - [immediate] vector size,  (LSC_DATA_ELEMS enum)
+    //  Operand 4 - [immediate] cache options (LSC_CACHE_OPT enum)
+
+    Value* Ptr = inst->getArgOperand(0);
+    PointerType* ptrType = cast<PointerType>(Ptr->getType());
+
+    ResourceDescriptor resource = GetResourceVariable(Ptr);
+    CVariable* offset = GetSymbol(Ptr);
+    bool useA32 = !isA64Ptr(ptrType, m_currShader->GetContext());
+
+    // load_cmask is tgm;
+    // tgm requires a32;
+    useA32 = true;
+
+    offset = useA32 ? TruncatePointer(offset) : offset;
+    auto addrSize = useA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b;
+    const int immOffset = (int)cast<ConstantInt>(inst->getOperand(1))->getSExtValue();
+
+    auto dataSize = (LSC_DATA_SIZE)cast<ConstantInt>(inst->getOperand(2))->getZExtValue();
+
+    // it's mask rather than size
+    auto dataElems = (LSC_DATA_ELEMS)cast<ConstantInt>(inst->getOperand(3))->getZExtValue();
+    uint32_t dataElemNum = m_encoder->LSC_GetElementNum( dataElems );
+
+    const LSC_CACHE_OPTS cacheOpts =
+        translateLSCCacheControlsFromValue(inst->getOperand(4), true);
+
+
+    CVariable* tempdst[4] = { nullptr, nullptr, nullptr, nullptr };
+    auto instWidth = m_currShader->m_Platform->getMaxLSCTypedMessageSize();
+    bool needsSplit = m_currShader->m_SIMDSize > instWidth;
+
+    const CShader::ExtractMaskWrapper writeMask( m_currShader, inst );
+    uint numChannels = iSTD::BitCount( writeMask.getEM() );
+
+    auto eltBitSize = 8;
+    switch (dataSize)
+    {
+    case LSC_DATA_SIZE_16b:
+        eltBitSize *= 2;
+        break;
+    case LSC_DATA_SIZE_32b:
+        eltBitSize *= 4;
+        break;
+    case LSC_DATA_SIZE_64b:
+        eltBitSize *= 8;
+        break;
+    default:
+        break;
+    }
+
+    if (!needsSplit)
+    {
+        m_encoder->LSC_TypedReadWrite( LSC_LOAD_QUAD, &resource,
+            offset + immOffset, nullptr, nullptr, nullptr,
+            m_destination, eltBitSize,
+            dataElems, // function header expects a mask
+            addrSize,
+            0x1 // mask correlated with dataElemNum
+        );
+
+        m_encoder->Push();
+    }
+    else
+    {
+        const unsigned int numLanesForInstWidth = numLanes(instWidth);
+        IGC_ASSERT(numLanesForInstWidth);
+        const unsigned int splitInstCount
+            = numLanes(m_currShader->m_SIMDSize) / numLanesForInstWidth;
+
+        for (uint i = 0; i < splitInstCount; ++i)
+        {
+            tempdst[i] = m_currShader->GetNewVariable(
+                numLanesForInstWidth * dataElemNum, // size in # of elems
+                ISA_TYPE_F,
+                EALIGN_GRF,
+                CName::NONE);
+
+            setSIMDSizeMask(m_encoder, m_currShader, i);
+            m_encoder->SetSrcSubVar(0, i);
+
+            m_encoder->LSC_TypedReadWrite( LSC_LOAD_QUAD, &resource,
+                offset + immOffset, nullptr, nullptr, nullptr,
+                tempdst[ i ], eltBitSize,
+                dataElems, // function header expects a mask
+                addrSize,
+                1 );
+
+            m_encoder->Push();
+        }
+    }
+
+    if (m_currShader->m_SIMDSize != instWidth)
+    {
+        JoinSIMD(tempdst, numChannels, instWidth);
+    }
+}
 
 void EmitPass::emitLscIntrinsicPrefetch(llvm::GenIntrinsicInst* inst)
 {
@@ -22364,6 +22483,118 @@ void EmitPass::emitLscIntrinsicStore(llvm::GenIntrinsicInst* inst)
         });
 }
 
+void EmitPass::emitLscIntrinsicStoreCmask(llvm::GenIntrinsicInst* inst)
+{
+    // Intrinsic format:
+    //  Operand 0 - [non-uniform] memory address where the data,vector is stored
+    //              ugm - flat,stateless,buffer,scratch
+    //              slm - flat
+    //  Operand 1 - [immediate] element offset (in elements)
+    //  Operand 2 - [non-uniform] data,vector to be stored into memory from registers
+    //  Operand 3 - [immediate] data size,    (LSC_DATA_SIZE enum)
+    //  Operand 4 - [immediate] vector size,  (LSC_DATA_ELEMS enum)
+    //  Operand 5 - [immediate] cache options (LSC_CACHE_OPT enum)
+
+    Value* Ptr = inst->getArgOperand(0);
+    int immOffset = (int)cast<ConstantInt>(inst->getOperand(1))->getSExtValue();
+
+    Value* storedVal = inst->getArgOperand(2);
+    CVariable* storedVar = GetSymbol(storedVal);
+    storedVar = BroadcastIfUniform(storedVar);
+
+    ResourceDescriptor resource = GetResourceVariable(Ptr);
+    PointerType* ptrType = cast<PointerType>(Ptr->getType());
+    CVariable* offset = GetSymbol(Ptr);
+    bool useA32 = !isA64Ptr(ptrType, m_currShader->GetContext());
+
+    // load_cmask is tgm; tgm requires a32;
+    useA32 = true;
+
+    offset = useA32 ? TruncatePointer(offset) : offset;
+    // In case eOffset isn't GRF aligned, need to create a copy
+    // For non-uniform variable, it should be already GRF-aligned.
+    offset = ReAlignUniformVariable(offset, EALIGN_GRF);
+
+    auto addrSize = useA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b;
+    auto dataSize = (LSC_DATA_SIZE)cast<ConstantInt>(inst->getOperand(3))->getZExtValue();
+
+    // cmask
+    auto dataElems = (LSC_DATA_ELEMS)cast<ConstantInt>(inst->getOperand(4))->getZExtValue();
+    uint32_t dataElemNum = m_encoder->LSC_GetElementNum( dataElems );
+
+    LSC_CACHE_OPTS cacheOpts =
+        translateLSCCacheControlsFromValue(inst->getOperand(5), false);
+
+    CVariable* pSrc_X = storedVar;
+
+    auto instWidth = m_currShader->m_Platform->getMaxLSCTypedMessageSize();
+    bool needsSplit = m_currShader->m_SIMDSize > instWidth;
+
+    auto eltBitSize = 8;
+    switch (dataSize)
+    {
+    case LSC_DATA_SIZE_16b:
+        eltBitSize *= 2;
+        break;
+    case LSC_DATA_SIZE_32b:
+        eltBitSize *= 4;
+        break;
+    case LSC_DATA_SIZE_64b:
+        eltBitSize *= 8;
+        break;
+    default:
+        break;
+    }
+
+    if (!needsSplit)
+    {
+        CVariable* pPayload = m_currShader->GetNewVariable(
+            dataElemNum * numLanes( m_currShader->m_SIMDSize ),
+            ISA_TYPE_F,
+            EALIGN_GRF,
+            CName::NONE );
+        m_currShader->CopyVariable( pPayload, pSrc_X, 0 );
+        m_encoder->LSC_TypedReadWrite( LSC_STORE_QUAD, &resource,
+            offset + immOffset, nullptr, nullptr, nullptr,
+            pPayload, eltBitSize,
+            dataElems, // mask
+            addrSize,
+            0x1 );
+        m_encoder->Push();
+    }
+    else
+    {
+        const unsigned int numLanesForInstWidth = numLanes( instWidth );
+
+        for( uint i = 0; i < 2; ++i )
+        {
+            CVariable* pPayload = nullptr;
+            pPayload = m_currShader->GetNewVariable(
+                numLanesForInstWidth * dataElemNum, // size in # of elems
+                ISA_TYPE_F,
+                EALIGN_GRF, CName::NONE );
+
+            setSIMDSizeMask( m_encoder, m_currShader, i );
+            if( !pSrc_X->IsUniform() )
+            {
+                m_encoder->SetSrcSubVar( 0, i );
+            }
+            m_encoder->SetDstSubVar( 0 );
+            m_encoder->Copy( pPayload, pSrc_X );
+            m_encoder->Push();
+
+            setSIMDSizeMask( m_encoder, m_currShader, i );
+            m_encoder->SetSrcSubVar( 0, i );
+            m_encoder->LSC_TypedReadWrite( LSC_STORE_QUAD, &resource,
+                offset + immOffset, nullptr, nullptr, nullptr,
+                pPayload, eltBitSize,
+                dataElems, // function header expects a mask
+                addrSize,
+                0x1 );
+            m_encoder->Push();
+        }
+    }
+}
 
 void EmitPass::emitLSCLoad(
     Instruction* inst,
@@ -22654,6 +22885,9 @@ void EmitPass::emitLSCIntrinsic(llvm::GenIntrinsicInst* GII)
     case GenISAIntrinsic::GenISA_LSCLoadBlock:
         emitLscIntrinsicLoad(GII);
         break;
+    case GenISAIntrinsic::GenISA_LSCLoadCmask:
+        emitLscIntrinsicLoadCmask(GII);
+        break;
     case GenISAIntrinsic::GenISA_LSCPrefetch:
     case GenISAIntrinsic::GenISA_LSCLoadStatus:
         emitLscIntrinsicPrefetch(GII);
@@ -22662,6 +22896,9 @@ void EmitPass::emitLSCIntrinsic(llvm::GenIntrinsicInst* GII)
     case GenISAIntrinsic::GenISA_LSCStore:
     case GenISAIntrinsic::GenISA_LSCStoreBlock:
         emitLscIntrinsicStore(GII);
+        break;
+    case GenISAIntrinsic::GenISA_LSCStoreCmask:
+        emitLscIntrinsicStoreCmask(GII);
         break;
     case GenISAIntrinsic::GenISA_LSCFence:
         emitLSCFence(GII);
@@ -23143,6 +23380,165 @@ void EmitPass::emitReadTraceRaySync(llvm::GenIntrinsicInst* I)
     m_encoder->Push();
 }
 
+void EmitPass::emitRayQueryCheckRelease(
+    GenIntrinsicInst* I,
+    bool RayQueryCheckEnable,
+    bool RayQueryReleaseEnable)
+{
+    // We emit a SW fence here to prevent motion of other sends across this
+    // send.rta until we have VISA support. An actual fence was previously
+    // inserted in the RayTracingShaderLowering pass.
+    m_encoder->Fence(false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true);
+    m_encoder->Push();
+
+    CVariable* header = m_currShader->GetNewVariable(
+        getGRFSize() / SIZE_DWORD, ISA_TYPE_UD, EALIGN_GRF, "RTHeader");
+
+    {
+        // Initialize RayQuery Enable bit
+        constexpr uint32_t RayQueryDword =
+            offsetof(RTStackFormat::TraceRayMessage::Header, rayQueryLocation) / sizeof(DWORD);
+        static_assert(RayQueryDword == 4, "header change?");
+
+        uint64_t rayQueryHeader = 0x1; // RayQueryEnable bit.
+
+        rayQueryHeader |= RayQueryCheckEnable ? 0x2 : 0;
+        rayQueryHeader |= RayQueryReleaseEnable ? 0x4 : 0;
+
+        CVariable* RayQueryVal =
+            m_currShader->ImmToVariable(rayQueryHeader, ISA_TYPE_UD);
+
+        m_encoder->SetSimdSize(SIMDMode::SIMD1);
+        m_encoder->SetNoMask();
+        m_encoder->SetDstSubReg(RayQueryDword);
+        m_encoder->Copy(header, RayQueryVal);
+        m_encoder->Push();
+    }
+
+    const unsigned int extDescriptor = EU_MESSAGE_TARGET_SFID_RTA;
+    CVariable* exDesc = m_currShader->ImmToVariable(extDescriptor, ISA_TYPE_UD);
+
+    uint messageSpecificControl = BindlessThreadDispatch(
+        1,
+        m_currShader->m_SIMDSize >= SIMDMode::SIMD16 ? 1 : 0,
+        true,
+        false
+        // If this is RayQuery Release message, there is no grf
+        // returned.
+        && !RayQueryReleaseEnable
+    );
+
+    CVariable* pMessDesc =
+        m_currShader->ImmToVariable(messageSpecificControl, ISA_TYPE_UD);
+
+    // Messages to rta unit require 2 sources. But Check/Release
+    // messages do not send any data is src1.
+    // To handle this, a dummy source is created.
+    CVariable* dummySource = m_currShader->GetNewVariable(
+        getGRFSize() / SIZE_DWORD, ISA_TYPE_UD, EALIGN_GRF, "dummySource");
+
+    m_encoder->Lifetime(LIFETIME_START, dummySource);
+
+    const uint32_t NumSend =
+        (m_currShader->m_SIMDSize == SIMDMode::SIMD32
+            ) ? 2 : 1;
+    for (uint32_t Cnt = 0; Cnt < NumSend; Cnt++)
+    {
+        if (m_currShader->m_SIMDSize == SIMDMode::SIMD32
+            )
+        {
+            m_encoder->SetSimdSize(SIMDMode::SIMD16);
+            if (Cnt == 1)
+                m_encoder->SetMask(EMASK_H2);
+        }
+
+        m_encoder->Sends(
+            nullptr,
+            header,
+            dummySource,
+            extDescriptor,
+            exDesc,
+            pMessDesc);
+
+        m_encoder->Push();
+    }
+
+    // Insert a software fence after the send.rta so no IO operations get
+    // scheduled across the send from below.  We should be able to remove this
+    // once we have VISA support for raytracing rather than emitting a
+    // raw_sends.
+    m_encoder->Fence(false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true);
+    m_encoder->Push();
+}
+
+EmitPass::PreemptionEncoding
+EmitPass::getEncoderPreemptionMode(EPreemptionMode preemptionMode)
+{
+    switch (preemptionMode)
+    {
+    default:
+        break;
+    case PREEMPTION_ENABLED:
+        return PreemptionEncoding::PreemptionEnabled;
+    case PREEMPTION_DISABLED:
+        return PreemptionEncoding::PreemptionDisabled;
+    }
+
+    return PreemptionEncoding::PreemptionEnabled;
+}
+
+void EmitPass::emitPreemptionDisable()
+{
+    CVariable *Mask = m_currShader->ImmToVariable(
+        ~getEncoderPreemptionMode(PREEMPTION_ENABLED),
+        ISA_TYPE_UD);
+
+    m_encoder->And(m_currShader->GetCR0(), m_currShader->GetCR0(), Mask);
+    m_encoder->Push();
+}
+
+void EmitPass::emitPreemptionEnable(PreemptionEnableIntrinsic* PEI)
+{
+    if (m_currShader->GetShaderType() == ShaderType::OPENCL_SHADER)
+    {
+        COpenCLKernel* kernel = static_cast<COpenCLKernel*>(m_currShader);
+        if (kernel->GetDisableMidThreadPreemption())
+            return;
+    }
+
+    CVariable* Flag = nullptr;
+    if (auto* CI = dyn_cast<ConstantInt>(PEI->getFlag()))
+    {
+        if (CI->isZero())
+            return;
+    }
+    else
+    {
+        Flag = GetSymbol(PEI->getFlag());
+    }
+
+    CVariable *Mask = m_currShader->ImmToVariable(
+        getEncoderPreemptionMode(PREEMPTION_ENABLED),
+        ISA_TYPE_UD);
+
+    m_encoder->SetPredicate(Flag);
+    m_encoder->Or(m_currShader->GetCR0(), m_currShader->GetCR0(), Mask);
+    m_encoder->Push();
+}
 
 void EmitPass::emitBTD(
     CVariable* GlobalBufferPtr,
@@ -23170,6 +23566,17 @@ void EmitPass::emitBTD(
         m_encoder->Push();
     }
 
+    if (!releaseStackID && m_currShader->m_Platform->canSupportWMTP())
+    {
+
+        // We just need to initialize this to 0 on a normal spawn.
+        CVariable* Zero = m_currShader->ImmToVariable(0x0, ISA_TYPE_UD);
+        m_encoder->SetSimdSize(SIMDMode::SIMD1);
+        m_encoder->SetNoMask();
+        m_encoder->SetDstSubReg(2);
+        m_encoder->Copy(payload, Zero);
+        m_encoder->Push();
+    }
 
     StackID = BroadcastIfUniform(StackID);
     // StackID[15:0]
@@ -23181,6 +23588,7 @@ void EmitPass::emitBTD(
     // should be released.
     if (releaseStackID)
     {
+        // Preempted StackID Release [1] (Xe2)
         // StackID Release           [0]
         CVariable* Alias = m_currShader->GetNewAlias(payload, ISA_TYPE_UD, 0, 1);
         CVariable* Bit = m_currShader->ImmToVariable(0x1, ISA_TYPE_UD);

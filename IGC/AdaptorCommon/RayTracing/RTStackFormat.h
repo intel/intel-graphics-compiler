@@ -330,7 +330,7 @@ struct MemRay<Xe>
         instLeafPtr           = 48,
         rayMask               = 8,
 
-        reserved2             = 7,
+        ComparisonValue       = 7,
         pad2                  = 8,
     };
 
@@ -402,7 +402,7 @@ struct MemRay<Xe>
     // DG2
     //uint64_t pad                 : 8;                              // explicit padding bits
     uint64_t pad                   : (T)Bits::pad;                   // explicit padding bits
-    uint64_t reserved2             : (T)Bits::reserved2;
+    uint64_t ComparisonValue       : (T)Bits::ComparisonValue;       // to be compared with Instance.ComparisonValue
     uint64_t shaderIndexMultiplier : (T)Bits::shaderIndexMultiplier; // shader index multiplier
 
     union
@@ -531,8 +531,8 @@ struct InstanceLeaf<Xe>
             geomFlags             = 2,
             startNodePtr          = 48,
             instFlags             = 8,
-            reserved1             = 1,
-            reserved2             = 7,
+            ComparisonMode        = 1,
+            ComparisonValue       = 7,
         };
 
         uint32_t shaderIndex : (T)Bits::shaderIndex;  // shader index used to calculate instancing shader in case of software instancing
@@ -547,8 +547,9 @@ struct InstanceLeaf<Xe>
         uint64_t startNodePtr : (T)Bits::startNodePtr;  // start node where to continue traversal of the instanced object
         uint64_t instFlags    : (T)Bits::instFlags;     // flags for the instance (see InstanceFlags)
 
-        uint64_t reserved1       : (T)Bits::reserved1; // 0 for less than or equal, 1 for greater
-        uint64_t reserved2       : (T)Bits::reserved2; // to be compared with ray.ComparisonValue
+        // Xe2+
+        uint64_t ComparisonMode  : (T)Bits::ComparisonMode;  // 0 for less than or equal, 1 for greater
+        uint64_t ComparisonValue : (T)Bits::ComparisonValue; // to be compared with ray.ComparisonValue
 
 
         // Note that the hardware swaps the translation components of the
@@ -1024,6 +1025,8 @@ struct TraceRayMessage
             uint64_t rayQueryLocation;
             // bit 128
             uint64_t rayQuery         : 1;   // indicates a ray query message
+            uint64_t rayQueryCheck    : 1;   // indicates a ray query check message
+            uint64_t rayQueryRelease  : 1;   // indicates a ray query release message
         };
     } header;
 

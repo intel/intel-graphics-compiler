@@ -20,6 +20,7 @@ llvm::Pass* createRayTracingIntrinsicResolutionPass();
 llvm::Pass* createTraceRayInlinePrepPass();
 llvm::Pass* createTraceRayInlineLatencySchedulerPass();
 llvm::Pass* CreateTraceRayInlineLoweringPass();
+llvm::Pass* CreateDynamicRayManagementPass();
 llvm::Pass* CreateRTGlobalsPointerLoweringPass();
 llvm::Pass* createOverrideTMaxPass(unsigned OverrideValue);
 }

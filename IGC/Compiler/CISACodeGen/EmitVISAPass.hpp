@@ -495,6 +495,22 @@ public:
 
     void emitReadTraceRaySync(llvm::GenIntrinsicInst* I);
 
+    void emitRayQueryCheckRelease(
+        llvm::GenIntrinsicInst* I,
+        bool RayQueryCheckEnable = false,
+        bool RayQueryReleaseEnable = false
+    );
+
+    void emitPreemptionDisable();
+    void emitPreemptionEnable(llvm::PreemptionEnableIntrinsic* PEI);
+
+    enum PreemptionEncoding
+    {
+        PreemptionDisabled = (0 << 14),
+        PreemptionEnabled  = (1 << 14)
+    };
+
+    static PreemptionEncoding getEncoderPreemptionMode(EPreemptionMode preemptionMode);
 
     void emitBTD(
         CVariable* GlobalBufferPtr,
@@ -551,6 +567,8 @@ public:
     void emitLscIntrinsicLoad(llvm::GenIntrinsicInst* GII);
     void emitLscIntrinsicPrefetch(llvm::GenIntrinsicInst* GII);
     void emitLscIntrinsicStore(llvm::GenIntrinsicInst* GII);
+    void emitLscIntrinsicLoadCmask(llvm::GenIntrinsicInst* inst);
+    void emitLscIntrinsicStoreCmask(llvm::GenIntrinsicInst* GII);
 
     void emitLSCFence(llvm::GenIntrinsicInst* inst);
     void emitLSC2DBlockOperation(llvm::GenIntrinsicInst* inst);

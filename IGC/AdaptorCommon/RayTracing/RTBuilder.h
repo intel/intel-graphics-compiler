@@ -254,6 +254,11 @@ public:
 
     Value* CreateSyncStackPtrIntrinsic(Value* Addr, Type* PtrTy, bool AddDecoration);
 
+    RayQueryCheckIntrinsic* CreateRayQueryCheckIntrinsic();
+    RayQueryReleaseIntrinsic* CreateRayQueryReleaseIntrinsic();
+
+    PreemptionDisableIntrinsic* CreatePreemptionDisableIntrinsic();
+    PreemptionEnableIntrinsic* CreatePreemptionEnableIntrinsic(Value *Flag = nullptr);
 
     SyncStackPointerVal* getSyncStackPointer();
 
@@ -435,6 +440,7 @@ private:
     Value* emitStateRegID(uint32_t BitStart, uint32_t BitEnd);
     std::pair<uint32_t, uint32_t> getSliceIDBitsInSR0() const;
     std::pair<uint32_t, uint32_t> getDualSubsliceIDBitsInSR0() const;
+    std::pair<uint32_t, uint32_t> getSubsliceIDBitsInSR0() const;
 
 
     Value* getGlobalDSSID();
@@ -453,6 +459,8 @@ public:
     Type* getRTStack2PtrTy(RTMemoryAccessMode Mode, bool async = true) const;
     Type* getRayDispatchGlobalDataPtrTy(Module &M);
 
+    ConstantInt* supportStochasticLod();
+
 
     GenIntrinsicInst* createDummyInstID(Value* pSrcVal);
 
@@ -466,6 +474,7 @@ public:
         Value* RootNodePtr,
         Value* RayFlags,
         Value* InstanceInclusionMask,
+        Value* ComparisonValue,
         Value* TMax);
 
     void emitSingleRQMemRayWrite(

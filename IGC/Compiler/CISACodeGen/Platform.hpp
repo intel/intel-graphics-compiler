@@ -157,6 +157,12 @@ bool canSupportWMTPWithoutBTD() const {
 }
 
 
+bool canSupportWMTP() const
+{
+    // Returns true if the platform has the capability of supporting
+    // WMTP but WMTP isn't supported for all shader types
+    return isCoreChildOf(IGFX_XE2_LPG_CORE);
+}
 
 bool supportsWMTPForShaderType(ShaderType type) const {
 
@@ -1147,10 +1153,12 @@ bool matchImmOffsetsLSC() const
 {
     enum LscMatchImmMode {
         OFF = 0,
+        IF_HW_SUPPORTED = 1,
         ON = 2,
     };
     auto immOffsetMode = (LscMatchImmMode)IGC_GET_FLAG_VALUE(LscImmOffsMatch);
-    return hasLSC() && immOffsetMode >= ON;
+    return hasLSC() &&
+        (immOffsetMode >= ON || (immOffsetMode == IF_HW_SUPPORTED && isCoreChildOf(IGFX_XE2_LPG_CORE)));
 }
 
 bool WaCubeHFPrecisionBug() const
@@ -1367,6 +1375,16 @@ bool hasDualKSPPS() const
 }
 
 bool hasLSCSamplerRouting() const
+{
+    return isCoreChildOf(IGFX_XE2_LPG_CORE);
+}
+
+bool supportStochasticLod() const
+{
+    return isCoreChildOf(IGFX_XE2_LPG_CORE);
+}
+
+bool supportsProgrammableOffsets() const
 {
     return isCoreChildOf(IGFX_XE2_LPG_CORE);
 }

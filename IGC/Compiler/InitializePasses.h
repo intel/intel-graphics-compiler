@@ -188,6 +188,8 @@ void initializeTraceRayInlineLoweringPassPass(llvm::PassRegistry&);
 void initializeRayTracingAddressSpaceAAWrapperPassPass(llvm::PassRegistry&);
 void initializeRayTracingMemDSEPassPass(llvm::PassRegistry&);
 void initializeOverrideTMaxPassPass(llvm::PassRegistry&);
+void initializeTranslateToProgrammableOffsetsPassPass(llvm::PassRegistry&);
+void initializeDynamicRayManagementPassPass(llvm::PassRegistry&);
 void initializeVectorBitCastOptPass(llvm::PassRegistry&);
 void initializeVectorPreProcessPass(llvm::PassRegistry&);
 void initializeVectorProcessPass(llvm::PassRegistry&);

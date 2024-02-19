@@ -159,12 +159,36 @@ bool RayTracingShaderLowering::runOnModule(Module& M)
     CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
     RTBuilder RTB(M.getContext(), *CGCtx);
+    const bool ForcePreemptionDisable =
+        CGCtx->type == ShaderType::RAYTRACING_SHADER &&
+        CGCtx->platform.canSupportWMTP();
 
     bool Changed = false;
     for (auto& F : M)
     {
         if (F.isDeclaration())
             continue;
+        Value* EntryPreemptionVal = nullptr;
+        auto checkPreemption = [&](Function &F) {
+            if (EntryPreemptionVal)
+                return EntryPreemptionVal;
+            RTBuilder::InsertPointGuard Guard(RTB);
+            RTB.SetInsertPoint(&F.getEntryBlock().front());
+            Function* cr0 = llvm::GenISAIntrinsic::getDeclaration(
+                F.getParent(),
+                GenISAIntrinsic::GenISA_movcr);
+            Value* Val = RTB.CreateCall(cr0, RTB.getInt32(0)); // cr0.0
+            Val = RTB.CreateAnd(
+                Val, EmitPass::getEncoderPreemptionMode(PREEMPTION_ENABLED));
+            EntryPreemptionVal = RTB.CreateICmpNE(Val, RTB.getInt32(0));
+            return EntryPreemptionVal;
+        };
+        const bool isFunc = !isEntryFunc(CGCtx->getMetaDataUtils(), &F);
+        if (ForcePreemptionDisable)
+        {
+            RTB.SetInsertPoint(&F.getEntryBlock().front());
+            RTB.CreatePreemptionDisableIntrinsic();
+        }
 
         SmallVector<Instruction*, 8> DeadInsts;
 
@@ -218,6 +242,21 @@ bool RayTracingShaderLowering::runOnModule(Module& M)
                 Changed = true;
                 break;
             }
+            case GenISAIntrinsic::GenISA_RayQueryCheck:
+                if (!ForcePreemptionDisable)
+                {
+                    RTB.SetInsertPoint(GII);
+                    RTB.CreatePreemptionDisableIntrinsic();
+                }
+                break;
+            case GenISAIntrinsic::GenISA_RayQueryRelease:
+                if (!ForcePreemptionDisable)
+                {
+                    Value* Flag = isFunc ? checkPreemption(F) : nullptr;
+                    RTB.SetInsertPoint(GII->getNextNode());
+                    RTB.CreatePreemptionEnableIntrinsic(Flag);
+                }
+                break;
             default:
                 break;
             }

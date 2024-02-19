@@ -1271,6 +1271,7 @@ public:
     Value* getTMax() const { return getOperand(15); }
     void setTMax(Value* V) { setOperand(15, V); }
     Value* getPayload() const { return getOperand(16); }
+    Value* getComparisonValue() const { return getOperand(17); }
 };
 
 class CallShaderHLIntrinsic : public ContinuationHLIntrinsic {
@@ -1611,6 +1612,31 @@ public:
     Value* getFlags()  const { return getOperand(0); }
 };
 
+class RayQueryCheckIntrinsic : public GenIntrinsicInst {
+public:
+    // Methods for support type inquiry through isa, cast, and dyn_cast:
+    static inline bool classof(const GenIntrinsicInst* I) {
+        GenISAIntrinsic::ID ID = I->getIntrinsicID();
+        return ID == GenISAIntrinsic::GenISA_RayQueryCheck;
+    }
+
+    static inline bool classof(const Value* V) {
+        return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
+    }
+};
+
+class RayQueryReleaseIntrinsic : public GenIntrinsicInst {
+public:
+    // Methods for support type inquiry through isa, cast, and dyn_cast:
+    static inline bool classof(const GenIntrinsicInst* I) {
+        GenISAIntrinsic::ID ID = I->getIntrinsicID();
+        return ID == GenISAIntrinsic::GenISA_RayQueryRelease;
+    }
+
+    static inline bool classof(const Value* V) {
+        return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
+    }
+};
 
 class RayQueryInstrisicBase : public GenIntrinsicInst
 {
@@ -1680,6 +1706,7 @@ public:
     Value* getTMin() const { return getOperand(10); }
     Value* getTMax() const { return getOperand(11); }
     void setTMax(Value* V) { setOperand(11, V); }
+    Value* getComparisonValue() const { return getOperand(12); }
 };
 
 class TraceRaySyncProceedHLIntrinsic : public RayQueryInstrisicBase {
@@ -1907,6 +1934,35 @@ public:
     {
         llvm::ConstantDataArray* constantVal = llvm::dyn_cast<llvm::ConstantDataArray>(getOperand(0));
         return constantVal->getAsString();
+    }
+};
+class PreemptionEnableIntrinsic : public GenIntrinsicInst {
+public:
+    // Methods for support type inquiry through isa, cast, and dyn_cast:
+    static inline bool classof(const GenIntrinsicInst* I) {
+        GenISAIntrinsic::ID ID = I->getIntrinsicID();
+        return ID == GenISAIntrinsic::GenISA_PreemptionEnable;
+    }
+
+    static inline bool classof(const Value* V) {
+        return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
+    }
+
+    Value* getFlag() const {
+        return getOperand(0);
+    }
+};
+
+class PreemptionDisableIntrinsic : public GenIntrinsicInst {
+public:
+    // Methods for support type inquiry through isa, cast, and dyn_cast:
+    static inline bool classof(const GenIntrinsicInst* I) {
+        GenISAIntrinsic::ID ID = I->getIntrinsicID();
+        return ID == GenISAIntrinsic::GenISA_PreemptionDisable;
+    }
+
+    static inline bool classof(const Value* V) {
+        return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
     }
 };
 

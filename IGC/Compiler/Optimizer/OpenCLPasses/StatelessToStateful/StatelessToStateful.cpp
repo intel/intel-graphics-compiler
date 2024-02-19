@@ -612,6 +612,36 @@ void StatelessToStateful::promoteIntrinsic(InstructionInfo& II)
             { pTy,I->getOperand(1)->getType() });
         statefulInst = CallInst::Create(pFunc, args, "", I);
     }
+    else if (intrinID == GenISAIntrinsic::GenISA_LSCStoreCmask)
+    {
+        SmallVector<Value*, 6> args;
+        args.push_back(statefulPtr);
+        args.push_back(I->getOperand(1));
+        args.push_back(I->getOperand(2));
+        args.push_back(I->getOperand(3));
+        args.push_back(I->getOperand(4));
+        args.push_back(I->getOperand(5));
+        Function* pFunc = GenISAIntrinsic::getDeclaration(
+            M,
+            intrinID,
+            { pTy, I->getOperand(2)->getType() });
+        statefulInst = CallInst::Create(pFunc, args, "", I);
+    }
+    else if (intrinID == GenISAIntrinsic::GenISA_LSCLoadCmask)
+    {
+        Function* pCurrInstFunc = I->getCalledFunction();
+        SmallVector<Value*, 5> args;
+        args.push_back(statefulPtr);
+        args.push_back(I->getOperand(1));
+        args.push_back(I->getOperand(2));
+        args.push_back(I->getOperand(3));
+        args.push_back(I->getOperand(4));
+        Function* pFunc = GenISAIntrinsic::getDeclaration(
+            M,
+            intrinID,
+            { pCurrInstFunc->getReturnType(), pTy });
+        statefulInst = CallInst::Create(pFunc, args, "", I);
+    }
     else if (isUntypedAtomic(intrinID))
     {
         if (intrinID == GenISAIntrinsic::GenISA_intatomicrawA64 ||
@@ -844,6 +874,19 @@ void StatelessToStateful::visitCallInst(CallInst& I)
 
         addToPromotionMap(I, ptr);
     }
+    else if (intrinID == GenISAIntrinsic::GenISA_LSCLoadCmask ||
+        intrinID == GenISAIntrinsic::GenISA_LSCStoreCmask)
+    {
+        Value* ptr = Inst->getOperand(0);
+        PointerType* ptrTy = dyn_cast<PointerType>(ptr->getType());
+        // If not global, skip.
+        if (ptrTy->getPointerAddressSpace() != ADDRESS_SPACE_GLOBAL)
+        {
+            return;
+        }
+
+        addToPromotionMap(I, ptr);
+    }
 
     // check if there's non-kernel-arg load/store
     if (IGC_IS_FLAG_ENABLED(DumpHasNonKernelArgLdSt)) {
@@ -858,6 +901,7 @@ void StatelessToStateful::visitCallInst(CallInst& I)
             case GenISAIntrinsic::GenISA_LSCLoad:
             case GenISAIntrinsic::GenISA_LSCLoadBlock:
             case GenISAIntrinsic::GenISA_LSCPrefetch:
+            case GenISAIntrinsic::GenISA_LSCLoadCmask:
                 return true;
             default:
                 break;
@@ -871,6 +915,7 @@ void StatelessToStateful::visitCallInst(CallInst& I)
             case GenISAIntrinsic::GenISA_LSCStore:
             case GenISAIntrinsic::GenISA_LSCStoreBlock:
             case GenISAIntrinsic::GenISA_simdBlockWrite:
+            case GenISAIntrinsic::GenISA_LSCStoreCmask:
                 return true;
             default:
                 break;
