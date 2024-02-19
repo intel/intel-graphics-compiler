@@ -1002,18 +1002,18 @@ static_assert(
     sizeof(RTMemory<uint8_t[8], RTStack2<Xe>, RTStack2<Xe>, uint8_t[136],
         32, 2048, 16 * 8 * 16>), "mismatch?");
 
+/* a list of commands for the ray tracing hardware */
+enum class TraceRayCtrl : uint8_t
+{
+    TRACE_RAY_INITIAL = 0,              // Initializes hit and initializes traversal state
+    TRACE_RAY_INSTANCE = 1,             // Loads committed hit and initializes traversal state
+    TRACE_RAY_COMMIT = 2,               // Loads potential hit and loads traversal state
+    TRACE_RAY_CONTINUE = 3,             // Loads committed hit and loads traversal state
+    TRACE_RAY_NONE = 5                  // Illegal!
+};
+
 struct TraceRayMessage
 {
-    /* a list of commands for the ray tracing hardware */
-    enum TraceRayCtrl : uint8_t
-    {
-        TRACE_RAY_INITIAL = 0,              // Initializes hit and initializes traversal state
-        TRACE_RAY_INSTANCE = 1,             // Loads committed hit and initializes traversal state
-        TRACE_RAY_COMMIT = 2,               // Loads potential hit and loads traversal state
-        TRACE_RAY_CONTINUE = 3,             // Loads committed hit and loads traversal state
-        TRACE_RAY_NONE = 5                  // Illegal!
-    };
-
     // This data is sent per message and is uniform across all rays in a dispatch.
     struct Header
     {
@@ -1037,6 +1037,7 @@ struct TraceRayMessage
 
     static_assert(sizeof(Payload) == 4, "Payload must be 4 bytes");
 };
+
 
 // TraceRayInline enums
 

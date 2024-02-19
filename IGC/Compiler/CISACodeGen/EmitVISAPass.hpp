@@ -491,6 +491,8 @@ public:
     LSC_CACHE_OPTS getDefaultRaytracingCachePolicy(bool isLoad) const;
     void emitAsyncStackID(llvm::GenIntrinsicInst* I);
     void emitTraceRay(llvm::TraceRayIntrinsic *I, bool RayQueryEnable);
+
+
     void emitReadTraceRaySync(llvm::GenIntrinsicInst* I);
 
 
@@ -499,7 +501,10 @@ public:
         CVariable* StackID,
         CVariable* ShaderRecord,
         CVariable* Flag,
-        bool releaseStackID);
+        bool releaseStackID
+        );
+
+
     void emitBindlessThreadDispatch(llvm::BTDIntrinsic *I);
     void emitStackIDRelease(llvm::StackIDReleaseIntrinsic *I);
     void emitGetShaderRecordPtr(llvm::GetShaderRecordPtrIntrinsic *I);

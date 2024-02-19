@@ -2268,6 +2268,7 @@ namespace IGC
         return GetVISASurfaceOpnd(predDefSurface, &tempImm);
     }
 
+
     void CEncoder::RenderTargetWrite(CVariable* var[],
         bool isUndefined[],
         bool lastRenderTarget,

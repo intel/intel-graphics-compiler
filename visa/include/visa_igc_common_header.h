@@ -988,4 +988,5 @@ typedef enum {
   VISA_LSC_IMMOFF_SPILL_FILL = 17
 } VISALscImmOffOpts;
 
+
 #endif // _VISA_IGC_COMMON_HEADER_H_

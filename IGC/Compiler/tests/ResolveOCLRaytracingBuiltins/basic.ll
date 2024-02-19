@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -enable-debugify --igc-resolve-ocl-raytracing-builtins -platformdg2 -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -enable-debugify --igc-resolve-ocl-raytracing-builtins -platformdg2 -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,%RT_CHECK_PREFIX%
 ; ------------------------------------------------
 ; ResolveOCLRaytracingBuiltins
 ; ------------------------------------------------
@@ -82,7 +82,7 @@ define spir_kernel void @rt_kernel(%struct.rtglobals_t addrspace(1)* %rt) {
 ; CHECK:    store i32 addrspace(4)* [[TMP42]], i32 addrspace(4)** [[GBTD]], align 8
 ; CHECK:    [[TMP43:%.*]] = load [[STRUCT_RTGLOBALS_T]] addrspace(1)*, [[STRUCT_RTGLOBALS_T]] addrspace(1)** [[RT_ADDR]], align 8
 ; CHECK:    call void @llvm.genx.GenISA.LSCFence(i32 0, i32 1, i32 0)
-; CHECK:    [[TMP44:%.*]] = call i32 @llvm.genx.GenISA.TraceRaySync.p1struct.rtglobals_t.i32([[STRUCT_RTGLOBALS_T]] addrspace(1)* [[TMP43]], i32 257)
+; CHECK-RT-NEXT:    [[TMP44:%.*]] = call i32 @llvm.genx.GenISA.TraceRaySync.p1struct.rtglobals_t.i32([[STRUCT_RTGLOBALS_T]] addrspace(1)* [[TMP43]], i32 257)
 ; CHECK:    [[TMP45:%.*]] = inttoptr i32 [[TMP44]] to %struct.rtfence_t*
 ; CHECK:    store %struct.rtfence_t* [[TMP45]], %struct.rtfence_t** [[FC]], align 8
 ; CHECK:    [[TMP46:%.*]] = load %struct.rtfence_t*, %struct.rtfence_t** [[FC]], align 8

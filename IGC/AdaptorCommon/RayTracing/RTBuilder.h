@@ -355,7 +355,7 @@ public:
     Value* getHitValid(StackPointerVal* StackPointer, bool CommittedHit);
     void   setHitValid(StackPointerVal* StackPointer, bool CommittedHit);
     Value* getSyncTraceRayControl(Value* ptrCtrl);
-    void   setSyncTraceRayControl(Value* ptrCtrl, unsigned ctrl);
+    void   setSyncTraceRayControl(Value* ptrCtrl, RTStackFormat::TraceRayCtrl ctrl);
     Value* getHitBaryCentric(StackPointerVal* StackPointer, uint32_t idx, bool CommittedHit);
 
 
@@ -377,6 +377,7 @@ public:
         Value* traceRayCtrl,
         bool isRayQuery,
         const Twine& PayloadName = "");
+
 
 
 

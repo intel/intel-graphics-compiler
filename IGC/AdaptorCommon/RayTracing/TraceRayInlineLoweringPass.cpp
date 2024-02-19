@@ -304,7 +304,7 @@ void TraceRayInlineLoweringPass::LowerTraceRayInline(Function& F)
         // RayQueryObject->stateInfo.traceRayCtrl = TRACE_RAY_INITIAL
         builder.setSyncTraceRayControl(
             getShMemRTCtrl(builder, QueryObjIndex),
-            TraceRayMessage::TraceRayCtrl::TRACE_RAY_INITIAL);
+            TraceRayCtrl::TRACE_RAY_INITIAL);
 
         if (singleRQMemRayStore)
         {
@@ -798,7 +798,7 @@ void TraceRayInlineLoweringPass::LowerCommitNonOpaqueTriangleHit(Function& F)
         auto* const ShadowMemStackPointer = getShMemRayQueryRTStack(builder, CH->getQueryObjIndex());
 
         builder.createPotentialHit2CommittedHit(ShadowMemStackPointer);
-        builder.setSyncTraceRayControl(getShMemRTCtrl(builder, CH->getQueryObjIndex()), TraceRayMessage::TraceRayCtrl::TRACE_RAY_COMMIT);
+        builder.setSyncTraceRayControl(getShMemRTCtrl(builder, CH->getQueryObjIndex()), TraceRayCtrl::TRACE_RAY_COMMIT);
     }
 
     for (auto CH : CommitHits)
@@ -925,7 +925,7 @@ void TraceRayInlineLoweringPass::LowerCommitProceduralPrimitiveHit(Function& F)
 
         builder.setSyncTraceRayControl(
             getShMemRTCtrl(builder, CH->getQueryObjIndex()),
-            TraceRayMessage::TraceRayCtrl::TRACE_RAY_COMMIT);
+            TraceRayCtrl::TRACE_RAY_COMMIT);
     }
 
     for (auto CH : CommitHits)

@@ -288,9 +288,8 @@ TraceRayIntrinsic* RTBuilder::createTraceRay(
     bool isRayQuery,
     const Twine& PayloadName)
 {
-    constexpr uint16_t TraceRayCtrlOffset =
-        offsetof(TraceRayMessage::Payload, traceRayCtrl) * 8;
-    Value* traceRayCtrlVal = this->CreateShl(traceRayCtrl, TraceRayCtrlOffset);
+    TraceRayIntrinsic* TraceRay = nullptr;
+
     Module* module = this->GetInsertBlock()->getModule();
 
     Value* GlobalPointer = this->getGlobalBufferPtr();
@@ -299,16 +298,27 @@ TraceRayIntrinsic* RTBuilder::createTraceRay(
         GenISAIntrinsic::GenISA_TraceRaySync :
         GenISAIntrinsic::GenISA_TraceRayAsync;
 
-    Value* bitField = getTraceRayPayload(
-        bvhLevel, traceRayCtrlVal, isRayQuery, PayloadName);
     Function* traceFn = GenISAIntrinsic::getDeclaration(
         module,
         ID,
         GlobalPointer->getType());
 
-    Value* Args[] = { GlobalPointer, bitField };
+    SmallVector<Value*, 4> Args;
 
-    auto* TraceRay = cast<TraceRayIntrinsic>(this->CreateCall(traceFn, Args));
+    {
+        constexpr uint16_t TraceRayCtrlOffset =
+            offsetof(TraceRayMessage::Payload, traceRayCtrl) * 8;
+        Value* traceRayCtrlVal = this->CreateShl(traceRayCtrl, TraceRayCtrlOffset);
+
+        Value* bitField = getTraceRayPayload(bvhLevel, traceRayCtrlVal, isRayQuery, PayloadName);
+
+        Args.push_back(GlobalPointer);
+        Args.push_back(bitField);
+
+
+        TraceRay = cast<TraceRayIntrinsic>(this->CreateCall(traceFn, Args));
+    }
+
     return TraceRay;
 }
 
@@ -1061,6 +1071,7 @@ Value* RTBuilder::getTraceRayPayload(
     return bitField;
 }
 
+
 GenIntrinsicInst* RTBuilder::getSr0_0()
 {
     Module* module = this->GetInsertBlock()->getModule();
@@ -1292,10 +1303,10 @@ Value* RTBuilder::getSyncTraceRayControl(Value* ptrCtrl)
     return this->CreateLoad(ptrCtrl, VALUE_NAME("rayQueryObject.traceRayControl"));
 }
 
-void RTBuilder::setSyncTraceRayControl(Value* ptrCtrl, unsigned ctrl)
+void RTBuilder::setSyncTraceRayControl(Value* ptrCtrl, RTStackFormat::TraceRayCtrl ctrl)
 {
     Type* eleType = IGCLLVM::getNonOpaquePtrEltTy(ptrCtrl->getType());
-    this->CreateStore(llvm::ConstantInt::get(eleType, ctrl), ptrCtrl);
+    this->CreateStore(llvm::ConstantInt::get(eleType, (uint32_t)ctrl), ptrCtrl);
 }
 
 Value* RTBuilder::getHitBaryCentric(

@@ -70,3 +70,5 @@ else:
 if not config.regkeys_disabled:
   config.available_features.add('regkeys')
 
+  config.substitutions.append(('%RT_CHECK_PREFIX%', 'CHECK-RT'))
+

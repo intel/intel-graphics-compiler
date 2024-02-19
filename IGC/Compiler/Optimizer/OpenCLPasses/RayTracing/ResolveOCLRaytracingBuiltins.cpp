@@ -340,10 +340,11 @@ void ResolveOCLRaytracingBuiltins::handleDispatchTraceRayQuery(CallInst& callIns
 
   Value* payload = m_builder->CreateOr(bvhLevel, traceRayCtrl, VALUE_NAME("traceRayQueryPayload"));
 
-  Value* Args[] = {
-      rtDispatchGlobals,
-      payload
-  };
+  SmallVector<Value*, 4> Args;
+  
+  Args.push_back(rtDispatchGlobals);
+  Args.push_back(payload);
+
 
   // The return value from this TraceRay with RayQueryEnable is a dummy register, which is used
   // to sync this message via scoreboard.

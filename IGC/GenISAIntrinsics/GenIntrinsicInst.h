@@ -1316,6 +1316,7 @@ public:
     void setGlobalBufferPointer(Value* V) { return setOperand(0, V); }
 
     Value* getPayload()             const { return getOperand(1); }
+
 };
 
 class TraceRayAsyncIntrinsic : public TraceRayIntrinsic {
@@ -1342,6 +1343,7 @@ public:
     static inline bool classof(const Value *V) {
         return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
     }
+
 };
 
 class BTDIntrinsic : public GenIntrinsicInst {
@@ -1359,6 +1361,7 @@ public:
     Value* getGlobalBufferPointer() const { return getOperand(0); }
     Value* getStackID()             const { return getOperand(1); }
     Value* getShaderRecordAddress() const { return getOperand(2); }
+
 };
 
 class StackIDReleaseIntrinsic : public GenIntrinsicInst {

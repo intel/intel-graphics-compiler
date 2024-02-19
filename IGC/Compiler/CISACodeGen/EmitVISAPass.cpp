@@ -22928,6 +22928,7 @@ void EmitPass::emitTileYOffset(TileYIntrinsic* I)
 
 void EmitPass::emitTraceRay(TraceRayIntrinsic* I, bool RayQueryEnable)
 {
+
     // We emit a SW fence here to prevent motion of other sends across this
     // send.rta until we have VISA support. An actual fence was previously
     // inserted in the RayTracingShaderLowering pass.
@@ -23111,6 +23112,7 @@ void EmitPass::emitTraceRay(TraceRayIntrinsic* I, bool RayQueryEnable)
     m_encoder->Push();
 }
 
+
 void EmitPass::emitReadTraceRaySync(llvm::GenIntrinsicInst* I)
 {
     // Insert a software fence before and after the ReadTraceRaySync so no IO operations get
@@ -23147,8 +23149,10 @@ void EmitPass::emitBTD(
     CVariable* StackID,
     CVariable* ShaderRecord,
     CVariable* Flag,
-    bool releaseStackID)
+    bool releaseStackID
+)
 {
+
 
     CVariable* payload = m_currShader->GetNewVariable(
         2 * getGRFSize() / SIZE_DWORD, ISA_TYPE_UD, EALIGN_GRF, CName::NONE);
@@ -23244,13 +23248,21 @@ void EmitPass::emitBTD(
     m_encoder->Push();
 }
 
+
 void EmitPass::emitBindlessThreadDispatch(BTDIntrinsic* I)
 {
     CVariable* globalBufferPtr = GetSymbol(I->getGlobalBufferPointer());
     CVariable* stackID = GetSymbol(I->getStackID());
     CVariable* shaderRecord = GetSymbol(I->getShaderRecordAddress());
 
-    emitBTD(globalBufferPtr, stackID, shaderRecord, nullptr, false);
+
+    emitBTD(
+        globalBufferPtr,
+        stackID,
+        shaderRecord,
+        nullptr,
+        false
+    );
 }
 
 void EmitPass::emitStackIDRelease(StackIDReleaseIntrinsic* I)
@@ -23264,7 +23276,13 @@ void EmitPass::emitStackIDRelease(StackIDReleaseIntrinsic* I)
         flag = GetSymbol(I->getPredicate());
     }
 
-    emitBTD(nullptr, stackID, nullptr, flag, true);
+    emitBTD(
+        nullptr,
+        stackID,
+        nullptr,
+        flag,
+        true
+    );
 }
 
 void EmitPass::emitGetShaderRecordPtr(GetShaderRecordPtrIntrinsic* I)
