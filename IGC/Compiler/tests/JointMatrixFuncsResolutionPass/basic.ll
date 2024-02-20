@@ -27,7 +27,6 @@ define spir_kernel void @test_jm(i32 %a, i8* %dst, i32* %dst2, i8* %a1, i8* %dst
 
 define void @fill_length(i32 %a, i8* %dst, i32* %dst2) {
 ; CHECK-LABEL: define void @fill_length(
-; CHECK:    [[PTR:%.*]] = alloca <8 x i32>
 ; CHECK:    [[TMP1:%.*]] = insertelement <8 x i32> undef, i32 [[A:%.*]], i64 0
 ; CHECK:    [[TMP2:%.*]] = insertelement <8 x i32> [[TMP1]], i32 [[A]], i64 1
 ; CHECK:    [[TMP3:%.*]] = insertelement <8 x i32> [[TMP2]], i32 [[A]], i64 2
@@ -36,6 +35,7 @@ define void @fill_length(i32 %a, i8* %dst, i32* %dst2) {
 ; CHECK:    [[TMP6:%.*]] = insertelement <8 x i32> [[TMP5]], i32 [[A]], i64 5
 ; CHECK:    [[TMP7:%.*]] = insertelement <8 x i32> [[TMP6]], i32 [[A]], i64 6
 ; CHECK:    [[TMP8:%.*]] = insertelement <8 x i32> [[TMP7]], i32 [[A]], i64 7
+; CHECK:    [[PTR:%.*]] = alloca <8 x i32>
 ; CHECK:    store <8 x i32> [[TMP8]], <8 x i32>* [[PTR:%.*]]
 ; CHECK:    [[MATPTR:%.*]] = bitcast <8 x i32>* [[PTR:%.*]] to i8*, !dbg [[DBG1:![0-9]*]]
 ; CHECK:    call void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_8x4_i8_8_generic_pi64_v8i8(i8* %dst, i8* [[MATPTR]], i32 8), !dbg [[DBG1]]
@@ -57,11 +57,11 @@ declare spir_func void @__builtin_spirv_OpJointMatrixStoreINTEL(i8*, %intel.join
 
 define void @load_store(i8* %a, i8* %dst) {
 ; CHECK-LABEL: define void @load_store(
-; CHECK: [[TMP4:%.*]] = alloca <8 x i32>
 ; CHECK: [[PTR:%.*]] = alloca <8 x i32>
 ; CHECK: [[MATPTR:%.*]] = bitcast <8 x i32>* [[PTR]] to i8*
 ; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_8x16_i32_8_generic_v8i8_pi32_i32(i8* [[MATPTR]], i8* %a, i32 16), !dbg [[DBG2:![0-9]*]]
 ; CHECK: [[MATRIX:%.*]] = load <8 x i32>, <8 x i32>* [[PTR]]
+; CHECK: [[TMP4:%.*]] = alloca <8 x i32>
 ; CHECK: store <8 x i32> [[MATRIX]], <8 x i32>* [[TMP4]]
 ; CHECK: [[TMP5:%.*]] = bitcast <8 x i32>* [[TMP4]] to i8*
 ; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_8x16_i32_8_generic_pi64_v8i8(i8* %dst, i8* [[TMP5]], i32 8), !dbg [[DBG3:![0-9]*]]
