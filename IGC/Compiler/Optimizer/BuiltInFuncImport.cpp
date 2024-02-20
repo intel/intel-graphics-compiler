@@ -1050,6 +1050,7 @@ void BIImport::removeFunctionBitcasts(Module& M)
                         newCI->takeName(pInstCall);
                         newCI->setCallingConv(pInstCall->getCallingConv());
                         newCI->setAttributes(pInstCall->getAttributes());
+                        newCI->setDebugLoc(pInstCall->getDebugLoc());
                         pInstCall->replaceAllUsesWith(newCI);
                         pInstCall->dropAllReferences();
                         if (constExpr->use_empty())
