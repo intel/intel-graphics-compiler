@@ -5836,7 +5836,7 @@ void EmitPass::emitLegacySimdBlockWrite(llvm::Instruction* inst, llvm::Value* pt
     CVariable* data = GetSymbol(dataPtr);
     bool useA64 = isA64Ptr(ptrType, m_currShader->GetContext());
 
-    if (!data->IsUniform() && !IsGRFAligned(data, EALIGN_GRF))
+    if (!IsGRFAligned(data, EALIGN_GRF) && !data->IsUniform())
     {
         CVariable* temp =
             m_currShader->GetNewVariable(numLanes(m_SimdMode), data->GetType(), EALIGN_GRF, CName::NONE);
@@ -6340,7 +6340,7 @@ void EmitPass::emitLSCSimdBlockWrite(llvm::Instruction* inst, llvm::Value* ptrVa
     CVariable* data = GetSymbol(dataPtr);
     bool useA64 = isA64Ptr(ptrType, m_currShader->GetContext());
 
-    if (!data->IsUniform() && !IsGRFAligned(data, EALIGN_GRF))
+    if (!IsGRFAligned(data, EALIGN_GRF) && !data->IsUniform())
     {
         CVariable* temp =
             m_currShader->GetNewVariable(numLanes(m_SimdMode), data->GetType(), EALIGN_GRF, CName::NONE);
