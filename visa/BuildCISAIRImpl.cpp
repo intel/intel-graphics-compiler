@@ -1292,8 +1292,21 @@ void CISA_IR_Builder::LinkTimeOptimization(
           if (inst->opcode() == G4_mov) {
             inst->getSrc(0)->computeRightBound(inst->getExecSize());
           }
+
+          auto isPredefinedAreg = [](G4_Operand *opnd) {
+            if (opnd) {
+              if (opnd->isTmReg() || opnd->isCrReg() || opnd->isSrReg() ||
+                  opnd->isDbgReg())
+                return true;
+            }
+            return false;
+          };
+
           for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i) {
-            cloneDcl(inst->getSrc(i));
+            auto src = inst->getSrc(i);
+            if (!isPredefinedAreg(src)) {
+              cloneDcl(src);
+            }
           }
           if (inst->opcode() == G4_goto) {
             inst->asCFInst()->setUip(labelMap[fret->asCFInst()->getUip()]);
@@ -1301,7 +1314,10 @@ void CISA_IR_Builder::LinkTimeOptimization(
                      inst->getSrc(0) && inst->getSrc(0)->isLabel()) {
             inst->setSrc(labelMap[fret->getSrc(0)->asLabel()], 0);
           }
-          cloneDcl(inst->getDst());
+          auto dst = inst->getDst();
+          if (!isPredefinedAreg(dst)) {
+            cloneDcl(inst->getDst());
+          }
           cloneDcl(inst->getPredicate());
           // add predicate into declaration list
           if (G4_VarBase *flag = inst->getCondModBase()) {
