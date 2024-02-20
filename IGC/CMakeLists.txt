@@ -1417,13 +1417,14 @@ set(IGC_BUILD__MAIN_IGC_LIB_SUFFIXES
 )
 
 set(IGC_BUILD__PROJ__igc_dll              "${IGC_BUILD__PROJ_NAME_PREFIX}${IGC_LIBRARY_NAME}_dll")
+set(ENV{igc_dll}                          "${IGC_BUILD__PROJ__igc_dll}")
 set(IGC_BUILD__PROJ_LABEL__igc_dll        "${IGC_BUILD__PROJ__igc_dll}")
 
 #FCL
 set(IGC_BUILD__PROJ__fcl_dll              "${IGC_BUILD__PROJ_NAME_PREFIX}fcl_dll")
 set(IGC_BUILD__PROJ_LABEL__fcl_dll        "${IGC_BUILD__PROJ__fcl_dll}")
 
-set(IGC_BUILD__PROJ__igc_lib              "${IGC_BUILD__PROJ_NAME_PREFIX}igc_lib")
+set(IGC_BUILD__PROJ__igc_lib              "${IGC_BUILD__PROJ_NAME_PREFIX}${IGC_LIBRARY_NAME}_lib")
 set(IGC_BUILD__PROJ_LABEL__igc_lib        "${IGC_BUILD__PROJ__igc_lib}")
 
 set(IGC_BUILD__PROJ_LABEL__GenX_IR        "${IGC_BUILD__PROJ_NAME_PREFIX}vISA")
@@ -1863,7 +1864,7 @@ message(STATUS "Using precompiled headers")
     GenISAIntrinsics
     GenX_IR
     GenXDebugInfo
-    igc_lib
+    ${IGC_BUILD__PROJ__igc_lib}
   )
 
   if(IGC_BUILD__VC_ENABLED)
