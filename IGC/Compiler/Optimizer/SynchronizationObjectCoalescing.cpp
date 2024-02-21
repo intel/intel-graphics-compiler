@@ -525,6 +525,7 @@ char SynchronizationObjectCoalescing::ID = 0;
 SynchronizationObjectCoalescing::SynchronizationObjectCoalescing() :
     llvm::FunctionPass(ID)
 {
+    initializeSynchronizationObjectCoalescingPass(*PassRegistry::getPassRegistry());
 }
 
 ////////////////////////////////////////////////////////////////////////
