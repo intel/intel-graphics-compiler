@@ -260,6 +260,7 @@ private:
   bool lowerStackRestore(CallInst *CI);
   bool lowerHardwareThreadID(CallInst *CI);
   bool lowerLogicalThreadID(CallInst *CI);
+  bool lowerNamedBarrierArrive(CallInst *CI);
 
   Value *swapLowHighHalves(IRBuilder<> &Builder, Value *Arg) const;
   bool lowerByteSwap(CallInst *CI);
@@ -2170,6 +2171,8 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerHardwareThreadID(CI);
     case vc::InternalIntrinsic::logical_thread_id:
       return lowerLogicalThreadID(CI);
+    case GenXIntrinsic::genx_nbarrier_arrive:
+      return lowerNamedBarrierArrive(CI);
     }
     return false;
   }
@@ -4775,6 +4778,59 @@ bool GenXLowering::lowerLogicalThreadID(CallInst *CI) {
 
   CI->replaceAllUsesWith(Res);
   ToErase.push_back(CI);
+  return true;
+}
+
+bool GenXLowering::lowerNamedBarrierArrive(CallInst *CI) {
+  IGC_ASSERT(vc::getAnyIntrinsicID(CI) == GenXIntrinsic::genx_nbarrier_arrive);
+  if (!ST->hasNBarrier()) {
+    CI->getContext().emitError(CI, "Named barriers are not suppported by " +
+                                       ST->getCPU());
+    return false;
+  }
+
+  Module *M = CI->getModule();
+  IRBuilder<> Builder(CI);
+
+  const unsigned Width = ST->getGRFByteSize() / DWordBytes;
+  auto *Int32Ty = Builder.getInt32Ty();
+  auto *PayloadTy = IGCLLVM::FixedVectorType::get(Int32Ty, Width);
+  auto *UndefV = UndefValue::get(PayloadTy);
+
+  // Prepare named barrier message payload as follows:
+  //   payload[2][31:24]: number of consumers
+  //   payload[2][23:16]: number of producers
+  //   payload[2][15:14]: thread role
+  //   payload[2][4:0]: barrier id
+  auto *BarrierId = Builder.CreateZExt(CI->getArgOperand(0), Int32Ty);
+  auto *Role = Builder.CreateZExt(CI->getArgOperand(1), Int32Ty);
+  auto *NumProducers = Builder.CreateZExt(CI->getArgOperand(2), Int32Ty);
+  auto *NumConsumers = Builder.CreateZExt(CI->getArgOperand(3), Int32Ty);
+
+  auto *Payload = Builder.CreateAdd(BarrierId, Builder.CreateShl(Role, 14));
+  Payload = Builder.CreateAdd(Payload, Builder.CreateShl(NumProducers, 16));
+  Payload = Builder.CreateAdd(Payload, Builder.CreateShl(NumConsumers, 24));
+
+  Payload = Builder.CreateInsertElement(UndefV, Payload, 2);
+
+  SmallVector<Value *, 8> Args = {
+      Builder.getInt8(0),           // modifier (none)
+      Builder.getInt8(0),           // log2(exec size)
+      Builder.getTrue(),            // predicate
+      Builder.getInt8(1),           // number of source registers
+      Builder.getInt8(3),           // Gateway
+      Builder.getInt32(0),          // extened message descriptor
+      Builder.getInt32(0x02000004), // message descriptor: barrier
+      Payload,
+  };
+
+  auto *SendFunc =
+      vc::getAnyDeclaration(M, GenXIntrinsic::genx_raw_send2_noresult,
+                            {Builder.getInt1Ty(), PayloadTy});
+
+  Builder.CreateCall(SendFunc, Args);
+  ToErase.push_back(CI);
+
   return true;
 }
 
