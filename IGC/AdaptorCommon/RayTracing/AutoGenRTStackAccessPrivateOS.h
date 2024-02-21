@@ -1007,6 +1007,20 @@ auto* _getPrimLeaf_Xe(Value* arg_0, Value* arg_1)
   return V_8;
 }
 
+auto* _getInstanceLeaf_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
+{
+  auto* V_2 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(1), getInt32(5) });
+  auto* V_3 = CreateICmpEQ(arg_1, getInt32(1));
+  auto* V_4 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(5) });
+  auto* V_5 = CreateSelect(V_3, V_4, V_2);
+  auto* V_6 = CreateLoad(V_5);
+  auto* V_7 = CreateShl(V_6, getInt64(6));
+  auto* V_8 = CreateAnd(V_7, getInt64(281474976710592));
+  auto* V_9 = canonizePointer(V_8);
+  auto* V_10 = CreateIntToPtr(V_9, PointerType::get(_struct_RTStackFormat__InstanceLeaf(*Ctx.getModule()), 1), _ReturnName);
+  return V_10;
+}
+
 auto* _getInstanceContributionToHitGroupIndex_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
 {
   auto* V_2 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(1), getInt32(5) });

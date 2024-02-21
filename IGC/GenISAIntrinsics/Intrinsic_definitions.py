@@ -3254,7 +3254,8 @@ Imported_Intrinsics = \
      ("float",                         "ray     Tmin"),
      ("float",                         "ray     Tmax"),
      ("anyptr",                        "payload"),
-     ("int",                           "reserved")],
+     ("int",                           "reserved"),
+     ("float",                         "reserved")],
     "None"]],
 ####################################################################################################
 "GenISA_TraceRayInlineAbort": ["Raytracing: Abort operation for RayQuery object at index taken in the input",
