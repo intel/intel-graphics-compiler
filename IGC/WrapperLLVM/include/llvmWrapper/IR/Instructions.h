@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #define IGCLLVM_IR_INSTRUCTIONS_H
 
 #include "llvm/Config/llvm-config.h"
+#include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/User.h"
 
@@ -79,6 +80,15 @@ namespace IGCLLVM
         return false;
 #else
         return llvm::isa<llvm::FreezeInst>(I);
+#endif
+    }
+
+    inline bool isDebugOrPseudoInst(llvm::Instruction& I)
+    {
+#if LLVM_VERSION_MAJOR < 14
+        return llvm::isa<llvm::DbgInfoIntrinsic>(&I);
+#else
+        return I.isDebugOrPseudoInst();
 #endif
     }
 }

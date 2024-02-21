@@ -85,6 +85,8 @@ namespace llvm {
             llvm::BasicBlock* BB = const_cast<llvm::BasicBlock*>(&*BBI);
             for (auto II = BB->begin(); II != BB->end(); II++)
             {
+                if (IGCLLVM::isDebugOrPseudoInst(*II))
+                    continue;
                 if (llvm::GenIntrinsicInst* pIntrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(II))
                 {
                     if (CheckSendMsg && isSendMessage(pIntrinsic))
