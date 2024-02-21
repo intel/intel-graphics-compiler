@@ -912,6 +912,8 @@ namespace IGC
         bool m_ForceEarlyZMathCheck = false;
         // Adding multiversioning to partially redundant samples, if AIL is on.
         bool m_enableSampleMultiversioning = false;
+        // Re-enabling SIMD16 for compute shader if spill oversizes on SIMD32
+        bool m_fallbackCSSIMD16 = false;
 
         bool m_src1RemovedForBlendOpt = false;
         llvm::AssemblyAnnotationWriter* annotater = nullptr;
