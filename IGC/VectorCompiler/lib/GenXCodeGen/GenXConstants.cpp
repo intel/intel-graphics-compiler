@@ -1081,6 +1081,9 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst) {
       IGC_ASSERT_MESSAGE(!isa<UndefValue>(El), "CDV element can't be undef");
       Elements.push_back(El);
     }
+  } else if (auto *CAZ = dyn_cast<ConstantAggregateZero>(C)) {
+    std::fill_n(std::back_inserter(Elements), VT->getNumElements(),
+                CAZ->getSequentialElement());
   } else {
     ConstantVector *CV = cast<ConstantVector>(C);
     // Gather the elements.
@@ -1710,6 +1713,11 @@ bool ConstantLoader::isSimple() const {
     return true; // undef is simple (and generates no vISA code)
   if (C->getType()->getScalarType()->isIntegerTy(1) && C->isAllOnesValue())
     return true; // all 1s predicate is simple
+#if LLVM_VERSION_MAJOR > 10
+  // bfloat constants are not supported as imm value
+  if (C->getType()->getScalarType()->isBFloatTy())
+    return false;
+#endif // LLVM_VERSION_MAJOR > 10
   if(User && User->isBinaryOp())
     if (isa<VectorType>(C->getType()))
       if (auto splat = C->getSplatValue())

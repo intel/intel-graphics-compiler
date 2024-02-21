@@ -2129,6 +2129,9 @@ bool genx::isSupportedFloatingPointType(const Type *Ty) {
   IGC_ASSERT(Ty);
   auto *ScalarTy = Ty->getScalarType();
   return ScalarTy->isFloatTy() || ScalarTy->isHalfTy() ||
+#if LLVM_VERSION_MAJOR > 10
+         ScalarTy->isBFloatTy() ||
+#endif //  LLVM_VERSION_MAJOR > 10
          ScalarTy->isDoubleTy();
 }
 
