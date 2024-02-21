@@ -23168,7 +23168,7 @@ void EmitPass::emitTraceRay(TraceRayIntrinsic* I, bool RayQueryEnable)
 
     // We emit a SW fence here to prevent motion of other sends across this
     // send.rta until we have VISA support. An actual fence was previously
-    // inserted in the RayTracingShaderLowering pass.
+    // inserted in the RayTracingShaderLowering pass
     m_encoder->Fence(false,
         false,
         false,
@@ -23385,6 +23385,7 @@ void EmitPass::emitRayQueryCheckRelease(
     bool RayQueryCheckEnable,
     bool RayQueryReleaseEnable)
 {
+
     // We emit a SW fence here to prevent motion of other sends across this
     // send.rta until we have VISA support. An actual fence was previously
     // inserted in the RayTracingShaderLowering pass.
@@ -23484,6 +23485,7 @@ void EmitPass::emitRayQueryCheckRelease(
         true);
     m_encoder->Push();
 }
+
 
 EmitPass::PreemptionEncoding
 EmitPass::getEncoderPreemptionMode(EPreemptionMode preemptionMode)
