@@ -412,16 +412,16 @@ endif(ANDROID AND MEDIA_IGA)
       unset(IGA_LIB_PATH)
   elseif(MSVC)
       install(TARGETS IGA_DLL RUNTIME
-              DESTINATION Release/lh64              CONFIGURATIONS Release)
+              DESTINATION Release/bin              CONFIGURATIONS Release)
       install(TARGETS IGA_DLL RUNTIME
-              DESTINATION Release-Internal/lh64     CONFIGURATIONS ReleaseInternal)
+              DESTINATION Release-Internal/bin     CONFIGURATIONS ReleaseInternal)
       install(TARGETS IGA_DLL RUNTIME
-              DESTINATION Debug/lh64                CONFIGURATIONS Debug)
+              DESTINATION Debug/bin                CONFIGURATIONS Debug)
 
       install(FILES $<TARGET_PDB_FILE:IGA_DLL>
-              DESTINATION Release/lh64/pdb          CONFIGURATIONS Release)
+              DESTINATION Release/pdb          CONFIGURATIONS Release)
       install(FILES $<TARGET_PDB_FILE:IGA_DLL>
-              DESTINATION Release-Internal/lh64/pdb CONFIGURATIONS ReleaseInternal)
+              DESTINATION Release-Internal/pdb CONFIGURATIONS ReleaseInternal)
       install(FILES $<TARGET_PDB_FILE:IGA_DLL>
-              DESTINATION Debug/lh64/pdb            CONFIGURATIONS Debug)
+              DESTINATION Debug/pdb            CONFIGURATIONS Debug)
   endif()

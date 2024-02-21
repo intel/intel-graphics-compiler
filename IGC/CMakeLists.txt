@@ -2067,14 +2067,14 @@ if(UNIX)
   install(DIRECTORY ${IGC_BUILD__VISA_DIR}/iga/IGALibrary/api/ DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/iga COMPONENT igc-opencl-devel FILES_MATCHING PATTERN "*.h*")
 elseif (WIN32)
   install(TARGETS ${IGC_BUILD__PROJ__igc_dll}
-          RUNTIME DESTINATION Release/lh64          CONFIGURATIONS Release)
+          RUNTIME DESTINATION Release/bin          CONFIGURATIONS Release)
   install(TARGETS ${IGC_BUILD__PROJ__igc_dll}
-          RUNTIME DESTINATION Debug/lh64            CONFIGURATIONS Debug)
+          RUNTIME DESTINATION Debug/bin            CONFIGURATIONS Debug)
 
   install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__igc_dll}>
-          DESTINATION Release/lh64/pdb              CONFIGURATIONS Release)
+          DESTINATION Release/pdb              CONFIGURATIONS Release)
   install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__igc_dll}>
-          DESTINATION Debug/lh64/pdb                CONFIGURATIONS Debug)
+          DESTINATION Debug/pdb                CONFIGURATIONS Debug)
 
   if(CMAKE_SIZEOF_VOID_P EQUAL 8) # Only copy 64 build
 
@@ -2096,14 +2096,14 @@ elseif (WIN32)
 
   if (FCL_ENABLED)
     install(TARGETS ${IGC_BUILD__PROJ__fcl_dll}
-            RUNTIME DESTINATION Release/lh64          CONFIGURATIONS Release)
+            RUNTIME DESTINATION Release/bin          CONFIGURATIONS Release)
     install(TARGETS ${IGC_BUILD__PROJ__fcl_dll}
-            RUNTIME DESTINATION Debug/lh64            CONFIGURATIONS Debug)
+            RUNTIME DESTINATION Debug/bin            CONFIGURATIONS Debug)
 
     install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__fcl_dll}>
-            DESTINATION Release/lh64/pdb              CONFIGURATIONS Release)
+            DESTINATION Release/pdb              CONFIGURATIONS Release)
     install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__fcl_dll}>
-            DESTINATION Debug/lh64/pdb                CONFIGURATIONS Debug)
+            DESTINATION Debug/pdb                CONFIGURATIONS Debug)
   endif()
 endif()
 
