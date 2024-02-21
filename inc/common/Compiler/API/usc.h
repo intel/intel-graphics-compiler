@@ -689,7 +689,8 @@ typedef enum SYSTEM_THREAD_MODE_ENUM
     SYSTEM_THREAD_MODE_NONE         = 0x0,
     SYSTEM_THREAD_MODE_DEBUG        = 0x1,
     SYSTEM_THREAD_MODE_CSR          = 0x2,
-    SYSTEM_THREAD_MODE_DEBUG_LOCAL  = 0x4
+    SYSTEM_THREAD_MODE_DEBUG_LOCAL  = 0x4,
+    SYSTEM_THREAD_MODE_CSR_64B      = 0x5
 } SYSTEM_THREAD_MODE;
 
 /*****************************************************************************\
