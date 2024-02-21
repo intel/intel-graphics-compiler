@@ -634,7 +634,7 @@ bool hasFusedEUNoMaskWA() const {
 }
 
 bool hasSLMWARIssue() const {
-  return getPlatform() == Xe_DG2 || getPlatform() == Xe_MTL ||
+  return getPlatform() == Xe_DG2 || getPlatform() == Xe_MTL || getPlatform() == Xe_ARL ||
          getPlatform() == Xe_PVC || getPlatform() == Xe_PVCXT;
 }
 
