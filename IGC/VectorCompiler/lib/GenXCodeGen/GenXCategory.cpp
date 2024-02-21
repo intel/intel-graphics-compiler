@@ -172,6 +172,7 @@ namespace {
     vc::KernelMetadata KM;
     GenXLiveness *Liveness = nullptr;
     DominatorTreeGroupWrapperPass *DTs = nullptr;
+    LoopInfoGroupWrapperPass *LIs = nullptr;
     const GenXSubtarget *Subtarget = nullptr;
     const DataLayout *DL = nullptr;
     SmallVector<Instruction *, 8> ToErase;
@@ -390,6 +391,7 @@ namespace {
   INITIALIZE_PASS_BEGIN(GenXCategoryWrapper, "GenXCategoryWrapper",
                         "GenXCategoryWrapper", false, false)
   INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPassWrapper)
+  INITIALIZE_PASS_DEPENDENCY(LoopInfoGroupWrapperPassWrapper);
   INITIALIZE_PASS_DEPENDENCY(GenXLivenessWrapper)
   INITIALIZE_PASS_END(GenXCategoryWrapper, "GenXCategoryWrapper",
                       "GenXCategoryWrapper", false, false)
@@ -401,12 +403,14 @@ namespace {
 
   void GenXCategory::getAnalysisUsage(AnalysisUsage &AU) {
     AU.addRequired<DominatorTreeGroupWrapperPass>();
+    AU.addRequired<LoopInfoGroupWrapperPass>();
     AU.addRequired<GenXLiveness>();
     AU.addRequired<TargetPassConfig>();
     AU.addPreserved<GenXModule>();
     AU.addPreserved<GenXLiveness>();
     AU.addPreserved<FunctionGroupAnalysis>();
     AU.addPreserved<DominatorTreeGroupWrapperPass>();
+    AU.addPreserved<LoopInfoGroupWrapperPass>();
     AU.setPreservesCFG();
   }
 
@@ -418,6 +422,7 @@ bool GenXCategory::runOnFunctionGroup(FunctionGroup &FG)
 {
   KM = vc::KernelMetadata{FG.getHead()};
   DTs = &getAnalysis<DominatorTreeGroupWrapperPass>();
+  LIs = &getAnalysis<LoopInfoGroupWrapperPass>();
   Liveness = &getAnalysis<GenXLiveness>();
   Subtarget = &getAnalysis<TargetPassConfig>()
                    .getTM<GenXTargetMachine>()
@@ -529,35 +534,50 @@ static bool commonUpPredicate(BasicBlock *BB) {
  */
 bool GenXCategory::processFunction(Function *F)
 {
+  auto *LI = LIs->getLoopInfo(F);
   Func = F;
   // Before doing the category conversion, fix circular phis.
   Modified = fixCircularPhis(F);
   // Load constants in phi nodes.
   loadPhiConstants(*F, DTs->getDomTree(F), *Subtarget, *DL, false);
   // Process all instructions.
+  DenseMap<Instruction *, SmallVector<Instruction *, 16>> MoveMap;
   for (po_iterator<BasicBlock *> i = po_begin(&Func->getEntryBlock()),
       e = po_end(&Func->getEntryBlock()); i != e; ++i) {
     // This loop scans the basic block backwards. If any code is inserted
     // before the current point, that code is scanned too.
     BasicBlock *BB = *i;
+    // There is no LICM pass after GenXCategory, so we have to make sure,
+    // that no constants are added inside a loop. They have to be moved
+    // before the loop (or the outermost loop in case of a nested one)
+    SmallVectorImpl<Instruction *> *AddedInsts = nullptr;
+    if (auto *L = LI->getLoopFor(BB)) {
+      while (L->getParentLoop())
+        L = L->getParentLoop();
+      if (auto *BeforeTheLoopBB = L->getLoopPredecessor())
+        AddedInsts = &MoveMap[BeforeTheLoopBB->getTerminator()];
+    }
     for (Instruction *Inst = &BB->back(); Inst;
-        Inst = (Inst == &BB->front() ? nullptr : Inst->getPrevNode())) {
-      Modified |= loadNonSimpleConstants(Inst, *Subtarget, *DL, nullptr);
-      Modified |= loadConstants(Inst, *Subtarget, *DL);
+         Inst = (Inst == &BB->front() ? nullptr : Inst->getPrevNode())) {
+      Modified |= loadNonSimpleConstants(Inst, *Subtarget, *DL, AddedInsts);
+      Modified |= loadConstants(Inst, *Subtarget, *DL, AddedInsts);
       if (!processValue(Inst))
         NoCategory.push_back(Inst);
     }
 
     // This commons up constpred calls just loaded.
     Modified |= commonUpPredicate(BB);
-
-    // Erase instructions (and their live ranges) as requested by processValue.
-    for (unsigned i = 0, e = ToErase.size(); i != e; ++i) {
-      Liveness->eraseLiveRange(ToErase[i]);
-      ToErase[i]->eraseFromParent();
-    }
-    ToErase.clear();
   }
+  // Move instructions outside of loops
+  for (auto &It : MoveMap)
+    for (auto *InstToMove : It.second)
+      InstToMove->moveBefore(It.first);
+  // Erase instructions (and their live ranges) as requested by processValue.
+  for (auto ToEraseInst : ToErase) {
+    Liveness->eraseLiveRange(ToEraseInst);
+    ToEraseInst->eraseFromParent();
+  }
+  ToErase.clear();
   // Process all args.
   for (auto fi = Func->arg_begin(), fe = Func->arg_end(); fi != fe; ++fi) {
     Value *V = &*fi;

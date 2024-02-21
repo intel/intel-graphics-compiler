@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2023 Intel Corporation
+Copyright (C) 2020-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -154,7 +154,8 @@ bool loadConstantsForInlineAsm(
 
 // Load constants used in an instruction.
 bool loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
-                   const DataLayout &DL);
+                   const DataLayout &DL,
+                   SmallVectorImpl<Instruction *> *AddedInstructions = nullptr);
 
 // Load constants used in phi nodes in a function.
 bool loadPhiConstants(Function &F, DominatorTree *DT,

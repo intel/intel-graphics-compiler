@@ -275,7 +275,8 @@ bool genx::loadConstantsForInlineAsm(
  * loadPhiConstants.
  */
 bool genx::loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
-                         const DataLayout &DL) {
+                         const DataLayout &DL,
+                         SmallVectorImpl<Instruction *> *AddedInstructions) {
   bool Modified = false;
   Use *U;
   if (isa<PHINode>(Inst))
@@ -297,7 +298,9 @@ bool genx::loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
           return C1 && C1->isAllOnesValue();
         };
         if (!IsNot()) {
-          Inst->setOperand(oi, ConstantLoader(C, Subtarget, DL).load(Inst));
+          Inst->setOperand(
+              oi, ConstantLoader(C, Subtarget, DL, nullptr, AddedInstructions)
+                      .load(Inst));
           Modified = true;
         }
       }
@@ -306,7 +309,8 @@ bool genx::loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
     // select: disallow constant selector
     U = &Inst->getOperandUse(0);
     if (auto C = dyn_cast<Constant>(*U)) {
-      *U = ConstantLoader(C, Subtarget, DL).load(Inst);
+      *U = ConstantLoader(C, Subtarget, DL, nullptr, AddedInstructions)
+               .load(Inst);
       Modified = true;
     }
     return Modified;
@@ -316,7 +320,8 @@ bool genx::loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
     // on element operand.
     U = &Inst->getOperandUse(1);
     if (auto C = dyn_cast<Constant>(*U)) {
-      *U = ConstantLoader(C, Subtarget, DL).load(Inst);
+      *U = ConstantLoader(C, Subtarget, DL, nullptr, AddedInstructions)
+               .load(Inst);
       Modified = true;
     }
     // Also disallow constant (other than undef) on old struct value operand.
@@ -331,7 +336,9 @@ bool genx::loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
     // Conditional branch: disallow constant condition.
     if (Br->isConditional()) {
       if (auto C = dyn_cast<Constant>(Br->getCondition())) {
-        Br->setCondition(ConstantLoader(C, Subtarget, DL).load(Br));
+        Br->setCondition(
+            ConstantLoader(C, Subtarget, DL, nullptr, AddedInstructions)
+                .load(Br));
         Modified = true;
       }
     }
@@ -344,7 +351,9 @@ bool genx::loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
         Ret->getFunction()->getLinkage() == GlobalValue::InternalLinkage) {
       if (auto C = dyn_cast<Constant>(Ret->getOperand(0))) {
         if (!C->getType()->isVoidTy() && !isa<UndefValue>(C)) {
-          Ret->setOperand(0, ConstantLoader(C, Subtarget, DL).load(Ret));
+          Ret->setOperand(
+              0, ConstantLoader(C, Subtarget, DL, nullptr, AddedInstructions)
+                     .load(Ret));
           Modified = true;
         }
       }
@@ -355,7 +364,7 @@ bool genx::loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
   if (!CI)
     return Modified;
   if (CI->isInlineAsm())
-    return loadConstantsForInlineAsm(CI, Subtarget, DL, nullptr);
+    return loadConstantsForInlineAsm(CI, Subtarget, DL, AddedInstructions);
   int IntrinsicID = vc::getAnyIntrinsicID(CI);
   switch (IntrinsicID) {
     case GenXIntrinsic::not_any_intrinsic:
@@ -371,7 +380,8 @@ bool genx::loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
         U = &CI->getOperandUse(i);
         if (auto C = dyn_cast<Constant>(*U)) {
           if (!isa<UndefValue>(C)) {
-            *U = ConstantLoader(C, Subtarget, DL).loadBig(CI);
+            *U = ConstantLoader(C, Subtarget, DL, nullptr, AddedInstructions)
+                     .loadBig(CI);
             Modified = true;
           }
         }
@@ -385,7 +395,8 @@ bool genx::loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
       // abs modifier: disallow constant input.
       U = &CI->getOperandUse(0);
       if (auto C = dyn_cast<Constant>(*U)) {
-        *U = ConstantLoader(C, Subtarget, DL).load(CI);
+        *U = ConstantLoader(C, Subtarget, DL, nullptr, AddedInstructions)
+                 .load(CI);
         Modified = true;
       }
       break;
@@ -395,7 +406,8 @@ bool genx::loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
       // rdpredregion, any, all: disallow constant input
       U = &CI->getOperandUse(0);
       if (auto C = dyn_cast<Constant>(*U)) {
-        *U = ConstantLoader(C, Subtarget, DL).load(CI);
+        *U = ConstantLoader(C, Subtarget, DL, nullptr, AddedInstructions)
+                 .load(CI);
         Modified = true;
       }
       break;
@@ -404,14 +416,16 @@ bool genx::loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
       // rdregion: disallow constant input
       U = &CI->getOperandUse(0);
       if (auto C = dyn_cast<Constant>(*U)) {
-        *U = ConstantLoader(C, Subtarget, DL).loadBig(CI);
+        *U = ConstantLoader(C, Subtarget, DL, nullptr, AddedInstructions)
+                 .loadBig(CI);
         Modified = true;
       }
       // Also disallow constant vector index (constant scalar OK).
       U = &CI->getOperandUse(GenXIntrinsic::GenXRegion::RdIndexOperandNum);
       if (auto C = dyn_cast<Constant>(*U)) {
         if (isa<VectorType>(C->getType())) {
-          *U = ConstantLoader(C, Subtarget, DL).load(CI);
+          *U = ConstantLoader(C, Subtarget, DL, nullptr, AddedInstructions)
+                   .load(CI);
           Modified = true;
         }
       }
@@ -422,7 +436,8 @@ bool genx::loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
       U = &CI->getOperandUse(0);
       if (auto C = dyn_cast<Constant>(*U)) {
         if (!isa<UndefValue>(C)) {
-          *U = ConstantLoader(C, Subtarget, DL).loadBig(CI);
+          *U = ConstantLoader(C, Subtarget, DL, nullptr, AddedInstructions)
+                   .loadBig(CI);
           Modified = true;
         }
       }
@@ -433,7 +448,8 @@ bool genx::loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
       U = &CI->getOperandUse(0);
       if (auto C = dyn_cast<Constant>(*U)) {
         if (!isa<UndefValue>(C)) {
-          *U = ConstantLoader(C, Subtarget, DL).loadBig(CI);
+          *U = ConstantLoader(C, Subtarget, DL, nullptr, AddedInstructions)
+                   .loadBig(CI);
           Modified = true;
         }
       }
@@ -441,7 +457,8 @@ bool genx::loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
       U = &CI->getOperandUse(GenXIntrinsic::GenXRegion::WrIndexOperandNum);
       if (auto C = dyn_cast<Constant>(*U)) {
         if (isa<VectorType>(C->getType())) {
-          *U = ConstantLoader(C, Subtarget, DL).load(CI);
+          *U = ConstantLoader(C, Subtarget, DL, nullptr, AddedInstructions)
+                   .load(CI);
           Modified = true;
         }
       }
@@ -449,7 +466,8 @@ bool genx::loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
       U = &CI->getOperandUse(GenXIntrinsic::GenXRegion::PredicateOperandNum);
       if (auto C = dyn_cast<Constant>(*U)) {
         if (!C->isAllOnesValue()) {
-          *U = ConstantLoader(C, Subtarget, DL).load(CI);
+          *U = ConstantLoader(C, Subtarget, DL, nullptr, AddedInstructions)
+                   .load(CI);
           Modified = true;
         }
       }
@@ -462,7 +480,8 @@ bool genx::loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
       U = &CI->getOperandUse(2);
       if (auto C = dyn_cast<Constant>(*U)) {
         if (!C->isNullValue()) {
-          *U = ConstantLoader(C, Subtarget, DL).load(CI);
+          *U = ConstantLoader(C, Subtarget, DL, nullptr, AddedInstructions)
+                   .load(CI);
           Modified = true;
         }
       }
@@ -514,7 +533,8 @@ bool genx::loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
           continue;
         }
         // Operand is not allowed to be constant. Insert code to load it.
-        *U = ConstantLoader(C, Subtarget, DL).loadBig(CI);
+        *U = ConstantLoader(C, Subtarget, DL, nullptr, AddedInstructions)
+                 .loadBig(CI);
         Modified = true;
       }
       break;
@@ -1285,7 +1305,7 @@ Instruction *ConstantLoader::loadSplatConstant(Instruction *InsertPos) {
   // Create <1 x T> constant and broadcast it through rdregion.
   Constant *CV = ConstantVector::get(C1);
   // Load that scalar constant first.
-  ConstantLoader L(CV, Subtarget, DL);
+  ConstantLoader L(CV, Subtarget, DL, nullptr, AddedInstructions);
   Value *V = L.load(InsertPos);
   // Broadcast through rdregion.
   Instruction *Result = nullptr;
@@ -1395,7 +1415,7 @@ Instruction *ConstantLoader::loadNonPackedIntConst(Instruction *InsertBefore) {
         std::min(PowerOf2Floor(NumElements - Idx), (uint64_t)ImmIntVec::Width);
     Constant *SubC = getConstantSubvector(C, Idx, Size);
     Value *SubV = SubC;
-    ConstantLoader SubLoader(SubC, Subtarget, DL);
+    ConstantLoader SubLoader(SubC, Subtarget, DL, nullptr, AddedInstructions);
     SubV = SubLoader.load(InsertBefore);
 
     Region R(C, &DL);
@@ -1441,7 +1461,8 @@ Instruction *ConstantLoader::loadPackedInt(Instruction *Inst) {
                cast<ConstantInt>(PackedVals.back())->getSExtValue() <= 15);
   }
 
-  ConstantLoader Packed(ConstantVector::get(PackedVals), Subtarget, DL);
+  ConstantLoader Packed(ConstantVector::get(PackedVals), Subtarget, DL, nullptr,
+                        AddedInstructions);
   auto *LoadPacked = Packed.loadNonPackedIntConst(Inst);
   if (PackedIntScale != 1) {
     auto *SplatVal =
@@ -1646,7 +1667,7 @@ Instruction *ConstantLoader::loadBig(Instruction *InsertBefore) {
     // value with wrregion.
     Constant *SubC = getConstantSubvector(C, Idx, Size);
     Value *SubV = SubC;
-    ConstantLoader SubLoader(SubC, Subtarget, DL);
+    ConstantLoader SubLoader(SubC, Subtarget, DL, nullptr, AddedInstructions);
     if (!SubLoader.isSimple())
       SubV = SubLoader.loadNonSimple(InsertBefore);
     Region R(C, &DL);
