@@ -107,7 +107,7 @@ void ImageFuncsAnalysis::visitCallInst(CallInst& CI)
     {
         imageFunc = &m_argMap[ImplicitArg::IMAGE_WIDTH];
     }
-    else if (funcName == GET_IMAGE_DEPTH)
+    else if (funcName == GET_IMAGE_DEPTH && m_addImplicitImageArgs)
     {
         imageFunc = &m_argMap[ImplicitArg::IMAGE_DEPTH];
     }

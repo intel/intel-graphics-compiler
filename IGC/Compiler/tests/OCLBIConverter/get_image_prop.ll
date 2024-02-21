@@ -20,23 +20,25 @@ define spir_kernel void @kernel(%spirv.Image._void_1_0_0_0_0_0_0 addrspace(1)* %
   %1 = trunc i64 %data to i32
 ; CHECK-NOT: __builtin_IB_get_image_width
 ; CHECK-NOT: __builtin_IB_get_image_height
+; CHECK-NOT: __builtin_IB_get_image_height
 ; CHECK:    [[BINDLESS_IMG:%.*]] = addrspacecast [[SPIRV_IMAGE__VOID_1_0_0_0_0_0_0]] addrspace(1)* [[IMG]] to float addrspace(393216)*
-; CHECK-NEXT:    [[TMP2:%.*]] = call <4 x i32> @llvm.genx.GenISA.resinfoptr.p393216f32(float addrspace(393216)* [[BINDLESS_IMG]], i32 0)
-; CHECK-NEXT:    [[TMP3:%.*]] = extractelement <4 x i32> [[TMP2]], i32 0
+; CHECK-NEXT:    [[TMP1:%.*]] = call <4 x i32> @llvm.genx.GenISA.resinfoptr.p393216f32(float addrspace(393216)* [[BINDLESS_IMG]], i32 0)
+; CHECK-NEXT:    extractelement <4 x i32> [[TMP1]], i32 0
 ; CHECK-NEXT:    [[BINDLESS_IMG1:%.*]] = addrspacecast [[SPIRV_IMAGE__VOID_1_0_0_0_0_0_0]] addrspace(1)* [[IMG]] to float addrspace(393216)*
-; CHECK-NEXT:    [[TMP4:%.*]] = call <4 x i32> @llvm.genx.GenISA.resinfoptr.p393216f32(float addrspace(393216)* [[BINDLESS_IMG1]], i32 0)
-; CHECK-NEXT:    [[TMP5:%.*]] = extractelement <4 x i32> [[TMP4]], i32 1
-; CHECK-NEXT:    [[VECINIT_I_I_I:%.*]] = insertelement <2 x i32> undef, i32 [[TMP3]], i64 0
-; CHECK-NEXT:    [[VECINIT2_I_I_I:%.*]] = insertelement <2 x i32> [[VECINIT_I_I_I]], i32 [[TMP5]], i64 1
-  %call.i.i.i = call spir_func i32 @__builtin_IB_get_image_width(i32 %1)
-  %call1.i.i.i = call spir_func i32 @__builtin_IB_get_image_height(i32 %1)
-  %vecinit.i.i.i = insertelement <2 x i32> undef, i32 %call.i.i.i, i64 0
-  %vecinit2.i.i.i = insertelement <2 x i32> %vecinit.i.i.i, i32 %call1.i.i.i, i64 1
+; CHECK-NEXT:    [[TMP2:%.*]] = call <4 x i32> @llvm.genx.GenISA.resinfoptr.p393216f32(float addrspace(393216)* [[BINDLESS_IMG1]], i32 0)
+; CHECK-NEXT:    extractelement <4 x i32> [[TMP2]], i32 1
+; CHECK-NEXT:    [[BINDLESS_IMG2:%.*]] = addrspacecast [[SPIRV_IMAGE__VOID_1_0_0_0_0_0_0]] addrspace(1)* [[IMG]] to float addrspace(393216)*
+; CHECK-NEXT:    [[TMP3:%.*]] = call <4 x i32> @llvm.genx.GenISA.resinfoptr.p393216f32(float addrspace(393216)* [[BINDLESS_IMG2]], i32 0)
+; CHECK-NEXT:    extractelement <4 x i32> [[TMP3]], i32 2
+  %call = call spir_func i32 @__builtin_IB_get_image_width(i32 %1)
+  %call1 = call spir_func i32 @__builtin_IB_get_image_height(i32 %1)
+  %call2 = call spir_func i32 @__builtin_IB_get_image_depth(i32 %1)
   ret void
 }
 
 declare spir_func i32 @__builtin_IB_get_image_width(i32)
 declare spir_func i32 @__builtin_IB_get_image_height(i32)
+declare spir_func i32 @__builtin_IB_get_image_depth(i32)
 
 !igc.functions = !{!0}
 !IGCMetadata = !{!3}

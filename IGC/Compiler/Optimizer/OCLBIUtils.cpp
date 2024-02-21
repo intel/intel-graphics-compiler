@@ -948,6 +948,9 @@ public:
         case HEIGHT:
             prop = builder.CreateExtractElement(info, builder.getInt32(1));
             break;
+        case DEPTH:
+            prop = builder.CreateExtractElement(info, builder.getInt32(2));
+            break;
         default:
             emitError("Unsupported bindless image property requested.", NULL);
         }
@@ -1356,6 +1359,7 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap* paramMap, CImagesBI::I
     if (modMD->compOpt.UseBindlessMode && !modMD->compOpt.UseLegacyBindlessMode){
         m_CommandMap["__builtin_IB_get_image_width"] = CGetImageProperty::create(paramMap, CImagesBI::ImageProperty::WIDTH);
         m_CommandMap["__builtin_IB_get_image_height"] = CGetImageProperty::create(paramMap, CImagesBI::ImageProperty::HEIGHT);
+        m_CommandMap["__builtin_IB_get_image_depth"] = CGetImageProperty::create(paramMap, CImagesBI::ImageProperty::DEPTH);
     }
 
     //convert Built-ins

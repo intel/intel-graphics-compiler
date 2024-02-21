@@ -163,7 +163,8 @@ namespace IGC
         enum ImageProperty
         {
             WIDTH,
-            HEIGHT
+            HEIGHT,
+            DEPTH
         };
 
         struct ParamInfo

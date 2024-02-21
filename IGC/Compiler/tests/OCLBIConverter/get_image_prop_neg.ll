@@ -16,17 +16,18 @@
 define spir_kernel void @kernel(%spirv.Image._void_1_0_0_0_0_0_0 addrspace(1)* %img) {
   %data = ptrtoint %spirv.Image._void_1_0_0_0_0_0_0 addrspace(1)* %img to i64
   %1 = trunc i64 %data to i32
-; CHECK:    [[CALL_I_I_I:%.*]] = call spir_func i32 @__builtin_IB_get_image_width(i32 [[TMP1:%.*]])
-; CHECK-NEXT:    [[CALL1_I_I_I:%.*]] = call spir_func i32 @__builtin_IB_get_image_height(i32 [[TMP1]])
-  %call.i.i.i = call spir_func i32 @__builtin_IB_get_image_width(i32 %1)
-  %call1.i.i.i = call spir_func i32 @__builtin_IB_get_image_height(i32 %1)
-  %vecinit.i.i.i = insertelement <2 x i32> undef, i32 %call.i.i.i, i64 0
-  %vecinit2.i.i.i = insertelement <2 x i32> %vecinit.i.i.i, i32 %call1.i.i.i, i64 1
+; CHECK:      call spir_func i32 @__builtin_IB_get_image_width(i32 [[TMP1:%.*]])
+; CHECK-NEXT: call spir_func i32 @__builtin_IB_get_image_height(i32 [[TMP1]])
+; CHECK-NEXT: call spir_func i32 @__builtin_IB_get_image_depth(i32 [[TMP1]])
+  %call = call spir_func i32 @__builtin_IB_get_image_width(i32 %1)
+  %call1 = call spir_func i32 @__builtin_IB_get_image_height(i32 %1)
+  %call2 = call spir_func i32 @__builtin_IB_get_image_depth(i32 %1)
   ret void
 }
 
 declare spir_func i32 @__builtin_IB_get_image_width(i32)
 declare spir_func i32 @__builtin_IB_get_image_height(i32)
+declare spir_func i32 @__builtin_IB_get_image_depth(i32)
 
 !igc.functions = !{!0}
 !IGCMetadata = !{!3}

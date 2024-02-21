@@ -81,6 +81,11 @@ void ImageFuncResolution::visitCallInst(CallInst& CI)
     }
     else if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE_DEPTH))
     {
+        if (!isImplicitImageArgs)
+        {
+            IGC_ASSERT_MESSAGE(false, "Getting Image Depth from implicit args is supported only in bindful mode");
+            return;
+        }
         imageRes = getImageDepth(CI);
     }
     else if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE_NUM_MIP_LEVELS))
