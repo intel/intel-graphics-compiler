@@ -664,7 +664,7 @@ DECLARE_IGC_REGKEY(DWORD, ParameterForColdFuncThreshold,        80, "C/10-STD fo
 DECLARE_IGC_REGKEY(bool, ControlUnitSize,               false, "Control compilation unit size by unit trimming", true)
 DECLARE_IGC_REGKEY(DWORD, ExpandedUnitSizeThreshold,    50000, "Trimming target of compilation unit size", true)
 DECLARE_IGC_REGKEY(DWORD, PrintControlUnitSize,             0, "Print information about unit trimming", true)
-DECLARE_IGC_REGKEY(DWORD, StaticProfileGuidedSpillCostAnalysis,  0, "Use static profile information to estimate spill cost, " \
+DECLARE_IGC_REGKEY(DWORD, StaticProfileGuidedSpillCostAnalysis,  8, "Use static profile information to estimate spill cost, " \
   "1 for profile generation, 2 for profile transfer, 4 for profile embedding, " \
   "8 for spill computation, and 16 for enabling frequency-based spill selection ", true)
 DECLARE_IGC_REGKEY(DWORD, StaticProfileGuidedSpillCostAnalysisScale, 4, "Scale adjustment for static profile guided spill cost analysis", true)
