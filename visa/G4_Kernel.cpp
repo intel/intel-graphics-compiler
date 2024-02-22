@@ -1955,7 +1955,7 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(std::ostream &os,
 
       formatToInstToStream(pc, os);
 
-      (*itBB)->emitBasicInstructionComment(os, itInst, suppressRegs, lastRegs);
+      (*itBB)->emitBasicInstructionComment(os, itInst, suppressRegs, lastRegs, pc);
       os << "\n";
 
       pc += kv.getInstSize(pc);

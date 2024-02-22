@@ -208,7 +208,7 @@ void G4_BB::emitBasicInstruction(std::ostream &output, INST_LIST_ITER &it) {
 }
 void G4_BB::emitBasicInstructionComment(std::ostream &output,
                                         INST_LIST_ITER &it, int *suppressRegs,
-                                        int *lastRegs) {
+                                        int *lastRegs, int32_t pc) {
   const G4_INST *inst = *it;
 
   auto platform = inst->getPlatform();
@@ -259,6 +259,9 @@ void G4_BB::emitBasicInstructionComment(std::ostream &output,
       jitInfo->statsVerbose.BCNum += BCNum;
       jitInfo->statsVerbose.numByteRMWs += countReadModifyWrite(output, inst);
     }
+
+    if (getParent().getKernel()->getOption(vISA_PrintInstOffsetInAsm))
+      output << " inst_offset=" << pc;
   }
 }
 

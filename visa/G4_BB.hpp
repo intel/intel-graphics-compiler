@@ -250,7 +250,7 @@ public:
   void emitInstruction(std::ostream &output, INST_LIST_ITER &it);
   void emitBasicInstruction(std::ostream &output, INST_LIST_ITER &it);
   void emitBasicInstructionComment(std::ostream &output, INST_LIST_ITER &it,
-                                   int *suppressRegs, int *lastRegs);
+                                   int *suppressRegs, int *lastRegs, int32_t pc);
   void emitInstructionSourceLineMapping(std::ostream &output,
                                         INST_LIST_ITER &it);
   void emitBankConflict(std::ostream &output, const G4_INST *inst);

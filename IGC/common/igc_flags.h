@@ -371,6 +371,7 @@ DECLARE_IGC_REGKEY(bool, ElfTempDumpEnable,             false, "dump temporary E
 DECLARE_IGC_REGKEY(debugString, DebugDumpNamePrefix,    0,     "Set a prefix to debug info dump filenames(with path) and drop hash info from them (for testing purposes)", true)
 DECLARE_IGC_REGKEY(bool, ShowFullVectorsInShaderDumps,  false, "print all elements of vectors in ShaderDumps, can dramatically increase ShaderDumps size", true)
 DECLARE_IGC_REGKEY(bool, PrintHexFloatInShaderDumpAsm,  true, "print floats in hex in asm dump", true)
+DECLARE_IGC_REGKEY(bool, PrintInstOffsetInShaderDumpAsm, false, "print instruction offsets as comments in asm dump", true)
 DECLARE_IGC_REGKEY(debugString, PrintAfter,             0,     "Take either all or comma/semicolon-separated list of pass names. If set, enable print LLVM IR after the given pass is done (mimic llvm print-after)", true)
 DECLARE_IGC_REGKEY(debugString, PrintBefore,            0,     "Take either all or comma/semicolon-separated list of pass names. If set, enable print LLVM IR before the given pass is done (mimic llvm print-before)", true)
 DECLARE_IGC_REGKEY(bool, PrintMDBeforeModule,           false, "Print metadata of the module at the beginning of the dump. Used for LIT tests.", true)

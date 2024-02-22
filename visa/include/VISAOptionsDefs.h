@@ -584,6 +584,9 @@ DEF_VISA_OPTION(vISA_PrintHexFloatInAsm, ET_BOOL, "-printHexFloatInAsm",
                 "Makes device assembly report immediate float operands in "
                 "hex instead of float.",
                 false)
+DEF_VISA_OPTION(vISA_PrintInstOffsetInAsm, ET_BOOL_TRUE, "-printInstOffsetInAsm",
+                "Enables printing instruction offsets as comments in shader dump.",
+                false)
 DEF_VISA_OPTION(
     vISA_dumpIgaJson, ET_INT32, "-dumpIgaJson",
     "Emits a .json file (peer to .asm) with final IGA output in JSON format; "

@@ -5071,6 +5071,11 @@ namespace IGC
             SaveOption(vISA_PrintHexFloatInAsm, true);
         }
 
+        if (IGC_IS_FLAG_ENABLED(PrintInstOffsetInShaderDumpAsm))
+        {
+            SaveOption(vISA_PrintInstOffsetInAsm, true);
+        }
+
         if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
         {
             SaveOption(vISA_SBIDDepLoc, true);
