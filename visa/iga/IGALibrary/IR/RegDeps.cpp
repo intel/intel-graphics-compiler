@@ -973,7 +973,7 @@ void DepSet::setInputsSendDescDep() {
   }
   auto exDesc = m_instruction->getExtMsgDescriptor();
   if (exDesc.isReg()) {
-    addABytesAndBukets(desc.reg.regNum);
+    addABytesAndBukets(exDesc.reg.regNum);
   }
 }
 
