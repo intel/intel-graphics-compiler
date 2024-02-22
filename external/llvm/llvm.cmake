@@ -48,7 +48,7 @@ endif()
 # Handle dependent options for Prebuild mode.
 if(IGC_OPTION__LLVM_MODE STREQUAL PREBUILDS_MODE_NAME)
   if(WIN32)
-    set(LLVM_ROOT "${BS_DIR_EXTERNAL_COMPONENTS}/llvm_prebuilt_windows" CACHE PATH "Path to LLVM prebuilt binaries")
+    set(LLVM_ROOT "${BS_DIR_EXTERNAL_COMPONENTS}/llvm_prebuilt_windows_${IGC_OPTION__LLVM_PREFERRED_VERSION}" CACHE PATH "Path to LLVM prebuilt binaries")
   else()
     set(LLVM_ROOT "${DEFAULT_IGC_LLVM_PREBUILDS_DIRS}" CACHE PATH
       "Paths to LLVM prebuild (multiple paths can be specified separated by ;")
@@ -69,7 +69,7 @@ if(NOT IGC_OPTION__LLVM_MODE)
   else()
     # Set defaults and stop.
     if(WIN32)
-      set(LLVM_ROOT "${BS_DIR_EXTERNAL_COMPONENTS}/llvm_prebuilt_windows" CACHE PATH "Path to LLVM prebuilt binaries")
+      set(LLVM_ROOT "${BS_DIR_EXTERNAL_COMPONENTS}/llvm_prebuilt_windows_${IGC_OPTION__LLVM_PREFERRED_VERSION}" CACHE PATH "Path to LLVM prebuilt binaries")
     else()
       set(LLVM_ROOT ${DEFAULT_IGC_LLVM_PREBUILDS_DIRS})
     endif()
