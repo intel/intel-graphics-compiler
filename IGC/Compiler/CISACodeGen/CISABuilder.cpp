@@ -859,7 +859,23 @@ namespace IGC
         if (var->IsImmediate())
         {
             uint64_t immediate = CalculateImmediateValue(var, mod.mod);
-            V(vKernel->CreateVISAImmediate(operand, &immediate, var->GetType()));
+            auto isaType = var->GetType();
+
+#if LLVM_VERSION_MAJOR >= 14
+            // :bf type is not supported for immediate values.
+            if (var->GetType() == ISA_TYPE_BF) {
+                APFloat immBF(APFloat::BFloat(), APInt(16, immediate));
+                bool losesInfo = false;
+                auto status = immBF.convert(
+                    APFloat::IEEEsingle(),
+                    RoundingMode::NearestTiesToEven, &losesInfo);
+                IGC_ASSERT(status == llvm::APFloatBase::opStatus::opOK && !losesInfo);
+                immediate = immBF.bitcastToAPInt().getZExtValue();
+                isaType = ISA_TYPE_F;
+            }
+#endif
+            V(vKernel->CreateVISAImmediate(operand, &immediate,
+                                           isaType));
         }
         else
         {
