@@ -237,7 +237,7 @@ void LSCCacheOptimizationPass::visitStoreInst(StoreInst& storeInst)
     uint64_t region_size = 0;
 
     const Instruction* address = dyn_cast<Instruction>(storeInst.getPointerOperand());
-    auto Region = getRegionOffset(address, &DL, &offset, &region_size);
+    auto Region = getRegionOffset(address, *m_CGCtx->getModuleMetaData(), &DL, &offset, &region_size);
     if (!Region)
         return;
 

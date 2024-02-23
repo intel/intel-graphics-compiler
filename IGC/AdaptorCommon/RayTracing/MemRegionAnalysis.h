@@ -35,6 +35,7 @@ getRTRegionByAddrspace(const llvm::Value* V, const ModuleMetaData& MMD);
 
 llvm::Optional<RTMemRegion> getRegionOffset(
     const llvm::Value* Ptr,
+    const ModuleMetaData& moduleMetaData,
     const llvm::DataLayout* DL = nullptr,
     uint64_t* Offset = nullptr,
     uint64_t* dereferenceable_value = nullptr);

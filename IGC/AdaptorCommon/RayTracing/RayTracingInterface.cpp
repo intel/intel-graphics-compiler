@@ -169,6 +169,7 @@ static void setupRTMemoryStyle(CodeGenContext* pContext)
     }
 }
 
+
 namespace IGC
 {
 

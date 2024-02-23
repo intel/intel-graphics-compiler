@@ -243,6 +243,7 @@ struct RayDispatchInlinedData
     uint64_t RayDispatchGlobalDataPtr;     //                r2.1:uq
 };
 
+
 template<typename Type>
 constexpr Type Align(const Type value, const size_t alignment)
 {

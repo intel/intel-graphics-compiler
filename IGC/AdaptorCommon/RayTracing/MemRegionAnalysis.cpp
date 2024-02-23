@@ -24,15 +24,25 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace IGC;
 
-static bool isGlobalPtr(const InlineDataIntrinsic *I)
+static bool isGlobalPtr(const InlineDataIntrinsic *I, const IGC::ModuleMetaData& moduleMetaData)
 {
     constexpr uint32_t GlobalPtrOffset =
         offsetof(RayDispatchInlinedData, RayDispatchGlobalDataPtr) / sizeof(uint64_t);
 
-    return (I->getArg() == GlobalPtrOffset);
+
+    uint32_t globalPtrOffset = 0;
+
+    if (moduleMetaData.rtInfo.GlobalDataStyle == RayDispatchInlinedDataStyle::Xe)
+    {
+        globalPtrOffset = GlobalPtrOffset;
+    }
+
+    return (I->getArg() == globalPtrOffset);
 }
 
-static Optional<RTMemRegion> getIntrinsicRegion(const GenIntrinsicInst* GII)
+static Optional<RTMemRegion> getIntrinsicRegion(
+    const GenIntrinsicInst* GII,
+    const IGC::ModuleMetaData& moduleMetaData)
 {
     switch (GII->getIntrinsicID())
     {
@@ -50,7 +60,7 @@ static Optional<RTMemRegion> getIntrinsicRegion(const GenIntrinsicInst* GII)
     case GenISAIntrinsic::GenISA_ContinuationSignpost:
         return RTMemRegion::SWStack;
     case GenISAIntrinsic::GenISA_InlinedData:
-        if (isGlobalPtr(cast<InlineDataIntrinsic>(GII)))
+        if (isGlobalPtr(cast<InlineDataIntrinsic>(GII), moduleMetaData))
             return RTMemRegion::RTGlobals;
         else
             return None;
@@ -84,7 +94,12 @@ getRTRegionByAddrspace(const Value* V, const ModuleMetaData &MMD)
     return None;
 }
 
-Optional<RTMemRegion> getRegionOffset(const Value* Ptr, const DataLayout *DL, uint64_t* Offset, uint64_t* dereferenceable_value)
+Optional<RTMemRegion> getRegionOffset(
+    const Value* Ptr,
+    const IGC::ModuleMetaData& moduleMetaData,
+    const DataLayout *DL,
+    uint64_t* Offset,
+    uint64_t* dereferenceable_value)
 {
     // Set an initial value for the Offset, overwriting whatever garbage value there may be.
     // If there is a getelementptr instruction the value of the *Offset will be updated.
@@ -130,7 +145,7 @@ Optional<RTMemRegion> getRegionOffset(const Value* Ptr, const DataLayout *DL, ui
                 IGC_ASSERT(!CanBeNull);
             }
 
-            return getIntrinsicRegion(GII);
+            return getIntrinsicRegion(GII, moduleMetaData);
         }
         else
         {
@@ -171,7 +186,7 @@ Optional<RTMemRegion> getRTRegion(const Value* V, const ModuleMetaData &MMD)
             break;
         case Instruction::Call:
             if (auto* GII = dyn_cast<GenIntrinsicInst>(I))
-                return getIntrinsicRegion(GII);
+                return getIntrinsicRegion(GII, MMD);
             return None;
         default:
             return None;

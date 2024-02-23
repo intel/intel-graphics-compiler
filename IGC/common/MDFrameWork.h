@@ -249,6 +249,7 @@ namespace IGC
         bool doSyncDispatchRays = false;
 
         RTMemoryStyle MemStyle = RTMemoryStyle::Xe;
+        RayDispatchInlinedDataStyle GlobalDataStyle = RayDispatchInlinedDataStyle::Xe;
     };
 
     // Info specific to each raytracing shader
