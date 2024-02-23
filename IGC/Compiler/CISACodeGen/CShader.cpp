@@ -4092,32 +4092,24 @@ bool CShader::needsEntryFence() const
 
 bool CShader::forceCacheCtrl(llvm::Instruction* inst)
 {
-    std::map<uint32_t, uint32_t> list = m_ModuleMetadata->forceLscCacheList;
-    unsigned calleeArgNo = 0;
-    PushInfo& pushInfo = m_ModuleMetadata->pushInfo;
-    Value* src = IGC::TracePointerSource(inst->getOperand(0));
-    if (src)
+    const auto& list = m_ModuleMetadata->forceLscCacheList;
+    const auto* PtrTy = dyn_cast<PointerType>(inst->getOperand(0)->getType());
+
+    if (PtrTy)
     {
-        if (Argument * calleeArg = dyn_cast<Argument>(src))
+        const auto pos = list.find(PtrTy->getAddressSpace());
+
+        if (pos != list.end())
         {
-            calleeArgNo = calleeArg->getArgNo();
-            for (auto index_it = pushInfo.constantReg.begin(); index_it != pushInfo.constantReg.end(); ++index_it)
-            {
-                if (index_it->second == calleeArgNo)
-                {
-                    auto pos = list.find(index_it->first);
-                    if (pos != list.end()) {
-                        MDNode* node = MDNode::get(
-                            inst->getContext(),
-                            ConstantAsMetadata::get(
-                                ConstantInt::get(Type::getInt32Ty(inst->getContext()), pos->second)));
-                        inst->setMetadata("lsc.cache.ctrl", node);
-                        return true;
-                    }
-                }
-            }
+            auto* node = MDNode::get(
+                inst->getContext(),
+                ConstantAsMetadata::get(
+                    ConstantInt::get(Type::getInt32Ty(inst->getContext()), pos->second)));
+            inst->setMetadata("lsc.cache.ctrl", node);
+            return true;
         }
     }
+
     return false;
 }
 
