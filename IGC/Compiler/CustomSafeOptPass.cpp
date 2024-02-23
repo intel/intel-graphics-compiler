@@ -3609,8 +3609,11 @@ void GenSpecificPattern::visitFNeg(llvm::UnaryOperator& I)
     // and adds source modifier for this region/value.
 
     IRBuilder<> builder(&I);
-
     Value* fsub = nullptr;
+
+    if (IGCLLVM::isBFloatTy(I.getType())) {
+        return;
+    }
 
     if (!I.getType()->isVectorTy())
     {

@@ -589,7 +589,7 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB *bb) {
       G4_SrcRegRegion *srcRegion = src->asSrcRegRegion();
       const RegionDesc *rd = srcRegion->getRegion();
       if (srcRegion->getModifier() != Mod_src_undef && isIntDivide) {
-        // no source modifer for int divide
+        // no source modifier for int divide
         return true;
       } else if (srcRegion->getRegAccess() != Direct) {
         return true;

@@ -3015,11 +3015,11 @@ namespace IGC
             if (cmpInst->getOperand(0)->getType()->getPrimitiveSizeInBits() == I.getType()->getPrimitiveSizeInBits())
             {
                 CmpSextPattern* pattern = new (m_allocator) CmpSextPattern();
-                bool supportModifer = SupportsModifier(cmpInst);
+                bool supportModifier = SupportsModifier(cmpInst, m_Platform);
 
                 pattern->inst = cmpInst;
-                pattern->sources[0] = GetSource(cmpInst->getOperand(0), supportModifer, false, IsSourceOfSample(&I));
-                pattern->sources[1] = GetSource(cmpInst->getOperand(1), supportModifer, false, IsSourceOfSample(&I));
+                pattern->sources[0] = GetSource(cmpInst->getOperand(0), supportModifier, false, IsSourceOfSample(&I));
+                pattern->sources[1] = GetSource(cmpInst->getOperand(1), supportModifier, false, IsSourceOfSample(&I));
                 AddPattern(pattern);
                 match = true;
             }
@@ -3362,21 +3362,21 @@ namespace IGC
                     return SkipCanonicalize(src);
                 });
         }
-        bool supportModiferSrc0 = SupportsModifier(&I);
+        bool supportModifierSrc0 = SupportsModifier(&I, m_Platform);
         bool supportRegioning = SupportsRegioning(&I);
         llvm::Instruction* src0Inst = llvm::dyn_cast<llvm::Instruction>(I.getOperand(0));
         if (I.getOpcode() == llvm::Instruction::UDiv && src0Inst && src0Inst->getOpcode() == llvm::Instruction::Sub) {
-            supportModiferSrc0 = false;
+            supportModifierSrc0 = false;
         }
-        pattern->sources[0] = GetSource(sources[0], supportModiferSrc0 && SupportSrc0Mod, supportRegioning, IsSourceOfSample(&I));
+        pattern->sources[0] = GetSource(sources[0], supportModifierSrc0 && SupportSrc0Mod, supportRegioning, IsSourceOfSample(&I));
         if (nbSources > 1)
         {
-            bool supportModiferSrc1 = SupportsModifier(&I);
+            bool supportModifierSrc1 = SupportsModifier(&I, m_Platform);
             llvm::Instruction* src1Inst = llvm::dyn_cast<llvm::Instruction>(I.getOperand(1));
             if (I.getOpcode() == llvm::Instruction::UDiv && src1Inst && src1Inst->getOpcode() == llvm::Instruction::Sub) {
-                supportModiferSrc1 = false;
+                supportModifierSrc1 = false;
             }
-            pattern->sources[1] = GetSource(sources[1], supportModiferSrc1, supportRegioning, IsSourceOfSample(&I));
+            pattern->sources[1] = GetSource(sources[1], supportModifierSrc1, supportRegioning, IsSourceOfSample(&I));
 
             // add df imm to constant pool for binary/ternary inst
             // we do 64-bit int imm bigger than 32 bits, since smaller may fit in D/W
@@ -3953,7 +3953,7 @@ namespace IGC
         {
             GenericPointersCmpPattern* pattern = new (m_allocator) GenericPointersCmpPattern();
 
-            bool supportsMod = SupportsModifier(&I);
+            bool supportsMod = SupportsModifier(&I, m_Platform);
             pattern->cmpSources[0] = GetSource(I.getOperand(0), supportsMod, false, IsSourceOfSample(&I));
             pattern->cmpSources[1] = GetSource(I.getOperand(1), supportsMod, false, IsSourceOfSample(&I));
             pattern->cmp = &I;
@@ -4540,9 +4540,9 @@ namespace IGC
 
             CmpSelectPattern* pattern = new (m_allocator) CmpSelectPattern();
             pattern->predicate = cmp->getPredicate();
-            bool supportsModifer = SupportsModifier(cmp);
-            pattern->cmpSources[0] = GetSource(cmp->getOperand(0), supportsModifer, false, IsSourceOfSample(&I));
-            pattern->cmpSources[1] = GetSource(cmp->getOperand(1), supportsModifer, false, IsSourceOfSample(&I));
+            bool supportsModifier = SupportsModifier(cmp, m_Platform);
+            pattern->cmpSources[0] = GetSource(cmp->getOperand(0), supportsModifier, false, IsSourceOfSample(&I));
+            pattern->cmpSources[1] = GetSource(cmp->getOperand(1), supportsModifier, false, IsSourceOfSample(&I));
 
             pattern->bfnSources[1] = GetSource(selSources[0], false, false, IsSourceOfSample(&I));
             pattern->bfnSources[2] = GetSource(selSources[1], false, false, IsSourceOfSample(&I));

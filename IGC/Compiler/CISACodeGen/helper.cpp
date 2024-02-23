@@ -1627,7 +1627,7 @@ namespace IGC
 #define DECLARE_OPCODE(instName, llvmType, name, modifiers, sat, pred, condMod, mathIntrinsic, atomicIntrinsic, regioning) \
     case name:\
     return modifiers;
-    bool SupportsModifier(llvm::Instruction* inst)
+    bool SupportsModifier(llvm::Instruction* inst, const IGC::CPlatform& platform)
     {
         // Special cases
         switch (inst->getOpcode())
@@ -1646,6 +1646,9 @@ namespace IGC
             return false;
         default:
             break;
+        }
+        if (IGCLLVM::isBFloatTy(inst->getType())) {
+            return false;
         }
 
         switch (GetOpCode(inst))

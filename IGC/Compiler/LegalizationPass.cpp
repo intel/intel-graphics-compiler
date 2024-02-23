@@ -177,6 +177,26 @@ void Legalization::visitInstruction(llvm::Instruction& I)
     m_ctx->m_instrTypes.numLocalInsts++;
 }
 
+#if LLVM_VERSION_MAJOR >= 14
+void Legalization::visitFNeg(llvm::UnaryOperator &I) {
+    if (IGCLLVM::isBFloatTy(I.getType())) {
+        m_builder->SetInsertPoint(&I);
+        auto ExtendedOp = m_builder->CreateFPExt(
+            I.getOperand(0), Type::getFloatTy(I.getContext()));
+        auto FloatFneg = m_builder->CreateFNeg(ExtendedOp);
+        auto Res = m_builder->CreateFPTrunc(FloatFneg, I.getType());
+
+        cast<Instruction>(ExtendedOp)->setDebugLoc(I.getDebugLoc());
+        cast<Instruction>(FloatFneg)->setDebugLoc(I.getDebugLoc());
+        cast<Instruction>(Res)->setDebugLoc(I.getDebugLoc());
+
+        I.replaceAllUsesWith(Res);
+        m_instructionsToRemove.push_back(&I);
+    }
+    m_ctx->m_instrTypes.numInsts++;
+}
+#endif // LLVM_VERSION_MAJOR >= 14
+
 void Legalization::visitBinaryOperator(llvm::BinaryOperator& I)
 {
     if (I.getOpcode() == Instruction::FRem)
@@ -2680,11 +2700,7 @@ static bool isCandidateFDiv(Instruction* Inst)
         return false;
 
     Type* Ty = Inst->getType();
-    if (!Ty->isFloatTy() && !Ty->isHalfTy()
-#if LLVM_VERSION_MAJOR >= 14
-        && !Ty->isBFloatTy()
-#endif
-    )
+    if (!Ty->isFloatTy() && !Ty->isHalfTy() && !IGCLLVM::isBFloatTy(Ty))
         return false;
 
     auto Op = dyn_cast<FPMathOperator>(Inst);
@@ -2739,11 +2755,8 @@ bool IGC::expandFDIVInstructions(llvm::Function& F)
             Value* Y = Inst->getOperand(1);
             Value* V = nullptr;
 
-            if (Inst->getType()->isHalfTy()
-#if LLVM_VERSION_MAJOR >= 14
-                || Inst->getType()->isBFloatTy()
-#endif
-            ) {
+            if (Inst->getType()->isHalfTy() ||
+                IGCLLVM::isBFloatTy(Inst->getType())) {
                 if (Inst->hasAllowReciprocal()) {
                     APFloat Val(1.0f);
                     bool ignored;

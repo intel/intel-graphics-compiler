@@ -1613,6 +1613,7 @@ bool supportTriggerLargeGRFRetry() const
 }
 
 
+
 bool EnableCSWalkerPass() const
 {
     return isCoreChildOf(IGFX_XE2_LPG_CORE);

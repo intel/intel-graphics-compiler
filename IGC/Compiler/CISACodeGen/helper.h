@@ -96,7 +96,7 @@ namespace IGC
 #undef DECLARE_OPCODE
 
     EOPCODE GetOpCode(const llvm::Instruction* inst);
-    bool SupportsModifier(llvm::Instruction* inst);
+    bool SupportsModifier(llvm::Instruction* inst, const CPlatform& platform);
     bool SupportsSaturate(llvm::Instruction* inst);
     bool SupportsPredicate(llvm::Instruction* inst);
     bool SupportsCondModifier(llvm::Instruction* inst);

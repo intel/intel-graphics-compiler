@@ -181,7 +181,7 @@ protected:
   //  lb = bit offset of the first flag bit
   //  rb = bit offset of the last flag bit
   //  (rb - lb) < 32 always holds for flags
-  //  for predicate and conditonal modifers, the bounds are also effected by the
+  //  for predicate and conditonal modifiers, the bounds are also effected by the
   //  quarter control
   uint16_t left_bound;
   uint16_t right_bound;

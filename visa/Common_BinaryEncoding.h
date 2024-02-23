@@ -2402,7 +2402,7 @@ inline bool BinaryEncodingBase::uncompactOneInstruction(G4_INST *inst) {
   uint32_t subRegIndex100 = CompactSubRegTable.GetBits_100_096(subRegIndex);
   uint32_t subRegIndex68 = CompactSubRegTable.GetBits_068_064(subRegIndex);
   uint32_t subRegIndex52 = CompactSubRegTable.GetBits_052_048(subRegIndex);
-  uint32_t condModifer = GetCondModifier(mybin);
+  uint32_t condModifier = GetCondModifier(mybin);
   uint32_t accWrCtrl = GetCmpAccWrCtrl(mybin);
   uint32_t flagSubRegNum = GetCmpFlagSubRegNum(mybin);
   uint32_t bits88 = CompactSourceTable.GetBits_088_077(src0Index);
@@ -2420,7 +2420,7 @@ inline bool BinaryEncodingBase::uncompactOneInstruction(G4_INST *inst) {
   mybin->SetBits(100, 96, subRegIndex100);
   mybin->SetBits(68, 64, subRegIndex68);
   mybin->SetBits(52, 48, subRegIndex52);
-  SetCondModifier(mybin, condModifer);
+  SetCondModifier(mybin, condModifier);
   SetAccWrCtrl(mybin, accWrCtrl);
   SetFlagRegNum(mybin, flagSubRegNum);
   SetCompactCtrl(mybin, 0); // uncompaction

@@ -54,13 +54,14 @@ void HandleFRemInstructions::visitFRem(llvm::BinaryOperator& I)
         auto TypeWidth = ScalarType->getScalarSizeInBits();
         FpTypeStr = "f" + std::to_string(TypeWidth);
     }
-#if LLVM_VERSION_MAJOR >= 14
-    else if (ScalarType->isBFloatTy())
+    else if (IGCLLVM::isBFloatTy(ScalarType))
     {
         FpTypeStr = "f32";
         Type *FloatTy = Type::getFloatTy(I.getContext());
         ValType = ValType->isVectorTy()
-                      ? VectorType::get(FloatTy, cast<VectorType>(ValType))
+                      ? IGCLLVM::FixedVectorType::get(
+                            FloatTy,
+                            (unsigned)cast<IGCLLVM::FixedVectorType>(ValType)->getNumElements())
                       : FloatTy;
 
         auto Val1Float = new FPExtInst(Val1, ValType, "", &I);
@@ -70,7 +71,6 @@ void HandleFRemInstructions::visitFRem(llvm::BinaryOperator& I)
         Val1 = Val1Float;
         Val2 = Val2Float;
     }
-#endif
     else
     {
         IGC_ASSERT_MESSAGE(0, "Unsupported type");
@@ -96,13 +96,11 @@ void HandleFRemInstructions::visitFRem(llvm::BinaryOperator& I)
     auto Callee = m_module->getOrInsertFunction(FuncName, FT);
     SmallVector<Value*, 2> FuncArgs{ Val1, Val2 };
     Instruction* NewFRem = CallInst::Create(Callee, FuncArgs, "");
-#if LLVM_VERSION_MAJOR >= 14
-    if (ScalarType->isBFloatTy()) {
+    if (IGCLLVM::isBFloatTy(ScalarType)) {
         NewFRem->insertBefore(&I);
         NewFRem->setDebugLoc(I.getDebugLoc());
         NewFRem = new FPTruncInst(NewFRem, I.getOperand(0)->getType());
     }
-#endif
     ReplaceInstWithInst(&I, NewFRem);
     m_changed = true;
 }
