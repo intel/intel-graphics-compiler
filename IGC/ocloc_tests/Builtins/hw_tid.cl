@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 // The test checks if a call to  __builtin_IB_hw_thread_id in a stack call
 // produces a code sequence with sr0 usage.
 
-// REQUIRES: regkeys
+// REQUIRES: regkeys, dg2-supported
 
 // RUN: ocloc compile -file %s -options " -igc_opts 'DumpVISAASMToConsole=1'" -device dg2 | FileCheck %s --check-prefix=CHECK-VISA
 // CHECK-VISA: recursive_call{{.*}}:

@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// REQUIRES: regkeys
+// REQUIRES: regkeys, dg2-supported
 
 // RUN: ocloc compile -file %s -device dg2 \
 // RUN: -options "-I %S -cl-std=CL3.0 -igc_opts 'PrintToConsole=1 PrintBefore=EmitPass'" \

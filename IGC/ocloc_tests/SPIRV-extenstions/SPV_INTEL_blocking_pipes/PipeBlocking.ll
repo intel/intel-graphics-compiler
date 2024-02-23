@@ -1,5 +1,5 @@
 ; UNSUPPORTED: system-windows
-; REQUIRES: llvm-spirv, regkeys
+; REQUIRES: llvm-spirv, regkeys, dg2-supported
 
 ; RUN: llvm-as %s -o %t.bc
 ; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_blocking_pipes,+SPV_INTEL_arbitrary_precision_integers -o %t.spv

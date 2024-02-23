@@ -1,5 +1,5 @@
 // UNSUPPORTED: system-windows
-
+// REQUIRES: dg2-supported
 // RUN: ocloc compile -file %s -options "-g" -internal_options "-cl-intel-use-bindless-mode" -device dg2 2>&1 | FileCheck %s
 
 // Check that kernel build is successful in "-g" mode.

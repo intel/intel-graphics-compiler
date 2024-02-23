@@ -52,7 +52,7 @@
 ; Temporary disabled this tests for win builds
 ;
 ; UNSUPPORTED: system-windows
-; REQUIRES: llvm-spirv, regkeys
+; REQUIRES: llvm-spirv, regkeys, dg2-supported
 
 ; Check that translation of optimized IR doesn't crash:
 ; RUN: llvm-as %s -o %t.bc

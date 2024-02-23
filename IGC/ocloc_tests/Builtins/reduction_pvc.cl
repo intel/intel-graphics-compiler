@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// REQUIRES: regkeys, pvc-supported
+// REQUIRES: regkeys, pvc-supported, dg2-supported
 
 // RUN: ocloc compile -file %s -device dg2 -options "-cl-std=CL2.0 -igc_opts 'PrintToConsole=1 PrintAfter=Layout'" 2>&1 | FileCheck %s --check-prefix=CHECK-BASE
 // RUN: ocloc compile -file %s -device pvc -options "-cl-std=CL2.0 -igc_opts 'PrintToConsole=1 PrintAfter=Layout'" 2>&1 | FileCheck %s --check-prefix=CHECK-PVC

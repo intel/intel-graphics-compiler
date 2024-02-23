@@ -1,5 +1,5 @@
 ; UNSUPPORTED: system-windows
-; REQUIRES: llvm-spirv, regkeys
+; REQUIRES: llvm-spirv, regkeys, dg2-supported
 
 ; Need to backport some SPIRV-LLVM-Translator patches first
 ; XFAIL: *

@@ -1,4 +1,5 @@
 // Tests targets spirv-extension: SPV_INTEL_media_block_io
+// REQUIRES: dg2-supported
 // RUN: ocloc compile -file %s -options "-cl-std=CL2.0 -igc_opts 'PrintToConsole=1 PrintBefore=EmitPass'" -device dg2 2>&1 | FileCheck %s --check-prefix=CHECK-LLVM
 
 uchar __attribute__((overloadable)) intel_sub_group_media_block_read_uc(int2 src_offset, int width, int height, read_only image2d_t image);

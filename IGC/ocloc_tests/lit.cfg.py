@@ -57,21 +57,19 @@ def get_available_devices(tool_path, ld_path):
     set_of_devices = set()
     # ocloc executable is expected to be present for these tests
     ocloc_cmd = subprocess.Popen(
-        [tool_path, 'ids', '--help'], stdout=subprocess.PIPE, env={'LD_LIBRARY_PATH': ld_path})
+        [tool_path, 'compile', '--help'], stdout=subprocess.PIPE, env={'LD_LIBRARY_PATH': ld_path})
     ocloc_out = ocloc_cmd.stdout.read().decode()
     ocloc_cmd.wait()
     for line in ocloc_out.split('\n') :
-        if 'All supported acronyms:' in line :
-            fields = line.split(':')
-            for dev in fields[1].rstrip('.').split(','):
+        if '<device_type> can be:' in line :
+            fields = line.strip().split(':')
+            for dev in fields[1].split(','):
                acronym = dev.strip()
-               if acronym :
+               if acronym and not 'ip version' in acronym :
                   set_of_devices.add(acronym + '-supported')
-            break
     return set_of_devices
 
 # Get supported acronyms for ocloc
-# Deprecated acronyms are not added
 devices = get_available_devices(ocloc_path, config.environment['LD_LIBRARY_PATH'])
 lit_config.note('Supported device acronyms(to be used with REQUIRES:): \n%s' % ' '.join(sorted(devices)))
 config.available_features.update(devices)

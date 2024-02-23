@@ -55,7 +55,7 @@
 ;   A cb = __builtin_intel_fpga_reg(ca);
 
 ; UNSUPPORTED: system-windows
-; REQUIRES: llvm-spirv, regkeys
+; REQUIRES: llvm-spirv, regkeys, dg2-supported
 
 ; RUN: llvm-as %s -o %t.bc
 ; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_fpga_reg -o %t.spv

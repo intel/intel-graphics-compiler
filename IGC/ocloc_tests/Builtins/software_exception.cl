@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 // The test checks if a call to __builtin_IB_software_exception enables
 // bit 29 (Software Exception Control) in CR0.1
 
-// REQUIRES: regkeys
+// REQUIRES: regkeys, dg2-supported
 
 // RUN: ocloc compile -file %s -options " -igc_opts 'VISAOptions=-asmToConsole'" -device dg2 | FileCheck %s --check-prefix=CHECK-ASM
 // CHECK-ASM: (W) or (1|M0) cr0.1<1>:ud   cr0.1<0;1,0>:ud   0x20000000:ud
