@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -90,6 +90,16 @@ public:
   void log(llvm::raw_ostream &OS) const override;
   std::error_code convertToErrorCode() const override {
     return make_error_code(errc::invalid_module);
+  }
+};
+
+class BifLoadingError final : public llvm::ErrorInfo<BifLoadingError> {
+public:
+  static char ID;
+
+  void log(llvm::raw_ostream &OS) const override;
+  std::error_code convertToErrorCode() const override {
+    return make_error_code(errc::bif_load_fail);
   }
 };
 

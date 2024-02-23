@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2023 Intel Corporation
+Copyright (C) 2020-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -176,11 +176,10 @@ struct ExternalData {
   llvm::ArrayRef<const char*> DirectCallFunctions;
 };
 
-llvm::Expected<CompileOutput> Compile(llvm::ArrayRef<char> Input,
-                                      const CompileOptions &Opts,
-                                      const ExternalData &ExtData,
-                                      llvm::ArrayRef<uint32_t> SpecConstIds,
-                                      llvm::ArrayRef<uint64_t> SpecConstValues);
+llvm::Expected<CompileOutput>
+Compile(llvm::ArrayRef<char> Input, const CompileOptions &Opts,
+        const ExternalData &ExtData, llvm::ArrayRef<uint32_t> SpecConstIds,
+        llvm::ArrayRef<uint64_t> SpecConstValues, llvm::raw_ostream &Log);
 
 llvm::Expected<CompileOptions> ParseOptions(llvm::StringRef ApiOptions,
                                             llvm::StringRef InternalOptions,

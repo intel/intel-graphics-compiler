@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -99,6 +99,14 @@ char InvalidModuleError::ID = 0;
 
 void InvalidModuleError::log(llvm::raw_ostream &OS) const {
   OS << ErrorTraits<errc::invalid_module>::getMessage();
+}
+// }}
+
+// BifLoadingError {{
+char BifLoadingError::ID = 0;
+
+void BifLoadingError::log(llvm::raw_ostream &OS) const {
+  OS << ErrorTraits<errc::bif_load_fail>::getMessage();
 }
 // }}
 

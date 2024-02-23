@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2023 Intel Corporation
+Copyright (C) 2020-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/Error.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/Process.h>
+#include <llvm/Support/raw_ostream.h>
 
 #include <AdaptorOCL/OCL/BuiltinResource.h>
 #include <AdaptorOCL/OCL/LoadBuffer.h>
@@ -33,7 +34,6 @@ SPDX-License-Identifier: MIT
 
 #include <algorithm>
 #include <memory>
-#include <sstream>
 #include <system_error>
 
 #include <cstring>
@@ -48,18 +48,12 @@ struct VcPayloadInfo {
 
 class BuildDiag {
 public:
-  void addWarning(const std::string &Str) {
-    BuildLog << "warning: " << Str << "\n";
-  }
-  std::string getLog() const { return BuildLog.str(); }
+  explicit BuildDiag(llvm::raw_ostream &Log) : Out(Log) {}
+  void addWarning(llvm::StringRef Str) { Out << "warning: " << Str << "\n"; }
 
 private:
-  // for now, we don't differentiate between warnings and errors
-  // the expectation is that a marker indicating an error shall be
-  // reported by other means
-  std::ostringstream BuildLog;
+  llvm::raw_ostream &Out;
 };
-
 } // namespace
 
 static VcPayloadInfo tryExtractPayload(const char *Input, size_t InputSize) {
@@ -367,33 +361,16 @@ static void adjustOptions(const IGC::CPlatform &IGCPlatform,
   adjustTransformationsAndOptimizations(Opts);
 }
 
-static void setErrorMessage(const std::string &ErrorMessage,
+static void setErrorMessage(llvm::StringRef ErrorMessage,
                             TC::STB_TranslateOutputArgs &pOutputArgs) {
   pOutputArgs.pErrorString = new char[ErrorMessage.size() + 1];
-  memcpy_s(pOutputArgs.pErrorString, ErrorMessage.size() + 1,
-           ErrorMessage.c_str(), ErrorMessage.size() + 1);
+  memcpy_s(pOutputArgs.pErrorString, ErrorMessage.size(), ErrorMessage.data(),
+           ErrorMessage.size());
+  pOutputArgs.pErrorString[ErrorMessage.size()] = '\0';
   pOutputArgs.ErrorStringSize = ErrorMessage.size() + 1;
 }
 
-static std::error_code getError(llvm::Error Err,
-                                TC::STB_TranslateOutputArgs *OutputArgs) {
-  std::error_code Status;
-  llvm::handleAllErrors(std::move(Err),
-                        [&Status, OutputArgs](const llvm::ErrorInfoBase &EI) {
-                          Status = EI.convertToErrorCode();
-                          setErrorMessage(EI.message(), *OutputArgs);
-                        });
-  return Status;
-}
-
-static std::error_code getError(std::error_code Err,
-                                TC::STB_TranslateOutputArgs *OutputArgs) {
-  setErrorMessage(Err.message(), *OutputArgs);
-  return Err;
-}
-
 static void outputBinary(llvm::StringRef Binary, llvm::StringRef DebugInfo,
-                         const BuildDiag &Diag,
                          TC::STB_TranslateOutputArgs *OutputArgs) {
   size_t BinarySize = Binary.size();
   char *BinaryOutput = new char[BinarySize];
@@ -406,16 +383,6 @@ static void outputBinary(llvm::StringRef Binary, llvm::StringRef DebugInfo,
              DebugInfo.size());
     OutputArgs->pDebugData = DebugInfoOutput;
     OutputArgs->DebugDataSize = DebugInfo.size();
-  }
-  const std::string &BuildLog = Diag.getLog();
-  if (!BuildLog.empty()) {
-    // Currently, if warnings are reported, we expected that there was no
-    // error string set.
-    IGC_ASSERT(OutputArgs->pErrorString == nullptr);
-#ifndef NDEBUG
-    llvm::errs() << BuildLog;
-#endif
-    setErrorMessage(BuildLog, *OutputArgs);
   }
 }
 
@@ -609,45 +576,34 @@ static void validateCMProgramForOCLBin(const vc::CGen8CMProgram &CMProgram) {
                      "some text relocations are lost for oclbin");
 }
 
-std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
-                                   TC::STB_TranslateOutputArgs *OutputArgs,
-                                   TC::TB_DATA_FORMAT InputDataFormatTemp,
-                                   const IGC::CPlatform &IGCPlatform,
-                                   float ProfilingTimerResolution) {
+static llvm::Expected<bool>
+translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
+               TC::STB_TranslateOutputArgs *OutputArgs,
+               TC::TB_DATA_FORMAT InputDataFormatTemp,
+               const IGC::CPlatform &IGCPlatform,
+               float ProfilingTimerResolution, llvm::raw_ostream &BuildLogOut) {
   llvm::StringRef ApiOptions{InputArgs->pOptions, InputArgs->OptionsSize};
   llvm::StringRef InternalOptions{InputArgs->pInternalOptions,
                                   InputArgs->InternalOptionsSize};
-
   llvm::ArrayRef<char> Input{InputArgs->pInput, InputArgs->InputSize};
 
-  const ShaderHash Hash = getShaderHash(Input);
-  std::unique_ptr<vc::ShaderDumper> Dumper;
-  if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable)) {
-    Dumper = vc::createVC_IGCFileDumper(Hash);
-  } else {
-    Dumper = vc::createDefaultShaderDumper();
-  }
+  const auto Hash = getShaderHash(Input);
+  auto Dumper = IGC_IS_FLAG_ENABLED(ShaderDumpEnable)
+                    ? vc::createVC_IGCFileDumper(Hash)
+                    : vc::createDefaultShaderDumper();
+  BuildDiag Diag(BuildLogOut);
 
+  // Parse and adjust VC options passed by a user and a runtime.
   auto ExpOptions = parseOptions(*Dumper, ApiOptions, InternalOptions, Input);
-  // If vc was not called, then observable state should not be changed.
-  if (ExpOptions.errorIsA<vc::NotVCError>()) {
-    llvm::consumeError(ExpOptions.takeError());
-    return vc::errc::not_vc_codegen;
-  }
-  // Other errors are VC related and should be reported.
   if (!ExpOptions)
-    return getError(ExpOptions.takeError(), OutputArgs);
-
-  BuildDiag Diag;
+    return ExpOptions.takeError();
   vc::CompileOptions &Opts = ExpOptions.get();
   adjustOptions(IGCPlatform, InputDataFormatTemp, Opts, Diag, Hash);
 
-  // here we have Opts set and can dump what we got from runtime and how
-  // we understood it. We need to do it before output error on unknown platform
   dumpPlatform(Opts, IGCPlatform.getPlatformInfo(), *Dumper);
 
   if (Opts.CPUStr.empty())
-    llvm::report_fatal_error("vc::translateBuild: unsupported platform");
+    return llvm::make_error<vc::OptionError>("Unknown target platform", false);
 
   if (IGC_IS_FLAG_ENABLED(ShaderOverride))
     Opts.ShaderOverrider =
@@ -655,24 +611,24 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
 
   Opts.Dumper = std::move(Dumper);
 
-  llvm::ArrayRef<const char *> VISALTOStrings{
-      InputArgs->pVISAAsmToLinkArray, InputArgs->NumVISAAsmsToLink};
-
+  llvm::ArrayRef<const char *> VISALTOStrings{InputArgs->pVISAAsmToLinkArray,
+                                              InputArgs->NumVISAAsmsToLink};
   llvm::ArrayRef<const char *> DirectCallFunctions{
       InputArgs->pDirectCallFunctions, InputArgs->NumDirectCallFunctions};
 
-  auto ExtData =
-      fillExternalData(Opts.Binary, Opts.CPUStr, VISALTOStrings, DirectCallFunctions);
+  auto ExtData = fillExternalData(Opts.Binary, Opts.CPUStr, VISALTOStrings,
+                                  DirectCallFunctions);
   if (!ExtData)
-    return getError(vc::make_error_code(vc::errc::bif_load_fail), OutputArgs);
+    return llvm::make_error<vc::BifLoadingError>();
+
   llvm::ArrayRef<uint32_t> SpecConstIds{InputArgs->pSpecConstantsIds,
                                         InputArgs->SpecConstantsSize};
   llvm::ArrayRef<uint64_t> SpecConstValues{InputArgs->pSpecConstantsValues,
                                            InputArgs->SpecConstantsSize};
   auto ExpOutput = vc::Compile(Input, Opts, ExtData.getValue(), SpecConstIds,
-                               SpecConstValues);
+                               SpecConstValues, BuildLogOut);
   if (!ExpOutput)
-    return getError(ExpOutput.takeError(), OutputArgs);
+    return ExpOutput.takeError();
   auto &CompileResult = ExpOutput.get();
 
   vc::CGen8CMProgram CMProgram{Opts, IGCPlatform.getPlatformInfo(),
@@ -695,9 +651,9 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
         static_cast<std::size_t>(ProgramDebugData.Size())};
 
     if (CMProgram.HasErrors())
-      return getError(CMProgram.GetError(), OutputArgs);
+      return CMProgram.GetError();
 
-    outputBinary(BinaryRef, DebugInfoRef, Diag, OutputArgs);
+    outputBinary(BinaryRef, DebugInfoRef, OutputArgs);
     break;
   }
   case vc::BinaryKind::ZE: {
@@ -706,18 +662,48 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
     CMProgram.GetZEBinary(ProgramBinaryOS, CompileResult.PointerSizeInBytes);
 
     if (CMProgram.HasErrors())
-      return getError(CMProgram.GetError(), OutputArgs);
+      return CMProgram.GetError();
 
     if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
       Opts.Dumper->dumpBinary(ProgramBinary, "", "progbin");
 
     llvm::StringRef BinaryRef{ProgramBinary.data(), ProgramBinary.size()};
-    outputBinary(BinaryRef, {}, Diag, OutputArgs);
+    outputBinary(BinaryRef, {}, OutputArgs);
     break;
   }
   default:
     IGC_ASSERT_EXIT_MESSAGE(0, "Unknown binary format");
   }
 
-  return {};
+  return true;
+}
+
+std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
+                                   TC::STB_TranslateOutputArgs *OutputArgs,
+                                   TC::TB_DATA_FORMAT InputDataFormatTemp,
+                                   const IGC::CPlatform &IGCPlatform,
+                                   float ProfilingTimerResolution) {
+  std::string BuildLog;
+  llvm::raw_string_ostream BuildLogOut(BuildLog);
+
+  auto R = ::translateBuild(InputArgs, OutputArgs, InputDataFormatTemp,
+                            IGCPlatform, ProfilingTimerResolution, BuildLogOut);
+  IGC_ASSERT(OutputArgs->pErrorString == nullptr);
+
+  std::error_code Status;
+  if (!R)
+    llvm::handleAllErrors(
+        R.takeError(), [&Status, &BuildLogOut](const llvm::ErrorInfoBase &EI) {
+          Status = EI.convertToErrorCode();
+          BuildLogOut << EI.message() << "\n";
+        });
+
+  if (!BuildLog.empty()) {
+#ifndef NDEBUG
+    llvm::errs() << BuildLog;
+#endif // NDEBUG
+    setErrorMessage(BuildLog, *OutputArgs);
+  }
+
+  return Status;
 }

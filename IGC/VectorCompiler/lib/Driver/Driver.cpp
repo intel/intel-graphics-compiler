@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2023 Intel Corporation
+Copyright (C) 2020-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -21,34 +21,36 @@ SPDX-License-Identifier: MIT
 #include "llvm/GenXIntrinsics/GenXIntrOpts.h"
 #include "llvm/GenXIntrinsics/GenXSPIRVReaderAdaptor.h"
 
-#include "llvm/ADT/ScopeExit.h"
-#include "llvm/ADT/SmallString.h"
-#include "llvm/ADT/SmallVector.h"
-#include "llvm/ADT/Statistic.h"
-#include "llvm/ADT/StringExtras.h"
-#include "llvm/ADT/Triple.h"
-#include "llvm/Analysis/TargetLibraryInfo.h"
-#include "llvm/Analysis/TargetTransformInfo.h"
-#include "llvm/Bitcode/BitcodeReader.h"
-#include "llvm/IR/DebugInfo.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Verifier.h"
-#include "llvm/IRReader/IRReader.h"
+#include <llvm/ADT/ScopeExit.h>
+#include <llvm/ADT/SmallString.h>
+#include <llvm/ADT/SmallVector.h>
+#include <llvm/ADT/Statistic.h>
+#include <llvm/ADT/StringExtras.h>
+#include <llvm/ADT/Triple.h>
+#include <llvm/Analysis/TargetLibraryInfo.h>
+#include <llvm/Analysis/TargetTransformInfo.h>
+#include <llvm/Bitcode/BitcodeReader.h>
+#include <llvm/IR/DebugInfo.h>
+#include <llvm/IR/DiagnosticInfo.h>
+#include <llvm/IR/DiagnosticPrinter.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Verifier.h>
+#include <llvm/IRReader/IRReader.h>
 #include <llvm/MC/SubtargetFeature.h>
-#include "llvm/Option/ArgList.h"
-#include "llvm/Support/Allocator.h"
-#include "llvm/Support/CommandLine.h"
-#include "llvm/Support/Error.h"
-#include "llvm/Support/FileSystem.h"
-#include "llvm/Support/MemoryBuffer.h"
-#include "llvm/Support/SourceMgr.h"
-#include "llvm/Support/StringSaver.h"
-#include "llvm/Support/Timer.h"
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/Target/TargetOptions.h"
-#include "llvm/Transforms/IPO.h"
-#include "llvm/Transforms/IPO/PassManagerBuilder.h"
-#include "llvm/Transforms/Scalar.h"
+#include <llvm/Option/ArgList.h>
+#include <llvm/Support/Allocator.h>
+#include <llvm/Support/CommandLine.h>
+#include <llvm/Support/Error.h>
+#include <llvm/Support/FileSystem.h>
+#include <llvm/Support/MemoryBuffer.h>
+#include <llvm/Support/SourceMgr.h>
+#include <llvm/Support/StringSaver.h>
+#include <llvm/Support/Timer.h>
+#include <llvm/Support/raw_ostream.h>
+#include <llvm/Target/TargetOptions.h>
+#include <llvm/Transforms/IPO.h>
+#include <llvm/Transforms/IPO/PassManagerBuilder.h>
+#include <llvm/Transforms/Scalar.h>
 
 #include "llvmWrapper/Option/OptTable.h"
 #include "llvmWrapper/Support/TargetRegistry.h"
@@ -475,11 +477,30 @@ static void printLLVMTimers(const vc::CompileOptions &Opts) {
   llvm::errs() << OutStr;
 }
 
-Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
-                                        const vc::CompileOptions &Opts,
-                                        const vc::ExternalData &ExtData,
-                                        ArrayRef<uint32_t> SpecConstIds,
-                                        ArrayRef<uint64_t> SpecConstValues) {
+namespace {
+struct DiagnosticContext {
+  llvm::raw_ostream &Log;
+  bool Failed;
+};
+
+void diagnosticHandlerCallback(const DiagnosticInfo &DI, void *Context) {
+  auto *DiagCtx = static_cast<DiagnosticContext *>(Context);
+  auto Severity = DI.getSeverity();
+
+  DiagnosticPrinterRawOStream DP(DiagCtx->Log);
+  DiagCtx->Log << LLVMContext::getDiagnosticMessagePrefix(Severity) << ": ";
+  DI.print(DP);
+  DiagCtx->Log << "\n";
+
+  if (Severity == DS_Error)
+    DiagCtx->Failed = true;
+}
+} // namespace
+
+Expected<vc::CompileOutput>
+vc::Compile(ArrayRef<char> Input, const vc::CompileOptions &Opts,
+            const vc::ExternalData &ExtData, ArrayRef<uint32_t> SpecConstIds,
+            ArrayRef<uint64_t> SpecConstValues, llvm::raw_ostream &Log) {
   parseLLVMOptions(Opts.LLVMOptions);
   // Reset options when everything is done here. This is needed to not
   // interfere with subsequent translations (including scalar part).
@@ -489,6 +510,9 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
   LLVMContext Context;
   LLVMInitializeGenXTarget();
   LLVMInitializeGenXTargetInfo();
+
+  DiagnosticContext DiagCtx{Log, false};
+  Context.setDiagnosticHandlerCallBack(diagnosticHandlerCallback, &DiagCtx);
 
   Expected<std::unique_ptr<llvm::Module>> ExpModule =
       getModule(Input, Opts.FType, SpecConstIds, SpecConstValues, Context);
@@ -508,6 +532,10 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
   PerModulePasses.add(createGenXSPIRVReaderAdaptorPass());
   PerModulePasses.add(createGenXRestoreIntrAttrPass());
   PerModulePasses.run(M);
+
+  if (DiagCtx.Failed)
+    return make_error<vc::OutputBinaryCreationError>(
+        "Compiler error emitted in IR adaptors");
 
   Triple TheTriple = overrideTripleWithVC(M.getTargetTriple());
   M.setTargetTriple(TheTriple.getTriple());
@@ -543,10 +571,18 @@ Expected<vc::CompileOutput> vc::Compile(ArrayRef<char> Input,
 
   optimizeIR(Opts, ExtData, TM, M);
 
+  if (DiagCtx.Failed)
+    return make_error<vc::OutputBinaryCreationError>(
+        "Compiler error emitted in optimizer");
+
   if (Opts.DumpIR && Opts.Dumper)
     Opts.Dumper->dumpModule(M, "optimized");
 
   vc::CompileOutput Output = runCodeGen(Opts, ExtData, TM, M);
+
+  if (DiagCtx.Failed)
+    return make_error<vc::OutputBinaryCreationError>(
+        "Compiler error emitted in code generator");
 
   if (Opts.DumpIR && Opts.Dumper)
     Opts.Dumper->dumpModule(M, "final");

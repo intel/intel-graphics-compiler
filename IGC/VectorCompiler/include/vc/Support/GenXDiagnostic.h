@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -126,7 +126,7 @@ public:
 
   void print(llvm::DiagnosticPrinter &DP) const override {
     if (Severity == llvm::DS_Error)
-      llvm::report_fatal_error(llvm::StringRef(Description));
+      DP << "LLVM ERROR: ";
     DP << Description;
   }
 

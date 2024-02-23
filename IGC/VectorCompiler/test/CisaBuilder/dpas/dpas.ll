@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -11,7 +11,7 @@
 ; RUN: llc %s -march=genx64 -mcpu=XeHPC -vc-skip-ocl-runtime-info -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null \
 ; RUN: | FileCheck %s
 
-; RUN: %not_for_vc_diag% llc %s -march=genx64 -mcpu=XeHPCVG -vc-skip-ocl-runtime-info -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null 2>&1 \
+; RUN: not llc %s -march=genx64 -mcpu=XeHPCVG -vc-skip-ocl-runtime-info -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null 2>&1 \
 ; RUN: | FileCheck --check-prefix=CHECK-XeHPCVG %s
 
 ; COM: ;;;;;;;;;; CHECKERS ;;;;;;;;;;
