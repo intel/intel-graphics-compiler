@@ -192,6 +192,33 @@ namespace IGC
             }
         }
 
+        template<typename dataType, typename RegkeyT>
+        inline void SetCompilerOptionOpaqueHelper(RegkeyT& regkeyName, const dataType* data)
+        {
+            memcpy_s(&regkeyName.m_Value, sizeof(dataType), data, sizeof(dataType));
+        }
+
+        template<typename RegkeyT>
+        inline void SetCompilerOptionOpaqueHelper(RegkeyT& regkeyName, debugString data)
+        {
+            strcpy_s(&regkeyName.m_string, sizeof(debugString), data);
+        }
+
+        void IGC_DEBUG_API_CALL SetCompilerOptionOpaque(OptionFlag flag, void* data)
+        {
+            switch (flag)
+            {
+#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode) \
+            case OptionFlag::OPTION_##regkeyName: \
+                SetCompilerOptionOpaqueHelper(g_RegKeyList.regkeyName, reinterpret_cast<dataType*>(data)); \
+            break;
+#include "common/igc_regkeys.h"
+#undef DECLARE_IGC_REGKEY
+            default:
+                break;
+            }
+        }
+
         extern "C" void IGC_DEBUG_API_CALL SetCompilerOptionValue( const char* flagName, int value )
         {
             if (!flagName)
@@ -234,7 +261,7 @@ namespace IGC
             }
         }
 
-        void IGC_DEBUG_API_CALL SetDebugFlag( DebugFlag flag, bool enabled )
+        void IGC_DEBUG_API_CALL SetDebugFlag(DebugFlag flag, bool enabled)
         {
             IGC_ASSERT_EXIT_MESSAGE((0 <= static_cast<int>(flag)), "range sanity check");
             IGC_ASSERT_EXIT_MESSAGE((static_cast<int>(flag) < static_cast<int> (DebugFlag::END)), "range sanity check");
@@ -264,7 +291,7 @@ namespace IGC
             return g_debugFlags[ static_cast<int>(flag) ];
         }
 
-        void IGC_DEBUG_API_CALL SetDumpFlag( DumpType type, DumpLoc loc, bool enabled )
+        void IGC_DEBUG_API_CALL SetDumpFlag(DumpType type, DumpLoc loc, bool enabled)
         {
             IGC_ASSERT_EXIT_MESSAGE((0 <= static_cast<int>(type)), "range sanity check");
             IGC_ASSERT_EXIT_MESSAGE((static_cast<int>(type) < static_cast<int> (DumpType::END)), "range sanity check");
@@ -297,7 +324,7 @@ namespace IGC
             }
         }
 
-        void IGC_DEBUG_API_CALL SetShaderCorpusName( CorpusName name )
+        void IGC_DEBUG_API_CALL SetShaderCorpusName(CorpusName name)
         {
             g_shaderCorpusName = name;
         }
@@ -307,7 +334,7 @@ namespace IGC
             return g_shaderCorpusName.c_str();
         }
 
-        void IGC_DEBUG_API_CALL SetShaderOutputFolder( OutputFolderName name )
+        void IGC_DEBUG_API_CALL SetShaderOutputFolder(OutputFolderName name)
         {
             g_shaderOutputFolder = name;
         }
@@ -594,7 +621,24 @@ namespace IGC
         extern "C" void IGC_DEBUG_API_CALL SetCompilerOptionValue(const char* flagName, int value);
         extern "C" void IGC_DEBUG_API_CALL SetCompilerOptionString(const char* flagName, debugString s);
 
+        void IGC_DEBUG_API_CALL SetCompilerOptionOpaque(OptionFlag flag, void* data);
+
 
 #endif // defined( IGC_DEBUG_VARIABLES )
+
+        static const CustomAPIFunctionTable g_CustomAPIFunctionTable = {
+            SetCompilerOptionOpaque,
+            SetDebugFlag,
+            SetDumpFlag,
+            SetShaderCorpusName,
+            SetShaderOutputFolder,
+            GetShaderOutputFolder,
+            GetVersionInfo
+        };
+
+        extern "C" void IGC_DEBUG_API_CALL ExportCustomAPIFunctions(CustomAPIFunctionTable* fnTable)
+        {
+            memcpy_s(fnTable, sizeof(CustomAPIFunctionTable), &g_CustomAPIFunctionTable, sizeof(CustomAPIFunctionTable));
+        }
     }
 }

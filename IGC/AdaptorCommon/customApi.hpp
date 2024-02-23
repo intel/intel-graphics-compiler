@@ -170,29 +170,31 @@ namespace IGC
         void IGC_DEBUG_API_CALL SetCompilerOption(OptionFlag flag, int value);
         void IGC_DEBUG_API_CALL SetCompilerOption(OptionFlag flag, debugString s);
 
+
+        void IGC_DEBUG_API_CALL SetCompilerOptionOpaque(OptionFlag flag, void* data);
         extern "C" void IGC_DEBUG_API_CALL SetCompilerOptionValue(const char* flagName, int value);
         extern "C" void IGC_DEBUG_API_CALL SetCompilerOptionString(const char* flagName, debugString s);
 
         /// Assign the state of a debug flag (for _DEBUG and _INTERNAL builds only)
-        void IGC_DEBUG_API_CALL SetDebugFlag( DebugFlag flag, bool enabled );
+       void IGC_DEBUG_API_CALL SetDebugFlag(DebugFlag flag, bool enabled);
 
         /// Query the state of a debug flag (for _DEBUG and _INTERNAL builds only)
         bool IGC_DEBUG_API_CALL GetDebugFlag( DebugFlag flag );
 
         /// Assign the state of a dump flag (for _DEBUG and _INTERNAL builds only)
-        void IGC_DEBUG_API_CALL SetDumpFlag( DumpType type, DumpLoc loc, bool enabled );
+        void IGC_DEBUG_API_CALL SetDumpFlag(DumpType type, DumpLoc loc, bool enabled);
 
         /// Query the state of a dump flag (for )DEBUG and _INTERNAL builds only)
         bool IGC_DEBUG_API_CALL GetDumpFlag( DumpType type, DumpLoc loc);
 
         /// Set a name for the to-be-compiled set of shaders
-        void IGC_DEBUG_API_CALL SetShaderCorpusName( CorpusName name );
+        void IGC_DEBUG_API_CALL SetShaderCorpusName(CorpusName name);
 
         /// Get the name for the to-be-compiled set of shaders
         CorpusName IGC_DEBUG_API_CALL GetShaderCorpusName();
 
         /// Set a name for the output folder
-        void IGC_DEBUG_API_CALL SetShaderOutputFolder( OutputFolderName name );
+        void IGC_DEBUG_API_CALL SetShaderOutputFolder(OutputFolderName name);
 
         void IGC_DEBUG_API_CALL SetShaderOutputName( OutputName name );
 
@@ -243,6 +245,12 @@ namespace IGC
         {
             (void)flag;
             (void)s;
+        }
+
+        inline void IGC_DEBUG_API_CALL SetCompilerOptionOpaque(OptionFlag flag, void* data)
+        {
+            (void)flag;
+            (void)data;
         }
 
         extern "C" inline void IGC_DEBUG_API_CALL SetCompilerOptionValue(const char* flagName, int value)
@@ -314,6 +322,18 @@ namespace IGC
 
         /// Omits changelist and build number in _RELEASE builds
         inline VersionInfo GetVersionInfo() { return "CONFIGURATION: Release"; }
-#endif
+    #endif
+
+        struct CustomAPIFunctionTable {
+            decltype(&SetCompilerOptionOpaque) pfnSetCompilerOptionOpaque;
+            decltype(&SetDebugFlag) pfnSetDebugFlag;
+            decltype(&SetDumpFlag) pfnSetDumpFlag;
+            decltype(&SetShaderCorpusName) pfnSetShaderCorpusName;
+            decltype(&SetShaderOutputFolder) pfnSetShaderOutputFolder;
+            decltype(&GetShaderOutputFolder) pfnGetShaderOutputFolder;
+            decltype(&GetVersionInfo) pfnGetVersionInfo;
+        };
+
+        extern "C" void IGC_DEBUG_API_CALL ExportCustomAPIFunctions(CustomAPIFunctionTable * fnTable);
     }
 }
