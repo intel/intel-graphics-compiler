@@ -15,7 +15,8 @@ SPDX-License-Identifier: MIT
 Building IGC needs flex, bison, libz and cmake version at least 3.13.4. You can install required packages on Ubuntu using this command:
 
 ```shell
-$ sudo apt-get install flex bison libz-dev cmake libc6 libstdc++6
+$ sudo apt-get install flex bison libz-dev cmake libc6 libstdc++6 python3-pip
+$ sudo python3 -m pip install mako
 ```
 
 Some of the incoming git operations will try to download and apply patches. For this purpose it is necessary to setup git credentials if they are not already in the git configuration:
