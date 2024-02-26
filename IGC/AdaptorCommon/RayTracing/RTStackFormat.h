@@ -745,7 +745,7 @@ enum class InstanceFlags : uint8_t
     TRIANGLE_CULL_DISABLE = 0x1,
     TRIANGLE_FRONT_COUNTERCLOCKWISE = 0x2,
     FORCE_OPAQUE = 0x4,
-    FORCE_NON_OPAQUE = 0x8
+    FORCE_NON_OPAQUE = 0x8,
 };
 
 template <typename GenT>
