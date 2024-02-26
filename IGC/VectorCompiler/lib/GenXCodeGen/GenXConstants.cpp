@@ -83,6 +83,7 @@ SPDX-License-Identifier: MIT
 #include "GenXConstants.h"
 #include "GenXGotoJoin.h"
 #include "GenXIntrinsics.h"
+#include "GenXSubtarget.h"
 
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/SmallSet.h"
@@ -92,6 +93,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InstIterator.h"
+#include "llvm/IR/InstVisitor.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/ValueMap.h"
 #include "llvm/Support/Casting.h"
@@ -264,6 +266,307 @@ bool genx::loadConstantsForInlineAsm(
   return Modified;
 }
 
+namespace {
+//
+// Helper class to load constants which cannot be immediate values. Should be
+// only used from the genx::loadConstants() function.
+//
+class ConstantLoadHelper : public InstVisitor<ConstantLoadHelper, bool> {
+public:
+  ConstantLoadHelper(const GenXSubtarget &ST, const DataLayout &DL,
+                     SmallVectorImpl<Instruction *> *AddedInst)
+      : ST(ST), DL(DL), AddedInst(AddedInst) {}
+
+  bool visitInstruction(Instruction &) { return false; }
+
+  bool visitBinaryOperator(BinaryOperator &BO);
+  bool visitSelectInst(SelectInst &SI);
+  bool visitInsertValueInst(InsertValueInst &IV);
+  bool visitBranchInst(BranchInst &Br);
+  bool visitReturnInst(ReturnInst &Ret);
+  bool visitCallInst(CallInst &CI);
+
+private:
+  const GenXSubtarget &ST;
+  const DataLayout &DL;
+  SmallVectorImpl<Instruction *> *AddedInst;
+};
+
+bool ConstantLoadHelper::visitBinaryOperator(BinaryOperator &BO) {
+  auto *Ty = BO.getType();
+  auto *STy = Ty->getScalarType();
+
+  // BFloat and boolean (except not) operations do not support immediate values.
+#if LLVM_VERSION_MAJOR > 10
+  if (!STy->isIntegerTy(1) && !STy->isBFloatTy())
+#else  // LLVM_VERSION_MAJOR > 10
+  if (!STy->isIntegerTy(1))
+#endif // LLVM_VERSION_MAJOR > 10
+    return false;
+
+  bool Modified = false;
+
+  for (int I = 0; I < 2; I++) {
+    auto *C = dyn_cast<Constant>(BO.getOperand(I));
+    if (!C)
+      continue;
+    // Predicate binary operator: disallow constant operands, except that
+    // xor with -1 is allowed.
+    auto IsNotInst =
+        I == 1 && BO.getOpcode() == Instruction::Xor && C->isAllOnesValue();
+    if (!IsNotInst) {
+      auto *NewC = ConstantLoader(C, ST, DL, nullptr, AddedInst).load(&BO);
+      BO.setOperand(I, NewC);
+      Modified = true;
+    }
+  }
+
+  return Modified;
+}
+
+bool ConstantLoadHelper::visitSelectInst(SelectInst &SI) {
+  // select: disallow constant selector and bfloat immediate values.
+  bool Modified = false;
+  const bool IsBFloat =
+#if LLVM_VERSION_MAJOR > 10
+      SI.getType()->getScalarType()->isBFloatTy();
+#else  // LLVM_VERSION_MAJOR > 10
+      false;
+#endif // LLVM_VERSION_MAJOR > 10
+
+  for (int I = 0; I < (IsBFloat ? 3 : 1); I++) {
+    auto *U = &SI.getOperandUse(I);
+    if (auto *C = dyn_cast<Constant>(*U)) {
+      *U = ConstantLoader(C, ST, DL, nullptr, AddedInst).load(&SI);
+      Modified = true;
+    }
+  }
+  return Modified;
+}
+
+bool ConstantLoadHelper::visitInsertValueInst(InsertValueInst &IV) {
+  // insertvalue (inserting a value into a struct): disallow constant
+  // on element operand.
+  bool Modified = false;
+  auto *U = &IV.getOperandUse(1);
+  if (auto *C = dyn_cast<Constant>(*U)) {
+    *U = ConstantLoader(C, ST, DL, nullptr, AddedInst).load(&IV);
+    Modified = true;
+  }
+  // Also disallow constant (other than undef) on old struct value operand.
+  // We need to load each non-undef element separately.
+  U = &IV.getOperandUse(0);
+  if (auto *C = dyn_cast<Constant>(*U))
+    if (!isa<UndefValue>(C))
+      *U = loadConstantStruct(C, &IV, ST, DL);
+  return Modified;
+}
+
+bool ConstantLoadHelper::visitBranchInst(BranchInst &Br) {
+  // Conditional branch: disallow constant condition.
+  if (Br.isConditional()) {
+    if (auto *C = dyn_cast<Constant>(Br.getCondition())) {
+      Br.setCondition(ConstantLoader(C, ST, DL, nullptr, AddedInst).load(&Br));
+      return true;
+    }
+  }
+  return false;
+}
+
+bool ConstantLoadHelper::visitReturnInst(ReturnInst &Ret) {
+  // Return: disallow constant return value in a subroutine (internal linkage).
+  if (Ret.getNumOperands() &&
+      Ret.getFunction()->getLinkage() == GlobalValue::InternalLinkage) {
+    if (auto C = dyn_cast<Constant>(Ret.getOperand(0))) {
+      if (!C->getType()->isVoidTy() && !isa<UndefValue>(C)) {
+        Ret.setOperand(
+            0, ConstantLoader(C, ST, DL, nullptr, AddedInst).load(&Ret));
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+bool ConstantLoadHelper::visitCallInst(CallInst &CI) {
+  Use *U = nullptr;
+  bool Modified = false;
+
+  if (CI.isInlineAsm())
+    return loadConstantsForInlineAsm(&CI, ST, DL, AddedInst);
+
+  auto IID = vc::getAnyIntrinsicID(&CI);
+  switch (IID) {
+  case GenXIntrinsic::not_any_intrinsic:
+  case Intrinsic::fma:
+  case GenXIntrinsic::genx_ssmad:
+  case GenXIntrinsic::genx_sumad:
+  case GenXIntrinsic::genx_usmad:
+  case GenXIntrinsic::genx_uumad:
+  case GenXIntrinsic::genx_output:
+  case GenXIntrinsic::genx_output_1:
+    // load all args for subroutine and some intrinsic calls.
+    for (unsigned i = 0, e = IGCLLVM::getNumArgOperands(&CI); i != e; ++i) {
+      U = &CI.getOperandUse(i);
+      if (auto C = dyn_cast<Constant>(*U)) {
+        if (!isa<UndefValue>(C)) {
+          *U = ConstantLoader(C, ST, DL, nullptr, AddedInst).loadBig(&CI);
+          Modified = true;
+        }
+      }
+    }
+    break;
+  case GenXIntrinsic::genx_constanti:
+  case GenXIntrinsic::genx_constantf:
+    break;
+  case GenXIntrinsic::genx_absi:
+  case GenXIntrinsic::genx_absf:
+    // abs modifier: disallow constant input.
+    U = &CI.getOperandUse(0);
+    if (auto C = dyn_cast<Constant>(*U)) {
+      *U = ConstantLoader(C, ST, DL, nullptr, AddedInst).load(&CI);
+      Modified = true;
+    }
+    break;
+  case GenXIntrinsic::genx_rdpredregion:
+  case GenXIntrinsic::genx_any:
+  case GenXIntrinsic::genx_all:
+    // rdpredregion, any, all: disallow constant input
+    U = &CI.getOperandUse(0);
+    if (auto C = dyn_cast<Constant>(*U)) {
+      *U = ConstantLoader(C, ST, DL, nullptr, AddedInst).load(&CI);
+      Modified = true;
+    }
+    break;
+  case GenXIntrinsic::genx_rdregioni:
+  case GenXIntrinsic::genx_rdregionf:
+    // rdregion: disallow constant input
+    U = &CI.getOperandUse(0);
+    if (auto C = dyn_cast<Constant>(*U)) {
+      *U = ConstantLoader(C, ST, DL, nullptr, AddedInst).loadBig(&CI);
+      Modified = true;
+    }
+    // Also disallow constant vector index (constant scalar OK).
+    U = &CI.getOperandUse(GenXIntrinsic::GenXRegion::RdIndexOperandNum);
+    if (auto C = dyn_cast<Constant>(*U)) {
+      if (isa<VectorType>(C->getType())) {
+        *U = ConstantLoader(C, ST, DL, nullptr, AddedInst).load(&CI);
+        Modified = true;
+      }
+    }
+    break;
+  case GenXIntrinsic::genx_wrpredregion:
+  case GenXIntrinsic::genx_wrpredpredregion:
+    // wrpredpred: disallow constant "old vector" input unless undef
+    U = &CI.getOperandUse(0);
+    if (auto C = dyn_cast<Constant>(*U)) {
+      if (!isa<UndefValue>(C)) {
+        *U = ConstantLoader(C, ST, DL, nullptr, AddedInst).loadBig(&CI);
+        Modified = true;
+      }
+    }
+    break;
+  case GenXIntrinsic::genx_wrregioni:
+  case GenXIntrinsic::genx_wrregionf:
+    // wrregion: disallow constant "old vector" input unless undef
+    U = &CI.getOperandUse(0);
+    if (auto C = dyn_cast<Constant>(*U)) {
+      if (!isa<UndefValue>(C)) {
+        *U = ConstantLoader(C, ST, DL, nullptr, AddedInst).loadBig(&CI);
+        Modified = true;
+      }
+    }
+    // Also disallow constant vector index (constant scalar OK).
+    U = &CI.getOperandUse(GenXIntrinsic::GenXRegion::WrIndexOperandNum);
+    if (auto C = dyn_cast<Constant>(*U)) {
+      if (isa<VectorType>(C->getType())) {
+        *U = ConstantLoader(C, ST, DL, nullptr, AddedInst).load(&CI);
+        Modified = true;
+      }
+    }
+    // Also disallow constant predicate unless all ones.
+    U = &CI.getOperandUse(GenXIntrinsic::GenXRegion::PredicateOperandNum);
+    if (auto C = dyn_cast<Constant>(*U)) {
+      if (!C->isAllOnesValue()) {
+        *U = ConstantLoader(C, ST, DL, nullptr, AddedInst).load(&CI);
+        Modified = true;
+      }
+    }
+    break;
+  case GenXIntrinsic::genx_simdcf_goto:
+    // goto: disallow constant predicate input, unless it is all 0. We want to
+    // allow constant all 0, as it is the encoding used for an "else", and
+    // loading the constant into a predicate register stops the finalizer's
+    // structurizer working.
+    U = &CI.getOperandUse(2);
+    if (auto C = dyn_cast<Constant>(*U)) {
+      if (!C->isNullValue()) {
+        *U = ConstantLoader(C, ST, DL, nullptr, AddedInst).load(&CI);
+        Modified = true;
+      }
+    }
+    break;
+  default:
+    // Intrinsic: check intrinsic descriptor to see where constant args are
+    // allowed. Iterate through each field in the intrinsic info.
+    GenXIntrinsicInfo II(IID);
+    // Intrinsic not found.
+    if (II.isNull())
+      return Modified;
+    unsigned MaxRawOperands = II.getTrailingNullZoneStart(&CI);
+    for (auto &AI : II.getInstDesc()) {
+      if (!AI.isArgOrRet() || AI.isRet())
+        continue;
+      // This field relates to an operand.
+      U = &CI.getOperandUse(AI.getArgIdx());
+      auto *C = dyn_cast<Constant>(*U);
+      if (!C)
+        continue;
+      auto *CTy = C->getType()->getScalarType();
+      // Operand is constant.
+      // Allow constant if it is i1 or vector of i1 set to all ones; this
+      // represents an "all true" predication field.
+      if (CTy->isIntegerTy(1) && C->isAllOnesValue())
+        continue;
+      // Allow constant if intrinsic descriptor allows it for this arg.
+      if (AI.getCategory() == GenXIntrinsicInfo::CACHEOPTS)
+        continue;
+      // If it is a RAW operand, allow the constant if it's in the trailing
+      // null region (it must be a null constant if so), or if the value
+      // is undefined and RAW_NULLALLOWED is enabled.
+      if (AI.isRaw()) {
+        if ((unsigned)AI.getArgIdx() >= MaxRawOperands) {
+          IGC_ASSERT(C->isNullValue());
+          continue;
+        }
+        if (isa<UndefValue>(C) && AI.rawNullAllowed())
+          continue;
+      }
+      // Also allow constant if it is undef in a TWOADDR
+      if (isa<UndefValue>(C) && AI.getCategory() == GenXIntrinsicInfo::TWOADDR)
+        continue;
+      // Also allow constant if it is a reserved surface index.
+      if (AI.getCategory() == GenXIntrinsicInfo::SURFACE &&
+          visa::isReservedSurfaceIndex(visa::convertToSurfaceIndex(C))) {
+        continue;
+      }
+      // Allow non-bfloat constant if the instruction supports immediate values.
+#if LLVM_VERSION_MAJOR > 10
+      if (!AI.isImmediateDisallowed() && !CTy->isBFloatTy())
+#else  // LLVM_VERSION_MAJOR > 10
+      if (!AI.isImmediateDisallowed())
+#endif // LLVM_VERSION_MAJOR > 10
+        continue;
+      // Operand is not allowed to be constant. Insert code to load it.
+      *U = ConstantLoader(C, ST, DL, nullptr, AddedInst).loadBig(&CI);
+      Modified = true;
+    }
+    break;
+  }
+  return Modified;
+}
+} // namespace
+
 /***********************************************************************
  * loadConstants : load constants as required for an instruction
  *
@@ -275,251 +578,9 @@ bool genx::loadConstantsForInlineAsm(
  * loadPhiConstants.
  */
 bool genx::loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
-                         const DataLayout &DL) {
-  bool Modified = false;
-  Use *U;
-  if (isa<PHINode>(Inst))
-    return Modified;
-  if (isa<BinaryOperator>(Inst) &&
-      Inst->getType()->getScalarType()->isIntegerTy(1)) {
-    // Predicate binary operator: disallow constant operands, except
-    // that xor with -1 is allowed.
-    for (unsigned oi = 0; oi != 2; ++oi)
-      if (auto C = dyn_cast<Constant>(Inst->getOperand(oi))) {
-        auto IsNot = [=]() {
-          if (oi != 1)
-            return false;
-          if (Inst->getOpcode() != Instruction::Xor)
-            return false;
-          if (!C->getType()->isVectorTy())
-            return C->isAllOnesValue();
-          Constant *C1 = C->getSplatValue();
-          return C1 && C1->isAllOnesValue();
-        };
-        if (!IsNot()) {
-          Inst->setOperand(oi, ConstantLoader(C, Subtarget, DL).load(Inst));
-          Modified = true;
-        }
-      }
-  }
-  if (isa<SelectInst>(Inst)) {
-    // select: disallow constant selector
-    U = &Inst->getOperandUse(0);
-    if (auto C = dyn_cast<Constant>(*U)) {
-      *U = ConstantLoader(C, Subtarget, DL).load(Inst);
-      Modified = true;
-    }
-    return Modified;
-  }
-  if (isa<InsertValueInst>(Inst)) {
-    // insertvalue (inserting a value into a struct): disallow constant
-    // on element operand.
-    U = &Inst->getOperandUse(1);
-    if (auto C = dyn_cast<Constant>(*U)) {
-      *U = ConstantLoader(C, Subtarget, DL).load(Inst);
-      Modified = true;
-    }
-    // Also disallow constant (other than undef) on old struct value operand.
-    // We need to load each non-undef element separately.
-    U = &Inst->getOperandUse(0);
-    if (auto C = dyn_cast<Constant>(*U))
-      if (!isa<UndefValue>(C))
-        *U = loadConstantStruct(C, Inst, Subtarget, DL);
-    return Modified;
-  }
-  if (auto Br = dyn_cast<BranchInst>(Inst)) {
-    // Conditional branch: disallow constant condition.
-    if (Br->isConditional()) {
-      if (auto C = dyn_cast<Constant>(Br->getCondition())) {
-        Br->setCondition(ConstantLoader(C, Subtarget, DL).load(Br));
-        Modified = true;
-      }
-    }
-    return Modified;
-  }
-  if (auto Ret = dyn_cast<ReturnInst>(Inst)) {
-    // Return: disallow constant return value in a subroutine (internal
-    // linkage).
-    if (Ret->getNumOperands() &&
-        Ret->getFunction()->getLinkage() == GlobalValue::InternalLinkage) {
-      if (auto C = dyn_cast<Constant>(Ret->getOperand(0))) {
-        if (!C->getType()->isVoidTy() && !isa<UndefValue>(C)) {
-          Ret->setOperand(0, ConstantLoader(C, Subtarget, DL).load(Ret));
-          Modified = true;
-        }
-      }
-    }
-    return Modified;
-  }
-  auto CI = dyn_cast<CallInst>(Inst);
-  if (!CI)
-    return Modified;
-  if (CI->isInlineAsm())
-    return loadConstantsForInlineAsm(CI, Subtarget, DL, nullptr);
-  int IntrinsicID = vc::getAnyIntrinsicID(CI);
-  switch (IntrinsicID) {
-    case GenXIntrinsic::not_any_intrinsic:
-    case Intrinsic::fma:
-    case GenXIntrinsic::genx_ssmad:
-    case GenXIntrinsic::genx_sumad:
-    case GenXIntrinsic::genx_usmad:
-    case GenXIntrinsic::genx_uumad:
-    case GenXIntrinsic::genx_output:
-    case GenXIntrinsic::genx_output_1:
-      // load all args for subroutine and some intrinsic calls.
-      for (unsigned i = 0, e = IGCLLVM::getNumArgOperands(CI); i != e; ++i) {
-        U = &CI->getOperandUse(i);
-        if (auto C = dyn_cast<Constant>(*U)) {
-          if (!isa<UndefValue>(C)) {
-            *U = ConstantLoader(C, Subtarget, DL).loadBig(CI);
-            Modified = true;
-          }
-        }
-      }
-      break;
-    case GenXIntrinsic::genx_constanti:
-    case GenXIntrinsic::genx_constantf:
-      break;
-    case GenXIntrinsic::genx_absi:
-    case GenXIntrinsic::genx_absf:
-      // abs modifier: disallow constant input.
-      U = &CI->getOperandUse(0);
-      if (auto C = dyn_cast<Constant>(*U)) {
-        *U = ConstantLoader(C, Subtarget, DL).load(CI);
-        Modified = true;
-      }
-      break;
-    case GenXIntrinsic::genx_rdpredregion:
-    case GenXIntrinsic::genx_any:
-    case GenXIntrinsic::genx_all:
-      // rdpredregion, any, all: disallow constant input
-      U = &CI->getOperandUse(0);
-      if (auto C = dyn_cast<Constant>(*U)) {
-        *U = ConstantLoader(C, Subtarget, DL).load(CI);
-        Modified = true;
-      }
-      break;
-    case GenXIntrinsic::genx_rdregioni:
-    case GenXIntrinsic::genx_rdregionf:
-      // rdregion: disallow constant input
-      U = &CI->getOperandUse(0);
-      if (auto C = dyn_cast<Constant>(*U)) {
-        *U = ConstantLoader(C, Subtarget, DL).loadBig(CI);
-        Modified = true;
-      }
-      // Also disallow constant vector index (constant scalar OK).
-      U = &CI->getOperandUse(GenXIntrinsic::GenXRegion::RdIndexOperandNum);
-      if (auto C = dyn_cast<Constant>(*U)) {
-        if (isa<VectorType>(C->getType())) {
-          *U = ConstantLoader(C, Subtarget, DL).load(CI);
-          Modified = true;
-        }
-      }
-      break;
-    case GenXIntrinsic::genx_wrpredregion:
-    case GenXIntrinsic::genx_wrpredpredregion:
-      // wrpredpred: disallow constant "old vector" input unless undef
-      U = &CI->getOperandUse(0);
-      if (auto C = dyn_cast<Constant>(*U)) {
-        if (!isa<UndefValue>(C)) {
-          *U = ConstantLoader(C, Subtarget, DL).loadBig(CI);
-          Modified = true;
-        }
-      }
-      break;
-    case GenXIntrinsic::genx_wrregioni:
-    case GenXIntrinsic::genx_wrregionf:
-      // wrregion: disallow constant "old vector" input unless undef
-      U = &CI->getOperandUse(0);
-      if (auto C = dyn_cast<Constant>(*U)) {
-        if (!isa<UndefValue>(C)) {
-          *U = ConstantLoader(C, Subtarget, DL).loadBig(CI);
-          Modified = true;
-        }
-      }
-      // Also disallow constant vector index (constant scalar OK).
-      U = &CI->getOperandUse(GenXIntrinsic::GenXRegion::WrIndexOperandNum);
-      if (auto C = dyn_cast<Constant>(*U)) {
-        if (isa<VectorType>(C->getType())) {
-          *U = ConstantLoader(C, Subtarget, DL).load(CI);
-          Modified = true;
-        }
-      }
-      // Also disallow constant predicate unless all ones.
-      U = &CI->getOperandUse(GenXIntrinsic::GenXRegion::PredicateOperandNum);
-      if (auto C = dyn_cast<Constant>(*U)) {
-        if (!C->isAllOnesValue()) {
-          *U = ConstantLoader(C, Subtarget, DL).load(CI);
-          Modified = true;
-        }
-      }
-      break;
-    case GenXIntrinsic::genx_simdcf_goto:
-      // goto: disallow constant predicate input, unless it is all 0. We want to
-      // allow constant all 0, as it is the encoding used for an "else", and
-      // loading the constant into a predicate register stops the finalizer's
-      // structurizer working.
-      U = &CI->getOperandUse(2);
-      if (auto C = dyn_cast<Constant>(*U)) {
-        if (!C->isNullValue()) {
-          *U = ConstantLoader(C, Subtarget, DL).load(CI);
-          Modified = true;
-        }
-      }
-      break;
-    default:
-      // Intrinsic: check intrinsic descriptor to see where constant args
-      // are allowed.
-      // Iterate through each field in the intrinsic info.
-      GenXIntrinsicInfo II(IntrinsicID);
-      // Intrinsic not found.
-      if (II.isNull())
-        return Modified;
-      unsigned MaxRawOperands = II.getTrailingNullZoneStart(CI);
-      for (auto &AI : II.getInstDesc()) {
-        if (!AI.isArgOrRet() || AI.isRet())
-          continue;
-        // This field relates to an operand.
-        U = &CI->getOperandUse(AI.getArgIdx());
-        auto C = dyn_cast<Constant>(*U);
-        if (!C)
-          continue;
-        // Operand is constant.
-        // Allow constant if it is i1 or vector of i1 set to all ones; this
-        // represents an "all true" predication field.
-        if (C->getType()->getScalarType()->isIntegerTy(1) && C->isAllOnesValue())
-          continue;
-        // Allow constant if intrinsic descriptor allows it for this arg.
-        if (!AI.isImmediateDisallowed())
-          continue;
-        if (AI.getCategory() == GenXIntrinsicInfo::CACHEOPTS)
-          continue;
-        // If it is a RAW operand, allow the constant if it's in the trailing
-        // null region (it must be a null constant if so), or if the value
-        // is undefined and RAW_NULLALLOWED is enabled.
-        if (AI.isRaw()) {
-          if ((unsigned)AI.getArgIdx() >= MaxRawOperands) {
-            IGC_ASSERT(C->isNullValue());
-            continue;
-          }
-          if (isa<UndefValue>(C) && AI.rawNullAllowed())
-            continue;
-        }
-        // Also allow constant if it is undef in a TWOADDR
-        if (isa<UndefValue>(C) && AI.getCategory() == GenXIntrinsicInfo::TWOADDR)
-          continue;
-        // Also allow constant if it is a reserved surface index.
-        if (AI.getCategory() == GenXIntrinsicInfo::SURFACE &&
-            visa::isReservedSurfaceIndex(visa::convertToSurfaceIndex(C))) {
-          continue;
-        }
-        // Operand is not allowed to be constant. Insert code to load it.
-        *U = ConstantLoader(C, Subtarget, DL).loadBig(CI);
-        Modified = true;
-      }
-      break;
-  }
-  return Modified;
+                         const DataLayout &DL,
+                         SmallVectorImpl<Instruction *> *AddedInstructions) {
+  return ConstantLoadHelper(Subtarget, DL, AddedInstructions).visit(*Inst);
 }
 
 bool genx::areConstantsEqual(const Constant *C1, const Constant *C2) {
@@ -1336,20 +1397,23 @@ Instruction *ConstantLoader::loadSplatConstant(Instruction *InsertPos) {
  */
 Instruction *ConstantLoader::load(Instruction *InsertBefore) {
   IGC_ASSERT(isSimple());
+  auto *Ty = C->getType();
   // Do not splat load on byte data as HW does not support byte imm source.
-  if (!C->getType()->getScalarType()->isIntegerTy(8))
-    if (auto NewInst = loadSplatConstant(InsertBefore))
+  if (!Ty->getScalarType()->isIntegerTy(8))
+    if (auto *NewInst = loadSplatConstant(InsertBefore))
       return NewInst;
+
+  IRBuilder<> Builder(InsertBefore);
 
   if (!PackedFloat && !PackedIntScale && !isa<UndefValue>(C)) { // not packed int constant or undef
     if (auto CC = getConsolidatedConstant(C)) {
       // We're loading a vector of byte or short (but not i1). Use int so the
       // instruction does not use so many channels. This may also save it being
       // split by legalization.
-      Instruction *NewInst =
+      auto *NewInst =
           loadConstant(CC, InsertBefore, Subtarget, DL, AddedInstructions);
-      NewInst = CastInst::Create(Instruction::BitCast, NewInst, C->getType(),
-          "constant", InsertBefore);
+      NewInst = cast<Instruction>(Builder.CreateBitCast(NewInst, Ty));
+
       if (AddedInstructions)
         AddedInstructions->push_back(NewInst);
       return NewInst;
@@ -1357,18 +1421,36 @@ Instruction *ConstantLoader::load(Instruction *InsertBefore) {
   }
 
   // Load the constant as normal.
-  Value *Args[] = { C };   // Args to new llvm.genx.constant
-  Type *OverloadedTypes[] = { C->getType() };
-  GenXIntrinsic::ID IntrinsicID = GenXIntrinsic::genx_constanti;
-  if (C->getType()->isFPOrFPVectorTy())
-    IntrinsicID = GenXIntrinsic::genx_constantf;
-  else if (C->getType()->getScalarType()->isIntegerTy(1))
+  SmallVector<Value *, 1> Args = {C};
+  SmallVector<Type *, 1> OverloadedTypes = {Ty};
+
+  auto IntrinsicID = GenXIntrinsic::genx_constanti;
+
+  if (C->getType()->isFPOrFPVectorTy()) {
+#if LLVM_VERSION_MAJOR > 10
+    if (Ty->getScalarType()->isBFloatTy()) {
+      Type *NewTy = Builder.getInt16Ty();
+      if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty))
+        NewTy = IGCLLVM::FixedVectorType::get(NewTy, VTy->getNumElements());
+      auto *NewC = Builder.CreateBitCast(C, NewTy);
+      Args[0] = NewC;
+      OverloadedTypes[0] = NewTy;
+    } else
+#endif // LLVM_VERSION_MAJOR > 10
+      IntrinsicID = GenXIntrinsic::genx_constantf;
+  } else if (C->getType()->getScalarType()->isIntegerTy(1)) {
     IntrinsicID = GenXIntrinsic::genx_constantpred;
-  Module *M = InsertBefore->getModule();
-  Function *Decl = GenXIntrinsic::getGenXDeclaration(M, IntrinsicID, OverloadedTypes);
-  Instruction *NewInst = CallInst::Create(Decl, Args, "constant", InsertBefore);
+  }
+
+  auto *M = InsertBefore->getModule();
+  auto *Decl = vc::getAnyDeclaration(M, IntrinsicID, OverloadedTypes);
+  Instruction *NewInst = Builder.CreateCall(Decl, Args);
+
+  NewInst = cast<Instruction>(Builder.CreateBitCast(NewInst, Ty));
+
   if (AddedInstructions)
     AddedInstructions->push_back(NewInst);
+
   return NewInst;
 }
 
@@ -1713,11 +1795,6 @@ bool ConstantLoader::isSimple() const {
     return true; // undef is simple (and generates no vISA code)
   if (C->getType()->getScalarType()->isIntegerTy(1) && C->isAllOnesValue())
     return true; // all 1s predicate is simple
-#if LLVM_VERSION_MAJOR > 10
-  // bfloat constants are not supported as imm value
-  if (C->getType()->getScalarType()->isBFloatTy())
-    return false;
-#endif // LLVM_VERSION_MAJOR > 10
   if(User && User->isBinaryOp())
     if (isa<VectorType>(C->getType()))
       if (auto splat = C->getSplatValue())

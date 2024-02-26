@@ -10,32 +10,6 @@
 
 ;; Test legalization of bfloat16 constant
 
-; CHECK-LABEL: @const_zero
-; CHECK-NEXT: [[OP1:%.+]] = bitcast <4 x i64> %0 to <16 x bfloat>
-; CHECK-NEXT: [[CONST1:%.+]] = call <1 x i32> @llvm.genx.constanti.v1i32(<1 x i32> zeroinitializer)
-; CHECK-NEXT: [[CONSTPLAT:%.+]] = call <8 x i32> @llvm.genx.rdregioni.v8i32.v1i32.i16(<1 x i32> [[CONST1]], i32 0, i32 8, i32 0, i16 0, i32 undef)
-; CHECK-NEXT: [[CONST2:%.+]] = bitcast <8 x i32> [[CONSTPLAT]] to <16 x bfloat>
-; CHECK-NEXT: fadd <16 x bfloat> [[OP1]], [[CONST2]]
-define <4 x i64> @const_zero(<4 x i64> %0) {
-  %2 = bitcast <4 x i64> %0 to <16 x bfloat>
-  %3 = fadd <16 x bfloat> %2, zeroinitializer
-  %4 = bitcast <16 x bfloat> %3 to <4 x i64>
-  ret <4 x i64> %4
-}
-
-; CHECK-LABEL: @const_one
-; CHECK-NEXT: [[OP1:%.+]] = bitcast <4 x i64> %0 to <16 x bfloat>
-; CHECK-NEXT: [[CONST1:%.+]] = call <1 x i32> @llvm.genx.constanti.v1i32(<1 x i32> <i32 1065369472>)
-; CHECK-NEXT: [[CONSTPLAT:%.+]] = call <8 x i32> @llvm.genx.rdregioni.v8i32.v1i32.i16(<1 x i32> [[CONST1]], i32 0, i32 8, i32 0, i16 0, i32 undef)
-; CHECK-NEXT: [[CONST2:%.+]] = bitcast <8 x i32> [[CONSTPLAT]] to <16 x bfloat>
-; CHECK-NEXT: fadd <16 x bfloat> [[OP1]], [[CONST2]]
-define <4 x i64> @const_one(<4 x i64> %0) {
-  %2 = bitcast <4 x i64> %0 to <16 x bfloat>
-  %3 = fadd <16 x bfloat> %2, <bfloat 0xR3F80, bfloat 0xR3F80, bfloat 0xR3F80, bfloat 0xR3F80, bfloat 0xR3F80, bfloat 0xR3F80, bfloat 0xR3F80, bfloat 0xR3F80, bfloat 0xR3F80, bfloat 0xR3F80, bfloat 0xR3F80, bfloat 0xR3F80, bfloat 0xR3F80, bfloat 0xR3F80, bfloat 0xR3F80, bfloat 0xR3F80>
-  %4 = bitcast <16 x bfloat> %3 to <4 x i64>
-  ret <4 x i64> %4
-}
-
 ; CHECK-LABEL: @const_vector
 ; CHECK-NEXT: [[OP1:%.+]] = bitcast <4 x i64> %0 to <16 x bfloat>
 ; CHECK-NEXT: [[CONST1:%.+]] = call <1 x i32> @llvm.genx.constanti.v1i32(<1 x i32> <i32 -1049607840>)
