@@ -124,11 +124,19 @@ Value *SPIRVExpander::visitCallInst(CallInst &CI) {
 
   CalleeName = CalleeName.drop_front(PrefixPos + Prefix.size());
 
+  auto IID = StringSwitch<unsigned>(CalleeName)
+                 .StartsWith("BitCount", Intrinsic::ctpop)
+                 .Default(Intrinsic::not_intrinsic);
+
+  if (IID != Intrinsic::not_intrinsic) {
+    SmallVector<Value *, 3> Args(CI.args());
+    return emitIntrinsic(Builder, IID, Ty, Args);
+  }
+
   // Addrspace-related builtins.
   if (CalleeName.startswith("GenericCastToPtrExplicit"))
     return emitIntrinsic(Builder, vc::InternalIntrinsic::cast_to_ptr_explicit,
                          Ty, {CI.getArgOperand(0)});
-
   // SPV_INTEL_bfloat16_conversion extension.
   if (CalleeName.startswith("ConvertFToBF16INTEL")) {
     auto *Arg = CI.getArgOperand(0);
@@ -166,19 +174,57 @@ Value *SPIRVExpander::visitCallInst(CallInst &CI) {
   if (!CalleeName.consume_front("ocl_"))
     return nullptr;
 
+  IID = StringSwitch<unsigned>(CalleeName)
+            // Integer intrinsics
+            .StartsWith("popcount", Intrinsic::ctpop)
+            .StartsWith("s_abs", GenXIntrinsic::genx_absi)
+            // Floating-point intrinsics
+            .StartsWith("fabs", Intrinsic::fabs)
+            .StartsWith("fma", Intrinsic::fma)
+            .StartsWith("fmax", Intrinsic::maxnum)
+            .StartsWith("fmin", Intrinsic::minnum)
+            .StartsWith("mad", Intrinsic::fmuladd)
+            .StartsWith("sqrt", Intrinsic::sqrt)
+            .Default(Intrinsic::not_intrinsic);
+
+  if (IID != Intrinsic::not_intrinsic) {
+    SmallVector<Value *, 3> Args(CI.args());
+    return emitIntrinsic(Builder, IID, Ty, Args);
+  }
+
+  IID = StringSwitch<unsigned>(CalleeName)
+            .StartsWith("clz", Intrinsic::ctlz)
+            .StartsWith("ctz", Intrinsic::cttz)
+            .Default(Intrinsic::not_intrinsic);
+
+  if (IID != Intrinsic::not_intrinsic) {
+    SmallVector<Value *, 2> Args(CI.args());
+    // is_zero_poison == 0
+    Args.push_back(Constant::getNullValue(Builder.getInt1Ty()));
+    return emitIntrinsic(Builder, IID, Ty, Args);
+  }
+
   // Native subset
   if (!CalleeName.consume_front("native_") &&
       !CalleeName.consume_front("half_"))
     return nullptr;
 
-  if (CalleeName.startswith("cos"))
-    return emitMathIntrinsic(Builder, Intrinsic::cos, Ty, {CI.getArgOperand(0)},
-                             true);
+  IID = StringSwitch<unsigned>(CalleeName)
+            .StartsWith("cos", Intrinsic::cos)
+            .StartsWith("exp2", Intrinsic::exp2)
+            .StartsWith("log2", Intrinsic::log2)
+            .StartsWith("powr", Intrinsic::pow)
+            .StartsWith("sin", Intrinsic::sin)
+            .StartsWith("sqrt", Intrinsic::sqrt)
+            .Default(Intrinsic::not_intrinsic);
+
+  if (IID != Intrinsic::not_intrinsic) {
+    SmallVector<Value *, 2> Args(CI.args());
+    return emitMathIntrinsic(Builder, IID, Ty, Args, true);
+  }
+
   if (CalleeName.startswith("divide"))
     return emitFDiv(Builder, CI.getArgOperand(0), CI.getArgOperand(1), true);
-  if (CalleeName.startswith("exp2"))
-    return emitMathIntrinsic(Builder, Intrinsic::exp2, Ty,
-                             {CI.getArgOperand(0)}, true);
   if (CalleeName.startswith("exp10")) {
     // exp10(x) == exp2(x * log2(10))
     auto *C = ConstantFP::get(Ty, Log2_10);
@@ -191,9 +237,6 @@ Value *SPIRVExpander::visitCallInst(CallInst &CI) {
     auto *ArgV = Builder.CreateFMul(CI.getArgOperand(0), C);
     return emitMathIntrinsic(Builder, Intrinsic::exp2, Ty, {ArgV}, true);
   }
-  if (CalleeName.startswith("log2"))
-    return emitMathIntrinsic(Builder, Intrinsic::log2, Ty,
-                             {CI.getArgOperand(0)}, true);
   if (CalleeName.startswith("log10")) {
     // log10(x) == log2(x) * log10(2)
     auto *LogV = emitMathIntrinsic(Builder, Intrinsic::log2, Ty,
@@ -208,9 +251,6 @@ Value *SPIRVExpander::visitCallInst(CallInst &CI) {
     auto *C = ConstantFP::get(Ty, Ln2);
     return Builder.CreateFMul(LogV, C);
   }
-  if (CalleeName.startswith("powr"))
-    return emitMathIntrinsic(Builder, Intrinsic::pow, Ty,
-                             {CI.getArgOperand(0), CI.getArgOperand(1)}, true);
   if (CalleeName.startswith("recip")) {
     auto *OneC = ConstantFP::get(Ty, 1.0);
     return emitFDiv(Builder, OneC, CI.getArgOperand(0), true);
@@ -221,12 +261,6 @@ Value *SPIRVExpander::visitCallInst(CallInst &CI) {
                                     {CI.getArgOperand(0)}, true);
     return emitFDiv(Builder, OneC, SqrtV, true);
   }
-  if (CalleeName.startswith("sin"))
-    return emitMathIntrinsic(Builder, Intrinsic::sin, Ty, {CI.getArgOperand(0)},
-                             true);
-  if (CalleeName.startswith("sqrt"))
-    return emitMathIntrinsic(Builder, Intrinsic::sqrt, Ty,
-                             {CI.getArgOperand(0)}, true);
   if (CalleeName.startswith("tan")) {
     // tan(x) == sin(x) / cos(x)
     auto *ArgV = CI.getArgOperand(0);
@@ -281,7 +315,7 @@ static bool isSPIRVBuiltinDecl(const Function &F) {
     return true;
   if (!F.isDeclaration())
     return false;
-  if (F.isIntrinsic() || GenXIntrinsic::isGenXIntrinsic(&F))
+  if (auto IID = vc::getAnyIntrinsicID(&F); vc::isAnyNonTrivialIntrinsic(IID))
     return false;
   return Name.contains("__spirv");
 }
