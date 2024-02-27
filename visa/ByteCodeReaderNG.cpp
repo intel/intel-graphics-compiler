@@ -775,9 +775,7 @@ static void readInstructionDataportNG(unsigned &bytePos, const char *buf,
   switch (opcode) {
   case ISA_MEDIA_ST:
   case ISA_MEDIA_LD: {
-    uint8_t modifier = (ISA_MEDIA_LD == opcode || ISA_MEDIA_ST == opcode)
-                           ? readPrimitiveOperandNG<uint8_t>(bytePos, buf)
-                           : 0;
+uint8_t modifier = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
     uint8_t surface = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
     uint8_t plane = (ISA_MEDIA_LD == opcode || ISA_MEDIA_ST == opcode)
                         ? readPrimitiveOperandNG<uint8_t>(bytePos, buf)

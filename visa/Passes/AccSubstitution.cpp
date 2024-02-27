@@ -912,6 +912,7 @@ struct AccAssignment {
   // on inst type/size) we have to spill active intervals that occupy acc0/acc1.
   // the pre-assigned interavl is also pushed to active list
   void handlePreAssignedInterval(AccInterval *interval) {
+    vISA_ASSERT(interval->assignedAcc >= 0, "interval->assignedAcc can't be negative");
     if (!freeAccs[interval->assignedAcc]) {
       spillInterval(interval->assignedAcc);
     }

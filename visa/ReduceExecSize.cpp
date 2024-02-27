@@ -12,6 +12,8 @@ SPDX-License-Identifier: MIT
 #include "InstSplit.h"
 #include "Optimizer.h"
 
+#include <algorithm>
+
 using namespace vISA;
 
 uint8_t HWConformity::checkMinExecSize(G4_opcode op) {
@@ -99,8 +101,8 @@ bool HWConformity::fixDstAlignmentWithVectorImm(INST_LIST_ITER iter,
         // we can interleave the vector to avoid a move
         // e.g., mov (2) r1.0<1>:d 0x21:uv  -->
         //       mov (2) r1.0<1>:d 0x0201:uv
-        uint32_t bitValue = 0;
-        uint16_t immBits = (uint16_t)src->asImm()->getImm();
+          uint64_t bitValue = 0;
+          uint32_t immBits = static_cast<uint32_t>(src->asImm()->getImm());
         for (int i = 0; i < execSize; ++i) {
           int val = (immBits >> (i * 4)) & 0xF;
           bitValue |= val << (i * 8);

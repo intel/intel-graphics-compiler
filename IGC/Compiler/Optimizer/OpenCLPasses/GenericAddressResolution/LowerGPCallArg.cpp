@@ -146,7 +146,7 @@ void LowerGPCallArg::updateMetadata(Function* oldFunc, Function* newFunc) {
     {
         auto funcInfo = loc->second;
         FuncMD.erase(oldFunc);
-        FuncMD[newFunc] = funcInfo;
+        FuncMD[newFunc] = std::move(funcInfo);
     }
 
     m_mdUtils->save(m_module->getContext());
