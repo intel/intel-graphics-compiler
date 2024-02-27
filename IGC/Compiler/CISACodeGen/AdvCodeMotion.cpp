@@ -833,7 +833,9 @@ bool MadLoopSlice::sliceLoop(Loop *L) const {
             break;
         if (isa<DbgInfoIntrinsic>(I))
             continue;
-        Instruction *Leader = ECs.getLeaderValue(I);
+
+        auto leader_iterator = ECs.findLeader(I);
+        Instruction* Leader = leader_iterator != ECs.member_end() ? *leader_iterator : nullptr;
         auto MapIt = Leaders.find(Leader);
         if (MapIt == Leaders.end())
             continue;
