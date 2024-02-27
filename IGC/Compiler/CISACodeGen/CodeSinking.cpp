@@ -70,7 +70,9 @@ namespace IGC {
         IGC_INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
         IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
         IGC_INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
-        IGC_INITIALIZE_PASS_DEPENDENCY(WIAnalysis)
+        IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+        IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+        IGC_INITIALIZE_PASS_DEPENDENCY(TranslationTable)
         IGC_INITIALIZE_PASS_DEPENDENCY(IGCLivenessAnalysis)
         IGC_INITIALIZE_PASS_END(CodeSinking, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
@@ -285,9 +287,24 @@ namespace IGC {
         PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
         LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
         AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
-        WI = &getAnalysis<WIAnalysis>();
-        RPE = &getAnalysis<IGCLivenessAnalysis>();
+        MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+        ModMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+
+        TranslationTable TT;
+        TT.run(F);
+
+        WI = WIAnalysisRunner(&F, LI, DT, PDT, MDUtils, CTX, ModMD, &TT);
+        WI.run();
+
         DL = &F.getParent()->getDataLayout();
+
+        RPE = &getAnalysis<IGCLivenessAnalysis>();
+        FRPE = &getAnalysis<IGCFunctionExternalRegPressureAnalysis>();
+        // Note: FRPE is a Module analysis and currently it runs only once.
+        // If function A calls function B then
+        // it's possible that transformation of function A reduces the regpressure good enough
+        // and we could not apply sinking in function B, but we don't recompute FPRE
+        // to save compile time, so in this case LoopSinking might apply for loops in function B
 
         bool Changed = false;
 
@@ -314,20 +331,27 @@ namespace IGC {
 
         if (IGC_IS_FLAG_ENABLED(DumpLoopSink))
         {
-            auto Name = Debug::DumpName(IGC::Debug::GetShaderOutputName())
-                                        .Hash(CTX->hash)
-                                        .Type(CTX->type)
-                                        .Retry(CTX->m_retryManager.GetRetryId())
-                                        .Pass("loopsink")
-                                        .Extension("txt");
-            IGC::Debug::DumpLock();
-            std::ofstream OutputFile(Name.str(), std::ios_base::app);
-            if (OutputFile.is_open())
+            if (IGC_IS_FLAG_ENABLED(PrintToConsole))
             {
-                OutputFile << Log;
+                IGC::Debug::ods() << Log;
             }
-            OutputFile.close();
-            IGC::Debug::DumpUnlock();
+            else
+            {
+                auto Name = Debug::DumpName(IGC::Debug::GetShaderOutputName())
+                                            .Hash(CTX->hash)
+                                            .Type(CTX->type)
+                                            .Retry(CTX->m_retryManager.GetRetryId())
+                                            .Pass("loopsink")
+                                            .Extension("txt");
+                IGC::Debug::DumpLock();
+                std::ofstream OutputFile(Name.str(), std::ios_base::app);
+                if (OutputFile.is_open())
+                {
+                    OutputFile << Log;
+                }
+                OutputFile.close();
+                IGC::Debug::DumpUnlock();
+            }
         }
 
         return Changed;
@@ -1329,11 +1353,12 @@ namespace IGC {
                 PreheaderDefsCandidates.insert(V);
             }
         }
-        uint PreheaderDefsSizeInBytes = RPE->estimateSizeInBytes(PreheaderDefsCandidates, *F, SIMD);
+        uint PreheaderDefsSizeInBytes = RPE->estimateSizeInBytes(PreheaderDefsCandidates, *F, SIMD, &WI);
         uint PreheaderDefsSizeInRegs = RPE->bytesToRegisters(PreheaderDefsSizeInBytes);
 
-        // Estimate max pressure in the loop
-        uint MaxLoopPressure = RPE->getMaxRegCountForLoop(*L, SIMD);
+        // Estimate max pressure in the loop and the external pressure
+        uint MaxLoopPressure = RPE->getMaxRegCountForLoop(*L, SIMD, &WI);
+        uint FunctionExternalPressure = FRPE ? FRPE->getExternalPressureForFunction(F) : 0;
 
         auto isSinkCriteriaMet = [&](uint MaxLoopPressure)
         {
@@ -1342,11 +1367,6 @@ namespace IGC {
             return ((MaxLoopPressure > NGRF + GRFThresholdDelta) &&
                     (PreheaderDefsSizeInRegs > (MaxLoopPressure - NGRF) * LOOPSINK_PREHEADER_IMPACT_THRESHOLD));
         };
-
-        // Check if the real regpressure may be higher, because the function is not a kernel
-        // and is called not as stack call
-        bool MayHaveCallerRegpressure = !isEntryFunc(CTX->getMetaDataUtils(), F) &&
-            !F->hasFnAttribute("visaStackCall");
 
         PrintDump("\n");
         if (!Preheader->getName().empty())
@@ -1366,47 +1386,11 @@ namespace IGC {
 
         PrintDump("Threshold to sink = " << NGRF + GRFThresholdDelta << "\n");
         PrintDump("MaxLoopPressure = " << MaxLoopPressure << "\n");
-        PrintDump("MayHaveCallerRegpressure? = " << (MayHaveCallerRegpressure ? "YES" : "no") << "\n");
+        PrintDump("MaxLoopPressure + FunctionExternalPressure = " << MaxLoopPressure + FunctionExternalPressure << "\n");
 
-        // If loop pressure induced in this function only is enough for the criteria, return immediately
-        // Otherwise try to add pressure from callsite as the real regpressure may be higher
-        if (isSinkCriteriaMet(MaxLoopPressure))
-            return MayHaveCallerRegpressure ?
-                LoopSinkMode::FullSink :
-                LoopSinkMode::SinkWhileRegpressureIsHigh;
-
-        // Look just for the direct callers while there is no cross-procedure regpressure analysis
-        if (MayHaveCallerRegpressure)
-        {
-            PrintDump("Checking callsites:" << "\n");
-            for (llvm::User *U : F->users()) {
-                CallInst *CI = llvm::dyn_cast<llvm::CallInst>(U);
-                if (CI == nullptr)
-                    continue;
-
-                if (CI->getCalledFunction() != F)
-                    continue;
-
-                BasicBlock *CallerBB = CI->getParent();
-                Function *CallerFunction = CallerBB->getParent();
-                PrintDump("Call from function " << CallerFunction->getName() << ":\n");
-                PrintInstructionDump(CI);
-
-                // Augment liveness analysis with blocks from the caller function
-                bool RPEHasCallerFunctionInfo = RPE->getOutSet().count(&CallerFunction->getEntryBlock());
-                if (!RPEHasCallerFunctionInfo)
-                    RPE->livenessAnalysis(*CallerFunction);
-
-                // Get call site regpressure
-                auto CallerBBPressureMap = RPE->getPressureMapForBB(*CallerBB, SIMD);
-                uint CallSitePressure = RPE->bytesToRegisters(CallerBBPressureMap[CI]);
-
-                PrintDump("MaxLoopPressure + CallSitePressure = " << MaxLoopPressure + CallSitePressure << "\n");
-
-                if (isSinkCriteriaMet(MaxLoopPressure + CallSitePressure))
-                    return LoopSinkMode::FullSink;
-            }
-        }
+        // Sink if the regpressure in the loop is high enough (including function external regpressure)
+        if (isSinkCriteriaMet(MaxLoopPressure + FunctionExternalPressure))
+            return LoopSinkMode::SinkWhileRegpressureIsHigh;
 
         PrintDump(">> No sinking.\n");
         return LoopSinkMode::NoSink;
@@ -1424,10 +1408,24 @@ namespace IGC {
         if (!Preheader)
             return false;
 
-        PrintDump(">> Sinking in the loop with preheader" << Preheader->getName() << "\n");
+        PrintDump(">> Sinking in the loop with preheader " << Preheader->getName() << "\n");
 
         Function *F = Preheader->getParent();
         uint NGRF = CTX->getNumGRFPerThread();
+
+        uint FunctionExternalPressure = FRPE ? FRPE->getExternalPressureForFunction(F) : 0;
+        uint NeededRegpressure = NGRF - IGC_GET_FLAG_VALUE(LoopSinkRegpressureMargin);
+        if ((NeededRegpressure >= FunctionExternalPressure) &&
+                (Mode == LoopSinkMode::SinkWhileRegpressureIsHigh))
+        {
+            NeededRegpressure -= FunctionExternalPressure;
+            PrintDump("Targeting new own regpressure in the loop = " << NeededRegpressure << "\n");
+        }
+        else
+        {
+            Mode = LoopSinkMode::FullSink;
+            PrintDump("Doing full sink.\n");
+        }
 
         bool EverChanged = false;
 
@@ -1504,9 +1502,9 @@ namespace IGC {
 
                 uint SIMD = numLanes(RPE->bestGuessSIMDSize());
                 RPE->rerunLivenessAnalysis(*F);
-                MaxLoopPressure = RPE->getMaxRegCountForLoop(*L, SIMD);
+                MaxLoopPressure = RPE->getMaxRegCountForLoop(*L, SIMD, &WI);
                 PrintDump("New max loop pressure = " << MaxLoopPressure << "\n");
-                if (MaxLoopPressure < (NGRF - IGC_GET_FLAG_VALUE(LoopSinkRegpressureMargin))
+                if ((MaxLoopPressure < NeededRegpressure)
                         && (Mode == LoopSinkMode::SinkWhileRegpressureIsHigh))
                 {
                     AchievedNeededRegpressure = true;
@@ -1755,7 +1753,7 @@ namespace IGC {
                 int DstSize = getDstSize(V);
                 if (!DstSize)
                     return false;
-                if (WI->isUniform(V))
+                if (WI.isUniform(V))
                     continue;
                 AccSave -= DstSize / 8;
             }
@@ -1766,7 +1764,7 @@ namespace IGC {
                 int DstSize = getDstSize(V);
                 if (!DstSize)
                     return false;
-                if (WI->isUniform(V))
+                if (WI.isUniform(V))
                     continue;
                 AllUsersAreUniform = false;
                 AccSave += DstSize / 8;
