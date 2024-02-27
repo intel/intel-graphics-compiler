@@ -177,25 +177,97 @@ void Legalization::visitInstruction(llvm::Instruction& I)
     m_ctx->m_instrTypes.numLocalInsts++;
 }
 
-#if LLVM_VERSION_MAJOR >= 14
-void Legalization::visitFNeg(llvm::UnaryOperator &I) {
-    if (IGCLLVM::isBFloatTy(I.getType())) {
-        m_builder->SetInsertPoint(&I);
-        auto ExtendedOp = m_builder->CreateFPExt(
-            I.getOperand(0), Type::getFloatTy(I.getContext()));
-        auto FloatFneg = m_builder->CreateFNeg(ExtendedOp);
-        auto Res = m_builder->CreateFPTrunc(FloatFneg, I.getType());
+void Legalization::visitUnaryInstruction(UnaryInstruction &I) {
+    // Legalize bfloat unary instructions that need intermediate
+    // step with float type.
+    auto SrcOperand = I.getOperand(0);
+    if (!IGCLLVM::isBFloatTy(SrcOperand->getType()->getScalarType()) &&
+        !IGCLLVM::isBFloatTy(I.getType()->getScalarType()))
+        return;
 
-        cast<Instruction>(ExtendedOp)->setDebugLoc(I.getDebugLoc());
-        cast<Instruction>(FloatFneg)->setDebugLoc(I.getDebugLoc());
-        cast<Instruction>(Res)->setDebugLoc(I.getDebugLoc());
-
-        I.replaceAllUsesWith(Res);
-        m_instructionsToRemove.push_back(&I);
+    bool convertSourceToFloat = false;
+    bool extendDestToFloat = false;
+    bool needsTrunc = false;
+    switch (I.getOpcode()) {
+    case Instruction::FPToUI:
+    case Instruction::FPToSI:
+        convertSourceToFloat = true;
+        break;
+    case Instruction::UIToFP:
+    case Instruction::SIToFP:
+        needsTrunc = true;
+        extendDestToFloat = true;
+        break;
+    case Instruction::FPExt:
+        if (I.getType()->getScalarType()->isDoubleTy()) {
+            convertSourceToFloat = true;
+        } else {
+            return;
+        }
+        break;
+    case Instruction::FPTrunc:
+        if (SrcOperand->getType()->getScalarType()->isDoubleTy()) {
+            convertSourceToFloat = true;
+        } else {
+            return;
+        }
+        break;
+    case Instruction::FNeg:
+        convertSourceToFloat = true;
+        extendDestToFloat = true;
+        needsTrunc = true;
+        break;
+    default:
+        return;
     }
+
+    // helper lambda to get corresponding vector or scalar float type.
+    auto getFloatTypeBasedOnType = [](Type *orgType) {
+      Type *FloatTy = Type::getFloatTy(orgType->getContext());
+      return orgType->isVectorTy()
+                 ? IGCLLVM::FixedVectorType::get(
+                       FloatTy,
+                       (unsigned)cast<IGCLLVM::FixedVectorType>(orgType)
+                           ->getNumElements())
+                 : FloatTy;
+    };
+
+    m_builder->SetInsertPoint(&I);
+    auto NewInst = I.clone();
+    NewInst->setDebugLoc(I.getDebugLoc());
+
+    if (convertSourceToFloat) {
+        auto NewType = getFloatTypeBasedOnType(SrcOperand->getType());
+        Value *SourceConverted = nullptr;
+        if (NewType->getScalarSizeInBits() >
+            SrcOperand->getType()->getScalarSizeInBits()) {
+            SourceConverted = m_builder->CreateFPExt(SrcOperand, NewType);
+        } else {
+            SourceConverted =
+                m_builder->CreateFPTrunc(SrcOperand, NewType);
+        }
+        NewInst->setOperand(0, SourceConverted);
+        cast<Instruction>(SourceConverted)->setDebugLoc(I.getDebugLoc());
+    }
+
+    m_builder->Insert(NewInst);
+
+    if (extendDestToFloat) {
+        NewInst->mutateType(getFloatTypeBasedOnType(I.getType()));
+    }
+
+    if (needsTrunc) {
+        auto TruncInst =
+            cast<Instruction>(m_builder->CreateFPTrunc(NewInst, I.getType()));
+        TruncInst->setDebugLoc(I.getDebugLoc());
+        NewInst = TruncInst;
+    }
+
+    I.replaceAllUsesWith(NewInst);
+    m_instructionsToRemove.push_back(&I);
+
     m_ctx->m_instrTypes.numInsts++;
 }
-#endif // LLVM_VERSION_MAJOR >= 14
 
 void Legalization::visitBinaryOperator(llvm::BinaryOperator& I)
 {

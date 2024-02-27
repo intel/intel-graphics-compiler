@@ -81,9 +81,7 @@ namespace IGC
         void visitBitCastInst(llvm::BitCastInst& I);
         void visitBasicBlock(llvm::BasicBlock& BB);
         void visitTruncInst(llvm::TruncInst&);
-#if LLVM_VERSION_MAJOR >= 14
-        void visitFNeg(llvm::UnaryOperator &I);
-#endif
+        void visitUnaryInstruction(llvm::UnaryInstruction &I);
         void visitBinaryOperator(llvm::BinaryOperator& I);
         void visitAddrSpaceCastInst(llvm::AddrSpaceCastInst&);
 
