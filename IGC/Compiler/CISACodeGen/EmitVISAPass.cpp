@@ -10423,6 +10423,10 @@ void EmitPass::emitLoad3DInner(LdRawIntrinsic* inst, ResourceDescriptor& resourc
                     {
                         IGC_ASSERT(alignment == 1 || alignment == 2);
                         IGC_ASSERT(src_offset->IsUniform());
+                        uint destSize = m_destination->GetSize();
+                        // Alignment can be greater than the destination size. If that happens,
+                        // alignment needs to be clamped to the destination size.
+                        alignment = (alignment > destSize) ? destSize : alignment;
                         uint numElements = m_destination->GetSize() / alignment;
                         VISA_Type realType = alignment == 1 ? ISA_TYPE_UB : ISA_TYPE_UW;
                         CVariable* tmp = m_currShader->GetNewVariable(

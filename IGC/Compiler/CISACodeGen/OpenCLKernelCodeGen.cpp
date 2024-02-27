@@ -933,7 +933,10 @@ namespace IGC
             // each mode: BTI mode, Bindless legacy mode and Bindless advance
             bool is_stateful_mode = bti_idx != 0xffffffff;
 
-            if (is_stateful_mode && (!m_Context->m_InternalOptions.UseBindlessMode)) {
+            const bool use_bindless_mode = GetContext()->getModuleMetaData()->compOpt.UseBindlessMode;
+            const bool use_bindless_legacy_mode = GetContext()->getModuleMetaData()->compOpt.UseLegacyBindlessMode;
+
+            if (is_stateful_mode && (!use_bindless_mode)) {
                 // Add BTI argument if being promoted to stateful BTI mode
                 // promoted arg has 0 offset and 0 size
                 zebin::ZEInfoBuilder::addPayloadArgumentByPointer(m_kernelInfo.m_zePayloadArgs,
@@ -958,12 +961,8 @@ namespace IGC
                     (kernelArg->getArgType() == KernelArg::ArgType::PTR_CONSTANT &&
                     (kernelArg->getArg()->use_empty() || !GetHasConstantStatelessAccess())));
 
-            bool is_bindless_legacy_mode =
-                m_Context->m_InternalOptions.UseBindlessMode &&
-                m_Context->m_InternalOptions.UseBindlessLegacyMode;
-            bool is_bindless_advance_mode =
-                m_Context->m_InternalOptions.UseBindlessMode &&
-                !m_Context->m_InternalOptions.UseBindlessLegacyMode;
+            bool is_bindless_legacy_mode = use_bindless_mode && use_bindless_legacy_mode;
+            bool is_bindless_advance_mode = use_bindless_mode && !use_bindless_legacy_mode;
 
             // When on bindless advance mode, there's an IMPLICIT_BINDLESS_OFFSET argument generated
             // associated to this argument. Keep track of addrspace and access_type for setting the
