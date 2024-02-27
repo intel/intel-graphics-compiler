@@ -1295,8 +1295,8 @@ void CISA_IR_Builder::LinkTimeOptimization(
 
           auto isPredefinedAreg = [](G4_Operand *opnd) {
             if (opnd) {
-              if (opnd->isTmReg() || opnd->isCrReg() || opnd->isSrReg() ||
-                  opnd->isDbgReg())
+              G4_Declare *topDcl = opnd->getTopDcl();
+              if (topDcl && topDcl->isPreDefinedVar() && opnd->isAreg())
                 return true;
             }
             return false;
@@ -1316,7 +1316,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
           }
           auto dst = inst->getDst();
           if (!isPredefinedAreg(dst)) {
-            cloneDcl(inst->getDst());
+            cloneDcl(dst);
           }
           cloneDcl(inst->getPredicate());
           // add predicate into declaration list
