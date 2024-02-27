@@ -17,6 +17,11 @@ See LICENSE.TXT for details.
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "Compiler/CISACodeGen/IGCLivenessAnalysis.h"
 #include "Compiler/CISACodeGen/IGCFunctionExternalPressure.h"
+#include "Compiler/CISACodeGen/TranslationTable.hpp"
+#include "Compiler/MetaDataUtilsWrapper.h"
+#include "Compiler/MetaDataApi/MetaDataApi.h"
+#include "Compiler/CodeGenContextWrapper.hpp"
+
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Analysis/PostDominators.h>
 #include <llvm/Analysis/LoopInfo.h>
@@ -30,8 +35,11 @@ namespace IGC {
         llvm::PostDominatorTree* PDT;
         llvm::LoopInfo* LI;
         llvm::AliasAnalysis* AA;
-        WIAnalysis* WI;
+        WIAnalysisRunner WI;
+        IGCMD::MetaDataUtils* MDUtils;
+        ModuleMetaData* ModMD;
         IGCLivenessAnalysis* RPE;
+        IGCFunctionExternalRegPressureAnalysis* FRPE;
 
         const llvm::DataLayout* DL;  // to estimate register pressure
         CodeGenContext* CTX;
@@ -49,7 +57,8 @@ namespace IGC {
             AU.addRequired<llvm::PostDominatorTreeWrapperPass>();
             AU.addRequired<llvm::LoopInfoWrapperPass>();
             AU.addRequired<llvm::AAResultsWrapperPass>();
-            AU.addRequired<WIAnalysis>();
+            AU.addRequired<MetaDataUtilsWrapper>();
+            AU.addRequired<TranslationTable>();
             AU.addRequired<IGCLivenessAnalysis>();
             AU.addRequired<IGCFunctionExternalRegPressureAnalysis>();
             AU.addRequired<CodeGenContextWrapper>();
@@ -58,7 +67,7 @@ namespace IGC {
             AU.addPreserved<llvm::PostDominatorTreeWrapperPass>();
             AU.addPreserved<llvm::LoopInfoWrapperPass>();
             AU.addPreserved<llvm::AAResultsWrapperPass>();
-            AU.addPreservedID(WIAnalysis::ID);
+            AU.addPreservedID(TranslationTable::ID);
         }
     private:
 
