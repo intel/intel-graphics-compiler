@@ -52,7 +52,7 @@ class IGCFunctionExternalRegPressureAnalysis : public llvm::ModulePass {
     IGCMD::MetaDataUtils* MDUtils = nullptr;
     ModuleMetaData* ModMD = nullptr;
 
-    WIAnalysisRunner runWIAnalysis(Function &F);
+    std::unique_ptr<WIAnalysisRunner> runWIAnalysis(Function &F);
     void generateTableOfPressure(Module &M, unsigned int SIMD);
 
     unsigned int estimateSizeInBytes(ValueSet &Set, Function &F, unsigned int SIMD, WIAnalysisRunner &WI);

@@ -72,6 +72,7 @@ namespace IGC {
         IGC_INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
         IGC_INITIALIZE_PASS_DEPENDENCY(WIAnalysis)
         IGC_INITIALIZE_PASS_DEPENDENCY(IGCLivenessAnalysis)
+        IGC_INITIALIZE_PASS_DEPENDENCY(IGCFunctionExternalRegPressureAnalysis)
         IGC_INITIALIZE_PASS_END(CodeSinking, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
         CodeSinking::CodeSinking(bool generalSinking) : FunctionPass(ID), LogStream(Log) {

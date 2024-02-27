@@ -35,7 +35,7 @@ IGCFunctionExternalRegPressureAnalysis::IGCFunctionExternalRegPressureAnalysis()
 };
 
 
-WIAnalysisRunner IGCFunctionExternalRegPressureAnalysis::runWIAnalysis(Function &F) {
+std::unique_ptr<WIAnalysisRunner> IGCFunctionExternalRegPressureAnalysis::runWIAnalysis(Function &F) {
 
     TranslationTable TT;
     TT.run(F);
@@ -44,9 +44,8 @@ WIAnalysisRunner IGCFunctionExternalRegPressureAnalysis::runWIAnalysis(Function 
     auto *PDT = &getAnalysis<PostDominatorTreeWrapperPass>(F).getPostDomTree();
     auto *LI = &getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
 
-    WIAnalysisRunner WI;
-    WI = WIAnalysisRunner(&F, LI, DT, PDT, MDUtils, CGCtx, ModMD, &TT);
-    WI.run();
+    auto WI = std::make_unique<WIAnalysisRunner>(&F, LI, DT, PDT, MDUtils, CGCtx, ModMD, &TT);
+    WI->run();
     return WI;
 }
 
@@ -204,13 +203,13 @@ void IGCFunctionExternalRegPressureAnalysis::generateTableOfPressure(llvm::Modul
         if(F.isDeclaration()) continue;
 
         livenessAnalysis(F);
-        WIAnalysisRunner WI = runWIAnalysis(F);
+        std::unique_ptr<WIAnalysisRunner> WI = runWIAnalysis(F);
 
         for (auto &BB : F) {
             for (auto &I : BB) {
                 auto *Call = llvm::dyn_cast<CallInst>(&I);
                 if (!Call) continue;
-                CallSitePressure[Call] = getPressureMapForBB(BB, SIMD, WI)[&I];
+                CallSitePressure[Call] = getPressureMapForBB(BB, SIMD, *WI)[&I];
             }
         }
     }

@@ -16,6 +16,7 @@ See LICENSE.TXT for details.
 #pragma once
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "Compiler/CISACodeGen/IGCLivenessAnalysis.h"
+#include "Compiler/CISACodeGen/IGCFunctionExternalPressure.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Analysis/PostDominators.h>
 #include <llvm/Analysis/LoopInfo.h>
@@ -50,6 +51,7 @@ namespace IGC {
             AU.addRequired<llvm::AAResultsWrapperPass>();
             AU.addRequired<WIAnalysis>();
             AU.addRequired<IGCLivenessAnalysis>();
+            AU.addRequired<IGCFunctionExternalRegPressureAnalysis>();
             AU.addRequired<CodeGenContextWrapper>();
 
             AU.addPreserved<llvm::DominatorTreeWrapperPass>();
