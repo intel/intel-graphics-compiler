@@ -557,18 +557,39 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
     else if (isVnniTransform && !isTranspose)
     {
         numBlocksV = 1;
+
         if (elemSize == 8)
         {
             // __builtin_IB_subgroup_block_read_flat_transform_u8_k32
             tileHeight = 32;
-            tileWidth = subGrpSize;
         }
         else
         {
             // __builtin_IB_subgroup_block_read_flat_transform_u16_k16
-            tileHeight = 16;
-            tileWidth = subGrpSize;
+            if (funcName.consume_front("_k16"))
+            {
+                tileHeight = 16;
+            }
+            // __builtin_IB_subgroup_block_read_flat_transform_u16_k32
+            else if (funcName.consume_front("_k32"))
+            {
+                tileHeight = 32;
+            }
+            else
+            {
+                IGC_ASSERT_MESSAGE(0, "Unrecognized k element in __builtin_IB_subgroup_block_read/write.");
+                return nullptr;
+            }
+
+            // __builtin_IB_subgroup_block_read_flat_transform_u16_k16v2
+            // __builtin_IB_subgroup_block_read_flat_transform_u16_k32v2
+            if (funcName.consume_front("v2"))
+            {
+                numBlocksV = 2;
+            }
         }
+
+        tileWidth = subGrpSize;
     }
     else
     {
