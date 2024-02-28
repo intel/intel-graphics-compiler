@@ -11,6 +11,14 @@
   "DESCRIPTION": "See cisa_gen_intrinsics.py for description of this document",
   "INTRINSICS": {
     // Standard LLVM intrinsics
+    "ctlz": {
+      "opc": "ISA_LZD",
+      "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", 1 ]
+    },
     "fma": {
       "opc": "ISA_MAD",
       "exec_size": [ "EXECSIZE" ],

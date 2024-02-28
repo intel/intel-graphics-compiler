@@ -238,6 +238,7 @@ private:
   bool lowerUSubWithSat(CallInst *CI);
   bool lowerCtpop(CallInst *CI);
   bool lowerFCmpInst(FCmpInst *Inst);
+  bool lowerCttz(CallInst *Inst);
   bool lowerUnorderedFCmpInst(FCmpInst *Inst);
   bool lowerMinMax(CallInst *CI, unsigned IntrinsicID);
   bool lowerSqrt(CallInst *CI);
@@ -1977,8 +1978,9 @@ bool GenXLowering::processInst(Instruction *Inst) {
   }
   if (Inst->getOpcode() == Instruction::ICmp)
     return widenByteOp(Inst);
-  else if (auto CI = dyn_cast<FCmpInst>(Inst))
+  if (auto *CI = dyn_cast<FCmpInst>(Inst))
     return lowerFCmpInst(CI);
+
   if (CallInst *CI = dyn_cast<CallInst>(Inst)) {
     if (CI->isInlineAsm())
       return false;
@@ -2081,6 +2083,8 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerTrap(CI);
     case Intrinsic::ctpop:
       return lowerCtpop(CI);
+    case Intrinsic::cttz:
+      return lowerCttz(CI);
 #if LLVM_VERSION_MAJOR >= 12
     case Intrinsic::smin:
     case Intrinsic::smax:
@@ -3615,6 +3619,24 @@ bool GenXLowering::lowerFCmpInst(FCmpInst *Inst) {
   }
 
   return false;
+}
+
+bool GenXLowering::lowerCttz(CallInst *CI) {
+  // T Cttz(T src) {
+  //   T src_reverse = reverse_bits(src);
+  //   return count_leading_zeros(src_reverse);
+  // }
+  IRBuilder<> Builder(CI);
+  auto *ResTy = CI->getType();
+
+  Value *Reverse = Builder.CreateIntrinsic(Intrinsic::bitreverse, {ResTy},
+                                           {CI->getArgOperand(0)});
+  Value *Result = Builder.CreateIntrinsic(Intrinsic::ctlz, {ResTy},
+                                          {Reverse, CI->getArgOperand(1)});
+
+  CI->replaceAllUsesWith(Result);
+  ToErase.push_back(CI);
+  return true;
 }
 
 // FCmp with NE is the only one supported unordered cmp inst. All the rest must

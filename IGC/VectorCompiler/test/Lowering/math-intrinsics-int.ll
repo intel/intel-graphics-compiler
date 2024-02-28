@@ -34,3 +34,16 @@ define internal spir_func void @min_max_uint(i32 %arg1, i32 %arg2) {
   %2 = call i32 @llvm.umax.i32(i32 %arg1, i32 %arg2)
   ret void
 }
+
+declare i32 @llvm.cttz.i32(i32, i1)
+declare i32 @llvm.ctlz.i32(i32, i1)
+
+; CHECK-LABEL: cttz_ctlz_int
+define internal spir_func void @cttz_ctlz_int(i32 %arg) {
+; CHECK: [[REV:%[^ ]+]] = call i32 @llvm.genx.bfrev.i32(i32 %arg)
+; CHECK: @llvm.ctlz.i32(i32 [[REV]], i1 false)
+  %1 = call i32 @llvm.cttz.i32(i32 %arg, i1 false)
+; CHECK: @llvm.ctlz.i32(i32 %arg, i1 false)
+  %2 = call i32 @llvm.ctlz.i32(i32 %arg, i1 false)
+  ret void
+}

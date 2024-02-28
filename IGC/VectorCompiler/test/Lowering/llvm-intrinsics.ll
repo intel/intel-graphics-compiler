@@ -68,3 +68,18 @@ define i32 @test_uadd_sat(i32 %a, i32 %b)
 ; CHECK: call i32 @llvm.genx.uuadd.sat.i32.i32(i32 %a, i32 %b)
   ret i32 %res
 }
+
+; i64 - currently llvm.bitreverse with bitsize bigger than 32 is not supported
+declare <8 x i32> @llvm.cttz.v8i32(<8 x i32>, i1)
+declare <8 x i32> @llvm.ctlz.v8i32(<8 x i32>, i1)
+
+; CHECK-LABEL: cttz_ctlz_int
+define internal spir_func void @cttz_ctlz_int(<8 x i32> %arg) {
+; CHECK: [[REV:%.*]] = call <8 x i32> @llvm.genx.bfrev.v8i32(<8 x i32> %arg)
+; CHECK:  @llvm.ctlz.v8i32(<8 x i32> [[REV]], i1 false)
+  %1 = call <8 x i32>  @llvm.cttz.v8i32(<8 x i32> %arg, i1 false)
+; CHECK: @llvm.ctlz.v8i32(<8 x i32> %arg, i1 false)
+  %2 = call <8 x i32>  @llvm.ctlz.v8i32(<8 x i32> %arg, i1 false)
+  ret void
+}
+
