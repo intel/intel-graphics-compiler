@@ -56,6 +56,7 @@ namespace IGC
             llvm::Value* bufferAddress;
             llvm::Value* bufferOffsetInBytes;
             uint32_t implicitArgBufferSizeIndex;
+            llvm::Value* elementSizeInBytes;
         };
 
         bool modified;

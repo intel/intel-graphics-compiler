@@ -26,10 +26,11 @@ define spir_kernel void @kernel(i32 addrspace(1)* %input) nounwind {
 ; CHECK-NEXT:     [[ADDRESS:%[0-9]+]] = ptrtoint i32 addrspace(1)* %1 to i64
 ; CHECK-NEXT:     [[OFFSET:%[0-9]+]] = sub i64 [[ADDRESS]], [[BASE_ADDRESS]]
 ; CHECK-NEXT:     [[BUFFER_SIZE_EQ_ZERO:%[0-9]+]] = icmp eq i64 %bufferSize, 0
-; CHECK-NEXT:     [[OFFSET_GE_ZERO:%[0-9]+]] = icmp sge i64 [[OFFSET]], 0
-; CHECK-NEXT:     [[OFFSET_LT_BUFFER_SIZE:%[0-9]+]] = icmp slt i64 [[OFFSET]], %bufferSize
-; CHECK-NEXT:     [[OFFSET_IN_RANGE:%[0-9]+]] = and i1 [[OFFSET_GE_ZERO]], [[OFFSET_LT_BUFFER_SIZE]]
-; CHECK-NEXT:     [[CONDITION:%[0-9]+]] = or i1 [[BUFFER_SIZE_EQ_ZERO]], [[OFFSET_IN_RANGE]]
+; CHECK-NEXT:     [[LOWER_BOUND_CHECK:%[0-9]+]] = icmp sge i64 [[OFFSET]], 0
+; CHECK-NEXT:     [[UPPER_BOUND:%[0-9]+]] = sub i64 %bufferSize, 4
+; CHECK-NEXT:     [[UPPER_BOUND_CHECK:%[0-9]+]] = icmp slt i64 [[OFFSET]], [[UPPER_BOUND]]
+; CHECK-NEXT:     [[OFFSET_IN_BOUNDS:%[0-9]+]] = and i1 [[LOWER_BOUND_CHECK]], [[UPPER_BOUND_CHECK]]
+; CHECK-NEXT:     [[CONDITION:%[0-9]+]] = or i1 [[BUFFER_SIZE_EQ_ZERO]], [[OFFSET_IN_BOUNDS]]
 ; CHECK-NEXT:     br i1 [[CONDITION]], label %bufferboundschecking.valid, label %bufferboundschecking.invalid
 
 ; CHECK:        bufferboundschecking.valid:

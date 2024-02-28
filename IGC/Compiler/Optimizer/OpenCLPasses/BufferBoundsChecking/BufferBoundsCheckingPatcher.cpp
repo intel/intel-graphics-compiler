@@ -64,6 +64,11 @@ void BufferBoundsCheckingPatcher::visitICmpInst(ICmpInst& icmp)
     modified |= patchInstruction(&icmp);
 }
 
+void BufferBoundsCheckingPatcher::visitSub(BinaryOperator& sub)
+{
+    modified |= patchInstruction(&sub);
+}
+
 bool BufferBoundsCheckingPatcher::patchInstruction(llvm::Instruction* instruction)
 {
     if (!hasPatchInfo(instruction))

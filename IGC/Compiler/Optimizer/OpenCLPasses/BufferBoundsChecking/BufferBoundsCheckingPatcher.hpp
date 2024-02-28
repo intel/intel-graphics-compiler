@@ -41,6 +41,7 @@ namespace IGC
         virtual bool runOnFunction(llvm::Function& function) override;
 
         void visitICmpInst(llvm::ICmpInst& icmp);
+        void visitSub(llvm::BinaryOperator& sub);
 
         struct PatchInfo {
             uint32_t operandIndex;

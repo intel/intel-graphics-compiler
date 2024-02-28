@@ -154,22 +154,23 @@ Value* BufferBoundsChecking::createBoundsCheckingCondition(const AccessInfo& acc
 
     auto bufferSizeIsZero = new ICmpInst(insertBefore, ICmpInst::ICMP_EQ, undef, zero);
     auto bufferOffsetIsGreaterOrEqualZero = new ICmpInst(insertBefore, ICmpInst::ICMP_SGE, accessInfo.bufferOffsetInBytes, zero);
-    auto bufferOffsetIsLessThanSize = new ICmpInst(insertBefore, ICmpInst::ICMP_SLT, accessInfo.bufferOffsetInBytes, undef);
+    auto upperBound = BinaryOperator::Create(Instruction::Sub, undef, accessInfo.elementSizeInBytes, "", insertBefore);
+    auto bufferOffsetIsLessThanSizeMinusElemSize = new ICmpInst(insertBefore, ICmpInst::ICMP_SLT, accessInfo.bufferOffsetInBytes, upperBound);
 
     BufferBoundsCheckingPatcher::addPatchInfo(
         bufferSizeIsZero,
         BufferBoundsCheckingPatcher::PatchInfo{0, accessInfo.implicitArgBufferSizeIndex}
     );
     BufferBoundsCheckingPatcher::addPatchInfo(
-        bufferOffsetIsLessThanSize,
-        BufferBoundsCheckingPatcher::PatchInfo{1, accessInfo.implicitArgBufferSizeIndex}
+        upperBound,
+        BufferBoundsCheckingPatcher::PatchInfo{0, accessInfo.implicitArgBufferSizeIndex}
     );
 
     return BinaryOperator::Create(Instruction::Or,
         bufferSizeIsZero,
         BinaryOperator::Create(Instruction::And,
             bufferOffsetIsGreaterOrEqualZero,
-            bufferOffsetIsLessThanSize,
+            bufferOffsetIsLessThanSizeMinusElemSize,
             "",
             insertBefore),
         "",
@@ -362,6 +363,22 @@ BufferBoundsChecking::AccessInfo BufferBoundsChecking::getAccessInfo(Instruction
         {
             return argumentQualifiesForChecking(&arg);
         });
+
+    Type* type = nullptr;
+    if (auto load = dyn_cast<LoadInst>(instruction))
+    {
+        type = instruction->getType();
+    }
+    else if (auto store = dyn_cast<StoreInst>(instruction))
+    {
+        type = store->getValueOperand()->getType();
+    }
+    else
+    {
+        IGC_ASSERT(0);
+    }
+    result.elementSizeInBytes = ConstantInt::get(Type::getInt64Ty(instruction->getContext()),
+                                          instruction->getModule()->getDataLayout().getTypeSizeInBits(type) / 8);
 
     return result;
 }
