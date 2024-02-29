@@ -1731,7 +1731,6 @@ bool TranslateBuild(
 
     // set g_CurrentShaderHash in igc_regkeys.cpp
     SetCurrentDebugHash(inputShHash);
-
     // on wrong spec constants, vc::translateBuild may fail
     // so lets dump those early
     if (pInputArgs->SpecConstantsSize > 0 && IGC_IS_FLAG_ENABLED(ShaderDumpEnable))

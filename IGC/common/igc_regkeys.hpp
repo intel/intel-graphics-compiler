@@ -31,8 +31,8 @@ typedef char debugString[1024];
 #endif
 
 
-#if defined(IGC_DEBUG_VARIABLES)
 #include <vector>
+#if defined(IGC_DEBUG_VARIABLES)
 struct HashRange
 {
     enum class Type
@@ -63,6 +63,16 @@ struct HashRange
     }
 };
 
+struct EntryPoint
+{
+
+    std::string entry_point_name;
+    union
+    {
+        unsigned    m_Value;
+        debugString m_string;
+    };
+};
 struct SRegKeyVariableMetaData
 {
     union
@@ -71,6 +81,7 @@ struct SRegKeyVariableMetaData
         debugString m_string;
     };
     std::vector<HashRange> hashes;
+    std::vector<EntryPoint> entry_points;
     bool m_isSetToNonDefaultValue;
     bool m_isSet = false;
     bool IsSet() const
@@ -137,6 +148,7 @@ struct SRegKeysList
 };
 #undef DECLARE_IGC_REGKEY
 bool CheckHashRange(SRegKeyVariableMetaData& varname);
+bool CheckEntryPoint(SRegKeyVariableMetaData& varname);
 void setImpliedRegkey(SRegKeyVariableMetaData& name,
     const bool set,
     SRegKeyVariableMetaData& subname,
@@ -145,15 +157,15 @@ void setImpliedRegkey(SRegKeyVariableMetaData& name,
 extern SRegKeysList g_RegKeyList;
 #if defined(LINUX_RELEASE_MODE)
 #define IGC_GET_FLAG_VALUE(name)                 \
-  ((CheckHashRange(g_RegKeyList.name) && g_RegKeyList.name.IsReleaseMode()) ? g_RegKeyList.name.m_Value : g_RegKeyList.name.GetDefault())
+  (((CheckHashRange(g_RegKeyList.name) || CheckEntryPoint(g_RegKeyList.name)) && g_RegKeyList.name.IsReleaseMode() ) ? g_RegKeyList.name.m_Value : g_RegKeyList.name.GetDefault())
 #define IGC_IS_FLAG_SET(name)                    \
-  (CheckHashRange(g_RegKeyList.name) ? g_RegKeyList.name.IsSet() : false)
+  ((CheckHashRange(g_RegKeyList.name) || CheckEntryPoint(g_RegKeyList.name))? g_RegKeyList.name.IsSet() : false)
 #define IGC_GET_FLAG_DEFAULT_VALUE(name)         (g_RegKeyList.name.GetDefault())
 #define IGC_IS_FLAG_ENABLED(name)                (IGC_GET_FLAG_VALUE(name) != 0)
 #define IGC_IS_FLAG_DISABLED(name)               (!IGC_IS_FLAG_ENABLED(name))
 #define IGC_SET_FLAG_VALUE(name, regkeyValue)    (g_RegKeyList.name.m_Value = regkeyValue)
 #define IGC_GET_REGKEYSTRING(name)               \
-  ((CheckHashRange(g_RegKeyList.name) && g_RegKeyList.name.IsReleaseMode()) ? g_RegKeyList.name.m_string : "")
+  (((CheckHashRange(g_RegKeyList.name)|| CheckEntryPoint(g_RegKeyList.name)) && g_RegKeyList.name.IsReleaseMode()) ? g_RegKeyList.name.m_string : "")
 #define IGC_SET_IMPLIED_REGKEY(name, setOnValue, subname, subvalue) \
   (setImpliedRegkey(g_RegKeyList.name, (g_RegKeyList.name.m_Value == setOnValue), \
                     g_RegKeyList.subname, subvalue))
@@ -162,15 +174,15 @@ extern SRegKeysList g_RegKeyList;
                     g_RegKeyList.subname, subvalue))
 #else
 #define IGC_GET_FLAG_VALUE(name)                 \
-  (CheckHashRange(g_RegKeyList.name) ? g_RegKeyList.name.m_Value : g_RegKeyList.name.GetDefault())
+  ((CheckHashRange(g_RegKeyList.name)||CheckEntryPoint(g_RegKeyList.name)) ? g_RegKeyList.name.m_Value : g_RegKeyList.name.GetDefault())
 #define IGC_IS_FLAG_SET(name)                    \
-  (CheckHashRange(g_RegKeyList.name) ? g_RegKeyList.name.IsSet() : false)
+  ((CheckHashRange(g_RegKeyList.name)||CheckEntryPoint(g_RegKeyList.name)) ? g_RegKeyList.name.IsSet() : false)
 #define IGC_GET_FLAG_DEFAULT_VALUE(name)         (g_RegKeyList.name.GetDefault())
 #define IGC_IS_FLAG_ENABLED(name)                (IGC_GET_FLAG_VALUE(name) != 0)
 #define IGC_IS_FLAG_DISABLED(name)               (!IGC_IS_FLAG_ENABLED(name))
 #define IGC_SET_FLAG_VALUE(name, regkeyValue)    (g_RegKeyList.name.m_Value = regkeyValue)
 #define IGC_GET_REGKEYSTRING(name)               \
-  (CheckHashRange(g_RegKeyList.name) ? g_RegKeyList.name.m_string : "")
+  ((CheckHashRange(g_RegKeyList.name)||CheckEntryPoint(g_RegKeyList.name)) ? g_RegKeyList.name.m_string : "")
 #define IGC_SET_IMPLIED_REGKEY(name, setOnValue, subname, subvalue) \
   (setImpliedRegkey(g_RegKeyList.name, (g_RegKeyList.name.m_Value == setOnValue), \
                     g_RegKeyList.subname, subvalue))
@@ -203,6 +215,8 @@ void DumpIGCRegistryKeyDefinitions();
 void DumpIGCRegistryKeyDefinitions3(std::string driverRegistryPath, unsigned long pciBus, unsigned long pciDevice, unsigned long pciFunction);
 void LoadRegistryKeys(const std::string& options = "", bool *RegFlagNameError = nullptr);
 void SetCurrentDebugHash(const ShaderHash &hash);
+void SetCurrentEntryPoints(const std::vector<std::string> &entry_points);
+void ClearCurrentEntryPoints();
 #undef LINUX_RELEASE_MODE
 #else
 static inline void GetKeysSetExplicitly(std::string* KeyValuePairs, std::string* OptionKeys)
@@ -213,6 +227,10 @@ static inline void GetKeysSetExplicitly(std::string* KeyValuePairs, std::string*
 static inline void SetCurrentDebugHash(const ShaderHash &hash)
 {
     IGC_UNUSED(hash);
+}
+static inline void SetCurrentEntryPoints(const std::vector<std::string>& entry_points)
+{
+    IGC_UNUSED(entry_points);
 }
 static inline void LoadRegistryKeys(const std::string& options = "", bool *RegFlagNameError=nullptr)
 {

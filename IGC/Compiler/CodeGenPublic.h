@@ -999,7 +999,7 @@ namespace IGC
         bool m_checkFastFlagPerInstructionInCustomUnsafeOptPass = false;
         // Map to store global offsets in original global buffer
         std::map<std::string, uint64_t> inlineProgramScopeGlobalOffsets;
-
+        std::vector<std::string> entry_names;
     private:
         //For storing error message
         std::stringstream oclErrorMessage;
@@ -1067,8 +1067,11 @@ namespace IGC
         llvm::LLVMContext* getLLVMContext() const;
         IGC::IGCMD::MetaDataUtils* getMetaDataUtils() const;
         IGCLLVM::Module* getModule() const;
+        std::vector<std::string> getEntryNames() const;
 
         void setModule(llvm::Module* m);
+        void setEntryNames(llvm::Module* m);
+        void clearEntryNames();
         // Several clients explicitly delete module without resetting module to null.
         // This causes the issue later when the dtor is invoked (trying to delete a
         // dangling pointer again). This function is used to replace any explicit
