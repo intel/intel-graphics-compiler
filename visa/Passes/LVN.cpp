@@ -485,7 +485,10 @@ void LVN::replaceAllUses(G4_INST *defInst, bool negate, UseList &uses,
     } else {
       unsigned short vstride = srcToReplace->getRegion()->vertStride;
       unsigned short width = srcToReplace->getRegion()->width;
-      unsigned short hstride = getActualHStride(srcToReplace);
+      // Rule: If Width = 1, HorzStride must be 0 regardless of the values of
+      //       ExecSize and VertStride.
+      unsigned short hstride =
+          (width == 1) ? 0 : getActualHStride(srcToReplace);
       G4_Type type = srcToReplace->getType();
 
       unsigned int subRegOffScaled =
