@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2024 Intel Corporation
+Copyright (C) 2021-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -256,26 +256,6 @@ static void assertValidPrintCall(const CallInst &CI) {
   (void)CI;
 }
 
-// Format string operand is expected to be GEP. In some cases bitcast is
-// present instead. It has to be substituted with an equivalent GEP
-static void fixFormatStringOperand(CallInst &CI) {
-  auto *FmtOp = CI.getOperand(0);
-  if (isConstantStringFirstElementGEP(*FmtOp))
-    return;
-  auto *BCO = dyn_cast<BitCastOperator>(FmtOp);
-  if (!BCO)
-    return;
-  auto *Ptr = BCO->getOperand(0);
-  if (!isConstantString(*Ptr))
-    return;
-  auto *GV = cast<GlobalVariable>(Ptr);
-  auto *Zero = Constant::getNullValue(Type::getInt32Ty(Ptr->getContext()));
-  Constant* Indices[2] = { Zero, Zero };
-  auto *GEP =
-      ConstantExpr::getGetElementPtr(GV->getValueType(), GV, Indices);
-  CI.setOperand(0, GEP);
-}
-
 // Returns pair of format string size (including '\0') and argument information.
 static std::pair<int, PrintfArgInfoSeq>
 analyzeFormatString(const Value &FmtStrOp) {
@@ -289,11 +269,6 @@ analyzeFormatString(const Value &FmtStrOp) {
 // Marks strings passed as "%s" arguments in printf.
 // Recursive function, long instruction chains aren't expected.
 static void markStringArgument(Value &Arg) {
-  if (isConstantString(Arg)) {
-    auto &String = cast<GlobalVariable>(Arg);
-    String.addAttribute(PrintfStringVariable);
-    return;
-  }
   if (isa<GEPOperator>(Arg)) {
     auto *String = getConstStringGVFromOperandOptional(Arg);
     if (!String)
@@ -311,11 +286,6 @@ static void markStringArgument(Value &Arg) {
     // cases.
     markStringArgument(*SI.getFalseValue());
     markStringArgument(*SI.getTrueValue());
-    return;
-  }
-  if (isa<BitCastOperator>(Arg)) {
-    auto &BCO = cast<BitCastOperator>(Arg);
-    markStringArgument(*BCO.getOperand(0));
     return;
   }
   if (isCastToGenericAS(Arg))
@@ -344,7 +314,6 @@ static void markPrintfStrings(CallInst &OrigPrintf,
 
 void GenXPrintfResolution::handlePrintfCall(CallInst &OrigPrintf) {
   assertValidPrintCall(OrigPrintf);
-  fixFormatStringOperand(OrigPrintf);
   auto [FmtStrSize, ArgsInfo] =
       analyzeFormatString(*OrigPrintf.getArgOperand(0));
   if (ArgsInfo.size() != IGCLLVM::getNumArgOperands(&OrigPrintf) - 1)
