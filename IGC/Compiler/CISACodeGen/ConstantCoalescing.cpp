@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMUtils.h"
 #include "Compiler/CISACodeGen/ConstantCoalescing.hpp"
 #include "Compiler/CISACodeGen/CISACodeGen.h"
+#include "Compiler/CISACodeGen/EmitVISAPass.hpp"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "common/IGCIRBuilder.h"
@@ -1268,9 +1269,9 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
     // LSC supports:
     // - transposed loads of 1, 2, 3, 4, 8, 16, 32 and 64 DWords/QWords
     // - (byte aligned) loads of 1, 2 and 4 Bytes
-    auto RoundChunkSize = [this, scalarSizeInBytes](const uint32_t chunkSize)
+    auto RoundChunkSize = [this, scalarSizeInBytes, load](const uint32_t chunkSize)
     {
-        bool supportsVec3Load = scalarSizeInBytes >= 4 && m_ctx->platform.LSCEnabled();
+        bool supportsVec3Load = scalarSizeInBytes >= 4 && EmitPass::shouldGenerateLSCQuery(*m_ctx, load) == Tristate::True;
         uint32_t validChunkSize = (supportsVec3Load && chunkSize == 3) ?
             3 : iSTD::RoundPower2((DWORD)chunkSize);
         return validChunkSize;
