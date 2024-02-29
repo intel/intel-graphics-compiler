@@ -698,8 +698,8 @@ float4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Rfloat4(
     __spirv_SampledImage_3D SampledImage,
     float3 Coordinate,
     int ImageOperands,
-    float4 dx,
-    float4 dy)
+    float3 dx,
+    float3 dy)
 {
     int image_id = (int)__builtin_IB_get_image(SampledImage);
     int sampler_id = (int)__builtin_IB_get_sampler(SampledImage);
@@ -721,7 +721,7 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img3d_ro_
     float4 dx,
     float4 dy)
 {
-    return __spirv_ImageSampleExplicitLod_Rfloat4(SampledImage, Coordinate.xyz, ImageOperands, dx, dy);
+    return __spirv_ImageSampleExplicitLod_Rfloat4(SampledImage, Coordinate.xyz, ImageOperands, dx.xyz, dy.xyz);
 }
 
 #ifdef cl_khr_fp16
@@ -729,8 +729,8 @@ half4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Rhalf4(
     __spirv_SampledImage_3D SampledImage,
     float3 Coordinate,
     int ImageOperands,
-    float4 dx,
-    float4 dy)
+    float3 dx,
+    float3 dy)
 {
     int image_id = (int)__builtin_IB_get_image(SampledImage);
     int sampler_id = (int)__builtin_IB_get_sampler(SampledImage);
@@ -753,7 +753,7 @@ half4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f16_img3d_ro_v
     float4 dx,
     float4 dy)
 {
-    return __spirv_ImageSampleExplicitLod_Rhalf4(SampledImage, Coordinate.xyz, ImageOperands, dx, dy);
+    return __spirv_ImageSampleExplicitLod_Rhalf4(SampledImage, Coordinate.xyz, ImageOperands, dx.xyz, dy.xyz);
 }
 #endif // cl_khr_fp16
 
@@ -761,8 +761,8 @@ uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(
     __spirv_SampledImage_3D SampledImage,
     float3 Coordinate,
     int ImageOperands,
-    float4 dx,
-    float4 dy)
+    float3 dx,
+    float3 dy)
 {
     return as_uint4(__spirv_ImageSampleExplicitLod_Rfloat4(SampledImage, Coordinate, ImageOperands, dx, dy));
 }
@@ -774,15 +774,15 @@ uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(
     float4 dx,
     float4 dy)
 {
-    return __spirv_ImageSampleExplicitLod_Ruint4(SampledImage, Coordinate.xyz, ImageOperands, dx, dy);
+    return __spirv_ImageSampleExplicitLod_Ruint4(SampledImage, Coordinate.xyz, ImageOperands, dx.xyz, dy.xyz);
 }
 
 int4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Rint4(
     __spirv_SampledImage_3D SampledImage,
     float3 Coordinate,
     int ImageOperands,
-    float4 dx,
-    float4 dy)
+    float3 dx,
+    float3 dy)
 {
     return as_int4(__spirv_ImageSampleExplicitLod_Rfloat4(SampledImage, Coordinate, ImageOperands, dx, dy));
 }
@@ -794,15 +794,25 @@ int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img3d_ro_v4
     float4 dx,
     float4 dy)
 {
-    return __spirv_ImageSampleExplicitLod_Rint4(SampledImage, Coordinate.xyz, ImageOperands, dx, dy);
+    return __spirv_ImageSampleExplicitLod_Rint4(SampledImage, Coordinate.xyz, ImageOperands, dx.xyz, dy.xyz);
 }
 
-short4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Rshort4(__spirv_SampledImage_3D SampledImage, float3 Coordinate, int ImageOperands, float4 dx, float4 dy)
+ushort4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Rushort4(__spirv_SampledImage_3D SampledImage, float3 Coordinate, int ImageOperands, float3 dx, float3 dy)
+{
+    return convert_ushort4(__spirv_ImageSampleExplicitLod_Ruint4(SampledImage, Coordinate, ImageOperands, dx, dy));
+}
+
+short4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Rshort4(__spirv_SampledImage_3D SampledImage, float3 Coordinate, int ImageOperands, float3 dx, float3 dy)
 {
     return convert_short4(__spirv_ImageSampleExplicitLod_Rint4(SampledImage, Coordinate, ImageOperands, dx, dy));
 }
 
-char4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Rchar4(__spirv_SampledImage_3D SampledImage, float3 Coordinate, int ImageOperands, float4 dx, float4 dy)
+uchar4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruchar4(__spirv_SampledImage_3D SampledImage, float3 Coordinate, int ImageOperands, float3 dx, float3 dy)
+{
+    return convert_uchar4(__spirv_ImageSampleExplicitLod_Ruint4(SampledImage, Coordinate, ImageOperands, dx, dy));
+}
+
+char4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Rchar4(__spirv_SampledImage_3D SampledImage, float3 Coordinate, int ImageOperands, float3 dx, float3 dy)
 {
     return convert_char4(__spirv_ImageSampleExplicitLod_Rint4(SampledImage, Coordinate, ImageOperands, dx, dy));
 }

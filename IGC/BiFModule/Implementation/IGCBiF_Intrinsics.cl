@@ -47,7 +47,7 @@ float4 __builtin_IB_OCL_1d_sample_d(int, int, float,  float, float);
 float4 __builtin_IB_OCL_1darr_sample_d(int, int, float2,  float, float);
 float4 __builtin_IB_OCL_2d_sample_d(int, int, float2, float2, float2);
 float4 __builtin_IB_OCL_2darr_sample_d(int, int, float4, float2, float2);
-float4 __builtin_IB_OCL_3d_sample_d(int, int, float3, float4, float4);
+float4 __builtin_IB_OCL_3d_sample_d(int, int, float3, float3, float3);
 
 // versions that return uint for read_imageui
 uint4 __builtin_IB_OCL_1d_sample_lui(int, int, float,  float);
@@ -60,7 +60,7 @@ uint4 __builtin_IB_OCL_1d_sample_dui(int, int, float,  float, float);
 uint4 __builtin_IB_OCL_1darr_sample_dui(int, int, float2,  float, float);
 uint4 __builtin_IB_OCL_2d_sample_dui(int, int, float2, float2, float2);
 uint4 __builtin_IB_OCL_2darr_sample_dui(int, int, float4, float2, float2);
-uint4 __builtin_IB_OCL_3d_sample_dui(int, int, float3, float4, float4);
+uint4 __builtin_IB_OCL_3d_sample_dui(int, int, float3, float3, float3);
 
 uint4 __builtin_IB_OCL_1d_ldui(int, int,  int);
 uint4 __builtin_IB_OCL_1darr_ldui(int, int2,  int);
