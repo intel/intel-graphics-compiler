@@ -2110,9 +2110,9 @@ bool MinMaxMatcher::emit() {
 
 // For a given instruction, find the insertion position which is the closest
 // to all the similar users to the specified reference user.
-static Instruction *
-findOptimalInsertionPos(Instruction *I, Instruction *Ref, DominatorTree *DT,
-                        std::function<bool(Instruction *)> IsSimilar) {
+static Instruction *findOptimalInsertionPos(
+    Instruction *I, Instruction *Ref, DominatorTree *DT,
+    std::function<bool(Instruction *, Instruction *)> IsDivisor) {
   IGC_ASSERT_MESSAGE(!isa<PHINode>(Ref), "PHINode is not expected!");
 
   // Shortcut case. If it's single-used, insert just before that user.
@@ -2122,7 +2122,7 @@ findOptimalInsertionPos(Instruction *I, Instruction *Ref, DominatorTree *DT,
   DenseMap<BasicBlock *, Instruction *> BBs;
   for (auto U : I->users()) {
     Instruction *User = dyn_cast<Instruction>(U);
-    if (!User || !IsSimilar(User))
+    if (!User || !IsDivisor(User, I))
       continue;
     BasicBlock *UseBB = User->getParent();
     DenseMap<BasicBlock *, Instruction *>::iterator MI;
@@ -2235,11 +2235,12 @@ void GenXPatternMatch::visitFDiv(BinaryOperator &I) {
   if (!Divisor)
     return;
 
-  auto IsSimilar = [](Instruction *User) {
-    return User->getOpcode() == Instruction::FDiv && User->hasAllowReciprocal();
+  auto IsDivisor = [](Instruction *I, Instruction *MaybeDivisor) {
+    return I->getOpcode() == Instruction::FDiv && I->hasAllowReciprocal() &&
+           I->getOperand(1) == MaybeDivisor;
   };
 
-  Instruction *Pos = findOptimalInsertionPos(Divisor, &I, DT, IsSimilar);
+  Instruction *Pos = findOptimalInsertionPos(Divisor, &I, DT, IsDivisor);
   IRB.SetInsertPoint(Pos);
 
   // (fdiv 1., (sqrt x)) -> (rsqrt x)
@@ -2265,7 +2266,7 @@ void GenXPatternMatch::visitFDiv(BinaryOperator &I) {
   for (auto UI = Divisor->user_begin(); UI != Divisor->user_end();) {
     auto *U = *UI++;
     Instruction *UserInst = dyn_cast<Instruction>(U);
-    if (!UserInst || UserInst == Rcp || !IsSimilar(UserInst))
+    if (!UserInst || UserInst == Rcp || !IsDivisor(UserInst, Divisor))
       continue;
     Op0 = UserInst->getOperand(0);
     Value *NewVal = Rcp;
