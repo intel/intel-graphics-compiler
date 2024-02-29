@@ -403,7 +403,7 @@ static Type* _struct_IGC__RayDispatchGlobalData__RayDispatchGlobalDataCommon(Mod
       IntegerType::get(M.getContext(), 32),
       IntegerType::get(M.getContext(), 32),
       IntegerType::get(M.getContext(), 64),
-      IntegerType::get(M.getContext(), 32),
+      _union_anon_13(M),
       IntegerType::get(M.getContext(), 32),
       IntegerType::get(M.getContext(), 32),
       IntegerType::get(M.getContext(), 32),
@@ -412,6 +412,28 @@ static Type* _struct_IGC__RayDispatchGlobalData__RayDispatchGlobalDataCommon(Mod
           IntegerType::get(M.getContext(), 32);
         return ArrayType::get(EltTy, 3);
       }(),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
+static Type* _union_anon_13(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "union.anon.13";
+    Type* Tys[] = {
+      _struct_anon_14(M),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
+static Type* _struct_anon_14(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "struct.anon.14";
+    Type* Tys[] = {
+      IntegerType::get(M.getContext(), 32),
       IntegerType::get(M.getContext(), 32),
     };
     return StructType::create(M.getContext(), Tys, StructName, false);

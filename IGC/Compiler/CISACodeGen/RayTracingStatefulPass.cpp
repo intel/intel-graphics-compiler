@@ -91,6 +91,7 @@ Value* getBaseSSHOffset(CodeGenContext* Ctx, RTBuilder& RTB) {
 
 }
 
+
 bool RaytracingStatefulPass::runOnFunction(Function& F)
 {
     CodeGenContext *Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
@@ -129,7 +130,13 @@ bool RaytracingStatefulPass::runOnFunction(Function& F)
             BaseOffset <<= Ctx->platform.getBSOLocInExtDescriptor();
 
         RTB.SetInsertPoint(I);
-        auto* BaseSSHOffset = getBaseSSHOffset(Ctx, RTB);
+
+        Value* BaseSSHOffset = nullptr;
+
+        {
+            BaseSSHOffset = getBaseSSHOffset(Ctx, RTB);
+        }
+
         auto* ResourceOffset =
             RTB.CreateAdd(BaseSSHOffset, RTB.getInt32(BaseOffset));
 

@@ -129,19 +129,30 @@ struct RayDispatchGlobalData
         uint64_t statelessScratchPtr;       // Stateless scratch buffer pointer
         uint64_t pCallableShaderBasePtr;    // base pointer of callable shader record array (8-bytes alignment)
         uint32_t pCallableShaderStride;     // stride of callable shader records (8-bytes alignment)
-        uint32_t paddingBits3;              // 32-bits of padding
+        uint32_t pNumDSSRTStacks;           // number of stacks per DSS
         uint64_t bindlessHeapBasePtr;       // base pointer of bindless heap
         uint64_t pHitGroupBasePtr;          // base pointer of hit group shader record array (16-bytes alignment)
         uint64_t pMissShaderBasePtr;        // base pointer of miss shader record array (8-bytes alignment)
         uint32_t pHitGroupStride;           // stride of hit group shader records (16-bytes alignment)
         uint32_t pMissShaderStride;         // stride of miss shader records (8-bytes alignment)
         uint64_t pRtMemBasePtr;             // base address of the allocated stack memory
-        uint32_t baseSSHOffset;             // (index/bindless offset) of first memory region for stateful indirect accesses
+
+        union
+        {
+            struct
+            {
+                uint32_t baseSSHOffset;             // (index/bindless offset) of first memory region for stateful indirect accesses
+                uint32_t paddingBits3;              // 32-bits of padding
+            };
+
+        };
+
+        uint32_t paddingBits4;
+
         uint32_t pStackSizePerRay;          // maximal stack size of a ray
         uint32_t swStackSizePerRay;         // size in bytes per ray of the SWStack
-        uint32_t pNumDSSRTStacks;           // number of stacks per DSS
         uint32_t dispatchRaysDimensions[3]; // dispatch dimensions of the thread grid
-        uint32_t paddingBits4;
+
 
         template<class TAPIAdaptor>
         void populate(const TAPIAdaptor& umd)
