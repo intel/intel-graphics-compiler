@@ -4421,7 +4421,7 @@ namespace IGC
             {
                 // R1 has the stack-ids for BTD. R1 is not needed to be
                 // reserved if not support WMTP with BTD.
-                SaveOption(vISA_ReserveR0, true);
+                SaveOption(vISA_enablePreemptionR0Only, true);
             }
             else
             {
@@ -4740,11 +4740,6 @@ namespace IGC
                 // compiler heuristics
                 SaveOption(vISA_AutoGRFSelection, true);
             }
-        }
-
-        if (m_program->m_Platform->forceSamplerHeader())
-        {
-            SaveOption(vISA_samplerHeaderWA, true);
         }
 
         if (IGC_IS_FLAG_ENABLED(EnableHashMovsAtPrologue))
