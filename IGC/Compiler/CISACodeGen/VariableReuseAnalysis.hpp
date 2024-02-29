@@ -31,38 +31,58 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 namespace IGC {
+    // SBaseVecDesc and SSubVecDesc together describe subvec to baseVec aliasing
+    // BaseVec is aka aliasee; subVec is aka aliaser.
+    struct SSubVecDesc;
+
+    struct SBaseVecDesc
+    {
+        // Minimum aligment required for BaseVector.
+        //   For example,
+        //     int2 a = ld p
+        //     int4 b = {a, x, y}
+        //   as 'a' is grf-aligned (ld return payload), 'b' should be aligned
+        //   at grf too in order to make 'a' the part of 'b'.
+        e_alignment Align;
+        llvm::Value* BaseVector;
+        // All BaseVector's aliasers (subVec)
+        llvm::SmallVector<SSubVecDesc*, 16> Aliasers;
+
+        SBaseVecDesc(llvm::Value* V, e_alignment A) : Align(A), BaseVector(V)
+        {}
+    };
 
     struct SSubVecDesc
     {
         // Denote a subvector of BaseVector starting at StartElementOffset.
         // StartElementOffset is in the unit of BaseVector's element type.
         //
-        // This can potentially denote subvector and basevector relationship
-        // among vector values of different element sizes. For now, subvector
-        // and basevector have the same element size (could be differnt types,
-        // such as int32_t and float, etc). Here is the example showing the
+        // Current implementation assumes that subvector and basevector have
+        // the same element size (could be differnt types, such as int32_t
+        // and float, etc). Here is the example showing the
         // relationship among them:
         //   Given the aliasing relation:
         //     Aliaser[0:n] -->  BaseVector[0:m]
         //   where (StartElementOffset + n) <= m. Then,
         //     Aliaser = BaseVector[StartElementOffset, StartElementOffset+n]
 
-        // Aliaser
-        //   It is a dessa node value; either scalar or subvector
+        // Aliaser and Aliasee
+        //   They are dessa node values.
         llvm::Value* Aliaser;
 
         // Aliasee:
-        llvm::Value* BaseVector;
+        //llvm::Value* BaseVector;
 
-        // Valid only if this entry is for BaseVector, ie, Aliaser == BaseVector
-        llvm::SmallVector<SSubVecDesc*, 16> Aliasers;
+        // Keep all aliasers of BaseVecotr. Valid for the root entry only,
+        // that is, Aliaser == BaseVector
+        //llvm::SmallVector<SSubVecDesc*, 16> Aliasers;
+        SBaseVecDesc* Aliasee;
 
-        // In the unit of BaseVector's element size
         short  StartElementOffset;  // in the unit of BaseVector's element type
         short  NumElts;             // the number of element of Aliaser
 
         SSubVecDesc(llvm::Value* V)
-            : Aliaser(V), BaseVector(V), StartElementOffset(0)
+            : Aliaser(V), Aliasee(nullptr), StartElementOffset(0)
         {
             IGCLLVM::FixedVectorType* VTy = llvm::dyn_cast<IGCLLVM::FixedVectorType>(V->getType());
             NumElts = VTy ? (short)VTy->getNumElements() : 1;
@@ -70,7 +90,7 @@ namespace IGC {
 
         // Temporary : tobedeleted
         SSubVecDesc()
-            : Aliaser(nullptr), BaseVector(nullptr),
+            : Aliaser(nullptr), Aliasee(nullptr),
             StartElementOffset(0), NumElts(0)
         {}
     };
@@ -84,55 +104,43 @@ namespace IGC {
         SVecElement() : Vec(nullptr), Elem(nullptr), EltIx(-1) {}
     };
 
-    // A temporary struct for capturing vector/sub-vector relation.
-    // For example:
-    //   extElt:
-    //     s0 = extElt From, 4
-    //     s1 = extElt From, 5
-    //     ...
-    //
-    //   cast:
-    //     s0 = castinst s0
-    //     s1 = castinst s1
-    //     ...
-    //
-    //   insELt:
-    //     V0 = insElt Undef,  s0, 0
-    //     V1 = insElt V0,     s1, 1
-    //     ......
-    //     Vn = insElt Vn-1,   sn, n
-    //
-    // where s0-s1 are typically from extElt, but not necessary.
-    // And they can from different vectors. Sometimes, castInst
-    // are present between ins and ext. Here, two cases are
-    // considered:
+    // A struct for capturing one element aliasing b/w sub-vector/vector
+    // Two cases are considered:
     //
     //   case 1: Insert to (x0 and x1 are inserted to y)
     //     case 1.1
     //        int4 x0, x1;
-    //        int8 y = (x0, x1)
+    //        int8 y = (x0, x1);
     //
     //     case 1.2
-    //        int4 y = (s0, s1, s2, s3)
+    //        int4 y = (s0, s1, s2, s3);
     //
     //   case 2: Extract from (y is extracted from x)
-    //       int8 x
-    //       int4 y = x.s0123 (use half of x)
+    //       int8 x;
+    //       int4 y0 = x.s0123 (first half of x)
+    //       int4 y1 = x.4567 (second half of x)
     //
+    // Corresponding LLVM IRs are some extElt instructions followed by insElt.
+    // For example, y0 in case 2 would be:
+    //   s0 = extElt BVec, 0
+    //   s1 = extElt BVec, 1
+    //   s2 = extElt BVec, 2
+    //   s3 = extElt BVec, 3
     //
-    // A vector is used to keep this info. Each element of the
-    // vector corresponds to a single IEI. So, for vector size
-    // of N, there are N elements. The vector is defined as the
-    // following inside the class:
-    //    SmallVector<SVecInsExtInfo, 16> VecInsEltInfoTy
+    //   v0 = insElt undef, s0
+    //   v1 = insElt v0,    s1
+    //   v2 = insElt V1,    s2
+    //   v3 = insElt V2,    s3
+    //
+    // Sometimes, type cast instrutions might be present for s0, s1, s2,and s3
+    // before doing insElt.
     //
     struct SVecInsEltInfo {
         llvm::InsertElementInst* IEI;
         llvm::Value* Elt;
 
-        // If Elt is null, EEI must not be null, which
-        // indicates that (FromVec, FromVec_eltIx) is
-        // used as scalar operands in this IEI.
+        // If Elt is null, EEI must not be null. EEI is used as scalar operand
+        // in IEI and is the same as (FromVec, FromVec_eltIx).
         llvm::ExtractElementInst* EEI;
         llvm::Value* FromVec;
         int          FromVec_eltIx;
@@ -174,13 +182,9 @@ namespace IGC {
 
         typedef llvm::SmallVector<SVecInsEltInfo, 32> VecInsEltInfoTy;
         typedef std::map<llvm::Value*, SSubVecDesc*> AliasMapTy;  // ordered map
+        typedef std::map<llvm::Value*, SBaseVecDesc*> BaseVecMapTy;
         typedef llvm::SmallVector<llvm::Value*, 32> ValueVectorTy;
         typedef llvm::DenseMap<llvm::Value*, llvm::Value*> Val2ValMapTy;
-
-        // following to be deleted
-        typedef llvm::DenseMap<llvm::Value*, SSubVecDesc> ValueAliasMapTy;
-        typedef llvm::DenseMap<llvm::Value*, llvm::TinyPtrVector<llvm::Value*> > AliasRootMapTy;
-        typedef llvm::SmallVector<SVecElement, 32> VecEltTy;
 
         virtual bool runOnFunction(llvm::Function& F) override;
 
@@ -269,35 +273,36 @@ namespace IGC {
 
         //
         // m_aliasMap:
-        //      For mapping aliaser to aliasee:
-        //         aliaser -> aliasee
-        // where aliasee is a vector value and aliaser could be a scalar or
-        // a vector values.
+        //      For mapping aliaser to aliasee: aliaser -> aliasee
+        // where aliasee is a vector and aliaser could be a scalar or a vector.
         //
         // Properties of the map:
-        //   1. No chain aliases
-        //       No following:
+        //   1. alias root value.
+        //      A root value is denoted by a map entry from a value to itself.
+        //           Vec0 -> Vec0
+        //      Root value is always an aliasee, meaning the map has other
+        //      entry like:
+        //           Vec1 -> Vec0
+        //   2. Any non-root value in this map is either an aliaser or
+        //      an aliasee, but not both. For example,
+        //       cannot have this:
         //           Vec0 -> Vec1
         //           v0 -> Vec0
         //       Instead, they are represented as follows:
         //           Vec0 -> Vec1
         //           v0   -> Vec1
-        //   2. Aliasee is an aliaser to itself (for convenience)
-        //           Vec0 -> Vec0
-        //       When this entry is seen, we know Vec0 is an aliasee,
-        //       also called a alias root value.
         //   3. Liveness of aliaser and aliasee are not combined
         //      Unlike dessa alias, in which aliser's liveness is merged
         //      into aliasee's. Here, aliaser's liveness is nerver merged
         //      into aliasee's.
         //
-        //  Note:
-        //     notation:
-        //         aliasCC(v) : all values that share the same alias root as v.
-        //         dessaCC(v) : all values in the same dessa congruent class as v.
-        //         subAlias(v, startIx, nelts) :
-        //                      all v in aliasCC(v) whose elements overlap
-        //                      v's baseVector[startIx : startIx+nelts-1].
+        //  Notation:
+        //    aliasCC(v) : all values that have the same alias root as v,
+        //                 including alias root.
+        //    dessaCC(v) : all values in the same dessa congruent class as v.
+        //    subAlias(v, startIx, nelts) :
+        //                 all v in aliasCC(v) that overlap v's elements in
+        //                 range baseVector[startIx : startIx+nelts-1].
         //  For example,  V is of int4, s0, s1, s2, s3 are scalars that are aliased
         //  to V's element at 0, 1, 2, and 2, respectively.
         //                         s0 --> v[0]
@@ -305,13 +310,15 @@ namespace IGC {
         //                         s2 --> v[2]
         //                         s3 --> v[3]
         //   aliasCC(s0) = aliasCC(s1) = aliasCC(s2) = aliasCC(s3) = aliasCC(v)
-        //               = {v, s0, s1, s2, s3, s4}
+        //               = {v, s0, s1, s2, s3}
         //   subAlias(v, 2, 2) = {s2, s3, v}  // only s2&s3 overlaps V[2:3]
         //   dessaCC(s0) = { values in the same dessa CC }
         //
         //   [todo] add Algo here.
         //
         AliasMapTy  m_aliasMap;
+        BaseVecMapTy m_baseVecMap;
+
 
         // Function argument cannot be made a sub-part of another bigger
         // value as it has been assigned a fixed physical GRF. The following
@@ -332,9 +339,10 @@ namespace IGC {
             return false;
         }
 
-        // Add an entry V->itself if not existing yet.
-        void addVecAlias(llvm::Value* Aliaser, llvm::Value* Aliasee, int Idx);
+        void addVecAlias(llvm::Value* Aliaser, llvm::Value* Aliasee, int Idx,
+            e_alignment AliaseeAlign = EALIGN_AUTO);
         SSubVecDesc* getOrCreateSubVecDesc(llvm::Value* V);
+        SBaseVecDesc* getOrCreateBaseVecDesc(llvm::Value* V, e_alignment A);
         void getAllAliasVals(
             ValueVectorTy& AliasVals,
             llvm::Value* Aliaser,
@@ -359,6 +367,7 @@ namespace IGC {
             m_IsFunctionPressureLow = Status::Undef;
             m_IsBlockPressureLow = Status::Undef;
             m_aliasMap.clear();
+            m_baseVecMap.clear();
             m_root2AliasMap.clear();
             m_HasBecomeNoopInsts.clear();
             m_LifetimeAt1stDefOfBB.clear();
@@ -420,8 +429,8 @@ namespace IGC {
 
         // DCC: DeSSA congruent class
         // If any of V's DCC is an aliaser, return true.
-        bool hasAnyOfDCCAsAliaser(llvm::Value* V) const;
-        bool hasAnotherInDCCAsAliasee(llvm::Value* V) const;
+        bool hasAnyDCCAsAliaser(llvm::Value* V) const;
+        bool hasAnotherDCCAsAliasee(llvm::Value* V) const;
         bool isAliased(llvm::Value* V) const;
 
         // Returns true for the following pattern:
@@ -433,6 +442,10 @@ namespace IGC {
             int& IEI_ix,
             llvm::Value*& EEI_Vec,
             int& EEI_ix);
+        bool isCandidateUse(llvm::Value* V) const;
+        bool isCandidateDef(llvm::Value* V) const;
+        bool checkSubAlign(e_alignment& BaseAlign,
+            llvm::Value* Subvec_nd, llvm::Value* Basevec_nd, int Base_ix);
 
 
         CodeGenContext* m_pCtx;
@@ -473,11 +486,10 @@ namespace IGC {
         // aggressively without checking each individual def-use pair.
         Status m_IsBlockPressureLow;
 
-        // Temporaries under VATemp
-        // if a value V is in a dessa CC and V is aliased,
-        // add <V's root, V> into the map.  This is a quick
-        // way to check if any of values in a dessa CC has
-        // been aliased (either aliaser or aliasee)
+        // For vector alising on non-isolated values (under VATemp >= 2). If
+        // a value V is in a dessa CC (not isolated) and V is aliased, add
+        // <V's root, V> into the map.  This is a quick check to see if any
+        // value in a dessa CC has been aliased (either aliaser or aliasee)
         Val2ValMapTy m_root2AliasMap;
     };
 

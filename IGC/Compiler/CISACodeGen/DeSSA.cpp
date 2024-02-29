@@ -1621,11 +1621,33 @@ bool DeSSA::isAliasee(Value* V) const
     return AI->first == AI->second;
 }
 
-// If V is neither InsElt'ed, nor phi-coalesced, it is said to be
-// single valued. In another word, if it is aliased only, it will
-// have a single value during V's lifetime.
+// Single-valued:
+//   If a variable takes one and only one value during its entire life time,
+//   it is called single-valued. If a variable is of vector or struct, single
+//   valued means that all its component (vector elements or struct members)
+//   are all singled-valued.
+//
+// This concept is useful when setting up aliasing.  For example,
+//   a = bitcast b to i32
+// If both a and b are singled valued, a will be set to alias b without
+// doing futher checking. However, if either isn't single valued, checking
+// if a can be aliased to b needs to interfere checking. For example
+//   dessa CC : [b, c]  // b and c are coalesced into a single variable.
+//
+//      b = 1
+//      a = bitcast b to i32
+//      ...
+//      c = 2
+//      ...
+//   L:   = a
+//        = b
+//
+//  In this case, if a is aliased to b, a would get 2 at L, but the correct
+//  value should be 1. In order to find out if a can be aliased to b, it
+//  requires to do interference checking with c.
 bool DeSSA::isSingleValued(llvm::Value* V) const
 {
+    // InsEltMap and non-isolated : not single-valued
     Value* aliasee = getAliasee(V);
     Value* insEltRootV = getInsEltRoot(aliasee);
     if (InsEltMap.count(aliasee) || !isIsolated(insEltRootV)) {

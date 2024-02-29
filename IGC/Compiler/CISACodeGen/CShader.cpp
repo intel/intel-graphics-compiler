@@ -490,23 +490,34 @@ void CShader::CreateAliasVars()
     // Create CVariables for vector aliasing (This is more
     // efficient than doing it on-fly inside getSymbol()).
     if (GetContext()->getVectorCoalescingControl() > 0 &&
-        !m_VRA->m_aliasMap.empty())
+        !m_VRA->m_baseVecMap.empty())
     {
         // For each vector alias root, generate cvariable
         // for it and all its component sub-vector
-        for (auto& II : m_VRA->m_aliasMap)
+        for (auto& II : m_VRA->m_baseVecMap)
         {
-            SSubVecDesc* SV = II.second;
-            Value* rootVal = SV->BaseVector;
-            if (SV->Aliaser != rootVal)
-                continue;
+            SBaseVecDesc* BV = II.second;
+            Value* rootVal = BV->BaseVector;
+            if (BV->Align != EALIGN_AUTO) {
+                // may need to set align on root cvar
+                Value* rV = rootVal;
+                if (m_deSSA) {
+                    Value* dessaRoot = m_deSSA->getRootValue(rootVal);
+                    if (dessaRoot && dessaRoot != rootVal)
+                        rV = dessaRoot;
+                }
+                CVariable* rVar = GetSymbol(rV);
+                if (rVar->GetAlign() == EALIGN_AUTO ||
+                    rVar->GetAlign() < BV->Align)
+                    rVar->SetAlign(BV->Align);
+            }
             CVariable* rootCVar = GetSymbol(rootVal);
 
             // Generate all vector aliasers and their
             // dessa root if any.
-            for (int i = 0, sz = (int)SV->Aliasers.size(); i < sz; ++i)
+            for (int i = 0, sz = (int)BV->Aliasers.size(); i < sz; ++i)
             {
-                SSubVecDesc* aSV = SV->Aliasers[i];
+                SSubVecDesc* aSV = BV->Aliasers[i];
                 Value* V = aSV->Aliaser;
                 // Create alias cvariable for Aliaser and its dessa root if any
                 Value* Vals[2] = { V, nullptr };
