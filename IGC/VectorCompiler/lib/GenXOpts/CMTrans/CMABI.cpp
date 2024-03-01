@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -383,6 +383,38 @@ bool CMABI::runOnSCC(CallGraphSCC &SCC) {
     }
     Changed |= LocalChange;
   } while (LocalChange);
+
+  // Create a local copies for leftover byval arguments
+  for (auto i = SCC.begin(), e = SCC.end(); i != e; ++i) {
+    Function *F = (*i)->getFunction();
+    if (!F || F->empty())
+      continue;
+    for (auto &Arg : F->args()) {
+      auto *ArgTy = Arg.getType();
+      if (!Arg.hasAttribute(Attribute::ByVal) || !ArgTy->isPointerTy())
+        continue;
+      auto *M = F->getParent();
+      auto *InsertBefore = F->getEntryBlock().getFirstNonPHI();
+      auto *PtrTy = cast<PointerType>(ArgTy);
+      auto *Ty = IGCLLVM::getNonOpaquePtrEltTy(PtrTy);
+      auto *Int64Ty = Type::getInt64Ty(M->getContext());
+      auto *Int8Ty = Type::getInt8Ty(M->getContext());
+      auto *Int1Ty = Type::getInt1Ty(M->getContext());
+      auto *Alloca = new AllocaInst(Ty, vc::AddrSpace::Private,
+                                    Arg.getName() + ".byval", InsertBefore);
+      Arg.replaceAllUsesWith(Alloca);
+      auto *DstTy = PointerType::get(Int8Ty, vc::AddrSpace::Private);
+      auto *SrcTy = PointerType::get(Int8Ty, PtrTy->getPointerAddressSpace());
+      auto *Decl = Intrinsic::getDeclaration(M, Intrinsic::memcpy,
+                                             {DstTy, SrcTy, Int64Ty});
+      auto *Dst = new BitCastInst(Alloca, DstTy, "", InsertBefore);
+      auto *Src = new BitCastInst(&Arg, SrcTy, "", InsertBefore);
+      auto *Size = ConstantInt::get(
+          Int64Ty, vc::getTypeSize(Ty, &M->getDataLayout()).inBytes());
+      auto *IsVolatile = ConstantInt::get(Int1Ty, 0);
+      CallInst::Create(Decl, {Dst, Src, Size, IsVolatile}, "", InsertBefore);
+    }
+  }
 
   return Changed;
 }

@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -61,11 +61,16 @@ define internal spir_func void @store_float_internal_byval(%struct4* byval(%stru
   %f = extractvalue %struct4 %s, 0
   store float %f, float* %f_ptr
   ret void
+; SMALL-OFF-NEXT: %[[COPY_STR:[^ ]+]] = alloca %struct4, align 8
+; SMALL-OFF-NEXT: %[[MEMCPY_DST:[^ ]+]] = bitcast %struct4* %[[COPY_STR]] to i8*
+; SMALL-OFF-NEXT: %[[MEMCPY_SRC:[^ ]+]] = bitcast %struct4* %s_ptr to i8*
+; SMALL-OFF-NEXT: call void @llvm.memcpy.p0i8.p0i8.i64(i8* %[[MEMCPY_DST]], i8* %[[MEMCPY_SRC]], i64 4, i1 false)
 ; SMALL-ON-NEXT: %s_ptr = alloca %struct4
 ; SMALL-ON-NEXT: store %struct4 %[[INPUT_STR]], %struct4* %s_ptr
 ; COMMON-NEXT: %f_ptr = alloca float
 ; COMMON-NEXT: store float %[[INPUT_FLOAT]], float* %f_ptr
-; COMMON-NEXT: %s = load %struct4, %struct4* %s_ptr
+; SMALL-OFF-NEXT: %s = load %struct4, %struct4* %[[COPY_STR]]
+; SMALL-ON-NEXT: %s = load %struct4, %struct4* %s_ptr
 ; COMMON-NEXT: %f = extractvalue %struct4 %s, 0
 ; COMMON-NEXT: store float %f, float* %f_ptr
 ; COMMON-NEXT: %[[FLOAT_VAL:[^ ]+]] = load float, float* %f_ptr
@@ -81,7 +86,11 @@ define spir_func void @store_float(%struct4* byval(%struct4) %s_ptr, float* %f_p
   %f = extractvalue %struct4 %s, 0
   store float %f, float* %f_ptr
   ret void
-; COMMON-NEXT: %s = load %struct4, %struct4* %s_ptr
+; COMMON-NEXT: %[[COPY_STR:[^ ]+]] = alloca %struct4, align 8
+; COMMON-NEXT: %[[MEMCPY_DST:[^ ]+]] = bitcast %struct4* %[[COPY_STR]] to i8*
+; COMMON-NEXT: %[[MEMCPY_SRC:[^ ]+]] = bitcast %struct4* %s_ptr to i8*
+; COMMON-NEXT: call void @llvm.memcpy.p0i8.p0i8.i64(i8* %[[MEMCPY_DST]], i8* %[[MEMCPY_SRC]], i64 4, i1 false)
+; COMMON-NEXT: %s = load %struct4, %struct4* %[[COPY_STR]]
 ; COMMON-NEXT: %f = extractvalue %struct4 %s, 0
 ; COMMON-NEXT: store float %f, float* %f_ptr
 ; COMMON-NEXT: ret void
@@ -164,9 +173,13 @@ define spir_func void @store_sum(%struct24* byval(%struct24) %s_ptr) #0 {
   %sum = fadd <2 x float> %fv1, %fv2
   store <2 x float> %sum, <2 x float>* %fv_ptr
   ret void
-; COMMON-NEXT: %ptr1 = getelementptr %struct24, %struct24* %s_ptr, i32 0, i32 0
-; COMMON-NEXT: %ptr2 = getelementptr %struct24, %struct24* %s_ptr, i32 0, i32 1
-; COMMON-NEXT: %ptr3 = getelementptr %struct24, %struct24* %s_ptr, i32 0, i32 2
+; COMMON-NEXT: %[[COPY_STR:[^ ]+]] = alloca %struct24, align 8
+; COMMON-NEXT: %[[MEMCPY_DST:[^ ]+]] = bitcast %struct24* %[[COPY_STR]] to i8*
+; COMMON-NEXT: %[[MEMCPY_SRC:[^ ]+]] = bitcast %struct24* %s_ptr to i8*
+; COMMON-NEXT: call void @llvm.memcpy.p0i8.p0i8.i64(i8* %[[MEMCPY_DST]], i8* %[[MEMCPY_SRC]], i64 24, i1 false)
+; COMMON-NEXT: %ptr1 = getelementptr %struct24, %struct24* %[[COPY_STR]], i32 0, i32 0
+; COMMON-NEXT: %ptr2 = getelementptr %struct24, %struct24* %[[COPY_STR]], i32 0, i32 1
+; COMMON-NEXT: %ptr3 = getelementptr %struct24, %struct24* %[[COPY_STR]], i32 0, i32 2
 ; COMMON-NEXT: %fv1 = load <2 x float>, <2 x float>* %ptr1
 ; COMMON-NEXT: %fv2 = load <2 x float>, <2 x float>* %ptr2
 ; COMMON-NEXT: %fv_ptr = load <2 x float>*, <2 x float>** %ptr3
