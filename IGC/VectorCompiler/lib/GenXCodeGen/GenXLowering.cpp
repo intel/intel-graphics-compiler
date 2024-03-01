@@ -252,6 +252,7 @@ private:
   bool lowerDebugTrap(CallInst *CI);
   bool lowerFMulAdd(CallInst *CI);
   bool lowerAddcSubb(CallInst *CI, unsigned IntrinsicID);
+  bool lower64Bitreverse(CallInst *CI);
   bool lowerBitreverse(CallInst *CI);
   bool lowerFunnelShift(CallInst *CI, unsigned IntrinsicID);
   bool lowerMathIntrinsic(CallInst *CI, GenXIntrinsic::ID GenXID,
@@ -4218,6 +4219,31 @@ bool GenXLowering::lowerLzd(Instruction *Inst) {
   return true;
 }
 
+bool GenXLowering::lower64Bitreverse(CallInst *CI) {
+  // %1 = call i64 @llvm.bitreverse.i64(i64 %in)
+  //  to
+  // %1 = call i64 @llvm.bitreverse.i64(i64 %in)
+  // {inH, inL} = rdregion.32 in
+  // inRH = bitreverse.32 inH
+  // inRL = bitreverse.32 inL
+  // res = wrregion.64 {inRL, inRH}
+
+  auto *InType = CI->getType();
+  IRBuilder<> IRB{CI};
+  auto Split = IVSplitter(*CI).splitValueLoHi(*CI->getOperand(0));
+  auto *ResTy = Split.Lo->getType();
+  Value *LoReverse =
+      IRB.CreateIntrinsic(Intrinsic::bitreverse, {ResTy}, {Split.Lo});
+  Value *HiReverse =
+      IRB.CreateIntrinsic(Intrinsic::bitreverse, {ResTy}, {Split.Hi});
+  Value *Result = IVSplitter(*CI).combineLoHiSplit(
+      {LoReverse, HiReverse}, CI->getName() + ".", InType->isIntegerTy());
+
+  CI->replaceAllUsesWith(Result);
+  ToErase.push_back(CI);
+  return true;
+}
+
 // %1 = call i8 @llvm.bitreverse.i8(i8 %in)
 // to
 // %1.zext = zext i8 %in to i32
@@ -4244,11 +4270,7 @@ bool GenXLowering::lowerBitreverse(CallInst *CI) {
   auto OriginalElementBitSize = OriginalType->getScalarSizeInBits();
   int ShiftSize = 32 - OriginalElementBitSize;
   if (ShiftSize < 0) {
-    DiagnosticInfoLowering Err(CI,
-                               "currently llvm.bitreverse with bitsize bigger "
-                               "than 32 is not supported",
-                               DS_Error);
-    CI->getContext().diagnose(Err);
+    return lower64Bitreverse(CI);
   }
   Value *ShiftSizeVal = ConstantInt::get(BfrevType, ShiftSize);
   IRBuilder<> Builder(CI);
