@@ -289,3 +289,33 @@ entry:
   store bfloat %sitofp, bfloat addrspace(1)* %out, align 4
   ret void
 }
+
+; BITCAST
+
+; CHECK-VISA: .kernel "test_bfloat_bitcast_i16"
+; CHECK-VISA-DAG: add (M1_NM, 1) [[RESVAR:.*]](0,0)<1> [[CASTEDSRC:.*]](0,0)<0;1,0> 0x1:w
+; CHECK-VISA-DAG: .decl [[RESVAR]] v_type=G type=w num_elts=1
+; CHECK-VISA-DAG: .decl [[CASTEDSRC]] v_type=G type=w num_elts=1 {{.*}} alias=<[[BFLOATVAR:.*]], 0>
+; CHECK-VISA-DAG: .decl [[BFLOATVAR]] v_type=G type=bf num_elts=1
+define spir_kernel void @test_bfloat_bitcast_i16(bfloat %b1, bfloat addrspace(1)* %out) {
+entry:
+  %word = bitcast bfloat %b1 to i16
+  %add = add i16 %word, 1
+  %res = bitcast i16 %add to bfloat
+  store bfloat %res, bfloat addrspace(1)* %out, align 4
+  ret void
+}
+
+; CHECK-VISA: .kernel "test_bfloat_bitcast_half"
+; CHECK-VISA-DAG: add (M1_NM, 1) [[RESVAR:.*]](0,0)<1> [[CASTEDSRC:.*]](0,0)<0;1,0> 0x3c00:hf
+; CHECK-VISA-DAG: .decl [[RESVAR]] v_type=G type=hf num_elts=1
+; CHECK-VISA-DAG: .decl [[CASTEDSRC]] v_type=G type=hf num_elts=1 {{.*}} alias=<[[BFLOATVAR:.*]], 0>
+; CHECK-VISA-DAG: .decl [[BFLOATVAR]] v_type=G type=bf num_elts=1
+define spir_kernel void @test_bfloat_bitcast_half(bfloat %b1, bfloat addrspace(1)* %out) {
+entry:
+  %half = bitcast bfloat %b1 to half
+  %add = fadd half %half, 1.0
+  %res = bitcast half %add to bfloat
+  store bfloat %res, bfloat addrspace(1)* %out, align 4
+  ret void
+}

@@ -2425,6 +2425,9 @@ void EmitPass::EmitSimpleAlu(EOPCODE opCode, CVariable* dst, CVariable* src0, CV
     case llvm_ieee_divide:
         m_encoder->IEEEDivide(dst, src0, src1);
         break;
+    case llvm_inv:
+        m_encoder->Inv(dst, src0);
+        break;
     default:
         //need support
         IGC_ASSERT(0);

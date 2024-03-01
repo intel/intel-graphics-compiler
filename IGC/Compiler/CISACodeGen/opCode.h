@@ -85,6 +85,7 @@ DECLARE_OPCODE(floor, Intrinsic, llvm_floor, true, true, true, true, true, false
 DECLARE_OPCODE(ceil, Intrinsic, llvm_ceil, true, true, true, true, true, false, false)
 DECLARE_OPCODE(trunc, Intrinsic, llvm_round_z, true, true, true, true, true, false, false)
 DECLARE_OPCODE(ctlz, Intrinsic, llvm_ctlz, false, false, true, false, true, false, false)
+DECLARE_OPCODE(GenISA_inv, GenISAIntrinsic, llvm_inv, false, false, false, false, true, false, false)
 DECLARE_OPCODE(GenISA_ROUNDNE, GenISAIntrinsic, llvm_roundne, true, true, true, true, true, false, false)
 DECLARE_OPCODE(GenISA_frc, GenISAIntrinsic, llvm_frc, true, false, true, true, false, false, false)
 DECLARE_OPCODE(InsertElement, Instruction, llvm_insert, true, false, false, false, false, false, false)

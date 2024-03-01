@@ -89,6 +89,7 @@ static bool ExistUndefinedReferencesInModule(Module& module, CodeGenContext *CGC
         {
             StringRef funcName = F.getName();
             if (!funcName.startswith("__builtin_IB") && funcName != "printf" &&
+                !funcName.startswith("__builtin_bf16") &&
                 !funcName.startswith("__igcbuiltin_") &&
                 !funcName.startswith("__translate_sampler_initializer") &&
 #if defined(IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR)

@@ -102,6 +102,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/SPIRMetaDataTranslation.h"
 #include "Compiler/Optimizer/OpenCLPasses/ErrorCheckPass/ErrorCheckPass.h"
 #include "Compiler/Optimizer/OpenCLPasses/PoisonFP64KernelsPass/PoisonFP64KernelsPass.h"
+#include "Compiler/Optimizer/OpenCLPasses/BfloatFuncs/BfloatFuncsResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/DpasFuncs/DpasFuncsResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/LSCFuncs/LSCFuncsResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/NamedBarriers/NamedBarriersResolution.hpp"
@@ -553,6 +554,7 @@ static void CommonOCLBasedPasses(
     mpm.add(new ResolveOCLAtomics());
     mpm.add(new ResourceAllocator());
     mpm.add(new SubGroupFuncsResolution());
+    mpm.add(new BfloatFuncsResolution());
     mpm.add(createDpasFuncsResolutionPass());
     mpm.add(createLSCFuncsResolutionPass());
 

@@ -1264,6 +1264,7 @@ namespace IGC
             case GenISAIntrinsic::GenISA_IEEE_Sqrt:
             case GenISAIntrinsic::GenISA_IEEE_Divide:
             case GenISAIntrinsic::GenISA_rsq:
+            case GenISAIntrinsic::GenISA_inv:
                 match = MatchModifier(I);
                 break;
             case GenISAIntrinsic::GenISA_intatomicraw:

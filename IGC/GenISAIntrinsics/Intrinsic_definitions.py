@@ -3337,5 +3337,10 @@ Imported_Intrinsics = \
 "GenISA_bitcasttostruct": ["bitcast from a int (or int vector) to a struct, GRF layout related",
     [("anystruct",                      "result"),
     [("anyint",                         "input")],
+    "NoMem"]],
+####################################################################################################
+"GenISA_inv":["Inv math function",
+    [("anyfloat",                         "result"),
+    [(0,                                  "src0")],
     "NoMem"]]
 }

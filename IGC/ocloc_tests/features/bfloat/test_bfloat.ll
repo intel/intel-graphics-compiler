@@ -149,3 +149,36 @@ entry:
   ret void
 }
 
+; CHECK-VISA: .kernel "test_bfloat_select"
+; CHECK-VISA-DAG: {{.*}} sel (M1_NM, 1) [[RES:.*]](0,0)<1> [[BFLOAT1:.*]](0,0)<0;1,0> [[BFLOAT2:.*]](0,0)<0;1,0>
+; CHECK-VISA-DAG: .decl [[RES]] {{.*}} type=bf
+; CHECK-VISA-DAG: .decl [[BFLOAT1]] {{.*}} type=bf
+; CHECK-VISA-DAG: .decl [[BFLOAT2]] {{.*}} type=bf
+define spir_kernel void @test_bfloat_select(bfloat %b1, bfloat %b2, i1 %cond, bfloat addrspace(1)* %out) {
+entry:
+  %res = select i1 %cond, bfloat %b1, bfloat %b2
+  store bfloat %res, bfloat addrspace(1)* %out, align 4
+  ret void
+}
+
+;
+define spir_kernel void @test(bfloat %b1, bfloat %b2, bfloat %b3, bfloat %b4, bfloat addrspace(1)* %out, half %h1, half %h2, half addrspace(1)* %hout) {
+entry:
+  %add = fadd bfloat %b1, %b2
+  store bfloat %add, bfloat addrspace(1)* %out, align 2
+  %mulptr1 = ptrtoint bfloat addrspace(1)* %out to i32
+  %mulptr2 = add i32 %mulptr1, 4
+  %outmul = inttoptr i32 %mulptr2 to bfloat addrspace(1)*
+  %mul = fmul bfloat %b1, %b2
+  store bfloat %mul, bfloat addrspace(1)* %outmul, align 2
+;  %sub = fsub bfloat %b3, %b2
+;  %mul = fmul bfloat %add, %sub
+;  %div = fdiv bfloat %mul, %b4
+;  %rem = frem bfloat %div, %b3
+;  %neg = fneg bfloat %rem
+;  %addimm = fadd bfloat %neg, 1.0
+;  ;%div = frem half %h1, %h2
+;  store bfloat %addimm, bfloat addrspace(1)* %out, align 2
+;  ;store half %div, half addrspace(1)* %hout, align 2
+  ret void
+}
