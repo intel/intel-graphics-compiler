@@ -2380,11 +2380,22 @@ int16 __attribute__((overloadable)) intel_convert_f32_to_bf16_packed(float16 a, 
 
 #ifdef cl_intel_subgroup_matrix_multiply_accumulate_tf32
 
-// A: half of tfloat32 B: tfloat32 ACC: float DST: float
-float  __attribute__((overloadable)) intel_sub_group_tf32_tf32_matrix_mad_k8_f32(short  a, int8 b, float  acc);
-float2 __attribute__((overloadable)) intel_sub_group_tf32_tf32_matrix_mad_k8_f32(short2 a, int8 b, float2 acc);
-float4 __attribute__((overloadable)) intel_sub_group_tf32_tf32_matrix_mad_k8_f32(short4 a, int8 b, float4 acc);
-float8 __attribute__((overloadable)) intel_sub_group_tf32_tf32_matrix_mad_k8_f32(short8 a, int8 b, float8 acc);
+// A: tf32, even rows in lower 8 SIMD channels, odd rows in upper 8 SIMD channels
+// B: tf32
+// ACC: float
+// DST: float
+
+// M = 1, K = 8, N = 16, upper 8 channels of a ignored
+float  __attribute__((overloadable)) intel_sub_group_tf32_tf32_matrix_mad_k8_f32(float  a, float8 b, float  acc);
+
+// M = 2, K = 8, N = 16, all channels of a are used
+float2 __attribute__((overloadable)) intel_sub_group_tf32_tf32_matrix_mad_k8_f32(float  a, float8 b, float2 acc);
+
+// M = 4, K = 8, N = 16
+float4 __attribute__((overloadable)) intel_sub_group_tf32_tf32_matrix_mad_k8_f32(float2 a, float8 b, float4 acc);
+
+// M = 8, K = 8, N = 16
+float8 __attribute__((overloadable)) intel_sub_group_tf32_tf32_matrix_mad_k8_f32(float4 a, float8 b, float8 acc);
 
 // Conversions
 int   __attribute__((overloadable)) intel_convert_f32_to_tf32(float source);

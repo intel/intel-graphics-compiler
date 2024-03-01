@@ -339,16 +339,16 @@ half8   __builtin_IB_sub_group16_fdpas_hf_hf_hf_hf_8_8 (half8  acc,  short8  a, 
 
 
 // tf32, rcount = 1, simd16
-float   __builtin_IB_sub_group16_fdpas_f_f_tf32_tf32_8_1  (float  acc, short  a, int8 b) __attribute__((const));
+float   __builtin_IB_sub_group16_fdpas_f_f_tf32_tf32_8_1  (float  acc, float  a, float8 b) __attribute__((const));
 
 // tf32, rcount = 2, simd16
-float2  __builtin_IB_sub_group16_fdpas_f_f_tf32_tf32_8_2  (float2 acc, short2 a, int8 b) __attribute__((const));
+float2  __builtin_IB_sub_group16_fdpas_f_f_tf32_tf32_8_2  (float2 acc, float  a, float8 b) __attribute__((const));
 
 // tf32, rcount = 4, simd16
-float4  __builtin_IB_sub_group16_fdpas_f_f_tf32_tf32_8_4  (float4 acc, short4 a, int8 b) __attribute__((const));
+float4  __builtin_IB_sub_group16_fdpas_f_f_tf32_tf32_8_4  (float4 acc, float2 a, float8 b) __attribute__((const));
 
 // tf32, rcount = 8, simd16
-float8  __builtin_IB_sub_group16_fdpas_f_f_tf32_tf32_8_8  (float8 acc, short8 a, int8 b) __attribute__((const));
+float8  __builtin_IB_sub_group16_fdpas_f_f_tf32_tf32_8_8  (float8 acc, float4 a, float8 b) __attribute__((const));
 
 
 //

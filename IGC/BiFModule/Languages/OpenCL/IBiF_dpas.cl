@@ -483,10 +483,10 @@ DEFN_INTEL_CVT2( f32_to_bf16_packed,  int16, float16, float16, 2fto2bf_16 )
 #ifdef cl_intel_subgroup_matrix_multiply_accumulate_tf32
 // PVC_B
 
-DEFN_INTEL_SG16_FDPAS( tf32_tf32_matrix_mad_k8_f32, float,   float,   short,   int8,  fdpas_f_f_tf32_tf32_8_1 )
-DEFN_INTEL_SG16_FDPAS( tf32_tf32_matrix_mad_k8_f32, float2,  float2,  short2,  int8,  fdpas_f_f_tf32_tf32_8_2 )
-DEFN_INTEL_SG16_FDPAS( tf32_tf32_matrix_mad_k8_f32, float4,  float4,  short4,  int8,  fdpas_f_f_tf32_tf32_8_4 )
-DEFN_INTEL_SG16_FDPAS( tf32_tf32_matrix_mad_k8_f32, float8,  float8,  short8,  int8,  fdpas_f_f_tf32_tf32_8_8 )
+DEFN_INTEL_SG16_FDPAS( tf32_tf32_matrix_mad_k8_f32, float,   float,   float,   float8,  fdpas_f_f_tf32_tf32_8_1 )
+DEFN_INTEL_SG16_FDPAS( tf32_tf32_matrix_mad_k8_f32, float2,  float2,  float,   float8,  fdpas_f_f_tf32_tf32_8_2 )
+DEFN_INTEL_SG16_FDPAS( tf32_tf32_matrix_mad_k8_f32, float4,  float4,  float2,  float8,  fdpas_f_f_tf32_tf32_8_4 )
+DEFN_INTEL_SG16_FDPAS( tf32_tf32_matrix_mad_k8_f32, float8,  float8,  float4,  float8,  fdpas_f_f_tf32_tf32_8_8 )
 
 DEFN_INTEL_CVT( f32_to_tf32,  int,   float,   ftotf32_1  )
 DEFN_INTEL_CVT( f32_to_tf32,  int2,  float2,  ftotf32_2  )

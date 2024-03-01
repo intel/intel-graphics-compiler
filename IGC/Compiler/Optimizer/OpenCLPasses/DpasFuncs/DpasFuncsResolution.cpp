@@ -421,8 +421,11 @@ void DpasFuncsResolution::visitCallInst(CallInst& CI)
             IGC_ASSERT_MESSAGE(ACC_nelts == RC, "ICE: dpas intrinsic has mismatched vector sizes of arguments!");
             IGC_ASSERT_MESSAGE(B_nelts == SD, "ICE: dpas intrinsic has mismatched vector sizes of arguments!");
             IGC_ASSERT_MESSAGE(precOk, "ICE: dpas's A and B have illegal type combination!");
-            IGC_ASSERT_MESSAGE(B_BaseTy->isIntegerTy(32), "ICE: dpas's arg B shall have base type int32!");
-            IGC_ASSERT_MESSAGE(RC == (IsDpasw ? 2 * A_nelts : A_nelts), "ICE: dpas's arg A has wrong element size!");
+            IGC_ASSERT_MESSAGE(B_BaseTy->isIntegerTy(32) || (PB == PrecisionType::TF32 && B_BaseTy->isFloatTy()),
+                "ICE: dpas's arg B shall have base type int32 or float!");
+            IGC_ASSERT_MESSAGE((RC == (IsDpasw ? 2 * A_nelts : A_nelts) ||
+                               (PA == PrecisionType::TF32 && (RC == 2 * A_nelts))),
+                               "ICE: dpas's arg A has wrong element size!");
 
             uint32_t AbitsPerDepth = 32;
             if (m_pCtx->platform.hasExecSize16DPAS())
@@ -430,7 +433,9 @@ void DpasFuncsResolution::visitCallInst(CallInst& CI)
                 AbitsPerDepth = AbitsPerDepth / 2;
             }
 
-            IGC_ASSERT_MESSAGE(A_BaseTy->isIntegerTy(AbitsPerDepth), "ICE: dpas intrinsic's A has wrong base type!");
+            IGC_ASSERT_MESSAGE(A_BaseTy->isIntegerTy(AbitsPerDepth) ||
+                              (PA == PrecisionType::TF32 && A_BaseTy->isFloatTy()),
+                              "ICE: dpas intrinsic's A has wrong base type!");
             if (PA == PrecisionType::TF32)
             {
                 if (!(DstTy == DSTACC_FLOAT && AccTy == DSTACC_FLOAT))
@@ -458,7 +463,15 @@ void DpasFuncsResolution::visitCallInst(CallInst& CI)
     Value* args[8];
     args[0] = CI.getArgOperand(0);
     args[1] = CI.getArgOperand(1);
-    args[2] = CI.getArgOperand(2);
+
+    Value* B = CI.getArgOperand(2);
+    Type* BTy = B->getType();
+    if (FixedVectorType *BVecTy = dyn_cast<FixedVectorType>(BTy); BVecTy && BTy->getScalarType()->isFloatTy()) {
+        B = CastInst::Create(Instruction::CastOps::BitCast, B,
+            FixedVectorType::get(intTy, (unsigned) BVecTy->getNumElements()),
+            B->getName() + ".cast", &CI);
+    }
+    args[2] = B;
 
     args[3] = ConstantInt::get(intTy, PA);
     args[4] = ConstantInt::get(intTy, PB);
