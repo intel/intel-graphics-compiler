@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: regkeys, dg2-supported
+; REQUIRES: regkeys
 
 ; RUN: igc_opt -platformdg2 -igc-emit-visa -simd-mode 32 %s -regkey DumpVISAASMToConsole | FileCheck %s
 
