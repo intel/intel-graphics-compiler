@@ -170,7 +170,7 @@ bool GEDRestrictionsHandler::ConvertEnumeratedValueToRawEncodedValue(NumType& va
     {
         if (NULL != enumTable[i])
         {
-            const NumType tabVal = *(((const NumType* const*)(enumTable))[i]);
+            const NumType tabVal = *(((const uint32_t* const*)(enumTable))[i]);
             if (tabVal == val)
             {
                 val = (NumType)i; // the actual value that needs to be encoded is the index

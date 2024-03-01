@@ -16,7 +16,7 @@ SPDX-License-Identifier: MIT
  * class GEDInterpreter static API functions
  *************************************************************************************************/
 
-uint32_t GEDInterpreter::InterpretPositionInternal(uint32_t value, /* GED_PSEUDO_FIELD */ const uint32_t interpId,
+uint64_t GEDInterpreter::InterpretPositionInternal(uint64_t value, /* GED_PSEUDO_FIELD */ const uint32_t interpId,
                                                    const /* GED_MODEL */ uint8_t modelId, const GED_VALUE_TYPE valueType,
                                                    GED_RETURN_VALUE& ret)
 {
@@ -44,9 +44,9 @@ uint32_t GEDInterpreter::InterpretPositionInternal(uint32_t value, /* GED_PSEUDO
 }
 
 
-GED_RETURN_VALUE GEDInterpreter::SetInterpretedPositionInternal(uint32_t& writeTo, /* GED_PSEUDO_FIELD */ const uint32_t interpId,
+GED_RETURN_VALUE GEDInterpreter::SetInterpretedPositionInternal(uint64_t& writeTo, /* GED_PSEUDO_FIELD */ const uint32_t interpId,
                                                                 const /* GED_MODEL */ uint8_t modelId, const GED_VALUE_TYPE valueType,
-                                                                uint32_t valueToWrite)
+                                                                uint64_t valueToWrite)
 {
     const ModelData& modelData = ModelsArray[modelId];
     GEDASSERT(interpId < modelData.numberOfPseudoFields);
