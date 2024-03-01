@@ -11824,6 +11824,11 @@ unsigned GraphColor::edgeWeightARF(const LiveRange *lr1, const LiveRange *lr2) {
     } else if (lr1_align == Four_Word && lr2_align == Four_Word) {
       return lr1_nreg + lr2_nreg - 1 + (4 - lr1_nreg % 4) % 4 +
              (4 - lr2_nreg % 4) % 4;
+    } else if (lr1_align == Four_Word && lr2_align == Eight_Word) {
+      if (((8 - lr2_nreg % 8) % 8) >= 4)
+        return lr2_nreg + lr1_nreg - 1 + (8 - lr2_nreg % 8) % 8 - 4;
+      return lr1_nreg + lr2_nreg - 1 + (8 - lr2_nreg % 8) % 8 +
+             (4 - lr1_nreg % 4) % 4;
     } else if (lr1_align == Eight_Word && lr2_align == Any) {
       return lr1_nreg + lr2_nreg + 7 - (lr1_nreg + lr2_nreg) % 8;
     } else if (lr1_align == Eight_Word && lr2_align == Four_Word) {

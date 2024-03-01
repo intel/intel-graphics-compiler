@@ -7379,6 +7379,10 @@ bool G4_INST::canSrcBeAccAfterHWConform(Gen4_Operand_Number opndNum) const {
   // dst must be GRF-aligned
   if (G4_VarBase *base = dst->getBase()) {
     if (base->isRegVar()) {
+      if (dst->getTopDcl()->getRegFile() !=
+          G4_GRF) { // In case spill/fill address or flag regsiter
+        return false;
+      }
       if (base->asRegVar()->isPhyRegAssigned()) {
         if ((dst->getLinearizedStart() %
              getBuilder().numEltPerGRF<Type_UB>()) != 0) {
