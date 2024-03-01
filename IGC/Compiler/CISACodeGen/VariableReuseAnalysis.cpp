@@ -460,7 +460,7 @@ void VariableReuseAnalysis::postProcessing()
     if (!m_DeSSA || control == 0)
         return;
 
-    // VATemp = 0x10
+    // VectorAlias = 0x10
     DenseMap<Value*, int> dessaRootVisited;
     auto IS = m_baseVecMap.begin();
     auto IE = m_baseVecMap.end();
@@ -502,7 +502,7 @@ void VariableReuseAnalysis::postProcessing()
         setLifeTimeStartPos(aliaseeRoot, AllVals, theBC);
     }
 
-    // VAtemp = 0x20, for other vector values.
+    // VectorAlias = 0x20, for other vector values.
     if (control < 2)
         return;
 
@@ -589,8 +589,8 @@ bool VariableReuseAnalysis::getVectorIndicesIfConstant(
 void VariableReuseAnalysis::visitExtractElementInst(ExtractElementInst& I)
 {
     const auto control = ((m_pCtx->getVectorCoalescingControl() >> 2) & 0x3);
-    // VATemp=0x4 : for isolated values
-    //       =0x8 : for both isolated and non-isolated values
+    // VectorAlias=0x4 : for isolated values
+    //            =0x8 : for both isolated and non-isolated values
     if (control == 0) {
         return;
     }
@@ -1076,9 +1076,9 @@ bool VariableReuseAnalysis::getElementValue(
 
 void VariableReuseAnalysis::InsertElementAliasing(Function* F)
 {
-    // Do it if VATemp != 0.
-    // VATemp=0x1: subvec aliasing for isolated values (getRootValue()=null)
-    //       =0x2: subvec aliasing for both isolated and non-isolated value)
+    // Do it if VectorAlias != 0.
+    // VectorAlias=0x1: subvec aliasing for isolated values (getRootValue()=null)
+    //            =0x2: subvec aliasing for both isolated and non-isolated value)
     const auto control = (m_pCtx->getVectorCoalescingControl() & 0x3);
     if (control == 0) {
         return;
@@ -1360,6 +1360,13 @@ bool VariableReuseAnalysis::processInsertTo(VecInsEltInfoTy& AllIEIs)
                 Value* EEI_nv = m_DeSSA->getNodeValue(EEI);
                 addVecAlias(EEI_nv, Base_nv, j);
             }
+        }
+        else {
+            // scalar
+            InsertElementInst* IEI = AllIEIs[V_ix].IEI;
+            if (m_DeSSA->isNoopAliaser(IEI))
+                continue;
+            m_HasBecomeNoopInsts[IEI] = 1;
         }
         hasAlias = true;
     }

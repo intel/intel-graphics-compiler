@@ -486,8 +486,8 @@ namespace IGC {
         // aggressively without checking each individual def-use pair.
         Status m_IsBlockPressureLow;
 
-        // For vector alising on non-isolated values (under VATemp >= 2). If
-        // a value V is in a dessa CC (not isolated) and V is aliased, add
+        // For vector alising on non-isolated values (under VectorAlias >= 2).
+        // If a value V is in a dessa CC (not isolated) and V is aliased, add
         // <V's root, V> into the map.  This is a quick check to see if any
         // value in a dessa CC has been aliased (either aliaser or aliasee)
         Val2ValMapTy m_root2AliasMap;

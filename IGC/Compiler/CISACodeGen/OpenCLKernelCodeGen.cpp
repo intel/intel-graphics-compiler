@@ -174,7 +174,7 @@ namespace IGC
         if (val < 0)
         {
             // no cmdline option
-            val = IGC_GET_FLAG_VALUE(VATemp);
+            val = IGC_GET_FLAG_VALUE(VectorAlias);
         }
         return val;
     }
