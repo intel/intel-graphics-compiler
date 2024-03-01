@@ -874,12 +874,12 @@ iga_status_t iga_diagnostic_get_text_extent(const iga_diagnostic_t *d,
 // internal data structures.
 static iga_opspec_t opspec_to_handle(const OpSpec *os) {
   const uintptr_t TOP_BIT =
-      (sizeof(void *) == 4) ? 0xC0000000 : 0x8000000000000000;
+      (sizeof(void *) == 4) ? (uintptr_t)0xC0000000 : (uintptr_t)0x8000000000000000;
   return (iga_opspec_t)((uintptr_t)os ^ TOP_BIT);
 }
 static const OpSpec *opspec_from_handle(iga_opspec_t os) {
   const uintptr_t TOP_BIT =
-      (sizeof(void *) == 4) ? 0xC0000000 : 0x8000000000000000;
+      (sizeof(void *) == 4) ? (uintptr_t)0xC0000000 : (uintptr_t)0x8000000000000000;
   return (const OpSpec *)((uintptr_t)os ^ TOP_BIT);
 }
 
