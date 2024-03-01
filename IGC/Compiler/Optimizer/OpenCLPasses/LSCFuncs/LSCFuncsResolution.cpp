@@ -542,6 +542,14 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
             {
                 tileWidth = 8;
             }
+            else if (funcName.consume_front("_k4"))
+            {
+                tileWidth = 4;
+            }
+            else if (funcName.consume_front("_k2"))
+            {
+                tileWidth = 2;
+            }
             else
             {
                 IGC_ASSERT_MESSAGE(0, "Transpose with 32 bit element size only supports width 8.");
