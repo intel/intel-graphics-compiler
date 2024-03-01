@@ -114,24 +114,24 @@ typedef union
 //
 
 /* negative values underflow range */
-static __constant float __stgamma_ep__neg_underflow[2] = { 43.0, -43.0 };
+static __constant float __stgamma_ep_nofp64__neg_underflow[2] = { 43.0, -43.0 };
 
 /* negative values "half" overflow range - multiply by 1/An */
-static __constant float __stgamma_ep__neg_half_overflow[2] = { 40.0, -40.0 };
+static __constant float __stgamma_ep_nofp64__neg_half_overflow[2] = { 40.0, -40.0 };
 
     /* overflow boundary (35.04010009765625) */
 
-static __constant unsigned int __stgamma_ep__overflowf_boundary[] = {
+static __constant unsigned int __stgamma_ep_nofp64__overflowf_boundary[] = {
     0x420c2910, //       35.0401001
 };
 
     /* point of local minium (0.461632144968362356785) */
 
-static __constant unsigned int __stgamma_ep__local_minimumf[] = {
+static __constant unsigned int __stgamma_ep_nofp64__local_minimumf[] = {
     0x3eec5b0c, //      0.461632133
 };
 
-static __constant unsigned int __stgamma_ep__tgammaf_A_table[] = {
+static __constant unsigned int __stgamma_ep_nofp64__tgammaf_A_table[] = {
     0x404f7e8e, //       3.24209929
     0x3ffd9a9c, //        1.9812808
     0x3ece7348, //      0.403223276
@@ -219,7 +219,7 @@ static __constant unsigned int __stgamma_ep__tgammaf_A_table[] = {
 
     /* sin(pi*x)/pi */
 
-static __constant unsigned int __stgamma_ep__tgammaf_sin_table[] = {
+static __constant unsigned int __stgamma_ep_nofp64__tgammaf_sin_table[] = {
     0xb60a2594, //  -2.05854758e-06
     0x3487e4c9, //   2.53121726e-07
     0x42aa0ebd, //       85.0287857
@@ -230,7 +230,7 @@ static __constant unsigned int __stgamma_ep__tgammaf_sin_table[] = {
     0xc11eacd2, //      -9.91719246
 };
 
-static __constant unsigned int __stgamma_ep__tgammaf_A100_table[] = {
+static __constant unsigned int __stgamma_ep_nofp64__tgammaf_A100_table[] = {
     0x3f800000, //                1
     0xbf13c466, //     -0.577215552
     0x3f7d3247, //      0.989048421
@@ -241,7 +241,7 @@ static __constant unsigned int __stgamma_ep__tgammaf_A100_table[] = {
     0xbecc84b2, //     -0.399449885
 };
 
-static __constant unsigned int __stgamma_ep__tgammaf_A125_table[] = {
+static __constant unsigned int __stgamma_ep_nofp64__tgammaf_A125_table[] = {
     0x3f62b6e4, //      0.885603189
     0xaf74351d, //  -2.22105404e-10
     0x3edb62a3, //      0.428486913
@@ -252,7 +252,7 @@ static __constant unsigned int __stgamma_ep__tgammaf_A125_table[] = {
     0xbda1091b, //    -0.0786306486
 };
 
-static __constant unsigned int __stgamma_ep__tgammaf_A150_table[] = {
+static __constant unsigned int __stgamma_ep_nofp64__tgammaf_A150_table[] = {
     0x3f7fe30a, //      0.999558091
     0xbf122cb9, //     -0.570994914
     0x3f732aac, //      0.949869871
@@ -263,7 +263,7 @@ static __constant unsigned int __stgamma_ep__tgammaf_A150_table[] = {
     0xbca3985b, //    -0.0199701097
 };
 
-static __constant unsigned int __stgamma_ep__tgammaf_A175_table[] = {
+static __constant unsigned int __stgamma_ep_nofp64__tgammaf_A175_table[] = {
     0x3f7f70f3, //      0.997817218
     0xbf0e0d77, //     -0.554892957
     0x3f62b540, //      0.885578156
@@ -276,30 +276,30 @@ static __constant unsigned int __stgamma_ep__tgammaf_A175_table[] = {
 
 /* Right shifter */
 
-static __constant unsigned __stgamma_ep__two_23h[] = { 0x4b000000 };    /* 2^23 */
+static __constant unsigned __stgamma_ep_nofp64__two_23h[] = { 0x4b000000 };    /* 2^23 */
 
 /* Special values */
 
-static __constant unsigned int __stgamma_ep__own_large_value_32[] = { 0x71800000, 0xf1800000 }; /* +2^100,-2^100 */
+static __constant unsigned int __stgamma_ep_nofp64__own_large_value_32[] = { 0x71800000, 0xf1800000 }; /* +2^100,-2^100 */
 
-static __constant unsigned int __stgamma_ep__own_small_value_32[] = { 0x0d800000, 0x8d800000 }; /* +2^(-100),-2^(-100) */
+static __constant unsigned int __stgamma_ep_nofp64__own_small_value_32[] = { 0x0d800000, 0x8d800000 }; /* +2^(-100),-2^(-100) */
 
 /* constants */
 
-static __constant unsigned int __stgamma_ep__zeros[] = { 0x00000000, 0x80000000 };
-static __constant unsigned int __stgamma_ep__ones[] = { 0x3f800000, 0xbf800000 };
-static __constant unsigned int __stgamma_ep__infs[] = { 0x7f800000, 0xff800000 };
-static __constant float __stgamma_ep_twos[] = { 2.0, -2.0 };
-static __constant float __stgamma_ep_ones_5[] = { 1.5, -1.5 };
-static __constant float __stgamma_ep_ones_25[] = { 1.25, -1.25 };
-static __constant float __stgamma_ep_ones_75[] = { 1.75, -1.75 };
+static __constant unsigned int __stgamma_ep_nofp64__zeros[] = { 0x00000000, 0x80000000 };
+static __constant unsigned int __stgamma_ep_nofp64__ones[] = { 0x3f800000, 0xbf800000 };
+static __constant unsigned int __stgamma_ep_nofp64__infs[] = { 0x7f800000, 0xff800000 };
+static __constant float __stgamma_ep_nofp64_twos[] = { 2.0, -2.0 };
+static __constant float __stgamma_ep_nofp64_ones_5[] = { 1.5, -1.5 };
+static __constant float __stgamma_ep_nofp64_ones_25[] = { 1.25, -1.25 };
+static __constant float __stgamma_ep_nofp64_ones_75[] = { 1.75, -1.75 };
 
 #pragma float_control(precise,on)
 
 extern float exp2f (float);
 
 __attribute__((always_inline))
-inline int __internal_stgamma_ep_cout (float *a, float *r)
+inline int __internal_stgamma_ep_nofp64_cout (float *a, float *r)
 {
     int nRet = 0;
     int t = 0, i = 0, j = 0, irsign = 0;
@@ -317,7 +317,7 @@ inline int __internal_stgamma_ep_cout (float *a, float *r)
     __constant float *Af;
     x = *(a);
     absx = x;
-    res = ((__constant float *) __stgamma_ep__zeros)[0];
+    res = ((__constant float *) __stgamma_ep_nofp64__zeros)[0];
 
     /* get arg sign */
     ixsign = (((_iml_tg_sp_union_t *) & x)->hex >> 31);
@@ -333,9 +333,9 @@ inline int __internal_stgamma_ep_cout (float *a, float *r)
         ix = *((int *) (&absx));
 
         /* if x == 0 - zero divide exception */
-        if (x == ((__constant float *) __stgamma_ep__zeros)[0])
+        if (x == ((__constant float *) __stgamma_ep_nofp64__zeros)[0])
         {
-            *r = (((__constant float *) __stgamma_ep__ones)[(ixsign)] / ((__constant float *) __stgamma_ep__zeros)[0]);
+            *r = (((__constant float *) __stgamma_ep_nofp64__ones)[(ixsign)] / ((__constant float *) __stgamma_ep_nofp64__zeros)[0]);
             nRet = 2;
             return nRet;
         }
@@ -343,8 +343,8 @@ inline int __internal_stgamma_ep_cout (float *a, float *r)
         if (ix <= 0x00200000)   /* if |x| < denorm_overflow */
         {
             {
-                float tz = ((__constant float *) __stgamma_ep__own_large_value_32)[0];
-                ((*r)) = (((__constant float *) __stgamma_ep__own_large_value_32)[(ixsign)] * tz);
+                float tz = ((__constant float *) __stgamma_ep_nofp64__own_large_value_32)[0];
+                ((*r)) = (((__constant float *) __stgamma_ep_nofp64__own_large_value_32)[(ixsign)] * tz);
             };  /* raise overflow */
             nRet = 3;
             return nRet;
@@ -357,8 +357,8 @@ inline int __internal_stgamma_ep_cout (float *a, float *r)
             if (ixexp >= 0x00000096)
             {
                 {
-                    float tz = ((__constant float *) __stgamma_ep__zeros)[0];
-                    ((*r)) = (((__constant float *) __stgamma_ep__zeros)[(0)] / tz);
+                    float tz = ((__constant float *) __stgamma_ep_nofp64__zeros)[0];
+                    ((*r)) = (((__constant float *) __stgamma_ep_nofp64__zeros)[(0)] / tz);
                 };
                 nRet = 1;
                 return nRet;
@@ -366,12 +366,12 @@ inline int __internal_stgamma_ep_cout (float *a, float *r)
             else
             {
                 /* get integer value of arg (truncated) */
-                tv = absx + (*(__constant float *) __stgamma_ep__two_23h);
-                diabsx_t = tv - (*(__constant float *) __stgamma_ep__two_23h);
+                tv = absx + (*(__constant float *) __stgamma_ep_nofp64__two_23h);
+                diabsx_t = tv - (*(__constant float *) __stgamma_ep_nofp64__two_23h);
                 iabsx_t = (0x000fffff) & (*((int *) (&tv)));
                 if (diabsx_t > absx)
                 {
-                    diabsx_t -= ((__constant float *) __stgamma_ep__ones)[0];
+                    diabsx_t -= ((__constant float *) __stgamma_ep_nofp64__ones)[0];
                     iabsx_t -= 1;
                 }
             }   // else if(ixexp >= 0x00000096)
@@ -380,28 +380,28 @@ inline int __internal_stgamma_ep_cout (float *a, float *r)
             if (absx == diabsx_t)
             {
                 {
-                    float tz = ((__constant float *) __stgamma_ep__zeros)[0];
-                    ((*r)) = (((__constant float *) __stgamma_ep__zeros)[(0)] / tz);
+                    float tz = ((__constant float *) __stgamma_ep_nofp64__zeros)[0];
+                    ((*r)) = (((__constant float *) __stgamma_ep_nofp64__zeros)[(0)] / tz);
                 };
                 nRet = 1;
                 return nRet;
             }
 
             /* if arg < -185.0 then underflow (values rounded to zero) */
-            if (x < __stgamma_ep__neg_underflow[1])
+            if (x < __stgamma_ep_nofp64__neg_underflow[1])
             {
-                (*r) = (((__constant float *) __stgamma_ep__own_small_value_32)[((~iabsx_t) & 1)] * ((__constant float *) __stgamma_ep__own_small_value_32)[0]);    /* raise underflow and inexact */
+                (*r) = (((__constant float *) __stgamma_ep_nofp64__own_small_value_32)[((~iabsx_t) & 1)] * ((__constant float *) __stgamma_ep_nofp64__own_small_value_32)[0]);    /* raise underflow and inexact */
                 nRet = 4;
                 return nRet;
             }
         }   // if(ixsign)
 
         /* big positive values overflow domain (res rounded to INF) */
-        if (x >= (*((__constant float *) __stgamma_ep__overflowf_boundary)))
+        if (x >= (*((__constant float *) __stgamma_ep_nofp64__overflowf_boundary)))
         {
             {
-                float tz = ((__constant float *) __stgamma_ep__own_large_value_32)[0];
-                ((*r)) = (((__constant float *) __stgamma_ep__own_large_value_32)[(0)] * tz);
+                float tz = ((__constant float *) __stgamma_ep_nofp64__own_large_value_32)[0];
+                ((*r)) = (((__constant float *) __stgamma_ep_nofp64__own_large_value_32)[(0)] * tz);
             };  /* raise overflow and inexact */
             nRet = 3;
             return nRet;
@@ -411,8 +411,8 @@ inline int __internal_stgamma_ep_cout (float *a, float *r)
         if (ixsign)
         {
             /* get rounded to nearest abs arg */
-            tv = absx + (*(__constant float *) __stgamma_ep__two_23h);
-            diabsx_n = tv - (*(__constant float *) __stgamma_ep__two_23h);
+            tv = absx + (*(__constant float *) __stgamma_ep_nofp64__two_23h);
+            diabsx_n = tv - (*(__constant float *) __stgamma_ep_nofp64__two_23h);
             iabsx_n = (0x000fffff) & (*((int *) (&tv)));
 
             rrr = absx - diabsx_n;  /* reduced argument */
@@ -425,30 +425,30 @@ inline int __internal_stgamma_ep_cout (float *a, float *r)
             /* Tailor series */
             s = rrr +
                 rrr *
-                ((r2 * (((__constant float *) __stgamma_ep__tgammaf_sin_table)[0] + r2 * ((__constant float *) __stgamma_ep__tgammaf_sin_table)[1])) *
-                 (((__constant float *) __stgamma_ep__tgammaf_sin_table)[2] +
+                ((r2 * (((__constant float *) __stgamma_ep_nofp64__tgammaf_sin_table)[0] + r2 * ((__constant float *) __stgamma_ep_nofp64__tgammaf_sin_table)[1])) *
+                 (((__constant float *) __stgamma_ep_nofp64__tgammaf_sin_table)[2] +
                   r2 * (r2 +
-                        ((__constant float *) __stgamma_ep__tgammaf_sin_table)[3])) * (((__constant float *) __stgamma_ep__tgammaf_sin_table)[4] +
+                        ((__constant float *) __stgamma_ep_nofp64__tgammaf_sin_table)[3])) * (((__constant float *) __stgamma_ep_nofp64__tgammaf_sin_table)[4] +
                                                                                        r2 * (r2 +
                                                                                              ((__constant float *)
-                                                                                              __stgamma_ep__tgammaf_sin_table)[5])) *
-                 (((__constant float *) __stgamma_ep__tgammaf_sin_table)[6] + r2 * (r2 + ((__constant float *) __stgamma_ep__tgammaf_sin_table)[7])));
+                                                                                              __stgamma_ep_nofp64__tgammaf_sin_table)[5])) *
+                 (((__constant float *) __stgamma_ep_nofp64__tgammaf_sin_table)[6] + r2 * (r2 + ((__constant float *) __stgamma_ep_nofp64__tgammaf_sin_table)[7])));
         }   // if(ixsign)
 
         /* get truncated integer argument */
-        tv = absx + (*(__constant float *) __stgamma_ep__two_23h);
-        diabsx_t = tv - (*(__constant float *) __stgamma_ep__two_23h);
+        tv = absx + (*(__constant float *) __stgamma_ep_nofp64__two_23h);
+        diabsx_t = tv - (*(__constant float *) __stgamma_ep_nofp64__two_23h);
         iabsx_t = (0x000fffff) & (*((int *) (&tv)));
 
         if (diabsx_t > absx)
         {
-            diabsx_t -= ((__constant float *) __stgamma_ep__ones)[0];
+            diabsx_t -= ((__constant float *) __stgamma_ep_nofp64__ones)[0];
             iabsx_t -= 1;
         }
         /* get result sign */
         irsign = ((iabsx_t + 1) & 1);
         /* if x > 2.0 - simple polynomials */
-        if (absx >= __stgamma_ep_twos[0])
+        if (absx >= __stgamma_ep_nofp64_twos[0])
         {
             t = iabsx_t & (~0x7);   /* index of table of coefficient */
             i = iabsx_t & (0x7);    /* used in recursive formula */
@@ -457,7 +457,7 @@ inline int __internal_stgamma_ep_cout (float *a, float *r)
                 i = i - 2;
 
             rrr = absx - diabsx_t;  /* reduced argument */
-            A = &(((__constant float *) __stgamma_ep__tgammaf_A_table)[t + (t >> 1) + (t >> 3)]);   /* table address */
+            A = &(((__constant float *) __stgamma_ep_nofp64__tgammaf_A_table)[t + (t >> 1) + (t >> 3)]);   /* table address */
             r2 = rrr * rrr; /* rrr^2 */
 
             /* factorized polynomial */
@@ -466,7 +466,7 @@ inline int __internal_stgamma_ep_cout (float *a, float *r)
                 (r2 + A[2] * rrr + A[6 + 2]) * (r2 + A[3] * rrr + A[6 + 3]) * (r2 + A[4] * rrr + A[6 + 4]) * (r2 + A[5] * rrr + A[6 + 5]);
 
             /* if no recursion - p = 1.0 */
-            pr = ((__constant float *) __stgamma_ep__ones)[0];
+            pr = ((__constant float *) __stgamma_ep_nofp64__ones)[0];
             /* if i > 0 - recursies */
             if (i)
             {
@@ -483,7 +483,7 @@ inline int __internal_stgamma_ep_cout (float *a, float *r)
                 float invp = 1.0f / p;
                 resf = invp / resf;
 
-                if (x < __stgamma_ep__neg_half_overflow[1])
+                if (x < __stgamma_ep_nofp64__neg_half_overflow[1])
                 {
                     unsigned int i2m27 = 0x32000000;
                     float f2m27 = *(float *) &i2m27;
@@ -508,9 +508,9 @@ inline int __internal_stgamma_ep_cout (float *a, float *r)
         else
         {
             /* if |x| < 1 - calculate gamma(x+1) */
-            if (absx < ((__constant float *) __stgamma_ep__ones)[0])
+            if (absx < ((__constant float *) __stgamma_ep_nofp64__ones)[0])
             {
-                curabsx = absx + (((__constant float *) __stgamma_ep__ones)[0]);
+                curabsx = absx + (((__constant float *) __stgamma_ep_nofp64__ones)[0]);
             }
             else
             {
@@ -519,25 +519,25 @@ inline int __internal_stgamma_ep_cout (float *a, float *r)
 
             /* split intervals: */
             /* x >= 1.75 */
-            if (curabsx >= __stgamma_ep_ones_75[0])
+            if (curabsx >= __stgamma_ep_nofp64_ones_75[0])
             {
-                rrr = curabsx - (((__constant float *) __stgamma_ep__ones)[0]);
-                A = ((__constant float *) __stgamma_ep__tgammaf_A175_table);
+                rrr = curabsx - (((__constant float *) __stgamma_ep_nofp64__ones)[0]);
+                A = ((__constant float *) __stgamma_ep_nofp64__tgammaf_A175_table);
             }
-            else if (curabsx >= __stgamma_ep_ones_5[0]) /* x >= 1.5 */
+            else if (curabsx >= __stgamma_ep_nofp64_ones_5[0]) /* x >= 1.5 */
             {
-                rrr = curabsx - (((__constant float *) __stgamma_ep__ones)[0]);
-                A = ((__constant float *) __stgamma_ep__tgammaf_A150_table);
+                rrr = curabsx - (((__constant float *) __stgamma_ep_nofp64__ones)[0]);
+                A = ((__constant float *) __stgamma_ep_nofp64__tgammaf_A150_table);
             }
-            else if (curabsx >= __stgamma_ep_ones_25[0])    /* 1.5 > x >= 1.25 */
+            else if (curabsx >= __stgamma_ep_nofp64_ones_25[0])    /* 1.5 > x >= 1.25 */
             {
-                rrr = curabsx - ((((__constant float *) __stgamma_ep__ones)[0]) + (*((__constant float *) __stgamma_ep__local_minimumf)));
-                A = ((__constant float *) __stgamma_ep__tgammaf_A125_table);
+                rrr = curabsx - ((((__constant float *) __stgamma_ep_nofp64__ones)[0]) + (*((__constant float *) __stgamma_ep_nofp64__local_minimumf)));
+                A = ((__constant float *) __stgamma_ep_nofp64__tgammaf_A125_table);
             }
-            else if (curabsx < __stgamma_ep_ones_25[0]) /* 0 < x < 1.25 */
+            else if (curabsx < __stgamma_ep_nofp64_ones_25[0]) /* 0 < x < 1.25 */
             {
-                rrr = curabsx - (((__constant float *) __stgamma_ep__ones)[0]);
-                A = ((__constant float *) __stgamma_ep__tgammaf_A100_table);
+                rrr = curabsx - (((__constant float *) __stgamma_ep_nofp64__ones)[0]);
+                A = ((__constant float *) __stgamma_ep_nofp64__tgammaf_A100_table);
             }
 
             if (ixexp)  /* for normal values - compute whole polynomial */
@@ -549,11 +549,11 @@ inline int __internal_stgamma_ep_cout (float *a, float *r)
                 p = A[0];
             }
 
-            if (absx < ((__constant float *) __stgamma_ep__ones)[0])    /* |x| < 1.0 */
+            if (absx < ((__constant float *) __stgamma_ep_nofp64__ones)[0])    /* |x| < 1.0 */
             {
                 if (ixsign) /* if x < 0 then rrr = 1/(s*p) */
                 {
-                    resf = (((__constant float *) __stgamma_ep__ones)[0]) / (s * p);
+                    resf = (((__constant float *) __stgamma_ep_nofp64__ones)[0]) / (s * p);
                     if (irsign)
                         resf = -resf;
                 }
@@ -566,7 +566,7 @@ inline int __internal_stgamma_ep_cout (float *a, float *r)
             {
                 if (ixsign) /* rrr = 1/(x*s*p); */
                 {
-                    resf = (((__constant float *) __stgamma_ep__ones)[0]) / ((absx) * s * p);
+                    resf = (((__constant float *) __stgamma_ep_nofp64__ones)[0]) / ((absx) * s * p);
                 }
                 else    /* rrr = p */
                 {
@@ -584,8 +584,8 @@ inline int __internal_stgamma_ep_cout (float *a, float *r)
         if (ixsign && (!((((_iml_tg_sp_union_t *) & x)->hex & 0x007FFFFF) != 0)))
         {
             {
-                float tz = ((__constant float *) __stgamma_ep__zeros)[0];
-                ((*r)) = (((__constant float *) __stgamma_ep__zeros)[(1)] / tz);
+                float tz = ((__constant float *) __stgamma_ep_nofp64__zeros)[0];
+                ((*r)) = (((__constant float *) __stgamma_ep_nofp64__zeros)[(1)] / tz);
             };
             nRet = 1;
             return nRet;
@@ -608,7 +608,7 @@ float __ocl_svml_tgammaf (float a)
 
     va1 = a;;
 
-    __internal_stgamma_ep_cout (&va1, &vr1);
+    __internal_stgamma_ep_nofp64_cout (&va1, &vr1);
     r = vr1;;
 
     return r;

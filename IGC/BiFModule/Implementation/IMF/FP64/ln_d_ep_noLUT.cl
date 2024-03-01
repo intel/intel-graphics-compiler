@@ -32,7 +32,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dln_ep___c9 = { 0xbfc11e70a5c9b8f8UL };
+} __dln_ep_nolut___c9 = { 0xbfc11e70a5c9b8f8UL };
 
 static __constant union
 {
@@ -40,7 +40,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dln_ep___c8 = { 0x3fc20827ee8835feUL };
+} __dln_ep_nolut___c8 = { 0x3fc20827ee8835feUL };
 
 static __constant union
 {
@@ -48,7 +48,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dln_ep___c7 = { 0xbfbedf6494cc1f86UL };
+} __dln_ep_nolut___c7 = { 0xbfbedf6494cc1f86UL };
 
 static __constant union
 {
@@ -56,7 +56,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dln_ep___c6 = { 0x3fc1e531c40397e0UL };
+} __dln_ep_nolut___c6 = { 0x3fc1e531c40397e0UL };
 
 static __constant union
 {
@@ -64,7 +64,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dln_ep___c5 = { 0xbfc55d72615e74d3UL };
+} __dln_ep_nolut___c5 = { 0xbfc55d72615e74d3UL };
 
 static __constant union
 {
@@ -72,7 +72,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dln_ep___c4 = { 0x3fc99dac1eadbf8eUL };
+} __dln_ep_nolut___c4 = { 0x3fc99dac1eadbf8eUL };
 
 static __constant union
 {
@@ -80,7 +80,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dln_ep___c3 = { 0xbfcfffcff3489b95UL };
+} __dln_ep_nolut___c3 = { 0xbfcfffcff3489b95UL };
 
 static __constant union
 {
@@ -88,7 +88,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dln_ep___c2 = { 0x3fd5554dfa222c07UL };
+} __dln_ep_nolut___c2 = { 0x3fd5554dfa222c07UL };
 
 static __constant union
 {
@@ -96,7 +96,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dln_ep___c1 = { 0xbfe00000145aea06UL };
+} __dln_ep_nolut___c1 = { 0xbfe00000145aea06UL };
 
 static __constant union
 {
@@ -104,7 +104,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dln_ep___c0 = { 0x3e30eba0cce2e0b0UL };
+} __dln_ep_nolut___c0 = { 0x3e30eba0cce2e0b0UL };
 
 __attribute__((always_inline))
 inline int __internal_dln_ep_nolut_cout (double *a, double *r)
@@ -174,15 +174,15 @@ inline int __internal_dln_ep_nolut_cout (double *a, double *r)
     one.w = 0x3FF0000000000000ull;
     x.w = (x.w + one.w) - expon_r.w;
     R = x.f - one.f;
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (__dln_ep___c9.f, R, __dln_ep___c8.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dln_ep___c7.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dln_ep___c6.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dln_ep___c5.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dln_ep___c4.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dln_ep___c3.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dln_ep___c2.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dln_ep___c1.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dln_ep___c0.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (__dln_ep_nolut___c9.f, R, __dln_ep_nolut___c8.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dln_ep_nolut___c7.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dln_ep_nolut___c6.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dln_ep_nolut___c5.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dln_ep_nolut___c4.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dln_ep_nolut___c3.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dln_ep_nolut___c2.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dln_ep_nolut___c1.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dln_ep_nolut___c0.f);
     expon.s32[0] -= denorm_scale_exp;
     d_expon = (double) expon.s32[0];
     poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, R);

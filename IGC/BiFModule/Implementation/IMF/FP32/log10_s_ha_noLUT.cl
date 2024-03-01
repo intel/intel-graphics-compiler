@@ -11,58 +11,58 @@ SPDX-License-Identifier: MIT
 static __constant union {
   unsigned int w;
   float f;
-} __slog10_ha_two32 = {0x4f800000u};
+} __slog10_ha_nolut_two32 = {0x4f800000u};
 static __constant union {
   unsigned int w;
   float f;
-} __slog10_ha_c10 = {0xbca31649u};
+} __slog10_ha_nolut_c10 = {0xbca31649u};
 static __constant union {
   unsigned int w;
   float f;
-} __slog10_ha_c9 = {0x3d3c41e2u};
+} __slog10_ha_nolut_c9 = {0x3d3c41e2u};
 static __constant union {
   unsigned int w;
   float f;
-} __slog10_ha_c8 = {0xbd6b2906u};
+} __slog10_ha_nolut_c8 = {0xbd6b2906u};
 static __constant union {
   unsigned int w;
   float f;
-} __slog10_ha_c7 = {0x3d80c9d2u};
+} __slog10_ha_nolut_c7 = {0x3d80c9d2u};
 static __constant union {
   unsigned int w;
   float f;
-} __slog10_ha_c6 = {0xbd940285u};
+} __slog10_ha_nolut_c6 = {0xbd940285u};
 static __constant union {
   unsigned int w;
   float f;
-} __slog10_ha_c5 = {0x3db1cb7cu};
+} __slog10_ha_nolut_c5 = {0x3db1cb7cu};
 static __constant union {
   unsigned int w;
   float f;
-} __slog10_ha_c4 = {0xbdde5c73u};
+} __slog10_ha_nolut_c4 = {0xbdde5c73u};
 static __constant union {
   unsigned int w;
   float f;
-} __slog10_ha_c3 = {0x3e143d6bu};
+} __slog10_ha_nolut_c3 = {0x3e143d6bu};
 static __constant union {
   unsigned int w;
   float f;
-} __slog10_ha_c2h = {0xbe5e5bd8u};
+} __slog10_ha_nolut_c2h = {0xbe5e5bd8u};
 static __constant union {
   unsigned long w;
   unsigned int w32[2];
   int s32[2];
   double f;
-} __slog10_ha_dc1 = {0x3fdbcb7b133e4c1euL};
+} __slog10_ha_nolut_dc1 = {0x3fdbcb7b133e4c1euL};
 static __constant union {
   unsigned long w;
   unsigned int w32[2];
   int s32[2];
   double f;
-} __slog10_ha_L10_2 = {0x3fd34413509F79FFuL};
+} __slog10_ha_nolut_L10_2 = {0x3fd34413509F79FFuL};
 
 __attribute__((always_inline))
-static inline int __ocl_svml_internal_slog10_ha(float *a, float *r)
+static inline int __ocl_svml_internal_slog10_ha_nolut(float *a, float *r)
 {
   float xin = *a;
   union {
@@ -90,20 +90,20 @@ LOG10F_MAIN:
   R = mant.f - 1.0f;
   expon = (double)iexpon;
   // polynomial
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(__slog10_ha_c10.f, R,
-                                                __slog10_ha_c9.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __slog10_ha_c8.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __slog10_ha_c7.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __slog10_ha_c6.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __slog10_ha_c5.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __slog10_ha_c4.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __slog10_ha_c3.f);
-  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __slog10_ha_c2h.f);
+  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(__slog10_ha_nolut_c10.f, R,
+                                                __slog10_ha_nolut_c9.f);
+  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __slog10_ha_nolut_c8.f);
+  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __slog10_ha_nolut_c7.f);
+  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __slog10_ha_nolut_c6.f);
+  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __slog10_ha_nolut_c5.f);
+  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __slog10_ha_nolut_c4.f);
+  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __slog10_ha_nolut_c3.f);
+  poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, )(poly, R, __slog10_ha_nolut_c2h.f);
   dR = (double)R;
   dpoly = (double)poly;
   // expon*log10(2), DP
-  expon *= __slog10_ha_L10_2.f;
-  dpoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dpoly, dR, __slog10_ha_dc1.f);
+  expon *= __slog10_ha_nolut_L10_2.f;
+  dpoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dpoly, dR, __slog10_ha_nolut_dc1.f);
   dpoly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, )(dpoly, dR, expon);
   poly = (float)dpoly;
   *r = poly;
@@ -132,7 +132,7 @@ LOG10F_SPECIAL:
   }
   // positive denormal
   // scale x by 2^32
-  x.f *= __slog10_ha_two32.f;
+  x.f *= __slog10_ha_nolut_two32.f;
   // normalized, unbiased exponent
   iexpon = (x.w - 0x3f400000u) & 0xff800000u;
   // normalized mantissa
@@ -146,6 +146,6 @@ LOG10F_SPECIAL:
 float __ocl_svml_log10f_ha_noLUT(float x)
 {
   float r;
-  __ocl_svml_internal_slog10_ha(&x, &r);
+  __ocl_svml_internal_slog10_ha_nolut(&x, &r);
   return r;
 }

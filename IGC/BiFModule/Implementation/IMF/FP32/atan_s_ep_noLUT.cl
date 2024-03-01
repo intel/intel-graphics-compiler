@@ -30,31 +30,31 @@ static __constant union
 {
     unsigned int w;
     float f;
-} __satan_ep_c4 = { 0xbca5054fu };
+} __satan_ep_nolut_c4 = { 0xbca5054fu };
 
 static __constant union
 {
     unsigned int w;
     float f;
-} __satan_ep_c3 = { 0x3e49099du };
+} __satan_ep_nolut_c3 = { 0x3e49099du };
 
 static __constant union
 {
     unsigned int w;
     float f;
-} __satan_ep_c2 = { 0xbecbaf63u };
+} __satan_ep_nolut_c2 = { 0xbecbaf63u };
 
 static __constant union
 {
     unsigned int w;
     float f;
-} __satan_ep_c1 = { 0x3bef4e52u };
+} __satan_ep_nolut_c1 = { 0x3bef4e52u };
 
 static __constant union
 {
     unsigned int w;
     float f;
-} __satan_ep_c0 = { 0x3f7ff759u };
+} __satan_ep_nolut_c0 = { 0x3f7ff759u };
 
 __attribute__((always_inline))
 inline int __internal_satan_ep_nolut_cout (float *pxin, float *pres)
@@ -79,10 +79,10 @@ inline int __internal_satan_ep_nolut_cout (float *pxin, float *pres)
         sgn_r = sgn_x ^ (smask & 0x80000000u);
         R0.w = xa.w + (diff & smask);
         R = R0.f;
-        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (__satan_ep_c4.f, R, __satan_ep_c3.f);
-        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __satan_ep_c2.f);
-        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __satan_ep_c1.f);
-        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __satan_ep_c0.f);
+        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (__satan_ep_nolut_c4.f, R, __satan_ep_nolut_c3.f);
+        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __satan_ep_nolut_c2.f);
+        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __satan_ep_nolut_c1.f);
+        poly = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R, __satan_ep_nolut_c0.f);
         sres.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (poly, R0.f, hcorr.f);
         sres.w = sres.w ^ sgn_r;
         *pres = sres.f;

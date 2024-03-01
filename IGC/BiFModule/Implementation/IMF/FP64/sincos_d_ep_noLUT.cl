@@ -32,7 +32,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dsincos_ep_INV_PI64 = { 0x3fd45f306dc9c883UL };
+} __dsincos_ep_nolut_INV_PI64 = { 0x3fd45f306dc9c883UL };
 
 static __constant union
 {
@@ -40,7 +40,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dsincos_ep_SHIFTER = { 0x4328000000000000UL };
+} __dsincos_ep_nolut_SHIFTER = { 0x4328000000000000UL };
 
 static __constant union
 {
@@ -48,7 +48,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dsincos_ep_PI1_BITS = { 0x400921fb54442d18UL };
+} __dsincos_ep_nolut_PI1_BITS = { 0x400921fb54442d18UL };
 
 static __constant union
 {
@@ -56,7 +56,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dsincos_ep_PI2_BITS = { 0x3ca1a62633000000UL };
+} __dsincos_ep_nolut_PI2_BITS = { 0x3ca1a62633000000UL };
 
 static __constant union
 {
@@ -64,7 +64,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dsincos_ep_PI3_BITS = { 0x3aa45c06e0e68948UL };
+} __dsincos_ep_nolut_PI3_BITS = { 0x3aa45c06e0e68948UL };
 
 static __constant union
 {
@@ -72,7 +72,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dsincos_ep_two = { 0x4000000000000000UL };
+} __dsincos_ep_nolut_two = { 0x4000000000000000UL };
 
 static __constant union
 {
@@ -80,7 +80,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dsincos_ep_half = { 0x3fe0000000000000UL };
+} __dsincos_ep_nolut_half = { 0x3fe0000000000000UL };
 
 static __constant union
 {
@@ -88,7 +88,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dsincos_ep_c_coeff[] = {
+} __dsincos_ep_nolut_c_coeff[] = {
     {0x3feffffffff97c47UL}, {0xbfdffffffbdee95eUL}, {0x3fa55553a875b0c5UL},
     {0xbf56c078624df59aUL}, {0x3ef9906ffd58bf6dUL}, {0},
 };
@@ -99,14 +99,14 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dsincos_ep_s_coeff[] = {
+} __dsincos_ep_nolut_s_coeff[] = {
     {0xbe2a670b2f4764e4UL}, {0xbfc55553fe6f4534UL}, {0x3f8110630f1a5f72UL},
     {0xbf299076bb901430UL},
 };
 
-static __constant unsigned long __dsincos_ep_AbsMask = 0x7fffffffffffffffUL;
-static __constant unsigned long __dsincos_ep_zero = 0x0000000000000000UL;
-static __constant unsigned int __dsincos_ep_InvPi_tbl[] = { 0, 0,
+static __constant unsigned long __dsincos_ep_nolut_AbsMask = 0x7fffffffffffffffUL;
+static __constant unsigned long __dsincos_ep_nolut_zero = 0x0000000000000000UL;
+static __constant unsigned int __dsincos_ep_nolut_InvPi_tbl[] = { 0, 0,
     0x28BE60DBu, 0x9391054Au, 0x7F09D5F4u, 0x7D4D3770u,
     0x36D8A566u, 0x4F10E410u, 0x7F9458EAu, 0xF7AEF158u,
     0x6DC91B8Eu, 0x909374B8u, 0x01924BBAu, 0x82746487u,
@@ -118,10 +118,10 @@ static __constant unsigned int __dsincos_ep_InvPi_tbl[] = { 0, 0,
     0xCF41CE7Du, 0xE294A4BAu, 0x9AFED7ECu, 0x47E35742u,
     0x1580CC11u, 0xBF1EDAEAu, 0, 0, 0, 0
 };
-static __constant unsigned int __dsincos_ep_two_pi[2] = { 0x2168C235u, 0xC90FDAA2u };
+static __constant unsigned int __dsincos_ep_nolut_two_pi[2] = { 0x2168C235u, 0xC90FDAA2u };
 
 __attribute__((always_inline))
-static inline double __dsincos_ep_trig_noLUT_reduction (double x, int kbits, double *py_low, int *pinterv)
+static inline double __dsincos_ep_nolut_trig_noLUT_reduction (double x, int kbits, double *py_low, int *pinterv)
 {
     unsigned long ix, sgn_x, abs_x, mx, R;
     unsigned long S[2], P2, P3, P4, P5, L, L2, Lh, P23, P23_l, Msk;
@@ -154,13 +154,13 @@ static inline double __dsincos_ep_trig_noLUT_reduction (double x, int kbits, dou
     }
     expon_x = expon_x + 12 - 0x3ff;
     j = (((unsigned int) (expon_x)) >> (5));
-    T[0] = __dsincos_ep_InvPi_tbl[j];
-    T[1] = __dsincos_ep_InvPi_tbl[j + 1];
-    T[2] = __dsincos_ep_InvPi_tbl[j + 2];
-    T[3] = __dsincos_ep_InvPi_tbl[j + 3];
-    T[4] = __dsincos_ep_InvPi_tbl[j + 4];
-    T[5] = __dsincos_ep_InvPi_tbl[j + 5];
-    T[6] = __dsincos_ep_InvPi_tbl[j + 6];
+    T[0] = __dsincos_ep_nolut_InvPi_tbl[j];
+    T[1] = __dsincos_ep_nolut_InvPi_tbl[j + 1];
+    T[2] = __dsincos_ep_nolut_InvPi_tbl[j + 2];
+    T[3] = __dsincos_ep_nolut_InvPi_tbl[j + 3];
+    T[4] = __dsincos_ep_nolut_InvPi_tbl[j + 4];
+    T[5] = __dsincos_ep_nolut_InvPi_tbl[j + 5];
+    T[6] = __dsincos_ep_nolut_InvPi_tbl[j + 6];
     shift = expon_x - (j << 5);
     if (shift)
     {
@@ -229,9 +229,9 @@ static inline double __dsincos_ep_trig_noLUT_reduction (double x, int kbits, dou
     }
     Sh = (unsigned int) (((unsigned long) (S[1])) >> (32));
     Sl = (unsigned int) S[1];
-    R = (((unsigned long) ((unsigned int) (Sh))) * ((unsigned int) (__dsincos_ep_two_pi[1])));
-    P2 = (((unsigned long) ((unsigned int) (Sh))) * ((unsigned int) (__dsincos_ep_two_pi[0])));
-    P3 = (((unsigned long) ((unsigned int) (Sl))) * ((unsigned int) (__dsincos_ep_two_pi[1])));
+    R = (((unsigned long) ((unsigned int) (Sh))) * ((unsigned int) (__dsincos_ep_nolut_two_pi[1])));
+    P2 = (((unsigned long) ((unsigned int) (Sh))) * ((unsigned int) (__dsincos_ep_nolut_two_pi[0])));
+    P3 = (((unsigned long) ((unsigned int) (Sl))) * ((unsigned int) (__dsincos_ep_nolut_two_pi[1])));
     P23 = P2 + P3;
     if (P23 < P3)
         R++;
@@ -277,28 +277,28 @@ inline int __internal_dsincos_ep_nolut_cout (double *a, double *psin, double *pc
     double s_poly, c_poly, R_Rl, R2h, R2l, Ch;
     unsigned long sgn_x, R_sgn, C_sgn, index, lindex;
     x0.f = xin;
-    x.w = x0.w & (__dsincos_ep_AbsMask);
+    x.w = x0.w & (__dsincos_ep_nolut_AbsMask);
     sgn_x = (x0).w ^ (x).w;
     leading_xh = ((unsigned) x.w32[1]);
     cond = ((unsigned) (leading_xh) >= (0x41300000 - 0));
     if (cond)
         goto SINCOS_SPECIAL;
-    dS.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (x.f, (__dsincos_ep_INV_PI64).f, (__dsincos_ep_SHIFTER).f);
-    dN = dS.f - (__dsincos_ep_SHIFTER).f;
+    dS.f = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (x.f, (__dsincos_ep_nolut_INV_PI64).f, (__dsincos_ep_nolut_SHIFTER).f);
+    dN = dS.f - (__dsincos_ep_nolut_SHIFTER).f;
     C_sgn = (dS).w << 63;
     R_sgn = ((dS).w >> 1) << 63;
     index = dS.w & 1;
-    R = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (-dN, (__dsincos_ep_PI1_BITS).f, x.f);
-    R = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (-dN, (__dsincos_ep_PI2_BITS).f, R);
+    R = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (-dN, (__dsincos_ep_nolut_PI1_BITS).f, x.f);
+    R = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (-dN, (__dsincos_ep_nolut_PI2_BITS).f, R);
     R2 = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (R, R, 0.0);
   SINCOS_MAIN_PATH:
-    c_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (R2, (__dsincos_ep_c_coeff[4]).f, (__dsincos_ep_c_coeff[3]).f);
-    s_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (R2, (__dsincos_ep_s_coeff[3]).f, (__dsincos_ep_s_coeff[2]).f);
-    c_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (R2, c_poly, (__dsincos_ep_c_coeff[2]).f);
-    c_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (R2, c_poly, (__dsincos_ep_c_coeff[1]).f);
-    s_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (R2, s_poly, (__dsincos_ep_s_coeff[1]).f);
-    c_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (R2, c_poly, (__dsincos_ep_c_coeff[0]).f);
-    s_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (R2, s_poly, (__dsincos_ep_s_coeff[0]).f);
+    c_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (R2, (__dsincos_ep_nolut_c_coeff[4]).f, (__dsincos_ep_nolut_c_coeff[3]).f);
+    s_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (R2, (__dsincos_ep_nolut_s_coeff[3]).f, (__dsincos_ep_nolut_s_coeff[2]).f);
+    c_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (R2, c_poly, (__dsincos_ep_nolut_c_coeff[2]).f);
+    c_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (R2, c_poly, (__dsincos_ep_nolut_c_coeff[1]).f);
+    s_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (R2, s_poly, (__dsincos_ep_nolut_s_coeff[1]).f);
+    c_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (R2, c_poly, (__dsincos_ep_nolut_c_coeff[0]).f);
+    s_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (R2, s_poly, (__dsincos_ep_nolut_s_coeff[0]).f);
     s_poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (R, s_poly, R);
     sin_res.f = (index == 0) ? s_poly : c_poly;
     cos_res.f = (index == 0) ? c_poly : s_poly;
@@ -321,7 +321,7 @@ inline int __internal_dsincos_ep_nolut_cout (double *a, double *psin, double *pc
         *psin = *pcos = xin + xin;
         return nRet;
     }
-    R = __dsincos_ep_trig_noLUT_reduction (x.f, 2, &Rl, &idx);
+    R = __dsincos_ep_nolut_trig_noLUT_reduction (x.f, 2, &Rl, &idx);
     R2 = R * R;
     lindex = index = (unsigned long) idx;
     lindex <<= 63;

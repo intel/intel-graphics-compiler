@@ -1050,7 +1050,7 @@ static inline double __slgamma_ep_own_lgamma_pos_fp64 (double arg)
         lx = 0.0;
     }
 
-    ix = ((((_iml_dp_union_t *) & x)->dwords.hi_dword));
+    ix = ((((_iml_v2_dp_union_t *) & x)->dwords.hi_dword));
 
     if ((x == 1.0) || (x == 2.0))
     {
@@ -1176,10 +1176,10 @@ inline int __internal_slgamma_ep_cout (float *a, float *r)
     float f = 0.0f, f1 = 0.0f;
     double ldx = 0.0, t0 = 0.0, t1 = 0.0, t2 = 0.0, result = 0.0, y = 0.0, y2 = 0.0;
     double p = 0.0, r1 = 0.0, r2 = 0.0;
-    signed int ix = ((signed int) (((_iml_sp_union_t *) & x)->hex[0]));
-    unsigned int iabsx = ((((_iml_sp_union_t *) & x)->hex[0]) & 0x7fffffff);
-    unsigned int xsig = (((_iml_sp_union_t *) & x)->hex[0] >> 31);
-    unsigned int exp_x = ((((_iml_sp_union_t *) & x)->hex[0] >> 23) & 0xFF);
+    signed int ix = ((signed int) (((_iml_v2_sp_union_t *) & x)->hex[0]));
+    unsigned int iabsx = ((((_iml_v2_sp_union_t *) & x)->hex[0]) & 0x7fffffff);
+    unsigned int xsig = (((_iml_v2_sp_union_t *) & x)->hex[0] >> 31);
+    unsigned int exp_x = ((((_iml_v2_sp_union_t *) & x)->hex[0] >> 23) & 0xFF);
     int i = 0, intx = 0;
     int signgam = 1;
     int nRet = 0;
@@ -1299,7 +1299,7 @@ inline int __internal_slgamma_ep_cout (float *a, float *r)
                 //
                 f = (-2.5) - x;
                 f = f + (__slgamma_ep__TWO_23H[0]);
-                i = ((((_iml_sp_union_t *) & f)->hex[0]) & 0x00000001); // i=trunc(2-x)
+                i = ((((_iml_v2_sp_union_t *) & f)->hex[0]) & 0x00000001); // i=trunc(2-x)
                 f = f - (__slgamma_ep__TWO_23H[0]);
 
                 if ((((__constant double *) __slgamma_ep__LRIB)[3 * i + 0] < x) && (x < ((__constant double *) __slgamma_ep__LRIB)[3 * i + 2]))
@@ -1447,7 +1447,7 @@ inline int __internal_slgamma_ep_cout (float *a, float *r)
     return nRet;
 }   // inline int __internal_slgamma_ep_cout (float *a, float *r)
 
-float __ocl_svml_lgammaf (float a)
+float __ocl_svml_lgammaf_ep (float a)
 {
     float va1;
     float vr1;

@@ -57,7 +57,7 @@ static __constant __internal_sln_ep_data_t __internal_sln_ep_data = {
     {0x00000000u, 0x80000000u}
 };
 
-static __constant _iml_sp_union_t __sln_ep_CoutTab[210] = {
+static __constant _iml_v2_sp_union_t __sln_ep_nolut_CoutTab[210] = {
     0x3F800000,
     0x00000000,
     0x00000000,
@@ -285,53 +285,53 @@ inline int __internal_sln_ep_nolut_cout (float *a, float *r)
     int i;
     int nRet = 0;
     int isDenorm = 0;
-    if ((((((_iml_sp_union_t *) & a[0])->hex[0] >> 23) & 0xFF) != 0xFF))
+    if ((((((_iml_v2_sp_union_t *) & a[0])->hex[0] >> 23) & 0xFF) != 0xFF))
     {
         x = a[0];
         iN = 0;
-        if (((((_iml_sp_union_t *) & x)->hex[0] >> 23) & 0xFF) == 0)
+        if (((((_iml_v2_sp_union_t *) & x)->hex[0] >> 23) & 0xFF) == 0)
         {
-            x = (x * ((__constant float *) __sln_ep_CoutTab)[200]);
+            x = (x * ((__constant float *) __sln_ep_nolut_CoutTab)[200]);
             iN -= (27);
         }
-        if (x > ((__constant float *) __sln_ep_CoutTab)[201])
+        if (x > ((__constant float *) __sln_ep_nolut_CoutTab)[201])
         {
             u = x - 1.0f;
             fAbsU = u;
-            (((_iml_sp_union_t *) & fAbsU)->hex[0] = (((_iml_sp_union_t *) & fAbsU)->hex[0] & 0x7FFFFFFF) | ((_iml_uint32_t) (0) << 31));
-            if (fAbsU > ((__constant float *) __sln_ep_CoutTab)[199])
+            (((_iml_v2_sp_union_t *) & fAbsU)->hex[0] = (((_iml_v2_sp_union_t *) & fAbsU)->hex[0] & 0x7FFFFFFF) | ((_iml_uint32_t) (0) << 31));
+            if (fAbsU > ((__constant float *) __sln_ep_nolut_CoutTab)[199])
             {
-                iN += ((((_iml_sp_union_t *) & x)->hex[0] >> 23) & 0xFF) - 0x7F;
+                iN += ((((_iml_v2_sp_union_t *) & x)->hex[0] >> 23) & 0xFF) - 0x7F;
                 fN = (float) iN;
                 if (isDenorm == 1)
                 {
-                    fNLn2Hi = (fN * (((__constant float *) __sln_ep_CoutTab)[195] + ((__constant float *) __sln_ep_CoutTab)[196]));
+                    fNLn2Hi = (fN * (((__constant float *) __sln_ep_nolut_CoutTab)[195] + ((__constant float *) __sln_ep_nolut_CoutTab)[196]));
                     fNLn2Lo = 0.0f;
                 }
                 else
                 {
-                    fNLn2Hi = (fN * ((__constant float *) __sln_ep_CoutTab)[195]);
-                    fNLn2Lo = (fN * ((__constant float *) __sln_ep_CoutTab)[196]);
+                    fNLn2Hi = (fN * ((__constant float *) __sln_ep_nolut_CoutTab)[195]);
+                    fNLn2Lo = (fN * ((__constant float *) __sln_ep_nolut_CoutTab)[196]);
                 }
                 y = x;
-                (((_iml_sp_union_t *) & y)->hex[0] = (((_iml_sp_union_t *) & y)->hex[0] & 0x807FFFFF) | (((_iml_uint32_t) (0x7F) & 0xFF) << 23));
-                fTmp = (y + ((__constant float *) __sln_ep_CoutTab)[197]);
-                j = (((_iml_sp_union_t *) & fTmp)->hex[0] & 0x007FFFFF) & ((1 << (6 + 1)) - 1);
-                fRcprY = ((__constant float *) __sln_ep_CoutTab)[3 * (j)];
-                fLnRcprYHi = ((__constant float *) __sln_ep_CoutTab)[3 * (j) + 1];
-                fLnRcprYLo = ((__constant float *) __sln_ep_CoutTab)[3 * (j) + 2];
+                (((_iml_v2_sp_union_t *) & y)->hex[0] = (((_iml_v2_sp_union_t *) & y)->hex[0] & 0x807FFFFF) | (((_iml_uint32_t) (0x7F) & 0xFF) << 23));
+                fTmp = (y + ((__constant float *) __sln_ep_nolut_CoutTab)[197]);
+                j = (((_iml_v2_sp_union_t *) & fTmp)->hex[0] & 0x007FFFFF) & ((1 << (6 + 1)) - 1);
+                fRcprY = ((__constant float *) __sln_ep_nolut_CoutTab)[3 * (j)];
+                fLnRcprYHi = ((__constant float *) __sln_ep_nolut_CoutTab)[3 * (j) + 1];
+                fLnRcprYLo = ((__constant float *) __sln_ep_nolut_CoutTab)[3 * (j) + 2];
                 fWHi = (fNLn2Hi + fLnRcprYHi);
                 fWLo = (fNLn2Lo + fLnRcprYLo);
-                fTmp = (y + ((__constant float *) __sln_ep_CoutTab)[198]);
-                fYHi = (fTmp - ((__constant float *) __sln_ep_CoutTab)[198]);
+                fTmp = (y + ((__constant float *) __sln_ep_nolut_CoutTab)[198]);
+                fYHi = (fTmp - ((__constant float *) __sln_ep_nolut_CoutTab)[198]);
                 fYLo = (y - fYHi);
                 fUHi = (fRcprY * fYHi - 1.0f);
                 fULo = (fRcprY * fYLo);
                 u = (fUHi + fULo);
-                fP = ((((((((__constant float *) __sln_ep_CoutTab)[209] * u + ((__constant float *) __sln_ep_CoutTab)[208]) * u +
-                          ((__constant float *) __sln_ep_CoutTab)[207]) * u + ((__constant float *) __sln_ep_CoutTab)[206]) * u +
-                        ((__constant float *) __sln_ep_CoutTab)[205]) * u + ((__constant float *) __sln_ep_CoutTab)[204]) * u +
-                      ((__constant float *) __sln_ep_CoutTab)[203]);
+                fP = ((((((((__constant float *) __sln_ep_nolut_CoutTab)[209] * u + ((__constant float *) __sln_ep_nolut_CoutTab)[208]) * u +
+                          ((__constant float *) __sln_ep_nolut_CoutTab)[207]) * u + ((__constant float *) __sln_ep_nolut_CoutTab)[206]) * u +
+                        ((__constant float *) __sln_ep_nolut_CoutTab)[205]) * u + ((__constant float *) __sln_ep_nolut_CoutTab)[204]) * u +
+                      ((__constant float *) __sln_ep_nolut_CoutTab)[203]);
                 fP = (fP * u * u);
                 fResHi = (fWHi + fUHi);
                 fResLo = ((fWLo + fULo) + fP);
@@ -339,10 +339,10 @@ inline int __internal_sln_ep_nolut_cout (float *a, float *r)
             }
             else
             {
-                fP = ((((((((__constant float *) __sln_ep_CoutTab)[209] * u + ((__constant float *) __sln_ep_CoutTab)[208]) * u +
-                          ((__constant float *) __sln_ep_CoutTab)[207]) * u + ((__constant float *) __sln_ep_CoutTab)[206]) * u +
-                        ((__constant float *) __sln_ep_CoutTab)[205]) * u + ((__constant float *) __sln_ep_CoutTab)[204]) * u +
-                      ((__constant float *) __sln_ep_CoutTab)[203]);
+                fP = ((((((((__constant float *) __sln_ep_nolut_CoutTab)[209] * u + ((__constant float *) __sln_ep_nolut_CoutTab)[208]) * u +
+                          ((__constant float *) __sln_ep_nolut_CoutTab)[207]) * u + ((__constant float *) __sln_ep_nolut_CoutTab)[206]) * u +
+                        ((__constant float *) __sln_ep_nolut_CoutTab)[205]) * u + ((__constant float *) __sln_ep_nolut_CoutTab)[204]) * u +
+                      ((__constant float *) __sln_ep_nolut_CoutTab)[203]);
                 fP = (fP * u * u);
                 fP = (fP + u);
                 r[0] = fP;
@@ -350,23 +350,23 @@ inline int __internal_sln_ep_nolut_cout (float *a, float *r)
         }
         else
         {
-            if (x == ((__constant float *) __sln_ep_CoutTab)[201])
+            if (x == ((__constant float *) __sln_ep_nolut_CoutTab)[201])
             {
-                r[0] = -((__constant float *) __sln_ep_CoutTab)[202] / ((__constant float *) __sln_ep_CoutTab)[201];
+                r[0] = -((__constant float *) __sln_ep_nolut_CoutTab)[202] / ((__constant float *) __sln_ep_nolut_CoutTab)[201];
                 nRet = 2;
             }
             else
             {
-                r[0] = ((__constant float *) __sln_ep_CoutTab)[201] / ((__constant float *) __sln_ep_CoutTab)[201];
+                r[0] = ((__constant float *) __sln_ep_nolut_CoutTab)[201] / ((__constant float *) __sln_ep_nolut_CoutTab)[201];
                 nRet = 1;
             }
         }
     }
     else
     {
-        if (((((_iml_sp_union_t *) & a[0])->hex[0] >> 31) == 1) && ((((_iml_sp_union_t *) & a[0])->hex[0] & 0x007FFFFF) == 0))
+        if (((((_iml_v2_sp_union_t *) & a[0])->hex[0] >> 31) == 1) && ((((_iml_v2_sp_union_t *) & a[0])->hex[0] & 0x007FFFFF) == 0))
         {
-            r[0] = ((__constant float *) __sln_ep_CoutTab)[201] / ((__constant float *) __sln_ep_CoutTab)[201];
+            r[0] = ((__constant float *) __sln_ep_nolut_CoutTab)[201] / ((__constant float *) __sln_ep_nolut_CoutTab)[201];
             nRet = 1;
         }
         else

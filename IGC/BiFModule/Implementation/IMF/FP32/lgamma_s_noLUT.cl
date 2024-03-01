@@ -115,12 +115,12 @@ SPDX-License-Identifier: MIT
 // Positive args path of lgamma's data:
 //
 
-static __constant unsigned int __slgamma_ep__LM[] = {
+static __constant unsigned int __slgamma_nolut__LM[] = {
     0x6356BE3F, 0x3FF762D8
 };  // The point of local minimum on [1;2]
 
 // [1,1.25)
-static __constant unsigned int __slgamma_ep__C0[] = {
+static __constant unsigned int __slgamma_nolut__C0[] = {
     0x21765550, 0x4004F394  // A0
         , 0xBC14D340, 0x3FAC8CDF, 0xFC0EE4DC, 0xBFE22092    // A8,A7
         , 0x7D9BF558, 0x4027CB00, 0xCA309876, 0xC02C6004    // A4,A3
@@ -129,7 +129,7 @@ static __constant unsigned int __slgamma_ep__C0[] = {
 };
 
 // [1.25,1.5)
-static __constant unsigned int __slgamma_ep__C1[] = {
+static __constant unsigned int __slgamma_nolut__C1[] = {
     0xBCC38A42, 0xBFBF19B9  // A0
         , 0x35A6171A, 0x3F838E0D, 0xD61313B7, 0xBF831BBB    // A8,A7
         , 0x196425D0, 0x3FB08B40, 0xA53EB830, 0xBFC2E427    // A4,A3
@@ -138,7 +138,7 @@ static __constant unsigned int __slgamma_ep__C1[] = {
 };
 
 // [1.5,1.75)
-static __constant unsigned int __slgamma_ep__C2[] = {
+static __constant unsigned int __slgamma_nolut__C2[] = {
     0xF9DFA0CC, 0x4001DB08  // A0
         , 0xEB31047F, 0x3F65D5A7, 0x9BFA7FDE, 0xBFA44EAC    // A8,A7
         , 0xE7A663D8, 0x40051FEF, 0xE00A2522, 0xC012A5CF    // A4,A3
@@ -147,7 +147,7 @@ static __constant unsigned int __slgamma_ep__C2[] = {
 };
 
 // [1.75,2.0)
-static __constant unsigned int __slgamma_ep__C3[] = {
+static __constant unsigned int __slgamma_nolut__C3[] = {
     0x38D6CF0A, 0x4000A0CB  // A0
         , 0x032EB39A, 0x3F4A9222, 0x87EEA5A3, 0xBF8CBC95    // A8,A7
         , 0x0783BE49, 0x3FF79540, 0x418B8A25, 0xC00851BC    // A4,A3
@@ -156,7 +156,7 @@ static __constant unsigned int __slgamma_ep__C3[] = {
 };
 
 // [2;4)
-static __constant unsigned int __slgamma_ep__C4[] = {
+static __constant unsigned int __slgamma_nolut__C4[] = {
     0x38B9355F, 0xBEB2CC7A, 0x1833BF4C, 0x3F035F2D  // A10,A9
         , 0x7FD27785, 0xBFF51BAA, 0x5B6CDEFF, 0x3FFC9D5D    // A2,A1
         , 0xF9CB46C7, 0xBF421676, 0xFA1436C6, 0x3F7437F2    // A8,A7
@@ -167,7 +167,7 @@ static __constant unsigned int __slgamma_ep__C4[] = {
 
 // [4; 2^13)
 
-static __constant unsigned int __slgamma_ep__A[] = {
+static __constant unsigned int __slgamma_nolut__A[] = {
     0x40800000  // 00:    4.0
         , 0x41000000    // 01:    8.0
         , 0x41800000    // 02:   16.0
@@ -183,7 +183,7 @@ static __constant unsigned int __slgamma_ep__A[] = {
 
 /* [4; 2^13) */
 
-static __constant unsigned int __slgamma_ep__B[] = {
+static __constant unsigned int __slgamma_nolut__B[] = {
     0x3E800000  // 00: 1.0/   4.0
         , 0x3E000000    // 01: 1.0/   8.0
         , 0x3D800000    // 02: 1.0/  16.0
@@ -199,7 +199,7 @@ static __constant unsigned int __slgamma_ep__B[] = {
 
 // [4; 2^13)
 
-static __constant unsigned int __slgamma_ep__C5_0[] = {
+static __constant unsigned int __slgamma_nolut__C5_0[] = {
 // 00: [4;8)
     0x9000EB5C, 0x3FCB8CC6, 0xA0C2C641, 0xBFD41997  // A6,A5
         , 0xFA0EA462, 0x3FFCAB0B    // A0
@@ -236,7 +236,7 @@ static __constant unsigned int __slgamma_ep__C5_0[] = {
 };
 
 // [4; 2^13)
-static __constant unsigned int __slgamma_ep__C5[] = {
+static __constant unsigned int __slgamma_nolut__C5[] = {
 // 00: [4;8)
     0x8451C0CD, 0x3F6BBBD6, 0x272A16F7, 0xBF966EC3  // A10,A9
         , 0xA39AD769, 0x40022A24, 0xDF49C8C5, 0x4014190E    // A2,A1
@@ -298,37 +298,37 @@ static __constant unsigned int __slgamma_ep__C5[] = {
 // Main path of lgamma's data:
 //
 
-static __constant float __slgamma_ep__TWO_23H[2] = { 12582912.0, -12582912.0 };
+static __constant float __slgamma_nolut__TWO_23H[2] = { 12582912.0, -12582912.0 };
 
 // ln(sqrt(2*Pi)) = 0.9189385332046727417803297364056176398618
 
-static __constant unsigned int __slgamma_ep__LN_SQRT_TWO_PI[] = { 0xc864beb5, 0x3fed67f1 };
+static __constant unsigned int __slgamma_nolut__LN_SQRT_TWO_PI[] = { 0xc864beb5, 0x3fed67f1 };
 
 // Maximal positive number
 
-static __constant int __slgamma_ep__PBIG[] = { 0x7f7fffff, 0x7f7fffff };
+static __constant int __slgamma_nolut__PBIG[] = { 0x7f7fffff, 0x7f7fffff };
 
 // polynomial approximation of ln(sin(Pi*r)/(Pi*r)), |r| <= 0.5
 
-static __constant unsigned int __slgamma_ep__S16[] = { 0xA486E820, 0xBFD58731 };
+static __constant unsigned int __slgamma_nolut__S16[] = { 0xA486E820, 0xBFD58731 };
 
-static __constant unsigned int __slgamma_ep__S14[] = { 0xC28E15A9, 0xBFA4452C };
+static __constant unsigned int __slgamma_nolut__S14[] = { 0xC28E15A9, 0xBFA4452C };
 
-static __constant unsigned int __slgamma_ep__S08[] = { 0xE1B86C4F, 0xBFD013F6 };
+static __constant unsigned int __slgamma_nolut__S08[] = { 0xE1B86C4F, 0xBFD013F6 };
 
-static __constant unsigned int __slgamma_ep__S06[] = { 0x9F7A341F, 0xBFD5B3F1 };
+static __constant unsigned int __slgamma_nolut__S06[] = { 0x9F7A341F, 0xBFD5B3F1 };
 
-static __constant unsigned int __slgamma_ep__S12[] = { 0x5252E778, 0xBFC86A0D };
+static __constant unsigned int __slgamma_nolut__S12[] = { 0x5252E778, 0xBFC86A0D };
 
-static __constant unsigned int __slgamma_ep__S10[] = { 0xC9EE284B, 0xBFC93E08 };
+static __constant unsigned int __slgamma_nolut__S10[] = { 0xC9EE284B, 0xBFC93E08 };
 
-static __constant unsigned int __slgamma_ep__S04[] = { 0x555C9EDD, 0xBFE15132 };
+static __constant unsigned int __slgamma_nolut__S04[] = { 0x555C9EDD, 0xBFE15132 };
 
-static __constant unsigned int __slgamma_ep__S02[] = { 0x62480E35, 0xBFFA51A6 };
+static __constant unsigned int __slgamma_nolut__S02[] = { 0x62480E35, 0xBFFA51A6 };
 
 // Left root polynomials.
 
-static __constant unsigned int __slgamma_ep__LRP[] = {
+static __constant unsigned int __slgamma_nolut__LRP[] = {
 // near -2.7476826467274126919
     0xC31314FF, 0xC034185A, 0x3C28DFE3, 0x4023267F  // R3,R2
         , 0xA904B194, 0xBFFEA12D, 0x30BA7689, 0x3CA8FB85    // R1,R0
@@ -339,7 +339,7 @@ static __constant unsigned int __slgamma_ep__LRP[] = {
 
 // Right root polynomials.
 
-static __constant unsigned int __slgamma_ep__RRP[] = {
+static __constant unsigned int __slgamma_nolut__RRP[] = {
 // near -2.4570247382208005860
     0x058D9592, 0x3FF694A6, 0xB003A92B, 0x40136EEB  // R3,R2
         , 0x66AF5360, 0x3FF83FE9, 0x6D1FE86D, 0x3C90323B    // R1,R0
@@ -350,7 +350,7 @@ static __constant unsigned int __slgamma_ep__RRP[] = {
 
 // Left root and it's bounds.
 
-static __constant unsigned int __slgamma_ep__LRIB[] = {
+static __constant unsigned int __slgamma_nolut__LRIB[] = {
     0xA9328A1D, 0xC005FB43, 0x0A1BD901, 0xC005FB41  // -2.7476826467274126919
         , 0x6B0527E5, 0xC005FB3E, 0xD0D6F455, 0xC00FA47B, 0x547C2FE5, 0xC00FA471    // -3.9552942848585979085
     , 0x80000000, 0xC00FA45D
@@ -358,7 +358,7 @@ static __constant unsigned int __slgamma_ep__LRIB[] = {
 
 // Right root and it's bounds.
 
-static __constant unsigned int __slgamma_ep__RRIB[] = {
+static __constant unsigned int __slgamma_nolut__RRIB[] = {
     0x3517A988, 0xC003A7FF, 0x9600F86C, 0xC003A7FC  // -2.4570247382208005860
         , 0xF6EA4750, 0xC003A7F9, 0x5BB50ACB, 0xC0092610, 0xBC9E59AF, 0xC009260D    // -3.1435808883499798405
     , 0x1D87A893, 0xC009260B
@@ -371,7 +371,7 @@ static __constant unsigned int __slgamma_ep__RRIB[] = {
 //! @return            Returns 64-bit natural logarithm
 //! ===========================================================================
 __attribute__((always_inline))
-static inline double __slgamma_ep_own_log_fp64 (double arg)
+static inline double __slgamma_nolut_own_log_fp64 (double arg)
 {
     int denorm_scale_exp = 0;
     double result = 0.0;
@@ -530,7 +530,7 @@ static inline double __slgamma_ep_own_log_fp64 (double arg)
 //! @return            Returns 32-bit nearbyint
 //! ===========================================================================
 __attribute__((always_inline))
-static inline float __slgamma_ep_own_nearbyint_fp32 (float sA)
+static inline float __slgamma_nolut_own_nearbyint_fp32 (float sA)
 {
     float _rnd_s2p23 = 0.0f;
     float _rnd_sSignMask = 0.0f;
@@ -561,7 +561,7 @@ static inline float __slgamma_ep_own_nearbyint_fp32 (float sA)
 //! @return            Returns 32-bit ceil
 //! ===========================================================================
 __attribute__((always_inline))
-static inline float __slgamma_ep_own_ceilf_fp32 (float sA)
+static inline float __slgamma_nolut_own_ceilf_fp32 (float sA)
 {
     float _rnd_s2p23 = 0.0f;
     float _rnd_sSignMask = 0.0f;
@@ -600,11 +600,11 @@ static inline float __slgamma_ep_own_ceilf_fp32 (float sA)
 //! @return            Returns 32-bit lgamma
 //! ===========================================================================
 __attribute__((always_inline))
-static inline float __slgamma_ep_own_lgamma_fast_fp32 (float arg)
+static inline float __slgamma_nolut_own_lgamma_fast_fp32 (float arg)
 {
 
-    unsigned int __slgamma_ep_own_log2pif = 0x3feb3f8eu;
-    float result = 0.5f * ((*(float *) &(__slgamma_ep_own_log2pif)) - SPIRV_OCL_BUILTIN(log, _f32, ) (arg));
+    unsigned int __slgamma_nolut_own_log2pif = 0x3feb3f8eu;
+    float result = 0.5f * ((*(float *) &(__slgamma_nolut_own_log2pif)) - SPIRV_OCL_BUILTIN(log, _f32, ) (arg));
     result = result + (arg * (SPIRV_OCL_BUILTIN(log, _f32, ) (arg + (1.0f / ((12.0f * arg) - (1.0f / (10.0f * arg))))) - 1.0f));
     return result;
 }   // static inline float _VSTATIC(own_lgamma_fast_fp32) (float arg)
@@ -616,12 +616,12 @@ static inline float __slgamma_ep_own_lgamma_fast_fp32 (float arg)
 //! @return            Returns 64-bit lgamma
 //! ===========================================================================
 __attribute__((always_inline))
-static inline double __slgamma_ep_own_lgamma_fast_fp64 (double arg)
+static inline double __slgamma_nolut_own_lgamma_fast_fp64 (double arg)
 {
 
-    unsigned int __slgamma_ep_own_log2pi[] = { 0xc864beb5u, 0x3ffd67f1u };
-    double result = 0.5 * ((*(double *) __slgamma_ep_own_log2pi) - __slgamma_ep_own_log_fp64 (arg));
-    result = result + (arg * (__slgamma_ep_own_log_fp64 (arg + (1.0 / ((12.0 * arg) - (1.0 / (10.0 * arg))))) - 1.0));
+    unsigned int __slgamma_nolut_own_log2pi[] = { 0xc864beb5u, 0x3ffd67f1u };
+    double result = 0.5 * ((*(double *) __slgamma_nolut_own_log2pi) - __slgamma_nolut_own_log_fp64 (arg));
+    result = result + (arg * (__slgamma_nolut_own_log_fp64 (arg + (1.0 / ((12.0 * arg) - (1.0 / (10.0 * arg))))) - 1.0));
     return result;
 }   // static inline double _VSTATIC(own_lgamma_fast_fp64) (double arg)
 
@@ -632,7 +632,7 @@ static inline double __slgamma_ep_own_lgamma_fast_fp64 (double arg)
 //! @return            Returns 64-bit lgamma
 //! ===========================================================================
 __attribute__((always_inline))
-static inline double __slgamma_ep_own_lgamma_pos_fp64 (double arg)
+static inline double __slgamma_nolut_own_lgamma_pos_fp64 (double arg)
 {
     double x = 0.0, result = 0.0, y = 0.0, p = 0.0, y2 = 0.0, lx = 0.0;
     unsigned int ix = 0;
@@ -641,7 +641,7 @@ static inline double __slgamma_ep_own_lgamma_pos_fp64 (double arg)
     if (arg < 1.0)
     {
         x = arg + 1.0;
-        lx = __slgamma_ep_own_log_fp64 (arg);
+        lx = __slgamma_nolut_own_log_fp64 (arg);
     }
     else
     {
@@ -649,7 +649,7 @@ static inline double __slgamma_ep_own_lgamma_pos_fp64 (double arg)
         lx = 0.0;
     }
 
-    ix = ((((_iml_dp_union_t *) & x)->dwords.hi_dword));
+    ix = ((((_iml_v2_dp_union_t *) & x)->dwords.hi_dword));
 
     if ((x == 1.0) || (x == 2.0))
     {
@@ -660,7 +660,7 @@ static inline double __slgamma_ep_own_lgamma_pos_fp64 (double arg)
     else if (x >= 4.0)  // 4 <= x < 2^13:
     {
 
-        result = __slgamma_ep_own_lgamma_fast_fp64 (x);
+        result = __slgamma_nolut_own_lgamma_fast_fp64 (x);
     }   // else if ( x >= 4.0 ) // 4 <= x < 2^13:
     else if (x > 2.0)
     {
@@ -670,15 +670,15 @@ static inline double __slgamma_ep_own_lgamma_pos_fp64 (double arg)
         // ln(GAMMA(x)) ~ (x-2)*P10(x)
         //
         y2 = x * x;
-        p = ((((((__constant double *) __slgamma_ep__C4)[1] * y2
-                + ((__constant double *) __slgamma_ep__C4)[5]) * y2
-               + ((__constant double *) __slgamma_ep__C4)[9]) * y2
-              + ((__constant double *) __slgamma_ep__C4)[7]) * y2 + ((__constant double *) __slgamma_ep__C4)[3]) * x;
-        result = ((((((__constant double *) __slgamma_ep__C4)[0] * y2
-                     + ((__constant double *) __slgamma_ep__C4)[4]) * y2
-                    + ((__constant double *) __slgamma_ep__C4)[8]) * y2
-                   + ((__constant double *) __slgamma_ep__C4)[6]) * y2
-                  + ((__constant double *) __slgamma_ep__C4)[2]) * y2 + ((__constant double *) __slgamma_ep__C4)[10];
+        p = ((((((__constant double *) __slgamma_nolut__C4)[1] * y2
+                + ((__constant double *) __slgamma_nolut__C4)[5]) * y2
+               + ((__constant double *) __slgamma_nolut__C4)[9]) * y2
+              + ((__constant double *) __slgamma_nolut__C4)[7]) * y2 + ((__constant double *) __slgamma_nolut__C4)[3]) * x;
+        result = ((((((__constant double *) __slgamma_nolut__C4)[0] * y2
+                     + ((__constant double *) __slgamma_nolut__C4)[4]) * y2
+                    + ((__constant double *) __slgamma_nolut__C4)[8]) * y2
+                   + ((__constant double *) __slgamma_nolut__C4)[6]) * y2
+                  + ((__constant double *) __slgamma_nolut__C4)[2]) * y2 + ((__constant double *) __slgamma_nolut__C4)[10];
         result = result + p;
         p = x - 2.0;
         result = result * p;
@@ -691,13 +691,13 @@ static inline double __slgamma_ep_own_lgamma_pos_fp64 (double arg)
         // ln(GAMMA(x)) ~ P8(x)
         //
         y2 = x * x;
-        p = (((((__constant double *) __slgamma_ep__C3)[2] * y2
-               + ((__constant double *) __slgamma_ep__C3)[6]) * y2
-              + ((__constant double *) __slgamma_ep__C3)[4]) * y2 + ((__constant double *) __slgamma_ep__C3)[8]) * x;
-        result = (((((__constant double *) __slgamma_ep__C3)[1] * y2
-                    + ((__constant double *) __slgamma_ep__C3)[5]) * y2
-                   + ((__constant double *) __slgamma_ep__C3)[3]) * y2
-                  + ((__constant double *) __slgamma_ep__C3)[7]) * y2 + ((__constant double *) __slgamma_ep__C3)[0];
+        p = (((((__constant double *) __slgamma_nolut__C3)[2] * y2
+               + ((__constant double *) __slgamma_nolut__C3)[6]) * y2
+              + ((__constant double *) __slgamma_nolut__C3)[4]) * y2 + ((__constant double *) __slgamma_nolut__C3)[8]) * x;
+        result = (((((__constant double *) __slgamma_nolut__C3)[1] * y2
+                    + ((__constant double *) __slgamma_nolut__C3)[5]) * y2
+                   + ((__constant double *) __slgamma_nolut__C3)[3]) * y2
+                  + ((__constant double *) __slgamma_nolut__C3)[7]) * y2 + ((__constant double *) __slgamma_nolut__C3)[0];
         result = result + p;
     }   // else if ( x >= 1.75 )
     else if (x >= 1.5)
@@ -708,13 +708,13 @@ static inline double __slgamma_ep_own_lgamma_pos_fp64 (double arg)
         // ln(GAMMA(x)) ~ P8(x)
         //
         y2 = x * x;
-        p = (((((__constant double *) __slgamma_ep__C2)[2] * y2
-               + ((__constant double *) __slgamma_ep__C2)[6]) * y2
-              + ((__constant double *) __slgamma_ep__C2)[4]) * y2 + ((__constant double *) __slgamma_ep__C2)[8]) * x;
-        result = (((((__constant double *) __slgamma_ep__C2)[1] * y2
-                    + ((__constant double *) __slgamma_ep__C2)[5]) * y2
-                   + ((__constant double *) __slgamma_ep__C2)[3]) * y2
-                  + ((__constant double *) __slgamma_ep__C2)[7]) * y2 + ((__constant double *) __slgamma_ep__C2)[0];
+        p = (((((__constant double *) __slgamma_nolut__C2)[2] * y2
+               + ((__constant double *) __slgamma_nolut__C2)[6]) * y2
+              + ((__constant double *) __slgamma_nolut__C2)[4]) * y2 + ((__constant double *) __slgamma_nolut__C2)[8]) * x;
+        result = (((((__constant double *) __slgamma_nolut__C2)[1] * y2
+                    + ((__constant double *) __slgamma_nolut__C2)[5]) * y2
+                   + ((__constant double *) __slgamma_nolut__C2)[3]) * y2
+                  + ((__constant double *) __slgamma_nolut__C2)[7]) * y2 + ((__constant double *) __slgamma_nolut__C2)[0];
         result = result + p;
     }   // else if ( x >= 1.5 )
     else if (x >= 1.25)
@@ -726,15 +726,15 @@ static inline double __slgamma_ep_own_lgamma_pos_fp64 (double arg)
         // where x0 - point of local minimum on [1;2]
         // rounded to nearest double precision number.
         //
-        y = x - (*(__constant double *) __slgamma_ep__LM);
+        y = x - (*(__constant double *) __slgamma_nolut__LM);
         y2 = y * y;
-        p = (((((__constant double *) __slgamma_ep__C1)[2] * y2
-               + ((__constant double *) __slgamma_ep__C1)[6]) * y2
-              + ((__constant double *) __slgamma_ep__C1)[4]) * y2 + ((__constant double *) __slgamma_ep__C1)[8]) * y;
-        result = (((((__constant double *) __slgamma_ep__C1)[1] * y2
-                    + ((__constant double *) __slgamma_ep__C1)[5]) * y2
-                   + ((__constant double *) __slgamma_ep__C1)[3]) * y2
-                  + ((__constant double *) __slgamma_ep__C1)[7]) * y2 + ((__constant double *) __slgamma_ep__C1)[0];
+        p = (((((__constant double *) __slgamma_nolut__C1)[2] * y2
+               + ((__constant double *) __slgamma_nolut__C1)[6]) * y2
+              + ((__constant double *) __slgamma_nolut__C1)[4]) * y2 + ((__constant double *) __slgamma_nolut__C1)[8]) * y;
+        result = (((((__constant double *) __slgamma_nolut__C1)[1] * y2
+                    + ((__constant double *) __slgamma_nolut__C1)[5]) * y2
+                   + ((__constant double *) __slgamma_nolut__C1)[3]) * y2
+                  + ((__constant double *) __slgamma_nolut__C1)[7]) * y2 + ((__constant double *) __slgamma_nolut__C1)[0];
         result = result + p;
     }   // else if ( x >= 1.25 )
     else    // if ( x >= 1.0 )
@@ -745,13 +745,13 @@ static inline double __slgamma_ep_own_lgamma_pos_fp64 (double arg)
         // ln(GAMMA(x)) ~ P8(x)
         //
         y2 = x * x;
-        p = (((((__constant double *) __slgamma_ep__C0)[2] * y2
-               + ((__constant double *) __slgamma_ep__C0)[6]) * y2
-              + ((__constant double *) __slgamma_ep__C0)[4]) * y2 + ((__constant double *) __slgamma_ep__C0)[8]) * x;
-        result = (((((__constant double *) __slgamma_ep__C0)[1] * y2
-                    + ((__constant double *) __slgamma_ep__C0)[5]) * y2
-                   + ((__constant double *) __slgamma_ep__C0)[3]) * y2
-                  + ((__constant double *) __slgamma_ep__C0)[7]) * y2 + ((__constant double *) __slgamma_ep__C0)[0];
+        p = (((((__constant double *) __slgamma_nolut__C0)[2] * y2
+               + ((__constant double *) __slgamma_nolut__C0)[6]) * y2
+              + ((__constant double *) __slgamma_nolut__C0)[4]) * y2 + ((__constant double *) __slgamma_nolut__C0)[8]) * x;
+        result = (((((__constant double *) __slgamma_nolut__C0)[1] * y2
+                    + ((__constant double *) __slgamma_nolut__C0)[5]) * y2
+                   + ((__constant double *) __slgamma_nolut__C0)[3]) * y2
+                  + ((__constant double *) __slgamma_nolut__C0)[7]) * y2 + ((__constant double *) __slgamma_nolut__C0)[0];
         result = result + p;
     }   // else // if ( x >= 1.0 )
 
@@ -769,17 +769,17 @@ static inline double __slgamma_ep_own_lgamma_pos_fp64 (double arg)
 //! ===========================================================================
 
 __attribute__((always_inline))
-inline int __internal_slgamma_ep_cout (float *a, float *r)
+inline int __internal_slgamma_nolut_cout (float *a, float *r)
 {
 
     float x = (*a);
     float f = 0.0f, f1 = 0.0f;
     double ldx = 0.0, t0 = 0.0, t1 = 0.0, t2 = 0.0, result = 0.0, y = 0.0, y2 = 0.0;
     double p = 0.0, r1 = 0.0, r2 = 0.0;
-    signed int ix = ((signed int) (((_iml_sp_union_t *) & x)->hex[0]));
-    unsigned int iabsx = ((((_iml_sp_union_t *) & x)->hex[0]) & 0x7fffffff);
-    unsigned int xsig = (((_iml_sp_union_t *) & x)->hex[0] >> 31);
-    unsigned int exp_x = ((((_iml_sp_union_t *) & x)->hex[0] >> 23) & 0xFF);
+    signed int ix = ((signed int) (((_iml_v2_sp_union_t *) & x)->hex[0]));
+    unsigned int iabsx = ((((_iml_v2_sp_union_t *) & x)->hex[0]) & 0x7fffffff);
+    unsigned int xsig = (((_iml_v2_sp_union_t *) & x)->hex[0] >> 31);
+    unsigned int exp_x = ((((_iml_v2_sp_union_t *) & x)->hex[0] >> 23) & 0xFF);
     int i = 0, intx = 0;
     int signgam = 1;
     int nRet = 0;
@@ -806,7 +806,7 @@ inline int __internal_slgamma_ep_cout (float *a, float *r)
     {
         // OVERFLOW_BOUNDARY <= x <= +Max_Double
         // Return +Infinity. Raise Inexact and Overflow.
-        (*r) = (*(__constant double *) __slgamma_ep__PBIG) * (*(__constant double *) __slgamma_ep__PBIG);
+        (*r) = (*(__constant double *) __slgamma_nolut__PBIG) * (*(__constant double *) __slgamma_nolut__PBIG);
         nRet = 3;
     }
     else
@@ -814,14 +814,14 @@ inline int __internal_slgamma_ep_cout (float *a, float *r)
 
         if (x >= 4.0f)  // x>4 fast Sergio Nemes branch
         {
-            (*r) = __slgamma_ep_own_lgamma_fast_fp32 (x);
+            (*r) = __slgamma_nolut_own_lgamma_fast_fp32 (x);
         }
         else if (!xsig) // x>=0 positive arguments domain
         {
             if (iabsx < 0x46000000u)
             {
                 ldx = x;
-                (*r) = __slgamma_ep_own_lgamma_pos_fp64 (ldx);
+                (*r) = __slgamma_nolut_own_lgamma_pos_fp64 (ldx);
             }
             else    // if ( iabsx <= 0x7C44AF8Eu)
             {
@@ -832,9 +832,9 @@ inline int __internal_slgamma_ep_cout (float *a, float *r)
                 // ln(GAMMA(x)) = ln(sqrt(2*Pi)) + (x-0.5)ln(x) - x
                 //
                 ldx = x;
-                result = (*(__constant double *) __slgamma_ep__LN_SQRT_TWO_PI);
+                result = (*(__constant double *) __slgamma_nolut__LN_SQRT_TWO_PI);
                 t1 = ldx - 0.5;
-                t2 = __slgamma_ep_own_log_fp64 (x);
+                t2 = __slgamma_nolut_own_log_fp64 (x);
                 t1 = t1 * t2;
                 result = result + t1;
                 result = result - ldx;
@@ -843,11 +843,11 @@ inline int __internal_slgamma_ep_cout (float *a, float *r)
         }   // if (!xsig) // x>=0 positive arguments domain
         else    // x<0 negative arguments domain
         {
-            f = __slgamma_ep_own_nearbyint_fp32 (x);
+            f = __slgamma_nolut_own_nearbyint_fp32 (x);
 
             intx = (x == f);    /* Is x an integer? */
 
-            if (!intx && (x > (__slgamma_ep__TWO_23H[1])) && !(((int) __slgamma_ep_own_ceilf_fp32 (x)) & 1))
+            if (!intx && (x > (__slgamma_nolut__TWO_23H[1])) && !(((int) __slgamma_nolut_own_ceilf_fp32 (x)) & 1))
             {
                 // x belongs to interval (-2*k-1;-2*k) for some integer k>0.
                 signgam = -1;
@@ -879,8 +879,8 @@ inline int __internal_slgamma_ep_cout (float *a, float *r)
                 }
 
                 p = SPIRV_OCL_BUILTIN(fabs, _f64, ) (p);
-                p = __slgamma_ep_own_log_fp64 ((double) p);
-                result = __slgamma_ep_own_lgamma_pos_fp64 (y);
+                p = __slgamma_nolut_own_log_fp64 ((double) p);
+                result = __slgamma_nolut_own_lgamma_pos_fp64 (y);
                 result = result - p;
                 (*r) = (float) result;
             }   // else if ( iabsx < 0x40000000u )
@@ -898,28 +898,28 @@ inline int __internal_slgamma_ep_cout (float *a, float *r)
                 // lgammaf(x) = lgammaf(x+1) - ln(abs(x))
                 //
                 f = (-2.5) - x;
-                f = f + (__slgamma_ep__TWO_23H[0]);
-                i = ((((_iml_sp_union_t *) & f)->hex[0]) & 0x00000001); // i=trunc(2-x)
-                f = f - (__slgamma_ep__TWO_23H[0]);
+                f = f + (__slgamma_nolut__TWO_23H[0]);
+                i = ((((_iml_v2_sp_union_t *) & f)->hex[0]) & 0x00000001); // i=trunc(2-x)
+                f = f - (__slgamma_nolut__TWO_23H[0]);
 
-                if ((((__constant double *) __slgamma_ep__LRIB)[3 * i + 0] < x) && (x < ((__constant double *) __slgamma_ep__LRIB)[3 * i + 2]))
+                if ((((__constant double *) __slgamma_nolut__LRIB)[3 * i + 0] < x) && (x < ((__constant double *) __slgamma_nolut__LRIB)[3 * i + 2]))
                 {
                     // x is near left root
                     y = x;
-                    y = y - ((__constant double *) __slgamma_ep__LRIB)[3 * i + 1];
-                    result = ((((__constant double *) __slgamma_ep__LRP)[4 * i + 0] * y
-                               + ((__constant double *) __slgamma_ep__LRP)[4 * i + 1]) * y
-                              + ((__constant double *) __slgamma_ep__LRP)[4 * i + 2]) * y + ((__constant double *) __slgamma_ep__LRP)[4 * i + 3];
+                    y = y - ((__constant double *) __slgamma_nolut__LRIB)[3 * i + 1];
+                    result = ((((__constant double *) __slgamma_nolut__LRP)[4 * i + 0] * y
+                               + ((__constant double *) __slgamma_nolut__LRP)[4 * i + 1]) * y
+                              + ((__constant double *) __slgamma_nolut__LRP)[4 * i + 2]) * y + ((__constant double *) __slgamma_nolut__LRP)[4 * i + 3];
                     result = result;
                 }
-                else if ((((__constant double *) __slgamma_ep__RRIB)[3 * i + 0] < x) && (x < ((__constant double *) __slgamma_ep__RRIB)[3 * i + 2]))
+                else if ((((__constant double *) __slgamma_nolut__RRIB)[3 * i + 0] < x) && (x < ((__constant double *) __slgamma_nolut__RRIB)[3 * i + 2]))
                 {
                     // x is near right root
                     y = x;
-                    y = y - ((__constant double *) __slgamma_ep__RRIB)[3 * i + 1];
-                    result = ((((__constant double *) __slgamma_ep__RRP)[4 * i + 0] * y
-                               + ((__constant double *) __slgamma_ep__RRP)[4 * i + 1]) * y
-                              + ((__constant double *) __slgamma_ep__RRP)[4 * i + 2]) * y + ((__constant double *) __slgamma_ep__RRP)[4 * i + 3];
+                    y = y - ((__constant double *) __slgamma_nolut__RRIB)[3 * i + 1];
+                    result = ((((__constant double *) __slgamma_nolut__RRP)[4 * i + 0] * y
+                               + ((__constant double *) __slgamma_nolut__RRP)[4 * i + 1]) * y
+                              + ((__constant double *) __slgamma_nolut__RRP)[4 * i + 2]) * y + ((__constant double *) __slgamma_nolut__RRP)[4 * i + 3];
                     result = result;
                 }
                 else
@@ -933,8 +933,8 @@ inline int __internal_slgamma_ep_cout (float *a, float *r)
                         y = y + 1.0;
                     }
                     p = SPIRV_OCL_BUILTIN(fabs, _f64, ) (p);
-                    p = __slgamma_ep_own_log_fp64 ((double) p);
-                    result = __slgamma_ep_own_lgamma_pos_fp64 (y);
+                    p = __slgamma_nolut_own_log_fp64 ((double) p);
+                    result = __slgamma_nolut_own_lgamma_pos_fp64 (y);
                     result = result - p;
                 }
                 (*r) = (float) result;
@@ -952,8 +952,8 @@ inline int __internal_slgamma_ep_cout (float *a, float *r)
                 }
 
                 p = SPIRV_OCL_BUILTIN(fabs, _f64, ) (p);
-                p = __slgamma_ep_own_log_fp64 ((double) p);
-                result = __slgamma_ep_own_lgamma_pos_fp64 (y);
+                p = __slgamma_nolut_own_log_fp64 ((double) p);
+                result = __slgamma_nolut_own_lgamma_pos_fp64 (y);
                 result = result - p;
                 (*r) = (float) result;
             }   // else if ( iabsx < 0x41100000u )
@@ -969,32 +969,32 @@ inline int __internal_slgamma_ep_cout (float *a, float *r)
                 // and ln(sin(Pi*r1)/(Pi*r1)) is approximated by
                 // 8-degree polynomial of r1^2.
                 //
-                f = (__slgamma_ep__TWO_23H[0]) - x;
-                f = f - (__slgamma_ep__TWO_23H[0]); // f=round(-x)
+                f = (__slgamma_nolut__TWO_23H[0]) - x;
+                f = f - (__slgamma_nolut__TWO_23H[0]); // f=round(-x)
                 ldx = x;
                 ldx = -ldx;
                 r1 = f;
                 r1 = ldx - r1;
                 r2 = r1 * r1;
 
-                result = __slgamma_ep_own_log_fp64 (-x);
+                result = __slgamma_nolut_own_log_fp64 (-x);
                 result = -result;
-                y = __slgamma_ep_own_lgamma_pos_fp64 (ldx);
+                y = __slgamma_nolut_own_lgamma_pos_fp64 (ldx);
                 result = result - y;
 
                 t1 = r2 * r2;
-                t0 = ((((*(__constant double *) __slgamma_ep__S14) * t1
-                        + (*(__constant double *) __slgamma_ep__S10)) * t1
-                       + (*(__constant double *) __slgamma_ep__S06)) * t1 + (*(__constant double *) __slgamma_ep__S02)) * r2;
-                p = ((((*(__constant double *) __slgamma_ep__S16) * t1
-                       + (*(__constant double *) __slgamma_ep__S12)) * t1
-                      + (*(__constant double *) __slgamma_ep__S08)) * t1 + (*(__constant double *) __slgamma_ep__S04)) * t1;
+                t0 = ((((*(__constant double *) __slgamma_nolut__S14) * t1
+                        + (*(__constant double *) __slgamma_nolut__S10)) * t1
+                       + (*(__constant double *) __slgamma_nolut__S06)) * t1 + (*(__constant double *) __slgamma_nolut__S02)) * r2;
+                p = ((((*(__constant double *) __slgamma_nolut__S16) * t1
+                       + (*(__constant double *) __slgamma_nolut__S12)) * t1
+                      + (*(__constant double *) __slgamma_nolut__S08)) * t1 + (*(__constant double *) __slgamma_nolut__S04)) * t1;
                 p = p + t0;
 
                 result = result - p;
 
                 r1 = SPIRV_OCL_BUILTIN(fabs, _f64, ) (r1);
-                y = __slgamma_ep_own_log_fp64 ((double) r1);
+                y = __slgamma_nolut_own_log_fp64 ((double) r1);
                 result = result - y;
                 (*r) = (float) result;
             }   // else if ( iabsx < 0x46000000u )
@@ -1008,36 +1008,36 @@ inline int __internal_slgamma_ep_cout (float *a, float *r)
                 // - x - ln(sin(Pi*r1)/(Pi*r1)) - ln(|r1|)
                 // where r1 = x - rounded_to_nearest_integer(x).
                 //
-                result = (*(__constant double *) __slgamma_ep__LN_SQRT_TWO_PI);
+                result = (*(__constant double *) __slgamma_nolut__LN_SQRT_TWO_PI);
                 ldx = x;
                 t1 = ldx - 0.5;
                 t2 = -ldx;
-                t2 = __slgamma_ep_own_log_fp64 (-x);
+                t2 = __slgamma_nolut_own_log_fp64 (-x);
                 t1 = t1 * t2;
                 result = t1 - result;
 
                 result = result - ldx;
 
-                f = (__slgamma_ep__TWO_23H[0]);
+                f = (__slgamma_nolut__TWO_23H[0]);
                 f = f - x;
-                f = f - (__slgamma_ep__TWO_23H[0]);
+                f = f - (__slgamma_nolut__TWO_23H[0]);
 
                 r1 = -ldx;
                 r1 = r1 - f;
                 r2 = r1 * r1;
 
-                p = ((((((((*(__constant double *) __slgamma_ep__S16) * r2
-                           + (*(__constant double *) __slgamma_ep__S14)) * r2
-                          + (*(__constant double *) __slgamma_ep__S12)) * r2
-                         + (*(__constant double *) __slgamma_ep__S10)) * r2
-                        + (*(__constant double *) __slgamma_ep__S08)) * r2
-                       + (*(__constant double *) __slgamma_ep__S06)) * r2
-                      + (*(__constant double *) __slgamma_ep__S04)) * r2 + (*(__constant double *) __slgamma_ep__S02)) * r2;
+                p = ((((((((*(__constant double *) __slgamma_nolut__S16) * r2
+                           + (*(__constant double *) __slgamma_nolut__S14)) * r2
+                          + (*(__constant double *) __slgamma_nolut__S12)) * r2
+                         + (*(__constant double *) __slgamma_nolut__S10)) * r2
+                        + (*(__constant double *) __slgamma_nolut__S08)) * r2
+                       + (*(__constant double *) __slgamma_nolut__S06)) * r2
+                      + (*(__constant double *) __slgamma_nolut__S04)) * r2 + (*(__constant double *) __slgamma_nolut__S02)) * r2;
 
                 result = result - p;
 
                 r1 = SPIRV_OCL_BUILTIN(fabs, _f64, ) (r1);
-                y = __slgamma_ep_own_log_fp64 ((double) r1);
+                y = __slgamma_nolut_own_log_fp64 ((double) r1);
                 result = result - y;
                 (*r) = (float) result;
             }   // else if ( intx )
@@ -1045,7 +1045,7 @@ inline int __internal_slgamma_ep_cout (float *a, float *r)
     }   // else if ( exp_x == IML_EXPINF_32 )
 
     return nRet;
-}   // inline int __internal_slgamma_ep_cout (float *a, float *r)
+}   // inline int __internal_slgamma_nolut_cout (float *a, float *r)
 
 float __ocl_svml_lgammaf_noLUT (float a)
 {
@@ -1054,7 +1054,7 @@ float __ocl_svml_lgammaf_noLUT (float a)
     float r;
 
     va1 = a;
-    __internal_slgamma_ep_cout (&va1, &vr1);
+    __internal_slgamma_nolut_cout (&va1, &vr1);
     r = vr1;
 
     return r;

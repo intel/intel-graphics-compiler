@@ -26,7 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../imf.h"
 #pragma OPENCL FP_CONTRACT OFF
 
-static __constant _iml_dp_union_t __dpowr_la_nolut_CoutTab[860] = {
+static __constant _iml_v2_dp_union_t __dpowr_la_nolut_CoutTab[860] = {
     0x00000000, 0x3FF00000,
     0x00000000, 0x3FEF07C0,
     0x00000000, 0x3FEE1E00,
@@ -902,22 +902,22 @@ inline int __internal_dpowr_lut_cout (double *a, double *b, double *r)
         iDenoExpAdd, iXHi, k, i1, i2, i3, iELogAX, iN, j, iERes, iSign, iIsSigZeroX, iIsSigZeroY;
     dX = *a;
     dY = *b;
-    iEXB = ((((_iml_dp_union_t *) & dX)->dwords.hi_dword >> 20) & 0x7FF);
-    iEYB = ((((_iml_dp_union_t *) & dY)->dwords.hi_dword >> 20) & 0x7FF);
-    iSignX = (((_iml_dp_union_t *) & dX)->dwords.hi_dword >> 31);
-    iSignY = (((_iml_dp_union_t *) & dY)->dwords.hi_dword >> 31);
-    iIsSigZeroX = (((((_iml_dp_union_t *) & dX)->dwords.hi_dword & 0x000FFFFF) == 0) && ((((_iml_dp_union_t *) & dX)->dwords.lo_dword) == 0));
-    iIsSigZeroY = (((((_iml_dp_union_t *) & dY)->dwords.hi_dword & 0x000FFFFF) == 0) && ((((_iml_dp_union_t *) & dY)->dwords.lo_dword) == 0));
-    iYHi = (iEYB << 20) | (((_iml_dp_union_t *) & dY)->dwords.hi_dword & 0x000FFFFF);
-    iYLo = (((_iml_dp_union_t *) & dY)->dwords.lo_dword);
-    iYIsFinite = (((((_iml_dp_union_t *) & dY)->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF);
+    iEXB = ((((_iml_v2_dp_union_t *) & dX)->dwords.hi_dword >> 20) & 0x7FF);
+    iEYB = ((((_iml_v2_dp_union_t *) & dY)->dwords.hi_dword >> 20) & 0x7FF);
+    iSignX = (((_iml_v2_dp_union_t *) & dX)->dwords.hi_dword >> 31);
+    iSignY = (((_iml_v2_dp_union_t *) & dY)->dwords.hi_dword >> 31);
+    iIsSigZeroX = (((((_iml_v2_dp_union_t *) & dX)->dwords.hi_dword & 0x000FFFFF) == 0) && ((((_iml_v2_dp_union_t *) & dX)->dwords.lo_dword) == 0));
+    iIsSigZeroY = (((((_iml_v2_dp_union_t *) & dY)->dwords.hi_dword & 0x000FFFFF) == 0) && ((((_iml_v2_dp_union_t *) & dY)->dwords.lo_dword) == 0));
+    iYHi = (iEYB << 20) | (((_iml_v2_dp_union_t *) & dY)->dwords.hi_dword & 0x000FFFFF);
+    iYLo = (((_iml_v2_dp_union_t *) & dY)->dwords.lo_dword);
+    iYIsFinite = (((((_iml_v2_dp_union_t *) & dY)->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF);
     {
         int iXisZero = ((iEXB == 0) && (iIsSigZeroX));
         int iYisZero = ((iEYB == 0) && (iIsSigZeroY));
-        int iXisNAN = (!((((((_iml_dp_union_t *) & dX)->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF))) && (!(iIsSigZeroX));
-        int iYisNAN = (!((((((_iml_dp_union_t *) & dY)->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF))) && (!(iIsSigZeroY));
-        int iXisINF = (!((((((_iml_dp_union_t *) & dX)->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF))) && ((iIsSigZeroX));
-        int iYisINF = (!((((((_iml_dp_union_t *) & dY)->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF))) && ((iIsSigZeroY));
+        int iXisNAN = (!((((((_iml_v2_dp_union_t *) & dX)->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF))) && (!(iIsSigZeroX));
+        int iYisNAN = (!((((((_iml_v2_dp_union_t *) & dY)->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF))) && (!(iIsSigZeroY));
+        int iXisINF = (!((((((_iml_v2_dp_union_t *) & dX)->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF))) && ((iIsSigZeroX));
+        int iYisINF = (!((((((_iml_v2_dp_union_t *) & dY)->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF))) && ((iIsSigZeroY));
         if (iXisNAN)
         {
             dbVTmp1 = ((__constant double *) __dpowr_la_nolut_CoutTab)[852];
@@ -954,14 +954,14 @@ inline int __internal_dpowr_lut_cout (double *a, double *b, double *r)
                 *r = dbVTmp1;
                 return nRet;
             }
-            if (((((((_iml_dp_union_t *) & dY)->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF)) && iSignY)
+            if (((((((_iml_v2_dp_union_t *) & dY)->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF)) && iSignY)
             {
                 dbVTmp1 = ((__constant double *) __dpowr_la_nolut_CoutTab)[852];
                 dbVTmp1 = 1.0 / dbVTmp1;
                 *r = dbVTmp1;
                 return nRet;
             }
-            if (((((((_iml_dp_union_t *) & dY)->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF)) && (!iSignY))
+            if (((((((_iml_v2_dp_union_t *) & dY)->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF)) && (!iSignY))
             {
                 *r = ((__constant double *) __dpowr_la_nolut_CoutTab)[852];
                 return nRet;
@@ -969,7 +969,7 @@ inline int __internal_dpowr_lut_cout (double *a, double *b, double *r)
         }
         if (dX == ((__constant double *) __dpowr_la_nolut_CoutTab)[853])
         {
-            if (((((((_iml_dp_union_t *) & dY)->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF)))
+            if (((((((_iml_v2_dp_union_t *) & dY)->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF)))
             {
                 *r = ((__constant double *) __dpowr_la_nolut_CoutTab)[853];
                 return nRet;
@@ -1051,7 +1051,7 @@ inline int __internal_dpowr_lut_cout (double *a, double *b, double *r)
     }
     if (!((iSignX == 0) && (iEXB == 0x3FF) && iIsSigZeroX) && !((iEYB == 0) && iIsSigZeroY))
     {
-        iXIsFinite = (((((_iml_dp_union_t *) & dX)->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF);
+        iXIsFinite = (((((_iml_v2_dp_union_t *) & dX)->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF);
         if ((iXIsFinite || iIsSigZeroX) && (iYIsFinite || iIsSigZeroY))
         {
             if (dX != ((__constant double *) __dpowr_la_nolut_CoutTab)[852])
@@ -1065,23 +1065,23 @@ inline int __internal_dpowr_lut_cout (double *a, double *b, double *r)
                             dbSignRes = ((__constant double *) __dpowr_la_nolut_CoutTab)[853 + (iSignX & iYIsInt)];
                             iDenoExpAdd = 0;
                             dbAX = dX;
-                            (((_iml_dp_union_t *) & dbAX)->dwords.hi_dword =
-                             (((_iml_dp_union_t *) & dbAX)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (0) << 31));
+                            (((_iml_v2_dp_union_t *) & dbAX)->dwords.hi_dword =
+                             (((_iml_v2_dp_union_t *) & dbAX)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (0) << 31));
                             if (iEXB == 0)
                             {
                                 dbAX = dbAX * ((__constant double *) __dpowr_la_nolut_CoutTab)[858];
                                 iDenoExpAdd = iDenoExpAdd - 200;
                             }
                             dbX1 = dbAX;
-                            (((_iml_dp_union_t *) & dbX1)->dwords.hi_dword =
-                             (((_iml_dp_union_t *) & dbX1)->dwords.hi_dword & 0x800FFFFF) | (((_iml_uint32_t) (0x3FF) & 0x7FF) << 20));
-                            iXHi = ((((_iml_dp_union_t *) & dbAX)->dwords.hi_dword >> 20) & 0x7FF);
+                            (((_iml_v2_dp_union_t *) & dbX1)->dwords.hi_dword =
+                             (((_iml_v2_dp_union_t *) & dbX1)->dwords.hi_dword & 0x800FFFFF) | (((_iml_uint32_t) (0x3FF) & 0x7FF) << 20));
+                            iXHi = ((((_iml_v2_dp_union_t *) & dbAX)->dwords.hi_dword >> 20) & 0x7FF);
                             iXHi = iXHi << 20;
-                            iXHi = iXHi | (((_iml_dp_union_t *) & dbAX)->dwords.hi_dword & 0x000FFFFF);
+                            iXHi = iXHi | (((_iml_v2_dp_union_t *) & dbAX)->dwords.hi_dword & 0x000FFFFF);
                             k = iXHi - 0x3FE7C000;
                             k = k >> 20;
                             k = k + iDenoExpAdd;
-                            i1 = (((_iml_dp_union_t *) & dbX1)->dwords.hi_dword & 0x000FFFFF);
+                            i1 = (((_iml_v2_dp_union_t *) & dbX1)->dwords.hi_dword & 0x000FFFFF);
                             i1 = i1 & 0xFC000;
                             i1 = i1 + 0x4000;
                             i1 = i1 >> 15;
@@ -1089,7 +1089,7 @@ inline int __internal_dpowr_lut_cout (double *a, double *b, double *r)
                             dbL1Hi = ((__constant double *) __dpowr_la_nolut_CoutTab)[33 + 2 * (i1) + 0];
                             dbL1Lo = ((__constant double *) __dpowr_la_nolut_CoutTab)[33 + 2 * (i1) + 1];
                             dbX2 = dbX1 * dbRcp1;
-                            i2 = (((_iml_dp_union_t *) & dbX2)->dwords.hi_dword & 0x000FFFFF);
+                            i2 = (((_iml_v2_dp_union_t *) & dbX2)->dwords.hi_dword & 0x000FFFFF);
                             i2 = i2 & 0xFC00;
                             i2 = i2 + 0x400;
                             i2 = i2 >> 11;
@@ -1097,7 +1097,7 @@ inline int __internal_dpowr_lut_cout (double *a, double *b, double *r)
                             dbL2Hi = ((__constant double *) __dpowr_la_nolut_CoutTab)[132 + 2 * (i2) + 0];
                             dbL2Lo = ((__constant double *) __dpowr_la_nolut_CoutTab)[132 + 2 * (i2) + 1];
                             dbX3 = dbX2 * dbRcp2;
-                            i3 = (((_iml_dp_union_t *) & dbX3)->dwords.hi_dword & 0x000FFFFF);
+                            i3 = (((_iml_v2_dp_union_t *) & dbX3)->dwords.hi_dword & 0x000FFFFF);
                             i3 = i3 & 0xFF0;
                             i3 = i3 + 0x10;
                             i3 = i3 >> 5;
@@ -1139,7 +1139,7 @@ inline int __internal_dpowr_lut_cout (double *a, double *b, double *r)
                             dbVTmp2 = (dbTmp1 + (dbCQ));
                             dbT_CQHi = dbVTmp1;
                             dbCQLo = dbVTmp2;
-                            iELogAX = ((((_iml_dp_union_t *) & dbT_CQHi)->dwords.hi_dword >> 20) & 0x7FF);
+                            iELogAX = ((((_iml_v2_dp_union_t *) & dbT_CQHi)->dwords.hi_dword >> 20) & 0x7FF);
                             if (iELogAX + iEYB < 11 + 2 * 0x3FF)
                             {
                                 if (iELogAX + iEYB > -62 + 2 * 0x3FF)
@@ -1183,7 +1183,7 @@ inline int __internal_dpowr_lut_cout (double *a, double *b, double *r)
                                     dbPL = dbTmp3;
                                     dbPLL = (dY * dbHLL);
                                     dbVTmp1 = (dbPH + ((__constant double *) __dpowr_la_nolut_CoutTab)[855]);
-                                    iN = (((_iml_dp_union_t *) & dbVTmp1)->dwords.lo_dword);
+                                    iN = (((_iml_v2_dp_union_t *) & dbVTmp1)->dwords.lo_dword);
                                     j = iN & 0x7F;
                                     iN = iN >> 7;
                                     dbVPHH = (dbVTmp1 - ((__constant double *) __dpowr_la_nolut_CoutTab)[855]);
@@ -1200,14 +1200,14 @@ inline int __internal_dpowr_lut_cout (double *a, double *b, double *r)
                                     dbResLo = (dbExp2PolyT + ((__constant double *) __dpowr_la_nolut_CoutTab)[585 + 2 * (j) + 1]);
                                     dbResHi = ((__constant double *) __dpowr_la_nolut_CoutTab)[585 + 2 * (j) + 0];
                                     dbRes = (dbResHi + dbResLo);
-                                    iERes = ((((_iml_dp_union_t *) & dbRes)->dwords.hi_dword >> 20) & 0x7FF) - 0x3FF;
+                                    iERes = ((((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword >> 20) & 0x7FF) - 0x3FF;
                                     iERes = (iERes + iN);
                                     if (iERes < 1024)
                                     {
                                         if (iERes >= -1022)
                                         {
-                                            (((_iml_dp_union_t *) & dbRes)->dwords.hi_dword =
-                                             (((_iml_dp_union_t *) & dbRes)->dwords.
+                                            (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword =
+                                             (((_iml_v2_dp_union_t *) & dbRes)->dwords.
                                               hi_dword & 0x800FFFFF) | (((_iml_uint32_t) (iERes + 0x3FF) & 0x7FF) << 20));
                                             dbRes = dbRes * dbSignRes;
                                             dR = dbRes;
@@ -1231,8 +1231,8 @@ inline int __internal_dpowr_lut_cout (double *a, double *b, double *r)
                                                 dbSignRes *= ((__constant double *) __dpowr_la_nolut_CoutTab)[859];
                                                 iN = (iN + 200);
                                                 dbTwoPowN = ((__constant double *) __dpowr_la_nolut_CoutTab)[853];
-                                                (((_iml_dp_union_t *) & dbTwoPowN)->dwords.hi_dword =
-                                                 (((_iml_dp_union_t *) & dbTwoPowN)->dwords.
+                                                (((_iml_v2_dp_union_t *) & dbTwoPowN)->dwords.hi_dword =
+                                                 (((_iml_v2_dp_union_t *) & dbTwoPowN)->dwords.
                                                   hi_dword & 0x800FFFFF) | (((_iml_uint32_t) (iN + 0x3FF) & 0x7FF) << 20));
                                                 dbResHi = (dbResHi * dbTwoPowN);
                                                 dbResHi = (dbResHi * dbSignRes);
@@ -1251,8 +1251,8 @@ inline int __internal_dpowr_lut_cout (double *a, double *b, double *r)
                                                     dbSignRes *= ((__constant double *) __dpowr_la_nolut_CoutTab)[859];
                                                     iN = iN + 200;
                                                     dbTwoPowN = ((__constant double *) __dpowr_la_nolut_CoutTab)[853];
-                                                    (((_iml_dp_union_t *) & dbTwoPowN)->dwords.hi_dword =
-                                                     (((_iml_dp_union_t *) & dbTwoPowN)->dwords.
+                                                    (((_iml_v2_dp_union_t *) & dbTwoPowN)->dwords.hi_dword =
+                                                     (((_iml_v2_dp_union_t *) & dbTwoPowN)->dwords.
                                                       hi_dword & 0x800FFFFF) | (((_iml_uint32_t) (iN + 0x3FF) & 0x7FF) << 20));
                                                     dbRes = (dbRes * dbTwoPowN);
                                                     dbRes = (dbRes * dbSignRes);
@@ -1291,7 +1291,7 @@ inline int __internal_dpowr_lut_cout (double *a, double *b, double *r)
                             }
                             else
                             {
-                                iSign = iSignY ^ (((_iml_dp_union_t *) & dbT_CQHi)->dwords.hi_dword >> 31);
+                                iSign = iSignY ^ (((_iml_v2_dp_union_t *) & dbT_CQHi)->dwords.hi_dword >> 31);
                                 dbTmp1 = ((__constant double *) __dpowr_la_nolut_CoutTab)[850 + (iSign)];
                                 dbTmp1 = (dbTmp1 * dbTmp1);
                                 dbTmp1 = (dbTmp1 * dbSignRes);
@@ -1363,10 +1363,10 @@ inline int __internal_dpowr_lut_cout (double *a, double *b, double *r)
     else
     {
         dbVTmp1 = dX + dY;
-        iSign = (((_iml_dp_union_t *) & dbVTmp1)->dwords.hi_dword >> 31);
+        iSign = (((_iml_v2_dp_union_t *) & dbVTmp1)->dwords.hi_dword >> 31);
         dbVTmp2 = ((__constant double *) __dpowr_la_nolut_CoutTab)[853];
-        (((_iml_dp_union_t *) & dbVTmp2)->dwords.hi_dword =
-         (((_iml_dp_union_t *) & dbVTmp2)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
+        (((_iml_v2_dp_union_t *) & dbVTmp2)->dwords.hi_dword =
+         (((_iml_v2_dp_union_t *) & dbVTmp2)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
         dR = dbVTmp2 * dbVTmp2;
     }
     *r = dR;

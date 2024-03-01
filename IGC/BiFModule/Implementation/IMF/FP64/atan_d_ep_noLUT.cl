@@ -62,7 +62,7 @@ static __constant __internal_datan_ep_data_t __internal_datan_ep_data = {
     0x3FEFFFFFFEB5A845uL,
 };
 
-static __constant _iml_dp_union_t __datan_ep_CoutTab[242] = {
+static __constant _iml_v2_dp_union_t __datan_ep_nolut_CoutTab[242] = {
     0xE8000000, 0x3FC3D6EE,
     0x8B0D1D86, 0x3DF8CC4D,
     0x50000000, 0x3FCB90D7,
@@ -316,32 +316,32 @@ inline int __internal_datan_ep_nolut_cout (double *a, double *r)
         dbQLo, dbT1Hi, dbT1Lo, dbTHi, dbTLo, dbS, dbAtanPoly, dbAHi, dbALo, dbResHi, dbResLo, dbRes;
     double dbVTmp1, dbVTmp2, dbVTmp3;
     int i, iSign, iJ;
-    if ((((((_iml_dp_union_t *) & (*a))->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF))
+    if ((((((_iml_v2_dp_union_t *) & (*a))->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF))
     {
-        iSign = (((_iml_dp_union_t *) & (*a))->dwords.hi_dword >> 31);
+        iSign = (((_iml_v2_dp_union_t *) & (*a))->dwords.hi_dword >> 31);
         dbX = (*a);
-        (((_iml_dp_union_t *) & dbX)->dwords.hi_dword = (((_iml_dp_union_t *) & dbX)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (0) << 31));
-        if (dbX >= ((__constant double *) __datan_ep_CoutTab)[236])
+        (((_iml_v2_dp_union_t *) & dbX)->dwords.hi_dword = (((_iml_v2_dp_union_t *) & dbX)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (0) << 31));
+        if (dbX >= ((__constant double *) __datan_ep_nolut_CoutTab)[236])
         {
-            if (dbX < ((__constant double *) __datan_ep_CoutTab)[237])
+            if (dbX < ((__constant double *) __datan_ep_nolut_CoutTab)[237])
             {
-                iJ = ((((_iml_dp_union_t *) & (*a))->dwords.hi_dword >> 20) & 0x7FF) << 20;
-                iJ = iJ | (((_iml_dp_union_t *) & (*a))->dwords.hi_dword & 0x000FFFFF);
+                iJ = ((((_iml_v2_dp_union_t *) & (*a))->dwords.hi_dword >> 20) & 0x7FF) << 20;
+                iJ = iJ | (((_iml_v2_dp_union_t *) & (*a))->dwords.hi_dword & 0x000FFFFF);
                 iJ = iJ - 0x3FC00000;
                 iJ = iJ >> 19;
                 dbB = dbX;
-                (((_iml_dp_union_t *) & dbB)->dwords.lo_dword = (0));
-                (((_iml_dp_union_t *) & dbB)->dwords.hi_dword =
-                 (((_iml_dp_union_t *) & dbB)->dwords.
-                  hi_dword & 0xFFF00000) | ((((((_iml_dp_union_t *) & dbB)->dwords.hi_dword & 0x000FFFFF) & 0x80000) | 0x40000) & 0x000FFFFF));
+                (((_iml_v2_dp_union_t *) & dbB)->dwords.lo_dword = (0));
+                (((_iml_v2_dp_union_t *) & dbB)->dwords.hi_dword =
+                 (((_iml_v2_dp_union_t *) & dbB)->dwords.
+                  hi_dword & 0xFFF00000) | ((((((_iml_v2_dp_union_t *) & dbB)->dwords.hi_dword & 0x000FFFFF) & 0x80000) | 0x40000) & 0x000FFFFF));
                 dbU = dbX - dbB;
-                dbVTmp1 = ((dbU) * (((__constant double *) __datan_ep_CoutTab)[241]));
+                dbVTmp1 = ((dbU) * (((__constant double *) __datan_ep_nolut_CoutTab)[241]));
                 dbVTmp2 = (dbVTmp1 - (dbU));
                 dbVTmp1 = (dbVTmp1 - dbVTmp2);
                 dbVTmp2 = ((dbU) - dbVTmp1);
                 dbUHi = dbVTmp1;
                 dbULo = dbVTmp2;
-                dbVTmp1 = ((dbX) * (((__constant double *) __datan_ep_CoutTab)[241]));
+                dbVTmp1 = ((dbX) * (((__constant double *) __datan_ep_nolut_CoutTab)[241]));
                 dbVTmp2 = (dbVTmp1 - (dbX));
                 dbVTmp1 = (dbVTmp1 - dbVTmp2);
                 dbVTmp2 = ((dbX) - dbVTmp1);
@@ -354,31 +354,31 @@ inline int __internal_datan_ep_nolut_cout (double *a, double *r)
                 dbVTmp2 = (dbTmp1 + (dbXB1Lo));
                 dbXBHi = dbVTmp1;
                 dbXBLo = dbVTmp2;
-                dbVTmp1 = ((((__constant double *) __datan_ep_CoutTab)[238]) + (dbXBHi));
-                dbVTmp2 = ((((__constant double *) __datan_ep_CoutTab)[238]) - dbVTmp1);
+                dbVTmp1 = ((((__constant double *) __datan_ep_nolut_CoutTab)[238]) + (dbXBHi));
+                dbVTmp2 = ((((__constant double *) __datan_ep_nolut_CoutTab)[238]) - dbVTmp1);
                 dbVTmp3 = (dbVTmp1 + dbVTmp2);
                 dbVTmp2 = ((dbXBHi) + dbVTmp2);
-                dbVTmp3 = ((((__constant double *) __datan_ep_CoutTab)[238]) - dbVTmp3);
+                dbVTmp3 = ((((__constant double *) __datan_ep_nolut_CoutTab)[238]) - dbVTmp3);
                 dbVTmp3 = (dbVTmp2 + dbVTmp3);
                 dbV1Hi = dbVTmp1;
                 dbV2Lo = dbVTmp3;
                 dbV1Lo = dbV2Lo + dbXBLo;
-                dbVTmp1 = ((dbV1Hi) * (((__constant double *) __datan_ep_CoutTab)[241]));
+                dbVTmp1 = ((dbV1Hi) * (((__constant double *) __datan_ep_nolut_CoutTab)[241]));
                 dbVTmp2 = (dbVTmp1 - (dbV1Hi));
                 dbVTmp1 = (dbVTmp1 - dbVTmp2);
                 dbVTmp2 = ((dbV1Hi) - dbVTmp1);
                 dbVHi = dbVTmp1;
                 dbV3Lo = dbVTmp2;
                 dbVLo = dbV3Lo + dbV1Lo;
-                dbTmp1 = (((__constant double *) __datan_ep_CoutTab)[238] / dbVHi);
-                dbVTmp2 = (dbTmp1 * ((__constant double *) __datan_ep_CoutTab)[241]);
+                dbTmp1 = (((__constant double *) __datan_ep_nolut_CoutTab)[238] / dbVHi);
+                dbVTmp2 = (dbTmp1 * ((__constant double *) __datan_ep_nolut_CoutTab)[241]);
                 dbVTmp3 = (dbVTmp2 - dbTmp1);
                 dbVTmp3 = (dbVTmp2 - dbVTmp3);
                 dbTmp1 = (dbVHi * dbVTmp3);
-                dbTmp1 = (((__constant double *) __datan_ep_CoutTab)[238] - dbTmp1);
+                dbTmp1 = (((__constant double *) __datan_ep_nolut_CoutTab)[238] - dbTmp1);
                 dbVTmp2 = (dbVLo * dbVTmp3);
                 dbVTmp2 = (dbTmp1 - dbVTmp2);
-                dbTmp1 = (((__constant double *) __datan_ep_CoutTab)[238] + dbVTmp2);
+                dbTmp1 = (((__constant double *) __datan_ep_nolut_CoutTab)[238] + dbVTmp2);
                 dbQHi = dbVTmp3;
                 dbTmp1 = (dbTmp1 * dbVTmp2);
                 dbQLo = (dbTmp1 * dbVTmp3);
@@ -395,12 +395,12 @@ inline int __internal_datan_ep_nolut_cout (double *a, double *r)
                 dbTLo = dbVTmp2;
                 dbS = dbTHi * dbTHi;
                 dbAtanPoly =
-                    ((((((((__constant double *) __datan_ep_CoutTab)[234]) * dbS + ((__constant double *) __datan_ep_CoutTab)[233]) * dbS +
-                        ((__constant double *) __datan_ep_CoutTab)[232]) * dbS + ((__constant double *) __datan_ep_CoutTab)[231]) * dbS +
-                      ((__constant double *) __datan_ep_CoutTab)[230]) * dbS + ((__constant double *) __datan_ep_CoutTab)[229]) * dbS +
-                    ((__constant double *) __datan_ep_CoutTab)[228];
-                dbVTmp1 = ((((__constant double *) __datan_ep_CoutTab)[0 + 2 * (iJ) + 0]) + (dbTHi));
-                dbTmp1 = ((((__constant double *) __datan_ep_CoutTab)[0 + 2 * (iJ) + 0]) - dbVTmp1);
+                    ((((((((__constant double *) __datan_ep_nolut_CoutTab)[234]) * dbS + ((__constant double *) __datan_ep_nolut_CoutTab)[233]) * dbS +
+                        ((__constant double *) __datan_ep_nolut_CoutTab)[232]) * dbS + ((__constant double *) __datan_ep_nolut_CoutTab)[231]) * dbS +
+                      ((__constant double *) __datan_ep_nolut_CoutTab)[230]) * dbS + ((__constant double *) __datan_ep_nolut_CoutTab)[229]) * dbS +
+                    ((__constant double *) __datan_ep_nolut_CoutTab)[228];
+                dbVTmp1 = ((((__constant double *) __datan_ep_nolut_CoutTab)[0 + 2 * (iJ) + 0]) + (dbTHi));
+                dbTmp1 = ((((__constant double *) __datan_ep_nolut_CoutTab)[0 + 2 * (iJ) + 0]) - dbVTmp1);
                 dbVTmp2 = (dbTmp1 + (dbTHi));
                 dbAHi = dbVTmp1;
                 dbALo = dbVTmp2;
@@ -408,54 +408,54 @@ inline int __internal_datan_ep_nolut_cout (double *a, double *r)
                 dbTmp1 = dbAtanPoly * dbS;
                 dbTmp1 = dbTmp1 * dbTHi;
                 dbTmp1 = dbTmp1 + dbTLo;
-                dbTmp1 = dbTmp1 + ((__constant double *) __datan_ep_CoutTab)[0 + 2 * (iJ) + 1];
+                dbTmp1 = dbTmp1 + ((__constant double *) __datan_ep_nolut_CoutTab)[0 + 2 * (iJ) + 1];
                 dbResLo = dbTmp1 + dbALo;
                 dbRes = dbResHi + dbResLo;
-                (((_iml_dp_union_t *) & dbRes)->dwords.hi_dword =
-                 (((_iml_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
+                (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword =
+                 (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
                 (*r) = dbRes;
             }
             else
             {
-                dbRes = ((__constant double *) __datan_ep_CoutTab)[239] + ((__constant double *) __datan_ep_CoutTab)[240];
-                (((_iml_dp_union_t *) & dbRes)->dwords.hi_dword =
-                 (((_iml_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
+                dbRes = ((__constant double *) __datan_ep_nolut_CoutTab)[239] + ((__constant double *) __datan_ep_nolut_CoutTab)[240];
+                (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword =
+                 (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
                 (*r) = dbRes;
             }
         }
         else
         {
-            if (dbX >= ((__constant double *) __datan_ep_CoutTab)[235])
+            if (dbX >= ((__constant double *) __datan_ep_nolut_CoutTab)[235])
             {
                 dbS = dbX * dbX;
                 dbAtanPoly =
-                    ((((((((__constant double *) __datan_ep_CoutTab)[234]) * dbS + ((__constant double *) __datan_ep_CoutTab)[233]) * dbS +
-                        ((__constant double *) __datan_ep_CoutTab)[232]) * dbS + ((__constant double *) __datan_ep_CoutTab)[231]) * dbS +
-                      ((__constant double *) __datan_ep_CoutTab)[230]) * dbS + ((__constant double *) __datan_ep_CoutTab)[229]) * dbS +
-                    ((__constant double *) __datan_ep_CoutTab)[228];
+                    ((((((((__constant double *) __datan_ep_nolut_CoutTab)[234]) * dbS + ((__constant double *) __datan_ep_nolut_CoutTab)[233]) * dbS +
+                        ((__constant double *) __datan_ep_nolut_CoutTab)[232]) * dbS + ((__constant double *) __datan_ep_nolut_CoutTab)[231]) * dbS +
+                      ((__constant double *) __datan_ep_nolut_CoutTab)[230]) * dbS + ((__constant double *) __datan_ep_nolut_CoutTab)[229]) * dbS +
+                    ((__constant double *) __datan_ep_nolut_CoutTab)[228];
                 dbRes = dbAtanPoly * dbS;
                 dbRes = dbRes * dbX;
                 dbRes = dbRes + dbX;
-                (((_iml_dp_union_t *) & dbRes)->dwords.hi_dword =
-                 (((_iml_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
+                (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword =
+                 (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
                 (*r) = dbRes;
             }
             else
             {
-                if (((((_iml_dp_union_t *) & dbX)->dwords.hi_dword >> 20) & 0x7FF) != 0)
+                if (((((_iml_v2_dp_union_t *) & dbX)->dwords.hi_dword >> 20) & 0x7FF) != 0)
                 {
-                    dbVTmp1 = ((__constant double *) __datan_ep_CoutTab)[238] + dbX;
+                    dbVTmp1 = ((__constant double *) __datan_ep_nolut_CoutTab)[238] + dbX;
                     dbRes = dbVTmp1 * dbX;
-                    (((_iml_dp_union_t *) & dbRes)->dwords.hi_dword =
-                     (((_iml_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
+                    (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword =
+                     (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
                     (*r) = dbRes;
                 }
                 else
                 {
                     dbVTmp1 = dbX * dbX;
                     dbRes = dbX + dbVTmp1;
-                    (((_iml_dp_union_t *) & dbRes)->dwords.hi_dword =
-                     (((_iml_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
+                    (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword =
+                     (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
                     (*r) = dbRes;
                 }
             }
@@ -463,12 +463,12 @@ inline int __internal_datan_ep_nolut_cout (double *a, double *r)
     }
     else
     {
-        if ((((((_iml_dp_union_t *) & (*a))->dwords.hi_dword & 0x000FFFFF) == 0) && ((((_iml_dp_union_t *) & (*a))->dwords.lo_dword) == 0)))
+        if ((((((_iml_v2_dp_union_t *) & (*a))->dwords.hi_dword & 0x000FFFFF) == 0) && ((((_iml_v2_dp_union_t *) & (*a))->dwords.lo_dword) == 0)))
         {
-            dbRes = ((__constant double *) __datan_ep_CoutTab)[239] + ((__constant double *) __datan_ep_CoutTab)[240];
-            iSign = (((_iml_dp_union_t *) & (*a))->dwords.hi_dword >> 31);
-            (((_iml_dp_union_t *) & dbRes)->dwords.hi_dword =
-             (((_iml_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
+            dbRes = ((__constant double *) __datan_ep_nolut_CoutTab)[239] + ((__constant double *) __datan_ep_nolut_CoutTab)[240];
+            iSign = (((_iml_v2_dp_union_t *) & (*a))->dwords.hi_dword >> 31);
+            (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword =
+             (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
             (*r) = dbRes;
         }
         else

@@ -309,15 +309,15 @@ inline int __internal_stgamma_ep_cout (float *a, float *r)
     res = ((__constant float *) __stgamma_ep__zeros)[0];
 
     // get arg sign
-    ixsign = (((_iml_sp_union_t *) & x)->hex[0] >> 31);
+    ixsign = (((_iml_v2_sp_union_t *) & x)->hex[0] >> 31);
     // get arg exponent
-    ixexp = ((((_iml_sp_union_t *) & x)->hex[0] >> 23) & 0xFF);
+    ixexp = ((((_iml_v2_sp_union_t *) & x)->hex[0] >> 23) & 0xFF);
 
     // normal values
     if (ixexp != 0xFF)
     {
         // create absolute value
-        (((_iml_sp_union_t *) & absx)->hex[0] = (((_iml_sp_union_t *) & absx)->hex[0] & 0x7FFFFFFF) | ((_iml_uint32_t) (0) << 31));
+        (((_iml_v2_sp_union_t *) & absx)->hex[0] = (((_iml_v2_sp_union_t *) & absx)->hex[0] & 0x7FFFFFFF) | ((_iml_uint32_t) (0) << 31));
 
         ix = *((int *) (&absx));
 
@@ -566,7 +566,7 @@ inline int __internal_stgamma_ep_cout (float *a, float *r)
     else    // INF or NAN
     {
         // Singularity at negative INF
-        if (ixsign && (!((((_iml_sp_union_t *) & x)->hex[0] & 0x007FFFFF) != 0)))
+        if (ixsign && (!((((_iml_v2_sp_union_t *) & x)->hex[0] & 0x007FFFFF) != 0)))
         {
             {
                 float tz = ((__constant float *) __stgamma_ep__zeros)[0];
@@ -583,7 +583,7 @@ inline int __internal_stgamma_ep_cout (float *a, float *r)
     }   // else if (ixexp != IML_EXPINF_32)
 }   // inline int __internal_stgamma_ep_cout (float *a, float *r)
 
-float __ocl_svml_tgammaf (float a)
+float __ocl_svml_tgammaf_ep (float a)
 {
     float va1;
     float vr1;

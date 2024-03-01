@@ -112,7 +112,7 @@ static __constant __internal_dlog1p_la_noLUT_data_t __internal_dlog1p_la_noLUT_d
 
 /* Macros to access other precomputed constants */
 /* Table look-up: all DP constants are presented in hexadecimal form */
-static __constant _iml_dp_union_t __dlog1p_la_CoutTab[210] = {
+static __constant _iml_v2_dp_union_t __dlog1p_la_nolut_CoutTab[210] = {
     0x00000000, 0x3FF00000, /* RCPR_Y[0]       =  1.0000000000e+00 */
     0x00000000, 0x00000000, /* LN_RCPR_Y_HI[0] =  0.0000000000e-01 */
     0x00000000, 0x00000000, /* LN_RCPR_Y_LO[0] =  0.0000000000e-01 */
@@ -356,7 +356,7 @@ inline int __ocl_svml_internal_dlog1p_noLUT_cout (double *a0, double *r)
     int nRet = 0;
     (*a) = (*a0) + 1.0;
     /* Filter out Infs and NaNs */
-    if ((((((_iml_dp_union_t *) & a[0])->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF))
+    if ((((((_iml_v2_dp_union_t *) & a[0])->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF))
     {
         /* Here if argument is finite double precision number */
 /*
@@ -366,53 +366,53 @@ inline int __ocl_svml_internal_dlog1p_noLUT_cout (double *a0, double *r)
         x = a[0];
         iN = 0;
         /* Check if x is denormalized number or [+/-]0 */
-        if (((((_iml_dp_union_t *) & x)->dwords.hi_dword >> 20) & 0x7FF) == 0)
+        if (((((_iml_v2_dp_union_t *) & x)->dwords.hi_dword >> 20) & 0x7FF) == 0)
         {
             /* Here if argument is denormalized or [+/-]0 */
             /* Scale x and properly adjust iN */
-            x *= ((__constant double *) __dlog1p_la_CoutTab)[200];
+            x *= ((__constant double *) __dlog1p_la_nolut_CoutTab)[200];
             iN -= 60;
         }
         /* Starting from this point x is finite normalized number */
-        if (x > ((__constant double *) __dlog1p_la_CoutTab)[201])
+        if (x > ((__constant double *) __dlog1p_la_nolut_CoutTab)[201])
         {
             /* Here if x is positive finite normalized number */
             /* Get absolute value of u=x-1 */
             u = (x - 1.0);
             dbAbsU = u;
-            (((_iml_dp_union_t *) & dbAbsU)->dwords.hi_dword =
-             (((_iml_dp_union_t *) & dbAbsU)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (0) << 31));
+            (((_iml_v2_dp_union_t *) & dbAbsU)->dwords.hi_dword =
+             (((_iml_v2_dp_union_t *) & dbAbsU)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (0) << 31));
             /* Check if a[0] falls into "Near 1" range */
-            if (dbAbsU > ((__constant double *) __dlog1p_la_CoutTab)[199])
+            if (dbAbsU > ((__constant double *) __dlog1p_la_nolut_CoutTab)[199])
             {
                 /* 6) "Main" path */
                 /* a) Range reduction */
                 /* Get N taking into account denormalized arguments */
-                iN += ((((_iml_dp_union_t *) & x)->dwords.hi_dword >> 20) & 0x7FF) - 0x3FF;
+                iN += ((((_iml_v2_dp_union_t *) & x)->dwords.hi_dword >> 20) & 0x7FF) - 0x3FF;
                 dbN = (double) iN;
 /*
 //                  Compute N*Ln2Hi and N*Ln2Lo. Notice that N*Ln2Hi
 //                    is error-free for any N
 */
-                dbNLn2Hi = (dbN * ((__constant double *) __dlog1p_la_CoutTab)[195]);
-                dbNLn2Lo = (dbN * ((__constant double *) __dlog1p_la_CoutTab)[196]);
+                dbNLn2Hi = (dbN * ((__constant double *) __dlog1p_la_nolut_CoutTab)[195]);
+                dbNLn2Lo = (dbN * ((__constant double *) __dlog1p_la_nolut_CoutTab)[196]);
                 /* Get y */
                 y = x;
-                (((_iml_dp_union_t *) & y)->dwords.hi_dword =
-                 (((_iml_dp_union_t *) & y)->dwords.hi_dword & 0x800FFFFF) | (((_iml_uint32_t) (0x3FF) & 0x7FF) << 20));
+                (((_iml_v2_dp_union_t *) & y)->dwords.hi_dword =
+                 (((_iml_v2_dp_union_t *) & y)->dwords.hi_dword & 0x800FFFFF) | (((_iml_uint32_t) (0x3FF) & 0x7FF) << 20));
                 /* Obtain j */
-                dbTmp = (y + ((__constant double *) __dlog1p_la_CoutTab)[197]);
-                j = (((_iml_dp_union_t *) & dbTmp)->dwords.lo_dword) & ((1 << (6 + 1)) - 1);
+                dbTmp = (y + ((__constant double *) __dlog1p_la_nolut_CoutTab)[197]);
+                j = (((_iml_v2_dp_union_t *) & dbTmp)->dwords.lo_dword) & ((1 << (6 + 1)) - 1);
                 /* Get table values of RcprY, LnRcprYHi, LnRcprYLo */
-                dbRcprY = ((__constant double *) __dlog1p_la_CoutTab)[3 * (j)];
-                dbLnRcprYHi = ((__constant double *) __dlog1p_la_CoutTab)[3 * (j) + 1];
-                dbLnRcprYLo = ((__constant double *) __dlog1p_la_CoutTab)[3 * (j) + 2];
+                dbRcprY = ((__constant double *) __dlog1p_la_nolut_CoutTab)[3 * (j)];
+                dbLnRcprYHi = ((__constant double *) __dlog1p_la_nolut_CoutTab)[3 * (j) + 1];
+                dbLnRcprYLo = ((__constant double *) __dlog1p_la_nolut_CoutTab)[3 * (j) + 2];
                 /* Calculate WHi and WLo */
                 dbWHi = (dbNLn2Hi + dbLnRcprYHi);
                 dbWLo = (dbNLn2Lo + dbLnRcprYLo);
                 /* Get YHi and YLo */
-                dbTmp = (y + ((__constant double *) __dlog1p_la_CoutTab)[198]);
-                dbYHi = (dbTmp - ((__constant double *) __dlog1p_la_CoutTab)[198]);
+                dbTmp = (y + ((__constant double *) __dlog1p_la_nolut_CoutTab)[198]);
+                dbYHi = (dbTmp - ((__constant double *) __dlog1p_la_nolut_CoutTab)[198]);
                 dbYLo = (y - dbYHi);
                 /* Get UHi, uLo and U */
                 dbUHi = ((dbRcprY * dbYHi) - 1.0);
@@ -420,10 +420,10 @@ inline int __ocl_svml_internal_dlog1p_noLUT_cout (double *a0, double *r)
                 u = (dbUHi + dbuLo);
                 /* b) Approximation */
                 dbP =
-                    (((((((__constant double *) __dlog1p_la_CoutTab)[209] * u + ((__constant double *) __dlog1p_la_CoutTab)[208]) * u +
-                        ((__constant double *) __dlog1p_la_CoutTab)[207]) * u + ((__constant double *) __dlog1p_la_CoutTab)[206]) * u +
-                      ((__constant double *) __dlog1p_la_CoutTab)[205]) * u + ((__constant double *) __dlog1p_la_CoutTab)[204]) * u +
-                    ((__constant double *) __dlog1p_la_CoutTab)[203];
+                    (((((((__constant double *) __dlog1p_la_nolut_CoutTab)[209] * u + ((__constant double *) __dlog1p_la_nolut_CoutTab)[208]) * u +
+                        ((__constant double *) __dlog1p_la_nolut_CoutTab)[207]) * u + ((__constant double *) __dlog1p_la_nolut_CoutTab)[206]) * u +
+                      ((__constant double *) __dlog1p_la_nolut_CoutTab)[205]) * u + ((__constant double *) __dlog1p_la_nolut_CoutTab)[204]) * u +
+                    ((__constant double *) __dlog1p_la_nolut_CoutTab)[203];
                 dbP = (dbP * u * u);
                 /* c) Reconstruction */
                 dbResHi = (dbWHi + dbUHi);
@@ -434,10 +434,10 @@ inline int __ocl_svml_internal_dlog1p_noLUT_cout (double *a0, double *r)
             {
                 /* 5) "Near 1" path (|u|<=NEAR0_BOUND) */
                 dbP =
-                    (((((((__constant double *) __dlog1p_la_CoutTab)[209] * u + ((__constant double *) __dlog1p_la_CoutTab)[208]) * u +
-                        ((__constant double *) __dlog1p_la_CoutTab)[207]) * u + ((__constant double *) __dlog1p_la_CoutTab)[206]) * u +
-                      ((__constant double *) __dlog1p_la_CoutTab)[205]) * u + ((__constant double *) __dlog1p_la_CoutTab)[204]) * u +
-                    ((__constant double *) __dlog1p_la_CoutTab)[203];
+                    (((((((__constant double *) __dlog1p_la_nolut_CoutTab)[209] * u + ((__constant double *) __dlog1p_la_nolut_CoutTab)[208]) * u +
+                        ((__constant double *) __dlog1p_la_nolut_CoutTab)[207]) * u + ((__constant double *) __dlog1p_la_nolut_CoutTab)[206]) * u +
+                      ((__constant double *) __dlog1p_la_nolut_CoutTab)[205]) * u + ((__constant double *) __dlog1p_la_nolut_CoutTab)[204]) * u +
+                    ((__constant double *) __dlog1p_la_nolut_CoutTab)[203];
                 dbP = (dbP * u * u);
                 dbP = (dbP + u);
                 r[0] = dbP;
@@ -446,16 +446,16 @@ inline int __ocl_svml_internal_dlog1p_noLUT_cout (double *a0, double *r)
         else
         {
             /* Path 3) or 4). Here if argument is negative number or +/-0 */
-            if (x == ((__constant double *) __dlog1p_la_CoutTab)[201])
+            if (x == ((__constant double *) __dlog1p_la_nolut_CoutTab)[201])
             {
                 /* Path 3). Here if argument is +/-0 */
-                r[0] = -((__constant double *) __dlog1p_la_CoutTab)[202] / ((__constant double *) __dlog1p_la_CoutTab)[201];
+                r[0] = -((__constant double *) __dlog1p_la_nolut_CoutTab)[202] / ((__constant double *) __dlog1p_la_nolut_CoutTab)[201];
                 nRet = 2;
             }
             else
             {
                 /* Path 4). Here if argument is negative number */
-                r[0] = ((__constant double *) __dlog1p_la_CoutTab)[201] / ((__constant double *) __dlog1p_la_CoutTab)[201];
+                r[0] = ((__constant double *) __dlog1p_la_nolut_CoutTab)[201] / ((__constant double *) __dlog1p_la_nolut_CoutTab)[201];
                 nRet = 1;
             }
         }
@@ -463,11 +463,11 @@ inline int __ocl_svml_internal_dlog1p_noLUT_cout (double *a0, double *r)
     else
     {
         /* Path 1) or 2). Here if argument is NaN or +/-Infinity */
-        if (((((_iml_dp_union_t *) & a[0])->dwords.hi_dword >> 31) == 1)
-            && (((((_iml_dp_union_t *) & a[0])->dwords.hi_dword & 0x000FFFFF) == 0) && ((((_iml_dp_union_t *) & a[0])->dwords.lo_dword) == 0)))
+        if (((((_iml_v2_dp_union_t *) & a[0])->dwords.hi_dword >> 31) == 1)
+            && (((((_iml_v2_dp_union_t *) & a[0])->dwords.hi_dword & 0x000FFFFF) == 0) && ((((_iml_v2_dp_union_t *) & a[0])->dwords.lo_dword) == 0)))
         {
             /* Path 2). Here if argument is -Infinity */
-            r[0] = ((__constant double *) __dlog1p_la_CoutTab)[201] / ((__constant double *) __dlog1p_la_CoutTab)[201];
+            r[0] = ((__constant double *) __dlog1p_la_nolut_CoutTab)[201] / ((__constant double *) __dlog1p_la_nolut_CoutTab)[201];
             nRet = 1;
         }
         else

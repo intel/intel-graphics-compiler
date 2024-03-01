@@ -30,19 +30,19 @@ static __constant union
 {
     unsigned int w;
     float f;
-} __dexp_ep_p_L2Ef = { 0x3fB8AA3Bu };
+} __dexp_ep_nolut_p_L2Ef = { 0x3fB8AA3Bu };
 
 static __constant union
 {
     unsigned int w;
     float f;
-} __dexp_ep_p_Shifterf0 = { 0x4b4003ffu };
+} __dexp_ep_nolut_p_Shifterf0 = { 0x4b4003ffu };
 
 static __constant union
 {
     unsigned int w;
     float f;
-} __dexp_ep_p_fthres = { 0x4431195c };
+} __dexp_ep_nolut_p_fthres = { 0x4431195c };
 
 static __constant union
 {
@@ -50,7 +50,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dexp_ep_p_NL2H = { 0xbfe62e42fefa39efUL };
+} __dexp_ep_nolut_p_NL2H = { 0xbfe62e42fefa39efUL };
 
 static __constant union
 {
@@ -58,7 +58,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dexp_ep_p_NL2L = { 0xbc7abc9e3b39803fUL };
+} __dexp_ep_nolut_p_NL2L = { 0xbc7abc9e3b39803fUL };
 
 static __constant union
 {
@@ -66,7 +66,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dexp_ep_c6 = { 0x3f56dd9818211af0UL };
+} __dexp_ep_nolut_c6 = { 0x3f56dd9818211af0UL };
 
 static __constant union
 {
@@ -74,7 +74,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dexp_ep_c5 = { 0x3f8126fababd1cf2UL };
+} __dexp_ep_nolut_c5 = { 0x3f8126fababd1cf2UL };
 
 static __constant union
 {
@@ -82,7 +82,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dexp_ep_c4 = { 0x3fa55541c4c8cb89UL };
+} __dexp_ep_nolut_c4 = { 0x3fa55541c4c8cb89UL };
 
 static __constant union
 {
@@ -90,7 +90,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dexp_ep_c3 = { 0x3fc55540432ea07bUL };
+} __dexp_ep_nolut_c3 = { 0x3fc55540432ea07bUL };
 
 static __constant union
 {
@@ -98,7 +98,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dexp_ep_c2 = { 0x3fe00000090aa64aUL };
+} __dexp_ep_nolut_c2 = { 0x3fe00000090aa64aUL };
 
 static __constant union
 {
@@ -106,7 +106,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dexp_ep_c1 = { 0x3ff000000a208385UL };
+} __dexp_ep_nolut_c1 = { 0x3ff000000a208385UL };
 
 static __constant union
 {
@@ -114,7 +114,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dexp_ep_c0 = { 0xbdd63f26cce7780fUL };
+} __dexp_ep_nolut_c0 = { 0xbdd63f26cce7780fUL };
 
 static __constant union
 {
@@ -122,7 +122,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dexp_ep_min_norm = { 0x0010000000000000UL };
+} __dexp_ep_nolut_min_norm = { 0x0010000000000000UL };
 
 static __constant union
 {
@@ -130,7 +130,7 @@ static __constant union
     unsigned int w32[2];
     int s32[2];
     double f;
-} __dexp_ep_Inf = { 0x7ff0000000000000UL };
+} __dexp_ep_nolut_Inf = { 0x7ff0000000000000UL };
 
 __attribute__((always_inline))
 inline int __internal_dexp_ep_nolut_cout (double *a, double *r)
@@ -161,19 +161,19 @@ inline int __internal_dexp_ep_nolut_cout (double *a, double *r)
     } idx;
     float fN, xf;
     xf = (float) x;
-    idx.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (xf, __dexp_ep_p_L2Ef.f, __dexp_ep_p_Shifterf0.f);
-    fN = idx.f - __dexp_ep_p_Shifterf0.f;
+    idx.f = SPIRV_OCL_BUILTIN(fma, _f32_f32_f32, ) (xf, __dexp_ep_nolut_p_L2Ef.f, __dexp_ep_nolut_p_Shifterf0.f);
+    fN = idx.f - __dexp_ep_nolut_p_Shifterf0.f;
     N = (double) fN;
     T.w32[1] = idx.w << 20;
     T.w32[0] = 0;
-    R = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (__dexp_ep_p_NL2H.f, N, x);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (__dexp_ep_c6.f, R, __dexp_ep_c5.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dexp_ep_c4.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dexp_ep_c3.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dexp_ep_c2.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dexp_ep_c1.f);
-    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dexp_ep_c0.f);
-    if (SPIRV_OCL_BUILTIN(fabs, _f32, ) (xf) > __dexp_ep_p_fthres.f)
+    R = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (__dexp_ep_nolut_p_NL2H.f, N, x);
+    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (__dexp_ep_nolut_c6.f, R, __dexp_ep_nolut_c5.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dexp_ep_nolut_c4.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dexp_ep_nolut_c3.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dexp_ep_nolut_c2.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dexp_ep_nolut_c1.f);
+    poly = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (poly, R, __dexp_ep_nolut_c0.f);
+    if (SPIRV_OCL_BUILTIN(fabs, _f32, ) (xf) > __dexp_ep_nolut_p_fthres.f)
         goto EXP_SPECIAL_PATH;
     res = SPIRV_OCL_BUILTIN(fma, _f64_f64_f64, ) (T.f, poly, T.f);
     *r = res;
@@ -198,8 +198,8 @@ inline int __internal_dexp_ep_nolut_cout (double *a, double *r)
         zero.w = 0;
         res = res_special.f + zero.f;
     }
-    nRet = (res < __dexp_ep_min_norm.f) ? 4 : nRet;
-    nRet = (res == __dexp_ep_Inf.f) ? 3 : nRet;
+    nRet = (res < __dexp_ep_nolut_min_norm.f) ? 4 : nRet;
+    nRet = (res == __dexp_ep_nolut_Inf.f) ? 3 : nRet;
     *r = res;
     return nRet;
 }

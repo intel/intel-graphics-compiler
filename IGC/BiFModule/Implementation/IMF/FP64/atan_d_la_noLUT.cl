@@ -83,7 +83,7 @@ static __ocl_svml_internal_datan_data_t __ocl_svml_internal_datan_data = {
     0x3FF0000000000000uL,   // dA00
 };  /*dAtan_Table */
 
-static __constant _iml_dp_union_t __datan_la_nolut_CoutTab[242] = {
+static __constant _iml_v2_dp_union_t __datan_la_nolut_CoutTab[242] = {
     0xE8000000, 0x3FC3D6EE, /* atan(B[  0])hi = +1.549967415631e-01 */
     0x8B0D1D86, 0x3DF8CC4D, /* atan(B[  0])lo = +3.608592409707e-10 */
     0x50000000, 0x3FCB90D7, /* atan(B[  1])hi = +2.153576985002e-01 */
@@ -341,14 +341,14 @@ inline int __ocl_svml_internal_datan_noLUT (double *a, double *r)
     double dbVTmp1, dbVTmp2, dbVTmp3;
     int i, iSign, iJ;
     /* Filter out INFs and NaNs */
-    if ((((((_iml_dp_union_t *) & (*a))->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF))
+    if ((((((_iml_v2_dp_union_t *) & (*a))->dwords.hi_dword >> 20) & 0x7FF) != 0x7FF))
     {
         /* Here if argument is finite double precision number */
         /* Get sign of argument */
-        iSign = (((_iml_dp_union_t *) & (*a))->dwords.hi_dword >> 31);
+        iSign = (((_iml_v2_dp_union_t *) & (*a))->dwords.hi_dword >> 31);
         /* x = |(*a)| */
         dbX = (*a);
-        (((_iml_dp_union_t *) & dbX)->dwords.hi_dword = (((_iml_dp_union_t *) & dbX)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (0) << 31));
+        (((_iml_v2_dp_union_t *) & dbX)->dwords.hi_dword = (((_iml_v2_dp_union_t *) & dbX)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (0) << 31));
         if (dbX >= ((__constant double *) __datan_la_nolut_CoutTab)[236])
         {
             /* Here if BOUND1 <= x < Inf */
@@ -357,16 +357,16 @@ inline int __ocl_svml_internal_datan_noLUT (double *a, double *r)
                 /* 5) "Main" path: Here if BOUND1 <= x < BOUND2 */
                 /* 5.a) atan() argument reduction */
                 /* 5.a.1) Getting index j */
-                iJ = ((((_iml_dp_union_t *) & (*a))->dwords.hi_dword >> 20) & 0x7FF) << 20;
-                iJ = iJ | (((_iml_dp_union_t *) & (*a))->dwords.hi_dword & 0x000FFFFF);
+                iJ = ((((_iml_v2_dp_union_t *) & (*a))->dwords.hi_dword >> 20) & 0x7FF) << 20;
+                iJ = iJ | (((_iml_v2_dp_union_t *) & (*a))->dwords.hi_dword & 0x000FFFFF);
                 iJ = iJ - 0x3FC00000;
                 iJ = iJ >> 19;
                 /* 5.a.2) Getting base point b */
                 dbB = dbX;
-                (((_iml_dp_union_t *) & dbB)->dwords.lo_dword = (0));
-                (((_iml_dp_union_t *) & dbB)->dwords.hi_dword =
-                 (((_iml_dp_union_t *) & dbB)->dwords.
-                  hi_dword & 0xFFF00000) | ((((((_iml_dp_union_t *) & dbB)->dwords.hi_dword & 0x000FFFFF) & 0x80000) | 0x40000) & 0x000FFFFF));
+                (((_iml_v2_dp_union_t *) & dbB)->dwords.lo_dword = (0));
+                (((_iml_v2_dp_union_t *) & dbB)->dwords.hi_dword =
+                 (((_iml_v2_dp_union_t *) & dbB)->dwords.
+                  hi_dword & 0xFFF00000) | ((((((_iml_v2_dp_union_t *) & dbB)->dwords.hi_dword & 0x000FFFFF) & 0x80000) | 0x40000) & 0x000FFFFF));
                 /* 5.a.3) Getting t in multiprecision */
                 /* 5.a.3.1) Obtain u = x - b as sum UHi+uLo */
                 dbU = dbX - dbB;
@@ -461,8 +461,8 @@ inline int __ocl_svml_internal_datan_noLUT (double *a, double *r)
                 dbResLo = dbTmp1 + dbALo;
                 /* (*r) := Sign * (ResHi + ResLo) */
                 dbRes = dbResHi + dbResLo;
-                (((_iml_dp_union_t *) & dbRes)->dwords.hi_dword =
-                 (((_iml_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
+                (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword =
+                 (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
                 (*r) = dbRes;
             }
             else
@@ -472,8 +472,8 @@ inline int __ocl_svml_internal_datan_noLUT (double *a, double *r)
                 /* Res := Pi/2 */
                 dbRes = ((__constant double *) __datan_la_nolut_CoutTab)[239] + ((__constant double *) __datan_la_nolut_CoutTab)[240];
                 /* (*r) := Sign * Res */
-                (((_iml_dp_union_t *) & dbRes)->dwords.hi_dword =
-                 (((_iml_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
+                (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword =
+                 (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
                 (*r) = dbRes;
             }
         }
@@ -495,14 +495,14 @@ inline int __ocl_svml_internal_datan_noLUT (double *a, double *r)
                 dbRes = dbRes * dbX;
                 dbRes = dbRes + dbX;
                 /* (*r) := Sign * Res */
-                (((_iml_dp_union_t *) & dbRes)->dwords.hi_dword =
-                 (((_iml_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
+                (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword =
+                 (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
                 (*r) = dbRes;
             }
             else
             {
                 /* Here if 0 <= x < BOUND0 */
-                if (((((_iml_dp_union_t *) & dbX)->dwords.hi_dword >> 20) & 0x7FF) != 0)
+                if (((((_iml_v2_dp_union_t *) & dbX)->dwords.hi_dword >> 20) & 0x7FF) != 0)
                 {
                     /* Path 3.2) Here if MIN_NORMAL <= x < BOUND0 */
                     /* Tmp := 1 + x */
@@ -510,8 +510,8 @@ inline int __ocl_svml_internal_datan_noLUT (double *a, double *r)
                     /* Res := Tmp * x */
                     dbRes = dbVTmp1 * dbX;
                     /* (*r) := Sign * Res */
-                    (((_iml_dp_union_t *) & dbRes)->dwords.hi_dword =
-                     (((_iml_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
+                    (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword =
+                     (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
                     (*r) = dbRes;
                 }
                 else
@@ -522,8 +522,8 @@ inline int __ocl_svml_internal_datan_noLUT (double *a, double *r)
                     dbVTmp1 = dbX * dbX;
                     dbRes = dbX + dbVTmp1;
                     /* (*r) := Sign * Res */
-                    (((_iml_dp_union_t *) & dbRes)->dwords.hi_dword =
-                     (((_iml_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
+                    (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword =
+                     (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
                     (*r) = dbRes;
                 }
             }
@@ -531,14 +531,14 @@ inline int __ocl_svml_internal_datan_noLUT (double *a, double *r)
     }
     else
     {
-        if ((((((_iml_dp_union_t *) & (*a))->dwords.hi_dword & 0x000FFFFF) == 0) && ((((_iml_dp_union_t *) & (*a))->dwords.lo_dword) == 0)))
+        if ((((((_iml_v2_dp_union_t *) & (*a))->dwords.hi_dword & 0x000FFFFF) == 0) && ((((_iml_v2_dp_union_t *) & (*a))->dwords.lo_dword) == 0)))
         {
             /* Path 2). Here if argument is Infinity */
             /* (*r) := Sign * Pi/2 */
             dbRes = ((__constant double *) __datan_la_nolut_CoutTab)[239] + ((__constant double *) __datan_la_nolut_CoutTab)[240];
-            iSign = (((_iml_dp_union_t *) & (*a))->dwords.hi_dword >> 31);
-            (((_iml_dp_union_t *) & dbRes)->dwords.hi_dword =
-             (((_iml_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
+            iSign = (((_iml_v2_dp_union_t *) & (*a))->dwords.hi_dword >> 31);
+            (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword =
+             (((_iml_v2_dp_union_t *) & dbRes)->dwords.hi_dword & 0x7FFFFFFF) | ((_iml_uint32_t) (iSign) << 31));
             (*r) = dbRes;
         }
         else

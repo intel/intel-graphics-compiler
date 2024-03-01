@@ -24,7 +24,6 @@ typedef long long1_gen;
 typedef float float1_gen;
 typedef float float1_ref;
 typedef int int1_ref;
-typedef int __int32;
 
 typedef unsigned int  _iml_uint32_t;
 typedef int           _iml_int32_t;
@@ -34,7 +33,7 @@ typedef union
 {
     uint hex;
     float fp;
-} _iml_sp_union_t;
+} _iml_pow_sp_union_t;
 
 __attribute__((always_inline))
 uint _castf32_u32(float a)
@@ -56,14 +55,14 @@ typedef struct tag_iml_dpdwords_t
 {
   _iml_uint32_t lo_dword;
   _iml_uint32_t hi_dword;
-} _iml_dpdwords_t;
+} _iml_pow_dpdwords_t;
 
 typedef union
 {
   _iml_uint32_t hex[2];
-  _iml_dpdwords_t dwords;
+  _iml_pow_dpdwords_t dwords;
   double fp;
-} _iml_dp_union_t;
+} _iml_pow_dp_union_t;
 
 typedef union
 {
@@ -86,7 +85,7 @@ ulong _castf64_u64(double a)
 __attribute__((always_inline))
 double _nearbyint(double a)
 {
-  return SPIRV_OCL_BUILTIN(round, _f64, )(a);
+  return SPIRV_OCL_BUILTIN(rint, _f64, )(a);
 }
 #endif
 
@@ -1063,7 +1062,7 @@ __constant sRootn_Table_Type __ocl_svml_srootn_data = {
 
 
 
-__constant _iml_sp_union_t _vmlsRootnHATab[380] = {
+__constant _iml_pow_sp_union_t _vmlsRootnHATab[380] = {
 
   { 0x3F800000 },
   { 0x3F640000 },
