@@ -33,13 +33,14 @@ namespace IGC
         bool allowConstantCoalescing;
         bool allowLargeGRF;
         bool allowLoadSinking;
+        bool forceIndirectCallsInSyncRT;
         unsigned nextState;
     };
 
     static const RetryState RetryTable[] = {
-       // adrCl  licm  codSk AdrSk  Slice  PrivM  VISAP  URBWr  Coals  GRF    loadSk
-        { false, true,  true, false, false, true,  true,  true,  true,  false, false, 1 },
-        { true,  false, true, true,  true,  false, false, false, false, true,  true, 500 }
+       // adrCl  licm   codSk AdrSk  Slice  PrivM  VISAP  URBWr  Coals  GRF    loadSk, SyncRT
+        { false, true,  true, false, false, true,  true,  true,  true,  false, false,  false, 1 },
+        { true,  false, true, true,  true,  false, false, false, false, true,  true,   true, 500 }
     };
 
     static constexpr size_t RetryTableSize = sizeof(RetryTable) / sizeof(RetryState);
@@ -150,6 +151,13 @@ namespace IGC
         unsigned id = GetPerFuncRetryStateId(F);
         IGC_ASSERT(id < RetryTableSize);
         return RetryTable[id].allowLargeGRF;
+    }
+
+    bool RetryManager::ForceIndirectCallsInSyncRT() const
+    {
+        unsigned id = GetRetryId();
+        IGC_ASSERT(id < RetryTableSize);
+        return RetryTable[id].forceIndirectCallsInSyncRT;
     }
 
     bool RetryManager::AllowLoadSinking(Function* F) const

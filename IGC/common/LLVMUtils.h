@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #pragma once
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/IR/Instructions.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <list>
@@ -47,3 +48,18 @@ namespace IGC
 
 void DumpLLVMIR(IGC::CodeGenContext* pContext, const char* dumpName);
 void DumpHashToOptions(const ShaderHash&, const ShaderType);
+
+class InlineHelper
+{
+private:
+    llvm::DenseMap<llvm::Function*, llvm::SmallVector<llvm::AllocaInst*, 4>> m_InlinedStaticArrayAllocas;
+#if defined(_RELEASE_INTERNAL) || defined(_DEBUG)
+    llvm::Function* m_calledFunction = nullptr;
+#endif
+
+public:
+    InlineHelper() = default;
+    ~InlineHelper() = default;
+
+    void InlineAndOptimize(llvm::CallInst* callInst);
+};

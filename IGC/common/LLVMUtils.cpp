@@ -28,6 +28,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvmWrapper/ADT/StringRef.h>
+#include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace IGC;
@@ -926,5 +927,52 @@ void DumpHashToOptions(const ShaderHash& hashs, const ShaderType type)
         }
 
         options_gen_mutex.unlock();
+    }
+}
+
+void InlineHelper::InlineAndOptimize(CallInst* callInst)
+{
+#if defined(_RELEASE_INTERNAL) || defined(_DEBUG)
+    // little check to make sure we are inlining the same function
+    if (m_calledFunction)
+        IGC_ASSERT(m_calledFunction == callInst->getCalledFunction());
+    else
+        m_calledFunction = callInst->getCalledFunction();
+#endif
+    auto* fn = callInst->getFunction();
+
+    InlineFunctionInfo IFI;
+    bool CanInline = IGCLLVM::InlineFunction(callInst, IFI);
+    IGC_ASSERT_MESSAGE(CanInline, "failed to inline?");
+
+    auto& perFnAllocas = m_InlinedStaticArrayAllocas[fn];
+
+    // Merge static array allocas to reduce the use of private
+    // memory. This is a similar optimization that exists in
+    // the inliner, see mergeInlinedArrayAllocas().
+    if (perFnAllocas.empty())
+    {
+        for (AllocaInst* allocaInst : IFI.StaticAllocas)
+        {
+            if (!allocaInst->isArrayAllocation() &&
+                allocaInst->getAllocatedType()->isArrayTy())
+            {
+                perFnAllocas.push_back(allocaInst);
+            }
+        }
+    }
+    else
+    {
+        auto it = perFnAllocas.begin();
+        for (AllocaInst* allocaInst : IFI.StaticAllocas)
+        {
+            if (!allocaInst->isArrayAllocation() &&
+                allocaInst->getAllocatedType()->isArrayTy())
+            {
+                IGC_ASSERT((*it)->getAllocatedType() == allocaInst->getAllocatedType());
+                allocaInst->replaceAllUsesWith(*it);
+                ++it;
+            }
+        }
     }
 }
