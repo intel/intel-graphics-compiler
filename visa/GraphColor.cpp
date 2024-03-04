@@ -1022,7 +1022,7 @@ void BankConflictPass::setupBankConflictsForBBTGL(G4_BB *bb,
       } else {
         setupBankConflictsforMad(inst);
       }
-    } else if (gra.forceBCR && !forGlobal &&
+    } else if (gra.kernel.getOption(vISA_forceBCR) && !forGlobal &&
                inst->getNumSrc() == 2) {
       threeSourceInstNum++;
       setupBankConflictsforMad(inst);
@@ -3499,7 +3499,7 @@ bool Augmentation::markNonDefaultMaskDef() {
         nonDefaultMaskDefFound = true;
       }
 
-      if ((gra.favorBCR || gra.forceBCR) &&
+      if (kernel.getOption(vISA_forceBCR) &&
           gra.getBankConflict(dcl) != BANK_CONFLICT_NONE) {
         gra.setAugmentationMask(dcl, AugmentationMasks::NonDefault);
         nonDefaultMaskDefFound = true;
@@ -6723,7 +6723,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF,
         // pass) then abort on spill
         //
         if ((heuristic == ROUND_ROBIN ||
-             (doBankConflict && !gra.forceBCR)) &&
+             (doBankConflict && !kernel.getOption(vISA_forceBCR))) &&
             (lr->getRegKind() == G4_GRF || lr->getRegKind() == G4_FLAG)) {
           return false;
         } else if (kernel.fg.isPseudoDcl(dcl)) {
@@ -7345,13 +7345,11 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
           return false;
         }
 
-        if (!success && gra.favorBCR) {
-          return false;
-        }
-
-        if (!success && doBankConflictReduction && !gra.forceBCR) {
-          resetTemporaryRegisterAssignments();
-          assignColors(FIRST_FIT);
+        if (!kernel.getOption(vISA_forceBCR)) {
+          if (!success && doBankConflictReduction) {
+            resetTemporaryRegisterAssignments();
+            assignColors(FIRST_FIT);
+          }
         }
       }
     } else {
@@ -10113,16 +10111,6 @@ bool GlobalRA::tryHybridRA() {
     return true;
   }
 
-  //Skip hybridRA if BCR is needed
-  if (favorBCR) {
-    lra.undoLocalRAAssignments(true);
-    // Restore alignment in case LRA modified it
-    copyAlignment();
-    //reset favorBCR
-    favorBCR = false;
-    return false;
-  }
-
   if (useHybridRAwithSpill) {
     insertPhyRegDecls();
   } else {
@@ -10443,14 +10431,14 @@ std::pair<bool, bool> GlobalRA::bankConflict() {
   bool doBankConflictReduction = false, highInternalConflict = false;
   if (builder.getOption(vISA_LocalBankConflictReduction) &&
       builder.hasBankCollision()) {
-    bool reduceBC = false;
-    bool threeSouceBCR = false;
+    bool reduceBCInRR = false;
+    bool reduceBCInTAandFF = false;
     BankConflictPass bc(*this, true);
 
-    reduceBC = bc.setupBankConflictsForKernel(
-        true, threeSouceBCR, SECOND_HALF_BANK_START_GRF * 2,
+    reduceBCInRR = bc.setupBankConflictsForKernel(
+        true, reduceBCInTAandFF, SECOND_HALF_BANK_START_GRF * 2,
         highInternalConflict);
-    doBankConflictReduction = reduceBC && threeSouceBCR;
+    doBankConflictReduction = reduceBCInRR && reduceBCInTAandFF;
   }
   return std::make_pair(doBankConflictReduction, highInternalConflict);
 }
@@ -10780,8 +10768,11 @@ GlobalRA::insertSpillCode(bool enableSpillSpaceCompression,
 
 bool GlobalRA::rerunGRAIter(bool rerunGRA)
 {
-  if (getIterNo() == 0 && (rerunGRA || forceBCR)) {
-    forceBCR = false;
+  if (getIterNo() == 0 && (rerunGRA || kernel.getOption(vISA_forceBCR))) {
+    if (kernel.getOption(vISA_forceBCR)) {
+      // FIXME: We shouldn't modify options. Use local bool flag instead.
+      kernel.getOptions()->setOption(vISA_forceBCR, false);
+    }
     return true;
   }
   return false;
@@ -10999,9 +10990,6 @@ int GlobalRA::coloringRegAlloc() {
     if (!fastCompile) {
       rpe.run();
       writeVerboseRPEStats(rpe);
-      favorBCR |= doBankConflictReduction && kernel.useAutoGRFSelection() &&
-                  kernel.getOption(vISA_RoundRobin) && !hasStackCall &&
-                  (rpe.getMaxRP() < kernel.getNumRegTotal() - 16);
     }
     GraphColor coloring(liveAnalysis, false, forceSpill);
 
