@@ -351,6 +351,7 @@ DECLARE_IGC_REGKEY(bool, DPASReadSuppressionWA,         true,  "Enable read supp
 DECLARE_IGC_REGKEY(bool, EnableDivergentBarrierCheck,   false, "Uses WIAnalysis to find barriers in divergent flow control. May have false positives.", false)
 DECLARE_IGC_REGKEY(bool, EnableBitcastExtractInsertPattern,   true,  "Enable BitcastExtractInsertPattern in CustomSafeOptPass.", true)
 DECLARE_IGC_REGKEY(DWORD, ForceLoosenSimd32Occu,        2,     "Control loosenSimd32occu return value. 0 - off, 1 - on, 2 - platform default", false)
+DECLARE_IGC_REGKEY(bool, ForceFunctionsToNop,           false, "Replace functions with immediate return to help narrow down shaders; use with Options.txt.", false)
 
 DECLARE_IGC_GROUP("Shader dumping")
 DECLARE_IGC_REGKEY(bool, EnableCosDump, false, "Enable cos dump", true)

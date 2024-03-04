@@ -19,6 +19,7 @@ set(IGC_BUILD__SRC__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/ProcessFuncAttributes.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/TypesLegalizationPass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/LegalizeFunctionSignatures.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/ForceFunctionsToNop.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/DivergentBarrierPass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/FastMathConstantHandling.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/LoadBuffer.cpp"
