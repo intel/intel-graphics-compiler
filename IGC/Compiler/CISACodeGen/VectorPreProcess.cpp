@@ -1059,9 +1059,13 @@ bool VectorPreProcess::splitVector3LoadStore(Instruction* Inst)
             Value* Elt0 = NULL;
             Value* Elt1 = NULL;
             Value* Elt2 = NULL;
+            bool UseLegacyLdRawMessage = isa<LdRawIntrinsic>(Inst) &&
+                EmitPass::shouldGenerateLSCQuery(*m_CGCtx, Inst) != Tristate::True;
             // If alignment is the same as 4-element vector's, it's likely safe
             // to make it 4-element load. (always safe ?)
-            if (ALI->getAlignment() >= 4 * etyBytes)
+            if (ALI->getAlignment() >= 4 * etyBytes &&
+                // Legacy ldraw message doesn't support 32-byte payloads
+                !(UseLegacyLdRawMessage && etyBytes == 8))
             {
                 // Make it 4-element load
                 Type* newVTy = FixedVectorType::get(eTy, 4);
