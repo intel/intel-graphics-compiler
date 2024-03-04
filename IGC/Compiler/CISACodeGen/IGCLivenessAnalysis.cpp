@@ -452,7 +452,7 @@ void IGCRegisterPressurePrinter::printPhi(const PhiSet &Set, std::string &Output
 
 bool IGCRegisterPressurePrinter::runOnFunction(llvm::Function &F) {
 
-    ExternalPressure = getAnalysis<IGCFunctionExternalRegPressureAnalysis>().getExternalPressureForFunction(&F);
+    unsigned int ExternalPressure = getAnalysis<IGCFunctionExternalRegPressureAnalysis>().getExternalPressureForFunction(&F);
     RPE = &getAnalysis<IGCLivenessAnalysis>();
     WI = &getAnalysis<WIAnalysis>();
     CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
