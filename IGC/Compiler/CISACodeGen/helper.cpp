@@ -1494,7 +1494,9 @@ namespace IGC
         case GenISAIntrinsic::GenISA_simdShuffleDown:
         case GenISAIntrinsic::GenISA_simdShuffleXor:
         case GenISAIntrinsic::GenISA_simdBlockRead:
+        case GenISAIntrinsic::GenISA_simdBlockReadBindless:
         case GenISAIntrinsic::GenISA_simdBlockWrite:
+        case GenISAIntrinsic::GenISA_simdBlockWriteBindless:
         case GenISAIntrinsic::GenISA_simdMediaBlockRead:
         case GenISAIntrinsic::GenISA_simdMediaBlockWrite:
         case GenISAIntrinsic::GenISA_MediaBlockWrite:
