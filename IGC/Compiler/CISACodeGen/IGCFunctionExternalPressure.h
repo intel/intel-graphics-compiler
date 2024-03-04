@@ -96,10 +96,10 @@ class IGCFunctionExternalRegPressureAnalysis : public llvm::ModulePass {
         return AmountOfRegistersRoundUp;
     }
 
-    std::unique_ptr<InsideBlockPressureMap> getPressureMapForBB(llvm::BasicBlock &BB,
+    InsideBlockPressureMap getPressureMapForBB(llvm::BasicBlock &BB,
                                                unsigned int SIMD, WIAnalysisRunner& WI) {
-        std::unique_ptr<InsideBlockPressureMap> PressureMap = std::make_unique<InsideBlockPressureMap>();
-        collectPressureForBB(BB, *PressureMap, SIMD, WI);
+        InsideBlockPressureMap PressureMap;
+        collectPressureForBB(BB, PressureMap, SIMD, WI);
         return PressureMap;
     }
 
