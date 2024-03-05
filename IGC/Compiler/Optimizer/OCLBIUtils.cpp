@@ -946,9 +946,11 @@ public:
             prop = builder.CreateExtractElement(info, builder.getInt32(0));
             break;
         case HEIGHT:
+        case ARRAY_SIZE_1D:
             prop = builder.CreateExtractElement(info, builder.getInt32(1));
             break;
         case DEPTH:
+        case ARRAY_SIZE_2D:
             prop = builder.CreateExtractElement(info, builder.getInt32(2));
             break;
         default:
@@ -1360,6 +1362,8 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap* paramMap, CImagesBI::I
         m_CommandMap["__builtin_IB_get_image_width"] = CGetImageProperty::create(paramMap, CImagesBI::ImageProperty::WIDTH);
         m_CommandMap["__builtin_IB_get_image_height"] = CGetImageProperty::create(paramMap, CImagesBI::ImageProperty::HEIGHT);
         m_CommandMap["__builtin_IB_get_image_depth"] = CGetImageProperty::create(paramMap, CImagesBI::ImageProperty::DEPTH);
+        m_CommandMap["__builtin_IB_get_image1d_array_size"] = CGetImageProperty::create(paramMap, CImagesBI::ImageProperty::ARRAY_SIZE_1D);
+        m_CommandMap["__builtin_IB_get_image2d_array_size"] = CGetImageProperty::create(paramMap, CImagesBI::ImageProperty::ARRAY_SIZE_2D);
     }
 
     //convert Built-ins

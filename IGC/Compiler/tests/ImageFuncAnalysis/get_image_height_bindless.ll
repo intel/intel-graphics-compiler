@@ -10,8 +10,6 @@
 
 ; RUN: igc_opt -igc-image-func-analysis -S %s -o - | FileCheck %s
 
-%opencl.image2d_t = type opaque
-
 declare i32 @__builtin_IB_get_image_height(i32 %img)
 
 define i32 @foo(i32 %img) nounwind {

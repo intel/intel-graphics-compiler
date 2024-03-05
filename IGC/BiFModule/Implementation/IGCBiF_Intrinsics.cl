@@ -16,7 +16,8 @@ SPDX-License-Identifier: MIT
 
 int    __builtin_IB_get_address_mode(int) __attribute__((const));
 int    __builtin_IB_is_normalized_coords(int) __attribute__((const));
-int    __builtin_IB_get_image_array_size(int) __attribute__((const));
+int    __builtin_IB_get_image1d_array_size(int) __attribute__((const));
+int    __builtin_IB_get_image2d_array_size(int) __attribute__((const));
 int    __builtin_IB_get_snap_wa_reqd(int) __attribute__((const));
 int    __builtin_IB_get_image_height(int) __attribute__((const));
 int    __builtin_IB_get_image_width(int) __attribute__((const));

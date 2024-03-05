@@ -9,20 +9,26 @@
 ; RUN: igc_opt -igc-image-func-analysis -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
-%opencl.image2d_t = type opaque
+declare i32 @__builtin_IB_get_image1d_array_size(i32 %img)
 
-declare i32 @__builtin_IB_get_image_array_size(i32 %img)
+declare i32 @__builtin_IB_get_image2d_array_size(i32 %img)
 
 define i32 @foo(i32 %img) nounwind {
-  %id = call i32 @__builtin_IB_get_image_array_size(i32 %img)
+  %id = call i32 @__builtin_IB_get_image1d_array_size(i32 %img)
   ret i32 %id
 }
 
-!igc.functions = !{!0}
+define i32 @bar(i32 %img) nounwind {
+  %id = call i32 @__builtin_IB_get_image2d_array_size(i32 %img)
+  ret i32 %id
+}
+
+!igc.functions = !{!0, !4}
 !0 = !{i32 (i32)* @foo, !1}
 !1 = !{!2, !3}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"implicit_arg_desc"}
+!4 = !{i32 (i32)* @bar, !1}
 
 ;CHECK: !{!"implicit_arg_desc", ![[A1:[0-9]+]]}
 ;CHECK: ![[A1]] = !{i32 27, ![[A2:[0-9]+]]}

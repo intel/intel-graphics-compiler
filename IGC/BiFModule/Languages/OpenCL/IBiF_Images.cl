@@ -379,7 +379,7 @@ INLINE int4 OVERLOADABLE read_imagei(read_only image1d_array_t image_array, samp
 INLINE uint4 OVERLOADABLE read_imageui(read_only image1d_array_t image_array, sampler_t sampler, int2 coords) {
     int id = (int)__builtin_astype(image_array, __global void*);
     int IDimage_array = (int)__builtin_astype(image_array, __global void*);
-    int dt = __builtin_IB_get_image_array_size(IDimage_array);
+    int dt = __builtin_IB_get_image1d_array_size(IDimage_array);
     float layer = clamp(rint((float)coords.y), 0.0f, (float)(--dt));
     if ((__builtin_IB_get_address_mode(__builtin_IB_convert_sampler_to_int(sampler)) & 0x07) == CLK_ADDRESS_CLAMP_TO_EDGE)
     {
@@ -395,7 +395,7 @@ INLINE uint4 OVERLOADABLE read_imageui(read_only image1d_array_t image_array, sa
 INLINE uint4 OVERLOADABLE read_imageui(read_only image1d_array_t image_array, sampler_t sampler, float2 coords) {
     int id = (int)__builtin_astype(image_array, __global void*);
     int IDimage_array = (int)__builtin_astype(image_array, __global void*);
-    int dt = __builtin_IB_get_image_array_size(IDimage_array);
+    int dt = __builtin_IB_get_image1d_array_size(IDimage_array);
     float layer = clamp(rint(coords.y), 0.0f, (float)(--dt));
     if ((__builtin_IB_get_address_mode(__builtin_IB_convert_sampler_to_int(sampler)) & 0x07) == CLK_ADDRESS_CLAMP)
     {
@@ -581,7 +581,7 @@ INLINE int4 OVERLOADABLE read_imagei(read_only image2d_array_t image_array, samp
 INLINE uint4 OVERLOADABLE read_imageui(read_only image2d_array_t image_array, sampler_t sampler, int4 coords) {
     int id = (int)__builtin_astype(image_array, __global void*);
     int IDimage_array = (int)__builtin_astype(image_array, __global void*);
-    int dt = __builtin_IB_get_image_array_size(IDimage_array);
+    int dt = __builtin_IB_get_image2d_array_size(IDimage_array);
     float layer = clamp(rint((float)coords.z), 0.0f, (float)(--dt));
     if ((__builtin_IB_get_address_mode(__builtin_IB_convert_sampler_to_int(sampler)) & 0x07) == CLK_ADDRESS_CLAMP_TO_EDGE)
     {
@@ -597,7 +597,7 @@ INLINE uint4 OVERLOADABLE read_imageui(read_only image2d_array_t image_array, sa
 INLINE uint4 OVERLOADABLE read_imageui(read_only image2d_array_t image_array, sampler_t sampler, float4 coords) {
     int id = (int)__builtin_astype(image_array, __global void*);
     int IDimage_array = (int)__builtin_astype(image_array, __global void*);
-    int dt = __builtin_IB_get_image_array_size(IDimage_array);
+    int dt = __builtin_IB_get_image2d_array_size(IDimage_array);
     float layer = clamp(rint(coords.z), 0.0f, (float)(--dt));
     if ((__builtin_IB_get_address_mode(__builtin_IB_convert_sampler_to_int(sampler)) & 0x07) == CLK_ADDRESS_CLAMP)
     {

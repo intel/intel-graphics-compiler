@@ -11,10 +11,10 @@
 
 %opencl.image2d_t = type opaque
 
-declare i32 @__builtin_IB_get_image_array_size(i32 %img)
+declare i32 @__builtin_IB_get_image2d_array_size(i32 %img)
 
 define i32 @foo(i32 %img, i32 %imageArrSize) nounwind {
-  %id = call i32 @__builtin_IB_get_image_array_size(i32 %img)
+  %id = call i32 @__builtin_IB_get_image2d_array_size(i32 %img)
   ret i32 %id
 }
 
@@ -31,5 +31,5 @@ define i32 @foo(i32 %img, i32 %imageArrSize) nounwind {
 
 ; CHECK:         ret i32 %imageArrSize
 
-; CHECK-NOT:     call i32 @__builtin_IB_get_image_array_size(i32 %img)
+; CHECK-NOT:     call i32 @__builtin_IB_get_image2d_array_size(i32 %img)
 

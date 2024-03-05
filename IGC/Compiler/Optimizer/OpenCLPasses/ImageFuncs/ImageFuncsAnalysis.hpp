@@ -81,7 +81,8 @@ namespace IGC
         static const llvm::StringRef GET_IMAGE_CHANNEL_DATA_TYPE;
         static const llvm::StringRef GET_IMAGE_CHANNEL_ORDER;
         static const llvm::StringRef GET_IMAGE_SRGB_CHANNEL_ORDER;
-        static const llvm::StringRef GET_IMAGE_ARRAY_SIZE;
+        static const llvm::StringRef GET_IMAGE1D_ARRAY_SIZE;
+        static const llvm::StringRef GET_IMAGE2D_ARRAY_SIZE;
         static const llvm::StringRef GET_IMAGE_NUM_SAMPLES;
         static const llvm::StringRef GET_SAMPLER_ADDRESS_MODE;
         static const llvm::StringRef GET_SAMPLER_NORMALIZED_COORDS;

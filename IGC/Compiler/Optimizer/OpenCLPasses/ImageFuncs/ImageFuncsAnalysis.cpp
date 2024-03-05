@@ -40,7 +40,8 @@ const llvm::StringRef ImageFuncsAnalysis::GET_IMAGE_NUM_MIP_LEVELS = "__builtin_
 const llvm::StringRef ImageFuncsAnalysis::GET_IMAGE_CHANNEL_DATA_TYPE = "__builtin_IB_get_image_channel_data_type";
 const llvm::StringRef ImageFuncsAnalysis::GET_IMAGE_CHANNEL_ORDER = "__builtin_IB_get_image_channel_order";
 const llvm::StringRef ImageFuncsAnalysis::GET_IMAGE_SRGB_CHANNEL_ORDER = "__builtin_IB_get_image_srgb_channel_order";
-const llvm::StringRef ImageFuncsAnalysis::GET_IMAGE_ARRAY_SIZE = "__builtin_IB_get_image_array_size";
+const llvm::StringRef ImageFuncsAnalysis::GET_IMAGE1D_ARRAY_SIZE = "__builtin_IB_get_image1d_array_size";
+const llvm::StringRef ImageFuncsAnalysis::GET_IMAGE2D_ARRAY_SIZE = "__builtin_IB_get_image2d_array_size";
 const llvm::StringRef ImageFuncsAnalysis::GET_IMAGE_NUM_SAMPLES = "__builtin_IB_get_image_num_samples";
 const llvm::StringRef ImageFuncsAnalysis::GET_SAMPLER_ADDRESS_MODE = "__builtin_IB_get_address_mode";
 const llvm::StringRef ImageFuncsAnalysis::GET_SAMPLER_NORMALIZED_COORDS = "__builtin_IB_is_normalized_coords";
@@ -127,7 +128,7 @@ void ImageFuncsAnalysis::visitCallInst(CallInst& CI)
     {
         imageFunc = &m_argMap[ImplicitArg::IMAGE_SRGB_CHANNEL_ORDER];
     }
-    else if (funcName == GET_IMAGE_ARRAY_SIZE)
+    else if ((funcName == GET_IMAGE1D_ARRAY_SIZE || funcName == GET_IMAGE2D_ARRAY_SIZE) && m_addImplicitImageArgs)
     {
         imageFunc = &m_argMap[ImplicitArg::IMAGE_ARRAY_SIZE];
     }

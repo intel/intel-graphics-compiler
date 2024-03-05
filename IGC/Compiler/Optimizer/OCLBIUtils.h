@@ -164,7 +164,9 @@ namespace IGC
         {
             WIDTH,
             HEIGHT,
-            DEPTH
+            DEPTH,
+            ARRAY_SIZE_1D,
+            ARRAY_SIZE_2D
         };
 
         struct ParamInfo

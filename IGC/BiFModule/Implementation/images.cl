@@ -302,7 +302,7 @@ uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_2D
 
     if (Lod == 0.0f)
     {
-        int dt = __builtin_IB_get_image_array_size(image_id);
+        int dt = __builtin_IB_get_image2d_array_size(image_id);
         float layer = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(SPIRV_OCL_BUILTIN(rint, _f32, )(Coordinate.z), 0.0f, (float)(dt - 1));
         if ((__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP)
         {
@@ -350,7 +350,7 @@ uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_2D
     // "Snap workaround" - path
     if ((__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP_TO_EDGE)
     {
-        int dt = __builtin_IB_get_image_array_size(image_id);
+        int dt = __builtin_IB_get_image2d_array_size(image_id);
         float layer = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(SPIRV_OCL_BUILTIN(rint, _f32, )((float)Coordinate.z), 0.0f, (float)(dt - 1));
         float2 floatCoords = SPIRV_BUILTIN(ConvertSToF, _v2f32_v2i32, _Rfloat2)(Coordinate.xy);
         return as_uint4(__builtin_IB_OCL_2darr_sample_l(image_id, sampler_id, (float4)(floatCoords, layer, 0.0f), Lod));
@@ -358,7 +358,7 @@ uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_2D
     else
     {
         float float_lod = SPIRV_BUILTIN(ConvertFToS, _i32_f32, _Rint)(Lod);
-        int dt = __builtin_IB_get_image_array_size(image_id);
+        int dt = __builtin_IB_get_image2d_array_size(image_id);
         float layer = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(SPIRV_OCL_BUILTIN(rint, _f32, )((float)Coordinate.z), 0.0f, (float)(dt - 1));
         return __builtin_IB_OCL_2darr_ldui(image_id, (int4)(Coordinate.xy, (int)layer, 0), float_lod);
     }
@@ -516,7 +516,7 @@ uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_1D
 
     if (Lod == 0.0f)
     {
-        int dt = __builtin_IB_get_image_array_size(image_id);
+        int dt = __builtin_IB_get_image1d_array_size(image_id);
         float layer = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(SPIRV_OCL_BUILTIN(rint, _f32, )(Coordinate.y), 0.0f, (float)(dt - 1));
         if ((__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP)
         {
@@ -562,7 +562,7 @@ uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_1D
     // "Snap workaround" - path
     if ((__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP_TO_EDGE)
     {
-        int dt = __builtin_IB_get_image_array_size(image_id);
+        int dt = __builtin_IB_get_image1d_array_size(image_id);
         float layer = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(SPIRV_OCL_BUILTIN(rint, _f32, )((float)Coordinate.y), 0.0f, (float)(dt - 1));
         float floatCoords = SPIRV_BUILTIN(ConvertSToF, _f32_i32, _Rfloat)(Coordinate.x);
         return as_uint4(__builtin_IB_OCL_1darr_sample_l(image_id, sampler_id, (float2)(floatCoords, layer), Lod));
@@ -570,7 +570,7 @@ uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_1D
     else
     {
         float float_lod = SPIRV_BUILTIN(ConvertFToS, _i32_f32, _Rint)(Lod);
-        int dt = __builtin_IB_get_image_array_size(image_id);
+        int dt = __builtin_IB_get_image1d_array_size(image_id);
         float layer = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(SPIRV_OCL_BUILTIN(rint, _f32, )((float)Coordinate.y), 0.0f, (float)(dt - 1));
         return __builtin_IB_OCL_1darr_ldui(image_id, (int2)(Coordinate.x, (int)layer), float_lod);
     }
@@ -1991,7 +1991,7 @@ uint __intel_query_image_size_Ruint(int id)
 uint2 __intel_query_arrayed_image_size_Ruint2(int id)
 {
     uint width = __builtin_IB_get_image_width(id);
-    uint elements = __builtin_IB_get_image_array_size(id);
+    uint elements = __builtin_IB_get_image1d_array_size(id);
     return (uint2)(width, elements);
 }
 
@@ -2006,7 +2006,7 @@ uint3 __intel_query_arrayed_image_size_Ruint3(int id)
 {
     uint width = __builtin_IB_get_image_width(id);
     uint height = __builtin_IB_get_image_height(id);
-    uint elements = __builtin_IB_get_image_array_size(id);
+    uint elements = __builtin_IB_get_image2d_array_size(id);
     return (uint3)(width, height, elements);
 }
 
@@ -2016,15 +2016,6 @@ uint3 __intel_query_image_size_Ruint3(int id)
     uint height = __builtin_IB_get_image_height(id);
     uint depth = __builtin_IB_get_image_depth(id);
     return (uint3)(width, height, depth);
-}
-
-uint4 __intel_query_image_size_Ruint4(int id)
-{
-    uint width = __builtin_IB_get_image_width(id);
-    uint height = __builtin_IB_get_image_height(id);
-    uint depth = __builtin_IB_get_image_depth(id);
-    uint elements = __builtin_IB_get_image_array_size(id);
-    return (uint4)(width, height, depth, elements);
 }
 
 // ------------------------OpImageQuerySize------------------------

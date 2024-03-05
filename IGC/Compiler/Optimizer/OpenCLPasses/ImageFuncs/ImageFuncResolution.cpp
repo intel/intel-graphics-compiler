@@ -104,8 +104,13 @@ void ImageFuncResolution::visitCallInst(CallInst& CI)
     {
         imageRes = getImplicitImageArg(CI, ImplicitArg::IMAGE_SRGB_CHANNEL_ORDER);
     }
-    else if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE_ARRAY_SIZE))
+    else if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE1D_ARRAY_SIZE) || funcName.equals(ImageFuncsAnalysis::GET_IMAGE2D_ARRAY_SIZE))
     {
+        if (!isImplicitImageArgs)
+        {
+            IGC_ASSERT_MESSAGE(false, "Getting Image Array Size from implicit args is supported only in bindful mode");
+            return;
+        }
         imageRes = getImageArraySize(CI);
     }
     else if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE_NUM_SAMPLES))
