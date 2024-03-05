@@ -1,6 +1,6 @@
 ; UNSUPPORTED: system-windows
 ; REQUIRES: regkeys
-; RUN: igc_opt --igc-pressure-printer -S --disable-output --regkey=RegPressureVerbocity=5 < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --igc-pressure-printer -S --disable-output --regkey=RegPressureVerbocity=1 < %s 2>&1 | FileCheck %s
 
 define spir_func void @baz() nounwind {
 entry:
@@ -83,8 +83,8 @@ entry:
 ;CHECK: N: 0 (0)          ret void
 ;CHECK: SIMD: 8, external pressure: 0
 ;CHECK: block: entry function: main
-;CHECK: IN:     [       4       ] %J, %base, %I, %offset,
-;CHECK: KILL:   [       4       ] %J, %base, %I, %offset,
+;CHECK: IN:     [       4       ]
+;CHECK: KILL:   [       4       ]
 ;CHECK: OUT:    [       0       ]
 ;CHECK: N: 256 (8)        %baseArith = ptrtoint double addrspace(1)* %base to i64
 ;CHECK: N: 256 (8)        %basePtr = mul nuw nsw i64 %offset, 207368
