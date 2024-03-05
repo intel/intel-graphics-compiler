@@ -1591,6 +1591,7 @@ add_library("${IGC_BUILD__PROJ__igc_dll}" SHARED
     ${IGC_BUILD__RES__IGC__igc_dll}
   )
 
+
 if(IGC_OPTION__LINK_KHRONOS_SPIRV_TRANSLATOR)
   target_link_libraries("${IGC_BUILD__PROJ__igc_dll}" PRIVATE LLVMSPIRVLib)
 endif()
