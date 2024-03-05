@@ -65,6 +65,8 @@ namespace TC
         bool EnableIntegerMad() const override { return true; }
 
         bool RespectPerInstructionContractFlag() const override { return true; }
+
+        bool EnableLSCForLdRawAndStoreRawOnDG2() const override { return true; }
     };
 
     // In case some cpas are specific to NEO
