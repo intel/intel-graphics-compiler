@@ -207,10 +207,20 @@ void IGCFunctionExternalRegPressureAnalysis::generateTableOfPressure(llvm::Modul
         WIAnalysisRunner WI = runWIAnalysis(F);
 
         for (auto &BB : F) {
+
+            std::unique_ptr<InsideBlockPressureMap> PressureMap;
             for (auto &I : BB) {
+
                 auto *Call = llvm::dyn_cast<CallInst>(&I);
+
                 if (!Call) continue;
-                CallSitePressure[Call] = getPressureMapForBB(BB, SIMD, WI)[&I];
+
+                if (Call->getCallingConv() != CallingConv::SPIR_FUNC) continue;
+
+                if(!PressureMap)
+                    PressureMap = getPressureMapForBB(BB, SIMD, *WI);
+
+                CallSitePressure[Call] = (*PressureMap)[&I];
             }
         }
     }
