@@ -76,13 +76,32 @@ namespace IGC
 
     void CodeGenPatternMatch::CodeGenNode(llvm::DomTreeNode* node)
     {
-        // Process blocks by processing the dominance tree depth first
-        for (auto child = node->begin(); child != node->end(); ++child)
+        struct NodeRange
         {
-            CodeGenNode(*child);
+            NodeRange(llvm::DomTreeNode* node, llvm::DomTreeNode::iterator current, llvm::DomTreeNode::iterator end) :
+                m_Node(node), m_Current(current), m_End(end) {}
+            llvm::DomTreeNode* m_Node;
+            llvm::DomTreeNode::iterator m_Current;
+            llvm::DomTreeNode::iterator m_End;
+        };
+        std::list<NodeRange> m_NodeContainer;
+        m_NodeContainer.push_front(NodeRange(node, node->begin(), node->end()));
+
+        // Process blocks by processing the dominance tree depth first
+        while (!m_NodeContainer.empty())
+        {
+            NodeRange& currNodeRange = m_NodeContainer.front();
+            if (currNodeRange.m_Current == currNodeRange.m_End)
+            {
+                llvm::BasicBlock* bb = currNodeRange.m_Node->getBlock();
+                CodeGenBlock(bb);
+                m_NodeContainer.pop_front();
+                continue;
+            }
+            llvm::DomTreeNode* child = *currNodeRange.m_Current;
+            m_NodeContainer.push_front(NodeRange(child, child->begin(), child->end()));
+            currNodeRange.m_Current++;
         }
-        llvm::BasicBlock* bb = node->getBlock();
-        CodeGenBlock(bb);
     }
 
     bool CodeGenPatternMatch::runOnFunction(llvm::Function& F)
