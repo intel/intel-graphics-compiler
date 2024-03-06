@@ -626,13 +626,19 @@ void VariableReuseAnalysis::visitExtractElementInst(ExtractElementInst& I)
 
     Value* EEI_nv = m_DeSSA->getNodeValue(EEI);
     Value* vec_nv = m_DeSSA->getNodeValue(vecVal);
-
-    // If EEI has been payload-coalesced or has been vec-aliased,
-    // skip it for now (implementation choice).
-    if (hasBeenPayloadCoalesced(EEI) ||
-        hasAnotherDCCAsAliasee(vec_nv) ||
-        hasAnyDCCAsAliaser(EEI_nv)) {
+    // If EEI has been payload-coalesced or has been an aliaser, skip
+    if (hasBeenPayloadCoalesced(EEI) || isAliaser(EEI_nv)) {
         return;
+    }
+
+    if (!m_DeSSA->isSingleValued(EEI_nv) || !m_DeSSA->isSingleValued(vec_nv)) {
+        if (control < 2) {
+            return;
+        }
+
+        if (hasAnyDCCAsAliaser(EEI_nv) || hasAnotherDCCAsAliasee(vec_nv)) {
+            return;
+        }
     }
 
     // Can only do alias if idx is a known constant.
@@ -844,16 +850,18 @@ bool VariableReuseAnalysis::isAliased(Value* V) const
     return (m_aliasMap.count(V_nv) > 0 || m_baseVecMap.count(V_nv) > 0);
 }
 
+// Return true if V is aliased to a vector as an aliaser
+bool VariableReuseAnalysis::isAliaser(Value* V) const
+{
+    Value* V_nv = m_DeSSA ? m_DeSSA->getNodeValue(V) : V;
+    return m_aliasMap.count(V_nv) > 0;
+}
+
 // DCC: DeSSA Congruent Class
 // If V has been coalesced by DeSSA and any value in V's DCC has been aliased
 // as an aliaser, return true.
 bool VariableReuseAnalysis::hasAnyDCCAsAliaser(Value* V) const
 {
-    auto II = m_aliasMap.find(V);
-    if (II != m_aliasMap.end()) {
-        return true;
-    }
-
     // If V is not in the map, check others in its DCC
     Value* rv = m_DeSSA ? m_DeSSA->getRootValue(V) : nullptr;
     if (rv) {
@@ -1153,7 +1161,7 @@ bool VariableReuseAnalysis::processExtractFrom(VecInsEltInfoTy& AllIEIs)
             return false;
     }
 
-    Value* lastIEI = AllIEIs[nelts-1].IEI;
+    Value* lastIEI = AllIEIs[nelts - 1].IEI;
     if (!isCandidateUse(lastIEI) && !isCandidateUse(BaseVec) &&
         !isCandidateDef(BaseVec))
         return false;
@@ -1166,6 +1174,11 @@ bool VariableReuseAnalysis::processExtractFrom(VecInsEltInfoTy& AllIEIs)
 
     Value* Sub_nv = m_DeSSA->getNodeValue(Sub);
     Value* Base_nv = m_DeSSA->getNodeValue(BaseVec);
+
+    // If Sub_nv has been aliased to another vector already, skip
+    if (isAliaser(Sub_nv)) {
+        return false;
+    }
 
     e_alignment BaseAlign;
     if (!checkSubAlign(BaseAlign, Sub_nv, Base_nv, BaseStartIx)) {
@@ -1314,6 +1327,11 @@ bool VariableReuseAnalysis::processInsertTo(VecInsEltInfoTy& AllIEIs)
 
         // If V is an arg, skip it
         if (isOrCoalescedWithArg(V)) {
+            continue;
+        }
+
+        // If V has been an aliaser, skip.
+        if (isAliaser(V)) {
             continue;
         }
 

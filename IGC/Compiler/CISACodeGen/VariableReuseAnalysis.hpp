@@ -428,10 +428,12 @@ namespace IGC {
         bool aliasInterfere(llvm::Value* Sub, llvm::Value* Base, int Base_ix);
 
         // DCC: DeSSA congruent class
-        // If any of V's DCC is an aliaser, return true.
+        // If any value of V's DCC is an aliaser, return true.
         bool hasAnyDCCAsAliaser(llvm::Value* V) const;
+        // If a value of V's DCC, which isn't V, is an aliasee, return true.
         bool hasAnotherDCCAsAliasee(llvm::Value* V) const;
         bool isAliased(llvm::Value* V) const;
+        bool isAliaser(llvm::Value* V) const;
 
         // Returns true for the following pattern:
         //   a = extractElement <vectorType> EEI_Vec, <constant EEI_ix>
