@@ -233,7 +233,7 @@ Argument* CImagesBI::CImagesUtils::findImageFromBufferPtr(const MetaDataUtils& M
     return nullptr;
 }
 
-static bool isBindlessImageLoad(Value *v)
+static bool isBindlessImageOrSamplerLoad(Value *v)
 {
     auto *load = dyn_cast<LoadInst>(v);
     if (!load)
@@ -254,7 +254,7 @@ ConstantInt* CImagesBI::CImagesUtils::getImageIndex(
 {
     ConstantInt* imageIndex = nullptr;
 
-    imageParam = ValueTracker::track(pCallInst, paramIndex, nullptr, nullptr, isBindlessImageLoad);
+    imageParam = ValueTracker::track(pCallInst, paramIndex, nullptr, nullptr, isBindlessImageOrSamplerLoad);
     IGC_ASSERT(imageParam);
     IGC_ASSERT(isa<Argument>(imageParam) || isa<LoadInst>(imageParam));
     int i = (*pParamMap)[imageParam].index;
@@ -264,7 +264,7 @@ ConstantInt* CImagesBI::CImagesUtils::getImageIndex(
 
 BufferType CImagesBI::CImagesUtils::getImageType(ParamMap* pParamMap, CallInst* pCallInst, unsigned int paramIndex)
 {
-    Value *imageParam = ValueTracker::track(pCallInst, paramIndex, nullptr, nullptr, isBindlessImageLoad);
+    Value *imageParam = ValueTracker::track(pCallInst, paramIndex, nullptr, nullptr, isBindlessImageOrSamplerLoad);
     IGC_ASSERT(imageParam);
     IGC_ASSERT(isa<Argument>(imageParam) || isa<LoadInst>(imageParam));
     return isa<LoadInst>(imageParam) ? BufferType::BINDLESS : (*pParamMap)[imageParam].type;
@@ -406,13 +406,29 @@ class COCL_sample : public CImagesBI
 public:
     COCL_sample(ParamMap* paramMap, InlineMap* inlineMap, int* nextSampler, Dimension Dim, MetaDataUtils* pMdUtils, ModuleMetaData* modMD) : CImagesBI(paramMap, inlineMap, nextSampler, Dim), m_pMdUtils(pMdUtils), m_modMD(modMD) {}
 
-    ConstantInt* getSamplerIndex(void)
+    Value* getSamplerValue(void)
     {
         ConstantInt* samplerIndex = nullptr;
-        Value* samplerParam = ValueTracker::track(m_pCallInst, 1, m_pMdUtils, m_modMD);
+        Value* samplerParam = ValueTracker::track(m_pCallInst, 1, m_pMdUtils, m_modMD, isBindlessImageOrSamplerLoad);
         if (!samplerParam) {
             emitError("There are instructions that use a sampler, but no sampler found in the kernel!", m_pCallInst);
             return nullptr;
+        }
+
+        auto modMD = m_pCodeGenContext->getModuleMetaData();
+
+        // If bindless image is preferred, map the bindless pointer
+        if (modMD->UseBindlessImage)
+        {
+            // If sampler is argument, look up index in the parameter map.
+            int i = isa<Argument>(samplerParam) ? (*m_pParamMap)[samplerParam].index : 0;
+            samplerIndex = ConstantInt::get(m_pIntType, i);
+            unsigned int addressSpace = IGC::EncodeAS4GFXResource(*samplerIndex, BufferType::BINDLESS_SAMPLER);
+            Type* ptrTy = llvm::PointerType::get(m_pFloatType, addressSpace);
+            Value* bindlessSampler = isa<IntegerType>(samplerParam->getType()) ?
+                BitCastInst::CreateBitOrPointerCast(samplerParam, ptrTy, "bindless_sampler", m_pCallInst) :
+                BitCastInst::CreatePointerCast(samplerParam, ptrTy, "bindless_sampler", m_pCallInst);
+            return bindlessSampler;
         }
 
         // Argument samplers are looked up in the parameter map
@@ -609,13 +625,17 @@ public:
         }
     }
 
-    bool prepareSamplerIndex()
+    bool prepareSamplerValue()
     {
-        ConstantInt* samplerIndex = getSamplerIndex();
-        if (!samplerIndex) return false;
-        unsigned int addrSpace = EncodeAS4GFXResource(*samplerIndex, SAMPLER);
-        Value* sampler = ConstantPointerNull::get(PointerType::get(samplerIndex->getType(), addrSpace));
-        m_args.push_back(sampler);
+        Value* samplerValue = getSamplerValue();
+        if (!samplerValue) return false;
+        if (isa<ConstantInt>(samplerValue))
+        {
+            unsigned int addrSpace = EncodeAS4GFXResource(*samplerValue, SAMPLER);
+            samplerValue = ConstantPointerNull::get(PointerType::get(samplerValue->getType(), addrSpace));
+        }
+
+        m_args.push_back(samplerValue);
         return true;
     }
 
@@ -711,8 +731,8 @@ public:
         m_args.push_back(m_pFloatZero); // ai (?)
         preparePairedResource();
         createGetBufferPtr();
-        bool samplerIndexFound = prepareSamplerIndex();
-        if (!samplerIndexFound) return;
+        bool samplerValueFound = prepareSamplerValue();
+        if (!samplerValueFound) return;
 
         prepareZeroOffsets();
         Type* types[] = {
@@ -749,7 +769,7 @@ public:
         m_args.push_back(m_pFloatZero); // minLOD (?)
         preparePairedResource();
         prepareImageBTI();
-        prepareSamplerIndex();
+        prepareSamplerValue();
         prepareZeroOffsets();
         Type* types[] = {
             m_pCallInst->getType(),

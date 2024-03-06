@@ -228,8 +228,8 @@ namespace IGC
         void prepareLOD(CoordType Coord);
 
 
-        /// @brief  push the sampler index into the function argument list
-        void prepareSamplerIndex(void);
+        /// @brief  push the sampler value into the function argument list
+        void prepareSamplerValue(void);
 
         /// @brief  create a call to the GetBufferPtr intrinsic pseudo-instruction
         /// @brief  push the image index into the function argument list
