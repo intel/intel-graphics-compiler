@@ -396,6 +396,15 @@ void ModuleAllocaAnalysis::analyze(Function* F, unsigned& Offset, alignment_t& M
         IGC_ASSERT(nullptr != SizeVal);
         unsigned CurSize = (unsigned)(SizeVal->getZExtValue() *
             DL->getTypeAllocSize(AI->getAllocatedType()));
+
+        bool isPackedStruct = false;
+        if (auto st = dyn_cast<StructType>(AI->getAllocatedType())) {
+            isPackedStruct = st->isPacked();
+        }
+        if (!isPackedStruct) {
+            CurSize = iSTD::Align(CurSize, (size_t)Alignment);
+        }
+
         AllocaInfo->setAllocaDesc(AI, Offset, CurSize);
 
         // Increment the current offset for the next alloca.
