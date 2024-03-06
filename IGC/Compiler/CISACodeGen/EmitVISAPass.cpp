@@ -12584,7 +12584,20 @@ CVariable* EmitPass::GetExecutionMask(CVariable*& vecMaskVar)
 CVariable* EmitPass::GetExecutionMask()
 {
     CVariable* vecMask = nullptr;
-    return GetExecutionMask(vecMask);
+
+    SBasicBlock* currBlk = getCurrentBlock();
+
+    // Since this is used in ballots, which are often more than 1 in BB cache it
+    CVariable* execMask = currBlk ? currBlk->m_executionMask : nullptr;
+    if(execMask == nullptr)
+    {
+        execMask = GetExecutionMask(vecMask);
+        if(currBlk)
+        {
+            currBlk->m_executionMask = execMask;
+        }
+    }
+    return execMask;
 }
 
 CVariable* EmitPass::GetNumActiveLanes()
