@@ -353,9 +353,6 @@ bool StatelessToStateful::pointerIsFromKernelArgument(Value& ptr)
         base = gep->getPointerOperand()->stripPointerCasts();
     }
 
-    if (!m_supportNonGEPPtr && gep == nullptr)
-        return false;
-
     if (getKernelArgFromPtr(*dyn_cast<PointerType>(ptr.getType()), base) != nullptr)
         return true;
     return false;
@@ -398,11 +395,6 @@ bool StatelessToStateful::pointerIsPositiveOffsetFromKernelArgument(
         base = gep->getPointerOperand()->stripPointerCasts();
     }
 
-    if (!m_supportNonGEPPtr && gep == nullptr)
-    {
-        return false;
-    }
-
     // if the base is from kerenl argument
     if (const KernelArg * arg = getKernelArgFromPtr(*ptrType, base))
     {
@@ -421,12 +413,12 @@ bool StatelessToStateful::pointerIsPositiveOffsetFromKernelArgument(
         bool gepProducesPositivePointer = true;
 
         // An address needs to be DW-aligned in order to be a base
-        // in a surface state.  In another word, a unaligned argument
+        // in a surface state.  In another word, an unaligned argument
         // cannot be used as a surface base unless buffer_offset is
         // used, in which "argument + buffer_offset" is instead used
         // as a surface base. (argument + buffer_offset is the original
         // base of buffer created on host side, the original buffer is
-        // guarantted to be DW-aligned.)
+        // guaranteed to be DW-aligned.)
         //
         // Note that implicit arg is always aligned.
         bool isAlignedPointee = false;
@@ -452,20 +444,11 @@ bool StatelessToStateful::pointerIsPositiveOffsetFromKernelArgument(
         if (!m_ctx->enableZEBinary())
             isAlignedPointee = true;
 
-        // special handling
-        if (m_supportNonGEPPtr && gep == nullptr && !arg->isImplicitArg())
-        {
-            // For NonGEP ptr, do stateful only if arg isn't char*/short*
-            // (We hit bugs when allowing stateful for char*/short* arg without GEP.
-            //  Here, we simply avoid doing stateful for char*/short*.)
-            isAlignedPointee = (getPointeeAlign(DL, base) >= 4);
-        }
-
         // If m_hasBufferOffsetArg is true, the offset argument is added to
         // the final offset to make it definitely positive. Thus skip checking
         // if an offset is positive.
         //
-        // Howerver, if m_hasoptionalBufferOffsetArg is true, the buffer offset
+        // However, if m_hasoptionalBufferOffsetArg is true, the buffer offset
         // is not generated if all offsets can be proven positive (this has
         // performance benefit as adding buffer offset is an additional add).
         // Also, if an argument is unaligned, buffer offset must be ON and used;

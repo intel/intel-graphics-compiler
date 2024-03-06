@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 // RUN: ocloc compile -file %s -device dg2 \
 // RUN: -options "-I %S -cl-std=CL3.0 -igc_opts 'PrintToConsole=1 PrintBefore=EmitPass'" \
+// RUN: -internal_options "-cl-intel-greater-than-4GB-buffer-required" \
 // RUN: -out_dir /dev/null 2>&1 | FileCheck --enable-var-scope %s
 
 #include "test_convert_sat_helper.h"
