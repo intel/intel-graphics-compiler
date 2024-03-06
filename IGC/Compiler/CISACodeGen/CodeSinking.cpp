@@ -241,7 +241,6 @@ namespace IGC {
     {
         MemoizedStoresInLoops.clear();
         BlacklistedLoops.clear();
-        BBPressures.clear();
 
         bool Changed = false;
         for (auto &L : LI->getLoopsInPreorder())
@@ -1329,26 +1328,6 @@ namespace IGC {
         return changed;
     }
 
-    // Implementation of RPE->getMaxRegCountForLoop(*L, SIMD);
-    // with per-BB pressure caching to improve compile-time
-    uint CodeSinking::getMaxRegCountForLoop(Loop *L)
-    {
-        IGC_ASSERT(RPE);
-        uint SIMD = numLanes(RPE->bestGuessSIMDSize());
-        unsigned int Max = 0;
-        for (BasicBlock *BB : L->getBlocks())
-        {
-            auto BBPressureEntry = BBPressures.try_emplace(BB);
-            unsigned int &BBPressure = BBPressureEntry.first->second;
-            if (BBPressureEntry.second)  // BB was not in the set, need to recompute
-            {
-                BBPressure = RPE->getMaxRegCountForBB(*BB, SIMD);
-            }
-            Max = std::max(BBPressure, Max);
-        }
-        return Max;
-    }
-
     LoopSinkMode CodeSinking::needLoopSink(Loop *L)
     {
         BasicBlock *Preheader = L->getLoopPreheader();
@@ -1379,7 +1358,7 @@ namespace IGC {
         uint PreheaderDefsSizeInRegs = RPE->bytesToRegisters(PreheaderDefsSizeInBytes);
 
         // Estimate max pressure in the loop and the external pressure
-        uint MaxLoopPressure = getMaxRegCountForLoop(L);
+        uint MaxLoopPressure = RPE->getMaxRegCountForLoop(*L, SIMD, &WI);
         uint FunctionExternalPressure = FRPE ? FRPE->getExternalPressureForFunction(F) : 0;
 
         auto isSinkCriteriaMet = [&](uint MaxLoopPressure)
@@ -1449,21 +1428,6 @@ namespace IGC {
             PrintDump("Doing full sink.\n");
         }
 
-        // We can only affect Preheader and the loop.
-        // Collect affected BBs to invalidate cached regpressure
-        // and request recomputation of liveness analysis preserving not affected BBs
-        BBSet AffectedBBs;
-        AffectedBBs.insert(Preheader);
-        for (BasicBlock *BB: L->blocks())
-            AffectedBBs.insert(BB);
-
-        auto rerunLiveness = [&]()
-        {
-            for (BasicBlock *BB: AffectedBBs)
-                BBPressures.erase(BB);
-            RPE->rerunLivenessAnalysis(*F, &AffectedBBs);
-        };
-
         bool EverChanged = false;
 
         // Find LIs in preheader that would definitely reduce
@@ -1525,7 +1489,6 @@ namespace IGC {
             if (IterChanged)
             {
                 EverChanged = true;
-
                 // Invoke LocalSink() to move def to its first use
                 if (LocalBlkSet.size() > 0)
                 {
@@ -1538,8 +1501,9 @@ namespace IGC {
                     LocalInstSet.clear();
                 }
 
-                rerunLiveness();
-                MaxLoopPressure = getMaxRegCountForLoop(L);
+                uint SIMD = numLanes(RPE->bestGuessSIMDSize());
+                RPE->rerunLivenessAnalysis(*F);
+                MaxLoopPressure = RPE->getMaxRegCountForLoop(*L, SIMD, &WI);
                 PrintDump("New max loop pressure = " << MaxLoopPressure << "\n");
                 if ((MaxLoopPressure < NeededRegpressure)
                         && (Mode == LoopSinkMode::SinkWhileRegpressureIsHigh))
@@ -1590,7 +1554,6 @@ namespace IGC {
             PrintDump(">> Reverting the changes.\n");
 
             rollbackSinking(true, Preheader);
-            rerunLiveness();
 
             return false;
         }

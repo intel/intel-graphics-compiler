@@ -95,7 +95,7 @@ void IGCLivenessAnalysis::combineOut(llvm::BasicBlock *BB, ValueSet *Set) {
     }
 }
 
-void IGCLivenessAnalysis::addOperandsToSet(llvm::Instruction *Inst, ValueSet &Set) {
+void addToSet(llvm::Instruction *Inst, ValueSet &Set) {
     for (auto &Op : Inst->operands()) {
         llvm::Value *V = Op.get();
         // We are counting only instructions right now
@@ -107,26 +107,6 @@ void IGCLivenessAnalysis::addOperandsToSet(llvm::Instruction *Inst, ValueSet &Se
         if (!(llvm::isa<llvm::Instruction>(V) || llvm::isa<llvm::Argument>(V)))
             continue;
         Set.insert(V);
-    }
-}
-
-void IGCLivenessAnalysis::addNonLocalOperandsToSet(llvm::Instruction *Inst, ValueSet &Set) {
-    for (auto &Op : Inst->operands()) {
-        llvm::Value *V = Op.get();
-        // We are counting only instructions right now
-        // potetntially we should also count globals, but
-        // we defintely shouldn't count:
-        // br label %bb1 (basic block names)
-        // call %functionName (function names)
-        // add %a, 1 (constants)
-        Instruction *I = dyn_cast<Instruction>(V);
-        bool IsInstruction = I != nullptr;
-        bool OperandInDifferentBB = IsInstruction && (I->getParent() != Inst->getParent());
-        bool IsArgument = !IsInstruction && llvm::isa<llvm::Argument>(V);
-        if (OperandInDifferentBB || IsArgument)
-        {
-            Set.insert(V);
-        }
     }
 }
 
@@ -146,7 +126,6 @@ void IGCLivenessAnalysis::addToPhiSet(llvm::PHINode *Phi, PhiSet *InPhiSet) {
         (*InPhiSet)[BB].insert(ValueFromOurBlock);
     }
 }
-
 // scan through block in reversed order and add each operand
 // into IN block while deleting defined values
 void IGCLivenessAnalysis::processBlock(llvm::BasicBlock *BB, ValueSet &Set,
@@ -160,27 +139,14 @@ void IGCLivenessAnalysis::processBlock(llvm::BasicBlock *BB, ValueSet &Set,
             addToPhiSet(Phi, PhiSet);
             continue;
         }
-        addNonLocalOperandsToSet(Inst, Set);
+        addToSet(Inst, Set);
     }
 }
 
-void IGCLivenessAnalysis::livenessAnalysis(llvm::Function &F, BBSet *StartBBs) {
+void IGCLivenessAnalysis::livenessAnalysis(llvm::Function &F) {
     std::queue<llvm::BasicBlock *> Worklist;
-
-    if (StartBBs != nullptr)
-    {
-        // If StartBBs are provided we know that only these BBs could be changed
-        // Add only them to the initial Worklist
-        for (BasicBlock *BB : *StartBBs)
-            Worklist.push(BB);
-    }
-    else
-    {
-        // Start with adding all BBs to the Worklist
-        // to make sure In set is populated for every BB
-        for (BasicBlock &BB : F)
-            Worklist.push(&BB);
-    }
+    for (BasicBlock &BB : F)
+        Worklist.push(&BB);
 
     while (!Worklist.empty()) {
 
@@ -248,7 +214,7 @@ void IGCLivenessAnalysis::collectPressureForBB(
 
         auto Phi = llvm::dyn_cast<llvm::PHINode>(Inst);
         if (!Phi) {
-            addOperandsToSet(Inst, BBSet);
+            addToSet(Inst, BBSet);
         }
 
         BBListing[Inst] = Size;
@@ -259,7 +225,7 @@ void IGCLivenessAnalysis::collectPressureForBB(
 bool IGCLivenessAnalysis::runOnFunction(llvm::Function &F) {
 
     CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    livenessAnalysis(F, nullptr);
+    livenessAnalysis(F);
 
     return true;
 }

@@ -86,7 +86,7 @@ void IGCFunctionExternalRegPressureAnalysis::combineOut(llvm::BasicBlock *BB, Va
     }
 }
 
-void IGCFunctionExternalRegPressureAnalysis::addOperandsToSet(llvm::Instruction *Inst, ValueSet &Set) {
+void IGCFunctionExternalRegPressureAnalysis::addToSet(llvm::Instruction *Inst, ValueSet &Set) {
     for (auto &Op : Inst->operands()) {
         llvm::Value *V = Op.get();
         // We are counting only instructions right now
@@ -98,26 +98,6 @@ void IGCFunctionExternalRegPressureAnalysis::addOperandsToSet(llvm::Instruction 
         if (!(llvm::isa<llvm::Instruction>(V) || llvm::isa<llvm::Argument>(V)))
             continue;
         Set.insert(V);
-    }
-}
-
-void IGCFunctionExternalRegPressureAnalysis::addNonLocalOperandsToSet(llvm::Instruction *Inst, ValueSet &Set) {
-    for (auto &Op : Inst->operands()) {
-        llvm::Value *V = Op.get();
-        // We are counting only instructions right now
-        // potetntially we should also count globals, but
-        // we defintely shouldn't count:
-        // br label %bb1 (basic block names)
-        // call %functionName (function names)
-        // add %a, 1 (constants)
-        Instruction *I = dyn_cast<Instruction>(V);
-        bool IsInstruction = I != nullptr;
-        bool OperandInDifferentBB = IsInstruction && (I->getParent() != Inst->getParent());
-        bool IsArgument = !IsInstruction && llvm::isa<llvm::Argument>(V);
-        if (OperandInDifferentBB || IsArgument)
-        {
-            Set.insert(V);
-        }
     }
 }
 
@@ -138,7 +118,7 @@ void IGCFunctionExternalRegPressureAnalysis::collectPressureForBB(
 
         auto Phi = llvm::dyn_cast<llvm::PHINode>(Inst);
         if (!Phi) {
-            addOperandsToSet(Inst, BBSet);
+            addToSet(Inst, BBSet);
         }
 
         BBListing[Inst] = Size;
@@ -175,7 +155,7 @@ void IGCFunctionExternalRegPressureAnalysis::processBlock(llvm::BasicBlock *BB, 
             addToPhiSet(Phi, PhiSet);
             continue;
         }
-        addNonLocalOperandsToSet(Inst, Set);
+        addToSet(Inst, Set);
     }
 }
 

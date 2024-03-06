@@ -133,23 +133,11 @@ class IGCLivenessAnalysis : public llvm::FunctionPass {
     // ...
     // rerunLivenessAnalysis()
     // collectPressureForBB()
-    void rerunLivenessAnalysis(llvm::Function &F, BBSet *BBs = nullptr) {
-        if (BBs != nullptr)
-        {
-            for (BasicBlock *BB : *BBs)
-            {
-                In[BB].clear();
-                Out[BB].clear();
-                InPhi[BB].clear();
-            }
-        }
-        else
-        {
-            releaseMemory();
-        }
-        livenessAnalysis(F, BBs);
+    void rerunLivenessAnalysis(llvm::Function &F) {
+        releaseMemory();
+        livenessAnalysis(F);
     }
-    void livenessAnalysis(llvm::Function &F, BBSet *StartBBs);
+    void livenessAnalysis(llvm::Function &F);
 
     static char ID;
     llvm::StringRef getPassName() const override { return "IGCLivenessAnalysis"; }
@@ -166,8 +154,6 @@ class IGCLivenessAnalysis : public llvm::FunctionPass {
     void mergeSets(ValueSet *OutSet, llvm::BasicBlock *Succ);
     void combineOut(llvm::BasicBlock *BB, ValueSet *Set);
     void addToPhiSet(llvm::PHINode *Phi, PhiSet *InPhiSet);
-    void addOperandsToSet(llvm::Instruction *Inst, ValueSet &Set);
-    void addNonLocalOperandsToSet(llvm::Instruction *Inst, ValueSet &Set);
     void processBlock(llvm::BasicBlock *BB, ValueSet &Set, PhiSet *PhiSet);
 
 };
