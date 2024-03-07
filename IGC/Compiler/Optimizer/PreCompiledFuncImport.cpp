@@ -2697,14 +2697,13 @@ void PreCompiledFuncImport::checkAndSetEnableSubroutine()
             switch (I->getOpcode()) {
             default:
                 break;
-            case Instruction::FDiv: {
+            case Instruction::FDiv:
                 if (DPDivSqrtEmu && I->getOperand(0)->getType()->isDoubleTy())
                 {
                     m_enableCallForEmulation = true;
                     m_pCtx->m_hasDPDivSqrtEmu = true;
                 }
                 break;
-            }
             case Instruction::FMul:
             case Instruction::FAdd:
             case Instruction::FSub:

@@ -279,7 +279,7 @@ getSPIRVBuiltinName(Op OC, SPIRVInstruction *BI, const std::vector<Type*>& ArgTy
 
   if (!name.empty()) {
     name = name + suffix;
-    decorateSPIRVBuiltin(name, std::move(ArgTypes));
+    decorateSPIRVBuiltin(name, ArgTypes);
   }
   else
   {
