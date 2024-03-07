@@ -540,7 +540,14 @@ void CShader::CreateAliasVars()
                     int nelts = (VTy ? (int)VTy->getNumElements() : 1);
 
                     VISA_Type visaTy = GetType(BTy);
-                    int typeBytes = (int)CEncoder::GetCISADataTypeSize(visaTy);
+                    int typeBytes = (int)m_DL->getTypeStoreSize(BTy);
+
+                    // special handling of struct type
+                    if (BTy->isStructTy()) {
+                        IGC_ASSERT((int)CEncoder::GetCISADataTypeSize(visaTy) == 1);
+                        nelts *= (int)m_DL->getTypeStoreSize(BTy);
+                    }
+
                     int offsetInBytes = typeBytes * startIx;
                     int nbelts = nelts;
                     if (!rootCVar->IsUniform())
