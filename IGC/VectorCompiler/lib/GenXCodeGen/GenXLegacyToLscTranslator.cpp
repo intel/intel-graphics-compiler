@@ -737,6 +737,8 @@ Value *GenXLegacyToLscTranslator::translateAtomic(CallInst &CI) const {
 
   auto *Ty = CI.getType();
   auto AddrSize = LSC_ADDR_SIZE_32b;
+  auto DataSize =
+      Ty->isIntOrIntVectorTy(64) ? LSC_DATA_SIZE_64b : LSC_DATA_SIZE_32b;
 
   int ArgN = 0;
   auto *Pred = CI.getArgOperand(ArgN++);
@@ -777,7 +779,7 @@ Value *GenXLegacyToLscTranslator::translateAtomic(CallInst &CI) const {
       Pred,
       Builder.getInt8(Opcode),
       Builder.getInt8(AddrSize),
-      Builder.getInt8(LSC_DATA_SIZE_32b),
+      Builder.getInt8(DataSize),
       CacheOpts,
       Base,
       Addr,

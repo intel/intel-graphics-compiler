@@ -59,6 +59,22 @@ declare <16 x i32> @llvm.genx.svm.atomic.imax.v16i32.v16i1.v16i64(<16 x i1>, <16
 
 declare <16 x i32> @llvm.genx.svm.atomic.cmpxchg.v16i32.v16i1.v16i64(<16 x i1>, <16 x i64>, <16 x i32>, <16 x i32>, <16 x i32>)
 
+declare <16 x i64> @llvm.genx.svm.atomic.inc.v16i64.v16i1.v16i64(<16 x i1>, <16 x i64>, <16 x i64>)
+declare <16 x i64> @llvm.genx.svm.atomic.dec.v16i64.v16i1.v16i64(<16 x i1>, <16 x i64>, <16 x i64>)
+
+declare <16 x i64> @llvm.genx.svm.atomic.add.v16i64.v16i1.v16i64(<16 x i1>, <16 x i64>, <16 x i64>, <16 x i64>)
+declare <16 x i64> @llvm.genx.svm.atomic.sub.v16i64.v16i1.v16i64(<16 x i1>, <16 x i64>, <16 x i64>, <16 x i64>)
+declare <16 x i64> @llvm.genx.svm.atomic.min.v16i64.v16i1.v16i64(<16 x i1>, <16 x i64>, <16 x i64>, <16 x i64>)
+declare <16 x i64> @llvm.genx.svm.atomic.max.v16i64.v16i1.v16i64(<16 x i1>, <16 x i64>, <16 x i64>, <16 x i64>)
+declare <16 x i64> @llvm.genx.svm.atomic.xchg.v16i64.v16i1.v16i64(<16 x i1>, <16 x i64>, <16 x i64>, <16 x i64>)
+declare <16 x i64> @llvm.genx.svm.atomic.and.v16i64.v16i1.v16i64(<16 x i1>, <16 x i64>, <16 x i64>, <16 x i64>)
+declare <16 x i64> @llvm.genx.svm.atomic.or.v16i64.v16i1.v16i64(<16 x i1>, <16 x i64>, <16 x i64>, <16 x i64>)
+declare <16 x i64> @llvm.genx.svm.atomic.xor.v16i64.v16i1.v16i64(<16 x i1>, <16 x i64>, <16 x i64>, <16 x i64>)
+declare <16 x i64> @llvm.genx.svm.atomic.imin.v16i64.v16i1.v16i64(<16 x i1>, <16 x i64>, <16 x i64>, <16 x i64>)
+declare <16 x i64> @llvm.genx.svm.atomic.imax.v16i64.v16i1.v16i64(<16 x i1>, <16 x i64>, <16 x i64>, <16 x i64>)
+
+declare <16 x i64> @llvm.genx.svm.atomic.cmpxchg.v16i64.v16i1.v16i64(<16 x i1>, <16 x i64>, <16 x i64>, <16 x i64>, <16 x i64>)
+
 
 ; CHECK-LABEL: test_bti
 define void @test_bti(<16 x i1> %pred, <16 x i32> %addr, <16 x i32> %src0, <16 x i32> %src1, <16 x i32> %passthru) {
@@ -254,6 +270,38 @@ define void @test_ugm(<16 x i1> %pred, <16 x i64> %addr, <16 x i32> %src0, <16 x
   %imin = call <16 x i32> @llvm.genx.svm.atomic.imin.v16i32.v16i1.v16i64(<16 x i1> %pred, <16 x i64> %addr, <16 x i32> %src0, <16 x i32> %passthru)
   %imax = call <16 x i32> @llvm.genx.svm.atomic.imax.v16i32.v16i1.v16i64(<16 x i1> %pred, <16 x i64> %addr, <16 x i32> %src0, <16 x i32> %passthru)
   %cas = call <16 x i32> @llvm.genx.svm.atomic.cmpxchg.v16i32.v16i1.v16i64(<16 x i1> %pred, <16 x i64> %addr, <16 x i32> %src0, <16 x i32> %src1, <16 x i32> %passthru)
+
+  ret void
+}
+
+; CHECK-LABEL: test_ugm64
+define void @test_ugm64(<16 x i1> %pred, <16 x i64> %addr, <16 x i64> %src0, <16 x i64> %src1, <16 x i64> %passthru) {
+  ; CHECK: %inc = call <16 x i64> @llvm.vc.internal.lsc.atomic.ugm.v16i64.v16i1.v2i8.v16i64(<16 x i1> %pred, i8 8, i8 3, i8 4, <2 x i8> zeroinitializer, i64 0, <16 x i64> %addr, i16 1, i32 0, <16 x i64> undef, <16 x i64> undef, <16 x i64> %passthru)
+  ; CHECK: %dec = call <16 x i64> @llvm.vc.internal.lsc.atomic.ugm.v16i64.v16i1.v2i8.v16i64(<16 x i1> %pred, i8 9, i8 3, i8 4, <2 x i8> zeroinitializer, i64 0, <16 x i64> %addr, i16 1, i32 0, <16 x i64> undef, <16 x i64> undef, <16 x i64> %passthru)
+  ; CHECK: %add = call <16 x i64> @llvm.vc.internal.lsc.atomic.ugm.v16i64.v16i1.v2i8.v16i64(<16 x i1> %pred, i8 12, i8 3, i8 4, <2 x i8> zeroinitializer, i64 0, <16 x i64> %addr, i16 1, i32 0, <16 x i64> %src0, <16 x i64> undef, <16 x i64> %passthru)
+  ; CHECK: %sub = call <16 x i64> @llvm.vc.internal.lsc.atomic.ugm.v16i64.v16i1.v2i8.v16i64(<16 x i1> %pred, i8 13, i8 3, i8 4, <2 x i8> zeroinitializer, i64 0, <16 x i64> %addr, i16 1, i32 0, <16 x i64> %src0, <16 x i64> undef, <16 x i64> %passthru)
+  ; CHECK: %min = call <16 x i64> @llvm.vc.internal.lsc.atomic.ugm.v16i64.v16i1.v2i8.v16i64(<16 x i1> %pred, i8 16, i8 3, i8 4, <2 x i8> zeroinitializer, i64 0, <16 x i64> %addr, i16 1, i32 0, <16 x i64> %src0, <16 x i64> undef, <16 x i64> %passthru)
+  ; CHECK: %max = call <16 x i64> @llvm.vc.internal.lsc.atomic.ugm.v16i64.v16i1.v2i8.v16i64(<16 x i1> %pred, i8 17, i8 3, i8 4, <2 x i8> zeroinitializer, i64 0, <16 x i64> %addr, i16 1, i32 0, <16 x i64> %src0, <16 x i64> undef, <16 x i64> %passthru)
+  ; CHECK: %xchg = call <16 x i64> @llvm.vc.internal.lsc.atomic.ugm.v16i64.v16i1.v2i8.v16i64(<16 x i1> %pred, i8 11, i8 3, i8 4, <2 x i8> zeroinitializer, i64 0, <16 x i64> %addr, i16 1, i32 0, <16 x i64> %src0, <16 x i64> undef, <16 x i64> %passthru)
+  ; CHECK: %and = call <16 x i64> @llvm.vc.internal.lsc.atomic.ugm.v16i64.v16i1.v2i8.v16i64(<16 x i1> %pred, i8 24, i8 3, i8 4, <2 x i8> zeroinitializer, i64 0, <16 x i64> %addr, i16 1, i32 0, <16 x i64> %src0, <16 x i64> undef, <16 x i64> %passthru)
+  ; CHECK: %or = call <16 x i64> @llvm.vc.internal.lsc.atomic.ugm.v16i64.v16i1.v2i8.v16i64(<16 x i1> %pred, i8 25, i8 3, i8 4, <2 x i8> zeroinitializer, i64 0, <16 x i64> %addr, i16 1, i32 0, <16 x i64> %src0, <16 x i64> undef, <16 x i64> %passthru)
+  ; CHECK: %xor = call <16 x i64> @llvm.vc.internal.lsc.atomic.ugm.v16i64.v16i1.v2i8.v16i64(<16 x i1> %pred, i8 26, i8 3, i8 4, <2 x i8> zeroinitializer, i64 0, <16 x i64> %addr, i16 1, i32 0, <16 x i64> %src0, <16 x i64> undef, <16 x i64> %passthru)
+  ; CHECK: %imin = call <16 x i64> @llvm.vc.internal.lsc.atomic.ugm.v16i64.v16i1.v2i8.v16i64(<16 x i1> %pred, i8 14, i8 3, i8 4, <2 x i8> zeroinitializer, i64 0, <16 x i64> %addr, i16 1, i32 0, <16 x i64> %src0, <16 x i64> undef, <16 x i64> %passthru)
+  ; CHECK: %imax = call <16 x i64> @llvm.vc.internal.lsc.atomic.ugm.v16i64.v16i1.v2i8.v16i64(<16 x i1> %pred, i8 15, i8 3, i8 4, <2 x i8> zeroinitializer, i64 0, <16 x i64> %addr, i16 1, i32 0, <16 x i64> %src0, <16 x i64> undef, <16 x i64> %passthru)
+  ; CHECK: %cas = call <16 x i64> @llvm.vc.internal.lsc.atomic.ugm.v16i64.v16i1.v2i8.v16i64(<16 x i1> %pred, i8 18, i8 3, i8 4, <2 x i8> zeroinitializer, i64 0, <16 x i64> %addr, i16 1, i32 0, <16 x i64> %src1, <16 x i64> %src0, <16 x i64> %passthru)
+  %inc = call <16 x i64> @llvm.genx.svm.atomic.inc.v16i64.v16i1.v16i64(<16 x i1> %pred, <16 x i64> %addr, <16 x i64> %passthru)
+  %dec = call <16 x i64> @llvm.genx.svm.atomic.dec.v16i64.v16i1.v16i64(<16 x i1> %pred, <16 x i64> %addr, <16 x i64> %passthru)
+  %add = call <16 x i64> @llvm.genx.svm.atomic.add.v16i64.v16i1.v16i64(<16 x i1> %pred, <16 x i64> %addr, <16 x i64> %src0, <16 x i64> %passthru)
+  %sub = call <16 x i64> @llvm.genx.svm.atomic.sub.v16i64.v16i1.v16i64(<16 x i1> %pred, <16 x i64> %addr, <16 x i64> %src0, <16 x i64> %passthru)
+  %min = call <16 x i64> @llvm.genx.svm.atomic.min.v16i64.v16i1.v16i64(<16 x i1> %pred, <16 x i64> %addr, <16 x i64> %src0, <16 x i64> %passthru)
+  %max = call <16 x i64> @llvm.genx.svm.atomic.max.v16i64.v16i1.v16i64(<16 x i1> %pred, <16 x i64> %addr, <16 x i64> %src0, <16 x i64> %passthru)
+  %xchg = call <16 x i64> @llvm.genx.svm.atomic.xchg.v16i64.v16i1.v16i64(<16 x i1> %pred, <16 x i64> %addr, <16 x i64> %src0, <16 x i64> %passthru)
+  %and = call <16 x i64> @llvm.genx.svm.atomic.and.v16i64.v16i1.v16i64(<16 x i1> %pred, <16 x i64> %addr, <16 x i64> %src0, <16 x i64> %passthru)
+  %or = call <16 x i64> @llvm.genx.svm.atomic.or.v16i64.v16i1.v16i64(<16 x i1> %pred, <16 x i64> %addr, <16 x i64> %src0, <16 x i64> %passthru)
+  %xor = call <16 x i64> @llvm.genx.svm.atomic.xor.v16i64.v16i1.v16i64(<16 x i1> %pred, <16 x i64> %addr, <16 x i64> %src0, <16 x i64> %passthru)
+  %imin = call <16 x i64> @llvm.genx.svm.atomic.imin.v16i64.v16i1.v16i64(<16 x i1> %pred, <16 x i64> %addr, <16 x i64> %src0, <16 x i64> %passthru)
+  %imax = call <16 x i64> @llvm.genx.svm.atomic.imax.v16i64.v16i1.v16i64(<16 x i1> %pred, <16 x i64> %addr, <16 x i64> %src0, <16 x i64> %passthru)
+  %cas = call <16 x i64> @llvm.genx.svm.atomic.cmpxchg.v16i64.v16i1.v16i64(<16 x i1> %pred, <16 x i64> %addr, <16 x i64> %src0, <16 x i64> %src1, <16 x i64> %passthru)
 
   ret void
 }
