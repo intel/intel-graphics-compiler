@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -14,17 +14,15 @@
 ; Debug-info related check
 ; CHECK-NOT: WARNING
 ; CHECK: CheckModuleDebugify: PASS
-; XFAIL: *
 
 define spir_func void @test(i32 addrspace(1)* %dst, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ, i8* %privateBase, i32 %bufferOffset) #0 {
-; CHECK-LABEL: @test(
 ; CHECK:  entry:
-; CHECK:    [[DST_ADDR:%.*]] = alloca i32 addrspace(1)*, align 8
-; CHECK:    [[X:%.*]] = alloca i32, align 4
-; CHECK:    [[Y:%.*]] = alloca i32, align 4
-; CHECK:    [[Z:%.*]] = alloca i32, align 4
-; CHECK:    store i32 addrspace(1)* [[DST:%.*]], i32 addrspace(1)** [[DST_ADDR]], align 8
 ; CHECK:    [[TMP0:%.*]] = call i16 @llvm.genx.GenISA.simdLaneId.i16()
+; CHECK:    [[DST_ADDR:%.*]] = alloca i32 addrspace(1)*
+; CHECK:    [[X:%.*]] = alloca i32
+; CHECK:    [[Y:%.*]] = alloca i32
+; CHECK:    [[Z:%.*]] = alloca i32
+; CHECK:    store i32 addrspace(1)* [[DST:%.*]], i32 addrspace(1)** [[DST_ADDR]]
 ; CHECK:    [[TMP1:%.*]] = call i32 addrspace(1)* @llvm.genx.GenISA.GetLocalIdBufferPtr.p1i32()
 ; CHECK:    [[TMP2:%.*]] = ptrtoint i32 addrspace(1)* [[TMP1]] to i64
 ; CHECK:    [[TMP3:%.*]] = mul i16 [[TMP0]], 6
@@ -33,38 +31,35 @@ define spir_func void @test(i32 addrspace(1)* %dst, <8 x i32> %r0, <8 x i32> %pa
 ; CHECK:    [[TMP6:%.*]] = inttoptr i64 [[TMP5]] to i16 addrspace(1)*
 ; CHECK:    [[TMP7:%.*]] = load i16, i16 addrspace(1)* [[TMP6]]
 ; CHECK:    [[EXT1:%.*]] = zext i16 [[TMP7]] to i32
-; CHECK:    store i32 [[EXT1]], i32* [[X]], align 4
-; CHECK:    [[TMP8:%.*]] = call i16 @llvm.genx.GenISA.simdLaneId.i16()
-; CHECK:    [[TMP9:%.*]] = call i32 addrspace(1)* @llvm.genx.GenISA.GetLocalIdBufferPtr.p1i32()
-; CHECK:    [[TMP10:%.*]] = ptrtoint i32 addrspace(1)* [[TMP9]] to i64
-; CHECK:    [[TMP11:%.*]] = mul i16 [[TMP8]], 6
-; CHECK:    [[TMP12:%.*]] = add i16 [[TMP11]], 2
-; CHECK:    [[TMP13:%.*]] = zext i16 [[TMP12]] to i64
-; CHECK:    [[TMP14:%.*]] = add i64 [[TMP13]], [[TMP10]]
-; CHECK:    [[TMP15:%.*]] = inttoptr i64 [[TMP14]] to i16 addrspace(1)*
-; CHECK:    [[TMP16:%.*]] = load i16, i16 addrspace(1)* [[TMP15]]
-; CHECK:    [[EXT2:%.*]] = zext i16 [[TMP16]] to i32
-; CHECK:    store i32 [[EXT2]], i32* [[Y]], align 4
-; CHECK:    [[TMP17:%.*]] = call i16 @llvm.genx.GenISA.simdLaneId.i16()
-; CHECK:    [[TMP18:%.*]] = call i32 addrspace(1)* @llvm.genx.GenISA.GetLocalIdBufferPtr.p1i32()
-; CHECK:    [[TMP19:%.*]] = ptrtoint i32 addrspace(1)* [[TMP18]] to i64
-; CHECK:    [[TMP20:%.*]] = mul i16 [[TMP17]], 6
-; CHECK:    [[TMP21:%.*]] = add i16 [[TMP20]], 4
-; CHECK:    [[TMP22:%.*]] = zext i16 [[TMP21]] to i64
-; CHECK:    [[TMP23:%.*]] = add i64 [[TMP22]], [[TMP19]]
-; CHECK:    [[TMP24:%.*]] = inttoptr i64 [[TMP23]] to i16 addrspace(1)*
-; CHECK:    [[TMP25:%.*]] = load i16, i16 addrspace(1)* [[TMP24]]
-; CHECK:    [[EXT3:%.*]] = zext i16 [[TMP25]] to i32
-; CHECK:    store i32 [[EXT3]], i32* [[Z]], align 4
-; CHECK:    [[TMP26:%.*]] = load i32, i32* [[X]], align 4
-; CHECK:    [[TMP27:%.*]] = load i32, i32* [[Y]], align 4
-; CHECK:    [[ADD:%.*]] = add nsw i32 [[TMP26]], [[TMP27]]
-; CHECK:    [[TMP28:%.*]] = load i32, i32* [[Z]], align 4
-; CHECK:    [[ADD5:%.*]] = add nsw i32 [[ADD]], [[TMP28]]
-; CHECK:    [[TMP29:%.*]] = load i32 addrspace(1)*, i32 addrspace(1)** [[DST_ADDR]], align 8
-; CHECK:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, i32 addrspace(1)* [[TMP29]], i64 0
-; CHECK:    store i32 [[ADD5]], i32 addrspace(1)* [[ARRAYIDX]], align 4
-; CHECK:    ret void
+; CHECK:    store i32 [[EXT1]], i32* [[X]]
+; CHECK:    [[TMP8:%.*]] = call i32 addrspace(1)* @llvm.genx.GenISA.GetLocalIdBufferPtr.p1i32()
+; CHECK:    [[TMP9:%.*]] = ptrtoint i32 addrspace(1)* [[TMP8]] to i64
+; CHECK:    [[TMP10:%.*]] = mul i16 [[TMP0]], 6
+; CHECK:    [[TMP11:%.*]] = add i16 [[TMP10]], 2
+; CHECK:    [[TMP12:%.*]] = zext i16 [[TMP11]] to i64
+; CHECK:    [[TMP13:%.*]] = add i64 [[TMP12]], [[TMP9]]
+; CHECK:    [[TMP14:%.*]] = inttoptr i64 [[TMP13]] to i16 addrspace(1)*
+; CHECK:    [[TMP15:%.*]] = load i16, i16 addrspace(1)* [[TMP14]]
+; CHECK:    [[EXT2:%.*]] = zext i16 [[TMP15]] to i32
+; CHECK:    store i32 [[EXT2]], i32* [[Y]]
+; CHECK:    [[TMP16:%.*]] = call i32 addrspace(1)* @llvm.genx.GenISA.GetLocalIdBufferPtr.p1i32()
+; CHECK:    [[TMP17:%.*]] = ptrtoint i32 addrspace(1)* [[TMP16]] to i64
+; CHECK:    [[TMP18:%.*]] = mul i16 [[TMP0]], 6
+; CHECK:    [[TMP19:%.*]] = add i16 [[TMP18]], 4
+; CHECK:    [[TMP20:%.*]] = zext i16 [[TMP19]] to i64
+; CHECK:    [[TMP21:%.*]] = add i64 [[TMP20]], [[TMP17]]
+; CHECK:    [[TMP22:%.*]] = inttoptr i64 [[TMP21]] to i16 addrspace(1)*
+; CHECK:    [[TMP23:%.*]] = load i16, i16 addrspace(1)* [[TMP22]]
+; CHECK:    [[EXT3:%.*]] = zext i16 [[TMP23]] to i32
+; CHECK:    store i32 [[EXT3]], i32* [[Z]]
+; CHECK:    [[TMP24:%.*]] = load i32, i32* [[X]]
+; CHECK:    [[TMP25:%.*]] = load i32, i32* [[Y]]
+; CHECK:    [[ADD:%.*]] = add nsw i32 [[TMP24]], [[TMP25]]
+; CHECK:    [[TMP26:%.*]] = load i32, i32* [[Z]]
+; CHECK:    [[ADD5:%.*]] = add nsw i32 [[ADD]], [[TMP26]]
+; CHECK:    [[TMP27:%.*]] = load i32 addrspace(1)*, i32 addrspace(1)** [[DST_ADDR]]
+; CHECK:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, i32 addrspace(1)* [[TMP27]], i64 0
+; CHECK:    store i32 [[ADD5]], i32 addrspace(1)* [[ARRAYIDX]]
 ;
 entry:
   %dst.addr = alloca i32 addrspace(1)*, align 8
