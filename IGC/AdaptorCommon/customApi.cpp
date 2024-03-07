@@ -625,20 +625,5 @@ namespace IGC
 
 
 #endif // defined( IGC_DEBUG_VARIABLES )
-
-        static const CustomAPIFunctionTable g_CustomAPIFunctionTable = {
-            SetCompilerOptionOpaque,
-            SetDebugFlag,
-            SetDumpFlag,
-            SetShaderCorpusName,
-            SetShaderOutputFolder,
-            GetShaderOutputFolder,
-            GetVersionInfo
-        };
-
-        extern "C" void IGC_DEBUG_API_CALL ExportCustomAPIFunctions(CustomAPIFunctionTable* fnTable)
-        {
-            memcpy_s(fnTable, sizeof(CustomAPIFunctionTable), &g_CustomAPIFunctionTable, sizeof(CustomAPIFunctionTable));
-        }
     }
 }

@@ -323,17 +323,5 @@ namespace IGC
         /// Omits changelist and build number in _RELEASE builds
         inline VersionInfo GetVersionInfo() { return "CONFIGURATION: Release"; }
     #endif
-
-        struct CustomAPIFunctionTable {
-            decltype(&SetCompilerOptionOpaque) pfnSetCompilerOptionOpaque;
-            decltype(&SetDebugFlag) pfnSetDebugFlag;
-            decltype(&SetDumpFlag) pfnSetDumpFlag;
-            decltype(&SetShaderCorpusName) pfnSetShaderCorpusName;
-            decltype(&SetShaderOutputFolder) pfnSetShaderOutputFolder;
-            decltype(&GetShaderOutputFolder) pfnGetShaderOutputFolder;
-            decltype(&GetVersionInfo) pfnGetVersionInfo;
-        };
-
-        extern "C" void IGC_DEBUG_API_CALL ExportCustomAPIFunctions(CustomAPIFunctionTable * fnTable);
     }
 }
