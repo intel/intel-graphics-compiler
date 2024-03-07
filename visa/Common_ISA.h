@@ -845,7 +845,10 @@ public:
   /// getHWEncoding - Get HW encoding of channel mask. HW
   /// defines channel mask in negative logic to help remove header when all
   /// channels are enabled.
-  unsigned getHWEncoding() const { return ~unsigned(Value) & 0xF; }
+  unsigned getHWEncoding(bool invert = true) const {
+    unsigned encoding = (invert) ? ~unsigned(Value) & 0xF : unsigned(Value) & 0xF;
+    return encoding;
+  }
 
   /// getNumChannles - Get number of channels enabled.
   unsigned getNumEnabledChannels() const {
