@@ -154,6 +154,20 @@ struct TranslateIntrinsic : TranslateIntrinsicImpl<TTranslateIntrinsic>
 {
     using ImplType = TranslateIntrinsicImpl<TTranslateIntrinsic>;
 
+    static bool IsValidImmediateOffset(llvm::Value* offset)
+    {
+        constexpr int64_t cMinImmediateOffset = -8;
+        constexpr int64_t cMaxImmediateOffset =  7;
+        llvm::ConstantInt* imm = llvm::dyn_cast<llvm::ConstantInt>(offset);
+        if (imm &&
+            imm->getSExtValue() >= cMinImmediateOffset &&
+            imm->getSExtValue() <= cMaxImmediateOffset)
+        {
+            return true;
+        }
+        return false;
+    }
+
     template<class SampleOrGatherInstrinsic>
     static bool IsApplicable(SampleOrGatherInstrinsic* sampleOrGatherIntr)
     {
@@ -163,9 +177,9 @@ struct TranslateIntrinsic : TranslateIntrinsicImpl<TTranslateIntrinsic>
         llvm::Value* offsetR = sampleOrGatherIntr->getOperand(immOffsetSourceIndex + 2);
 
         bool applicable =
-            !llvm::isa<llvm::Constant>(offsetU) ||
-            !llvm::isa<llvm::Constant>(offsetV) ||
-            !llvm::isa<llvm::Constant>(offsetR);
+            !IsValidImmediateOffset(offsetU) ||
+            !IsValidImmediateOffset(offsetV) ||
+            !IsValidImmediateOffset(offsetR);
 
         applicable &= IsApplicableDerived<ImplType>(sampleOrGatherIntr);
 
