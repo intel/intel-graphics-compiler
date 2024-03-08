@@ -2408,11 +2408,11 @@ G4_INST *SpillManagerGRF::createLSCSpill(G4_Declare *spillRangeDcl,
   G4_RegVarTmp *rvar = static_cast<G4_RegVarTmp *>(spillRangeDcl->getRegVar());
   int offset = getDisp(rvar->getBaseRegVar());
   getSpillOffset(offset);
+  uint32_t totalByteOffset = (offset + spillOff * builder_->getGRFSize());
   // message expects offsets to be in HWord
-  uint32_t offsetHwords = (offset + spillOff * builder_->getGRFSize()) >>
-                          SCRATCH_SPACE_ADDRESS_UNIT;
+  uint32_t offsetHwords = totalByteOffset >> SCRATCH_SPACE_ADDRESS_UNIT;
 
-  G4_SrcRegRegion *header = getLSCSpillFillHeader(fp, offset);
+  G4_SrcRegRegion *header = getLSCSpillFillHeader(fp, totalByteOffset);
   auto sendInst =
       builder_->createSpill(postDst, header, srcOpnd, execSize, height,
                             offsetHwords, fp, InstOpt_WriteEnable, true);
@@ -2443,10 +2443,10 @@ G4_INST *SpillManagerGRF::createLSCSpill(G4_Declare *spillRangeDcl,
   getSpillOffset(offset);
   // message expects offsets to be in HWord
   auto regOff = spilledRangeRegion->getRegOff();
-  uint32_t offsetHwords =
-      (offset + regOff * builder_->getGRFSize()) >> SCRATCH_SPACE_ADDRESS_UNIT;
+  uint32_t totalByteOffset = (offset + regOff * builder_->getGRFSize());
+  uint32_t offsetHwords = totalByteOffset >> SCRATCH_SPACE_ADDRESS_UNIT;
 
-  G4_SrcRegRegion *header = getLSCSpillFillHeader(fp, offset);
+  G4_SrcRegRegion *header = getLSCSpillFillHeader(fp, totalByteOffset);
   auto sendInst = builder_->createSpill(
       postDst, header, srcOpnd, execSize, (uint16_t)extMsgLength, offsetHwords,
       fp, static_cast<G4_InstOption>(option), true, isScatter);
@@ -2473,11 +2473,11 @@ G4_INST *SpillManagerGRF::createLSCFill(G4_Declare *fillRangeDcl,
   G4_RegVarTmp *rvar = static_cast<G4_RegVarTmp *>(r);
   int offset = getDisp(rvar->getBaseRegVar());
   getSpillOffset(offset);
+  uint32_t totalByteOffset = (offset + spillOff * builder_->getGRFSize());
   // fill intrinsic expects offsets to be in HWord
-  uint32_t offsetHwords = (offset + spillOff * builder_->getGRFSize()) >>
-                          SCRATCH_SPACE_ADDRESS_UNIT;
+  uint32_t offsetHwords = totalByteOffset >> SCRATCH_SPACE_ADDRESS_UNIT;
 
-  G4_SrcRegRegion *header = getLSCSpillFillHeader(fp, offset);
+  G4_SrcRegRegion *header = getLSCSpillFillHeader(fp, totalByteOffset);
   auto fillInst =
       builder_->createFill(header, postDst, g4::SIMD16, height, offsetHwords,
                            fp, InstOpt_WriteEnable, true);
