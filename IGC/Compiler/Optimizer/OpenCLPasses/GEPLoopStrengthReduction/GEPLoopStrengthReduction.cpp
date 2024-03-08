@@ -26,7 +26,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "common/igc_regkeys.hpp"
 #include "common/IGCIRBuilder.h"
-#include "Compiler/CISACodeGen/RegisterPressureEstimate.hpp"
+#include "Compiler/CISACodeGen/IGCLivenessAnalysis.h"
 #include "Compiler/CodeGenPublic.h"
 
 using namespace llvm;
@@ -120,11 +120,11 @@ enum ReductionType
 // Score used by heuristic for deciding what type of reduction to apply.
 struct Score
 {
-    Score() : ReducedInstructions(0), RegisterPressure(0) {}
+    Score() : ReducesInstructions(false), RegisterPressure(0) {}
 
-    // How many instructions are estimated to be reduced from loop.
-    // Can be negative if instructions are added to loop.
-    int ReducedInstructions;
+    // True if reduction to preheader would lower number of instructions in
+    // loop. False otherwise.
+    bool ReducesInstructions;
 
     // Estimated increase in register pressure when reducing to loop's preheader.
     unsigned RegisterPressure;
@@ -187,7 +187,7 @@ friend class Scorer;
 
 public:
 
-    ReductionCandidateGroup(const Loop *L, const DominatorTree *DT, GetElementPtrInst *GEP, const SCEV *S, int64_t Step)
+    ReductionCandidateGroup(Loop *L, const DominatorTree *DT, GetElementPtrInst *GEP, const SCEV *S, int64_t Step)
         : L(L), DT(DT), Step(Step), Base(GEP, S, 0), RT(REDUCE_TO_PREHEADER) {}
 
     bool addToGroup(ScalarEvolution &SE, GetElementPtrInst *GEP, const SCEV *S, int64_t Step);
@@ -199,10 +199,13 @@ public:
     // Return how many GEP instructions will be reduced.
     uint32_t getGEPCount() { return 1 + Others.size(); }
 
+    // Returns reduced GEPs. Filled after successful reduction.
+    const SmallVectorImpl<GetElementPtrInst*> &getReduced() { return Reduced; }
+
     ReductionType getReductionType() { return RT; }
     void setReductionType(ReductionType RT) { this->RT = RT; }
 
-    const Loop *getLoop() { return L; }
+    Loop *getLoop() { return L; }
 
     Score getScore() { return Score; }
 
@@ -233,7 +236,10 @@ private:
     // to preheader, as it should give smallest increase in register pressure.
     std::optional<ReductionCandidate> Cheapest;
 
-    const Loop *L;
+    // All GEPs that were reduced and are safe to delete.
+    SmallVector<GetElementPtrInst*, 8> Reduced;
+
+    Loop *L;
 
     const DominatorTree *DT;
 
@@ -249,8 +255,8 @@ private:
 class Scorer
 {
 public:
-    Scorer(const DataLayout &DL, ModuleMetaData &MMD)
-        : DL(DL), MMD(MMD) {}
+    Scorer(const DataLayout &DL, ModuleMetaData &MMD, IGCLivenessAnalysis &RPE, WIAnalysisRunner &WI)
+        : DL(DL), MMD(MMD), RPE(RPE), WI(WI) {}
 
     void score(SmallVectorImpl<ReductionCandidateGroup> &Candidates);
 
@@ -264,7 +270,9 @@ private:
     int estimatePointerAddition(ReductionCandidateGroup &Candidate);
 
     const DataLayout &DL;
+    IGCLivenessAnalysis &RPE;
     ModuleMetaData &MMD;
+    WIAnalysisRunner &WI;
 };
 
 
@@ -293,53 +301,36 @@ private:
 };
 
 
-// Tracks estimated register pressure. Takes into account initial pressure
-// (before this pass) and any changes made by reductions. Keeps tracks
-// where SCEV Expander inserts new instructions. For example:
-//
-//   loop A:
-//     loop B1
-//     loop B2
-//
-// Reduction in loop B1 might insert instruction to basic block with more global
-// scope than loop B1 itself, for example to loop A's header. These new variables
-// will have longer lifecycle than loop B1 and will impact available pressure
-// budged for loop B2's reductions.
+// Tracks estimated register pressure.
 class RegisterPressureTracker
 {
 public:
-    RegisterPressureTracker(CodeGenContext &CGC, RegisterPressureEstimate &RPE, SmallVectorImpl<ReductionCandidateGroup> &Candidates);
+
+    RegisterPressureTracker(Function &F, CodeGenContext &CGC, IGCLivenessAnalysis &RPE, IGCFunctionExternalRegPressureAnalysis &FRPE, WIAnalysisRunner &WI);
 
     bool fitsPressureThreshold(ReductionCandidateGroup &C);
     void updatePressure(ReductionCandidateGroup &C, SCEVExpander &E);
 
-private:
-
-    struct LoopEstimation
+    void trackDeletedInstruction(Value *V)
     {
-        LoopEstimation(const Loop *L, unsigned InitialPressure): L(L), InitialPressure(InitialPressure), NewInstructions(0) {}
+        if (auto *I = dyn_cast<Instruction>(V))
+            BBsToUpdate.insert(I->getParent());
+    }
 
-        const Loop *L;
-
-        // Initial register pressure returned by pressure analysis pass.
-        unsigned InitialPressure;
-
-        // New instructions inserted by reductions.
-        unsigned NewInstructions;
-    };
-
-    void cacheInitialPressure(const Loop *L);
+private:
 
 #if LLVM_VERSION_MAJOR < 14
     SmallVector<Instruction*, 32> getInsertedInstructions(ReductionCandidateGroup &C, SCEVExpander &E);
 #endif
 
-    RegisterPressureEstimate &RPE;
-    DenseMap<const Loop*, LoopEstimation> LoopEstimations;
-    unsigned MaxPressure;
+    unsigned MaxAllowedPressure;
+    unsigned ExternalPressure;
 
-    // Instructions added outside of scope of any loop.
-    unsigned NewGlobalInsts;
+    IGCLivenessAnalysis &RPE;
+    WIAnalysisRunner &WI;
+
+    // Basic Blocks impacted by reduction, requiring register pressure reestimation.
+    BBSet BBsToUpdate;
 
     // Keep track what new instructions inserted by SCEV Expander were already added to estimation.
     SmallPtrSet<Instruction*, 32> VisitedNewInsts;
@@ -356,6 +347,8 @@ public:
     bool reduce(SmallVectorImpl<ReductionCandidateGroup> &Candidates);
 
 private:
+
+    void cleanup(ReductionCandidateGroup &C);
 
     IGCLLVM::IRBuilder<> &IRB;
     RegisterPressureTracker &RPT;
@@ -658,14 +651,14 @@ void ReductionCandidateGroup::reduceToPreheader(IGCLLVM::IRBuilder<> &IRB, SCEVE
 
     // Replace base GEP
     Base.GEP->replaceAllUsesWith(Pointer);
-    RecursivelyDeleteTriviallyDeadInstructions(Base.GEP);
+    Reduced.push_back(Base.GEP);
 
     // Replace remaining GEPs in the group
     for (auto &Other : Others)
     {
         IRB.SetInsertPoint(Other.GEP);
         Other.GEP->replaceAllUsesWith(Other.Delta == 0 ? Pointer : IRB.CreateGEP(Pointer, IRB.getInt64(Other.Delta)));
-        RecursivelyDeleteTriviallyDeadInstructions(Other.GEP);
+        Reduced.push_back(Other.GEP);
     }
 }
 
@@ -683,7 +676,7 @@ void ReductionCandidateGroup::reduceIndexOnly(IGCLLVM::IRBuilder<> &IRB, SCEVExp
         {
             IRB.SetInsertPoint(Other.GEP);
             Other.GEP->replaceAllUsesWith(Other.Delta == 0 ? Base.GEP : IRB.CreateGEP(Base.GEP, IRB.getInt64(Other.Delta)));
-            RecursivelyDeleteTriviallyDeadInstructions(Other.GEP);
+            Reduced.push_back(Other.GEP);
         }
     }
 }
@@ -705,7 +698,8 @@ void Scorer::score(ReductionCandidateGroup &Candidate)
 }
 
 
-// Returns estimated number of reduced instructions.
+// Estimate if reduction will remove instructions from loop. Takes into account instructions
+// added when lowering GEP to direct pointer arithmetics.
 void Scorer::scoreReducedInstructions(ReductionCandidateGroup &Candidate)
 {
     auto &Cheapest = Candidate.getCheapestCandidate();
@@ -738,7 +732,7 @@ void Scorer::scoreReducedInstructions(ReductionCandidateGroup &Candidate)
         score += estimateIndexInstructions(*Candidate.getLoop(), Cheapest.GEP);
     }
 
-    Candidate.Score.ReducedInstructions = score;
+    Candidate.Score.ReducesInstructions = score > 0;
 }
 
 
@@ -825,10 +819,53 @@ void Scorer::scoreRegisterPressure(ReductionCandidateGroup &Candidate)
     //   1. It doesn't return increase value, only boolean if expansion fits in given budget.
     //   2. Depends on correctly defined TargetTransformInfo.
 
-    // TODO Iterate over instructions to expand and estimate reg pressure.
+    // To estimate increase in register pressure, iterate over all instructions inside loop
+    // that used to calculate index and estimate register size. In reality, change in
+    // pressure might be different, as SCEVExpander might simplify calculations.
 
-    // Use expression size as an estimation.
-    Candidate.Score.RegisterPressure = Cheapest.S->getExpressionSize();
+    Instruction* Index = dyn_cast<Instruction>(*(Cheapest.GEP->operands().end() - 1));
+    if (!Index)
+        return;
+
+    auto *L = Candidate.getLoop();
+    auto *F = Cheapest.GEP->getParent()->getParent();
+    uint SIMD = numLanes(RPE.bestGuessSIMDSize());
+
+    ValueSet Instructions;
+
+    // Keep track of visited instructions (don't go into cycles).
+    ValueSet Visited;
+
+    std::function<void(Instruction*)> Visit = [&](Instruction* I)
+    {
+        if (Visited.insert(I).second == false)
+            return;
+
+        if (!L->contains(I))
+            return;
+
+        switch (I->getOpcode())
+        {
+        case Instruction::PHI:
+            if (I->getParent() == L->getHeader())
+                return; // no need to go further
+            break;
+        default:
+            Instructions.insert(I);
+        }
+
+        for (auto* It = I->operands().begin(); It != I->operands().end(); ++It)
+        {
+            if (auto* Next = dyn_cast<Instruction>(It))
+                Visit(Next);
+        }
+    };
+
+    Visit(Index);
+
+    uint SizeInBytes = RPE.estimateSizeInBytes(Instructions, *F, SIMD, &WI);
+
+    Candidate.Score.RegisterPressure = RPE.bytesToRegisters(SizeInBytes);
 }
 
 
@@ -1048,67 +1085,26 @@ bool Analyzer::deconstructSCEV(const SCEV *S, const SCEV *&Start, int64_t &Step)
 }
 
 
-RegisterPressureTracker::RegisterPressureTracker(CodeGenContext &CGC, RegisterPressureEstimate &RPE, SmallVectorImpl<ReductionCandidateGroup> &Candidates)
-    : RPE(RPE), NewGlobalInsts(0)
+RegisterPressureTracker::RegisterPressureTracker(Function &F, CodeGenContext &CGC, IGCLivenessAnalysis &RPE, IGCFunctionExternalRegPressureAnalysis &FRPE, WIAnalysisRunner &WI)
+    : RPE(RPE), WI(WI)
 {
-    MaxPressure = static_cast<unsigned>(
-        CGC.getNumGRFPerThread() / 128.0f * CGC.platform.getGRFSize() / 32.0f * IGC_GET_FLAG_VALUE(GEPLSRThresholdRatio));
+    MaxAllowedPressure = static_cast<unsigned>(CGC.getNumGRFPerThread() * IGC_GET_FLAG_VALUE(GEPLSRThresholdRatio) / 100.0f);
 
-    // Collect initial pressures for all analyzed loops and their parents.
-    for (auto &C : Candidates)
-        cacheInitialPressure(C.getLoop());
-}
-
-
-void RegisterPressureTracker::cacheInitialPressure(const Loop *L)
-{
-    if (!L)
-        return;
-
-    if (LoopEstimations.count(L))
-        return;
-
-    // Initial pressure is loop's preheader.
-    LoopEstimations.try_emplace(L, L, RPE.getMaxRegisterPressure(L->getLoopPreheader()));
-
-    // Cache parent loop too.
-    cacheInitialPressure(L->getParentLoop());
+    ExternalPressure = FRPE.getExternalPressureForFunction(&F);
 }
 
 
 bool RegisterPressureTracker::fitsPressureThreshold(ReductionCandidateGroup &C)
 {
-    auto *L = C.getLoop();
+    uint SIMD = numLanes(RPE.bestGuessSIMDSize());
 
-    auto It = LoopEstimations.find(L);
-    IGC_ASSERT(It != LoopEstimations.end());
+    unsigned InitialPressure = ExternalPressure + RPE.getMaxRegCountForLoop(*C.getLoop(), SIMD, &WI);
+    unsigned EstimatedPressure = InitialPressure + C.getScore().RegisterPressure;
 
-    unsigned InitialPressure = It->second.InitialPressure;
-
-    // Look for new instructions added to loop and its' parents.
-    unsigned NewInsts = It->second.NewInstructions;
-    while ((L = L->getParentLoop()))
-        NewInsts += LoopEstimations.find(L)->second.NewInstructions;
-
-    // Include global instructions too.
-    NewInsts += NewGlobalInsts;
-
-    const unsigned InstsThreshold = IGC_GET_FLAG_VALUE(GEPLSRNewInstructionThreshold);
-    if (NewInsts > InstsThreshold)
+    if (EstimatedPressure >= MaxAllowedPressure)
     {
         LLVM_DEBUG(
-            dbgs() << "  Total of new instructions (" << NewInsts << ") above threshold " << InstsThreshold << "; can't fully reduce ";
-            C.print(dbgs());
-            dbgs() << "\n");
-        return false;
-    }
-
-    // Use number of new instructions to roughly estimate increase in pressure.
-    unsigned EstimatedPressue = InitialPressure + NewInsts;
-    if (EstimatedPressue >= MaxPressure)
-    {
-        LLVM_DEBUG(
-            dbgs() << "  Estimated register pressure " << EstimatedPressue << " above threshold " << MaxPressure << "; can't fully reduce ";
+            dbgs() << "  Estimated register pressure " << EstimatedPressure << " above threshold " << MaxAllowedPressure << "; can't fully reduce ";
             C.print(dbgs());
             dbgs() << "\n");
         return false;
@@ -1120,47 +1116,74 @@ bool RegisterPressureTracker::fitsPressureThreshold(ReductionCandidateGroup &C)
 
 void RegisterPressureTracker::updatePressure(ReductionCandidateGroup &C, SCEVExpander &E)
 {
+    // Refresh all BBs in loop.
+    BBsToUpdate.insert(C.getLoop()->getBlocks().begin(), C.getLoop()->getBlocks().end());
+
+    if (C.getReductionType() == REDUCE_TO_PREHEADER)
+    {
+        // When adding new induction variable to loop, we need to refresh loop's preheader and body (all BBs).
+        // SCEVExpander can push new instructions to outer loops, including adding new induction variables.
+        // Find outermost loop touched by SCEVExpander and refresh register estimation for it.
+
+        // Query SCEVExpander for new instructions.
 #if LLVM_VERSION_MAJOR < 14
-    auto AllInsertedInstructions = getInsertedInstructions(C, E);
+        auto AllInsertedInstructions = getInsertedInstructions(C, E);
 #else
-    auto AllInsertedInstructions = E.getAllInsertedInstructions();
+        auto AllInsertedInstructions = E.getAllInsertedInstructions();
 #endif
 
-    for (auto *I : AllInsertedInstructions)
-    {
-        if (isa<PHINode>(I))
-            continue;
+        // Start searching from inner loop.
+        Loop *TopLoop = C.getLoop();
 
-        if (VisitedNewInsts.count(I))
-            continue;
-
-        VisitedNewInsts.insert(I);
-
-        auto *L = C.getLoop();
-
-        // Search where new instruction was inserted.
-        do
+        for (auto *I : AllInsertedInstructions)
         {
-            // Check if SCEV expander inserted new instruction to loop's preheader or  body.
-            BasicBlock *BB = I->getParent();
-            if (BB == L->getLoopPreheader() || L->contains(BB))
+            // Skip if instruction was inserted by previous reductions.
+            if (VisitedNewInsts.insert(I).second == false)
+                continue;
+
+            if (TopLoop->contains(I))
+                continue;
+
+            if (TopLoop->getLoopPreheader() == I->getParent())
+                continue;
+
+            // At this point we know that instruction is not in current loop. Check outer loops.
+
+            Loop *L;
+            for (L = TopLoop->getParentLoop(); L != nullptr; L = L->getParentLoop())
             {
-                LoopEstimations.find(L)->second.NewInstructions += 1;
-                break;
+                if (L->contains(I) || L->getLoopPreheader() == I->getParent())
+                    break;
             }
 
-        } while ((L = L->getParentLoop()));
-
-        if (!L)
-        {
-            // Insruction was not matched with any loop, increase function's global estimate.
-            NewGlobalInsts += 1;
+            if (L)
+            {
+                // Found new loop.
+                TopLoop = L;
+            }
+            else
+            {
+                LLVM_DEBUG(
+                    dbgs() << "  Found instruction in basic block [" << I->getParent()->getName() << "] not present in any loop; instruction: ";
+                    I->print(dbgs(), true);
+                    dbgs() << "\n");
+                BBsToUpdate.insert(I->getParent());
+            }
         }
+
+        BBsToUpdate.insert(TopLoop->block_begin(), TopLoop->block_end());
+        BBsToUpdate.insert(TopLoop->getLoopPreheader());
     }
 
-    // New GEP instruction added to preheader is not inserted by expander, count it manually.
-    if (C.getReductionType() == REDUCE_TO_PREHEADER)
-        LoopEstimations.find(C.getLoop())->second.NewInstructions += 1;
+    // BBs with removed instructions should be already collected in Reducer::cleanup.
+
+    Function *F = C.getLoop()->getLoopPreheader()->getParent();
+
+    if (!BBsToUpdate.empty())
+    {
+        RPE.rerunLivenessAnalysis(*F, &BBsToUpdate);
+        BBsToUpdate.clear();
+    }
 }
 
 
@@ -1256,7 +1279,7 @@ bool Reducer::reduce(SmallVectorImpl<ReductionCandidateGroup> &Candidates)
     // register pressure under threshold.
     for (auto It = Candidates.begin(); It != Candidates.end(); ++It)
     {
-        if (IGC_IS_FLAG_ENABLED(EnableGEPLSRToPreheader) && It->getScore().ReducedInstructions > 0)
+        if (IGC_IS_FLAG_ENABLED(EnableGEPLSRToPreheader) && It->getScore().ReducesInstructions)
         {
             // It is beneficial to reduce to preheader, but keep register pressure in check.
             if (!RPT.fitsPressureThreshold(*It))
@@ -1283,13 +1306,28 @@ bool Reducer::reduce(SmallVectorImpl<ReductionCandidateGroup> &Candidates)
 
         It->transform(IRB, E);
 
-        if (It->getReductionType() == REDUCE_TO_PREHEADER)
-            RPT.updatePressure(*It, E);
+        cleanup(*It);
+        RPT.updatePressure(*It, E);
 
         changed = true;
     }
 
     return changed;
+}
+
+
+void Reducer::cleanup(ReductionCandidateGroup &C)
+{
+    // Delete GEP instructions together with index calculations. Inform Register
+    // Pressure Estimator about removed instructions.
+    for (auto *GEP : C.getReduced())
+    {
+#if LLVM_VERSION_MAJOR < 14
+        RecursivelyDeleteTriviallyDeadInstructions(GEP);
+#else
+        RecursivelyDeleteTriviallyDeadInstructions(GEP, nullptr, nullptr, [&](Value* V) { RPT.trackDeletedInstruction(V); });
+#endif
+    }
 }
 
 
@@ -1365,9 +1403,11 @@ void GEPLoopStrengthReduction::getAnalysisUsage(llvm::AnalysisUsage &AU) const
 {
     AU.addRequired<CodeGenContextWrapper>();
     AU.addRequired<DominatorTreeWrapperPass>();
+    AU.addRequired<IGCFunctionExternalRegPressureAnalysis>();
+    AU.addRequired<IGCLivenessAnalysis>();
     AU.addRequired<llvm::LoopInfoWrapperPass>();
     AU.addRequired<MetaDataUtilsWrapper>();
-    AU.addRequired<RegisterPressureEstimate>();
+    AU.addRequired<PostDominatorTreeWrapperPass>();
     AU.addRequired<llvm::ScalarEvolutionWrapperPass>();
 }
 
@@ -1386,17 +1426,30 @@ bool GEPLoopStrengthReduction::runOnFunction(llvm::Function &F)
     auto &DL = F.getParent()->getDataLayout();
     auto &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
     auto &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+    auto &MDU = *getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     auto &MMD = *getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-    auto &RPE = getAnalysis<RegisterPressureEstimate>();
+    auto &PDT = getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
+    auto &RPE = getAnalysis<IGCLivenessAnalysis>();
     auto &SE = getAnalysis<ScalarEvolutionWrapperPass>().getSE();
 
-    if (!RPE.isAvailable())
-        return false;
+    // Note: FRPE is a Module analysis and currently runs only once.
+    // If function A calls function B then it's possible that transformation of function A
+    // increases pressure so LSR reduction should not be applied in function B, but we don't
+    // recompute FRPE to save compile time, so reduction might apply for loops in function B.
+    auto &FRPE = getAnalysis<IGCFunctionExternalRegPressureAnalysis>();
+
+    TranslationTable TT;
+    TT.run(F);
+
+    WIAnalysisRunner WI = WIAnalysisRunner(&F, &LI, &DT, &PDT, &MDU, &CGC, &MMD, &TT);
+    WI.run();
 
     // Using one SCEV expander between all reductions reduces number of duplicated new instructions.
     auto E = SCEVExpander(SE, DL, "gep-loop-strength-reduction");
 
     SmallVector<ReductionCandidateGroup, 32> Candidates;
+
+    RegisterPressureTracker RPT(F, CGC, RPE, FRPE, WI);
 
     for (Loop *L : LI.getLoopsInPreorder())
         Analyzer(DL, DT, *L, LI, SE, E).analyze(Candidates);
@@ -1404,10 +1457,9 @@ bool GEPLoopStrengthReduction::runOnFunction(llvm::Function &F)
     if (Candidates.empty())
         return false;
 
-    Scorer(DL, MMD).score(Candidates);
+    Scorer(DL, MMD, RPE, WI).score(Candidates);
 
     IGCLLVM::IRBuilder<> IRB(F.getContext());
-    RegisterPressureTracker RPT(CGC, RPE, Candidates);
 
     bool changed = Reducer(IRB, RPT, E, AllowLICM).reduce(Candidates);
     if (changed)
@@ -1425,9 +1477,11 @@ bool GEPLoopStrengthReduction::runOnFunction(llvm::Function &F)
 IGC_INITIALIZE_PASS_BEGIN(GEPLoopStrengthReduction, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
+IGC_INITIALIZE_PASS_DEPENDENCY(IGCFunctionExternalRegPressureAnalysis)
+IGC_INITIALIZE_PASS_DEPENDENCY(IGCLivenessAnalysis)
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_DEPENDENCY(RegisterPressureEstimate)
+IGC_INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass)
 IGC_INITIALIZE_PASS_END(GEPLoopStrengthReduction, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 

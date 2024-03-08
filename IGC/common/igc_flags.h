@@ -287,7 +287,6 @@ DECLARE_IGC_REGKEY(bool, EnableBitcastedLoadNarrowing, false, "Enable narrowing 
 DECLARE_IGC_REGKEY(bool, EnableBitcastedLoadNarrowingToScalar, false, "Enable narrowing of vector loads to scalar ones in bitcasts patterns.", false)
 DECLARE_IGC_REGKEY(bool, EnableOptReportLoadNarrowing, false, "Generate opt report for narrowing of vector loads.", false)
 DECLARE_IGC_REGKEY(DWORD, GEPLSRThresholdRatio, 100, "Ratio for register pressure threshold in GEP Loop Strength Reduction pass", false)
-DECLARE_IGC_REGKEY(DWORD, GEPLSRNewInstructionThreshold, 32, "Threshold for max number of new instructions added by GEP Loop Strength Reduction pass", false)
 DECLARE_IGC_REGKEY(bool, EnableGEPLSRToPreheader, true, "Enables reduction to loop's preheader in GEP Loop Strength Reduction pass", false)
 
 DECLARE_IGC_GROUP("Shader debugging")
