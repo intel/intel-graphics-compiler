@@ -59,7 +59,8 @@ bool BfloatFuncsResolution::runOnFunction(Function& F)
 void BfloatFuncsResolution::visitCallInst(CallInst &CI) {
     // The functions that we are about to resolve are in mangled form.
     // Quick check before demangling to save compilation time.
-    if (!CI.getCalledFunction()->getName().contains("__builtin_bf16"))
+    if (!CI.getCalledFunction() ||
+        !CI.getCalledFunction()->getName().contains("__builtin_bf16"))
       return;
 
     std::string DNameStr =
