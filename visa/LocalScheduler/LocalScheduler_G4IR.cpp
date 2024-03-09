@@ -1374,10 +1374,9 @@ DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
     }
 
     if (curInst->isDpas()) {
-      bool tryGroup = true;
       std::list<G4_INST *>::reverse_iterator iNextInst = iInst;
       iNextInst++;
-      if (tryGroup && iNextInst != iInstEnd) {
+      if (iNextInst != iInstEnd) {
         G4_INST *nextInst = *iNextInst;
         BitSet liveSrc(totalGRFNum, false);
         BitSet liveDst(totalGRFNum, false);
@@ -1387,7 +1386,9 @@ DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
         // group continuous dpas in the same node if they can potentially form a
         // dpas macro
         while (nextInst->isDpas()) {
-          if (!hasSameSourceOneDPAS(curInst, nextInst, liveDst, liveSrc))
+          bool canGroup = false;
+            canGroup = hasSameSourceOneDPAS(curInst, nextInst, liveDst, liveSrc);
+          if (!canGroup)
             break;
 
           // Pushed to the same node
