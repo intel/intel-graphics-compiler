@@ -734,8 +734,8 @@ void VariableReuseAnalysis::printAlias(raw_ostream& OS, const Function* F) const
         {
             SSubVecDesc* aSV = VI;
             Value* aliaser = aSV->Aliaser;
-            Value* dessaRoot = m_DeSSA ? m_DeSSA->getRootValue(aliaser) : nullptr;
-            const char* inCC = dessaRoot ? ".inDessaCC" : "";
+            bool isSinglVal = m_DeSSA ? m_DeSSA->isSingleValued(aliaser) : true;
+            const char* inCC = !isSinglVal ? ".inDessaCC" : "";
             OS << "    " << *aliaser
                 << "  [" << aSV->StartElementOffset << "]"
                 << inCC << "\n";
@@ -1142,7 +1142,7 @@ void VariableReuseAnalysis::InsertElementAliasing(Function* F)
 // Return true if vector formed by IEI chain is a sub-vector of another one.
 bool VariableReuseAnalysis::processExtractFrom(VecInsEltInfoTy& AllIEIs)
 {
-    int nelts = (int)AllIEIs.size();
+    const int nelts = (int)AllIEIs.size();
     Value* BaseVec = AllIEIs[0].FromVec;
     int BaseStartIx = AllIEIs[0].FromVec_eltIx;
     if (!BaseVec) {
@@ -1216,18 +1216,22 @@ bool VariableReuseAnalysis::processExtractFrom(VecInsEltInfoTy& AllIEIs)
     addVecAlias(Sub_nv, Base_nv, BaseStartIx, BaseAlign);
 
     // Make sure noop insts are in the map.
-    for (int i = 0, sz = (int)AllIEIs.size(); i < sz; ++i)
+    for (int i = 0, sz = nelts; i < sz; ++i)
     {
+        // IEI chain is coalesced by DeSSA, so it's safe to mark it as noop
         InsertElementInst* IEI = AllIEIs[i].IEI;
-        if (m_DeSSA->isNoopAliaser(IEI))
-            continue;
-        m_HasBecomeNoopInsts[IEI] = 1;
+        if (!m_DeSSA->isNoopAliaser(IEI)) {
+          m_HasBecomeNoopInsts[IEI] = 1;
+        }
 
         ExtractElementInst* EEI = AllIEIs[i].EEI;
         IGC_ASSERT(EEI);
-        if (m_DeSSA->isNoopAliaser(EEI))
-            continue;
-        m_HasBecomeNoopInsts[EEI] = 1;
+        if (!m_DeSSA->isNoopAliaser(EEI)) {
+          // Set EEI as an aliser, thus it become noop.
+          Value *EEI_nv = m_DeSSA->getNodeValue(EEI);
+          addVecAlias(EEI_nv, Base_nv, AllIEIs[i].FromVec_eltIx, EALIGN_AUTO);
+          m_HasBecomeNoopInsts[EEI] = 1;
+        }
     }
     return true;
 }
@@ -1363,24 +1367,26 @@ bool VariableReuseAnalysis::processInsertTo(VecInsEltInfoTy& AllIEIs)
             // Make sure noop insts are in the map.
             for (int j = V_ix, sz = V_ix + V_sz; j < sz; ++j)
             {
+                // Safe to mark IEI as noop as IEI chain's coalesced by DeSSA
                 InsertElementInst* IEI = AllIEIs[j].IEI;
-                if (m_DeSSA->isNoopAliaser(IEI))
-                    continue;
-                m_HasBecomeNoopInsts[IEI] = 1;
+                if (!m_DeSSA->isNoopAliaser(IEI)) {
+                    m_HasBecomeNoopInsts[IEI] = 1;
+                }
 
                 ExtractElementInst* EEI = AllIEIs[j].EEI;
                 IGC_ASSERT(EEI);
                 // Sub-vector
-                if (m_DeSSA->isNoopAliaser(EEI))
-                    continue;
-                m_HasBecomeNoopInsts[EEI] = 1;
-
-                Value* EEI_nv = m_DeSSA->getNodeValue(EEI);
-                addVecAlias(EEI_nv, Base_nv, j);
+                if (!m_DeSSA->isNoopAliaser(EEI)) {
+                    // EEI should be in alias map so it can be marked as noop
+                    Value *EEI_nv = m_DeSSA->getNodeValue(EEI);
+                    addVecAlias(EEI_nv, Base_nv, j);
+                    m_HasBecomeNoopInsts[EEI] = 1;
+                }
             }
         }
         else {
             // scalar
+            // Safe to mark IEI as noop as IEI chain's coalesced by DeSSA
             InsertElementInst* IEI = AllIEIs[V_ix].IEI;
             if (m_DeSSA->isNoopAliaser(IEI))
                 continue;
