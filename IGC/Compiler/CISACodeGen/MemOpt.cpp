@@ -104,6 +104,8 @@ namespace {
 
         bool runOnFunction(Function& F) override;
 
+        StringRef getPassName() const override { return "MemOpt"; }
+
     private:
         void getAnalysisUsage(AnalysisUsage& AU) const override {
             AU.setPreservesCFG();

@@ -352,6 +352,11 @@ void VariableReuseAnalysis::mergeVariables(Function* F)
 
 void VariableReuseAnalysis::visitLiveInstructions(Function* F)
 {
+    const auto control = ((m_pCtx->getVectorCoalescingControl() >> 2) & 0x3);
+    if (control == 0) {
+        return;
+    }
+
     for (auto BI = F->begin(), BE = F->end(); BI != BE; ++BI)
     {
         BasicBlock* BB = &*BI;
@@ -962,6 +967,9 @@ bool VariableReuseAnalysis::getAllInsEltsIfAvailable(
 
     // Make sure all elements are present, and they should have same uniform.
     Value* V = AllIEIs[0].IEI;
+    if (V == nullptr) {
+        return false;
+    }
     Value* V_nv = m_DeSSA->getNodeValue(V);
     Value* V_root = getRootValue(V_nv);
     auto V_dep = m_WIA->whichDepend(V);
@@ -1088,7 +1096,9 @@ void VariableReuseAnalysis::InsertElementAliasing(Function* F)
     // VectorAlias=0x1: subvec aliasing for isolated values (getRootValue()=null)
     //            =0x2: subvec aliasing for both isolated and non-isolated value)
     const auto control = (m_pCtx->getVectorCoalescingControl() & 0x3);
-    if (control == 0) {
+    // To avoid increasing GRF pressure, skip if F is too large.
+    const uint32_t NumBBThreshold = (int)IGC_GET_FLAG_VALUE(VectorAliasBBThreshold);
+    if (control == 0 || F->size() > NumBBThreshold) {
         return;
     }
 
