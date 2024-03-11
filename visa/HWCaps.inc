@@ -881,8 +881,4 @@ bool hasMulMacRSIssue() const {
 
   return VISA_WA_CHECK(getPWaTable(), Wa_18035690555);
 }
-
-bool favorBCR() {
-  return false;
-}
 // end HW capabilities

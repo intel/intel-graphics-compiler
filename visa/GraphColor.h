@@ -1502,8 +1502,6 @@ public:
   bool useFastRA = false;
   bool useHybridRAwithSpill = false;
   bool useLocalRA = false;
-  bool favorBCR = false;
-  bool forceBCR = false;
   uint32_t nextSpillOffset = 0;
   uint32_t scratchOffset = 0;
 
@@ -1937,7 +1935,7 @@ public:
     if (kernel.getOptions()->getOption(vISA_VerifyAugmentation)) {
       verifyAugmentation = std::make_unique<VerifyAugmentation>();
     }
-    forceBCR = kernel.getOption(vISA_forceBCR);
+
     // Set callWA condition.
     //    Call return ip and mask need wa only for non-entry functions. As call
     //    WA also needs a temp, we conservatively add WA for

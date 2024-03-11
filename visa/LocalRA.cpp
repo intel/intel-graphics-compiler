@@ -425,7 +425,7 @@ bool LocalRA::localRA() {
   }
 
   if (!doRoundRobin) {
-    if (gra.forceBCR && doBCR) {
+    if (kernel.getOption(vISA_forceBCR) && doBCR) {
       RA_TRACE(std::cout << "\t--first-fit BCR RA\n");
       needGlobalRA = localRAPass(false, doSplitLLR);
     }
@@ -441,10 +441,6 @@ bool LocalRA::localRA() {
       specialAlign();
       needGlobalRA = localRAPass(false, doSplitLLR);
     }
-    gra.favorBCR |= doBCR && kernel.useAutoGRFSelection() &&
-                    builder.favorBCR() && kernel.getOption(vISA_RoundRobin) &&
-                    !kernel.fg.getHasStackCalls() &&
-                    !kernel.fg.getIsStackCallFunc();
   }
 
   if (needGlobalRA == false) {
