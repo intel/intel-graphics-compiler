@@ -22,9 +22,6 @@ define spir_kernel void @WaveletDenoise(<4 x i8> addrspace(1)* %srcImage, <4 x i
 ; CHECK-DG1-NEXT:  entry:
 ; CHECK-DG1-NEXT:    [[I:%.*]] = extractelement <3 x i32> [[LOCALSIZE:%.*]], i64 0
 ; CHECK-DG1-NEXT:    [[TMP0:%.*]] = alloca <64 x i8>
-; CHECK-DG1-NEXT:    [[TMP:%.*]] = alloca [16 x float]
-; CHECK-DG1-NEXT:    [[TMP1:%.*]] = alloca <16 x float>
-; CHECK-DG1:         [[ARRAYIDX165_1:%.*]] = getelementptr inbounds [16 x float], [16 x float]* [[TMP]]
 ;
 ; CHECK-DG2-LABEL: @WaveletDenoise(
 ; CHECK-DG2-NEXT:  entry:

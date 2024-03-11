@@ -521,9 +521,7 @@ void WIAnalysisRunner::updateArgsDependency(llvm::Function* pF)
     //    order (intel_reqd_workgroup_walk_order()) and work group size (reqd_work_group_size()),
     //    we may derive that some of local IDs are uniform.
     bool localX_uniform = false, localY_uniform = false, localZ_uniform = false;
-    // DispatchOCLWGInLinearOrder should be removed after testing the guarded code.
-    if (!IsSubroutine &&
-        IGC_IS_FLAG_ENABLED(DispatchOCLWGInLinearOrder))
+    if (!IsSubroutine)
     {
         checkLocalIdUniform(pF, localX_uniform, localY_uniform, localZ_uniform);
     }
@@ -2152,8 +2150,8 @@ void WIAnalysisRunner::checkLocalIdUniform(
         IsLzUniform = true;
     }
 
-    if (IGC_IS_FLAG_ENABLED(DispatchOCLWGInLinearOrder) ||
-        (WO_0 == 0 && WO_1 == 1 && WO_2 == 2))
+
+    if (WO_0 == 0 && WO_1 == 1 && WO_2 == 2)
     {
         // linear order dispatch
         uint32_t XxY = X * Y;
