@@ -123,6 +123,9 @@ namespace IGC {
         llvm::SmallPtrSet<llvm::Loop*, 8> BlacklistedLoops;
         const StoresVec getAllStoresInLoop(llvm::Loop* L);
 
+        unsigned getMaxRegCountForLoop(llvm::Loop* L);
+        llvm::DenseMap<llvm::BasicBlock*, uint> BBPressures;
+
         void appendIfNotExist(InstPair src, std::vector<InstPair> &instMap)
         {
             if (std::find(instMap.begin(), instMap.end(), src) == instMap.end())

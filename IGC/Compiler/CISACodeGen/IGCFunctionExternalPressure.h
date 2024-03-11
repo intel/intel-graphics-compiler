@@ -22,7 +22,8 @@ using namespace IGC;
 using namespace llvm;
 
 typedef std::unordered_map<llvm::Value *, unsigned int> InclusionSet;
-typedef llvm::SmallPtrSet<llvm::Value *, 16> ValueSet;
+typedef llvm::SmallPtrSet<llvm::Value *, 32> ValueSet;
+typedef llvm::SmallPtrSet<llvm::BasicBlock *, 32> BBSet;
 typedef std::unordered_map<llvm::BasicBlock *, ValueSet> DFSet;
 typedef std::unordered_map<llvm::BasicBlock *, ValueSet> PhiSet;
 typedef std::unordered_map<llvm::BasicBlock *, PhiSet> InPhiSet;
@@ -63,7 +64,8 @@ class IGCFunctionExternalRegPressureAnalysis : public llvm::ModulePass {
     void addToPhiSet(llvm::PHINode *Phi, PhiSet *InPhiSet);
     void processBlock(llvm::BasicBlock *BB, ValueSet &Set, PhiSet *PhiSet);
     void livenessAnalysis(llvm::Function &F);
-    void addToSet(llvm::Instruction *Inst, ValueSet &Set);
+    void addOperandsToSet(llvm::Instruction *Inst, ValueSet &Set);
+    void addNonLocalOperandsToSet(llvm::Instruction *Inst, ValueSet &Set);
 
 
     unsigned int registerSizeInBytes() {
