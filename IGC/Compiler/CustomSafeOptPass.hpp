@@ -172,6 +172,7 @@ namespace IGC
         void visitZExtInst(llvm::ZExtInst& I);
         void visitCastInst(llvm::CastInst& I);
         void visitIntToPtr(llvm::IntToPtrInst& I);
+        void visitMul(llvm::BinaryOperator& I);
         void visitSDiv(llvm::BinaryOperator& I);
         void visitTruncInst(llvm::TruncInst& I);
         void visitBitCastInst(llvm::BitCastInst& I);
