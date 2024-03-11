@@ -691,6 +691,7 @@ public:
   void setName(const char *n) { name = n; }
   const char *getName() const { return name; }
 
+  bool reachMaxGRF();
   bool updateKernelToLargerGRF();
   void updateKernelByRegPressure(unsigned regPressure);
   bool updateKernelFromNumGRFAttr();
