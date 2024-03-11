@@ -261,6 +261,11 @@ DECLARE_IGC_REGKEY(bool, DisableDynamicTextureFolding,  false,  "Disable Dynamic
 DECLARE_IGC_REGKEY(bool, DisableDynamicResInfoFolding,  true,  "Disable Dynamic ResInfo Instruction Folding", false)
 DECLARE_IGC_REGKEY(bool, DisableRectListOpt,            false, "Disable Rect List optimization", false)
 
+DECLARE_IGC_REGKEY(bool, DispatchOCLWGInLinearOrder,    false, "If set, dispatch HW threads based on the linearized order of WI in a WG; \
+                                                                ie, let localSize=(lx, ly, lz), localId=(ix, iy, iz). And \
+                                                                   linearLocalId = ix + lx * (iy + ly * iz); \
+                                                                And linear order means that \
+                                                                   linearLocalId(lane[x+1])=linearLocalId(lane[x])+1", false)
 DECLARE_IGC_REGKEY(DWORD, EnableCodeAssumption,         1, \
     "If set (> 0), generate llvm.assume to help certain optimizations. It is OCL only for now. \
      Only 1 and 2 are valid. 2 will be 1 plus additional assumption. It also does other minor changes.", false)

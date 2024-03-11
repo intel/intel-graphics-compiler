@@ -187,6 +187,7 @@ $ export IGC_ShaderDumpEnable=1
 | `DisableUniformAnalysis` | Setting this to 1/true adds a compiler switch to disable uniform_analysis | - |
 | `DisableUniformTypedAccess` | Setting this will disable uniform typed access handling | - |
 | `DisableUniformURBWrite` | Disables generation of uniform URB write messages | - |
+| `DispatchOCLWGInLinearOrder` | If set, dispatch HW threads based on the linearized order of WI in a WG;<br/>                                                                ie, let localSize=(lx, ly, lz), localId=(ix, iy, iz). And<br/>                                                                   linearLocalId = ix + lx * (iy + ly * iz);<br/>                                                                And linear order means that<br/>                                                                   linearLocalId(lane[x+1])=linearLocalId(lane[x])+1 | - |
 | `EnableAtomicBranch` | Enable Atomic branch optimization which break atomic into if/else with atomic and read based on the operation | - |
 | `EnableBitcastedLoadNarrowing` | Enable narrowing of vector loads in bitcasts patterns. | - |
 | `EnableBitcastedLoadNarrowingToScalar` | Enable narrowing of vector loads to scalar ones in bitcasts patterns. | - |
