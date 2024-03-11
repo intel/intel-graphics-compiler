@@ -590,7 +590,7 @@ INLINE uint4 OVERLOADABLE read_imageui(read_only image2d_array_t image_array, sa
     }
     else
     {
-        return __builtin_IB_OCL_2darr_ldui(id, (int4)(coords.x,coords.y,(int)layer, 0 ), 0);
+        return __builtin_IB_OCL_2darr_ldui(id, (int3)(coords.x,coords.y,(int)layer), 0);
     }
 }
 
@@ -607,7 +607,7 @@ INLINE uint4 OVERLOADABLE read_imageui(read_only image2d_array_t image_array, sa
             float2 dim = convert_float2(get_image_dim(image_array));
             tmpCoords = coords.xy*dim;
         }
-        int4 intCoords = convert_int4((float4)(floor(tmpCoords), layer, 0.0f));
+        int3 intCoords = convert_int3((float3)(floor(tmpCoords), layer));
         return __builtin_IB_OCL_2darr_ldui(id, intCoords, 0);
     }
     else
@@ -914,7 +914,7 @@ INLINE float4 OVERLOADABLE static __read_imagef_3d(int id, int4 coord) {
 
 INLINE float4 OVERLOADABLE read_imagef(read_only image2d_array_t image, int4 coord) {
     int id = (int)__builtin_astype(image, __global void*);
-    float4 res = __builtin_IB_OCL_2darr_ld(id, coord, 0);
+    float4 res = __builtin_IB_OCL_2darr_ld(id, coord.xyz, 0);
     return __flush_denormals(res);
 }
 
@@ -936,7 +936,7 @@ INLINE int4 OVERLOADABLE read_imagei(read_write image2d_array_t image, int4 coor
 
 INLINE uint4 OVERLOADABLE read_imageui(read_only image2d_array_t image, int4 coord) {
     int id = (int)__builtin_astype(image, __global void*);
-    return __builtin_IB_OCL_2darr_ldui(id, coord, 0);
+    return __builtin_IB_OCL_2darr_ldui(id, coord.xyz, 0);
 }
 
 #if SUPPORT_ACCESS_QUAL_OVERLOAD
@@ -1076,7 +1076,7 @@ INLINE float OVERLOADABLE read_imagef(read_write image2d_depth_t image, int2 coo
 
 INLINE float OVERLOADABLE read_imagef(read_only image2d_array_depth_t image, int4 coord) {
     int id = (int)__builtin_astype(image, __global void*);
-    float4 res = __builtin_IB_OCL_2darr_ld(id, coord, 0);
+    float4 res = __builtin_IB_OCL_2darr_ld(id, coord.xyz, 0);
     return __flush_denormals(res).x;
 }
 
@@ -1417,7 +1417,7 @@ INLINE void OVERLOADABLE write_imagei(read_write image2d_array_t image_array, in
 
 INLINE void OVERLOADABLE write_imageui(write_only image2d_array_t image_array, int4 coords, uint4 color) {
     int id = (int)__builtin_astype(image_array, __global void*);
-    __builtin_IB_write_2darr_ui(id, coords, color, 0);
+    __builtin_IB_write_2darr_ui(id, coords.xyz, color, 0);
 }
 
 #if SUPPORT_ACCESS_QUAL_OVERLOAD
@@ -1457,7 +1457,7 @@ INLINE void OVERLOADABLE write_imagei(write_only image2d_array_t image_array, in
 
 INLINE void OVERLOADABLE write_imageui(write_only image2d_array_t image_array, int4 coords, int lod, uint4 color) {
     int id = (int)__builtin_astype(image_array, __global void*);
-    __builtin_IB_write_2darr_ui(id, coords, color, lod);
+    __builtin_IB_write_2darr_ui(id, coords.xyz, color, lod);
 }
 
 #if(__OPENCL_C_VERSION__ >= CL_VERSION_2_0)

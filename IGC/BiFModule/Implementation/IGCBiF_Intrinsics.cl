@@ -66,13 +66,13 @@ uint4 __builtin_IB_OCL_3d_sample_dui(int, int, float3, float3, float3);
 uint4 __builtin_IB_OCL_1d_ldui(int, int,  int);
 uint4 __builtin_IB_OCL_1darr_ldui(int, int2,  int);
 uint4 __builtin_IB_OCL_2d_ldui(int, int2, int);
-uint4 __builtin_IB_OCL_2darr_ldui(int, int4, int);
+uint4 __builtin_IB_OCL_2darr_ldui(int, int3, int);
 uint4 __builtin_IB_OCL_3d_ldui(int, int3, int);
 
 float4 __builtin_IB_OCL_1d_ld(int, int,  int);
 float4 __builtin_IB_OCL_1darr_ld(int, int2,  int);
 float4 __builtin_IB_OCL_2d_ld(int, int2, int);
-float4 __builtin_IB_OCL_2darr_ld(int, int4, int);
+float4 __builtin_IB_OCL_2darr_ld(int, int3, int);
 float4 __builtin_IB_OCL_3d_ld(int, int3, int);
 
 float4 __builtin_IB_OCL_2d_ldmcs(int, int2);
@@ -93,7 +93,7 @@ __global void* __builtin_IB_convert_pipe_wo_to_intel_pipe(write_only pipe int);
 // Image writes
 void     __builtin_IB_write_1darr_ui(int, int2, uint4, int);
 void     __builtin_IB_write_1d_ui(int, int, uint4, int);
-void     __builtin_IB_write_2darr_ui(int, int4, uint4, int);
+void     __builtin_IB_write_2darr_ui(int, int3, uint4, int);
 void     __builtin_IB_write_2d_ui(int, int2, uint4, int);
 void     __builtin_IB_write_3d_ui(int, int3, uint4, int);
 void     __builtin_IB_write_2darr_f(int, int4, float4, int);
