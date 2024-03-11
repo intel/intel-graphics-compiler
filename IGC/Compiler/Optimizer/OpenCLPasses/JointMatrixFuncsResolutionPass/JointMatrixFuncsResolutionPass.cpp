@@ -351,17 +351,19 @@ struct SupportedParams {
 
 static SupportedParams getSupportedParams(const JointMatrixTypeDescription *desc, bool useSG16) {
     /* slices are represented as vectors from <1 x i32> to <8 x i32>, resulting in the maximum slice size: */
-    const unsigned maxSliceBitWidth = 256;
+    unsigned maxSliceBitWidth = 256;
     SupportedParams params;
+    params.bitWidth = 8 | 32;
+
     if (desc->layout == LayoutPackedA) {
         params.maxRows = 8;
         params.columns = maxSliceBitWidth / desc->bitWidth;
-        params.bitWidth = 8 | 16 | 32;
+        params.bitWidth |= 16;
         params.layouts = 1 << LayoutRowMajor;
     } else if (desc->layout == LayoutPackedB) {
         params.rows = maxSliceBitWidth / desc->bitWidth;
         params.columns = useSG16 ? 16 : 8;
-        params.bitWidth = 8 | 16 | 32;
+        params.bitWidth |= 16;
         params.layouts |= 1 << LayoutColumnMajor;
         params.layouts |= 1 << LayoutPackedB;
         params.layouts |= 1 << LayoutPackedA; /* PackedA means just packed in the new version of spec. */
@@ -369,10 +371,10 @@ static SupportedParams getSupportedParams(const JointMatrixTypeDescription *desc
     } else { /* accumulator */
         params.maxRows = maxSliceBitWidth / desc->bitWidth;
         params.columns = useSG16 ? 16 : 8;
-        params.bitWidth = 8 | 32;
         params.layouts |= 1 << LayoutRowMajor;
         params.layouts |= 1 << LayoutColumnMajor;
     }
+
     return params;
 }
 
@@ -650,9 +652,12 @@ bool JointMatrixFuncsResolutionPass::parseMatrixTypeNameLegacy(const Type *opaqu
 
     offset += 1; /* Skip type specifier, [f|i] */
     outDescription->bitWidth = parseNumber(name, &offset);
-    IGC_ASSERT_MESSAGE(outDescription->bitWidth == 8 ||
-                           outDescription->bitWidth == 16 ||
-                           outDescription->bitWidth == 32,
+
+    bool supportedBitWidth =
+        (outDescription->bitWidth == 8 ||
+         outDescription->bitWidth == 16 ||
+         outDescription->bitWidth == 32);
+    IGC_ASSERT_MESSAGE(supportedBitWidth,
                        "Unexpected matrix element size.");
 
     return true;
@@ -836,7 +841,7 @@ unsigned JointMatrixFuncsResolutionPass::getNumRowsPerWI(const JointMatrixTypeDe
     IGC_ASSERT_MESSAGE(desc->contribBitWidth > 0, "Unexpected bit width of contribution type.");
     unsigned totalBits = desc->rows * desc->columns * desc->bitWidth;
     unsigned canHandleBits = desc->contribBitWidth * m_SIMDSize;
-    return totalBits % canHandleBits ? totalBits / canHandleBits + 1 : totalBits / canHandleBits;
+    return totalBits / canHandleBits + (totalBits % canHandleBits ? 1 : 0);
 }
 
 // Create <i64 x 32> type used for Accumulator 32x64 in array [2 x <i64 x 32>].

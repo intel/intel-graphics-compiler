@@ -275,7 +275,10 @@ SPDX-License-Identifier: MIT
 //     Since contrib_type might be larger than element_type.
 //     To load a proper ammout per WI we need to contrib_K that's derived from K but it's smaller for some configurations.
 
+#define MAX_ROW_BYTES_2D_BLOCK_LOAD 64 // maximum per row size in bytes supported by 2D block load
+
 #define IMPLEMENT_BLOCK2D_LOAD_SG16_ROW_MAJOR_(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_K) \
+  if (contrib_K*sizeof(contrib_type) <= MAX_ROW_BYTES_2D_BLOCK_LOAD) { /* For 2D loads (block2d width)*(data size) must be <= MAX_ROW_BYTES_2D_BLOCK_LOAD */ \
     long offset = as_long(mem); \
     long baseoffset = offset & (~0x3f); /* align to 64-byte */ \
     int width = (sizeof (element_type)) * stride - 1; /* in bytes */ \
@@ -286,9 +289,11 @@ SPDX-License-Identifier: MIT
     OUT_VEC##WI_rows(u##contrib_type) DEFINE_BLOCK2D_RW_NAME(read, , contrib_bitwidth, WI_rows, M, contrib_K)(long, int, int, int, int2); \
     OUT_VEC##WI_rows(u##contrib_type) res = DEFINE_BLOCK2D_RW_NAME(read, , contrib_bitwidth, WI_rows, M, contrib_K)(baseoffset, width, height, pitch, coords); \
     *(__private OUT_VEC##WI_rows(u##contrib_type) *)dst = res; \
-    return;
+    return; \
+  }
 
 #define IMPLEMENT_BLOCK2D_LOAD_SG16_COL_MAJOR_(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_K) \
+  if (contrib_K*sizeof(element_type) <= MAX_ROW_BYTES_2D_BLOCK_LOAD) { /* For 2D loads (block2d width)*(data size) must be <= MAX_ROW_BYTES_2D_BLOCK_LOAD */ \
     long offset = as_long(mem); \
     long baseoffset = offset & (~0x3f); /* align to 64-byte */ \
     int width = (sizeof (element_type)) * stride - 1; /* in bytes */ \
@@ -300,9 +305,11 @@ SPDX-License-Identifier: MIT
     OUT_VEC8(u##contrib_type) DEFINE_BLOCK2D_TRANSPOSE_NAME(elem_bitwidth, M)(long, int, int, int, int2); \
     OUT_VEC8(u##contrib_type) res = DEFINE_BLOCK2D_TRANSPOSE_NAME(elem_bitwidth, M)(baseoffset, width, height, pitch, coords); \
     *(__private OUT_VEC##M(u##contrib_type) *)dst = *(__private OUT_VEC##M(u##contrib_type) *)&res; \
-    return;
+    return; \
+  }
 
 #define IMPLEMENT_BLOCK2D_LOAD_SG16_VNNI_TX_(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_K) \
+  if (contrib_K*sizeof(element_type) <= MAX_ROW_BYTES_2D_BLOCK_LOAD) { /* For 2D loads (block2d width)*(data size) must be <= MAX_ROW_BYTES_2D_BLOCK_LOAD */ \
     long offset = as_long(mem); \
     long baseoffset = offset & (~0x3f); /* align to 64-byte */ \
     int width = (sizeof (element_type)) * stride - 1; /* in bytes */ \
@@ -313,7 +320,8 @@ SPDX-License-Identifier: MIT
     OUT_VEC##M(u##contrib_type) DEFINE_BLOCK2D_VNNI_NAME(elem_bitwidth, contrib_K)(long, int, int, int, int2); \
     OUT_VEC##M(u##contrib_type) res = DEFINE_BLOCK2D_VNNI_NAME(elem_bitwidth, contrib_K)(baseoffset, width, height, pitch, coords); \
     *(__private OUT_VEC##M(u##contrib_type) *)dst = res; \
-    return;
+    return; \
+  }
 
 #define IMPLEMENT_BLOCK2D_LOAD__(sg, order, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows) \
   IMPLEMENT_BLOCK2D_LOAD##sg##order(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, \
