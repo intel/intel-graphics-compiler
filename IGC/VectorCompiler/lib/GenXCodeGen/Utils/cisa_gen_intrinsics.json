@@ -2547,8 +2547,8 @@
       "numdst": [ "NUMGRFS", 0 ],
       "desc": [ "GENERAL", "UNSIGNED", 4 ],
       "src": [ "RAW", 5 ],
-      "skip__": [ "TWOADDR", 6 ],
-      "dst": [ "RAW", 0 ]
+      "dst": [ "RAW", 0 ],
+      "twoaddr": [ "TWOADDR", 6 ]
     },
     "genx_raw_send_noresult": {
       "opc": "ISA_RAW_SEND",
@@ -2575,8 +2575,8 @@
       "desc": [ "GENERAL", "UNSIGNED", 5 ],
       "src": [ "RAW", 6 ],
       "src2": [ "RAW", 7 ],
-      "skip__": [ "TWOADDR", 8 ],
-      "dst": [ "RAW", 0 ]
+      "dst": [ "RAW", 0 ],
+      "twoaddr": [ "TWOADDR", 8 ]
     },
     "genx_raw_sends_noresult": {
       "opc": "ISA_RAW_SENDS",
@@ -2606,8 +2606,8 @@
       "desc": [ "GENERAL", "UNSIGNED", 8 ],
       "src": [ "RAW", 9 ],
       "src2": [ "NULLRAW", 10 ],
-      "skip__": [ "TWOADDR", 10 ],
-      "dst": [ "RAW", 0 ]
+      "dst": [ "RAW", 0 ],
+      "twoaddr": [ "TWOADDR", 10 ]
     },
     "genx_raw_send2_noresult": {
       "opc": "ISA_RAW_SENDS",
@@ -2637,8 +2637,8 @@
       "desc": [ "GENERAL", "UNSIGNED", 9 ],
       "src": [ "RAW", 10 ],
       "src2": [ "RAW", 11 ],
-      "skip__": [ "TWOADDR", 12 ],
-      "dst": [ "RAW", 0 ]
+      "dst": [ "RAW", 0 ],
+      "twoaddr": [ "TWOADDR", 12 ]
     },
     "genx_raw_sends2_noresult": {
       "opc": "ISA_RAW_SENDS",
@@ -4655,23 +4655,20 @@
       ]
     ],
     "ISA_RAW_SENDS": [
-      [ "CISA_CALL",
-        [ "Kernel->AppendVISAMiscRawSends",
-          "pred",
-          "exec_mask",
-          "exec_size",
-          "modifier_sendc",
-          "FFID",
-          "extended_message_descriptor",
-          "numsrc",
-          "numsrc2",
-          "numdst",
-          "desc",
-          "src",
-          "src2",
-          "dst",
-          "modifier_sendc & 2"
-        ]
+      [ "CreateRawSendS",
+        "exec_mask",
+        "exec_size",
+        "pred",
+        "FFID",
+        "modifier_sendc",
+        "desc",
+        "extended_message_descriptor",
+        "numdst",
+        "dst",
+        "numsrc",
+        "src",
+        "numsrc2",
+        "src2"
       ]
     ],
     "ISA_RNDD": [

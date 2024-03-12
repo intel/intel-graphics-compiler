@@ -4011,6 +4011,20 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     CISA_CALL(Kernel->AppendVISALscFence(LscSfid, LscFenceOp, LscScope));
   };
 
+  auto CreateRawSendS = [&](VISA_EMask_Ctrl ExecMask, VISA_Exec_Size ExecSize,
+                            VISA_PredOpnd *Pred, char SFID, char Modifier,
+                            VISA_VectorOpnd *Desc, VISA_VectorOpnd *ExtDesc,
+                            uint8_t NumDst, VISA_RawOpnd *Dst, uint8_t NumSrc0,
+                            VISA_RawOpnd *Src0, uint8_t NumSrc1,
+                            VISA_RawOpnd *Src1) {
+
+    const bool IsEOT = Modifier & 2;
+    CISA_CALL(Kernel->AppendVISAMiscRawSends(
+        Pred, ExecMask, ExecSize, Modifier, SFID, ExtDesc, NumSrc0, NumSrc1,
+        NumDst, Desc, Src0, Src1, Dst, IsEOT));
+  };
+
+
   VISA_EMask_Ctrl exec_mask;
 #include "GenXIntrinsicsBuildMap.inc"
 }
