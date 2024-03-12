@@ -695,8 +695,8 @@ deriveOptimizationLevel(opt::Arg *A, OptSpecifier PrimaryOpt) {
     StringRef Val = A->getValue();
     return parseOptimizationLevelString(Val);
   } else {
-    IGC_ASSERT(A->getOption().matches(OPT_opt_disable_common));
-    return vc::OptimizerLevel::None;
+    // Default optimization mode - O2
+    return vc::OptimizerLevel::Full;
   }
 }
 
