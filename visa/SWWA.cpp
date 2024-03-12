@@ -3562,9 +3562,7 @@ void Optimizer::mulMacRSWA() {
     while (ii != bb->end()) {
       G4_INST *inst = *ii;
 
-      if (inst->getNumSrc() != 2 || inst->tokenHonourInstruction() ||
-          inst->isIntrinsic()) {
-        prevInst = nullptr;
+      if (!inst->isIntegerPipeInstructionXe()) {
         ii++;
         continue;
       }
@@ -3597,7 +3595,7 @@ void Optimizer::mulMacRSWA() {
         G4_Operand *prevSrc1 = prevInst->getSrc(1);
         G4_Operand *curSrc1 = inst->getSrc(1);
 
-        if (prevSrc1->isGreg() &&
+        if (prevSrc1 && curSrc1 && prevSrc1->isGreg() &&
             prevSrc1->isSrcRegRegion() && curSrc1 != nullptr &&
             curSrc1->isGreg() && curSrc1->isSrcRegRegion()) { // All regions
 
@@ -3627,7 +3625,7 @@ void Optimizer::mulMacRSWA() {
         G4_Operand *prevSrc1 = prevInst->getSrc(1);
         G4_Operand *curSrc1 = inst->getSrc(1);
 
-        if (prevSrc1->isGreg() &&
+        if (prevSrc1 && curSrc1 && prevSrc1->isGreg() &&
             prevSrc1->isSrcRegRegion() && curSrc1 != nullptr &&
             curSrc1->isGreg() && curSrc1->isSrcRegRegion()) {
           if (prevInst->opcode() != G4_mach && prevInst->opcode() != G4_mul &&
