@@ -6100,6 +6100,18 @@ static std::string generateALUPipeComment(SB_INST_PIPE aluPipe) {
   }
 }
 
+// Add commend translating offset to reg so it's easier to follow
+static void handleAddrAddMov(G4_INST *inst)
+{
+  if (inst->opcode() == G4_add && inst->getDst()->isAreg() && inst->getSrc(1)->isAddrExp())
+  {
+    std::stringstream ss;
+    ss << "src1 is addr of ";
+    inst->getSrc(1)->asAddrExp()->getRegVar()->emit(ss);
+    inst->addComment(ss.str());
+  }
+}
+
 void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
                      LiveGRFBuckets *&globalSendsLB,
                      LiveGRFBuckets *&GRFAlignedGlobalSendsLB,
@@ -6769,6 +6781,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
     // dump ALU pipe in asm comment
     if (addComment) {
       node->GetInstruction()->addComment(generateALUPipeComment(node->ALUPipe));
+      handleAddrAddMov(node->GetInstruction());
     }
 
     if (node->hasDistInfo()) {
