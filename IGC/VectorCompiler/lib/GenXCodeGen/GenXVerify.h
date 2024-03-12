@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2023 Intel Corporation
+Copyright (C) 2023-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -73,7 +73,7 @@ private:
   enum class IsFatal { No = 0, Yes = 1 };
 
   void verifyRegioning(const CallInst &, const unsigned);
-  bool ensure(const bool Cond, const Twine &Msg, const Instruction &I,
+  bool ensure(const bool Cond, const Twine &Msg, const Value &V,
               const IsFatal IsFatal_ = IsFatal::Yes);
   [[noreturn]] static void terminate();
 

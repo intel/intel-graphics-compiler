@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2023 Intel Corporation
+Copyright (C) 2023-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -27,12 +27,12 @@ void GenXVerify::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.setPreservesAll();
 }
 
-bool GenXVerify::ensure(const bool Cond, const Twine &Msg, const Instruction &I,
+bool GenXVerify::ensure(const bool Cond, const Twine &Msg, const Value &V,
                         const IsFatal IsFatal_) {
   if (LLVM_LIKELY(Cond))
     return true;
   if (IsFatal_ == IsFatal::Yes || OptAllFatal || !OptQuietNonFatal)
-    vc::diagnose(I.getContext(),
+    vc::diagnose(V.getContext(),
                  DbgPrefix + "[stage:" +
                      OptStage.getParser().getOption(
                          static_cast<int>(OptStage.getValue())) +
@@ -40,7 +40,7 @@ bool GenXVerify::ensure(const bool Cond, const Twine &Msg, const Instruction &I,
                      (IsFatal_ == IsFatal::No
                           ? " (non-fatal, spec review required)"
                           : ""),
-                 Msg, DS_Warning, vc::WarningName::Generic, &I);
+                 Msg, DS_Warning, vc::WarningName::Generic, &V);
   if (IsFatal_ == IsFatal::Yes || OptAllFatal) {
     IsBroken = true;
     if (OptTerminationPolicy == Terminate::OnFirstError)
@@ -55,15 +55,29 @@ bool GenXVerify::ensure(const bool Cond, const Twine &Msg, const Instruction &I,
 
 bool GenXVerify::runOnModule(Module &M) {
   visit(M);
+  if (Stage == GenXVerifyStage::PostIrAdaptors)
+    for (const auto &GV : M.globals())
+      visitGlobalVariable(GV);
   if (OptTerminationPolicy != Terminate::No && IsBroken)
     terminate();
   return false;
 }
 
 void GenXVerify::visitGlobalVariable(const GlobalVariable &GV){
-    // TODO: add genx_volatile-attributed values check here.
-    //       please make sure to run this check under a proper InvariantsSet to
-    //       trigger it only at appropriate pipeline stage(s).
+  if (!GV.hasAttribute(genx::FunctionMD::GenXVolatile))
+    return;
+  ensure(GV.getAddressSpace() == vc::AddrSpace::Private,
+         "a volatile variable must reside in private address space", GV);
+  auto InvalidUser = llvm::find_if(GV.users(), [](const User *U) {
+    const auto *I = dyn_cast<Instruction>(U);
+    return !I || !(genx::isAVStore(I) || genx::isAVLoad(I));
+  });
+  if (InvalidUser == GV.user_end())
+    return;
+  ensure(false,
+         "a volatile variable may only be used in genx.vload/genx.vstore "
+         "intrinsics and volatile loads/stores instructions",
+         **InvalidUser);
 };
 
 void GenXVerify::visitCallInst(const CallInst &CI) {
