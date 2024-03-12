@@ -4222,13 +4222,13 @@ bool GenXLowering::lowerLzd(Instruction *Inst) {
 bool GenXLowering::lower64Bitreverse(CallInst *CI) {
   // %1 = call i64 @llvm.bitreverse.i64(i64 %in)
   //  to
-  // {%inH, %inL} = rdregion.32 %in
-  // %inRH = bitreverse.32 %inH
-  // %inRL = bitreverse.32 %inL
-  // %res = wrregion.64 {%inRL, %inRH}
+  // %1 = call i64 @llvm.bitreverse.i64(i64 %in)
+  // {inH, inL} = rdregion.32 in
+  // inRH = bitreverse.32 inH
+  // inRL = bitreverse.32 inL
+  // res = wrregion.64 {inRL, inRH}
 
   auto *InType = CI->getType();
-  IGC_ASSERT(InType->getScalarSizeInBits() == 64);
   IRBuilder<> IRB{CI};
   auto Split = IVSplitter(*CI).splitValueLoHi(*CI->getOperand(0));
   auto *ResTy = Split.Lo->getType();
