@@ -32,7 +32,7 @@ diff -Naur "a/llvm/include/llvm/Analysis/ScalarEvolution.h" "b/llvm/include/llvm
 diff -Naur "a/llvm/lib/Analysis/ScalarEvolution.cpp" "b/llvm/lib/Analysis/ScalarEvolution.cpp"
 --- "a/llvm/lib/Analysis/ScalarEvolution.cpp"	2023-09-27 19:27:08.189098000 +0200
 +++ "b/llvm/lib/Analysis/ScalarEvolution.cpp"	2023-09-27 19:05:40.601713600 +0200
-@@ -7076,6 +7076,13 @@
+@@ -7004,6 +7004,13 @@
  
    Stack.emplace_back(V, true);
    Stack.emplace_back(V, false);
@@ -46,12 +46,10 @@ diff -Naur "a/llvm/lib/Analysis/ScalarEvolution.cpp" "b/llvm/lib/Analysis/Scalar
    while (!Stack.empty()) {
      auto E = Stack.pop_back_val();
      Value *CurV = E.getPointer();
-@@ -7088,6 +7095,12 @@
+@@ -7016,6 +7023,10 @@
      // If all operands have been visited already, create the SCEV.
      if (E.getInt()) {
        CreatedSCEV = createSCEV(CurV);
-+      if (isa<PHINode>(CurV))
-+        PendingPhiSCEVIter.erase(cast<PHINode>(CurV));
 +    } else if (isa<PHINode>(CurV) && 
 +      PendingPhiSCEVIter.count(cast<PHINode>(CurV)) > 0) {
 +      // cycled Phi, try to get its SCEV
@@ -59,7 +57,13 @@ diff -Naur "a/llvm/lib/Analysis/ScalarEvolution.cpp" "b/llvm/lib/Analysis/Scalar
      } else {
        // Otherwise get the operands we need to create SCEV's for before creating
        // the SCEV for CurV. If the SCEV for CurV can be constructed trivially,
-@@ -7101,8 +7114,11 @@
+@@ -7025,12 +7036,17 @@
+ 
+     if (CreatedSCEV) {
+       insertValueToMap(CurV, CreatedSCEV);
++      if (isa<PHINode>(CurV))
++          PendingPhiSCEVIter.erase(cast<PHINode>(CurV));
+     } else {
        // Queue CurV for SCEV creation, followed by its's operands which need to
        // be constructed first.
        Stack.emplace_back(CurV, true);
@@ -72,7 +76,7 @@ diff -Naur "a/llvm/lib/Analysis/ScalarEvolution.cpp" "b/llvm/lib/Analysis/Scalar
      }
    }
  
-@@ -7225,7 +7241,8 @@
+@@ -7153,7 +7169,8 @@
      return getUnknown(V);
  
    case Instruction::PHI:
@@ -82,3 +86,12 @@ diff -Naur "a/llvm/lib/Analysis/ScalarEvolution.cpp" "b/llvm/lib/Analysis/Scalar
      return nullptr;
  
    case Instruction::Select: {
+@@ -13405,6 +13422,8 @@
+         auto ValueIt = ValueExprMap.find_as(ValueAndOffset.first);
+         if (ValueIt != ValueExprMap.end())
+           ValueExprMap.erase(ValueIt);
++        if (isa<PHINode>(ValueAndOffset.first))
++          PendingPhiSCEVIter.erase(cast<PHINode>(ValueAndOffset.first));
+       }
+     }
+     ExprValueMap.erase(ExprIt);
