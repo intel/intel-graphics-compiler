@@ -5,7 +5,8 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; RUN: igc_opt -igc-code-sinking -inputcs -S < %s | FileCheck %s
+; REQUIRES: regkeys
+; RUN: igc_opt -igc-hoist-congruent-phi -inputcs --regkey CodeSinkingMinSize=10 -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; CodeSinking
 ; ------------------------------------------------
@@ -42,58 +43,9 @@ then:
   br label %exit
 ; no phi instruction, hoisted %mulB3 is the return value
 ; CHECK-LABEL: exit:
-; CHECK-NEXT: call void @foo()
 ; CHECK: ret float [[HOISTEDMULB3]]
 exit:
   %retVal = phi float [ %mulB3, %then ], [ %mulA3, %entry ]
-  ; code sinking is run on functions with more than 32 instructions
-  ; insert dummy instructions
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
-  call void @foo()
   ret float %retVal
 }
 

@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; RUN: igc_opt --regkey TotalGRFNum=256 --regkey DumpLoopSink=1 --regkey PrintToConsole=1 --regkey LoopSinkThresholdDelta=30 --regkey DisableCodeSinking=0 --regkey DisableLoopSink=0 --regkey EnableLoadChainLoopSink=1 -platformdg2 -simd-mode 16 --igc-wi-analysis %enable-basic-aa% --scev-aa --igc-code-sinking -S %s 2>&1 | FileCheck %s
+; RUN: igc_opt --regkey TotalGRFNum=256 --regkey DumpLoopSink=1 --regkey PrintToConsole=1 --regkey LoopSinkThresholdDelta=30 --regkey DisableCodeSinking=0 --regkey DisableLoopSink=0 --regkey EnableLoadChainLoopSink=1 -platformdg2 -simd-mode 16 --igc-wi-analysis %enable-basic-aa% --scev-aa --igc-code-loop-sinking -S %s 2>&1 | FileCheck %s
 
 ; The own regpressure of the functions is not enough to sink
 ; Checking that we use interprocedural analysis to find out that combined regpressure is high enough

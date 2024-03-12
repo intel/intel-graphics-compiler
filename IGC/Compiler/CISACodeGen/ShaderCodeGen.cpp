@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/PullConstantHeuristics.hpp"
 #include "Compiler/CISACodeGen/PushAnalysis.hpp"
 #include "Compiler/CISACodeGen/ScalarizerCodeGen.hpp"
+#include "Compiler/CISACodeGen/HoistCongruentPhi.hpp"
 #include "Compiler/CISACodeGen/CodeSinking.hpp"
 #include "Compiler/CISACodeGen/AddressArithmeticSinking.hpp"
 #include "Compiler/CISACodeGen/AtomicOptPass.hpp"
@@ -238,7 +239,14 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     // Also need to understand the performance benefit better.
     if (!isOptDisabled)
     {
-        mpm.add(new CodeSinking(true));
+        mpm.add(new HoistCongruentPHI());
+        mpm.add(new CodeSinking());
+        if ((IGC_IS_FLAG_DISABLED(DisableLoopSink) || IGC_IS_FLAG_ENABLED(ForceLoopSink))
+             && ctx.type == ShaderType::OPENCL_SHADER
+             && ctx.m_instrTypes.numOfLoop > 0)
+        {
+            mpm.add(new CodeLoopSinking());
+        }
     }
 
 
@@ -1345,7 +1353,8 @@ void OptimizeIR(CodeGenContext* const pContext)
 
         if (pContext->m_DriverInfo.CodeSinkingBeforeCFGSimplification())
         {
-            mpm.add(new CodeSinking(true));
+            mpm.add(new HoistCongruentPHI());
+            mpm.add(new CodeSinking());
         }
 #if LLVM_VERSION_MAJOR >= 12
         mpm.add(llvm::createCFGSimplificationPass(SimplifyCFGOptions().hoistCommonInsts(true)));
