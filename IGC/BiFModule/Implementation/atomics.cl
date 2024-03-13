@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -188,7 +188,6 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p4i64_i32_i32, )( __generic l
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
 #endif // defined(cl_khr_int64_base_atomics) || defined(cl_khr_int64_extended_atomics)
-
 
 float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p0f32_i32_i32, )( __private float *Pointer, int Scope, int Semantics )
 {
@@ -1694,7 +1693,6 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicOr, _p4i64_i32_i32_i64, )( __generic
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
 #endif // defined(cl_khr_int64_extended_atomics)
-
 
 // Atomic Xor
 
