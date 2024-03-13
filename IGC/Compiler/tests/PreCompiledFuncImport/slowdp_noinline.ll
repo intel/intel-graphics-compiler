@@ -17,9 +17,9 @@
 
 ; CHECK: m_enableSubroutine: 1
 
-define void @test(double addrspace(1)* %p, double %a, double %b, double %c) #0 {
+define void @dp_add_test(double addrspace(1)* %p, double %a, double %b, double %c) #0 {
 entry:
-; CHECK-LABEL: @test
+; CHECK-LABEL: @dp_add_test
 ; CHECK: entry:
 ; CHECK:   [[TMP0:%.*]] = call double @__igcbuiltin_dp_add(double %a, double %b, i32 0, i32 0, i32 0, i32* %DPEmuFlag)
 ; CHECK:   [[TMP1:%.*]] = call double @__igcbuiltin_dp_add(double [[TMP0]], double %c, i32 0, i32 0, i32 0, i32* %DPEmuFlag)
@@ -30,6 +30,17 @@ entry:
   ret void
 }
 
-; CHECK: define internal double @__igcbuiltin_dp_add{{.*}}[[ATTR0:#[0-9]+]]
+define void @dp_to_int32_test(i32 addrspace(1)* %p, double %a) #0 {
+entry:
+; CHECK-LABEL: @dp_to_int32_test
+; CHECK: entry:
+; CHECK:   [[TMP0:%.*]] = call i32 @__igcbuiltin_dp_to_int32(double %a, i32 3, i32 0, i32* %DPEmuFlag)
+; CHECK:   store i32 [[TMP0]], i32 addrspace(1)* %p
+  %dp_to_i32 = fptosi double %a to i32
+  store i32 %dp_to_i32, i32 addrspace(1)* %p, align 4
+  ret void
+}
 
+; CHECK: define internal double @__igcbuiltin_dp_add{{.*}}[[ATTR0:#[0-9]+]]
+; CHECK: define internal i32 @__igcbuiltin_dp_to_int32{{.*}}[[ATTR0:#[0-9]+]]
 ; CHECK: attributes [[ATTR0]] = {{{.*}} noinline {{.*}}visaStackCall

@@ -887,7 +887,7 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
             continue;
         }
 
-        if (Func->hasOneUse() || emuFC == FLAG_FCALL_FORCE_INLINE)
+        if ((Func->hasOneUse() && !II->isSlowDPEmuFunc()) || emuFC == FLAG_FCALL_FORCE_INLINE)
         {
             Func->addFnAttr(llvm::Attribute::AlwaysInline);
             continue;
