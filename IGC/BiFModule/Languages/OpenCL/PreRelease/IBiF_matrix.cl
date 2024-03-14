@@ -1087,10 +1087,10 @@ DEFINE_B_B_16x64(generic)
 DEFINE_B_B_16x64(global)
 DEFINE_B_B_16x64(local)
 
-#define DEFINE_STORE_IMPL_LARGE(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, address_space) \
-  INLINE void MANGLE_STORE_NAME_##address_space(layout, sg, elem_bitwidth, shape, M) (char *mem, __private char *src, long stride) { \
+#define DEFINE_STORE_IMPL_LARGE(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows, address_space) \
+  INLINE void MANGLE_STORE_NAME_##address_space(layout, sg, elem_bitwidth, shape, WI_rows) (char *mem, __private char *src, long stride) { \
       int sg_size = get_sub_group_size(); \
-      if (BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= BLOCK2D_IMPL && M == 16 \
+      if (WI_rows == M && BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= BLOCK2D_IMPL && M == 16 \
           && order == _ROW_MAJOR && address_space == AS_GLOBAL && elem_bitwidth > 8) { \
           __private char *c0 = src + 0 * 8 * (sizeof (int)); \
           __private char *c1 = src + 1 * 8 * (sizeof (int)); \
@@ -1109,22 +1109,28 @@ DEFINE_B_B_16x64(local)
       int sg_cols = K / pack_factor; \
       int skip_factor = sg_size / sg_cols; \
       __private contrib_type *slice = (__private contrib_type *)src; \
-      for (int i = 0; i < M; i++) { \
+      for (int i = 0; i < WI_rows; i++) { \
+        if ( (i*skip_factor + slid/sg_cols) < M ) \
           ptr[IND##order(slid, stride, skip_factor, i, sg_cols)] = slice[i]; \
+        else \
+          continue; /*last even row for matrix with odd number of rows doesn't exist*/ \
       } \
   }
 
-#define DEFINE_STORE_LARGE__(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us) \
-  DEFINE_STORE_IMPL_LARGE(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, AS_GENERIC) \
-  DEFINE_STORE_IMPL_LARGE(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, AS_LOCAL) \
-  DEFINE_STORE_IMPL_LARGE(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, AS_GLOBAL)
+#define DEFINE_STORE_LARGE__(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows) \
+  DEFINE_STORE_IMPL_LARGE(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, WI_rows, AS_GENERIC) \
+  DEFINE_STORE_IMPL_LARGE(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, WI_rows, AS_LOCAL) \
+  DEFINE_STORE_IMPL_LARGE(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, WI_rows, AS_GLOBAL)
 
-#define DEFINE_STORE_LARGE(layout, sg, element_type, contrib_type, M, K, order, us) \
+#define DEFINE_STORE_LARGE(layout, sg, element_type, contrib_type, M, K, order, us, WI_rows) \
   DEFINE_STORE_LARGE__(layout, sg, element_type, BITWIDTH(element_type), contrib_type, BITWIDTH(contrib_type), \
                        M, K, SHAPE(layout, M, K, element_type, contrib_type), \
-                       order, us)
+                       order, us, WI_rows)
 
-DEFINE_STORE_LARGE(Accumulator_RowMajor, _SG16, int, int, 16, 16, ROW_MAJOR, )
+// sub group size 16
+DEFINE_STORE_LARGE(Accumulator_RowMajor, _SG16, int, int, 16, 16, ROW_MAJOR, , 16)
+// sub group size 32
+DEFINE_STORE_LARGE(Accumulator_RowMajor, _SG16, int, int, 16, 16, ROW_MAJOR, , 8)
 
 #define DEFINE_STORE_ACC_ROW_MAJOR_32x64(address_space) \
   INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_32x64_i32_128_##address_space##_pi64_v8i8(char *mem, __private char *src, long stride) { \

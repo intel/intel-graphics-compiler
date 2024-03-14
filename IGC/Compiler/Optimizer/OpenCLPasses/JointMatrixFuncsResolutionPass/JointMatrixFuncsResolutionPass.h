@@ -61,7 +61,6 @@ namespace IGC
         llvm::Value *ResolveSliceInsert(llvm::CallInst *CI);
         llvm::Value *ResolveSliceExtract(llvm::CallInst *CI);
         llvm::Instruction *ResolveGetCoord(llvm::CallInst *CI);
-        llvm::Value *createSliceExtract(llvm::IRBuilder<> *builder, llvm::Value *matrix, llvm::Value *index, const JointMatrixTypeDescription *desc);
         llvm::Value *ResolveCall(llvm::CallInst *CI);
         llvm::Value *ResolveGeneric(llvm::Instruction *OldInst);
         llvm::Value *Resolve(llvm::Value *value);

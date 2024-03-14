@@ -1370,72 +1370,112 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveGetCoord(CallInst *CI) {
     return newCall;
 }
 
-Value *JointMatrixFuncsResolutionPass::createSliceExtract
-      (IRBuilder<> *builder, Value *matrix, Value *index, const JointMatrixTypeDescription *desc) {
-    if (desc->bitWidth != desc->contribBitWidth) {
+// Updates index, in case value is packed and extracts element from vector using new index
+template <class BuilderT>
+static Value *updateIndexAndCreateSliceExtract(BuilderT *builder, Value *matrix, Value **index,
+                                               unsigned contribBitWidth, unsigned bitWidth) {
+    if (bitWidth != contribBitWidth) {
         /* Unpacking: */
-        IGC_ASSERT_MESSAGE(desc->bitWidth > 0, "Unexpected matrix element bit width.");
-        uint64_t packFactor = desc->contribBitWidth / desc->bitWidth;
-        index = builder->CreateUDiv(index, ConstantInt::get(index->getType(), packFactor));
+        IGC_ASSERT_MESSAGE(bitWidth > 0, "Unexpected matrix element bit width.");
+        uint64_t packFactor = contribBitWidth / bitWidth;
+        *index = builder->CreateUDiv(*index, ConstantInt::get((*index)->getType(), packFactor));
     }
-    return builder->CreateExtractElement(matrix, index, "matrix.element");
+    return builder->CreateExtractElement(matrix, *index, "matrix.element");
 }
 
-// TODO: this method may need to be updated to support accumulator 32x64 due to
-// non-standard representation [2 x <i64 x 32>]
+// Creates offset to point to element we need to adress by index inside packed value
+// For example if value is i64 (valBitWidth == 64) and element is i32 (elemBitWidth == 32)
+// Then depending on index, offset can be either 0 or 32
+template <class BuilderT>
+static Value *createOffsetForPackedValue(BuilderT *builder, Value *index, unsigned valBitWidth, unsigned elemBitWidth) {
+    uint64_t packFactor = valBitWidth / elemBitWidth;
+    Value *offset = builder->CreateURem(index, ConstantInt::get(index->getType(), packFactor));
+    offset = builder->CreateMul(offset, ConstantInt::get(offset->getType(), elemBitWidth));
+    return builder->CreateTruncOrBitCast(offset, Type::getIntNTy(builder->getContext(), valBitWidth));
+}
+
+// Returns element extracted from a packed value by index
+// First we find out offset inside the value
+// Then we shift right value to offset to move data we need to the low part of value
+// Then we trunkate to the bit width of element
+template <class BuilderT>
+static Value *unpackElementFromPackedValue(BuilderT *builder, Value *index, Value *value,
+                                           unsigned valBitWidth, unsigned elemBitWidth) {
+    Value *offset = createOffsetForPackedValue(builder, index, valBitWidth, elemBitWidth);
+    Value *element = builder->CreateAShr(value, offset);
+    return builder->CreateTruncOrBitCast(element, Type::getIntNTy(builder->getContext(), elemBitWidth));
+}
+
+// Merges component into packed value, addressed by index
+template <class BuilderT>
+static Value *mergeComponentToPackedValue(BuilderT *builder, Value *value, Value *component, Value *offset,
+                                          unsigned valBitWidth, unsigned elemBitWidth) {
+    if (!isa<IntegerType>(component->getType())) {
+        component = builder->CreateBitCast(component, Type::getIntNTy(builder->getContext(), elemBitWidth));
+    }
+    component = builder->CreateZExtOrBitCast(component, Type::getIntNTy(builder->getContext(), valBitWidth));
+
+    /* clear value bits: */
+    uint64_t maskValue = (1ULL << elemBitWidth) - 1;
+    Value *mask = builder->CreateShl(ConstantInt::get(value->getType(), maskValue), offset);
+    mask = builder->CreateNot(mask);
+    value = builder->CreateAnd(value, mask);
+
+    /* shift component and merge with element: */
+    component = builder->CreateShl(component, offset);
+    return builder->CreateOr(value, component);
+}
+
 Value *JointMatrixFuncsResolutionPass::ResolveSliceInsert(CallInst *CI) {
     Value *matrix = Resolve(CI->getArgOperand(0));
     Value *component = CI->getArgOperand(1);
     Value *index = CI->getArgOperand(2);
 
     JointMatrixTypeDescription desc;
-    Type *rawMatTy = ResolveType(CI->getArgOperand(0)->getType(), &desc);
-    IGCLLVM::FixedVectorType *matTy = dyn_cast<IGCLLVM::FixedVectorType>(rawMatTy);
-
+    Type *matTy = ResolveType(CI->getArgOperand(0)->getType(), &desc);
     IRBuilder builder(CI);
     Value *slice = nullptr;
-    if (desc.bitWidth != desc.contribBitWidth) {
-        // If rows = 1, we do not need an extract, so directly use the value.
-        Value *element = matrix;
-        if (matTy) {
-            // We have a vector e.g. a matrix with rows > 1
-            element = createSliceExtract(&builder, matrix, index, &desc);
-        }
-        if (!isa<IntegerType>(element->getType())) {
-            element = builder.CreateBitCast(element, Type::getIntNTy(builder.getContext(), desc.contribBitWidth));
-        }
 
-        uint64_t packFactor = desc.contribBitWidth / desc.bitWidth;
-        Value *offset = builder.CreateURem(index, ConstantInt::get(index->getType(), packFactor));
-        offset = builder.CreateMul(offset, ConstantInt::get(offset->getType(), desc.bitWidth));
+    // Special case Accumulator 32x64 is represented as [2 x <i64 x 32>].
+    if (isAccumulator32x64(desc)) {
+        Value *offset = createOffsetForPackedValue(&builder, index, 64, desc.bitWidth);
 
-        index = builder.CreateUDiv(index, ConstantInt::get(index->getType(), packFactor));
+        // extract first or second half of array
+        Value* indexArray = builder.CreateICmpUGT(index, ConstantInt::get(index->getType(), 63)); // i1 0 or 1
+        Value* half0 = builder.CreateExtractValue(matrix, {0}, "matrix.slice.half0");
+        Value* half1 = builder.CreateExtractValue(matrix, {1}, "matrix.slice.half1");
+        Value* halfMatrix = builder.CreateSelect(indexArray, half1, half0, "matrix.slice.selected.half"); // <32 x i64>
 
-        if (!isa<IntegerType>(component->getType())) {
-            component = builder.CreateBitCast(component, Type::getIntNTy(builder.getContext(), desc.bitWidth));
-        }
+        // extract one of 32 elements of vector to update and merge component to it
+        Value* indexVec = builder.CreateURem(index, ConstantInt::get(index->getType(), 64)); // 0..63
+        Value *element = updateIndexAndCreateSliceExtract(&builder, halfMatrix, &indexVec, 64, desc.bitWidth);
+        component = mergeComponentToPackedValue(&builder, element, component, offset, 64, desc.bitWidth);
 
-        component = builder.CreateZExtOrBitCast(component, Type::getIntNTy(builder.getContext(), desc.contribBitWidth));
-        offset = builder.CreateTruncOrBitCast(offset, Type::getIntNTy(builder.getContext(), desc.contribBitWidth));
-
-        /* clear element bits: */
-        uint64_t maskValue = (1ULL << desc.bitWidth) - 1;
-        Value *mask = builder.CreateShl(ConstantInt::get(element->getType(), maskValue), offset);
-        mask = builder.CreateNot(mask);
-        element = builder.CreateAnd(element, mask);
-
-        /* shift component and merge with element: */
-        component = builder.CreateShl(component, offset);
-        component = builder.CreateOr(element, component);
-    }
-
-    if (IntegerType *vectorElementType = dyn_cast<IntegerType>(getResolvedVectorElementType(rawMatTy, &builder)))
-        component = builder.CreateBitCast(component, vectorElementType);
-
-    if (matTy) {
-        slice = builder.CreateInsertElement(matrix, component, index);
+        // insert new component to vector <32 x i64> and then insert new vector to array of 2 vectors
+        slice = builder.CreateInsertElement(halfMatrix, component, indexVec);
+        Value* newHalf0 = builder.CreateSelect(indexArray, half0, slice);
+        Value* newHalf1 = builder.CreateSelect(indexArray, slice, half1);
+        slice = createPair(&builder, getAcc32x64HalfType(builder.getContext()), newHalf0, newHalf1);
     } else {
-        slice = component;
+        if (desc.bitWidth != desc.contribBitWidth) { /* Unpacking: */
+            Value *offset = createOffsetForPackedValue(&builder, index, desc.contribBitWidth, desc.bitWidth);
+
+            // prepare element to update
+            Value *element = matrix; // If rows == 1, we do not need an extract, so directly use the value.
+            if (dyn_cast<IGCLLVM::FixedVectorType>(matTy))
+                element = updateIndexAndCreateSliceExtract(&builder, matrix, &index, desc.contribBitWidth, desc.bitWidth);
+            if (!isa<IntegerType>(element->getType()))
+                element = builder.CreateBitCast(element, Type::getIntNTy(builder.getContext(), desc.contribBitWidth));
+
+            component = mergeComponentToPackedValue(&builder, element, component, offset, desc.contribBitWidth, desc.bitWidth);
+        } else if (IntegerType *vectorElementType = dyn_cast<IntegerType>(getResolvedVectorElementType(matTy, &builder))) {
+            component = builder.CreateBitCast(component, vectorElementType);
+        }
+
+        if (dyn_cast<IGCLLVM::FixedVectorType>(matTy))
+            slice = builder.CreateInsertElement(matrix, component, index);
+        else
+            slice = component;
     }
 
     InstsToErase.insert(CI);
@@ -1448,34 +1488,38 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceExtract(CallInst *CI) {
 
     JointMatrixTypeDescription desc;
     Type *matTy = ResolveType(CI->getArgOperand(0)->getType(), &desc);
-
     IRBuilder builder(CI);
+    Value *element = matrix; // if it is a single value, we can directly use the value
 
-    // If we are dealing with a vector, extract the element, else we have a
-    // single value, we can directly use the value
-    Value *element = matrix;
-    if (IGCLLVM::FixedVectorType *ty = dyn_cast<IGCLLVM::FixedVectorType>(matTy))
-        element = createSliceExtract(&builder, matrix, index, &desc);
+    // If we are dealing with a vector, extract the element
+    if (dyn_cast<IGCLLVM::FixedVectorType>(matTy)) {
+        Value *indexVec = index;
+        element = updateIndexAndCreateSliceExtract(&builder, matrix, &indexVec, desc.contribBitWidth, desc.bitWidth);
+    } else if (isAccumulator32x64(desc)) {
+        // Get index of which element of array to use: 0 or 1
+        Value* indexArray = builder.CreateICmpUGT(index, ConstantInt::get(index->getType(), 63));
 
-    /* Unpacking: */
-    if (desc.bitWidth != desc.contribBitWidth) {
-        index = builder.CreateTruncOrBitCast(index, element->getType());
-        uint64_t packFactor = desc.contribBitWidth / desc.bitWidth;
-        Value *offset = builder.CreateURem(index, ConstantInt::get(index->getType(), packFactor));
-        offset = builder.CreateMul(offset, ConstantInt::get(offset->getType(), desc.bitWidth));
-        element = builder.CreateAShr(element, offset);
-        uint64_t mask = (1ULL << desc.bitWidth) - 1;
-        element = builder.CreateAnd(element, mask);
+        // Select half that we need:
+        Value* half0 = builder.CreateExtractValue(matrix, {0}, "matrix.slice.half0");
+        Value* half1 = builder.CreateExtractValue(matrix, {1}, "matrix.slice.half1");
+        Value* halfMatrix = builder.CreateSelect(indexArray, half1, half0, "matrix.slice.selected.half");
 
-        element = builder.CreateTruncOrBitCast(element, Type::getIntNTy(builder.getContext(), desc.bitWidth));
-        element = builder.CreateBitCast(element, CI->getType());
+        // get index of element inside vector of 64 elements
+        Value* indexVec = builder.CreateURem(index, ConstantInt::get(index->getType(), 64)); // 0..63
+        element = updateIndexAndCreateSliceExtract(&builder, halfMatrix, &indexVec, 64, desc.bitWidth);
     }
 
-    // We need the bitcast, especially for half, as the function call that is
+    // unpack element we need from packed value
+    if (desc.bitWidth != desc.contribBitWidth) {
+        element = unpackElementFromPackedValue(&builder, index, element, desc.contribBitWidth, desc.bitWidth);
+    } else if (isAccumulator32x64(desc)) {
+        element = unpackElementFromPackedValue(&builder, index, element, 64, desc.bitWidth);
+    }
+
+    // We need the bitcast, e.g. for half, as the function call that is
     // being replaced has a half return type and the vectorElementType is i16
     element = builder.CreateBitCast(element, CI->getType());
 
-    CI->replaceAllUsesWith(element);
     InstsToErase.insert(CI);
     return element;
 }
