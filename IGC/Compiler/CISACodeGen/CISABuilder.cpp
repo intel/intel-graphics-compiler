@@ -7918,7 +7918,7 @@ namespace IGC
         {
             IGC_ASSERT(execSize == EXEC_SIZE_16);
             unsigned numParts = 2;
-            VISA_Exec_Size fromExecSize = GetAluExecSize(dst);
+            VISA_Exec_Size fromExecSize = execSize;
             VISA_Exec_Size toExecSize = SplitExecSize(fromExecSize, numParts);
 
             CVariable* input0 = nullptr;
