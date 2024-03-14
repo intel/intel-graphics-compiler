@@ -233,7 +233,7 @@ Argument* CImagesBI::CImagesUtils::findImageFromBufferPtr(const MetaDataUtils& M
     return nullptr;
 }
 
-static bool isBindlessImageOrSamplerLoad(Value *v)
+static bool isBindlessImageLoad(Value *v)
 {
     auto *load = dyn_cast<LoadInst>(v);
     if (!load)
@@ -254,7 +254,7 @@ ConstantInt* CImagesBI::CImagesUtils::getImageIndex(
 {
     ConstantInt* imageIndex = nullptr;
 
-    imageParam = ValueTracker::track(pCallInst, paramIndex, nullptr, nullptr, isBindlessImageOrSamplerLoad);
+    imageParam = ValueTracker::track(pCallInst, paramIndex, nullptr, nullptr, isBindlessImageLoad);
     IGC_ASSERT(imageParam);
     IGC_ASSERT(isa<Argument>(imageParam) || isa<LoadInst>(imageParam));
     int i = (*pParamMap)[imageParam].index;
@@ -264,7 +264,7 @@ ConstantInt* CImagesBI::CImagesUtils::getImageIndex(
 
 BufferType CImagesBI::CImagesUtils::getImageType(ParamMap* pParamMap, CallInst* pCallInst, unsigned int paramIndex)
 {
-    Value *imageParam = ValueTracker::track(pCallInst, paramIndex, nullptr, nullptr, isBindlessImageOrSamplerLoad);
+    Value *imageParam = ValueTracker::track(pCallInst, paramIndex, nullptr, nullptr, isBindlessImageLoad);
     IGC_ASSERT(imageParam);
     IGC_ASSERT(isa<Argument>(imageParam) || isa<LoadInst>(imageParam));
     return isa<LoadInst>(imageParam) ? BufferType::BINDLESS : (*pParamMap)[imageParam].type;
@@ -409,7 +409,21 @@ public:
     Value* getSamplerValue(void)
     {
         ConstantInt* samplerIndex = nullptr;
-        Value* samplerParam = ValueTracker::track(m_pCallInst, 1, m_pMdUtils, m_modMD, isBindlessImageOrSamplerLoad);
+        auto isBindlessSampler = [](Value *v)
+        {
+            // Bindless sampler is computed in ResolveSampledImageBuiltins pass.
+            if (auto *I = dyn_cast<BinaryOperator>(v))
+            {
+                if (I->getOpcode() != BinaryOperator::Or || !I->getType()->isIntegerTy(64))
+                    return false;
+                if (auto *C = dyn_cast<ConstantInt>(I->getOperand(1)))
+                {
+                    return C->isOne();
+                }
+            }
+            return false;
+        };
+        Value* samplerParam = ValueTracker::track(m_pCallInst, 1, m_pMdUtils, m_modMD, isBindlessSampler);
         if (!samplerParam) {
             emitError("There are instructions that use a sampler, but no sampler found in the kernel!", m_pCallInst);
             return nullptr;

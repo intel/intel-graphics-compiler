@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
+#include "Compiler/MetaDataUtilsWrapper.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
@@ -34,6 +35,11 @@ namespace IGC
             return "ResolveSampledImageBuiltins";
         }
 
+        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+        {
+            AU.addRequired<MetaDataUtilsWrapper>();
+        }
+
         virtual bool runOnModule(llvm::Module& M) override;
         void visitCallInst(llvm::CallInst& CI);
 
@@ -45,6 +51,7 @@ namespace IGC
         llvm::Value* lowerGetSampler(llvm::CallInst& CI);
 
         bool m_changed = false;
+        ModuleMetaData* modMD = nullptr;
         std::unordered_set<llvm::CallInst*> m_builtinsToRemove;
     };
 

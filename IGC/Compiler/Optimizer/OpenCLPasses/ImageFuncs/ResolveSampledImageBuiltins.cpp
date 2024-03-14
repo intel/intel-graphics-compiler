@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/Optimizer/OpenCLPasses/ImageFuncs/ResolveSampledImageBuiltins.hpp"
 #include "Compiler/IGCPassSupport.h"
+#include "common/MDFrameWork.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
@@ -24,6 +25,7 @@ using namespace IGC;
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(ResolveSampledImageBuiltins, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_END(ResolveSampledImageBuiltins, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char ResolveSampledImageBuiltins::ID = 0;
@@ -38,6 +40,7 @@ ResolveSampledImageBuiltins::ResolveSampledImageBuiltins() : ModulePass(ID)
 
 bool ResolveSampledImageBuiltins::runOnModule(Module& M) {
     m_changed = false;
+    modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     visit(M);
 
     for (auto builtin : m_builtinsToRemove)
@@ -133,6 +136,7 @@ Value* ResolveSampledImageBuiltins::lowerGetSampler(CallInst& CI)
     IGC_ASSERT(callReturningOpaque);
 
     m_builtinsToRemove.insert(callReturningOpaque);
+    auto *Int64Ty = Type::getInt64Ty(CI.getContext());
 
     Value* samplerArg = callReturningOpaque->getArgOperand(1);
     if (CallInst* samplerInitializer = dyn_cast<CallInst>(samplerArg))
@@ -141,18 +145,45 @@ Value* ResolveSampledImageBuiltins::lowerGetSampler(CallInst& CI)
         return ZExtInst::Create(
             Instruction::ZExt,
             samplerInitializer->getArgOperand(0),
-            Type::getInt64Ty(CI.getContext()),
+            Int64Ty,
             "",
             &CI);
+    }
+    else if (modMD->UseBindlessImage && !isa<Argument>(samplerArg))
+    {
+        Value* image = callReturningOpaque->getArgOperand(0);
+        IGC_ASSERT(image->getType()->isPointerTy());
+        Value *imageOffset = PtrToIntInst::Create(
+            Instruction::PtrToInt,
+            image,
+            Int64Ty,
+            "",
+            &CI);
+        // When sampled image is created in a single API call, e.g. SYCL bindless image,
+        // bindless surface state heap layout is
+        // | image state | image implicit args state | sampler state | redescribed image state | ...
+        // Sampler state offset is addition of image state offset, size of
+        // image state and size of image implicit args state.
+        // Both size of image state and image implicit args state are 64 bytes.
+        constexpr uint64_t surfaceStateSize = 64;
+        auto *stateSizeValue = ConstantInt::get(Int64Ty, surfaceStateSize * 2);
+        auto *samplerOffset = BinaryOperator::CreateAdd(imageOffset, stateSizeValue, "sampler_offset", &CI);
+        // Set bit-field 0 to 1 to select Bindless Sampler State Base Address.
+        return BinaryOperator::CreateOr(samplerOffset, ConstantInt::get(Int64Ty, 1), "", &CI);
     }
     else
     {
         IGC_ASSERT(samplerArg->getType()->isPointerTy());
-        return PtrToIntInst::Create(
+        Value *samplerOffset = PtrToIntInst::Create(
             Instruction::PtrToInt,
             samplerArg,
-            Type::getInt64Ty(CI.getContext()),
+            Int64Ty,
             "",
             &CI);
+        if (modMD->UseBindlessImage) {
+            // Set bit-field 0 to 1 to select Bindless Sampler State Base Address.
+            samplerOffset = BinaryOperator::CreateOr(samplerOffset, ConstantInt::get(Int64Ty, 1), "", &CI);
+        }
+        return samplerOffset;
     }
 }
