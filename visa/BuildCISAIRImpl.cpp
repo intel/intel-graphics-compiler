@@ -4104,19 +4104,28 @@ bool CISA_IR_Builder::CISA_create_lsc_untyped_block2d_inst(
     LSC_DATA_SHAPE_BLOCK2D dataShape2d, VISA_opnd *dstData,
     VISA_opnd *src0AddrsOps[LSC_BLOCK2D_ADDR_PARAMS], VISA_opnd *src1Data,
     int xImmOffset, int yImmOffset, int lineNum) {
-  VISA_VectorOpnd *src0Addrs[LSC_BLOCK2D_ADDR_PARAMS]{
+  if (src0AddrsOps[1] == nullptr) {
+    // using the optimized block2d instruction
+    VISA_CALL_TO_BOOL(AppendVISALscUntypedBlock2DInst, opcode,
+        static_cast<VISA_PredOpnd*>(pred), execSize, emask,
+        caching, dataShape2d, static_cast<VISA_RawOpnd*>(dstData),
+        static_cast<VISA_VectorOpnd*>(src0AddrsOps[0]),
+        xImmOffset, yImmOffset, static_cast<VISA_RawOpnd*>(src1Data));
+  } else {
+    VISA_VectorOpnd *src0Addrs[LSC_BLOCK2D_ADDR_PARAMS]{
       static_cast<VISA_VectorOpnd *>(src0AddrsOps[0]),
       static_cast<VISA_VectorOpnd *>(src0AddrsOps[1]),
       static_cast<VISA_VectorOpnd *>(src0AddrsOps[2]),
       static_cast<VISA_VectorOpnd *>(src0AddrsOps[3]),
       static_cast<VISA_VectorOpnd *>(src0AddrsOps[4]),
       static_cast<VISA_VectorOpnd *>(src0AddrsOps[5]),
-  };
-  VISA_CALL_TO_BOOL(AppendVISALscUntypedBlock2DInst, opcode, sfid,
+    };
+    VISA_CALL_TO_BOOL(AppendVISALscUntypedBlock2DInst, opcode, sfid,
                     static_cast<VISA_PredOpnd *>(pred), execSize, emask,
                     caching, dataShape2d, static_cast<VISA_RawOpnd *>(dstData),
                     src0Addrs, xImmOffset, yImmOffset,
                     static_cast<VISA_RawOpnd *>(src1Data));
+  }
   return true;
 }
 

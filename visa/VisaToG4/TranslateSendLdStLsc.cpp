@@ -661,6 +661,143 @@ int IR_Builder::translateLscUntypedInst(
   return status;
 }
 
+
+int IR_Builder::translateLscUntypedBlock2DInst(
+    LSC_OP op, LSC_SFID lscSfid, G4_Predicate *pred,
+    VISA_Exec_Size visaExecSize, VISA_EMask_Ctrl emask,
+    LSC_CACHE_OPTS cacheOpts, LSC_DATA_SHAPE_BLOCK2D dataShape2D,
+    G4_DstRegRegion *dstRead, // dst can be NULL reg (e.g store)
+    G4_Operand *src0AddrRgn, // always the addresses
+    G4_SrcRegRegion *src1Data, // store data
+    int xImmOff, int yImmOff)
+{
+  TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+
+  int status = VISA_SUCCESS;
+  auto check = [&](bool z, const char *what) {
+    if (!z) {
+      vISA_ASSERT_INPUT(false, std::string(what));
+      status = VISA_FAILURE;
+    }
+  };
+
+  if (dataShape2D.order == LSC_DATA_ORDER_TRANSPOSE) {
+    switch (dataShape2D.size) {
+    case LSC_DATA_SIZE_8b:
+      check (false, "d8 not supported");
+      break;
+    case LSC_DATA_SIZE_16b:
+      check (false, "d16 not supported");
+      break;
+    case LSC_DATA_SIZE_32b:
+      check (dataShape2D.width <= 16 && dataShape2D.height <= 32,
+          "for d32, width <= 16 and height <= 32 elements");
+      break;
+    case LSC_DATA_SIZE_64b:
+      check (dataShape2D.width <= 4 && dataShape2D.height == 8,
+          "for d64, width <= 4 and height == 8 elements");
+      break;
+    default:
+      check(false, "invalid data type");
+    }
+  }
+
+  const auto opInfo = LscOpInfoGet(op);
+  vISA_ASSERT_INPUT(opInfo.isBlock2D(), "not an LSC block2d op");
+
+  const G4_ExecSize execSize = toExecSize(visaExecSize);
+  const G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
+
+  int emuImmOffX = 0, emuImmOffY = 0;
+  auto immOffNeedsEmu = [&](int off) {
+    return getPlatform() < Xe2 ||
+           off < -(1 << 9) || off > (1 << 9) - 1;
+  };
+
+  bool needsWaExDesc15_12 =
+      VISA_WA_CHECK(getPWaTable(), Wa_14020375314) &&
+      ((xImmOff & 0xF) == 0xB);
+  if (immOffNeedsEmu(xImmOff) || needsWaExDesc15_12) {
+    emuImmOffX = xImmOff;
+    xImmOff = 0;
+  }
+  if (immOffNeedsEmu(yImmOff)) {
+    emuImmOffY = yImmOff;
+    yImmOff = 0;
+  }
+
+  G4_SrcRegRegion* src0Addr = src0AddrRgn->asSrcRegRegion();
+
+  SFID sfid = SFID::NULL_SFID;
+  switch (lscSfid) {
+  case LSC_UGM:
+    sfid = SFID::UGM;
+    break;
+  case LSC_UGML:
+    sfid = SFID::UGML;
+    break;
+  case LSC_SLM:
+    sfid = SFID::SLM;
+    break;
+  default:
+    vISA_ASSERT_UNREACHABLE("invalid SFID for untyped block2d LSC message");
+  }
+  // send descriptor
+  uint32_t desc = 0;
+
+  desc |= opInfo.encoding;
+  if (dataShape2D.vnni)
+    desc |= (1 << 7); // Desc[7]
+  int dataSizeBits = lscEncodeDataSize(dataShape2D.size, desc, status);
+  if (dataShape2D.order == LSC_DATA_ORDER_TRANSPOSE)
+    desc |= (1 << 15);
+  lscEncodeCachingOpts(opInfo, cacheOpts, desc, status);
+  desc |= (0 << 29); // Desc[30:29] = FLAT
+
+  uint32_t dataRegs =
+      lscBlock2dComputeDataRegs(op, dataShape2D, getGRFSize(), dataSizeBits);
+  uint32_t addrRegs = 1;
+
+  int src1Len = 0;
+  uint32_t dstLen = 0;
+  uint32_t src0Len = addrRegs;
+
+  if (opInfo.isLoad()) {
+    if (isNullOperand(dstRead)) {
+      dstLen = 0; // prefetch
+    } else {
+      dstLen = dataRegs;
+    }
+    src1Len = 0;
+  } else if (opInfo.isStore()) {
+    dstLen = 0;
+    src0Len = addrRegs;
+    src1Len = (int)dataRegs;
+  } else {
+    check(false, "unexpected message type");
+  }
+
+  desc |= dstLen << 20;   // Desc[24:20]  dst len
+  desc |= addrRegs << 25; // Desc[28:25]  src0 len
+
+
+  uint32_t exDesc = 0;
+  exDesc |= ((uint32_t)xImmOff & 0x3FF) << 12;
+  exDesc |= ((uint32_t)yImmOff & 0x3FF) << 22;
+
+  G4_SendDescRaw *msgDesc =
+      createLscDesc(sfid, desc, exDesc, src1Len,
+                    getSendAccessType(opInfo.isLoad(), opInfo.isStore()),
+                    nullptr, LdStAttrs::NONE);
+
+  G4_InstSend *sendInst =
+      createLscSendInst(pred, dstRead, src0Addr, src1Data, execSize, msgDesc,
+                        instOpt, LSC_ADDR_TYPE_FLAT, 0x0, true);
+  (void)sendInst;
+
+  return status;
+}
+
 int IR_Builder::translateLscUntypedBlock2DInst(
     LSC_OP op, LSC_SFID lscSfid, G4_Predicate *pred,
     VISA_Exec_Size visaExecSize, VISA_EMask_Ctrl emask,

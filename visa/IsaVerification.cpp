@@ -4115,19 +4115,25 @@ struct LscInstVerifier {
       // may have additional constraints (e.g. only 1, 2, and 4)
       error("block2d data shape block count (array/vec len) > 16");
     }
-
-    //
-    /////////////////////////////////////////
-    // now we're at the register operands
-    //
-    verifyVectorOperandNotNull("SurfaceBase", currOpIx + 1);
-    verifyVectorOperandNotNull("SurfaceWidth", currOpIx + 2);
-    verifyVectorOperandNotNull("SurfaceHeight", currOpIx + 3);
-    verifyVectorOperandNotNull("SurfacePitch", currOpIx + 4);
-    verifyVectorOperandNotNull("OffsetX", currOpIx + 5);
-    verifyVectorOperandNotNull("OffsetY", currOpIx + 7);
-    //
-    verifyDataOperands(currOpIx, currOpIx + 9);
+    if (inst->opnd_num - currOpIx < LSC_BLOCK2D_ADDR_PARAMS) {
+      // TODO: change this when we add grammar for this flavor of block2D operation
+      verifyVectorOperandNotNull("addrPayload", currOpIx + 1);
+      // imm x and y offsets are currOpIx+2 and currOpIx+3
+      verifyDataOperands(currOpIx, currOpIx + 4);
+    } else {
+      //
+      /////////////////////////////////////////
+      // now we're at the register operands
+      //
+      //
+      verifyVectorOperandNotNull("SurfaceBase", currOpIx + 1);
+      verifyVectorOperandNotNull("SurfaceWidth", currOpIx + 2);
+      verifyVectorOperandNotNull("SurfaceHeight", currOpIx + 3);
+      verifyVectorOperandNotNull("SurfacePitch", currOpIx + 4);
+      verifyVectorOperandNotNull("OffsetX", currOpIx + 5);
+      verifyVectorOperandNotNull("OffsetY", currOpIx + 7);
+      verifyDataOperands(currOpIx, currOpIx + 9);
+    }
   }
 
   ///////////////////////////////////////////////////////////////////////////

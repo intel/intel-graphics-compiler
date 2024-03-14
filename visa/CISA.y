@@ -2073,6 +2073,14 @@ LscUntypedBlock2dAddrOperand:
     {
         $$ = {nullptr,0,{$3,$5,$7,$9,$11,$13},{0, 0},{LSC_ADDR_TYPE_FLAT,1,0,LSC_ADDR_SIZE_64b}};
     }
+    |
+//  1           2       3             4     5      6
+    LSC_AM_FLAT LBRACK LscVectorOpReg PLUS LPAREN  IntExpPrim
+//  7     8               9        10
+    COMMA IntExpPrim RPAREN RBRACK
+    {
+        $$ = {nullptr,0,{$3,nullptr,nullptr,nullptr,nullptr,nullptr},{(int)$6,(int)$8},{LSC_ADDR_TYPE_FLAT,1,0,LSC_ADDR_SIZE_64b}};
+    }
 LscTypedAddrWithOffsetOperand:
     LscPayloadNonNullReg
     {

@@ -3066,28 +3066,40 @@ private:
     auto fmtAddrOperand = [&]() {
       ss << "flat";
       ss << "[";
-      formatVectorOperand(currOpIx + 1);
-      ss << ",";
-      formatVectorOperand(currOpIx + 2);
-      ss << ",";
-      formatVectorOperand(currOpIx + 3);
-      ss << ",";
-      formatVectorOperand(currOpIx + 4);
-      ss << ",";
-      formatVectorOperand(currOpIx + 5);
-      if ((int)getPrimitive<int16_t>(currOpIx + 6) != 0) {
-        if ((int)getPrimitive<int16_t>(currOpIx+6) > 0) {
-          ss << "+";
-        }
-        ss << (int)getPrimitive<int16_t>(currOpIx+6);
+      if (inst->opnd_num - currOpIx < LSC_BLOCK2D_ADDR_PARAMS) {
+        formatVectorOperand(currOpIx + 1);
+        ss << " + (";
+        // imm x offset
+        ss << (int)getPrimitive<int16_t>(currOpIx + 2);
+        ss << ",";
+        // imm y offset
+        ss << (int)getPrimitive<int16_t>(currOpIx + 3);
+        ss << ")";
       }
-      ss << ",";
-      formatVectorOperand(currOpIx + 7);
-      if ((int)getPrimitive<int16_t>(currOpIx+8) != 0) {
-        if ((int)getPrimitive<int16_t>(currOpIx+8) > 0) {
-          ss << "+";
+      else {
+        formatVectorOperand(currOpIx + 1);
+        ss << ",";
+        formatVectorOperand(currOpIx + 2);
+        ss << ",";
+        formatVectorOperand(currOpIx + 3);
+        ss << ",";
+        formatVectorOperand(currOpIx + 4);
+        ss << ",";
+        formatVectorOperand(currOpIx + 5);
+        if ((int)getPrimitive<int16_t>(currOpIx + 6) != 0) {
+          if ((int)getPrimitive<int16_t>(currOpIx + 6) > 0) {
+            ss << "+";
+          }
+          ss << (int)getPrimitive<int16_t>(currOpIx + 6);
         }
-        ss << (int)getPrimitive<int16_t>(currOpIx+8);
+        ss << ",";
+        formatVectorOperand(currOpIx + 7);
+        if ((int)getPrimitive<int16_t>(currOpIx + 8) != 0) {
+          if ((int)getPrimitive<int16_t>(currOpIx + 8) > 0) {
+            ss << "+";
+          }
+          ss << (int)getPrimitive<int16_t>(currOpIx + 8);
+        }
       }
       ss << "]";
     };
@@ -3099,7 +3111,8 @@ private:
     } else {
       fmtAddrOperand();
       ss << "  ";
-      formatDataOperand(currOpIx + 9);
+      (inst->opnd_num - currOpIx < LSC_BLOCK2D_ADDR_PARAMS) ?
+        formatDataOperand(currOpIx + 4) : formatDataOperand(currOpIx + 9);
     }
   } // formatUntypedBlock2D
 

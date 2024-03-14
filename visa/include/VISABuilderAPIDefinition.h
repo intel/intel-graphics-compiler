@@ -441,6 +441,12 @@ public:
       LSC_DATA_SHAPE_BLOCK2D dataShape, VISA_RawOpnd *dstData,
       VISA_VectorOpnd *src0Addrs[LSC_BLOCK2D_ADDR_PARAMS],
       int xImmOffset, int yImmOffset, VISA_RawOpnd *src1Data) = 0;
+  VISA_BUILDER_API virtual int AppendVISALscUntypedBlock2DInst(
+      LSC_OP subOpcode, VISA_PredOpnd *pred,
+      VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
+      LSC_DATA_SHAPE_BLOCK2D dataShape, VISA_RawOpnd *dstData,
+      VISA_VectorOpnd *src0AddrPayload,
+      int xImmOffset, int yImmOffset, VISA_RawOpnd *src1Data) = 0;
   ///////////////////////////////////////////////////////////////////////////
   // LSC typed operations
   //

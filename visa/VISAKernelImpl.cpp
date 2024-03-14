@@ -7825,6 +7825,76 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedStridedInst(
 }
 
 VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedBlock2DInst(
+    LSC_OP op, VISA_PredOpnd *pred, VISA_Exec_Size execSize,
+    VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
+    LSC_DATA_SHAPE_BLOCK2D dataShape2D, VISA_RawOpnd *dstData,
+    VISA_VectorOpnd* src0AddrPayload,
+    int xImmOffset, int yImmOffset, VISA_RawOpnd *src1Data) {
+
+  TIME_SCOPE(VISA_BUILDER_APPEND_INST);
+
+  AppendVISAInstCommon();
+
+  int status = VISA_SUCCESS;
+
+  LSC_CHECK_NULL_DST(dstData);
+  LSC_CHECK_NULL_SRC(src1Data);
+
+  if (IS_GEN_BOTH_PATH) {
+    CreateGenRawDstOperand(dstData);
+    CreateGenRawSrcOperand(src1Data);
+
+    G4_Operand *src0AddrSrcRgn = src0AddrPayload->g4opnd;
+
+    status |= m_builder->translateLscUntypedBlock2DInst(
+        op, LSC_UGM, pred ? pred->g4opnd->asPredicate() : nullptr, execSize,
+        emask, cacheOpts, dataShape2D, dstData->g4opnd->asDstRegRegion(),
+        src0AddrSrcRgn, src1Data->g4opnd->asSrcRegRegion(), xImmOffset, yImmOffset);
+  }
+
+  if (IS_VISA_BOTH_PATH) {
+    const VISA_INST_Desc *instDesc = &CISA_INST_table[ISA_LSC_UNTYPED];
+    VISA_opnd *opnds[MAX_OPNDS_PER_INST]{};
+    int numOpnds = 0;
+
+    // use same order for load, store, and atomic
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(op, ISA_TYPE_UB));
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(LSC_UGM, ISA_TYPE_UB));
+    //
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(cacheOpts.l1, ISA_TYPE_UB));
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(cacheOpts.l3, ISA_TYPE_UB));
+    //
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(dataShape2D.size, ISA_TYPE_UB));
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(dataShape2D.order, ISA_TYPE_UB));
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(dataShape2D.blocks, ISA_TYPE_UB));
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(dataShape2D.width, ISA_TYPE_UW));
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(dataShape2D.height, ISA_TYPE_UW));
+    ADD_OPND(numOpnds, opnds,
+             CreateOtherOpnd(dataShape2D.vnni ? 1 : 0, ISA_TYPE_UB));
+    //
+    ADD_OPND(numOpnds, opnds, dstData);
+
+    ADD_OPND(numOpnds, opnds, src0AddrPayload);
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(xImmOffset, ISA_TYPE_D));
+    ADD_OPND(numOpnds, opnds, CreateOtherOpnd(yImmOffset, ISA_TYPE_D));
+
+    ADD_OPND(numOpnds, opnds, src1Data);
+
+    CisaFramework::CisaInst *inst = new (m_mem) CisaFramework::CisaInst(m_mem);
+    PredicateOpnd predOpnd =
+        pred ? pred->convertToPred() : PredicateOpnd::getNullPred();
+    // Pack execution size & mask
+    unsigned size = execSize;
+    PACK_EXEC_SIZE(size, emask);
+
+    inst->createCisaInstruction(ISA_LSC_UNTYPED, (uint8_t)size, 0, predOpnd,
+                                opnds, numOpnds, instDesc, verifier);
+    addInstructionToEnd(inst);
+  }
+  return status;
+}
+
+VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedBlock2DInst(
     LSC_OP op, LSC_SFID lscSfid, VISA_PredOpnd *pred, VISA_Exec_Size execSize,
     VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
     LSC_DATA_SHAPE_BLOCK2D dataShape2D, VISA_RawOpnd *dstData,
