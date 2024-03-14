@@ -64,6 +64,7 @@ namespace IGC
         void visitGetElementPtrInst(llvm::GetElementPtrInst& I);
         void visitPHINode(llvm::PHINode& PN);
         void visitSelectInst(llvm::SelectInst& I);
+        void visitIntrinsicInst(llvm::IntrinsicInst& I);
         void SetLoopFlags(llvm::Function& F);
 
     private:

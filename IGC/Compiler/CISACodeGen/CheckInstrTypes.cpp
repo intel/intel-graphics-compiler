@@ -594,6 +594,44 @@ void CheckInstrTypes::visitSelectInst(SelectInst& I)
     g_InstrTypes.hasSel = true;
 }
 
+void CheckInstrTypes::visitIntrinsicInst(IntrinsicInst& I)
+{
+    auto isGenericPtr = [](Value* V) {
+        IGC_ASSERT(V->getType()->isPointerTy());
+        PointerType* PTy = cast<PointerType>(V->getType());
+        return PTy->getAddressSpace() == ADDRESS_SPACE_GENERIC;
+    };
+
+    switch (I.getIntrinsicID())
+    {
+        case Intrinsic::memcpy:
+        case Intrinsic::memmove:
+        {
+            auto MT = dyn_cast<MemTransferInst>(&I);
+            Value* Dst = MT->getRawDest();
+            Value* Src = MT->getRawSource();
+            if (isGenericPtr(Dst) || isGenericPtr(Src))
+            {
+                g_InstrTypes.hasGenericAddressSpacePointers = true;
+                g_InstrTypes.hasDynamicGenericLoadStore = true;
+            }
+            break;
+        }
+        case Intrinsic::memset:
+        {
+            auto MS = dyn_cast<MemSetInst>(&I);
+            Value* Dst = MS->getRawDest();
+            if (isGenericPtr(Dst))
+            {
+                g_InstrTypes.hasGenericAddressSpacePointers = true;
+                g_InstrTypes.hasDynamicGenericLoadStore = true;
+            }
+            break;
+        }
+        default: break;
+    }
+}
+
 void CheckInstrTypes::visitGetElementPtrInst(llvm::GetElementPtrInst& I)
 {
     g_InstrTypes.numInsts++;
