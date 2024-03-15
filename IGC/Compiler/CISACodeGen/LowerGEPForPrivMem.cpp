@@ -334,6 +334,15 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* 
         return StatusPrivArr2Reg::OutOfAllocSizeLimit;
     }
 
+    // Multiple indirect byte access could be harmful for performance
+    if (SOAInfo.baseType->isIntegerTy(8) && !isUniformAlloca &&
+        m_ctx->platform.isCoreChildOf(IGFX_XE_HPG_CORE))
+    {
+        // Limit promotable alloca size with byte indirect access by 4 GRF vector size
+        if (allocaSize * SIMDSize / m_ctx->platform.getGRFSize() > 4)
+            return StatusPrivArr2Reg::IsNotNativeType;
+    }
+
     // get all the basic blocks that contain the uses of the alloca
     // then estimate how much changing this alloca to register adds to the pressure at that block.
     unsigned int lowestAssignedNumber = 0xFFFFFFFF;
