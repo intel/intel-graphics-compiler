@@ -798,7 +798,7 @@ public:
     bool IsIndirectAccess(llvm::Value* value);
 
     CVariable* GetSrcVariable(const SSource& source, bool fromConstPool = false);
-    void SetSourceModifiers(unsigned int sourceIndex, const SSource& source);
+    void SetSourceModifiers(unsigned int sourceIndex, const SSource& source) const;
 
     SBasicBlock* getCurrentBlock() const {
         // if m_currentBlock is not set to initial value then return current block

@@ -2129,7 +2129,7 @@ CVariable* EmitPass::GetSrcVariable(const SSource& source, bool fromConstPool)
     return src;
 }
 
-void EmitPass::SetSourceModifiers(unsigned int sourceIndex, const SSource& source)
+void EmitPass::SetSourceModifiers(unsigned int sourceIndex, const SSource& source) const
 {
     if (source.mod != EMOD_NONE)
     {
@@ -3115,6 +3115,8 @@ void EmitPass::EmitMulPair(GenIntrinsicInst* GII, const SSource Sources[4], cons
     if (Lo != nullptr && Hi == nullptr)
     {
         // Lo = A * B
+        SetSourceModifiers(0, Sources[0]);
+        SetSourceModifiers(1, Sources[2]);
         m_encoder->Mul(Lo, L0, L1);
         m_encoder->Push();
         return;
@@ -3139,6 +3141,8 @@ void EmitPass::EmitMulPair(GenIntrinsicInst* GII, const SSource Sources[4], cons
 
     if (Lo == nullptr)
     {
+        SetSourceModifiers(0, Sources[0]);
+        SetSourceModifiers(1, Sources[2]);
         // Cr = carry(A * B)
         m_encoder->MulH(dstHiTmp, L0, L1);
         m_encoder->Push();
@@ -3160,6 +3164,8 @@ void EmitPass::EmitMulPair(GenIntrinsicInst* GII, const SSource Sources[4], cons
             CVariable* dstTmp = m_currShader->GetNewVariable(numElements * 2, ISA_TYPE_UD, EALIGN_GRF, Lo->IsUniform(),
                 CName(Lo->getName(), "int64Tmp"));
             CVariable* zero = m_currShader->ImmToVariable(0, ISA_TYPE_UD);
+            SetSourceModifiers(0, Sources[0]);
+            SetSourceModifiers(1, Sources[2]);
             m_encoder->Madw(dstTmp, L0, L1, zero);
 
             // dstLow = E
@@ -3177,10 +3183,14 @@ void EmitPass::EmitMulPair(GenIntrinsicInst* GII, const SSource Sources[4], cons
         else
         {
             // E = A * B
+            SetSourceModifiers(0, Sources[0]);
+            SetSourceModifiers(1, Sources[2]);
             m_encoder->Mul(dstLoTmp, L0, L1);
             m_encoder->Push();
 
             // Cr = carry(A * B)
+            SetSourceModifiers(0, Sources[0]);
+            SetSourceModifiers(1, Sources[2]);
             m_encoder->MulH(dstHiTmp, L0, L1);
             m_encoder->Push();
         }
@@ -3188,6 +3198,8 @@ void EmitPass::EmitMulPair(GenIntrinsicInst* GII, const SSource Sources[4], cons
 
     // F = A * D
     CVariable* T0 = m_currShader->GetNewVariable(Hi, CName(Hi->getName(), "int64HiLH"));
+    SetSourceModifiers(0, Sources[0]);
+    SetSourceModifiers(1, Sources[3]);
     m_encoder->Mul(T0, L0, H1);
     m_encoder->Push();
 
@@ -3196,6 +3208,8 @@ void EmitPass::EmitMulPair(GenIntrinsicInst* GII, const SSource Sources[4], cons
     m_encoder->Push();
 
     // G = B * C
+    SetSourceModifiers(0, Sources[2]);
+    SetSourceModifiers(1, Sources[1]);
     m_encoder->Mul(T0, L1, H0);
     m_encoder->Push();
 
