@@ -154,6 +154,8 @@ public:
     bool GTPinIndirRef                      = false;
     // Skip emission of Frame Descriptor Entry in VISA.
     bool SkipFDE                            = false;
+    bool NoFusedCallWA                      = false;
+    bool DisableCompaction                  = false;
     uint32_t GTPinScratchAreaSizeValue      = 0;
 
     std::vector<std::string> LargeGRFKernels;

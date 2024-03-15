@@ -506,6 +506,14 @@ void Options::parseOptions(const char* opts)
         SkipFDE = true;
     }
 
+    if (apiOptions.hasArg(OPT_no_fusedCallWA_common)) {
+      NoFusedCallWA = true;
+    }
+
+    if (apiOptions.hasArg(OPT_disable_compaction_common)) {
+      DisableCompaction = true;
+    }
+
     if (const llvm::opt::Arg* arg = apiOptions.getLastArg(OPT_required_thread_count_common))
     {
         if (arg->getNumValues() > 0)

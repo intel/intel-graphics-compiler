@@ -30,6 +30,10 @@ defm gtpin_indir_ref : CommonFlag<"gtpin-indir-ref">;
 
 defm skip_fde : CommonFlag<"skip-fde">;
 
+defm no_fusedCallWA : CommonFlag<"no-fusedCallWA">;
+
+defm disable_compaction : CommonFlag<"disable-compaction">;
+
 def emit_debug : PlainFlag<"g">,
   HelpText<"Enable generation of debug information and enables kernel debug">;
 // These are coming from NEO when run under debugger.

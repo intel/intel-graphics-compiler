@@ -4138,6 +4138,9 @@ namespace IGC
             {
                 SaveOption(vISA_skipFDE, true);
             }
+            if (ClContext->m_Options.DisableCompaction) {
+              SaveOption(vISA_Compaction, false);
+            }
         }
 
         bool EnableBarrierInstCounterBits = false;
@@ -4511,8 +4514,16 @@ namespace IGC
 
         if (m_program->m_Platform->hasFusedEU() && IGC_IS_FLAG_ENABLED(EnableCallWA))
         {
-            if (m_program->HasNestedCalls() || m_program->HasIndirectCalls() || m_program->IsIntelSymbolTableVoidProgram())
-            {
+            bool forceNoWA = false;
+            if (context->type == ShaderType::OPENCL_SHADER) {
+                auto ClContext = static_cast<OpenCLProgramContext *>(context);
+                if (ClContext->m_Options.NoFusedCallWA) {
+                    forceNoWA = true;
+                }
+            }
+            if (!forceNoWA &&
+                (m_program->HasNestedCalls() || m_program->HasIndirectCalls() ||
+                 m_program->IsIntelSymbolTableVoidProgram())) {
                 SaveOption(vISA_fusedCallWA, (uint32_t)1);
             }
         }
