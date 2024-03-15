@@ -266,8 +266,8 @@ protected:
     SPIRVEntry::validate();
     CompType->validate();
 #if 1
-    // Allow any vector from 1 to 16 for testing.
-    IGC_ASSERT(CompCount >= 1 && CompCount <= 16);
+    // Allow vector size to be 64 as Block2D load can have short64(d8_m32k32v2)
+    IGC_ASSERT(CompCount >= 1 && CompCount <= 64);
 #else
     IGC_ASSERT(CompCount == 2 || CompCount == 3 || CompCount == 4 ||
         CompCount == 8 || CompCount == 16);
