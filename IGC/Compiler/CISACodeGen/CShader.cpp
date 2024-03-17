@@ -497,21 +497,20 @@ void CShader::CreateAliasVars()
         for (auto& II : m_VRA->m_baseVecMap)
         {
             SBaseVecDesc* BV = II.second;
-            Value* rootVal = BV->BaseVector;
+            Value* baseVal = BV->BaseVector;
             if (BV->Align != EALIGN_AUTO) {
-                // may need to set align on root cvar
-                Value* rV = rootVal;
+                // Need to set align on root cvar
+                Value* rV = baseVal;
                 if (m_deSSA) {
-                    Value* dessaRoot = m_deSSA->getRootValue(rootVal);
-                    if (dessaRoot && dessaRoot != rootVal)
+                    Value* dessaRoot = m_deSSA->getRootValue(baseVal);
+                    if (dessaRoot && dessaRoot != baseVal)
                         rV = dessaRoot;
                 }
-                CVariable* rVar = GetSymbol(rV);
-                if (rVar->GetAlign() == EALIGN_AUTO ||
-                    rVar->GetAlign() < BV->Align)
-                    rVar->SetAlign(BV->Align);
+                (void) GetSymbol(rV, false, BV->Align);
             }
-            CVariable* rootCVar = GetSymbol(rootVal);
+            CVariable* rootCVar = GetSymbol(baseVal);
+            Type* bEltTy = baseVal->getType()->getScalarType();
+            const uint32_t bEltBytes = (int)m_DL->getTypeStoreSize(bEltTy);
 
             // Generate all vector aliasers and their
             // dessa root if any.
@@ -526,7 +525,9 @@ void CShader::CreateAliasVars()
                     if (dessaRootVal && dessaRootVal != V)
                         Vals[1] = dessaRootVal;
                 }
+                // index to baseVal, use baseElt to compute offset
                 int startIx = aSV->StartElementOffset;
+                int offsetInBytes = bEltBytes * startIx;
 
                 for (int i = 0; i < 2; ++i)
                 {
@@ -540,15 +541,12 @@ void CShader::CreateAliasVars()
                     int nelts = (VTy ? (int)VTy->getNumElements() : 1);
 
                     VISA_Type visaTy = GetType(BTy);
-                    int typeBytes = (int)m_DL->getTypeStoreSize(BTy);
-
                     // special handling of struct type
                     if (BTy->isStructTy()) {
                         IGC_ASSERT((int)CEncoder::GetCISADataTypeSize(visaTy) == 1);
                         nelts *= (int)m_DL->getTypeStoreSize(BTy);
                     }
 
-                    int offsetInBytes = typeBytes * startIx;
                     int nbelts = nelts;
                     if (!rootCVar->IsUniform())
                     {
@@ -3082,7 +3080,10 @@ unsigned int CShader::EvaluateSIMDConstExpr(Value* C)
     return 0;
 }
 
-CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
+// MinAlign: if set (meaning not EALIGN_AUTO), select the larger of this
+//           and 'preferredAlign'.
+CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool,
+    e_alignment MinAlign)
 {
     CVariable* var = nullptr;
 
@@ -3092,7 +3093,7 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
         return GetStructVariable(value);
     }
 
-    if (Constant * C = llvm::dyn_cast<llvm::Constant>(value))
+    if (Constant* C = llvm::dyn_cast<llvm::Constant>(value))
     {
         // Check for function and global symbols
         {
@@ -3138,7 +3139,7 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
                 {
                     return it->second;
                 }
-                const auto &valName = value->getName();
+                const auto& valName = value->getName();
                 if (isVecType)
                 {
                     // Map the entire vector value to the CVar
@@ -3190,7 +3191,7 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
         return var;
     }
 
-    else if (Instruction * inst = dyn_cast<Instruction>(value))
+    else if (Instruction* inst = dyn_cast<Instruction>(value))
     {
         if (m_CG->SIMDConstExpr(inst))
         {
@@ -3216,7 +3217,7 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
 
         // For non node value, get symbol for node value first.
         // Then, get an alias to that node value.
-        CVariable* Base = GetSymbol(nodeVal);
+        CVariable* Base = GetSymbol(nodeVal, false, MinAlign);
         CVariable* AliasVar = createAliasIfNeeded(value, Base);
         symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, AliasVar));
         return AliasVar;
@@ -3225,7 +3226,7 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
     if (!isa<InsertElementInst>(value) && value->hasOneUse()) {
         auto IEI = dyn_cast<InsertElementInst>(value->user_back());
         if (IEI && CanTreatScalarSourceAsAlias(IEI)) {
-            CVariable* Var = GetSymbol(IEI);
+            CVariable* Var = GetSymbol(IEI, false, MinAlign);
             llvm::ConstantInt* Idx = llvm::cast<llvm::ConstantInt>(IEI->getOperand(2));
             unsigned short NumElts = 1;
             unsigned EltSz = CEncoder::GetCISADataTypeSize(GetType(IEI->getType()->getScalarType()));
@@ -3242,7 +3243,7 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
         }
     }
 
-    if (llvm::ExtractElementInst * EEI = llvm::dyn_cast<ExtractElementInst>(value))
+    if (llvm::ExtractElementInst* EEI = llvm::dyn_cast<ExtractElementInst>(value))
     {
         if (CanTreatAsAlias(EEI))
         {
@@ -3251,7 +3252,7 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
             Value* vecOperand = EEI->getVectorOperand();
             // need to call GetSymbol() before AdjustExtractIndex(), since
             // GetSymbol may update mask of the vector operand.
-            CVariable* vec = GetSymbol(vecOperand);
+            CVariable* vec = GetSymbol(vecOperand, false, MinAlign);
 
             uint element = AdjustExtractIndex(vecOperand, (uint16_t)pConstElem->getZExtValue());
             IGC_ASSERT_MESSAGE((element < (UINT16_MAX)), "ExtractElementInst element index > higher than 64k");
@@ -3294,11 +3295,11 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
         }
     }
 
-    if (GenIntrinsicInst * genInst = dyn_cast<GenIntrinsicInst>(value))
+    if (GenIntrinsicInst* genInst = dyn_cast<GenIntrinsicInst>(value))
     {
         if (VMECoalescePattern(genInst))
         {
-            auto* Sym = GetSymbol(genInst->getOperand(0));
+            auto* Sym = GetSymbol(genInst->getOperand(0), false, MinAlign);
             auto* Alias = GetNewAlias(Sym, Sym->GetType(), 0, Sym->GetNumberElement());
             symbolMapping.insert(std::pair<Value*, CVariable*>(value, Alias));
             return Alias;
@@ -3346,6 +3347,10 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
     IGC_ASSERT(!isa<Instruction>(value) || isa<PHINode>(value) || m_CG->NeedInstruction(cast<Instruction>(*value)));
 
     e_alignment preferredAlign = GetPreferredAlignment(value, m_WI, GetContext());
+    if (MinAlign != EALIGN_AUTO &&
+        (preferredAlign == EALIGN_AUTO || MinAlign > preferredAlign)) {
+        preferredAlign = MinAlign;
+    }
 
     // simple de-ssa, always creates a new svar, and return
     if (!m_deSSA)

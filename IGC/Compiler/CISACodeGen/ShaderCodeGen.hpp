@@ -154,7 +154,8 @@ public:
     CVariable* LazyCreateCCTupleBackingVariable(
         CoalescingEngine::CCTuple* ccTuple,
         VISA_Type baseType = ISA_TYPE_UD);
-    CVariable* GetSymbol(llvm::Value* value, bool fromConstantPool = false);
+    CVariable* GetSymbol(llvm::Value* value, bool fromConstantPool = false,
+                         e_alignment MinAlign = EALIGN_AUTO);
     void        AddSetup(uint index, CVariable* var);
     bool        AppendPayloadSetup(CVariable* var);
     void        AddPatchTempSetup(CVariable* var);

@@ -1293,7 +1293,6 @@ bool VariableReuseAnalysis::processInsertTo(VecInsEltInfoTy& AllIEIs)
         if (!Elt ||
             (Sub && (i - SubStartIx) != AllIEIs[i].FromVec_eltIx)) {
             isSubCandidate = false;
-            continue;
         }
 
         // If Sub == nullptr or NextSub != Sub, this is the last element
