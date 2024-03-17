@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/CoalescingEngine.hpp"
 #include "Compiler/CISACodeGen/BlockCoalescing.hpp"
 #include "common/LLVMWarningsPush.hpp"
+#include "Compiler/MetaDataUtilsWrapper.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/ADT/TinyPtrVector.h"
@@ -193,6 +194,7 @@ namespace IGC {
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {
             // AU.addRequired<RegisterEstimator>();
             AU.setPreservesAll();
+            AU.addRequired<MetaDataUtilsWrapper>();
             AU.addRequired<llvm::DominatorTreeWrapperPass>();
             AU.addRequired<WIAnalysis>();
             AU.addRequired<LiveVarsAnalysis>();
@@ -493,6 +495,11 @@ namespace IGC {
         // <V's root, V> into the map.  This is a quick check to see if any
         // value in a dessa CC has been aliased (either aliaser or aliasee)
         Val2ValMapTy m_root2AliasMap;
+
+        // For vector aliasing heuristic to prevent possible high-reg pressure
+        bool m_skipScalarAliaser;
+        void setSkipScalarAliaser(llvm::BasicBlock* BB);
+        bool isSkipScalarAliaser() const { return m_skipScalarAliaser; }
     };
 
     llvm::FunctionPass* createVariableReuseAnalysisPass();

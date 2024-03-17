@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 using namespace IGC;
+using namespace IGC::IGCMD;
 
 namespace
 {
@@ -98,6 +99,7 @@ char VariableReuseAnalysis::ID = 0;
 IGC_INITIALIZE_PASS_BEGIN(VariableReuseAnalysis, "VariableReuseAnalysis",
     "VariableReuseAnalysis", false, true)
     // IGC_INITIALIZE_PASS_DEPENDENCY(RegisterEstimator)
+    IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
     IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
     IGC_INITIALIZE_PASS_DEPENDENCY(WIAnalysis)
     IGC_INITIALIZE_PASS_DEPENDENCY(LiveVarsAnalysis)
@@ -1096,55 +1098,60 @@ void VariableReuseAnalysis::InsertElementAliasing(Function* F)
     // VectorAlias=0x1: subvec aliasing for isolated values (getRootValue()=null)
     //            =0x2: subvec aliasing for both isolated and non-isolated value)
     const auto control = (m_pCtx->getVectorCoalescingControl() & 0x3);
-    // To avoid increasing GRF pressure, skip if F is too large.
+    // To avoid increasing GRF pressure, skip if F is too large or not an entry
     const uint32_t NumBBThreshold = (int)IGC_GET_FLAG_VALUE(VectorAliasBBThreshold);
-    if (control == 0 || F->size() > NumBBThreshold) {
+    MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    if (control == 0 || !isEntryFunc(pMdUtils, F) || F->size() > NumBBThreshold) {
         return;
     }
-
-    for (auto II = inst_begin(F), IE = inst_end(F); II != IE; ++II)
+    for (auto BI = F->begin(), BE = F->end(); BI != BE; ++BI)
     {
-        Instruction* I = &*II;
-        if (!m_PatternMatch->NeedInstruction(*I))
-            continue;
+        BasicBlock* BB = &*BI;
+        setSkipScalarAliaser(BB);
+        for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
+        {
+            Instruction* I = &*II;
+            if (!m_PatternMatch->NeedInstruction(*I))
+                continue;
 
-        InsertElementInst* IEI = dyn_cast<InsertElementInst>(I);
-        if (!IEI)
-            continue;
+            InsertElementInst* IEI = dyn_cast<InsertElementInst>(I);
+            if (!IEI)
+                continue;
 
-        // Two cases for sub-vector aliasing:
-        //   1. extractFrom: sub-vector is created from a base vector.
-        //      For example:
-        //         given base: int8 b;  a sub-vector s (int4) can be:
-        //         s = (int4)(b.s4, b.s5, b.s6, b.s7)
-        //      In this case, 's' becomes a part of 'b'. In LLVM IR,
-        //      there are a chain of extElt and insElt instructions for
-        //      doing so.
-        //   2. insertTo: sub-vector is used to create a base vector.
-        //      For example:
-        //         given sub-vector int4 s0, s1;  int8 vector b is created like:
-        //           b = (int8) (s0, s1)
-        //      In this case,  both s0 and s1 become part of b.
+            // Two cases for sub-vector aliasing:
+            //   1. extractFrom: sub-vector is created from a base vector.
+            //      For example:
+            //         given base: int8 b;  a sub-vector s (int4) can be:
+            //         s = (int4)(b.s4, b.s5, b.s6, b.s7)
+            //      In this case, 's' becomes a part of 'b'. In LLVM IR,
+            //      there are a chain of extElt and insElt instructions for
+            //      doing so.
+            //   2. insertTo: sub-vector is used to create a base vector.
+            //      For example:
+            //         given sub-vector int4 s0, s1;  int8 vector b is created like:
+            //           b = (int8) (s0, s1)
+            //      In this case,  both s0 and s1 become part of b.
 
-        // Start insertElement pattern from the first InsertElement (one
-        // with UndefValue. Note that this's also the dessa insElt root.
-        if (!isa<UndefValue>(IEI->getOperand(0)))
-            continue;
+            // Start insertElement pattern from the first InsertElement (one
+            // with UndefValue. Note that this's also the dessa insElt root.
+            if (!isa<UndefValue>(IEI->getOperand(0)))
+                continue;
 
-        // First, collect all insertElementInst and extractElementInst.
-        VecInsEltInfoTy AllIEIs;
-        if (!getAllInsEltsIfAvailable(IEI, AllIEIs)) {
-            continue;
-        }
+            // First, collect all insertElementInst and extractElementInst.
+            VecInsEltInfoTy AllIEIs;
+            if (!getAllInsEltsIfAvailable(IEI, AllIEIs)) {
+                continue;
+            }
 
-        // Check if this is an extractFrom pattern, if so, add alias.
-        if (processExtractFrom(AllIEIs)) {
-            continue;
-        }
+            // Check if this is an extractFrom pattern, if so, add alias.
+            if (processExtractFrom(AllIEIs)) {
+                continue;
+            }
 
-        // Check if this is an insertTo pattern, if so add alias.
-        if (processInsertTo(AllIEIs)) {
-            continue;
+            // Check if this is an insertTo pattern, if so add alias.
+            if (processInsertTo(AllIEIs)) {
+                continue;
+            }
         }
     }
 }
@@ -1292,6 +1299,10 @@ bool VariableReuseAnalysis::processInsertTo(VecInsEltInfoTy& AllIEIs)
         Value* Elt = AllIEIs[i].Elt;
         if (!Elt ||
             (Sub && (i - SubStartIx) != AllIEIs[i].FromVec_eltIx)) {
+            isSubCandidate = false;
+        }
+        if (Elt && Sub == nullptr && isSkipScalarAliaser()) {
+            // Skip scalar coalescing
             isSubCandidate = false;
         }
 
@@ -1560,4 +1571,12 @@ bool VariableReuseAnalysis::checkSubAlign (e_alignment& BaseAlign,
     }
     BaseAlign = sub_align;
     return true;
+}
+
+void VariableReuseAnalysis::setSkipScalarAliaser(llvm::BasicBlock* BB)
+{
+    if (BB->size() > 500)
+        m_skipScalarAliaser = true;
+    else
+        m_skipScalarAliaser = false;
 }
