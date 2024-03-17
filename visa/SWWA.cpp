@@ -3555,16 +3555,14 @@ void Optimizer::mulMacRSWA() {
             (dstStrideInBytes % exChannelWidth == 0));
   };
 
+  G4_INST *prevInst = nullptr;
   for (auto bb : fg) {
-    G4_INST *prevInst = nullptr;
     INST_LIST_ITER ii = bb->begin();
 
     while (ii != bb->end()) {
       G4_INST *inst = *ii;
 
-      if (inst->getNumSrc() != 2 || inst->tokenHonourInstruction() ||
-          inst->isIntrinsic()) {
-        prevInst = nullptr;
+      if (!inst->isIntegerPipeInstructionXe()) {
         ii++;
         continue;
       }
@@ -3597,9 +3595,9 @@ void Optimizer::mulMacRSWA() {
         G4_Operand *prevSrc1 = prevInst->getSrc(1);
         G4_Operand *curSrc1 = inst->getSrc(1);
 
-        if (prevSrc1->isGreg() &&
-            prevSrc1->isSrcRegRegion() && curSrc1 != nullptr &&
-            curSrc1->isGreg() && curSrc1->isSrcRegRegion()) { // All regions
+        if (prevSrc1 && prevSrc1->isGreg() && prevSrc1->isSrcRegRegion() &&
+            curSrc1 && curSrc1->isGreg() &&
+            curSrc1->isSrcRegRegion()) { // All regions
 
           if (!prevSrc1->asSrcRegRegion()->isFlatRegRegion(
                   exChannelWidth, checkFlatRegRegionFunc) &&
@@ -3627,9 +3625,8 @@ void Optimizer::mulMacRSWA() {
         G4_Operand *prevSrc1 = prevInst->getSrc(1);
         G4_Operand *curSrc1 = inst->getSrc(1);
 
-        if (prevSrc1->isGreg() &&
-            prevSrc1->isSrcRegRegion() && curSrc1 != nullptr &&
-            curSrc1->isGreg() && curSrc1->isSrcRegRegion()) {
+        if (prevSrc1 && prevSrc1->isGreg() && prevSrc1->isSrcRegRegion() &&
+            curSrc1 && curSrc1->isGreg() && curSrc1->isSrcRegRegion()) {
           if (prevInst->opcode() != G4_mach && prevInst->opcode() != G4_mul &&
               prevInst->opcode() != G4_mac) {
             if (curSrc1->asSrcRegRegion()->isFlatRegRegion(
