@@ -3436,6 +3436,9 @@ static bool analyzeForShiftPattern(Constant *C,
   if (ET->isPointerTy() || ET->isIntegerTy(1))
     return false;
 
+  if (auto *ConstExpt = dyn_cast<ConstantExpr>(C))
+    return false;
+
   unsigned ElmSz = ET->getScalarSizeInBits() / genx::ByteBits;
   unsigned Width = Subtarget.getGRFByteSize() / ElmSz;
   unsigned NElts = VT->getNumElements();
