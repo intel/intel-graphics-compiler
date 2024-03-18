@@ -36,7 +36,7 @@ define spir_kernel void @test_isequal(i32 addrspace(1)* %out1, i16 zeroext %v1_1
 entry:
 ; CHECK: %[[SRC0BF:.*]] = bitcast i16 %v1_1 to bfloat
 ; CHECK: %[[SRC1BF:.*]] = bitcast i16 %v2_1 to bfloat
-; CHECK: %[[FCMPRES:.*]] = fcmp oeq bfloat %[[SRC0BF]], %[[SRC1BF]]
+; CHECK: %[[FCMPRES:.*]] = fcmp ueq bfloat %[[SRC0BF]], %[[SRC1BF]]
 ; CHECK: %{{.*}} = zext i1 %[[FCMPRES]] to i32
   %call = call spir_func i32 @_Z22__builtin_bf16_isequaltt(i16 zeroext %v1_1, i16 zeroext %v2_1) #2
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %out1, i64 0
@@ -44,7 +44,7 @@ entry:
 
 ; CHECK: %[[SRC0BF:.*]] = bitcast <2 x i16> %v1_2 to <2 x bfloat>
 ; CHECK: %[[SRC1BF:.*]] = bitcast <2 x i16> %v2_2 to <2 x bfloat>
-; CHECK: %[[FCMPRES:.*]] = fcmp oeq <2 x bfloat> %[[SRC0BF]], %[[SRC1BF]]
+; CHECK: %[[FCMPRES:.*]] = fcmp ueq <2 x bfloat> %[[SRC0BF]], %[[SRC1BF]]
 ; CHECK: %{{.*}} = zext <2 x i1> %[[FCMPRES]] to <2 x i32>
   %call1 = call spir_func <2 x i32> @_Z22__builtin_bf16_isequalDv2_tS_(<2 x i16> %v1_2, <2 x i16> %v2_2) #2
   %arrayidx2 = getelementptr inbounds <2 x i32>, <2 x i32> addrspace(1)* %out2, i64 1
@@ -52,7 +52,7 @@ entry:
 
 ; CHECK: %[[SRC0BF:.*]] = bitcast <4 x i16> %v1_4 to <4 x bfloat>
 ; CHECK: %[[SRC1BF:.*]] = bitcast <4 x i16> %v2_4 to <4 x bfloat>
-; CHECK: %[[FCMPRES:.*]] = fcmp oeq <4 x bfloat> %[[SRC0BF]], %[[SRC1BF]]
+; CHECK: %[[FCMPRES:.*]] = fcmp ueq <4 x bfloat> %[[SRC0BF]], %[[SRC1BF]]
 ; CHECK: %{{.*}} = zext <4 x i1> %[[FCMPRES]] to <4 x i32>
   %call3 = call spir_func <4 x i32> @_Z22__builtin_bf16_isequalDv4_tS_(<4 x i16> %v1_4, <4 x i16> %v2_4) #2
   %arrayidx4 = getelementptr inbounds <4 x i32>, <4 x i32> addrspace(1)* %out4, i64 2
@@ -60,7 +60,7 @@ entry:
 
 ; CHECK: %[[SRC0BF:.*]] = bitcast <8 x i16> %v1_8 to <8 x bfloat>
 ; CHECK: %[[SRC1BF:.*]] = bitcast <8 x i16> %v2_8 to <8 x bfloat>
-; CHECK: %[[FCMPRES:.*]] = fcmp oeq <8 x bfloat> %[[SRC0BF]], %[[SRC1BF]]
+; CHECK: %[[FCMPRES:.*]] = fcmp ueq <8 x bfloat> %[[SRC0BF]], %[[SRC1BF]]
 ; CHECK: %{{.*}} = zext <8 x i1> %[[FCMPRES]] to <8 x i32>
   %call5 = call spir_func <8 x i32> @_Z22__builtin_bf16_isequalDv8_tS_(<8 x i16> %v1_8, <8 x i16> %v2_8) #2
   %arrayidx6 = getelementptr inbounds <8 x i32>, <8 x i32> addrspace(1)* %out8, i64 3
@@ -68,7 +68,7 @@ entry:
 
 ; CHECK: %[[SRC0BF:.*]] = bitcast <16 x i16> %v1_16 to <16 x bfloat>
 ; CHECK: %[[SRC1BF:.*]] = bitcast <16 x i16> %v2_16 to <16 x bfloat>
-; CHECK: %[[FCMPRES:.*]] = fcmp oeq <16 x bfloat> %[[SRC0BF]], %[[SRC1BF]]
+; CHECK: %[[FCMPRES:.*]] = fcmp ueq <16 x bfloat> %[[SRC0BF]], %[[SRC1BF]]
 ; CHECK: %{{.*}} = zext <16 x i1> %[[FCMPRES]] to <16 x i32>
   %call7 = call spir_func <16 x i32> @_Z22__builtin_bf16_isequalDv16_tS_(<16 x i16> %v1_16, <16 x i16> %v2_16) #2
   %arrayidx8 = getelementptr inbounds <16 x i32>, <16 x i32> addrspace(1)* %out16, i64 4
@@ -86,7 +86,7 @@ define spir_kernel void @test_isgreater(i32 addrspace(1)* %out1, i16 zeroext %v1
 entry:
 ; CHECK: %[[SRC0BF:.*]] = bitcast i16 %v1_1 to bfloat
 ; CHECK: %[[SRC1BF:.*]] = bitcast i16 %v2_1 to bfloat
-; CHECK: %[[FCMPRES:.*]] = fcmp ogt bfloat %[[SRC0BF]], %[[SRC1BF]]
+; CHECK: %[[FCMPRES:.*]] = fcmp ugt bfloat %[[SRC0BF]], %[[SRC1BF]]
 ; CHECK: %{{.*}} = zext i1 %[[FCMPRES]] to i32
   %call = call spir_func i32 @_Z24__builtin_bf16_isgreatertt(i16 zeroext %v1_1, i16 zeroext %v2_1) #2
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %out1, i64 0
@@ -103,7 +103,7 @@ define spir_kernel void @test_isless(i32 addrspace(1)* %out1, i16 zeroext %v1_1,
 entry:
 ; CHECK: %[[SRC0BF:.*]] = bitcast i16 %v1_1 to bfloat
 ; CHECK: %[[SRC1BF:.*]] = bitcast i16 %v2_1 to bfloat
-; CHECK: %[[FCMPRES:.*]] = fcmp olt bfloat %[[SRC0BF]], %[[SRC1BF]]
+; CHECK: %[[FCMPRES:.*]] = fcmp ult bfloat %[[SRC0BF]], %[[SRC1BF]]
 ; CHECK: %{{.*}} = zext i1 %[[FCMPRES]] to i32
   %call = call spir_func i32 @_Z21__builtin_bf16_islesstt(i16 zeroext %v1_1, i16 zeroext %v2_1) #2
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %out1, i64 0
@@ -120,7 +120,7 @@ define spir_kernel void @test_isnotequal(i32 addrspace(1)* %out1, i16 zeroext %v
 entry:
 ; CHECK: %[[SRC0BF:.*]] = bitcast i16 %v1_1 to bfloat
 ; CHECK: %[[SRC1BF:.*]] = bitcast i16 %v2_1 to bfloat
-; CHECK: %[[FCMPRES:.*]] = fcmp one bfloat %[[SRC0BF]], %[[SRC1BF]]
+; CHECK: %[[FCMPRES:.*]] = fcmp une bfloat %[[SRC0BF]], %[[SRC1BF]]
 ; CHECK: %{{.*}} = zext i1 %[[FCMPRES]] to i32
   %call = call spir_func i32 @_Z25__builtin_bf16_isnotequaltt(i16 zeroext %v1_1, i16 zeroext %v2_1) #2
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %out1, i64 0
@@ -137,7 +137,7 @@ define spir_kernel void @test_islessequal(i32 addrspace(1)* %out1, i16 zeroext %
 entry:
 ; CHECK: %[[SRC0BF:.*]] = bitcast i16 %v1_1 to bfloat
 ; CHECK: %[[SRC1BF:.*]] = bitcast i16 %v2_1 to bfloat
-; CHECK: %[[FCMPRES:.*]] = fcmp ole bfloat %[[SRC0BF]], %[[SRC1BF]]
+; CHECK: %[[FCMPRES:.*]] = fcmp ule bfloat %[[SRC0BF]], %[[SRC1BF]]
 ; CHECK: %{{.*}} = zext i1 %[[FCMPRES]] to i32
   %call = call spir_func i32 @_Z26__builtin_bf16_islessequaltt(i16 zeroext %v1_1, i16 zeroext %v2_1) #2
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %out1, i64 0
@@ -154,7 +154,7 @@ define spir_kernel void @test_isgreaterequal(i32 addrspace(1)* %out1, i16 zeroex
 entry:
 ; CHECK: %[[SRC0BF:.*]] = bitcast i16 %v1_1 to bfloat
 ; CHECK: %[[SRC1BF:.*]] = bitcast i16 %v2_1 to bfloat
-; CHECK: %[[FCMPRES:.*]] = fcmp oge bfloat %[[SRC0BF]], %[[SRC1BF]]
+; CHECK: %[[FCMPRES:.*]] = fcmp uge bfloat %[[SRC0BF]], %[[SRC1BF]]
 ; CHECK: %{{.*}} = zext i1 %[[FCMPRES]] to i32
   %call = call spir_func i32 @_Z29__builtin_bf16_isgreaterequaltt(i16 zeroext %v1_1, i16 zeroext %v2_1) #2
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %out1, i64 0

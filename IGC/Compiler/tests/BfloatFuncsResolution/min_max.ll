@@ -50,7 +50,7 @@ define spir_kernel void @test_min(i16 addrspace(1)* %out1, i16 zeroext %v1_1, i1
 entry:
 ; CHECK: %[[SRC0BF:.*]] = bitcast i16 %v1_1 to bfloat
 ; CHECK: %[[SRC1BF:.*]] = bitcast i16 %v2_1 to bfloat
-; CHECK: %[[COND:.*]] = fcmp olt bfloat %[[SRC0BF]], %[[SRC1BF]]
+; CHECK: %[[COND:.*]] = fcmp ult bfloat %[[SRC0BF]], %[[SRC1BF]]
 ; CHECK: %[[SELECTRES:.*]] = select i1 %[[COND]], bfloat %[[SRC0BF]], bfloat %[[SRC1BF]]
 ; CHECK: %{{.*}} = bitcast bfloat %[[SELECTRES]] to i16
   %call = call spir_func zeroext i16 @_Z18__builtin_bf16_mintt(i16 zeroext %v1_1, i16 zeroext %v2_1) #2
@@ -59,7 +59,7 @@ entry:
 
 ; CHECK: %[[SRC0BF:.*]] = bitcast <2 x i16> %v1_2 to <2 x bfloat>
 ; CHECK: %[[SRC1BF:.*]] = bitcast <2 x i16> %v2_2 to <2 x bfloat>
-; CHECK: %[[COND:.*]] = fcmp olt <2 x bfloat> %[[SRC0BF]], %[[SRC1BF]]
+; CHECK: %[[COND:.*]] = fcmp ult <2 x bfloat> %[[SRC0BF]], %[[SRC1BF]]
 ; CHECK: %[[SELECTRES:.*]] = select <2 x i1> %[[COND]], <2 x bfloat> %[[SRC0BF]], <2 x bfloat> %[[SRC1BF]]
 ; CHECK: %{{.*}} = bitcast <2 x bfloat> %[[SELECTRES]] to <2 x i16>
   %call1 = call spir_func <2 x i16> @_Z18__builtin_bf16_minDv2_tS_(<2 x i16> %v1_2, <2 x i16> %v2_2) #2
@@ -68,7 +68,7 @@ entry:
 
 ; CHECK: %[[SRC0BF:.*]] = bitcast <4 x i16> %v1_4 to <4 x bfloat>
 ; CHECK: %[[SRC1BF:.*]] = bitcast <4 x i16> %v2_4 to <4 x bfloat>
-; CHECK: %[[COND:.*]] = fcmp olt <4 x bfloat> %[[SRC0BF]], %[[SRC1BF]]
+; CHECK: %[[COND:.*]] = fcmp ult <4 x bfloat> %[[SRC0BF]], %[[SRC1BF]]
 ; CHECK: %[[SELECTRES:.*]] = select <4 x i1> %[[COND]], <4 x bfloat> %[[SRC0BF]], <4 x bfloat> %[[SRC1BF]]
 ; CHECK: %{{.*}} = bitcast <4 x bfloat> %[[SELECTRES]] to <4 x i16>
   %call3 = call spir_func <4 x i16> @_Z18__builtin_bf16_minDv4_tS_(<4 x i16> %v1_4, <4 x i16> %v2_4) #2
@@ -77,7 +77,7 @@ entry:
 
 ; CHECK: %[[SRC0BF:.*]] = bitcast <8 x i16> %v1_8 to <8 x bfloat>
 ; CHECK: %[[SRC1BF:.*]] = bitcast <8 x i16> %v2_8 to <8 x bfloat>
-; CHECK: %[[COND:.*]] = fcmp olt <8 x bfloat> %[[SRC0BF]], %[[SRC1BF]]
+; CHECK: %[[COND:.*]] = fcmp ult <8 x bfloat> %[[SRC0BF]], %[[SRC1BF]]
 ; CHECK: %[[SELECTRES:.*]] = select <8 x i1> %[[COND]], <8 x bfloat> %[[SRC0BF]], <8 x bfloat> %[[SRC1BF]]
 ; CHECK: %{{.*}} = bitcast <8 x bfloat> %[[SELECTRES]] to <8 x i16>
   %call5 = call spir_func <8 x i16> @_Z18__builtin_bf16_minDv8_tS_(<8 x i16> %v1_8, <8 x i16> %v2_8) #2
@@ -86,7 +86,7 @@ entry:
 
 ; CHECK: %[[SRC0BF:.*]] = bitcast <16 x i16> %v1_16 to <16 x bfloat>
 ; CHECK: %[[SRC1BF:.*]] = bitcast <16 x i16> %v2_16 to <16 x bfloat>
-; CHECK: %[[COND:.*]] = fcmp olt <16 x bfloat> %[[SRC0BF]], %[[SRC1BF]]
+; CHECK: %[[COND:.*]] = fcmp ult <16 x bfloat> %[[SRC0BF]], %[[SRC1BF]]
 ; CHECK: %[[SELECTRES:.*]] = select <16 x i1> %[[COND]], <16 x bfloat> %[[SRC0BF]], <16 x bfloat> %[[SRC1BF]]
 ; CHECK: %{{.*}} = bitcast <16 x bfloat> %[[SELECTRES]] to <16 x i16>
   %call7 = call spir_func <16 x i16> @_Z18__builtin_bf16_minDv16_tS_(<16 x i16> %v1_16, <16 x i16> %v2_16) #2
@@ -101,7 +101,7 @@ define spir_kernel void @test_max(i16 addrspace(1)* %out1, i16 zeroext %v1_1, i1
 entry:
 ; CHECK: %[[SRC0BF:.*]] = bitcast i16 %v1_1 to bfloat
 ; CHECK: %[[SRC1BF:.*]] = bitcast i16 %v2_1 to bfloat
-; CHECK: %[[COND:.*]] = fcmp ogt bfloat %[[SRC0BF]], %[[SRC1BF]]
+; CHECK: %[[COND:.*]] = fcmp ugt bfloat %[[SRC0BF]], %[[SRC1BF]]
 ; CHECK: %[[SELECTRES:.*]] = select i1 %[[COND]], bfloat %[[SRC0BF]], bfloat %[[SRC1BF]]
 ; CHECK: %{{.*}} = bitcast bfloat %[[SELECTRES]] to i16
   %call = call spir_func zeroext i16 @_Z18__builtin_bf16_maxtt(i16 zeroext %v1_1, i16 zeroext %v2_1) #2
@@ -110,7 +110,7 @@ entry:
 
 ; CHECK: %[[SRC0BF:.*]] = bitcast <2 x i16> %v1_2 to <2 x bfloat>
 ; CHECK: %[[SRC1BF:.*]] = bitcast <2 x i16> %v2_2 to <2 x bfloat>
-; CHECK: %[[COND:.*]] = fcmp ogt <2 x bfloat> %[[SRC0BF]], %[[SRC1BF]]
+; CHECK: %[[COND:.*]] = fcmp ugt <2 x bfloat> %[[SRC0BF]], %[[SRC1BF]]
 ; CHECK: %[[SELECTRES:.*]] = select <2 x i1> %[[COND]], <2 x bfloat> %[[SRC0BF]], <2 x bfloat> %[[SRC1BF]]
 ; CHECK: %{{.*}} = bitcast <2 x bfloat> %[[SELECTRES]] to <2 x i16>
   %call1 = call spir_func <2 x i16> @_Z18__builtin_bf16_maxDv2_tS_(<2 x i16> %v1_2, <2 x i16> %v2_2) #2
@@ -119,7 +119,7 @@ entry:
 
 ; CHECK: %[[SRC0BF:.*]] = bitcast <4 x i16> %v1_4 to <4 x bfloat>
 ; CHECK: %[[SRC1BF:.*]] = bitcast <4 x i16> %v2_4 to <4 x bfloat>
-; CHECK: %[[COND:.*]] = fcmp ogt <4 x bfloat> %[[SRC0BF]], %[[SRC1BF]]
+; CHECK: %[[COND:.*]] = fcmp ugt <4 x bfloat> %[[SRC0BF]], %[[SRC1BF]]
 ; CHECK: %[[SELECTRES:.*]] = select <4 x i1> %[[COND]], <4 x bfloat> %[[SRC0BF]], <4 x bfloat> %[[SRC1BF]]
 ; CHECK: %{{.*}} = bitcast <4 x bfloat> %[[SELECTRES]] to <4 x i16>
   %call3 = call spir_func <4 x i16> @_Z18__builtin_bf16_maxDv4_tS_(<4 x i16> %v1_4, <4 x i16> %v2_4) #2
@@ -128,7 +128,7 @@ entry:
 
 ; CHECK: %[[SRC0BF:.*]] = bitcast <8 x i16> %v1_8 to <8 x bfloat>
 ; CHECK: %[[SRC1BF:.*]] = bitcast <8 x i16> %v2_8 to <8 x bfloat>
-; CHECK: %[[COND:.*]] = fcmp ogt <8 x bfloat> %[[SRC0BF]], %[[SRC1BF]]
+; CHECK: %[[COND:.*]] = fcmp ugt <8 x bfloat> %[[SRC0BF]], %[[SRC1BF]]
 ; CHECK: %[[SELECTRES:.*]] = select <8 x i1> %[[COND]], <8 x bfloat> %[[SRC0BF]], <8 x bfloat> %[[SRC1BF]]
 ; CHECK: %{{.*}} = bitcast <8 x bfloat> %[[SELECTRES]] to <8 x i16>
   %call5 = call spir_func <8 x i16> @_Z18__builtin_bf16_maxDv8_tS_(<8 x i16> %v1_8, <8 x i16> %v2_8) #2
@@ -137,7 +137,7 @@ entry:
 
 ; CHECK: %[[SRC0BF:.*]] = bitcast <16 x i16> %v1_16 to <16 x bfloat>
 ; CHECK: %[[SRC1BF:.*]] = bitcast <16 x i16> %v2_16 to <16 x bfloat>
-; CHECK: %[[COND:.*]] = fcmp ogt <16 x bfloat> %[[SRC0BF]], %[[SRC1BF]]
+; CHECK: %[[COND:.*]] = fcmp ugt <16 x bfloat> %[[SRC0BF]], %[[SRC1BF]]
 ; CHECK: %[[SELECTRES:.*]] = select <16 x i1> %[[COND]], <16 x bfloat> %[[SRC0BF]], <16 x bfloat> %[[SRC1BF]]
 ; CHECK: %{{.*}} = bitcast <16 x bfloat> %[[SELECTRES]] to <16 x i16>
   %call7 = call spir_func <16 x i16> @_Z18__builtin_bf16_maxDv16_tS_(<16 x i16> %v1_16, <16 x i16> %v2_16) #2
