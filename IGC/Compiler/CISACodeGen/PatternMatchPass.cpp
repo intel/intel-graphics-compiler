@@ -2567,6 +2567,20 @@ namespace IGC
         return v.getNumOperands();
     }
 
+    // Returns true if the value is an integer constant that can be encoded in
+    // 32 bits.
+    inline bool Is32BitConstInt(llvm::Value* val)
+    {
+        llvm::ConstantInt* imm = llvm::dyn_cast<ConstantInt>(val);
+        if (imm &&
+            imm->getSExtValue() <= std::numeric_limits<int32_t>::max() &&
+            imm->getSExtValue() >= std::numeric_limits<int32_t>::min())
+        {
+            return true;
+        }
+        return false;
+    }
+
     bool CodeGenPatternMatch::MatchImmOffsetLSC(llvm::Instruction& I)
     {
         struct LSCImmOffsetPattern : public Pattern
@@ -2683,8 +2697,9 @@ namespace IGC
             return false;
         }
 
-        const bool isConstant0 = llvm::isa<llvm::ConstantInt>(addSubInst->getOperand(0));
-        const bool isConstant1 = llvm::isa<llvm::ConstantInt>(addSubInst->getOperand(1));
+        // VISA interface accepts 32-bit immediate offset values
+        const bool isConstant0 = Is32BitConstInt(addSubInst->getOperand(0));
+        const bool isConstant1 = Is32BitConstInt(addSubInst->getOperand(1));
         if (isConstant1 || (isConstant0 && addSubInst->getOpcode() == llvm::Instruction::Add))
         {
             // YES: var + imm

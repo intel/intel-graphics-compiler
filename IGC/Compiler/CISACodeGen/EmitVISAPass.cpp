@@ -18850,9 +18850,9 @@ void EmitPass::emitLSCVectorStore(Value *Ptr,
     bool dstUniform = eOffset->IsUniform();
 
     const int immOffsetVal =
-        immOffset ? static_cast<int>(immOffset->getSExtValue()) : 0;
+        immOffset ? int_cast<int>(immOffset->getSExtValue()) : 0;
     const int immScaleVal =
-        immScale ? static_cast<int>(immScale->getSExtValue()) : 1;
+        immScale ? int_cast<int>(immScale->getSExtValue()) : 1;
 
     // 1. handle cases eltBytes < 4
     if (eltBytes < 4)
@@ -22181,7 +22181,7 @@ void EmitPass::emitLscIntrinsicLoad(llvm::GenIntrinsicInst* inst)
         offset = BroadcastIfUniform(offset);
     }
 
-    const int immOffset = (int)cast<ConstantInt>(inst->getOperand(1))->getSExtValue();
+    const int immOffset = int_cast<int>(cast<ConstantInt>(inst->getOperand(1))->getSExtValue());
     auto dataSize = (LSC_DATA_SIZE)cast<ConstantInt>(inst->getOperand(2))->getZExtValue();
     auto dataElems = (LSC_DATA_ELEMS)cast<ConstantInt>(inst->getOperand(3))->getZExtValue();
 
@@ -22236,7 +22236,7 @@ void EmitPass::emitLscIntrinsicLoadCmask(llvm::GenIntrinsicInst* inst)
 
     offset = useA32 ? TruncatePointer(offset) : offset;
     auto addrSize = useA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b;
-    const int immOffset = (int)cast<ConstantInt>(inst->getOperand(1))->getSExtValue();
+    const int immOffset = int_cast<int>(cast<ConstantInt>(inst->getOperand(1))->getSExtValue());
 
     auto dataSize = (LSC_DATA_SIZE)cast<ConstantInt>(inst->getOperand(2))->getZExtValue();
 
@@ -22345,7 +22345,7 @@ void EmitPass::emitLscIntrinsicPrefetch(llvm::GenIntrinsicInst* inst)
 
     auto dataSize = (LSC_DATA_SIZE)cast<ConstantInt>(inst->getOperand(2))->getZExtValue();
     auto dataElems = (LSC_DATA_ELEMS)cast<ConstantInt>(inst->getOperand(3))->getZExtValue();
-    int immOffset = (int)cast<ConstantInt>(inst->getOperand(1))->getSExtValue();
+    int immOffset = int_cast<int>(cast<ConstantInt>(inst->getOperand(1))->getSExtValue());
 
     LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromValue(inst->getOperand(4), true);
 
@@ -22434,7 +22434,7 @@ void EmitPass::emitLscIntrinsicStore(llvm::GenIntrinsicInst* inst)
     //  Operand 5 - [immediate] cache options (LSC_CACHE_OPT enum)
 
     Value* Ptr  = inst->getArgOperand(0);
-    int immOffset = (int)cast<ConstantInt>(inst->getOperand(1))->getSExtValue();
+    int immOffset = int_cast<int>(cast<ConstantInt>(inst->getOperand(1))->getSExtValue());
     Value* storedVal = inst->getArgOperand(2);
     CVariable* storedVar = GetSymbol(storedVal);
     storedVar = BroadcastIfUniform(storedVar);
@@ -22503,7 +22503,7 @@ void EmitPass::emitLscIntrinsicStoreCmask(llvm::GenIntrinsicInst* inst)
     //  Operand 5 - [immediate] cache options (LSC_CACHE_OPT enum)
 
     Value* Ptr = inst->getArgOperand(0);
-    int immOffset = (int)cast<ConstantInt>(inst->getOperand(1))->getSExtValue();
+    int immOffset = int_cast<int>(cast<ConstantInt>(inst->getOperand(1))->getSExtValue());
 
     Value* storedVal = inst->getArgOperand(2);
     CVariable* storedVar = GetSymbol(storedVal);
