@@ -483,6 +483,9 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   vc::addPass(PM, createGenXInitBiFConstantsPass());
   vc::addPass(PM, createGenXFixInvalidFuncNamePass());
 
+  /// .. include:: GenXRawSendRipper.cpp
+  vc::addPass(PM, createGenXRawSendRipperPass());
+
   // Install GenX-specific TargetTransformInfo for passes such as
   // LowerAggrCopies and InfoAddressSpace
   vc::addPass(PM, createTargetTransformInfoWrapperPass(getTargetIRAnalysis()));
