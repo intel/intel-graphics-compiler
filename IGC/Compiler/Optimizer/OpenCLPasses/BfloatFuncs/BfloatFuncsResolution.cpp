@@ -84,25 +84,25 @@ void BfloatFuncsResolution::visitCallInst(CallInst &CI) {
 
     llvm::StringSwitch<std::function<void()>>(DName)
         .StartsWith("__builtin_bf16_isequal",
-                    [&]() { handleCompare(CI, CmpInst::Predicate::FCMP_UEQ); })
+                    [&]() { handleCompare(CI, CmpInst::Predicate::FCMP_OEQ); })
         .StartsWith("__builtin_bf16_isgreaterequal",
-                    [&]() { handleCompare(CI, CmpInst::Predicate::FCMP_UGE); })
+                    [&]() { handleCompare(CI, CmpInst::Predicate::FCMP_OGE); })
         .StartsWith("__builtin_bf16_isgreater",
-                    [&]() { handleCompare(CI, CmpInst::Predicate::FCMP_UGT); })
+                    [&]() { handleCompare(CI, CmpInst::Predicate::FCMP_OGT); })
         .StartsWith("__builtin_bf16_islessequal",
-                    [&]() { handleCompare(CI, CmpInst::Predicate::FCMP_ULE); })
+                    [&]() { handleCompare(CI, CmpInst::Predicate::FCMP_OLE); })
         .StartsWith("__builtin_bf16_isless",
-                    [&]() { handleCompare(CI, CmpInst::Predicate::FCMP_ULT); })
+                    [&]() { handleCompare(CI, CmpInst::Predicate::FCMP_OLT); })
         .StartsWith("__builtin_bf16_isnotequal",
-                    [&]() { handleCompare(CI, CmpInst::Predicate::FCMP_UNE); })
+                    [&]() { handleCompare(CI, CmpInst::Predicate::FCMP_ONE); })
         .StartsWith("__builtin_bf16_isunordered",
                     [&]() { handleCompare(CI, CmpInst::Predicate::FCMP_UNO); })
         .StartsWith("__builtin_bf16_select",
                     [&]() { handleSelect(CI); })
         .StartsWith("__builtin_bf16_min",
-                    [&]() { handleMinMax(CI, CmpInst::Predicate::FCMP_ULT); })
+                    [&]() { handleMinMax(CI, CmpInst::Predicate::FCMP_OLT); })
         .StartsWith("__builtin_bf16_max",
-                    [&]() { handleMinMax(CI, CmpInst::Predicate::FCMP_UGT); })
+                    [&]() { handleMinMax(CI, CmpInst::Predicate::FCMP_OGT); })
         .StartsWith("__builtin_bf16_add",
                     [&]() { handleArithmetic(CI, Instruction::FAdd); })
         .StartsWith("__builtin_bf16_sub",
