@@ -61,7 +61,11 @@ struct CompileOptions {
   std::string ApiOptions;
 
   // Output binary format
+  // API options:
+  //   -[cl,ze]-enable-zebin
+  ///  -[cl,ze]-disable-zebin
   // Internal options:
+  //   -[cl,ze]-allow-zebin
   //   -[cl,ze]-disable-zebin
   //   -binary-format=[ocl,ze,cm]
   // Debug keys:

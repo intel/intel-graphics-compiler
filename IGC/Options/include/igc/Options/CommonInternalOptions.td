@@ -23,6 +23,10 @@ defm emit_zebin_visa_sections : CommonFlag<"emit-zebin-visa-sections">,
 def emit_visa_only : PlainFlag<"emit-visa-only">,
   HelpText<"Compile until vISA">;
 
+// -cl-allow-zebin, -ze-allow-zebin
+defm allow_zebin : CommonFlag<"allow-zebin">,
+  HelpText<"Emit level zero binary">;
+
 // -cl-disable-zebin, -ze-disable-zebin
 defm disable_zebin : CommonFlag<"disable-zebin">,
   HelpText<"Emit binary in legacy format">;

@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
 ;
-; RUN: igc_opt -enable-debugify --igc-programscope-constant-resolve -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -regkey EnableZEBinary=0 -enable-debugify --igc-programscope-constant-resolve -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; ProgramScopeConstantResolution
 ; ------------------------------------------------

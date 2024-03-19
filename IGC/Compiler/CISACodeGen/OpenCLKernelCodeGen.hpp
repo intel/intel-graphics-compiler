@@ -92,13 +92,23 @@ namespace IGC
                 }
             };
 
-            if (m_InternalOptions.DisableZEBinary) {
-                // Allow to disable ZEBin via internal options
+            // If env flag is set, use it's value no matter what (works as "Force").
+            if (IGC_IS_FLAG_SET(EnableZEBinary))
+                m_enableZEBinary = IGC_IS_FLAG_ENABLED(EnableZEBinary);
+
+            // Runtime option precede supported platforms (can force zebin on unsupported).
+            else if (m_InternalOptions.EnableZEBinary)
+                m_enableZEBinary = *m_InternalOptions.EnableZEBinary;
+            else if (m_Options.EnableZEBinary)
+                m_enableZEBinary = *m_Options.EnableZEBinary;
+
+            // If platform is unsupported, disable regardless of the default.
+            else if (!supportsZEBin(platform))
                 m_enableZEBinary = false;
-            } else {
-                // Enable ZEBin for all supported platforms
-                m_enableZEBinary = supportsZEBin(platform);
-            }
+
+            // Set the default value from the flag table.
+            else
+                m_enableZEBinary = IGC_IS_FLAG_ENABLED(EnableZEBinary);
         }
 
         bool enableZEBinary() const override { return m_enableZEBinary; }

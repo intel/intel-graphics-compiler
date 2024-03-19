@@ -7,13 +7,12 @@
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
 ; RUN: igc_opt -igc-programscope-constant-analysis -igc-serialize-metadata \
-; RUN:   -S < %s | FileCheck %s
+; RUN:   -S -regkey EnableZEBinary=1 < %s | FileCheck %s
 ; ------------------------------------------------
 ; ProgramScopeConstantAnalysis
 ; ------------------------------------------------
 
-; Test checks that metadata is updated with correct string constants
-; (this tested the case with EnableZEBinary=1 which is the default now)
+; Test checks that metadata is updated with correct string constants when EnableZEBinary=1
 
 ; CHECK:     !{!"stringConstants",
 ; CHECK-DAG: !{!"stringConstantsSet{{[[][0-9][]]}}", [3 x i8] addrspace(2)* @opencl_printf_str}

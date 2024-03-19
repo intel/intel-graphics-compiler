@@ -740,6 +740,19 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
     Opts.GRFSize = MaybeGRFSize;
   }
 
+  if (opt::Arg *A =
+          ApiOptions.getLastArg(OPT_enable_zebin_common, OPT_disable_zebin_common))
+    switch (A->getOption().getID()) {
+    case OPT_enable_zebin_common:
+      Opts.Binary = vc::BinaryKind::ZE;
+      break;
+    case OPT_disable_zebin_common:
+      Opts.Binary = vc::BinaryKind::OpenCL;
+      break;
+    default:
+      break;
+    }
+
   if (opt::Arg *A = ApiOptions.getLastArg(OPT_fp_contract)) {
     StringRef Val = A->getValue();
     auto MayBeAllowFPOPFusion =
@@ -830,11 +843,14 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
     Opts.InteropSubgroupSize = MaybeSize.getValue();
   }
 
-  if (opt::Arg* A = InternalOptions.getLastArg(
-      OPT_binary_format, OPT_disable_zebin_common)) {
+  if (opt::Arg *A = InternalOptions.getLastArg(
+          OPT_binary_format, OPT_allow_zebin_common, OPT_disable_zebin_common)) {
     auto OptID = A->getOption().getID();
-    if (OptID == OPT_disable_zebin_common)
-        Opts.Binary = vc::BinaryKind::OpenCL;
+
+    if (OptID == OPT_allow_zebin_common)
+      Opts.Binary = vc::BinaryKind::ZE;
+    else if (OptID == OPT_disable_zebin_common)
+      Opts.Binary = vc::BinaryKind::OpenCL;
     else {
       StringRef Val = A->getValue();
       auto MaybeBinary = StringSwitch<Optional<vc::BinaryKind>>(Val)
