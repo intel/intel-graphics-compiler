@@ -336,40 +336,6 @@ namespace IGC
 
         NUM_ARG_SPACE_RESERVATION_SLOTS
     };
-
-    //copied from DXILConstants.h
-    enum class DXResourceClass {
-        SRV = 0,
-        UAV,
-        CBuffer,
-        Sampler,
-        Invalid
-    };
-
-    //copied from DXILConstants.h
-    enum class DXResourceKind : unsigned {
-        Invalid = 0,
-        Texture1D,
-        Texture2D,
-        Texture2DMS,
-        Texture3D,
-        TextureCube,
-        Texture1DArray,
-        Texture2DArray,
-        Texture2DMSArray,
-        TextureCubeArray,
-        TypedBuffer,
-        RawBuffer,
-        StructuredBuffer,
-        CBuffer,
-        Sampler,
-        TBuffer,
-        RTAccelerationStructure,
-        FeedbackTexture2D,
-        FeedbackTexture2DArray,
-        NumEntries,
-    };
-
 }
 
 #endif //CODE_GEN_PUBLIC_ENUMS_H_

@@ -414,19 +414,11 @@ namespace IGC
         int  DerivedConstantsOffset = -1;
     };
 
+
     struct SResInfoFoldingOutput
     {
         uint32_t textureID;
         bool value[4];
-    };
-
-    struct CustomResourceOutput
-    {
-        unsigned regIndex;
-        unsigned regSpace;
-        int rangeSize;
-        DXResourceClass resType;
-        DXResourceKind resShape;
     };
 
     enum SIMDInfoBit
@@ -479,7 +471,6 @@ namespace IGC
 
         bool         hasEvalSampler = false;
         std::vector<SResInfoFoldingOutput> m_ResInfoFoldingOutput;
-
         // GenUpdateCB outputs
         void*       m_ConstantBufferReplaceShaderPatterns = nullptr;
         uint        m_ConstantBufferReplaceShaderPatternsSize = 0;
