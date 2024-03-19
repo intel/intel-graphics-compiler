@@ -412,10 +412,6 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
     {
         newValue = promoteICmp(icmp);
     }
-    else if (auto fcmp = dyn_cast<FCmpInst>(value))
-    {
-        newValue = promoteFCmp(fcmp);
-    }
     else if (auto inlineAsm = dyn_cast<InlineAsm>(value))
     {
         newValue = promoteInlineAsm(inlineAsm);
@@ -482,17 +478,6 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
             clone->insertBefore(instruction);
             instruction->replaceAllUsesWith(clone);
             newValue = convertI1ToI8(clone, instruction);
-        }
-    }
-
-    if (typeNeedsPromotion(newValue->getType()))
-    {
-        if (auto instruction = dyn_cast<Instruction>(newValue))
-        {
-            ZExtInst* zext = new ZExtInst(newValue, getOrCreatePromotedType(newValue->getType()), "");
-            zext->insertAfter(instruction);
-            if (newValue == value)
-                return zext;
         }
     }
 
@@ -1022,35 +1007,6 @@ ICmpInst* PromoteBools::promoteICmp(ICmpInst* icmp)
     );
     newICmp->setDebugLoc(icmp->getDebugLoc());
     return newICmp;
-}
-
-FCmpInst* PromoteBools::promoteFCmp(FCmpInst* fcmp)
-{
-    if (!fcmp)
-    {
-        return nullptr;
-    }
-
-    auto op0 = fcmp->getOperand(0);
-    auto op1 = fcmp->getOperand(1);
-
-    if (!wasPromotedAnyOf(fcmp->operands()) && !typeNeedsPromotion(op0->getType()))
-    {
-        return fcmp;
-    }
-
-    auto promotedOp0 = convertI1ToI8(getOrCreatePromotedValue(op0), fcmp);
-    auto promotedOp1 = convertI1ToI8(getOrCreatePromotedValue(op1), fcmp);
-
-    auto newFCmp = new FCmpInst(
-        fcmp,
-        fcmp->getPredicate(),
-        promotedOp0,
-        promotedOp1,
-        ""
-    );
-    newFCmp->setDebugLoc(fcmp->getDebugLoc());
-    return newFCmp;
 }
 
 InlineAsm* PromoteBools::promoteInlineAsm(InlineAsm* inlineAsm)
