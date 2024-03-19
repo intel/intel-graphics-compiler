@@ -5384,6 +5384,7 @@ int VISAKernelImpl::AppendVISA3dInfo(VISASampler3DSubOpCode subOpcode,
                                      VISA_Exec_Size executionSize,
                                      VISAChannelMask srcChannels,
                                      VISA_StateOpndHandle *surface,
+                                     unsigned int surfaceIndex,
                                      VISA_RawOpnd *lod, VISA_RawOpnd *dst) {
   TIME_SCOPE(VISA_BUILDER_APPEND_INST);
 
@@ -5431,6 +5432,7 @@ int VISAKernelImpl::AppendVISA3dInfo(VISASampler3DSubOpCode subOpcode,
                                    inst_desc, channels.getBinary(opcode)));
 
     ADD_OPND(num_operands, opnd, surface);
+    ADD_OPND(num_operands, opnd, CreateOtherOpnd(0, ISA_TYPE_UD));
     if (subOpcode == VISA_3D_RESINFO) {
       ADD_OPND(num_operands, opnd, lod);
       // opnd_num used in binary emiter, so need to have correct value.

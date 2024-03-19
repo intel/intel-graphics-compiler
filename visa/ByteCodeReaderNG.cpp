@@ -1915,7 +1915,7 @@ static void readInstructionSampler(unsigned &bytePos, const char *buf,
         surfaceHnd, container.surfaceVarDecls[surface]);
     kernelBuilder->AppendVISA3dInfo(
         subOpcode, emask, esize,
-        ChannelMask::createAPIFromBinary(opcode, channelMask), surfaceHnd, lod,
+        ChannelMask::createAPIFromBinary(opcode, channelMask), surfaceHnd, 0, lod,
         dst);
 
     break;

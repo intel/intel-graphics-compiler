@@ -979,8 +979,8 @@ public:
   VISA_BUILDER_API int
   AppendVISA3dInfo(VISASampler3DSubOpCode subOpcode, VISA_EMask_Ctrl emask,
                    VISA_Exec_Size executionSize, VISAChannelMask srcChannel,
-                   VISA_StateOpndHandle *surface, VISA_RawOpnd *lod,
-                   VISA_RawOpnd *dst) override;
+                   VISA_StateOpndHandle *surface, unsigned int surfaceIndex,
+                   VISA_RawOpnd *lod, VISA_RawOpnd *dst) override;
 
   VISA_BUILDER_API int AppendVISA3dRTWrite(
       VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,

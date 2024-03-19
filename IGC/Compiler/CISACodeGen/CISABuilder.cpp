@@ -2672,6 +2672,7 @@ namespace IGC
                 GetAluExecSize(dst),
                 ConvertChannelMaskToVisaType(writeMask),
                 surfOpnd,
+                0,
                 lodVar,
                 dstVar));
         }

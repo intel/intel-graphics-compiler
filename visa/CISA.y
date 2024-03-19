@@ -1418,20 +1418,20 @@ Gather43dInstruction: Predicate SAMPLE4_3D_OP PixelNullMaskEnableOpt SAMPLER_CHA
 
 PixelNullMaskEnableOpt: %empty {$$ = false;} | PIXEL_NULL_MASK {$$ = true;}
 
-            //          1                   2              3           4           5              6
-ResInfo3dInstruction: RESINFO_OP_3D   SAMPLER_CHANNEL  ExecSize       Var     RawOperand      RawOperand
+            //          1                   2              3           4                    5              6
+ResInfo3dInstruction: RESINFO_OP_3D   SAMPLER_CHANNEL  ExecSize   SamplerAddrOperand     RawOperand      RawOperand
    {
         ABORT_ON_FAIL(pBuilder->CISA_create_info_3d_instruction(
             VISA_3D_RESINFO, $3.emask, $3.exec_size,
-            ChannelMask::createFromAPI($2), $4, $5, $6, CISAlineno));
+            ChannelMask::createFromAPI($2), $4.base, $4.offset, $5, $6, CISAlineno));
    }
 
-           //               1                    2              3         4          5
-SampleInfo3dInstruction: SAMPLEINFO_OP_3D   SAMPLER_CHANNEL  ExecSize    Var     RawOperand
+           //               1                    2              3         4                       5
+SampleInfo3dInstruction: SAMPLEINFO_OP_3D   SAMPLER_CHANNEL  ExecSize    SamplerAddrOperand     RawOperand
    {
         ABORT_ON_FAIL(pBuilder->CISA_create_info_3d_instruction(
             VISA_3D_SAMPLEINFO, $3.emask, $3.exec_size,
-            ChannelMask::createFromAPI($2), $4, NULL, $5, CISAlineno));
+            ChannelMask::createFromAPI($2), $4.base, $4.offset, NULL, $5, CISAlineno));
    }
 
 RTWriteOperands:

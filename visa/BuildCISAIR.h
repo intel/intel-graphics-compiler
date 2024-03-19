@@ -406,8 +406,8 @@ public:
   bool CISA_create_info_3d_instruction(VISASampler3DSubOpCode subOpcode,
                                        VISA_EMask_Ctrl emask,
                                        unsigned exec_size, ChannelMask channel,
-                                       const char *surface_name, VISA_opnd *lod,
-                                       VISA_opnd *dst, int lineNum);
+                                       const char *surface_name, unsigned surfaceIndex,
+                                       VISA_opnd *lod, VISA_opnd *dst, int lineNum);
 
   bool createSample4Instruction(VISA_opnd *pred,
                                 VISASampler3DSubOpCode subOpcode,

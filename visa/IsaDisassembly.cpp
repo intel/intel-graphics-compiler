@@ -1648,9 +1648,12 @@ printInstructionSampler(const print_format_provider_t *header,
 
     sstr << " " << printExecutionSize(inst->opcode, inst->execsize) << " ";
 
-    // surface
-    uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
-    sstr << " " << printSurfaceName(surface);
+    {
+      // surface
+      uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
+      sstr << " " << printSurfaceName(surface);
+      i++; // skip the surface index
+    }
 
     if (subop == VISA_3D_RESINFO) {
       // lod

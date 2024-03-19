@@ -3374,16 +3374,17 @@ bool CISA_IR_Builder::CISA_create_rtwrite_3d_instruction(
 
 bool CISA_IR_Builder::CISA_create_info_3d_instruction(
     VISASampler3DSubOpCode subOpcode, VISA_EMask_Ctrl emask, unsigned exec_size,
-    ChannelMask channel, const char *surfaceName, VISA_opnd *lod,
-    VISA_opnd *dst, int lineNum) {
-  VISA_StateOpndHandle *surface =
-      CISA_get_surface_variable(surfaceName, lineNum);
+    ChannelMask channel, const char *surfaceName, unsigned int surfaceIndex,
+    VISA_opnd *lod, VISA_opnd *dst, int lineNum) {
+
+  VISA_StateOpndHandle *surface = nullptr;
+  surface = CISA_get_surface_variable(surfaceName, lineNum);
   if (!surface)
     return false; // error recorded
 
   VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
   VISA_CALL_TO_BOOL(AppendVISA3dInfo, subOpcode, emask, executionSize,
-                    channel.getAPI(), surface, (VISA_RawOpnd *)lod,
+                    channel.getAPI(), surface, surfaceIndex, (VISA_RawOpnd *)lod,
                     (VISA_RawOpnd *)dst);
   return true;
 }
