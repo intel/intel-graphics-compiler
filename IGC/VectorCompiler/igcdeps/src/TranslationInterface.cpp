@@ -265,16 +265,10 @@ static void adjustDebugStrippingPolicy(vc::CompileOptions &Opts) {
 // Overwrite binary format option for backward compatibility with
 // environment variable approach.
 static void adjustBinaryFormat(vc::BinaryKind &Binary) {
-  if (Binary == vc::BinaryKind::CM)
+  if (Binary != vc::BinaryKind::Default)
     return;
 
-  if (Binary != vc::BinaryKind::Default && !IGC_IS_FLAG_SET(EnableZEBinary))
-    return;
-
-  if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
-    Binary = vc::BinaryKind::ZE;
-  else
-    Binary = vc::BinaryKind::OpenCL;
+  Binary = vc::BinaryKind::OpenCL;
 }
 
 template <typename T> T deriveDefaultableFlagValue(int Flag) {

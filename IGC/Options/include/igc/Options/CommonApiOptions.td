@@ -47,14 +47,6 @@ defm library_compilation : CommonFlag<"library-compilation">;
 defm library_compile_simd : CommonSeparate<"library-compile-simd">;
 defm : CommonJoined<"library-compile-simd=">, Alias<library_compile_simd_common>;
 
-// -cl-enable-zebin, -ze-enable-zebin
-defm enable_zebin : CommonFlag<"enable-zebin">,
-  HelpText<"Emit level zero binary (zebin)">;
-
-// -cl-disable-zebin, -ze-disable-zebin
-defm disable_zebin : CommonFlag<"disable-zebin">,
-  HelpText<"Emit binary in legacy format">;
-
 defm exp_register_file_size : CommonSeparate<"exp-register-file-size">,
   HelpText<"Set amount of registers used by regalloc">;
 defm : CommonJoined<"exp-register-file-size=">, Alias<exp_register_file_size_common>,

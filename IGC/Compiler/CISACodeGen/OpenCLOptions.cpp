@@ -204,14 +204,9 @@ void InternalOptions::parseOptions(const char* internalOpts)
         }
     }
 
-    if (internalOptions.hasArg(OPT_allow_zebin_common))
-    {
-        EnableZEBinary = true;
-    }
-
     if (internalOptions.hasArg(OPT_disable_zebin_common))
     {
-        EnableZEBinary = false;
+        DisableZEBinary = true;
     }
 
     if (internalOptions.hasArg(OPT_exclude_ir_from_zebin_common))
@@ -582,16 +577,6 @@ void Options::parseOptions(const char* opts)
         // This option enables FP64 emulation for platforms that
         // cannot HW support for double operations
         EnableFP64GenEmu = true;
-    }
-
-    if (apiOptions.hasArg(OPT_enable_zebin_common))
-    {
-        EnableZEBinary = true;
-    }
-
-    if (apiOptions.hasArg(OPT_disable_zebin_common))
-    {
-        EnableZEBinary = false;
     }
 }
 } // namespace IGC
