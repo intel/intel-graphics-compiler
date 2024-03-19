@@ -508,7 +508,7 @@ public:
   void InstDstOpRegDirect(const Loc &loc, RegName rn, int reg,
                           Region::Horz rgnHorz, Type ty) {
     RegRef rr;
-    rr.regNum = (uint8_t)reg;
+    rr.regNum = (uint16_t)reg;
     InstDstOpRegDirect(loc, rn, rr, rgnHorz, ty);
   }
   void InstDstOpRegDirect(const Loc &loc, RegName rn, RegRef reg,
@@ -533,8 +533,8 @@ public:
 
     m_dst.regOpDstMod = m_dstModifier;
     m_dst.regOpName = rnm;
-    m_dst.regOpReg = RegRef(static_cast<uint8_t>(regNum), 0);
-    m_dst.regOpReg.regNum = (uint8_t)regNum;
+    m_dst.regOpReg = RegRef((uint16_t)regNum, (uint16_t)0);
+    m_dst.regOpReg.regNum = (uint16_t)regNum;
     m_dst.regOpRgn.setDstHz(rgnH);
     m_dst.regOpMathMacroExtReg = mme;
     m_dst.type = ty;
@@ -577,7 +577,7 @@ public:
                           int reg,     // register/subregister
                           Region rgn,  // region parameters
                           Type ty) {
-    RegRef rr((uint8_t)reg, 0);
+    RegRef rr((uint16_t)reg, (uint16_t)0);
     InstSrcOpRegDirect(srcOpIx, loc, SrcModifier::NONE, rnm, rr, rgn, ty);
   }
   void
@@ -613,7 +613,7 @@ public:
     src.kind = Operand::Kind::MACRO;
     src.regOpSrcMod = srcMod;
     src.regOpName = rnm;
-    src.regOpReg.regNum = (uint8_t)regNum;
+    src.regOpReg.regNum = (uint16_t)regNum;
     src.regOpReg.subRegNum = 0;
     src.regOpRgn = rgn;
     src.regOpMathMacroExtReg = MathMacroExt;
