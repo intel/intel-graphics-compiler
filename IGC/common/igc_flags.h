@@ -376,7 +376,7 @@ DECLARE_IGC_REGKEY(debugString, PrintAfter,             0,     "Take either all 
 DECLARE_IGC_REGKEY(debugString, PrintBefore,            0,     "Take either all or comma/semicolon-separated list of pass names. If set, enable print LLVM IR before the given pass is done (mimic llvm print-before)", true)
 DECLARE_IGC_REGKEY(bool, PrintMDBeforeModule,           false, "Print metadata of the module at the beginning of the dump. Used for LIT tests.", true)
 DECLARE_IGC_REGKEY(bool, DumpUseShorterName,            true,  "If set, use an internal shader name(_entry_id) in dump file name", true)
-DECLARE_IGC_REGKEY(bool, EnableKernelNamesBasedHash,    false, "If set, use kernels' names to calculate the hash", false)
+DECLARE_IGC_REGKEY(bool, EnableKernelNamesBasedHash,    false, "If set, use kernels' names to calculate the hash. Doesn't work on .cl dump's hash. Will overwrite dumps if multiple modules have the same kernel names.", false)
 DECLARE_IGC_REGKEY(bool, InterleaveSourceShader,        true, "Interleave the source shader in asm dump", true)
 DECLARE_IGC_REGKEY(bool, ShaderDumpPidDisable,          false, "disabled adding PID to the name of shader dump directory", true)
 DECLARE_IGC_REGKEY(bool, DumpToCurrentDir,              false, "dump shaders to the current directory", true)

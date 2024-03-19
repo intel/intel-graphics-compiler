@@ -331,6 +331,7 @@ $ export IGC_ShaderDumpEnable=1
 | `EnableCapsDump` | Enable hardware caps dump | Available |
 | `EnableCisDump` | Enable cis dump | Available |
 | `EnableCosDump` | Enable cos dump | Available |
+| `EnableKernelNamesBasedHash` | If set, use kernels' names to calculate the hash. Doesn't work on .cl dump's hash. Will overwrite dumps if multiple modules have the same kernel names. | - |
 | `EnableLivenessDump` | Enable dumping out liveness info on stderr. | Available |
 | `EnableScalarizerDebugLog` | print step by step scalarizer debug info. | Available |
 | `EnableShaderNumbering` | Number shaders in the order they are dumped based on their hashes | Available |
