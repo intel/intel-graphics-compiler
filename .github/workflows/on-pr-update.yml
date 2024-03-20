@@ -21,7 +21,9 @@ jobs:
           echo "os_branch=${{ github.event.branches[0].name }}" >> $GITHUB_ENV
       - name: Get branch name if pr review state changed
         if: github.event_name == 'pull_request_review'
+        env:
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: >
-          echo "os_branch=${{ github.event.pull_request.head.ref }}" >> $GITHUB_ENV
+          echo "os_branch=$PR_HEAD_REF" >> $GITHUB_ENV
       - name: Notify
         run: ${{ secrets.NOTIFY }}
