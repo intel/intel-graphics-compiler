@@ -2834,7 +2834,7 @@ void GenSpecificPattern::visitAnd(BinaryOperator& I)
     }
 }
 
-void GenSpecificPattern::visitAShr(BinaryOperator &I)
+void GenSpecificPattern::visitAShr(BinaryOperator& I)
 {
     /*
         From:
@@ -2850,70 +2850,36 @@ void GenSpecificPattern::visitAShr(BinaryOperator &I)
         %132 = sext i8 %ee1 to i32
         %133 = sext i8 %ee2 to i32
         Which will end up as regioning instead of 2 isntr.
-
-        Also change shl 24 + asr 24 -> extractelement <4 x i8> %temp, i32 0
     */
 
     llvm::IRBuilder<> builder(&I);
     using namespace llvm::PatternMatch;
 
-    auto tryTransformAsrToEE = [&](Instruction &I, uint32_t BaseTypeSize, uint32_t ElemSize)
+    Instruction* AShrSrc = nullptr;
+    auto pattern_1 = m_AShr(m_Instruction(AShrSrc), m_SpecificInt(16));
+
+    if (match(&I, pattern_1) && I.getType()->isIntegerTy(32) && AShrSrc && AShrSrc->getType()->isIntegerTy(32))
     {
-        IGC_ASSERT(BaseTypeSize % ElemSize == 0);
+        Instruction* ShlSrc = nullptr;
 
-        auto *BaseType = builder.getIntNTy(BaseTypeSize);
-        if (I.getType() != BaseType)
-            return false;
+        auto Shl_Pattern = m_Shl(m_Instruction(ShlSrc), m_SpecificInt(16));
+        bool submatch = match(AShrSrc, Shl_Pattern) && ShlSrc && ShlSrc->getType()->isIntegerTy(32);
 
-        Value *AShrSrc = nullptr;
-        uint32_t ShiftBits = BaseTypeSize - ElemSize;
-        auto AShrPattern = m_AShr(m_Value(AShrSrc), m_SpecificInt(ShiftBits));
+        // in case there's no shr, we take upper half
+        uint32_t newIndex = 1;
 
-        if (!match(&I, AShrPattern))
-            return false;
-        if (!AShrSrc || AShrSrc->getType() != BaseType)
-            return false;
-
-        Value *ShlSrc = nullptr;
-
-        auto ShlPattern = m_Shl(m_Value(ShlSrc), m_SpecificInt(ShiftBits));
-        bool ShlMatch = match(AShrSrc, ShlPattern) && ShlSrc && ShlSrc->getType() == BaseType;
-
-        uint32_t Index = 0;
-        Value *BaseValue = nullptr;
-        if (ShlMatch)
+        // if there was Shl, we take lower half
+        if (submatch)
         {
-            BaseValue = ShlSrc;
-            Index = 0;
+            AShrSrc = ShlSrc;
+            newIndex = 0;
         }
-        else if (ShiftBits * 2 == BaseTypeSize)
-        {
-            // if Shl is not matched we can still make an EE on the AShr source
-            // but extract the upper half. Check we shift exactly the half bits
-            BaseValue = AShrSrc;
-            Index = 1;
-        }
-        else
-        {
-            return false;
-        }
-
-        VectorType *Vec = VectorType::get(builder.getIntNTy(ElemSize), BaseTypeSize / ElemSize, false);
-        Value* BC = builder.CreateBitCast(BaseValue, Vec);
-        Value* EE = builder.CreateExtractElement(BC, builder.getIntN(BaseTypeSize, Index));
-        Value* SExt = builder.CreateSExt(EE, BaseType);
-        I.replaceAllUsesWith(SExt);
+        VectorType* vec2 = VectorType::get(builder.getInt16Ty(), 2, false);
+        Value* BC = builder.CreateBitCast(AShrSrc, vec2);
+        Value* EE = builder.CreateExtractElement(BC, builder.getInt32(newIndex));
+        Value* Sext = builder.CreateSExt(EE, builder.getInt32Ty());
+        I.replaceAllUsesWith(Sext);
         I.eraseFromParent();
-
-        return true;
-    };
-
-    tryTransformAsrToEE(I, 32, 16);
-
-    CodeGenContext *CTX = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    if (CTX->platform.supportByteALUOperation())
-    {
-        tryTransformAsrToEE(I, 32, 8);
     }
 }
 
