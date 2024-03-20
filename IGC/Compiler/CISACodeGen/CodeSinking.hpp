@@ -29,11 +29,11 @@ See LICENSE.TXT for details.
 
 namespace IGC {
     class CodeSinking : public llvm::FunctionPass {
-        llvm::DominatorTree* DT;
-        llvm::PostDominatorTree* PDT;
-        llvm::LoopInfo* LI;
-        const llvm::DataLayout* DL;  // to estimate register pressure
-        CodeGenContext* CTX;
+        llvm::DominatorTree* DT = nullptr;
+        llvm::PostDominatorTree* PDT = nullptr;
+        llvm::LoopInfo* LI = nullptr;
+        const llvm::DataLayout* DL = nullptr;  // to estimate register pressure
+        CodeGenContext* CTX = nullptr;
     public:
         static char ID; // Pass identification
 
@@ -77,8 +77,8 @@ namespace IGC {
         std::vector<llvm::Instruction*> MovedInsts;
         std::vector<llvm::Instruction*> UndoLocas;
         /// counting the number of gradient/sample operation sinked into CF
-        unsigned totalGradientMoved;
-        unsigned numGradientMovedOutBB;
+        unsigned totalGradientMoved = 0;
+        unsigned numGradientMovedOutBB = 0;
     };
 
     void initializeCodeSinkingPass(llvm::PassRegistry&);
@@ -87,16 +87,16 @@ namespace IGC {
     typedef enum { NoSink=0, SinkWhileRegpressureIsHigh, FullSink } LoopSinkMode;
 
     class CodeLoopSinking : public llvm::FunctionPass {
-        llvm::DominatorTree* DT;
-        llvm::PostDominatorTree* PDT;
-        llvm::LoopInfo* LI;
-        llvm::AliasAnalysis* AA;
+        llvm::DominatorTree* DT = nullptr;
+        llvm::PostDominatorTree* PDT = nullptr;
+        llvm::LoopInfo* LI = nullptr;
+        llvm::AliasAnalysis* AA = nullptr;
         WIAnalysisRunner WI;
-        IGCMD::MetaDataUtils* MDUtils;
-        ModuleMetaData* ModMD;
-        IGCLivenessAnalysis* RPE;
-        IGCFunctionExternalRegPressureAnalysis* FRPE;
-        CodeGenContext* CTX;
+        IGCMD::MetaDataUtils* MDUtils = nullptr;
+        ModuleMetaData* ModMD = nullptr;
+        IGCLivenessAnalysis* RPE = nullptr;
+        IGCFunctionExternalRegPressureAnalysis* FRPE = nullptr;
+        CodeGenContext* CTX = nullptr;
 
     public:
         static char ID; // Pass identification

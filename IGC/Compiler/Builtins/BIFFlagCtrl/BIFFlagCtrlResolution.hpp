@@ -52,10 +52,10 @@ public:
   virtual bool runOnModule(llvm::Module &M) override;
 
 private:
-  CodeGenContext *PtrCGC;
-  llvm::Module *pModule;
+  CodeGenContext *PtrCGC = nullptr;
+  llvm::Module *pModule = nullptr;
 
-  std::map<llvm::StringRef, std::function<bool()>> ListDelegates;
+  std::map<llvm::StringRef, std::function<bool()>> ListDelegates{};
 
   template <typename T> bool replace(T Value, llvm::GlobalVariable *GV);
 

@@ -400,9 +400,6 @@ bool LocalRA::localRA() {
   if (!kernel.fg.getHasStackCalls() && !kernel.fg.getIsStackCallFunc() &&
       !hasSplitInsts) {
     trivialAssignRA(needGlobalRA, reduceBCInTAandFF);
-    if (!needGlobalRA) {
-      return true;
-    }
   }
 
   if (doRoundRobin) {

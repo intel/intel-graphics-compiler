@@ -4778,6 +4778,8 @@ static bool regionHasFixedSubreg(const IR_Builder &builder, G4_Operand *opnd,
 
   G4_VarBase *base = opnd->getBase();
 
+  vISA_ASSERT(base != nullptr, "Invalid VarBase");
+
   if (base->isAccReg()) {
     if (opnd->isDstRegRegion()) {
       offset = opnd->asDstRegRegion()->getSubRegOff();

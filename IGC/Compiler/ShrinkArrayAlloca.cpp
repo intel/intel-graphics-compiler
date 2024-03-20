@@ -424,7 +424,7 @@ void ShrinkArrayAllocaPass::GatherAllocas(Function& F)
 bool ShrinkArrayAllocaPass::Resolve()
 {
     bool modified = false;
-    for (auto info : m_AllocaInfo)
+    for (const auto& info : m_AllocaInfo)
     {
         // Remap indices
         auto used = info.second;

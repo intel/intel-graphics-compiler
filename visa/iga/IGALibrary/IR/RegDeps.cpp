@@ -1680,7 +1680,7 @@ void DepSet::addGrfBytes(size_t reg, size_t subRegBytes, size_t num_bytes) {
 }
 
 void DepSet::addABytesAndBukets(size_t reg) {
-  IGA_ASSERT(reg >= 0 && reg < m_DB.getARF_A_REGS(),
+  IGA_ASSERT(reg < m_DB.getARF_A_REGS(),
              "a# register out of bounds");
   size_t addr =  m_DB.getARF_A_START() + m_DB.getARF_A_BYTES_PER_REG() * reg;
   IGA_ASSERT(addr < (size_t)m_DB.getARF_A_START() + m_DB.getARF_A_LEN(),

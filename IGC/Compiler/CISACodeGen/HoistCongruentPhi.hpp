@@ -23,8 +23,8 @@ See LICENSE.TXT for details.
 
 namespace IGC {
     class HoistCongruentPHI : public llvm::FunctionPass {
-        llvm::DominatorTree* DT;
-        CodeGenContext* CTX;
+        llvm::DominatorTree* DT = nullptr;
+        CodeGenContext* CTX = nullptr;
 
     public:
         static char ID; // Pass identification

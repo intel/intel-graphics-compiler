@@ -485,7 +485,7 @@ void IGCRegisterPressurePrinter::printPhi(const PhiSet &Set, std::string &Output
         return;
 
     Output += "PHIS:\t[\t" + std::to_string(Set.size()) + "\t] ";
-    for (auto Elem : Set) {
+    for (const auto& Elem : Set) {
         auto &OneBBSet = Elem.second;
         unsigned int Size = OneBBSet.size();
         if (PrinterType > 1) {

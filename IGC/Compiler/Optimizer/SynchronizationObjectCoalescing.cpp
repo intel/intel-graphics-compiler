@@ -1532,7 +1532,7 @@ IterationCallbackT GetIterationFunc(
             instructionMask |= bbLookupTable.lookup(pCurrentBasicBlock);
             return;
         }
-        for (auto [index, val] : currBBInstsRange.first)
+        for (const auto& [index, val] : currBBInstsRange.first)
         {
             instructionMask |= instMaskLookupTable.lookup(val);
         }
