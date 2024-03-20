@@ -188,6 +188,7 @@ class IGCRegisterPressurePrinter : public llvm::FunctionPass {
     unsigned int PrinterType = IGC_GET_FLAG_VALUE(RegPressureVerbocity);
     // maximum potential calling context pressure of a function
     unsigned int ExternalPressure = 0;
+    unsigned int MaxPressureInKernel = 0;
 
     void intraBlock(llvm::BasicBlock &BB, std::string &Output, unsigned int SIMD);
     void dumpRegPressure(llvm::Function &F, unsigned int SIMD);

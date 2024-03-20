@@ -96,6 +96,11 @@ void IGCLivenessAnalysis::combineOut(llvm::BasicBlock *BB, ValueSet *Set) {
 }
 
 void IGCLivenessAnalysis::addOperandsToSet(llvm::Instruction *Inst, ValueSet &Set) {
+
+    // do not process debug instructions and lifetimehints in any way
+    if(Inst->isDebugOrPseudoInst() || Inst->isLifetimeStartOrEnd())
+        return;
+
     for (auto &Op : Inst->operands()) {
         llvm::Value *V = Op.get();
         // We are counting only instructions right now
@@ -111,6 +116,11 @@ void IGCLivenessAnalysis::addOperandsToSet(llvm::Instruction *Inst, ValueSet &Se
 }
 
 void IGCLivenessAnalysis::addNonLocalOperandsToSet(llvm::Instruction *Inst, ValueSet &Set) {
+
+    // do not process debug instructions and lifetimehints in any way
+    if(Inst->isDebugOrPseudoInst() || Inst->isLifetimeStartOrEnd())
+        return;
+
     for (auto &Op : Inst->operands()) {
         llvm::Value *V = Op.get();
         // We are counting only instructions right now
@@ -309,6 +319,7 @@ void IGCRegisterPressurePrinter::printIntraBlock(llvm::BasicBlock &BB,
         }
         unsigned int SizeInBytes = BBListing[Inst];
         unsigned int AmountOfRegistersRoundUp = RPE->bytesToRegisters(SizeInBytes);
+        MaxPressureInKernel = std::max(MaxPressureInKernel, AmountOfRegistersRoundUp);
         Output += std::to_string(SizeInBytes) + " (" +
                   std::to_string(AmountOfRegistersRoundUp) + ")" + "    \t";
         printInstruction(Inst, Output);
@@ -356,6 +367,9 @@ void IGCRegisterPressurePrinter::dumpRegPressure(llvm::Function &F,
                 OutputFile << Output;
             Output.clear();
         }
+
+        OutputFile << "==============================================" << "\n";
+        OutputFile << "MaxPressure In Kernel: " << MaxPressureInKernel << "\n";
 
         OutputFile.close();
     }
@@ -486,7 +500,7 @@ void IGCRegisterPressurePrinter::printPhi(const PhiSet &Set, std::string &Output
 
 bool IGCRegisterPressurePrinter::runOnFunction(llvm::Function &F) {
 
-    unsigned int ExternalPressure = getAnalysis<IGCFunctionExternalRegPressureAnalysis>().getExternalPressureForFunction(&F);
+    ExternalPressure = getAnalysis<IGCFunctionExternalRegPressureAnalysis>().getExternalPressureForFunction(&F);
     RPE = &getAnalysis<IGCLivenessAnalysis>();
     WI = &getAnalysis<WIAnalysis>();
     CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
