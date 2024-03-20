@@ -312,7 +312,7 @@ void GenXCodeGenModule::processFunction(Function& F)
             if (IGC_IS_FLAG_DISABLED(EnableSIMDVariantCompilation))
             {
                 int req_subgroup = 0;
-                for (const auto& FG : CallerFGs)
+                for (auto FG : CallerFGs)
                 {
                     auto FHead = FG.first->getHead();
                     auto subGrpSz = pMdUtils->getFunctionsInfoItem(FHead)->getSubGroupSize();
@@ -607,8 +607,7 @@ bool GenXCodeGenModule::runOnModule(Module& M)
     }
 
     // Clone indirect funcs if SIMD variants are required
-    if (IGC_IS_FLAG_ENABLED(EnableSIMDVariantCompilation))
-        FGA->CloneFunctionGroupForMultiSIMDCompile(&M);
+    FGA->CloneFunctionGroupForMultiSIMDCompile(&M);
 
     this->pMdUtils->save(M.getContext());
 
@@ -998,7 +997,7 @@ void GenXFunctionGroupAnalysis::CloneFunctionGroupForMultiSIMDCompile(llvm::Modu
         if (hasReqdSIMD > 0)
         {
             bool ReqMultipleSIMD = hasReqdSIMD != 8 && hasReqdSIMD != 16 && hasReqdSIMD != 32;
-            if (ReqMultipleSIMD)
+            if (IGC_IS_FLAG_ENABLED(EnableSIMDVariantCompilation) && ReqMultipleSIMD)
             {
                 for (int i = 0; i < 3; i++)
                 {
@@ -1023,6 +1022,11 @@ void GenXFunctionGroupAnalysis::CloneFunctionGroupForMultiSIMDCompile(llvm::Modu
                         }
                     }
                 }
+            }
+            else
+            {
+                IGC_ASSERT_MESSAGE(!ReqMultipleSIMD, "SIMD variant compilation not supported");
+                continue;
             }
         }
     }
