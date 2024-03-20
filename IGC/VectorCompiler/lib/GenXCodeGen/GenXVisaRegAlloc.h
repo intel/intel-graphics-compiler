@@ -149,12 +149,12 @@ namespace llvm {
         // case PreDefined_Vars::PREDEFINED_FE_SP:
         // case PreDefined_Vars::PREDEFINED_FE_FP:
         // case PreDefined_Vars::PREDEFINED_HW_TID:
-        // case PreDefined_Vars::PREDEFINED_SR0:
+        case PreDefined_Vars::PREDEFINED_SR0:
         case PreDefined_Vars::PREDEFINED_CR0:
         // case PreDefined_Vars::PREDEFINED_CE0:
         // case PreDefined_Vars::PREDEFINED_DBG:
         // case PreDefined_Vars::PREDEFINED_COLOR:
-        // case PreDefined_Vars::PREDEFINED_MSG0:
+        case PreDefined_Vars::PREDEFINED_MSG0:
           return false;
         default:
           return true;
@@ -304,4 +304,3 @@ namespace llvm {
 
 } // end namespace llvm
 #endif //ndef GENXVISAREGALLOC_H
-
