@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 namespace vISA {
 class G4_BB;
 class FlowGraph;
+class PointsToAnalysis;
 
 // Top level Analysis class that each analysis needs to inherit.
 // Each inherited class needs to implement their own reset() and
@@ -91,19 +92,24 @@ private:
 };
 
 // Computes and stores direct references of variables.
-// Indirects references are not computed here.
+// Indirects references are computed only if PointsToAnalysis instance
+// is valid.
 class VarReferences : public Analysis {
 public:
   VarReferences(G4_Kernel &k, bool GRF = false, bool bounds = true,
-                bool pseudoKills = false)
+                bool pseudoKills = false, PointsToAnalysis* p = nullptr)
       : kernel(k), onlyGRF(GRF), needBounds(bounds),
-        reportPseudoKill(pseudoKills) {}
+        reportPseudoKill(pseudoKills), p2a(p) {}
 
   // Defs -> vector[tuple<inst, bb, lb, rb>]
   // Uses -> vector[tuple<inst, bb>]
+  // TODO: Store G4_DstRegRegion instead of G4_INST* in Defs,
+  //             G4_SrcRegResion instead of G4_INST* in Uses
   using Defs =
       std::vector<std::tuple<G4_INST *, G4_BB *, unsigned int, unsigned int>>;
   using Uses = std::vector<std::tuple<G4_INST *, G4_BB *>>;
+  // Set to large enough number so its never a valid bound
+  const unsigned int UnknownBound = 0xffff;
 
   bool isUniqueDef(G4_Operand *dst);
   unsigned int getDefCount(G4_Declare *dcl);
@@ -120,6 +126,7 @@ private:
   bool onlyGRF = false;
   bool needBounds = true;
   bool reportPseudoKill = false;
+  PointsToAnalysis *p2a = nullptr;
 
   void reset() override;
   void run() override;

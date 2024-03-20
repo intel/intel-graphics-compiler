@@ -1532,3 +1532,43 @@ std::vector<G4_BB *> vISA::SpillAnalysis::GetIntervalBBs(
 
   return BBs;
 }
+
+void Augmentation::verifyHomeLocation() {
+  VarReferences refs(kernel);
+
+  auto allRefsInFunc = [&](G4_Declare *dcl, FuncInfo *func) {
+    auto *allDefs = refs.getDefs(dcl);
+    if (allDefs) {
+      for (auto &def : *allDefs) {
+        auto *bb = std::get<1>(def);
+        if (bbToFunc.at(bb) != func)
+          return false;
+      }
+    }
+
+    auto *allUses = refs.getUses(dcl);
+    if (allUses) {
+      for (auto &def : *allUses) {
+        auto *bb = std::get<1>(def);
+        if (bbToFunc.at(bb) != func)
+          return false;
+      }
+    }
+
+    return true;
+  };
+
+  for (auto &entry : sortedIntervals) {
+    auto *dcl = entry.dcl;
+    if (isSubroutineArg(dcl) || isSubroutineRetVal(dcl)) {
+      vISA_ASSERT(!homeFunc[dcl->getDeclId()],
+                  "not expecting arg/retval to have home func");
+      continue;
+    }
+
+    auto *func = homeFunc[dcl->getDeclId()];
+    if (allRefsInFunc(dcl, func))
+      continue;
+    vISA_ASSERT(false, "bad home func");
+  }
+}
