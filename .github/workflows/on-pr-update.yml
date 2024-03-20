@@ -11,6 +11,8 @@ on:
   status:
   pull_request_review:
 
+permissions: read-all
+
 jobs:
   notify:
     runs-on: self-hosted

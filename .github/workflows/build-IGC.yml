@@ -13,7 +13,9 @@ on:
     branches: [ master ]
   pull_request:
     branches: [ master ]
-    
+
+permissions: read-all
+
 jobs:
   download-OpenCL-Clang: # openCL Clang is downloaded from intel/intel-graphics-compiler releases
     if: github.repository == 'intel/intel-graphics-compiler'
