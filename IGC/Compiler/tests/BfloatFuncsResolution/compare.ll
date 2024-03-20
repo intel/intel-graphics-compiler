@@ -120,7 +120,7 @@ define spir_kernel void @test_isnotequal(i32 addrspace(1)* %out1, i16 zeroext %v
 entry:
 ; CHECK: %[[SRC0BF:.*]] = bitcast i16 %v1_1 to bfloat
 ; CHECK: %[[SRC1BF:.*]] = bitcast i16 %v2_1 to bfloat
-; CHECK: %[[FCMPRES:.*]] = fcmp one bfloat %[[SRC0BF]], %[[SRC1BF]]
+; CHECK: %[[FCMPRES:.*]] = fcmp une bfloat %[[SRC0BF]], %[[SRC1BF]]
 ; CHECK: %{{.*}} = zext i1 %[[FCMPRES]] to i32
   %call = call spir_func i32 @_Z25__builtin_bf16_isnotequaltt(i16 zeroext %v1_1, i16 zeroext %v2_1) #2
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %out1, i64 0

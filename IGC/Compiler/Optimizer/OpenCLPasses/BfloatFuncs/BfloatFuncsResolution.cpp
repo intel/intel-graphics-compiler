@@ -94,7 +94,7 @@ void BfloatFuncsResolution::visitCallInst(CallInst &CI) {
         .StartsWith("__builtin_bf16_isless",
                     [&]() { handleCompare(CI, CmpInst::Predicate::FCMP_OLT); })
         .StartsWith("__builtin_bf16_isnotequal",
-                    [&]() { handleCompare(CI, CmpInst::Predicate::FCMP_ONE); })
+                    [&]() { handleCompare(CI, CmpInst::Predicate::FCMP_UNE); })
         .StartsWith("__builtin_bf16_isunordered",
                     [&]() { handleCompare(CI, CmpInst::Predicate::FCMP_UNO); })
         .StartsWith("__builtin_bf16_select",
@@ -263,26 +263,15 @@ void BfloatFuncsResolution::handleArithmetic(llvm::CallInst& CI,
     bool IsResFloat = CI.getType()->getScalarType()->isFloatTy();
 
 
-    if (IsResFloat && (FloatOperandIndex != -1)) {
-      // 1. If we have float on destination, and one float source extend the
-      // short sources to float.
+    if (IsResFloat || (FloatOperandIndex != -1)) {
+      // 1. If we have float on destination, or float source extend the
+      // short sources to float. Let vISA handle the mix mode propagation.
       for (size_t i = 0; i < Operands.size(); ++i) {
         if (i == FloatOperandIndex)
           continue;
         auto Op = bitcastToBfloat(Operands[i]);
-        Operands[i] = m_builder->CreateFPExt(Op, CI.getType());
-      }
-    } else if (!IsResFloat && (FloatOperandIndex != -1)) {
-      // 2. If we have short on destination, truncate the float source to
-      // bfloat.
-      for (size_t i = 0; i < Operands.size(); ++i) {
-        if (i == FloatOperandIndex) {
-          Operands[i] = m_builder->CreateFPTrunc(
-              Operands[i], getTypeBasedOnType(Operands[i]->getType(),
-                                              m_builder->getBFloatTy()));
-        } else {
-          Operands[i] = bitcastToBfloat(Operands[i]);
-        }
+        Operands[i] = m_builder->CreateFPExt(
+            Op, getTypeBasedOnType(Op->getType(), m_builder->getFloatTy()));
       }
     } else if (FloatOperandIndex == -1) {
       // 3. If we have only shorts on source, just
@@ -303,16 +292,22 @@ void BfloatFuncsResolution::handleArithmetic(llvm::CallInst& CI,
       Res = m_builder->CreateFAdd(Res, Operands[2]);
     } else {
       IGC_ASSERT_MESSAGE(0, "Unsupported number of operands.");
+      return;
     }
 
-    if (Res->getType()->getScalarType()->isBFloatTy()) {
+    if (Res && Res->getType()->getScalarType()->isBFloatTy()) {
       if (IsResFloat) {
-        Res = m_builder->CreateFPExt(Res, CI.getType());
+        IGC_ASSERT_MESSAGE(0, "Not expected path");
       } else {
         Res = m_builder->CreateBitCast(Res, CI.getType());
       }
     } else {
-      IGC_ASSERT(Res->getType()->getScalarType()->isFloatTy());
+      IGC_ASSERT(Res && Res->getType()->getScalarType()->isFloatTy());
+      if (!CI.getType()->getScalarType()->isFloatTy()) {
+        Res = m_builder->CreateFPTrunc(
+            Res, getTypeBasedOnType(Res->getType(), m_builder->getBFloatTy()));
+        Res = m_builder->CreateBitCast(Res, CI.getType());
+      }
     }
 
     CI.replaceAllUsesWith(Res);

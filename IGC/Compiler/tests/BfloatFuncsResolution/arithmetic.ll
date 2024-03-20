@@ -105,9 +105,10 @@ entry:
 ; CHECK: define spir_kernel void @test_add_v2
 define spir_kernel void @test_add_v2(i16 addrspace(1)* %out1, float %v1_1, i16 zeroext %v2_1) #1 {
 entry:
-; CHECK: %[[SRC0BF:.*]] = fptrunc float %v1_1 to bfloat
 ; CHECK: %[[SRC1BF:.*]] = bitcast i16 %v2_1 to bfloat
-; CHECK: %[[RES:.*]] = fadd bfloat %[[SRC0BF]], %[[SRC1BF]]
+; CHECK: %[[SRC1F:.*]] = fpext bfloat %[[SRC1BF]] to float
+; CHECK: %[[RESF:.*]] = fadd float %v1_1, %[[SRC1F]]
+; CHECK: %[[RES:.*]] = fptrunc float %[[RESF]] to bfloat
 ; CHECK: %{{.*}} = bitcast bfloat %[[RES]] to i16
   %call = call spir_func zeroext i16 @_Z18__builtin_bf16_addft(float %v1_1, i16 zeroext %v2_1) #2
   %arrayidx = getelementptr inbounds i16, i16 addrspace(1)* %out1, i64 0
@@ -120,8 +121,9 @@ entry:
 define spir_kernel void @test_add_v3(i16 addrspace(1)* %out1, i16 zeroext %v1_1, float %v2_1) #1 {
 entry:
 ; CHECK: %[[SRC0BF:.*]] = bitcast i16 %v1_1 to bfloat
-; CHECK: %[[SRC1BF:.*]] = fptrunc float %v2_1 to bfloat
-; CHECK: %[[RES:.*]] = fadd bfloat %[[SRC0BF]], %[[SRC1BF]]
+; CHECK: %[[SRC0F:.*]] = fpext bfloat %[[SRC0BF]] to float
+; CHECK: %[[RESF:.*]] = fadd float %[[SRC0F]], %v2_1
+; CHECK: %[[RES:.*]] = fptrunc float %[[RESF]] to bfloat
 ; CHECK: %{{.*}} = bitcast bfloat %[[RES]] to i16
   %call = call spir_func zeroext i16 @_Z18__builtin_bf16_addtf(i16 zeroext %v1_1, float %v2_1) #2
   %arrayidx = getelementptr inbounds i16, i16 addrspace(1)* %out1, i64 0
@@ -133,9 +135,10 @@ entry:
 define spir_kernel void @test_addf_v1(float addrspace(1)* %out1, i16 zeroext %v1_1, i16 zeroext %v2_1) #1 {
 entry:
 ; CHECK: %[[SRC0BF:.*]] = bitcast i16 %v1_1 to bfloat
+; CHECK: %[[SRC0F:.*]] = fpext bfloat %[[SRC0BF]] to float
 ; CHECK: %[[SRC1BF:.*]] = bitcast i16 %v2_1 to bfloat
-; CHECK: %[[RES:.*]] = fadd bfloat %[[SRC0BF]], %[[SRC1BF]]
-; CHECK: %{{.*}} = fpext bfloat %[[RES]] to float
+; CHECK: %[[SRC1F:.*]] = fpext bfloat %[[SRC1BF]] to float
+; CHECK: %[[RES:.*]] = fadd float %[[SRC0F]], %[[SRC1F]]
   %call = call spir_func float @_Z19__builtin_bf16_addftt(i16 zeroext %v1_1, i16 zeroext %v2_1) #2
   %arrayidx = getelementptr inbounds float, float addrspace(1)* %out1, i64 0
   store float %call, float addrspace(1)* %arrayidx, align 4
@@ -186,9 +189,10 @@ entry:
 ; CHECK: define spir_kernel void @test_sub_v2
 define spir_kernel void @test_sub_v2(i16 addrspace(1)* %out1, float %v1_1, i16 zeroext %v2_1) #1 {
 entry:
-; CHECK: %[[SRC0BF:.*]] = fptrunc float %v1_1 to bfloat
 ; CHECK: %[[SRC1BF:.*]] = bitcast i16 %v2_1 to bfloat
-; CHECK: %[[RES:.*]] = fsub bfloat %[[SRC0BF]], %[[SRC1BF]]
+; CHECK: %[[SRC1F:.*]] = fpext bfloat %[[SRC1BF]] to float
+; CHECK: %[[RESF:.*]] = fsub float %v1_1, %[[SRC1F]]
+; CHECK: %[[RES:.*]] = fptrunc float %[[RESF]] to bfloat
 ; CHECK: %{{.*}} = bitcast bfloat %[[RES]] to i16
   %call = call spir_func zeroext i16 @_Z18__builtin_bf16_subft(float %v1_1, i16 zeroext %v2_1) #2
   %arrayidx = getelementptr inbounds i16, i16 addrspace(1)* %out1, i64 0
@@ -201,8 +205,9 @@ entry:
 define spir_kernel void @test_sub_v3(i16 addrspace(1)* %out1, i16 zeroext %v1_1, float %v2_1) #1 {
 entry:
 ; CHECK: %[[SRC0BF:.*]] = bitcast i16 %v1_1 to bfloat
-; CHECK: %[[SRC1BF:.*]] = fptrunc float %v2_1 to bfloat
-; CHECK: %[[RES:.*]] = fsub bfloat %[[SRC0BF]], %[[SRC1BF]]
+; CHECK: %[[SRC0F:.*]] = fpext bfloat %[[SRC0BF]] to float
+; CHECK: %[[RESF:.*]] = fsub float %[[SRC0F]], %v2_1
+; CHECK: %[[RES:.*]] = fptrunc float %[[RESF]] to bfloat
 ; CHECK: %{{.*}} = bitcast bfloat %[[RES]] to i16
   %call = call spir_func zeroext i16 @_Z18__builtin_bf16_subtf(i16 zeroext %v1_1, float %v2_1) #2
   %arrayidx = getelementptr inbounds i16, i16 addrspace(1)* %out1, i64 0
@@ -214,9 +219,10 @@ entry:
 define spir_kernel void @test_subf_v1(float addrspace(1)* %out1, i16 zeroext %v1_1, i16 zeroext %v2_1) #1 {
 entry:
 ; CHECK: %[[SRC0BF:.*]] = bitcast i16 %v1_1 to bfloat
+; CHECK: %[[SRC0F:.*]] = fpext bfloat %[[SRC0BF]] to float
 ; CHECK: %[[SRC1BF:.*]] = bitcast i16 %v2_1 to bfloat
-; CHECK: %[[RES:.*]] = fsub bfloat %[[SRC0BF]], %[[SRC1BF]]
-; CHECK: %{{.*}} = fpext bfloat %[[RES]] to float
+; CHECK: %[[SRC1F:.*]] = fpext bfloat %[[SRC1BF]] to float
+; CHECK: %[[RES:.*]] = fsub float %[[SRC0F]], %[[SRC1F]]
   %call = call spir_func float @_Z19__builtin_bf16_subftt(i16 zeroext %v1_1, i16 zeroext %v2_1) #2
   %arrayidx = getelementptr inbounds float, float addrspace(1)* %out1, i64 0
   store float %call, float addrspace(1)* %arrayidx, align 4
@@ -267,9 +273,10 @@ entry:
 ; CHECK: define spir_kernel void @test_mul_v2
 define spir_kernel void @test_mul_v2(i16 addrspace(1)* %out1, float %v1_1, i16 zeroext %v2_1) #1 {
 entry:
-; CHECK: %[[SRC0BF:.*]] = fptrunc float %v1_1 to bfloat
 ; CHECK: %[[SRC1BF:.*]] = bitcast i16 %v2_1 to bfloat
-; CHECK: %[[RES:.*]] = fmul bfloat %[[SRC0BF]], %[[SRC1BF]]
+; CHECK: %[[SRC1F:.*]] = fpext bfloat %[[SRC1BF]] to float
+; CHECK: %[[RESF:.*]] = fmul float %v1_1, %[[SRC1F]]
+; CHECK: %[[RES:.*]] = fptrunc float %[[RESF]] to bfloat
 ; CHECK: %{{.*}} = bitcast bfloat %[[RES]] to i16
   %call = call spir_func zeroext i16 @_Z18__builtin_bf16_mulft(float %v1_1, i16 zeroext %v2_1) #2
   %arrayidx = getelementptr inbounds i16, i16 addrspace(1)* %out1, i64 0
@@ -282,8 +289,9 @@ entry:
 define spir_kernel void @test_mul_v3(i16 addrspace(1)* %out1, i16 zeroext %v1_1, float %v2_1) #1 {
 entry:
 ; CHECK: %[[SRC0BF:.*]] = bitcast i16 %v1_1 to bfloat
-; CHECK: %[[SRC1BF:.*]] = fptrunc float %v2_1 to bfloat
-; CHECK: %[[RES:.*]] = fmul bfloat %[[SRC0BF]], %[[SRC1BF]]
+; CHECK: %[[SRC0F:.*]] = fpext bfloat %[[SRC0BF]] to float
+; CHECK: %[[RESF:.*]] = fmul float %[[SRC0F]], %v2_1
+; CHECK: %[[RES:.*]] = fptrunc float %[[RESF]] to bfloat
 ; CHECK: %{{.*}} = bitcast bfloat %[[RES]] to i16
   %call = call spir_func zeroext i16 @_Z18__builtin_bf16_multf(i16 zeroext %v1_1, float %v2_1) #2
   %arrayidx = getelementptr inbounds i16, i16 addrspace(1)* %out1, i64 0
@@ -295,9 +303,10 @@ entry:
 define spir_kernel void @test_mulf_v1(float addrspace(1)* %out1, i16 zeroext %v1_1, i16 zeroext %v2_1) #1 {
 entry:
 ; CHECK: %[[SRC0BF:.*]] = bitcast i16 %v1_1 to bfloat
+; CHECK: %[[SRC0F:.*]] = fpext bfloat %[[SRC0BF]] to float
 ; CHECK: %[[SRC1BF:.*]] = bitcast i16 %v2_1 to bfloat
-; CHECK: %[[RES:.*]] = fmul bfloat %[[SRC0BF]], %[[SRC1BF]]
-; CHECK: %{{.*}} = fpext bfloat %[[RES]] to float
+; CHECK: %[[SRC1F:.*]] = fpext bfloat %[[SRC1BF]] to float
+; CHECK: %[[RES:.*]] = fmul float %[[SRC0F]], %[[SRC1F]]
   %call = call spir_func float @_Z19__builtin_bf16_mulftt(i16 zeroext %v1_1, i16 zeroext %v2_1) #2
   %arrayidx = getelementptr inbounds float, float addrspace(1)* %out1, i64 0
   store float %call, float addrspace(1)* %arrayidx, align 4
@@ -348,12 +357,14 @@ entry:
 ; Function Attrs: convergent nounwind
 define spir_kernel void @test_mad_v2(i16 addrspace(1)* %out1, float %v1_1, i16 zeroext %v2_1, i16 zeroext %v3_1) #1 {
 entry:
-; CHECK: %[[SRC0BF:.*]] = fptrunc float %v1_1 to bfloat
 ; CHECK: %[[SRC1BF:.*]] = bitcast i16 %v2_1 to bfloat
+; CHECK: %[[SRC1F:.*]] = fpext bfloat %[[SRC1BF]] to float
 ; CHECK: %[[SRC2BF:.*]] = bitcast i16 %v3_1 to bfloat
-; CHECK: %[[FMULRES:.*]] = fmul bfloat %[[SRC0BF]], %[[SRC1BF]]
-; CHECK: %[[FADDRES:.*]] = fadd bfloat %[[FMULRES]], %[[SRC2BF]]
-; CHECK: %{{.*}} = bitcast bfloat %[[FADDRES]] to i16
+; CHECK: %[[SRC2F:.*]] = fpext bfloat %[[SRC2BF]] to float
+; CHECK: %[[FMULRES:.*]] = fmul float %v1_1, %[[SRC1F]]
+; CHECK: %[[FADDRES:.*]] = fadd float %[[FMULRES]], %[[SRC2F]]
+; CHECK: %[[RES:.*]] = fptrunc float %[[FADDRES]] to bfloat
+; CHECK: %{{.*}} = bitcast bfloat %[[RES]] to i16
   %call = call spir_func zeroext i16 @_Z18__builtin_bf16_madftt(float %v1_1, i16 zeroext %v2_1, i16 zeroext %v3_1) #2
   %arrayidx = getelementptr inbounds i16, i16 addrspace(1)* %out1, i64 0
   store i16 %call, i16 addrspace(1)* %arrayidx, align 2
@@ -364,11 +375,13 @@ entry:
 define spir_kernel void @test_mad_v3(i16 addrspace(1)* %out1, i16 zeroext %v1_1, i16 zeroext %v2_1, float %v3_1) #1 {
 entry:
 ; CHECK: %[[SRC0BF:.*]] = bitcast i16 %v1_1 to bfloat
+; CHECK: %[[SRC0F:.*]] = fpext bfloat %[[SRC0BF]] to float
 ; CHECK: %[[SRC1BF:.*]] = bitcast i16 %v2_1 to bfloat
-; CHECK: %[[SRC2BF:.*]] = fptrunc float %v3_1 to bfloat
-; CHECK: %[[FMULRES:.*]] = fmul bfloat %[[SRC0BF]], %[[SRC1BF]]
-; CHECK: %[[FADDRES:.*]] = fadd bfloat %[[FMULRES]], %[[SRC2BF]]
-; CHECK: %{{.*}} = bitcast bfloat %[[FADDRES]] to i16
+; CHECK: %[[SRC1F:.*]] = fpext bfloat %[[SRC1BF]] to float
+; CHECK: %[[FMULRES:.*]] = fmul float %[[SRC0F]], %[[SRC1F]]
+; CHECK: %[[FADDRES:.*]] = fadd float %[[FMULRES]], %v3_1
+; CHECK: %[[RES:.*]] = fptrunc float %[[FADDRES]] to bfloat
+; CHECK: %{{.*}} = bitcast bfloat %[[RES]] to i16
   %call = call spir_func zeroext i16 @_Z18__builtin_bf16_madttf(i16 zeroext %v1_1, i16 zeroext %v2_1, float %v3_1) #2
   %arrayidx = getelementptr inbounds i16, i16 addrspace(1)* %out1, i64 0
   store i16 %call, i16 addrspace(1)* %arrayidx, align 2
@@ -379,11 +392,13 @@ entry:
 define spir_kernel void @test_madf_v1(float addrspace(1)* %out1, i16 zeroext %v1_1, i16 zeroext %v2_1, i16 zeroext %v3_1) #1 {
 entry:
 ; CHECK: %[[SRC0BF:.*]] = bitcast i16 %v1_1 to bfloat
+; CHECK: %[[SRC0F:.*]] = fpext bfloat %[[SRC0BF]] to float
 ; CHECK: %[[SRC1BF:.*]] = bitcast i16 %v2_1 to bfloat
+; CHECK: %[[SRC1F:.*]] = fpext bfloat %[[SRC1BF]] to float
 ; CHECK: %[[SRC2BF:.*]] = bitcast i16 %v3_1 to bfloat
-; CHECK: %[[FMULRES:.*]] = fmul bfloat %[[SRC0BF]], %[[SRC1BF]]
-; CHECK: %[[FADDRES:.*]] = fadd bfloat %[[FMULRES]], %[[SRC2BF]]
-; CHECK: %{{.*}} = fpext bfloat %[[FADDRES]] to float
+; CHECK: %[[SRC2F:.*]] = fpext bfloat %[[SRC2BF]] to float
+; CHECK: %[[FMULRES:.*]] = fmul float %[[SRC0F]], %[[SRC1F]]
+; CHECK: %[[FADDRES:.*]] = fadd float %[[FMULRES]], %[[SRC2F]]
   %call = call spir_func float @_Z19__builtin_bf16_madfttt(i16 zeroext %v1_1, i16 zeroext %v2_1, i16 zeroext %v3_1) #2
   %arrayidx = getelementptr inbounds float, float addrspace(1)* %out1, i64 0
   store float %call, float addrspace(1)* %arrayidx, align 4
