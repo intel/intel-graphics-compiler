@@ -952,10 +952,12 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
             mpm.add(llvm::createEarlyCSEPass());
         }
 
+        if(IGC_IS_FLAG_SET(DumpRegPressureEstimate)) mpm.add(new IGCRegisterPressurePrinter("before"));
         mpm.add(createCloneAddressArithmeticPass());
         // cloneAddressArithmetic leaves old instructions unnecessary
         // dce pass helps to clean that up
         mpm.add(createDeadCodeEliminationPass());
+        if(IGC_IS_FLAG_SET(DumpRegPressureEstimate)) mpm.add(new IGCRegisterPressurePrinter("after"));
     }
 
     mpm.add(createRematAddressArithmeticPass());

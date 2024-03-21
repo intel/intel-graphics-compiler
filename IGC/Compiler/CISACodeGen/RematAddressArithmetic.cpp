@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/BreadthFirstIterator.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/IGCLivenessAnalysis.h"
+#include <fstream>
 
 using namespace llvm;
 using namespace IGC;
@@ -63,17 +64,49 @@ public:
     virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {
         AU.setPreservesCFG();
         AU.addRequired<IGCLivenessAnalysis>();
+        AU.addRequired<CodeGenContextWrapper>();
         AU.addRequired<WIAnalysis>();
     }
 
+    typedef llvm::SmallVector<llvm::Instruction *, 16> RematChain;
+
+    typedef std::unordered_set<llvm::Instruction *> RematSet;
+    typedef std::pair<RematSet, RematSet> RematPair;
+    typedef llvm::SmallVector<RematPair, 16> SliceToRematTargetVector;
+
     bool runOnFunction(Function&) override;
-    void countUses(Function&);
-    void rematWholeChain(llvm::IntToPtrInst *I);
-    bool isRegPressureLow(Function &F);
+
     std::unordered_map<llvm::Value*, unsigned int> Uses;
+    std::unordered_map<llvm::Instruction*, unsigned int> FlowMap;
+    SliceToRematTargetVector Vector;
+    RematSet MinCut;
+
+    std::unique_ptr<std::ofstream> OutputLogFile;
+    std::string LogStr;
+    llvm::raw_string_ostream OutputLogStream = raw_string_ostream(LogStr);
+
+    CodeGenContext *CGCtx = nullptr;
+    IGCLivenessAnalysis* RPE;
 
 private:
     bool greedyRemat(Function &F);
+    bool rematerialize(RematSet& ToProcess, unsigned int FlowThreshold);
+    bool isRegPressureLow(Function &F);
+    bool skipChain(RematChain& Chain, Instruction* Root);
+
+    RematChain collectRematChain(llvm::Instruction *I, unsigned int NumOfUsesLimit);
+
+    unsigned int collectFlow(RematSet& ToProcess, Function& F);
+
+    void countUses(Function&);
+    void speculateWholeChain(RematSet& ToProcess, unsigned int UsesLimit);
+    void collectInstToProcess(RematSet& ToProcess, Function& F);
+    void addToSystem(CloneAddressArithmetic::RematSet& Set, llvm::Instruction *I);
+    void computeFlow(llvm::Instruction* I);
+    void rematWholeChain(llvm::Instruction *I, RematChain& Chain);
+    void estimateProfit(RematSet& ToProcess);
+    void initializeLogFile(Function& F);
+    void writeLog();
 };
 } // end namespace
 
@@ -91,146 +124,358 @@ namespace IGC {
 IGC_INITIALIZE_PASS_BEGIN(CloneAddressArithmetic, PASS_FLAG_2, PASS_DESC_2, PASS_CFG_ONLY_2, PASS_ANALYSIS_2)
 IGC_INITIALIZE_PASS_DEPENDENCY(IGCLivenessAnalysis)
 IGC_INITIALIZE_PASS_DEPENDENCY(WIAnalysis)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(CloneAddressArithmetic, PASS_FLAG_2, PASS_DESC_2, PASS_CFG_ONLY_2, PASS_ANALYSIS_2)
 }
 
-void putAddrSpaceCastClose(Function &F) {
 
-    std::vector<llvm::Instruction *> V;
+#define DEBUG IGC_IS_FLAG_ENABLED(RematLog)
+#if 1
+#define PRINT_LOG(Str) if(IGC_IS_FLAG_ENABLED(RematLog)) OutputLogStream << Str;
+#define PRINT_LOG_NL(Str) if(IGC_IS_FLAG_ENABLED(RematLog)) OutputLogStream << Str << "\n";
+#define PRINT_INST(I) if(IGC_IS_FLAG_ENABLED(RematLog)) { I->print(OutputLogStream, false); }
+#define PRINT_INST_NL(I) if(IGC_IS_FLAG_ENABLED(RematLog)) { I->print(OutputLogStream, false); OutputLogStream << "\n"; }
+#else
+#define PRINT_LOG(Str) if(IGC_IS_FLAG_ENABLED(RematLog)) llvm::errs() << Str;
+#define PRINT_LOG_NL(Str) if(IGC_IS_FLAG_ENABLED(RematLog)) llvm::errs() << Str << "\n";
+#define PRINT_INST(I) if(IGC_IS_FLAG_ENABLED(RematLog)) { I->print(llvm::errs(), false); }
+#define PRINT_INST_NL(I) if(IGC_IS_FLAG_ENABLED(RematLog)) { I->print(llvm::errs(), false); llvm::errs() << "\n"; }
+#endif
 
-    for (BasicBlock &BB : F) {
-        for (auto &I : BB) {
-            if (llvm::isa<AddrSpaceCastInst>(I))
-                V.push_back(&I);
-        }
-    }
-
-    for(auto I : V) {
-
-        std::vector<llvm::Use *> VectorOfUses;
-        for(auto &U : I->uses()) { VectorOfUses.push_back(&U); }
-
-        for(auto U : VectorOfUses) {
-            auto User = U->getUser();
-            auto UserInst = llvm::dyn_cast<Instruction>(User);
-
-            if(llvm::isa_and_nonnull<PHINode>(UserInst)) continue;
-
-            if(UserInst) {
-                auto Clone = I->clone();
-                Clone->setName(I->getName() + "_clonedAddrSpaceCast");
-                Clone->insertBefore(UserInst);
-                *U = Clone;
-            }
-        }
-    }
-}
-
-static bool isAddressArithmetic(Instruction* I)
-{
-    if (isa<GetElementPtrInst>(I) ||
-        isa<InsertElementInst>(I) ||
-        isa<InsertValueInst>(I) ||
-        isa<BinaryOperator>(I) ||
-        (isa<UnaryInstruction>(I) && !isa<LoadInst>(I)) ||
-        (IGC_GET_FLAG_VALUE(RematAllowExtractElement) && isa<ExtractElementInst>(I)))
-        return true;
-
-    return false;
-}
-
-void CloneAddressArithmetic::rematWholeChain(llvm::IntToPtrInst *I) {
-
-  llvm::SmallVector<llvm::Instruction *, 4> RematVector;
-  std::queue<llvm::Instruction *> BFSQ;
-  BFSQ.push((Instruction *)I);
-
-  const unsigned NumOfUsesLimit = IGC_GET_FLAG_VALUE(RematUsesThreshold);
-  const unsigned RematChainLimit = IGC_GET_FLAG_VALUE(RematChainLimit);
-
-  // we are traversing ssa-chain for address arithmetic
-  while (!BFSQ.empty()) {
-
-    llvm::Instruction *CurrI = BFSQ.front();
-    BFSQ.pop();
-
-    for (unsigned int i = 0; i < CurrI->getNumOperands(); ++i) {
-
-      Instruction *Op = llvm::dyn_cast<Instruction>(CurrI->getOperand(i));
-      if( Op != NULL) {
-
-        bool NotPHI = !llvm::isa<llvm::PHINode>(Op);
-        bool NotConstant = !llvm::isa<llvm::Constant>(Op);
-        bool SameBB = IGC_IS_FLAG_ENABLED(RematSameBBScope) ? Op->getParent() == I->getParent() : true;
-        bool NotUniform = IGC_IS_FLAG_ENABLED(RematRespectUniformity) ? !WI->isUniform(Op) : true;
-        bool AddressArithmetic = isAddressArithmetic(Op);
-
-        // if operand has more uses than specified, we do not rematerialize it.
-        // helps with situation like this:
-        //
-        // (we don't want to add this to every rematerialized chain of instructions)
-        // someCommonValue = add base, 10000
-        //
-        // mul r0, someCommonValue
-        // load r0
-        // ...
-        // mul r2 someCommonValue
-        // load r2
-        bool NotTooManyUses = Uses[Op] < NumOfUsesLimit;
-
-        if (SameBB && NotConstant && NotPHI && NotTooManyUses && AddressArithmetic && NotUniform) {
-
-          BFSQ.push(Op);
-          RematVector.push_back(Op);
-        }
-      }
-    }
-  }
-
-  // if the remat chain will be too long, probably we don't want that
-  if(RematVector.size() > RematChainLimit) return;
-  std::unordered_map<Instruction *, Instruction *> OldToNew;
-  std::reverse(RematVector.begin(), RematVector.end());
-
-  for (auto el : RematVector) {
-
-    auto Clone = el->clone();
-    OldToNew[el] = Clone;
-    for (unsigned int i = 0; i < Clone->getNumOperands(); ++i) {
-
-      auto OldOp = llvm::dyn_cast<Instruction>(Clone->getOperand(i));
-
-      if (OldToNew.count(OldOp)) {
-        Clone->setOperand(i, OldToNew[OldOp]);
-      }
-    }
-
-    Clone->setName("remat");
-    Clone->insertBefore(I);
-  }
-
-  auto OldOp = dyn_cast<Instruction>(I->getOperand(0));
-  if (OldToNew.count(OldOp)) I->setOperand(0, OldToNew[OldOp]);
-
-  OldToNew.clear();
-  RematVector.clear();
-}
-
-bool isSafelyRematerializable(Use& Use) {
+static bool isSafelyRematerializable(Use& Use) {
 
     auto LI = llvm::isa<LoadInst>(Use.getUser());
     auto SI = llvm::isa<StoreInst>(Use.getUser());
     auto BI = llvm::isa<BitCastInst>(Use.getUser());
     auto SelI = llvm::isa<SelectInst>(Use.getUser());
     auto CI = IGC_IS_FLAG_ENABLED(RematAddrSpaceCastToUse) ? llvm::isa<AddrSpaceCastInst>(Use.getUser()) : false;
+    // TODO: move to whitelist option
+    // sometimes it helps to rematerialize arguments for llvm.debug functions in general it's not safe.
+    // this is not airtight, use only for testing purposes, if performance gains are significant it should be investigated.
+    // visa can exhibit strange behavior sometimes
+    auto CLI = IGC_IS_FLAG_ENABLED(RematCallsOperand) ? llvm::isa<CallInst>(Use.getUser()) : false;
 
-    bool Result = LI || SI || BI || CI || SelI;
+    bool Result = LI || SI || BI || CI || CLI || SelI;
     return Result;
 }
 
+static bool isAddressArithmetic(Instruction* I)
+{
+    bool Result =
+        isa<GetElementPtrInst>(I) ||
+        isa<InsertElementInst>(I) ||
+        isa<InsertValueInst>(I) ||
+        isa<BinaryOperator>(I) ||
+        isa<AddrSpaceCastInst>(I) ||
+        isa<SelectInst>(I) ||
+        isa<CastInst>(I) ||
+        (isa<UnaryInstruction>(I) && !isa<LoadInst>(I)) ||
+        (IGC_GET_FLAG_VALUE(RematAllowLoads) && isa<LoadInst>(I)) ||
+        (IGC_GET_FLAG_VALUE(RematAllowOneUseLoad) && isa<LoadInst>(I) && I->hasOneUse()) ||
+        (IGC_GET_FLAG_VALUE(RematAllowExtractElement) && isa<ExtractElementInst>(I));
+
+    return Result;
+}
+
+void addToSetRemat(llvm::Instruction *Inst, CloneAddressArithmetic::RematSet &Set) {
+    for (auto &Op : Inst->operands()) {
+        llvm::Value *V = Op.get();
+        // We are counting only instructions right now
+        // potetntially we should also count globals, but
+        // we defintely shouldn't count:
+        // br label %bb1 (basic block names)
+        // call %functionName (function names)
+        // add %a, 1 (constants)
+        if (!(llvm::isa<llvm::Instruction>(V) || llvm::isa<llvm::Argument>(V)))
+            continue;
+        // fix it in sameSet processing
+        if (llvm::isa<llvm::PHINode>(V))
+            continue;
+        Set.insert(static_cast<llvm::Instruction *>(V));
+    }
+}
+
+bool setCompare(CloneAddressArithmetic::RematSet& A, CloneAddressArithmetic::RematSet& B) {
+
+    if(B.empty() || A.empty()) return false;
+    bool IsSame = true;
+    for (auto *Elem : A)
+        IsSame &= (bool)B.count(Elem);
+    return IsSame && B.size() == A.size();
+}
+
+
+bool isSubset(CloneAddressArithmetic::RematSet& A, CloneAddressArithmetic::RematSet& B) {
+
+    bool IsSame = true;
+    for (auto *Elem : A)
+        IsSame &= (bool)B.count(Elem);
+    // #TODO: process supersets and subsets
+    return IsSame;
+}
+
+void CloneAddressArithmetic::computeFlow(llvm::Instruction* I) {
+
+    std::queue<llvm::Instruction *> BFSQ;
+    BFSQ.push(I);
+    unsigned int NumOfUses = Uses[I];
+
+    while (!BFSQ.empty()) {
+
+        llvm::Instruction *CurrI = BFSQ.front();
+        BFSQ.pop();
+        for (unsigned int i = 0; i < CurrI->getNumOperands(); ++i) {
+
+            Instruction *Op = llvm::dyn_cast<Instruction>(CurrI->getOperand(i));
+            if(!Op) continue;
+
+            bool NotPHI = !llvm::isa<llvm::PHINode>(Op);
+            bool NotConstant = !llvm::isa<llvm::Constant>(Op);
+            bool NotUniform = IGC_IS_FLAG_ENABLED(RematRespectUniformity) ? !WI->isUniform(Op) : true;
+            bool AddressArithmetic = isAddressArithmetic(Op);
+
+            if (NotConstant && NotPHI && AddressArithmetic && NotUniform) {
+                FlowMap[Op] = FlowMap[Op] + NumOfUses;
+                BFSQ.push(Op);
+            }
+        }
+    }
+}
+
+
+CloneAddressArithmetic::RematChain
+CloneAddressArithmetic::collectRematChain(llvm::Instruction* I, unsigned int NumOfUsesLimit) {
+
+    RematChain RematVector;
+    std::queue<llvm::Instruction *> BFSQ;
+
+    BFSQ.push(I);
+
+    PRINT_LOG("Collect chain for: "); PRINT_INST(I); PRINT_LOG_NL("");
+
+    llvm::SmallVector<unsigned int, 4> StateVector;
+
+    // we are travdrsing ssa-chain for address arithmetic
+    while (!BFSQ.empty()) {
+
+        llvm::Instruction *CurrI = BFSQ.front();
+        BFSQ.pop();
+
+        for (unsigned int i = 0; i < CurrI->getNumOperands(); ++i) {
+
+            Instruction *Op = llvm::dyn_cast<Instruction>(CurrI->getOperand(i));
+            if( !Op)
+                continue;
+
+            PRINT_LOG("Candidate: [" << FlowMap[Op] << "] "); PRINT_INST(Op);
+
+            bool NotPHI = !llvm::isa<llvm::PHINode>(Op);
+            bool NotConstant = !llvm::isa<llvm::Constant>(Op);
+            bool SameBB = IGC_IS_FLAG_ENABLED(RematSameBBScope) ? Op->getParent() == I->getParent() : true;
+            bool NotUniform = IGC_IS_FLAG_ENABLED(RematRespectUniformity) ? !WI->isUniform(Op) : true;
+            bool AddressArithmetic = isAddressArithmetic(Op);
+
+            bool NotTooManyUses = FlowMap[Op] <= NumOfUsesLimit;
+
+            if (SameBB && NotConstant && NotPHI && NotTooManyUses && AddressArithmetic && NotUniform) {
+                BFSQ.push(Op);
+                RematVector.push_back(Op);
+                PRINT_LOG_NL("\t\t --> Accepted");
+                continue;
+            }
+            PRINT_LOG_NL("\t\t --> Rejected: " << "BB:" << SameBB << "Uses:" << NotTooManyUses << "Ar:" << AddressArithmetic << "Un:" << NotUniform);
+        }
+    }
+
+    return RematVector;
+}
+
+void CloneAddressArithmetic::addToSystem(RematSet &Set, llvm::Instruction *I) {
+
+    PRINT_LOG_NL("\n");
+    PRINT_LOG_NL("Size: " << Vector.size());
+    PRINT_LOG("Inst: "); PRINT_INST(I); PRINT_LOG_NL("");
+
+    for(auto originEl : Set) { PRINT_LOG("Set: "); PRINT_INST(originEl); PRINT_LOG_NL(""); }
+
+    bool Same = false;
+    for(auto &Pair : Vector) {
+
+        auto& ExistingSet = Pair.first;
+        auto& ExistingRematVector = Pair.second;
+
+        Same = setCompare(Set, ExistingSet);
+        if(Same) {
+            PRINT_LOG("found set: "); PRINT_INST(I); PRINT_LOG_NL("");
+            ExistingRematVector.insert(I);
+            break;
+        }
+    }
+
+    if(!Same)
+        Vector.push_back(RematPair(Set, {I}));
+
+    PRINT_LOG_NL("");
+}
+
+
+void CloneAddressArithmetic::rematWholeChain(llvm::Instruction* I, RematChain& Chain) {
+
+    std::unordered_map<Instruction *, Instruction *> OldToNew;
+
+    for (auto el : Chain) {
+
+        auto Clone = el->clone();
+        OldToNew[el] = Clone;
+        for (unsigned int i = 0; i < Clone->getNumOperands(); ++i) {
+
+            auto OldOp = llvm::dyn_cast<Instruction>(Clone->getOperand(i));
+
+            if (OldToNew.count(OldOp))
+                Clone->setOperand(i, OldToNew[OldOp]);
+        }
+
+        Clone->setName("remat");
+        Clone->insertBefore(I);
+    }
+
+    auto OldOp = dyn_cast<Instruction>(I->getOperand(0));
+    if (OldToNew.count(OldOp)) I->setOperand(0, OldToNew[OldOp]);
+
+    OldToNew.clear();
+}
+
+
+bool CloneAddressArithmetic::skipChain(RematChain& Chain, Instruction* Root) {
+
+    // this is a base flow
+    // instructions that have equal flow to origin instruction
+    // aren't result in copies, they just moved down
+    unsigned int RootFlow = Uses[Root];
+    unsigned int InstructionToCopy = 0;
+
+    for (auto &El : Chain)
+        if(RootFlow != FlowMap[El])
+            InstructionToCopy++;
+
+    const unsigned RematChainLimit = IGC_GET_FLAG_VALUE(RematChainLimit);
+    bool Result = InstructionToCopy >= RematChainLimit;
+
+    PRINT_LOG_NL("RootFlow: " << RootFlow << "  Limit: " << RematChainLimit << "  Steps: " << InstructionToCopy);
+    return Result;
+}
+
+
+bool CloneAddressArithmetic::rematerialize(RematSet& ToProcess, unsigned int FlowThreshold) {
+
+    for (auto El : ToProcess) {
+
+        PRINT_LOG("rematerialize: "); PRINT_INST(El);
+
+        Value *V = El;
+        llvm::SmallVector<llvm::Use*, 8> VectorOfUses;
+        // collect all uses of particular addrArith inst
+        bool ShouldBeRemated = true;
+        for (auto &U : V->uses()) {
+            ShouldBeRemated &= isSafelyRematerializable(U);
+            VectorOfUses.push_back(&U);
+        }
+
+        if(!ShouldBeRemated) continue;
+        PRINT_LOG_NL(" ---> all uses accepted ");
+
+        RematChain Chain = collectRematChain(El, FlowThreshold);
+        if(skipChain(Chain, El)) continue;
+        std::reverse(Chain.begin(), Chain.end());
+
+        for (auto Use : VectorOfUses) {
+
+            // take use of addrArith instruction, clone instruction,
+            // insert clone right before the use, swap use to clone, remat
+            auto User = Use->getUser();
+            auto UserInst = llvm::dyn_cast<Instruction>(User);
+
+            if(!UserInst)
+                continue;
+
+            PRINT_LOG("remat: "); PRINT_INST(User); PRINT_LOG(" --> ");
+
+            auto Clone = El->clone();
+            Clone->setName("cloned_" + El->getName());
+            Clone->insertBefore(UserInst);
+            *Use = Clone;
+
+            PRINT_INST_NL(Clone);
+            rematWholeChain(Clone, Chain);
+        }
+        PRINT_LOG_NL("");
+    }
+    return true;
+}
+
+
+void CloneAddressArithmetic::estimateProfit(RematSet& ToProcess) {
+
+    if(!DEBUG) return;
+
+    PRINT_LOG_NL("FINAL: ");
+    PRINT_LOG_NL("SIZE: " << Vector.size());
+    for(auto el : Vector) {
+
+        auto& OriginSet = el.first;
+        auto& ValueSet = el.second;
+
+        unsigned int SetSize = ValueSet.size();
+        PRINT_LOG_NL("SetSize: " << SetSize);
+
+        PRINT_LOG_NL("origin nodes:");
+        for(auto originEl : OriginSet) {
+            PRINT_INST_NL(originEl);
+        }
+
+        PRINT_LOG_NL("------");
+        for(auto vecEl : ValueSet) {
+            PRINT_LOG("uses: " << Uses[vecEl]<< " "); PRINT_INST_NL(vecEl);
+        }
+    }
+
+    return;
+}
+
+void CloneAddressArithmetic::speculateWholeChain(RematSet &ToProcess, unsigned int UsesLimit) {
+
+    PRINT_LOG_NL("speculate, FlowThreshold:" << UsesLimit);
+    for (auto I : ToProcess) {
+
+        RematChain Chain = collectRematChain(I, UsesLimit);
+        RematSet Set;
+
+        addToSetRemat(I, Set);
+        for(auto& el: Chain) {
+            Set.erase(el);
+            PRINT_LOG("[" << FlowMap[el] << "] "); PRINT_INST_NL(el);
+            addToSetRemat(el, Set);
+         }
+
+        for(auto el : Set) {
+            PRINT_LOG("origin: "); PRINT_INST(el); PRINT_LOG_NL("");
+        }
+
+        addToSystem(Set, I);
+    }
+
+    estimateProfit(ToProcess);
+    PRINT_LOG_NL("end_speculate");
+    Vector.clear();
+    return;
+}
+
+
+
+
 bool CloneAddressArithmetic::isRegPressureLow(Function &F) {
 
-    auto RPE = &getAnalysis<IGCLivenessAnalysis>();
+    RPE = &getAnalysis<IGCLivenessAnalysis>();
     unsigned int SIMD = numLanes(RPE->bestGuessSIMDSize());
     unsigned int PressureLimit = IGC_GET_FLAG_VALUE(RematRPELimit);
     bool Result = RPE->getMaxRegCountForFunction(F, SIMD) < PressureLimit;
@@ -252,61 +497,111 @@ void CloneAddressArithmetic::countUses(Function &F) {
     }
 }
 
-bool CloneAddressArithmetic::greedyRemat(Function &F) {
 
-    bool Result = false;
 
-    if (isRegPressureLow(F))
-        return Result;
+bool isRematInstruction(llvm::Value* V) {
 
-    countUses(F);
+    bool IntToPtr = llvm::isa<IntToPtrInst>(V);
+    bool AddrSpCast = llvm::isa<AddrSpaceCastInst>(V);
+    bool BitCast = llvm::isa<BitCastInst>(V);
+    bool GEP = llvm::isa<GetElementPtrInst>(V);
 
-    // At times, addrspace casts end up far away from their direct users.
-    if(IGC_IS_FLAG_ENABLED(RematMoveAddrSpaceCast)) putAddrSpaceCastClose(F);
+    bool Result = IntToPtr || AddrSpCast || BitCast || GEP;
+    return Result;
+}
 
-    llvm::SmallVector<llvm::IntToPtrInst *, 4> ToProcess;
 
-    // go through block, collect all inttoptr instructions to do
-    // remat on them
+void CloneAddressArithmetic::collectInstToProcess(RematSet& ToProcess, Function& F) {
     for (BasicBlock &BB : F) {
         for (auto &I : BB) {
-            auto *CastedIntToPtrInst = llvm::dyn_cast<IntToPtrInst>(&I);
-            if (CastedIntToPtrInst) ToProcess.push_back(CastedIntToPtrInst);
+
+            bool IsLoad = llvm::isa<LoadInst>(I);
+            bool IsStore = llvm::isa<StoreInst>(I);
+            if (!IsLoad && !IsStore) continue;
+
+            llvm::Value* V =
+                IsLoad ? static_cast<LoadInst *>(&I)->getPointerOperand() :
+                static_cast<StoreInst *>(&I)->getPointerOperand();
+
+            if(isRematInstruction(V))
+                ToProcess.insert(static_cast<Instruction *>(V));
         }
     }
+}
 
-    for (auto el : ToProcess) {
 
-        Value *V = el;
-        llvm::SmallVector<llvm::Use*, 4> VectorOfUses;
-        // collect all uses of particular intoptr inst
-        bool ShouldBeRemated = true;
-        for (auto &U : V->uses()) {
-            ShouldBeRemated &= isSafelyRematerializable(U);
-            VectorOfUses.push_back(&U);
-        }
+unsigned int CloneAddressArithmetic::collectFlow(RematSet& ToProcess, Function& F) {
 
-        if(!ShouldBeRemated) continue;
+    unsigned int FlowBudget = 0;
+    for (auto el : ToProcess)
+        FlowBudget += Uses[el];
 
-        for (auto use : VectorOfUses) {
+    PRINT_LOG_NL("FlowBudget: " << FlowBudget);
+    unsigned int Base = IGC_GET_FLAG_VALUE(RematFlowThreshold);
+    float Coefficient = 0.01f*(float)Base;
+    unsigned int Result = (unsigned int)((float)FlowBudget*Coefficient);
 
-            // Clone inttoptr instruction, insert clone right before the use,
-            // switch use to clone, remat
-            auto User = use->getUser();
-            auto UserInst = llvm::dyn_cast<Instruction>(User);
+    for (auto el : ToProcess)
+        computeFlow((Instruction*)el);
 
-            if(UserInst) {
-                auto Clone = el->clone();
-                Clone->setName("cloned_" + el->getName());
-                Clone->insertBefore(UserInst);
-                *use = Clone;
-                rematWholeChain((llvm::IntToPtrInst *)Clone);
-                Result = true;
-            }
+    if(DEBUG) {
+        for (auto el : FlowMap) {
+            PRINT_LOG("[" << el.second << "] {" << Uses[el.first]<< "}\t"); PRINT_INST_NL(el.first);
         }
     }
 
     return Result;
+}
+
+
+bool CloneAddressArithmetic::greedyRemat(Function &F) {
+
+    bool Result = false;
+    if(isRegPressureLow(F))
+        return Result;
+
+    initializeLogFile(F);
+    countUses(F);
+    RematSet ToProcess;
+    collectInstToProcess(ToProcess, F);
+
+    unsigned int FlowThreshold = collectFlow(ToProcess, F);
+    writeLog();
+    speculateWholeChain(ToProcess, FlowThreshold);
+
+    writeLog();
+    rematerialize(ToProcess, FlowThreshold);
+    writeLog();
+
+    FlowMap.clear();
+    return Result;
+}
+
+
+void CloneAddressArithmetic::writeLog() {
+
+    if(IGC_IS_FLAG_ENABLED(RematLog) && OutputLogFile->is_open())
+        *OutputLogFile << OutputLogStream.str();
+
+    OutputLogStream.str().clear();
+}
+
+
+void CloneAddressArithmetic::initializeLogFile(Function& F) {
+
+    if(!IGC_IS_FLAG_ENABLED(RematLog))
+        return;
+
+    std::stringstream ss;
+    ss << F.getName().str() << "_" << "Remat";
+    auto Name = Debug::DumpName(IGC::Debug::GetShaderOutputName())
+        .Hash(CGCtx->hash)
+        .Type(CGCtx->type)
+        .Retry(CGCtx->m_retryManager.GetRetryId())
+        .Pass(ss.str().c_str())
+        .Extension("ll");
+
+    OutputLogFile = std::make_unique<std::ofstream>(Name.str());
 }
 
 bool CloneAddressArithmetic::runOnFunction(Function& F)
@@ -314,7 +609,10 @@ bool CloneAddressArithmetic::runOnFunction(Function& F)
     if (skipFunction(F))
         return false;
 
+    CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     WI = &getAnalysis<WIAnalysis>();
+
+
     bool Modified = false;
     Modified |= greedyRemat(F);
     return Modified;
