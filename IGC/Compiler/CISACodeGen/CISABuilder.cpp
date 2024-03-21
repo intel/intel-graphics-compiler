@@ -4843,6 +4843,11 @@ namespace IGC
             SaveOption(vISA_enableBCR, true);
         }
         if (context->type == ShaderType::OPENCL_SHADER &&
+            m_program->m_Platform->supportTwoSrcBundleConflictReduction())
+        {
+            SaveOption(vISA_twoSrcBCR, true);
+        }
+        if (context->type == ShaderType::OPENCL_SHADER &&
             m_program->m_Platform->supportDpasInstruction())
         {
             //3: Enable bundle conflict reduction for all instructions.

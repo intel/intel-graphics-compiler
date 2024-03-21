@@ -330,6 +330,7 @@ DEF_VISA_OPTION(vISA_AbortOnSpillThreshold, ET_INT32, "-abortOnSpill", UNUSED,
                 0)
 DEF_VISA_OPTION(vISA_enableBCR, ET_BOOL, "-enableBCR", UNUSED, false)
 DEF_VISA_OPTION(vISA_forceBCR, ET_BOOL, "-forceBCR", UNUSED, false)
+DEF_VISA_OPTION(vISA_twoSrcBCR, ET_BOOL, "-twoSrcBCR", UNUSED, false)
 DEF_VISA_OPTION(vISA_NewAugmentation, ET_BOOL_TRUE, "-newaugmentation",
                 "USAGE: -newaugmentation "
                 "enable using augmentation with holes",
