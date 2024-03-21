@@ -1508,17 +1508,14 @@ endif()
 
 add_subdirectory(VISALinkerDriver)
 igc_sg_define(IGC__VISALinkerDriver)
-
 if(MSVC)
   set(IGC_BUILD__RES__IGC__igc_common
       "${CMAKE_CURRENT_SOURCE_DIR}/igc.rc"
     )
   igc_rc_register_resource(IGC__igc_dll RESOURCES DriverInterface__igc_dll FILE "${IGC_BUILD__RES__IGC__igc_common}") # [WA#2]
-  igc_rc_register_resource(IGC__igc_lib RESOURCES DriverInterface__igc_dll FILE "${IGC_BUILD__RES__IGC__igc_common}") # [WA#2]
 
   igc_rc_get_resource(IGC_BUILD__RES__IGC__igc_dll IGC__igc_dll)
   # Static libraries on Windows cannot pass resources to final libraries.
-  set(IGC_BUILD__RES__IGC__igc_lib)
   source_group("Resources" FILES
     ${IGC_BUILD__RES__IGC__igc_dll}
   )
@@ -1590,6 +1587,7 @@ add_library("${IGC_BUILD__PROJ__igc_dll}" SHARED
     ${IGC_BUILD__HDR__IGC__igc_dll}
     ${IGC_BUILD__RES__IGC__igc_dll}
   )
+target_compile_definitions(${IGC_BUILD__PROJ__igc_dll} PRIVATE VER_ORIGINALNAME="$<TARGET_FILE_NAME:${IGC_BUILD__PROJ__igc_dll}>")
 
 
 if(IGC_OPTION__LINK_KHRONOS_SPIRV_TRANSLATOR)
