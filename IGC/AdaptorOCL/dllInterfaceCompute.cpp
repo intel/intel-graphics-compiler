@@ -1164,20 +1164,41 @@ bool TranslateBuildSPMD(
     // Setting mutex to ensure that single thread will enter and setup this flag.
     {
         const std::lock_guard<std::mutex> lock(llvm_mutex);
+        std::vector<const char*> args;
+        args.push_back("igc");
+        auto optionsMap = llvm::cl::getRegisteredOptions();
+
         // Disable code sinking in instruction combining.
         // This is a workaround for a performance issue caused by code sinking
         // that is being done in LLVM's instcombine pass.
         // This code will be removed once sinking is removed from instcombine.
-        auto optionsMap = llvm::cl::getRegisteredOptions();
         llvm::StringRef instCombineFlag = "-instcombine-code-sinking=0";
         auto instCombineSinkingSwitch = optionsMap.find(instCombineFlag.trim("-=0"));
         if (instCombineSinkingSwitch != optionsMap.end())
         {
             if (instCombineSinkingSwitch->getValue()->getNumOccurrences() == 0)
             {
-                const char* const args[] = { "igc", instCombineFlag.data() };
-                llvm::cl::ParseCommandLineOptions(std::size(args), args);
+                args.push_back(instCombineFlag.data());
             }
+        }
+
+        // With the default (250) maximum number of accesses allowed for memory
+        // promotion when using MemorySSA we lack the performance for some
+        // applications. Setting the number of accesses for memory promotion
+        // cap to 500 solves this issue.
+        llvm::StringRef licmMSSAPromotionFlag = "-licm-mssa-max-acc-promotion=500";
+        auto licmMSSAPromotionSwitch = optionsMap.find(licmMSSAPromotionFlag.trim("-=500"));
+        if (licmMSSAPromotionSwitch != optionsMap.end())
+        {
+            if (licmMSSAPromotionSwitch->getValue()->getNumOccurrences() == 0)
+            {
+                args.push_back(licmMSSAPromotionFlag.data());
+            }
+        }
+
+        if (std::size(args) > 1)
+        {
+            llvm::cl::ParseCommandLineOptions(std::size(args), &args[0]);
         }
     }
 
