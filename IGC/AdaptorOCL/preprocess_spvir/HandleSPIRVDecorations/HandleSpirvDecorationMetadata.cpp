@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "HandleSpirvDecorationMetadata.h"
-#include "CacheControlsHelper.h"
+#include "AdaptorOCL/Utils/CacheControlsHelper.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 

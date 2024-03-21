@@ -69,7 +69,7 @@ namespace IGC
     // !11 = !{i32 6442,    i32 1,          i32 0   }
     // !12 = !{i32 6442,    i32 3,          i32 1   }
     template<typename T>
-    llvm::SmallDenseMap<CacheLevel, T> parseCacheControlsMD(llvm::SmallPtrSetImpl<llvm::MDNode*>& MDNodes)
+    inline llvm::SmallDenseMap<CacheLevel, T> parseCacheControlsMD(llvm::SmallPtrSetImpl<llvm::MDNode*>& MDNodes)
     {
         using namespace llvm;
         auto getLiteral = [](const MDNode* node, const uint32_t index)
@@ -99,14 +99,14 @@ namespace IGC
     }
 
     template<typename T>
-    std::optional<T> getCacheControl(llvm::SmallDenseMap<CacheLevel, T>& cacheControls, CacheLevel level)
+    inline std::optional<T> getCacheControl(llvm::SmallDenseMap<CacheLevel, T>& cacheControls, CacheLevel level)
     {
         if (auto E = cacheControls.find(level); E != cacheControls.end())
             return E->second;
         return {};
     }
 
-    LSC_L1_L3_CC mapToLSCCacheControl(StoreCacheControl L1Control, StoreCacheControl L3Control)
+    inline LSC_L1_L3_CC mapToLSCCacheControl(StoreCacheControl L1Control, StoreCacheControl L3Control)
     {
         for (auto& [LSCEnum, SPIRVEnum] : supportedStoreConfigs)
             if (SPIRVEnum.first == L1Control && SPIRVEnum.second == L3Control)
@@ -115,7 +115,7 @@ namespace IGC
         return LSC_CC_INVALID;
     }
 
-    LSC_L1_L3_CC mapToLSCCacheControl(LoadCacheControl L1Control, LoadCacheControl L3Control)
+    inline LSC_L1_L3_CC mapToLSCCacheControl(LoadCacheControl L1Control, LoadCacheControl L3Control)
     {
         for (auto& [LSCEnum, SPIRVEnum] : supportedLoadConfigs)
             if (SPIRVEnum.first == L1Control && SPIRVEnum.second == L3Control)
@@ -128,7 +128,7 @@ namespace IGC
     std::pair<T, T> mapToSPIRVCacheControl(LSC_L1_L3_CC) = delete;
 
     template <>
-    std::pair<LoadCacheControl, LoadCacheControl> mapToSPIRVCacheControl<LoadCacheControl>(LSC_L1_L3_CC LSCControl)
+    inline std::pair<LoadCacheControl, LoadCacheControl> mapToSPIRVCacheControl<LoadCacheControl>(LSC_L1_L3_CC LSCControl)
     {
         if (auto I = supportedLoadConfigs.find(LSCControl); I != supportedLoadConfigs.end())
             return I->second;
@@ -138,7 +138,7 @@ namespace IGC
     }
 
     template <>
-    std::pair<StoreCacheControl, StoreCacheControl> mapToSPIRVCacheControl<StoreCacheControl>(LSC_L1_L3_CC LSCControl)
+    inline std::pair<StoreCacheControl, StoreCacheControl> mapToSPIRVCacheControl<StoreCacheControl>(LSC_L1_L3_CC LSCControl)
     {
         if (auto I = supportedStoreConfigs.find(LSCControl); I != supportedStoreConfigs.end())
             return I->second;
