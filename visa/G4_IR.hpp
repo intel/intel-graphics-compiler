@@ -1313,7 +1313,8 @@ public:
   bool canBeEOT() const {
     bool canEOT = getMsgDesc()->getDstLenRegs() == 0 &&
                   (getMsgDesc()->getSFID() != SFID::NULL_SFID &&
-                   getMsgDesc()->getSFID() != SFID::SAMPLER);
+                   getMsgDesc()->getSFID() != SFID::SAMPLER &&
+                  !getMsgDesc()->isFence());
 
     return canEOT;
   }
