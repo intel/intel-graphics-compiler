@@ -11,8 +11,10 @@ SPDX-License-Identifier: MIT
 #include <winver.h>
 #include "..\install\intcver.h"
 
-#if !defined(VER_ORIGINALNAME)
-    #error VER_ORIGINALNAME is missing
+#if defined(_WIN64)
+    #define VER_ORIGINALNAME "igc64.dll"
+#else
+    #define VER_ORIGINALNAME "igc32.dll"
 #endif
 #define VER_FILETYPE             VFT_DLL
 #define VER_FILESUBTYPE          VFT2_DRV_INSTALLABLE
