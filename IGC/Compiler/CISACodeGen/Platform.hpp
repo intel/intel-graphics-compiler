@@ -579,11 +579,6 @@ bool supportBfnInstruction() const
     return isProductChildOf(IGFX_XE_HP_SDV);
 }
 
-bool supportTwoSrcBundleConflictReduction() const
-{
-    return isProductChildOf(IGFX_ARROWLAKE);
-}
-
 bool supportDpasInstruction() const
 {
     return isProductChildOf(IGFX_XE_HP_SDV) && m_platformInfo.eProductFamily != IGFX_METEORLAKE &&

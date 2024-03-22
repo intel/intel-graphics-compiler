@@ -359,7 +359,7 @@ bool LocalRA::localRAPass(bool doRoundRobin, bool doSplitLLR) {
         gra.useHybridRAwithSpill && !doRoundRobin);
   }
 
-  if (needGlobalRA && (doRoundRobin || gra.twoSrcBundleBCR)) {
+  if (needGlobalRA && doRoundRobin) {
     undoLocalRAAssignments(true);
   }
 
@@ -392,7 +392,7 @@ bool LocalRA::localRA() {
   bool reduceBCInRR = false;
 
   if (builder.getOption(vISA_LocalBankConflictReduction) &&
-      (builder.hasBankCollision() || gra.twoSrcBundleBCR)) {
+      builder.hasBankCollision()) {
     reduceBCInRR = bc.setupBankConflictsForKernel(
         doRoundRobin, reduceBCInTAandFF, numRegLRA, highInternalConflict);
   }
@@ -428,7 +428,7 @@ bool LocalRA::localRA() {
   }
 
   if (!doRoundRobin) {
-    if ((gra.forceBCR || gra.twoSrcBundleBCR) && doBCR) {
+    if (gra.forceBCR && doBCR) {
       RA_TRACE(std::cout << "\t--first-fit BCR RA\n");
       needGlobalRA = localRAPass(false, doSplitLLR);
     }
@@ -442,8 +442,6 @@ bool LocalRA::localRA() {
         globalLRSize = 0;
       }
       specialAlign();
-      gra.clearAllBundleConflictDcl();
-      gra.twoSrcBundleBCR = false;
       needGlobalRA = localRAPass(false, doSplitLLR);
     }
     gra.favorBCR |= doBCR && kernel.useAutoGRFSelection() &&

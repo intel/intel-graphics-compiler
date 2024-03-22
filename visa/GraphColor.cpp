@@ -806,39 +806,6 @@ void BankConflictPass::setupBankConflictsforDPAS(G4_INST *inst) {
   return;
 }
 
-
-void BankConflictPass::setupBundleConflictsforTwoSrcsInst(G4_INST *inst) {
-  vISA_ASSERT(inst->getNumSrc() == 2, "Only support two source operands instructions");
-
-  G4_Declare *dcls[2];
-  G4_Declare *opndDcls[2];
-  unsigned offset[2];
-
-  for (int i = 0; i < 2; i += 1) {
-    dcls[i] = nullptr;
-    opndDcls[i] = nullptr;
-
-    G4_Operand *src = inst->getSrc(i);
-    if (!src || !src->isSrcRegRegion() || src->isAreg()) {
-      // bank conflict not possible
-      continue;
-    }
-
-    dcls[i] = GetTopDclFromRegRegion(src);
-    opndDcls[i] = src->getBase()->asRegVar()->getDeclare();
-    offset[i] = (opndDcls[i]->getOffsetFromBase() + src->getLeftBound()) /
-                gra.kernel.numEltPerGRF<Type_UB>();
-  }
-
-  // Add potential bundle conflicts
-  if (dcls[0] && dcls[1]) {
-    gra.addBundleConflictDcl(dcls[0], dcls[1], offset[0] - offset[1]);
-    gra.addBundleConflictDcl(dcls[1], dcls[0], offset[1] - offset[0]);
-  }
-
-  return;
-}
-
 void BankConflictPass::setupBankConflictsforMad(G4_INST *inst) {
   BankConflict srcBC[3];
   unsigned offset[3];
@@ -1055,10 +1022,10 @@ void BankConflictPass::setupBankConflictsForBBTGL(G4_BB *bb,
       } else {
         setupBankConflictsforMad(inst);
       }
-    } else if ((gra.forceBCR || gra.twoSrcBundleBCR) && !forGlobal &&
+    } else if (gra.forceBCR && !forGlobal &&
                inst->getNumSrc() == 2) {
       threeSourceInstNum++;
-      setupBundleConflictsforTwoSrcsInst(inst);
+      setupBankConflictsforMad(inst);
     }
   }
 
@@ -10136,21 +10103,6 @@ bool GlobalRA::tryHybridRA() {
   copyMissingAlignment();
   BankConflictPass bc(*this, false);
 
-  if (twoSrcBundleBCR) {
-    LivenessAnalysis liveAnalysis(*this, G4_GRF | G4_INPUT);
-    liveAnalysis.computeLiveness();
-
-    if (!liveAnalysis.getNumSelectedVar()) {
-      return false;
-    }
-
-    RPE rpe(*this, &liveAnalysis);
-    rpe.run();
-    if (rpe.getMaxRP() >= kernel.getNumRegTotal() - 24) {
-      // No two src bundle conflict reduction if high register pressure
-      twoSrcBundleBCR = false;
-    }
-  }
 
   LocalRA lra(bc, *this);
   if (lra.localRA()) {
