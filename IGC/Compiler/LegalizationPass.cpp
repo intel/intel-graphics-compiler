@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvmWrapper/IR/InstrTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
@@ -1652,11 +1653,7 @@ void Legalization::visitShuffleVectorInst(ShuffleVectorInst& I)
     Value* src0 = I.getOperand(0);
     Value* src1 = I.getOperand(1);
     // The mask is guaranteed by the LLVM IR spec to be constant
-#if LLVM_VERSION_MAJOR < 11
-    Constant* mask = cast<Constant>(I.getOperand(2));
-#else
-    Constant* mask = I.getShuffleMaskForBitcode();
-#endif
+    Constant* mask = IGCLLVM::getShuffleMaskForBitcode(&I);
     // The two inputs are guaranteed to be of the same type
     IGCLLVM::FixedVectorType* inType = cast<IGCLLVM::FixedVectorType>(src0->getType());
     int inCount = int_cast<int>(inType->getNumElements());

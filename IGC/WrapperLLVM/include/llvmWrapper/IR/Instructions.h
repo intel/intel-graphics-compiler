@@ -19,78 +19,78 @@ SPDX-License-Identifier: MIT
 namespace IGCLLVM
 {
 
-    inline llvm::Value* getCalledValue(llvm::CallInst& CI)
-    {
+inline llvm::Value* getCalledValue(llvm::CallInst& CI)
+{
 #if LLVM_VERSION_MAJOR <= 10
-        return CI.getCalledValue();
+    return CI.getCalledValue();
 #else
-        return CI.getCalledOperand();
+    return CI.getCalledOperand();
 #endif
-    }
+}
 
-    inline llvm::Value* getCalledValue(llvm::CallInst* CI)
-    {
+inline llvm::Value* getCalledValue(llvm::CallInst* CI)
+{
 #if LLVM_VERSION_MAJOR <= 10
-        return CI->getCalledValue();
+    return CI->getCalledValue();
 #else
-        return CI->getCalledOperand();
+    return CI->getCalledOperand();
 #endif
-    }
+}
 
-    inline const llvm::Value* getCalledValue(const llvm::CallInst* CI)
-    {
+inline const llvm::Value* getCalledValue(const llvm::CallInst* CI)
+{
 #if LLVM_VERSION_MAJOR <= 10
-        return CI->getCalledValue();
+    return CI->getCalledValue();
 #else
-        return CI->getCalledOperand();
+    return CI->getCalledOperand();
 #endif
-    }
+}
 
-    inline unsigned getNumArgOperands(const llvm::CallInst* CI)
-    {
+inline unsigned getNumArgOperands(const llvm::CallInst* CI)
+{
 #if LLVM_VERSION_MAJOR < 14
-       return CI->getNumArgOperands();
+    return CI->getNumArgOperands();
 #else
-       return CI->arg_size();
+    return CI->arg_size();
 #endif
-    }
+}
 
-    inline unsigned getArgOperandNo(llvm::CallInst &CI, const llvm::Use *U) {
+inline unsigned getArgOperandNo(llvm::CallInst &CI, const llvm::Use *U) {
 #if LLVM_VERSION_MAJOR < 10
-      IGC_ASSERT_MESSAGE(CI.isArgOperand(U), "Arg operand # out of range!");
-      return (unsigned)(U - CI.arg_begin());
+    IGC_ASSERT_MESSAGE(CI.isArgOperand(U), "Arg operand # out of range!");
+    return (unsigned)(U - CI.arg_begin());
 #else
-      return CI.getArgOperandNo(U);
+    return CI.getArgOperandNo(U);
 #endif
-    }
+}
 
-    inline llvm::Constant* getShuffleMaskForBitcode(llvm::ShuffleVectorInst* SVI)
-    {
+inline llvm::Constant* getShuffleMaskForBitcode(llvm::ShuffleVectorInst* SVI)
+{
 #if LLVM_VERSION_MAJOR < 11
-        return SVI->getMask();
+    return SVI->getMask();
 #else
-        return SVI->getShuffleMaskForBitcode();
+    return llvm::ShuffleVectorInst::convertShuffleMaskForBitcode(SVI->getShuffleMask(), SVI->getType());
 #endif
-    }
+}
 
-    inline bool isFreezeInst(llvm::Instruction* I)
-    {
+inline bool isFreezeInst(llvm::Instruction* I)
+{
 #if LLVM_VERSION_MAJOR < 10
-        (void)I;
-        return false;
+    (void)I;
+    return false;
 #else
-        return llvm::isa<llvm::FreezeInst>(I);
+    return llvm::isa<llvm::FreezeInst>(I);
 #endif
-    }
+}
 
-    inline bool isDebugOrPseudoInst(llvm::Instruction& I)
-    {
+inline bool isDebugOrPseudoInst(llvm::Instruction& I)
+{
 #if LLVM_VERSION_MAJOR < 14
-        return llvm::isa<llvm::DbgInfoIntrinsic>(&I);
+    return llvm::isa<llvm::DbgInfoIntrinsic>(&I);
 #else
-        return I.isDebugOrPseudoInst();
+    return I.isDebugOrPseudoInst();
 #endif
-    }
+}
 }
 
 #endif

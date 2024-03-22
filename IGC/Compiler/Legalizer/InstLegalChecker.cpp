@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
@@ -250,13 +251,7 @@ LegalizeAction InstLegalChecker::visitShuffleVectorInst(ShuffleVectorInst& I) {
     if ((Act = TL->getTypeLegalizeAction(I.getOperand(0)->getType())) != Legal)
         return Act;
     // Check the constant mask.
-    return TL->getTypeLegalizeAction(I.
-#if LLVM_VERSION_MAJOR <= 10
-        getMask
-#else
-        getShuffleMaskForBitcode
-#endif
-        ()->getType());
+    return TL->getTypeLegalizeAction(IGCLLVM::getShuffleMaskForBitcode(&I)->getType());
 }
 
 LegalizeAction InstLegalChecker::visitExtractValueInst(ExtractValueInst& I) {
