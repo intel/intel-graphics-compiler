@@ -334,6 +334,9 @@ private:
 
     // Keep track what new instructions inserted by SCEV Expander were already added to estimation.
     SmallPtrSet<Instruction*, 32> VisitedNewInsts;
+
+    // If true, always updates all BBs.
+    bool refreshAllBBs = true;
 };
 
 
@@ -1116,6 +1119,14 @@ bool RegisterPressureTracker::fitsPressureThreshold(ReductionCandidateGroup &C)
 
 void RegisterPressureTracker::updatePressure(ReductionCandidateGroup &C, SCEVExpander &E)
 {
+    if (refreshAllBBs)
+    {
+        BBsToUpdate.clear();
+        Function *F = C.getLoop()->getLoopPreheader()->getParent();
+        RPE.rerunLivenessAnalysis(*F);
+        return;
+    }
+
     // Refresh all BBs in loop.
     BBsToUpdate.insert(C.getLoop()->getBlocks().begin(), C.getLoop()->getBlocks().end());
 
