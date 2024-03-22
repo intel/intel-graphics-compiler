@@ -1658,5 +1658,11 @@ unsigned int roundUpTgsmSize(DWORD size) const
     return iSTD::RoundPower2(size) * blockSize;
 }
 
+
+bool preferLSCCache() const
+{
+    return isCoreChildOf(IGFX_XE2_LPG_CORE);
+}
+
 };
 }//namespace IGC

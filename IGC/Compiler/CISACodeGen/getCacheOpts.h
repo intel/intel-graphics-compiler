@@ -102,6 +102,6 @@ namespace IGC {
     /**
      * @return the load cache policy for the SWStack
      */
-    LSC_L1_L3_CC SWStackLoadPolicy();
+    LSC_L1_L3_CC SWStackLoadPolicy(const CodeGenContext& Ctx);
 } // namespace IGC
 

@@ -38,6 +38,7 @@ namespace IGC {
 LSC_L1_L3_CC RTStackStorePolicy()
 {
     LSC_L1_L3_CC cacheOpts = LSC_L1IAR_WB_L3C_WB;
+    // Ctx.platform.preferLSCCache() also prefers LSC_L1IAR_WB_L3C_WB
 
     if (IGC_IS_FLAG_ENABLED(ForceRTStackStoreCacheCtrl))
     {
@@ -73,7 +74,7 @@ LSC_L1_L3_CC SWStackStorePolicy(const CodeGenContext &Ctx)
 {
     LSC_L1_L3_CC cacheOpts = Ctx.platform.NeedsLSCFenceUGMBeforeEOT() ?
         LSC_L1S_L3C_WB :
-        LSC_L1UC_L3C_WB;
+        (Ctx.platform.preferLSCCache() ? LSC_L1IAR_WB_L3C_WB : LSC_L1UC_L3C_WB);
 
     if (IGC_IS_FLAG_ENABLED(ForceSWStackStoreCacheCtrl))
     {
@@ -91,6 +92,7 @@ LSC_L1_L3_CC SWStackStorePolicy(const CodeGenContext &Ctx)
 LSC_L1_L3_CC RTStackLoadPolicy()
 {
     LSC_L1_L3_CC cacheOpts = LSC_L1C_WT_L3C_WB;
+    // Ctx.platform.preferLSCCache() also prefers LSC_L1C_WT_L3C_WB
 
     if (IGC_IS_FLAG_ENABLED(ForceRTStackLoadCacheCtrl))
     {
@@ -122,9 +124,9 @@ LSC_L1_L3_CC SWHotZoneLoadPolicy()
 /**
  * @return the load cache policy for the SWStack
  */
-LSC_L1_L3_CC SWStackLoadPolicy()
+LSC_L1_L3_CC SWStackLoadPolicy(const CodeGenContext& Ctx)
 {
-    LSC_L1_L3_CC cacheOpts = LSC_L1UC_L3C_WB;
+    LSC_L1_L3_CC cacheOpts = Ctx.platform.preferLSCCache() ? LSC_L1C_WT_L3C_WB : LSC_L1UC_L3C_WB;
 
     if (IGC_IS_FLAG_ENABLED(ForceSWStackLoadCacheCtrl))
     {
@@ -191,7 +193,7 @@ Optional<LSC_L1_L3_CC> getCacheOptsLoadPolicy(
         cacheOpts = RTStackLoadPolicy();
         break;
     case RTMemRegion::SWStack:
-        cacheOpts = SWStackLoadPolicy();
+        cacheOpts = SWStackLoadPolicy(Ctx);
         break;
     case RTMemRegion::SWHotZone:
         cacheOpts = SWHotZoneLoadPolicy();
