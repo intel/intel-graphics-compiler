@@ -311,17 +311,9 @@ public:
     bool fitsPressureThreshold(ReductionCandidateGroup &C);
     void updatePressure(ReductionCandidateGroup &C, SCEVExpander &E);
 
-    void trackDeletedInstruction(Value *V)
-    {
-        if (auto *I = dyn_cast<Instruction>(V))
-            BBsToUpdate.insert(I->getParent());
-    }
+    void trackDeletedInstruction(Value *V);
 
 private:
-
-#if LLVM_VERSION_MAJOR < 14
-    SmallVector<Instruction*, 32> getInsertedInstructions(ReductionCandidateGroup &C, SCEVExpander &E);
-#endif
 
     unsigned MaxAllowedPressure;
     unsigned ExternalPressure;
@@ -334,9 +326,6 @@ private:
 
     // Keep track what new instructions inserted by SCEV Expander were already added to estimation.
     SmallPtrSet<Instruction*, 32> VisitedNewInsts;
-
-    // If true, always updates all BBs.
-    bool refreshAllBBs = true;
 };
 
 
@@ -1097,6 +1086,25 @@ RegisterPressureTracker::RegisterPressureTracker(Function &F, CodeGenContext &CG
 }
 
 
+void RegisterPressureTracker::trackDeletedInstruction(Value *V)
+{
+    if (auto *I = dyn_cast<Instruction>(V))
+        BBsToUpdate.insert(I->getParent());
+
+    for (auto It = RPE.getInSet().begin(); It != RPE.getInSet().end(); ++It)
+    {
+        if (It->second.count(V))
+            BBsToUpdate.insert(It->first);
+    }
+
+    for (auto It = RPE.getOutSet().begin(); It != RPE.getOutSet().end(); ++It)
+    {
+        if (It->second.count(V))
+            BBsToUpdate.insert(It->first);
+    }
+}
+
+
 bool RegisterPressureTracker::fitsPressureThreshold(ReductionCandidateGroup &C)
 {
     uint SIMD = numLanes(RPE.bestGuessSIMDSize());
@@ -1119,13 +1127,13 @@ bool RegisterPressureTracker::fitsPressureThreshold(ReductionCandidateGroup &C)
 
 void RegisterPressureTracker::updatePressure(ReductionCandidateGroup &C, SCEVExpander &E)
 {
-    if (refreshAllBBs)
-    {
-        BBsToUpdate.clear();
-        Function *F = C.getLoop()->getLoopPreheader()->getParent();
-        RPE.rerunLivenessAnalysis(*F);
-        return;
-    }
+
+#if LLVM_VERSION_MAJOR < 14
+    BBsToUpdate.clear();
+    Function *F = C.getLoop()->getLoopPreheader()->getParent();
+    RPE.rerunLivenessAnalysis(*F);
+    return;
+#else
 
     // Refresh all BBs in loop.
     BBsToUpdate.insert(C.getLoop()->getBlocks().begin(), C.getLoop()->getBlocks().end());
@@ -1137,11 +1145,7 @@ void RegisterPressureTracker::updatePressure(ReductionCandidateGroup &C, SCEVExp
         // Find outermost loop touched by SCEVExpander and refresh register estimation for it.
 
         // Query SCEVExpander for new instructions.
-#if LLVM_VERSION_MAJOR < 14
-        auto AllInsertedInstructions = getInsertedInstructions(C, E);
-#else
         auto AllInsertedInstructions = E.getAllInsertedInstructions();
-#endif
 
         // Start searching from inner loop.
         Loop *TopLoop = C.getLoop();
@@ -1195,67 +1199,8 @@ void RegisterPressureTracker::updatePressure(ReductionCandidateGroup &C, SCEVExp
         RPE.rerunLivenessAnalysis(*F, &BBsToUpdate);
         BBsToUpdate.clear();
     }
+#endif // LLVM_VERSION_MAJOR
 }
-
-
-#if LLVM_VERSION_MAJOR < 14
-SmallVector<Instruction*, 32> RegisterPressureTracker::getInsertedInstructions(ReductionCandidateGroup &C, SCEVExpander &E)
-{
-    // Older LLVM versions doesn't have API for quering all new instructions added
-    // by SCEV Expander. Instead, we must manually iterate over all instructions and
-    // query Expander if it inserted the instruction in question.
-
-    SmallVector<Instruction*, 32> Result;
-    SmallPtrSet<BasicBlock*, 32> VisitedBB;
-
-    // To make it faster, only iteratate over this loop and outer loops BBs
-    // (don't iterate over all BBs in the function).
-    auto *L = C.getLoop();
-    do
-    {
-        for (auto BB = L->block_begin(); BB != L->block_end(); ++BB)
-        {
-            if (VisitedBB.count(*BB))
-                continue;
-
-            VisitedBB.insert(*BB);
-
-            // Skip subloops; expander shouldn't insert instructions there.
-            bool isSubloop = false;
-            for (auto SL = L->getSubLoops().begin(); SL != L->getSubLoops().end(); ++SL)
-            {
-                if ((*SL)->contains(*BB))
-                {
-                    isSubloop = true;
-                    break;
-                }
-            }
-
-            if (isSubloop)
-                continue;
-
-            for (auto I = (*BB)->begin(); I != (*BB)->end(); ++I)
-            {
-                if (E.isInsertedInstruction(&*I))
-                    Result.push_back(&*I);
-            }
-        }
-
-        // Check preheader too.
-        if (L->getLoopPreheader())
-        {
-            for (auto I = L->getLoopPreheader()->begin(); I != L->getLoopPreheader()->end(); ++I)
-            {
-                if (E.isInsertedInstruction(&*I))
-                    Result.push_back(&*I);
-            }
-        }
-
-    } while ((L = L->getParentLoop()));
-
-    return Result;
-}
-#endif
 
 
 bool Reducer::reduce(SmallVectorImpl<ReductionCandidateGroup> &Candidates)
