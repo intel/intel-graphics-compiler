@@ -2452,7 +2452,9 @@ namespace IGC
                 if (InitAsSet.insert(C).second)
                     Init.push_back(C);
             }
-            GV->eraseFromParent();
+
+            if (GV->user_empty())
+                GV->eraseFromParent();
         }
 
         Type* Int8PtrTy = llvm::Type::getInt8PtrTy(M.getContext());
