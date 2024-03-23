@@ -1317,14 +1317,13 @@ Value* DeSSA::getRootValue(Value* Val, e_alignment* pAlign) const
 
 void DeSSA::getAllValuesInCongruentClass(
     Value* V,
-    SmallVector<Value*, 8> & ValsInCC)
+    SmallVector<Value*, 16> & ValsInCC)
 {
     // Handle InsertElement specially. Note that only rootValue from
     // a sequence of insertElement is in congruent class. The RootValue
     // has its liveness modified to cover all InsertElements that are
     // grouped together.
-    Value* RootV = nullptr;
-    RootV = getNodeValue(V);
+    Value* RootV = getNodeValue(V);
 
     IGC_ASSERT_MESSAGE(nullptr != RootV, "ICE: Node value should not be nullptr!");
     ValsInCC.push_back(RootV);
@@ -1334,6 +1333,47 @@ void DeSSA::getAllValuesInCongruentClass(
         for (Node* N = First->next; N != First; N = N->next)
         {
             ValsInCC.push_back(N->value);
+        }
+    }
+    return;
+}
+
+// All values that are coalesced together, including values that are
+// handled specially, such as ones in aliasMap and insEltMap.
+void DeSSA::getAllCoalescedValues(
+    Value* V,
+    SmallVector<Value*, 16>& Vals)
+{
+    getAllValuesInCongruentClass(V, Vals);
+    IGC_ASSERT_MESSAGE(Vals.size() > 0, "ICE: Vals should not be empty!");
+
+    // First, add values from InsEltMap
+    for (int i = 0, sz = (int)Vals.size(); i < sz; ++i) {
+        Value* ccVal = Vals[i];
+        for (auto II : InsEltMap) {
+            Value* R = II.second;
+            if (R != ccVal) {
+                continue;
+            }
+            Value* A = II.first;
+            if (A != R) {
+                Vals.push_back(A);
+            }
+        }
+    }
+
+    // second, add aliasers from AliasMap
+    for (int i = 0, sz = (int)Vals.size(); i < sz; ++i) {
+        Value* aliasee = Vals[i];
+        for (auto II : AliasMap) {
+            Value* R = II.second;
+            if (R != aliasee) {
+                continue;
+            }
+            Value* aliaser = II.first;
+            if (aliaser != aliasee) {
+                Vals.push_back(aliaser);
+            }
         }
     }
     return;
@@ -1672,8 +1712,8 @@ bool DeSSA::isSingleValued(llvm::Value* V) const
 //   and sort congruent classes before doing interference checking.
 bool DeSSA::interfere(llvm::Value* V0, llvm::Value* V1)
 {
-    SmallVector<Value*, 8> allCC0;
-    SmallVector<Value*, 8> allCC1;
+    SmallVector<Value*, 16> allCC0;
+    SmallVector<Value*, 16> allCC1;
     getAllValuesInCongruentClass(V0, allCC0);
     getAllValuesInCongruentClass(V1, allCC1);
 
@@ -1700,8 +1740,8 @@ bool DeSSA::interfere(llvm::Value* V0, llvm::Value* V1)
 //    with V0 and V1 interference ignored.
 bool DeSSA::aliasInterfere(llvm::Value* V0, llvm::Value* V1)
 {
-    SmallVector<Value*, 8> allCC0;
-    SmallVector<Value*, 8> allCC1;
+    SmallVector<Value*, 16> allCC0;
+    SmallVector<Value*, 16> allCC1;
     getAllValuesInCongruentClass(V0, allCC0);
     getAllValuesInCongruentClass(V1, allCC1);
 

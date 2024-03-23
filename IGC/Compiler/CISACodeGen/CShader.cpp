@@ -509,8 +509,8 @@ void CShader::CreateAliasVars()
                 (void) GetSymbol(rV, false, BV->Align);
             }
             CVariable* rootCVar = GetSymbol(baseVal);
-            Type* bEltTy = baseVal->getType()->getScalarType();
-            const uint32_t bEltBytes = (int)m_DL->getTypeStoreSize(bEltTy);
+            Type* eltTy = BV->OrigType->getScalarType();
+            uint32_t bEltBytes = (uint32_t)m_DL->getTypeStoreSize(eltTy);
 
             // Generate all vector aliasers and their
             // dessa root if any.

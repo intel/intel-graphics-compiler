@@ -42,15 +42,23 @@ namespace IGC {
         //   For example,
         //     int2 a = ld p
         //     int4 b = {a, x, y}
-        //   as 'a' is grf-aligned (ld return payload), 'b' should be aligned
+        //   as 'a' is grf-aligned (ld's return payload), 'b' should be aligned
         //   at grf too in order to make 'a' the part of 'b'.
         e_alignment Align;
         llvm::Value* BaseVector;
+        // Keep the original vector type as BaseVector is dessa node value,
+        // which could be a different value with a differnt type. For vector
+        // aliasing, both sub and base must have the same element size.
+        llvm::VectorType* OrigType;
         // All BaseVector's aliasers (subVec)
         llvm::SmallVector<SSubVecDesc*, 16> Aliasers;
 
-        SBaseVecDesc(llvm::Value* V, e_alignment A) : Align(A), BaseVector(V)
-        {}
+        SBaseVecDesc(llvm::Value* V, llvm::Value* OV, e_alignment A)
+            : Align(A), BaseVector(V)
+            , OrigType(llvm::dyn_cast<llvm::VectorType>(OV->getType()))
+        {
+            IGC_ASSERT(OrigType != nullptr);
+        }
     };
 
     struct SSubVecDesc
@@ -80,7 +88,7 @@ namespace IGC {
         SBaseVecDesc* Aliasee;
 
         short  StartElementOffset;  // in the unit of BaseVector's element type
-        short  NumElts;             // the number of element of Aliaser
+        short  NumElts;             // the number of elements of Aliaser
 
         SSubVecDesc(llvm::Value* V)
             : Aliaser(V), Aliasee(nullptr), StartElementOffset(0)
@@ -341,10 +349,12 @@ namespace IGC {
             return false;
         }
 
-        void addVecAlias(llvm::Value* Aliaser, llvm::Value* Aliasee, int Idx,
+        void addVecAlias(llvm::Value* Aliaser, llvm::Value* Aliasee,
+            llvm::Value* OrigBaseVec, int Idx,
             e_alignment AliaseeAlign = EALIGN_AUTO);
         SSubVecDesc* getOrCreateSubVecDesc(llvm::Value* V);
-        SBaseVecDesc* getOrCreateBaseVecDesc(llvm::Value* V, e_alignment A);
+        SBaseVecDesc* getOrCreateBaseVecDesc(
+            llvm::Value* V, llvm::Value* OV, e_alignment A);
         void getAllAliasVals(
             ValueVectorTy& AliasVals,
             llvm::Value* Aliaser,
@@ -448,8 +458,8 @@ namespace IGC {
             int& EEI_ix);
         bool isCandidateUse(llvm::Value* V) const;
         bool isCandidateDef(llvm::Value* V) const;
-        bool checkSubAlign(e_alignment& BaseAlign,
-            llvm::Value* Subvec_nd, llvm::Value* Basevec_nd, int Base_ix);
+        bool checkSubAlign(e_alignment& BaseAlign,  llvm::Value* Subvec,
+            llvm::Value* Basevec, int Base_ix);
 
 
         CodeGenContext* m_pCtx;

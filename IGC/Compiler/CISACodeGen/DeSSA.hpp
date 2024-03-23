@@ -100,7 +100,12 @@ namespace IGC {
 
         void getAllValuesInCongruentClass(
             llvm::Value* V,
-            llvm::SmallVector<llvm::Value*, 8> & ValsInCC);
+            llvm::SmallVector<llvm::Value*, 16> & ValsInCC);
+
+        // getAllValuesInCongruentClass() + aliasMap + insEltMap, etc.
+        void getAllCoalescedValues(
+            llvm::Value* V,
+            llvm::SmallVector<llvm::Value*, 16>& Vals);
 
         /// print - print partitions in human readable form
         virtual void print(llvm::raw_ostream& OS, const llvm::Module* = 0) const override;

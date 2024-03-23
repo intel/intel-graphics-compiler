@@ -50,11 +50,13 @@ namespace
         };
 
         //Type* eltTy = V->getType()->getScalarType();
-        const bool is64BitTy = false; // (eltTy->getPrimitiveSizeInBits() > 32);
+        bool is64BitTy = false; // (eltTy->getPrimitiveSizeInBits() > 32);
 
         // GRF-aligned for send operands
         // check if V is defined by send
-        bool isSend = isa<LoadInst>(V);
+        if (isa<LoadInst>(V)) {
+            getSendPayloadAlignment(is64BitTy);
+        }
         if (GenIntrinsicInst* CI = dyn_cast<GenIntrinsicInst>(V))
         {
             switch (CI->getIntrinsicID()) {
@@ -62,14 +64,14 @@ namespace
                 return grfAlignment();
             case GenISAIntrinsic::GenISA_simdBlockRead:
             case GenISAIntrinsic::GenISA_LSC2DBlockRead:
-                isSend = true;
-                break;
+                return getSendPayloadAlignment(is64BitTy);
             default:
                 break;
             }
         }
 
         // Check if V is used in send
+        bool isSend = false;
         for (auto UI = V->user_begin(), UE = V->user_end(); UI != UE; ++UI) {
             User* U = *UI;
             if (isa<LoadInst>(U) || isa<StoreInst>(U))
@@ -486,7 +488,7 @@ void VariableReuseAnalysis::postProcessing()
         // m_LifetimeAtEndOfBB is used to keep track of it; for the latter,
         // m_LifetimeAt1stDefOfBB is used.
         ValueVectorTy AllVals;
-        SmallVector<Value*, 8> valInCC;
+        SmallVector<Value*, 16> valInCC;
         m_DeSSA->getAllValuesInCongruentClass(aliasee, valInCC);
         AllVals.insert(AllVals.end(), valInCC.begin(), valInCC.end());
 
@@ -529,7 +531,7 @@ void VariableReuseAnalysis::postProcessing()
         dessaRootVisited[rootV] = 1;
 
         ValueVectorTy AllVals;
-        SmallVector<Value*, 8> valInCC;
+        SmallVector<Value*, 16> valInCC;
         m_DeSSA->getAllValuesInCongruentClass(rootV, valInCC);
         AllVals.insert(AllVals.end(), valInCC.begin(), valInCC.end());
 
@@ -666,7 +668,7 @@ void VariableReuseAnalysis::visitExtractElementInst(ExtractElementInst& I)
     }
 
     // Valid vec alias and add it into alias map
-    addVecAlias(EEI_nv, vec_nv, iIdx);
+    addVecAlias(EEI_nv, vec_nv, vecVal, iIdx);
 
     // Mark this inst as noop inst
     m_HasBecomeNoopInsts[EEI] = 1;
@@ -759,7 +761,8 @@ void VariableReuseAnalysis::dumpAlias() const
 
 // Add alias Aliaser -> Aliasee[Idx]
 void VariableReuseAnalysis::addVecAlias(
-    Value* Aliaser, Value* Aliasee, int Idx, e_alignment AliaseeAlign)
+    Value* Aliaser, Value* Aliasee, Value* OrigBaseVec,
+    int Idx, e_alignment AliaseeAlign)
 {
     auto getLargerAlign = [](e_alignment A0, e_alignment A1) -> e_alignment {
         if (A0 == EALIGN_AUTO)
@@ -779,7 +782,7 @@ void VariableReuseAnalysis::addVecAlias(
         StartIx += SV->StartElementOffset;
     }
     else {
-        aliaseeBV = getOrCreateBaseVecDesc(Aliasee, AliaseeAlign);
+        aliaseeBV = getOrCreateBaseVecDesc(Aliasee, OrigBaseVec, AliaseeAlign);
     }
     // update align
     aliaseeBV->Align = getLargerAlign(aliaseeBV->Align, AliaseeAlign);
@@ -840,10 +843,10 @@ SSubVecDesc* VariableReuseAnalysis::getOrCreateSubVecDesc(Value* V)
 }
 
 SBaseVecDesc* VariableReuseAnalysis::getOrCreateBaseVecDesc(Value* V,
-    e_alignment A)
+    Value* OV, e_alignment A)
 {
     if (m_baseVecMap.count(V) == 0) {
-        SBaseVecDesc* BV = new(Allocator) SBaseVecDesc(V, A);
+        SBaseVecDesc* BV = new(Allocator) SBaseVecDesc(V, OV, A);
         m_baseVecMap.insert(std::make_pair(V, BV));
     }
     return m_baseVecMap[V];
@@ -1006,6 +1009,14 @@ Value* VariableReuseAnalysis::traceAliasValue(Value* V)
 {
     if (CastInst * CastI = dyn_cast_or_null<CastInst>(V))
     {
+        // Only handle Noop cast inst. For example,
+        //    dst = bitcast <3 x i32> src to <3 x float>,
+        // it is okay, but the following isn't.
+        //    dst = bitcast <3 x i64> src to <6 x i32>
+        if (!isNoOpInst(CastI, m_pCtx)) {
+            return V;
+        }
+
         Value* Src = CastI->getOperand(0);
         if (isa<Constant>(Src))
             return CastI;
@@ -1198,7 +1209,7 @@ bool VariableReuseAnalysis::processExtractFrom(VecInsEltInfoTy& AllIEIs)
     }
 
     e_alignment BaseAlign;
-    if (!checkSubAlign(BaseAlign, Sub_nv, Base_nv, BaseStartIx)) {
+    if (!checkSubAlign(BaseAlign, Sub, BaseVec, BaseStartIx)) {
         return false;
     }
 
@@ -1230,7 +1241,7 @@ bool VariableReuseAnalysis::processExtractFrom(VecInsEltInfoTy& AllIEIs)
     }
 
     // add alias
-    addVecAlias(Sub_nv, Base_nv, BaseStartIx, BaseAlign);
+    addVecAlias(Sub_nv, Base_nv, BaseVec, BaseStartIx, BaseAlign);
 
     // Make sure noop insts are in the map.
     for (int i = 0, sz = nelts; i < sz; ++i)
@@ -1246,7 +1257,7 @@ bool VariableReuseAnalysis::processExtractFrom(VecInsEltInfoTy& AllIEIs)
         if (!m_DeSSA->isNoopAliaser(EEI)) {
           // Set EEI as an aliser, thus it become noop.
           Value *EEI_nv = m_DeSSA->getNodeValue(EEI);
-          addVecAlias(EEI_nv, Base_nv, AllIEIs[i].FromVec_eltIx, EALIGN_AUTO);
+          addVecAlias(EEI_nv, Base_nv, BaseVec, AllIEIs[i].FromVec_eltIx, EALIGN_AUTO);
           m_HasBecomeNoopInsts[EEI] = 1;
         }
     }
@@ -1378,7 +1389,7 @@ bool VariableReuseAnalysis::processInsertTo(VecInsEltInfoTy& AllIEIs)
                 continue;
             }
         }
-        addVecAlias(V_nv, Base_nv, V_ix, BaseAlign);
+        addVecAlias(V_nv, Base_nv, FirstIEI, V_ix, BaseAlign);
 
         int V_sz = getNumElts(V);
         if (V_sz > 1)
@@ -1399,7 +1410,7 @@ bool VariableReuseAnalysis::processInsertTo(VecInsEltInfoTy& AllIEIs)
                 if (!m_DeSSA->isNoopAliaser(EEI)) {
                     // EEI should be in alias map so it can be marked as noop
                     Value *EEI_nv = m_DeSSA->getNodeValue(EEI);
-                    addVecAlias(EEI_nv, Base_nv, j);
+                    addVecAlias(EEI_nv, Base_nv, FirstIEI, j);
                     m_HasBecomeNoopInsts[EEI] = 1;
                 }
             }
@@ -1482,8 +1493,13 @@ bool VariableReuseAnalysis::aliasInterfere(Value* Sub, Value* Base, int BaseIdx)
 bool VariableReuseAnalysis::isCandidateUse(Value* V) const
 {
     for (User* U : V->users()) {
-        if (GenIntrinsicInst* CI = dyn_cast<GenIntrinsicInst>(U)) {
-            switch (CI->getIntrinsicID()) {
+        Value* V = U;
+        CastInst* CI = dyn_cast<CastInst>(V);
+        if (CI && isNoOpInst(CI, m_pCtx)) {
+            V = CI->getOperand(0);
+        }
+        if (GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(V)) {
+            switch (GII->getIntrinsicID()) {
             case GenISAIntrinsic::GenISA_sub_group_dpas:
             case GenISAIntrinsic::GenISA_LSC2DBlockWrite:
             case GenISAIntrinsic::GenISA_simdBlockWrite:
@@ -1492,7 +1508,7 @@ bool VariableReuseAnalysis::isCandidateUse(Value* V) const
                 break;
             }
         }
-        else if (StoreInst* SI = dyn_cast<StoreInst>(U)) {
+        else if (StoreInst* SI = dyn_cast<StoreInst>(V)) {
             return true;
         }
     }
@@ -1502,8 +1518,13 @@ bool VariableReuseAnalysis::isCandidateUse(Value* V) const
 // Check if a value is defined by instructions that we handle.
 bool VariableReuseAnalysis::isCandidateDef(Value* V) const
 {
-    if (GenIntrinsicInst* CI = dyn_cast<GenIntrinsicInst>(V)) {
-        switch (CI->getIntrinsicID()) {
+    Value* Val = V;
+    CastInst* CI = dyn_cast<CastInst>(Val);
+    if (CI && isNoOpInst(CI, m_pCtx)) {
+        Val = CI->getOperand(0);
+    }
+    if (GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(Val)) {
+        switch (GII->getIntrinsicID()) {
         case GenISAIntrinsic::GenISA_sub_group_dpas:
         case GenISAIntrinsic::GenISA_LSC2DBlockWrite:
         case GenISAIntrinsic::GenISA_simdBlockWrite:
@@ -1512,19 +1533,24 @@ bool VariableReuseAnalysis::isCandidateDef(Value* V) const
             break;
         }
     }
-    else if (StoreInst* SI = dyn_cast<StoreInst>(V)) {
+    else if (StoreInst* SI = dyn_cast<StoreInst>(Val)) {
         return true;
     }
     return false;
 }
 
-// Given node values Subvec_nd and Basevec_nd. This function checks
-// if Subvec can be a sub-vector of Basevec_nd at base idex Base_ix.
-// If so, return true, and set the correct alignment requirement
-// to BaseAlign.
-bool VariableReuseAnalysis::checkSubAlign (e_alignment& BaseAlign,
-    Value* Subvec_nd, Value* Basevec_nd, int Base_ix)
+// Check if SubVec is aligned if it becomes a sub-vector at Base_ix of
+// BaseVec. If so, return true with SubVec alignment in BaseAlign.
+bool VariableReuseAnalysis::checkSubAlign(e_alignment& BaseAlign,
+    Value* SubVec, Value* BaseVec, int Base_ix)
 {
+    auto maxAlign = [](e_alignment A, e_alignment B) {
+        if (A == EALIGN_AUTO)
+            return B;
+        if (B == EALIGN_AUTO)
+            return A;
+        return A > B ? A : B;
+    };
 
     auto toBytes = [](e_alignment A) {
         switch (A) {
@@ -1542,11 +1568,21 @@ bool VariableReuseAnalysis::checkSubAlign (e_alignment& BaseAlign,
     };
 
     BaseAlign = EALIGN_AUTO;
-    Type* eltTy = Basevec_nd->getType()->getScalarType();
-    uint32_t eltBytes = ((uint32_t)eltTy->getPrimitiveSizeInBits() / 8);
-    Type* sEltTy = Subvec_nd->getType()->getScalarType();
-    IGC_ASSERT(eltBytes == ((uint32_t)sEltTy->getPrimitiveSizeInBits() / 8));
-    e_alignment sub_align = getMinAlignment(Subvec_nd, m_WIA, m_pCtx);
+
+    // Get element bytes from original base vector
+    Type* eltTy = BaseVec->getType()->getScalarType();
+    uint32_t eltBytes = (uint32_t)m_DL->getTypeStoreSize(eltTy);
+
+    // get all coalesced values for subvec and find the max alignment
+    SmallVector<Value*, 16> allVals;
+    m_DeSSA->getAllCoalescedValues(SubVec, allVals);
+
+    e_alignment sub_align = EALIGN_AUTO;
+    for (auto II : allVals) {
+        Value* V = II;
+        e_alignment thisAlign = getMinAlignment(V, m_WIA, m_pCtx);
+        sub_align = maxAlign(sub_align, thisAlign);
+    }
     int sub_alignBytes = toBytes(sub_align);
     if (sub_alignBytes == 0) {
         // AUTO align is fine.
@@ -1555,10 +1591,12 @@ bool VariableReuseAnalysis::checkSubAlign (e_alignment& BaseAlign,
 
     // m_SimdSize is unavailable, using smallest simdsize for now.
     int simdsize = numLanes(m_pCtx->platform.getMinDispatchMode());
-    int uLanes = (m_WIA->isUniform(Basevec_nd) ? 1 : simdsize);
+    int uLanes = (m_WIA->isUniform(BaseVec) ? 1 : simdsize);
     // If base is an aliaser at this time, must check its aliasee
+
+    Value* BaseVec_nd = m_DeSSA->getNodeValue(BaseVec);
     int ix1 = 0;
-    auto MII = m_aliasMap.find(Basevec_nd);
+    auto MII = m_aliasMap.find(BaseVec_nd);
     if (MII != m_aliasMap.end()) {
         SSubVecDesc* SV = MII->second;
         ix1 = SV->StartElementOffset;
