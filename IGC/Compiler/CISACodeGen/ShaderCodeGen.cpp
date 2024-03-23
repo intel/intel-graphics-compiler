@@ -1606,7 +1606,17 @@ void OptimizeIR(CodeGenContext* const pContext)
                 // jump threading currently causes the atomic_flag test from c11 conformance to fail.  Right now,
                 // only do jump threading if we don't have atomics as using atomics as locks seems to be the most common
                 // case of violating the no independent forward progress clause from the spec.
-                mpm.add(llvm::createJumpThreadingPass());
+
+                // We need to increase default duplication threshold since JumpThreading pass cost estimation does
+                // not consider that not all instructions need to be duplicated.
+                int BBDuplicateThreshold = (pContext->type == ShaderType::OPENCL_SHADER) ? 9 : -1;
+#if LLVM_VERSION_MAJOR >= 15 || LLVM_VERSION_MAJOR < 12
+                // In LLVM-12.x an extra parameter InsertFreezeWhenUnfoldingSelect = false was added
+                // to JumpThreading pass, but since LLVM-15.x it was removed again.
+                mpm.add(llvm::createJumpThreadingPass(BBDuplicateThreshold));
+#else // LLVM_VERSION_MAJOR
+                mpm.add(llvm::createJumpThreadingPass(false, BBDuplicateThreshold));
+#endif // LLVM_VERSION_MAJOR
             }
             mpm.add(llvm::createCFGSimplificationPass());
             mpm.add(llvm::createEarlyCSEPass());
