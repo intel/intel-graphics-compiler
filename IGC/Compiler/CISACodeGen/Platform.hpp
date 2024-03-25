@@ -1669,5 +1669,6 @@ bool preferLSCCache() const
     return isCoreChildOf(IGFX_XE2_LPG_CORE);
 }
 
+
 };
 }//namespace IGC

@@ -53,7 +53,7 @@ namespace IGC
 
         CodeGenContext* m_context;
         llvm::Function* m_kernel;
-        std::array<CShader*, 8> m_SIMDshaders;
+        std::array<CShader*, 9> m_SIMDshaders;
 
     public:
         typedef std::unique_ptr<CShaderProgram> UPtr;

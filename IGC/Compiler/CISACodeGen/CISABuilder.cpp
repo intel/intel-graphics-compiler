@@ -936,6 +936,26 @@ namespace IGC
                         hStride,
                         var->GetType()));
                 }
+                else if (var->GetNumberElement() < numLanes(m_encoderState.m_simdSize))
+                {
+                    IGC_ASSERT(numLanes(m_encoderState.m_simdSize) % var->GetNumberElement() == 0);
+                    unsigned short vStride = 1;
+                    unsigned short width = numLanes(m_encoderState.m_simdSize) / var->GetNumberElement();
+                    unsigned short hStride = 0;
+
+                    unsigned short immOffset = (unsigned short)
+                        mod.subReg * GetCISADataTypeSize(var->GetType());
+                    V(vKernel->CreateVISAIndirectSrcOperand(
+                        operand,
+                        var->visaAddrVariable,
+                        MODIFIER_NONE,
+                        0,
+                        immOffset,
+                        vStride,
+                        width,
+                        hStride,
+                        var->GetType()));
+                }
                 else
                 {
                     // non-uniform addressing uses VxH indirect addressing mode
