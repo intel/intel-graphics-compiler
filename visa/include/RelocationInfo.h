@@ -41,7 +41,7 @@ enum GenSymType {
 /// GenSymEntry - An symbol table entry
 typedef struct {
   uint32_t s_type;   // The symbol's type
-  uint32_t s_offset; // The binary offset of this symbol. This field is ignored
+  size_t s_offset; // The binary offset of this symbol. This field is ignored
                      // if s_type is S_UNDEF
   uint32_t s_size;   // The size in bytes of the function binary
   char s_name[MAX_SYMBOL_NAME_LENGTH]; // The symbol's name
@@ -80,13 +80,13 @@ typedef struct {
 /// FIXME: s_type should be standard ELF symbol type instead of GenSymType
 struct ZESymEntry {
   GenSymType s_type;  // The symbol's type
-  uint32_t s_offset;  // The binary offset of this symbol. This field is ignored
+  size_t s_offset;  // The binary offset of this symbol. This field is ignored
                       // if s_type is S_UNDEF
   uint32_t s_size;    // The size in bytes of the function binary
   std::string s_name; // The symbol's name
 
   ZESymEntry() = default;
-  ZESymEntry(GenSymType type, uint32_t offset, uint32_t size, std::string name)
+  ZESymEntry(GenSymType type, size_t offset, uint32_t size, std::string name)
       : s_type(type), s_offset(offset), s_size(size), s_name(std::move(name)) {}
 };
 

@@ -5897,7 +5897,7 @@ namespace IGC
                     // Constant Sampler: s_offset contains the sampler ID
                     sEntry.s_type = vISA::GenSymType::S_CONST_SAMPLER;
                     sEntry.s_size = 0;
-                    sEntry.s_offset = static_cast<uint32_t>(global.second);
+                    sEntry.s_offset = static_cast<size_t>(global.second);
                 }
                 else
                 {
@@ -5913,7 +5913,7 @@ namespace IGC
 
                     sEntry.s_type = type;
                     sEntry.s_size = int_cast<uint32_t>(pModule->getDataLayout().getTypeAllocSize(pGlobal->getValueType()));
-                    sEntry.s_offset = static_cast<uint32_t>(global.second);
+                    sEntry.s_offset = static_cast<size_t>(global.second);
                 }
                 symbolTableList.push_back(std::make_pair(pGlobal, sEntry));
             }
