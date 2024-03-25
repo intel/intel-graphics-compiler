@@ -312,6 +312,9 @@ namespace IGC
             uint32_t addrSpace,
             llvm::Instruction* dominatingChunk,
             llvm::Instruction* mergeCandidate);
+
+        bool CompareMetadata(Instruction* instA, Instruction* instB) const;
+        void CopyMetadata(Instruction* dst, Instruction* src);
     };
 
 }

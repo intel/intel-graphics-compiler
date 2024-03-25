@@ -832,6 +832,7 @@ void ConstantCoalescing::MergeScatterLoad(Instruction* load,
         if (CompareBufferBase(cur_chunk->bufIdxV, cur_chunk->addrSpace, bufIdxV, addrSpace) &&
             cur_chunk->baseIdxV == eltIdxV &&
             cur_chunk->chunkIO->getType()->getScalarType() == load->getType()->getScalarType() &&
+            CompareMetadata(cur_chunk->chunkIO, load) &&
             !CheckForAliasingWrites(addrSpace, cur_chunk->chunkIO, load))
         {
             uint lb = std::min(eltid, cur_chunk->chunkStart);
@@ -1129,6 +1130,8 @@ void ConstantCoalescing::CombineTwoLoads(
             irBuilder->getFalse()
         };
         cov_chunk->chunkIO = irBuilder->CreateCall(ldRawFn, args, ldRaw0->getName());
+        IGC_ASSERT(CompareMetadata(ldRaw0, ldRaw1));
+        CopyMetadata(cov_chunk->chunkIO, ldRaw0);
         wiAns->incUpdateDepend(cov_chunk->chunkIO, wiAns->whichDepend(ldRaw0));
     }
 
@@ -1233,6 +1236,7 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
         if (CompareBufferBase(cur_chunk->bufIdxV, cur_chunk->addrSpace, bufIdxV, addrSpace) &&
             cur_chunk->baseIdxV == eltIdxV &&
             cur_chunk->chunkIO->getType()->getScalarType() == loadEltTy &&
+            CompareMetadata(cur_chunk->chunkIO, load) &&
             !CheckForAliasingWrites(addrSpace, cur_chunk->chunkIO, load))
         {
             uint lb = std::min(eltid, cur_chunk->chunkStart);
@@ -1762,6 +1766,7 @@ Instruction* ConstantCoalescing::CreateChunkLoad(
         wiAns->incUpdateDepend(ptr, wiAns->whichDepend(seedi));
         chunkLoad = irBuilder->CreateLoad(ptr);
         chunkLoad->setAlignment(getAlign(alignment));
+        CopyMetadata(chunkLoad, seedi);
         chunk->chunkIO = chunkLoad;
     }
     else
@@ -1800,6 +1805,7 @@ Instruction* ConstantCoalescing::CreateChunkLoad(
             GenISAIntrinsic::GenISA_ldrawvector_indexed,
             types);
         chunk->chunkIO = irBuilder->CreateCall(ldRawFn, arguments);
+        CopyMetadata(chunk->chunkIO, ldRaw);
     }
 
     wiAns->incUpdateDepend(chunk->chunkIO, wiAns->whichDepend(seedi));
@@ -2733,4 +2739,32 @@ bool ConstantCoalescing::CheckForAliasingWrites(
     }
     return false;
 }
+
+// Checks if instructions are decorated with the same or compatible metadata.
+// Returns true if metadata is compatible.
+// Note: currently only LSC cache control metadata is checked.
+bool ConstantCoalescing::CompareMetadata(
+    Instruction* instA,
+    Instruction* instB) const
+{
+    const MDNode* nodeA = instA->getMetadata("lsc.cache.ctrl");
+    const MDNode* nodeB = instB->getMetadata("lsc.cache.ctrl");
+    IGC_ASSERT(nodeA == nullptr || nodeA->isUniqued());
+    IGC_ASSERT(nodeB == nullptr || nodeB->isUniqued());
+    return nodeA == nodeB;
+}
+
+// Copy known metadata.
+// Note: currently only LSC cache control metadata is copied.
+void ConstantCoalescing::CopyMetadata(Instruction* dst, Instruction* src)
+{
+    MDNode* nodeDst = dst->getMetadata("lsc.cache.ctrl");
+    MDNode* nodeSrc = src->getMetadata("lsc.cache.ctrl");
+    if (nodeDst != nodeSrc)
+    {
+        IGC_ASSERT(nodeDst == nullptr);
+        dst->setMetadata("lsc.cache.ctrl", nodeSrc);
+    }
+}
+
 char IGC::ConstantCoalescing::ID = 0;
