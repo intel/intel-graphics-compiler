@@ -36,7 +36,6 @@ static const unsigned PRESSURE_REDUCTION_THRESHOLD = 110;
 static const unsigned PRESSURE_LATENCY_HIDING_THRESHOLD = 104;
 static const unsigned PRESSURE_HIGH_THRESHOLD = 128;
 static const unsigned PRESSURE_REDUCTION_THRESHOLD_SIMD32 = 120;
-static const unsigned EXTRA_REGISTERS_FOR_RA = 10; // percentage
 
 namespace {
 
@@ -372,7 +371,10 @@ struct RegisterPressure {
   }
 
   void recompute(G4_BB *BB) { rpe->runBB(BB); }
-  void recompute() { rpe->run(); }
+  void recompute() {
+    rpe->resetMaxRP();
+    rpe->run();
+  }
 
   // Return the register pressure in GRF for an instruction.
   unsigned getPressure(G4_INST *Inst) const {
@@ -380,7 +382,9 @@ struct RegisterPressure {
   }
 
   // Return the max register pressure
-  unsigned getMaxRP() const { return rpe->getMaxRP(); }
+  unsigned getMaxRP() const {
+    return rpe->getMaxRP();
+  }
 
   // Return the max pressure in GRFs for this block.
   unsigned getPressure(G4_BB *bb, std::vector<G4_INST *> *Insts = nullptr) {
@@ -727,13 +731,7 @@ bool preRA_Scheduler::runWithGRFSelection(unsigned &KernelPressure) {
     KernelPressure = rp.getMaxRP();
   }
 
-  // In RA extra registers might be needed to satisfy some restrictions,
-  // e.g. alignment, SIMD size, etc. So in order to avoid spill in GRF
-  // modes smaller than default, extra registers are added to reg pressure.
-  unsigned ExtraRegs =
-      (unsigned)(kernel.getNumRegTotal() * EXTRA_REGISTERS_FOR_RA / 100.0f);
-
-  kernel.updateKernelByRegPressure(KernelPressure + ExtraRegs);
+  kernel.updateKernelByRegPressure(KernelPressure);
 
   return Changed;
 }
