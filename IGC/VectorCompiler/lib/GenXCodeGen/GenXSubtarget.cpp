@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -23,6 +23,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
 #include "Probe/Assertion.h"
+
+#include <unordered_set>
 
 using namespace llvm;
 
@@ -257,5 +259,20 @@ TARGET_PLATFORM GenXSubtarget::getVisaPlatform() const {
     return TARGET_PLATFORM::Xe2;
   default:
     return TARGET_PLATFORM::GENX_NONE;
+  }
+}
+
+bool GenXSubtarget::isValidGRFSize(unsigned Size) const {
+  switch (TargetId) {
+  case GenXSubtarget::XeHP:
+  case GenXSubtarget::XeHPG:
+  case GenXSubtarget::XeLPG:
+  case GenXSubtarget::XeLPGPlus:
+  case GenXSubtarget::XeHPC:
+  case GenXSubtarget::XeHPCVG:
+  case GenXSubtarget::Xe2:
+    return Size == 128 || Size == 256;
+  default:
+    return Size == 128; // platforms <= TGL
   }
 }
