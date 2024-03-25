@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -429,8 +429,6 @@ public:
 
   /// * stackSurface - return a surface that should be used for stack.
   PreDefined_Surface stackSurface() const { return StackSurf; }
-
-  bool isValidGRFSize(unsigned Size) const;
 };
 
 } // namespace llvm

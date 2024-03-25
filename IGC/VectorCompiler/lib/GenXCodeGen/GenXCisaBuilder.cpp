@@ -938,11 +938,10 @@ static bool isExtOperandBaled(Use &U, const GenXBaling *Baling) {
 
 // Args:
 //    HasBarrier - whether kernel has barrier or sbarrier
-static void addKernelAttrsFromMetadata(VISAKernel &Kernel,
-                                       const vc::KernelMetadata &KM,
-                                       const GenXSubtarget *Subtarget,
-                                       const GenXBackendConfig *BC,
-                                       bool HasBarrier) {
+void addKernelAttrsFromMetadata(VISAKernel &Kernel,
+                                const vc::KernelMetadata &KM,
+                                const GenXSubtarget *Subtarget,
+                                bool HasBarrier) {
   unsigned SLMSizeInKb = divideCeil(KM.getSLMSize(), 1024);
   if (SLMSizeInKb > Subtarget->getMaxSlmSize())
     report_fatal_error("SLM size exceeds target limits");
@@ -974,24 +973,6 @@ static void addKernelAttrsFromMetadata(VISAKernel &Kernel,
     uint8_t BarrierCnt =
         static_cast<uint8_t>(KM.getAlignedBarrierCnt(HasBarrier));
     Kernel.AddKernelAttribute("NBarrierCnt", sizeof(BarrierCnt), &BarrierCnt);
-  }
-
-  // The number of registers for given kernel can be set by:
-  //   1. Kernel attribute (if it is valid for given platform).
-  //   2. A compiler option for the entire module.
-  //   3. Compiler heuristics.
-  if (KM.getGRFSize() && Subtarget->isValidGRFSize(*KM.getGRFSize())) {
-    unsigned NumGRF = *KM.getGRFSize();
-    Kernel.AddKernelAttribute("NumGRF", sizeof(NumGRF), &NumGRF);
-  } else if (KM.isAutoGRFSize()) {
-    // Do nothing since we always set "-autoGRFSelection" visa option.
-  } else if (BC->getGRFSize()) {
-    unsigned NumGRF = BC->getGRFSize();
-    Kernel.AddKernelAttribute("NumGRF", sizeof(NumGRF), &NumGRF);
-  } else if (!BC->isAutoLargeGRFMode()) {
-    unsigned DefaultGRFSize = 128;
-    Kernel.AddKernelAttribute("NumGRF", sizeof(DefaultGRFSize),
-                              &DefaultGRFSize);
   }
 }
 
@@ -1051,8 +1032,7 @@ void GenXKernelBuilder::runOnKernel() {
   IGC_ASSERT_MESSAGE(Kernel, "Kernel initialization failed!");
   LLVM_DEBUG(dbgs() << "=== PROCESS KERNEL(" << KernelName << ") ===\n");
 
-  addKernelAttrsFromMetadata(*Kernel, TheKernelMetadata, Subtarget,
-                             BackendConfig, HasBarrier);
+  addKernelAttrsFromMetadata(*Kernel, TheKernelMetadata, Subtarget, HasBarrier);
 
   // Set CM target for all functions produced by VC.
   // See visa spec for CMTarget value (section 4, Kernel).
@@ -5829,10 +5809,12 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
   if (ST.needsWANoMaskFusedEU() && !DisableNoMaskWA)
     addArgument("-noMaskWA");
 
-  // Set autoGRFSize visa option which has a lower
-  // priority than a kernel attribute. That is required
-  // since the analogous kernel attribute does not exist.
-  addArgument("-autoGRFSelection");
+  unsigned GRFSize = BC.getGRFSize();
+  if (GRFSize > 0) {
+    addArgument("-TotalGRFNum");
+    addArgument(to_string(GRFSize));
+  } else if (BC.isAutoLargeGRFMode())
+    addArgument("-autoGRFSelection");
 
   if (ST.hasFusedEU()) {
     addArgument("-fusedCallWA");
