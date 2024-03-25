@@ -12,9 +12,6 @@ SPDX-License-Identifier: MIT
 
 namespace IGC
 {
-    constexpr uint64_t DecorationIdCacheControlLoad = 6442;
-    constexpr uint64_t DecorationIdCacheControlStore = 6443;
-
     enum class LoadCacheControl
     {
         Uncached = 0,
@@ -33,21 +30,6 @@ namespace IGC
         Streaming = 3,
         Invalid // This value represents invalid/unsupported cache control value
     };
-
-    template <typename T>
-    inline uint64_t getDecorationIdCacheControl() {
-        static_assert(std::is_same_v<T, LoadCacheControl> || std::is_same_v<T, StoreCacheControl>);
-        return (std::is_same_v<T, LoadCacheControl> ? DecorationIdCacheControlLoad : DecorationIdCacheControlStore);
-    }
-
-    template<typename T>
-    inline int getDefaultCacheControlValue(CodeGenContext *ctx)
-    {
-        static_assert(std::is_same_v<T, LoadCacheControl> || std::is_same_v<T, StoreCacheControl>);
-        return std::is_same_v<T, LoadCacheControl> ?
-            ctx->getModuleMetaData()->compOpt.LoadCacheDefault :
-            ctx->getModuleMetaData()->compOpt.StoreCacheDefault;
-    }
 
     template<typename T>
     using CacheControlMapTy = std::unordered_map<LSC_L1_L3_CC, std::pair<T, T>, std::hash<int>>;
@@ -103,8 +85,8 @@ namespace IGC
         for (auto Node : MDNodes)
         {
             IGC_ASSERT(Node->getNumOperands() == 3);
-            IGC_ASSERT(getLiteral(Node, 0).value() == DecorationIdCacheControlLoad ||
-                       getLiteral(Node, 0).value() == DecorationIdCacheControlStore);
+            IGC_ASSERT(getLiteral(Node, 0).value() == 6442 ||
+                       getLiteral(Node, 0).value() == 6443);
 
             auto cacheLevel = getLiteral(Node, 1);
             auto cacheControl = getLiteral(Node, 2);
@@ -163,111 +145,5 @@ namespace IGC
 
         IGC_ASSERT_MESSAGE(false, "Unsupported cache controls combination!");
         return { StoreCacheControl::Invalid, StoreCacheControl::Invalid };
-    }
-
-    inline llvm::DenseMap<uint64_t, llvm::SmallPtrSet<llvm::MDNode*, 4>> parseSPIRVDecorationsFromMD(llvm::Value* V)
-    {
-        using namespace llvm;
-        MDNode* spirvDecorationsMD = nullptr;
-        if (auto* GV = dyn_cast<GlobalVariable>(V))
-        {
-            spirvDecorationsMD = GV->getMetadata("spirv.Decorations");
-        }
-        else if (auto* II = dyn_cast<Instruction>(V))
-        {
-            spirvDecorationsMD = II->getMetadata("spirv.Decorations");
-        }
-        else if (auto* A = dyn_cast<Argument>(V))
-        {
-            Function* F = A->getParent();
-            auto* parameterMD = F->getMetadata("spirv.ParameterDecorations");
-
-            if (parameterMD)
-            {
-                spirvDecorationsMD = cast<MDNode>(parameterMD->getOperand(A->getArgNo()));
-            }
-        }
-
-        DenseMap<uint64_t, SmallPtrSet<MDNode*, 4>> spirvDecorations;
-        if (spirvDecorationsMD)
-        {
-            for (const auto& operand : spirvDecorationsMD->operands())
-            {
-                auto node = dyn_cast<MDNode>(operand.get());
-                if (node->getNumOperands() == 0)
-                {
-                    continue;
-                }
-
-                if (auto value = dyn_cast<ValueAsMetadata>(node->getOperand(0)))
-                {
-                    if (auto constantInt = dyn_cast<ConstantInt>(value->getValue()))
-                    {
-                        uint64_t decorationId = constantInt->getZExtValue();
-
-                        spirvDecorations[decorationId].insert(node);
-                    }
-                }
-            }
-        }
-        return spirvDecorations;
-    }
-
-    struct CacheControlFromMDNodes {
-        int value; // equal to default if (isEmpty || isDefault || isInvalid)
-        bool isEmpty;
-        bool isDefault;
-        bool isInvalid;
-    };
-    template<typename T>
-    CacheControlFromMDNodes resolveCacheControlFromMDNodes(CodeGenContext *ctx, llvm::SmallPtrSetImpl<llvm::MDNode*>& MDNodes)
-    {
-        using namespace llvm;
-        static_assert(std::is_same_v<T, LoadCacheControl> || std::is_same_v<T, StoreCacheControl>);
-        SmallDenseMap<CacheLevel, T> cacheControls = parseCacheControlsMD<T>(MDNodes);
-        IGC_ASSERT(!cacheControls.empty());
-
-        // SPV_INTEL_cache_controls extension specification states the following:
-        // "Cache Level is an unsigned 32-bit integer telling the cache level to
-        //  which the control applies. The value 0 indicates the cache level closest
-        //  to the processing unit, the value 1 indicates the next furthest cache
-        //  level, etc. If some cache level does not exist, the decoration is ignored."
-        //
-        // Therefore Cache Level equal to 0 maps to L1$ and Cache Level equal to 1 maps to L3$.
-        // Other Cache Level values are ignored.
-        const int cacheDefault = getDefaultCacheControlValue<T>(ctx);
-
-        CacheControlFromMDNodes result = {};
-        result.value = cacheDefault;
-
-        auto L1CacheControl = getCacheControl(cacheControls, CacheLevel(0));
-        auto L3CacheControl = getCacheControl(cacheControls, CacheLevel(1));
-
-        if (!L1CacheControl && !L3CacheControl)
-        {
-            // Early exit if there are no cache controls set for cache levels that are controllable
-            // by Intel GPUs.
-            result.isEmpty = true;
-            return result;
-        }
-
-        LSC_L1_L3_CC defaultLSCCacheControls = static_cast<LSC_L1_L3_CC>(cacheDefault);
-        auto [L1Default, L3Default] = mapToSPIRVCacheControl<T>(defaultLSCCacheControls);
-        IGC_ASSERT(L1Default != T::Invalid && L3Default != T::Invalid);
-
-        T newL1CacheControl = L1CacheControl ? L1CacheControl.value() : L1Default;
-        T newL3CacheControl = L3CacheControl ? L3CacheControl.value() : L3Default;
-
-        LSC_L1_L3_CC newLSCCacheControl =
-            mapToLSCCacheControl(newL1CacheControl, newL3CacheControl);
-
-        result.isDefault = (defaultLSCCacheControls == newLSCCacheControl);
-        if (newLSCCacheControl == LSC_CC_INVALID)
-        {
-            result.isInvalid = true;
-            return result;
-        }
-        result.value = newLSCCacheControl;
-        return result;
     }
 }

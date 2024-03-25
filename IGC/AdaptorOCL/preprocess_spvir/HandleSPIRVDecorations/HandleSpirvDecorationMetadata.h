@@ -59,5 +59,6 @@ namespace IGC
         void handleHostAccessIntel(llvm::GlobalVariable& globalVariable, llvm::MDNode* node);
         template<typename T>
         void handleCacheControlINTEL(llvm::Instruction& I, llvm::SmallPtrSetImpl<llvm::MDNode*>& MDNodes);
+        llvm::DenseMap<uint64_t, llvm::SmallPtrSet<llvm::MDNode*, 4>> parseSPIRVDecorationsFromMD(llvm::Value* V);
     };
 }
