@@ -269,6 +269,10 @@ half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicLoad, _p4f16_i32_i32, )(__generic ha
     {
         return SPIRV_BUILTIN(AtomicLoad, _p3f16_i32_i32, )((__local half*)Pointer, Scope, Semantics);
     }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicLoad, _p0f16_i32_i32, )((__private int*)Pointer, Scope, Semantics);
+    }
     else
     {
         return SPIRV_BUILTIN(AtomicLoad, _p1f16_i32_i32, )((__global half*)Pointer, Scope, Semantics);
@@ -454,6 +458,10 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p4i32_i32_i32_i32, )( __ge
     {
         atomic_operation_1op( __builtin_IB_atomic_xchg_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicExchange, _p0i32_i32_i32_i32, )((__private int*)Pointer, Scope, Semantics, Value);
+    }
     else
     {
         atomic_operation_1op( __builtin_IB_atomic_xchg_global_i32, uint, (__global int*)Pointer, Scope, Semantics, Value, true );
@@ -619,6 +627,10 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p4i64_i32_i32_i64, )( __g
     {
         return SPIRV_BUILTIN(AtomicExchange, _p3i64_i32_i32_i64, )((__local long*)Pointer, Scope, Semantics, Value);
     }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicExchange, _p0i64_i32_i32_i64, )((__private long*)Pointer, Scope, Semantics, Value);
+    }
     else
     {
         return SPIRV_BUILTIN(AtomicExchange, _p1i64_i32_i32_i64, )((__global long*)Pointer, Scope, Semantics, Value);
@@ -658,6 +670,10 @@ float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p4f32_i32_i32_f32, )( __
     {
         atomic_operation_1op_as_float( __builtin_IB_atomic_xchg_local_i32, float, (local int*)Pointer, Scope, Semantics, as_int(Value), false );
     }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicExchange, _p0f32_i32_i32_f32, )((__private int*)Pointer, Scope, Semantics, Value);
+    }
     else
     {
         atomic_operation_1op_as_float( __builtin_IB_atomic_xchg_global_i32, float, (global int*)Pointer, Scope, Semantics, as_int(Value), true );
@@ -693,6 +709,10 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p4f64_i32_i32_f64, )( _
     if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         return SPIRV_BUILTIN(AtomicExchange, _p3f64_i32_i32_f64, )((__local double*) Pointer, Scope, Semantics, Value);
+    }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicExchange, _p0f64_i32_i32_f64, )((__private double*) Pointer, Scope, Semantics, Value);
     }
     else
     {
@@ -733,6 +753,10 @@ half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicExchange, _p4f16_i32_i32_f16, )(__ge
     if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         return SPIRV_BUILTIN(AtomicExchange, _p3f16_i32_i32_f16, )((__local half*)Pointer, Scope, Semantics, Value);
+    }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicExchange, _p0f16_i32_i32_f16, )((__private half*)Pointer, Scope, Semantics, Value);
     }
     else
     {
@@ -776,6 +800,10 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchange, _p4i32_i32_i32_i32_i
     if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         atomic_cmpxhg( __builtin_IB_atomic_cmpxchg_local_i32, uint, (__local int*)Pointer, Scope, Equal, Value, Comparator, false );
+    }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicCompareExchange, _p0i32_i32_i32_i32_i32_i32, )((__private int*)Pointer, Scope, Equal, Unequal, Value, Comparator);
     }
     else
     {
@@ -832,6 +860,10 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchange, _p4i64_i32_i32_i32_
     {
         return SPIRV_BUILTIN(AtomicCompareExchange, _p3i64_i32_i32_i32_i64_i64, )( (__local long*)Pointer, Scope, Equal, Unequal, Value, Comparator );
     }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicCompareExchange, _p0i64_i32_i32_i32_i64_i64, )((__private long*)Pointer, Scope, Equal, Unequal, Value, Comparator);
+    }
     else
     {
         return SPIRV_BUILTIN(AtomicCompareExchange, _p1i64_i32_i32_i32_i64_i64, )( (__global long*)Pointer, Scope, Equal, Unequal, Value, Comparator );
@@ -876,6 +908,10 @@ float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchange, _p4f32_i32_i32_i32
     if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         atomic_cmpxhg_as_float( __builtin_IB_atomic_cmpxchg_local_i32, float, (__local int*)Pointer, Scope, Equal, as_uint(Value), as_uint(Comparator), false );
+    }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicCompareExchange, _p0f32_i32_i32_i32_f32_f32, )((__private int*)Pointer, Scope, Equal, Unequal, Value, Comparator);
     }
     else
     {
@@ -970,6 +1006,10 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIIncrement, _p4i32_i32_i32, )( __gene
     {
         atomic_operation_0op( __builtin_IB_atomic_inc_local_i32, uint, (__local int*)Pointer, Scope, Semantics, false );
     }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicIIncrement, _p0i32_i32_i32, )((__private int*)Pointer, Scope, Semantics);
+    }
     else
     {
         atomic_operation_0op( __builtin_IB_atomic_inc_global_i32, uint, (__global int*)Pointer, Scope, Semantics, true );
@@ -1006,6 +1046,10 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIIncrement, _p4i64_i32_i32, )( __gen
     if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         return SPIRV_BUILTIN(AtomicIIncrement, _p3i64_i32_i32, )((__local long*)Pointer, Scope, Semantics );
+    }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicIIncrement, _p0i64_i32_i32, )((__private long*)Pointer, Scope, Semantics);
     }
     else
     {
@@ -1047,6 +1091,10 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIDecrement, _p4i32_i32_i32, )( __gene
     {
         atomic_operation_0op( __builtin_IB_atomic_dec_local_i32, uint, (__local int*)Pointer, Scope, Semantics, false );
     }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicIDecrement, _p0i32_i32_i32, )((__private int*)Pointer, Scope, Semantics);
+    }
     else
     {
         atomic_operation_0op( __builtin_IB_atomic_dec_global_i32, uint, (__global int*)Pointer, Scope, Semantics, true );
@@ -1081,6 +1129,10 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIDecrement, _p4i64_i32_i32, )( __gen
     if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         return SPIRV_BUILTIN(AtomicIDecrement, _p3i64_i32_i32, )( (__local long*)Pointer, Scope, Semantics );
+    }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicIDecrement, _p0i64_i32_i32, )((__private long*)Pointer, Scope, Semantics);
     }
     else
     {
@@ -1124,6 +1176,10 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIAdd, _p4i32_i32_i32_i32, )( __generi
     {
         atomic_operation_1op( __builtin_IB_atomic_add_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicIAdd, _p0i32_i32_i32_i32, )((__private int*)Pointer, Scope, Semantics, Value);
+    }
     else
     {
         atomic_operation_1op( __builtin_IB_atomic_add_global_i32, uint, (__global int*)Pointer, Scope, Semantics, Value, true );
@@ -1155,6 +1211,10 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicIAdd, _p4i64_i32_i32_i64, )( __gener
     if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         return SPIRV_BUILTIN(AtomicIAdd, _p3i64_i32_i32_i64, )((__local long*)Pointer, Scope, Semantics, Value);
+    }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicIAdd, _p0i64_i32_i32_i64, )((__private long*)Pointer, Scope, Semantics, Value);
     }
     else
     {
@@ -1196,6 +1256,10 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicISub, _p4i32_i32_i32_i32, )( __generi
     {
         atomic_operation_1op( __builtin_IB_atomic_sub_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicISub, _p0i32_i32_i32_i32, )((__private int*)Pointer, Scope, Semantics, Value);
+    }
     else
     {
         atomic_operation_1op( __builtin_IB_atomic_sub_global_i32, uint, (__global int*)Pointer, Scope, Semantics, Value, true );
@@ -1232,6 +1296,10 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicISub, _p4i64_i32_i32_i64, )( __gener
     if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         return SPIRV_BUILTIN(AtomicISub, _p3i64_i32_i32_i64, )((__local long*)Pointer, Scope, Semantics, Value );
+    }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicISub, _p0i64_i32_i32_i64, )((__private long*)Pointer, Scope, Semantics, Value);
     }
     else
     {
@@ -1273,6 +1341,10 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicSMin, _p4i32_i32_i32_i32, )( __generi
     {
         atomic_operation_1op( __builtin_IB_atomic_min_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicSMin, _p0i32_i32_i32_i32, )((__private int*)Pointer, Scope, Semantics, Value);
+    }
     else
     {
         atomic_operation_1op( __builtin_IB_atomic_min_global_i32, uint, (__global int*)Pointer, Scope, Semantics, Value, true );
@@ -1308,6 +1380,10 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicSMin, _p4i64_i32_i32_i64, )( __gener
     if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         return SPIRV_BUILTIN(AtomicSMin, _p3i64_i32_i32_i64, )((__local long*)Pointer, Scope, Semantics, Value );
+    }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicSMin, _p0i64_i32_i32_i64, )((__private long*)Pointer, Scope, Semantics, Value);
     }
     else
     {
@@ -1347,6 +1423,10 @@ uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicUMin, _p4i32_i32_i32_i32, )( __gener
     {
         atomic_operation_1op( __builtin_IB_atomic_min_local_u32, uint, (__local uint*)Pointer, Scope, Semantics, Value, false );
     }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicUMin, _p0i32_i32_i32_i32, )((__private uint*)Pointer, Scope, Semantics, Value);
+    }
     else
     {
         atomic_operation_1op( __builtin_IB_atomic_min_global_u32, uint, (__global uint*)Pointer, Scope, Semantics, Value, true );
@@ -1382,6 +1462,10 @@ ulong SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicUMin, _p4i64_i32_i32_i64, )( __gene
     if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         return SPIRV_BUILTIN(AtomicUMin, _p3i64_i32_i32_i64, )( (__local ulong*)Pointer, Scope, Semantics, Value );
+    }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicUMin, _p0i64_i32_i32_i64, )((__private ulong*)Pointer, Scope, Semantics, Value);
     }
     else
     {
@@ -1422,6 +1506,10 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicSMax, _p4i32_i32_i32_i32, )( __generi
     {
         atomic_operation_1op( __builtin_IB_atomic_max_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicSMax, _p0i32_i32_i32_i32, )((__private int*)Pointer, Scope, Semantics, Value);
+    }
     else
     {
         atomic_operation_1op( __builtin_IB_atomic_max_global_i32, uint, (__global int*)Pointer, Scope, Semantics, Value, true );
@@ -1457,6 +1545,10 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicSMax, _p4i64_i32_i32_i64, )( __gener
     if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         return SPIRV_BUILTIN(AtomicSMax, _p3i64_i32_i32_i64, )( (__local long*)Pointer, Scope, Semantics, Value );
+    }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicSMax, _p0i64_i32_i32_i64, )((__private long*)Pointer, Scope, Semantics, Value);
     }
     else
     {
@@ -1499,6 +1591,10 @@ uint SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicUMax, _p4i32_i32_i32_i32, )( __gener
     {
         atomic_operation_1op( __builtin_IB_atomic_max_local_u32, uint, (__local uint*)Pointer, Scope, Semantics, Value, false );
     }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicUMax, _p0i32_i32_i32_i32, )((__private uint*)Pointer, Scope, Semantics, Value);
+    }
     else
     {
         atomic_operation_1op( __builtin_IB_atomic_max_global_u32, uint, (__global uint*)Pointer, Scope, Semantics, Value, true );
@@ -1534,6 +1630,10 @@ ulong SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicUMax, _p4i64_i32_i32_i64, )( __gene
     if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         return SPIRV_BUILTIN(AtomicUMax, _p3i64_i32_i32_i64, )( (__local ulong*)Pointer, Scope, Semantics, Value );
+    }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicUMax, _p0i64_i32_i32_i64, )((__private ulong*)Pointer, Scope, Semantics, Value);
     }
     else
     {
@@ -1574,6 +1674,10 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicAnd, _p4i32_i32_i32_i32, )( __generic
     {
         atomic_operation_1op( __builtin_IB_atomic_and_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicAnd, _p0i32_i32_i32_i32, )((__private int*)Pointer, Scope, Semantics, Value);
+    }
     else
     {
         atomic_operation_1op( __builtin_IB_atomic_and_global_i32, uint, (__global int*)Pointer, Scope, Semantics, Value, true );
@@ -1609,6 +1713,10 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicAnd, _p4i64_i32_i32_i64, )( __generi
     if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         return SPIRV_BUILTIN(AtomicAnd, _p3i64_i32_i32_i64, )( (__local long*)Pointer, Scope, Semantics, Value );
+    }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicAnd, _p0i64_i32_i32_i64, )((__private long*)Pointer, Scope, Semantics, Value);
     }
     else
     {
@@ -1649,6 +1757,10 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicOr, _p4i32_i32_i32_i32, )( __generic 
     {
         atomic_operation_1op( __builtin_IB_atomic_or_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicOr, _p0i32_i32_i32_i32, )((__private int*)Pointer, Scope, Semantics, Value);
+    }
     else
     {
         atomic_operation_1op( __builtin_IB_atomic_or_global_i32, uint, (__global int*)Pointer, Scope, Semantics, Value, true );
@@ -1684,6 +1796,10 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicOr, _p4i64_i32_i32_i64, )( __generic
     if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
       return SPIRV_BUILTIN(AtomicOr, _p3i64_i32_i32_i64, )( (__local long*)Pointer, Scope, Semantics, Value );
+    }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicOr, _p0i64_i32_i32_i64, )((__private long*)Pointer, Scope, Semantics, Value);
     }
     else
     {
@@ -1725,6 +1841,10 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicXor, _p4i32_i32_i32_i32, )( __generic
     {
         atomic_operation_1op( __builtin_IB_atomic_xor_local_i32, uint, (__local int*)Pointer, Scope, Semantics, Value, false );
     }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicXor, _p0i32_i32_i32_i32, )((__private int*)Pointer, Scope, Semantics, Value);
+    }
     else
     {
         atomic_operation_1op( __builtin_IB_atomic_xor_global_i32, uint, (__global int*)Pointer, Scope, Semantics, Value, true );
@@ -1760,6 +1880,10 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicXor, _p4i64_i32_i32_i64, )( __generi
     if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         return SPIRV_BUILTIN(AtomicXor, _p3i64_i32_i32_i64, )( (__local long*)Pointer, Scope, Semantics, Value );
+    }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicXor, _p0i64_i32_i32_i64, )((__private long*)Pointer, Scope, Semantics, Value);
     }
     else
     {
@@ -1875,6 +1999,10 @@ float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p4f32_i32_i32_f32, )( __g
     {
         return SPIRV_BUILTIN(AtomicFAddEXT, _p3f32_i32_i32_f32, )((local float*)Pointer, Scope, Semantics, Value);
     }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicFAddEXT, _p0f32_i32_i32_f32, )((__private float*)Pointer, Scope, Semantics, Value);
+    }
     else
     {
         return SPIRV_BUILTIN(AtomicFAddEXT, _p1f32_i32_i32_f32, )((global float*)Pointer, Scope, Semantics, Value);
@@ -1949,6 +2077,10 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p4f64_i32_i32_f64, )( __
     {
         return SPIRV_BUILTIN(AtomicFAddEXT, _p3f64_i32_i32_f64, )((local double*)Pointer, Scope, Semantics, Value);
     }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicFAddEXT, _p0f64_i32_i32_f64, )((__private double*)Pointer, Scope, Semantics, Value);
+    }
     else
     {
         return SPIRV_BUILTIN(AtomicFAddEXT, _p1f64_i32_i32_f64, )((global double*)Pointer, Scope, Semantics, Value);
@@ -2003,6 +2135,10 @@ half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p4f16_i32_i32_f16, )( gene
     {
         return SPIRV_BUILTIN(AtomicFMinEXT, _p3f16_i32_i32_f16, )((__local half*)Pointer, Scope, Semantics, Value);
     }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicFMinEXT, _p0f16_i32_i32_f16, )((__private half*)Pointer, Scope, Semantics, Value);
+    }
     else
     {
         return SPIRV_BUILTIN(AtomicFMinEXT, _p1f16_i32_i32_f16, )((__global half*)Pointer, Scope, Semantics, Value);
@@ -2034,6 +2170,10 @@ float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p4f32_i32_i32_f32, )( gen
     if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         return SPIRV_BUILTIN(AtomicFMinEXT, _p3f32_i32_i32_f32, )((__local float*)Pointer, Scope, Semantics, Value);
+    }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicFMinEXT, _p0f32_i32_i32_f32, )((__private float*)Pointer, Scope, Semantics, Value);
     }
     else
     {
@@ -2090,6 +2230,10 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p4f64_i32_i32_f64, )( ge
     {
         return SPIRV_BUILTIN(AtomicFMinEXT, _p3f64_i32_i32_f64, )((__local double*)Pointer, Scope, Semantics, Value);
     }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicFMinEXT, _p0f64_i32_i32_f64, )((__private double*)Pointer, Scope, Semantics, Value);
+    }
     else
     {
         return SPIRV_BUILTIN(AtomicFMinEXT, _p1f64_i32_i32_f64, )((__global double*)Pointer, Scope, Semantics, Value);
@@ -2144,6 +2288,10 @@ half SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p4f16_i32_i32_f16, )( gene
     {
         return SPIRV_BUILTIN(AtomicFMaxEXT, _p3f16_i32_i32_f16, )((__local half*)Pointer, Scope, Semantics, Value);
     }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicFMaxEXT, _p0f16_i32_i32_f16, )((__private half*)Pointer, Scope, Semantics, Value);
+    }
     else
     {
         return SPIRV_BUILTIN(AtomicFMaxEXT, _p1f16_i32_i32_f16, )((__global half*)Pointer, Scope, Semantics, Value);
@@ -2175,6 +2323,10 @@ float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p4f32_i32_i32_f32, )( gen
     if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         return SPIRV_BUILTIN(AtomicFMaxEXT, _p3f32_i32_i32_f32, )((__local float*)Pointer, Scope, Semantics, Value);
+    }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicFMaxEXT, _p0f32_i32_i32_f32, )((__private float*)Pointer, Scope, Semantics, Value);
     }
     else
     {
@@ -2230,6 +2382,10 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p4f64_i32_i32_f64, )( ge
     if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
         return SPIRV_BUILTIN(AtomicFMaxEXT, _p3f64_i32_i32_f64, )((__local double*)Pointer, Scope, Semantics, Value);
+    }
+    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
+    {
+        return SPIRV_BUILTIN(AtomicFMaxEXT, _p0f64_i32_i32_f64, )((__private double*)Pointer, Scope, Semantics, Value);
     }
     else
     {
