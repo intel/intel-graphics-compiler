@@ -3430,6 +3430,7 @@ void vISAVerifier::verifyBFMixedMode(const CISA_INST *inst) {
   case ISA_RSQRT:
   case ISA_SIN:
   case ISA_SQRT:
+  case ISA_FMINMAX:
     if (irBuilder->supportPureBF())
       break;
   default:
@@ -3442,10 +3443,14 @@ void vISAVerifier::verifyBFMixedMode(const CISA_INST *inst) {
   // opernads: 0 : srcStart-1        --> dst
   //           srcStart : n_srcs-1   --> src
   int srcStart = (int)ISA_Inst_Table[opcode].n_dsts;
-
+  // fminmax's 1st opnd is minmax op
+  // cmp's 1st opnd is cmp relop
+  if (opcode == ISA_FMINMAX || opcode == ISA_CMP)
+    srcStart++;
   // CMP's target must be bool, skip checking cmp's dst
   if (opcode != ISA_CMP) {
-    for (int j = 0; j < srcStart; j++) {
+    int dstStart = opcode == ISA_FMINMAX ? 1 : 0;
+    for (int j = dstStart; j < srcStart; j++) {
       VISA_Type dstType = getOperandVISAType(inst, j);
       REPORT_INSTRUCTION(options,
                          (dstType == ISA_TYPE_F || dstType == ISA_TYPE_BF),
@@ -3455,9 +3460,6 @@ void vISAVerifier::verifyBFMixedMode(const CISA_INST *inst) {
             options, (dstType == ISA_TYPE_BF),
             "Math instructions must be pure BF mode");
     }
-  } else {
-    // cmp's 1st opnd is cmp relop
-    ++srcStart;
   }
   for (int j = 0; j < ISA_Inst_Table[opcode].n_srcs; j++) {
     VISA_Type srcType = getOperandVISAType(inst, j + srcStart);
