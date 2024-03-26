@@ -67,6 +67,8 @@ class VectorDecomposer {
   using GenXSubtarget = llvm::GenXSubtarget;
 
   const DataLayout *DL = nullptr;
+  const GenXSubtarget *ST;
+
   llvm::SmallVector<Instruction *, 16> StartWrRegions;
   std::set<Instruction *> Seen;
   llvm::SmallVector<Instruction *, 16> Web;
@@ -80,6 +82,8 @@ class VectorDecomposer {
   unsigned DecomposedCount = 0;
 
 public:
+  explicit VectorDecomposer(const GenXSubtarget *ST) : ST(ST) {}
+
   // clear : clear anything stored
   void clear() {
     clearOne();

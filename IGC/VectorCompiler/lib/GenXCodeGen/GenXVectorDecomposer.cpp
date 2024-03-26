@@ -167,7 +167,8 @@ bool VectorDecomposer::determineDecomposition(Instruction *Inst) {
   NotDecomposingReportInst = Inst;
   Web.clear();
   Decomposition.clear();
-  unsigned NumGrfs = alignTo<256>(DL->getTypeSizeInBits(Inst->getType())) / 256;
+  unsigned GRFWidth = genx::ByteBits * (ST ? ST->getGRFByteSize() : defaultGRFByteSize);
+  unsigned NumGrfs = alignTo(DL->getTypeSizeInBits(Inst->getType()), GRFWidth) / GRFWidth;
   if (NumGrfs == 1)
     return false; // Ignore single GRF vector.
   LLVM_DEBUG(dbgs() << "VectorDecomposer::determineDecomposition(" << *Inst

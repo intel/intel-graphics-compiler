@@ -58,7 +58,6 @@ namespace {
 
 // GenXPostLegalization : post-legalization pass
 class GenXPostLegalization : public FunctionPass {
-  VectorDecomposer VD;
   const DataLayout *DL = nullptr;
   const GenXSubtarget *ST = nullptr;
 public:
@@ -100,6 +99,8 @@ bool GenXPostLegalization::runOnFunction(Function &F)
   ST = &getAnalysis<TargetPassConfig>()
             .getTM<GenXTargetMachine>()
             .getGenXSubtarget();
+
+  VectorDecomposer VD(ST);
 
   bool Modified = false;
   Modified |= vc::breakConstantExprs(&F, vc::LegalizationStage::Legalized);
