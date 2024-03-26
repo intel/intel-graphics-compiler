@@ -1196,6 +1196,26 @@ bool TranslateBuildSPMD(
             }
         }
 
+        llvm::StringRef dsePartialOverwriteTrackingFlag = "-enable-dse-partial-overwrite-tracking=1";
+        auto dsePartialOverwriteTrackingSwitch = optionsMap.find(dsePartialOverwriteTrackingFlag.trim("-=1"));
+        if (dsePartialOverwriteTrackingSwitch != optionsMap.end())
+        {
+            if (dsePartialOverwriteTrackingSwitch->getValue()->getNumOccurrences() == 0)
+            {
+                args.push_back(dsePartialOverwriteTrackingFlag.data());
+            }
+        }
+
+        llvm::StringRef dseMSSAStepLimitFlag = "-dse-memoryssa-walklimit=150";
+        auto dseMSSAStepLimitSwitch = optionsMap.find(dseMSSAStepLimitFlag.trim("-=150"));
+        if (dseMSSAStepLimitSwitch != optionsMap.end())
+        {
+            if (dseMSSAStepLimitSwitch->getValue()->getNumOccurrences() == 0)
+            {
+                args.push_back(dseMSSAStepLimitFlag.data());
+            }
+        }
+
         if (std::size(args) > 1)
         {
             llvm::cl::ParseCommandLineOptions(std::size(args), &args[0]);
