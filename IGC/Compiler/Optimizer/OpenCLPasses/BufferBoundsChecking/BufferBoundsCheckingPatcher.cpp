@@ -103,8 +103,8 @@ BufferBoundsCheckingPatcher::PatchInfo BufferBoundsCheckingPatcher::getPatchInfo
 {
     MDNode* metadata = instruction->getMetadata("bufferboundschecking.patch");
     return {
-        uint32_t(dyn_cast<ConstantInt>(dyn_cast<ConstantAsMetadata>(metadata->getOperand(0))->getValue())->getZExtValue()),
-        uint32_t(dyn_cast<ConstantInt>(dyn_cast<ConstantAsMetadata>(metadata->getOperand(1))->getValue())->getZExtValue()),
+        uint32_t(cast<ConstantInt>(cast<ConstantAsMetadata>(metadata->getOperand(0))->getValue())->getZExtValue()),
+        uint32_t(cast<ConstantInt>(cast<ConstantAsMetadata>(metadata->getOperand(1))->getValue())->getZExtValue()),
     };
 }
 

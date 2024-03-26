@@ -54,9 +54,6 @@ namespace
 
         // GRF-aligned for send operands
         // check if V is defined by send
-        if (isa<LoadInst>(V)) {
-            getSendPayloadAlignment(is64BitTy);
-        }
         if (GenIntrinsicInst* CI = dyn_cast<GenIntrinsicInst>(V))
         {
             switch (CI->getIntrinsicID()) {
@@ -818,17 +815,13 @@ void VariableReuseAnalysis::addVecAlias(
     {
         // If aliaser isn't single-valued, add it to its root map.
         if (!m_DeSSA->isSingleValued(Aliaser)) {
-            Value* rv0 = m_DeSSA ? m_DeSSA->getRootValue(Aliaser) : nullptr;
-            if (rv0) {
-                m_root2AliasMap[rv0] = Aliaser;
-            }
+            Value* rv0 = m_DeSSA->getRootValue(Aliaser);
+            m_root2AliasMap[rv0] = Aliaser;
         }
         if (!m_DeSSA->isSingleValued(Aliasee)) {
             // If it isn't isolated, add it to its root map
-            Value* rv1 = m_DeSSA ? m_DeSSA->getRootValue(Aliasee) : nullptr;
-            if (rv1) {
-                m_root2AliasMap[rv1] = Aliasee;
-            }
+            Value* rv1 = m_DeSSA->getRootValue(Aliasee);
+            m_root2AliasMap[rv1] = Aliasee;
         }
     }
 }

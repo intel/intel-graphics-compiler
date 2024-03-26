@@ -528,7 +528,7 @@ void PromoteBools::setPromotedAttributes(Function* newFunction, AttributeList& a
 
     // set return attributes
     attrBuilder.clear();
-    for (auto attr : IGCLLVM::getRetAttrs(attributeList))
+    for (const auto &attr : IGCLLVM::getRetAttrs(attributeList))
     {
         attrBuilder.addAttribute(getPromoted(attr));
     }

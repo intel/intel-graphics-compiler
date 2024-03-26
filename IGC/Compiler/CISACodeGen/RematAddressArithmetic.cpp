@@ -488,8 +488,7 @@ void CloneAddressArithmetic::countUses(Function &F) {
         for (auto &I : BB) {
             unsigned int NonDebugUses = 0;
             for (auto U : I.users()) {
-                auto *Inst = llvm::dyn_cast<llvm::Instruction>(U);
-                if(!llvm::isa<DbgInfoIntrinsic>(Inst))
+                if(!llvm::isa<DbgInfoIntrinsic>(U))
                     NonDebugUses += 1;
             }
             Uses[&I] = NonDebugUses;

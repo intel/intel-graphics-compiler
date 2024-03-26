@@ -38,6 +38,6 @@ define spir_kernel void @kernel(i32 addrspace(1)* %input) nounwind {
 
 ; CHECK:        bufferboundschecking.invalid:
 ; CHECK:          call spir_func void @__bufferoutofbounds_assert
-; CHECK:          store volatile i32 [[VALUE]], i32 addrspace(1)* null
+; CHECK:          store i32 [[VALUE]], i32 addrspace(1)* null
 
 ; CHECK:        declare void @__bufferoutofbounds

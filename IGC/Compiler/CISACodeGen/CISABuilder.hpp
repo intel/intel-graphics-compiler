@@ -140,7 +140,6 @@ namespace IGC
         std::string GetShaderName();
 
         CEncoder();
-        ~CEncoder();
         void SetProgram(CShader* program);
         void Jump(CVariable* flag, uint label);
         void AddLabel(uint label);

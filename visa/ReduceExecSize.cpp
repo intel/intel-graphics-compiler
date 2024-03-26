@@ -102,7 +102,7 @@ bool HWConformity::fixDstAlignmentWithVectorImm(INST_LIST_ITER iter,
         uint64_t bitValue = 0;
         uint32_t immBits = static_cast<uint32_t>(src->asImm()->getImm());
         for (int i = 0; i < execSize; ++i) {
-          int val = (immBits >> (i * 4)) & 0xF;
+          uint64_t val = (immBits >> (i * 4)) & 0xF;
           bitValue |= val << (i * 8);
         }
         inst->setSrc(builder.createImm(bitValue, ty), k);

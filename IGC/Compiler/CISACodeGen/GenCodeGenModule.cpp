@@ -315,7 +315,7 @@ void GenXCodeGenModule::processFunction(Function& F)
             if (IGC_IS_FLAG_DISABLED(EnableSIMDVariantCompilation))
             {
                 int req_subgroup = 0;
-                for (auto FG : CallerFGs)
+                for (const auto &FG : CallerFGs)
                 {
                     auto FHead = FG.first->getHead();
                     auto subGrpSz = pMdUtils->getFunctionsInfoItem(FHead)->getSubGroupSize();

@@ -11160,7 +11160,7 @@ void EmitPass::emitCopyGRFBlock(CVariable* Dst, CVariable* Src, Type* type, uint
         // but we need to copy them either via stack memory or via the ARG/RET GRFs, using the SoA layout.
         // Depending on if we read or write, we need to shuffle the struct data to and from SoA layout.
         IGC_ASSERT(type->isStructTy() && numInstance == 2);
-        StructType* STy = dyn_cast<StructType>(type);
+        StructType* STy = cast<StructType>(type);
         const StructLayout* SL = m_DL->getStructLayout(STy);
         unsigned nLanes = numLanes(m_currShader->m_SIMDSize);
 

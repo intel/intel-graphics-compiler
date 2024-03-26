@@ -364,10 +364,6 @@ namespace IGC
         samplervar = nullptr;
     }
 
-    CEncoder::~CEncoder()
-    {
-    }
-
     uint32_t CEncoder::getGRFSize() const { return m_program->getGRFSize(); }
 
 

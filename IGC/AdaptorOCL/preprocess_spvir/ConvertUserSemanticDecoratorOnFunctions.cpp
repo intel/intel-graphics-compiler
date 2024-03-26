@@ -88,13 +88,13 @@ bool ConvertUserSemanticDecoratorOnFunctions::runOnModule(Module& M)
     //       ...
     //
 
-    auto annotations_array = dyn_cast<ConstantArray>(annotations_gv->getOperand(0));
+    auto annotations_array = cast<ConstantArray>(annotations_gv->getOperand(0));
     for (const auto& op : annotations_array->operands())
     {
-        auto annotation_struct = dyn_cast<ConstantStruct>(op.get());
-        auto annotated_function = dyn_cast<Function>(annotation_struct->getOperand(0)->getOperand(0));
-        auto annotation_gv = dyn_cast<GlobalVariable>(annotation_struct->getOperand(1)->getOperand(0));
-        auto annotation = dyn_cast<ConstantDataArray>(annotation_gv->getInitializer())->getAsCString();
+        auto annotation_struct = cast<ConstantStruct>(op.get());
+        auto annotated_function = cast<Function>(annotation_struct->getOperand(0)->getOperand(0));
+        auto annotation_gv = cast<GlobalVariable>(annotation_struct->getOperand(1)->getOperand(0));
+        auto annotation = cast<ConstantDataArray>(annotation_gv->getInitializer())->getAsCString();
 
         auto &funcInfo = MD->FuncMD[annotated_function];
         funcInfo.UserAnnotations.emplace_back(annotation.data());

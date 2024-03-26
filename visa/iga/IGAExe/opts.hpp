@@ -535,7 +535,7 @@ public:
   void defineFlag(const char *sNm, const char *lNm, const char *desc,
                   const char *extDesc,
                   int attrs, // OptAttrs
-                  Setter<O> setter) {
+                  const Setter<O> &setter) {
     opts.defineFlag(sNm, lNm, desc, extDesc, attrs, setter);
   }
   void defineFlag(const char *sNm, const char *lNm, const char *desc,

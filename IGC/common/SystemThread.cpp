@@ -1367,6 +1367,7 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
                 break;
             case IGFX_XE_HP_SDV:
                 SIPIndex = XE_HP_CSR;
+                [[fallthrough]];
             case IGFX_DG2:
             case IGFX_PVC:
             case IGFX_METEORLAKE:
@@ -1382,8 +1383,6 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
                     {
                         SIPIndex = XE2_CSR_DEBUG_BINDLESS_LNL_1x4_160;
                     }
-                    else
-                        break;
                 }
                 else if (sysInfo.SliceCount == 2 && sysInfo.SubSliceCount == 4)
                 {
@@ -1395,11 +1394,8 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
                     {
                         SIPIndex = XE2_CSR_DEBUG_BINDLESS_LNL_2x4_160;
                     }
-                    else
-                        break;
                 }
-                else
-                    break;
+                break;
 
             default:
                 break;

@@ -647,9 +647,9 @@ void Optimizer::finishFusedCallWA() {
   }
 
   // indirect relative call
-  for (auto II : kernel.m_indirectCallWAInfo) {
+  for (const auto &II : kernel.m_indirectCallWAInfo) {
     G4_BB *BB = II.first;
-    IndirectCallWAInfo &callWAInfo = II.second;
+    const IndirectCallWAInfo &callWAInfo = II.second;
 
     if (callWAInfo.Small_start == nullptr) { // calla, skip
       continue;
@@ -706,8 +706,8 @@ void Optimizer::finishFusedCallWA() {
   // Here propogate r60.0 down to call instruction
   // (For call, can just copy patch's dst to call's target. Here the code works
   //  for both call and calla.)
-  for (auto II : kernel.m_indirectCallWAInfo) {
-    IndirectCallWAInfo &callWAInfo = II.second;
+  for (const auto &II : kernel.m_indirectCallWAInfo) {
+    const IndirectCallWAInfo &callWAInfo = II.second;
 
     G4_INST *iCallInst = callWAInfo.Small_call;
     G4_BB *B = callWAInfo.Small_BB;

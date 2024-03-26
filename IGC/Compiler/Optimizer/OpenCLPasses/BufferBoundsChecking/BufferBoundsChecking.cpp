@@ -185,7 +185,7 @@ Value* BufferBoundsChecking::createLoadStoreReplacement(Instruction* instruction
     }
     else if (auto store = dyn_cast<StoreInst>(instruction))
     {
-        return new StoreInst(store->getValueOperand(), ConstantPointerNull::get(dyn_cast<PointerType>(store->getPointerOperandType())), "", insertBefore);
+        return new StoreInst(store->getValueOperand(), ConstantPointerNull::get(dyn_cast<PointerType>(store->getPointerOperandType())), insertBefore);
     }
     else
     {

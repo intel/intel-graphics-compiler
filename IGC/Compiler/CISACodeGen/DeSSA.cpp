@@ -1365,7 +1365,7 @@ void DeSSA::getAllCoalescedValues(
     // second, add aliasers from AliasMap
     for (int i = 0, sz = (int)Vals.size(); i < sz; ++i) {
         Value* aliasee = Vals[i];
-        for (auto II : AliasMap) {
+        for (const auto &II : AliasMap) {
             Value* R = II.second;
             if (R != aliasee) {
                 continue;

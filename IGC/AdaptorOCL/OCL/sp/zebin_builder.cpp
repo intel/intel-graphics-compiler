@@ -459,7 +459,7 @@ void ZEBinaryBuilder::addKernelSymbols(
     }
 
     // add function symbols defined in kernel text
-    for (auto sym : symbols.function)
+    for (const auto &sym : symbols.function)
         addSymbol(sym, llvm::ELF::STB_GLOBAL, kernelSectId);
 
     // we do not support sampler symbols now
@@ -473,7 +473,7 @@ void ZEBinaryBuilder::addProgramRelocations(const IGC::SOpenCLProgramInfo& annot
     // FIXME: For r_type, zebin::R_TYPE_ZEBIN should have the same enum value as visa::GenRelocType.
     // Take the value directly
     IGC_ASSERT(relocs.globalConstReloc.empty() || mGlobalConstSectID != -1);
-    for (auto reloc : relocs.globalConstReloc)
+    for (const auto &reloc : relocs.globalConstReloc)
         mBuilder.addRelRelocation(reloc.r_offset, reloc.r_symbol, static_cast<zebin::R_TYPE_ZEBIN>(reloc.r_type), mGlobalConstSectID);
 
     IGC_ASSERT(relocs.globalReloc.empty() || mGlobalSectID != -1);

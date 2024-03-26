@@ -96,7 +96,6 @@ namespace IGC
         }
 
         WIAnalysisRunner() {}
-        ~WIAnalysisRunner() {}
 
         bool run();
 
