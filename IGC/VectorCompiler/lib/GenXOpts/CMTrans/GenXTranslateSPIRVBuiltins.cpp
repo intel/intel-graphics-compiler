@@ -66,6 +66,8 @@ private:
                            ArrayRef<Value *> Args, bool AFN = false);
   Value *emitFDiv(IRBuilder<> &Builder, Value *L, Value *R, bool ARCP = false);
 
+  Value *emitAddcSubb(IRBuilder<> &Builder, unsigned IID, CallInst &CI);
+
   Module *M;
 };
 
@@ -102,6 +104,38 @@ Value *SPIRVExpander::emitFDiv(IRBuilder<> &Builder, Value *L, Value *R,
   if (auto *FDivInst = dyn_cast<Instruction>(FDiv))
     FDivInst->setHasAllowReciprocal(ARCP);
   return FDiv;
+}
+
+Value *SPIRVExpander::emitAddcSubb(IRBuilder<> &Builder, unsigned IID,
+                                   CallInst &CI) {
+  auto *Res = CI.getArgOperand(0);
+
+  auto *ArgTy = CI.getArgOperand(1)->getType();
+  auto *Instr = emitIntrinsic(Builder, IID, {ArgTy, ArgTy},
+                              {CI.getArgOperand(1), CI.getArgOperand(2)});
+
+  unsigned IdxCarry = (IID == GenXIntrinsic::genx_addc
+                           ? GenXIntrinsic::GenXResult::IdxAddc_Carry
+                           : GenXIntrinsic::GenXResult::IdxSubb_Borrow);
+  unsigned IdxRes = (IID == GenXIntrinsic::genx_addc
+                         ? GenXIntrinsic::GenXResult::IdxAddc_Add
+                         : GenXIntrinsic::GenXResult::IdxSubb_Sub);
+  auto *Carry =
+      Builder.CreateExtractValue(Instr, {IdxCarry}, CI.getName() + ".carry");
+  auto *ExtRes =
+      Builder.CreateExtractValue(Instr, {IdxRes}, CI.getName() + ".res");
+
+  // SPIRV builtins Addc/Subbi have an inverted structure with respect to
+  // vc-intrinsics
+  unsigned int AddrSpace = cast<PointerType>(Res->getType())->getAddressSpace();
+  Res = Builder.CreateBitCast(Res,
+                              PointerType::get(ExtRes->getType(), AddrSpace));
+  auto *ResPtr = Builder.CreateGEP(Carry->getType(), Res, Builder.getInt32(0));
+  auto *CarryPtr =
+      Builder.CreateGEP(ExtRes->getType(), Res, Builder.getInt32(1));
+
+  Builder.CreateStore(ExtRes, ResPtr);
+  return Builder.CreateStore(Carry, CarryPtr);
 }
 
 Value *SPIRVExpander::visitCallInst(CallInst &CI) {
@@ -169,6 +203,14 @@ Value *SPIRVExpander::visitCallInst(CallInst &CI) {
         emitIntrinsic(Builder, Intrinsic::readcyclecounter, llvm::None, {});
     return Builder.CreateBitCast(Intr, CI.getType());
   }
+
+  IID = StringSwitch<unsigned>(CalleeName)
+            .StartsWith("IAddCarry", GenXIntrinsic::genx_addc)
+            .StartsWith("ISubBorrow", GenXIntrinsic::genx_subb)
+            .Default(Intrinsic::not_intrinsic);
+
+  if (IID != Intrinsic::not_intrinsic)
+    return emitAddcSubb(Builder, IID, CI);
 
   // OpenCL extended instruction set
   if (!CalleeName.consume_front("ocl_"))
