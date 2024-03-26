@@ -1,8 +1,6 @@
 ; UNSUPPORTED: system-windows
-; REQUIRES: llvm-spirv, regkeys, dg2-supported
-
-; Need to backport some SPIRV-LLVM-Translator patches first
-; XFAIL: *
+; TODO: enable the test after promotion
+; REQUIRES: llvm-spirv, regkeys, dg2-supported, enable-after-promotion
 
 ; RUN: llvm-as %s -o %t.bc
 ; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_kernel_attributes -o %t.spv
