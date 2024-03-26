@@ -98,6 +98,7 @@ The user attributes are kernel attributes set by the user in the kernel signatur
 | reqd_work_group_size  | int32x3 | Optional | [0, 0, 0] | |
 | vec_type_hint  | str | Optional | | |
 | work_group_size_hint  | int32x3 | Optional | [0, 0, 0] | |
+| intel_reqd_thread_group_dispatch_size | int32 | Optional | 0 | Hardware dispatches thread groups in batches, the size of which is controlled by the thread_group_dispatch_size parameter. When this parameter is set, it overrides driver heuristics by selecting the specified value for thread_group_dispatch_size. Only values supported by the hardware can be set. |
 <!--- UserAttribute -->
 
 ## Execution Environment
@@ -223,7 +224,7 @@ Supported <argument_type> of payload_arguments or per_thread_payload_arguments.
 | sampler_snap_wa | | Sampler descriptor specifying whether snap coordinate workaround is required |
 | const_base | | The base address of constant buffer, or the bindless offset of constant buffer if addrmode = "bindless" |
 | global_base | | The base address of global buffer, or the bindless offset of global buffer if addrmode = "bindless" |
-| buffer_size | int64 | Buffer size |
+| buffer_size | int64 | Size in bytes of corresponding buffer |
 <!--- <argument_type> ArgType -->
 
 arg_byvalue and arg_bypointer are user arguments that are explicitly passed in from the applications. Other kinds of arguments are implicit arguments that are passed in by runtime.

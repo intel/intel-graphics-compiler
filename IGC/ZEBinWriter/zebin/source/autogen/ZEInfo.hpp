@@ -32,7 +32,7 @@ struct zeInfoUserAttribute
 {
     bool operator==(const zeInfoUserAttribute& other) const
     {
-        return intel_reqd_sub_group_size == other.intel_reqd_sub_group_size && intel_reqd_workgroup_walk_order == other.intel_reqd_workgroup_walk_order && invalid_kernel == other.invalid_kernel && reqd_work_group_size == other.reqd_work_group_size && vec_type_hint == other.vec_type_hint && work_group_size_hint == other.work_group_size_hint;
+        return intel_reqd_sub_group_size == other.intel_reqd_sub_group_size && intel_reqd_workgroup_walk_order == other.intel_reqd_workgroup_walk_order && invalid_kernel == other.invalid_kernel && reqd_work_group_size == other.reqd_work_group_size && vec_type_hint == other.vec_type_hint && work_group_size_hint == other.work_group_size_hint && intel_reqd_thread_group_dispatch_size == other.intel_reqd_thread_group_dispatch_size;
     }
     zeinfo_int32_t intel_reqd_sub_group_size = 0;
     std::vector<zeinfo_int32_t> intel_reqd_workgroup_walk_order;
@@ -40,6 +40,7 @@ struct zeInfoUserAttribute
     std::vector<zeinfo_int32_t> reqd_work_group_size;
     zeinfo_str_t vec_type_hint;
     std::vector<zeinfo_int32_t> work_group_size_hint;
+    zeinfo_int32_t intel_reqd_thread_group_dispatch_size = 0;
 };
 struct zeInfoExecutionEnv
 {
@@ -240,7 +241,7 @@ struct zeInfoContainer
     KernelsMiscInfoTy kernels_misc_info;
 };
 struct PreDefinedAttrGetter{
-    static zeinfo_str_t getVersionNumber() { return "1.40"; }
+    static zeinfo_str_t getVersionNumber() { return "1.41"; }
 
     enum class ArgThreadSchedulingMode {
         age_based,
@@ -284,7 +285,7 @@ struct PreDefinedAttrGetter{
         sampler_snap_wa,
         const_base,
         global_base,
-        buffer_size,
+        buffer_size
     };
     enum class ArgAddrMode {
         stateless,

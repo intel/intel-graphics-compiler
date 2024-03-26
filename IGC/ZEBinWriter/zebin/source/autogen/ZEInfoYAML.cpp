@@ -53,6 +53,7 @@ void MappingTraits<zeInfoUserAttribute>::mapping(IO& io, zeInfoUserAttribute& in
     io.mapOptional("reqd_work_group_size", info.reqd_work_group_size);
     io.mapOptional("vec_type_hint", info.vec_type_hint, std::string());
     io.mapOptional("work_group_size_hint", info.work_group_size_hint);
+    io.mapOptional("intel_reqd_thread_group_dispatch_size", info.intel_reqd_thread_group_dispatch_size, 0);
 }
 void MappingTraits<zeInfoExecutionEnv>::mapping(IO& io, zeInfoExecutionEnv& info)
 {
