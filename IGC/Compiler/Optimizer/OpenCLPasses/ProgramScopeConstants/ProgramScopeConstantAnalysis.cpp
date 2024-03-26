@@ -492,7 +492,7 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
                 inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), pointerSize, 0);
             }
         }
-        else if (dyn_cast<ConstantPointerNull>(initializer))
+        else if (isa<ConstantPointerNull>(initializer) || isa<UndefValue>(initializer))
         {
             inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), pointerSize, 0);
         }
