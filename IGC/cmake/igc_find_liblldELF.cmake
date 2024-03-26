@@ -11,31 +11,24 @@
 
 function(add_lld_library LIB_NAME)
   if(WIN32)
-    find_library(${LIB_NAME}_PATH_RELEASE
+    igc_arch_get_cpu(cpuSuffix)
+    set(LLD_LIB_PREBUILT_PATH_RELEASE "${IGC_OPTION__LLD_DIR}/../Release/${cpuSuffix}/Release/lib")
+    set(LLD_LIB_PREBUILT_PATH_DEBUG "${IGC_OPTION__LLD_DIR}/../Debug/${cpuSuffix}/Debug/lib")
+    find_library(${LIB_NAME}_PATH
       ${LIB_NAME}
-      PATHS "${IGC_OPTION__LLD_DIR}/Release/lib"
+      PATHS "${LLD_LIB_PREBUILT_PATH_RELEASE}"
+            "${LLD_LIB_PREBUILT_PATH_DEBUG}"
       PATH_SUFFIXES "llvm-${LLVM_VERSION_MAJOR}/lib")
-
-    if("${${LIB_NAME}_PATH_RELEASE}" STREQUAL "${LIB_NAME}_PATH_RELEASE-NOTFOUND")
+    if("${${LIB_NAME}_PATH}" STREQUAL "${LIB_NAME}_PATH-NOTFOUND")
       message(FATAL_ERROR
-      "Cannot find ${LIB_NAME} library in Release version in ${IGC_OPTION__LLD_DIR}")
-    endif()
-
-    find_library(${LIB_NAME}_PATH_DEBUG
-      ${LIB_NAME}
-      PATHS "${IGC_OPTION__LLD_DIR}/Debug/lib"
-      PATH_SUFFIXES "llvm-${LLVM_VERSION_MAJOR}/lib")
-
-    if("${${LIB_NAME}_PATH_DEBUG}" STREQUAL "${LIB_NAME}_PATH_DEBUG-NOTFOUND")
-      message(FATAL_ERROR
-      "Cannot find ${LIB_NAME} library in Debug version in ${IGC_OPTION__LLD_DIR}")
+      "Cannot find ${LIB_NAME} library in ${IGC_OPTION__LLD_DIR}")
     endif()
 
     add_library(${LIB_NAME} UNKNOWN IMPORTED GLOBAL)
     set_target_properties(${LIB_NAME} PROPERTIES
-      IMPORTED_LOCATION_RELEASE "${${LIB_NAME}_PATH_RELEASE}"
-      IMPORTED_LOCATION_RELEASEINTERNAL "${${LIB_NAME}_PATH_RELEASE}"
-      IMPORTED_LOCATION_DEBUG "${${LIB_NAME}_PATH_DEBUG}"
+      IMPORTED_LOCATION_RELEASE "${LLD_LIB_PREBUILT_PATH_RELEASE}/${LIB_NAME}.lib"
+      IMPORTED_LOCATION_RELEASEINTERNAL "${LLD_LIB_PREBUILT_PATH_RELEASE}/${LIB_NAME}.lib"
+      IMPORTED_LOCATION_DEBUG "${LLD_LIB_PREBUILT_PATH_DEBUG}/${LIB_NAME}.lib"
       )
   else()
     if(NOT DEFINED IGC_OPTION__LLDELF_LIB_DIR)
@@ -61,7 +54,7 @@ function(add_lld_executable EXE_NAME)
   if(WIN32)
     find_program(${EXE_NAME}_PATH_RELEASE
       ${EXE_NAME}
-      PATHS "${IGC_OPTION__LLD_DIR}/Release/bin"
+      PATHS "${IGC_OPTION__LLD_DIR}/bin"
       PATH_SUFFIXES "llvm-${LLVM_VERSION_MAJOR}/bin")
 
     if("${${EXE_NAME}_PATH_RELEASE}" STREQUAL "${EXE_NAME}_PATH_RELEASE-NOTFOUND")
