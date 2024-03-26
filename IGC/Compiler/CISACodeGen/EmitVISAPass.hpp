@@ -955,15 +955,9 @@ private:
     int getGRFSize() const { return m_currShader->getGRFSize(); }
 
     void initDefaultRoundingMode();
-    ERoundingMode GetRoundingMode_FPCvtInt(llvm::Instruction* pInst);
-    ERoundingMode GetRoundingMode_FP(llvm::Instruction* inst);
     void SetRoundingMode_FP(ERoundingMode RM_FP);
     void SetRoundingMode_FPCvtInt(ERoundingMode RM_FPCvtInt);
-    bool setRMExplicitly(llvm::Instruction* inst);
     void ResetRoundingMode(llvm::Instruction* inst);
-
-    // returns true if the instruction does not care about the rounding mode settings
-    bool ignoreRoundingMode(llvm::Instruction* inst) const;
 
     // A64 load/store with HWA that make sure the offset hi part is the same per LS call
     // addrUnifrom: if the load/store address is uniform, we can skip A64 WA

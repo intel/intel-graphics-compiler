@@ -66,6 +66,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/PrepareLoadsStoresPass.h"
 #include "Compiler/CISACodeGen/EvaluateFreeze.hpp"
 #include "Compiler/CISACodeGen/DpasScan.hpp"
+#include "Compiler/CISACodeGen/FPRoundingModeCoalescing.hpp"
 
 #include "Compiler/CISACodeGen/SLMConstProp.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GenericAddressDynamicResolution.hpp"
@@ -315,6 +316,9 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
         // Resolving private memory allocas
         mpm.add(CreatePrivateMemoryResolution());
     }
+
+    // Reorder FP instructions to minimize number of times rounding mode is switched.
+    mpm.add(createFPRoundingModeCoalescingPass());
 
     // Expected to be the last ModulePass before EmitPass at this point.
     // (Shall be after GenXCodeGenModulePass.)

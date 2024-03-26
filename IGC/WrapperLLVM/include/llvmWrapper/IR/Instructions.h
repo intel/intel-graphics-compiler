@@ -14,6 +14,10 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/User.h"
 
+#if LLVM_VERSION_MAJOR < 11
+#include "llvm/Analysis/OrderedBasicBlock.h"
+#endif
+
 #include "Probe/Assertion.h"
 
 namespace IGCLLVM
@@ -89,6 +93,15 @@ inline bool isDebugOrPseudoInst(llvm::Instruction& I)
     return llvm::isa<llvm::DbgInfoIntrinsic>(&I);
 #else
     return I.isDebugOrPseudoInst();
+#endif
+}
+
+inline bool comesBefore(llvm::Instruction* A, llvm::Instruction* B)
+{
+#if LLVM_VERSION_MAJOR < 11
+    return llvm::OrderedBasicBlock(A->getParent()).dominates(A, B);
+#else
+    return A->comesBefore(B);
 #endif
 }
 }

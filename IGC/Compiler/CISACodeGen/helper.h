@@ -231,6 +231,15 @@ namespace IGC
 
     bool IsBitCastForLifetimeMark(const llvm::Value* V);
 
+    ERoundingMode GetRoundingMode_FPCvtInt(ModuleMetaData* modMD, llvm::Instruction* pInst);
+    ERoundingMode GetRoundingMode_FP(ModuleMetaData* modMD, llvm::Instruction* inst);
+
+    // Return true if inst needs specific rounding mode; false otherwise.
+    bool setsRMExplicitly(llvm::Instruction* inst);
+
+    // returns true if the instruction does not care about the rounding mode settings
+    bool ignoresRoundingMode(llvm::Instruction* inst);
+
     // isA64Ptr - Queries whether given pointer type requires 64-bit representation in vISA
     bool isA64Ptr(llvm::PointerType* PT, CodeGenContext* pContext);
 
