@@ -1289,7 +1289,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
             isSubroutine = true;
           }
 
-          if (inst->opcode() == G4_mov) {
+          if (inst->opcode() == G4_mov && fret->getSrc(0)->isRightBoundSet()) {
             inst->getSrc(0)->computeRightBound(inst->getExecSize());
           }
 
