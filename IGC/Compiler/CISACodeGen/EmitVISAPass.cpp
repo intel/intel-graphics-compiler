@@ -14608,12 +14608,9 @@ bool EmitPass::IsUniformAtomic(llvm::Instruction* pInst)
                 m_currShader->m_DriverInfo->WASLMPointersDwordUnit())
                 return false;
             llvm::Value* pllbuffer = pInst->getOperand(0);
-            CVariable* pDstBuffer = GetSymbol(pllbuffer);
-
             llvm::Value* pllDstAddr = pInst->getOperand(1);
-            CVariable* pDstAddr = GetSymbol(pllDstAddr);
 
-            if (pDstAddr->IsUniform() && pDstBuffer->IsUniform())
+            if (m_currShader->GetIsUniform(pllDstAddr) && m_currShader->GetIsUniform(pllbuffer))
             {
                 AtomicOp atomic_op = static_cast<AtomicOp>(llvm::cast<llvm::ConstantInt>(pInst->getOperand(3))->getZExtValue());
 
