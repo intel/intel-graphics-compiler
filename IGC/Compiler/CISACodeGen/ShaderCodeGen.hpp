@@ -362,7 +362,7 @@ public:
     // If V is not in any congruent class, not aliased to any other
     // variables, not payload-coalesced, then this function returns
     // true.
-    bool IsCoalesced(llvm::Value* V, bool SkipCheckVRA = false);
+    bool IsCoalesced(llvm::Value* V);
 
     bool VMECoalescePattern(llvm::GenIntrinsicInst*);
 
