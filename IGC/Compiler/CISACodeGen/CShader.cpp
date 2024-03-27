@@ -1270,8 +1270,8 @@ uint CShader::GetNbVectorElementAndMask(llvm::Value* val, uint32_t& mask)
     // we don't process vector bigger than 31 elements as the mask has only 32bits
     // If we want to support longer vectors we need to extend the mask size
     //
-    // If val has been coalesced, don't prune it.
-    if (IsCoalesced(val) || nbElement > 31)
+    // If val has been coalesced, don't prune it (VRA aliase doesn't matter).
+    if (IsCoalesced(val, true) || nbElement > 31)
     {
         return nbElement;
     }
@@ -3563,8 +3563,8 @@ bool CShader::HasBecomeNoop(Instruction* inst) {
     return m_VRA->m_HasBecomeNoopInsts.count(inst);
 }
 
-bool CShader::IsCoalesced(Value* V) {
-    if ((m_VRA && m_VRA->isAliasedValue(V)) ||
+bool CShader::IsCoalesced(Value* V, bool SkipCheckVRA) {
+    if ((!SkipCheckVRA && m_VRA && m_VRA->isAliasedValue(V)) ||
         (m_deSSA && m_deSSA->getRootValue(V)) ||
         (m_coalescingEngine && m_coalescingEngine->GetValueCCTupleMapping(V)))
     {
