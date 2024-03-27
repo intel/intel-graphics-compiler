@@ -327,16 +327,31 @@ void BfloatFuncsResolution::handleMath(
 
     Op0 = bitcastToBfloat(CI.getOperand(0));
 
-    Value *Res = nullptr;
-    if (needsGenISAIntrinsic) {
-      auto pFunc = llvm::GenISAIntrinsic::getDeclaration(
-          CI.getModule(), (GenISAIntrinsic::ID) Operation, Op0->getType());
-      Res = m_builder->CreateCall(pFunc, Op0);
-    } else {
-      Res = m_builder->CreateIntrinsic(Operation, {Op0->getType()}, {Op0});
+    Value *Res = UndefValue::get(Op0->getType());
+
+    int numScalarOperations =
+        Op0->getType()->isVectorTy()
+            ? cast<IGCLLVM::FixedVectorType>(Op0->getType())->getNumElements()
+            : 1;
+    Type *scalarType = Op0->getType()->getScalarType();
+    for (int i = 0; i < numScalarOperations; i++) {
+      Value *Operand = Op0->getType()->isVectorTy()
+                           ? m_builder->CreateExtractElement(Op0, i)
+                           : Op0;
+      Value *CallRes = nullptr;
+      if (needsGenISAIntrinsic) {
+        auto pFunc = llvm::GenISAIntrinsic::getDeclaration(
+            CI.getModule(), (GenISAIntrinsic::ID)Operation, scalarType);
+        CallRes = m_builder->CreateCall(pFunc, Operand);
+      } else {
+        CallRes =
+            m_builder->CreateIntrinsic(Operation, {scalarType}, {Operand});
+      }
+      Res = Op0->getType()->isVectorTy()
+                ? m_builder->CreateInsertElement(Res, CallRes, i)
+                : CallRes;
     }
     Res = m_builder->CreateBitCast(Res, CI.getType());
-
     CI.replaceAllUsesWith(Res);
     m_instructionsToRemove.push_back(&CI);
 }
