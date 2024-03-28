@@ -318,6 +318,14 @@ namespace IGC {
             }
             return llvm::isa<llvm::Argument>(V);
         }
+
+        // Special coalescing prior the main algorithm kicks in.
+        void CoalesceOthers();
+        // Main algo shall skip if a value is in the map.
+        llvm::DenseMap<llvm::Value*, int> m_processedValues;
+        bool isProcessed(llvm::Value* V) const {
+            return m_processedValues.count(V) > 0;
+        }
     };
 
     struct MIIndexCompare {

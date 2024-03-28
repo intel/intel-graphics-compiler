@@ -9087,6 +9087,48 @@ namespace IGC
         }
     }
 
+    void CEncoder::LSC_2DBlockMessage(
+        LSC_OP subOp,
+        CVariable* Dst,
+        CVariable* AddrPayload,
+        CVariable* Src,
+        uint32_t ImmX, uint32_t ImmY,
+        uint32_t elemSize,
+        uint32_t blockWidth,  uint32_t blockHeight,  uint32_t numBlocks,
+        bool isTranspose, bool isVnni,
+        LSC_CACHE_OPTS cacheOpts)
+    {
+        VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
+        VISA_Exec_Size execSize = EXEC_SIZE_1;
+        VISA_EMask_Ctrl mask = ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask);
+        LSC_DATA_SHAPE_BLOCK2D dataShape2D{};
+        dataShape2D.size = LSC_GetElementSize(elemSize, true);
+        IGC_ASSERT((isTranspose == false) || (isVnni == false));
+        dataShape2D.order = isTranspose ? LSC_DATA_ORDER_TRANSPOSE : LSC_DATA_ORDER_NONTRANSPOSE;
+        IGC_ASSERT((subOp == LSC_LOAD_BLOCK2D) || (numBlocks == 1));
+        dataShape2D.blocks = numBlocks; // NOTE: this is a parameter for a load2d; for store2d leave it 1
+        dataShape2D.height = (int)blockHeight;
+        dataShape2D.width = (int)blockWidth;
+        dataShape2D.vnni = isVnni; // this enables the "transform" operation from the HAS
+
+        VISA_RawOpnd* Dst_opnd = Dst ? GetRawSource(Dst) : nullptr;
+        VISA_VectorOpnd* AP_opnd = GetSourceOperandNoModifier(AddrPayload);
+        VISA_RawOpnd* Src_opnd = Src ? GetRawSource(Src) : nullptr;
+        IGC_ASSERT(AP_opnd != nullptr);
+        V(vKernel->AppendVISALscUntypedBlock2DInst(
+            subOp,
+            predOpnd,
+            execSize,
+            mask,
+            cacheOpts,
+            dataShape2D,
+            Dst_opnd,
+            AP_opnd,
+            ImmX,
+            ImmY,
+            Src_opnd));
+    }
+
     void CEncoder::LSC_TypedReadWrite(
         LSC_OP subOp,
         ResourceDescriptor* resource,

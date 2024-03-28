@@ -2553,6 +2553,16 @@ static e_alignment GetPreferredAlignmentOnUse(llvm::Value* V, WIAnalysis* WIA,
 e_alignment IGC::GetPreferredAlignment(llvm::Value* V, WIAnalysis* WIA,
     CodeGenContext* pContext)
 {
+    if (GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(V)) {
+        switch (GII->getIntrinsicID()) {
+        case GenISAIntrinsic::GenISA_LSC2DBlockCreateAddrPayload:
+        case GenISAIntrinsic::GenISA_LSC2DBlockSetBlockXY:
+            return (pContext->platform.getGRFSize() == 64) ? EALIGN_32WORD : EALIGN_HWORD;
+        default:
+            break;
+        }
+    }
+
     // So far, non-uniform variables are always naturally aligned.
     if (!WIA->isUniform(V))
         return EALIGN_AUTO;

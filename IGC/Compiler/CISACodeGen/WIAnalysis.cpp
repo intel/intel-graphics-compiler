@@ -1479,7 +1479,9 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         GII_id == GenISAIntrinsic::GenISA_getAssertBufferPtr  ||
         GII_id == GenISAIntrinsic::GenISA_staticConstantPatchValue ||
         GII_id == GenISAIntrinsic::GenISA_bitcastfromstruct ||
-        GII_id == GenISAIntrinsic::GenISA_bitcasttostruct)
+        GII_id == GenISAIntrinsic::GenISA_bitcasttostruct ||
+        GII_id == GenISAIntrinsic::GenISA_LSC2DBlockCreateAddrPayload ||
+        GII_id == GenISAIntrinsic::GenISA_LSC2DBlockSetBlockXY)
     {
         switch (GII_id)
         {
@@ -1504,6 +1506,8 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         case GenISAIntrinsic::GenISA_GetImplicitBufferPtr:
         case GenISAIntrinsic::GenISA_GetLocalIdBufferPtr:
         case GenISAIntrinsic::GenISA_ReadFromReservedArgSpace:
+        case GenISAIntrinsic::GenISA_LSC2DBlockCreateAddrPayload:
+        case GenISAIntrinsic::GenISA_LSC2DBlockSetBlockXY:
             return WIAnalysis::UNIFORM_THREAD;
         case GenISAIntrinsic::GenISA_getR0:
         case GenISAIntrinsic::GenISA_getPayloadHeader:

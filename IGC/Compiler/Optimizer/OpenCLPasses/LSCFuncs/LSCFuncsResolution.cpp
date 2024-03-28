@@ -21,6 +21,9 @@ SPDX-License-Identifier: MIT
 #include <string>
 #include "Probe/Assertion.h"
 
+#include <algorithm>
+#include <sstream>
+
 using namespace llvm;
 using namespace IGC;
 
@@ -71,6 +74,11 @@ namespace {
         /// LSC Prefetch and load status intrinsics
         Instruction* CreateLSCLoadStatusPreftchIntrinsicCallInst(
             GenISAIntrinsic::ID prefetchOp);
+
+        /// LSC block 2d with address payload as a single argument
+        Instruction* CreateLSC2DBlockAddressPayload(CallInst &CI);
+        Instruction* SetLSC2DBlockAddressPayloadBlockXY(CallInst &CI, bool IsAddend, bool IsBlockX);
+        Instruction* CreateSubGroup2DBlockOperationAP(CallInst &CI, StringRef funcName, bool isRead);
 
         /// LSC subgroup 2d block read/write intrinsics
         Instruction* CreateSubGroup2DBlockOperation(llvm::CallInst& CI, llvm::StringRef funcName, bool isRead);
@@ -166,6 +174,10 @@ namespace {
         CallInst* m_pCurrInst = nullptr;
         Function* m_pCurrInstFunc = nullptr;
 
+        // For verifying address payload for block 2d read/write.
+        llvm::SmallVector<Instruction *, 32> m_lsc2dblock_readwrite;
+        void verifyBlock2DAddressPayload();
+
         static const StringRef PREFIX_LSC_STORE_local;
         static const StringRef PREFIX_LSC_STORE_global;
         static const StringRef PREFIX_LSC_STORE_BLOCK_global;
@@ -177,6 +189,8 @@ namespace {
         static const StringRef PREFIX_LSC_LOAD_BLOCK_global;
         static const StringRef PREFIX_LSC_LOAD_status;
 
+        static const StringRef PREFIX_SUBGROUP_BLOCK_READ_AP;
+        static const StringRef PREFIX_SUBGROUP_BLOCK_WRITE_AP;
         static const StringRef PREFIX_SUBGROUP_BLOCK_READ;
         static const StringRef PREFIX_SUBGROUP_BLOCK_WRITE;
 
@@ -202,7 +216,10 @@ const StringRef LSCFuncsResolution::PREFIX_LSC_LOAD_global = "__builtin_IB_lsc_l
 const StringRef LSCFuncsResolution::PREFIX_LSC_LOAD_BLOCK_global = "__builtin_IB_lsc_load_block_global_";
 const StringRef LSCFuncsResolution::PREFIX_LSC_LOAD_status = "__builtin_IB_lsc_load_status_global_";
 
-const StringRef LSCFuncsResolution::PREFIX_SUBGROUP_BLOCK_READ = "__builtin_IB_subgroup_block_read";
+// Suffix _AP : builtin with address payload as a single argument
+const StringRef LSCFuncsResolution::PREFIX_SUBGROUP_BLOCK_READ_AP = "__builtin_IB_subgroup_block_read_ap";
+const StringRef LSCFuncsResolution::PREFIX_SUBGROUP_BLOCK_WRITE_AP = "__builtin_IB_subgroup_block_write_ap";
+const StringRef LSCFuncsResolution::PREFIX_SUBGROUP_BLOCK_READ =  "__builtin_IB_subgroup_block_read";
 const StringRef LSCFuncsResolution::PREFIX_SUBGROUP_BLOCK_WRITE = "__builtin_IB_subgroup_block_write";
 
 const StringRef LSCFuncsResolution::PREFIX_LSC_LOAD_CMASK_local = "__builtin_IB_lsc_load_cmask_local_";
@@ -255,6 +272,8 @@ bool LSCFuncsResolution::runOnFunction(Function &F)
     m_changed = false;
 
     visit(F);
+
+    verifyBlock2DAddressPayload();
 
     if (hasError()) {
         m_pCtx->EmitError(m_ErrorMsg.str().c_str(), &F);
@@ -318,8 +337,21 @@ void LSCFuncsResolution::visitCallInst(CallInst &CI)
         lscCall = CreateLSCStoreCmaskIntrinsicCallInst(true);
     //////////////
     // 2d block intrinsics
-    }
-    else if (FN.consume_front(LSCFuncsResolution::PREFIX_SUBGROUP_BLOCK_READ))
+    } else if (FN.consume_front("__builtin_IB_subgroup_createBlock2DAddressPayload")) {
+        lscCall = CreateLSC2DBlockAddressPayload(CI);
+    } else if (FN.consume_front("__builtin_IB_subgroup_setBlock2DAddressPayloadBlockX")) {
+        lscCall = SetLSC2DBlockAddressPayloadBlockXY(CI, false, true);
+    } else if (FN.consume_front("__builtin_IB_subgroup_setBlock2DAddressPayloadBlockY")) {
+        lscCall = SetLSC2DBlockAddressPayloadBlockXY(CI, false, false);
+    } else if (FN.consume_front("__builtin_IB_subgroup_addBlock2DAddressPayloadBlockX")) {
+        lscCall = SetLSC2DBlockAddressPayloadBlockXY(CI, true, true);
+    } else if (FN.consume_front("__builtin_IB_subgroup_addBlock2DAddressPayloadBlockY")) {
+        lscCall = SetLSC2DBlockAddressPayloadBlockXY(CI, true, false);
+    } else if (FN.consume_front(LSCFuncsResolution::PREFIX_SUBGROUP_BLOCK_READ_AP)) {
+        lscCall = CreateSubGroup2DBlockOperationAP(CI, FN, true);
+    } else if (FN.consume_front(LSCFuncsResolution::PREFIX_SUBGROUP_BLOCK_WRITE_AP)) {
+        lscCall = CreateSubGroup2DBlockOperationAP(CI, FN, false);
+    } else if (FN.consume_front(LSCFuncsResolution::PREFIX_SUBGROUP_BLOCK_READ))
     {
         lscCall = CreateSubGroup2DBlockOperation(CI, FN, true);
     }
@@ -387,6 +419,362 @@ Instruction* LSCFuncsResolution::CreateLSCLoadIntrinsicCallInst(
         m_pCurrInstFunc->getParent(), op, OvldTys);
     Instruction* lscCall = CallInst::Create(lscFunc, args, "", m_pCurrInst);
     return lscCall;
+}
+
+Instruction *LSCFuncsResolution::CreateLSC2DBlockAddressPayload(CallInst &CI) {
+    Value *Base = CI.getArgOperand(0);
+    Value *Width = CI.getArgOperand(1);
+    Value *Height = CI.getArgOperand(2);
+    Value *Pitch = CI.getArgOperand(3);
+    Value *BlkX = CI.getArgOperand(4);
+    Value *BlkY = CI.getArgOperand(5);
+    Value *BlkWidth = CI.getArgOperand(6);
+    Value *BlkHeight = CI.getArgOperand(7);
+    Value *NumBlks = CI.getArgOperand(8);
+
+    if (!isa<ConstantInt>(BlkWidth) || !isa<ConstantInt>(BlkHeight) ||
+        !isa<ConstantInt>(NumBlks)) {
+        IGC_ASSERT_MESSAGE(0, "Block2D address payload: block_x, block_y,"
+                              " and num of blocks must be constant!");
+        return nullptr;
+    }
+
+    Value *args[]{Base, Width,    Height,    Pitch,  BlkX,
+                  BlkY, BlkWidth, BlkHeight, NumBlks};
+    Function *Func = GenISAIntrinsic::getDeclaration(
+        CI.getModule(), GenISAIntrinsic::GenISA_LSC2DBlockCreateAddrPayload);
+    Instruction *I = CallInst::Create(Func, args, "Block2D_AddrPayload", &CI);
+    updateDebugLoc(&CI, I);
+    return I;
+}
+
+Instruction *LSCFuncsResolution::SetLSC2DBlockAddressPayloadBlockXY(
+    CallInst &CI, bool IsAddend, bool IsBlockX)
+{
+    Value *args[4];
+    args[0] = CI.getArgOperand(0);
+    args[1] = CI.getArgOperand(1);
+    args[2] = ConstantInt::get(Type::getInt1Ty(CI.getContext()), IsAddend);
+    args[3] = ConstantInt::get(Type::getInt1Ty(CI.getContext()), IsBlockX);
+    Function *Func = GenISAIntrinsic::getDeclaration(
+        CI.getModule(), GenISAIntrinsic::GenISA_LSC2DBlockSetBlockXY);
+
+    Instruction *I = CallInst::Create(Func, args, "Block2D_AddrPayload", &CI);
+    updateDebugLoc(&CI, I);
+    return I;
+}
+
+Instruction *LSCFuncsResolution::CreateSubGroup2DBlockOperationAP(
+    CallInst &CI, StringRef funcName, bool isRead)
+{
+    const char *fname = funcName.data();
+
+    bool isPrefetch = funcName.consume_front("_prefetch");
+    uint32_t isTranspose = funcName.consume_front("_transpose") ? 1 : 0;
+    uint32_t isVnniTransform = funcName.consume_front("_transform") ? 1 : 0;
+
+    uint32_t elemSize = 0;
+    uint32_t blkWidth = 0;
+    uint32_t blkHeight = 0;
+    uint32_t numBlks = 0;
+    if (funcName.consume_front("_u8")) {
+        elemSize = 8;
+    } else if (funcName.consume_front("_u16")) {
+        elemSize = 16;
+    } else if (funcName.consume_front("_u32")) {
+        elemSize = 32;
+    } else if (funcName.consume_front("_u64")) {
+        elemSize = 64;
+    } else {
+        IGC_ASSERT_MESSAGE(0, "Invalid element size in: %s\n", fname);
+        return nullptr;
+    }
+
+    if (funcName.consume_front("_m32")) {
+        blkHeight = 32;
+    } else if (funcName.consume_front("_m16")) {
+        blkHeight = 16;
+    } else if (funcName.consume_front("_m8")) {
+        blkHeight = 8;
+    } else if (funcName.consume_front("_m4")) {
+        blkHeight = 4;
+    } else if (funcName.consume_front("_m2")) {
+        blkHeight = 2;
+    } else if (funcName.consume_front("_m1")) {
+        blkHeight = 1;
+    } else {
+        std::stringstream ss;
+        ss << "Unsupported m element in : " << fname << "\n";
+        reportError(ss.str().c_str());
+        IGC_ASSERT_MESSAGE(0, "%s", ss.str().c_str());
+        return nullptr;
+    }
+
+    if (funcName.consume_front("k64")) {
+        blkWidth = 64;
+    } else if (funcName.consume_front("k32")) {
+        blkWidth = 32;
+    } else if (funcName.consume_front("k16")) {
+        blkWidth = 16;
+    } else if (funcName.consume_front("k8")) {
+        blkWidth = 8;
+    } else if (funcName.consume_front("k4")) {
+        blkWidth = 4;
+    } else if (funcName.consume_front("k2")) {
+        blkWidth = 2;
+    } else if (funcName.consume_front("k1")) {
+        blkWidth = 1;
+    } else {
+        std::stringstream ss;
+        ss << "Unsupported k element in : " << fname << "\n";
+        reportError(ss.str().c_str());
+        IGC_ASSERT_MESSAGE(0, "Unsupported k element in : %s\n", fname);
+        return nullptr;
+    }
+
+    if (funcName.consume_front("v1")) {
+        numBlks = 1;
+    } else if (funcName.consume_front("v2")) {
+        numBlks = 2;
+    } else if (funcName.consume_front("v4")) {
+        numBlks = 4;
+    } else {
+        std::stringstream ss;
+        ss << "Unsupported v element in : " << fname << "\n";
+        reportError(ss.str().c_str());
+        IGC_ASSERT_MESSAGE(0, "Unsupported v element in : %s\n", fname);
+        return nullptr;
+    }
+
+    if (!isTranspose && !isVnniTransform) {
+        uint32_t rowBytesPerBlk = ((elemSize / 8) * blkWidth);
+        if ((rowBytesPerBlk * numBlks) > 64 || rowBytesPerBlk < 4) {
+            std::stringstream ss;
+            ss << "width x numBlocks > 64 bytes: " << fname << "\n";
+            reportError(ss.str().c_str());
+            IGC_ASSERT_MESSAGE(0, "width x numBlocks should be no "
+                                  "larger than 64 bytes : %s\n", fname);
+            return nullptr;
+        }
+    } else if (isTranspose && !isVnniTransform) {
+        bool isLegitW8 = false;
+
+        bool isValid64 = (elemSize == 64 && blkHeight == 8 &&
+             (blkWidth <= 4 ||  (blkWidth == 8 && isLegitW8)));
+        bool isValid32 = (elemSize == 32 && blkHeight <= 8);
+        if (!(isValid32 || isValid64)) {
+            std::stringstream ss;
+            ss << "Unsupported m/k/v transpose combination in: " << fname << "\n";
+            reportError(ss.str().c_str());
+            IGC_ASSERT_MESSAGE(0,
+                "Unsupported m/k/v transpose combination in : %s\n", fname);
+            return nullptr;
+        }
+    } else if (!isTranspose && isVnniTransform) {
+        bool isValid8 = (elemSize == 8 && blkHeight >= 4 && blkWidth >= 4);
+        bool isValid16 = (elemSize == 16 && blkHeight >= 2 && blkWidth >= 2 &&
+                          blkWidth <= 32);
+        if (!(isValid8 || isValid16)) {
+            std::stringstream ss;
+            ss << "Unsupported m/k/v transform combination in: " << fname << "\n";
+            reportError(ss.str().c_str());
+            IGC_ASSERT_MESSAGE(
+                0, "Unsupported m/k/v transform combination in : %s\n", fname);
+            return nullptr;
+        }
+    } else {
+        std::stringstream ss;
+        ss << "Transpose and transform are not allowed to be used together : "
+           << fname << "\n";
+        reportError(ss.str().c_str());
+        IGC_ASSERT_MESSAGE(0, "Transpose and transform are not allowed "
+                              "to be used together: %s\n", fname);
+        return nullptr;
+    }
+
+    Value *AddrPayload = CI.getArgOperand(0);
+    Value *ImmX = CI.getArgOperand(1);
+    Value *ImmY = CI.getArgOperand(2);
+    Value *cacheArg = CI.getArgOperand(isRead ? 3 : 4);
+    if (!isa<ConstantInt>(cacheArg)) {
+        std::stringstream ss;
+        ss << "cacheopts must be an immediate constant : "
+            << fname << "\n";
+        reportError(ss.str().c_str());
+        IGC_ASSERT_MESSAGE(0,
+            "cacheopts must be an immediate constant: %s\n", fname);
+        return nullptr;
+    }
+    uint32_t cacheOptsArgNum = isRead ? 3 : 4;
+    Value* cacheOpts = getCacheControlOpts(cacheOptsArgNum);
+
+    LLVMContext &C = CI.getContext();
+    ConstantInt *eltVal = ConstantInt::get((Type::getInt32Ty(C)), elemSize);
+    ConstantInt *wVal = ConstantInt::get((Type::getInt32Ty(C)), blkWidth);
+    ConstantInt *hVal = ConstantInt::get((Type::getInt32Ty(C)), blkHeight);
+    ConstantInt *nblkVal = ConstantInt::get((Type::getInt32Ty(C)), numBlks);
+    ConstantInt *tranVal = ConstantInt::get((Type::getInt1Ty(C)), isTranspose);
+    ConstantInt *vnniVal = ConstantInt::get((Type::getInt1Ty(C)), isVnniTransform);
+
+    SmallVector<Value*, 16> args{AddrPayload, ImmX, ImmY, eltVal, wVal, hVal, nblkVal,
+                  tranVal, vnniVal, cacheOpts, };
+
+    Function *Func = nullptr;
+    if (isRead) {
+        Func = GenISAIntrinsic::getDeclaration(
+            CI.getCalledFunction()->getParent(),
+            isPrefetch
+                ? GenISAIntrinsic::GenISA_LSC2DBlockPrefetchAddrPayload
+                : GenISAIntrinsic::GenISA_LSC2DBlockReadAddrPayload,
+            CI.getCalledFunction()->getReturnType());
+    } else {
+        Value *dst = CI.getArgOperand(3);
+        args.push_back(dst);
+        Func = GenISAIntrinsic::getDeclaration(
+            CI.getCalledFunction()->getParent(),
+            GenISAIntrinsic::GenISA_LSC2DBlockWriteAddrPayload, dst->getType());
+    }
+
+    Instruction *callI = CallInst::Create(Func, args, "", &CI);
+    updateDebugLoc(&CI, callI);
+
+    // For verifying block dimension at the end of runOnFuncion.
+    m_lsc2dblock_readwrite.push_back(callI);
+    return callI;
+}
+
+void LSCFuncsResolution::verifyBlock2DAddressPayload() {
+    if (m_lsc2dblock_readwrite.empty()) {
+        return;
+    }
+
+    // Given the following:
+    //  (1)  int8 AP = LSC2DBlockCreateAddrPayload(....)
+    //       ...
+    //  (2)  int8 AP1 = LSC2DBLockSetBlockXY(AP, ...)
+    //       ...
+    //  (3)  x = LSC2DBlockReadAddrPayload(AP1, ...)
+    // this function verifies that block dimention used in read at (3) is the
+    // same as one created at (1). Note that it is a user's responsibility to
+    // guarantee this.
+    //
+    // rootAPMap maps an AP to a root AP. For the above, it maps (2) to (1).
+    // (1) is called the root AP.
+    std::unordered_map<GenIntrinsicInst *, GenIntrinsicInst *> rootAPMap;
+
+    auto isAPUpdateInst = [](GenIntrinsicInst *aG) {
+        switch (aG->getIntrinsicID()) {
+        case GenISAIntrinsic::GenISA_LSC2DBlockSetBlockXY:
+            return true;
+        default:
+            break;
+        }
+        return false;
+    };
+
+    auto isAPCreateInst = [](GenIntrinsicInst *aG) {
+      switch (aG->getIntrinsicID()) {
+      case GenISAIntrinsic::GenISA_LSC2DBlockCreateAddrPayload:
+        return true;
+      default:
+        break;
+      }
+      return false;
+    };
+
+    for (auto V : m_lsc2dblock_readwrite) {
+        GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(V);
+        if (!GII)
+            continue; // safety check
+        auto GID = GII->getIntrinsicID();
+        if (GID != GenISAIntrinsic::GenISA_LSC2DBlockReadAddrPayload &&
+            GID != GenISAIntrinsic::GenISA_LSC2DBlockWriteAddrPayload &&
+            GID != GenISAIntrinsic::GenISA_LSC2DBlockPrefetchAddrPayload)
+            continue; // safety check
+
+        // worklist : list of AP defining insts
+        std::list<Value*> worklist;
+        Value* aAP = GII->getArgOperand(0);
+        worklist.push_back(aAP);
+
+        auto currII = worklist.begin();
+        GenIntrinsicInst *rootGII = nullptr;
+        for (; currII != worklist.end(); ++currII) {
+            Value* V = *currII;
+            if (GenIntrinsicInst* pGI = dyn_cast<GenIntrinsicInst>(V)) {
+                GenIntrinsicInst* thisRoot = nullptr;
+                auto II = rootAPMap.find(GII);
+                if (II != rootAPMap.end())
+                    thisRoot = II->second;
+                else if (isAPCreateInst(pGI))
+                    thisRoot = pGI;
+
+                if (thisRoot != nullptr) {
+                    if (rootGII == nullptr) {
+                        rootGII = thisRoot;
+                    }
+                    else if (rootGII != thisRoot) {
+                        IGC_ASSERT_MESSAGE(0, "Block2D address payload: defined "
+                            "by more than one create builtin");
+                        return;
+                    }
+                    continue;
+                }
+                if (isAPUpdateInst(pGI)) {
+                    Value* tV = pGI->getArgOperand(0);
+                    if (std::find(worklist.begin(), worklist.end(), tV) ==
+                        worklist.end())
+                        worklist.push_back(tV);
+                }
+                else {
+                    IGC_ASSERT_MESSAGE(0, "Address Payload created correctly!");
+                    return;
+                }
+            }
+            else if (PHINode* PHI = dyn_cast<PHINode>(V)) {
+                for (uint i = 0, e = PHI->getNumOperands(); i != e; ++i) {
+                    Value* Src = PHI->getOperand(i);
+                    if (std::find(worklist.begin(), worklist.end(), Src) ==
+                        worklist.end()) {
+                        worklist.push_back(Src);
+                    }
+                }
+            }
+            else {
+                IGC_ASSERT_MESSAGE(
+                    0, "Block2D address payload: defined incorrectly");
+                return;
+            }
+        }
+        if (rootGII == nullptr) {
+            IGC_ASSERT_MESSAGE(0, "Block2D address payload: not defined");
+            return;
+        }
+
+        for (auto V : worklist) {
+            GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(V);
+            if (!V)
+                continue;
+            rootAPMap[GII] = rootGII;
+        }
+
+        // verify
+        int width = (int)cast<ConstantInt>(GII->getArgOperand(4))->getZExtValue();
+        int height = (int)cast<ConstantInt>(GII->getArgOperand(5))->getZExtValue();
+        int numBlks = (int)cast<ConstantInt>(GII->getArgOperand(6))->getZExtValue();
+        int ap_width = (int)cast<ConstantInt>(rootGII->getArgOperand(6))->getZExtValue();
+        int ap_height = (int)cast<ConstantInt>(rootGII->getArgOperand(7))->getZExtValue();
+        int ap_numBlks = (int)cast<ConstantInt>(rootGII->getArgOperand(8))->getZExtValue();
+        if (height != ap_height || width != ap_width || numBlks != ap_numBlks) {
+            std::stringstream ss;
+            ss << "Block2D address payload: read/write builtins' "
+               << "block dimention do not match address payload's\n";
+            reportError(ss.str().c_str());
+            IGC_ASSERT_MESSAGE(0, "Block2D address payload: read/write builtins' "
+                                  "block dimention do not match address payload's");
+            return;
+        }
+    }
 }
 
 Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& CI, llvm::StringRef funcName, bool isRead)

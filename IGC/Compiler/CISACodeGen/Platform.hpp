@@ -982,6 +982,11 @@ bool hasLSCTypedMessage() const
     return isCoreChildOf(IGFX_XE_HPC_CORE);
 }
 
+bool LSC2DSupportImmXY() const
+{
+    return false;
+}
+
 SIMDMode getMaxLSCTypedMessageSize() const
 {
     switch (m_platformInfo.eRenderCoreFamily)

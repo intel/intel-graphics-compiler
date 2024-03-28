@@ -307,6 +307,16 @@ namespace IGC
             CVariable* flatImageBaseoffset, CVariable* flatImageWidth,
             CVariable* flatImageHeight, CVariable* flatImagePitch,
             LSC_CACHE_OPTS cacheOpts = { LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT });
+        void LSC_2DBlockMessage(
+            LSC_OP subOp,
+            CVariable* Dst,
+            CVariable* AddrPayload,
+            CVariable* Src,
+            uint32_t ImmX, uint32_t ImmY,
+            uint32_t elemSize,
+            uint32_t blockWidth, uint32_t blockHeight, uint32_t numBlocks,
+            bool isTranspose, bool isVnni,
+            LSC_CACHE_OPTS cacheOpts = { LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT });
         void NamedBarrier(e_barrierKind BarrierKind, CVariable* src0, CVariable* src1);
         void LSC_TypedReadWrite(
             LSC_OP subOp, ResourceDescriptor* resource,

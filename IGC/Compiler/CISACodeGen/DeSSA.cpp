@@ -397,6 +397,9 @@ bool DeSSA::runOnFunction(Function& MF)
     CoalesceAliasInst();
     CoalesceInsertElements();
 
+    // Special coalescing
+    CoalesceOthers();
+
     // checkPHILoopInput
     //  PreHeader:
     //      x = ...
@@ -468,7 +471,7 @@ bool DeSSA::runOnFunction(Function& MF)
         for (BasicBlock::iterator BBI = I->begin(), BBE = I->end();
             BBI != BBE; ++BBI) {
             PHINode* PHI = dyn_cast<PHINode>(BBI);
-            if (!PHI) {
+            if (!PHI || isProcessed(PHI)) {
                 break;
             }
 
@@ -1292,6 +1295,77 @@ DeSSA::CoalesceInsertElements()
                     }
                 }
             }
+        }
+    }
+}
+
+// This is to coalesce special instructions
+void DeSSA::CoalesceOthers()
+{
+    // Coalesce address payload
+    //   1. created by GenISA_LSC2DBlockCreateAddrPayload; or
+    //   2. may be updated by GenISA_LSC2DBlockSetBlockXY
+    // By design, address payload created originally and later
+    // updated should be coalesced and no need to check interference.
+    auto push_back_if_absent = [](std::list<Value*>& L, Value* V) {
+        if (std::find(L.begin(), L.end(), V) == L.end()) {
+            L.push_back(V);
+        }
+    };
+
+    auto isAddrPayloadUpdater = [](Value* V) {
+        GenIntrinsicInst* G = dyn_cast<GenIntrinsicInst>(V);
+        if (!G ||
+            G->getIntrinsicID() != GenISAIntrinsic::GenISA_LSC2DBlockSetBlockXY) {
+            return false;
+        }
+        return true;
+    };
+
+
+    for (auto II = inst_begin(m_F), E = inst_end(m_F); II != E; ++II) {
+        Instruction* I = &*II;
+        GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(I);
+        if (!GII) {
+            continue;
+        }
+        auto GID = GII->getIntrinsicID();
+        if (GID != GenISAIntrinsic::GenISA_LSC2DBlockCreateAddrPayload) {
+            continue;
+        }
+        // By design, all uses of CreateAddrPayload should be coalesced.
+        //
+        // The algorithm collect all uses by doing breadth-first traversal,
+        // making sure each value is visited no more than once to avoid cyclic
+        // use relation due to PHI node.
+        //
+        std::list<Value*> allUses{ GII };
+        for (auto it = allUses.begin(); it != allUses.end(); ++it) {
+            Value* V = *it;
+            for (auto user : V->users()) {
+                Value* tV = user;
+                // Only PHI and addrPayload updating GEN intrinsic can define
+                // new address payload value.
+                if (isa<PHINode>(tV) || isAddrPayloadUpdater(tV)) {
+                    push_back_if_absent(allUses, tV);
+                }
+            }
+        }
+
+        // Make all values in allUses in the same CC
+        auto iter = allUses.begin();
+        // allUses's first is GII, loop from the second
+        IGC_ASSERT(GII == getNodeValue(GII));
+        addReg(GII, EALIGN_GRF);
+        m_processedValues[GII] = 1;
+        ++iter;
+        for (auto iterEnd = allUses.end(); iter != iterEnd; ++iter) {
+            Value* V = *iter;
+            IGC_ASSERT(V == getNodeValue(V));
+            addReg(V, EALIGN_GRF);
+            unionRegs(GII, V);
+
+            m_processedValues[V] = 1;
         }
     }
 }
