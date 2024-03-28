@@ -628,6 +628,7 @@ bool hasScratchSurface() const
     return isProductChildOf(IGFX_XE_HP_SDV);
 }
 
+
 bool hasAtomicPreDec() const
 {
     return !isProductChildOf(IGFX_XE_HP_SDV);
@@ -1188,9 +1189,11 @@ bool WaCubeHFPrecisionBug() const
 //The max size in bytes of the scratch space per thread.
 //  XeHP_SDV and above are for each physical thread: 256k.
 //  TGLLP and below are for each FFTID: 2M.
-uint32_t maxPerThreadScratchSpace() const
+uint32_t maxPerThreadScratchSpace(
+) const
 {
-    return (hasScratchSurface() ? 0x40000 : 0x200000);
+
+    return hasScratchSurface() ? 0x40000 : 0x200000;
 }
 
 bool supportAIParameterCombiningWithLODBiasEnabled() const
