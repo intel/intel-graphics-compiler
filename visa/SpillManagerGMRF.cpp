@@ -3485,6 +3485,9 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode(
           G4_Declare *mRangeDcl = createAndInitMHeader(
               (G4_RegVarTransient *)temp->getRegVar()->getBaseRegVar());
 
+          kernel->fg.builder->createPseudoKill(temp, PseudoKillType::Other,
+                                               true);
+
           sendInSpilledRegVarPortions(fillGRFRangeDcl, mRangeDcl, 0,
                                       temp->getNumRows(), 0);
 
