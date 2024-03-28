@@ -50,6 +50,7 @@ using namespace USC;
 namespace SIP
 {
 
+
 // Debug surface area for all XE2 architectures
 struct Xe2DebugSurfaceLayout
 {
