@@ -567,10 +567,6 @@ bool DeSSA::runOnFunction(Function& MF)
         print(dessaDump.stream());
         DumpUnlock();
     }
-    else if (IGC_IS_FLAG_ENABLED(PrintToConsole))
-    {
-        print(ods());
-    }
     m_F = nullptr;
     return false;
 }

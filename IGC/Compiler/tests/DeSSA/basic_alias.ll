@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
 ;
-; RUN: igc_opt -regkey PrintToConsole=1 -DeSSA -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -regkey PrintToConsole=1,DumpDeSSA=1 -DeSSA -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; DeSSA
 ; ------------------------------------------------
