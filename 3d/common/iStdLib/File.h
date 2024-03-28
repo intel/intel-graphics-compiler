@@ -499,8 +499,10 @@ inline int CreateAppOutputDir(
     char *path = (char*)malloc(sizeof(char)*bufSize);
     char *outputDirectoryCopy = (char*)malloc(sizeof(char)*bufSize);
 
-    if (NULL == path)
+    if (!path || !outputDirectoryCopy)
     {
+        free(path);
+        free(outputDirectoryCopy);
         return -1;
     }
 

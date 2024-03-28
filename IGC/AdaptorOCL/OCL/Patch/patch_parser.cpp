@@ -1578,7 +1578,8 @@ void DebugPatchList(
                 for (unsigned i = 0; i < pPatchItem->NumEntries; i++)
                 {
                     ICBE_DPF_STR(output, GFXDBG_HARDWARE,
-                        "\tSymbol(Entry %02d): %s\n\t  Offset = %d\n\t  Size = %d\n\t  Type = %d\n", i,
+                        "\tSymbol(Entry %02d): %s\n\t  Offset = %z\n\t  Size = %d\n\t  Type = %d\n",
+                        i,
                         entryPtr->s_name,
                         entryPtr->s_offset,
                         entryPtr->s_size,

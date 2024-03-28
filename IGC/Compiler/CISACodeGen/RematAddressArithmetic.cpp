@@ -86,7 +86,7 @@ public:
     llvm::raw_string_ostream OutputLogStream = raw_string_ostream(LogStr);
 
     CodeGenContext *CGCtx = nullptr;
-    IGCLivenessAnalysis* RPE;
+    IGCLivenessAnalysis* RPE = nullptr;
 
 private:
     bool greedyRemat(Function &F);
@@ -420,7 +420,7 @@ void CloneAddressArithmetic::estimateProfit(RematSet& ToProcess) {
 
     PRINT_LOG_NL("FINAL: ");
     PRINT_LOG_NL("SIZE: " << Vector.size());
-    for(auto el : Vector) {
+    for(const auto &el : Vector) {
 
         auto& OriginSet = el.first;
         auto& ValueSet = el.second;
@@ -544,7 +544,7 @@ unsigned int CloneAddressArithmetic::collectFlow(RematSet& ToProcess, Function& 
         computeFlow((Instruction*)el);
 
     if(DEBUG) {
-        for (auto el : FlowMap) {
+        for (const auto &el : FlowMap) {
             PRINT_LOG("[" << el.second << "] {" << Uses[el.first]<< "}\t"); PRINT_INST_NL(el.first);
         }
     }

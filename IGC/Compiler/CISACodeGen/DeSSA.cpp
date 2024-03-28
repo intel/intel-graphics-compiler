@@ -1350,7 +1350,7 @@ void DeSSA::getAllCoalescedValues(
     // First, add values from InsEltMap
     for (int i = 0, sz = (int)Vals.size(); i < sz; ++i) {
         Value* ccVal = Vals[i];
-        for (auto II : InsEltMap) {
+        for (const auto &II : InsEltMap) {
             Value* R = II.second;
             if (R != ccVal) {
                 continue;
