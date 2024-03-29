@@ -1669,6 +1669,19 @@ unsigned int roundUpTgsmSize(DWORD size) const
 }
 
 
+unsigned getRayTracingTileXDim2D() const
+{
+    return 32;
+}
+
+unsigned getRayTracingTileYDim2D() const
+{
+    if (isCoreChildOf(IGFX_XE2_LPG_CORE))
+        return 32;
+    else
+        return 4;
+}
+
 bool preferLSCCache() const
 {
     return isCoreChildOf(IGFX_XE2_LPG_CORE);
