@@ -22,7 +22,7 @@ namespace {
         COMPILE_TIME_INTERVALS interval{};
         TimeStatsCounterStartEndMode mode{};
         std::string igcPass{};
-        TimeStatsCounterType type;
+        TimeStatsCounterType type{};
 
     public:
         static char ID;

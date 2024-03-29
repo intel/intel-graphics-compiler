@@ -119,7 +119,7 @@ VariableReuseAnalysis::VariableReuseAnalysis()
     m_pCtx(nullptr), m_WIA(nullptr), m_LV(nullptr), m_DeSSA(nullptr),
     m_PatternMatch(nullptr), m_coalescingEngine(nullptr),
     m_RPE(nullptr), m_SimdSize(0), m_IsFunctionPressureLow(Status::Undef),
-    m_IsBlockPressureLow(Status::Undef) {
+    m_IsBlockPressureLow(Status::Undef), m_skipScalarAliaser(false) {
     initializeVariableReuseAnalysisPass(*PassRegistry::getPassRegistry());
 }
 
@@ -1263,7 +1263,7 @@ bool VariableReuseAnalysis::processInsertTo(VecInsEltInfoTy& AllIEIs)
 {
     const auto control = (m_pCtx->getVectorCoalescingControl() & 0x3);
     SmallVector<std::pair<Value*, int>, 8> SubVecs;
-    auto IsInSubVecs = [SubVecs](Value* Val) {
+    auto IsInSubVecs = [&SubVecs](Value* Val) {
         for (int j = 0, sz = (int)SubVecs.size(); j < sz; ++j) {
             if (SubVecs[j].first == Val)
                 return true;

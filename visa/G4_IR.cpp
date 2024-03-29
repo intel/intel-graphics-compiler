@@ -4790,7 +4790,7 @@ static bool regionHasFixedSubreg(const IR_Builder &builder, G4_Operand *opnd,
     return true;
   }
 
-  if (base == NULL || !base->isRegVar() ||
+  if (!base->isRegVar() ||
       !base->asRegVar()->getDeclare()->useGRF()) {
     return false;
   }

@@ -384,7 +384,7 @@ namespace IGC {
             m_HasBecomeNoopInsts.clear();
             m_LifetimeAt1stDefOfBB.clear();
             m_LifetimeAtEndOfBB.clear();
-
+            m_skipScalarAliaser = false;
         }
 
         // Initialize per-block states. In particular, check if the entire block has a

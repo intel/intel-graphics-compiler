@@ -81,7 +81,7 @@ namespace IGC
         void getImplicitArg(unsigned int explicitArgNo, unsigned int& startArgNo, unsigned int& endArgNo);
 
     protected:
-        llvm::Function* m_pFunction;
+        llvm::Function* m_pFunction = nullptr;
 
         ImplicitArgs m_implicitArgs;
     };

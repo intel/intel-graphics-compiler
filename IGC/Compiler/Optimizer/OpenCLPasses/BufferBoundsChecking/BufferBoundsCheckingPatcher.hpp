@@ -53,9 +53,9 @@ namespace IGC
         static PatchInfo getPatchInfo(llvm::Instruction* instruction);
 
     private:
-        bool modified;
-        ImplicitArgs* implicitArgs;
-        IGCMD::MetaDataUtils* metadataUtils;
+        bool modified = false;
+        ImplicitArgs* implicitArgs = nullptr;
+        IGCMD::MetaDataUtils* metadataUtils = nullptr;
 
         llvm::Argument* getBufferSizeArg(llvm::Function* function, uint32_t n);
         bool patchInstruction(llvm::Instruction* instruction);

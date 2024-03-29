@@ -1032,16 +1032,16 @@ void VarReferences::run() {
           }
           auto &Defs = VarRefs[topdcl].first;
           Defs.push_back(std::make_tuple(inst, bb, lb, rb));
-        }
 
-        if (p2a && dst->isIndirect()) {
-          auto *pointees = p2a->getAllInPointsTo(topdcl->getRegVar());
-          vISA_ASSERT(pointees, "expecting valid pointee list");
-          for (const auto& pointee : *pointees) {
-            auto &Defs = VarRefs[pointee.var->getDeclare()->getRootDeclare()].first;
-            // lb, rb are both unknown for indirects
-            Defs.push_back(
-                std::make_tuple(inst, bb, UnknownBound, UnknownBound));
+          if (p2a && dst->isIndirect()) {
+            auto *pointees = p2a->getAllInPointsTo(topdcl->getRegVar());
+            vISA_ASSERT(pointees, "expecting valid pointee list");
+            for (const auto& pointee : *pointees) {
+              auto &Defs = VarRefs[pointee.var->getDeclare()->getRootDeclare()].first;
+              // lb, rb are both unknown for indirects
+              Defs.push_back(
+                  std::make_tuple(inst, bb, UnknownBound, UnknownBound));
+            }
           }
         }
       }

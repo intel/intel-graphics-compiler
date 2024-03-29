@@ -764,8 +764,10 @@ void IGCPassManager::addPrintPass(Pass* P, bool isBefore)
     PassManager::add(new SerializePrintMetaDataPass(stream));
 
     auto printerPass = P->createPrinterPass(m_irDumps.front().stream(), "");
-    if (printerPass->getPassKind() == PT_Function) //Enabling debug info for -O2
+    if (printerPass->getPassKind() == PT_Function) { // Enabling debug info for -O2
+        delete printerPass;
         printerPass = llvm::createPrintModulePass(m_irDumps.front().stream(), "");
+    }
     PassManager::add(printerPass);
 
 
