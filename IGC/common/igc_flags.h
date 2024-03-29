@@ -724,7 +724,7 @@ DECLARE_IGC_REGKEY(DWORD, FastestS1Experiments,         0,      "Select configs 
 DECLARE_IGC_REGKEY(bool, ForceAddingStackcallKernelPrerequisites, false,  "Force adding static overhead for stackcall to the kernel entry such as HWTID instructions for experiments", true)
 DECLARE_IGC_REGKEY(bool, DisableFastestLinearScan,      false,   "Disable LinearScanRA in FastestSIMD.", false)
 DECLARE_IGC_REGKEY(bool, DisableFastestGopt,            false,   "Disable global optimizations for stage 1 shaders.", false)
-DECLARE_IGC_REGKEY(bool, ForceFastestSIMD, false,  "Force PS or CS to return SIMD8 as fast as possible.", false)
+DECLARE_IGC_REGKEY(bool, ForceFastestSIMD, false,  "Force PS, CS, VS to return lowest possible SIMD as fast as possible.", false)
 DECLARE_IGC_REGKEY(bool, EnableFastestSingleCSSIMD,     true,  "Enable selecting single CS SIMD in staged compilation.", false)
 DECLARE_IGC_REGKEY(bool, ForceFastestSingleCSSIMD, false, "Force selecting single CS SIMD in staged compilation on unsupported platforms.", false)
 DECLARE_IGC_REGKEY(bool, ForceBestSIMD, false,  "Force pixel shader to return the best SIMD, either SIMD16 or SIMD8.", false)
