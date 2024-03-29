@@ -119,7 +119,7 @@ VariableReuseAnalysis::VariableReuseAnalysis()
     m_pCtx(nullptr), m_WIA(nullptr), m_LV(nullptr), m_DeSSA(nullptr),
     m_PatternMatch(nullptr), m_coalescingEngine(nullptr),
     m_RPE(nullptr), m_SimdSize(0), m_IsFunctionPressureLow(Status::Undef),
-    m_IsBlockPressureLow(Status::Undef), m_skipScalarAliaser(false) {
+    m_IsBlockPressureLow(Status::Undef) {
     initializeVariableReuseAnalysisPass(*PassRegistry::getPassRegistry());
 }
 
@@ -1111,7 +1111,6 @@ void VariableReuseAnalysis::InsertElementAliasing(Function* F)
     for (auto BI = F->begin(), BE = F->end(); BI != BE; ++BI)
     {
         BasicBlock* BB = &*BI;
-        setSkipScalarAliaser(BB);
         for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
         {
             Instruction* I = &*II;
@@ -1153,7 +1152,7 @@ void VariableReuseAnalysis::InsertElementAliasing(Function* F)
             }
 
             // Check if this is an insertTo pattern, if so add alias.
-            if (processInsertTo(AllIEIs)) {
+            if (processInsertTo(BB, AllIEIs)) {
                 continue;
             }
         }
@@ -1182,9 +1181,16 @@ bool VariableReuseAnalysis::processExtractFrom(VecInsEltInfoTy& AllIEIs)
             return false;
     }
 
+    // DPAS unlikely uses smaller vector, favor extractMask
+    if (base_nelts <= 4 && isExtractMaskCandidate(BaseVec)) {
+        return false;
+    }
+
     Value* lastIEI = AllIEIs[nelts - 1].IEI;
-    if (!isCandidateUse(lastIEI) && !isCandidateUse(BaseVec) &&
-        !isCandidateDef(BaseVec))
+    auto S_use = getCandidateStateUse(lastIEI);
+    auto B_def = getCandidateStateDef(BaseVec);
+    auto B_use = getCandidateStateUse(BaseVec);
+    if (!aliasOkay(S_use, B_def, B_use))
         return false;
 
     Value* Sub = AllIEIs[0].IEI;
@@ -1259,7 +1265,7 @@ bool VariableReuseAnalysis::processExtractFrom(VecInsEltInfoTy& AllIEIs)
 
 // Check if IEI is a base vector created by other sub-vectors
 // or scalars. If it is, create alias and return true.
-bool VariableReuseAnalysis::processInsertTo(VecInsEltInfoTy& AllIEIs)
+bool VariableReuseAnalysis::processInsertTo(BasicBlock* BB, VecInsEltInfoTy& AllIEIs)
 {
     const auto control = (m_pCtx->getVectorCoalescingControl() & 0x3);
     SmallVector<std::pair<Value*, int>, 8> SubVecs;
@@ -1305,7 +1311,8 @@ bool VariableReuseAnalysis::processInsertTo(VecInsEltInfoTy& AllIEIs)
             (Sub && (i - SubStartIx) != AllIEIs[i].FromVec_eltIx)) {
             isSubCandidate = false;
         }
-        if (Elt && Sub == nullptr && isSkipScalarAliaser()) {
+
+        if (Elt && Sub == nullptr && skipScalarAliaser(BB, Elt)) {
             // Skip scalar coalescing
             isSubCandidate = false;
         }
@@ -1345,7 +1352,7 @@ bool VariableReuseAnalysis::processInsertTo(VecInsEltInfoTy& AllIEIs)
 
 
     InsertElementInst* LastIEI = AllIEIs.back().IEI;
-    const bool isBaseCand = isCandidateUse(LastIEI);
+    auto B_use = getCandidateStateUse(LastIEI);
     bool hasAlias = false;
     for (int i = 0, sz = (int)SubVecs.size(); i < sz; ++i)
     {
@@ -1363,7 +1370,9 @@ bool VariableReuseAnalysis::processInsertTo(VecInsEltInfoTy& AllIEIs)
             continue;
         }
 
-        if (!isBaseCand && !isCandidateDef(V) && !isCandidateUse(V))
+        auto S_use = getCandidateStateUse(V);
+        auto S_def = getCandidateStateDef(V);
+        if (!aliasOkay(S_use, S_def, B_use))
             continue;
 
         e_alignment BaseAlign;
@@ -1483,53 +1492,100 @@ bool VariableReuseAnalysis::aliasInterfere(Value* Sub, Value* Base, int BaseIdx)
 }
 
 // Check if a value is used in instructions that we handle.
-bool VariableReuseAnalysis::isCandidateUse(Value* V) const
+VariableReuseAnalysis::AState VariableReuseAnalysis::getCandidateStateUse(
+    Value* V) const
 {
+    // If any of its use is used as func arg, skip
+    AState retSt = AState::OK;
     for (User* U : V->users()) {
-        Value* V = U;
-        CastInst* CI = dyn_cast<CastInst>(V);
+        Value* Val = U;
+        CastInst* CI = dyn_cast<CastInst>(Val);
         if (CI && isNoOpInst(CI, m_pCtx)) {
-            V = CI->getOperand(0);
+            Val = CI->getOperand(0);
         }
-        if (GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(V)) {
+        if (GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(Val)) {
             switch (GII->getIntrinsicID()) {
             case GenISAIntrinsic::GenISA_sub_group_dpas:
             case GenISAIntrinsic::GenISA_LSC2DBlockWrite:
             case GenISAIntrinsic::GenISA_simdBlockWrite:
-                return true;
+                retSt = AState::TARGET;
+                break;
             default:
                 break;
             }
         }
-        else if (StoreInst* SI = dyn_cast<StoreInst>(V)) {
-            return true;
+        else if (StoreInst* SI = dyn_cast<StoreInst>(Val)) {
+            retSt =  AState::TARGET;
+        }
+        else if (isa<CallInst>(Val)) {
+            return AState::SKIP;
         }
     }
-    return false;
+    return retSt;
 }
 
 // Check if a value is defined by instructions that we handle.
-bool VariableReuseAnalysis::isCandidateDef(Value* V) const
+VariableReuseAnalysis::AState VariableReuseAnalysis::getCandidateStateDef(
+    Value* V) const
 {
     Value* Val = V;
     CastInst* CI = dyn_cast<CastInst>(Val);
     if (CI && isNoOpInst(CI, m_pCtx)) {
         Val = CI->getOperand(0);
     }
+
+    // skip if V is defined by a function.
     if (GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(Val)) {
         switch (GII->getIntrinsicID()) {
         case GenISAIntrinsic::GenISA_sub_group_dpas:
-        case GenISAIntrinsic::GenISA_LSC2DBlockWrite:
-        case GenISAIntrinsic::GenISA_simdBlockWrite:
-            return true;
+        case GenISAIntrinsic::GenISA_LSC2DBlockRead:
+        case GenISAIntrinsic::GenISA_simdBlockRead:
+            return AState::TARGET;
         default:
             break;
         }
     }
-    else if (StoreInst* SI = dyn_cast<StoreInst>(Val)) {
-        return true;
+    else if (LoadInst* SI = dyn_cast<LoadInst>(Val)) {
+        return AState::TARGET;
     }
-    return false;
+    else if (isa<CallInst>(Val)) {
+        return AState::SKIP;
+    }
+    return AState::OK;
+}
+
+// Vector alias disables extractMask optimization. This function
+// checks if extractMask optim can be applied. And the caller
+// will decide whether to favor extractMask optimization.
+bool VariableReuseAnalysis::isExtractMaskCandidate(Value* V) const
+{
+    auto BIT = [](int n) { return (uint32_t)(1 << n); };
+
+    if (!isa<VectorType>(V->getType()))
+        return false;
+
+    uint32_t nelts = getNumElts(V);
+    // Using 31 to be consistent with extractMash.
+    if (nelts > 31) {
+        return false;
+    }
+    uint32_t mask = 0;
+    for (auto II = V->user_begin(), IE = V->user_end(); II != IE; ++II)
+    {
+        Value* V = *II;
+        if (ExtractElementInst* EEI = dyn_cast<llvm::ExtractElementInst>(V))
+        {
+            if (ConstantInt* CI = dyn_cast<ConstantInt>(EEI->getIndexOperand()))
+            {
+                uint32_t indexBit = BIT(static_cast<uint>(CI->getZExtValue()));
+                mask |= indexBit;
+                continue;
+            }
+        }
+        return false;
+    }
+    uint32_t fullMask = maskTrailingOnes<uint32_t>(nelts);
+    return fullMask > mask;
 }
 
 // Check if SubVec is aligned if it becomes a sub-vector at Base_ix of
@@ -1604,10 +1660,8 @@ bool VariableReuseAnalysis::checkSubAlign(e_alignment& BaseAlign,
     return true;
 }
 
-void VariableReuseAnalysis::setSkipScalarAliaser(llvm::BasicBlock* BB)
+bool VariableReuseAnalysis::skipScalarAliaser(BasicBlock* BB, Value* ScalarVal) const
 {
-    if (BB->size() > 500)
-        m_skipScalarAliaser = true;
-    else
-        m_skipScalarAliaser = false;
+    Instruction* I = dyn_cast<Instruction>(ScalarVal);
+    return ((BB->size() > 500) || !I || I->getParent() != BB);
 }

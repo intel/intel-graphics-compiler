@@ -340,7 +340,7 @@ namespace IGC {
             if (llvm::isa<llvm::Argument>(V))
                 return true;
             if (m_DeSSA) {
-                if (llvm::Value * R = m_DeSSA->getRootValue(V)) {
+                if (llvm::Value* R = m_DeSSA->getRootValue(V)) {
                     auto IE = m_ArgDeSSARoot.end();
                     auto it = std::find(m_ArgDeSSARoot.begin(), IE, R);
                     return it != IE;
@@ -384,7 +384,6 @@ namespace IGC {
             m_HasBecomeNoopInsts.clear();
             m_LifetimeAt1stDefOfBB.clear();
             m_LifetimeAtEndOfBB.clear();
-            m_skipScalarAliaser = false;
         }
 
         // Initialize per-block states. In particular, check if the entire block has a
@@ -434,7 +433,7 @@ namespace IGC {
             VecInsEltInfoTy& AllIEIs);
 
         bool processExtractFrom(VecInsEltInfoTy& AllIEIs);
-        bool processInsertTo(VecInsEltInfoTy& AllIEIs);
+        bool processInsertTo(llvm::BasicBlock* BB, VecInsEltInfoTy& AllIEIs);
 
         // Check if sub can be aliased to Base[Base_ix:size(sub)-1]
         bool aliasInterfere(llvm::Value* Sub, llvm::Value* Base, int Base_ix);
@@ -456,8 +455,24 @@ namespace IGC {
             int& IEI_ix,
             llvm::Value*& EEI_Vec,
             int& EEI_ix);
-        bool isCandidateUse(llvm::Value* V) const;
-        bool isCandidateDef(llvm::Value* V) const;
+
+        // For alias(S,B), each of S and B can be one of three states.
+        enum class AState {
+            SKIP,   // skip aliasing
+            OK,     // aliasing okay if the other is target
+            TARGET  // aliasing okay if no one is SKIP
+        };
+        bool isExtractMaskCandidate(llvm::Value* V) const;
+        AState getCandidateStateUse(llvm::Value* V) const;
+        AState getCandidateStateDef(llvm::Value* V) const;
+        bool aliasOkay(AState A, AState B, AState C) const {
+            if ((A == AState::TARGET || B == AState::TARGET
+                || C == AState::TARGET) && A != AState::SKIP &&
+                B != AState::SKIP && C != AState::SKIP) {
+                return true;
+            }
+            return false;
+        }
         bool checkSubAlign(e_alignment& BaseAlign,  llvm::Value* Subvec,
             llvm::Value* Basevec, int Base_ix);
 
@@ -507,9 +522,7 @@ namespace IGC {
         Val2ValMapTy m_root2AliasMap;
 
         // For vector aliasing heuristic to prevent possible high-reg pressure
-        bool m_skipScalarAliaser;
-        void setSkipScalarAliaser(llvm::BasicBlock* BB);
-        bool isSkipScalarAliaser() const { return m_skipScalarAliaser; }
+        bool skipScalarAliaser(llvm::BasicBlock* BB, llvm::Value* V) const;
     };
 
     llvm::FunctionPass* createVariableReuseAnalysisPass();
