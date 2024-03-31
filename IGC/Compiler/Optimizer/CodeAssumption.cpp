@@ -78,8 +78,7 @@ void CodeAssumption::uniformHelper(Module* M)
             auto BB = CI->getParent();
             auto KF = BB->getParent();
 
-            if (!IGC_IS_FLAG_ENABLED(DispatchOCLWGInLinearOrder) &&
-                !IsSGIdUniform(m_pMDUtils, modMD, KF))
+            if (!IsSGIdUniform(m_pMDUtils, modMD, KF))
                 continue;
 
             // The value must be uniform. Using shuffle with index=0 to
