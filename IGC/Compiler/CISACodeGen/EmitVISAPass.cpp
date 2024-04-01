@@ -1030,6 +1030,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         SBasicBlock& block = m_pattern->m_blocks[i];
         block.clearCaching();   // clear for each SIMD size
         m_currentBlock = i;
+        atomic_shared_pUVR.clear();
         if (m_blockCoalescing->IsEmptyBlock(block.bb))
         {
             continue;
@@ -19024,6 +19025,48 @@ void EmitPass::emitLSCTypedWrite(llvm::Instruction* pInsn)
     m_currShader->isMessageTargetDataCacheDataPort = true;
 }
 
+tuple<CVariable*, CVariable*, CVariable*> EmitPass::addToCachedPayloadUVR(CVariable* pU, CVariable* pV, CVariable* pR)
+{
+    // call this function when the uvr tuple is not seen before.
+    CVariable* uAlias = nullptr;
+    CVariable* vAlias = nullptr;
+    CVariable* rAlias = nullptr;
+
+    int dim = pR ? 3 : (pV ? 2 : 1);
+
+    // create a space with the size of the payload.
+    CVariable* UVRpayload = m_currShader->GetNewVariable(dim, pU->GetType(), EALIGN_DWORD, true, CName::NONE);
+
+    // copy U into this UVRpayload and create a uAlias with size 1 since the functions we are calling only take single Variable.
+    // The aliasing to UVRpayload can avoid extra movs for creating payload into continuous registers in vISA
+    m_encoder->SetSimdSize(SIMDMode::SIMD1);
+    m_encoder->SetDstSubVar(0);
+    m_encoder->Cast(UVRpayload, pU);
+    m_encoder->Push();
+    uAlias = m_currShader->GetNewAlias(UVRpayload, pU->GetType(), 0, 0);
+
+    if (pV)
+    {
+        // handle pV if it exists
+        m_encoder->SetSimdSize(SIMDMode::SIMD1);
+        m_encoder->SetDstSubVar(1);
+        m_encoder->Cast(UVRpayload, pV);
+        m_encoder->Push();
+        vAlias = m_currShader->GetNewAlias(UVRpayload, pV->GetType(), getGRFSize(), 0);
+    }
+    if (pR)
+    {
+        // handle pR if it exists
+        m_encoder->SetSimdSize(SIMDMode::SIMD1);
+        m_encoder->SetDstSubVar(2);
+        m_encoder->Cast(UVRpayload, pR);
+        m_encoder->Push();
+        rAlias = m_currShader->GetNewAlias(UVRpayload, pR->GetType(), getGRFSize() * 2, 0);
+    }
+
+    return make_tuple(uAlias, vAlias, rAlias);
+}
+
 void EmitPass::emitLSCAtomicTyped(llvm::GenIntrinsicInst* inst)
 {
     ForceDMask();
@@ -19067,7 +19110,6 @@ void EmitPass::emitLSCAtomicTyped(llvm::GenIntrinsicInst* inst)
     }
 
     ResourceDescriptor resource = GetResourceVariable(pllbuffer);
-
     CVariable* pR = isUndefOrConstInt0(pllR) ? nullptr : GetSymbol(pllR);
     CVariable* pV = (pR == nullptr && isUndefOrConstInt0(pllV)) ? nullptr : GetSymbol(pllV);
     CVariable* pU = GetSymbol(pllU);
@@ -19075,22 +19117,35 @@ void EmitPass::emitLSCAtomicTyped(llvm::GenIntrinsicInst* inst)
 
     if (IsUniformAtomic(inst))
     {
-        pU = ReAlignUniformVariable(pU, EALIGN_GRF);
-        pV = pV ? ReAlignUniformVariable(pV, EALIGN_GRF) : pV;
-        pR = pR ? ReAlignUniformVariable(pR, EALIGN_GRF) : pR;
+        // check if the UVR payload is reused. If so get the CVariable from cached tuple
+        // this can reduce the mov instructions for creating UVR payload.
+        tuple<CVariable*, CVariable*, CVariable*> cachedCVar;
+        tuple<Value*, Value*, Value*> uvr = make_tuple(pllU, pllV, pllR);
+        if (auto It = atomic_shared_pUVR.find(uvr); It != atomic_shared_pUVR.end())
+        {
+            cachedCVar = It->second;
+        }
+        else
+        {
+            pU = ReAlignUniformVariable(pU, EALIGN_GRF);
+            pV = pV ? ReAlignUniformVariable(pV, EALIGN_GRF) : pV;
+            pR = pR ? ReAlignUniformVariable(pR, EALIGN_GRF) : pR;
+            cachedCVar = addToCachedPayloadUVR(pU, pV, pR);
+            atomic_shared_pUVR[uvr] = cachedCVar;
+        }
 
         if (atomic_op == EATOMIC_OR && OrWith0Atomic(inst, 4))
         {
             // special case of atomic_load
             emitScalarAtomicLoad(inst, resource,
-                                 nullptr /*pDstAddr*/, pU, pV, pR, pSrc0,
+                                 nullptr /*pDstAddr*/, get<0>(cachedCVar), get<1>(cachedCVar), get<2>(cachedCVar), pSrc0,
                                  false /*isA64*/, eltSizeInBits, 0, 1,
                                  LSC_ADDR_SIZE_32b);
         }
         else
         {
             emitScalarAtomics(inst, resource, atomic_op,
-                              nullptr /*pDstAddr*/, pU, pV, pR, pSrc0,
+                              nullptr /*pDstAddr*/, get<0>(cachedCVar), get<1>(cachedCVar), get<2>(cachedCVar), pSrc0,
                               false /*isA64*/, eltSizeInBits, 0, 1,
                               LSC_ADDR_SIZE_32b);
         }
