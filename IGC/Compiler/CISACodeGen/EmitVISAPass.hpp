@@ -1033,10 +1033,6 @@ private:
     bool m_isDuplicate;
     CVariable *m_tmpDest = nullptr;
     std::set<CoalescingEngine::CCTuple *> lifetimeStartAdded;
-
-    tuple<CVariable*, CVariable*, CVariable*> addToCachedPayloadUVR(CVariable* pU, CVariable* pV, CVariable* pR);
-    std::map<tuple<Value*, Value*, Value*>, tuple<CVariable*, CVariable*, CVariable*>> atomic_shared_pUVR;
-
 };
 
 } // namespace IGC
