@@ -40,7 +40,7 @@ using namespace vISA;
 
 #define GRAPH_COLOR_MEM_SIZE 16 * 1024
 #define SCRATCH_MSG_LIMIT (128 * 1024)
-#define SCRATCH_COMPRESS_THRESHOLD (32 * 1024)
+#define SCRATCH_COMPRESS_THRESHOLD (12 * 1024)
 
 const RAVarInfo GlobalRA::defaultValues;
 const char GlobalRA::StackCallStr[] = "StackCall";
