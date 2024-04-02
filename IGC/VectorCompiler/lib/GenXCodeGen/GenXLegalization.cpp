@@ -350,8 +350,8 @@ private:
   unsigned splitDeadElements(unsigned Width, unsigned StartIdx);
   unsigned determineWidth(unsigned WholeWidth, unsigned StartIdx);
   unsigned determineNonRegionWidth(Instruction *Inst, unsigned StartIdx);
-  LegalPredSize getLegalPredSize(Value *Pred, Type *ElementTy,
-                                 unsigned StartIdx, unsigned RemainingSize = 0);
+  LegalPredSize getLegalPredSize(Value *Pred, unsigned StartIdx,
+                                 unsigned RemainingSize = 0);
   PredPart getPredPart(Value *V, unsigned Offset);
   Value *splitBale(Value *Last, unsigned StartIdx, unsigned Width,
                    Instruction *InsertBefore);
@@ -1225,7 +1225,7 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
         // We have a predicate, and it is not a baled in rdpredregion. (A
         // baled in rdpredregion is handled when this loop reaches that
         // instruction.) Get the min and max legal predicate size.
-        auto PredWidths = getLegalPredSize(R.Mask, R.ElementTy, StartIdx);
+        auto PredWidths = getLegalPredSize(R.Mask, StartIdx);
         ThisWidth = std::min(ThisWidth, PredWidths.Max);
         PredMinWidth = PredWidths.Min;
       }
@@ -1353,14 +1353,8 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
       // - if predicate is a vector and
       // - if it does not have rdpredregion baled in.
       if (!i->Info.isOperandBaled(0) && i->Inst->getType()->isVectorTy()) {
-        // Get the min and max legal predicate size. First get the element type
-        // from the wrregion or select that the notp is baled into.
-        Type *ElementTy = nullptr;
-        auto Head = B.getHeadIgnoreGStore()->Inst;
-        if (Head != i->Inst)
-          ElementTy = Head->getOperand(1)->getType()->getScalarType();
-        auto PredWidths =
-            getLegalPredSize(i->Inst->getOperand(0), ElementTy, StartIdx);
+        // Get the min and max legal predicate size.
+        auto PredWidths = getLegalPredSize(i->Inst->getOperand(0), StartIdx);
         // If the min legal predicate size is more than the remaining size in
         // the predicate that the rdpredregion extracts, ignore it. This results
         // in an illegal rdpredregion from splitInst, which then has to be
@@ -1377,13 +1371,9 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
       unsigned RdPredStart =
           cast<ConstantInt>(i->Inst->getOperand(1))->getZExtValue();
       // Get the min and max legal predicate size.
-      auto PredWidths = getLegalPredSize(
-          i->Inst->getOperand(0), // the input predicate
-          cast<Instruction>(i->Inst->use_begin()->getUser())
-              ->getOperand(1)
-              ->getType()
-              ->getScalarType(), // the wrregion/select element type
-          RdPredStart + StartIdx);
+      auto PredWidths =
+          getLegalPredSize(i->Inst->getOperand(0), // the input predicate
+                           RdPredStart + StartIdx);
       // If the min legal predicate size is more than the remaining size in
       // the predicate that the rdpredregion extracts, ignore it. This results
       // in an illegal rdpredregion from splitInst, which then has to be
@@ -1435,11 +1425,7 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
       if (Pred && isa<VectorType>(Pred->getType())) {
         // For a select (with a vector predicate) or cmp, we need to take the
         // predicate into account. Get the min and max legal predicate size.
-        auto PredWidths =
-            getLegalPredSize(Pred,
-                             cast<VectorType>(i->Inst->getOperand(1)->getType())
-                                 ->getElementType(),
-                             StartIdx);
+        auto PredWidths = getLegalPredSize(Pred, StartIdx);
         // If the min legal predicate size is more than the remaining size in
         // the predicate that the rdpredregion extracts, ignore it. This results
         // in an illegal rdpredregion from splitInst, which then has to be
@@ -1613,17 +1599,13 @@ unsigned GenXLegalization::determineNonRegionWidth(Instruction *Inst,
  * Return:  Min = min legal size
  *          Max = max legal size
  */
-LegalPredSize GenXLegalization::getLegalPredSize(Value *Pred, Type *ElementTy,
-                                                 unsigned StartIdx,
+LegalPredSize GenXLegalization::getLegalPredSize(Value *Pred, unsigned StartIdx,
                                                  unsigned RemainingSize) {
   // Get details of the part containing StartIdx.
   auto PP = getPredPart(Pred, StartIdx);
-  // Set Min to 8, or 4 if the element type of the operation using the
-  // intrinsic is 64 bit. Doing this ensures that the next split in the same
-  // part is on a legal offset. The offset of a split within a part must be 8
-  // aligned, or 4 aligned if the element type is 64 bit.
   LegalPredSize Ret;
-  Ret.Min = !ElementTy ? 8 : ElementTy->getPrimitiveSizeInBits() != 64 ? 8 : 4;
+  // 4-aligned predicates are not supported for native simd16.
+  Ret.Min = ST->getGRFByteSize() > 32 ? 8 : 4;
   // Set Max to the remaining size left in this part, rounded down to a power
   // of two.
   unsigned LogMax = Log2_32(PP.Size - StartIdx + PP.Offset);
@@ -1784,7 +1766,7 @@ Value *GenXLegalization::joinBaleResult(Value *PrevSliceRes,
     // the root of a tree of wrpredregions, and only the roots of
     // wrpredregion trees need to be in IllegalPredicates.)
     if (!StartIdx) {
-      auto PredSize = getLegalPredSize(NewWr, nullptr, 0);
+      auto PredSize = getLegalPredSize(NewWr, 0);
       if (PredSize.Max !=
           cast<IGCLLVM::FixedVectorType>(NewWr->getType())->getNumElements())
         IllegalPredicates.insert(NewWr);

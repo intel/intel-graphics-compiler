@@ -257,18 +257,6 @@ bool testPhiNodeHasNoMismatchedRegs(const llvm::PHINode *const Phi,
   return Result;
 }
 
-/***********************************************************************
- * Local function for testing one assertion statement.
- */
-bool testPredicate(const CmpInst *const Cmp, const DstOpndDesc &DstDesc) {
-  bool Result = (!DstDesc.WrRegion);
-  Result = (Result || (Cmp->getType()->getPrimitiveSizeInBits() != 4));
-  Result = (Result || (Cmp->getOperand(0)->getType()->getScalarType()
-    ->getPrimitiveSizeInBits() == 64));
-  IGC_ASSERT(Result);
-  return Result;
-}
-
 } // namespace
 
 #define CISA_CALL_CTX(c, ctx)                                                  \
@@ -4671,9 +4659,6 @@ void GenXKernelBuilder::buildCastInst(CastInst *CI, BaleInfo BI, unsigned Mod,
  */
 void GenXKernelBuilder::buildCmp(CmpInst *Cmp, BaleInfo BI,
                                  const DstOpndDesc &DstDesc) {
-  IGC_ASSERT_MESSAGE(
-      testPredicate(Cmp, DstDesc),
-      "write predicate size 4 only allowed for double/longlong type");
   Signedness Signed = DONTCARESIGNED;
   VISA_Cond_Mod opSpec;
   switch (Cmp->getPredicate()) {
