@@ -500,11 +500,6 @@ static void CommonOCLBasedPasses(
 
         mpm.add(createGASRetValuePropagatorPass());
 
-        // this pass is intended to inline the remaining always inline functions that had issues
-        // with argument address spaces (byVal addrspace(4)) in the previous attempt
-        mpm.add(createAlwaysInlinerLegacyPass());
-        mpm.add(new PurgeMetaDataUtils());
-
         // Run another round of constant breaking as GAS resolving may generate constants (constant address)
         mpm.add(new BreakConstantExpr());
     }
