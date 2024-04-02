@@ -1251,6 +1251,16 @@ void PreCompiledFuncImport::visitBinaryOperator(BinaryOperator& I)
         // Partial hardware DP support available, can use faster implementation.
         processFPBinaryOperator(I, I.getFastMathFlags().isFast() ? FUNCTION_DP_DIV_NOMADM_FAST : FUNCTION_DP_DIV_NOMADM_IEEE);
     }
+    else if (isSPDiv() && I.getOperand(0)->getType()->isFloatTy())
+    {
+        if (I.getOpcode() == Instruction::FDiv)
+        {
+            auto* OpC = dyn_cast<ConstantFP>(I.getOperand(0));
+            if (!OpC || !OpC->getValueAPF().isExactlyValue(1.0)) {
+                processFPBinaryOperator(I, FUNCTION_SP_DIV);
+            }
+        }
+    }
 }
 
 //%rem = srem i8 %a, %b
@@ -1650,7 +1660,16 @@ void PreCompiledFuncImport::processFPBinaryOperator(Instruction& I, FunctionIDs 
         args.push_back(I.getOperand(0));
         args.push_back(I.getOperand(1));
 
-        if (FID != FUNCTION_DP_DIV_NOMADM_IEEE && FID != FUNCTION_DP_DIV_NOMADM_FAST)
+        if (FID == FUNCTION_SP_DIV)
+        {
+            Type* intTy = Type::getInt32Ty(m_pModule->getContext());
+            auto pMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+            int ftz = (m_pCtx->m_floatDenormMode32 == FLOAT_DENORM_FLUSH_TO_ZERO) ? 1 : 0;
+            int daz = (pMD->compOpt.DenormsAreZero) ? 1 : 0;
+            args.push_back(ConstantInt::get(intTy, ftz));
+            args.push_back(ConstantInt::get(intTy, daz));
+        }
+        else if (FID != FUNCTION_DP_DIV_NOMADM_IEEE && FID != FUNCTION_DP_DIV_NOMADM_FAST)
         {
             Type* intTy = Type::getInt32Ty(m_pModule->getContext());
             Function* CurrFunc = I.getParent()->getParent();
