@@ -2851,15 +2851,12 @@ bool IGC::expandFDIVInstructions(llvm::Function& F)
                     V = Builder.CreateFPTrunc(V, Inst->getType());
                 }
             }
-            else if (Inst->hasAllowReciprocal()/* || needsNoScaling(Y)*/) {
+            else if (Inst->hasAllowReciprocal() || needsNoScaling(Y)) {
                 Y = Builder.CreateFDiv(ConstantFP::get(Ctx, APFloat(1.0f)), Y);
                 V = Builder.CreateFMul(Y, X);
             }
             else {
-                // Commented out, this optimization can produce incorrect results. Also the code looks incorrect.
-                // Instead of this code, the code emitter inserts code for precision calculations.
-                // TODO Rework or delete this code.
-/*                float S32 = uint64_t(1) << 32;
+                float S32 = uint64_t(1) << 32;
                 ConstantFP* C0 = ConstantFP::get(Ctx, APFloat(S32));
                 ConstantFP* C1 = ConstantFP::get(Ctx, APFloat(1.0f));
                 ConstantFP* C2 = ConstantFP::get(Ctx, APFloat(1.0f / S32));
@@ -2880,9 +2877,7 @@ bool IGC::expandFDIVInstructions(llvm::Function& F)
                 V = Builder.CreateFMul(Y, Scale);
                 V = Builder.CreateFDiv(C1, V);
                 V = Builder.CreateFMul(V, X);
-                V = Builder.CreateFMul(V, Scale);*/
-
-                continue;
+                V = Builder.CreateFMul(V, Scale);
             }
 
             Inst->replaceAllUsesWith(V);
