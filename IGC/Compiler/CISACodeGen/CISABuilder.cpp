@@ -4770,6 +4770,11 @@ namespace IGC
             }
         }
 
+        if (m_program->m_Platform->forceSamplerHeader())
+        {
+            SaveOption(vISA_samplerHeaderWA, true);
+        }
+
         if (IGC_IS_FLAG_ENABLED(EnableHashMovsAtPrologue))
         {
             SaveOption(vISA_HashMovsAtPrologue, true);
