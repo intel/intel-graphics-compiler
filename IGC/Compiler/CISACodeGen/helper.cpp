@@ -49,7 +49,7 @@ namespace IGC
             unsigned int       bufId : 16;
             unsigned int       bufType : 5;
             unsigned int       indirect : 1;     // bool
-            unsigned int       bufCDExt : 10;    // extend this field when bufIds collide
+            unsigned int       reserved : 10;
         } bits;
         uint32_t u32Val;
     } GFXResourceAddrSpace;
@@ -60,8 +60,7 @@ namespace IGC
     unsigned EncodeAS4GFXResource(
         const llvm::Value& bufIdx,
         BufferType bufType,
-        unsigned uniqueIndAS,
-        unsigned bufCDExt)
+        unsigned uniqueIndAS)
     {
         GFXResourceAddrSpace temp;
         static_assert(sizeof(temp) == 4, "Code below may need and update.");
@@ -90,13 +89,11 @@ namespace IGC
             unsigned int bufId = static_cast<unsigned>(CI->getZExtValue());
             IGC_ASSERT((bufType == BINDLESS_SAMPLER) || (bufId < (1 << 16)));
             temp.bits.bufId = bufId;
-            temp.bits.bufCDExt = bufCDExt;
             return temp.u32Val;
         }
 
         // if it is indirect-buf, it is front-end's job to give a proper(unique) address-space per access
         temp.bits.bufId = uniqueIndAS;
-        temp.bits.bufCDExt = bufCDExt;
         temp.bits.indirect = 1;
         return temp.u32Val;
     }
