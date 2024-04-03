@@ -246,6 +246,8 @@ public:
         const Twine &JoinBBName = "");
 
     Value* getRtMemBasePtr(void);
+    Value* getStackSizePerRay(void);
+    Value* getNumDSSRTStacks(void);
     Value* getMaxBVHLevels(void);
     Value* getStatelessScratchPtr(void);
     Value* getPrimLeafIndex(StackPointerVal* StackPointer, bool CommittedHit);
@@ -364,7 +366,7 @@ public:
     Value* getHitBaryCentric(StackPointerVal* StackPointer, uint32_t idx, bool CommittedHit);
 
 
-    Value* getGlobalBufferPtr();
+    Value* getGlobalBufferPtr(IGC::ADDRESS_SPACE Addrspace = IGC::ADDRESS_SPACE_CONSTANT);
     Value* getSyncStackID();
     Value* getSyncStackOffset(bool rtMemBasePtr = true);
     SpillValueIntrinsic* getSpillValue(Value* Val, uint64_t Offset);
@@ -457,7 +459,7 @@ public:
     Type* getSMStack2Ty() const;
     Type* getRTStack2Ty() const;
     Type* getRTStack2PtrTy(RTMemoryAccessMode Mode, bool async = true) const;
-    Type* getRayDispatchGlobalDataPtrTy(Module &M);
+    Type* getRayDispatchGlobalDataPtrTy(Module &M, IGC::ADDRESS_SPACE Addrspace);
 
     ConstantInt* supportStochasticLod();
 

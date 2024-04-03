@@ -1,13 +1,12 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2021 Intel Corporation
+Copyright (C) 2019-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
 #include "IGC/common/StringMacros.hpp"
-#include "IGC/AdaptorCommon/RayTracing/RTBuilder.h"
 #include <map>
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/IRBuilder.h>
@@ -17,8 +16,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenPublicEnums.h"
 #include "Probe/Assertion.h"
 #include "IGC/AdaptorCommon/RayTracing/RTBuilder.h"
-#include "IGC/AdaptorCommon/RayTracing/RTStackFormat.h"
-#include "IGC/AdaptorCommon/RayTracing/API/RayDispatchGlobalData.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -51,10 +48,18 @@ namespace {
   };
 }
 
+static Value* castToRTGlobalsTy(RTBuilder& RTB, Value* V) {
+    // Cast explicit global buffer pointer type to the type used by RTBuilder.
+    auto* M = RTB.GetInsertBlock()->getModule();
+    auto GlobalPtrTy = RTB.getRayDispatchGlobalDataPtrTy(
+        *M, ADDRESS_SPACE_GLOBAL);
+    return RTB.CreatePointerCast(V, GlobalPtrTy);
+}
+
 char ResolveOCLRaytracingBuiltins::ID = 0;
 
 ResolveOCLRaytracingBuiltins::ResolveOCLRaytracingBuiltins() :
-    ModulePass(ID), m_pCtx(nullptr), m_builder(nullptr) {
+    ModulePass(ID) {
     initializeResolveOCLRaytracingBuiltinsPass(*PassRegistry::getPassRegistry());
 }
 
@@ -62,25 +67,28 @@ bool ResolveOCLRaytracingBuiltins::runOnModule(Module& M) {
     m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     m_callsToReplace.clear();
 
-    IGCIRBuilder<> builder(M.getContext());
+    // Fills up the m_CallsToReplace with all instances of calls to kernels in the functionHandlersMap.
+    visit(M);
+
+    if (m_callsToReplace.empty())
+        return false;
+
+    if (!m_pCtx->platform.supportRayTracing()) {
+        IGC_ASSERT_MESSAGE(0, "Raytracing extensions used on unsupported platform!");
+        m_pCtx->EmitError("OCL raytracing extensions can be used only on supported platform", *m_callsToReplace.begin());
+        return false;
+    }
+
+    RTBuilder builder(M.getContext(), *m_pCtx);
     m_builder = &builder;
+    // Disable optimisation assuming BVHLevels=2
+    m_builder->setDisableRTGlobalsKnownValues(true);
 
     // intel_rt_production extension uses intel_ray_query_opaque_t which cannot be defined in BiF Library
     defineOpaqueTypes();
 
-    // Fills up the m_CallsToReplace with all instances of calls to kernels in the functionHandlersMap.
-    visit(M);
-
-    if (m_callsToReplace.size() > 0) {
-        if (!m_pCtx->platform.supportRayTracing()) {
-            IGC_ASSERT_MESSAGE(0, "Raytracing extensions used on unsupported platform!");
-            m_pCtx->EmitError("OCL raytracing extensions can be used only on supported platform", *m_callsToReplace.begin());
-            return false;
-        }
-
-        constexpr uint32_t AllocSize = RTStackFormat::getSyncStackSize();
-        m_pCtx->getModuleMetaData()->rtInfo.RayQueryAllocSizeInBytes = AllocSize;
-    }
+    constexpr uint32_t AllocSize = RTStackFormat::getSyncStackSize();
+    m_pCtx->getModuleMetaData()->rtInfo.RayQueryAllocSizeInBytes = AllocSize;
 
     bool found_regular_function = false;
     auto& FuncMap = m_pCtx->getModuleMetaData()->FuncMD;
@@ -127,10 +135,10 @@ bool ResolveOCLRaytracingBuiltins::runOnModule(Module& M) {
         }
     }
 
-    return m_callsToReplace.size() > 0;
+    return true;
 }
 
-void ResolveOCLRaytracingBuiltins::defineOpaqueTypes(){
+void ResolveOCLRaytracingBuiltins::defineOpaqueTypes() {
     Module* M = m_pCtx->getModule();
     LLVMContext& C = M->getContext();
 
@@ -186,28 +194,19 @@ Where DSSID is an index which uniquely identifies the DSS in the machine (across
 
 */
 void ResolveOCLRaytracingBuiltins::handleGetRtStack(CallInst& callInst) {
+  m_builder->SetInsertPoint(&callInst);
   IGC_ASSERT(callInst.getType()->isPointerTy());
-  auto rtDispatchGlobals = callInst.getArgOperand(0);
-
-  // Calculate:
-  // syncBase = RTDispatchGlobals.rtMemBasePtr - (DSSID * NUM_SIMD_LANES_PER_DSS + StackID + 1)*syncStackSize;
-  RTBuilder rtbuilder(m_builder->getContext(), *m_pCtx);
-  rtbuilder.SetInsertPoint(&callInst);
-
-  // RTBuilder uses GEP instructions on the global pointer for some operations.
-  // Cast explicit global buffer pointer type to the type used by RTBuilder.
-  auto GlobalPtrTy = rtbuilder.getRayDispatchGlobalDataPtrTy(*callInst.getModule());
-  rtDispatchGlobals = rtbuilder.CreatePointerCast(rtDispatchGlobals, GlobalPtrTy);
+  auto *rtDispatchGlobals = castToRTGlobalsTy(*m_builder, callInst.getArgOperand(0));
 
   // By default RTBuilder uses an implicit global buffer pointer.
   // OCL extensions use explicit buffer.
-  rtbuilder.setGlobalBufferPtr(rtDispatchGlobals);
+  m_builder->setGlobalBufferPtr(rtDispatchGlobals);
 
-  // Disable optimisation used on DX path.
-  rtbuilder.setDisableRTGlobalsKnownValues(true);
+  // Calculate:
+  // syncBase = RTDispatchGlobals.rtMemBasePtr - (DSSID * NUM_SIMD_LANES_PER_DSS + StackID + 1)*syncStackSize;
 
-  auto rtMemBasePtr = rtMemBasePtrGetter(rtDispatchGlobals);
-  Value* stackOffset = rtbuilder.CreateZExt(rtbuilder.getSyncStackOffset(), rtMemBasePtr->getType());
+  auto* rtMemBasePtr = m_builder->getRtMemBasePtr();
+  Value* stackOffset = m_builder->CreateZExt(m_builder->getSyncStackOffset(), rtMemBasePtr->getType());
   Value* syncBase = m_builder->CreateSub(rtMemBasePtr, stackOffset, "syncBase");
 
   // Cast to resulting pointer
@@ -252,11 +251,13 @@ void ResolveOCLRaytracingBuiltins::handleGetGlobalBTDStack(CallInst& callInst) {
 }
 
 void ResolveOCLRaytracingBuiltins::handleGetBTDStack(CallInst& callInst, const bool isGlobal) {
+  m_builder->SetInsertPoint(&callInst);
   IGC_ASSERT(callInst.getType()->isPointerTy());
-  auto rtDispatchGlobals = callInst.getArgOperand(0);
-  Value* rtMemBasePtr = rtMemBasePtrGetter(rtDispatchGlobals);
-  Value* stackSizePerRay = stackSizePerRayGetter(rtDispatchGlobals);
-  Value* numDSSStacks = numDSSRTStacksGetter(rtDispatchGlobals);
+  auto *rtDispatchGlobals = castToRTGlobalsTy(*m_builder, callInst.getArgOperand(0));
+  m_builder->setGlobalBufferPtr(rtDispatchGlobals);
+  Value* rtMemBasePtr = m_builder->getRtMemBasePtr();
+  Value* stackSizePerRay = m_builder->getStackSizePerRay();
+  Value* numDSSStacks = m_builder->getNumDSSRTStacks();
   Value* dssID = getIntrinsicValue(GenISAIntrinsic::GenISA_dual_subslice_id);
 
   stackSizePerRay = m_builder->CreateZExt(stackSizePerRay, m_builder->getInt64Ty());
@@ -279,30 +280,6 @@ void ResolveOCLRaytracingBuiltins::handleGetBTDStack(CallInst& callInst, const b
   callInst.eraseFromParent();
 }
 
-// Note: this can be merged with RTBuilder::CreateLSCFence()
-// once we use RTBuilder in this file.
-CallInst* ResolveOCLRaytracingBuiltins::CreateLSCFence(
-    llvm::IRBuilder<>* IRB,
-    LSC_SFID SFID,
-    LSC_SCOPE Scope,
-    LSC_FENCE_OP FenceOp)
-{
-    Function* pFunc = GenISAIntrinsic::getDeclaration(
-        IRB->GetInsertBlock()->getModule(),
-        GenISAIntrinsic::GenISA_LSCFence);
-
-    Value* VSFID  = IRB->getInt32(SFID);
-    Value* VScope = IRB->getInt32(Scope);
-    Value* VOp    = IRB->getInt32(FenceOp);
-
-    Value* Args[] =
-    {
-        VSFID, VScope, VOp
-    };
-
-    return IRB->CreateCall(pFunc, Args);
-}
-
 /*
 Handler for
 rtfence_t __builtin_IB_intel_dispatch_trace_ray_query(
@@ -318,12 +295,13 @@ The compiler will implement this function by assembling the inputs into a RT mes
 The return value of this function is a sync object which will be used by the kernel to synchronize the RT message.
 */
 void ResolveOCLRaytracingBuiltins::handleDispatchTraceRayQuery(CallInst& callInst) {
+  m_builder->SetInsertPoint(&callInst);
   IGC_ASSERT(callInst.getType()->isPointerTy());
   IGC_ASSERT(IGCLLVM::getNumArgOperands(&callInst) == 3);
 
   // Insert a ugm fence prior to send.rta to ensure RTUnit has accesss to
   // current data.
-  CreateLSCFence(m_builder, LSC_UGM, LSC_SCOPE_LOCAL, LSC_FENCE_OP_NONE);
+  m_builder->CreateLSCFence(LSC_UGM, LSC_SCOPE_LOCAL, LSC_FENCE_OP_NONE);
 
   auto rtDispatchGlobals = callInst.getArgOperand(0);
   auto bvhLevel = callInst.getArgOperand(1);
@@ -341,7 +319,7 @@ void ResolveOCLRaytracingBuiltins::handleDispatchTraceRayQuery(CallInst& callIns
   Value* payload = m_builder->CreateOr(bvhLevel, traceRayCtrl, VALUE_NAME("traceRayQueryPayload"));
 
   SmallVector<Value*, 4> Args;
-  
+
   Args.push_back(rtDispatchGlobals);
   Args.push_back(payload);
 
@@ -352,7 +330,7 @@ void ResolveOCLRaytracingBuiltins::handleDispatchTraceRayQuery(CallInst& callIns
   fenceValue = m_builder->CreateIntToPtr(fenceValue, callInst.getType());
   if (m_pCtx->platform.RTFenceWAforBkModeEnabled())
   {
-      CreateLSCFence(m_builder, LSC_UGM, LSC_SCOPE_GPU, LSC_FENCE_OP_EVICT);
+      m_builder->CreateLSCFence(LSC_UGM, LSC_SCOPE_GPU, LSC_FENCE_OP_EVICT);
   }
   callInst.replaceAllUsesWith(fenceValue);
   callInst.eraseFromParent();
@@ -368,6 +346,7 @@ The kernel must pass the fence object returned by the ray dispatch query functio
 to this sync function prior to reading any results from the RT Stack
 */
 void ResolveOCLRaytracingBuiltins::handleRTSync(CallInst& callInst) {
+  m_builder->SetInsertPoint(&callInst);
   auto fence = m_builder->CreatePtrToInt(callInst.getOperand(0), m_builder->getInt32Ty());
   getIntrinsicValue(GenISAIntrinsic::GenISA_ReadTraceRaySync, fence);
   callInst.eraseFromParent();
@@ -381,10 +360,10 @@ Description:
 Returns IMPLICIT_RT_GLOBAL_BUFFER implicit argument.
 */
 void ResolveOCLRaytracingBuiltins::handleGetRTGlobalBuffer(llvm::CallInst& callInst) {
-    RTBuilder rtbuilder(m_builder->getContext(), *m_pCtx);
-    rtbuilder.SetInsertPoint(&callInst);
-    auto v = rtbuilder.getGlobalBufferPtr();
-    auto c = rtbuilder.CreateBitCast(v, callInst.getType());
+    m_builder->SetInsertPoint(&callInst);
+    m_builder->setGlobalBufferPtr(nullptr);
+    auto v = m_builder->getGlobalBufferPtr(ADDRESS_SPACE_GLOBAL);
+    auto c = m_builder->CreateBitCast(v, callInst.getType());
     callInst.replaceAllUsesWith(c);
     callInst.eraseFromParent();
 }
@@ -399,23 +378,22 @@ Allocates private memory for rayquery object and stores all it's initializer
 values passed as argument to __builtin_IB_intel_init_ray_query.
 */
 void ResolveOCLRaytracingBuiltins::handleInitRayQuery(llvm::CallInst& callInst) {
-    RTBuilder rtbuilder(m_builder->getContext(), *m_pCtx);
     Function* F = callInst.getFunction();
-    rtbuilder.SetInsertPoint(&*F->getEntryBlock().getFirstInsertionPt());
+    m_builder->SetInsertPoint(&*F->getEntryBlock().getFirstInsertionPt());
 
     unsigned numArgs = IGCLLVM::getNumArgOperands(&callInst);
     IGC_ASSERT(numArgs == 5);
 
     auto* allocaType = IGCLLVM::getNonOpaquePtrEltTy(callInst.getType());
-    auto* alloca = rtbuilder.CreateAlloca(allocaType);
+    auto* alloca = m_builder->CreateAlloca(allocaType);
 
-    rtbuilder.SetInsertPoint(&callInst);
+    m_builder->SetInsertPoint(&callInst);
 
     auto storeToAlloca = [&](unsigned argIndex)
     {
-        auto ptr = rtbuilder.CreateGEP(alloca, { rtbuilder.getInt32(0), rtbuilder.getInt32(argIndex) });
+        auto ptr = m_builder->CreateGEP(alloca, { m_builder->getInt32(0), m_builder->getInt32(argIndex) });
         auto arg = callInst.getOperand(argIndex);
-        rtbuilder.CreateStore(arg, ptr);
+        m_builder->CreateStore(arg, ptr);
     };
 
     for (unsigned argIndex = 0; argIndex < numArgs; argIndex++)
@@ -434,8 +412,7 @@ Description:
 Stores new values to rayquery alloca
 */
 void ResolveOCLRaytracingBuiltins::handleUpdateRayQuery(llvm::CallInst& callInst) {
-    RTBuilder rtbuilder(m_builder->getContext(), *m_pCtx);
-    rtbuilder.SetInsertPoint(&callInst);
+    m_builder->SetInsertPoint(&callInst);
 
     unsigned numArgs = IGCLLVM::getNumArgOperands(&callInst);
     IGC_ASSERT(numArgs == 6);
@@ -444,9 +421,9 @@ void ResolveOCLRaytracingBuiltins::handleUpdateRayQuery(llvm::CallInst& callInst
 
     for (unsigned argIndex = 1; argIndex < numArgs; argIndex++)
     {
-        auto* ptr = rtbuilder.CreateGEP(rayQuery, { rtbuilder.getInt32(0), rtbuilder.getInt32(argIndex - 1) });
+        auto* ptr = m_builder->CreateGEP(rayQuery, { m_builder->getInt32(0), m_builder->getInt32(argIndex - 1) });
         Value* arg = callInst.getOperand(argIndex);
-        rtbuilder.CreateStore(arg, ptr);
+        m_builder->CreateStore(arg, ptr);
     }
 
     callInst.eraseFromParent();
@@ -464,8 +441,7 @@ Description:
 Loads queried value from rayquery alloca
 */
 void ResolveOCLRaytracingBuiltins::handleQuery(llvm::CallInst& callInst) {
-    RTBuilder rtbuilder(m_builder->getContext(), *m_pCtx);
-    rtbuilder.SetInsertPoint(&callInst);
+    m_builder->SetInsertPoint(&callInst);
 
     enum RayQueryArgsOrder
     {
@@ -488,39 +464,14 @@ void ResolveOCLRaytracingBuiltins::handleQuery(llvm::CallInst& callInst) {
     Value* rayQuery = callInst.getArgOperand(0);
 
     unsigned argIndex = builtinToArgIndex.at(callInst.getCalledFunction()->getName().str());
-    auto* ptr = rtbuilder.CreateGEP(rayQuery, { rtbuilder.getInt32(0), rtbuilder.getInt32(argIndex) });
-    auto* queriedValue = rtbuilder.CreateLoad(ptr);
+    auto* ptr = m_builder->CreateGEP(rayQuery, { m_builder->getInt32(0), m_builder->getInt32(argIndex) });
+    auto* queriedValue = m_builder->CreateLoad(ptr);
 
     callInst.replaceAllUsesWith(queriedValue);
     callInst.eraseFromParent();
 }
 
 // ---- Helper functions ----
-
-Instruction* ResolveOCLRaytracingBuiltins::loadFromOffset(Value* basePtr, const size_t offset, const size_t typeSizeInBytes, StringRef valName = "") {
-  IGC_ASSERT(isa<PointerType>(basePtr->getType()));
-  Value* ptrAsInt = m_builder->CreatePtrToInt(basePtr, m_builder->getInt64Ty());
-  Value* intWithOffset = m_builder->CreateAdd(ptrAsInt, m_builder->getInt64(offset));
-  Type* resType = m_builder->getIntNTy(typeSizeInBytes * 8);
-  Value* ptrWithOffset = m_builder->CreateIntToPtr(intWithOffset,
-    PointerType::get(resType, basePtr->getType()->getPointerAddressSpace()));
-  Instruction* loadedVal = m_builder->CreateLoad(ptrWithOffset, valName);
-  return loadedVal;
-}
-
-#define RT_DISPATCH_GETTER_DEF(FieldName) \
-Instruction* ResolveOCLRaytracingBuiltins::FieldName##Getter(Value* rtDispatchGlobalsValue) {  \
-  constexpr size_t offset = offsetof(RayDispatchGlobalData::RT::Xe, FieldName);                \
-  constexpr size_t typeSize = sizeof(((RayDispatchGlobalData::RT::Xe*)0)->FieldName);          \
-  return loadFromOffset(rtDispatchGlobalsValue, offset, typeSize, #FieldName);                 \
-}
-
-RT_DISPATCH_GETTER_DEF(rtMemBasePtr)
-RT_DISPATCH_GETTER_DEF(maxBVHLevels)
-RT_DISPATCH_GETTER_DEF(stackSizePerRay)
-RT_DISPATCH_GETTER_DEF(numDSSRTStacks)
-
-#undef RT_DISPATCH_GETTER_DEF
 
 Value* ResolveOCLRaytracingBuiltins::getIntrinsicValue(GenISAIntrinsic::ID intrinsicId, ArrayRef<Value*> args) {
   std::vector<Type*> types;

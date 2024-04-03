@@ -92,6 +92,28 @@ Value* RTBuilder::getRtMemBasePtr(void)
     return _get_rtMemBasePtr_Xe(VALUE_NAME("rtMemBasePtr"));
 }
 
+Value* RTBuilder::getStackSizePerRay(void)
+{
+#define STYLE(X)                                                    \
+    static_assert(                                                  \
+        offsetof(RayDispatchGlobalData::RT::Xe, stackSizePerRay) == \
+        offsetof(RayDispatchGlobalData::RT::X,  stackSizePerRay));
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    return _get_stackSizePerRay_Xe(VALUE_NAME("stackSizePerRay"));
+}
+
+Value* RTBuilder::getNumDSSRTStacks(void)
+{
+#define STYLE(X)                                                   \
+    static_assert(                                                 \
+        offsetof(RayDispatchGlobalData::RT::Xe, numDSSRTStacks) == \
+        offsetof(RayDispatchGlobalData::RT::X,  numDSSRTStacks));
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    return _get_numDSSRTStacks_Xe(VALUE_NAME("numDSSRTStacks"));
+}
+
 
 Value* RTBuilder::getMaxBVHLevels(void)
 {
@@ -1508,7 +1530,7 @@ void RTBuilder::setDereferenceable(CallInst* CI, uint32_t Size)
     CI->setAttributes(AL);
 }
 
-Value* RTBuilder::getGlobalBufferPtr()
+Value* RTBuilder::getGlobalBufferPtr(IGC::ADDRESS_SPACE Addrspace)
 {
     // If explicit GlobalBuffer pointer is set, use it instead
     // of getting it via intrinsic.
@@ -1519,7 +1541,8 @@ Value* RTBuilder::getGlobalBufferPtr()
 
     auto* M = this->GetInsertBlock()->getModule();
 
-    auto* PtrTy = this->getRayDispatchGlobalDataPtrTy(*M);
+    auto* PtrTy = this->getRayDispatchGlobalDataPtrTy(
+        *M, Addrspace);
 
     Function* Func = GenISAIntrinsic::getDeclaration(
         M,
@@ -1716,12 +1739,9 @@ Type* RTBuilder::getRTStack2PtrTy(
     return lazyGetRTType(*Ctx.getModule(), RTType, addTy);
 }
 
-Type* RTBuilder::getRayDispatchGlobalDataPtrTy(Module &M)
+Type* RTBuilder::getRayDispatchGlobalDataPtrTy(
+    Module &M, IGC::ADDRESS_SPACE Addrspace)
 {
-    uint32_t Addrspace = (Ctx.type == ShaderType::OPENCL_SHADER) ?
-        ADDRESS_SPACE_GLOBAL :
-        ADDRESS_SPACE_CONSTANT;
-
     auto addTy = [&](NamedMDNode *TypesMD, RaytracingType Idx) {
         auto* Ty = _gettype_RayDispatchGlobalData(M);
         return setRTTypeMD(

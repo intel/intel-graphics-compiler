@@ -821,6 +821,24 @@ auto* _get_maxBVHLevels_Xe(const Twine& _ReturnName = "")
   return V_2;
 }
 
+auto* _get_stackSizePerRay_Xe(const Twine& _ReturnName = "")
+{
+  auto* V_0 = getGlobalBufferPtr();
+  auto* V_1 = CreateInBoundsGEP(V_0, { getInt64(0), getInt32(0), getInt32(0), getInt32(2), getInt32(0) });
+  auto* V_2 = CreateLoad(V_1, _ReturnName);
+  setInvariantLoad(V_2);
+  return V_2;
+}
+
+auto* _get_numDSSRTStacks_Xe(const Twine& _ReturnName = "")
+{
+  auto* V_0 = getGlobalBufferPtr();
+  auto* V_1 = CreateInBoundsGEP(V_0, { getInt64(0), getInt32(0), getInt32(0), getInt32(3), getInt32(0) });
+  auto* V_2 = CreateLoad(V_1, _ReturnName);
+  setInvariantLoad(V_2);
+  return V_2;
+}
+
 auto* _get_statelessScratchPtr(const Twine& _ReturnName = "")
 {
   auto* V_0 = getGlobalBufferPtr();

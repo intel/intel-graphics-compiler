@@ -19,6 +19,10 @@ SPDX-License-Identifier: MIT
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "visa/include/visa_igc_common_header.h"
 
+namespace llvm {
+    class RTBuilder;
+}
+
 namespace IGC {
 
   class ResolveOCLRaytracingBuiltins : public llvm::ModulePass, public llvm::InstVisitor<ResolveOCLRaytracingBuiltins> {
@@ -53,30 +57,13 @@ namespace IGC {
     void handleQuery(llvm::CallInst& callInst);
 
   private:
-    CodeGenContext* m_pCtx;
+    CodeGenContext* m_pCtx = nullptr;
     std::vector<llvm::CallInst*> m_callsToReplace;
-    IGCLLVM::IRBuilder<>* m_builder;
+    llvm::RTBuilder* m_builder = nullptr;
 
-    llvm::Instruction* loadFromOffset(llvm::Value* basePtr, const size_t offset, const size_t typeSizeInBytes, llvm::StringRef valName);
     void handleGetBTDStack(llvm::CallInst& callInst, const bool isGlobal);
 
     void defineOpaqueTypes();
-
-    llvm::CallInst* CreateLSCFence(
-        llvm::IRBuilder<>* IRB,
-        LSC_SFID SFID,
-        LSC_SCOPE Scope,
-        LSC_FENCE_OP FenceOp);
-
-#define RT_DISPATCH_GETTER_DECL(FieldName) \
-    llvm::Instruction* FieldName##Getter(llvm::Value* rtDispatchGlobalsValue);
-
-    RT_DISPATCH_GETTER_DECL(rtMemBasePtr)
-    RT_DISPATCH_GETTER_DECL(maxBVHLevels)
-    RT_DISPATCH_GETTER_DECL(stackSizePerRay)
-    RT_DISPATCH_GETTER_DECL(numDSSRTStacks)
-
-#undef RT_DISPATCH_GETTER_DECL
 
     llvm::Value* getIntrinsicValue(llvm::GenISAIntrinsic::ID intrinsicId, llvm::ArrayRef<llvm::Value*> args = llvm::None);
   };
