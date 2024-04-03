@@ -28,6 +28,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/ConstantCoalescing.hpp"
 #include "Compiler/CISACodeGen/CheckInstrTypes.hpp"
 #include "Compiler/CISACodeGen/EstimateFunctionSize.h"
+#include "Compiler/CISACodeGen/GenerateBlockMemOpsPass.hpp"
 #include "Compiler/CISACodeGen/GenerateFrequencyData.hpp"
 #include "Compiler/CISACodeGen/PassTimer.hpp"
 #include "Compiler/CISACodeGen/FixAddrSpaceCast.h"
@@ -1395,6 +1396,11 @@ void OptimizeIR(CodeGenContext* const pContext)
         mpm.add(new IGCConstProp());
         GFX_ONLY_PASS { mpm.add(createTranslateToProgrammableOffsetsPass()); }
 
+        // This pass needs to be extended for other devices
+        if (pContext->platform.getPlatformInfo().eProductFamily == IGFX_PVC)
+        {
+            mpm.add(new GenerateBlockMemOpsPass());
+        }
         mpm.add(new BlockMemOpAddrScalarizationPass());
 
         mpm.add(new CustomSafeOptPass());

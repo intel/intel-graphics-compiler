@@ -63,6 +63,7 @@ void initializeGASResolvingPass(llvm::PassRegistry&);
 void initializeGASRetValuePropagatorPass(llvm::PassRegistry&);
 void initializeStaticGASResolutionPass(llvm::PassRegistry&);
 void initializeLowerGPCallArgPass(llvm::PassRegistry&);
+void initializeGenerateBlockMemOpsPassPass(llvm::PassRegistry&);
 void initializeGenericAddressAnalysisPass(llvm::PassRegistry&);
 void initializeGenericAddressDynamicResolutionPass(llvm::PassRegistry&);
 void initializeGenFDIVEmulationPass(llvm::PassRegistry&);
