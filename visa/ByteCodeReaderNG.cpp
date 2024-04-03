@@ -817,9 +817,7 @@ static void readInstructionDataportNG(unsigned &bytePos, const char *buf,
   }
   case ISA_GATHER:
   case ISA_SCATTER: {
-    uint8_t elt_size = (ISA_SCATTER == opcode || ISA_GATHER == opcode)
-                           ? readPrimitiveOperandNG<uint8_t>(bytePos, buf)
-                           : 0;
+    uint8_t elt_size = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
     if (ISA_GATHER == opcode) {
       readPrimitiveOperandNG<uint8_t>(bytePos, buf);
     } // modifier

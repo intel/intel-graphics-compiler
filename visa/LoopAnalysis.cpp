@@ -1068,15 +1068,15 @@ void VarReferences::run() {
           if (topdcl) {
             auto &Uses = VarRefs[topdcl].second;
             Uses.push_back(std::make_tuple(inst, bb));
-          }
 
-          if (p2a && src->isIndirect()) {
-            auto *pointees = p2a->getAllInPointsTo(topdcl->getRegVar());
-            vISA_ASSERT(pointees, "expecting valid pointee list");
-            for (const auto &pointee : *pointees) {
-              auto &Uses =
-                  VarRefs[pointee.var->getDeclare()->getRootDeclare()].second;
-              Uses.push_back(std::make_tuple(inst, bb));
+            if (p2a && src->isIndirect()) {
+              auto *pointees = p2a->getAllInPointsTo(topdcl->getRegVar());
+              vISA_ASSERT(pointees, "expecting valid pointee list");
+              for (const auto &pointee : *pointees) {
+                auto &Uses =
+                    VarRefs[pointee.var->getDeclare()->getRootDeclare()].second;
+                Uses.push_back(std::make_tuple(inst, bb));
+              }
             }
           }
         }

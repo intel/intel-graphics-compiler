@@ -752,9 +752,9 @@ void LSCFuncsResolution::verifyBlock2DAddressPayload() {
         }
 
         for (auto V : worklist) {
-            GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(V);
             if (!V)
                 continue;
+            GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(V);
             rootAPMap[GII] = rootGII;
         }
 
