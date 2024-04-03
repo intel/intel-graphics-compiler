@@ -703,7 +703,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
 
     // Run MemOpt
     if (!isOptDisabled &&
-        ctx.m_instrTypes.hasLoadStore && IGC_IS_FLAG_DISABLED(DisableMemOpt)) {
+        ctx.m_instrTypes.hasLoadStore && IGC_IS_FLAG_DISABLED(DisableMemOpt) && !ctx.getModuleMetaData()->disableMemOptforNegativeOffsetLoads) {
 
 #if LLVM_VERSION_MAJOR <= 10
         if (ctx.type == ShaderType::OPENCL_SHADER)

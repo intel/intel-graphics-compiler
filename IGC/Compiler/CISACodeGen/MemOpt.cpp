@@ -1108,14 +1108,6 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
         return (int64_t)0;
     };
 
-    // Disable merge if disableMemOptforNegativeOffsetLoads flag is set and we
-    // cannot prove that the SCEV expression is positive.
-    auto disableMergeLoadIfNegativeOffset = [&](const SCEV*& expr)->bool
-    {
-        return CGC->getModuleMetaData()->disableMemOptforNegativeOffsetLoads &&
-            !SE->isKnownNonNegative(expr);
-    };
-
     // Push the leading load into the list to be optimized (after
     // canonicalization.) It will be swapped with the new one if it's merged.
     ToOpt.push_back(LeadingLoad);
@@ -1188,10 +1180,6 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
         }
     }
 
-    // Check for potentially negative pointer
-    if (disableMergeLoadIfNegativeOffset(LeadingPtr))
-        return false;
-
     // LoadInst, Offset, MemRefListTy::iterator, LeadingLoad's int2PtrOffset
     SmallVector<std::tuple<LoadInst*, int64_t, MemRefListTy::iterator>, 8>
         LoadsToMerge;
@@ -1260,10 +1248,6 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
 
         const SCEV* NextPtr = SE->getSCEV(NextLoad->getPointerOperand());
         if (isa<SCEVCouldNotCompute>(NextPtr))
-            continue;
-
-        // LeadingPtr is known non-negative, skip potentially negative NextPtr
-        if (disableMergeLoadIfNegativeOffset(NextPtr))
             continue;
 
         int64_t Off = 0;
