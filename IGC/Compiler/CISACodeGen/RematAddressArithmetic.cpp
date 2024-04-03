@@ -220,6 +220,8 @@ void CloneAddressArithmetic::computeFlow(llvm::Instruction* I) {
     BFSQ.push(I);
     unsigned int NumOfUses = Uses[I];
 
+    std::unordered_set<llvm::Instruction *> Explored;
+
     while (!BFSQ.empty()) {
 
         llvm::Instruction *CurrI = BFSQ.front();
@@ -233,11 +235,14 @@ void CloneAddressArithmetic::computeFlow(llvm::Instruction* I) {
             bool NotConstant = !llvm::isa<llvm::Constant>(Op);
             bool NotUniform = IGC_IS_FLAG_ENABLED(RematRespectUniformity) ? !WI->isUniform(Op) : true;
             bool AddressArithmetic = isAddressArithmetic(Op);
+            bool NotExplored = !Explored.count(Op);
 
-            if (NotConstant && NotPHI && AddressArithmetic && NotUniform) {
-                FlowMap[Op] = FlowMap[Op] + NumOfUses;
-                BFSQ.push(Op);
-            }
+            bool Skip = !(NotConstant && NotPHI && AddressArithmetic && NotUniform && NotExplored);
+            if (Skip) continue;
+
+            FlowMap[Op] = FlowMap[Op] + NumOfUses;
+            Explored.insert(Op);
+            BFSQ.push(Op);
         }
     }
 }
@@ -254,6 +259,7 @@ CloneAddressArithmetic::collectRematChain(llvm::Instruction* I, unsigned int Num
     PRINT_LOG("Collect chain for: "); PRINT_INST(I); PRINT_LOG_NL("");
 
     llvm::SmallVector<unsigned int, 4> StateVector;
+    std::unordered_set<llvm::Instruction *> Explored;
 
     // we are travdrsing ssa-chain for address arithmetic
     while (!BFSQ.empty()) {
@@ -264,8 +270,7 @@ CloneAddressArithmetic::collectRematChain(llvm::Instruction* I, unsigned int Num
         for (unsigned int i = 0; i < CurrI->getNumOperands(); ++i) {
 
             Instruction *Op = llvm::dyn_cast<Instruction>(CurrI->getOperand(i));
-            if( !Op)
-                continue;
+            if (!Op) continue;
 
             PRINT_LOG("Candidate: [" << FlowMap[Op] << "] "); PRINT_INST(Op);
 
@@ -274,16 +279,21 @@ CloneAddressArithmetic::collectRematChain(llvm::Instruction* I, unsigned int Num
             bool SameBB = IGC_IS_FLAG_ENABLED(RematSameBBScope) ? Op->getParent() == I->getParent() : true;
             bool NotUniform = IGC_IS_FLAG_ENABLED(RematRespectUniformity) ? !WI->isUniform(Op) : true;
             bool AddressArithmetic = isAddressArithmetic(Op);
-
             bool NotTooManyUses = FlowMap[Op] <= NumOfUsesLimit;
+            bool NotExplored = !Explored.count(Op);
 
-            if (SameBB && NotConstant && NotPHI && NotTooManyUses && AddressArithmetic && NotUniform) {
-                BFSQ.push(Op);
-                RematVector.push_back(Op);
-                PRINT_LOG_NL("\t\t --> Accepted");
+            PRINT_LOG("\t\t " << "BB:" << SameBB << "Uses:" << NotTooManyUses << "Ar:" << AddressArithmetic << "Un:" << NotUniform);
+            bool Skip = !(SameBB && NotConstant && NotPHI && NotTooManyUses && AddressArithmetic && NotUniform && NotExplored);
+            if (Skip) {
+                PRINT_LOG_NL("\t\t --> Rejected");
                 continue;
             }
-            PRINT_LOG_NL("\t\t --> Rejected: " << "BB:" << SameBB << "Uses:" << NotTooManyUses << "Ar:" << AddressArithmetic << "Un:" << NotUniform);
+
+            BFSQ.push(Op);
+            Explored.insert(Op);
+            RematVector.push_back(Op);
+
+            PRINT_LOG_NL("\t\t --> Accepted");
         }
     }
 
@@ -540,8 +550,10 @@ unsigned int CloneAddressArithmetic::collectFlow(RematSet& ToProcess, Function& 
     float Coefficient = 0.01f*(float)Base;
     unsigned int Result = (unsigned int)((float)FlowBudget*Coefficient);
 
-    for (auto el : ToProcess)
+    for (auto el : ToProcess) {
+        PRINT_LOG("Start to compute flow: "); PRINT_INST_NL(el);
         computeFlow((Instruction*)el);
+    }
 
     if(DEBUG) {
         for (const auto &el : FlowMap) {
@@ -555,25 +567,26 @@ unsigned int CloneAddressArithmetic::collectFlow(RematSet& ToProcess, Function& 
 
 bool CloneAddressArithmetic::greedyRemat(Function &F) {
 
-    bool Result = false;
     if(isRegPressureLow(F))
-        return Result;
+        return false;
 
     initializeLogFile(F);
     countUses(F);
+
     RematSet ToProcess;
     collectInstToProcess(ToProcess, F);
 
     unsigned int FlowThreshold = collectFlow(ToProcess, F);
     writeLog();
-    speculateWholeChain(ToProcess, FlowThreshold);
 
+    speculateWholeChain(ToProcess, FlowThreshold);
     writeLog();
+
     rematerialize(ToProcess, FlowThreshold);
     writeLog();
 
     FlowMap.clear();
-    return Result;
+    return true;
 }
 
 
