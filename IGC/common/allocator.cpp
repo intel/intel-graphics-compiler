@@ -35,7 +35,6 @@ static HANDLE g_heap = NULL;
 static std::atomic<unsigned int> g_alloc_cnt = 0;
 static bool ReadingRegkey = true;
 static bool PHEnabled = false;
-static const char * regkeyPath =  "SOFTWARE\\INTEL\\IGFX\\IGC";
 #endif // _WIN32 || _WIN64
 
 #include "Probe/Assertion.h"
@@ -272,9 +271,27 @@ inline void* CAllocator::Malloc(size_t size)
     //read regkey for once
     if (ReadingRegkey)
     {
-        typedef char debugString[4];
+        HKEY uscKey;
         DWORD value = 0;
-        if (ReadIGCRegistry("EnableIGCPrivateHeap", &value, sizeof(value), regkeyPath, false)) {
+        LONG success = RegOpenKeyExA(
+            HKEY_LOCAL_MACHINE,
+            "SOFTWARE\\INTEL\\IGFX\\IGC",
+            0,
+            KEY_READ,
+            &uscKey);
+
+        if (ERROR_SUCCESS == success)
+        {
+            DWORD dwSize = sizeof(value);
+            success = RegQueryValueExA(
+                uscKey,
+                "EnableIGCPrivateHeap",
+                NULL,
+                NULL,
+                (LPBYTE)&value,
+                &dwSize);
+
+            RegCloseKey(uscKey);
             PHEnabled = value;
         }
         ReadingRegkey = false;

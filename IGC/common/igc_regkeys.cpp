@@ -386,7 +386,6 @@ bool ReadIGCRegistry(
     const char*  pName,
     void*        pValue,
     unsigned int size ,
-    const char * registrykeypath,
     bool readFromEnv)
 {
     // All platforms can retrieve settings from environment
@@ -397,29 +396,50 @@ bool ReadIGCRegistry(
 
 #if defined _WIN32
     LONG success = ERROR_SUCCESS;
-    HKEY uscKey;
-
-    success = RegOpenKeyExA(
-        HKEY_LOCAL_MACHINE,
-        registrykeypath,
-        0,
-        KEY_READ,
-        &uscKey );
-
-    if( ERROR_SUCCESS == success )
+    static std::vector<std::string> registrykeypaths;
+    if (registrykeypaths.empty())
     {
-        DWORD dwSize = size;
-        success = RegQueryValueExA(
-            uscKey,
-            pName,
-            NULL,
-            NULL,
-            (LPBYTE)pValue,
-            &dwSize );
-
-        RegCloseKey( uscKey );
+        registrykeypaths.push_back(IGC_REGISTRY_KEY);
+        std::vector<DEVINST> drivers;
+        std::list<std::string> registrypaths;
+        GetIntelDriverPaths(drivers);
+        for (auto driverInfo : drivers)
+        {
+            std::string driverStoreRegKeyPath = getNewRegistryPath(driverInfo);
+            std::string registryKeyPath = "SYSTEM\\ControlSet001\\Control\\Class\\" + driverStoreRegKeyPath + "\\IGC";
+            registrykeypaths.push_back(registryKeyPath);
+        }
     }
-    return ( ERROR_SUCCESS == success );
+
+    for (const std::string& registrykeypath : registrykeypaths)
+    {
+        HKEY uscKey;
+        success = RegOpenKeyExA(
+            HKEY_LOCAL_MACHINE,
+            registrykeypath.c_str(),
+            0,
+            KEY_READ,
+            &uscKey);
+
+        if (ERROR_SUCCESS == success)
+        {
+            DWORD dwSize = size;
+            success = RegQueryValueExA(
+                uscKey,
+                pName,
+                NULL,
+                NULL,
+                (LPBYTE)pValue,
+                &dwSize);
+
+            RegCloseKey(uscKey);
+        }
+
+        if (ERROR_SUCCESS == success)
+        {
+            return true;
+        }
+    }
 #endif // defined _WIN32
 
     return false;
@@ -1110,10 +1130,35 @@ bool CheckEntryPoint(SRegKeyVariableMetaData& varname)
     return false;
 }
 
+/*****************************************************************************\
+
+Function:
+    GetRegistryKeyValue
+
+Description:
+    Reads a registry variable from the registry
+
+Input:
+    key
+    buffer
+    bufferSize
+
+Output:
+    read status
+
+\*****************************************************************************/
+extern "C" bool IGC_DEBUG_API_CALL GetRegistryKeyValue(const char* key, void* buffer, uint32_t bufferSize)
+{
+    bool isSet = ReadIGCRegistry(
+        key,
+        buffer,
+        bufferSize);
+    return isSet;
+}
+
 static void LoadFromRegKeyOrEnvVarOrOptions(
     const std::string& options = "",
-    bool* RegFlagNameError = nullptr,
-    const std::string& registrykeypath = IGC_REGISTRY_KEY)
+    bool* RegFlagNameError = nullptr)
 {
     SRegKeyVariableMetaData* pRegKeyVariable = (SRegKeyVariableMetaData*)&g_RegKeyList;
     constexpr unsigned NUM_REGKEY_ENTRIES =
@@ -1125,10 +1170,10 @@ static void LoadFromRegKeyOrEnvVarOrOptions(
         std::string nameWithEqual = name;
         nameWithEqual = nameWithEqual + "=";
 
-        bool isSet = ReadIGCRegistry(
+        bool isSet = GetRegistryKeyValue(
             name,
             &value,
-            sizeof(value), registrykeypath.c_str());
+            sizeof(value));
 
         if (isSet)
         {
@@ -1218,18 +1263,6 @@ void LoadRegistryKeys(const std::string& options, bool *RegFlagNameError)
     if(!flagsSet)
     {
         flagsSet = true;
-        // dump out IGC.xml for the registry manager
-#if defined(_WIN64) || defined(_WIN32)
-        std::vector<DEVINST> drivers;
-        std::list<std::string> registrypaths;
-        GetIntelDriverPaths(drivers);
-        for (auto driverInfo : drivers)
-        {
-            std::string driverStoreRegKeyPath = getNewRegistryPath(driverInfo);
-            std::string registryKeyPath = "SYSTEM\\ControlSet001\\Control\\Class\\" + driverStoreRegKeyPath + "\\IGC";
-            LoadFromRegKeyOrEnvVarOrOptions(options, RegFlagNameError, registryKeyPath);
-        }
-#endif
         LoadFromRegKeyOrEnvVarOrOptions(options, RegFlagNameError);
 #if !defined(_DEBUG)
         if (IGC_IS_FLAG_ENABLED(EnableDebugging))
