@@ -386,6 +386,7 @@ public:
   bool needIntraReadSuppressionWA() const
   { return mPlatformModel.platform == Platform::XE; }
 
+
 private:
   // ASSUMES: byte-level tracking for all elements
 
