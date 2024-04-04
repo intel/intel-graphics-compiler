@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "OpenCLKernelCodeGen.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/NamedBarriers/NamedBarriersResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/StackOverflowDetection/StackOverflowDetection.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/LSCFuncs/LSCFuncsResolution.hpp"
 #include "Compiler/CISACodeGen/GenerateFrequencyData.hpp"
 #include "AdaptorCommon/RayTracing/RTStackFormat.h"
 #include "DeSSA.hpp"
@@ -8881,7 +8882,8 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_LSC2DBlockPrefetchAddrPayload:
     case GenISAIntrinsic::GenISA_LSC2DBlockWriteAddrPayload:
     case GenISAIntrinsic::GenISA_LSC2DBlockCreateAddrPayload:
-    case GenISAIntrinsic::GenISA_LSC2DBlockSetBlockXY:
+    case GenISAIntrinsic::GenISA_LSC2DBlockCopyAddrPayload:
+    case GenISAIntrinsic::GenISA_LSC2DBlockSetAddrPayloadField:
         emitLSCIntrinsic(inst);
         break;
     case GenISAIntrinsic::GenISA_dummyInst:
@@ -22782,6 +22784,18 @@ void EmitPass::emitLSC2DBlockOperation(llvm::GenIntrinsicInst* inst)
 
 void EmitPass::emitLSC2DBlockAddrPayload(GenIntrinsicInst* GII)
 {
+    if (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_LSC2DBlockCopyAddrPayload)
+    {
+        CVariable* srcAP = GetSymbol(GII->getOperand(0));
+        IGC_ASSERT(m_destination != srcAP);
+        m_encoder->SetUniformSIMDSize(SIMDMode::SIMD8);
+        m_encoder->SetDstSubReg(0);
+        m_encoder->SetSrcRegion(0, 1, 1, 0);
+        m_encoder->Copy(m_destination, srcAP);
+        m_encoder->Push();
+        return;
+    }
+
     // Surface parameters
     CVariable* Base = GetSymbol(GII->getOperand(0));
     CVariable* WidthM1 = GetSymbol(GII->getOperand(1));
@@ -22795,12 +22809,11 @@ void EmitPass::emitLSC2DBlockAddrPayload(GenIntrinsicInst* GII)
     uint32_t numBlks = (uint32_t)cast<ConstantInt>(GII->getOperand(8))->getZExtValue();
     uint32_t blkDim = (((numBlks-1) << 16) | ((bHeight-1) << 8) | (bWidth-1));
 
-    CVariable* BaseDW = m_currShader->GetNewAlias(Base, ISA_TYPE_D, 0, 2, 1);
+    CVariable* dstQW = m_currShader->GetNewAlias(m_destination, ISA_TYPE_Q, 0, 1, true);
     CVariable* blkDimVar = m_currShader->ImmToVariable(blkDim, ISA_TYPE_D);
-    m_encoder->SetUniformSIMDSize(SIMDMode::SIMD2);
+    m_encoder->SetUniformSIMDSize(SIMDMode::SIMD1);
     m_encoder->SetDstSubReg(0);
-    m_encoder->SetSrcRegion(0, 1, 1, 0);
-    m_encoder->Copy(m_destination, BaseDW);
+    m_encoder->Copy(dstQW, Base);
     m_encoder->Push();
     m_encoder->SetUniformSIMDSize(SIMDMode::SIMD1);
     m_encoder->SetDstSubReg(2);
@@ -22828,23 +22841,56 @@ void EmitPass::emitLSC2DBlockAddrPayload(GenIntrinsicInst* GII)
     m_encoder->Push();
 }
 
-void EmitPass::emitLSC2DSetBlockXY(GenIntrinsicInst* GII)
+void EmitPass::emitLSC2DBlockSetAddrPayloadField(GenIntrinsicInst* GII)
 {
     CVariable* AP = GetSymbol(GII->getOperand(0));
     IGC_ASSERT(AP == m_destination);
-    CVariable* XorY = GetSymbol(GII->getOperand(1));
-    uint32_t IsAddend = (uint32_t)cast<ConstantInt>(GII->getOperand(2))->getZExtValue();
-    uint32_t IsX = (uint32_t)cast<ConstantInt>(GII->getOperand(3))->getZExtValue();
-    m_encoder->SetUniformSIMDSize(SIMDMode::SIMD1);
-    m_encoder->SetDstSubReg(IsX ? 5 : 6);
-    if (IsAddend > 0) {
-        m_encoder->SetSrcSubReg(0, IsX ? 5 : 6);
-        m_encoder->Add(m_destination, m_destination, XorY);
+    int tval = (int)cast<ConstantInt>(GII->getOperand(1))->getZExtValue();
+    LSC2DBlockField Field = (LSC2DBlockField)tval;
+    CVariable* cV = GetSymbol(GII->getOperand(2));
+    uint32_t IsAddend = (uint32_t)cast<ConstantInt>(GII->getOperand(3))->getZExtValue();
+
+    switch (Field) {
+    case LSC2DBlockField::BASE:
+    {
+        CVariable* baseQW = m_currShader->GetNewAlias(m_destination, ISA_TYPE_Q, 0, 1, true);
+        m_encoder->SetUniformSIMDSize(SIMDMode::SIMD1);
+        m_encoder->SetDstSubReg(0);
+        m_encoder->Copy(baseQW, cV);
+        m_encoder->Push();
+        break;
     }
-    else {
-        m_encoder->Copy(m_destination, XorY);
+    case LSC2DBlockField::BLOCKX:
+    case LSC2DBlockField::BLOCKY:
+    {
+        const uint32_t OprdNum = (Field == LSC2DBlockField::BLOCKX ? 5 : 6);
+        m_encoder->SetUniformSIMDSize(SIMDMode::SIMD1);
+        m_encoder->SetDstSubReg(OprdNum);
+        if (IsAddend > 0) {
+            m_encoder->SetSrcSubReg(0, OprdNum);
+            m_encoder->Add(m_destination, m_destination, cV);
+        }
+        else {
+            m_encoder->Copy(m_destination, cV);
+        }
+        m_encoder->Push();
+        break;
     }
-    m_encoder->Push();
+    case LSC2DBlockField::WIDTH:
+    case LSC2DBlockField::HEIGHT:
+    case LSC2DBlockField::PITCH:
+    {
+        const uint32_t OprdNum = (Field == LSC2DBlockField::WIDTH ? 2
+            : (Field == LSC2DBlockField::HEIGHT ? 3 : 4));
+        m_encoder->SetUniformSIMDSize(SIMDMode::SIMD1);
+        m_encoder->SetDstSubReg(OprdNum);
+        m_encoder->Copy(m_destination, cV);
+        m_encoder->Push();
+        break;
+    }
+    default:
+        IGC_ASSERT_MESSAGE(0, "Unknown LSC2DBlock field enum!");
+    }
 }
 
 void EmitPass::emitLSC2DBlockReadWriteWithAddrPayload(GenIntrinsicInst* GII)
@@ -23100,10 +23146,11 @@ void EmitPass::emitLSCIntrinsic(llvm::GenIntrinsicInst* GII)
         emitLSC2DBlockReadWriteWithAddrPayload(GII);
         break;
     case GenISAIntrinsic::GenISA_LSC2DBlockCreateAddrPayload:
+    case GenISAIntrinsic::GenISA_LSC2DBlockCopyAddrPayload:
         emitLSC2DBlockAddrPayload(GII);
         break;
-    case GenISAIntrinsic::GenISA_LSC2DBlockSetBlockXY:
-        emitLSC2DSetBlockXY(GII);
+    case GenISAIntrinsic::GenISA_LSC2DBlockSetAddrPayloadField:
+        emitLSC2DBlockSetAddrPayloadField(GII);
         break;
     default:
         if (isLSCAtomic(iid)) { ////// GenISA_LSCAtomic*

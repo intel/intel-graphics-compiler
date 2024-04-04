@@ -574,7 +574,7 @@ public:
     void emitLSC2DBlockOperation(llvm::GenIntrinsicInst* inst);
     void emitLSC2DBlockAddrPayload(llvm::GenIntrinsicInst* GII);
     void emitLSC2DBlockReadWriteWithAddrPayload(llvm::GenIntrinsicInst* GII);
-    void emitLSC2DSetBlockXY(llvm::GenIntrinsicInst* GII);
+    void emitLSC2DBlockSetAddrPayloadField(llvm::GenIntrinsicInst* GII);
 
     void emitLSCAtomic(llvm::GenIntrinsicInst* inst);
     void emitLSCIntrinsic(llvm::GenIntrinsicInst* GII);

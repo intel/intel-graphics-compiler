@@ -2553,16 +2553,6 @@ static e_alignment GetPreferredAlignmentOnUse(llvm::Value* V, WIAnalysis* WIA,
 e_alignment IGC::GetPreferredAlignment(llvm::Value* V, WIAnalysis* WIA,
     CodeGenContext* pContext)
 {
-    if (GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(V)) {
-        switch (GII->getIntrinsicID()) {
-        case GenISAIntrinsic::GenISA_LSC2DBlockCreateAddrPayload:
-        case GenISAIntrinsic::GenISA_LSC2DBlockSetBlockXY:
-            return (pContext->platform.getGRFSize() == 64) ? EALIGN_32WORD : EALIGN_HWORD;
-        default:
-            break;
-        }
-    }
-
     // So far, non-uniform variables are always naturally aligned.
     if (!WIA->isUniform(V))
         return EALIGN_AUTO;
@@ -3314,7 +3304,6 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool,
             symbolMapping.insert(std::pair<Value*, CVariable*>(value, Alias));
             return Alias;
         }
-
     }
 
     if (m_coalescingEngine) {
@@ -3396,7 +3385,26 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool,
         }
     }
 
-    if (IGC_IS_FLAG_ENABLED(EnableVariableReuse))
+    if (GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(value))
+    {
+        switch (GII->getIntrinsicID()) {
+        case GenISAIntrinsic::GenISA_LSC2DBlockCreateAddrPayload:
+        case GenISAIntrinsic::GenISA_LSC2DBlockCopyAddrPayload:
+        case GenISAIntrinsic::GenISA_LSC2DBlockSetAddrPayloadField:
+        {
+            // Address Payload is opaque, no alias to it. It takes 8DW.
+            auto thisAlign = (m_Platform->getGRFSize() == 64 ? EALIGN_32WORD : EALIGN_HWORD);
+            var = GetNewVariable(8, ISA_TYPE_D, thisAlign,
+                WIBaseClass::UNIFORM_THREAD, value->getName());
+            symbolMapping.insert(std::pair<Value*, CVariable*>(value, var));
+            break;
+        }
+        default:
+            break;
+        }
+    }
+
+    if (!var && IGC_IS_FLAG_ENABLED(EnableVariableReuse))
     {
         // Only for instructions and do not reuse flag variables.
         if (!value->getType()->getScalarType()->isIntegerTy(1))
@@ -3430,7 +3438,7 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool,
     }
 
     symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, var));
-    if (rootValue)
+    if (rootValue && rootValue != value)
     {
         CVariable* aV = var;
         if (IGC_IS_FLAG_ENABLED(EnableDeSSA))

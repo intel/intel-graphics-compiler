@@ -2729,7 +2729,7 @@ Imported_Intrinsics = \
     "None"]],
 ####################################################################################################
 "GenISA_LSC2DBlockCreateAddrPayload": ["Create LSC2DBlock read/write address payload",
-    [("int8",                            "address payload"),
+    [("int",                           "output: address payload placeholder"),
     [("long",                          "surface base offset"),
      ("int",                           "surface base width"),
      ("int",                           "surface base height"),
@@ -2741,19 +2741,23 @@ Imported_Intrinsics = \
      ("int",                           "V - num blocks (2 for simple 2d block read)")],
      "None"]],
 ####################################################################################################
-"GenISA_LSC2DBlockSetBlockXY": ["LSC 2d block : set block x in address payload",
-    [("int8",                          "output address payload"),
-    [("int8",                          "arg0: input address payload"),
-     ("int",                           "arg1: block offset x or y"),
-     ("bool",                          "arg2: false : arg1 is the new offset; "+\
-                                       "       true : offset(arg0) + arg1 is the new offset"),
-     ("bool",                          "arg3: true:  arg1 is offset x; "+\
-                                       "      false: arg1 is offset y")],
-    "None"]],
+"GenISA_LSC2DBlockCopyAddrPayload": ["Copy LSC2DBlock read/write address payload",
+    [("int",                           "output: new address payload placeholder"),
+    [("int",                           "input : address payload to be copied")],
+     "None"]],
+####################################################################################################
+"GenISA_LSC2DBlockSetAddrPayloadField": ["LSC 2d block : set given field in address payload",
+    [("int",                           "output: address payload (AP) placeholder"),
+    [("int",                           "arg0: input address payload placeholder"),
+     ("int",                           "arg1: field name (LSC2DBlockField)"),
+     ("anyint",                        "arg2: field value"),
+     ("bool",                          "arg2: false : AP[arg1] = arg2; "+\
+                                       "       true : AP[arg1] += arg2")],
+     "None"]],
 ####################################################################################################
 "GenISA_LSC2DBlockReadAddrPayload": ["LSC 2d block read with address payload(AP) as a single arg",
     [("anyint",                        ""),
-    [("int8",                          "address payload (AP)"),
+    [("int",                          "address payload (AP) placeholder"),
      ("int",                           "immediate offset x in ext_desc, added to AP's x"),
      ("int",                           "immediate offset y in ext_desc, added to Ap's y"),
      ("int",                           "element size in bits"),
@@ -2768,7 +2772,7 @@ Imported_Intrinsics = \
     ####################################################################################################
 "GenISA_LSC2DBlockWriteAddrPayload": ["LSC 2d block write with address payload(AP) as a single arg",
     [("void",                          "nothing is returned"),
-    [("int8",                          "address payload (AP)"),
+    [("int",                           "address payload (AP) placeholder"),
      ("int",                           "immediate offset x in ext_desc, added to AP's x"),
      ("int",                           "immediate offset y in ext_desc, added to Ap's y"),
      ("int",                           "element size in bits"),
@@ -2784,7 +2788,7 @@ Imported_Intrinsics = \
 ####################################################################################################
 "GenISA_LSC2DBlockPrefetchAddrPayload": ["LSC 2d block prefetch with address payload(AP) as a single arg",
     [("void",                          "nothing is returned"),
-    [("int8",                          "address payload (AP)"),
+    [("int",                           "address payload (AP) placeholder"),
      ("int",                           "immediate offset x in ext_desc, added to AP's x"),
      ("int",                           "immediate offset y in ext_desc, added to Ap's y"),
      ("int",                           "elemement size in bits"),

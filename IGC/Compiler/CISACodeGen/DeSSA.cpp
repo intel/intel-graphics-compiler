@@ -1303,8 +1303,9 @@ DeSSA::CoalesceInsertElements()
 void DeSSA::CoalesceOthers()
 {
     // Coalesce address payload
-    //   1. created by GenISA_LSC2DBlockCreateAddrPayload; or
-    //   2. may be updated by GenISA_LSC2DBlockSetBlockXY
+    //   1. created by GenISA_LSC2DBlockCreateAddrPayload
+    //      or GenISA_LSC2DBlockCopyAddrPayload;
+    //   2. may be updated by GenISA_LSC2DBlockSetAddrPayloadField
     // By design, address payload created originally and later
     // updated should be coalesced and no need to check interference.
     auto push_back_if_absent = [](std::list<Value*>& L, Value* V) {
@@ -1316,7 +1317,7 @@ void DeSSA::CoalesceOthers()
     auto isAddrPayloadUpdater = [](Value* V) {
         GenIntrinsicInst* G = dyn_cast<GenIntrinsicInst>(V);
         if (!G ||
-            G->getIntrinsicID() != GenISAIntrinsic::GenISA_LSC2DBlockSetBlockXY) {
+            G->getIntrinsicID() != GenISAIntrinsic::GenISA_LSC2DBlockSetAddrPayloadField) {
             return false;
         }
         return true;
@@ -1330,31 +1331,32 @@ void DeSSA::CoalesceOthers()
             continue;
         }
         auto GID = GII->getIntrinsicID();
-        if (GID != GenISAIntrinsic::GenISA_LSC2DBlockCreateAddrPayload) {
+        if (GID != GenISAIntrinsic::GenISA_LSC2DBlockCreateAddrPayload &&
+            GID != GenISAIntrinsic::GenISA_LSC2DBlockCopyAddrPayload) {
             continue;
         }
-        // By design, all uses of CreateAddrPayload should be coalesced.
+        // Coalesce all uses of CreateAddrPayload/CopyAddrPayload, including
+        // all uses of its address payload updating intrinsics.
         //
-        // The algorithm collect all uses by doing breadth-first traversal,
-        // making sure each value is visited no more than once to avoid cyclic
-        // use relation due to PHI node.
+        // The algorithm collect all uses (address payload) by doing
+        // breadth-first traversal, making sure each value is visited no
+        // more than once to avoid cyclic use relation due to PHI node.
         //
         std::list<Value*> allUses{ GII };
         for (auto it = allUses.begin(); it != allUses.end(); ++it) {
             Value* V = *it;
             for (auto user : V->users()) {
                 Value* tV = user;
-                // Only PHI and addrPayload updating GEN intrinsic can define
-                // new address payload value.
+                // Only PHI/addrPayload updating intrinsic can be coalesced
                 if (isa<PHINode>(tV) || isAddrPayloadUpdater(tV)) {
                     push_back_if_absent(allUses, tV);
                 }
             }
         }
 
-        // Make all values in allUses in the same CC
+        // allUses have all address payload values. Coalesce them together.
+        // They are opaque and have no aliases.
         auto iter = allUses.begin();
-        // allUses's first is GII, loop from the second
         IGC_ASSERT(GII == getNodeValue(GII));
         addReg(GII, EALIGN_GRF);
         m_processedValues[GII] = 1;

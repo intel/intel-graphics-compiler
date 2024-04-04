@@ -77,7 +77,8 @@ namespace {
 
         /// LSC block 2d with address payload as a single argument
         Instruction* CreateLSC2DBlockAddressPayload(CallInst &CI);
-        Instruction* SetLSC2DBlockAddressPayloadBlockXY(CallInst &CI, bool IsAddend, bool IsBlockX);
+        Instruction* CopyLSC2DBlockAddressPayload(CallInst& CI);
+        Instruction* SetLSC2DBlockAddressPayloadField(CallInst &CI, LSC2DBlockField Field, bool IsAddend);
         Instruction* CreateSubGroup2DBlockOperationAP(CallInst &CI, StringRef funcName, bool isRead);
 
         /// LSC subgroup 2d block read/write intrinsics
@@ -339,14 +340,24 @@ void LSCFuncsResolution::visitCallInst(CallInst &CI)
     // 2d block intrinsics
     } else if (FN.consume_front("__builtin_IB_subgroup_createBlock2DAddressPayload")) {
         lscCall = CreateLSC2DBlockAddressPayload(CI);
+    } else if (FN.consume_front("__builtin_IB_subgroup_copyBlock2DAddressPayload")) {
+        lscCall = CopyLSC2DBlockAddressPayload(CI);
+    } else if (FN.consume_front("__builtin_IB_subgroup_setBlock2DAddressPayloadBase")) {
+        lscCall = SetLSC2DBlockAddressPayloadField(CI, LSC2DBlockField::BASE, false);
+    } else if (FN.consume_front("__builtin_IB_subgroup_setBlock2DAddressPayloadWidth")) {
+        lscCall = SetLSC2DBlockAddressPayloadField(CI, LSC2DBlockField::WIDTH, false);
+    } else if (FN.consume_front("__builtin_IB_subgroup_setBlock2DAddressPayloadHeight")) {
+        lscCall = SetLSC2DBlockAddressPayloadField(CI, LSC2DBlockField::HEIGHT, false);
+    } else if (FN.consume_front("__builtin_IB_subgroup_setBlock2DAddressPayloadPitch")) {
+        lscCall = SetLSC2DBlockAddressPayloadField(CI, LSC2DBlockField::PITCH, false);
     } else if (FN.consume_front("__builtin_IB_subgroup_setBlock2DAddressPayloadBlockX")) {
-        lscCall = SetLSC2DBlockAddressPayloadBlockXY(CI, false, true);
+        lscCall = SetLSC2DBlockAddressPayloadField(CI, LSC2DBlockField::BLOCKX, false);
     } else if (FN.consume_front("__builtin_IB_subgroup_setBlock2DAddressPayloadBlockY")) {
-        lscCall = SetLSC2DBlockAddressPayloadBlockXY(CI, false, false);
+        lscCall = SetLSC2DBlockAddressPayloadField(CI, LSC2DBlockField::BLOCKY, false);
     } else if (FN.consume_front("__builtin_IB_subgroup_addBlock2DAddressPayloadBlockX")) {
-        lscCall = SetLSC2DBlockAddressPayloadBlockXY(CI, true, true);
+        lscCall = SetLSC2DBlockAddressPayloadField(CI, LSC2DBlockField::BLOCKX, true);
     } else if (FN.consume_front("__builtin_IB_subgroup_addBlock2DAddressPayloadBlockY")) {
-        lscCall = SetLSC2DBlockAddressPayloadBlockXY(CI, true, false);
+        lscCall = SetLSC2DBlockAddressPayloadField(CI, LSC2DBlockField::BLOCKY, true);
     } else if (FN.consume_front(LSCFuncsResolution::PREFIX_SUBGROUP_BLOCK_READ_AP)) {
         lscCall = CreateSubGroup2DBlockOperationAP(CI, FN, true);
     } else if (FN.consume_front(LSCFuncsResolution::PREFIX_SUBGROUP_BLOCK_WRITE_AP)) {
@@ -421,6 +432,15 @@ Instruction* LSCFuncsResolution::CreateLSCLoadIntrinsicCallInst(
     return lscCall;
 }
 
+Instruction* LSCFuncsResolution::CopyLSC2DBlockAddressPayload(CallInst& CI) {
+    Value* args[]{ CI.getArgOperand(0) };
+    Function* Func = GenISAIntrinsic::getDeclaration(
+        CI.getModule(), GenISAIntrinsic::GenISA_LSC2DBlockCopyAddrPayload);
+    Instruction* I = CallInst::Create(Func, args, "Block2D_AddrPayload", &CI);
+    updateDebugLoc(&CI, I);
+    return I;
+}
+
 Instruction *LSCFuncsResolution::CreateLSC2DBlockAddressPayload(CallInst &CI) {
     Value *Base = CI.getArgOperand(0);
     Value *Width = CI.getArgOperand(1);
@@ -448,16 +468,17 @@ Instruction *LSCFuncsResolution::CreateLSC2DBlockAddressPayload(CallInst &CI) {
     return I;
 }
 
-Instruction *LSCFuncsResolution::SetLSC2DBlockAddressPayloadBlockXY(
-    CallInst &CI, bool IsAddend, bool IsBlockX)
+Instruction *LSCFuncsResolution::SetLSC2DBlockAddressPayloadField(
+    CallInst &CI, LSC2DBlockField Field, bool IsAddend)
 {
     Value *args[4];
     args[0] = CI.getArgOperand(0);
-    args[1] = CI.getArgOperand(1);
-    args[2] = ConstantInt::get(Type::getInt1Ty(CI.getContext()), IsAddend);
-    args[3] = ConstantInt::get(Type::getInt1Ty(CI.getContext()), IsBlockX);
-    Function *Func = GenISAIntrinsic::getDeclaration(
-        CI.getModule(), GenISAIntrinsic::GenISA_LSC2DBlockSetBlockXY);
+    args[1] = ConstantInt::get(Type::getInt32Ty(CI.getContext()), Field);
+    args[2] = CI.getArgOperand(1);
+    args[3] = ConstantInt::get(Type::getInt1Ty(CI.getContext()), IsAddend);
+    Type* tys[1] = { args[2]->getType() };
+    Function* Func = GenISAIntrinsic::getDeclaration(
+        CI.getModule(), GenISAIntrinsic::GenISA_LSC2DBlockSetAddrPayloadField, tys);
 
     Instruction *I = CallInst::Create(Func, args, "Block2D_AddrPayload", &CI);
     updateDebugLoc(&CI, I);
@@ -643,6 +664,8 @@ Instruction *LSCFuncsResolution::CreateSubGroup2DBlockOperationAP(
     return callI;
 }
 
+// Verify the block shape from address payload matches one specified
+// in read/write/prefetch builtin.
 void LSCFuncsResolution::verifyBlock2DAddressPayload() {
     if (m_lsc2dblock_readwrite.empty()) {
         return;
@@ -664,7 +687,10 @@ void LSCFuncsResolution::verifyBlock2DAddressPayload() {
 
     auto isAPUpdateInst = [](GenIntrinsicInst *aG) {
         switch (aG->getIntrinsicID()) {
-        case GenISAIntrinsic::GenISA_LSC2DBlockSetBlockXY:
+        case GenISAIntrinsic::GenISA_LSC2DBlockSetAddrPayloadField:
+        // Copy does not change block shape, so it is treated not as
+        // a creation for the purpose of this verification
+        case GenISAIntrinsic::GenISA_LSC2DBlockCopyAddrPayload:
             return true;
         default:
             break;
@@ -727,7 +753,8 @@ void LSCFuncsResolution::verifyBlock2DAddressPayload() {
                         worklist.push_back(tV);
                 }
                 else {
-                    IGC_ASSERT_MESSAGE(0, "Address Payload created correctly!");
+                    IGC_ASSERT_MESSAGE(0,
+                        "Address Payload must be created with incorrect builtin!");
                     return;
                 }
             }
@@ -741,8 +768,8 @@ void LSCFuncsResolution::verifyBlock2DAddressPayload() {
                 }
             }
             else {
-                IGC_ASSERT_MESSAGE(
-                    0, "Block2D address payload: defined incorrectly");
+                IGC_ASSERT_MESSAGE(0, "Block2D address payload: must be "
+                    "created with creation builtin in the current function");
                 return;
             }
         }
@@ -752,9 +779,9 @@ void LSCFuncsResolution::verifyBlock2DAddressPayload() {
         }
 
         for (auto V : worklist) {
-            if (!V)
-                continue;
             GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(V);
+            if (!GII)
+                continue;
             rootAPMap[GII] = rootGII;
         }
 

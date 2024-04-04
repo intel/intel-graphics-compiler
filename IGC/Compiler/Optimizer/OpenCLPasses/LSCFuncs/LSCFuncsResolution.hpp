@@ -24,6 +24,12 @@ namespace llvm {
 
 namespace IGC
 {
+    // LSC 2D block address payload field names for updating only
+    // (block width/height/numBlock are not updated).
+    enum LSC2DBlockField {
+        BASE=1, WIDTH=2, HEIGHT=3, PITCH=4, BLOCKX=5, BLOCKY=6
+    };
+
     llvm::FunctionPass* createLSCFuncsResolutionPass();
 } // namespace IGC
 

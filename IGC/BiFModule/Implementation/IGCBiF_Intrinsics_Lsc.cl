@@ -455,94 +455,105 @@ ulong4 __builtin_IB_subgroup_block_read_flat_transpose_u64_k4(long baseoffset, i
 //     4. Argument order:  width goes before height, this is to be consistent with coordinate order (x for
 //        width, y for height).
 //
-//  Address payload builtin, always int8 and it is uniform
-int8 __builtin_IB_subgroup_createBlock2DAddressPayload(long base, int width_minus_one, int height_minus_one, int pitch_minus_one,
+//  "Address payload" is a opaque, uniform variable, and is a placeholder for the real address payload.
+//  This placeholder type is always int.
+//
+// These two builtins creates a new address payload
+int __builtin_IB_subgroup_createBlock2DAddressPayload(long base, int width_minus_one, int height_minus_one, int pitch_minus_one,
         int blockX, int blockY, int blockWidth, int blockHeight, int numBlocks);
-int8 __builtin_IB_subgroup_setBlock2DAddressPayloadBlockX(int8 addrPayload, int blockX);
-int8 __builtin_IB_subgroup_setBlock2DAddressPayloadBlockY(int8 addrPayload, int blockY);
-int8 __builtin_IB_subgroup_addBlock2DAddressPayloadBlockX(int8 addrPayload, int blockX);
-int8 __builtin_IB_subgroup_addBlock2DAddressPayloadBlockY(int8 addrPayload, int blockY);
+int __builtin_IB_subgroup_copyBlock2DAddressPayload(int AP);
+
+// The following updates the existing address payload
+int __builtin_IB_subgroup_addBlock2DAddressPayloadBlockX(int addrPayload, int blockX);
+int __builtin_IB_subgroup_addBlock2DAddressPayloadBlockY(int addrPayload, int blockY);
+int __builtin_IB_subgroup_setBlock2DAddressPayloadBlockX(int addrPayload, int blockX);
+int __builtin_IB_subgroup_setBlock2DAddressPayloadBlockY(int addrPayload, int blockY);
+int __builtin_IB_subgroup_setBlock2DAddressPayloadBase(int addrPayload, long base);
+int __builtin_IB_subgroup_setBlock2DAddressPayloadWidth(int addrPayload, int width_minus_one);
+int __builtin_IB_subgroup_setBlock2DAddressPayloadHeigth(int addrPayload, int height_minus_one);
+int __builtin_IB_subgroup_setBlock2DAddressPayloadPitch(int addrPayload, int pitch_minus_one);
+
 //
 // 2d block read, expect addrPayload's block dimension to be the same as one specified
 //
 // A matrix uses short as its element type except double dpas, which uses int
-short4  __builtin_IB_subgroup_block_read_ap_u8_m4k32v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-short8  __builtin_IB_subgroup_block_read_ap_u8_m8k32v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-short16 __builtin_IB_subgroup_block_read_ap_u8_m16k32v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-short4  __builtin_IB_subgroup_block_read_ap_u8_m2k32v2(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-short8  __builtin_IB_subgroup_block_read_ap_u8_m4k32v2(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-short16 __builtin_IB_subgroup_block_read_ap_u8_m8k32v2(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-short4  __builtin_IB_subgroup_block_read_ap_u16_m4k16v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-short8  __builtin_IB_subgroup_block_read_ap_u16_m8k16v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-short16 __builtin_IB_subgroup_block_read_ap_u16_m16k16v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-short4  __builtin_IB_subgroup_block_read_ap_u16_m2k16v2(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-short8  __builtin_IB_subgroup_block_read_ap_u16_m4k16v2(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-short16 __builtin_IB_subgroup_block_read_ap_u16_m8k16v2(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-short4  __builtin_IB_subgroup_block_read_ap_u32_m4k8v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-short8  __builtin_IB_subgroup_block_read_ap_u32_m8k8v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-short16 __builtin_IB_subgroup_block_read_ap_u32_m16k8v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-short8  __builtin_IB_subgroup_block_read_ap_u32_m4k8v2(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-short16 __builtin_IB_subgroup_block_read_ap_u32_m8k8v2(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-int4    __builtin_IB_subgroup_block_read_ap_u64_m4k8v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-void    __builtin_IB_subgroup_block_write_ap_u8_m4k32v1(int8 addrPayload, const int immX, const int immY, short4 val, enum LSC_LDCC cacheOpt);
-void    __builtin_IB_subgroup_block_write_ap_u8_m8k32v1(int8 addrPayload, const int immX, const int immY, short8 val, enum LSC_LDCC cacheOpt);
-void    __builtin_IB_subgroup_block_write_ap_u8_m16k32v1(int8 addrPayload, const int immX, const int immY, short16 val, enum LSC_LDCC cacheOpt);
-void    __builtin_IB_subgroup_block_write_ap_u16_m4k16v1(int8 addrPayload, const int immX, const int immY, short4 val, enum LSC_LDCC cacheOpt);
-void    __builtin_IB_subgroup_block_write_ap_u16_m8k16v1(int8 addrPayload, const int immX, const int immY, short8 val, enum LSC_LDCC cacheOpt);
-void    __builtin_IB_subgroup_block_write_ap_u16_m16k16v1(int8 addrPayload, const int immX, const int immY, short16 val, enum LSC_LDCC cacheOpt);
+short4  __builtin_IB_subgroup_block_read_ap_u8_m4k32v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+short8  __builtin_IB_subgroup_block_read_ap_u8_m8k32v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+short16 __builtin_IB_subgroup_block_read_ap_u8_m16k32v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+short4  __builtin_IB_subgroup_block_read_ap_u8_m2k32v2(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+short8  __builtin_IB_subgroup_block_read_ap_u8_m4k32v2(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+short16 __builtin_IB_subgroup_block_read_ap_u8_m8k32v2(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+short4  __builtin_IB_subgroup_block_read_ap_u16_m4k16v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+short8  __builtin_IB_subgroup_block_read_ap_u16_m8k16v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+short16 __builtin_IB_subgroup_block_read_ap_u16_m16k16v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+short4  __builtin_IB_subgroup_block_read_ap_u16_m2k16v2(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+short8  __builtin_IB_subgroup_block_read_ap_u16_m4k16v2(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+short16 __builtin_IB_subgroup_block_read_ap_u16_m8k16v2(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+short4  __builtin_IB_subgroup_block_read_ap_u32_m4k8v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+short8  __builtin_IB_subgroup_block_read_ap_u32_m8k8v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+short16 __builtin_IB_subgroup_block_read_ap_u32_m16k8v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+short8  __builtin_IB_subgroup_block_read_ap_u32_m4k8v2(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+short16 __builtin_IB_subgroup_block_read_ap_u32_m8k8v2(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+int4    __builtin_IB_subgroup_block_read_ap_u64_m4k8v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+void    __builtin_IB_subgroup_block_write_ap_u8_m4k32v1(int addrPayload, const int immX, const int immY, short4 val, enum LSC_LDCC cacheOpt);
+void    __builtin_IB_subgroup_block_write_ap_u8_m8k32v1(int addrPayload, const int immX, const int immY, short8 val, enum LSC_LDCC cacheOpt);
+void    __builtin_IB_subgroup_block_write_ap_u8_m16k32v1(int addrPayload, const int immX, const int immY, short16 val, enum LSC_LDCC cacheOpt);
+void    __builtin_IB_subgroup_block_write_ap_u16_m4k16v1(int addrPayload, const int immX, const int immY, short4 val, enum LSC_LDCC cacheOpt);
+void    __builtin_IB_subgroup_block_write_ap_u16_m8k16v1(int addrPayload, const int immX, const int immY, short8 val, enum LSC_LDCC cacheOpt);
+void    __builtin_IB_subgroup_block_write_ap_u16_m16k16v1(int addrPayload, const int immX, const int immY, short16 val, enum LSC_LDCC cacheOpt);
 // prefetch
-void    __builtin_IB_subgroup_block_read_ap_prefetch_u8_m4k32v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-void    __builtin_IB_subgroup_block_read_ap_prefetch_u8_m8k32v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-void    __builtin_IB_subgroup_block_read_ap_prefetch_u8_m16k32v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+void    __builtin_IB_subgroup_block_read_ap_prefetch_u8_m4k32v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+void    __builtin_IB_subgroup_block_read_ap_prefetch_u8_m8k32v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+void    __builtin_IB_subgroup_block_read_ap_prefetch_u8_m16k32v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
 //
 // B matrix uses int as its element type except double dpas, which uses long
-int4    __builtin_IB_subgroup_block_read_ap_u8_m4k64v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-int8    __builtin_IB_subgroup_block_read_ap_u8_m8k64v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-int16   __builtin_IB_subgroup_block_read_ap_u8_m16k64v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-int4    __builtin_IB_subgroup_block_read_ap_u32_m4k16v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-int8    __builtin_IB_subgroup_block_read_ap_u32_m8k16v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-int16   __builtin_IB_subgroup_block_read_ap_u32_m16k16v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-int8    __builtin_IB_subgroup_block_read_ap_u32_m4k16v2(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-int16   __builtin_IB_subgroup_block_read_ap_u32_m8k16v2(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-long8   __builtin_IB_subgroup_block_read_ap_u64_m8k16v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-void    __builtin_IB_subgroup_block_write_ap_u8_m4k64v1(int8 addrPayload, const int immX, const int immY, int4 val, enum LSC_LDCC cacheOpt);
-void    __builtin_IB_subgroup_block_write_ap_u8_m8k64v1(int8 addrPayload, const int immX, const int immY, int8 val, enum LSC_LDCC cacheOpt);
-void    __builtin_IB_subgroup_block_write_ap_u8_m16k64v1(int8 addrPayload, const int immX, const int immY, int16 val, enum LSC_LDCC cacheOpt);
-void    __builtin_IB_subgroup_block_write_ap_u16_m8k32v1(int8 addrPayload, const int immX, const int immY, int8 val, enum LSC_LDCC cacheOpt);
-void    __builtin_IB_subgroup_block_write_ap_u32_m8k16v1(int8 addrPayload, const int immX, const int immY, int8 val, enum LSC_LDCC cacheOpt);
+int4    __builtin_IB_subgroup_block_read_ap_u8_m4k64v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+int8    __builtin_IB_subgroup_block_read_ap_u8_m8k64v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+int16   __builtin_IB_subgroup_block_read_ap_u8_m16k64v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+int4    __builtin_IB_subgroup_block_read_ap_u32_m4k16v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+int8    __builtin_IB_subgroup_block_read_ap_u32_m8k16v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+int16   __builtin_IB_subgroup_block_read_ap_u32_m16k16v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+int8    __builtin_IB_subgroup_block_read_ap_u32_m4k16v2(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+int16   __builtin_IB_subgroup_block_read_ap_u32_m8k16v2(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+long8   __builtin_IB_subgroup_block_read_ap_u64_m8k16v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+void    __builtin_IB_subgroup_block_write_ap_u8_m4k64v1(int addrPayload, const int immX, const int immY, int4 val, enum LSC_LDCC cacheOpt);
+void    __builtin_IB_subgroup_block_write_ap_u8_m8k64v1(int addrPayload, const int immX, const int immY, int8 val, enum LSC_LDCC cacheOpt);
+void    __builtin_IB_subgroup_block_write_ap_u8_m16k64v1(int addrPayload, const int immX, const int immY, int16 val, enum LSC_LDCC cacheOpt);
+void    __builtin_IB_subgroup_block_write_ap_u16_m8k32v1(int addrPayload, const int immX, const int immY, int8 val, enum LSC_LDCC cacheOpt);
+void    __builtin_IB_subgroup_block_write_ap_u32_m8k16v1(int addrPayload, const int immX, const int immY, int8 val, enum LSC_LDCC cacheOpt);
 // prefetch
-void    __builtin_IB_subgroup_block_read_ap_prefetch_u8_m4k64v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-void    __builtin_IB_subgroup_block_read_ap_prefetch_u8_m8k64v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-void   __builtin_IB_subgroup_block_read_ap_prefetch_u8_m16k64v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+void    __builtin_IB_subgroup_block_read_ap_prefetch_u8_m4k64v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+void    __builtin_IB_subgroup_block_read_ap_prefetch_u8_m8k64v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+void   __builtin_IB_subgroup_block_read_ap_prefetch_u8_m16k64v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
 
 //
 // 2d block read with transform
 //
 // A matrix (short as element type)
-short4  __builtin_IB_subgroup_block_read_ap_transform_u8_m16k8v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-short8  __builtin_IB_subgroup_block_read_ap_transform_u8_m32k8v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-short4  __builtin_IB_subgroup_block_read_ap_transform_u16_m8k8v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-short8  __builtin_IB_subgroup_block_read_ap_transform_u16_m16k8v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+short4  __builtin_IB_subgroup_block_read_ap_transform_u8_m16k8v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+short8  __builtin_IB_subgroup_block_read_ap_transform_u8_m32k8v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+short4  __builtin_IB_subgroup_block_read_ap_transform_u16_m8k8v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+short8  __builtin_IB_subgroup_block_read_ap_transform_u16_m16k8v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
 // B matrix (int as element type)
-int4  __builtin_IB_subgroup_block_read_ap_transform_u8_m16k16v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-int8  __builtin_IB_subgroup_block_read_ap_transform_u8_m32k16v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-int16 __builtin_IB_subgroup_block_read_ap_transform_u8_m32k16v2(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-int4  __builtin_IB_subgroup_block_read_ap_transform_u16_m8k16v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-int8  __builtin_IB_subgroup_block_read_ap_transform_u16_m16k16v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-int16 __builtin_IB_subgroup_block_read_ap_transform_u16_m32k16v1(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+int4  __builtin_IB_subgroup_block_read_ap_transform_u8_m16k16v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+int8  __builtin_IB_subgroup_block_read_ap_transform_u8_m32k16v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+int16 __builtin_IB_subgroup_block_read_ap_transform_u8_m32k16v2(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+int4  __builtin_IB_subgroup_block_read_ap_transform_u16_m8k16v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+int8  __builtin_IB_subgroup_block_read_ap_transform_u16_m16k16v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+int16 __builtin_IB_subgroup_block_read_ap_transform_u16_m32k16v1(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
 //
 // 2d block read with transpose
 //
 // A matrix
-short4   __builtin_IB_subgroup_block_read_transpose_u32_m8k4(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-short8   __builtin_IB_subgroup_block_read_transpose_u32_m8k8(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-short16  __builtin_IB_subgroup_block_read_transpose_u32_m8k16(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-int4     __builtin_IB_subgroup_block_read_transpose_u64_m8k4(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+short4   __builtin_IB_subgroup_block_read_transpose_u32_m8k4(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+short8   __builtin_IB_subgroup_block_read_transpose_u32_m8k8(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+short16  __builtin_IB_subgroup_block_read_transpose_u32_m8k16(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+int4     __builtin_IB_subgroup_block_read_transpose_u64_m8k4(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
 // B matrix
-int4     __builtin_IB_subgroup_block_read_transpose_u32_m16k4(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-int8     __builtin_IB_subgroup_block_read_transpose_u32_m16k8(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-int16    __builtin_IB_subgroup_block_read_transpose_u32_m16k16(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-long8     __builtin_IB_subgroup_block_read_transpose_u64_m16k8(int8 addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+int4     __builtin_IB_subgroup_block_read_transpose_u32_m16k4(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+int8     __builtin_IB_subgroup_block_read_transpose_u32_m16k8(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+int16    __builtin_IB_subgroup_block_read_transpose_u32_m16k16(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+long8     __builtin_IB_subgroup_block_read_transpose_u64_m16k8(int addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
 
 
 #endif // cl_intel_subgroup_extended_block_read
