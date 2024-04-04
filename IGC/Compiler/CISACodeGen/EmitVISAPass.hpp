@@ -658,8 +658,10 @@ public:
     void emitSaveInReservedArgSpace(llvm::SaveInReservedArgSpaceIntrinsic* I);
     void emitReadFromReservedArgSpace(llvm::ReadFromReservedArgSpaceIntrinsic* I);
     void emitStoreLocalIdBufferPtr(llvm::GenIntrinsicInst* I);
+    void emitStoreGlobalBufferArg(llvm::GenIntrinsicInst* I);
     void emitLoadImplBufferPtr(llvm::GenIntrinsicInst* I);
     void emitLoadLocalIdBufferPtr(llvm::GenIntrinsicInst* I);
+    void emitLoadGlobalBufferArg(llvm::GenIntrinsicInst* I);
 
     void emitMayUnalignedVectorCopy(
         CVariable* D, uint32_t D_off, CVariable* S, uint32_t S_off, llvm::Type* Ty);

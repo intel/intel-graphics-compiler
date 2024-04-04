@@ -504,7 +504,6 @@ namespace IGC
 
     IGC::ModuleMetaData* CodeGenContext::getModuleMetaData() const
     {
-        IGC_ASSERT_MESSAGE(nullptr != modMD, "Module Metadata is not initialized");
         return modMD;
     }
 

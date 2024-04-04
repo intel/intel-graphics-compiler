@@ -107,6 +107,7 @@ void CShader::InitEncoder(SIMDMode simdSize, bool canAbortOnSpill, ShaderDispatc
     m_SavedSRetPtr = nullptr;
     m_ImplArgBufPtr = nullptr;
     m_LocalIdBufPtr = nullptr;
+    m_GlobalBufferArg = nullptr;
 
     // SIMD32 is a SIMD16 shader with 2 instance of each instruction
     m_SIMDSize = (simdSize == SIMDMode::SIMD8 ? SIMDMode::SIMD8 : SIMDMode::SIMD16);
@@ -318,6 +319,12 @@ void CShader::InitializeStackVariables()
         m_LocalIdBufPtr = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, 1, "LocalIdPtr");
         encoder.GetVISAPredefinedVar(m_LocalIdBufPtr, PREDEFINED_LOCAL_ID_BUF_PTR);
     }
+    // reserve a temp GRF for implicit arguments programmed by FE
+    if (m_ctx->m_DriverInfo.SupportGlobalStackArgs() &&
+        m_ctx->type != ShaderType::RAYTRACING_SHADER)
+    {
+        m_GlobalBufferArg = GetNewVariable(2, ISA_TYPE_UQ, EALIGN_QWORD, true, 1, "GlobalBufferArg");
+    }
 
     auto& argRegisterReservations = m_ctx->getModuleMetaData()->argRegisterReservations;
     m_ARGVReservedVariablesTotalSize = 0;
@@ -358,9 +365,10 @@ void CShader::RestoreStackState()
     // Restore FP to previous frame's FP
     encoder.Copy(m_FP, m_SavedFP);
     encoder.Push();
-
     // Reset temp variables
     m_SavedFP = nullptr;
+    m_GlobalBufferArg = nullptr;
+
     for (auto& arg : m_ARGVReservedVariables)
         arg = nullptr;
 }
@@ -1045,6 +1053,11 @@ CVariable* CShader::GetLocalIdBufPtr()
 {
     IGC_ASSERT(m_LocalIdBufPtr);
     return m_LocalIdBufPtr;
+}
+
+CVariable* CShader::GetGlobalBufferArg()
+{
+    return m_GlobalBufferArg;
 }
 
 CVariable* CShader::GetFP()

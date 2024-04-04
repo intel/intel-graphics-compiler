@@ -712,6 +712,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     }
 
     CShader* prevShader = m_pCtx->m_prevShader;
+
     if (isFuncGroupHead)
     {
         m_currShader->InitEncoder(m_SimdMode, m_canAbortOnSpill, m_ShaderDispatchMode);
@@ -8920,6 +8921,12 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_GetLocalIdBufferPtr:
         emitLoadLocalIdBufferPtr(inst);
         break;
+    case GenISAIntrinsic::GenISA_SetGlobalBufferArg:
+        emitStoreGlobalBufferArg(inst);
+        break;
+    case GenISAIntrinsic::GenISA_GetGlobalBufferArg:
+        emitLoadGlobalBufferArg(inst);
+        break;
     case GenISAIntrinsic::GenISA_bitcastfromstruct:
       emitBitcastfromstruct(inst);
       break;
@@ -11221,6 +11228,13 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     IGC_ASSERT(!m_encoder->IsSecondHalf());
     bool hasSecondHalf = (m_currShader->m_numberInstance == 2) && (m_currShader->m_dispatchSize == SIMDMode::SIMD32);
 
+
+    // Reserve space on ARGV to pass globally accessible args
+    CVariable* GlobalBufferArg = m_currShader->GetGlobalBufferArg();
+    if (GlobalBufferArg != nullptr)
+    {
+        offsetA += GlobalBufferArg->GetSize();
+    }
     offsetA += m_currShader->GetARGVReservedVariablesTotalSize();
     IGC_ASSERT(offsetA < ArgBlkVar->GetSize());
 
@@ -11311,6 +11325,12 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     // lamda to copy arguments to arg register block
     auto CopyArgBlkVariables = [&]()
     {
+        if (GlobalBufferArg != nullptr)
+        {
+            // Copy any implicit args to the start of ARGV
+            CVariable* Dst = m_currShader->GetNewAlias(ArgBlkVar, GlobalBufferArg->GetType(), 0, GlobalBufferArg->GetNumberElement(), GlobalBufferArg->IsUniform());
+            m_currShader->CopyVariable(Dst, GlobalBufferArg);
+        }
         for (auto& [Src, argType, offset] : argsOnRegister)
         {
             emitCopyGRFBlock(ArgBlkVar, Src, argType, offset, hasSecondHalf ? 2 : 1, true);
@@ -11479,6 +11499,15 @@ void EmitPass::emitStackFuncEntry(Function* F)
     IGC_ASSERT(!m_encoder->IsSecondHalf());
     bool hasSecondHalf = (m_currShader->m_numberInstance == 2) && (m_currShader->m_dispatchSize == SIMDMode::SIMD32);
     SmallVector<std::tuple<CVariable*, CVariable*, Type*>, 8> StructShuffleVector;
+
+    CVariable* GlobalBufferArg = m_currShader->GetGlobalBufferArg();
+    if (GlobalBufferArg != nullptr)
+    {
+        // Copy any implicit args from the start of ARGV to a local temp
+        offsetA += GlobalBufferArg->GetSize();
+        CVariable* Src = m_currShader->GetNewAlias(ArgBlkVar, GlobalBufferArg->GetType(), 0, GlobalBufferArg->GetNumberElement(), GlobalBufferArg->IsUniform());
+        m_currShader->CopyVariable(GlobalBufferArg, Src);
+    }
 
     for (auto& Arg : F->args())
     {
@@ -21292,9 +21321,18 @@ void EmitPass::emitReadFromReservedArgSpace(llvm::ReadFromReservedArgSpaceIntrin
 
 void EmitPass::emitStoreLocalIdBufferPtr(llvm::GenIntrinsicInst* I)
 {
-    if(m_currShader->HasStackCalls() &&
+    if (m_currShader->HasStackCalls() &&
         !m_encoder->IsSecondHalf())
         m_currShader->CopyVariable(m_currShader->GetLocalIdBufPtr(), GetSymbol(I->getArgOperand(0)));
+}
+
+void EmitPass::emitStoreGlobalBufferArg(llvm::GenIntrinsicInst* I)
+{
+    CVariable* GlobalBufferArg = m_currShader->GetGlobalBufferArg();
+    IGC_ASSERT(GlobalBufferArg);
+    if(m_currShader->HasStackCalls() &&
+        !m_encoder->IsSecondHalf())
+        m_currShader->CopyVariable(GlobalBufferArg, GetSymbol(I->getArgOperand(0)));
 }
 
 void EmitPass::emitLoadImplBufferPtr(llvm::GenIntrinsicInst* I)
@@ -21312,6 +21350,17 @@ void EmitPass::emitLoadLocalIdBufferPtr(llvm::GenIntrinsicInst* I)
     m_encoder->SetNoMask();
     m_encoder->SetSrcSubReg(0, 0);
     m_encoder->Copy(m_destination, m_currShader->GetLocalIdBufPtr());
+    m_encoder->Push();
+}
+
+void EmitPass::emitLoadGlobalBufferArg(llvm::GenIntrinsicInst* I)
+{
+    CVariable* GlobalBufferArg = m_currShader->GetGlobalBufferArg();
+    IGC_ASSERT(GlobalBufferArg);
+    m_encoder->SetUniformSIMDSize(lanesToSIMDMode(1));
+    m_encoder->SetNoMask();
+    m_encoder->SetSrcSubReg(0, 0);
+    m_encoder->Copy(m_destination, GlobalBufferArg);
     m_encoder->Push();
 }
 
