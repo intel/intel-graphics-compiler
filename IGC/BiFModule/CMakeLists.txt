@@ -637,6 +637,7 @@ generate_bif_src_checksum(${IGC_BUILD__PROJ__BiFModule_OCL})
 generate_bif_prebuild_pack(${IGC_BUILD__PROJ__BiFModule_OCL} "${IGC_BUILD__PROJ_DEPENDS_BiFModule_OCL}")
 set(IGC_BUILD__PROJ__BiFModuleCache_OCL       "${IGC_BUILD__PROJ__BiFModuleCache_OCL}" PARENT_SCOPE)
 
+
 # =========================================== SPIRV Headers ============================================
 
 add_library(IGCSPIRVHeaders INTERFACE)

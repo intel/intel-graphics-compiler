@@ -176,10 +176,6 @@ namespace IGC
             {
                 IGC::aligned_free(m_debugDataGenISA);
             }
-            if (m_gtpinBuffer)
-            {
-                free(m_gtpinBuffer);
-            }
             if (m_funcSymbolTable)
             {
                 free(m_funcSymbolTable);

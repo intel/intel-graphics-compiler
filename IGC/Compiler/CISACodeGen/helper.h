@@ -529,16 +529,6 @@ namespace IGC
         }
     }
 
-    enum dim
-    {
-        ThreadGroupSize_X,
-        ThreadGroupSize_Y,
-        ThreadGroupSize_Z
-    };
-
-    unsigned int GetthreadGroupSize(const llvm::Module& M, dim dimension);
-    void SetthreadGroupSize(llvm::Module& M, llvm::Constant* size, dim dimension);
-
     // Debug line info helper function
     inline void updateDebugLoc(llvm::Instruction* pOrigin, llvm::Instruction* pNew)
     {

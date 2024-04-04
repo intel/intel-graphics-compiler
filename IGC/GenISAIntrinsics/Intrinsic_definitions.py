@@ -175,11 +175,6 @@ Imported_Intrinsics = \
     [],
     "InaccessibleMemOnly"]],
 ####################################################################################################
-"GenISA_GetGlobalBufferArg": ["",
-    [("anyvector",                     "implicit argument value"),
-    [],
-    "InaccessibleMemOnly"]],
-####################################################################################################
 "GenISA_GetPixelMask": ["Get live pixel mask from dmask",
     [("bool",                          ""),
     [("bool",                          "")],
@@ -579,11 +574,6 @@ Imported_Intrinsics = \
 "GenISA_SetImplicitBufferPtr": ["",
     [("void",                          "result"),
     [("anyptr",                        "buffer pointer passed by runtime")],
-    "InaccessibleMemOnly"]],
-####################################################################################################
-"GenISA_SetGlobalBufferArg": ["",
-    [("void",                          "result"),
-    [("anyvector",                     "implicit arg values")],
     "InaccessibleMemOnly"]],
 ####################################################################################################
 "GenISA_SetDebugReg": ["",
