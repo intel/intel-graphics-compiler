@@ -124,7 +124,6 @@ DECLARE_IGC_REGKEY(bool, DisableWriteCombine, false, "Disable write combine. PVC
 DECLARE_IGC_REGKEY(bool, Force32bitConstantGEPLowering, false, "Go back to old version of GEP lowering for constant address space. PVC only", false)
 DECLARE_IGC_REGKEY(bool, NewSpillCostFunction,          false, "Use new spill cost function in VISA RA", false)
 DECLARE_IGC_REGKEY(bool, EnableCoalesceScalarMoves, true, "Enable scalar moves to be coalesced into fewer moves", true)
-DECLARE_IGC_REGKEY(bool, ForceSpillSpaceCompression, false, "Force spill space compression", false)
 DECLARE_IGC_GROUP("IGC Optimization")
 DECLARE_IGC_REGKEY(bool, AllowMem2Reg,                  false, "Setting this to true makes IGC run mem2reg even when optimizations are disabled", true)
 DECLARE_IGC_REGKEY(bool, DisableIGCOptimizations,       false, "Setting this to 1/true adds a compiler switch to disables all the above IGC optimizations", false)
