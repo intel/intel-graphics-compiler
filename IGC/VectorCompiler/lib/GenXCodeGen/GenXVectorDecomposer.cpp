@@ -167,8 +167,9 @@ bool VectorDecomposer::determineDecomposition(Instruction *Inst) {
   NotDecomposingReportInst = Inst;
   Web.clear();
   Decomposition.clear();
-  unsigned GRFWidth = genx::ByteBits * (ST ? ST->getGRFByteSize() : defaultGRFByteSize);
-  unsigned NumGrfs = alignTo(DL->getTypeSizeInBits(Inst->getType()), GRFWidth) / GRFWidth;
+  unsigned GRFWidth = genx::ByteBits * GRFByteSize;
+  unsigned NumGrfs =
+      alignTo(DL->getTypeSizeInBits(Inst->getType()), GRFWidth) / GRFWidth;
   if (NumGrfs == 1)
     return false; // Ignore single GRF vector.
   LLVM_DEBUG(dbgs() << "VectorDecomposer::determineDecomposition(" << *Inst
@@ -349,8 +350,8 @@ void VectorDecomposer::adjustDecomposition(Instruction *Inst) {
   Last += (R.Width - 1) * R.Stride;
   Last = R.Offset + Last * R.ElementBytes;
   // Compute the GRF number of the first and last byte of the region.
-  unsigned First = R.Offset / 32U;
-  Last /= 32U;
+  unsigned First = R.Offset / GRFByteSize;
+  Last /= GRFByteSize;
   if ((First >= Decomposition.size()) || (Last >= Decomposition.size())) {
     setNotDecomposing(Inst, "out-of-bounds");
     return; // don't attempt to decompose out-of-bounds accesses
@@ -704,7 +705,7 @@ void VectorDecomposer::decomposeBitCast(Instruction *Inst,
  * VectorDecomposer::getPartIndex : get the part index for the region
  */
 unsigned VectorDecomposer::getPartIndex(vc::Region *R) {
-  return Decomposition[R->Offset / 32U];
+  return Decomposition[R->Offset / GRFByteSize];
 }
 
 /***********************************************************************
@@ -712,7 +713,7 @@ unsigned VectorDecomposer::getPartIndex(vc::Region *R) {
  */
 unsigned VectorDecomposer::getPartOffset(unsigned PartIndex) {
   // Offsets[] has the index in GRFs.
-  return Offsets[PartIndex] * 32;
+  return Offsets[PartIndex] * GRFByteSize;
 }
 
 /***********************************************************************
@@ -721,10 +722,11 @@ unsigned VectorDecomposer::getPartOffset(unsigned PartIndex) {
 unsigned VectorDecomposer::getPartNumBytes(Type *WholeTy, unsigned PartIndex) {
   if (PartIndex + 1 != Offsets.size()) {
     // Not the last part. We can use the offset (in GRFs) difference.
-    return 32 * (Offsets[PartIndex + 1] - Offsets[PartIndex]);
+    return GRFByteSize * (Offsets[PartIndex + 1] - Offsets[PartIndex]);
   }
   // For the last part, we need to get the total size from WholeTy.
-  return DL->getTypeSizeInBits(WholeTy) / 8U - 32 * Offsets[PartIndex];
+  return DL->getTypeSizeInBits(WholeTy) / genx::ByteBits -
+         GRFByteSize * Offsets[PartIndex];
 }
 
 /***********************************************************************
@@ -734,7 +736,7 @@ unsigned VectorDecomposer::getPartNumElements(Type *WholeTy,
                                               unsigned PartIndex) {
   Type *ElementTy = WholeTy->getScalarType();
   return getPartNumBytes(WholeTy, PartIndex) /
-         (DL->getTypeSizeInBits(ElementTy) >> 3);
+         (DL->getTypeSizeInBits(ElementTy) / genx::ByteBits);
 }
 
 /***********************************************************************

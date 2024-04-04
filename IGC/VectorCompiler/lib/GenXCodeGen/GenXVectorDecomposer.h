@@ -16,9 +16,10 @@ SPDX-License-Identifier: MIT
 /// For a vector written by wrregion and read by rdregion, it finds the way that
 /// the vector can be divided into parts, with each part a range of one or more
 /// GRFs, such that no rdregion or wrregion crosses a part boundary. Then it
-/// decomposes the vector into those parts. A rdregion/wrregion that reads/writes
-/// a whole part can be removed completely; a rdregion/wrregion that reads/writes
-/// only some of the part is replaced to read/write just the applicable part.
+/// decomposes the vector into those parts. A rdregion/wrregion that
+/// reads/writes a whole part can be removed completely; a rdregion/wrregion
+/// that reads/writes only some of the part is replaced to read/write just the
+/// applicable part.
 ///
 /// In fact it does all this for a web of vectors linked by wrregion, phi nodes
 /// and bitcasts.
@@ -32,6 +33,9 @@ SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 
 #pragma once
+
+#include "GenX.h"
+#include "GenXSubtarget.h"
 
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/IR/Instructions.h"
@@ -80,9 +84,11 @@ class VectorDecomposer {
   std::map<PHINode *, llvm::SmallVector<Value *, 8>> PhiParts;
   llvm::SmallVector<Instruction *, 8> NewInsts;
   unsigned DecomposedCount = 0;
+  const unsigned GRFByteSize;
 
 public:
-  explicit VectorDecomposer(const GenXSubtarget *ST) : ST(ST) {}
+  explicit VectorDecomposer(const GenXSubtarget *ST)
+      : ST(ST), GRFByteSize(ST ? ST->getGRFByteSize() : llvm::genx::defaultGRFByteSize) {}
 
   // clear : clear anything stored
   void clear() {
@@ -166,7 +172,7 @@ private:
     DMap.clear();
   }
   bool processStartSelect(Instruction *Inst);
-  bool determineDecomposition(Instruction* Inst);
+  bool determineDecomposition(Instruction *Inst);
   void setNotDecomposing() { NotDecomposing = true; }
   void addToWeb(Value *V);
   void decompose(Instruction *Inst);
