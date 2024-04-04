@@ -217,7 +217,7 @@ SmallVector<Value*, 4> BufferBoundsChecking::createAssertArgs(const AccessInfo& 
     {
         const auto zero = ConstantInt::getSigned(Type::getInt32Ty(globalVariable->getParent()->getContext()), 0);
         auto result = GetElementPtrInst::Create(
-            IGCLLVM::getNonOpaquePtrEltTy(globalVariable->getType()),
+            globalVariable->getValueType(),
             globalVariable,
             { zero, zero },
             "",

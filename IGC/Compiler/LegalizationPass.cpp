@@ -1816,7 +1816,7 @@ void Legalization::RecursivelyChangePointerType(Instruction* oldPtr, llvm::Type*
             Type *BaseTy = Ty;
             GetElementPtrInst* newGep = GetElementPtrInst::Create(BaseTy, newPtr, Idx, "", gep);
             newGep->setDebugLoc(gep->getDebugLoc());
-            RecursivelyChangePointerType(gep, IGCLLVM::getNonOpaquePtrEltTy(newGep->getType()), newGep);
+            RecursivelyChangePointerType(gep, newGep->getResultElementType(), newGep);
         }
         else if (LoadInst * load = dyn_cast<LoadInst>(*II))
         {

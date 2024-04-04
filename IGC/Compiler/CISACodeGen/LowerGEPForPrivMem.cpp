@@ -725,7 +725,7 @@ void TransposeHelper::handleGEPInst(
     //
     IRBuilder<> IRB(pGEP);
     Value* pScalarizedIdx = IRB.getInt32(0);
-    Type* T = IGCLLVM::getNonOpaquePtrEltTy(pGEP->getPointerOperandType());
+    Type* T = pGEP->getSourceElementType();
     for (unsigned i = 0, e = pGEP->getNumIndices(); i < e; ++i)
     {
         auto GepOpnd = IRB.CreateZExtOrTrunc(pGEP->getOperand(i + 1), IRB.getInt32Ty());
