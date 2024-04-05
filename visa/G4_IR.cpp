@@ -2276,6 +2276,16 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum,
     }
   }
 
+  if (builder.supportNativeSIMD32()) {
+    // Can't propagate for below case as the new src will expand 4 GRFs but the
+    // region is not scalar or continuous.
+    // mov (M1, 32) V0099(0,0)<1>:d V0098(0,0)<1;1,0>:q
+    // shr (M1, 32) V0106(0,0)<1>:d V0099(0,0)<1;1,0>:d V0105(0,0)<1;1,0>:d
+    if (sameExecSize && execSize == g4::SIMD32 && MT == Trunc &&
+        TypeSize(srcType) == 8 && !src->isScalarSrc())
+      return false;
+  }
+
   return true;
 }
 
