@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2023 Intel Corporation
+Copyright (C) 2021-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -128,7 +128,9 @@ int spirvReadVerify(const char *pIn, size_t InSz, const uint32_t *SpecConstIds,
       return -1;
     }
     PrepareModuleStructs(*SpirM);
-    Status = llvm::verifyModule(*SpirM);
+    // Bool-value need to separate functionality and debug errors
+    bool BrokenDebugInfo = false;
+    Status = llvm::verifyModule(*SpirM, nullptr, &BrokenDebugInfo);
     if (Status) {
       ErrSaver("spirv_read_verify: verify Module failed", ErrUserData);
       return -1;
