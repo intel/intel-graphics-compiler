@@ -11,6 +11,24 @@
 ; ScalarizeFunction
 ; ------------------------------------------------
 
+define spir_kernel void @test_unary(<2 x float> %src1) {
+; CHECK-LABEL: @test_unary(
+; CHECK:    [[SRC1_SCALAR:%.*]] = extractelement <2 x float> [[SRC1:%.*]], i32 0
+; CHECK:    [[SRC1_SCALAR1:%.*]] = extractelement <2 x float> [[SRC1]], i32 1
+; CHECK:    [[TMP1:%.*]] = alloca <2 x float>, align 4
+; CHECK:    [[TMP2:%.*]] = fneg float [[SRC1_SCALAR]]
+; CHECK:    [[TMP3:%.*]] = fneg float [[SRC1_SCALAR1]]
+; CHECK:    [[ASSEMBLED_VECT:%.*]] = insertelement <2 x float> undef, float [[TMP2]], i32 0
+; CHECK:    [[ASSEMBLED_VECT2:%.*]] = insertelement <2 x float> [[ASSEMBLED_VECT]], float [[TMP3]], i32 1
+; CHECK:    store <2 x float> [[ASSEMBLED_VECT2]], <2 x float>* [[TMP1]], align 8
+; CHECK:    ret void
+;
+  %1 = alloca <2 x float>, align 4
+  %2 = fneg <2 x float> %src1
+  store <2 x float> %2, <2 x float>* %1, align 8
+  ret void
+}
+
 define spir_kernel void @test_binary(<2 x i32> %src1, <2 x i32> %src2) {
 ; CHECK-LABEL: @test_binary(
 ; CHECK:    [[SCALAR2:%.*]] = extractelement <2 x i32> [[SRC2:%.*]], i32 0

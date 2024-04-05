@@ -92,6 +92,7 @@ namespace IGC
          *  \{ */
          /// @brief Scalarize an instruction
          /// @param I Instruction to scalarize
+        void scalarizeInstruction(llvm::UnaryOperator* UI);
         void scalarizeInstruction(llvm::BinaryOperator* BI);
         void scalarizeInstruction(llvm::CmpInst* CI);
         void scalarizeInstruction(llvm::CastInst* CI);

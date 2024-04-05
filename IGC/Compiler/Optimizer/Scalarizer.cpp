@@ -310,6 +310,9 @@ void ScalarizeFunction::dispatchInstructionToScalarize(Instruction* I)
 
     switch (I->getOpcode())
     {
+    case Instruction::FNeg:
+        scalarizeInstruction(dyn_cast<UnaryOperator>(I));
+        break;
     case Instruction::Add:
     case Instruction::Sub:
     case Instruction::Mul:
@@ -413,6 +416,55 @@ void ScalarizeFunction::recoverNonScalarizableInst(Instruction* Inst)
             }
         }
     }
+}
+
+void ScalarizeFunction::scalarizeInstruction(UnaryOperator* UI)
+{
+    V_PRINT(scalarizer, "\t\tUnary instruction\n");
+    IGC_ASSERT_MESSAGE(UI, "instruction type dynamic cast failed");
+    IGCLLVM::FixedVectorType* instType = dyn_cast<IGCLLVM::FixedVectorType>(UI->getType());
+    // Only need handling for vector binary ops
+    if (!instType) return;
+
+    // Prepare empty SCM entry for the instruction
+    SCMEntry* newEntry = getSCMEntry(UI);
+
+    // Get additional info from instruction
+    unsigned numElements = int_cast<unsigned>(instType->getNumElements());
+
+    // Obtain scalarized argument
+    SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>operand0;
+    bool op0IsConst;
+
+    obtainScalarizedValues(operand0, &op0IsConst, UI->getOperand(0), UI);
+
+    // If argument is constant, don't bother Scalarizing inst
+    if (op0IsConst) return;
+
+    // Generate new (scalar) instructions
+    SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>newScalarizedInsts;
+    newScalarizedInsts.resize(numElements);
+    for (unsigned dup = 0; dup < numElements; dup++)
+    {
+        Value* Val = UnaryOperator::Create(
+            UI->getOpcode(),
+            operand0[dup],
+            UI->getName(),
+            UI
+        );
+        if (UnaryOperator* UO = dyn_cast<UnaryOperator>(Val)) {
+            // Copy fast math flags if any.
+            if (isa<FPMathOperator>(UO))
+                UO->setFastMathFlags(UI->getFastMathFlags());
+        }
+        newScalarizedInsts[dup] = Val;
+    }
+
+    // Add new value/s to SCM
+    updateSCMEntryWithValues(newEntry, &(newScalarizedInsts[0]), UI, true);
+
+    // Remove original instruction
+    m_removedInsts.insert(UI);
 }
 
 void ScalarizeFunction::scalarizeInstruction(BinaryOperator* BI)
