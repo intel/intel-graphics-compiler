@@ -211,7 +211,12 @@ Value* ImageFuncResolution::getSamplerAddressMode(CallInst& CI)
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
     Value* sampler = ValueTracker::track(&CI, 0, pMdUtils, modMD);
-    IGC_ASSERT_MESSAGE(sampler != nullptr, "Sampler untraceable for ImplicitArg::SAMPLER_ADDRESS");
+    if (sampler == nullptr)
+    {
+        // TODO: For now disable WA if unable to trace sampler argument.
+        // Will need to rework WA to add support for indirect sampler case.
+        return ConstantInt::get(CI.getType(), 0);
+    }
     if (isa<Argument>(sampler))
     {
         Argument* arg = getImplicitImageArg(CI, ImplicitArg::SAMPLER_ADDRESS);

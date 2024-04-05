@@ -190,6 +190,6 @@ void ImageFuncsAnalysis::visitCallInst(CallInst& CI)
     else
     {
         // Only these args should be hit by the indirect case
-        IGC_ASSERT(funcName == GET_SAMPLER_NORMALIZED_COORDS || funcName == GET_SAMPLER_SNAP_WA_REQUIRED);
+        IGC_ASSERT(funcName == GET_SAMPLER_ADDRESS_MODE || funcName == GET_SAMPLER_NORMALIZED_COORDS || funcName == GET_SAMPLER_SNAP_WA_REQUIRED);
     }
 }
