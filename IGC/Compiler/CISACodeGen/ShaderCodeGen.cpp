@@ -885,8 +885,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         {
             mpm.add(createDisableLICMForSpecificLoops());
             mpm.add(createLICMPass());
-            if (ctx.type == ShaderType::OPENCL_SHADER ||
-                ctx.type == ShaderType::COMPUTE_SHADER)
+            if (ctx.type == ShaderType::OPENCL_SHADER)
             {
                 mpm.add(new RegPressureLoopControl());
             }
