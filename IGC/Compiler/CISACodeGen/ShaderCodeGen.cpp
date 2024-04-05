@@ -56,6 +56,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/LowerGEPForPrivMem.hpp"
 #include "Compiler/CISACodeGen/POSH_RemoveNonPositionOutput.h"
 #include "Compiler/CISACodeGen/RegisterEstimator.hpp"
+#include "Compiler/CISACodeGen/RegisterPressureEstimate.hpp"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/CISACodeGen/RayTracingShaderLowering.hpp"
 #include "Compiler/CISACodeGen/RayTracingStatefulPass.h"
@@ -75,7 +76,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryToSLM.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ProgramScopeConstants/ProgramScopeConstantResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/WIFuncs/WIFuncResolution.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/RegPressureLoopControl/RegPressureLoopControl.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/BreakConstantExpr/BreakConstantExpr.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ReplaceUnsupportedIntrinsics/ReplaceUnsupportedIntrinsics.hpp"
 #include "Compiler/Optimizer/PreCompiledFuncImport.hpp"
@@ -885,10 +885,6 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         {
             mpm.add(createDisableLICMForSpecificLoops());
             mpm.add(createLICMPass());
-            if (ctx.type == ShaderType::OPENCL_SHADER)
-            {
-                mpm.add(new RegPressureLoopControl());
-            }
             mpm.add(llvm::createEarlyCSEPass());
         }
         mpm.add(createAggressiveDCEPass());

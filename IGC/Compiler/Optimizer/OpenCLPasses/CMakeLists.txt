@@ -40,7 +40,6 @@ add_subdirectory(PoisonFP64KernelsPass)
 add_subdirectory(PrivateMemory)
 add_subdirectory(ProgramScopeConstants)
 add_subdirectory(RayTracing)
-add_subdirectory(RegPressureLoopControl)
 add_subdirectory(ReplaceUnsupportedIntrinsics)
 add_subdirectory(ResourceAllocator)
 add_subdirectory(RewriteLocalSize)
@@ -88,7 +87,6 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses_PrivateMemory}
     ${IGC_BUILD__SRC__OpenCLPasses_ProgramScopeConstants}
     ${IGC_BUILD__SRC__OpenCLPasses_Raytracing}
-    ${IGC_BUILD__SRC__OpenCLPasses_RegPressureLoopControl}
     ${IGC_BUILD__SRC__OpenCLPasses_ReplaceUnsupportedIntrinsics}
     ${IGC_BUILD__SRC__OpenCLPasses_ResourceAllocator}
     ${IGC_BUILD__SRC__OpenCLPasses_RewriteLocalSize}
@@ -141,7 +139,6 @@ set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses_PrivateMemory}
     ${IGC_BUILD__HDR__OpenCLPasses_ProgramScopeConstants}
     ${IGC_BUILD__HDR__OpenCLPasses_Raytracing}
-    ${IGC_BUILD__HDR__OpenCLPasses_RegPressureLoopControl}
     ${IGC_BUILD__HDR__OpenCLPasses_ReplaceUnsupportedIntrinsics}
     ${IGC_BUILD__HDR__OpenCLPasses_ResourceAllocator}
     ${IGC_BUILD__HDR__OpenCLPasses_RewriteLocalSize}
@@ -196,7 +193,6 @@ set(IGC_BUILD_Compiler_OpenCLPasses_Groups
     Compiler__OpenCLPasses_PrivateMemory
     Compiler__OpenCLPasses_ProgramScopeConstants
     Compiler__OpenCLPasses_Raytracing
-    Compiler__OpenCLPasses_RegPressureLoopControl
     Compiler__OpenCLPasses_ReplaceUnsupportedIntrinsics
     Compiler__OpenCLPasses_RewriteLocalSize
     Compiler__OpenCLPasses_ScalarArgAsPointer
