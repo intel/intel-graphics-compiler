@@ -145,7 +145,8 @@ bool GenerateBlockMemOpsPass::isIndexContinuous(Value *Indx) {
         }
     }
 
-    return true;
+    // If local_id_x was met then index is continuous.
+    return lx;
 }
 
 
