@@ -81,7 +81,7 @@ define spir_kernel void @image_copy(%spirv.Image._void_2_0_0_0_0_0_1 addrspace(1
   %39 = load %spirv.Image._void_2_0_0_0_0_0_1 addrspace(1)*, %spirv.Image._void_2_0_0_0_0_0_1 addrspace(1)** %7, align 8
   %40 = ptrtoint %spirv.Image._void_2_0_0_0_0_0_1 addrspace(1)* %39 to i64
   %41 = trunc i64 %40 to i32
-  call spir_func void @__builtin_IB_write_3d_ui(i32 %41, <4 x i32> zeroinitializer, <4 x i32> zeroinitializer, i32 0) #0
+  call spir_func void @__builtin_IB_write_3d_u4i(i32 %41, <4 x i32> zeroinitializer, <4 x i32> zeroinitializer, i32 0) #0
   store %spirv.Image._void_2_0_0_0_0_0_1 addrspace(1)* %38, %spirv.Image._void_2_0_0_0_0_0_1 addrspace(1)** %7, align 8
   store %"class.sycl::_V1::detail::image_accessor" addrspace(4)* %35, %"class.sycl::_V1::detail::image_accessor" addrspace(4)** %8, align 8
   store %"class.check_get_accessor" addrspace(4)* %32, %"class.check_get_accessor" addrspace(4)** %9, align 8
@@ -95,7 +95,7 @@ define spir_kernel void @image_copy(%spirv.Image._void_2_0_0_0_0_0_1 addrspace(1
   ret void
 }
 
-declare spir_func void @__builtin_IB_write_3d_ui(i32, <4 x i32>, <4 x i32>, i32)
+declare spir_func void @__builtin_IB_write_3d_u4i(i32, <4 x i32>, <4 x i32>, i32)
 
 attributes #0 = { convergent nounwind }
 

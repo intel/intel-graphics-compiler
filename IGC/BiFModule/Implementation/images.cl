@@ -1592,10 +1592,20 @@ float SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _f32_img2d_array_msaa_depth_ro
 // Image Write
 
 #define DEF_IMAGE_WRITE_2D(ACC_QUAL)                                                                                              \
+void OVERLOADABLE __spirv_ImageWrite(global Img2d_##ACC_QUAL* Image, int2 Coordinate, uint Texel)                                 \
+{                                                                                                                                 \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                        \
+    __builtin_IB_write_2d_u1i(id, Coordinate, Texel, 0);                                                                          \
+}                                                                                                                                 \
+void OVERLOADABLE __spirv_ImageWrite(global Img2d_##ACC_QUAL* Image, int2 Coordinate, uint2 Texel)                                \
+{                                                                                                                                 \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                        \
+    __builtin_IB_write_2d_u2i(id, Coordinate, Texel, 0);                                                                          \
+}                                                                                                                                 \
 void OVERLOADABLE __spirv_ImageWrite(global Img2d_##ACC_QUAL* Image, int2 Coordinate, uint4 Texel)                                \
 {                                                                                                                                 \
     int id = (int)__builtin_astype(Image, __global void*);                                                                        \
-    __builtin_IB_write_2d_ui(id, Coordinate, Texel, 0);                                                                           \
+    __builtin_IB_write_2d_u4i(id, Coordinate, Texel, 0);                                                                          \
 }                                                                                                                                 \
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_##ACC_QUAL##_v2i32_v4i32, )(global Img2d_##ACC_QUAL* Image, int2 Coordinate, int4 Texel)     \
 {                                                                                                                                 \
@@ -1619,10 +1629,20 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_##ACC_QUAL##_v2i32_v4f3
 }
 
 #define DEF_IMAGE_WRITE_2D_ARRAY(ACC_QUAL)                                                                                                   \
+void OVERLOADABLE __spirv_ImageWrite(global Img2d_array_##ACC_QUAL* Image, int3 Coordinate, uint Texel)                                      \
+{                                                                                                                                            \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                                   \
+    __builtin_IB_write_2darr_u1i(id, Coordinate, Texel, 0);                                                                                  \
+}                                                                                                                                            \
+void OVERLOADABLE __spirv_ImageWrite(global Img2d_array_##ACC_QUAL* Image, int3 Coordinate, uint2 Texel)                                     \
+{                                                                                                                                            \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                                   \
+    __builtin_IB_write_2darr_u2i(id, Coordinate, Texel, 0);                                                                                  \
+}                                                                                                                                            \
 void OVERLOADABLE __spirv_ImageWrite(global Img2d_array_##ACC_QUAL* Image, int3 Coordinate, uint4 Texel)                                     \
 {                                                                                                                                            \
     int id = (int)__builtin_astype(Image, __global void*);                                                                                   \
-    __builtin_IB_write_2darr_ui(id, Coordinate, Texel, 0);                                                                                   \
+    __builtin_IB_write_2darr_u4i(id, Coordinate, Texel, 0);                                                                                  \
 }                                                                                                                                            \
 void OVERLOADABLE __spirv_ImageWrite(global Img2d_array_##ACC_QUAL* Image, int4 Coordinate, uint4 Texel)                                     \
 {                                                                                                                                            \
@@ -1636,7 +1656,7 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_array_##ACC_QUAL##_v4i3
 {                                                                                                                                            \
     __spirv_ImageWrite(Image, Coordinate.xyz, Texel);                                                                                        \
 }                                                                                                                                            \
-void OVERLOADABLE __spirv_ImageWrite(global Img2d_array_##ACC_QUAL* Image, int3 Coordinate, float4 Texel)                                      \
+void OVERLOADABLE __spirv_ImageWrite(global Img2d_array_##ACC_QUAL* Image, int3 Coordinate, float4 Texel)                                    \
 {                                                                                                                                            \
     __spirv_ImageWrite(Image, Coordinate, as_uint4(Texel));                                                                                  \
 }                                                                                                                                            \
@@ -1670,10 +1690,20 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_array_##ACC_QUAL##_v4i3
 }
 
 #define DEF_IMAGE_WRITE_1D(ACC_QUAL)                                                                                         \
+void OVERLOADABLE __spirv_ImageWrite(global Img1d_##ACC_QUAL* Image, int Coordinate, uint Texel)                             \
+{                                                                                                                            \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                   \
+    __builtin_IB_write_1d_u1i(id, Coordinate, Texel, 0);                                                                     \
+}                                                                                                                            \
+void OVERLOADABLE __spirv_ImageWrite(global Img1d_##ACC_QUAL* Image, int Coordinate, uint2 Texel)                            \
+{                                                                                                                            \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                   \
+    __builtin_IB_write_1d_u2i(id, Coordinate, Texel, 0);                                                                     \
+}                                                                                                                            \
 void OVERLOADABLE __spirv_ImageWrite(global Img1d_##ACC_QUAL* Image, int Coordinate, uint4 Texel)                            \
 {                                                                                                                            \
     int id = (int)__builtin_astype(Image, __global void*);                                                                   \
-    __builtin_IB_write_1d_ui(id, Coordinate, Texel, 0);                                                                      \
+    __builtin_IB_write_1d_u4i(id, Coordinate, Texel, 0);                                                                     \
 }                                                                                                                            \
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_##ACC_QUAL##_i32_v4i32, )(global Img1d_##ACC_QUAL* Image, int Coordinate, int4 Texel)   \
 {                                                                                                                            \
@@ -1700,7 +1730,7 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_##ACC_QUAL##_i32_v4f32_
 void OVERLOADABLE __spirv_ImageWrite(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate, uint4 Texel)                                   \
 {                                                                                                                                          \
     int id = (int)__builtin_astype(Image, __global void*);                                                                                 \
-    __builtin_IB_write_1d_ui(id, Coordinate, Texel, 0);                                                                                    \
+    __builtin_IB_write_1d_u4i(id, Coordinate, Texel, 0);                                                                                   \
 }                                                                                                                                          \
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_buffer_##ACC_QUAL##_i32_v4i32, )(global Img1d_buffer_##ACC_QUAL* Image, int Coordinate, int4 Texel)   \
 {                                                                                                                                          \
@@ -1724,10 +1754,20 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_buffer_##ACC_QUAL##_i32
 }
 
 #define DEF_IMAGE_WRITE_1D_ARRAY(ACC_QUAL)                                                                                                  \
+void OVERLOADABLE __spirv_ImageWrite(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate, uint Texel)                                     \
+{                                                                                                                                           \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                                  \
+    __builtin_IB_write_1darr_u1i(id, Coordinate, Texel, 0);                                                                                 \
+}                                                                                                                                           \
+void OVERLOADABLE __spirv_ImageWrite(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate, uint2 Texel)                                    \
+{                                                                                                                                           \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                                  \
+    __builtin_IB_write_1darr_u2i(id, Coordinate, Texel, 0);                                                                                 \
+}                                                                                                                                           \
 void OVERLOADABLE __spirv_ImageWrite(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate, uint4 Texel)                                    \
 {                                                                                                                                           \
     int id = (int)__builtin_astype(Image, __global void*);                                                                                  \
-    __builtin_IB_write_1darr_ui(id, Coordinate, Texel, 0);                                                                                  \
+    __builtin_IB_write_1darr_u4i(id, Coordinate, Texel, 0);                                                                                 \
 }                                                                                                                                           \
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_array_##ACC_QUAL##_v2i32_v4i32, )(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate, int4 Texel)   \
 {                                                                                                                                           \
@@ -1754,7 +1794,7 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_array_##ACC_QUAL##_v2i3
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_depth_##ACC_QUAL##_v2i32_f32, )(global Img2d_depth_##ACC_QUAL * Image, int2 Coordinate, float Texel)   \
 {                                                                                                                                           \
     int id = (int)__builtin_astype(Image, __global void*);                                                                                  \
-    __builtin_IB_write_2d_ui(id, Coordinate, (uint4)(as_uint(Texel), 0, 0, 0), 0);                                                          \
+    __builtin_IB_write_2d_u4i(id, Coordinate, (uint4)(as_uint(Texel), 0, 0, 0), 0);                                                         \
 }                                                                                                                                           \
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_depth_##ACC_QUAL##_v2i32_f32_i32, )(global Img2d_depth_##ACC_QUAL * Image, int2 Coordinate, float Texel, int ImageOperands) \
 {                                                                                                                                           \
@@ -1765,7 +1805,7 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_depth_##ACC_QUAL##_v2i3
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_array_depth_##ACC_QUAL##_v4i32_f32, )(global Img2d_array_depth_##ACC_QUAL * Image, int4 Coordinate, float Texel)   \
 {                                                                                                                                           \
     int id = (int)__builtin_astype(Image, __global void*);                                                                                  \
-    __builtin_IB_write_2darr_ui(id, Coordinate.xyz, (uint4)(as_uint(Texel), 0, 0, 0), 0);                                                   \
+    __builtin_IB_write_2darr_u4i(id, Coordinate.xyz, (uint4)(as_uint(Texel), 0, 0, 0), 0);                                                  \
 }                                                                                                                                           \
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_array_depth_##ACC_QUAL##_v4i32_f32_i32, )(global Img2d_array_depth_##ACC_QUAL * Image, int4 Coordinate, float Texel, int ImageOperands) \
 {                                                                                                                                           \
@@ -1773,10 +1813,20 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_array_depth_##ACC_QUAL#
 }
 
 #define DEF_IMAGE_WRITE_3D(ACC_QUAL)                                                                                                                  \
+void OVERLOADABLE __spirv_ImageWrite(global Img3d_##ACC_QUAL* Image, int3 Coordinate, uint Texel)                                                     \
+{                                                                                                                                                     \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                                            \
+    __builtin_IB_write_3d_u1i(id, Coordinate, Texel, 0);                                                                                              \
+}                                                                                                                                                     \
+void OVERLOADABLE __spirv_ImageWrite(global Img3d_##ACC_QUAL* Image, int3 Coordinate, uint2 Texel)                                                    \
+{                                                                                                                                                     \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                                            \
+    __builtin_IB_write_3d_u2i(id, Coordinate, Texel, 0);                                                                                              \
+}                                                                                                                                                     \
 void OVERLOADABLE __spirv_ImageWrite(global Img3d_##ACC_QUAL* Image, int3 Coordinate, uint4 Texel)                                                    \
 {                                                                                                                                                     \
     int id = (int)__builtin_astype(Image, __global void*);                                                                                            \
-    __builtin_IB_write_3d_ui(id, Coordinate, Texel, 0);                                                                                               \
+    __builtin_IB_write_3d_u4i(id, Coordinate, Texel, 0);                                                                                              \
 }                                                                                                                                                     \
 void OVERLOADABLE __spirv_ImageWrite(global Img3d_##ACC_QUAL* Image, int4 Coordinate, uint4 Texel)                                                    \
 {                                                                                                                                                     \
@@ -1846,7 +1896,7 @@ DEF_IMAGE_WRITE_3D(rw)
 void OVERLOADABLE __spirv_ImageWrite(global Img##IMAGE_TYPE* Image, COORDS_TYPE Coordinate, uint4 Texel, int ImageOperands, int Lod) \
 {                                                                                                                                    \
     int id = (int)__builtin_astype(Image, __global void*);                                                                           \
-    __builtin_IB_write_##IMAGE_TYPE_ABBR##_ui(id, Coordinate COORDS_XYZ, Texel, Lod);                                                \
+    __builtin_IB_write_##IMAGE_TYPE_ABBR##_u4i(id, Coordinate COORDS_XYZ, Texel, Lod);                                               \
 }                                                                                                                                    \
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img##IMAGE_TYPE##_##COORDS_TYPE_ABBR##_v4i32_i32_i32, )(global Img##IMAGE_TYPE* Image, COORDS_TYPE Coordinate, int4 Texel, int ImageOperands, int Lod)   \
 {                                                                                                                                                                                                           \
@@ -1923,7 +1973,7 @@ DEF_HALF_IMAGE_WRITE_COORD3(3d_rw)
 #define DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_TY(DIM, ARRAY_ACC_QUAL, COORD_DIM, TY)                                                      \
 void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate, TY color)                       \
 {                                                                                                                                           \
-    __spirv_ImageWrite(Image, Coordinate, (TY##4)(color, (TY)0, (TY)0, (TY)1));                                                             \
+    __spirv_ImageWrite(Image, Coordinate, as_uint(color));                                                                                  \
 }                                                                                                                                           \
 void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate, TY color, int ImageOperands)    \
 {                                                                                                                                           \
@@ -1931,7 +1981,17 @@ void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image,
 }                                                                                                                                           \
 void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate, TY##2 color)                    \
 {                                                                                                                                           \
-    __spirv_ImageWrite(Image, Coordinate, (TY##4)(color, (TY)0, (TY)1));                                                                    \
+    __spirv_ImageWrite(Image, Coordinate, as_uint2(color));                                                                                 \
+}                                                                                                                                           \
+void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate, TY##2 color, int ImageOperands) \
+{                                                                                                                                           \
+    __spirv_ImageWrite(Image, Coordinate, color);                                                                                           \
+}
+
+#define DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_OP(DIM, ARRAY_ACC_QUAL, COORD_DIM, TY)                                                      \
+void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate, TY color, int ImageOperands)    \
+{                                                                                                                                           \
+    __spirv_ImageWrite(Image, Coordinate, color);                                                                                           \
 }                                                                                                                                           \
 void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate, TY##2 color, int ImageOperands) \
 {                                                                                                                                           \
@@ -1940,16 +2000,13 @@ void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image,
 
 #define DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE(DIM, ARRAY_ACC_QUAL, COORD_DIM)   \
 DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_TY(DIM, ARRAY_ACC_QUAL, COORD_DIM, int)   \
-DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_TY(DIM, ARRAY_ACC_QUAL, COORD_DIM, uint)  \
-DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_TY(DIM, ARRAY_ACC_QUAL, COORD_DIM, float)
-
-#define DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_HALF(DIM, ARRAY_ACC_QUAL, COORD_DIM) \
-DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_TY(DIM, ARRAY_ACC_QUAL, COORD_DIM, half)
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_TY(DIM, ARRAY_ACC_QUAL, COORD_DIM, float) \
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_OP(DIM, ARRAY_ACC_QUAL, COORD_DIM, uint)
 
 #define DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_S_C(DIM, ARRAY_ACC_QUAL, COORD_DIM, TY, UNSIGNED)                                           \
 void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate, TY color)                       \
 {                                                                                                                                           \
-    __spirv_ImageWrite(Image, Coordinate, (UNSIGNED##int4)(convert_##UNSIGNED##int(color), 0, 0, 1));                                       \
+    __spirv_ImageWrite(Image, Coordinate, convert_##UNSIGNED##int(color));                                                                  \
 }                                                                                                                                           \
 void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate, TY color, int ImageOperands)    \
 {                                                                                                                                           \
@@ -1957,7 +2014,7 @@ void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image,
 }                                                                                                                                           \
 void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate, TY##2 color)                    \
 {                                                                                                                                           \
-    __spirv_ImageWrite(Image, Coordinate, (UNSIGNED##int4)(convert_##UNSIGNED##int2(color), 0, 1));                                         \
+    __spirv_ImageWrite(Image, Coordinate, convert_##UNSIGNED##int2(color));                                                                 \
 }                                                                                                                                           \
 void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate, TY##2 color, int ImageOperands) \
 {                                                                                                                                           \
@@ -2001,6 +2058,21 @@ DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_SC(3, wo, 3)
 DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_SC(3, rw, 3)
 
 #ifdef cl_khr_fp16
+
+#define DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_HALF_1_2(DIM, ARRAY_ACC_QUAL, COORD_DIM)                                 \
+void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate, half Texel)  \
+{                                                                                                                        \
+    __spirv_ImageWrite(Image, Coordinate, SPIRV_BUILTIN(FConvert, _v1f32_v1f16, _Rfloat)(Texel));                        \
+}                                                                                                                        \
+void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate, half2 Texel) \
+{                                                                                                                        \
+    __spirv_ImageWrite(Image, Coordinate, SPIRV_BUILTIN(FConvert, _v2f32_v2f16, _Rfloat2)(Texel));                       \
+}
+
+#define DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_HALF(DIM, ARRAY_ACC_QUAL, COORD_DIM) \
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_HALF_1_2(DIM, ARRAY_ACC_QUAL, COORD_DIM)     \
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_OP(DIM, ARRAY_ACC_QUAL, COORD_DIM, half)
+
 DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_HALF(1, wo, )
 DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_HALF(1, rw, )
 DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_HALF(1, array_wo, 2)

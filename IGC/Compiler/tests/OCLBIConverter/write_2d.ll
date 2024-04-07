@@ -24,13 +24,13 @@ define spir_kernel void @kernel(%spirv.Image._void_1_0_0_0_0_0_1 addrspace(1)* %
   %trunc = trunc i64 %img_as_int to i32
   ; CHECK-NOT: __builtin_IB_write_2d_ui
   ; CHECK: %[[IMG:.*]] = call float addrspace(196608)* @llvm.genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
-  ; call void @llvm.genx.GenISA.typedwrite.p196608f32(float addrspace(196608)* %[[IMG]], i32 %{{.*}}, i32 %{{.*}}, i32 0, i32 0, float %{{.*}}, float %{{.*}}, float %{{.*}}, float %{{.*}})
-  call spir_func void @__builtin_IB_write_2d_ui(i32 %trunc, <2 x i32> zeroinitializer, <4 x i32> zeroinitializer, i32 0)
+  ; CHECK: call void @llvm.genx.GenISA.typedwrite.p196608f32(float addrspace(196608)* %[[IMG]], i32 %{{.*}}, i32 %{{.*}}, i32 0, i32 0, float %{{.*}}, float %{{.*}}, float %{{.*}}, float %{{.*}})
+  call spir_func void @__builtin_IB_write_2d_u4i(i32 %trunc, <2 x i32> zeroinitializer, <4 x i32> zeroinitializer, i32 0)
 
   ret void
 }
 
-declare spir_func void @__builtin_IB_write_2d_ui(i32, <2 x i32>, <4 x i32>, i32)
+declare spir_func void @__builtin_IB_write_2d_u4i(i32, <2 x i32>, <4 x i32>, i32)
 
 !igc.functions = !{!0}
 !IGCMetadata = !{!3}

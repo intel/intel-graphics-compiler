@@ -91,11 +91,21 @@ __global void* __builtin_IB_convert_pipe_wo_to_intel_pipe(write_only pipe int);
 #endif
 
 // Image writes
-void     __builtin_IB_write_1darr_ui(int, int2, uint4, int);
-void     __builtin_IB_write_1d_ui(int, int, uint4, int);
-void     __builtin_IB_write_2darr_ui(int, int3, uint4, int);
-void     __builtin_IB_write_2d_ui(int, int2, uint4, int);
-void     __builtin_IB_write_3d_ui(int, int3, uint4, int);
+void     __builtin_IB_write_1darr_u1i(int, int2, uint, int);
+void     __builtin_IB_write_1darr_u2i(int, int2, uint2, int);
+void     __builtin_IB_write_1darr_u4i(int, int2, uint4, int);
+void     __builtin_IB_write_1d_u1i(int, int, uint, int);
+void     __builtin_IB_write_1d_u2i(int, int, uint2, int);
+void     __builtin_IB_write_1d_u4i(int, int, uint4, int);
+void     __builtin_IB_write_2darr_u1i(int, int3, uint, int);
+void     __builtin_IB_write_2darr_u2i(int, int3, uint2, int);
+void     __builtin_IB_write_2darr_u4i(int, int3, uint4, int);
+void     __builtin_IB_write_2d_u1i(int, int2, uint, int);
+void     __builtin_IB_write_2d_u2i(int, int2, uint2, int);
+void     __builtin_IB_write_2d_u4i(int, int2, uint4, int);
+void     __builtin_IB_write_3d_u1i(int, int3, uint, int);
+void     __builtin_IB_write_3d_u2i(int, int3, uint2, int);
+void     __builtin_IB_write_3d_u4i(int, int3, uint4, int);
 void     __builtin_IB_write_2darr_f(int, int4, float4, int);
 void     __builtin_IB_write_2d_f(int, int2, float4, int);
 

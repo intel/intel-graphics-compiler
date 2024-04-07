@@ -164,7 +164,7 @@ entry:
   %4 = shufflevector <2 x i32> %1, <2 x i32> undef, <4 x i32> <i32 0, i32 1, i32 0, i32 0>
   %astype.i = bitcast <4 x float> %3 to <4 x i32>
   %conv.i.i.i = trunc i64 %ImageArgVal to i32
-  call spir_func void @__builtin_IB_write_2d_ui(i32 %conv.i.i.i, <2 x i32> %1, <4 x i32> %astype.i, i32 0) #4
+  call spir_func void @__builtin_IB_write_2d_u4i(i32 %conv.i.i.i, <2 x i32> %1, <4 x i32> %astype.i, i32 0) #4
   ret void
 }
 
@@ -204,7 +204,7 @@ entry:
   %ImageArgVal = ptrtoint %opencl.image2d_t.write_only addrspace(1)* %0 to i64
   %4 = shufflevector <2 x i32> %1, <2 x i32> undef, <4 x i32> <i32 0, i32 1, i32 0, i32 0>
   %conv.i.i = trunc i64 %ImageArgVal to i32
-  call spir_func void @__builtin_IB_write_2d_ui(i32 %conv.i.i, <2 x i32> %1, <4 x i32> %3, i32 0) #4
+  call spir_func void @__builtin_IB_write_2d_u4i(i32 %conv.i.i, <2 x i32> %1, <4 x i32> %3, i32 0) #4
   ret void
 }
 
@@ -245,13 +245,13 @@ entry:
   %ImageArgVal = ptrtoint %opencl.image2d_t.write_only addrspace(1)* %0 to i64
   %4 = shufflevector <2 x i32> %1, <2 x i32> undef, <4 x i32> <i32 0, i32 1, i32 0, i32 0>
   %conv.i.i = trunc i64 %ImageArgVal to i32
-  call spir_func void @__builtin_IB_write_2d_ui(i32 %conv.i.i, <2 x i32> %1, <4 x i32> %3, i32 0) #4
+  call spir_func void @__builtin_IB_write_2d_u4i(i32 %conv.i.i, <2 x i32> %1, <4 x i32> %3, i32 0) #4
   ret void
 }
 
 declare spir_func <4 x i32> @__builtin_IB_OCL_2d_ldui(i32, <2 x i32>, i32) local_unnamed_addr #2
 declare spir_func <4 x float> @__builtin_IB_OCL_2d_ld(i32, <2 x i32>, i32) local_unnamed_addr #2
-declare spir_func void @__builtin_IB_write_2d_ui(i32, <2 x i32>, <4 x i32>, i32) local_unnamed_addr #2
+declare spir_func void @__builtin_IB_write_2d_u4i(i32, <2 x i32>, <4 x i32>, i32) local_unnamed_addr #2
 declare void @llvm.genx.GenISA.CatchAllDebugLine() #3
 
 attributes #0 = { convergent noinline nounwind optnone "less-precise-fpmad"="true" }
