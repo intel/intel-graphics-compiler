@@ -2729,7 +2729,7 @@ Imported_Intrinsics = \
     "None"]],
 ####################################################################################################
 "GenISA_LSC2DBlockCreateAddrPayload": ["Create LSC2DBlock read/write address payload",
-    [("int",                           "output: address payload placeholder"),
+    [("anyptr",                        "output: address payload placeholder"),
     [("long",                          "surface base offset"),
      ("int",                           "surface base width"),
      ("int",                           "surface base height"),
@@ -2742,22 +2742,22 @@ Imported_Intrinsics = \
      "None"]],
 ####################################################################################################
 "GenISA_LSC2DBlockCopyAddrPayload": ["Copy LSC2DBlock read/write address payload",
-    [("int",                           "output: new address payload placeholder"),
-    [("int",                           "input : address payload to be copied")],
-     "None"]],
+    [("anyptr",                       "output: new address payload placeholder"),
+    [(0,                              "input : address payload to be copied")],
+    "ReadArgMem"]],
 ####################################################################################################
 "GenISA_LSC2DBlockSetAddrPayloadField": ["LSC 2d block : set given field in address payload",
-    [("int",                           "output: address payload (AP) placeholder"),
-    [("int",                           "arg0: input address payload placeholder"),
+    [("void",                          "No return value"),
+    [("anyptr",                        "arg0: input/output address payload placeholder"),
      ("int",                           "arg1: field name (LSC2DBlockField)"),
      ("anyint",                        "arg2: field value"),
      ("bool",                          "arg2: false : AP[arg1] = arg2; "+\
                                        "       true : AP[arg1] += arg2")],
-     "None"]],
+    "ReadWriteArgMem"]],
 ####################################################################################################
 "GenISA_LSC2DBlockReadAddrPayload": ["LSC 2d block read with address payload(AP) as a single arg",
     [("anyint",                        ""),
-    [("int",                          "address payload (AP) placeholder"),
+    [("anyptr",                        "address payload (AP) placeholder"),
      ("int",                           "immediate offset x in ext_desc, added to AP's x"),
      ("int",                           "immediate offset y in ext_desc, added to Ap's y"),
      ("int",                           "element size in bits"),
@@ -2769,10 +2769,10 @@ Imported_Intrinsics = \
                                        "only and elemSize 32)"),
      ("int",                           "cache controls options (LSC_CACHE_OPTS)")],
     "None"]],
-    ####################################################################################################
+####################################################################################################
 "GenISA_LSC2DBlockWriteAddrPayload": ["LSC 2d block write with address payload(AP) as a single arg",
     [("void",                          "nothing is returned"),
-    [("int",                           "address payload (AP) placeholder"),
+    [("anyptr",                        "address payload (AP) placeholder"),
      ("int",                           "immediate offset x in ext_desc, added to AP's x"),
      ("int",                           "immediate offset y in ext_desc, added to Ap's y"),
      ("int",                           "element size in bits"),
@@ -2788,7 +2788,7 @@ Imported_Intrinsics = \
 ####################################################################################################
 "GenISA_LSC2DBlockPrefetchAddrPayload": ["LSC 2d block prefetch with address payload(AP) as a single arg",
     [("void",                          "nothing is returned"),
-    [("int",                           "address payload (AP) placeholder"),
+    [("anyptr",                        "address payload (AP) placeholder"),
      ("int",                           "immediate offset x in ext_desc, added to AP's x"),
      ("int",                           "immediate offset y in ext_desc, added to Ap's y"),
      ("int",                           "elemement size in bits"),
@@ -2799,7 +2799,7 @@ Imported_Intrinsics = \
      ("bool",                          "vnni transform (for transpose+transform use transpose "+\
                                        "only and elemSize 32)"),
      ("int",                           "cache controls options (LSC_CACHE_OPTS)")],
-     "None"]],
+    "None"]],
 ####################################################################################################
 "GenISA_LSCAtomicFP32": ["LSC atomic FP32 add,sub,min,max,fcas",
     [("float",                         "return old value"),

@@ -432,38 +432,40 @@ Instruction* LSCFuncsResolution::CreateLSCLoadIntrinsicCallInst(
     return lscCall;
 }
 
-Instruction* LSCFuncsResolution::CopyLSC2DBlockAddressPayload(CallInst& CI) {
-    Value* args[]{ CI.getArgOperand(0) };
+Instruction* LSCFuncsResolution::CreateLSC2DBlockAddressPayload(CallInst& CI) {
+    Value* Base = CI.getArgOperand(0);
+    Value* Width = CI.getArgOperand(1);
+    Value* Height = CI.getArgOperand(2);
+    Value* Pitch = CI.getArgOperand(3);
+    Value* BlkX = CI.getArgOperand(4);
+    Value* BlkY = CI.getArgOperand(5);
+    Value* BlkWidth = CI.getArgOperand(6);
+    Value* BlkHeight = CI.getArgOperand(7);
+    Value* NumBlks = CI.getArgOperand(8);
+
+    if (!isa<ConstantInt>(BlkWidth) || !isa<ConstantInt>(BlkHeight) ||
+        !isa<ConstantInt>(NumBlks)) {
+        IGC_ASSERT_MESSAGE(0, "Block2D address payload: block_x, block_y,"
+            " and num of blocks must be constant!");
+        return nullptr;
+    }
+
+    Value* args[]{ Base, Width,    Height,    Pitch,  BlkX,
+                  BlkY, BlkWidth, BlkHeight, NumBlks };
+    Type* Tys[1] = { CI.getType() };
     Function* Func = GenISAIntrinsic::getDeclaration(
-        CI.getModule(), GenISAIntrinsic::GenISA_LSC2DBlockCopyAddrPayload);
+        CI.getModule(), GenISAIntrinsic::GenISA_LSC2DBlockCreateAddrPayload, Tys);
     Instruction* I = CallInst::Create(Func, args, "Block2D_AddrPayload", &CI);
     updateDebugLoc(&CI, I);
     return I;
 }
 
-Instruction *LSCFuncsResolution::CreateLSC2DBlockAddressPayload(CallInst &CI) {
-    Value *Base = CI.getArgOperand(0);
-    Value *Width = CI.getArgOperand(1);
-    Value *Height = CI.getArgOperand(2);
-    Value *Pitch = CI.getArgOperand(3);
-    Value *BlkX = CI.getArgOperand(4);
-    Value *BlkY = CI.getArgOperand(5);
-    Value *BlkWidth = CI.getArgOperand(6);
-    Value *BlkHeight = CI.getArgOperand(7);
-    Value *NumBlks = CI.getArgOperand(8);
-
-    if (!isa<ConstantInt>(BlkWidth) || !isa<ConstantInt>(BlkHeight) ||
-        !isa<ConstantInt>(NumBlks)) {
-        IGC_ASSERT_MESSAGE(0, "Block2D address payload: block_x, block_y,"
-                              " and num of blocks must be constant!");
-        return nullptr;
-    }
-
-    Value *args[]{Base, Width,    Height,    Pitch,  BlkX,
-                  BlkY, BlkWidth, BlkHeight, NumBlks};
-    Function *Func = GenISAIntrinsic::getDeclaration(
-        CI.getModule(), GenISAIntrinsic::GenISA_LSC2DBlockCreateAddrPayload);
-    Instruction *I = CallInst::Create(Func, args, "Block2D_AddrPayload", &CI);
+Instruction* LSCFuncsResolution::CopyLSC2DBlockAddressPayload(CallInst& CI) {
+    Value* args[]{ CI.getArgOperand(0) };
+    Function* Func = GenISAIntrinsic::getDeclaration(
+        CI.getModule(), GenISAIntrinsic::GenISA_LSC2DBlockCopyAddrPayload,
+        CI.getType());
+    Instruction* I = CallInst::Create(Func, args, "Block2D_AddrPayload", &CI);
     updateDebugLoc(&CI, I);
     return I;
 }
@@ -476,11 +478,11 @@ Instruction *LSCFuncsResolution::SetLSC2DBlockAddressPayloadField(
     args[1] = ConstantInt::get(Type::getInt32Ty(CI.getContext()), Field);
     args[2] = CI.getArgOperand(1);
     args[3] = ConstantInt::get(Type::getInt1Ty(CI.getContext()), IsAddend);
-    Type* tys[1] = { args[2]->getType() };
+    Type* tys[2] = { args[0]->getType(), args[2]->getType() };
     Function* Func = GenISAIntrinsic::getDeclaration(
         CI.getModule(), GenISAIntrinsic::GenISA_LSC2DBlockSetAddrPayloadField, tys);
 
-    Instruction *I = CallInst::Create(Func, args, "Block2D_AddrPayload", &CI);
+    Instruction *I = CallInst::Create(Func, args, "", &CI);
     updateDebugLoc(&CI, I);
     return I;
 }
@@ -642,18 +644,26 @@ Instruction *LSCFuncsResolution::CreateSubGroup2DBlockOperationAP(
 
     Function *Func = nullptr;
     if (isRead) {
-        Func = GenISAIntrinsic::getDeclaration(
-            CI.getCalledFunction()->getParent(),
-            isPrefetch
-                ? GenISAIntrinsic::GenISA_LSC2DBlockPrefetchAddrPayload
-                : GenISAIntrinsic::GenISA_LSC2DBlockReadAddrPayload,
-            CI.getCalledFunction()->getReturnType());
+        if (isPrefetch) {
+            Func = GenISAIntrinsic::getDeclaration(
+                CI.getCalledFunction()->getParent(),
+                GenISAIntrinsic::GenISA_LSC2DBlockPrefetchAddrPayload,
+                AddrPayload->getType());
+        }
+        else {
+            Type* tys[2] = { CI.getType(), AddrPayload->getType() };
+            Func = GenISAIntrinsic::getDeclaration(
+                CI.getCalledFunction()->getParent(),
+                GenISAIntrinsic::GenISA_LSC2DBlockReadAddrPayload,
+                tys);
+        }
     } else {
-        Value *dst = CI.getArgOperand(3);
-        args.push_back(dst);
+        Value *storedVal = CI.getArgOperand(3);
+        args.push_back(storedVal);
+        Type* tys[2] = {AddrPayload->getType(), storedVal->getType() };
         Func = GenISAIntrinsic::getDeclaration(
             CI.getCalledFunction()->getParent(),
-            GenISAIntrinsic::GenISA_LSC2DBlockWriteAddrPayload, dst->getType());
+            GenISAIntrinsic::GenISA_LSC2DBlockWriteAddrPayload, tys);
     }
 
     Instruction *callI = CallInst::Create(Func, args, "", &CI);
@@ -672,14 +682,13 @@ void LSCFuncsResolution::verifyBlock2DAddressPayload() {
     }
 
     // Given the following:
-    //  (1)  int8 AP = LSC2DBlockCreateAddrPayload(....)
+    //  (1)  int* AP = LSC2DBlockCreateAddrPayload(....)
     //       ...
-    //  (2)  int8 AP1 = LSC2DBLockSetBlockXY(AP, ...)
+    //  (2)  LSC2DBLockSetBlockXY(AP, ...)
     //       ...
     //  (3)  x = LSC2DBlockReadAddrPayload(AP1, ...)
     // this function verifies that block dimention used in read at (3) is the
-    // same as one created at (1). Note that it is a user's responsibility to
-    // guarantee this.
+    // same as one created at (1) (This is user's responsibility).
     //
     // rootAPMap maps an AP to a root AP. For the above, it maps (2) to (1).
     // (1) is called the root AP.
@@ -687,8 +696,10 @@ void LSCFuncsResolution::verifyBlock2DAddressPayload() {
 
     auto isAPUpdateInst = [](GenIntrinsicInst *aG) {
         switch (aG->getIntrinsicID()) {
-        case GenISAIntrinsic::GenISA_LSC2DBlockSetAddrPayloadField:
-        // Copy does not change block shape, so it is treated not as
+        // No longer returns a value
+        // case GenISAIntrinsic::GenISA_LSC2DBlockSetAddrPayloadField:
+        //
+        // Copy does not change block dimention, so it is treated not as
         // a creation for the purpose of this verification
         case GenISAIntrinsic::GenISA_LSC2DBlockCopyAddrPayload:
             return true;
@@ -699,13 +710,27 @@ void LSCFuncsResolution::verifyBlock2DAddressPayload() {
     };
 
     auto isAPCreateInst = [](GenIntrinsicInst *aG) {
-      switch (aG->getIntrinsicID()) {
-      case GenISAIntrinsic::GenISA_LSC2DBlockCreateAddrPayload:
-        return true;
-      default:
-        break;
-      }
-      return false;
+        switch (aG->getIntrinsicID()) {
+        case GenISAIntrinsic::GenISA_LSC2DBlockCreateAddrPayload:
+            return true;
+        default:
+            break;
+        }
+        return false;
+    };
+
+    auto isSameDimension = [](
+        GenIntrinsicInst* RootGII, GenIntrinsicInst* GII, bool isGIIRoot) {
+        const int w_no = isGIIRoot ? 6 : 4;
+        const int h_no = isGIIRoot ? 7 : 5;
+        const int b_no = isGIIRoot ? 8 : 6;
+        int width = (int)cast<ConstantInt>(GII->getArgOperand(w_no))->getZExtValue();
+        int height = (int)cast<ConstantInt>(GII->getArgOperand(h_no))->getZExtValue();
+        int numBlks = (int)cast<ConstantInt>(GII->getArgOperand(b_no))->getZExtValue();
+        int rt_width = (int)cast<ConstantInt>(RootGII->getArgOperand(6))->getZExtValue();
+        int rt_height = (int)cast<ConstantInt>(RootGII->getArgOperand(7))->getZExtValue();
+        int rt_numBlks = (int)cast<ConstantInt>(RootGII->getArgOperand(8))->getZExtValue();
+        return (height == rt_height && width == rt_width && numBlks == rt_numBlks);
     };
 
     for (auto V : m_lsc2dblock_readwrite) {
@@ -739,9 +764,11 @@ void LSCFuncsResolution::verifyBlock2DAddressPayload() {
                     if (rootGII == nullptr) {
                         rootGII = thisRoot;
                     }
-                    else if (rootGII != thisRoot) {
-                        IGC_ASSERT_MESSAGE(0, "Block2D address payload: defined "
-                            "by more than one create builtin");
+                    else if (rootGII != thisRoot &&
+                        !isSameDimension(rootGII, thisRoot, true)) {
+                        IGC_ASSERT_MESSAGE(0, "Block2D address payload: "
+                            "addressPayload argument is defined by more than "
+                            "one create builtins with different dimensions");
                         return;
                     }
                     continue;
@@ -754,7 +781,7 @@ void LSCFuncsResolution::verifyBlock2DAddressPayload() {
                 }
                 else {
                     IGC_ASSERT_MESSAGE(0,
-                        "Address Payload must be created with incorrect builtin!");
+                        "AddressPayload is created with incorrect builtin!");
                     return;
                 }
             }
@@ -785,14 +812,7 @@ void LSCFuncsResolution::verifyBlock2DAddressPayload() {
             rootAPMap[GII] = rootGII;
         }
 
-        // verify
-        int width = (int)cast<ConstantInt>(GII->getArgOperand(4))->getZExtValue();
-        int height = (int)cast<ConstantInt>(GII->getArgOperand(5))->getZExtValue();
-        int numBlks = (int)cast<ConstantInt>(GII->getArgOperand(6))->getZExtValue();
-        int ap_width = (int)cast<ConstantInt>(rootGII->getArgOperand(6))->getZExtValue();
-        int ap_height = (int)cast<ConstantInt>(rootGII->getArgOperand(7))->getZExtValue();
-        int ap_numBlks = (int)cast<ConstantInt>(rootGII->getArgOperand(8))->getZExtValue();
-        if (height != ap_height || width != ap_width || numBlks != ap_numBlks) {
+        if (!isSameDimension(rootGII, GII, false)) {
             std::stringstream ss;
             ss << "Block2D address payload: read/write builtins' "
                << "block dimention do not match address payload's\n";
