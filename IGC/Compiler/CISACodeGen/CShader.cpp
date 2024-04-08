@@ -3390,6 +3390,7 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool,
         switch (GII->getIntrinsicID()) {
         case GenISAIntrinsic::GenISA_LSC2DBlockCreateAddrPayload:
         case GenISAIntrinsic::GenISA_LSC2DBlockCopyAddrPayload:
+        case GenISAIntrinsic::GenISA_LSC2DBlockSetAddrPayloadField:
         {
             // Address Payload is opaque, no alias to it. It takes 8DW.
             auto thisAlign = (m_Platform->getGRFSize() == 64 ? EALIGN_32WORD : EALIGN_HWORD);
