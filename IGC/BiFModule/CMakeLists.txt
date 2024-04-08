@@ -487,6 +487,7 @@ set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_rt_production")
 set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_subgroup_matrix_multiply_accumulate_tf32")
 set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_subgroup_extended_block_read")
 set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_pvc_lsc_validation")
+set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_subgroup_extended_block_read_cacheopts")
 
 igc_bif_build_bc(
     OUTPUT               "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int.bc"
