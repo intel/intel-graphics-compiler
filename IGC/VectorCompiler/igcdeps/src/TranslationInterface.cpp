@@ -180,6 +180,8 @@ getPlatformName(const PLATFORM &Platform) {
   case IGFX_XE2_LPG_CORE:
     if (Product == IGFX_LUNARLAKE)
       return {"Xe2", RevId};
+    if (Product == IGFX_BMG)
+      return {"Xe2", RevId};
     break;
   default:
     break;

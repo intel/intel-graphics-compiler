@@ -96,6 +96,8 @@ inline const char *getPlatformStr(PLATFORM Platform, unsigned &RevId) {
     if (GFX_IS_ARL_S(DeviceId))
       return "arl-s";
     return "arl-h";
+  case IGFX_BMG:
+    return "bmg";
   case IGFX_LUNARLAKE:
     return "lnl";
   default:
