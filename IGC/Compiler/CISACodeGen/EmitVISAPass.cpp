@@ -22710,6 +22710,8 @@ void EmitPass::emitLSCStore(
 void EmitPass::emitLSC2DBlockOperation(llvm::GenIntrinsicInst* inst)
 {
     bool isRead = inst->getIntrinsicID() == GenISAIntrinsic::GenISA_LSC2DBlockRead;
+    const bool isPrefetch = inst->getIntrinsicID() == GenISAIntrinsic::GenISA_LSC2DBlockPrefetch;
+    isRead |= isPrefetch;
 
     CVariable* pFlatImageBaseoffset = GetSymbol(inst->getOperand(0));
     CVariable* pFlatImageWidth = GetSymbol(inst->getOperand(1));
@@ -22728,6 +22730,7 @@ void EmitPass::emitLSC2DBlockOperation(llvm::GenIntrinsicInst* inst)
 
     CVariable* destination = m_destination;
     if (numBlocksV == 2 && blockHeight == 1 &&
+        !isPrefetch &&
         elemSizeInBits * blockWidth == 256 &&
         m_currShader->m_Platform->getPlatformInfo().eProductFamily >= IGFX_PVC)
     {
@@ -22770,6 +22773,7 @@ void EmitPass::emitLSC2DBlockOperation(llvm::GenIntrinsicInst* inst)
     m_encoder->Push();
 
     if (isRead &&
+        !isPrefetch &&
         destination != m_destination)
     {
         // m1 v2 block read
@@ -23136,6 +23140,7 @@ void EmitPass::emitLSCIntrinsic(llvm::GenIntrinsicInst* GII)
         emitLSCFence(GII);
         break;
     case GenISAIntrinsic::GenISA_LSC2DBlockRead:
+    case GenISAIntrinsic::GenISA_LSC2DBlockPrefetch:
     case GenISAIntrinsic::GenISA_LSC2DBlockWrite:
         emitLSC2DBlockOperation(GII);
         break;
