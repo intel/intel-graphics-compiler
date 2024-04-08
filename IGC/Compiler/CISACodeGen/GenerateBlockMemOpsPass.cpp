@@ -198,7 +198,7 @@ bool GenerateBlockMemOpsPass::canOptLoadStore(Instruction *I) {
         CurrentAlignment = IGCLLVM::getAlignmentValue(LI);
         DataType = cast<Value>(LI)->getType();
     } else {
-        StoreInst *SI = dyn_cast<StoreInst>(I);
+        StoreInst* SI = cast<StoreInst>(I);
         Ptr = SI->getPointerOperand();
         ValOp = SI->getValueOperand();
         CurrentAlignment = IGCLLVM::getAlignmentValue(SI);

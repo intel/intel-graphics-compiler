@@ -260,7 +260,7 @@ struct InstDecoder {
     return decodeFragment(f, fmt);
   }
 
-  void addReserved(int off, int len, std::string errStr = "?") {
+  void addReserved(int off, int len, const std::string &errStr = "?") {
     Fragment fRSVD("Reserved", off, len);
     auto b = bits.getFragment(fRSVD);
     addDecodedFragment(fRSVD, b != 0 ? errStr : "");
@@ -630,7 +630,7 @@ struct InstDecoder {
   }
 
   void decodeSubRegWithType(OperandInfo &opInfo, const Field &fSUBREG,
-                            Type type, std::string typeSyntax) {
+                            Type type, const std::string &typeSyntax) {
     auto srb = (int)bits.getField(fSUBREG);
     auto scaled =
         BinaryOffsetToSubReg(srb, opInfo.regOpName, type, model.platform);
