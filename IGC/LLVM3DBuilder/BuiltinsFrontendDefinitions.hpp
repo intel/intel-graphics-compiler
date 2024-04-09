@@ -4273,6 +4273,29 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateCoverage()
         this->CreateCall(pFunc, this->getInt32(IGC::INPUT_COVERAGE_MASK)), this->getInt32Ty());
 }
 
+template<bool preserveNames, typename T, typename Inserter>
+inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateStartVertexLocation()
+{
+    llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
+    llvm::Function* pFunc = llvm::GenISAIntrinsic::getDeclaration(
+        module,
+        llvm::GenISAIntrinsic::GenISA_DCL_SystemValue,
+        this->getFloatTy());
+    return this->CreateBitCast(
+        this->CreateCall(pFunc, this->getInt32(IGC::XP0)), this->getInt32Ty());
+}
+
+template<bool preserveNames, typename T, typename Inserter>
+inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateStartInstanceLocation()
+{
+    llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
+    llvm::Function* pFunc = llvm::GenISAIntrinsic::getDeclaration(
+        module,
+        llvm::GenISAIntrinsic::GenISA_DCL_SystemValue,
+        this->getFloatTy());
+    return this->CreateBitCast(
+        this->CreateCall(pFunc, this->getInt32(IGC::XP1)), this->getInt32Ty());
+}
 
 template<bool preserveNames, typename T, typename Inserter>
 inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDomainPointInput(unsigned int dim)

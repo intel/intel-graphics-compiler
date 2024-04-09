@@ -1048,6 +1048,8 @@ public:
     llvm::Value* CreateInstanceID();
     llvm::Value* CreateCoverage();
     llvm::Value* CreateSampleIndex();
+    llvm::Value* CreateStartVertexLocation();
+    llvm::Value* CreateStartInstanceLocation();
     llvm::Value* CreateDomainPointInput(unsigned int dimension);
     llvm::Value* create_inputVecF32(llvm::Value* inputIndex, llvm::Value* interpolationMode);
     llvm::Value* create_uavSerializeAll();
