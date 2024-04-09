@@ -121,6 +121,7 @@ bool SetFastMathFlags::setFlags(Function& F, FastMathFlags fmfs)
     {
         unsigned int op = i->getOpcode();
         switch (op) {
+        case Instruction::FNeg:
         case Instruction::FAdd:
         case Instruction::FSub:
         case Instruction::FMul:

@@ -82,15 +82,9 @@ char CustomUnsafeOptPass::ID = 0;
 STATISTIC(Stat_FcmpRemoved, "Number of insts removed in FCmp Opt");
 STATISTIC(Stat_FloatRemoved, "Number of insts removed in Float Opt");
 
-static bool allowUnsafeMathOpt(CodeGenContext* ctx, llvm::BinaryOperator& op)
+static bool allowUnsafeMathOpt(CodeGenContext* ctx)
 {
-    // always allow unsafe opt if instruction has the flag
-    if (llvm::isa<llvm::FPMathOperator>(op) && op.getFastMathFlags().isFast())
-    {
-        return true;
-    }
-
-    // then check compiler options in metadata
+    // check compiler options in metadata
     if ((!ctx->m_checkFastFlagPerInstructionInCustomUnsafeOptPass &&
         ctx->getModuleMetaData()->compOpt.FastRelaxedMath) ||
         ctx->getModuleMetaData()->compOpt.UnsafeMathOptimizations)
@@ -104,6 +98,18 @@ static bool allowUnsafeMathOpt(CodeGenContext* ctx, llvm::BinaryOperator& op)
     }
 
     return false;
+}
+
+static bool allowUnsafeMathOpt(CodeGenContext* ctx, llvm::BinaryOperator& op)
+{
+    // always allow unsafe opt if instruction has the flag
+    if (llvm::isa<llvm::FPMathOperator>(op) && op.getFastMathFlags().isFast())
+    {
+        return true;
+    }
+
+    // then check compiler options in metadata
+    return allowUnsafeMathOpt(ctx);
 }
 
 CustomUnsafeOptPass::CustomUnsafeOptPass()
@@ -164,6 +170,31 @@ bool CustomUnsafeOptPass::runOnFunction(Function& F)
 void CustomUnsafeOptPass::visitInstruction(Instruction& I)
 {
     // nothing
+}
+
+void CustomUnsafeOptPass::visitPHINode(llvm::PHINode& I)
+{
+    /*
+    From
+        %zero = phi float [ -0.000000e+00, %if.then ], [ 0.000000e+00, %for.body ]
+        %mul = fmul fast float %zero, %smth
+    To
+        %mul = fmul fast float 0.0, %smth
+    */
+    if (I.getType()->isFloatingPointTy() && allowUnsafeMathOpt(m_ctx))
+    {
+        bool isZeroFP = llvm::all_of(I.incoming_values(), [](Use& use)
+        {
+            return isa<ConstantFP>(use.get()) && cast<ConstantFP>(use.get())->isZero();
+        });
+
+        if (isZeroFP)
+        {
+            I.replaceAllUsesWith(ConstantFP::get(I.getType(), 0.0));
+            I.eraseFromParent();
+            m_isChanged = true;
+        }
+    }
 }
 
 void CustomUnsafeOptPass::visitFPToSIInst(llvm::FPToSIInst& I)

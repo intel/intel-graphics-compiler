@@ -48,6 +48,7 @@ namespace IGC
         }
 
         void visitInstruction(llvm::Instruction& I);
+        void visitPHINode(llvm::PHINode& I);
         void visitBinaryOperator(llvm::BinaryOperator& I);
         void visitFCmpInst(llvm::FCmpInst& FC);
         void visitSelectInst(llvm::SelectInst& I);
