@@ -16085,174 +16085,6 @@ void EmitPass::emitAluConditionMod(Pattern* aluPattern, Instruction* alu, CmpIns
 }
 
 
-ERoundingMode EmitPass::GetRoundingMode_FPCvtInt(Instruction* pInst)
-{
-    if (isa<FPToSIInst>(pInst) || isa <FPToUIInst>(pInst))
-    {
-        const ERoundingMode defaultRoundingMode_FPCvtInt = static_cast<ERoundingMode>(
-            m_pCtx->getModuleMetaData()->compOpt.FloatCvtIntRoundingMode);
-        return defaultRoundingMode_FPCvtInt;
-    }
-
-    if (GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(pInst))
-    {
-        switch (GII->getIntrinsicID())
-        {
-        default:
-            break;
-        case GenISAIntrinsic::GenISA_ftoui_rtn:
-        case GenISAIntrinsic::GenISA_ftoi_rtn:
-            return ERoundingMode::ROUND_TO_NEGATIVE;
-        case GenISAIntrinsic::GenISA_ftoui_rtp:
-        case GenISAIntrinsic::GenISA_ftoi_rtp:
-            return ERoundingMode::ROUND_TO_POSITIVE;
-        case GenISAIntrinsic::GenISA_ftoui_rte:
-        case GenISAIntrinsic::GenISA_ftoi_rte:
-            return ERoundingMode::ROUND_TO_NEAREST_EVEN;
-        }
-    }
-    // rounding not needed!
-    return ERoundingMode::ROUND_TO_ANY;
-}
-
-ERoundingMode EmitPass::GetRoundingMode_FP(Instruction* inst)
-{
-    // Float rounding mode
-    ERoundingMode RM = static_cast<ERoundingMode>(m_pCtx->getModuleMetaData()->compOpt.FloatRoundingMode);
-    if (GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(inst))
-    {
-        switch (GII->getIntrinsicID())
-        {
-        case GenISAIntrinsic::GenISA_f32tof16_rtz:
-        case GenISAIntrinsic::GenISA_ftof_rtz:
-        case GenISAIntrinsic::GenISA_itof_rtz:
-        case GenISAIntrinsic::GenISA_uitof_rtz:
-        case GenISAIntrinsic::GenISA_add_rtz:
-        case GenISAIntrinsic::GenISA_mul_rtz:
-        case GenISAIntrinsic::GenISA_fma_rtz:
-            RM = ERoundingMode::ROUND_TO_ZERO;
-            break;
-        case GenISAIntrinsic::GenISA_ftof_rtn:
-        case GenISAIntrinsic::GenISA_itof_rtn:
-        case GenISAIntrinsic::GenISA_uitof_rtn:
-        case GenISAIntrinsic::GenISA_fma_rtn:
-            RM = ERoundingMode::ROUND_TO_NEGATIVE;
-            break;
-        case GenISAIntrinsic::GenISA_ftof_rtp:
-        case GenISAIntrinsic::GenISA_itof_rtp:
-        case GenISAIntrinsic::GenISA_uitof_rtp:
-        case GenISAIntrinsic::GenISA_fma_rtp:
-            RM = ERoundingMode::ROUND_TO_POSITIVE;
-            break;
-        case GenISAIntrinsic::GenISA_ftof_rte:
-            RM = ERoundingMode::ROUND_TO_NEAREST_EVEN;
-            break;
-        case GenISAIntrinsic::GenISA_ftobf:
-        case GenISAIntrinsic::GenISA_2fto2bf:
-        {
-            ConstantInt* rmVal;
-            if (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_2fto2bf) {
-                rmVal = cast<ConstantInt>(GII->getArgOperand(2));
-            }
-            else {
-                rmVal = cast<ConstantInt>(GII->getArgOperand(1));
-            }
-            RM = (ERoundingMode)rmVal->getZExtValue();
-            break;
-        }
-        case GenISAIntrinsic::GenISA_hftobf8:
-        {
-            ConstantInt* rmVal = cast<ConstantInt>(GII->getArgOperand(1));
-            RM = (ERoundingMode)rmVal->getZExtValue();
-            break;
-        }
-        default:
-            break;
-        }
-    }
-    return RM;
-}
-
-bool EmitPass::ignoreRoundingMode(llvm::Instruction* inst) const
-{
-    auto isFZero = [](Value* V) {
-        if (ConstantFP* FCST = dyn_cast<ConstantFP>(V))
-        {
-            return FCST->isZero();
-        }
-        return false;
-    };
-
-    if (isa<InsertElementInst>(inst) ||
-        isa<ExtractElementInst>(inst) ||
-        isa<BitCastInst>(inst) ||
-        isa<ICmpInst>(inst) ||
-        isa<FPExtInst>(inst) ||
-        isa<FCmpInst>(inst) ||
-        isa<SelectInst>(inst) ||
-        isa<TruncInst>(inst) ||
-        isa<LoadInst>(inst) ||
-        isa<StoreInst>(inst))
-    {
-        // these are not affected by rounding mode.
-        return true;
-    }
-
-    if (BinaryOperator* BOP = dyn_cast<BinaryOperator>(inst))
-    {
-        if (BOP->getType()->isIntOrIntVectorTy()) {
-            // Integer binary op does not need rounding mode
-            return true;
-        }
-
-        // float operations on EM uses RTNE only and are not affected
-        // by rounding mode.
-        if (BOP->getType()->isFPOrFPVectorTy())
-        {
-            switch (BOP->getOpcode())
-            {
-            default:
-                break;
-            case Instruction::FDiv:
-                return true;
-            case Instruction::FSub:
-                // Negation is okay for any rounding mode
-                if (isFZero(BOP->getOperand(0))) {
-                    return true;
-                }
-                break;
-            }
-        }
-    }
-    if (IntrinsicInst* II = dyn_cast<IntrinsicInst>(inst))
-    {
-        switch (II->getIntrinsicID())
-        {
-        default:
-            break;
-        case IGCLLVM::Intrinsic::exp2:
-        case IGCLLVM::Intrinsic::sqrt:
-            return true;
-        }
-    }
-
-    if (GenIntrinsicInst * GII = dyn_cast<GenIntrinsicInst>(inst))
-    {
-        GenISAIntrinsic::ID id = GII->getIntrinsicID();
-        switch (id)
-        {
-        case GenISAIntrinsic::GenISA_bftof:
-        case GenISAIntrinsic::GenISA_bf8tohf:
-        case GenISAIntrinsic::GenISA_tf32tof:
-            return true;
-        default:
-            break;
-        }
-    }
-    // add more instr as needed
-    return false;
-}
-
 void EmitPass::initDefaultRoundingMode()
 {
     const ERoundingMode defaultRM_FP = static_cast<ERoundingMode>(m_pCtx->getModuleMetaData()->compOpt.FloatRoundingMode);
@@ -16304,41 +16136,6 @@ void EmitPass::SetRoundingMode_FPCvtInt(ERoundingMode newRM_FPCvtInt)
     }
 }
 
-// Return true if inst needs specific rounding mode; false otherwise.
-//
-// Currently, only gen intrinsic needs rounding mode other than the default.
-bool EmitPass::setRMExplicitly(Instruction* inst)
-{
-    if (GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(inst))
-    {
-        switch (GII->getIntrinsicID())
-        {
-        case GenISAIntrinsic::GenISA_f32tof16_rtz:
-        case GenISAIntrinsic::GenISA_ftof_rtz:
-        case GenISAIntrinsic::GenISA_itof_rtz:
-        case GenISAIntrinsic::GenISA_uitof_rtz:
-        case GenISAIntrinsic::GenISA_add_rtz:
-        case GenISAIntrinsic::GenISA_mul_rtz:
-        case GenISAIntrinsic::GenISA_fma_rtz:
-        case GenISAIntrinsic::GenISA_fma_rtp:
-        case GenISAIntrinsic::GenISA_fma_rtn:
-        case GenISAIntrinsic::GenISA_ftof_rtn:
-        case GenISAIntrinsic::GenISA_itof_rtn:
-        case GenISAIntrinsic::GenISA_uitof_rtn:
-        case GenISAIntrinsic::GenISA_ftof_rtp:
-        case GenISAIntrinsic::GenISA_itof_rtp:
-        case GenISAIntrinsic::GenISA_uitof_rtp:
-        case GenISAIntrinsic::GenISA_ftobf:
-        case GenISAIntrinsic::GenISA_2fto2bf:
-        case GenISAIntrinsic::GenISA_hftobf8:
-            return true;
-        default:
-            break;
-        }
-    }
-    return false;
-}
-
 void EmitPass::ResetRoundingMode(Instruction* inst)
 {
     // Reset rounding modes to default if they are not. Howerver, if
@@ -16365,11 +16162,11 @@ void EmitPass::ResetRoundingMode(Instruction* inst)
          nextInst != nullptr;
          nextInst = nextInst->getNextNonDebugInstruction())
     {
-        if (ignoreRoundingMode(nextInst))
+        if (ignoresRoundingMode(nextInst))
         {
             continue;
         }
-        if (setRMExplicitly(nextInst))
+        if (setsRMExplicitly(nextInst))
         {
             // As nextInst will set RM explicitly, no need to go further.
             break;
@@ -16378,7 +16175,7 @@ void EmitPass::ResetRoundingMode(Instruction* inst)
         // At this point, a default RM is needed. For FPCvtInt, we know
         // precisely whether FPCvtInt RM is needed or not; but for FP, we
         // do it conservatively as we do not scan all instructions here.
-        ERoundingMode intRM = GetRoundingMode_FPCvtInt(nextInst);
+        ERoundingMode intRM = GetRoundingMode_FPCvtInt(m_pCtx->getModuleMetaData(), nextInst);
 
         // If it is not ROUND_TO_ANY, it uses FPCvtInt RM;
         // otherwise, it does not use FPCvtInt RM.
@@ -16463,7 +16260,7 @@ void EmitPass::emitf32tof16_rtz(llvm::GenIntrinsicInst* inst)
 void EmitPass::emitfitof(llvm::GenIntrinsicInst* inst)
 {
     CVariable* src = GetSymbol(inst->getOperand(0));
-    ERoundingMode RM = GetRoundingMode_FP(inst);
+    ERoundingMode RM = GetRoundingMode_FP(m_pCtx->getModuleMetaData(), inst);
     CVariable* dst = m_destination;
 
     GenISAIntrinsic::ID id = inst->getIntrinsicID();
@@ -16558,7 +16355,7 @@ void EmitPass::emitftoi(llvm::GenIntrinsicInst* inst)
     IGC_ASSERT_MESSAGE(inst->getOperand(0)->getType()->isFloatingPointTy(), "Unsupported type");
     CVariable* src = GetSymbol(inst->getOperand(0));
     CVariable* dst = m_destination;
-    ERoundingMode RM = GetRoundingMode_FPCvtInt(inst);
+    ERoundingMode RM = GetRoundingMode_FPCvtInt(m_pCtx->getModuleMetaData(), inst);
     IGC_ASSERT_MESSAGE(RM != ERoundingMode::ROUND_TO_ANY, "Not valid FP->int rounding mode!");
 
     GenISAIntrinsic::ID id = inst->getIntrinsicID();

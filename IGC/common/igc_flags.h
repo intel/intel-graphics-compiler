@@ -289,6 +289,7 @@ DECLARE_IGC_REGKEY(bool, EnableBitcastedLoadNarrowingToScalar, false, "Enable na
 DECLARE_IGC_REGKEY(bool, EnableOptReportLoadNarrowing, false, "Generate opt report for narrowing of vector loads.", false)
 DECLARE_IGC_REGKEY(DWORD, GEPLSRThresholdRatio, 100, "Ratio for register pressure threshold in GEP Loop Strength Reduction pass", false)
 DECLARE_IGC_REGKEY(bool, EnableGEPLSRToPreheader, true, "Enables reduction to loop's preheader in GEP Loop Strength Reduction pass", false)
+DECLARE_IGC_REGKEY(DWORD, FPRoundingModeCoalescingMaxDistance, 20, "Max distance in instructions for reordering FP instructions with common rounding mode", false)
 
 DECLARE_IGC_GROUP("Shader debugging")
 DECLARE_IGC_REGKEY(bool, CopyA0ToDBG0,                  false, " Copy a0 used for extended msg descriptor to dbg0 to help debug", false)
