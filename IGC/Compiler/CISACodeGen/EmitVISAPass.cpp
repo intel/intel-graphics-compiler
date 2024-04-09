@@ -22898,8 +22898,11 @@ void EmitPass::emitLSC2DBlockSetAddrPayloadField(GenIntrinsicInst* GII)
 
 void EmitPass::emitLSC2DBlockReadWriteWithAddrPayload(GenIntrinsicInst* GII)
 {
-    const bool isRead =
-        (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_LSC2DBlockReadAddrPayload);
+    const bool isPrefetch =
+        (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_LSC2DBlockPrefetchAddrPayload);
+    const bool isRead = (isPrefetch ||
+        (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_LSC2DBlockReadAddrPayload));
+
 
     CVariable* AP = GetSymbol(GII->getOperand(0));
     CVariable* AddrPayload = AP;
