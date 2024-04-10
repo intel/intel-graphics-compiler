@@ -184,6 +184,8 @@ bool VariableReuseAnalysis::runOnFunction(Function& F)
 
         postProcessing();
 
+        sortAliasResult();
+
         if (IGC_IS_FLAG_ENABLED(DumpVariableAlias))
         {
             auto name =
@@ -749,6 +751,55 @@ void VariableReuseAnalysis::printAlias(raw_ostream& OS, const Function* F) const
         OS << "\n";
     }
     OS << "\n";
+}
+
+// Sort the final aliase info (baseVecmap) so that its order is deterministic.
+// CreateAliasVars() relies on this to generate cvariables in order.
+// (todo: use vector instead of map in the algorithm to avoid sorting.)
+void VariableReuseAnalysis::sortAliasResult()
+{
+    if (m_baseVecMap.empty()) {
+        return;
+    }
+
+    Function* F = m_F;
+    // Assign each inst/arg a unique integer so that the output
+    // would be in order. It is useful when doing comparison.
+    DenseMap<const Value*, int> Val2IntMap;
+    int id = 0;
+    if (F) {
+        // All arguments
+        for (auto AI = F->arg_begin(), AE = F->arg_end(); AI != AE; ++AI) {
+            const Value* aVal = AI;
+            Val2IntMap[aVal] = (++id);
+        }
+        // All instructions
+        for (auto II = inst_begin(F), IE = inst_end(F); II != IE; ++II) {
+            const Instruction* Inst = &*II;
+            Val2IntMap[(Value*)Inst] = (++id);
+        }
+    }
+
+    auto SubVecCmp = [&](const SSubVecDesc* SV0, const SSubVecDesc* SV1) {
+        int n0 = Val2IntMap[SV0->Aliaser];
+        int n1 = Val2IntMap[SV1->Aliaser];
+        return n0 < n1;
+        };
+
+    auto BaseVecCmp = [&](const SBaseVecDesc* BV0, const SBaseVecDesc* BV1) {
+        int n0 = Val2IntMap[BV0->BaseVector];
+        int n1 = Val2IntMap[BV1->BaseVector];
+        return n0 < n1;
+        };
+
+
+    m_sortedBaseVec.clear();
+    for (auto& MI : m_baseVecMap) {
+        SBaseVecDesc* BV = MI.second;
+        std::sort(BV->Aliasers.begin(), BV->Aliasers.end(), SubVecCmp);
+        m_sortedBaseVec.push_back(BV);
+    }
+    std::sort(m_sortedBaseVec.begin(), m_sortedBaseVec.end(), BaseVecCmp);
 }
 
 void VariableReuseAnalysis::dumpAlias() const
