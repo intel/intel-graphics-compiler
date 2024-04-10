@@ -2732,6 +2732,55 @@ namespace IGC
         return true;
     }
 
+    unsigned int GetthreadGroupSize(const Module& M, dim dimension)
+    {
+        unsigned int threadGroupSize = 0;
+        GlobalVariable* pGlobal = nullptr;
+        switch (dimension)
+        {
+        case ThreadGroupSize_X:
+            pGlobal = M.getGlobalVariable("ThreadGroupSize_X");
+            threadGroupSize = static_cast<unsigned int>(
+                (llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue()));
+            break;
+        case ThreadGroupSize_Y:
+            pGlobal = M.getGlobalVariable("ThreadGroupSize_Y");
+            threadGroupSize = static_cast<unsigned int>(
+                (llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue()));
+            break;
+        case ThreadGroupSize_Z:
+            pGlobal = M.getGlobalVariable("ThreadGroupSize_Z");
+            threadGroupSize = static_cast<unsigned int>(
+                (llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue()));
+            break;
+        default:
+            IGC_ASSERT(0);
+            break;
+        }
+        return threadGroupSize;
+    }
+
+    void SetthreadGroupSize(llvm::Module& M, llvm::Constant* size, dim dimension)
+    {
+        llvm::GlobalVariable* pGlobal = nullptr;
+        switch (dimension)
+        {
+        case ThreadGroupSize_X:
+            pGlobal = M.getGlobalVariable("ThreadGroupSize_X");
+            break;
+        case ThreadGroupSize_Y:
+            pGlobal = M.getGlobalVariable("ThreadGroupSize_Y");
+            break;
+        case ThreadGroupSize_Z:
+            pGlobal = M.getGlobalVariable("ThreadGroupSize_Z");
+            break;
+        default:
+            IGC_ASSERT(0);
+            break;
+        }
+        pGlobal->setInitializer(size);
+    }
+
     ConstantInt* getConstantSInt(
         IRBuilder<>& Builder, const int bitSize, int64_t val)
     {
