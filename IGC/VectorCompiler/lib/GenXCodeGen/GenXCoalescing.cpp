@@ -401,7 +401,7 @@ namespace {
     void applyCopiesOptimized();
     void applyCopiesForValue(const std::set<CopyData> &CDSet);
     template <typename Iter>
-    Iter mergeCopiesTillFailed(SimpleValue CopySV, Iter BeginIt, Iter EndIt);
+    LiveRange* mergeCopiesTillFailed(SimpleValue CopySV, Iter &It, Iter EndIt);
     // Helpers
     DominatorTree *getDomTree(Function *F) const {
       return DTWrapper->getDomTree(F);
@@ -1930,7 +1930,6 @@ void GenXCoalescing::applyCopiesForValue(const std::set<CopyData> &CDSet) {
     // is used to detect possible interference.
     auto CopySV = SimpleValue(CurrCopy, Idx);
     Liveness->removeValueNoDelete(CopySV);
-    auto *CopyLR = Liveness->buildLiveRange(CopySV);
     auto *DestLR = Liveness->getLiveRange(DestSV);
 
     LLVM_DEBUG(dbgs() << "Created copy for LR: "; DestLR->print(dbgs());
@@ -1938,7 +1937,7 @@ void GenXCoalescing::applyCopiesForValue(const std::set<CopyData> &CDSet) {
                dbgs() << "\nCopy inst: "; CopySV.print(dbgs()); dbgs() << "\n");
 
     // Try to apply this copy in other copy candidates.
-    It = mergeCopiesTillFailed(CopySV, ++It, EndIt);
+    auto *CopyLR = mergeCopiesTillFailed(CopySV, ++It, EndIt);
 
     LLVM_DEBUG(dbgs() << "Finished processing all candidates for that copy\n";
                dbgs() << "Final copy val LR: "; CopyLR->print(dbgs());
@@ -1962,26 +1961,26 @@ void GenXCoalescing::applyCopiesForValue(const std::set<CopyData> &CDSet) {
  * For more details, check applyCopiesOptimized description.
  */
 template <typename Iter>
-Iter GenXCoalescing::mergeCopiesTillFailed(SimpleValue CopySV, Iter BeginIt,
-                                           Iter EndIt) {
-  if (BeginIt == EndIt)
-    return EndIt;
-
+LiveRange *GenXCoalescing::mergeCopiesTillFailed(SimpleValue CopySV, Iter &It,
+                                                 Iter EndIt) {
   auto *CopyLR = Liveness->buildLiveRange(CopySV);
-  auto *DestLR = Liveness->getLiveRange(BeginIt->Dest);
+  if (It == EndIt)
+    return CopyLR;
+
+  auto *DestLR = Liveness->getLiveRange(It->Dest);
   Instruction *CurrCopy = cast<Instruction>(CopySV.getValue());
 
-  for (auto It = BeginIt; It != EndIt; ++It) {
+  while (It != EndIt) {
     // Interference detection
     if (Liveness->interfere(DestLR, CopyLR)) {
       LLVM_DEBUG(dbgs() << "Interference detected\n");
-      return It;
+      return CopyLR;
     }
     // Dominance detection
     if (!getDomTree(CurrCopy->getFunction())
              ->dominates(CurrCopy, cast<Instruction>(It->Dest.getValue()))) {
       LLVM_DEBUG(dbgs() << "Copy doesn't dominate user\n");
-      return It;
+      return CopyLR;
     }
 
     // Copy may be redundant. Check interference after copy applied.
@@ -1992,8 +1991,9 @@ Iter GenXCoalescing::mergeCopiesTillFailed(SimpleValue CopySV, Iter BeginIt,
     if (It->Source.getValue()->getType() == CurrCopy->getType()) {
       *It->UseInDest = CurrCopy;
     } else {
-      IGC_ASSERT_MESSAGE(It->Source.getIndex() == 0,
-        "Must be non-aggregated type: should come from bitcast");
+      IGC_ASSERT_MESSAGE(
+          It->Source.getIndex() == 0,
+          "Must be non-aggregated type: should come from bitcast");
       IRBuilder<> Builder(CurrCopy->getNextNode());
       BCI = cast<BitCastInst>(Builder.CreateBitCast(
           CurrCopy, It->Source.getValue()->getType(), "red_copy_type_conv"));
@@ -2004,23 +2004,23 @@ Iter GenXCoalescing::mergeCopiesTillFailed(SimpleValue CopySV, Iter BeginIt,
     }
 
     Liveness->rebuildLiveRange(CopyLR);
-    if (!Liveness->twoAddrInterfere(DestLR, CopyLR)) {
-      LLVM_DEBUG(dbgs() << "Success. Moving to next candidate\n");
-      continue;
+    if (Liveness->twoAddrInterfere(DestLR, CopyLR)) {
+      // Undo copy elimination
+      LLVM_DEBUG(dbgs() << "Interference detected\n");
+      *It->UseInDest = OldValue;
+      if (BCI) {
+        Liveness->removeValue(BCI);
+        BCI->eraseFromParent();
+      }
+      Liveness->rebuildLiveRange(CopyLR);
+      return CopyLR;
     }
 
-    // Undo copy elimination
-    LLVM_DEBUG(dbgs() << "Interference detected\n");
-    *It->UseInDest = OldValue;
-    if (BCI) {
-      Liveness->removeValue(BCI);
-      BCI->eraseFromParent();
-    }
-    Liveness->rebuildLiveRange(CopyLR);
-    return It;
+    LLVM_DEBUG(dbgs() << "Success. Moving to next candidate\n");
+    It++;
   }
 
-  return EndIt;
+  return CopyLR;
 }
 
 /***********************************************************************
