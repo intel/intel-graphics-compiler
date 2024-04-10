@@ -181,18 +181,28 @@ void CustomUnsafeOptPass::visitPHINode(llvm::PHINode& I)
     To
         %mul = fmul fast float 0.0, %smth
     */
-    if (I.getType()->isFloatingPointTy() && allowUnsafeMathOpt(m_ctx))
+    if (I.getType()->isFloatingPointTy())
     {
-        bool isZeroFP = llvm::all_of(I.incoming_values(), [](Use& use)
+        // allow transformation if all PHI users can ignore the sign of zero
+        bool isNoSignedZeros = llvm::all_of(I.users(), [](const auto& U)
         {
-            return isa<ConstantFP>(use.get()) && cast<ConstantFP>(use.get())->isZero();
+            auto* Op = dyn_cast<FPMathOperator>(U);
+            return Op && Op->hasNoSignedZeros();
         });
 
-        if (isZeroFP)
+        if (isNoSignedZeros || allowUnsafeMathOpt(m_ctx))
         {
-            I.replaceAllUsesWith(ConstantFP::get(I.getType(), 0.0));
-            I.eraseFromParent();
-            m_isChanged = true;
+            bool isZeroFP = llvm::all_of(I.incoming_values(), [](Use& use)
+            {
+                return isa<ConstantFP>(use.get()) && cast<ConstantFP>(use.get())->isZero();
+            });
+
+            if (isZeroFP)
+            {
+                I.replaceAllUsesWith(ConstantFP::get(I.getType(), 0.0));
+                I.eraseFromParent();
+                m_isChanged = true;
+            }
         }
     }
 }
