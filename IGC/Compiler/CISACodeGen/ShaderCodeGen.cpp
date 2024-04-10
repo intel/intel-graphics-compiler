@@ -244,7 +244,8 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
         mpm.add(new CodeSinking());
         if ((IGC_IS_FLAG_DISABLED(DisableLoopSink) || IGC_IS_FLAG_ENABLED(ForceLoopSink))
              && ctx.type == ShaderType::OPENCL_SHADER
-             && ctx.m_instrTypes.numOfLoop > 0)
+             && ctx.m_instrTypes.numOfLoop > 0
+             && ctx.m_instrTypes.numInsts >= IGC_GET_FLAG_VALUE(CodeLoopSinkingMinSize))
         {
             mpm.add(new CodeLoopSinking());
         }

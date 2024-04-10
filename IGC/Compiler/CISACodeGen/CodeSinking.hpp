@@ -154,6 +154,8 @@ namespace IGC {
         std::string Log;
         llvm::raw_string_ostream LogStream;
 
+        void dumpToFile(const std::string& Log);
+
         // memoize all possible stores for every loop that is a candidate for sinking
         typedef llvm::SmallVector<llvm::Instruction*, 32> StoresVec;
         llvm::DenseMap<llvm::Loop*, StoresVec> MemoizedStoresInLoops;
