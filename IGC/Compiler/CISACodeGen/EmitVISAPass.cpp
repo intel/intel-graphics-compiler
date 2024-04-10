@@ -22541,7 +22541,7 @@ void EmitPass::emitLSC2DBlockOperation(llvm::GenIntrinsicInst* inst)
             m_destination->GetNumberInstance(),
             CName::NONE);
     }
-    LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromValue(inst->getOperand(12), true);
+    LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromValue(inst->getOperand(12), isRead);
 
     if (isRead == false)
     {
