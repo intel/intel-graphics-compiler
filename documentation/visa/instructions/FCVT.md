@@ -38,7 +38,7 @@ SPDX-License-Identifier: MIT
 ```
     Perform type conversion between FP8 and HF from <src0> to <dst>. FP8 here is BF8, it is an 8-bit float with 1-bit sign, 5-bit exponent, and 2-bit mantissa, aka E5M2.  HF-to-BF8 conversion uses the RTE rounding mode (round-to-nearest-even), and denoms are retained. FP8-to-HF is a precise conversion, thus no rounding is involved. BF8 is denoted by type UB as visa has no BF8 type.
 
-    {PVC_XT+}It also performs conversion between float and TF32 (tensorfloat, 1-bit sign, 8-bit exponent, and 10-bit mantissa). It also uses RTE for float to TF32. Denorms are flushed to zero. Conversion from TF32 to float is noop as TF32 is a valid F type.
+    {PVC_XT+}It also performs conversion from float to TF32 (tensorfloat, 1-bit sign, 8-bit exponent, and 10-bit mantissa). It uses RTE for float to TF32. Denorms are flushed to zero. No conversion from TF32 to float, as TF32 is a valid F type.
 
 
 ```
@@ -99,5 +99,5 @@ FCVT (<exec_size>) <dst> <src0>
 
     - If Dst has HF type, Src0 must have UB type (which represents a BF8 value).
     - If Dst has UB type (which represents a BF8 value), Src0 must have HF type. NM (NoMask) mask control must be used.
-    {PVC_XT+}- If Dst has F type, Src0 must have UD (as TF32 value); If Dst has UD type (as TF32 value), Src0 must have F type.
+    {PVC_XT+}- If Dst has UD type (as TF32 value), Src0 must have F type. Src0 can not be UD type (as TF32 value).
 

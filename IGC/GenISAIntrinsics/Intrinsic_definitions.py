@@ -2927,11 +2927,6 @@ Imported_Intrinsics = \
     [("anyint",                        "bf8 source (as char)")],
     "NoMem"]],
 ####################################################################################################
-"GenISA_tf32tof": ["tf32 to float conversion",
-    [("anyfloat",                      "float result"),
-    [("anyint",                        "tf32 source (as int)")],
-    "NoMem"]],
-####################################################################################################
 "GenISA_HDCuncompressedwrite": ["XeHP SDV surface compression - HDC flat CCS builtin",
     [("void",                          "nothing to return"),
     [("anyptr",                        "ptr location where the value is stored to"),
@@ -2972,14 +2967,9 @@ Imported_Intrinsics = \
     "NoMem"]],
 ####################################################################################################
 "GenISA_ftotf32": ["float to tf32 conversion",
-    [("anyint",                        "tf32 result (as int)"),
+    [("anyfloat",                      "tf32 result (as float)"),
     [("anyfloat",                      "float source"),
      ("int",                           "Rounding mode(ERoundingMode)")],
-    "NoMem"]],
-####################################################################################################
-"GenISA_tf32tof": ["tf32 to float conversion",
-    [("anyfloat",                      "float result"),
-    [("anyint",                        "tf32 source (as int)")],
     "NoMem"]],
 ####################################################################################################
 "GenISA_srnd_hftobf8": ["stochastic rounding:  srnd dst  src0  src1",

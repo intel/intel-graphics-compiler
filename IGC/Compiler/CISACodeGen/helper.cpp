@@ -2372,7 +2372,6 @@ namespace IGC
             {
             case GenISAIntrinsic::GenISA_bftof:
             case GenISAIntrinsic::GenISA_bf8tohf:
-            case GenISAIntrinsic::GenISA_tf32tof:
                 return true;
             default:
                 break;

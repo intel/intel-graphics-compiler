@@ -1053,20 +1053,20 @@ void vISAVerifier::verifyInstructionMove(const CISA_INST *inst) {
 
     if (dstType == ISA_TYPE_UB) {
       REPORT_INSTRUCTION(options, src0Type == ISA_TYPE_HF,
-                         "F_CVT with UB(actually BF8) dst must have HF src");
+                         "FCVT with UB(actually BF8) dst must have HF src");
     } else if (src0Type == ISA_TYPE_UB) {
       REPORT_INSTRUCTION(options, dstType == ISA_TYPE_HF,
-                         "F_CVT with UB(actually BF8) src must have HF dst");
+                         "FCVT with UB(actually BF8) src must have HF dst");
     } else if (dstType == ISA_TYPE_UD) {
       REPORT_INSTRUCTION(options, src0Type == ISA_TYPE_F,
-                         "F_CVT with UD(actually TF32) dst must have F src");
+                         "FCVT with UD(actually TF32) dst must have F src");
     } else if (src0Type == ISA_TYPE_UD) {
-      REPORT_INSTRUCTION(options, dstType == ISA_TYPE_F,
-                         "F_CVT with UD(actually TF32) src0 must have F dst");
+      REPORT_INSTRUCTION(options, false,
+                         "FCVT with UD(actually TF32) src0 is not supported");
     }
     else {
       REPORT_INSTRUCTION(options, false,
-                         "F_CVT must have either UB(actually BF8) dst or src");
+                         "FCVT must have either UB(actually BF8) dst or src");
     }
 
     // Check if NoMask is required
@@ -1074,7 +1074,7 @@ void vISAVerifier::verifyInstructionMove(const CISA_INST *inst) {
     case ISA_TYPE_UB:
     {
       REPORT_INSTRUCTION(options, isNoMask(inst->getExecMask()),
-                         "F_CVT must use noMask for HF to FP8 conversion");
+                         "FCVT must use noMask for HF to FP8 conversion");
     }
     default:
       break;

@@ -2398,19 +2398,12 @@ float4 __attribute__((overloadable)) intel_sub_group_tf32_tf32_matrix_mad_k8_f32
 float8 __attribute__((overloadable)) intel_sub_group_tf32_tf32_matrix_mad_k8_f32(float4 a, float8 b, float8 acc);
 
 // Conversions
-int   __attribute__((overloadable)) intel_convert_f32_to_tf32(float source);
-int2  __attribute__((overloadable)) intel_convert_f32_to_tf32(float2 source);
-int3  __attribute__((overloadable)) intel_convert_f32_to_tf32(float3 source);
-int4  __attribute__((overloadable)) intel_convert_f32_to_tf32(float4 source);
-int8  __attribute__((overloadable)) intel_convert_f32_to_tf32(float8 source);
-int16 __attribute__((overloadable)) intel_convert_f32_to_tf32(float16 source);
-
-float   __attribute__((overloadable)) intel_convert_tf32_to_f32(int source);
-float2  __attribute__((overloadable)) intel_convert_tf32_to_f32(int2 source);
-float3  __attribute__((overloadable)) intel_convert_tf32_to_f32(int3 source);
-float4  __attribute__((overloadable)) intel_convert_tf32_to_f32(int4 source);
-float8  __attribute__((overloadable)) intel_convert_tf32_to_f32(int8 source);
-float16 __attribute__((overloadable)) intel_convert_tf32_to_f32(int16 source);
+float   intel_convert_tfloat32_as_float(    float   source);
+float2  intel_convert_tfloat322_as_float2(  float2  source);
+float3  intel_convert_tfloat323_as_float3(  float3  source);
+float4  intel_convert_tfloat324_as_float4(  float4  source);
+float8  intel_convert_tfloat328_as_float8(  float8  source);
+float16 intel_convert_tfloat3216_as_float16(float16 source);
 
 #endif // cl_intel_subgroup_matrix_multiply_accumulate_tf32
 

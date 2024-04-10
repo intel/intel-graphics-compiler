@@ -1430,7 +1430,6 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         GII_id == GenISAIntrinsic::GenISA_srnd_ftohf ||
         GII_id == GenISAIntrinsic::GenISA_srnd_hftobf8 ||
         GII_id == GenISAIntrinsic::GenISA_ftotf32 ||
-        GII_id == GenISAIntrinsic::GenISA_tf32tof ||
         GII_id == GenISAIntrinsic::GenISA_GlobalBufferPointer ||
         GII_id == GenISAIntrinsic::GenISA_LocalBufferPointer ||
         GII_id == GenISAIntrinsic::GenISA_InlinedData ||

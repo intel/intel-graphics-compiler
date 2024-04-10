@@ -417,25 +417,19 @@ half8  __builtin_IB_bf8tohf_8 (char8  a) __attribute__((const));
 half16 __builtin_IB_bf8tohf_16(char16 a) __attribute__((const));
 
 
-// tf32 <--> float float conversion
-//    tf32 : no igc type for tf32. Use int as *opaque* type for it.
+// tf32 <--> float conversion
+//    tf32 : no igc type for tf32. Use float as *opaque* type for it.
 //           (tf32: 19 bits, taking 32bit storage)
 //
 // f -> tf32 conversion builtins (rte rounding mode)
-int   __builtin_IB_ftotf32_1 (float   a) __attribute__((const));
-int2  __builtin_IB_ftotf32_2 (float2  a) __attribute__((const));
-int3  __builtin_IB_ftotf32_3 (float3  a) __attribute__((const));
-int4  __builtin_IB_ftotf32_4 (float4  a) __attribute__((const));
-int8  __builtin_IB_ftotf32_8 (float8  a) __attribute__((const));
-int16 __builtin_IB_ftotf32_16(float16 a) __attribute__((const));
+float   __builtin_IB_ftotf32_1 (float   a) __attribute__((const));
+float2  __builtin_IB_ftotf32_2 (float2  a) __attribute__((const));
+float3  __builtin_IB_ftotf32_3 (float3  a) __attribute__((const));
+float4  __builtin_IB_ftotf32_4 (float4  a) __attribute__((const));
+float8  __builtin_IB_ftotf32_8 (float8  a) __attribute__((const));
+float16 __builtin_IB_ftotf32_16(float16 a) __attribute__((const));
 
-// tf32 -> f conversion builtins (precise conversion, use shl a, 13)
-float   __builtin_IB_tf32tof_1 (int   a) __attribute__((const));
-float2  __builtin_IB_tf32tof_2 (int2  a) __attribute__((const));
-float3  __builtin_IB_tf32tof_3 (int3  a) __attribute__((const));
-float4  __builtin_IB_tf32tof_4 (int4  a) __attribute__((const));
-float8  __builtin_IB_tf32tof_8 (int8  a) __attribute__((const));
-float16 __builtin_IB_tf32tof_16(int16 a) __attribute__((const));
+// tf32 -> f conversion is not needed, since every tf32 is already a float
 
 // Stochastic rounding : srnd d  a  r
 //      d: bf8 | hf

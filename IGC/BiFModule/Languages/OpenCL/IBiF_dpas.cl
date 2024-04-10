@@ -62,6 +62,12 @@ INLINE RETTY OVERLOADABLE intel_convert_##FNAME (SRCTY a)                       
     return __builtin_IB_##INTERNAL_FNAME (a);                                            \
 }
 
+#define DEFN_INTEL_CVT_NO_OVERLOAD(FNAME, RETTY,  SRCTY,  INTERNAL_FNAME)                \
+INLINE RETTY intel_convert_##FNAME (SRCTY a)                                             \
+{                                                                                        \
+    return __builtin_IB_##INTERNAL_FNAME (a);                                            \
+}
+
 //// special conversion/rounding
 #define DEFN_INTEL_CVT2(FNAME, RETTY,  SRC0TY,  SRC1TY,  INTERNAL_FNAME)                 \
 INLINE RETTY OVERLOADABLE intel_convert_##FNAME (SRC0TY a, SRC1TY b)                     \
@@ -488,19 +494,12 @@ DEFN_INTEL_SG16_FDPAS( tf32_tf32_matrix_mad_k8_f32, float2,  float2,  float,   f
 DEFN_INTEL_SG16_FDPAS( tf32_tf32_matrix_mad_k8_f32, float4,  float4,  float2,  float8,  fdpas_f_f_tf32_tf32_8_4 )
 DEFN_INTEL_SG16_FDPAS( tf32_tf32_matrix_mad_k8_f32, float8,  float8,  float4,  float8,  fdpas_f_f_tf32_tf32_8_8 )
 
-DEFN_INTEL_CVT( f32_to_tf32,  int,   float,   ftotf32_1  )
-DEFN_INTEL_CVT( f32_to_tf32,  int2,  float2,  ftotf32_2  )
-DEFN_INTEL_CVT( f32_to_tf32,  int3,  float3,  ftotf32_3  )
-DEFN_INTEL_CVT( f32_to_tf32,  int4,  float4,  ftotf32_4  )
-DEFN_INTEL_CVT( f32_to_tf32,  int8,  float8,  ftotf32_8  )
-DEFN_INTEL_CVT( f32_to_tf32,  int16, float16, ftotf32_16 )
-
-DEFN_INTEL_CVT( tf32_to_f32,  float,   int,   tf32tof_1  )
-DEFN_INTEL_CVT( tf32_to_f32,  float2,  int2,  tf32tof_2  )
-DEFN_INTEL_CVT( tf32_to_f32,  float3,  int3,  tf32tof_3  )
-DEFN_INTEL_CVT( tf32_to_f32,  float4,  int4,  tf32tof_4  )
-DEFN_INTEL_CVT( tf32_to_f32,  float8,  int8,  tf32tof_8  )
-DEFN_INTEL_CVT( tf32_to_f32,  float16, int16, tf32tof_16 )
+DEFN_INTEL_CVT_NO_OVERLOAD( tfloat32_as_float,     float,   float,   ftotf32_1  )
+DEFN_INTEL_CVT_NO_OVERLOAD( tfloat322_as_float2,   float2,  float2,  ftotf32_2  )
+DEFN_INTEL_CVT_NO_OVERLOAD( tfloat323_as_float3,   float3,  float3,  ftotf32_3  )
+DEFN_INTEL_CVT_NO_OVERLOAD( tfloat324_as_float4,   float4,  float4,  ftotf32_4  )
+DEFN_INTEL_CVT_NO_OVERLOAD( tfloat328_as_float8,   float8,  float8,  ftotf32_8  )
+DEFN_INTEL_CVT_NO_OVERLOAD( tfloat3216_as_float16, float16, float16, ftotf32_16 )
 
 #endif // cl_intel_subgroup_matrix_multiply_accumulate_tf32
 

@@ -8801,26 +8801,6 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB *bb) {
     return true;
   }
 
-  if (inst->getSrc(0)->getType() == Type_UD) {
-    // fcvt  a:F   b:tf32
-    // --> mov  a:f  b:f  (tf32 format is valid f)
-    G4_Operand *newSrc;
-    if (inst->getSrc(0)->isImm()) {
-      float newF = inst->getSrc(0)->asImm()->getFloat();
-      newSrc = builder.createImm(newF);
-    } else {
-      G4_SrcRegRegion *regSrc = inst->getSrc(0)->asSrcRegRegion();
-      regSrc->setType(builder, Type_F);
-      newSrc = regSrc;
-    }
-    auto newDst = inst->getDst();
-    auto movInst = builder.createMov(inst->getExecSize(), newDst, newSrc,
-                                     inst->getOption(), false);
-    bb->insertBefore(i, movInst);
-    bb->erase(i);
-    return true;
-  }
-
   if (inst->getDst()->getType() == Type_UD) {
     // fcvt a:tf32   b:f
     // Make sure dst/src0 have the same subreg offset and stride, except for

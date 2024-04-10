@@ -8539,7 +8539,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_hftobf8:
     case GenISAIntrinsic::GenISA_bf8tohf:
     case GenISAIntrinsic::GenISA_ftotf32:
-    case GenISAIntrinsic::GenISA_tf32tof:
         emitfcvt(inst);
         break;
     case GenISAIntrinsic::GenISA_srnd_ftohf:
@@ -21272,8 +21271,7 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst* GII)
         id == GenISAIntrinsic::GenISA_bftof ||
         id == GenISAIntrinsic::GenISA_hftobf8 ||
         id == GenISAIntrinsic::GenISA_bf8tohf ||
-        id == GenISAIntrinsic::GenISA_ftotf32 ||
-        id == GenISAIntrinsic::GenISA_tf32tof)
+        id == GenISAIntrinsic::GenISA_ftotf32)
     {
         CVariable* tDst = nullptr, *tSrc = nullptr;
         if (id == GenISAIntrinsic::GenISA_ftobf) {
@@ -21292,10 +21290,6 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst* GII)
         else if (id == GenISAIntrinsic::GenISA_bf8tohf) {
             tDst = dst;
             tSrc = m_currShader->GetNewAlias(src, ISA_TYPE_UB, 0, 0);
-        }
-        else if (id == GenISAIntrinsic::GenISA_tf32tof) {
-            tDst = dst;
-            tSrc = m_currShader->GetNewAlias(src, ISA_TYPE_UD, 0, 0);
         }
         else if (id == GenISAIntrinsic::GenISA_ftotf32) {
             tDst = m_currShader->GetNewAlias(dst, ISA_TYPE_UD, 0, 0);
@@ -21341,7 +21335,6 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst* GII)
                 }
                 if (id == GenISAIntrinsic::GenISA_hftobf8 ||
                     id == GenISAIntrinsic::GenISA_bf8tohf ||
-                    id == GenISAIntrinsic::GenISA_tf32tof ||
                     id == GenISAIntrinsic::GenISA_ftotf32
                     )
                 {
@@ -21366,7 +21359,6 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst* GII)
                 m_encoder->SetSrcSubReg(0, srcOff);
                 if (id == GenISAIntrinsic::GenISA_hftobf8 ||
                     id == GenISAIntrinsic::GenISA_bf8tohf ||
-                    id == GenISAIntrinsic::GenISA_tf32tof ||
                     id == GenISAIntrinsic::GenISA_ftotf32
                    )
                 {

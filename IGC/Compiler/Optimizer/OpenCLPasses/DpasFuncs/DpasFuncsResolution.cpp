@@ -578,17 +578,6 @@ bool DpasFuncsResolution::processCvt(CallInst& CI)
         args[1] = ConstantInt::get(intTy, FP_RM);  // rounding mode
         argslen = 2;
     }
-    else if (funcName.startswith("__builtin_IB_tf32tof_"))
-    {
-        // It is a precise conversion, no RM needed!
-        // Note that sizeof() includes the ending '\0', so need to do -1!
-        if (!demangleFCvtSuffix(funcName, (int)sizeof("__builtin_IB_tf32tof_") - 1, nullptr, &VecLen, nullptr))
-            return false;
-
-        iid = GenISAIntrinsic::GenISA_tf32tof;
-        args[0] = CI.getArgOperand(0);
-        argslen = 1;
-    }
     else
     {
         return false;
@@ -639,11 +628,9 @@ bool DpasFuncsResolution::processCvt(CallInst& CI)
         break;
     }
     case GenISAIntrinsic::GenISA_ftotf32:
-    case GenISAIntrinsic::GenISA_tf32tof:
     {
         if ((n != n0 || n != VecLen) ||
-            (iid == GenISAIntrinsic::GenISA_ftotf32 && !(EOpnd0Ty->isFloatTy() && ETy->isIntegerTy(32))) ||
-            (iid == GenISAIntrinsic::GenISA_tf32tof && !(EOpnd0Ty->isIntegerTy(32) && ETy->isFloatTy())))
+            (iid == GenISAIntrinsic::GenISA_ftotf32 && !(EOpnd0Ty->isFloatTy() && ETy->isFloatTy())))
         {
             m_ErrorMsg = "Wrong argument types in tf32 conversion functions!";
             IGC_ASSERT_MESSAGE(0, "Wrong argument types in tf32 conversion functions!");
@@ -669,8 +656,7 @@ bool DpasFuncsResolution::processCvt(CallInst& CI)
     {
         cvt = "bf8_cvt";
     }
-    else if (iid == GenISAIntrinsic::GenISA_ftotf32 ||
-             iid == GenISAIntrinsic::GenISA_tf32tof)
+    else if (iid == GenISAIntrinsic::GenISA_ftotf32)
     {
         cvt = "tf32_cvt";
     }
