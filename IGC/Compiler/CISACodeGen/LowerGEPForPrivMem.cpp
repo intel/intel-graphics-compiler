@@ -792,7 +792,7 @@ static Value* loadEltsFromVecAlloca(
     IGCLLVM::IRBuilder<>& IRB,
     Type* scalarType)
 {
-    Value* pLoadVecAlloca = IRB.CreateLoad(pVecAlloca);
+    Value* pLoadVecAlloca = IRB.CreateLoad(pVecAlloca->getAllocatedType(), pVecAlloca);
     if (N == 1)
     {
         return IRB.CreateBitCast(
@@ -848,7 +848,7 @@ void TransposeHelperPromote::handleStoreInst(
 
     IGCLLVM::IRBuilder<> IRB(pStore);
     llvm::Value* pStoreVal = pStore->getValueOperand();
-    llvm::Value* pLoadVecAlloca = IRB.CreateLoad(pVecAlloca);
+    llvm::Value* pLoadVecAlloca = IRB.CreateLoad(pVecAlloca->getAllocatedType(), pVecAlloca);
     llvm::Value* pIns = pLoadVecAlloca;
     IGC_ASSERT(nullptr != pStoreVal);
     IGC_ASSERT(nullptr != pStoreVal->getType());

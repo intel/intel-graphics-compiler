@@ -79,7 +79,7 @@ void ExtensionFuncsResolution::visitCallInst(CallInst& CI)
         IGC_ASSERT(retType->isVectorTy() || retType->isIntegerTy());
         PointerType* ptrType = PointerType::get(retType, 0);
         auto bitcastInst = builder.CreateBitCast(CI.getArgOperand(0), ptrType);
-        auto ret = builder.CreateLoad(bitcastInst);
+        auto ret = builder.CreateLoad(retType, bitcastInst);
         CI.replaceAllUsesWith(ret);
         CI.eraseFromParent();
         return;

@@ -370,7 +370,7 @@ namespace {
                                 IRB->getInt64Ty()->getPointerTo(OldPtrTy->getAddressSpace());
                             Value* NewPtr = IRB->CreateBitCast(OldPtr, NewPtrTy);
                             // Create new load.
-                            LoadInst* NewLD = IRB->CreateLoad(NewPtr);
+                            LoadInst* NewLD = IRB->CreateLoad(IRB->getInt64Ty(), NewPtr);
                             Emu->dupMemoryAttribute(NewLD, LD, 0);
                             // Cast the load i64 back to pointer.
                             Value* NewVal = IRB->CreateIntToPtr(NewLD, PtrTy);
@@ -1246,7 +1246,7 @@ bool InstExpander::visitLoad(LoadInst& LD) {
         Emu->getV2Int32Ty()->getPointerTo(OldPtrTy->getAddressSpace());
     Value* NewPtr = IRB->CreatePointerCast(OldPtr, NewPtrTy);
 
-    LoadInst* NewLD = IRB->CreateLoad(NewPtr);
+    LoadInst* NewLD = IRB->CreateLoad(Emu->getV2Int32Ty(), NewPtr);
     Emu->dupMemoryAttribute(NewLD, &LD, 0);
 
     Value* Lo = IRB->CreateExtractElement(NewLD, IRB->getInt32(0));

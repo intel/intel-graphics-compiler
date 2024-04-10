@@ -378,7 +378,7 @@ namespace {
                                 IRB->getInt64Ty()->getPointerTo(OldPtrTy->getAddressSpace());
                             Value* NewPtr = IRB->CreateBitCast(OldPtr, NewPtrTy);
                             // Create new load.
-                            LoadInst* NewLD = IRB->CreateLoad(NewPtr);
+                            LoadInst* NewLD = IRB->CreateLoad(IRB->getInt64Ty(), NewPtr);
                             Emu->dupMemoryAttribute(NewLD, LD, 0);
                             // Cast the load i64 back to pointer.
                             Value* NewVal = IRB->CreateIntToPtr(NewLD, PtrTy);

@@ -887,7 +887,7 @@ bool BIImport::runOnModule(Module& M)
                     IGCLLVM::IRBuilder<> builder(CI);
                     // Load function address from the table index
                     Value* FP = builder.CreateGEP(FPTablePtr, builder.getInt32(tableIndex));
-                    FP = builder.CreateLoad(FP);
+                    FP = builder.CreateLoad(cast<llvm::GetElementPtrInst>(FP)->getResultElementType(), FP);
                     IGC_ASSERT(FP->getType()->isPointerTy());
                     // Call the loaded function address
                     SmallVector<Value*, 8> Args;

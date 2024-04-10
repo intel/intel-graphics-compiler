@@ -580,7 +580,7 @@ public:
             for (unsigned i = 0, e = (unsigned)pLoadVT->getNumElements(); i < e; ++i)
             {
                 Value* ptr = IRB.CreateIntToPtr(address, scalarptrTy);
-                Value* v = IRB.CreateLoad(ptr);
+                Value* v = IRB.CreateLoad(scalarType, ptr);
                 vec = IRB.CreateInsertElement(vec, v, IRB.getInt32(i));
                 address = IRB.CreateAdd(address, stride);
             }

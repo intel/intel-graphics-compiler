@@ -1396,7 +1396,7 @@ void PreCompiledFuncImport::processInt32Divide(BinaryOperator& inst, Int32Emulat
     }
     else
     {
-        Value* l = builder.CreateLoad(pRem, "rem");
+        Value* l = builder.CreateLoad(cast<llvm::AllocaInst>(pRem)->getAllocatedType(),  pRem, "rem");
         inst.replaceAllUsesWith(l);
         inst.eraseFromParent();
     }

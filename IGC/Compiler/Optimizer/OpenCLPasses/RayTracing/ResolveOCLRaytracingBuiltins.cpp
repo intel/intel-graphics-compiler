@@ -465,7 +465,7 @@ void ResolveOCLRaytracingBuiltins::handleQuery(llvm::CallInst& callInst) {
 
     unsigned argIndex = builtinToArgIndex.at(callInst.getCalledFunction()->getName().str());
     auto* ptr = m_builder->CreateGEP(rayQuery, { m_builder->getInt32(0), m_builder->getInt32(argIndex) });
-    auto* queriedValue = m_builder->CreateLoad(ptr);
+    auto* queriedValue = m_builder->CreateLoad(cast<llvm::GetElementPtrInst>(ptr)->getResultElementType(), ptr);
 
     callInst.replaceAllUsesWith(queriedValue);
     callInst.eraseFromParent();

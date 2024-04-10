@@ -100,7 +100,7 @@ void HandleLoadStoreInstructions::visitLoadInst(llvm::LoadInst& I)
                 // new IntToPtr and new load
                 // cannot use irbuilder to create IntToPtr. It may create ConstantExpr instead of instruction
                 Value* i2p = llvm::IntToPtrInst::Create(Instruction::IntToPtr, offset, floatyptr, "splitDouble", &I);
-                Value* data = builder.CreateLoad(i2p);
+                Value* data = builder.CreateLoad(builder.getFloatTy(), i2p);
                 vec = builder.CreateInsertElement(vec, data, builder.getInt32(i));
             }
             newInst = builder.CreateBitCast(vec, doubleDstType);
@@ -112,7 +112,7 @@ void HandleLoadStoreInstructions::visitLoadInst(llvm::LoadInst& I)
             llvm::Type* dataType = IGCLLVM::FixedVectorType::get(builder.getFloatTy(), numVectorElements * 2);
             llvm::PointerType* ptrType = llvm::PointerType::get(dataType, ptrv->getType()->getPointerAddressSpace());
             llvm::Value* newPtrv = builder.CreateBitCast(ptrv, ptrType);
-            Value* newLoad = builder.CreateLoad(newPtrv);
+            Value* newLoad = builder.CreateLoad(dataType, newPtrv);
             newInst = builder.CreateBitCast(newLoad, doubleDstType);
         }
         I.replaceAllUsesWith(newInst);

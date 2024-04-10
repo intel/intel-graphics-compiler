@@ -259,7 +259,7 @@ bool InstPromoter::visitLoadInst(LoadInst& I) {
                 Twine(NewBasePtr->getName(), ".off") + Twine(Off));
 
         LoadInst* NewLd =
-            IRB->CreateLoad(NewPtr, Twine(I.getName(), getSuffix()) + Twine(Part));
+            IRB->CreateLoad(NewTy, NewPtr, Twine(I.getName(), getSuffix()) + Twine(Part));
         TL->dupMemoryAttribute(NewLd, &I, Off);
 
         Value* NewVal =

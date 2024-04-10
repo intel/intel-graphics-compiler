@@ -357,7 +357,7 @@ llvm::Value* LowerImplicitArgIntrinsics::BuildLoadInst(llvm::CallInst& CI, unsig
     auto LoadType = IGCLLVM::FixedVectorType::get(ElemType, LoadByteSize / ElemByteSize);
     auto PtrType = PointerType::get(LoadType, AddrSpace);
     auto BitCast = Builder.CreateBitCast(IntToPtr, PtrType);
-    auto LoadInst = Builder.CreateLoad(BitCast);
+    auto LoadInst = Builder.CreateLoad(LoadType, BitCast);
     LoadInst->setAlignment(IGCLLVM::getCorrectAlign(ElemByteSize));
     LoadedData = LoadInst;
 
@@ -850,7 +850,7 @@ void LowerImplicitArgIntrinsics::visitCallInst(CallInst& CI)
             // Load data
             auto Int16Ptr = Type::getInt16PtrTy(F->getContext(), ADDRESS_SPACE_GLOBAL);
             auto Addr = Builder.CreateIntToPtr(Result, Int16Ptr);
-            auto LoadInst = Builder.CreateLoad(Addr);
+            auto LoadInst = Builder.CreateLoad(Builder.getInt16Ty(), Addr);
             auto Trunc = Builder.CreateZExtOrBitCast(LoadInst, CI.getType());
             V = Trunc;
             break;

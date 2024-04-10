@@ -709,8 +709,9 @@ void PeepholeTypeLegalizer::legalizeUnaryInstruction(Instruction& I) {
         promoteInt(loadSrcWidth, loadQuotient, loadPromoteToInt, 8); // hard coded to 8 since our hardware is bte addressable.
 
         if (loadQuotient > 1) {
-            Value* newBitCast = m_builder->CreatePointerCast(I.getOperand(0), IGCLLVM::FixedVectorType::get(llvm::Type::getIntNTy(I.getContext(), loadPromoteToInt), loadQuotient));
-            Value* newLoadInst = m_builder->CreateLoad(newBitCast);
+            IGCLLVM::FixedVectorType* vTy = IGCLLVM::FixedVectorType::get(llvm::Type::getIntNTy(I.getContext(), loadPromoteToInt), loadQuotient);
+            Value* newBitCast = m_builder->CreatePointerCast(I.getOperand(0), vTy);
+            Value* newLoadInst = m_builder->CreateLoad(vTy, newBitCast);
             // mask the extra bits loaded for type legalization
             unsigned maskCnt = (loadPromoteToInt * loadQuotient) - loadSrcWidth;
             unsigned char mask = 0xff;
@@ -732,8 +733,9 @@ void PeepholeTypeLegalizer::legalizeUnaryInstruction(Instruction& I) {
             I.eraseFromParent();
         }
         else {
-            Value* newBitCast = m_builder->CreatePointerCast(I.getOperand(0), IGCLLVM::FixedVectorType::get(llvm::Type::getIntNTy(I.getContext(), loadPromoteToInt), loadQuotient));
-            Value* newLoadInst = m_builder->CreateLoad(newBitCast);
+            IGCLLVM::FixedVectorType* vTy = IGCLLVM::FixedVectorType::get(llvm::Type::getIntNTy(I.getContext(), loadPromoteToInt), loadQuotient);
+            Value* newBitCast = m_builder->CreatePointerCast(I.getOperand(0), vTy);
+            Value* newLoadInst = m_builder->CreateLoad(vTy, newBitCast);
             // mask the extra bits loaded for type legalization
             unsigned maskCnt = (loadPromoteToInt * loadQuotient) - loadSrcWidth;
             unsigned char mask = 0xff;

@@ -197,7 +197,7 @@ Instruction* ReplaceUnsupportedIntrinsics::insertReverseLoop(
         // Loop body's Basic Block
         IGCLLVM::IRBuilder<> B(Body);
         B.SetCurrentDebugLocation(DL);
-        IV = B.CreateLoad(pIV, "IV");
+        IV = B.CreateLoad(cast<llvm::AllocaInst>(pIV)->getAllocatedType(), pIV, "IV");
         // User of function will add more instructions at this point ...
         // Decrement the IV and check for end of loop
         Value* Dec = B.CreateSub(IV, One);
@@ -242,7 +242,7 @@ Instruction* ReplaceUnsupportedIntrinsics::insertLoop(Instruction* Loc, Value* L
         // Loop body's Basic Block
         IGCLLVM::IRBuilder<> B(Body);
         B.SetCurrentDebugLocation(DL);
-        IV = B.CreateLoad(pIV, "IV");
+        IV = B.CreateLoad(cast<llvm::AllocaInst>(pIV)->getAllocatedType(), pIV, "IV");
         // User of function will add more instructions at this point ...
         // Increment the IV and check for end of loop
         Value* Inc = B.CreateAdd(IV, ConstantInt::get(LengthType, 1));
