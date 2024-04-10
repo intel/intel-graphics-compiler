@@ -494,9 +494,9 @@ void CShader::CreateAliasVars()
     {
         // For each vector alias root, generate cvariable
         // for it and all its component sub-vector
-        for (auto& II : m_VRA->m_baseVecMap)
+        for (auto& II : m_VRA->m_sortedBaseVec)
         {
-            SBaseVecDesc* BV = II.second;
+            SBaseVecDesc* BV = II;
             Value* baseVal = BV->BaseVector;
             if (BV->Align != EALIGN_AUTO) {
                 // Need to set align on root cvar

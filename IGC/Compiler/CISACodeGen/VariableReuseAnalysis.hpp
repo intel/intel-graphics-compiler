@@ -27,7 +27,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/RegisterEstimator.hpp"
 #include <list>
-#include <map>
+#include <unordered_map>
 #include <algorithm>
 #include "Probe/Assertion.h"
 
@@ -190,8 +190,8 @@ namespace IGC {
         ~VariableReuseAnalysis() {}
 
         typedef llvm::SmallVector<SVecInsEltInfo, 32> VecInsEltInfoTy;
-        typedef std::map<llvm::Value*, SSubVecDesc*> AliasMapTy;  // ordered map
-        typedef std::map<llvm::Value*, SBaseVecDesc*> BaseVecMapTy;
+        typedef std::unordered_map<llvm::Value*, SSubVecDesc*> AliasMapTy;
+        typedef std::unordered_map<llvm::Value*, SBaseVecDesc*> BaseVecMapTy;
         typedef llvm::SmallVector<llvm::Value*, 32> ValueVectorTy;
         typedef llvm::DenseMap<llvm::Value*, llvm::Value*> Val2ValMapTy;
 
@@ -324,11 +324,11 @@ namespace IGC {
         //   subAlias(v, 2, 2) = {s2, s3, v}  // only s2&s3 overlaps V[2:3]
         //   dessaCC(s0) = { values in the same dessa CC }
         //
-        //   [todo] add Algo here.
-        //
         AliasMapTy  m_aliasMap;
         BaseVecMapTy m_baseVecMap;
 
+        // sorted m_baseVecMap for creating cvar in derministic order
+        llvm::SmallVector<SBaseVecDesc*, 16> m_sortedBaseVec;
 
         // Function argument cannot be made a sub-part of another bigger
         // value as it has been assigned a fixed physical GRF. The following
@@ -380,6 +380,7 @@ namespace IGC {
             m_IsBlockPressureLow = Status::Undef;
             m_aliasMap.clear();
             m_baseVecMap.clear();
+            m_sortedBaseVec.clear();
             m_root2AliasMap.clear();
             m_HasBecomeNoopInsts.clear();
             m_LifetimeAt1stDefOfBB.clear();
@@ -411,6 +412,8 @@ namespace IGC {
             ValueVectorTy& AllVals,
             BlockCoalescing* theBC);
         void postProcessing();
+
+        void sortAliasResult();
 
         // Return true if this instruction can be converted to an alias
         bool canBeAlias(llvm::CastInst* I);
