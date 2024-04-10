@@ -815,7 +815,7 @@ namespace IGC {
     // Helper functions for loop sink debug dumps
 #define PrintDump(Contents) if (IGC_IS_FLAG_ENABLED(DumpLoopSink)) {LogStream << Contents;}
 #define PrintInstructionDump(Inst) if (IGC_IS_FLAG_ENABLED(DumpLoopSink)) {Inst->print(LogStream, false); LogStream << "\n";}
-#define PrintOUGDump(OUG) if (IGC_IS_FLAG_ENABLED(DumpLoopSink)) {OUG->print(LogStream); LogStream << "\n";}
+#define PrintOUGDump(OUG) if (IGC_IS_FLAG_ENABLED(DumpLoopSink)) {OUG.print(LogStream); LogStream << "\n";}
 
 
     // Register pass to igc-opt
@@ -851,7 +851,7 @@ namespace IGC {
             return false;
 
         if (IGC_IS_FLAG_ENABLED(DisableCodeSinking) ||
-            numInsts(F) < IGC_GET_FLAG_VALUE(CodeSinkingMinSize))
+            numInsts(F) < IGC_GET_FLAG_VALUE(CodeLoopSinkingMinSize))
         {
             return false;
         }
@@ -900,29 +900,28 @@ namespace IGC {
         if (IGC_IS_FLAG_ENABLED(DumpLoopSink))
         {
             if (IGC_IS_FLAG_ENABLED(PrintToConsole))
-            {
                 IGC::Debug::ods() << Log;
-            }
             else
-            {
-                auto Name = Debug::DumpName(IGC::Debug::GetShaderOutputName())
-                                            .Hash(CTX->hash)
-                                            .Type(CTX->type)
-                                            .Retry(CTX->m_retryManager.GetRetryId())
-                                            .Pass("loopsink")
-                                            .Extension("txt");
-                IGC::Debug::DumpLock();
-                std::ofstream OutputFile(Name.str(), std::ios_base::app);
-                if (OutputFile.is_open())
-                {
-                    OutputFile << Log;
-                }
-                OutputFile.close();
-                IGC::Debug::DumpUnlock();
-            }
+                dumpToFile(Log);
         }
 
         return Changed;
+    }
+
+    void CodeLoopSinking::dumpToFile(const std::string& Log)
+    {
+        auto Name = Debug::DumpName(IGC::Debug::GetShaderOutputName())
+                                    .Hash(CTX->hash)
+                                    .Type(CTX->type)
+                                    .Retry(CTX->m_retryManager.GetRetryId())
+                                    .Pass("loopsink")
+                                    .Extension("txt");
+        IGC::Debug::DumpLock();
+        std::ofstream OutputFile(Name.str(), std::ios_base::app);
+        if (OutputFile.is_open())
+            OutputFile << Log;
+        OutputFile.close();
+        IGC::Debug::DumpUnlock();
     }
 
     // Implementation of RPE->getMaxRegCountForLoop(*L, SIMD);
@@ -974,34 +973,6 @@ namespace IGC {
         uint NGRF = CTX->getNumGRFPerThread();
         uint SIMD = numLanes(RPE->bestGuessSIMDSize());
 
-        // Estimate preheader's potential to sink
-        ValueSet PreheaderDefs = RPE->getDefs(*Preheader);
-        // Filter out preheader defined values that are used not in the loop or not supported
-        ValueSet PreheaderDefsCandidates;
-        for (Value *V : PreheaderDefs)
-        {
-            Instruction *I = dyn_cast<Instruction>(V);
-            if (I && isLoopSinkCandidate(I, L,
-                    (IGC_IS_FLAG_ENABLED(EnableLoadsLoopSink) || IGC_IS_FLAG_ENABLED(ForceLoadsLoopSink))))
-            {
-                PreheaderDefsCandidates.insert(V);
-            }
-        }
-        uint PreheaderDefsSizeInBytes = RPE->estimateSizeInBytes(PreheaderDefsCandidates, *F, SIMD, &WI);
-        uint PreheaderDefsSizeInRegs = RPE->bytesToRegisters(PreheaderDefsSizeInBytes);
-
-        // Estimate max pressure in the loop and the external pressure
-        uint MaxLoopPressure = getMaxRegCountForLoop(L);
-        uint FunctionExternalPressure = FRPE ? FRPE->getExternalPressureForFunction(F) : 0;
-
-        auto isSinkCriteriaMet = [&](uint MaxLoopPressure)
-        {
-            // loop sinking is needed if the loop's pressure is higher than number of GRFs by threshold
-            // and preheader's potential to reduce the delta is good enough
-            return ((MaxLoopPressure > NGRF + GRFThresholdDelta) &&
-                    (PreheaderDefsSizeInRegs > (MaxLoopPressure - NGRF) * LOOPSINK_PREHEADER_IMPACT_THRESHOLD));
-        };
-
         PrintDump("\n");
         if (!Preheader->getName().empty())
         {
@@ -1017,6 +988,41 @@ namespace IGC {
         {
             PrintDump("Checking loop with unnamed empty preheader.");
         }
+
+        // Estimate preheader's potential to sink
+        ValueSet PreheaderDefs = RPE->getDefs(*Preheader);
+        // Filter out preheader defined values that are used not in the loop or not supported
+        ValueSet PreheaderDefsCandidates;
+        for (Value *V : PreheaderDefs)
+        {
+            Instruction *I = dyn_cast<Instruction>(V);
+            if (I && isLoopSinkCandidate(I, L,
+                    (IGC_IS_FLAG_ENABLED(EnableLoadsLoopSink) || IGC_IS_FLAG_ENABLED(ForceLoadsLoopSink))))
+            {
+                PreheaderDefsCandidates.insert(V);
+            }
+        }
+
+        if (PreheaderDefsCandidates.empty())
+        {
+            PrintDump(">> No sinking candidates in the preheader.\n");
+            return LoopSinkMode::NoSink;
+        }
+
+        uint PreheaderDefsSizeInBytes = RPE->estimateSizeInBytes(PreheaderDefsCandidates, *F, SIMD, &WI);
+        uint PreheaderDefsSizeInRegs = RPE->bytesToRegisters(PreheaderDefsSizeInBytes);
+
+        // Estimate max pressure in the loop and the external pressure
+        uint MaxLoopPressure = getMaxRegCountForLoop(L);
+        uint FunctionExternalPressure = FRPE ? FRPE->getExternalPressureForFunction(F) : 0;
+
+        auto isSinkCriteriaMet = [&](uint MaxLoopPressure)
+        {
+            // loop sinking is needed if the loop's pressure is higher than number of GRFs by threshold
+            // and preheader's potential to reduce the delta is good enough
+            return ((MaxLoopPressure > NGRF + GRFThresholdDelta) &&
+                    (PreheaderDefsSizeInRegs > (MaxLoopPressure - NGRF) * LOOPSINK_PREHEADER_IMPACT_THRESHOLD));
+        };
 
         PrintDump("Threshold to sink = " << NGRF + GRFThresholdDelta << "\n");
         PrintDump("MaxLoopPressure = " << MaxLoopPressure << "\n");
@@ -1453,7 +1459,7 @@ namespace IGC {
         };
 
         // Check if it's beneficial to sink it in the loop
-        auto isBeneficialToSink = [&](OperandUseGroup *OUG)-> bool
+        auto isBeneficialToSink = [&](OperandUseGroup &OUG)-> bool
         {
             auto getDstSize = [this](Value *V)
             {
@@ -1472,10 +1478,8 @@ namespace IGC {
                 return DstSize;
             };
 
-            IGC_ASSERT(OUG);
-
             // All instructions are safe to sink always or consume larger type than produce
-            if (std::all_of(OUG->Users.begin(), OUG->Users.end(),
+            if (std::all_of(OUG.Users.begin(), OUG.Users.end(),
                 [this](Instruction *I)
                 {
                     return isAlwaysSinkInstruction(I) || isCastInstrReducingPressure(I, false);
@@ -1489,7 +1493,7 @@ namespace IGC {
             // is uniform, but the User (instruction to sink) is uniform, we'll decide it's beneficial to sink
             int AccSave = 0;
 
-            for (Value *V : OUG->Operands)
+            for (Value *V : OUG.Operands)
             {
                 int DstSize = getDstSize(V);
                 if (!DstSize)
@@ -1500,7 +1504,7 @@ namespace IGC {
             }
 
             bool AllUsersAreUniform = true;
-            for (Value *V : OUG->Users)
+            for (Value *V : OUG.Users)
             {
                 int DstSize = getDstSize(V);
                 if (!DstSize)
@@ -1513,7 +1517,7 @@ namespace IGC {
 
             // If all uses are uniform, and we save enough SSA-values it's still beneficial
             if (AccSave >= 0 && AllUsersAreUniform &&
-                ((int)OUG->Users.size() - (int)OUG->Operands.size() >= (int)(IGC_GET_FLAG_VALUE(LoopSinkMinSaveUniform))))
+                ((int)OUG.Users.size() - (int)OUG.Operands.size() >= (int)(IGC_GET_FLAG_VALUE(LoopSinkMinSaveUniform))))
             {
                 return true;
             }
@@ -1521,7 +1525,7 @@ namespace IGC {
             // All instructions are part of a chain to already sinked load and don't
             // increase pressure too much. It simplifies the code a little and without
             // adding remat pass for simple cases
-            if (AccSave >= 0 && std::all_of(OUG->Users.begin(), OUG->Users.end(),
+            if (AccSave >= 0 && std::all_of(OUG.Users.begin(), OUG.Users.end(),
                 [&](Instruction *I) {return isLoadChain(I, LoadChains);}))
             {
                 return true;
@@ -1563,111 +1567,91 @@ namespace IGC {
         // Here we group all candidates based on its operands and select ones that definitely
         // reduce the pressure.
         //
-        OperandUseGroup *AllGroups = new OperandUseGroup[SinkCandidates.size()];
-        SmallVector<OperandUseGroup *, 16> InstUseInfo;
-        for (uint32_t i = 0, e = (uint32_t)SinkCandidates.size(); i < e; ++i)
+
+        SmallVector<OperandUseGroup, 16> InstUseInfo;
+        InstUseInfo.reserve(SinkCandidates.size());
+
+        for (Instruction *I : SinkCandidates)
         {
-            Instruction *I = SinkCandidates[i];
-            SmallPtrSet<Value *, 4> theUses;
+            SmallPtrSet<Value *, 4> CandidateOperands;
             for (Use &U : I->operands())
             {
                 Value *V = U;
                 if (isa<Constant>(V) || isUsedInLoop(V, L))
                     continue;
 
-                theUses.insert(V);
+                CandidateOperands.insert(V);
             }
 
             // If this set of uses have been referenced by other instructions,
             // put this inst in the same group. Note that we don't union sets
             // that intersect each other.
-            uint32_t j, je = (uint32_t)InstUseInfo.size();
-            for (j = 0; j < je; ++j)
+            auto it = std::find_if(InstUseInfo.begin(), InstUseInfo.end(), [&](OperandUseGroup &OUG)
             {
-                OperandUseGroup *OUG = InstUseInfo[j];
-                if (isSameSet(OUG->Operands, theUses)) {
-                    OUG->Users.push_back(I);
-                    break;
+                return isSameSet(OUG.Operands, CandidateOperands);
+            });
+
+            if (it != InstUseInfo.end())
+                it->Users.push_back(I);
+            else
+                InstUseInfo.push_back(OperandUseGroup{CandidateOperands, {I}});
+        }
+
+        // Sink the instructions from every group if they are beneficial
+        bool Changed = false;
+        for (OperandUseGroup &OUG : InstUseInfo)
+        {
+
+            PrintDump("Checking if sinking the group is beneficial:\n");
+            PrintOUGDump(OUG);
+
+            if (!isBeneficialToSink(OUG))
+                continue;
+            PrintDump(">> Beneficial to sink.\n\n");
+
+            bool GroupChanged = false;
+            for (Instruction *I : OUG.Users)
+            {
+                Instruction *PrevLoc = I->getNextNode();
+                bool UserChanged = sinkInstruction(I);
+                if (UserChanged)
+                {
+                    PrintDump("Sinking instruction:\n");
+                    PrintInstructionDump(I);
+
+                    UndoLocas.push_back(PrevLoc);
+                    MovedInsts.push_back(I);
+
+                    GroupChanged = true;
+                    if (isa<LoadInst>(I) || isLoadChain(I, LoadChains))
+                        LoadChains.insert(I);
                 }
             }
+            if (GroupChanged)
+            {
+                Changed = true;
 
-            if (j == je) {
-                // No match found, create the new one.
-                OperandUseGroup &OUG = AllGroups[i];
-                OUG.Operands = std::move(theUses);
-                OUG.Users.push_back(I);
-                InstUseInfo.push_back(&OUG);
+                // If the group is sinked, remove its operands from other groups
+                // So that the same operands were not considered in the next's group
+                // estimation of whether it's beneficial to sink the users.
+                //
+                // It's still useful if we don't sink all the users from the group, but sink at least one.
+                // Because if we sink, the operands of the sinked group become alive in the loop's body,
+                // so they should not be considered for the next group
+                for (OperandUseGroup &OUG1 : InstUseInfo)
+                {
+                    // Just don't remove the operands from the same group
+                    // so that we don't lose the operands set
+                    if (&OUG1 == &OUG)
+                        continue;
+
+                    for (Value *V : OUG.Operands)
+                        OUG1.Operands.erase(V);
+                }
             }
         }
 
-        bool EverChanged = false;
-        // Just a placeholder, all LIs considered here are ALUs.
-        SmallPtrSet<Instruction *, 16> Stores;
-        bool IterChanged;
-        uint32_t N = (uint32_t) InstUseInfo.size();
-        do {
-            IterChanged = false;
-            for (uint32_t i = 0; i < N; ++i)
-            {
-                OperandUseGroup *OUG = InstUseInfo[i];
-                if (!OUG)
-                    continue;
-
-                PrintDump("Checking if sinking the group is beneficial:\n");
-                PrintOUGDump(OUG);
-
-                if (!isBeneficialToSink(OUG))
-                    continue;
-                PrintDump(">> Beneficial to sink.\n\n");
-
-                bool GroupChanged = false;
-                for (int j = 0; j < (int)(OUG->Users.size()); ++j)
-                {
-                    Instruction *I = OUG->Users[j];
-                    Instruction *PrevLoc = I->getNextNode();
-                    bool UserChanged = sinkInstruction(I);
-                    if (UserChanged)
-                    {
-                        PrintDump("Sinking instruction:\n");
-                        PrintInstructionDump(I);
-
-                        UndoLocas.push_back(PrevLoc);
-                        MovedInsts.push_back(I);
-
-                        GroupChanged = true;
-                        if (isa<LoadInst>(I) || isLoadChain(I, LoadChains))
-                        {
-                            LoadChains.insert(I);
-                        }
-                    }
-                }
-                if (GroupChanged) {
-                    IterChanged = true;
-                    EverChanged = true;
-
-                    // Since those operands become global already, remove
-                    // them from the sets in the vector.
-                    for (uint32_t k = 0; k < N; ++k)
-                    {
-                        OperandUseGroup *OUG1 = InstUseInfo[k];
-                        if (k == i || !OUG1)
-                            continue;
-
-                        for (auto I : OUG->Operands) {
-                            Value *V = I;
-                            OUG1->Operands.erase(V);
-                        }
-                    }
-                }
-
-                // Just set it to nullptr (erasing it would be more expensive).
-                InstUseInfo[i] = nullptr;
-            }
-        } while (IterChanged);
-
-        delete[] AllGroups;
-
-        return EverChanged;
+        return Changed;
     }
 
     // Find the target BB and move the instruction
