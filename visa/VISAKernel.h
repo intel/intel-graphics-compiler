@@ -123,7 +123,7 @@ public:
 
   vISA::Attributes *getKernelAttributes() { return m_kernelAttrs; }
   // Temporary function to move options to attributes!
-  void finalizeAttributes();
+  bool finalizeAttributes();
 
   void setName(const char *n);
   const char *getName() const { return m_name.c_str(); }
