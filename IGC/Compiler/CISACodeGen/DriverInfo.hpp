@@ -205,9 +205,6 @@ namespace IGC
         /// support predicate add pattern match
         virtual bool SupportMatchPredAdd() const { return false; }
 
-        /// Support passing globally accessed pointers implicitly to callees using argument registers
-        virtual bool SupportGlobalStackArgs() const { return false; }
-
         /// Adjust adapter to adjust the loop unrolling threshold
         virtual unsigned int GetLoopUnrollThreshold() const
         {
