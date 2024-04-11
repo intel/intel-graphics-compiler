@@ -18,7 +18,9 @@ define void @test_add(i8 %src) {
 ; CHECK-LABEL: @test_add(
 ; CHECK:    [[TMP1:%.*]] = and i8 [[SRC:%.*]], 63
 ; CHECK:    [[DOTPROMOTE:%.*]] = add i8 [[TMP1]], [[TMP1]]
-; CHECK:    call void @use.i8(i8 [[DOTPROMOTE]])
+; CHECK:    [[TMP2:%.*]] = shl i8 [[DOTPROMOTE]], 2
+; CHECK:    [[TMP3:%.*]] = ashr i8 [[TMP2]], 2
+; CHECK:    call void @use.i8(i8 [[TMP3]])
 ; CHECK:    ret void
 ;
   %1 = trunc i8 %src to i6
@@ -126,7 +128,9 @@ define void @test_extractelement_0(i16 %src) {
 ; CHECK:    [[TMP3:%.*]] = shl i16 [[TMP2]], 4
 ; CHECK:    [[TMP4:%.*]] = trunc i16 [[TMP3]] to i8
 ; CHECK:    [[TMP5:%.*]] = ashr i8 [[TMP4]], 4
-; CHECK:    call void @use.i8(i8 [[TMP5]])
+; CHECK:    [[TMP6:%.*]] = shl i8 [[TMP5]], 4
+; CHECK:    [[TMP7:%.*]] = ashr i8 [[TMP6]], 4
+; CHECK:    call void @use.i8(i8 [[TMP7]])
 ; CHECK:    ret void
 ;
   %1 = trunc i16 %src to i12
@@ -143,7 +147,9 @@ define void @test_extractelement_1(i16 %src) {
 ; CHECK:    [[TMP2:%.*]] = and i16 [[TMP1]], 240
 ; CHECK:    [[TMP3:%.*]] = trunc i16 [[TMP2]] to i8
 ; CHECK:    [[TMP4:%.*]] = ashr i8 [[TMP3]], 4
-; CHECK:    call void @use.i8(i8 [[TMP4]])
+; CHECK:    [[TMP5:%.*]] = shl i8 [[TMP4]], 4
+; CHECK:    [[TMP6:%.*]] = ashr i8 [[TMP5]], 4
+; CHECK:    call void @use.i8(i8 [[TMP6]])
 ; CHECK:    ret void
 ;
   %1 = trunc i16 %src to i12

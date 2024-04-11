@@ -397,6 +397,11 @@ bool InstPromoter::visitSExtInst(SExtInst& I) {
         if (LegalizedSingleValue->getType() == I.getDestTy())
         {
             Promoted = LegalizedSingleValue;
+
+            // Extend the legalized value
+            unsigned shiftAmt = I.getDestTy()->getIntegerBitWidth() - I.getSrcTy()->getIntegerBitWidth();
+            Promoted = IRB->CreateShl(Promoted, shiftAmt);
+            Promoted = IRB->CreateAShr(Promoted, shiftAmt);
             return true;
         }
     }

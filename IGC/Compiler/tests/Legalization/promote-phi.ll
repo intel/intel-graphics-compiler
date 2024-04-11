@@ -15,7 +15,9 @@ target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f1
 define void @test_phi(i1 %src) {
 ; CHECK-LABEL: @test_phi(
 ; CHECK:    [[DOTPROMOTE:%.*]] = phi i8 [ -2, %b2 ], [ 12, %b1 ]
-; CHECK:    call void @use.i8(i8 [[DOTPROMOTE]])
+; CHECK:    [[TMP1:%.*]] = shl i8 [[DOTPROMOTE]], 4
+; CHECK:    [[TMP2:%.*]] = ashr i8 [[TMP1]], 4
+; CHECK:    call void @use.i8(i8 [[TMP2]])
 ; CHECK:    ret void
 ;
   br i1 %src, label %b1, label %b2

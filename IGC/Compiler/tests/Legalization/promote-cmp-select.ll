@@ -23,7 +23,9 @@ define void @test_cmp(i8 %src1, i8 %src2) {
 ; CHECK:    [[TMP6:%.*]] = ashr i8 [[TMP5]], 5
 ; CHECK:    [[DOTPROMOTE:%.*]] = icmp sle i8 [[TMP4]], [[TMP6]]
 ; CHECK:    [[DOTPROMOTE1:%.*]] = select i1 [[DOTPROMOTE]], i8 [[TMP1]], i8 [[TMP2]]
-; CHECK:    call void @use.i8(i8 [[DOTPROMOTE1]])
+; CHECK:    [[TMP7:%.*]] = shl i8 [[DOTPROMOTE1]], 5
+; CHECK:    [[TMP8:%.*]] = ashr i8 [[TMP7]], 5
+; CHECK:    call void @use.i8(i8 [[TMP8]])
 ; CHECK:    ret void
 ;
   %s1 = trunc i8 %src1 to i3
