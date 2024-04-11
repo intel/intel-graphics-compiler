@@ -55,6 +55,11 @@ define spir_kernel void @test_lsc(i64 %base, <2 x i32> %cord) {
 ; CHECK:    call <32 x i16> @llvm.genx.GenISA.LSC2DBlockRead.v32i16(i64 %base, i32 0, i32 7, i32 0, i32 [[TMP13]], i32 [[TMP14]], i32 16, i32 16, i32 32, i32 2, i1 false, i1 true, i32 0)
   %7 = call <32 x i16> @__builtin_IB_subgroup_block_read_flat_transform_u16_k32v2(i64 %base, i32 0, i32 7, i32 0, <2 x i32> %cord)
 
+; CHECK:    [[TMP15:%.*]] = extractelement <2 x i32> %cord, i32 0
+; CHECK:    [[TMP16:%.*]] = extractelement <2 x i32> %cord, i32 1
+; CHECK:    call <32 x i16> @llvm.genx.GenISA.LSC2DBlockRead.v32i16(i64 %base, i32 0, i32 7, i32 0, i32 [[TMP15]], i32 [[TMP16]], i32 16, i32 16, i32 16, i32 2, i1 false, i1 false, i32 4)
+  %8 = call <32 x i16> @__builtin_IB_subgroup_block_read_flat_cacheopts_u16_m16k16v2(i64 %base, i32 0, i32 7, i32 0, <2 x i32> %cord, i32 4)
+
 ; CHECK:    ret void
   ret void
 }
@@ -68,6 +73,8 @@ declare <4 x i32>  @__builtin_IB_subgroup_block_read_flat_u32_wi4_m8k8v1(i64, i3
 declare <16 x i16> @__builtin_IB_subgroup_block_read_flat_transform_u16_k16v2(i64, i32, i32, i32, <2 x i32>)
 declare <16 x i16> @__builtin_IB_subgroup_block_read_flat_transform_u16_k32(i64, i32, i32, i32, <2 x i32>)
 declare <32 x i16> @__builtin_IB_subgroup_block_read_flat_transform_u16_k32v2(i64, i32, i32, i32, <2 x i32>)
+
+declare <32 x i16> @__builtin_IB_subgroup_block_read_flat_cacheopts_u16_m16k16v2(i64, i32, i32, i32, <2 x i32>, i32)
 
 !igc.functions = !{!0}
 
