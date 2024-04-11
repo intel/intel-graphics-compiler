@@ -1064,7 +1064,7 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
     Value* imageResHeight = CI.getArgOperand(2);
     Value* imageResPitch = CI.getArgOperand(3);
 
-    SmallVector<Value*, 13> args;
+    SmallVector<Value*, 14> args;
     args.push_back(imageResBaseoffset);
     args.push_back(imageResWidth);
     args.push_back(imageResHeight);
@@ -1114,17 +1114,12 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
     }
     else
     {
-        uint32_t blockWriteDstOperandId = 5;
-        if (hasCacheOpts)
-        {
-            blockWriteDstOperandId = 6;
-        }
-        Value *dst = CI.getArgOperand(blockWriteDstOperandId);
-        args.push_back(dst);
+        Value *srcVal = CI.getArgOperand(5);
+        args.push_back(srcVal);
         BlockFunc = GenISAIntrinsic::getDeclaration(
             CI.getCalledFunction()->getParent(),
             GenISAIntrinsic::GenISA_LSC2DBlockWrite,
-            dst->getType());
+            srcVal->getType());
     }
 
     Instruction* BlockOp = CallInst::Create(BlockFunc, args, "", &CI);
