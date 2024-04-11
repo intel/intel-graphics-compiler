@@ -379,7 +379,7 @@ SymExpr* SymbolicEvaluation::getSymExpr(const Value* V)
     if (expr == nullptr)
     {
         // Create a SymExpr (it is a constant)
-        SymExpr* E = new (m_symEvaAllocator) SymExpr();
+        SymExpr* E = new (m_symExprAllocator.Allocate()) SymExpr();
         E->ConstTerm = coeff;
         setSymInfo(V, E);
 
@@ -697,9 +697,9 @@ void SymbolicEvaluation::getSymExprOrConstant(const Value* V, SymExpr*& S, int64
     // the function should have returned already and won't reach this place.
     if (S == nullptr)
     {
-        SymProd* P = new (m_symEvaAllocator) SymProd();
-        SymTerm* T = new (m_symEvaAllocator) SymTerm();
-        SymExpr* E = new (m_symEvaAllocator) SymExpr();
+        SymProd* P = new (m_symProdAllocator.Allocate()) SymProd();
+        SymTerm* T = new (m_symTermAllocator.Allocate()) SymTerm();
+        SymExpr* E = new (m_symExprAllocator.Allocate()) SymExpr();
         P->Prod.push_back(V);
         T->Term = P;
         E->SymTerms.push_back(T);
@@ -752,7 +752,7 @@ int SymbolicEvaluation::cmp(const SymProd* T0, const SymProd* T1)
 SymExpr* SymbolicEvaluation::add(
     SymExpr* S0, SymExpr* S1, bool negateS1)
 {
-    SymExpr* Expr = new (m_symEvaAllocator) SymExpr();
+    SymExpr* Expr = new (m_symExprAllocator.Allocate()) SymExpr();
 
     int i0 = 0, i1 = 0;
     const int e0 = S0->SymTerms.size();
@@ -789,7 +789,7 @@ SymExpr* SymbolicEvaluation::add(
         }
 
         if (T != nullptr) {
-            SymTerm* newT = new (m_symEvaAllocator) SymTerm();
+            SymTerm* newT = new (m_symTermAllocator.Allocate()) SymTerm();
             Expr->SymTerms.push_back(newT);
             copy(newT, T);
             newT->Coeff = Coeff;
@@ -798,14 +798,14 @@ SymExpr* SymbolicEvaluation::add(
 
     while (i0 < e0)
     {
-        SymTerm* newT = new (m_symEvaAllocator) SymTerm();
+        SymTerm* newT = new (m_symTermAllocator.Allocate()) SymTerm();
         Expr->SymTerms.push_back(newT);
         copy(newT, S0->SymTerms[i0]);
         ++i0;
     }
     while (i1 < e1)
     {
-        SymTerm* newT = new (m_symEvaAllocator) SymTerm();
+        SymTerm* newT = new (m_symTermAllocator.Allocate()) SymTerm();
         Expr->SymTerms.push_back(newT);
         copy(newT, S1->SymTerms[i1]);
         if (negateS1) {
@@ -821,7 +821,7 @@ SymExpr* SymbolicEvaluation::add(
 
 SymExpr* SymbolicEvaluation::add(SymExpr* S, int64_t C)
 {
-    SymExpr* Expr = new (m_symEvaAllocator) SymExpr();
+    SymExpr* Expr = new (m_symExprAllocator.Allocate()) SymExpr();
     copy(Expr, S);
     Expr->ConstTerm += C;
     return Expr;
@@ -829,12 +829,12 @@ SymExpr* SymbolicEvaluation::add(SymExpr* S, int64_t C)
 
 SymExpr* SymbolicEvaluation::mul(SymExpr* S, int64_t C)
 {
-    SymExpr* Expr = new (m_symEvaAllocator) SymExpr();
+    SymExpr* Expr = new (m_symExprAllocator.Allocate()) SymExpr();
     if (C != 0)
     {
         for (int i = 0, e = S->SymTerms.size(); i < e; ++i)
         {
-            SymTerm* newT = new (m_symEvaAllocator) SymTerm();
+            SymTerm* newT = new (m_symTermAllocator.Allocate()) SymTerm();
             copy(newT, S->SymTerms[i]);
             newT->Coeff *= C;
             Expr->SymTerms.push_back(newT);

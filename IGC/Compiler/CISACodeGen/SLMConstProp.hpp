@@ -44,11 +44,6 @@ namespace IGC
         SymProd(const SymProd& P) : Prod(P.Prod) {}
 
         SymProd& operator=(const SymProd& P) = delete;
-#if 0
-        {
-            Prod.append(P.Prod.begin(), P.Prod.end());
-        }
-#endif
     };
 
     class SymTerm {
@@ -101,7 +96,6 @@ namespace IGC
                     << "\n";
             }
 #endif
-            clear();
         }
 
         SymbolicEvaluation(const SymbolicEvaluation&) = delete;
@@ -139,7 +133,7 @@ namespace IGC
 
         void copy(SymTerm* D, SymTerm* S)
         {
-            D->Term = new (m_symEvaAllocator) SymProd(*S->Term);
+            D->Term = new (m_symProdAllocator.Allocate()) SymProd(*S->Term);
             D->Coeff = S->Coeff;
         }
 
@@ -147,7 +141,7 @@ namespace IGC
         {
             for (int i = 0, e = S->SymTerms.size(); i < e; ++i)
             {
-                SymTerm* newT = new (m_symEvaAllocator) SymTerm();
+                SymTerm* newT = new (m_symTermAllocator.Allocate()) SymTerm();
                 copy(newT, S->SymTerms[i]);
                 D->SymTerms.push_back(newT);
             }
@@ -155,10 +149,14 @@ namespace IGC
         }
 
         void clear() {
+            m_symProdAllocator.DestroyAll();
+            m_symTermAllocator.DestroyAll();
+            m_symExprAllocator.DestroyAll();
+            m_symInfoAllocator.DestroyAll();
+
             m_nextValueID = 0;
             m_DL = nullptr;
             m_symInfos.clear();
-            m_symEvaAllocator.Reset();
         }
 
 #if defined(_DEBUG)
@@ -211,7 +209,12 @@ namespace IGC
         bool exceedMaxValues() const { return m_nextValueID > MAX_NUM_VALUES; }
 
         SymInfoMap m_symInfos;
-        llvm::BumpPtrAllocator m_symEvaAllocator;
+
+        // SpecificBumpPtrAllocator calls dtor on destruction automatically
+        llvm::SpecificBumpPtrAllocator<ValueSymInfo> m_symInfoAllocator;
+        llvm::SpecificBumpPtrAllocator<SymExpr> m_symExprAllocator;
+        llvm::SpecificBumpPtrAllocator<SymTerm> m_symTermAllocator;
+        llvm::SpecificBumpPtrAllocator<SymProd> m_symProdAllocator;
 
         // A varaint of getSymExpr.  This one does not create SymExpr if
         // V is an integer constant. Instead, return constant as 'C'.
@@ -230,7 +233,7 @@ namespace IGC
 
         void setSymInfo(const llvm::Value* V, SymExpr* E)
         {
-            ValueSymInfo* VSI = new (m_symEvaAllocator) ValueSymInfo();
+            ValueSymInfo* VSI = new (m_symInfoAllocator.Allocate()) ValueSymInfo();
             VSI->ID = m_nextValueID++;
             VSI->CastInfo = SymCastInfo::SYMCAST_NOCAST;
             VSI->symExpr = E;
