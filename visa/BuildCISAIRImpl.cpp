@@ -1648,7 +1648,9 @@ int CISA_IR_Builder::Compile(const char *isaasmFileName, bool emit_visa_only) {
 
     int status = VISA_SUCCESS;
     for (auto func : m_kernelsAndFunctions) {
-      func->finalizeAttributes();
+      bool attrWithoutError = func->finalizeAttributes();
+      if (!attrWithoutError)
+        return VISA_FAILURE;
     }
 
     if (m_options.getOption(vISA_GenerateISAASM) ||
@@ -1718,7 +1720,9 @@ int CISA_IR_Builder::Compile(const char *isaasmFileName, bool emit_visa_only) {
       }
 
       mainKernel = (kernel->getIsKernel()) ? kernel : mainKernel;
-      kernel->finalizeAttributes();
+      bool attrWithoutError = kernel->finalizeAttributes();
+      if (!attrWithoutError)
+        return VISA_FAILURE;
       kernel->getIRBuilder()->setType(kernel->getType());
       if (kernel->getIsKernel() == false) {
         if (kernel->getIRBuilder()->getArgSize() <

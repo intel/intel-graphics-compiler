@@ -126,15 +126,6 @@ int VISAKernelImpl::compileFastPath() {
         m_kernelAttrs->isKernelAttrSet(Attributes::ATTR_RetValSize))),
       "vISA: input for function must have attributes ArgSize and RetValSize!");
 
-  if (getIsKernel() &&
-      m_kernelAttrs->isKernelAttrSet(Attributes::ATTR_NumGRF)) {
-    if (!m_kernel->updateKernelFromNumGRFAttr()) {
-      m_builder->criticalMsgStream()
-          << "vISA: wrong value for .kernel_attr NumGRF";
-      return VISA_FAILURE;
-    }
-  }
-
   if (getIsKernel()) {
     status = calculateTotalInputSize();
   }
@@ -8423,16 +8414,23 @@ void VISAKernelImpl::setGenxDebugInfoBuffer(char *buffer, unsigned long size) {
 
 /**
  *  finalizeAttributes() sets attributes based on options, etc.
- *     This is a temporary solution to move some options to attributes.
- *     Once clients set attributes directily without using options, this
- *     function shall be removed.
+ *     Also, updates GRF configuration based on kernel attribute.
+ *     Returns true if no error is found, false otherwise.
  */
-void VISAKernelImpl::finalizeAttributes() {
+bool VISAKernelImpl::finalizeAttributes() {
   if (!m_kernelAttrs->isKernelAttrSet(Attributes::ATTR_Target)) {
     VISATarget target = m_options->getTarget();
     uint8_t val = (uint8_t)target;
     AddKernelAttribute("Target", sizeof(val), &val);
   }
+  if (m_kernelAttrs->isKernelAttrSet(Attributes::ATTR_NumGRF)) {
+    if (!m_kernel->updateKernelFromNumGRFAttr()) {
+      m_builder->criticalMsgStream()
+          << "vISA: wrong value for .kernel_attr NumGRF";
+      return false;
+    }
+  }
+  return true;
 }
 
 VISA_LabelOpnd *
