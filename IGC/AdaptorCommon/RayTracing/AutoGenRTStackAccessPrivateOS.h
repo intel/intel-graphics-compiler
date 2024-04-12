@@ -873,20 +873,20 @@ auto* _getDispatchRaysIndex_HotZone_v1(Value* arg_0, Value* arg_1, const Twine& 
   auto* V_10 = CreateAnd(V_9, getInt16(31));
   auto* V_11 = CreateZExt(V_10, getInt32Ty());
   auto* V_12 = CreateICmpEQ(arg_1, getInt32(0));
-  auto* V_13 = CreateSelect(V_12, getInt32(0), V_5);
-  auto* V_14 = CreateICmpUGT(arg_1, getInt32(1));
-  auto* V_15 = CreateSelect(V_14, V_8, getInt32(0));
-  auto* V_16 = CreateAdd(V_15, V_13);
-  auto* V_17 = CreateSelect(V_12, V_5, getInt32(0));
-  auto* V_18 = CreateICmpEQ(arg_1, getInt32(1));
-  auto* V_19 = CreateSelect(V_18, V_8, V_17);
-  auto* V_20 = CreateICmpEQ(arg_1, getInt32(2));
-  auto* V_21 = CreateSelect(V_20, V_11, V_19);
-  auto* V_22 = CreateShl(getInt32(4294967295), V_21);
+  auto* V_13 = CreateSelect(V_12, V_5, getInt32(0));
+  auto* V_14 = CreateICmpEQ(arg_1, getInt32(1));
+  auto* V_15 = CreateSelect(V_14, V_8, V_13);
+  auto* V_16 = CreateICmpEQ(arg_1, getInt32(2));
+  auto* V_17 = CreateSelect(V_16, V_11, V_15);
+  auto* V_18 = CreateSelect(V_12, getInt32(0), V_5);
+  auto* V_19 = CreateICmpUGT(arg_1, getInt32(1));
+  auto* V_20 = CreateSelect(V_19, V_8, getInt32(0));
+  auto* V_21 = CreateAdd(V_20, V_18);
+  auto* V_22 = CreateShl(getInt32(4294967295), V_17);
   auto* V_23 = CreateXor(V_22, getInt32(4294967295));
   auto* V_24 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(1) });
   auto* V_25 = CreateLoad(V_24);
-  auto* V_26 = CreateLShr(V_25, V_16);
+  auto* V_26 = CreateLShr(V_25, V_21);
   auto* V_27 = CreateAnd(V_26, V_23, _ReturnName);
   return V_27;
 }
@@ -903,24 +903,26 @@ void _setDispatchRaysIndex_HotZone_v1(Value* arg_0, Value* arg_1, Value* arg_2, 
 {
   auto* V_4 = ctlz(arg_1);
   auto* V_5 = CreateSub(getInt32(32), V_4);
-  auto* V_6 = ctlz(arg_2);
-  auto* V_7 = CreateSub(getInt32(32), V_6);
-  auto* V_8 = CreateShl(arg_2, V_5);
-  auto* V_9 = CreateOr(V_8, arg_1);
-  auto* V_10 = CreateShl(V_7, getInt32(5));
-  auto* V_11 = CreateOr(V_5, V_10);
-  auto* V_12 = CreateAdd(V_7, V_5);
-  auto* V_13 = ctlz(arg_3);
-  auto* V_14 = CreateShl(arg_3, V_12);
-  auto* V_15 = CreateOr(V_14, V_9);
-  auto* V_16 = CreateShl(V_13, getInt32(10));
-  auto* V_17 = CreateSub(getInt32(32768), V_16);
-  auto* V_18 = CreateOr(V_11, V_17);
-  auto* V_19 = CreateTrunc(V_18, getInt16Ty());
-  auto* V_20 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(0), getInt32(1), getInt32(0) });
-  CreateStore(V_19, V_20);
-  auto* V_21 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(1) });
-  CreateStore(V_15, V_21);
+  auto* V_6 = CreateTrunc(V_5, getInt16Ty());
+  auto* V_7 = ctlz(arg_2);
+  auto* V_8 = CreateSub(getInt32(32), V_7);
+  auto* V_9 = CreateShl(arg_2, V_5);
+  auto* V_10 = CreateOr(V_9, arg_1);
+  auto* V_11 = CreateTrunc(V_8, getInt16Ty());
+  auto* V_12 = CreateShl(V_11, getInt16(5));
+  auto* V_13 = CreateOr(V_12, V_6);
+  auto* V_14 = CreateAdd(V_8, V_5);
+  auto* V_15 = ctlz(arg_3);
+  auto* V_16 = CreateShl(arg_3, V_14);
+  auto* V_17 = CreateOr(V_16, V_10);
+  auto* V_18 = CreateTrunc(V_15, getInt16Ty());
+  auto* V_19 = CreateMul(V_18, getInt16(64512));
+  auto* V_20 = CreateXor(V_19, getInt16(32768));
+  auto* V_21 = CreateOr(V_13, V_20);
+  auto* V_22 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(0), getInt32(1), getInt32(0) });
+  CreateStore(V_21, V_22);
+  auto* V_23 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(1) });
+  CreateStore(V_17, V_23);
   return;
 }
 
@@ -1147,25 +1149,23 @@ auto* _isDoneBitNotSet_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName =
 
 void _setDoneBit_Xe(Value* arg_0, Value* arg_1)
 {
-  auto* V_2 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(3) });
-  auto* V_3 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(1), getInt32(3) });
-  auto* V_4 = CreateSelect(arg_1, V_2, V_3);
-  auto* V_5 = CreateSelect(arg_1, V_2, V_3);
-  auto* V_6 = CreateLoad(V_4);
-  auto* V_7 = CreateOr(V_6, getInt32(268435456));
-  CreateStore(V_7, V_5);
+  auto* V_2 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(1), getInt32(3) });
+  auto* V_3 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(3) });
+  auto* V_4 = CreateSelect(arg_1, V_3, V_2);
+  auto* V_5 = CreateLoad(V_4);
+  auto* V_6 = CreateOr(V_5, getInt32(268435456));
+  CreateStore(V_6, V_4);
   return;
 }
 
 void _setHitValid_Xe(Value* arg_0, Value* arg_1)
 {
-  auto* V_2 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(3) });
-  auto* V_3 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(1), getInt32(3) });
-  auto* V_4 = CreateSelect(arg_1, V_2, V_3);
-  auto* V_5 = CreateSelect(arg_1, V_2, V_3);
-  auto* V_6 = CreateLoad(V_4);
-  auto* V_7 = CreateOr(V_6, getInt32(65536));
-  CreateStore(V_7, V_5);
+  auto* V_2 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(1), getInt32(3) });
+  auto* V_3 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(3) });
+  auto* V_4 = CreateSelect(arg_1, V_3, V_2);
+  auto* V_5 = CreateLoad(V_4);
+  auto* V_6 = CreateOr(V_5, getInt32(65536));
+  CreateStore(V_6, V_4);
   return;
 }
 
@@ -1253,43 +1253,28 @@ auto* _TransformWorldToObject_Xe(Value* arg_0, Value* arg_1, Value* arg_2, Value
 
 auto* _getObjWorldAndWorldObj_Xe(Value* arg_0, Value* arg_1, Value* arg_2, Value* arg_3, const Twine& _ReturnName = "")
 {
-  auto* BB_4 = GetInsertBlock();
-  auto* _CurIP = &*GetInsertPoint();
-  auto *_JoinBB = BB_4->splitBasicBlock(_CurIP, VALUE_NAME("_getObjWorldAndWorldObj_Xe.join"));
-  BB_4->getTerminator()->eraseFromParent();
-  auto* BB_5 = BasicBlock::Create(*Ctx.getLLVMContext(), VALUE_NAME("_getObjWorldAndWorldObj_Xe."), _JoinBB->getParent(), _JoinBB);
-  auto* BB_6 = BasicBlock::Create(*Ctx.getLLVMContext(), VALUE_NAME("_getObjWorldAndWorldObj_Xe."), _JoinBB->getParent(), _JoinBB);
-  SetInsertPoint(BB_4);
-  auto* V_7 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(1), getInt32(5) });
-  auto* V_8 = CreateICmpEQ(arg_3, getInt32(1));
-  auto* V_9 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(5) });
-  auto* V_10 = CreateSelect(V_8, V_9, V_7);
-  auto* V_11 = CreateLoad(V_10);
-  auto* V_12 = CreateShl(V_11, getInt64(6));
-  auto* V_13 = CreateAnd(V_12, getInt64(281474976710592));
-  auto* V_14 = canonizePointer(V_13);
-  auto* V_15 = CreateIntToPtr(V_14, PointerType::get(_struct_RTStackFormat__InstanceLeaf(*Ctx.getModule()), 1));
-  auto* V_16 = CreateZExt(arg_1, getInt64Ty());
-  auto* V_17 = CreateInBoundsGEP(V_15, { getInt64(0), getInt32(1), getInt32(3), V_16 });
-  auto* V_18 = CreateInBoundsGEP(V_15, { getInt64(0), getInt32(0), getInt32(3), V_16 });
-  auto* V_19 = CreateSelect(arg_2, V_17, V_18);
-  auto* V_20 = CreateICmpUGT(arg_1, getInt32(8));
-  CreateCondBr(V_20, BB_5, BB_6);
-  SetInsertPoint(BB_5);
-  auto* V_21 = CreateAdd(arg_1, getInt32(4294967287));
-  auto* V_22 = CreateZExt(V_21, getInt64Ty());
-  auto* V_23 = CreateInBoundsGEP(V_15, { getInt64(0), getInt32(0), getInt32(6), V_22 });
-  auto* V_24 = CreateInBoundsGEP(V_15, { getInt64(0), getInt32(1), getInt32(6), V_22 });
-  auto* V_25 = CreateSelect(arg_2, V_23, V_24);
-  CreateBr(BB_6);
-  SetInsertPoint(BB_6);
-  auto* V_26 = CreatePHI(PointerType::get(getFloatTy(), 1), 2);
-  auto* V_27 = CreateLoad(V_26, _ReturnName);
-  CreateBr(_JoinBB);
-  V_26->addIncoming(V_19, BB_4);
-  V_26->addIncoming(V_25, BB_5);
-  SetInsertPoint(_CurIP);
-  return V_27;
+  auto* V_4 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(1), getInt32(5) });
+  auto* V_5 = CreateICmpEQ(arg_3, getInt32(1));
+  auto* V_6 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(5) });
+  auto* V_7 = CreateSelect(V_5, V_6, V_4);
+  auto* V_8 = CreateLoad(V_7);
+  auto* V_9 = CreateShl(V_8, getInt64(6));
+  auto* V_10 = CreateAnd(V_9, getInt64(281474976710592));
+  auto* V_11 = canonizePointer(V_10);
+  auto* V_12 = CreateIntToPtr(V_11, PointerType::get(_struct_RTStackFormat__InstanceLeaf(*Ctx.getModule()), 1));
+  auto* V_13 = CreateZExt(arg_1, getInt64Ty());
+  auto* V_14 = CreateInBoundsGEP(V_12, { getInt64(0), getInt32(1), getInt32(3), V_13 });
+  auto* V_15 = CreateInBoundsGEP(V_12, { getInt64(0), getInt32(0), getInt32(3), V_13 });
+  auto* V_16 = CreateSelect(arg_2, V_14, V_15);
+  auto* V_17 = CreateICmpUGT(arg_1, getInt32(8));
+  auto* V_18 = CreateAdd(arg_1, getInt32(4294967287));
+  auto* V_19 = CreateZExt(V_18, getInt64Ty());
+  auto* V_20 = CreateInBoundsGEP(V_12, { getInt64(0), getInt32(0), getInt32(6), V_19 });
+  auto* V_21 = CreateInBoundsGEP(V_12, { getInt64(0), getInt32(1), getInt32(6), V_19 });
+  auto* V_22 = CreateSelect(arg_2, V_20, V_21);
+  auto* V_23 = CreateSelect(V_17, V_22, V_16);
+  auto* V_24 = CreateLoad(V_23, _ReturnName);
+  return V_24;
 }
 
 auto* _getRayTCurrent_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
@@ -1316,9 +1301,9 @@ auto* _getHitT_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
 
 void _setHitT_Xe(Value* arg_0, Value* arg_1, Value* arg_2)
 {
-  auto* V_3 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(0) });
-  auto* V_4 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(1), getInt32(0) });
-  auto* V_5 = CreateSelect(arg_2, V_3, V_4);
+  auto* V_3 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(1), getInt32(0) });
+  auto* V_4 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(0) });
+  auto* V_5 = CreateSelect(arg_2, V_4, V_3);
   CreateStore(arg_1, V_5);
   return;
 }
@@ -1426,35 +1411,30 @@ auto* _getGeometryIndex_Xe(Value* arg_0, Value* arg_1, Value* arg_2, const Twine
 
 void _createPotentialHit2CommittedHit_Xe(Value* arg_0)
 {
-  auto* V_1 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(1) });
-  auto* V_2 = CreateBitCast(V_1, PointerType::get(getInt32Ty(), arg_0->getType()->getPointerAddressSpace()));
-  auto* V_3 = CreateLoad(V_2);
-  auto* V_4 = CreateBitCast(arg_0, PointerType::get(getInt32Ty(), arg_0->getType()->getPointerAddressSpace()));
-  CreateStore(V_3, V_4);
-  auto* V_5 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(1), getInt32(1) });
-  auto* V_6 = CreateBitCast(V_5, PointerType::get(getInt32Ty(), arg_0->getType()->getPointerAddressSpace()));
-  auto* V_7 = CreateLoad(V_6);
-  auto* V_8 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(1) });
-  auto* V_9 = CreateBitCast(V_8, PointerType::get(getInt32Ty(), arg_0->getType()->getPointerAddressSpace()));
-  CreateStore(V_7, V_9);
-  auto* V_10 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(1), getInt32(2) });
-  auto* V_11 = CreateBitCast(V_10, PointerType::get(getInt32Ty(), arg_0->getType()->getPointerAddressSpace()));
-  auto* V_12 = CreateLoad(V_11);
-  auto* V_13 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(2) });
-  auto* V_14 = CreateBitCast(V_13, PointerType::get(getInt32Ty(), arg_0->getType()->getPointerAddressSpace()));
-  CreateStore(V_12, V_14);
-  auto* V_15 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(1), getInt32(3) });
-  auto* V_16 = CreateLoad(V_15);
-  auto* V_17 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(3) });
-  CreateStore(V_16, V_17);
-  auto* V_18 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(1), getInt32(4) });
-  auto* V_19 = CreateLoad(V_18);
-  auto* V_20 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(4) });
-  CreateStore(V_19, V_20);
-  auto* V_21 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(1), getInt32(5) });
-  auto* V_22 = CreateLoad(V_21);
-  auto* V_23 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(5) });
-  CreateStore(V_22, V_23);
+  auto* V_1 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(1), getInt32(0) });
+  auto* V_2 = CreateLoad(V_1);
+  auto* V_3 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(0) });
+  CreateStore(V_2, V_3);
+  auto* V_4 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(1), getInt32(1) });
+  auto* V_5 = CreateLoad(V_4);
+  auto* V_6 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(1) });
+  CreateStore(V_5, V_6);
+  auto* V_7 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(1), getInt32(2) });
+  auto* V_8 = CreateLoad(V_7);
+  auto* V_9 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(2) });
+  CreateStore(V_8, V_9);
+  auto* V_10 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(1), getInt32(3) });
+  auto* V_11 = CreateLoad(V_10);
+  auto* V_12 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(3) });
+  CreateStore(V_11, V_12);
+  auto* V_13 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(1), getInt32(4) });
+  auto* V_14 = CreateLoad(V_13);
+  auto* V_15 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(4) });
+  CreateStore(V_14, V_15);
+  auto* V_16 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(1), getInt32(5) });
+  auto* V_17 = CreateLoad(V_16);
+  auto* V_18 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(0), getInt32(5) });
+  CreateStore(V_17, V_18);
   return;
 }
 
@@ -1475,7 +1455,7 @@ void _createTraceRayInlinePrologue_Xe(Value* arg_0, Value* arg_1, Value* arg_2, 
   auto* V_14 = CreateInBoundsGEP(V_13, { getInt64(0), getInt32(3) });
   auto* V_15 = CreateLoad(V_14);
   auto* V_16 = CreateZExt(V_15, getInt32Ty());
-  auto* V_17 = CreateInBoundsGEP(V_12, { getInt64(0), getInt32(0), getInt32(0) });
+  auto* V_17 = CreateGEP(V_12, { getInt64(0), getInt32(0), getInt32(0) });
   auto* V_18 = CreateAnd(arg_2, getInt64(281474976710655));
   auto* V_19 = CreateOr(V_16, arg_3);
   auto* V_20 = CreateZExt(V_19, getInt64Ty());
@@ -1580,62 +1560,61 @@ void _copyMemHitInProceed_Xe(Value* arg_0, Value* arg_1, Value* arg_2)
   auto* BB_4 = BasicBlock::Create(*Ctx.getLLVMContext(), VALUE_NAME("_copyMemHitInProceed_Xe."), _JoinBB->getParent(), _JoinBB);
   auto* BB_5 = BasicBlock::Create(*Ctx.getLLVMContext(), VALUE_NAME("_copyMemHitInProceed_Xe."), _JoinBB->getParent(), _JoinBB);
   auto* BB_6 = BasicBlock::Create(*Ctx.getLLVMContext(), VALUE_NAME("_copyMemHitInProceed_Xe."), _JoinBB->getParent(), _JoinBB);
-  auto* BB_7 = BasicBlock::Create(*Ctx.getLLVMContext(), VALUE_NAME("_copyMemHitInProceed_Xe."), _JoinBB->getParent(), _JoinBB);
-  auto* BB_8 = BasicBlock::Create(*Ctx.getLLVMContext(), VALUE_NAME("_copyMemHitInProceed_Xe."), _JoinBB->getParent(), _JoinBB);
   SetInsertPoint(BB_3);
-  CreateCondBr(arg_2, BB_5, BB_4);
-  SetInsertPoint(BB_5);
-  auto* V_9 = CreatePHI(IGCLLVM::FixedVectorType::get(getInt32Ty(), 4), 2);
-  auto* V_10 = CreateInBoundsGEP(arg_1, { getInt64(0), getInt32(0), getInt32(3) });
-  auto* V_11 = CreateLoad(V_10);
-  auto* V_12 = CreateInsertElement(V_9, V_11, getInt64(3));
-  auto* V_13 = CreateBitCast(arg_0, PointerType::get(IGCLLVM::FixedVectorType::get(getInt32Ty(), 4), arg_0->getType()->getPointerAddressSpace()));
-  CreateStore(V_12, V_13);
-  auto* V_14 = CreateInBoundsGEP(arg_1, { getInt64(0), getInt32(1) });
-  auto* V_15 = CreateBitCast(V_14, PointerType::get(getInt32Ty(), arg_1->getType()->getPointerAddressSpace()));
-  auto* V_16 = CreateLoad(V_15);
-  auto* V_17 = CreateInsertElement(UndefValue::get(IGCLLVM::FixedVectorType::get(getInt32Ty(), 4)), V_16, getInt64(0));
-  CreateCondBr(arg_2, BB_6, BB_7);
-  SetInsertPoint(BB_6);
-  auto* V_18 = CreateShuffleVector(V_17, ConstantVector::get({ UndefValue::get(getInt32Ty()), getInt32(0), getInt32(0), UndefValue::get(getInt32Ty()) }), ConstantVector::get({ getInt32(0), getInt32(5), getInt32(6), getInt32(3) }));
-  CreateBr(BB_8);
-  SetInsertPoint(BB_8);
-  auto* V_19 = CreatePHI(IGCLLVM::FixedVectorType::get(getInt32Ty(), 4), 2);
-  auto* V_20 = CreateInBoundsGEP(arg_1, { getInt64(0), getInt32(1), getInt32(3) });
-  auto* V_21 = CreateLoad(V_20);
-  auto* V_22 = CreateOr(V_21, getInt32(268435456));
-  auto* V_23 = CreateInsertElement(V_19, V_22, getInt64(3));
-  auto* V_24 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(1) });
-  auto* V_25 = CreateBitCast(V_24, PointerType::get(IGCLLVM::FixedVectorType::get(getInt32Ty(), 4), arg_0->getType()->getPointerAddressSpace()));
-  CreateStore(V_23, V_25);
-  CreateBr(_JoinBB);
-  SetInsertPoint(BB_7);
-  auto* V_26 = CreateInBoundsGEP(arg_1, { getInt64(0), getInt32(1), getInt32(1) });
-  auto* V_27 = CreateBitCast(V_26, PointerType::get(getInt32Ty(), arg_1->getType()->getPointerAddressSpace()));
-  auto* V_28 = CreateLoad(V_27);
-  auto* V_29 = CreateInsertElement(V_17, V_28, getInt64(1));
-  auto* V_30 = CreateInBoundsGEP(arg_1, { getInt64(0), getInt32(1), getInt32(2) });
-  auto* V_31 = CreateBitCast(V_30, PointerType::get(getInt32Ty(), arg_1->getType()->getPointerAddressSpace()));
-  auto* V_32 = CreateLoad(V_31);
-  auto* V_33 = CreateInsertElement(V_29, V_32, getInt64(2));
-  CreateBr(BB_8);
+  CreateCondBr(arg_2, BB_4, BB_5);
   SetInsertPoint(BB_4);
-  auto* V_34 = CreateBitCast(arg_1, PointerType::get(getInt32Ty(), arg_1->getType()->getPointerAddressSpace()));
-  auto* V_35 = CreateLoad(V_34);
-  auto* V_36 = CreateInsertElement(UndefValue::get(IGCLLVM::FixedVectorType::get(getInt32Ty(), 4)), V_35, getInt64(0));
-  auto* V_37 = CreateInBoundsGEP(arg_1, { getInt64(0), getInt32(0), getInt32(1) });
+  auto* V_7 = CreateInBoundsGEP(arg_1, { getInt64(0), getInt32(0), getInt32(3) });
+  auto* V_8 = CreateLoad(V_7);
+  auto* V_9 = CreateInsertElement(ConstantVector::get({ getInt32(0), getInt32(0), getInt32(0), UndefValue::get(getInt32Ty()) }), V_8, getInt64(3));
+  auto* V_10 = CreateBitCast(arg_0, PointerType::get(IGCLLVM::FixedVectorType::get(getInt32Ty(), 4), arg_0->getType()->getPointerAddressSpace()));
+  CreateStore(V_9, V_10);
+  auto* V_11 = CreateInBoundsGEP(arg_1, { getInt64(0), getInt32(1) });
+  auto* V_12 = CreateBitCast(V_11, PointerType::get(getInt32Ty(), arg_1->getType()->getPointerAddressSpace()));
+  auto* V_13 = CreateLoad(V_12);
+  auto* V_14 = CreateInsertElement(ConstantVector::get({ UndefValue::get(getInt32Ty()), getInt32(0), getInt32(0), UndefValue::get(getInt32Ty()) }), V_13, getInt64(0));
+  CreateBr(BB_6);
+  SetInsertPoint(BB_6);
+  auto* V_15 = CreatePHI(IGCLLVM::FixedVectorType::get(getInt32Ty(), 4), 2);
+  auto* V_16 = CreateInBoundsGEP(arg_1, { getInt64(0), getInt32(1), getInt32(3) });
+  auto* V_17 = CreateLoad(V_16);
+  auto* V_18 = CreateOr(V_17, getInt32(268435456));
+  auto* V_19 = CreateInsertElement(V_15, V_18, getInt64(3));
+  auto* V_20 = CreateInBoundsGEP(arg_0, { getInt64(0), getInt32(1) });
+  auto* V_21 = CreateBitCast(V_20, PointerType::get(IGCLLVM::FixedVectorType::get(getInt32Ty(), 4), arg_0->getType()->getPointerAddressSpace()));
+  CreateStore(V_19, V_21);
+  CreateBr(_JoinBB);
+  SetInsertPoint(BB_5);
+  auto* V_22 = CreateBitCast(arg_1, PointerType::get(getInt32Ty(), arg_1->getType()->getPointerAddressSpace()));
+  auto* V_23 = CreateLoad(V_22);
+  auto* V_24 = CreateInsertElement(UndefValue::get(IGCLLVM::FixedVectorType::get(getInt32Ty(), 4)), V_23, getInt64(0));
+  auto* V_25 = CreateInBoundsGEP(arg_1, { getInt64(0), getInt32(0), getInt32(1) });
+  auto* V_26 = CreateBitCast(V_25, PointerType::get(getInt32Ty(), arg_1->getType()->getPointerAddressSpace()));
+  auto* V_27 = CreateLoad(V_26);
+  auto* V_28 = CreateInsertElement(V_24, V_27, getInt64(1));
+  auto* V_29 = CreateInBoundsGEP(arg_1, { getInt64(0), getInt32(0), getInt32(2) });
+  auto* V_30 = CreateBitCast(V_29, PointerType::get(getInt32Ty(), arg_1->getType()->getPointerAddressSpace()));
+  auto* V_31 = CreateLoad(V_30);
+  auto* V_32 = CreateInsertElement(V_28, V_31, getInt64(2));
+  auto* V_33 = CreateInBoundsGEP(arg_1, { getInt64(0), getInt32(0), getInt32(3) });
+  auto* V_34 = CreateLoad(V_33);
+  auto* V_35 = CreateInsertElement(V_32, V_34, getInt64(3));
+  auto* V_36 = CreateBitCast(arg_0, PointerType::get(IGCLLVM::FixedVectorType::get(getInt32Ty(), 4), arg_0->getType()->getPointerAddressSpace()));
+  CreateStore(V_35, V_36);
+  auto* V_37 = CreateInBoundsGEP(arg_1, { getInt64(0), getInt32(1) });
   auto* V_38 = CreateBitCast(V_37, PointerType::get(getInt32Ty(), arg_1->getType()->getPointerAddressSpace()));
   auto* V_39 = CreateLoad(V_38);
-  auto* V_40 = CreateInsertElement(V_36, V_39, getInt64(1));
-  auto* V_41 = CreateInBoundsGEP(arg_1, { getInt64(0), getInt32(0), getInt32(2) });
+  auto* V_40 = CreateInsertElement(UndefValue::get(IGCLLVM::FixedVectorType::get(getInt32Ty(), 4)), V_39, getInt64(0));
+  auto* V_41 = CreateInBoundsGEP(arg_1, { getInt64(0), getInt32(1), getInt32(1) });
   auto* V_42 = CreateBitCast(V_41, PointerType::get(getInt32Ty(), arg_1->getType()->getPointerAddressSpace()));
   auto* V_43 = CreateLoad(V_42);
-  auto* V_44 = CreateInsertElement(V_40, V_43, getInt64(2));
-  CreateBr(BB_5);
-  V_9->addIncoming(V_44, BB_4);
-  V_9->addIncoming(ConstantVector::get({ getInt32(0), getInt32(0), getInt32(0), UndefValue::get(getInt32Ty()) }), BB_3);
-  V_19->addIncoming(V_18, BB_6);
-  V_19->addIncoming(V_33, BB_7);
+  auto* V_44 = CreateInsertElement(V_40, V_43, getInt64(1));
+  auto* V_45 = CreateInBoundsGEP(arg_1, { getInt64(0), getInt32(1), getInt32(2) });
+  auto* V_46 = CreateBitCast(V_45, PointerType::get(getInt32Ty(), arg_1->getType()->getPointerAddressSpace()));
+  auto* V_47 = CreateLoad(V_46);
+  auto* V_48 = CreateInsertElement(V_44, V_47, getInt64(2));
+  CreateBr(BB_6);
+  V_15->addIncoming(V_14, BB_4);
+  V_15->addIncoming(V_48, BB_5);
   SetInsertPoint(_CurIP);
 }
 
