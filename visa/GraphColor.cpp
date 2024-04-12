@@ -8998,7 +8998,7 @@ void GlobalRA::addStoreRestoreToReturn() {
 
   unsigned regNum = kernel.stackCall.getCallerSaveLastGRF();
   unsigned subRegNum = kernel.numEltPerGRF<Type_UD>() - size;
-  oldFPDcl = builder.createHardwiredDeclare(4, Type_UD, regNum, subRegNum);
+  oldFPDcl = builder.createHardwiredDeclare(size, Type_UD, regNum, subRegNum);
   oldFPDcl->setName(builder.getNameString(24, "CallerSaveRetIp_BE_FP"));
 
   G4_DstRegRegion *oldFPDst =
