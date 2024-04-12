@@ -3323,6 +3323,8 @@ namespace IGC
 
         AddAnalysisPasses(*ctx, Passes);
 
+        bool isSIMD32Allowed = !ctx->hasSyncRTCalls() || (ctx->platform.getMaxRayQuerySIMDSize() == SIMDMode::SIMD32);
+
         if (ctx->m_enableFunctionPointer
             && (ctx->m_enableSimdVariantCompilation)
             && ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 0)
@@ -3343,9 +3345,13 @@ namespace IGC
                 pass1Mode = SIMDMode::SIMD16;
                 pass2Mode = SIMDMode::SIMD8;
             }
-            // Run first pass
-            AddCodeGenPasses(*ctx, shaders, Passes, pass1Mode, false);
-            Passes.run(*(ctx->getModule()));
+
+            if ((pass1Mode == SIMDMode::SIMD32) && isSIMD32Allowed)
+            {
+                // Run first pass
+                AddCodeGenPasses(*ctx, shaders, Passes, pass1Mode, false);
+                Passes.run(*(ctx->getModule()));
+            }
 
             // Create and run second pass
             IGCPassManager Passes2(ctx, "CG2");
@@ -3364,7 +3370,11 @@ namespace IGC
 
         if (ctx->platform.getMinDispatchMode() == SIMDMode::SIMD16)
         {
-            AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD32, false);
+            if (isSIMD32Allowed)
+            {
+                AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD32, false);
+            }
+
             AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD16, false);
 
             ctx->SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD8, ShaderDispatchMode::NOT_APPLICABLE);
@@ -3372,7 +3382,11 @@ namespace IGC
         else
         {
             // The order in which we call AddCodeGenPasses matters, please to not change order
-            AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD32, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32));
+            if (isSIMD32Allowed)
+            {
+                AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD32, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32));
+            }
+
             AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD16, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 16));
             AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD8, false);
         }
