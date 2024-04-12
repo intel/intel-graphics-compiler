@@ -1442,7 +1442,8 @@ bool static const isSpecial(RegName rn) {
   // All the other ARF should have explicitly access so no need
   // the special handling on it
   // Others are SP, IP, IM, DBG
-  if (rn == RegName::ARF_CR || rn == RegName::ARF_SR || rn == RegName::ARF_CE) {
+  if (rn == RegName::ARF_CR || rn == RegName::ARF_SR || rn == RegName::ARF_CE ||
+      rn == RegName::ARF_FC) {
     return true;
   }
   return false;
@@ -1649,6 +1650,7 @@ uint32_t DepSet::addressOf(RegName rnm, const RegRef &rr,
   case RegName::ARF_CR:
   case RegName::ARF_SR:
   case RegName::ARF_CE:
+  case RegName::ARF_FC:
     return getAddressOf(m_DB.getARF_SPECIAL_START(),
                         m_DB.getARF_SPECIAL_BYTES_PER_REG());
   default:
