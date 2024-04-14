@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2023 Intel Corporation
+Copyright (C) 2019-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -157,17 +157,17 @@ public:
   void handleGEPInst(GetElementPtrInst *GEP, GenericVectorIndex Idx);
   void handleBCInst(BitCastInst &BC, GenericVectorIndex Idx);
   void handlePTIInst(PtrToIntInst &BC, GenericVectorIndex Idx);
-  void handlePHINode(PHINode *Phi, GenericVectorIndex ScalarizedIdx,
+  void handlePHINode(PHINode *Phi, GenericVectorIndex Idx,
                      BasicBlock *IncomingBB);
 
-  void handleLoadInst(LoadInst *Load, Value *ScalarizedIdx);
-  void handleStoreInst(StoreInst *Store, GenericVectorIndex ScalarizedIdx);
-  void handleGather(IntrinsicInst *II, Value *ScalarizedIdx, unsigned MaskIndex,
-                    unsigned ValueIndex);
-  void handleScatter(IntrinsicInst *II, Value *ScalarizedIdx,
+  void handleLoadInst(LoadInst *Load, GenericVectorIndex Idx);
+  void handleStoreInst(StoreInst *Store, GenericVectorIndex Idx);
+  void handleGather(IntrinsicInst *II, GenericVectorIndex Idx,
+                    unsigned MaskIndex, unsigned ValueIndex);
+  void handleScatter(IntrinsicInst *II, GenericVectorIndex Idx,
                      unsigned MaskIndex, unsigned ValueIndex);
-  void handleLifetimeStart(IntrinsicInst *II, Value *ScalarizedIdx);
-  void handleLifetimeEnd(IntrinsicInst *II, Value *ScalarizedIdx);
+  void handleLifetimeStart(IntrinsicInst *II, GenericVectorIndex Idx);
+  void handleLifetimeEnd(IntrinsicInst *II, GenericVectorIndex Idx);
   void EraseDeadCode();
 
   TransposeHelper(AllocaInst *AI, const DataLayout *Layout)
@@ -329,7 +329,7 @@ void TransposeHelper::handlePTIInst(PtrToIntInst &PTI, GenericVectorIndex Idx) {
     ToBeRemoved.push_back(Next);
   }
 
-  handleAllocaSources(*Next, {BinOp, Idx.ElementSizeInBits});
+  handleAllocaSources(*Next, {BinOp, genx::ByteBits});
 }
 
 void TransposeHelper::handleAllocaSources(Instruction &Inst,
@@ -346,28 +346,28 @@ void TransposeHelper::handleAllocaSources(Instruction &Inst,
     } else if (auto *Store = dyn_cast<StoreInst>(User)) {
       handleStoreInst(Store, Idx);
     } else if (auto *Load = dyn_cast<LoadInst>(User)) {
-      handleLoadInst(Load, Idx.Index);
+      handleLoadInst(Load, Idx);
     } else if (auto *Phi = dyn_cast<PHINode>(User)) {
       handlePHINode(Phi, Idx, Inst.getParent());
     } else if (auto *II = dyn_cast<IntrinsicInst>(User)) {
       switch (vc::getAnyIntrinsicID(II)) {
       case Intrinsic::lifetime_start:
-        handleLifetimeStart(II, Idx.Index);
+        handleLifetimeStart(II, Idx);
         break;
       case Intrinsic::lifetime_end:
-        handleLifetimeEnd(II, Idx.Index);
+        handleLifetimeEnd(II, Idx);
         break;
       case Intrinsic::masked_gather:
-        handleGather(II, Idx.Index, 2, 3);
+        handleGather(II, Idx, 2, 3);
         break;
       case Intrinsic::masked_scatter:
-        handleScatter(II, Idx.Index, 3, 0);
+        handleScatter(II, Idx, 3, 0);
         break;
       case GenXIntrinsic::genx_svm_gather:
-        handleGather(II, Idx.Index, 0, 3);
+        handleGather(II, Idx, 0, 3);
         break;
       case GenXIntrinsic::genx_svm_scatter:
-        handleScatter(II, Idx.Index, 0, 3);
+        handleScatter(II, Idx, 0, 3);
         break;
       default:
         break;
@@ -500,9 +500,12 @@ void TransposeHelper::handlePHINode(PHINode *Phi, GenericVectorIndex Idx,
   handleAllocaSources(*Phi, {NewPhi, Idx.ElementSizeInBits});
 }
 
-void TransposeHelper::handleLoadInst(LoadInst *Load, Value *ScalarizedIdx) {
+void TransposeHelper::handleLoadInst(LoadInst *Load, GenericVectorIndex Idx) {
   IGC_ASSERT(Load->isSimple());
   IRBuilder<> IRB(Load);
+  auto *ScalarizedIdx =
+      IRB.CreateMul(Idx.Index, ConstantInt::get(Idx.Index->getType(),
+                                                Idx.getElementSizeInBytes()));
   auto LdTy = Load->getType()->getScalarType();
   auto *ReadIn = loadAndCastVector(VectorAlloca, LdTy, IRB);
   bool IsFuncPointer =
@@ -549,24 +552,27 @@ void TransposeHelper::handleLoadInst(LoadInst *Load, Value *ScalarizedIdx) {
         cast<IGCLLVM::FixedVectorType>(Load->getType())->getNumElements();
     Value *Result = UndefValue::get(Load->getType());
     for (unsigned I = 0; I < Len; ++I) {
-      Value *VectorIdx = ConstantInt::get(ScalarizedIdx->getType(), I);
-      auto Idx = IRB.CreateAdd(ScalarizedIdx, VectorIdx);
-      auto Val = IRB.CreateExtractElement(ReadIn, Idx);
+      Value *VectorIdx = ConstantInt::get(Idx.Index->getType(), I);
+      auto Index = IRB.CreateAdd(Idx.Index, VectorIdx);
+      auto Val = IRB.CreateExtractElement(ReadIn, Index);
       Result = IRB.CreateInsertElement(Result, Val, VectorIdx);
     }
     Load->replaceAllUsesWith(Result);
   } else {
-    auto Result = IRB.CreateExtractElement(ReadIn, ScalarizedIdx);
+    auto Result = IRB.CreateExtractElement(ReadIn, Idx.Index);
     Load->replaceAllUsesWith(Result);
   }
   Load->eraseFromParent();
 }
 
 void TransposeHelper::handleStoreInst(StoreInst *Store,
-                                      GenericVectorIndex ScalarizedIdx) {
+                                      GenericVectorIndex Idx) {
   // Add Store instruction to remove list
   IGC_ASSERT(Store->isSimple());
   IRBuilder<> IRB(Store);
+  auto *ScalarizedIdx =
+      IRB.CreateMul(Idx.Index, ConstantInt::get(Idx.Index->getType(),
+                                                Idx.getElementSizeInBytes()));
   Value *StoreVal = Store->getValueOperand();
   auto *StTy = StoreVal->getType()->getScalarType();
   Value *WriteOut = loadAndCastVector(VectorAlloca, StTy, IRB);
@@ -587,11 +593,11 @@ void TransposeHelper::handleStoreInst(StoreInst *Store,
           NewStoreVal, IntegerType::getInt64Ty(Store->getContext()));
     }
     Region R(NewStoreVal, DL);
-    if (!ScalarizedIdx.Index->getType()->isIntegerTy(16)) {
-      ScalarizedIdx.Index = IRB.CreateZExtOrTrunc(
-          ScalarizedIdx.Index, Type::getInt16Ty(Store->getContext()));
+    if (!ScalarizedIdx->getType()->isIntegerTy(16)) {
+      ScalarizedIdx = IRB.CreateZExtOrTrunc(
+          ScalarizedIdx, Type::getInt16Ty(Store->getContext()));
     }
-    if (auto *ConstIdx = dyn_cast<Constant>(ScalarizedIdx.Index))
+    if (auto *ConstIdx = dyn_cast<Constant>(ScalarizedIdx))
       R.Indirect = ConstantExpr::getMul(
           ConstIdx,
           ConstantInt::get(
@@ -599,7 +605,7 @@ void TransposeHelper::handleStoreInst(StoreInst *Store,
               DL->getTypeSizeInBits(NewStoreVal->getType()->getScalarType()) /
                   genx::ByteBits));
     else
-      R.Indirect = ScalarizedIdx.Index;
+      R.Indirect = ScalarizedIdx;
     WriteOut =
         R.createWrRegion(WriteOut, NewStoreVal, Store->getName() + ".promoted",
                          Store, Store->getDebugLoc());
@@ -616,29 +622,32 @@ void TransposeHelper::handleStoreInst(StoreInst *Store,
     auto Len =
         cast<IGCLLVM::FixedVectorType>(StoreVal->getType())->getNumElements();
     for (unsigned I = 0; I < Len; ++I) {
-      Value *VectorIdx = ConstantInt::get(ScalarizedIdx.Index->getType(), I);
+      Value *VectorIdx = ConstantInt::get(Idx.Index->getType(), I);
       auto *Val = IRB.CreateExtractElement(StoreVal, VectorIdx);
-      auto *Idx = IRB.CreateAdd(ScalarizedIdx.Index, VectorIdx);
+      auto *Index = IRB.CreateAdd(Idx.Index, VectorIdx);
       IGC_ASSERT_MESSAGE(
           DL->getTypeSizeInBits(Val->getType()) ==
-              ScalarizedIdx.ElementSizeInBits,
+              Idx.ElementSizeInBits,
           "stored type considered vector element size must correspond");
-      WriteOut = IRB.CreateInsertElement(WriteOut, Val, Idx);
+      WriteOut = IRB.CreateInsertElement(WriteOut, Val, Index);
     }
   } else {
     IGC_ASSERT_MESSAGE(
         DL->getTypeSizeInBits(StoreVal->getType()) ==
-            ScalarizedIdx.ElementSizeInBits,
+            Idx.ElementSizeInBits,
         "stored type considered vector element size must correspond");
-    WriteOut = IRB.CreateInsertElement(WriteOut, StoreVal, ScalarizedIdx.Index);
+    WriteOut = IRB.CreateInsertElement(WriteOut, StoreVal, Idx.Index);
   }
   castAndStoreVector(VectorAlloca, WriteOut, IRB);
   Store->eraseFromParent();
 }
 
-void TransposeHelper::handleGather(IntrinsicInst *Inst, Value *ScalarizedIdx,
+void TransposeHelper::handleGather(IntrinsicInst *Inst, GenericVectorIndex Idx,
                                    unsigned MaskIndex, unsigned ValueIndex) {
   IRBuilder<> IRB(Inst);
+  auto *ScalarizedIdx =
+      IRB.CreateMul(Idx.Index, ConstantInt::get(Idx.Index->getType(),
+                                                Idx.getElementSizeInBytes()));
   auto *InstTy = cast<IGCLLVM::FixedVectorType>(Inst->getType());
   auto *ElemTy = InstTy->getElementType();
   auto *LoadVecAlloca = loadAndCastVector(VectorAlloca, ElemTy, IRB);
@@ -672,9 +681,12 @@ void TransposeHelper::handleGather(IntrinsicInst *Inst, Value *ScalarizedIdx,
   Inst->eraseFromParent();
 }
 
-void TransposeHelper::handleScatter(IntrinsicInst *Inst, Value *ScalarizedIdx,
+void TransposeHelper::handleScatter(IntrinsicInst *Inst, GenericVectorIndex Idx,
                                     unsigned MaskIndex, unsigned ValueIndex) {
   IRBuilder<> IRB(Inst);
+  auto *ScalarizedIdx =
+      IRB.CreateMul(Idx.Index, ConstantInt::get(Idx.Index->getType(),
+                                                Idx.getElementSizeInBytes()));
   auto *StoreVal = Inst->getArgOperand(ValueIndex);
   auto *StoreTy = cast<IGCLLVM::FixedVectorType>(StoreVal->getType());
   auto *ElemTy = StoreTy->getElementType();
@@ -697,12 +709,12 @@ void TransposeHelper::handleScatter(IntrinsicInst *Inst, Value *ScalarizedIdx,
 }
 
 void TransposeHelper::handleLifetimeStart(IntrinsicInst *II,
-                                          Value *ScalarizedIdx) {
+                                          GenericVectorIndex Idx) {
   auto IID = vc::getAnyIntrinsicID(II);
   IGC_ASSERT_EXIT(IID == Intrinsic::lifetime_start);
 
   IRBuilder<> IRB(II);
-  IGC_ASSERT_EXIT(ScalarizedIdx == IRB.getInt32(0));
+  IGC_ASSERT_EXIT(Idx.Index == IRB.getInt32(0));
 
   auto *Ty = VectorAlloca->getAllocatedType();
   auto *SizeC = IRB.getInt64(DL->getTypeSizeInBits(Ty) / ByteBits);
@@ -718,12 +730,12 @@ void TransposeHelper::handleLifetimeStart(IntrinsicInst *II,
 }
 
 void TransposeHelper::handleLifetimeEnd(IntrinsicInst *II,
-                                        Value *ScalarizedIdx) {
+                                        GenericVectorIndex Idx) {
   auto IID = vc::getAnyIntrinsicID(II);
   IGC_ASSERT_EXIT(IID == Intrinsic::lifetime_end);
 
   IRBuilder<> IRB(II);
-  IGC_ASSERT_EXIT(ScalarizedIdx == IRB.getInt32(0));
+  IGC_ASSERT_EXIT(Idx.Index == IRB.getInt32(0));
 
   auto *Ty = VectorAlloca->getAllocatedType();
   auto *SizeC = IRB.getInt64(DL->getTypeSizeInBits(Ty) / ByteBits);
