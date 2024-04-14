@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-private-mem-resolution -S < %s | FileCheck %s
+; RUN: igc_opt --igc-private-mem-resolution -S %s | FileCheck %s
 ; ------------------------------------------------
 ; PrivateMemoryResolution
 ; ------------------------------------------------
@@ -20,8 +20,8 @@ define spir_kernel void @test_pmem(i32 addrspace(1)* %dst, i32 addrspace(1)* %sr
 ; CHECK:    [[SIMDLANEID16:%.*]] = call i16 @llvm.genx.GenISA.simdLaneId()
 ; CHECK:    [[SIMDLANEID:%.*]] = zext i16 [[SIMDLANEID16]] to i32
 ; CHECK:    [[SIMDSIZE:%.*]] = call i32 @llvm.genx.GenISA.simdSize()
-; CHECK:    [[TOTALPRIVATEMEMPERTHREAD:%.*]] = mul i32 [[SIMDSIZE]], 24
 ; CHECK:    [[TMP0:%.*]] = call i32 @llvm.genx.GenISA.hw.thread.id.alloca.i32()
+; CHECK:    [[TOTALPRIVATEMEMPERTHREAD:%.*]] = mul i32 [[SIMDSIZE]], 24
 ; CHECK:    [[PERTHREADOFFSET:%.*]] = mul i32 [[TMP0]], [[TOTALPRIVATEMEMPERTHREAD]]
 ; CHECK:    [[DST_ADDR_SIMDBUFFEROFFSET:%.*]] = mul i32 [[SIMDSIZE]], 8
 ; CHECK:    [[DST_ADDR_BUFFEROFFSETFORTHREAD:%.*]] = add i32 [[PERTHREADOFFSET]], [[DST_ADDR_SIMDBUFFEROFFSET]]

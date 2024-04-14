@@ -8,7 +8,7 @@
 ; COM: Depends on other commit with m_instTypes initialization, enable when fixed
 ; UNSUPPORTED: system-windows
 ;
-; RUN: igc_opt --igc-private-mem-resolution -S < %s | FileCheck %s
+; RUN: igc_opt --igc-private-mem-resolution -S %s | FileCheck %s
 ; ------------------------------------------------
 ; PrivateMemoryResolution
 ; ------------------------------------------------
