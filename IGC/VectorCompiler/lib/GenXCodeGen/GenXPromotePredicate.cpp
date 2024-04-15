@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -233,10 +233,6 @@ bool GenXPromotePredicate::runOnFunction(Function &F) {
   // Promote web if it is big enough (likely to cause flag spills).
   bool Modified = false;
   for (auto I = PredicateWebs.begin(), E = PredicateWebs.end(); I != E; ++I) {
-#if LLVM_VERSION_MAJOR > 14
-    // Clear metadata
-    I->getData()->setMetadata(IdxMDName, nullptr);
-#endif
     if (!I->isLeader())
       continue;
     PredicateWeb Web(PredicateWebs.member_begin(I), PredicateWebs.member_end());
