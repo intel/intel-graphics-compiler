@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-private-mem-resolution --platformpvc -S %s 2>&1 | FileCheck %s
+; RUN: igc_opt --igc-private-mem-resolution --platformpvc -S < %s 2>&1 | FileCheck %s
 
 define spir_kernel void @testallocabig(i8* %privateBase) {
 entry:
@@ -16,9 +16,9 @@ entry:
 ; CHECK:  [[simdLaneId16:%[A-z0-9]*]] = call i16 @llvm.genx.GenISA.simdLaneId()
 ; CHECK:  [[simdLaneId:%[A-z0-9]*]] = zext i16 [[simdLaneId16]] to i32
 ; CHECK:  [[simdSize:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.simdSize()
-; CHECK:  [[CAL0:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.hw.thread.id.alloca.i32()
 ; CHECK:  [[totalPrivateMemPerThread:%[A-z0-9]*]] = mul i32 [[simdSize]], 200000
 ; CHECK:  [[ZXT0:%[A-z0-9]*]] = zext i32 [[totalPrivateMemPerThread]] to i64
+; CHECK:  [[CAL0:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.hw.thread.id.alloca.i32()
 ; CHECK:  [[ZXT1:%[A-z0-9]*]] = zext i32 [[CAL0]] to i64
 ; CHECK:  [[perThreadOffset:%[A-z0-9]*]] = mul i64 [[ZXT1]], [[ZXT0]]
 ; CHECK:  [[SIMDBufferOffset:%[.A-z0-9]*]] = mul i32 [[simdSize]], 0
