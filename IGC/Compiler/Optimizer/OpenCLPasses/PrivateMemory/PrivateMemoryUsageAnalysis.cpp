@@ -131,7 +131,7 @@ bool PrivateMemoryUsageAnalysis::runOnFunction(Function& F)
         // This is the condition that double emulation is used.
         pCtx->checkDPEmulationEnabled();
 
-        if (pCtx->m_hasDPEmu)
+        if (pCtx->m_hasDPEmu || pCtx->m_hasDPConvEmu)
         {
             m_hasPrivateMem = true;
         }

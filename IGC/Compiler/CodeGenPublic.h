@@ -959,8 +959,9 @@ namespace IGC
         void* gtpin_init = nullptr;
         bool m_hasLegacyDebugInfo = false;
         bool m_hasEmu64BitInsts = false;
-        bool m_hasDPDivSqrtEmu = false;
         bool m_hasDPEmu = false;
+        bool m_hasDPDivSqrtEmu = false;
+        bool m_hasDPConvEmu = false;
 
         // Flag for staged compilation
         CG_FLAG_t m_CgFlag = FLAG_CG_ALL_SIMDS;

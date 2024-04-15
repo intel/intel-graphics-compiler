@@ -8,11 +8,11 @@
 ;
 ; REQUIRES: regkeys
 ;
-; RUN: igc_opt -regkey TestIGCPreCompiledFunctions=1 -regkey ForceEmuKind=109 %s -S -o - --platformmtl --igc-precompiled-import | FileCheck %s
+; RUN: igc_opt -regkey TestIGCPreCompiledFunctions=1 -regkey ForceEmuKind=213 %s -S -o - --platformmtl --igc-precompiled-import | FileCheck %s
 ; ------------------------------------------------
 ; PreCompiledFuncImport
 ;
-; ForceEmuKind=109 means EMU_I64DIVREM | EMU_DP_DIV_SQRT | EMU_SP_DIV | EMU_I32DIVREM_SP | EMU_FP64_FP16_CONV
+; ForceEmuKind=213 means EMU_I64DIVREM | EMU_DP_DIV_SQRT | EMU_SP_DIV | EMU_I32DIVREM_SP | EMU_FP64_FP16_CONV
 ;
 ; This test verifies if GenISA.fma intrinsic names clash doesn't occur when `sdiv i64` and `fdiv double`
 ; are simultaniously emulated in the same LLVM module. Sdiv's implementation uses fma.rtz.f32, while

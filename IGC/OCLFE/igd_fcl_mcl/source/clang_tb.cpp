@@ -1367,7 +1367,13 @@ namespace TC
                             (strcmp(pParam, "-cl-intel-enable-auto-large-GRF-mode") == 0) ||
                             (strcmp(pParam, "-ze-skip-fde") == 0) ||
                             (strcmp(pParam, "-ze-no-fusedCallWA") == 0) ||
-                            (strcmp(pParam, "-ze-disable-compaction") == 0);
+                            (strcmp(pParam, "-ze-disable-compaction") == 0) ||
+                            (strcmp(pParam, "-cl-poison-unsupported-fp64-kernels") == 0) || //used by fp64 poisoning
+                            (strcmp(pParam, "-ze-poison-unsupported-fp64-kernels") == 0) || //used by fp64 poisoning
+                            (strcmp(pParam, "-cl-fp64-gen-emu") == 0) || //used by fp64 emulation
+                            (strcmp(pParam, "-ze-fp64-gen-emu") == 0) || //used by fp64 emulation
+                            (strcmp(pParam, "-cl-fp64-gen-conv-emu") == 0) || //used by fp64 conversion emulation
+                            (strcmp(pParam, "-ze-fp64-gen-conv-emu") == 0); //used by fp64 conversion emulation
 
                         if (isCommonOption)
                         {

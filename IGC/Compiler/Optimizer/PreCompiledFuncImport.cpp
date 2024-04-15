@@ -666,7 +666,7 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
         origFunctions.insert(Func);
     }
 
-    if (isDPEmu() && preProcessDouble())
+    if ((isDPEmu() || isDPConvEmu()) && preProcessDouble())
     {
         m_changed = true;
     }
@@ -904,7 +904,7 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
 
         // Don't inline original slow DP emu functions, they are only for passing
         // conformance, not for perf.
-        if (isDPEmu() && II->isSlowDPEmuFunc())
+        if ((isDPEmu() || isDPConvEmu()) && II->isSlowDPEmuFunc())
             continue;
 
         totalNumberOfPotentiallyInlinedInst += II->totalInstructions;
@@ -924,7 +924,7 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
         {
             Function* Func = II->F;
 
-            if (Func->hasFnAttribute(llvm::Attribute::AlwaysInline) || (isDPEmu() && II->isSlowDPEmuFunc()))
+            if (Func->hasFnAttribute(llvm::Attribute::AlwaysInline) || ((isDPEmu() || isDPConvEmu()) && II->isSlowDPEmuFunc()))
                 continue;
 
             unsigned calls = ((unsigned)IGC_GET_FLAG_VALUE(InlinedEmulationThreshold) - totalNumberOfInlinedInst) / II->funcInstructions;
@@ -946,7 +946,7 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
         {
             // Special handling of DP functions: any one that has not been marked as inline
             // at this point, it will be either subroutine or stackcall.
-            const bool isDPCallFunc = (isDPEmu() && II->isSlowDPEmuFunc());
+            const bool isDPCallFunc = ((isDPEmu() || isDPConvEmu()) && II->isSlowDPEmuFunc());
 
             // Use subroutine/stackcall for some DP emulation functions if
             // EmulationFunctionControl is set so, or
@@ -1509,7 +1509,7 @@ void PreCompiledFuncImport::getInt64DivideEmuType(EmulatedFunctions function, un
     }
 
     // look only for native DP support (ignore emulated DP)
-    if (m_pCtx->platform.hasNoFP64Inst() || isDPEmu() || isDPDivSqrtEmu())
+    if (m_pCtx->platform.hasNoFP64Inst() || isDPEmu() || isDPConvEmu() || isDPDivSqrtEmu())
     {
         // no full DP support, use SP
         functionName = m_Int64SpDivRemFunctionNames[function][elementIndex];
@@ -1525,7 +1525,7 @@ void PreCompiledFuncImport::getInt64DivideEmuType(EmulatedFunctions function, un
 void PreCompiledFuncImport::visitFPTruncInst(llvm::FPTruncInst& inst)
 {
     m_pCtx->metrics.StatBeginEmuFunc(&inst);
-    if ((isFP64toFP16() || isDPEmu()) &&
+    if ((isFP64toFP16() || isDPEmu() || isDPConvEmu()) &&
         inst.getDestTy()->isHalfTy() && inst.getSrcTy()->isDoubleTy())
     {
         if (inst.getDestTy()->isVectorTy())
@@ -1566,7 +1566,7 @@ void PreCompiledFuncImport::visitFPTruncInst(llvm::FPTruncInst& inst)
         return;
     }
 
-    if (isDPEmu() && inst.getDestTy()->isFloatTy() && inst.getSrcTy()->isDoubleTy())
+    if ((isDPEmu() || isDPConvEmu()) && inst.getDestTy()->isFloatTy() && inst.getSrcTy()->isDoubleTy())
     {
         Function* newFunc = getOrCreateFunction(FUNCTION_DP_TO_SP);
         Value* args[5];
@@ -1888,7 +1888,7 @@ Value* PreCompiledFuncImport::createFlagValue(Function* F)
 
 void PreCompiledFuncImport::visitFPExtInst(llvm::FPExtInst& I)
 {
-    if (isDPEmu() && I.getDestTy()->isDoubleTy() &&
+    if ((isDPEmu() || isDPConvEmu()) && I.getDestTy()->isDoubleTy() &&
         (I.getSrcTy()->isFloatTy() || I.getSrcTy()->isHalfTy()))
     {
         m_pCtx->metrics.StatBeginEmuFunc(&I);
@@ -1926,7 +1926,7 @@ void PreCompiledFuncImport::visitFPExtInst(llvm::FPExtInst& I)
 void PreCompiledFuncImport::visitCastInst(llvm::CastInst& I)
 {
     m_pCtx->metrics.StatBeginEmuFunc(&I);
-    if (!isDPEmu()) {
+    if (!isDPEmu() && !isDPConvEmu()) {
         return;
     }
 
@@ -2451,31 +2451,6 @@ As a result, we reduce 2x necessary work
     return;
 }
 
-bool PreCompiledFuncImport::isDPConvFunc(Function* F) const
-{
-    StringRef FN = F->getName();
-    for (int i = 0; i < NUM_FUNCTION_IDS; ++i) {
-        if (FN.equals(m_functionInfos[i].FuncName))
-        {
-            FunctionIDs FID = (FunctionIDs)i;
-            switch (FID)
-            {
-            default:
-                break;
-            case FUNCTION_DP_TO_I32:
-            case FUNCTION_DP_TO_UI32:
-            case FUNCTION_I32_TO_DP:
-            case FUNCTION_UI32_TO_DP:
-            case FUNCTION_DP_TO_SP:
-            case FUNCTION_SP_TO_DP:
-                return true;
-            }
-            break;
-        }
-    }
-    return false;
-}
-
 bool PreCompiledFuncImport::usePrivateMemory(Function* F)
 {
     // Assume alloca is in entry BB
@@ -2685,6 +2660,7 @@ void PreCompiledFuncImport::checkAndSetEnableSubroutine()
     bool SPDiv = isSPDiv();
     bool DPEmu = isDPEmu();
     bool DPDivSqrtEmu = isDPDivSqrtEmu();
+    bool DPConvEmu = isDPConvEmu();
     bool I64DivRem = isI64DivRem();
 
     Module* M = m_pCtx->getModule();
@@ -2716,7 +2692,7 @@ void PreCompiledFuncImport::checkAndSetEnableSubroutine()
             case Instruction::FPToSI:
             case Instruction::FPToUI:
             case Instruction::FPTrunc:
-                if (DPEmu && I->getOperand(0)->getType()->isDoubleTy())
+                if ((DPEmu || DPConvEmu) && I->getOperand(0)->getType()->isDoubleTy())
                 {
                     m_enableCallForEmulation = true;
                 }
@@ -2724,7 +2700,7 @@ void PreCompiledFuncImport::checkAndSetEnableSubroutine()
             case Instruction::SIToFP:
             case Instruction::UIToFP:
             case Instruction::FPExt:
-                if (DPEmu && I->getType()->isDoubleTy())
+                if ((DPEmu || DPConvEmu) && I->getType()->isDoubleTy())
                 {
                     m_enableCallForEmulation = true;
                 }

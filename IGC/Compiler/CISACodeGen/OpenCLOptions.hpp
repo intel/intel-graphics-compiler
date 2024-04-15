@@ -182,6 +182,9 @@ public:
     // This option enables FP64 emulation for platforms that
     // cannot HW support for double operations
     bool EnableFP64GenEmu = false;
+    // This option enables FP64 emulation for conversions
+    // This applies to platforms that cannot HW support for double operations
+    bool EnableFP64GenConvEmu = false;
 
     std::optional<bool> EnableZEBinary;
 

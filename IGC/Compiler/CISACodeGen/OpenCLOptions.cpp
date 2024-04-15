@@ -584,6 +584,13 @@ void Options::parseOptions(const char* opts)
         EnableFP64GenEmu = true;
     }
 
+    if (apiOptions.hasArg(OPT_fp64_gen_conv_emu_common))
+    {
+        // This option enables FP64 emulation for conversions
+        // This applies to platforms that cannot HW support for double operations
+        EnableFP64GenConvEmu = true;
+    }
+
     if (apiOptions.hasArg(OPT_enable_zebin_common))
     {
         EnableZEBinary = true;

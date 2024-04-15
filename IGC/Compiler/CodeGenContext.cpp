@@ -580,11 +580,17 @@ namespace IGC
     // check if DP emu is required
     void CodeGenContext::checkDPEmulationEnabled()
     {
+        // TODO: the method should also check DivSqrt Emulation Mode
         if ((IGC_IS_FLAG_ENABLED(ForceDPEmulation) ||
             (m_DriverInfo.NeedFP64(platform.getPlatformInfo().eProductFamily) && platform.hasNoFP64Inst())) ||
             (getCompilerOption().FP64GenEmulationEnabled && platform.emulateFP64ForPlatformsWithoutHWSupport()))
         {
             m_hasDPEmu = true;
+        }
+
+        if (getCompilerOption().FP64GenConvEmulationEnabled && platform.emulateFP64ForPlatformsWithoutHWSupport())
+        {
+            m_hasDPConvEmu = true;
         }
     }
 

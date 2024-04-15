@@ -100,7 +100,86 @@ static bool isFP64Operation(llvm::Instruction *I) {
     return false;
 }
 
-void ErrorCheck::visitInstruction(llvm::Instruction& I)
+static bool isFP64ArithmeticOperation(llvm::Instruction* I) {
+    if (auto* II = dyn_cast<IntrinsicInst>(I)) {
+        switch (II->getIntrinsicID())
+        {
+        case Intrinsic::fabs:
+        case Intrinsic::fma:
+        case Intrinsic::sqrt:
+            return true;
+        default:
+            return false;
+        }
+    }
+    else if (auto* GII = dyn_cast<GenIntrinsicInst>(I)) {
+        switch (GII->getIntrinsicID()) {
+        case GenISAIntrinsic::GenISA_fma_rtn:
+        case GenISAIntrinsic::GenISA_fma_rtp:
+        case GenISAIntrinsic::GenISA_fma_rtz:
+            return true;
+        default:
+            return false;
+        }
+    }
+    else {
+        switch (I->getOpcode()) {
+        case Instruction::FAdd:
+        case Instruction::FSub:
+        case Instruction::FMul:
+        case Instruction::FDiv:
+            return true;
+        default:
+            return false;
+        }
+    }
+}
+
+static bool isValidFP64InstructionForDPConvEmu(llvm::Instruction* I) {
+    switch (I->getOpcode()) {
+    case Instruction::Load:
+    case Instruction::Store:
+    case Instruction::FPToSI:
+    case Instruction::FPToUI:
+    case Instruction::SIToFP:
+    case Instruction::UIToFP:
+    case Instruction::FPExt:
+    case Instruction::FPTrunc:
+    case Instruction::ExtractElement:
+    case Instruction::InsertElement:
+    case Instruction::ExtractValue:
+    case Instruction::InsertValue:
+    case Instruction::BitCast:
+    case Instruction::PHI:
+    case Instruction::Select:
+    // By default, we assume that Call instruction is valid for DPConvEmu,
+    // because it can call e.g. other func or kernel.
+    // Call instruction can be invalid for DPConvEmu when it calls intrinsic
+    // which is arithmetic operation, but this case is handled in isFP64ArithmeticOperation()
+    case Instruction::Call:
+        return true;
+    default:
+        return false;
+    }
+}
+
+// This function handles FP64 emulation mode. It investigates the following cases:
+// if (ctx->m_hasDPConvEmu && !ctx->m_hasDPEmu
+//    where AO == ArithmeticOperation, VI == ValidInstructionForDPConvEmu
+//     1. poison=1 AO=1         => attr + warning
+//     2. poison=1 AO=0 VI=0    => attr
+//     3. poison=0 AO=1         => err msg
+//     4. poison=0 AO=0         => emu
+// if (!ctx->m_hasDPConvEmu && ctx->m_hasDPEmu)
+//     1. poison=1              => emu
+//     2. poison=0              => emu
+// if (ctx->m_hasDPConvEmu && ctx->m_hasDPEmu)
+//     1. poison=1              => emu
+//     2. poison=0              => emu
+// if (!ctx->m_hasDPConvEmu && !ctx->m_hasDPEmu)
+//     1. poison=1              => attr
+//     2. poison=0              => err msg
+void ErrorCheck::handleFP64EmulationMode(llvm::Instruction& I)
 {
     auto ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
@@ -110,11 +189,11 @@ void ErrorCheck::visitInstruction(llvm::Instruction& I)
     bool poisonFP64KernelsEnabled = false;
     if (ctx->type == ShaderType::OPENCL_SHADER)
     {
-        OpenCLProgramContext *OCLContext = static_cast<OpenCLProgramContext*>(ctx);
+        OpenCLProgramContext* OCLContext = static_cast<OpenCLProgramContext*>(ctx);
         poisonFP64KernelsEnabled = OCLContext->m_Options.EnableUnsupportedFP64Poisoning;
     }
 
-    // chcek that has HW DP support and DP emu is disabled
+    // check that has HW DP support and DP emu is disabled
     if (!ctx->platform.hasNoFP64Inst() && !ctx->m_hasDPEmu)
         return;
 
@@ -123,20 +202,44 @@ void ErrorCheck::visitInstruction(llvm::Instruction& I)
     if (!usesDouble)
         return;
 
-    // emit msg when platform don't support DP operations
-    if (!poisonFP64KernelsEnabled && !ctx->m_hasDPEmu) {
+    // emit error msg when platform don't support DP operations and poisonFP64Kernels is disabled
+    if (!poisonFP64KernelsEnabled && !ctx->m_hasDPEmu && !ctx->m_hasDPConvEmu) {
         ctx->EmitError("Double type is not supported on this platform.", &I);
         m_hasError = true;
         return;
     }
 
+    // emit error msg when platform can emulate DP conversion operations, but in the kernel are used DP arithmetic operations (poisonFP64Kernels is disabled)
+    if (!poisonFP64KernelsEnabled && !ctx->m_hasDPEmu && ctx->m_hasDPConvEmu && isFP64ArithmeticOperation(&I))
+    {
+        ctx->EmitError("Double arithmetic operation is not supported on this platform with FP64 conversion emulation mode (poison FP64 kernels is disabled).", &I);
+        m_hasError = true;
+        return;
+    }
+
+    // emit warning when platform can emulate DP conversion operations, but in the kernel are used DP arithmetic operations and poisonFP64Kernels is enabled
+    // we can add "uses-fp64-math" attr for functions here, because poisonFP64Kernels is enabled and we may encounter Call instruction to intrinsic which is arithmetic operation
+    if (poisonFP64KernelsEnabled && !ctx->m_hasDPEmu && ctx->m_hasDPConvEmu && isFP64ArithmeticOperation(&I))
+    {
+        Function* F = I.getParent()->getParent();
+        F->addFnAttr("uses-fp64-math");
+        ctx->EmitWarning("Double arithmetic operation is not supported on this platform with FP64 conversion emulation mode (poison FP64 kernels is enabled).");
+    }
+
     // Add "uses-fp64-math" attr for functions when poison fp64 kernels is required
     // on platform and DP emulation is disabled
-    if (poisonFP64KernelsEnabled && !ctx->m_hasDPEmu)
+    // When investigated instruction is valid for DPConvEmu, we don't need to add the attribute
+    if ((poisonFP64KernelsEnabled && !ctx->m_hasDPEmu && !ctx->m_hasDPConvEmu) ||
+        (poisonFP64KernelsEnabled && !ctx->m_hasDPEmu && ctx->m_hasDPConvEmu && !isValidFP64InstructionForDPConvEmu(&I)))
     {
         Function* F = I.getParent()->getParent();
         F->addFnAttr("uses-fp64-math");
     }
+}
+
+void ErrorCheck::visitInstruction(llvm::Instruction& I)
+{
+    handleFP64EmulationMode(I);
 }
 
 void ErrorCheck::visitCallInst(CallInst& CI)
@@ -166,4 +269,6 @@ void ErrorCheck::visitCallInst(CallInst& CI)
             break;
         }
     }
+
+    handleFP64EmulationMode(CI);
 }

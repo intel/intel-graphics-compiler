@@ -427,6 +427,7 @@ namespace IGC
         bool ExcludeIRFromZEBinary                      = false;
         bool EmitZeBinVISASections                      = false;
         bool FP64GenEmulationEnabled                    = false;
+        bool FP64GenConvEmulationEnabled                = false;
 
         //when true, compiler disables the Remat optimization for compute shaders
         bool allowDisableRematforCS                     = false;

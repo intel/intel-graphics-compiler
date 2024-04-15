@@ -319,6 +319,9 @@ static void CommonOCLBasedPasses(
         pContext->m_InternalOptions.EnableFP64GenEmu ||
         pContext->m_Options.EnableFP64GenEmu;
 
+    CompilerOpts.FP64GenConvEmulationEnabled =
+        pContext->m_Options.EnableFP64GenConvEmu;
+
     CompilerOpts.LoadCacheDefault =
         pContext->m_InternalOptions.LoadCacheDefault;
 
@@ -445,9 +448,6 @@ static void CommonOCLBasedPasses(
 
         // Check after GlobalDCE in case of doubles in dead functions
         mpm.add(new ErrorCheck());
-        if (pContext->m_Options.EnableUnsupportedFP64Poisoning) {
-            mpm.add(new PoisonFP64Kernels());
-        }
 
         mpm.add(new LowerInvokeSIMD());
 

@@ -46,6 +46,8 @@ namespace IGC
         bool m_hasError = false;
 
         void checkArgsSize(llvm::Function& F);
+
+        void handleFP64EmulationMode(llvm::Instruction& I);
     };
 
 } // namespace IGC
