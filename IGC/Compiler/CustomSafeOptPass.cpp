@@ -2474,9 +2474,13 @@ void GenSpecificPattern::visitMul(llvm::BinaryOperator& I)
                 // erase the original adds within this pass just yet, as we'd
                 // be invalidating the InstVisitor iteration, but subsequent
                 // DCE instances will handle the orphaned instructions anyway.
+                builder.SetInsertPoint(cast<Instruction>(UI));
                 UI->replaceAllUsesWith(builder.CreateSub(Addend, Shl));
             }
         }
+        // Make sure to reset the insertion point for the shl negation after
+        // the possible transformations above
+        builder.SetInsertPoint(&I);
         I.replaceAllUsesWith(builder.CreateNeg(Shl));
         I.eraseFromParent();
     }
