@@ -732,7 +732,7 @@ public:
     // the number of lanes of the entire dispatch. It is read only as it is cached for reuse.
     CVariable* GetNumActiveLanes();
 
-    CVariable* GetExecutionMask();
+    CVariable* GetExecutionMask(bool useCache = false);
     CVariable* GetExecutionMask(CVariable* &vecMaskVar);
     CVariable* GetHalfExecutionMask();
     CVariable* UniformCopy(CVariable* var, bool doSub = false);

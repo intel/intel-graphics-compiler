@@ -12636,10 +12636,23 @@ CVariable* EmitPass::GetExecutionMask(CVariable*& vecMaskVar)
     return eMask;
 }
 
-CVariable* EmitPass::GetExecutionMask()
+CVariable* EmitPass::GetExecutionMask(bool useCache)
 {
     CVariable* vecMask = nullptr;
-    return GetExecutionMask(vecMask);
+
+    SBasicBlock* currBlk = getCurrentBlock();
+
+    // Since this is used in ballots, which are often more than 1 in BB cache it
+    CVariable* execMask = currBlk ? currBlk->m_executionMask : nullptr;
+    if(execMask == nullptr || !useCache)
+    {
+        execMask = GetExecutionMask(vecMask);
+        if(useCache && currBlk)
+        {
+            currBlk->m_executionMask = execMask;
+        }
+    }
+    return execMask;
 }
 
 CVariable* EmitPass::GetNumActiveLanes()
@@ -12653,7 +12666,7 @@ CVariable* EmitPass::GetNumActiveLanes()
     CVariable* numActiveLanes = currBlk ? currBlk->m_numActiveLanes : nullptr;
     if (numActiveLanes == nullptr)
     {
-        CVariable* emask = GetExecutionMask();  // execution mask for the entire dispatch size
+        CVariable* emask = GetExecutionMask(true);  // execution mask for the entire dispatch size
         // Count the number of '1' bits we have in the execmask to get the number of active lanes.
         // For example, given emask = 1011011000100010b,  numActiveLanes = 7
         // This will handle cases in which not all lanes are active.
@@ -20600,7 +20613,7 @@ void EmitPass::emitWaveBallot(llvm::GenIntrinsicInst* inst)
     }
     else
     {
-        CVariable* exeMask = GetExecutionMask();
+        CVariable* exeMask = GetExecutionMask(true);
         if (!uniform_active_lane)
         {
             // (W)     and (1|M0)   r1.0:ud r0.0<0;1;0>:ud f0.0:uw
