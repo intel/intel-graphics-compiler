@@ -780,7 +780,15 @@ void TransposeHelper::handleGEPInst(
         }
         pScalarizedIdx = IRB.CreateNUWMul(pScalarizedIdx, IRB.getInt32(arr_sz));
     }
-    pScalarizedIdx = IRB.CreateNUWAdd(pScalarizedIdx, idx);
+    ConstantInt* CIidx = dyn_cast<ConstantInt>(idx);
+    if (CIidx && CIidx->isNegative())
+    {
+        pScalarizedIdx = IRB.CreateAdd(pScalarizedIdx, idx);
+    }
+    else
+    {
+        pScalarizedIdx = IRB.CreateNUWAdd(pScalarizedIdx, idx);
+    }
     HandleAllocaSources(pGEP, pScalarizedIdx);
 }
 
