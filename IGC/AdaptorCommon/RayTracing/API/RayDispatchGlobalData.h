@@ -187,9 +187,9 @@ struct RayDispatchGlobalData
             {
                 rtMemBasePtr        = umd.GetRayStackBufferAddress();
                 callStackHandlerPtr = umd.GetCallStackHandlerPtr();
-                stackSizePerRay     = umd.GetStackSizePerRay();
-                numDSSRTStacks      = umd.GetNumDSSRTStacks();
-                maxBVHLevels        = umd.GetMaxBVHLevels();
+                stack_size_info.stackSizePerRay  = umd.GetStackSizePerRay();
+                num_stacks_info.numDSSRTStacks   = umd.GetNumDSSRTStacks();
+                rt_data_info.maxBVHLevels        = umd.GetMaxBVHLevels();
 
                 common.populate(umd);
             }
@@ -201,17 +201,17 @@ struct RayDispatchGlobalData
                 uint32_t stackSizePerRay;       // maximal stack size of a ray
                 uint32_t sizePerRay : 8;
                 uint32_t MBZ1       : 24;
-            };
+            } stack_size_info;
             union {
                 uint32_t numDSSRTStacks;        // number of stacks per DSS
                 uint32_t numRTStacks : 12;
                 uint32_t MBZ2        : 20;
-            };
+            } num_stacks_info;
             union {
                 uint32_t maxBVHLevels;          // the maximal number of supported instancing levels
                 uint32_t bvhLevels : 3;
                 uint32_t MBZ3      : 29;
-            };
+            } rt_data_info;
             uint32_t paddingBits[1+8];          // padding
 
             // HW doesn't read anything below this point.

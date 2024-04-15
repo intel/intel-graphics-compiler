@@ -96,8 +96,8 @@ Value* RTBuilder::getStackSizePerRay(void)
 {
 #define STYLE(X)                                                    \
     static_assert(                                                  \
-        offsetof(RayDispatchGlobalData::RT::Xe, stackSizePerRay) == \
-        offsetof(RayDispatchGlobalData::RT::X,  stackSizePerRay));
+        offsetof(RayDispatchGlobalData::RT::Xe, stack_size_info.stackSizePerRay) == \
+        offsetof(RayDispatchGlobalData::RT::X,  stack_size_info.stackSizePerRay));
 #include "RayTracingMemoryStyle.h"
 #undef STYLE
     return _get_stackSizePerRay_Xe(VALUE_NAME("stackSizePerRay"));
@@ -107,8 +107,8 @@ Value* RTBuilder::getNumDSSRTStacks(void)
 {
 #define STYLE(X)                                                   \
     static_assert(                                                 \
-        offsetof(RayDispatchGlobalData::RT::Xe, numDSSRTStacks) == \
-        offsetof(RayDispatchGlobalData::RT::X,  numDSSRTStacks));
+        offsetof(RayDispatchGlobalData::RT::Xe, num_stacks_info.numDSSRTStacks) == \
+        offsetof(RayDispatchGlobalData::RT::X,  num_stacks_info.numDSSRTStacks));
 #include "RayTracingMemoryStyle.h"
 #undef STYLE
     return _get_numDSSRTStacks_Xe(VALUE_NAME("numDSSRTStacks"));
