@@ -2253,6 +2253,13 @@ namespace IGC
                 } // End of switch
             }
 
+            if (InlineAsm * IA = dyn_cast<InlineAsm>(IGCLLVM::getCalledValue(CallI)))
+            {
+                if (IA->getAsmString().find("dpas") != std::string::npos)
+                {
+                    SetHasDPAS();
+                }
+            }
             if (mayHasMemoryAccess)
             {
                 // Checking stateless access info
