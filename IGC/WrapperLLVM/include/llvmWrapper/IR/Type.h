@@ -12,6 +12,9 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Type.h"
 
 namespace IGCLLVM {
+    /// Only use this method in code that is not reachable with opaque pointers,
+    /// or part of deprecated methods that will be removed as part of the opaque
+    /// pointers transition. (For LLVM 14+)
     // Normally, we'd want the wrapper function name to match that in the
     // latest relevant LLVM revision to simplify migration. In this instance,
     // a shorthand is chosen primarily for formatting reasons.
