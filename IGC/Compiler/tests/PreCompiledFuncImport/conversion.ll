@@ -156,3 +156,75 @@ entry:
   store double %call1, double addrspace(1)* %arrayidx2, align 8
   ret void
 }
+
+define spir_kernel void @fptoui_kernel(double addrspace(1)* %inA, i32 addrspace(1)* %out, <8 x i32> %r0, <8 x i32> %payloadHeader, <3 x i32> %enqueuedLocalSize, i16 %localIdX, i16 %localIdY, i16 %localIdZ, i8* %privateBase, i32 %bufferOffset, i32 %bufferOffset1) #0 {
+; CHECK-LABEL: @fptoui_kernel(
+; CHECK: entry:
+; CHECK:  [[DPEmuFlag:%.*]] = alloca i32
+; CHECK:  [[TMP0:%.*]] = extractelement <8 x i32> %payloadHeader, i64 0
+; CHECK:  [[TMP1:%.*]] = extractelement <3 x i32> %enqueuedLocalSize, i64 0
+; CHECK:  [[TMP2:%.*]] = extractelement <8 x i32> %r0, i64 1
+; CHECK:  [[MUL:%.*]] = mul i32 [[TMP1]], [[TMP2]]
+; CHECK:  [[LOCAL_ID_X:%.*]] = zext i16 %localIdX to i32
+; CHECK:  [[ADD0:%.*]] = add i32 [[MUL]], [[LOCAL_ID_X]]
+; CHECK:  [[ADD1:%.*]] = add i32 [[ADD0]], [[TMP0]]
+; CHECK:  [[CONV0:%.*]] = zext i32 [[ADD1]] to i64
+; CHECK:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds double, double addrspace(1)* %inA, i64 [[CONV0]]
+; CHECK:  [[TMP3:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX0]], align 8
+; CHECK:  [[CALL_TMP:%.*]] = call i32 @__igcbuiltin_dp_to_uint32(double [[TMP3]], i32 3, i32 0, i32* [[DPEmuFlag]])
+; CHECK:  [[ARRAY_IDX1:%.*]] = getelementptr inbounds i32, i32 addrspace(1)* %out, i64 [[CONV0]]
+; CHECK:  store i32 [[CALL_TMP]], i32 addrspace(1)* [[ARRAY_IDX1]], align 4
+; CHECK:  ret void
+;
+entry:
+  %payloadHeader.scalar = extractelement <8 x i32> %payloadHeader, i64 0
+  %enqueuedLocalSize.scalar = extractelement <3 x i32> %enqueuedLocalSize, i64 0
+  %r0.scalar18 = extractelement <8 x i32> %r0, i64 1
+  %mul.i.i.i = mul i32 %enqueuedLocalSize.scalar, %r0.scalar18
+  %localIdX3 = zext i16 %localIdX to i32
+  %add.i.i.i = add i32 %mul.i.i.i, %localIdX3
+  %add4.i.i.i = add i32 %add.i.i.i, %payloadHeader.scalar
+  %conv.i.i.i = zext i32 %add4.i.i.i to i64
+  %arrayidx = getelementptr inbounds double, double addrspace(1)* %inA, i64 %conv.i.i.i
+  %0 = load double, double addrspace(1)* %arrayidx, align 8
+  %call1 = fptoui double %0 to i32
+  %arrayidx2 = getelementptr inbounds i32, i32 addrspace(1)* %out, i64 %conv.i.i.i
+  store i32 %call1, i32 addrspace(1)* %arrayidx2, align 4
+  ret void
+}
+
+define spir_kernel void @fptosi_kernel(double addrspace(1)* %inA, i32 addrspace(1)* %out, <8 x i32> %r0, <8 x i32> %payloadHeader, <3 x i32> %enqueuedLocalSize, i16 %localIdX, i16 %localIdY, i16 %localIdZ, i8* %privateBase, i32 %bufferOffset, i32 %bufferOffset1) #0 {
+; CHECK-LABEL: @fptosi_kernel(
+; CHECK: entry:
+; CHECK:  [[DPEmuFlag:%.*]] = alloca i32
+; CHECK:  [[TMP0:%.*]] = extractelement <8 x i32> %payloadHeader, i64 0
+; CHECK:  [[TMP1:%.*]] = extractelement <3 x i32> %enqueuedLocalSize, i64 0
+; CHECK:  [[TMP2:%.*]] = extractelement <8 x i32> %r0, i64 1
+; CHECK:  [[MUL:%.*]] = mul i32 [[TMP1]], [[TMP2]]
+; CHECK:  [[LOCAL_ID_X:%.*]] = zext i16 %localIdX to i32
+; CHECK:  [[ADD0:%.*]] = add i32 [[MUL]], [[LOCAL_ID_X]]
+; CHECK:  [[ADD1:%.*]] = add i32 [[ADD0]], [[TMP0]]
+; CHECK:  [[CONV0:%.*]] = zext i32 [[ADD1]] to i64
+; CHECK:  [[ARRAY_IDX0:%.*]] = getelementptr inbounds double, double addrspace(1)* %inA, i64 [[CONV0]]
+; CHECK:  [[TMP3:%.*]] = load double, double addrspace(1)* [[ARRAY_IDX0]], align 8
+; CHECK:  [[CALL_TMP:%.*]] = call i32 @__igcbuiltin_dp_to_int32(double [[TMP3]], i32 3, i32 0, i32* [[DPEmuFlag]])
+; CHECK:  [[ARRAY_IDX1:%.*]] = getelementptr inbounds i32, i32 addrspace(1)* %out, i64 [[CONV0]]
+; CHECK:  store i32 [[CALL_TMP]], i32 addrspace(1)* [[ARRAY_IDX1]], align 4
+; CHECK:  ret void
+;
+entry:
+  %payloadHeader.scalar = extractelement <8 x i32> %payloadHeader, i64 0
+  %enqueuedLocalSize.scalar = extractelement <3 x i32> %enqueuedLocalSize, i64 0
+  %r0.scalar18 = extractelement <8 x i32> %r0, i64 1
+  %mul.i.i.i = mul i32 %enqueuedLocalSize.scalar, %r0.scalar18
+  %localIdX3 = zext i16 %localIdX to i32
+  %add.i.i.i = add i32 %mul.i.i.i, %localIdX3
+  %add4.i.i.i = add i32 %add.i.i.i, %payloadHeader.scalar
+  %conv.i.i.i = zext i32 %add4.i.i.i to i64
+  %arrayidx = getelementptr inbounds double, double addrspace(1)* %inA, i64 %conv.i.i.i
+  %0 = load double, double addrspace(1)* %arrayidx, align 8
+  %call1 = fptosi double %0 to i32
+  %arrayidx2 = getelementptr inbounds i32, i32 addrspace(1)* %out, i64 %conv.i.i.i
+  store i32 %call1, i32 addrspace(1)* %arrayidx2, align 4
+  ret void
+}
