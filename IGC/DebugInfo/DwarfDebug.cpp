@@ -1060,7 +1060,7 @@ void DwarfDebug::ExtractConstantData(const llvm::Constant *ConstVal,
 
 void DwarfDebug::constructThenAddImportedEntityDIE(CompileUnit *TheCU,
                                                    DIImportedEntity *IE) {
-  if (isa<DILocalScope>(IE->getScope()))
+  if (isa_and_nonnull<DILocalScope>(IE->getScope()))
     return;
 
   if (DIE *D = TheCU->getOrCreateContextDIE(IE->getScope())) {
