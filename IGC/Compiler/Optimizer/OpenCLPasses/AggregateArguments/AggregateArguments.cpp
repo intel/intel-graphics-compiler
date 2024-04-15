@@ -284,7 +284,7 @@ void ResolveAggregateArguments::storeArgument(const Argument* arg, AllocaInst* b
         unsigned int baseAllocaOffset = m_implicitArgs.getStructArgOffset(i);
 
         Value* offsetFromBase = ConstantInt::get(Type::getInt32Ty(base->getContext()), baseAllocaOffset);
-        Value* storeAddress = irBuilder.CreateGEP(baseAsPtri8, offsetFromBase);
+        Value* storeAddress = irBuilder.CreateGEP(Type::getInt8Ty(base->getContext()), baseAsPtri8, offsetFromBase);
         Value* offsetAsPointer = irBuilder.CreateBitCast(storeAddress,
             implicitArgToStore->getType()->getPointerTo(ADDRESS_SPACE_PRIVATE));
         irBuilder.CreateStore(&(*implicitArgToStore), offsetAsPointer);

@@ -100,17 +100,24 @@ AllocaInst* TypesLegalizationPass::CreateAlloca( Instruction *inst ) {
 ///////////////////////////////////////////////////////////////////////
 /// @brief Creates GEP instruction.
 /// @param  builder llvm IR builder to use
+/// @param  Ty element type
 /// @param  ptr memory pointer to
 /// @param  indices set of constant indices to use in GEP
 /// @return Value* - GetElementPtrInst* instruction.
+Value* TypesLegalizationPass::CreateGEP(IGCLLVM::IRBuilder<>& builder, Type* Ty, Value* ptr, SmallVector<unsigned, 8>& indices) {
+    SmallVector< Value*, 8> gepIndices;
+    gepIndices.reserve(indices.size() + 1);
+    gepIndices.push_back(builder.getInt32(0));
+    for (unsigned idx : indices) {
+        gepIndices.push_back(builder.getInt32(idx));
+    }
+    return builder.CreateGEP(Ty, ptr, gepIndices);
+}
+
+// Depricated because it uses typed pointers and
+// should no longer be used in LLVM 14+ compatible code.
 Value* TypesLegalizationPass::CreateGEP( IGCLLVM::IRBuilder<> &builder,Value *ptr,SmallVector<unsigned,8> &indices ) {
-  SmallVector<   Value *,8> gepIndices;
-  gepIndices.reserve( indices.size() + 1 );
-  gepIndices.push_back( builder.getInt32( 0 ) );
-  for(unsigned idx : indices) {
-    gepIndices.push_back( builder.getInt32( idx ) );
-  }
-  return builder.CreateGEP( ptr,gepIndices );
+  return CreateGEP(builder, IGCLLVM::getNonOpaquePtrEltTy(ptr->getType()), ptr, indices);
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -225,7 +232,7 @@ TypesLegalizationPass::ResolveValue( Instruction *ip,Value *val,SmallVector<unsi
   else if(LoadInst* ld = dyn_cast<LoadInst>(val))
   {
     IGCLLVM::IRBuilder<> builder( ld );
-    Value* gep = CreateGEP( builder,ld->getOperand( 0 ),indices );
+    Value* gep = CreateGEP( builder, ld->getType(), ld->getOperand( 0 ),indices );
     auto alignment = IGCLLVM::getAlignmentValue(ld);
     unsigned pointerTypeSize = ld->getType()->getScalarSizeInBits() / 8;
     if ( alignment && (alignment_t)pointerTypeSize == alignment )
@@ -367,7 +374,7 @@ void TypesLegalizationPass::ResolveStoreInst(
         if (StructType* st = dyn_cast<StructType>(storeInst->getValueOperand()->getType()))
             isPackedStruct = st->isPacked();
 
-        Value* pGEP = CreateGEP(builder, storeInst->getOperand(1), indices);
+        Value* pGEP = CreateGEP(builder, storeInst->getValueOperand()->getType(), storeInst->getOperand(1), indices);
         if (isPackedStruct)
             builder.CreateAlignedStore(val, pGEP, IGCLLVM::getAlign(1));
         else

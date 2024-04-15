@@ -1393,9 +1393,9 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
         GEPOperator* FirstGEP =
             dyn_cast<GEPOperator>(FirstLoad->getPointerOperand());
         if (FirstGEP && FirstGEP->isInBounds())
-            Ptr = Builder.CreateInBoundsGEP(Ptr, Idx);
+            Ptr = Builder.CreateInBoundsGEP(LeadingLoadScalarType, Ptr, Idx);
         else
-            Ptr = Builder.CreateGEP(Ptr, Idx);
+            Ptr = Builder.CreateGEP(LeadingLoadScalarType, Ptr, Idx);
     }
 
     Type* NewLoadType = IGCLLVM::FixedVectorType::get(LeadingLoadScalarType, NumElts);

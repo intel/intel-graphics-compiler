@@ -83,7 +83,8 @@ private:
 
     //return m_ShMemRTCtrls[index]
     Value* getShMemRTCtrl(RTBuilder& builder, Value* queryIndex) {
-        return builder.CreateGEP(m_ShMemRTCtrls, { builder.getInt32(0), queryIndex }, VALUE_NAME("&shadowMem.RTCtrl"));
+        return builder.CreateGEP(cast<llvm::AllocaInst>(m_ShMemRTCtrls)->getAllocatedType(),
+            m_ShMemRTCtrls, { builder.getInt32(0), queryIndex }, VALUE_NAME("&shadowMem.RTCtrl"));
     }
 
     //return rtStacks[index]
@@ -94,7 +95,8 @@ private:
     //return rtStacks[index]
     RTBuilder::SyncStackPointerVal* getShMemRayQueryRTStack(RTBuilder& builder, Value* queryIndex) {
         return static_cast<RTBuilder::SyncStackPointerVal*>(
-            builder.CreateGEP(m_ShMemRTStacks, { builder.getInt32(0), queryIndex }, VALUE_NAME("&shadowMem.RTStack")));
+            builder.CreateGEP(cast<llvm::AllocaInst>(m_ShMemRTStacks)->getAllocatedType(),
+                m_ShMemRTStacks, { builder.getInt32(0), queryIndex }, VALUE_NAME("&shadowMem.RTStack")));
     }
 
     std::pair<BasicBlock*, BasicBlock*> branchOnPotentialHitDone(
@@ -1035,7 +1037,7 @@ bool RTGlobalsPointerLoweringPass::runOnFunction(Function& F)
             // structures to `RTGlobalsAlign`.
             constexpr uint32_t Offset =
                 IGC::Align(sizeof(RayDispatchGlobalData), IGC::RTGlobalsAlign);
-            Ptr = builder.CreateGEP(Ptr, builder.getInt32(Offset));
+            Ptr = builder.CreateGEP(builder.getInt8Ty(), Ptr, builder.getInt32(Offset));
             auto* rtGlobalsPtrHi = builder.CreateBitCast(
                 Ptr, rtGlobalsPtr->getType());
             rtGlobalsPtrSplit = builder.CreateSelect(

@@ -616,7 +616,7 @@ void ReductionCandidateGroup::reduceToPreheader(IGCLLVM::IRBuilder<> &IRB, SCEVE
     IRB.SetInsertPoint(&LPH->back());
     SmallVector<Value*, 4> Indices(Base.GEP->indices().begin(), Base.GEP->indices().end() - 1);
     Indices.push_back(StartIndex);
-    Value *Pointer = IRB.CreateGEP(Base.GEP->getPointerOperand(), Indices);
+    Value *Pointer = IRB.CreateGEP(Base.GEP->getSourceElementType(), Base.GEP->getPointerOperand(), Indices);
 
     // Create phi node if pointer is moved in loop
     if (Step != 0)
