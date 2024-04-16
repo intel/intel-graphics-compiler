@@ -222,8 +222,8 @@ Value *SPIRVExpander::visitCallInst(CallInst &CI) {
             .StartsWith("s_abs", GenXIntrinsic::genx_absi)
             // Floating-point intrinsics
             .StartsWith("fabs", Intrinsic::fabs)
-            .StartsWith("fma", Intrinsic::fma)
             .StartsWith("fmax", Intrinsic::maxnum)
+            .StartsWith("fma", Intrinsic::fma)
             .StartsWith("fmin", Intrinsic::minnum)
             .StartsWith("mad", Intrinsic::fmuladd)
             .StartsWith("sqrt", Intrinsic::sqrt)
