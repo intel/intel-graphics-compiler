@@ -125,7 +125,7 @@ DEFN_DEFAULT_SUB_GROUP_STEPS(double)
 #define DEFN_DEFAULT_SUB_GROUP_SORT_KEY_ONLY(                                  \
     type, type_abbr, direction, is_asc)                                        \
 type __devicelib_default_sub_group_private_sort_##direction##_##type_abbr(     \
-    type value)                                                                \
+    type value, char* scratch_unused)                                          \
 {                                                                              \
     const uint local_size = get_local_size(0);                                 \
     const uint idx = get_local_id(0);                                          \
