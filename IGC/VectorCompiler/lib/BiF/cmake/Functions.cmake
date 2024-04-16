@@ -90,7 +90,7 @@ function(vc_build_bif TARGET RES_FILE CMCL_SRC_PATH BIF_NAME PTR_BIT_SIZE)
       COMMAND clang-tool -cc1 ${CMCL_INCLUDES} ${VC_INCLUDES}
                ${EXTRA_CLANG_INCLUDES} ${IGC_LLVM_DEPENDENT_CLANG_FLAGS} ${EXTRA_CLANG_FLAGS}
                -x cl -cl-std=clc++ -triple=${SPIR_TARGET}
-               -O2 -disable-llvm-passes -emit-llvm-bc -o "${BIF_CLANG_BC_NAME}" ${CMCL_SRC}
+               -O2 -disable-llvm-passes -discard-value-names -emit-llvm-bc -o "${BIF_CLANG_BC_NAME}" ${CMCL_SRC}
       COMMENT "vc_build_bif: Compiling CMCL source ${CMCL_SRC} to BC ${BIF_CLANG_BC_NAME}"
       DEPENDS clang-tool "${CMCL_SRC}" ${EXTRA_DEPENDS}
       COMMAND_EXPAND_LISTS)
