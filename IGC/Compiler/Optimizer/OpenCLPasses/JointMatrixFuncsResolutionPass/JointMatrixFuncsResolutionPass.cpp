@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OCLBIUtils.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
+#include "AdaptorOCL/Utils/CacheControlsHelper.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
@@ -949,6 +950,24 @@ static Instruction *loadSlice(BuilderT *builder, Type *matTy, Value *sliceArray)
     return nullptr;
 }
 
+template <typename T>
+static int resolveCacheControlDecorations(CodeGenContext *ctx, Value *pointerValue)
+{
+    static_assert(std::is_same_v<T, LoadCacheControl> || std::is_same_v<T, StoreCacheControl>);
+    auto spirvDecorations = parseSPIRVDecorationsFromMD(pointerValue);
+    for (auto& [DecorationId, MDNodes] : spirvDecorations)
+    {
+        if (DecorationId == getDecorationIdCacheControl<T>())
+        {
+            CacheControlFromMDNodes controls = resolveCacheControlFromMDNodes<T>(ctx, MDNodes);
+            if (controls.isInvalid)
+                ctx->EmitWarning("Unsupported cache controls configuration requested. Applying default configuration.");
+            return controls.value;
+        }
+    }
+    return 0;
+}
+
 Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
 {
     Value *ptrVal        = CI->getArgOperand(0);
@@ -970,7 +989,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
     std::string funcName =
         GetMatrixFuncName(false, true, loadLayout, address_space, &desc,
                           "__builtin_spriv_OpJointMatrixLoadINTEL_");
-    FunctionType *funcType = FunctionType::get(retTy, { arrayTy, ptrVal->getType(), strideVal->getType() }, false);
+    FunctionType *funcType = FunctionType::get(retTy, { arrayTy, ptrVal->getType(), strideVal->getType(), Type::getInt32Ty(ctx) }, false);
 
     InstsToErase.insert(CI);
 
@@ -981,8 +1000,9 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
 
     builder.SetInsertPoint(CI);
     Value *dst = builder.CreateBitCast(sliceArray, arrayTy);
+    Value *cacheOpt = builder.getInt32(resolveCacheControlDecorations<LoadCacheControl>(m_Ctx, ptrVal));
 
-    std::vector<Value *> Args = { dst, ptrVal, strideVal };
+    std::vector<Value *> Args = { dst, ptrVal, strideVal, cacheOpt };
     Instruction *newCall = builder.CreateCall(M->getOrInsertFunction(funcName, funcType), Args);
     newCall->setDebugLoc(CI->getDebugLoc());
 
@@ -1019,7 +1039,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveStore(CallInst *CI)
                           "__builtin_spriv_OpJointMatrixStoreINTEL_");
     FunctionType *funcType =
         FunctionType::get(Type::getVoidTy(M->getContext()),
-            { ptrVal->getType(), arrayTy, strideVal->getType() }, false);
+            { ptrVal->getType(), arrayTy, strideVal->getType(), Type::getInt32Ty(ctx) }, false);
 
     InstsToErase.insert(CI);
 
@@ -1031,8 +1051,9 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveStore(CallInst *CI)
     builder.SetInsertPoint(CI);
     builder.CreateStore(matVal, sliceArray);
     Value *src = builder.CreateBitCast(sliceArray, arrayTy);
+    Value *cacheOpt = builder.getInt32(resolveCacheControlDecorations<StoreCacheControl>(m_Ctx, ptrVal));
 
-    std::vector<Value *> Args = { ptrVal, src, strideVal };
+    std::vector<Value *> Args = { ptrVal, src, strideVal, cacheOpt };
     Instruction *newCall = CallInst::Create(M->getOrInsertFunction(funcName, funcType), Args, "", CI);
     newCall->setDebugLoc(CI->getDebugLoc());
     return newCall;

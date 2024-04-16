@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2023 Intel Corporation
+; Copyright (C) 2022 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -16,7 +16,10 @@
 ; CHECK-SAME: Missing line 7
 ; CHECK: CheckModuleDebugify: PASS
 
-define spir_kernel void @test_jm(i32 %t1_a, i8* %t1_dst1, i32* %t1_dst2, i8* %t2_a, i8* %t2_dst, float addrspace(1)* %t3_a, float addrspace(1)* %t3_dst) {
+define spir_kernel void @test_jm(
+  i32 %t1_a, i8* %t1_dst1, i32* %t1_dst2,
+  i8* %t2_a, i8* %t2_dst,
+  float addrspace(1)* %t3_a, float addrspace(1)* %t3_dst) {
   call void @fill_length(i32 %t1_a, i8* %t1_dst1, i32* %t1_dst2)
   call void @load_store_legacy(i8* %t2_a, i8* %t2_dst)
   call void @load_store_acc_transpose(float addrspace(1)* %t3_a, float addrspace(1)* %t3_dst)
@@ -38,7 +41,7 @@ define void @fill_length(i32 %a, i8* %dst, i32* %dst2) {
 ; CHECK:    [[TMP8:%.*]] = insertelement <8 x i32> [[TMP7]], i32 [[A]], i64 7
 ; CHECK:    store <8 x i32> [[TMP8]], <8 x i32>* [[PTR:%.*]]
 ; CHECK:    [[MATPTR:%.*]] = bitcast <8 x i32>* [[PTR:%.*]] to i8*, !dbg [[DBG1:![0-9]*]]
-; CHECK:    call void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_8x32_i8_8_generic_pi64_v8i8(i8* %dst, i8* [[MATPTR]], i32 8), !dbg [[DBG1]]
+; CHECK:    call void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_8x32_i8_8_generic_pi64_v8i8(i8* %dst, i8* [[MATPTR]], i32 8, i32 0), !dbg [[DBG1]]
 ; CHECK:    ret void
 ; CHECK-NOT: error
 ;
@@ -59,11 +62,11 @@ define void @load_store_legacy(i8* %a, i8* %dst) {
 ; CHECK: [[TMP4:%.*]] = alloca <8 x i32>
 ; CHECK: [[PTR:%.*]] = alloca <8 x i32>
 ; CHECK: [[MATPTR:%.*]] = bitcast <8 x i32>* [[PTR]] to i8*
-; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_8x16_i16_8_generic_v8i8_pi32_i32(i8* [[MATPTR]], i8* %a, i32 16), !dbg [[DBG2:![0-9]*]]
+; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_8x16_i16_8_generic_v8i8_pi32_i32(i8* [[MATPTR]], i8* %a, i32 16, i32 0), !dbg [[DBG2:![0-9]*]]
 ; CHECK: [[MATRIX:%.*]] = load <8 x i32>, <8 x i32>* [[PTR]]
 ; CHECK: store <8 x i32> [[MATRIX]], <8 x i32>* [[TMP4]]
 ; CHECK: [[TMP5:%.*]] = bitcast <8 x i32>* [[TMP4]] to i8*
-; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_8x16_i16_8_generic_pi64_v8i8(i8* %dst, i8* [[TMP5]], i32 8), !dbg [[DBG3:![0-9]*]]
+; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_8x16_i16_8_generic_pi64_v8i8(i8* %dst, i8* [[TMP5]], i32 8, i32 0), !dbg [[DBG3:![0-9]*]]
 ; CHECK: ret void
 ; CHECK-NOT: error
 ;
@@ -81,11 +84,11 @@ define void @load_store_acc_transpose(float addrspace(1)* %a, float addrspace(1)
 ; CHECK: [[TMP4:%.*]] = alloca <8 x float>
 ; CHECK: [[PTR:%.*]] = alloca <8 x float>
 ; CHECK: [[MATPTR:%.*]] = bitcast <8 x float>* [[PTR]] to i8*
-; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_ColumnMajor_8x8_i32_8_global_v8i8_pi32_i32(i8* [[MATPTR]], float addrspace(1)* %a, i64 64), !dbg [[DBG2:![0-9]*]]
+; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_ColumnMajor_8x8_i32_8_global_v8i8_pi32_i32(i8* [[MATPTR]], float addrspace(1)* %a, i64 64, i32 0), !dbg [[DBG2:![0-9]*]]
 ; CHECK: [[MATRIX:%.*]] = load <8 x float>, <8 x float>* [[PTR]]
 ; CHECK: store <8 x float> [[MATRIX]], <8 x float>* [[TMP4]]
 ; CHECK: [[TMP5:%.*]] = bitcast <8 x float>* [[TMP4]] to i8*
-; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_ColumnMajor_8x8_i32_8_global_pi64_v8i8(float addrspace(1)* %dst, i8* [[TMP5]], i64 64), !dbg [[DBG3:![0-9]*]]
+; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_ColumnMajor_8x8_i32_8_global_pi64_v8i8(float addrspace(1)* %dst, i8* [[TMP5]], i64 64, i32 0), !dbg [[DBG3:![0-9]*]]
 ; CHECK: ret void
 ; CHECK-NOT: error
 ;
@@ -93,9 +96,7 @@ define void @load_store_acc_transpose(float addrspace(1)* %a, float addrspace(1)
 call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_8_3_3_2liii(float addrspace(1)* %dst, %spirv.JointMatrixINTEL._float_8_8_3_3_2 addrspace(1)* %1, i64 64, i32 1, i32 3, i32 0) #0
 ret void
 }
-; Function Attrs: nounwind
 declare spir_func %spirv.JointMatrixINTEL._float_8_8_3_3_2 addrspace(1)* @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_8_3_3_2PU3AS1fliii(float addrspace(1)*, i64, i32, i32, i32) #0
-; Function Attrs: nounwind
 declare spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_8_3_3_2liii(float addrspace(1)*, %spirv.JointMatrixINTEL._float_8_8_3_3_2 addrspace(1)*, i64, i32, i32, i32) #0
 
 

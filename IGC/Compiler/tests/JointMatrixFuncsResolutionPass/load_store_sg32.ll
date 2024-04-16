@@ -20,13 +20,13 @@ define spir_kernel void @test(float addrspace(1)* %ptr1, float addrspace(1)* %pt
 ; CHECK-NEXT:    [[TMP2:%.*]] = alloca <8 x float>
 
 ; CHECK-NEXT:    [[TMP3:%.*]] = bitcast <8 x float>* [[TMP2]] to i8*
-; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_8_global_v8i8_pi32_i32(i8* [[TMP3]], float addrspace(1)* [[PTR1]], i64 32)
+; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_8_global_v8i8_pi32_i32(i8* [[TMP3]], float addrspace(1)* [[PTR1]], i64 32, i32 0)
 ; CHECK-NEXT:    [[TMP4:%.*]] = load <8 x float>, <8 x float>* [[TMP2]]
   %C1 = call spir_func %spirv.JointMatrixINTEL._float_16_16_3_3_2 addrspace(1)* @_Z81__spirv_JointMatrixLoadINTEL_RPU3AS143__spirv_JointMatrixINTEL__float_16_16_3_3_2PU3AS1fliii(float addrspace(1)* %ptr1, i64 32, i32 0, i32 3, i32 0)
 
 ; CHECK-NEXT:    store <8 x float> [[TMP4]], <8 x float>* [[TMP1]]
 ; CHECK-NEXT:    [[TMP5:%.*]] = bitcast <8 x float>* [[TMP1]] to i8*
-; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_8_global_pi64_v8i8(float addrspace(1)* [[PTR2]], i8* [[TMP5]], i64 32)
+; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_16x16_i32_8_global_pi64_v8i8(float addrspace(1)* [[PTR2]], i8* [[TMP5]], i64 32, i32 0)
   call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS143__spirv_JointMatrixINTEL__float_16_16_3_3_2liii(float addrspace(1)* %ptr2, %spirv.JointMatrixINTEL._float_16_16_3_3_2 addrspace(1)* %C1, i64 32, i32 0, i32 3, i32 0)
 
 ; CHECK-NEXT:    ret void

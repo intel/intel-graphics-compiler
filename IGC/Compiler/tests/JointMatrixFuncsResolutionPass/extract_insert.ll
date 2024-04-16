@@ -21,7 +21,7 @@ define spir_kernel void @test(float addrspace(1)* %ptr1, i64 %ind1, float addrsp
 ; CHECK-NEXT:    [[TMP2:%.*]] = alloca <16 x float>
 
 ; CHECK-NEXT:    [[TMP3:%.*]] = bitcast <16 x float>* [[TMP2]] to i8*
-; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_16_global_v8i8_pi32_i32(i8* [[TMP3]], float addrspace(1)* [[PTR1]], i64 32)
+; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_16x16_i32_16_global_v8i8_pi32_i32(i8* [[TMP3]], float addrspace(1)* [[PTR1]], i64 32, i32 0)
 ; CHECK-NEXT:    [[TMP4:%.*]] = load <16 x float>, <16 x float>* [[TMP2]]
   %C1 = call spir_func %spirv.JointMatrixINTEL._float_16_16_3_3_2 addrspace(1)* @_Z81__spirv_JointMatrixLoadINTEL_RPU3AS143__spirv_JointMatrixINTEL__float_16_16_3_3_2PU3AS1fliii(float addrspace(1)* %ptr1, i64 32, i32 0, i32 3, i32 0)
 
@@ -35,7 +35,7 @@ define spir_kernel void @test(float addrspace(1)* %ptr1, i64 %ind1, float addrsp
   %3 = call spir_func %spirv.JointMatrixINTEL._float_16_16_3_3_2 addrspace(1)* @_Z27__spirv_VectorInsertDynamicPU3AS143__spirv_JointMatrixINTEL__float_16_16_3_3_2fl(%spirv.JointMatrixINTEL._float_16_16_3_3_2 addrspace(1)* %C1, float %2, i64 %ind1)
 
 ; CHECK-NEXT:    [[TMP7:%.*]] = bitcast [2 x <32 x i64>]* [[TMP1]] to i8*
-; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_32x64_i32_128_global_v8i8_pi32_i32(i8* [[TMP7]], float addrspace(1)* [[PTR2]], i64 128)
+; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_32x64_i32_128_global_v8i8_pi32_i32(i8* [[TMP7]], float addrspace(1)* [[PTR2]], i64 128, i32 0)
 ; CHECK-NEXT:    [[TMP8:%.*]] = bitcast [2 x <32 x i64>]* [[TMP1]] to <32 x i64>*
 ; CHECK-NEXT:    [[TMP9:%.*]] = load <32 x i64>, <32 x i64>* [[TMP8]]
 ; CHECK-NEXT:    [[TMP10:%.*]] = getelementptr <32 x i64>, <32 x i64>* [[TMP8]], i32 1
