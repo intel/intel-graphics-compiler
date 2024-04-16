@@ -129,7 +129,7 @@ void HandleSpirvDecorationMetadata::handleCacheControlINTEL(Instruction& I, Smal
 {
     static_assert(std::is_same_v<T, LoadCacheControl> || std::is_same_v<T, StoreCacheControl>);
     CacheControlFromMDNodes cacheControl = resolveCacheControlFromMDNodes<T>(m_pCtx, MDNodes);
-    if (cacheControl.isEmpty || cacheControl.isDefault) return;
+    if (cacheControl.isEmpty) return;
     if (cacheControl.isInvalid)
     {
         m_pCtx->EmitWarning("Unsupported cache controls configuration requested. Applying default configuration.");

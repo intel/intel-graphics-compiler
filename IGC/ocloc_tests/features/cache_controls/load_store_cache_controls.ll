@@ -18,6 +18,7 @@ target triple = "spir64-unknown-unknown"
 
 ; CHECK: .kernel "TestLoad_L0_Uncached__L3_Uncached"
 ; CHECK: lsc_load.ugm.uc.uc ({{.*}})
+; CHECK: lsc_store.ugm ({{.*}})
 define spir_kernel void @TestLoad_L0_Uncached__L3_Uncached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1, !spirv.Decorations !0
@@ -33,6 +34,7 @@ entry:
 
 ; CHECK: .kernel "TestLoad_L0_Uncached__L3_Cached"
 ; CHECK: lsc_load.ugm.uc.ca ({{.*}})
+; CHECK: lsc_store.ugm ({{.*}})
 define spir_kernel void @TestLoad_L0_Uncached__L3_Cached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1, !spirv.Decorations !10
@@ -48,6 +50,7 @@ entry:
 
 ; CHECK: .kernel "TestLoad_L0_Cached__L3_Uncached"
 ; CHECK: lsc_load.ugm.ca.uc ({{.*}})
+; CHECK: lsc_store.ugm ({{.*}})
 define spir_kernel void @TestLoad_L0_Cached__L3_Uncached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1, !spirv.Decorations !20
@@ -61,9 +64,10 @@ entry:
 !22 = !{i32 6442, i32 1, i32 0}  ; {CacheControlLoadINTEL, CacheLevel=1, Uncached}
 
 
-; CHECK: .kernel "TestLoad_L0_Cached__L3_Cached__DefaultConfig"
-; CHECK: lsc_load.ugm ({{.*}})
-define spir_kernel void @TestLoad_L0_Cached__L3_Cached__DefaultConfig(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
+; CHECK: .kernel "TestLoad_L0_Cached__L3_Cached"
+; CHECK: lsc_load.ugm.ca.ca ({{.*}})
+; CHECK: lsc_store.ugm ({{.*}})
+define spir_kernel void @TestLoad_L0_Cached__L3_Cached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1, !spirv.Decorations !30
   %0 = load i32, i32 addrspace(1)* %arrayidx, align 4
@@ -78,6 +82,7 @@ entry:
 
 ; CHECK: .kernel "TestLoad_L0_Streaming__L3_Uncached"
 ; CHECK: lsc_load.ugm.st.uc ({{.*}})
+; CHECK: lsc_store.ugm ({{.*}})
 define spir_kernel void @TestLoad_L0_Streaming__L3_Uncached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1, !spirv.Decorations !40
@@ -93,6 +98,7 @@ entry:
 
 ; CHECK: .kernel "TestLoad_L0_Streaming__L3_Cached"
 ; CHECK: lsc_load.ugm.st.ca ({{.*}})
+; CHECK: lsc_store.ugm ({{.*}})
 define spir_kernel void @TestLoad_L0_Streaming__L3_Cached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1, !spirv.Decorations !50
@@ -108,6 +114,7 @@ entry:
 
 ; CHECK: .kernel "TestLoad_L0_InvalidateAfterRead__L3_Cached"
 ; CHECK: lsc_load.ugm.ri.ca ({{.*}})
+; CHECK: lsc_store.ugm ({{.*}})
 define spir_kernel void @TestLoad_L0_InvalidateAfterRead__L3_Cached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1, !spirv.Decorations !60
@@ -123,6 +130,7 @@ entry:
 
 ; CHECK: .kernel "TestLoad_L0_Uncached__L3_ConstCached"
 ; CHECK-PVC: lsc_load.ugm ({{.*}})
+; CHECK: lsc_store.ugm ({{.*}})
 define spir_kernel void @TestLoad_L0_Uncached__L3_ConstCached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1, !spirv.Decorations !70
@@ -138,6 +146,7 @@ entry:
 
 ; CHECK: .kernel "TestLoad_L0_Cached__L3_ConstCached"
 ; CHECK-PVC: lsc_load.ugm ({{.*}})
+; CHECK: lsc_store.ugm ({{.*}})
 define spir_kernel void @TestLoad_L0_Cached__L3_ConstCached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1, !spirv.Decorations !80
@@ -153,6 +162,7 @@ entry:
 
 ; CHECK: .kernel "TestLoad_L0_InvalidateAfterRead__L3_InvalidateAfterRead"
 ; CHECK-PVC: lsc_load.ugm ({{.*}})
+; CHECK: lsc_store.ugm ({{.*}})
 define spir_kernel void @TestLoad_L0_InvalidateAfterRead__L3_InvalidateAfterRead(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1, !spirv.Decorations !90
@@ -167,6 +177,7 @@ entry:
 
 
 ; CHECK: .kernel "TestStore_L0_Uncached__L3_Uncached"
+; CHECK: lsc_load.ugm ({{.*}})
 ; CHECK: lsc_store.ugm.uc.uc ({{.*}})
 define spir_kernel void @TestStore_L0_Uncached__L3_Uncached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
@@ -181,9 +192,10 @@ entry:
 !102 = !{i32 6443, i32 1, i32 0}  ; {CacheControlStoreINTEL, CacheLevel=1, Uncached}
 
 
-; CHECK: .kernel "TestStore_L0_Uncached__L3_WriteBack__DefaultConfig"
-; CHECK: lsc_store.ugm ({{.*}})
-define spir_kernel void @TestStore_L0_Uncached__L3_WriteBack__DefaultConfig(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
+; CHECK: .kernel "TestStore_L0_Uncached__L3_WriteBack"
+; CHECK: lsc_load.ugm ({{.*}})
+; CHECK: lsc_store.ugm.uc.wb ({{.*}})
+define spir_kernel void @TestStore_L0_Uncached__L3_WriteBack(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1
   %0 = load i32, i32 addrspace(1)* %arrayidx, align 4
@@ -197,6 +209,7 @@ entry:
 
 
 ; CHECK: .kernel "TestStore_L0_WriteThrough__L3_Uncached"
+; CHECK: lsc_load.ugm ({{.*}})
 ; CHECK: lsc_store.ugm.wt.uc ({{.*}})
 define spir_kernel void @TestStore_L0_WriteThrough__L3_Uncached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
@@ -212,6 +225,7 @@ entry:
 
 
 ; CHECK: .kernel "TestStore_L0_WriteThrough__L3_WriteBack"
+; CHECK: lsc_load.ugm ({{.*}})
 ; CHECK: lsc_store.ugm.wt.wb ({{.*}})
 define spir_kernel void @TestStore_L0_WriteThrough__L3_WriteBack(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
@@ -227,6 +241,7 @@ entry:
 
 
 ; CHECK: .kernel "TestStore_L0_Streaming__L3_Uncached"
+; CHECK: lsc_load.ugm ({{.*}})
 ; CHECK: lsc_store.ugm.st.uc ({{.*}})
 define spir_kernel void @TestStore_L0_Streaming__L3_Uncached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
@@ -242,6 +257,7 @@ entry:
 
 
 ; CHECK: .kernel "TestStore_L0_Streaming__L3_WriteBack"
+; CHECK: lsc_load.ugm ({{.*}})
 ; CHECK: lsc_store.ugm.st.wb ({{.*}})
 define spir_kernel void @TestStore_L0_Streaming__L3_WriteBack(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
@@ -257,6 +273,7 @@ entry:
 
 
 ; CHECK: .kernel "TestStore_L0_WriteBack__L3_WriteBack"
+; CHECK: lsc_load.ugm ({{.*}})
 ; CHECK: lsc_store.ugm.wb.wb ({{.*}})
 define spir_kernel void @TestStore_L0_WriteBack__L3_WriteBack(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:

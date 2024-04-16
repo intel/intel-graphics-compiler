@@ -17,9 +17,7 @@ entry:
   ; CHECK: store i32 0, i32 addrspace(1)* %arrayidx0, align 4, !lsc.cache.ctrl [[S0_CC:!.*]]
   store i32 0, i32 addrspace(1)* %arrayidx0, align 4
   %arrayidx1 = getelementptr inbounds i32, i32 addrspace(1)* %buffer, i64 1, !spirv.Decorations !10
-  ; COM: cached controls specified by !10 metadata are the same as default cache controls, so not
-  ;      expecting insertion of !lsc.cache.ctrl metadata
-  ; CHECK-NOT: store i32 0, i32 addrspace(1)* %arrayidx1, align 4, !lsc.cache.ctrl
+  ; CHECK: store i32 0, i32 addrspace(1)* %arrayidx1, align 4, !lsc.cache.ctrl
   store i32 0, i32 addrspace(1)* %arrayidx1, align 4
   %arrayidx2 = getelementptr inbounds i32, i32 addrspace(1)* %buffer, i64 1, !spirv.Decorations !13
   ; CHECK: store i32 0, i32 addrspace(1)* %arrayidx2, align 4, !lsc.cache.ctrl [[S2_CC:!.*]]

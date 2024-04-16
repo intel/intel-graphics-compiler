@@ -224,9 +224,8 @@ namespace IGC
     }
 
     struct CacheControlFromMDNodes {
-        int value; // equal to default if (isEmpty || isDefault || isInvalid)
+        int value; // equal to default if (isEmpty || isInvalid)
         bool isEmpty;
-        bool isDefault;
         bool isInvalid;
     };
     template<typename T>
@@ -271,7 +270,6 @@ namespace IGC
         LSC_L1_L3_CC newLSCCacheControl =
             mapToLSCCacheControl(ctx, newL1CacheControl, newL3CacheControl);
 
-        result.isDefault = (defaultLSCCacheControls == newLSCCacheControl);
         if (newLSCCacheControl == LSC_CC_INVALID)
         {
             result.isInvalid = true;
