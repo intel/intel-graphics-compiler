@@ -116,6 +116,8 @@ static MsgOp ConvertSamplerOpToMsgOp(VISASampler3DSubOpCode op) {
     return MsgOp::LD_LZ;
   case VISASampler3DSubOpCode::VISA_3D_LD_L:
     return MsgOp::LD_L;
+  case VISASampler3DSubOpCode::VISA_3D_LD:
+    return MsgOp::LD;
   case VISASampler3DSubOpCode::VISA_3D_LD2DMS_W:
     return MsgOp::LD_2DMS_W;
   case VISASampler3DSubOpCode::VISA_3D_LD_MCS:
@@ -124,6 +126,8 @@ static MsgOp ConvertSamplerOpToMsgOp(VISASampler3DSubOpCode op) {
     return MsgOp::SAMPLE_INFO;
   case VISASampler3DSubOpCode::VISA_3D_RESINFO:
     return MsgOp::RESINFO;
+  case VISASampler3DSubOpCode::VISA_3D_LOD:
+    return MsgOp::LOD;
   default:
     return MsgOp::INVALID;
   }
