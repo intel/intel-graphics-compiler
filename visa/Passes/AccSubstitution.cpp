@@ -460,6 +460,13 @@ bool AccSubPass::isAccCandidate(G4_INST *inst, int &lastUse, bool &mustBeAcc0,
     return false;
   }
 
+  if (builder.usesStack() && (dst->getTopDcl() == kernel.fg.getFramePtrDcl() ||
+                              dst->getTopDcl() == kernel.fg.getStackPtrDcl() ||
+                              dst->getTopDcl() == kernel.fg.getStackPtrDcl() ||
+                              dst->getTopDcl() == kernel.fg.pseudoVCEDcl)) {
+    return false;
+  }
+
   if (!IS_TYPE_FLOAT_FOR_ACC(dst->getType())) {
     isAllFloat = false;
   }
