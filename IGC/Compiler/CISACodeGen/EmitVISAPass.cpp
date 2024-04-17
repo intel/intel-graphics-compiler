@@ -9082,6 +9082,7 @@ void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
     string asmStr = IA->getAsmString();
     smallvector<CVariable*, 8> opnds;
     SmallVector<StringRef, 8> constraints;
+    DenseMap<CVariable*, Instruction*> DstOpndMap;
 
     if (asmStr.empty())
         return;
@@ -9107,12 +9108,14 @@ void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
             IGC_ASSERT(id < numOutputs);
             IGC_ASSERT(outputs[id] == nullptr);
             outputs[id] = GetSymbol(ex);
+            DstOpndMap[outputs[id]] = ex;
         }
         for (auto var : outputs) opnds.push_back(var);
     }
     else if (m_destination)
     {
         opnds.push_back(m_destination);
+        DstOpndMap[m_destination] = inst;
     }
     for (unsigned i = 0; i < IGCLLVM::getNumArgOperands(inst); i++)
     {
@@ -9135,9 +9138,12 @@ void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
                 CVariable* dest = opnds[destID];
                 if (cv && dest && cv != dest)
                 {
-                    if (inst->getType()->isVectorTy())
+                    auto iter = DstOpndMap.find(dest);
+                    IGC_ASSERT(iter != DstOpndMap.end());
+                    Instruction* I = iter->second;
+                    if (I->getType()->isVectorTy())
                     {
-                        emitVectorCopy(dest, cv, int_cast<unsigned>(dyn_cast<IGCLLVM::FixedVectorType>(inst->getType())->getNumElements()));
+                        emitVectorCopy(dest, cv, int_cast<unsigned>(dyn_cast<IGCLLVM::FixedVectorType>(I->getType())->getNumElements()));
                     }
                     else
                     {
