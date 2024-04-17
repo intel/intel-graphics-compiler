@@ -586,6 +586,10 @@ CallGraphNode *CMABI::TransformKernel(Function *F) {
 
   vc::replaceFunctionRefMD(*F, *NF);
 
+  // Update kernel list's entry
+  Info->Kernels.erase(F);
+  Info->Kernels.insert(NF);
+
   // Now that the old function is dead, delete it. If there is a dangling
   // reference to the CallgraphNode, just leave the dead function around.
   NF_CGN->stealCalledFunctionsFrom(CG[F]);
