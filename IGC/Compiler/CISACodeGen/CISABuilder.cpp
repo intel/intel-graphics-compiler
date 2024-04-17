@@ -2634,7 +2634,8 @@ namespace IGC
 
     void CEncoder::Info(EOPCODE subOpcode, uint writeMask, const ResourceDescriptor& resource, CVariable* lod, CVariable* dst)
     {
-        VISA_StateOpndHandle* surfOpnd = GetVISASurfaceOpnd(resource);
+        VISA_StateOpndHandle* surfOpnd =
+            GetVISASurfaceOpnd(resource);
         VISA_RawOpnd* dstVar = GetRawDestination(dst);
         VISA_RawOpnd* lodVar = GetRawSource(lod);
 
