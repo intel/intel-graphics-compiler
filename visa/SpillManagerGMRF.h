@@ -619,7 +619,6 @@ private:
   unsigned spillRegStart_ = 0;
   unsigned indrSpillRegStart_ = 0;
   unsigned spillRegOffset_ = 0;
-  LSLR_LIST activeLR_;
   std::unordered_set<G4_DstRegRegion *> noRMWNeeded;
 
   const Interference *spillIntf_ = nullptr;

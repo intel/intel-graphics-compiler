@@ -433,23 +433,35 @@ unsigned SpillManagerGRF::calculateSpillDispForLS(G4_RegVar *regVar) const {
                       : regVar->getId();
   vASSERT(lrId < varIdCount_);
 
-  for (auto lr : activeLR_) {
-    G4_RegVar *intfRegVar = lr->getTopDcl()->getRegVar();
-    if (intfRegVar->isRegVarTransient())
-      continue;
+  for (auto lr : (*spilledLSLRs_)) {
+    G4_Declare* dcl = regVar->getDeclare();
+    while (dcl->getAliasDeclare()) {
+      dcl = dcl->getAliasDeclare();
+    }
+    LSLiveRange* curLr = gra.getLSLR(dcl);
+    unsigned int curSid, curEid, sid, eid;
+    curLr->getFirstRef(curSid);
+    curLr->getLastRef(curEid);
+    lr->getFirstRef(sid);
+    lr->getLastRef(eid);
+    if (curSid <= eid && sid <= curEid) {
+      G4_RegVar* intfRegVar = lr->getTopDcl()->getRegVar();
+      if (intfRegVar->isRegVarTransient())
+        continue;
 
-    unsigned iDisp = intfRegVar->getDisp();
-    if (iDisp == UINT_MAX)
-      continue;
+      unsigned iDisp = intfRegVar->getDisp();
+      if (iDisp == UINT_MAX)
+        continue;
 
-    LocList::iterator loc;
-    for (loc = locList.begin();
-         loc != locList.end() && (*loc)->getDisp() < iDisp; ++loc)
-      ;
-    if (loc != locList.end())
-      locList.insert(loc, intfRegVar);
-    else
-      locList.push_back(intfRegVar);
+      LocList::iterator loc;
+      for (loc = locList.begin();
+        loc != locList.end() && (*loc)->getDisp() < iDisp; ++loc)
+        ;
+      if (loc != locList.end())
+        locList.insert(loc, intfRegVar);
+      else
+        locList.push_back(intfRegVar);
+    }
   }
 
   // Find a spill slot for lRange within the locList.
@@ -3677,11 +3689,6 @@ void SpillManagerGRF::insertAddrTakenLSSpillAndFillCode(
         spillRegOffset_ += numrows;
       }
 
-      if (!lr->isActiveLR()) {
-        lr->setActiveLR(true);
-        updateActiveList(lr, &activeLR_);
-      }
-
       if (numrows > 1 ||
           (lr->getTopDcl()->getNumElems() * lr->getTopDcl()->getElemSize() ==
            builder_->getGRFSize())) {
@@ -3884,11 +3891,6 @@ void SpillManagerGRF::insertAddrTakenLSSpillFill(
          inst_it++) {
       G4_INST *curInst = (*inst_it);
 
-      unsigned int instID = curInst->getLexicalId();
-      if (instID != (unsigned int)-1) {
-        expireRanges(instID * 2, &activeLR_);
-      }
-
       if (failSafeSpill_) {
         spillRegOffset_ = indrSpillRegStart_;
       }
@@ -3911,16 +3913,6 @@ void SpillManagerGRF::insertAddrTakenLSSpillFill(
         }
       }
     }
-  }
-
-  if (activeLR_.size() > 0) {
-    // Expire any remaining ranges
-    LSLiveRange *lastActive = activeLR_.back();
-    unsigned int endIdx;
-
-    lastActive->getLastRef(endIdx);
-
-    expireRanges(endIdx, &activeLR_);
   }
 }
 
@@ -4390,11 +4382,7 @@ bool SpillManagerGRF::spillLiveRanges(G4_Kernel *kernel) {
       INST_LIST::iterator kt = jt;
       ++kt;
       G4_INST *inst = *jt;
-      unsigned int instID = inst->getLexicalId();
       curInst = inst;
-      if (instID != (unsigned int)-1) {
-        expireRanges(instID * 2, &activeLR_);
-      }
 
       if (failSafeSpill_) {
         spillRegOffset_ = spillRegStart_;
@@ -4411,11 +4399,6 @@ bool SpillManagerGRF::spillLiveRanges(G4_Kernel *kernel) {
           G4_Declare *dcl = regVar->getDeclare();
           while (dcl->getAliasDeclare()) {
             dcl = dcl->getAliasDeclare();
-          }
-          LSLiveRange *lr = gra.getLSLR(dcl);
-          if (!lr->isActiveLR()) {
-            lr->setActiveLR(true);
-            updateActiveList(lr, &activeLR_);
           }
 
           if (getRFType(regVar) == G4_GRF) {
@@ -4445,11 +4428,6 @@ bool SpillManagerGRF::spillLiveRanges(G4_Kernel *kernel) {
             G4_Declare *dcl = regVar->getDeclare();
             while (dcl->getAliasDeclare()) {
               dcl = dcl->getAliasDeclare();
-            }
-            LSLiveRange *lr = gra.getLSLR(dcl);
-            if (!lr->isActiveLR()) {
-              lr->setActiveLR(true);
-              updateActiveList(lr, &activeLR_);
             }
 
             if (inst->isLifeTimeEnd()) {
