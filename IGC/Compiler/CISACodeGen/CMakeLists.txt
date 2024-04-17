@@ -200,7 +200,6 @@ set(IGC_BUILD__HDR__CISACodeGen_Common
     "${CMAKE_CURRENT_SOURCE_DIR}/messageEncoding.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/opCode.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/IGCLivenessAnalysis.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/IGCFunctionExternalPressure.h"
   )
 
 

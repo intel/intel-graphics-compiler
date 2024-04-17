@@ -42,13 +42,13 @@ IGCLivenessAnalysis::IGCLivenessAnalysis() : FunctionPass(ID) {
 };
 
 
-unsigned int IGCLivenessAnalysis::registerSizeInBytes() {
+unsigned int IGCLivenessAnalysisBase::registerSizeInBytes() {
     if (CGCtx->platform.isProductChildOf(IGFX_PVC))
         return 64;
     return 32;
 }
 
-SIMDMode IGCLivenessAnalysis::bestGuessSIMDSize() {
+SIMDMode IGCLivenessAnalysisBase::bestGuessSIMDSize() {
     switch (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth)) {
     case 0:
         break;
@@ -65,7 +65,7 @@ SIMDMode IGCLivenessAnalysis::bestGuessSIMDSize() {
     return SIMDMode::SIMD8;
 }
 
-ValueSet IGCLivenessAnalysis::getDefs(llvm::BasicBlock &BB) {
+ValueSet IGCLivenessAnalysisBase::getDefs(llvm::BasicBlock &BB) {
 
     ValueSet &BBIn = In[&BB];
     ValueSet &BBOut = Out[&BB];
@@ -80,13 +80,13 @@ ValueSet IGCLivenessAnalysis::getDefs(llvm::BasicBlock &BB) {
 
 // for every successor we take all of it's IN values
 // and the PHI values that are coming from our BB
-void IGCLivenessAnalysis::mergeSets(ValueSet *OutSet, llvm::BasicBlock *Succ) {
+void IGCLivenessAnalysisBase::mergeSets(ValueSet *OutSet, llvm::BasicBlock *Succ) {
     for (auto elem : In[Succ])
         OutSet->insert(elem);
 }
 
 // we scan through all successors and merge their INSETs as our OUTSET
-void IGCLivenessAnalysis::combineOut(llvm::BasicBlock *BB, ValueSet *Set) {
+void IGCLivenessAnalysisBase::combineOut(llvm::BasicBlock *BB, ValueSet *Set) {
     ValueSet *OutSet = &Out[BB];
     for (llvm::succ_iterator SI = llvm::succ_begin(BB), SE = llvm::succ_end(BB);
          SI != SE; ++SI) {
@@ -95,7 +95,7 @@ void IGCLivenessAnalysis::combineOut(llvm::BasicBlock *BB, ValueSet *Set) {
     }
 }
 
-void IGCLivenessAnalysis::addOperandsToSet(llvm::Instruction *Inst, ValueSet &Set) {
+void IGCLivenessAnalysisBase::addOperandsToSet(llvm::Instruction *Inst, ValueSet &Set) {
 
     // do not process debug instructions and lifetimehints in any way
     if(Inst->isDebugOrPseudoInst() || Inst->isLifetimeStartOrEnd())
@@ -115,7 +115,7 @@ void IGCLivenessAnalysis::addOperandsToSet(llvm::Instruction *Inst, ValueSet &Se
     }
 }
 
-void IGCLivenessAnalysis::addNonLocalOperandsToSet(llvm::Instruction *Inst, ValueSet &Set) {
+void IGCLivenessAnalysisBase::addNonLocalOperandsToSet(llvm::Instruction *Inst, ValueSet &Set) {
 
     // do not process debug instructions and lifetimehints in any way
     if(Inst->isDebugOrPseudoInst() || Inst->isLifetimeStartOrEnd())
@@ -144,7 +144,7 @@ void IGCLivenessAnalysis::addNonLocalOperandsToSet(llvm::Instruction *Inst, Valu
 // has its own set of PHI values, that it has to deliver
 // so we take values that are coming from each block
 // and add them to their OUT set directly
-void IGCLivenessAnalysis::addToPhiSet(llvm::PHINode *Phi, PhiSet *InPhiSet) {
+void IGCLivenessAnalysisBase::addToPhiSet(llvm::PHINode *Phi, PhiSet *InPhiSet) {
     for (auto BB : Phi->blocks()) {
         auto ValueFromOurBlock = Phi->getIncomingValueForBlock(BB);
         auto *OutSet = &Out[BB];
@@ -159,7 +159,7 @@ void IGCLivenessAnalysis::addToPhiSet(llvm::PHINode *Phi, PhiSet *InPhiSet) {
 
 // scan through block in reversed order and add each operand
 // into IN block while deleting defined values
-void IGCLivenessAnalysis::processBlock(llvm::BasicBlock *BB, ValueSet &Set,
+void IGCLivenessAnalysisBase::processBlock(llvm::BasicBlock *BB, ValueSet &Set,
                                        PhiSet *PhiSet) {
     for (auto RI = BB->rbegin(), RE = BB->rend(); RI != RE; ++RI) {
         llvm::Instruction *Inst = &(*RI);
@@ -174,7 +174,7 @@ void IGCLivenessAnalysis::processBlock(llvm::BasicBlock *BB, ValueSet &Set,
     }
 }
 
-void IGCLivenessAnalysis::livenessAnalysis(llvm::Function &F, BBSet *StartBBs) {
+void IGCLivenessAnalysisBase::livenessAnalysis(llvm::Function &F, BBSet *StartBBs) {
     std::queue<llvm::BasicBlock *> Worklist;
 
     if (StartBBs != nullptr)
@@ -222,7 +222,7 @@ void IGCLivenessAnalysis::livenessAnalysis(llvm::Function &F, BBSet *StartBBs) {
     }
 }
 
-unsigned int IGCLivenessAnalysis::estimateSizeInBytes(ValueSet &Set,
+unsigned int IGCLivenessAnalysisBase::estimateSizeInBytes(ValueSet &Set,
                                                       Function &F,
                                                       unsigned int SIMD,
                                                       WIAnalysisRunner* WI) {
@@ -243,7 +243,7 @@ unsigned int IGCLivenessAnalysis::estimateSizeInBytes(ValueSet &Set,
 }
 
 
-void IGCLivenessAnalysis::collectPressureForBB(
+void IGCLivenessAnalysisBase::collectPressureForBB(
     llvm::BasicBlock &BB, InsideBlockPressureMap &BBListing,
     unsigned int SIMD, WIAnalysisRunner* WI) {
     ValueSet &BBOut = Out[&BB];

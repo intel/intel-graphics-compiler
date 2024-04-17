@@ -16,7 +16,6 @@ See LICENSE.TXT for details.
 #pragma once
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "Compiler/CISACodeGen/IGCLivenessAnalysis.h"
-#include "Compiler/CISACodeGen/IGCFunctionExternalPressure.h"
 #include "Compiler/CISACodeGen/TranslationTable.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/MetaDataApi/MetaDataApi.h"

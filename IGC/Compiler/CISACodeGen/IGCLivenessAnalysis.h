@@ -12,9 +12,9 @@ SPDX-License-Identifier: MIT
 #include "DebugInfo/VISAModule.hpp"
 #include "Probe/Assertion.h"
 #include "ShaderCodeGen.hpp"
-#include "IGCFunctionExternalPressure.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
+#include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/IR/DIBuilder.h"
 #include "common/LLVMWarningsPop.hpp"
 
@@ -22,56 +22,68 @@ using namespace IGC;
 
 namespace IGC {
 
-class IGCLivenessAnalysis : public llvm::FunctionPass {
-    // contains all values that liveIn into this block
-    DFSet In;
-    // this is a redundant set for visualization purposes,
-    // contains all values that go into PHIs grouped
-    // by the block from which they are coming
-    InPhiSet InPhi;
-    // contains all of the values that liveOut out of this block
-    DFSet Out;
+    typedef std::unordered_map<llvm::Value *, unsigned int> InclusionSet;
+    typedef llvm::SmallPtrSet<llvm::Value *, 32> ValueSet;
+    typedef llvm::SmallPtrSet<llvm::BasicBlock *, 32> BBSet;
+    typedef std::unordered_map<llvm::BasicBlock *, ValueSet> DFSet;
+    typedef std::unordered_map<llvm::BasicBlock *, ValueSet> PhiSet;
+    typedef std::unordered_map<llvm::BasicBlock *, PhiSet> InPhiSet;
+    typedef std::unordered_map<llvm::Value *, unsigned int> InsideBlockPressureMap;
 
-    IGC::CodeGenContext *CGCtx = nullptr;
+    class IGCLivenessAnalysisBase {
+        public:
 
+        // contains all values that liveIn into this block
+        DFSet In;
+        // this is a redundant set for visualization purposes,
+        // contains all values that go into PHIs grouped
+        // by the block from which they are coming
+        InPhiSet InPhi;
+        // contains all of the values that liveOut out of this block
+        DFSet Out;
+
+        IGC::CodeGenContext *CGCtx = nullptr;
+
+        // returns all definitions that were made in the block
+        // computed by taking difference between In and Out,
+        // everyting that was originated in the block and got into OUT
+        ValueSet getDefs(llvm::BasicBlock &BB);
+        DFSet &getInSet() { return In; }
+        const DFSet &getInSet() const { return In; }
+        InPhiSet &getInPhiSet() { return InPhi; }
+        const InPhiSet &getInPhiSet() const { return InPhi; }
+        DFSet &getOutSet() { return Out; }
+        const DFSet &getOutSet() const { return Out; }
+
+        unsigned int estimateSizeInBytes(ValueSet &Set, llvm::Function &F, unsigned int SIMD, WIAnalysisRunner* WI = nullptr);
+        void collectPressureForBB(llvm::BasicBlock &BB,
+                InsideBlockPressureMap &BBListing,
+                unsigned int SIMD,
+                WIAnalysisRunner* WI = nullptr);
+
+        SIMDMode bestGuessSIMDSize();
+
+        unsigned int bytesToRegisters(unsigned int Bytes) {
+            unsigned int RegisterSizeInBytes = registerSizeInBytes();
+            unsigned int AmountOfRegistersRoundUp =
+                (Bytes + RegisterSizeInBytes - 1) / RegisterSizeInBytes;
+            return AmountOfRegistersRoundUp;
+        }
+
+        unsigned int registerSizeInBytes();
+        void mergeSets(ValueSet *OutSet, llvm::BasicBlock *Succ);
+        void combineOut(llvm::BasicBlock *BB, ValueSet *Set);
+        void addToPhiSet(llvm::PHINode *Phi, PhiSet *InPhiSet);
+        void addOperandsToSet(llvm::Instruction *Inst, ValueSet &Set);
+        void addNonLocalOperandsToSet(llvm::Instruction *Inst, ValueSet &Set);
+        void processBlock(llvm::BasicBlock *BB, ValueSet &Set, PhiSet *PhiSet);
+        void livenessAnalysis(llvm::Function &F, BBSet *StartBBs = nullptr);
+    };
+
+class IGCLivenessAnalysis : public llvm::FunctionPass, public IGCLivenessAnalysisBase {
   public:
 
-    // returns all definitions that were made in the block
-    // computed by taking difference between In and Out,
-    // everyting that was originated in the block and got into OUT
-    ValueSet getDefs(llvm::BasicBlock &BB);
-    DFSet &getInSet() { return In; }
-    const DFSet &getInSet() const { return In; }
-    InPhiSet &getInPhiSet() { return InPhi; }
-    const InPhiSet &getInPhiSet() const { return InPhi; }
-    DFSet &getOutSet() { return Out; }
-    const DFSet &getOutSet() const { return Out; }
 
-    unsigned int estimateSizeInBytes(ValueSet &Set, llvm::Function &F, unsigned int SIMD, WIAnalysisRunner* WI = nullptr);
-    void collectPressureForBB(llvm::BasicBlock &BB,
-                              InsideBlockPressureMap &BBListing,
-                              unsigned int SIMD,
-                              WIAnalysisRunner* WI = nullptr);
-
-    SIMDMode bestGuessSIMDSize();
-    // I expect it to be used as
-    //   InsideBlockPressureMap Map = getPressureMapForBB(...)
-    // for copy elision
-    // to get SIMD, you can use bestGuessSIMDSize()
-    // if you know better, put your own value
-    InsideBlockPressureMap getPressureMapForBB(llvm::BasicBlock &BB,
-                                               unsigned int SIMD, WIAnalysisRunner* WI = nullptr) {
-        InsideBlockPressureMap PressureMap;
-        collectPressureForBB(BB, PressureMap, SIMD, WI);
-        return PressureMap;
-    }
-
-    unsigned int bytesToRegisters(unsigned int Bytes) {
-        unsigned int RegisterSizeInBytes = registerSizeInBytes();
-        unsigned int AmountOfRegistersRoundUp =
-            (Bytes + RegisterSizeInBytes - 1) / RegisterSizeInBytes;
-        return AmountOfRegistersRoundUp;
-    }
 
     unsigned int getMaxRegCountForBB(llvm::BasicBlock &BB, unsigned int SIMD, WIAnalysisRunner* WI = nullptr) {
         InsideBlockPressureMap PressureMap;
@@ -124,7 +136,6 @@ class IGCLivenessAnalysis : public llvm::FunctionPass {
         Out.clear();
     }
 
-
     // if you need to recompute pressure analysis after modifications were made
     // that can potentially change In Out sets, we need to update them, it's fast
     // collectPressureForBB()
@@ -149,7 +160,6 @@ class IGCLivenessAnalysis : public llvm::FunctionPass {
         }
         livenessAnalysis(F, BBs);
     }
-    void livenessAnalysis(llvm::Function &F, BBSet *StartBBs);
 
     static char ID;
     llvm::StringRef getPassName() const override { return "IGCLivenessAnalysis"; }
@@ -160,16 +170,65 @@ class IGCLivenessAnalysis : public llvm::FunctionPass {
         AU.setPreservesAll();
         AU.addRequired<CodeGenContextWrapper>();
     }
-  private:
+};
 
-    unsigned int registerSizeInBytes();
-    void mergeSets(ValueSet *OutSet, llvm::BasicBlock *Succ);
-    void combineOut(llvm::BasicBlock *BB, ValueSet *Set);
-    void addToPhiSet(llvm::PHINode *Phi, PhiSet *InPhiSet);
-    void addOperandsToSet(llvm::Instruction *Inst, ValueSet &Set);
-    void addNonLocalOperandsToSet(llvm::Instruction *Inst, ValueSet &Set);
-    void processBlock(llvm::BasicBlock *BB, ValueSet &Set, PhiSet *PhiSet);
+typedef std::unordered_map<llvm::CallInst *, unsigned int> CallSiteToPressureMap;
+class IGCFunctionExternalRegPressureAnalysis : public llvm::ModulePass, public IGCLivenessAnalysisBase {
+    // this map contains external pressure for a function
+    std::unordered_map<Function *, unsigned int> ExternalFunctionPressure;
+    // this map contains all the callsites in the module and their pressure
+    CallSiteToPressureMap CallSitePressure;
 
+    // already present in IGCLivenessAnalysisBase
+    //IGC::CodeGenContext *CGCtx = nullptr;
+    IGCMD::MetaDataUtils* MDUtils = nullptr;
+    ModuleMetaData* ModMD = nullptr;
+
+    std::unique_ptr<WIAnalysisRunner> runWIAnalysis(Function &F);
+    void generateTableOfPressure(Module &M, unsigned int SIMD);
+
+  public:
+    static char ID;
+    llvm::StringRef getPassName() const override {
+        return "FunctionExternalPressure";
+    }
+
+    std::unique_ptr<InsideBlockPressureMap> getPressureMapForBB(llvm::BasicBlock &BB,
+            unsigned int SIMD, WIAnalysisRunner& WI) {
+        std::unique_ptr<InsideBlockPressureMap> PressureMap = std::make_unique<InsideBlockPressureMap>();
+        collectPressureForBB(BB, *PressureMap, SIMD, &WI);
+        return PressureMap;
+    }
+
+    // returns pressure in registers
+    unsigned int getExternalPressureForFunction(llvm::Function* F) {
+        unsigned int Registers = bytesToRegisters(ExternalFunctionPressure[F]);
+        return Registers;
+    }
+
+    IGCFunctionExternalRegPressureAnalysis();
+    virtual ~IGCFunctionExternalRegPressureAnalysis() {}
+
+    bool runOnModule(llvm::Module &M) override;
+    virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+        AU.setPreservesAll();
+
+        AU.addRequired<CallGraphWrapperPass>();
+        AU.addRequired<CodeGenContextWrapper>();
+        AU.addRequired<MetaDataUtilsWrapper>();
+
+        AU.addRequired<DominatorTreeWrapperPass>();
+        AU.addRequired<PostDominatorTreeWrapperPass>();
+        AU.addRequired<LoopInfoWrapperPass>();
+
+    }
+    void releaseMemory() override {
+        In.clear();
+        InPhi.clear();
+        Out.clear();
+        ExternalFunctionPressure.clear();
+        CallSitePressure.clear();
+    }
 };
 
 
