@@ -1094,9 +1094,9 @@ void DepSet::setInputsSrcDep() {
                                    : m_instruction->getSrc1Length();
           // if we can't tell the number of registers
           // (e.g. the descriptor is in a register),
-          // then we must conservatively assume the worst (31)
+          // then we must conservatively assume the worst (32)
           if (nregs < 0)
-            nregs = 31;
+            nregs = 32;
           uint32_t regNum = op.getDirRegRef().regNum;
           for (uint32_t i = 0; i < (uint32_t)nregs; i++) {
             if ((regNum + i) >= m_DB.getGRF_REGS()) {
@@ -1259,7 +1259,7 @@ void DepSet::setOutputsDstDep() {
       // getDstLength return -1 when it's not able to deduce the length
       // we have to be conservative and use the max
       if (nregs < 0)
-        nregs = 31;
+        nregs = 32;
       for (uint32_t i = 0; i < (uint32_t)nregs; i++) {
         uint32_t regNum = op.getDirRegRef().regNum;
         if ((regNum + i) >= m_DB.getGRF_REGS()) {
