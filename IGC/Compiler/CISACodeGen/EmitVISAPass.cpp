@@ -20413,8 +20413,10 @@ bool EmitPass::ResourceLoopHeader(
         uniformResource.m_surfaceType = resource.m_surfaceType;
         uniformResource.m_resource = UniformCopy(resource.m_resource, offset);
         uniformResource.m_isConstant = resource.m_isConstant;
-        m_encoder->Cmp(EPREDICATE_EQ, resourceFlag, uniformResource.m_resource, resource.m_resource);
-        m_encoder->Push();
+        {
+            m_encoder->Cmp(EPREDICATE_EQ, resourceFlag, uniformResource.m_resource, resource.m_resource);
+            m_encoder->Push();
+        }
         resource = uniformResource;
     }
     if (!uniformSampler)
