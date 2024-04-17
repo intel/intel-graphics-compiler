@@ -400,7 +400,15 @@ public:
     } else {
       // per-thread payload vars
       perThreadOffsetMem = CTIS;
-      perThreadOffsetMem -= useInlineData ? builder.getInlineDataSize() : 0;
+
+      if (useInlineData && builder.getInlineDataSize() >= perThreadOffsetMem)
+      {
+          perThreadOffsetMem = 0;
+      }
+      else if (useInlineData)
+      {
+          perThreadOffsetMem -= builder.getInlineDataSize();
+      }
 
       // cross-thread payload vars
       numCrossThreadDW = CTIS / TypeSize(Type_UD);
