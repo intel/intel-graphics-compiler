@@ -103,11 +103,9 @@ define void @test_uitofp(i64 %a) {
 ; CHECK: .u2f.inner.true.branch:
 ; CHECK:    [[TMP7:%[A-z0-9]*]] = shl i32 [[TMP2]], [[TMP4]]
 ; CHECK:    [[TMP8:%[A-z0-9]*]] = shl i32 [[TMP3]], [[TMP4]]
-; CHECK:    [[TMP9:%[A-z0-9]*]] = sub i32 0, [[TMP4]]
-; CHECK:    [[TMP10:%[A-z0-9]*]] = lshr i32 [[TMP2]], [[TMP9]]
-; CHECK:    [[TMP11:%[A-z0-9]*]] = or i32 [[TMP8]], [[TMP10]]
+; CHECK:    [[TMP11:%[A-z0-9]*]] = or i32 [[TMP8]], [[TMP7]]
 ; CHECK:    br label [[TMP12]]
-; CHECK: 12:
+; CHECK: 10:
 ; CHECK:    [[DOTU2F_INNER_MERGE_HI:%[A-z0-9.]*]] = phi i32 [ [[TMP3]], [[DOTU2F_OUTER_TRUE_BRANCH]] ], [ [[TMP11]], [[DOTU2F_INNER_TRUE_BRANCH]] ]
 ; CHECK:    [[DOTU2F_INNER_MERGE_LO:%[A-z0-9.]*]] = phi i32 [ [[TMP2]], [[DOTU2F_OUTER_TRUE_BRANCH]] ], [ [[TMP7]], [[DOTU2F_INNER_TRUE_BRANCH]] ]
 ; CHECK:    [[TMP13:%[A-z0-9]*]] = icmp ne i32 [[DOTU2F_INNER_MERGE_LO]], 0
@@ -115,10 +113,10 @@ define void @test_uitofp(i64 %a) {
 ; CHECK: .u2f.rounding.branch:
 ; CHECK:    [[TMP14:%[A-z0-9]*]] = or i32 [[DOTU2F_INNER_MERGE_HI]], 1
 ; CHECK:    br label [[TMP15]]
-; CHECK: 15:
+; CHECK: 13:
 ; CHECK:    [[DOTU2F_ROUNDING_MERGE_HI:%[A-z0-9.]*]] = phi i32 [ [[DOTU2F_INNER_MERGE_HI]], [[TMP12]] ], [ [[TMP14]], [[DOTU2F_ROUNDING_BRANCH]] ]
 ; CHECK:    br label [[TMP16]]
-; CHECK: 16:
+; CHECK: 14:
 ; CHECK:    [[DOTU2F_OUTER_MERGE:%[A-z0-9.]*]] = phi i32 [ [[TMP2]], [[TMP0:%[A-z0-9]*]] ], [ [[DOTU2F_ROUNDING_MERGE_HI]], [[TMP15]] ]
 ; CHECK:    [[TMP17:%[A-z0-9]*]] = uitofp i32 [[DOTU2F_OUTER_MERGE]] to float
 ; CHECK:    [[TMP18:%[A-z0-9]*]] = sub i32 159, [[TMP4]]
@@ -153,11 +151,9 @@ define void @test_sitofp(i64 %a) {
 ; CHECK: .u2f.inner.true.branch:
 ; CHECK:    [[TMP13:%[A-z0-9]*]] = shl i32 [[TMP8]], [[TMP10]]
 ; CHECK:    [[TMP14:%[A-z0-9]*]] = shl i32 [[TMP9]], [[TMP10]]
-; CHECK:    [[TMP15:%[A-z0-9]*]] = sub i32 0, [[TMP10]]
-; CHECK:    [[TMP16:%[A-z0-9]*]] = lshr i32 [[TMP8]], [[TMP15]]
-; CHECK:    [[TMP17:%[A-z0-9]*]] = or i32 [[TMP14]], [[TMP16]]
+; CHECK:    [[TMP17:%[A-z0-9]*]] = or i32 [[TMP14]], [[TMP13]]
 ; CHECK:    br label [[TMP18]]
-; CHECK: 18:
+; CHECK: 16:
 ; CHECK:    [[DOTU2F_INNER_MERGE_HI:%[A-z0-9.]*]] = phi i32 [ [[TMP9]], [[DOTU2F_OUTER_TRUE_BRANCH]] ], [ [[TMP17]], [[DOTU2F_INNER_TRUE_BRANCH]] ]
 ; CHECK:    [[DOTU2F_INNER_MERGE_LO:%[A-z0-9.]*]] = phi i32 [ [[TMP8]], [[DOTU2F_OUTER_TRUE_BRANCH]] ], [ [[TMP13]], [[DOTU2F_INNER_TRUE_BRANCH]] ]
 ; CHECK:    [[TMP19:%[A-z0-9]*]] = icmp ne i32 [[DOTU2F_INNER_MERGE_LO]], 0
@@ -165,10 +161,10 @@ define void @test_sitofp(i64 %a) {
 ; CHECK: .u2f.rounding.branch:
 ; CHECK:    [[TMP20:%[A-z0-9]*]] = or i32 [[DOTU2F_INNER_MERGE_HI]], 1
 ; CHECK:    br label [[TMP21]]
-; CHECK: 21:
+; CHECK: 19:
 ; CHECK:    [[DOTU2F_ROUNDING_MERGE_HI:%[A-z0-9.]*]] = phi i32 [ [[DOTU2F_INNER_MERGE_HI]], [[TMP18]] ], [ [[TMP20]], [[DOTU2F_ROUNDING_BRANCH]] ]
 ; CHECK:    br label [[TMP22]]
-; CHECK: 22:
+; CHECK: 20:
 ; CHECK:    [[DOTU2F_OUTER_MERGE:%[A-z0-9.]*]] = phi i32 [ [[TMP8]], [[TMP0:%[A-z0-9]*]] ], [ [[DOTU2F_ROUNDING_MERGE_HI]], [[TMP21]] ]
 ; CHECK:    [[TMP23:%[A-z0-9]*]] = uitofp i32 [[DOTU2F_OUTER_MERGE]] to float
 ; CHECK:    [[TMP24:%[A-z0-9]*]] = sub i32 159, [[TMP10]]
