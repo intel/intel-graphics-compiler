@@ -1536,7 +1536,8 @@ Value* InstExpander::convertUIToFP32(Type* DstTy, Value* Lo, Value* Hi, Instruct
         // 0 < ShAmt < 32
         Value* L = IRB->CreateShl(Lo, ShAmt);
         Value* H = IRB->CreateShl(Hi, ShAmt);
-        H = IRB->CreateOr(H, L);
+        Value* T0 = IRB->CreateLShr(Lo, IRB->CreateNeg(ShAmt));
+        H = IRB->CreateOr(H, T0);
 
         InnerResHi->addIncoming(Hi, TrueBB);
         InnerResLo->addIncoming(Lo, TrueBB);
