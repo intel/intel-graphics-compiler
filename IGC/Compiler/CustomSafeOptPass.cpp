@@ -5722,6 +5722,15 @@ void SplitIndirectEEtoSel::visitExtractElementInst(llvm::ExtractElementInst& I)
         return;
     }
 
+    // ignore if index instruction hasn't nsw or nuw
+    if (Instruction* indexInstr = dyn_cast<Instruction>(index))
+    {
+        if (!indexInstr->hasNoSignedWrap() && !indexInstr->hasNoUnsignedWrap())
+        {
+            return;
+        }
+    }
+
     // used to calculate offsets
     int64_t add = 0;
     int64_t mul = 1;
