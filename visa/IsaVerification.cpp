@@ -4472,6 +4472,10 @@ void vISAVerifier::verifyKernelHeader() {
   for (unsigned i = 0; i < header->getInputCount(); i++) {
     {
       auto pi = header->getInput(i);
+      // Pseudo inputs are user defined, so no error checking is
+      // done by compiler.
+      if (pi->isPseudoInput())
+        continue;
       unsigned Begin = pi->offset;
       unsigned End = Begin + pi->size;
       if (End >= (uint32_t)(irBuilder->getGRFSize() * (256 - 1))) {
@@ -4480,6 +4484,8 @@ void vISAVerifier::verifyKernelHeader() {
       }
       for (unsigned j = 0; j < i; ++j) {
         auto pj = header->getInput(j);
+        if (pj->isPseudoInput())
+          continue;
         unsigned Begin1 = pj->offset, End1 = pj->offset + pj->size;
         if ((Begin >= Begin1 && Begin < End1) ||
             (Begin1 >= Begin && Begin1 < End)) {
