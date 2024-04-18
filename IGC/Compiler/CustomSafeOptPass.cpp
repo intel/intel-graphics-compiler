@@ -1035,14 +1035,14 @@ void CustomSafeOptPass::visitMulH(CallInst* inst, bool isSigned)
             uint64_t ui0 = src0->getZExtValue();
             uint64_t ui1 = src1->getZExtValue();
             uint64_t r = ((ui0 * ui1) >> nbits);
-            inst->replaceAllUsesWith(ConstantInt::get(inst->getType(), r));
+            inst->replaceAllUsesWith(ConstantInt::get(inst->getType(), r, true));
         }
         else
         {
             int64_t si0 = src0->getSExtValue();
             int64_t si1 = src1->getSExtValue();
             int64_t r = ((si0 * si1) >> nbits);
-            inst->replaceAllUsesWith(ConstantInt::get(inst->getType(), r, true));
+            inst->replaceAllUsesWith(ConstantInt::get(inst->getType(), r));
         }
         inst->eraseFromParent();
     }
