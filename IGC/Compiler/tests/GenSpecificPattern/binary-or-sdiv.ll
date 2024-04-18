@@ -20,7 +20,7 @@ define spir_kernel void @test_and_or(i64 %src1, i64 %src2) {
 ; CHECK:    [[TMP1:%.*]] = bitcast i64 [[SRC1:%.*]] to <2 x i32>
 ; CHECK:    [[TMP2:%.*]] = extractelement <2 x i32> [[TMP1]], i32 0
 ; CHECK:    [[TMP3:%.*]] = bitcast i64 [[SRC2:%.*]] to <2 x i32>
-; CHECK:    [[TMP4:%.*]] = extractelement <2 x i32> [[TMP3]], i32 1
+; CHECK:    [[TMP4:%.*]] = extractelement <2 x i32> [[TMP3]], i32 0
 ; CHECK:    [[TMP5:%.*]] = insertelement <2 x i32> undef, i32 [[TMP2]], i32 0
 ; CHECK:    [[TMP6:%.*]] = insertelement <2 x i32> [[TMP5]], i32 [[TMP4]], i32 1
 ; CHECK:    [[TMP7:%.*]] = bitcast <2 x i32> [[TMP6]] to i64

@@ -2998,7 +2998,7 @@ void GenSpecificPattern::visitOr(BinaryOperator& I)
         m_BitCast(m_InsertElt(m_Value(VecOp), m_Value(EltOp2), m_SpecificInt(1))));
     if (match(&I, pattern1) && AndOp1 && AndOp1->getType()->isIntegerTy(64))
     {
-        createBitcastExtractInsertPattern(I, AndOp1, EltOp1, 0, 1);
+        createBitcastExtractInsertPattern(I, AndOp1, EltOp1, 0, 0);
     }
     else if (match(&I, pattern2) && AndOp2 && AndOp2->getType()->isIntegerTy(64))
     {
@@ -3013,7 +3013,7 @@ void GenSpecificPattern::visitOr(BinaryOperator& I)
                 vector_type->getNumElements() == 2)
             {
                 auto InsertOp = cast<BitCastInst>(I.getOperand(1))->getOperand(0);
-                createBitcastExtractInsertPattern(I, AndOp2, InsertOp, 0, 1);
+                createBitcastExtractInsertPattern(I, AndOp2, InsertOp, 0, 0);
             }
         }
     }
