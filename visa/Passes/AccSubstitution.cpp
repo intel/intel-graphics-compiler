@@ -540,11 +540,19 @@ bool AccSubPass::isAccCandidate(G4_INST *inst, int &lastUse, bool &mustBeAcc0,
             }
           }
         }
-        // Q: What's the purpose of this check?
-        if (!IS_TYPE_FLOAT_FOR_ACC(useInst->getSrc(2)->getType()) ||
-            (useInst->getDst() &&
-             !IS_TYPE_FLOAT_FOR_ACC(useInst->getDst()->getType()))) {
-          return false;
+        if (kernel.fg.builder->removedAccRestrictionsAsGRF()) {
+          if (!IS_TYPE_FLOAT_ALL(useInst->getSrc(2)->getType()) ||
+              (useInst->getDst() &&
+               !IS_TYPE_FLOAT_ALL(useInst->getDst()->getType()))) {
+            return false;
+          }
+        } else {
+          // Q: What's the purpose of this check?
+          if (!IS_TYPE_FLOAT_FOR_ACC(useInst->getSrc(2)->getType()) ||
+              (useInst->getDst() &&
+               !IS_TYPE_FLOAT_FOR_ACC(useInst->getDst()->getType()))) {
+            return false;
+          }
         }
         break;
       case Opnd_src1:
