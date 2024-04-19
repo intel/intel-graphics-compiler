@@ -295,7 +295,7 @@ namespace IGC {
             }
             else
             {
-                return SrcSize <= DstSize;
+                return SrcSize < DstSize;
             }
         }
 
@@ -1485,6 +1485,47 @@ namespace IGC {
             return false;
         };
 
+        // This bitcast is unlikely to increase the regpressure and
+        // might enable load sinking on the next iteration.
+        auto isBeneficialToSinkBitcast = [&](Instruction *I, OperandUseGroup &OUG) {
+            BitCastInst *BC = dyn_cast<BitCastInst>(I);
+            if (!BC)
+                return false;
+
+            IGC_ASSERT(OUG.Operands.size() <= 1);
+
+            if (OUG.Operands.size() == 0)
+                return true;
+
+            Value *V = *(OUG.Operands.begin());
+            LoadInst *LI = dyn_cast<LoadInst>(V);
+            if (!LI)
+                return true;
+
+            // Either load will be sinked before bitcast or the loaded value would anyway be alive
+            // in the whole loop body. So it's safe to sink the bitcast
+            if (BC->hasOneUse())
+                return true;
+
+            // Now it makes sense to sink bitcast only if it would enable load sinking
+            // Otherwise it can lead to the increase of register pressure
+            if (!IGC_IS_FLAG_ENABLED(EnableLoadsLoopSink) && !IGC_IS_FLAG_ENABLED(ForceLoadsLoopSink))
+                return false;
+
+            // Check the load would be a candidate if not for this bitcast
+            for (const User *UserInst : LI->users())
+            {
+                if (!isa<Instruction>(UserInst))
+                    return false;
+                if (dyn_cast<BitCastInst>(UserInst) == BC)
+                    continue;
+                if (!L->contains(cast<Instruction>(UserInst)))
+                    return false;
+            }
+
+            return isSafeToLoopSinkLoad(LI, L);
+        };
+
         // Check if it's beneficial to sink it in the loop
         auto isBeneficialToSink = [&](OperandUseGroup &OUG)-> bool
         {
@@ -1507,9 +1548,11 @@ namespace IGC {
 
             // All instructions are safe to sink always or consume larger type than produce
             if (std::all_of(OUG.Users.begin(), OUG.Users.end(),
-                [this](Instruction *I)
+                [&](Instruction *I)
                 {
-                    return isAlwaysSinkInstruction(I) || isCastInstrReducingPressure(I, false);
+                    return isAlwaysSinkInstruction(I) ||
+                        isCastInstrReducingPressure(I, false) ||
+                        isBeneficialToSinkBitcast(I, OUG);
                 }))
             {
                 return true;
