@@ -117,6 +117,7 @@ struct RayDispatchGlobalData
     // Stack size is encoded in # of 64 byte chunks.
     // e.g., 0x0 = 64 bytes, 0x1 = 128 bytes, etc.
     static constexpr uint32_t StackChunkSize = 64;
+    static constexpr uint32_t LargeStack = StackChunkSize * 64;
 
     struct RayDispatchGlobalDataCommon
     {
