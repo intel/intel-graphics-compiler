@@ -3274,7 +3274,7 @@ namespace IGC
         ISA_Opcode subOpcode,
         CVariable* dst,
         e_predefSurface surfaceType,
-        CVariable* bufId,
+        CVariable* buf,
         CVariable* xOffset,
         CVariable* yOffset,
         uint modifier,
@@ -3282,7 +3282,7 @@ namespace IGC
         unsigned char blockHeight,
         uint plane)
     {
-        VISA_StateOpndHandle* surfOpnd = GetVISASurfaceOpnd(surfaceType, bufId);
+        VISA_StateOpndHandle* surfOpnd = GetVISASurfaceOpnd(surfaceType, buf);
         VISA_VectorOpnd* xVar = GetUniformSource(xOffset);
         VISA_VectorOpnd* yVar = GetUniformSource(yOffset);
         VISA_RawOpnd* tempVar = nullptr;
@@ -3446,7 +3446,7 @@ namespace IGC
         return GetVISASurfaceOpnd(resource.m_surfaceType, resource.m_resource);
     }
 
-    VISA_StateOpndHandle* CEncoder::GetVISASurfaceOpnd(e_predefSurface surfaceType, CVariable* bti)
+    VISA_StateOpndHandle* CEncoder::GetVISASurfaceOpnd(e_predefSurface surfaceType, CVariable* var)
     {
         VISA_StateOpndHandle* surfOpnd = nullptr;
         if (surfaceType == ESURFACE_NORMAL || surfaceType == ESURFACE_BINDLESS || surfaceType == ESURFACE_SSHBINDLESS)
@@ -3460,7 +3460,7 @@ namespace IGC
             {
                 surfacevar = dummySurface;
             }
-            VISA_VectorOpnd* sourecOpnd = GetUniformSource(bti);
+            VISA_VectorOpnd* sourecOpnd = GetUniformSource(var);
             VISA_VectorOpnd* dstOpnd = nullptr;
             V(vKernel->CreateVISAStateOperand(dstOpnd, surfacevar, 0, true));
 
@@ -9257,7 +9257,7 @@ namespace IGC
         LSC_OP subOpcode,
         CVariable* srcDst,
         e_predefSurface surfaceType,
-        CVariable* bufId,
+        CVariable* buf,
         CVariable* xOffset,
         CVariable* yOffset,
         int blockWidth,
@@ -9268,7 +9268,7 @@ namespace IGC
         dataShape2D.height = blockHeight;
         dataShape2D.width = blockWidth;
 
-        VISA_VectorOpnd* surfOpnd = GetVISALSCSurfaceOpnd(surfaceType, bufId);
+        VISA_VectorOpnd* surfOpnd = GetVISALSCSurfaceOpnd(surfaceType, buf);
         VISA_VectorOpnd* xOffsetOpnd = GetUniformSource(xOffset);
         VISA_VectorOpnd* yOffsetOpnd = GetUniformSource(yOffset);
         VISA_RawOpnd* dstOpnd = nullptr;

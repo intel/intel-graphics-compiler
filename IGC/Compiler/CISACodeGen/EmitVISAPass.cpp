@@ -6633,17 +6633,23 @@ void EmitPass::emitLSCSimdBlockRead(llvm::Instruction* inst, llvm::Value* ptrVal
 
 void EmitPass::emitMediaBlockIO(const llvm::GenIntrinsicInst* inst, bool isRead)
 {
-    uint ImgArgIndex = (uint)GetImmediateVal(inst->getOperand(0));
-    uint isImageTypeUAV = (uint)GetImmediateVal(inst->getOperand(3));
+    bool isBindless = !isa<ConstantInt>(inst->getOperand(0));
+    uint32_t BTI = 0;
 
-    uint32_t BTI = isImageTypeUAV ?
-        m_currShader->m_pBtiLayout->GetUavIndex(ImgArgIndex) :
-        m_currShader->m_pBtiLayout->GetTextureIndex(ImgArgIndex);
+    if (!isBindless)
+    {
+        uint ImgArgIndex = (uint)GetImmediateVal(inst->getOperand(0));
+        uint isImageTypeUAV = (uint)GetImmediateVal(inst->getOperand(3));
 
-    bool directIdx = (llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(0))) ? true : false;
-    m_currShader->SetBindingTableEntryCountAndBitmap(directIdx, isImageTypeUAV ? UAV : RESOURCE, ImgArgIndex, BTI);
+        BTI = isImageTypeUAV ?
+            m_currShader->m_pBtiLayout->GetUavIndex(ImgArgIndex) :
+            m_currShader->m_pBtiLayout->GetTextureIndex(ImgArgIndex);
 
-    CVariable* pImgBTI = m_currShader->ImmToVariable(BTI, ISA_TYPE_UD);
+        bool directIdx = (llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(0))) ? true : false;
+        m_currShader->SetBindingTableEntryCountAndBitmap(directIdx, isImageTypeUAV ? UAV : RESOURCE, ImgArgIndex, BTI);
+    }
+
+    CVariable* pImg = isBindless ? GetSymbol(inst->getOperand(0)) : m_currShader->ImmToVariable(BTI, ISA_TYPE_UD);
 
     // width and height must be supplied as compile time constants.
     uint blockWidth = (uint)cast<ConstantInt>(inst->getOperand(4))->getZExtValue();
@@ -6727,17 +6733,18 @@ void EmitPass::emitMediaBlockIO(const llvm::GenIntrinsicInst* inst, bool isRead)
         BlockCopy(pDst, pData, pSecondHalf, pData, 1, 2);
     }
 
+    auto surfaceType = isBindless ? ESURFACE_BINDLESS : ESURFACE_NORMAL;
     if (m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_LPG_CORE))
     {
-        m_encoder->LSC_Typed2dBlock(LSC_STORE_BLOCK2D, pDst, ESURFACE_NORMAL, pImgBTI, pXOffset, pYOffset, (int)widthInBytes, (int)blockHeight);
+        m_encoder->LSC_Typed2dBlock(LSC_STORE_BLOCK2D, pDst, surfaceType, pImg, pXOffset, pYOffset, (int)widthInBytes, (int)blockHeight);
     }
     else
     {
         m_encoder->MediaBlockMessage(
             isRead ? ISA_Opcode::ISA_MEDIA_LD : ISA_Opcode::ISA_MEDIA_ST,
             pDst,
-            ESURFACE_NORMAL,
-            pImgBTI,
+            surfaceType,
+            pImg,
             pXOffset,
             pYOffset,
             0,
@@ -6754,20 +6761,26 @@ void EmitPass::emitMediaBlockIO(const llvm::GenIntrinsicInst* inst, bool isRead)
 
 void EmitPass::emitMediaBlockRectangleRead(llvm::Instruction* inst)
 {
-    int SrcImgBTI = int_cast<int>(GetImmediateVal(inst->getOperand(0)));
-    int isImageTypeUAV = int_cast<int>(GetImmediateVal(inst->getOperand(3)));
-
     CVariable* xOffset = GetSymbol(inst->getOperand(1));
     CVariable* yOffset = GetSymbol(inst->getOperand(2));
 
-    uint32_t bindingTableIndex = isImageTypeUAV ?
-        m_currShader->m_pBtiLayout->GetUavIndex(SrcImgBTI) :
-        m_currShader->m_pBtiLayout->GetTextureIndex(SrcImgBTI);
+    uint32_t bindingTableIndex = 0;
 
-    bool directIdx = (llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(0))) ? true : false;
-    m_currShader->SetBindingTableEntryCountAndBitmap(directIdx, isImageTypeUAV ? UAV : RESOURCE, SrcImgBTI, bindingTableIndex);
+    bool isBindless = !isa<ConstantInt>(inst->getOperand(0));
 
-    CVariable* srcbti = m_currShader->ImmToVariable(bindingTableIndex, ISA_TYPE_UD);
+    if (!isBindless)
+    {
+        int SrcImgBTI = int_cast<int>(GetImmediateVal(inst->getOperand(0)));
+        int isImageTypeUAV = int_cast<int>(GetImmediateVal(inst->getOperand(3)));
+        bindingTableIndex = isImageTypeUAV ?
+            m_currShader->m_pBtiLayout->GetUavIndex(SrcImgBTI) :
+            m_currShader->m_pBtiLayout->GetTextureIndex(SrcImgBTI);
+
+        bool directIdx = (llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(0))) ? true : false;
+        m_currShader->SetBindingTableEntryCountAndBitmap(directIdx, isImageTypeUAV ? UAV : RESOURCE, SrcImgBTI, bindingTableIndex);
+    }
+
+    CVariable* src = isBindless ? GetSymbol(inst->getOperand(0)) : m_currShader->ImmToVariable(bindingTableIndex, ISA_TYPE_UD);
 
     CVariable* pDst = GetSymbol(inst->getOperand(6));
 
@@ -6777,17 +6790,18 @@ void EmitPass::emitMediaBlockRectangleRead(llvm::Instruction* inst)
 
     IGC_ASSERT(blockWidth * blockHeight == pDst->GetSize());
 
+    auto surfaceType = isBindless ? ESURFACE_BINDLESS : ESURFACE_NORMAL;
     if (m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_LPG_CORE))
     {
-        m_encoder->LSC_Typed2dBlock(LSC_LOAD_BLOCK2D, pDst, ESURFACE_NORMAL, srcbti, xOffset, yOffset, (int)blockWidth, (int)blockHeight);
+        m_encoder->LSC_Typed2dBlock(LSC_LOAD_BLOCK2D, pDst, surfaceType, src, xOffset, yOffset, (int)blockWidth, (int)blockHeight);
     }
     else
     {
         m_encoder->MediaBlockMessage(
             ISA_Opcode::ISA_MEDIA_LD,
             pDst,
-            ESURFACE_NORMAL,
-            srcbti,
+            surfaceType,
+            src,
             xOffset,
             yOffset,
             0,
@@ -6808,9 +6822,6 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
     }
     IGC_ASSERT_MESSAGE(nbElements <= 16, "InValid Vector Size");
 
-    int SrcImgBTI = int_cast<int>(GetImmediateVal(inst->getOperand(0)));
-    int isImageTypeUAV = int_cast<int>(GetImmediateVal(inst->getOperand(3)));
-
     Value* xOffset = inst->getOperand(1);
     Value* yOffset = inst->getOperand(2);
 
@@ -6830,18 +6841,25 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
     uint32_t blockHeight = nbElements;
     uint32_t blockHeight_step = 0;
 
-    if (isImageTypeUAV)
+    bool isBindless = !isa<ConstantInt>(inst->getOperand(0));
+
+    if (!isBindless)
     {
-        bindingTableIndex = m_currShader->m_pBtiLayout->GetUavIndex(SrcImgBTI);
-    }
-    else // elseif imageType is Resource
-    {
-        bindingTableIndex = m_currShader->m_pBtiLayout->GetTextureIndex(SrcImgBTI);
+        int SrcImgBTI = int_cast<int>(GetImmediateVal(inst->getOperand(0)));
+        int isImageTypeUAV = int_cast<int>(GetImmediateVal(inst->getOperand(3)));
+        if (isImageTypeUAV)
+        {
+            bindingTableIndex = m_currShader->m_pBtiLayout->GetUavIndex(SrcImgBTI);
+        }
+        else // elseif imageType is Resource
+        {
+            bindingTableIndex = m_currShader->m_pBtiLayout->GetTextureIndex(SrcImgBTI);
+        }
+
+        m_currShader->SetBindingTableEntryCountAndBitmap(true, isImageTypeUAV ? UAV : RESOURCE, SrcImgBTI, bindingTableIndex);
     }
 
-    m_currShader->SetBindingTableEntryCountAndBitmap(true, isImageTypeUAV ? UAV : RESOURCE, SrcImgBTI, bindingTableIndex);
-
-    CVariable* srcbti = m_currShader->ImmToVariable(bindingTableIndex, ISA_TYPE_UD);
+    CVariable* src = isBindless ? GetSymbol(inst->getOperand(0)) : m_currShader->ImmToVariable(bindingTableIndex, ISA_TYPE_UD);
     uint32_t maxWidth = 32;
 
     if (totalWidth < maxWidth)
@@ -7010,13 +7028,14 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
 
             CVariable* dstVar = numPasses_axisX == 1 ? m_destination : pTempDest;
 
+            auto surfaceType = isBindless ? ESURFACE_BINDLESS : ESURFACE_NORMAL;
             if (m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_LPG_CORE))
             {
                 m_encoder->LSC_Typed2dBlock(
                     LSC_LOAD_BLOCK2D,
                     dstVar,
-                    ESURFACE_NORMAL,
-                    srcbti,
+                    surfaceType,
+                    src,
                     pTempVar_axis_X_offset,
                     pTempVar_axis_Y_offset,
                     (int)blockWidth,
@@ -7027,8 +7046,8 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
                 m_encoder->MediaBlockMessage(
                     ISA_Opcode::ISA_MEDIA_LD,
                     dstVar,
-                    ESURFACE_NORMAL,
-                    srcbti,
+                    surfaceType,
+                    src,
                     pTempVar_axis_X_offset,
                     pTempVar_axis_Y_offset,
                     0,
@@ -7122,9 +7141,6 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
 
 void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
 {
-    int SrcImgBTI = int_cast<int>(GetImmediateVal(inst->getOperand(0)));
-    int isImageTypeUAV = int_cast<int>(GetImmediateVal(inst->getOperand(3)));
-
     Value* xOffset = inst->getOperand(1);
     Value* yOffset = inst->getOperand(2);
     Value* dataPtr = inst->getOperand(4);
@@ -7153,18 +7169,25 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
     uint32_t blockHeight_step = 0;
     uint32_t bindingTableIndex = 0;
 
-    if (isImageTypeUAV)
+    bool isBindless = !isa<ConstantInt>(inst->getOperand(0));
+
+    if (!isBindless)
     {
-        bindingTableIndex = m_currShader->m_pBtiLayout->GetUavIndex(SrcImgBTI);
-    }
-    else // elseif imageType is Resource
-    {
-        bindingTableIndex = m_currShader->m_pBtiLayout->GetTextureIndex(SrcImgBTI);
+        int SrcImgBTI = int_cast<int>(GetImmediateVal(inst->getOperand(0)));
+        int isImageTypeUAV = int_cast<int>(GetImmediateVal(inst->getOperand(3)));
+        if (isImageTypeUAV)
+        {
+            bindingTableIndex = m_currShader->m_pBtiLayout->GetUavIndex(SrcImgBTI);
+        }
+        else // elseif imageType is Resource
+        {
+            bindingTableIndex = m_currShader->m_pBtiLayout->GetTextureIndex(SrcImgBTI);
+        }
+
+        m_currShader->SetBindingTableEntryCountAndBitmap(true, isImageTypeUAV ? UAV : RESOURCE, SrcImgBTI, bindingTableIndex);
     }
 
-    m_currShader->SetBindingTableEntryCountAndBitmap(true, isImageTypeUAV ? UAV : RESOURCE, SrcImgBTI, bindingTableIndex);
-
-    CVariable* srcbti = m_currShader->ImmToVariable(bindingTableIndex, ISA_TYPE_UD);
+    CVariable* src = isBindless ? GetSymbol(inst->getOperand(0)) : m_currShader->ImmToVariable(bindingTableIndex, ISA_TYPE_UD);
     uint32_t maxWidth = 32;
 
     if (totalWidth < maxWidth)
@@ -7389,13 +7412,14 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
                 // For normal case
                 blockHeight;
 
+            auto surfaceType = isBindless ? ESURFACE_BINDLESS : ESURFACE_NORMAL;
             if (m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_LPG_CORE))
             {
                 m_encoder->LSC_Typed2dBlock(
                     LSC_STORE_BLOCK2D,
                     tempdst,
-                    ESURFACE_NORMAL,
-                    srcbti,
+                    surfaceType,
+                    src,
                     pTempVar_axis_X_offset,
                     pTempVar_axis_Y_offset,
                     (int)blockWidth,
@@ -7406,8 +7430,8 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
                 m_encoder->MediaBlockMessage(
                     ISA_Opcode::ISA_MEDIA_ST,
                     tempdst,
-                    ESURFACE_NORMAL,
-                    srcbti,
+                    surfaceType,
+                    src,
                     pTempVar_axis_X_offset,
                     pTempVar_axis_Y_offset,
                     0,

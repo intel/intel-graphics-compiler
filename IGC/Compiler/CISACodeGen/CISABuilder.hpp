@@ -247,7 +247,7 @@ namespace IGC
         void MediaBlockMessage(ISA_Opcode subOpcode,
             CVariable* dst,
             e_predefSurface surfaceType,
-            CVariable* bufId,
+            CVariable* buf,
             CVariable* xOffset,
             CVariable* yOffset,
             uint modifier,
@@ -339,7 +339,7 @@ namespace IGC
             LSC_OP subOpcode,
             CVariable* dst,
             e_predefSurface surfaceType,
-            CVariable* bufId,
+            CVariable* buf,
             CVariable* xOffset,
             CVariable* yOffset,
             int blockWidth,
@@ -563,7 +563,7 @@ namespace IGC
         VISA_RawOpnd* GetPairedResourceOperand(const ResourceDescriptor& pairedResource);
         VISA_RawOpnd* GetRawDestination(CVariable* var, unsigned offset = 0);
         VISA_PredOpnd* GetFlagOperand(const SFlag& flag);
-        VISA_StateOpndHandle* GetVISASurfaceOpnd(e_predefSurface surfaceType, CVariable* bti);
+        VISA_StateOpndHandle* GetVISASurfaceOpnd(e_predefSurface surfaceType, CVariable* var);
         VISA_StateOpndHandle* GetVISASurfaceOpnd(const ResourceDescriptor& resource);
         VISA_LabelOpnd* GetOrCreateLabel(uint label, VISA_Label_Kind kind = LABEL_BLOCK);
         VISA_LabelOpnd* GetFuncLabel(llvm::Function* F);
