@@ -158,7 +158,7 @@ namespace {
             auto alignment = getAlignment(RefLD);
 
             NewLD->setVolatile(RefLD->isVolatile());
-            NewLD->setAlignment(IGCLLVM::getAlign(unsigned(MinAlign(alignment, Off))));
+            NewLD->setAlignment(IGCLLVM::getAlign(MinAlign(alignment, Off)));
             NewLD->setOrdering(RefLD->getOrdering());
             NewLD->setSyncScopeID(RefLD->getSyncScopeID());
             copyKnownMetadata(NewLD, RefLD);
