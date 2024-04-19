@@ -472,8 +472,16 @@ void SubGroupFuncsResolution::pushMediaBlockArgs(llvm::SmallVector<llvm::Value*,
         BTIHelper(CI);
     }
 
-    Value* pImg = nullptr;
-    ConstantInt* imageIndex = IGC::CImagesBI::CImagesUtils::getImageIndex(&m_argIndexMap, &CI, 0, pImg);
+    Value *image;
+    if (m_pCtx->getModuleMetaData()->UseBindlessImage)
+    {
+        image = CI.getArgOperand(0);
+    }
+    else
+    {
+        Value* pImg = nullptr;
+        image = IGC::CImagesBI::CImagesUtils::getImageIndex(&m_argIndexMap, &CI, 0, pImg);
+    }
 
     ConstantInt* constIndex = ConstantInt::get((Type::getInt32Ty(C)), 0);
     Instruction* xOffset = ExtractElementInst::Create(CI.getArgOperand(1), constIndex, "xOffset", &CI);
@@ -488,7 +496,7 @@ void SubGroupFuncsResolution::pushMediaBlockArgs(llvm::SmallVector<llvm::Value*,
     updateDebugLoc(&CI, xOffset);
     updateDebugLoc(&CI, yOffset);
 
-    args.push_back(imageIndex);
+    args.push_back(image);
     args.push_back(xOffset);
     args.push_back(yOffset);
     args.push_back(isImageTypeUAV);
