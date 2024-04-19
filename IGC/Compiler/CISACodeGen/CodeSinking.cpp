@@ -1100,7 +1100,9 @@ namespace IGC {
         bool AllowOnlySingleUseLoadChainSinking = false;
         bool IterChanged = false;
 
-        uint MaxLoopPressure = 0;
+        uint InitialLoopPressure = getMaxRegCountForLoop(L);
+        uint MaxLoopPressure = InitialLoopPressure;
+
         bool AchievedNeededRegpressure = false;
 
         do
@@ -1190,6 +1192,30 @@ namespace IGC {
             }
         } while (true);
 
+        if (!EverChanged)
+        {
+            PrintDump("No changes were made in this loop.\n");
+            return false;
+        }
+
+        PrintDump("New max loop pressure = " << MaxLoopPressure << "\n");
+
+        bool NeedToRollback = false;
+
+        // We always estimate if the sinking of a candidate is beneficial.
+        // So it's unlikely we increase the regpressure in the loop.
+        //
+        // But due to iterative approach we have some heuristics to sink
+        // instruction that don't reduce the regpressure immediately in order to
+        // enable the optimization for some potential candidates on the next iteration.
+        // Rollback the transformation if the result regpressure becomes higher
+        // as a result of such speculative sinking.
+        if (MaxLoopPressure > InitialLoopPressure)
+        {
+            PrintDump("Loop pressure increased after sinking.\n");
+            NeedToRollback = true;
+        }
+
         // If we haven't achieved the needed regpressure, it's possible that even if the sinking
         // would be beneficial for small GRF, there still will be spills.
         // In this case there is a chance that just choosing
@@ -1205,27 +1231,28 @@ namespace IGC {
             PrintDump("New max loop pressure = " << MaxLoopPressure << "\n");
             PrintDump("Threshold to rollback = " <<
                 NGRF + IGC_GET_FLAG_VALUE(LoopSinkRollbackThreshold) << "\n");
-            PrintDump(">> Reverting the changes.\n");
 
+            NeedToRollback = true;
+        }
+
+        if (NeedToRollback)
+        {
+            PrintDump(">> Reverting the changes.\n");
             rollbackSinking(true, Preheader, UndoLocas, MovedInsts);
             rerunLiveness();
-
             return false;
         }
 
-        if (EverChanged)
-        {
-            if (CTX->m_instrTypes.hasDebugInfo)
-                ProcessDbgValueInst(*Preheader, DT);
+        if (CTX->m_instrTypes.hasDebugInfo)
+            ProcessDbgValueInst(*Preheader, DT);
 
-            // We decided we don't rollback, change the names of the instructions in IR
-            for (Instruction *I : MovedInsts)
-            {
-                I->setName("sink_" + I->getName());
-            }
+        // We decided we don't rollback, change the names of the instructions in IR
+        for (Instruction *I : MovedInsts)
+        {
+            I->setName("sink_" + I->getName());
         }
 
-        return EverChanged;
+        return true;
     }
 
     bool CodeLoopSinking::isAlwaysSinkInstruction(Instruction *I)
@@ -1626,7 +1653,14 @@ namespace IGC {
                     if (isa<LoadInst>(I) || isLoadChain(I, LoadChains))
                         LoadChains.insert(I);
                 }
+                else
+                {
+                    PrintDump("Couldn't sink the instruction:\n");
+                    PrintInstructionDump(I);
+                }
             }
+            PrintDump("\n");
+
             if (GroupChanged)
             {
                 Changed = true;
