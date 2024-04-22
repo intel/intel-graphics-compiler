@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2023 Intel Corporation
+Copyright (C) 2020-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -77,6 +77,8 @@ public:
   bool isSimple() const;
   bool isLegalSize() const;
 
+  bool isPackedIntVector() const;
+
 private:
   bool allowI64Ops() const;
 
@@ -84,7 +86,6 @@ private:
   void analyzeForPackedInt(unsigned NumElements);
   void analyzeForPackedFloat(unsigned NumElements);
 
-  bool isPackedIntVector() const;
   bool isPackedFloatVector() const;
 
   Constant *getConsolidatedConstant(Constant *C);

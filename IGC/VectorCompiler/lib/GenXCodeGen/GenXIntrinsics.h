@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -163,7 +163,7 @@ public:
                                    // because inst cannot overflow so
                                    // saturation only required on destination
                                    // truncation
-    // Modifiers for source only, 3 bits used
+    // Modifiers for source only, 4 bits used
     NOIMM =                 GENX_ITR_FLAGVAL(7), // source not allowed to be immediate
     MODIFIER =              GENX_ITR_FLAGMASK(8, 2),
     MODIFIER_DEFAULT =      GENX_ITR_FLAGENUM(8, 0), // src modifier default: none
@@ -171,6 +171,8 @@ public:
     MODIFIER_LOGIC =        GENX_ITR_FLAGENUM(8, 2), // src modifier: logic
     MODIFIER_EXTONLY =      GENX_ITR_FLAGENUM(8, 3), // src modifier: extend only
     DIRECTONLY =            GENX_ITR_FLAGVAL(10), // indirect region not allowed
+    IMM16ONLY =             GENX_ITR_FLAGVAL(11), // source allowed to be only 16 bit immediate
+
   };
   struct ArgInfo {
     unsigned Info;
@@ -271,6 +273,8 @@ public:
       }
       return false;
     }
+    // For instructions without 32-bit imm support
+    bool isImmediate16Only() const { return Info & IMM16ONLY; }
     // getModifier : get what source modifier is allowed
     unsigned getModifier() const {
       IGC_ASSERT(isGeneral());

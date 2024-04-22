@@ -2483,9 +2483,9 @@
       "pred": [ "IMPLICITPRED" ],
       "ctsign": "ChooseSign({1, 2, 3})",
       "dst": [ "GENERAL_CTSIGN", 0 ],
-      "src0": [ "GENERAL_CTSIGN", "MODIFIER_ARITH", 1 ],
-      "src1": [ "GENERAL_CTSIGN", "MODIFIER_ARITH", 2 ],
-      "src2": [ "GENERAL_CTSIGN", "MODIFIER_ARITH", 3 ]
+      "src0": [ "GENERAL_CTSIGN", "MODIFIER_ARITH", "IMM16ONLY", 1 ],
+      "src1": [ "GENERAL_CTSIGN", "MODIFIER_ARITH", "IMM16ONLY", 2 ],
+      "src2": [ "GENERAL_CTSIGN", "MODIFIER_ARITH", "IMM16ONLY", 3 ]
     },
     "genx_ssadd3_sat": {
       "opc": "ISA_ADD3",
@@ -2921,9 +2921,9 @@
       "exec_size": [ "EXECSIZE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
-      "src0": [ "GENERAL", "UNSIGNED", 1 ],
-      "src1": [ "GENERAL", "UNSIGNED", 2 ],
-      "src2": [ "GENERAL", "UNSIGNED", 3 ],
+      "src0": [ "GENERAL", "UNSIGNED", "IMM16ONLY", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "IMM16ONLY", 2 ],
+      "src2": [ "GENERAL", "UNSIGNED", "IMM16ONLY", 3 ],
       "src4_LUT_value_constant": [ "BYTE", 4 ]
     },
     "genx_va_minmax": {

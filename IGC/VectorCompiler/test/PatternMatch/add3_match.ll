@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -160,4 +160,85 @@ define i32 @test_match_i32ssadd(i32 %op0, i32 %op1, i32 %op2)  {
   %1 = add i32 %op0, %op1
   %2 = call i32 @llvm.genx.ssadd.sat.i32.i32(i32 %1, i32 %op2)
   ret i32 %2
+}
+
+; =============== ADDITIONAL FAILED MATCH ===============
+; optimize
+define <32 x i8> @test_match_v32i8(<32 x i8> %op0, <32 x i8> %op1, <32 x i8> %op2)  {
+  ;CHECK: [[F1:%[^ ]+]] = add <32 x i8> %op0, %op1
+  ;CHECK: add <32 x i8> [[F1]], %op2
+  %1 = add <32 x i8> %op0, %op1
+  %2 = add <32 x i8> %1, %op2
+  ret <32 x i8> %2
+}
+
+; scalar value optimize
+define i8 @test_match_i8(i8 %op0, i8 %op1, i8 %op2)  {
+  ;CHECK: [[F2:%[^ ]+]] = add i8 %op0, %op1
+  ;CHECK: add i8 [[F2:%[^ ]+]], %op2
+  %1 = add i8 %op0, %op1
+  %2 = add i8 %1, %op2
+  ret i8 %2
+}
+
+; scalar value 2 const not opt
+define i8 @test_match_i8cc(i8 %op0)  {
+  ;CHECK: [[TMP1:%[^ ]+]] = add i8 %op0, 7
+  ;CHECK-NEXT: [[TMP2:%[^ ]+]] = add i8 [[TMP1]], 10
+  %1 = add i8 %op0, 7
+  %2 = add i8 %1, 10
+  ret i8 %2
+}
+
+; scalar value 1 const  opt
+define i8 @test_match_i8c(i8 %op0, i8 %op1)  {
+  ;CHECK: [[F3:%[^ ]+]] = add i8 %op0, %op1
+  ;CHECK: add i8 [[F3]], 10
+  %1 = add i8 %op0, %op1
+  %2 = add i8 %1, 10
+  ret i8 %2
+}
+
+; double type - not opt
+define <32 x double> @test_v32double(<32 x double> %op0, <32 x double> %op1, <32 x double> %op2)  {
+  ;CHECK: %1 = fadd <32 x double> %op0, %op1
+  %1 = fadd <32 x double> %op0, %op1
+  %2 = fadd <32 x double> %1, %op2
+  ret <32 x double> %2
+}
+
+; optimize
+define <32 x i64> @test_match_v32i64(<32 x i64> %op0, <32 x i64> %op1, <32 x i64> %op2)  {
+  ;CHECK: [[F4:%[^ ]+]] = add <32 x i64> %op0, %op1
+  ;CHECK: add <32 x i64> [[F4]], %op2
+  %1 = add <32 x i64> %op0, %op1
+  %2 = add <32 x i64> %1, %op2
+  ret <32 x i64> %2
+}
+
+; scalar value optimize
+define i64 @test_match_i64(i64 %op0, i64 %op1, i64 %op2)  {
+  ;CHECK: [[F5:%[^ ]+]] = add i64 %op0, %op1
+  ;CHECK: add i64 [[F5]], %op2
+  %1 = add i64 %op0, %op1
+  %2 = add i64 %1, %op2
+  ret i64 %2
+}
+
+; scalar value 2 const not opt
+define i64 @test_match_i64cc(i64 %op0)  {
+  ;CHECK: [[TMP1:%[^ ]+]] = add i64 %op0, 7
+  ;CHECK-NEXT: [[TMP2:%[^ ]+]] = add i64 [[TMP1]], 10
+  %1 = add i64 %op0, 7
+  %2 = add i64 %1, 10
+  ret i64 %2
+}
+
+; scalar value 1 const  opt
+define i64 @test_match_i64c(i64 %op0, i64 %op1)  {
+  ;CHECK: [[F6:%[^ ]+]] = add i64 %op0, %op1
+  ;CHECK: add i64 [[F6]], 10
+  %1 = add i64 %op0, %op1
+  %2 = add i64 %1, 10
+  ret i64 %2
 }

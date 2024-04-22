@@ -550,6 +550,14 @@ bool ConstantLoadHelper::visitCallInst(CallInst &CI) {
           visa::isReservedSurfaceIndex(visa::convertToSurfaceIndex(C))) {
         continue;
       }
+      if (AI.isImmediate16Only()) {
+        ConstantLoader CL(C, ST, DL, nullptr, AddedInst);
+        if (!CL.isPackedIntVector())
+          continue;
+        *U = CL.loadBig(&CI);
+        Modified = true;
+        break;
+      }
       // Allow non-bfloat constant if the instruction supports immediate values.
 #if LLVM_VERSION_MAJOR > 10
       if (!AI.isImmediateDisallowed() && !CTy->isBFloatTy())
@@ -1826,6 +1834,8 @@ bool ConstantLoader::isPackedIntVector() const {
   // Check for a packed int vector. Either the element type must be i16, or
   // the user (instruction using the constant) must be genx.constanti or
   // wrregion or wrconstregion. Not allowed if the user is a logic op.
+  if (!isa<IGCLLVM::FixedVectorType>(C->getType()))
+    return false;
   if (cast<IGCLLVM::FixedVectorType>(C->getType())->getNumElements() >
       ImmIntVec::Width)
     return false; // wrong width for packed vector
