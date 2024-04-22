@@ -30,23 +30,8 @@ entry:
 
 attributes #0 = { nounwind }
 
-!IGCMetadata = !{!0}
 !igc.functions = !{!300}
 
-!0 = !{!"ModuleMD", !5}
-!1 = !{void (i32 addrspace(1)*, i32, <8 x i32>, <8 x i32>, i8 addrspace(1)*, i32)* @test_implicit_dg, !2}
-!2 = !{!3}
-!3 = !{!"function_type", i32 0}
-!4 = !{}
-!5 = !{!"FuncMD", !6, !7}
-!6 = !{!"FuncMDMap[0]", void (i32 addrspace(1)*, i32, <8 x i32>, <8 x i32>, i8 addrspace(1)*, i32)* @test_implicit_dg}
-!7 = !{!"FuncMDValue[0]", !8}
-!8 = !{!"resAllocMD", !9}
-!9 = !{!"argAllocMDList", !10}
-!10 = !{!"argAllocMDListVec[0]", !11, !12, !13}
-!11 = !{!"type", i32 0}
-!12 = !{!"extensionType", i32 -1}
-!13 = !{!"indexType", i32 0}
 !300 = !{void (i32 addrspace(1)*, i32, <8 x i32>, <8 x i32>, i8 addrspace(1)*, i32)* @test_implicit_dg, !301}
 !301 = !{!302, !303}
 !302 = !{!"function_type", i32 0}
