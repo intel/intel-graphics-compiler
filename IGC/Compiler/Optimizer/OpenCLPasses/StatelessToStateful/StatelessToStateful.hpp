@@ -164,6 +164,11 @@ namespace IGC
         // When true, every messages that are in ptrArg + offset will have offset >= 0.
         bool       m_hasPositivePointerOffset = false;
 
+        // Handle non-gep pointer
+        //   For historic reason (probably non-DW aligned arg), non-gep ptr isn't handled.
+        //   If this field is true, non-gep ptr shall be handled.
+        const bool m_supportNonGEPPtr = false;
+
         llvm::AssumptionCacheTracker* m_ACT = nullptr;
         llvm::AssumptionCache* getAC(llvm::Function* F)
         {
