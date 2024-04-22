@@ -127,7 +127,6 @@ typedef enum _FOOTPRINT_TYPE {
   GRF_T = 1,
   ACC_T = 2,
   FLAG_T = 4,
-  A0_T = 16
 } FOOTPRINT_TYPE;
 
 struct SBFootprint {
@@ -659,8 +658,7 @@ public:
 
   int send_start = -1;
   int send_end = -1;
-  int numBuckets = 0;
-  int numGlobalBuckets = 0;
+
   unsigned loopStartBBID = -1; // The start BB ID of live range
   unsigned loopEndBBID = -1;   // The start BB ID of live range
 
@@ -700,10 +698,9 @@ public:
            LiveGRFBuckets *globalLB, LiveGRFBuckets *GRFAlignedGlobalSendsLB,
            PointsToAnalysis &p,
            std::map<G4_Label *, G4_BB_SB *> *LabelToBlockMap,
-           const unsigned dpasLatency, int numOfB, int numOfGB)
+           const unsigned dpasLatency)
       : swsb(sb), builder(b), mem(m), bb(block),
-        tokenAfterDPASCycle(dpasLatency), numBuckets(numOfB),
-        numGlobalBuckets(numOfGB) {
+        tokenAfterDPASCycle(dpasLatency) {
     for (int i = 0; i < PIPE_DPAS; i++) {
       latestDepALUID[i] = 0;
       latestInstID[i] = nullptr;
@@ -734,8 +731,6 @@ public:
                                   Gen4_Operand_Number opnd_num, G4_INST *inst);
   SBFootprint *getFootprintForFlag(G4_Operand *opnd,
                                    Gen4_Operand_Number opnd_num, G4_INST *inst);
-  SBFootprint *getFootprintForA0(G4_Operand *opnd, Gen4_Operand_Number opnd_num,
-                                 G4_INST *inst);
   bool getFootprintForOperand(SBNode *node, G4_INST *inst, G4_Operand *opnd,
                               Gen4_Operand_Number opnd_num);
   void getGRFBuckets(const SBFootprint *footprint, Gen4_Operand_Number opndNum,
@@ -942,8 +937,6 @@ class SWSB {
   const unsigned tokenAfterWriteSendSamplerCycle;
   int tokenAfterDPASCycle;
 
-  int numBuckets = 0;
-  int numGlobalBuckets = 0;
   // For profiling
   uint32_t syncInstCount = 0;
   uint32_t AWSyncInstCount = 0;
@@ -1079,8 +1072,7 @@ class SWSB {
 
   void SWSBDepDistanceGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
                                 LiveGRFBuckets &globalSendsLB,
-                                LiveGRFBuckets &GRFAlignedGlobalSendsLB,
-                                int numBuckets, int numGlobalBuckets);
+                                LiveGRFBuckets &GRFAlignedGlobalSendsLB);
   void handleFuncCall();
   void SWSBGlobalTokenGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
                                 LiveGRFBuckets &globalSendsLB,
