@@ -10,14 +10,12 @@ SPDX-License-Identifier: MIT
 // Partial i64 emulation
 // RUN: ocloc compile -file %s -device pvc \
 // RUN: -options "-I %S -cl-std=CL3.0 -igc_opts 'PrintToConsole=1 PrintBefore=EmitPass'" \
-// RUN: -internal_options "-cl-intel-greater-than-4GB-buffer-required" \
 // RUN: -out_dir /dev/null 2>&1 | FileCheck --enable-var-scope %s --check-prefixes=CHECK,CHECK-PARTIAL-EMU
 
 // In full i64 emu, fp32/64 ftoi casts involve complex emulation sequences
 // that we shouldn't really be testing here. Disable those tests via additional FE macro
 // RUN: ocloc compile -file %s -device dg2 \
 // RUN: -options "-I %S -cl-std=CL3.0 -igc_opts 'PrintToConsole=1 PrintBefore=EmitPass' -DCHECK_HALF_ONLY" \
-// RUN: -internal_options "-cl-intel-greater-than-4GB-buffer-required" \
 // RUN: -out_dir /dev/null 2>&1 | FileCheck --enable-var-scope %s --check-prefixes=CHECK,CHECK-FULL-EMU
 
 #include "test_convert_sat_helper.h"
