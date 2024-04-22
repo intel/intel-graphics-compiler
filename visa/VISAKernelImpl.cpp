@@ -8424,6 +8424,27 @@ bool VISAKernelImpl::finalizeAttributes() {
     AddKernelAttribute("Target", sizeof(val), &val);
   }
   if (m_kernelAttrs->isKernelAttrSet(Attributes::ATTR_NumGRF)) {
+    unsigned attrNumGRF =
+        m_kernelAttrs->getInt32KernelAttr(Attributes::ATTR_NumGRF);
+    if (m_options->isOptionSetByUser(vISA_TotalGRFNum)) {
+      // Check if there is a mismatch between kernel attribute
+      // and vISA option. If so, report the error.
+      unsigned optionNumGRF = m_options->getuInt32Option(vISA_TotalGRFNum);
+      // If kernel attribute NumGRF=0, auto GRF selection is requested
+      bool autoGRFRequested = attrNumGRF == 0;
+      if (autoGRFRequested && optionNumGRF) {
+        m_builder->criticalMsgStream() << "vISA: Kernel attribute NumGRF=0 (auto "
+                                        "GRF) contradicts option -TotalGRFNum="
+                                     << optionNumGRF;
+        return false;
+      }
+      if (attrNumGRF != optionNumGRF) {
+        m_builder->criticalMsgStream()
+            << "vISA: Kernel attribute NumGRF=" << attrNumGRF
+            << " contradicts option -TotalGRFNum=" << optionNumGRF;
+        return false;
+      }
+    }
     if (!m_kernel->updateKernelFromNumGRFAttr()) {
       m_builder->criticalMsgStream()
           << "vISA: wrong value for .kernel_attr NumGRF";

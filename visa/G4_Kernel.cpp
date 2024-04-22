@@ -660,12 +660,12 @@ void G4_Kernel::updateKernelByRegPressure(unsigned regPressure) {
 bool G4_Kernel::updateKernelFromNumGRFAttr() {
   unsigned attrNumGRF =
       m_kernelAttrs->getInt32KernelAttr(Attributes::ATTR_NumGRF);
-  if (!grfMode.isValidNumGRFs(attrNumGRF))
+  if (attrNumGRF != 0 && !grfMode.isValidNumGRFs(attrNumGRF))
     return false;
   if (numRegTotal == attrNumGRF)
     return true;
 
-  autoGRFSelection = false;
+  autoGRFSelection = (attrNumGRF == 0);
   // Scale number of GRFs, Acc, SWSB tokens.
   setKernelParameters(attrNumGRF);
   fg.builder->rebuildPhyRegPool(getNumRegTotal());

@@ -64,7 +64,8 @@ DEF_ATTR_INT32(ATTR_PerThreadInputSize, "PerThreadInputSize", AK_KERNEL, 0,
 DEF_ATTR_INT32(ATTR_SimdSize, "SimdSize", AK_KERNEL, 0,
                "Dispatch simd size. 0 if not provided.")
 DEF_ATTR_INT32(ATTR_NumGRF, "NumGRF", AK_KERNEL, 0,
-               "Number of GRFs for current kernel.")
+               "Number of GRFs for current kernel. If 0, vISA decides best GRF "
+               "number (auto GRF selection).")
 DEF_ATTR_INT32(ATTR_Scope, "Scope", AK_VAR, 0, "")
 DEF_ATTR_INT32(ATTR_SurfaceUsage, "SurfaceUsage", AK_VAR, 0, "")
 DEF_ATTR_INT32(ATTR_CrossThreadInputSize, "CrossThreadInputSize", AK_KERNEL, -1,
