@@ -444,6 +444,8 @@ static bool isSupprtedLargeSlice(const JointMatrixTypeDescription *desc, bool us
     if (desc->layout == LayoutRowMajor) {
         if (desc->rows == 16 && desc->columns == 16 && desc->bitWidth == 32)
             return true;
+        if (desc->rows == 1  && desc->columns == 64 && desc->bitWidth == 32)
+            return true;
         if (desc->rows == 32 && desc->columns == 64 && desc->bitWidth == 32)
             return true;
     }
@@ -1088,6 +1090,8 @@ static bool isMADSupportedAsBuiltin(unsigned M, unsigned N, unsigned K) {
     if (M == 16 && N == 16 && K == 16)
         return true;
     if (M == 32 && N == 64 && K == 16)
+        return true;
+    if (M == 1 && N == 64 && K == 16)
         return true;
     return false;
 }
