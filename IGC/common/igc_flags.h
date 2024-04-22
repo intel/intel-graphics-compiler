@@ -211,6 +211,7 @@ DECLARE_IGC_REGKEY(bool, DisablePromotePrivMem,         false, "Setting this to 
 DECLARE_IGC_REGKEY(bool, EnableSimplifyGEP,             true,  "Enable IGC to simplify indices expr of GEP.", false)
 DECLARE_IGC_REGKEY(bool, DisableCustomUnsafeOpt,        false, "Disable IGC to run custom unsafe optimizations", false)
 DECLARE_IGC_REGKEY(bool, DisableReducePow,              false, "Disable IGC to reduce pow instructions", false)
+DECLARE_IGC_REGKEY(bool, EnableFastSampleD,             false, "Enable fast sample D opt.", false)
 DECLARE_IGC_REGKEY(bool, DisableSqrtOpt, false, "Prevent IGC from doing the optimization y*y = x if y = sqrt(x)", false)
 DECLARE_IGC_REGKEY(bool, EnableFastMath,                false, "Enable fast math optimizations in IGC", false)
 DECLARE_IGC_REGKEY(bool, DisableFlattenSmallSwitch,     false, "Disable the flatten small switch pass", false)
