@@ -423,6 +423,10 @@ void ScalarizeFunction::scalarizeInstruction(UnaryOperator* UI)
     V_PRINT(scalarizer, "\t\tUnary instruction\n");
     IGC_ASSERT_MESSAGE(UI, "instruction type dynamic cast failed");
     IGCLLVM::FixedVectorType* instType = dyn_cast<IGCLLVM::FixedVectorType>(UI->getType());
+    // Do not apply if optnone function
+    if (UI->getFunction()->hasOptNone())
+        return;
+
     // Only need handling for vector binary ops
     if (!instType) return;
 
