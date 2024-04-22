@@ -1196,6 +1196,12 @@ uint32_t maxPerThreadScratchSpace(
     return hasScratchSurface() ? 0x40000 : 0x200000;
 }
 
+bool enableSpillCompressionCheckDefault() const
+{
+    bool bEnabled = false;
+    return bEnabled;
+}
+
 bool supportAIParameterCombiningWithLODBiasEnabled() const
 {
     return IGC_IS_FLAG_ENABLED(EnableAIParameterCombiningWithLODBias) &&
