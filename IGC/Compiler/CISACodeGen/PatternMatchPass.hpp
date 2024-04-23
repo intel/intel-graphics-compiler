@@ -110,7 +110,6 @@ namespace IGC
         // caches the active lane mask (a flag variable) for the current instance in this BB
         // this is currently set only when we enable the A64 WA
         CVariable* m_activeMask = nullptr;   // flag var
-        CVariable* m_executionMask = nullptr;// flag var for the entire dispatch size.
         CVariable* m_numActiveLanes = nullptr;  // general var, #lanes for the entire dispatch size.
 
         // caches combined current+next sources for SimdShuffleDown intrinsic
@@ -119,7 +118,6 @@ namespace IGC
 
         void clearCaching() {
             m_activeMask = nullptr;
-            m_executionMask = nullptr;
             m_numActiveLanes = nullptr;
             m_simdShuffleDownSrc.clear();
         }
