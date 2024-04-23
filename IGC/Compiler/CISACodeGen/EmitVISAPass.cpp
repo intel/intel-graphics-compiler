@@ -21700,10 +21700,30 @@ void EmitPass::emitsrnd(llvm::GenIntrinsicInst* GII)
     }
 }
 
-static LSC_CACHE_OPTS translateLSCCacheControlsEnum(
-    LSC_L1_L3_CC l1l3cc, bool isLoad
-)
+bool EmitPass::isSupportedLSCCacheControlsEnum(LSC_L1_L3_CC l1l3cc, bool isLoad) const
 {
+    if (isLoad)
+    {
+        switch (l1l3cc)
+        {
+        default: break;
+        case LSC_L1UC_L3CC:
+        case LSC_L1C_L3CC:
+        case LSC_L1IAR_L3IAR:
+            return (m_pCtx->platform.isCoreChildOf(IGFX_XE2_LPG_CORE));
+        }
+    }
+    return true;
+}
+
+LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsEnum(
+    LSC_L1_L3_CC l1l3cc, bool isLoad, const Value* warningContextValue) const
+{
+    if (!isSupportedLSCCacheControlsEnum(l1l3cc, isLoad)) {
+        m_pCtx->EmitWarning("Unsupported cache controls configuration requested. Applying default configuration.", warningContextValue);
+        l1l3cc = LSC_L1DEF_L3DEF;
+    }
+
     LSC_CACHE_OPTS cacheOpts {LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT};
     switch (l1l3cc)
     {
@@ -21775,15 +21795,13 @@ LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsFromValue(
 {
     return translateLSCCacheControlsEnum(
         static_cast<LSC_L1_L3_CC>(cast<ConstantInt>(value)->getSExtValue()),
-        isLoad
-    );
+        isLoad, value);
 }
 
-static Optional<LSC_CACHE_OPTS>
-setCacheOptionsForConstantBufferLoads(Instruction& inst, LSC_L1_L3_CC Ctrl
-)
+Optional<LSC_CACHE_OPTS>
+EmitPass::cacheOptionsForConstantBufferLoads(Instruction* inst, LSC_L1_L3_CC Ctrl) const
 {
-    if (const Value* resourcePointer = GetBufferOperand(&inst))
+    if (const Value* resourcePointer = GetBufferOperand(inst))
     {
         uint addressSpace = resourcePointer->getType()->getPointerAddressSpace();
         BufferType bufferType = GetBufferType(addressSpace);
@@ -21792,37 +21810,34 @@ setCacheOptionsForConstantBufferLoads(Instruction& inst, LSC_L1_L3_CC Ctrl
             (bufferType == BINDLESS_CONSTANT_BUFFER) ||
             (bufferType == SSH_BINDLESS_CONSTANT_BUFFER))
         {
-            return translateLSCCacheControlsEnum(Ctrl, true
-            );
+            return translateLSCCacheControlsEnum(Ctrl, true, inst);
         }
     }
     return None;
 }
 
 Optional<LSC_CACHE_OPTS>
-EmitPass::setCacheOptionsForConstantBufferLoads(Instruction& inst) const
+EmitPass::cacheOptionsForConstantBufferLoads(Instruction* inst) const
 {
     Optional<LSC_CACHE_OPTS> cacheOpts;
     if (IGC_IS_FLAG_DISABLED(DisableSystemMemoryCachingInGPUForConstantBuffers) &&
         m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_LPG_CORE))
     {
-        if (auto Opts = ::setCacheOptionsForConstantBufferLoads(inst, LSC_L1C_L3CC
-        ))
+        if (auto Opts = cacheOptionsForConstantBufferLoads(inst, LSC_L1C_L3CC))
             cacheOpts = *Opts;
     }
     if (m_pCtx->type == ShaderType::RAYTRACING_SHADER &&
         IGC_IS_FLAG_ENABLED(ForceRTConstantBufferCacheCtrl))
     {
         auto Ctrl = (LSC_L1_L3_CC)IGC_GET_FLAG_VALUE(RTConstantBufferCacheCtrl);
-        if (auto Opts = ::setCacheOptionsForConstantBufferLoads(inst, Ctrl
-        ))
+        if (auto Opts = cacheOptionsForConstantBufferLoads(inst, Ctrl))
             cacheOpts = *Opts;
     }
     return cacheOpts;
 }
 
-static bool tryOverrideCacheOpts(LSC_CACHE_OPTS& cacheOpts, bool isLoad, bool isTGM
-)
+bool EmitPass::tryOverrideCacheOpts(LSC_CACHE_OPTS& cacheOpts, bool isLoad, bool isTGM,
+    const Value* warningContextValue) const
 {
     uint32_t l1l3CacheVal = 0;
 
@@ -21841,9 +21856,7 @@ static bool tryOverrideCacheOpts(LSC_CACHE_OPTS& cacheOpts, bool isLoad, bool is
 
     if (l1l3CacheVal != 0)
     {
-        cacheOpts = translateLSCCacheControlsEnum(
-            static_cast<LSC_L1_L3_CC>(l1l3CacheVal), isLoad
-        );
+        cacheOpts = translateLSCCacheControlsEnum(static_cast<LSC_L1_L3_CC>(l1l3CacheVal), isLoad, warningContextValue);
     }
     return l1l3CacheVal != 0;
 }
@@ -21871,8 +21884,7 @@ LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsFromMetadata(
     {
         if (m_pCtx->platform.supportsNonDefaultLSCCacheSetting())
         {
-            if (tryOverrideCacheOpts(cacheOpts, isLoad, isTGM
-            ))
+            if (tryOverrideCacheOpts(cacheOpts, isLoad, isTGM, inst))
             {
                 // global override cache settings have highest priority
                 return cacheOpts;
@@ -21898,14 +21910,12 @@ LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsFromMetadata(
         if (isLoad && m_pCtx->getModuleMetaData()->compOpt.LoadCacheDefault != -1)
         {   // load
             LSC_L1_L3_CC L1L3Val = static_cast<LSC_L1_L3_CC>(m_pCtx->getModuleMetaData()->compOpt.LoadCacheDefault);
-            cacheOpts = translateLSCCacheControlsEnum(L1L3Val, true
-            );
+            cacheOpts = translateLSCCacheControlsEnum(L1L3Val, true, inst);
         }
         else if (!isLoad && m_pCtx->getModuleMetaData()->compOpt.StoreCacheDefault != -1)
         {   // store
             LSC_L1_L3_CC L1L3Val = static_cast<LSC_L1_L3_CC>(m_pCtx->getModuleMetaData()->compOpt.StoreCacheDefault);
-            cacheOpts = translateLSCCacheControlsEnum(L1L3Val, false
-            );
+            cacheOpts = translateLSCCacheControlsEnum(L1L3Val, false, inst);
         }
     }
 
@@ -21928,8 +21938,7 @@ LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsFromMetadata(
         }
     }
 
-    if (tryOverrideCacheOpts(cacheOpts, isLoad, isTGM
-    ))
+    if (tryOverrideCacheOpts(cacheOpts, isLoad, isTGM, inst))
     {
         // global override cache settings have highest priority
         return cacheOpts;
@@ -21960,7 +21969,7 @@ LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsFromMetadata(
 
     if (inst && isLoad)
     {
-        if (auto Opts = setCacheOptionsForConstantBufferLoads(*inst))
+        if (auto Opts = cacheOptionsForConstantBufferLoads(inst))
             cacheOpts = *Opts;
     }
 
@@ -22169,7 +22178,7 @@ void EmitPass::emitLscIntrinsicLoad(llvm::GenIntrinsicInst* inst)
     LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromValue(inst->getOperand(4), true);
     LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
 
-    if (auto Opts = setCacheOptionsForConstantBufferLoads(*inst))
+    if (auto Opts = cacheOptionsForConstantBufferLoads(inst))
         cacheOpts = *Opts;
 
     emitLscIntrinsicFragments(m_destination, dataSize, dataElems, immOffset,
@@ -23163,8 +23172,7 @@ LSC_CACHE_OPTS EmitPass::getDefaultRaytracingCachePolicy(bool isLoad) const
             LSC_L1IAR_WB_L3C_WB;
     }
 
-    return translateLSCCacheControlsEnum(Opts, isLoad
-    );
+    return translateLSCCacheControlsEnum(Opts, isLoad, nullptr);
 }
 
 void EmitPass::emitAsyncStackID(llvm::GenIntrinsicInst *I)

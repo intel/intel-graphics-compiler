@@ -54,7 +54,6 @@ namespace IGC
     {
         T L1;
         T L3;
-        GFXCORE_FAMILY MinimumSupportedCoreFamily = IGFX_XE_HP_CORE;
     };
 
     template<typename T>
@@ -80,9 +79,9 @@ namespace IGC
         { LSC_L1S_L3UC,        { LoadCacheControl::Streaming,           LoadCacheControl::Uncached } },
         { LSC_L1S_L3C_WB,      { LoadCacheControl::Streaming,           LoadCacheControl::Cached   } },
         { LSC_L1IAR_WB_L3C_WB, { LoadCacheControl::InvalidateAfterRead, LoadCacheControl::Cached   } },
-        { LSC_L1UC_L3CC,       { LoadCacheControl::Uncached,            LoadCacheControl::ConstCached,         IGFX_XE2_LPG_CORE } },
-        { LSC_L1C_L3CC,        { LoadCacheControl::Cached,              LoadCacheControl::ConstCached,         IGFX_XE2_LPG_CORE } },
-        { LSC_L1IAR_L3IAR,     { LoadCacheControl::InvalidateAfterRead, LoadCacheControl::InvalidateAfterRead, IGFX_XE2_LPG_CORE } },
+        { LSC_L1UC_L3CC,       { LoadCacheControl::Uncached,            LoadCacheControl::ConstCached,        } },
+        { LSC_L1C_L3CC,        { LoadCacheControl::Cached,              LoadCacheControl::ConstCached,        } },
+        { LSC_L1IAR_L3IAR,     { LoadCacheControl::InvalidateAfterRead, LoadCacheControl::InvalidateAfterRead } },
     };
 
     using CacheLevel = uint64_t;
@@ -132,44 +131,42 @@ namespace IGC
         return {};
     }
 
-    inline LSC_L1_L3_CC mapToLSCCacheControl(CodeGenContext *ctx, StoreCacheControl L1Control, StoreCacheControl L3Control)
+    inline LSC_L1_L3_CC mapToLSCCacheControl(StoreCacheControl L1Control, StoreCacheControl L3Control)
     {
         for (auto& [LSCEnum, SPIRVEnum] : supportedStoreConfigs)
-            if (SPIRVEnum.L1 == L1Control && SPIRVEnum.L3 == L3Control && ctx->platform.isCoreChildOf(SPIRVEnum.MinimumSupportedCoreFamily))
+            if (SPIRVEnum.L1 == L1Control && SPIRVEnum.L3 == L3Control)
                 return LSCEnum;
 
         return LSC_CC_INVALID;
     }
 
-    inline LSC_L1_L3_CC mapToLSCCacheControl(CodeGenContext *ctx, LoadCacheControl L1Control, LoadCacheControl L3Control)
+    inline LSC_L1_L3_CC mapToLSCCacheControl(LoadCacheControl L1Control, LoadCacheControl L3Control)
     {
         for (auto& [LSCEnum, SPIRVEnum] : supportedLoadConfigs)
-            if (SPIRVEnum.L1 == L1Control && SPIRVEnum.L3 == L3Control && ctx->platform.isCoreChildOf(SPIRVEnum.MinimumSupportedCoreFamily))
+            if (SPIRVEnum.L1 == L1Control && SPIRVEnum.L3 == L3Control)
                 return LSCEnum;
 
         return LSC_CC_INVALID;
     }
 
     template<typename T>
-    std::pair<T, T> mapToSPIRVCacheControl(CodeGenContext*, LSC_L1_L3_CC) = delete;
+    SeparateCacheControlsL1L3<T> mapToSPIRVCacheControl(LSC_L1_L3_CC) = delete;
 
     template <>
-    inline std::pair<LoadCacheControl, LoadCacheControl> mapToSPIRVCacheControl<LoadCacheControl>(CodeGenContext *ctx, LSC_L1_L3_CC LSCControl)
+    inline SeparateCacheControlsL1L3<LoadCacheControl> mapToSPIRVCacheControl<LoadCacheControl>(LSC_L1_L3_CC LSCControl)
     {
         if (auto I = supportedLoadConfigs.find(LSCControl); I != supportedLoadConfigs.end())
-            if (ctx->platform.isCoreChildOf(I->second.MinimumSupportedCoreFamily))
-                return { I->second.L1, I->second.L3 };
+            return I->second;
 
         IGC_ASSERT_MESSAGE(false, "Unsupported cache controls combination!");
         return { LoadCacheControl::Invalid, LoadCacheControl::Invalid };
     }
 
     template <>
-    inline std::pair<StoreCacheControl, StoreCacheControl> mapToSPIRVCacheControl<StoreCacheControl>(CodeGenContext *ctx, LSC_L1_L3_CC LSCControl)
+    inline SeparateCacheControlsL1L3<StoreCacheControl> mapToSPIRVCacheControl<StoreCacheControl>(LSC_L1_L3_CC LSCControl)
     {
         if (auto I = supportedStoreConfigs.find(LSCControl); I != supportedStoreConfigs.end())
-            if (ctx->platform.isCoreChildOf(I->second.MinimumSupportedCoreFamily))
-                return { I->second.L1, I->second.L3 };
+            return I->second;
 
         IGC_ASSERT_MESSAGE(false, "Unsupported cache controls combination!");
         return { StoreCacheControl::Invalid, StoreCacheControl::Invalid };
@@ -261,14 +258,14 @@ namespace IGC
         }
 
         LSC_L1_L3_CC defaultLSCCacheControls = static_cast<LSC_L1_L3_CC>(cacheDefault);
-        auto [L1Default, L3Default] = mapToSPIRVCacheControl<T>(ctx, defaultLSCCacheControls);
-        IGC_ASSERT(L1Default != T::Invalid && L3Default != T::Invalid);
+        auto L1L3Default = mapToSPIRVCacheControl<T>(defaultLSCCacheControls);
+        IGC_ASSERT(L1L3Default.L1 != T::Invalid && L1L3Default.L3 != T::Invalid);
 
-        T newL1CacheControl = L1CacheControl ? L1CacheControl.value() : L1Default;
-        T newL3CacheControl = L3CacheControl ? L3CacheControl.value() : L3Default;
+        T newL1CacheControl = L1CacheControl ? L1CacheControl.value() : L1L3Default.L1;
+        T newL3CacheControl = L3CacheControl ? L3CacheControl.value() : L1L3Default.L3;
 
         LSC_L1_L3_CC newLSCCacheControl =
-            mapToLSCCacheControl(ctx, newL1CacheControl, newL3CacheControl);
+            mapToLSCCacheControl(newL1CacheControl, newL3CacheControl);
 
         if (newLSCCacheControl == LSC_CC_INVALID)
         {

@@ -16,10 +16,10 @@
 target triple = "spir64-unknown-unknown"
 
 
-; CHECK: .kernel "TestLoad_L0_Uncached__L3_Uncached"
+; CHECK: .kernel "TestLoad_L1_Uncached__L3_Uncached"
 ; CHECK: lsc_load.ugm.uc.uc ({{.*}})
 ; CHECK: lsc_store.ugm ({{.*}})
-define spir_kernel void @TestLoad_L0_Uncached__L3_Uncached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
+define spir_kernel void @TestLoad_L1_Uncached__L3_Uncached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1, !spirv.Decorations !0
   %0 = load i32, i32 addrspace(1)* %arrayidx, align 4
@@ -32,10 +32,10 @@ entry:
 !2 = !{i32 6442, i32 1, i32 0}  ; {CacheControlLoadINTEL, CacheLevel=1, Uncached}
 
 
-; CHECK: .kernel "TestLoad_L0_Uncached__L3_Cached"
+; CHECK: .kernel "TestLoad_L1_Uncached__L3_Cached"
 ; CHECK: lsc_load.ugm.uc.ca ({{.*}})
 ; CHECK: lsc_store.ugm ({{.*}})
-define spir_kernel void @TestLoad_L0_Uncached__L3_Cached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
+define spir_kernel void @TestLoad_L1_Uncached__L3_Cached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1, !spirv.Decorations !10
   %0 = load i32, i32 addrspace(1)* %arrayidx, align 4
@@ -48,10 +48,10 @@ entry:
 !12 = !{i32 6442, i32 1, i32 1}  ; {CacheControlLoadINTEL, CacheLevel=1, Cached}
 
 
-; CHECK: .kernel "TestLoad_L0_Cached__L3_Uncached"
+; CHECK: .kernel "TestLoad_L1_Cached__L3_Uncached"
 ; CHECK: lsc_load.ugm.ca.uc ({{.*}})
 ; CHECK: lsc_store.ugm ({{.*}})
-define spir_kernel void @TestLoad_L0_Cached__L3_Uncached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
+define spir_kernel void @TestLoad_L1_Cached__L3_Uncached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1, !spirv.Decorations !20
   %0 = load i32, i32 addrspace(1)* %arrayidx, align 4
@@ -64,10 +64,10 @@ entry:
 !22 = !{i32 6442, i32 1, i32 0}  ; {CacheControlLoadINTEL, CacheLevel=1, Uncached}
 
 
-; CHECK: .kernel "TestLoad_L0_Cached__L3_Cached"
+; CHECK: .kernel "TestLoad_L1_Cached__L3_Cached"
 ; CHECK: lsc_load.ugm.ca.ca ({{.*}})
 ; CHECK: lsc_store.ugm ({{.*}})
-define spir_kernel void @TestLoad_L0_Cached__L3_Cached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
+define spir_kernel void @TestLoad_L1_Cached__L3_Cached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1, !spirv.Decorations !30
   %0 = load i32, i32 addrspace(1)* %arrayidx, align 4
@@ -80,10 +80,10 @@ entry:
 !32 = !{i32 6442, i32 1, i32 1}  ; {CacheControlLoadINTEL, CacheLevel=1, Cached}
 
 
-; CHECK: .kernel "TestLoad_L0_Streaming__L3_Uncached"
+; CHECK: .kernel "TestLoad_L1_Streaming__L3_Uncached"
 ; CHECK: lsc_load.ugm.st.uc ({{.*}})
 ; CHECK: lsc_store.ugm ({{.*}})
-define spir_kernel void @TestLoad_L0_Streaming__L3_Uncached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
+define spir_kernel void @TestLoad_L1_Streaming__L3_Uncached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1, !spirv.Decorations !40
   %0 = load i32, i32 addrspace(1)* %arrayidx, align 4
@@ -96,10 +96,10 @@ entry:
 !42 = !{i32 6442, i32 1, i32 0}  ; {CacheControlLoadINTEL, CacheLevel=1, Uncached}
 
 
-; CHECK: .kernel "TestLoad_L0_Streaming__L3_Cached"
+; CHECK: .kernel "TestLoad_L1_Streaming__L3_Cached"
 ; CHECK: lsc_load.ugm.st.ca ({{.*}})
 ; CHECK: lsc_store.ugm ({{.*}})
-define spir_kernel void @TestLoad_L0_Streaming__L3_Cached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
+define spir_kernel void @TestLoad_L1_Streaming__L3_Cached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1, !spirv.Decorations !50
   %0 = load i32, i32 addrspace(1)* %arrayidx, align 4
@@ -112,10 +112,10 @@ entry:
 !52 = !{i32 6442, i32 1, i32 1}  ; {CacheControlLoadINTEL, CacheLevel=1, Cached}
 
 
-; CHECK: .kernel "TestLoad_L0_InvalidateAfterRead__L3_Cached"
+; CHECK: .kernel "TestLoad_L1_InvalidateAfterRead__L3_Cached"
 ; CHECK: lsc_load.ugm.ri.ca ({{.*}})
 ; CHECK: lsc_store.ugm ({{.*}})
-define spir_kernel void @TestLoad_L0_InvalidateAfterRead__L3_Cached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
+define spir_kernel void @TestLoad_L1_InvalidateAfterRead__L3_Cached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1, !spirv.Decorations !60
   %0 = load i32, i32 addrspace(1)* %arrayidx, align 4
@@ -128,10 +128,10 @@ entry:
 !62 = !{i32 6442, i32 1, i32 1}  ; {CacheControlLoadINTEL, CacheLevel=1, Cached}
 
 
-; CHECK: .kernel "TestLoad_L0_Uncached__L3_ConstCached"
+; CHECK: .kernel "TestLoad_L1_Uncached__L3_ConstCached"
 ; CHECK-PVC: lsc_load.ugm ({{.*}})
 ; CHECK: lsc_store.ugm ({{.*}})
-define spir_kernel void @TestLoad_L0_Uncached__L3_ConstCached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
+define spir_kernel void @TestLoad_L1_Uncached__L3_ConstCached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1, !spirv.Decorations !70
   %0 = load i32, i32 addrspace(1)* %arrayidx, align 4
@@ -144,10 +144,10 @@ entry:
 !72 = !{i32 6442, i32 1, i32 4}  ; {CacheControlLoadINTEL, CacheLevel=1, ConstCached}
 
 
-; CHECK: .kernel "TestLoad_L0_Cached__L3_ConstCached"
+; CHECK: .kernel "TestLoad_L1_Cached__L3_ConstCached"
 ; CHECK-PVC: lsc_load.ugm ({{.*}})
 ; CHECK: lsc_store.ugm ({{.*}})
-define spir_kernel void @TestLoad_L0_Cached__L3_ConstCached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
+define spir_kernel void @TestLoad_L1_Cached__L3_ConstCached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1, !spirv.Decorations !80
   %0 = load i32, i32 addrspace(1)* %arrayidx, align 4
@@ -160,10 +160,10 @@ entry:
 !82 = !{i32 6442, i32 1, i32 4}  ; {CacheControlLoadINTEL, CacheLevel=1, ConstCached}
 
 
-; CHECK: .kernel "TestLoad_L0_InvalidateAfterRead__L3_InvalidateAfterRead"
+; CHECK: .kernel "TestLoad_L1_InvalidateAfterRead__L3_InvalidateAfterRead"
 ; CHECK-PVC: lsc_load.ugm ({{.*}})
 ; CHECK: lsc_store.ugm ({{.*}})
-define spir_kernel void @TestLoad_L0_InvalidateAfterRead__L3_InvalidateAfterRead(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
+define spir_kernel void @TestLoad_L1_InvalidateAfterRead__L3_InvalidateAfterRead(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1, !spirv.Decorations !90
   %0 = load i32, i32 addrspace(1)* %arrayidx, align 4
@@ -176,10 +176,10 @@ entry:
 !92 = !{i32 6442, i32 1, i32 3}  ; {CacheControlLoadINTEL, CacheLevel=1, InvalidateAfterRead}
 
 
-; CHECK: .kernel "TestStore_L0_Uncached__L3_Uncached"
+; CHECK: .kernel "TestStore_L1_Uncached__L3_Uncached"
 ; CHECK: lsc_load.ugm ({{.*}})
 ; CHECK: lsc_store.ugm.uc.uc ({{.*}})
-define spir_kernel void @TestStore_L0_Uncached__L3_Uncached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
+define spir_kernel void @TestStore_L1_Uncached__L3_Uncached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1
   %0 = load i32, i32 addrspace(1)* %arrayidx, align 4
@@ -192,10 +192,10 @@ entry:
 !102 = !{i32 6443, i32 1, i32 0}  ; {CacheControlStoreINTEL, CacheLevel=1, Uncached}
 
 
-; CHECK: .kernel "TestStore_L0_Uncached__L3_WriteBack"
+; CHECK: .kernel "TestStore_L1_Uncached__L3_WriteBack"
 ; CHECK: lsc_load.ugm ({{.*}})
 ; CHECK: lsc_store.ugm.uc.wb ({{.*}})
-define spir_kernel void @TestStore_L0_Uncached__L3_WriteBack(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
+define spir_kernel void @TestStore_L1_Uncached__L3_WriteBack(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1
   %0 = load i32, i32 addrspace(1)* %arrayidx, align 4
@@ -208,10 +208,10 @@ entry:
 !112 = !{i32 6443, i32 1, i32 2}  ; {CacheControlStoreINTEL, CacheLevel=1, WriteBack}
 
 
-; CHECK: .kernel "TestStore_L0_WriteThrough__L3_Uncached"
+; CHECK: .kernel "TestStore_L1_WriteThrough__L3_Uncached"
 ; CHECK: lsc_load.ugm ({{.*}})
 ; CHECK: lsc_store.ugm.wt.uc ({{.*}})
-define spir_kernel void @TestStore_L0_WriteThrough__L3_Uncached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
+define spir_kernel void @TestStore_L1_WriteThrough__L3_Uncached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1
   %0 = load i32, i32 addrspace(1)* %arrayidx, align 4
@@ -224,10 +224,10 @@ entry:
 !122 = !{i32 6443, i32 1, i32 0}  ; {CacheControlStoreINTEL, CacheLevel=1, Uncached}
 
 
-; CHECK: .kernel "TestStore_L0_WriteThrough__L3_WriteBack"
+; CHECK: .kernel "TestStore_L1_WriteThrough__L3_WriteBack"
 ; CHECK: lsc_load.ugm ({{.*}})
 ; CHECK: lsc_store.ugm.wt.wb ({{.*}})
-define spir_kernel void @TestStore_L0_WriteThrough__L3_WriteBack(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
+define spir_kernel void @TestStore_L1_WriteThrough__L3_WriteBack(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1
   %0 = load i32, i32 addrspace(1)* %arrayidx, align 4
@@ -240,10 +240,10 @@ entry:
 !132 = !{i32 6443, i32 1, i32 2}  ; {CacheControlStoreINTEL, CacheLevel=1, WriteBack}
 
 
-; CHECK: .kernel "TestStore_L0_Streaming__L3_Uncached"
+; CHECK: .kernel "TestStore_L1_Streaming__L3_Uncached"
 ; CHECK: lsc_load.ugm ({{.*}})
 ; CHECK: lsc_store.ugm.st.uc ({{.*}})
-define spir_kernel void @TestStore_L0_Streaming__L3_Uncached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
+define spir_kernel void @TestStore_L1_Streaming__L3_Uncached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1
   %0 = load i32, i32 addrspace(1)* %arrayidx, align 4
@@ -256,10 +256,10 @@ entry:
 !142 = !{i32 6443, i32 1, i32 0}  ; {CacheControlStoreINTEL, CacheLevel=1, Uncached}
 
 
-; CHECK: .kernel "TestStore_L0_Streaming__L3_WriteBack"
+; CHECK: .kernel "TestStore_L1_Streaming__L3_WriteBack"
 ; CHECK: lsc_load.ugm ({{.*}})
 ; CHECK: lsc_store.ugm.st.wb ({{.*}})
-define spir_kernel void @TestStore_L0_Streaming__L3_WriteBack(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
+define spir_kernel void @TestStore_L1_Streaming__L3_WriteBack(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1
   %0 = load i32, i32 addrspace(1)* %arrayidx, align 4
@@ -272,10 +272,10 @@ entry:
 !152 = !{i32 6443, i32 1, i32 2}  ; {CacheControlStoreINTEL, CacheLevel=1, WriteBack}
 
 
-; CHECK: .kernel "TestStore_L0_WriteBack__L3_WriteBack"
+; CHECK: .kernel "TestStore_L1_WriteBack__L3_WriteBack"
 ; CHECK: lsc_load.ugm ({{.*}})
 ; CHECK: lsc_store.ugm.wb.wb ({{.*}})
-define spir_kernel void @TestStore_L0_WriteBack__L3_WriteBack(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
+define spir_kernel void @TestStore_L1_WriteBack__L3_WriteBack(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
 entry:
   %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %in, i64 1
   %0 = load i32, i32 addrspace(1)* %arrayidx, align 4

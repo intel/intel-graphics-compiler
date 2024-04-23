@@ -356,7 +356,9 @@ public:
     void emitFastClearSend(llvm::Instruction* pInst);
     void setRovCacheCtrl(llvm::GenIntrinsicInst* inst);
     llvm::Optional<LSC_CACHE_OPTS>
-        setCacheOptionsForConstantBufferLoads(Instruction& inst) const;
+        cacheOptionsForConstantBufferLoads(Instruction* inst, LSC_L1_L3_CC Ctrl) const;
+    llvm::Optional<LSC_CACHE_OPTS>
+        cacheOptionsForConstantBufferLoads(Instruction* inst) const;
     bool useRasterizerOrderedByteAddressBuffer(llvm::GenIntrinsicInst* inst);
     void emitUniformAtomicCounter(llvm::GenIntrinsicInst* pInst);
 
@@ -539,6 +541,9 @@ public:
     void emitHDCuncompressedwrite(llvm::GenIntrinsicInst* I);
     ////////////////////////////////////////////////////////////////////
     // LSC related functions
+    bool tryOverrideCacheOpts(LSC_CACHE_OPTS& cacheOpts, bool isLoad, bool isTGM, const llvm::Value* warningContextValue) const;
+    bool isSupportedLSCCacheControlsEnum(LSC_L1_L3_CC l1l3cc, bool isLoad) const;
+    LSC_CACHE_OPTS translateLSCCacheControlsEnum(LSC_L1_L3_CC l1l3cc, bool isLoad, const llvm::Value* warningContextValue) const;
     LSC_CACHE_OPTS translateLSCCacheControlsFromValue(
         llvm::Value *value, bool isLoad) const;
     LSC_CACHE_OPTS translateLSCCacheControlsFromMetadata(
