@@ -939,7 +939,7 @@ namespace IGC
                 else if (var->GetNumberElement() < numLanes(m_encoderState.m_simdSize))
                 {
                     IGC_ASSERT(numLanes(m_encoderState.m_simdSize) % var->GetNumberElement() == 0);
-                    unsigned short vStride = 1;
+                    unsigned short vStride = 0x8000;
                     unsigned short width = numLanes(m_encoderState.m_simdSize) / var->GetNumberElement();
                     unsigned short hStride = 0;
 
