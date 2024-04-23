@@ -486,9 +486,10 @@ void CloneAddressArithmetic::speculateWholeChain(RematSet &ToProcess, unsigned i
 bool CloneAddressArithmetic::isRegPressureLow(Function &F) {
 
     RPE = &getAnalysis<IGCLivenessAnalysis>();
-    unsigned int SIMD = numLanes(RPE->bestGuessSIMDSize());
+    unsigned int SIMD = numLanes(RPE->bestGuessSIMDSize(&F));
     unsigned int PressureLimit = IGC_GET_FLAG_VALUE(RematRPELimit);
-    bool Result = RPE->getMaxRegCountForFunction(F, SIMD) < PressureLimit;
+    unsigned int MaxPressure = RPE->getMaxRegCountForFunction(F, SIMD, &WI->Runner);
+    bool Result = MaxPressure < PressureLimit;
     return Result;
 }
 

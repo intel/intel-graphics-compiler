@@ -759,7 +759,7 @@ DECLARE_IGC_REGKEY(int, ByPassAllocaSizeHeuristic,   0,  "Force some Alloca to p
 DECLARE_IGC_REGKEY(DWORD, MemOptWindowSize,   150,  "Size of the window in unit of instructions in which load/stores are allowed to be coalesced. Keep it limited in order to avoid creating long liveranges. Default value is 150", false)
 DECLARE_IGC_REGKEY(DWORD, RematFlowThreshold,   10,  "Proportion of the whole rematerialization targets to cutoff remat chain", false)
 DECLARE_IGC_REGKEY(DWORD, RematChainLimit,   12,  "If number of instructions we've collected is more than this value, we bail on it", false)
-DECLARE_IGC_REGKEY(DWORD, RematRPELimit,   100,  "Cutoff value for register estimator, lower than that, kernel won't be rematted", false)
+DECLARE_IGC_REGKEY(DWORD, RematRPELimit,   121,  "Cutoff value for register estimator, lower than that, kernel won't be rematted", false)
 DECLARE_IGC_REGKEY(bool, RematEnable, false, "Enable clone adress arithmetic pass not only on retry", false)
 DECLARE_IGC_REGKEY(bool, RematLog, false, "Dump Remat Log, usefull for analyzing spills as well", false)
 DECLARE_IGC_REGKEY(bool, RematSameBBScope, false, "Confine rematerialization only to variables within the same BB, we won't pull down values from predeccors", false)

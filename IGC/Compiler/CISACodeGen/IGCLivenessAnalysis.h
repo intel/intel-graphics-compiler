@@ -43,6 +43,7 @@ namespace IGC {
         DFSet Out;
 
         IGC::CodeGenContext *CGCtx = nullptr;
+        IGCMD::MetaDataUtils* MDUtils = nullptr;
 
         // returns all definitions that were made in the block
         // computed by taking difference between In and Out,
@@ -61,7 +62,7 @@ namespace IGC {
                 unsigned int SIMD,
                 WIAnalysisRunner* WI = nullptr);
 
-        SIMDMode bestGuessSIMDSize();
+        SIMDMode bestGuessSIMDSize(Function* F = nullptr);
 
         unsigned int bytesToRegisters(unsigned int Bytes) {
             unsigned int RegisterSizeInBytes = registerSizeInBytes();
@@ -169,6 +170,7 @@ class IGCLivenessAnalysis : public llvm::FunctionPass, public IGCLivenessAnalysi
     virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
         AU.setPreservesAll();
         AU.addRequired<CodeGenContextWrapper>();
+        AU.addRequired<MetaDataUtilsWrapper>();
     }
 };
 
@@ -181,7 +183,6 @@ class IGCFunctionExternalRegPressureAnalysis : public llvm::ModulePass, public I
 
     // already present in IGCLivenessAnalysisBase
     //IGC::CodeGenContext *CGCtx = nullptr;
-    IGCMD::MetaDataUtils* MDUtils = nullptr;
     ModuleMetaData* ModMD = nullptr;
 
     std::unique_ptr<WIAnalysisRunner> runWIAnalysis(Function &F);
