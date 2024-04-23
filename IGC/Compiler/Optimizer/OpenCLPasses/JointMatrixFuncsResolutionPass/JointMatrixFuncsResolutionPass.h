@@ -52,7 +52,9 @@ namespace IGC
         void visitBitCastInst(llvm::BitCastInst &I);
 
     private:
+        template <bool IsJointMatrix>
         llvm::Instruction *ResolveLoad(llvm::CallInst *CI);
+        template <bool IsJointMatrix>
         llvm::Instruction *ResolveStore(llvm::CallInst *CI);
         llvm::Instruction *ResolveMad(llvm::CallInst *CI, unsigned OperationType);
         int getSliceSize(const JointMatrixTypeDescription *desc);
@@ -64,6 +66,7 @@ namespace IGC
         llvm::Value *ResolveCall(llvm::CallInst *CI);
         llvm::Value *ResolveGeneric(llvm::Instruction *OldInst);
         llvm::Value *Resolve(llvm::Value *value);
+        void preprocessAccessChain(llvm::Function *F);
 
         bool parseMatrixTypeNameLegacy(const llvm::Type *opaqueType, JointMatrixTypeDescription *outDescription);
         bool ParseMatrixTypeName(llvm::Type *opaqueType, JointMatrixTypeDescription *outDescription);

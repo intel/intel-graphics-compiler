@@ -16,8 +16,8 @@
 %spirv.JointMatrixINTEL._char_8_32_0_3_0 = type opaque
 %spirv.JointMatrixINTEL._char_32_16_0_3_1 = type opaque
 
-; CHECK-PVC-VG: error: OpJointMatrixMadINTEL is not supported on this platform!
-; CHECK-PVC-NOT: error: OpJointMatrixMadINTEL is not supported on this platform!
+; CHECK-PVC-VG: error: OpJointMatrixMadINTEL/OpCooperativeMatrixMulAddKHR is not supported on this platform!
+; CHECK-PVC-NOT: error: OpJointMatrixMadINTEL/OpCooperativeMatrixMulAddKHR is not supported on this platform!
 
 define spir_kernel void @load_store_legacy_error(i8 addrspace(1)* %src, i64 %stride, i32 addrspace(1)* %dst) {
   %1 = call spir_func %spirv.JointMatrixINTEL._int_8_16_3_3_2 addrspace(1)* @_Z26__spirv_CompositeConstructi(i32 0)
