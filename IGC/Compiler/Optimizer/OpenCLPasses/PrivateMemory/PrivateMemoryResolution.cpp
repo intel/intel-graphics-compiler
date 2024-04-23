@@ -837,6 +837,31 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     Value* simdLaneId = entryBuilder.CreateIntCast(simdLaneId16, typeInt32, false, VALUE_NAME("simdLaneId"));
     Instruction* simdSize = entryBuilder.CreateCall(simdSizeFunc, llvm::None, VALUE_NAME("simdSize"));
 
+    // Return Base + Offset
+    //   Base : int/ptr;  Offset : int
+    //   Possible cases: ptr64 + i32/i64; ptr32 + i32; i64 + i32/i64; i32 + i32.
+    auto addOffset = [this](IGCLLVM::IRBuilder<>& IRB, Value* Base, Value* Offset)
+    {
+        Value* addr;
+        Type* bTy = Base->getType();
+        Type* oTy = Offset->getType();
+        if (Base->getType()->isPointerTy()) {
+            auto& DL = m_currFunction->getParent()->getDataLayout();
+            Type* intPtrTy = DL.getIntPtrType(bTy);
+            IGC_ASSERT(intPtrTy->getPrimitiveSizeInBits() >= oTy->getPrimitiveSizeInBits());
+            Value* BaseAsInt = IRB.CreatePtrToInt(Base, intPtrTy, VALUE_NAME("baseAsInt"));
+            Value* offset = IRB.CreateZExt(Offset, intPtrTy);
+            Value* baseOffAsInt = IRB.CreateAdd(BaseAsInt, offset, VALUE_NAME("baseOffAsInt"), true, true);
+            addr = IRB.CreateIntToPtr(baseOffAsInt, Base->getType(), VALUE_NAME("baseAddOffset"));
+        }
+        else {
+            IGC_ASSERT(bTy->getPrimitiveSizeInBits() >= oTy->getPrimitiveSizeInBits());
+            Value* offset = IRB.CreateZExt(Offset, bTy);
+            addr = IRB.CreateAdd(Base, offset, VALUE_NAME("baseAddOffset"), true, true);
+        }
+        return addr;
+    };
+
     // Return thread offset. As it is per-thread, the calculation should be done in entry BB.
     auto createThreadOffset = [simdSize, typeInt32, typeInt64, safe32bitOffset](
         IGCLLVM::IRBuilder<>& IRB, Value* ThreadID, uint32_t TotalPrivMemPerWI)
@@ -984,8 +1009,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
             Function* pHWTIDFunc = GenISAIntrinsic::getDeclaration(m_currFunction->getParent(), GenISAIntrinsic::GenISA_hw_thread_id_alloca, Type::getInt32Ty(C));
             Value* threadId = entryBuilder.CreateCall(pHWTIDFunc);
             Value* perThreadOffset = createThreadOffset(entryBuilder, threadId, totalPrivateMemPerWI);
-            perThreadOffset = entryBuilder.CreateZExt(perThreadOffset, privateBase->getType());
-            threadBase = entryBuilder.CreateAdd(privateBase, perThreadOffset);
+            threadBase = addOffset(entryBuilder, privateBase, perThreadOffset);
         }
 
         for (auto pAI : allocaInsts)
@@ -1123,6 +1147,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
         threadId = entryBuilder.CreateOr(FFSID, shlThreadID, VALUE_NAME("threadId"));
     }
     Value* perThreadOffset = createThreadOffset(entryBuilder, threadId, totalPrivateMemPerWI);
+    Value* threadBase = addOffset(entryBuilder, privateMemPtr, perThreadOffset);
 
     auto perThreadOffsetInst = dyn_cast_or_null<Instruction>(perThreadOffset);
     IGC_ASSERT_MESSAGE(perThreadOffsetInst, "perThreadOffset will not be marked as Output");
@@ -1138,12 +1163,11 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     {
         // %bufferOffset                = mul i32 %simdSize, <scalarBufferOffset>
         // %bufferOffset                = zext i32 %bufferOffset to i64
-        // %bufferOffsetForThread       = add i64 %perThreadOffset, %bufferOffset
         // %perLaneOffset               = mul i32 %simdLaneId, <bufferSize>
         // %perLaneOffset               = zext i32 %perLaneOffset to i64
-        // %totalOffset                 = add i64 %bufferOffsetForThread, %perLaneOffset
-        // %privateBufferGEP            = getelementptr i8* %privateBase, i64 %totalOffset
-        // %privateBuffer               = bitcast i8* %offsettmp1 to <buffer type>
+        // %totalOffset                 = add i64 %bufferOffset, %perLaneOffset
+        // %privateBufferGEP            = getelementptr i8* %threadBase, i64 %totalOffset
+        // %privateBuffer               = bitcast i8* %privateBufferGEP to <buffer type>
 
         IGCLLVM::IRBuilder<> builder(pAI);
         builder.SetCurrentDebugLocation(entryDebugLoc);
@@ -1155,16 +1179,15 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
         Value* bufferOffset = builder.CreateMul(simdSize, ConstantInt::get(typeInt32, scalarBufferOffset), VALUE_NAME(pAI->getName() + ".SIMDBufferOffset"));
         if (!safe32bitOffset)
             bufferOffset = builder.CreateZExt(bufferOffset, typeInt64);
-        Value* bufferOffsetForThread = builder.CreateAdd(perThreadOffset, bufferOffset, VALUE_NAME(pAI->getName() + ".bufferOffsetForThread"));
         Value* perLaneOffset = isUniform ? builder.getInt32(0) : simdLaneId;
         perLaneOffset = builder.CreateMul(perLaneOffset, ConstantInt::get(typeInt32, bufferSize), VALUE_NAME("perLaneOffset"));
         if (!safe32bitOffset)
             perLaneOffset = builder.CreateZExt(perLaneOffset, typeInt64);
-        Value* totalOffset = builder.CreateAdd(bufferOffsetForThread, perLaneOffset, VALUE_NAME(pAI->getName() + ".totalOffset"));
+        Value* totalOffset = builder.CreateAdd(bufferOffset, perLaneOffset, VALUE_NAME(pAI->getName() + ".totalOffset"));
         if (m_currFunction->getParent()->getDataLayout().getPointerSize() == 8)
             // Manually zero-extend the offset to 64-bits to prevent it from being sign-extended by InstructionCombining
             totalOffset = builder.CreateZExt(totalOffset, typeInt64);
-        Value* privateBufferGEP = builder.CreateGEP(privateMemPtr, totalOffset, VALUE_NAME(pAI->getName() + ".privateBufferGEP"));
+        Value* privateBufferGEP = builder.CreateGEP(threadBase, totalOffset, VALUE_NAME(pAI->getName() + ".privateBufferGEP"));
         Value* privateBuffer = builder.CreatePointerCast(privateBufferGEP, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));
 
         auto DbgUses = llvm::FindDbgAddrUses(pAI);

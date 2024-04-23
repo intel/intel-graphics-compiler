@@ -19,12 +19,18 @@ entry:
 ; CHECK:  [[CALL:%[A-z0-9]*]] = call i32 @llvm.genx.GenISA.hw.thread.id.alloca.i32()
 ; CHECK:  [[totalPrivateMemPerThread:%[.A-z0-9]*]] = mul i32 [[simdSize]], 400
 ; CHECK:  [[perThreadOffset:%[A-z0-9]*]] = mul i32 [[CALL]], [[totalPrivateMemPerThread]]
+; CHECK:  [[baseAsInt:%.*]] = ptrtoint i8* %privateBase to i64
+; CHECK:  [[ZXT0:%.*]] = zext i32 [[perThreadOffset]] to i64
+; CHECK:  [[TMP:%.*]] = add nuw nsw i64 [[baseAsInt]], [[ZXT0]]
+; CHECK:  [[ThreadBase:%.*]] = inttoptr i64 [[TMP]] to i8*
+;;
+;; End of entryBuilder
+;;
 ; CHECK:  [[SIMDBufferOffset:%[.A-z0-9]*]] = mul i32 [[simdSize]], 0
-; CHECK:  [[bufferOffsetForThread:%[.A-z0-9]*]] = add i32 [[perThreadOffset]], [[SIMDBufferOffset]]
 ; CHECK:  [[perLaneOffset:%[A-z0-9]*]] = mul i32 [[simdLaneId]], 400
-; CHECK:  [[totalOffset:%[.A-z0-9]*]] = add i32 [[bufferOffsetForThread]], [[perLaneOffset]]
+; CHECK:  [[totalOffset:%[.A-z0-9]*]] = add i32 [[SIMDBufferOffset]], [[perLaneOffset]]
 ; CHECK:  [[totalOffsetExt:%[.A-z0-9]*]] = zext i32 [[totalOffset]] to i64
-; CHECK:  [[privateBufferGEP:%[.A-z0-9]*]] = getelementptr i8, i8* %privateBase, i64 [[totalOffsetExt]]
+; CHECK:  [[privateBufferGEP:%[.A-z0-9]*]] = getelementptr i8, i8* [[ThreadBase]], i64 [[totalOffsetExt]]
 ; CHECK:  [[privateBuffer:%[.A-z0-9]*]] = bitcast i8* [[privateBufferGEP]] to [100 x float]*
 ; CHECK:  ret void
 }
