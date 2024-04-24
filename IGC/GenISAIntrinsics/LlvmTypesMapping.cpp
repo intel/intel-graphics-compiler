@@ -180,7 +180,10 @@ bool PointerType::VerifyType(llvm::Type* pType) const
     {
         isCorrect = isCorrect && m_AddressSpace == llvm::cast<llvm::PointerType>(pType)->getAddressSpace();
     }
-    isCorrect = isCorrect && m_Type.VerifyType(IGCLLVM::getNonOpaquePtrEltTy(pType));
+    if (!IGCLLVM::isOpaquePointerTy(pType))
+    {
+        isCorrect = isCorrect && m_Type.VerifyType(IGCLLVM::getNonOpaquePtrEltTy(pType));
+    }
     return isCorrect;
 }
 

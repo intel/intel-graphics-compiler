@@ -112,8 +112,18 @@ void FixResourcePtr::RemoveGetBufferPtr(GenIntrinsicInst* bufPtr, Value* bufIdx)
 
         PointerType* const instType = dyn_cast<PointerType>(inst->getType());
         IGC_ASSERT(nullptr != instType);
-        Type* eltType = IGCLLVM::getNonOpaquePtrEltTy(instType);
-        PointerType* ptrType = PointerType::get(eltType, outAS);
+        PointerType* ptrType = nullptr;
+        if (IGCLLVM::isOpaquePointerTy(instType))
+        {
+#if LLVM_VERSION_MAJOR >= 14
+            ptrType = PointerType::get(bufPtr->getContext(), outAS);
+#endif
+        }
+        else
+        {
+            Type* eltType = IGCLLVM::getNonOpaquePtrEltTy(instType);
+            ptrType = PointerType::get(eltType, outAS);
+        }
         inst->mutateType(ptrType);
         // iterate all the uses, put bitcast on the worklist
         for (auto UI = inst->user_begin(), E = inst->user_end(); UI != E; ++UI)
@@ -203,15 +213,13 @@ void FixResourcePtr::FindLoadStore(Instruction* bufPtr, Instruction* eltPtr, Ins
 Value* FixResourcePtr::GetByteOffset(Instruction* eltPtr)
 {
     IGC_ASSERT(eltPtr->getNumOperands() == 2);
-    Value* ptrOp = eltPtr->getOperand(0);
-    PointerType* ptrTy = dyn_cast<PointerType>(ptrOp->getType());
-    IGC_ASSERT(ptrTy);
+    IGC_ASSERT(isa<llvm::GetElementPtrInst>(eltPtr));
     Value* eltIdx = eltPtr->getOperand(1);
 
     builder->SetInsertPoint(eltPtr);
     // decide offset in bytes
     //     may need to create shift
-    uint  eltBytes = int_cast<uint>(DL->getTypeStoreSize(IGCLLVM::getNonOpaquePtrEltTy(ptrTy)));
+    uint  eltBytes = int_cast<uint>(DL->getTypeStoreSize(cast<llvm::GetElementPtrInst>(eltPtr)->getSourceElementType()));
     APInt eltSize = APInt(32, eltBytes);
 
     Value* offsetValue = eltIdx;

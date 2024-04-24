@@ -1454,8 +1454,6 @@ void Legalization::visitStoreInst(StoreInst& I)
 
         IGC_ASSERT(nullptr != storePtr);
         IGC_ASSERT(nullptr != storePtr->getType());
-        IGC_ASSERT(nullptr != IGCLLVM::getNonOpaquePtrEltTy(storePtr->getType()));
-        IGC_ASSERT(IGCLLVM::getNonOpaquePtrEltTy(storePtr->getType())->isIntegerTy(srcWidth));
 
         PointerType* ptrTy = PointerType::get(legalTy, storePtr->getType()->getPointerAddressSpace());
         IntToPtrInst* intToPtr = dyn_cast<IntToPtrInst>(storePtr);

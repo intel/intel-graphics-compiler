@@ -26,6 +26,14 @@ namespace IGCLLVM {
 #endif
     }
 
+    inline bool isOpaquePointerTy(const llvm::Type* PtrTy) {
+#if LLVM_VERSION_MAJOR < 14
+        return false;
+#else
+        return PtrTy->isOpaquePointerTy();
+#endif
+    }
+
     inline bool isBFloatTy(llvm::Type* type) {
 #if LLVM_VERSION_MAJOR < 14
         return false;

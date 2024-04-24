@@ -326,7 +326,6 @@ bool VerificationPass::verifyType(Type* type, Value* val)
         // type is still valid unless it gets dereferenced, which will get
         // checked later.
 
-        //success &= verifyType(IGCLLVM::getNonOpaquePtrEltTy(type), val);
         break;
     }
 

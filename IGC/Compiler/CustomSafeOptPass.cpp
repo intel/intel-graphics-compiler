@@ -695,7 +695,7 @@ void CustomSafeOptPass::visitLoadInst(LoadInst& load)
             SmallVector<Value*, 8> indices;
             indices.append(gep->idx_begin(), gep->idx_end());
             indices[selIdx] = sel->getOperand(1);
-            Type *BaseTy = IGCLLVM::getNonOpaquePtrEltTy(gep->getPointerOperand()->getType());
+            Type *BaseTy = gep->getSourceElementType();
             GetElementPtrInst* gep1 = GetElementPtrInst::Create(BaseTy, gep->getPointerOperand(), indices, gep->getName(), gep);
             gep1->setDebugLoc(gep->getDebugLoc());
             indices[selIdx] = sel->getOperand(2);
@@ -4491,7 +4491,7 @@ bool ClampICBOOBAccess::runOnFunction(Function& F)
                             continue;
                         }
 
-                        Type* eleType = IGCLLVM::getNonOpaquePtrEltTy(gep->getPointerOperandType());
+                        Type* eleType = gep->getSourceElementType();
                         if (!eleType->isArrayTy() ||
                             !(eleType->getArrayElementType()->isFloatTy() || eleType->getArrayElementType()->isIntegerTy(32)))
                         {
@@ -4501,7 +4501,7 @@ bool ClampICBOOBAccess::runOnFunction(Function& F)
                         // Want to compare index into ICB to ensure index doesn't go past the size of the ICB
                         // If it does clamp to some index where a zero is stored
                         m_builder.SetInsertPoint(gep);
-                        uint64_t arrSize = IGCLLVM::getNonOpaquePtrEltTy(gep->getPointerOperandType())->getArrayNumElements();
+                        uint64_t arrSize = gep->getSourceElementType()->getArrayNumElements();
                         Value* eltIdx = gep->getOperand(2);
                         Value* isOOB = m_builder.CreateICmp(ICmpInst::ICMP_UGE, eltIdx, llvm::ConstantInt::get(eltIdx->getType(), arrSize));
                         unsigned zeroIndex = modMD->immConstant.zeroIdxs[offsetIntoMergedBuffer];
@@ -4586,7 +4586,7 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function& F)
                                 continue;
                             }
 
-                            Type* eleType = IGCLLVM::getNonOpaquePtrEltTy(gep->getPointerOperandType());
+                            Type* eleType = gep->getSourceElementType();
                             if (!eleType->isArrayTy() ||
                                 !(eleType->getArrayElementType()->isFloatTy() || eleType->getArrayElementType()->isIntegerTy(32)))
                             {
