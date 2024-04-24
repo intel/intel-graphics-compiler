@@ -396,7 +396,7 @@ bool CMABI::runOnSCC(CallGraphSCC &SCC) {
       auto *M = F->getParent();
       auto *InsertBefore = F->getEntryBlock().getFirstNonPHI();
       auto *PtrTy = cast<PointerType>(ArgTy);
-      auto *Ty = IGCLLVM::getNonOpaquePtrEltTy(PtrTy);
+      auto *Ty = F->getParamByValType(Arg.getArgNo());
       auto *Int64Ty = Type::getInt64Ty(M->getContext());
       auto *Int8Ty = Type::getInt8Ty(M->getContext());
       auto *Int1Ty = Type::getInt1Ty(M->getContext());
@@ -436,11 +436,10 @@ void CMABI::LocalizeGlobals(LocalizationInfo &LI) {
     LLVM_DEBUG(dbgs() << "Localizing global: " << *GV << "\n  ");
 
     Instruction &FirstI = *Fn->getEntryBlock().begin();
-    Type *ElemTy = IGCLLVM::getNonOpaquePtrEltTy(GV->getType());
     IGCLLVM::Align GVAlign = IGCLLVM::getCorrectAlign(GV->getAlignment());
-    AllocaInst *Alloca = new AllocaInst(ElemTy, vc::AddrSpace::Private,
-                                        /*ArraySize=*/nullptr, GVAlign,
-                                        GV->getName() + ".local", &FirstI);
+    AllocaInst *Alloca = new AllocaInst(
+        GV->getValueType(), vc::AddrSpace::Private,
+        /*ArraySize=*/nullptr, GVAlign, GV->getName() + ".local", &FirstI);
 
     if (!isa<UndefValue>(GV->getInitializer()))
       new StoreInst(GV->getInitializer(), Alloca, /*isVolatile=*/false,
@@ -1091,9 +1090,8 @@ bool CMLowerVLoadVStore::lowerLoadStore(Function &F) {
         if (GenXIntrinsic::isVStore(&Inst))
           Builder.CreateStore(Inst.getOperand(0), Inst.getOperand(1));
         else {
-          Value *Op0 = Inst.getOperand(0);
-          auto LI = Builder.CreateLoad(IGCLLVM::getNonOpaquePtrEltTy(Op0->getType()),
-                                       Op0, Inst.getName());
+          auto LI = Builder.CreateLoad(Inst.getType(), Inst.getOperand(0),
+                                       Inst.getName());
           LI->setDebugLoc(Inst.getDebugLoc());
           Inst.replaceAllUsesWith(LI);
         }
@@ -1107,7 +1105,7 @@ bool CMLowerVLoadVStore::lowerLoadStore(Function &F) {
           IRBuilder<> Builder(&Inst);
           if (GenXIntrinsic::isVStore(&Inst)) {
             auto PtrTy = cast<PointerType>(Inst.getOperand(1)->getType());
-            PtrTy = PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(PtrTy), AS1);
+            PtrTy = PointerType::getWithSamePointeeType(PtrTy, AS1);
             auto PtrCast = Builder.CreateAddrSpaceCast(Inst.getOperand(1), PtrTy);
             Type* Tys[] = { Inst.getOperand(0)->getType(),
                            PtrCast->getType() };
@@ -1118,7 +1116,7 @@ bool CMLowerVLoadVStore::lowerLoadStore(Function &F) {
           }
           else {
             auto PtrTy = cast<PointerType>(Inst.getOperand(0)->getType());
-            PtrTy = PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(PtrTy), AS1);
+            PtrTy = PointerType::getWithSamePointeeType(PtrTy, AS1);
             auto PtrCast = Builder.CreateAddrSpaceCast(Inst.getOperand(0), PtrTy);
             Type* Tys[] = { Inst.getType(), PtrCast->getType() };
             Function* Fn = GenXIntrinsic::getGenXDeclaration(
@@ -1307,16 +1305,14 @@ void ArgRefPattern::process(DominatorTree &DT) {
 
   if (CopyOutRegion) {
     Builder.SetInsertPoint(CopyOutRegion);
-    CopyOutRegion->setArgOperand(
-        0, Builder.CreateLoad(IGCLLVM::getNonOpaquePtrEltTy(BaseAlloca->getType()),
-                              BaseAlloca));
+    CopyOutRegion->setArgOperand(0,
+                                 Builder.CreateLoad(BaseAllocaTy, BaseAlloca));
   }
 
   // Rewrite all stores.
   for (auto ST : VStores) {
     Builder.SetInsertPoint(ST);
-    Value *OldVal = Builder.CreateLoad(
-        IGCLLVM::getNonOpaquePtrEltTy(BaseAlloca->getType()), BaseAlloca);
+    Value *OldVal = Builder.CreateLoad(BaseAllocaTy, BaseAlloca);
     // Always use copy-in region arguments as copy-out region
     // arguments do not dominate this store.
     auto M = ST->getModule();
@@ -1344,8 +1340,7 @@ void ArgRefPattern::process(DominatorTree &DT) {
       continue;
 
     Builder.SetInsertPoint(LI);
-    Value *SrcVal = Builder.CreateLoad(
-        IGCLLVM::getNonOpaquePtrEltTy(BaseAlloca->getType()), BaseAlloca);
+    Value *SrcVal = Builder.CreateLoad(BaseAllocaTy, BaseAlloca);
     SmallVector<Value *, 8> Args(CopyInRegion->args());
     Args[0] = SrcVal;
     Value *Val = Builder.CreateCall(RdFn, Args);
