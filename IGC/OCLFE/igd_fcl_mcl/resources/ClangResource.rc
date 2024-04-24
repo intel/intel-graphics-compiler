@@ -30,23 +30,11 @@ SPDX-License-Identifier: MIT
 #ifdef _AMD64_
 #define VER_INTERNALNAME            "igdfcl64.dll"
 #define VER_ORIGINALNAME            "igdfcl64.dll"
-#if _DEBUG
-#define VER_DUMP                    "../../../../../dump64/igc/bif/Debug/opencl_cth.h"
-#elif _INTERNAL
-#define VER_DUMP                    "../../../../../dump64/igc/bif/ReleaseInternal/opencl_cth.h"
-#else
-#define VER_DUMP                    "../../../../../dump64/igc/bif/Release/opencl_cth.h"
-#endif
+#define VER_DUMP                    IGC_BIF_OPENCL_CTH_HEADER
 #else
 #define VER_INTERNALNAME            "igdfcl32.dll"
 #define VER_ORIGINALNAME            "igdfcl32.dll"
-#if _DEBUG
-#define VER_DUMP                    "../../../../../dump32/igc/bif/Debug/opencl_cth.h"
-#elif _INTERNAL
-#define VER_DUMP                    "../../../../../dump32/igc/bif/ReleaseInternal/opencl_cth.h"
-#else
-#define VER_DUMP                    "../../../../../dump32/igc/bif/Release/opencl_cth.h"
-#endif
+#define VER_DUMP                    IGC_BIF_OPENCL_CTH_HEADER
 #endif
 
 
