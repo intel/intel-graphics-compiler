@@ -251,6 +251,7 @@ private:
   bool lowerTrap(CallInst *CI);
   bool lowerDebugTrap(CallInst *CI);
   bool lowerFMulAdd(CallInst *CI);
+  bool lowerPowI(CallInst *CI);
   bool lowerAddcSubb(CallInst *CI, unsigned IntrinsicID);
   bool lower64Bitreverse(CallInst *CI);
   bool lowerBitreverse(CallInst *CI);
@@ -2123,6 +2124,8 @@ bool GenXLowering::processInst(Instruction *Inst) {
       llvm_unreachable("Expect intrinsic should be lowered before");
     case Intrinsic::fmuladd:
       return lowerFMulAdd(CI);
+    case Intrinsic::powi:
+      return lowerPowI(CI);
     case Intrinsic::bitreverse:
       return lowerBitreverse(CI);
     case Intrinsic::bswap:
@@ -4445,6 +4448,20 @@ bool GenXLowering::lowerFMulAdd(CallInst *CI) {
   FMA->setDebugLoc(CI->getDebugLoc());
   CI->replaceAllUsesWith(FMA);
 
+  ToErase.push_back(CI);
+  return true;
+}
+
+bool GenXLowering::lowerPowI(CallInst *CI) {
+  IGC_ASSERT(CI);
+  IRBuilder<> IRB{CI};
+  auto *Decl = Intrinsic::getDeclaration(CI->getModule(), Intrinsic::pow,
+                                         {CI->getType()});
+  auto *Cast =
+      IRB.CreateCast(Instruction::SIToFP, CI->getOperand(1), CI->getType());
+  auto *Pow = IRB.CreateCall(Decl, {CI->getOperand(0), Cast}, CI->getName());
+  Pow->setHasApproxFunc(true);
+  CI->replaceAllUsesWith(Pow);
   ToErase.push_back(CI);
   return true;
 }
