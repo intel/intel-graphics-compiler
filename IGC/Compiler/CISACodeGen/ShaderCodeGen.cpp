@@ -320,7 +320,7 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     }
 
     // Reorder FP instructions to minimize number of times rounding mode is switched.
-    //mpm.add(createFPRoundingModeCoalescingPass());
+    mpm.add(createFPRoundingModeCoalescingPass());
 
     // Expected to be the last ModulePass before EmitPass at this point.
     // (Shall be after GenXCodeGenModulePass.)
