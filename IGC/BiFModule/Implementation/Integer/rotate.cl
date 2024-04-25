@@ -241,9 +241,13 @@ int16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(rotate, _v16i32_v16i32, )( int16 v, i
 INLINE
 long SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(rotate, _i64_i64, )( long v, long i )
 {
-    ulong temp = as_ulong(i) % 64;
+    ulong shift_left = as_ulong(i) % 64;
+    if (shift_left == 0)
+    {
+        return v;
+    }
     ulong uv = as_ulong(v);
-    return as_ulong((uv << temp) | (uv >> (64 - temp)));
+    return (uv << shift_left) | (uv >> (64 - shift_left));
 }
 
 INLINE
