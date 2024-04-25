@@ -389,7 +389,7 @@ void DivergentBarrierPass::generateBody(
         IRB.CreateCall(BarrierFn);
 
         auto* ThreadDoneCnt = IRB.CreateLoad(
-            IRB.getInt32Ty(),
+            IGCLLVM::getNonOpaquePtrEltTy(ThreadDoneCntPtr->getType()),
             ThreadDoneCntPtr, VALUE_NAME("thread.done.cnt"));
 
         Value* GroupSize = getGroupSize(*Wrapper);

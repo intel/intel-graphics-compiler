@@ -217,12 +217,12 @@ inline void StoreToStruct(IGCLLVM::IRBuilder<>& builder, Value* strVal, Value* s
 }
 
 // BE does not handle struct load/store, so instead load each element from the GEP struct pointer and insert it into the struct value
-inline Value* LoadFromStruct(IGCLLVM::IRBuilder<>& builder, Type* strTy, Value* strPtr)
+inline Value* LoadFromStruct(IGCLLVM::IRBuilder<>& builder, Value* strPtr)
 {
     IGC_ASSERT(strPtr->getType()->isPointerTy());
-    IGC_ASSERT(strTy->isStructTy());
+    IGC_ASSERT(IGCLLVM::getNonOpaquePtrEltTy(strPtr->getType())->isStructTy());
 
-    Value* strVal = UndefValue::get(strTy);
+    Value* strVal = UndefValue::get(IGCLLVM::getNonOpaquePtrEltTy(strPtr->getType()));
     StructType* sTy = cast<StructType>(strVal->getType());
     for (unsigned i = 0; i < sTy->getNumElements(); i++)
     {
@@ -465,7 +465,7 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
                 for (auto RetInst : Returns)
                 {
                     IGCLLVM::IRBuilder<> builder(RetInst);
-                    Value* retVal = LoadFromStruct(builder, OldArgIt->getType(), tempAllocaForSRetPointer);
+                    Value* retVal = LoadFromStruct(builder, tempAllocaForSRetPointer);
                     builder.CreateRet(retVal);
                     RetInst->eraseFromParent();
                 }
@@ -587,7 +587,7 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
         {
             // Map the new operand to the loaded value of the struct pointer
             IGCLLVM::IRBuilder<> builder(callInst);
-            Value* newOp = LoadFromStruct(builder, IGCLLVM::getNonOpaquePtrEltTy(arg->getType()), arg);
+            Value* newOp = LoadFromStruct(builder, arg);
             callArgs.push_back(newOp);
             ArgAttrVec.push_back(AttributeSet());
             fixArgType = true;
