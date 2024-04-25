@@ -203,7 +203,7 @@ DECLARE_IGC_REGKEY(debugString, LLVMCommandLine,        0,     "applies LLVM com
 DECLARE_IGC_REGKEY(debugString, SelectiveHashOptions,   0,     "applies options to hash ragne via string", false)
 DECLARE_IGC_REGKEY(bool, DisableDX9LowPrecision,        true,  "Disables HF in DX9.", false)
 DECLARE_IGC_REGKEY(bool, EnablePingPongTextureOpt,      true,  "Enables the Ping Pong texture optimization which is used only for Compute Shaders for back to back dispatches", false)
-DECLARE_IGC_REGKEY(bool, EnableAtomicBranch,            false, "Enable Atomic branch optimization which break atomic into if/else with atomic and read based on the operation", false)
+DECLARE_IGC_REGKEY(DWORD,EnableAtomicBranch,            0,     "Enable Atomic branch optimization that break atomic into if/else. 1: if Val == 0 ignore iadd/sub/umax 0. 2: checks if memory is lower than Val before doing umax. 3: applies both 1 for iadd/sub and 2 for umax", false)
 DECLARE_IGC_REGKEY(bool, EnableThreeWayLoadSpiltOpt,    false, "Enable three way load spilt opt.", false)
 DECLARE_IGC_REGKEY(bool, EnableSamplerChannelReturn,    true,  "Setting this to 1/true adds a compiler switch to enable using header to return selective channels from sampler", false)
 DECLARE_IGC_REGKEY(bool, EnableThreadCombiningOpt,      true,  "Enables the thread combining optimization which is used only for Compute Shaders for combining a number of software threads to dispatch smaller number of hardware threads", false)

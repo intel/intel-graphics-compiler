@@ -6223,7 +6223,7 @@ namespace {
         StringRef getPassName() const override { return "InsertBranchOpt"; }
 
         bool runOnFunction(Function& F) override;
-        void atomicSpiltOpt(Function& F);
+        void atomicSpiltOpt(Function& F, int mode);
         void ThreeWayLoadSpiltOpt(Function& F);
         void findOptCases(SelectInst* I);
         bool HasSrcFromEE(Instruction* I, uint selNum, Instruction*& loadInst);
@@ -6875,10 +6875,85 @@ void InsertBranchOpt::ThreeWayLoadSpiltOpt(Function& F)
     }
 }
 
-void InsertBranchOpt::atomicSpiltOpt(Function& F)
+void InsertBranchOpt::atomicSpiltOpt(Function& F, int mode)
 {
-    std::vector<GenIntrinsicInst*>atomicSplit;
-    for (auto BI = F.begin(), BE = F.end(); BI != BE; BI++)
+    // Allow both modes to be applied
+    bool defaultMode = ( ( mode & 1 ) == 1 );
+    bool alternateUmaxMode = ( ( mode & 2 ) == 2 );
+
+    auto createReadFromAtomic = []( IRBuilder<>& builder, Instruction* inst, bool isTyped )
+        {
+            Constant* zero = ConstantInt::get( inst->getType(), 0 );
+            Instruction* NewInst = nullptr;
+            if( isTyped )
+            {
+                Function* pLdIntrinsic = llvm::GenISAIntrinsic::getDeclaration(
+                    inst->getModule(),
+                    GenISAIntrinsic::GenISA_typedread,
+                    inst->getOperand( 0 )->getType() );
+
+                SmallVector<Value*, 5> ld_FunctionArgList( 5 );
+                ld_FunctionArgList[ 0 ] = inst->getOperand( 0 );
+                ld_FunctionArgList[ 1 ] = inst->getOperand( 1 );
+                ld_FunctionArgList[ 2 ] = inst->getOperand( 2 );
+                ld_FunctionArgList[ 3 ] = zero;
+                ld_FunctionArgList[ 4 ] = zero;
+                NewInst = builder.CreateCall( pLdIntrinsic, ld_FunctionArgList );
+            }
+            else
+            {
+                std::vector<Type*> types;
+                std::vector<Value*> ld_FunctionArgList;
+
+                Value* resourcePtr = inst->getOperand( 0 );
+                types.push_back( IGCLLVM::FixedVectorType::get( builder.getFloatTy(), 4 ) );
+                types.push_back( resourcePtr->getType() );//Paired resource
+                types.push_back( resourcePtr->getType() );//Resource
+
+
+                Function* pLdIntrinsic = GenISAIntrinsic::getDeclaration(
+                    inst->getModule(),
+                    GenISAIntrinsic::GenISA_ldptr,
+                    types );
+
+                ld_FunctionArgList.push_back( inst->getOperand( 1 ) );    //coordinates x
+                ld_FunctionArgList.push_back( zero );                   //coordinates y
+                ld_FunctionArgList.push_back( zero );                   //coordinates z
+                ld_FunctionArgList.push_back( zero );                   //lod
+                ld_FunctionArgList.push_back( llvm::UndefValue::get( inst->getOperand( 0 )->getType() ) );
+                ld_FunctionArgList.push_back( inst->getOperand( 0 ) );    //src buffer
+                ld_FunctionArgList.push_back( zero );                   //immediate offset u
+                ld_FunctionArgList.push_back( zero );                   //immediate offset v
+                ld_FunctionArgList.push_back( zero );                   //immediate offset w
+                NewInst = builder.CreateCall( pLdIntrinsic, ld_FunctionArgList );
+            }
+
+            Instruction* ExtractE = cast<Instruction>( builder.CreateExtractElement( NewInst, (uint64_t)0 ) );
+            Instruction* castI = cast<Instruction>( builder.CreateBitCast( ExtractE, inst->getType() ) );
+            return castI;
+        };
+
+    auto splitBBAndName = []( Instruction* condInst , Instruction* inst, Instruction** ThenTerm, Instruction** ElseTerm, BasicBlock* &MergeBlock)
+        {
+            if( ElseTerm )
+            {
+                SplitBlockAndInsertIfThenElse( condInst, inst, ThenTerm, ElseTerm );
+                BasicBlock* ElseBlock = (*ElseTerm)->getParent();
+                ElseBlock->setName( "atomic.if.false" );
+            }
+            else
+            {
+                (*ThenTerm) = SplitBlockAndInsertIfThen( condInst, inst, false );
+            }
+            BasicBlock* ThenBlock = (*ThenTerm)->getParent();
+            MergeBlock = inst->getParent();
+
+            ThenBlock->setName( "atomic.if.true" );
+            MergeBlock->setName( "atomic.if.end" );
+        };
+
+    std::vector<std::pair<GenIntrinsicInst*, IGC::AtomicOp>> atomicSplit;
+    for( auto BI = F.begin(), BE = F.end(); BI != BE; BI++ )
     {
         for (auto II = BI->begin(); II != BI->end(); II++)
         {
@@ -6899,19 +6974,20 @@ void InsertBranchOpt::atomicSpiltOpt(Function& F)
                 if (!src || !op)
                     continue;
 
-                if (op->getZExtValue() == AtomicOp::EATOMIC_IADD ||
-                    op->getZExtValue() == AtomicOp::EATOMIC_SUB ||
-                    op->getZExtValue() == AtomicOp::EATOMIC_UMAX)
+                AtomicOp atomicOp = static_cast<AtomicOp>(op->getZExtValue());
+
+                if( ( ( defaultMode ) && ( atomicOp == AtomicOp::EATOMIC_IADD || atomicOp == AtomicOp::EATOMIC_SUB ) )
+                    ||
+                    atomicOp == AtomicOp::EATOMIC_UMAX )
                 {
-                    atomicSplit.push_back(inst);
+                    atomicSplit.push_back( std::make_pair( inst, atomicOp ) );
                 }
             }
         }
     }
 
-    for (auto iter : atomicSplit)
+    for ( auto& [inst, op] : atomicSplit)
     {
-        Instruction* inst = &(*iter);
         bool isTyped = false;
         int srcID = 2;
         if (cast<GenIntrinsicInst>(inst)->getIntrinsicID() == GenISAIntrinsic::GenISA_intatomictyped)
@@ -6920,81 +6996,47 @@ void InsertBranchOpt::atomicSpiltOpt(Function& F)
             srcID = 4;
         }
 
-        // Create an if-then-else structure.
-        // if (cond!=0)
-        //    use the original atomic add inst
-        // else
-        //    use typedread or load
         IRBuilder<> builder(inst);
         Instruction* src = dyn_cast<Instruction>(inst->getOperand(srcID));
-        Instruction* condInst = dyn_cast<Instruction>(builder.CreateICmp(ICmpInst::ICMP_NE, src, builder.getInt32(0)));
-        CallInst* NewInst = nullptr;
-        Constant *zero = ConstantInt::get(inst->getType(), 0);
-        if (isTyped)
-        {
-            Function* pLdIntrinsic = llvm::GenISAIntrinsic::getDeclaration(
-                inst->getModule(),
-                GenISAIntrinsic::GenISA_typedread,
-                inst->getOperand(0)->getType());
-
-            SmallVector<Value*, 5> ld_FunctionArgList(5);
-            ld_FunctionArgList[0] = inst->getOperand(0);
-            ld_FunctionArgList[1] = inst->getOperand(1);
-            ld_FunctionArgList[2] = inst->getOperand(2);
-            ld_FunctionArgList[3] = zero;
-            ld_FunctionArgList[4] = zero;
-            NewInst = builder.CreateCall(pLdIntrinsic, ld_FunctionArgList);
-        }
-        else
-        {
-            std::vector<Type*> types;
-            std::vector<Value*> ld_FunctionArgList;
-
-            Value* resourcePtr = inst->getOperand(0);
-            types.push_back(IGCLLVM::FixedVectorType::get(builder.getFloatTy(), 4));
-            types.push_back(resourcePtr->getType());//Paired resource
-            types.push_back(resourcePtr->getType());//Resource
-
-
-            Function* pLdIntrinsic = GenISAIntrinsic::getDeclaration(
-                inst->getModule(),
-                GenISAIntrinsic::GenISA_ldptr,
-                types);
-
-            ld_FunctionArgList.push_back(inst->getOperand(1));    //coordinates x
-            ld_FunctionArgList.push_back(zero);                   //coordinates y
-            ld_FunctionArgList.push_back(zero);                   //coordinates z
-            ld_FunctionArgList.push_back(zero);                   //lod
-            ld_FunctionArgList.push_back(llvm::UndefValue::get(inst->getOperand(0)->getType()));
-            ld_FunctionArgList.push_back(inst->getOperand(0));    //src buffer
-            ld_FunctionArgList.push_back(zero);                   //immediate offset u
-            ld_FunctionArgList.push_back(zero);                   //immediate offset v
-            ld_FunctionArgList.push_back(zero);                   //immediate offset w
-            NewInst = builder.CreateCall(pLdIntrinsic, ld_FunctionArgList);
-        }
-        Value* ExtractE = builder.CreateExtractElement(NewInst, (uint64_t)0);
-        Value* castI = builder.CreateBitCast(ExtractE, inst->getType());
-
+        Instruction* readI = nullptr;
         Instruction* ThenTerm = nullptr;
         Instruction* ElseTerm = nullptr;
-        SplitBlockAndInsertIfThenElse(condInst, inst, &ThenTerm, &ElseTerm);
-        BasicBlock* ThenBlock = ThenTerm->getParent();
-        BasicBlock* ElseBlock = ElseTerm->getParent();
-        BasicBlock* MergeBlock = inst->getParent();
+        BasicBlock* MergeBlock = nullptr;
 
-        ThenBlock->setName("atomic.if.true");
-        ElseBlock->setName("atomic.if.false");
-        MergeBlock->setName("atomic.if.end");
 
-        inst->moveBefore(ThenTerm);
-        NewInst->moveBefore(ElseTerm);
-        dyn_cast<ExtractElementInst>(ExtractE)->moveBefore(ElseTerm);
-        dyn_cast<BitCastInst>(castI)->moveBefore(ElseTerm);
+        if( op != AtomicOp::EATOMIC_UMAX || !alternateUmaxMode )
+        {
+            // Create an if-then-else structure.
+            // if (cond!=0)
+            //    use the original atomic add inst
+            // else
+            //    use typedread or load
+            Instruction* condInst = dyn_cast<Instruction>(builder.CreateICmp(ICmpInst::ICMP_NE, src, builder.getInt32(0)));
+            splitBBAndName( condInst, inst, &ThenTerm, &ElseTerm, MergeBlock );
+            inst->moveBefore( ThenTerm );
 
-        PHINode* newPhi = PHINode::Create(inst->getType(), 2, "", &MergeBlock->front());
-        inst->replaceUsesOutsideBlock(newPhi, ThenBlock);
-        newPhi->addIncoming(inst, ThenBlock);
-        newPhi->addIncoming(castI, ElseBlock);
+            builder.SetInsertPoint( ElseTerm );
+            readI = createReadFromAtomic( builder, inst, isTyped);
+        }
+        else // ( op == AtomicOp::EATOMIC_UMAX && alternateUmaxMode )
+        {
+            // Create an if-then structure.
+            // x = typedread or load
+            // if (x < src)
+            //    use the original atomic umax inst src
+            readI = createReadFromAtomic( builder, inst, isTyped );
+            Instruction* condInst = dyn_cast<Instruction>( builder.CreateICmp( ICmpInst::ICMP_UGT, src, readI ) );
+
+            splitBBAndName( condInst, inst, &ThenTerm, nullptr, MergeBlock );
+            inst->moveBefore( ThenTerm );
+        }
+        if( inst->getNumUses() )
+        {
+            PHINode* newPhi = PHINode::Create(inst->getType(), 2, "", &MergeBlock->front());
+            inst->replaceUsesOutsideBlock(newPhi, inst->getParent());
+            newPhi->addIncoming( inst, inst->getParent() );
+            newPhi->addIncoming( readI, readI->getParent() );
+        }
     }
 }
 
@@ -7243,9 +7285,11 @@ void typedWriteZeroStoreCheck(Function& F)
 bool InsertBranchOpt::runOnFunction(Function& F)
 {
     pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    if (IGC_IS_FLAG_ENABLED(EnableAtomicBranch) || pContext->getModuleMetaData()->csInfo.atomicBranch)
+
+    int mode = IGC_IS_FLAG_ENABLED( EnableAtomicBranch ) ? IGC_GET_FLAG_VALUE( EnableAtomicBranch ) : pContext->getModuleMetaData()->csInfo.atomicBranch;
+    if( mode )
     {
-        atomicSpiltOpt(F);
+        atomicSpiltOpt( F, mode );
     }
 
     if (IGC_IS_FLAG_ENABLED(EnableThreeWayLoadSpiltOpt) || pContext->getModuleMetaData()->enableThreeWayLoadSpiltOpt)
