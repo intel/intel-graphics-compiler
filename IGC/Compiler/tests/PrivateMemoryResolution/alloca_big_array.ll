@@ -27,12 +27,11 @@ entry:
 ;;
 ;; End of entryBuilder
 ;;
-; CHECK:  [[SIMDBufferOffset:%[.A-z0-9]*]] = mul i32 [[simdSize]], 0
-; CHECK:  [[ZXT2:%[A-z0-9]*]] = zext i32 [[SIMDBufferOffset]] to i64
+; CHECK:  [[BufferOffset:%[.A-z0-9]*]] = mul i32 [[simdSize]], 0
 ; CHECK:  [[perLaneOffset:%[A-z0-9]*]] = mul i32 [[simdLaneId]], 200000
-; CHECK:  [[ZXT3:%[A-z0-9]*]] = zext i32 [[perLaneOffset]] to i64
-; CHECK:  [[totalOffset:%[.A-z0-9]*]] = add i64 [[ZXT2]], [[ZXT3]]
-; CHECK:  [[privateBufferGEP:%[.A-z0-9]*]] = getelementptr i8, i8* [[ThreadBase]], i64 [[totalOffset]]
+; CHECK:  [[SIMDBUFOFF:%[.A-z0-9]*]] = add i32 [[BufferOffset]], [[perLaneOffset]]
+; CHECK:  [[ZXT2:%[A-z0-9]*]] = zext i32 [[SIMDBUFOFF]] to i64
+; CHECK:  [[privateBufferGEP:%[.A-z0-9]*]] = getelementptr i8, i8* [[ThreadBase]], i64 [[ZXT2]]
 ; CHECK:  [[privateBuffer:%[.A-z0-9]*]] = bitcast i8* [[privateBufferGEP]] to [50000 x float]*
 ; CHECK:  ret void
 }

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
-; RUN: igc_opt --regkey EnableSOAPromotionDisablingHeuristic=1 --igc-private-mem-resolution --platformtgllp -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --regkey EnableSOAPromotionDisablingHeuristic=1 --igc-private-mem-resolution --platformtgllp -S %s 2>&1 | FileCheck %s
 
 ; The stored vector has the same baseType but different number of elements as alloca type
 ; We could apply SOA, but is looks not beneficial, as all the memory operations are vector
@@ -22,7 +22,7 @@ define spir_kernel void @test_pmem(i32 addrspace(1)* %dst, i32 addrspace(1)* %sr
 ; CHECK-NEXT:    [[OUT_SIMDBUFFEROFFSET:%.*]] = mul i32 [[SIMDSIZE]], 0
 ; CHECK-NEXT:    [[PERLANEOFFSET:%.*]] = mul i32 [[SIMDLANEID]], 128
 ; CHECK-NEXT:    [[OUT_TOTALOFFSET:%.*]] = add i32 [[OUT_SIMDBUFFEROFFSET]], [[PERLANEOFFSET]]
-; CHECK-NEXT:    [[OUT_THREADOFFSET:%.*]] = add i32 [[PRIVATEBASE1]], [[OUT_TOTALOFFSET]]
+; CHECK-NEXT:    [[OUT_THREADOFFSET:%.*]] = add {{.*}} i32 [[PRIVATEBASE1]], [[OUT_TOTALOFFSET]]
 ; CHECK-NEXT:    [[OUT_PRIVATEBUFFERPTR:%.*]] = inttoptr i32 [[OUT_THREADOFFSET]] to [7 x <4 x i32>]*
 ; CHECK-NEXT:    [[MEMSET_VDST:%.*]] = bitcast [7 x <4 x i32>]* [[OUT_PRIVATEBUFFERPTR]] to <8 x i32>*
 ; CHECK-NEXT:    store <8 x i32> zeroinitializer, <8 x i32>* [[MEMSET_VDST]], align 32

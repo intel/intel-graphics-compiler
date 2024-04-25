@@ -27,16 +27,16 @@ define spir_kernel void @test_pmem(<8 x i32> addrspace(1)* %dst, <8 x i32> addrs
 ; CHECK:    [[SIMDSIZE:%.*]] = call i32 @llvm.genx.GenISA.simdSize()
 ; CHECK:    [[R0_5:%.*]] = extractelement <8 x i32> [[R0:%.*]], i32 5
 ; CHECK:    [[PRIVATEBASE1:%.*]] = and i32 [[R0_5]], -1024
-; CHECK:    [[DST_ADDR_SIMDBUFFEROFFSET:%.*]] = mul i32 [[SIMDSIZE]], 64
+; CHECK:    [[DST_ADDR_BUFFEROFFSET:%.*]] = mul i32 [[SIMDSIZE]], 64
 ; CHECK:    [[PERLANEOFFSET3:%.*]] = mul i32 [[SIMDLANEID]], 8
-; CHECK:    [[DST_ADDR_TOTALOFFSET:%.*]] = add i32 [[DST_ADDR_SIMDBUFFEROFFSET]], [[PERLANEOFFSET3]]
-; CHECK:    [[DST_ADDR_THREADOFFSET:%.*]] = add i32 [[PRIVATEBASE1]], [[DST_ADDR_TOTALOFFSET]]
-; CHECK:    [[DST_ADDR_PRIVATEBUFFERPTR:%.*]] = inttoptr i32 [[DST_ADDR_THREADOFFSET]] to <8 x i32> addrspace(1)**
+; CHECK:    [[DST_ADDR_SIMDBUFOFF:%.*]] = add i32 [[DST_ADDR_BUFFEROFFSET]], [[PERLANEOFFSET3]]
+; CHECK:    [[DST_ADDR_BASEOFFSET:%.*]] = add {{.*}} i32 [[PRIVATEBASE1]], [[DST_ADDR_SIMDBUFOFF]]
+; CHECK:    [[DST_ADDR_PRIVATEBUFFERPTR:%.*]] = inttoptr i32 [[DST_ADDR_BASEOFFSET]] to <8 x i32> addrspace(1)**
 ; CHECK:    call void @llvm.lifetime.start.p0p1v8i32(i64 4, <8 x i32> addrspace(1)** [[DST_ADDR_PRIVATEBUFFERPTR]])
-; CHECK:    [[AA_SIMDBUFFEROFFSET:%.*]] = mul i32 [[SIMDSIZE]], 0
+; CHECK:    [[AA_BUFFEROFFSET:%.*]] = mul i32 [[SIMDSIZE]], 0
 ; CHECK:    [[PERLANEOFFSET:%.*]] = mul i32 [[SIMDLANEID]], 32
-; CHECK:    [[AA_TOTALOFFSET:%.*]] = add i32 [[AA_SIMDBUFFEROFFSET]], [[PERLANEOFFSET]]
-; CHECK:    [[AA_THREADOFFSET:%.*]] = add i32 [[PRIVATEBASE1]], [[AA_TOTALOFFSET]]
+; CHECK:    [[AA_SIMDBUFOFF:%.*]] = add i32 [[AA_BUFFEROFFSET]], [[PERLANEOFFSET]]
+; CHECK:    [[AA_THREADOFFSET:%.*]] = add {{.*}} i32 [[PRIVATEBASE1]], [[AA_SIMDBUFOFF]]
 ; CHECK:    [[AA_PRIVATEBUFFERPTR:%.*]] = inttoptr i32 [[AA_THREADOFFSET]] to <8 x i32>*
 ; CHECK:    [[TMP0:%.*]] = mul i32 [[SIMDSIZE]], 32
 ; CHECK:    [[TMP1:%.*]] = mul i32 0, [[TMP0]]
@@ -45,10 +45,10 @@ define spir_kernel void @test_pmem(<8 x i32> addrspace(1)* %dst, <8 x i32> addrs
 ; CHECK:    [[TMP4:%.*]] = mul i32 0, [[TMP3]]
 ; CHECK:    [[TMP5:%.*]] = add i32 [[AA_THREADOFFSET]], [[TMP4]]
 ; CHECK:    store <8 x i32> addrspace(1)* [[DST:%.*]], <8 x i32> addrspace(1)** [[DST_ADDR_PRIVATEBUFFERPTR]], align 8
-; CHECK:    [[SRC_ADDR_SIMDBUFFEROFFSET:%.*]] = mul i32 [[SIMDSIZE]], 72
+; CHECK:    [[SRC_ADDR_BUFFEROFFSET:%.*]] = mul i32 [[SIMDSIZE]], 72
 ; CHECK:    [[PERLANEOFFSET4:%.*]] = mul i32 [[SIMDLANEID]], 8
-; CHECK:    [[SRC_ADDR_TOTALOFFSET:%.*]] = add i32 [[SRC_ADDR_SIMDBUFFEROFFSET]], [[PERLANEOFFSET4]]
-; CHECK:    [[SRC_ADDR_THREADOFFSET:%.*]] = add i32 [[PRIVATEBASE1]], [[SRC_ADDR_TOTALOFFSET]]
+; CHECK:    [[SRC_ADDR_SIMDBUFOFF:%.*]] = add i32 [[SRC_ADDR_BUFFEROFFSET]], [[PERLANEOFFSET4]]
+; CHECK:    [[SRC_ADDR_THREADOFFSET:%.*]] = add {{.*}} i32 [[PRIVATEBASE1]], [[SRC_ADDR_SIMDBUFOFF]]
 ; CHECK:    [[SRC_ADDR_PRIVATEBUFFERPTR:%.*]] = inttoptr i32 [[SRC_ADDR_THREADOFFSET]] to <8 x i32> addrspace(1)**
 ; CHECK:    store <8 x i32> addrspace(1)* [[SRC:%.*]], <8 x i32> addrspace(1)** [[SRC_ADDR_PRIVATEBUFFERPTR]], align 8
 ; CHECK:    [[TMP6:%.*]] = load <8 x i32> addrspace(1)*, <8 x i32> addrspace(1)** [[SRC_ADDR_PRIVATEBUFFERPTR]], align 8
@@ -59,10 +59,10 @@ define spir_kernel void @test_pmem(<8 x i32> addrspace(1)* %dst, <8 x i32> addrs
 ; CHECK:    [[TMP9:%.*]] = load <8 x i32> addrspace(1)*, <8 x i32> addrspace(1)** [[SRC_ADDR_PRIVATEBUFFERPTR]], align 8
 ; CHECK:    [[ARRAYIDX1:%.*]] = getelementptr inbounds <8 x i32>, <8 x i32> addrspace(1)* [[TMP9]], i64 1
 ; CHECK:    [[TMP10:%.*]] = load <8 x i32>, <8 x i32> addrspace(1)* [[ARRAYIDX1]], align 4
-; CHECK:    [[BB_SIMDBUFFEROFFSET:%.*]] = mul i32 [[SIMDSIZE]], 32
+; CHECK:    [[BB_BUFFEROFFSET:%.*]] = mul i32 [[SIMDSIZE]], 32
 ; CHECK:    [[PERLANEOFFSET2:%.*]] = mul i32 [[SIMDLANEID]], 32
-; CHECK:    [[BB_TOTALOFFSET:%.*]] = add i32 [[BB_SIMDBUFFEROFFSET]], [[PERLANEOFFSET2]]
-; CHECK:    [[BB_THREADOFFSET:%.*]] = add i32 [[PRIVATEBASE1]], [[BB_TOTALOFFSET]]
+; CHECK:    [[BB_SIMDBUFOFF:%.*]] = add i32 [[BB_BUFFEROFFSET]], [[PERLANEOFFSET2]]
+; CHECK:    [[BB_THREADOFFSET:%.*]] = add {{.*}} i32 [[PRIVATEBASE1]], [[BB_SIMDBUFOFF]]
 ; CHECK:    [[BB_PRIVATEBUFFERPTR:%.*]] = inttoptr i32 [[BB_THREADOFFSET]] to <8 x i32>*
 ; CHECK:    [[TMP11:%.*]] = mul i32 [[SIMDSIZE]], 32
 ; CHECK:    [[TMP12:%.*]] = mul i32 0, [[TMP11]]

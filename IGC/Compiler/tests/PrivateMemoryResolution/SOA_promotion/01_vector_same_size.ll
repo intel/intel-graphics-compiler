@@ -21,7 +21,7 @@ define spir_kernel void @test_pmem(i32 addrspace(1)* %dst, i32 addrspace(1)* %sr
 ; CHECK-NEXT:    [[OUT_SIMDBUFFEROFFSET:%.*]] = mul i32 [[SIMDSIZE]], 0
 ; CHECK-NEXT:    [[PERLANEOFFSET:%.*]] = mul i32 [[SIMDLANEID]], 16
 ; CHECK-NEXT:    [[OUT_TOTALOFFSET:%.*]] = add i32 [[OUT_SIMDBUFFEROFFSET]], [[PERLANEOFFSET]]
-; CHECK-NEXT:    [[OUT_THREADOFFSET:%.*]] = add i32 [[PRIVATEBASE1]], [[OUT_TOTALOFFSET]]
+; CHECK-NEXT:    [[OUT_THREADOFFSET:%.*]] = add {{.*}} i32 [[PRIVATEBASE1]], [[OUT_TOTALOFFSET]]
 ; CHECK-NEXT:    [[OUT_PRIVATEBUFFERPTR:%.*]] = inttoptr i32 [[OUT_THREADOFFSET]] to [7 x <4 x i32>]*
 ; CHECK-NEXT:    [[TMP0:%.*]] = mul i32 [[SIMDSIZE]], 16
 ; CHECK-NEXT:    [[TMP1:%.*]] = mul i32 0, [[TMP0]]
