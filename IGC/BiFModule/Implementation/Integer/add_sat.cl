@@ -459,10 +459,14 @@ INLINE
 long SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_add_sat, _i64_i64, )( long x,
                                         long y )
 {
-    long temp = x + y;
-    return ((x ^ y | ~(x ^ temp)) >> 63) ? temp :
-           (temp > 0)                    ? LONG_MIN :
-                                           LONG_MAX ;
+    if ((x > 0 && y > LONG_MAX - x) || (x < 0 && y < LONG_MIN - x))
+    {
+        return x > 0 ? LONG_MAX : LONG_MIN;
+    }
+    else
+    {
+        return x + y;
+    }
 }
 
 INLINE
