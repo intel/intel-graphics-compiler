@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/InternalIntrinsics/InternalIntrinsics.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/IntrinsicsWrapper.h"
 #include "vc/Utils/General/BiF.h"
 
@@ -111,6 +112,10 @@ Value *SPIRVExpander::emitAddcSubb(IRBuilder<> &Builder, unsigned IID,
   auto *Res = CI.getArgOperand(0);
 
   auto *ArgTy = CI.getArgOperand(1)->getType();
+  if (ArgTy->getScalarType()->getPrimitiveSizeInBits() < 32) {
+    vc::diagnose(CI.getFunction()->getContext(), "GenXTranslateSPIRV",
+                 "only 32/64-bit addc/subb supported", &CI);
+  }
   auto *Instr = emitIntrinsic(Builder, IID, {ArgTy, ArgTy},
                               {CI.getArgOperand(1), CI.getArgOperand(2)});
 
