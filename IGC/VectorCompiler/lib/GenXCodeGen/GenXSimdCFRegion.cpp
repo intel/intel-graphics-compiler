@@ -567,13 +567,13 @@ private:
   void generateOppositeMask(Type *RmTy);
   void generateThenGoto(BranchInst *Br, BasicBlock *Join);
   Value *generateJoin(BasicBlock *JoinBlock);
-  Value *getEMAddr(Function *F);
+  AllocaInst *getEMAddr(Function *F);
   //  Get or create EM-Load for basic-block
   Value *getEMValue(BasicBlock *BB);
   void saveGotoEMRM(CallInst *Goto);
   bool TryReplace(SimdCFRegionBase *Reg, Use *Ui, bool IsEm);
 
-  Value *getRMAddr(unsigned Width = 0);
+  AllocaInst *getRMAddr(unsigned Width = 0);
   bool isSimdCFCondition(Value *Cond);
   std::pair<BranchInst *, Value *> findSimdCFBranchAndCondition(BasicBlock &BB);
 
@@ -599,7 +599,7 @@ private:
   SimdCFRegionPtr tryMatchLoop(BasicBlock &BB);
 };
 
-Value *GenXPredToSimdCF::getEMAddr(Function *F) {
+AllocaInst *GenXPredToSimdCF::getEMAddr(Function *F) {
   // TODO: replace to Module or function-group for support stack calls
   IGC_ASSERT(F);
   auto EM = EMAddrs.find(F);
@@ -626,15 +626,14 @@ Value *GenXPredToSimdCF::getEMValue(BasicBlock *BB) {
   auto *Inst = BB->getFirstNonPHI();
   IRBuilder<> Builder(Inst);
 
-  Value *EMAddr = getEMAddr(Inst->getFunction());
-  auto *EMVal =
-      Builder.CreateLoad(IGCLLVM::getNonOpaquePtrEltTy(EMAddr->getType()),
-                         EMAddr, false /*isVolatile*/, EMAddr->getName());
+  auto *EMAddr = getEMAddr(Inst->getFunction());
+  auto *EMVal = Builder.CreateLoad(EMAddr->getAllocatedType(), EMAddr,
+                                   false /*isVolatile*/, EMAddr->getName());
   EMLoads[BB] = EMVal;
   return EMVal;
 }
 
-Value *GenXPredToSimdCF::getRMAddr(unsigned Width) {
+AllocaInst *GenXPredToSimdCF::getRMAddr(unsigned Width) {
   auto RMAddr = RMAddrs.find(JP);
   if (RMAddr == RMAddrs.end()) {
     auto *RMTy =
@@ -1190,19 +1189,18 @@ SimdCFRegionsT GenXPredToSimdCF::findSimdCFRegions(Function &F) {
 
 Value *GenXPredToSimdCF::generateJoin(BasicBlock *JoinBlock) {
   auto *F = JoinBlock->getParent();
-  Value *EM = getEMAddr(F);
+  auto *EM = getEMAddr(F);
 
   auto SimdWidth = getSimdSize(Mask->getType());
   IRBuilder<> Builder(JoinBlock, JoinBlock->begin());
 
   // Fix execution mask in after-then branch
-  auto *OldEM = Builder.CreateLoad(IGCLLVM::getNonOpaquePtrEltTy(EM->getType()),
-                                   EM, false /*isVolatile*/, EM->getName());
+  auto *OldEM = Builder.CreateLoad(EM->getAllocatedType(), EM,
+                                   false /*isVolatile*/, EM->getName());
 
   auto *RMAddr = getRMAddr(SimdWidth);
-  auto *RM =
-      Builder.CreateLoad(IGCLLVM::getNonOpaquePtrEltTy(RMAddr->getType()),
-                         RMAddr, false /*isVolatile*/, RMAddr->getName());
+  auto *RM = Builder.CreateLoad(RMAddr->getAllocatedType(), RMAddr,
+                                false /*isVolatile*/, RMAddr->getName());
 
   Type *Tys[] = {OldEM->getType(), RM->getType()};
   auto *M = JoinBlock->getModule();
@@ -1224,13 +1222,13 @@ void GenXPredToSimdCF::saveGotoEMRM(CallInst *Goto) {
   IRBuilder<> Builder(Goto->getParent()->getTerminator());
 
   // Save EM-value
-  Value *EM = getEMAddr(Goto->getFunction());
+  auto *EM = getEMAddr(Goto->getFunction());
   auto *NewGotoEM = Builder.CreateExtractValue(Goto, 0, "goto.extractem");
   Builder.CreateStore(NewGotoEM, EM, false /*isVolatile*/);
 
   // Save RM-value
-  Value *GotoRMAddr = getRMAddr(SimdWidth);
-  auto *RmTy = IGCLLVM::getNonOpaquePtrEltTy(GotoRMAddr->getType());
+  auto *GotoRMAddr = getRMAddr(SimdWidth);
+  auto *RmTy = GotoRMAddr->getAllocatedType();
   auto *NewGotoRM = Builder.CreateExtractValue(Goto, 1, "goto.extractrm");
   IGC_ASSERT(GotoRMAddr->getType()->isPointerTy());
 
@@ -1264,17 +1262,15 @@ void GenXPredToSimdCF::generateGoto(BranchInst *Br) {
 
   auto SimdWidth = getSimdSize(Mask->getType());
   auto *F = Br->getFunction();
-  Value *EM = getEMAddr(F);
-  Instruction *OldGotoEM =
-      Builder.CreateLoad(IGCLLVM::getNonOpaquePtrEltTy(EM->getType()), EM,
-                         false /*isVolatile*/, EM->getName());
+  auto *EM = getEMAddr(F);
+  auto *OldGotoEM = Builder.CreateLoad(EM->getAllocatedType(), EM,
+                                       false /*isVolatile*/, EM->getName());
 
-  Value *GotoRMAddr = getRMAddr(SimdWidth);
-  auto *RmTy = IGCLLVM::getNonOpaquePtrEltTy(GotoRMAddr->getType());
+  auto *GotoRMAddr = getRMAddr(SimdWidth);
+  auto *RmTy = GotoRMAddr->getAllocatedType();
 
-  Instruction *OldGotoRM = Builder.CreateLoad(
-      IGCLLVM::getNonOpaquePtrEltTy(GotoRMAddr->getType()), GotoRMAddr,
-      false /*isVolatile*/, GotoRMAddr->getName());
+  auto *OldGotoRM = Builder.CreateLoad(RmTy, GotoRMAddr, false /*isVolatile*/,
+                                       GotoRMAddr->getName());
 
   generateOppositeMask(RmTy);
 
@@ -1313,7 +1309,7 @@ void GenXPredToSimdCF::generateThenGoto(BranchInst *Br, BasicBlock *Join) {
   auto *M = Br->getModule();
   Value *OldGotoEM = getEMValue(Br->getParent());
 
-  auto *RmTy = IGCLLVM::getNonOpaquePtrEltTy(getRMAddr(SimdWidth)->getType());
+  auto *RmTy = getRMAddr(SimdWidth)->getAllocatedType();
 
   Type *GotoTys[] = {OldGotoEM->getType(), RmTy};
   auto *RMZeroinit = Constant::getNullValue(RmTy);
@@ -1438,9 +1434,8 @@ void GenXPredToSimdCF::replaceUses(Use *Ui, bool BuildEM) {
     auto SimdWidth = getSimdSize(Mask->getType());
     // And class-member JP
     auto *RMAddr = getRMAddr(SimdWidth);
-    CurrMask =
-        Builder.CreateLoad(IGCLLVM::getNonOpaquePtrEltTy(RMAddr->getType()),
-                           RMAddr, false /*isVolatile*/, RMAddr->getName());
+    CurrMask = Builder.CreateLoad(RMAddr->getAllocatedType(), RMAddr,
+                                  false /*isVolatile*/, RMAddr->getName());
   }
   if (CondTy != CurrMask->getType()) {
     // if sizes are equal - creare bitcast or trunk
