@@ -433,7 +433,8 @@ namespace IGC
         SIMD_SKIP_PERF,      // 7: skip this SIMD due to performance concern (dx12 + discard, MRT, etc) or other reasons.
         SIMD_SKIP_ML,        // 8: skip this SIMD due to ML engine prediction.
         SIMD_FORCE_CONTENT,  // 9: force this simd due to shader content (simd32 if WaveActive, barriers + interlocks)
-        SIMD_INFO_RESERVED   // 10: *** If new entry is added, make sure it still fits in m_SIMDInfo ***
+        SIMD_FORCE_HINT,     // 10: force this simd by hint(s) (now for WaveSize only)
+        SIMD_INFO_RESERVED   // 11: *** If new entry is added, make sure it still fits in m_SIMDInfo ***
     };
 
     enum SIMDInfoOffset
