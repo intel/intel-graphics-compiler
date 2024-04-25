@@ -20456,8 +20456,10 @@ bool EmitPass::ResourceLoopHeader(
         samplerFlag = m_currShader->GetNewVariable(numLanes(m_SimdMode), ISA_TYPE_BOOL, EALIGN_BYTE, CName::NONE);
         uniformSampler.m_samplerType = sampler.m_samplerType;
         uniformSampler.m_sampler = UniformCopy(sampler.m_sampler, offset);
-        m_encoder->Cmp(EPREDICATE_EQ, samplerFlag, uniformSampler.m_sampler, sampler.m_sampler);
-        m_encoder->Push();
+        {
+            m_encoder->Cmp(EPREDICATE_EQ, samplerFlag, uniformSampler.m_sampler, sampler.m_sampler);
+            m_encoder->Push();
+        }
         sampler = uniformSampler;
     }
     if (resourceFlag && samplerFlag)
