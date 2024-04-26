@@ -375,6 +375,13 @@ namespace IGC
         // If enabled IGC must not hoist convergent instructions.
         virtual bool DisableConvergentInstructionsHoisting() const { return false; }
 
+        // Each API can define its own preferred values for the spill threshold
+        virtual unsigned getSIMD8_SpillThreshold() const    { return IGC_GET_FLAG_VALUE(SIMD8_SpillThreshold);    }
+        virtual unsigned getSIMD16_SpillThreshold() const   { return IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold);   }
+        virtual unsigned getSIMD32_SpillThreshold() const   { return IGC_GET_FLAG_VALUE(SIMD32_SpillThreshold);   }
+        virtual unsigned getCSSIMD16_SpillThreshold() const { return IGC_GET_FLAG_VALUE(CSSIMD16_SpillThreshold); }
+        virtual unsigned getCSSIMD32_SpillThreshold() const { return IGC_GET_FLAG_VALUE(CSSIMD32_SpillThreshold); }
+
 protected:
     bool autoGRFSelection = false;
     };

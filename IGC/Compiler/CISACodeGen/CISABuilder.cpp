@@ -4056,18 +4056,18 @@ namespace IGC
                 if (m_program->m_Platform->getGRFSize() >= 64)
                 {
                     if (m_program->m_dispatchSize == SIMDMode::SIMD16)
-                         SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold) * 4);
+                         SaveOption(vISA_AbortOnSpillThreshold, context->m_DriverInfo.getSIMD16_SpillThreshold() * 4);
                     else if (m_program->m_dispatchSize == SIMDMode::SIMD32)
-                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD32_SpillThreshold) * 4);
+                        SaveOption(vISA_AbortOnSpillThreshold, context->m_DriverInfo.getSIMD32_SpillThreshold() * 4);
                 }
                 else
                 {
                     if (m_program->m_dispatchSize == SIMDMode::SIMD8)
-                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD8_SpillThreshold) * 2);
+                        SaveOption(vISA_AbortOnSpillThreshold, context->m_DriverInfo.getSIMD8_SpillThreshold() * 2);
                     else if (m_program->m_dispatchSize == SIMDMode::SIMD16)
-                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold) * 2);
+                        SaveOption(vISA_AbortOnSpillThreshold, context->m_DriverInfo.getSIMD16_SpillThreshold() * 2);
                     else
-                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD32_SpillThreshold) * 2);
+                        SaveOption(vISA_AbortOnSpillThreshold, context->m_DriverInfo.getSIMD32_SpillThreshold() * 2);
                 }
             }
             break;
@@ -4078,16 +4078,16 @@ namespace IGC
                 if (m_program->m_Platform->getGRFSize() >= 64)
                 {
                     if (m_program->m_dispatchSize == SIMDMode::SIMD16)
-                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(CSSIMD16_SpillThreshold) * 4);
+                        SaveOption(vISA_AbortOnSpillThreshold, context->m_DriverInfo.getCSSIMD16_SpillThreshold() * 4);
                     else if (m_program->m_dispatchSize == SIMDMode::SIMD32)
-                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(CSSIMD32_SpillThreshold) * 4);
+                        SaveOption(vISA_AbortOnSpillThreshold, context->m_DriverInfo.getCSSIMD32_SpillThreshold() * 4);
                 }
                 else
                 {
                     if (m_program->m_dispatchSize == SIMDMode::SIMD16)
-                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(CSSIMD16_SpillThreshold) * 2);
+                        SaveOption(vISA_AbortOnSpillThreshold, context->m_DriverInfo.getCSSIMD16_SpillThreshold() * 2);
                     else if (m_program->m_dispatchSize == SIMDMode::SIMD32)
-                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(CSSIMD32_SpillThreshold) * 2);
+                        SaveOption(vISA_AbortOnSpillThreshold, context->m_DriverInfo.getCSSIMD32_SpillThreshold() * 2);
                 }
             }
             break;
@@ -4100,16 +4100,16 @@ namespace IGC
                 if (m_program->m_Platform->getGRFSize() >= 64)
                 {
                     if (m_program->m_dispatchSize == SIMDMode::SIMD8)
-                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD8_SpillThreshold) * 2);
+                        SaveOption(vISA_AbortOnSpillThreshold, context->m_DriverInfo.getSIMD8_SpillThreshold() * 2);
                     else if (m_program->m_dispatchSize == SIMDMode::SIMD16)
-                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold) * 4);
+                        SaveOption(vISA_AbortOnSpillThreshold, context->m_DriverInfo.getSIMD16_SpillThreshold() * 4);
                     else if (m_program->m_dispatchSize == SIMDMode::SIMD32)
-                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD32_SpillThreshold) * 4);
+                        SaveOption(vISA_AbortOnSpillThreshold, context->m_DriverInfo.getSIMD32_SpillThreshold() * 4);
                 }
                 else
                 {
                     if (m_program->m_dispatchSize == SIMDMode::SIMD8)
-                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD8_SpillThreshold) * 2);
+                        SaveOption(vISA_AbortOnSpillThreshold, context->m_DriverInfo.getSIMD8_SpillThreshold() * 2);
                 }
             }
             break;

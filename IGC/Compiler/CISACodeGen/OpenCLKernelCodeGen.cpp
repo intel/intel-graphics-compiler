@@ -237,16 +237,16 @@ namespace IGC
         if (this->platform.getGRFSize() >= 64)
         {
             if (dispatchSize == SIMDMode::SIMD32)
-                threshold = float(IGC_GET_FLAG_VALUE(SIMD32_SpillThreshold)) / 100.0f;
+                threshold = float(m_DriverInfo.getSIMD32_SpillThreshold()) / 100.0f;
             else if (dispatchSize == SIMDMode::SIMD16)
-                threshold = float(IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold) * 2) / 100.0f;
+                threshold = float(m_DriverInfo.getSIMD16_SpillThreshold() * 2) / 100.0f;
         }
         else
         {
             if (dispatchSize == SIMDMode::SIMD16)
-                threshold = float(IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold)) / 100.0f;
+                threshold = float(m_DriverInfo.getSIMD16_SpillThreshold()) / 100.0f;
             else if (dispatchSize == SIMDMode::SIMD8)
-                threshold = float(IGC_GET_FLAG_VALUE(SIMD8_SpillThreshold)) / 100.0f;
+                threshold = float(m_DriverInfo.getSIMD8_SpillThreshold()) / 100.0f;
         }
         return threshold;
     }
