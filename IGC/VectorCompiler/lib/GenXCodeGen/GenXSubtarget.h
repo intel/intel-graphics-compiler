@@ -225,6 +225,9 @@ private:
   /// Max supported SLM size (in kbytes)
   int MaxSLMSize = 64;
 
+  // Number of elements in Address Register
+  unsigned AddressRegisterElements = 16;
+
   // Shows which surface should we use for stack
   PreDefined_Surface StackSurf;
 
@@ -421,6 +424,11 @@ public:
   ArrayRef<std::pair<int, int>> getThreadIdBits() const;
 
   unsigned getNumCacheLevels() const { return 2; }
+
+  // Address Register size in elements.
+  unsigned getAddressRegisterElements() const {
+    return AddressRegisterElements;
+  }
 
   // Generic helper functions...
   const Triple &getTargetTriple() const { return TargetTriple; }
