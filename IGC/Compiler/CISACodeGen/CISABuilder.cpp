@@ -2722,7 +2722,8 @@ namespace IGC
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
         bool isIdxLT16;
         VISA_StateOpndHandle* samplerOpnd = GetSamplerOperand(sampler, isIdxLT16);
-        VISA_StateOpndHandle* surfOpnd = GetVISASurfaceOpnd(resource);
+        VISA_StateOpndHandle* surfOpnd =
+            GetVISASurfaceOpnd(resource);
         uint32_t samplerImmIndex = 0;
         uint32_t surfaceImmIndex = 0;
         VISA_RawOpnd* pairedResourceBSSOOpnd = GetPairedResourceOperand(pairedResource);
