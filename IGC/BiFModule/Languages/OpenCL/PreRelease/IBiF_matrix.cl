@@ -1013,8 +1013,8 @@ The storage in memory will be: 0 0 1 1 2 2 ... 7 7
     int pack_factor = contrib_bitwidth / elem_bitwidth; \
     int sg_cols = (C*VF) / pack_factor; \
     int skip_factor = sg_size / sg_cols; \
-    int row = (wi_id*pack_factor)/(C*VF) + index/pack_factor*skip_factor; \
-    int col = (wi_id * pack_factor) % (C*VF) + index % pack_factor; \
+    int row = ((wi_id*pack_factor)/(C*VF) + index/pack_factor*skip_factor)* VF; \
+    int col = ((wi_id * pack_factor) % (C*VF) + index % pack_factor)/ VF; \
     int2 result = (int2)(row, col); \
     return result; \
   }
