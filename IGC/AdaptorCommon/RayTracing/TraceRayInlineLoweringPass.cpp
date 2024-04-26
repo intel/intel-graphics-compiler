@@ -106,6 +106,7 @@ private:
     void emitSingleRQMemRayWrite(RTBuilder& builder, Value* queryObjIndex);
     bool analyzeSingleRQMemRayWrite(const Function& F) const;
     std::pair<bool, unsigned> analyzeSingleRQProceed(const Function& F) const;
+    void HandleAcceptHitAndEndSearch(RTBuilder& builder, RTBuilder::SyncStackPointerVal* ShadowMemStackPointer, Instruction* IP);
 
     Value* emitProceedMainBody(RTBuilder& builder, Value* queryObjIndex);
 
@@ -802,6 +803,8 @@ void TraceRayInlineLoweringPass::LowerCommitNonOpaqueTriangleHit(Function& F)
 
         builder.createPotentialHit2CommittedHit(ShadowMemStackPointer);
         builder.setSyncTraceRayControl(getShMemRTCtrl(builder, CH->getQueryObjIndex()), TraceRayCtrl::TRACE_RAY_COMMIT);
+
+        HandleAcceptHitAndEndSearch(builder, ShadowMemStackPointer, CH);
     }
 
     for (auto CH : CommitHits)
@@ -929,12 +932,29 @@ void TraceRayInlineLoweringPass::LowerCommitProceduralPrimitiveHit(Function& F)
         builder.setSyncTraceRayControl(
             getShMemRTCtrl(builder, CH->getQueryObjIndex()),
             TraceRayCtrl::TRACE_RAY_COMMIT);
+
+        HandleAcceptHitAndEndSearch(builder, ShadowMemStackPointer, CH);
     }
 
     for (auto CH : CommitHits)
     {
         CH->eraseFromParent();
     }
+}
+
+void TraceRayInlineLoweringPass::HandleAcceptHitAndEndSearch(RTBuilder& builder, RTBuilder::SyncStackPointerVal* ShadowMemStackPointer, Instruction* IP)
+{
+    auto* rayFlags = builder.getRayFlags(ShadowMemStackPointer);
+    auto* AcceptHitAndEndSearch = builder.getInt16(static_cast<uint32_t>(RTStackFormat::RayFlags::ACCEPT_FIRST_HIT_AND_END_SEARCH));
+
+    Value* V;
+
+    V = builder.CreateAnd(rayFlags, AcceptHitAndEndSearch);
+    V = builder.CreateICmpNE(V, builder.getInt16(0));
+
+    auto [accepthitBB, _] = builder.createTriangleFlow(V, IP, VALUE_NAME("AcceptHitAndEndSearch"), VALUE_NAME("Default"));
+    builder.SetInsertPoint(accepthitBB->getTerminator());
+    builder.setDoneBit(ShadowMemStackPointer, false);
 }
 
 //For 3D/Compute Shaders The RTGlobals Pointer comes from a different location.
