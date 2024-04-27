@@ -351,8 +351,11 @@ namespace IGC {
             if (llvm::dyn_cast<llvm::PHINode>(val)) {
                 return true;
             }
-            else if (llvm::dyn_cast<llvm::ExtractElementInst>(val)) {
-                return true;
+            else if (llvm::ExtractElementInst *ee = llvm::dyn_cast<llvm::ExtractElementInst>(val)) {
+                if (llvm::isa<llvm::ConstantInt>(ee->getOperand(1)))
+                    return false;
+                else
+                    return true;
             }
             else {
                 for (llvm::Value::user_iterator i = val->user_begin(), e = val->user_end(); i != e; ++i)
