@@ -598,33 +598,6 @@ namespace IGC
         bool& isAnyNodeCoalescable)
     {
         uint numConstants = 0;
-
-        // detect the case where send message outputs are exactly the input of the next send
-        Value* eeSrc = nullptr;
-        uint srci = 0;
-        uint backToBackSrc = 0;
-        if (numOperands > 1)
-        {
-            for (srci = 0; srci < numOperands; srci++)
-            {
-                Value* val = GetPayloadElementToValueMapping(tupleGeneratingInstruction, srci);
-                if (llvm::ExtractElementInst* ee = llvm::dyn_cast<llvm::ExtractElementInst>(val)) {
-                    if (srci == 0)
-                    {
-                        eeSrc = ee->getOperand(0);
-                        backToBackSrc++;
-                    }
-                    else
-                    {
-                        if (ee->getOperand(0) == eeSrc)
-                            backToBackSrc++;
-                    }
-                }
-            }
-            if (backToBackSrc == numOperands)
-                return;
-        }
-
         //Step: Prepare.
         for (uint i = 0; i < numOperands; i++)
         {
