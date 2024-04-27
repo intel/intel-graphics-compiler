@@ -1161,7 +1161,6 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
         threadId = entryBuilder.CreateOr(FFSID, shlThreadID, VALUE_NAME("threadId"));
     }
     Value* perThreadOffset = createThreadOffset(entryBuilder, threadId, totalPrivateMemPerWI);
-    Value* threadBase = addOffset(entryBuilder, privateMemPtr, perThreadOffset);
 
     auto perThreadOffsetInst = dyn_cast_or_null<Instruction>(perThreadOffset);
     IGC_ASSERT_MESSAGE(perThreadOffsetInst, "perThreadOffset will not be marked as Output");
@@ -1191,11 +1190,12 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
         unsigned int bufferSize = m_ModAllocaInfo->getConstBufferSize(pAI);
 
         Value* SIMDBufferOffset = createSIMDBufferOffset(builder, pAI, scalarBufferOffset, bufferSize, isUniform);
+        Value* totalOffset = addOffset(builder, perThreadOffset, SIMDBufferOffset);
         if (m_currFunction->getParent()->getDataLayout().getPointerSize() == 8) {
             // Manually zero-extend the offset to 64-bits to prevent it from being sign-extended by InstructionCombining
-            SIMDBufferOffset = builder.CreateZExt(SIMDBufferOffset, typeInt64);
+            totalOffset = builder.CreateZExt(totalOffset, typeInt64);
         }
-        Value* privateBufferGEP = builder.CreateGEP(threadBase, SIMDBufferOffset, VALUE_NAME(pAI->getName() + ".privateBufferGEP"));
+        Value* privateBufferGEP = builder.CreateGEP(privateMemPtr, totalOffset, VALUE_NAME(pAI->getName() + ".privateBufferGEP"));
         Value* privateBuffer = builder.CreatePointerCast(privateBufferGEP, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));
 
         auto DbgUses = llvm::FindDbgAddrUses(pAI);
