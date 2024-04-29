@@ -480,7 +480,7 @@ namespace IGC
 
         SSimplePushInfo simplePushInfoArr[g_c_maxNumberOfBufferPushed];
 
-        uint64_t    SIMDInfo;
+        uint64_t    SIMDInfo = 0;
         void* m_StagingCtx;
         bool m_RequestStage2;
     };
@@ -543,6 +543,10 @@ namespace IGC
 
         // Shader has LSC store messages with non-default L1 cache control
         bool HasLscStoresWithNonDefaultL1CacheControls = false;
+
+        // This is just diagnostic information to track whether we picked
+        // the retry shader
+        bool BetterThanPrev = false;
     };
 
     struct SRayTracingShadersGroup
@@ -980,7 +984,7 @@ namespace IGC
         std::vector<int> m_gsNonDefaultIdxMap;
         std::vector<int> m_psIdxMap;
         DWORD LtoUsedMask = 0;
-        uint64_t m_SIMDInfo;
+        uint64_t m_SIMDInfo = 0;
         uint32_t HdcEnableIndexSize = 0;
         std::vector<RoutingIndex> HdcEnableIndexValues;
         uint32_t m_NumGRFPerThread = 0;
