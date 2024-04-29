@@ -529,7 +529,7 @@ struct SBBucketNode {
   int getSendID() const { return sendID; }
 
   void dump() const {
-    std::cerr << "#" << node->getNodeID() << "-" << opndNum << ",";
+    std::cerr << "#" << node->getNodeID() << "-" << (int)opndNum << ",";
   }
 };
 

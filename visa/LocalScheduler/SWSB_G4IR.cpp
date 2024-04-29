@@ -1821,7 +1821,8 @@ void SWSB::genSWSBPatchInfo() {
   // kernel.
   for (G4_BB *bb : fg) {
     if (bb->Succs.empty() && BBVector[bb->getId()]->Succs.empty()) {
-      LiveGRFBuckets send_use_out(kernel.getNumRegTotal());
+      LiveGRFBuckets send_use_out(kernel.getNumRegTotal() +
+                                  fg.builder->getNumScalarRegisters());
       for (size_t i = 0; i < globalSendOpndList.size(); i++) {
         SBBucketNode *sBucketNode = globalSendOpndList[i];
         SBNode *sNode = sBucketNode->node;

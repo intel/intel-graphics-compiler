@@ -863,7 +863,7 @@ bool modelSendSrcReadLatency () const {
 }
 
 bool hasReadSuppressionOrSharedLocalMemoryWAs() const {
-  return getPlatform() < Xe2;
+  return true;
 }
 
 bool supportNativeSIMD32() const {
