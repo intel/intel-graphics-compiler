@@ -26,11 +26,13 @@ SPDX-License-Identifier: MIT
 #include <stack>
 #include <sstream>
 #include "Probe/Assertion.h"
+#include <llvmWrapper/IR/PatternMatch.h>
 
 using namespace llvm;
 using namespace IGC;
 using namespace IGC::IGCMD;
 using namespace IGC::Debug;
+using namespace llvm::PatternMatch;
 
 static cl::opt<bool> PrintWiaCheck(
     "print-wia-check", cl::init(false), cl::Hidden,
@@ -1255,6 +1257,134 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const LoadInst* inst)
     return calculate_dep_simple(inst);
 }
 
+// This functions checks if result of inst is sub_group_id value.
+// In other words, it checks the following pattern:
+//
+// %localSizeX = extractelement <3 x i32> %localSize, i32 0
+// %localSizeY = extractelement <3 x i32> %localSize, i32 1
+// %localIdZZext = zext i16 %localIdZ to i32
+// %mul1 = mul i32 %localSizeY, %localIdZzext
+// %localIdYZext = zext i16 %localIdY to i32
+// %add1 = add i32 %mul1, %localIdYZext
+// %mul2 = mul i32 %add1, %localSizeX
+// %add2 = add i32 %mul2, %localIdX4
+// %simdSize = call i32 @llvm.genx.GenISA.simdSize()
+//
+// pattern 1:
+// %lshr1 = lshr i32 %simdSize, 4
+// %lshr2 = lshr i32 %add2, 3
+// %sgid = lshr i32 %lshr2, %lshr1
+//
+// or
+//
+// pattern 2:
+// %sgid = udiv i32 %add2, %simdSize
+//
+// This pattern matching can be removed, when get_subgroup_id call is inlined after applying the WIAnalysis.
+bool WIAnalysisRunner::check_sg_id(const Instruction* inst)
+{
+    const Value *val = cast<Value>(inst);
+    Value *lshrInst1 = nullptr;
+    Value *lshrInst2 = nullptr;
+    Value *addInst1 = nullptr;
+    Value *addInst2 = nullptr;
+    Value *callVal1 = nullptr;
+    Value *extrVal1 = nullptr;
+    Value *extrVal2 = nullptr;
+    Value *mulInst1 = nullptr;
+    Value *mulInst2 = nullptr;
+    Value *localIdX = nullptr;
+    Value *localIdY = nullptr;
+    Value *localIdZ = nullptr;
+
+    FunctionInfoMetaDataHandle funcInfoMD = m_pMdUtils->getFunctionsInfoItem(m_func);
+    SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
+    // If subGroupSize is not set in the metadata, then we need to check the pattern with llvm.genx.GenISA.simdSize call.
+    if (subGroupSize->hasValue())
+    {
+        uint32_t simdSize = (uint32_t)subGroupSize->getSIMDSize();
+        IGC_ASSERT(simdSize == 8 || simdSize == 16 || simdSize == 32);
+        uint32_t power = 0;
+        if (simdSize == 32)
+        {
+            power = 5;
+        }
+        else if (simdSize == 16)
+        {
+            power = 4;
+        }
+        else
+        {
+            power = 3;
+        }
+
+        auto lshrPat1 = m_LShr(m_Value(addInst1), m_SpecificInt(power));
+        if (!match(val, lshrPat1))
+            return false;
+    }
+    else
+    {
+        auto lshrPat1 = m_LShr(m_Value(lshrInst1), m_Value(lshrInst2));
+
+        // Check pattern 1.
+        if (match(val, lshrPat1))
+        {
+            auto lshrPat2 = m_LShr(m_Value(addInst1), m_SpecificInt(3));
+            auto lshrPat3 = m_LShr(m_Value(callVal1), m_SpecificInt(4));
+
+            match(lshrInst1, lshrPat2);
+            match(lshrInst2, lshrPat3);
+        }
+
+        // If pattern 1 was not found, check pattern 2.
+        if (!callVal1 || !addInst1)
+        {
+            auto udivPat1 = m_UDiv(m_Value(addInst1), m_Value(callVal1));
+            if (!match(val, udivPat1))
+                return false;
+        }
+
+        GenIntrinsicInst *genInst = dyn_cast<GenIntrinsicInst>(callVal1);
+        if (!genInst || (genInst->getIntrinsicID() != GenISAIntrinsic::GenISA_simdSize))
+            return false;
+    }
+
+    auto addPat11 =  m_Add(m_Value(mulInst1), m_ZExt(m_Value(localIdX)));
+    auto addPat12 =  m_Add(m_ZExt(m_Value(localIdX)), m_Value(mulInst1));
+    if (!match(addInst1, addPat11) && !match(addInst1, addPat12))
+        return false;
+
+    auto mulPat11 = m_Mul(m_ExtractElt(m_Value(extrVal1), m_SpecificInt(0)), m_Value(addInst2));
+    auto mulPat12 = m_Mul(m_Value(addInst2), m_ExtractElt(m_Value(extrVal1), m_SpecificInt(0)));
+    if (!match(mulInst1, mulPat11) && !match(mulInst1, mulPat12))
+        return false;
+
+    auto addPat21 =  m_Add(m_Value(mulInst2), m_ZExt(m_Value(localIdY)));
+    auto addPat22 =  m_Add(m_ZExt(m_Value(localIdY)), m_Value(mulInst2));
+    if (!match(addInst2, addPat21) && !match(addInst2, addPat22))
+        return false;
+
+    auto mulPat21 = m_Mul(m_ExtractElt(m_Value(extrVal2), m_SpecificInt(1)), m_ZExt(m_Value(localIdZ)));
+    auto mulPat22 = m_Mul(m_ZExt(m_Value(localIdZ)), m_ExtractElt(m_Value(extrVal2), m_SpecificInt(1)));
+    if (!match(mulInst2, mulPat21) && !match(mulInst2, mulPat22))
+        return false;
+
+    ImplicitArgs implicitArgs(*m_func, m_pMdUtils);
+    Value *argX = implicitArgs.getImplicitArgValue(*m_func, ImplicitArg::LOCAL_ID_X, m_pMdUtils);
+    Value *argY = implicitArgs.getImplicitArgValue(*m_func, ImplicitArg::LOCAL_ID_Y, m_pMdUtils);
+    Value *argZ = implicitArgs.getImplicitArgValue(*m_func, ImplicitArg::LOCAL_ID_Z, m_pMdUtils);
+    Value *localSize = implicitArgs.getImplicitArgValue(*m_func, ImplicitArg::LOCAL_SIZE, m_pMdUtils);
+    Value *enqLocalSize = implicitArgs.getImplicitArgValue(*m_func, ImplicitArg::ENQUEUED_LOCAL_WORK_SIZE, m_pMdUtils);
+
+    if ((localIdX != argX) || (localIdY != argY) || (localIdZ != argZ))
+        return false;
+
+    if ((localSize != extrVal1) && (enqLocalSize != extrVal1) || (localSize != extrVal2) && (enqLocalSize != extrVal2))
+        return false;
+
+    return true;
+}
+
 WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(
     const BinaryOperator* inst)
 {
@@ -1266,6 +1396,11 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(
     IGC_ASSERT(dep0 < WIAnalysis::NumDeps);
     WIAnalysis::WIDependancy dep1 = getDependency(op1);
     IGC_ASSERT(dep1 < WIAnalysis::NumDeps);
+
+    if (check_sg_id(inst))
+    {
+        return WIAnalysis::UNIFORM_THREAD;
+    }
 
     // For whatever binary operation,
     // uniform returns uniform
