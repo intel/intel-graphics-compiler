@@ -38,7 +38,7 @@ constexpr uint32_t scNumIntrinsics = static_cast<uint32_t>(llvm::GenISAIntrinsic
 /// which can't be confused with it's prefix.  This ensures we don't have
 /// collisions between two unrelated function types. Otherwise, you might
 /// parse ffXX as f(fXX) or f(fX)X.  (X is a placeholder for any other type.)
-static std::string getMangledTypeStr(llvm::Type* Ty) {
+std::string getMangledTypeStr(llvm::Type* Ty) {
     IGC_ASSERT(Ty);
     std::string Result;
     if (llvm::PointerType* PTyp = llvm::dyn_cast<llvm::PointerType>(Ty)) {

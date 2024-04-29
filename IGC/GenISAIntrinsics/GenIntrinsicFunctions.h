@@ -24,6 +24,7 @@ class Module;
 
 namespace IGC
 {
+std::string getMangledTypeStr(llvm::Type* Ty);
 
 const char* GetIntrinsicPrefixName();
 
