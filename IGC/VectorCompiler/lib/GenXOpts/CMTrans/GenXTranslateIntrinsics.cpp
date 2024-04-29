@@ -493,7 +493,6 @@ GenXTranslateIntrinsics::translateLscLoadStoreBlock2D(CallInst &I) const {
 
   IGC_ASSERT_EXIT(PredTy->isIntOrIntVectorTy(1));
   if (auto *PredVTy = dyn_cast<IGCLLVM::FixedVectorType>(PredTy)) {
-    IGC_ASSERT_EXIT(PredVTy->getNumElements() == 1);
     constexpr uint64_t Index = 0;
     Pred = Builder.CreateExtractElement(Pred, Index);
   }
