@@ -944,6 +944,39 @@ namespace IGC
     {
     }
 
+    // Returns the SIMD mode of a kernel based on a platform and settings flags.
+    // VS, DS, HS, GS currently supported only.
+    SIMDMode CodeGenContext::GetSIMDMode()
+    {
+        SIMDMode simdMode = SIMDMode::UNKNOWN;
+
+        uint32_t forcedSIMDSize = 0;
+        bool isGeomFF = (type == ShaderType::VERTEX_SHADER) ||
+            (type == ShaderType::HULL_SHADER) ||
+            (type == ShaderType::DOMAIN_SHADER) ||
+            (type == ShaderType::GEOMETRY_SHADER);
+
+        if (isGeomFF)
+        {
+            // Step 1: get platform-dependent default mode.
+            {
+                simdMode = platform.getMinDispatchMode();
+            }
+        }
+        else
+        {
+            IGC_ASSERT_MESSAGE(0, "Incorrect shader type");
+        }
+
+        if (hasSyncRTCalls() &&
+           (simdMode > platform.getPreferredRayQuerySIMDSize()))
+        {
+            simdMode = platform.getPreferredRayQuerySIMDSize();
+        }
+
+        return simdMode;
+    }
+
     // [used by shader dump] create unqiue id, starting from 1, for each
     // entry function.
     // Each entry function has 1-1 map b/w its name and its dump name.

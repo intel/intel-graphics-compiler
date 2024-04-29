@@ -1171,6 +1171,8 @@ namespace IGC
 
         uint64_t GetSIMDInfo() { return m_SIMDInfo; }
 
+        SIMDMode GetSIMDMode();
+
         virtual llvm::Optional<SIMDMode> knownSIMDSize() const {
             return llvm::None;
         }
