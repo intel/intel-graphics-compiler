@@ -48,7 +48,7 @@ unsigned int IGCLivenessAnalysisBase::registerSizeInBytes() {
     return 32;
 }
 
-SIMDMode IGCLivenessAnalysisBase::bestGuessSIMDSize(Function* F) {
+SIMDMode IGCLivenessAnalysisBase::bestGuessSIMDSize() {
     switch (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth)) {
     case 0:
         break;
@@ -60,21 +60,8 @@ SIMDMode IGCLivenessAnalysisBase::bestGuessSIMDSize(Function* F) {
         return SIMDMode::SIMD32;
     }
 
-    if(F && MDUtils->findFunctionsInfoItem(F) != MDUtils->end_FunctionsInfo()) {
-        IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = MDUtils->getFunctionsInfoItem(F);
-        unsigned SimdSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
-        if(SimdSize)
-            return lanesToSIMDMode(SimdSize);
-    }
-
-    if(CGCtx->platform.isProductChildOf(IGFX_PVC) && CGCtx->m_retryManager.GetRetryId() >= 1) {
-        return SIMDMode::SIMD16;
-    }
-
-    if (CGCtx->platform.isProductChildOf(IGFX_PVC)) {
+    if (CGCtx->platform.isProductChildOf(IGFX_PVC))
         return SIMDMode::SIMD32;
-    }
-
     return SIMDMode::SIMD8;
 }
 
@@ -281,9 +268,9 @@ void IGCLivenessAnalysisBase::collectPressureForBB(
 
 bool IGCLivenessAnalysis::runOnFunction(llvm::Function &F) {
 
-    MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     livenessAnalysis(F, nullptr);
+
     return true;
 }
 
@@ -517,9 +504,8 @@ bool IGCRegisterPressurePrinter::runOnFunction(llvm::Function &F) {
     RPE = &getAnalysis<IGCLivenessAnalysis>();
     WI = &getAnalysis<WIAnalysis>();
     CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    MaxPressureInKernel = 0;
 
-    unsigned int SIMD = numLanes(RPE->bestGuessSIMDSize(&F));
+    unsigned int SIMD = numLanes(RPE->bestGuessSIMDSize());
 
     if (DumpToFile) {
         PrinterType = 1;
