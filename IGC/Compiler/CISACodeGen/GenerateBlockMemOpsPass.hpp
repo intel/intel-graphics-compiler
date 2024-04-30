@@ -38,7 +38,7 @@ class GenerateBlockMemOpsPass : public llvm::FunctionPass
         virtual bool runOnFunction(llvm::Function &F) override;
     private:
         llvm::Value *checkGep(llvm::GetElementPtrInst *Gep);
-        llvm::Value *getLocalId(llvm::Function *F, IGC::ImplicitArg::ArgType Id);
+        bool isLocalIdX(const llvm::Value *InputVal);
         bool isAddressAligned(llvm::Value *Ptr, const alignment_t &CurrentAlignment, llvm::Type *DataType);
         bool isIndexContinuous(llvm::Value *Addr);
         bool checkVectorizationAlongX(llvm::Function *F);

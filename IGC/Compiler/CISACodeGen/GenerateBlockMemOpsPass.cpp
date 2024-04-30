@@ -84,69 +84,38 @@ bool GenerateBlockMemOpsPass::isAddressAligned(Value *Ptr, const alignment_t &Cu
 
 // This function checks if Indx is equal to 1 * LocalIdX + UniformPart, assuming LocalIdY and LocalIdZ are uniform values.
 bool GenerateBlockMemOpsPass::isIndexContinuous(Value *Indx) {
-    Instruction *FirstRoot = dyn_cast<Instruction>(Indx);
-    if (!FirstRoot)
+    Instruction *NonUnifInst = dyn_cast<Instruction>(Indx);
+    if (!NonUnifInst)
         return false;
 
-    bool lx = false;
-
-    // NonUniformInstsMap is used to collect non-uniform part of address arithmetic.
-    // The bool value indicates whether the arithmetic chain contained an instruction other than a zext or add instruction.
-    DenseMap<Value*, bool> NonUniformInstsMap;
-    NonUniformInstsMap.insert({Indx, false});
-
-    // Continue algorithm untill we have non-uniform values in the list.
-    while (NonUniformInstsMap.size()) {
-        for (const auto& Item : NonUniformInstsMap) {
-            Value *CurrentVal = Item.first;
-            bool ContainRestrInstr = Item.second;
-
-            Instruction *CurrentInst = dyn_cast<Instruction>(CurrentVal);
-            if (!CurrentInst)
+    Value *NonUniformOp = nullptr;
+    // Continuity requires that only add and zext operations can be performed on a non-uniform value.
+    while (NonUnifInst) {
+        if (isa<ZExtInst>(NonUnifInst)) {
+            NonUniformOp = NonUnifInst->getOperand(0);
+        } else if (NonUnifInst->getOpcode() == Instruction::Add) {
+            Value *Op0 = NonUnifInst->getOperand(0);
+            Value *Op1 = NonUnifInst->getOperand(1);
+            if (!WI->isUniform(Op1) && !WI->isUniform(Op0))
                 return false;
 
-            for (auto Op = CurrentInst->op_begin(), E = CurrentInst->op_end(); Op != E; Op++) {
-                Value *OpVal = cast<Value>(Op);
-
-                if (!WI->isUniform(OpVal)) {
-                    if (isa<Instruction>(OpVal)) {
-
-                        if (isa<ZExtInst>(CurrentInst) || (CurrentInst->getOpcode() == Instruction::Add)) {
-                            NonUniformInstsMap.insert({OpVal, ContainRestrInstr});
-                        } else {
-                            // Mark the value as true, since it is used in instructions other than add or zext.
-                            NonUniformInstsMap.insert({OpVal, true});
-                        }
-
-                    } else {
-                        if (isa<Argument>(OpVal)) {
-
-                            if (OpVal == getLocalId(CurrentInst->getFunction(), ImplicitArg::LOCAL_ID_X)) {
-                                // If local_id_x has already been encountered during analysis or the chain contains prohibited instructions,
-                                // then the index is not continuous.
-                                if (lx || ContainRestrInstr)
-                                    return false;
-
-                                lx = true;
-                            } else if ((OpVal != getLocalId(CurrentInst->getFunction(), ImplicitArg::LOCAL_ID_Y)) &&
-                                    (OpVal != getLocalId(CurrentInst->getFunction(), ImplicitArg::LOCAL_ID_Z))) {
-                                // We assume that local_id_y and local_id_z are uniform, so it doesn't matter which instructions they were used in.
-                                return false;
-                            }
-
-                        } else {
-                            return false;
-                        }
-                    }
-                }
+            if (WI->isUniform(Op0)) {
+                NonUniformOp = Op1;
+            } else {
+                NonUniformOp = Op0;
             }
-
-            NonUniformInstsMap.erase(CurrentInst);
+        } else {
+            return false;
         }
+
+        // If local_id_x was met then index is continuous.
+        if (isLocalIdX(NonUniformOp))
+            return true;
+
+        NonUnifInst = dyn_cast<Instruction>(NonUniformOp);
     }
 
-    // If local_id_x was met then index is continuous.
-    return lx;
+    return false;
 }
 
 
@@ -226,12 +195,14 @@ bool GenerateBlockMemOpsPass::canOptLoadStore(Instruction *I) {
     return true;
 }
 
-Value *GenerateBlockMemOpsPass::getLocalId(Function *F, IGC::ImplicitArg::ArgType Id) {
-    Instruction *Pos = F->getEntryBlock().getFirstNonPHI();
-    IRBuilder<> Builder(Pos);
+bool GenerateBlockMemOpsPass::isLocalIdX(const Value *InputVal) {
+    const Argument *A = dyn_cast<Argument>(InputVal);
+    if (!A)
+        return false;
+    Function *F = const_cast<Function *>(A->getParent());
     ImplicitArgs implicitArgs(*F, MdUtils);
-    Value *V = implicitArgs.getImplicitArgValue(*F, Id, MdUtils);
-    return V;
+    Value *localIdX = implicitArgs.getImplicitArgValue(*F, ImplicitArg::LOCAL_ID_X, MdUtils);
+    return A == localIdX;
 }
 
 bool GenerateBlockMemOpsPass::changeToBlockInst(Instruction *I) {
