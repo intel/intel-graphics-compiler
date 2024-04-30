@@ -76,6 +76,14 @@ static const unsigned int MAX_RETVAL_SIZE_IN_BITS = 64;
 static const unsigned int MAX_STRUCT_SIZE_IN_BITS = 128;
 static const unsigned int MAX_SUBROUTINE_STRUCT_SIZE_IN_BITS = 512;
 
+enum ReturnOpt
+{
+    RETURN_DEFAULT = 0,
+    RETURN_BY_REF,
+    RETURN_STRUCT,
+    RETURN_LEGAL_INT
+};
+
 bool LegalizeFunctionSignatures::runOnModule(Module& M)
 {
     auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
@@ -267,8 +275,7 @@ void LegalizeFunctionSignatures::FixFunctionSignatures(Module& M)
             continue;
         }
 
-        bool legalizeReturnType = false;
-        bool promoteSRetType = false;
+        ReturnOpt retTypeOption = ReturnOpt::RETURN_DEFAULT;
         bool fixArgType = false;
         std::vector<Type*> argTypes;
 
@@ -280,13 +287,17 @@ void LegalizeFunctionSignatures::FixFunctionSignatures(Module& M)
         // Create the new function signature by replacing the illegal types
         if (FunctionHasPromotableSRetArg(M, pFunc))
         {
-            promoteSRetType = true;
+            retTypeOption = ReturnOpt::RETURN_STRUCT;
             ai++; // Skip adding the first arg
         }
         else if (!isLegalSignatureType(M, pFunc->getReturnType(), isStackCall))
         {
-            legalizeReturnType = true;
+            retTypeOption = ReturnOpt::RETURN_BY_REF;
             argTypes.push_back(PointerType::get(pFunc->getReturnType(), 0));
+        }
+        else if (!isLegalIntVectorType(M, pFunc->getReturnType()))
+        {
+            retTypeOption = ReturnOpt::RETURN_LEGAL_INT;
         }
 
         for (; ai != ei; ai++)
@@ -313,33 +324,32 @@ void LegalizeFunctionSignatures::FixFunctionSignatures(Module& M)
             }
         }
 
-        if (!legalizeReturnType && !promoteSRetType && !fixArgType)
+        if (retTypeOption != ReturnOpt::RETURN_DEFAULT || fixArgType)
         {
-            // Nothing to fix
-            continue;
+            // Clone function with new signature
+            Type* returnType =
+                retTypeOption == ReturnOpt::RETURN_BY_REF ? Type::getVoidTy(M.getContext()) :
+                retTypeOption == ReturnOpt::RETURN_STRUCT ? PromotedStructValueType(M, pFunc->arg_begin()->getType()) :
+                retTypeOption == ReturnOpt::RETURN_LEGAL_INT ? LegalizedIntVectorType(M, pFunc->getReturnType()) :
+                pFunc->getReturnType();
+            FunctionType* signature = FunctionType::get(returnType, argTypes, false);
+            Function* pNewFunc = Function::Create(signature, pFunc->getLinkage(), pFunc->getName(), pFunc->getParent());
+            pNewFunc->takeName(pFunc);
+            pNewFunc->setCallingConv(pFunc->getCallingConv());
+            pNewFunc->setAttributes(pFunc->getAttributes());
+
+            // Since we need to pass in pointers to be dereferenced by the new function, remove the "readnone" attribute
+            // Also we need to create allocas for these pointers, so set the flag to true
+            if (retTypeOption == ReturnOpt::RETURN_BY_REF)
+            {
+                pNewFunc->removeFnAttr(llvm::Attribute::ReadNone);
+                pNewFunc->removeFnAttr(llvm::Attribute::ReadOnly);
+                pContext->m_instrTypes.hasNonPrimitiveAlloca = true;
+            }
+
+            // Map the old function to the new
+            oldToNewFuncMap[pFunc] = pNewFunc;
         }
-
-        // Clone function with new signature
-        Type* returnType = legalizeReturnType ? Type::getVoidTy(M.getContext()) :
-            promoteSRetType ? PromotedStructValueType(M, pFunc->arg_begin()->getType()) :
-            pFunc->getReturnType();
-        FunctionType* signature = FunctionType::get(returnType, argTypes, false);
-        Function* pNewFunc = Function::Create(signature, pFunc->getLinkage(), pFunc->getName(), pFunc->getParent());
-        pNewFunc->takeName(pFunc);
-        pNewFunc->setCallingConv(pFunc->getCallingConv());
-        pNewFunc->setAttributes(pFunc->getAttributes());
-
-        // Since we need to pass in pointers to be dereferenced by the new function, remove the "readnone" attribute
-        // Also we need to create allocas for these pointers, so set the flag to true
-        if (legalizeReturnType)
-        {
-            pNewFunc->removeFnAttr(llvm::Attribute::ReadNone);
-            pNewFunc->removeFnAttr(llvm::Attribute::ReadOnly);
-            pContext->m_instrTypes.hasNonPrimitiveAlloca = true;
-        }
-
-        // Map the old function to the new
-        oldToNewFuncMap[pFunc] = pNewFunc;
     }
 }
 
@@ -357,18 +367,20 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
             llvm::SmallVector<llvm::ReturnInst*, 8> Returns;
             auto OldArgIt = pFunc->arg_begin();
             auto NewArgIt = pNewFunc->arg_begin();
-            bool legalizeReturnType = false;
-            bool promoteSRetType = false;
+            ReturnOpt retTypeOption = ReturnOpt::RETURN_DEFAULT;
             bool isStackCall = pFunc->hasFnAttribute("visaStackCall");
             Value* tempAllocaForSRetPointer = nullptr;
             llvm::SmallVector<llvm::Argument*, 8> ArgByVal;
 
             if (FunctionHasPromotableSRetArg(M, pFunc)) {
-                promoteSRetType = true;
+                retTypeOption = ReturnOpt::RETURN_STRUCT;
             }
             else if (!isLegalSignatureType(M, pFunc->getReturnType(), isStackCall)) {
-                legalizeReturnType = true;
+                retTypeOption = ReturnOpt::RETURN_BY_REF;
                 ++NewArgIt; // Skip first argument that we added.
+            }
+            else if (!isLegalIntVectorType(M, pFunc->getReturnType())) {
+                retTypeOption = ReturnOpt::RETURN_LEGAL_INT;
             }
 
             // Fix the usages of arguments that have changed
@@ -376,7 +388,7 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
             IGCLLVM::IRBuilder<> builder(EntryBB);
             for (; OldArgIt != pFunc->arg_end(); ++OldArgIt)
             {
-                if (OldArgIt == pFunc->arg_begin() && promoteSRetType)
+                if (OldArgIt == pFunc->arg_begin() && retTypeOption == ReturnOpt::RETURN_STRUCT)
                 {
                     // Create a temp alloca to map the old argument. This will be removed later by SROA.
                     tempAllocaForSRetPointer = builder.CreateAlloca(PromotedStructValueType(M, OldArgIt->getType()));
@@ -437,7 +449,7 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
             }
 
             // Now fix the return values
-            if (legalizeReturnType)
+            if (retTypeOption == ReturnOpt::RETURN_BY_REF)
             {
                 // Add the 'noalias' and 'sret' attribute to arg0
                 auto retArg = pNewFunc->arg_begin();
@@ -459,13 +471,26 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
                     RetInst->eraseFromParent();
                 }
             }
-            else if (promoteSRetType)
+            else if (retTypeOption == ReturnOpt::RETURN_STRUCT)
             {
                 // For "sret" returns, we load from the temp alloca created earlier and return the loaded value instead
                 for (auto RetInst : Returns)
                 {
                     IGCLLVM::IRBuilder<> builder(RetInst);
                     Value* retVal = LoadFromStruct(builder, tempAllocaForSRetPointer);
+                    builder.CreateRet(retVal);
+                    RetInst->eraseFromParent();
+                }
+            }
+            else if (retTypeOption == ReturnOpt::RETURN_LEGAL_INT)
+            {
+                // Extend illegal int returns to legal type
+                for (auto RetInst : Returns)
+                {
+                    IGCLLVM::IRBuilder<> builder(RetInst);
+                    Value* retVal = RetInst->getReturnValue();
+                    Type* retTy = retVal->getType();
+                    retVal = builder.CreateZExt(retVal, LegalizedIntVectorType(M, retTy));
                     builder.CreateRet(retVal);
                     RetInst->eraseFromParent();
                 }
@@ -533,8 +558,7 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
 {
     Function* calledFunc = callInst->getCalledFunction();
     SmallVector<Value*, 16> callArgs;
-    bool legalizeReturnType = false;
-    bool promoteSRetType = false;
+    ReturnOpt retTypeOption = ReturnOpt::RETURN_DEFAULT;
     bool fixArgType = false;
     bool isStackCall = !calledFunc || calledFunc->hasFnAttribute("visaStackCall");
 
@@ -553,7 +577,7 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
         isPromotableStructType(M, callInst->getArgOperand(0)->getType(), isStackCall, true /* retval */))
     {
         opNum++; // Skip the first call operand
-        promoteSRetType = true;
+        retTypeOption = ReturnOpt::RETURN_STRUCT;
     }
     else if (!isLegalSignatureType(M, callInst->getType(), isStackCall))
     {
@@ -566,7 +590,11 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
         ArgAttrs.addAttribute(llvm::Attribute::NoAlias);
         ArgAttrs.addStructRetAttr(callInst->getType());
         ArgAttrVec.push_back(AttributeSet::get(M.getContext(), ArgAttrs));
-        legalizeReturnType = true;
+        retTypeOption = ReturnOpt::RETURN_BY_REF;
+    }
+    else if (!isLegalIntVectorType(M, callInst->getType()))
+    {
+        retTypeOption = ReturnOpt::RETURN_LEGAL_INT;
     }
 
     // Check call operands if it needs to be replaced
@@ -612,7 +640,7 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
         }
     }
 
-    if (legalizeReturnType || promoteSRetType || fixArgType)
+    if (retTypeOption != ReturnOpt::RETURN_DEFAULT || fixArgType)
     {
         IGCLLVM::IRBuilder<> builder(callInst);
         Value* newCalledValue = nullptr;
@@ -625,8 +653,10 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
             {
                 argTypes.push_back(arg->getType());
             }
-            Type* retType = legalizeReturnType ? Type::getVoidTy(callInst->getContext()) :
-                promoteSRetType ? PromotedStructValueType(M, callInst->getArgOperand(0)->getType()) :
+            Type* retType =
+                retTypeOption == ReturnOpt::RETURN_BY_REF ? Type::getVoidTy(callInst->getContext()) :
+                retTypeOption == ReturnOpt::RETURN_STRUCT ? PromotedStructValueType(M, callInst->getArgOperand(0)->getType()) :
+                retTypeOption == ReturnOpt::RETURN_LEGAL_INT ? LegalizedIntVectorType(M, callInst->getType()) :
                 callInst->getType();
             newFnTy = FunctionType::get(retType, argTypes, false);
             Value* calledValue = IGCLLVM::getCalledValue(callInst);
@@ -646,17 +676,23 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
         newCallInst->setAttributes(AttributeList::get(M.getContext(), IGCLLVM::getFnAttrs(PAL), IGCLLVM::getRetAttrs(PAL), ArgAttrVec));
         newCallInst->setDebugLoc(callInst->getDebugLoc());
 
-        if (legalizeReturnType)
+        if (retTypeOption == ReturnOpt::RETURN_BY_REF)
         {
             // Load the return value from the arg pointer before using it
             IGC_ASSERT(returnPtr);
             Value* load = builder.CreateLoad(returnPtr);
             callInst->replaceAllUsesWith(load);
         }
-        else if (promoteSRetType)
+        else if (retTypeOption == ReturnOpt::RETURN_STRUCT)
         {
             // Store the struct value into the orginal pointer operand
             StoreToStruct(builder, newCallInst, callInst->getArgOperand(0));
+        }
+        else if (retTypeOption == ReturnOpt::RETURN_LEGAL_INT)
+        {
+            // Truncate legal type back into original value
+            Value* trunc = builder.CreateTrunc(newCallInst, callInst->getType());
+            callInst->replaceAllUsesWith(trunc);
         }
         else
         {

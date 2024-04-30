@@ -251,6 +251,7 @@ public:
     CVariable* GetPrivateBase();
     CVariable* GetImplArgBufPtr();
     CVariable* GetLocalIdBufPtr();
+    CVariable* GetGlobalBufferArg();
     void SaveSRet(CVariable* sretPtr);
     CVariable* GetAndResetSRet();
 
@@ -742,6 +743,7 @@ protected:
     CVariable* m_SavedSRetPtr;
     CVariable* m_ImplArgBufPtr;
     CVariable* m_LocalIdBufPtr;
+    CVariable* m_GlobalBufferArg;
 
     std::vector<USC::SConstantGatherEntry> gatherMap;
     uint     m_ConstantBufferLength;
