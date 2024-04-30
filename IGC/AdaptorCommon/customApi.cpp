@@ -343,6 +343,21 @@ namespace IGC
             g_shaderOutputName = name;
         }
 
+        bool needMkDir()
+        {
+            return IGC_IS_FLAG_ENABLED(DumpLLVMIR)              ||
+                   IGC_IS_FLAG_ENABLED(EnableCosDump)           ||
+                   IGC_IS_FLAG_ENABLED(EnableVISAOutput)        ||
+                   IGC_IS_FLAG_ENABLED(EnableVISABinary)        ||
+                   IGC_IS_FLAG_ENABLED(EnableVISADumpCommonISA) ||
+                   GetDebugFlag(DebugFlag::DUMP_AFTER_PASSES)   ||
+                   GetDebugFlag(DebugFlag::VISA_OUTPUT)         ||
+                   GetDebugFlag(DebugFlag::VISA_BINARY)         ||
+                   GetDebugFlag(DebugFlag::VISA_DUMPCOMMONISA)  ||
+                   IGC_IS_FLAG_ENABLED(EnableCapsDump)          ||
+                   IGC_IS_FLAG_ENABLED(ShaderOverride);
+        }
+
         OutputFolderName IGC_DEBUG_API_CALL GetBaseIGCOutputFolder()
         {
             static std::mutex m;
@@ -355,18 +370,7 @@ namespace IGC
 #   if defined(_WIN64) || defined(_WIN32)
             if (!IGC_IS_FLAG_ENABLED(DumpToCurrentDir) && !IGC_IS_FLAG_ENABLED(DumpToCustomDir))
             {
-                bool needMkdir =
-                    IGC_IS_FLAG_ENABLED(DumpLLVMIR) ||
-                    IGC_IS_FLAG_ENABLED(EnableCosDump) ||
-                    IGC_IS_FLAG_ENABLED(EnableVISAOutput) ||
-                    IGC_IS_FLAG_ENABLED(EnableVISABinary) ||
-                    IGC_IS_FLAG_ENABLED(EnableVISADumpCommonISA) ||
-                    GetDebugFlag(DebugFlag::DUMP_AFTER_PASSES) ||
-                    GetDebugFlag(DebugFlag::VISA_OUTPUT) ||
-                    GetDebugFlag(DebugFlag::VISA_BINARY) ||
-                    GetDebugFlag(DebugFlag::VISA_DUMPCOMMONISA) ||
-                    IGC_IS_FLAG_ENABLED(EnableCapsDump) ||
-                    IGC_IS_FLAG_ENABLED(ShaderOverride);
+                bool needMkdir = needMkDir();
 
                 char dumpPath[256];
 
@@ -519,7 +523,7 @@ namespace IGC
                     sprintf_s(dumpPath, "%sunknownProcess_%d\\", dumpPath, _getpid());
                 }
 
-                if (GetFileAttributesA(dumpPath) != FILE_ATTRIBUTE_DIRECTORY)
+                if (GetFileAttributesA(dumpPath) != FILE_ATTRIBUTE_DIRECTORY && needMkDir())
                 {
                     _mkdir(dumpPath);
                 }
@@ -535,10 +539,7 @@ namespace IGC
 #elif defined ANDROID
 
             if (IGC_IS_FLAG_ENABLED(DumpToCurrentDir))
-
                 return "";
-
-
 
             if (!SysUtils::CreateDir(GetBaseIGCOutputFolder(), true, IGC_IS_FLAG_DISABLED(ShaderDumpPidDisable), &g_shaderOutputFolder))
 
@@ -547,21 +548,7 @@ namespace IGC
 #elif defined __linux__
             if (!IGC_IS_FLAG_ENABLED(DumpToCurrentDir) && g_shaderOutputFolder == "" && !IGC_IS_FLAG_ENABLED(DumpToCustomDir))
             {
-                bool needMkdir = false;
-
-                if (IGC_IS_FLAG_ENABLED(DumpLLVMIR) ||
-                    IGC_IS_FLAG_ENABLED(EnableCosDump) ||
-                    IGC_IS_FLAG_ENABLED(EnableVISAOutput) ||
-                    IGC_IS_FLAG_ENABLED(EnableVISABinary) ||
-                    IGC_IS_FLAG_ENABLED(EnableVISADumpCommonISA) ||
-                    GetDebugFlag(DebugFlag::DUMP_AFTER_PASSES) ||
-                    GetDebugFlag(DebugFlag::VISA_OUTPUT) ||
-                    GetDebugFlag(DebugFlag::VISA_BINARY) ||
-                    GetDebugFlag(DebugFlag::VISA_DUMPCOMMONISA) ||
-                    IGC_IS_FLAG_ENABLED(EnableCapsDump))
-                {
-                    needMkdir = true;
-                }
+                bool needMkdir = needMkDir();
 
                 char path[MAX_PATH] = { 0 };
                 bool pidEnabled = IGC_IS_FLAG_DISABLED(ShaderDumpPidDisable);
@@ -576,7 +563,6 @@ namespace IGC
                         true,
                         pidEnabled);
                 }
-
 
                 g_shaderOutputFolder = path;
             }
