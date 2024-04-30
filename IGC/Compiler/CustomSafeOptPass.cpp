@@ -362,6 +362,58 @@ void CustomSafeOptPass::visitShuffleIndex(llvm::CallInst* I)
     }
 }
 
+// here we merge dot-product (no acc) and add (as acc) into one dp4a
+// before optimizing:
+// % id113- = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 0, i32 % 261, i32 % 281)
+// ......
+// %id213- = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 0, i32 %305, i32 %345)
+// %id214- = add i32 %id113-, %id213-
+// ......
+// %id317- = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 0, i32 %267, i32 %321)
+// %id318- = add i32 % id214- , % id317-
+// ......
+// after optimizing:
+// %id213- = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 %id113-, i32 %305, i32 %345)
+// ......
+// %id317- = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 %id213-, i32 %267, i32 %321)
+void CustomSafeOptPass::mergeDotAddToDp4a(llvm::CallInst* I)
+{
+    if (!IGC_IS_FLAG_ENABLED(EnableDotAddToDp4aMerge))
+      return;
+
+    // found %id213- = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 0, i32 %305, i32 %345)
+    GenIntrinsicInst* instr = dyn_cast<GenIntrinsicInst>(I);
+
+    if (ConstantInt* CI = dyn_cast<ConstantInt>(instr->getOperand(0))) {
+      // make sure operand(0) value is (i32 0)
+      if (CI->isZero()) {
+        // found %id214- = add i32 %id113-, %id213-
+        if (Instruction* nextInst = dyn_cast<Instruction>(I)->getNextNode()) {
+          // make sure followed by add op
+          if (nextInst->getOpcode() == Instruction::Add) {
+            // the acc in operand(0) should be %id113-
+            Value* accVal = nextInst->getOperand(0);
+            if (CallInst* accInst = dyn_cast<CallInst>(accVal)) {
+              if (GenIntrinsicInst* accInstr = dyn_cast<GenIntrinsicInst>(accInst)) {
+                // make sure the accumulate is from its previous dp4a op
+                if (accInstr->getIntrinsicID() == GenISAIntrinsic::GenISA_dp4a_ss) {
+                  // %id213- = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 0, i32 %305, i32 %345)
+                  for (auto user : instr->users()) {
+                    // replace i32 0 with %id113- in operand(0)
+                    instr->setOperand(0, accVal);
+                    user->replaceAllUsesWith(instr);
+                    // %id213- = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 %id113-, i32 %305, i32 %345)
+                    break;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+}
+
 // Check if Lower 64b to 32b transformation is applicable for binary operator
 // i.e. trunc(a op b) == trunc(a) op trunc(b)
 static bool isTruncInvariant(unsigned Opcode) {
@@ -780,6 +832,13 @@ void CustomSafeOptPass::visitCallInst(CallInst& C)
             visitShuffleIndex(inst);
             break;
         }
+
+        case GenISAIntrinsic::GenISA_dp4a_ss:
+        {
+            mergeDotAddToDp4a(&C);
+            break;
+        }
+
         default:
             break;
         }
