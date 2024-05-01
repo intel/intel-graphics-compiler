@@ -368,6 +368,9 @@ void SpillManager::replaceSpilledSrc(
         genRegMov(bb, it, spDcl->getRegVar(), ss->getSubRegOff(),
                   tmpDcl->getRegVar(), tmpDcl->getNumElems(),
                   isNoMask);
+        auto pseudoKill =
+          builder.createPseudoKill(tmpDcl, PseudoKillType::Other, false);
+        bb->insertBefore(std::prev(it), pseudoKill);
       }
 
       // create new src from the temp address variable, with offset 0
