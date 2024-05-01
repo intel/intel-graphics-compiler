@@ -300,11 +300,6 @@ uint PayloadMapping::GetNumPayloadElements(const Instruction* inst)
         return GetNumPayloadElements_LDMS(sampleInst);
     }
 
-    if (llvm::isa<llvm::AtomicTypedIntrinsic>(intrinsicInst))
-    {
-        return GetNumPayloadElements_AtomicTyped(intrinsicInst);
-    }
-
     if (isURBWriteIntrinsic(intrinsicInst))
     {
         return GetNumPayloadElements_URBWrite(intrinsicInst);
@@ -584,12 +579,6 @@ uint PayloadMapping::GetNumPayloadElements_RTWrite(const GenIntrinsicInst* inst)
     return numElements;
 }
 
-uint PayloadMapping::GetNumPayloadElements_AtomicTyped(const GenIntrinsicInst* inst)
-{
-    const int numElements = 3; //xyz coordinate.
-    return numElements;
-}
-
 ///
 Value* PayloadMapping::GetPayloadElementToValueMapping_URBWrite(const GenIntrinsicInst* inst, uint index)
 {
@@ -624,12 +613,6 @@ Value* PayloadMapping::GetPayloadElementToValueMapping_sample(const SampleIntrin
 {
     uint valueIndex = GetNonAdjustedPayloadElementIndexToValueIndexMapping_sample(inst, index);
     return inst->getOperand(valueIndex);
-}
-
-/// \brief Gets payload element index to value mapping, adjusted with splitting decision(peeling).
-Value* PayloadMapping::GetPayloadElementToValueMapping_AtomicTyped(const AtomicTypedIntrinsic* inst, const uint index)
-{
-    return inst->getOperand(index+1);
 }
 
 /// \brief Gets payload element index to value mapping for RT writes.
@@ -693,13 +676,6 @@ Value* PayloadMapping::GetPayloadElementToValueMapping(const Instruction* inst, 
         return payloadValue;
     }
 
-    if (const AtomicTypedIntrinsic* atomicInst = dyn_cast<AtomicTypedIntrinsic>(inst))
-    {
-        payloadValue = GetPayloadElementToValueMapping_AtomicTyped(atomicInst, index);
-        IGC_ASSERT(payloadValue != nullptr);
-        m_PayloadMappingCache.insert(std::pair<std::pair<const llvm::Instruction*, uint>, Value*>(instIndexPair, payloadValue));
-        return payloadValue;
-    }
 
     if (isURBWriteIntrinsic(intrinsicInst))
     {

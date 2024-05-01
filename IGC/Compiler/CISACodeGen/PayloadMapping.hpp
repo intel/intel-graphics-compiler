@@ -50,7 +50,6 @@ namespace IGC
         uint GetNumPayloadElements_LDMS(const llvm::GenIntrinsicInst* inst);
         uint GetNonAdjustedNumPayloadElements_Sample(const llvm::SampleIntrinsic* inst);
         uint GetNumPayloadElements_Sample(const llvm::SampleIntrinsic* inst);
-        uint GetNumPayloadElements_AtomicTyped(const llvm::GenIntrinsicInst* inst);
 
         /// ------------------------------
         /// \brief Get the mapping from the payload element (at position index)
@@ -63,7 +62,6 @@ namespace IGC
         llvm::Value* GetPayloadElementToValueMapping_LDMS(const llvm::SamplerLoadIntrinsic* inst, const uint index);
         llvm::Value* GetNonAdjustedPayloadElementToValueMapping_sample(const llvm::SampleIntrinsic* inst, const uint index);
         llvm::Value* GetPayloadElementToValueMapping_sample(const llvm::SampleIntrinsic* inst, const uint index);
-        llvm::Value* GetPayloadElementToValueMapping_AtomicTyped(const llvm::AtomicTypedIntrinsic* inst, const uint index);
 
         //Handling of non-homogeneous payloads (RT write)
         const llvm::Instruction* GetSupremumOfNonHomogeneousPart(

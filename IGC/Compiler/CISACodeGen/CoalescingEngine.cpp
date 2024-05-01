@@ -181,7 +181,6 @@ namespace IGC
                 {
                     if ((isURBWriteIntrinsic(intrinsic) && !IGC_IS_FLAG_ENABLED(DisablePayloadCoalescing_URB)) ||
                         (llvm::isa<llvm::RTWriteIntrinsic>(intrinsic) && !IGC_IS_FLAG_ENABLED(DisablePayloadCoalescing_RT)) ||
-                        (llvm::isa<llvm::AtomicTypedIntrinsic>(intrinsic) && !IGC_IS_FLAG_ENABLED(DisablePayloadCoalescing_AtomicTyped)) ||
                         (llvm::isa<llvm::RTDualBlendSourceIntrinsic>(intrinsic) && !IGC_IS_FLAG_ENABLED(DisablePayloadCoalescing_RT) && m_Platform.hasDualKSPPS()))
                     {
                         ProcessTuple(DefMI);
@@ -634,8 +633,7 @@ namespace IGC
                 // Do not coalesce values having excessive number of uses.
                 // This otfen introduces many anti-dependencies.
                 const unsigned MAX_USE_COUNT = 20;
-                if (val->hasNUsesOrMore(MAX_USE_COUNT)
-                    && !llvm::isa<llvm::AtomicTypedIntrinsic>(tupleGeneratingInstruction))
+                if (val->hasNUsesOrMore(MAX_USE_COUNT))
                 {
                     isAnyNodeAnchored = true;
                 }
@@ -1460,7 +1458,6 @@ namespace IGC
         if (isSampleInstruction(inst) ||
             isLdInstruction(inst) ||
             isURBWriteIntrinsic(inst) ||
-            llvm::isa<llvm::AtomicTypedIntrinsic>(inst) ||
             llvm::isa<llvm::RTWriteIntrinsic>(inst) ||
             (llvm::isa<llvm::RTDualBlendSourceIntrinsic>(inst) && m_Platform.hasDualKSPPS()))
         {
@@ -1514,6 +1511,7 @@ namespace IGC
             case GenISAIntrinsic::GenISA_floatatomicstructured:
             case GenISAIntrinsic::GenISA_cmpxchgatomicstructured:
             case GenISAIntrinsic::GenISA_fcmpxchgatomicstructured:
+            case GenISAIntrinsic::GenISA_intatomictyped:
             case GenISAIntrinsic::GenISA_icmpxchgatomictyped:
             case GenISAIntrinsic::GenISA_floatatomictyped:
             case GenISAIntrinsic::GenISA_fcmpxchgatomictyped:
