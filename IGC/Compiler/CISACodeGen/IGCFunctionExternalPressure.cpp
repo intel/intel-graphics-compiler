@@ -49,13 +49,14 @@ std::unique_ptr<WIAnalysisRunner> IGCFunctionExternalRegPressureAnalysis::runWIA
     return WI;
 }
 
-void IGCFunctionExternalRegPressureAnalysis::generateTableOfPressure(llvm::Module &M, unsigned int SIMD) {
+void IGCFunctionExternalRegPressureAnalysis::generateTableOfPressure(llvm::Module &M) {
 
     // basic preprocessing, scan all of the functions,
     // collect callsite pressure for eash callsite
     for (auto &F : M) {
         if(F.isDeclaration()) continue;
 
+        unsigned int SIMD = numLanes(bestGuessSIMDSize(&F));
         livenessAnalysis(F);
         std::unique_ptr<WIAnalysisRunner> WI = runWIAnalysis(F);
 
@@ -122,12 +123,12 @@ void IGCFunctionExternalRegPressureAnalysis::generateTableOfPressure(llvm::Modul
 
 bool IGCFunctionExternalRegPressureAnalysis::runOnModule(llvm::Module &M) {
 
+    FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
     CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     ModMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
-    unsigned int SIMD = numLanes(bestGuessSIMDSize());
-    generateTableOfPressure(M, SIMD);
+    generateTableOfPressure(M);
 
     return true;
 }

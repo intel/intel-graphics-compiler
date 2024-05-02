@@ -929,7 +929,8 @@ namespace IGC {
     uint CodeLoopSinking::getMaxRegCountForLoop(Loop *L)
     {
         IGC_ASSERT(RPE);
-        uint SIMD = numLanes(RPE->bestGuessSIMDSize());
+        Function *F = L->getLoopPreheader()->getParent();
+        uint SIMD = numLanes(RPE->bestGuessSIMDSize(F));
         unsigned int Max = 0;
         for (BasicBlock *BB : L->getBlocks())
         {
@@ -971,7 +972,7 @@ namespace IGC {
         Function *F = Preheader->getParent();
         uint GRFThresholdDelta = IGC_GET_FLAG_VALUE(LoopSinkThresholdDelta);
         uint NGRF = CTX->getNumGRFPerThread();
-        uint SIMD = numLanes(RPE->bestGuessSIMDSize());
+        uint SIMD = numLanes(RPE->bestGuessSIMDSize(F));
 
         PrintDump("\n");
         if (!Preheader->getName().empty())

@@ -43,6 +43,8 @@ namespace IGC {
         DFSet Out;
 
         IGC::CodeGenContext *CGCtx = nullptr;
+        IGCMD::MetaDataUtils* MDUtils = nullptr;
+        GenXFunctionGroupAnalysis* FGA = nullptr;
 
         // returns all definitions that were made in the block
         // computed by taking difference between In and Out,
@@ -61,7 +63,7 @@ namespace IGC {
                 unsigned int SIMD,
                 WIAnalysisRunner* WI = nullptr);
 
-        SIMDMode bestGuessSIMDSize();
+        SIMDMode bestGuessSIMDSize(Function* F = nullptr);
 
         unsigned int bytesToRegisters(unsigned int Bytes) {
             unsigned int RegisterSizeInBytes = registerSizeInBytes();
@@ -168,7 +170,10 @@ class IGCLivenessAnalysis : public llvm::FunctionPass, public IGCLivenessAnalysi
     virtual bool runOnFunction(llvm::Function &F) override;
     virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
         AU.setPreservesAll();
+        AU.addRequired<GenXFunctionGroupAnalysis>();
         AU.addRequired<CodeGenContextWrapper>();
+        AU.addRequired<MetaDataUtilsWrapper>();
+
     }
 };
 
@@ -181,11 +186,10 @@ class IGCFunctionExternalRegPressureAnalysis : public llvm::ModulePass, public I
 
     // already present in IGCLivenessAnalysisBase
     //IGC::CodeGenContext *CGCtx = nullptr;
-    IGCMD::MetaDataUtils* MDUtils = nullptr;
     ModuleMetaData* ModMD = nullptr;
 
     std::unique_ptr<WIAnalysisRunner> runWIAnalysis(Function &F);
-    void generateTableOfPressure(Module &M, unsigned int SIMD);
+    void generateTableOfPressure(Module &M);
 
   public:
     static char ID;
@@ -213,6 +217,7 @@ class IGCFunctionExternalRegPressureAnalysis : public llvm::ModulePass, public I
     virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
         AU.setPreservesAll();
 
+        AU.addRequired<GenXFunctionGroupAnalysis>();
         AU.addRequired<CallGraphWrapperPass>();
         AU.addRequired<CodeGenContextWrapper>();
         AU.addRequired<MetaDataUtilsWrapper>();

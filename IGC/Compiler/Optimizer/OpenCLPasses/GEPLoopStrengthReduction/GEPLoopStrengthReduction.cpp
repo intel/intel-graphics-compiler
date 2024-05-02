@@ -821,7 +821,7 @@ void Scorer::scoreRegisterPressure(ReductionCandidateGroup &Candidate)
 
     auto *L = Candidate.getLoop();
     auto *F = Cheapest.GEP->getParent()->getParent();
-    uint SIMD = numLanes(RPE.bestGuessSIMDSize());
+    uint SIMD = numLanes(RPE.bestGuessSIMDSize(F));
 
     ValueSet Instructions;
 
@@ -1107,7 +1107,8 @@ void RegisterPressureTracker::trackDeletedInstruction(Value *V)
 
 bool RegisterPressureTracker::fitsPressureThreshold(ReductionCandidateGroup &C)
 {
-    uint SIMD = numLanes(RPE.bestGuessSIMDSize());
+    auto *F = C.getLoop()->getLoopPreheader()->getParent();
+    uint SIMD = numLanes(RPE.bestGuessSIMDSize(F));
 
     unsigned InitialPressure = ExternalPressure + RPE.getMaxRegCountForLoop(*C.getLoop(), SIMD, &WI);
     unsigned EstimatedPressure = InitialPressure + C.getScore().RegisterPressure;

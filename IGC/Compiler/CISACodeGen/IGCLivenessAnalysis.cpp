@@ -48,7 +48,7 @@ unsigned int IGCLivenessAnalysisBase::registerSizeInBytes() {
     return 32;
 }
 
-SIMDMode IGCLivenessAnalysisBase::bestGuessSIMDSize() {
+SIMDMode IGCLivenessAnalysisBase::bestGuessSIMDSize(Function* F) {
     switch (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth)) {
     case 0:
         break;
@@ -60,8 +60,26 @@ SIMDMode IGCLivenessAnalysisBase::bestGuessSIMDSize() {
         return SIMDMode::SIMD32;
     }
 
-    if (CGCtx->platform.isProductChildOf(IGFX_PVC))
+    auto FG = FGA ? FGA->getGroup(F) : nullptr;
+    bool hasStackCall = (FG && FG->hasStackCall()) || (F && F->hasFnAttribute("visaStackCall"));
+    bool isIndirectGroup = FG && FGA->isIndirectCallGroup(FG);
+    bool hasSubroutine = FG && !FG->isSingle() && !hasStackCall && !isIndirectGroup;
+
+    // if we can find metadata with stipulations how we should compile we use it
+    if(F && MDUtils->findFunctionsInfoItem(F) != MDUtils->end_FunctionsInfo()) {
+        IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = MDUtils->getFunctionsInfoItem(F);
+        unsigned SimdSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
+        if(SimdSize)
+            return lanesToSIMDMode(SimdSize);
+    }
+
+    // rule for pvc
+    if(CGCtx->platform.isProductChildOf(IGFX_PVC)) {
+        if(hasSubroutine)
+            return SIMDMode::SIMD16;
         return SIMDMode::SIMD32;
+    }
+
     return SIMDMode::SIMD8;
 }
 
@@ -268,9 +286,10 @@ void IGCLivenessAnalysisBase::collectPressureForBB(
 
 bool IGCLivenessAnalysis::runOnFunction(llvm::Function &F) {
 
+    FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
+    MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     livenessAnalysis(F, nullptr);
-
     return true;
 }
 
@@ -504,8 +523,9 @@ bool IGCRegisterPressurePrinter::runOnFunction(llvm::Function &F) {
     RPE = &getAnalysis<IGCLivenessAnalysis>();
     WI = &getAnalysis<WIAnalysis>();
     CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    MaxPressureInKernel = 0;
 
-    unsigned int SIMD = numLanes(RPE->bestGuessSIMDSize());
+    unsigned int SIMD = numLanes(RPE->bestGuessSIMDSize(&F));
 
     if (DumpToFile) {
         PrinterType = 1;
