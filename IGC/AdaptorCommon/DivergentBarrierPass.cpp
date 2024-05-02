@@ -413,7 +413,7 @@ void DivergentBarrierPass::generateBody(
     for (auto* CI : ContCalls)
     {
         InlineFunctionInfo IFI;
-        bool CanInline = IGCLLVM::InlineFunction(CI, IFI);
+        bool CanInline = IGCLLVM::InlineFunction(CI, IFI, nullptr, false);
         IGC_ASSERT_MESSAGE(CanInline, "failed to inline?");
     }
 
