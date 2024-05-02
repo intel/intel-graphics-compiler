@@ -746,7 +746,7 @@ sample_po|sample_po_b|sample_po_l|sample_po_c|sample_po_d|sample_po_l_c|sample_p
         return SAMPLE_3D_OP;
     }
 
-sample_mlod|sample_c_mlod|sample_d_c_mlod {
+sample_mlod|sample_c_mlod|sample_d_c_mlod|lod {
         TRACE("** SAMPLE_3D");
         CISAlval.sample3DOp = str2SampleOpcode(yytext, pBuilder->getPlatform());
         return SAMPLE_3D_OP;
