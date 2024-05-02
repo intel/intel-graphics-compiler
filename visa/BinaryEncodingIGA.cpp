@@ -574,6 +574,7 @@ MathFC BinaryEncodingIGA::getMathFC(const G4_INST *inst) {
   }
 }
 
+
 //
 // Return the IGA op for the given vISA instruction <op> for platform p.
 // <inst> is sometimes necessary to compute the subopcode (e.g., send)

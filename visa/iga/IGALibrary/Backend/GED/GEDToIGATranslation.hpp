@@ -806,6 +806,7 @@ static inline SFMessageType translate(GED_MESSAGE_TYPE fc) {
   }
 }
 
+
 static inline MathFC translate(GED_MATH_FC fc) {
   switch (fc) {
   case GED_MATH_FC_INV:

@@ -928,6 +928,7 @@ static inline GED_COND_MODIFIER lowerCondModifier(FlagModifier condMod) {
   return mod;
 }
 
+
 static inline GED_MATH_FC lowerMathFC(MathFC fc) {
   switch (fc) {
   case MathFC::INV:
