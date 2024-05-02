@@ -233,9 +233,6 @@ def FeatureHas7ThreadsPerEU : SubtargetFeature<"feature_7threads_per_eu",
 def FeatureHas8ThreadsPerEU : SubtargetFeature<"feature_8threads_per_eu",
                                                 "NumThreadsPerEU", "8",
                                                 "Target has 8 threads per EU">;
-def FeatureAddressRegisterElements8 : SubtargetFeature<
-  "addr_register_size_8", "AddressRegisterElements", "8",
-  "Number of Address Register Elements is 8">;
 
 //===----------------------------------------------------------------------===//
 // GenX processors supported.
@@ -247,7 +244,6 @@ class Proc<string Name, list<SubtargetFeature> Features>
 def : Proc<"generic", []>;
 
 def : Proc<"Gen8", [
-  FeatureAddressRegisterElements8,
   FeatureFP64,
   FeatureHWTIDFromPredef,
   FeatureHas7ThreadsPerEU,
@@ -265,7 +261,6 @@ def : Proc<"Gen8", [
 ]>;
 
 def : Proc<"Gen9", [
-  FeatureAddressRegisterElements8,
   FeatureFP64,
   FeatureHWTIDFromPredef,
   FeatureHas7ThreadsPerEU,
@@ -287,7 +282,6 @@ def : Proc<"Gen9", [
 ]>;
 
 def : Proc<"Gen9LP", [
-  FeatureAddressRegisterElements8,
   FeatureFP64,
   FeatureHWTIDFromPredef,
   FeatureHas7ThreadsPerEU,
