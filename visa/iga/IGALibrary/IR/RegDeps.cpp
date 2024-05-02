@@ -958,7 +958,7 @@ void DepSet::setInputsFlagDep() {
     fByteOff += execOff / 8; // move over by ARF offset
     size_t execSize = static_cast<size_t>(m_instruction->getExecSize());
     size_t addr = (size_t)m_DB.getARF_F_START() + fByteOff;
-    addFBytes(addr, execSize / 8);
+    addFBytes(addr, execSize);
     m_bucketList.push_back(addr / m_DB.getBYTES_PER_BUCKET());
   }
 }
@@ -1193,7 +1193,7 @@ void DepSet::setOutputsFlagDep() {
                                                                    // (static_cast<int>(m_instruction->getExecSize())
                                                                    // - 1);
     size_t addr = (size_t)m_DB.getARF_F_START() + fByteOff;
-    addFBytes(addr, execSize / 8);
+    addFBytes(addr, execSize);
     m_bucketList.push_back(addr / m_DB.getBYTES_PER_BUCKET());
   }
 }
