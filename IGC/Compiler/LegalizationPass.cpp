@@ -2854,34 +2854,28 @@ bool IGC::expandFDIVInstructions(llvm::Function& F)
                 V = Builder.CreateFMul(Y, X);
             }
             else {
-                // Create comparisons to check if X or Y is +/-0, +/-Inf, +/-NaN, or subnormal
-                Value* CmpXY = Builder.CreateFCmpOEQ(X, Y);
-                Value* YAsInt32 = Builder.CreateBitCast(Y, Builder.getInt32Ty());
-                Value* YExp = Builder.CreateAnd(YAsInt32, Builder.getInt32(0x7f800000));
-                Value* YMantissa = Builder.CreateAnd(YAsInt32, Builder.getInt32(0x007fffff));
-                Value* CmpYExpZero = Builder.CreateICmpEQ(YExp, Builder.getInt32(0));
-                Value* CmpYMantissaZero = Builder.CreateICmpEQ(YMantissa, Builder.getInt32(0));
-                Value* CmpYIsZeroOrSubnormal = Builder.CreateOr(CmpYExpZero, CmpYMantissaZero);
-                Value *CmpYIsNotZeroOrSubnormal = Builder.CreateNot(CmpYIsZeroOrSubnormal);
-
                 float S32 = uint64_t(1) << 32;
                 ConstantFP* C0 = ConstantFP::get(Ctx, APFloat(S32));
                 ConstantFP* C1 = ConstantFP::get(Ctx, APFloat(1.0f));
                 ConstantFP* C2 = ConstantFP::get(Ctx, APFloat(1.0f / S32));
 
-                // Determine the appropriate scale based on Y's exponent
-                Value* ScaleUp = Builder.CreateSelect(Builder.CreateICmpEQ(YExp, Builder.getInt32(0)), C0, C1);
-                Value* Scale = Builder.CreateSelect(Builder.CreateICmpUGE(YExp, Builder.getInt32(200 << 23)), C2, ScaleUp);
+                Value* Exp = Builder.CreateAnd(
+                    Builder.CreateBitCast(Y, Builder.getInt32Ty()),
+                    Builder.getInt32(0x7f800000));
+
+                // Check if B's exponent is 0, scale up.
+                Value* P1 = Builder.CreateICmpEQ(Exp, Builder.getInt32(0));
+                Value* Scale = Builder.CreateSelect(P1, C0, C1);
+
+                // Check if B's exponent >= 200, scale down.
+                Value* P2 = Builder.CreateICmpUGE(Exp, Builder.getInt32(200 << 23));
+                Scale = Builder.CreateSelect(P2, C2, Scale);
 
                 // Compute rcp(y * S) * x * S
-                Y = Builder.CreateFMul(Y, Scale);
-                Y = Builder.CreateFDiv(C1, Y);
-                V = Builder.CreateFMul(Y, X);
+                V = Builder.CreateFMul(Y, Scale);
+                V = Builder.CreateFDiv(C1, V);
+                V = Builder.CreateFMul(V, X);
                 V = Builder.CreateFMul(V, Scale);
-
-               // Only select 1.0 if x == y and y is a normal number
-                V = Builder.CreateSelect(Builder.CreateAnd(CmpXY, CmpYIsNotZeroOrSubnormal),
-                    ConstantFP::get(Ctx, APFloat(1.0f)), V);
             }
 
             Inst->replaceAllUsesWith(V);
@@ -2889,6 +2883,7 @@ bool IGC::expandFDIVInstructions(llvm::Function& F)
             Changed = true;
         }
     }
+
     return Changed;
 }
 
