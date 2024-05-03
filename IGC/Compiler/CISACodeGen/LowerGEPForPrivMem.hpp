@@ -44,13 +44,15 @@ namespace IGC
         /// Signifies if all memory instructions that operate on a
         /// compound-typed variable are vector-typed.
         bool allUsesAreVector;
+        // Partition size for new algorithm
+        uint32_t SOAPartitionBytes;
 
         SOALayoutInfo() : canUseSOALayout(false), baseType(nullptr),
-                          allUsesAreVector(false) {}
+                          allUsesAreVector(false), SOAPartitionBytes(4) {}
         SOALayoutInfo(bool canUseSOALayout, llvm::Type* baseType,
-                      bool allUsesAreVector) :
+                      bool allUsesAreVector, uint32_t Size) :
             canUseSOALayout(canUseSOALayout), baseType(baseType),
-            allUsesAreVector(false) {}
+            allUsesAreVector(false), SOAPartitionBytes (Size) {}
         SOALayoutInfo(SOALayoutInfo&) = default;
         ~SOALayoutInfo() = default;
     };
@@ -74,16 +76,45 @@ namespace IGC
     public:
         friend llvm::InstVisitor<SOALayoutChecker, bool>;
 
-        SOALayoutChecker(llvm::AllocaInst& allocaToCheck) : allocaRef(allocaToCheck) {}
+        // isOCL is for testing, it will be removed once testing is done.
+        SOALayoutChecker(llvm::AllocaInst& allocaToCheck, bool isOCL);
         SOALayoutChecker() = delete;
         ~SOALayoutChecker() = default;
         SOALayoutChecker(SOALayoutChecker&) = delete;
 
         SOALayoutInfo getOrGatherInfo();
 
+        // for new algo
+        int getNewAlgoControl() const { return newAlgoControl; }
+
     private:
         llvm::AllocaInst& allocaRef;
+        const llvm::DataLayout* pDL;
         std::unique_ptr<SOALayoutInfo> pInfo;
+
+        // ===== fields for new algo =====
+        // todo: combine the new and old together
+        //
+        // SOAPartitionBytes : the size of chunk used to divide a buffer
+        //   into a sequence of chunks. It should be a power-of-2 number
+        //   with minimum value being 4. It is selected to be the larger
+        //   of 4 and size of any scalar element type.
+        uint32_t SOAPartitionBytes = 4;
+        // newAlgoControl
+        //   The old algo : array of DW[xn]
+        //   the new algo : array of DW{xn], array of QW[xn],
+        //                  array of structs.
+        //    0 : disable new algorithm
+        //    1 : enable new algorithm for array of simple struct
+        //    2 : enable new algorithm for array of simple struct
+        //        array of dw[xn], array of qw[xn]
+        //        (not splitting vector, intend to replace the old algo)
+        //    3 : 2 plus array of more complicated structs.
+        int newAlgoControl = 0;
+        uint32_t selectPartitionSize(llvm::Type* Ty);
+        // Return true if struct can be transposed
+        bool checkStruct(llvm::StructType* StTy);
+        // ===== end of fields for new algo =====
 
         bool isVectorSOA = true;
         llvm::Instruction* parentLevelInst = nullptr;
@@ -110,11 +141,18 @@ namespace IGC
     class TransposeHelper
     {
     public:
-        TransposeHelper(bool vectorIndex) : m_vectorIndex(vectorIndex) {}
+        TransposeHelper(const llvm::DataLayout& DL, bool vectorIndex)
+            : m_vectorIndex(vectorIndex)
+            , m_DL(DL)
+        {}
         void HandleAllocaSources(
             llvm::Instruction* v,
             llvm::Value* idx);
         void handleGEPInst(
+            llvm::GetElementPtrInst* pGEP,
+            llvm::Value* idx);
+        // Temporary, this is to replace HandleGEPInst
+        void handleGEPInstNew(
             llvm::GetElementPtrInst* pGEP,
             llvm::Value* idx);
         virtual void handleLoadInst(
@@ -124,8 +162,11 @@ namespace IGC
             llvm::StoreInst* pStore,
             llvm::Value* pScalarizedIdx) = 0;
         virtual void handleLifetimeMark(llvm::IntrinsicInst* inst) = 0;
+        // For select handleGEPinstNew
+        virtual bool useNewAlgo() { return false; }
         void EraseDeadCode();
     protected:
+        const llvm::DataLayout& m_DL;
         std::vector<llvm::Instruction*> m_toBeRemovedGEP;
     private:
         bool m_vectorIndex;

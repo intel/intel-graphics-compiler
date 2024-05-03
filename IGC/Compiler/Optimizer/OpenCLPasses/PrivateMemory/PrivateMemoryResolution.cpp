@@ -28,10 +28,12 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
+#include <utility>
+
 using namespace llvm;
 using namespace IGC;
 
-namespace IGC {
+namespace {
 
     /// @brief  PrivateMemoryResolution pass used for resolving private memory alloca instructions.
     ///         This is done by resolving the alloca instructions.
@@ -90,11 +92,89 @@ namespace IGC {
         llvm::Function* m_currFunction = nullptr;
     };
 
-    ModulePass* CreatePrivateMemoryResolution()
+    class TransposePrivMem : public TransposeHelper
     {
-        return new PrivateMemoryResolution();
+    public:
+        TransposePrivMem(const DataLayout& DL, Value* B, Value* Simdsize, uint32_t ChunkSize)
+            : TransposeHelper(DL, true)
+            , m_DL(DL)
+            , m_simdSize(Simdsize)
+            , m_bufferBase(B)
+            , m_chunkBytes(ChunkSize)
+        {
+            IGC_ASSERT(isPowerOf2_32(m_chunkBytes));
+            m_shtAmt = Log2_32(m_chunkBytes);
+            m_offsetMask = maskTrailingOnes<uint32_t>(m_shtAmt);
+        }
+
+        void handleLoadInst(LoadInst* pLoad, Value* pScalarizedIdx);
+        void handleStoreInst(StoreInst* pStore, Value* pScalarizedIdx);
+        void handleLifetimeMark(IntrinsicInst* inst);
+        bool useNewAlgo() { return true; }
+    private:
+        const DataLayout& m_DL;
+        Value* m_simdSize;
+        Value* m_bufferBase;
+        uint32_t m_chunkBytes;
+        // For calculating chunk no and chunk offset
+        uint32_t m_shtAmt;
+        uint32_t m_offsetMask;
+
+        // Return chunk number that byteOffset belongs to
+        Value* getChunkNum(IGCLLVM::IRBuilder<>& IRB, Value* OffsetInBytes);
+        // Return the offset within chunk that byteOffset points to
+        Value* getChunkOff(IGCLLVM::IRBuilder<>& IRB, Value* OFfsetInBytes);
+    };
+
+    // helper
+    //   B: int / ptr;  O: unsigned int
+    //   Possible cases: ptr64 + i32/i64; ptr32 + i32; i64 + i32/i64; i32 + i32.
+    Value* addOffset(IGCLLVM::IRBuilder<>& IRB, const DataLayout& pDL,
+        Value* B, Value* O)
+    {
+        Type* bTy = B->getType();
+        Type* oTy = O->getType();
+        IGC_ASSERT(oTy->isIntegerTy());
+        IGC_ASSERT(bTy->isPointerTy() || bTy->isIntegerTy());
+        Value* addr;
+        if (isa<ConstantInt>(O) && cast<ConstantInt>(O)->isZero()) {
+            addr = B;
+        }
+        else if (bTy->isPointerTy()) {
+            Type* intPtrTy = pDL.getIntPtrType(bTy);
+            IGC_ASSERT(intPtrTy->getPrimitiveSizeInBits() >= oTy->getPrimitiveSizeInBits());
+            Value* baseAsInt = IRB.CreatePtrToInt(B, intPtrTy, VALUE_NAME("baseAsInt"));
+            Value* off = IRB.CreateZExt(O, intPtrTy);
+            Value* baseOffAsInt = IRB.CreateAdd(baseAsInt, off, VALUE_NAME("baseOffAsInt"), true, true);
+            addr = IRB.CreateIntToPtr(baseOffAsInt, B->getType(), VALUE_NAME("baseAddOffset"));
+        }
+        else {
+            IGC_ASSERT(bTy->getPrimitiveSizeInBits() >= oTy->getPrimitiveSizeInBits());
+            Value* off = IRB.CreateZExt(O, bTy);
+            addr = IRB.CreateAdd(B, off, VALUE_NAME("baseAddOffset"), true, true);
+        }
+        return addr;
+    };
+
+    // Given B, either int or ptr, convert it to ptr to T
+    Value* convertToPtr(IGCLLVM::IRBuilder<>& IRB, const DataLayout& pDL, Value* B, Type* ptrTy)
+    {
+        IGC_ASSERT(ptrTy->isPointerTy());
+        Value* R;
+        if (B->getType()->isPointerTy()) {
+            R = IRB.CreateBitCast(B, ptrTy);
+        }
+        else {
+            R = IRB.CreateIntToPtr(B, ptrTy);
+        }
+        return R;
     }
-} // namespace IGC
+}  // namespace
+
+ModulePass* IGC::CreatePrivateMemoryResolution()
+{
+    return new PrivateMemoryResolution();
+}
 
 // Register pass to igc-opt
 #define PASS_FLAG "igc-private-mem-resolution"
@@ -549,7 +629,8 @@ public:
     Value* base;
     unsigned int elementSize;
     bool vectorIO;
-    TransposeHelperPrivateMem(Value* b, Value* size, unsigned int eltSize, bool vectorType) : TransposeHelper(vectorType) {
+    TransposeHelperPrivateMem(const DataLayout& DL, Value* b, Value* size, unsigned int eltSize, bool vectorType)
+        : TransposeHelper(DL, vectorType) {
         simdSize = size;
         base = b;
         elementSize = eltSize;
@@ -638,6 +719,102 @@ public:
         inst->eraseFromParent();
     }
 };
+
+Value* TransposePrivMem::getChunkNum(IGCLLVM::IRBuilder<>& IRB, Value* OffsetInBytes)
+{
+    Value* chunkNo = IRB.CreateLShr(OffsetInBytes, m_shtAmt);
+    return chunkNo;
+}
+
+Value* TransposePrivMem::getChunkOff(IGCLLVM::IRBuilder<>& IRB, Value* OffsetInBytes)
+{
+    Value* chunkOffset = IRB.CreateAnd(OffsetInBytes, m_offsetMask);
+    return chunkOffset;
+}
+
+void TransposePrivMem::handleLoadInst(LoadInst* pLoad, Value* pScalarizedIdx)
+{
+    IGC_ASSERT(nullptr != pLoad);
+    IGC_ASSERT(pLoad->isSimple());
+    IGCLLVM::IRBuilder<> IRB(pLoad);
+    uint32_t bytes = (uint32_t)m_DL.getTypeStoreSize(pLoad->getType());
+    IGC_ASSERT(bytes <= m_chunkBytes);
+    IGC_ASSERT(isPowerOf2_32(bytes));
+
+    Value* chunkNo = getChunkNum(IRB, pScalarizedIdx);
+    Value* chunkVal = IRB.getInt32(m_chunkBytes);
+    Value* chunkBytesPerWI = IRB.CreateMul(chunkNo, chunkVal);
+    Value* chunkByteOffset = IRB.CreateMul(m_simdSize, chunkBytesPerWI);
+    Value* addr = addOffset(IRB, m_DL, m_bufferBase, chunkByteOffset);
+
+    Value* eltIx;
+    if (bytes == m_chunkBytes) {
+        // Each type is naturally aligned -> chunk offset = 0
+        eltIx = IRB.getInt32(0);
+    }
+    else {
+        // (a / bytes) == (a >> Log2_32(bytes))
+        uint32_t lshrAmt = Log2_32(bytes);
+        Value* chunkOff = getChunkOff(IRB, pScalarizedIdx);
+        if (bytes == 1)
+            eltIx = chunkOff;
+        else
+            eltIx = IRB.CreateLShr(chunkOff, IRB.getInt32(lshrAmt));
+    }
+
+    Value* addrInElt = convertToPtr(IRB, m_DL, addr, pLoad->getPointerOperandType());
+    Value* gep = IRB.CreateGEP(addrInElt, eltIx, VALUE_NAME(pLoad->getName() + ".SOAPrivMemGEP"));
+    Value* val = IRB.CreateAlignedLoad(gep, IGCLLVM::getAlign(*pLoad));
+
+    pLoad->replaceAllUsesWith(val);
+    pLoad->eraseFromParent();
+}
+
+void TransposePrivMem::handleStoreInst(StoreInst* pStore, Value* pScalarizedIdx)
+{
+    IGC_ASSERT(nullptr != pStore);
+    IGC_ASSERT(pStore->isSimple());
+    IGCLLVM::IRBuilder<> IRB(pStore);
+    Type* valTy = pStore->getValueOperand()->getType();
+    uint32_t bytes = (uint32_t)m_DL.getTypeStoreSize(valTy);
+    IGC_ASSERT(bytes <= m_chunkBytes);
+    IGC_ASSERT(isPowerOf2_32(bytes));
+
+    Value* chunkNo = getChunkNum(IRB, pScalarizedIdx);
+    Value* chunkVal = IRB.getInt32(m_chunkBytes);
+    Value* chunkBytesPerWI = IRB.CreateMul(chunkNo, chunkVal);
+    Value* chunkByteOffset = IRB.CreateMul(m_simdSize, chunkBytesPerWI);
+    Value* addr = addOffset(IRB, m_DL, m_bufferBase, chunkByteOffset);
+
+    Value* eltIx;
+    if (bytes == m_chunkBytes) {
+        // Each type is naturally aligned -> chunk offset = 0
+        eltIx = IRB.getInt32(0);
+    }
+    else {
+        // (a / bytes) == (a >> Log2_32(bytes))
+        uint32_t lshrAmt = Log2_32(bytes);
+        Value* chunkOff = getChunkOff(IRB, pScalarizedIdx);
+        if (bytes == 1)
+            eltIx = chunkOff;
+        else
+            eltIx = IRB.CreateLShr(chunkOff, IRB.getInt32(lshrAmt));
+    }
+
+    Value* addrInElt = convertToPtr(IRB, m_DL, addr, pStore->getPointerOperandType());
+    Value* gep = IRB.CreateGEP(addrInElt, eltIx, VALUE_NAME(pStore->getName() + ".SOAPrivMemGEP"));
+    IRB.CreateAlignedStore(pStore->getValueOperand(), gep, IGCLLVM::getAlign(*pStore));
+
+    pStore->eraseFromParent();
+}
+
+void TransposePrivMem::handleLifetimeMark(IntrinsicInst* inst)
+{
+    IGC_ASSERT(nullptr != inst);
+    IGC_ASSERT((inst->getIntrinsicID() == llvm::Intrinsic::lifetime_start) ||
+        (inst->getIntrinsicID() == llvm::Intrinsic::lifetime_end));
+    inst->eraseFromParent();
+}
 
 bool PrivateMemoryResolution::testTransposedMemory(const Type* pTmpType, const Type* const pTypeOfAccessedObject, uint64_t tmpAllocaSize, const uint64_t bufferSizeLimit)
 {
@@ -738,7 +915,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     // The implementation in this function implies that the total private memory
     // for each thread is no larger than 4 GB, which implies that the total private
     // memory for WI is no larger than 128MB. But the total private memory for a kernel
-    // could be larger than 4 GB. If so, need to use 64bit for offset.
+    // could be larger than 4 GB, which needs to use 64bit offset from private base.
     //
     // 32 is max simd width
     IGC_ASSERT_MESSAGE((totalPrivateMemPerWI * 32ull) <= (uint64_t)UINT32_MAX,
@@ -792,8 +969,8 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     //       optimization if this optimization can apply
     //          buffer0 -> {chunk0, chunk1, ..., }
     //       [buffer0 thread0] can be laid out like this:
-    //         [chunk0 lan0][chunk0 lane1] .... [chunk0 laneK]
-    //         [chunk0 lan1][chunk1 lane1] .... [chunk1 laneK]
+    //         [chunk0 lane0][chunk0 lane1] .... [chunk0 laneK]
+    //         [chunk1 lane0][chunk1 lane1] .... [chunk1 laneK]
     //         ...
     //       This optimization is for better cache utilization.
     //
@@ -818,6 +995,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     // private memory for a kernel is larger than 4GB, offset should be 64 bit.
 
     LLVMContext& C = m_currFunction->getContext();
+    const DataLayout& DL = m_currFunction->getParent()->getDataLayout();
 
     IntegerType* typeInt32 = Type::getInt32Ty(C);
     IntegerType* typeInt64 = Type::getInt64Ty(C);
@@ -837,31 +1015,6 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     Instruction* simdLaneId16 = entryBuilder.CreateCall(simdLaneIdFunc, llvm::None, VALUE_NAME("simdLaneId16"));
     Value* simdLaneId = entryBuilder.CreateIntCast(simdLaneId16, typeInt32, false, VALUE_NAME("simdLaneId"));
     Instruction* simdSize = entryBuilder.CreateCall(simdSizeFunc, llvm::None, VALUE_NAME("simdSize"));
-
-    // Return Base + Offset
-    //   Base : int/ptr;  Offset : int
-    //   Possible cases: ptr64 + i32/i64; ptr32 + i32; i64 + i32/i64; i32 + i32.
-    auto addOffset = [this](IGCLLVM::IRBuilder<>& IRB, Value* Base, Value* Offset)
-    {
-        Value* addr;
-        Type* bTy = Base->getType();
-        Type* oTy = Offset->getType();
-        if (Base->getType()->isPointerTy()) {
-            auto& DL = m_currFunction->getParent()->getDataLayout();
-            Type* intPtrTy = DL.getIntPtrType(bTy);
-            IGC_ASSERT(intPtrTy->getPrimitiveSizeInBits() >= oTy->getPrimitiveSizeInBits());
-            Value* BaseAsInt = IRB.CreatePtrToInt(Base, intPtrTy, VALUE_NAME("baseAsInt"));
-            Value* offset = IRB.CreateZExt(Offset, intPtrTy);
-            Value* baseOffAsInt = IRB.CreateAdd(BaseAsInt, offset, VALUE_NAME("baseOffAsInt"), true, true);
-            addr = IRB.CreateIntToPtr(baseOffAsInt, Base->getType(), VALUE_NAME("baseAddOffset"));
-        }
-        else {
-            IGC_ASSERT(bTy->getPrimitiveSizeInBits() >= oTy->getPrimitiveSizeInBits());
-            Value* offset = IRB.CreateZExt(Offset, bTy);
-            addr = IRB.CreateAdd(Base, offset, VALUE_NAME("baseAddOffset"), true, true);
-        }
-        return addr;
-    };
 
     // Return thread offset. As it is per-thread, the calculation should be done in entry BB.
     auto createThreadOffset = [simdSize, typeInt32, typeInt64, safe32bitOffset](
@@ -1027,7 +1180,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
             Function* pHWTIDFunc = GenISAIntrinsic::getDeclaration(m_currFunction->getParent(), GenISAIntrinsic::GenISA_hw_thread_id_alloca, Type::getInt32Ty(C));
             Value* threadId = entryBuilder.CreateCall(pHWTIDFunc);
             Value* perThreadOffset = createThreadOffset(entryBuilder, threadId, totalPrivateMemPerWI);
-            threadBase = addOffset(entryBuilder, privateBase, perThreadOffset);
+            threadBase = addOffset(entryBuilder, DL, privateBase, perThreadOffset);
         }
 
         for (auto pAI : allocaInsts)
@@ -1047,7 +1200,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
             // Get buffer information from the analysis
             unsigned int scalarBufferOffset = m_ModAllocaInfo->getConstBufferOffset(pAI);
             // If we can use SOA layout transpose the memory
-            IGC::SOALayoutChecker SOAChecker(*pAI);
+            IGC::SOALayoutChecker SOAChecker(*pAI, Ctx.type == ShaderType::OPENCL_SHADER);
             IGC::SOALayoutInfo SOAInfo = SOAChecker.getOrGatherInfo();
             // TransposeMemLayout is not prepared to work on 64-bit pointers (originally, the private address space is expressed by 32-bit pointers).
             // Address space casting
@@ -1056,50 +1209,69 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
                 SOAInfo.canUseSOALayout;
             Type* pTypeOfAccessedObject = SOAInfo.baseType;
             bool allUsesAreVector = SOAInfo.allUsesAreVector;
+            Value* privateBufferPTR;
 
-            if (TransposeMemLayout && IGC_IS_FLAG_ENABLED(EnableSOAPromotionDisablingHeuristic))
+            // New Algo handles both 64bit ptr and 32bi ptr.
+            if (SOAInfo.canUseSOALayout &&
+                (SOAChecker.getNewAlgoControl() > 1 ||
+                 (SOAChecker.getNewAlgoControl() == 1 && pTypeOfAccessedObject->isStructTy())))
             {
-                // SOA layout can be not beneficial for the alloca, even is it is possible
-                // For example, if it is not vectorSOA, but all uses are vectors
-                // (in case of vectors of different size of elements number) we close the
-                // possibility to use large loads/stores, so cancel the transformation.
-                // Currently it is only enabled by option
-                bool isSOABeneficial = pTypeOfAccessedObject->isVectorTy() || !allUsesAreVector;
-                Type* allocaType = pAI->getAllocatedType();
-                if (VectorType* vectorType = dyn_cast<VectorType>(allocaType))
-                {
-                    bool baseTypeIsSmall = (unsigned)(vectorType->getElementType()->getScalarSizeInBits()) < 32;
-                    isSOABeneficial |= baseTypeIsSmall;
-                }
-                TransposeMemLayout &= isSOABeneficial;
-            }
+                Value* simdBufferOffset = createSIMDBufferOffset(builder, pAI, scalarBufferOffset, SOAInfo.SOAPartitionBytes, isUniform);
+                Value* bufferBase = addOffset(builder, DL, threadBase, simdBufferOffset);
+                privateBufferPTR = builder.CreateIntToPtr(bufferBase,
+                    pAI->getAllocatedType()->getPointerTo(scratchMemoryAddressSpace),
+                    VALUE_NAME(pAI->getName() + ".privateBufferPTR"));
 
-            unsigned int bufferSize = 0;
-            if (TransposeMemLayout)
-            {
-                auto DL = &m_currFunction->getParent()->getDataLayout();
-                bufferSize = (unsigned)DL->getTypeAllocSize(pTypeOfAccessedObject);
-                IGC_ASSERT(testTransposedMemory(pAI->getAllocatedType(), pTypeOfAccessedObject, bufferSize, (m_ModAllocaInfo->getConstBufferSize(pAI))));
-            }
-            else
-            {
-                bufferSize = m_ModAllocaInfo->getConstBufferSize(pAI);
-            }
-
-            Value* simdBufferOffset = createSIMDBufferOffset(builder, pAI, scalarBufferOffset, bufferSize, isUniform);
-            Value* bufferBase = addOffset(builder, threadBase, simdBufferOffset);
-            Value* privateBufferPTR = builder.CreateIntToPtr(bufferBase, pAI->getAllocatedType()->getPointerTo(scratchMemoryAddressSpace), VALUE_NAME(pAI->getName() + ".privateBufferPTR"));
-            Value* privateBuffer = builder.CreatePointerCast(privateBufferPTR, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));
-
-            if (TransposeMemLayout)
-            {
-                TransposeHelperPrivateMem helper(bufferBase, simdSize, bufferSize, pTypeOfAccessedObject->isVectorTy());
+                TransposePrivMem helper(DL, bufferBase, simdSize, SOAInfo.SOAPartitionBytes);
                 Value* Idx = builder.getInt32(0);
                 helper.HandleAllocaSources(pAI, Idx);
                 helper.EraseDeadCode();
             }
+            else {
+                if (TransposeMemLayout && IGC_IS_FLAG_ENABLED(EnableSOAPromotionDisablingHeuristic))
+                {
+                    // SOA layout can be not beneficial for the alloca, even is it is possible
+                    // For example, if it is not vectorSOA, but all uses are vectors
+                    // (in case of vectors of different size of elements number) we close the
+                    // possibility to use large loads/stores, so cancel the transformation.
+                    // Currently it is only enabled by option
+                    bool isSOABeneficial = pTypeOfAccessedObject->isVectorTy() || !allUsesAreVector;
+                    Type* allocaType = pAI->getAllocatedType();
+                    if (VectorType* vectorType = dyn_cast<VectorType>(allocaType))
+                    {
+                        bool baseTypeIsSmall = (unsigned)(vectorType->getElementType()->getScalarSizeInBits()) < 32;
+                        isSOABeneficial |= baseTypeIsSmall;
+                    }
+                    TransposeMemLayout &= isSOABeneficial;
+                }
+
+                unsigned int bufferSize = 0;
+                if (TransposeMemLayout)
+                {
+                    bufferSize = (unsigned)DL.getTypeAllocSize(pTypeOfAccessedObject);
+                    IGC_ASSERT(testTransposedMemory(pAI->getAllocatedType(), pTypeOfAccessedObject, bufferSize, (m_ModAllocaInfo->getConstBufferSize(pAI))));
+                }
+                else
+                {
+                    bufferSize = m_ModAllocaInfo->getConstBufferSize(pAI);
+                }
+
+                Value* simdBufferOffset = createSIMDBufferOffset(builder, pAI, scalarBufferOffset, bufferSize, isUniform);
+                Value* bufferBase = addOffset(builder, DL, threadBase, simdBufferOffset);
+                privateBufferPTR = builder.CreateIntToPtr(bufferBase, pAI->getAllocatedType()->getPointerTo(scratchMemoryAddressSpace), VALUE_NAME(pAI->getName() + ".privateBufferPTR"));
+                //privateBuffer = builder.CreatePointerCast(privateBufferPTR, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));
+
+                if (TransposeMemLayout)
+                {
+                    TransposeHelperPrivateMem helper(DL, bufferBase, simdSize, bufferSize, pTypeOfAccessedObject->isVectorTy());
+                    Value* Idx = builder.getInt32(0);
+                    helper.HandleAllocaSources(pAI, Idx);
+                    helper.EraseDeadCode();
+                }
+            }
 
             // Replace all uses of original alloca with the bitcast
+            Value* privateBuffer = builder.CreatePointerCast(privateBufferPTR, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));
             Ctx.metrics.UpdateVariable(pAI, privateBuffer);
             pAI->replaceAllUsesWith(privateBuffer);
             pAI->eraseFromParent();
@@ -1187,16 +1359,41 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
         bool isUniform = pAI->getMetadata("uniform") != nullptr;
         // Get buffer information from the analysis
         unsigned int scalarBufferOffset = m_ModAllocaInfo->getConstBufferOffset(pAI);
-        unsigned int bufferSize = m_ModAllocaInfo->getConstBufferSize(pAI);
+        Value* bufferBase;
 
-        Value* SIMDBufferOffset = createSIMDBufferOffset(builder, pAI, scalarBufferOffset, bufferSize, isUniform);
-        Value* totalOffset = addOffset(builder, perThreadOffset, SIMDBufferOffset);
-        if (m_currFunction->getParent()->getDataLayout().getPointerSize() == 8) {
-            // Manually zero-extend the offset to 64-bits to prevent it from being sign-extended by InstructionCombining
-            totalOffset = builder.CreateZExt(totalOffset, typeInt64);
+        // If we can use SOA layout transpose the memory
+        IGC::SOALayoutChecker SOAChecker(*pAI, Ctx.type == ShaderType::OPENCL_SHADER);
+        IGC::SOALayoutInfo SOAInfo = SOAChecker.getOrGatherInfo();
+        if (SOAInfo.canUseSOALayout && IGC_GET_FLAG_VALUE(EnablePrivMemNewSOATranspose) > 0)
+        {
+            uint32_t chunksize = SOAInfo.SOAPartitionBytes;
+            Value* SIMDBufferOffset = createSIMDBufferOffset(builder, pAI, scalarBufferOffset, chunksize, isUniform);
+            Value* totalOffset = addOffset(builder, DL, perThreadOffset, SIMDBufferOffset);
+
+            // using offset, rather than ptr, is more efficient.
+            Type* bTy = privateMemPtr->getType();
+            IGC_ASSERT(bTy->isPointerTy());
+            Value* baseAsInt = builder.CreatePtrToInt(privateMemPtr, DL.getIntPtrType(bTy), "privBaseInt");
+
+            Value* baseOff = addOffset(builder, DL, baseAsInt, totalOffset);
+            TransposePrivMem helper(DL, baseOff, simdSize, SOAInfo.SOAPartitionBytes);
+            Value* Idx = builder.getInt32(0);
+            helper.HandleAllocaSources(pAI, Idx);
+            helper.EraseDeadCode();
+
+            bufferBase = convertToPtr(builder, DL, baseOff, bTy);
         }
-        Value* privateBufferGEP = builder.CreateGEP(privateMemPtr, totalOffset, VALUE_NAME(pAI->getName() + ".privateBufferGEP"));
-        Value* privateBuffer = builder.CreatePointerCast(privateBufferGEP, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));
+        else {
+            uint32_t bufferSize = m_ModAllocaInfo->getConstBufferSize(pAI);
+            Value* SIMDBufferOffset = createSIMDBufferOffset(builder, pAI, scalarBufferOffset, bufferSize, isUniform);
+            Value* totalOffset = addOffset(builder, DL, perThreadOffset, SIMDBufferOffset);
+            if (m_currFunction->getParent()->getDataLayout().getPointerSize() == 8) {
+                // Manually zero-extend the offset to 64-bits to prevent it from being sign-extended by InstructionCombining
+                totalOffset = builder.CreateZExt(totalOffset, typeInt64);
+            }
+            bufferBase = builder.CreateGEP(privateMemPtr, totalOffset, VALUE_NAME(pAI->getName() + ".privateBufferGEP"));
+        }
+        Value* privateBuffer = builder.CreatePointerCast(bufferBase, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));
 
         auto DbgUses = llvm::FindDbgAddrUses(pAI);
         for (auto Use : DbgUses)

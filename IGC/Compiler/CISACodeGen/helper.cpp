@@ -3018,7 +3018,7 @@ namespace IGC
     ///
     /// Return nullptr if complex type cannot be defined with only one type
     ///
-    llvm::Type* GetBaseType(llvm::Type* ProcessedType)
+    llvm::Type* GetBaseType(llvm::Type* ProcessedType, bool StructAsBaseOk)
     {
         while (ProcessedType->isArrayTy() || ProcessedType->isStructTy())
         {
@@ -3026,14 +3026,43 @@ namespace IGC
                 ProcessedType = ProcessedType->getArrayElementType();
             else
             {
-                if (ProcessedType->getStructNumElements() != 1)
+                if (ProcessedType->getStructNumElements() != 1) {
+                    if (StructAsBaseOk)
+                        return ProcessedType;
                     return nullptr;
+                }
 
+                // 1-field struct is treated as a scalar.
                 ProcessedType = ProcessedType->getStructElementType(0);
             }
         }
 
         return ProcessedType;
+    }
+
+    // Return true if all members of the given struct type are first-class
+    // scalar types.
+    bool isSimpleStructTy(StructType* STy, uint32_t EltBytes) {
+        if (!STy->isSized())
+            return false;
+        for (Type* Ty : STy->elements()) {
+            Type* eTy = Ty;
+            if (StructType* st = dyn_cast<StructType>(eTy)) {
+                return false;
+                //if (!isSimpleStructTy(st, EltBytes))
+                //    return false;
+                //continue;
+            }
+            if (eTy->isArrayTy()) {
+                eTy = eTy->getArrayElementType();
+            }
+            if (!eTy->isSingleValueType())
+                return false;
+            eTy = eTy->getScalarType();
+            if (eTy->getPrimitiveSizeInBits() != (EltBytes * 8))
+                return false;
+        }
+        return true;
     }
 
     // Function modifies address space in selected uses of given input value

@@ -47,7 +47,6 @@ typedef unsigned int uint;
 #define SIZE_OWORD 16
 #define SIZE_YWORD 32
 
-enum ADDRESS_SPACE : unsigned int;
 
 namespace IGC
 {
@@ -581,7 +580,8 @@ namespace IGC
     std::tuple<std::string, std::string, unsigned> ParseVectorVariantFunctionString(llvm::StringRef varStr);
 
     // Return base type of complex type or nullptr if it cannot be processed
-    llvm::Type* GetBaseType(llvm::Type* ProcessedType);
+    llvm::Type* GetBaseType(llvm::Type* ProcessedType, bool StructAsBaseOk = false);
+    bool isSimpleStructTy(llvm::StructType* STy, uint32_t EltBytes);
 
     // Function modifies address space in selected uses of given input value
     void FixAddressSpaceInAllUses(llvm::Value* ptr, uint newAS, uint oldAS);

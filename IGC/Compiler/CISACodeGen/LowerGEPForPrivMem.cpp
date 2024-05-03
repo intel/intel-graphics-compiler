@@ -17,11 +17,14 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
+#include "llvm/IR/GetElementPtrTypeIterator.h"
 #include <llvm/IR/Function.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/Transforms/Utils/Local.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
+
+#include <algorithm>
 
 #define MAX_ALLOCA_PROMOTE_GRF_NUM      48
 #define MAX_PRESSURE_GRF_NUM            90
@@ -272,6 +275,9 @@ bool LowerGEPForPrivMem::IsNativeType(Type* type)
         return false;
     }
 
+    if (type->isStructTy())
+        return false;
+
     return true;
 }
 
@@ -306,7 +312,7 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* 
 
         allowedAllocaSizeInBytes = (allowedAllocaSizeInBytes * 8) / SIMDSize;
     }
-    SOALayoutChecker checker(*pAlloca);
+    SOALayoutChecker checker(*pAlloca, m_ctx->type == ShaderType::OPENCL_SHADER);
     SOALayoutInfo SOAInfo = checker.getOrGatherInfo();
     if (!SOAInfo.canUseSOALayout)
     {
@@ -392,11 +398,22 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* 
     return StatusPrivArr2Reg::OK;
 }
 
+SOALayoutChecker::SOALayoutChecker(AllocaInst& allocaToCheck, bool isOCL)
+    : allocaRef(allocaToCheck)
+{
+    auto F = allocaToCheck.getParent()->getParent();
+    pDL = &F->getParent()->getDataLayout();
+    newAlgoControl = IGC_GET_FLAG_VALUE(EnablePrivMemNewSOATranspose);
+    if (IGC_IS_FLAG_ENABLED(NewSOATransposeForOpenCL) && !isOCL) {
+        newAlgoControl = 0;
+    }
+}
+
 SOALayoutInfo SOALayoutChecker::getOrGatherInfo()
 {
     if (pInfo)
         return *pInfo;
-    pInfo = std::make_unique<SOALayoutInfo>(false, nullptr, false);
+    pInfo = std::make_unique<SOALayoutInfo>(false, nullptr, false, 4);
 
     // Do not allow SOA layout for vla which will be stored on the stack.
     // We don't support SOA layout for privates on stack at all so this is just to make
@@ -414,9 +431,40 @@ SOALayoutInfo SOALayoutChecker::getOrGatherInfo()
     if ((!pType->isArrayTy() && !pType->isVectorTy()) || allocaRef.isArrayAllocation())
         return *pInfo;
 
-    pInfo->baseType = GetBaseType(pType);
+    // Enable transpose for array of struct
+    pInfo->baseType = GetBaseType(pType, newAlgoControl > 0 ? true : false);
     if (!pInfo->baseType)
         return *pInfo;
+
+    if (newAlgoControl > 0) {
+        SOAPartitionBytes = selectPartitionSize(pInfo->baseType);
+
+        StructType* STy = dyn_cast<StructType>(pInfo->baseType);
+        if (STy != nullptr) {
+            if (!isPowerOf2_32(SOAPartitionBytes) || !checkStruct(STy)) {
+                if (newAlgoControl < 3)
+                    return *pInfo;
+
+                // newAlgoControl = 3
+                // check if partition size can be the entire struct
+                uint32_t sz = (uint32_t)pDL->getTypeStoreSize(STy);
+                if (sz > 16 || !isPowerOf2_32(sz)) {
+                    return *pInfo;
+                }
+                SOAPartitionBytes = std::max(4u, sz);
+            }
+        }
+
+        // Skip for non-power-of-2 partition size
+        if (isPowerOf2_32(SOAPartitionBytes) &&
+            (newAlgoControl > 1 || STy != nullptr)) {
+            pInfo->canUseSOALayout = checkUsers(allocaRef);
+            pInfo->SOAPartitionBytes = SOAPartitionBytes;
+            return *pInfo;
+        }
+        // fall-thru to use the old algo for newAlgoControl=1
+        // and STy == nullptr
+    }
     // only handle case with a simple base type
     if (!(pInfo->baseType->getScalarType()->isFloatingPointTy() ||
         pInfo->baseType->getScalarType()->isIntegerTy()))
@@ -435,6 +483,80 @@ SOALayoutInfo SOALayoutChecker::getOrGatherInfo()
     return *pInfo;
 }
 
+uint32_t SOALayoutChecker::selectPartitionSize(Type* Ty)
+{
+    uint32_t size = 4;
+    if (StructType* StTy = dyn_cast<StructType>(Ty)) {
+        int nElts = (int)StTy->getNumElements();
+        for (int ix = 0; ix < nElts; ++ix) {
+            Type* eTy = StTy->getElementType(ix);
+            uint32_t sz = selectPartitionSize(eTy);
+            size = std::max(sz, size);
+        }
+        return size;
+    }
+    if (Ty->isArrayTy()) {
+        // Don't split vector
+        uint32_t sz = selectPartitionSize(Ty->getArrayElementType());
+        size = std::max(sz, size);
+        return size;
+    }
+
+    uint32_t sz = (uint32_t)pDL->getTypeStoreSize(Ty);
+    size = std::max(sz, size);
+    return size;
+}
+
+bool SOALayoutChecker::checkStruct(StructType* StTy)
+{
+    if (!StTy->isSized())
+        return false;
+
+    uint32_t StTyBytes = (uint32_t)pDL->getTypeStoreSize(StTy);
+
+    // Larger struct shall be multiple of partition size
+    if (StTyBytes > SOAPartitionBytes &&
+        (StTyBytes % SOAPartitionBytes) != 0)
+        return false;
+    // Partition shall be multiple of smaller struct size
+    if (StTyBytes < SOAPartitionBytes &&
+        (SOAPartitionBytes % StTyBytes) != 0)
+        return false;
+
+    const StructLayout* SL = pDL->getStructLayout(StTy);
+    int32_t nElts = (int)StTy->getNumElements();
+    for (int ix = 0; ix < nElts; ++ix) {
+        Type* ty = StTy->getElementType(ix);
+        uint32_t eTyBytes = (uint32_t)pDL->getTypeStoreSize(ty);
+        IGC_ASSERT(SOAPartitionBytes >= eTyBytes);
+        if (!isPowerOf2_32(eTyBytes))
+            return false;
+
+        if (newAlgoControl == 1) {
+            // only handle struct with members being same-sized scalars
+            if (SOAPartitionBytes != eTyBytes ||
+                !ty->isSingleValueType() ||
+                ty->isVectorTy()) {
+                return false;
+            }
+        }
+        // newAlgoControl=2 is handled in other places
+        else if (newAlgoControl > 2) {
+            // May handle nested struct/array, etc.
+            if (!ty->isSingleValueType()) {
+                return false;
+            }
+        }
+        uint32_t byteOffset = (uint32_t)SL->getElementOffset(ix);
+        uint32_t chunkOff = (byteOffset % SOAPartitionBytes);
+        // check alignment
+        if (MinAlign(eTyBytes, chunkOff) < eTyBytes) {
+            return false;
+        }
+    }
+    return true;
+}
+
 // TODO: Consider a worklist-based implementation instead.
 bool SOALayoutChecker::checkUsers(Instruction& I)
 {
@@ -450,23 +572,32 @@ bool SOALayoutChecker::checkUsers(Instruction& I)
 
 bool SOALayoutChecker::visitBitCastInst(BitCastInst& BI)
 {
-    Type* baseT = GetBaseType(IGCLLVM::getNonOpaquePtrEltTy(BI.getType()));
-    Type* sourceType = GetBaseType(IGCLLVM::getNonOpaquePtrEltTy(BI.getOperand(0)->getType()));
-    if (BI.use_empty())
+    if (BI.use_empty() || IsBitCastForLifetimeMark(&BI))
     {
         return true;
     }
-    else if (baseT != nullptr &&
+
+    Type* baseT = GetBaseType(IGCLLVM::getNonOpaquePtrEltTy(BI.getType()), true);
+    Type* sourceType = GetBaseType(IGCLLVM::getNonOpaquePtrEltTy(BI.getOperand(0)->getType()), true);
+    if (baseT->isStructTy() || sourceType->isStructTy()) {
+        StructType* bSTy = dyn_cast<StructType>(baseT);
+        StructType* sSTy = dyn_cast<StructType>(sourceType);
+        IGC_ASSERT(bSTy || sSTy);
+        return bSTy && sSTy && (bSTy == sSTy || bSTy->isLayoutIdentical(sSTy));
+    }
+    if (baseT != nullptr &&
         baseT->getScalarSizeInBits() != 0 &&
         baseT->getScalarSizeInBits() == sourceType->getScalarSizeInBits())
     {
-        isVectorSOA &= (unsigned int)baseT->getPrimitiveSizeInBits() == sourceType->getPrimitiveSizeInBits();
+        const bool sameSize = ((uint32_t)baseT->getPrimitiveSizeInBits() ==
+            (uint32_t)sourceType->getPrimitiveSizeInBits());
+        isVectorSOA &= sameSize;
+        if (newAlgoControl > 1 && baseT->isVectorTy() && !sameSize) {
+            return false;
+        }
         return checkUsers(BI);
     }
-    else if (IsBitCastForLifetimeMark(&BI))
-    {
-        return true;
-    }
+
     // Not a candidate.
     return false;
 }
@@ -659,7 +790,11 @@ public:
     AllocaInst* pVecAlloca;
     // location of lifetime starts
     llvm::SmallPtrSet<Instruction*, 4> pStartPoints;
-    TransposeHelperPromote(AllocaInst* pAI) : TransposeHelper(false) { pVecAlloca = pAI; }
+    TransposeHelperPromote(AllocaInst* pAI, const DataLayout& DL)
+        : TransposeHelper(DL, false)
+    {
+        pVecAlloca = pAI;
+    }
 };
 
 void LowerGEPForPrivMem::handleAllocaInst(llvm::AllocaInst* pAlloca)
@@ -676,7 +811,7 @@ void LowerGEPForPrivMem::handleAllocaInst(llvm::AllocaInst* pAlloca)
 
     IRBuilder<> IRB(pVecAlloca);
     Value* idx = IRB.getInt32(0);
-    TransposeHelperPromote helper(pVecAlloca);
+    TransposeHelperPromote helper(pVecAlloca, *m_pDL);
     helper.HandleAllocaSources(pAlloca, idx);
     IGC_ASSERT(nullptr != pAlloca);
     // for uniform alloca, we need to insert an initial definition
@@ -708,6 +843,11 @@ void TransposeHelper::handleGEPInst(
     llvm::GetElementPtrInst* pGEP,
     llvm::Value* idx)
 {
+    if (useNewAlgo()) {
+        handleGEPInstNew(pGEP, idx);
+        return;
+    }
+
     IGC_ASSERT(nullptr != pGEP);
     IGC_ASSERT(static_cast<ADDRESS_SPACE>(pGEP->getPointerAddressSpace()) == ADDRESS_SPACE_PRIVATE);
     // Add GEP instruction to remove list
@@ -790,6 +930,63 @@ void TransposeHelper::handleGEPInst(
         pScalarizedIdx = IRB.CreateNUWAdd(pScalarizedIdx, idx);
     }
     HandleAllocaSources(pGEP, pScalarizedIdx);
+}
+
+void TransposeHelper::handleGEPInstNew(
+    llvm::GetElementPtrInst* pGEP,
+    llvm::Value* idx)
+{
+    IGC_ASSERT(nullptr != pGEP);
+    IGC_ASSERT(static_cast<ADDRESS_SPACE>(pGEP->getPointerAddressSpace()) == ADDRESS_SPACE_PRIVATE);
+    // Add GEP instruction to remove list
+    m_toBeRemovedGEP.push_back(pGEP);
+    if (pGEP->use_empty())
+    {
+        // GEP has no users, do nothing.
+        return;
+    }
+
+    auto isIntZero = [](Value* V) {
+        ConstantInt* CI = dyn_cast<ConstantInt>(V);
+        return (CI && CI->isZero());
+    };
+
+    IRBuilder<> IRB(pGEP);
+    // linearOffset : byte offset of int32 (could be negative, no overflow).
+    Value* linearOffset = IRB.getInt32(0);
+    gep_type_iterator GTI = gep_type_begin(pGEP);
+    for (auto OI = pGEP->op_begin() + 1, E = pGEP->op_end(); OI != E; ++OI, ++GTI) {
+        Value* ix = *OI;
+        Value* OffsetVal;
+        if (StructType* StTy = GTI.getStructTypeOrNull()) {
+            unsigned Field = int_cast<unsigned>(cast<ConstantInt>(ix)->getZExtValue());
+            uint64_t Offset = m_DL.getStructLayout(StTy)->getElementOffset(Field);
+            OffsetVal = IRB.getInt32((uint32_t)Offset);
+        }
+        else {
+            Value* NewIx = IRB.CreateSExtOrTrunc(ix, linearOffset->getType());
+            // OffsetVal = NewIx * tyBytes
+            if (isIntZero(NewIx)) {
+                OffsetVal = NewIx;
+            }
+            else {
+                Type* Ty = GTI.getIndexedType();
+                uint64_t tyBytes = m_DL.getTypeAllocSize(Ty);
+                OffsetVal = IRB.CreateNSWMul(NewIx, IRB.getInt32((uint32_t)tyBytes));
+            }
+        }
+        // linearOffset += OffsetVal
+        if (!isIntZero(OffsetVal)) {
+            if (isIntZero(linearOffset))
+                linearOffset = OffsetVal;
+            else
+                linearOffset = IRB.CreateNSWAdd(linearOffset, OffsetVal);
+        }
+    }
+    // linearOffset += idx
+    if (!isIntZero(idx))
+        linearOffset = IRB.CreateAdd(linearOffset, idx);
+    HandleAllocaSources(pGEP, linearOffset);
 }
 
 // Load N elements from a vector alloca, Idx, ... Idx + N - 1. Return a scalar
