@@ -37,7 +37,7 @@ using namespace IGC::IGCMD;
 
 namespace IGC {
 
-    bool expandFDIVInstructions(llvm::Function& F);
+    bool expandFDIVInstructions(llvm::Function &F, ShaderType ShaderTy);
 
 } // namespace IGC
 
@@ -108,7 +108,7 @@ bool Legalization::runOnFunction(Function& F)
 
     // Legalize fdiv if any
     if (!m_ctx->platform.hasFDIV())
-        expandFDIVInstructions(F);
+        expandFDIVInstructions(F, m_ctx->type);
     return true;
 }
 
@@ -2806,8 +2806,7 @@ static bool needsNoScaling(Value* Val)
 //       S = 2^(-32) if exp(y) >= 200,
 //       S = 1.0f otherwise
 //
-bool IGC::expandFDIVInstructions(llvm::Function& F)
-{
+bool IGC::expandFDIVInstructions(llvm::Function &F, ShaderType ShaderTy) {
     bool Changed = false;
     for (auto& BB : F.getBasicBlockList()) {
         for (auto Iter = BB.begin(); Iter != BB.end();) {
@@ -2855,28 +2854,36 @@ bool IGC::expandFDIVInstructions(llvm::Function& F)
                 V = Builder.CreateFMul(Y, X);
             }
             else {
+                Value* YAsInt32 = Builder.CreateBitCast(Y, Builder.getInt32Ty());
+                Value* YExp = Builder.CreateAnd(YAsInt32, Builder.getInt32(0x7f800000));
+
                 float S32 = uint64_t(1) << 32;
                 ConstantFP* C0 = ConstantFP::get(Ctx, APFloat(S32));
                 ConstantFP* C1 = ConstantFP::get(Ctx, APFloat(1.0f));
                 ConstantFP* C2 = ConstantFP::get(Ctx, APFloat(1.0f / S32));
 
-                Value* Exp = Builder.CreateAnd(
-                    Builder.CreateBitCast(Y, Builder.getInt32Ty()),
-                    Builder.getInt32(0x7f800000));
-
-                // Check if B's exponent is 0, scale up.
-                Value* P1 = Builder.CreateICmpEQ(Exp, Builder.getInt32(0));
-                Value* Scale = Builder.CreateSelect(P1, C0, C1);
-
-                // Check if B's exponent >= 200, scale down.
-                Value* P2 = Builder.CreateICmpUGE(Exp, Builder.getInt32(200 << 23));
-                Scale = Builder.CreateSelect(P2, C2, Scale);
+                // Determine the appropriate scale based on Y's exponent.
+                Value* ScaleUp = Builder.CreateSelect(Builder.CreateICmpEQ(YExp, Builder.getInt32(0)), C0, C1);
+                Value* Scale = Builder.CreateSelect(Builder.CreateICmpUGE(YExp, Builder.getInt32(200 << 23)), C2, ScaleUp);
 
                 // Compute rcp(y * S) * x * S
-                V = Builder.CreateFMul(Y, Scale);
-                V = Builder.CreateFDiv(C1, V);
-                V = Builder.CreateFMul(V, X);
+                Value *ScaledY = Builder.CreateFMul(Y, Scale);
+                ScaledY = Builder.CreateFDiv(C1, ScaledY);
+                V = Builder.CreateFMul(ScaledY, X);
                 V = Builder.CreateFMul(V, Scale);
+
+                // In case of OpenCL kernels, create comparisons to check if X or Y is +/-0, +/-Inf, +/-NaN,
+                // or subnormal. If x == y and y is a normal number, select 1.0f as a result for better precision.
+                if (ShaderTy == ShaderType::OPENCL_SHADER) {
+                    Value* CmpXY = Builder.CreateFCmpOEQ(X, Y);
+                    Value* YMantissa = Builder.CreateAnd(YAsInt32, Builder.getInt32(0x007fffff));
+                    Value* CmpYExpZero = Builder.CreateICmpEQ(YExp, Builder.getInt32(0));
+                    Value* CmpYMantissaZero = Builder.CreateICmpEQ(YMantissa, Builder.getInt32(0));
+                    Value* CmpYIsZeroOrSubnormal = Builder.CreateOr(CmpYExpZero, CmpYMantissaZero);
+                    Value* CmpYIsNotZeroOrSubnormal = Builder.CreateNot(CmpYIsZeroOrSubnormal);
+                    V = Builder.CreateSelect(Builder.CreateAnd(CmpXY, CmpYIsNotZeroOrSubnormal),
+                        ConstantFP::get(Ctx, APFloat(1.0f)), V);
+                }
             }
 
             Inst->replaceAllUsesWith(V);
@@ -2898,6 +2905,7 @@ namespace IGC {
         void getAnalysisUsage(AnalysisUsage& AU) const override
         {
             AU.setPreservesCFG();
+            AU.addRequired<CodeGenContextWrapper>();
         }
     };
 
@@ -2920,6 +2928,7 @@ GenFDIVEmulation::GenFDIVEmulation()
 
 bool GenFDIVEmulation::runOnFunction(Function& F)
 {
+    IGC::CodeGenContext* m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     // Always emulate fdiv instructions.
-    return expandFDIVInstructions(F);
+    return expandFDIVInstructions(F, m_ctx->type);
 }
