@@ -449,6 +449,13 @@ bool HDCCoalesceSLMAtomicINCWithNoReturn() const
     return m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE;
 }
 
+
+int LSCCachelineSize() const
+{
+    return 64;
+}
+
+
 bool HDCCoalesceAtomicCounterAccess() const
 {
     return (m_platformInfo.eRenderCoreFamily < IGFX_GEN12_CORE) && IGC_IS_FLAG_DISABLED(ForceSWCoalescingOfAtomicCounter);

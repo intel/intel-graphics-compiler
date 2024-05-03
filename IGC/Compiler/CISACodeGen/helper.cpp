@@ -1246,6 +1246,7 @@ namespace IGC
             case GenISAIntrinsic::GenISA_simdBlockRead:
             case GenISAIntrinsic::GenISA_simdBlockWrite:
             case GenISAIntrinsic::GenISA_LSCLoad:
+            case GenISAIntrinsic::GenISA_LSCInvalidate:
             case GenISAIntrinsic::GenISA_LSCLoadBlock:
             case GenISAIntrinsic::GenISA_LSCLoadCmask:
                 pBuffer = intr->getOperand(0);

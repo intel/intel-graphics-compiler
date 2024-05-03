@@ -877,6 +877,7 @@ static void setImpliedIGCKeys()
     IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, RematThreshold, 0);
     IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisableDPSE, true);
     IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisableSWStackOffsetElision, true);
+    IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisableInvalidateRTStackAfterLastRead, true);
 
     IGC_SET_IMPLIED_REGKEY(ForceRTRetry, 1, RetryManagerFirstStateId, 1);
 

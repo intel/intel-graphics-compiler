@@ -467,6 +467,32 @@ void TraceRayInlineLoweringPass::LowerSyncStackToShadowMemory(Function& F)
             ShadowMemRTCtrlPtr);
 
         SS2SM->replaceAllUsesWith(Proceed);
+
+        if (IGC_IS_FLAG_DISABLED(DisableInvalidateRTStackAfterLastRead))
+        {
+            auto* LSCInvalidate = GenISAIntrinsic::getDeclaration(
+                F.getParent(),
+                GenISAIntrinsic::GenISA_LSCInvalidate,
+                { builder.getInt32Ty(), HWStackPointer->getType() }
+            );
+
+            auto [InvalidateAfterProceedBB, _] = builder.createTriangleFlow(builder.CreateNot(Proceed), SS2SM, VALUE_NAME("InvalidateAfterProceed"));
+            builder.SetInsertPoint(InvalidateAfterProceedBB->getTerminator());
+
+            for (uint i = 0; i < getSyncStackSize() / m_CGCtx->platform.LSCCachelineSize(); i++)
+            {
+                builder.CreateCall(
+                    LSCInvalidate,
+                    {
+                        HWStackPointer,
+                        builder.getInt32(i * m_CGCtx->platform.LSCCachelineSize()),
+                        builder.getInt32(LSC_DATA_SIZE_32b), // doesn't matter what we put here because the entire cacheline is invalidated
+                        builder.getInt32(LSC_DATA_ELEMS_1),
+                        builder.getInt32(LSC_L1IAR_WB_L3C_WB)
+                    }
+                );
+            }
+        }
     }
 
     for (auto SS2SM : SS2SMs)
