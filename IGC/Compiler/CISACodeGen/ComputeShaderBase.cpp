@@ -149,7 +149,8 @@ namespace IGC
         }
 
         // Perfer linear walk for 2D dispatch, but linear UAV surface
-        if (IGC_IS_FLAG_ENABLED(ForceLinearWalkOnLinearUAV) &&
+        if ((IGC_IS_FLAG_ENABLED(ForceLinearWalkOnLinearUAV) ||
+            MMD->compOpt.ForceLinearWalkOnLinearUAV) &&
             (m_ThreadIDLayout == ThreadIDLayout::TileY) &&
             EMIT_LOCAL_MASK::XY == m_emitMask &&
             num1DAccesses)
