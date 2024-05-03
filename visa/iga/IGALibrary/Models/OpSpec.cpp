@@ -112,13 +112,13 @@ Region OpSpec::implicitSrcRegion(int srcOpIx, ExecSize execSize,
       }
     } else {
       // basic macro: e.g. math.invm ...
-      if (execSize == ExecSize::SIMD1) {
+      // math doesn't have implicit region on XE+
+      if (platform >= Platform::XE)
+        return Region::INVALID;
+      if (execSize == ExecSize::SIMD1)
         return Region::SRC010;
-      } else if (platform >= Platform::XE) {
-        return Region::SRC110;
-      } else {
+      else
         return Region::SRC221;
-      }
     }
   } else if (isSendFormat() || isSendsFormat()) {
     // no regions on send's
