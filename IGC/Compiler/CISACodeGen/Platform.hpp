@@ -1701,9 +1701,6 @@ unsigned getRayTracingTileXDim2D() const
 
 unsigned getRayTracingTileYDim2D() const
 {
-    if (isCoreChildOf(IGFX_XE2_LPG_CORE))
-        return 32;
-    else
         return 4;
 }
 
