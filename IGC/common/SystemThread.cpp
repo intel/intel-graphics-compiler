@@ -178,7 +178,7 @@ struct Xe2DebugSurfaceLayout
 
 struct StateSaveAreaHeader Xe2SIPCSRDebugBindlessDebugHeader =
 {
-    {"tssarea", 0, {2, 0, 0}, sizeof(StateSaveAreaHeader) / 8, {0, 0, 0}}, // versionHeader
+    {"tssarea", 0, {2, 2, 0}, sizeof(StateSaveAreaHeader) / 8, {0, 0, 0}}, // versionHeader
     {
         // regHeader
         0,                                               // num_slices
