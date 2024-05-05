@@ -8,7 +8,8 @@
 ; COM: Depends on other commit with m_instTypes initialization, enable when fixed
 ; UNSUPPORTED: system-windows
 ;
-; RUN: igc_opt --igc-private-mem-resolution -S %s | FileCheck %s
+; REQUIRES: regkeys
+; RUN: igc_opt --regkey EnablePrivMemNewSOATranspose=0 --igc-private-mem-resolution -S %s | FileCheck %s
 ; ------------------------------------------------
 ; PrivateMemoryResolution
 ; ------------------------------------------------

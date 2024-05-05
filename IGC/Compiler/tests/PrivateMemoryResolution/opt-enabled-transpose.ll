@@ -6,7 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-private-mem-resolution -S %s | FileCheck %s
+; REQUIRES: regkeys
+; RUN: igc_opt --regkey EnablePrivMemNewSOATranspose=0 --igc-private-mem-resolution -S %s | FileCheck %s
 ; ------------------------------------------------
 ; PrivateMemoryResolution
 ; ------------------------------------------------

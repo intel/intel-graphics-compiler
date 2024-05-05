@@ -6,7 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-private-mem-resolution --platformpvc -S %s 2>&1 | FileCheck %s
+; REQUIRES: regkeys
+; RUN: igc_opt --regkey EnablePrivMemNewSOATranspose=0 --igc-private-mem-resolution --platformpvc -S %s 2>&1 | FileCheck %s
 
 define spir_kernel void @testallocasmall(i8* %privateBase) {
 entry:

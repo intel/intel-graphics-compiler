@@ -1212,7 +1212,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
             Value* privateBufferPTR;
 
             // New Algo handles both 64bit ptr and 32bi ptr.
-            if (SOAInfo.canUseSOALayout &&
+            if (!isUniform && SOAInfo.canUseSOALayout &&
                 (SOAChecker.getNewAlgoControl() > 1 ||
                  (SOAChecker.getNewAlgoControl() == 1 && pTypeOfAccessedObject->isStructTy())))
             {

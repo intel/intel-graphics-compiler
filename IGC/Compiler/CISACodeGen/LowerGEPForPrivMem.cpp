@@ -341,7 +341,7 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* 
     }
 
     // Multiple indirect byte access could be harmful for performance
-    if (SOAInfo.baseType->isIntegerTy(8) && !isUniformAlloca &&
+    if (SOAInfo.baseType->getScalarType()->isIntegerTy(8) && !isUniformAlloca &&
         m_ctx->platform.isCoreChildOf(IGFX_XE_HPG_CORE))
     {
         // Limit promotable alloca size with byte indirect access by 4 GRF vector size
