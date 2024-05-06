@@ -362,8 +362,9 @@ unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
         // 1. fit in 2 GRFs; and
         // 2. fit in the whole region; and
         // 3. fit in a row if the width is not legal
-        // 4. no more than 8 elements in multi indirect (because there
-        //    are only 8 elements in an address register).
+        // 4. no more than getAddressRegisterElements elements in multi indirect
+        // (because there are only getAddressRegisterElements elements in an
+        // address register).
         IGC_ASSERT_EXIT(Width > 0 && R.ElementBytes > 0);
         auto LogWidth = genx::log2(Width);
         if (1U << LogWidth == Width)
@@ -372,9 +373,7 @@ unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
         if (LogWidth + LogElementBytes > (LogGRFWidth + 1))
           LogWidth = LogGRFWidth + 1 - LogElementBytes;
         IGC_ASSERT_EXIT(LogWidth >= 0);
-        ValidWidth = 1 << LogWidth;
-        if (ValidWidth > 8)
-          ValidWidth = 8;
+        ValidWidth = std::min(1u << LogWidth, ST.getAddressRegisterElements());
       }
       // Other multi indirect can only do one element.
     } else {
