@@ -1549,7 +1549,7 @@ unsigned GenXLegalization::determineNonRegionWidth(Instruction *Inst,
   if (!VT)
     return 1;
   unsigned Width = VT->getNumElements() - StartIdx;
-  unsigned BytesPerElement = VT->getElementType()->getPrimitiveSizeInBits() / 8;
+  unsigned BytesPerElement = VT->getElementType()->getPrimitiveSizeInBits() / genx::ByteBits;
   // Check whether the operand element size is bigger than the result operand
   // size. Normally we just check operand 0. This won't work on a select, and
   // we don't need to do the check on a select anyway as its operand and result
@@ -1565,16 +1565,19 @@ unsigned GenXLegalization::determineNonRegionWidth(Instruction *Inst,
           cast<VectorType>(Inst->getOperand(0)->getType())
               ->getElementType()
               ->getPrimitiveSizeInBits() /
-          8;
+          genx::ByteBits;
       if (InBytesPerElement > BytesPerElement)
         BytesPerElement = InBytesPerElement;
     }
   }
-  unsigned int TwoGRFWidth = ST ? (2 * ST->getGRFByteSize()) : 64;
+  unsigned NumGRF = 2;
+
+  unsigned int MaxWidthAllowed = ST ? (NumGRF * ST->getGRFByteSize()) : 64;
+
   if (BytesPerElement) {
     // Non-predicate result.
-    if (Width * BytesPerElement > TwoGRFWidth)
-      Width = TwoGRFWidth / BytesPerElement;
+    if (Width * BytesPerElement > MaxWidthAllowed)
+      Width = MaxWidthAllowed / BytesPerElement;
     IGC_ASSERT_EXIT(Width > 0);
     Width = 1 << genx::log2(Width);
   } else {

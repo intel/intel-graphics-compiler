@@ -341,6 +341,8 @@ unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
   unsigned GRFByteSize = ST.getGRFByteSize();
   int MaxStride = 4;
   unsigned LogGRFWidth = genx::log2(GRFByteSize);
+  unsigned NumGRF = 2;
+
   if ((!R.Stride || exactLog2(R.Stride) >= 0) &&
       (Allow2D || R.Stride <= MaxStride)) {
     // The stride is legal, so we can potentially do more than one element at a
@@ -390,7 +392,6 @@ unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
         // region and the index so far to calculate how far into a GRF this
         // subregion starts, and set the boundary at the next-but-one GRF
         // boundary.
-        unsigned NumGRF = 2;
         // For PVC it's legal to read only from one GFR in byte source
         if (!ST.hasMultiIndirectByteRegioning() &&
             R.ElementBytes == genx::ByteBytes)
@@ -528,11 +529,9 @@ unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
       // If the RStride is 0 (which is seen in splat operations) then the
       // above logic tends to determine that all of the elements can fit,
       // irrespective of vector size and type. This is usually incorrect
-      // in the wider context, so clamp it here to whatever fits in 2GRF if
+      // in the wider context, so clamp it here to whatever fits in NumGRF if
       // necessary
-      if (ValidWidth > (2 * ElementsPerGRF))
-        ValidWidth = 2 * ElementsPerGRF;
-
+      ValidWidth = std::min(ValidWidth, NumGRF * ElementsPerGRF);
     }
   }
   if (AdjustValidWidthForTarget && !ST.hasMultiIndirectByteRegioning() &&

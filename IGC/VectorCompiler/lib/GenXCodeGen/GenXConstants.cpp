@@ -1758,12 +1758,13 @@ bool ConstantLoader::isLegalSize() const {
   auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(C->getType());
   if (!VT)
     return true;
-  const int NumBits = DL.getTypeSizeInBits(VT);
+  const unsigned NumBits = DL.getTypeSizeInBits(VT);
   if (!llvm::isPowerOf2_32(NumBits))
     return false;
-  const int GRFSizeInBits = Subtarget.getGRFByteSize() * genx::ByteBits;
-  if (NumBits > GRFSizeInBits * 2)
-    return false; // bigger than 2 GRFs
+  const unsigned GRFSizeInBits = Subtarget.getGRFByteSize() * genx::ByteBits;
+  unsigned NumGRF = 2;
+  if (NumBits > GRFSizeInBits * NumGRF)
+    return false; // bigger than NumGRF GRFs
   if (VT->getNumElements() > 32)
     return false; // 64 bytes not allowed
   return true;
