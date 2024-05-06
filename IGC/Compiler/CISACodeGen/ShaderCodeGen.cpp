@@ -1452,7 +1452,8 @@ void OptimizeIR(CodeGenContext* const pContext)
                 mpm.add(llvm::createLCSSAPass());
                 mpm.add(llvm::createLoopSimplifyPass());
 
-                if (pContext->type == ShaderType::OPENCL_SHADER &&
+                if (IGC_IS_FLAG_ENABLED(EnableGEPLSR) &&
+                    pContext->type == ShaderType::OPENCL_SHADER &&
                     pContext->platform.getPlatformInfo().eProductFamily == IGFX_PVC &&
                     !useStatelessToStateful(*pContext) &&
                     pContext->m_retryManager.IsFirstTry())
