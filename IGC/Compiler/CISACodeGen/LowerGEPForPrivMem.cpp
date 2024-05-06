@@ -436,7 +436,7 @@ SOALayoutInfo SOALayoutChecker::getOrGatherInfo()
     if (!pInfo->baseType)
         return *pInfo;
 
-    if (newAlgoControl > 0) {
+    if (useNewAlgo(pInfo->baseType)) {
         SOAPartitionBytes = selectPartitionSize(pInfo->baseType);
 
         StructType* STy = dyn_cast<StructType>(pInfo->baseType);
@@ -456,14 +456,11 @@ SOALayoutInfo SOALayoutChecker::getOrGatherInfo()
         }
 
         // Skip for non-power-of-2 partition size
-        if (isPowerOf2_32(SOAPartitionBytes) &&
-            (newAlgoControl > 1 || STy != nullptr)) {
+        if (isPowerOf2_32(SOAPartitionBytes)) {
             pInfo->canUseSOALayout = checkUsers(allocaRef);
             pInfo->SOAPartitionBytes = SOAPartitionBytes;
-            return *pInfo;
         }
-        // fall-thru to use the old algo for newAlgoControl=1
-        // and STy == nullptr
+        return *pInfo;
     }
     // only handle case with a simple base type
     if (!(pInfo->baseType->getScalarType()->isFloatingPointTy() ||

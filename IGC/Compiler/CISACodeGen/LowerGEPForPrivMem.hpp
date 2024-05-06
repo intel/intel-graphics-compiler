@@ -85,7 +85,10 @@ namespace IGC
         SOALayoutInfo getOrGatherInfo();
 
         // for new algo
-        int getNewAlgoControl() const { return newAlgoControl; }
+        bool useNewAlgo(llvm::Type* baseTy) const {
+            return (newAlgoControl > 1 ||
+                (newAlgoControl == 1 && baseTy->isStructTy()));
+        }
 
     private:
         llvm::AllocaInst& allocaRef;

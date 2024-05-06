@@ -1212,9 +1212,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
             Value* privateBufferPTR;
 
             // New Algo handles both 64bit ptr and 32bi ptr.
-            if (!isUniform && SOAInfo.canUseSOALayout &&
-                (SOAChecker.getNewAlgoControl() > 1 ||
-                 (SOAChecker.getNewAlgoControl() == 1 && pTypeOfAccessedObject->isStructTy())))
+            if (!isUniform && SOAInfo.canUseSOALayout && SOAChecker.useNewAlgo(pTypeOfAccessedObject))
             {
                 Value* simdBufferOffset = createSIMDBufferOffset(builder, pAI, scalarBufferOffset, SOAInfo.SOAPartitionBytes, isUniform);
                 Value* bufferBase = addOffset(builder, DL, threadBase, simdBufferOffset);
@@ -1364,7 +1362,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
         // If we can use SOA layout transpose the memory
         IGC::SOALayoutChecker SOAChecker(*pAI, Ctx.type == ShaderType::OPENCL_SHADER);
         IGC::SOALayoutInfo SOAInfo = SOAChecker.getOrGatherInfo();
-        if (SOAInfo.canUseSOALayout && IGC_GET_FLAG_VALUE(EnablePrivMemNewSOATranspose) > 0)
+        if (!isUniform && SOAInfo.canUseSOALayout && SOAChecker.useNewAlgo(SOAInfo.baseType))
         {
             uint32_t chunksize = SOAInfo.SOAPartitionBytes;
             Value* SIMDBufferOffset = createSIMDBufferOffset(builder, pAI, scalarBufferOffset, chunksize, isUniform);
