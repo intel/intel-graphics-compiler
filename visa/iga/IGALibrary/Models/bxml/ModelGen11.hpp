@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -104,7 +104,8 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
-  {Op::BFE /* Op::7 */, Platform::GEN11, 0x18,
+  {Op::INVALID, Platform::GEN11, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
+  {Op::BFE /* Op::8 */, Platform::GEN11, 0x18,
     "bfe",
     "Bit Field Extract",
     OpSpec::Format::TERNARY_REGIMM_REG_REGIMM,
@@ -116,7 +117,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
-  {Op::BFI1 /* Op::8 */, Platform::GEN11, 0x19,
+  {Op::BFI1 /* Op::9 */, Platform::GEN11, 0x19,
     "bfi1",
     "Bit Field Insert 1",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -128,7 +129,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
-  {Op::BFI2 /* Op::9 */, Platform::GEN11, 0x1A,
+  {Op::BFI2 /* Op::10 */, Platform::GEN11, 0x1A,
     "bfi2",
     "Bit Field Insert 2",
     OpSpec::Format::TERNARY_REGIMM_REG_REGIMM,
@@ -141,7 +142,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
   {Op::INVALID, Platform::GEN11, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
-  {Op::BFREV /* Op::11 */, Platform::GEN11, 0x17,
+  {Op::BFREV /* Op::12 */, Platform::GEN11, 0x17,
     "bfrev",
     "Bit Field Reverse",
     OpSpec::Format::BASIC_UNARY_REGIMM,
@@ -151,7 +152,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
-  {Op::BRC /* Op::12 */, Platform::GEN11, 0x23,
+  {Op::BRC /* Op::13 */, Platform::GEN11, 0x23,
     "brc",
     "Branch Converging",
     OpSpec::Format::JUMP_BINARY_BRC,
@@ -161,7 +162,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
-  {Op::BRD /* Op::13 */, Platform::GEN11, 0x21,
+  {Op::BRD /* Op::14 */, Platform::GEN11, 0x21,
     "brd",
     "Branch Diverging",
     OpSpec::Format::JUMP_UNARY_REGIMM,
@@ -171,14 +172,14 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
-  {Op::BREAK /* Op::14 */, Platform::GEN11, 0x28,
+  {Op::BREAK /* Op::15 */, Platform::GEN11, 0x28,
     "break",
     "Break",
     OpSpec::Format::JUMP_BINARY_IMM_IMM,
     {}, // no type mappings
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
-  {Op::CALL /* Op::15 */, Platform::GEN11, 0x2C,
+  {Op::CALL /* Op::16 */, Platform::GEN11, 0x2C,
     "call",
     "Call",
     OpSpec::Format::JUMP_UNARY_CALL_REGIMM,
@@ -188,7 +189,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
-  {Op::CALLA /* Op::16 */, Platform::GEN11, 0x2B,
+  {Op::CALLA /* Op::17 */, Platform::GEN11, 0x2B,
     "calla",
     "Call Absolute",
     OpSpec::Format::JUMP_UNARY_CALL_REGIMM,
@@ -198,7 +199,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
-  {Op::CBIT /* Op::17 */, Platform::GEN11, 0x4D,
+  {Op::CBIT /* Op::18 */, Platform::GEN11, 0x4D,
     "cbit",
     "Count Bits Set",
     OpSpec::Format::BASIC_UNARY_REGIMM,
@@ -208,7 +209,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
-  {Op::CMP /* Op::18 */, Platform::GEN11, 0x10,
+  {Op::CMP /* Op::19 */, Platform::GEN11, 0x10,
     "cmp",
     "Compare",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -238,7 +239,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
   },
-  {Op::CMPN /* Op::19 */, Platform::GEN11, 0x11,
+  {Op::CMPN /* Op::20 */, Platform::GEN11, 0x11,
     "cmpn",
     "Compare NaN",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -258,14 +259,14 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
   },
-  {Op::CONT /* Op::20 */, Platform::GEN11, 0x29,
+  {Op::CONT /* Op::21 */, Platform::GEN11, 0x29,
     "cont",
     "Continue",
     OpSpec::Format::JUMP_BINARY_IMM_IMM,
     {}, // no type mappings
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
-  {Op::CSEL /* Op::21 */, Platform::GEN11, 0x12,
+  {Op::CSEL /* Op::22 */, Platform::GEN11, 0x12,
     "csel",
     "Conditional Select",
     OpSpec::Format::TERNARY_REGIMM_REG_REGIMM,
@@ -289,14 +290,15 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
   {Op::INVALID, Platform::GEN11, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
   {Op::INVALID, Platform::GEN11, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
   {Op::INVALID, Platform::GEN11, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
-  {Op::ELSE /* Op::30 */, Platform::GEN11, 0x24,
+  {Op::INVALID, Platform::GEN11, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
+  {Op::ELSE /* Op::32 */, Platform::GEN11, 0x24,
     "else",
     "Else",
     OpSpec::Format::JUMP_BINARY_IMM_IMM,
     {}, // no type mappings
     OpSpec::Attr::SUPPORTS_BRCTL
   },
-  {Op::ENDIF /* Op::31 */, Platform::GEN11, 0x25,
+  {Op::ENDIF /* Op::33 */, Platform::GEN11, 0x25,
     "endif",
     "End If",
     OpSpec::Format::JUMP_UNARY_IMM,
@@ -305,7 +307,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
   },
   {Op::INVALID, Platform::GEN11, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
   {Op::INVALID, Platform::GEN11, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
-  {Op::FBH /* Op::34 */, Platform::GEN11, 0x4B,
+  {Op::FBH /* Op::36 */, Platform::GEN11, 0x4B,
     "fbh",
     "Find First Bit from MSB Side",
     OpSpec::Format::BASIC_UNARY_REGIMM,
@@ -315,7 +317,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
-  {Op::FBL /* Op::35 */, Platform::GEN11, 0x4C,
+  {Op::FBL /* Op::37 */, Platform::GEN11, 0x4C,
     "fbl",
     "Find First Bit from LSB Side",
     OpSpec::Format::BASIC_UNARY_REGIMM,
@@ -325,7 +327,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
-  {Op::FRC /* Op::36 */, Platform::GEN11, 0x43,
+  {Op::FRC /* Op::38 */, Platform::GEN11, 0x43,
     "frc",
     "Fraction",
     OpSpec::Format::BASIC_UNARY_REGIMM,
@@ -335,35 +337,35 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
   },
-  {Op::GOTO /* Op::37 */, Platform::GEN11, 0x2E,
+  {Op::GOTO /* Op::39 */, Platform::GEN11, 0x2E,
     "goto",
     "Goto",
     OpSpec::Format::JUMP_BINARY_IMM_IMM,
     {}, // no type mappings
     OpSpec::Attr::SUPPORTS_BRCTL|OpSpec::Attr::SUPPORTS_PREDICATION
   },
-  {Op::HALT /* Op::38 */, Platform::GEN11, 0x2A,
+  {Op::HALT /* Op::40 */, Platform::GEN11, 0x2A,
     "halt",
     "Halt",
     OpSpec::Format::JUMP_BINARY_IMM_IMM,
     {}, // no type mappings
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
-  {Op::IF /* Op::39 */, Platform::GEN11, 0x22,
+  {Op::IF /* Op::41 */, Platform::GEN11, 0x22,
     "if",
     "If",
     OpSpec::Format::JUMP_BINARY_IMM_IMM,
     {}, // no type mappings
     OpSpec::Attr::SUPPORTS_BRCTL|OpSpec::Attr::SUPPORTS_PREDICATION
   },
-  {Op::ILLEGAL /* Op::40 */, Platform::GEN11, 0x00,
+  {Op::ILLEGAL /* Op::42 */, Platform::GEN11, 0x00,
     "illegal",
     "Illegal",
     OpSpec::Format::NULLARY,
     {}, // no type mappings
     OpSpec::Attr::NONE
   },
-  {Op::JMPI /* Op::41 */, Platform::GEN11, 0x20,
+  {Op::JMPI /* Op::43 */, Platform::GEN11, 0x20,
     "jmpi",
     "Jump Indexed",
     OpSpec::Format::JUMP_UNARY_REGIMM,
@@ -373,7 +375,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
-  {Op::JOIN /* Op::42 */, Platform::GEN11, 0x2F,
+  {Op::JOIN /* Op::44 */, Platform::GEN11, 0x2F,
     "join",
     "Join",
     OpSpec::Format::JUMP_UNARY_IMM,
@@ -382,7 +384,8 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
   },
   {Op::INVALID, Platform::GEN11, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
   {Op::INVALID, Platform::GEN11, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
-  {Op::LZD /* Op::45 */, Platform::GEN11, 0x4A,
+  {Op::INVALID, Platform::GEN11, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
+  {Op::LZD /* Op::48 */, Platform::GEN11, 0x4A,
     "lzd",
     "Leading Zero Detection",
     OpSpec::Format::BASIC_UNARY_REGIMM,
@@ -392,7 +395,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
-  {Op::MAC /* Op::46 */, Platform::GEN11, 0x48,
+  {Op::MAC /* Op::49 */, Platform::GEN11, 0x48,
     "mac",
     "Multiply Accumulate",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -410,7 +413,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
-  {Op::MACH /* Op::47 */, Platform::GEN11, 0x49,
+  {Op::MACH /* Op::50 */, Platform::GEN11, 0x49,
     "mach",
     "Multiply Accumulate High",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -423,7 +426,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
   {Op::INVALID, Platform::GEN11, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
-  {Op::MAD /* Op::49 */, Platform::GEN11, 0x5B,
+  {Op::MAD /* Op::52 */, Platform::GEN11, 0x5B,
     "mad",
     "Multiply Add",
     OpSpec::Format::TERNARY_REGIMM_REG_REGIMM,
@@ -445,7 +448,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
-  {Op::MADM /* Op::50 */, Platform::GEN11, 0x5D,
+  {Op::MADM /* Op::53 */, Platform::GEN11, 0x5D,
     "madm",
     "Multiply Add for Macro",
     OpSpec::Format::TERNARY_REGIMM_REG_REGIMM,
@@ -457,7 +460,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
-  {Op::MATH /* Op::51 */, Platform::GEN11, 0x38,
+  {Op::MATH /* Op::54 */, Platform::GEN11, 0x38,
     "math",
     "Extended Math Function",
     OpSpec::Format::MATH_BINARY_REG_REGIMM,
@@ -473,7 +476,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
-  {Op::MOV /* Op::52 */, Platform::GEN11, 0x01,
+  {Op::MOV /* Op::55 */, Platform::GEN11, 0x01,
     "mov",
     "Move",
     OpSpec::Format::BASIC_UNARY_REGIMM,
@@ -525,7 +528,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
-  {Op::MOVI /* Op::53 */, Platform::GEN11, 0x03,
+  {Op::MOVI /* Op::56 */, Platform::GEN11, 0x03,
     "movi",
     "Move Indexed",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -547,7 +550,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
-  {Op::MUL /* Op::54 */, Platform::GEN11, 0x41,
+  {Op::MUL /* Op::57 */, Platform::GEN11, 0x41,
     "mul",
     "Multiply",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -578,14 +581,14 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
   {Op::INVALID, Platform::GEN11, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
-  {Op::NOP /* Op::56 */, Platform::GEN11, 0x7E,
+  {Op::NOP /* Op::59 */, Platform::GEN11, 0x7E,
     "nop",
     "No Operation",
     OpSpec::Format::NULLARY,
     {}, // no type mappings
     OpSpec::Attr::NONE
   },
-  {Op::NOT /* Op::57 */, Platform::GEN11, 0x04,
+  {Op::NOT /* Op::60 */, Platform::GEN11, 0x04,
     "not",
     "Logic Not",
     OpSpec::Format::BASIC_UNARY_REGIMM,
@@ -603,7 +606,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
   },
-  {Op::OR /* Op::58 */, Platform::GEN11, 0x06,
+  {Op::OR /* Op::61 */, Platform::GEN11, 0x06,
     "or",
     "Logic Or",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -622,7 +625,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
   },
   {Op::INVALID, Platform::GEN11, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
-  {Op::RET /* Op::60 */, Platform::GEN11, 0x2D,
+  {Op::RET /* Op::63 */, Platform::GEN11, 0x2D,
     "ret",
     "Return",
     OpSpec::Format::JUMP_UNARY_REG,
@@ -632,7 +635,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
-  {Op::RNDD /* Op::61 */, Platform::GEN11, 0x45,
+  {Op::RNDD /* Op::64 */, Platform::GEN11, 0x45,
     "rndd",
     "Round Down",
     OpSpec::Format::BASIC_UNARY_REGIMM,
@@ -642,7 +645,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
-  {Op::RNDE /* Op::62 */, Platform::GEN11, 0x46,
+  {Op::RNDE /* Op::65 */, Platform::GEN11, 0x46,
     "rnde",
     "Round to Nearest or Even",
     OpSpec::Format::BASIC_UNARY_REGIMM,
@@ -652,7 +655,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
-  {Op::RNDU /* Op::63 */, Platform::GEN11, 0x44,
+  {Op::RNDU /* Op::66 */, Platform::GEN11, 0x44,
     "rndu",
     "Round Up",
     OpSpec::Format::BASIC_UNARY_REGIMM,
@@ -662,7 +665,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
-  {Op::RNDZ /* Op::64 */, Platform::GEN11, 0x47,
+  {Op::RNDZ /* Op::67 */, Platform::GEN11, 0x47,
     "rndz",
     "Round to Zero",
     OpSpec::Format::BASIC_UNARY_REGIMM,
@@ -672,7 +675,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
-  {Op::ROL /* Op::65 */, Platform::GEN11, 0x0F,
+  {Op::ROL /* Op::68 */, Platform::GEN11, 0x0F,
     "rol",
     "Rotate Left",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -682,7 +685,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER
   },
-  {Op::ROR /* Op::66 */, Platform::GEN11, 0x0E,
+  {Op::ROR /* Op::69 */, Platform::GEN11, 0x0E,
     "ror",
     "Rotate Right",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -695,7 +698,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
   {Op::INVALID, Platform::GEN11, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
   {Op::INVALID, Platform::GEN11, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
   {Op::INVALID, Platform::GEN11, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
-  {Op::SEL /* Op::70 */, Platform::GEN11, 0x02,
+  {Op::SEL /* Op::73 */, Platform::GEN11, 0x02,
     "sel",
     "Select",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -721,14 +724,14 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::IS_SELECT|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
-  {Op::SEND /* Op::71 */, Platform::GEN11, 0x31,
+  {Op::SEND /* Op::74 */, Platform::GEN11, 0x31,
     "send",
     "Send Message",
     OpSpec::Format::SEND_UNARY,
     {}, // no type mappings
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
-  {Op::SENDC /* Op::72 */, Platform::GEN11, 0x32,
+  {Op::SENDC /* Op::75 */, Platform::GEN11, 0x32,
     "sendc",
     "Conditional Send Message",
     OpSpec::Format::SEND_UNARY,
@@ -738,14 +741,14 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
   {Op::INVALID, Platform::GEN11, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
   {Op::INVALID, Platform::GEN11, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
   {Op::INVALID, Platform::GEN11, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
-  {Op::SENDS /* Op::76 */, Platform::GEN11, 0x33,
+  {Op::SENDS /* Op::79 */, Platform::GEN11, 0x33,
     "sends",
     "Split Send Message",
     OpSpec::Format::SEND_BINARY,
     {}, // no type mappings
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
-  {Op::SENDSC /* Op::77 */, Platform::GEN11, 0x34,
+  {Op::SENDSC /* Op::80 */, Platform::GEN11, 0x34,
     "sendsc",
     "Conditional Split Send Message",
     OpSpec::Format::SEND_BINARY,
@@ -753,7 +756,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
   {Op::INVALID, Platform::GEN11, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
-  {Op::SHL /* Op::79 */, Platform::GEN11, 0x09,
+  {Op::SHL /* Op::82 */, Platform::GEN11, 0x09,
     "shl",
     "Shift Left",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -771,7 +774,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
-  {Op::SHR /* Op::80 */, Platform::GEN11, 0x08,
+  {Op::SHR /* Op::83 */, Platform::GEN11, 0x08,
     "shr",
     "Shift Right",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -789,7 +792,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
-  {Op::SMOV /* Op::81 */, Platform::GEN11, 0x0A,
+  {Op::SMOV /* Op::84 */, Platform::GEN11, 0x0A,
     "smov",
     "Scattered Move",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -806,7 +809,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
   {Op::INVALID, Platform::GEN11, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
-  {Op::SUBB /* Op::83 */, Platform::GEN11, 0x4F,
+  {Op::SUBB /* Op::86 */, Platform::GEN11, 0x4F,
     "subb",
     "Integer Subtraction with Borrow",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -817,7 +820,7 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION
   },
   {Op::INVALID, Platform::GEN11, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
-  {Op::WAIT /* Op::85 */, Platform::GEN11, 0x30,
+  {Op::WAIT /* Op::88 */, Platform::GEN11, 0x30,
     "wait",
     "Wait Notification",
     OpSpec::Format::SYNC_UNARY,
@@ -827,14 +830,14 @@ static const iga::OpSpec MODEL_GEN11_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::NONE
   },
-  {Op::WHILE /* Op::86 */, Platform::GEN11, 0x27,
+  {Op::WHILE /* Op::89 */, Platform::GEN11, 0x27,
     "while",
     "While",
     OpSpec::Format::JUMP_UNARY_IMM,
     {}, // no type mappings
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
-  {Op::XOR /* Op::87 */, Platform::GEN11, 0x07,
+  {Op::XOR /* Op::90 */, Platform::GEN11, 0x07,
     "xor",
     "Logic Xor",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
