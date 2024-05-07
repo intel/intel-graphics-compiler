@@ -6,8 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ==========================-->
 
-# Intel&reg; Graphics Compiler for OpenCL&trade;
-
 ## Producing shader dumps
 
 Shader dumps (further abbreviated as *dumps*) are intermediate compilation snapshots created during IGC runtime. They are the main IGC debugging tool. For example: producing dumps from two consecutive builds and comparing them will show exactly what effect the change has had on the compilation process.

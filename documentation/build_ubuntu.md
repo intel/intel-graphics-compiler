@@ -6,8 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ==========================-->
 
-# Intel&reg; Graphics Compiler for OpenCL&trade;
-
 ## Ubuntu build section
 
 ### 1. Prepare workspace
@@ -15,7 +13,8 @@ SPDX-License-Identifier: MIT
 Building IGC needs flex, bison, libz and cmake version at least 3.13.4. You can install required packages on Ubuntu using this command:
 
 ```shell
-$ sudo apt-get install flex bison libz-dev cmake libc6 libstdc++6
+$ sudo apt-get install flex bison libz-dev cmake libc6 libstdc++6 python3-pip
+$ sudo python3 -m pip install mako
 ```
 
 Some of the incoming git operations will try to download and apply patches. For this purpose it is necessary to setup git credentials if they are not already in the git configuration:
@@ -33,6 +32,13 @@ In this step you need to prepare VC Intrinsics, SPIRV-LLVM Translator, LLVM, LLD
 It can be done either by using packaged releases or building those yourself:
 
 #### Use preinstalled packages
+
+**Configuration using preinstalled packages is not recommended and is not being validated.**
+
+IGC can use preinstalled LLVM, however while building with LLVM from sources it applies additional patches addressing certain workloads.
+Also, depending on the Ubuntu release, SPIRV-LLVM-Translator available through apt may be older than required.
+
+<details>
 
 For **LLVM**, **LLD** and **Clang** packages please visit this [link](https://apt.llvm.org/) to download and install desired version.
 For `apt` package manager you can use this command:
@@ -55,6 +61,8 @@ When **SPIRV-Tools** are set to Prebuilds you may also use **SPIRV-Headers** pre
 Mind that until the issue https://github.com/KhronosGroup/SPIRV-Tools/issues/3909 will not be resolved, we support SPIRV_Tools only as a shared lib, and we encourage to build SPIRV-Tools prebuild with SPIRV_TOOLS_BUILD_STATIC=OFF flag.
 
 Moreover, OpenCL Clang and Vector Compiler share the SPIRV-LLVM Translator library. SPIRV-LLVM Translator cannot be built if OpenCL-Clang is taken as prebuilt from system. This can lead to problems with linking.
+
+</details>
 
 #### Build from sources
 
