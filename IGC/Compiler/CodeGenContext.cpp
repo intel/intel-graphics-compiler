@@ -973,11 +973,8 @@ namespace IGC
             IGC_ASSERT_MESSAGE(0, "Incorrect shader type");
         }
 
-        if (hasSyncRTCalls() &&
-           (simdMode > platform.getPreferredRayQuerySIMDSize()))
-        {
-            simdMode = platform.getPreferredRayQuerySIMDSize();
-        }
+        IGC_ASSERT_MESSAGE(!hasSyncRTCalls() || (simdMode <= platform.getPreferredRayQuerySIMDSize()),
+            "Unsupported SIMD mode for RayQuery");
 
         return simdMode;
     }
