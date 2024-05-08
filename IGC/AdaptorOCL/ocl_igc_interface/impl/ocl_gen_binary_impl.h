@@ -15,12 +15,11 @@ SPDX-License-Identifier: MIT
 #include "igfxfmid.h"
 
 #include "cif/macros/enable.h"
-#include "OCLAPI/oclapi.h"
 
 namespace IGC {
 
 CIF_DECLARE_INTERFACE_PIMPL(OclGenBinary) : CIF::PimplBase {
-  OCL_API_CALL CIF_PIMPL_DECLARE_CONSTRUCTOR()
+  CIF_PIMPL_DECLARE_CONSTRUCTOR()
   {
   }
 };

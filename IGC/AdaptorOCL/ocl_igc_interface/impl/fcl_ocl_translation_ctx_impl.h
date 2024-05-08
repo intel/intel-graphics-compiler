@@ -26,7 +26,6 @@ SPDX-License-Identifier: MIT
 #include "OCLFE/igd_fcl_mcl/headers/common_clang.h"
 
 #include "cif/macros/enable.h"
-#include "OCLAPI/oclapi.h"
 
 namespace TC{
 
@@ -36,7 +35,7 @@ namespace IGC {
 
 CIF_DECLARE_INTERFACE_PIMPL(FclOclTranslationCtx) : CIF::PimplBase
 {
-    OCL_API_CALL CIF_PIMPL_DECLARE_CONSTRUCTOR(CIF::Version_t version, CIF_PIMPL(FclOclDeviceCtx) *globalState,
+    CIF_PIMPL_DECLARE_CONSTRUCTOR(CIF::Version_t version, CIF_PIMPL(FclOclDeviceCtx) *globalState,
                                   CodeType::CodeType_t inType, CodeType::CodeType_t outType)
         : globalState(CIF::Sanity::ToReferenceOrAbort(globalState)), inType(inType), outType(outType){
         this->legacyInterface = CreateLegacyInterface(inType, outType, err);
@@ -44,7 +43,7 @@ CIF_DECLARE_INTERFACE_PIMPL(FclOclTranslationCtx) : CIF::PimplBase
         this->legacyInterface->SetOclApiVersion(globalState->MiscOptions.OclApiVersion);
     }
 
-    OCL_API_CALL CIF_PIMPL_DECLARE_CONSTRUCTOR(CIF::Version_t version, CIF_PIMPL(FclOclDeviceCtx)* globalState,
+    CIF_PIMPL_DECLARE_CONSTRUCTOR(CIF::Version_t version, CIF_PIMPL(FclOclDeviceCtx)* globalState,
                                   CodeType::CodeType_t inType, CodeType::CodeType_t outType, CIF::Builtins::BufferSimple* err)
         : globalState(CIF::Sanity::ToReferenceOrAbort(globalState)), inType(inType), outType(outType), err(err) {
         this->legacyInterface = CreateLegacyInterface(inType, outType, err);
@@ -54,14 +53,14 @@ CIF_DECLARE_INTERFACE_PIMPL(FclOclTranslationCtx) : CIF::PimplBase
         }
     }
 
-    OCL_API_CALL CIF_PIMPL_DECLARE_DESTRUCTOR() override{
+    CIF_PIMPL_DECLARE_DESTRUCTOR() override{
         if(this->legacyInterface != nullptr){
             TC::CClangTranslationBlock::Delete(this->legacyInterface);
             this->legacyInterface = nullptr;
         }
     }
 
-    OCL_API_CALL static bool SupportsTranslation(CodeType::CodeType_t inType, CodeType::CodeType_t outType){
+    static bool SupportsTranslation(CodeType::CodeType_t inType, CodeType::CodeType_t outType){
         static std::pair<CodeType::CodeType_t, CodeType::CodeType_t> supportedTranslations[] =
             {
                   // from                 // to
@@ -80,14 +79,14 @@ CIF_DECLARE_INTERFACE_PIMPL(FclOclTranslationCtx) : CIF::PimplBase
         return false;
     }
 
-    OCL_API_CALL OclTranslationOutputBase* TranslateCM(CIF::Version_t outVersion,
+    OclTranslationOutputBase* TranslateCM(CIF::Version_t outVersion,
                                         CIF::Builtins::BufferSimple* src,
                                         CIF::Builtins::BufferSimple* options,
                                         CIF::Builtins::BufferSimple* internalOptions,
                                         CIF::Builtins::BufferSimple* tracingOptions,
                                         uint32_t tracingOptionsCount
                                         );
-    OCL_API_CALL OclTranslationOutputBase *Translate(CIF::Version_t outVersion,
+    OclTranslationOutputBase *Translate(CIF::Version_t outVersion,
                                         CIF::Builtins::BufferSimple *src,
                                         CIF::Builtins::BufferSimple *options,
                                         CIF::Builtins::BufferSimple *internalOptions,
@@ -149,18 +148,18 @@ protected:
     std::string FclOpts{};
     std::string FclInternalOpts{};
 public:
-    OCL_API_CALL void GetFclOptions(CIF::Builtins::BufferSimple *opts){
+    void GetFclOptions(CIF::Builtins::BufferSimple *opts){
       assert(opts && opts->GetSizeRaw() == 0 && "GetFclOptions expects empty buffer");
       opts->Resize(FclOpts.size() + 1);
       strncpy((char*)opts->GetMemoryRawWriteable(), FclOpts.c_str(), FclOpts.size() + 1);
     }
-    OCL_API_CALL void GetFclInternalOptions(CIF::Builtins::BufferSimple *opts) {
+    void GetFclInternalOptions(CIF::Builtins::BufferSimple *opts) {
       assert(opts && opts->GetSizeRaw() == 0 && "GetFclInternalOptions expects empty buffer");
       opts->Resize(FclInternalOpts.size() + 1);
       strncpy((char*)opts->GetMemoryRawWriteable(), FclInternalOpts.c_str(), FclInternalOpts.size() + 1);
     }
 protected:
-    OCL_API_CALL static TC::CClangTranslationBlock* CreateLegacyInterface(CodeType::CodeType_t inType, CodeType::CodeType_t outType, CIF::Builtins::BufferSimple* err) {
+    static TC::CClangTranslationBlock* CreateLegacyInterface(CodeType::CodeType_t inType, CodeType::CodeType_t outType, CIF::Builtins::BufferSimple* err) {
         if (SupportsTranslation(inType, outType) == false) {
             return nullptr;
         }

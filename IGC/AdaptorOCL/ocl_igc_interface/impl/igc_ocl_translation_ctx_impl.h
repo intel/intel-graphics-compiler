@@ -29,7 +29,6 @@ SPDX-License-Identifier: MIT
 #include <spirv-tools/libspirv.h>
 
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
-#include "OCLAPI/oclapi.h"
 
 namespace TC{
 
@@ -49,14 +48,14 @@ extern bool ParseInput(
   IGC::OpenCLProgramContext &oclContext,
   TB_DATA_FORMAT inputDataFormatTemp);
 
-OCL_API_CALL bool TranslateBuild(
+bool TranslateBuild(
   const STB_TranslateInputArgs* pInputArgs,
   STB_TranslateOutputArgs* pOutputArgs,
   TB_DATA_FORMAT inputDataFormatTemp,
   const IGC::CPlatform &platform,
   float profilingTimerResolution);
 
-OCL_API_CALL bool TranslateBuildSPMD(
+bool TranslateBuildSPMD(
   const STB_TranslateInputArgs* pInputArgs,
   STB_TranslateOutputArgs* pOutputArgs,
   TB_DATA_FORMAT inputDataFormatTemp,
@@ -64,7 +63,7 @@ OCL_API_CALL bool TranslateBuildSPMD(
   float profilingTimerResolution,
   const ShaderHash& inputShHash);
 
-OCL_API_CALL bool TranslateBuildVC(
+bool TranslateBuildVC(
   const STB_TranslateInputArgs* pInputArgs,
   STB_TranslateOutputArgs* pOutputArgs,
   TB_DATA_FORMAT inputDataFormatTemp,
@@ -72,16 +71,16 @@ OCL_API_CALL bool TranslateBuildVC(
   float profilingTimerResolution,
   const ShaderHash& inputShHash);
 
-OCL_API_CALL void RebuildGlobalAnnotations(
+void RebuildGlobalAnnotations(
   IGC::OpenCLProgramContext& oclContext,
   llvm::Module* pKernelModule
 );
 
-OCL_API_CALL bool ReadSpecConstantsFromSPIRV(
+bool ReadSpecConstantsFromSPIRV(
     std::istream &IS,
     std::vector<std::pair<uint32_t, uint32_t>> &OutSCInfo);
 
-OCL_API_CALL void DumpShaderFile(
+void DumpShaderFile(
     const std::string& dstDir,
     const char* pBuffer,
     const UINT bufferSize,
@@ -89,20 +88,20 @@ OCL_API_CALL void DumpShaderFile(
     const std::string& ext,
     std::string* fileName);
 
-OCL_API_CALL spv_result_t DisassembleSPIRV(
+spv_result_t DisassembleSPIRV(
     const char* pBuffer,
     UINT bufferSize,
     spv_text* outSpirvAsm);
 
-OCL_API_CALL void UnlockMutex();
+void UnlockMutex();
 
 }
 
-OCL_API_CALL bool enableSrcLine(void*);
+bool enableSrcLine(void*);
 
 namespace IGC {
 
-    OCL_API_CALL inline TC::TB_DATA_FORMAT toLegacyFormat(CodeType::CodeType_t format){
+inline TC::TB_DATA_FORMAT toLegacyFormat(CodeType::CodeType_t format){
     switch(format){
         case CodeType::elf : return TC::TB_DATA_FORMAT_ELF; break;
         case CodeType::llvmBc : return TC::TB_DATA_FORMAT_LLVM_BINARY; break;
@@ -115,7 +114,7 @@ namespace IGC {
     }
 }
 
-struct OCL_API_CALL IGC_State {
+struct IGC_State {
 protected:
     bool isAlive;
 public:
@@ -135,13 +134,13 @@ public:
 
 CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
 {
-    OCL_API_CALL CIF_PIMPL_DECLARE_CONSTRUCTOR(CIF::Version_t version, CIF_PIMPL(IgcOclDeviceCtx) *globalState,
+    CIF_PIMPL_DECLARE_CONSTRUCTOR(CIF::Version_t version, CIF_PIMPL(IgcOclDeviceCtx) *globalState,
                                   CodeType::CodeType_t inType, CodeType::CodeType_t outType)
         : globalState(CIF::Sanity::ToReferenceOrAbort(globalState)), inType(inType), outType(outType)
     {
     }
 
-    OCL_API_CALL static bool SupportsTranslation(CodeType::CodeType_t inType, CodeType::CodeType_t outType){
+    static bool SupportsTranslation(CodeType::CodeType_t inType, CodeType::CodeType_t outType){
         static std::pair<CodeType::CodeType_t, CodeType::CodeType_t> supportedTranslations[] =
             {
                   // from                 // to
@@ -159,7 +158,7 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
         return false;
     }
 
-    OCL_API_CALL bool GetSpecConstantsInfo(CIF::Builtins::BufferSimple *src,
+    bool GetSpecConstantsInfo(CIF::Builtins::BufferSimple *src,
                               CIF::Builtins::BufferSimple *outSpecConstantsIds,
                               CIF::Builtins::BufferSimple *outSpecConstantsSizes)
     {
@@ -214,7 +213,7 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
         return success;
     }
 
-    OCL_API_CALL OclTranslationOutputBase *Translate(CIF::Version_t outVersion,
+    OclTranslationOutputBase *Translate(CIF::Version_t outVersion,
                                         CIF::Builtins::BufferSimple *src,
                                         CIF::Builtins::BufferSimple *specConstantsIds,
                                         CIF::Builtins::BufferSimple *specConstantsValues,
@@ -410,7 +409,7 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
         return outputInterface.release();
     }
 
-    OCL_API_CALL OclTranslationOutputBase* GetErrorOutput(CIF::Version_t outVersion, unsigned int code) const
+    OclTranslationOutputBase* GetErrorOutput(CIF::Version_t outVersion, unsigned int code) const
     {
         auto outputInterface = CIF::RAII::UPtr(CIF::InterfaceCreator<OclTranslationOutput>::CreateInterfaceVer(outVersion, this->outType));
         if (outputInterface == nullptr) {
@@ -475,7 +474,7 @@ CIF_DEFINE_INTERFACE_TO_PIMPL_FORWARDING_CTOR_DTOR(IgcOclTranslationCtx);
 
 #if defined(NDEBUG)
 #if defined(WIN32)
-OCL_API_CALL int ex_filter(unsigned int code, struct _EXCEPTION_POINTERS* ep);
+int ex_filter(unsigned int code, struct _EXCEPTION_POINTERS* ep);
 
 #define EX_GUARD_BEGIN                                                        \
 __try                                                                         \
@@ -490,7 +489,7 @@ __except (ex_filter(GetExceptionCode(), GetExceptionInformation()))           \
 }                                                                             \
 
 #else
-OCL_API_CALL void signalHandler(int sig, siginfo_t* info, void* ucontext);
+void signalHandler(int sig, siginfo_t* info, void* ucontext);
 
 #define SET_SIG_HANDLER(SIG)                                                  \
 struct sigaction saold_##SIG;                                                 \

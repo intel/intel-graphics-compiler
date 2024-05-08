@@ -17,7 +17,6 @@ SPDX-License-Identifier: MIT
 #include "ocl_igc_interface/ocl_translation_output.h"
 
 #include "cif/macros/enable.h"
-#include "OCLAPI/oclapi.h"
 
 // Interface : FCL_OCL_TRAC
 //             "Frontent Compiler - OCL" Translation Context
@@ -31,7 +30,7 @@ CIF_DEFINE_INTERFACE_VER(FclOclTranslationCtx, 1) {
   CIF_INHERIT_CONSTRUCTOR();
 
   template <typename OclTranslationOutputInterface = OclTranslationOutputTagOCL>
-  OCL_API_CALL CIF::RAII::UPtr_t<OclTranslationOutputInterface> Translate(
+  CIF::RAII::UPtr_t<OclTranslationOutputInterface> Translate(
                                                              CIF::Builtins::BufferSimple *src,
                                                              CIF::Builtins::BufferSimple *options,
                                                              CIF::Builtins::BufferSimple *internalOptions,
@@ -44,7 +43,7 @@ CIF_DEFINE_INTERFACE_VER(FclOclTranslationCtx, 1) {
   }
 
 protected:
-   OCL_API_CALL virtual OclTranslationOutputBase *TranslateImpl(CIF::Version_t outVersion,
+  virtual OclTranslationOutputBase *TranslateImpl(CIF::Version_t outVersion,
                                                   CIF::Builtins::BufferSimple *src,
                                                   CIF::Builtins::BufferSimple *options,
                                                   CIF::Builtins::BufferSimple *internalOptions,
@@ -54,8 +53,8 @@ protected:
 
 CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(FclOclTranslationCtx, 2, 1) {
   CIF_INHERIT_CONSTRUCTOR();
-  OCL_API_CALL virtual void GetFclOptions(CIF::Builtins::BufferSimple *options);
-  OCL_API_CALL virtual void GetFclInternalOptions(CIF::Builtins::BufferSimple *internalOptions);
+  virtual void GetFclOptions(CIF::Builtins::BufferSimple *options);
+  virtual void GetFclInternalOptions(CIF::Builtins::BufferSimple *internalOptions);
 };
 
 CIF_GENERATE_VERSIONS_LIST_AND_DECLARE_INTERFACE_DEPENDENCIES(FclOclTranslationCtx, IGC::OclTranslationOutput, CIF::Builtins::Buffer);

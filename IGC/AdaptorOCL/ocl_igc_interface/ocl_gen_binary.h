@@ -28,7 +28,7 @@ CIF_DECLARE_INTERFACE(OclGenBinary, "OCL_GEN_BIN")
 // Default OCL GEN binary interface works only as 1:1 version checker,
 // but can be easily used for declaring backwards compatibility as well
 CIF_DEFINE_INTERFACE_VER(OclGenBinary, iOpenCL::CURRENT_ICBE_VERSION){
-   CIF_INHERIT_CONSTRUCTOR();
+  CIF_INHERIT_CONSTRUCTOR();
 };
 
 CIF_GENERATE_VERSIONS_LIST_WITH_BASE(OclGenBinary, 1000);
