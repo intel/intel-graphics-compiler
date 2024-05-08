@@ -55,6 +55,7 @@ IGC_INITIALIZE_PASS_END(JointMatrixFuncsResolutionPass, PASS_FLAG, PASS_DESC, PA
 static const char *SPIRVPrefix = "__spirv_";
 static const char *JointMatrixBIPrefix = "__builtin_spirv_OpJointMatrix";
 static const char *JointMatrixBISuffix = "JointMatrixINTEL_";
+static const char *JointMatrixPrefetchPrefx = "CooperativeMatrixPrefetch";
 static const char *JointMatrixLoadPrefx  = "JointMatrixLoadINTEL";
 static const char *JointMatrixStorePrefx = "JointMatrixStoreINTEL";
 static const char *JointMatrixMadPrefx   = "JointMatrixMadINTEL";
@@ -593,35 +594,38 @@ bool JointMatrixFuncsResolutionPass::ValidateLoadStore
 }
 
 std::string JointMatrixFuncsResolutionPass::GetMatrixFuncName(
-    bool isGetCoord, bool isLoad, unsigned operationLayout,
+    GetMatrixFuncNameOperation operation, unsigned operationLayout,
     unsigned address_space, const JointMatrixTypeDescription *desc,
-    std::string prefix) {
+    const std::string& prefix) {
+
     /* Treat row major matrices with types not supported by accumulators as
      * PackedA matrices. Both are in row major format. */
     unsigned matrixLayout = desc->layout;
-    if (!isGetCoord && isLoad && matrixLayout == LayoutRowMajor &&
+    if (operation == Load && matrixLayout == LayoutRowMajor &&
         desc->bitWidth <= 16) {
         matrixLayout = LayoutPackedA;
     }
 
-    std::string name = std::move(prefix);
+    std::string name = prefix;
 
-    switch (matrixLayout) {
-      case LayoutPackedA:
-        name += "PackedA_";
-        break;
-      case LayoutPackedB:
-        name += "PackedB_";
-        break;
-      case LayoutRowMajor:
-      case LayoutColumnMajor:
-        name += "Accumulator_";
-        break;
-      default:
-        IGC_ASSERT_MESSAGE(false, "Unexpected matrix layout.");
+    if (operation != Prefetch) {
+        switch (matrixLayout) {
+          case LayoutPackedA:
+            name += "PackedA_";
+            break;
+          case LayoutPackedB:
+            name += "PackedB_";
+            break;
+          case LayoutRowMajor:
+          case LayoutColumnMajor:
+            name += "Accumulator_";
+            break;
+          default:
+            IGC_ASSERT_MESSAGE(false, "Unexpected matrix layout.");
+        }
     }
 
-    if (!isGetCoord) {
+    if (operation != GetCoord && operation != Prefetch) {
         /* New version of the JointMatrix specification uses single value to
          * represent PackedA and PackedB layouts, named simply; 'Packed'. The
          * value of 'Packed' is equal to the value of legacy 'PackedA'. If we
@@ -663,25 +667,25 @@ std::string JointMatrixFuncsResolutionPass::GetMatrixFuncName(
     name += std::to_string(desc->columns);
     name += "_i" + std::to_string(desc->bitWidth);
 
-    // We are done creating the mangling for get_coord here()
-    if (isGetCoord)
+    // We are done creating the mangling for get_coord and prefetch
+    if (operation == Prefetch || operation == GetCoord)
         return name;
 
     name += "_" + std::to_string(getNumRowsPerWI(desc));
 
     // Continue mangling for load and store
     if (address_space == ADDRESS_SPACE_GLOBAL) {
-        name += "_global_";
+        name += "_global";
     } else if (address_space == ADDRESS_SPACE_LOCAL) {
-        name += "_local_";
+        name += "_local";
     } else {
-        name += "_generic_";
+        name += "_generic";
     }
 
-    if (isLoad) {
-        name += "v8i8_pi32_i32";
-    } else {
-        name += "pi64_v8i8";
+    if (operation == Load) {
+        name += "_v8i8_pi32_i32";
+    } else if (operation == Store) {
+        name += "_pi64_v8i8";
     }
     return name;
 }
@@ -1068,6 +1072,129 @@ static int resolveCacheControlDecorations(CodeGenContext *ctx, Value *pointerVal
     return 0;
 }
 
+static void AppendSetToString(std::string& msg, const std::set<unsigned>& numbers)
+{
+    bool first = true;
+    for (unsigned n: numbers) {
+        if (!first) msg += ", ";
+        msg += std::to_string(n);
+        first = false;
+    }
+}
+
+Instruction *JointMatrixFuncsResolutionPass::ResolvePrefetch(CallInst *CI)
+{
+    Value *ptrVal        = CI->getArgOperand(0);
+    Value *coordXVal     = CI->getArgOperand(1); // unused
+    Value *coordYVal     = CI->getArgOperand(2); // unused
+    Value *numRowsVal    = CI->getArgOperand(3);
+    Value *numColsVal    = CI->getArgOperand(4);
+    Value *cacheLevelVal = CI->getArgOperand(5);
+    Value *layoutVal     = CI->getArgOperand(6); // unused
+    Value *strideVal     = CI->getArgOperand(7);
+    unsigned loadLayout = (unsigned)constIntValue(layoutVal);
+    unsigned cacheLevel = (unsigned)constIntValue(cacheLevelVal);
+    (void)coordXVal; // This argument will be removed in future SPIRV translator versions
+    (void)coordYVal; // This argument will be removed in future SPIRV translator versions
+
+    JointMatrixTypeDescription desc;
+    desc.rows = (unsigned)constIntValue(numRowsVal);
+    desc.columns = (unsigned)constIntValue(numColsVal);
+
+    // Pointer type resolution
+    {
+        PointerType *ptrType = cast<PointerType>(ptrVal->getType());
+        Type *ptrElemType = IGCLLVM::getNonOpaquePtrEltTy(ptrType);
+
+        if (StructType *structTy = dyn_cast<StructType>(ptrElemType)) {
+            if (structTy->getNumElements() == 1) {
+                ptrElemType = structTy->getElementType(0);
+                // we assume that only custom floating point types are wrapped into structs
+                desc.isFloating = true;
+            }
+        }
+
+        if (ptrElemType->isHalfTy()) {
+            desc.bitWidth = 16;
+            desc.isFloating = true;
+        } else if (ptrElemType->isFloatTy()) {
+            desc.bitWidth = 32;
+            desc.isFloating = true;
+        } else if (ptrElemType->isDoubleTy()) {
+            desc.bitWidth = 64;
+            desc.isFloating = true;
+        } else if (ptrElemType->isIntegerTy()) {
+            desc.bitWidth = cast<IntegerType>(ptrElemType)->getBitWidth();
+        } else {
+            m_Ctx->EmitError("Failed to resolve matrix prefetch pointer type", ptrVal);
+        }
+    }
+
+    LLVMContext &ctx = CI->getContext();
+    Type *retTy = Type::getVoidTy(ctx);
+    Module *M = CI->getParent()->getModule();
+    unsigned address_space = ptrVal->getType()->getPointerAddressSpace();
+
+    // Prefetch validation
+    {
+        if (m_SIMDSize < 16) {
+            m_Ctx->EmitError("Matrix prefetch requires SIMD size to be 16 or higher", CI);
+        }
+
+        if (address_space != ADDRESS_SPACE_GENERIC &&
+            address_space != ADDRESS_SPACE_GLOBAL)
+        {
+            m_Ctx->EmitError("Unsupported address space. Matrix prefetch supports generic and global pointers", ptrVal);
+        }
+
+        std::set<unsigned> supported_rows = { 1, 2, 4, 8, 16, 32 };
+        std::set<unsigned> supported_cols = { 8, 16, 32, 64 };
+
+        if (supported_rows.find(desc.rows) == supported_rows.end()) {
+            std::string msg = "Unsupported row parameter for matrix prefetch: " +
+                std::to_string(desc.rows) + ". Supported values: ";
+            AppendSetToString(msg, supported_rows);
+            msg += ".";
+            m_Ctx->EmitError(msg.c_str(), numRowsVal);
+        }
+
+        if (supported_cols.find(desc.columns) == supported_cols.end()) {
+            std::string msg = "Unsupported column parameter for matrix prefetch: "
+                + std::to_string(desc.columns)  + ". Supported values: ";
+            AppendSetToString(msg, supported_cols);
+            msg += ".";
+            m_Ctx->EmitError(msg.c_str(), numColsVal);
+        }
+
+        unsigned elemBytes = desc.bitWidth/8;
+        unsigned perRowBytes = desc.columns * elemBytes;
+        bool supported = (perRowBytes <= 64);
+
+        if (!supported) {
+            std::string msg = "Matrix prefetch size limit exceeded. "
+                "(columns * dataSize) has to be (equal or less than 64B)";
+            msg += ".\nLimit exceeded with values: " + std::to_string(desc.columns) +
+                " * " + std::to_string(elemBytes) + "B = " + std::to_string(perRowBytes) + "B";
+            m_Ctx->EmitError(msg.c_str(), ptrVal);
+        }
+    }
+
+    std::string funcName = GetMatrixFuncName(Prefetch, loadLayout, address_space, &desc,
+        "__builtin_spriv_OpJointMatrixPrefetchINTEL_");
+    FunctionType *funcType = FunctionType::get(retTy, { ptrVal->getType(), strideVal->getType(), Type::getInt32Ty(ctx) }, false);
+
+    InstsToErase.insert(CI);
+    IRBuilder<> builder(CI);
+
+    int targetCacheOpt = (cacheLevel <= 1 ? LSC_L1C_WT_L3C_WB : LSC_L1UC_L3C_WB); // This is an arbitrary mapping that hopefully gets specified in the future
+    Value *cacheOpt = builder.getInt32(targetCacheOpt);
+
+    std::vector<Value *> Args = { ptrVal, strideVal, cacheOpt };
+    Instruction *newCall = builder.CreateCall(M->getOrInsertFunction(funcName, funcType), Args);
+    newCall->setDebugLoc(CI->getDebugLoc());
+    return newCall;
+}
+
 template <bool IsJointMatrix>
 Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
 {
@@ -1091,7 +1218,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
 
     ValidateLoadStore(true, loadLayout, &desc, CI);
     std::string funcName =
-        GetMatrixFuncName(false, true, loadLayout, address_space, &desc,
+        GetMatrixFuncName(Load, loadLayout, address_space, &desc,
                           "__builtin_spriv_OpJointMatrixLoadINTEL_");
     FunctionType *funcType = FunctionType::get(retTy, { arrayTy, ptrVal->getType(), strideVal->getType(), Type::getInt32Ty(ctx) }, false);
 
@@ -1143,7 +1270,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveStore(CallInst *CI)
 
     ValidateLoadStore(false, storeLayout, &desc, CI);
     std::string funcName =
-        GetMatrixFuncName(false, false, storeLayout, address_space, &desc,
+        GetMatrixFuncName(Store, storeLayout, address_space, &desc,
                           "__builtin_spriv_OpJointMatrixStoreINTEL_");
     FunctionType *funcType =
         FunctionType::get(Type::getVoidTy(M->getContext()),
@@ -1496,7 +1623,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveGetCoord(CallInst *CI) {
     ResolveType(jointMatArg->getType(), &desc);
 
     std::string funcName = GetMatrixFuncName(
-        true, false, -1 /*placeholder*/, -1 /*placeholder*/, &desc,
+        GetCoord, -1 /*placeholder*/, -1 /*placeholder*/, &desc,
         "__builtin_spirv_OpJointMatrixGetCoordINTEL_"); // GetCoordMatrixFuncName(&desc);
 
     IRBuilder builder(CI);
@@ -1792,7 +1919,10 @@ Value *JointMatrixFuncsResolutionPass::ResolveCall(CallInst *CI) {
 
     Value *NewValue = nullptr;
     StringRef funcName = func->getName();
-    if (funcName.contains(JointMatrixLoadPrefx)) {
+    if (funcName.contains(JointMatrixPrefetchPrefx)) {
+        InsertPlaceholder(CI);
+        NewValue = ResolvePrefetch(CI);
+    } else if (funcName.contains(JointMatrixLoadPrefx)) {
         InsertPlaceholder(CI);
         NewValue = ResolveLoad</*isJointMatrix*/ true>(CI);
     } else if (funcName.contains(CooperativeMatrixLoadPrefx)) {

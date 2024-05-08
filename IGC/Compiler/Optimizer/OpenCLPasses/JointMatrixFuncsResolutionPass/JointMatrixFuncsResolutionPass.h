@@ -52,6 +52,7 @@ namespace IGC
         void visitBitCastInst(llvm::BitCastInst &I);
 
     private:
+        llvm::Instruction *ResolvePrefetch(llvm::CallInst *CI);
         template <bool IsJointMatrix>
         llvm::Instruction *ResolveLoad(llvm::CallInst *CI);
         template <bool IsJointMatrix>
@@ -81,11 +82,17 @@ namespace IGC
         void CacheResolvedTypes(llvm::Type *oldType, llvm::Type *newType);
         void InsertPlaceholder(llvm::Value *v);
 
-        std::string GetMatrixFuncName(bool isGetCoord, bool isLoad,
+        enum GetMatrixFuncNameOperation {
+            GetCoord,
+            Prefetch,
+            Load,
+            Store,
+        };
+        std::string GetMatrixFuncName(GetMatrixFuncNameOperation operation,
                                       unsigned operationLayout,
                                       unsigned address_space,
                                       const JointMatrixTypeDescription *desc,
-                                      std::string prefix);
+                                      const std::string& prefix);
 
         bool ValidateLoadStore
             (bool isLoad, unsigned operationLayout, const JointMatrixTypeDescription *desc, llvm::Value *ctx);

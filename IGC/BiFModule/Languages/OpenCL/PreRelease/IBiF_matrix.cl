@@ -275,13 +275,13 @@ typedef uint   __attribute__((ext_vector_type(32))) uint32;
 // WI_rows is the number of rows owned by each WI, which can be different from M e.g. for tf32
 #define MANGLE_LOAD_NAME_AS_GENERIC(layout, sg, elem_bitwidth, shape, WI_rows) \
   __builtin_spriv_OpJointMatrixLoadINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_##WI_rows##_generic_v8i8_pi32_i32
-
 #define MANGLE_LOAD_NAME_AS_LOCAL(layout, sg, elem_bitwidth, shape, WI_rows) \
   __builtin_spriv_OpJointMatrixLoadINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_##WI_rows##_local_v8i8_pi32_i32
-
 #define MANGLE_LOAD_NAME_AS_GLOBAL(layout, sg, elem_bitwidth, shape, WI_rows) \
   __builtin_spriv_OpJointMatrixLoadINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_##WI_rows##_global_v8i8_pi32_i32
 
+#define MANGLE_PREFETCH_NAME(sg, elem_bitwidth, shape) \
+  __builtin_spriv_OpJointMatrixPrefetchINTEL##sg##_##shape##_i##elem_bitwidth
 
 #define SUB_GROUP_LOAD(readop, M, src, dst, stride, contrib_type) \
     __private contrib_type *wi_contrib = (__private contrib_type *)dst; \
@@ -321,17 +321,17 @@ typedef uint   __attribute__((ext_vector_type(32))) uint32;
 #define DEFINE_BLOCK_RW_NAME2(rw, us) intel_sub_group_block_##rw##us##2
 #define DEFINE_BLOCK_RW_NAME1(rw, us) intel_sub_group_block_##rw##us
 
-#define DEFINE_BLOCK2D_RW_NAME(rw, tx, contrib_bitwidth, WI_rows, M, K) __builtin_IB_subgroup_block_##rw##_flat_cacheopts##tx##_u##contrib_bitwidth##_wi##WI_rows##_m##M##k##K##v1
-#define DEFINE_BLOCK2D_TRANSPOSE_NAME(contrib_bitwidth, K) __builtin_IB_subgroup_block_read_flat_cacheopts_transpose_u##contrib_bitwidth##_k##K
-#define DEFINE_BLOCK2D_VNNI_NAME(contrib_bitwidth, K) __builtin_IB_subgroup_block_read_flat_cacheopts_transform_u##contrib_bitwidth##_k##K
+#define DEFINE_BLOCK2D_RW_NAME(rw, tx, contrib_bitwidth, WI_rows, tile_height, tile_width) __builtin_IB_subgroup_block_##rw##_flat_cacheopts##tx##_u##contrib_bitwidth##_wi##WI_rows##_m##tile_height##k##tile_width##v1
+#define DEFINE_BLOCK2D_TRANSPOSE_NAME(contrib_bitwidth, tile_width) __builtin_IB_subgroup_block_read_flat_cacheopts_transpose_u##contrib_bitwidth##_k##tile_width // tile_height = sub group size (16)
+#define DEFINE_BLOCK2D_VNNI_NAME(contrib_bitwidth, tile_height) __builtin_IB_subgroup_block_read_flat_cacheopts_transform_u##contrib_bitwidth##_k##tile_height // tile_width = sub group size (16)
 
 /* For platforms without SG16 JointMatrix support block2d is not available. The
  * implementation remains empty, will fallthrough to vector implementation. */
-#define IMPLEMENT_BLOCK2D_LOAD_ROW_MAJOR_(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_K) \
+#define IMPLEMENT_BLOCK2D_LOAD_ROW_MAJOR_(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_M, contrib_K) \
   /* not supported, fallthrough */
-#define IMPLEMENT_BLOCK2D_LOAD_COL_MAJOR_(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_K) \
+#define IMPLEMENT_BLOCK2D_LOAD_COL_MAJOR_(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_M, contrib_K) \
   /* not supported, fallthrough */
-#define IMPLEMENT_BLOCK2D_LOAD_VNNI_TX_(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_K) \
+#define IMPLEMENT_BLOCK2D_LOAD_VNNI_TX_(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_M, contrib_K) \
   /* not supported, fallthrough */
 #define IMPLEMENT_BLOCK2D_STORE_1(layout, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, store_height, contrib_K) \
   /* not supported, fallthrough */
@@ -342,7 +342,7 @@ typedef uint   __attribute__((ext_vector_type(32))) uint32;
 
 #define MAX_ROW_BYTES_2D_BLOCK_LOAD 64 // maximum per row size in bytes supported by 2D block load
 
-#define IMPLEMENT_BLOCK2D_LOAD_SG16_ROW_MAJOR_(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_K) \
+#define IMPLEMENT_BLOCK2D_LOAD_SG16_ROW_MAJOR_(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_M, contrib_K) \
   if (contrib_K*sizeof(contrib_type) <= MAX_ROW_BYTES_2D_BLOCK_LOAD) { /* For 2D loads (block2d width)*(data size) must be <= MAX_ROW_BYTES_2D_BLOCK_LOAD */ \
     long offset = as_long(mem); \
     long baseoffset = offset & (~0x3f); /* align to 64-byte */ \
@@ -357,13 +357,13 @@ typedef uint   __attribute__((ext_vector_type(32))) uint32;
     return; \
   }
 
-#define IMPLEMENT_BLOCK2D_LOAD_SG16_COL_MAJOR_(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_K) \
-  if (contrib_K*sizeof(element_type) <= MAX_ROW_BYTES_2D_BLOCK_LOAD) { /* For 2D loads (block2d width)*(data size) must be <= MAX_ROW_BYTES_2D_BLOCK_LOAD */ \
+#define IMPLEMENT_BLOCK2D_LOAD_SG16_COL_MAJOR_(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_M, contrib_K) \
+  if (M*sizeof(element_type) <= MAX_ROW_BYTES_2D_BLOCK_LOAD) { /* For 2D loads (block2d width)*(data size) must be <= MAX_ROW_BYTES_2D_BLOCK_LOAD */ \
     long offset = as_long(mem); \
     long baseoffset = offset & (~0x3f); /* align to 64-byte */ \
     int width = (sizeof (element_type)) * stride - 1; /* in bytes */ \
     int pitch = width; /* JointMatrices are expected to be contiguous in memory, without padding at the end of a row */ \
-    int height = contrib_K - 1; /* column count */ \
+    int height = 16 - 1; /* taken from SG16 */ \
     long x = (offset - baseoffset) / (sizeof (contrib_type)); /* in elements */ \
     int2 coords = (int2)(x, 0); \
     /* 2D block read transpose builtin requires K value _after_ the transpose operation is done - which is equal to M before the transpose */ \
@@ -373,24 +373,26 @@ typedef uint   __attribute__((ext_vector_type(32))) uint32;
     return; \
   }
 
-#define IMPLEMENT_BLOCK2D_LOAD_SG16_VNNI_TX_(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_K) \
+#define IMPLEMENT_BLOCK2D_LOAD_SG16_VNNI_TX_(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_M, contrib_K) \
   if (contrib_K*sizeof(element_type) <= MAX_ROW_BYTES_2D_BLOCK_LOAD) { /* For 2D loads (block2d width)*(data size) must be <= MAX_ROW_BYTES_2D_BLOCK_LOAD */ \
     long offset = as_long(mem); \
     long baseoffset = offset & (~0x3f); /* align to 64-byte */ \
     int width = (sizeof (element_type)) * stride - 1; /* in bytes */ \
     int pitch = width; /* JointMatrices are expected to be contiguous in memory, without padding at the end of a row */ \
-    int height = K - 1; /* row count */ \
+    int height = contrib_M - 1; /* row count */ \
     long x = (offset - baseoffset) / (sizeof (element_type)); /* in elements */ \
     int2 coords = (int2)(x, 0); \
-    OUT_VEC##M(u##contrib_type) DEFINE_BLOCK2D_VNNI_NAME(elem_bitwidth, contrib_K)(long, int, int, int, int2, int); \
-    OUT_VEC##M(u##contrib_type) res = DEFINE_BLOCK2D_VNNI_NAME(elem_bitwidth, contrib_K)(baseoffset, width, height, pitch, coords, cacheOpt); \
+    OUT_VEC##M(u##contrib_type) DEFINE_BLOCK2D_VNNI_NAME(elem_bitwidth, contrib_M)(long, int, int, int, int2, int); \
+    OUT_VEC##M(u##contrib_type) res = DEFINE_BLOCK2D_VNNI_NAME(elem_bitwidth, contrib_M)(baseoffset, width, height, pitch, coords, cacheOpt); \
     *(__private OUT_VEC##M(u##contrib_type) *)dst = res; \
     return; \
   }
 
 #define IMPLEMENT_BLOCK2D_LOAD__(sg, order, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows) \
   IMPLEMENT_BLOCK2D_LOAD##sg##order(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, \
-                                    M, K, WI_rows, MATH_DIV(K, MATH_DIV(contrib_bitwidth, elem_bitwidth)))
+                                    M, K, WI_rows, \
+                                    MATH_MUL(M, MATH_DIV(contrib_bitwidth, elem_bitwidth)), \
+                                    MATH_DIV(K, MATH_DIV(contrib_bitwidth, elem_bitwidth)))
 
 #define IMPLEMENT_BLOCK2D_LOAD(sg, order, element_type, contrib_type, M, K, WI_rows) \
   IMPLEMENT_BLOCK2D_LOAD__(sg, order, element_type, BITWIDTH(element_type), contrib_type, BITWIDTH(contrib_type), \
@@ -541,6 +543,44 @@ typedef uint   __attribute__((ext_vector_type(32))) uint32;
 #define DEFINE_LOAD(layout, sg, element_type, contrib_type, M, K, order, us, WI_rows) \
     DEFINE_LOAD_IMPL(layout, sg, element_type, BITWIDTH(element_type), contrib_type, BITWIDTH(contrib_type), \
                      M, K, SHAPE(layout, M, K, element_type, contrib_type), order, us, WI_rows)
+
+// Prefetch impl
+#define DEFINE_PREFETCH_IMPL(sg, element_type, elem_bitwidth, M, K, shape) \
+  INLINE void MANGLE_PREFETCH_NAME(sg, elem_bitwidth, shape) (char *mem, long stride, int cacheOpt) { \
+    long offset = as_long(mem); \
+    long baseoffset = offset & (~0x3f); \
+    int width = (sizeof (element_type)) * stride - 1; \
+    int pitch = width; \
+    int height = M - 1; \
+    long x = (offset - baseoffset) / (sizeof (element_type)); \
+    int2 coords = (int2)(x, 0); \
+    void __builtin_IB_subgroup_block_read_flat_prefetch_u##elem_bitwidth##_m##M##k##K##v1(long, int, int, int, int2, int); \
+    __builtin_IB_subgroup_block_read_flat_prefetch_u##elem_bitwidth##_m##M##k##K##v1(baseoffset, width, height, pitch, coords, cacheOpt); \
+  }
+
+#define DEFINE_PREFETCH__(sg, element_type, elem_bitwidth, M, K, shape) \
+  DEFINE_PREFETCH_IMPL(sg, element_type, elem_bitwidth, M, K, shape)
+
+#define DEFINE_PREFETCH(sg, element_type, M, K) \
+  DEFINE_PREFETCH__(sg, element_type, BITWIDTH(element_type), M, K, SHAPE_CONCAT(M, K))
+
+// Prefetch define all combinations
+#define DEFINE_PREFETCH_GROUP_MK(M, K) \
+    DEFINE_PREFETCH(_SG16, char,  M, K) \
+    DEFINE_PREFETCH(_SG16, short, M, K) \
+    DEFINE_PREFETCH(_SG16, int,   M, K) \
+    DEFINE_PREFETCH(_SG16, long,  M, K)
+#define DEFINE_PREFETCH_GROUP_K(K) \
+    DEFINE_PREFETCH_GROUP_MK(1,  K) \
+    DEFINE_PREFETCH_GROUP_MK(2,  K) \
+    DEFINE_PREFETCH_GROUP_MK(4,  K) \
+    DEFINE_PREFETCH_GROUP_MK(8,  K) \
+    DEFINE_PREFETCH_GROUP_MK(16, K) \
+    DEFINE_PREFETCH_GROUP_MK(32, K)
+DEFINE_PREFETCH_GROUP_K(8)
+DEFINE_PREFETCH_GROUP_K(16)
+DEFINE_PREFETCH_GROUP_K(32)
+DEFINE_PREFETCH_GROUP_K(64)
 
 /* PackedA load i16 */
 DEFINE_LOAD(PackedA_RowMajor, , short, int, 8, 16, ROW_MAJOR, , 8)
