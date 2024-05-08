@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -162,6 +162,9 @@ private:
   /// True if subtarget supports LSC messages
   bool HasLSCMessages = false;
 
+  /// True if subtarget supports typed LSC messages
+  bool HasLSCTypedMessages = false;
+
   /// True if subtarget supports constant offset for LSC message address
   bool HasLSCOffset = false;
 
@@ -285,10 +288,16 @@ public:
 
   bool hasLSCMessages() const { return HasLSCMessages; }
 
+  bool hasLSCTypedMessages() const { return HasLSCTypedMessages; }
+
   bool hasLSCOffset() const { return HasLSCOffset; }
 
   bool translateLegacyMessages() const {
-    return (HasLSCMessages && TranslateLegacyMessages);
+    return HasLSCMessages && TranslateLegacyMessages;
+  }
+
+  bool translateMediaBlockMessages() const {
+    return HasLSCTypedMessages && TranslateLegacyMessages;
   }
 
   bool hasHalfSIMDLSC() const { return HasHalfSIMDLSC; }

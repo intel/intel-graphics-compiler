@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -157,6 +157,10 @@ def FeatureThreadPayloadInMemory : SubtargetFeature<"thread_payload_in_memory",
 def FeatureHasLSC : SubtargetFeature<"feature_has_lsc",
                                      "HasLSCMessages", "true",
                                      "Target supports LSC messages">;
+def FeatureHasLSCTyped : SubtargetFeature<"feature_has_lsc_typed",
+                                          "HasLSCTypedMessages", "true",
+                                          "Target supports typed LSC messages",
+                                          [FeatureHasLSC]>;
 def FeatureHasLSCOffset : SubtargetFeature<"feature_has_lsc_offset",
                                            "HasLSCOffset", "true",
                                            "Target supports constant offset for LSC messages",
@@ -482,6 +486,7 @@ def : Proc<"Xe2", [
   FeatureHasBfn,
   FeatureHasLSC,
   FeatureHasLSCOffset,
+  FeatureHasLSCTyped,
   FeatureHasLargeGRF,
   FeatureHasMadSimd32,
   FeatureHasNamedBarriers,

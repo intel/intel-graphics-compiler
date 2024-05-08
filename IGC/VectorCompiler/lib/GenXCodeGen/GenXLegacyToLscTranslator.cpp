@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2023 Intel Corporation
+Copyright (C) 2023-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -215,6 +215,8 @@ void GenXLegacyToLscTranslator::visitCallInst(CallInst &CI) {
     break;
   case GenXIntrinsic::genx_media_ld:
   case GenXIntrinsic::genx_media_st:
+    if (!ST->translateMediaBlockMessages())
+      return;
     NewCI = translateMediaLoadStore(CI);
     break;
   }
@@ -800,6 +802,8 @@ Value *GenXLegacyToLscTranslator::translateAtomic(CallInst &CI) const {
 
 Value *GenXLegacyToLscTranslator::translateMediaLoadStore(CallInst &CI) const {
   LLVM_DEBUG(dbgs() << "Translate intrinsic: " << CI);
+  IGC_ASSERT(ST->translateMediaBlockMessages());
+
   IRBuilder<> Builder(&CI);
   auto IID = vc::getAnyIntrinsicID(&CI);
 
