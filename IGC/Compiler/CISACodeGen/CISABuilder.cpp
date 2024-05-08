@@ -5285,6 +5285,12 @@ namespace IGC
             }
         }
 
+        if (IGC_GET_FLAG_VALUE(SpillCompressionThresholdOverride) != 0)
+        {
+            SaveOption(vISA_SpillSpaceCompressionThreshold,
+                IGC_GET_FLAG_VALUE(SpillCompressionThresholdOverride));
+        }
+
         if (context->getModuleMetaData()->compOpt.DisableIncSpillCostAllAddrTaken)
         {
             SaveOption(vISA_IncSpillCostAllAddrTaken, false);

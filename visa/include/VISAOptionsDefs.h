@@ -295,6 +295,8 @@ DEF_VISA_OPTION(vISA_SpillSpaceCompression, ET_BOOL, "-nospillcompression",
                 UNUSED, true)
 DEF_VISA_OPTION(vISA_ForceSpillSpaceCompression, ET_BOOL, "-forcespillcompression",
                 UNUSED, false)
+DEF_VISA_OPTION(vISA_SpillSpaceCompressionThreshold, ET_INT32, "-spillcompressionThreshold",
+                "USAGE: -spillcompressionThreshold <NUM>\n", 0)
 DEF_VISA_OPTION(vISA_ConsiderLoopInfoInRA, ET_BOOL, "-noloopra", UNUSED, true)
 DEF_VISA_OPTION(vISA_ReserveR0, ET_BOOL, "-reserveR0", UNUSED, false)
 DEF_VISA_OPTION(vISA_SpiltLLR, ET_BOOL, "-nosplitllr", UNUSED, true)

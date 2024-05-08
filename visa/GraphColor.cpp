@@ -10732,13 +10732,22 @@ unsigned GlobalRA::computeSpillSize(const LIVERANGE_LIST &spilledLRs) {
 
 bool GlobalRA::spillSpaceCompression(int spillSize,
                                      const int globalScratchOffset) {
-  if (builder.getOption(vISA_ForceSpillSpaceCompression))
+  if (builder.getOption(vISA_ForceSpillSpaceCompression) &&
+      (builder.getuint32Option(vISA_SpillSpaceCompressionThreshold) == 0))
     return true;
+
+  int spillcompressionThreshold =
+      (int)builder.getuint32Option(vISA_SpillSpaceCompressionThreshold) * 1024;
+
+  // user disabled vISA_ForceSpillSpaceCompression and no threshold override.
+  if (spillcompressionThreshold == 0) {
+    spillcompressionThreshold = SCRATCH_COMPRESS_THRESHOLD;
+  }
 
   // factor 1.2 is used to count in the space used for the following
   // iterations. Generally, the most spill will happen in first iteration.
   if ((spillSize * 1.2) <
-      ((int)SCRATCH_COMPRESS_THRESHOLD - globalScratchOffset)) {
+      (spillcompressionThreshold - globalScratchOffset)) {
     return false;
   }
   return true;
