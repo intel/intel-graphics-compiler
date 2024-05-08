@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2023 Intel Corporation
+Copyright (C) 2023-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -71,6 +71,8 @@ public:
   void visitFPToUIInst(FPToUIInst &Inst);
   void visitSIToFPInst(SIToFPInst &Inst);
   void visitUIToFPInst(UIToFPInst &Inst);
+
+  void visitSelectInst(SelectInst &Inst);
 
   // lower intrinsic instructions
   void visitCallInst(CallInst &Inst);
@@ -200,6 +202,36 @@ void GenXBFloatLowering::visitSIToFPInst(SIToFPInst &Inst) {
 
 void GenXBFloatLowering::visitUIToFPInst(UIToFPInst &Inst) {
   lowerCastToBFloat(Inst);
+}
+
+void GenXBFloatLowering::visitSelectInst(SelectInst &Inst) {
+  auto *Ty = Inst.getType();
+  if (!Ty->getScalarType()->isBFloatTy())
+    return;
+  LLVM_DEBUG(dbgs() << "GenXBFloatLowering: apply on SelectInst\n"
+                    << Inst << "\n");
+
+  auto *TrueVal = Inst.getTrueValue();
+  auto *FalseVal = Inst.getFalseValue();
+
+  IRBuilder<> Builder(&Inst);
+
+  Type *I16Ty = Builder.getInt16Ty();
+  if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty))
+    I16Ty = IGCLLVM::FixedVectorType::get(I16Ty, VTy->getNumElements());
+
+  auto *TrueValCast = Builder.CreateBitCast(TrueVal, I16Ty);
+  auto *FalseValCast = Builder.CreateBitCast(FalseVal, I16Ty);
+
+  auto *Select = Builder.CreateSelect(Inst.getCondition(), TrueValCast,
+                                      FalseValCast, Inst.getName() + ".int");
+  auto *Cast = Builder.CreateBitCast(Select, Ty);
+
+  Cast->takeName(&Inst);
+  Inst.replaceAllUsesWith(Cast);
+  Inst.eraseFromParent();
+
+  Modify = true;
 }
 
 void GenXBFloatLowering::visitCallInst(CallInst &Inst) {
