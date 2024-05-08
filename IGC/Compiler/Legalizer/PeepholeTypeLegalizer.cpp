@@ -915,6 +915,30 @@ void PeepholeTypeLegalizer::cleanupZExtInst(Instruction& I) {
                     I.eraseFromParent();
                     Changed = true;
                 }
+                /*
+                Check if mask can be applied only on first element of vector.
+
+                sample pattern:
+                %1.    trunc %ALU1 i64, i7
+                %2.    zext %1 i7, i16
+                -->
+                %1.    bitcast %ALU1 i64, <2 x i32>
+                %2.    extractelement %1, 0
+                %3.    and %2, mask
+                %4.    trunc %3 i32, i16
+                */
+                else if (promoteToInt >= I.getType()->getScalarSizeInBits()) {
+                    Value* srcAsVec = m_builder->CreateBitCast(prevInst->getOperand(0),
+                        IGCLLVM::FixedVectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
+                    Value* elmt = m_builder->CreateExtractElement(srcAsVec, llvm::ConstantInt::get(m_builder->getInt32Ty(), 0));
+                    uint64_t mask = (1ULL << activeBits) - 1;
+                    Value* maskedElmt = m_builder->CreateAnd(elmt, mask);
+                    Value* cleanedUpInst = m_builder->CreateTrunc(maskedElmt, I.getType());
+
+                    I.replaceAllUsesWith(cleanedUpInst);
+                    I.eraseFromParent();
+                    Changed = true;
+                }
                 else {
                     // this is a place holder, but DO NOT expect to need an implementation for this case.
                     IGC_ASSERT_MESSAGE(0, "Not yet implemented");
