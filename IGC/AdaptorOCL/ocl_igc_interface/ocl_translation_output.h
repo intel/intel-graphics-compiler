@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "ocl_igc_interface/code_type.h"
 
 #include "cif/macros/enable.h"
+#include "OCLAPI/oclapi.h"
 
 // Interface : OCL_TRA_OUT
 //             "IGC - OCL" Translation Output
@@ -27,28 +28,28 @@ CIF_DECLARE_INTERFACE(OclTranslationOutput, "OCL_TRA_OUT");
 CIF_DEFINE_INTERFACE_VER(OclTranslationOutput, 1) {
   CIF_INHERIT_CONSTRUCTOR();
 
-  virtual bool Successful() const;
-  virtual bool HasWarnings() const;
-  virtual CodeType::CodeType_t GetOutputType() const;
+  OCL_API_CALL virtual bool Successful() const;
+  OCL_API_CALL virtual bool HasWarnings() const;
+  OCL_API_CALL virtual CodeType::CodeType_t GetOutputType() const;
 
   template <typename BufferInterface = CIF::Builtins::BufferLatest>
-  BufferInterface *GetBuildLog() {
+  OCL_API_CALL BufferInterface *GetBuildLog() {
     return static_cast<BufferInterface*>(GetBuildLogImpl(BufferInterface::GetVersion()));
   }
 
   template <typename BufferInterface = CIF::Builtins::BufferLatest>
-  BufferInterface *GetOutput() {
+  OCL_API_CALL BufferInterface *GetOutput() {
     return static_cast<BufferInterface*>(GetOutputImpl(BufferInterface::GetVersion()));
   }
 
   template <typename BufferInterface = CIF::Builtins::BufferLatest>
-  BufferInterface *GetDebugData() {
+  OCL_API_CALL BufferInterface *GetDebugData() {
     return static_cast<BufferInterface*>(GetDebugDataImpl(BufferInterface::GetVersion()));
   }
 protected:
-  virtual CIF::Builtins::BufferBase *GetBuildLogImpl(CIF::Version_t bufferVersion);
-  virtual CIF::Builtins::BufferBase *GetOutputImpl(CIF::Version_t bufferVersion);
-  virtual CIF::Builtins::BufferBase *GetDebugDataImpl(CIF::Version_t bufferVersion);
+  OCL_API_CALL virtual CIF::Builtins::BufferBase *GetBuildLogImpl(CIF::Version_t bufferVersion);
+  OCL_API_CALL virtual CIF::Builtins::BufferBase *GetOutputImpl(CIF::Version_t bufferVersion);
+  OCL_API_CALL virtual CIF::Builtins::BufferBase *GetDebugDataImpl(CIF::Version_t bufferVersion);
 };
 
 CIF_GENERATE_VERSIONS_LIST_AND_DECLARE_INTERFACE_DEPENDENCIES(OclTranslationOutput, CIF::Builtins::Buffer);

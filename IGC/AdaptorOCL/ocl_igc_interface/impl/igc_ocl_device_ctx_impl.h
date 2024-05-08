@@ -29,12 +29,14 @@ SPDX-License-Identifier: MIT
 #include "cif/macros/enable.h"
 #include "version.h"
 
+#include "OCLAPI/oclapi.h"
+
 namespace IGC
 {
 
 CIF_DECLARE_INTERFACE_PIMPL(IgcOclDeviceCtx) : CIF::PimplBase
 {
-    CIF_PIMPL_DECLARE_CONSTRUCTOR(CIF::Version_t version, CIF::ICIF *parentInterface)
+    OCL_API_CALL CIF_PIMPL_DECLARE_CONSTRUCTOR(CIF::Version_t version, CIF::ICIF *parentInterface)
     {
         platform.CreateImpl();
         gtSystemInfo.CreateImpl();
@@ -42,33 +44,33 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclDeviceCtx) : CIF::PimplBase
         igcBuiltins.CreateImpl();
     }
 
-    CIF_PIMPL(Platform) *GetPlatformImpl(){
+    OCL_API_CALL CIF_PIMPL(Platform) *GetPlatformImpl(){
         return this->platform.GetImpl();
     }
 
-    PlatformBase *GetPlatformHandle(CIF::Version_t version)
+    OCL_API_CALL PlatformBase *GetPlatformHandle(CIF::Version_t version)
     {
         return platform.GetVersion(version);
     }
 
-    GTSystemInfoBase *GetGTSystemInfoHandle(CIF::Version_t version)
+    OCL_API_CALL GTSystemInfoBase *GetGTSystemInfoHandle(CIF::Version_t version)
     {
         return gtSystemInfo.GetVersion(version);
     }
 
-    IgcFeaturesAndWorkaroundsBase *GetIgcFeaturesAndWorkaroundsHandle(CIF::Version_t version)
+    OCL_API_CALL IgcFeaturesAndWorkaroundsBase *GetIgcFeaturesAndWorkaroundsHandle(CIF::Version_t version)
     {
         return igcFeaturesAndWorkarounds.GetVersion(version);
     }
 
-    IgcBuiltinsBase *GetIgcBuiltinsHandle(CIF::Version_t version)
+    OCL_API_CALL IgcBuiltinsBase *GetIgcBuiltinsHandle(CIF::Version_t version)
     {
         return igcBuiltins.GetVersion(version);
     }
 
-    IgcOclTranslationCtxBase *CreateTranslationCtx(CIF::Version_t version, CodeType::CodeType_t inType, CodeType::CodeType_t outType);
+    OCL_API_CALL IgcOclTranslationCtxBase *CreateTranslationCtx(CIF::Version_t version, CodeType::CodeType_t inType, CodeType::CodeType_t outType);
 
-    bool GetSystemRoutine(SystemRoutineType::SystemRoutineType_t typeOfSystemRoutine, bool bindless, CIF::Builtins::BufferSimple *outSystemRoutineBuffer, CIF::Builtins::BufferSimple *stateSaveAreaHeaderInit) {
+    OCL_API_CALL bool GetSystemRoutine(SystemRoutineType::SystemRoutineType_t typeOfSystemRoutine, bool bindless, CIF::Builtins::BufferSimple *outSystemRoutineBuffer, CIF::Builtins::BufferSimple *stateSaveAreaHeaderInit) {
         if (nullptr == outSystemRoutineBuffer) {
             return false;
         }
@@ -110,7 +112,7 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclDeviceCtx) : CIF::PimplBase
 #endif
     }
 
-    struct MiscOptions
+    struct OCL_API_CALL MiscOptions
     {
         MiscOptions()
         {
@@ -125,7 +127,7 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclDeviceCtx) : CIF::PimplBase
         float ProfilingTimerResolution;
     } MiscOptions;
 
-    const IGC::CPlatform & GetIgcCPlatform()
+    OCL_API_CALL const IGC::CPlatform & GetIgcCPlatform()
     {
         // "fast path" where we return initialized igcPlatform without a lock
         if(igcPlatform.get() != nullptr)
