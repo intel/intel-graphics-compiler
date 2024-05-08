@@ -5781,10 +5781,10 @@ void SplitIndirectEEtoSel::visitExtractElementInst(llvm::ExtractElementInst& I)
         return;
     }
 
-    // ignore if index instruction hasn't nsw or nuw
-    if (Instruction* indexInstr = dyn_cast<Instruction>(index))
+    // ignore if index instruction is OverflowingBinaryOperator and doesn't have nsw or nuw
+    if (OverflowingBinaryOperator* indexOp = dyn_cast<OverflowingBinaryOperator>(index))
     {
-        if (!indexInstr->hasNoSignedWrap() && !indexInstr->hasNoUnsignedWrap())
+        if (!indexOp->hasNoSignedWrap() && !indexOp->hasNoUnsignedWrap())
         {
             return;
         }
