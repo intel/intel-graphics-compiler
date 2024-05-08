@@ -402,6 +402,7 @@ void Legalization::visitCallInst(llvm::CallInst& I)
         }
 
         I.replaceAllUsesWith(newInst);
+        newInst->takeName(&I);
         I.eraseFromParent();
     }
     else if (!m_ctx->platform.supportSamplerFp16Input())
