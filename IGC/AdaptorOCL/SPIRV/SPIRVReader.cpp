@@ -1959,6 +1959,8 @@ bool SPIRVToLLVM::transOCLBuiltinFromVariable(GlobalVariable *GV,
       continue;
     if (checkAndProcessInstructionPattern<GetElementPtrInst, LoadInst>(inst, addToDeletesOrUsers))
       continue;
+    if (checkAndProcessInstructionPattern<GetElementPtrInst, BitCastInst, LoadInst>(inst, addToDeletesOrUsers))
+        continue;
 
     IGC_ASSERT_MESSAGE(false, "Unknown pattern");
   }
