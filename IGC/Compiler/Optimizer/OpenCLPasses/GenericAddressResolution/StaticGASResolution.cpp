@@ -73,6 +73,34 @@ bool StaticGASResolution::runOnFunction(llvm::Function& F)
                 changed = true;
             }
         }
+
+        // When there is no Private/Local to Generic AS casting it is safe
+        // to replace corresponding builtin calls by nullptr.
+        CallInst* CI = dyn_cast<CallInst>(I);
+        if (CI)
+        {
+            Function* pCalledFunc = CI->getCalledFunction();
+            if (pCalledFunc && (pCalledFunc->getName() == "__builtin_IB_to_private" ||
+                                pCalledFunc->getName() == "__builtin_IB_to_local"))
+            {
+                IGC_ASSERT(IGCLLVM::getNumArgOperands(CI) == 1);
+                Value* arg = CI->getArgOperand(0);
+                PointerType* argType = dyn_cast<PointerType>(arg->getType());
+                IGC_ASSERT(argType != nullptr);
+                PointerType* dstType = dyn_cast<PointerType>(CI->getType());
+                IGC_ASSERT(dstType != nullptr);
+
+                auto argAS = cast<PointerType>(arg->getType())->getAddressSpace();
+                if (argAS == ADDRESS_SPACE_GENERIC)
+                {
+                    Value* newPtr = llvm::ConstantPointerNull::get(dstType);
+                    CI->replaceAllUsesWith(newPtr);
+                    CI->eraseFromParent();
+
+                    changed = true;
+                }
+            }
+        }
     }
 
     return changed;
