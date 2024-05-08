@@ -1905,8 +1905,8 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
       inst = createMadm(predicateFlagReg_m1, exsize, dst0, src0, src1, src2,
                         madmInstOpt);
 
-      // -0.5*y
-      // H0 = -0.5*y;
+      // 0.5*y
+      // H0 = 0.5*y;
       // madm (4) r9.acc3 r0.noacc r2(r8).noacc r7.acc2 {Align16, N1/N2}
       dst0 = createDstRegRegion(tdst9);
       dst0->setAccRegSel(ACC3);
@@ -1916,18 +1916,12 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
       src1->setAccRegSel(NOACC);
       src2 = createSrcRegRegion(tsrc7);
       src2->setAccRegSel(ACC2);
-      G4_SrcRegRegion neg_srcRegion(*this, Mod_Minus, src1->getRegAccess(),
-                                    src1->getBase(), src1->getRegOff(),
-                                    src1->getSubRegOff(), src1->getRegion(),
-                                    src1->getType());
-      neg_src1 = createSrcRegRegion(neg_srcRegion);
-      neg_src1->setAccRegSel(src1->getAccRegSel());
-      inst = createMadm(predicateFlagReg_m2, exsize, dst0, src0, neg_src1, src2,
+      inst = createMadm(predicateFlagReg_m2, exsize, dst0, src0, src1, src2,
                         madmInstOpt);
 
       // relative error; use double precision FMA
-      // eps = DP_FMA(H0, S0, 0.5);
-      // eps = 0.5 + H0*S0
+      // eps = DP_FMA(H0, -S0, 0.5);
+      // eps = 0.5 - H0*S0
       // madm (4) r10.acc5 r2(r8).noacc -r11.acc4 r9.acc3 {Align16, N1/N2}
       dst0 = createDstRegRegion(tdst10);
       dst0->setAccRegSel(ACC5);
@@ -1937,7 +1931,13 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
       src1->setAccRegSel(ACC4);
       src2 = createSrcRegRegion(tsrc9);
       src2->setAccRegSel(ACC3);
-      inst = createMadm(predicateFlagReg_m3, exsize, dst0, src0, src1, src2,
+      G4_SrcRegRegion neg_srcRegion1(*this, Mod_Minus, src1->getRegAccess(),
+                                     src1->getBase(), src1->getRegOff(),
+                                     src1->getSubRegOff(), src1->getRegion(),
+                                     src1->getType());
+      G4_SrcRegRegion *neg_src1 = createSrcRegRegion(neg_srcRegion1);
+      neg_src1->setAccRegSel(src1->getAccRegSel());
+      inst = createMadm(predicateFlagReg_m3, exsize, dst0, src0, neg_src1, src2,
                         madmInstOpt);
 
       // refine approximation to ~46 bits
