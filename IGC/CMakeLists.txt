@@ -1507,6 +1507,21 @@ if (FCL_ENABLED)
 endif()
 
 add_subdirectory(VISALinkerDriver)
+
+### Will add this glue later as we start transitioning igc to new repo ###
+#if(MSVC)
+#  set(IGC2_SRC_ORIG ${BS_DIR_EXTERNAL_COMPONENTS}/igc2)
+#  set(IGC2_WORKSPACE ${CMAKE_CURRENT_BINARY_DIR}/../igc2)
+#  message(STATUS "[IGC2] igc2 dll will be built from sources")
+#  message(STATUS "[IGC2] Copying igc2 sources ${IGC2_SRC_ORIG} to ${IGC2_WORKSPACE}")
+#  message("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+#  message("^^^^^********^^^^^^$$$$$$$$$$^^^^^^^^^^^^^^^^&&&&&&&&&&&^^^^^^^^^&&&&&&&&")
+#  if(NOT EXISTS "${IGC2_WORKSPACE}")
+#    execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${IGC2_SRC_ORIG} ${IGC2_WORKSPACE})
+#  endif()
+#  add_subdirectory(${IGC2_WORKSPACE} ${IGC2_WORKSPACE}/bin)
+#endif()
+
 igc_sg_define(IGC__VISALinkerDriver)
 if(MSVC)
   set(IGC_BUILD__RES__IGC__igc_common

@@ -841,4 +841,5 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
 void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm);
 void destroyShaderMap(CShaderProgram::KernelShaderMap& shaders);
 void unify_opt_PreProcess(CodeGenContext* pContext);
+
 }
