@@ -1083,6 +1083,14 @@ namespace IGC {
             RPE->rerunLivenessAnalysis(*F, &AffectedBBs);
         };
 
+        auto getSizeInRegs = [&](const SmallVectorImpl<Instruction *> &Insts)
+        {
+            auto SIMD = numLanes(RPE->bestGuessSIMDSize(F));
+            ValueSet InstsSet(Insts.begin(), Insts.end());
+            unsigned int SizeInBytes = RPE->estimateSizeInBytes(InstsSet, *F, SIMD, &WI);
+            return RPE->bytesToRegisters(SizeInBytes);
+        };
+
         bool EverChanged = false;
 
         // Find LIs in preheader that would definitely reduce
@@ -1105,6 +1113,7 @@ namespace IGC {
         uint MaxLoopPressure = InitialLoopPressure;
 
         bool AchievedNeededRegpressure = false;
+        bool RecomputeMaxLoopPressure = false;
 
         do
         {
@@ -1159,9 +1168,21 @@ namespace IGC {
                     LocalInstSet.clear();
                 }
 
+                if (MaxLoopPressure - getSizeInRegs(SinkCandidates) > NeededRegpressure)
+                {
+                    // Heuristic to save recalculation of liveness
+                    // The size of the candidates set is not enough to reach the needed regpressure
+                    // even if we sinked everything
+                    PrintDump("Running one more iteration without recalculating liveness...\n");
+                    RecomputeMaxLoopPressure = true;
+                    continue;
+                }
+
                 rerunLiveness();
                 MaxLoopPressure = getMaxRegCountForLoop(L);
+                RecomputeMaxLoopPressure = false;
                 PrintDump("New max loop pressure = " << MaxLoopPressure << "\n");
+
                 if ((MaxLoopPressure < NeededRegpressure)
                         && (Mode == LoopSinkMode::SinkWhileRegpressureIsHigh))
                 {
@@ -1197,6 +1218,12 @@ namespace IGC {
         {
             PrintDump("No changes were made in this loop.\n");
             return false;
+        }
+
+        if (RecomputeMaxLoopPressure)
+        {
+            rerunLiveness();
+            MaxLoopPressure = getMaxRegCountForLoop(L);
         }
 
         PrintDump("New max loop pressure = " << MaxLoopPressure << "\n");
