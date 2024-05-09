@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -470,7 +470,8 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
   } else {
     // Only valid ARF type are NULL and Accumulator for ternary instructions
     if (inst->getNumSrc() == 3) {
-      if (opnd->isAreg() && !opnd->isNullReg() && !opnd->isAccReg())
+      if (opnd->isAreg() && !opnd->isNullReg() && !opnd->isAccReg() &&
+          !(opnd == inst->getSrc(0) && opnd->isSrReg()))
         vISA_ASSERT(false, "Not allowed ARF in ternary instruction");
     }
 
