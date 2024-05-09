@@ -760,6 +760,9 @@ namespace IGC
         bool isHDCFastClearShader = false;
 
         std::array<uint32_t, NUM_ARG_SPACE_RESERVATION_SLOTS> argRegisterReservations{};
+
+        uint8_t SIMD16_SpillThreshold = 0;
+        uint8_t SIMD32_SpillThreshold = 0;
     };
 
     void serialize(const IGC::ModuleMetaData &moduleMD, llvm::Module* module);
