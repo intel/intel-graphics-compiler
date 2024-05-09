@@ -19,16 +19,13 @@ uint32_t getRTStackHeaderSize(uint32_t MaxBVHLevels)
     // TODO: The compiler currently hardcodes its offsets to assume 2 BVH
     // levels.  When we move to read the BVH levels from the
     // RayDispatchGlobalData we can remove this check.
-    IGC_ASSERT_MESSAGE((MaxBVHLevels > 0), "Unsupported level!");
+    IGC_ASSERT_MESSAGE((MaxBVHLevels >= 2), "Unsupported level!");
 
-#define STYLE(X) static_assert(sizeof(RTStack2<Xe>) == sizeof(RTStack2<X>));
-#include "RayTracingMemoryStyle.h"
-#undef STYLE
 
     static constexpr std::array<uint32_t, 9> Sizes =
     {
-        0,
-        sizeof(RTStack<Xe, 1>),
+        0, // should not be used
+        0, // should not be used
         sizeof(RTStack<Xe, 2>),
         sizeof(RTStack<Xe, 3>),
         sizeof(RTStack<Xe, 4>),

@@ -8,13 +8,8 @@ SPDX-License-Identifier: MIT
 
 //===----------------------------------------------------------------------===//
 ///
-/// \file
-/// \brief This file contains a definition of the structure of the ray tracing
-/// stack as seen by a ray.  Each ray will have its own private copy of the
-/// stack. Through a combination of offsetof() and sizeof(), passes will find
-/// offsets to fields within the structs and update themselves automatically
-/// when this file changes.
-///
+/// This file contains a definition of the structure of the ray tracing
+/// stack as seen by a ray.
 ///
 //===----------------------------------------------------------------------===//
 #pragma once
@@ -242,6 +237,7 @@ struct MemTravStack
     };
 };
 
+// Define structs Xe, used to specialize other template structs, like MemHit or RTStack, via GenT arg
 #define STYLE(X) struct X;
 #include "RayTracingMemoryStyle.h"
 #undef STYLE
@@ -591,9 +587,25 @@ struct RTStack
     MemHit<GenT> committedHit;    // stores committed hit
     MemHit<GenT> potentialHit;    // stores potential hit that is passed to any hit shader
 
-    MemRay<GenT> ray[MaxBVHLevels];       // stores a ray for each instancing level
+    MemRay<GenT> ray0;
+    MemRay<GenT> ray1;
+    MemRay<GenT> ray[MaxBVHLevels - 2];       // stores a ray for each instancing level
     MemTravStack travStack[MaxBVHLevels]; // spill location for the internal stack state per instancing level
+
+    static_assert(MaxBVHLevels > 2);
 };
+
+template <typename GenT>
+struct RTStack<GenT, MAX_BVH_LEVELS>
+{
+    MemHit<GenT> committedHit;    // stores committed hit
+    MemHit<GenT> potentialHit;    // stores potential hit that is passed to any hit shader
+
+    MemRay<GenT> ray0;
+    MemRay<GenT> ray1;
+    MemTravStack travStack[MAX_BVH_LEVELS]; // spill location for the internal stack state per instancing level
+};
+
 
 // This is the ShadowMemory that we maintain if we DONOT need spill/fill it to/from HW RTStack.
 // We keep this data structure as small as possible to reduce the size.
@@ -603,7 +615,22 @@ struct SMStack
     MemHit<GenT> committedHit;    // stores committed hit
     MemHit<GenT> potentialHit;    // stores potential hit that is passed to any hit shader
 
-    MemRay<GenT> ray[MaxBVHLevels];       // stores a ray for each instancing level
+    MemRay<GenT> ray0;
+    MemRay<GenT> ray1;
+    MemRay<GenT> ray[MaxBVHLevels - 2];       // stores a ray for each instancing level
+    //MemTravStack travStack[MaxBVHLevels]; // spill location for the internal stack state per instancing level
+
+    static_assert(MaxBVHLevels > 2);
+};
+
+template <typename GenT>
+struct SMStack<GenT, MAX_BVH_LEVELS>
+{
+    MemHit<GenT> committedHit;    // stores committed hit
+    MemHit<GenT> potentialHit;    // stores potential hit that is passed to any hit shader
+
+    MemRay<GenT> ray0;
+    MemRay<GenT> ray1;
     //MemTravStack travStack[MaxBVHLevels]; // spill location for the internal stack state per instancing level
 };
 
@@ -613,6 +640,9 @@ template <typename GenT>
 using RTStack2 = RTStack<GenT, MAX_BVH_LEVELS>;
 template <typename GenT>
 using SMStack2 = SMStack<GenT, MAX_BVH_LEVELS>;
+
+template <typename RTStack2T>
+constexpr size_t sizeofRTStack2() { return sizeof(RTStack2T); }
 
 #if !defined(__clang__) || (__clang_major__ >= 15)
 static_assert(std::is_standard_layout_v<RTStack2<Xe>>);
@@ -624,8 +654,10 @@ static_assert(std::is_standard_layout_v<SMStack2<Xe>>);
 // documentation purposes.
 static_assert(offsetof(RTStack2<Xe>, committedHit) == 0,   "unexpected offset!");
 static_assert(offsetof(RTStack2<Xe>, potentialHit) == 32,  "unexpected offset!");
-static_assert(offsetof(RTStack2<Xe>, ray)          == 64,  "unexpected offset!");
+static_assert(offsetof(RTStack2<Xe>, ray0)         == 64,  "unexpected offset!");
+static_assert(offsetof(RTStack2<Xe>, ray1)         == 64 + 64, "unexpected offset!");
 static_assert(offsetof(RTStack2<Xe>, travStack)    == 192, "unexpected offset!");
+
 
 
 /////////////// BVH structures ///////////////
@@ -955,7 +987,7 @@ constexpr uint64_t calcRTMemoryAllocSize(
 }
 
 constexpr uint32_t getSyncStackSize() {
-#define STYLE(X) static_assert(sizeof(RTStack2<Xe>) == sizeof(RTStack2<X>));
+#define STYLE(X) static_assert(sizeofRTStack2<RTStack2<Xe>>() == sizeofRTStack2<RTStack2<X>>());
 #include "RayTracingMemoryStyle.h"
 #undef STYLE
     return sizeof(RTStack2<Xe>);

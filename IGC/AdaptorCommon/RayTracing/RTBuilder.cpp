@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 
 #include "IGC/common/StringMacros.hpp"
+#include <type_traits>
 #include "RTBuilder.h"
 #include "RTArgs.h"
 #include "iStdLib/utility.h"
@@ -84,34 +85,16 @@ void RTBuilder::setInvariantLoad(LoadInst* LI)
 
 Value* RTBuilder::getRtMemBasePtr(void)
 {
-#define STYLE(X)                                                 \
-    static_assert(                                               \
-        offsetof(RayDispatchGlobalData::RT::Xe, rtMemBasePtr) == \
-        offsetof(RayDispatchGlobalData::RT::X,  rtMemBasePtr));
-#include "RayTracingMemoryStyle.h"
-#undef STYLE
     return _get_rtMemBasePtr_Xe(VALUE_NAME("rtMemBasePtr"));
 }
 
 Value* RTBuilder::getStackSizePerRay(void)
 {
-#define STYLE(X)                                                    \
-    static_assert(                                                  \
-        offsetof(RayDispatchGlobalData::RT::Xe, stack_size_info.stackSizePerRay) == \
-        offsetof(RayDispatchGlobalData::RT::X,  stack_size_info.stackSizePerRay));
-#include "RayTracingMemoryStyle.h"
-#undef STYLE
     return _get_stackSizePerRay_Xe(VALUE_NAME("stackSizePerRay"));
 }
 
 Value* RTBuilder::getNumDSSRTStacks(void)
 {
-#define STYLE(X)                                                   \
-    static_assert(                                                 \
-        offsetof(RayDispatchGlobalData::RT::Xe, num_stacks_info.numDSSRTStacks) == \
-        offsetof(RayDispatchGlobalData::RT::X,  num_stacks_info.numDSSRTStacks));
-#include "RayTracingMemoryStyle.h"
-#undef STYLE
     return _get_numDSSRTStacks_Xe(VALUE_NAME("numDSSRTStacks"));
 }
 
@@ -243,7 +226,7 @@ uint32_t RTBuilder::getRTStack2Size() const
 {
     switch (getMemoryStyle())
     {
-#define STYLE(X) case RTMemoryStyle::X: return sizeof(RTStack2<RTStackFormat::X>);
+#define STYLE(X) case RTMemoryStyle::X: return sizeofRTStack2<RTStack2<RTStackFormat::X>>();
 #include "RayTracingMemoryStyle.h"
 #undef STYLE
     }
@@ -253,9 +236,6 @@ uint32_t RTBuilder::getRTStack2Size() const
 
 Value* RTBuilder::getRTStackSize(uint32_t Align)
 {
-#define STYLE(X) static_assert(sizeof(RTStack2<Xe>) == sizeof(RTStack2<RTStackFormat::X>));
-#include "RayTracingMemoryStyle.h"
-#undef STYLE
     // syncStackSize = sizeof(HitInfo)*2 + (sizeof(Ray) + sizeof(TravStack))*RTDispatchGlobals.maxBVHLevels
     Value* stackSize = this->CreateMul(
         this->getInt32(sizeof(MemRay<Xe>) + sizeof(MemTravStack)),
@@ -591,6 +571,7 @@ Value* RTBuilder::alignVal(Value* V, uint64_t Align)
 Value* RTBuilder::getRayInfo(StackPointerVal* perLaneStackPtr, uint32_t Idx, uint32_t BvhLevel)
 {
     IGC_ASSERT_MESSAGE(Idx < 8, "out-of-bounds!");
+    IGC_ASSERT(BvhLevel < 2);
     switch (getMemoryStyle())
     {
 #define STYLE(X)                       \
@@ -675,6 +656,7 @@ Value* RTBuilder::getWorldRayOrig(RTBuilder::StackPointerVal* perLaneStackPtr, u
 
 Value* RTBuilder::getMemRayOrig(StackPointerVal* perLaneStackPtr, uint32_t dim, uint32_t BvhLevel, const Twine& Name)
 {
+    IGC_ASSERT(BvhLevel < 2);
     switch (getMemoryStyle())
     {
 #define STYLE(X)                       \
@@ -693,6 +675,7 @@ Value* RTBuilder::getMemRayOrig(StackPointerVal* perLaneStackPtr, uint32_t dim, 
 
 Value* RTBuilder::getMemRayDir(StackPointerVal* perLaneStackPtr, uint32_t dim, uint32_t BvhLevel, const Twine& Name)
 {
+    IGC_ASSERT(BvhLevel < 2);
     switch (getMemoryStyle())
     {
 #define STYLE(X)                       \
@@ -1725,12 +1708,14 @@ Type* RTBuilder::getRTStack2PtrTy(
         }
         IGC_ASSERT(AddrSpace != ADDRESS_SPACE_NUM_ADDRESSES);
 
+        uint32_t RTStackHeaderSize = RTStackFormat::getRTStackHeaderSize(MAX_BVH_LEVELS);
+
         return setRTTypeMD(
             *Ctx.getModule(),
             Idx,
             TypesMD,
             getRTStack2Ty(),
-            RTStackFormat::getRTStackHeaderSize(MAX_BVH_LEVELS),
+            RTStackHeaderSize,
             AddrSpace);
     };
 

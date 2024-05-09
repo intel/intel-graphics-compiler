@@ -106,3 +106,4 @@ SPDX-License-Identifier: MIT
     RTMEMORY_STYLE_OPTION(Auto, -1) \
     RTMEMORY_STYLE_OPTION(Xe,    0)
 #endif // RTMEMORY_STYLE_OPTION
+
