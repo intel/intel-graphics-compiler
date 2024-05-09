@@ -459,9 +459,19 @@ G4_Type getMixModeType() const {
 // each flag register is 16-bit
 uint32_t getNumFlagRegisters(void) { return getPlatform() >= Xe_PVC ? 8 : 4; }
 
+// each address register is 16 bits
 uint32_t getNumAddrRegisters() const {
     return 16;
-  }
+}
+
+// each address register is 16 bits
+uint32_t getNumAddrRegistersInGRFSizeSWSB() const {
+    if (hasMultipleALUPipes()) {
+      return ((16 * G4_WSIZE) + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>();
+    } else {
+      return 0;
+    }
+}
 
 uint32_t getNumScalarRegisters(void) {
   if (enableSendIndirect()) {
@@ -646,6 +656,8 @@ bool hasLongOperandTypeDepIssue() const {
 
 bool hasFourALUPipes() const { return getPlatform() >= Xe_PVC; }
 
+bool hasMultipleALUPipes() const { return hasThreeALUPipes() || hasFourALUPipes(); };
+
 bool hasFiveALUPipes() const {
   return getPlatform() >= Xe2;
 }
@@ -723,10 +735,6 @@ bool hasGRFAlignedSrc2DPAS() const { return getPlatform() >= Xe_PVC; }
 
 bool hasWriteCombine() const {
   return getPlatform() >= Xe2;
-}
-
-bool hasA0WARHWissue() {
-  return getPlatform() >= Xe_XeHPSDV;
 }
 
 bool hasFtoPackedHFMove() const { return getPlatform() >= Xe_DG2; }

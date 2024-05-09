@@ -524,17 +524,6 @@ void SBNode::finalizeDistanceType1(IR_Builder &builder,
     return;
   }
 
-  if (builder.hasA0WARHWissue() && (builder.hasThreeALUPipes() || builder.hasFourALUPipes())) {
-    G4_INST *inst = GetInstruction();
-
-    if (inst->getDst() && inst->getDst()->isDirectA0()) {
-      instVec.front()->setDistance(1);
-      instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
-
-      return;
-    }
-  }
-
   unsigned curDistance = (unsigned)instVec.front()->getDistance();
   if (!distDep.empty()) {
     SB_INST_PIPE depPipe = PIPE_NONE;
@@ -667,7 +656,7 @@ void SBNode::finalizeDistanceType2(IR_Builder &builder,
     return;
   }
 
-  if (builder.hasA0WARHWissue() && (builder.hasThreeALUPipes() || builder.hasFourALUPipes())) {
+  if (builder.hasThreeALUPipes() || builder.hasFourALUPipes()) {
     G4_INST *inst = GetInstruction();
 
     if (inst->getDst() && inst->getDst()->isDirectA0()) {
@@ -823,17 +812,6 @@ void SBNode::finalizeDistanceType3(IR_Builder &builder,
     instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
     clearAllDistInfo();
     return;
-  }
-
-  if (builder.hasA0WARHWissue() && (builder.hasThreeALUPipes() || builder.hasFourALUPipes())) {
-    G4_INST *inst = GetInstruction();
-
-    if (inst->getDst() && inst->getDst()->isDirectA0()) {
-      instVec.front()->setDistance(1);
-      instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
-      clearAllDistInfo();
-      return;
-    }
   }
 
   if (instVec.front()->getDistance() == 1 &&
@@ -1142,7 +1120,7 @@ SBFootprint *G4_BB_SB::getFootprintForACC(G4_Operand *opnd,
   else if (opnd->isSrcRegRegion())
     regNum = opnd->asSrcRegRegion()->getRegOff();
 
-  regNum += builder.kernel.getNumRegTotal() + builder.getNumScalarRegisters();
+  regNum += numGlobalBuckets;
 
   LB += regNum * builder.numEltPerGRF<Type_UB>();
   RB += regNum * builder.numEltPerGRF<Type_UB>();
@@ -1173,11 +1151,9 @@ SBFootprint *G4_BB_SB::getFootprintForFlag(G4_Operand *opnd,
   RB = (unsigned short)(opnd->getRightBound() + subRegOff * 16) *
        FLAG_TO_GRF_MAP;
 
-  LB += (builder.kernel.getNumRegTotal() + builder.getNumScalarRegisters() +
-         builder.kernel.getNumAcc()) *
+  LB += (numGlobalBuckets + builder.kernel.getNumAcc()) *
         builder.numEltPerGRF<Type_UB>();
-  RB += (builder.kernel.getNumRegTotal() + builder.getNumScalarRegisters() +
-         builder.kernel.getNumAcc()) *
+  RB += (numGlobalBuckets + builder.kernel.getNumAcc()) *
         builder.numEltPerGRF<Type_UB>();
 
   void *allocedMem = mem.alloc(sizeof(SBFootprint));
@@ -1187,6 +1163,48 @@ SBFootprint *G4_BB_SB::getFootprintForFlag(G4_Operand *opnd,
   return footprint;
 }
 
+
+SBFootprint *G4_BB_SB::getFootprintForA0(G4_Operand *opnd,
+                                         Gen4_Operand_Number opnd_num,
+                                         G4_INST *inst) {
+  bool valid = true;
+  unsigned subRegNum = 0;
+  if (opnd->isSrcRegRegion()) {
+    G4_SrcRegRegion *srcRegRegion = opnd->asSrcRegRegion();
+    if (srcRegRegion->getRegAccess() == Direct) {
+      subRegNum = srcRegRegion->ExSubRegNum(valid);
+    } else {
+      subRegNum = srcRegRegion->ExIndSubRegNum(valid);
+    }
+  } else if (opnd->isDstRegRegion()) {
+    G4_DstRegRegion *dstRegRegion = opnd->asDstRegRegion();
+    if (dstRegRegion->getRegAccess() == Direct) {
+      subRegNum = dstRegRegion->ExSubRegNum(valid);
+    } else {
+      subRegNum = dstRegRegion->ExIndSubRegNum(valid);
+    }
+  } else {
+    vISA_ASSERT_UNREACHABLE("invalid A0 operand");
+  }
+
+  unsigned short LB = 0;
+  unsigned short RB = 0;
+  G4_Type type = opnd->getType();
+  G4_Type addrType = opnd->isIndirect() ? ADDR_REG_TYPE : opnd->getType();
+  LB = subRegNum * TypeSize(addrType);
+  RB = opnd->getRightBound() - opnd->getLeftBound() + LB;
+
+  LB += (builder.kernel.getNumRegTotal() + builder.getNumScalarRegisters()) *
+        builder.numEltPerGRF<Type_UB>();
+  RB += (builder.kernel.getNumRegTotal() + builder.getNumScalarRegisters()) *
+        builder.numEltPerGRF<Type_UB>();
+
+  void *allocedMem = mem.alloc(sizeof(SBFootprint));
+  SBFootprint *footprint =
+      new (allocedMem) SBFootprint(A0_T, type, LB, RB, inst);
+
+  return footprint;
+}
 
 static bool compareInterval(SBNode *n1, SBNode *n2) {
   return n1->getLiveStartID() < n2->getLiveStartID();
@@ -1243,7 +1261,7 @@ void SWSB::setDefaultDistanceAtFirstInstruction() {
     for (auto it = bb->begin(); it != bb->end(); it++) {
       if (!(*it)->isLabel()) {
         (*it)->setDistance(1);
-        if (fg.builder->hasThreeALUPipes() || fg.builder->hasFourALUPipes()) {
+        if (fg.builder->hasMultipleALUPipes()) {
           (*it)->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
         }
         if (fg.builder->getFCPatchInfo()->getFCComposableKernel() &&
@@ -1383,7 +1401,8 @@ void SWSB::SWSBBuildSIMDCFG() {
 // Generate the dependence distance
 void SWSB::SWSBDepDistanceGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
                                     LiveGRFBuckets &globalSendsLB,
-                                    LiveGRFBuckets &GRFAlignedGlobalSendsLB) {
+                                    LiveGRFBuckets &GRFAlignedGlobalSendsLB,
+                                    int numBuckets, int numGlobalBuckets) {
   BB_LIST_ITER ib(fg.begin()), bend(fg.end());
 
   // Initialize global data
@@ -1399,10 +1418,11 @@ void SWSB::SWSBDepDistanceGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
   // Local dependence analysis
   for (; ib != bend; ++ib) {
     // TODO: Can each G4_BB_SB have its own allocator instead of sharing SWSB's?
-    BBVector[(*ib)->getId()] = new (BB_SWSBAllocator) G4_BB_SB(
-        *this, *(fg.builder), SWSBMem, *ib, &SBNodes, &SBSendNodes,
-        &globalSendOpndList, &indexes, globalSendNum, &LB, &globalSendsLB,
-        &GRFAlignedGlobalSendsLB, p, &labelToBlockMap, tokenAfterDPASCycle);
+    BBVector[(*ib)->getId()] = new (BB_SWSBAllocator)
+        G4_BB_SB(*this, *(fg.builder), SWSBMem, *ib, &SBNodes, &SBSendNodes,
+                 &globalSendOpndList, &indexes, globalSendNum, &LB,
+                 &globalSendsLB, &GRFAlignedGlobalSendsLB, p, &labelToBlockMap,
+                 tokenAfterDPASCycle, numBuckets, numGlobalBuckets);
   }
 }
 
@@ -1438,7 +1458,7 @@ void SWSB::handleFuncCall() {
     if (node->GetInstruction()->isReturn() ||
         node->GetInstruction()->isFReturn()) {
       node->GetInstruction()->setDistance(1);
-      if (fg.builder->hasThreeALUPipes() || fg.builder->hasFourALUPipes()) {
+      if (fg.builder->hasMultipleALUPipes()) {
         node->GetInstruction()->setDistanceTypeXe(
             G4_INST::DistanceType::DISTALL);
       }
@@ -1459,17 +1479,12 @@ void SWSB::SWSBInitializeGlobalNodesInBuckets(
                        // operands
     LiveGRFBuckets &GRFAlignedGlobalSendsLB) { // live buckets of global sends
 
-  dstGlobalIDs.resize(kernel.getNumRegTotal() +
-                      fg.builder->getNumScalarRegisters());
-  srcGlobalIDs.resize(kernel.getNumRegTotal() +
-                      fg.builder->getNumScalarRegisters());
+  dstGlobalIDs.resize(numGlobalBuckets);
+  srcGlobalIDs.resize(numGlobalBuckets);
 
   // Scan the global send LB to set the node bit in dst or src bit set of each
   // bucket that node touches.
-  for (unsigned curBucket = 0;
-       curBucket <
-       kernel.getNumRegTotal() + fg.builder->getNumScalarRegisters();
-       curBucket++) {
+  for (int curBucket = 0; curBucket < numGlobalBuckets; curBucket++) {
     SparseBitVector dstBitSet;
     SparseBitVector srcBitSet;
 
@@ -1895,13 +1910,18 @@ void SWSB::SWSBGenerator() {
   kernel.fg.reassignBlockIDs();
 
   // Note that getNumFlagRegisters() treat each 16 bits as a flag register
-  int numBuckets = kernel.getNumRegTotal() +
-                   fg.builder->getNumScalarRegisters() + kernel.getNumAcc() +
-                   fg.builder->getNumFlagRegisters();
+  numBuckets = kernel.getNumRegTotal() +
+                   fg.builder->getNumScalarRegisters() +
+                   fg.builder->getNumAddrRegistersInGRFSizeSWSB() +
+                   kernel.getNumAcc() + fg.builder->getNumFlagRegisters();
+  numGlobalBuckets = kernel.getNumRegTotal() +
+                   fg.builder->getNumScalarRegisters() +
+                   fg.builder->getNumAddrRegistersInGRFSizeSWSB();
   LiveGRFBuckets LB(numBuckets);
   LiveGRFBuckets globalSendsLB(numBuckets);
   LiveGRFBuckets GRFAlignedGlobalSendsLB(numBuckets);
-  SWSBDepDistanceGenerator(p, LB, globalSendsLB, GRFAlignedGlobalSendsLB);
+  SWSBDepDistanceGenerator(p, LB, globalSendsLB, GRFAlignedGlobalSendsLB,
+                           numBuckets, numGlobalBuckets);
 
 #ifdef DEBUG_VERBOSE_ON
   dumpDepInfo();
@@ -4318,7 +4338,7 @@ void SWSB::insertSync(G4_BB *bb, SBNode *node, G4_INST *inst,
   if (node->followDistOneAreg() && insertedSync) {
     G4_INST *syncInst = insertSyncInstructionAfter(bb, prevIt);
     syncInst->setDistance(1);
-    if (fg.builder->hasThreeALUPipes() || fg.builder->hasFourALUPipes()) {
+    if (fg.builder->hasMultipleALUPipes()) {
       syncInst->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
     }
   }
@@ -4326,7 +4346,7 @@ void SWSB::insertSync(G4_BB *bb, SBNode *node, G4_INST *inst,
   if (node->hasDistOneAreg() && !hasValidNextInst) {
     G4_INST *syncInst = insertSyncInstructionAfter(bb, inst_it);
     syncInst->setDistance(1);
-    if (fg.builder->hasThreeALUPipes() || fg.builder->hasFourALUPipes()) {
+    if (fg.builder->hasMultipleALUPipes()) {
       syncInst->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
     }
   }
@@ -4389,8 +4409,7 @@ void SWSB::insertTokenSync() {
 
       auto jitInfo = kernel.fg.builder->getJitInfo();
       if (inst->getDistance() == 1) {
-        if (kernel.fg.builder->hasThreeALUPipes() ||
-            kernel.fg.builder->hasFourALUPipes()) {
+        if (kernel.fg.builder->hasMultipleALUPipes()) {
           if (inst->getDistanceTypeXe() == G4_INST::DistanceType::DISTALL) {
             jitInfo->statsVerbose.allAtOneDistNum++;
           } else {
@@ -4546,8 +4565,7 @@ void SWSB::insertTokenSync() {
         G4_INST *syncInst = insertSyncAllRDInstruction(bb, src, tmp_it);
         if (node->hasDistOneAreg()) {
           syncInst->setDistance(1);
-          if (kernel.fg.builder->hasThreeALUPipes() ||
-              kernel.fg.builder->hasFourALUPipes()) {
+          if (kernel.fg.builder->hasMultipleALUPipes()) {
             syncInst->setDistanceTypeXe(
                 G4_INST::DistanceType::DISTALL);
           }
@@ -5179,6 +5197,7 @@ bool G4_BB_SB::getFootprintForOperand(SBNode *node, G4_INST *inst,
   bool footprintOperand = false;
   bool isAccReg = false;
   bool isFlagReg = false;
+  bool isA0Reg = false;
   SBFootprint *footprint = nullptr;
   G4_VarBase *base = opnd->getBase();
 
@@ -5200,6 +5219,7 @@ bool G4_BB_SB::getFootprintForOperand(SBNode *node, G4_INST *inst,
     }
     isAccReg = phyReg->isAccReg();
     isFlagReg = phyReg->isFlag();
+    isA0Reg = phyReg->isA0();
     break;
   case G4_VarBase::VK_regVar:
     vISA_ASSERT_UNREACHABLE("Should not be a regvar. PhyReg is extracted from regvar.");
@@ -5216,7 +5236,7 @@ bool G4_BB_SB::getFootprintForOperand(SBNode *node, G4_INST *inst,
     node->setFootprint(footprint, opndNum);
   }
 
-  if ((builder.hasThreeALUPipes() || builder.hasFourALUPipes())) {
+  if (builder.hasMultipleALUPipes()) {
     if (isAccReg) {
       footprint = getFootprintForACC(opnd, opndNum, inst);
       node->setFootprint(footprint, opndNum);
@@ -5225,8 +5245,11 @@ bool G4_BB_SB::getFootprintForOperand(SBNode *node, G4_INST *inst,
       footprint = getFootprintForFlag(opnd, opndNum, inst);
       node->setFootprint(footprint, opndNum);
     }
+    if (isA0Reg) {
+      footprint = getFootprintForA0(opnd, opndNum, inst);
+      node->setFootprint(footprint, opndNum);
+    }
   }
-
 
   return hasDistOneAReg;
 }
@@ -5307,7 +5330,8 @@ void G4_BB_SB::getGRFBuckets(const SBFootprint *footprint,
                              std::vector<SBBucketDesc> &BDvec, bool GRFOnly) {
   for (const SBFootprint *curFootprint = footprint; curFootprint != nullptr;
        curFootprint = curFootprint->next) {
-    if (GRFOnly && (curFootprint->fType != GRF_T)) {
+    if (GRFOnly && (curFootprint->fType != GRF_T) &&
+         (curFootprint->fType != A0_T)) {
       continue;
     }
 
@@ -5356,7 +5380,8 @@ void G4_BB_SB::getGRFBucketsForOperands(SBNode *node,
   for (Gen4_Operand_Number opndNum = first_opnd; opndNum <= last_opnd;
        opndNum = (Gen4_Operand_Number)(opndNum + 1)) {
     const SBFootprint *footprint = node->getFirstFootprint(opndNum);
-    if (!footprint || (GRFOnly && (footprint->fType != GRF_T))) {
+    if (!footprint || (GRFOnly && (footprint->fType != GRF_T) &&
+                       (footprint->fType != A0_T))) {
       continue;
     }
     getGRFBuckets(footprint, opndNum, BDvec, GRFOnly);
@@ -5568,7 +5593,7 @@ static SB_INST_PIPE getDataTypePipeXe(const IR_Builder &builder, G4_Type type) {
 
 void G4_BB_SB::setDistance(const SBFootprint *footprint, SBNode *node,
                            SBNode *liveNode, bool dstDep) {
-  if (builder.hasThreeALUPipes() || builder.hasFourALUPipes()) {
+  if (builder.hasMultipleALUPipes()) {
     unsigned prevID = 0;
     unsigned currentID = 0;
     switch (liveNode->ALUPipe) {
@@ -6139,10 +6164,20 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
     SBNodes->emplace_back(node);
     curInst->setLocalId(0);
 
-    if (builder.hasA0WARHWissue() &&
-        (builder.hasThreeALUPipes() || builder.hasFourALUPipes())) {
-      setSpecialDistance(node);
+    if (builder.hasFiveALUPipes() && !indexes->setFirstA0 && curInst->getDst()) {
+      if (curInst->getDst()->isDirectA0()) {
+        indexes->setFirstA0 = 1;
+        SBDISTDEP_ITEM depItem;
+        depItem.liveNodePipe = PIPE_FLOAT;
+        depItem.nodePipe = node->ALUPipe;
+        depItem.operandType = PIPE_INT;
+        depItem.dstDep = false;
+        node->setDistance(1);
+        node->distDep.push_back(depItem);
+        node->setDistInfo(PIPE_FLOAT, 1);
+      }
     }
+
     // Record the node IDs of the instructions in BB
     if (first_node == INVALID_ID) {
       first_node = nodeID;
@@ -6157,7 +6192,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
       node->setFollowDistOneAReg();
       hasFollowDistOneAReg = false;
       hasFollowDistOneIndirectReg = false;
-      if (builder.hasThreeALUPipes() || builder.hasFourALUPipes()) {
+      if (builder.hasMultipleALUPipes()) {
         node->instVec.front()->setDistanceTypeXe(
             G4_INST::DistanceType::DISTALL);
       }
@@ -6176,7 +6211,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
     if (hasFollowDistOneAReg) {
       node->setDistance(1);
       node->setDistOneAReg();
-      if (builder.hasThreeALUPipes() || builder.hasFourALUPipes()) {
+      if (builder.hasMultipleALUPipes()) {
         node->instVec.front()->setDistanceTypeXe(
             G4_INST::DistanceType::DISTALL);
       }
@@ -6401,7 +6436,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
       getGRFBucketDescs(node, liveBDvec, false);
     }
 
-    if (builder.hasThreeALUPipes() || builder.hasFourALUPipes()) {
+    if (builder.hasMultipleALUPipes()) {
       node->ALUPipe = curInst->getInstructionPipeXe();
     }
 
@@ -6409,7 +6444,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
     if (distanceHonourInstruction(curInst)) {
       ALUID++;
 
-      if (builder.hasThreeALUPipes() || builder.hasFourALUPipes()) {
+      if (builder.hasMultipleALUPipes()) {
         switch (node->ALUPipe) {
         case PIPE_INT:
           node->setIntegerID(integerID);
@@ -6440,7 +6475,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
       if (BDvec.empty() && node->distDep.empty()) {
         if (ALUID >= SWSB_MAX_ALU_DEPENDENCE_DISTANCE &&
             ALUID != node->getALUID()) {
-          if (builder.hasThreeALUPipes() || builder.hasFourALUPipes()) {
+          if (builder.hasMultipleALUPipes()) {
             clearKilledBucketNodeXeHP(LB, integerID, floatID, longID, mathID);
           } else {
             clearKilledBucketNodeXeLP(LB, ALUID);
@@ -6650,8 +6685,14 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
           if (dep == RAW &&
               (curBucket <
                (totalGRFNum +
-                (int)builder.getNumScalarRegisters()))) { // Only need track GRF
-                                                          // RAW dependence
+                (int)builder.getNumScalarRegisters()))) { // Only need track
+                                                          // GRF and scalar RAW
+                                                          // dependence
+            // Fixme: We should track RAW and WAW dependences of A0, just don't
+            // add software scoreboard for them. By tracking the dependences, we
+            // can kill other dependences. However, it looks like cobalt2
+            // doens't suppor A0 well, so we just ignore the RAW and WAW
+            // dependences, the other dependences may be killed will be kept.
             LB->killOperand(bn_it);
             setDistance(curFootprint, node, liveNode, false);
             liveNode->setInstKilled(true); // Instrtuction level kill
@@ -6668,18 +6709,26 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
               killed = true;
             }
 
-            if (builder.hasThreeALUPipes() || builder.hasFourALUPipes()) {
-              if (!distanceHonourInstruction(curInst) ||
-                  node->ALUPipe != liveNode->ALUPipe ||
-                  (node->ALUPipe == liveNode->ALUPipe && hasRMWOverlap)) {
-                if (!killed) {
-                  LB->killOperand(bn_it);
-                  killed = true;
-                }
+            if (builder.hasMultipleALUPipes()) {
+              unsigned A0_start = builder.kernel.getNumRegTotal() +
+                                  builder.getNumScalarRegisters();
+              unsigned A0_end =
+                  A0_start + builder.getNumAddrRegistersInGRFSizeSWSB() - 1;
 
-                setDistance(curFootprint, node, liveNode, true);
-                liveNode->setInstKilled(true); // Instruction level kill
-                instKill = true;
+              if ((curBucket < (int)A0_start) || (curBucket > (int)A0_end)) {
+                vISA_ASSERT(A0_end >= A0_start, "No A0 regsiter");
+                if (!distanceHonourInstruction(curInst) ||
+                    node->ALUPipe != liveNode->ALUPipe ||
+                    (node->ALUPipe == liveNode->ALUPipe && hasRMWOverlap)) {
+                  if (!killed) {
+                    LB->killOperand(bn_it);
+                    killed = true;
+                  }
+
+                  setDistance(curFootprint, node, liveNode, true);
+                  liveNode->setInstKilled(true); // Instruction level kill
+                  instKill = true;
+                }
               }
             } else if (!curInst->distanceHonourInstruction() ||
                        (liveInst->isLongPipeInstructionXe() &&
@@ -6707,7 +6756,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
               killed = true;
             }
 
-            if (builder.hasThreeALUPipes() || builder.hasFourALUPipes()) {
+            if (builder.hasMultipleALUPipes()) {
               if (!curInst->distanceHonourInstruction() ||
                   node->ALUPipe != liveNode->ALUPipe) {
                 if (!killed) {
@@ -6733,7 +6782,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
 
           if (dep == NODEP && hasSameFunctionID(liveInst, curInst)) {
             if (curFootprint->isWholeOverlap(liveFootprint)) {
-              if (builder.hasThreeALUPipes() || builder.hasFourALUPipes()) {
+              if (builder.hasMultipleALUPipes()) {
                 if (node->ALUPipe == liveNode->ALUPipe) {
                   LB->killOperand(bn_it);
                   continue;
@@ -6760,7 +6809,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
     if (node->hasDistInfo()) {
       if (builder.hasFiveALUPipes()) {
         node->finalizeDistanceType2(builder, latestInstID);
-      } else if (builder.hasThreeALUPipes() || builder.hasFourALUPipes()) {
+      } else if (builder.hasMultipleALUPipes()) {
         if (builder.getOptions()->getOption(vISA_disableRegDistAllDep)) {
           node->finalizeDistanceType3(builder, latestInstID);
         } else {
@@ -6776,7 +6825,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
         (VISA_WA_CHECK(builder.getPWaTable(), Wa_14013672992) &&
          node->GetInstruction()->isEOT())) {
       node->setDistance(1);
-      if (builder.hasThreeALUPipes() || builder.hasFourALUPipes()) {
+      if (builder.hasMultipleALUPipes()) {
         node->instVec.front()->setDistanceTypeXe(
             G4_INST::DistanceType::DISTALL);
       }
@@ -6785,7 +6834,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
     // Simplify the LB according to the distance, and if the node is killed
     if (instKill || (ALUID >= SWSB_MAX_ALU_DEPENDENCE_DISTANCE &&
                      ALUID != node->getALUID())) {
-      if (builder.hasThreeALUPipes() || builder.hasFourALUPipes()) {
+      if (builder.hasMultipleALUPipes()) {
         clearKilledBucketNodeXeHP(LB, integerID, floatID, longID, mathID);
       } else {
         clearKilledBucketNodeXeLP(LB, ALUID);
@@ -6816,8 +6865,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
         }
 
         // For global dependence tracking, we need only check buckets GRF + SRF
-        if (BD.bucket < (int)(builder.kernel.getNumRegTotal() +
-                            builder.getNumScalarRegisters())) {
+        if (BD.bucket < numGlobalBuckets) {
           if (BD.opndNum == Opnd_dst) {
             BBGRF.setDst(BD.bucket, true);
           } else {
@@ -6837,8 +6885,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
         }
 
         LB->add(bucketNodes[BD.opndNum], BD.bucket);
-        if (BD.bucket < (int)(builder.kernel.getNumRegTotal() +
-                              builder.getNumScalarRegisters())) {
+        if (BD.bucket < numGlobalBuckets) {
           if (BD.opndNum == Opnd_dst) {
             BBGRF.setDst(BD.bucket, true);
           } else {
@@ -7322,7 +7369,7 @@ void G4_BB_SB::getLiveBucketsFromFootprint(
   for (const SBFootprint *footprint = firstFootprint; footprint != nullptr;
        footprint = footprint->next) {
     // We only track the global dependence for GRF
-    if (footprint->fType != GRF_T) {
+    if ((footprint->fType != GRF_T) && (footprint->fType != A0_T)) {
       continue;
     }
 
@@ -7367,7 +7414,7 @@ void SWSB::addGlobalDependence(unsigned globalSendNum,
     //    For token dependence, there is only implicit RAR and WAR dependencies.
     //    the order of the operands are scanned is not an issue anymore.
     //    i.e explicit RAW and WAW can cover all other dependences.
-    LiveGRFBuckets send_use_kills(kernel.getNumRegTotal());
+    LiveGRFBuckets send_use_kills(numGlobalBuckets);
     for (unsigned i : send_kill.dst) {
       for (SBBucketNode *sBucketNode : globalDstSBSendNodes[i]) {
         SBNode *sNode = sBucketNode->node;
@@ -7604,7 +7651,7 @@ void SWSB::addGlobalDependence(unsigned globalSendNum,
       }
 
       if (instKill) {
-        if (fg.builder->hasThreeALUPipes() || fg.builder->hasFourALUPipes()) {
+        if (fg.builder->hasMultipleALUPipes()) {
           sb_bb->clearKilledBucketNodeXeHP(&send_use_kills, 0, 0, 0, 0);
         } else {
           sb_bb->clearKilledBucketNodeXeLP(&send_use_kills, 0);
@@ -7661,7 +7708,7 @@ void SWSB::addGlobalDependenceWithReachingDef(
     //    For token dependence, there is only implicit RAR and WAR dependencies.
     //    the order of the operands are scanned is not an issue anymore.
     //    i.e explicit RAW and WAW can cover all other dependences.
-    LiveGRFBuckets send_use_kills(kernel.getNumRegTotal());
+    LiveGRFBuckets send_use_kills(numGlobalBuckets);
     for (size_t j = 0; j < globalSendOpndList->size(); j++) {
       SBBucketNode *sBucketNode = (*globalSendOpndList)[j];
       SBNode *sNode = sBucketNode->node;
@@ -7967,7 +8014,7 @@ void SWSB::addGlobalDependenceWithReachingDef(
       }
 
       if (instKill) {
-        if (fg.builder->hasThreeALUPipes() || fg.builder->hasFourALUPipes()) {
+        if (fg.builder->hasMultipleALUPipes()) {
           BBVector[i]->clearKilledBucketNodeXeHP(&send_use_kills, 0, 0, 0, 0);
         } else {
           BBVector[i]->clearKilledBucketNodeXeLP(&send_use_kills, 0);
@@ -8136,7 +8183,7 @@ static bool isSWSBRequired(IR_Builder *builder, G4_INST *inst) {
       if (phyReg->getAreg()->getArchRegType() == AREG_A0) {
         return true;
       }
-      if (builder->hasThreeALUPipes() || builder->hasFourALUPipes()) {
+      if (builder->hasMultipleALUPipes()) {
         return true;
       }
     }
@@ -8154,7 +8201,7 @@ static G4_INST *setForceDebugSWSB(IR_Builder *builder, G4_BB *bb,
     return nullptr;
   }
 
-  if (builder->hasThreeALUPipes() || builder->hasFourALUPipes()) {
+  if (builder->hasMultipleALUPipes()) {
     if (!inst->tokenHonourInstruction()) {
       inst->setDistance(1);
       inst->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
@@ -8173,7 +8220,7 @@ static G4_INST *setForceDebugSWSB(IR_Builder *builder, G4_BB *bb,
     inst->setSBIDSetToken(0);
     if (inst->isEOT()) {
       inst->setDistance(1);
-      if (builder->hasThreeALUPipes() || builder->hasFourALUPipes()) {
+      if (builder->hasMultipleALUPipes()) {
         inst->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
       }
     }
@@ -8240,7 +8287,7 @@ static void setInstructionStallSWSB(IR_Builder *builder, G4_BB *bb,
     G4_SrcRegRegion *src0 = builder->createNullSrc(Type_UD);
     G4_INST *extraSyncInst = builder->createSync(G4_sync_nop, src0);
     extraSyncInst->setDistance(1);
-    if (builder->hasThreeALUPipes() || builder->hasFourALUPipes()) {
+    if (builder->hasMultipleALUPipes()) {
       extraSyncInst->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
     }
     bb->insertBefore(inst_it, extraSyncInst);
@@ -8252,7 +8299,7 @@ static void setInstructionStallSWSB(IR_Builder *builder, G4_BB *bb,
     G4_SrcRegRegion *src0_1 = builder->createNullSrc(Type_UD);
     G4_INST *extraSyncInst = builder->createSync(G4_sync_nop, src0_1);
     extraSyncInst->setDistance(1);
-    if (builder->hasThreeALUPipes() || builder->hasFourALUPipes()) {
+    if (builder->hasMultipleALUPipes()) {
       extraSyncInst->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
     }
     bb->insertBefore(inst_it, extraSyncInst);
@@ -8285,7 +8332,7 @@ static void setInstructionBarrierSWSB(IR_Builder *builder, G4_BB *bb,
   G4_SrcRegRegion *src0 = builder->createNullSrc(Type_UD);
   syncAllRdInst = builder->createSync(G4_sync_allrd, src0);
   syncAllRdInst->setDistance(1);
-  if (builder->hasThreeALUPipes() || builder->hasFourALUPipes()) {
+  if (builder->hasMultipleALUPipes()) {
     syncAllRdInst->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
   }
   INST_LIST_ITER next_it = inst_it;
