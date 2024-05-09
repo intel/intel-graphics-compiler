@@ -378,7 +378,7 @@ void CustomSafeOptPass::visitShuffleIndex(llvm::CallInst* I)
 // %id317- = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 %id213-, i32 %267, i32 %321)
 void CustomSafeOptPass::mergeDotAddToDp4a(llvm::CallInst* I)
 {
-    if (!IGC_IS_FLAG_ENABLED(EnableDotAddToDp4aMerge))
+    if (IGC_IS_FLAG_ENABLED(DisableDotAddToDp4aMerge))
       return;
 
     // found %id213- = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 0, i32 %305, i32 %345)
