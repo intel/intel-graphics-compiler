@@ -3045,6 +3045,7 @@ bool EarlyOutPatterns::runOnFunction(Function& F)
 {
     m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     if (IGC_IS_FLAG_ENABLED(DisableEarlyOutPatterns) ||
+        m_ctx->getModuleMetaData()->compOpt.DisableEarlyOut ||
         m_ctx->m_DriverInfo.WaNOSNotResolved())
     {
         return false;

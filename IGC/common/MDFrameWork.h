@@ -411,6 +411,7 @@ namespace IGC
         bool disableMathRefactoring                     = false;
         bool atomicBranch                               = false;
         bool spillCompression                           = false;
+        bool DisableEarlyOut                            = false;
         bool ForceInt32DivRemEmu                        = false;
         bool ForceInt32DivRemEmuSP                      = false;
         bool DisableFastestSingleCSSIMD                 = false;
@@ -493,6 +494,8 @@ namespace IGC
         bool atomicBranch = false;
         // enable spill compression
         bool spillCompression = false;
+        // disable early out
+        bool disableEarlyOut = false;
         // enable compute walk order optimization
         bool walkOrderEnabled = false;
         unsigned int walkOrderOverride = 0;
