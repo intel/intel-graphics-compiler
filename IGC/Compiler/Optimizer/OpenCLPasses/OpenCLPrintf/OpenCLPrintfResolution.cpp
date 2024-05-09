@@ -323,7 +323,7 @@ bool OpenCLPrintfResolution::argIsString(Value* arg)
             return false;
         }
         Constant* initializer = formatString->getInitializer();
-        if (initializer->isZeroValue())
+        if (initializer->isZeroValue() && initializer->getType()->isArrayTy())
         {
             // Is zeroinitializer; can't be casted to ConstantDataArray.
             // This caused zeroinitializers to be treated as non-strings,
@@ -397,7 +397,7 @@ void OpenCLPrintfResolution::removeExcessArgs()
         unsigned int numFormatSpecifiers = 0;
 
         Constant* initializer = GV->getInitializer();
-        if (initializer->isZeroValue())
+        if (initializer->isZeroValue() && initializer->getType()->isArrayTy())
             // The string literal is empty, can't be casted to ConstantDataArray
             // and there is no way it contains any format specifiers.
             numFormatSpecifiers = 0;
