@@ -297,6 +297,7 @@ void CustomSafeOptPass::visitShuffleIndex(llvm::CallInst* I)
     bool patternFound = false;
     Value* simdLaneId = nullptr;
     ConstantInt* xorValueConstant = nullptr;
+    ConstantInt* andValueConstant = nullptr;
 
     /*
     Pattern match
@@ -311,6 +312,15 @@ void CustomSafeOptPass::visitShuffleIndex(llvm::CallInst* I)
     %simdLaneId = zext i16 %simdLaneId16 to i32
     %xor = xor i32 %simdLaneId, 2
     %simdShuffle.2 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %x, i32 %xor, i32 0)
+
+    or
+
+    %simdLaneId16 = call i16 @llvm.genx.GenISA.simdLaneId()
+    %and = and i16 %856, 63
+    %zext = zext i16 %857 to i32
+    %xor = xor i32 %858, 1
+    %simdShuffle.3 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %x, i32
+    %xor, i32 0)
     */
 
     ConstantInt* enableHelperLanes = dyn_cast<ConstantInt>(I->getOperand(2));
@@ -319,10 +329,14 @@ void CustomSafeOptPass::visitShuffleIndex(llvm::CallInst* I)
     }
 
     if (match(I->getOperand(1),
-              m_ZExt(m_c_Xor(m_Value(simdLaneId), m_ConstantInt(xorValueConstant)))) ||
-        match(I->getOperand(1),
-              m_c_Xor(m_ZExt(m_Value(simdLaneId)), m_ConstantInt(xorValueConstant))))
-    {
+              m_ZExt(m_c_Xor(m_Value(simdLaneId),
+                             m_ConstantInt(xorValueConstant)))) ||
+        match(I->getOperand(1), // Match this pattern first as it's more specialized case than next one
+              m_c_Xor(m_ZExt(m_And(m_Value(simdLaneId),
+                                   m_ConstantInt(andValueConstant))),
+                      m_ConstantInt(xorValueConstant))) ||
+        match(I->getOperand(1), m_c_Xor(m_ZExt(m_Value(simdLaneId)),
+                                        m_ConstantInt(xorValueConstant)))) {
         if (CallInst* CI = dyn_cast<CallInst>(simdLaneId))
         {
             Function* simdIdF = CI->getCalledFunction();
@@ -352,6 +366,16 @@ void CustomSafeOptPass::visitShuffleIndex(llvm::CallInst* I)
         if (xorValue >= 16) {
             // currently not supported in the emitter
             return;
+        }
+
+        if (andValueConstant) {
+            uint64_t andValue = andValueConstant->getValue().getZExtValue();
+
+            // We handle "redundant values", so those which bits enable all of
+            // 32 lanes, so 31, 63 (spotted in nature), 127, 255 etc.
+            if ((andValue & 31) != 31) {
+                return;
+            }
         }
 
         Value* value = I->getOperand(0);
