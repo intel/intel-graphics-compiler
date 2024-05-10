@@ -19,8 +19,10 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instructions.h>
 #include <llvm/Demangle/Demangle.h>
 #include <llvm/IR/Mangler.h>
+#include <llvm/Support/Regex.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <iostream>
+
 using namespace llvm;
 using namespace IGC;
 
@@ -171,6 +173,65 @@ void HandleSpirvDecorationMetadata::visitStoreInst(StoreInst& I)
     }
 }
 
+void HandleSpirvDecorationMetadata::visit2DBlockReadCallInst(CallInst& I, StringRef unmangledName)
+{
+    Value* ptr = I.getArgOperand(0);
+    auto spirvDecorations = parseSPIRVDecorationsFromMD(ptr);
+    for (auto& [DecorationId, MDNodes] : spirvDecorations)
+    {
+        switch (DecorationId)
+        {
+            // IDecCacheControlLoadINTEL
+            case DecorationIdCacheControlLoad:
+            {
+                handleCacheControlINTELFor2DBlockIO<LoadCacheControl>(I, MDNodes, unmangledName);
+                break;
+            }
+        }
+    }
+}
+
+void HandleSpirvDecorationMetadata::visit2DBlockWriteCallInst(CallInst& I, StringRef unmangledName)
+{
+    Value* ptr = I.getArgOperand(0);
+    auto spirvDecorations = parseSPIRVDecorationsFromMD(ptr);
+    for (auto& [DecorationId, MDNodes] : spirvDecorations)
+    {
+        switch (DecorationId)
+        {
+            // IDecCacheControlStoreINTEL
+            case DecorationIdCacheControlStore:
+            {
+                handleCacheControlINTELFor2DBlockIO<StoreCacheControl>(I, MDNodes, unmangledName);
+                break;
+            }
+        }
+    }
+}
+
+void HandleSpirvDecorationMetadata::visitCallInst(CallInst& I)
+{
+    Function* F = I.getCalledFunction();
+    if (!F) return;
+
+    Regex pattern2DBlockRead(
+        "_Z[0-9]+(intel_sub_group_2d_block_(prefetch|read|read_transform|read_transpose)_[0-9]+b_[0-9]+r[0-9]+x[0-9]+c)");
+    Regex pattern2DBlockWrite(
+        "_Z[0-9]+(intel_sub_group_2d_block_write_[0-9]+b_[0-9]+r[0-9]+x[0-9]+c)");
+
+    SmallVector<StringRef, 4> Matches;
+    StringRef funcName = F->getName();
+
+    if (pattern2DBlockRead.match(funcName, &Matches))
+    {
+        visit2DBlockReadCallInst(I, Matches[1]);
+    }
+    else if (pattern2DBlockWrite.match(funcName, &Matches))
+    {
+        visit2DBlockWriteCallInst(I, Matches[1]);
+    }
+}
+
 template<typename T>
 void HandleSpirvDecorationMetadata::handleCacheControlINTEL(Instruction& I, SmallPtrSetImpl<MDNode*>& MDNodes)
 {
@@ -231,4 +292,39 @@ void HandleSpirvDecorationMetadata::handleCacheControlINTEL(Instruction& I, Smal
     {
         m_pCtx->EmitWarning("Unsupported cache controls configuration requested. Applying default configuration.");
     }
+}
+
+template<typename T>
+void HandleSpirvDecorationMetadata::handleCacheControlINTELFor2DBlockIO(CallInst& I, SmallPtrSetImpl<MDNode*>& MDNodes, StringRef unmangledName)
+{
+    static_assert(std::is_same_v<T, LoadCacheControl> || std::is_same_v<T, StoreCacheControl>);
+    CacheControlFromMDNodes cacheControl = resolveCacheControlFromMDNodes<T>(m_pCtx, MDNodes);
+    if (cacheControl.isEmpty) return;
+    if (cacheControl.isInvalid)
+    {
+        m_pCtx->EmitWarning("Unsupported cache controls configuration requested. Applying default configuration.");
+        return;
+    }
+
+    Function* F = I.getCalledFunction();
+    IGC_ASSERT(F);
+
+    SmallVector<Value*, 4> args(I.args());
+    args.push_back(ConstantInt::get(Type::getInt32Ty(I.getContext()), cacheControl.value));
+
+    SmallVector<Type*, 4> argTypes;
+    for (const auto& arg : args)
+        argTypes.push_back(arg->getType());
+
+    FunctionType* FT = FunctionType::get(I.getType(), argTypes, false);
+    std::string newFuncName = "__internal_" + unmangledName.str() + "_cache_controls";
+    auto newFunction = m_Module->getOrInsertFunction(newFuncName, FT);
+
+    auto newCall = CallInst::Create(newFunction, args, "", &I);
+    I.replaceAllUsesWith(newCall);
+    I.eraseFromParent();
+
+    // Cleanup unused function if all calls have been replaced with the internal version
+    if (F->getNumUses() == 0)
+        F->eraseFromParent();
 }

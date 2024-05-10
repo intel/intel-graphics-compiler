@@ -46,6 +46,9 @@ namespace IGC
 
         void visitLoadInst(llvm::LoadInst& I);
         void visitStoreInst(llvm::StoreInst& I);
+        void visitCallInst(llvm::CallInst& I);
+        void visit2DBlockReadCallInst(llvm::CallInst& I, llvm::StringRef unmangledName);
+        void visit2DBlockWriteCallInst(llvm::CallInst& I, llvm::StringRef unmangledName);
 
     private:
         llvm::Module* m_Module = nullptr;
@@ -60,5 +63,7 @@ namespace IGC
         template<typename T>
         void handleCacheControlINTEL(llvm::Instruction& I, llvm::SmallPtrSetImpl<llvm::MDNode*>& MDNodes);
         llvm::DenseMap<uint64_t, llvm::SmallPtrSet<llvm::MDNode*, 4>> parseSPIRVDecorationsFromMD(llvm::Value* V);
+        template<typename T>
+        void handleCacheControlINTELFor2DBlockIO(llvm::CallInst& I, llvm::SmallPtrSetImpl<llvm::MDNode*>& MDNodes, llvm::StringRef unmangledName);
     };
 }

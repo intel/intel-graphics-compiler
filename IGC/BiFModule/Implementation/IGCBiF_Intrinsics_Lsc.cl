@@ -422,7 +422,7 @@ uint8 __builtin_IB_subgroup_block_read_flat_transpose_u32_k8(long baseoffset, in
 ulong4 __builtin_IB_subgroup_block_read_flat_transpose_u64_k4(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord);
 #endif // cl_intel_subgroup_extended_block_read
 
-#ifdef cl_intel_subgroup_extended_block_read_cacheopts
+#if defined(cl_intel_subgroup_extended_block_read_cacheopts) || defined(cl_intel_subgroup_2d_block_io)
 // 2d block read cacheopts
 ushort2  __builtin_IB_subgroup_block_read_cacheopts_u8_m1k32v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
 ushort4  __builtin_IB_subgroup_block_read_cacheopts_u8_m2k32v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
@@ -453,9 +453,9 @@ void __builtin_IB_subgroup_block_read_prefetch_transform_u16_k16(long baseoffset
 // equivalent to transpose_transform_u8_k32 and transpose_transform_u16_k16
 void __builtin_IB_subgroup_block_read_prefetch_transpose_u32_k8(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
 void __builtin_IB_subgroup_block_read_prefetch_transpose_u64_k4(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
-#endif // cl_intel_subgroup_extended_block_read_cacheopts
+#endif // cl_intel_subgroup_extended_block_read_cacheopts || cl_intel_subgroup_2d_block_io
 
-#ifdef cl_intel_subgroup_extended_block_write_cacheopts
+#if defined(cl_intel_subgroup_extended_block_write_cacheopts) || defined(cl_intel_subgroup_2d_block_io)
 // 2d block write cacheopts
 void __builtin_IB_subgroup_block_write_cacheopts_u8_m1k32v1(long base_address, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, ushort val, enum LSC_STCC cache_control);
 void __builtin_IB_subgroup_block_write_cacheopts_u8_m2k32v1(long base_address, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, ushort2 val, enum LSC_STCC cache_control);
@@ -465,6 +465,101 @@ void __builtin_IB_subgroup_block_write_cacheopts_u16_m1k16v1(long base_address, 
 void __builtin_IB_subgroup_block_write_cacheopts_u16_m2k16v1(long base_address, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, ushort2 val, enum LSC_STCC cache_control);
 void __builtin_IB_subgroup_block_write_cacheopts_u16_m4k16v1(long base_address, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, ushort4 val, enum LSC_STCC cache_control);
 void __builtin_IB_subgroup_block_write_cacheopts_u16_m8k16v1(long base_address, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, ushort8 val, enum LSC_STCC cache_control);
-#endif // cl_intel_subgroup_extended_block_write_cacheopts
+#endif // cl_intel_subgroup_extended_block_write_cacheopts || cl_intel_subgroup_2d_block_io
+
+#ifdef cl_intel_subgroup_2d_block_io
+
+typedef ushort ushort32 __attribute__((ext_vector_type(32)));
+typedef ushort ushort64 __attribute__((ext_vector_type(64)));
+
+typedef uint uint32 __attribute__((ext_vector_type(32)));
+typedef uint uint64 __attribute__((ext_vector_type(64)));
+
+ushort32  __builtin_IB_subgroup_block_read_cacheopts_u8_m16k32v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+ushort64  __builtin_IB_subgroup_block_read_cacheopts_u8_m32k32v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+
+ushort32  __builtin_IB_subgroup_block_read_cacheopts_u16_m16k16v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+ushort64  __builtin_IB_subgroup_block_read_cacheopts_u16_m32k16v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+
+void  __builtin_IB_subgroup_block_read_prefetch_u8_m16k32v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+void  __builtin_IB_subgroup_block_read_prefetch_u8_m32k32v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+
+void  __builtin_IB_subgroup_block_read_prefetch_u16_m16k16v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+void  __builtin_IB_subgroup_block_read_prefetch_u16_m32k16v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+
+ushort   __builtin_IB_subgroup_block_read_cacheopts_u8_m1k32v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+ushort2  __builtin_IB_subgroup_block_read_cacheopts_u8_m2k32v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+ushort4  __builtin_IB_subgroup_block_read_cacheopts_u8_m4k32v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+ushort8  __builtin_IB_subgroup_block_read_cacheopts_u8_m8k32v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+
+void  __builtin_IB_subgroup_block_read_prefetch_u8_m1k32v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+void  __builtin_IB_subgroup_block_read_prefetch_u8_m2k32v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+void  __builtin_IB_subgroup_block_read_prefetch_u8_m4k32v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+void  __builtin_IB_subgroup_block_read_prefetch_u8_m8k32v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+
+ushort   __builtin_IB_subgroup_block_read_cacheopts_u16_m1k16v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+ushort2  __builtin_IB_subgroup_block_read_cacheopts_u16_m2k16v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+ushort4  __builtin_IB_subgroup_block_read_cacheopts_u16_m4k16v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+ushort8  __builtin_IB_subgroup_block_read_cacheopts_u16_m8k16v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+ushort16 __builtin_IB_subgroup_block_read_cacheopts_u16_m16k16v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+ushort32 __builtin_IB_subgroup_block_read_cacheopts_u16_m32k16v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+
+void __builtin_IB_subgroup_block_read_prefetch_u8_m32k16v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+void __builtin_IB_subgroup_block_read_prefetch_u16_m1k16v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+void __builtin_IB_subgroup_block_read_prefetch_u16_m2k16v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+void __builtin_IB_subgroup_block_read_prefetch_u16_m4k16v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+void __builtin_IB_subgroup_block_read_prefetch_u16_m8k16v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+void __builtin_IB_subgroup_block_read_prefetch_u16_m16k16v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+void __builtin_IB_subgroup_block_read_prefetch_u16_m32k16v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+void __builtin_IB_subgroup_block_read_prefetch_u32_m16k8v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+
+uint   __builtin_IB_subgroup_block_read_cacheopts_u32_m1k8v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+uint2  __builtin_IB_subgroup_block_read_cacheopts_u32_m2k8v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+uint4  __builtin_IB_subgroup_block_read_cacheopts_u32_m4k8v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+uint8  __builtin_IB_subgroup_block_read_cacheopts_u32_m8k8v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+uint16 __builtin_IB_subgroup_block_read_cacheopts_u32_m16k8v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+uint32 __builtin_IB_subgroup_block_read_cacheopts_u32_m32k8v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+
+void __builtin_IB_subgroup_block_read_prefetch_u32_m1k8v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+void __builtin_IB_subgroup_block_read_prefetch_u32_m2k8v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+void __builtin_IB_subgroup_block_read_prefetch_u32_m4k8v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+void __builtin_IB_subgroup_block_read_prefetch_u32_m8k8v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+void __builtin_IB_subgroup_block_read_prefetch_u32_m16k8v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+void __builtin_IB_subgroup_block_read_prefetch_u32_m32k8v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+
+uint2   __builtin_IB_subgroup_block_read_cacheopts_u32_m1k8v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+uint4  __builtin_IB_subgroup_block_read_cacheopts_u32_m2k8v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+uint8  __builtin_IB_subgroup_block_read_cacheopts_u32_m4k8v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+uint16  __builtin_IB_subgroup_block_read_cacheopts_u32_m8k8v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+uint32 __builtin_IB_subgroup_block_read_cacheopts_u32_m16k8v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+uint64 __builtin_IB_subgroup_block_read_cacheopts_u32_m32k8v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+
+void __builtin_IB_subgroup_block_read_prefetch_u32_m1k8v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+void __builtin_IB_subgroup_block_read_prefetch_u32_m2k8v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+void __builtin_IB_subgroup_block_read_prefetch_u32_m4k8v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+void __builtin_IB_subgroup_block_read_prefetch_u32_m8k8v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+void __builtin_IB_subgroup_block_read_prefetch_u32_m16k8v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+void __builtin_IB_subgroup_block_read_prefetch_u32_m32k8v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+
+void __builtin_IB_subgroup_block_write_cacheopts_u8_m1k16v1(long base_address, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, uchar val, enum LSC_STCC cache_control);
+void __builtin_IB_subgroup_block_write_cacheopts_u8_m2k16v1(long base_address, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, uchar2 val, enum LSC_STCC cache_control);
+void __builtin_IB_subgroup_block_write_cacheopts_u8_m4k16v1(long base_address, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, uchar4 val, enum LSC_STCC cache_control);
+void __builtin_IB_subgroup_block_write_cacheopts_u8_m8k16v1(long base_address, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, uchar8 val, enum LSC_STCC cache_control);
+
+void __builtin_IB_subgroup_block_write_cacheopts_u32_m1k16v1(long base_address, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, uint val, enum LSC_STCC cache_control);
+void __builtin_IB_subgroup_block_write_cacheopts_u32_m2k16v1(long base_address, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, uint2 val, enum LSC_STCC cache_control);
+void __builtin_IB_subgroup_block_write_cacheopts_u32_m4k16v1(long base_address, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, uint4 val, enum LSC_STCC cache_control);
+void __builtin_IB_subgroup_block_write_cacheopts_u32_m8k16v1(long base_address, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, uint8 val, enum LSC_STCC cache_control);
+
+uint16 __builtin_IB_subgroup_block_read_cacheopts_transform_u16_k32v1(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+uint16 __builtin_IB_subgroup_block_read_cacheopts_transform_u16_k16v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+uint32 __builtin_IB_subgroup_block_read_cacheopts_transform_u16_k32v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+uint16 __builtin_IB_subgroup_block_read_cacheopts_transform_u8_k32v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+uint32 __builtin_IB_subgroup_block_read_cacheopts_transform_u8_k32v4(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+
+void __builtin_IB_subgroup_block_read_prefetch_u8_m32k16v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+void __builtin_IB_subgroup_block_read_prefetch_u8_m32k16v4(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord, enum LSC_LDCC cacheOpt);
+
+#endif // cl_intel_subgroup_2d_block_io
 
 #endif // IGCBIF_INTRINSICS_LSC_CL
