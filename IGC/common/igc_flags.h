@@ -823,7 +823,7 @@ DECLARE_IGC_REGKEY(int,  OverrideCsWalkOrder,        0,     "Override compute wa
 DECLARE_IGC_REGKEY(bool, OverrideCsTileLayoutEnable, false, "Enable overriding compute walker tile layout", true)
 DECLARE_IGC_REGKEY(bool, OverrideCsTileLayout,       0,     "Override compute walker tile layout. False is linear. True is TileY", true)
 DECLARE_IGC_REGKEY(DWORD, MemCpyLoweringUnrollThreshold, 12, "Min number of mem instructions that require non-unrolled loop when lowering memcpy", false)
-DECLARE_IGC_REGKEY(DWORD, EnablePrivMemNewSOATranspose,            1, "0 : disable new algo; 1 and up : enable new algo. " \
+DECLARE_IGC_REGKEY(DWORD, EnablePrivMemNewSOATranspose,            2, "0 : disable new algo; 1 and up : enable new algo. " \
                                                                       "1 : enable new algo just for array of struct; " \
                                                                       "2 : 1 plus new algo for array of dw[xn]/qw[xn],etc " \
                                                                       "3 : 2 plus new algo for array of complicated struct.", true)
