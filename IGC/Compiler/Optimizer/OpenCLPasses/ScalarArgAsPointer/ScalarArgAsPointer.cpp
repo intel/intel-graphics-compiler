@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ScalarArgAsPointer/ScalarArgAsPointer.hpp"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/IGCPassSupport.h"
@@ -47,7 +46,7 @@ bool ScalarArgAsPointerAnalysis::runOnModule(Module& M)
 {
     DL = &M.getDataLayout();
 
-    MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    MetaDataUtils* MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
 
     bool changed = false;
 
@@ -56,7 +55,7 @@ bool ScalarArgAsPointerAnalysis::runOnModule(Module& M)
         if (F.isDeclaration())
             continue;
 
-        if (!isEntryFunc(MDU, &F))
+        if (!isEntryFunc(MDUtils, &F))
             continue;
 
         changed |= analyzeFunction(F);
@@ -64,7 +63,7 @@ bool ScalarArgAsPointerAnalysis::runOnModule(Module& M)
 
     // Update LLVM metadata based on IGC MetadataUtils
     if (changed)
-        MDU->save(M.getContext());
+        MDUtils->save(M.getContext());
 
     return changed;
 }
@@ -74,7 +73,6 @@ bool ScalarArgAsPointerAnalysis::analyzeFunction(llvm::Function& F)
     m_matchingArgs.clear();
     m_visitedInst.clear();
     m_allocas.clear();
-    m_currentFunction = &F;
 
     LLVM_DEBUG(
         dbgs() << "running for function " << F.getName() << "\n");
@@ -105,33 +103,24 @@ void ScalarArgAsPointerAnalysis::visitLoadInst(llvm::LoadInst& I)
 
 void ScalarArgAsPointerAnalysis::visitCallInst(CallInst& CI)
 {
-    if (auto I = dyn_cast<GenIntrinsicInst>(&CI))
-        return visitGenIntrinsic(*I);
+    auto I = dyn_cast<GenIntrinsicInst>(&CI);
+    if (!I)
+        return;
 
-    // If function takes pointer as argument, assume it is used for access.
-    for (auto it = CI.op_begin(); it != CI.op_end(); ++it)
-    {
-        if (isa< PointerType>((*it)->getType()))
-            analyzePointer(*it);
-    }
-}
-
-void ScalarArgAsPointerAnalysis::visitGenIntrinsic(GenIntrinsicInst& I)
-{
-    GenISAIntrinsic::ID const id = I.getIntrinsicID();
+    GenISAIntrinsic::ID const id = I->getIntrinsicID();
 
     if (id == GenISAIntrinsic::GenISA_LSC2DBlockRead ||
         id == GenISAIntrinsic::GenISA_LSC2DBlockPrefetch ||
         id == GenISAIntrinsic::GenISA_LSC2DBlockWrite)
     {
-        return analyzeValue(I.getOperand(0));
+        return analyzeValue(I->getOperand(0));
     }
 
     if (IsStatelessMemLoadIntrinsic(id) ||
         IsStatelessMemStoreIntrinsic(id) ||
-        IsStatelessMemAtomicIntrinsic(I, id))
+        IsStatelessMemAtomicIntrinsic(*I, id))
     {
-        Value* V = GetBufferOperand(&I);
+        Value* V = GetBufferOperand(I);
 
         if (!V || !isa<PointerType>(V->getType()))
             return;
@@ -262,39 +251,8 @@ ScalarArgAsPointerAnalysis::analyzeOperand(llvm::Value* op)
 
         result->insert(args->begin(), args->end());
     }
-    else if (GlobalValue* global = dyn_cast<GlobalValue>(op))
-    {
-        Argument* arg = analyzeGlobal(global);
-
-        if (!arg)
-            return nullptr; // propagate fail
-
-        result->insert(arg);
-    }
 
     return result;
-}
-
-llvm::Argument* ScalarArgAsPointerAnalysis::analyzeGlobal(llvm::GlobalValue* V)
-{
-    PointerType* type = dyn_cast<PointerType>(V->getType());
-    if (!type)
-        return nullptr;
-
-    if (type->getAddressSpace() != ADDRESS_SPACE_GLOBAL)
-        return nullptr;
-
-    ImplicitArgs implicitArgs(*m_currentFunction, MDU);
-
-    if (!implicitArgs.isImplicitArgExist(ImplicitArg::GLOBAL_BASE))
-        return nullptr;
-
-    if (m_currentFunction->arg_size() < implicitArgs.size())
-        return nullptr;
-
-    unsigned implicitArgsBaseIndex = m_currentFunction->arg_size() - implicitArgs.size();
-    unsigned implicitArgIndex = implicitArgs.getArgIndex(ImplicitArg::GLOBAL_BASE);
-    return std::next(m_currentFunction->arg_begin(), implicitArgsBaseIndex + implicitArgIndex);
 }
 
 void ScalarArgAsPointerAnalysis::analyzeStoredArg(llvm::StoreInst& SI)

@@ -1358,8 +1358,7 @@ namespace IGC
             zebin::zeInfoPayloadArgument& arg =
                 zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
                     m_kernelInfo.m_zePayloadArgs, zeArgType, payloadPosition,
-                    kernelArg->getAllocateSize(),
-                    kernelArg->isScalarAsPointer());
+                    kernelArg->getAllocateSize());
             SOpenCLKernelInfo::SResourceInfo resInfo =
                 getResourceInfo(kernelArg->getAssociatedArgNo());
             unsigned btiValue = getBTI(resInfo);

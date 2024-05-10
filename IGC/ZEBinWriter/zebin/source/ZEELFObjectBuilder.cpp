@@ -1202,14 +1202,12 @@ zeInfoPayloadArgument& ZEInfoBuilder::addPayloadArgumentImplicit(
     PayloadArgumentsTy& arg_list,
     PreDefinedAttrGetter::ArgType type,
     int32_t offset,
-    int32_t size,
-    bool has_ptr)
+    int32_t size)
 {
     zeInfoPayloadArgument& arg = arg_list.emplace_back();
     arg.arg_type = PreDefinedAttrGetter::get(type);
     arg.offset = offset;
     arg.size = size;
-    arg.is_ptr = has_ptr;
     return arg;
 }
 

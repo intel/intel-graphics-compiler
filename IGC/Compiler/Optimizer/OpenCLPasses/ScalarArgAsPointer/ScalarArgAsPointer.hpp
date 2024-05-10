@@ -74,8 +74,6 @@ namespace IGC
 
         using ArgSet = llvm::SmallPtrSet<llvm::Argument*, 2>;
 
-        void visitGenIntrinsic(llvm::GenIntrinsicInst& I);
-
         /// @brief    Analyzes kernel function and saves result in function metadata.
         /// @param    F function to analyze.
         /// @returns  True if function metadata was updated.
@@ -101,8 +99,6 @@ namespace IGC
         /// @param    op operand to trace back.
         /// @returns  Set of matching kernel arguments.
         const std::shared_ptr<ArgSet> analyzeOperand(llvm::Value* op);
-
-        llvm::Argument* analyzeGlobal(llvm::GlobalValue* V);
 
         /// @brief  Checks if instruction stores kernel argument, and if true, traces back to
         ///         alloca instruction (with offset). This is required for decomposed structs
@@ -138,10 +134,6 @@ namespace IGC
 
         /// @brief Data layout of currently analyzed module.
         const llvm::DataLayout* DL = nullptr;
-
-        IGC::IGCMD::MetaDataUtils* MDU = nullptr;
-
-        llvm::Function* m_currentFunction = nullptr;
     };
 
 } // namespace IGC

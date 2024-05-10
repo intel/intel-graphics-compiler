@@ -492,8 +492,7 @@ public:
         PayloadArgumentsTy& arg_list,
         PreDefinedAttrGetter::ArgType type,
         int32_t offset,
-        int32_t size,
-        bool has_ptr = false);
+        int32_t size);
 
     // addPerThreadPayloadArgument - add a per-thread payload argument into
     // arg_list. Currently we only support local id as per-thread argument.
