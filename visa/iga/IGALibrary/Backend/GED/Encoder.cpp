@@ -284,8 +284,10 @@ void Encoder::encodeFC(const Instruction &i) {
     auto sf = i.getDpasFc();
     auto sdepth = GetDpasSystolicDepth(sf);
     auto rc = GetDpasRepeatCount(sf);
+    {
     GED_ENCODE(SystolicDepth, sdepth);
     GED_ENCODE(RepeatCount, rc);
+    }
   } else if (os.isAnySendFormat()) {
     if (platform() >= Platform::XE) {
       // on earlier platforms this is stowed in ExDesc

@@ -61,7 +61,6 @@ struct OpSpec {
     UNARY = HAS_DST << 1,   // takes one operand
     BINARY = UNARY << 1,    // takes two operands
     TERNARY = BINARY << 1,  // takes three operands
-    NARY = TERNARY << 1, // takes more than three operands
 
     /////////////////////////////////////////////////
     // THE ACTUAL VALID ENTRIES
@@ -145,8 +144,6 @@ struct OpSpec {
     // XE:
     //   sync.<syctrl> (..)  reg
     SYNC_UNARY = (SPECIAL | UNARY) + 2,
-
-    QUINARY_SRC = (NARY | HAS_DST) + 1,
   };
   //
   // various miscellaneous attributes about the operation
@@ -227,6 +224,9 @@ struct OpSpec {
   bool isOneOf(Op op1, Op op2) const { return is(op1) || is(op2); }
   bool isOneOf(Op op1, Op op2, Op op3) const {
     return is(op1) || is(op2) || is(op3);
+  }
+  bool isOneOf(Op op1, Op op2, Op op3, Op op4) const {
+    return is(op1) || is(op2) || is(op3) || is(op4);
   }
 
   //////////////////////////////////////////////////////////////////////

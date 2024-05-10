@@ -308,7 +308,7 @@ template <SourceIndex S> void Encoder::encodeSrcRegFile(GED_REG_FILE rf) {
     GED_ENCODE(Src0RegFile, rf);
   } else if (S == SourceIndex::SRC1) {
     GED_ENCODE(Src1RegFile, rf);
-  } else {
+  } else if (S == SourceIndex::SRC2) {
     GED_ENCODE(Src2RegFile, rf);
   }
 }
@@ -355,7 +355,7 @@ void Encoder::encodeSrcSubRegNum(uint32_t subRegInByte) {
     GED_ENCODE(Src0SubRegNum, subRegInByte);
   } else if (S == SourceIndex::SRC1) {
     GED_ENCODE(Src1SubRegNum, subRegInByte);
-  } else {
+  } else if (S == SourceIndex::SRC2) {
     GED_ENCODE(Src2SubRegNum, subRegInByte);
   }
 }
@@ -388,7 +388,7 @@ void Encoder::encodeSrcReg(RegName regName, uint16_t regNum) {
     GED_ENCODE(Src0RegNum, regBits);
   } else if (S == SourceIndex::SRC1) {
     GED_ENCODE(Src1RegNum, regBits);
-  } else {
+  } else if (S == SourceIndex::SRC2) {
     GED_ENCODE(Src2RegNum, regBits);
   }
 }

@@ -87,6 +87,7 @@ DEFINE_SOURCE_ACCESSOR_INLINE(TYPE, FIELD, 2)
   DEFINE_SOURCE_ACCESSOR(TYPE, FIELD, 1)                                       \
   DEFINE_SOURCE_ACCESSOR(TYPE, FIELD, 2)
 
+
 namespace iga {
 struct FlagRegInfo {
   Predication pred;

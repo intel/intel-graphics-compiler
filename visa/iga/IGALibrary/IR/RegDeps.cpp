@@ -1695,7 +1695,7 @@ void DepSet::addABytesAndBukets(size_t reg) {
   // set the corresponding buckets
   for (auto i = addr / m_DB.getBYTES_PER_BUCKET();
        i <= (addr + num_bytes - 1) / m_DB.getBYTES_PER_BUCKET(); i++) {
-    addToBucket(i);
+    addToBucket((uint32_t)i);
   }
 }
 void DepSet::addFBytes(size_t fByteOff, size_t num_bytes) {
