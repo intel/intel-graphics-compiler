@@ -46,6 +46,9 @@ namespace IGC
 
         void visitLoadInst(llvm::LoadInst& I);
         void visitStoreInst(llvm::StoreInst& I);
+        void visitCallInst(llvm::CallInst& I);
+        void visit2DBlockReadCallInst(llvm::CallInst& I, llvm::StringRef unmangledName);
+        void visit2DBlockWriteCallInst(llvm::CallInst& I, llvm::StringRef unmangledName);
 
     private:
         llvm::Module* m_Module = nullptr;
@@ -59,5 +62,7 @@ namespace IGC
         void handleHostAccessIntel(llvm::GlobalVariable& globalVariable, llvm::MDNode* node);
         template<typename T>
         void handleCacheControlINTEL(llvm::Instruction& I, llvm::SmallPtrSetImpl<llvm::MDNode*>& MDNodes);
+        template<typename T>
+        void handleCacheControlINTELFor2DBlockIO(llvm::CallInst& I, llvm::SmallPtrSetImpl<llvm::MDNode*>& MDNodes, llvm::StringRef unmangledName);
     };
 }
