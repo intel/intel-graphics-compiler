@@ -897,6 +897,8 @@ namespace IGC
 
         PushConstantMode m_pushConstantMode = PushConstantMode::DEFAULT;
 
+        static constexpr uint32_t DEFAULT_TOTAL_GRF_NUM = 128;
+
         SInstrTypes m_instrTypes = {};
         SInstrTypes m_instrTypesAfterOpts = {};
         // The module contains global variables with private address space.
@@ -988,7 +990,6 @@ namespace IGC
         uint64_t m_SIMDInfo = 0;
         uint32_t HdcEnableIndexSize = 0;
         std::vector<RoutingIndex> HdcEnableIndexValues;
-        uint32_t m_NumGRFPerThread = 0;
 
         // Flag per function/kernel informing about if it has
         // expensive loops and needs trigger retry compilation
@@ -1020,6 +1021,7 @@ namespace IGC
         /// input: IGC MetaData Utils
         IGC::IGCMD::MetaDataUtils* m_pMdUtils = nullptr;
         IGC::ModuleMetaData* modMD = nullptr;
+        uint32_t m_NumGRFPerThread = 0;
 
         virtual void setFlagsPerCtx();
 

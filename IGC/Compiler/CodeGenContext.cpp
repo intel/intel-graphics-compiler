@@ -845,8 +845,6 @@ namespace IGC
     /// there is no user-forced setting
     uint32_t CodeGenContext::getNumGRFPerThread(bool returnDefault)
     {
-        constexpr uint32_t DEFAULT_TOTAL_GRF_NUM = 128;
-
         if (m_NumGRFPerThread)
             return m_NumGRFPerThread;
 
@@ -857,29 +855,18 @@ namespace IGC
         }
         if (getModuleMetaData()->csInfo.forceTotalGRFNum != 0)
         {
-            if ((this->type == ShaderType::RAYTRACING_SHADER ||
-                this->type == ShaderType::BINDLESS_SHADER) &&
-                platform.isCoreChildOf(IGFX_XE2_LPG_CORE) &&
-                getModuleMetaData()->csInfo.forceTotalGRFNum > DEFAULT_TOTAL_GRF_NUM)
-            {
-                m_NumGRFPerThread = DEFAULT_TOTAL_GRF_NUM;
-                return m_NumGRFPerThread;
-            }
-            else
-            {
-                m_NumGRFPerThread = getModuleMetaData()->csInfo.forceTotalGRFNum;
-                return m_NumGRFPerThread;
-            }
+            m_NumGRFPerThread = getModuleMetaData()->csInfo.forceTotalGRFNum;
+            return m_NumGRFPerThread;
         }
 
-
         // read value from CompOptions first
-        DWORD GRFNum4RQToUse = getModuleMetaData()->compOpt.ForceLargeGRFNum4RQ ? 0x100 : 0;
+        DWORD GRFNum4RQToUse = getModuleMetaData()->compOpt.ForceLargeGRFNum4RQ ? 256 : 0;
 
         // override if reg key value is set
-        GRFNum4RQToUse = IGC_IS_FLAG_ENABLED( TotalGRFNum4RQ ) ? IGC_GET_FLAG_VALUE( TotalGRFNum4RQ ) : GRFNum4RQToUse;
+        GRFNum4RQToUse = IGC_IS_FLAG_ENABLED( TotalGRFNum4RQ ) ?
+            IGC_GET_FLAG_VALUE( TotalGRFNum4RQ ) : GRFNum4RQToUse;
 
-        if (hasSyncRTCalls() && (this->type != ShaderType::RAYTRACING_SHADER) && GRFNum4RQToUse != 0)
+        if (hasSyncRTCalls() && GRFNum4RQToUse != 0)
         {
             m_NumGRFPerThread = GRFNum4RQToUse;
             return m_NumGRFPerThread;
