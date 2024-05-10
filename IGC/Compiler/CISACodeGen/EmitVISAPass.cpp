@@ -8834,8 +8834,18 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         // nothing to do
         break;
     case GenISAIntrinsic::GenISA_wavebarrier:
-        // nothing to do
+    {
+        m_encoder->Fence(false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true);
+        m_encoder->Push();
         break;
+    }
     case GenISAIntrinsic::GenISA_mul_rtz:
     case GenISAIntrinsic::GenISA_fma_rtz:
     case GenISAIntrinsic::GenISA_add_rtz:
