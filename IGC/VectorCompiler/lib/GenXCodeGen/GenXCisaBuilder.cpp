@@ -4660,7 +4660,7 @@ void GenXKernelBuilder::buildCastInst(CastInst *CI, BaleInfo BI, unsigned Mod,
 void GenXKernelBuilder::buildCmp(CmpInst *Cmp, BaleInfo BI,
                                  const DstOpndDesc &DstDesc) {
   Signedness Signed = DONTCARESIGNED;
-  VISA_Cond_Mod opSpec;
+  VISA_Cond_Mod opSpec = ISA_CMP_UNDEF;
   switch (Cmp->getPredicate()) {
   case CmpInst::FCMP_ONE:
   case CmpInst::FCMP_ORD:

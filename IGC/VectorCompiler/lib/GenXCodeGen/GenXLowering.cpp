@@ -928,7 +928,7 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
   }
   // Deduce intrinsic width: check predicate if exists, then check address
   // vector.
-  unsigned WidthOperand;
+  unsigned WidthOperand = NONEED;
   if (PredIdx != NONEED)
     WidthOperand = PredIdx;
   else if (AddrIdx != NONEED)
