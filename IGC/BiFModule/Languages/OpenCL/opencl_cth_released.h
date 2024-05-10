@@ -6662,6 +6662,97 @@ void __attribute__((overloadable)) intel_sub_group_media_block_write_ui8(int2 sr
 
 #endif // cl_intel_media_block_io
 
+#ifdef cl_intel_subgroup_2d_block_io
+
+////////////////////////////////////////////////////////////////
+// 2D Block Load, 8-bit data, Rows in [1, 2, 4, 8], Columns in [32x2]:
+
+void __attribute__((overloadable)) intel_sub_group_2d_block_read_8b_1r32x2c(__global void* base_address, int width, int height, int pitch, int2 coord, __private ushort* destination);
+void __attribute__((overloadable)) intel_sub_group_2d_block_read_8b_2r32x2c(__global void* base_address, int width, int height, int pitch, int2 coord, __private ushort* destination);
+void __attribute__((overloadable)) intel_sub_group_2d_block_read_8b_4r32x2c(__global void* base_address, int width, int height, int pitch, int2 coord, __private ushort* destination);
+void __attribute__((overloadable)) intel_sub_group_2d_block_read_8b_8r32x2c(__global void* base_address, int width, int height, int pitch, int2 coord, __private ushort* destination);
+
+void __attribute__((overloadable)) intel_sub_group_2d_block_prefetch_8b_1r32x2c(__global void* base_address, int width, int height, int pitch, int2 coord);
+void __attribute__((overloadable)) intel_sub_group_2d_block_prefetch_8b_2r32x2c(__global void* base_address, int width, int height, int pitch, int2 coord);
+void __attribute__((overloadable)) intel_sub_group_2d_block_prefetch_8b_4r32x2c(__global void* base_address, int width, int height, int pitch, int2 coord);
+void __attribute__((overloadable)) intel_sub_group_2d_block_prefetch_8b_8r32x2c(__global void* base_address, int width, int height, int pitch, int2 coord);
+
+////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////
+// 2D Block Load, 16-bit data, Rows in [1, 2, 4, 8], Columns in [16x2]:
+
+void __attribute__((overloadable)) intel_sub_group_2d_block_read_16b_1r16x2c(__global void* base_address, int width, int height, int pitch, int2 coord, __private ushort* destination);
+void __attribute__((overloadable)) intel_sub_group_2d_block_read_16b_2r16x2c(__global void* base_address, int width, int height, int pitch, int2 coord, __private ushort* destination);
+void __attribute__((overloadable)) intel_sub_group_2d_block_read_16b_4r16x2c(__global void* base_address, int width, int height, int pitch, int2 coord, __private ushort* destination);
+void __attribute__((overloadable)) intel_sub_group_2d_block_read_16b_8r16x2c(__global void* base_address, int width, int height, int pitch, int2 coord, __private ushort* destination);
+
+void __attribute__((overloadable)) intel_sub_group_2d_block_prefetch_16b_1r16x2c(__global void* base_address, int width, int height, int pitch, int2 coord);
+void __attribute__((overloadable)) intel_sub_group_2d_block_prefetch_16b_2r16x2c(__global void* base_address, int width, int height, int pitch, int2 coord);
+void __attribute__((overloadable)) intel_sub_group_2d_block_prefetch_16b_4r16x2c(__global void* base_address, int width, int height, int pitch, int2 coord);
+void __attribute__((overloadable)) intel_sub_group_2d_block_prefetch_16b_8r16x2c(__global void* base_address, int width, int height, int pitch, int2 coord);
+
+////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////
+// 2D Block Load with VNNI Transform, 8-bit data, Rows in [32*], Columns in [16]:
+
+void __attribute__((overloadable)) intel_sub_group_2d_block_read_transform_8b_32r16x1c(__global void* base_address, int width, int height, int pitch, int2 coord, __private uint* destination);
+
+void __attribute__((overloadable)) intel_sub_group_2d_block_prefetch_8b_32r16x1c(__global void* base_address, int width, int height, int pitch, int2 coord);
+
+////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////
+// 2D Block Load with VNNI Transform, 16-bit data, Rows in [16, 32], Columns in [16]:
+
+void __attribute__((overloadable)) intel_sub_group_2d_block_read_transform_16b_16r16x1c(__global void* base_address, int width, int height, int pitch, int2 coord, __private uint* destination);
+
+void __attribute__((overloadable)) intel_sub_group_2d_block_prefetch_16b_16r16x1c(__global void* base_address, int width, int height, int pitch, int2 coord);
+
+// 32 row version implemented in opencl_cth_pre_release.h
+
+////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////
+// 2D Block Load with Transpose, 32-bit data, Rows in [16], Columns in [1, 2, 4, 8]:
+
+// 1, 2 and 4 columns versions TBD
+
+void __attribute__((overloadable)) intel_sub_group_2d_block_read_transpose_32b_16r8x1c(__global void* base_address, int width, int height, int pitch, int2 coord, __private uint* destination);
+
+void __attribute__((overloadable)) intel_sub_group_2d_block_prefetch_32b_16r8x1c(__global void* base_address, int width, int height, int pitch, int2 coord);
+
+////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////
+// 2D Block Store, 8-bit data, Rows in [1, 2, 4, 8], Columns in [32]:
+
+void __attribute__((overloadable)) intel_sub_group_2d_block_write_8b_1r32x1c(__global void* base_address, int width, int height, int pitch, int2 coord, private ushort* val);
+void __attribute__((overloadable)) intel_sub_group_2d_block_write_8b_2r32x1c(__global void* base_address, int width, int height, int pitch, int2 coord, private ushort* val);
+void __attribute__((overloadable)) intel_sub_group_2d_block_write_8b_4r32x1c(__global void* base_address, int width, int height, int pitch, int2 coord, private ushort* val);
+void __attribute__((overloadable)) intel_sub_group_2d_block_write_8b_8r32x1c(__global void* base_address, int width, int height, int pitch, int2 coord, private ushort* val);
+
+////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////
+// 2D Block Store, 16-bit data, Rows in [1, 2, 4, 8], Columns in [16]:
+
+void __attribute__((overloadable)) intel_sub_group_2d_block_write_16b_1r16x1c(__global void* base_address, int width, int height, int pitch, int2 coord, private ushort* val);
+void __attribute__((overloadable)) intel_sub_group_2d_block_write_16b_2r16x1c(__global void* base_address, int width, int height, int pitch, int2 coord, private ushort* val);
+void __attribute__((overloadable)) intel_sub_group_2d_block_write_16b_4r16x1c(__global void* base_address, int width, int height, int pitch, int2 coord, private ushort* val);
+void __attribute__((overloadable)) intel_sub_group_2d_block_write_16b_8r16x1c(__global void* base_address, int width, int height, int pitch, int2 coord, private ushort* val);
+
+////////////////////////////////////////////////////////////////
+
+#endif //defined(cl_intel_subgroup_2d_block_io)
+
 #ifdef cl_khr_fp16
 half    __attribute__((overloadable)) intel_sub_group_shuffle( half x, uint c );
 half    __attribute__((overloadable)) intel_sub_group_shuffle_down( half prev, half cur, uint c );

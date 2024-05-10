@@ -488,6 +488,7 @@ set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_subgroup_extended_block_read")
 set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_pvc_lsc_validation")
 set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_subgroup_extended_block_read_cacheopts")
 set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_subgroup_extended_block_write_cacheopts")
+set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_subgroup_2d_block_io")
 
 igc_bif_build_bc(
     OUTPUT               "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int.bc"

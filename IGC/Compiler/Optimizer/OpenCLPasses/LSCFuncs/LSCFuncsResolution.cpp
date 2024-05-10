@@ -939,6 +939,10 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
         {
             numBlocksV = 1;
         }
+        else if (isPrefetch && funcName.consume_front("v4"))
+        {
+            numBlocksV = 4;
+        }
         else
         {
             IGC_ASSERT_MESSAGE(funcName.consume_front("v2"), "Unrecognized v element in __builtin_IB_subgroup_block_read/write.");
@@ -1003,6 +1007,20 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
 
         if (elemSize == 8)
         {
+            bool is32Height = funcName.consume_front("_k32");
+            IGC_ASSERT_MESSAGE(is32Height, "Only k32 is supported for 8 bit element size, at the moment.");
+
+            // __builtin_IB_subgroup_block_read_flat_transform_u8_k32v2
+            if (funcName.consume_front("v2"))
+            {
+                numBlocksV = 2;
+            }
+            // __builtin_IB_subgroup_block_read_flat_transform_u8_k32v4
+            else if(funcName.consume_front("v4"))
+            {
+                numBlocksV = 4;
+            }
+
             // __builtin_IB_subgroup_block_read_flat_transform_u8_k32
             tileHeight = 32;
         }
