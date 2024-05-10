@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZEBIN Version
-Version 1.41
+Version 1.42
 
 ## Versioning
 Format: \<_Major number_\>.\<_Minor number_\>
@@ -15,6 +15,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.42**: Enable is_ptr attribute in indirect payload arguments.
 - **Version 1.41**: Add intel_reqd_thread_group_dispatch_size to user_attributes.
 - **Version 1.40**: Add buffer_size to argument_type.
 - **Version 1.39**: Add private_size and spill_size to execution_env.
