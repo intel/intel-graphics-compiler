@@ -72,6 +72,8 @@ int IR_Builder::translateVISAMediaLoadInst(
   // create MOV inst
   createMovR0Inst(dcl, 0, 0, true);
   /* mov (1)      VX(0,2)<1>,    CONST[R,C]  */
+  vISA_ASSERT_INPUT(!(blockHeight & 0xFFFF0000) && !(blockWidth & 0xFFFF0000),
+                    "upper 16-bits of block height/width should be 0");
   temp = (blockHeight - 1) << 16 | (blockWidth - 1);
   createMovInst(dcl, 0, 2, g4::SIMD1, NULL, NULL, createImm(temp, Type_UD),
                 true);
@@ -83,6 +85,44 @@ int IR_Builder::translateVISAMediaLoadInst(
   // send's operands preparation
   // create a currDst for VX
   G4_SrcRegRegion *payload = createSrcRegRegion(dcl, getRegionStride1());
+
+  unsigned msgDesc = 0;
+  if ((mod == MEDIA_LD_top) || (mod == MEDIA_LD_top_mod)) {
+    msgDesc += 0x6 << MESSAGE_SPECIFIC_CONTROL; // Read top fields
+  } else if ((mod == MEDIA_LD_bottom) || (mod == MEDIA_LD_bottom_mod)) {
+    msgDesc += 0x7 << MESSAGE_SPECIFIC_CONTROL; // Read bottom fields
+  }
+
+  SET_DATAPORT_MESSAGE_TYPE(msgDesc, DC1_MEDIA_BLOCK_READ)
+
+  msgDesc += planeID;
+
+  unsigned regs2rcv = (obj_size - 1) / numEltPerGRF<Type_UB>() + 1;
+
+  if (shouldForceSplitSend(surface) || useSends()) {
+    // message length = 1, response length != 0, header present = 1
+    msgDesc += (1 << getSendMsgLengthBitOffset()) +
+               (1 << getSendHeaderPresentBitOffset());
+
+    unsigned regs2snd = 1;
+    unsigned extMsgLength = 0;
+    uint16_t extFuncCtrl = 0;
+
+    G4_SendDescRaw *desc = createSendMsgDesc(
+        msgDesc, regs2rcv, regs2snd, SFID::DP_DC1, extMsgLength, extFuncCtrl,
+        SendAccess::READ_ONLY, surface, nullptr);
+
+    G4_DstRegRegion *d = checkSendDst(dstOpnd->asDstRegRegion());
+    G4_ExecSize send_exec_size(getGenxDataportIOSize());
+    if (IS_WTYPE(d->getType())) {
+      send_exec_size *= 2;
+    }
+
+    createSplitSendInst(nullptr, d, payload, nullptr, send_exec_size, desc,
+                        InstOpt_WriteEnable, false);
+
+    return VISA_SUCCESS;
+  }
 
   // mediaread overwrites entire GRF
   bool via_temp = false;
@@ -127,25 +167,13 @@ int IR_Builder::translateVISAMediaLoadInst(
 
   G4_DstRegRegion *d = checkSendDst(dstOpnd->asDstRegRegion());
 
-  temp = 0;
-  if ((mod == MEDIA_LD_top) || (mod == MEDIA_LD_top_mod)) {
-    temp += 0x6 << MESSAGE_SPECIFIC_CONTROL; // Read top fields
-  } else if ((mod == MEDIA_LD_bottom) || (mod == MEDIA_LD_bottom_mod)) {
-    temp += 0x7 << MESSAGE_SPECIFIC_CONTROL; // Read bottom fields
-  }
-
-  SET_DATAPORT_MESSAGE_TYPE(temp, DC1_MEDIA_BLOCK_READ)
-
-  temp += planeID;
-
   G4_ExecSize send_exec_size(getGenxDataportIOSize());
   if (IS_WTYPE(d->getType())) {
     send_exec_size *= 2;
   }
 
-  createSendInst(NULL, d, payload, 1,
-                 (obj_size - 1) / numEltPerGRF<Type_UB>() + 1, send_exec_size,
-                 temp, SFID::DP_DC1, 1, SendAccess::READ_ONLY, surface, NULL,
+  createSendInst(NULL, d, payload, 1, regs2rcv, send_exec_size, msgDesc,
+                 SFID::DP_DC1, 1, SendAccess::READ_ONLY, surface, NULL,
                  InstOpt_WriteEnable, false);
 
   if (via_temp) {
