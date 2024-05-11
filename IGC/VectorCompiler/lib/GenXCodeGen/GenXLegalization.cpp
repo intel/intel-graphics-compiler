@@ -1851,9 +1851,10 @@ Value *GenXLegalization::joinWrRegion(Value *PrevSliceRes, BaleInst BInst,
   if (CurSplitKind == SplitKind::SplitKind_GStore && StartIdx != 0) {
     Instruction *ST = B.getHead()->Inst;
     IGC_ASSERT(isa<StoreInst>(ST));
-    auto *GV = cast<GlobalValue>(ST->getOperand(1));
-    auto *Load = new LoadInst(GV->getValueType(), GV, ".gload",
-                              /*volatile*/ true, InsertBefore);
+    Value *GV = ST->getOperand(1);
+    auto *Load =
+        new LoadInst(IGCLLVM::getNonOpaquePtrEltTy(GV->getType()), GV, ".gload",
+                     /*volatile*/ true, InsertBefore);
     Load->setDebugLoc(BInst.Inst->getDebugLoc());
     In = Load;
   }

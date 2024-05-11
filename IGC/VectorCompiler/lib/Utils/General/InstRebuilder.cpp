@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2024 Intel Corporation
+Copyright (C) 2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -95,13 +95,15 @@ public:
 
   Instruction *visitLoadInst(LoadInst &OrigLoad) {
     Value &Ptr = getSingleNewOperand();
-    return new LoadInst{OrigLoad.getType(),
-                        &Ptr,
-                        "",
-                        OrigLoad.isVolatile(),
-                        IGCLLVM::getAlign(OrigLoad),
-                        OrigLoad.getOrdering(),
-                        OrigLoad.getSyncScopeID()};
+    auto *NewLoad =
+        new LoadInst{IGCLLVM::getNonOpaquePtrEltTy(Ptr.getType()),
+                     &Ptr,
+                     "",
+                     OrigLoad.isVolatile(),
+                     IGCLLVM::getAlign(OrigLoad),
+                     OrigLoad.getOrdering(),
+                     OrigLoad.getSyncScopeID()};
+    return NewLoad;
   }
 
   StoreInst *visitStoreInst(StoreInst &OrigStore) {

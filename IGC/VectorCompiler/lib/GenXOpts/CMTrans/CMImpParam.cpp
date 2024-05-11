@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -769,9 +769,9 @@ void CMImpParam::replaceWithGlobal(CallInst *CI) {
                      "genx or vc internal intrinsic is expected");
   auto IID = vc::getAnyIntrinsicID(CI->getCalledFunction());
   GlobalVariable *GV = getOrCreateGlobalForIID(CI->getFunction(), IID);
-  LoadInst *Load = new LoadInst(
-      GV->getValueType(), GV, "",
-      /* isVolatile */ false, IGCLLVM::getCorrectAlign(GV->getAlignment()), CI);
+  LoadInst *Load = new LoadInst(IGCLLVM::getNonOpaquePtrEltTy(GV->getType()), GV, "",
+                                /* isVolatile */ false,
+                                IGCLLVM::getCorrectAlign(GV->getAlignment()), CI);
   Load->takeName(CI);
   Load->setDebugLoc(CI->getDebugLoc());
   CI->replaceAllUsesWith(Load);

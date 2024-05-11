@@ -2230,8 +2230,8 @@ static bool skipTransform(Instruction *DefI, Instruction *UseI) {
 // gstore w, G
 static void normalizeGStore(StoreInst &SI) {
   Value *PointerOp = SI.getPointerOperand();
-  auto LI = new LoadInst(SI.getValueOperand()->getType(), PointerOp, ".gload",
-                         true /*volatile*/, &SI);
+  auto LI = new LoadInst(IGCLLVM::getNonOpaquePtrEltTy(PointerOp->getType()),
+                         PointerOp, ".gload", true /*volatile*/, &SI);
   Value *StoreOp = SI.getValueOperand();
   Region R(StoreOp);
   auto WrR =
