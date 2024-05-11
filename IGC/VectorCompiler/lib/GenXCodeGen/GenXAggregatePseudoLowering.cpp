@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2023 Intel Corporation
+Copyright (C) 2020-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -347,21 +347,20 @@ public:
                        "should take the operand from the original load");
     IRBuilder<> IRB{&OrigLoad};
     Value *PointerOp = OrigLoad.getPointerOperand();
-    Type *Ty = IGCLLVM::getNonOpaquePtrEltTy(PointerOp->getType()->getScalarType());
-    auto *GEP = IRB.CreateInBoundsGEP(Ty, PointerOp, CreateIdxListForGEP(IRB),
-                                      OrigLoad.getName() + "aggr.gep");
+    auto *GEP = cast<GetElementPtrInst>(IRB.CreateInBoundsGEP(
+        OrigLoad.getType(), PointerOp, CreateIdxListForGEP(IRB),
+        OrigLoad.getName() + "aggr.gep"));
     // FIXME: replace a structure alignment with an element alignment
-    Type *GEPPtrTy = IGCLLVM::getNonOpaquePtrEltTy(GEP->getType());
-    return IRB.CreateAlignedLoad(GEPPtrTy, GEP, IGCLLVM::getAlign(OrigLoad),
-                                 OrigLoad.isVolatile(),
-                                 OrigLoad.getName() + ".split.aggr");
+    return IRB.CreateAlignedLoad(
+        GEP->getResultElementType(), GEP, IGCLLVM::getAlign(OrigLoad),
+        OrigLoad.isVolatile(), OrigLoad.getName() + ".split.aggr");
   }
 
   Instruction *visitStoreInst(StoreInst &OrigStore) const {
     IRBuilder<> IRB{&OrigStore};
     Value *PointerOp = OrigStore.getPointerOperand();
-    Type *Ty = IGCLLVM::getNonOpaquePtrEltTy(PointerOp->getType()->getScalarType());
-    auto *GEP = IRB.CreateInBoundsGEP(Ty, PointerOp, CreateIdxListForGEP(IRB),
+    auto *GEP = IRB.CreateInBoundsGEP(OrigStore.getValueOperand()->getType(),
+                                      PointerOp, CreateIdxListForGEP(IRB),
                                       OrigStore.getName() + "aggr.gep");
     // FIXME: replace a structure alignment with an element alignment
     return IRB.CreateAlignedStore(NewOps[0], GEP, IGCLLVM::getAlign(OrigStore),
