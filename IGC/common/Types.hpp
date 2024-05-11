@@ -132,7 +132,6 @@ enum class ShaderType
     COMPUTE_SHADER,
     OPENCL_SHADER,
     RAYTRACING_SHADER,
-    BINDLESS_SHADER,
     END,
     BEGIN = 0
 };
@@ -160,7 +159,6 @@ static const char *ShaderTypeString[] = {
     "CS",
     "OCL",
     "RAYDISPATCH",
-    "BINDLESS",
     "ERROR"
 };
 

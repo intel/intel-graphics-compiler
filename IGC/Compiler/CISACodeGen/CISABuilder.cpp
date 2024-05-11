@@ -4486,7 +4486,7 @@ namespace IGC
         }
 
         if ((context->type == ShaderType::OPENCL_SHADER || context->type == ShaderType::COMPUTE_SHADER
-            || context->type == ShaderType::RAYTRACING_SHADER ||  context->type == ShaderType::BINDLESS_SHADER) &&
+            || context->type == ShaderType::RAYTRACING_SHADER) &&
             (m_program->m_Platform->preemptionSupported() || IGC_IS_FLAG_ENABLED(ForcePreemptionWA)) &&
             IGC_IS_FLAG_ENABLED(EnablePreemption))
         {
