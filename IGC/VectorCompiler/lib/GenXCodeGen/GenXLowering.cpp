@@ -2040,9 +2040,8 @@ bool GenXLowering::processInst(Instruction *Inst) {
     case GenXIntrinsic::genx_vload: {
       if (!Inst->use_empty()) {
         Value *Ptr = Inst->getOperand(0);
-        LoadInst *LI =
-            new LoadInst(IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType()), Ptr, "",
-                         /*volatile*/ true, Inst);
+        LoadInst *LI = new LoadInst(Inst->getType(), Ptr, "",
+                                    /*volatile*/ true, Inst);
         LI->takeName(Inst);
         LI->setDebugLoc(Inst->getDebugLoc());
         Inst->replaceAllUsesWith(LI);
