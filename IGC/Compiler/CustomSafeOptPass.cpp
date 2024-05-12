@@ -387,49 +387,60 @@ void CustomSafeOptPass::visitShuffleIndex(llvm::CallInst* I)
 }
 
 // here we merge dot-product (no acc) and add (as acc) into one dp4a
-// before optimizing:
-// % id113- = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 0, i32 % 261, i32 % 281)
-// ......
+// there must be:
 // %id213- = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 0, i32 %305, i32 %345)
-// %id214- = add i32 %id113-, %id213-
-// ......
-// %id317- = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 0, i32 %267, i32 %321)
-// %id318- = add i32 % id214- , % id317-
-// ......
+// %id214- = add i32 %id113-, %id213- <--- case 1: acc is on the 1st operand
+// or
+// %id214- = add i32 %id213-, %id113- <--- case 2: acc is on the 2nd operand
 // after optimizing:
 // %id213- = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 %id113-, i32 %305, i32 %345)
-// ......
-// %id317- = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 %id213-, i32 %267, i32 %321)
 void CustomSafeOptPass::mergeDotAddToDp4a(llvm::CallInst* I)
 {
-    if (!IGC_IS_FLAG_ENABLED(EnableDotAddToDp4aMerge))
+    if (IGC_IS_FLAG_ENABLED(DisableDotAddToDp4aMerge))
       return;
 
     // found %id213- = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 0, i32 %305, i32 %345)
     GenIntrinsicInst* instr = dyn_cast<GenIntrinsicInst>(I);
 
+    auto checkValidAccValue = [](GenIntrinsicInst* dp4aInstr, Value* accVal) {
+      // check callInst if the value is from a previous callInst and make sure
+      // it's not the dp4a intrinsic it self, such as the %id213- above
+      if (CallInst* valInst = dyn_cast<CallInst>(accVal)) {
+        if (GenIntrinsicInst* valInstr = dyn_cast<GenIntrinsicInst>(valInst)) {
+          return (valInstr != dp4aInstr) ? true : false;
+        }
+      }
+
+      // if it's not callInst, then it's a previous result for acc in this intrinsic
+      return true;;
+    };
+
     if (ConstantInt* CI = dyn_cast<ConstantInt>(instr->getOperand(0))) {
       // make sure operand(0) value is (i32 0)
       if (CI->isZero()) {
-        // found %id214- = add i32 %id113-, %id213-
+        // check the followed instruction
         if (Instruction* nextInst = dyn_cast<Instruction>(I)->getNextNode()) {
-          // make sure followed by add op
+          // make sure it's add op
           if (nextInst->getOpcode() == Instruction::Add) {
-            // the acc in operand(0) should be %id113-
-            Value* accVal = nextInst->getOperand(0);
-            if (CallInst* accInst = dyn_cast<CallInst>(accVal)) {
-              if (GenIntrinsicInst* accInstr = dyn_cast<GenIntrinsicInst>(accInst)) {
-                // make sure the accumulate is from its previous dp4a op
-                if (accInstr->getIntrinsicID() == GenISAIntrinsic::GenISA_dp4a_ss) {
-                  // %id213- = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 0, i32 %305, i32 %345)
-                  for (auto user : instr->users()) {
-                    // replace i32 0 with %id113- in operand(0)
-                    instr->setOperand(0, accVal);
-                    user->replaceAllUsesWith(instr);
-                    // %id213- = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 %id113-, i32 %305, i32 %345)
-                    break;
-                  }
-                }
+            // the acc value
+            Value* accVal = nullptr;
+
+            // check if the operand(0) is the acc, or the operand(1) is
+            if (checkValidAccValue(instr, nextInst->getOperand(0))) {
+              accVal = nextInst->getOperand(0);
+            }
+            else if (checkValidAccValue(instr, nextInst->getOperand(1))) {
+              accVal = nextInst->getOperand(1);
+            }
+
+            // if a valid acc is found
+            if (accVal) {
+              for (auto user : instr->users()) {
+                // replace i32 0 with %id113-
+                instr->setOperand(0, accVal);
+                user->replaceAllUsesWith(instr);
+                // %id213- = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 %id113-, i32 %305, i32 %345)
+                break;
               }
             }
           }
@@ -858,6 +869,7 @@ void CustomSafeOptPass::visitCallInst(CallInst& C)
         }
 
         case GenISAIntrinsic::GenISA_dp4a_ss:
+        case GenISAIntrinsic::GenISA_dp4a_uu:
         {
             mergeDotAddToDp4a(&C);
             break;
