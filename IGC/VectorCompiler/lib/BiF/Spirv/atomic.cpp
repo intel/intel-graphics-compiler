@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -222,7 +222,6 @@ SPIRV_ATOMIC_BUILTIN_BINARY(FAddEXT, atomic::operation::fadd, __local, float)
 SPIRV_ATOMIC_BUILTIN_BINARY(FAddEXT, atomic::operation::fadd, __local, double)
 SPIRV_ATOMIC_BUILTIN_BINARY(FAddEXT, atomic::operation::fadd, __generic, float)
 SPIRV_ATOMIC_BUILTIN_BINARY(FAddEXT, atomic::operation::fadd, __generic, double)
-
 
 #define SPIRV_ATOMIC_BUILTIN_BINARY_WITH_OPVALUE(                              \
     SPIRV_ATOMIC_OP, GEN_ATOMIC_OP, OPVALUE, ADDRESS_SPACE, TYPE)              \

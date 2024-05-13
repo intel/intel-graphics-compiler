@@ -9,17 +9,18 @@ SPDX-License-Identifier: MIT
 #include <cm-cl/vector.h>
 #include <opencl_def.h>
 
-#include "printf_not_cm_common.h"
-#include "vc/BiF/PrintfIface.h"
+#include <vc/BiF/PrintfIface.h>
+
+#include "common.h"
 
 using namespace vc::bif::printf;
 using namespace cm;
 
-static constexpr int StringAnnotationSize = sizeof(uintptr_t);
-// StringAnnotationSize but in DWords.
-static constexpr int StringDWordSize = StringAnnotationSize / 4;
+static constexpr int StringAnnotationSize = sizeof(BufferElementTy);
+// String is transfered by its index, which is always 1 DWord.
+static constexpr int StringArgSize = 1;
 
-// Format string handling. Just writing format string pointer to buffer and
+// Format string handling. Just writing format string index to buffer and
 // promoting the pointer to buffer.
 template <typename T>
 vector<BufferElementTy, TransferDataSize>
@@ -29,21 +30,32 @@ printf_fmt_impl(vector<BufferElementTy, TransferDataSize> TransferData,
     // Just skip.
     return TransferData;
   __global BufferElementTy *CurAddress = getCurAddress(TransferData);
-  auto StrAddress = castPointerToVector(FormatString);
-  for (int Idx = 0; Idx != StringDWordSize; ++Idx)
-    CurAddress = writeElementToBuffer(CurAddress, StrAddress[Idx]);
+  BufferElementTy Index = detail::printf_format_index(FormatString);
+  CurAddress = writeElementToBuffer(CurAddress, Index);
   setCurAddress(TransferData, CurAddress);
   return TransferData;
 }
 
-// String must be handled separately in order ocl printf to work.
-// It can be treated as any other argument in zebin case.
+// String argument requires a special treatment.
+// It could've been covered in standard arg routine, but in this case pointer
+// would have to pass through several bitcast, plus under condition. It would
+// cause some problems as `@llvm.vc.internal.print.format.index` should get
+// pointer directly from global constant. It would require several IR
+// transformations to get rid of those bitcasts and conditions. Which can be
+// avoided by this "specialization" for string argument.
 template <typename T>
 vector<BufferElementTy, TransferDataSize>
 printf_arg_str_impl(vector<BufferElementTy, TransferDataSize> TransferData,
                     T *String) {
-  return printf_arg_impl<StringDWordSize>(TransferData, ArgKind::String,
-                                          castPointerToVector(String));
+  if (TransferData[TransferDataLayout::ReturnValue])
+    // Just skip.
+    return TransferData;
+  __global BufferElementTy *CurAddress = getCurAddress(TransferData);
+  BufferElementTy Index = detail::printf_format_index(String);
+  CurAddress = writeElementToBuffer(CurAddress, ArgCode::String);
+  CurAddress = writeElementToBuffer(CurAddress, Index);
+  setCurAddress(TransferData, CurAddress);
+  return TransferData;
 }
 
 extern "C" cl_vector<BufferElementTy, TransferDataSize>
@@ -79,7 +91,7 @@ extern "C" cl_vector<BufferElementTy, TransferDataSize>
 __vc_printf_arg(cl_vector<BufferElementTy, TransferDataSize> TransferData,
                 ArgKind::Enum Kind,
                 cl_vector<BufferElementTy, ArgData::Size> Arg) {
-  return printf_arg_impl<StringDWordSize>(TransferData, Kind, Arg).cl_vector();
+  return printf_arg_impl<StringArgSize>(TransferData, Kind, Arg).cl_vector();
 }
 
 extern "C" cl_vector<BufferElementTy, TransferDataSize>

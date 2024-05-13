@@ -1,19 +1,19 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2023 Intel Corporation
+Copyright (C) 2021-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#ifndef VC_BIF_PRINTF_NOT_CM_COMMON_H
-#define VC_BIF_PRINTF_NOT_CM_COMMON_H
+#ifndef VC_BIF_PRINT_COMMON_H
+#define VC_BIF_PRINT_COMMON_H
 
 #include <cm-cl/atomic.h>
 #include <cm-cl/vector.h>
 #include <opencl_def.h>
 
-#include "vc/BiF/PrintfIface.h"
+#include <vc/BiF/PrintfIface.h>
 
 using namespace vc::bif::printf;
 using namespace cm;
@@ -207,4 +207,4 @@ printf_ret_impl(vector<BufferElementTy, TransferDataSize> TransferData) {
   return TransferData[TransferDataLayout::ReturnValue];
 }
 
-#endif // VC_BIF_PRINTF_NOT_CM_COMMON_H
+#endif // VC_BIF_PRINT_COMMON_H

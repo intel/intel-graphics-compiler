@@ -11,16 +11,11 @@ include(cmake/Functions.cmake)
 set(RESOURCE_EMBEDDER_SCRIPT ${IGC_SOURCE_DIR}/BiFModule/resource_embedder.py)
 set(VCB_EXE "vcb" CACHE STRING "")
 
-set(PRINTF_NOT_CM_COMMON_H_PATH ${CMAKE_CURRENT_SOURCE_DIR}/printf_not_cm_common.h)
-
-vc_embed_bif(PRINTF_OCL_32_CPP_PATH printf_ocl_genx.cpp VCBiFPrintfOCL 32
-             DEPENDS ${PRINTF_NOT_CM_COMMON_H_PATH})
-vc_embed_bif(PRINTF_OCL_64_CPP_PATH printf_ocl_genx.cpp VCBiFPrintfOCL 64
-             DEPENDS ${PRINTF_NOT_CM_COMMON_H_PATH})
-vc_embed_bif(PRINTF_ZE_32_CPP_PATH printf_ze_genx.cpp VCBiFPrintfZE 32
-             DEPENDS ${PRINTF_NOT_CM_COMMON_H_PATH})
-vc_embed_bif(PRINTF_ZE_64_CPP_PATH printf_ze_genx.cpp VCBiFPrintfZE 64
-             DEPENDS ${PRINTF_NOT_CM_COMMON_H_PATH})
+set(PRINTF_COMMON ${CMAKE_CURRENT_SOURCE_DIR}/Print/common.h)
+vc_embed_bif(PRINTF_OCL_32 Print/ocl.cpp VCBiFPrintfOCL 32 DEPENDS ${PRINTF_COMMON})
+vc_embed_bif(PRINTF_OCL_64 Print/ocl.cpp VCBiFPrintfOCL 64 DEPENDS ${PRINTF_COMMON})
+vc_embed_bif(PRINTF_ZE_32 Print/ze.cpp VCBiFPrintfZE 32 DEPENDS ${PRINTF_COMMON})
+vc_embed_bif(PRINTF_ZE_64 Print/ze.cpp VCBiFPrintfZE 64 DEPENDS ${PRINTF_COMMON})
 
 #Define the macro if Khronos SPIR-V translator is used.
 if(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC)
@@ -30,14 +25,15 @@ endif()
 get_target_include_opt_list(IGC_SPIRV_HEADERS_INCLUDES IGCSPIRVHeaders)
 
 set(SPIRV_BUILTIN_SOURCES
-  spirv_atomic_builtins_genx.cpp
-  spirv_exec_builtins_genx.cpp
-  spirv_math_builtins_genx.cpp)
-vc_embed_bif(SPIRV_BUILTINS_CPP_PATH
-             "${SPIRV_BUILTIN_SOURCES}"
-             VCSPIRVBuiltins 64
-             CLANG_INCLUDES ${IGC_SPIRV_HEADERS_INCLUDES}
-             CLANG_FLAGS ${CLANG_FLAGS_FOR_SPIRV_BUILTINS})
+  Spirv/atomic.cpp
+  Spirv/assert.cpp
+  Spirv/barrier.cpp
+  Spirv/exec.cpp
+  Spirv/math.cpp)
+
+vc_embed_bif(SPIRV_BUILTINS "${SPIRV_BUILTIN_SOURCES}" VCSPIRVBuiltins 64
+  CLANG_INCLUDES ${IGC_SPIRV_HEADERS_INCLUDES}
+  CLANG_FLAGS ${CLANG_FLAGS_FOR_SPIRV_BUILTINS})
 
 set(BUILTIN_SOURCES
   Library/Math/F16/fptoi.cpp
@@ -57,21 +53,13 @@ set(BUILTIN_SOURCES
 
   Library/Atomics/Local/binop.cpp)
 
-vc_embed_optimized_bif(BUILTINS_CPP_PATH "${BUILTIN_SOURCES}" VCBuiltins 64)
+vc_embed_optimized_bif(BUILTINS "${BUILTIN_SOURCES}" VCBuiltins 64)
 
 add_custom_target(VCBiFPreparation
-  DEPENDS ${PRINTF_OCL_32_CPP_PATH}
-          ${PRINTF_OCL_64_CPP_PATH}
-          ${PRINTF_ZE_32_CPP_PATH}
-          ${PRINTF_ZE_64_CPP_PATH}
-          ${BUILTINS_CPP_PATH}
-          ${SPIRV_BUILTINS_CPP_PATH})
+  DEPENDS ${PRINTF_OCL_32} ${PRINTF_OCL_64} ${PRINTF_ZE_32} ${PRINTF_ZE_64}
+  ${BUILTINS} ${SPIRV_BUILTINS})
 
 add_library(VCEmbeddedBiF OBJECT
-  ${PRINTF_OCL_32_CPP_PATH}
-  ${PRINTF_OCL_64_CPP_PATH}
-  ${PRINTF_ZE_32_CPP_PATH}
-  ${PRINTF_ZE_64_CPP_PATH}
-  ${BUILTINS_CPP_PATH}
-  ${SPIRV_BUILTINS_CPP_PATH})
+  ${PRINTF_OCL_32} ${PRINTF_OCL_64} ${PRINTF_ZE_32} ${PRINTF_ZE_64}
+  ${BUILTINS} ${SPIRV_BUILTINS})
 target_link_libraries(VCEmbeddedBiF VCHeaders)
