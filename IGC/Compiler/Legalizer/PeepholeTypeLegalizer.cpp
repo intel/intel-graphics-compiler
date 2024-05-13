@@ -1303,6 +1303,90 @@ void PeepholeTypeLegalizer::cleanupBitCastInst(Instruction& I) {
         }
         break;
     }
+    case Instruction::InsertElement:
+    {
+        if (isLegalInteger(I.getOperand(0)->getType()->getScalarSizeInBits()))
+            return;
+
+        // Pattern:
+        //   %1 = insertelement <8 x i1> undef, i1 %a, i32 0
+        //   %2 = insertelement <8 x i1> %1, i1 %b, i32 1
+        //   %3 = insertelement <8 x i1> %2, i1 false, i32 2
+        //   %4 = insertelement <8 x i1> %3, i1 false, i32 3
+        //   %5 = insertelement <8 x i1> %4, i1 false, i32 4
+        //   %6 = insertelement <8 x i1> %5, i1 false, i32 5
+        //   %7 = insertelement <8 x i1> %6, i1 false, i32 6
+        //   %8 = insertelement <8 x i1> %7, i1 false, i32 7
+        //   %9 = bitcast <8 x i1> %8 to i8
+        //
+        // Translate to:
+        //   %1 = select i1 %a, i8 1, i8 0
+        //   %2 = select i1 %b, i8 1, i8 0
+        //   %3 = shl i8 %2, 1
+        //   %4 = or i8 %1, %3
+        IGC_ASSERT_MESSAGE(I.getOperand(0)->getType()->getScalarSizeInBits() == 1,
+            "Unexpected illegal type width");
+
+        Value* result = nullptr;
+
+        // Collect all insert elements.
+        SmallVector<InsertElementInst*, 8> inserts;
+        Value* prevValue = prevInst;
+
+        while (!isa<UndefValue>(prevValue))
+        {
+            if (InsertElementInst* insert = cast<InsertElementInst>(prevValue))
+            {
+                inserts.push_back(insert);
+                prevValue = insert->getOperand(0);
+            }
+            else
+            {
+                IGC_ASSERT_MESSAGE(0, "Unsupported i1 bitcast pattern");
+                return;
+            }
+        }
+
+        // Build initial value from constant elements.
+        unsigned initialVal = 0;
+        for (auto it = inserts.begin(); it != inserts.end(); ++it)
+        {
+            if (ConstantInt* c = dyn_cast<ConstantInt>((*it)->getOperand(1)))
+            {
+                if (c->getZExtValue())
+                    initialVal |= 1 << cast<ConstantInt>((*it)->getOperand(2))->getZExtValue();
+            }
+        }
+        if (initialVal)
+            result = ConstantInt::get(I.getType(), initialVal, false);
+
+        // Build final value from non-constant elements.
+        for (auto it = inserts.rbegin(); it != inserts.rend(); ++it)
+        {
+            if (isa<ConstantInt>((*it)->getOperand(1)))
+                continue;
+
+            Value* val = m_builder->CreateSelect((*it)->getOperand(1), ConstantInt::get(I.getType(), 1, false), ConstantInt::get(I.getType(), 0, false));
+
+            unsigned index = (unsigned)cast<ConstantInt>((*it)->getOperand(2))->getZExtValue();
+            if (index > 0)
+                val = m_builder->CreateShl(val, index);
+
+            result = result ? m_builder->CreateOr(result, val) : val;
+        }
+
+        if (!result)
+            result = ConstantInt::get(I.getType(), 0, false);
+
+        I.replaceAllUsesWith(result);
+        I.eraseFromParent();
+        for (auto it = inserts.begin(); it != inserts.end(); ++it)
+            if ((*it)->use_empty())
+                (*it)->eraseFromParent();
+        Changed = true;
+
+        break;
+    }
     default:
         IGC_ASSERT_MESSAGE(isLegalInteger(I.getOperand(0)->getType()->getScalarSizeInBits()),
             "Unexpected illegal type width");

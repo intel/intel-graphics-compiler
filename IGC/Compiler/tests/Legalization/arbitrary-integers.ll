@@ -198,5 +198,22 @@ define void @test_insertelement_zero(i8 %src) {
   ret void
 }
 
+define i1 @test_icmp(i1 %src0, i1 %src1) {
+; CHECK-LABEL: @test_icmp(
+; CHECK:    %1 = insertelement <2 x i1> undef, i1 %src0, i32 0
+; CHECK:    %2 = insertelement <2 x i1> %1, i1 %src1, i32 1
+; CHECK:    [[TMP1:%.*]] = shufflevector <2 x i1> %2, <2 x i1> zeroinitializer, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 3, i32 3, i32 3, i32 3>
+; CHECK:    [[TMP2:%.*]] = bitcast <8 x i1> [[TMP1]] to i8
+; CHECK:    [[TMP3:%.*]] = and i8 [[TMP2]], 3
+; CHECK:    [[TMP4:%.*]] = icmp ne i8 [[TMP3]], 0
+; CHECK:    ret i1 [[TMP4]]
+;
+  %1 = insertelement <2 x i1> undef, i1 %src0, i32 0
+  %2 = insertelement <2 x i1> %1, i1 %src1, i32 1
+  %3 = bitcast <2 x i1> %2 to i2
+  %.not = icmp ne i2 %3, 0
+  ret i1 %.not
+}
+
 declare void @use.i8(i8)
 declare void @use.i16(i16)
