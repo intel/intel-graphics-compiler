@@ -83,11 +83,13 @@ SPDX-License-Identifier: MIT
 #include "vc/Utils/GenX/Intrinsics.h"
 #include "vc/Utils/General/InstRebuilder.h"
 
-#include <functional>
-#include <limits>
 #include "Probe/Assertion.h"
 #include "IGC/common/StringMacros.hpp"
 #include "IGC/common/debug/DebugMacros.hpp"
+
+#include <functional>
+#include <limits>
+#include <queue>
 
 using namespace llvm;
 using namespace llvm::PatternMatch;
@@ -202,6 +204,8 @@ private:
   // Transform logic operation with a mask from <N x iM> to <N/(32/M) x i32>
   bool extendMask(BinaryOperator *BO);
   bool mergeApply(CallInst *CI);
+
+  bool matchBFN(Function &F);
 };
 
 } // namespace
@@ -239,6 +243,9 @@ bool GenXPatternMatch::runOnFunction(Function &F) {
     Changed |= propagateFoldableRegion(&F);
     Changed |= reassociateIntegerMad(&F);
   }
+
+  if (EnableBfnMatcher && ST->hasAdd3Bfn())
+    matchBFN(F);
 
   visit(F);
 
@@ -385,46 +392,263 @@ private:
 };
 
 class BfnMatcher {
+private:
+  enum Op { Not, And, Or, Xor, Unknown };
+
+  static constexpr StringRef OpNames[] = {"not", "and", "or", "xor"};
+  static constexpr unsigned LutValues[] = {0xaa, 0xcc, 0xf0};
+
+  static constexpr unsigned UsesThreshold = 4;
+  static constexpr unsigned SourceLimit = 3;
+
 public:
-  explicit BfnMatcher(Instruction *I) {
+  explicit BfnMatcher(BinaryOperator *I, bool TryGreedy = true)
+      : MainInst(I), TryGreedy(TryGreedy) {
     IGC_ASSERT_MESSAGE(I, "null instruction");
-    MainBfnInst = I;
-    PrevBfnInst = nullptr;
-    // in prevBfnInst operands are Srcs[0] and Srcs[1]
-    // MainBfnInst is prevInst operands are result of prevInst and Srcs[2]
-    Srcs[1] = I->getOperand(0);
-    Srcs[2] = I->getOperand(1);
-    Srcs[0] = nullptr;
-    IGC_ASSERT_MESSAGE(Srcs[1] && Srcs[2], "null operands");
   }
 
-  bool match();
+  bool match() {
+    auto *Ty = MainInst->getType();
+    // TODO: support i8 and i64
+    if (!Ty->isIntOrIntVectorTy(16) && !Ty->isIntOrIntVectorTy(32))
+      return false;
+
+    unsigned MatchedOps = 0;
+    Srcs.insert(MainInst);
+
+    // Grow the pattern to find the source operands using a BFS.
+    std::queue<BinaryOperator *> Queue;
+    Queue.push(MainInst);
+
+    while (!Queue.empty()) {
+      auto *Inst = Queue.front();
+      Queue.pop();
+
+      if (Inst->hasNUsesOrMore(UsesThreshold))
+        return false;
+
+      auto Op = getOperation(Inst);
+      LLVM_DEBUG({
+        if (Op != Unknown)
+          dbgs() << "BFN: Found " << OpNames[Op] << " operation: " << *Inst
+                 << "\n";
+      });
+
+      switch (Op) {
+      case Unknown:
+        break;
+      case Not: {
+        auto *Op0 = Inst->getOperand(0);
+        auto *Op1 = Inst->getOperand(1);
+
+        auto *NewSrc = isa<ConstantInt>(Op0) ? Op1 : Op0;
+
+        Srcs.remove(Inst);
+        Srcs.insert(NewSrc);
+
+        if (auto *BO = dyn_cast<BinaryOperator>(NewSrc))
+          Queue.push(BO);
+      } break;
+      default: { // And, Or, Xor
+        auto *Op0 = Inst->getOperand(0);
+        auto *Op1 = Inst->getOperand(1);
+
+        if (isPossibleSource(Op0))
+          Srcs.insert(Op1);
+        else if (isPossibleSource(Op1))
+          Srcs.insert(Op0);
+        else if (TryGreedy || Srcs.size() < SourceLimit) {
+          Srcs.insert(Op0);
+          Srcs.insert(Op1);
+        } else
+          continue;
+
+        Srcs.remove(Inst);
+
+        if (auto *BO = dyn_cast<BinaryOperator>(Op0))
+          Queue.push(BO);
+        if (auto *BO = dyn_cast<BinaryOperator>(Op1))
+          Queue.push(BO);
+
+        MatchedOps++;
+      } break;
+      }
+    }
+
+    LLVM_DEBUG({
+      dbgs() << "BFN: Found " << MatchedOps << " matched operations\n";
+      for (auto *Src : Srcs)
+        dbgs() << "BFN: Source: " << *Src << "\n";
+    });
+
+    if (Srcs.size() > SourceLimit || Srcs.size() < SourceLimit - 1 ||
+        MatchedOps < 2)
+      return false;
+
+    return emit();
+  }
 
 private:
-  static bool checkBfnTypes(const Value *V) {
-    IGC_ASSERT_MESSAGE(V, "Error: nullptr input");
-    return V->getType()->isIntOrIntVectorTy(16) ||
-           V->getType()->isIntOrIntVectorTy(32);
+  Constant *getNotConstantIfGreater(const Constant *C,
+                                    uint64_t Threshold = 0) const {
+    auto *Ty = C->getType();
+
+    if (auto *CI = dyn_cast<ConstantInt>(C)) {
+      auto Val = CI->getZExtValue();
+      auto NegVal = Val ^ maskTrailingOnes<uint64_t>(Ty->getScalarSizeInBits());
+
+      if (Threshold == 0 || (Val > Threshold && NegVal <= Threshold))
+        return ConstantInt::get(CI->getType(), NegVal);
+
+      return nullptr;
+    }
+
+    auto *CV = dyn_cast<ConstantVector>(C);
+    if (!CV)
+      return nullptr;
+
+    auto *Splat = CV->getSplatValue();
+    if (!Splat)
+      return nullptr;
+
+    auto *NegC = getNotConstantIfGreater(Splat, Threshold);
+    if (!NegC)
+      return nullptr;
+
+    auto *VTy = cast<IGCLLVM::FixedVectorType>(CV->getType());
+    return ConstantVector::getSplat(VTy->getElementCount(), NegC);
   }
-  // These constants are from VISA docs for calculating bfn constant.
-  // Combine these constants with any logical operations to get the function
-  // index for that logical combination
-  using FunctionIndexT = unsigned char;
-  static constexpr std::array<FunctionIndexT, 3> BfnIndex = {0xaa, 0xcc, 0xf0};
-  FunctionIndexT getFunctionIndex() const;
 
-  void growPattern(const Use *U);
+  bool emit() {
+    auto *Ty = MainInst->getType();
 
-  // Return true if changes are made.
-  bool emit();
+    SrcsOrdered.assign(Srcs.begin(), Srcs.end());
+    if (SrcsOrdered.size() == 2)
+      SrcsOrdered.push_back(UndefValue::get(Ty));
 
-  // The instructions in the bfn matching:
-  // and/or/xor
-  Instruction *MainBfnInst;
-  Instruction *PrevBfnInst;
+    // The BFN instruction only supports immediate value to be encoded as Src0
+    // or Src2
+    if (isa<Constant>(SrcsOrdered[1]))
+      std::swap(SrcsOrdered[1], SrcsOrdered[2]);
 
-  // Source operands for the bfn intrinsic call
-  std::array<Value *, 3> Srcs;
+    // If the Src2 is a splat or scalar constant, try to fit it into 16-bit.
+    if (auto *CSrc2 = dyn_cast<Constant>(SrcsOrdered[2])) {
+      const uint64_t Threshold = maskTrailingOnes<uint64_t>(16);
+      if (auto *NegCSrc2 = getNotConstantIfGreater(CSrc2, Threshold))
+        SrcsOrdered[2] = NegCSrc2;
+    }
+
+    IRBuilder<> Builder(MainInst);
+
+    auto Lut = getLutValue(MainInst);
+    if (Lut == ~0) {
+      LLVM_DEBUG(dbgs() << "BFN: LUT value not found\n");
+      return false;
+    }
+    LLVM_DEBUG(dbgs() << "BFN: LUT value: " << format_hex(Lut, 2) << "\n");
+
+    Value *NewV = nullptr;
+
+    if (Lut == 0) { // BFN with LUT 0 is constant zero
+      NewV = Constant::getNullValue(Ty);
+    } else if (Lut == 0xff) { // BFN with LUT 0xff is constant all ones
+      NewV = Constant::getAllOnesValue(Ty);
+    } else {
+      auto *M = MainInst->getModule();
+      auto *F = vc::getAnyDeclaration(M, GenXIntrinsic::genx_bfn, {Ty, Ty});
+
+      SrcsOrdered.push_back(Builder.getInt8(Lut));
+      NewV = Builder.CreateCall(F, SrcsOrdered);
+      NewV->takeName(MainInst);
+    }
+
+    MainInst->replaceAllUsesWith(NewV);
+
+    LLVM_DEBUG(dbgs() << "BFN: Created: " << *NewV << "\n");
+    return true;
+  }
+
+  unsigned getLutValueForSource(const Value *V) const {
+    auto It = std::find(SrcsOrdered.begin(), SrcsOrdered.end(), V);
+    if (It != SrcsOrdered.end())
+      return LutValues[std::distance(SrcsOrdered.begin(), It)];
+    return ~0;
+  }
+
+  unsigned getLutValue(const Value *V) const {
+    if (auto *C = dyn_cast<Constant>(V)) {
+      if (C->isZeroValue())
+        return 0;
+      if (C->isAllOnesValue())
+        return 0xff;
+    }
+
+    if (auto Lut = getLutValueForSource(V); Lut != ~0)
+      return Lut;
+
+    if (auto *C = dyn_cast<Constant>(V)) {
+      auto *NegC = getNotConstantIfGreater(C);
+      if (!NegC)
+        return ~0;
+
+      auto Lut = getLutValueForSource(NegC);
+      if (Lut != ~0)
+        return Lut ^ 0xff;
+
+      return ~0;
+    }
+
+    auto *BO = cast<BinaryOperator>(V);
+    auto *Op0 = BO->getOperand(0);
+    auto *Op1 = BO->getOperand(1);
+
+    switch (BO->getOpcode()) {
+    case Instruction::And:
+      return getLutValue(Op0) & getLutValue(Op1);
+    case Instruction::Or:
+      return getLutValue(Op0) | getLutValue(Op1);
+    case Instruction::Xor:
+      return getLutValue(Op0) ^ getLutValue(Op1);
+    default:
+      IGC_ASSERT_UNREACHABLE();
+      return ~0;
+    }
+  }
+
+  static Op getOperation(const BinaryOperator *I) {
+    switch (I->getOpcode()) {
+    case Instruction::And:
+      return And;
+    case Instruction::Or:
+      return Or;
+    case Instruction::Xor: {
+      auto *Op0 = dyn_cast<Constant>(I->getOperand(0));
+      auto *Op1 = dyn_cast<Constant>(I->getOperand(1));
+      if ((Op0 && Op0->isAllOnesValue()) || (Op1 && Op1->isAllOnesValue()))
+        return Not;
+      return Xor;
+    }
+    default:
+      return Unknown;
+    }
+  }
+
+  bool isPossibleSource(Value *V) const {
+    if (Srcs.contains(V))
+      return true;
+
+    if (const auto *C = dyn_cast<Constant>(V)) {
+      auto *NegC = getNotConstantIfGreater(C);
+      return NegC && Srcs.contains(NegC);
+    }
+
+    return false;
+  }
+
+  BinaryOperator *MainInst;
+  const bool TryGreedy;
+  SmallSetVector<Value *, 4> Srcs;
+  SmallVector<Value *, 4> SrcsOrdered;
 };
 
 // Class to identify cases where a comparison and select are equivalent to a
@@ -489,21 +713,13 @@ void GenXPatternMatch::visitBinaryOperator(BinaryOperator &I) {
         if (I.getType()->getScalarType()->isIntegerTy(1)) {
           if (foldBoolAnd(&I))
             Changed = true;
-        }
-        else if (extendMask(&I))
+        } else if (extendMask(&I))
           Changed = true;
-        else if (ST && (ST->hasAdd3Bfn()))
-          Changed |= EnableBfnMatcher && BfnMatcher(&I).match();
         break;
       case Instruction::Or:
       case Instruction::Xor:
-        if (!I.getType()->getScalarType()->isIntegerTy(1) &&
-          (ST && ST->hasAdd3Bfn())) {
-          Changed |= EnableBfnMatcher && BfnMatcher(&I).match();
-        }
-        else
-          if (extendMask(&I))
-            Changed = true;
+        if (extendMask(&I))
+          Changed = true;
         break;
       }
   } else {
@@ -1836,94 +2052,6 @@ bool Add3Matcher::emit() {
   return true;
 }
 
-/// the Beginning of the BfnMatcher
-bool BfnMatcher::match() {
-  if (MainBfnInst->use_empty())
-    return false;
-  if (!checkBfnTypes(MainBfnInst))
-    return false;
-
-  Use *U = std::find_if(MainBfnInst->op_begin(), MainBfnInst->op_end(),
-                        [](const Use &U) {
-                          Instruction *I = dyn_cast<Instruction>(U.get());
-                          if (!I)
-                            return false;
-                          if (!I->hasOneUse())
-                            return false;
-                          return I->isBitwiseLogicOp();
-                        });
-  if (U == MainBfnInst->op_end())
-    return false;
-
-  growPattern(U);
-  return emit();
-}
-
-void BfnMatcher::growPattern(const Use *U) {
-  IGC_ASSERT(U);
-  Instruction *I = cast<Instruction>(U->get());
-  IGC_ASSERT(I && I->isBitwiseLogicOp());
-
-  unsigned SrcIdx = U->getOperandNo();
-  // we do not work with this operand
-  Value *BfnOtherOperand = MainBfnInst->getOperand((SrcIdx + 1) % 2);
-
-  Srcs[0] = I->getOperand(0);
-  Srcs[1] = I->getOperand(1);
-  Srcs[2] = BfnOtherOperand;
-  PrevBfnInst = I;
-}
-
-BfnMatcher::FunctionIndexT BfnMatcher::getFunctionIndex() const {
-  // calculation left to right, with no brackets,
-  // so first calculation for PrevBfnInst, next MainBfnInst
-
-  auto calculateOperation = [](unsigned Opcode, FunctionIndexT Op0,
-                               FunctionIndexT Op1) {
-    switch (Opcode) {
-    case Instruction::And:
-      return Op0 & Op1;
-    case Instruction::Or:
-      return Op0 | Op1;
-    case Instruction::Xor:
-      return Op0 ^ Op1;
-    default:
-      IGC_ASSERT_MESSAGE(false, "Wrong Opcode");
-      return 0;
-    }
-  };
-  FunctionIndexT result =
-      calculateOperation(PrevBfnInst->getOpcode(), BfnIndex[0], BfnIndex[1]);
-  return calculateOperation(MainBfnInst->getOpcode(), result, BfnIndex[2]);
-}
-
-// Return true if changes are made.
-bool BfnMatcher::emit() {
-  IGC_ASSERT_MESSAGE(Srcs[0] && Srcs[1] && Srcs[2] && MainBfnInst &&
-                         PrevBfnInst,
-                     "Error: wrong class structure");
-  FunctionIndexT Index = getFunctionIndex();
-
-  IRBuilder<> Builder{MainBfnInst};
-  // create the BFN call
-  Function *Fn = nullptr;
-  {
-    Module *M = MainBfnInst->getModule();
-    Type *Tys[2] = {MainBfnInst->getType(), Srcs[0]->getType()};
-    Fn = GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_bfn, Tys);
-  }
-  std::array<Value *, 4> Args;
-
-  std::copy(Srcs.begin(), Srcs.end(), Args.begin());
-  Args.back() = Builder.getInt8(Index);
-
-  CallInst *CI = Builder.CreateCall(Fn, Args, "bfn");
-  MainBfnInst->replaceAllUsesWith(CI);
-
-  NumOfBfnMatched++;
-  return true;
-}
-
 bool MinMaxMatcher::valuesMatch(llvm::Value *Op1, llvm::Value *Op2) {
   // Handle casts for instructions.
   bool ZExt = false;
@@ -3115,6 +3243,33 @@ void GenXPatternMatch::visitSRem(BinaryOperator &I) {
   IGC_ASSERT(CheckRes == DivRemOptimize::Pow2);
   decomposeSRemPow2(I);
   Changed = true;
+}
+
+bool GenXPatternMatch::matchBFN(Function &F) {
+  bool Changed = false;
+
+  for (auto &BB : F)
+    for (auto It = BB.rbegin(); It != BB.rend();) {
+      auto *BO = dyn_cast<BinaryOperator>(&*It++);
+      if (!BO)
+        continue;
+
+      auto Opcode = BO->getOpcode();
+      if (Opcode != Instruction::And && Opcode != Instruction::Or &&
+          Opcode != Instruction::Xor)
+        continue;
+
+      if (BO->hasNUses(0))
+        continue;
+
+      bool IsMatched = BfnMatcher(BO).match() || BfnMatcher(BO, false).match();
+      if (IsMatched) {
+        Changed = true;
+        BO->eraseFromParent();
+      }
+    }
+
+  return Changed;
 }
 
 // Optimization for unsigned x % 2^p.
