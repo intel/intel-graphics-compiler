@@ -495,9 +495,10 @@ bool InstPromoter::visitBitCastInst(BitCastInst& I) {
         Type* PromotedTy = TySeq->front();
         unsigned N = PromotedTy->getScalarSizeInBits() /
             Val->getType()->getScalarSizeInBits();
+        unsigned MaxMaskIdx = 2 * (unsigned)cast<IGCLLVM::FixedVectorType>(Val->getType())->getNumElements();
         std::vector<Constant*> Vals;
         for (unsigned i = 0; i < N; i++)
-            Vals.push_back(IRB->getInt32(i));
+            Vals.push_back(IRB->getInt32(i < MaxMaskIdx ? i : MaxMaskIdx - 1));
 
         Value* Mask = ConstantVector::get(Vals);
         Value* Zero = Constant::getNullValue(Val->getType());
