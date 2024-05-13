@@ -1,6 +1,6 @@
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2019-2024 Intel Corporation
+# Copyright (C) 2019-2021 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -12,18 +12,17 @@ set(OPT_SOURCES
   CMTrans/CMABI.cpp
   CMTrans/CMImpParam.cpp
   CMTrans/CMKernelArgOffset.cpp
-  CMTrans/GenXBIFFlagCtrlResolution.cpp
   CMTrans/GenXBTIAssignment.cpp
-  CMTrans/GenXCloneIndirectFunctions.cpp
-  CMTrans/GenXFoldReduction.cpp
-  CMTrans/GenXImportOCLBiF.cpp
-  CMTrans/GenXLinkageCorruptor.cpp
+  CMTrans/GenXBIFFlagCtrlResolution.cpp
   CMTrans/GenXPrintfLegalization.cpp
   CMTrans/GenXPrintfResolution.cpp
-  CMTrans/GenXTrampolineInsertion.cpp
+  CMTrans/GenXImportOCLBiF.cpp
   CMTrans/GenXTranslateIntrinsics.cpp
   CMTrans/GenXTranslateSPIRVBuiltins.cpp
+  CMTrans/GenXTrampolineInsertion.cpp
   CMTrans/GenXTypeLegalization.cpp
+  CMTrans/GenXCloneIndirectFunctions.cpp
+  CMTrans/GenXLinkageCorruptor.cpp
   CMPacketize/GenXPacketize.cpp
   CMPacketize/PacketBuilder.cpp
   CMPacketize/PacketBuilder_math.cpp
