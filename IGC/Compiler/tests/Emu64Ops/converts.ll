@@ -103,7 +103,7 @@ define void @test_uitofp(i64 %a) {
 ; CHECK: .u2f.inner.true.branch:
 ; CHECK:    [[TMP7:%[A-z0-9]*]] = shl i32 [[TMP2]], [[TMP4]]
 ; CHECK:    [[TMP8:%[A-z0-9]*]] = shl i32 [[TMP3]], [[TMP4]]
-; CHECK:    [[TMP9:%[A-z0-9]*]] = sub i32 0, [[TMP4]]
+; CHECK:    [[TMP9:%[A-z0-9]*]] = sub i32 32, [[TMP4]]
 ; CHECK:    [[TMP10:%[A-z0-9]*]] = lshr i32 [[TMP2]], [[TMP9]]
 ; CHECK:    [[TMP11:%[A-z0-9]*]] = or i32 [[TMP8]], [[TMP10]]
 ; CHECK:    br label [[TMP12]]
@@ -153,7 +153,7 @@ define void @test_sitofp(i64 %a) {
 ; CHECK: .u2f.inner.true.branch:
 ; CHECK:    [[TMP13:%[A-z0-9]*]] = shl i32 [[TMP8]], [[TMP10]]
 ; CHECK:    [[TMP14:%[A-z0-9]*]] = shl i32 [[TMP9]], [[TMP10]]
-; CHECK:    [[TMP15:%[A-z0-9]*]] = sub i32 0, [[TMP10]]
+; CHECK:    [[TMP15:%[A-z0-9]*]] = sub i32 32, [[TMP10]]
 ; CHECK:    [[TMP16:%[A-z0-9]*]] = lshr i32 [[TMP8]], [[TMP15]]
 ; CHECK:    [[TMP17:%[A-z0-9]*]] = or i32 [[TMP14]], [[TMP16]]
 ; CHECK:    br label [[TMP18]]
