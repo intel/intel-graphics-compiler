@@ -1288,6 +1288,7 @@ unsigned ConstantLoader::getRegionBits(unsigned NeededBits,
   // Set the max width to the min size including both those elements
   // rounded up to the next power of two.
   unsigned MaxWidth = LastNeeded - FirstNeeded + 1;
+  IGC_ASSERT_EXIT(MaxWidth > 0);
   unsigned LogMaxWidth = genx::log2(MaxWidth);
   if (MaxWidth != 1U << LogMaxWidth) {
     ++LogMaxWidth;
@@ -1337,6 +1338,7 @@ unsigned ConstantLoader::getRegionBits(unsigned NeededBits,
   if (!BestCount) {
     // We could not find any region that includes more than one of NeededBits.
     // Just do a single element.
+    IGC_ASSERT_EXIT(NeededBits > 0);
     return 1 << genx::log2(NeededBits);
   }
   return BestBits;
@@ -1731,6 +1733,7 @@ Instruction *ConstantLoader::loadBig(Instruction *InsertBefore) {
   MaxSize = std::min(MaxSize, getMaxSIMDSize(InsertBefore));
   Instruction *Result = nullptr;
   for (unsigned Idx = 0; Idx != NumElements; ) {
+    IGC_ASSERT_EXIT(NumElements > Idx);
     unsigned Size = std::min(1U << genx::log2(NumElements - Idx), MaxSize);
     // Load this subvector constant if necessary, and insert into the overall
     // value with wrregion.

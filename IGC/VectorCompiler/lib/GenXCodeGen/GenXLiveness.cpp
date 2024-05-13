@@ -1344,6 +1344,7 @@ Instruction *GenXLiveness::insertCopy(Value *InputVal, LiveRange *LR,
       unsigned NumElts = std::min(MaxNum, NumElements - Offset);
       // Round NumElts down to power of 2. That is how many elements we
       // are copying this time round the loop.
+      IGC_ASSERT_EXIT(NumElts > 0);
       NumElts = 1 << genx::log2(NumElts);
       Fragments.push_back(std::make_pair(Offset, NumElts));
       Offset += NumElts;

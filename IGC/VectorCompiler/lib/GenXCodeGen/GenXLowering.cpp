@@ -2545,7 +2545,7 @@ Value *GenXLowering::scaleInsertExtractElementIndex(Value *IdxVal, Type *ElTy,
       IdxVal, I16Ty, false /*isSigned*/, "cast", InsertBefore);
   IdxInst->setDebugLoc(InsertBefore->getDebugLoc());
   // Multiply it by the element size in bytes.
-  if (ElementBytes != 1) {
+  if (ElementBytes > 1) {
     IdxInst = BinaryOperator::Create(
         Instruction::Shl, IdxInst,
         ConstantInt::get(I16Ty, genx::log2(ElementBytes)), "scale",
