@@ -5845,6 +5845,10 @@ void SplitIndirectEEtoSel::visitExtractElementInst(llvm::ExtractElementInst& I)
         mul = ci_mul ? (1LL << ci_mul->getSExtValue()) : 1LL;
         index = Val1;
     }
+    else
+    {
+        return;
+    }
 
     if (!isProfitableToSplit(num, mul, add))
         return;

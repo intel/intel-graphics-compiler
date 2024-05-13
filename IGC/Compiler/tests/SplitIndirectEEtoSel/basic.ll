@@ -108,3 +108,37 @@ define void @test(i32 %src1, <12 x float> %src2, float* %dst) {
   store float %6, float* %dst, align 4
   ret void
 }
+
+define void @test_no_match(<4 x i32> %vec) {
+; CHECK-LABEL: @test_no_match(
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    br label %body
+; CHECK:       body:
+; CHECK-NEXT:    [[TMP0:%.*]] = phi i32 [ 0, [[ENTRY:%.*]] ], [ [[TMP3:%.*]], [[LATCH:%.*]] ]
+; CHECK:         [[TMP1:%.*]] = extractelement <4 x i32> [[VEC:%.*]], i32 [[TMP0]]
+; CHECK:         [[TMP2:%.*]] = icmp ne i32 [[TMP1]], 0
+; CHECK:         br label [[LATCH]]
+; CHECK:       latch:
+; CHECK-NEXT:    [[TMP3]] = add nuw nsw i32 [[TMP0]], 4
+; CHECK:         [[TMP4:%.*]] = icmp ult i32 [[TMP0]], 12
+; CHECK:         br i1 [[TMP4]], label %body, label [[EXIT:%.*]]
+; CHECK:       exit:
+; CHECK-NEXT:    ret void
+;
+entry:
+  br label %body
+
+body:
+  %0 = phi i32 [ 0, %entry ], [ %3, %latch ]
+  %1 = extractelement <4 x i32> %vec, i32 %0
+  %2 = icmp ne i32 %1, 0
+  br label %latch
+
+latch:
+  %3 = add nuw nsw i32 %0, 4
+  %4 = icmp ult i32 %0, 12
+  br i1 %4, label %body, label %exit
+
+exit:
+  ret void
+}
