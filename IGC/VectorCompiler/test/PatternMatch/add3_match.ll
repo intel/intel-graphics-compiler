@@ -162,6 +162,26 @@ define i32 @test_match_i32ssadd(i32 %op0, i32 %op1, i32 %op2)  {
   ret i32 %2
 }
 
+define i32 @test_match_i32_imm(i32 %a, i32 %b) {
+; CHECK: call i32 @llvm.genx.add3.i32.i32(i32 %a, i32 %b, i32 123)
+  %tmp = add i32 %a, 123
+  %res = add i32 %tmp, %b
+  ret i32 %res
+}
+
+declare <8 x i32> @llvm.genx.rdregioni.v8i32.v1i32.i16(<16 x i32>, i32, i32, i32, i16, i32)
+
+define <8 x i32> @test_match_rdregion_ext_v8i8(<8 x i32> %acc, <16 x i8> %src) {
+; CHECK: %tmp = add <8 x i32> %a, %b
+; CHECK: %res = add <8 x i32> %acc, %tmp
+  %ext = zext <16 x i8> %src to <16 x i32>
+  %a = call <8 x i32> @llvm.genx.rdregioni.v8i32.v1i32.i16(<16 x i32> %ext, i32 8, i32 8, i32 1, i16 0, i32 undef)
+  %b = call <8 x i32> @llvm.genx.rdregioni.v8i32.v1i32.i16(<16 x i32> %ext, i32 8, i32 8, i32 1, i16 8, i32 undef)
+  %tmp = add <8 x i32> %a, %b
+  %res = add <8 x i32> %acc, %tmp
+  ret <8 x i32> %res
+}
+
 ; =============== ADDITIONAL FAILED MATCH ===============
 ; optimize
 define <32 x i8> @test_match_v32i8(<32 x i8> %op0, <32 x i8> %op1, <32 x i8> %op2)  {

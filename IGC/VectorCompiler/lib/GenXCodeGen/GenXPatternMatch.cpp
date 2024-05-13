@@ -1628,38 +1628,42 @@ bool MadMatcher::emit() {
 /// The beginning of the Add3Matcher
 bool Add3Matcher::isProfitable(Instruction *A2) const {
   // Do not match unused instructions.
-  if (AInst->use_empty())
+  if (AInst->use_empty() || !A2->hasOneUse())
     return false;
 
-  if (!A2->hasOneUse())
+  auto BitWidth = AInst->getType()->getScalarSizeInBits();
+  if (BitWidth != 16 && BitWidth != 32)
     return false;
 
-  auto nb1 = AInst->getType()->getScalarSizeInBits();
-  if (nb1 != 16 && nb1 != 32)
-    return false;
+  int NumConst = 0;
+  for (auto *Src : Srcs) {
+    // Skip the rdregion chain.
+    while (GenXIntrinsic::isRdRegion(Src)) {
+      auto *CI = cast<CallInst>(Src);
+      Src = CI->getOperand(0);
+    }
 
-  int nc = 0;
-  for (int i = 0; i < 3; ++i) {
-    // all sources must be 16-bit or 32-bit
-    auto Ext = dyn_cast<ExtOperator>(Srcs[i]);
-    if (Ext) {
-      Value *RV = Ext->getOperand(0);
-      auto nb3 = RV->getType()->getScalarSizeInBits();
-      if (nb3 != 16 && nb3 != 32)
+    // All sources must be 16-bit or 32-bit.
+    if (auto *Ext = dyn_cast<ExtOperator>(Src)) {
+      auto *RV = Ext->getOperand(0);
+      auto BitWidth = RV->getType()->getScalarSizeInBits();
+      if (BitWidth != 16 && BitWidth != 32)
         return false;
     }
-    if (auto C = dyn_cast<Constant>(Srcs[i])) {
-      nc++;
-      // less than two immediates
-      if (nc > 1)
+
+    // We only support single immediate value less than 16-bits.
+    if (auto *C = dyn_cast<Constant>(Src)) {
+      // Only one immediate.
+      if (++NumConst > 1)
         return false;
-      // the immediate must be less than 16-bits
+      // The immediate must fit into 16-bits.
       if (!C->getType()->isVectorTy() || C->getSplatValue()) {
         if (C->getUniqueInteger().uge(1 << 16))
           return false;
       }
     }
   }
+
   return true;
 }
 
@@ -1738,6 +1742,16 @@ bool Add3Matcher::matchIntegerAdd3() {
         }
       }
     }
+  }
+
+  // We didn't match the pattern.
+  if (llvm::any_of(Srcs, [](Value *V) { return !V; }))
+    return false;
+
+  // The instruction only supports immediate value for the Src0 or Src2 operand.
+  if (isa<Constant>(Srcs[1])) {
+    std::swap(Srcs[1], Srcs[2]);
+    std::swap(Negs[1], Negs[2]);
   }
 
   // Always use add3.
