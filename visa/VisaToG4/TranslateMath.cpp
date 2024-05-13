@@ -1975,7 +1975,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
                                      src0->getType());
 
       G4_SrcRegRegion *neg_src0 = createSrcRegRegion(neg_srcRegion0);
-      neg_src0->setAccRegSel(src1->getAccRegSel());
+      neg_src0->setAccRegSel(src0->getAccRegSel());
       inst = createMadm(predicateFlagReg_m5, exsize, dst0, neg_src0, src1, src2,
                         madmInstOpt);
 
