@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -399,12 +399,8 @@ Value *llvm::SimplifyGenXIntrinsic(unsigned IID, Type *RetTy, Use *ArgBegin,
  * If this instruction could not be simplified, returns null.
  */
 Value *llvm::SimplifyGenX(CallInst *I, const DataLayout &DL) {
-  Value *V = IGCLLVM::getCalledValue(I);
-  Type *Ty = V->getType();
-  if (auto *PTy = dyn_cast<PointerType>(Ty))
-    Ty = IGCLLVM::getNonOpaquePtrEltTy(PTy);
-  auto *FTy = cast<FunctionType>(Ty);
-  auto *F = dyn_cast<Function>(V);
+  auto *FTy = I->getFunctionType();
+  auto *F = I->getCalledFunction();
   if (!F)
     return nullptr;
 
