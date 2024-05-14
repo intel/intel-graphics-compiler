@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include "RTStackFormat.h"
 #include "Probe/Assertion.h"
 
+#include "llvmWrapper/IR/Argument.h"
 #include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/Alignment.h"
