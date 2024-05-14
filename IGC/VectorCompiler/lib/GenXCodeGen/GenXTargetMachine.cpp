@@ -208,7 +208,6 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXLegacyToLscTranslatorPass(registry);
   initializeGenXSLMResolutionPass(registry);
   initializeGenXTypeLegalizationPass(registry);
-  initializeGenXFoldReductionPass(registry);
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
 
@@ -870,7 +869,6 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
     PM.add(createGenXTranslateSPIRVBuiltinsPass());
     PM.add(createAlwaysInlinerLegacyPass());
     PM.add(createAlwaysInlinerLegacyPass());
-    PM.add(createGenXFoldReductionPass());
     PM.add(createGenXPrintfResolutionPass());
     PM.add(createGenXImportOCLBiFPass());
     PM.add(createGenXBIFFlagCtrlResolutionPass());
