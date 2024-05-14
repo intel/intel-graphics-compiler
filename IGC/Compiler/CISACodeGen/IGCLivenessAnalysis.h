@@ -76,7 +76,7 @@ namespace IGC {
         void mergeSets(ValueSet *OutSet, llvm::BasicBlock *Succ);
         void combineOut(llvm::BasicBlock *BB, ValueSet *Set);
         void addToPhiSet(llvm::PHINode *Phi, PhiSet *InPhiSet);
-        void addOperandsToSet(llvm::Instruction *Inst, ValueSet &Set);
+        unsigned int addOperandsToSet(llvm::Instruction *Inst, ValueSet &Set, unsigned int SIMD, WIAnalysisRunner* WI, const DataLayout& DL);
         void addNonLocalOperandsToSet(llvm::Instruction *Inst, ValueSet &Set);
         void processBlock(llvm::BasicBlock *BB, ValueSet &Set, PhiSet *PhiSet);
         void livenessAnalysis(llvm::Function &F, BBSet *StartBBs = nullptr);

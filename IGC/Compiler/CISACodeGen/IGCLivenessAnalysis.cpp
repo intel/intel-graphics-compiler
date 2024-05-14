@@ -113,11 +113,36 @@ void IGCLivenessAnalysisBase::combineOut(llvm::BasicBlock *BB, ValueSet *Set) {
     }
 }
 
-void IGCLivenessAnalysisBase::addOperandsToSet(llvm::Instruction *Inst, ValueSet &Set) {
+
+unsigned int computeSizeInBytes(Value* V, unsigned int SIMD, WIAnalysisRunner* WI, const DataLayout& DL) {
+
+    // when we check size of operands, this check is redundant
+    // but allows for a nicer code
+    bool NoRetVal = V->getType()->isVoidTy();
+    if(NoRetVal)
+        return 0;
+
+    auto Type = V->getType();
+    unsigned int TypeSizeInBits = (unsigned int) DL.getTypeSizeInBits(Type);
+    unsigned int Multiplier = SIMD;
+    if (WI && WI->isUniform(V))
+        Multiplier = 1;
+    unsigned int SizeInBytes = TypeSizeInBits * Multiplier / 8;
+    return SizeInBytes;
+}
+
+unsigned int IGCLivenessAnalysisBase::addOperandsToSet(llvm::Instruction *Inst, ValueSet &Set,
+        unsigned int SIMD, WIAnalysisRunner* WI, const DataLayout& DL) {
+
+        // we do not process PHI's there
+        auto Phi = llvm::dyn_cast<llvm::PHINode>(Inst);
+        if(Phi) return 0;
 
     // do not process debug instructions and lifetimehints in any way
     if(Inst->isDebugOrPseudoInst() || Inst->isLifetimeStartOrEnd())
-        return;
+        return 0;
+
+    unsigned int ResultSizeInBytes = 0;
 
     for (auto &Op : Inst->operands()) {
         llvm::Value *V = Op.get();
@@ -129,8 +154,15 @@ void IGCLivenessAnalysisBase::addOperandsToSet(llvm::Instruction *Inst, ValueSet
         // add %a, 1 (constants)
         if (!(llvm::isa<llvm::Instruction>(V) || llvm::isa<llvm::Argument>(V)))
             continue;
+
+        unsigned int SizeOfOperand = computeSizeInBytes(V, SIMD, WI, DL);
+        if(!Set.count(V))
+            ResultSizeInBytes += SizeOfOperand;
+
         Set.insert(V);
     }
+
+    return ResultSizeInBytes;
 }
 
 void IGCLivenessAnalysisBase::addNonLocalOperandsToSet(llvm::Instruction *Inst, ValueSet &Set) {
@@ -248,15 +280,9 @@ unsigned int IGCLivenessAnalysisBase::estimateSizeInBytes(ValueSet &Set,
 
     unsigned int Result = 0;
     for (auto El : Set) {
-        auto Type = El->getType();
-        unsigned int TypeSizeInBits = (unsigned int) DL.getTypeSizeInBits(Type);
-        unsigned int Multiplier = SIMD;
-        if (WI && WI->isUniform(El))
-            Multiplier = 1;
-        unsigned int SizeInBytes = TypeSizeInBits * Multiplier / 8;
+        unsigned int SizeInBytes = computeSizeInBytes(El, SIMD, WI, DL);
         Result += SizeInBytes;
     }
-
     return Result;
 }
 
@@ -264,22 +290,27 @@ unsigned int IGCLivenessAnalysisBase::estimateSizeInBytes(ValueSet &Set,
 void IGCLivenessAnalysisBase::collectPressureForBB(
     llvm::BasicBlock &BB, InsideBlockPressureMap &BBListing,
     unsigned int SIMD, WIAnalysisRunner* WI) {
+
+    const DataLayout &DL = BB.getParent()->getParent()->getDataLayout();
     ValueSet &BBOut = Out[&BB];
     // this should be a copy
     ValueSet BBSet = BBOut;
+
+    unsigned int SizeInBytes = estimateSizeInBytes(BBSet, *BB.getParent(), SIMD, WI);
 
     for (auto RI = BB.rbegin(), RE = BB.rend(); RI != RE; ++RI) {
 
         llvm::Instruction *Inst = &(*RI);
 
-        unsigned int Size = estimateSizeInBytes(BBSet, *BB.getParent(), SIMD, WI);
+        unsigned int SizeUpdate = 0;
+        SizeUpdate = addOperandsToSet(Inst, BBSet, SIMD, WI, DL);
 
-        auto Phi = llvm::dyn_cast<llvm::PHINode>(Inst);
-        if (!Phi) {
-            addOperandsToSet(Inst, BBSet);
-        }
+        BBListing[Inst] = SizeInBytes;
+        SizeInBytes += SizeUpdate;
 
-        BBListing[Inst] = Size;
+        if(!BBSet.count(Inst)) continue;
+        unsigned int InstSizeInBytes = computeSizeInBytes(Inst, SIMD, WI, DL);
+        SizeInBytes -= InstSizeInBytes;
         BBSet.erase(Inst);
     }
 }
