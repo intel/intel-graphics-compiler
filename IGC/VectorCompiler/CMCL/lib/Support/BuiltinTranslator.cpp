@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2023 Intel Corporation
+Copyright (C) 2021-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -234,7 +234,12 @@ Type &getTypeFromBuiltinOperand(CallInst &BiCall, int OpIdx) {
   Value &BiOp = *BiCall.getArgOperand(OpIdx);
   switch (BuiltinOperandKind[BiID][OpIdx]) {
   case OperandKind::Output:
-    return *IGCLLVM::getNonOpaquePtrEltTy(BiOp.getType());
+    switch (BiID) {
+    case BuiltinID::AddCarry:
+      return *BiCall.getType();
+    default:
+      llvm_unreachable("Unexpected builtin with an output operand");
+    }
   case OperandKind::Input:
   case OperandKind::Constant:
     return *BiOp.getType();
