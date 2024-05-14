@@ -191,6 +191,7 @@ static inline DpasFC GetDpasFC(uint32_t sysD, uint32_t repC) {
   return DpasFC((sysD << 8) | repC);
 }
 
+
 // An instruction subfunction is a set of immediate-encoded control bits
 // that control the behavior of some EU instruction.  We permit an
 // Instruction to have exactly one of these fields.

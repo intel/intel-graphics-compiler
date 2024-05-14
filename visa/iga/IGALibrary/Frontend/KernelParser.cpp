@@ -1670,6 +1670,7 @@ public:
     return BfnFC(fc);
   }
 
+
   // FlagModifierOpt = '(' FlagModif ')' FlagReg
   void ParseFlagModOpt() {
     Loc loc = NextLoc();

@@ -542,7 +542,7 @@ private:
     //    sel.esc   ... f0.1
     //    sel.any*  ... f0.1
     case Op::MATH:
-      subfunc = (ToSyntax(i.getMathFc()));
+      subfunc = ToSyntax(i.getMathFc());
       break;
     case Op::SEND:
     case Op::SENDC:
