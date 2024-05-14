@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022-2023 Intel Corporation
+Copyright (C) 2022-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -134,10 +134,11 @@ Value &vc::ImplicitArgs::Buffer::loadField(Value &BufferPtr,
                                      vc::ThreadPayloadKind::OnRegister),
       "wrong argument: a wrong type for buffer pointer value");
   auto *FieldPtr = IRB.CreateInBoundsGEP(
-      IGCLLVM::getNonOpaquePtrEltTy(BufferPtr.getType()), &BufferPtr,
-      {IRB.getInt32(0), IRB.getInt32(FieldIdx)}, Name + ".ptr");
-  auto *FieldVal = IRB.CreateLoad(IGCLLVM::getNonOpaquePtrEltTy(FieldPtr->getType()),
-                                  FieldPtr, Name);
+      &vc::ImplicitArgs::Buffer::getType(*IRB.GetInsertBlock()->getModule()),
+      &BufferPtr, {IRB.getInt32(0), IRB.getInt32(FieldIdx)}, Name + ".ptr");
+  auto *FieldVal =
+      IRB.CreateLoad(cast<GetElementPtrInst>(FieldPtr)->getResultElementType(),
+                     FieldPtr, Name);
   return *FieldVal;
 }
 
@@ -173,8 +174,9 @@ Value &vc::ImplicitArgs::LocalID::getPointer<vc::ThreadPayloadKind::InMemory>(
   auto &BasePtr =
       vc::ImplicitArgs::LocalID::getBasePtr(BufferPtr, IRB, Name + ".base");
   Value *Index = vc::getGroupThreadIDForPIM(IRB);
-  return *IRB.CreateGEP(IGCLLVM::getNonOpaquePtrEltTy(BasePtr.getType()), &BasePtr,
-                        Index, Name);
+  return *IRB.CreateGEP(
+      &vc::ImplicitArgs::LocalID::getType(*IRB.GetInsertBlock()->getModule()),
+      &BasePtr, Index, Name);
 }
 
 template <>
@@ -208,7 +210,8 @@ Value &vc::ImplicitArgs::LocalID::loadField(
     Value &LIDStructPtr, vc::ImplicitArgs::LocalID::Indices::Enum FieldIdx,
     IRBuilder<> &IRB, const Twine &Name) {
   auto *Ptr = IRB.CreateInBoundsGEP(
-      IGCLLVM::getNonOpaquePtrEltTy(LIDStructPtr.getType()), &LIDStructPtr,
-      {IRB.getInt32(0), IRB.getInt32(FieldIdx)}, Name + ".ptr");
-  return *IRB.CreateLoad(IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType()), Ptr, Name);
+      &vc::ImplicitArgs::LocalID::getType(*IRB.GetInsertBlock()->getModule()),
+      &LIDStructPtr, {IRB.getInt32(0), IRB.getInt32(FieldIdx)}, Name + ".ptr");
+  return *IRB.CreateLoad(cast<GetElementPtrInst>(Ptr)->getResultElementType(),
+                         Ptr, Name);
 }
