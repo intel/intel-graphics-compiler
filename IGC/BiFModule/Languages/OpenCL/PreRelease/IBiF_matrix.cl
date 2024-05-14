@@ -286,7 +286,7 @@ typedef uint   __attribute__((ext_vector_type(32))) uint32;
 #define SUB_GROUP_LOAD(readop, M, src, dst, stride, contrib_type) \
     __private contrib_type *wi_contrib = (__private contrib_type *)dst; \
     for (int i = 0; i < M; i++) \
-        wi_contrib[i] = readop((src) + i * (stride));
+        wi_contrib[i] = readop(src + i * stride);
 
 #define SUB_GROUP_LOAD_PACK_32(M, src, dst, stride) \
     /* empty */
@@ -473,7 +473,7 @@ typedef uint   __attribute__((ext_vector_type(32))) uint32;
 
 #define DEFINE_LOAD_VECTORS_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows, address_space) \
     if (WI_rows == M && BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_CONT_IMPL \
-        && stride == K && (M == 2 || M == 4 || M == 8) && order == _ROW_MAJOR \
+        && stride == K && (M == 2 || M == 4 || M == 8 || (M == 16 && contrib_bitwidth <= 16)) && order == _ROW_MAJOR \
         ) { \
         OUT_STORE_VEC##M(u##contrib_type) OVERLOADABLE DEFINE_BLOCK_RW_NAME##M(read, us)(const ATTRIBUTE_##address_space u##contrib_type *); \
         OUT_STORE_VEC##M(u##contrib_type) res = DEFINE_BLOCK_RW_NAME##M(read, us)((ATTRIBUTE_##address_space u##contrib_type *)mem); \
@@ -486,7 +486,7 @@ typedef uint   __attribute__((ext_vector_type(32))) uint32;
         int pack_factor = sizeof (u##contrib_type) / sizeof (element_type); \
         stride = stride / pack_factor; \
         if (order == _VNNI_TX) { /* for VNNI_TX contrib_type should be int and elem_type should be char or short */ \
-        SUB_GROUP_LOAD_PACK_##elem_bitwidth(M, (ATTRIBUTE_##address_space uint *)mem, dst, stride); \
+            SUB_GROUP_LOAD_PACK_##elem_bitwidth(M, (ATTRIBUTE_##address_space uint *)mem, dst, stride); \
         return; \
         } \
         SUB_GROUP_LOAD(intel_sub_group_block_read##us, M, (ATTRIBUTE_##address_space u##contrib_type *)mem, dst, stride, contrib_type); \
@@ -1176,8 +1176,8 @@ INLINE void __builtin_spriv_OpJointMatrixMadINTEL_32x64x16_bf16_bf16_fp32(__priv
     __builtin_spriv_OpJointMatrixMadINTEL_16x16x16_bf16_bf16_fp32(a1, b3, c7, d7);
 }
 
-DEFINE_LOAD(PackedA_RowMajor,     _SG16, short, short, 16, 16, ROW_MAJOR, , 16)
-DEFINE_LOAD(PackedA_RowMajor,     _SG16, short, short, 32, 16, ROW_MAJOR, , 32)
+DEFINE_LOAD(PackedA_RowMajor,     _SG16, short, short, 16, 16, ROW_MAJOR, _us, 16)
+DEFINE_LOAD(PackedA_RowMajor,     _SG16, short, short, 32, 16, ROW_MAJOR, _us, 32)
 
 DEFINE_LOAD(Accumulator_RowMajor, _SG16, int,   int,   16, 16, ROW_MAJOR, , 16)
 DEFINE_LOAD(Accumulator_RowMajor, _SG16, int,   int,   32, 16, ROW_MAJOR, , 32)
@@ -1191,23 +1191,6 @@ DEFINE_STORE(Accumulator_RowMajor, _SG16, int,   int,   16, 16, ROW_MAJOR, , 16,
 // sub group size 32
 DEFINE_STORE(PackedA_RowMajor,     _SG16, short, short, 16, 16, ROW_MAJOR, , 8, false)
 DEFINE_STORE(Accumulator_RowMajor, _SG16, int,   int,   16, 16, ROW_MAJOR, , 8, false)
-
-// special case for 1x64 C load: Joint Matrices are expected to be contiguous in memory, without padding at the end of a row
-// hence, we can load 1x64 shape using single 2d block load of shape 4x16 instead of 4 1x16 loads
-// R_orig is not used
-#define DEFINE_LOAD_LARGE_IMPL_(layout, elem_type, elem_bitwidth, contrib_type, R_orig, C, shape, order, WI_rows, WI_rows_per_load, address_space) \
-  INLINE void __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_1x64_i32_4_##address_space##_v8i8_pi32_i32(__private char *dst, char *mem, long stride, int cacheOpt) { \
-      long offset = as_long(mem); \
-      long baseoffset = offset & (~0x3f); /* align to 64-byte */ \
-      int width = sizeof(int) * 16 - 1; /* load 1x64 as 4x16, hence, width is 16 int in bytes */ \
-      int height = 4 - 1; /* row count */ \
-      int pitch = width; /* JointMatrices are expected to be contiguous in memory, without padding at the end of a row */ \
-      long x = (offset - baseoffset) / sizeof(int); /* in elements */ \
-      int2 coords = (int2)(x, 0); \
-      uint4 __builtin_IB_subgroup_block_read_flat_u32_wi4_m4k16v1(long, int, int, int, int2, int); \
-      uint4 res = __builtin_IB_subgroup_block_read_flat_u32_wi4_m4k16v1(baseoffset, width, height, pitch, coords, cacheOpt); \
-      *(__private uint4 *)dst = res; \
-  }
 
 // _4 in the name is for 4 2d block loads
 // R_orig is original number of rows before VNNI
@@ -1239,22 +1222,71 @@ DEFINE_STORE(Accumulator_RowMajor, _SG16, int,   int,   16, 16, ROW_MAJOR, , 8, 
 
 DEFINE_LOAD_LARGE(PackedB_PackedB,    short, int,  8, 128, ROW_MAJOR,  32, 4)
 DEFINE_LOAD_LARGE(PackedB_RowMajor,   short, int,  8, 128, VNNI_TX,    32, 4)
-DEFINE_LOAD_LARGE(Accumulator_RowMajor,    ,    ,  1,  64,          ,    ,  )
 DEFINE_LOAD_LARGE(Accumulator_RowMajor, int, int, 32,  64, ROW_MAJOR, 128, 4)
 
-#define DEFINE_STORE_ACC_ROW_MAJOR_1x64(address_space) \
-  INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_1x64_i32_4_##address_space##_pi64_v8i8(char *mem, __private char *src, long stride, int cacheOpt) { \
-    long offset = as_long(mem); \
-    long baseoffset = offset & (~0x3f); /* align to 64-byte */ \
-    int width = sizeof(int) * 16 - 1; /* in bytes, load 1x64 as 4x16 to use one load instead of 4 */ \
-    int pitch = width; /* JointMatrices are expected to be contiguous in memory, without padding at the end of a row */ \
-    int height = 4 - 1; /* row count */ \
-    long x = (offset - baseoffset) / sizeof(int); /* in elements */ \
-    int2 coords = (int2)(x, 0); \
-    uint4 val = *(uint4 *)src; \
-    void __builtin_IB_subgroup_block_write_flat_u32_wi4_m4k16v1(long, int, int, int, int2, uint4, int); \
-    __builtin_IB_subgroup_block_write_flat_u32_wi4_m4k16v1(baseoffset, width, height, pitch, coords, val, cacheOpt); \
-  }
+// special case for 1x64 C load: Joint Matrices are expected to be contiguous in memory, without padding at the end of a row
+// hence, we can load 1x64 shape using single 2d block load of shape 4x16 instead of 4 1x16 loads
+// or 1 block read4 instead of 4 block read by 1 element
+#define DEFINE_LOAD_LARGE_BLOCK2D_IMPL_1() \
+    if (BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= BLOCK2D_IMPL) { \
+      long offset = as_long(mem); \
+      long baseoffset = offset & (~0x3f); /* align to 64-byte */ \
+      int width = sizeof(int) * 16 - 1; /* load 1x64 as 4x16, hence, width is 16 int in bytes */ \
+      int height = 4 - 1; /* row count */ \
+      int pitch = width; /* JointMatrices are expected to be contiguous in memory, without padding at the end of a row */ \
+      long x = (offset - baseoffset) / sizeof(int); /* in elements */ \
+      int2 coords = (int2)(x, 0); \
+      uint4 __builtin_IB_subgroup_block_read_flat_u32_wi4_m4k16v1(long, int, int, int, int2, int); \
+      uint4 res = __builtin_IB_subgroup_block_read_flat_u32_wi4_m4k16v1(baseoffset, width, height, pitch, coords, cacheOpt); \
+      *(__private uint4 *)dst = res; \
+      return; \
+    } \
+
+#define DEFINE_LOAD_LARGE_VECTORS_IMPL_1(address_space) \
+    if(BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_CONT_IMPL) { \
+        *(__private uint4 *)dst = intel_sub_group_block_read4((__##address_space uint *)mem); \
+        return; \
+    } \
+    if(BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_IMPL) { \
+        /*not supported, fall through*/ \
+        return; \
+    }
+
+#define DEFINE_LOAD_LARGE_SCALAR_IMPL_1() { \
+        /*not supported, fall through*/ \
+        return; \
+    }
+
+#define DEFINE_LOAD_LARGE_1_IMPL_AS_GENERIC() \
+    INLINE void __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_1x64_i32_4_generic_v8i8_pi32_i32(__private char *dst, char *mem, long stride, int cacheOpt) { \
+        __builtin_assume((__global char*)mem != 0); \
+        int memIsGlobal = (0 != SPIRV_BUILTIN(GenericCastToPtrExplicit, _p1i8_p4i8_i32, _ToGlobal)(__builtin_astype((mem), __generic char*), StorageWorkgroup)); \
+        if (memIsGlobal) { \
+            DEFINE_LOAD_LARGE_BLOCK2D_IMPL_1() \
+            DEFINE_LOAD_LARGE_VECTORS_IMPL_1(global) \
+        } else { \
+            DEFINE_LOAD_LARGE_VECTORS_IMPL_1(local) \
+        } \
+        DEFINE_LOAD_LARGE_SCALAR_IMPL_1() \
+    }
+#define DEFINE_LOAD_LARGE_1_IMPL_AS_LOCAL() \
+    INLINE void __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_1x64_i32_4_local_v8i8_pi32_i32(__private char *dst, char *mem, long stride, int cacheOpt) { \
+        DEFINE_LOAD_LARGE_VECTORS_IMPL_1(local) \
+        DEFINE_LOAD_LARGE_SCALAR_IMPL_1() \
+    }
+#define DEFINE_LOAD_LARGE_1_IMPL_AS_GLOBAL() \
+    INLINE void __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_1x64_i32_4_global_v8i8_pi32_i32(__private char *dst, char *mem, long stride, int cacheOpt) { \
+        DEFINE_LOAD_LARGE_BLOCK2D_IMPL_1() \
+        DEFINE_LOAD_LARGE_VECTORS_IMPL_1(global) \
+        DEFINE_LOAD_LARGE_SCALAR_IMPL_1() \
+    }
+
+#define DEFINE_LOAD_LARGE_1(layout, M, K) \
+    DEFINE_LOAD_LARGE_1_IMPL_AS_GENERIC() \
+    DEFINE_LOAD_LARGE_1_IMPL_AS_LOCAL() \
+    DEFINE_LOAD_LARGE_1_IMPL_AS_GLOBAL()
+
+DEFINE_LOAD_LARGE_1(Accumulator_RowMajor, 1, 64)
 
 #define DEFINE_STORE_ACC_ROW_MAJOR_32x64(address_space) \
   INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_32x64_i32_128_##address_space##_pi64_v8i8(char *mem, __private char *src, long stride, int cacheOpt) { \
@@ -1291,5 +1323,66 @@ DEFINE_LOAD_LARGE(Accumulator_RowMajor, int, int, 32,  64, ROW_MAJOR, 128, 4)
   DEFINE_STORE_ACC_ROW_MAJOR_##R##x##C(global) \
   DEFINE_STORE_ACC_ROW_MAJOR_##R##x##C(local)
 
-DEFINE_STORE_ACC_ROW_MAJOR_LARGE( 1, 64)
 DEFINE_STORE_ACC_ROW_MAJOR_LARGE(32, 64)
+
+#define DEFINE_STORE_LARGE_BLOCK2D_IMPL_1() \
+    if (BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= BLOCK2D_IMPL) { \
+      long offset = as_long(mem); \
+      long baseoffset = offset & (~0x3f); /* align to 64-byte */ \
+      int width = sizeof(int) * 16 - 1; /* in bytes, load 1x64 as 4x16 to use one load instead of 4 */ \
+      int pitch = width; /* JointMatrices are expected to be contiguous in memory, without padding at the end of a row */ \
+      int height = 4 - 1; /* row count */ \
+      long x = (offset - baseoffset) / sizeof(int); /* in elements */ \
+      int2 coords = (int2)(x, 0); \
+      uint4 val = *(uint4 *)src; \
+      void __builtin_IB_subgroup_block_write_flat_u32_wi4_m4k16v1(long, int, int, int, int2, uint4, int); \
+      __builtin_IB_subgroup_block_write_flat_u32_wi4_m4k16v1(baseoffset, width, height, pitch, coords, val, cacheOpt); \
+      return; \
+    }
+
+#define DEFINE_STORE_LARGE_VECTORS_IMPL_1(address_space) \
+    if(BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_CONT_IMPL) { \
+        uint4 c = *(uint4 *) src; \
+        intel_sub_group_block_write4((__##address_space uint *)mem, c); \
+        return; \
+    } \
+    if(BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_IMPL) { \
+        /*not supported, fall through*/ \
+        return; \
+    }
+
+#define DEFINE_STORE_LARGE_SCALAR_IMPL_1() { \
+        /*not supported, fall through*/ \
+        return; \
+    }
+
+#define DEFINE_STORE_LARGE_1_IMPL_AS_GENERIC() \
+    INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_1x64_i32_4_generic_pi64_v8i8(char *mem, __private char *src, long stride, int cacheOpt) { \
+        __builtin_assume((__global char*)mem != 0); \
+        int memIsGlobal = (0 != SPIRV_BUILTIN(GenericCastToPtrExplicit, _p1i8_p4i8_i32, _ToGlobal)(__builtin_astype((mem), __generic char*), StorageWorkgroup)); \
+        if (memIsGlobal) { \
+            DEFINE_STORE_LARGE_BLOCK2D_IMPL_1() \
+            DEFINE_STORE_LARGE_VECTORS_IMPL_1(global) \
+        } else { \
+            DEFINE_STORE_LARGE_VECTORS_IMPL_1(local) \
+        } \
+        DEFINE_STORE_LARGE_SCALAR_IMPL_1() \
+    }
+#define DEFINE_STORE_LARGE_1_IMPL_AS_LOCAL() \
+    INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_1x64_i32_4_local_pi64_v8i8(char *mem, __private char *src, long stride, int cacheOpt) { \
+        DEFINE_STORE_LARGE_VECTORS_IMPL_1(local) \
+        DEFINE_STORE_LARGE_SCALAR_IMPL_1() \
+    }
+#define DEFINE_STORE_LARGE_1_IMPL_AS_GLOBAL() \
+    INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_1x64_i32_4_global_pi64_v8i8(char *mem, __private char *src, long stride, int cacheOpt) { \
+        DEFINE_STORE_LARGE_BLOCK2D_IMPL_1() \
+        DEFINE_STORE_LARGE_VECTORS_IMPL_1(global) \
+        DEFINE_STORE_LARGE_SCALAR_IMPL_1() \
+    }
+
+#define DEFINE_STORE_LARGE_1(layout, M, K) \
+    DEFINE_STORE_LARGE_1_IMPL_AS_GENERIC() \
+    DEFINE_STORE_LARGE_1_IMPL_AS_LOCAL() \
+    DEFINE_STORE_LARGE_1_IMPL_AS_GLOBAL()
+
+DEFINE_STORE_LARGE_1(Accumulator_RowMajor, 1, 64)
