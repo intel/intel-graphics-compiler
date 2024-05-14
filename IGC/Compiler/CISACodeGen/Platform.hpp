@@ -179,12 +179,7 @@ bool supportsWMTPForShaderType(ShaderType type) const {
     return false;
 }
 
-bool supportDisableMidThreadPreemptionSwitch() const
-{
-    return
-    false
-    ;
-}
+bool supportDisableMidThreadPreemptionSwitch() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
 
 bool needSWStencil() const
 {
