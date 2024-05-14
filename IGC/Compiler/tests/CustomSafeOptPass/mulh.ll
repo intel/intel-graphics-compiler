@@ -23,7 +23,7 @@ define void @test_umulh() {
 
 define void @test_umulh_2() {
 ; CHECK-LABEL: @test_umulh_2(
-; CHECK-NEXT:    call void @use.i32(i32 -1)
+; CHECK-NEXT:    call void @use.i32(i32 33)
 ; CHECK-NEXT:    ret void
 ;
   %1 = call i32 @llvm.genx.GenISA.umulH.i32(i32 -12, i32 34)
@@ -33,7 +33,7 @@ define void @test_umulh_2() {
 
 define void @test_imulh() {
 ; CHECK-LABEL: @test_imulh(
-; CHECK-NEXT:    call void @use.i32(i32 33)
+; CHECK-NEXT:    call void @use.i32(i32 -1)
 ; CHECK-NEXT:    ret void
 ;
   %1 = call i32 @llvm.genx.GenISA.imulH.i32(i32 -12, i32 34)
