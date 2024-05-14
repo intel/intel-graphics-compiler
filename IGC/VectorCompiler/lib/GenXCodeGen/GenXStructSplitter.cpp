@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2023 Intel Corporation
+Copyright (C) 2021-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -500,7 +500,7 @@ private:
 
   bool processGEP(GetElementPtrInst &GEPI, const TypeToInstrMap &NewInstr,
                   InstsToSubstitute /*OUT*/ &InstToInst);
-  bool processPTI(PtrToIntInst &PTI, const TypeToInstrMap &NewInstr,
+  bool processPTI(PtrToIntInst &PTI, Type *Ty, const TypeToInstrMap &NewInstr,
                   InstsToSubstitute /*OUT*/ &InstToInst);
   static bool processPTIsUses(Instruction &I, uint64_t /*OUT*/ &MaxPtrOffset);
 
@@ -1455,7 +1455,7 @@ bool Substituter::processAlloca(AllocaInst &Alloca) {
     if (!processGEP(*GEP, NewInstrs, InstToInst))
       return false;
   for (PtrToIntInst *PTI : UsesPTI)
-    if (!processPTI(*PTI, NewInstrs, InstToInst))
+    if (!processPTI(*PTI, Alloca.getAllocatedType(), NewInstrs, InstToInst))
       return false;
 
   for (auto &[InstToReplace, ToInst] : InstToInst)
@@ -1609,7 +1609,7 @@ bool Substituter::processGEP(GetElementPtrInst &GEPI,
       if (!processGEP(*GEP, NewInstructions, InstToInst))
         return false;
     for (PtrToIntInst *PTI : UsesPTI)
-      if (!processPTI(*PTI, NewInstructions, InstToInst))
+      if (!processPTI(*PTI, GEPI.getResultElementType(), NewInstructions, InstToInst))
         return false;
   } else {
     Type *PrevType = IdxPath.getTyAt(PlainTyIdx);
@@ -1679,12 +1679,10 @@ static bool verifyElement(StructType &STy,
 //  read/write, then checks if max offset lies within unsplit block. If it
 //  does, then substitutes the struct. Otherwise we cannot split the struct.
 //
-bool Substituter::processPTI(PtrToIntInst &PTI, const TypeToInstrMap &NewInstr,
+bool Substituter::processPTI(PtrToIntInst &PTI, Type *Ty,
+                             const TypeToInstrMap &NewInstr,
                              InstsToSubstitute /*OUT*/ &InstToInst) {
-
-  StructType &STy = *cast<StructType>(
-      IGCLLVM::getNonOpaquePtrEltTy(PTI.getPointerOperand()->getType()));
-
+  auto &STy = *cast<StructType>(Ty);
   uint64_t MaxPtrOffset{0};
   if (!processPTIsUses(PTI, MaxPtrOffset))
     return false;
