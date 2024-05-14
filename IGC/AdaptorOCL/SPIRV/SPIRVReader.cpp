@@ -270,9 +270,7 @@ public:
               CASE(dwarf::DW_OP_stack_value, SPIRVDebug::ExpressionOpCode::StackValue);
               CASE(dwarf::DW_OP_constu, SPIRVDebug::ExpressionOpCode::Constu);
               CASE(dwarf::DW_OP_LLVM_fragment, SPIRVDebug::ExpressionOpCode::Fragment);
-#if LLVM_VERSION_MAJOR >= 9
               CASE(dwarf::DW_OP_LLVM_convert, SPIRVDebug::ExpressionOpCode::Convert);
-#endif
               CASE(dwarf::DW_OP_addr, SPIRVDebug::ExpressionOpCode::Addr);
               CASE(dwarf::DW_OP_const1u, SPIRVDebug::ExpressionOpCode::Const1u);
               CASE(dwarf::DW_OP_const1s, SPIRVDebug::ExpressionOpCode::Const1s);

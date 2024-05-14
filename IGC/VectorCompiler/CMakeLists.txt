@@ -21,10 +21,6 @@ set(IGC_BUILD__PROJ_LABEL__VectorCompiler "${IGC_BUILD__PROJ__VectorCompiler}")
 message(STATUS "+++ Source/IGC/VectorCompiler +++")
 message(STATUS "[VC] Build proj: ${IGC_BUILD__PROJ__VectorCompiler}")
 
-if(LLVM_VERSION_MAJOR LESS 9)
-  message(FATAL_ERROR "OpenCL C++ is available only since LLVM-9. Cannot build VC BiF without this feature.")
-endif()
-
 # --- Options ---
 
 if(LLVM_ON_WIN32)
