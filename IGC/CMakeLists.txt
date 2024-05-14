@@ -1400,7 +1400,7 @@ add_subdirectory(ZEBinWriter/zebin)
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/ZEBinWriter/zebin/source")
 set(ZEBIN_INCLUDE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/ZEBinWriter/zebin/source/autogen")
 include_directories("${ZEBIN_INCLUDE_PATH}")
-
+add_subdirectory(PCH)
 # ===================================== Projects and source groups =====================================
 
 # Suffixes of main projects.
@@ -1765,7 +1765,6 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
   )
 
 list(APPEND _targetLinkLineCommon zebinlib)
-
 list(APPEND _targetLinkLineCommon IGCOptions)
 
 list(APPEND _targetLinkLineCommon "${IGC_BUILD__PROJ__VISALinkerDriver}")
@@ -1863,46 +1862,7 @@ list(APPEND _targetLinkLineCommon "${IGC_BUILD__PROJ__VISALinkerDriver}")
   endif()
 endforeach()
 
-
-# Set precompiled header files for Windows builds
-if(MSVC)
-
-message(STATUS "Using precompiled headers")
-
-  add_subdirectory(PCH)
-
-  set(PCHTargets
-    Compiler
-    AdaptorOCL
-    Probe
-    GenISAIntrinsics
-    GenX_IR
-    GenXDebugInfo
-    ${IGC_BUILD__PROJ__igc_lib}
-  )
-
-  if(IGC_BUILD__VC_ENABLED)
-    list(APPEND PCHTargets VCIGCDeps)
-  endif()
-
-  if(IGC_BUILD__VULKAN_FRONTEND_ENABLED)
-    list(APPEND PCHTargets VulkanFrontend)
-  endif()
-
-  foreach(_target ${PCHTargets})
-
-    add_dependencies(${_target}
-      intrinsics_gen # generate *inc files for llvm/IR/Attributes.h
-      IntrinsicDefintionGenerator # generate IntrinsicGenISA.gen for GenIntrinsicEnum.h
-    )
-
-    target_precompile_headers(${_target}
-      PRIVATE
-      "$<$<COMPILE_LANGUAGE:CXX>:${IGC_BUILD__IGC_SRC_DIR}/PCH/llvm.h>"
-      "$<$<COMPILE_LANGUAGE:CXX>:${IGC_BUILD__IGC_SRC_DIR}/PCH/common.h>"
-    )
-  endforeach()
-endif()
+include(igc_pch_reuse)
 
 if (FCL_ENABLED)
 #FCL

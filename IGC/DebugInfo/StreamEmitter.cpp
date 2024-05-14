@@ -708,7 +708,7 @@ void StreamEmitter::EmitSymbolValue(const MCSymbol *pSym, unsigned size,
 void StreamEmitter::EmitSectionOffset(const MCSymbol *pLabel,
                                       const MCSymbol *pSectionLabel) const {
   // Get the section that we're referring to, based on pSectionLabel.
-  const MCSection &section = pSectionLabel->getSection();
+  [[maybe_unused]] const MCSection &section = pSectionLabel->getSection();
 
   // If pLabel has already been emitted, verify that it is in the same section
   // as section label for sanity.

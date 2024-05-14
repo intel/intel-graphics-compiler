@@ -1115,8 +1115,8 @@ void DwarfDebug::beginModule() {
   for (auto *IE : CUNode->getImportedEntities())
     constructThenAddImportedEntityDIE(CU, IE);
 
-  auto NumDebugCUs = std::distance(M->debug_compile_units_begin(),
-                                   M->debug_compile_units_end());
+  [[maybe_unused]] auto NumDebugCUs = std::distance(
+      M->debug_compile_units_begin(), M->debug_compile_units_end());
   IGC_ASSERT_MESSAGE(NumDebugCUs == 1,
                      "only Modules with one CU are supported at the moment");
 

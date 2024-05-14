@@ -13,7 +13,7 @@ SPDX-License-Identifier: MIT
 
 
 // LLVM
-#include "common/LLVMWarningsPush.hpp"
+#include "../common/LLVMWarningsPush.hpp"
 #include "llvm-c/Core.h"
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/APSInt.h"
@@ -248,7 +248,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Utils/Local.h"
 #include "llvmWrapper/Transforms/Utils/LoopUtils.h"
 #include "llvmWrapper/Transforms/Utils/ValueMapper.h"
-#include "common/LLVMWarningsPop.hpp"
+#include "../common/LLVMWarningsPop.hpp"
 
 // Excluded LLVM headers with reasons
 

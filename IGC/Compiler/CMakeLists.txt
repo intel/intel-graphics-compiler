@@ -189,7 +189,12 @@ if(NOT ANDROID)
     )
 endif()
 
-
+foreach(src_file  ${IGC_BUILD__SRC__Compiler})
+    get_filename_component(file_ext ${src_file} EXT)
+    if(${file_ext} STREQUAL ".c")
+        set_source_files_properties(${src_file} PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
+    endif()
+endforeach()
 add_library("${IGC_BUILD__PROJ__Compiler}" STATIC
     ${IGC_BUILD__SRC__Compiler}
     ${IGC_BUILD__SRC_Win_Lin_Dar__Compiler}
