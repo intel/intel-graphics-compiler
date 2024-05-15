@@ -670,6 +670,8 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         // need to run loop simplify to canonicalize loop and merge latches
         mpm.add(createLoopCanonicalization());
         mpm.add(createLoopSimplifyPass());
+        if (!IGC_IS_FLAG_ENABLED(DisableLoopSplitWidePHIs))
+            mpm.add(createLoopSplitWidePHIs());
     }
 
     if (IGC_IS_FLAG_ENABLED(StackOverflowDetection)) {

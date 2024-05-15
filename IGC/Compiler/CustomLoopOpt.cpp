@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvmWrapper/IR/DerivedTypes.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Transforms/Utils/LoopUtils.h>
@@ -1282,3 +1283,347 @@ namespace IGC
         return new DisableLICMForSpecificLoops();
     }
 }
+
+// The LoopSplitWidePHIs pass finds opportunities to eliminate shuffles which
+// split and re-join wide vectors. The motivating case are loops with
+// accumulators of width k*N where the accumulator operations are of width N.
+// In such a case we replace the accumulator PHI with k individual PHIs for
+// each part, e.g.:
+//
+// loop.header:
+// %accum = phi <float x 16> [%zeroinitializer, %preheader], [%accum.join, %loop.end]
+// %accum.lo = shuffle %accum, %accum, <0..7>
+// %accum.hi = shuffle %accum, %accum, <8..15>
+// %accum.lo1 = dpas %accum.lo, ...
+// %accum.hi1 = dpas %accum.hi ...
+// ..
+// loop.end:
+// %accum.join = shuffle %accum.loN, %accum.hiN, <0..7, 0..7>
+// ..
+// loop.exit:
+// store <float x 16> %accum.join, ...
+//
+// If there are no other uses of %accum and %accum.join in the loop, this can
+// be transformed to:
+//
+// loop.header:
+// %accum.lo = phi <float x 8> [%zeroinitializer, %preheader], [%accum.loN, %loop.end]
+// %accum.hi = phi <float x 8> [%zeroinitializer, %preheader], [%accum.hiN, %loop.end]
+// %accum.lo1 = dpas %accum.lo, ...
+// %accum.hi1 = dpas %accum.hi ...
+// ..
+// loop.end:
+// ..
+// loop.exit:
+// %accum.join = shuffle %accum.loN, %accum.hiN, <0..7, 0..7>
+// store <float x 16> %accum.join, ...
+//
+// The major benefit of this transformation is to allow the finalizer
+// to easily identify opportunities to use indexed operands to access individual
+// parts of a wider accumulator register. Otherwise, the legalized shuffles
+// cannot be simplified without loop analysis and may lead to unneccesary mov
+// operations and more edges in the interference graph.
+//
+class LoopSplitWidePHIs : public llvm::FunctionPass
+{
+public:
+    static char ID;
+
+    LoopSplitWidePHIs();
+
+    void getAnalysisUsage(llvm::AnalysisUsage &AU) const
+    {
+        AU.addRequired<llvm::LoopInfoWrapperPass>();
+    }
+
+    bool runOnFunction(Function &F);
+    bool processLoop(Loop* L, LoopInfo *LI);
+    bool processOneLoop(Loop* L, LoopInfo *LI);
+    bool processPHI(SmallVectorImpl<PHINode*> &WL, Loop *L);
+
+    llvm::StringRef getPassName() const
+    {
+        return "IGC split wide loop PHIs";
+    }
+
+private:
+};
+
+#undef PASS_FLAG
+#undef PASS_DESC
+#undef PASS_CFG_ONLY
+#undef PASS_ANALYSIS
+#define PASS_FLAG     "igc-loop-split-wide-phis"
+#define PASS_DESC     "IGC split wide loop PHIs"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
+IGC_INITIALIZE_PASS_BEGIN(LoopSplitWidePHIs, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
+IGC_INITIALIZE_PASS_END(LoopSplitWidePHIs, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+
+char LoopSplitWidePHIs::ID = 0;
+
+LoopSplitWidePHIs::LoopSplitWidePHIs() : FunctionPass(ID)
+{
+    initializeLoopSplitWidePHIsPass(*PassRegistry::getPassRegistry());
+}
+
+bool LoopSplitWidePHIs::runOnFunction(llvm::Function &F)
+{
+    bool Changed = false;
+    LoopInfo* LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+    for (LoopInfo::iterator I = LI->begin(), E = LI->end(); I != E; ++I)
+        Changed |= processLoop(*I, LI);
+    return Changed;
+}
+
+bool LoopSplitWidePHIs::processLoop(llvm::Loop* L, LoopInfo* LI)
+{
+    bool Changed = false;
+    // Worklist maintains our depth-first queue of loops in this nest to process.
+    SmallVector<Loop*, 4> Worklist;
+    Worklist.push_back(L);
+
+    // Walk the worklist from front to back, pushing newly found sub loops onto
+    // the back. This will let us process loops from back to front in depth-first
+    // order. We can use this simple process because loops form a tree.
+    for (unsigned Idx = 0; Idx != Worklist.size(); ++Idx)
+    {
+        Loop* L2 = Worklist[Idx];
+        Worklist.append(L2->begin(), L2->end());
+    }
+
+    while (!Worklist.empty())
+        Changed |= processOneLoop(Worklist.pop_back_val(), LI);
+    return Changed;
+}
+
+bool LoopSplitWidePHIs::processOneLoop(llvm::Loop* L, LoopInfo* LI)
+{
+    bool Changed = false;
+    BasicBlock* Preheader = L->getLoopPreheader();
+    BasicBlock* Latch = L->getLoopLatch();
+    // Skip if the loop is not canonical.
+    if (!Preheader || !Latch)
+        return false;
+    IGC_ASSERT(Preheader->getTerminator());
+
+    // Initialize a worklist of all 2-source PHI nodes.
+    // We will repeatedly call processPHI to maybe transform
+    // the top PHI; this pushes any newly-created PHIs onto the
+    // worklist.
+    SmallVector<PHINode *, 8> Worklist;
+    for (auto &PHI : L->getHeader()->phis())
+    {
+        if (PHI.getNumIncomingValues() == 2 &&
+            PHI.getBasicBlockIndex(Preheader) >= 0 &&
+            PHI.getBasicBlockIndex(Latch) >= 0 &&
+            dyn_cast<IGCLLVM::FixedVectorType>(PHI.getType()))
+        {
+            Worklist.push_back(&PHI);
+        }
+    }
+
+    // Process the worklist. This may add two new items which
+    // are half the element count of the original PHI.
+    while (!Worklist.empty())
+        Changed |= processPHI(Worklist, L);
+    return Changed;
+}
+
+bool LoopSplitWidePHIs::processPHI(SmallVectorImpl<PHINode*> &WL, llvm::Loop *L)
+{
+    // Caller ensures that loop is canonical and has a well-formed
+    // preheader.
+    BasicBlock* Latch = L->getLoopLatch();
+    BasicBlock* Preheader = L->getLoopPreheader();
+    IGC_ASSERT(!WL.empty());
+
+    // Assume worklist elements are 2-source PHIs of fixed vector type
+    // fed by the preheader and latch, which exist.
+    // We check the required conditions, populating lists of uses
+    // to be replaced with the split components or their joined result.
+    PHINode *PHI = WL.pop_back_val();
+    auto ShufI = dyn_cast<ShuffleVectorInst>(PHI->getIncomingValueForBlock(Latch));
+    if (!ShufI || !ShufI->isConcat())
+        return false;
+
+    // Get the components of the concat and ensure they are equal size.
+    // This isn't a strict requirement but a simplifying assumption
+    // used later in code generation.
+    Value* Parts[2] = {
+        ShufI->getOperand(0),
+        ShufI->getOperand(1)
+    };
+    auto ElemCount =
+       dyn_cast<IGCLLVM::FixedVectorType>(Parts[0]->getType())->getNumElements();
+    if (ElemCount !=
+           dyn_cast<IGCLLVM::FixedVectorType>(Parts[1]->getType())->getNumElements())
+        return false;
+
+    // If I is an extract-like shuffle of ElemCount values from a wider
+    // source, return the index of the half being extracted (0 or 1).
+    // Returns -1 otherwise.
+    auto getExtractIndex = [ElemCount](Instruction *I) -> int
+    {
+        if (auto* UseShufI = dyn_cast<ShuffleVectorInst>(I))
+        {
+            auto ShufTy = dyn_cast<IGCLLVM::FixedVectorType>(UseShufI->getType());
+            int Index = -1;
+            if (UseShufI->isExtractSubvectorMask(Index) &&
+                (Index == 0 || Index == ElemCount) &&
+                ShufTy->getNumElements() == ElemCount)
+              return (int) (Index != 0);
+        }
+        return -1;
+    };
+
+    // Check the uses of the PHI value:
+    // * Extract-like uses can be bypassed to use
+    //   the corresponding split part.
+    // * Any other use disqualifies this candidate.
+    //
+    // We don't permit uses of the full value in L
+    // as this could result in a net increase in
+    // shuffles. It is possible to handle these cases
+    // if we do the accounting for added/removed
+    // shuffles.
+    using SplitUse = std::pair<Instruction *, int>;
+    SmallVector<SplitUse, 8> PHIUses;
+    for (auto U : PHI->users())
+    {
+        auto* UseI = dyn_cast<Instruction>(U);
+        int Idx = getExtractIndex(UseI);
+        if (Idx >= 0)
+            PHIUses.emplace_back(UseI, Idx);
+        else
+            return false;
+    }
+
+    // Check all uses of the latch value.
+    // * Any other uses in the loop disqualify the candidate.
+    //   Extract-like uses could be bypassed to use
+    //   the concat sources, but we assume this simplification
+    //   should already be done.
+    // * Uses out of the loop can be replaced with a concat
+    //   of ShufI's sources.
+    SmallVector<Instruction *, 8> LatchUses;
+    int LatchIdx = PHI->getBasicBlockIndex(Latch);
+    auto LatchVal = cast<Instruction>(PHI->getIncomingValue(LatchIdx));
+    for (auto U : LatchVal->users()) {
+        auto* UseI = cast<Instruction>(U);
+        if (UseI == PHI)
+           continue;
+        if (L->contains(UseI->getParent()))
+            return false;
+        else if (auto PN = dyn_cast<PHINode>(UseI)) {
+            // An external PHI use requires the PHI to
+            // be split into parts and joined. For now we
+            // We only handle the trivial case of a single-source
+            // PHI (e.g. in an exit block).
+            if (PN->getNumIncomingValues() > 1)
+                return false;
+        }
+        LatchUses.emplace_back(UseI);
+    }
+
+    // Bail early if there is nothing to be done.
+    if (PHIUses.empty())
+        return false;
+
+    // Create shuffle masks for concat/extract operations.
+    SmallVector<unsigned, 32> AllIndices;
+    SmallVector<unsigned, 16> PartIndices[2];
+    for (unsigned m = 0; m < ElemCount; ++m)
+    {
+        PartIndices[0].emplace_back(m);
+        PartIndices[1].emplace_back(m + ElemCount);
+    }
+    for (unsigned m = 0; m < (2 * ElemCount); ++m)
+        AllIndices.emplace_back(m);
+    Value* MaskAll = ConstantDataVector::get(PHI->getContext(), AllIndices);
+    Value* MaskPart[2] = {
+        ConstantDataVector::get(PHI->getContext(), PartIndices[0]),
+        ConstantDataVector::get(PHI->getContext(), PartIndices[1])
+    };
+
+    // Create the new PHIs for each part. Here we also need to split
+    // the incoming preheader value. Here we assume
+    PHINode *NewPHI[2] = {
+        PHINode::Create(Parts[0]->getType(), 2, "split.lo", PHI),
+        PHINode::Create(Parts[1]->getType(), 2, "split.hi", PHI)
+    };
+    auto PreValue = PHI->getIncomingValue(1 - LatchIdx);
+    for (int i = 0; i < 2; ++i)
+    {
+        auto *PreShufI =
+            new ShuffleVectorInst(PreValue, PreValue, MaskPart[i]);
+        PreShufI->insertBefore(Preheader->getTerminator());
+        NewPHI[i]->addIncoming(PreShufI, Preheader);
+        NewPHI[i]->addIncoming(Parts[i], Latch);
+    }
+
+    // Replace the split part uses with the new PHI values.
+    for (SplitUse &SU : PHIUses)
+    {
+        SmallVector<User *, 8u> Users(SU.first->users());
+        for (auto U : Users)
+            U->replaceUsesOfWith(SU.first, NewPHI[SU.second]);
+        IGC_ASSERT(!SU.first->hasNUsesOrMore(1));
+        SU.first->eraseFromParent();
+    }
+
+    // Latch value uses require a concat of ShufI's sources. Where this is
+    // inserted depends on whether the use is in a PHI or not.
+    for (auto *LatchUseI : LatchUses)
+    {
+        if (auto PN = dyn_cast<PHINode>(LatchUseI))
+        {
+            // This condition is checked before adding to LatchUses.
+            IGC_ASSERT(PN->getNumIncomingValues() == 1);
+            // Replace PN with PHIs for each of ShufI's sources, and replace
+            // all uses with a concat of the new PHI's results.
+            PHINode *ToConcat[2] = { nullptr, nullptr };
+            for (int i = 0; i < 2; ++i)
+            {
+                ToConcat[i] =
+                    PHINode::Create(Parts[i]->getType(), 1, (i ? "split.hi" : "split.lo"), PN);
+                ToConcat[i]->addIncoming(Parts[i], Latch);
+            }
+            auto ConcatI =
+                new ShuffleVectorInst(ToConcat[0], ToConcat[1], MaskAll);
+            ConcatI->insertBefore(PN->getParent()->getFirstNonPHI());
+            SmallVector<User*, 8u> Users(PN->users());
+            for (auto *U : Users)
+                U->replaceUsesOfWith(PN, ConcatI);
+            IGC_ASSERT(!PN->hasNUsesOrMore(1));
+            PN->eraseFromParent();
+        }
+        else
+        {
+            // Insert a concat of ShufI's sources before the use
+            // instruction.
+            auto ConcatI = new ShuffleVectorInst(Parts[0], Parts[1], MaskAll);
+            ConcatI->insertBefore(LatchUseI);
+            LatchUseI->replaceUsesOfWith(LatchVal, ConcatI);
+        }
+    }
+
+    // Finally, add our new PHIs to the worklist, which we know
+    // to satisfy the assumptions of worklist items, and remove the
+    // PHI we replaced.
+    IGC_ASSERT(!PHI->hasNUsesOrMore(1));
+    PHI->eraseFromParent();
+    for (int i = 0; i < 2; ++i)
+        WL.push_back(NewPHI[i]);
+    return true;
+}
+
+namespace IGC
+{
+    FunctionPass* createLoopSplitWidePHIs()
+    {
+        return new LoopSplitWidePHIs();
+    }
+}
+

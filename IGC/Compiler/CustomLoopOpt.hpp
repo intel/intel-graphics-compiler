@@ -161,5 +161,7 @@ namespace IGC
 
     llvm::LoopPass* createDisableLICMForSpecificLoops();
 
+    llvm::FunctionPass *createLoopSplitWidePHIs();
+
 } // namespace IGC
 
