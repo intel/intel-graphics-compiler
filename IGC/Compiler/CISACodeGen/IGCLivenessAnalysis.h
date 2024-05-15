@@ -183,6 +183,9 @@ class IGCFunctionExternalRegPressureAnalysis : public llvm::ModulePass, public I
     std::unordered_map<Function *, unsigned int> ExternalFunctionPressure;
     // this map contains all the callsites in the module and their pressure
     CallSiteToPressureMap CallSitePressure;
+    // contains all spir_func definitions inside our module, to check against
+    // if we have 0 of them, we don't have to compute external pressure
+    llvm::SmallPtrSet<llvm::Function *, 32> SetOfDefinitions;
 
     // already present in IGCLivenessAnalysisBase
     //IGC::CodeGenContext *CGCtx = nullptr;

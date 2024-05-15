@@ -69,6 +69,7 @@ void IGCFunctionExternalRegPressureAnalysis::generateTableOfPressure(llvm::Modul
 
                 if (!Call) continue;
                 if (Call->getCallingConv() != CallingConv::SPIR_FUNC) continue;
+                if (!SetOfDefinitions.count(Call->getCalledFunction())) continue;
 
                 if(!PressureMap)
                     PressureMap = getPressureMapForBB(BB, SIMD, *WI);
@@ -127,6 +128,18 @@ bool IGCFunctionExternalRegPressureAnalysis::runOnModule(llvm::Module &M) {
     CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     ModMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+
+    // simple check, we take every definition that we have in our module
+    // and remember it, later we will check, if we have no calls to those
+    // definitions, we don't have to compute external pressure
+    for (auto &F : M) {
+        if(F.isDeclaration()) continue;
+        if(F.getCallingConv() != CallingConv::SPIR_FUNC) continue;
+        SetOfDefinitions.insert(&F);
+    }
+
+    if(!SetOfDefinitions.size())
+        return false;
 
     generateTableOfPressure(M);
 
