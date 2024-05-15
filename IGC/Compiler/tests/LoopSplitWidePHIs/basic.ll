@@ -20,10 +20,10 @@ preheader:
   br label %loop
 
 ; CHECK-LABEL: loop
-; CHECK-DAG:   [[TMP0:%split.lo.*]] = phi <8 x float> [ [[TMP3:%.*]], %preheader ], [ %dpas, %loop ]
-; CHECK-DAG:   [[TMP1:%split.hi.*]] = phi <8 x float> [ [[TMP4:%.*]], %preheader ], [ %dpas64, %loop ]
-; CHECK-NEXT:  %dpas = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> [[TMP0]]
-; CHECK-NEXT:  %dpas64 = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> [[TMP1]]
+; CHECK-DAG:  [[PHI0:%split.*]] = phi <8 x float> [ [[TMP3:%.*]], %preheader ], [ [[DPAS0:%.*]], %loop ]
+; CHECK-DAG:  [[PHI1:%split.*]] = phi <8 x float> [ [[TMP4:%.*]], %preheader ], [ [[DPAS1:%.*]], %loop ]
+; CHECK-DAG:  [[DPAS0]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> [[PHI0]]
+; CHECK-DAG:  [[DPAS1]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> [[PHI1]]
 loop: ; preds = %loop, %preheader
   %.sroa.20546.0 = phi <16 x float> [ zeroinitializer, %preheader ], [ %vecjoin, %loop ]
   %vecpart.1 = shufflevector <16 x float> %.sroa.20546.0, <16 x float> zeroinitializer, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>

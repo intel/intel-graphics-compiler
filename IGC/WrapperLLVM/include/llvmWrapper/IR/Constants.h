@@ -99,6 +99,18 @@ namespace IGCLLVM
 #endif
     }
     } // namespace Constant
+
+    namespace PoisonValue {
+#if LLVM_VERSION_MAJOR < 12
+    inline llvm::UndefValue *get(llvm::Type *T) {
+        return llvm::UndefValue::get(T);
+    }
+#else
+    inline llvm::PoisonValue *get(llvm::Type *T) {
+        return llvm::PoisonValue::get(T);
+    }
+#endif
+    } // namespace PoisonValue
 }
 
 #endif

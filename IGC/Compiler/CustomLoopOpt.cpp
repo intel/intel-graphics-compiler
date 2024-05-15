@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvmWrapper/IR/Constants.h>
 #include <llvmWrapper/IR/DerivedTypes.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
@@ -1351,6 +1352,26 @@ public:
     }
 
 private:
+    // Structure used to describe a concatenation Result = [Head, Tail],
+    // where all values are fixed vector types of the same element size.
+    struct CatenatedValue {
+        ShuffleVectorInst *Result = nullptr;
+        BitCastInst *Bitcast = nullptr;
+        // a.k.a. { Head, Tail }
+        Value *Parts[2] = { nullptr, nullptr };
+        // Types of each part.
+        IGCLLVM::FixedVectorType *Types[2] = { nullptr, nullptr };
+        // Element count of Parts[1]
+        unsigned TailSize = 0;
+        // Offset of Parts[1].
+        unsigned Offset = 0;
+    };
+
+    bool getCatenatedValue(Instruction *I, CatenatedValue &CV);
+    Instruction *createCatenatedValue(const CatenatedValue &CV, Value *Head, Value *Tail,
+                                      Instruction *InsertBeforeI);
+
+    PHINode *foldBitcasts(PHINode *PHI, CatenatedValue &CV, Loop *L);
 };
 
 #undef PASS_FLAG
@@ -1381,7 +1402,7 @@ bool LoopSplitWidePHIs::runOnFunction(llvm::Function &F)
     return Changed;
 }
 
-bool LoopSplitWidePHIs::processLoop(llvm::Loop* L, LoopInfo* LI)
+bool LoopSplitWidePHIs::processLoop(Loop* L, LoopInfo* LI)
 {
     bool Changed = false;
     // Worklist maintains our depth-first queue of loops in this nest to process.
@@ -1402,7 +1423,7 @@ bool LoopSplitWidePHIs::processLoop(llvm::Loop* L, LoopInfo* LI)
     return Changed;
 }
 
-bool LoopSplitWidePHIs::processOneLoop(llvm::Loop* L, LoopInfo* LI)
+bool LoopSplitWidePHIs::processOneLoop(Loop* L, LoopInfo* LI)
 {
     bool Changed = false;
     BasicBlock* Preheader = L->getLoopPreheader();
@@ -1435,7 +1456,151 @@ bool LoopSplitWidePHIs::processOneLoop(llvm::Loop* L, LoopInfo* LI)
     return Changed;
 }
 
-bool LoopSplitWidePHIs::processPHI(SmallVectorImpl<PHINode*> &WL, llvm::Loop *L)
+// Helper for getCatenatedValue. If I effectively catenates two vectors
+// [Head, Tail], where the element count of Tail is at most that of Head,
+// return true and set Head, Tail to the source values of each part, and set
+// Offset and Width to the element counts of Head, Tail respectively.
+// We assume that I is of fixed vector type.
+static bool findCatenateSources(ShuffleVectorInst *I, Value *&Head, Value *&Tail,
+                                unsigned &Offset, unsigned &Width)
+{
+    // First handle the simple case of a concat shuffle, where
+    // the head and tail are of equal size.
+    if (I->isConcat())
+    {
+        Head = I->getOperand(0);
+        Tail = I->getOperand(1);
+        Offset = (unsigned) cast<IGCLLVM::FixedVectorType>(Head->getType())->getNumElements();
+        Width = Offset;
+        return true;
+    }
+
+    // Otherwise, we may have an insert subvector shuffle
+    // appending a shorter tail to a longer head.
+    int NumSubElts = 0, Index = 0;
+    if (IGCLLVM::isInsertSubvectorMask(I, NumSubElts, Index))
+    {
+        Head = I->getOperand(0);
+        Tail = I->getOperand(1);
+        // We expect the tail value to be padded to the same element count
+        // as the head, and require the padded value to only be used
+        // in the catenating shuffle.
+        if ((int)cast<IGCLLVM::FixedVectorType>(Tail->getType())->getNumElements() > NumSubElts)
+        {
+            auto SVI = dyn_cast<ShuffleVectorInst>(Tail);
+            if (SVI && SVI->isIdentityWithPadding() && SVI->hasOneUse())
+                Tail = SVI->getOperand(0);
+            else
+                return false;
+        }
+        Offset = Index;
+        Width = NumSubElts;
+        return true;
+    }
+    return false;
+}
+
+// Helper to identify shuffles which defined a catenated value that
+// is a candidate for splitting. Returns true and populates CV
+// with the description if successful.
+bool LoopSplitWidePHIs::getCatenatedValue(Instruction *I, CatenatedValue &CV)
+{
+    BitCastInst *BitcastI = nullptr;
+
+    // Look through at most one bitcast for a candidate
+    // shuffle. If the bitcast defines the latch value of a PHI
+    // and all PHI uses have an inverse bitcast, these
+    // can be folded away (see foldBitcasts()).
+    if (auto BCI = dyn_cast<BitCastInst>(I))
+    {
+        BitcastI = BCI;
+        I = dyn_cast<Instruction>(BCI->getOperand(0));
+        if (!I)
+            return false;
+    }
+    if (auto SVI = dyn_cast<ShuffleVectorInst>(I))
+    {
+        if (!isa<IGCLLVM::FixedVectorType>(SVI->getType()))
+            return false;
+        Value *Head, *Tail;
+        unsigned Offset, Width;
+        if (findCatenateSources(SVI, Head, Tail, Offset, Width))
+        {
+            IGC_ASSERT(Head && Tail);
+            CV.Result = SVI;
+            CV.Bitcast = BitcastI;
+            CV.Parts[0] = Head;
+            CV.Parts[1] = Tail;
+            CV.Types[0] = cast<IGCLLVM::FixedVectorType>(Head->getType());
+            CV.Types[1] = cast<IGCLLVM::FixedVectorType>(Tail->getType());
+            CV.TailSize = Width;
+            CV.Offset = Offset;
+            return true;
+        }
+    }
+    return false;
+}
+
+// Helpers to generate shuffle masks.
+// Generates a mask which is the catenation of one or two contiguously
+// increasing sequences and padded with undef elements up to the total.
+// padded with UndefMaskElem up to Total.
+static Value *getShuffleMask(LLVMContext &Ctx, uint64_t Total, uint64_t FromA, uint64_t ToA,
+                             uint64_t FromB = 0, uint64_t ToB = 0)
+{
+    IGC_ASSERT(FromA <= ToA && FromB <= ToB);
+    std::vector<Constant *> Components;
+    IntegerType *MaskElemTy = IntegerType::get(Ctx, 32);
+    for (uint64_t i = FromA; i < ToA; ++i)
+        Components.push_back(ConstantInt::get(MaskElemTy, i));
+    for (uint64_t i = FromB; i < ToB; ++i)
+        Components.push_back(ConstantInt::get(MaskElemTy, i));
+    for (uint64_t i = Components.size(); i < Total; ++i)
+        Components.push_back(UndefValue::get(MaskElemTy));
+    return ConstantVector::get(Components);
+}
+
+// Check that the given value has no users in the loop, except
+// the given instruction (if non-null), and that any external PHI
+// uses are single-source.
+static bool hasOnlySimpleExternalUses(Value *Val, Loop *L, Value *IgnoreUse = nullptr)
+{
+    for (auto *U : Val->users())
+    {
+        if (IgnoreUse && IgnoreUse == U)
+            continue;
+        auto *UseI = dyn_cast<Instruction>(U);
+        if (!UseI || L->contains(UseI->getParent()))
+            return false;
+        else if (auto PHI = dyn_cast<PHINode>(UseI))
+        {
+            if (PHI->getNumIncomingValues() > 1)
+                return false;
+        }
+    }
+    return true;
+}
+
+// If I is an extract-like shuffle of ElemWidth values from a wider
+// source, return the offset of the extracted portion.
+// Returns -1 otherwise.
+static int getExtractIndex(Instruction *I, unsigned ElemWidth)
+{
+    if (auto* UseShufI = dyn_cast<ShuffleVectorInst>(I))
+    {
+        auto ShufTy = dyn_cast<IGCLLVM::FixedVectorType>(UseShufI->getType());
+        int Index;
+        if (UseShufI->isExtractSubvectorMask(Index) &&
+            ShufTy->getNumElements() == ElemWidth)
+            return Index;
+    }
+    return -1;
+}
+
+// Maybe split the PHI at the back of the worklist. Returns true
+// if the PHI was split, and appends newly created candidate PHIs
+// to the list.
+bool LoopSplitWidePHIs::processPHI(SmallVectorImpl<PHINode*> &WL, Loop *L)
 {
     // Caller ensures that loop is canonical and has a well-formed
     // preheader.
@@ -1448,44 +1613,26 @@ bool LoopSplitWidePHIs::processPHI(SmallVectorImpl<PHINode*> &WL, llvm::Loop *L)
     // We check the required conditions, populating lists of uses
     // to be replaced with the split components or their joined result.
     PHINode *PHI = WL.pop_back_val();
-    auto ShufI = dyn_cast<ShuffleVectorInst>(PHI->getIncomingValueForBlock(Latch));
-    if (!ShufI || !ShufI->isConcat())
+    auto DefI = cast<Instruction>(PHI->getIncomingValueForBlock(Latch));
+
+    // Identify whether the latch value's definition is a candidate
+    // for splitting.
+    CatenatedValue CV;
+    if (!getCatenatedValue(DefI, CV))
         return false;
 
-    // Get the components of the concat and ensure they are equal size.
-    // This isn't a strict requirement but a simplifying assumption
-    // used later in code generation.
-    Value* Parts[2] = {
-        ShufI->getOperand(0),
-        ShufI->getOperand(1)
-    };
-    auto ElemCount =
-       dyn_cast<IGCLLVM::FixedVectorType>(Parts[0]->getType())->getNumElements();
-    if (ElemCount !=
-           dyn_cast<IGCLLVM::FixedVectorType>(Parts[1]->getType())->getNumElements())
-        return false;
-
-    // If I is an extract-like shuffle of ElemCount values from a wider
-    // source, return the index of the half being extracted (0 or 1).
-    // Returns -1 otherwise.
-    auto getExtractIndex = [ElemCount](Instruction *I) -> int
+    // If there is a bitcast of CV.Result, attempt to fold it away.
+    // This will replace PHI with a new PHI with the same type as
+    // CV.Result if successful, in which case we can proceed as usual.
+    if (CV.Bitcast)
     {
-        if (auto* UseShufI = dyn_cast<ShuffleVectorInst>(I))
-        {
-            auto ShufTy = dyn_cast<IGCLLVM::FixedVectorType>(UseShufI->getType());
-            int Index = -1;
-            if (UseShufI->isExtractSubvectorMask(Index) &&
-                (Index == 0 || Index == ElemCount) &&
-                ShufTy->getNumElements() == ElemCount)
-              return (int) (Index != 0);
-        }
-        return -1;
-    };
+        PHI = foldBitcasts(PHI, CV, L);
+        if (!PHI)
+            return false;
+    }
 
-    // Check the uses of the PHI value:
-    // * Extract-like uses can be bypassed to use
-    //   the corresponding split part.
-    // * Any other use disqualifies this candidate.
+    // Check the uses of the PHI value to ensure that
+    // all uses in the loop are extract-vector-like shuffles.
     //
     // We don't permit uses of the full value in L
     // as this could result in a net increase in
@@ -1496,107 +1643,140 @@ bool LoopSplitWidePHIs::processPHI(SmallVectorImpl<PHINode*> &WL, llvm::Loop *L)
     SmallVector<SplitUse, 8> PHIUses;
     for (auto U : PHI->users())
     {
-        auto* UseI = dyn_cast<Instruction>(U);
-        int Idx = getExtractIndex(UseI);
-        if (Idx >= 0)
-            PHIUses.emplace_back(UseI, Idx);
-        else
-            return false;
+        if (auto* UseI = dyn_cast<Instruction>(U))
+        {
+            int Idx = getExtractIndex(UseI, CV.TailSize);
+            if (Idx >= 0)
+            {
+                PHIUses.emplace_back(UseI, Idx);
+                continue;
+            }
+        }
+        return false;
     }
 
     // Check all uses of the latch value.
-    // * Any other uses in the loop disqualify the candidate.
-    //   Extract-like uses could be bypassed to use
-    //   the concat sources, but we assume this simplification
-    //   should already be done.
+    // * Any other uses in the loop (excluding the PHI) disqualify the candidate.
     // * Uses out of the loop can be replaced with a concat
-    //   of ShufI's sources.
-    SmallVector<Instruction *, 8> LatchUses;
-    int LatchIdx = PHI->getBasicBlockIndex(Latch);
-    auto LatchVal = cast<Instruction>(PHI->getIncomingValue(LatchIdx));
-    for (auto U : LatchVal->users()) {
-        auto* UseI = cast<Instruction>(U);
-        if (UseI == PHI)
-           continue;
-        if (L->contains(UseI->getParent()))
-            return false;
-        else if (auto PN = dyn_cast<PHINode>(UseI)) {
-            // An external PHI use requires the PHI to
-            // be split into parts and joined. For now we
-            // We only handle the trivial case of a single-source
-            // PHI (e.g. in an exit block).
-            if (PN->getNumIncomingValues() > 1)
-                return false;
-        }
-        LatchUses.emplace_back(UseI);
-    }
+    //   of ShufI's sources. This means a use in an external PHI
+    //   must be a single-source PHI which we can replace with
+    //   PHIs for each part, with uses of the original PHI replaced
+    //   by the catenation of the new PHIs.
+    if (!hasOnlySimpleExternalUses(CV.Result, L, PHI))
+        return false;
 
     // Bail early if there is nothing to be done.
     if (PHIUses.empty())
         return false;
 
-    // Create shuffle masks for concat/extract operations.
-    SmallVector<unsigned, 32> AllIndices;
-    SmallVector<unsigned, 16> PartIndices[2];
-    for (unsigned m = 0; m < ElemCount; ++m)
-    {
-        PartIndices[0].emplace_back(m);
-        PartIndices[1].emplace_back(m + ElemCount);
-    }
-    for (unsigned m = 0; m < (2 * ElemCount); ++m)
-        AllIndices.emplace_back(m);
-    Value* MaskAll = ConstantDataVector::get(PHI->getContext(), AllIndices);
-    Value* MaskPart[2] = {
-        ConstantDataVector::get(PHI->getContext(), PartIndices[0]),
-        ConstantDataVector::get(PHI->getContext(), PartIndices[1])
+    // Shuffle masks for extracting the catenated parts.
+    Value* MaskParts[2] = {
+        getShuffleMask(PHI->getContext(), CV.Types[0]->getNumElements(),
+                       0, CV.Offset),
+        getShuffleMask(PHI->getContext(), CV.Types[1]->getNumElements(),
+                       CV.Offset, CV.Offset + CV.TailSize)
     };
 
     // Create the new PHIs for each part. Here we also need to split
-    // the incoming preheader value. Here we assume
-    PHINode *NewPHI[2] = {
-        PHINode::Create(Parts[0]->getType(), 2, "split.lo", PHI),
-        PHINode::Create(Parts[1]->getType(), 2, "split.hi", PHI)
-    };
-    auto PreValue = PHI->getIncomingValue(1 - LatchIdx);
-    for (int i = 0; i < 2; ++i)
+    // the incoming preheader value.
+    PHINode *NewPHI[2];
+    for (unsigned i = 0; i < 2; ++i)
+        NewPHI[i] = PHINode::Create(CV.Types[i], 2, "split", PHI);
+    int PreIdx = PHI->getBasicBlockIndex(Preheader);
+    auto PreValue = PHI->getIncomingValue(PreIdx);
+    for (unsigned i = 0; i < 2; ++i)
     {
         auto *PreShufI =
-            new ShuffleVectorInst(PreValue, PreValue, MaskPart[i]);
+            new ShuffleVectorInst(PreValue, PreValue, MaskParts[i]);
         PreShufI->insertBefore(Preheader->getTerminator());
         NewPHI[i]->addIncoming(PreShufI, Preheader);
-        NewPHI[i]->addIncoming(Parts[i], Latch);
+        NewPHI[i]->addIncoming(CV.Parts[i], Latch);
     }
 
-    // Replace the split part uses with the new PHI values.
+    // Rewrite the PHI uses to use the new split PHI results.
+    // A use that extracts the tail part has it's uses replaced
+    // with NewPHI[1].
+    // A use that extracts any other part is rewritten to
+    // extract from NewPHI[0], or folded away if it becomes
+    // an identity shuffle.
     for (SplitUse &SU : PHIUses)
     {
-        SmallVector<User *, 8u> Users(SU.first->users());
+        // Set ReplaceWith with the appropriate source based on the
+        // extract index.
+        Value *ReplaceWith;
+        if (SU.second == CV.Offset)
+            ReplaceWith = NewPHI[1];
+        else
+        {
+            auto SVI = cast<ShuffleVectorInst>(SU.first);
+            auto NewSVI =
+              new ShuffleVectorInst(NewPHI[0], IGCLLVM::PoisonValue::get(NewPHI[0]->getType()),
+                                    IGCLLVM::getShuffleMaskForBitcode(SVI));
+            NewSVI->insertBefore(SU.first);
+            ReplaceWith = NewSVI;
+
+            if (NewSVI->isIdentity())
+            {
+                ReplaceWith = NewPHI[0];
+                NewSVI->eraseFromParent();
+            }
+        }
+
+        SmallVector<User*, 8u> Users(SU.first->users());
         for (auto U : Users)
-            U->replaceUsesOfWith(SU.first, NewPHI[SU.second]);
+            U->replaceUsesOfWith(SU.first, ReplaceWith);
         IGC_ASSERT(!SU.first->hasNUsesOrMore(1));
         SU.first->eraseFromParent();
     }
 
+    // Shuffle mask which catenates the parts back together.
+    auto FullOffset = CV.Types[0]->getNumElements();
+    auto FullWidth = cast<IGCLLVM::FixedVectorType>(PHI->getType())->getNumElements();
+    Value* MaskJoin = getShuffleMask(PHI->getContext(), FullWidth, 0, CV.Offset,
+                                     FullOffset, FullOffset + CV.TailSize);
+
+    // Shuffle mask to extend tail to the same element count as the head.
+    // This is left null if an extend is not needed.
+    Value *MaskPad = nullptr;
+    if (CV.Types[1]->getNumElements() < CV.Types[0]->getNumElements())
+        MaskPad = getShuffleMask(PHI->getContext(), CV.Types[0]->getNumElements(),
+                                 0, CV.Types[1]->getNumElements());
+
+    // Delete the PHI now so it will not appear as a use of the latch value.
+    IGC_ASSERT(!PHI->hasNUsesOrMore(1));
+    PHI->eraseFromParent();
+
     // Latch value uses require a concat of ShufI's sources. Where this is
     // inserted depends on whether the use is in a PHI or not.
-    for (auto *LatchUseI : LatchUses)
+    SmallVector<User*, 8u> LatchUsers(CV.Result->users());
+    for (auto *LatchUse : LatchUsers)
     {
-        if (auto PN = dyn_cast<PHINode>(LatchUseI))
+        if (auto PN = dyn_cast<PHINode>(LatchUse))
         {
-            // This condition is checked before adding to LatchUses.
             IGC_ASSERT(PN->getNumIncomingValues() == 1);
+
             // Replace PN with PHIs for each of ShufI's sources, and replace
             // all uses with a concat of the new PHI's results.
-            PHINode *ToConcat[2] = { nullptr, nullptr };
-            for (int i = 0; i < 2; ++i)
+            auto InsBeforeI = PN->getParent()->getFirstNonPHI();
+            Instruction *ToConcat[2];
+            for (unsigned i = 0; i < 2; ++i)
             {
-                ToConcat[i] =
-                    PHINode::Create(Parts[i]->getType(), 1, (i ? "split.hi" : "split.lo"), PN);
-                ToConcat[i]->addIncoming(Parts[i], Latch);
+                auto PHIPart = PHINode::Create(CV.Types[i], 1, "join", PN);
+                PHIPart->addIncoming(CV.Parts[i], Latch);
+                ToConcat[i] = PHIPart;
             }
-            auto ConcatI =
-                new ShuffleVectorInst(ToConcat[0], ToConcat[1], MaskAll);
-            ConcatI->insertBefore(PN->getParent()->getFirstNonPHI());
+
+            if (MaskPad)
+            {
+                ToConcat[1] =
+                    new ShuffleVectorInst(ToConcat[1],
+                                          IGCLLVM::PoisonValue::get(ToConcat[1]->getType()),
+                                          MaskPad);
+                ToConcat[1]->insertBefore(InsBeforeI);
+            }
+            auto ConcatI = new ShuffleVectorInst(ToConcat[0], ToConcat[1], MaskJoin);
+            ConcatI->insertBefore(InsBeforeI);
+
             SmallVector<User*, 8u> Users(PN->users());
             for (auto *U : Users)
                 U->replaceUsesOfWith(PN, ConcatI);
@@ -1607,20 +1787,121 @@ bool LoopSplitWidePHIs::processPHI(SmallVectorImpl<PHINode*> &WL, llvm::Loop *L)
         {
             // Insert a concat of ShufI's sources before the use
             // instruction.
-            auto ConcatI = new ShuffleVectorInst(Parts[0], Parts[1], MaskAll);
-            ConcatI->insertBefore(LatchUseI);
-            LatchUseI->replaceUsesOfWith(LatchVal, ConcatI);
+            auto *I = cast<Instruction>(LatchUse);
+            auto ConcatI = new ShuffleVectorInst(CV.Parts[0], CV.Parts[1], MaskJoin);
+            ConcatI->insertBefore(I);
+            I->replaceUsesOfWith(CV.Result, ConcatI);
         }
+
+    }
+
+    // Finally, we can delete CV.Result and any padding shuffles
+    // we looked through to find the tail value.
+    auto Tail = CV.Result->getOperand(1);
+    IGC_ASSERT(!CV.Result->hasNUsesOrMore(1));
+    CV.Result->eraseFromParent();
+
+    if (Tail != CV.Parts[1])
+    {
+        auto SVI = dyn_cast<ShuffleVectorInst>(Tail);
+        IGC_ASSERT(SVI && SVI->isIdentityWithPadding());
+        Tail = SVI->getOperand(0);
+        IGC_ASSERT(!SVI->hasNUsesOrMore(1));
+        SVI->eraseFromParent();
     }
 
     // Finally, add our new PHIs to the worklist, which we know
-    // to satisfy the assumptions of worklist items, and remove the
-    // PHI we replaced.
-    IGC_ASSERT(!PHI->hasNUsesOrMore(1));
-    PHI->eraseFromParent();
-    for (int i = 0; i < 2; ++i)
+    // to satisfy the assumptions of worklist items.
+    for (unsigned i = 0; i < 2; ++i)
         WL.push_back(NewPHI[i]);
     return true;
+}
+
+// The IR for catenating or extracting the parts of a CV
+// may involve bitcasts to/from other vector types.
+// In particular, we may have CVs where the shuffle instructions
+// to join/extract the parts are on a different type than
+// the PHI node type.
+// This method takes a PHI, and a CV with a bitcast V -> V',
+// where V is the type of the shuffle operations and V' is the type
+// of the PHI.
+// If every use of the PHI is as a bitcast V -> V', then
+// we can eliminate the bitcasts and rewrite PHI to use V,
+// and proceed to split further if possible.
+//
+// In principle we could eliminate any sequences of bitcasts
+// with the same start and end types, or insert bitcasts
+// to fix up uses of the PHI value as type V.
+//
+PHINode *LoopSplitWidePHIs::foldBitcasts(PHINode *PHI, CatenatedValue &CV, Loop *L)
+{
+    // Check that any uses of the PHI are as a bitcast to the shuffle type.
+    if (llvm::any_of(PHI->users(), [&CV](const User *U) {
+            return !isa<BitCastInst>(U) || U->getType() != CV.Result->getType();
+        }))
+        return nullptr;
+
+    // Ensure all uses of CV.Result can be rewritten to use the shuffle type.
+    if (!hasOnlySimpleExternalUses(CV.Bitcast, L, PHI))
+        return nullptr;
+
+    BasicBlock* Latch = L->getLoopLatch();
+    BasicBlock* Preheader = L->getLoopPreheader();
+
+    // Create the new PHI of the shuffle type, and insert a bitcast
+    // to the shuffle type for the preheader value.
+    auto NewPHI = PHINode::Create(CV.Result->getType(), 2, "", PHI);
+    auto PreValue = PHI->getIncomingValueForBlock(Preheader);
+    auto PreValueBCI = new BitCastInst(PreValue, CV.Result->getType(), "",
+                                       Preheader->getTerminator());
+    NewPHI->addIncoming(PreValueBCI, Preheader);
+    NewPHI->addIncoming(CV.Result, Latch);
+
+    SmallVector<User*, 8u> PHIUsers(PHI->users());
+    for (auto *PU : PHIUsers)
+    {
+        auto BCI = cast<BitCastInst>(PU);
+        SmallVector<User*, 8u> Users(BCI->users());
+        for (auto *U : Users)
+            U->replaceUsesOfWith(BCI, NewPHI);
+        IGC_ASSERT(!BCI->hasNUsesOrMore(1));
+        BCI->eraseFromParent();
+    }
+
+    // The PHI value is now dead. We still need to eliminate the bitcast
+    // defining the latch value, which may have other uses.
+    IGC_ASSERT(!PHI->hasNUsesOrMore(1));
+    PHI->eraseFromParent();
+
+    SmallVector<User*, 8u> BCIUsers(CV.Bitcast->users());
+    for (auto *U : BCIUsers)
+    {
+        // For a PHI use, we need to generate a new PHI of the shuffle type
+        // and a bitcast back to the type of the use.
+        // Otherwise, we just generate a bitcast to the use type in place.
+        if (auto *PN = dyn_cast<PHINode>(U))
+        {
+            auto InsBeforeI = PN->getParent()->getFirstNonPHI();
+            auto NewPN = PHINode::Create(CV.Result->getType(), 1, "", PN);
+            NewPN->addIncoming(CV.Result, Latch);
+            auto BCI = new BitCastInst(NewPN, PN->getType(), "", InsBeforeI);
+
+            SmallVector<User*, 8u> Users(PN->users());
+            for (auto *U : Users)
+                U->replaceUsesOfWith(PN, BCI);
+            PN->eraseFromParent();
+        }
+        else
+        {
+            auto *I = cast<Instruction>(U);
+            auto BCI = new BitCastInst(CV.Result, U->getType(), "", I);
+            I->replaceUsesOfWith(CV.Bitcast, BCI);
+        }
+    }
+    IGC_ASSERT(!CV.Bitcast->hasNUsesOrMore(1));
+    CV.Bitcast->eraseFromParent();
+    CV.Bitcast = nullptr;
+    return NewPHI;
 }
 
 namespace IGC
