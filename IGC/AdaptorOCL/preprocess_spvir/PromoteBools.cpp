@@ -913,7 +913,7 @@ CallInst* PromoteBools::promoteCall(CallInst* call)
     {
         if (wasPromoted(newFunction) || typeNeedsPromotion(functionType))
         {
-            newFunction = dyn_cast<Function>(getOrCreatePromotedValue(function));
+            newFunction = cast<Function>(getOrCreatePromotedValue(function));
         }
 
         for (auto& arg : call->args())
