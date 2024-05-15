@@ -38,74 +38,58 @@ IGC_INITIALIZE_PASS_END(BufferBoundsCheckingPatcher, PASS_FLAG, PASS_DESCRIPTION
 
 char BufferBoundsCheckingPatcher::ID = 0;
 
-BufferBoundsCheckingPatcher::BufferBoundsCheckingPatcher() : FunctionPass(ID)
+BufferBoundsCheckingPatcher::BufferBoundsCheckingPatcher() : ModulePass(ID)
 {
     initializeBufferBoundsCheckingPatcherPass(*PassRegistry::getPassRegistry());
 }
 
-bool BufferBoundsCheckingPatcher::runOnFunction(Function& function)
+bool BufferBoundsCheckingPatcher::runOnModule(Module& M)
 {
-    modified = false;
-
     metadataUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    implicitArgs = new ImplicitArgs(function, metadataUtils);
-
-    if (!isEntryFunc(metadataUtils, &function))
+    for (auto& function : M)
     {
-        return false;
+        if (function.isDeclaration())
+        {
+            continue;
+        }
+
+        implicitArgs = new ImplicitArgs(function, metadataUtils);
+        if (!isEntryFunc(metadataUtils, &function))
+        {
+            return false;
+        }
+
+        for (auto& instruction : instructions(&function))
+        {
+            if (auto call = dyn_cast<CallInst>(&instruction))
+            {
+                auto function = call->getCalledFunction();
+                if (!function || function->getName() != BUFFER_SIZE_PLACEHOLDER_FUNCTION_NAME)
+                {
+                    continue;
+                }
+
+                auto bufferSize = getBufferSizeArg(call->getFunction(), (uint32_t)dyn_cast<ConstantInt>(call->getArgOperand(0))->getSExtValue());
+                //auto bufferSize = ConstantInt::get(Type::getInt64Ty(call->getContext()), 64); // Only for testing purposes
+                call->replaceAllUsesWith(bufferSize);
+                toRemove.push_back(call);
+            }
+        }
     }
 
-    visit(function);
-    return modified;
-}
-
-void BufferBoundsCheckingPatcher::visitICmpInst(ICmpInst& icmp)
-{
-    modified |= patchInstruction(&icmp);
-}
-
-void BufferBoundsCheckingPatcher::visitSub(BinaryOperator& sub)
-{
-    modified |= patchInstruction(&sub);
-}
-
-bool BufferBoundsCheckingPatcher::patchInstruction(llvm::Instruction* instruction)
-{
-    if (!hasPatchInfo(instruction))
+    for (const auto& it : toRemove)
     {
-        return false;
+        it->eraseFromParent();
     }
 
-    auto patchInfo = getPatchInfo(instruction);
-    auto bufferSize = getBufferSizeArg(instruction->getFunction(), patchInfo.implicitArgBufferSizeIndex);
-    //auto bufferSize = ConstantInt::get(Type::getInt64Ty(instruction->getContext()), 64); // Only for testing purposes
-    instruction->setOperand(patchInfo.operandIndex, bufferSize);
-    instruction->setMetadata("bufferboundschecking.patch", nullptr);
-    return true;
-}
+    auto bufferSizePlaceholderFunction = M.getFunction(BUFFER_SIZE_PLACEHOLDER_FUNCTION_NAME);
+    if (bufferSizePlaceholderFunction)
+    {
+        bufferSizePlaceholderFunction->eraseFromParent();
+        return true;
+    }
 
-void BufferBoundsCheckingPatcher::addPatchInfo(Instruction* instruction, const PatchInfo& patchInfo)
-{
-    MDNode* metadata = MDNode::get(instruction->getContext(), {
-        ConstantAsMetadata::get(ConstantInt::get(Type::getInt32Ty(instruction->getContext()), patchInfo.operandIndex)),
-        ConstantAsMetadata::get(ConstantInt::get(Type::getInt32Ty(instruction->getContext()), patchInfo.implicitArgBufferSizeIndex)),
-    });
-
-    instruction->setMetadata("bufferboundschecking.patch", metadata);
-}
-
-bool BufferBoundsCheckingPatcher::hasPatchInfo(Instruction* instruction)
-{
-    return instruction->getMetadata("bufferboundschecking.patch") != nullptr;
-}
-
-BufferBoundsCheckingPatcher::PatchInfo BufferBoundsCheckingPatcher::getPatchInfo(Instruction* instruction)
-{
-    MDNode* metadata = instruction->getMetadata("bufferboundschecking.patch");
-    return {
-        uint32_t(cast<ConstantInt>(cast<ConstantAsMetadata>(metadata->getOperand(0))->getValue())->getZExtValue()),
-        uint32_t(cast<ConstantInt>(cast<ConstantAsMetadata>(metadata->getOperand(1))->getValue())->getZExtValue()),
-    };
+    return !toRemove.empty();
 }
 
 Argument* BufferBoundsCheckingPatcher::getBufferSizeArg(Function* function, uint32_t n)

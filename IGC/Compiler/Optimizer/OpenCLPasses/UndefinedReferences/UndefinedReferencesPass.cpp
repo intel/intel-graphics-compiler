@@ -16,6 +16,8 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 
+#include "Compiler/Optimizer/OpenCLPasses/BufferBoundsChecking/BufferBoundsCheckingPatcher.hpp"
+
 using namespace llvm;
 using namespace IGC;
 
@@ -99,6 +101,7 @@ static bool ExistUndefinedReferencesInModule(Module& module, CodeGenContext *CGC
                 !funcName.startswith("__builtin_spirv_OpSampledImage") &&
                 !funcName.startswith("__builtin_spirv_OpVmeImageINTEL") &&
 #endif
+                funcName != BufferBoundsCheckingPatcher::BUFFER_SIZE_PLACEHOLDER_FUNCTION_NAME &&
                 !F.hasFnAttribute("referenced-indirectly"))
             {
                 ReportUndefinedReference(CGC, funcName, &F);

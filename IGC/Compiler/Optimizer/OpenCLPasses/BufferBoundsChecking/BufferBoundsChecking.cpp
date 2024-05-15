@@ -43,7 +43,7 @@ IGC_INITIALIZE_PASS_END(BufferBoundsChecking, PASS_FLAG, PASS_DESCRIPTION, PASS_
 char BufferBoundsChecking::ID = 0;
 
 BufferBoundsChecking::BufferBoundsChecking()
-    : ModulePass(ID), modified(false), kernelArgs(nullptr)
+    : ModulePass(ID), modified(false), kernelArgs(nullptr), bufferSizePlaceholderFunction(nullptr)
 {
     initializeBufferBoundsCheckingPass(*PassRegistry::getPassRegistry());
 }
@@ -150,21 +150,13 @@ bool BufferBoundsChecking::argumentQualifiesForChecking(const Argument* argument
 Value* BufferBoundsChecking::createBoundsCheckingCondition(const AccessInfo& accessInfo, Instruction* insertBefore)
 {
     const auto zero = ConstantInt::get(Type::getInt64Ty(insertBefore->getModule()->getContext()), 0);
-    const auto undef = UndefValue::get(Type::getInt64Ty(insertBefore->getModule()->getContext()));
 
-    auto bufferSizeIsZero = new ICmpInst(insertBefore, ICmpInst::ICMP_EQ, undef, zero);
+    auto bufferSizePlaceholder = createBufferSizePlaceholder(accessInfo.implicitArgBufferSizeIndex, insertBefore);
+
+    auto bufferSizeIsZero = new ICmpInst(insertBefore, ICmpInst::ICMP_EQ, bufferSizePlaceholder, zero);
     auto bufferOffsetIsGreaterOrEqualZero = new ICmpInst(insertBefore, ICmpInst::ICMP_SGE, accessInfo.bufferOffsetInBytes, zero);
-    auto upperBound = BinaryOperator::Create(Instruction::Sub, undef, accessInfo.elementSizeInBytes, "", insertBefore);
+    auto upperBound = BinaryOperator::Create(Instruction::Sub, bufferSizePlaceholder, accessInfo.elementSizeInBytes, "", insertBefore);
     auto bufferOffsetIsLessThanSizeMinusElemSize = new ICmpInst(insertBefore, ICmpInst::ICMP_SLT, accessInfo.bufferOffsetInBytes, upperBound);
-
-    BufferBoundsCheckingPatcher::addPatchInfo(
-        bufferSizeIsZero,
-        BufferBoundsCheckingPatcher::PatchInfo{0, accessInfo.implicitArgBufferSizeIndex}
-    );
-    BufferBoundsCheckingPatcher::addPatchInfo(
-        upperBound,
-        BufferBoundsCheckingPatcher::PatchInfo{0, accessInfo.implicitArgBufferSizeIndex}
-    );
 
     return BinaryOperator::Create(Instruction::Or,
         bufferSizeIsZero,
@@ -380,5 +372,23 @@ BufferBoundsChecking::AccessInfo BufferBoundsChecking::getAccessInfo(Instruction
     result.elementSizeInBytes = ConstantInt::get(Type::getInt64Ty(instruction->getContext()),
                                           instruction->getModule()->getDataLayout().getTypeSizeInBits(type) / 8);
 
+    return result;
+}
+
+Value* BufferBoundsChecking::createBufferSizePlaceholder(uint32_t implicitArgBufferSizeIndex, Instruction* insertBefore)
+{
+    if (!bufferSizePlaceholderFunction)
+    {
+        auto M = insertBefore->getModule();
+        bufferSizePlaceholderFunction = cast<Function>(M->getOrInsertFunction(
+            BufferBoundsCheckingPatcher::BUFFER_SIZE_PLACEHOLDER_FUNCTION_NAME,
+            FunctionType::get(Type::getInt64Ty(M->getContext()), {Type::getInt64Ty(M->getContext())}, false)
+        ).getCallee());
+    }
+
+    auto result = CallInst::Create(bufferSizePlaceholderFunction, {
+            ConstantInt::getSigned(Type::getInt64Ty(insertBefore->getContext()), implicitArgBufferSizeIndex),
+        }, "", insertBefore);
+    result->setCallingConv(CallingConv::SPIR_FUNC);
     return result;
 }

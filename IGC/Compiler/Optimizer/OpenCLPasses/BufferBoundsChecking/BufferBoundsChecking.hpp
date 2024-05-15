@@ -59,15 +59,16 @@ namespace IGC
             llvm::Value* elementSizeInBytes;
         };
 
-        bool modified{};
+        bool modified;
 
-        IGCMD::MetaDataUtils* metadataUtils = nullptr;
-        ModuleMetaData* moduleMetadata = nullptr;
-        ImplicitArgs* implicitArgs = nullptr;
-        KernelArgs* kernelArgs = nullptr;
+        IGCMD::MetaDataUtils* metadataUtils;
+        ModuleMetaData* moduleMetadata;
+        ImplicitArgs* implicitArgs;
+        KernelArgs* kernelArgs;
         llvm::SmallVector<llvm::Instruction*, 4> loadsAndStoresToCheck;
         llvm::DenseMap<llvm::StringRef, llvm::GlobalVariable*> stringsCache;
-        llvm::DICompileUnit* compileUnit = nullptr;
+        llvm::DICompileUnit* compileUnit;
+        llvm::Function* bufferSizePlaceholderFunction;
 
         void handleLoadStore(llvm::Instruction* instruction);
 
@@ -84,5 +85,7 @@ namespace IGC
         const IGC::KernelArg* getKernelArgFromPtr(const llvm::PointerType& pointerType, llvm::Value* value);
         llvm::Argument* getBufferSizeArg(llvm::Function* function, uint32_t n);
         AccessInfo getAccessInfo(llvm::Instruction* instruction, llvm::Value* value);
+
+        llvm::Value* createBufferSizePlaceholder(uint32_t implicitArgBufferSizeIndex, llvm::Instruction* insertBefore);
     };
 }

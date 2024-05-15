@@ -20,10 +20,11 @@ SPDX-License-Identifier: MIT
 
 namespace IGC
 {
-    class BufferBoundsCheckingPatcher : public llvm::FunctionPass, public llvm::InstVisitor<BufferBoundsCheckingPatcher>
+    class BufferBoundsCheckingPatcher : public llvm::ModulePass, public llvm::InstVisitor<BufferBoundsCheckingPatcher>
     {
     public:
         static char ID;
+        static constexpr char* BUFFER_SIZE_PLACEHOLDER_FUNCTION_NAME = "__bufferboundschecking.bufferSizePlaceholder";
 
         BufferBoundsCheckingPatcher();
         ~BufferBoundsCheckingPatcher() = default;
@@ -38,26 +39,15 @@ namespace IGC
             return "BufferBoundsCheckingPatcher";
         }
 
-        virtual bool runOnFunction(llvm::Function& function) override;
+        virtual bool runOnModule(llvm::Module& M) override;
 
-        void visitICmpInst(llvm::ICmpInst& icmp);
-        void visitSub(llvm::BinaryOperator& sub);
-
-        struct PatchInfo {
-            uint32_t operandIndex;
-            uint32_t implicitArgBufferSizeIndex;
-        };
-
-        static void addPatchInfo(llvm::Instruction* instruction, const PatchInfo& patchInfo);
-        static bool hasPatchInfo(llvm::Instruction* instruction);
-        static PatchInfo getPatchInfo(llvm::Instruction* instruction);
+        void visitCallInst(llvm::CallInst& icmp);
 
     private:
-        bool modified = false;
-        ImplicitArgs* implicitArgs = nullptr;
-        IGCMD::MetaDataUtils* metadataUtils = nullptr;
+        ImplicitArgs* implicitArgs;
+        IGCMD::MetaDataUtils* metadataUtils;
+        llvm::SmallVector<llvm::CallInst*, 8> toRemove;
 
         llvm::Argument* getBufferSizeArg(llvm::Function* function, uint32_t n);
-        bool patchInstruction(llvm::Instruction* instruction);
     };
 }
