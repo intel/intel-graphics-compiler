@@ -273,11 +273,7 @@ endif()
 # The following cmake code perfoms search for the such translator.
 # But, until the transition is not completed, this code is under IGC_OPTION__LINK_KHRONOS_SPIRV_TRANSLATOR condition
 # Remove this condition after transition period is over
-if(CMAKE_SYSTEM_NAME MATCHES "Windows")
-  option(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC "[Experimental] Enable usage of Khronos SPIRV-LLVM-Translator in Scalar Compiler" OFF)
-else()
-  option(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC "[Experimental] Enable usage of Khronos SPIRV-LLVM-Translator in Scalar Compiler" ON)
-endif()
+option(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC "[Experimental] Enable usage of Khronos SPIRV-LLVM-Translator in Scalar Compiler" ON)
 
 # TODO: Change this flag to opt-out or remove completely once
 # opaque pointers are fully supported within the IGC stack.
