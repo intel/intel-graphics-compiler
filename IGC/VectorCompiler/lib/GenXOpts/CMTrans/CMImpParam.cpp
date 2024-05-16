@@ -784,7 +784,7 @@ static bool isSupportedAggregateArgument(Argument &Arg) {
   if (!Arg.hasByValAttr())
     return false;
 
-  Type *Ty = IGCLLVM::getNonOpaquePtrEltTy(Arg.getType());
+  auto *Ty = Arg.getParent()->getParamByValType(Arg.getArgNo());
   auto *STy = cast<StructType>(Ty);
   IGC_ASSERT(!STy->isOpaque());
   return true;
@@ -878,9 +878,9 @@ ArgLinearization CMImpParam::GenerateArgsLinearizationInfo(Function &F) {
     if (!isSupportedAggregateArgument(Arg))
       continue;
 
-    Type *ArgTy = Arg.getType();
-    IGC_ASSERT(isa<PointerType>(ArgTy));
-    auto *STy = cast<StructType>(IGCLLVM::getNonOpaquePtrEltTy(ArgTy));
+    IGC_ASSERT(isa<PointerType>(Arg.getType()));
+    auto *STy =
+        cast<StructType>(F.getParamByValType(Arg.getArgNo()));
     Lin[&Arg] = LinearizeAggregateType(STy);
   }
   return Lin;

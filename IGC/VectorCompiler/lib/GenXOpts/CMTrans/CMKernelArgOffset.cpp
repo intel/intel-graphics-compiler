@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -234,14 +234,13 @@ void CMKernelArgOffset::resolveByValArgs(Function *F) const {
       continue;
 
     auto *Base =
-        Builder.CreateAlloca(IGCLLVM::getNonOpaquePtrEltTy(Arg.getType()), nullptr,
+        Builder.CreateAlloca(F->getParamByValType(Arg.getArgNo()), nullptr,
                              Arg.getName() + ".linearization");
 
     Value *BaseAsI8Ptr = Builder.CreateBitCast(Base, Builder.getInt8PtrTy(),
                                                Base->getName() + ".i8");
     for (const auto &Info : KM->arg_lin(&Arg)) {
-      Type *Ty = IGCLLVM::getNonOpaquePtrEltTy(BaseAsI8Ptr->getType()->getScalarType());
-      Value *StoreAddrUntyped = Builder.CreateGEP(Ty, BaseAsI8Ptr, Info.Offset);
+      Value *StoreAddrUntyped = Builder.CreateGEP(Builder.getInt8Ty(), BaseAsI8Ptr, Info.Offset);
       Value *StoreAddrTyped = Builder.CreateBitCast(
           StoreAddrUntyped, Info.Arg->getType()->getPointerTo());
       Builder.CreateStore(Info.Arg, StoreAddrTyped);
