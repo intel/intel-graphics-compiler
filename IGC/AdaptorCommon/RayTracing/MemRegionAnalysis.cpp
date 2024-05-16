@@ -26,14 +26,12 @@ using namespace IGC;
 
 static bool isGlobalPtr(const InlineDataIntrinsic *I, const IGC::ModuleMetaData& moduleMetaData)
 {
-    constexpr uint32_t GlobalPtrOffset =
-        offsetof(RayDispatchInlinedData, RayDispatchGlobalDataPtr) / sizeof(uint64_t);
-
-
     uint32_t globalPtrOffset = 0;
 
     if (moduleMetaData.rtInfo.GlobalDataStyle == RayDispatchInlinedDataStyle::Xe)
     {
+        constexpr uint32_t GlobalPtrOffset =
+            offsetof(RayDispatchInlinedData, RayDispatchGlobalDataPtr) / sizeof(uint64_t);
         globalPtrOffset = GlobalPtrOffset;
     }
 

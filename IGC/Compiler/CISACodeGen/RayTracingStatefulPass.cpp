@@ -137,8 +137,9 @@ bool RaytracingStatefulPass::runOnFunction(Function& F)
             BaseSSHOffset = getBaseSSHOffset(Ctx, RTB);
         }
 
+        unsigned BitWidth = BaseSSHOffset->getType()->getIntegerBitWidth();
         auto* ResourceOffset =
-            RTB.CreateAdd(BaseSSHOffset, RTB.CreateZExtOrBitCast(RTB.getInt32(BaseOffset), BaseSSHOffset->getType()));
+            RTB.CreateAdd(BaseSSHOffset, RTB.getIntN(BitWidth, BaseOffset));
 
         auto* Offset = RTB.CreatePtrToInt(PointerOp, RTB.getInt32Ty());
         auto* ResourcePtr = RTB.CreateIntToPtr(
