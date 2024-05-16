@@ -152,6 +152,7 @@ static bool isValidFP64InstructionForDPConvEmu(llvm::Instruction* I) {
     case Instruction::BitCast:
     case Instruction::PHI:
     case Instruction::Select:
+    case Instruction::FCmp:
     // By default, we assume that Call instruction is valid for DPConvEmu,
     // because it can call e.g. other func or kernel.
     // Call instruction can be invalid for DPConvEmu when it calls intrinsic
@@ -213,6 +214,14 @@ void ErrorCheck::handleFP64EmulationMode(llvm::Instruction& I)
     if (!poisonFP64KernelsEnabled && !ctx->m_hasDPEmu && ctx->m_hasDPConvEmu && isFP64ArithmeticOperation(&I))
     {
         ctx->EmitError("Double arithmetic operation is not supported on this platform with FP64 conversion emulation mode (poison FP64 kernels is disabled).", &I);
+        m_hasError = true;
+        return;
+    }
+
+    // emit error msg when platform can emulate DP conversion operations, but in the kernel are used instructions that are not valid for DPConvEmu (poisonFP64Kernels is disabled)
+    if (!poisonFP64KernelsEnabled && !ctx->m_hasDPEmu && ctx->m_hasDPConvEmu && !isValidFP64InstructionForDPConvEmu(&I))
+    {
+        ctx->EmitError("Instruction is not valid on this platform with FP64 conversion emulation mode (poison FP64 kernels is disabled).", &I);
         m_hasError = true;
         return;
     }

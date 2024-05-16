@@ -2116,7 +2116,7 @@ uint32_t PreCompiledFuncImport::getFCmpMask(CmpInst::Predicate Pred)
 void PreCompiledFuncImport::visitFCmpInst(FCmpInst& I)
 {
     m_pCtx->metrics.StatBeginEmuFunc(&I);
-    if (!isDPEmu() || !I.getOperand(0)->getType()->isDoubleTy()) {
+    if ((!isDPEmu() && !isDPConvEmu()) || !I.getOperand(0)->getType()->isDoubleTy()) {
         return;
     }
 
@@ -2683,12 +2683,12 @@ void PreCompiledFuncImport::checkAndSetEnableSubroutine()
             case Instruction::FMul:
             case Instruction::FAdd:
             case Instruction::FSub:
-            case Instruction::FCmp:
                 if (DPEmu && I->getOperand(0)->getType()->isDoubleTy())
                 {
                     m_enableCallForEmulation = true;
                 }
                 break;
+            case Instruction::FCmp:
             case Instruction::FPToSI:
             case Instruction::FPToUI:
             case Instruction::FPTrunc:
