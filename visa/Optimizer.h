@@ -126,6 +126,7 @@ class Optimizer {
   bool foldPseudoNot(G4_BB *bb, INST_LIST_ITER &iter);
   bool createSmov(G4_BB *bb, G4_INST *flagMove, G4_INST *nextInst);
   bool foldCmpToCondMod(G4_BB *BB, INST_LIST_ITER &iter);
+  void sinkBarrierWait();
   void HWWorkaround();
   void preRA_HWWorkaround();
   void postRA_HWWorkaround();
@@ -402,6 +403,7 @@ public:
     PI_expandMadwPostSchedule,
     PI_ACCSchedule,
     PI_staticProfiling,
+    PI_sinkBarrierWait,
     PI_NUM_PASSES
   };
 

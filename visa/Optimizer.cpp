@@ -729,6 +729,8 @@ void Optimizer::initOptimizations() {
                   TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(ACCSchedule, vISA_PreSchedForAcc, TimerID::PRERA_SCHEDULING);
   OPT_INITIALIZE_PASS(staticProfiling, vISA_staticProfiling, TimerID::MISC_OPTS);
+  OPT_INITIALIZE_PASS(sinkBarrierWait, vISA_SinkBarrierWait,
+                  TimerID::OPTIMIZER);
 
   // Verify all passes are initialized.
 #ifdef _DEBUG
@@ -993,6 +995,7 @@ int Optimizer::optimization() {
 
   runPass(PI_insertScratchReadBeforeEOT);
 
+  runPass(PI_sinkBarrierWait);
   // HW workaround
   runPass(PI_HWWorkaround);
 
@@ -8482,5 +8485,69 @@ void Optimizer::dce() {
     bb->erase(std::remove_if(bb->begin(), bb->end(),
                              [](G4_INST *Inst) { return Inst->isDead(); }),
               bb->end());
+  }
+}
+
+// Barrier is translated into signal and wait instructions. Both are scheduling
+// barriers resulting in no any other instruction could be scheduled in-between.
+// However, signal will take a while to go through among threads, so we could
+// treat wait as a scheduling barrier for mayLoad/mayStore instructions only to
+// improve performance. This pass tries to sink barrier wait until non-scratch
+// send is found or when there's a possible flag overlap for nbarrier cases.
+void Optimizer::sinkBarrierWait() {
+  // Skip the optimization when barrier WA is required.
+  if (builder.needBarrierWA())
+    return;
+
+  // TODO: Check whether there's really a flag overlap between the two
+  // instructions. Given named barrier with flag src0 probably is rarely used,
+  // currently simply treat the case, wait's src0 is flag and the current inst
+  // writes flag, as an overlap.
+  auto hasFlagOverlap = [](const G4_INST *i1, const G4_INST *i2) -> bool {
+    vASSERT(i1 && i1->opcode() == G4_wait);
+    return i1->getSrc(0)->isFlag() && i2->writesFlag();
+  };
+
+  for (auto bb : fg) {
+    INST_LIST waits;
+    for (auto it = bb->begin(), ie = bb->end(); it != ie;) {
+      G4_INST *inst = *it;
+      // Move any barrier wait to the temporary list.
+      if (inst->opcode() == G4_wait) {
+        auto next = std::next(it);
+        waits.splice(waits.end(), bb->getInstList(), it);
+        it = next;
+        continue;
+      }
+
+      // Move all barrier waits from the temporary list back to inst list right
+      // before an interesting position like a non-scratch send or
+      // a control-flow instruction.
+      // TODO: Check if we can relax or need more restrictions. For example,
+      // private memory access probably could also be skipped.
+      if ((inst->isSend() && !inst->getMsgDesc()->isScratch()) ||
+          inst->isCFInst())
+        bb->splice(it, waits);
+
+      // When there's any wait that has a flag overlap with the current inst,
+      // move the range [waits.begin(), last overlapping wait iterator] back to
+      // the inst list so that the waits are not reordered.
+      auto rwit = std::find_if(waits.rbegin(), waits.rend(),
+          [=](const G4_INST *i) { return hasFlagOverlap(i, inst); });
+      if (rwit != waits.rend()) {
+        G4_INST *prev = nullptr, *last = *rwit;
+        auto wit = waits.begin();
+        while (prev != last) {
+          prev = *wit;
+          auto next = std::next(wit);
+          bb->splice(it, waits, wit);
+          wit = next;
+        };
+      }
+
+      ++it;
+    }
+    // Every BB should end with a EOT or a CF inst like goto/jmpi/ret.
+    vASSERT(waits.empty());
   }
 }

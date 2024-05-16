@@ -170,6 +170,11 @@ DEF_VISA_OPTION(vISA_SkipRedundantFillInRMW, ET_BOOL, "-normwopt", UNUSED, true)
 DEF_VISA_OPTION(vISA_ALTMode, ET_BOOL, "-nonALTMode", UNUSED, false)
 DEF_VISA_OPTION(vISA_CoalesceScalarMoves, ET_BOOL, "-enableCoalesceScalarMoves",
                 UNUSED, false)
+DEF_VISA_OPTION(vISA_SinkBarrierWait, ET_BOOL_TRUE, "-sinkBarrierWait",
+                "Barrier signal and wait are usually scheduled back to back. "
+                "The option is used to sink barrier wait away from signal as "
+                "far as possible.",
+                false)
 
 //=== code gen options ===
 DEF_VISA_OPTION(vISA_noSrc1Byte, ET_BOOL, "-nosrc1byte", UNUSED, false)
