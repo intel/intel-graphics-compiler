@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -37,7 +37,7 @@ enum Enum {
 // and the original pointee type.
 inline llvm::PointerType *changeAddrSpace(llvm::PointerType *OrigTy,
                                           int AddrSpace) {
-  return llvm::PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(OrigTy), AddrSpace);
+  return IGCLLVM::getWithSamePointeeType(OrigTy, AddrSpace);
 }
 
 // Changes addrspace inside a vector of pointers type.
@@ -82,6 +82,8 @@ llvm::Type *setScalarType(llvm::Type &OrigTy, llvm::Type &ScalarTy);
 // llvm::Type and have this method (VectorType, ArrayType, StructType), returns
 // 1 for others.
 unsigned getNumElements(llvm::Type &Ty);
+
+bool isFunctionPointerType(llvm::Type *Ty);
 
 } // namespace vc
 

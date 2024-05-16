@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2023 Intel Corporation
+Copyright (C) 2021-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -84,14 +84,14 @@ static const Value &ignoreCastToGenericAS(const Value &Op) {
 const GlobalVariable *vc::getConstStringGVFromOperandOptional(const Value &Op) {
   IGC_ASSERT_MESSAGE(Op.getType()->isPointerTy(),
                      "wrong argument: pointer was expected");
-  IGC_ASSERT_MESSAGE(IGCLLVM::getNonOpaquePtrEltTy(Op.getType())->isIntegerTy(8),
-                     "wrong argument: i8* value was expected");
   auto &MaybeGEP = ignoreCastToGenericAS(Op);
   if (!isa<GEPOperator>(MaybeGEP))
     return nullptr;
-  auto &GEPPtrOp = *cast<GEPOperator>(MaybeGEP).getPointerOperand();
+  auto &GEP = cast<GEPOperator>(MaybeGEP);
+  IGC_ASSERT_MESSAGE(GEP.getResultElementType()->isIntegerTy(8),
+                     "wrong argument: i8* value was expected");
   // FIXME: Check that indices are {0, 0}.
-  auto &MaybeGV = ignoreCastToGenericAS(GEPPtrOp);
+  auto &MaybeGV = ignoreCastToGenericAS(*GEP.getPointerOperand());
   if (!isConstantString(MaybeGV))
     return nullptr;
   return &cast<GlobalVariable>(MaybeGV);

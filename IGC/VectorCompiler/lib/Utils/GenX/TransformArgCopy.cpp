@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022-2023 Intel Corporation
+Copyright (C) 2022-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -293,7 +293,7 @@ vc::TransformedFuncInfo::TransformedFuncInfo(
 
 // Whether provided \p GV should be passed by pointer.
 static bool passLocalizedGlobalByPointer(const GlobalValue &GV) {
-  auto *Type = IGCLLVM::getNonOpaquePtrEltTy(GV.getType());
+  auto *Type = GV.getValueType();
   return Type->isAggregateType();
 }
 
@@ -309,7 +309,7 @@ void vc::TransformedFuncInfo::appendGlobals(
       GlobalArgs.Globals.push_back({GV, GlobalArgKind::ByPointer});
     } else {
       int ArgIdx = NewFuncType.Args.size();
-      Type *PointeeTy = IGCLLVM::getNonOpaquePtrEltTy(GV->getType());
+      Type *PointeeTy = GV->getValueType();
       NewFuncType.Args.push_back(PointeeTy);
       if (GV->isConstant())
         GlobalArgs.Globals.push_back({GV, GlobalArgKind::ByValueIn});
@@ -652,7 +652,7 @@ static Value *appendTransformedFuncRetPortion(
         isa<AllocaInst>(LocalizedGlobal),
         "an alloca is expected when pass localized global by value");
     Value *LocalizedGlobalVal = Builder.CreateLoad(
-        IGCLLVM::getNonOpaquePtrEltTy(LocalizedGlobal->getType()), LocalizedGlobal);
+        cast<AllocaInst>(LocalizedGlobal)->getAllocatedType(), LocalizedGlobal);
     return insertValueToRet(*LocalizedGlobalVal, NewRetVal, RetIdx, Builder,
                             NewFuncInfo);
   }
@@ -669,7 +669,7 @@ static Value *appendTransformedFuncRetPortion(
   IGC_ASSERT_MESSAGE(isa<AllocaInst>(CurRetByPtr),
                      "corresponding alloca is expected");
   Value *CurRetByVal = Builder.CreateLoad(
-      IGCLLVM::getNonOpaquePtrEltTy(CurRetByPtr->getType()), CurRetByPtr);
+      cast<AllocaInst>(CurRetByPtr)->getAllocatedType(), CurRetByPtr);
   return insertValueToRet(*CurRetByVal, NewRetVal, RetIdx, Builder,
                           NewFuncInfo);
 }
@@ -681,8 +681,7 @@ static Value *passGlobalAsCallArg(GlobalArgInfo GAI, CallInst &OrigCall) {
   // We should should load the global first to pass it by value.
   if (GAI.Kind == GlobalArgKind::ByValueIn ||
       GAI.Kind == GlobalArgKind::ByValueInOut)
-    return new LoadInst(IGCLLVM::getNonOpaquePtrEltTy(GAI.GV->getType()), GAI.GV,
-                        GAI.GV->getName() + ".val",
+    return new LoadInst(GAI.GV->getValueType(), GAI.GV, GAI.GV->getName() + ".val",
                         /* isVolatile */ false, &OrigCall);
   IGC_ASSERT_MESSAGE(
       GAI.Kind == GlobalArgKind::ByPointer,
@@ -825,10 +824,6 @@ std::vector<Value *> vc::FuncBodyTransfer::handleTransformedFuncArgs() {
             Replacement->getType()->getPointerAddressSpace() !=
                 OrigArg.getType()->getPointerAddressSpace(),
             "pointers should have different addr spaces when they mismatch");
-        IGC_ASSERT_MESSAGE(
-            IGCLLVM::getNonOpaquePtrEltTy(Replacement->getType()) ==
-                IGCLLVM::getNonOpaquePtrEltTy(OrigArg.getType()),
-            "pointers must have same element type when they mismatch");
         return new AddrSpaceCastInst(Replacement, OrigArg.getType(), "",
                                      InsertPt);
       });

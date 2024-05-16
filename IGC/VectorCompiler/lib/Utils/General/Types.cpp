@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -19,10 +19,10 @@ using namespace llvm;
 IGCLLVM::FixedVectorType *vc::changeAddrSpace(IGCLLVM::FixedVectorType *OrigTy,
                                               int AddrSpace) {
   IGC_ASSERT_MESSAGE(OrigTy, "wrong argument");
-  auto *PointeeTy = IGCLLVM::getNonOpaquePtrEltTy(OrigTy->getElementType());
+  auto *PtrTy = cast<PointerType>(OrigTy->getElementType());
   auto EC = OrigTy->getNumElements();
   return IGCLLVM::FixedVectorType::get(
-      llvm::PointerType::get(PointeeTy, AddrSpace), EC);
+      IGCLLVM::getWithSamePointeeType(PtrTy, AddrSpace), EC);
 }
 
 Type *vc::changeAddrSpace(Type *OrigTy, int AddrSpace) {
@@ -108,11 +108,6 @@ Type *vc::getNewTypeForCast(Type *OldOutType, Type *OldInType,
   IGC_ASSERT(NewOutType);
 
   if (NewInIsPtrOrVecPtr) {
-    // <4 x char*> -> <2 x half*> : < 2 x int*> - ? forbidden
-    // char* -> half* : int* -> ? forbidden
-    IGC_ASSERT_MESSAGE(IGCLLVM::getNonOpaquePtrEltTy(OldInType->getScalarType()) ==
-                           IGCLLVM::getNonOpaquePtrEltTy(NewInType->getScalarType()),
-                       "Error: unexpected type change");
     // address space from new
     // element count calculated as for vector
     // element type expect address space similar
@@ -154,4 +149,15 @@ unsigned vc::getNumElements(Type &Ty) {
   if (isa<StructType>(Ty))
     return cast<StructType>(Ty).getNumElements();
   return 1;
+}
+
+bool vc::isFunctionPointerType(Type *Ty) {
+  auto *PtrTy = llvm::dyn_cast<PointerType>(Ty);
+  if (!PtrTy)
+    return false;
+#if LLVM_VERSION_MAJOR >= 14
+  if (PtrTy->isOpaque())
+    return PtrTy->getAddressSpace() == AddrSpace::Program;
+#endif // LLVM_MAJOR_VERSION >= 14
+  return IGCLLVM::getNonOpaquePtrEltTy(PtrTy)->isFunctionTy();
 }

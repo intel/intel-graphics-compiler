@@ -1,11 +1,12 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "vc/Utils/General/Types.h"
 #include "vc/Utils/GenX/TypeSize.h"
 #include "llvmWrapper/IR/Type.h"
 
@@ -15,9 +16,7 @@ vc::TypeSizeWrapper vc::getTypeSize(llvm::Type *Ty,
   // FIXME: it's better to use DataLayout to get function pointers type size, so
   // we should remove it when such pointers will be in separate address space.
   // Size of function pointers is always 32 bit.
-  if (auto *PT = llvm::dyn_cast<llvm::PointerType>(Ty->getScalarType());
-      PT && IGCLLVM::getNonOpaquePtrEltTy(PT)->isFunctionTy()) {
-    // FIXME: wrong condition.
+  if (vc::isFunctionPointerType(Ty->getScalarType())) {
     auto NumElements =
         llvm::isa<IGCLLVM::FixedVectorType>(Ty)
             ? llvm::cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements()
