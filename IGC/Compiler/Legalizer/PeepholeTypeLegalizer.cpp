@@ -1345,9 +1345,8 @@ void PeepholeTypeLegalizer::cleanupBitCastInst(Instruction& I) {
         //
         // Translate to:
         //   %1 = select i1 %a, i8 1, i8 0
-        //   %2 = select i1 %b, i8 1, i8 0
-        //   %3 = shl i8 %2, 1
-        //   %4 = or i8 %1, %3
+        //   %2 = select i1 %b, i8 2, i8 0
+        //   %3 = or i8 %1, %2
         IGC_ASSERT_MESSAGE(I.getOperand(0)->getType()->getScalarSizeInBits() == 1,
             "Unexpected illegal type width");
 
@@ -1390,11 +1389,8 @@ void PeepholeTypeLegalizer::cleanupBitCastInst(Instruction& I) {
             if (isa<ConstantInt>((*it)->getOperand(1)))
                 continue;
 
-            Value* val = m_builder->CreateSelect((*it)->getOperand(1), ConstantInt::get(I.getType(), 1, false), ConstantInt::get(I.getType(), 0, false));
-
-            unsigned index = (unsigned)cast<ConstantInt>((*it)->getOperand(2))->getZExtValue();
-            if (index > 0)
-                val = m_builder->CreateShl(val, index);
+            uint64_t index = cast<ConstantInt>((*it)->getOperand(2))->getZExtValue();
+            Value* val = m_builder->CreateSelect((*it)->getOperand(1), ConstantInt::get(I.getType(), 1LL << index, false), ConstantInt::get(I.getType(), 0, false));
 
             result = result ? m_builder->CreateOr(result, val) : val;
         }

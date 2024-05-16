@@ -15,8 +15,7 @@ target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f1
 define i8 @test_x_on_least_significant_index_plus_zeros_constants(i1 %a, i1 %b) {
 ; CHECK-LABEL: @test_x_on_least_significant_index_plus_zeros_constants(
 ; CHECK:    [[V0:%.*]] = select i1 %a, i8 1, i8 0
-; CHECK:    [[V1_tmp:%.*]] = select i1 %b, i8 1, i8 0
-; CHECK:    [[V1:%.*]] = shl i8 [[V1_tmp]], 1
+; CHECK:    [[V1:%.*]] = select i1 %b, i8 2, i8 0
 ; CHECK:    [[RESULT:%.*]] = or i8 [[V0]], [[V1]]
 ; CHECK:    ret i8 [[RESULT]]
 ;
@@ -36,8 +35,7 @@ define i8 @test_x_on_least_significant_index_plus_random_constants(i1 %a, i1 %b)
 ; CHECK-LABEL: @test_x_on_least_significant_index_plus_random_constants(
 ; CHECK:    [[V0:%.*]] = select i1 %a, i8 1, i8 0
 ; CHECK:    [[RESULT0:%.*]] = or i8 40, [[V0]]
-; CHECK:    [[V1_tmp:%.*]] = select i1 %b, i8 1, i8 0
-; CHECK:    [[V1:%.*]] = shl i8 [[V1_tmp]], 1
+; CHECK:    [[V1:%.*]] = select i1 %b, i8 2, i8 0
 ; CHECK:    [[RESULT1:%.*]] = or i8 [[RESULT0]], [[V1]]
 ; CHECK:    ret i8 [[RESULT1]]
 ;
@@ -55,10 +53,8 @@ define i8 @test_x_on_least_significant_index_plus_random_constants(i1 %a, i1 %b)
 
 define i8 @test_x_on_random_index_plus_zeros_constants(i1 %a, i1 %b) {
 ; CHECK-LABEL: @test_x_on_random_index_plus_zeros_constants(
-; CHECK:    [[V0_tmp:%.*]] = select i1 %a, i8 1, i8 0
-; CHECK:    [[V0:%.*]] = shl i8 [[V0_tmp]], 2
-; CHECK:    [[V1_tmp:%.*]] = select i1 %b, i8 1, i8 0
-; CHECK:    [[V1:%.*]] = shl i8 [[V1_tmp]], 5
+; CHECK:    [[V0:%.*]] = select i1 %a, i8 4, i8 0
+; CHECK:    [[V1:%.*]] = select i1 %b, i8 32, i8 0
 ; CHECK:    [[RESULT:%.*]] = or i8 [[V0]], [[V1]]
 ; CHECK:    ret i8 [[RESULT]]
 ;
@@ -76,11 +72,9 @@ define i8 @test_x_on_random_index_plus_zeros_constants(i1 %a, i1 %b) {
 
 define i8 @test_x_on_random_index_plus_random_constants(i1 %a, i1 %b) {
 ; CHECK-LABEL: @test_x_on_random_index_plus_random_constants(
-; CHECK:    [[V0_tmp:%.*]] = select i1 %a, i8 1, i8 0
-; CHECK:    [[V0:%.*]] = shl i8 [[V0_tmp]], 2
+; CHECK:    [[V0:%.*]] = select i1 %a, i8 4, i8 0
 ; CHECK:    [[RESULT0:%.*]] = or i8 65, [[V0]]
-; CHECK:    [[V1_tmp:%.*]] = select i1 %b, i8 1, i8 0
-; CHECK:    [[V1:%.*]] = shl i8 [[V1_tmp]], 5
+; CHECK:    [[V1:%.*]] = select i1 %b, i8 32, i8 0
 ; CHECK:    [[RESULT1:%.*]] = or i8 [[RESULT0]], [[V1]]
 ; CHECK:    ret i8 [[RESULT1]]
 ;
