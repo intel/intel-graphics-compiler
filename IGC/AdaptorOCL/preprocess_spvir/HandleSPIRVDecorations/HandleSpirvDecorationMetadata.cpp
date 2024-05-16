@@ -69,7 +69,11 @@ void HandleSpirvDecorationMetadata::handleGlobalVariablesDecorations()
             switch (DecorationId)
             {
                 // IDecHostAccessINTEL
+#ifdef IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
+                case 6188:
+#else
                 case 6147:
+#endif
                 {
                     IGC_ASSERT_MESSAGE(MDNodes.size() == 1,
                         "Only one HostAccessINTEL decoration can be applied to a single global variable!");
