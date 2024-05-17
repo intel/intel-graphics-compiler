@@ -2054,7 +2054,35 @@ void CompileUnit::constructArrayTypeDIE(DIE &Buffer, DICompositeType *CTy) {
   if (CTy->isVector()) {
     addFlag(&Buffer, dwarf::DW_AT_GNU_vector);
   }
+#if LLVM_VERSION_MAJOR >= 12
+  // Add DW_AT_data_location attr to DWARF. Dynamic arrays are represented by
+  // descriptor and allocated space. DW_AT_data_location is used to denote
+  // allocated space.
+  if (DIVariable *Var = CTy->getDataLocation()) {
+    if (auto *VarDIE = getDIE(Var))
+      addDIEEntry(&Buffer, dwarf::DW_AT_data_location, VarDIE);
+  } else if (DIExpression *Expr = CTy->getDataLocationExp()) {
+    DIEBlock *Loc = new (DIEValueAllocator) DIEBlock;
+    IGC::DIEDwarfExpression DwarfExpr(*Asm, getCU(), *Loc);
+    // DwarfExpr.setMemoryLocationKind();
+    DwarfExpr.addExpression(Expr);
+    addBlock(&Buffer, dwarf::DW_AT_data_location, DwarfExpr.finalize());
+  }
 
+  // Add DW_AT_associated attr to DWARF. This is needed for the array variables
+  // with pointer attr. It helps to identify the status of variable whether it
+  // is currently associated
+  if (DIVariable *Var = CTy->getAssociated()) {
+    if (auto *VarDIE = getDIE(Var))
+      addDIEEntry(&Buffer, dwarf::DW_AT_associated, VarDIE);
+  } else if (DIExpression *Expr = CTy->getAssociatedExp()) {
+    DIEBlock *Loc = new (DIEValueAllocator) DIEBlock;
+    DIEDwarfExpression DwarfExpr(*Asm, getCU(), *Loc);
+    // DwarfExpr.setMemoryLocationKind();
+    DwarfExpr.addExpression(Expr);
+    addBlock(&Buffer, dwarf::DW_AT_associated, DwarfExpr.finalize());
+  }
+#endif
   // Emit the element type.
   addType(&Buffer, resolve(CTy->getBaseType()));
 
