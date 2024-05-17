@@ -520,7 +520,9 @@ uint32_t kv_get_message_len(const kv_t *kv, int32_t pc, uint32_t *mLen,
     numSet++;
     return (uint32_t)n;
   };
-  *rLen = setOne(inst->getDstLength());
+
+  auto dstLen = inst->getDstLength();
+  *rLen = setOne(dstLen);
   *mLen = setOne(inst->getSrc0Length());
   *emLen = setOne(inst->getSrc1Length());
 
