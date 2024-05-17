@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2023 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -22,9 +22,11 @@ define dllexport void @test(i64 %offset) {
 
   %ptr = getelementptr inbounds [16 x i32], [16 x i32]* %result, i64 0, i64 %offset
   %first_cast = bitcast i32* %ptr to i8*
+  %first_gep = getelementptr i8, i8* %first_cast, i64 0
 ; COM: The following casts are not supported
-  %second_cast = bitcast i8* %first_cast to i32*
-  %final_cast = bitcast i32* %second_cast to <8 x i32>*
+  %second_cast = bitcast i8* %first_gep to i32*
+  %second_gep = getelementptr i32, i32* %second_cast, i64 0
+  %final_cast = bitcast i32* %second_gep to <8 x i32>*
   store <8 x i32> zeroinitializer, <8 x i32>* %final_cast
 
 ; COM: ptrtoint checker expects some magical sequence
@@ -41,8 +43,10 @@ define dllexport void @test(i64 %offset) {
 ; CHECK-NEXT: %result = alloca [16 x i32], align 64
 ; CHECK-NEXT: %ptr = getelementptr inbounds [16 x i32], [16 x i32]* %result, i64 0, i64 %offset
 ; CHECK-NEXT: %first_cast = bitcast i32* %ptr to i8*
-; CHECK-NEXT: %second_cast = bitcast i8* %first_cast to i32*
-; CHECK-NEXT: %final_cast = bitcast i32* %second_cast to <8 x i32>*
+; CHECK-NEXT: %first_gep = getelementptr i8, i8* %first_cast, i64 0
+; CHECK-NEXT: %second_cast = bitcast i8* %first_gep to i32*
+; CHECK-NEXT: %second_gep = getelementptr i32, i32* %second_cast, i64 0
+; CHECK-NEXT: %final_cast = bitcast i32* %second_gep to <8 x i32>*
 ; CHECK-NEXT: store <8 x i32> zeroinitializer, <8 x i32>* %final_cast
 ; CHECK-NEXT: %ptr.i = ptrtoint [16 x i32]* %result to i64
 ; CHECK-NEXT: %base.i = insertelement <16 x i64> undef, i64 %ptr.i, i32 0

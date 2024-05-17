@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Support/BackendConfig.h"
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/General/STLExtras.h"
+#include "vc/Utils/General/Types.h"
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
@@ -103,8 +104,9 @@ private:
   IGCLLVM::FixedVectorType &getVectorTypeForAlloca(AllocaInst &Alloca,
                                                    Type &ElemTy) const;
 
-  bool checkAllocaUsesInternal(Instruction *I) const;
-  bool checkPtrToIntCandidate(PtrToIntInst *PTI) const;
+  bool checkTypes(Type* CurBaseTy, Type* NewTy) const;
+  bool checkAllocaUsesInternal(Instruction *I, Type* CurBaseTy, bool NeedCheckTypes) const;
+  bool checkPtrToIntCandidate(PtrToIntInst *PTI, Type* CurBaseTy) const;
 
   const DataLayout *DL = nullptr;
   LLVMContext *Ctx = nullptr;
@@ -145,10 +147,14 @@ namespace {
 struct GenericVectorIndex {
   Value *Index;
   int ElementSizeInBits;
+  bool NeedAdjust = false;
 
   int getElementSizeInBytes() const {
     return ElementSizeInBits / genx::ByteBits;
   }
+
+  template <typename FolderT = ConstantFolder>
+  void adjustIndex(Type *Ty, IRBuilder<FolderT> &IRB);
 };
 
 class TransposeHelper {
@@ -214,9 +220,31 @@ Type *getBaseType(Type *Ty, Type *BaseTy) {
       Ty = cast<VectorType>(Ty)->getElementType();
     }
   }
-  if (Ty->isPointerTy() && IGCLLVM::getNonOpaquePtrEltTy(Ty)->isFunctionTy())
+  if (vc::isFunctionPointerType(Ty))
     Ty = IntegerType::getInt64Ty(Ty->getContext());
   return Ty;
+}
+
+template <typename FolderT>
+void GenericVectorIndex::adjustIndex(Type *Ty, IRBuilder<FolderT> &IRB) {
+  if (!NeedAdjust)
+    return;
+  auto *BaseTy = getBaseType(Ty, nullptr);
+  IGC_ASSERT_EXIT(BaseTy);
+  if (BaseTy->getScalarSizeInBits() == ElementSizeInBits ||
+      vc::isFunctionPointerType(BaseTy))
+    return;
+  IGC_ASSERT_EXIT(BaseTy->getScalarSizeInBits() == 8);
+  Constant *Scale =
+      IRB.getInt32(ElementSizeInBits / BaseTy->getScalarSizeInBits());
+  if (Index->getType()->isVectorTy()) {
+    auto Width =
+        cast<IGCLLVM::FixedVectorType>(Index->getType())->getNumElements();
+    Scale = ConstantVector::getSplat(IGCLLVM::getElementCount(Width), Scale);
+  }
+  Index = IRB.CreateMul(Index, Scale);
+  ElementSizeInBits = BaseTy->getScalarSizeInBits();
+  NeedAdjust = false;
 }
 
 template <typename FolderT>
@@ -226,9 +254,7 @@ Instruction *TransposeHelper::loadAndCastVector(AllocaInst *VecAlloca,
   auto *LoadVecAlloca =
       IRB.CreateLoad(VecAlloca->getAllocatedType(), VecAlloca);
   auto *AllocatedElemTy = LoadVecAlloca->getType()->getScalarType();
-  bool IsFuncPointer = CastTy->isPointerTy() &&
-                       IGCLLVM::getNonOpaquePtrEltTy(CastTy)->isFunctionTy();
-  if (AllocatedElemTy == CastTy || IsFuncPointer)
+  if (AllocatedElemTy == CastTy || vc::isFunctionPointerType(CastTy))
     return LoadVecAlloca;
   auto AllocatedWidth = cast<IGCLLVM::FixedVectorType>(LoadVecAlloca->getType())
                             ->getNumElements();
@@ -263,42 +289,9 @@ void TransposeHelper::EraseDeadCode() {
 }
 
 void TransposeHelper::handleBCInst(BitCastInst &BC, GenericVectorIndex Idx) {
+  Idx.NeedAdjust = true;
   ToBeRemoved.push_back(&BC);
-
-  auto *DstTy = BC.getDestTy();
-  auto *SrcTy = BC.getSrcTy();
-  auto *DstDerefTy = getBaseType(
-      IGCLLVM::getNonOpaquePtrEltTy(DstTy->getScalarType()), nullptr);
-  auto *SrcDerefTy = getBaseType(
-      IGCLLVM::getNonOpaquePtrEltTy(SrcTy->getScalarType()), nullptr);
-  IGC_ASSERT_EXIT(DstDerefTy);
-  IGC_ASSERT_EXIT(SrcDerefTy);
-
-  // either the point-to-element-type is the same or
-  // the point-to-element-type is the byte
-  if (DstDerefTy->getScalarSizeInBits() == SrcDerefTy->getScalarSizeInBits() ||
-      (DstDerefTy->isPointerTy() &&
-       IGCLLVM::getNonOpaquePtrEltTy(DstDerefTy)->isFunctionTy())) {
-    handleAllocaSources(BC, Idx);
-    return;
-  }
-
-  IGC_ASSERT_EXIT(DstDerefTy->getScalarSizeInBits() == 8);
-  IRBuilder<> IRB(&BC);
-  auto ElementSize =
-      SrcDerefTy->getScalarSizeInBits() / DstDerefTy->getScalarSizeInBits();
-  Value *Scale = nullptr;
-  if (Idx.Index->getType()->isVectorTy()) {
-    auto Width =
-        cast<IGCLLVM::FixedVectorType>(Idx.Index->getType())->getNumElements();
-    Scale = ConstantVector::getSplat(IGCLLVM::getElementCount(Width),
-                                     IRB.getInt32(ElementSize));
-  } else {
-    Scale = IRB.getInt32(ElementSize);
-  }
-  auto NewIdx = IRB.CreateMul(Idx.Index, Scale);
-  handleAllocaSources(
-      BC, {NewIdx, static_cast<int>(DstDerefTy->getScalarSizeInBits())});
+  handleAllocaSources(BC, Idx);
 }
 
 void TransposeHelper::handlePTIInst(PtrToIntInst &PTI, GenericVectorIndex Idx) {
@@ -379,6 +372,8 @@ void TransposeHelper::handleAllocaSources(Instruction &Inst,
 void TransposeHelper::handleGEPInst(GetElementPtrInst *GEP,
                                     GenericVectorIndex Idx) {
   ToBeRemoved.push_back(GEP);
+  IRBuilder<> IRB(GEP);
+  Idx.adjustIndex(GEP->getSourceElementType(), IRB);
   Value *PtrOp = GEP->getPointerOperand();
   PointerType *PtrTy = dyn_cast<PointerType>(PtrOp->getType());
   IGC_ASSERT_MESSAGE(PtrTy, "Only accept scalar pointer!");
@@ -399,7 +394,6 @@ void TransposeHelper::handleGEPInst(GetElementPtrInst *GEP,
   }
   Type *Ty = PtrTy;
   auto GTI = gep_type_begin(GEP);
-  IRBuilder<> IRB(GEP);
   Value *ScalarizedIdx =
       (IdxWidth == 1)
           ? IRB.getInt32(0)
@@ -503,27 +497,19 @@ void TransposeHelper::handlePHINode(PHINode *Phi, GenericVectorIndex Idx,
 void TransposeHelper::handleLoadInst(LoadInst *Load, GenericVectorIndex Idx) {
   IGC_ASSERT(Load->isSimple());
   IRBuilder<> IRB(Load);
+  Idx.adjustIndex(Load->getType(), IRB);
   auto *ScalarizedIdx =
       IRB.CreateMul(Idx.Index, ConstantInt::get(Idx.Index->getType(),
                                                 Idx.getElementSizeInBytes()));
   auto LdTy = Load->getType()->getScalarType();
   auto *ReadIn = loadAndCastVector(VectorAlloca, LdTy, IRB);
-  bool IsFuncPointer =
-      Load->getPointerOperandType()->isPointerTy() &&
-      IGCLLVM::getNonOpaquePtrEltTy(Load->getPointerOperandType())
-          ->isPointerTy() &&
-      IGCLLVM::getNonOpaquePtrEltTy(
-          IGCLLVM::getNonOpaquePtrEltTy(Load->getPointerOperandType()))
-          ->isFunctionTy();
-  if (IsFuncPointer) {
+  if (vc::isFunctionPointerType(Load->getType())) {
     Region R(IGCLLVM::FixedVectorType::get(
-                 cast<VectorType>(
-                     IGCLLVM::getNonOpaquePtrEltTy(VectorAlloca->getType()))
+                 cast<VectorType>(VectorAlloca->getAllocatedType())
                      ->getElementType(),
                  DL->getTypeSizeInBits(LdTy) /
                      DL->getTypeSizeInBits(
-                         cast<VectorType>(IGCLLVM::getNonOpaquePtrEltTy(
-                                              VectorAlloca->getType()))
+                         cast<VectorType>(VectorAlloca->getAllocatedType())
                              ->getElementType())),
              DL);
     if (!ScalarizedIdx->getType()->isIntegerTy(16)) {
@@ -570,25 +556,20 @@ void TransposeHelper::handleStoreInst(StoreInst *Store,
   // Add Store instruction to remove list
   IGC_ASSERT(Store->isSimple());
   IRBuilder<> IRB(Store);
+  Value *StoreVal = Store->getValueOperand();
+  Idx.adjustIndex(StoreVal->getType(), IRB);
   auto *ScalarizedIdx =
       IRB.CreateMul(Idx.Index, ConstantInt::get(Idx.Index->getType(),
                                                 Idx.getElementSizeInBytes()));
-  Value *StoreVal = Store->getValueOperand();
   auto *StTy = StoreVal->getType()->getScalarType();
   Value *WriteOut = loadAndCastVector(VectorAlloca, StTy, IRB);
 
-  bool IsFuncPointerStore =
-      (isFuncPointerVec(StoreVal) ||
-       (StoreVal->getType()->isPointerTy() &&
-        IGCLLVM::getNonOpaquePtrEltTy(StoreVal->getType())->isFunctionTy()));
-  if (IsFuncPointerStore) {
+  if (vc::isFunctionPointerType(StoreVal->getType())) {
     auto *NewStoreVal = StoreVal;
-    IGC_ASSERT(
-        cast<VectorType>(IGCLLVM::getNonOpaquePtrEltTy(VectorAlloca->getType()))
-            ->getElementType()
-            ->isIntegerTy(64));
-    if (NewStoreVal->getType()->isPointerTy() &&
-        IGCLLVM::getNonOpaquePtrEltTy(NewStoreVal->getType())->isFunctionTy()) {
+    IGC_ASSERT(cast<VectorType>(VectorAlloca->getAllocatedType())
+                   ->getElementType()
+                   ->isIntegerTy(64));
+    if (vc::isFunctionPointerType(NewStoreVal->getType())) {
       NewStoreVal = IRB.CreatePtrToInt(
           NewStoreVal, IntegerType::getInt64Ty(Store->getContext()));
     }
@@ -645,6 +626,7 @@ void TransposeHelper::handleStoreInst(StoreInst *Store,
 void TransposeHelper::handleGather(IntrinsicInst *Inst, GenericVectorIndex Idx,
                                    unsigned MaskIndex, unsigned ValueIndex) {
   IRBuilder<> IRB(Inst);
+  Idx.adjustIndex(Inst->getType(), IRB);
   auto *ScalarizedIdx =
       IRB.CreateMul(Idx.Index, ConstantInt::get(Idx.Index->getType(),
                                                 Idx.getElementSizeInBytes()));
@@ -684,10 +666,11 @@ void TransposeHelper::handleGather(IntrinsicInst *Inst, GenericVectorIndex Idx,
 void TransposeHelper::handleScatter(IntrinsicInst *Inst, GenericVectorIndex Idx,
                                     unsigned MaskIndex, unsigned ValueIndex) {
   IRBuilder<> IRB(Inst);
+  auto *StoreVal = Inst->getArgOperand(ValueIndex);
+  Idx.adjustIndex(StoreVal->getType(), IRB);
   auto *ScalarizedIdx =
       IRB.CreateMul(Idx.Index, ConstantInt::get(Idx.Index->getType(),
                                                 Idx.getElementSizeInBytes()));
-  auto *StoreVal = Inst->getArgOperand(ValueIndex);
   auto *StoreTy = cast<IGCLLVM::FixedVectorType>(StoreVal->getType());
   auto *ElemTy = StoreTy->getElementType();
   auto *LoadVecAlloca = loadAndCastVector(VectorAlloca, ElemTy, IRB);
@@ -862,7 +845,7 @@ unsigned int GenXPromoteArray::extractAllocaSize(AllocaInst *Alloca) {
   return totalArrayStructureSize;
 }
 
-bool GenXPromoteArray::checkPtrToIntCandidate(PtrToIntInst *PTI) const {
+bool GenXPromoteArray::checkPtrToIntCandidate(PtrToIntInst *PTI, Type *CurBaseTy) const {
   // Here we handle only the most common patterns for LLVM and SVM
   // gather/scatter instructions:
   //   * ptrtoint->insertelem->shuffle->arith_op->svm_gather/scatter,
@@ -928,10 +911,7 @@ bool GenXPromoteArray::checkPtrToIntCandidate(PtrToIntInst *PTI) const {
     // %v1 = <8 x float> svm_gather %v0, %offsets, <8 x float> undef
     // OR
     // svm_scatter %v0, %offset, <8 x float> %value
-    if (Input->getType()->getScalarType() !=
-        getBaseType(
-            IGCLLVM::getNonOpaquePtrEltTy(PTI->getOperand(0)->getType()),
-            nullptr))
+    if (Input->getType()->getScalarType() != CurBaseTy)
       return false;
 
     if (NumBlocks != 0)
@@ -947,18 +927,40 @@ bool GenXPromoteArray::checkPtrToIntCandidate(PtrToIntInst *PTI) const {
   return true;
 }
 
-bool GenXPromoteArray::checkAllocaUsesInternal(Instruction *I) const {
+bool GenXPromoteArray::checkTypes(Type* CurBaseTy, Type* NewTy) const {
+  auto *NewBaseTy = getBaseType(NewTy, nullptr);
+  // either the point-to-element-type is the same or
+  // the point-to-element-type is the byte or a function pointer
+  if (!CurBaseTy || !NewBaseTy)
+    return false;
+  if (NewBaseTy->getScalarSizeInBits() != 8 &&
+      CurBaseTy->getScalarSizeInBits() != NewBaseTy->getScalarSizeInBits() &&
+      !vc::isFunctionPointerType(NewBaseTy))
+    return false;
+  return true;
+}
+
+bool GenXPromoteArray::checkAllocaUsesInternal(Instruction *I, Type *CurBaseTy, bool NeedCheckTypes) const {
   for (Value::user_iterator UseIt = I->user_begin(), UseE = I->user_end();
        UseIt != UseE; ++UseIt) {
     if (auto *GEP = dyn_cast<GetElementPtrInst>(*UseIt)) {
+      if (NeedCheckTypes && !checkTypes(CurBaseTy, GEP->getSourceElementType()))
+        return false;
       auto *PtrV = GEP->getPointerOperand();
       // we cannot support a vector of pointers as the base of the GEP
-      if (!PtrV->getType()->isPointerTy() || !checkAllocaUsesInternal(GEP))
+      if (!PtrV->getType()->isPointerTy() ||
+          !checkAllocaUsesInternal(
+              GEP, getBaseType(GEP->getResultElementType(), nullptr), false))
         return false;
     } else if (auto *Load = dyn_cast<LoadInst>(*UseIt)) {
+      if (NeedCheckTypes && !checkTypes(CurBaseTy, Load->getType()))
+        return false;
       if (!Load->isSimple())
         return false;
     } else if (auto *Store = dyn_cast<StoreInst>(*UseIt)) {
+      if (NeedCheckTypes &&
+          !checkTypes(CurBaseTy, Store->getValueOperand()->getType()))
+        return false;
       if (!Store->isSimple())
         return false;
       // GEP instruction is the stored value of the StoreInst (not supported)
@@ -967,33 +969,28 @@ bool GenXPromoteArray::checkAllocaUsesInternal(Instruction *I) const {
     } else if (auto *Cast = dyn_cast<BitCastInst>(*UseIt)) {
       if (Cast->use_empty())
         continue;
-      auto *BaseTy = getBaseType(
-          IGCLLVM::getNonOpaquePtrEltTy(Cast->getType()->getScalarType()),
-          nullptr);
-      auto *SrcTy =
-          getBaseType(IGCLLVM::getNonOpaquePtrEltTy(
-                          Cast->getOperand(0)->getType()->getScalarType()),
-                      nullptr);
-      // either the point-to-element-type is the same or
-      // the point-to-element-type is the byte or a function pointer
-      if (!BaseTy || !SrcTy)
-        return false;
-      auto BaseScalarSizeInBits = BaseTy->getScalarSizeInBits();
-      if (BaseScalarSizeInBits != 8 &&
-          BaseScalarSizeInBits != SrcTy->getScalarSizeInBits() &&
-          (!BaseTy->isPointerTy() ||
-           !IGCLLVM::getNonOpaquePtrEltTy(BaseTy)->isFunctionTy()))
-        return false;
-      if (!checkAllocaUsesInternal(Cast))
+      if (!checkAllocaUsesInternal(Cast, CurBaseTy, true))
         return false;
     } else if (auto *PTI = dyn_cast<PtrToIntInst>(*UseIt)) {
-      if (!checkPtrToIntCandidate(PTI))
+      if (!checkPtrToIntCandidate(PTI, CurBaseTy))
         return false;
     } else if (auto *II = dyn_cast<IntrinsicInst>(*UseIt)) {
       auto IID = vc::getAnyIntrinsicID(II);
-      if (IID != Intrinsic::lifetime_start && IID != Intrinsic::lifetime_end &&
-          IID != Intrinsic::masked_gather && IID != Intrinsic::masked_scatter)
+      switch (IID) {
+      case Intrinsic::lifetime_start:
+      case Intrinsic::lifetime_end:
+        break;
+      case Intrinsic::masked_gather:
+        if (NeedCheckTypes && !checkTypes(CurBaseTy, II->getType()))
+          return false;
+        break;
+      case Intrinsic::masked_scatter:
+        if (NeedCheckTypes && !checkTypes(CurBaseTy, II->getOperand(0)->getType()))
+          return false;
+        break;
+      default:
         return false;
+      }
     } else if (auto *Phi = dyn_cast<PHINode>(*UseIt)) {
       // Only GEPs with same base and bitcasts with same src yet supported
       Value *PtrOp = nullptr;
@@ -1012,7 +1009,7 @@ bool GenXPromoteArray::checkAllocaUsesInternal(Instruction *I) const {
         return false;
       };
       if (!all_of(Phi->incoming_values(), IsValid) ||
-          !checkAllocaUsesInternal(Phi))
+          !checkAllocaUsesInternal(Phi, CurBaseTy, NeedCheckTypes))
         return false;
     } else {
       // This is some other instruction. Right now we don't want to handle these
@@ -1046,8 +1043,7 @@ bool GenXPromoteArray::isAllocaPromotable(AllocaInst &Alloca) {
   auto *ScalarTy = BaseTy->getScalarType();
   // only handle case with a simple base type
   if (!(ScalarTy->isFloatingPointTy() || ScalarTy->isIntegerTy()) &&
-      !(ScalarTy->isPointerTy() &&
-        IGCLLVM::getNonOpaquePtrEltTy(ScalarTy)->isFunctionTy()))
+      !vc::isFunctionPointerType(ScalarTy))
     return false;
 
   // After promotion the variable will be illegal.
@@ -1055,7 +1051,7 @@ bool GenXPromoteArray::isAllocaPromotable(AllocaInst &Alloca) {
   if (!visa::Variable::isLegal(VecTy, *DL))
     return false;
 
-  return checkAllocaUsesInternal(&Alloca);
+  return checkAllocaUsesInternal(&Alloca, BaseTy, false);
 }
 
 void GenXPromoteArray::visitStore(StoreInst &I) {
@@ -1103,8 +1099,7 @@ void GenXPromoteArray::selectAllocasToHandle() {
 
 void GenXPromoteArray::handleAllocaInst(AllocaInst *Alloca) {
   // Extract the Alloca size and the base Type
-  auto *Ty = IGCLLVM::getNonOpaquePtrEltTy(Alloca->getType());
-  auto *BaseTy = getBaseType(Ty, nullptr);
+  auto *BaseTy = getBaseType(Alloca->getAllocatedType(), nullptr);
   if (!BaseTy)
     return;
   BaseTy = BaseTy->getScalarType();
