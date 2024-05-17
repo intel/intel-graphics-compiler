@@ -1403,7 +1403,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
         PointerType::get(NewLoadType, LeadingLoad->getPointerAddressSpace());
     Value* NewPointer = Builder.CreateBitCast(Ptr, NewPointerType);
     LoadInst* NewLoad =
-        Builder.CreateAlignedLoad(NewPointer, IGCLLVM::getAlign(*FirstLoad));
+        Builder.CreateAlignedLoad(NewLoadType, NewPointer, IGCLLVM::getAlign(*FirstLoad));
     NewLoad->setDebugLoc(LeadingLoad->getDebugLoc());
 
     // Unpack the load value to their uses. For original vector loads, extracting

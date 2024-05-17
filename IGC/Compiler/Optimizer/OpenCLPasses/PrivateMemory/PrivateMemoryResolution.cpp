@@ -763,8 +763,8 @@ void TransposePrivMem::handleLoadInst(LoadInst* pLoad, Value* pScalarizedIdx)
     }
 
     Value* addrInElt = convertToPtr(IRB, m_DL, addr, pLoad->getPointerOperandType());
-    Value* gep = IRB.CreateGEP(addrInElt, eltIx, VALUE_NAME(pLoad->getName() + ".SOAPrivMemGEP"));
-    Value* val = IRB.CreateAlignedLoad(gep, IGCLLVM::getAlign(*pLoad));
+    Value* gep = IRB.CreateGEP(pLoad->getType(), addrInElt, eltIx, VALUE_NAME(pLoad->getName() + ".SOAPrivMemGEP"));
+    Value* val = IRB.CreateAlignedLoad(cast<GetElementPtrInst>(gep)->getResultElementType(), gep, IGCLLVM::getAlign(*pLoad));
 
     pLoad->replaceAllUsesWith(val);
     pLoad->eraseFromParent();

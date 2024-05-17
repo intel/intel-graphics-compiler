@@ -144,7 +144,7 @@ bool LdShrink::runOnFunction(Function& F) {
                 = (alignment_t)MinAlign(IGCLLVM::getAlignmentValue(LI),
                     DL->getTypeStoreSize(ScalarTy) * Offset);
 
-            LoadInst* NewLoad = Builder.CreateAlignedLoad(ScalarPtr, IGCLLVM::getAlign(alignment));
+            LoadInst* NewLoad = Builder.CreateAlignedLoad(ScalarTy, ScalarPtr, IGCLLVM::getAlign(alignment));
             NewLoad->setDebugLoc(LI->getDebugLoc());
 
             ExtractElementInst* EEI = cast<ExtractElementInst>(*LI->user_begin());

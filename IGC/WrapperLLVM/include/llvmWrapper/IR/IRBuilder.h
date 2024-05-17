@@ -232,6 +232,14 @@ namespace IGCLLVM
             return llvm::IRBuilder<T, InserterTyDef()>::CreateAlignedLoad(ptrType, Ptr, Align, Name);
         }
 
+        /// Provided to resolve 'CreateAlignedLoad(Ptr, Align, "...")'
+        /// correctly, instead of converting the string to 'bool' for the isVolatile
+        /// parameter.
+        inline llvm::LoadInst* CreateAlignedLoad(llvm::Type* ptrType, llvm::Value* Ptr, IGCLLVM::Align Align, const llvm::Twine& Name = "")
+        {
+            return llvm::IRBuilder<T, InserterTyDef()>::CreateAlignedLoad(ptrType, Ptr, Align, Name);
+        }
+
         // This wrapper function is deprecated because it uses typed pointer and
         // should no longer be used in LLVM 14+ compatible code.
         inline llvm::LoadInst* CreateAlignedLoad(llvm::Value* Ptr, IGCLLVM::Align Align, const llvm::Twine& Name = "")
