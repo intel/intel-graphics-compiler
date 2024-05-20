@@ -583,8 +583,7 @@ bool SOALayoutChecker::visitBitCastInst(BitCastInst& BI)
         IGC_ASSERT(bSTy || sSTy);
         return bSTy && sSTy && (bSTy == sSTy || bSTy->isLayoutIdentical(sSTy));
     }
-    if (baseT != nullptr &&
-        baseT->getScalarSizeInBits() != 0 &&
+    if (baseT->getScalarSizeInBits() != 0 &&
         baseT->getScalarSizeInBits() == sourceType->getScalarSizeInBits())
     {
         const bool sameSize = ((uint32_t)baseT->getPrimitiveSizeInBits() ==

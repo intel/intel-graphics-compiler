@@ -399,9 +399,6 @@ void CustomSafeOptPass::mergeDotAddToDp4a(llvm::CallInst* I)
     if (IGC_IS_FLAG_ENABLED(DisableDotAddToDp4aMerge))
       return;
 
-    // found %id213- = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 0, i32 %305, i32 %345)
-    GenIntrinsicInst* instr = dyn_cast<GenIntrinsicInst>(I);
-
     auto checkValidAccValue = [](GenIntrinsicInst* dp4aInstr, Value* accVal) {
       // check callInst if the value is from a previous callInst and make sure
       // it's not the dp4a intrinsic it self, such as the %id213- above
@@ -414,6 +411,9 @@ void CustomSafeOptPass::mergeDotAddToDp4a(llvm::CallInst* I)
       // if it's not callInst, then it's a previous result for acc in this intrinsic
       return true;;
     };
+
+    // found %id213- = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 0, i32 %305, i32 %345)
+    GenIntrinsicInst* instr = cast<GenIntrinsicInst>(I);
 
     if (ConstantInt* CI = dyn_cast<ConstantInt>(instr->getOperand(0))) {
       // make sure operand(0) value is (i32 0)
