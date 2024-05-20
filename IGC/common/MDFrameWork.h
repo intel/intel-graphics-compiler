@@ -479,7 +479,7 @@ namespace IGC
         bool disableSimd32Slicing = false;
         bool disableSplitOnSpill = false;
         bool enableNewSpillCostFunction = false;
-        bool forcedVISAPreRAScheduler = false;
+        bool forceVISAPreSched = false;
         bool forceUniformBuffer = false;
         bool forceUniformSurfaceSampler = false;
         // disables dispatch along y and tiled order optimizations

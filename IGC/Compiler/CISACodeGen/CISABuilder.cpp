@@ -4384,7 +4384,7 @@ namespace IGC
             }
 
             // Check reg-key or compiler input
-            if (IGC_IS_FLAG_ENABLED(ForceVISAPreSched) || context->getModuleMetaData()->csInfo.forcedVISAPreRAScheduler)
+            if (IGC_IS_FLAG_ENABLED(ForceVISAPreSched) || context->getModuleMetaData()->csInfo.forceVISAPreSched)
                 return true;
 
             // API check.
