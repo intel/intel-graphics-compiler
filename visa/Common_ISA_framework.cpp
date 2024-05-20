@@ -176,13 +176,16 @@ int CISA_IR_Builder::isaDump(const char *combinedIsaasmName) const {
 #ifdef IS_RELEASE_DLL
   return VISA_SUCCESS;
 #else
+  const bool isaasmToConsole = m_options.getOption(vISA_ISAASMToConsole);
   const bool genIsaasm = m_options.getOption(vISA_GenerateISAASM);
+  const bool allowIsaasmDump = CisaFramework::allowDump(m_options,
+    combinedIsaasmName ? combinedIsaasmName : std::string());
   const bool genCombinedIsaasm =
-      m_options.getOption(vISA_GenerateCombinedISAASM);
+    m_options.getOption(vISA_GenerateCombinedISAASM) &&
+    (isaasmToConsole || allowIsaasmDump);
   if (!genIsaasm && !genCombinedIsaasm)
     return VISA_SUCCESS;
 
-  const bool isaasmToConsole = m_options.getOption(vISA_ISAASMToConsole);
   std::stringstream ss;
 
   VISAKernelImpl *mainKernel = *kernel_begin();
@@ -212,8 +215,6 @@ int CISA_IR_Builder::isaDump(const char *combinedIsaasmName) const {
     asmName << ".visaasm";
     std::string asmFileName = sanitizePathString(asmName.str());
 
-    // Do we still want to support regex for file dump filters when writing
-    // a combined isaasm file?
     if (!CisaFramework::allowDump(m_options, asmFileName))
       continue;
 
