@@ -21654,26 +21654,10 @@ void EmitPass::emitsrnd(llvm::GenIntrinsicInst* GII)
     }
 }
 
-bool EmitPass::isSupportedLSCCacheControlsEnum(LSC_L1_L3_CC l1l3cc, bool isLoad) const
-{
-    if (isLoad)
-    {
-        switch (l1l3cc)
-        {
-        default: break;
-        case LSC_L1UC_L3CC:
-        case LSC_L1C_L3CC:
-        case LSC_L1IAR_L3IAR:
-            return (m_pCtx->platform.isCoreChildOf(IGFX_XE2_LPG_CORE));
-        }
-    }
-    return true;
-}
-
 LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsEnum(
     LSC_L1_L3_CC l1l3cc, bool isLoad, const Value* warningContextValue) const
 {
-    if (!isSupportedLSCCacheControlsEnum(l1l3cc, isLoad)) {
+    if (!m_pCtx->platform.isSupportedLSCCacheControlsEnum(l1l3cc, isLoad)) {
         m_pCtx->EmitWarning("Unsupported cache controls configuration requested. Applying default configuration.", warningContextValue);
         l1l3cc = LSC_L1DEF_L3DEF;
     }

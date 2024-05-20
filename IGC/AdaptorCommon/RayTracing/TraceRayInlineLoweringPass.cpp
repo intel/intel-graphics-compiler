@@ -479,6 +479,11 @@ void TraceRayInlineLoweringPass::LowerSyncStackToShadowMemory(Function& F)
             auto [InvalidateAfterProceedBB, _] = builder.createTriangleFlow(builder.CreateNot(Proceed), SS2SM, VALUE_NAME("InvalidateAfterProceed"));
             builder.SetInsertPoint(InvalidateAfterProceedBB->getTerminator());
 
+            LSC_L1_L3_CC CacheCtrl =
+                m_CGCtx->platform.isSupportedLSCCacheControlsEnum(LSC_L1IAR_L3IAR, true) ?
+                LSC_L1IAR_L3IAR :
+                LSC_L1IAR_WB_L3C_WB;
+
             for (uint i = 0; i < getSyncStackSize() / m_CGCtx->platform.LSCCachelineSize(); i++)
             {
                 builder.CreateCall(
@@ -488,7 +493,7 @@ void TraceRayInlineLoweringPass::LowerSyncStackToShadowMemory(Function& F)
                         builder.getInt32(i * m_CGCtx->platform.LSCCachelineSize()),
                         builder.getInt32(LSC_DATA_SIZE_32b), // doesn't matter what we put here because the entire cacheline is invalidated
                         builder.getInt32(LSC_DATA_ELEMS_1),
-                        builder.getInt32(LSC_L1IAR_WB_L3C_WB)
+                        builder.getInt32(CacheCtrl)
                     }
                 );
             }

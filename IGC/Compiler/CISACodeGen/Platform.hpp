@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include "skuwa/iacm_g12_rev_id.h"
 
 #include "iStdLib/utility.h"
+#include "visa_igc_common_header.h"
 
 namespace IGC
 {
@@ -1681,6 +1682,22 @@ uint32_t getVISAABIVersion() const {
 bool supportsNonDefaultLSCCacheSetting() const
 {
     return isCoreChildOf(IGFX_XE2_LPG_CORE);
+}
+
+bool isSupportedLSCCacheControlsEnum(LSC_L1_L3_CC l1l3cc, bool isLoad) const
+{
+    if (isLoad)
+    {
+        switch (l1l3cc)
+        {
+        default: break;
+        case LSC_L1UC_L3CC:
+        case LSC_L1C_L3CC:
+        case LSC_L1IAR_L3IAR:
+            return isCoreChildOf(IGFX_XE2_LPG_CORE);
+        }
+    }
+    return true;
 }
 
 unsigned int roundUpTgsmSize(DWORD size) const

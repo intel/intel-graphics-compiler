@@ -542,7 +542,6 @@ public:
     ////////////////////////////////////////////////////////////////////
     // LSC related functions
     bool tryOverrideCacheOpts(LSC_CACHE_OPTS& cacheOpts, bool isLoad, bool isTGM, const llvm::Value* warningContextValue) const;
-    bool isSupportedLSCCacheControlsEnum(LSC_L1_L3_CC l1l3cc, bool isLoad) const;
     LSC_CACHE_OPTS translateLSCCacheControlsEnum(LSC_L1_L3_CC l1l3cc, bool isLoad, const llvm::Value* warningContextValue) const;
     LSC_CACHE_OPTS translateLSCCacheControlsFromValue(
         llvm::Value *value, bool isLoad) const;
