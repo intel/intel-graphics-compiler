@@ -228,7 +228,7 @@ Value *GenXLoadStoreLegalization::extendMemoryOperation(Value *InsertTo,
   IRBuilder<> Builder(&CI);
 
   SmallVector<Value *, 13> Args;
-  llvm::transform(CI.args(), std::back_inserter(Args), [&](Value *Arg) {
+  llvm::transform(CI.args(), std::back_inserter(Args), [&](Value *Arg) -> Value* {
     auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Arg->getType());
     if (!VTy)
       return Arg;
@@ -242,10 +242,36 @@ Value *GenXLoadStoreLegalization::extendMemoryOperation(Value *InsertTo,
     auto *ETy = VTy->getElementType();
     auto *InsTy = IGCLLVM::FixedVectorType::get(
         ETy, IsSOA ? VectorSize * ExtendWidth : ExtendWidth);
-    Value *Insert = ETy->isIntegerTy(1) ? Constant::getNullValue(InsTy)
-                                        : UndefValue::get(InsTy);
-    return createInsertToSOAValue(&CI, Insert, Arg, IsSOA ? VectorSize : 1, 0,
-                                  RestSize);
+    if (!ETy->isIntegerTy(1))
+      return createInsertToSOAValue(&CI, UndefValue::get(InsTy), Arg,
+                                    IsSOA ? VectorSize : 1, 0, RestSize);
+    if (RestSize == 4 || RestSize == 8 || RestSize == 16 || !isa<CmpInst>(Arg))
+      return createInsertToSOAValue(&CI, Constant::getNullValue(InsTy), Arg,
+                                    IsSOA ? VectorSize : 1, 0, RestSize);
+
+    // If a predicate is illegally sized, it will cause problems later in
+    // GenXLegalization pass because wrpredregion must follow offset alignment
+    // restrictions. In case when the illegal predicate is result of cmp
+    // instruction we can also extend this instruction instead of just
+    // writing its result into a legal-sized predicate.
+    auto *Cmp = cast<CmpInst>(Arg);
+    auto *OpVTy = cast<IGCLLVM::FixedVectorType>(Cmp->getOperand(0)->getType());
+    auto *NewOpTy = IGCLLVM::FixedVectorType::get(
+        OpVTy->getElementType(),
+        IsSOA ? VectorSize * ExtendWidth : ExtendWidth);
+    auto *NewOp0 = createInsertToSOAValue(&CI, Constant::getNullValue(NewOpTy),
+                                          Cmp->getOperand(0),
+                                          IsSOA ? VectorSize : 1, 0, RestSize);
+    auto *NewOp1 = createInsertToSOAValue(
+        &CI,
+        Cmp->isTrueWhenEqual() ? Constant::getAllOnesValue(NewOpTy)
+                               : Constant::getNullValue(NewOpTy),
+        Cmp->getOperand(1), IsSOA ? VectorSize : 1, 0, RestSize);
+    auto *NewCmp =
+        CmpInst::Create(Cmp->getOpcode(), Cmp->getPredicate(), NewOp0, NewOp1,
+                        Cmp->getName() + ".extended", &CI);
+    NewCmp->setDebugLoc(Cmp->getDebugLoc());
+    return NewCmp;
   });
 
   Value *Res = Builder.CreateCall(Func, Args);
