@@ -47,9 +47,13 @@ bool HandleSpirvDecorationMetadata::runOnModule(Module& module)
     m_Metadata = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     m_Module = &module;
+    m_BuiltinsToRemove.clear();
 
     handleInstructionsDecorations();
     handleGlobalVariablesDecorations();
+
+    for (auto& F : m_BuiltinsToRemove)
+        F->eraseFromParent();
 
     return m_changed;
 }
@@ -232,8 +236,9 @@ void HandleSpirvDecorationMetadata::handleCacheControlINTELFor2DBlockIO(CallInst
     auto newCall = CallInst::Create(newFunction, args, "", &I);
     I.replaceAllUsesWith(newCall);
     I.eraseFromParent();
+    m_changed = true;
 
     // Cleanup unused function if all calls have been replaced with the internal version
     if (F->getNumUses() == 0)
-        F->eraseFromParent();
+        m_BuiltinsToRemove.insert(F);
 }

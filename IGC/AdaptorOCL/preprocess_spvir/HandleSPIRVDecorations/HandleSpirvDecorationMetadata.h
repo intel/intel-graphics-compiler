@@ -55,6 +55,7 @@ namespace IGC
         CodeGenContext* m_pCtx = nullptr;
         ModuleMetaData* m_Metadata = nullptr;
         bool m_changed = false;
+        llvm::DenseSet<llvm::Function*> m_BuiltinsToRemove;
 
         void handleInstructionsDecorations();
         void handleGlobalVariablesDecorations();
