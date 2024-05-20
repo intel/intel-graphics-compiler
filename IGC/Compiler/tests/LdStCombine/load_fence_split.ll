@@ -24,6 +24,11 @@
 ;    load i8; load i8; barrier; load i8; load i8; -> load <2xi8>; barrier; load <2xi8>
 ;      No load <4 x i8>
 
+; REQUIRES: regkeys
+;
+; RUN:   igc_opt %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=5 \
+; RUN:           -platformbmg \
+; RUN: | FileCheck %s
 
 
  ;

@@ -12,6 +12,9 @@
 ; RUN: llvm-as %s -o %t.bc
 ; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_cache_controls,+SPV_INTEL_joint_matrix -o %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-PVC
+; REQUIRES: xe2-hpg-supported
+; We want to run these tests on Xe2. This is blocked by ocloc (NEO) which doesn't have any Xe2 platform in open source yet.
+; RUN: ocloc compile -spirv_input -file %t.spv -device xe2-hpg -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-BMG
 
 target triple = "spir64-unknown-unknown"
 
@@ -133,6 +136,7 @@ ret void
 
 
 ; CHECK: .kernel "TestLoad_L1_Uncached__L3_ConstCached"
+; CHECK-BMG: lsc_load_block2d.ugm.uc.cc ({{.*}})
 ; CHECK-PVC: lsc_load_block2d.ugm ({{.*}})
 ; CHECK: lsc_store_block2d.ugm ({{.*}})
 define spir_kernel void @TestLoad_L1_Uncached__L3_ConstCached(float addrspace(1)* %src, float addrspace(1)* %dst) {
@@ -149,6 +153,7 @@ ret void
 
 
 ; CHECK: .kernel "TestLoad_L1_Cached__L3_ConstCached"
+; CHECK-BMG: lsc_load_block2d.ugm.ca.cc ({{.*}})
 ; CHECK-PVC: lsc_load_block2d.ugm ({{.*}})
 ; CHECK: lsc_store_block2d.ugm ({{.*}})
 define spir_kernel void @TestLoad_L1_Cached__L3_ConstCached(float addrspace(1)* %src, float addrspace(1)* %dst) {
@@ -165,6 +170,7 @@ ret void
 
 
 ; CHECK: .kernel "TestLoad_L1_InvalidateAfterRead__L3_InvalidateAfterRead"
+; CHECK-BMG: lsc_load_block2d.ugm.ri.ri ({{.*}})
 ; CHECK-PVC: lsc_load_block2d.ugm ({{.*}})
 ; CHECK: lsc_store_block2d.ugm ({{.*}})
 define spir_kernel void @TestLoad_L1_InvalidateAfterRead__L3_InvalidateAfterRead(float addrspace(1)* %src, float addrspace(1)* %dst) {

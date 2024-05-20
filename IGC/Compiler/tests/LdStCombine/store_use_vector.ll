@@ -34,6 +34,12 @@
 ; All 20 stores will be combined into a single vector store:
 ;
 
+;
+; REQUIRES: regkeys
+;
+; RUN:   igc_opt %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=1,MaxStoreVectorSizeInBytes=32 \
+; RUN:           -platformbmg \
+; RUN: | FileCheck %s
 
 ;
 ; CHECK-LABEL: define spir_kernel void @test_const_init

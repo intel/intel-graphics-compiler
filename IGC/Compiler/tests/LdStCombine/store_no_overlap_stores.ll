@@ -14,6 +14,11 @@
 ;
 ; Note: this test is from ocl test test_spir half (test.vstore_half_private_float3)
 ;
+; REQUIRES: regkeys
+;
+; RUN:  igc_opt -S -inputocl %enable-basic-aa% -platformbmg \
+; RUN:          -igc-ldstcombine -regkey=EnableLdStCombine=1 %s | FileCheck %s
+;
 
 ;
 ; CHECK-LABEL: target triple

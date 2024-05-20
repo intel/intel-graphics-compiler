@@ -108,7 +108,7 @@ public:
     virtual void PreAnalysisPass();
     virtual void ExtractGlobalVariables() {}
     void         EOTURBWrite();
-    CVariable* URBFence();
+    CVariable* URBFence(LSC_SCOPE scope = LSC_SCOPE_LOCAL);
     void         EOTGateway(CVariable* payload = nullptr);
     void         EOTRenderTarget(CVariable* r1,
         bool isPerCoarse);

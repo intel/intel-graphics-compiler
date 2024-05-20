@@ -388,7 +388,7 @@ bool SamplerPerfOptPass::runOnFunction(Function& F)
                 }
                 if (SamplerGatherIntrinsic* gatherInst = dyn_cast<SamplerGatherIntrinsic>(II))
                 {
-                    if (ctx->platform.isCoreChildOf(IGFX_XE2_LPG_CORE) && isSamplingFromCubeSurface(gatherInst))
+                    if (ctx->platform.isCoreChildOf(IGFX_XE2_HPG_CORE) && isSamplingFromCubeSurface(gatherInst))
                     {
                         IGC_ASSERT_MESSAGE(!ctx->platform.WaCubeHFPrecisionBug(),
                             "This WA should be absent on this platform.");

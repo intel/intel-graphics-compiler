@@ -73,7 +73,7 @@ private:
                 enabledSlices++;
             }
         }
-        isChildOfXe2 = Ctx.platform.isCoreChildOf(IGFX_XE2_LPG_CORE);
+        isChildOfXe2 = Ctx.platform.isCoreChildOf(IGFX_XE2_HPG_CORE);
 
         if (isChildOfXe2 || Ctx.platform.isProductChildOf(IGFX_PVC))
         {

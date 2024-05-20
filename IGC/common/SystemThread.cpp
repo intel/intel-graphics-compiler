@@ -803,7 +803,7 @@ bool SIPSuppoertedOnPlatformFamily(const GFXCORE_FAMILY& family)
     case IGFX_XE_HP_CORE:
     case IGFX_XE_HPG_CORE:
     case IGFX_XE_HPC_CORE:
-    case IGFX_XE2_LPG_CORE:
+    case IGFX_XE2_HPG_CORE:
         return true;
     default:
         return false;
@@ -1317,7 +1317,7 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
     case IGFX_XE_HP_CORE:
     case IGFX_XE_HPG_CORE:
     case IGFX_XE_HPC_CORE:
-    case IGFX_XE2_LPG_CORE:
+    case IGFX_XE2_HPG_CORE:
 
     {
         if (mode & SYSTEM_THREAD_MODE_DEBUG)
@@ -1345,6 +1345,7 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
                 SIPIndex =  XE_HPC_CSR_DEBUG_BINDLESS;
                 break;
             case IGFX_LUNARLAKE :
+            case IGFX_BMG :
                 SIPIndex =  XE2_CSR_DEBUG_BINDLESS;
             default:
                 break;

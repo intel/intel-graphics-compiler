@@ -7,6 +7,11 @@
 ;============================ end_copyright_notice =============================
 
 
+; REQUIRES: regkeys
+;
+; RUN:   igc_opt %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=5 \
+; RUN:           -platformbmg \
+; RUN: | FileCheck %s
 
 ; CHECK-LABEL: target datalayout
 ; %__StructSOALayout_{{.*}} = type <{ %__StructAOSLayout_{{.*}} }>

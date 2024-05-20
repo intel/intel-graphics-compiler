@@ -6735,7 +6735,7 @@ void EmitPass::emitMediaBlockIO(const llvm::GenIntrinsicInst* inst, bool isRead)
     }
 
     auto surfaceType = isBindless ? ESURFACE_BINDLESS : ESURFACE_NORMAL;
-    if (m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_LPG_CORE))
+    if (m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_HPG_CORE))
     {
         m_encoder->LSC_Typed2dBlock(LSC_STORE_BLOCK2D, pDst, surfaceType, pImg, pXOffset, pYOffset, (int)widthInBytes, (int)blockHeight);
     }
@@ -6792,7 +6792,7 @@ void EmitPass::emitMediaBlockRectangleRead(llvm::Instruction* inst)
     IGC_ASSERT(blockWidth * blockHeight == pDst->GetSize());
 
     auto surfaceType = isBindless ? ESURFACE_BINDLESS : ESURFACE_NORMAL;
-    if (m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_LPG_CORE))
+    if (m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_HPG_CORE))
     {
         m_encoder->LSC_Typed2dBlock(LSC_LOAD_BLOCK2D, pDst, surfaceType, src, xOffset, yOffset, (int)blockWidth, (int)blockHeight);
     }
@@ -7030,7 +7030,7 @@ void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
             CVariable* dstVar = numPasses_axisX == 1 ? m_destination : pTempDest;
 
             auto surfaceType = isBindless ? ESURFACE_BINDLESS : ESURFACE_NORMAL;
-            if (m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_LPG_CORE))
+            if (m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_HPG_CORE))
             {
                 m_encoder->LSC_Typed2dBlock(
                     LSC_LOAD_BLOCK2D,
@@ -7414,7 +7414,7 @@ void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
                 blockHeight;
 
             auto surfaceType = isBindless ? ESURFACE_BINDLESS : ESURFACE_NORMAL;
-            if (m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_LPG_CORE))
+            if (m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_HPG_CORE))
             {
                 m_encoder->LSC_Typed2dBlock(
                     LSC_STORE_BLOCK2D,
@@ -8705,7 +8705,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
             emitStateRegID(11, 13);
         else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE_HPC_CORE)
             emitStateRegID(12, 14);
-        else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE2_LPG_CORE)
+        else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE2_HPG_CORE)
             emitStateRegID(11, 15);
         else
             emitStateRegID(12, 14);
@@ -8720,7 +8720,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
                  IGFX_XE_HPC_CORE) {
           emitStateRegID(9, 11);
         }
-        else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE2_LPG_CORE)
+        else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE2_HPG_CORE)
             emitStateRegID(8, 9);
         else
             emitStateRegID(8, 8);
@@ -8770,7 +8770,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
                  IGFX_XE_HPC_CORE) {
           emitStateRegID(4, 5);
         }
-        else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE2_LPG_CORE)
+        else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE2_HPG_CORE)
             emitStateRegID(4, 6);
         else
             emitStateRegID(4, 7);
@@ -15910,7 +15910,7 @@ void EmitPass::emitFlushSamplerCache()
 
 void EmitPass::emitUniformAtomicCounter(llvm::GenIntrinsicInst* pInsn)
 {
-    if (m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_LPG_CORE))
+    if (m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_HPG_CORE))
     {
         return emitLscUniformAtomicCounter(pInsn);
     }
@@ -21823,7 +21823,7 @@ EmitPass::cacheOptionsForConstantBufferLoads(Instruction* inst) const
 {
     Optional<LSC_CACHE_OPTS> cacheOpts;
     if (IGC_IS_FLAG_DISABLED(DisableSystemMemoryCachingInGPUForConstantBuffers) &&
-        m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_LPG_CORE))
+        m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_HPG_CORE))
     {
         if (auto Opts = cacheOptionsForConstantBufferLoads(inst, LSC_L1C_L3CC))
             cacheOpts = *Opts;

@@ -212,8 +212,17 @@ void CShader::EOTURBWrite()
 // If return value is not a nullptr, the returned variable is a send message
 // writeback variable that must be read in order to wait for URB Fence
 // completion, e.g. the variable may be used as payload to EOTGateway.
-CVariable* CShader::URBFence()
+CVariable* CShader::URBFence(LSC_SCOPE scope)
 {
+    if (m_Platform->hasLSCUrbMessage())
+    {
+        encoder.LSC_Fence(LSC_URB, scope, LSC_FENCE_OP_EVICT);
+        encoder.Push();
+        // Return nullptr as LSC URB message has no writeback register
+        // to read.
+        return nullptr;
+    }
+    else
     {
         // A legacy HDC URB fence message issued by a thread causes further
         // messages issued by the thread to be blocked until all previous URB
@@ -941,7 +950,8 @@ CVariable* CShader::GetHWTID()
     {
         if (m_Platform->getHWTIDFromSR0())
         {
-            if (m_Platform->getPlatformInfo().eProductFamily == IGFX_LUNARLAKE)
+            if ((m_Platform->getPlatformInfo().eProductFamily == IGFX_BMG) ||
+                (m_Platform->getPlatformInfo().eProductFamily == IGFX_LUNARLAKE))
             {
                 if (m_DriverInfo->supportsLogicalSSIDInHWTID())
                 {
@@ -1475,6 +1485,14 @@ uint CShader::GetNbVectorElementAndMask(llvm::Value* val, uint32_t& mask)
                     // if the vector is accessed by anything else than direct Extract we cannot prune it
                     maxIndex = nbElement;
                     break;
+                }
+                // Non-transposed LSC load messages support only 1, 2, 3, 4 and
+                // 8 element vectors. Transposed loads also support 16, 32 and 64.
+                if (m_Platform->hasLSCUrbMessage() &&
+                    (IID == GenISAIntrinsic::GenISA_URBRead ||
+                     IID == GenISAIntrinsic::GenISA_URBReadOutput))
+                {
+                    maxIndex = maxIndex > 4 ? iSTD::RoundPower2((DWORD)maxIndex) : maxIndex;
                 }
 
                 mask = BIT(maxIndex) - 1;
@@ -3362,7 +3380,7 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool,
             {
                 mult = 2;
             }
-            if (m_Platform->isCoreChildOf(IGFX_XE2_LPG_CORE) && value->getType()->isIntegerTy(16) && m_SIMDSize == SIMDMode::SIMD16)
+            if (m_Platform->isCoreChildOf(IGFX_XE2_HPG_CORE) && value->getType()->isIntegerTy(16) && m_SIMDSize == SIMDMode::SIMD16)
             {
                 IGC_ASSERT(m_Platform->getGRFSize() == 64);
                 mult = 2;

@@ -374,6 +374,10 @@ void InitGt_12_70SwWaTable(
        PWA_TABLE                       pWaTable,
        PSKU_FEATURE_TABLE              pSkuTable,
        PWA_INIT_PARAM                  pWaParam);
+void InitGt_20_01HwWaTable(
+       PWA_TABLE                       pWaTable,
+       PSKU_FEATURE_TABLE              pSkuTable,
+       PWA_INIT_PARAM                  pWaParam);
 void InitGt_20_04HwWaTable(
        PWA_TABLE                       pWaTable,
        PSKU_FEATURE_TABLE              pSkuTable,

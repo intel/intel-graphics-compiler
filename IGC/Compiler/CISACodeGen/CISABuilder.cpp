@@ -29,6 +29,7 @@ SPDX-License-Identifier: MIT
 #include <string>
 #include <fstream>
 #include "Probe/Assertion.h"
+#include "messageEncoding.hpp"
 
 #if !defined(_WIN32)
 #   define _strdup strdup
@@ -2220,6 +2221,9 @@ namespace IGC
 
     void CEncoder::Send(CVariable* dst, CVariable* src, uint exDesc, CVariable* messDescriptor, bool isSendc)
     {
+        IGC_ASSERT_MESSAGE(m_program->m_Platform->getPlatformInfo().eProductFamily < IGFX_BMG ||
+            (exDesc & 0xF) == EU_MESSAGE_TARGET_SFID_BTD || (exDesc & 0xF) == EU_MESSAGE_TARGET_SFID_RTA || (exDesc & 0xF) == EU_GEN7_MESSAGE_TARGET_PIXEL_INTERPOLATOR,
+            "raw send is not allowed on bmg+ platforms");
         if (dst && dst->IsUniform())
         {
             m_encoderState.m_simdSize = m_encoderState.m_uniformSIMDSize;
@@ -2252,6 +2256,9 @@ namespace IGC
 
     void CEncoder::Sends(CVariable* dst, CVariable* src0, CVariable* src1, uint ffid, CVariable* exDesc, CVariable* messDescriptor, bool isSendc, bool hasEOT)
     {
+        IGC_ASSERT_MESSAGE(m_program->m_Platform->getPlatformInfo().eProductFamily < IGFX_BMG ||
+            ffid == EU_MESSAGE_TARGET_SFID_BTD || ffid == EU_MESSAGE_TARGET_SFID_RTA || ffid == EU_GEN7_MESSAGE_TARGET_PIXEL_INTERPOLATOR,
+            "raw sends is not allowed on bmg+ platforms");
         if (exDesc->IsImmediate() && src1 == nullptr)
         {
             Send(dst, src0, (uint)exDesc->GetImmediateValue(), messDescriptor, isSendc);
@@ -3199,7 +3206,7 @@ namespace IGC
                     return Xe_PVC; // PVC XL A0 RevID=0x0
                 }
             }
-        case IGFX_XE2_LPG_CORE:
+        case IGFX_XE2_HPG_CORE:
             return Xe2;
             // fall-through
         default:

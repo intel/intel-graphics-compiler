@@ -47,7 +47,7 @@ bool hasQWAddSupport() const
 {
     return (m_platformInfo.eProductFamily == IGFX_PVC &&
         m_platformInfo.usRevId >= REVISION_D)  // true from PVC XT B0 RevID==0x5==REVISION_D
-        || isCoreChildOf(IGFX_XE2_LPG_CORE);
+        || isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
 //all the platforms which DONOT support 64 bit int operations
@@ -148,13 +148,13 @@ bool enablePSsimd32() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GE
 
 bool supportSimd32PerPixelPSWithNumSamples16() const
 {
-    return isCoreChildOf(IGFX_XE2_LPG_CORE);
+    return isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
 bool canSupportWMTPWithoutBTD() const {
     // Returns true if the platform has the capability of supporting
     // WMTP but WMTP isn't supported for all shader types
-    return isCoreChildOf(IGFX_XE2_LPG_CORE);
+    return isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
 
@@ -162,12 +162,12 @@ bool canSupportWMTP() const
 {
     // Returns true if the platform has the capability of supporting
     // WMTP but WMTP isn't supported for all shader types
-    return isCoreChildOf(IGFX_XE2_LPG_CORE);
+    return isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
 bool supportsWMTPForShaderType(ShaderType type) const {
 
-    if (isCoreChildOf(IGFX_XE2_LPG_CORE)) {
+    if (isCoreChildOf(IGFX_XE2_HPG_CORE)) {
         switch(type) {
         case ShaderType::COMPUTE_SHADER:
         case ShaderType::OPENCL_SHADER:
@@ -502,13 +502,13 @@ bool hasSamplerSupport() const
 
 bool hasSamplerFeedbackSurface() const
 {
-    return m_platformInfo.eProductFamily >= IGFX_LUNARLAKE;
+    return m_platformInfo.eProductFamily >= IGFX_BMG;
 }
 
 // logical subslice id
 bool hasLogicalSSID() const
 {
-    return isCoreChildOf(IGFX_XE2_LPG_CORE);
+    return isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
 uint32_t getMinPushConstantBufferAlignment() const
@@ -561,8 +561,9 @@ unsigned getSlmSizePerSsOrDss() const
             slmSizePerSsOrDss = 131072;
         }
     }
-    else if (isProductChildOf(IGFX_LUNARLAKE))
+    else if (isProductChildOf(IGFX_BMG))
     {
+        // SLMSizeInKb is reported per SS for BMG+
         slmSizePerSsOrDss = GetGTSystemInfo().SLMSizeInKb * 1024;
     }
     else if (isProductChildOf(IGFX_PVC))
@@ -608,7 +609,7 @@ bool supportJointMatrixOCLExtension() const
 
 bool hasPackedRestrictedFloatVector() const
 {
-    return !isCoreChildOf(IGFX_XE2_LPG_CORE);
+    return !isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
 bool supportLoadThreadPayloadForCompute() const
@@ -768,7 +769,7 @@ bool supportHWDispatchWalkOrder() const
 {
     const bool hasHWDispatchWalkOrder =
         (m_platformInfo.eProductFamily == IGFX_ARROWLAKE && !(GFX_IS_ARL_S(m_platformInfo.usDeviceID)))
-        || isCoreChildOf(IGFX_XE2_LPG_CORE);
+        || isCoreChildOf(IGFX_XE2_HPG_CORE);
     return hasHWDispatchWalkOrder;
 }
 
@@ -781,7 +782,7 @@ bool hasHalfSIMDLSC() const
         (m_platformInfo.eProductFamily == IGFX_PVC && m_platformInfo.usRevId >= REVISION_B) ||
         m_platformInfo.eProductFamily == IGFX_METEORLAKE ||
         m_platformInfo.eProductFamily == IGFX_ARROWLAKE ||
-        isCoreChildOf(IGFX_XE2_LPG_CORE);
+        isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
 bool NeedsLSCFenceUGMBeforeEOT() const
@@ -793,7 +794,7 @@ bool hasPartialInt64Support() const
 {
     // false for PVC XL A0 RevID==0x0, true from PVC XT A0 RevID==0x3==REVISION_B
     return (m_platformInfo.eProductFamily == IGFX_PVC && m_platformInfo.usRevId >= REVISION_B) ||
-        isCoreChildOf(IGFX_XE2_LPG_CORE);
+        isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
 bool hasInt64Add() const
@@ -818,7 +819,7 @@ bool hasInt64DstMul() const
 {
 
     return (m_platformInfo.eProductFamily == IGFX_PVC && m_platformInfo.usRevId < REVISION_B)
-            || isCoreChildOf(IGFX_XE2_LPG_CORE);
+            || isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
 bool hasExecSize16DPAS() const
@@ -843,7 +844,7 @@ bool hasNoFullI64Support() const
 
 bool hasBFTFDenormMode() const
 {
-    return isCoreChildOf(IGFX_XE2_LPG_CORE);
+    return isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
 bool WaPredicatedStackIDRelease() const
@@ -901,6 +902,7 @@ bool supports3DAndCubeSampleD() const
         m_platformInfo.eProductFamily != IGFX_DG2 &&
         m_platformInfo.eProductFamily != IGFX_METEORLAKE &&
         m_platformInfo.eProductFamily != IGFX_ARROWLAKE &&
+        m_platformInfo.eProductFamily != IGFX_BMG &&
         m_platformInfo.eProductFamily != IGFX_LUNARLAKE
         ) ||
         IGC_IS_FLAG_DISABLED(EnableSampleDEmulation);
@@ -957,7 +959,7 @@ bool hasURBFence() const
     return (m_platformInfo.eProductFamily == IGFX_DG2 ||
         m_platformInfo.eProductFamily == IGFX_METEORLAKE ||
         m_platformInfo.eProductFamily == IGFX_ARROWLAKE ||
-        isCoreChildOf(IGFX_XE2_LPG_CORE));
+        isCoreChildOf(IGFX_XE2_HPG_CORE));
 }
 
 bool hasMultiTile() const
@@ -1002,7 +1004,7 @@ bool hasLSCTypedMessage() const
 
 bool LSC2DSupportImmXY() const
 {
-    return false;
+    return isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
 SIMDMode getMaxLSCTypedMessageSize() const
@@ -1034,13 +1036,13 @@ bool hasInt64SLMAtomicCAS() const
 {
     // false for PVC XL A0 RevID==0x0, true from PVC XT A0 RevID==0x3==REVISION_B
     return (m_platformInfo.eProductFamily == IGFX_PVC && m_platformInfo.usRevId >= REVISION_B)
-            || isCoreChildOf(IGFX_XE2_LPG_CORE);
+            || isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
 bool hasFP64GlobalAtomicAdd() const
 {
     return (m_platformInfo.eProductFamily == IGFX_PVC && m_platformInfo.usRevId > REVISION_A0)
-            || isCoreChildOf(IGFX_XE2_LPG_CORE);
+            || isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
 bool supports16BitLdMcs() const
@@ -1068,7 +1070,7 @@ bool typedReadSupportsAllRenderableFormats() const
         (m_platformInfo.eProductFamily == IGFX_METEORLAKE) ||
         (m_platformInfo.eProductFamily == IGFX_ARROWLAKE) ||
         (m_platformInfo.eRenderCoreFamily == IGFX_XE_HPC_CORE) ||
-        isCoreChildOf(IGFX_XE2_LPG_CORE))
+        isCoreChildOf(IGFX_XE2_HPG_CORE))
     {
         return IGC_IS_FLAG_DISABLED(ForceFormatConversionDG2Plus);
     }
@@ -1096,12 +1098,12 @@ bool needsWAForThreadsUtilization() const
 bool supportDualSimd8PS() const
 {
     return IGC_IS_FLAG_ENABLED(EnableDualSIMD8) && (m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE) &&
-        !isCoreChildOf(IGFX_XE2_LPG_CORE);
+        !isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
 bool hasDualSimd8Payload() const
 {
-    return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE) && !isCoreChildOf(IGFX_XE2_LPG_CORE);
+    return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE) && !isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
 unsigned int getMaxMeshShaderThreads() const {
@@ -1138,7 +1140,7 @@ unsigned int getMaxNumberHWThreadForEachWG() const
             return getMaxNumberThreadPerSubslice() * 2;
         }
     }
-    else if (m_platformInfo.eRenderCoreFamily == IGFX_XE2_LPG_CORE)
+    else if (m_platformInfo.eRenderCoreFamily == IGFX_XE2_HPG_CORE)
     {
         // Each WG is dispatched into one subslice
         return getMaxNumberThreadPerSubslice();
@@ -1186,7 +1188,7 @@ bool matchImmOffsetsLSC() const
     };
     auto immOffsetMode = (LscMatchImmMode)IGC_GET_FLAG_VALUE(LscImmOffsMatch);
     return hasLSC() &&
-        (immOffsetMode >= ON || (immOffsetMode == IF_HW_SUPPORTED && isCoreChildOf(IGFX_XE2_LPG_CORE)));
+        (immOffsetMode >= ON || (immOffsetMode == IF_HW_SUPPORTED && isCoreChildOf(IGFX_XE2_HPG_CORE)));
 }
 
 bool WaCubeHFPrecisionBug() const
@@ -1218,7 +1220,7 @@ bool supportAIParameterCombiningWithLODBiasEnabled() const
            GFX_IS_DG2_G11_CONFIG(m_platformInfo.usDeviceID) ||
            m_platformInfo.eProductFamily == IGFX_METEORLAKE ||
            m_platformInfo.eProductFamily == IGFX_ARROWLAKE ||
-           isCoreChildOf(IGFX_XE2_LPG_CORE));
+           isCoreChildOf(IGFX_XE2_HPG_CORE));
 }
 
 bool useScratchSpaceForOCL() const
@@ -1259,6 +1261,8 @@ bool hasNoFP64Inst() const {
 
 //all the platforms which have correctly rounded macros (INVM, RSQRTM, MADM)
 bool hasCorrectlyRoundedMacros() const {
+    if (isCoreChildOf(IGFX_XE2_HPG_CORE) && IGC_IS_FLAG_DISABLED(DisableCorrectlyRoundedMacros))
+        return true;
     return (m_platformInfo.eProductFamily != IGFX_ICELAKE_LP &&
         m_platformInfo.eProductFamily != IGFX_LAKEFIELD &&
         m_platformInfo.eProductFamily != IGFX_JASPERLAKE &&
@@ -1271,6 +1275,7 @@ bool hasCorrectlyRoundedMacros() const {
         m_platformInfo.eProductFamily != IGFX_DG2 &&
         m_platformInfo.eProductFamily != IGFX_METEORLAKE) &&
         m_platformInfo.eProductFamily != IGFX_ARROWLAKE &&
+        m_platformInfo.eProductFamily != IGFX_BMG &&
         m_platformInfo.eProductFamily != IGFX_LUNARLAKE;
 }
 
@@ -1278,7 +1283,7 @@ bool hasCorrectlyRoundedMacros() const {
 bool preferFP32IntDivRemEmu() const {
     return (m_platformInfo.eProductFamily == IGFX_METEORLAKE ||
         m_platformInfo.eProductFamily == IGFX_ARROWLAKE ||
-        isCoreChildOf(IGFX_XE2_LPG_CORE));
+        isCoreChildOf(IGFX_XE2_HPG_CORE));
 }
 
 // Platforms that haven't HW support for FP64 operations
@@ -1333,7 +1338,7 @@ bool emulateByteScraterMsgForSS() const
 bool has64BMediaBlockRW() const
 {
     bool hasBlockRW = (IGC_IS_FLAG_ENABLED(Enable64BMediaBlockRW) && isProductChildOf(IGFX_XE_HP_SDV));
-    hasBlockRW = hasBlockRW || isCoreChildOf(IGFX_XE2_LPG_CORE);
+    hasBlockRW = hasBlockRW || isCoreChildOf(IGFX_XE2_HPG_CORE);
     return hasBlockRW;
 }
 
@@ -1392,37 +1397,37 @@ uint32_t getMaxBlockMsgSize(bool isSLM) const
 
 bool hasLSCUrbMessage() const
 {
-    return isCoreChildOf(IGFX_XE2_LPG_CORE);
+    return isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
 bool hasSampleMlodMessage() const
 {
-    return isCoreChildOf(IGFX_XE2_LPG_CORE);
+    return isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
 bool forceSamplerHeader() const
 {
-    return isCoreChildOf(IGFX_XE2_LPG_CORE);
+    return isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
 bool hasDualKSPPS() const
 {
-    return isCoreChildOf(IGFX_XE2_LPG_CORE);
+    return isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
 bool hasLSCSamplerRouting() const
 {
-    return isCoreChildOf(IGFX_XE2_LPG_CORE);
+    return isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
 bool supportStochasticLod() const
 {
-    return isCoreChildOf(IGFX_XE2_LPG_CORE);
+    return isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
 bool supportsProgrammableOffsets() const
 {
-    return isCoreChildOf(IGFX_XE2_LPG_CORE);
+    return isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
 // ***** Below go accessor methods for testing WA data from WA_TABLE *****
@@ -1575,12 +1580,12 @@ const SCompilerHwCaps& GetCaps() { return m_caps; }
 
 bool supportHeaderRTW() const
 {
-    return (!isCoreChildOf(IGFX_XE2_LPG_CORE));
+    return (!isCoreChildOf(IGFX_XE2_HPG_CORE));
 }
 
 bool preemptionSupported() const
 {
-    if (isCoreChildOf(IGFX_XE_HPC_CORE) && !isCoreChildOf(IGFX_XE2_LPG_CORE))
+    if (isCoreChildOf(IGFX_XE_HPC_CORE) && !isCoreChildOf(IGFX_XE2_HPG_CORE))
         return false;
 
     return GetPlatformFamily() >= IGFX_GEN9_CORE;
@@ -1617,7 +1622,7 @@ unsigned forceQwAtSrc0ForQwShlWA() const
 
 bool hasSIMD8Support() const
 {
-    if (isCoreChildOf(IGFX_XE2_LPG_CORE))
+    if (isCoreChildOf(IGFX_XE2_HPG_CORE))
         return false;
     return !(m_platformInfo.eRenderCoreFamily == IGFX_XE_HPC_CORE);
 }
@@ -1641,18 +1646,18 @@ bool supportLargeGRF() const
 
 bool supportCheckCSThreadsLimit() const
 {
-    return (m_platformInfo.eRenderCoreFamily == IGFX_XE2_LPG_CORE);
+    return (m_platformInfo.eRenderCoreFamily == IGFX_XE2_HPG_CORE);
 }
 bool supportTriggerLargeGRFRetry() const
 {
-    return (m_platformInfo.eRenderCoreFamily == IGFX_XE2_LPG_CORE);
+    return (m_platformInfo.eRenderCoreFamily == IGFX_XE2_HPG_CORE);
 }
 
 
 
 bool EnableCSWalkerPass() const
 {
-    return isCoreChildOf(IGFX_XE2_LPG_CORE);
+    return isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
 bool limitedBCR() const
@@ -1665,7 +1670,7 @@ bool limitedBCR() const
 uint32_t getMaxAddressedHWThreads() const
 {
     // TODO Calculate the value
-    if (isCoreChildOf(IGFX_XE2_LPG_CORE))
+    if (isCoreChildOf(IGFX_XE2_HPG_CORE))
         return 8192;
     return 4096;
 }
@@ -1681,7 +1686,7 @@ uint32_t getVISAABIVersion() const {
 
 bool supportsNonDefaultLSCCacheSetting() const
 {
-    return isCoreChildOf(IGFX_XE2_LPG_CORE);
+    return isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
 bool isSupportedLSCCacheControlsEnum(LSC_L1_L3_CC l1l3cc, bool isLoad) const
@@ -1694,7 +1699,7 @@ bool isSupportedLSCCacheControlsEnum(LSC_L1_L3_CC l1l3cc, bool isLoad) const
         case LSC_L1UC_L3CC:
         case LSC_L1C_L3CC:
         case LSC_L1IAR_L3IAR:
-            return isCoreChildOf(IGFX_XE2_LPG_CORE);
+            return isCoreChildOf(IGFX_XE2_HPG_CORE);
         }
     }
     return true;
@@ -1706,7 +1711,7 @@ unsigned int roundUpTgsmSize(DWORD size) const
     size = iSTD::Round(size, blockSize) / blockSize;
     if (size > 16)
     {
-        if (isCoreChildOf(IGFX_XE2_LPG_CORE))
+        if (isCoreChildOf(IGFX_XE2_HPG_CORE))
         {
             const DWORD roundSize = iSTD::RoundPower2(size) / 4;
             return iSTD::Round(size, roundSize) * blockSize;
@@ -1728,7 +1733,7 @@ unsigned getRayTracingTileYDim2D() const
 
 bool preferLSCCache() const
 {
-    return isCoreChildOf(IGFX_XE2_LPG_CORE);
+    return isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
 

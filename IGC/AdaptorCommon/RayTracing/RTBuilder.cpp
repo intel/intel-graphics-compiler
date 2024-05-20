@@ -1152,7 +1152,7 @@ std::pair<uint32_t, uint32_t> RTBuilder::getSliceIDBitsInSR0() const {
     {
         return {12, 14};
     }
-    else if (Ctx.platform.GetPlatformFamily() == IGFX_XE2_LPG_CORE)
+    else if (Ctx.platform.GetPlatformFamily() == IGFX_XE2_HPG_CORE)
     {
         return {11, 15};
     }
@@ -1168,7 +1168,7 @@ std::pair<uint32_t, uint32_t> RTBuilder::getSubsliceIDBitsInSR0() const {
     {
         return {12, 13};
     }
-    else if (Ctx.platform.GetPlatformFamily() == IGFX_XE2_LPG_CORE)
+    else if (Ctx.platform.GetPlatformFamily() == IGFX_XE2_HPG_CORE)
     {
         return {8, 9};
     }
@@ -1541,7 +1541,8 @@ Value* RTBuilder::getSyncStackID()
     {
         return _getSyncStackID_Xe_HPC(VALUE_NAME("SyncStackID"));
     }
-    else if (PlatformInfo.eProductFamily == IGFX_LUNARLAKE)
+    else if (PlatformInfo.eProductFamily == IGFX_BMG ||
+             PlatformInfo.eProductFamily == IGFX_LUNARLAKE)
     {
         return _getSyncStackID_Xe2(VALUE_NAME("SyncStackID"));
     }

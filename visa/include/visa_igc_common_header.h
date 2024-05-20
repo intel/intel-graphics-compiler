@@ -870,6 +870,7 @@ enum LSC_SFID {
   LSC_UGML, // .ugml
   LSC_TGM,  // .tgm
   LSC_SLM,  // .slm
+  LSC_URB,  // .urb
 };
 
 enum LSC_OP {

@@ -35,6 +35,11 @@
 ; }
 
 
+; REQUIRES: regkeys
+;
+; RUN:   igc_opt %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=1 \
+; RUN:           -platformbmg \
+; RUN: | FileCheck %s
 ;
 ; CHECK-LABEL: define spir_kernel void @test_vector
 ; CHECK:       store <2 x double>

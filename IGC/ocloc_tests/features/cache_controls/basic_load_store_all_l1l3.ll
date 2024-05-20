@@ -13,6 +13,10 @@
 ; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_cache_controls -o %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-PVC
 
+; REQUIRES: xe2-hpg-supported
+; We want to run these tests on Xe2. This is blocked by ocloc (NEO) which doesn't have any Xe2 platform in open source yet.
+; RUN: ocloc compile -spirv_input -file %t.spv -device xe2-hpg -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-BMG
+
 target triple = "spir64-unknown-unknown"
 
 
@@ -129,6 +133,7 @@ entry:
 
 
 ; CHECK: .kernel "TestLoad_L1_Uncached__L3_ConstCached"
+; CHECK-BMG: lsc_load.ugm.uc.cc ({{.*}})
 ; CHECK-PVC: lsc_load.ugm ({{.*}})
 ; CHECK: lsc_store.ugm ({{.*}})
 define spir_kernel void @TestLoad_L1_Uncached__L3_ConstCached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
@@ -145,6 +150,7 @@ entry:
 
 
 ; CHECK: .kernel "TestLoad_L1_Cached__L3_ConstCached"
+; CHECK-BMG: lsc_load.ugm.ca.cc ({{.*}})
 ; CHECK-PVC: lsc_load.ugm ({{.*}})
 ; CHECK: lsc_store.ugm ({{.*}})
 define spir_kernel void @TestLoad_L1_Cached__L3_ConstCached(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {
@@ -161,6 +167,7 @@ entry:
 
 
 ; CHECK: .kernel "TestLoad_L1_InvalidateAfterRead__L3_InvalidateAfterRead"
+; CHECK-BMG: lsc_load.ugm.ri.ri ({{.*}})
 ; CHECK-PVC: lsc_load.ugm ({{.*}})
 ; CHECK: lsc_store.ugm ({{.*}})
 define spir_kernel void @TestLoad_L1_InvalidateAfterRead__L3_InvalidateAfterRead(i32 addrspace(1)* %in, i32 addrspace(1)* %out) {

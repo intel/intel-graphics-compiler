@@ -9,6 +9,11 @@
 ; This test is a modification of store_use_vector.ll and it's purpose is to make sure, that debug calls
 ; are neutral to LdStCombine pass optimizations. They should not be treated as fence-like calls.
 ;
+; REQUIRES: regkeys
+;
+; RUN:   igc_opt %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=1 \
+; RUN:           -platformbmg \
+; RUN: | FileCheck %s
 
 ;
 ; CHECK-LABEL: define spir_kernel void @f0

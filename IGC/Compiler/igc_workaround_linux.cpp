@@ -188,10 +188,13 @@ namespace IGC
                 InitGt_12_70SwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
                 break;
             }
-            case IGFX_XE2_LPG_CORE:
+            case IGFX_XE2_HPG_CORE:
             {
                 switch (GFX_GET_GMD_RELEASE_VERSION_RENDER(platform->getPlatformInfo()))
                 {
+                case GFX_GMD_ARCH_20_RELEASE_XE2_HPG_X2:
+                    InitGt_20_01HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+                    break;
                 case GFX_GMD_ARCH_20_RELEASE_XE2_LPG:
                     InitGt_20_04HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
                     break;

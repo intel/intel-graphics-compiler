@@ -35,6 +35,11 @@
 ;
 ; The barrier stops combining from going accross it. As result, two stores are generated.
 
+; REQUIRES: regkeys
+;
+; RUN:   igc_opt %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=1 \
+; RUN:           -platformbmg \
+; RUN: | FileCheck %s
 
 ;
 ; CHECK-LABEL: target datalayout

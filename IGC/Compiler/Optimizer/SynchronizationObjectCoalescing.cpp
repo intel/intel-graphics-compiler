@@ -928,6 +928,9 @@ InstructionMask SynchronizationObjectCoalescing::GetDefaultWriteMemoryInstructio
         case LSC_SLM: // .slm
             result |= SharedMemoryWriteOperation;
             break;
+        case LSC_URB: // .urb
+            result |= UrbWriteOperation;
+            break;
         }
     }
     else if (IsTypedMemoryFenceOperation(pSourceInst))
@@ -1029,6 +1032,9 @@ InstructionMask SynchronizationObjectCoalescing::GetDefaultMemoryInstructionMask
             break;
         case LSC_SLM: // .slm
             result |= AtomicOperation | SharedMemoryWriteOperation | SharedMemoryReadOperation;
+            break;
+        case LSC_URB: // .urb
+            result |= UrbWriteOperation | OutputUrbReadOperation;
             break;
         }
     }

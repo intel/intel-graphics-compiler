@@ -11,6 +11,11 @@
 ; a module.
 
 
+; REQUIRES: regkeys
+;
+; RUN:   igc_opt %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=1 \
+; RUN:           -platformbmg \
+; RUN: | FileCheck %s
 
 ; CHECK-LABEL: target datalayout
 ; CHECK:       %__StructSOALayout_ = type <{ <2 x i32>, <2 x i32> }>

@@ -7,6 +7,11 @@
 ;============================ end_copyright_notice =============================
 
 
+; REQUIRES: regkeys
+;
+; RUN:   igc_opt %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=1 \
+; RUN:           -platformbmg \
+; RUN: | FileCheck %s
 
 
  ; Given  a0 = shl a, 1

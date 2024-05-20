@@ -10,6 +10,11 @@
 ; This test is test that a struct is prefered over a vector to avoid additional
 ; bitcast instructions.
 
+; REQUIRES: regkeys
+;
+; RUN:   igc_opt %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=1 \
+; RUN:           -platformbmg \
+; RUN: | FileCheck %s
 ;
 ; CHECK-LABEL: target datalayout
 ; CHECK:       %__StructSOALayout_ = type <{ float, i32 }>
