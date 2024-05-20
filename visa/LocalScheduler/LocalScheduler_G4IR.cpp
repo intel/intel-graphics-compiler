@@ -2458,6 +2458,13 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
   // Used to avoid WAW subreg hazards
   Node *lastScheduled = nullptr;
 
+  // Send queue, used to emulate the send queue in HW
+  SendQueue sQueue(*kernel);
+  SendQueue oQueue(*kernel);
+  // The Stall cycle because of the full of the send queue
+  uint32_t sQueueStallCycle = 0;
+  uint32_t oQueueStallCycle = 0;
+
   auto updateForSucc = [&](Node *scheduled) {
     for (auto &curSucc : scheduled->succs) {
       Node *succ = curSucc.getNode();
@@ -2495,8 +2502,21 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
     schedule->scheduledNodes.push_back(scheduled);
     lastScheduled = scheduled;
 
-    // Set the cycle at which this node is scheduled.
-    scheduled->schedTime = currCycle;
+    if (getOptions()->getOption(vISA_SendQueueSched) &&
+        scheduled->getInstructions()->front()->isSend()) {
+      // Set the cycle at which this node is scheduled.
+      // Add stall cycle from send queue if there is stall happened
+      G4_INST *inst = *scheduled->getInstructions()->begin();
+      if (inst->getMsgDesc()->isSampler()) {
+        scheduled->schedTime = currCycle + sQueueStallCycle;
+      } else {
+        scheduled->schedTime = currCycle + oQueueStallCycle;
+      }
+    } else {
+      // Set the cycle at which this node is scheduled.
+      scheduled->schedTime = currCycle;
+    }
+
 
     updateForSucc(scheduled);
 
@@ -2693,6 +2713,70 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
     }
   };
 
+  auto applySendQueueHeuristic = [&](SendQueue &sQueue,
+                                     uint32_t &sendQueueStallCycle,
+                                     Node *scheduled) {
+    Node *rescheduled = nullptr;
+    // Fixeme: currently, the send source register read latency is used as
+    // dequeue cycles. Update if it's not accurate
+    unsigned sendLatencyOfScheduled =
+        LT.getSendSrcReadLatency(scheduled->getInstructions()->front());
+
+    //Update Queue according to current cycle
+    sQueue.updateCycle(currCycle);
+
+    if (sQueue.isFull()) {//Stall will happen if no change
+      Node *topNode = sQueue.front();
+      int sendLatency = LT.getSendSrcReadLatency(topNode->getInstructions()->front());
+      sendLatency -= sQueue.size();
+      sendQueueStallCycle = sendLatency;
+
+      // Because of stall cycle, adjust the preReadyQueue and readyList
+      while (!preReadyQueue.empty()) {
+        Node *readyCandidate = preReadyQueue.top();
+        if (readyCandidate->earliest > (currCycle + sendQueueStallCycle))
+          break;
+        readyList.push(readyCandidate);
+        preReadyQueue.pop();
+      }
+
+      // Find candidate which is not send in the readyList. For none-candidates,
+      // have to be popped to a temp list, which will be added back.
+      std::vector<Node *> instList;
+      size_t readyListSize = readyList.size();
+      while (!readyList.empty()) {
+        Node *candidate = readyList.top();
+        readyList.pop();
+        if (!candidate->getInstructions()->front()->isSend()) {
+          rescheduled = candidate;
+          break;
+        }
+        instList.push_back(candidate);
+      }
+
+      // If rescheduled, add the previous scheduled into list to add back to
+      // queue. Otherwise, push into send queue. Note the send queue itself will
+      // pop top item if it's full.
+      if (rescheduled) {
+        instList.push_back(scheduled);
+      } else {
+        rescheduled = scheduled;
+        sQueue.push(rescheduled, currCycle + sendLatencyOfScheduled);
+      }
+
+      // Add back to readyList
+      for (auto N : instList) {
+        readyList.push(N);
+      }
+      assert(readyList.size() == readyListSize);
+    } else {//Not full, just push to queue
+      rescheduled = scheduled;
+      sQueue.push(scheduled, currCycle + sendLatencyOfScheduled);
+    }
+
+    return rescheduled;
+  };
+
   collectRoots();
   for (auto N : Roots) {
     preReadyQueue.push(N);
@@ -2725,6 +2809,19 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
     // Allow fall-through behavior to try different heuristics if possible.
     // The heuristics are ordered based on their priority.
     Node *heuCandidate = nullptr;
+    G4_INST *inst = *scheduled->getInstructions()->begin();
+
+    if (getOptions()->getOption(vISA_SendQueueSched) && inst->isSend()) {
+      G4_SendDesc *MsgDesc = inst->getMsgDesc();
+      if (MsgDesc->isSampler()) {
+        heuCandidate =
+            applySendQueueHeuristic(sQueue, sQueueStallCycle, scheduled);
+      } else {
+        heuCandidate =
+            applySendQueueHeuristic(oQueue, oQueueStallCycle, scheduled);
+      }
+    }
+
     if (!heuCandidate && scheduleForSuppression()) {
       heuCandidate = applySuppressionHeuristic(scheduled, lastScheduled);
     }

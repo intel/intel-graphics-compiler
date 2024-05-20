@@ -295,6 +295,10 @@ unsigned getCoIssueUints() const {
         auto GEN = getPlatformGeneration();
         return (GEN >= PlatformGen::XE) ? 1 : 2;
 #else
+  if (getOptions()->getOption(vISA_SendQueueSched)) {
+    auto GEN = getPlatformGeneration();
+    return (GEN >= PlatformGen::XE) ? 1 : 2;
+  }
   return 2;
 #endif
 }
@@ -848,10 +852,7 @@ bool needNopAfterCFInstWA() const {
 }
 
 bool modelSendSrcReadLatency () const {
-  const TARGET_PLATFORM p = getPlatform();
-  if (p >= Xe_PVCXT)
-    return getOption(vISA_schedWithSendSrcReadCycle);
-  return false;
+  return getOption(vISA_schedWithSendSrcReadCycle);
 }
 
 bool hasReadSuppressionOrSharedLocalMemoryWAs() const {
@@ -880,5 +881,12 @@ bool hasMulMacRSIssue() const {
     return true;
 
   return VISA_WA_CHECK(getPWaTable(), Wa_18035690555);
+}
+
+uint32_t getSizeOfSendQueue() const {
+  if (getuint32Option(vISA_SendQueueEntries)) {
+    return getuint32Option(vISA_SendQueueEntries);
+  }
+  return 6;
 }
 // end HW capabilities

@@ -229,6 +229,64 @@ struct BucketDescr {
       : bucket(Bucket), operand(Operand), mask(Mask) {}
 };
 
+class SendQueue {
+public:
+  typedef std::pair<Node *, unsigned> sendLatencyCounterPair_t;
+  G4_Kernel &kernel;
+  std::list<sendLatencyCounterPair_t> sendCache;
+  unsigned entries = 0;
+
+  SendQueue(G4_Kernel &K) : kernel(K) {
+    entries = kernel.fg.builder->getSizeOfSendQueue();
+    unsigned threadSchedPolicy =
+        kernel.fg.builder->getuint32Option(vISA_threadSchedPolicy);
+    if (threadSchedPolicy) { // round robin policy
+      unsigned HWThreadsPerEU = kernel.getNumThreads();
+      entries = (entries % HWThreadsPerEU) ? (entries / HWThreadsPerEU + 1)
+                                           : (entries / HWThreadsPerEU);
+    }
+  }
+
+  ~SendQueue() = default;
+
+  void push(Node *n, unsigned initDelay) {
+    sendCache.push_back(sendLatencyCounterPair_t(n, initDelay));
+    if (sendCache.size() > entries) {
+      sendCache.erase(sendCache.begin());
+    }
+  }
+
+  void pop() {
+    if (!sendCache.empty()) {
+      sendCache.erase(sendCache.begin());
+    }
+  }
+
+  unsigned size() { return (int)sendCache.size(); }
+
+  Node *front() {
+    if (!sendCache.empty()) {
+      return (*sendCache.begin()).first;
+    } else {
+      return nullptr;
+    }
+  }
+
+  bool isFull() const { return sendCache.size() >= entries; }
+  bool isEmpty() const { return sendCache.empty(); }
+
+  void updateCycle(unsigned currentCycle) {
+    for (auto it = sendCache.begin(); it != sendCache.end();) {
+      if (currentCycle > (*it).second)
+        it = sendCache.erase(it);
+      else
+        ++it;
+    }
+  }
+
+  std::list<sendLatencyCounterPair_t> &getQueueEntries() { return sendCache; }
+};
+
 class DDD {
   std::vector<Node *> allNodes;
   // Used to allocate BucketNode, which is POD.

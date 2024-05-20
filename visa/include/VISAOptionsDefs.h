@@ -772,3 +772,8 @@ DEF_VISA_OPTION(vISA_EnableProgrammableOffsetsMessageBitInHeader, ET_BOOL,
 DEF_VISA_OPTION(vISA_staticProfiling, ET_BOOL, "-staticProfiling", UNUSED, true)
 DEF_VISA_OPTION(vISA_staticBBProfiling, ET_BOOL, "-staticBBProfiling", UNUSED, false)
 DEF_VISA_OPTION(vISA_hasMulMacRSIssue, ET_BOOL, "-hasMulMacRSIssue", UNUSED, false)
+DEF_VISA_OPTION(
+    vISA_threadSchedPolicy, ET_INT32, "-threadSchedPolicy",
+    "HW thread scheduling policy: 0: single thread first; 1: round robin;", 0)
+DEF_VISA_OPTION(vISA_SendQueueEntries, ET_INT32, "-sendQueueEntries", UNUSED, 0)
+DEF_VISA_OPTION(vISA_SendQueueSched, ET_BOOL, "-sendQueueSched", UNUSED, false)
