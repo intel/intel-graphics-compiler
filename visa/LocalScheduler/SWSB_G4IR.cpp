@@ -1001,44 +1001,53 @@ SBFootprint *G4_BB_SB::getFootprintForGRF(G4_Operand *opnd,
     LB = (unsigned short)opnd->getLinearizedStart();
     RB = (unsigned short)opnd->getLinearizedEnd();
     if (inst->isSend()) {
-      vASSERT((LB % builder.numEltPerGRF<Type_UB>()) == 0);
-      // For the operands of the send instructions,
-      // we are using the message length to avoid the in-consistence with the HW
-      // requirement.
-      //
-      if (opnd_num == Opnd_src0) {
-        RB = LB +
-             builder.numEltPerGRF<Type_UB>() *
-                 inst->getMsgDesc()->getSrc0LenRegs() -
-             1;
-      }
+      if (builder.useLSCForPayloadLoad()) {
+        mustBeWholeGRF = false;
+        if (opnd_num == Opnd_src0) {
+          RB = LB + inst->getMsgDesc()->getSrc0LenBytes() - 1;
+        }
+        if (inst->isSplitSend() && opnd_num == Opnd_src1) {
+          RB = LB + inst->getMsgDesc()->getSrc1LenBytes() - 1;
+        }
+        if (opnd_num == Opnd_dst) {
+          RB = LB + inst->getMsgDesc()->getDstLenBytes() - 1;
+        }
+        vISA_ASSERT(RB < (builder.numEltPerGRF<Type_UB>() * aregOffset),
+                    "Out of register bound");
+      } else {
+        vASSERT((LB % builder.numEltPerGRF<Type_UB>()) == 0);
+        if (opnd_num == Opnd_src0) {
+          RB = LB + inst->getMsgDesc()->getSrc0LenRegs() -
+               1;
+        }
 
-      if (inst->isSplitSend() && opnd_num == Opnd_src1) {
-        RB = LB +
-             builder.numEltPerGRF<Type_UB>() *
-                 inst->getMsgDesc()->getSrc1LenRegs() -
-             1;
-      }
+        if (inst->isSplitSend() && opnd_num == Opnd_src1) {
+          RB = LB +
+               builder.numEltPerGRF<Type_UB>() *
+                   inst->getMsgDesc()->getSrc1LenRegs() -
+               1;
+        }
 
-      if (opnd_num == Opnd_dst) {
-        int dstSize = inst->getMsgDesc()->getDstLenRegs();
-        // DG2 A0 W/A to treat SIMD8 SLM load with single GRF return as two GRF
-        // return
-        if (VISA_WA_CHECK(builder.getPWaTable(), Wa_14012562260) &&
-            inst->getExecSize() <= 8 && isSLMMsg(inst) && dstSize == 1) {
-          if ((LB / builder.numEltPerGRF<Type_UB>()) < 127) {
-            dstSize = 2;
+        if (opnd_num == Opnd_dst) {
+          int dstSize = inst->getMsgDesc()->getDstLenRegs();
+          // DG2 A0 W/A to treat SIMD8 SLM load with single GRF return as two
+          // GRF return
+          if (VISA_WA_CHECK(builder.getPWaTable(), Wa_14012562260) &&
+              inst->getExecSize() <= 8 && isSLMMsg(inst) && dstSize == 1) {
+            if ((LB / builder.numEltPerGRF<Type_UB>()) < 127) {
+              dstSize = 2;
+            }
+          }
+
+          if ((LB / builder.numEltPerGRF<Type_UB>()) <
+              (unsigned short)(totalGRFNum - 1)) {
+            RB = LB + builder.numEltPerGRF<Type_UB>() * dstSize - 1;
           }
         }
 
-        if ((LB / builder.numEltPerGRF<Type_UB>()) <
-            (unsigned short)(totalGRFNum - 1)) {
-          RB = LB + builder.numEltPerGRF<Type_UB>() * dstSize - 1;
-        }
+        vISA_ASSERT(RB < (builder.numEltPerGRF<Type_UB>() * aregOffset),
+                    "Out of register bound");
       }
-
-      vISA_ASSERT(RB < (builder.numEltPerGRF<Type_UB>() * aregOffset),
-             "Out of register bound");
     }
     // HW WA for DPAS src2, treat all source 2 as 8x8 source 2 to avoid the read
     // suppression issue
