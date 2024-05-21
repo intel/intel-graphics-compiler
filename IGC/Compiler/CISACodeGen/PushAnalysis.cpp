@@ -1383,7 +1383,7 @@ namespace IGC
                 bool pushCondition = ((urbOffset >= urbReadOffsetForPush) && (urbOffset - urbReadOffsetForPush) < (int)numberOfElementsPerVertexThatAreGoingToBePushed);
 
                 // If the attribute index of URBRead is a constant then we pull
-                // inputs if elementIndex <= minElementsPerVertexThatCanBePushed
+                // inputs if elementIndex <= numberOfElementsPerVertexThatAreGoingToBePushed
                 if (pElementIndex && pushCondition)
                 {
                     uint elementIndex = urbOffset - urbReadOffsetForPush;
