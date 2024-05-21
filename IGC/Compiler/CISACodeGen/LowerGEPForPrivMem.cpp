@@ -176,6 +176,7 @@ bool LowerGEPForPrivMem::runOnFunction(llvm::Function& F)
     m_pRegisterPressureEstimate->buildRPMapPerInstruction();
 
     m_allocasToPrivMem.clear();
+    m_promotedLiveranges.clear();
     visit(F);
 
     std::vector<llvm::AllocaInst*>& allocaToHande = m_allocasToPrivMem;
