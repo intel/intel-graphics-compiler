@@ -286,17 +286,22 @@ Value* OpenCLPrintfResolution::processPrintfString(Value* arg, Function& F)
             processPrintfString(selectInst->getOperand(1), F),
             processPrintfString(selectInst->getOperand(2), F),
             "", selectInst);
+        // TODO: Clean up the original select within the current pass
         return selectInst2;
     }
     else if (PHINode* phiNode = dyn_cast<PHINode>(arg))
     {
         unsigned inNum = phiNode->getNumIncomingValues();
-        PHINode* phiNode2 = PHINode::Create(m_int32Type, inNum, "", phiNode);
-        for (unsigned i = 0; i < inNum; i++)
+        PHINode* newPhi = nullptr;
+        for (unsigned i = 0; i < inNum; ++i)
         {
-            phiNode2->addIncoming(processPrintfString(phiNode->getIncomingValue(i), F), phiNode->getIncomingBlock(i));
+            Value* newIV = processPrintfString(phiNode->getIncomingValue(i), F);
+            if (!newPhi)
+                newPhi = PHINode::Create(newIV->getType(), inNum, "", phiNode);
+            newPhi->addIncoming(newIV, phiNode->getIncomingBlock(i));
         }
-        return phiNode2;
+        // TODO: Clean up the original PHI node within the current pass
+        return newPhi;
     }
     else
     {
