@@ -1045,6 +1045,39 @@ enum class TraceRayCtrl : uint8_t
     TRACE_RAY_NONE = 5                  // Illegal!
 };
 
+struct TraceRayPayload
+{
+    enum class PayloadBits : uint8_t
+    {
+        bvhLevel     = 3,
+        reserved     = 5,
+        traceRayCtrl = 3,
+        reserved_1   = 5,
+        stackID      = 12,
+        reserved_2   = 4,
+    };
+
+    // This is the offset within the bitfield
+    enum class PayloadOffsets : uint8_t
+    {
+        bvhLevel     = 0,
+        reserved     = (uint8_t)PayloadBits::bvhLevel,
+        traceRayCtrl = PayloadOffsets::reserved + (uint8_t)PayloadBits::reserved,
+        reserved_1   = PayloadOffsets::traceRayCtrl + (uint8_t)PayloadBits::traceRayCtrl,
+        stackID      = PayloadOffsets::reserved_1 + (uint8_t)PayloadBits::reserved_1,
+    };
+    // Trace Ray Payload (per SIMD lane)
+    struct TraceRayPayloadData
+    {
+        uint32_t        bvhLevel     : (uint32_t)PayloadBits::bvhLevel;     // bits[  2:0]: tells the hardware which ray to process
+        uint32_t        reserved     : (uint32_t)PayloadBits::reserved;     // bits[  7:3]: reserved MBZ
+        uint32_t        traceRayCtrl : (uint32_t)PayloadBits::traceRayCtrl; // bits[ 10:8]: trace ray operation to perform
+        uint32_t        reserved_1   : (uint32_t)PayloadBits::reserved_1;   // bits[15:11]: reserved MBZ
+        uint32_t        stackID      : (uint32_t)PayloadBits::stackID;      // bits[27:16]: the ID of the stack of this thread
+        uint32_t        reserved_2   : (uint32_t)PayloadBits::reserved_2;   // bits[31:28]: reserved MBZ
+    } payload;
+};
+
 struct TraceRayMessage
 {
     // This data is sent per message and is uniform across all rays in a dispatch.
@@ -1062,19 +1095,12 @@ struct TraceRayMessage
         };
     } header;
 
-    // this data is sent per ray (SIMD LANE)
-    struct Payload
-    {
-        uint8_t      bvhLevel;     // the level tells the hardware which ray to process
-        TraceRayCtrl traceRayCtrl; // the command the hardware should perform
-        uint16_t     stackID;      // the ID of the stack of this thread
-    } payload;
+    TraceRayPayload payload;
 
-    static_assert(sizeof(Payload) == 4, "Payload must be 4 bytes");
+    static_assert(sizeof(TraceRayPayload::payload) == 4, "Payload must be 4 bytes");
 };
 
-
-// TraceRayInline enums
+// RayQuery enums
 
 enum COMMITTED_STATUS : uint32_t
 {

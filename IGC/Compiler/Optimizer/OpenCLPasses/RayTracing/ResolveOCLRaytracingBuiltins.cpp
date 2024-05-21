@@ -303,30 +303,23 @@ void ResolveOCLRaytracingBuiltins::handleDispatchTraceRayQuery(CallInst& callIns
   // current data.
   m_builder->CreateLSCFence(LSC_UGM, LSC_SCOPE_LOCAL, LSC_FENCE_OP_NONE);
 
-  auto rtDispatchGlobals = callInst.getArgOperand(0);
-  auto bvhLevel = callInst.getArgOperand(1);
-  auto traceRayCtrl = callInst.getArgOperand(2);
+  auto *rtDispatchGlobals = callInst.getArgOperand(0);
+  auto *bvhLevel = callInst.getArgOperand(1);
+  auto *traceRayCtrl = callInst.getArgOperand(2);
+
+  m_builder->setGlobalBufferPtr(rtDispatchGlobals);
 
   // Prepare the payload
-  // [0:2] bvh_level
+  // [2:0] bvh_level
   bvhLevel = m_builder->CreateAnd(bvhLevel, 7);
-  // [8:9] trace_ray_control
+  // [9:8] trace_ray_control
   traceRayCtrl = m_builder->CreateAnd(traceRayCtrl, 3);
-  traceRayCtrl = m_builder->CreateShl(traceRayCtrl, 8);
-  // [26:16] stack_id.
+  // [27:16] stack_id.
   // for RayQuery this is not used, leave it as 0.
-
-  Value* payload = m_builder->CreateOr(bvhLevel, traceRayCtrl, VALUE_NAME("traceRayQueryPayload"));
-
-  SmallVector<Value*, 4> Args;
-
-  Args.push_back(rtDispatchGlobals);
-  Args.push_back(payload);
-
 
   // The return value from this TraceRay with RayQueryEnable is a dummy register, which is used
   // to sync this message via scoreboard.
-  auto fenceValue = getIntrinsicValue(GenISAIntrinsic::GenISA_TraceRaySync, Args);
+  Value *fenceValue = m_builder->createSyncTraceRay(bvhLevel, traceRayCtrl);
   fenceValue = m_builder->CreateIntToPtr(fenceValue, callInst.getType());
   if (m_pCtx->platform.RTFenceWAforBkModeEnabled())
   {

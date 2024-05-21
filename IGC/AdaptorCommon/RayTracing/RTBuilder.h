@@ -264,11 +264,6 @@ public:
 
     SyncStackPointerVal* getSyncStackPointer();
 
-    // Note: 'traceRayCtrl' should be already by 8 bits to its location
-    // in the payload before passing as an argument to this function.
-    // getTraceRayPayload() just ORs together the bvh, ctrl, and stack id.
-    TraceRayIntrinsic* createTraceRay(Value* bvhLevel, Value* traceRayCtrl, bool isRayQuery, const Twine& PayloadName = "");
-
     void createReadSyncTraceRay(Value* val);
 
     TraceRaySyncIntrinsic* createSyncTraceRay(Value* bvhLevel, Value* traceRayCtrl, const Twine& PayloadName = "");
@@ -387,7 +382,6 @@ public:
 
 
 
-
     static bool checkAlign(
         Module& M,
         StructType* StructTy,
@@ -396,6 +390,7 @@ public:
     Value* getGlobalSyncStackID();
 
 private:
+    TraceRayIntrinsic* createTraceRay(Value* bvhLevel, Value* traceRayCtrl, bool isRayQuery, const Twine& PayloadName = "");
 
     Value* canonizePointer(Value* Ptr);
     Value* getSyncRTStackSize();

@@ -324,17 +324,12 @@ RTBuilder::SyncStackPointerVal* RTBuilder::getSyncStackPointer()
 }
 
 
-// Note: 'traceRayCtrl' should be already by 8 bits to its location
-// in the payload before passing as an argument to this function.
-// getTraceRayPayload() just ORs together the bvh, ctrl, and stack id.
 TraceRayIntrinsic* RTBuilder::createTraceRay(
     Value* bvhLevel,
     Value* traceRayCtrl,
     bool isRayQuery,
     const Twine& PayloadName)
 {
-    TraceRayIntrinsic* TraceRay = nullptr;
-
     Module* module = this->GetInsertBlock()->getModule();
 
     Value* GlobalPointer = this->getGlobalBufferPtr();
@@ -348,23 +343,13 @@ TraceRayIntrinsic* RTBuilder::createTraceRay(
         ID,
         GlobalPointer->getType());
 
-    SmallVector<Value*, 4> Args;
+    Value* payload = getTraceRayPayload(
+        bvhLevel, traceRayCtrl, isRayQuery, PayloadName);
 
-    {
-        constexpr uint16_t TraceRayCtrlOffset =
-            offsetof(TraceRayMessage::Payload, traceRayCtrl) * 8;
-        Value* traceRayCtrlVal = this->CreateShl(traceRayCtrl, TraceRayCtrlOffset);
-
-        Value* bitField = getTraceRayPayload(bvhLevel, traceRayCtrlVal, isRayQuery, PayloadName);
-
-        Args.push_back(GlobalPointer);
-        Args.push_back(bitField);
+    SmallVector<Value*, 4> Args{ GlobalPointer, payload };
 
 
-        TraceRay = cast<TraceRayIntrinsic>(this->CreateCall(traceFn, Args));
-    }
-
-    return TraceRay;
+    return cast<TraceRayIntrinsic>(this->CreateCall(traceFn, Args));
 }
 
 void RTBuilder::createReadSyncTraceRay(Value* val)
@@ -1098,27 +1083,27 @@ Value* RTBuilder::getTraceRayPayload(
 {
     Value* stackId = nullptr;
 
-    // Trace message
-    //Generate Payload to trace Ray which is 32-bit that includes:
-    //uint8_t      bvhLevel     // the level tells the hardware which ray to process
-    //uint8_t      traceRayCtrl // the command the hardware should perform
-    //uint16_t     stackID      // the ID of the stack of this thread
-    // Get stackID
-    if (isRayQuery == true)
+    if (isRayQuery)
     {
-        //For RayQuery/TraceRayInline - set stack ID to zero since hardware will not use this field
-        stackId = this->getInt32(0);
+        // For RayQuery - set stack ID to zero since hardware will not use this field
+        stackId = getInt32(0);
     }
 
-    constexpr uint16_t StackIDOffset =
-        offsetof(TraceRayMessage::Payload, stackID) * 8;
-    Value* bitField = this->CreateOr(
+    Value* traceRayCtrlVal = CreateShl(
         traceRayCtrl,
-        this->CreateShl(stackId, StackIDOffset));
-    bitField = this->CreateOr(bitField, bvhLevel, PayloadName);
-    return bitField;
-}
+        getInt32((uint8_t)TraceRayPayload::PayloadOffsets::traceRayCtrl));
+    Value* stackIDVal = CreateShl(
+        stackId,
+        getInt32((uint8_t)TraceRayPayload::PayloadOffsets::stackID));
+    Value* bvhLevelVal = CreateShl(
+        bvhLevel,
+        getInt32((uint8_t)TraceRayPayload::PayloadOffsets::bvhLevel));
 
+    Value* payload = CreateOr(stackIDVal, traceRayCtrlVal, PayloadName);
+    payload = CreateOr(bvhLevelVal, payload, PayloadName);
+
+    return payload;
+}
 
 GenIntrinsicInst* RTBuilder::getSr0_0()
 {

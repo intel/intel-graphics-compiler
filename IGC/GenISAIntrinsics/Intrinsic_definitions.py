@@ -3109,7 +3109,8 @@ Imported_Intrinsics = \
     [("void",                          ""),
     [("anyptr",                        "global buffer pointer"),
      ("short",                         "stack id"),
-     ("long",                          "shader record address")],
+     ("long",                          "shader record address")
+    ],
     "None"]],
 ####################################################################################################
 "GenISA_CallShaderHL": ["Raytracing: equivalent to DXR CallShader() (HL = high level)",
@@ -3287,13 +3288,15 @@ Imported_Intrinsics = \
 "GenISA_TraceRayAsync": ["Raytracing: codegens to send.rta (sync bit not set)",
     [("void",                          ""),
     [("anyptr",                        "global buffer pointer"),
-     ("int",                           "Trace data: bitfield containg bvhLevel, stackID and trcCtrl")],
+     ("int",                           "Trace data: bitfield containing bvhLevel, stackID and trcCtrl")
+    ],
     "None"]],
 ####################################################################################################
 "GenISA_TraceRaySync": ["Raytracing: codegens to send.rta (with the sync bit set)",
     [("int",                           "dst is used to sync the message"),
     [("anyptr",                        "global buffer pointer"),
-     ("int",                           "Trace data: bitfield containg bvhLevel, stackID and trcCtrl")],
+     ("int",                           "Trace data: bitfield containing bvhLevel, stackID and trcCtrl")
+    ],
     "None"]],
 ####################################################################################################
 "GenISA_TraceRaySyncProceed": ["Raytracing: codegens to ShadowMemoryToSyncStack AND send.rta (sync bit set)",
