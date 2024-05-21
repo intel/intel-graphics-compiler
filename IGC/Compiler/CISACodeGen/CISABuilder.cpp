@@ -4295,7 +4295,33 @@ namespace IGC
             SaveOption(vISA_setFFID, ffid[unsigned(context->type)]);
         }
 
-        SaveOption(vISA_hasRNEandDenorm, true);
+        // Float types denorm mode in control register must be set to retain denorm mode
+        // when executing Math Macro instruction sequence.
+        // It applies to the platforms which has correctly implemented macros and INV and SQRT instructions.
+        // 1. Set appropriate bit in control register.
+        // 2. Execute inv or sqrt instruction
+        // 3. Flush denorm in the result if flushing was enabled.
+        // 4. Restore original denorm mode in control register.
+        // vISA has an option for it: vISA_hasRNEandDenorm.
+        // If it is set, vISA assumes global denorm mode is set to retain, so it does not need to set it again.
+        // If the global mode is set to flush_to_zero, the option must be unset,
+        // so vISA sets the mode to retain, for the macro.
+
+        CodeGenContext* pCtx = m_program->GetContext();
+        bool needsDenormRetainForMathInstructions =
+            (pCtx->m_floatDenormMode16 == FLOAT_DENORM_FLUSH_TO_ZERO) ||
+            (pCtx->m_floatDenormMode32 == FLOAT_DENORM_FLUSH_TO_ZERO) ||
+            (pCtx->m_floatDenormMode64 == FLOAT_DENORM_FLUSH_TO_ZERO) ||
+            (pCtx->m_floatDenormModeBFTF == FLOAT_DENORM_FLUSH_TO_ZERO);
+
+        if (m_program->m_Platform->hasCorrectlyRoundedMacros() && needsDenormRetainForMathInstructions)
+        {
+            SaveOption(vISA_hasRNEandDenorm, false);
+        }
+        else
+        {
+            SaveOption(vISA_hasRNEandDenorm, true);
+        }
 
         // need to fold ret into the previous RTWrite/URBWrite/etc
         if (context->type != ShaderType::OPENCL_SHADER && context->type != ShaderType::COMPUTE_SHADER)
