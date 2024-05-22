@@ -175,13 +175,6 @@ unsigned int VISAModule::GetVisaOffset(const llvm::Instruction *pInst) const {
   return itr->second.m_offset;
 }
 
-unsigned int VISAModule::GetVisaSize(const llvm::Instruction *pInst) const {
-  InstInfoMap::const_iterator itr = m_instInfoMap.find(pInst);
-  IGC_ASSERT_MESSAGE(itr != m_instInfoMap.end(), "Invalid Instruction");
-  IGC_ASSERT_MESSAGE(itr->second.m_size != INVALID_SIZE, "Invalid Size");
-  return itr->second.m_size;
-}
-
 const Module *VISAModule::GetModule() const { return m_Func->getParent(); }
 
 const Function *VISAModule::GetEntryFunction() const { return m_Func; }
@@ -424,11 +417,12 @@ VISAModule::getGenISARange(const VISAObjectDebugInfo &VDI,
       start = getNextInst(start);
       continue;
     }
+    IGC_ASSERT_MESSAGE(itr->second.m_size != INVALID_SIZE, "Invalid Size");
 
     auto startVISAOffset = itr->second.m_offset;
     // VISASize indicated # of VISA insts emitted for this
     // LLVM IR inst
-    auto VISASize = GetVisaSize(start);
+    auto VISASize = itr->second.m_size;
 
     for (unsigned int i = 0; i != VISASize; i++) {
       auto VISAIndex = startVISAOffset + i;
