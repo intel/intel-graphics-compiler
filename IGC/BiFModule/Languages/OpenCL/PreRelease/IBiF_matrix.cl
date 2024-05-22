@@ -280,6 +280,27 @@ typedef uint   __attribute__((ext_vector_type(32))) uint32;
       wi_contrib[i] = as_int((uchar4)(row0, row1, row2, row3)); \
     }
 
+#define GATHER_LOAD_PACK_32(element_type, M, dst, slid, stride) \
+    /* empty */
+
+#define GATHER_LOAD_PACK_16(element_type, M, dst, slid, stride) \
+    element_type *src = (element_type *)mem; \
+    for (int i = 0; i < M; i++) { \
+      ushort row0 = src[(2 * i + 0) * stride + slid]; \
+      ushort row1 = src[(2 * i + 1) * stride + slid]; \
+      dst[i] = as_int((ushort2)(row0, row1)); \
+    }
+
+#define GATHER_LOAD_PACK_8(element_type, M, dst, slid, stride) \
+    element_type *src = (element_type *)mem; \
+    for (int i = 0; i < M; i++) { \
+      uchar row0 = src[(4 * i + 0) * stride + slid]; \
+      uchar row1 = src[(4 * i + 1) * stride + slid]; \
+      uchar row2 = src[(4 * i + 2) * stride + slid]; \
+      uchar row3 = src[(4 * i + 3) * stride + slid]; \
+      dst[i] = as_int((uchar4)(row0, row1, row2, row3)); \
+    }
+
 // variants for 32, 16, 7, 6, 5, 3 and 1 are only used to make the code compilable
 #define DEFINE_BLOCK_RW_NAME32(rw, us) intel_sub_group_block_##rw##us##32
 #define DEFINE_BLOCK_RW_NAME16(rw, us) intel_sub_group_block_##rw##us##16
@@ -430,19 +451,23 @@ typedef uint   __attribute__((ext_vector_type(32))) uint32;
         return; \
     }
 
-#define DEFINE_LOAD_SCALAR_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows) \
+#define DEFINE_LOAD_SCALAR_IMPL(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, order, WI_rows) \
     contrib_type *ptr = (contrib_type *)mem; \
     int slid = get_sub_group_local_id(); \
     int pack_factor = sizeof (contrib_type) / sizeof (element_type); \
-    stride = stride / pack_factor; \
+    long packed_stride = stride / pack_factor; \
     int sg_cols = K / pack_factor; \
     int skip_factor = sg_size / sg_cols; \
     __private contrib_type *wi_contrib = (__private contrib_type *)dst; \
+    if (order == _VNNI_TX) { \
+      GATHER_LOAD_PACK_##elem_bitwidth(element_type, M, wi_contrib, slid, stride) \
+      return; \
+    } \
     for (int i = 0; i < WI_rows; i++) { \
-    if ( (i*skip_factor + slid/sg_cols) < M ) \
-        wi_contrib[i] = ptr[IND##order(slid, stride, skip_factor, i, sg_cols)]; \
-    else \
-        wi_contrib[i] = 0; /*last even row for matrix with odd number of rows doesn't exist*/ \
+      if ( (i*skip_factor + slid/sg_cols) < M ) \
+          wi_contrib[i] = ptr[IND##order(slid, packed_stride, skip_factor, i, sg_cols)]; \
+      else \
+          wi_contrib[i] = 0; /*last even row for matrix with odd number of rows doesn't exist*/ \
     }
 
 #define DEFINE_LOAD_IMPL_AS_GENERIC(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows) \
@@ -456,20 +481,20 @@ typedef uint   __attribute__((ext_vector_type(32))) uint32;
         } else { \
             DEFINE_LOAD_VECTORS_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, WI_rows, AS_LOCAL) \
         } \
-        DEFINE_LOAD_SCALAR_IMPL( layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, WI_rows) \
+        DEFINE_LOAD_SCALAR_IMPL(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, _##order, WI_rows) \
     }
 #define DEFINE_LOAD_IMPL_AS_LOCAL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows) \
     INLINE void MANGLE_LOAD_NAME_AS_LOCAL(layout, sg, elem_bitwidth, shape, WI_rows) (__private char *dst, char *mem, long stride, int cacheOpt) { \
         int sg_size = get_sub_group_size(); \
         DEFINE_LOAD_VECTORS_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, WI_rows, AS_LOCAL) \
-        DEFINE_LOAD_SCALAR_IMPL( layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, WI_rows) \
+        DEFINE_LOAD_SCALAR_IMPL(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, _##order, WI_rows) \
     }
 #define DEFINE_LOAD_IMPL_AS_GLOBAL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows) \
     INLINE void MANGLE_LOAD_NAME_AS_GLOBAL(layout, sg, elem_bitwidth, shape, WI_rows) (__private char *dst, char *mem, long stride, int cacheOpt) { \
         int sg_size = get_sub_group_size(); \
         DEFINE_LOAD_BLOCK2D_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, WI_rows) \
         DEFINE_LOAD_VECTORS_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, WI_rows, AS_GLOBAL) \
-        DEFINE_LOAD_SCALAR_IMPL( layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, WI_rows) \
+        DEFINE_LOAD_SCALAR_IMPL(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, _##order, WI_rows) \
     }
 
 #define DEFINE_LOAD_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows) \
@@ -719,7 +744,7 @@ DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, int, 2, 16, COL_MAJOR, , 1)
         return; \
     }
 
-#define DEFINE_STORE_SCALAR_IMPL(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, order, WI_rows) \
+#define DEFINE_STORE_SCALAR_IMPL(element_type, contrib_type, M, K, order, WI_rows) \
     contrib_type *ptr = (contrib_type *)mem; \
     int slid = get_sub_group_local_id(); \
     int pack_factor = sizeof (contrib_type) / sizeof (element_type); \
@@ -745,20 +770,20 @@ DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, int, 2, 16, COL_MAJOR, , 1)
         } else { \
             DEFINE_STORE_VECTORS_IMPL(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, _##order, us, WI_rows, block_opt, AS_LOCAL) \
         } \
-        DEFINE_STORE_SCALAR_IMPL(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, _##order, WI_rows) \
+        DEFINE_STORE_SCALAR_IMPL(element_type, contrib_type, M, K, _##order, WI_rows) \
     }
 #define DEFINE_STORE_IMPL_AS_LOCAL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows, block_opt) \
     INLINE void MANGLE_STORE_NAME(layout, sg, elem_bitwidth, shape, WI_rows, local) (char *mem, __private char *src, long stride, int cacheOpt) { \
         int sg_size = get_sub_group_size(); \
         DEFINE_STORE_VECTORS_IMPL(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, _##order, us, WI_rows, block_opt, AS_LOCAL) \
-        DEFINE_STORE_SCALAR_IMPL(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, _##order, WI_rows) \
+        DEFINE_STORE_SCALAR_IMPL(element_type, contrib_type, M, K, _##order, WI_rows) \
     }
 #define DEFINE_STORE_IMPL_AS_GLOBAL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows, block_opt) \
     INLINE void MANGLE_STORE_NAME(layout, sg, elem_bitwidth, shape, WI_rows, global) (char *mem, __private char *src, long stride, int cacheOpt) { \
         int sg_size = get_sub_group_size(); \
         DEFINE_STORE_BLOCK2D_IMPL(sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, _##order, WI_rows) \
         DEFINE_STORE_VECTORS_IMPL(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, _##order, us, WI_rows, block_opt, AS_GLOBAL) \
-        DEFINE_STORE_SCALAR_IMPL(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, _##order, WI_rows) \
+        DEFINE_STORE_SCALAR_IMPL(element_type, contrib_type, M, K, _##order, WI_rows) \
     }
 
 #define DEFINE_STORE_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows, block_opt) \
@@ -1287,10 +1312,12 @@ DEFINE_STORE_LARGE(Accumulator_RowMajor, int,   int,   32, 64, ROW_MAJOR, 128)
         return; \
     }
 
-#define DEFINE_LOAD_LARGE_SCALAR_IMPL_1() { \
-        /*not supported, fall through*/ \
-        return; \
-    }
+#define DEFINE_LOAD_LARGE_SCALAR_IMPL_1() \
+    int *ptr = (int *)mem; \
+    int slid = get_sub_group_local_id(); \
+    __private int *wi_contrib = (__private int *)dst; \
+    for (int i = 0; i < 4; i++) \
+      wi_contrib[i] = ptr[i*16 + slid];
 
 #define DEFINE_LOAD_LARGE_1_IMPL_AS_GENERIC() \
     INLINE void __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_1x64_i32_4_generic_v8i8_pi32_i32(__private char *dst, char *mem, long stride, int cacheOpt) { \
@@ -1351,10 +1378,12 @@ DEFINE_LOAD_LARGE_1(Accumulator_RowMajor, 1, 64)
         return; \
     }
 
-#define DEFINE_STORE_LARGE_SCALAR_IMPL_1() { \
-        /*not supported, fall through*/ \
-        return; \
-    }
+#define DEFINE_STORE_LARGE_SCALAR_IMPL_1() \
+    int *ptr = (int *)mem; \
+    int slid = get_sub_group_local_id(); \
+    __private int *slice = (__private int *)src; \
+    for (int i = 0; i < 4; i++) \
+      ptr[i*16 + slid] = slice[i];
 
 #define DEFINE_STORE_LARGE_1_IMPL_AS_GENERIC() \
     INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_1x64_i32_4_generic_pi64_v8i8(char *mem, __private char *src, long stride, int cacheOpt) { \
