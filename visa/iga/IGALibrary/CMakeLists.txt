@@ -303,24 +303,8 @@ target_compile_definitions(IGA_ENC_LIB PUBLIC IGA_DISABLE_ENCODER_EXCEPTIONS)
 ##############################################################################
 # iga##.dll
 ##############################################################################
-if(MSVC)
-  if (NOT IGC_BUILD)
-    include(${CMAKE_CURRENT_SOURCE_DIR}/../../../IGC/cmake/igc_resource_utils.cmake)
-  endif()
-  set(IGA_BUILD__RES__IGC__igc_common
-      "${CMAKE_CURRENT_SOURCE_DIR}/iga.rc"
-    )
-  igc_rc_register_resource(IGA_DLL FILE "${IGA_BUILD__RES__IGC__igc_common}") # [WA#2]
 
-  igc_rc_get_resource(IGC_BUILD__RES__IGC__iga_dll IGA_DLL)
-  # Static libraries on Windows cannot pass resources to final libraries.
-  set(IGC_BUILD__RES__IGC__iga_lib)
-  source_group("Resources" FILES
-    ${IGC_BUILD__RES__IGC__iga_dll}
-  )
-endif()
-
-    add_library(IGA_DLL SHARED $<TARGET_OBJECTS:GEDLibrary> $<TARGET_OBJECTS:IGA_OLIB> ${IGA_API} ${IGC_BUILD__RES__IGC__iga_dll})
+    add_library(IGA_DLL SHARED $<TARGET_OBJECTS:GEDLibrary> $<TARGET_OBJECTS:IGA_OLIB> ${IGA_API})
 
 set(IGA_DLL_DEFINITIONS ${IGA_DEFINITIONS} IGA_BUILDING_DLL)
 if (WIN32)
