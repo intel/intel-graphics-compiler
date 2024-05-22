@@ -961,8 +961,7 @@ bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAll, _i32_i1, )(int Execution, bool P
         if(SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )() == 1)
             return SPIRV_BUILTIN(GroupUMin, _i32_i32_i32, )(Subgroup, GroupOperationReduce, (uint)(Predicate) );
 
-        GET_MEMPOOL_PTR(tmp, int, false, 1)
-        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for any prev mempool usage to finish before overwrite
+        GET_SAFE_MEMPOOL_PTR(tmp, int, false, 1)
         *tmp = 1;
         SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for tmp to be initialized
         if(Predicate == 0)
@@ -984,8 +983,7 @@ bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAny, _i32_i1, )(int Execution, bool P
         if(SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )() == 1)
             return SPIRV_BUILTIN(GroupUMax, _i32_i32_i32, )(Subgroup, GroupOperationReduce, (uint)Predicate );
 
-        GET_MEMPOOL_PTR(tmp, int, false, 1)
-        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for any prev mempool usage to finish before overwrite
+        GET_SAFE_MEMPOOL_PTR(tmp, int, false, 1)
         *tmp = 0;
         SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for tmp to be initialized
         if(Predicate == 1)
@@ -1076,7 +1074,7 @@ DEFN_NON_UNIFORM_ALL_EQUAL(half,   f16)
 
 #define BROADCAST_WORKGROUP(type)                                                       \
 {                                                                                       \
-    GET_MEMPOOL_PTR(tmp, type, false, 1)                                                       \
+    GET_SAFE_MEMPOOL_PTR(tmp, type, false, 1)                                           \
     if( (__intel_LocalInvocationId(0) == LocalId.s0) &                                            \
         (__intel_LocalInvocationId(1) == LocalId.s1) &                                            \
         (__intel_LocalInvocationId(2) == LocalId.s2) )                                            \
@@ -1085,7 +1083,6 @@ DEFN_NON_UNIFORM_ALL_EQUAL(half,   f16)
     }                                                                                   \
     SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory);        \
     type ret = *tmp;                                                                    \
-    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory);        \
     return ret;                                                                         \
 }
 
@@ -2346,7 +2343,7 @@ type __builtin_IB_WorkGroupReduce_##func##_##type_abbr(type X)                  
             return sg_x;                                                                                                                    \
         }                                                                                                                                   \
         else {                                                                                                                              \
-            GET_MEMPOOL_PTR(scratch, type, true, 0)                                                                                         \
+            GET_SAFE_MEMPOOL_PTR(scratch, type, true, 0)                                                                                    \
             uint sg_id = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupId, , )();                                                                      \
             uint sg_lid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                                                      \
             uint sg_size = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )();                                                               \
@@ -2388,7 +2385,7 @@ type __builtin_IB_WorkGroupReduce_##func##_##type_abbr(type X)                  
     else                                                                                                                                    \
     {                                                                                                                                       \
         type sg_x = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationReduce, X);                                  \
-        GET_MEMPOOL_PTR(scratch, type, true, 0)                                                                                             \
+        GET_SAFE_MEMPOOL_PTR(scratch, type, true, 0)                                                                                        \
         uint sg_id = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupId, , )();                                                                          \
         uint num_sg = SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )();                                                                       \
         uint sg_lid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                                                          \
@@ -2427,7 +2424,6 @@ type __builtin_IB_WorkGroupReduce_##func##_##type_abbr(type X)                  
             type value = sg_lid < values_num ? scratch[sg_lid] : identity;                                                                  \
             result = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationReduce, value);                             \
         }                                                                                                                                   \
-        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);                                      \
         return result;                                                                                                                      \
     }                                                                                                                                       \
 }
@@ -2438,7 +2434,7 @@ type __builtin_IB_WorkGroupScanInclusive_##func##_##type_abbr(type X)           
 {                                                                                                               \
     type sg_x = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationInclusiveScan, X);   \
                                                                                                                 \
-    GET_MEMPOOL_PTR(scratch, type, true, 0)                                                                     \
+    GET_SAFE_MEMPOOL_PTR(scratch, type, true, 0)                                                                \
     uint sg_id = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupId, , )();                                                  \
     uint num_sg = SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )();                                               \
     uint sg_lid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                                  \
@@ -2465,7 +2461,6 @@ type __builtin_IB_WorkGroupScanInclusive_##func##_##type_abbr(type X)           
     } else {                                                                                                    \
         result = op(sg_x, sg_prefix);                                                                           \
     }                                                                                                           \
-    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);              \
     return result;                                                                                              \
 }
 
@@ -2475,7 +2470,7 @@ type __builtin_IB_WorkGroupScanExclusive_##func##_##type_abbr(type X)           
 {                                                                                                               \
     type carry = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationInclusiveScan, X);  \
                                                                                                                 \
-    GET_MEMPOOL_PTR(scratch, type, true, 0)                                                                     \
+    GET_SAFE_MEMPOOL_PTR(scratch, type, true, 0)                                                                \
     uint sg_id = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupId, , )();                                                  \
     uint num_sg = SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )();                                               \
     uint sg_lid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                                  \
@@ -2507,7 +2502,6 @@ type __builtin_IB_WorkGroupScanExclusive_##func##_##type_abbr(type X)           
     } else {                                                                                                    \
         result = op(sg_x, sg_prefix);                                                                           \
     }                                                                                                           \
-    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);              \
     return result;                                                                                              \
 }
 
@@ -2696,7 +2690,7 @@ type  SPIRV_OVERLOADABLE SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(int 
 type __builtin_IB_WorkGroupReduce_WI0_##func##_##type_abbr(type X)                                         \
 {                                                                                                          \
     type sg_x = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationReduce, X);     \
-    GET_MEMPOOL_PTR(scratch, type, true, 0)                                                                \
+    GET_SAFE_MEMPOOL_PTR(scratch, type, true, 0)                                                           \
     uint sg_id = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupId, , )();                                             \
     uint num_sg = SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )();                                          \
     uint sg_lid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                             \
@@ -2729,7 +2723,6 @@ type __builtin_IB_WorkGroupReduce_WI0_##func##_##type_abbr(type X)              
         type value = sg_lid < values_num ? scratch[sg_lid] : identity;                                     \
         result = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationReduce, value); \
     }                                                                                                      \
-    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);         \
     return result;                                                                                         \
 }
 
