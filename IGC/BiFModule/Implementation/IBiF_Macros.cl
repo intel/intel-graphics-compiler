@@ -20,6 +20,16 @@ SPDX-License-Identifier: MIT
         _additionalElems,                                                   \
         sizeof(_type));
 
+// Use this to grab a pointer to local memory whenever you
+// are treating the local memory as automatic storage.
+// This request is always secured with the barrier with workgroup scope,
+// so any of the func-builtins have no chance to overwrite the common SLM
+// each other (prevents from race in common SLM memory spot).
+#define GET_SAFE_MEMPOOL_PTR(_ptr, _type, _allocAllWorkgroups, _additionalElems) \
+  /* Wait for any prev mempool usage to finish before overwrite */               \
+  __builtin_IB_thread_group_barrier();                                           \
+  GET_MEMPOOL_PTR(_ptr, _type, _allocAllWorkgroups, _additionalElems)
+
 // Macro for async work copy implementation.
 #define ASYNC_WORK_GROUP_COPY(dst, src, num_elements, evt, __num_elements_type)                  \
     {                                                                       \
