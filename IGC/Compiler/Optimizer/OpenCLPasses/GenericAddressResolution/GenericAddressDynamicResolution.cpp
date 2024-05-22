@@ -278,7 +278,7 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
 
         if (LoadInst* LI = dyn_cast<LoadInst>(&I))
         {
-            load = builder.CreateAlignedLoad(ptr, getAlign(*LI), LI->isVolatile(), LoadName);
+            load = builder.CreateAlignedLoad(LI->getType(), ptr, getAlign(*LI), LI->isVolatile(), LoadName);
         }
         else if (StoreInst* SI = dyn_cast<StoreInst>(&I))
         {
@@ -355,7 +355,7 @@ void GenericAddressDynamicResolution::resolveGASWithoutBranches(Instruction& I, 
 
     if (LoadInst* LI = dyn_cast<LoadInst>(&I))
     {
-        nonLocalLoad = builder.CreateAlignedLoad(globalPtr, getAlign(*LI), LI->isVolatile(), "globalOrPrivateLoad");
+        nonLocalLoad = builder.CreateAlignedLoad(LI->getType(), globalPtr, getAlign(*LI), LI->isVolatile(), "globalOrPrivateLoad");
     }
     else if (StoreInst* SI = dyn_cast<StoreInst>(&I))
     {

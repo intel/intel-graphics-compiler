@@ -667,7 +667,8 @@ void ReductionCandidateGroup::reduceIndexOnly(IGCLLVM::IRBuilder<> &IRB, SCEVExp
         if (Base.GEP->getParent() == Other.GEP->getParent())
         {
             IRB.SetInsertPoint(Other.GEP);
-            Other.GEP->replaceAllUsesWith(Other.Delta == 0 ? Base.GEP : IRB.CreateGEP(Base.GEP, IRB.getInt64(Other.Delta)));
+            Other.GEP->replaceAllUsesWith(Other.Delta == 0 ? Base.GEP :
+                IRB.CreateGEP(Base.GEP->getResultElementType(), Base.GEP, IRB.getInt64(Other.Delta)));
             Reduced.push_back(Other.GEP);
         }
     }

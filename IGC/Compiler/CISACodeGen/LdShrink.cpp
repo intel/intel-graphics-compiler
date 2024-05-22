@@ -138,7 +138,7 @@ bool LdShrink::runOnFunction(Function& F) {
                 = PointerType::get(ScalarTy, PtrTy->getAddressSpace());
             Value* ScalarPtr = Builder.CreatePointerCast(Ptr, ScalarPtrTy);
             if (Offset)
-                ScalarPtr = Builder.CreateInBoundsGEP(ScalarPtr, Builder.getInt32(Offset));
+                ScalarPtr = Builder.CreateInBoundsGEP(ScalarTy, ScalarPtr, Builder.getInt32(Offset));
 
             alignment_t alignment
                 = (alignment_t)MinAlign(IGCLLVM::getAlignmentValue(LI),

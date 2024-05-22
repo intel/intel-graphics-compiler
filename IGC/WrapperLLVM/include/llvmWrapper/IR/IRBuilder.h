@@ -232,7 +232,7 @@ namespace IGCLLVM
             return llvm::IRBuilder<T, InserterTyDef()>::CreateAlignedLoad(ptrType, Ptr, Align, Name);
         }
 
-        /// Provided to resolve 'CreateAlignedLoad(Ptr, Align, "...")'
+        /// Provided to resolve 'CreateAlignedLoad(ptrType, Ptr, Align, "...")'
         /// correctly, instead of converting the string to 'bool' for the isVolatile
         /// parameter.
         inline llvm::LoadInst* CreateAlignedLoad(llvm::Type* ptrType, llvm::Value* Ptr, IGCLLVM::Align Align, const llvm::Twine& Name = "")
@@ -248,6 +248,12 @@ namespace IGCLLVM
             return llvm::IRBuilder<T, InserterTyDef()>::CreateAlignedLoad(ptrType, Ptr, Align, Name);
         }
 
+        /// Provided to resolve 'CreateAlignedLoad(ptrType, Ptr, Align, "...")' correctly.
+        inline llvm::LoadInst* CreateAlignedLoad(llvm::Type* ptrType, llvm::Value* Ptr, IGCLLVM::Align Align, bool isVolatile, const llvm::Twine& Name = "")
+        {
+            return llvm::IRBuilder<T, InserterTyDef()>::CreateAlignedLoad(ptrType, Ptr, Align, isVolatile, Name);
+        }
+
         // This wrapper function is deprecated because it uses typed pointer and
         // should no longer be used in LLVM 14+ compatible code.
         inline llvm::LoadInst* CreateAlignedLoad(llvm::Value* Ptr, IGCLLVM::Align Align, bool isVolatile, const llvm::Twine& Name = "")
@@ -255,18 +261,6 @@ namespace IGCLLVM
             llvm::Type* ptrType = IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType());
             return llvm::IRBuilder<T, InserterTyDef()>::CreateAlignedLoad(ptrType, Ptr, Align, isVolatile, Name);
         }
-
-        // This wrapper function is deprecated because it uses typed pointer and
-        // should no longer be used in LLVM 14+ compatible code.
-        inline llvm::Value* CreateConstGEP1_32(
-            llvm::Value* Ptr,
-            unsigned Idx0,
-            const llvm::Twine& Name = "")
-        {
-            return llvm::IRBuilder<T, InserterTyDef()>::CreateConstGEP1_32(IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType()), Ptr, Idx0, Name);
-        }
-
-        using llvm::IRBuilder<T, InserterTyDef()>::CreateConstGEP1_32;
 
         // This wrapper function is deprecated because it uses typed pointer and
         // should no longer be used in LLVM 14+ compatible code.
@@ -345,24 +339,6 @@ namespace IGCLLVM
             return llvm::IRBuilder<T, InserterTyDef()>::CreateFreeze(V, Name);
 #endif
         }
-
-        // This wrapper function is deprecated because it uses typed pointer
-        // and should no longer be used in LLVM 14+ compatible code.
-        inline llvm::Value* CreateConstInBoundsGEP2_64(
-            llvm::Value* Ptr,
-            uint64_t Idx0,
-            uint64_t Idx1,
-            const llvm::Twine& Name = "")
-        {
-#if LLVM_VERSION_MAJOR <= 10
-            return llvm::IRBuilder<T, InserterTyDef()>::CreateConstInBoundsGEP2_64(Ptr, Idx0, Idx1, Name);
-#else
-            return llvm::IRBuilder<T, InserterTyDef()>::CreateConstInBoundsGEP2_64(IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType()), Ptr, Idx0, Idx1, Name);
-#endif
-        }
-
-        using llvm::IRBuilder<T, InserterTyDef()>::CreateConstInBoundsGEP2_64;
-
     };
 
     template <typename T = llvm::ConstantFolder,

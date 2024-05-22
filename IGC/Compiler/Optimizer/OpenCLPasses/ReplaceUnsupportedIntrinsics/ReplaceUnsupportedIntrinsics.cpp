@@ -491,8 +491,9 @@ void ReplaceUnsupportedIntrinsics::replaceMemcpy(IntrinsicInst* I)
 
     // BaseSize == 32 if we want to handle algorithm in general way
     // or different value if want to keep size of base type to further optimizations
+    PointerType *ptrTy= cast<PointerType>(Dst->stripPointerCasts()->getType());
     uint32_t BaseSize = 0;
-    Type* RawDstType = IGCLLVM::getNonOpaquePtrEltTy(Dst->stripPointerCasts()->getType());
+    Type* RawDstType = IGCLLVM::isOpaquePointerTy(ptrTy) ? Builder.getInt8Ty() : IGCLLVM::getNonOpaquePtrEltTy(ptrTy);
     if (Type* BaseType = GetBaseType(RawDstType))
         BaseSize = BaseType->getScalarSizeInBits();
 
@@ -534,9 +535,9 @@ void ReplaceUnsupportedIntrinsics::replaceMemcpy(IntrinsicInst* I)
             {
                 for (unsigned i = 0; i < NewCount; ++i)
                 {
-                    Value* tSrc = Builder.CreateConstGEP1_32(vSrc, i);
-                    Value* tDst = Builder.CreateConstGEP1_32(vDst, i);
-                    LoadInst* L = Builder.CreateAlignedLoad(tSrc, getAlign(SrcAlign), IsVolatile);
+                    Value* tSrc = Builder.CreateConstGEP1_32(VecTys[0], vSrc, i);
+                    Value* tDst = Builder.CreateConstGEP1_32(VecTys[0], vDst, i);
+                    LoadInst* L = Builder.CreateAlignedLoad(VecTys[0], tSrc, getAlign(SrcAlign), IsVolatile);
                     (void)Builder.CreateAlignedStore(L, tDst, getAlign(Align), IsVolatile);
                 }
             }
@@ -546,9 +547,9 @@ void ReplaceUnsupportedIntrinsics::replaceMemcpy(IntrinsicInst* I)
                 Instruction* IV = insertLoop(MC, NewLPCount, "memcpy");
                 {
                     IGCLLVM::IRBuilder<> B(&(*++BasicBlock::iterator(IV)));
-                    Value* tSrc = B.CreateGEP(vSrc, IV);
-                    Value* tDst = B.CreateGEP(vDst, IV);
-                    LoadInst* L = B.CreateAlignedLoad(tSrc, getAlign(SrcAlign), IsVolatile);
+                    Value* tSrc = B.CreateGEP(VecTys[0], vSrc, IV);
+                    Value* tDst = B.CreateGEP(VecTys[0], vDst, IV);
+                    LoadInst* L = B.CreateAlignedLoad(VecTys[0], tSrc, getAlign(SrcAlign), IsVolatile);
                     (void)B.CreateAlignedStore(L, tDst, getAlign(Align), IsVolatile);
                 }
             }
@@ -571,11 +572,11 @@ void ReplaceUnsupportedIntrinsics::replaceMemcpy(IntrinsicInst* I)
             uint32_t adjust_align = getLargestPowerOfTwo(SZ);
             Align = adjust_align < Align ? adjust_align : Align;
             SrcAlign = adjust_align < SrcAlign ? adjust_align : SrcAlign;
-            NewSrc = BOfst > 0 ? Builder.CreateConstGEP1_32(Src, BOfst) : Src;
-            NewDst = BOfst > 0 ? Builder.CreateConstGEP1_32(Dst, BOfst) : Dst;
+            NewSrc = BOfst > 0 ? Builder.CreateConstGEP1_32(Builder.getInt8Ty(), Src, BOfst) : Src;
+            NewDst = BOfst > 0 ? Builder.CreateConstGEP1_32(Builder.getInt8Ty(), Dst, BOfst) : Dst;
             vSrc = Builder.CreateBitCast(SkipBitCast(NewSrc), PointerType::get(VecTys[i], SrcAS), "memcpy_rem");
             vDst = Builder.CreateBitCast(SkipBitCast(NewDst), PointerType::get(VecTys[i], DstAS), "memcpy_rem");
-            LoadInst* L = Builder.CreateAlignedLoad(vSrc, getAlign(SrcAlign), IsVolatile);
+            LoadInst* L = Builder.CreateAlignedLoad(VecTys[i], vSrc, getAlign(SrcAlign), IsVolatile);
             (void)Builder.CreateAlignedStore(L, vDst, getAlign(Align), IsVolatile);
             BOfst += SZ;
         }
@@ -588,9 +589,9 @@ void ReplaceUnsupportedIntrinsics::replaceMemcpy(IntrinsicInst* I)
         Instruction* IV = insertLoop(MC, LPCount, "memcpy");
         {
             IGCLLVM::IRBuilder<> B(&(*++BasicBlock::iterator(IV)));
-            Value* tSrc = B.CreateGEP(Src, IV);
-            Value* tDst = B.CreateGEP(Dst, IV);
-            LoadInst* L = B.CreateAlignedLoad(tSrc, getAlign(SrcAlign), IsVolatile);
+            Value* tSrc = B.CreateGEP(Builder.getInt8Ty(), Src, IV);
+            Value* tDst = B.CreateGEP(Builder.getInt8Ty(), Dst, IV);
+            LoadInst* L = B.CreateAlignedLoad(Builder.getInt8Ty(), tSrc, getAlign(SrcAlign), IsVolatile);
             (void)B.CreateAlignedStore(L, tDst, getAlign(Align), IsVolatile);
         }
     }
@@ -710,12 +711,12 @@ void ReplaceUnsupportedIntrinsics::replaceMemMove(IntrinsicInst* I)
             {
                 uint offset = byteOffsets[i];
                 uint32_t newAlign = getLargestPowerOfTwo(Align + offset);
-                auto* tSrc = B.CreateConstGEP1_32(i8Src, offset);
-                auto* tDst = B.CreateConstGEP1_32(i8Dst, offset);
+                auto* tSrc = B.CreateConstGEP1_32(B.getInt8Ty(), i8Src, offset);
+                auto* tDst = B.CreateConstGEP1_32(B.getInt8Ty(), i8Dst, offset);
 
                 auto* vSrc = B.CreateBitCast(SkipBitCast(tSrc), PointerType::get(VecTys[i], SrcAS), "memcpy_rem");
                 auto* vDst = B.CreateBitCast(SkipBitCast(tDst), PointerType::get(VecTys[i], DstAS), "memcpy_rem");
-                LoadInst* L = B.CreateAlignedLoad(vSrc, getAlign(newAlign), IsVolatile);
+                LoadInst* L = B.CreateAlignedLoad(VecTys[i], vSrc, getAlign(newAlign), IsVolatile);
                 (void)B.CreateAlignedStore(L, vDst, getAlign(newAlign), IsVolatile);
             }
 
@@ -730,9 +731,9 @@ void ReplaceUnsupportedIntrinsics::replaceMemMove(IntrinsicInst* I)
                 for (unsigned i = 0; i < NewCount; i++)
                 {
                     unsigned idx = NewCount - 1 - i;
-                    auto* tSrc = B.CreateConstGEP1_32(vSrc, idx);
-                    auto* tDst = B.CreateConstGEP1_32(vDst, idx);
-                    LoadInst* L = B.CreateAlignedLoad(tSrc, getAlign(newAlign), IsVolatile);
+                    auto* tSrc = B.CreateConstGEP1_32(VecTys[0], vSrc, idx);
+                    auto* tDst = B.CreateConstGEP1_32(VecTys[0], vDst, idx);
+                    LoadInst* L = B.CreateAlignedLoad(VecTys[0], tSrc, getAlign(newAlign), IsVolatile);
                     (void)B.CreateAlignedStore(L, tDst, getAlign(newAlign), IsVolatile);
                 }
             }
@@ -742,9 +743,9 @@ void ReplaceUnsupportedIntrinsics::replaceMemMove(IntrinsicInst* I)
                 Instruction* IV = insertReverseLoop(BBTrue, Post, NewLPCount, "memmmove");
                 {
                     IGCLLVM::IRBuilder<> B(&(*++BasicBlock::iterator(IV)));
-                    Value* tSrc = B.CreateGEP(vSrc, IV);
-                    Value* tDst = B.CreateGEP(vDst, IV);
-                    LoadInst* L = B.CreateAlignedLoad(tSrc, getAlign(newAlign), IsVolatile);
+                    Value* tSrc = B.CreateGEP(VecTys[0], vSrc, IV);
+                    Value* tDst = B.CreateGEP(VecTys[0], vDst, IV);
+                    LoadInst* L = B.CreateAlignedLoad(VecTys[0], tSrc, getAlign(newAlign), IsVolatile);
                     (void)B.CreateAlignedStore(L, tDst, getAlign(newAlign), IsVolatile);
                 }
             }
@@ -766,9 +767,9 @@ void ReplaceUnsupportedIntrinsics::replaceMemMove(IntrinsicInst* I)
             Instruction* IV = insertReverseLoop(BBTrue, Post, LPCount, "memmove");
             {
                 IGCLLVM::IRBuilder<> B(&(*++BasicBlock::iterator(IV)));
-                Value* tSrc = B.CreateGEP(i8Src, IV);
-                Value* tDst = B.CreateGEP(i8Dst, IV);
-                LoadInst* L = B.CreateAlignedLoad(tSrc, getAlign(1), IsVolatile);
+                Value* tSrc = B.CreateGEP(B.getInt8Ty(), i8Src, IV);
+                Value* tDst = B.CreateGEP(B.getInt8Ty(), i8Dst, IV);
+                LoadInst* L = B.CreateAlignedLoad(B.getInt8Ty(), tSrc, getAlign(1), IsVolatile);
                 (void)B.CreateAlignedStore(L, tDst, getAlign(1), IsVolatile);
             }
         }
@@ -843,7 +844,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemset(IntrinsicInst* I)
             {
                 for (unsigned i = 0; i < NewCount; ++i)
                 {
-                    Value* tDst = Builder.CreateConstGEP1_32(vDst, i);
+                    Value* tDst = Builder.CreateConstGEP1_32(VecTys[0], vDst, i);
                     (void)Builder.CreateAlignedStore(vSrc, tDst, getAlign(Align), IsVolatile);
                 }
             }
@@ -853,7 +854,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemset(IntrinsicInst* I)
                 Instruction* IV = insertLoop(MS, NewLPCount, "memset");
                 {
                     IGCLLVM::IRBuilder<> B(&(*++BasicBlock::iterator(IV)));
-                    Value* tDst = B.CreateGEP(vDst, IV);
+                    Value* tDst = B.CreateGEP(VecTys[0], vDst, IV);
                     (void)B.CreateAlignedStore(vSrc, tDst, getAlign(Align), IsVolatile);
                 }
             }
@@ -876,7 +877,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemset(IntrinsicInst* I)
             uint32_t adjust_align = getLargestPowerOfTwo(SZ);
             Align = adjust_align < Align ? adjust_align : Align;
             PointerType* PTy = PointerType::get(VecTys[i], AS);
-            NewDst = BOfst > 0 ? Builder.CreateConstGEP1_32(Dst, BOfst) : Dst;
+            NewDst = BOfst > 0 ? Builder.CreateConstGEP1_32(Builder.getInt8Ty(), Dst, BOfst) : Dst;
             vSrc = replicateScalar(Src, VecTys[i], MS);
             vDst = Builder.CreateBitCast(SkipBitCast(NewDst), PTy, "memset_rem");
             (void)Builder.CreateAlignedStore(vSrc, vDst, getAlign(Align), IsVolatile);
@@ -890,7 +891,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemset(IntrinsicInst* I)
         Instruction* IV = insertLoop(MS, LPCount, "memset");
         {
             IGCLLVM::IRBuilder<> B(&(*++BasicBlock::iterator(IV)));
-            Value* tDst = B.CreateGEP(Dst, IV);
+            Value* tDst = B.CreateGEP(Builder.getInt8Ty(), Dst, IV);
             (void)B.CreateAlignedStore(Src, tDst, getAlign(Align), IsVolatile);
         }
     }

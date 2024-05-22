@@ -352,7 +352,7 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
 
     if (LI)
     {
-        LoadInst* load = Builder.CreateAlignedLoad(newPtr,
+        LoadInst* load = Builder.CreateAlignedLoad(newVTy, newPtr,
             IGCLLVM::getCorrectAlign(IGCLLVM::getAlignmentValue(LI)),
             LI->isVolatile(),
             "vCastload");

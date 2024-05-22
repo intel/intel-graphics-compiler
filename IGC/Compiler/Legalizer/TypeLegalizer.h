@@ -520,7 +520,7 @@ namespace IGC {
                 if (Idx != 0) {
                     unsigned AS = BasePtrTy->getPointerAddressSpace();
                     NewPtr =
-                        IRB->CreateInBoundsGEP(BasePtr,
+                        IRB->CreateInBoundsGEP(IRB->getInt8Ty(), BasePtr,
                             ConstantInt::get(getIntPtrTy(AS), Idx), Name);
                 }
 

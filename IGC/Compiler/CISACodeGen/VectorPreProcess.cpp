@@ -150,7 +150,7 @@ namespace
             {
                 Type* newPtrType = PointerType::get(returnType, ptr->getType()->getPointerAddressSpace());
                 ptr = builder.CreateBitCast(ptr, newPtrType);
-                return builder.CreateAlignedLoad(ptr, IGCLLVM::getAlign(alignment), isVolatile);
+                return builder.CreateAlignedLoad(returnType, ptr, IGCLLVM::getAlign(alignment), isVolatile);
             }
             else
             {
@@ -173,7 +173,7 @@ namespace
             {
                 Type* ePtrType = PointerType::get(returnType->getScalarType(), ptr->getType()->getPointerAddressSpace());
                 ptr = builder.CreateBitCast(ptr, ePtrType);
-                return builder.CreateConstGEP1_32(ptr, offset);
+                return builder.CreateConstGEP1_32(returnType->getScalarType(), ptr, offset);
             }
             else
             {
@@ -285,7 +285,7 @@ namespace
             {
                 Type* ePtrType = PointerType::get(storedType->getScalarType(), ptr->getType()->getPointerAddressSpace());
                 ptr = builder.CreateBitCast(ptr, ePtrType);
-                return builder.CreateConstGEP1_32(ptr, offset);
+                return builder.CreateConstGEP1_32(storedType->getScalarType(), ptr, offset);
             }
             else
             {

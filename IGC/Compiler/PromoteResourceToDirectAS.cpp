@@ -623,7 +623,7 @@ void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value
 
             // Promote ldraw back to load
             pNewBufferAccessInst = builder.CreateAlignedLoad(
-                pBuffer,
+                pBufferType, pBuffer,
                 IGCLLVM::getAlign(ldRawIntr->getAlignment()),
                 ldRawIntr->isVolatile());
             break;
