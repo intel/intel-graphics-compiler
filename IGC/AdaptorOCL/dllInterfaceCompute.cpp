@@ -1196,6 +1196,17 @@ bool TranslateBuildSPMD(
             }
         }
 
+        // Avoid stack overflow in AliasAnalysis for expansive loop unrolling cases.
+        llvm::StringRef aaQueryDepthFlag = "-basic-aa-max-query-depth=192";
+        auto aaQueryDepthSwitch = optionsMap.find(aaQueryDepthFlag.trim("-=192"));
+        if (aaQueryDepthSwitch != optionsMap.end())
+        {
+            if (aaQueryDepthSwitch->getValue()->getNumOccurrences() == 0)
+            {
+                args.push_back(aaQueryDepthFlag.data());
+            }
+        }
+
         llvm::StringRef dsePartialOverwriteTrackingFlag = "-enable-dse-partial-overwrite-tracking=1";
         auto dsePartialOverwriteTrackingSwitch = optionsMap.find(dsePartialOverwriteTrackingFlag.trim("-=1"));
         if (dsePartialOverwriteTrackingSwitch != optionsMap.end())
