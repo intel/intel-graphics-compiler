@@ -1087,11 +1087,21 @@ bool CMLowerVLoadVStore::lowerLoadStore(Function &F) {
       if (GV == nullptr) {
         // change to load/store
         IRBuilder<> Builder(&Inst);
-        if (GenXIntrinsic::isVStore(&Inst))
-          Builder.CreateStore(Inst.getOperand(0), Inst.getOperand(1));
-        else {
-          auto LI = Builder.CreateLoad(Inst.getType(), Inst.getOperand(0),
-                                       Inst.getName());
+        // There is no align attribute in vload/store intrinsics. During
+        // creation of normal load/store, if the alignment is not specified,
+        // LLVM defaults it to the ABI alignment of the loaded/stored vector,
+        // which can be too big. We have to explicitly set the alignment to the
+        // vector element's ABI align.
+        const DataLayout &DL = M->getDataLayout();
+        if (GenXIntrinsic::isVStore(&Inst)) {
+          auto *StoreVal = Inst.getOperand(0);
+          auto Align = DL.getABITypeAlign(StoreVal->getType()->getScalarType());
+          Builder.CreateAlignedStore(StoreVal, Inst.getOperand(1), Align);
+        } else {
+          auto *LoadTy = Inst.getType();
+          auto Align = DL.getABITypeAlign(LoadTy->getScalarType());
+          auto LI = Builder.CreateAlignedLoad(LoadTy, Inst.getOperand(0), Align,
+                                              Inst.getName());
           LI->setDebugLoc(Inst.getDebugLoc());
           Inst.replaceAllUsesWith(LI);
         }
