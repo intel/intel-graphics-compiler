@@ -854,7 +854,12 @@ bool G4_INST::hasNoPipe() const {
   if (op == G4_wait || op == G4_halt || op == G4_nop) {
     return true;
   }
-
+  if (op == G4_label) {
+    return true;
+  }
+  if (op == G4_intrinsic) {
+    return true;
+  }
   if (op == G4_sync_fence || op == G4_sync_nop || op == G4_sync_allrd ||
       op == G4_sync_allwr) {
     return true;

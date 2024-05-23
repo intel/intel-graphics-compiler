@@ -92,6 +92,7 @@ enum SB_INST_PIPE {
   PIPE_MATH = 4,
   PIPE_DPAS = 6,
   PIPE_SEND = 7,
+  PIPE_ALL = 8
 };
 // forward declaration for the binary of an instruction
 class BinInst;

@@ -1309,7 +1309,9 @@ DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
   TOTAL_BUCKETS = OTHER_ARF_BUCKET + 1;
 
   LiveBuckets LB(this, GRF_BUCKET, TOTAL_BUCKETS);
-
+  for (int i = 0; i < PIPE_ALL; i++) {
+    latestInstOfEachPipe[i] = nullptr;
+  }
   // Building the graph in reverse relative to the original instruction
   // order, to naturally take care of the liveness of operands.
   std::list<G4_INST *>::reverse_iterator iInst(bb->rbegin()),
@@ -2497,6 +2499,34 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
     }
   };
 
+  auto getStepCycle = [&](Node *n, uint32_t currCycle) -> uint32_t {
+    uint32_t stepCycle = 1;
+    for (unsigned i = PIPE_INT; i < PIPE_ALL; i++) {
+      if (latestInstOfEachPipe[i] == nullptr) {
+        continue;
+      }
+
+      if ((latestInstOfEachPipe[i]->schedTime +
+           latestInstOfEachPipe[i]->getOccupancy()) <= currCycle) {
+        latestInstOfEachPipe[i] = nullptr;
+        continue;
+      }
+
+      if (i == n->instPipe) {
+        stepCycle = std::max(
+            stepCycle, latestInstOfEachPipe[i]->schedTime +
+                           latestInstOfEachPipe[i]->getOccupancy() - currCycle);
+      } else {
+        if (latestInstOfEachPipe[i]->schedTime + 1 > currCycle) {
+          stepCycle = std::max(stepCycle, latestInstOfEachPipe[i]->schedTime +
+                                              1 - currCycle);
+        }
+      }
+    }
+
+    return stepCycle;
+  };
+
   auto updateForScheduled = [&](Node *scheduled) {
     // Append the scheduled node to the end of the schedule.
     schedule->scheduledNodes.push_back(scheduled);
@@ -2519,9 +2549,15 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
 
 
     updateForSucc(scheduled);
+    if (getOptions()->getOption(vISA_multiplePipeSched)) {
+      // Increment the scheduler's clock after each scheduled node
+      currCycle += getStepCycle(scheduled, currCycle);
 
-    // Increment the scheduler's clock after each scheduled node
-    currCycle += scheduled->getOccupancy();
+      latestInstOfEachPipe[scheduled->instPipe] = scheduled;
+    } else {
+      // Increment the scheduler's clock after each scheduled node
+      currCycle += scheduled->getOccupancy();
+    }
   };
 
   auto scheduleForSuppression = [&]() -> bool {
@@ -2596,6 +2632,32 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
     return scheduled;
   };
 
+  auto getHigestOccupancyStallPipe = [&](uint32_t currCycle) -> SB_INST_PIPE {
+    SB_INST_PIPE pipe = PIPE_NONE;
+    uint32_t mostOccupancyStallCycle = 0;
+    for (unsigned i = PIPE_INT; i < PIPE_ALL; i++) {
+      if (latestInstOfEachPipe[i] == nullptr) {
+        continue;
+      }
+
+      if ((latestInstOfEachPipe[i]->schedTime +
+           latestInstOfEachPipe[i]->getOccupancy()) <= currCycle) {
+        latestInstOfEachPipe[i] = nullptr;
+        continue;
+      }
+
+      if (latestInstOfEachPipe[i]->schedTime +
+              latestInstOfEachPipe[i]->getOccupancy() >
+          mostOccupancyStallCycle) {
+        pipe = (SB_INST_PIPE)i;
+        mostOccupancyStallCycle = latestInstOfEachPipe[i]->schedTime +
+                                  latestInstOfEachPipe[i]->getOccupancy();
+      }
+    }
+
+    return pipe;
+  };
+
   // Try to avoid b2b math if possible as there are pipeline stalls.
   auto scheduleForB2BMathReduction = [&](Node *scheduled) -> bool {
     return !readyList.empty() && lastScheduled &&
@@ -2604,7 +2666,7 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
   };
 
   auto applyB2BMathReductionHeuristic = [&](Node *scheduled,
-      Node *lastScheduled) -> Node * {
+                                            Node *lastScheduled) -> Node * {
     // pick another node on the ready list if it's not math and won't cause
     // a longer stall to save compile time we currently limit search size to 2
     std::vector<Node *> popped;
@@ -2615,6 +2677,28 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
       if (!next->getInstructions()->front()->isMath() &&
           next->getEarliest() <
               lastScheduled->schedTime + lastScheduled->getOccupancy()) {
+        readyList.push(scheduled);
+        scheduled = next;
+        break;
+      } else {
+        // keep searching
+        popped.push_back(next);
+      }
+    }
+    for (auto nodes : popped) {
+      readyList.push(nodes);
+    }
+    return scheduled;
+  };
+
+  auto applyMultiplePipelineHeuristic = [&](Node *scheduled, SB_INST_PIPE stallPipe) -> Node * {
+    // pick another node on the ready list if it's not math and won't cause
+    // a longer stall to save compile time we currently limit search size to 2
+    std::vector<Node *> popped;
+    for (size_t i = 0; i < readyList.size(); ++i) {
+      Node *next = readyList.top();
+      readyList.pop();
+      if (next->instPipe != stallPipe) {
         readyList.push(scheduled);
         scheduled = next;
         break;
@@ -2829,9 +2913,17 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
       heuCandidate =
           applyBankConflictReductionHeuristic(scheduled, lastScheduled);
     }
-    if (!heuCandidate && scheduleForB2BMathReduction(scheduled)) {
-      heuCandidate =
-          applyB2BMathReductionHeuristic(scheduled, lastScheduled);
+    if (!heuCandidate) {
+      if (getOptions()->getOption(vISA_multiplePipeSched)) {
+        auto occupancyPipe = getHigestOccupancyStallPipe(currCycle);
+        if (occupancyPipe != PIPE_NONE &&
+            occupancyPipe == scheduled->instPipe) {
+          heuCandidate =
+              applyMultiplePipelineHeuristic(scheduled, occupancyPipe);
+        }
+      } else if (scheduleForB2BMathReduction(scheduled)){
+        heuCandidate = applyB2BMathReductionHeuristic(scheduled, lastScheduled);
+      }
     }
     if (!heuCandidate && scheduleForWAWSubregHazardReduction()) {
       heuCandidate =
@@ -2958,6 +3050,10 @@ Node::Node(uint32_t id, G4_INST *inst, Edge_Allocator &depEdgeAllocator,
   priority = occupancy;
 
   barrier = CheckBarrier(inst);
+
+  if (!inst->isLabel()) {
+    instPipe = inst->getInstructionPipeXe();
+  }
 }
 
 void LocalScheduler::EmitNode(Node *node) {

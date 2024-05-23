@@ -104,6 +104,7 @@ public:
   unsigned getNodeID() const { return nodeID; };
 
   uint32_t schedTime = 0;
+  SB_INST_PIPE instPipe = PIPE_NONE;
 
   // Number of predecessor nodes not scheduled
   uint16_t predsNotScheduled = 0;
@@ -322,6 +323,7 @@ public:
   typedef std::pair<Node *, Node *> instrPair_t;
   typedef std::vector<instrPair_t> instrPairVec_t;
   NODE_LIST Roots;
+  Node *latestInstOfEachPipe[PIPE_ALL];
   NodeAlloc NodeAllocator;
   void moveDeps(Node *fromNode, Node *toNode);
   void pairTypedWriteOrURBWriteNodes(G4_BB *bb);
