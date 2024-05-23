@@ -944,31 +944,19 @@ CVariable* CShader::GetHWTID()
             if (m_Platform->getPlatformInfo().eProductFamily == IGFX_LUNARLAKE)
             {
 
+                uint32_t bitmask = BITMASK(16);
                 m_HW_TID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1, "HWTID");
                 encoder.SetNoMask();
                 encoder.SetSrcSubReg(0, 0);
-
-                // m_HW_TID = msg0 & BITMASK(8)
-                encoder.And(m_HW_TID, GetMSG0(), ImmToVariable(BITMASK(8), ISA_TYPE_UD));
+                encoder.And(m_HW_TID, GetSR0(), ImmToVariable(bitmask, ISA_TYPE_D));
                 encoder.Push();
 
-                CVariable *srID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD,
-                                                 true, 1, "SR_0_6");
-                // srID = sr0 & BitMASK(7)
-                encoder.And(srID, GetSR0(), ImmToVariable(BITMASK(7), ISA_TYPE_UD));
-                encoder.Push();
-
-                // m_HW_TID = m_HW_TID << 6
-                encoder.Shl(m_HW_TID, m_HW_TID, ImmToVariable(6, ISA_TYPE_UD));
-                encoder.Push();
-
-                // Remove bit sr0.0[3]
-                // srID = sr0.0[6:4] : sr0.0[2:0]
-                RemoveBitRange(srID, 3, 1);
-
-                // m_HW_TID = m_HW_TID | srID
-                encoder.Or(m_HW_TID, m_HW_TID, srID);
-                encoder.Push();
+                // Remove bit [10]
+                RemoveBitRange(m_HW_TID, 10, 1);
+                // Remove bit [7]
+                RemoveBitRange(m_HW_TID, 7, 1);
+                // Remove bit [3]
+                RemoveBitRange(m_HW_TID, 3, 1);
 
                 return m_HW_TID;
             }
