@@ -13,7 +13,7 @@ SPDX-License-Identifier: MIT
 
 // The reduction for PVC is more unrolled
 // CHECK-BASE-COUNT-3: call float @llvm.genx.GenISA.WaveAll
-// CHECK-PVC-COUNT-4: call float @llvm.genx.GenISA.WaveAll
+// CHECK-PVC-COUNT-2: call float @llvm.genx.GenISA.WaveAll
 
 kernel void test(__global float* out, __global float* in)
 {
