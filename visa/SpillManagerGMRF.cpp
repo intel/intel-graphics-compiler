@@ -2948,8 +2948,13 @@ void SpillManagerGRF::insertSpillRangeCode(INST_LIST::iterator spilledInstIter,
 
     auto preloadNeeded = shouldPreloadSpillRange(*spilledInstIter, bb);
     auto scatterSpillCandidate = isScatterSpillCandidate();
+    auto needsRMW = checkRMWNeeded();
+    // Scatter spill is used only when the spill needs RMW.
+    // If spill doesn't need RMW then we can use block spill as those
+    // can be coalesced with nearby block spills.
+    auto useScatter = (scatterSpillCandidate && needsRMW);
 
-    if (preloadNeeded && checkRMWNeeded() && !scatterSpillCandidate) {
+    if (preloadNeeded && needsRMW && !scatterSpillCandidate) {
 
       // Preload the segment aligned spill range from memory to use
       // as an overlay
@@ -3065,7 +3070,7 @@ void SpillManagerGRF::insertSpillRangeCode(INST_LIST::iterator spilledInstIter,
         newSubregOff = subRegOff;
       }
 
-      if ((!bb->isAllLaneActive() && !preloadNeeded) ||  scatterSpillCandidate) {
+      if ((!bb->isAllLaneActive() && !preloadNeeded) || useScatter) {
         spillSendOption = (*spilledInstIter)->getMaskOption();
       }
     }
@@ -3076,7 +3081,7 @@ void SpillManagerGRF::insertSpillRangeCode(INST_LIST::iterator spilledInstIter,
 
     if (gra.useLscForSpillFill) {
       spillSendInst = createLSCSpill(spillRangeDcl, spilledRegion, execSize,
-                                     spillSendOption, scatterSpillCandidate);
+                                     spillSendOption, useScatter);
     } else {
       spillSendInst = createSpillSendInstr(
           spillRangeDcl, mRangeDcl, spilledRegion, execSize, spillSendOption);
