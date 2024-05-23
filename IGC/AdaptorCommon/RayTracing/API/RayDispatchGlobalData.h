@@ -127,11 +127,21 @@ struct RayDispatchGlobalData
         // from top to bottom in order from least frequently used to most.
         uint64_t printfBufferBasePtr;       // base pointer of printf buffer
         uint64_t ProfilingBufferGpuVa;      // GTPin buffer to collect profiling data
-        uint64_t statelessScratchPtr;       // Stateless scratch buffer pointer
+        union
+        {
+            uint64_t padding;
+        };
+        union
+        {
+            uint64_t statelessScratchPtr;       // Stateless scratch buffer pointer
+        };
         uint64_t pCallableShaderBasePtr;    // base pointer of callable shader record array (8-bytes alignment)
         uint32_t pCallableShaderStride;     // stride of callable shader records (8-bytes alignment)
         uint32_t pNumDSSRTStacks;           // number of stacks per DSS
-        uint64_t bindlessHeapBasePtr;       // base pointer of bindless heap
+        union
+        {
+            uint64_t bindlessHeapBasePtr;    // base pointer of bindless heap
+        };
         uint64_t pHitGroupBasePtr;          // base pointer of hit group shader record array (16-bytes alignment)
         uint64_t pMissShaderBasePtr;        // base pointer of miss shader record array (8-bytes alignment)
         uint32_t pHitGroupStride;           // stride of hit group shader records (16-bytes alignment)
@@ -213,7 +223,7 @@ struct RayDispatchGlobalData
                 uint32_t bvhLevels : 3;
                 uint32_t MBZ3      : 29;
             } rt_data_info;
-            uint32_t paddingBits[1+8];          // padding
+            uint32_t paddingBits[1+6];          // padding
 
             // HW doesn't read anything below this point.
             RayDispatchGlobalDataCommon common;

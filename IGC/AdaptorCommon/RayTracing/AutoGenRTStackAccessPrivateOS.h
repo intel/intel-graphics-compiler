@@ -337,7 +337,7 @@ static Type* _struct_IGC__RayDispatchGlobalData__RT__Xe(Module &M)
       [&] {
         auto *EltTy =
           IntegerType::get(M.getContext(), 32);
-        return ArrayType::get(EltTy, 9);
+        return ArrayType::get(EltTy, 7);
       }(),
       _struct_IGC__RayDispatchGlobalData__RayDispatchGlobalDataCommon(M),
     };
@@ -387,17 +387,18 @@ static Type* _struct_IGC__RayDispatchGlobalData__RayDispatchGlobalDataCommon(Mod
     Type* Tys[] = {
       IntegerType::get(M.getContext(), 64),
       IntegerType::get(M.getContext(), 64),
-      IntegerType::get(M.getContext(), 64),
-      IntegerType::get(M.getContext(), 64),
-      IntegerType::get(M.getContext(), 32),
-      IntegerType::get(M.getContext(), 32),
-      IntegerType::get(M.getContext(), 64),
-      IntegerType::get(M.getContext(), 64),
-      IntegerType::get(M.getContext(), 64),
-      IntegerType::get(M.getContext(), 32),
-      IntegerType::get(M.getContext(), 32),
-      IntegerType::get(M.getContext(), 64),
       _union_anon_13(M),
+      _union_anon_14(M),
+      IntegerType::get(M.getContext(), 64),
+      IntegerType::get(M.getContext(), 32),
+      IntegerType::get(M.getContext(), 32),
+      _union_anon_15(M),
+      IntegerType::get(M.getContext(), 64),
+      IntegerType::get(M.getContext(), 64),
+      IntegerType::get(M.getContext(), 32),
+      IntegerType::get(M.getContext(), 32),
+      IntegerType::get(M.getContext(), 64),
+      _union_anon_16(M),
       IntegerType::get(M.getContext(), 32),
       IntegerType::get(M.getContext(), 32),
       IntegerType::get(M.getContext(), 32),
@@ -416,16 +417,49 @@ static Type* _union_anon_13(Module &M)
   [&] {
     StringRef StructName = "union.anon.13";
     Type* Tys[] = {
-      _struct_anon_14(M),
+      IntegerType::get(M.getContext(), 64),
     };
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
-static Type* _struct_anon_14(Module &M)
+static Type* _union_anon_14(Module &M)
 {
   return
   [&] {
-    StringRef StructName = "struct.anon.14";
+    StringRef StructName = "union.anon.14";
+    Type* Tys[] = {
+      IntegerType::get(M.getContext(), 64),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
+static Type* _union_anon_15(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "union.anon.15";
+    Type* Tys[] = {
+      IntegerType::get(M.getContext(), 64),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
+static Type* _union_anon_16(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "union.anon.16";
+    Type* Tys[] = {
+      _struct_anon_17(M),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
+static Type* _struct_anon_17(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "struct.anon.17";
     Type* Tys[] = {
       IntegerType::get(M.getContext(), 32),
       IntegerType::get(M.getContext(), 32),
@@ -836,7 +870,7 @@ auto* _get_numDSSRTStacks_Xe(const Twine& _ReturnName = "")
 auto* _get_statelessScratchPtr(const Twine& _ReturnName = "")
 {
   auto* V_0 = getGlobalBufferPtr();
-  auto* V_1 = CreateInBoundsGEP(V_0, { getInt64(0), getInt32(0), getInt32(0), getInt32(6), getInt32(2) });
+  auto* V_1 = CreateInBoundsGEP(V_0, { getInt64(0), getInt32(0), getInt32(0), getInt32(6), getInt32(3), getInt32(0) });
   auto* V_2 = CreateLoad(V_1, _ReturnName);
   setInvariantLoad(V_2);
   return V_2;
