@@ -531,18 +531,6 @@ namespace IGC
         uint32_t      DimX2D            = 0;
         uint32_t      DimY2D            = 0;
 
-        // dynamically select between the 1D and 2D tiling layout at runtime based
-        // on the size of the dispatch.
-        uint32_t      DimHorizontalX1D = 0;
-        uint32_t      DimHorizontalY1D = 0;
-        uint32_t      DimVerticalX1D = 0;
-        uint32_t      DimVerticalY1D = 0;
-
-        uint32_t      DimHorizontalX2D = 0;
-        uint32_t      DimHorizontalY2D = 0;
-        uint32_t      DimVerticalX2D = 0;
-        uint32_t      DimVerticalY2D = 0;
-
         // Shaders that satisfy `isPrimaryShaderIdentifier()` can also have
         // a collection of other names that they go by.
         std::vector<std::string> Aliases;
