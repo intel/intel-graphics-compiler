@@ -396,7 +396,7 @@ void CustomSafeOptPass::visitShuffleIndex(llvm::CallInst* I)
 // %id213- = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 %id113-, i32 %305, i32 %345)
 void CustomSafeOptPass::mergeDotAddToDp4a(llvm::CallInst* I)
 {
-    if (IGC_IS_FLAG_ENABLED(DisableDotAddToDp4aMerge))
+    if (!IGC_IS_FLAG_ENABLED(EnableDotAddToDp4aMerge))
       return;
 
     auto checkValidAccValue = [](GenIntrinsicInst* dp4aInstr, Value* accVal) {
