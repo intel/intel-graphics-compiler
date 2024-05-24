@@ -949,9 +949,9 @@ unsigned JointMatrixFuncsResolutionPass::getNumRowsPerWI(const JointMatrixTypeDe
     return totalBits / canHandleBits + (totalBits % canHandleBits ? 1 : 0);
 }
 
-// Create <i64 x 32> type used for Accumulator 32x64 in array [2 x <i64 x 32>].
+// Create <float x 64> type used for Accumulator 32x64 in array [2 x <float x 64>].
 static Type* getAcc32x64HalfType(LLVMContext &ctx) {
-    return IGCLLVM::FixedVectorType::get(Type::getInt64Ty(ctx), 32);
+    return IGCLLVM::FixedVectorType::get(Type::getFloatTy(ctx), 64);
 }
 
 // Check if it is one off special case: Accumulator 32x64.
@@ -976,23 +976,9 @@ Type *JointMatrixFuncsResolutionPass::ResolveType(Type *opaqueType, JointMatrixT
     LLVMContext &ctx = opaqueType->getContext();
     Type *resolvedType = nullptr;
 
-    // One off special case: this should ideally be a vector of <i32 x 128>. However since IGC
-    // code gen supports vector operations only on vectors up to 32
-    // entries, we model this slice as array of [2 x <i64 x 32>].
-    if (isAccumulator32x64(desc)) {
-        desc.contribBitWidth = 32; // we still consider contrib bit width to be 32
-
-        if (outDesc != nullptr)
-            *outDesc = desc;
-
-        resolvedType = ArrayType::get(getAcc32x64HalfType(ctx), 2);
-        CacheResolvedTypes(opaqueType, resolvedType);
-        return resolvedType;
-    }
-
-    // The rest follows common rules for type resolution
     Type *baseType = Type::getInt32Ty(ctx);
     desc.contribBitWidth = 32;
+
     if (desc.layout == LayoutPackedA) {
         if (!isTF32(&desc) && m_Ctx->platform.hasExecSize16DPAS()) {
             baseType = Type::getInt16Ty(ctx);
@@ -1005,11 +991,18 @@ Type *JointMatrixFuncsResolutionPass::ResolveType(Type *opaqueType, JointMatrixT
     if (outDesc != nullptr)
         *outDesc = desc;
 
-    unsigned vectorSize = getNumRowsPerWI(&desc);
-    if (vectorSize == 1) {
-        resolvedType = baseType;
-    } else {
-        resolvedType = IGCLLVM::FixedVectorType::get(baseType, vectorSize);
+    // One off special case: this should ideally be a vector of <float x 128>. However since IGC
+    // code gen supports vector operations only on vectors up to 64
+    // entries, we model this slice as array of [2 x <float x 64>].
+    if (isAccumulator32x64(desc))
+        resolvedType = ArrayType::get(getAcc32x64HalfType(ctx), 2);
+    else
+    {
+        unsigned vectorSize = getNumRowsPerWI(&desc);
+        if (vectorSize == 1)
+            resolvedType = baseType;
+        else
+            resolvedType = IGCLLVM::FixedVectorType::get(baseType, vectorSize);
     }
 
     IGC_ASSERT_EXIT_MESSAGE(resolvedType != nullptr, "Failed to resolve matrix type.");
@@ -1501,7 +1494,7 @@ static Type *getResolvedVectorElementType(Type *matrixType, BuilderT *builder) {
     if (matrixType->isIntegerTy() || matrixType->isFloatingPointTy())
         return matrixType;
     if (matrixType->isArrayTy() && matrixType->getArrayNumElements() == 2) {
-        return Type::getInt32Ty(builder->getContext());
+        return Type::getFloatTy(builder->getContext());
     }
 
     IGC_ASSERT_MESSAGE(false, "Unexpected type of matrix slice.");
@@ -1569,11 +1562,6 @@ Value *JointMatrixFuncsResolutionPass::ResolveFill(CallInst *CI) {
     if (desc.bitWidth != desc.contribBitWidth)
         fillValue = packFillValue(&builder, fillValue, vecElementIntType);
 
-    // Special case Accumulator 32x64 is represented as [2 x <i64 x 32>].
-    // Hence need to pack 2 i32 values into 1 i64
-    if (isAccumulator32x64(desc))
-        fillValue = packFillValue(&builder, fillValue, Type::getIntNTy(builder.getContext(), 64));
-
     Value *slice = fillValue;
 
     // We create a vector only for rows > 1, as for rows = 1, we have one signle element instead of a one-element vector.
@@ -1584,14 +1572,14 @@ Value *JointMatrixFuncsResolutionPass::ResolveFill(CallInst *CI) {
             slice = builder.CreateInsertElement(slice, fillValue, i);
         }
     }
-    // Special case Accumulator 32x64 is represented as [2 x <i64 x 32>].
+    // Special case Accumulator 32x64 is represented as [2 x <float x 64>].
     else if (isAccumulator32x64(desc))
     {
         Type *halfTy = getAcc32x64HalfType(builder.getContext());
         Value *slice0 = UndefValue::get(halfTy);
         Value *slice1 = UndefValue::get(halfTy);
 
-        const int vectorSize = 32;
+        const int vectorSize = 64;
         for (int i = 0; i < vectorSize; i++) {
             slice0 = builder.CreateInsertElement(slice0, fillValue, i);
             slice1 = builder.CreateInsertElement(slice1, fillValue, i);
@@ -1714,47 +1702,43 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceInsert(CallInst *CI) {
     IRBuilder builder(CI);
     Value *slice = nullptr;
 
-    // Special case Accumulator 32x64 is represented as [2 x <i64 x 32>].
-    if (isAccumulator32x64(desc)) {
-        Value *offset = createOffsetForPackedValue(&builder, index, 64, desc.bitWidth);
+    if (desc.bitWidth != desc.contribBitWidth)
+    {
+        // Unpacking:
+        Value *offset = createOffsetForPackedValue(&builder, index, desc.contribBitWidth, desc.bitWidth);
 
-        // extract first or second half of array
-        Value* indexArray = builder.CreateICmpUGT(index, ConstantInt::get(index->getType(), 63)); // i1 0 or 1
-        Value* half0 = builder.CreateExtractValue(matrix, {0}, "matrix.slice.half0");
-        Value* half1 = builder.CreateExtractValue(matrix, {1}, "matrix.slice.half1");
-        Value* halfMatrix = builder.CreateSelect(indexArray, half1, half0, "matrix.slice.selected.half"); // <32 x i64>
-
-        // extract one of 32 elements of vector to update and merge component to it
-        Value* indexVec = builder.CreateURem(index, ConstantInt::get(index->getType(), 64)); // 0..63
-        Value *element = updateIndexAndCreateSliceExtract(&builder, halfMatrix, &indexVec, 64, desc.bitWidth);
-        component = mergeComponentToPackedValue(&builder, element, component, offset, 64, desc.bitWidth);
-
-        // insert new component to vector <32 x i64> and then insert new vector to array of 2 vectors
-        slice = builder.CreateInsertElement(halfMatrix, component, indexVec);
-        Value* newHalf0 = builder.CreateSelect(indexArray, half0, slice);
-        Value* newHalf1 = builder.CreateSelect(indexArray, slice, half1);
-        slice = createPair(&builder, getAcc32x64HalfType(builder.getContext()), newHalf0, newHalf1);
-    } else {
-        if (desc.bitWidth != desc.contribBitWidth) { /* Unpacking: */
-            Value *offset = createOffsetForPackedValue(&builder, index, desc.contribBitWidth, desc.bitWidth);
-
-            // prepare element to update
-            Value *element = matrix; // If rows == 1, we do not need an extract, so directly use the value.
-            if (dyn_cast<IGCLLVM::FixedVectorType>(matTy))
-                element = updateIndexAndCreateSliceExtract(&builder, matrix, &index, desc.contribBitWidth, desc.bitWidth);
-            if (!isa<IntegerType>(element->getType()))
-                element = builder.CreateBitCast(element, Type::getIntNTy(builder.getContext(), desc.contribBitWidth));
-
-            component = mergeComponentToPackedValue(&builder, element, component, offset, desc.contribBitWidth, desc.bitWidth);
-        } else if (IntegerType *vectorElementType = dyn_cast<IntegerType>(getResolvedVectorElementType(matTy, &builder))) {
-            component = builder.CreateBitCast(component, vectorElementType);
-        }
-
+        // prepare element to update
+        Value *element = matrix; // If rows == 1, we do not need an extract, so directly use the value.
         if (dyn_cast<IGCLLVM::FixedVectorType>(matTy))
-            slice = builder.CreateInsertElement(matrix, component, index);
-        else
-            slice = component;
+            element = updateIndexAndCreateSliceExtract(&builder, matrix, &index, desc.contribBitWidth, desc.bitWidth);
+        if (!isa<IntegerType>(element->getType()))
+            element = builder.CreateBitCast(element, Type::getIntNTy(builder.getContext(), desc.contribBitWidth));
+
+        component = mergeComponentToPackedValue(&builder, element, component, offset, desc.contribBitWidth, desc.bitWidth);
     }
+    else if (IntegerType *vectorElementType = dyn_cast<IntegerType>(getResolvedVectorElementType(matTy, &builder)))
+        component = builder.CreateBitCast(component, vectorElementType);
+
+    // Special case Accumulator 32x64 is represented as [2 x <float x 64>].
+    if (isAccumulator32x64(desc))
+    {
+        // extract first or second half of array
+        Value *indexArray = builder.CreateICmpUGT(index, ConstantInt::get(index->getType(), 63)); // i1 0 or 1
+        Value *half0 = builder.CreateExtractValue(matrix, {0}, "matrix.slice.half0");
+        Value *half1 = builder.CreateExtractValue(matrix, {1}, "matrix.slice.half1");
+        Value *halfMatrix = builder.CreateSelect(indexArray, half1, half0, "matrix.slice.selected.half"); // <64 x float>
+
+        // insert new component to vector <64 x float> and then insert new vector to array of 2 vectors
+        Value* indexVec = builder.CreateURem(index, ConstantInt::get(index->getType(), 64)); // 0..63
+        slice = builder.CreateInsertElement(halfMatrix, component, indexVec);
+        Value *newHalf0 = builder.CreateSelect(indexArray, half0, slice);
+        Value *newHalf1 = builder.CreateSelect(indexArray, slice, half1);
+        slice = createPair(&builder, getAcc32x64HalfType(builder.getContext()), newHalf0, newHalf1);
+    }
+    else if (dyn_cast<IGCLLVM::FixedVectorType>(matTy))
+        slice = builder.CreateInsertElement(matrix, component, index);
+    else
+        slice = component;
 
     InstsToErase.insert(CI);
     return slice;
@@ -1784,14 +1768,12 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceExtract(CallInst *CI) {
 
         // get index of element inside vector of 64 elements
         Value* indexVec = builder.CreateURem(index, ConstantInt::get(index->getType(), 64)); // 0..63
-        element = updateIndexAndCreateSliceExtract(&builder, halfMatrix, &indexVec, 64, desc.bitWidth);
+        element = updateIndexAndCreateSliceExtract(&builder, halfMatrix, &indexVec, desc.contribBitWidth, desc.bitWidth);
     }
 
     // unpack element we need from packed value
     if (desc.bitWidth != desc.contribBitWidth) {
         element = unpackElementFromPackedValue(&builder, index, element, desc.contribBitWidth, desc.bitWidth);
-    } else if (isAccumulator32x64(desc)) {
-        element = unpackElementFromPackedValue(&builder, index, element, 64, desc.bitWidth);
     }
 
     // We need the bitcast, e.g. for half, as the function call that is
