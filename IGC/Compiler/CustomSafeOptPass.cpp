@@ -396,24 +396,23 @@ void CustomSafeOptPass::visitShuffleIndex(llvm::CallInst* I)
 // %id213- = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 %id113-, i32 %305, i32 %345)
 void CustomSafeOptPass::mergeDotAddToDp4a(llvm::CallInst* I)
 {
-    if (!IGC_IS_FLAG_ENABLED(EnableDotAddToDp4aMerge))
+    if (IGC_IS_FLAG_ENABLED(DisableDotAddToDp4aMerge))
       return;
 
-    auto checkValidAccValue = [](GenIntrinsicInst* dp4aInstr, Value* accVal) {
-      // check callInst if the value is from a previous callInst and make sure
-      // it's not the dp4a intrinsic it self, such as the %id213- above
-      if (CallInst* valInst = dyn_cast<CallInst>(accVal)) {
+    auto isPreviousDp4aInstr = [](GenIntrinsicInst* dp4aInstr, Value* opdVal) {
+      // It's the dp4a intrinsic, such as the %id213- above.
+      // If so, then the other operand is the acc.
+      if (CallInst* valInst = dyn_cast<CallInst>(opdVal)) {
         if (GenIntrinsicInst* valInstr = dyn_cast<GenIntrinsicInst>(valInst)) {
-          return (valInstr != dp4aInstr) ? true : false;
+          return (valInstr == dp4aInstr) ? true : false;
         }
       }
 
-      // if it's not callInst, then it's a previous result for acc in this intrinsic
-      return true;;
+      return false;
     };
 
     // found %id213- = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 0, i32 %305, i32 %345)
-    GenIntrinsicInst* instr = cast<GenIntrinsicInst>(I);
+    GenIntrinsicInst* instr = dyn_cast<GenIntrinsicInst>(I);
 
     if (ConstantInt* CI = dyn_cast<ConstantInt>(instr->getOperand(0))) {
       // make sure operand(0) value is (i32 0)
@@ -425,12 +424,13 @@ void CustomSafeOptPass::mergeDotAddToDp4a(llvm::CallInst* I)
             // the acc value
             Value* accVal = nullptr;
 
-            // check if the operand(0) is the acc, or the operand(1) is
-            if (checkValidAccValue(instr, nextInst->getOperand(0))) {
-              accVal = nextInst->getOperand(0);
-            }
-            else if (checkValidAccValue(instr, nextInst->getOperand(1))) {
+            // If the operand(0) is the previous dp4a, then operand(1) is acc.
+            // else vice versa.
+            if (isPreviousDp4aInstr(instr, nextInst->getOperand(0))) {
               accVal = nextInst->getOperand(1);
+            }
+            else if (isPreviousDp4aInstr(instr, nextInst->getOperand(1))) {
+              accVal = nextInst->getOperand(0);
             }
 
             // if a valid acc is found

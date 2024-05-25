@@ -6,13 +6,15 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --platformdg2 --regkey EnableDotAddToDp4aMerge=1 -igc-custom-safe-opt -S < %s --dce | FileCheck %s
+; RUN: igc_opt --platformdg2 -igc-custom-safe-opt -S < %s --dce | FileCheck %s
 ; ------------------------------------------------
 ; CustomSafeOptPass: DotAddToDp4a
 ; ------------------------------------------------
 define void @test_DotAddToDp4a(i32 %a, i32 %b, i32 %c, i32 %d, i32 %e, i32 %f) {
 ; CHECK-LABEL: @test_DotAddToDp4a(
 ; CHECK:    [[TMP1:%.*]] = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 0, i32 %a, i32 %b)
+; CHECK:    [[TMP2:%.*]] = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 [[TMP1]], i32 %c, i32 %d)
+; CHECK:    [[TMP3:%.*]] = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 [[TMP2]], i32 %e, i32 %f)
 ;
   %1 = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 0, i32 %a, i32 %b)
   %2 = call i32 @llvm.genx.GenISA.dp4a.ss.i32(i32 0, i32 %c, i32 %d)
