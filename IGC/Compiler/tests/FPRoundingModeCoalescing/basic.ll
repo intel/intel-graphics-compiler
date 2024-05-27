@@ -503,6 +503,54 @@ entry:
   ret void
 }
 
+define spir_kernel void @phi_node_is_ignored(double %src1, double %src2, double %src3, double addrspace(1)* %dst) {
+entry:
+; CHECK-LABEL: entry:
+; CHECK:         br label %l1
+; CHECK:       l1:                                               ; preds = %l1, %entry
+; CHECK:         %phi = phi double [ %src3, %entry ], [ %tmp13, %l1 ]
+; COM: First dependencies for FMAs.
+; CHECK:         %fma.rtz.1.arg = fsub double %src1, %src3
+; CHECK:         %fma.rtz.2.arg = fsub double %src1, %src2
+; COM: Next all FMAs grouped together.
+; CHECK:         %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.1.arg)
+; CHECK:         %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.2.arg)
+; COM: Then all uses of FMAs' results that could be moved.
+; CHECK:         %tmp11 = fadd double %src1, %fma.rtz.1.result
+; CHECK:         %tmp12 = fadd double %src2, %tmp11
+; CHECK:         %tmp13 = fadd double %fma.rtz.1.result, %tmp12
+; CHECK:         %tmp14 = fcmp oeq double %tmp13, 5.000000e+00
+; CHECK:         br i1 %tmp14, label %l1, label %l2
+; CHECK:       l2:                                               ; preds = %l1
+; CHECK:         %result = fadd double %fma.rtz.1.result, %fma.rtz.2.result
+; CHECK:         store double %result, double addrspace(1)* %dst
+; CHECK:         ret void
+  br label %l1
+
+l1:
+  %phi = phi double [ %src3, %entry ], [ %tmp13, %l1 ]
+
+  %fma.rtz.1.arg = fsub double %src1, %src3
+  %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.1.arg)
+
+; COM: Depends on result of first FMA, but can be moved after third FMA.
+  %tmp11 = fadd double %src1, %fma.rtz.1.result
+  %tmp12 = fadd double %src2, %tmp11
+  %tmp13 = fadd double %fma.rtz.1.result, %tmp12
+  %tmp14 = fcmp oeq double %tmp13, 5.0
+
+  %fma.rtz.2.arg = fsub double %src1, %src2
+  %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.2.arg)
+; COM: Users will be moved here.
+
+  br i1 %tmp14, label %l1, label %l2
+
+l2:
+  %result = fadd double %fma.rtz.1.result, %fma.rtz.2.result
+  store double %result, double addrspace(1)* %dst
+  ret void
+}
+
 ; Don't reorder instructions if there is a risk of side effect.
 define spir_kernel void @side_effect(double %src1, double %src2, double %src3, double addrspace(1)* %dst) {
 entry:
@@ -532,7 +580,7 @@ declare float @llvm.genx.GenISA.uitof.rtz.f32.i32(i32)
 declare double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double, double, double)
 declare double @llvm.genx.GenISA.fma.rtp.f64.f64.f64.f64(double, double, double)
 
-!igc.functions = !{!0, !1, !2, !3, !4, !5, !6, !7, !8, !9, !10, !11}
+!igc.functions = !{!0, !1, !2, !3, !4, !5, !6, !7, !8, !9, !10, !11, !12}
 
 !0 = !{void (double, double, double, double addrspace(1)*, i32 addrspace(1)*)* @no_dependence_on_rm, !100}
 !1 = !{void (double, double, double, double addrspace(1)*, i32 addrspace(1)*)* @no_uses_for_fma_rtz, !100}
@@ -545,6 +593,7 @@ declare double @llvm.genx.GenISA.fma.rtp.f64.f64.f64.f64(double, double, double)
 !8 = !{void (double, double, double, double addrspace(1)*)* @multiple_rm_modes, !100}
 !9 = !{void (double, double, double, double addrspace(1)*)* @max_distance_threshold_with_insert_point, !100}
 !10 = !{void (double, double, double, double addrspace(1)*)* @max_distance_threshold_without_insert_point, !100}
-!11 = !{void (double, double, double, double addrspace(1)*)* @side_effect, !100}
+!11 = !{void (double, double, double, double addrspace(1)*)* @phi_node_is_ignored, !100}
+!12 = !{void (double, double, double, double addrspace(1)*)* @side_effect, !100}
 !100 = !{!101}
 !101 = !{!"function_type", i32 0}

@@ -176,6 +176,7 @@ bool FPRoundingModeCoalescingImpl::coalesce() {
 }
 
 bool FPRoundingModeCoalescingImpl::update() {
+
     for (auto I = BB.rbegin(); I != BB.rend(); ++I) {
 
         if (VisitedInstructions.insert(&*I).second == false)
@@ -252,6 +253,8 @@ bool FPRoundingModeCoalescingImpl::tryMove(Instruction &ToMove, FPRoundingModeGr
         for (auto V = ToCheck->users().begin(); V != ToCheck->users().end(); ++V) {
             if (auto *I = dyn_cast<Instruction>(*V)) {
                 if (I->getParent() != ToMove.getParent())
+                    continue;
+                if (isa<PHINode>(I))
                     continue;
                 // Special case - if group directly uses ToMove, then this use is already on correct position.
                 if (Group.comesBeforeTail(I) && (ToCheck != &ToMove || !Group.contains(I))) {
