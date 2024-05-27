@@ -1722,6 +1722,8 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap* paramMap, CImagesBI::I
     m_CommandMap["__builtin_IB_get_stack_pointer"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_getStackPointer, false);
     m_CommandMap["__builtin_IB_get_stack_size_per_thread"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_getStackSizePerThread, false);
 
+    m_CommandMap["__devicelib_exit"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_thread_exit, false);
+
     m_KnownBuiltins = {
         //resolved later in GenericAddressDynamicResolution pass:
         "__builtin_IB_to_local",

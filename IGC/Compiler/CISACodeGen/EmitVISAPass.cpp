@@ -8666,6 +8666,11 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         m_encoder->Push();
         break;
     }
+    case GenISAIntrinsic::GenISA_thread_exit:
+    {
+        m_currShader->EOTGateway();
+        break;
+    }
     case GenISAIntrinsic::GenISA_getStackPointer: {
         IGC_ASSERT(m_destination->GetType() == ISA_TYPE_Q);
         IGC_ASSERT(m_currShader->GetSP() &&
