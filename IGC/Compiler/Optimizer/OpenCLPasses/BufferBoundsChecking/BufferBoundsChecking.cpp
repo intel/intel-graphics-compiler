@@ -232,6 +232,7 @@ SmallVector<Value*, 4> BufferBoundsChecking::createAssertArgs(const AccessInfo& 
         result.push_back(accessInfo.bufferAddress);
     }
     result.push_back(accessInfo.bufferOffsetInBytes);
+    result.push_back(createBufferSizePlaceholder(accessInfo.implicitArgBufferSizeIndex, insertBefore));
 
     return result;
 }
