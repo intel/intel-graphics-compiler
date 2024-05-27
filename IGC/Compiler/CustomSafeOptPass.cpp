@@ -2403,6 +2403,17 @@ void TrivialLocalMemoryOpsElimination::visitStoreInst(StoreInst& I)
 {
     if (I.getPointerAddressSpace() == ADDRESS_SPACE_LOCAL)
     {
+        if (auto *GV = dyn_cast<GlobalVariable>(I.getPointerOperand()->stripPointerCasts()))
+        {
+            // Device sanitizer instrumentation pass inserts a new local memory
+            // variable and inserts store to the variable in a kernel. The
+            // variable is loaded later in no-inline functions. For this case,
+            // do not eliminate the store.
+            if (GV->getName().startswith("__Asan"))
+            {
+                return;
+            }
+        }
         m_LocalStoresToRemove.push_back(&I);
     }
     else if (I.getPointerAddressSpace() == ADDRESS_SPACE_GENERIC)
