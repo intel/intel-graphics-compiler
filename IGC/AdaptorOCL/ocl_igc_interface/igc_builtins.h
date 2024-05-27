@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "cif/common/cif.h"
 
 #include "cif/macros/enable.h"
+#include "OCLAPI/oclapi.h"
 
 namespace IGC {
 
@@ -91,7 +92,7 @@ CIF_DEFINE_INTERFACE_VER(IgcBuiltins, 1) {
 
     // Returns true if the requrested configuration is supported by IGC
     // Populates IGCBuiltinMemoryInfo struct that should be allocated by the caller
-    virtual bool GetBuiltinMemoryRequired(IGCBuiltinMemoryInfo *memoryInfo,
+    OCL_API_CALL virtual bool GetBuiltinMemoryRequired(IGCBuiltinMemoryInfo *memoryInfo,
                                           BuiltinAlgorithm::Algorithm_t algorithm,
                                           AlgorithmVariant_t variant,
                                           BuiltinMemoryScope::MemoryScope_t scope,
