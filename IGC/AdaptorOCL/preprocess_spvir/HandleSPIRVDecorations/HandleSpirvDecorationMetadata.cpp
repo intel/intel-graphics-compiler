@@ -166,6 +166,24 @@ void HandleSpirvDecorationMetadata::visit2DBlockWriteCallInst(CallInst& I, Strin
     }
 }
 
+void HandleSpirvDecorationMetadata::visitPrefetchCallInst(CallInst& I)
+{
+    Value* ptr = I.getArgOperand(0);
+    auto spirvDecorations = parseSPIRVDecorationsFromMD(ptr);
+    for (auto& [DecorationId, MDNodes] : spirvDecorations)
+    {
+        switch (DecorationId)
+        {
+            // IDecCacheControlLoadINTEL
+            case DecorationIdCacheControlLoad:
+            {
+                handleCacheControlINTELForPrefetch(I, MDNodes);
+                break;
+            }
+        }
+    }
+}
+
 void HandleSpirvDecorationMetadata::visitCallInst(CallInst& I)
 {
     Function* F = I.getCalledFunction();
@@ -175,6 +193,11 @@ void HandleSpirvDecorationMetadata::visitCallInst(CallInst& I)
         "_Z[0-9]+(intel_sub_group_2d_block_(prefetch|read|read_transform|read_transpose)_[0-9]+b_[0-9]+r[0-9]+x[0-9]+c)");
     Regex pattern2DBlockWrite(
         "_Z[0-9]+(intel_sub_group_2d_block_write_[0-9]+b_[0-9]+r[0-9]+x[0-9]+c)");
+#if defined(IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR)
+    Regex patternPrefetch("_Z[0-9]+__spirv_ocl_prefetch");
+#else // IGC Legacy SPIRV Translator
+    Regex patternPrefetch("__builtin_spirv_OpenCL_prefetch");
+#endif
 
     SmallVector<StringRef, 4> Matches;
     StringRef funcName = F->getName();
@@ -186,6 +209,10 @@ void HandleSpirvDecorationMetadata::visitCallInst(CallInst& I)
     else if (pattern2DBlockWrite.match(funcName, &Matches))
     {
         visit2DBlockWriteCallInst(I, Matches[1]);
+    }
+    else if (patternPrefetch.match(funcName, &Matches))
+    {
+        visitPrefetchCallInst(I);
     }
 }
 
@@ -231,6 +258,64 @@ void HandleSpirvDecorationMetadata::handleCacheControlINTELFor2DBlockIO(CallInst
 
     FunctionType* FT = FunctionType::get(I.getType(), argTypes, false);
     std::string newFuncName = "__internal_" + unmangledName.str() + "_cache_controls";
+    auto newFunction = m_Module->getOrInsertFunction(newFuncName, FT);
+
+    auto newCall = CallInst::Create(newFunction, args, "", &I);
+    I.replaceAllUsesWith(newCall);
+    I.eraseFromParent();
+    m_changed = true;
+
+    // Cleanup unused function if all calls have been replaced with the internal version
+    if (F->getNumUses() == 0)
+        m_BuiltinsToRemove.insert(F);
+}
+
+void HandleSpirvDecorationMetadata::handleCacheControlINTELForPrefetch(llvm::CallInst& I, llvm::SmallPtrSetImpl<llvm::MDNode*>& MDNodes)
+{
+    CacheControlFromMDNodes cacheControl = resolveCacheControlFromMDNodes<LoadCacheControl>(m_pCtx, MDNodes);
+    if (cacheControl.isEmpty) return;
+    if (cacheControl.isInvalid)
+    {
+        m_pCtx->EmitWarning("Unsupported cache controls configuration requested. Applying default configuration.");
+        return;
+    }
+
+    Function* F = I.getCalledFunction();
+    IGC_ASSERT(F);
+
+    // Convert prefetch call to: __lsc_prefetch_cache_controls(global void* p, int element_size, int num_elements, enum LSC_LDCC cache_opt)
+    SmallVector<Value*, 4> args;
+    args.push_back(I.getArgOperand(0));
+
+    // OpenCL spec states for prefetch: "Prefetch num_gentypes * sizeof(gentype) bytes into the global cache.".
+    // This design is not friendly to opaque pointers, as it assumes element size can be read from pointer.
+    // For now read size from typed pointer, and in future this will be replaced with opaque prefetch with
+    // explicit element size as arg.
+    PointerType* PTy = dyn_cast<PointerType>(I.getArgOperand(0)->getType());
+    IGC_ASSERT(PTy);
+    args.push_back(ConstantInt::get(Type::getInt32Ty(I.getContext()), IGCLLVM::getNonOpaquePtrEltTy(PTy)->getPrimitiveSizeInBits() / 8));
+
+    // OpenCL prefetch overloads num_elements to either i32 or i64. Convert to i32.
+    IGCLLVM::IRBuilder<> builder(&I);
+    args.push_back(builder.CreateZExtOrTrunc(I.getArgOperand(1), Type::getInt32Ty(I.getContext())));
+
+    auto config = supportedLoadConfigs.find(static_cast<LSC_L1_L3_CC>(cacheControl.value));
+    if (m_pCtx->platform.getPlatformInfo().eProductFamily == IGFX_PVC && config != supportedLoadConfigs.end() && config->second.L1 == LoadCacheControl::Cached)
+    {
+        m_pCtx->EmitWarning("Prefetch to L1 is unsupported on this platform.");
+        args.push_back(ConstantInt::get(Type::getInt32Ty(I.getContext()), mapToLSCCacheControl(LoadCacheControl::Uncached, config->second.L3)));
+    }
+    else
+    {
+        args.push_back(ConstantInt::get(Type::getInt32Ty(I.getContext()), cacheControl.value));
+    }
+
+    SmallVector<Type*, 4> argTypes;
+    for (const auto& arg : args)
+        argTypes.push_back(arg->getType());
+
+    FunctionType* FT = FunctionType::get(I.getType(), argTypes, false);
+    std::string newFuncName = "__lsc_prefetch_cache_controls";
     auto newFunction = m_Module->getOrInsertFunction(newFuncName, FT);
 
     auto newCall = CallInst::Create(newFunction, args, "", &I);

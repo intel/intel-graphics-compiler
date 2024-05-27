@@ -8,10 +8,11 @@ SPDX-License-Identifier: MIT
 
 #include "IGCBiF_Intrinsics_Lsc.cl"
 
-#define LSC_PREFETCH(p, num_elements) lsc_prefetch(p, sizeof(*p), num_elements)
+#define LSC_PREFETCH(p, num_elements) __lsc_prefetch(p, sizeof(*p), num_elements)
 
-// Mapping from OpenCL prefetch to LSC prefetch.
-INLINE void lsc_prefetch(global void* p, int element_size, int num_elements)
+// Mapping from OpenCL prefetch to LSC prefetch. OpenCL prefetch doesn't have
+// cache control options; default cache control options are used.
+INLINE void __lsc_prefetch(global void* p, int element_size, int num_elements)
 {
     enum LSC_LDCC cacheOpt = BIF_FLAG_CTRL_GET(ForceL1Prefetch) ? LSC_LDCC_L1C_L3C : LSC_LDCC_L1UC_L3C;
 
@@ -145,6 +146,80 @@ INLINE void lsc_prefetch(global void* p, int element_size, int num_elements)
             {
                 __builtin_IB_lsc_prefetch_global_uchar(p, 0, cacheOpt);
             }
+        }
+    }
+}
+
+// Mapping from OpenCL prefetch to LSC prefetch with exposed cache controls.
+INLINE void __lsc_prefetch_cache_controls(global void* p, int element_size, int num_elements, enum LSC_LDCC cache_opt)
+{
+    int size = element_size * num_elements;
+
+    // Assumptions:
+    // 1. Vector data type can be used only for i32/i64 types and only if
+    //    pointer is aligned. OpenCL defines alignment to the size of the
+    //    data type in bytes. Instead of checking alignment at runtime:
+    //      a. Assume i32/i64 types are aligned to 4 bytes.
+    //      b. Assume i8/i16 types are not aligned.
+    // 2. Assume overfetch is safe. For platforms generating page faults
+    //    on out of bounds prefetch, cache controls must be corrected
+    //    before calling builtin.
+
+    if (element_size % 4)
+    {
+        // unaligned, don't use vectors
+        if (size > 8)
+        {
+            __builtin_IB_lsc_prefetch_global_ulong(p, 0, cache_opt);
+            __builtin_IB_lsc_prefetch_global_ulong((global ulong*)p + 1, 0, cache_opt);
+        }
+        else if (size > 4)
+        {
+            __builtin_IB_lsc_prefetch_global_ulong(p, 0, cache_opt);
+        }
+        else if (size > 2)
+        {
+            __builtin_IB_lsc_prefetch_global_uint(p, 0, cache_opt);
+        }
+        else if (size > 1)
+        {
+            __builtin_IB_lsc_prefetch_global_ushort(p, 0, cache_opt);
+        }
+        else if (size == 1)
+        {
+            __builtin_IB_lsc_prefetch_global_uchar(p, 0, cache_opt);
+        }
+    }
+    else
+    {
+        // aligned, can use vectors
+        if (size > 16)
+        {
+            __builtin_IB_lsc_prefetch_global_uint8(p, 0, cache_opt);
+        }
+        else if (size > 12)
+        {
+            __builtin_IB_lsc_prefetch_global_uint4(p, 0, cache_opt);
+        }
+        else if (size > 8)
+        {
+            __builtin_IB_lsc_prefetch_global_uint3(p, 0, cache_opt);
+        }
+        else if (size > 4)
+        {
+            __builtin_IB_lsc_prefetch_global_ulong(p, 0, cache_opt);
+        }
+        else if (size > 2)
+        {
+            __builtin_IB_lsc_prefetch_global_uint(p, 0, cache_opt);
+        }
+        else if (size > 1)
+        {
+            __builtin_IB_lsc_prefetch_global_ushort(p, 0, cache_opt);
+        }
+        else if (size == 1)
+        {
+            __builtin_IB_lsc_prefetch_global_uchar(p, 0, cache_opt);
         }
     }
 }
