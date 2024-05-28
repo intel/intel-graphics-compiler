@@ -563,7 +563,7 @@ DECLARE_IGC_REGKEY(bool, DisableSystemMemoryCachingInGPUForConstantBuffers, fals
 DECLARE_IGC_REGKEY(bool, EnableInsertingPairedResourcePointer, true, "Enable to insert a bindless paired resource address into sampler headers in context of sampling feedback resources", true)
 DECLARE_IGC_REGKEY(bool, EnablePromotionToSampleMlod,          true,
     "Enables promotion of sample and sample_c to sample_mlod and sample_c_mlod instructions when min lod is present", false)
-DECLARE_IGC_REGKEY(bool, EnableLscSamplerRouting, true, "Enables conversion of LD to LD_L instructions.", false)
+DECLARE_IGC_REGKEY(bool, EnableLscSamplerRouting, false, "Enables conversion of LD to LD_L instructions.", false)
 DECLARE_IGC_REGKEY(bool, EnableSIMD16ForXe2, false, "Enable SIMD16 for Xe2", false)
 DECLARE_IGC_REGKEY(bool, EnableSIMD16ForNonWaveXe2, false, "Enable SIMD16 for Xe2 if the shader doesn't have wave", false)
 DECLARE_IGC_REGKEY(DWORD, CheckCSSLMLimit, 2, "Check SLM or threads limit on compute shader to turn on Enable2xGRF on DG2+"\

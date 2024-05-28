@@ -453,7 +453,6 @@ namespace IGC
         unsigned FastestS1Options                       = 0;  // FCEXP_NO_EXPRIMENT. Can't access the enum here for some reason.
         bool DisableFastestForWaveIntrinsicsCS          = false;
         bool ForceLinearWalkOnLinearUAV                 = false;
-        bool DisableLscSamplerRouting                   = false;
     };
 
     enum class ThreadIDLayout

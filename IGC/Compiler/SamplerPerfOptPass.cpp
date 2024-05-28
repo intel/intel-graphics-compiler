@@ -400,11 +400,8 @@ bool SamplerPerfOptPass::runOnFunction(Function& F)
                 }
                 if (SamplerLoadIntrinsic* loadInst = dyn_cast<SamplerLoadIntrinsic>(II))
                 {
-                    // EnableLscSamplerRouting key is true (default)
-                    // DisableLscSamplerRouting is from UMD AIL to turn off per shader
                     if (ctx->platform.hasLSCSamplerRouting() &&
                         IGC_IS_FLAG_ENABLED(EnableLscSamplerRouting) &&
-                        !ctx->getModuleMetaData()->compOpt.DisableLscSamplerRouting &&
                         loadInst->getIntrinsicID() == GenISAIntrinsic::GenISA_ldptr)
                     {
                         changed = ConvertLdToLdl(loadInst);
