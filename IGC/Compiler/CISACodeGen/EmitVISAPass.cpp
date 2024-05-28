@@ -9597,6 +9597,10 @@ void EmitPass::emitIntToPtr(llvm::IntToPtrInst* I2P)
 
 void EmitPass::emitBitCast(llvm::BitCastInst* btCst)
 {
+    if (IsBitCastForLifetimeMark(btCst))
+    {
+        return;
+    }
     Type* srcType = btCst->getOperand(0)->getType();
     Type* dstType = btCst->getType();
     unsigned int numSrcElement = srcType->isVectorTy() ? (unsigned)cast<IGCLLVM::FixedVectorType>(srcType)->getNumElements() : 1;
