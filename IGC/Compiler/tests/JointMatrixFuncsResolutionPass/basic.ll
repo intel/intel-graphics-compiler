@@ -91,14 +91,16 @@ define void @load_store_acc_transpose(float addrspace(1)* %a, float addrspace(1)
 ; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_ColumnMajor_8x8_i32_8_global_pi64_v8i8(float addrspace(1)* %dst, i8* [[TMP5]], i64 64, i32 0), !dbg [[DBG3:![0-9]*]]
 ; CHECK: ret void
 ; CHECK-NOT: error
+; CHECK-NOT: @_Z26__spirv_CompositeConstructf(float 1
 ;
 %1 = call spir_func %spirv.JointMatrixINTEL._float_8_8_3_3_2 addrspace(1)* @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_8_3_3_2PU3AS1fliii(float addrspace(1)* %a, i64 64, i32 1, i32 3, i32 0) #0
+%dead_call = call spir_func %spirv.JointMatrixINTEL._float_8_8_3_3_2 addrspace(1)* @_Z26__spirv_CompositeConstructf(float 1.000000e+00)
 call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_8_3_3_2liii(float addrspace(1)* %dst, %spirv.JointMatrixINTEL._float_8_8_3_3_2 addrspace(1)* %1, i64 64, i32 1, i32 3, i32 0) #0
 ret void
 }
 declare spir_func %spirv.JointMatrixINTEL._float_8_8_3_3_2 addrspace(1)* @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_8_3_3_2PU3AS1fliii(float addrspace(1)*, i64, i32, i32, i32) #0
 declare spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_8_3_3_2liii(float addrspace(1)*, %spirv.JointMatrixINTEL._float_8_8_3_3_2 addrspace(1)*, i64, i32, i32, i32) #0
-
+declare spir_func %spirv.JointMatrixINTEL._float_8_8_3_3_2 addrspace(1)* @_Z26__spirv_CompositeConstructf(float) #0
 
 !igc.functions = !{!0}
 !0 = !{void (i32, i8*, i32*, i8*, i8*, float addrspace(1)*, float addrspace(1)*)* @test_jm, !1}

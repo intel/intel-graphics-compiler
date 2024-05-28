@@ -2166,7 +2166,7 @@ void JointMatrixFuncsResolutionPass::visitCallInst(CallInst& CI)
     }
 
     if (funcName.startswith("_Z") && (funcName.contains("__spirv_JointMatrix") ||
-        funcName.contains("__spirv_CooperativeMatrix"))) {
+        funcName.contains("__spirv_CooperativeMatrix") || funcName.contains(JointMatrixFillPrefx))) {
         ResolveSIMDSize(CI.getParent()->getParent());
         ResolveCall(&CI);
         return;
