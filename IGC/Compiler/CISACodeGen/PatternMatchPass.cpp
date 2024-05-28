@@ -2032,11 +2032,19 @@ namespace IGC
             SSource pred;
             e_predMode predMode;
             bool invertPred;
-            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
+            void Emit(EmitPass* pass, const DstModifier& modifier) override
             {
                 DstModifier modf = modifier;
                 modf.predMode = predMode;
                 pass->PredAdd(pred, invertPred, sources, modf);
+            }
+
+            // Cannot use the ".sat" modifier as it is applied only to data lanes enabled by the predication 
+            // while saturation operation matched MatchFloatingPointSatModifier should be executed
+            // irrespective of the predicate value matched by MatchPredAdd.
+            bool supportsSaturate() override
+            {
+                return false;
             }
         };
 
