@@ -423,6 +423,11 @@ static bool isSameTopology(const BlockValueMap& BlockMapX, const BlockValueMap& 
 
                         if (IncomingValueX == IncomingValueY)
                             return false;
+
+                        // If one value is recurred value, then the other should be recurred value too.
+                        if ((IncomingValueX == ValueX && IncomingValueY != ValueY) ||
+                            (IncomingValueX != ValueX && IncomingValueY == ValueY))
+                            return false;
                     }
                     continue;
                 }
@@ -505,8 +510,10 @@ static bool replaceNonPHINodeUses(const BlockValueMapVector& BlockMaps, const Bl
                 IGC_ASSERT_MESSAGE(PairX != BlockMapX.end(), "Inconsistent duplicate maps");
                 auto ValueX = PairX->second;
 
-                if (ValueX != ValueY)
+                if (ValueX != ValueY) {
                     ValueX->replaceAllUsesWith(ValueY);
+                    Changed = true;
+                }
             }
         }
     }

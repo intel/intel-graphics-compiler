@@ -403,3 +403,38 @@ exit:                                             ; preds = %outer.loop.cleanup
 ; CHECK-NOT: %a0
 ; CHECK: %x0 = phi float
 ; CHECK: %tt = fadd float %x0
+
+; Function Attrs: alwaysinline convergent nounwind
+define spir_kernel void @igcphieliminationtest4(float addrspace(3)* %arg) {
+; nodes ai and bi are not duplicates of xi, don't eliminate
+entry:
+  %index = getelementptr inbounds float, float addrspace(3)* %arg, i64 0
+  br label %outer.loop
+
+outer.loop:                                       ; preds = %outer.loop.preheader, %if.end2
+  %i = phi i32 [ 0, %entry ], [ %ii, %outer.loop ]
+  %a0 = phi float [ 0.0, %entry ], [ %a0, %outer.loop ]
+  %x0 = phi float [ 0.0, %entry ], [ %tt, %outer.loop ]
+  %b0 = phi float [ 0.0, %entry ], [ %b0, %outer.loop ]
+  %tt = fadd float %x0, 1.0
+  %ii = add nuw nsw i32 %i, 1
+  %outer.cmp = icmp slt i32 %ii, 16
+  br i1 %outer.cmp, label %outer.loop, label %outer.loop.cleanup
+
+outer.loop.cleanup:                               ; preds = %if.end2, %entry
+  store float %a0, float addrspace(3)* %index, align 4
+  store float %x0, float addrspace(3)* %index, align 4
+  store float %b0, float addrspace(3)* %index, align 4
+  br label %exit
+
+exit:                                             ; preds = %outer.loop.cleanup
+  ret void
+}
+
+; CHECK: %a0 = phi float
+; CHECK: %x0 = phi float
+; CHECK: %b0 = phi float
+; CHECK: %tt = fadd float %x0
+; CHECK: store float %a0
+; CHECK: store float %x0
+; CHECK: store float %b0
