@@ -180,6 +180,7 @@ private:
   bool flipBoolNot(Instruction *Inst);
   // foldBoolAnd : fold a (vector) bool and into sel/wrregion if beneficial
   bool matchInverseSqrt(Instruction *I);
+  bool matchFloatAbs(BinaryOperator *I);
   bool foldLscAddrCalculation(CallInst *Inst);
   Value *applyLscAddrFolding(Value *Offsets, APInt &Scale, APInt &Offset);
   bool foldBoolAnd(Instruction *Inst);
@@ -714,7 +715,7 @@ void GenXPatternMatch::visitBinaryOperator(BinaryOperator &I) {
         if (I.getType()->getScalarType()->isIntegerTy(1)) {
           if (foldBoolAnd(&I))
             Changed = true;
-        } else if (extendMask(&I))
+        } else if (extendMask(&I) || matchFloatAbs(&I))
           Changed = true;
         break;
       case Instruction::Or:
@@ -1196,6 +1197,60 @@ bool GenXPatternMatch::matchInverseSqrt(Instruction *I) {
   I->eraseFromParent();
 
   OpInst->eraseFromParent();
+  return true;
+}
+
+/// Fold the following sequence into genx_absf intrinsic:
+///
+/// %1 = bitcast <4 x float> %0 to <4 x i32>
+/// %2 = and <4 x i32> %1, <i32 0x7fffffff, i32 0x7fffffff, ...>
+/// %3 = bitcast <4 x i32> %2 to <4 x float>
+///
+/// After the folding the sequence will look like:
+/// %1 = call <4 x float> @llvm.genx.absf.v4f32(<4 x float> %0)
+///
+/// The absf intrinsic can be baled with its user and translated into the
+/// source modifier.
+bool GenXPatternMatch::matchFloatAbs(BinaryOperator *I) {
+  if (I->getOpcode() != Instruction::And)
+    return false;
+
+  auto *Ty = I->getType();
+  auto *Cast = dyn_cast<BitCastInst>(I->getOperand(0));
+  if (!Cast)
+    return false;
+
+  auto *CastSrc = Cast->getOperand(0);
+  auto *SrcTy = CastSrc->getType();
+  if (!SrcTy->isFPOrFPVectorTy())
+    return false;
+
+  if (!I->hasOneUser())
+    return false;
+
+  auto *User = I->user_back();
+  if (!isa<BitCastInst>(User) || User->getType() != SrcTy)
+    return false;
+
+  uint64_t SplatV = 0;
+
+  if (auto *C = dyn_cast<ConstantData>(I->getOperand(1))) {
+    auto *Splat = dyn_cast_or_null<ConstantInt>(C->getSplatValue());
+    if (!Splat)
+      return false;
+    SplatV = Splat->getZExtValue();
+  }
+
+  if (SplatV != maskTrailingOnes<uint64_t>(Ty->getScalarSizeInBits() - 1))
+    return false;
+
+  IRBuilder<> Builder(I);
+  auto *M = I->getModule();
+  auto *F = vc::getAnyDeclaration(M, GenXIntrinsic::genx_absf, {SrcTy});
+  auto *NewI = Builder.CreateCall(F, {CastSrc});
+  NewI->takeName(I);
+  User->replaceAllUsesWith(NewI);
+
   return true;
 }
 
