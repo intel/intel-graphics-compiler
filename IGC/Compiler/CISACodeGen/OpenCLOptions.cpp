@@ -524,16 +524,14 @@ void Options::parseOptions(const char* opts)
         }
     }
 
-    if (const llvm::opt::Arg* arg = apiOptions.getLastArg(OPT_large_grf_kernel_common))
+    for (auto arg : apiOptions.getAllArgValues(OPT_large_grf_kernel_common))
     {
-        llvm::StringRef valStr = arg->getValue();
-        LargeGRFKernels.push_back(valStr.str());
+        LargeGRFKernels.push_back(arg);
     }
 
-    if (const llvm::opt::Arg* arg = apiOptions.getLastArg(OPT_regular_grf_kernel_common))
+    for (auto arg : apiOptions.getAllArgValues(OPT_regular_grf_kernel_common))
     {
-        llvm::StringRef valStr = arg->getValue();
-        RegularGRFKernels.push_back(valStr.str());
+        RegularGRFKernels.push_back(arg);
     }
 
     if (apiOptions.hasArg(OPT_enable_auto_large_GRF_mode_common))

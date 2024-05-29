@@ -1332,6 +1332,10 @@ namespace TC
                             (strcmp(pParam, "-cl-intel-256-GRF-per-thread") == 0) || //temporary options
                             (strcmp(pParam, "-ze-opt-256-GRF-per-thread") == 0) || //temporary options
                             (strcmp(pParam, "-ze-opt-large-register-file") == 0) || //temporary options
+                            (strcmp(pParam, "-cl-intel-large-grf-kernel") == 0) ||
+                            (strcmp(pParam, "-ze-opt-large-grf-kernel") == 0) ||
+                            (strcmp(pParam, "-cl-intel-regular-grf-kernel") == 0) ||
+                            (strcmp(pParam, "-ze-opt-regular-grf-kernel") == 0) ||
                             (strcmp(pParam, "-ze-opt-disable-recompilation") == 0) || //temporary options
                             (strcmp(pParam, "-cl-intel-num-thread-per-eu") == 0) || //temporary options
                             (strncmp(pParam, "-cl-intel-reqd-eu-thread-count", 30) == 0) ||
@@ -1408,6 +1412,15 @@ namespace TC
                             else if (strcmp(pParam, "-ze-gtpin-scratch-area-size") == 0)
                             {
                                 // Next token is N, so ignore it
+                                ignoreNextToken = true;
+                            }
+                            else if (
+                                (strcmp(pParam, "-cl-intel-large-grf-kernel") == 0) ||
+                                (strcmp(pParam, "-ze-opt-large-grf-kernel") == 0) ||
+                                (strcmp(pParam, "-cl-intel-regular-grf-kernel") == 0) ||
+                                (strcmp(pParam, "-ze-opt-regular-grf-kernel") == 0))
+                            {
+                                // Next token is kernel name substring, ignore it
                                 ignoreNextToken = true;
                             }
                         }
