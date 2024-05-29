@@ -1207,10 +1207,14 @@ bool DisableLICMForSpecificLoops::runOnLoop(Loop* L, LPPassManager& LPM)
     if (!L->getHeader() || !L->getLoopLatch())
         return false;
 
-    // Disable LICM optimization by adding llvm.licm.disable when Loop depends on
-    // SIMD Lane Id and operates on local memory
-    if (LoopHasLoadFromLocalAddressSpace(*L)
-        && LoopDependsOnSIMDLaneId(*L))
+    // Disable LICM optimization by adding llvm.licm.disable
+    // - when Loop depends on SIMD Lane Id and operates on local memory
+    // - when shader contains a large number of BBs that may trigger stack overflow
+    //   from memory SSA updater
+
+    if (constexpr size_t BB_LIMIT_FOR_LICM = 2500;
+        L->getHeader()->getParent()->size() > BB_LIMIT_FOR_LICM ||
+        (LoopHasLoadFromLocalAddressSpace(*L) && LoopDependsOnSIMDLaneId(*L)))
     {
         Changed |= AddLICMDisableMedatadaToSpecificLoop(*L);
     }
