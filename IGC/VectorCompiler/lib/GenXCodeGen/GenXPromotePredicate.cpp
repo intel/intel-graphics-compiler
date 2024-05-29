@@ -88,9 +88,65 @@ static Value *getTruncatedValue(Value *Val, Instruction *InsertBefore) {
   return IRB.CreateTrunc(Val, NewTy, Val->getName() + ".truncated");
 }
 
+static Value *scalarizeInputPredicate(Value *V, Type *Ty, IRBuilder<> &IRB) {
+  if (auto *C = dyn_cast<Constant>(V)) {
+    if (C->isAllOnesValue())
+      return Constant::getAllOnesValue(Ty);
+    if (C->isNullValue())
+      return Constant::getNullValue(Ty);
+  }
+  return IRB.CreateBitCast(V, Ty);
+}
+
+// Promote a vector predicate operation into scalar integer one.
+static Value *promoteInstToScalar(Instruction *Inst) {
+  IRBuilder<> IRB(Inst);
+
+  auto *VTy = cast<IGCLLVM::FixedVectorType>(Inst->getType());
+  auto Width = VTy->getNumElements();
+  IGC_ASSERT(VTy->isIntOrIntVectorTy(1));
+  IGC_ASSERT(Width == 8 || Width == 16 || Width == 32);
+
+  auto *STy = IRB.getIntNTy(Width);
+
+  // Special case - phi node.
+  if (auto *Phi = dyn_cast<PHINode>(Inst)) {
+    auto *ScalarPhi = IRB.CreatePHI(STy, Phi->getNumIncomingValues(),
+                                    Phi->getName() + ".scalar");
+    for (unsigned I = 0; I < Phi->getNumIncomingValues(); ++I) {
+      auto *IncomingBlock = Phi->getIncomingBlock(I);
+      auto *IncomingValue = Phi->getIncomingValue(I);
+
+      IRB.SetInsertPoint(IncomingBlock->getTerminator());
+      auto *ScalarValue = scalarizeInputPredicate(IncomingValue, STy, IRB);
+
+      ScalarPhi->addIncoming(ScalarValue, IncomingBlock);
+    }
+
+    IRB.SetInsertPoint(Phi->getParent()->getFirstNonPHI());
+    return IRB.CreateBitCast(ScalarPhi, VTy);
+  }
+
+  IGC_ASSERT(isa<BinaryOperator>(Inst));
+
+  auto *Op1 = scalarizeInputPredicate(Inst->getOperand(0), STy, IRB);
+  auto *Op2 = scalarizeInputPredicate(Inst->getOperand(1), STy, IRB);
+  auto *ScalarInst = IRB.CreateBinOp(cast<BinaryOperator>(Inst)->getOpcode(),
+                                     Op1, Op2, Inst->getName() + ".scalar");
+  return IRB.CreateBitCast(ScalarInst, VTy);
+}
+
 // Promote one predicate instruction to grf - promote all its operands and
 // instruction itself, and then sink the result back to predicate.
 static Value *promoteInst(Instruction *Inst) {
+  if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Inst->getType())) {
+    IGC_ASSERT(VTy->isIntOrIntVectorTy(1));
+    auto Width = VTy->getNumElements();
+
+    if (Width == 8 || Width == 16 || Width == 32)
+      return promoteInstToScalar(Inst);
+  }
+
   IRBuilder<> IRB(Inst);
   // Special case - phi node.
   if (auto *Phi = dyn_cast<PHINode>(Inst)) {
@@ -142,6 +198,25 @@ static void foldTruncAndSExt(TruncInst *TI) {
   TI->eraseFromParent();
 }
 
+static void foldBitcast(BitCastInst *Cast) {
+  auto *Src = Cast->getOperand(0);
+  auto *SrcTy = Src->getType();
+
+  SmallVector<User *, 4> ToErase;
+  llvm::copy_if(Cast->users(), std::back_inserter(ToErase), [SrcTy](auto *U) {
+    return isa<BitCastInst>(U) && U->getType() == SrcTy;
+  });
+
+  for (auto *U : ToErase) {
+    auto *I = cast<Instruction>(U);
+    I->replaceAllUsesWith(Src);
+    I->eraseFromParent();
+  }
+
+  if (Cast->user_empty())
+    Cast->eraseFromParent();
+}
+
 class PredicateWeb {
 public:
   template <class InputIt>
@@ -159,17 +234,22 @@ public:
   }
   void doPromotion() const {
     // Do promotion.
-    SmallVector<TruncInst *, 8> Worklist;
-    for (auto Inst : Web) {
-      auto PromotedInst = promoteInst(Inst);
-      if (auto TI = dyn_cast<TruncInst>(PromotedInst))
-        Worklist.push_back(TI);
+    SmallVector<Instruction *, 8> Worklist;
+    for (auto *Inst : Web) {
+      auto *PromotedInst = promoteInst(Inst);
+
+      if (isa<TruncInst>(PromotedInst) || isa<BitCastInst>(PromotedInst))
+        Worklist.push_back(cast<Instruction>(PromotedInst));
+
       Inst->replaceAllUsesWith(PromotedInst);
       Inst->eraseFromParent();
     }
     // Do cleanup.
-    for (auto TI : Worklist)
-      foldTruncAndSExt(TI);
+    for (auto *I : Worklist)
+      if (auto *Trunc = dyn_cast<TruncInst>(I))
+        foldTruncAndSExt(Trunc);
+      else if (auto *Cast = dyn_cast<BitCastInst>(I))
+        foldBitcast(Cast);
   }
 
 private:

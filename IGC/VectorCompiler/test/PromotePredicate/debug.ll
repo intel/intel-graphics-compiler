@@ -1,35 +1,35 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
 ; RUN: %opt %use_old_pass_manager% -GenXPromotePredicate -march=genx64 -mtriple=spir64-unknown-unknown \
-; RUN: -mcpu=Gen9 -logical-ops-threshold=2 -S < %s | FileCheck %s
+; RUN: -mcpu=XeHPG -logical-ops-threshold=2 -S < %s | FileCheck %s
 
 ; COM: verify update of debug metadata
 
 ; CHECK: void @test_debug{{.*}}
-; CHECK: [[AND:%.*]] = and <32 x i[[AND_SIZE:[0-9]*]]> {{.*}} !dbg [[AND_LOC:![0-9]*]]
-; CHECK: [[TRUNC:%.*]] = icmp ne <32 x i[[AND_SIZE]]> [[AND]], zeroinitializer, !dbg [[AND_LOC]]
-; CHECK: void @llvm.dbg.value(metadata <32 x i1> [[TRUNC]], metadata [[TRUNC_MD:![0-9]*]], {{.*}}, !dbg [[AND_LOC]]
+; CHECK: [[AND:%.*]] = and <31 x i[[AND_SIZE:[0-9]*]]> {{.*}} !dbg [[AND_LOC:![0-9]*]]
+; CHECK: [[TRUNC:%.*]] = icmp ne <31 x i[[AND_SIZE]]> [[AND]], zeroinitializer, !dbg [[AND_LOC]]
+; CHECK: void @llvm.dbg.value(metadata <31 x i1> [[TRUNC]], metadata [[TRUNC_MD:![0-9]*]], {{.*}}, !dbg [[AND_LOC]]
 ;
 
-define void @test_debug(<32 x float> %src1, <32 x i32> %src2, <32 x i32>* %dst) {
+define void @test_debug(<31 x float> %src1, <31 x i32> %src2, <31 x i32>* %dst) {
 entry:
-  %0 = bitcast <32 x i32> %src2 to <32 x float>
-  %1 = fcmp ogt <32 x float> %src1, %0
-  %2 = xor <32 x i1> %1, <i1 true, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true>
-  %3 = and <32 x i1> %2, <i1 false, i1 false, i1 false, i1 true, i1 false, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true, i1 false, i1 false, i1 false, i1 true, i1 false, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true>
-  %4 = bitcast <32 x float> %src1 to <32 x i32>
-  %5 = icmp ult <32 x i32> %src2, %4
-  %6 = or <32 x i1> %5, %3
-  %7 = and <32 x i1> %6, <i1 true, i1 true, i1 true, i1 true, i1 true, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true>, !dbg !27
-  call void @llvm.dbg.value(metadata <32 x i1> %7, metadata !18, metadata !DIExpression()), !dbg !27
-  %8 = select <32 x i1> %7, <32 x i32> %src2, <32 x i32> %4
-  store <32 x i32> %8, <32 x i32>* %dst
+  %0 = bitcast <31 x i32> %src2 to <31 x float>
+  %1 = fcmp ogt <31 x float> %src1, %0
+  %2 = xor <31 x i1> %1, <i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true>
+  %3 = and <31 x i1> %2, <i1 false, i1 false, i1 true, i1 false, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true, i1 false, i1 false, i1 false, i1 true, i1 false, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true>
+  %4 = bitcast <31 x float> %src1 to <31 x i32>
+  %5 = icmp ult <31 x i32> %src2, %4
+  %6 = or <31 x i1> %5, %3
+  %7 = and <31 x i1> %6, <i1 true, i1 true, i1 true, i1 true, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true, i1 true, i1 false, i1 false, i1 true>, !dbg !27
+  call void @llvm.dbg.value(metadata <31 x i1> %7, metadata !18, metadata !DIExpression()), !dbg !27
+  %8 = select <31 x i1> %7, <31 x i32> %src2, <31 x i32> %4
+  store <31 x i32> %8, <31 x i32>* %dst
   ret void
 }
 

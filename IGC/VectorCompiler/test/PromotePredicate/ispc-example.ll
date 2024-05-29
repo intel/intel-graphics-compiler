@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -10,13 +10,16 @@
 ; RUN: -mcpu=Gen9 -logical-ops-threshold=2 -S < %s | FileCheck %s
 
 ; CHECK-LABEL: f_f
-; CHECK-DAG: [[LESSEQUAL_A_LOAD_widened:%.*]] = sext <8 x i1> %lessequal_a_load_ to <8 x i16>
-; CHECK-DAG: [[EQUAL_A_LOAD5_widened:%.*]] = sext <8 x i1> %equal_a_load5_ to <8 x i16>
-; CHECK-DAG: [[LOGICAL_AND_promoted:%.*]] = and <8 x i16> [[LESSEQUAL_A_LOAD_widened]], [[EQUAL_A_LOAD5_widened]]
-; CHECK-DAG: %0 = icmp ne <8 x i16> [[LOGICAL_AND_promoted]], zeroinitializer
-; CHECK-DAG: [[RETURNED_LANES_MEMORY_0_promoted:%.*]] = phi <8 x i16> [ [[LOGICAL_AND_promoted]], %safe_if_run_true.safe_if_after_true_crit_edge ], [ zeroinitializer, %allocas.safe_if_after_true_crit_edge ]
-; CHECK-DAG: [[NEG_RETURNED_LANES_promoted:%.*]] = xor <8 x i16> [[RETURNED_LANES_MEMORY_0_promoted]], <i16 -1, i16 -1, i16 -1, i16 -1, i16 -1, i16 -1, i16 -1, i16 -1>
-; CHECK-DAG: %1 = icmp ne <8 x i16> [[NEG_RETURNED_LANES_promoted]], zeroinitializer
+; CHECK-DAG: [[LESSEQUAL_A_LOAD_widened:%.*]] = bitcast <8 x i1> %lessequal_a_load_ to i8
+; CHECK-DAG: [[EQUAL_A_LOAD5_widened:%.*]] = bitcast <8 x i1> %equal_a_load5_ to i8
+; CHECK-DAG: [[LOGICAL_AND_promoted:%.*]] = and i8 [[LESSEQUAL_A_LOAD_widened]], [[EQUAL_A_LOAD5_widened]]
+; CHECK-DAG: [[LOGICAL_AND:%.*]] = bitcast i8 [[LOGICAL_AND_promoted]] to <8 x i1>
+; CHECK-DAG: call i1 @llvm.genx.any.v8i1(<8 x i1> [[LOGICAL_AND]])
+; CHECK-DAG: [[RETURNED_LANES_MEMORY_0_promoted:%.*]] = phi i8 [ [[LOGICAL_AND_promoted]], %safe_if_run_true.safe_if_after_true_crit_edge ], [ 0, %allocas.safe_if_after_true_crit_edge ]
+; CHECK-DAG: [[NEG_RETURNED_LANES_promoted:%.*]] = xor i8 [[RETURNED_LANES_MEMORY_0_promoted]], -1
+; CHECK-DAG: [[NEG_RETURNED_LANES:%.*]] = bitcast i8 [[NEG_RETURNED_LANES_promoted]] to <8 x i1>
+; CHECK-DAG: call void @llvm.genx.svm.scatter.v8i1.v8i64.v8f32(<8 x i1> [[NEG_RETURNED_LANES]], i32 0, <8 x i64> %new_offsets.i.i34, <8 x float> zeroinitializer)
+; CHECK-DAG: icmp eq i8 [[LOGICAL_AND_promoted]], -1
 
 declare void @llvm.genx.svm.scatter.v8i1.v8i64.v8f32(<8 x i1>, i32, <8 x i64>, <8 x float>)
 declare i1 @llvm.genx.any.v8i1(<8 x i1>)
