@@ -204,6 +204,7 @@ private:
   // Transform logic operation with a mask from <N x iM> to <N/(32/M) x i32>
   bool extendMask(BinaryOperator *BO);
   bool mergeApply(CallInst *CI);
+  bool matchPredAny(CallInst *Inst) const;
 
   bool matchBFN(Function &F);
 };
@@ -756,6 +757,9 @@ void GenXPatternMatch::visitCallInst(CallInst &I) {
 
   switch (IID) {
   default:
+    break;
+  case GenXIntrinsic::genx_any:
+    Changed |= matchPredAny(&I);
     break;
   case GenXIntrinsic::genx_inv:
     Changed |= matchInverseSqrt(&I);
@@ -3349,6 +3353,34 @@ bool GenXPatternMatch::decomposeSelect(Function *F) {
         SD.addStartSelect(&Inst);
 
   return SD.run();
+}
+
+/// Match and replace the following pattern:
+/// %1 = bitcast i16 %0 to <16 x i1>
+/// %2 = call i1 @llvm.genx.any.v16i1(<16 x i1> %1)
+///
+/// The sequence is replaced with:
+/// %1 = icmp ne i16 %0, 0
+///
+/// The pattern can be produced by the GenXPromotePredicate pass, and the icmp
+/// can produce more efficient code by omitting MOV from GRF to a flag register
+bool GenXPatternMatch::matchPredAny(CallInst *I) const {
+  auto *Cast = dyn_cast<BitCastInst>(I->getOperand(0));
+  if (!Cast)
+    return false;
+
+  auto *Src = Cast->getOperand(0);
+  auto *SrcTy = Src->getType();
+  if (!SrcTy->isIntegerTy())
+    return false;
+
+  IRBuilder<> IRB(I);
+  auto *ICmp = IRB.CreateICmpNE(Src, Constant::getNullValue(SrcTy));
+  ICmp->takeName(I);
+  I->replaceAllUsesWith(ICmp);
+  I->eraseFromParent();
+
+  return true;
 }
 
 bool GenXPatternMatch::mergeApply(CallInst *CI) {
