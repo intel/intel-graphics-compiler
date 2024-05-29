@@ -710,8 +710,8 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
         SAME_SPECIAL_KIND,
         {
             {OPND_EXECSIZE, ISA_TYPE_UB, 0},
-            {OPND_DST_GEN, ISA_TYPE_UB | ISA_TYPE_HF, 0},
-            {OPND_SRC_GEN, ISA_TYPE_HF | ISA_TYPE_F, 0},
+            {OPND_DST_GEN, ISA_TYPE_UB | ISA_TYPE_B | ISA_TYPE_HF, 0},
+            {OPND_SRC_GEN, ISA_TYPE_HF | ISA_TYPE_BF | ISA_TYPE_F, 0},
             {OPND_SRC_GEN | OPND_IMM,
              ISA_TYPE_UB | ISA_TYPE_UW | ISA_TYPE_F | ISA_TYPE_HF, 0},
         },

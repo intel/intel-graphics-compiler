@@ -3407,6 +3407,10 @@ void vISAVerifier::verifyBFMixedMode(const CISA_INST *inst) {
     return;
   }
 
+  // Skip srnd
+  if (opcode == ISA_SRND)
+    return;
+
   if (!irBuilder->hasBFMixMode()) {
     REPORT_INSTRUCTION(options, false,
                        "BF type is not allowed on this platform");
@@ -4366,12 +4370,14 @@ void vISAVerifier::verifyInstructionSrnd(const CISA_INST *inst) {
                      src1Type == ISA_TYPE_UW || src1Type == ISA_TYPE_UB ||
                          src1Type == ISA_TYPE_F || src1Type == ISA_TYPE_HF,
                      "src1 use UW/UB type");
-
-  REPORT_INSTRUCTION(options,
-                     (dstType == ISA_TYPE_UB && src0Type == ISA_TYPE_HF) ||
-                         (dstType == ISA_TYPE_HF && src0Type == ISA_TYPE_F),
-                     "Src and Dst types mismatch. Only (dst=ub, src=hf) or "
-                     "(dst=hf, src=f) supported.");
+  {
+    REPORT_INSTRUCTION(
+        options,
+        (dstType == ISA_TYPE_UB && src0Type == ISA_TYPE_HF) ||
+            (dstType == ISA_TYPE_HF && src0Type == ISA_TYPE_F),
+        "Src and Dst types mismatch. Only (dst=ub(bf8), src=hf) or "
+        "(dst=hf, src=f) supported.");
+  }
 }
 
 void vISAVerifier::verifyKernelAttributes() {
