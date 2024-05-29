@@ -1,32 +1,36 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
 //
-// This file defines a routine for folding a GenX intrinsic call into a constant.
+// This file defines a routine for folding a GenX intrinsic call into a
+// constant.
 //
 //===----------------------------------------------------------------------===//
 
 #include "vc/GenXOpts/GenXAnalysis.h"
+#include "vc/Utils/GenX/IntrinsicsWrapper.h"
 #include "vc/Utils/GenX/Region.h"
+
+#include "Probe/Assertion.h"
+
+#include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/Analysis/ConstantFolding.h"
-#include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/Support/Debug.h"
-#include "Probe/Assertion.h"
-#include "llvmWrapper/Support/TypeSize.h"
 
 #include "llvmWrapper/Analysis/CallGraph.h"
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/CallSite.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/Support/TypeSize.h"
 
 #define DEBUG_TYPE "genx-constantfolding"
 
@@ -36,17 +40,16 @@ using namespace llvm;
  * canConstantFoldGenXIntrinsic : Return true if it is even possible to fold
  *     a call to the specified GenX intrinsic
  */
-bool llvm::canConstantFoldGenXIntrinsic(unsigned IID)
-{
+bool llvm::canConstantFoldGenXIntrinsic(unsigned IID) {
   switch (IID) {
-    case GenXIntrinsic::genx_rdregioni:
-    case GenXIntrinsic::genx_rdregionf:
-    // The wrregion case specifically excludes genx_wrconstregion
-    case GenXIntrinsic::genx_wrregioni:
-    case GenXIntrinsic::genx_wrregionf:
-    case GenXIntrinsic::genx_all:
-    case GenXIntrinsic::genx_any:
-      return true;
+  case GenXIntrinsic::genx_rdregioni:
+  case GenXIntrinsic::genx_rdregionf:
+  // The wrregion case specifically excludes genx_wrconstregion
+  case GenXIntrinsic::genx_wrregioni:
+  case GenXIntrinsic::genx_wrregionf:
+  case GenXIntrinsic::genx_all:
+  case GenXIntrinsic::genx_any:
+    return true;
   }
   return false;
 }
@@ -79,8 +82,8 @@ static Constant *constantFoldRdRegion(Type *RetTy,
   if (!isa<VectorType>(OffsetC->getType()))
     Offset = cast<ConstantInt>(OffsetC)->getZExtValue() / RetElemSize;
   else
-    IGC_ASSERT(dyn_cast<IGCLLVM::FixedVectorType>(OffsetC->getType())->getNumElements() ==
-               R.NumElements);
+    IGC_ASSERT(dyn_cast<IGCLLVM::FixedVectorType>(OffsetC->getType())
+                   ->getNumElements() == R.NumElements);
   if (Offset >= WholeNumElements)
     return UndefValue::get(RetTy); // out of range index
   if (!isa<VectorType>(RetTy))
@@ -130,8 +133,8 @@ static Constant *constantFoldWrRegion(Type *RetTy,
   if (isa<ConstantExpr>(OldValue) || isa<ConstantExpr>(NewValue))
     return nullptr;
   IGC_ASSERT(RetTy == OldValue->getType());
-  auto OffsetC =
-      dyn_cast<ConstantInt>(Operands[GenXIntrinsic::GenXRegion::WrIndexOperandNum]);
+  auto OffsetC = dyn_cast<ConstantInt>(
+      Operands[GenXIntrinsic::GenXRegion::WrIndexOperandNum]);
   if (!OffsetC)
     return nullptr; // allow for but do not const fold when index is vector
 
@@ -192,14 +195,12 @@ static Constant *constantFoldWrRegion(Type *RetTy,
  * constantFoldAll : constant fold llvm.genx.all
  * constantFoldAny : constant fold llvm.genx.any
  */
-static Constant *constantFoldAll(Type *RetTy, Constant *In)
-{
+static Constant *constantFoldAll(Type *RetTy, Constant *In) {
   if (In->isAllOnesValue())
     return Constant::getAllOnesValue(RetTy);
   return Constant::getNullValue(RetTy);
 }
-static Constant *constantFoldAny(Type *RetTy, Constant *In)
-{
+static Constant *constantFoldAny(Type *RetTy, Constant *In) {
   if (!In->isNullValue())
     return Constant::getAllOnesValue(RetTy);
   return Constant::getNullValue(RetTy);

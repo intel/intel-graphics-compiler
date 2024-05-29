@@ -16,12 +16,13 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Analysis/CallGraph.h"
 #include "llvmWrapper/Analysis/InstructionSimplify.h"
 #include "llvmWrapper/IR/CallSite.h"
-#include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include <llvmWrapper/IR/Type.h>
 
 #include "vc/GenXOpts/GenXAnalysis.h"
 #include "vc/GenXOpts/GenXOpts.h"
+#include "vc/Utils/GenX/IntrinsicsWrapper.h"
 #include "vc/Utils/GenX/Region.h"
 
 #include <llvm/GenXIntrinsics/GenXIntrinsics.h>
@@ -38,8 +39,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/Debug.h>
 
-#include "llvmWrapper/Support/TypeSize.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/Support/TypeSize.h"
 
 #include "Probe/Assertion.h"
 
@@ -211,7 +212,8 @@ static bool isWriteWithUndefInput(const Instruction &Inst) {
 static Value &getWriteOldValueOperand(Instruction &Inst) {
   switch (GenXIntrinsic::getAnyIntrinsicID(&Inst)) {
   default:
-    IGC_ASSERT_EXIT_MESSAGE(0, "wrong argument: write region intrinsics are expected");
+    IGC_ASSERT_EXIT_MESSAGE(
+        0, "wrong argument: write region intrinsics are expected");
   case GenXIntrinsic::genx_wrregioni:
   case GenXIntrinsic::genx_wrregionf:
     return *Inst.getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
@@ -226,8 +228,9 @@ static Value &getWriteOldValueOperand(Instruction &Inst) {
 // \p ToProcess output iterator.
 template <typename OutIter>
 void processWriteWithUndefInput(Instruction &Inst, OutIter ToProcess) {
-  IGC_ASSERT_MESSAGE(isWriteWithUndefInput(Inst),
-   "wrong argument: write intrinsic with undef input was expected");
+  IGC_ASSERT_MESSAGE(
+      isWriteWithUndefInput(Inst),
+      "wrong argument: write intrinsic with undef input was expected");
   auto *OldVal = &getWriteOldValueOperand(Inst);
   Inst.replaceAllUsesWith(OldVal);
   // As a result of operand promotion we can get new suitable instructions.
@@ -276,115 +279,130 @@ bool llvm::simplifyWritesWithUndefInput(Function &F) {
  *
  * If this call could not be simplified, returns null.
  */
-Value *llvm::SimplifyGenXIntrinsic(unsigned IID, Type *RetTy, Use *ArgBegin,
-                                   Use *ArgEnd, const DataLayout &DL) {
+Value *llvm::SimplifyGenXIntrinsic(CallInst *CI, const DataLayout &DL) {
+  auto IID = vc::getAnyIntrinsicID(CI);
+  auto *RetTy = CI->getType();
+  Use *Args = CI->arg_begin();
+
   switch (IID) {
-    case GenXIntrinsic::genx_rdregioni:
-    case GenXIntrinsic::genx_rdregionf:
-      // Identity rdregion can be simplified to its "old value" input.
-      if (RetTy
-          == ArgBegin[GenXIntrinsic::GenXRegion::OldValueOperandNum]->getType()) {
-        unsigned NumElements = cast<IGCLLVM::FixedVectorType>(RetTy)->getNumElements();
-        unsigned Width = cast<ConstantInt>(
-              ArgBegin[GenXIntrinsic::GenXRegion::RdWidthOperandNum])
-            ->getZExtValue();
-        auto IndexV = dyn_cast<Constant>(
-          ArgBegin[GenXIntrinsic::GenXRegion::RdIndexOperandNum]);
-        if (!IndexV)
-          return nullptr;
-        unsigned Index = 0;
-        if (!isa<VectorType>(IndexV->getType()))
-          Index = cast<ConstantInt>(IndexV)->getZExtValue() /
-                  (DL.getTypeSizeInBits(RetTy->getScalarType()) / 8);
-        else
-          return nullptr;
-        if ((Index == 0 || Index >= NumElements) &&
-            (Width == NumElements || Width == cast<ConstantInt>(ArgBegin[
-             GenXIntrinsic::GenXRegion::RdVStrideOperandNum])->getSExtValue()))
-          if (NumElements == 1 || cast<ConstantInt>(ArgBegin[
-                GenXIntrinsic::GenXRegion::RdStrideOperandNum])->getSExtValue())
-            return ArgBegin[GenXIntrinsic::GenXRegion::OldValueOperandNum];
+  case GenXIntrinsic::genx_rdregioni:
+  case GenXIntrinsic::genx_rdregionf: {
+    // Identity rdregion can be simplified to its "old value" input.
+    if (RetTy ==
+        Args[GenXIntrinsic::GenXRegion::OldValueOperandNum]->getType()) {
+      unsigned NumElements =
+          cast<IGCLLVM::FixedVectorType>(RetTy)->getNumElements();
+      unsigned Width =
+          cast<ConstantInt>(Args[GenXIntrinsic::GenXRegion::RdWidthOperandNum])
+              ->getZExtValue();
+      auto IndexV = dyn_cast<Constant>(
+          Args[GenXIntrinsic::GenXRegion::RdIndexOperandNum]);
+      if (!IndexV)
+        return nullptr;
+      unsigned Index = 0;
+      if (!isa<VectorType>(IndexV->getType()))
+        Index = cast<ConstantInt>(IndexV)->getZExtValue() /
+                (DL.getTypeSizeInBits(RetTy->getScalarType()) / 8);
+      else
+        return nullptr;
+      if ((Index == 0 || Index >= NumElements) &&
+          (Width == NumElements ||
+           Width == cast<ConstantInt>(
+                        Args[GenXIntrinsic::GenXRegion::RdVStrideOperandNum])
+                        ->getSExtValue()))
+        if (NumElements == 1 ||
+            cast<ConstantInt>(
+                Args[GenXIntrinsic::GenXRegion::RdStrideOperandNum])
+                ->getSExtValue())
+          return Args[GenXIntrinsic::GenXRegion::OldValueOperandNum];
+    }
+    // rdregion with splatted constant input can be simplified to a constant of
+    // the appropriate type, ignoring the possibly variable index.
+    if (auto C = dyn_cast<Constant>(
+            Args[GenXIntrinsic::GenXRegion::OldValueOperandNum]))
+      if (auto Splat = C->getSplatValue()) {
+        if (auto VT = dyn_cast<IGCLLVM::FixedVectorType>(RetTy))
+          return ConstantVector::getSplat(
+              IGCLLVM::getElementCount(VT->getNumElements()), Splat);
+        return Splat;
       }
-      // rdregion with splatted constant input can be simplified to a constant of
-      // the appropriate type, ignoring the possibly variable index.
-      if (auto C = dyn_cast<Constant>(
-            ArgBegin[GenXIntrinsic::GenXRegion::OldValueOperandNum]))
-        if (auto Splat = C->getSplatValue()) {
-          if (auto VT = dyn_cast<IGCLLVM::FixedVectorType>(RetTy))
-            return ConstantVector::getSplat(
-                IGCLLVM::getElementCount(VT->getNumElements()), Splat);
-          return Splat;
-        }
-      break;
-    case GenXIntrinsic::genx_wrregioni:
-    case GenXIntrinsic::genx_wrregionf:
-      // The wrregion case specifically excludes genx_wrconstregion.
-      // Identity wrregion can be simplified to its "new value" input.
-      if (RetTy
-          == ArgBegin[GenXIntrinsic::GenXRegion::NewValueOperandNum]->getType()) {
-        if (auto CMask = dyn_cast<Constant>(ArgBegin[
-              GenXIntrinsic::GenXRegion::PredicateOperandNum])) {
-          if (CMask->isAllOnesValue()) {
-            unsigned NumElements = cast<IGCLLVM::FixedVectorType>(RetTy)->getNumElements();
-            unsigned Width = cast<ConstantInt>(
-                  ArgBegin[GenXIntrinsic::GenXRegion::WrWidthOperandNum])
-                ->getZExtValue();
-            auto IndexV = dyn_cast<Constant>(
-              ArgBegin[GenXIntrinsic::GenXRegion::WrIndexOperandNum]);
-            if (!IndexV)
-              return nullptr;
-            unsigned Index = 0;
-            if (!isa<VectorType>(IndexV->getType()))
-              Index = cast<ConstantInt>(IndexV)->getZExtValue() /
-                      (DL.getTypeSizeInBits(RetTy->getScalarType()) / 8);
-            else
-              return nullptr;
-            if ((Index == 0 || Index >= NumElements) &&
-                (Width == NumElements || Width == cast<ConstantInt>(ArgBegin[
-                 GenXIntrinsic::GenXRegion::WrVStrideOperandNum])->getSExtValue()))
-              if (NumElements == 1 || cast<ConstantInt>(ArgBegin[
-                    GenXIntrinsic::GenXRegion::WrStrideOperandNum])->getSExtValue())
-                return ArgBegin[GenXIntrinsic::GenXRegion::NewValueOperandNum];
-          }
+  } break;
+  case GenXIntrinsic::genx_wrregioni:
+  case GenXIntrinsic::genx_wrregionf:
+    // The wrregion case specifically excludes genx_wrconstregion.
+    // Identity wrregion can be simplified to its "new value" input.
+    if (RetTy ==
+        Args[GenXIntrinsic::GenXRegion::NewValueOperandNum]->getType()) {
+      if (auto CMask = dyn_cast<Constant>(
+              Args[GenXIntrinsic::GenXRegion::PredicateOperandNum])) {
+        if (CMask->isAllOnesValue()) {
+          unsigned NumElements =
+              cast<IGCLLVM::FixedVectorType>(RetTy)->getNumElements();
+          unsigned Width =
+              cast<ConstantInt>(
+                  Args[GenXIntrinsic::GenXRegion::WrWidthOperandNum])
+                  ->getZExtValue();
+          auto IndexV = dyn_cast<Constant>(
+              Args[GenXIntrinsic::GenXRegion::WrIndexOperandNum]);
+          if (!IndexV)
+            return nullptr;
+          unsigned Index = 0;
+          if (!isa<VectorType>(IndexV->getType()))
+            Index = cast<ConstantInt>(IndexV)->getZExtValue() /
+                    (DL.getTypeSizeInBits(RetTy->getScalarType()) / 8);
+          else
+            return nullptr;
+          if ((Index == 0 || Index >= NumElements) &&
+              (Width == NumElements ||
+               Width ==
+                   cast<ConstantInt>(
+                       Args[GenXIntrinsic::GenXRegion::WrVStrideOperandNum])
+                       ->getSExtValue()))
+            if (NumElements == 1 ||
+                cast<ConstantInt>(
+                    Args[GenXIntrinsic::GenXRegion::WrStrideOperandNum])
+                    ->getSExtValue())
+              return Args[GenXIntrinsic::GenXRegion::NewValueOperandNum];
         }
       }
-      // Wrregion with constant 0 predicate can be simplified to its "old value"
-      // input.
-      if (auto CMask = dyn_cast<Constant>(ArgBegin[
-            GenXIntrinsic::GenXRegion::PredicateOperandNum]))
-        if (CMask->isNullValue())
-          return ArgBegin[GenXIntrinsic::GenXRegion::OldValueOperandNum];
-      // Wrregion writing a value that has just been read out of the same
-      // region in the same vector can be simplified to its "old value" input.
-      // This works even if the predicate is not all true.
-      if (auto RdR = dyn_cast<CallInst>(ArgBegin[
-            GenXIntrinsic::GenXRegion::NewValueOperandNum])) {
-        if (auto RdRFunc = RdR->getCalledFunction()) {
-          Value *OldVal = ArgBegin[GenXIntrinsic::GenXRegion::OldValueOperandNum];
-          if ((GenXIntrinsic::getGenXIntrinsicID(RdRFunc) ==
-                   GenXIntrinsic::genx_rdregioni ||
-               GenXIntrinsic::getGenXIntrinsicID(RdRFunc) ==
-                   GenXIntrinsic::genx_rdregionf) &&
-              RdR->getArgOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum)
-                == OldVal) {
-            // Check the region parameters match between the rdregion and
-            // wrregion. There are 4 region parameters: vstride, width, stride,
-            // index.
-            bool CanSimplify = true;
-            for (unsigned i = 0; i != 4; ++i) {
-              if (ArgBegin[GenXIntrinsic::GenXRegion::WrVStrideOperandNum + i]
-                  != RdR->getArgOperand(
+    }
+    // Wrregion with constant 0 predicate can be simplified to its "old value"
+    // input.
+    if (auto CMask = dyn_cast<Constant>(
+            Args[GenXIntrinsic::GenXRegion::PredicateOperandNum]))
+      if (CMask->isNullValue())
+        return Args[GenXIntrinsic::GenXRegion::OldValueOperandNum];
+    // Wrregion writing a value that has just been read out of the same
+    // region in the same vector can be simplified to its "old value" input.
+    // This works even if the predicate is not all true.
+    if (auto RdR = dyn_cast<CallInst>(
+            Args[GenXIntrinsic::GenXRegion::NewValueOperandNum])) {
+      if (auto RdRFunc = RdR->getCalledFunction()) {
+        Value *OldVal = Args[GenXIntrinsic::GenXRegion::OldValueOperandNum];
+        if ((GenXIntrinsic::getGenXIntrinsicID(RdRFunc) ==
+                 GenXIntrinsic::genx_rdregioni ||
+             GenXIntrinsic::getGenXIntrinsicID(RdRFunc) ==
+                 GenXIntrinsic::genx_rdregionf) &&
+            RdR->getArgOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum) ==
+                OldVal) {
+          // Check the region parameters match between the rdregion and
+          // wrregion. There are 4 region parameters: vstride, width, stride,
+          // index.
+          bool CanSimplify = true;
+          for (unsigned i = 0; i != 4; ++i) {
+            if (Args[GenXIntrinsic::GenXRegion::WrVStrideOperandNum + i] !=
+                RdR->getArgOperand(
                     GenXIntrinsic::GenXRegion::RdVStrideOperandNum + i)) {
-                CanSimplify = false;
-                break;
-              }
+              CanSimplify = false;
+              break;
             }
-            if (CanSimplify)
-              return OldVal;
           }
+          if (CanSimplify)
+            return OldVal;
         }
       }
-      break;
+    }
+    break;
   }
   return nullptr;
 }
@@ -399,16 +417,9 @@ Value *llvm::SimplifyGenXIntrinsic(unsigned IID, Type *RetTy, Use *ArgBegin,
  * If this instruction could not be simplified, returns null.
  */
 Value *llvm::SimplifyGenX(CallInst *I, const DataLayout &DL) {
-  auto *FTy = I->getFunctionType();
-  auto *F = I->getCalledFunction();
-  if (!F)
-    return nullptr;
-
   LLVM_DEBUG(dbgs() << "Trying to simplify " << *I << "\n");
-  auto GenXID = GenXIntrinsic::getGenXIntrinsicID(F);
 
-  if (Value *Ret = SimplifyGenXIntrinsic(GenXID, FTy->getReturnType(),
-                                         I->arg_begin(), I->arg_end(), DL)) {
+  if (Value *Ret = SimplifyGenXIntrinsic(I, DL)) {
     LLVM_DEBUG(dbgs() << "Simplified to " << *Ret << "\n");
     return Ret;
   }
@@ -460,15 +471,19 @@ bool GenXSimplify::runOnFunction(Function &F) {
     for (auto I = BB.begin(); I != BB.end();) {
       Instruction *Inst = &*I++;
 
-      if (GenXIntrinsic::isGenXIntrinsic(Inst)) {
-        if (Value *V = SimplifyGenX(cast<CallInst>(Inst), DL)) {
-          if (isa<Instruction>(V) &&
-              !genx::isSafeToReplace_CheckAVLoadKillOrForbiddenUser(
-                  Inst, cast<Instruction>(V), &DT))
-            continue;
-          Changed |= replaceWithNewValue(*Inst, *V);
+      if (auto IID = vc::getAnyIntrinsicID(Inst);
+          vc::isAnyNonTrivialIntrinsic(IID)) {
+        auto *V = SimplifyGenX(cast<CallInst>(Inst), DL);
+        if (!V)
           continue;
-        }
+
+        auto *NewI = dyn_cast<Instruction>(V);
+        if (NewI && !genx::isSafeToReplace_CheckAVLoadKillOrForbiddenUser(
+                        Inst, NewI, &DT))
+          continue;
+
+        Changed |= replaceWithNewValue(*Inst, *V);
+        continue;
       }
 
       // Do general LLVM simplification

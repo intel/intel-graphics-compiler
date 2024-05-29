@@ -47,7 +47,8 @@ namespace {
  * If region index is a vector it should has given number of elements.
  */
 bool testRegionIndexForSizeMismatch(const llvm::Value *const V,
-  const unsigned& Width, const unsigned& NumElements) {
+                                    const unsigned &Width,
+                                    const unsigned &NumElements) {
 
   bool Result = true;
 
@@ -76,12 +77,12 @@ bool testOperator(const llvm::Instruction *const Operator) {
   const bool IsAdd = (Instruction::Add == Opcode);
   const bool IsSub = (Instruction::Sub == Opcode);
   const bool IsOr = (Instruction::Or == Opcode);
-  const bool IsAddAddr =
-    (GenXIntrinsic::genx_add_addr == GenXIntrinsic::getGenXIntrinsicID(Operator));
+  const bool IsAddAddr = (GenXIntrinsic::genx_add_addr ==
+                          GenXIntrinsic::getGenXIntrinsicID(Operator));
 
   bool Result = (IsAdd || IsSub || IsOr || IsAddAddr);
-  IGC_ASSERT_MESSAGE(Result,
-    "your offset seems to be calculated not through ADD or OR");
+  IGC_ASSERT_MESSAGE(
+      Result, "your offset seems to be calculated not through ADD or OR");
 
   // check if instruction 'or' could be changed to 'add'
   if (Result && IsOr) {
@@ -152,44 +153,44 @@ Region genx::makeRegionFromBaleInfo(const Instruction *Inst, const BaleInfo &BI,
   auto CallI = cast<CallInst>(Inst);
   IGC_ASSERT(CallI->getCalledFunction());
   switch (GenXIntrinsic::getGenXIntrinsicID(CallI->getCalledFunction())) {
-    case GenXIntrinsic::genx_rdpredregion:
-      Result.NumElements =
-          cast<IGCLLVM::FixedVectorType>(Inst->getType())->getNumElements();
-      Result.Width = Result.NumElements;
-      Result.Offset = cast<ConstantInt>(Inst->getOperand(1))->getZExtValue();
-      Result.ElementBytes = 1;
-      return Result;
-    case GenXIntrinsic::genx_wrpredregion:
-      Result.NumElements =
-          cast<IGCLLVM::FixedVectorType>(Inst->getOperand(1)->getType())
-              ->getNumElements();
-      Result.Width = Result.NumElements;
-      Result.Offset = cast<ConstantInt>(Inst->getOperand(2))->getZExtValue();
-      Result.ElementBytes = 1;
-      return Result;
-    case GenXIntrinsic::genx_rdregioni:
-    case GenXIntrinsic::genx_rdregionf:
-      ArgIdx = 1;
-      // The size/type of the region is given by the return value:
-      Subregion = Inst;
-      break;
-    case GenXIntrinsic::genx_wrregioni:
-    case GenXIntrinsic::genx_wrregionf:
-    case GenXIntrinsic::genx_wrconstregion:
-      ArgIdx = 2;
-      // The size/type of the region is given by the "subregion value to
-      // write" operand:
-      Subregion = Inst->getOperand(1);
-      // For wrregion, while we're here, also get the mask. We set mask to NULL
-      // if the mask operand is constant 1 (i.e. not predicated).
-      Result.Mask =
-          Inst->getOperand(GenXIntrinsic::GenXRegion::PredicateOperandNum);
-      if (auto C = dyn_cast<Constant>(Result.Mask))
-        if (C->isAllOnesValue())
-          Result.Mask = 0;
-      break;
-    default:
-      IGC_ASSERT_EXIT(0);
+  case GenXIntrinsic::genx_rdpredregion:
+    Result.NumElements =
+        cast<IGCLLVM::FixedVectorType>(Inst->getType())->getNumElements();
+    Result.Width = Result.NumElements;
+    Result.Offset = cast<ConstantInt>(Inst->getOperand(1))->getZExtValue();
+    Result.ElementBytes = 1;
+    return Result;
+  case GenXIntrinsic::genx_wrpredregion:
+    Result.NumElements =
+        cast<IGCLLVM::FixedVectorType>(Inst->getOperand(1)->getType())
+            ->getNumElements();
+    Result.Width = Result.NumElements;
+    Result.Offset = cast<ConstantInt>(Inst->getOperand(2))->getZExtValue();
+    Result.ElementBytes = 1;
+    return Result;
+  case GenXIntrinsic::genx_rdregioni:
+  case GenXIntrinsic::genx_rdregionf:
+    ArgIdx = 1;
+    // The size/type of the region is given by the return value:
+    Subregion = Inst;
+    break;
+  case GenXIntrinsic::genx_wrregioni:
+  case GenXIntrinsic::genx_wrregionf:
+  case GenXIntrinsic::genx_wrconstregion:
+    ArgIdx = 2;
+    // The size/type of the region is given by the "subregion value to
+    // write" operand:
+    Subregion = Inst->getOperand(1);
+    // For wrregion, while we're here, also get the mask. We set mask to NULL
+    // if the mask operand is constant 1 (i.e. not predicated).
+    Result.Mask =
+        Inst->getOperand(GenXIntrinsic::GenXRegion::PredicateOperandNum);
+    if (auto C = dyn_cast<Constant>(Result.Mask))
+      if (C->isAllOnesValue())
+        Result.Mask = 0;
+    break;
+  default:
+    IGC_ASSERT_EXIT(0);
   }
   // Get the region parameters.
   IGC_ASSERT_EXIT(Subregion);
@@ -211,7 +212,7 @@ Region genx::makeRegionFromBaleInfo(const Instruction *Inst, const BaleInfo &BI,
   // Get the start index.
   Value *V = Inst->getOperand(ArgIdx);
   IGC_ASSERT_MESSAGE(V->getType()->getScalarType()->isIntegerTy(16),
-    "region index must be i16 or vXi16 type");
+                     "region index must be i16 or vXi16 type");
   IGC_ASSERT(
       testRegionIndexForSizeMismatch(V, Result.Width, Result.NumElements));
 
@@ -223,7 +224,7 @@ Region genx::makeRegionFromBaleInfo(const Instruction *Inst, const BaleInfo &BI,
       Instruction *Operator = cast<Instruction>(V);
       // The index is variable and has something baled in. We want to process
       // a baled in add or add_addr, and ignore a baled in rdregion.
-      if(!GenXIntrinsic::isRdRegion(Operator)) {
+      if (!GenXIntrinsic::isRdRegion(Operator)) {
         // The index is variable and has a baled in or/add/sub/add_addr.
         // offset is calculated through 'add' or 'or'
         IGC_ASSERT(testOperator(Operator));
@@ -427,10 +428,11 @@ unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
                         (R.Width - 1) * R.Stride;
         unsigned Max = InputNumElements - Last - 1 + RealIdx;
         unsigned Min = RealIdx;
-        unsigned MinMaxGRFDiff = (Max & -ElementsPerGRF) - (Min & -ElementsPerGRF);
+        unsigned MinMaxGRFDiff =
+            (Max & -ElementsPerGRF) - (Min & -ElementsPerGRF);
         if (!MinMaxGRFDiff) // min and max in same GRF
-          ElementsToBoundary = ElementsPerGRF * GRFsPerIndirect
-              - (Max & (ElementsPerGRF - 1));
+          ElementsToBoundary =
+              ElementsPerGRF * GRFsPerIndirect - (Max & (ElementsPerGRF - 1));
         else if (MinMaxGRFDiff == 1 && GRFsPerIndirect > 1)
           ElementsToBoundary = ElementsPerGRF - (Max & (ElementsPerGRF - 1));
         // We may be able to refine an indirect region legal width further...
@@ -442,8 +444,8 @@ unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
           ElementsToBoundary = std::max(R.ParentWidth - RealIdx % R.ParentWidth,
                                         ElementsToBoundary);
         } else if (!isa<VectorType>(R.Indirect->getType())) {
-          // Use the alignment+offset of the single indirect index, with alignment
-          // limited to one GRF.
+          // Use the alignment+offset of the single indirect index, with
+          // alignment limited to one GRF.
           if (!Align.isUnknown()) {
             unsigned LogAlign = Align.getLogAlign();
             unsigned ExtraBits = Align.getExtraBits();
@@ -460,15 +462,16 @@ unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
                   std::min(LogGRFWidth, LogAlign) - genx::log2(R.ElementBytes);
               ExtraBits =
                   (ExtraBits & (GRFByteSize - 1)) >> genx::log2(R.ElementBytes);
-              // We have some alignment, so we can say that the next GRF boundary
-              // is (at least) that many elements away, minus the offset from that
-              // alignment.
-              // For SKL+, we can cross one GRF boundary, so add on one GRF's
-              // worth.
-              unsigned ElementsToBoundaryFromAlign = (1U << LogAlign) - ExtraBits;
-              ElementsToBoundaryFromAlign += (GRFsPerIndirect - 1) * ElementsPerGRF;
-              ElementsToBoundary = std::max(ElementsToBoundaryFromAlign,
-                  ElementsToBoundary);
+              // We have some alignment, so we can say that the next GRF
+              // boundary is (at least) that many elements away, minus the
+              // offset from that alignment. For SKL+, we can cross one GRF
+              // boundary, so add on one GRF's worth.
+              unsigned ElementsToBoundaryFromAlign =
+                  (1U << LogAlign) - ExtraBits;
+              ElementsToBoundaryFromAlign +=
+                  (GRFsPerIndirect - 1) * ElementsPerGRF;
+              ElementsToBoundary =
+                  std::max(ElementsToBoundaryFromAlign, ElementsToBoundary);
             }
           }
         }
@@ -554,7 +557,8 @@ unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
   // regions which could cross GRF boundary are already reported with valid
   // width of 1 so they don't have to be handled here
   if (R.Indirect && !R.isMultiIndirect() && R.is2D()) {
-    ValidWidth = std::min(ValidWidth, 1U << genx::log2(R.Width - Idx % R.Width));
+    ValidWidth =
+        std::min(ValidWidth, 1U << genx::log2(R.Width - Idx % R.Width));
   }
 
   return ValidWidth;
@@ -600,8 +604,8 @@ bool RdWrRegionSequence::buildFromStartWr(Instruction *ArgStartWr,
       WaitingFor = nullptr;
     bool SeenWaitingFor = false;
     for (;;) {
-      if (!Wr->hasOneUse() || Wr->use_begin()->getOperandNo()
-          != GenXIntrinsic::GenXRegion::OldValueOperandNum)
+      if (!Wr->hasOneUse() || Wr->use_begin()->getOperandNo() !=
+                                  GenXIntrinsic::GenXRegion::OldValueOperandNum)
         break;
       Wr = cast<Instruction>(Wr->use_begin()->getUser());
       if (!GenXIntrinsic::isWrRegion(Wr))
@@ -610,7 +614,8 @@ bool RdWrRegionSequence::buildFromStartWr(Instruction *ArgStartWr,
       if (!GenXIntrinsic::isRdRegion(In))
         break;
       auto Rd = cast<Instruction>(In);
-      if (Rd->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum) != Input)
+      if (Rd->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum) !=
+          Input)
         break;
       // Append to the regions. Give up if either fails.
       if (!TotalRdR.append(
@@ -630,7 +635,8 @@ bool RdWrRegionSequence::buildFromStartWr(Instruction *ArgStartWr,
     }
     return true;
   }
-  if (!isa<UndefValue>(Wr->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum)))
+  if (!isa<UndefValue>(
+          Wr->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum)))
     return false;
   auto TotalC = dyn_cast<Constant>(RdVal);
   if (!TotalC)
@@ -647,13 +653,14 @@ bool RdWrRegionSequence::buildFromStartWr(Instruction *ArgStartWr,
     WaitingFor = nullptr;
   bool SeenWaitingFor = false;
   for (;;) {
-    if (!Wr->hasOneUse() || Wr->use_begin()->getOperandNo()
-        != GenXIntrinsic::GenXRegion::OldValueOperandNum)
+    if (!Wr->hasOneUse() || Wr->use_begin()->getOperandNo() !=
+                                GenXIntrinsic::GenXRegion::OldValueOperandNum)
       break;
     Wr = cast<Instruction>(Wr->use_begin()->getUser());
     if (!GenXIntrinsic::isWrRegion(Wr))
       break;
-    auto In = dyn_cast<Constant>(Wr->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum));
+    auto In = dyn_cast<Constant>(
+        Wr->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum));
     if (!In)
       break;
     // Append to the regions. Give up if either fails.
@@ -680,9 +687,9 @@ bool RdWrRegionSequence::buildFromStartWr(Instruction *ArgStartWr,
 }
 
 /***********************************************************************
- * RdWrRegionSequence::buildFromWr:  detect a split (legalized) rdregion-wrregion
- *    sequence starting from any wrregion within it, and populate the
- *    RdWrRegionSequence object with its details
+ * RdWrRegionSequence::buildFromWr:  detect a split (legalized)
+ * rdregion-wrregion sequence starting from any wrregion within it, and populate
+ * the RdWrRegionSequence object with its details
  *
  * This fails if there is any predication. It succeeds with a sequence length
  * of one (i.e. a single rdregion-wrregion pair).
@@ -690,8 +697,7 @@ bool RdWrRegionSequence::buildFromStartWr(Instruction *ArgStartWr,
  * On failure, EndWr is left as is, which means that isNull() continues to
  * be true.
  */
-bool RdWrRegionSequence::buildFromWr(Instruction *Wr, GenXBaling *Baling)
-{
+bool RdWrRegionSequence::buildFromWr(Instruction *Wr, GenXBaling *Baling) {
   // Remember that our sequence needs to contain Wr.
   WaitingFor = Wr;
   // Scan back to what looks like the start of the sequence.
@@ -723,7 +729,8 @@ bool RdWrRegionSequence::buildFromWr(Instruction *Wr, GenXBaling *Baling)
           Wr->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum));
       if (!Rd)
         break;
-      if (Input != Rd->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum))
+      if (Input !=
+          Rd->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum))
         break;
     }
     StartWr = Wr;
@@ -745,19 +752,19 @@ bool RdWrRegionSequence::buildFromWr(Instruction *Wr, GenXBaling *Baling)
 }
 
 /***********************************************************************
- * RdWrRegionSequence::buildFromRd:  detect a split (legalized) rdregion-wrregion
- *    sequence starting from any rdregion within it, and populate the
- *    RdWrRegionSequence object with its details
+ * RdWrRegionSequence::buildFromRd:  detect a split (legalized)
+ * rdregion-wrregion sequence starting from any rdregion within it, and populate
+ * the RdWrRegionSequence object with its details
  *
  * This fails if there is any predication. It succeeds with a sequence length
  * of one (i.e. a single rdregion-wrregion pair).
  */
-bool RdWrRegionSequence::buildFromRd(Instruction *Rd, GenXBaling *Baling)
-{
+bool RdWrRegionSequence::buildFromRd(Instruction *Rd, GenXBaling *Baling) {
   IGC_ASSERT(GenXIntrinsic::isRdRegion(Rd));
   if (!Rd->hasOneUse())
     return false;
-  if (Rd->use_begin()->getOperandNo() != GenXIntrinsic::GenXRegion::NewValueOperandNum)
+  if (Rd->use_begin()->getOperandNo() !=
+      GenXIntrinsic::GenXRegion::NewValueOperandNum)
     return false;
   auto Wr = cast<Instruction>(Rd->use_begin()->getUser());
   if (!GenXIntrinsic::isWrRegion(Wr))
@@ -769,11 +776,10 @@ bool RdWrRegionSequence::buildFromRd(Instruction *Rd, GenXBaling *Baling)
  * RdWrRegionSequence::size : get number of rdregion-wrregion pairs in the
  *    sequence
  */
-unsigned RdWrRegionSequence::size() const
-{
+unsigned RdWrRegionSequence::size() const {
   unsigned Size = 1;
   Instruction *Wr = EndWr;
-  for ( ; Wr != StartWr; ++Size)
+  for (; Wr != StartWr; ++Size)
     Wr = cast<Instruction>(
         Wr->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum));
   return Size;
@@ -783,11 +789,9 @@ unsigned RdWrRegionSequence::size() const
  * RdWrRegionSequence::isOnlyUseOfInput : check whether the sequence is the
  *    only use of its input
  */
-bool RdWrRegionSequence::isOnlyUseOfInput() const
-{
+bool RdWrRegionSequence::isOnlyUseOfInput() const {
   unsigned Count = 0;
-  for (auto ui = Input->use_begin(), ue = Input->use_end();
-      ui != ue; ++ui)
+  for (auto ui = Input->use_begin(), ue = Input->use_end(); ui != ue; ++ui)
     ++Count;
   return Count == size();
 }
@@ -795,8 +799,7 @@ bool RdWrRegionSequence::isOnlyUseOfInput() const
 /***********************************************************************
  * RdWrRegionSequence::getRdIndex : get the index of the legalized rdregion
  */
-Value *RdWrRegionSequence::getRdIndex() const
-{
+Value *RdWrRegionSequence::getRdIndex() const {
   if (isa<Constant>(Input))
     return ConstantInt::get(Type::getInt16Ty(StartWr->getContext()), 0);
   auto Rd = cast<Instruction>(
@@ -808,8 +811,7 @@ Value *RdWrRegionSequence::getRdIndex() const
 /***********************************************************************
  * RdWrRegionSequence::getWrIndex : get the index of the legalized wrregion
  */
-Value *RdWrRegionSequence::getWrIndex() const
-{
+Value *RdWrRegionSequence::getWrIndex() const {
   return StartWr->getOperand(GenXIntrinsic::GenXRegion::WrIndexOperandNum);
 }
 
@@ -820,8 +822,7 @@ Value *RdWrRegionSequence::getWrIndex() const
  * rather than a sequence of wrregions with constant input. In the latter
  * case, this returns 0.
  */
-Use *RdWrRegionSequence::getInputUse() const
-{
+Use *RdWrRegionSequence::getInputUse() const {
   auto Rd = dyn_cast<Instruction>(
       StartWr->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum));
   if (!GenXIntrinsic::isRdRegion(Rd))
@@ -835,23 +836,19 @@ Use *RdWrRegionSequence::getInputUse() const
 /***********************************************************************
  * RdWrRegionSequence::print : debug dump/print
  */
-void RdWrRegionSequence::print(raw_ostream &OS) const
-{
+void RdWrRegionSequence::print(raw_ostream &OS) const {
   if (isNull())
     OS << "null";
   else {
     OS << "sequence";
     if (OldVal)
       dbgs() << " OldVal=" << OldVal->getName();
-    dbgs() << " Input=" << Input->getName()
-      << " StartWr=" << StartWr->getName()
-      << " EndWr=" << EndWr->getName()
-      << " RdR=" << RdR
-      << " WrR=" << WrR;
+    dbgs() << " Input=" << Input->getName() << " StartWr=" << StartWr->getName()
+           << " EndWr=" << EndWr->getName() << " RdR=" << RdR << " WrR=" << WrR;
   }
 }
 
-static Instruction* simplifyConstIndirectRegion(Instruction* Inst) {
+static Instruction *simplifyConstIndirectRegion(Instruction *Inst) {
   // if a region has a constant-vector as its indirect offsets,
   // try to recognize the pattern, and replace it with
   // a direct region with v-stride, h-stride, h-width
@@ -863,13 +860,13 @@ static Instruction* simplifyConstIndirectRegion(Instruction* Inst) {
   if (!cv)
     return nullptr;
   // Flatten the vector out into the elements array
-  llvm::SmallVector<llvm::Constant*, 16> elements;
+  llvm::SmallVector<llvm::Constant *, 16> elements;
   auto vectorLength =
       cast<IGCLLVM::FixedVectorType>(cv->getType())->getNumElements();
   for (unsigned i = 0; i < vectorLength; ++i)
     elements.push_back(cv->getElementAsConstant(i));
 
-  llvm::ConstantInt* ci = llvm::dyn_cast<llvm::ConstantInt>(elements[0]);
+  llvm::ConstantInt *ci = llvm::dyn_cast<llvm::ConstantInt>(elements[0]);
   if (ci == NULL)
     return nullptr; // Not a vector of integers
 
@@ -886,8 +883,8 @@ static Instruction* simplifyConstIndirectRegion(Instruction* Inst) {
     R.Width = 1;
     R.VStride = 0;
     if (GenXIntrinsic::isRdRegion(Inst))
-      return R.createRdRegion(Inst->getOperand(0),
-        Inst->getName(), Inst, Inst->getDebugLoc());
+      return R.createRdRegion(Inst->getOperand(0), Inst->getName(), Inst,
+                              Inst->getDebugLoc());
     else if (GenXIntrinsic::isWrRegion(Inst))
       return R.createWrRegion(Inst->getOperand(0), Inst->getOperand(1),
                               Inst->getName(), Inst, Inst->getDebugLoc());
@@ -920,13 +917,12 @@ static Instruction* simplifyConstIndirectRegion(Instruction* Inst) {
     if (prevVal + diff != nextVal) {
       if (Width == 1) {
         Width = i - i0;
-        if (i - vectorLength/2 > 0)
+        if (i - vectorLength / 2 > 0)
           return nullptr; // different strides
         VStride = nextVal - val0;
         val0 = nextVal;
         i0 = i;
-      }
-      else if (nextVal != val0 + VStride || i != i0 + Width)
+      } else if (nextVal != val0 + VStride || i != i0 + Width)
         return nullptr;
       else {
         val0 = nextVal;
@@ -937,8 +933,8 @@ static Instruction* simplifyConstIndirectRegion(Instruction* Inst) {
     }
     prevVal = nextVal;
   }
-  Stride = diff*8 / R.ElementTy->getPrimitiveSizeInBits();
-  VStride = VStride*8 / R.ElementTy->getPrimitiveSizeInBits();
+  Stride = diff * 8 / R.ElementTy->getPrimitiveSizeInBits();
+  VStride = VStride * 8 / R.ElementTy->getPrimitiveSizeInBits();
   // rewrite the region inst
   R.Indirect = nullptr;
   R.Offset = Offset;
@@ -946,8 +942,8 @@ static Instruction* simplifyConstIndirectRegion(Instruction* Inst) {
   R.Width = (Width == 1) ? R.NumElements : Width;
   R.VStride = VStride;
   if (GenXIntrinsic::isRdRegion(Inst))
-    return R.createRdRegion(Inst->getOperand(0),
-      Inst->getName(), Inst, Inst->getDebugLoc());
+    return R.createRdRegion(Inst->getOperand(0), Inst->getName(), Inst,
+                            Inst->getDebugLoc());
   else if (GenXIntrinsic::isWrRegion(Inst))
     return R.createWrRegion(Inst->getOperand(0), Inst->getOperand(1),
                             Inst->getName(), Inst, Inst->getDebugLoc());
@@ -1024,7 +1020,8 @@ static Value *simplifyRegionWrite(Instruction *WrR, const DataLayout *DL) {
       R.isWhole(WrR->getType(), DL) && !R.Mask &&
       vc::isBitCastAllowed(*NewVal, *WrR->getType()) &&
       !isPredefRegDestination(WrR) && !isPredefRegSource(NewVal))
-    return IRBuilder<>(WrR).CreateBitCast(NewVal, WrR->getType(), WrR->getName());
+    return IRBuilder<>(WrR).CreateBitCast(NewVal, WrR->getType(),
+                                          WrR->getName());
   // Replace C with A
   // C = wrregion(A, undef, R)
   if (isa<UndefValue>(NewVal))
@@ -1097,7 +1094,8 @@ static Value *simplifyBitCastFromRegionRead(BitCastInst *BCI,
 
 static Value *simplifyRegionRead(Instruction *Inst, const DataLayout *DL) {
   IGC_ASSERT(GenXIntrinsic::isRdRegion(Inst));
-  Value *Input = Inst->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
+  Value *Input =
+      Inst->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
   if (makeRegionFromBaleInfo(Inst, BaleInfo()).isWhole(Input->getType(), DL) &&
       vc::isBitCastAllowed(*Input, *Inst->getType()) &&
       !genx::isPredefRegSource(Inst))
@@ -1213,49 +1211,49 @@ bool llvm::genx::simplifyRegionInsts(Function *F, const DataLayout *DL,
   return Changed;
 }
 
-bool
-llvm::genx::IsLinearVectorConstantInts(Value* v, int64_t& start, int64_t& stride) {
-    auto cv = dyn_cast<ConstantDataVector>(v);
-    if (!cv)
-        return false;
-    // Flatten the vector out into the elements array
-    llvm::SmallVector<llvm::Constant*, 16> elements;
-    auto vectorLength =
-        cast<IGCLLVM::FixedVectorType>(cv->getType())->getNumElements();
-    for (unsigned i = 0; i < vectorLength; ++i)
-        elements.push_back(cv->getElementAsConstant(i));
+bool llvm::genx::IsLinearVectorConstantInts(Value *v, int64_t &start,
+                                            int64_t &stride) {
+  auto cv = dyn_cast<ConstantDataVector>(v);
+  if (!cv)
+    return false;
+  // Flatten the vector out into the elements array
+  llvm::SmallVector<llvm::Constant *, 16> elements;
+  auto vectorLength =
+      cast<IGCLLVM::FixedVectorType>(cv->getType())->getNumElements();
+  for (unsigned i = 0; i < vectorLength; ++i)
+    elements.push_back(cv->getElementAsConstant(i));
 
-    llvm::ConstantInt* ci = llvm::dyn_cast<llvm::ConstantInt>(elements[0]);
-    if (ci == NULL)
-        return false; // Not a vector of integers
+  llvm::ConstantInt *ci = llvm::dyn_cast<llvm::ConstantInt>(elements[0]);
+  if (ci == NULL)
+    return false; // Not a vector of integers
 
-    int64_t val0 = ci->getSExtValue();
-    if (vectorLength == 1) {
-        start = val0;
-        stride = 0;
-        return true;
-    }
-    ci = llvm::dyn_cast<llvm::ConstantInt>(elements[1]);
-    if (ci == NULL)
-        return false; // Not a vector of integers
-    int64_t prevVal = ci->getSExtValue();
-    int64_t diff = prevVal - val0;
-
-    // For each element in the array, see if it is both a ConstantInt and
-    // if the difference between it and the value of the previous element
-    // is stride.  If not, fail.
-    for (int i = 2; i < (int)vectorLength; ++i) {
-        ci = llvm::dyn_cast<llvm::ConstantInt>(elements[i]);
-        if (ci == NULL)
-            return false;
-
-        int64_t nextVal = ci->getSExtValue();
-        if (prevVal + diff != nextVal)
-            return false;
-
-        prevVal = nextVal;
-    }
+  int64_t val0 = ci->getSExtValue();
+  if (vectorLength == 1) {
     start = val0;
-    stride = diff;
+    stride = 0;
     return true;
+  }
+  ci = llvm::dyn_cast<llvm::ConstantInt>(elements[1]);
+  if (ci == NULL)
+    return false; // Not a vector of integers
+  int64_t prevVal = ci->getSExtValue();
+  int64_t diff = prevVal - val0;
+
+  // For each element in the array, see if it is both a ConstantInt and
+  // if the difference between it and the value of the previous element
+  // is stride.  If not, fail.
+  for (int i = 2; i < (int)vectorLength; ++i) {
+    ci = llvm::dyn_cast<llvm::ConstantInt>(elements[i]);
+    if (ci == NULL)
+      return false;
+
+    int64_t nextVal = ci->getSExtValue();
+    if (prevVal + diff != nextVal)
+      return false;
+
+    prevVal = nextVal;
+  }
+  start = val0;
+  stride = diff;
+  return true;
 }

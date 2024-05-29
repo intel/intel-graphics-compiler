@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2023 Intel Corporation
+Copyright (C) 2023-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/InternalIntrinsics/InternalIntrinsics.h"
+#include "vc/Utils/GenX/IntrinsicsWrapper.h"
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
