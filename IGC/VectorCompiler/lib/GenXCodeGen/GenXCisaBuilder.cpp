@@ -3912,6 +3912,16 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
             DataDesc, Base, SurfIdx, Dest, Addr, Src1, Src2));
       };
 
+  auto GetElementOrder = [](VISA_Exec_Size ExecSize,
+                            LSC_DATA_SIZE ElementSize) {
+    bool IsDWordOrQWord =
+        ElementSize == LSC_DATA_SIZE_32b || ElementSize == LSC_DATA_SIZE_64b;
+    bool IsScalar = ExecSize == EXEC_SIZE_1;
+
+    return IsScalar && IsDWordOrQWord ? LSC_DATA_ORDER_TRANSPOSE
+                                      : LSC_DATA_ORDER_NONTRANSPOSE;
+  };
+
   auto CreateLscLoad = [&](VISA_PredOpnd *Pred, VISA_Exec_Size ExecSize,
                            VISA_EMask_Ctrl ExecMask, LSC_OP Opcode,
                            LSC_SFID LscSfid, LSC_ADDR_TYPE AddressType,
@@ -3928,10 +3938,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
 
     if (Opcode == LSC_LOAD) {
       DataDesc.elems = LSC_DATA_ELEMS(VectorAttr);
-      DataDesc.order =
-          ExecSize == EXEC_SIZE_1 && DataDesc.elems != LSC_DATA_ELEMS_1
-              ? LSC_DATA_ORDER_TRANSPOSE
-              : LSC_DATA_ORDER_NONTRANSPOSE;
+      DataDesc.order = GetElementOrder(ExecSize, ElementSize);
     } else {
       IGC_ASSERT(ElementSize == LSC_DATA_SIZE_32b);
       DataDesc.chmask = VectorAttr;
@@ -3960,10 +3967,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
 
         if (Opcode == LSC_STORE) {
           DataDesc.elems = LSC_DATA_ELEMS(VectorAttr);
-          DataDesc.order =
-              ExecSize == EXEC_SIZE_1 && DataDesc.elems != LSC_DATA_ELEMS_1
-                  ? LSC_DATA_ORDER_TRANSPOSE
-                  : LSC_DATA_ORDER_NONTRANSPOSE;
+          DataDesc.order = GetElementOrder(ExecSize, ElementSize);
         } else {
           IGC_ASSERT(ElementSize == LSC_DATA_SIZE_32b);
           DataDesc.chmask = VectorAttr;
