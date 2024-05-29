@@ -1026,16 +1026,10 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
     vISA_ASSERT(false, "invalid");
   }
 
-  // region check, enforce <1;1,0> for source region, <1> for dst
-  auto isSrcRegion110 = [](const RegionDesc *RD) -> bool {
-    return RD->vertStride == 1 && RD->width == 1 && RD->horzStride == 0;
-  };
-
   if (dst->getHorzStride() != 1 ||
-      (!src0->isNullReg() && !isSrcRegion110(src0->getRegion())) ||
-      !isSrcRegion110(src1->getRegion()) ||
-      !isSrcRegion110(src2->getRegion()) ||
-      (src3 && !isSrcRegion110(src3->getRegion()))) {
+      (!src0->isNullReg() && !src0->getRegion()->isRegion110()) ||
+      !src1->getRegion()->isRegion110() || !src2->getRegion()->isRegion110() ||
+      (src3 && !src3->getRegion()->isRegion110())) {
     DEBUG_VERBOSE("src region should be <1;1,0> and dst region <1>!");
     inst->emit(std::cerr);
     DEBUG_VERBOSE("\n");

@@ -60,6 +60,9 @@ struct RegionDesc {
   bool isRegionV() const {
     return vertStride == UNDEFINED_SHORT && width == UNDEFINED_SHORT;
   }
+  bool isRegion110() const {
+    return vertStride == 1 && width == 1 && horzStride == 0;
+  }
   bool isScalar() const {
     return (vertStride == 0 && horzStride == 0) ||
            (width == 1 && vertStride == 0);
