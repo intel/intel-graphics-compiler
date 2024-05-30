@@ -5746,12 +5746,16 @@ bool Optimizer::addFenceCommit(INST_LIST_ITER ii, G4_BB *bb,
 void Optimizer::normalizeRegion() {
   for (auto bb : fg) {
     for (auto inst : *bb) {
-      if (inst->isCall() || inst->isFCall() || inst->isDpas() ||
+      if (inst->isCall() || inst->isFCall() ||
           inst->isReturn() || inst->isFReturn()) {
         // Do not rewrite region for call or return,
         // as the effective execution size is 2.
         continue;
       }
+
+      // Do not rewrite region for dpas as HW requires region <1;1,0>
+      if (inst->isDpas())
+        continue;
 
       if (inst->getExecSize() == g4::SIMD1) {
         // Replace: mov (1) r64.0<4>:df  r3.0<0;1,0>:df
