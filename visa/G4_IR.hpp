@@ -126,7 +126,13 @@ class G4_INST {
 
 protected:
   G4_opcode op;
-  llvm::SmallVector<G4_Operand *, G4_MAX_SRCS> srcs;
+  // Reserve 4 sources should be enough for most of instructions.
+  // TODO: In fact, we would reserve not just 4 but also set the size of "srcs"
+  // to 4. Currently there is some legacy code that presumes srcs[0:3] are
+  // always accessible for updates, and refactoring the code appears to be
+  // a challenge. We probably should still pursue the opportunity to remove that
+  // presumption and make the code cleaner.
+  llvm::SmallVector<G4_Operand *, /*N=*/4> srcs;
   G4_DstRegRegion *dst;
   G4_Predicate *predicate;
   G4_CondMod *mod;
@@ -285,6 +291,11 @@ public:
   G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o, G4_CondMod *m,
           G4_Sat s, G4_ExecSize size, G4_DstRegRegion *d, G4_Operand *s0,
           G4_Operand *s1, G4_Operand *s2, G4_Operand *s3, G4_InstOpts opt);
+
+  G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o, G4_CondMod *m,
+          G4_Sat s, G4_ExecSize size, G4_DstRegRegion *d, G4_Operand *s0,
+          G4_Operand *s1, G4_Operand *s2, G4_Operand *s3, G4_Operand *s4,
+          G4_InstOpts opt);
 
   G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o, G4_CondMod *m,
           G4_Sat s, G4_ExecSize size, G4_DstRegRegion *d, G4_Operand *s0,
@@ -655,6 +666,8 @@ public:
       return Opnd_src2;
     case 3:
       return Opnd_src3;
+    case 4:
+      return Opnd_src4;
     default:
       vISA_ASSERT_UNREACHABLE("bad source id");
       return Opnd_src0;
@@ -1021,10 +1034,10 @@ public:
 
   G4_InstDpas(const IR_Builder &builder, G4_opcode o, G4_ExecSize size,
               G4_DstRegRegion *d, G4_Operand *s0, G4_Operand *s1,
-              G4_Operand *s2, G4_Operand *s3, G4_InstOpts opt, GenPrecision a,
-              GenPrecision w, uint8_t sd, uint8_t rc)
+              G4_Operand *s2, G4_Operand *s3, G4_Operand *s4, G4_InstOpts opt,
+              GenPrecision a, GenPrecision w, uint8_t sd, uint8_t rc)
       : G4_INST(builder, nullptr, o, nullptr, g4::NOSAT, size, d, s0, s1, s2,
-                s3, opt),
+                s3, s4, opt),
         Src2Precision(a), Src1Precision(w), SystolicDepth(sd), RepeatCount(rc) {
   }
 

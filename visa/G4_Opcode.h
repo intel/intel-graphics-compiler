@@ -12,7 +12,8 @@ SPDX-License-Identifier: MIT
 #include "common.h"
 #include "visa_igc_common_header.h"
 
-#define G4_MAX_SRCS 4
+// TODO: Probably should get rid of G4_MAX_SRCS constant at some point.
+#define G4_MAX_SRCS 5
 #define G4_MAX_INTRINSIC_SRCS 8
 #define UNDEFINED_VAL 0xFFFFFFFF
 #define UNDEFINED_SHORT 0x8000
