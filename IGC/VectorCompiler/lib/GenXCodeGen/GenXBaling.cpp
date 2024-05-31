@@ -485,44 +485,50 @@ bool GenXBaling::operandCanBeBaled(
   if (ModType != GenXIntrinsicInfo::MODIFIER_DEFAULT) {
     int Mod = checkModifier(Opnd);
     switch (Mod) {
-      case BaleInfo::MAININST:
-        break;
-      case BaleInfo::ZEXT:
-        // Don't allow zext->sext baling
-        if (isa<SExtInst>(Inst))
+    case BaleInfo::MAININST:
+      break;
+    case BaleInfo::ZEXT:
+      // Don't allow zext->sext baling
+      if (isa<SExtInst>(Inst))
+        return false;
+      LLVM_FALLTHROUGH;
+    case BaleInfo::SEXT: {
+      if (CmpInst *CmpI = dyn_cast<CmpInst>(Inst)) {
+        if ((Mod == BaleInfo::SEXT) != CmpI->isSigned())
           return false;
-        LLVM_FALLTHROUGH;
-      case BaleInfo::SEXT: {
-        if (CmpInst *CmpI = dyn_cast<CmpInst>(Inst)) {
-          if ((Mod == BaleInfo::SEXT) != CmpI->isSigned())
-            return false;
-        }
-        // Don't allow sext->zext baling
-        if (Mod == BaleInfo::SEXT && isa<ZExtInst>(Inst))
-          return false;
-        // NOTE: mulh and madw don't allow sext/zext bailing, as it allows only
-        // D/UD operands
-        auto IID = GenXIntrinsic::getGenXIntrinsicID(Inst);
-        if (IID == GenXIntrinsic::genx_smulh ||
-            IID == GenXIntrinsic::genx_umulh ||
-            IID == GenXIntrinsic::genx_smadw ||
-            IID == GenXIntrinsic::genx_umadw)
-          return false;
+      }
+      // Don't allow sext->zext baling
+      if (Mod == BaleInfo::SEXT && isa<ZExtInst>(Inst))
+        return false;
+      // NOTE: mulh and madw don't allow sext/zext bailing, as it allows only
+      // D/UD operands
+      auto IID = GenXIntrinsic::getGenXIntrinsicID(Inst);
+      if (IID == GenXIntrinsic::genx_smulh ||
+          IID == GenXIntrinsic::genx_umulh ||
+          IID == GenXIntrinsic::genx_smadw || IID == GenXIntrinsic::genx_umadw)
+        return false;
+      return true;
+    }
+    case BaleInfo::NOTMOD:
+      if (ModType == GenXIntrinsicInfo::MODIFIER_LOGIC)
         return true;
-      } break;
-      case BaleInfo::NOTMOD:
-        if (ModType == GenXIntrinsicInfo::MODIFIER_LOGIC)
-          return true;
-        break;
-      case BaleInfo::ABSMOD:
-        // Part of the bodge to allow abs to be baled in to zext/sext.
-        if (ModType == MODIFIER_ABSONLY)
-          return true;
-        // fall through...
-      default:
-        if (ModType == GenXIntrinsicInfo::MODIFIER_ARITH)
-          return true;
-        break;
+      break;
+    case BaleInfo::NEGMOD:
+      // Don't bale neg(abs(X)), because the hardware doesn't support it.
+      if (GenXIntrinsic::isAbs(Inst))
+        return false;
+      if (ModType == GenXIntrinsicInfo::MODIFIER_ARITH)
+        return true;
+      break;
+    case BaleInfo::ABSMOD:
+      // Part of the bodge to allow abs to be baled in to zext/sext.
+      if (ModType == MODIFIER_ABSONLY)
+        return true;
+      LLVM_FALLTHROUGH;
+    default:
+      if (ModType == GenXIntrinsicInfo::MODIFIER_ARITH)
+        return true;
+      break;
     }
   }
   if (GenXIntrinsic::isRdRegion(Opnd)) {
