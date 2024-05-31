@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #include "Assertions.h"
 #include "PointsToAnalysis.h"
 #include "Rematerialization.h"
-#include <vector>
 
 namespace vISA {
 void Rematerialization::populateRefs() {
@@ -562,10 +561,10 @@ bool Rematerialization::canRematerialize(G4_SrcRegRegion *src, G4_BB *bb,
   }
 
   // Check liveness of each src operand in original op
-  const unsigned numSrc = uniqueDefInst->getNumSrc();
-  std::vector<bool> srcLive(numSrc, true);
+  bool srcLive[G4_MAX_SRCS];
   bool anySrcNotLive = false;
-  for (unsigned int i = 0; i < numSrc; i++) {
+  for (unsigned int i = 0; i < G4_MAX_SRCS; i++) {
+    srcLive[i] = true;
     auto srcOpnd = uniqueDefInst->getSrc(i);
     if (!srcOpnd || srcOpnd->isImm() || srcOpnd->isNullReg())
       continue;
@@ -770,7 +769,7 @@ bool Rematerialization::canRematerialize(G4_SrcRegRegion *src, G4_BB *bb,
   if (anySrcNotLive) {
     // Apply cost heuristic. It may be profitable to extend
     // scalars sometimes.
-    for (unsigned int i = 0; i < numSrc; i++) {
+    for (unsigned int i = 0; i < G4_MAX_SRCS; i++) {
       if (!srcLive[i]) {
         G4_SrcRegRegion *srcRgn = uniqueDefInst->getSrc(i)->asSrcRegRegion();
 

@@ -209,20 +209,6 @@ G4_INST::G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o,
 G4_INST::G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o,
                  G4_CondMod *m, G4_Sat s, G4_ExecSize size, G4_DstRegRegion *d,
                  G4_Operand *s0, G4_Operand *s1, G4_Operand *s2, G4_Operand *s3,
-                 G4_Operand *s4, G4_InstOpts opt)
-    : op(o), dst(d), predicate(prd), mod(m), option(opt),
-      useInstList(irb.getAllocator()), defInstList(irb.getAllocator()),
-      sat(s ? true : false), dead(false), evenlySplitInst(false),
-      doPostRA(false), canBeAcc(false), doNotDelete(false), execSize(size),
-      builder(irb) {
-  vISA_ASSERT(isDpas(), "Currently only dpas variants support 5 srcs");
-  srcs = {s0, s1, s2, s3, s4};
-  initOperands();
-}
-
-G4_INST::G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o,
-                 G4_CondMod *m, G4_Sat s, G4_ExecSize size, G4_DstRegRegion *d,
-                 G4_Operand *s0, G4_Operand *s1, G4_Operand *s2, G4_Operand *s3,
                  G4_Operand *s4, G4_Operand *s5, G4_Operand *s6, G4_Operand *s7,
                  G4_InstOpts opt)
     : op(o), dst(d), predicate(prd), mod(m), option(opt),
@@ -2696,6 +2682,10 @@ bool G4_INST::goodTwoGRFDst(bool &evenSplitDst) const {
 // propagation
 bool G4_INST::isWARdep(G4_INST *inst) {
   G4_Operand *msg0 = NULL;
+  G4_Operand *src0_0 = inst->getSrc(0);
+  G4_Operand *src0_1 = inst->getSrc(1);
+  G4_Operand *src0_2 = inst->getSrc(2);
+  G4_Operand *src0_3 = inst->getSrc(3);
   G4_Operand *implicitSrc0 = inst->getImplAccSrc();
   G4_Predicate *pred0 = inst->getPredicate();
 
@@ -2703,12 +2693,15 @@ bool G4_INST::isWARdep(G4_INST *inst) {
 
   if (dst1 && !hasNULLDst()) {
 
-    if (std::any_of(inst->src_begin(), inst->src_end(), [&](G4_Operand *src) {
-          return src->compareOperand(dst1, getBuilder()) != Rel_disjoint;
-        }))
-      return true;
-
-    if ((msg0 && (msg0->compareOperand(dst1, getBuilder()) != Rel_disjoint)) ||
+    if ((src0_0 &&
+         src0_0->compareOperand(dst1, getBuilder()) != Rel_disjoint) ||
+        (src0_1 &&
+         src0_1->compareOperand(dst1, getBuilder()) != Rel_disjoint) ||
+        (src0_2 &&
+         src0_2->compareOperand(dst1, getBuilder()) != Rel_disjoint) ||
+        (src0_3 &&
+         src0_3->compareOperand(dst1, getBuilder()) != Rel_disjoint) ||
+        (msg0 && (msg0->compareOperand(dst1, getBuilder()) != Rel_disjoint)) ||
         (pred0 &&
          (pred0->compareOperand(dst1, getBuilder()) != Rel_disjoint)) ||
         (implicitSrc0 &&
@@ -2718,27 +2711,29 @@ bool G4_INST::isWARdep(G4_INST *inst) {
   }
 
   if (mod) {
-    if (pred0 && pred0->compareOperand(mod, getBuilder()) != Rel_disjoint)
+    if ((pred0 && pred0->compareOperand(mod, getBuilder()) != Rel_disjoint) ||
+        (src0_0 && src0_0->isFlag() &&
+         src0_0->compareOperand(mod, getBuilder()) != Rel_disjoint) ||
+        (src0_1 && src0_1->isFlag() &&
+         src0_1->compareOperand(mod, getBuilder()) != Rel_disjoint) ||
+        (src0_2 && src0_2->isFlag() &&
+         src0_2->compareOperand(mod, getBuilder()) != Rel_disjoint)) {
       return true;
-
-    if (std::any_of(inst->src_begin(), inst->src_end(), [&](G4_Operand *src) {
-          return src->isFlag() &&
-                 src->compareOperand(mod, getBuilder()) != Rel_disjoint;
-        }))
-      return true;
+    }
   }
 
   auto implAccDst = getImplAccDst();
   if (implAccDst) {
-    if (implicitSrc0 && implicitSrc0->compareOperand(
-                            implAccDst, getBuilder()) != Rel_disjoint)
+    if ((implicitSrc0 && implicitSrc0->compareOperand(
+                             implAccDst, getBuilder()) != Rel_disjoint) ||
+        (src0_0 && src0_0->isAccReg() &&
+         src0_0->compareOperand(implAccDst, getBuilder()) != Rel_disjoint) ||
+        (src0_1 && src0_1->isAccReg() &&
+         src0_1->compareOperand(implAccDst, getBuilder()) != Rel_disjoint) ||
+        (src0_2 && src0_2->isAccReg() &&
+         src0_2->compareOperand(implAccDst, getBuilder()) != Rel_disjoint)) {
       return true;
-
-    if (std::any_of(inst->src_begin(), inst->src_end(), [&](G4_Operand *src) {
-          return src->isAccReg() &&
-                 src->compareOperand(mod, getBuilder()) != Rel_disjoint;
-        }))
-      return true;
+    }
   }
   return false;
 }
@@ -2788,19 +2783,23 @@ bool G4_INST::isRAWdep(G4_INST *inst) {
   G4_CondMod *cMod0 = inst->getCondMod();
   G4_Operand *implicitDst0 = inst->getImplAccDst();
   G4_Predicate *pred1 = getPredicate();
+  G4_Operand *src1_0 = getSrc(0);
+  G4_Operand *src1_1 = getSrc(1);
+  G4_Operand *src1_2 = getSrc(2);
+  G4_Operand *src1_3 = getSrc(3);
   G4_Operand *implicitSrc1 = getImplAccSrc();
 
+  bool NULLSrc1 = (opcode() == G4_math && src1_1->isNullReg());
   if (dst0 && !inst->hasNULLDst()) {
-    if (std::any_of(src_begin(), src_end(), [&](G4_Operand *src) {
-          // TODO: check if we can remove the null src1 check for math as
-          // compareOperand should handle NullReg already.
-          if (opcode() == G4_math && src == getSrc(1) && src->isNullReg())
-            return false;
-          return src->compareOperand(dst0, getBuilder()) != Rel_disjoint;
-        }))
-      return true;
-
-    if ((pred1 && pred1->compareOperand(dst0, getBuilder()) != Rel_disjoint) ||
+    if ((src1_0 &&
+         src1_0->compareOperand(dst0, getBuilder()) != Rel_disjoint) ||
+        (src1_1 && !NULLSrc1 &&
+         src1_1->compareOperand(dst0, getBuilder()) != Rel_disjoint) ||
+        (src1_2 &&
+         src1_2->compareOperand(dst0, getBuilder()) != Rel_disjoint) ||
+        (src1_3 &&
+         src1_3->compareOperand(dst0, getBuilder()) != Rel_disjoint) ||
+        (pred1 && pred1->compareOperand(dst0, getBuilder()) != Rel_disjoint) ||
         (implicitSrc1 &&
          implicitSrc1->compareOperand(dst0, getBuilder()) != Rel_disjoint)) {
       return true;
@@ -2808,26 +2807,28 @@ bool G4_INST::isRAWdep(G4_INST *inst) {
   }
 
   if (cMod0 && cMod0->getBase()) {
-    if (pred1 && pred1->compareOperand(cMod0, getBuilder()) != Rel_disjoint)
+    if ((pred1 && pred1->compareOperand(cMod0, getBuilder()) != Rel_disjoint) ||
+        (src1_0 && src1_0->isFlag() &&
+         src1_0->compareOperand(cMod0, getBuilder()) != Rel_disjoint) ||
+        (src1_2 && src1_2->isFlag() &&
+         src1_2->compareOperand(cMod0, getBuilder()) != Rel_disjoint) ||
+        (src1_1 && src1_1->isFlag() &&
+         src1_1->compareOperand(cMod0, getBuilder()) != Rel_disjoint)) {
       return true;
-
-    if (std::any_of(src_begin(), src_end(), [&](G4_Operand *src) {
-          return src->isFlag() &&
-                 src->compareOperand(dst0, getBuilder()) != Rel_disjoint;
-        }))
-      return true;
+    }
   }
 
   if (implicitDst0) {
-    if (implicitSrc1 && implicitSrc1->compareOperand(
-                            implicitDst0, getBuilder()) != Rel_disjoint)
+    if ((implicitSrc1 && implicitSrc1->compareOperand(
+                             implicitDst0, getBuilder()) != Rel_disjoint) ||
+        (src1_0 && src1_0->isAccReg() &&
+         src1_0->compareOperand(implicitDst0, getBuilder()) != Rel_disjoint) ||
+        (src1_2 && src1_2->isAccReg() &&
+         src1_2->compareOperand(implicitDst0, getBuilder()) != Rel_disjoint) ||
+        (src1_1 && src1_1->isAccReg() &&
+         src1_1->compareOperand(implicitDst0, getBuilder()) != Rel_disjoint)) {
       return true;
-
-    if (std::any_of(src_begin(), src_end(), [&](G4_Operand *src) {
-          return src->isAccReg() &&
-                 src->compareOperand(dst0, getBuilder()) != Rel_disjoint;
-        }))
-      return true;
+    }
   }
   return false;
 }
@@ -7836,10 +7837,10 @@ G4_INST *G4_InstDpas::cloneInst(const IR_Builder *b) {
   auto src1 = nonConstBuilder->duplicateOperand(getSrc(1));
   auto src2 = nonConstBuilder->duplicateOperand(getSrc(2));
   auto src3 = nonConstBuilder->duplicateOperand(getSrc(3));
-  auto src4 = nonConstBuilder->duplicateOperand(getSrc(4));
   return nonConstBuilder->createInternalDpasInst(
-      op, getExecSize(), dst, src0, src1, src2, option, getSrc2Precision(),
-      getSrc1Precision(), getSystolicDepth(), getRepeatCount(), src3, src4);
+      op, getExecSize(), dst, src0, src1, src2, src3, option,
+      getSrc2Precision(), getSrc1Precision(), getSystolicDepth(),
+      getRepeatCount());
 }
 
 bool G4_InstDpas::isInt() const {
@@ -7893,9 +7894,9 @@ uint8_t G4_InstDpas::getOpsPerChan() const {
 void G4_InstDpas::computeRightBound(G4_Operand *opnd) {
   associateOpndWithInst(opnd, this);
   if (opnd && !opnd->isImm() && !opnd->isNullReg()) {
-    uint8_t D = getSystolicDepth();
-    uint8_t C = getRepeatCount();
-    G4_ExecSize ES = getExecSize();
+    G4_InstDpas *dpasInst = asDpasInst();
+    uint8_t D = dpasInst->getSystolicDepth();
+    uint8_t C = dpasInst->getRepeatCount();
 
     auto computeDpasOperandBound = [this](G4_Operand *opnd, unsigned leftBound,
                                           unsigned rightBound) {
@@ -7907,11 +7908,11 @@ void G4_InstDpas::computeRightBound(G4_Operand *opnd) {
     if (opnd == dst || (opnd == srcs[0] && !opnd->isNullReg())) {
       // dst and src0 are always packed, and RB is exec_size * type_size *
       // rep_count
-      auto opndSize = ES * opnd->getTypeSize() * C;
+      auto opndSize = dpasInst->getExecSize() * opnd->getTypeSize() * C;
       computeDpasOperandBound(opnd, opnd->left_bound,
                               opnd->left_bound + opndSize - 1);
     } else if (opnd == srcs[1]) {
-      uint32_t bytesPerLane = getSrc1SizePerLaneInByte();
+      uint32_t bytesPerLane = dpasInst->getSrc1SizePerLaneInByte();
       uint8_t src1_D = D;
 
       // Each lanes needs (src1_D * bytesPerLane) bytes, and it's multiple of
@@ -7919,12 +7920,12 @@ void G4_InstDpas::computeRightBound(G4_Operand *opnd) {
       uint32_t bytesPerLaneForAllDepth = bytesPerLane * src1_D;
       bytesPerLaneForAllDepth = ((bytesPerLaneForAllDepth + 3) / 4) * 4;
 
-      uint32_t bytes = bytesPerLaneForAllDepth * ES;
+      uint32_t bytes = bytesPerLaneForAllDepth * dpasInst->getExecSize();
       computeDpasOperandBound(opnd, opnd->left_bound,
                               opnd->left_bound + bytes - 1);
     } else if (opnd == srcs[2]) {
       // src2 is uniform.
-      uint32_t bytesPerLane = getSrc2SizePerLaneInByte();
+      uint32_t bytesPerLane = dpasInst->getSrc2SizePerLaneInByte();
       uint32_t bytes = bytesPerLane * D * C;
       if (op == G4_dpasw) {
         bytes = bytesPerLane * D * ((C + 1) / 2);
@@ -7935,10 +7936,10 @@ void G4_InstDpas::computeRightBound(G4_Operand *opnd) {
 
     else if (opnd && opnd == srcs[3]) {
       uint32_t bytes;
-      if (isInt())
+      if (dpasInst->isInt())
       {
         bytes = 2 * getBuilder().getGRFSize();
-      } else if (isFP16() || isBF16()) {
+      } else if (dpasInst->isFP16() || dpasInst->isBF16()) {
         bytes = getBuilder().getGRFSize();
       } else { // isTF32()
         bytes = getBuilder().getGRFSize() / 2;

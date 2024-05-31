@@ -365,7 +365,6 @@ static Mask getMaskForOp(IR_Builder* builder, G4_INST *inst,
   case Opnd_src1:
   case Opnd_src2:
   case Opnd_src3:
-  case Opnd_src4:
   case Opnd_pred:
   case Opnd_implAccSrc: {
     if (opnd->isFlag()) {
@@ -547,7 +546,6 @@ static inline bool hasIndirection(G4_Operand *opnd,
   case Opnd_src2:
     return opnd->asSrcRegRegion()->isIndirect();
   case Opnd_src3:
-  case Opnd_src4:
   case Opnd_pred:
   case Opnd_condMod:
   case Opnd_implAccSrc:
@@ -567,8 +565,8 @@ void DDD::getBucketDescrs(Node *node, std::vector<BucketDescr> &BDvec) {
   for (G4_INST *inst : node->instVec) {
     // Iterate over all operands and create buckets.
     for (Gen4_Operand_Number opndNum :
-         {Opnd_dst, Opnd_src0, Opnd_src1, Opnd_src2, Opnd_src3, Opnd_src4,
-          Opnd_pred, Opnd_condMod, Opnd_implAccSrc, Opnd_implAccDst}) {
+         {Opnd_dst, Opnd_src0, Opnd_src1, Opnd_src2, Opnd_src3, Opnd_pred,
+          Opnd_condMod, Opnd_implAccSrc, Opnd_implAccDst}) {
       G4_Operand *opnd = inst->getOperand(opndNum);
       // Skip if no operand or the operand is not touched by the instruction
       if (!opnd || !opnd->getBase()) {

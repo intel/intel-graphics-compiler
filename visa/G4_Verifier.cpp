@@ -966,9 +966,8 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
   G4_Type s3Ty = src3 ? src3->getType() : Type_UNDEF;
 
   // No source modifier
-  if (std::any_of(dpasInst->src_begin(), dpasInst->src_end(),
-          [](G4_Operand *opnd) {
-            return opnd && opnd->asSrcRegRegion()->hasModifier(); })) {
+  if (src0->hasModifier() || src1->hasModifier() || src2->hasModifier() ||
+      (src3 && src3->hasModifier())) {
     DEBUG_VERBOSE("should not have source modifier");
     inst->emit(std::cerr);
     DEBUG_VERBOSE("\n");
@@ -976,10 +975,8 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
   }
 
   // No indirect register access
-  if (dst->isIndirect() ||
-      std::any_of(dpasInst->src_begin(), dpasInst->src_end(),
-          [](G4_Operand *opnd) {
-            return opnd && opnd->asSrcRegRegion()->isIndirect(); })) {
+  if (src0->isIndirect() || src1->isIndirect() || src2->isIndirect() ||
+      dst->isIndirect() || (src3 && src3->isIndirect())) {
     DEBUG_VERBOSE("no indirect register access supported!");
     inst->emit(std::cerr);
     DEBUG_VERBOSE("\n");
@@ -1029,13 +1026,10 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
     vISA_ASSERT(false, "invalid");
   }
 
-  bool invalidRegion = false;
-  invalidRegion =
-      dst->getHorzStride() != 1 ||
+  if (dst->getHorzStride() != 1 ||
       (!src0->isNullReg() && !src0->getRegion()->isRegion110()) ||
       !src1->getRegion()->isRegion110() || !src2->getRegion()->isRegion110() ||
-      (src3 && !src3->getRegion()->isRegion110());
-  if (invalidRegion) {
+      (src3 && !src3->getRegion()->isRegion110())) {
     DEBUG_VERBOSE("src region should be <1;1,0> and dst region <1>!");
     inst->emit(std::cerr);
     DEBUG_VERBOSE("\n");

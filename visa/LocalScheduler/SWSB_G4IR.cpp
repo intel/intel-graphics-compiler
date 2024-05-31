@@ -1019,7 +1019,6 @@ SBFootprint *G4_BB_SB::getFootprintForGRF(G4_Operand *opnd,
   case Opnd_src1:
   case Opnd_src2:
   case Opnd_src3:
-  case Opnd_src4:
   case Opnd_dst:
     LB = (unsigned short)opnd->getLinearizedStart();
     RB = (unsigned short)opnd->getLinearizedEnd();
@@ -1137,7 +1136,6 @@ SBFootprint *G4_BB_SB::getFootprintForACC(G4_Operand *opnd,
   case Opnd_src1:
   case Opnd_src2:
   case Opnd_src3:
-  case Opnd_src4:
   case Opnd_dst:
   case Opnd_implAccSrc:
   case Opnd_implAccDst:
@@ -1234,7 +1232,6 @@ static inline bool hasIndirection(const G4_Operand *opnd,
   case Opnd_src2:
     return opnd->asSrcRegRegion()->isIndirect();
   case Opnd_src3:
-  case Opnd_src4:
   case Opnd_pred:
   case Opnd_condMod:
   case Opnd_implAccSrc:
@@ -1796,8 +1793,6 @@ static void updatePatchInfo(FCPatchingInfo *FCPI, SBNode *Node,
   updateRegAccess(FCPI, Node, Opnd_src0, NumRegs);
   updateRegAccess(FCPI, Node, Opnd_src1, NumRegs);
   updateRegAccess(FCPI, Node, Opnd_src2, NumRegs);
-  updateRegAccess(FCPI, Node, Opnd_src3, NumRegs);
-  updateRegAccess(FCPI, Node, Opnd_src4, NumRegs);
   // Per inst, 'use' access always happens before 'def' access.
   updateRegAccess(FCPI, Node, Opnd_dst, NumRegs);
 }
@@ -5262,7 +5257,8 @@ void G4_BB_SB::getGRFFootprintForIndirect(SBNode *node,
   if (opnd_num == Opnd_dst) {
     G4_DstRegRegion *dstrgn = opnd->asDstRegRegion();
     addrdcl = GetTopDclFromRegRegion(dstrgn);
-  } else if (opnd_num >= Opnd_src0 && opnd_num <= Opnd_src4) {
+  } else if (opnd_num == Opnd_src0 || opnd_num == Opnd_src1 ||
+             opnd_num == Opnd_src2 || opnd_num == Opnd_src3) {
     G4_SrcRegRegion *srcrgn = opnd->asSrcRegRegion();
     addrdcl = GetTopDclFromRegRegion(srcrgn);
   }
@@ -5389,8 +5385,8 @@ bool G4_BB_SB::hasIndirectSource(SBNode *node) {
     return false;
   }
 
-  for (Gen4_Operand_Number opndNum :
-       {Opnd_src0, Opnd_src1, Opnd_src2, Opnd_src3, Opnd_src4}) {
+  for (Gen4_Operand_Number opndNum = Opnd_src0; opndNum <= Opnd_src3;
+       opndNum = (Gen4_Operand_Number)(opndNum + 1)) {
     G4_Operand *opnd = node->GetInstruction()->getOperand(opndNum);
 
     if (!opnd || !opnd->getBase()) {
@@ -5415,10 +5411,10 @@ bool G4_BB_SB::hasIndirectSource(SBNode *node) {
 bool G4_BB_SB::getGRFFootPrint(SBNode *node, PointsToAnalysis &p) {
   bool hasDistOneAReg = false;
   // We get the description for source first, so for current instruction, the
-  // scan order is src0, src1, src2, src3, src4, dst
+  // scan order is src0, src1, src2, src3, dst
   for (G4_INST *inst : node->instVec) {
     hasDistOneAReg |=
-        getGRFFootPrintOperands(node, inst, Opnd_src0, Opnd_src4, p);
+        getGRFFootPrintOperands(node, inst, Opnd_src0, Opnd_src3, p);
     hasDistOneAReg |=
         getGRFFootPrintOperands(node, inst, Opnd_pred, Opnd_implAccDst, p);
     hasDistOneAReg |=
@@ -5431,8 +5427,8 @@ bool G4_BB_SB::getGRFFootPrint(SBNode *node, PointsToAnalysis &p) {
 void G4_BB_SB::getGRFBucketDescs(SBNode *node, std::vector<SBBucketDesc> &BDvec,
                                  bool GRFOnly) {
   // We get the description for source first, so for current instruction, the
-  // scan order is src0, src1, src2, src3, src4, dst
-  getGRFBucketsForOperands(node, Opnd_src0, Opnd_src4, BDvec, GRFOnly);
+  // scan order is src0, src1, src2, src3, dst
+  getGRFBucketsForOperands(node, Opnd_src0, Opnd_src3, BDvec, GRFOnly);
   if (!GRFOnly) {
     getGRFBucketsForOperands(node, Opnd_pred, Opnd_implAccDst, BDvec, GRFOnly);
   }
@@ -5484,7 +5480,7 @@ void G4_BB_SB::clearKilledBucketNodeXeHP(LiveGRFBuckets *LB, int integerID,
 
       if (curLiveNode->isInstKilled() ||
           (curLiveNode->isSourceKilled() && liveBN->opndNum >= Opnd_src0 &&
-           liveBN->opndNum <= Opnd_src4)) {
+           liveBN->opndNum <= Opnd_src3)) {
         LB->killOperand(it);
         continue;
       }
@@ -5675,7 +5671,7 @@ void G4_BB_SB::setSpecialDistance(SBNode *node) {
 // instructions are killed as well.
 void G4_BB_SB::footprintMerge(SBNode *node, const SBNode *nextNode) {
   for (Gen4_Operand_Number opndNum :
-       {Opnd_src0, Opnd_src1, Opnd_src2, Opnd_src3, Opnd_src4, Opnd_dst}) {
+       {Opnd_src0, Opnd_src1, Opnd_src2, Opnd_dst}) {
     SBFootprint *nextfp = nextNode->getFirstFootprint(opndNum);
 
     if (nextfp != nullptr) {
@@ -5692,8 +5688,7 @@ void G4_BB_SB::footprintMerge(SBNode *node, const SBNode *nextNode) {
 bool G4_BB_SB::hasInternalDependenceWithinDPAS(SBNode *node) const {
   const SBFootprint *dstfp = node->getFirstFootprint(Opnd_dst);
 
-  for (Gen4_Operand_Number opndNum :
-       {Opnd_src0, Opnd_src1, Opnd_src2, Opnd_src3, Opnd_src4}) {
+  for (Gen4_Operand_Number opndNum : {Opnd_src0, Opnd_src1, Opnd_src2}) {
     const SBFootprint *srcfp = node->getFirstFootprint(opndNum);
     unsigned short internalOffset = 0;
     if (dstfp->hasOverlap(srcfp, internalOffset)) {
@@ -5717,8 +5712,7 @@ bool G4_BB_SB::hasRAWDependenceBetweenDPASNodes(SBNode *node,
                                                 SBNode *nextNode) const {
   const SBFootprint *fp = node->getFirstFootprint(Opnd_dst);
   if (fp) {
-    for (Gen4_Operand_Number opndNum2 :
-         {Opnd_src0, Opnd_src1, Opnd_src2, Opnd_src3, Opnd_src4}) {
+    for (Gen4_Operand_Number opndNum2 : {Opnd_src0, Opnd_src1, Opnd_src2}) {
       const SBFootprint *nextfp = nextNode->getFirstFootprint(opndNum2);
       unsigned short internalOffset = 0;
       if (nextfp && nextfp->hasOverlap(fp, internalOffset)) {
@@ -5848,7 +5842,7 @@ bool G4_BB_SB::isLastDpas(SBNode *curNode, SBNode *nextNode)
 
   // Same datatype of the same operand across all instructions
   for (Gen4_Operand_Number opndNum :
-       {Opnd_src0, Opnd_src1, Opnd_src2, Opnd_src3, Opnd_src4, Opnd_dst}) {
+       {Opnd_src0, Opnd_src1, Opnd_src2, Opnd_dst}) {
     if (curNode->getFirstFootprint(opndNum) &&
         nextNode->getFirstFootprint(opndNum) &&
         !curNode->getFirstFootprint(opndNum)->hasSameType(
@@ -6513,7 +6507,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
 
         if (liveNode->isInstKilled() ||
             (liveNode->isSourceKilled() && liveBN->opndNum >= Opnd_src0 &&
-             liveBN->opndNum <= Opnd_src4)) {
+             liveBN->opndNum <= Opnd_src3)) {
           ++bn_it;
           continue;
         }
@@ -7086,7 +7080,7 @@ G4_INST *G4_BB_SB::createADummyDpasRSWAInst(LiveGRFBuckets *LB, SBNode *curNode,
   newSrc[2]->setType(builder, src2->getType());
   G4_INST *dummyInst = builder.createInternalDpasInst(
       curInst->opcode(), curInst->getExecSize(), newDst, newSrc[0], newSrc[1],
-      newSrc[2], curInst->getOption(), curInst->getSrc2Precision(),
+      newSrc[2], nullptr, curInst->getOption(), curInst->getSrc2Precision(),
       curInst->getSrc1Precision(), curInst->getSystolicDepth(),
       curInst->getRepeatCount());
   return dummyInst;
@@ -8135,7 +8129,7 @@ void G4_BB::emitRegInfo(std::ostream &output, G4_INST *inst, int offset) {
 static bool isSWSBRequired(IR_Builder *builder, G4_INST *inst) {
   // Iterate over all operands and create buckets.
   for (Gen4_Operand_Number opndNum :
-       {Opnd_src0, Opnd_src1, Opnd_src2, Opnd_src3, Opnd_src4, Opnd_dst}) {
+       {Opnd_src0, Opnd_src1, Opnd_src2, Opnd_src3, Opnd_dst}) {
     G4_Operand *opnd = inst->getOperand(opndNum);
     // Skip if no operand or the operand is not touched by the instruction
     if (!opnd || !opnd->getBase()) {
