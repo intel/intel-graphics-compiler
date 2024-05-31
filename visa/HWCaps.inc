@@ -683,6 +683,8 @@ bool hasFenceControl() const { return false; }
 
 bool useLSCForPayloadLoad() const { return getPlatform() >= Xe_PVC; }
 
+bool byteGranularitySendDep() const { return getPlatform() >= Xe_PVC && getOption(vISA_byteGranulairySendDep); }
+
 bool hasPartialInt64Support() const {
   return getPlatform() >= Xe_PVCXT ||
          (getPlatform() >= Xe_PVC && getOption(vISA_HasPartialInt64));

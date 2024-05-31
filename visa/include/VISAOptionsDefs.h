@@ -498,6 +498,7 @@ DEF_VISA_OPTION(vISA_QuickTokenAllocation, ET_BOOL, "-quickTokenAllocation",
                 UNUSED, false)
 DEF_VISA_OPTION(vISA_DistPropTokenAllocation, ET_BOOL,
                 "-distPropTokenAllocation", UNUSED, false)
+DEF_VISA_OPTION(vISA_byteGranulairySendDep, ET_BOOL, "-byteGranulairySendDep", UNUSED, false)
 DEF_VISA_OPTION(vISA_SWSBStitch, ET_BOOL, "-SWSBStitch", UNUSED, false)
 DEF_VISA_OPTION(vISA_SBIDDepLoc, ET_BOOL, "-SBIDDepLoc", UNUSED, false)
 DEF_VISA_OPTION(vISA_DumpSBID, ET_BOOL, "-dumpSBID", UNUSED, false)
