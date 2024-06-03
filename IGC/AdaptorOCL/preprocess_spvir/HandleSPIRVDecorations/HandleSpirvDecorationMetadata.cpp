@@ -184,6 +184,42 @@ void HandleSpirvDecorationMetadata::visitPrefetchCallInst(CallInst& I)
     }
 }
 
+void HandleSpirvDecorationMetadata::visit1DBlockReadCallInst(CallInst& I)
+{
+    Value* ptr = I.getArgOperand(0);
+    auto spirvDecorations = parseSPIRVDecorationsFromMD(ptr);
+    for (auto& [DecorationId, MDNodes] : spirvDecorations)
+    {
+        switch (DecorationId)
+        {
+            // IDecCacheControlLoadINTEL
+            case DecorationIdCacheControlLoad:
+            {
+                handleCacheControlINTELFor1DBlockIO<LoadCacheControl>(I, MDNodes);
+                break;
+            }
+        }
+    }
+}
+
+void HandleSpirvDecorationMetadata::visit1DBlockWriteCallInst(CallInst& I)
+{
+    Value* ptr = I.getArgOperand(0);
+    auto spirvDecorations = parseSPIRVDecorationsFromMD(ptr);
+    for (auto& [DecorationId, MDNodes] : spirvDecorations)
+    {
+        switch (DecorationId)
+        {
+            // IDecCacheControlStoreINTEL
+            case DecorationIdCacheControlStore:
+            {
+                handleCacheControlINTELFor1DBlockIO<StoreCacheControl>(I, MDNodes);
+                break;
+            }
+        }
+    }
+}
+
 void HandleSpirvDecorationMetadata::visitCallInst(CallInst& I)
 {
     Function* F = I.getCalledFunction();
@@ -195,8 +231,12 @@ void HandleSpirvDecorationMetadata::visitCallInst(CallInst& I)
         "_Z[0-9]+(intel_sub_group_2d_block_write_[0-9]+b_[0-9]+r[0-9]+x[0-9]+c)");
 #if defined(IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR)
     Regex patternPrefetch("_Z[0-9]+__spirv_ocl_prefetch");
+    Regex pattern1DBlockRead("_Z[0-9]+__spirv_SubgroupBlockReadINTEL");
+    Regex pattern1DBlockWrite("_Z[0-9]+__spirv_SubgroupBlockWriteINTEL");
 #else // IGC Legacy SPIRV Translator
     Regex patternPrefetch("__builtin_spirv_OpenCL_prefetch");
+    Regex pattern1DBlockRead("__builtin_spirv_OpSubgroupBlockReadINTEL");
+    Regex pattern1DBlockWrite("__builtin_spirv_OpSubgroupBlockWriteINTEL");
 #endif
 
     SmallVector<StringRef, 4> Matches;
@@ -213,6 +253,14 @@ void HandleSpirvDecorationMetadata::visitCallInst(CallInst& I)
     else if (patternPrefetch.match(funcName, &Matches))
     {
         visitPrefetchCallInst(I);
+    }
+    else if (pattern1DBlockRead.match(funcName, &Matches))
+    {
+        visit1DBlockReadCallInst(I);
+    }
+    else if (pattern1DBlockWrite.match(funcName, &Matches))
+    {
+        visit1DBlockWriteCallInst(I);
     }
 }
 
@@ -317,6 +365,89 @@ void HandleSpirvDecorationMetadata::handleCacheControlINTELForPrefetch(llvm::Cal
     FunctionType* FT = FunctionType::get(I.getType(), argTypes, false);
     std::string newFuncName = "__lsc_prefetch_cache_controls";
     auto newFunction = m_Module->getOrInsertFunction(newFuncName, FT);
+
+    auto newCall = CallInst::Create(newFunction, args, "", &I);
+    I.replaceAllUsesWith(newCall);
+    I.eraseFromParent();
+    m_changed = true;
+
+    // Cleanup unused function if all calls have been replaced with the internal version
+    if (F->getNumUses() == 0)
+        m_BuiltinsToRemove.insert(F);
+}
+
+template<typename T>
+void HandleSpirvDecorationMetadata::handleCacheControlINTELFor1DBlockIO(CallInst& I, SmallPtrSetImpl<MDNode*>& MDNodes)
+{
+    static_assert(std::is_same_v<T, LoadCacheControl> || std::is_same_v<T, StoreCacheControl>);
+    CacheControlFromMDNodes cacheControl = resolveCacheControlFromMDNodes<T>(m_pCtx, MDNodes);
+    if (cacheControl.isEmpty) return;
+    if (cacheControl.isInvalid)
+    {
+        m_pCtx->EmitWarning("Unsupported cache controls configuration requested. Applying default configuration.");
+        return;
+    }
+
+    Function* F = I.getCalledFunction();
+    IGC_ASSERT(F);
+
+    Type* operationType = nullptr;
+    std::string funcName;
+    if constexpr (std::is_same_v<T, LoadCacheControl>)
+    {
+        operationType = I.getType();
+        funcName = "SubgroupBlockReadINTEL";
+    }
+    else
+    {
+        operationType = I.getArgOperand(1)->getType();
+        funcName = "SubgroupBlockWriteINTEL";
+    }
+
+    std::string typeName;
+    uint32_t numElements = 1;
+    Type* elementType = operationType;
+    if (auto* vecTy = dyn_cast<IGCLLVM::FixedVectorType>(operationType))
+    {
+        numElements = (uint32_t)vecTy->getNumElements();
+        elementType = vecTy->getElementType();
+    }
+
+    if (elementType->isIntegerTy())
+    {
+        switch (elementType->getIntegerBitWidth())
+        {
+            case 8:
+                typeName = "char";
+                break;
+            case 16:
+                typeName = "short";
+                break;
+            case 32:
+                typeName = "int";
+                break;
+            case 64:
+                typeName = "long";
+                break;
+            default:
+                IGC_ASSERT(0 && "Unsupported integer type");
+                break;
+        }
+    }
+
+    if(numElements > 1)
+        typeName += std::to_string(numElements);
+
+    SmallVector<Value*, 3> args(I.args());
+    args.push_back(ConstantInt::get(Type::getInt32Ty(I.getContext()), cacheControl.value));
+
+    SmallVector<Type*, 3> argTypes;
+    for (const auto& arg : args)
+        argTypes.push_back(arg->getType());
+
+    FunctionType* funcTy = FunctionType::get(I.getType(), argTypes, false);
+    std::string newFuncName = "__internal_" + funcName + "_" + typeName + "_cache_controls";
+    auto newFunction = m_Module->getOrInsertFunction(newFuncName, funcTy);
 
     auto newCall = CallInst::Create(newFunction, args, "", &I);
     I.replaceAllUsesWith(newCall);

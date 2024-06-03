@@ -612,6 +612,51 @@ void    __builtin_IB_simd_block_write_2_global_l( __global ulong*, ulong2 );
 void    __builtin_IB_simd_block_write_4_global_l( __global ulong*, ulong4 );
 void    __builtin_IB_simd_block_write_8_global_l( __global ulong*, ulong8 );
 
+// 1D block reads and writes with cache control argument : global address space
+uint    __builtin_IB_cache_controls_simd_block_read_1_global(const __global uint* base, uint cacheOpt);
+uint2   __builtin_IB_cache_controls_simd_block_read_2_global(const __global uint* base, uint cacheOpt);
+uint4   __builtin_IB_cache_controls_simd_block_read_4_global(const __global uint* base, uint cacheOpt);
+uint8   __builtin_IB_cache_controls_simd_block_read_8_global(const __global uint* base, uint cacheOpt);
+
+ushort    __builtin_IB_cache_controls_simd_block_read_1_global_h(const __global ushort* base, uint cacheOpt);
+ushort2   __builtin_IB_cache_controls_simd_block_read_2_global_h(const __global ushort* base, uint cacheOpt);
+ushort4   __builtin_IB_cache_controls_simd_block_read_4_global_h(const __global ushort* base, uint cacheOpt);
+ushort8   __builtin_IB_cache_controls_simd_block_read_8_global_h(const __global ushort* base, uint cacheOpt);
+ushort16  __builtin_IB_cache_controls_simd_block_read_16_global_h(const __global ushort* base, uint cacheOpt);
+
+uchar    __builtin_IB_cache_controls_simd_block_read_1_global_b(const __global uchar* base, uint cacheOpt);
+uchar2   __builtin_IB_cache_controls_simd_block_read_2_global_b(const __global uchar* base, uint cacheOpt);
+uchar4   __builtin_IB_cache_controls_simd_block_read_4_global_b(const __global uchar* base, uint cacheOpt);
+uchar8   __builtin_IB_cache_controls_simd_block_read_8_global_b(const __global uchar* base, uint cacheOpt);
+uchar16  __builtin_IB_cache_controls_simd_block_read_16_global_b(const __global uchar* base, uint cacheOpt);
+
+ulong    __builtin_IB_cache_controls_simd_block_read_1_global_l(const __global ulong* base, uint cacheOpt);
+ulong2   __builtin_IB_cache_controls_simd_block_read_2_global_l(const __global ulong* base, uint cacheOpt);
+ulong4   __builtin_IB_cache_controls_simd_block_read_4_global_l(const __global ulong* base, uint cacheOpt);
+ulong8   __builtin_IB_cache_controls_simd_block_read_8_global_l(const __global ulong* base, uint cacheOpt);
+
+void    __builtin_IB_cache_controls_simd_block_write_1_global(__global uint* base, uint val, uint cacheOpt);
+void    __builtin_IB_cache_controls_simd_block_write_2_global(__global uint* base, uint2 val, uint cacheOpt);
+void    __builtin_IB_cache_controls_simd_block_write_4_global(__global uint* base, uint4 val, uint cacheOpt);
+void    __builtin_IB_cache_controls_simd_block_write_8_global(__global uint* base, uint8 val, uint cacheOpt);
+
+void    __builtin_IB_cache_controls_simd_block_write_1_global_h(__global ushort* base, ushort val, uint cacheOpt);
+void    __builtin_IB_cache_controls_simd_block_write_2_global_h(__global ushort* base, ushort2 val, uint cacheOpt);
+void    __builtin_IB_cache_controls_simd_block_write_4_global_h(__global ushort* base, ushort4 val, uint cacheOpt);
+void    __builtin_IB_cache_controls_simd_block_write_8_global_h(__global ushort* base, ushort8 val, uint cacheOpt);
+void    __builtin_IB_cache_controls_simd_block_write_16_global_h(__global ushort* base, ushort16 val, uint cacheOpt);
+
+void    __builtin_IB_cache_controls_simd_block_write_1_global_b(__global uchar* base, uchar val, uint cacheOpt);
+void    __builtin_IB_cache_controls_simd_block_write_2_global_b(__global uchar* base, uchar2 val, uint cacheOpt);
+void    __builtin_IB_cache_controls_simd_block_write_4_global_b(__global uchar* base, uchar4 val, uint cacheOpt);
+void    __builtin_IB_cache_controls_simd_block_write_8_global_b(__global uchar* base, uchar8 val, uint cacheOpt);
+void    __builtin_IB_cache_controls_simd_block_write_16_global_b(__global uchar* base, uchar16 val, uint cacheOpt);
+
+void    __builtin_IB_cache_controls_simd_block_write_1_global_l(__global ulong* base, ulong val, uint cacheOpt);
+void    __builtin_IB_cache_controls_simd_block_write_2_global_l(__global ulong* base, ulong2 val, uint cacheOpt);
+void    __builtin_IB_cache_controls_simd_block_write_4_global_l(__global ulong* base, ulong4 val, uint cacheOpt);
+void    __builtin_IB_cache_controls_simd_block_write_8_global_l(__global ulong* base, ulong8 val, uint cacheOpt);
+
 // Block read : local address space
 uint    __builtin_IB_simd_block_read_1_local( const __local uint* );
 uint2   __builtin_IB_simd_block_read_2_local( const __local uint* );

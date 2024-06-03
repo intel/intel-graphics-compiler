@@ -50,6 +50,8 @@ namespace IGC
         void visit2DBlockReadCallInst(llvm::CallInst& I, llvm::StringRef unmangledName);
         void visit2DBlockWriteCallInst(llvm::CallInst& I, llvm::StringRef unmangledName);
         void visitPrefetchCallInst(llvm::CallInst& I);
+        void visit1DBlockReadCallInst(llvm::CallInst& I);
+        void visit1DBlockWriteCallInst(llvm::CallInst& I);
 
     private:
         llvm::Module* m_Module = nullptr;
@@ -67,5 +69,7 @@ namespace IGC
         template<typename T>
         void handleCacheControlINTELFor2DBlockIO(llvm::CallInst& I, llvm::SmallPtrSetImpl<llvm::MDNode*>& MDNodes, llvm::StringRef unmangledName);
         void handleCacheControlINTELForPrefetch(llvm::CallInst& I, llvm::SmallPtrSetImpl<llvm::MDNode*>& MDNodes);
+        template<typename T>
+        void handleCacheControlINTELFor1DBlockIO(llvm::CallInst& I, llvm::SmallPtrSetImpl<llvm::MDNode*>& MDNodes);
     };
 }
