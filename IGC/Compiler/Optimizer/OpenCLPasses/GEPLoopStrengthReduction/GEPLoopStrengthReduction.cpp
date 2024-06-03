@@ -97,9 +97,6 @@ using namespace IGC;
 //        global float *p = buf + id + i;
 //        *(p + 1) = *p + 3.0f;
 //      }
-//
-// TODO: At the moment pass accepts constant indices as llvm::Constant. These could be any llvm::Value
-// as long as value doesn't change inside loop body (is constant for full loop lifetime).
 
 
 enum ReductionType
@@ -187,10 +184,10 @@ friend class Scorer;
 
 public:
 
-    ReductionCandidateGroup(Loop *L, const DominatorTree *DT, GetElementPtrInst *GEP, const SCEV *S, int64_t Step)
+    ReductionCandidateGroup(Loop *L, const DominatorTree *DT, GetElementPtrInst *GEP, const SCEV *S, const SCEV *Step)
         : L(L), DT(DT), Step(Step), Base(GEP, S, 0), RT(REDUCE_TO_PREHEADER) {}
 
-    bool addToGroup(ScalarEvolution &SE, GetElementPtrInst *GEP, const SCEV *S, int64_t Step);
+    bool addToGroup(ScalarEvolution &SE, GetElementPtrInst *GEP, const SCEV *S, const SCEV *Step);
 
     void transform(IGCLLVM::IRBuilder<> &IRB, SCEVExpander &E);
 
@@ -223,6 +220,8 @@ private:
     void reduceToPreheader(IGCLLVM::IRBuilder<> &IRB, SCEVExpander &E);
     void reduceIndexOnly(IGCLLVM::IRBuilder<> &IRB, SCEVExpander &E);
 
+    Value *getStepValue(IGCLLVM::IRBuilder<> &IRB);
+
     // Base GEP to reduce
     ReductionCandidate Base;
 
@@ -230,7 +229,7 @@ private:
     SmallVector<ReductionCandidate, 4> Others;
 
     // Increment step value
-    int64_t Step;
+    const SCEV *Step;
 
     // Group member with the smallest SCEV expression. Preferred for reduction
     // to preheader, as it should give smallest increase in register pressure.
@@ -289,7 +288,7 @@ private:
     void analyzeGEP(GetElementPtrInst *GEP);
     bool doInitialValidation(GetElementPtrInst *GEP);
 
-    bool deconstructSCEV(const SCEV *S, const SCEV *&Start, int64_t &Step);
+    bool deconstructSCEV(const SCEV *S, const SCEV *&Start, const SCEV *&Step);
 
     DominatorTree &DT;
     Loop &L;
@@ -354,6 +353,9 @@ private:
 namespace SCEVHelper
 {
     const SCEV *dropExt(const SCEV *S);
+
+    bool isValidStep(const SCEV *S);
+    bool isEqual(const SCEV *A, const SCEV *B);
 
     // ScalarEvolution::getAddExpr requires all operands to have the same
     // type. Extend type if required.
@@ -481,9 +483,9 @@ bool ReductionCandidate::isBetterForReduction(const ReductionCandidate &Other)
 // New candidate can take position of group's base if it uses less instructions
 // to calculate.
 // Returns true if candidate was added to group.
-bool ReductionCandidateGroup::addToGroup(ScalarEvolution &SE, GetElementPtrInst *GEP, const SCEV *S, int64_t Step)
+bool ReductionCandidateGroup::addToGroup(ScalarEvolution &SE, GetElementPtrInst *GEP, const SCEV *S, const SCEV *Step)
 {
-    if (this->Step != Step)
+    if (!SCEVHelper::isEqual(this->Step, Step))
         return false;
 
     if (Base.GEP->getPointerOperand() != GEP->getPointerOperand())
@@ -619,7 +621,7 @@ void ReductionCandidateGroup::reduceToPreheader(IGCLLVM::IRBuilder<> &IRB, SCEVE
     Value *Pointer = IRB.CreateGEP(Base.GEP->getSourceElementType(), Base.GEP->getPointerOperand(), Indices);
 
     // Create phi node if pointer is moved in loop
-    if (Step != 0)
+    if (!Step->isZero())
     {
         // Add new phi node with pointer as induction variable
         SmallVector<BasicBlock*, 4> Latches;
@@ -634,7 +636,7 @@ void ReductionCandidateGroup::reduceToPreheader(IGCLLVM::IRBuilder<> &IRB, SCEVE
         for (auto *L : Latches)
         {
             IRB.SetInsertPoint(&L->back());
-            Value *Inc = IRB.CreateGEP(Phi, IRB.getInt64(Step));
+            Value *Inc = IRB.CreateGEP(Phi, getStepValue(IRB));
             Phi->addIncoming(Inc, L);
         }
 
@@ -675,6 +677,19 @@ void ReductionCandidateGroup::reduceIndexOnly(IGCLLVM::IRBuilder<> &IRB, SCEVExp
 }
 
 
+Value *ReductionCandidateGroup::getStepValue(IGCLLVM::IRBuilder<> &IRB)
+{
+    if (auto *S = dyn_cast<SCEVConstant>(Step))
+        return IRB.getInt64(dyn_cast<SCEVConstant>(Step)->getValue()->getSExtValue());
+
+    if (auto *S = dyn_cast<SCEVUnknown>(Step))
+        return S->getValue();
+
+    IGC_ASSERT_MESSAGE(0, "invalid induction value type");
+    return nullptr;
+}
+
+
 void Scorer::score(SmallVectorImpl<ReductionCandidateGroup> &Candidates)
 {
     for (auto &C : Candidates)
@@ -704,7 +719,7 @@ void Scorer::scoreReducedInstructions(ReductionCandidateGroup &Candidate)
     //   3. "+ base_ptr"     - single "add" instruction
     int score = 0;
 
-    if (Candidate.Step != 0)
+    if (!Candidate.Step->isZero())
     {
         // Reduction adds new instruction - incrementation of new induction variable at the end
         // of the iteration.
@@ -901,7 +916,7 @@ void Analyzer::analyzeGEP(GetElementPtrInst *GEP)
         return;
 
     const SCEV *Start = nullptr;
-    int64_t Step = 0;
+    const SCEV *Step = nullptr;
 
     if (!deconstructSCEV(S, Start, Step))
         return;
@@ -999,7 +1014,7 @@ bool Analyzer::doInitialValidation(GetElementPtrInst *GEP)
 // Takes SCEV expression returned by ScalarEvolution and deconstructs it into
 // expected format { start, +, step }. Returns false if expressions can't be
 // parsed and reduced.
-bool Analyzer::deconstructSCEV(const SCEV *S, const SCEV *&Start, int64_t &Step)
+bool Analyzer::deconstructSCEV(const SCEV *S, const SCEV *&Start, const SCEV *&Step)
 {
     // Drop ext instructions to analyze nested content.
     S = SCEVHelper::dropExt(S);
@@ -1009,10 +1024,10 @@ bool Analyzer::deconstructSCEV(const SCEV *S, const SCEV *&Start, int64_t &Step)
     //   { start, +, 0 }
     // This will do LICM-like reduction moving GEP to preheader, without adding new
     // induction variable.
-    if (IGCLLVM::isSafeToExpandAt(S, &L.getLoopPreheader()->back(), &SE, &E))
+    if (SE.isLoopInvariant(S, &L))
     {
         Start = S;
-        Step = 0;
+        Step = SE.getConstant(Type::getInt64Ty(L.getHeader()->getContext()), 0);
         return true;
     }
 
@@ -1027,12 +1042,17 @@ bool Analyzer::deconstructSCEV(const SCEV *S, const SCEV *&Start, int64_t &Step)
         if (Add->getNumOperands() != 2)
             return false;
 
-        const SCEVConstant *Op = dyn_cast<SCEVConstant>(Add->getOperand(1));
-        if (!Op)
+        const SCEV *OpStep = Add->getOperand(1);
+
+        // Step must be constant in loop's body.
+        if (!SE.isLoopInvariant(OpStep, &L))
+            return false;
+
+        if (!SCEVHelper::isValidStep(OpStep))
             return false;
 
         Start = Add->getStart();
-        Step = Op->getValue()->getSExtValue();
+        Step = OpStep;
 
         return IGCLLVM::isSafeToExpandAt(Start, &L.getLoopPreheader()->back(), &SE, &E);
     }
@@ -1048,10 +1068,10 @@ bool Analyzer::deconstructSCEV(const SCEV *S, const SCEV *&Start, int64_t &Step)
     if (auto *Add = dyn_cast<SCEVAddExpr>(S))
     {
         // There can be only one expression with step != 0.
-        Step = 0;
+        Step = SE.getConstant(Type::getInt64Ty(L.getHeader()->getContext()), 0);
 
         const SCEV *OpSCEV = nullptr;
-        int64_t OpStep = 0;
+        const SCEV *OpStep = nullptr;
         SCEVHelper::SCEVAddBuilder Builder(SE);
 
         for (auto *Op : Add->operands())
@@ -1059,9 +1079,9 @@ bool Analyzer::deconstructSCEV(const SCEV *S, const SCEV *&Start, int64_t &Step)
             if (!deconstructSCEV(Op, OpSCEV, OpStep))
                 return false;
 
-            if (OpStep != 0)
+            if (!OpStep->isZero())
             {
-                if (Step != 0)
+                if (!Step->isZero())
                     return false; // unsupported expression with multiple steps
                 Step = OpStep;
             }
@@ -1303,6 +1323,39 @@ const SCEV *SCEVHelper::dropExt(const SCEV *S)
     } while (true);
 
     return S;
+}
+
+
+bool SCEVHelper::isValidStep(const SCEV *S)
+{
+    switch (S->getSCEVType())
+    {
+    case scConstant:
+    case scUnknown:
+        return true;
+    default:
+        return false;
+    }
+}
+
+
+bool SCEVHelper::isEqual(const SCEV *A, const SCEV *B)
+{
+    // Scalar Evolution keeps unique SCEV instances, so we can compare pointers.
+    if (A == B)
+        return true;
+
+    if (A->getSCEVType() != B->getSCEVType())
+        return false;
+
+    switch (A->getSCEVType())
+    {
+    case scConstant:
+        // Can be different bit width, but same integer value.
+        return cast<SCEVConstant>(A)->getValue()->getZExtValue() == cast<SCEVConstant>(B)->getValue()->getZExtValue();
+    default:
+        return false;
+    }
 }
 
 
