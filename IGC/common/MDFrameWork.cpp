@@ -284,9 +284,25 @@ MDNode* CreateNode(const MapVector<Key, Value> &FuncMD, Module* module, StringRe
     int i = 0;
     for ( auto it = FuncMD.begin(); it != FuncMD.end(); ++it)
     {
+        // It is necessary to check that the function was not removed after the inline pass.
+        // If this happens, the function may be trying to access invalid metadata.
+        if (name == "FuncMD")
+        {
+            auto& functionList = module->getFunctionList();
+            llvm::Module::FunctionListType::iterator funcIterator = std::find_if(functionList.begin(), functionList.end(), [&it](Function& f)
+            {
+                return &f == dyn_cast<Function>(it->first);
+            });
+            if (funcIterator == functionList.end())
+            {
+                continue;
+            }
+        }
+
         nodes.push_back(CreateNode(it->first, module, name.str() + "Map[" + std::to_string(i) + "]"));
         nodes.push_back(CreateNode(it->second, module, name.str() + "Value[" +std::to_string(i++) + "]"));
     }
+
     MDNode* node = MDNode::get(module->getContext(), nodes);
     return node;
 }
