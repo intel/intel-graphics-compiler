@@ -333,7 +333,7 @@ void SubGroupFuncsResolution::mediaBlockWrite(llvm::CallInst& CI)
     CI.eraseFromParent();
 }
 
-void SubGroupFuncsResolution::simdBlockRead(llvm::CallInst& CI)
+void SubGroupFuncsResolution::simdBlockRead(llvm::CallInst& CI, bool hasCacheControls)
 {
     // Creates intrinsics that will be lowered in the CodeGen and will handle the simd_block_read
     LLVMContext& C = CI.getCalledFunction()->getContext();
@@ -383,6 +383,14 @@ void SubGroupFuncsResolution::simdBlockRead(llvm::CallInst& CI)
         use = *(CI.user_begin());
     }
 
+    MDNode* CacheCtrlNode = nullptr;
+    if (hasCacheControls)
+    {
+        int cacheControlValue = (cast<ConstantInt>(CI.getArgOperand(1)))->getZExtValue();
+        CacheCtrlNode = MDNode::get(C, ConstantAsMetadata::get(ConstantInt::get(Type::getInt32Ty(C), cacheControlValue)));
+    }
+
+    Instruction* simdBlockRead = nullptr;
     if (use && isa<BitCastInst>(use) &&
         ((use->getType()->getScalarType()->isFloatTy() && scalarSizeInBits == 32) ||
             (use->getType()->getScalarType()->isDoubleTy() && scalarSizeInBits == 64)))
@@ -393,26 +401,34 @@ void SubGroupFuncsResolution::simdBlockRead(llvm::CallInst& CI)
             CI.getCalledFunction()->getParent(),
             genIntrinID,
             types);
-        Instruction* simdBlockRead = CallInst::Create(simdBlockReadFunc, args, "", &CI);
+        simdBlockRead = CallInst::Create(simdBlockReadFunc, args, "", &CI);
         updateDebugLoc(&CI, simdBlockRead);
         use->replaceAllUsesWith(simdBlockRead);
         m_instsToDelete.push_back(bitCast);
         m_instsToDelete.push_back(&CI);
     }
-    else {
+    else
+    {
         types[0] = CI.getType();
         Function* simdBlockReadFunc = GenISAIntrinsic::getDeclaration(
             CI.getCalledFunction()->getParent(),
             genIntrinID,
             types);
-        Instruction* simdBlockRead = CallInst::Create(simdBlockReadFunc, args, "", &CI);
+        simdBlockRead = CallInst::Create(simdBlockReadFunc, args, "", &CI);
         updateDebugLoc(&CI, simdBlockRead);
         CI.replaceAllUsesWith(simdBlockRead);
         CI.eraseFromParent();
     }
+
+    IGC_ASSERT(simdBlockRead);
+
+    if (CacheCtrlNode)
+    {
+        simdBlockRead->setMetadata("lsc.cache.ctrl", CacheCtrlNode);
+    }
 }
 
-void SubGroupFuncsResolution::simdBlockWrite(llvm::CallInst& CI)
+void SubGroupFuncsResolution::simdBlockWrite(llvm::CallInst& CI, bool hasCacheControls)
 {
     LLVMContext& C = CI.getCalledFunction()->getContext();
     Value* Ptr = CI.getArgOperand(0);
@@ -458,6 +474,13 @@ void SubGroupFuncsResolution::simdBlockWrite(llvm::CallInst& CI)
         GenISAIntrinsic::GenISA_simdBlockWrite, types);
     Instruction* simdBlockWrite = CallInst::Create(simdBlockWriteFunc, args, "", &CI);
     updateDebugLoc(&CI, simdBlockWrite);
+
+    if (hasCacheControls)
+    {
+        int cacheControlValue = (cast<ConstantInt>(CI.getArgOperand(2)))->getZExtValue();
+        MDNode* CacheCtrlNode = MDNode::get(C, ConstantAsMetadata::get(ConstantInt::get(Type::getInt32Ty(C), cacheControlValue)));
+        simdBlockWrite->setMetadata("lsc.cache.ctrl", CacheCtrlNode);
+    }
 
     CI.replaceAllUsesWith(simdBlockWrite);
     CI.eraseFromParent();
@@ -679,6 +702,11 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
         CheckSIMDSize(CI, "Block reads not supported in SIMD32");
         simdBlockRead(CI);
     }
+    else if (funcName.startswith("__builtin_IB_cache_controls_simd_block_read"))
+    {
+        CheckSIMDSize(CI, "Block reads not supported in SIMD32");
+        simdBlockRead(CI, true);
+    }
     else if (funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL) ||
         funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL) ||
         funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL) ||
@@ -700,6 +728,11 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
     {
         CheckSIMDSize(CI, "Block writes not supported in SIMD32");
         simdBlockWrite(CI);
+    }
+    else if (funcName.startswith("__builtin_IB_cache_controls_simd_block_write"))
+    {
+        CheckSIMDSize(CI, "Block writes not supported in SIMD32");
+        simdBlockWrite(CI, true);
     }
     else if (funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_READ_1_LCL) ||
         funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_READ_2_LCL) ||
