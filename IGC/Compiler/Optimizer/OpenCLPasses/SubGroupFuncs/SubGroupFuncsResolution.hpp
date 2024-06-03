@@ -60,8 +60,8 @@ namespace IGC
         void mediaBlockRead(llvm::CallInst& CI);
         void mediaBlockWrite(llvm::CallInst& CI);
 
-        void simdBlockRead(llvm::CallInst& CI);
-        void simdBlockWrite(llvm::CallInst& CI);
+        void simdBlockRead(llvm::CallInst& CI, bool hasCacheControls = false);
+        void simdBlockWrite(llvm::CallInst& CI, bool hasCacheControls = false);
 
         void pushMediaBlockArgs(llvm::SmallVector<llvm::Value*, 5> & args, llvm::CallInst& CI);
 
