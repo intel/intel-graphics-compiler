@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -526,22 +526,34 @@ void GenXVisaRegAlloc::extraCoalescing()
         }
         if (LR->Category != vc::RegCategory::General)
           continue;
-        // We have a non-struct non-wrregion instruction whose result has a
-        // live range (it is not baled into anything else).
-        // Check all uses to see if there is one in a non-alu intrinsic. We
-        // don't want to coalesce that, because of the danger of the jitter
-        // needing to add an extra move in the send.
-        bool UseInNonAluIntrinsic = false;
-        for (auto ui = Inst->use_begin(), ue = Inst->use_end();
-            ui != ue && !UseInNonAluIntrinsic; ++ui) {
-          auto user = dyn_cast<Instruction>(ui->getUser());
-          IGC_ASSERT(user);
-          if (user->getType()->isVoidTy()) {
-            UseInNonAluIntrinsic = true;
-            break;
-          }
-          unsigned IID = vc::getAnyIntrinsicID(user);
-          switch (IID) {
+        bool IsDpas = false;
+        unsigned IID = vc::getAnyIntrinsicID(Inst);
+        switch (IID) {
+        case GenXIntrinsic::genx_dpas:
+        case GenXIntrinsic::genx_dpas_nosrc0:
+        case GenXIntrinsic::genx_dpas2:
+        case GenXIntrinsic::genx_dpasw:
+        case GenXIntrinsic::genx_dpasw_nosrc0:
+          IsDpas = true;
+          break;
+        default:
+          break;
+        }
+        if (!IsDpas) {
+          // We have a non-dpas non-struct non-wrregion instruction whose result
+          // has a live range (it is not baled into anything else). Check all
+          // uses to see if there is one in a non-alu intrinsic. We don't want
+          // to coalesce that, because of the danger of the jitter needing to
+          // add an extra move in the send.
+          bool UseInNonAluIntrinsic = false;
+          for (auto *U : Inst->users()) {
+            IGC_ASSERT(isa<Instruction>(U));
+            if (U->getType()->isVoidTy()) {
+              UseInNonAluIntrinsic = true;
+              break;
+            }
+            unsigned UserIID = vc::getAnyIntrinsicID(U);
+            switch (UserIID) {
             case GenXIntrinsic::not_any_intrinsic:
             case GenXIntrinsic::genx_rdregioni:
             case GenXIntrinsic::genx_rdregionf:
@@ -552,19 +564,22 @@ void GenXVisaRegAlloc::extraCoalescing()
             case GenXIntrinsic::genx_dpas_nosrc0:
             case GenXIntrinsic::genx_dpasw:
             case GenXIntrinsic::genx_dpasw_nosrc0:
+       // Not an intrinsic or safe non-alu intrinsic
+              continue;
+            default:
               break;
-            default: {
-                // It is an intrinsic. A non-alu intrinsic does not have a
-                // return value that is general.
-                GenXIntrinsicInfo II(IID);
-                if (!II.getRetInfo().isGeneral())
-                  UseInNonAluIntrinsic = true;
-              }
+            }
+            // It is an intrinsic. A non-alu intrinsic does not have a
+            // return value that is general.
+            GenXIntrinsicInfo UserII(UserIID);
+            if (!UserII.getRetInfo().isGeneral()) {
+              UseInNonAluIntrinsic = true;
               break;
+            }
           }
+          if (UseInNonAluIntrinsic)
+            continue;
         }
-        if (UseInNonAluIntrinsic)
-          continue;
 
         // Do not coalesce when this is a two address instrinsic with undef
         // input. Otherwise logic is broken on lifetime marker in vISA emission.
