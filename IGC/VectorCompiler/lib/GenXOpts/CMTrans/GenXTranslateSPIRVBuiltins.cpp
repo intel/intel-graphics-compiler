@@ -66,8 +66,8 @@ private:
   Value *emitMathIntrinsic(IRBuilder<> &Builder, unsigned IID, Type *Ty,
                            ArrayRef<Value *> Args, bool AFN = false);
   Value *emitFDiv(IRBuilder<> &Builder, Value *L, Value *R, bool ARCP = false);
-
   Value *emitAddcSubb(IRBuilder<> &Builder, unsigned IID, CallInst &CI);
+  Value *emitDot(IRBuilder<> &Builder, unsigned IID, CallInst &CI);
 
   Module *M;
 };
@@ -141,6 +141,17 @@ Value *SPIRVExpander::emitAddcSubb(IRBuilder<> &Builder, unsigned IID,
 
   Builder.CreateStore(ExtRes, ResPtr);
   return Builder.CreateStore(Carry, CarryPtr);
+}
+Value *SPIRVExpander::emitDot(IRBuilder<> &Builder, unsigned IID,
+                              CallInst &CI) {
+  auto *Ty = CI.getType();
+  auto *Src0 = CI.getOperand(0);
+  auto *Src1 = CI.getOperand(1);
+  IGC_ASSERT_EXIT(Ty->isFloatingPointTy());
+  auto *Mul = Builder.CreateFMul(Src0, Src1, CI.getName());
+  auto *Res = Builder.CreateFAddReduce(Constant::getNullValue(Ty), Mul);
+  Res->setHasAllowReassoc(true);
+  return Res;
 }
 
 Value *SPIRVExpander::visitCallInst(CallInst &CI) {
@@ -216,6 +227,10 @@ Value *SPIRVExpander::visitCallInst(CallInst &CI) {
 
   if (IID != Intrinsic::not_intrinsic)
     return emitAddcSubb(Builder, IID, CI);
+
+  if (CalleeName.startswith("Dot")) {
+    return emitDot(Builder, IID, CI);
+  }
 
   // OpenCL extended instruction set
   if (!CalleeName.consume_front("ocl_"))
