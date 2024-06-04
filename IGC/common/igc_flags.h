@@ -567,7 +567,7 @@ DECLARE_IGC_REGKEY(bool, EnablePromotionToSampleMlod,          true,
 DECLARE_IGC_REGKEY(bool, DisableCorrectlyRoundedMacros,     false, "Tmp flag to disable correcly rounded macros for BMG+. This flag will be removed in the future.", false)
 DECLARE_IGC_REGKEY(bool, EnableLscSamplerRouting, false, "Enables conversion of LD to LD_L instructions.", false)
 DECLARE_IGC_REGKEY(bool, EnableSIMD16ForXe2, false, "Enable SIMD16 for Xe2", false)
-DECLARE_IGC_REGKEY(bool, EnableSIMD16ForNonWaveXe2, false, "Enable SIMD16 for Xe2 if the shader doesn't have wave", false)
+DECLARE_IGC_REGKEY(bool, EnableSIMD16ForNonWaveXe2, true, "Enable SIMD16 for Xe2 if the shader doesn't have wave", false)
 DECLARE_IGC_REGKEY(DWORD, CheckCSSLMLimit, 2, "Check SLM or threads limit on compute shader to turn on Enable2xGRF on DG2+"\
     "0 - off, 1 - SLM limit heuristic, 2 - platform based heuristic (XE2 - threads limit, others - SLM limit)", false)
 DECLARE_IGC_REGKEY(DWORD, Enable2xGRF,                         2,     "Enable 2x GRF for high SLM or high threads usage"\
