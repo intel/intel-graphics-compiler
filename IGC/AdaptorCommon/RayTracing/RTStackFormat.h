@@ -94,7 +94,7 @@ namespace IGC {
 // will be patched with the global root signature at compile time
 struct alignas(8) TypeHoleGlobalRootSig
 {
-    char __Padding[8];
+    char __Padding[16];
 };
 
 // This is currently all of the cross-thread constant data that will be populated
