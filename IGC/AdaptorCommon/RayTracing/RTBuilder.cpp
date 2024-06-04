@@ -1543,9 +1543,6 @@ Value* RTBuilder::getSyncStackID()
     }
     else if (PlatformInfo.eProductFamily == IGFX_LUNARLAKE)
     {
-        if (IGC_IS_FLAG_ENABLED(EnableSupportRaytracingSIMD32))
-            return _getSyncStackID_Xe2_Experiment(VALUE_NAME("SyncStackID"));
-
         return _getSyncStackID_Xe2(VALUE_NAME("SyncStackID"));
     }
     else

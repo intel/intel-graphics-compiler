@@ -1800,16 +1800,3 @@ auto* _getSyncStackID_Xe2(const Twine& _ReturnName = "")
   return V_6;
 }
 
-auto* _getSyncStackID_Xe2_Experiment(const Twine& _ReturnName = "")
-{
-  auto* V_0 = getSr0_0();
-  auto* V_1 = get32BitLaneID();
-  auto* V_2 = CreateShl(V_0, getInt32(4));
-  auto* V_3 = CreateAnd(V_2, getInt32(1792));
-  auto* V_4 = CreateShl(V_0, getInt32(5));
-  auto* V_5 = CreateAnd(V_4, getInt32(224));
-  auto* V_6 = CreateOr(V_5, V_1);
-  auto* V_7 = CreateOr(V_6, V_3, _ReturnName);
-  return V_7;
-}
-
