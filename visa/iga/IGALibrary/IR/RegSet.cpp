@@ -333,15 +333,15 @@ bool RegSet::addDpasOperand(const Instruction &i, int opIx) {
   } else if (opIx == 1) { // src1
     size_t bitsAccessed = execSize * typeSizeBits * opsPerChannel * S;
     changed |= add(RegName::GRF_R, startOff, bitsAccessed);
-  } else { // src2
-           // this is a little subtle
-           // given bit precisions a src2 operand can stride across the
-           // bottom or top of a GRF without touching the other half
-           //
-           // e.g. dpas.4x2 (8) r24.0:d r24.0:d r6.0:u2 r14.32:u4
-           //       src2 - touches r14[16-31] and r15[16-31]
-           //
-           // TODO: can something like this happen for src1
+  } else if (opIx == 2) { // src2
+    // this is a little subtle
+    // given bit precisions a src2 operand can stride across the
+    // bottom or top of a GRF without touching the other half
+    //
+    // e.g. dpas.4x2 (8) r24.0:d r24.0:d r6.0:u2 r14.32:u4
+    //       src2 - touches r14[16-31] and r15[16-31]
+    //
+    // TODO: can something like this happen for src1
     for (size_t r = 0; r < R; r++) {
       size_t startSubReg = r * opsPerChannel * typeSizeBits * 8;
       size_t repReads = S * opsPerChannel * typeSizeBits;
