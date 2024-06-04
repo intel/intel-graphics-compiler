@@ -642,7 +642,7 @@ public:
     bool shouldGenerateLSC(llvm::Instruction* vectorLdStInst = nullptr, bool isTGM = false);
     bool forceCacheCtrl(llvm::Instruction* vectorLdStInst = nullptr);
     uint32_t totalBytesToStoreOrLoad(llvm::Instruction* vectorLdStInst);
-    void emitsrnd(llvm::GenIntrinsicInst* GII);
+    void emitSrnd(llvm::GenIntrinsicInst* GII);
     void emitStaticConstantPatchValue(
         llvm::StaticConstantPatchIntrinsic* staticConstantPatch32);
     // Debug Built-Ins

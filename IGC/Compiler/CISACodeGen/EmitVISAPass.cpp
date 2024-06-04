@@ -8601,7 +8601,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         break;
     case GenISAIntrinsic::GenISA_srnd_ftohf:
     case GenISAIntrinsic::GenISA_srnd_hftobf8:
-        emitsrnd(inst);
+        emitSrnd(inst);
         break;
     case GenISAIntrinsic::GenISA_uavSerializeAll:
     case GenISAIntrinsic::GenISA_uavSerializeOnResID:
@@ -21647,7 +21647,7 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst* GII)
     }
 }
 
-void EmitPass::emitsrnd(llvm::GenIntrinsicInst* GII)
+void EmitPass::emitSrnd(llvm::GenIntrinsicInst* GII)
 {
     CVariable* dst = m_destination;
     CVariable* src0 = GetSymbol(GII->getOperand(0));
@@ -21656,18 +21656,30 @@ void EmitPass::emitsrnd(llvm::GenIntrinsicInst* GII)
     bool isSat = CI->getValue().getBoolValue();
     GenISAIntrinsic::ID GID = GII->getIntrinsicID();
 
-    switch (GID)
+    // set dst types
+    if (GID == GenISAIntrinsic::GenISA_srnd_ftohf)
     {
-    case GenISAIntrinsic::GenISA_srnd_hftobf8:
-    {
-        if (dst->GetType() != ISA_TYPE_UB)
-        {   // Use UB for bf8
-            dst = m_currShader->GetNewAlias(dst, ISA_TYPE_UB, 0, 0);
-        }
-        break;
+        if (dst->GetType() != ISA_TYPE_HF)
+            dst = m_currShader->GetNewAlias(dst, ISA_TYPE_HF, 0, 0);
     }
-    default:
-        break;
+    if (GID == GenISAIntrinsic::GenISA_srnd_hftobf8
+        )
+    {
+        if (dst->GetType() != ISA_TYPE_UB) // Use UB for bf8
+            dst = m_currShader->GetNewAlias(dst, ISA_TYPE_UB, 0, 0);
+    }
+
+    // set src types
+    if (GID == GenISAIntrinsic::GenISA_srnd_ftohf)
+    {
+        if (src0->GetType() != ISA_TYPE_F)
+            src0 = m_currShader->GetNewAlias(src0, ISA_TYPE_F, 0, 0);
+    }
+    if (GID == GenISAIntrinsic::GenISA_srnd_hftobf8
+        )
+    {
+        if (src0->GetType() != ISA_TYPE_HF)
+            src0 = m_currShader->GetNewAlias(src0, ISA_TYPE_HF, 0, 0);
     }
 
     uint16_t nsimdsize = numLanes(m_currShader->m_SIMDSize);
