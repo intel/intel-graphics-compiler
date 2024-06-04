@@ -491,7 +491,7 @@ namespace IGC
         // force enable tile y optimization
         bool forceTileYWalk = false;
         // enable atomic branch optimization
-        bool atomicBranch = false;
+        unsigned int atomicBranch = 0;
         // enable spill compression
         bool spillCompression = false;
         // disable early out
