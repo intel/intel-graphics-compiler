@@ -232,6 +232,11 @@ typedef uint   __attribute__((ext_vector_type(32))) uint32;
 #define MEM_OFFSET_PackedB_RowMajor(     elem_type, contrib_type) (16 * sizeof(elem_type))
 #define MEM_OFFSET_Accumulator_RowMajor( elem_type, contrib_type) (16 * sizeof(contrib_type))
 
+// if we use checked load/store for B matrix which was not VNNI'ed, we need to multiply x offset change by vnnifactor
+#define X_OFFSET_MULTIPLIER_PackedB_PackedB(        elem_type, contrib_type) MATH_DIV(BITWIDTH(contrib_type), BITWIDTH(elem_type))
+#define X_OFFSET_MULTIPLIER_PackedB_RowMajor(       elem_type, contrib_type) 1
+#define X_OFFSET_MULTIPLIER_Accumulator_RowMajor(   elem_type, contrib_type) 1
+
 // Number of rows in a single store used in the name of built-in
 // it is 16 for PackedB matrix, because B is in VNNI format
 #define SPLIT_STORE_HEIGHT_PackedA_RowMajor 8
@@ -246,13 +251,21 @@ typedef uint   __attribute__((ext_vector_type(32))) uint32;
 // WI_rows is the number of rows owned by each WI, which can be different from M e.g. for tf32
 #define MANGLE_LOAD_NAME_AS_GENERIC(layout, sg, elem_bitwidth, shape, WI_rows) \
   __builtin_spriv_OpJointMatrixLoadINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_##WI_rows##_generic_v8i8_pi32_i32
+
 #define MANGLE_LOAD_NAME_AS_LOCAL(layout, sg, elem_bitwidth, shape, WI_rows) \
   __builtin_spriv_OpJointMatrixLoadINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_##WI_rows##_local_v8i8_pi32_i32
+
 #define MANGLE_LOAD_NAME_AS_GLOBAL(layout, sg, elem_bitwidth, shape, WI_rows) \
   __builtin_spriv_OpJointMatrixLoadINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_##WI_rows##_global_v8i8_pi32_i32
 
+#define MANGLE_LOAD_CHECKED_NAME(layout, sg, elem_bitwidth, shape, WI_rows) \
+  __builtin_spriv_OpJointMatrixLoadCheckedINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_##WI_rows##_v8i8_pi32_i32
+
 #define MANGLE_PREFETCH_NAME(sg, elem_bitwidth, shape) \
   __builtin_spriv_OpJointMatrixPrefetchINTEL##sg##_##shape##_i##elem_bitwidth
+
+#define MANGLE_FILLCHECKED_NAME(elem_bitwidth, WI_rows) \
+  __builtin_spriv_OpJointMatrixFillCheckedINTEL_i##elem_bitwidth##_##WI_rows
 
 #define SUB_GROUP_LOAD(readop, M, src, dst, stride, contrib_type) \
     __private contrib_type *wi_contrib = (__private contrib_type *)dst; \
@@ -380,14 +393,49 @@ typedef uint   __attribute__((ext_vector_type(32))) uint32;
     return; \
   }
 
-#define IMPLEMENT_BLOCK2D_LOAD__(sg, order, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows) \
-  IMPLEMENT_BLOCK2D_LOAD##sg##order(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, \
+#define IMPLEMENT_BLOCK2D_LOAD_CHECKED_SG16_ROW_MAJOR_(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_M, contrib_K) \
+  long offset = as_long(mem); \
+  int width_size = sizeof (element_type) * width - 1; /* in bytes */ \
+  int pitch = sizeof (element_type) * stride - 1; /* in bytes */ \
+  int height_size = height - 1; \
+  int pack_factor = sizeof (contrib_type) / sizeof (element_type); \
+  int2 coords = (int2)(x / pack_factor, y); \
+  OUT_VEC##WI_rows(u##contrib_type) DEFINE_BLOCK2D_RW_NAME(read, , contrib_bitwidth, WI_rows, M, contrib_K)(long, int, int, int, int2, int); \
+  OUT_VEC##WI_rows(u##contrib_type) res = DEFINE_BLOCK2D_RW_NAME(read, , contrib_bitwidth, WI_rows, M, contrib_K)(offset, width_size, height_size, pitch, coords, cacheOpt); \
+  *(__private OUT_VEC##WI_rows(u##contrib_type) *)dst = res; \
+  return;
+
+#define IMPLEMENT_BLOCK2D_LOAD_CHECKED_SG16_COL_MAJOR_(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_M, contrib_K) \
+  long offset = as_long(mem); \
+  int width_size = sizeof (element_type) * width - 1; /* in bytes */ \
+  int pitch = sizeof (element_type) * stride - 1; /* in bytes */ \
+  int height_size = height - 1; \
+  int2 coords = (int2)(x, y); \
+  /* 2D block read transpose builtin requires K value _after_ the transpose operation is done - which is equal to M before the transpose */ \
+  OUT_VEC8(u##contrib_type) DEFINE_BLOCK2D_TRANSPOSE_NAME(elem_bitwidth, M)(long, int, int, int, int2, int); \
+  OUT_VEC8(u##contrib_type) res = DEFINE_BLOCK2D_TRANSPOSE_NAME(elem_bitwidth, M)(offset, width_size, height_size, pitch, coords, cacheOpt); \
+  *(__private OUT_VEC##M(u##contrib_type) *)dst = *(__private OUT_VEC##M(u##contrib_type) *)&res; \
+  return;
+
+#define IMPLEMENT_BLOCK2D_LOAD_CHECKED_SG16_VNNI_TX_(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_M, contrib_K) \
+  long offset = as_long(mem); \
+  int width_size = sizeof (element_type) * width - 1; /* in bytes */ \
+  int pitch = sizeof (element_type) * stride - 1; /* in bytes */ \
+  int height_size = height - 1; \
+  int2 coords = (int2)(x, y); \
+  OUT_VEC##M(u##contrib_type) DEFINE_BLOCK2D_VNNI_NAME(elem_bitwidth, contrib_K)(long, int, int, int, int2, int); \
+  OUT_VEC##M(u##contrib_type) res = DEFINE_BLOCK2D_VNNI_NAME(elem_bitwidth, contrib_K)(offset, width_size, height_size, pitch, coords, cacheOpt); \
+  *(__private OUT_VEC##WI_rows(u##contrib_type) *)dst = res; \
+  return;
+
+#define IMPLEMENT_BLOCK2D_LOAD__(checked, sg, order, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows) \
+  IMPLEMENT_BLOCK2D_LOAD##checked##sg##order(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, \
                                     M, K, WI_rows, \
                                     MATH_MUL(M, MATH_DIV(contrib_bitwidth, elem_bitwidth)), \
                                     MATH_DIV(K, MATH_DIV(contrib_bitwidth, elem_bitwidth)))
 
-#define IMPLEMENT_BLOCK2D_LOAD(sg, order, element_type, contrib_type, M, K, WI_rows) \
-  IMPLEMENT_BLOCK2D_LOAD__(sg, order, element_type, BITWIDTH(element_type), contrib_type, BITWIDTH(contrib_type), \
+#define IMPLEMENT_BLOCK2D_LOAD(checked, sg, order, element_type, contrib_type, M, K, WI_rows) \
+  IMPLEMENT_BLOCK2D_LOAD__(checked, sg, order, element_type, BITWIDTH(element_type), contrib_type, BITWIDTH(contrib_type), \
                            M, K, WI_rows)
 
 #define IMPLEMENT_BLOCK2D_STORE_SG16(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, contrib_K) \
@@ -401,6 +449,18 @@ typedef uint   __attribute__((ext_vector_type(32))) uint32;
     void DEFINE_BLOCK2D_RW_NAME(write, , contrib_bitwidth, M, M, contrib_K)(long, int, int, int, int2, OUT_VEC##M(u##contrib_type), int); \
     OUT_VEC##M(u##contrib_type) val = *(OUT_VEC##M(u##contrib_type) *)src; \
     DEFINE_BLOCK2D_RW_NAME(write, , contrib_bitwidth, M, M, contrib_K)(baseoffset, width, height, pitch, coords, val, cacheOpt); \
+    return;
+
+#define IMPLEMENT_BLOCK2D_STORE_CHECKED_SG16(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, contrib_K) \
+    long offset = as_long(mem); \
+    int width_size = sizeof (element_type) * width - 1; /* in bytes */ \
+    int pitch = sizeof (element_type) * stride - 1; /* in bytes */ \
+    int height_size = height - 1; \
+    int pack_factor = sizeof (contrib_type) / sizeof (element_type); \
+    int2 coords = (int2)(x / pack_factor, y); \
+    void DEFINE_BLOCK2D_RW_NAME(write, , contrib_bitwidth, M, M, contrib_K)(long, int, int, int, int2, OUT_VEC##M(u##contrib_type), int); \
+    OUT_VEC##M(u##contrib_type) val = *(OUT_VEC##M(u##contrib_type) *)src; \
+    DEFINE_BLOCK2D_RW_NAME(write, , contrib_bitwidth, M, M, contrib_K)(offset, width_size, height_size, pitch, coords, val, cacheOpt); \
     return;
 
 // layout can be PackedA_RowMajor, PackedB_ColumnMajor, PackedB_PackedB, etc.
@@ -426,8 +486,11 @@ typedef uint   __attribute__((ext_vector_type(32))) uint32;
         && (M == 2 || M == 4 || M == 8 || M == 16 || M == 32) \
         && (order == _ROW_MAJOR || order == _VNNI_TX || (order == _COL_MAJOR && contrib_bitwidth == 32)) \
         ) { \
-        IMPLEMENT_BLOCK2D_LOAD(sg, order##_, element_type, contrib_type, M, K, WI_rows) \
+        IMPLEMENT_BLOCK2D_LOAD(, sg, order##_, element_type, contrib_type, M, K, WI_rows) \
     }
+
+#define DEFINE_LOAD_CHECKED_BLOCK2D_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows) \
+    IMPLEMENT_BLOCK2D_LOAD(_CHECKED, sg, order##_, element_type, contrib_type, M, K, WI_rows)
 
 #define DEFINE_LOAD_VECTORS_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows, address_space) \
     if (WI_rows == M && BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_CONT_IMPL \
@@ -497,6 +560,11 @@ typedef uint   __attribute__((ext_vector_type(32))) uint32;
         DEFINE_LOAD_SCALAR_IMPL(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, _##order, WI_rows) \
     }
 
+#define DEFINE_LOAD_CHECKED_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows) \
+    INLINE void MANGLE_LOAD_CHECKED_NAME(layout, sg, elem_bitwidth, shape, WI_rows) (__private char *dst, char *mem, int y, int x, int height, int width, long stride, int cacheOpt) { \
+        DEFINE_LOAD_CHECKED_BLOCK2D_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, WI_rows) \
+    }
+
 #define DEFINE_LOAD_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows) \
     DEFINE_LOAD_IMPL_AS_GENERIC(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows) \
     DEFINE_LOAD_IMPL_AS_LOCAL(  layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows) \
@@ -504,6 +572,11 @@ typedef uint   __attribute__((ext_vector_type(32))) uint32;
 
 #define DEFINE_LOAD(layout, sg, element_type, contrib_type, M, K, order, us, WI_rows) \
     DEFINE_LOAD_IMPL(layout, sg, element_type, BITWIDTH(element_type), contrib_type, BITWIDTH(contrib_type), \
+                     M, K, SHAPE(layout, M, K, element_type, contrib_type), order, us, WI_rows)
+
+/* only 2D block load is supported for checked load */
+#define DEFINE_LOAD_CHECKED(layout, sg, element_type, contrib_type, M, K, order, us, WI_rows) \
+    DEFINE_LOAD_CHECKED_IMPL(layout, sg, element_type, BITWIDTH(element_type), contrib_type, BITWIDTH(contrib_type), \
                      M, K, SHAPE(layout, M, K, element_type, contrib_type), order, us, WI_rows)
 
 // Prefetch impl
@@ -574,6 +647,11 @@ DEFINE_LOAD(PackedA_RowMajor, _SG16, short, short, 3, 16, ROW_MAJOR, _us, 3)
 DEFINE_LOAD(PackedA_RowMajor, _SG16, short, short, 2, 16, ROW_MAJOR, _us, 2)
 DEFINE_LOAD(PackedA_RowMajor, _SG16, short, short, 1, 16, ROW_MAJOR, _us, 1)
 
+DEFINE_LOAD_CHECKED(PackedA_RowMajor, _SG16, short, short, 8, 16, ROW_MAJOR, _us, 8)
+DEFINE_LOAD_CHECKED(PackedA_RowMajor, _SG16, short, short, 4, 16, ROW_MAJOR, _us, 4)
+DEFINE_LOAD_CHECKED(PackedA_RowMajor, _SG16, short, short, 2, 16, ROW_MAJOR, _us, 2)
+DEFINE_LOAD_CHECKED(PackedA_RowMajor, _SG16, short, short, 1, 16, ROW_MAJOR, _us, 1)
+
 /* PackedA load i16 SG16 for sub group size = 32*/
 DEFINE_LOAD(PackedA_RowMajor, _SG16, short, short, 8, 16, ROW_MAJOR, _us, 4)
 DEFINE_LOAD(PackedA_RowMajor, _SG16, short, short, 7, 16, ROW_MAJOR, _us, 4)
@@ -594,6 +672,11 @@ DEFINE_LOAD(PackedA_RowMajor, _SG16, char, short, 3, 32, ROW_MAJOR, _us, 3)
 DEFINE_LOAD(PackedA_RowMajor, _SG16, char, short, 2, 32, ROW_MAJOR, _us, 2)
 DEFINE_LOAD(PackedA_RowMajor, _SG16, char, short, 1, 32, ROW_MAJOR, _us, 1)
 
+DEFINE_LOAD_CHECKED(PackedA_RowMajor, _SG16, char, short, 8, 32, ROW_MAJOR, _us, 8)
+DEFINE_LOAD_CHECKED(PackedA_RowMajor, _SG16, char, short, 4, 32, ROW_MAJOR, _us, 4)
+DEFINE_LOAD_CHECKED(PackedA_RowMajor, _SG16, char, short, 2, 32, ROW_MAJOR, _us, 2)
+DEFINE_LOAD_CHECKED(PackedA_RowMajor, _SG16, char, short, 1, 32, ROW_MAJOR, _us, 1)
+
 /* PackedA load i8 SG16 for sub group size 32*/
 DEFINE_LOAD(PackedA_RowMajor, _SG16, char, short, 8, 32, ROW_MAJOR, _us, 4)
 DEFINE_LOAD(PackedA_RowMajor, _SG16, char, short, 7, 32, ROW_MAJOR, _us, 4)
@@ -606,6 +689,8 @@ DEFINE_LOAD(PackedA_RowMajor, _SG16, char, short, 2, 32, ROW_MAJOR, _us, 1)
 
 /* A load tf32 SG16 */
 DEFINE_LOAD(PackedA_RowMajor, _SG16, int, int, 8, 8, ROW_MAJOR, , 4)
+
+DEFINE_LOAD_CHECKED(PackedA_RowMajor, _SG16, int, int, 8, 8, ROW_MAJOR, , 4)
 /* A load tf32 SG16 for sub group size 32*/
 DEFINE_LOAD(PackedA_RowMajor, _SG16, int, int, 8, 8, ROW_MAJOR, , 2)
 
@@ -624,6 +709,10 @@ DEFINE_LOAD(PackedB_ColumnMajor, _SG16, short, int, 8, 32, COL_MAJOR, , 8)
 DEFINE_LOAD(PackedB_PackedB,     _SG16, short, int, 8, 32, ROW_MAJOR, , 8)
 DEFINE_LOAD(PackedB_RowMajor,    _SG16, short, int, 8, 32, VNNI_TX,   , 8)
 
+DEFINE_LOAD_CHECKED(PackedB_ColumnMajor, _SG16, short, int, 8, 32, COL_MAJOR, , 8)
+DEFINE_LOAD_CHECKED(PackedB_PackedB,     _SG16, short, int, 8, 32, ROW_MAJOR, , 8)
+DEFINE_LOAD_CHECKED(PackedB_RowMajor,    _SG16, short, int, 8, 32, VNNI_TX,   , 8)
+
 /* PackedB load i16 for sub group size = 32*/
 DEFINE_LOAD(PackedB_PackedB,     _SG16, short, int, 8, 32, ROW_MAJOR, , 4)
 
@@ -632,14 +721,22 @@ DEFINE_LOAD(PackedB_ColumnMajor, _SG16, char, int, 8, 64, COL_MAJOR, , 8)
 DEFINE_LOAD(PackedB_PackedB,     _SG16, char, int, 8, 64, ROW_MAJOR, , 8)
 DEFINE_LOAD(PackedB_RowMajor,    _SG16, char, int, 8, 64, VNNI_TX,   , 8)
 
+DEFINE_LOAD_CHECKED(PackedB_ColumnMajor, _SG16, char, int, 8, 64, COL_MAJOR, , 8)
+DEFINE_LOAD_CHECKED(PackedB_PackedB,     _SG16, char, int, 8, 64, ROW_MAJOR, , 8)
+DEFINE_LOAD_CHECKED(PackedB_RowMajor,    _SG16, char, int, 8, 64, VNNI_TX,   , 8)
+
 /* PackedB load i8 SG16 for sub group size 32*/
 DEFINE_LOAD(PackedB_PackedB,     _SG16, char, int, 8, 64, ROW_MAJOR, , 4)
 
 /* B load tf32 SG16 */
 DEFINE_LOAD(PackedB_RowMajor, _SG16, int, int, 8, 16, ROW_MAJOR, , 8)
 
+DEFINE_LOAD_CHECKED(PackedB_RowMajor, _SG16, int, int, 8, 16, ROW_MAJOR, , 8)
+
 /* B load tf32 SG16 sub group = 32 */
 DEFINE_LOAD(PackedB_RowMajor, _SG16, int, int, 8, 16, ROW_MAJOR, , 4)
+
+DEFINE_LOAD_CHECKED(PackedB_RowMajor, _SG16, int, int, 8, 16, ROW_MAJOR, , 4)
 
 /* Load accumulator is a special case of load packed A, both are row major: */
 DEFINE_LOAD(Accumulator_RowMajor, , int, int, 8, 8, ROW_MAJOR, , 8)
@@ -671,6 +768,11 @@ DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, int, 3, 16, ROW_MAJOR, , 3)
 DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, int, 2, 16, ROW_MAJOR, , 2)
 DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, int, 1, 16, ROW_MAJOR, , 1)
 
+DEFINE_LOAD_CHECKED(Accumulator_RowMajor, _SG16, int, int, 8, 16, ROW_MAJOR, , 8)
+DEFINE_LOAD_CHECKED(Accumulator_RowMajor, _SG16, int, int, 4, 16, ROW_MAJOR, , 4)
+DEFINE_LOAD_CHECKED(Accumulator_RowMajor, _SG16, int, int, 2, 16, ROW_MAJOR, , 2)
+DEFINE_LOAD_CHECKED(Accumulator_RowMajor, _SG16, int, int, 1, 16, ROW_MAJOR, , 1)
+
 /* Accumulator load i32 SG16 with transpose */
 DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, int, 8, 16, COL_MAJOR, , 8)
 DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, int, 7, 16, COL_MAJOR, , 7)
@@ -681,6 +783,11 @@ DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, int, 3, 16, COL_MAJOR, , 3)
 DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, int, 2, 16, COL_MAJOR, , 2)
 DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, int, 1, 16, COL_MAJOR, , 1)
 
+DEFINE_LOAD_CHECKED(Accumulator_ColumnMajor, _SG16, int, int, 8, 16, COL_MAJOR, , 8)
+DEFINE_LOAD_CHECKED(Accumulator_ColumnMajor, _SG16, int, int, 4, 16, COL_MAJOR, , 4)
+DEFINE_LOAD_CHECKED(Accumulator_ColumnMajor, _SG16, int, int, 2, 16, COL_MAJOR, , 2)
+DEFINE_LOAD_CHECKED(Accumulator_ColumnMajor, _SG16, int, int, 1, 16, COL_MAJOR, , 1)
+
 /* SG16 for subgroup 32*/
 DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, int, 8, 16, ROW_MAJOR, , 4)
 DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, int, 7, 16, ROW_MAJOR, , 4)
@@ -690,6 +797,10 @@ DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, int, 4, 16, ROW_MAJOR, , 2)
 DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, int, 3, 16, ROW_MAJOR, , 2)
 DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, int, 2, 16, ROW_MAJOR, , 1)
 // DEFINE_LOAD(Accumulator_RowMajor, _SG16, int, int, 1, 16, ROW_MAJOR, , 1) same as for subgroup 16
+
+DEFINE_LOAD_CHECKED(Accumulator_RowMajor, _SG16, int, int, 8, 16, ROW_MAJOR, , 4)
+DEFINE_LOAD_CHECKED(Accumulator_RowMajor, _SG16, int, int, 4, 16, ROW_MAJOR, , 2)
+DEFINE_LOAD_CHECKED(Accumulator_RowMajor, _SG16, int, int, 2, 16, ROW_MAJOR, , 1)
 
 /* Accumulator load i32 SG16 for subgroup 32 with transpose */
 DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, int, 8, 16, COL_MAJOR, , 4)
@@ -706,6 +817,9 @@ DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, int, 2, 16, COL_MAJOR, , 1)
 #define MANGLE_STORE_NAME(layout, sg, elem_bitwidth, shape, WI_rows, address_space) \
   __builtin_spriv_OpJointMatrixStoreINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_##WI_rows##_##address_space##_pi64_v8i8
 
+#define MANGLE_STORE_CHECKED_NAME(layout, sg, elem_bitwidth, shape, WI_rows) \
+  __builtin_spriv_OpJointMatrixStoreCheckedINTEL_##layout##sg##_##shape##_i##elem_bitwidth##_##WI_rows##_pi64_v8i8
+
 #define VEC_IND8(var, ind) var[ind]
 #define VEC_IND7(var, ind) var[ind]
 #define VEC_IND6(var, ind) var[ind]
@@ -721,6 +835,9 @@ DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, int, 2, 16, COL_MAJOR, , 1)
         ) { \
         IMPLEMENT_BLOCK2D_STORE##sg(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, MATH_DIV(K, MATH_DIV(contrib_bitwidth, elem_bitwidth))) \
     }
+
+#define DEFINE_STORE_CHECKED_BLOCK2D_IMPL(sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, order, WI_rows) \
+    IMPLEMENT_BLOCK2D_STORE_CHECKED##sg(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, MATH_DIV(K, MATH_DIV(contrib_bitwidth, elem_bitwidth)))
 
 // set block_opt to false to disable block non-continous optimization per one built-in as a workaround
 #define DEFINE_STORE_VECTORS_IMPL(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, order, us, WI_rows, block_opt, address_space) \
@@ -772,18 +889,25 @@ DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, int, 2, 16, COL_MAJOR, , 1)
         } \
         DEFINE_STORE_SCALAR_IMPL(element_type, contrib_type, M, K, _##order, WI_rows) \
     }
+
 #define DEFINE_STORE_IMPL_AS_LOCAL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows, block_opt) \
     INLINE void MANGLE_STORE_NAME(layout, sg, elem_bitwidth, shape, WI_rows, local) (char *mem, __private char *src, long stride, int cacheOpt) { \
         int sg_size = get_sub_group_size(); \
         DEFINE_STORE_VECTORS_IMPL(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, _##order, us, WI_rows, block_opt, AS_LOCAL) \
         DEFINE_STORE_SCALAR_IMPL(element_type, contrib_type, M, K, _##order, WI_rows) \
     }
+
 #define DEFINE_STORE_IMPL_AS_GLOBAL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows, block_opt) \
     INLINE void MANGLE_STORE_NAME(layout, sg, elem_bitwidth, shape, WI_rows, global) (char *mem, __private char *src, long stride, int cacheOpt) { \
         int sg_size = get_sub_group_size(); \
         DEFINE_STORE_BLOCK2D_IMPL(sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, _##order, WI_rows) \
         DEFINE_STORE_VECTORS_IMPL(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, _##order, us, WI_rows, block_opt, AS_GLOBAL) \
         DEFINE_STORE_SCALAR_IMPL(element_type, contrib_type, M, K, _##order, WI_rows) \
+    }
+
+#define DEFINE_STORE_CHECKED_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows, block_opt) \
+    INLINE void MANGLE_STORE_CHECKED_NAME(layout, sg, elem_bitwidth, shape, WI_rows) (char *mem, __private char *src, int y, int x, int height, int width, long stride, int cacheOpt) { \
+        DEFINE_STORE_CHECKED_BLOCK2D_IMPL(sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, _##order, WI_rows) \
     }
 
 #define DEFINE_STORE_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows, block_opt) \
@@ -793,6 +917,12 @@ DEFINE_LOAD(Accumulator_ColumnMajor, _SG16, int, int, 2, 16, COL_MAJOR, , 1)
 
 #define DEFINE_STORE(layout, sg, element_type, contrib_type, M, K, order, us, WI_rows, block_opt) \
     DEFINE_STORE_IMPL(layout, sg, element_type, BITWIDTH(element_type), contrib_type, BITWIDTH(contrib_type),\
+                      M, K, SHAPE(layout, M, K, element_type, contrib_type), \
+                      order, us, WI_rows, block_opt)
+
+/* only 2D block store is supported for checked store */
+#define DEFINE_STORE_CHECKED(layout, sg, element_type, contrib_type, M, K, order, us, WI_rows, block_opt) \
+    DEFINE_STORE_CHECKED_IMPL(layout, sg, element_type, BITWIDTH(element_type), contrib_type, BITWIDTH(contrib_type),\
                       M, K, SHAPE(layout, M, K, element_type, contrib_type), \
                       order, us, WI_rows, block_opt)
 
@@ -828,6 +958,11 @@ DEFINE_STORE(PackedA_RowMajor, _SG16, char,  short, 6, 32, ROW_MAJOR, _us, 6, fa
 DEFINE_STORE(PackedA_RowMajor, _SG16, char,  short, 7, 32, ROW_MAJOR, _us, 7, false)
 DEFINE_STORE(PackedA_RowMajor, _SG16, char,  short, 8, 32, ROW_MAJOR, _us, 8, false)
 
+DEFINE_STORE_CHECKED(PackedA_RowMajor, _SG16, char,  short, 1, 32, ROW_MAJOR, _us, 1, false)
+DEFINE_STORE_CHECKED(PackedA_RowMajor, _SG16, char,  short, 2, 32, ROW_MAJOR, _us, 2, false)
+DEFINE_STORE_CHECKED(PackedA_RowMajor, _SG16, char,  short, 4, 32, ROW_MAJOR, _us, 4, false)
+DEFINE_STORE_CHECKED(PackedA_RowMajor, _SG16, char,  short, 8, 32, ROW_MAJOR, _us, 8, false)
+
 /* PackedA store i8 SG16 for subgroup 32*/
 // DEFINE_STORE(PackedA_RowMajor, _SG16, char,  short, 1, 32, ROW_MAJOR, _us, 1, false) same as for subgroup 16
 DEFINE_STORE(PackedA_RowMajor, _SG16, char,  short, 2, 32, ROW_MAJOR, _us, 1, false)
@@ -847,6 +982,11 @@ DEFINE_STORE(PackedA_RowMajor, _SG16, short, short, 5, 16, ROW_MAJOR, _us, 5, fa
 DEFINE_STORE(PackedA_RowMajor, _SG16, short, short, 6, 16, ROW_MAJOR, _us, 6, false)
 DEFINE_STORE(PackedA_RowMajor, _SG16, short, short, 7, 16, ROW_MAJOR, _us, 7, false)
 DEFINE_STORE(PackedA_RowMajor, _SG16, short, short, 8, 16, ROW_MAJOR, _us, 8, false)
+
+DEFINE_STORE_CHECKED(PackedA_RowMajor, _SG16, short, short, 1, 16, ROW_MAJOR, _us, 1, false)
+DEFINE_STORE_CHECKED(PackedA_RowMajor, _SG16, short, short, 2, 16, ROW_MAJOR, _us, 2, false)
+DEFINE_STORE_CHECKED(PackedA_RowMajor, _SG16, short, short, 4, 16, ROW_MAJOR, _us, 4, false)
+DEFINE_STORE_CHECKED(PackedA_RowMajor, _SG16, short, short, 8, 16, ROW_MAJOR, _us, 8, false)
 
 /* PackedA store i16 SG16 for sub group size 32 */
 // DEFINE_STORE(PackedA_RowMajor, _SG16, short, short, 1, 16, ROW_MAJOR, _us, 1, false) same as for subgroup 16
@@ -871,6 +1011,8 @@ DEFINE_STORE(PackedB_PackedB,     , short, int, 8, 16, ROW_MAJOR, , 8, true)
 DEFINE_STORE(PackedB_ColumnMajor, _SG16, short, int, 8, 32, COL_MAJOR, , 8, false)
 DEFINE_STORE(PackedB_PackedB,     _SG16, short, int, 8, 32, ROW_MAJOR, , 8, true)
 
+DEFINE_STORE_CHECKED(PackedB_PackedB,     _SG16, short, int, 8, 32, ROW_MAJOR, , 8, true)
+
 /* PackedB store i16 SG16 for subgroup 32*/
 DEFINE_STORE(PackedB_PackedB,     _SG16, short, int, 8, 32, ROW_MAJOR, , 4, true)
 
@@ -883,11 +1025,15 @@ DEFINE_STORE(PackedB_PackedB,     , char, int, 8, 32, ROW_MAJOR, , 8, false)
 DEFINE_STORE(PackedB_ColumnMajor, _SG16, char, int, 8, 64, COL_MAJOR, , 8, false)
 DEFINE_STORE(PackedB_PackedB,     _SG16, char, int, 8, 64, ROW_MAJOR, , 8, false)
 
+DEFINE_STORE_CHECKED(PackedB_PackedB,     _SG16, char, int, 8, 64, ROW_MAJOR, , 8, false)
+
 /* PackedB store i8 SG16 for subgroup 32*/
 DEFINE_STORE(PackedB_PackedB,     _SG16, char, int, 8, 64, ROW_MAJOR, , 4, true)
 
 /* B store tf32 SG16 */
 DEFINE_STORE(PackedB_RowMajor, _SG16, int, int, 8, 16, ROW_MAJOR, , 8, true)
+
+DEFINE_STORE_CHECKED(PackedB_RowMajor, _SG16, int, int, 8, 16, ROW_MAJOR, , 8, true)
 
 /* B store tf32 SG16 for sub group size 32 */
 DEFINE_STORE(PackedB_RowMajor, _SG16, int, int, 8, 16, ROW_MAJOR, , 4, true)
@@ -921,6 +1067,11 @@ DEFINE_STORE(Accumulator_RowMajor, _SG16, int, int, 4, 16, ROW_MAJOR, , 4, true)
 DEFINE_STORE(Accumulator_RowMajor, _SG16, int, int, 3, 16, ROW_MAJOR, , 3, true)
 DEFINE_STORE(Accumulator_RowMajor, _SG16, int, int, 2, 16, ROW_MAJOR, , 2, true)
 DEFINE_STORE(Accumulator_RowMajor, _SG16, int, int, 1, 16, ROW_MAJOR, , 1, true)
+
+DEFINE_STORE_CHECKED(Accumulator_RowMajor, _SG16, int, int, 8, 16, ROW_MAJOR, , 8, true)
+DEFINE_STORE_CHECKED(Accumulator_RowMajor, _SG16, int, int, 4, 16, ROW_MAJOR, , 4, true)
+DEFINE_STORE_CHECKED(Accumulator_RowMajor, _SG16, int, int, 2, 16, ROW_MAJOR, , 2, true)
+DEFINE_STORE_CHECKED(Accumulator_RowMajor, _SG16, int, int, 1, 16, ROW_MAJOR, , 1, true)
 
 /* Accumulator store i32 SG16 with transpose */
 DEFINE_STORE(Accumulator_ColumnMajor, _SG16, int, int, 8, 16, COL_MAJOR, , 8, true)
@@ -1140,8 +1291,14 @@ INLINE void __builtin_spriv_OpJointMatrixMadINTEL_32x64x16_bf16_bf16_fp32(__priv
 DEFINE_LOAD(PackedA_RowMajor,     _SG16, short, short, 16, 16, ROW_MAJOR, _us, 16)
 DEFINE_LOAD(PackedA_RowMajor,     _SG16, short, short, 32, 16, ROW_MAJOR, _us, 32)
 
+DEFINE_LOAD_CHECKED(PackedA_RowMajor,     _SG16, short, short, 16, 16, ROW_MAJOR, , 16)
+DEFINE_LOAD_CHECKED(PackedA_RowMajor,     _SG16, short, short, 32, 16, ROW_MAJOR, , 32)
+
 DEFINE_LOAD(Accumulator_RowMajor, _SG16, int,   int,   16, 16, ROW_MAJOR, , 16)
 DEFINE_LOAD(Accumulator_RowMajor, _SG16, int,   int,   32, 16, ROW_MAJOR, , 32)
+
+DEFINE_LOAD_CHECKED(Accumulator_RowMajor, _SG16, int,   int,   16, 16, ROW_MAJOR, , 16)
+DEFINE_LOAD_CHECKED(Accumulator_RowMajor, _SG16, int,   int,   32, 16, ROW_MAJOR, , 32)
 
 // _4 in the name is for 4 2d block loads
 // R_orig is original number of rows before VNNI
@@ -1163,17 +1320,41 @@ DEFINE_LOAD(Accumulator_RowMajor, _SG16, int,   int,   32, 16, ROW_MAJOR, , 32)
       __builtin_spriv_OpJointMatrixLoadINTEL_##layout##_SG16_##R_orig##x16_i##elem_bitwidth##_##WI_rows_per_load##_##address_space##_v8i8_pi32_i32(dst3, mem3, stride, cacheOpt); \
   }
 
+// _4 in the name is for 4 2d block loads
+// R_orig is original number of rows before VNNI
+#define DEFINE_LOAD_CHECKED_LARGE_IMPL_4(layout, elem_type, elem_bitwidth, contrib_type, R_orig, C, shape, WI_rows, WI_rows_per_load) \
+  INLINE void __builtin_spriv_OpJointMatrixLoadCheckedINTEL_##layout##_SG16_##shape##_i##elem_bitwidth##_##WI_rows##_v8i8_pi32_i32(__private char *dst, char *mem, int y, int x, int height, int width, long stride, int cacheOpt) { \
+      __private char *dst0 = dst; \
+      __private char *dst1 = dst + 1 * WI_rows_per_load * (sizeof (contrib_type)); \
+      __private char *dst2 = dst + 2 * WI_rows_per_load * (sizeof (contrib_type)); \
+      __private char *dst3 = dst + 3 * WI_rows_per_load * (sizeof (contrib_type)); \
+      __builtin_spriv_OpJointMatrixLoadCheckedINTEL_##layout##_SG16_##R_orig##x16_i##elem_bitwidth##_##WI_rows_per_load##_v8i8_pi32_i32(dst0, mem, y, x + 0 * 16 * X_OFFSET_MULTIPLIER_##layout(elem_type, contrib_type), height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixLoadCheckedINTEL_##layout##_SG16_##R_orig##x16_i##elem_bitwidth##_##WI_rows_per_load##_v8i8_pi32_i32(dst1, mem, y, x + 1 * 16 * X_OFFSET_MULTIPLIER_##layout(elem_type, contrib_type), height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixLoadCheckedINTEL_##layout##_SG16_##R_orig##x16_i##elem_bitwidth##_##WI_rows_per_load##_v8i8_pi32_i32(dst2, mem, y, x + 2 * 16 * X_OFFSET_MULTIPLIER_##layout(elem_type, contrib_type), height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixLoadCheckedINTEL_##layout##_SG16_##R_orig##x16_i##elem_bitwidth##_##WI_rows_per_load##_v8i8_pi32_i32(dst3, mem, y, x + 3 * 16 * X_OFFSET_MULTIPLIER_##layout(elem_type, contrib_type), height, width, stride, cacheOpt); \
+  }
+
 #define DEFINE_LOAD_LARGE__(layout, elem_type, elem_bitwidth, contrib_type, contrib_bitwidth, R_orig, C, shape, WI_rows, WI_rows_per_load, num_loads) \
   DEFINE_LOAD_LARGE_IMPL_##num_loads(layout, elem_type, elem_bitwidth, contrib_type, R_orig, C, shape, WI_rows, WI_rows_per_load, generic) \
   DEFINE_LOAD_LARGE_IMPL_##num_loads(layout, elem_type, elem_bitwidth, contrib_type, R_orig, C, shape, WI_rows, WI_rows_per_load, global ) \
   DEFINE_LOAD_LARGE_IMPL_##num_loads(layout, elem_type, elem_bitwidth, contrib_type, R_orig, C, shape, WI_rows, WI_rows_per_load, local  )
 
+#define DEFINE_LOAD_CHECKED_LARGE__(layout, elem_type, elem_bitwidth, contrib_type, contrib_bitwidth, R_orig, C, shape, WI_rows, WI_rows_per_load, num_loads) \
+  DEFINE_LOAD_CHECKED_LARGE_IMPL_##num_loads(layout, elem_type, elem_bitwidth, contrib_type, R_orig, C, shape, WI_rows, WI_rows_per_load)
+
 #define DEFINE_LOAD_LARGE(layout, elem_type, contrib_type, R, C, order, WI_rows, num_loads) \
   DEFINE_LOAD_LARGE__(layout, elem_type, BITWIDTH(elem_type), contrib_type, BITWIDTH(contrib_type), R_ORIG(R, elem_type, contrib_type), C, SHAPE(layout, R, C, elem_type, contrib_type), WI_rows, MATH_DIV(WI_rows, num_loads), num_loads)
+
+#define DEFINE_LOAD_CHECKED_LARGE(layout, elem_type, contrib_type, R, C, order, WI_rows, num_loads) \
+  DEFINE_LOAD_CHECKED_LARGE__(layout, elem_type, BITWIDTH(elem_type), contrib_type, BITWIDTH(contrib_type), R_ORIG(R, elem_type, contrib_type), C, SHAPE(layout, R, C, elem_type, contrib_type), WI_rows, MATH_DIV(WI_rows, num_loads), num_loads)
 
 DEFINE_LOAD_LARGE(PackedB_PackedB,    short, int,  8, 128, ROW_MAJOR,  32, 4)
 DEFINE_LOAD_LARGE(PackedB_RowMajor,   short, int,  8, 128, VNNI_TX,    32, 4)
 DEFINE_LOAD_LARGE(Accumulator_RowMajor, int, int, 32,  64, ROW_MAJOR, 128, 4)
+
+DEFINE_LOAD_CHECKED_LARGE(PackedB_PackedB,    short, int,  8, 128, ROW_MAJOR,  32, 4)
+DEFINE_LOAD_CHECKED_LARGE(PackedB_RowMajor,   short, int,  8, 128, VNNI_TX,    32, 4)
+DEFINE_LOAD_CHECKED_LARGE(Accumulator_RowMajor, int, int, 32,  64, ROW_MAJOR, 128, 4)
 
 // _2 suffix in the name indicates that the function is using 2 2d block stores
 // store_height is not used
@@ -1263,24 +1444,100 @@ DEFINE_LOAD_LARGE(Accumulator_RowMajor, int, int, 32,  64, ROW_MAJOR, 128, 4)
       __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_##address_space##_pi64_v8i8(mem15, c15, stride, cacheOpt); \
   }
 
+// _2 suffix in the name indicates that the function is using 2 2d block stores
+// store_height is not used
+#define DEFINE_STORE_CHECKED_LARGE_IMPL_2(layout, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, WI_rows, store_height) \
+    INLINE void MANGLE_STORE_CHECKED_NAME(layout, _SG16, elem_bitwidth, shape, WI_rows) (char *mem, __private char *src, int y, int x, int height, int width, long stride, int cacheOpt) { \
+        __private char *c0 = src + 0 * 8 * (sizeof (contrib_type)); \
+        __private char *c1 = src + 1 * 8 * (sizeof (contrib_type)); \
+        __builtin_spriv_OpJointMatrixStoreCheckedINTEL_##layout##_SG16_8x16_i##elem_bitwidth##_8_pi64_v8i8(mem, c0, y + 0 * 8, x, height, width, stride, cacheOpt); \
+        __builtin_spriv_OpJointMatrixStoreCheckedINTEL_##layout##_SG16_8x16_i##elem_bitwidth##_8_pi64_v8i8(mem, c1, y + 1 * 8, x, height, width, stride, cacheOpt); \
+    }
+
+// _4 suffix in the name indicates that the function is using 4 2d block stores
+// store_height is a height of one store built-in called from the implementation
+#define DEFINE_STORE_CHECKED_LARGE_IMPL_4(layout, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, WI_rows, store_height) \
+    INLINE void MANGLE_STORE_CHECKED_NAME(layout, _SG16, elem_bitwidth, shape, WI_rows) (char *mem, __private char *src, int y, int x, int height, int width, long stride, int cacheOpt) { \
+        __private char *c0 = src + 0 * 8 * (sizeof (contrib_type)); \
+        __private char *c1 = src + 1 * 8 * (sizeof (contrib_type)); \
+        __private char *c2 = src + 2 * 8 * (sizeof (contrib_type)); \
+        __private char *c3 = src + 3 * 8 * (sizeof (contrib_type)); \
+        __builtin_spriv_OpJointMatrixStoreCheckedINTEL_##layout##_SG16_##store_height##x16_i##elem_bitwidth##_8_pi64_v8i8(mem, c0, y + 0 * 8, x, height, width, stride, cacheOpt); \
+        __builtin_spriv_OpJointMatrixStoreCheckedINTEL_##layout##_SG16_##store_height##x16_i##elem_bitwidth##_8_pi64_v8i8(mem, c1, y + 1 * 8, x, height, width, stride, cacheOpt); \
+        __builtin_spriv_OpJointMatrixStoreCheckedINTEL_##layout##_SG16_##store_height##x16_i##elem_bitwidth##_8_pi64_v8i8(mem, c2, y + 2 * 8, x, height, width, stride, cacheOpt); \
+        __builtin_spriv_OpJointMatrixStoreCheckedINTEL_##layout##_SG16_##store_height##x16_i##elem_bitwidth##_8_pi64_v8i8(mem, c3, y + 3 * 8, x, height, width, stride, cacheOpt); \
+    }
+
+#define DEFINE_STORE_CHECKED_LARGE_IMPL_16(layout, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, WI_rows, store_height) \
+  INLINE void MANGLE_STORE_CHECKED_NAME(layout, _SG16, elem_bitwidth, shape, WI_rows) (char *mem, __private char *src, int y, int x, int height, int width, long stride, int cacheOpt) { \
+      __private char *c0 = src + 0 * 8 * (sizeof (int)); \
+      __private char *c1 = src + 1 * 8 * (sizeof (int)); \
+      __private char *c2 = src + 2 * 8 * (sizeof (int)); \
+      __private char *c3 = src + 3 * 8 * (sizeof (int)); \
+      __private char *c4 = src + 4 * 8 * (sizeof (int)); \
+      __private char *c5 = src + 5 * 8 * (sizeof (int)); \
+      __private char *c6 = src + 6 * 8 * (sizeof (int)); \
+      __private char *c7 = src + 7 * 8 * (sizeof (int)); \
+      __private char *c8 = src + 8 * 8 * (sizeof (int)); \
+      __private char *c9 = src + 9 * 8 * (sizeof (int)); \
+      __private char *c10 = src + 10 * 8 * (sizeof (int)); \
+      __private char *c11 = src + 11 * 8 * (sizeof (int)); \
+      __private char *c12 = src + 12 * 8 * (sizeof (int)); \
+      __private char *c13 = src + 13 * 8 * (sizeof (int)); \
+      __private char *c14 = src + 14 * 8 * (sizeof (int)); \
+      __private char *c15 = src + 15 * 8 * (sizeof (int)); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_pi64_v8i8(mem, c0, y + 0 * 8, x + 0 * 16, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_pi64_v8i8(mem, c1, y + 1 * 8, x + 0 * 16, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_pi64_v8i8(mem, c2, y + 2 * 8, x + 0 * 16, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_pi64_v8i8(mem, c3, y + 3 * 8, x + 0 * 16, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_pi64_v8i8(mem, c4, y + 0 * 8, x + 1 * 16, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_pi64_v8i8(mem, c5, y + 1 * 8, x + 1 * 16, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_pi64_v8i8(mem, c6, y + 2 * 8, x + 1 * 16, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_pi64_v8i8(mem, c7, y + 3 * 8, x + 1 * 16, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_pi64_v8i8(mem, c8, y + 0 * 8, x + 2 * 16, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_pi64_v8i8(mem, c9, y + 1 * 8, x + 2 * 16, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_pi64_v8i8(mem, c10, y + 2 * 8, x + 2 * 16, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_pi64_v8i8(mem, c11, y + 3 * 8, x + 2 * 16, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_pi64_v8i8(mem, c12, y + 0 * 8, x + 3 * 16, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_pi64_v8i8(mem, c13, y + 1 * 8, x + 3 * 16, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_pi64_v8i8(mem, c14, y + 2 * 8, x + 3 * 16, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_8x16_i32_8_pi64_v8i8(mem, c15, y + 3 * 8, x + 3 * 16, height, width, stride, cacheOpt); \
+  }
+
 #define DEFINE_STORE_LARGE__(layout, elem_type, elem_bitwidth, contrib_type, contrib_bitwidth, R, C, shape, WI_rows, store_height, num_stores) \
   DEFINE_STORE_LARGE_IMPL_##num_stores(layout, elem_type, elem_bitwidth, contrib_type, contrib_bitwidth, R, C, shape, WI_rows, store_height, generic) \
   DEFINE_STORE_LARGE_IMPL_##num_stores(layout, elem_type, elem_bitwidth, contrib_type, contrib_bitwidth, R, C, shape, WI_rows, store_height, global ) \
   DEFINE_STORE_LARGE_IMPL_##num_stores(layout, elem_type, elem_bitwidth, contrib_type, contrib_bitwidth, R, C, shape, WI_rows, store_height, local  )
 
+#define DEFINE_STORE_CHECKED_LARGE__(layout, elem_type, elem_bitwidth, contrib_type, contrib_bitwidth, R, C, shape, WI_rows, store_height, num_stores) \
+  DEFINE_STORE_CHECKED_LARGE_IMPL_##num_stores(layout, elem_type, elem_bitwidth, contrib_type, contrib_bitwidth, R, C, shape, WI_rows, store_height )
+
 #define DEFINE_STORE_LARGE_(layout, elem_type, elem_bitwidth, contrib_type, contrib_bitwidth, R, C, shape, WI_rows, store_height, num_stores) \
   DEFINE_STORE_LARGE__(layout, elem_type, elem_bitwidth, contrib_type, contrib_bitwidth, R, C, shape, WI_rows, store_height, num_stores)
 
+#define DEFINE_STORE_CHECKED_LARGE_(layout, elem_type, elem_bitwidth, contrib_type, contrib_bitwidth, R, C, shape, WI_rows, store_height, num_stores) \
+  DEFINE_STORE_CHECKED_LARGE__(layout, elem_type, elem_bitwidth, contrib_type, contrib_bitwidth, R, C, shape, WI_rows, store_height, num_stores)
+
 #define DEFINE_STORE_LARGE(layout, elem_type, contrib_type, R, C, order, WI_rows) \
   DEFINE_STORE_LARGE_(layout, elem_type, BITWIDTH(elem_type), contrib_type, BITWIDTH(contrib_type), R, C, SHAPE(layout, R, C, elem_type, contrib_type), WI_rows, SPLIT_STORE_HEIGHT(layout), MATH_DIV(WI_rows, 8))
+
+#define DEFINE_STORE_CHECKED_LARGE(layout, elem_type, contrib_type, R, C, order, WI_rows) \
+  DEFINE_STORE_CHECKED_LARGE_(layout, elem_type, BITWIDTH(elem_type), contrib_type, BITWIDTH(contrib_type), R, C, SHAPE(layout, R, C, elem_type, contrib_type), WI_rows, SPLIT_STORE_HEIGHT(layout), MATH_DIV(WI_rows, 8))
 
 // sub group size 16
 DEFINE_STORE_LARGE(PackedA_RowMajor,     short, short, 16, 16, ROW_MAJOR,  16)
 DEFINE_STORE_LARGE(PackedA_RowMajor,     short, short, 32, 16, ROW_MAJOR,  32)
 DEFINE_STORE_LARGE(PackedB_PackedB,      short, int,   8, 128, ROW_MAJOR,  32)
 
+DEFINE_STORE_CHECKED_LARGE(PackedA_RowMajor,     short, short, 16, 16, ROW_MAJOR,  16)
+DEFINE_STORE_CHECKED_LARGE(PackedA_RowMajor,     short, short, 32, 16, ROW_MAJOR,  32)
+DEFINE_STORE_CHECKED_LARGE(PackedB_PackedB,      short, int,   8, 128, ROW_MAJOR,  32)
+
 DEFINE_STORE_LARGE(Accumulator_RowMajor, int,   int,   16, 16, ROW_MAJOR,  16)
 DEFINE_STORE_LARGE(Accumulator_RowMajor, int,   int,   32, 64, ROW_MAJOR, 128)
+
+DEFINE_STORE_CHECKED_LARGE(Accumulator_RowMajor, int,   int,   16, 16, ROW_MAJOR,  16)
+DEFINE_STORE_CHECKED_LARGE(Accumulator_RowMajor, int,   int,   32, 64, ROW_MAJOR, 128)
 
 // special case for 1x64 C load and store
 // Joint Matrices are expected to be contiguous in memory, without padding at the end of a row
@@ -1319,6 +1576,17 @@ DEFINE_STORE_LARGE(Accumulator_RowMajor, int,   int,   32, 64, ROW_MAJOR, 128)
     for (int i = 0; i < 4; i++) \
       wi_contrib[i] = ptr[i*16 + slid];
 
+#define DEFINE_LOAD_CHECKED_LARGE_BLOCK2D_IMPL_1() \
+    /* load 1x64 as 4 loads 1x16 */ \
+    __private char *dst0 = dst + 0 * 1 * sizeof(int); \
+    __private char *dst1 = dst + 1 * 1 * sizeof(int); \
+    __private char *dst2 = dst + 2 * 1 * sizeof(int); \
+    __private char *dst3 = dst + 3 * 1 * sizeof(int); \
+    __builtin_spriv_OpJointMatrixLoadCheckedINTEL_Accumulator_RowMajor_SG16_1x16_i32_1_v8i8_pi32_i32(dst0, mem, y, x + 0 * 16, height, width, stride, cacheOpt); \
+    __builtin_spriv_OpJointMatrixLoadCheckedINTEL_Accumulator_RowMajor_SG16_1x16_i32_1_v8i8_pi32_i32(dst1, mem, y, x + 1 * 16, height, width, stride, cacheOpt); \
+    __builtin_spriv_OpJointMatrixLoadCheckedINTEL_Accumulator_RowMajor_SG16_1x16_i32_1_v8i8_pi32_i32(dst2, mem, y, x + 2 * 16, height, width, stride, cacheOpt); \
+    __builtin_spriv_OpJointMatrixLoadCheckedINTEL_Accumulator_RowMajor_SG16_1x16_i32_1_v8i8_pi32_i32(dst3, mem, y, x + 3 * 16, height, width, stride, cacheOpt);
+
 #define DEFINE_LOAD_LARGE_1_IMPL_AS_GENERIC() \
     INLINE void __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_1x64_i32_4_generic_v8i8_pi32_i32(__private char *dst, char *mem, long stride, int cacheOpt) { \
         __builtin_assume((__global char*)mem != 0); \
@@ -1342,13 +1610,22 @@ DEFINE_STORE_LARGE(Accumulator_RowMajor, int,   int,   32, 64, ROW_MAJOR, 128)
         DEFINE_LOAD_LARGE_VECTORS_IMPL_1(global) \
         DEFINE_LOAD_LARGE_SCALAR_IMPL_1() \
     }
+#define DEFINE_LOAD_CHECKED_LARGE_1_IMPL() \
+    INLINE void __builtin_spriv_OpJointMatrixLoadCheckedINTEL_Accumulator_RowMajor_SG16_1x64_i32_4_v8i8_pi32_i32(__private char *dst, char *mem, int y, int x, int height, int width, long stride, int cacheOpt) { \
+        DEFINE_LOAD_CHECKED_LARGE_BLOCK2D_IMPL_1() \
+    }
 
 #define DEFINE_LOAD_LARGE_1(layout, M, K) \
     DEFINE_LOAD_LARGE_1_IMPL_AS_GENERIC() \
     DEFINE_LOAD_LARGE_1_IMPL_AS_LOCAL() \
     DEFINE_LOAD_LARGE_1_IMPL_AS_GLOBAL()
 
+#define DEFINE_LOAD_CHECKED_LARGE_1(layout, M, K) \
+    DEFINE_LOAD_CHECKED_LARGE_1_IMPL()
+
 DEFINE_LOAD_LARGE_1(Accumulator_RowMajor, 1, 64)
+
+DEFINE_LOAD_CHECKED_LARGE_1(Accumulator_RowMajor, 1, 64)
 
 #define DEFINE_STORE_LARGE_BLOCK2D_IMPL_1() \
     if (BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= BLOCK2D_IMPL) { \
@@ -1385,6 +1662,17 @@ DEFINE_LOAD_LARGE_1(Accumulator_RowMajor, 1, 64)
     for (int i = 0; i < 4; i++) \
       ptr[i*16 + slid] = slice[i];
 
+#define DEFINE_STORE_CHECKED_LARGE_BLOCK2D_IMPL_1() \
+    /* store 1x64 as 4 stores 1x16 */ \
+    __private char *c0 = src + 0 * 1 * (sizeof (int)); \
+    __private char *c1 = src + 1 * 1 * (sizeof (int)); \
+    __private char *c2 = src + 2 * 1 * (sizeof (int)); \
+    __private char *c3 = src + 3 * 1 * (sizeof (int)); \
+    __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_1x16_i32_1_pi64_v8i8(mem, c0, y, x + 0 * 16, height, width, stride, cacheOpt); \
+    __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_1x16_i32_1_pi64_v8i8(mem, c1, y, x + 1 * 16, height, width, stride, cacheOpt); \
+    __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_1x16_i32_1_pi64_v8i8(mem, c2, y, x + 2 * 16, height, width, stride, cacheOpt); \
+    __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_1x16_i32_1_pi64_v8i8(mem, c3, y, x + 3 * 16, height, width, stride, cacheOpt);
+
 #define DEFINE_STORE_LARGE_1_IMPL_AS_GENERIC() \
     INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_1x64_i32_4_generic_pi64_v8i8(char *mem, __private char *src, long stride, int cacheOpt) { \
         __builtin_assume((__global char*)mem != 0); \
@@ -1409,9 +1697,49 @@ DEFINE_LOAD_LARGE_1(Accumulator_RowMajor, 1, 64)
         DEFINE_STORE_LARGE_SCALAR_IMPL_1() \
     }
 
+#define DEFINE_STORE_CHECKED_LARGE_1_IMPL() \
+    INLINE void __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_1x64_i32_4_pi64_v8i8(char *mem, __private char *src, int y, int x, int height, int width, long stride, int cacheOpt) { \
+        DEFINE_STORE_CHECKED_LARGE_BLOCK2D_IMPL_1() \
+    }
+
 #define DEFINE_STORE_LARGE_1(layout, M, K) \
     DEFINE_STORE_LARGE_1_IMPL_AS_GENERIC() \
     DEFINE_STORE_LARGE_1_IMPL_AS_LOCAL() \
     DEFINE_STORE_LARGE_1_IMPL_AS_GLOBAL()
 
+#define DEFINE_STORE_CHECKED_LARGE_1(layout, M, K) \
+    DEFINE_STORE_CHECKED_LARGE_1_IMPL()
+
 DEFINE_STORE_LARGE_1(Accumulator_RowMajor, 1, 64)
+
+DEFINE_STORE_CHECKED_LARGE_1(Accumulator_RowMajor, 1, 64)
+
+#define DEFINE_FILLCHECKED_IMPL(element_type, elem_bitwidth, WI_rows) \
+  INLINE void MANGLE_FILLCHECKED_NAME(elem_bitwidth, WI_rows) (__private char *dst, int y, int x, int height, int width, element_type value) { \
+    int slid = get_sub_group_local_id(); \
+    __private element_type *wi_contrib = (__private element_type *) dst; \
+    for (int i = 0; i < WI_rows; i++) { \
+        element_type fill_value = ((slid < width - x) && (i < height - y)) ? value : 0; \
+        wi_contrib[i] = fill_value; \
+    } \
+}
+
+#define DEFINE_FILLCHECKED__(element_type, elem_bitwidth, WI_rows) \
+  DEFINE_FILLCHECKED_IMPL(element_type, elem_bitwidth, WI_rows)
+
+#define DEFINE_FILLCHECKED(element_type, WI_rows) \
+  DEFINE_FILLCHECKED__(element_type, BITWIDTH(element_type), WI_rows)
+
+#define DEFINE_FILLCHECKED_GROUP(element_type) \
+    DEFINE_FILLCHECKED(element_type, 1) \
+    DEFINE_FILLCHECKED(element_type, 2) \
+    DEFINE_FILLCHECKED(element_type, 4) \
+    DEFINE_FILLCHECKED(element_type, 8) \
+    DEFINE_FILLCHECKED(element_type, 16) \
+    DEFINE_FILLCHECKED(element_type, 32) \
+    DEFINE_FILLCHECKED(element_type, 64) \
+    DEFINE_FILLCHECKED(element_type, 128)
+
+DEFINE_FILLCHECKED_GROUP(char)
+DEFINE_FILLCHECKED_GROUP(short)
+DEFINE_FILLCHECKED_GROUP(int)

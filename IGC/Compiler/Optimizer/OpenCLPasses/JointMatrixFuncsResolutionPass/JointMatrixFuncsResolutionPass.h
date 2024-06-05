@@ -53,13 +53,14 @@ namespace IGC
 
     private:
         llvm::Instruction *ResolvePrefetch(llvm::CallInst *CI);
-        template <bool IsJointMatrix>
+        template <bool IsJointMatrix, bool isChecked>
         llvm::Instruction *ResolveLoad(llvm::CallInst *CI);
-        template <bool IsJointMatrix>
+        template <bool IsJointMatrix, bool IsChecked>
         llvm::Instruction *ResolveStore(llvm::CallInst *CI);
         llvm::Instruction *ResolveMad(llvm::CallInst *CI, unsigned OperationType);
         int getSliceSize(const JointMatrixTypeDescription *desc);
         llvm::Value *ResolveFill(llvm::CallInst *CI);
+        llvm::Instruction *ResolveFillChecked(llvm::CallInst *CI);
         llvm::Value *ResolveWILength(llvm::CallInst *CI);
         llvm::Value *ResolveSliceInsert(llvm::CallInst *CI);
         llvm::Value *ResolveSliceExtract(llvm::CallInst *CI);
@@ -87,6 +88,8 @@ namespace IGC
             Prefetch,
             Load,
             Store,
+            LoadChecked,
+            StoreChecked,
         };
         std::string GetMatrixFuncName(GetMatrixFuncNameOperation operation,
                                       unsigned operationLayout,
@@ -96,6 +99,9 @@ namespace IGC
 
         bool ValidateLoadStore
             (bool isLoad, unsigned operationLayout, const JointMatrixTypeDescription *desc, llvm::Value *ctx);
+
+        void Validate2DBlockLoadStore
+            (GetMatrixFuncNameOperation operation, unsigned operationLayout, unsigned address_space, const JointMatrixTypeDescription *desc, llvm::Value *ctx);
 
         // SIMD Size helpers
         llvm::Function *getEntryFunction(llvm::Function *F);

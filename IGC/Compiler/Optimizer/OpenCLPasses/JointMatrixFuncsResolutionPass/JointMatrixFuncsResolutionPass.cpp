@@ -57,12 +57,15 @@ static const char *JointMatrixBIPrefix = "__builtin_spirv_OpJointMatrix";
 static const char *JointMatrixBISuffix = "JointMatrixINTEL_";
 static const char *JointMatrixPrefetchPrefx = "CooperativeMatrixPrefetch";
 static const char *JointMatrixLoadPrefx  = "JointMatrixLoadINTEL";
+static const char *JointMatrixLoadCheckedPrefx = "CooperativeMatrixLoadCheckedINTEL";
 static const char *JointMatrixStorePrefx = "JointMatrixStoreINTEL";
+static const char *JointMatrixStoreCheckedPrefx = "CooperativeMatrixStoreCheckedINTEL";
 static const char *JointMatrixMadPrefx   = "JointMatrixMadINTEL";
 static const char *JointMatrixSUMadPrefx = "JointMatrixSUMadINTEL";
 static const char *JointMatrixUSMadPrefx = "JointMatrixUSMadINTEL";
 static const char *JointMatrixUUMadPrefx = "JointMatrixUUMadINTEL";
 static const char *JointMatrixFillPrefx  = "CompositeConstruct";
+static const char *JointMatrixFillCheckedPrefx  = "CooperativeMatrixConstructCheckedINTEL";
 static const char *JointMatrixWorkItemLengthPrefx = "JointMatrixWorkItemLengthINTEL";
 static const char *JointMatrixSliceInsert  = "VectorInsertDynamic";
 static const char *JointMatrixSliceExtract = "VectorExtractDynamic";
@@ -330,6 +333,19 @@ enum Op {
 };
 } // Load
 
+namespace LoadChecked {
+enum Op {
+  Pointer     = 0,
+  Y           = 1,
+  X           = 2,
+  Layout      = 3,
+  Height      = 4,
+  Width       = 5,
+  Stride      = 6,
+  MemOperand  = 7
+};
+} // LoadChecked
+
 namespace Store {
 enum Op {
   Pointer     = 0,
@@ -339,6 +355,36 @@ enum Op {
   MemOperand  = 4
 };
 } // Store
+
+namespace StoreChecked {
+enum Op {
+  Pointer     = 0,
+  Y           = 1,
+  X           = 2,
+  Matrix      = 3,
+  Layout      = 4,
+  Height      = 5,
+  Width       = 6,
+  Stride      = 7,
+  MemOperand  = 8
+};
+} // StoreChecked
+
+namespace Construct {
+enum Op {
+  Value       = 0,
+};
+} // Construct
+
+namespace ConstructChecked {
+enum Op {
+  Y           = 0,
+  X           = 1,
+  Height      = 2,
+  Width       = 3,
+  Value       = 4,
+};
+} // ConstructChecked
 } // JointMatrix
 
 // See https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/KHR/SPV_KHR_cooperative_matrix.asciidoc
@@ -513,8 +559,6 @@ static bool isSupprtedLargeSlice(const JointMatrixTypeDescription *desc, bool us
     }
 
     if (desc->layout == LayoutPackedB) {
-        if (desc->rows == 16 && desc->columns == 16 && desc->bitWidth == 16)
-            return true;
         if (desc->rows == 16 && desc->columns == 64 && desc->bitWidth == 16)
             return true;
     }
@@ -593,6 +637,96 @@ bool JointMatrixFuncsResolutionPass::ValidateLoadStore
     return result == ALL_VALID;
 }
 
+static void AppendSetToString(std::string& msg, const std::set<unsigned>& numbers)
+{
+    bool first = true;
+    for (unsigned n: numbers) {
+        if (!first) msg += ", ";
+        msg += std::to_string(n);
+        first = false;
+    }
+}
+
+void JointMatrixFuncsResolutionPass::Validate2DBlockLoadStore(GetMatrixFuncNameOperation operation, unsigned operationLayout, unsigned address_space, const JointMatrixTypeDescription *desc, Value *ctx) {
+    std::string operationName;
+    if (operation == LoadChecked) {
+        operationName = "checked load";
+    } else if (operation == StoreChecked) {
+        operationName = "checked store";
+    } else {
+        operationName = "prefetch";
+    }
+    if (IGC_GET_FLAG_VALUE(JointMatrixLoadStoreOpt) < 3) {
+        std::string msg = "Matrix " + operationName + " requires Joint Matrix load/store flag (JointMatrixLoadStoreOpt) to be set to 3.";
+        m_Ctx->EmitError(msg.c_str(), ctx);
+    }
+    if (address_space != ADDRESS_SPACE_GENERIC &&
+        address_space != ADDRESS_SPACE_GLOBAL) {
+        std::string msg = "Unsupported address space. Matrix " + operationName + " supports generic and global pointers.";
+        m_Ctx->EmitError(msg.c_str(), ctx);
+    }
+    if (!m_Ctx->platform.hasExecSize16DPAS()) {
+        std::string msg = "SYCL Joint Matrix " + operationName + " API is not supported on targeted GPU device.";
+        m_Ctx->EmitError(msg.c_str(), ctx);
+    }
+    if ((operation == LoadChecked || operation == StoreChecked) && isSupprtedLargeSlice(desc, true)) {
+        return;
+    }
+
+    std::set<unsigned> supported_rows = { 1, 2, 4, 8, 16, 32 };
+    std::set<unsigned> supported_cols = { 8, 16, 32, 64 };
+    if (supported_rows.find(desc->rows) == supported_rows.end()) {
+        std::string msg = "Unsupported row parameter for matrix " + operationName + ": " +
+            std::to_string(desc->rows) + ". Supported values: ";
+        AppendSetToString(msg, supported_rows);
+        msg += ".";
+        m_Ctx->EmitError(msg.c_str(), ctx);
+    }
+    if (supported_cols.find(desc->columns) == supported_cols.end()) {
+        std::string msg = "Unsupported column parameter for matrix " + operationName + ": " +
+            std::to_string(desc->columns)  + ". Supported values: ";
+        AppendSetToString(msg, supported_cols);
+        msg += ".";
+        m_Ctx->EmitError(msg.c_str(), ctx);
+    }
+    if (operation == LoadChecked || operation == Prefetch) {
+        unsigned elemBytes = desc->bitWidth/8;
+        unsigned perRowBytes = desc->columns * elemBytes;
+        bool supported = (perRowBytes <= 64);
+
+        if (!supported) {
+            std::string msg = "Matrix " + operationName + " size limit exceeded. "
+                "(columns * dataSize) has to be (equal or less than 64B)";
+            msg += ".\nLimit exceeded with values: " + std::to_string(desc->columns) +
+                " * " + std::to_string(elemBytes) + "B = " + std::to_string(perRowBytes) + "B";
+            m_Ctx->EmitError(msg.c_str(), ctx);
+        }
+    }
+
+    if (operation == LoadChecked) {
+        if (m_SIMDSize == 32 && !(operationLayout == LayoutRowMajor && desc->bitWidth == 32 && desc->columns == 16)) {
+            std::string msg = "Unsupported parameters for matrix " + operationName + " with SIMD size 32, layout: " + std::to_string(operationLayout) +
+                              ", element size: " + std::to_string(desc->bitWidth) + ", number of columns: " + std::to_string(desc->columns) + ".";
+            m_Ctx->EmitError(msg.c_str(), ctx);
+        }
+    }
+    if (operation == StoreChecked) {
+        if (m_SIMDSize == 32) {
+            std::string msg = "Matrix " + operationName + " is not supported for SIMD size 32.";
+            m_Ctx->EmitError(msg.c_str(), ctx);
+        }
+        if (operationLayout == LayoutColumnMajor) {
+            std::string msg = "Matrix " + operationName + " is not supported for ColumnMajor layout.";
+            m_Ctx->EmitError(msg.c_str(), ctx);
+        }
+        if (getNumRowsPerWI(desc) < desc->rows) {
+            std::string msg = "Unsupported matrix size for " + operationName + ", element size: " + std::to_string(desc->bitWidth)
+             + ", number of rows: " + std::to_string(desc->rows) + ", number of columns: " + std::to_string(desc->columns) + ".";
+            m_Ctx->EmitError(msg.c_str(), ctx);
+        }
+    }
+}
+
 std::string JointMatrixFuncsResolutionPass::GetMatrixFuncName(
     GetMatrixFuncNameOperation operation, unsigned operationLayout,
     unsigned address_space, const JointMatrixTypeDescription *desc,
@@ -601,7 +735,7 @@ std::string JointMatrixFuncsResolutionPass::GetMatrixFuncName(
     /* Treat row major matrices with types not supported by accumulators as
      * PackedA matrices. Both are in row major format. */
     unsigned matrixLayout = desc->layout;
-    if (operation == Load && matrixLayout == LayoutRowMajor &&
+    if ((operation == Load || operation == LoadChecked) && matrixLayout == LayoutRowMajor &&
         desc->bitWidth <= 16) {
         matrixLayout = LayoutPackedA;
     }
@@ -673,18 +807,20 @@ std::string JointMatrixFuncsResolutionPass::GetMatrixFuncName(
 
     name += "_" + std::to_string(getNumRowsPerWI(desc));
 
-    // Continue mangling for load and store
-    if (address_space == ADDRESS_SPACE_GLOBAL) {
-        name += "_global";
-    } else if (address_space == ADDRESS_SPACE_LOCAL) {
-        name += "_local";
-    } else {
-        name += "_generic";
+    // Checked load/store is available only for global address space. Generic address space is accepted and assumed global.
+    if (operation != LoadChecked && operation != StoreChecked) {
+        if (address_space == ADDRESS_SPACE_GLOBAL) {
+            name += "_global";
+        } else if (address_space == ADDRESS_SPACE_LOCAL) {
+            name += "_local";
+        } else {
+            name += "_generic";
+        }
     }
 
-    if (operation == Load) {
+    if (operation == Load || operation == LoadChecked) {
         name += "_v8i8_pi32_i32";
-    } else if (operation == Store) {
+    } else if (operation == Store || operation == StoreChecked) {
         name += "_pi64_v8i8";
     }
     return name;
@@ -1065,16 +1201,6 @@ static int resolveCacheControlDecorations(CodeGenContext *ctx, Value *pointerVal
     return 0;
 }
 
-static void AppendSetToString(std::string& msg, const std::set<unsigned>& numbers)
-{
-    bool first = true;
-    for (unsigned n: numbers) {
-        if (!first) msg += ", ";
-        msg += std::to_string(n);
-        first = false;
-    }
-}
-
 Instruction *JointMatrixFuncsResolutionPass::ResolvePrefetch(CallInst *CI)
 {
     Value *ptrVal        = CI->getArgOperand(0);
@@ -1129,48 +1255,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolvePrefetch(CallInst *CI)
     unsigned address_space = ptrVal->getType()->getPointerAddressSpace();
 
     // Prefetch validation
-    {
-        if (m_SIMDSize < 16) {
-            m_Ctx->EmitError("Matrix prefetch requires SIMD size to be 16 or higher", CI);
-        }
-
-        if (address_space != ADDRESS_SPACE_GENERIC &&
-            address_space != ADDRESS_SPACE_GLOBAL)
-        {
-            m_Ctx->EmitError("Unsupported address space. Matrix prefetch supports generic and global pointers", ptrVal);
-        }
-
-        std::set<unsigned> supported_rows = { 1, 2, 4, 8, 16, 32 };
-        std::set<unsigned> supported_cols = { 8, 16, 32, 64 };
-
-        if (supported_rows.find(desc.rows) == supported_rows.end()) {
-            std::string msg = "Unsupported row parameter for matrix prefetch: " +
-                std::to_string(desc.rows) + ". Supported values: ";
-            AppendSetToString(msg, supported_rows);
-            msg += ".";
-            m_Ctx->EmitError(msg.c_str(), numRowsVal);
-        }
-
-        if (supported_cols.find(desc.columns) == supported_cols.end()) {
-            std::string msg = "Unsupported column parameter for matrix prefetch: "
-                + std::to_string(desc.columns)  + ". Supported values: ";
-            AppendSetToString(msg, supported_cols);
-            msg += ".";
-            m_Ctx->EmitError(msg.c_str(), numColsVal);
-        }
-
-        unsigned elemBytes = desc.bitWidth/8;
-        unsigned perRowBytes = desc.columns * elemBytes;
-        bool supported = (perRowBytes <= 64);
-
-        if (!supported) {
-            std::string msg = "Matrix prefetch size limit exceeded. "
-                "(columns * dataSize) has to be (equal or less than 64B)";
-            msg += ".\nLimit exceeded with values: " + std::to_string(desc.columns) +
-                " * " + std::to_string(elemBytes) + "B = " + std::to_string(perRowBytes) + "B";
-            m_Ctx->EmitError(msg.c_str(), ptrVal);
-        }
-    }
+    Validate2DBlockLoadStore(Prefetch, loadLayout, address_space, &desc, CI);
 
     std::string funcName = GetMatrixFuncName(Prefetch, loadLayout, address_space, &desc,
         "__builtin_spriv_OpJointMatrixPrefetchINTEL_");
@@ -1188,12 +1273,12 @@ Instruction *JointMatrixFuncsResolutionPass::ResolvePrefetch(CallInst *CI)
     return newCall;
 }
 
-template <bool IsJointMatrix>
+template <bool IsJointMatrix, bool IsChecked>
 Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
 {
-    using OpVariant = typename
-        std::conditional<IsJointMatrix, JointMatrix::Load::Op,
-                         CoopMatrix::Load::Op>::type;
+    using OpVariant = typename std::conditional_t<IsJointMatrix,
+        std::conditional_t<IsChecked, JointMatrix::LoadChecked::Op, JointMatrix::Load::Op>,
+        CoopMatrix::Load::Op>;
     Value *ptrVal        = CI->getArgOperand(OpVariant::Pointer);
     Value *strideVal     = CI->getArgOperand(OpVariant::Stride);
     unsigned loadLayout  = (unsigned) constIntValue(CI->getArgOperand(OpVariant::Layout));
@@ -1210,10 +1295,9 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
     unsigned address_space = ptrVal->getType()->getPointerAddressSpace();
 
     ValidateLoadStore(true, loadLayout, &desc, CI);
-    std::string funcName =
-        GetMatrixFuncName(Load, loadLayout, address_space, &desc,
-                          "__builtin_spriv_OpJointMatrixLoadINTEL_");
-    FunctionType *funcType = FunctionType::get(retTy, { arrayTy, ptrVal->getType(), strideVal->getType(), Type::getInt32Ty(ctx) }, false);
+    if constexpr(IsChecked) {
+        Validate2DBlockLoadStore(LoadChecked, loadLayout, address_space, &desc, CI);
+    }
 
     InstsToErase.insert(CI);
 
@@ -1226,7 +1310,24 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
     Value *dst = builder.CreateBitCast(sliceArray, arrayTy);
     Value *cacheOpt = builder.getInt32(resolveCacheControlDecorations<LoadCacheControl>(m_Ctx, ptrVal));
 
-    std::vector<Value *> Args = { dst, ptrVal, strideVal, cacheOpt };
+    std::string instructionName = IsChecked ? "__builtin_spriv_OpJointMatrixLoadCheckedINTEL_" : "__builtin_spriv_OpJointMatrixLoadINTEL_";
+    std::string funcName =
+        GetMatrixFuncName(IsChecked ? LoadChecked : Load, loadLayout, address_space, &desc,
+                          instructionName);
+    FunctionType *funcType;
+    std::vector<Value *> Args;
+    if constexpr(IsChecked) {
+        Value *yVal = CI->getArgOperand(OpVariant::Y);
+        Value *xVal = CI->getArgOperand(OpVariant::X);
+        Value *heightVal = CI->getArgOperand(OpVariant::Height);
+        Value *widthVal = CI->getArgOperand(OpVariant::Width);
+        funcType = FunctionType::get(retTy, { arrayTy, ptrVal->getType(), yVal->getType(), xVal->getType(),
+            heightVal->getType(), widthVal->getType(), strideVal->getType(), Type::getInt32Ty(ctx) }, false);
+        Args = { dst, ptrVal, yVal, xVal, heightVal, widthVal, strideVal, cacheOpt };
+    } else {
+        funcType = FunctionType::get(retTy, { arrayTy, ptrVal->getType(), strideVal->getType(), cacheOpt->getType() }, false);
+        Args = { dst, ptrVal, strideVal, cacheOpt };
+    }
     Instruction *newCall = builder.CreateCall(M->getOrInsertFunction(funcName, funcType), Args);
     newCall->setDebugLoc(CI->getDebugLoc());
 
@@ -1235,12 +1336,12 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
     return newCall;
 }
 
-template <bool IsJointMatrix>
+template <bool IsJointMatrix, bool IsChecked>
 Instruction *JointMatrixFuncsResolutionPass::ResolveStore(CallInst *CI)
 {
-    using OpVariant = typename
-        std::conditional<IsJointMatrix, JointMatrix::Store::Op,
-                         CoopMatrix::Store::Op>::type;
+    using OpVariant = typename std::conditional_t<IsJointMatrix,
+        std::conditional_t<IsChecked, JointMatrix::StoreChecked::Op, JointMatrix::Store::Op>,
+        CoopMatrix::Store::Op>;
     Value *ptrVal        = CI->getArgOperand(OpVariant::Pointer);
     Value *matrixVal     = CI->getArgOperand(OpVariant::Matrix);
     Value *strideVal     = CI->getArgOperand(OpVariant::Stride);
@@ -1262,12 +1363,9 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveStore(CallInst *CI)
     unsigned address_space = ptrVal->getType()->getPointerAddressSpace();
 
     ValidateLoadStore(false, storeLayout, &desc, CI);
-    std::string funcName =
-        GetMatrixFuncName(Store, storeLayout, address_space, &desc,
-                          "__builtin_spriv_OpJointMatrixStoreINTEL_");
-    FunctionType *funcType =
-        FunctionType::get(Type::getVoidTy(M->getContext()),
-            { ptrVal->getType(), arrayTy, strideVal->getType(), Type::getInt32Ty(ctx) }, false);
+    if constexpr(IsChecked) {
+        Validate2DBlockLoadStore(StoreChecked, storeLayout, address_space, &desc, CI);
+    }
 
     InstsToErase.insert(CI);
 
@@ -1281,7 +1379,24 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveStore(CallInst *CI)
     Value *src = builder.CreateBitCast(sliceArray, arrayTy);
     Value *cacheOpt = builder.getInt32(resolveCacheControlDecorations<StoreCacheControl>(m_Ctx, ptrVal));
 
-    std::vector<Value *> Args = { ptrVal, src, strideVal, cacheOpt };
+    std::string instructionName = IsChecked ? "__builtin_spriv_OpJointMatrixStoreCheckedINTEL_" : "__builtin_spriv_OpJointMatrixStoreINTEL_";
+    std::string funcName =
+        GetMatrixFuncName(IsChecked ? StoreChecked : Store, storeLayout, address_space, &desc,
+                          instructionName);
+    FunctionType *funcType;
+    std::vector<Value *> Args;
+    if constexpr(IsChecked) {
+        Value *yVal = CI->getArgOperand(OpVariant::Y);
+        Value *xVal = CI->getArgOperand(OpVariant::X);
+        Value *heightVal = CI->getArgOperand(OpVariant::Height);
+        Value *widthVal = CI->getArgOperand(OpVariant::Width);
+        funcType = FunctionType::get(Type::getVoidTy(M->getContext()), { ptrVal->getType(), arrayTy, yVal->getType(),
+            xVal->getType(), heightVal->getType(), widthVal->getType(), strideVal->getType(), Type::getInt32Ty(ctx) }, false);
+        Args = { ptrVal, src, yVal, xVal, heightVal, widthVal, strideVal, cacheOpt };
+    } else {
+        funcType = FunctionType::get(Type::getVoidTy(M->getContext()), { ptrVal->getType(), arrayTy, strideVal->getType(), cacheOpt->getType() }, false);
+        Args = { ptrVal, src, strideVal, cacheOpt };
+    }
     Instruction *newCall = CallInst::Create(M->getOrInsertFunction(funcName, funcType), Args, "", CI);
     newCall->setDebugLoc(CI->getDebugLoc());
     return newCall;
@@ -1542,7 +1657,7 @@ static Value *packFillValue(BuilderT *Builder, Value *V, IntegerType *TargetType
 
 Value *JointMatrixFuncsResolutionPass::ResolveFill(CallInst *CI) {
     IRBuilder builder(CI);
-    Value *fillValue = CI->getArgOperand(0);
+    Value *fillValue = CI->getArgOperand(JointMatrix::Construct::Op::Value);
 
     JointMatrixTypeDescription desc;
     Type *matTy = ResolveType(CI->getType(), &desc);
@@ -1590,6 +1705,47 @@ Value *JointMatrixFuncsResolutionPass::ResolveFill(CallInst *CI) {
 
     InstsToErase.insert(CI);
     return slice;
+}
+
+Instruction *JointMatrixFuncsResolutionPass::ResolveFillChecked(CallInst *CI)
+{
+    Value *fillValue = CI->getArgOperand(JointMatrix::ConstructChecked::Op::Value);
+    Value *xVal = CI->getArgOperand(JointMatrix::ConstructChecked::Op::X);
+    Value *yVal = CI->getArgOperand(JointMatrix::ConstructChecked::Op::Y);
+    Value *heightVal = CI->getArgOperand(JointMatrix::ConstructChecked::Op::Height);
+    Value *widthVal = CI->getArgOperand(JointMatrix::ConstructChecked::Op::Width);
+
+    JointMatrixTypeDescription desc;
+    Type *matTy = ResolveType(CI->getType(), &desc);
+    LLVMContext &ctx = CI->getContext();
+    Type *retTy = Type::getVoidTy(ctx);
+    Type *arrayTy = Type::getInt8PtrTy(ctx, ADDRESS_SPACE_PRIVATE);
+
+    Module *M = CI->getParent()->getModule();
+
+    InstsToErase.insert(CI);
+
+    // Create alloca in the entry node of the function
+    IRBuilder<> builder(&*CI->getFunction()->getEntryBlock().getFirstInsertionPt());
+    builder.SetCurrentDebugLocation(CI->getDebugLoc());
+    Value *sliceArray = builder.CreateAlloca(matTy, ADDRESS_SPACE_PRIVATE);
+
+    builder.SetInsertPoint(CI);
+    Value *dst = builder.CreateBitCast(sliceArray, arrayTy);
+    /* Cast floating types to integer types of the same size. This allows to
+     * have a single set of store builtins for floats and integer */
+    Value *fillValueCast = builder.CreateBitCast(fillValue, Type::getIntNTy(builder.getContext(), desc.bitWidth));
+
+    std::string funcName = "__builtin_spriv_OpJointMatrixFillCheckedINTEL_i" + std::to_string(desc.bitWidth) + "_" + std::to_string(getNumRowsPerWI(&desc));
+    FunctionType *funcType = FunctionType::get(retTy, { arrayTy, yVal->getType(), xVal->getType(),
+            heightVal->getType(), widthVal->getType(), fillValueCast->getType() }, false);
+    std::vector<Value *> Args = { dst, yVal, xVal, heightVal, widthVal, fillValueCast };
+
+    Instruction *newCall = CallInst::Create(M->getOrInsertFunction(funcName, funcType), Args, "", CI);
+    newCall->setDebugLoc(CI->getDebugLoc());
+    newCall = loadSlice(&builder, matTy, sliceArray);
+
+    return newCall;
 }
 
 Value *JointMatrixFuncsResolutionPass::ResolveWILength(CallInst *CI) {
@@ -1906,16 +2062,22 @@ Value *JointMatrixFuncsResolutionPass::ResolveCall(CallInst *CI) {
         NewValue = ResolvePrefetch(CI);
     } else if (funcName.contains(JointMatrixLoadPrefx)) {
         InsertPlaceholder(CI);
-        NewValue = ResolveLoad</*isJointMatrix*/ true>(CI);
+        NewValue = ResolveLoad</*isJointMatrix*/ true, /*isChecked*/ false>(CI);
+    } else if (funcName.contains(JointMatrixLoadCheckedPrefx)) {
+        InsertPlaceholder(CI);
+        NewValue = ResolveLoad</*isJointMatrix*/ true,/*isChecked*/ true>(CI);
     } else if (funcName.contains(CooperativeMatrixLoadPrefx)) {
         InsertPlaceholder(CI);
-        NewValue = ResolveLoad</*isJointMatrix*/ false>(CI);
+        NewValue = ResolveLoad</*isJointMatrix*/ false,/*isChecked*/ false>(CI);
     } else if (funcName.contains(JointMatrixStorePrefx)) {
         InsertPlaceholder(CI);
-        NewValue = ResolveStore</*isJointMatrix*/ true>(CI);
-    } else if (funcName.contains(CooperativeMatrixStorePrefx)) {
+        NewValue = ResolveStore</*isJointMatrix*/ true,/*isChecked*/ false>(CI);
+    } else if (funcName.contains(JointMatrixStoreCheckedPrefx)) {
         InsertPlaceholder(CI);
-        NewValue = ResolveStore</*isJointMatrix*/ false>(CI);
+        NewValue = ResolveStore</*isJointMatrix*/ true,/*isChecked*/ true>(CI);
+    }  else if (funcName.contains(CooperativeMatrixStorePrefx)) {
+        InsertPlaceholder(CI);
+        NewValue = ResolveStore</*isJointMatrix*/ false,/*isChecked*/ false>(CI);
     } else if (funcName.contains(JointMatrixMadPrefx)) {
         InsertPlaceholder(CI);
         NewValue = ResolveMad(CI, MadOpSS);
@@ -1934,6 +2096,9 @@ Value *JointMatrixFuncsResolutionPass::ResolveCall(CallInst *CI) {
     } else if (funcName.contains(JointMatrixFillPrefx)) {
         InsertPlaceholder(CI);
         NewValue = ResolveFill(CI);
+    } else if (funcName.contains(JointMatrixFillCheckedPrefx)) {
+        InsertPlaceholder(CI);
+        NewValue = ResolveFillChecked(CI);
     } else if (funcName.contains(JointMatrixWorkItemLengthPrefx) ||
                funcName.contains(CooperativeMatrixLengthPrefx)) {
         InsertPlaceholder(CI);
