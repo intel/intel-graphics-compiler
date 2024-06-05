@@ -146,9 +146,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/Linker/Linker.h>
 #include <llvm/Analysis/ScopedNoAliasAA.h>
 #include <llvm/Analysis/TargetLibraryInfo.h>
-#include <llvm/Analysis/BlockFrequencyInfo.h>
-#include <llvm/Analysis/BranchProbabilityInfo.h>
-#include <llvm/Analysis/LoopInfo.h>
 #include <llvm/ADT/StringExtras.h>
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/MathExtras.h>

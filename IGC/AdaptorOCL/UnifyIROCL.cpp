@@ -17,9 +17,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/CFGPrinter.h>
 #include <llvm/Analysis/Passes.h>
 #include <llvm/Analysis/TargetTransformInfo.h>
-#include <llvm/Analysis/BlockFrequencyInfo.h>
-#include <llvm/Analysis/BranchProbabilityInfo.h>
-#include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Pass.h>
 #include <llvm/IR/PassManager.h>
 #include <llvm/Transforms/IPO.h>
@@ -412,10 +409,6 @@ static void CommonOCLBasedPasses(OpenCLProgramContext* pContext)
         // We need to propagate constexpr casts to resolve pseudo indirect calls
         mpm.add(createSCCPPass());
         mpm.add(new ResolveConstExprCalls());
-
-        mpm.add(new LoopInfoWrapperPass());
-        mpm.add(new BranchProbabilityInfoWrapperPass());
-        mpm.add(new BlockFrequencyInfoWrapperPass());
 
         // Estimate maximal function size in the module and disable subroutine if not profitable.
         mpm.add(createEstimateFunctionSizePass());

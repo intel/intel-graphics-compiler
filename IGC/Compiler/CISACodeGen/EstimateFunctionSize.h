@@ -22,6 +22,10 @@ SPDX-License-Identifier: MIT
 #include <unordered_map>
 #include <unordered_set>
 
+namespace llvm {
+class Loop;
+class LoopInfo;
+}
 namespace IGC {
 
     /// \brief Estimate function size after complete inlining.
@@ -92,6 +96,7 @@ namespace IGC {
         uint32_t getMaxUnitSize();
         void getFunctionsToTrim(llvm::Function* root, llvm::SmallVector<void*, 64> &trimming_pool, bool ignoreStackCallBoundary, uint32_t& func_cnt);
         void updateStaticFuncFreq();
+        void estimateTotalLoopIteration(llvm::Function &F, llvm::LoopInfo *LI);
 
         /// \brief The module being analyzed.
         llvm::Module* M;
@@ -130,6 +135,8 @@ namespace IGC {
         llvm::SmallVector<void*, 64> addressTakenFuncs;
         llvm::ScaledNumber<uint64_t> threshold_func_freq;
         llvm::ScaledNumber<uint64_t> thresholdForTrimming;
+        std::unordered_map<llvm::Loop *, llvm::ScaledNumber<uint64_t>>
+            LoopIterCnts;
     };
 
     llvm::ModulePass* createEstimateFunctionSizePass();
