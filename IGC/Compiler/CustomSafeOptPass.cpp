@@ -5828,15 +5828,6 @@ void SplitIndirectEEtoSel::visitExtractElementInst(llvm::ExtractElementInst& I)
         return;
     }
 
-    // ignore if index instruction is OverflowingBinaryOperator and doesn't have nsw or nuw
-    if (OverflowingBinaryOperator* indexOp = dyn_cast<OverflowingBinaryOperator>(index))
-    {
-        if (!indexOp->hasNoSignedWrap() && !indexOp->hasNoUnsignedWrap())
-        {
-            return;
-        }
-    }
-
     // used to calculate offsets
     int64_t add = 0;
     int64_t mul = 1;
@@ -5847,26 +5838,46 @@ void SplitIndirectEEtoSel::visitExtractElementInst(llvm::ExtractElementInst& I)
        %271 = extractelement <12 x float> %234, i32 %270
     */
     Value* Val1 = nullptr;
+    Value* Val2 = nullptr;
     ConstantInt* ci_add = nullptr;
     ConstantInt* ci_mul = nullptr;
 
-    auto pat1 = m_Add(m_Mul(m_Value(Val1), m_ConstantInt(ci_mul)), m_ConstantInt(ci_add));
-    auto pat2 = m_Mul(m_Value(Val1), m_ConstantInt(ci_mul));
+    auto pat_add = m_Add(m_Value(Val2), m_ConstantInt(ci_add));
+    auto pat_mul = m_Mul(m_Value(Val1), m_ConstantInt(ci_mul));
     // Some code shows `shl+or` instead of mul+add.
-    auto pat21 = m_Or(m_Shl(m_Value(Val1), m_ConstantInt(ci_mul)), m_ConstantInt(ci_add));
-    auto pat22 = m_Shl(m_Value(Val1), m_ConstantInt(ci_mul));
+    auto pat_or = m_Or(m_Value(Val2), m_ConstantInt(ci_add));
+    auto pat_shl = m_Shl(m_Value(Val1), m_ConstantInt(ci_mul));
 
-    if (match(index, pat1) || match(index, pat2))
+    if (match(index, pat_mul) || (match(index, pat_add) && match(Val2, pat_mul)))
     {
-        add = ci_add ? ci_add->getSExtValue() : 0;
         mul = ci_mul ? ci_mul->getSExtValue() : 1;
-        index = Val1;
     }
-    else if (match(index, pat21) || match(index, pat22))
+    else if (match(index, pat_shl) || (match(index, pat_or) && match(Val2, pat_shl)))
     {
-        add = ci_add ? ci_add->getSExtValue() : 0;
         mul = ci_mul ? (1LL << ci_mul->getSExtValue()) : 1LL;
-        index = Val1;
+    }
+    // Instruction::hasPoisonGeneratingFlags() could be used instead
+    // after llvm9 support is dropped
+    auto hasNoOverflow = [](Value* value) {
+        if (OverflowingBinaryOperator *OBO = dyn_cast<OverflowingBinaryOperator>(value))
+           return OBO->hasNoUnsignedWrap() || OBO->hasNoSignedWrap();
+        return true;
+    };
+
+    // If pattern matched check that corresponding index calculation has nsw or nuw
+    if (Val1)
+    {
+       // Transformation could still be profitable,
+       // but index and it's multiplier shouldn't be modified
+       if (!hasNoOverflow(index) || (Val2 && !hasNoOverflow(Val2)))
+       {
+          mul = 1;
+       }
+       else
+       {
+          add = ci_add ? ci_add->getSExtValue() : 0;
+          index = Val1;
+       }
     }
 
     if (!isProfitableToSplit(num, mul, add))
