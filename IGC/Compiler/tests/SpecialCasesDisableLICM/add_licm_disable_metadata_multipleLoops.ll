@@ -1,14 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-disable-licm-for-specific-loops -S < %s | FileCheck %s
+; RUN: igc_opt --igc-special-cases-disable-licm -S < %s | FileCheck %s
 ; ------------------------------------------------
-; DisableLICMForSpecificLoops
+; SpecialCasesDisableLICM
 ; ------------------------------------------------
 
 

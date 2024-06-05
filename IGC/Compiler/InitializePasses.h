@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -209,7 +209,7 @@ void initializeSampleMultiversioningPass(llvm::PassRegistry&);
 void initializeLoopCanonicalizationPass(llvm::PassRegistry&);
 void initializeLoopSplitWidePHIsPass(llvm::PassRegistry&);
 void initializeLoopHoistConstantPass(llvm::PassRegistry&);
-void initializeDisableLICMForSpecificLoopsPass(llvm::PassRegistry&);
+void initializeSpecialCasesDisableLICMPass(llvm::PassRegistry&);
 void initializeMemOptPass(llvm::PassRegistry&);
 void initializeLdStCombinePass(llvm::PassRegistry&);
 void initializeBIFTransformsPass(llvm::PassRegistry&);

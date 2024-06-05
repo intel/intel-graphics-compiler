@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1160,70 +1160,96 @@ namespace IGC
     }
 }
 
-class DisableLICMForSpecificLoops : public llvm::LoopPass
+// This pass disables LICM optimization by adding llvm.licm.disable
+// - when Loop depends on SIMD Lane Id and operates on local memory or
+// - when the loops are part of a large function and the number of loops
+//   is sizable where a potential stack overflow from memory SSA updater
+//   could occur.
+
+class SpecialCasesDisableLICM : public llvm::FunctionPass
 {
 public:
     static char ID;
 
-    DisableLICMForSpecificLoops();
+    SpecialCasesDisableLICM();
 
     void getAnalysisUsage(llvm::AnalysisUsage& AU) const
     {
         AU.addPreservedID(LCSSAID);
+        AU.addRequired<llvm::LoopInfoWrapperPass>();
     }
 
-    bool runOnLoop(Loop* L, LPPassManager& LPM);
+    bool runOnFunction(Function& F);
     bool LoopHasLoadFromLocalAddressSpace(const Loop& L);
     bool LoopDependsOnSIMDLaneId(const Loop& L);
     bool AddLICMDisableMedatadaToSpecificLoop(Loop& L);
 
     llvm::StringRef getPassName() const
     {
-        return "IGC disable LICM for specific loops";
+        return "IGC special cases disable LICM";
     }
 };
+
 #undef PASS_FLAG
 #undef PASS_DESC
 #undef PASS_CFG_ONLY
 #undef PASS_ANALYSIS
-#define PASS_FLAG     "igc-disable-licm-for-specific-loops"
-#define PASS_DESC     "IGC disable LICM for specific loops"
+#define PASS_FLAG     "igc-special-cases-disable-licm"
+#define PASS_DESC     "IGC special cases disable LICM"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(DisableLICMForSpecificLoops, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(DisableLICMForSpecificLoops, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(SpecialCasesDisableLICM, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
+IGC_INITIALIZE_PASS_END(SpecialCasesDisableLICM, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 
+char SpecialCasesDisableLICM::ID = 0;
 
-char DisableLICMForSpecificLoops::ID = 0;
-
-DisableLICMForSpecificLoops::DisableLICMForSpecificLoops() : LoopPass(ID)
+SpecialCasesDisableLICM::SpecialCasesDisableLICM() : FunctionPass(ID)
 {
-    initializeDisableLICMForSpecificLoopsPass(*PassRegistry::getPassRegistry());
+    initializeSpecialCasesDisableLICMPass(*PassRegistry::getPassRegistry());
 }
 
-bool DisableLICMForSpecificLoops::runOnLoop(Loop* L, LPPassManager& LPM)
+bool SpecialCasesDisableLICM::runOnFunction(llvm::Function& F)
 {
     bool Changed = false;
+    LoopInfo* LI = nullptr;
 
-    if (!L->getHeader() || !L->getLoopLatch())
-        return false;
+    auto getLoopInfo = [&]() -> LoopInfo* {
+        if (nullptr == LI)
+            return &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+        return LI;
+    };
 
-    // Disable LICM optimization by adding llvm.licm.disable
-    // - when Loop depends on SIMD Lane Id and operates on local memory
-    // - when shader contains a large number of BBs that may trigger stack overflow
-    //   from memory SSA updater
-
-    if (constexpr size_t BB_LIMIT_FOR_LICM = 2500;
-        L->getHeader()->getParent()->size() > BB_LIMIT_FOR_LICM ||
-        (LoopHasLoadFromLocalAddressSpace(*L) && LoopDependsOnSIMDLaneId(*L)))
+    if (constexpr size_t HIGH_BB_THRESHOLD_FOR_LICM = 2500;
+        F.size() > HIGH_BB_THRESHOLD_FOR_LICM)
     {
-        Changed |= AddLICMDisableMedatadaToSpecificLoop(*L);
+        LI = getLoopInfo();
+
+        if (constexpr size_t HIGH_LOOP_THRESHOLD_FOR_LICM = 450;
+            llvm::size(*LI) > HIGH_LOOP_THRESHOLD_FOR_LICM)
+        {
+            for (auto* L : *LI)
+                AddLICMDisableMedatadaToSpecificLoop(*L);
+
+            Changed = true;
+        }
+    }
+
+    if (!Changed)
+    {
+        LI = getLoopInfo();
+
+        for (auto* L : *LI)
+        {
+            if (LoopHasLoadFromLocalAddressSpace(*L) && LoopDependsOnSIMDLaneId(*L))
+                Changed |= AddLICMDisableMedatadaToSpecificLoop(*L);
+        }
     }
 
     return Changed;
 }
 
-bool DisableLICMForSpecificLoops::LoopHasLoadFromLocalAddressSpace(const Loop& L)
+bool SpecialCasesDisableLICM::LoopHasLoadFromLocalAddressSpace(const Loop& L)
 {
     for (BasicBlock* BB : L.blocks())
     {
@@ -1236,7 +1262,7 @@ bool DisableLICMForSpecificLoops::LoopHasLoadFromLocalAddressSpace(const Loop& L
     return false;
 }
 
-bool DisableLICMForSpecificLoops::LoopDependsOnSIMDLaneId(const Loop& L)
+bool SpecialCasesDisableLICM::LoopDependsOnSIMDLaneId(const Loop& L)
 {
     auto ComeFromSIMDLaneID = [](Value* I)
     {
@@ -1264,7 +1290,7 @@ bool DisableLICMForSpecificLoops::LoopDependsOnSIMDLaneId(const Loop& L)
     return false;
 }
 
-bool DisableLICMForSpecificLoops::AddLICMDisableMedatadaToSpecificLoop(Loop& L)
+bool SpecialCasesDisableLICM::AddLICMDisableMedatadaToSpecificLoop(Loop& L)
 {
     LLVMContext& context = L.getHeader()->getContext();
 
@@ -1283,9 +1309,9 @@ bool DisableLICMForSpecificLoops::AddLICMDisableMedatadaToSpecificLoop(Loop& L)
 
 namespace IGC
 {
-    LoopPass* createDisableLICMForSpecificLoops()
+    FunctionPass* createSpecialCasesDisableLICM()
     {
-        return new DisableLICMForSpecificLoops();
+        return new SpecialCasesDisableLICM();
     }
 }
 

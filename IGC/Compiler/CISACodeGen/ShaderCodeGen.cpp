@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -502,7 +502,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
 
         if (IGC_IS_FLAG_ENABLED(allowLICM) && ctx.m_retryManager.AllowLICM())
         {
-            mpm.add(createDisableLICMForSpecificLoops());
+            mpm.add(createSpecialCasesDisableLICM());
             mpm.add(llvm::createLICMPass());
         }
         mpm.add(llvm::createLoopSimplifyPass());
@@ -891,7 +891,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         }
         if (!fastCompile && !highAllocaPressure && !isPotentialHPCKernel && IGC_IS_FLAG_ENABLED(allowLICM) && ctx.m_retryManager.AllowLICM())
         {
-            mpm.add(createDisableLICMForSpecificLoops());
+            mpm.add(createSpecialCasesDisableLICM());
             mpm.add(createLICMPass());
             mpm.add(llvm::createEarlyCSEPass());
         }
@@ -1466,7 +1466,7 @@ void OptimizeIR(CodeGenContext* const pContext)
 
                 if (IGC_IS_FLAG_ENABLED(allowLICM) && pContext->m_retryManager.AllowLICM())
                 {
-                    mpm.add(createDisableLICMForSpecificLoops());
+                    mpm.add(createSpecialCasesDisableLICM());
                     int licmTh = IGC_GET_FLAG_VALUE(LICMStatThreshold);
                     mpm.add(new InstrStatistic(pContext, LICM_STAT, InstrStatStage::BEGIN, licmTh));
                     mpm.add(llvm::createLICMPass());
@@ -1523,7 +1523,7 @@ void OptimizeIR(CodeGenContext* const pContext)
 
                 if (IGC_IS_FLAG_ENABLED(allowLICM) && pContext->m_retryManager.AllowLICM())
                 {
-                    mpm.add(createDisableLICMForSpecificLoops());
+                    mpm.add(createSpecialCasesDisableLICM());
                     mpm.add(llvm::createLICMPass());
                 }
 

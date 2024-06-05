@@ -159,7 +159,7 @@ namespace IGC
 
     llvm::LoopPass* createLoopHoistConstant();
 
-    llvm::LoopPass* createDisableLICMForSpecificLoops();
+    llvm::FunctionPass* createSpecialCasesDisableLICM();
 
     llvm::FunctionPass *createLoopSplitWidePHIs();
 
