@@ -119,54 +119,12 @@ static void setupRegionBTIs(CodeGenContext* pContext)
     }
 }
 
-static constexpr uint32_t numRegkey()
-{
-    uint32_t i = 0;
-#define RTMEMORY_STYLE_OPTION(Name, Val) i++;
-#include "igc_regkeys_enums_defs.h"
-    RTMEMORY_STYLE_OPTIONS
-#undef RTMEMORY_STYLE_OPTION
-#undef RTMEMORY_STYLE_OPTIONS
-        return i;
-}
-
-static constexpr uint32_t numLayouts()
-{
-    uint32_t i = 0;
-#define STYLE(X) i++;
-#include "RayTracingMemoryStyle.h"
-#undef STYLE
-    return i;
-}
-
 static void setupRTMemoryStyle(CodeGenContext* pContext)
 {
-    static_assert(numRegkey() == numLayouts() + 1, "add the key!");
-    enum class StyleOptions
-    {
-#define RTMEMORY_STYLE_OPTION(Name, Val) Name = Val,
-#include "igc_regkeys_enums_defs.h"
-        RTMEMORY_STYLE_OPTIONS
-#undef RTMEMORY_STYLE_OPTION
-#undef RTMEMORY_STYLE_OPTIONS
-    };
-
-    auto Style = StyleOptions(IGC_GET_FLAG_VALUE(RTMemoryStyleOptions));
-
     auto& rtInfo = pContext->getModuleMetaData()->rtInfo;
 
-    switch (Style)
-    {
-        case StyleOptions::Auto:
-            rtInfo.MemStyle = RTMemoryStyle::Xe;
-            break;
-#define STYLE(X)                                \
-        case StyleOptions::X:                   \
-            rtInfo.MemStyle = RTMemoryStyle::X; \
-            break;
-#include "RayTracingMemoryStyle.h"
-#undef STYLE
-    }
+    rtInfo.MemStyle = RTMemoryStyle::Xe;
+
 }
 
 

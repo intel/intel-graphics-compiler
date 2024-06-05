@@ -101,9 +101,3 @@ SPDX-License-Identifier: MIT
     TRIBOOL_OPTION(Enabled,  1)
 #endif // TRIBOOL_OPTION
 
-#ifdef RTMEMORY_STYLE_OPTION
-#define RTMEMORY_STYLE_OPTIONS      \
-    RTMEMORY_STYLE_OPTION(Auto, -1) \
-    RTMEMORY_STYLE_OPTION(Xe,    0)
-#endif // RTMEMORY_STYLE_OPTION
-
