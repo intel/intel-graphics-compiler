@@ -17,7 +17,6 @@ SPDX-License-Identifier: MIT
 #include "ocl_igc_interface/ocl_translation_output.h"
 
 #include "cif/macros/enable.h"
-#include "OCLAPI/oclapi.h"
 
 // Interface : IGC_OCL_TRAC
 //             "IGC - OCL" Translation Context
@@ -31,7 +30,7 @@ CIF_DEFINE_INTERFACE_VER(IgcOclTranslationCtx, 1) {
   CIF_INHERIT_CONSTRUCTOR();
 
   template <typename OclTranslationOutputInterface = OclTranslationOutputTagOCL>
-  OCL_API_CALL CIF::RAII::UPtr_t<OclTranslationOutputInterface> Translate(CIF::Builtins::BufferSimple *src,
+  CIF::RAII::UPtr_t<OclTranslationOutputInterface> Translate(CIF::Builtins::BufferSimple *src,
                                                              CIF::Builtins::BufferSimple *options,
                                                              CIF::Builtins::BufferSimple *internalOptions,
                                                              CIF::Builtins::BufferSimple *tracingOptions,
@@ -41,7 +40,7 @@ CIF_DEFINE_INTERFACE_VER(IgcOclTranslationCtx, 1) {
   }
 
 protected:
-  OCL_API_CALL virtual OclTranslationOutputBase *TranslateImpl(CIF::Version_t outVersion,
+  virtual OclTranslationOutputBase *TranslateImpl(CIF::Version_t outVersion,
                                                   CIF::Builtins::BufferSimple *src,
                                                   CIF::Builtins::BufferSimple *options,
                                                   CIF::Builtins::BufferSimple *internalOptions,
@@ -56,7 +55,7 @@ CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(IgcOclTranslationCtx, 2, 1) {
   CIF_INHERIT_CONSTRUCTOR();
 
   template <typename OclTranslationOutputInterface = OclTranslationOutputTagOCL>
-  OCL_API_CALL CIF::RAII::UPtr_t<OclTranslationOutputInterface> Translate(CIF::Builtins::BufferSimple *src,
+  CIF::RAII::UPtr_t<OclTranslationOutputInterface> Translate(CIF::Builtins::BufferSimple *src,
                                                              CIF::Builtins::BufferSimple *options,
                                                              CIF::Builtins::BufferSimple *internalOptions,
                                                              CIF::Builtins::BufferSimple *tracingOptions,
@@ -67,7 +66,7 @@ CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(IgcOclTranslationCtx, 2, 1) {
   }
 
 protected:
-  OCL_API_CALL virtual OclTranslationOutputBase *TranslateImpl(CIF::Version_t outVersion,
+  virtual OclTranslationOutputBase *TranslateImpl(CIF::Version_t outVersion,
                                                   CIF::Builtins::BufferSimple *src,
                                                   CIF::Builtins::BufferSimple *options,
                                                   CIF::Builtins::BufferSimple *internalOptions,
@@ -83,7 +82,7 @@ CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(IgcOclTranslationCtx, 3, 2) {
   CIF_INHERIT_CONSTRUCTOR();
 
   template <typename OclTranslationOutputInterface = OclTranslationOutputTagOCL>
-  OCL_API_CALL CIF::RAII::UPtr_t<OclTranslationOutputInterface> Translate(CIF::Builtins::BufferSimple *src,
+  CIF::RAII::UPtr_t<OclTranslationOutputInterface> Translate(CIF::Builtins::BufferSimple *src,
                                                              CIF::Builtins::BufferSimple *specConstantsIds,
                                                              CIF::Builtins::BufferSimple *specConstantsValues,
                                                              CIF::Builtins::BufferSimple *options,
@@ -95,12 +94,12 @@ CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(IgcOclTranslationCtx, 3, 2) {
       return CIF::RAII::Pack<OclTranslationOutputInterface>(p);
   }
 
-  OCL_API_CALL virtual bool GetSpecConstantsInfoImpl(CIF::Builtins::BufferSimple *src,
+  virtual bool GetSpecConstantsInfoImpl(CIF::Builtins::BufferSimple *src,
                                 CIF::Builtins::BufferSimple *outSpecConstantsIds,
                                 CIF::Builtins::BufferSimple *outSpecConstantsSizes);
 
 protected:
-   OCL_API_CALL virtual OclTranslationOutputBase *TranslateImpl(CIF::Version_t outVersion,
+  virtual OclTranslationOutputBase *TranslateImpl(CIF::Version_t outVersion,
                                                   CIF::Builtins::BufferSimple *src,
                                                   CIF::Builtins::BufferSimple *specConstantsIds,
                                                   CIF::Builtins::BufferSimple *specConstantsValues,

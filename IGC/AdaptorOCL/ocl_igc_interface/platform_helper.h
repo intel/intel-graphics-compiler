@@ -12,7 +12,6 @@ SPDX-License-Identifier: MIT
 #include "cif/common/id.h"
 
 #include "ocl_igc_interface/platform.h"
-#include "OCLAPI/oclapi.h"
 
 #define COPY_VAL(INTEFACE_VAL_NAME, SRC_VAL_NAME)                              \
   dst.Set##INTEFACE_VAL_NAME(src.SRC_VAL_NAME)
@@ -22,7 +21,7 @@ SPDX-License-Identifier: MIT
 namespace IGC {
 namespace PlatformHelper {
 template <CIF::Version_t Ver, typename SrcStructT>
-OCL_API_CALL inline void PopulateInterfaceWith(IGC::Platform<Ver> &dst,
+inline void PopulateInterfaceWith(IGC::Platform<Ver> &dst,
                                    const SrcStructT &src) {
   COPY_VAL_E(ProductFamily);
   COPY_VAL_E(PCHProductFamily);
@@ -37,7 +36,7 @@ OCL_API_CALL inline void PopulateInterfaceWith(IGC::Platform<Ver> &dst,
 }
 
 template <typename SrcStructT>
-OCL_API_CALL inline void PopulateInterfaceWith(IGC::Platform<2>& dst,
+inline void PopulateInterfaceWith(IGC::Platform<2>& dst,
                                   const SrcStructT& src) {
   PopulateInterfaceWith<1>(dst, src);
   // Below COPY_VALs are not valid. NEO will populate *BlockID values
@@ -50,7 +49,7 @@ OCL_API_CALL inline void PopulateInterfaceWith(IGC::Platform<2>& dst,
 
 namespace GtSysInfoHelper {
 template <CIF::Version_t Ver, typename SrcStructT>
-OCL_API_CALL inline void PopulateInterfaceWith(IGC::GTSystemInfo<Ver> &dst,
+inline void PopulateInterfaceWith(IGC::GTSystemInfo<Ver> &dst,
                                   const SrcStructT &src) {
   COPY_VAL_EXACT(EUCount);
   COPY_VAL_EXACT(ThreadCount);
@@ -82,7 +81,7 @@ OCL_API_CALL inline void PopulateInterfaceWith(IGC::GTSystemInfo<Ver> &dst,
 }
 
 template <typename SrcStructT>
-OCL_API_CALL inline void PopulateInterfaceWith(IGC::GTSystemInfo<3>& dst,
+inline void PopulateInterfaceWith(IGC::GTSystemInfo<3>& dst,
                                   const SrcStructT& src) {
   PopulateInterfaceWith<1>(dst, src);
   COPY_VAL_EXACT(MaxDualSubSlicesSupported);
@@ -93,7 +92,7 @@ OCL_API_CALL inline void PopulateInterfaceWith(IGC::GTSystemInfo<3>& dst,
 
 namespace IgcPlatformFeaturesHelper {
 template <CIF::Version_t Ver, typename SrcStructT>
-OCL_API_CALL inline void PopulateInterfaceWith(IGC::IgcFeaturesAndWorkarounds<Ver> &dst,
+inline void PopulateInterfaceWith(IGC::IgcFeaturesAndWorkarounds<Ver> &dst,
                                   const SrcStructT &src) {
   COPY_VAL_EXACT(FtrDesktop);
   COPY_VAL_EXACT(FtrChannelSwizzlingXOREnabled);

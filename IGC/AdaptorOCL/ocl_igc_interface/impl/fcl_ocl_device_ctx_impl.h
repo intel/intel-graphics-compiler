@@ -21,7 +21,6 @@ SPDX-License-Identifier: MIT
 #include "cif/export/pimpl_base.h"
 
 #include "cif/macros/enable.h"
-#include "OCLAPI/oclapi.h"
 
 namespace IGC
 {
@@ -33,20 +32,20 @@ CIF_DECLARE_INTERFACE_PIMPL(FclOclDeviceCtx) : CIF::PimplBase
         platform.CreateImpl();
     }
 
-    OCL_API_CALL FclOclTranslationCtxBase * CreateTranslationCtx(CIF::Version_t version, CodeType::CodeType_t inType, CodeType::CodeType_t outType);
-    OCL_API_CALL FclOclTranslationCtxBase * CreateTranslationCtx(CIF::Version_t version, CodeType::CodeType_t inType, CodeType::CodeType_t outType, CIF::Builtins::BufferSimple* err);
+    FclOclTranslationCtxBase * CreateTranslationCtx(CIF::Version_t version, CodeType::CodeType_t inType, CodeType::CodeType_t outType);
+    FclOclTranslationCtxBase * CreateTranslationCtx(CIF::Version_t version, CodeType::CodeType_t inType, CodeType::CodeType_t outType, CIF::Builtins::BufferSimple* err);
 
-    OCL_API_CALL PlatformBase * GetPlatformHandle(CIF::Version_t version)
+    PlatformBase * GetPlatformHandle(CIF::Version_t version)
     {
         return platform.GetVersion(version);
     }
 
-    OCL_API_CALL CIF_PIMPL(Platform)* GetPlatformImpl()
+    CIF_PIMPL(Platform)* GetPlatformImpl()
     {
         return this->platform.GetImpl();
     }
 
-    struct OCL_API_CALL MiscOptions
+    struct MiscOptions
     {
         MiscOptions()
         {

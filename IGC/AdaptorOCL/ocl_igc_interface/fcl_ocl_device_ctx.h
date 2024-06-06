@@ -18,7 +18,6 @@ SPDX-License-Identifier: MIT
 #include <cinttypes>
 
 #include "cif/macros/enable.h"
-#include "OCLAPI/oclapi.h"
 
 // Interface : FCL_OCL_DEVC
 //             "Frontent Compiler - OCL" Device Context
@@ -33,22 +32,22 @@ CIF_DEFINE_INTERFACE_VER(FclOclDeviceCtx, 1){
 
   // oclApiVersion (as supported by OCL runtime) format : version = major_revision*100 + minor_revision*10 +  sub_revision
   //                                             e.g. OCL2.1 = 210
-  OCL_API_CALL virtual void SetOclApiVersion(uint32_t version);
+  virtual void SetOclApiVersion(uint32_t version);
 
   template <typename FclOclTranslationCtxInterface = FclOclTranslationCtxTagOCL>
-  OCL_API_CALL CIF::RAII::UPtr_t<FclOclTranslationCtxInterface> CreateTranslationCtx(CodeType::CodeType_t inType, CodeType::CodeType_t outType) {
+  CIF::RAII::UPtr_t<FclOclTranslationCtxInterface> CreateTranslationCtx(CodeType::CodeType_t inType, CodeType::CodeType_t outType) {
     return CIF::RAII::Pack<FclOclTranslationCtxInterface>( CreateTranslationCtxImpl(FclOclTranslationCtxInterface::GetVersion(), inType, outType) );
   }
 
 protected:
-  OCL_API_CALL virtual FclOclTranslationCtxBase *CreateTranslationCtxImpl(CIF::Version_t ver,
+  virtual FclOclTranslationCtxBase *CreateTranslationCtxImpl(CIF::Version_t ver,
                                                              CodeType::CodeType_t inType,
                                                              CodeType::CodeType_t outType);
 };
 
 CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(FclOclDeviceCtx, 2, 1) {
   CIF_INHERIT_CONSTRUCTOR();
-  OCL_API_CALL virtual CodeType::CodeType_t GetPreferredIntermediateRepresentation();
+  virtual CodeType::CodeType_t GetPreferredIntermediateRepresentation();
 };
 
 CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(FclOclDeviceCtx, 3, 2) {
@@ -57,12 +56,12 @@ CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(FclOclDeviceCtx, 3, 2) {
     using FclOclDeviceCtx<1>::CreateTranslationCtx;
 
     template <typename FclOclTranslationCtxInterface = FclOclTranslationCtxTagOCL>
-    OCL_API_CALL CIF::RAII::UPtr_t<FclOclTranslationCtxInterface> CreateTranslationCtx(CodeType::CodeType_t inType, CodeType::CodeType_t outType, CIF::Builtins::BufferSimple* err) {
+    CIF::RAII::UPtr_t<FclOclTranslationCtxInterface> CreateTranslationCtx(CodeType::CodeType_t inType, CodeType::CodeType_t outType, CIF::Builtins::BufferSimple* err) {
         return CIF::RAII::Pack<FclOclTranslationCtxInterface>(CreateTranslationCtxImpl(FclOclTranslationCtxInterface::GetVersion(), inType, outType, err));
     }
 
 protected:
-    OCL_API_CALL virtual FclOclTranslationCtxBase* CreateTranslationCtxImpl(CIF::Version_t ver,
+    virtual FclOclTranslationCtxBase* CreateTranslationCtxImpl(CIF::Version_t ver,
                                                               CodeType::CodeType_t inType,
                                                               CodeType::CodeType_t outType,
                                                               CIF::Builtins::BufferSimple* err);
@@ -72,12 +71,12 @@ CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(FclOclDeviceCtx, 4, 3) {
     CIF_INHERIT_CONSTRUCTOR();
 
     template <typename PlatformInterface = PlatformTagOCL>
-    OCL_API_CALL CIF::RAII::UPtr_t<PlatformInterface> GetPlatformHandle() {
+    CIF::RAII::UPtr_t<PlatformInterface> GetPlatformHandle() {
         return CIF::RAII::RetainAndPack<PlatformInterface>( GetPlatformHandleImpl(PlatformInterface::GetVersion()) );
     }
 
 protected:
-    OCL_API_CALL virtual PlatformBase *GetPlatformHandleImpl(CIF::Version_t ver);
+    virtual PlatformBase *GetPlatformHandleImpl(CIF::Version_t ver);
 };
 
 CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(FclOclDeviceCtx, 5, 4) {
