@@ -513,6 +513,9 @@ void GenXVisaRegAlloc::extraCoalescing()
           continue;
         if (GenXIntrinsic::isWrRegion(Inst))
           continue;
+        if (auto *CI = dyn_cast<CallInst>(Inst))
+          if (CI->isInlineAsm())
+            continue;
         auto LR = Liveness->getLiveRangeOrNull(Inst);
         if (!LR)
           continue;
