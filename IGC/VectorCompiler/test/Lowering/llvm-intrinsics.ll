@@ -156,3 +156,51 @@ define internal spir_func i64 @cttz_64(i64 %arg) {
   ret i64 %ret
 }
 
+declare <3 x i8> @llvm.cttz.v3i8(<3 x i8>, i1)
+declare <3 x i8> @llvm.ctlz.v3i8(<3 x i8>, i1)
+
+; CHECK-LABEL: cttz_ctlz_vi8
+define internal spir_func void @cttz_ctlz_vi8(<3 x i8> %arg) {
+; CHECK: [[ZEXT:%.*]] = zext <3 x i8> %arg to <3 x i32>
+; CHECK: [[REV:%.*]] = call <3 x i32> @llvm.genx.bfrev.v3i32(<3 x i32> [[ZEXT]])
+; ...
+; CHECK: [[CTTZ:%.*]] = call <3 x i32> @llvm.ctlz.v3i32({{.*}}, i1 false)
+; CHECK: [[SUB:%.*]] = sub <3 x i32> [[CTTZ]], <i32 24, i32 24, i32 24>
+; CHECK: bitcast <3 x i32> [[SUB]] to <12 x i8>
+; ...
+  %1 = call <3 x i8>  @llvm.cttz.v3i8(<3 x i8> %arg, i1 false)
+; CHECK: [[ZEXT:%.*]] = zext <3 x i8> %arg to <3 x i32>
+; CHECK: [[CTLZ:%.*]] = call <3 x i32> @llvm.ctlz.v3i32(<3 x i32> [[ZEXT]], i1 false)
+; CHECK: [[SUB:%.*]] = sub <3 x i32> [[CTLZ]], <i32 24, i32 24, i32 24>
+; CHECK: [[CAST:%.*]] = bitcast <3 x i32> [[SUB]] to <12 x i8>
+; CHECK: call <3 x i8> @llvm.genx.rdregioni.v3i8.v12i8.i16(<12 x i8> [[CAST]], i32 12, i32 3, i32 4, i16 0, i32 undef)
+  %2 = call <3 x i8>  @llvm.ctlz.v3i8(<3 x i8> %arg, i1 false)
+  ret void
+}
+
+declare i16 @llvm.cttz.i16(i16, i1)
+declare i16 @llvm.ctlz.i16(i16, i1)
+
+; CHECK-LABEL: cttz_ctlz_i16
+define internal spir_func void @cttz_ctlz_i16(i16 %arg) {
+; CHECK: [[ZEXT_1:%.*]] = zext i16 %arg to i32
+; CHECK: [[REV:%.*]] = call i32 @llvm.genx.bfrev.i32(i32 [[ZEXT_1]])
+; CHECK: [[SHIFT:%.*]] = lshr i32 [[REV]], 16
+; CHECK: [[DOWNCAST:%.*]] = bitcast i32 [[SHIFT]] to <2 x i16>
+; CHECK: [[RDREG_1:%.*]] = call i16 @llvm.genx.rdregioni.i16.v2i16.i16(<2 x i16> [[DOWNCAST]], i32 2, i32 1, i32 2, i16 0, i32 undef)
+; CHECK: [[ZEXT_2:%.*]] = zext i16 [[RDREG_1]] to i32
+; CHECK: [[CTLZ:%.*]] = call i32 @llvm.ctlz.i32(i32 [[ZEXT_2]], i1 false)
+; CHECK: [[SUB:%.*]] = sub i32 [[CTLZ]], 16
+; CHECK: [[DOWNCAST:%.*]] = bitcast i32 [[SUB]] to <2 x i16>
+; CHECK: call i16 @llvm.genx.rdregioni.i16.v2i16.i16(<2 x i16> [[DOWNCAST]], i32 2, i32 1, i32 2, i16 0, i32 undef)
+  %1 = call i16  @llvm.cttz.i16(i16 %arg, i1 false)
+
+; CHECK: [[ZEXT_1:%.*]] = zext i16 %arg to i32
+; CHECK: [[CTLZ:%.*]] = call i32 @llvm.ctlz.i32(i32 [[ZEXT_1]], i1 false)
+; CHECK: [[SUB:%.*]] = sub i32 [[CTLZ]], 16
+; CHECK: [[DOWNCAST:%.*]] = bitcast i32 [[SUB]] to <2 x i16>
+; CHECK: call i16 @llvm.genx.rdregioni.i16.v2i16.i16(<2 x i16> [[DOWNCAST]], i32 2, i32 1, i32 2, i16 0, i32 undef)
+
+  %2 = call i16  @llvm.ctlz.i16(i16 %arg, i1 false)
+  ret void
+}

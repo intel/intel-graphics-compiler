@@ -239,6 +239,7 @@ private:
   bool lowerCtpop(CallInst *CI);
   bool lowerFCmpInst(FCmpInst *Inst);
   bool lowerCttz(CallInst *Inst);
+  bool lowerCtlz(CallInst *Inst);
   bool lowerUnorderedFCmpInst(FCmpInst *Inst);
   bool lowerMinMax(CallInst *CI, unsigned IntrinsicID);
   bool lowerSqrt(CallInst *CI);
@@ -2086,6 +2087,8 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerCtpop(CI);
     case Intrinsic::cttz:
       return lowerCttz(CI);
+    case Intrinsic::ctlz:
+      return lowerCtlz(CI);
 #if LLVM_VERSION_MAJOR >= 12
     case Intrinsic::smin:
     case Intrinsic::smax:
@@ -3637,6 +3640,35 @@ bool GenXLowering::lowerCttz(CallInst *CI) {
   Value *Result = Builder.CreateIntrinsic(Intrinsic::ctlz, {ResTy},
                                           {Reverse, CI->getArgOperand(1)});
 
+  CI->replaceAllUsesWith(Result);
+  ToErase.push_back(CI);
+  return true;
+}
+
+bool GenXLowering::lowerCtlz(CallInst *CI) {
+  // The hardware only supports the ctlz operation for 32-bit integers, so we lower 8 and 16 bit integer operations as follows:
+  // 1. Zext i8 -> i32
+  // 2. ctlz.i32
+  // 3. res = ctlz.i32 - (32 - 8)
+
+  auto *Ty = CI->getType()->getScalarType();
+  unsigned OpTypeWidth = cast<IntegerType>(Ty)->getBitWidth();
+
+  if ((OpTypeWidth != 8) && (OpTypeWidth != 16))
+    return false;
+
+  IRBuilder<> Builder(CI);
+  Type *ResTy = Builder.getInt32Ty();
+  if (auto *SrcVTy = dyn_cast<IGCLLVM::FixedVectorType>(CI->getType()))
+    ResTy = IGCLLVM::FixedVectorType::get(ResTy, SrcVTy->getNumElements());
+
+  auto *Op = CI->getOperand(0);
+  auto *Zext = Builder.CreateZExt(Op, ResTy);
+  auto *Ctlz = Builder.CreateIntrinsic(Intrinsic::ctlz, {ResTy},
+                                       {Zext, CI->getArgOperand(1)});
+  auto *Result =
+      Builder.CreateSub(Ctlz, ConstantInt::get(ResTy, (32 - OpTypeWidth)));
+  Result = Builder.CreateTrunc(Result, CI->getType());
   CI->replaceAllUsesWith(Result);
   ToErase.push_back(CI);
   return true;
