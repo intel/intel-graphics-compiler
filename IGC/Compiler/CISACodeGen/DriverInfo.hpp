@@ -325,12 +325,6 @@ namespace IGC
         // If enabled, IGC must provide the corresponding UMD info on how much
         // memory to allocate for the RTGlobals + global root signature.
         virtual bool supportsExpandedRTGlobals() const { return false; }
-        // If enabled, UMD must support setting up threadgroup according to
-        // RayTracingCustomTileXDim* and RayTracingCustomTileYDim*. If you want
-        // to experiment with non-power-of-2 x dimensions, you also have to
-        // support filling local IDs in the indirect state for the shader to
-        // read (not required otherwise).
-        virtual bool supportsRaytracingTiling() const { return false; }
         // Enables the use of scratch space in raytracing shaders when possible
         virtual bool supportsRTScratchSpace() const { return false; }
         // Enables Raytracing printf

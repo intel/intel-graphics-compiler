@@ -522,8 +522,6 @@ namespace IGC
         // TODO: need to separate out bindless and raygen into two structs
         // for both DX and Vulkan.
 
-        void*         ThreadPayloadData = nullptr;
-        unsigned int  TotalDataLength   = 0;
         // dynamically select between the 1D and 2D layout at runtime based
         // on the size of the dispatch.
         uint32_t      DimX1D            = 0;

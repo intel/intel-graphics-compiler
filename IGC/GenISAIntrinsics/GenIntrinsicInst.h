@@ -1535,12 +1535,6 @@ public:
     uint32_t getTileXDim() const {
         return (uint32_t)cast<ConstantInt>(getOperand(1))->getZExtValue();
     }
-    uint32_t getSubtileXDim() const {
-        return (uint32_t)cast<ConstantInt>(getOperand(2))->getZExtValue();
-    }
-    uint32_t getSubtileYDim() const {
-        return (uint32_t)cast<ConstantInt>(getOperand(3))->getZExtValue();
-    }
 };
 
 class TileXIntrinsic : public TileIntrinsic {
