@@ -4518,6 +4518,7 @@ namespace IGC
             SaveOption(vISA_ActiveThreadsOnlyBarrier, true);
         }
 
+        bool r0Reserved = false;
         if ((context->type == ShaderType::OPENCL_SHADER || context->type == ShaderType::COMPUTE_SHADER
             || context->type == ShaderType::RAYTRACING_SHADER) &&
             (m_program->m_Platform->preemptionSupported() || IGC_IS_FLAG_ENABLED(ForcePreemptionWA)) &&
@@ -4541,9 +4542,10 @@ namespace IGC
             {
                 SaveOption(vISA_enablePreemption, true);
             }
+            r0Reserved = true;
         }
 
-        if ((context->type == ShaderType::OPENCL_SHADER || context->type == ShaderType::COMPUTE_SHADER) &&
+        if (!r0Reserved && (context->type == ShaderType::OPENCL_SHADER || context->type == ShaderType::COMPUTE_SHADER) &&
             (m_program->m_Platform->isProductChildOf(IGFX_PVC) || IGC_IS_FLAG_ENABLED(ForcePreserveR0)))
         {
             // Force VISA to preserve r0 in r0 itself throughout the kernel/stackcall function.

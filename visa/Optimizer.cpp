@@ -843,6 +843,12 @@ void Optimizer::accSubBeforeRA() {
 
 bool Optimizer::R0CopyNeeded() {
   if (!builder.canReadR0()) {
+    // If r0 cannot be read then r0 has to be copied
+    // and cannot be said to be preserved in r0. In
+    // other words, these 2 are mutually exclusive
+    // options.
+    vISA_ASSERT(!kernel.getOption(vISA_PreserveR0InR0),
+                "opposing options for r0 detected");
     return true;
   }
 
