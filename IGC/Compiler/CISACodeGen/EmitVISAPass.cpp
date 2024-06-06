@@ -2358,7 +2358,9 @@ void EmitPass::EmitSimpleAlu(EOPCODE opCode, CVariable* dst, CVariable* src0, CV
         break;
     case llvm_ushr:
     {
+        // src0 and dst must be unsigned
         src0 = m_currShader->BitCast(src0, GetUnsignedType(src0->GetType()));
+        dst = m_currShader->BitCast(dst, GetUnsignedType(dst->GetType()));
         m_encoder->Shr(dst, src0, src1);
     }
     break;
