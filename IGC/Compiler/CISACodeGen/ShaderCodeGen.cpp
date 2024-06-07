@@ -640,9 +640,16 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
     }
     else
     {
-            if (IGC_IS_FLAG_ENABLED(AllowMem2Reg))
+        if (IGC_IS_FLAG_ENABLED(AllowMem2Reg))
             mpm.add(createPromoteMemoryToRegisterPass());
     }
+
+    // There's no particular reason for this exact place, but it should be after LowerGEPForPrivMem
+    if (IGC_IS_FLAG_ENABLED(EnableSplitIndirectEEtoSel))
+    {
+        mpm.add(createSplitIndirectEEtoSelPass());
+    }
+
 
     if (ctx.type == ShaderType::OPENCL_SHADER ||
         ctx.type == ShaderType::COMPUTE_SHADER)
@@ -822,12 +829,6 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
     }
     // Since we don't support switch statements, switch lowering is needed after the last CFG simplication
     mpm.add(llvm::createLowerSwitchPass());
-
-    // There's no particular reason for this exact place, but it should be after LowerGEPForPrivMem
-    if (IGC_IS_FLAG_ENABLED(EnableSplitIndirectEEtoSel))
-    {
-        mpm.add(createSplitIndirectEEtoSelPass());
-    }
 
     // This pass can create constant expression
     if (ctx.m_DriverInfo.HasDoubleLoadStore())
