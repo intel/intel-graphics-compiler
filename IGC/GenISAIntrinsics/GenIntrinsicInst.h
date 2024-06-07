@@ -1976,6 +1976,10 @@ public:
     static inline bool classof(const Value* V) {
         return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
     }
+
+    Value* getFlag() const {
+        return getOperand(0);
+    }
 };
 
 class FPBinaryOperatorIntrinsic : public GenIntrinsicInst {
