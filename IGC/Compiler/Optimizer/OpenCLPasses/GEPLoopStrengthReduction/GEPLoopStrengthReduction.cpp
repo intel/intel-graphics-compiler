@@ -220,7 +220,7 @@ private:
     void reduceToPreheader(IGCLLVM::IRBuilder<> &IRB, SCEVExpander &E);
     void reduceIndexOnly(IGCLLVM::IRBuilder<> &IRB, SCEVExpander &E);
 
-    Value *getStepValue(IGCLLVM::IRBuilder<> &IRB);
+    Value *getStepValue(IGCLLVM::IRBuilder<> &IRB, SCEVExpander &E, BasicBlock *BB);
 
     // Base GEP to reduce
     ReductionCandidate Base;
@@ -354,7 +354,6 @@ namespace SCEVHelper
 {
     const SCEV *dropExt(const SCEV *S);
 
-    bool isValidStep(const SCEV *S);
     bool isEqual(const SCEV *A, const SCEV *B);
 
     // ScalarEvolution::getAddExpr requires all operands to have the same
@@ -386,6 +385,23 @@ namespace SCEVHelper
 
         ScalarEvolution &SE;
         SmallVector<Op, 16> Ops;
+    };
+
+    // Builds SCEVMulExpr instance. Function ScalarEvolution::getMulExpr requires all
+    // operands to have the same type. This class wraps ScalarEvolution::getMulExpr,
+    // but extends operands if it is needed to keep them all in one type.
+    class SCEVMulBuilder
+    {
+    public:
+        SCEVMulBuilder(ScalarEvolution &SE) : SE(SE) {}
+
+        SCEVMulBuilder &add(const SCEV *S);
+
+        const SCEV *build();
+
+    private:
+        ScalarEvolution &SE;
+        SmallVector<const SCEV*, 4> Ops;
     };
 };
 
@@ -636,7 +652,7 @@ void ReductionCandidateGroup::reduceToPreheader(IGCLLVM::IRBuilder<> &IRB, SCEVE
         for (auto *L : Latches)
         {
             IRB.SetInsertPoint(&L->back());
-            Value *Inc = IRB.CreateGEP(Phi, getStepValue(IRB));
+            Value *Inc = IRB.CreateGEP(Phi, getStepValue(IRB, E, L));
             Phi->addIncoming(Inc, L);
         }
 
@@ -677,7 +693,7 @@ void ReductionCandidateGroup::reduceIndexOnly(IGCLLVM::IRBuilder<> &IRB, SCEVExp
 }
 
 
-Value *ReductionCandidateGroup::getStepValue(IGCLLVM::IRBuilder<> &IRB)
+Value *ReductionCandidateGroup::getStepValue(IGCLLVM::IRBuilder<> &IRB, SCEVExpander &E, BasicBlock *BB)
 {
     if (auto *S = dyn_cast<SCEVConstant>(Step))
         return IRB.getInt64(dyn_cast<SCEVConstant>(Step)->getValue()->getSExtValue());
@@ -685,8 +701,7 @@ Value *ReductionCandidateGroup::getStepValue(IGCLLVM::IRBuilder<> &IRB)
     if (auto *S = dyn_cast<SCEVUnknown>(Step))
         return S->getValue();
 
-    IGC_ASSERT_MESSAGE(0, "invalid induction value type");
-    return nullptr;
+    return E.expandCodeFor(Step, Step->getType(), &BB->back());
 }
 
 
@@ -957,7 +972,7 @@ bool Analyzer::doInitialValidation(GetElementPtrInst *GEP)
     // If pointer is instruction, it must be usable in loop preheader.
     if (auto *I = dyn_cast<Instruction>(GEP->getPointerOperand()))
     {
-        if (!DT.dominates(I, L.getLoopPreheader()))
+        if (!DT.dominates(I, L.getLoopPreheader()) && I->getParent() != L.getLoopPreheader())
             return false;
     }
 
@@ -1048,9 +1063,6 @@ bool Analyzer::deconstructSCEV(const SCEV *S, const SCEV *&Start, const SCEV *&S
         if (!SE.isLoopInvariant(OpStep, &L))
             return false;
 
-        if (!SCEVHelper::isValidStep(OpStep))
-            return false;
-
         Start = Add->getStart();
         Step = OpStep;
 
@@ -1090,6 +1102,53 @@ bool Analyzer::deconstructSCEV(const SCEV *S, const SCEV *&Start, const SCEV *&S
         }
 
         Start = Builder.build();
+
+        return IGCLLVM::isSafeToExpandAt(Start, &L.getLoopPreheader()->back(), &SE, &E);
+    }
+
+    // If expression is:
+    //   x * { start, +, step }
+    // then change it to:
+    //   { x * start, +, x * step }
+    //
+    // Warning: GEP's new index will not be a constant integer, but a new SCEV expression.
+    if (auto *Mul = dyn_cast<SCEVMulExpr>(S))
+    {
+        // SCEVAddRecExpr will be SCEV with step != 0. Any other SCEV is a multiplier.
+        bool FoundAddRec = false;
+        SCEVHelper::SCEVMulBuilder StartBuilder(SE), StepBuilder(SE);
+
+        for (auto *Op : Mul->operands())
+        {
+            const SCEV *OpSCEV = nullptr;
+            const SCEV *OpStep = nullptr;
+            if (!deconstructSCEV(Op, OpSCEV, OpStep))
+                return false;
+
+            if (OpStep->isZero())
+            {
+                StartBuilder.add(OpSCEV);
+                StepBuilder.add(OpSCEV);
+            }
+            else
+            {
+                if (FoundAddRec)
+                    return false; // unsupported expression with multiple SCEVAddRecExpr
+                FoundAddRec = true;
+
+                StartBuilder.add(OpSCEV);
+                StepBuilder.add(OpStep);
+            }
+        }
+
+        if (!FoundAddRec)
+            return false;
+
+        Start = StartBuilder.build();
+        Step = StepBuilder.build();
+
+        if (!SE.isLoopInvariant(Step, &L))
+            return false;
 
         return IGCLLVM::isSafeToExpandAt(Start, &L.getLoopPreheader()->back(), &SE, &E);
     }
@@ -1326,19 +1385,6 @@ const SCEV *SCEVHelper::dropExt(const SCEV *S)
 }
 
 
-bool SCEVHelper::isValidStep(const SCEV *S)
-{
-    switch (S->getSCEVType())
-    {
-    case scConstant:
-    case scUnknown:
-        return true;
-    default:
-        return false;
-    }
-}
-
-
 bool SCEVHelper::isEqual(const SCEV *A, const SCEV *B)
 {
     // Scalar Evolution keeps unique SCEV instances, so we can compare pointers.
@@ -1400,6 +1446,41 @@ const SCEV *SCEVHelper::SCEVAddBuilder::build()
     }
 
     return SE.getAddExpr(FinalOps);
+}
+
+
+SCEVHelper::SCEVMulBuilder &SCEVHelper::SCEVMulBuilder::add(const SCEV *S)
+{
+    IGC_ASSERT(S->getType()->isIntegerTy());
+
+    // strip extend
+    S = SCEVHelper::dropExt(S);
+
+    Ops.emplace_back(S);
+
+    return *this;
+}
+
+
+const SCEV *SCEVHelper::SCEVMulBuilder::build()
+{
+    // ScalarEvolution::getMulExpr requires all operands to have the same
+    // type. First find the widest type.
+    Type *T = nullptr;
+    for (auto S : Ops)
+    {
+        T = T ? SE.getWiderType(T, S->getType()) : S->getType();
+    }
+
+    // Join list of operands, extending type if required.
+    SmallVector<const SCEV*, 4> FinalOps;
+
+    for (auto S : Ops)
+    {
+        FinalOps.push_back(S->getType() == T ? S : SE.getSignExtendExpr(S, T));
+    }
+
+    return SE.getMulExpr(FinalOps);
 }
 
 
