@@ -405,6 +405,31 @@ ulong  __builtin_IB_lsc_atomic_cmpxchg_global_ulong(volatile __global ulong *bas
 ulong  __builtin_IB_lsc_atomic_cmpxchg_local_ulong(volatile __local ulong *base, int immElemOff, ulong cmp, ulong val);
 #endif // cl_intel_pvc_lsc_validation
 
+#ifdef cl_intel_subgroups_buffer_prefetch
+// 1D Block prefetches
+void __builtin_IB_lsc_simd_block_prefetch_uchar(const __global uchar*, enum LSC_LDCC cacheOpt);
+void __builtin_IB_lsc_simd_block_prefetch_uchar2(const __global uchar*, enum LSC_LDCC cacheOpt);
+void __builtin_IB_lsc_simd_block_prefetch_uchar4(const __global uchar*, enum LSC_LDCC cacheOpt);
+void __builtin_IB_lsc_simd_block_prefetch_uchar8(const __global uchar*, enum LSC_LDCC cacheOpt);
+void __builtin_IB_lsc_simd_block_prefetch_uchar16(const __global uchar*, enum LSC_LDCC cacheOpt);
+
+void __builtin_IB_lsc_simd_block_prefetch_ushort(const __global ushort*, enum LSC_LDCC cacheOpt);
+void __builtin_IB_lsc_simd_block_prefetch_ushort2(const __global ushort*, enum LSC_LDCC cacheOpt);
+void __builtin_IB_lsc_simd_block_prefetch_ushort4(const __global ushort*, enum LSC_LDCC cacheOpt);
+void __builtin_IB_lsc_simd_block_prefetch_ushort8(const __global ushort*, enum LSC_LDCC cacheOpt);
+void __builtin_IB_lsc_simd_block_prefetch_ushort16(const __global ushort*, enum LSC_LDCC cacheOpt);
+
+void __builtin_IB_lsc_simd_block_prefetch_uint(const __global uint*, enum LSC_LDCC cacheOpt);
+void __builtin_IB_lsc_simd_block_prefetch_uint2(const __global uint*, enum LSC_LDCC cacheOpt);
+void __builtin_IB_lsc_simd_block_prefetch_uint4(const __global uint*, enum LSC_LDCC cacheOpt);
+void __builtin_IB_lsc_simd_block_prefetch_uint8(const __global uint*, enum LSC_LDCC cacheOpt);
+
+void __builtin_IB_lsc_simd_block_prefetch_ulong(const __global ulong*, enum LSC_LDCC cacheOpt);
+void __builtin_IB_lsc_simd_block_prefetch_ulong2(const __global ulong*, enum LSC_LDCC cacheOpt);
+void __builtin_IB_lsc_simd_block_prefetch_ulong4(const __global ulong*, enum LSC_LDCC cacheOpt);
+void __builtin_IB_lsc_simd_block_prefetch_ulong8(const __global ulong*, enum LSC_LDCC cacheOpt);
+#endif // cl_intel_subgroups_buffer_prefetch
+
 #ifdef cl_intel_subgroup_extended_block_read
 // 2d block read
 ushort2  __builtin_IB_subgroup_block_read_flat_u8_m1k32v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord);

@@ -1738,6 +1738,129 @@ DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(long4, v4i64, long, i64, simd_block_read_4
 DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(long8, v8i64, long, i64, simd_block_read_8_global_l)
 #endif // cl_intel_subgroups_long
 
+#ifdef cl_intel_subgroups_buffer_prefetch
+
+void __internal_SubgroupBlockPrefetchINTEL_char_cache_controls(const global uchar* ptr, uint num_bytes, enum LSC_LDCC cacheOpt)
+{
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        if (num_bytes == 1)
+        {
+            __builtin_IB_lsc_simd_block_prefetch_uchar(ptr, cacheOpt);
+        }
+        else if (num_bytes == 2)
+        {
+            __builtin_IB_lsc_simd_block_prefetch_uchar2(ptr, cacheOpt);
+        }
+        else if (num_bytes == 4)
+        {
+            __builtin_IB_lsc_simd_block_prefetch_uchar4(ptr, cacheOpt);
+        }
+        else if (num_bytes == 8)
+        {
+            __builtin_IB_lsc_simd_block_prefetch_uchar8(ptr, cacheOpt);
+        }
+        else if (num_bytes == 16)
+        {
+            __builtin_IB_lsc_simd_block_prefetch_uchar16(ptr, cacheOpt);
+        }
+    }
+}
+
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupBlockPrefetchINTEL, _p1i8, )(const global uchar* ptr, uint num_bytes)
+{
+    __internal_SubgroupBlockPrefetchINTEL_char_cache_controls(ptr, num_bytes, LSC_LDCC_DEFAULT);
+}
+
+void __internal_SubgroupBlockPrefetchINTEL_short_cache_controls(const global ushort* ptr, uint num_bytes, enum LSC_LDCC cacheOpt)
+{
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        if (num_bytes == 2)
+        {
+            __builtin_IB_lsc_simd_block_prefetch_ushort(ptr, cacheOpt);
+        }
+        else if (num_bytes == 4)
+        {
+            __builtin_IB_lsc_simd_block_prefetch_ushort2(ptr, cacheOpt);
+        }
+        else if (num_bytes == 8)
+        {
+            __builtin_IB_lsc_simd_block_prefetch_ushort4(ptr, cacheOpt);
+        }
+        else if (num_bytes == 16)
+        {
+            __builtin_IB_lsc_simd_block_prefetch_ushort8(ptr, cacheOpt);
+        }
+        else if (num_bytes == 32)
+        {
+            __builtin_IB_lsc_simd_block_prefetch_ushort16(ptr, cacheOpt);
+        }
+    }
+}
+
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupBlockPrefetchINTEL, _p1i16, )(const global ushort* ptr, uint num_bytes)
+{
+    __internal_SubgroupBlockPrefetchINTEL_short_cache_controls(ptr, num_bytes, LSC_LDCC_DEFAULT);
+}
+
+void __internal_SubgroupBlockPrefetchINTEL_int_cache_controls(const global uint* ptr, uint num_bytes, enum LSC_LDCC cacheOpt)
+{
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        if (num_bytes == 4)
+        {
+            __builtin_IB_lsc_simd_block_prefetch_uint(ptr, cacheOpt);
+        }
+        else if (num_bytes == 8)
+        {
+            __builtin_IB_lsc_simd_block_prefetch_uint2(ptr, cacheOpt);
+        }
+        else if (num_bytes == 16)
+        {
+            __builtin_IB_lsc_simd_block_prefetch_uint4(ptr, cacheOpt);
+        }
+        else if (num_bytes == 32)
+        {
+            __builtin_IB_lsc_simd_block_prefetch_uint8(ptr, cacheOpt);
+        }
+    }
+}
+
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupBlockPrefetchINTEL, _p1i32, )(const global uint* ptr, uint num_bytes)
+{
+    __internal_SubgroupBlockPrefetchINTEL_int_cache_controls(ptr, num_bytes, LSC_LDCC_DEFAULT);
+}
+
+void __internal_SubgroupBlockPrefetchINTEL_long_cache_controls(const global ulong* ptr, uint num_bytes, enum LSC_LDCC cacheOpt)
+{
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        if (num_bytes == 8)
+        {
+            __builtin_IB_lsc_simd_block_prefetch_ulong(ptr, cacheOpt);
+        }
+        else if (num_bytes == 16)
+        {
+            __builtin_IB_lsc_simd_block_prefetch_ulong2(ptr, cacheOpt);
+        }
+        else if (num_bytes == 32)
+        {
+            __builtin_IB_lsc_simd_block_prefetch_ulong4(ptr, cacheOpt);
+        }
+        else if (num_bytes == 64)
+        {
+            __builtin_IB_lsc_simd_block_prefetch_ulong8(ptr, cacheOpt);
+        }
+    }
+}
+
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupBlockPrefetchINTEL, _p1i64, )(const global ulong* ptr, uint num_bytes)
+{
+    __internal_SubgroupBlockPrefetchINTEL_long_cache_controls(ptr, num_bytes, LSC_LDCC_DEFAULT);
+}
+#endif // cl_intel_subgroups_buffer_prefetch
+
 #ifdef cl_intel_subgroup_local_block_io
 
 #define DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(TYPE, TYPE_ABBR, ELEM_TYPE, ELEM_TYPE_ABBR, INTERNAL_FUNC)   \

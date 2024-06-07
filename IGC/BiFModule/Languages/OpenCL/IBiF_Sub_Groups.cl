@@ -790,6 +790,35 @@ DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write_ul4, ulong4,
 DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write_ul8, ulong8, ulong, i64, v8i64, __builtin_IB_simd_block_write_8_global_l)
 #endif // cl_intel_subgroups_long
 
+#ifdef cl_intel_subgroups_buffer_prefetch
+#define DEFN_INTEL_SUB_GROUP_BLOCK_PREFETCH(FUNC_POSTFIX, PTR_TYPE, PTR_TYPE_MANGLING, NUM_BYTES) \
+void OVERLOADABLE intel_sub_group_block_prefetch_##FUNC_POSTFIX(const global PTR_TYPE* p)         \
+{                                                                                                 \
+    SPIRV_BUILTIN(SubgroupBlockPrefetchINTEL, _p1##PTR_TYPE_MANGLING, )(p, NUM_BYTES);            \
+}
+
+DEFN_INTEL_SUB_GROUP_BLOCK_PREFETCH(uc,   uchar,  i8, 1)
+DEFN_INTEL_SUB_GROUP_BLOCK_PREFETCH(uc2,  uchar,  i8, 2)
+DEFN_INTEL_SUB_GROUP_BLOCK_PREFETCH(uc4,  uchar,  i8, 4)
+DEFN_INTEL_SUB_GROUP_BLOCK_PREFETCH(uc8,  uchar,  i8, 8)
+DEFN_INTEL_SUB_GROUP_BLOCK_PREFETCH(uc16, uchar,  i8, 16)
+
+DEFN_INTEL_SUB_GROUP_BLOCK_PREFETCH(us,   ushort, i16, 2)
+DEFN_INTEL_SUB_GROUP_BLOCK_PREFETCH(us2,  ushort, i16, 4)
+DEFN_INTEL_SUB_GROUP_BLOCK_PREFETCH(us4,  ushort, i16, 8)
+DEFN_INTEL_SUB_GROUP_BLOCK_PREFETCH(us8,  ushort, i16, 16)
+DEFN_INTEL_SUB_GROUP_BLOCK_PREFETCH(us16, ushort, i16, 32)
+
+DEFN_INTEL_SUB_GROUP_BLOCK_PREFETCH(ui,   uint,   i32, 4)
+DEFN_INTEL_SUB_GROUP_BLOCK_PREFETCH(ui2,  uint,   i32, 8)
+DEFN_INTEL_SUB_GROUP_BLOCK_PREFETCH(ui4,  uint,   i32, 16)
+DEFN_INTEL_SUB_GROUP_BLOCK_PREFETCH(ui8,  uint,   i32, 32)
+
+DEFN_INTEL_SUB_GROUP_BLOCK_PREFETCH(ul,   ulong,  i64, 8)
+DEFN_INTEL_SUB_GROUP_BLOCK_PREFETCH(ul2,  ulong,  i64, 16)
+DEFN_INTEL_SUB_GROUP_BLOCK_PREFETCH(ul4,  ulong,  i64, 32)
+DEFN_INTEL_SUB_GROUP_BLOCK_PREFETCH(ul8,  ulong,  i64, 64)
+#endif // cl_intel_subgroups_buffer_prefetch
 
 #ifdef cl_intel_subgroup_local_block_io
 //

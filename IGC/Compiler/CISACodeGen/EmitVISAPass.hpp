@@ -568,6 +568,7 @@ public:
 
     void emitLscIntrinsicLoad(llvm::GenIntrinsicInst* GII);
     void emitLscIntrinsicPrefetch(llvm::GenIntrinsicInst* GII);
+    void emitLscSimdBlockPrefetch(llvm::GenIntrinsicInst* GII);
     void emitLscIntrinsicStore(llvm::GenIntrinsicInst* GII);
     void emitLscIntrinsicLoadCmask(llvm::GenIntrinsicInst* inst);
     void emitLscIntrinsicStoreCmask(llvm::GenIntrinsicInst* GII);
