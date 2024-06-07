@@ -2911,6 +2911,14 @@ Imported_Intrinsics = \
      ("int",                           "cache controls options (LSC_CACHE_OPTS)")],
     "ReadWriteArgMem"]],
 ####################################################################################################
+"GenISA_LSCSimdBlockPrefetch": ["LSC 1D block prefetch (loads to cache)",
+    [("void",                          "no data is returned"),
+    [("anyptr",                        "memory address"),
+     ("int",                           "data size (LSC_DATA_SIZE)"),
+     ("int",                           "vector size (LSC_DATA_ELEMS)"),
+     ("int",                           "cache controls options (LSC_CACHE_OPTS)")],
+    "ReadWriteArgMem"]],
+####################################################################################################
 "GenISA_LSCStore": ["LSC store instruction",
     [("void",                          "nothing is returned"),
     [("anyptr",                        "address to store to"),

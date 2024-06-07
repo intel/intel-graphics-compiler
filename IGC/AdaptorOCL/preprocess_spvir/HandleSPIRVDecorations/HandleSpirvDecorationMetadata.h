@@ -52,6 +52,8 @@ namespace IGC
         void visitPrefetchCallInst(llvm::CallInst& I);
         void visit1DBlockReadCallInst(llvm::CallInst& I);
         void visit1DBlockWriteCallInst(llvm::CallInst& I);
+        void visit1DBlockPrefetchCallInst(llvm::CallInst& I);
+        void visitOCL1DBlockPrefetchCallInst(llvm::CallInst& I, llvm::SmallVectorImpl<llvm::StringRef>& Matches);
 
     private:
         llvm::Module* m_Module = nullptr;
@@ -71,5 +73,6 @@ namespace IGC
         void handleCacheControlINTELForPrefetch(llvm::CallInst& I, llvm::SmallPtrSetImpl<llvm::MDNode*>& MDNodes);
         template<typename T>
         void handleCacheControlINTELFor1DBlockIO(llvm::CallInst& I, llvm::SmallPtrSetImpl<llvm::MDNode*>& MDNodes);
+        void handleCacheControlINTELForOCL1DBlockPrefetch(llvm::CallInst& I, llvm::SmallPtrSetImpl<llvm::MDNode*>& MDNodes, llvm::SmallVectorImpl<llvm::StringRef>& Matches);
     };
 }

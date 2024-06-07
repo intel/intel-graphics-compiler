@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/Support/Regex.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "visa_igc_common_header.h"
 #include <limits>
@@ -70,6 +71,8 @@ namespace {
         /// LSC Store intrinsics call method
         Instruction* CreateLSCStoreIntrinsicCallInst(GenISAIntrinsic::ID op, bool isLocalMem);
         Instruction* CreateLSCStoreCmaskIntrinsicCallInst(bool isLocalMem);
+
+        Instruction* CreateLSCSimdBlockPrefetchIntrinsicCallInst(llvm::StringRef funcName);
 
         /// LSC Prefetch and load status intrinsics
         Instruction* CreateLSCLoadStatusPreftchIntrinsicCallInst(
@@ -201,6 +204,7 @@ namespace {
         static const StringRef PREFIX_LSC_FENCE_EVICT_TO_MEMORY;
         static const StringRef PREFIX_LSC_ATOMIC;
         static const StringRef PREFIX_LSC_PREFETCH;
+        static const StringRef PREFIX_LSC_SIMD_BLOCK_PREFETCH;
     };
 }
 
@@ -229,6 +233,7 @@ const StringRef LSCFuncsResolution::PREFIX_LSC_FENCE  = "__builtin_IB_lsc_fence_
 const StringRef LSCFuncsResolution::PREFIX_LSC_FENCE_EVICT_TO_MEMORY = "__builtin_IB_lsc_fence_evict_to_memory";
 const StringRef LSCFuncsResolution::PREFIX_LSC_ATOMIC = "__builtin_IB_lsc_atomic_";
 const StringRef LSCFuncsResolution::PREFIX_LSC_PREFETCH = "__builtin_IB_lsc_prefetch_global_";
+const StringRef LSCFuncsResolution::PREFIX_LSC_SIMD_BLOCK_PREFETCH = "__builtin_IB_lsc_simd_block_prefetch_";
 
 // Register pass to igc-opt
 #define PASS_FLAG "igc-lsc-funcs-translation"
@@ -313,6 +318,8 @@ void LSCFuncsResolution::visitCallInst(CallInst &CI)
         lscCall = CreateLSCLoadCmaskIntrinsicCallInst(true);
     //////////////
     // prefetches
+    } else if (FN.consume_front(LSCFuncsResolution::PREFIX_LSC_SIMD_BLOCK_PREFETCH)) {
+        lscCall = CreateLSCSimdBlockPrefetchIntrinsicCallInst(FN);
     } else if (FN.startswith(LSCFuncsResolution::PREFIX_LSC_LOAD_status)) {
         lscCall = CreateLSCLoadStatusPreftchIntrinsicCallInst(
             GenISAIntrinsic::GenISA_LSCLoadStatus);
@@ -1167,6 +1174,79 @@ Instruction* LSCFuncsResolution::CreateLSCLoadCmaskIntrinsicCallInst(
     };
     Function* lscFunc = GenISAIntrinsic::getDeclaration(
         m_pCurrInstFunc->getParent(), GenISAIntrinsic::GenISA_LSCLoadCmask, OvldTys);
+    Instruction* lscCall = CallInst::Create(lscFunc, args, "", m_pCurrInst);
+    return lscCall;
+}
+
+Instruction* LSCFuncsResolution::CreateLSCSimdBlockPrefetchIntrinsicCallInst(StringRef funcName)
+{
+    Regex pattern1DBlockRead("(uchar|ushort|uint|ulong)(2|4|8|16)?");
+
+    SmallVector<StringRef, 3> matches;
+    bool matched = pattern1DBlockRead.match(funcName, &matches);
+    IGC_ASSERT_MESSAGE(matched, "Unsupported simd block prefetch!");
+    if (!matched) return nullptr;
+
+    StringRef elementTypeName = matches[1];
+    uint32_t numElements = matches[2] == "" ? 1 : std::stoi(matches[2].str());
+
+    LscTypeInfo typeInfo{};
+
+    if (elementTypeName.equals("uchar"))
+    {
+        typeInfo.dataSize = LSC_DATA_SIZE_8b;
+    }
+    else if (elementTypeName.equals("ushort"))
+    {
+        typeInfo.dataSize = LSC_DATA_SIZE_16b;
+    }
+    else if (elementTypeName.equals("uint"))
+    {
+        typeInfo.dataSize = LSC_DATA_SIZE_32b;
+    }
+    else if (elementTypeName.equals("ulong"))
+    {
+        typeInfo.dataSize = LSC_DATA_SIZE_64b;
+    }
+
+    switch (numElements)
+    {
+    case 1:
+        typeInfo.vectorSize = LSC_DATA_ELEMS_1;
+        break;
+    case 2:
+        typeInfo.vectorSize = LSC_DATA_ELEMS_2;
+        break;
+    case 4:
+        typeInfo.vectorSize = LSC_DATA_ELEMS_4;
+        break;
+    case 8:
+        typeInfo.vectorSize = LSC_DATA_ELEMS_8;
+        break;
+    case 16:
+        typeInfo.vectorSize = LSC_DATA_ELEMS_16;
+        IGC_ASSERT_MESSAGE(
+            typeInfo.dataSize == LSC_DATA_SIZE_8b || typeInfo.dataSize == LSC_DATA_SIZE_16b,
+            "16-elements vector size is only supported for uchar and ushort!");
+        break;
+    default:
+        IGC_ASSERT_MESSAGE(false, "Unsupported simd block prefetch variant!");
+        break;
+    }
+
+    Value* args[4]{
+        m_pCurrInst->getArgOperand(0),  // base address
+        getConstantInt32(typeInfo.dataSize),
+        getConstantInt32(typeInfo.vectorSize),
+        m_pCurrInst->getArgOperand(1)   // cache controls
+    };
+
+    Type* OvldTys[1]{
+        args[0]->getType(), // only one overloaded type
+    };
+
+    Function* lscFunc = GenISAIntrinsic::getDeclaration(
+        m_pCurrInstFunc->getParent(), GenISAIntrinsic::GenISA_LSCSimdBlockPrefetch, OvldTys);
     Instruction* lscCall = CallInst::Create(lscFunc, args, "", m_pCurrInst);
     return lscCall;
 }
