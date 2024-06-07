@@ -59,16 +59,16 @@ namespace IGC
             llvm::Value* elementSizeInBytes;
         };
 
-        bool modified;
+        bool modified = false;
 
-        IGCMD::MetaDataUtils* metadataUtils;
-        ModuleMetaData* moduleMetadata;
-        ImplicitArgs* implicitArgs;
-        KernelArgs* kernelArgs;
+        IGCMD::MetaDataUtils* metadataUtils = nullptr;
+        ModuleMetaData* moduleMetadata = nullptr;
+        ImplicitArgs* implicitArgs = nullptr;
+        KernelArgs* kernelArgs = nullptr;
         llvm::SmallVector<llvm::Instruction*, 4> loadsAndStoresToCheck;
         llvm::DenseMap<llvm::StringRef, llvm::GlobalVariable*> stringsCache;
-        llvm::DICompileUnit* compileUnit;
-        llvm::Function* bufferSizePlaceholderFunction;
+        llvm::DICompileUnit* compileUnit = nullptr;
+        llvm::Function* bufferSizePlaceholderFunction = nullptr;
 
         void handleLoadStore(llvm::Instruction* instruction);
 

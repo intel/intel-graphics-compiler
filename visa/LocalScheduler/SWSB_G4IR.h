@@ -621,7 +621,7 @@ private:
   // TODO: May want to change these to use llvm allocator as well.
   vISA::Mem_Manager &mem;
   G4_BB *bb;
-  G4_Label *BBLabel;
+  G4_Label *BBLabel = nullptr;
   int nodeID;
   int ALUID;
 
@@ -641,7 +641,7 @@ private:
   unsigned short getDpasSrcCacheSize(Gen4_Operand_Number opNum) const;
 
 public:
-  LiveGRFBuckets *send_use_kills;
+  LiveGRFBuckets *send_use_kills = nullptr;
   BB_SWSB_LIST Preds;
   BB_SWSB_LIST Succs;
 
@@ -680,8 +680,8 @@ public:
   std::vector<BitSet> tokeNodesMap;
   int first_DPASID = 0;
   int last_DPASID = 0;
-  unsigned *tokenLiveInDist;
-  unsigned *tokenLiveOutDist;
+  unsigned *tokenLiveInDist = nullptr;
+  unsigned *tokenLiveOutDist = nullptr;
   SBBitSets localReachingSends;
   SBBitSets
       BBGRF; // Is used to record the GRF registers accessed by each basic block

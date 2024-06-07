@@ -524,12 +524,12 @@ void Options::parseOptions(const char* opts)
         }
     }
 
-    for (auto arg : apiOptions.getAllArgValues(OPT_large_grf_kernel_common))
+    for (const auto& arg : apiOptions.getAllArgValues(OPT_large_grf_kernel_common))
     {
         LargeGRFKernels.push_back(arg);
     }
 
-    for (auto arg : apiOptions.getAllArgValues(OPT_regular_grf_kernel_common))
+    for (const auto& arg : apiOptions.getAllArgValues(OPT_regular_grf_kernel_common))
     {
         RegularGRFKernels.push_back(arg);
     }

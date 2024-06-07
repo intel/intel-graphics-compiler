@@ -44,8 +44,8 @@ namespace IGC
         void visitCallInst(llvm::CallInst& icmp);
 
     private:
-        ImplicitArgs* implicitArgs;
-        IGCMD::MetaDataUtils* metadataUtils;
+        ImplicitArgs* implicitArgs = nullptr;
+        IGCMD::MetaDataUtils* metadataUtils = nullptr;
         llvm::SmallVector<llvm::CallInst*, 8> toRemove;
 
         llvm::Argument* getBufferSizeArg(llvm::Function* function, uint32_t n);

@@ -69,7 +69,7 @@ bool BufferBoundsCheckingPatcher::runOnModule(Module& M)
                     continue;
                 }
 
-                auto bufferSize = getBufferSizeArg(call->getFunction(), (uint32_t)dyn_cast<ConstantInt>(call->getArgOperand(0))->getSExtValue());
+                auto bufferSize = getBufferSizeArg(call->getFunction(), (uint32_t)cast<ConstantInt>(call->getArgOperand(0))->getSExtValue());
                 //auto bufferSize = ConstantInt::get(Type::getInt64Ty(call->getContext()), 64); // Only for testing purposes
                 call->replaceAllUsesWith(bufferSize);
                 toRemove.push_back(call);

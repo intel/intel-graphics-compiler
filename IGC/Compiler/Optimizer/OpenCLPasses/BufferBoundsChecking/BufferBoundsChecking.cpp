@@ -42,8 +42,7 @@ IGC_INITIALIZE_PASS_END(BufferBoundsChecking, PASS_FLAG, PASS_DESCRIPTION, PASS_
 
 char BufferBoundsChecking::ID = 0;
 
-BufferBoundsChecking::BufferBoundsChecking()
-    : ModulePass(ID), modified(false), kernelArgs(nullptr), bufferSizePlaceholderFunction(nullptr)
+BufferBoundsChecking::BufferBoundsChecking() : ModulePass(ID)
 {
     initializeBufferBoundsCheckingPass(*PassRegistry::getPassRegistry());
 }
