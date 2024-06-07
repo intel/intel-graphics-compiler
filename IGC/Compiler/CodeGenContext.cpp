@@ -288,11 +288,18 @@ namespace IGC
             IGC_ASSERT(currentShader);
             IGC_ASSERT(previousShader);
 
+            // basically a small work around, if we have high spilling kernel on our hands, we are not afraid to use
+            // pre-retry shader, when we have less spills than retry one has
+            bool IsExcessiveSpillKernel = currentShader->m_spillSize >= IGC_GET_FLAG_VALUE(RetryRevertExcessiveSpillingKernelThreshold);
+            if (IsExcessiveSpillKernel) threshold = 1.02f;
+
             // Check if current shader spill is larger than previous shader spill
             // Threshold flag controls comparison tolerance - i.e. A threshold of 2.0 means that the
             // current shader spill must be 2x larger than previous spill to be considered "better".
             bool spillSizeBigger =
                 currentShader->m_spillSize > (unsigned int)(previousShader->m_spillSize * threshold);
+
+            llvm::errs() << " spill size: " << currentShader->m_spillSize << "\n";
 
             if (spillSizeBigger)
             {
