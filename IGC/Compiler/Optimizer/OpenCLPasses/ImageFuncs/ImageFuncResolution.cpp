@@ -205,141 +205,89 @@ Value* ImageFuncResolution::getImageNumSamples(CallInst& CI)
     return arg;
 }
 
-Value* ImageFuncResolution::getSamplerAddressMode(CallInst& CI)
+template<ImplicitArg::ArgType ArgTy>
+Value* ImageFuncResolution::getSamplerProperty(CallInst& CI)
 {
     MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-
-    Value* sampler = ValueTracker::track(&CI, 0, pMdUtils, modMD);
-    if (sampler == nullptr)
+    if (Value* sampler = ValueTracker::track(&CI, 0, pMdUtils, modMD))
     {
-        // TODO: For now disable WA if unable to trace sampler argument.
-        // Will need to rework WA to add support for indirect sampler case.
-        return ConstantInt::get(CI.getType(), 0);
-    }
-    if (isa<Argument>(sampler))
-    {
-        Argument* arg = getImplicitImageArg(CI, ImplicitArg::SAMPLER_ADDRESS);
-        return arg;
-    }
-    else
-    {
-        llvm::Function* pFunc = CI.getParent()->getParent();
-
-        IGC_ASSERT_MESSAGE(isa<ConstantInt>(sampler), "Sampler must be a constant integer");
-        InlineSamplerState samplerStateAddressMode{ cast<ConstantInt>(sampler)->getZExtValue() };
-        uint64_t samplerVal = 0;
-        uint samplerValue = int_cast<unsigned int>(cast<ConstantInt>(sampler)->getZExtValue());
-        if (modMD->FuncMD.find(pFunc) != modMD->FuncMD.end())
+        if (isa<Argument>(sampler))
         {
-            FunctionMetaData funcMD = modMD->FuncMD[pFunc];
-            ResourceAllocMD resAllocMD = funcMD.resAllocMD;
-            for (auto i = resAllocMD.inlineSamplersMD.begin(), e = resAllocMD.inlineSamplersMD.end(); i != e; i++)
+            if (m_implicitArgs.isImplicitArgExist(ArgTy))
             {
-                IGC::InlineSamplersMD inlineSamplerMD = *i;
-                if (samplerValue == inlineSamplerMD.m_Value)
-                {
-                    InlineSamplerState samplerState{ static_cast<uint64_t>(samplerValue) };
-                    samplerVal = inlineSamplerMD.addressMode;
-                }
+                Argument* arg = getImplicitImageArg(CI, ArgTy);
+                return arg;
             }
         }
-        return ConstantInt::get(CI.getType(), samplerVal);
+        else
+        {
+            llvm::Function* pFunc = CI.getFunction();
+
+            IGC_ASSERT_MESSAGE(isa<ConstantInt>(sampler), "Sampler must be a constant integer");
+            uint64_t samplerVal = 0;
+            if (modMD->FuncMD.find(pFunc) != modMD->FuncMD.end())
+            {
+                FunctionMetaData funcMD = modMD->FuncMD[pFunc];
+                ResourceAllocMD resAllocMD = funcMD.resAllocMD;
+                uint samplerValue = int_cast<unsigned int>(cast<ConstantInt>(sampler)->getZExtValue());
+                for (auto i = resAllocMD.inlineSamplersMD.begin(), e = resAllocMD.inlineSamplersMD.end(); i != e; i++)
+                {
+                    IGC::InlineSamplersMD inlineSamplerMD = *i;
+                    if (samplerValue == inlineSamplerMD.m_Value)
+                    {
+                        InlineSamplerState samplerState{ static_cast<uint64_t>(samplerValue) };
+                        if constexpr (ArgTy == ImplicitArg::SAMPLER_ADDRESS)
+                        {
+                            samplerVal = inlineSamplerMD.addressMode;
+                        }
+                        else if constexpr (ArgTy == ImplicitArg::SAMPLER_NORMALIZED)
+                        {
+                            samplerVal = inlineSamplerMD.NormalizedCoords;
+                        }
+                        else if constexpr (ArgTy == ImplicitArg::SAMPLER_SNAP_WA)
+                        {
+                            bool anyAddressModeClamp =
+                                inlineSamplerMD.TCXAddressMode == iOpenCL::SAMPLER_TEXTURE_ADDRESS_MODE_BORDER ||
+                                inlineSamplerMD.TCYAddressMode == iOpenCL::SAMPLER_TEXTURE_ADDRESS_MODE_BORDER ||
+                                inlineSamplerMD.TCZAddressMode == iOpenCL::SAMPLER_TEXTURE_ADDRESS_MODE_BORDER;
+                            bool anyMapFilterModeNearest =
+                                inlineSamplerMD.MagFilterType == iOpenCL::SAMPLER_MAPFILTER_POINT ||
+                                inlineSamplerMD.MinFilterType == iOpenCL::SAMPLER_MAPFILTER_POINT;
+                            bool snapWARequired = anyAddressModeClamp &&
+                                anyMapFilterModeNearest &&
+                                !inlineSamplerMD.NormalizedCoords;
+                            samplerVal = snapWARequired ? -1 : 0;
+                        }
+                        else
+                        {
+                            llvm_unreachable("unexpected sampler property");
+                        }
+                    }
+                }
+            }
+            return ConstantInt::get(CI.getType(), samplerVal);
+        }
     }
+
+    // TODO: For now disable WA if unable to trace sampler argument.
+    // Will need to rework WA to add support for indirect sampler case.
+    return ConstantInt::get(CI.getType(), 0);
+}
+
+Value* ImageFuncResolution::getSamplerAddressMode(CallInst& CI)
+{
+    return getSamplerProperty<ImplicitArg::SAMPLER_ADDRESS>(CI);
 }
 
 Value* ImageFuncResolution::getSamplerNormalizedCoords(CallInst& CI)
 {
-    MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-    Value* sampler = ValueTracker::track(&CI, 0, pMdUtils, modMD);
-    if (sampler == nullptr)
-    {
-        // TODO: For now disable WA if unable to trace sampler argument.
-        // Will need to rework WA to add support for indirect sampler case.
-        return ConstantInt::get(CI.getType(), 0);
-    }
-    else if (isa<Argument>(sampler))
-    {
-        Argument* arg = getImplicitImageArg(CI, ImplicitArg::SAMPLER_NORMALIZED);
-        return arg;
-    }
-    else
-    {
-        llvm::Function* pFunc = CI.getParent()->getParent();
-        IGC_ASSERT_MESSAGE(isa<ConstantInt>(sampler), "Sampler must be a constant integer");
-
-        uint64_t samplerVal = 0;
-        uint samplerValue = int_cast<unsigned int>(cast<ConstantInt>(sampler)->getZExtValue());
-
-        if (modMD->FuncMD.find(pFunc) != modMD->FuncMD.end())
-        {
-            FunctionMetaData funcMD = modMD->FuncMD[pFunc];
-            ResourceAllocMD resAllocMD = funcMD.resAllocMD;
-            for (auto i = resAllocMD.inlineSamplersMD.begin(), e = resAllocMD.inlineSamplersMD.end(); i != e; ++i)
-            {
-                IGC::InlineSamplersMD inlineSamplerMD = *i;
-                if (samplerValue == inlineSamplerMD.m_Value)
-                {
-                    InlineSamplerState samplerState{ static_cast<uint64_t>(samplerValue) };
-                    samplerVal = inlineSamplerMD.NormalizedCoords;
-                }
-            }
-        }
-        return ConstantInt::get(CI.getType(), samplerVal);
-    }
+    return getSamplerProperty<ImplicitArg::SAMPLER_NORMALIZED>(CI);
 }
 
 Value* ImageFuncResolution::getSamplerSnapWARequired(CallInst& CI)
 {
-    MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-    Value* sampler = ValueTracker::track(&CI, 0, pMdUtils, modMD);
-    if (sampler == nullptr)
-    {
-        // TODO: For now disable WA if unable to trace sampler argument.
-        // Will need to rework WA to add support for indirect sampler case.
-        return ConstantInt::get(CI.getType(), 0);
-    }
-    else if (isa<Argument>(sampler))
-    {
-        Argument* arg = getImplicitImageArg(CI, ImplicitArg::SAMPLER_SNAP_WA);
-        return arg;
-    }
-    else
-    {
-        IGC_ASSERT_MESSAGE(isa<ConstantInt>(sampler), "Sampler must be a constant integer");
-
-        llvm::Function* pFunc = CI.getParent()->getParent();
-
-        bool snapWARequired = false;
-        uint samplerVal = int_cast<unsigned int>(cast<ConstantInt>(sampler)->getZExtValue());
-
-        if (modMD->FuncMD.find(pFunc) != modMD->FuncMD.end())
-        {
-            FunctionMetaData funcMD = modMD->FuncMD[pFunc];
-            ResourceAllocMD resAllocMD = funcMD.resAllocMD;
-            for (auto i = resAllocMD.inlineSamplersMD.begin(), e = resAllocMD.inlineSamplersMD.end(); i != e; ++i)
-            {
-                InlineSamplersMD inlineSamplerMD = *i;
-                if (samplerVal == inlineSamplerMD.m_Value)
-                {
-                    InlineSamplerState samplerState{ static_cast<uint64_t>(samplerVal) };
-                    bool anyAddressModeClamp =
-                        inlineSamplerMD.TCXAddressMode == iOpenCL::SAMPLER_TEXTURE_ADDRESS_MODE_BORDER ||
-                        inlineSamplerMD.TCYAddressMode == iOpenCL::SAMPLER_TEXTURE_ADDRESS_MODE_BORDER ||
-                        inlineSamplerMD.TCZAddressMode == iOpenCL::SAMPLER_TEXTURE_ADDRESS_MODE_BORDER;
-                    bool anyMapFilterModeNearest =
-                        inlineSamplerMD.MagFilterType == iOpenCL::SAMPLER_MAPFILTER_POINT ||
-                        inlineSamplerMD.MinFilterType == iOpenCL::SAMPLER_MAPFILTER_POINT;
-                    snapWARequired = anyAddressModeClamp &&
-                        anyMapFilterModeNearest &&
-                        !inlineSamplerMD.NormalizedCoords;
-                }
-            }
-        }
-        return ConstantInt::get(CI.getType(), snapWARequired ? -1 : 0);
-    }
+    return getSamplerProperty<ImplicitArg::SAMPLER_SNAP_WA>(CI);
 }
 
 Argument* ImageFuncResolution::getImplicitImageArg(CallInst& CI, ImplicitArg::ArgType argType) {

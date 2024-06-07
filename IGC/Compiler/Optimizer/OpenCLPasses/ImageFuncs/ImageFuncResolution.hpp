@@ -107,6 +107,13 @@ namespace IGC
         /// @return A value representing the image number of samples.
         llvm::Value* getImageNumSamples(llvm::CallInst& CI);
 
+        /// @brief  Resolves sampler pseudo-builtin, e.g. get_sampler_address_mode.
+        /// @param  CI The call instruction.
+        /// @return A value representing the sampler property, which may either be
+        ///         a ConstantInt or an Argument.
+        template<ImplicitArg::ArgType ArgTy>
+        llvm::Value* getSamplerProperty(llvm::CallInst& CI);
+
         /// @brief  Resolves the pseudo-builtin get_sampler_address_mode(sampler_t).
         ///         Adds the approtiate sequence of code before the given call isntruction
         /// @param  CI The call instruction.

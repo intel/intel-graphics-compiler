@@ -177,19 +177,33 @@ void ImageFuncsAnalysis::visitCallInst(CallInst& CI)
     // don't require extra kernel parameters.
     Value* callArg = ValueTracker::track(&CI, 0, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
 
+    // Return true if v is argument and argument type is %spirv.Sampler.
+    // Return false when sampler track back to a SYCL bindless image argment,
+    // since in this case we don't need implicit args.
+    auto isSamplerArgument = [](Argument *arg) {
+        // TODO check v has sampler target extension type when switching to opaque pointer.
+        if (auto *pty = dyn_cast<PointerType>(arg->getType()))
+        {
+            if (auto *sty = dyn_cast<StructType>(IGCLLVM::getNonOpaquePtrEltTy(pty)))
+            {
+                return sty->isOpaque();
+            }
+        }
+        return false;
+    };
+
     // TODO: For now assume that we may not trace a sampler/texture for indirect access.
     // In this case we provide no WA support for indirect case and all WAs will return 0.
     // These WAs need to be reworked to support indirect case in the future.
     if (callArg)
     {
-        if (Argument * arg = dyn_cast<Argument>(callArg))
+        if (Argument * arg = dyn_cast<Argument>(callArg); arg && isSamplerArgument(arg))
         {
             imageFunc->insert(arg->getArgNo());
+            return;
         }
     }
-    else
-    {
-        // Only these args should be hit by the indirect case
-        IGC_ASSERT(funcName == GET_SAMPLER_ADDRESS_MODE || funcName == GET_SAMPLER_NORMALIZED_COORDS || funcName == GET_SAMPLER_SNAP_WA_REQUIRED);
-    }
+
+    // Only these args should be hit by the indirect case
+    IGC_ASSERT(funcName == GET_SAMPLER_ADDRESS_MODE || funcName == GET_SAMPLER_NORMALIZED_COORDS || funcName == GET_SAMPLER_SNAP_WA_REQUIRED);
 }

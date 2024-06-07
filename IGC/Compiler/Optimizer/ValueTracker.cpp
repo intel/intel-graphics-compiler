@@ -498,6 +498,12 @@ Value* ValueTracker::trackValue(Value* I)
             phiVisited.insert(std::make_pair(I, baseValue));
             return baseValue;
         }
+        else if (auto *BO = dyn_cast<BinaryOperator>(baseValue))
+        {
+            Value *Op0 = BO->getOperand(0);
+            Value *Op1 = BO->getOperand(1);
+            baseValue = isa_and_nonnull<Constant>(Op0) ? Op1 : (isa_and_nonnull<Constant>(Op1) ? Op0 : nullptr);
+        }
         else
         {
             baseValue = nullptr;

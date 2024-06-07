@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2017-2021 Intel Corporation
+; Copyright (C) 2017-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -9,17 +9,19 @@
 ; RUN: igc_opt -igc-image-func-analysis -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
-%opencl.image2d_t = type opaque
+%spirv.Sampler = type opaque
 
-declare i32 @__builtin_IB_get_snap_wa_reqd(i32 %sampler)
+declare i32 @__builtin_IB_get_snap_wa_reqd(i32)
 
-define i32 @foo(i32 %sampler) nounwind {
-  %id = call i32 @__builtin_IB_get_snap_wa_reqd(i32 %sampler)
+define i32 @foo(%spirv.Sampler addrspace(2)* %sampler) nounwind {
+  %1 = ptrtoint %spirv.Sampler addrspace(2)* %sampler to i64
+  %2 = trunc i64 %1 to i32
+  %id = call i32 @__builtin_IB_get_snap_wa_reqd(i32 %2)
   ret i32 %id
 }
 
 !igc.functions = !{!0}
-!0 = !{i32 (i32)* @foo, !1}
+!0 = !{i32 (%spirv.Sampler addrspace(2)*)* @foo, !1}
 !1 = !{!2, !3}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"implicit_arg_desc"}

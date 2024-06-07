@@ -1,10 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2017-2024 Intel Corporation
+; Copyright (C) 2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
+
+; Check new implicit arg is added for __builtin_IB_is_normalized_coords when
+; sampler is bindless (offset is or'ed with 1).
 
 ; RUN: igc_opt -igc-image-func-analysis -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
@@ -15,8 +18,9 @@ declare i32 @__builtin_IB_is_normalized_coords(i32)
 
 define i32 @foo(%spirv.Sampler addrspace(2)* %sampler) nounwind {
   %1 = ptrtoint %spirv.Sampler addrspace(2)* %sampler to i64
-  %2 = trunc i64 %1 to i32
-  %id = call i32 @__builtin_IB_is_normalized_coords(i32 %2)
+  %2 = or i64 %1, 1
+  %3 = trunc i64 %2 to i32
+  %id = call i32 @__builtin_IB_is_normalized_coords(i32 %3)
   ret i32 %id
 }
 
@@ -29,5 +33,3 @@ define i32 @foo(%spirv.Sampler addrspace(2)* %sampler) nounwind {
 ;CHECK: !{!"implicit_arg_desc", ![[A1:[0-9]+]]}
 ;CHECK: ![[A1]] = !{i32 30, ![[A2:[0-9]+]]}
 ;CHECK: ![[A2]] = !{!"explicit_arg_num", i32 0}
-
-
