@@ -1028,6 +1028,7 @@ bool TranslateToProgrammableOffsetsPass::runOnFunction(Function& F)
                 switch (loadInst->getIntrinsicID())
                 {
                 case GenISAIntrinsic::GenISA_ldptr:
+                case GenISAIntrinsic::GenISA_ldlptr:
                     newInst = TranslateIntrinsic<GenISAIntrinsic::GenISA_ldptr>::Translate(loadInst);
                     break;
                 default:
