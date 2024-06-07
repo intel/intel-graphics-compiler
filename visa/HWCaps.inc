@@ -888,4 +888,8 @@ uint32_t getSizeOfSendQueue() const {
   }
   return 6;
 }
+
+bool hasImmOnSrc0Src2ForAlign1Ternary() const {
+  return getPlatformGeneration() >= PlatformGen::XE;
+}
 // end HW capabilities

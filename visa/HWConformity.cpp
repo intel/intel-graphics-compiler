@@ -1353,7 +1353,8 @@ void HWConformity::fixAlign13SrcInst(INST_LIST_ITER iter, G4_BB *bb) {
                        i);
         }
       } else {
-        if (inst->getSrc(i)->isImm()) {
+        if (inst->getSrc(i)->isImm() &&
+            !builder.hasImmOnSrc0Src2ForAlign1Ternary()) {
           canBeImm = false;
         }
       }
@@ -3863,11 +3864,23 @@ bool HWConformity::isGoodAlign1TernarySrc(G4_INST *inst, int srcPos,
     // permanent WA: simd16 inst can't have src0 imm.
     // Instead of splitting, we just add a move
 
-    if (canBeImm && (srcPos == 0 || srcPos == 2) && src->getTypeSize() <= 2) {
+    bool isSigned = IS_SIGNED_INT(src->getType());
+    bool isLETwoBytes =
+        (src->getTypeSize() <= 2 ||
+         G4_Imm::isInTypeRange(src->asImm()->getImm(),
+                               isSigned ? G4_Type::Type_W : G4_Type::Type_UW));
+    if (canBeImm && (srcPos == 0 || srcPos == 2) && isLETwoBytes) {
+      bool canInlineImm = true;
       if (VISA_WA_CHECK(builder.getPWaTable(), WaNoSimd16TernarySrc0Imm)) {
-        return !isSrc2 && inst->getExecSize() != g4::SIMD16;
+        canInlineImm = !isSrc2 && inst->getExecSize() != g4::SIMD16;
       }
-      return true;
+      if (canInlineImm && src->getTypeSize() > 2) {
+        // replace imm to 2-byte type
+        auto *shoterImm = builder.createImmWithLowerType(src->asImm()->getImm(),
+                                                        src->getType());
+        inst->setSrc(shoterImm, srcPos);
+      }
+      return canInlineImm;
     }
     return false;
   } else if (src->isSrcRegRegion()) {
