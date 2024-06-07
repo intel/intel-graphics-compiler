@@ -6501,6 +6501,30 @@ void    __attribute__((overloadable)) intel_sub_group_block_write_ul8(__local ul
 
 #endif // cl_intel_subgroup_local_block_io
 
+#ifdef cl_intel_subgroups_buffer_prefetch
+void __attribute__((overloadable)) intel_sub_group_block_prefetch_uc(const __global uchar* p);
+void __attribute__((overloadable)) intel_sub_group_block_prefetch_uc2(const __global uchar* p);
+void __attribute__((overloadable)) intel_sub_group_block_prefetch_uc4(const __global uchar* p);
+void __attribute__((overloadable)) intel_sub_group_block_prefetch_uc8(const __global uchar* p);
+void __attribute__((overloadable)) intel_sub_group_block_prefetch_uc16(const __global uchar* p);
+
+void __attribute__((overloadable)) intel_sub_group_block_prefetch_us(const __global ushort* p);
+void __attribute__((overloadable)) intel_sub_group_block_prefetch_us2(const __global ushort* p);
+void __attribute__((overloadable)) intel_sub_group_block_prefetch_us4(const __global ushort* p);
+void __attribute__((overloadable)) intel_sub_group_block_prefetch_us8(const __global ushort* p);
+void __attribute__((overloadable)) intel_sub_group_block_prefetch_us16(const __global ushort* p);
+
+void __attribute__((overloadable)) intel_sub_group_block_prefetch_ui(const __global uint* p);
+void __attribute__((overloadable)) intel_sub_group_block_prefetch_ui2(const __global uint* p);
+void __attribute__((overloadable)) intel_sub_group_block_prefetch_ui4(const __global uint* p);
+void __attribute__((overloadable)) intel_sub_group_block_prefetch_ui8(const __global uint* p);
+
+void __attribute__((overloadable)) intel_sub_group_block_prefetch_ul(const __global ulong* p);
+void __attribute__((overloadable)) intel_sub_group_block_prefetch_ul2(const __global ulong* p);
+void __attribute__((overloadable)) intel_sub_group_block_prefetch_ul4(const __global ulong* p);
+void __attribute__((overloadable)) intel_sub_group_block_prefetch_ul8(const __global ulong* p);
+#endif // cl_intel_subgroups_buffer_prefetch
+
 #if defined(cl_khr_subgroup_non_uniform_arithmetic) || defined(cl_khr_subgroup_clustered_reduce)
 #define DECL_SUB_GROUP_NON_UNIFORM_OPERATION(TYPE, GROUP_TYPE, OPERATION)
 #define DECL_SUB_GROUP_NON_UNIFORM_CLUSTERED_OPERATION(TYPE, GROUP_TYPE, OPERATION)

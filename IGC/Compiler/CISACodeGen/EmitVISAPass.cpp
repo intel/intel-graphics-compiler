@@ -6573,6 +6573,8 @@ void EmitPass::emitLSCSimdBlockRead(llvm::Instruction* inst, llvm::Value* ptrVal
     PointerType* ptrType = cast<PointerType>(llPtr->getType());
     ResourceDescriptor resource = GetResourceVariable(llPtr);
 
+    bool isPrefetch = m_destination == nullptr;
+
     CVariable* src = nullptr;
     if (ptrVal)
     {
@@ -6587,11 +6589,53 @@ void EmitPass::emitLSCSimdBlockRead(llvm::Instruction* inst, llvm::Value* ptrVal
     bool useA64 = isA64Ptr(ptrType, m_currShader->GetContext());
     LSC_ADDR_SIZE addrSize = useA64 ? LSC_ADDR_SIZE_64b : LSC_ADDR_SIZE_32b;
 
-    Type* Ty = inst->getType();
-    IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
-    uint32_t nbElements = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
+    uint32_t nbElements = 0;
+    uint32_t typeSizeInBytes = 0;
+    if (isPrefetch)
+    {
+        LSC_DATA_SIZE lscDataSize = (LSC_DATA_SIZE)GetImmediateVal(inst->getOperand(1));
+        LSC_DATA_ELEMS lscDataElems = (LSC_DATA_ELEMS)GetImmediateVal(inst->getOperand(2));
 
-    uint32_t typeSizeInBytes = Ty->getScalarSizeInBits() / 8;
+        switch (lscDataSize)
+        {
+            case LSC_DATA_SIZE_8b:
+                typeSizeInBytes = 1; break;
+            case LSC_DATA_SIZE_16b:
+                typeSizeInBytes = 2; break;
+            case LSC_DATA_SIZE_32b:
+                typeSizeInBytes = 4; break;
+            case LSC_DATA_SIZE_64b:
+                typeSizeInBytes = 8; break;
+            default:
+                IGC_ASSERT_EXIT_MESSAGE(0, "invalid data type");
+        }
+
+        switch (lscDataElems)
+        {
+            case LSC_DATA_ELEMS_1:
+                nbElements = 1; break;
+            case LSC_DATA_ELEMS_2:
+                nbElements = 2; break;
+            case LSC_DATA_ELEMS_4:
+                nbElements = 4; break;
+            case LSC_DATA_ELEMS_8:
+                nbElements = 8; break;
+            case LSC_DATA_ELEMS_16:
+                nbElements = 16; break;
+            default:
+                IGC_ASSERT_EXIT_MESSAGE(0, "invalid number of elems");
+        }
+    }
+    else
+    {
+        Type* Ty = inst->getType();
+        IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
+        nbElements = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
+        typeSizeInBytes = Ty->getScalarSizeInBits() / 8;
+    }
+
+    IGC_ASSERT(nbElements > 0 && typeSizeInBytes > 0);
+
     uint32_t totalBytes = nbElements * typeSizeInBytes * numLanes(m_SimdMode);
 
     uint32_t bytesRemaining = totalBytes;
@@ -6611,6 +6655,11 @@ void EmitPass::emitLSCSimdBlockRead(llvm::Instruction* inst, llvm::Value* ptrVal
     m_encoder->Copy(pTempVar, src);
     m_encoder->Push();
 
+    LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
+    LSC_CACHE_OPTS cacheOpts = isPrefetch ?
+        translateLSCCacheControlsFromValue(inst->getOperand(3), true) :
+        translateLSCCacheControlsFromMetadata(inst, true);
+
     // If type size >= 8 bytes, assume 8byte aligned and use D64 Transpose message;
     // otherwise, use D32 transpose message.
     // bool isD64 = (typeSizeInBytes >= 8);
@@ -6621,7 +6670,7 @@ void EmitPass::emitLSCSimdBlockRead(llvm::Instruction* inst, llvm::Value* ptrVal
         uint32_t bytesToRead = getLSCBlockMsgSize(bytesRemaining, m_currShader->m_Platform->getMaxLSCBlockMsgSize(isD64));
         uint32_t nBlks = (bytesToRead * 8) / blkBits;
 
-        emitLSCLoad(inst, m_destination, pTempVar, blkBits, nBlks, dstOffset, &resource, addrSize, LSC_DATA_ORDER_TRANSPOSE, immOffset, 1);
+        emitLSCLoad(cacheOpts, m_destination, pTempVar, blkBits, nBlks, dstOffset, &resource, addrSize, LSC_DATA_ORDER_TRANSPOSE, immOffset, 1, addrSpace);
         m_encoder->Push();
 
         bytesRemaining -= bytesToRead;
@@ -8942,6 +8991,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_LSCLoadCmask:
     case GenISAIntrinsic::GenISA_LSCLoadStatus:
     case GenISAIntrinsic::GenISA_LSCPrefetch:
+    case GenISAIntrinsic::GenISA_LSCSimdBlockPrefetch:
     case GenISAIntrinsic::GenISA_LSCFence:
     case GenISAIntrinsic::GenISA_LSCAtomicFP64:
     case GenISAIntrinsic::GenISA_LSCAtomicFP32:
@@ -22412,6 +22462,13 @@ void EmitPass::emitLscIntrinsicPrefetch(llvm::GenIntrinsicInst* inst)
     }
 }
 
+void EmitPass::emitLscSimdBlockPrefetch(llvm::GenIntrinsicInst* inst)
+{
+    // SIMD Block Prefetch is just block read with null dst, so it can be handled
+    // with the same function as simdBlockRead.
+    emitLSCSimdBlockRead(inst);
+}
+
 void EmitPass::emitLscIntrinsicStore(llvm::GenIntrinsicInst* inst)
 {
     // Intrinsic format:
@@ -23107,6 +23164,9 @@ void EmitPass::emitLSCIntrinsic(llvm::GenIntrinsicInst* GII)
         emitLscIntrinsicPrefetch(GII);
         break;
         //
+    case GenISAIntrinsic::GenISA_LSCSimdBlockPrefetch:
+        emitLscSimdBlockPrefetch(GII);
+        break;
     case GenISAIntrinsic::GenISA_LSCStore:
     case GenISAIntrinsic::GenISA_LSCStoreBlock:
         emitLscIntrinsicStore(GII);
