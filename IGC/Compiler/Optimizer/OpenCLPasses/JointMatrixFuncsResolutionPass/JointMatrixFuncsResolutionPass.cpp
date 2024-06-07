@@ -1991,7 +1991,7 @@ void JointMatrixFuncsResolutionPass::preprocessAccessChain(Function *F) {
         Value *index = CI->getArgOperand(1);
 
         Instruction *memInst =
-            dyn_cast<Instruction>(IGCLLVM::getUniqueUndroppableUser(CI));
+            cast<Instruction>(IGCLLVM::getUniqueUndroppableUser(CI));
         // Expected format is:
         // %matrix_ptr = alloca %matrix_type
         // (may be some casts)
