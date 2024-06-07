@@ -441,7 +441,9 @@ enum {
   MatrixCSignedComponentsKHR = 0x4,
   MatrixResultSignedComponentsKHR = 0x8,
   // Unused right now
-  SaturatingAccumulationKHR = 0x10
+  SaturatingAccumulationKHR = 0x10,
+  MatrixAAndBTF32ComponentsINTEL = 0x20,
+  MatrixAAndBBFloat16ComponentsINTEL = 0x40
 };
 
 namespace IGC {
@@ -1402,7 +1404,8 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveStore(CallInst *CI)
     return newCall;
 }
 
-static PrecisionType getElementPrecison(const JointMatrixTypeDescription *desc, bool floatOp, bool isUnsigned) {
+static PrecisionType getJointMatrixElementPrecison(
+    const JointMatrixTypeDescription *desc, bool floatOp, bool isUnsigned) {
   const unsigned width = desc->bitWidth;
   if (floatOp && width == 16) {
       /* bf is passed as uint16_t, hf is using halfs */
@@ -1415,6 +1418,39 @@ static PrecisionType getElementPrecison(const JointMatrixTypeDescription *desc, 
       return isUnsigned ? PrecisionType::U8 : PrecisionType::S8;
   }
   return PrecisionType::PRECISION_UNUSED;
+}
+
+static PrecisionType getCoopMatrixElementPrecison(
+    const JointMatrixTypeDescription *desc, unsigned OperandsMask, unsigned Use,
+    bool floatOp) {
+    const unsigned width = desc->bitWidth;
+    if (OperandsMask & MatrixAAndBBFloat16ComponentsINTEL) {
+        IGC_ASSERT_MESSAGE(floatOp && width == 16,
+                           "Wrong OpCooperativeMatrixMulAddKHR ops for BFloat16");
+        return PrecisionType::BF16;
+    }
+    if (floatOp && width == 16) {
+        IGC_ASSERT_MESSAGE(!OperandsMask,
+                           "Wrong OpCooperativeMatrixMulAddKHR ops for FP16");
+        /* bf is passed as uint16_t, hf is using halfs */
+        return desc->isFloating ? PrecisionType::FP16 : PrecisionType::BF16;
+    }
+    if (OperandsMask & MatrixAAndBTF32ComponentsINTEL ||
+        (floatOp && width == 32)) {
+        return PrecisionType::TF32;
+    }
+    if (!floatOp && width == 8) {
+        if (OperandsMask & MatrixASignedComponentsKHR &&
+            OperandsMask & MatrixBSignedComponentsKHR) {
+            return PrecisionType::S8;
+        } else if (OperandsMask & MatrixASignedComponentsKHR) {
+            return Use == UseMatrixA ? PrecisionType::S8 : PrecisionType::U8;
+        } else if (OperandsMask & MatrixBSignedComponentsKHR) {
+            return Use == UseMatrixB ? PrecisionType::S8 : PrecisionType::U8;
+        }
+        return PrecisionType::U8;
+    }
+    return PrecisionType::PRECISION_UNUSED;
 }
 
 static const char *getElementName(PrecisionType P) {
@@ -1499,28 +1535,20 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveMad(CallInst *CI, unsigned O
 
     const bool floatMad = cDesc.isFloating;
 
-    // TODO: with Cooperative matrix extension and with further extend
-    // of a new version of Joint matrix extension we carry information of the
-    // type interpretation in MulAdd last masked parameter, so need to adjust
-    // getElementPrecison logic for the new versions
+    PrecisionType PA = PrecisionType::PRECISION_UNUSED;
+    PrecisionType PB = PrecisionType::PRECISION_UNUSED;
     if (OperationType == CooperativeOp) {
-        OperationType = floatMad ? MadOpSS : MadOpUU;
         const unsigned MulAddArgSize = CI->arg_size();
-        if (MulAddArgSize > 3) {
-            const auto OperandsMask =
-                cast<ConstantInt>(CI->getArgOperand(3))->getZExtValue();
-            if (OperandsMask & MatrixASignedComponentsKHR &&
-                OperandsMask & MatrixBSignedComponentsKHR) {
-                OperationType = MadOpSS;
-            } else if (OperandsMask & MatrixASignedComponentsKHR) {
-                OperationType = MadOpSU;
-            } else if (OperandsMask & MatrixBSignedComponentsKHR) {
-                OperationType = MadOpUS;
-            }
-        }
+        const auto OperandsMask = MulAddArgSize > 3
+            ? cast<ConstantInt>(CI->getArgOperand(3))->getZExtValue() : 0;
+        PA = getCoopMatrixElementPrecison(&aDesc, OperandsMask, UseMatrixA, floatMad);
+        PB = getCoopMatrixElementPrecison(&bDesc, OperandsMask, UseMatrixB, floatMad);
+    } else {
+        PA = getJointMatrixElementPrecison(&aDesc, floatMad,
+                                           isOperandUnsigned(OperationType, 0));
+        PB = getJointMatrixElementPrecison(&bDesc, floatMad,
+                                           isOperandUnsigned(OperationType, 1));
     }
-    PrecisionType PA = getElementPrecison(&aDesc, floatMad, isOperandUnsigned(OperationType, 0));
-    PrecisionType PB = getElementPrecison(&bDesc, floatMad, isOperandUnsigned(OperationType, 1));
 
     IGC_ASSERT_MESSAGE(PA != PrecisionType::PRECISION_UNUSED, "Invalid matrix A element type.");
     IGC_ASSERT_MESSAGE(PB != PrecisionType::PRECISION_UNUSED, "Invalid matrix B element type.");

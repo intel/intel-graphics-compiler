@@ -38,8 +38,8 @@
 
 define spir_kernel void @mad_builtin_signed(i8 addrspace(1)* %src, i64 %stride, i32 addrspace(1)* %dst) {
   %1 = call spir_func %spirv.CooperativeMatrixKHR._int_3_16_16_2 addrspace(1)* @_Z26__spirv_CompositeConstructi(i32 0)
-  %2 = call spir_func %spirv.CooperativeMatrixKHR._char_3_16_16_0 addrspace(1)* @_Z76__spirv_CompositeConstructi(i8 1)
-  %3 = call spir_func %spirv.CooperativeMatrixKHR._char_3_16_16_1 addrspace(1)* @_Z80__spirv_CompositeConstructi(i8 -1)
+  %2 = call spir_func %spirv.CooperativeMatrixKHR._char_3_16_16_0 addrspace(1)* @_Z76__spirv_CompositeConstructc(i8 1)
+  %3 = call spir_func %spirv.CooperativeMatrixKHR._char_3_16_16_1 addrspace(1)* @_Z80__spirv_CompositeConstructc(i8 -1)
   %4 = call spir_func %spirv.CooperativeMatrixKHR._int_3_16_16_2 addrspace(1)* @_Z34__spirv_CooperativeMatrixMulAddKHRPU3AS141__spirv_CooperativeMatrixKHR__char_3_16_16_0PU3AS142__spirv_CooperativeMatrixKHR__char_3_16_16_1PU3AS140__spirv_CooperativeMatrixKHR__int_3_16_16_2i(%spirv.CooperativeMatrixKHR._char_3_16_16_0 addrspace(1)* %2, %spirv.CooperativeMatrixKHR._char_3_16_16_1 addrspace(1)* %3, %spirv.CooperativeMatrixKHR._int_3_16_16_2 addrspace(1)* %1, i32 3)
   call spir_func void @_Z33__spirv_CooperativeMatrixStoreKHRPU3AS1iPU3AS140__spirv_CooperativeMatrixKHR__int_3_16_16_2ili(i32 addrspace(1)* %dst, %spirv.CooperativeMatrixKHR._int_3_16_16_2 addrspace(1)* %4, i32 0, i64 %stride, i32 3)
   ret void
@@ -68,8 +68,8 @@ define spir_kernel void @mad_builtin_signed(i8 addrspace(1)* %src, i64 %stride, 
 
 define spir_kernel void @mad_builtin_unsigned(i8 addrspace(1)* %src, i64 %stride, i32 addrspace(1)* %dst) {
   %1 = call spir_func %spirv.CooperativeMatrixKHR._int_3_16_16_2 addrspace(1)* @_Z26__spirv_CompositeConstructi(i32 0)
-  %2 = call spir_func %spirv.CooperativeMatrixKHR._char_3_16_16_0 addrspace(1)* @_Z76__spirv_CompositeConstructi(i8 1)
-  %3 = call spir_func %spirv.CooperativeMatrixKHR._char_3_16_16_1 addrspace(1)* @_Z80__spirv_CompositeConstructi(i8 -1)
+  %2 = call spir_func %spirv.CooperativeMatrixKHR._char_3_16_16_0 addrspace(1)* @_Z76__spirv_CompositeConstructc(i8 1)
+  %3 = call spir_func %spirv.CooperativeMatrixKHR._char_3_16_16_1 addrspace(1)* @_Z80__spirv_CompositeConstructc(i8 -1)
   %4 = call spir_func %spirv.CooperativeMatrixKHR._int_3_16_16_2 addrspace(1)* @_Z34__spirv_CooperativeMatrixMulAddKHRPU3AS141__spirv_CooperativeMatrixKHR__char_3_16_16_0PU3AS142__spirv_CooperativeMatrixKHR__char_3_16_16_1PU3AS140__spirv_CooperativeMatrixKHR__int_3_16_16_2(%spirv.CooperativeMatrixKHR._char_3_16_16_0 addrspace(1)* %2, %spirv.CooperativeMatrixKHR._char_3_16_16_1 addrspace(1)* %3, %spirv.CooperativeMatrixKHR._int_3_16_16_2 addrspace(1)* %1)
   call spir_func void @_Z33__spirv_CooperativeMatrixStoreKHRPU3AS1iPU3AS140__spirv_CooperativeMatrixKHR__int_3_16_16_2ili(i32 addrspace(1)* %dst, %spirv.CooperativeMatrixKHR._int_3_16_16_2 addrspace(1)* %4, i32 0, i64 %stride, i32 3)
   ret void
@@ -98,8 +98,8 @@ define spir_kernel void @mad_builtin_unsigned(i8 addrspace(1)* %src, i64 %stride
 
 define spir_kernel void @mad_builtin_unsigned_2(i8 addrspace(1)* %src, i64 %stride, i32 addrspace(1)* %dst) {
   %1 = call spir_func %spirv.CooperativeMatrixKHR._int_3_16_16_2 addrspace(1)* @_Z26__spirv_CompositeConstructi(i32 0)
-  %2 = call spir_func %spirv.CooperativeMatrixKHR._char_3_16_16_0 addrspace(1)* @_Z76__spirv_CompositeConstructi(i8 1)
-  %3 = call spir_func %spirv.CooperativeMatrixKHR._char_3_16_16_1 addrspace(1)* @_Z80__spirv_CompositeConstructi(i8 -1)
+  %2 = call spir_func %spirv.CooperativeMatrixKHR._char_3_16_16_0 addrspace(1)* @_Z76__spirv_CompositeConstructc(i8 1)
+  %3 = call spir_func %spirv.CooperativeMatrixKHR._char_3_16_16_1 addrspace(1)* @_Z80__spirv_CompositeConstructc(i8 -1)
   %4 = call spir_func %spirv.CooperativeMatrixKHR._int_3_16_16_2 addrspace(1)* @_Z34__spirv_CooperativeMatrixMulAddKHRPU3AS141__spirv_CooperativeMatrixKHR__char_3_16_16_0PU3AS142__spirv_CooperativeMatrixKHR__char_3_16_16_1PU3AS140__spirv_CooperativeMatrixKHR__int_3_16_16_2i(%spirv.CooperativeMatrixKHR._char_3_16_16_0 addrspace(1)* %2, %spirv.CooperativeMatrixKHR._char_3_16_16_1 addrspace(1)* %3, %spirv.CooperativeMatrixKHR._int_3_16_16_2 addrspace(1)* %1, i32 0)
   call spir_func void @_Z33__spirv_CooperativeMatrixStoreKHRPU3AS1iPU3AS140__spirv_CooperativeMatrixKHR__int_3_16_16_2ili(i32 addrspace(1)* %dst, %spirv.CooperativeMatrixKHR._int_3_16_16_2 addrspace(1)* %4, i32 0, i64 %stride, i32 3)
   ret void
@@ -128,8 +128,8 @@ define spir_kernel void @mad_builtin_unsigned_2(i8 addrspace(1)* %src, i64 %stri
 
 define spir_kernel void @mad_builtin_unsigned_signed(i8 addrspace(1)* %src, i64 %stride, i32 addrspace(1)* %dst) {
   %1 = call spir_func %spirv.CooperativeMatrixKHR._int_3_16_16_2 addrspace(1)* @_Z26__spirv_CompositeConstructi(i32 0)
-  %2 = call spir_func %spirv.CooperativeMatrixKHR._char_3_16_16_0 addrspace(1)* @_Z76__spirv_CompositeConstructi(i8 1)
-  %3 = call spir_func %spirv.CooperativeMatrixKHR._char_3_16_16_1 addrspace(1)* @_Z80__spirv_CompositeConstructi(i8 -1)
+  %2 = call spir_func %spirv.CooperativeMatrixKHR._char_3_16_16_0 addrspace(1)* @_Z76__spirv_CompositeConstructc(i8 1)
+  %3 = call spir_func %spirv.CooperativeMatrixKHR._char_3_16_16_1 addrspace(1)* @_Z80__spirv_CompositeConstructc(i8 -1)
   %4 = call spir_func %spirv.CooperativeMatrixKHR._int_3_16_16_2 addrspace(1)* @_Z34__spirv_CooperativeMatrixMulAddKHRPU3AS141__spirv_CooperativeMatrixKHR__char_3_16_16_0PU3AS142__spirv_CooperativeMatrixKHR__char_3_16_16_1PU3AS140__spirv_CooperativeMatrixKHR__int_3_16_16_2i(%spirv.CooperativeMatrixKHR._char_3_16_16_0 addrspace(1)* %2, %spirv.CooperativeMatrixKHR._char_3_16_16_1 addrspace(1)* %3, %spirv.CooperativeMatrixKHR._int_3_16_16_2 addrspace(1)* %1, i32 2)
   call spir_func void @_Z33__spirv_CooperativeMatrixStoreKHRPU3AS1iPU3AS140__spirv_CooperativeMatrixKHR__int_3_16_16_2ili(i32 addrspace(1)* %dst, %spirv.CooperativeMatrixKHR._int_3_16_16_2 addrspace(1)* %4, i32 0, i64 %stride, i32 3)
   ret void
@@ -158,8 +158,8 @@ define spir_kernel void @mad_builtin_unsigned_signed(i8 addrspace(1)* %src, i64 
 
 define spir_kernel void @mad_builtin_signed_unsigned(i8 addrspace(1)* %src, i64 %stride, i32 addrspace(1)* %dst) {
   %1 = call spir_func %spirv.CooperativeMatrixKHR._int_3_16_16_2 addrspace(1)* @_Z26__spirv_CompositeConstructi(i32 0)
-  %2 = call spir_func %spirv.CooperativeMatrixKHR._char_3_16_16_0 addrspace(1)* @_Z76__spirv_CompositeConstructi(i8 1)
-  %3 = call spir_func %spirv.CooperativeMatrixKHR._char_3_16_16_1 addrspace(1)* @_Z80__spirv_CompositeConstructi(i8 -1)
+  %2 = call spir_func %spirv.CooperativeMatrixKHR._char_3_16_16_0 addrspace(1)* @_Z76__spirv_CompositeConstructc(i8 1)
+  %3 = call spir_func %spirv.CooperativeMatrixKHR._char_3_16_16_1 addrspace(1)* @_Z80__spirv_CompositeConstructc(i8 -1)
   %4 = call spir_func %spirv.CooperativeMatrixKHR._int_3_16_16_2 addrspace(1)* @_Z34__spirv_CooperativeMatrixMulAddKHRPU3AS141__spirv_CooperativeMatrixKHR__char_3_16_16_0PU3AS142__spirv_CooperativeMatrixKHR__char_3_16_16_1PU3AS140__spirv_CooperativeMatrixKHR__int_3_16_16_2i(%spirv.CooperativeMatrixKHR._char_3_16_16_0 addrspace(1)* %2, %spirv.CooperativeMatrixKHR._char_3_16_16_1 addrspace(1)* %3, %spirv.CooperativeMatrixKHR._int_3_16_16_2 addrspace(1)* %1, i32 1)
   call spir_func void @_Z33__spirv_CooperativeMatrixStoreKHRPU3AS1iPU3AS140__spirv_CooperativeMatrixKHR__int_3_16_16_2ili(i32 addrspace(1)* %dst, %spirv.CooperativeMatrixKHR._int_3_16_16_2 addrspace(1)* %4, i32 0, i64 %stride, i32 3)
   ret void
@@ -167,9 +167,9 @@ define spir_kernel void @mad_builtin_signed_unsigned(i8 addrspace(1)* %src, i64 
 
 declare spir_func %spirv.CooperativeMatrixKHR._int_3_16_16_2 addrspace(1)* @_Z26__spirv_CompositeConstructi(i32)
 
-declare spir_func %spirv.CooperativeMatrixKHR._char_3_16_16_0 addrspace(1)* @_Z76__spirv_CompositeConstructi(i8)
+declare spir_func %spirv.CooperativeMatrixKHR._char_3_16_16_0 addrspace(1)* @_Z76__spirv_CompositeConstructc(i8)
 
-declare spir_func %spirv.CooperativeMatrixKHR._char_3_16_16_1 addrspace(1)* @_Z80__spirv_CompositeConstructi(i8)
+declare spir_func %spirv.CooperativeMatrixKHR._char_3_16_16_1 addrspace(1)* @_Z80__spirv_CompositeConstructc(i8)
 
 declare spir_func %spirv.CooperativeMatrixKHR._int_3_16_16_2 addrspace(1)* @_Z34__spirv_CooperativeMatrixMulAddKHRPU3AS141__spirv_CooperativeMatrixKHR__char_3_16_16_0PU3AS142__spirv_CooperativeMatrixKHR__char_3_16_16_1PU3AS140__spirv_CooperativeMatrixKHR__int_3_16_16_2(%spirv.CooperativeMatrixKHR._char_3_16_16_0 addrspace(1)*, %spirv.CooperativeMatrixKHR._char_3_16_16_1 addrspace(1)*, %spirv.CooperativeMatrixKHR._int_3_16_16_2 addrspace(1)*)
 
