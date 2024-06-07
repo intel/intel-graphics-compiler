@@ -1567,7 +1567,6 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         GII_id == GenISAIntrinsic::GenISA_GlobalBufferPointer ||
         GII_id == GenISAIntrinsic::GenISA_LocalBufferPointer ||
         GII_id == GenISAIntrinsic::GenISA_InlinedData ||
-        GII_id == GenISAIntrinsic::GenISA_TileYOffset ||
         GII_id == GenISAIntrinsic::GenISA_GetShaderRecordPtr ||
         GII_id == GenISAIntrinsic::GenISA_URBWrite ||
         GII_id == GenISAIntrinsic::GenISA_URBRead ||
@@ -1675,12 +1674,6 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
             }
         }
 
-        if (GII_id == GenISAIntrinsic::GenISA_TileYOffset)
-        {
-            {
-                return WIAnalysis::RANDOM;
-            }
-        }
 
         if (intrinsic_name == llvm_sgv)
         {

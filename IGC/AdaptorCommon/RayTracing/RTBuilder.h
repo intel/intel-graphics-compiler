@@ -463,6 +463,7 @@ public:
     GenIntrinsicInst* createDummyInstID(Value* pSrcVal);
 
     CallInst* ctlz(Value* V);
+    CallInst* cttz(Value* V);
 
     void createPotentialHit2CommittedHit(StackPointerVal* StackPtr);
 

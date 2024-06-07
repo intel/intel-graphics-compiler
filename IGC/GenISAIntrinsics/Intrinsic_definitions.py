@@ -3245,18 +3245,6 @@ Imported_Intrinsics = \
      ("anyptr",                        "User defined intersection attributes struct")],
     "None"]],
 ####################################################################################################
-"GenISA_TileXOffset": ["Raytracing: returns the X-offset within a raytracing tile",
-    [("short",                        "The offset"),
-    [("short",                        "TID (r0.4:uw & 0xff)"),
-     ("short",                        "X Dimension Size (Tile)")],
-    "NoMem"]],
-####################################################################################################
-"GenISA_TileYOffset": ["Raytracing: returns the Y-offset within a raytracing tile",
-    [("short",                        "The offset"),
-    [("short",                        "TID (r0.4:uw & 0xff)"),
-     ("short",                        "X Dimension Size (Tile)")],
-    "NoMem"]],
-####################################################################################################
 "GenISA_SpillValue": ["Raytracing: Spill a value onto the stack",
     [("void",                          ""),
     [("anyint",                        ""),

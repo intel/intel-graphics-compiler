@@ -1853,6 +1853,13 @@ CallInst* RTBuilder::ctlz(Value* V)
     return CreateCall2(Ctlz, V, getFalse(), VALUE_NAME("lzd"));
 }
 
+CallInst* RTBuilder::cttz(Value* V)
+{
+    auto* Cttz = Intrinsic::getDeclaration(
+        GetInsertBlock()->getModule(), Intrinsic::cttz, V->getType());
+    return CreateCall2(Cttz, V, getFalse(), VALUE_NAME("cttz"));
+}
+
 void RTBuilder::createPotentialHit2CommittedHit(StackPointerVal* StackPtr)
 {
     switch (getMemoryStyle())

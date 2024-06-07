@@ -8929,12 +8929,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_InlinedData:
         emitInlinedDataValue(inst);
         break;
-    case GenISAIntrinsic::GenISA_TileXOffset:
-        emitTileXOffset(cast<TileXIntrinsic>(inst));
-        break;
-    case GenISAIntrinsic::GenISA_TileYOffset:
-        emitTileYOffset(cast<TileYIntrinsic>(inst));
-        break;
     case GenISAIntrinsic::GenISA_LSCStore:
     case GenISAIntrinsic::GenISA_LSCStoreBlock:
     case GenISAIntrinsic::GenISA_LSCLoad:
@@ -23199,120 +23193,6 @@ void EmitPass::emitLocalBufferPtr(llvm::GenIntrinsicInst* I)
 void EmitPass::emitInlinedDataValue(llvm::GenIntrinsicInst* I)
 {
     IGC_ASSERT(m_currShader->GetShaderType() == ShaderType::RAYTRACING_SHADER);
-}
-
-void EmitPass::emitTileXOffset(TileXIntrinsic* I)
-{
-    const uint32_t XDim = I->getTileXDim();
-    IGC_ASSERT(iSTD::IsPowerOfTwo(XDim));
-
-    const uint32_t lanes = numLanes(m_currShader->m_SIMDSize);
-
-    CVariable* TID = GetSymbol(I->getTID());
-    if (!TID->IsUniform())
-        TID = UniformCopy(TID);
-
-    if (XDim >= lanes)
-    {
-        uint32_t Ratio = XDim / lanes;
-        CVariable* Mask = m_currShader->ImmToVariable(Ratio - 1, ISA_TYPE_UW);
-        CVariable* XCnt = m_currShader->GetNewVariable(TID);
-
-        // xcnt = tid & (ratio - 1)
-        m_encoder->And(XCnt, TID, Mask);
-        m_encoder->Push();
-
-        CVariable* XVals = m_currShader->GetNewVariable(
-            numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UW, EALIGN_GRF, "XVals");
-
-        m_currShader->GetSimdOffsetBase(XVals);
-
-        // xidx = xvals + simdsize * xcnt
-        CVariable* Tmp = m_currShader->GetNewVariable(XCnt);
-        CVariable* ShiftAmt = m_currShader->ImmToVariable(
-            llvm::countTrailingZeros(lanes), ISA_TYPE_UW);
-        m_encoder->Shl(Tmp, XCnt, ShiftAmt);
-        m_encoder->Add(m_destination, XVals, Tmp);
-        m_encoder->Push();
-    }
-    else
-    {
-        uint32_t Cnt = lanes / 8;
-        IGC_ASSERT_MESSAGE(Cnt <= 2, "unhandled simd size!");
-        uint32_t Vector = 0;
-
-        // xidx = range(XDim) repeated over simdsize
-        // for example (4x4 in simd8):
-        // xidx = mov 0x32103210:v
-        for (uint32_t j = 0; j < 8; j++)
-            Vector |= (j & (XDim - 1)) << (j * 4);
-
-        for (uint32_t i = 0; i < Cnt; i++)
-        {
-            m_encoder->SetSimdSize(SIMDMode::SIMD8);
-            m_encoder->SetDstSubReg(i * 8);
-            m_encoder->SetMask((i == 0) ? EMASK_Q1 : EMASK_Q2);
-            m_encoder->Cast(m_destination, m_currShader->ImmToVariable(Vector, ISA_TYPE_V));
-            m_encoder->Push();
-        }
-    }
-}
-
-void EmitPass::emitTileYOffset(TileYIntrinsic* I)
-{
-    const uint32_t XDim = I->getTileXDim();
-    IGC_ASSERT(iSTD::IsPowerOfTwo(XDim));
-
-    const uint32_t lanes = numLanes(m_currShader->m_SIMDSize);
-
-    CVariable* TID = GetSymbol(I->getTID());
-    if (!TID->IsUniform())
-        TID = UniformCopy(TID);
-
-    if (XDim >= lanes)
-    {
-        // yidx = tid / ratio
-        uint32_t Ratio = XDim / lanes;
-        CVariable* ShiftAmt = m_currShader->ImmToVariable(
-            llvm::countTrailingZeros(Ratio), ISA_TYPE_UW);
-        m_encoder->Shr(m_destination, TID, ShiftAmt);
-        m_encoder->Push();
-    }
-    else
-    {
-        uint32_t Cnt = lanes / 8;
-        IGC_ASSERT_MESSAGE(Cnt <= 2, "unhandled simd size!");
-
-        CVariable* YVals = m_currShader->GetNewVariable(
-            numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UW, EALIGN_GRF, "YVals");
-
-        for (uint32_t i = 0; i < Cnt; i++)
-        {
-            uint32_t Vector = 0;
-            // for example (4x4 in simd8):
-            // yvals = mov 0x11110000
-            // for example (4x4 in simd16):
-            // yvals_lo = mov 0x11110000
-            // yvals_hi = mov 0x33332222
-            for (uint32_t j = 0; j < 8; j++)
-                Vector |= ((j + i*8) / XDim) << (j * 4);
-
-            m_encoder->SetSimdSize(SIMDMode::SIMD8);
-            m_encoder->SetDstSubReg(i * 8);
-            m_encoder->SetMask((i == 0) ? EMASK_Q1 : EMASK_Q2);
-            m_encoder->Cast(YVals, m_currShader->ImmToVariable(Vector, ISA_TYPE_V));
-            m_encoder->Push();
-        }
-
-        uint32_t Ratio = lanes / XDim;
-        // yidx = yvals + tid * ratio
-        CVariable* Tmp = m_currShader->GetNewVariable(TID);
-        CVariable* ShiftAmt = m_currShader->ImmToVariable(
-            llvm::countTrailingZeros(Ratio), ISA_TYPE_UW);
-        m_encoder->Shl(Tmp, TID, ShiftAmt);
-        m_encoder->Add(m_destination, YVals, Tmp);
-        m_encoder->Push();
-    }
 }
 
 void EmitPass::emitTraceRay(TraceRayIntrinsic* I, bool RayQueryEnable)

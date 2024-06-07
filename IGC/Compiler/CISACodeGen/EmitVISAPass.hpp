@@ -529,8 +529,6 @@ public:
     void emitGlobalBufferPtr(llvm::GenIntrinsicInst *I);
     void emitLocalBufferPtr(llvm::GenIntrinsicInst *I);
     void emitInlinedDataValue(llvm::GenIntrinsicInst *I);
-    void emitTileXOffset(llvm::TileXIntrinsic *I);
-    void emitTileYOffset(llvm::TileYIntrinsic *I);
     void emitDpas(llvm::GenIntrinsicInst *GII,
                   const SSource* source,
                   const DstModifier& modifier);
