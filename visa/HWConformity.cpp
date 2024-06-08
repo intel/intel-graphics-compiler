@@ -4622,7 +4622,7 @@ G4_INST *HWConformity::evenlySplitDPAS8x8Inst(INST_LIST_ITER iter, G4_BB *bb) {
   G4_InstDpas *dpasInst = inst->asDpasInst();
   G4_INST *newInst = builder.createInternalDpasInst(
       inst->opcode(), inst->getExecSize(), newDst, newSrc[0], newSrc[1],
-      newSrc[2], nullptr, inst->getOption(), dpasInst->getSrc2Precision(),
+      newSrc[2], inst->getOption(), dpasInst->getSrc2Precision(),
       dpasInst->getSrc1Precision(), dpasInst->getSystolicDepth(),
       dpasInst->getRepeatCount() / 2);
 

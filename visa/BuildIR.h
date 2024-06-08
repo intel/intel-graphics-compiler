@@ -1470,16 +1470,18 @@ public:
 
   G4_INST *createDpasInst(G4_opcode opc, G4_ExecSize execSize,
                           G4_DstRegRegion *dst, G4_Operand *src0,
-                          G4_Operand *src1, G4_Operand *src2, G4_Operand *src3,
+                          G4_Operand *src1, G4_Operand *src2,
+                          G4_Operand *src3, G4_Operand *src4,
                           G4_InstOpts options, GenPrecision A, GenPrecision W,
                           uint8_t D, uint8_t C, bool addToInstList);
 
   G4_INST *createInternalDpasInst(G4_opcode opc, G4_ExecSize execSize,
                                   G4_DstRegRegion *dst, G4_Operand *src0,
                                   G4_Operand *src1, G4_Operand *src2,
-                                  G4_Operand *src3, G4_InstOpts options,
-                                  GenPrecision A, GenPrecision W, uint8_t D,
-                                  uint8_t C);
+                                  G4_InstOpts options, GenPrecision A,
+                                  GenPrecision W, uint8_t D, uint8_t C,
+                                  G4_Operand *src3 = nullptr,
+                                  G4_Operand *src4 = nullptr);
 
   G4_INST *createBfnInst(uint8_t booleanFuncCtrl, G4_Predicate *prd,
                          G4_CondMod *mod, G4_Sat sat, G4_ExecSize execSize,
@@ -1531,7 +1533,8 @@ public:
                             G4_SrcRegRegion *src0Opnd,
                             G4_SrcRegRegion *src1Opnd,
                             G4_SrcRegRegion *src2Opnd,
-                            G4_SrcRegRegion *src3Opnd, GenPrecision A,
+                            G4_SrcRegRegion *src3Opnd,
+                            G4_SrcRegRegion *src4Opnd, GenPrecision A,
                             GenPrecision W, uint8_t D, uint8_t C);
   int translateVISABfnInst(uint8_t booleanFuncCtrl,
                            VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask,
