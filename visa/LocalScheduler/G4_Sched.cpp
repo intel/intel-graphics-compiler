@@ -2371,9 +2371,8 @@ void preDDD::processBarrier(preNode *curNode, DepType Dep) {
   for (auto OpNum :
        {Gen4_Operand_Number::Opnd_dst, Gen4_Operand_Number::Opnd_src0,
         Gen4_Operand_Number::Opnd_src1, Gen4_Operand_Number::Opnd_src2,
-        Gen4_Operand_Number::Opnd_src3, Gen4_Operand_Number::Opnd_src4,
-        Gen4_Operand_Number::Opnd_pred, Gen4_Operand_Number::Opnd_condMod,
-        Gen4_Operand_Number::Opnd_implAccSrc,
+        Gen4_Operand_Number::Opnd_src3, Gen4_Operand_Number::Opnd_pred,
+        Gen4_Operand_Number::Opnd_condMod, Gen4_Operand_Number::Opnd_implAccSrc,
         Gen4_Operand_Number::Opnd_implAccDst}) {
     G4_Operand *opnd = Inst->getOperand(OpNum);
     if (opnd == nullptr || opnd->getBase() == nullptr || opnd->isNullReg())
@@ -2586,7 +2585,7 @@ void preDDD::processReadWrite(preNode *curNode) {
     for (auto OpNum :
          {Gen4_Operand_Number::Opnd_src0, Gen4_Operand_Number::Opnd_src1,
           Gen4_Operand_Number::Opnd_src2, Gen4_Operand_Number::Opnd_src3,
-          Gen4_Operand_Number::Opnd_src4, Gen4_Operand_Number::Opnd_pred,
+          Gen4_Operand_Number::Opnd_pred,
           Gen4_Operand_Number::Opnd_implAccSrc}) {
       G4_Operand *opnd = curNode->getInst()->getOperand(OpNum);
       if (opnd == nullptr || opnd->getBase() == nullptr || opnd->isNullReg())

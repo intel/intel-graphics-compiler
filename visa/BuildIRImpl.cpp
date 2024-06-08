@@ -1772,12 +1772,11 @@ G4_INST *IR_Builder::createCFInst(G4_Predicate *prd, G4_opcode op,
 G4_INST *IR_Builder::createDpasInst(G4_opcode opc, G4_ExecSize execSize,
                                     G4_DstRegRegion *dst, G4_Operand *src0,
                                     G4_Operand *src1, G4_Operand *src2,
-                                    G4_Operand *src3, G4_Operand *src4,
-                                    G4_InstOpts options, GenPrecision A,
-                                    GenPrecision W, uint8_t D, uint8_t C,
-                                    bool addToInstList) {
+                                    G4_Operand *src3, G4_InstOpts options,
+                                    GenPrecision A, GenPrecision W, uint8_t D,
+                                    uint8_t C, bool addToInstList) {
   G4_INST *i = new (mem) G4_InstDpas(*this, opc, execSize, dst, src0, src1,
-                                     src2, src3, src4, options, A, W, D, C);
+                                     src2, src3, options, A, W, D, C);
 
   if (addToInstList) {
     i->setVISAId(curCISAOffset);
@@ -1794,10 +1793,12 @@ G4_INST *IR_Builder::createDpasInst(G4_opcode opc, G4_ExecSize execSize,
 
 G4_INST *IR_Builder::createInternalDpasInst(
     G4_opcode opc, G4_ExecSize execSize, G4_DstRegRegion *dst, G4_Operand *src0,
-    G4_Operand *src1, G4_Operand *src2, G4_InstOpts options, GenPrecision A,
-    GenPrecision W, uint8_t D, uint8_t C, G4_Operand *src3, G4_Operand *src4) {
-  return createDpasInst(opc, execSize, dst, src0, src1, src2, src3, src4,
-                        options, A, W, D, C, false);
+    G4_Operand *src1, G4_Operand *src2, G4_Operand *src3, G4_InstOpts options,
+    GenPrecision A, GenPrecision W, uint8_t D, uint8_t C) {
+  auto ii = createDpasInst(opc, execSize, dst, src0, src1, src2, nullptr,
+                           options, A, W, D, C, false);
+
+  return ii;
 }
 
 G4_INST *IR_Builder::createBfnInst(uint8_t booleanFuncCtrl, G4_Predicate *prd,
