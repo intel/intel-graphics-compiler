@@ -53,7 +53,7 @@ public:
     // currently the maximum needed is 5.
     //
     // At the moment, the GENERAL category has 4 unused flag bits available
-    // to it, the RAW category has 13 unused bits, and the ARGCOUNT category
+    // to it, the RAW category has 11 unused bits, and the ARGCOUNT category
     // has 13 unused bits. No other categories make use of the flags yet,
     // so it should be a good while yet before it's necessary to resize
     // the bitfields.
@@ -172,6 +172,7 @@ public:
     MODIFIER_EXTONLY =      GENX_ITR_FLAGENUM(8, 3), // src modifier: extend only
     DIRECTONLY =            GENX_ITR_FLAGVAL(10), // indirect region not allowed
     IMM16ONLY =             GENX_ITR_FLAGVAL(11), // source allowed to be only 16 bit immediate
+    NULLALLOWED =           GENX_ITR_FLAGVAL(12), // source allowed to be null register
 
   };
   struct ArgInfo {
@@ -216,6 +217,17 @@ public:
     bool rawNullAllowed() const {
       IGC_ASSERT(isRaw());
       return Info & RAW_NULLALLOWED;
+    }
+    bool generalNullAllowed() const {
+      IGC_ASSERT(isGeneral());
+      return Info & NULLALLOWED;
+    }
+    bool isNullAllowed() const {
+      if (isGeneral())
+        return generalNullAllowed();
+      if (isRaw())
+        return rawNullAllowed();
+      return false;
     }
     // isArgOrRet : test whether this field has an arg index
     bool isArgOrRet() const {

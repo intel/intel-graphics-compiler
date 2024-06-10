@@ -531,16 +531,14 @@ bool ConstantLoadHelper::visitCallInst(CallInst &CI) {
       // Allow constant if intrinsic descriptor allows it for this arg.
       if (AI.getCategory() == GenXIntrinsicInfo::CACHEOPTS)
         continue;
+      // Allow constant, if it's undefined, and null register is allowed.
+      if (isa<UndefValue>(C) && AI.isNullAllowed())
+        continue;
       // If it is a RAW operand, allow the constant if it's in the trailing
-      // null region (it must be a null constant if so), or if the value
-      // is undefined and RAW_NULLALLOWED is enabled.
-      if (AI.isRaw()) {
-        if ((unsigned)AI.getArgIdx() >= MaxRawOperands) {
-          IGC_ASSERT(C->isNullValue());
-          continue;
-        }
-        if (isa<UndefValue>(C) && AI.rawNullAllowed())
-          continue;
+      // null region (it must be a null constant if so).
+      if (AI.isRaw() && (unsigned)AI.getArgIdx() >= MaxRawOperands) {
+        IGC_ASSERT(C->isNullValue());
+        continue;
       }
       // Also allow constant if it is undef in a TWOADDR
       if (isa<UndefValue>(C) && AI.getCategory() == GenXIntrinsicInfo::TWOADDR)

@@ -508,17 +508,17 @@ private:
   VISA_VectorOpnd *createDestination(Value *Dest,
                                      genx::Signedness Signed,
                                      unsigned *Offset = nullptr);
-  VISA_VectorOpnd *createSourceOperand(Instruction *Inst,
-                                       genx::Signedness Signed,
-                                       unsigned OperandNum, genx::BaleInfo BI,
-                                       unsigned Mod = 0,
-                                       genx::Signedness *SignedRes = nullptr,
-                                       unsigned MaxWidth = 16);
+  VISA_VectorOpnd *
+  createSourceOperand(Instruction *Inst, genx::Signedness Signed,
+                      unsigned OperandNum, genx::BaleInfo BI, unsigned Mod = 0,
+                      genx::Signedness *SignedRes = nullptr,
+                      unsigned MaxWidth = 16, bool IsNullAllowed = false);
   VISA_VectorOpnd *createSource(Value *V, genx::Signedness Signed, bool Baled,
                                 unsigned Mod = 0,
                                 genx::Signedness *SignedRes = nullptr,
                                 unsigned MaxWidth = 16,
-                                unsigned *Offset = nullptr, bool IsBF = false);
+                                unsigned *Offset = nullptr, bool IsBF = false,
+                                bool IsNullAllowed = false);
   VISA_VectorOpnd *createSource(Value *V, genx::Signedness Signed,
                                 unsigned MaxWidth = 16,
                                 unsigned *Offset = nullptr);
@@ -1718,15 +1718,17 @@ GenXKernelBuilder::createDestination(Value *Dest, genx::Signedness Signed,
   }
 }
 
-VISA_VectorOpnd *GenXKernelBuilder::createSourceOperand(
-    Instruction *Inst, Signedness Signed, unsigned OperandNum,
-    genx::BaleInfo BI, unsigned Mod, Signedness *SignedRes, unsigned MaxWidth) {
+VISA_VectorOpnd *
+GenXKernelBuilder::createSourceOperand(Instruction *Inst, Signedness Signed,
+                                       unsigned OperandNum, genx::BaleInfo BI,
+                                       unsigned Mod, Signedness *SignedRes,
+                                       unsigned MaxWidth, bool IsNullAllowed) {
   Value *V = Inst->getOperand(OperandNum);
   auto IID = vc::InternalIntrinsic::getInternalIntrinsicID(Inst);
   bool IsBF = IID == vc::InternalIntrinsic::cast_from_bf16;
 
   return createSource(V, Signed, BI.isOperandBaled(OperandNum), Mod, SignedRes,
-                      MaxWidth, nullptr, IsBF);
+                      MaxWidth, nullptr, IsBF, IsNullAllowed);
 }
 
 VISA_PredOpnd *
@@ -2000,14 +2002,29 @@ VISA_VectorOpnd *GenXKernelBuilder::createSource(Value *V, Signedness Signed,
                                                  bool Baled, unsigned Mod,
                                                  Signedness *SignedRes,
                                                  unsigned MaxWidth,
-                                                 unsigned *Offset, bool IsBF) {
+                                                 unsigned *Offset, bool IsBF,
+                                                 bool IsNullAllowed) {
   LLVM_DEBUG(dbgs() << "createSource for " << (Baled ? "baled" : "non-baled")
                     << (IsBF ? " brain" : " non-brain") << " value: ");
   LLVM_DEBUG(V->dump());
   LLVM_DEBUG(dbgs() << "\n");
   if (SignedRes)
     *SignedRes = Signed;
-  if (auto C = dyn_cast<Constant>(V)) {
+  // Null register is required
+  if (IsNullAllowed && isa<UndefValue>(V)) {
+    Region R(V);
+    if (Offset)
+      R.Offset = *Offset;
+    if (R.NumElements == 1)
+      R.VStride = R.Stride = 0;
+
+    VISA_GenVar *NullDecl = nullptr;
+    CISA_CALL(Kernel->GetPredefinedVar(NullDecl, PREDEFINED_NULL));
+
+    return createRegionOperand(&R, NullDecl, Signed, Mod, false /*IsDst*/,
+                               MaxWidth);
+  }
+  if (auto *C = dyn_cast<Constant>(V)) {
     if (Mod) {
       // Need to negate constant.
       IGC_ASSERT_MESSAGE(Mod == MODIFIER_NEG, "unexpected modifier");
@@ -3387,8 +3404,9 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
         MaxWidth =
             cast<IGCLLVM::FixedVectorType>(CI->getType())->getNumElements();
       }
-      ResultOperand = createSourceOperand(CI, Signed, AI.getArgIdx(), BI, 0,
-                                          nullptr, MaxWidth);
+      ResultOperand =
+          createSourceOperand(CI, Signed, AI.getArgIdx(), BI, 0, nullptr,
+                              MaxWidth, AI.generalNullAllowed());
     }
     return ResultOperand;
   };
