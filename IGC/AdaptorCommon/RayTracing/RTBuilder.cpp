@@ -229,6 +229,7 @@ Value* RTBuilder::getGlobalSyncStackID()
     return val;
 }
 
+
 uint32_t RTBuilder::getRTStack2Size() const
 {
     switch (getMemoryStyle())
@@ -265,11 +266,13 @@ Value* RTBuilder::getSyncRTStackSize()
 
 Value* RTBuilder::getSyncStackOffset(bool rtMemBasePtr)
 {
-    // Per thread Synchronous RTStack is calculated using the following formula:
+    // Per thread Synchronous RTStack address/ptr is calculated using the following formula
+    // (note that offset is calculated here so RTDispatchGlobals.rtMemBasePtr is not taken into account):
     // syncBase = RTDispatchGlobals.rtMemBasePtr - (GlobalSyncStackID + 1) * syncStackSize;
-    // If we start from syncStack, then, offset should be:
+    // If we start from syncStack, the address/ptr should be:
     // syncBase = syncStack + (NumSyncStackSlots - (GlobalSyncStackID + 1)) * syncStackSize
-    // Where:
+
+
     Value* globalStackID = this->getGlobalSyncStackID();
     Value* OffsetID = this->CreateAdd(globalStackID, this->getInt32(1));
 

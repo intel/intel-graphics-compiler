@@ -953,17 +953,17 @@ static_assert(IGC::RTStackAlign % LSC_WRITE_GRANULARITY == 0, "not aligned to wr
 
 // This is the structure of memory that will be allocated by the UMD:
 template <typename HotZoneTy, typename SyncStackTy, typename AsyncStackTy, typename SWStackTy,
-          uint64_t DSS_COUNT, uint64_t NumDSSRTStacks, uint64_t SIMD_LANES_PER_DSS>
+          uint32_t RTStackAlign, uint64_t DSS_COUNT, uint64_t NumDSSRTStacks, uint64_t SIMD_LANES_PER_DSS>
 struct RTMemory
 {
     // Packed SW hot-zones
     alignas(IGC::RTStackAlign) HotZoneTy HotZones[DSS_COUNT * NumDSSRTStacks];
 
     // sync stacks for synchronous ray tracing
-    alignas(IGC::RTStackAlign) SyncStackTy SyncStacks[DSS_COUNT * SIMD_LANES_PER_DSS];
+    alignas(RTStackAlign) SyncStackTy SyncStacks[DSS_COUNT * SIMD_LANES_PER_DSS];
 
     // RTMemBasePointer points here <----
-    alignas(IGC::RTStackAlign) AsyncStackTy AsyncStacks[DSS_COUNT * NumDSSRTStacks];
+    alignas(RTStackAlign) AsyncStackTy AsyncStacks[DSS_COUNT * NumDSSRTStacks];
 
     // Align to L3 sector size, or LSC sector size if stack is LSC-cached
     alignas(IGC::RTStackAlign) SWStackTy SWStacks[DSS_COUNT * NumDSSRTStacks];
@@ -980,11 +980,12 @@ constexpr uint64_t calcRTMemoryAllocSize(
     uint64_t SIMD_LANES_PER_DSS)
 {
     // SIMD_LANES_PER_DSS = EUCount * ThreadCount * SIMD16
-    return IGC::Align(SWHotZoneSize * DSS_COUNT * NumDSSRTStacks, IGC::RTStackAlign)     +
-           IGC::Align(SyncStackSize * DSS_COUNT * SIMD_LANES_PER_DSS, IGC::RTStackAlign) +
-           IGC::Align(AsyncStackSize * DSS_COUNT * NumDSSRTStacks, IGC::RTStackAlign)    +
-           IGC::Align(SWStackSize * DSS_COUNT * NumDSSRTStacks, IGC::RTStackAlign);
+    return IGC::Align(SWHotZoneSize * DSS_COUNT * NumDSSRTStacks, IGC::RTStackAlign) +
+        IGC::Align(SyncStackSize * DSS_COUNT * SIMD_LANES_PER_DSS, IGC::RTStackAlign) +
+        IGC::Align(AsyncStackSize * DSS_COUNT * NumDSSRTStacks, IGC::RTStackAlign) +
+        IGC::Align(SWStackSize * DSS_COUNT * NumDSSRTStacks, IGC::RTStackAlign);
 }
+
 
 constexpr uint32_t getSyncStackSize() {
 #define STYLE(X) static_assert(sizeofRTStack2<RTStack2<Xe>>() == sizeofRTStack2<RTStack2<X>>());
@@ -995,7 +996,7 @@ constexpr uint32_t getSyncStackSize() {
 
 // As per this:
 // The rtMemBasePtr points to the top of the async stacks.  After having computed
-// the full allocation with 'calcRTMemoryAllocSize()', This returns the offset
+// the full allocation with 'calcRTMemoryAllocSize()', this returns the offset
 // of the async stacks, hot zone, and sw stack from the base of the allocation.
 constexpr uint64_t calcRTMemoryOffsets(
     uint64_t SWHotZoneSize,
@@ -1020,20 +1021,22 @@ constexpr uint64_t calcRTMemoryOffsets(
     return AsyncOffset;
 }
 
+
 // unit tests:
 static_assert(
     calcRTMemoryAllocSize(
         sizeof(SWHotZone_v1), sizeof(RTStack2<Xe>), sizeof(RTStack2<Xe>), 128,
         32, 2048, 16 * 8 * 16) ==
-    sizeof(RTMemory<SWHotZone_v1, RTStack2<Xe>, RTStack2<Xe>, uint8_t[128],
+    sizeof(RTMemory<SWHotZone_v1, RTStack2<Xe>, RTStack2<Xe>, uint8_t[128], IGC::RTStackAlign,
         32, 2048, 16 * 8 * 16>), "mismatch?");
 
 static_assert(
     calcRTMemoryAllocSize(
         8, sizeof(RTStack2<Xe>), sizeof(RTStack2<Xe>), 136,
         32, 2048, 16 * 8 * 16) ==
-    sizeof(RTMemory<uint8_t[8], RTStack2<Xe>, RTStack2<Xe>, uint8_t[136],
+    sizeof(RTMemory<uint8_t[8], RTStack2<Xe>, RTStack2<Xe>, uint8_t[136], IGC::RTStackAlign,
         32, 2048, 16 * 8 * 16>), "mismatch?");
+
 
 /* a list of commands for the ray tracing hardware */
 enum class TraceRayCtrl : uint8_t
