@@ -1377,7 +1377,8 @@ namespace TC
                             (strcmp(pParam, "-cl-fp64-gen-emu") == 0) || //used by fp64 emulation
                             (strcmp(pParam, "-ze-fp64-gen-emu") == 0) || //used by fp64 emulation
                             (strcmp(pParam, "-cl-fp64-gen-conv-emu") == 0) || //used by fp64 conversion emulation
-                            (strcmp(pParam, "-ze-fp64-gen-conv-emu") == 0); //used by fp64 conversion emulation
+                            (strcmp(pParam, "-ze-fp64-gen-conv-emu") == 0) || //used by fp64 conversion emulation
+                            (strcmp(pParam, "-Xfinalizer") == 0); // used to pass options to visa finalizer
 
                         if (isCommonOption)
                         {
@@ -1421,6 +1422,11 @@ namespace TC
                                 (strcmp(pParam, "-ze-opt-regular-grf-kernel") == 0))
                             {
                                 // Next token is kernel name substring, ignore it
+                                ignoreNextToken = true;
+                            }
+                            else if (strcmp(pParam, "-Xfinalizer") == 0)
+                            {
+                                // if -Xfinalizer is used, ignore next token as it is the option for visa
                                 ignoreNextToken = true;
                             }
                         }

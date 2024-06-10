@@ -69,5 +69,8 @@ defm large_register_file : CommonFlag<"large-register-file">,
 defm enable_auto_large_GRF_mode : CommonFlag<"enable-auto-large-GRF-mode">,
   HelpText<"Use compiler heuristics to determine number of GRF">;
 
+// Pass <arg> to the visa finalizer
+def Xfinalizer : PlainSeparate<"Xfinalizer">,
+  HelpText<"Pass <arg> to the visa finalizer">, MetaVarName<"<arg>">;
 }
 // }} Common API options

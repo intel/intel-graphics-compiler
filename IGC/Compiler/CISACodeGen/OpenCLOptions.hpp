@@ -161,6 +161,9 @@ public:
     std::vector<std::string> LargeGRFKernels;
     std::vector<std::string> RegularGRFKernels;
 
+    bool Xfinalizer                         = false;
+    std::string XfinalizerOption;
+
        // Enable compiler heuristics ("-autoGRFSelection" in VISA) for large GRF selection.
     bool IntelEnableAutoLargeGRF            = false;
 

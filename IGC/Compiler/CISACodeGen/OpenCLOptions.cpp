@@ -598,5 +598,11 @@ void Options::parseOptions(const char* opts)
     {
         EnableZEBinary = false;
     }
+
+    if (const llvm::opt::Arg* arg = apiOptions.getLastArg(OPT_Xfinalizer))
+    {
+        Xfinalizer = true;
+        XfinalizerOption = arg->getValue();
+    }
 }
 } // namespace IGC

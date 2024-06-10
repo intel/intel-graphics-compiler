@@ -3985,6 +3985,15 @@ namespace IGC
         {
             params.push_back(param_uptr("-forcespillcompression", literal_deleter));
         }
+
+        // Set the visa finalizer option provided by user via API option
+        if (context->type == ShaderType::OPENCL_SHADER &&
+            static_cast<OpenCLProgramContext*>(context)->m_Options.Xfinalizer)
+        {
+                std::string opt(static_cast<OpenCLProgramContext*>(context)->m_Options.XfinalizerOption);
+                params.push_back(param_uptr(_strdup(opt.c_str()), literal_deleter));
+        }
+
         // Ensure VISA_Opts has the same scope as CreateVISABuilder so that valid
         // strings are checked by vISA and freed out of this function.
         if (IGC_IS_FLAG_ENABLED(VISAOptions))
