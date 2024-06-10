@@ -434,11 +434,6 @@ void GenXUnbaling::processFunc(Function *F) {
 bool canBeSafelyHoisted(Instruction *Inst, Instruction *InsertBefore) {
   if (Inst->getParent() != InsertBefore->getParent())
     return false;
-#if LLVM_VERSION_MAJOR <= 10
-  // There is no simple way to check order of instructions before llvm 11. Thus
-  // handling only cases, where U is a Constant/Declaration/etc
-  auto IsDefinedAtInsertPoint = [](Value *V) { return !isa<Instruction>(V); };
-#else
   // InsertBefore must come before Inst in IR
   if (!InsertBefore->comesBefore(Inst))
     return false;
@@ -447,7 +442,6 @@ bool canBeSafelyHoisted(Instruction *Inst, Instruction *InsertBefore) {
     return !Inst || Inst->getParent() == InsertBefore->getParent() &&
                         Inst->comesBefore(InsertBefore);
   };
-#endif
   return std::all_of(Inst->value_op_begin(), Inst->value_op_end(),
                      IsDefinedAtInsertPoint);
 }

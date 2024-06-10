@@ -2091,13 +2091,11 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerCttz(CI);
     case Intrinsic::ctlz:
       return lowerCtlz(CI);
-#if LLVM_VERSION_MAJOR >= 12
     case Intrinsic::smin:
     case Intrinsic::smax:
     case Intrinsic::umin:
     case Intrinsic::umax:
       return lowerMinMax(CI, IntrinsicID);
-#endif
     case Intrinsic::sqrt:
       return lowerSqrt(CI);
     case Intrinsic::sadd_sat:
@@ -2137,9 +2135,7 @@ bool GenXLowering::processInst(Instruction *Inst) {
     case Intrinsic::fshl:
     case Intrinsic::fshr:
       return lowerFunnelShift(CI, IntrinsicID);
-#if LLVM_VERSION_MAJOR >= 12
     case Intrinsic::abs:
-#endif
     case Intrinsic::fabs:
       return lowerAbs(CI);
     case Intrinsic::ceil:
@@ -2152,7 +2148,6 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerStackSave(CI);
     case Intrinsic::stackrestore:
       return lowerStackRestore(CI);
-#if LLVM_VERSION_MAJOR >= 12
     case Intrinsic::vector_reduce_add:
       return lowerReduction(CI, Instruction::Add);
     case Intrinsic::vector_reduce_mul:
@@ -2165,20 +2160,6 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerReduction(CI, Intrinsic::maxnum);
     case Intrinsic::vector_reduce_fmin:
       return lowerReduction(CI, Intrinsic::minnum);
-#else  // LLVM_VERSION_MAJOR >= 12
-    case Intrinsic::experimental_vector_reduce_add:
-      return lowerReduction(CI, Instruction::Add);
-    case Intrinsic::experimental_vector_reduce_mul:
-      return lowerReduction(CI, Instruction::Mul);
-    case Intrinsic::experimental_vector_reduce_v2_fadd:
-      return lowerReduction(CI, Instruction::FAdd);
-    case Intrinsic::experimental_vector_reduce_v2_fmul:
-      return lowerReduction(CI, Instruction::FMul);
-    case Intrinsic::experimental_vector_reduce_fmax:
-      return lowerReduction(CI, Intrinsic::maxnum);
-    case Intrinsic::experimental_vector_reduce_fmin:
-      return lowerReduction(CI, Intrinsic::minnum);
-#endif // LLVM_VERSION_MAJOR >= 12
     case GenXIntrinsic::genx_get_hwid:
       return lowerHardwareThreadID(CI);
     case vc::InternalIntrinsic::logical_thread_id:
@@ -3712,7 +3693,6 @@ bool GenXLowering::lowerUnorderedFCmpInst(FCmpInst *Inst) {
 }
 
 static GenXIntrinsic::ID convertMinMaxIntrinsic(unsigned ID) {
-#if LLVM_VERSION_MAJOR >= 12
   switch (ID) {
   default:
     break;
@@ -3725,7 +3705,6 @@ static GenXIntrinsic::ID convertMinMaxIntrinsic(unsigned ID) {
   case Intrinsic::umax:
     return GenXIntrinsic::genx_umax;
   };
-#endif
   IGC_ASSERT_EXIT_MESSAGE(0, "unknown min/max intrinsic");
   return GenXIntrinsic::not_any_intrinsic;
 }

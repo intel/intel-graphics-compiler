@@ -274,24 +274,17 @@ struct Comparator {
 
 bool GenXPromotePredicate::runOnFunction(Function &F) {
   // Put every predicate instruction into its own equivalence class.
-#if LLVM_VERSION_MAJOR > 13
   long Idx = 0;
-  llvm::EquivalenceClasses<Instruction *, Comparator>
-#else
-  llvm::EquivalenceClasses<Instruction *>
-#endif
-      PredicateWebs;
+  llvm::EquivalenceClasses<Instruction *, Comparator> PredicateWebs;
   for (auto &I : instructions(F)) {
     if (!genx::isPredicate(&I))
       continue;
     if (!I.isBitwiseLogicOp() && !isa<PHINode>(&I))
       continue;
-#if LLVM_VERSION_MAJOR > 13
     auto &Ctx = I.getContext();
     auto *MD = ConstantAsMetadata::get(
         ConstantInt::get(Ctx, llvm::APInt(64, ++Idx, false)));
     I.setMetadata(IdxMDName, MDNode::get(Ctx, MD));
-#endif
     PredicateWebs.insert(&I);
   }
   // Connect data-flow related instructions together.
@@ -300,12 +293,7 @@ bool GenXPromotePredicate::runOnFunction(Function &F) {
     for (auto &Op : Inst->operands()) {
       Instruction *In = dyn_cast<Instruction>(Op);
 
-      if (!In ||
-#if LLVM_VERSION_MAJOR > 13
-          !In->hasMetadata(IdxMDName))
-#else
-          PredicateWebs.findValue(In) == PredicateWebs.end())
-#endif
+      if (!In || !In->hasMetadata(IdxMDName))
         continue;
       PredicateWebs.unionSets(Inst, In);
     }

@@ -155,9 +155,7 @@ bool vc::isFunctionPointerType(Type *Ty) {
   auto *PtrTy = llvm::dyn_cast<PointerType>(Ty);
   if (!PtrTy)
     return false;
-#if LLVM_VERSION_MAJOR >= 14
   if (PtrTy->isOpaque())
     return PtrTy->getAddressSpace() == AddrSpace::Program;
-#endif // LLVM_MAJOR_VERSION >= 14
   return IGCLLVM::getNonOpaquePtrEltTy(PtrTy)->isFunctionTy();
 }

@@ -35,7 +35,6 @@ class TypeSizeWrapper {
 public:
   using SzType = uint64_t;
 
-#if LLVM_VERSION_MAJOR >= 10
   using DLTypeSize = llvm::TypeSize;
   static DLTypeSize InvalidDLSize() {
     return DLTypeSize::Fixed(0);
@@ -43,21 +42,10 @@ public:
   static DLTypeSize FixedDLSize(uint64_t SZ) {
     return DLTypeSize::Fixed(SZ);
   }
-#else
-  using DLTypeSize = uint64_t;
-  static DLTypeSize InvalidDLSize() {
-    return 0;
-  }
-  static DLTypeSize FixedDLSize(uint64_t SZ) {
-    return SZ;
-  }
-#endif
 
   TypeSizeWrapper() = default;
   TypeSizeWrapper(DLTypeSize TS) : TS(TS){};
-#if LLVM_VERSION_MAJOR >= 10
   TypeSizeWrapper(uint64_t TSIn) : TS{FixedDLSize(TSIn)} {};
-#endif
 
   SzType inBytesCeil() const { return asIntegralCeil<ByteBits>(); }
   SzType inWordsCeil() const { return asIntegralCeil<WordBits>(); }
@@ -119,12 +107,8 @@ private:
   }
 
   template <unsigned UnitBitSize, bool Strict> SzType asIntegral() const {
-#if LLVM_VERSION_MAJOR >= 10
     IGC_ASSERT(!TS.isScalable());
     uint64_t BitsAsUI = TS.getFixedSize();
-#else
-    uint64_t BitsAsUI = TS;
-#endif
     IGC_ASSERT_MESSAGE(BitsAsUI <= std::numeric_limits<SzType>::max(),
                        "Type is too large to operate on");
     IGC_ASSERT_MESSAGE(BitsAsUI >= 0, "Could not determine size of Type");

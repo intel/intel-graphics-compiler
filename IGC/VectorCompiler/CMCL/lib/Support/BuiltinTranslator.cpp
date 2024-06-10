@@ -350,12 +350,7 @@ Value &createMainInst<BuiltinID::Gather>(const std::vector<Value *> &Operands,
       cast<ConstantInt>(Operands[GatherOperand::Alignment])->getZExtValue());
   auto *MaskV = IRB.CreateTrunc(Operands[GatherOperand::Mask], MaskVTy);
   auto *PassthruV = Operands[GatherOperand::Passthru];
-
-#if LLVM_VERSION_MAJOR > 12
   auto *GatherV = IRB.CreateMaskedGather(RetVTy, PtrV, Align, MaskV, PassthruV);
-#else
-  auto *GatherV = IRB.CreateMaskedGather(PtrV, Align, MaskV, PassthruV);
-#endif
 
   return *GatherV;
 }

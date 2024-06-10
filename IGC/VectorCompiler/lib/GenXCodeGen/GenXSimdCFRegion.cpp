@@ -702,12 +702,7 @@ bool GenXPredToSimdCF::isReduceAnd(const Value *V) {
   if (V)
     if (const CallInst *CI = dyn_cast<CallInst>(V))
       return GenXIntrinsic::getGenXIntrinsicID(V) == GenXIntrinsic::genx_all ||
-             CI->getIntrinsicID() ==
-#if LLVM_VERSION_MAJOR < 12
-                 Intrinsic::experimental_vector_reduce_and;
-#else
-                 Intrinsic::vector_reduce_and;
-#endif
+             CI->getIntrinsicID() == Intrinsic::vector_reduce_and;
   return false;
 }
 
@@ -715,12 +710,7 @@ bool GenXPredToSimdCF::isReduceOr(const Value *V) {
   if (V)
     if (const CallInst *CI = dyn_cast<CallInst>(V))
       return GenXIntrinsic::getGenXIntrinsicID(V) == GenXIntrinsic::genx_any ||
-             CI->getIntrinsicID() ==
-#if LLVM_VERSION_MAJOR < 12
-                 Intrinsic::experimental_vector_reduce_or;
-#else
-                 Intrinsic::vector_reduce_or;
-#endif
+             CI->getIntrinsicID() == Intrinsic::vector_reduce_or;
   return false;
 }
 

@@ -71,11 +71,7 @@ void GenXSubtarget::initSubtargetFeatures(StringRef CPU, StringRef FS) {
   if (CPUName.empty() || TargetId == Invalid)
     report_fatal_error("Undefined or blank arch passed");
 
-  ParseSubtargetFeatures(CPUName,
-#if LLVM_VERSION_MAJOR >= 12
-                         /*TuneCPU=*/CPUName,
-#endif
-                         FS);
+  ParseSubtargetFeatures(CPUName, /*TuneCPU=*/CPUName, FS);
   if (EnforceLongLongEmulation)
     EmulateLongLong = true;
   if (EnforceDivRem32Emulation)
@@ -84,11 +80,7 @@ void GenXSubtarget::initSubtargetFeatures(StringRef CPU, StringRef FS) {
 
 GenXSubtarget::GenXSubtarget(const Triple &TT, const std::string &CPU,
                              const std::string &FS)
-    : GenXGenSubtargetInfo(TT, CPU,
-#if LLVM_VERSION_MAJOR >= 12
-                           /*TuneCPU=*/CPU,
-#endif
-                           FS),
+    : GenXGenSubtargetInfo(TT, CPU, /*TuneCPU=*/CPU, FS),
       TargetTriple(TT) {
   initSubtargetFeatures(CPU, FS);
 }

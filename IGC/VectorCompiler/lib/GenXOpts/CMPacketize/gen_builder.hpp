@@ -222,28 +222,18 @@ IndirectBrInst* INDIRECT_BR(Value *Addr, unsigned NumDests = 10)
 
 InvokeInst* INVOKE(Value *Callee, BasicBlock *NormalDest, BasicBlock *UnwindDest, ArrayRef<Value *> Args = None, const Twine &Name = "")
 {
-#if LLVM_VERSION_MAJOR >= 11
     auto *PTy = Callee->getType();
     auto *FTy = cast<FunctionType>(IGCLLVM::getNonOpaquePtrEltTy(PTy));
-#endif
-    return IRB()->CreateInvoke(
-#if LLVM_VERSION_MAJOR >= 11
-        FTy,
-#endif
-        Callee, NormalDest, UnwindDest, Args, Name);
+    return IRB()->CreateInvoke(FTy, Callee, NormalDest, UnwindDest, Args,
+                               Name);
 }
 
 InvokeInst* INVOKE(Value *Callee, BasicBlock *NormalDest, BasicBlock *UnwindDest, ArrayRef<Value *> Args, ArrayRef<OperandBundleDef> OpBundles, const Twine &Name = "")
 {
-#if LLVM_VERSION_MAJOR >= 11
     auto *PTy = Callee->getType();
     auto *FTy = cast<FunctionType>(IGCLLVM::getNonOpaquePtrEltTy(PTy));
-#endif
-    return IRB()->CreateInvoke(
-#if LLVM_VERSION_MAJOR >= 11
-        FTy,
-#endif
-        Callee, NormalDest, UnwindDest, Args, OpBundles, Name);
+    return IRB()->CreateInvoke(FTy, Callee, NormalDest, UnwindDest, Args,
+                               OpBundles, Name);
 }
 
 ResumeInst* RESUME(Value *Exn)

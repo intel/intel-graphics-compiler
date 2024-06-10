@@ -14,6 +14,12 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/CodeGen.h"
 #include "llvm/Target/TargetMachine.h"
 
+#if LLVM_VERSION_MAJOR < 15
+#define LLVM_GET_TTI_API_QUAL
+#else // LLVM_VERSION_MAJOR
+#define LLVM_GET_TTI_API_QUAL const
+#endif // LLVM_VERSION_MAJOR
+
 namespace IGCLLVM {
 #if LLVM_VERSION_MAJOR < 10
     using TargetMachine = llvm::TargetMachine;

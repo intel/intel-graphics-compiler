@@ -55,7 +55,6 @@ public:
 
 public:
   static char ID;
-#if LLVM_VERSION_MAJOR > 10
   // fadd, fsub e.t.c
   void visitBinaryOperator(BinaryOperator &Inst);
   // fneg
@@ -81,7 +80,6 @@ private:
   void lowerCastToBFloat(CastInst &Inst);
   void lowerCastFromBFloat(CastInst &Inst);
 
-#endif // LLVM_VERSION_MAJOR > 10
 };
 
 } // end namespace
@@ -104,7 +102,6 @@ void GenXBFloatLowering::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<TargetPassConfig>();
 }
 
-#if LLVM_VERSION_MAJOR > 10
 static Type *getFloatTyFromBfloat(Type *Ty) {
   IGC_ASSERT_EXIT(Ty->getScalarType()->isBFloatTy());
   auto *FloatTy = Type::getFloatTy(Ty->getContext());
@@ -348,7 +345,6 @@ void GenXBFloatLowering::lowerCastFromBFloat(CastInst &Inst) {
   Inst.eraseFromParent();
   Modify = true;
 }
-#endif // LLVM_VERSION_MAJOR > 10
 
 /***********************************************************************
  * GenXBFloatLowering::runOnFunction
@@ -358,13 +354,11 @@ bool GenXBFloatLowering::runOnFunction(Function &F) {
     return false;
   LLVM_DEBUG(dbgs() << "GenXBFloatLowering started\n");
 
-#if LLVM_VERSION_MAJOR > 10
   ST = &getAnalysis<TargetPassConfig>()
             .getTM<GenXTargetMachine>()
             .getGenXSubtarget();
 
   visit(F);
-#endif // LLVM_VERSION_MAJOR > 10
 
   LLVM_DEBUG(dbgs() << "GenXBFloatLowering ended\n");
   return Modify;

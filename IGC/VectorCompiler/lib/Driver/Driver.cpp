@@ -364,7 +364,7 @@ static void optimizeIR(const vc::CompileOptions &Opts,
   PMBuilder.LoopVectorize = false;
   PMBuilder.DisableUnrollLoops = false;
   PMBuilder.MergeFunctions = false;
-#if LLVM_VERSION_MAJOR <= 14
+#if LLVM_VERSION_MAJOR < 15
   PMBuilder.PrepareForThinLTO = false;
   PMBuilder.PrepareForLTO = false;
 #endif

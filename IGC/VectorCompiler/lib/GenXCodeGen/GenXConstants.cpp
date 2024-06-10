@@ -297,11 +297,7 @@ bool ConstantLoadHelper::visitBinaryOperator(BinaryOperator &BO) {
   auto *STy = Ty->getScalarType();
 
   // BFloat and boolean (except not) operations do not support immediate values.
-#if LLVM_VERSION_MAJOR > 10
   if (!STy->isIntegerTy(1) && !STy->isBFloatTy())
-#else  // LLVM_VERSION_MAJOR > 10
-  if (!STy->isIntegerTy(1))
-#endif // LLVM_VERSION_MAJOR > 10
     return false;
 
   bool Modified = false;
@@ -327,12 +323,7 @@ bool ConstantLoadHelper::visitBinaryOperator(BinaryOperator &BO) {
 bool ConstantLoadHelper::visitSelectInst(SelectInst &SI) {
   // select: disallow constant selector and bfloat immediate values.
   bool Modified = false;
-  const bool IsBFloat =
-#if LLVM_VERSION_MAJOR > 10
-      SI.getType()->getScalarType()->isBFloatTy();
-#else  // LLVM_VERSION_MAJOR > 10
-      false;
-#endif // LLVM_VERSION_MAJOR > 10
+  const bool IsBFloat = SI.getType()->getScalarType()->isBFloatTy();
 
   for (int I = 0; I < (IsBFloat ? 3 : 1); I++) {
     auto *U = &SI.getOperandUse(I);
@@ -557,11 +548,7 @@ bool ConstantLoadHelper::visitCallInst(CallInst &CI) {
         break;
       }
       // Allow non-bfloat constant if the instruction supports immediate values.
-#if LLVM_VERSION_MAJOR > 10
       if (!AI.isImmediateDisallowed() && !CTy->isBFloatTy())
-#else  // LLVM_VERSION_MAJOR > 10
-      if (!AI.isImmediateDisallowed())
-#endif // LLVM_VERSION_MAJOR > 10
         continue;
       // Operand is not allowed to be constant. Insert code to load it.
       *U = ConstantLoader(C, ST, DL, nullptr, AddedInst).loadBig(&CI);
@@ -1435,7 +1422,6 @@ Instruction *ConstantLoader::load(Instruction *InsertBefore) {
   auto IntrinsicID = GenXIntrinsic::genx_constanti;
 
   if (C->getType()->isFPOrFPVectorTy()) {
-#if LLVM_VERSION_MAJOR > 10
     if (Ty->getScalarType()->isBFloatTy()) {
       Type *NewTy = Builder.getInt16Ty();
       if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty))
@@ -1444,7 +1430,6 @@ Instruction *ConstantLoader::load(Instruction *InsertBefore) {
       Args[0] = NewC;
       OverloadedTypes[0] = NewTy;
     } else
-#endif // LLVM_VERSION_MAJOR > 10
       IntrinsicID = GenXIntrinsic::genx_constantf;
   } else if (C->getType()->getScalarType()->isIntegerTy(1)) {
     IntrinsicID = GenXIntrinsic::genx_constantpred;

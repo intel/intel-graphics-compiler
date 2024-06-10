@@ -77,11 +77,8 @@ public:
   const TargetSubtargetInfo *getSubtargetImpl(const Function &) const override {
     return &Subtarget;
   }
-#if LLVM_VERSION_MAJOR >= 15
-  TargetTransformInfo getTargetTransformInfo(const Function &F) const override;
-#else
-  TargetTransformInfo getTargetTransformInfo(const Function& F) override;
-#endif
+  TargetTransformInfo getTargetTransformInfo(const Function &F)
+      LLVM_GET_TTI_API_QUAL override;
 
   const GenXSubtarget &getGenXSubtarget() const { return Subtarget; }
 };
@@ -145,17 +142,8 @@ public:
   bool shouldBuildLookupTables() { return false; }
   unsigned getFlatAddressSpace() { return vc::AddrSpace::Generic; }
 
-#if LLVM_VERSION_MAJOR >= 13
-  InstructionCost
-#else
-  int
-#endif
-  getUserCost(const User *U, ArrayRef<const Value *> Operands
-#if LLVM_VERSION_MAJOR >= 11
-                  ,
-                  TTI::TargetCostKind CostKind
-#endif
-  ) {
+  InstructionCost getUserCost(const User *U, ArrayRef<const Value *> Operands,
+                              TTI::TargetCostKind CostKind) {
     if (auto EV = dyn_cast<ExtractValueInst>(U)) {
       switch(GenXIntrinsic::getGenXIntrinsicID(EV->getOperand(0))) {
         case GenXIntrinsic::genx_simdcf_goto:
@@ -167,12 +155,7 @@ public:
       }
     }
 
-    return BaseT::getUserCost(U, Operands
-#if LLVM_VERSION_MAJOR >= 11
-                              ,
-                              CostKind
-#endif
-    );
+    return BaseT::getUserCost(U, Operands, CostKind);
   }
 
   bool isProfitableToHoist(Instruction *I) const {
@@ -185,20 +168,12 @@ public:
   }
 
   void getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
-                               TTI::UnrollingPreferences &UP
-#if LLVM_VERSION_MAJOR >= 14
-                               ,
+                               TTI::UnrollingPreferences &UP,
                                OptimizationRemarkEmitter *ORE
-#endif
   );
 
-#if LLVM_VERSION_MAJOR >= 14
   void getPeelingPreferences(Loop *, ScalarEvolution &,
                              TTI::PeelingPreferences &) const;
-#else  // LLVM_VERSION_MAJOR >= 14
-  void getPeelingPreferences(Loop *, ScalarEvolution &,
-                             TTI::UnrollingPreferences &) const;
-#endif // LLVM_VERSION_MAJOR >= 14
 };
 
 /// Initialize all GenX passes for opt tool.

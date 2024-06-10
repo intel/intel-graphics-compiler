@@ -409,7 +409,6 @@ bool genx::isNoopCast(const CastInst *CI) {
 }
 
 bool genx::isBFloat16Cast(const Instruction *I) {
-#if LLVM_VERSION_MAJOR >= 11
   Type *Ty = nullptr;
   if (isa<FPTruncInst>(I))
     Ty = I->getType();
@@ -419,9 +418,6 @@ bool genx::isBFloat16Cast(const Instruction *I) {
     return false;
   IGC_ASSERT_EXIT(Ty);
   return Ty->getScalarType()->isBFloatTy();
-#else  // LLVM_VERSION_MAJOR >= 11
-  return false;
-#endif // LLVM_VERSION_MAJOR >= 11
 }
 
 /***********************************************************************
@@ -942,10 +938,6 @@ int ShuffleVectorAnalyzer::getAsUnslice()
   // Success.
   return Prefix;
 }
-
-#if LLVM_VERSION_MAJOR <= 10
-constexpr int UndefMaskElem = -1;
-#endif
 
 /***********************************************************************
  * extension of ShuffleVectorInst::isZeroEltSplatMask method
@@ -2129,10 +2121,7 @@ bool genx::isSupportedFloatingPointType(const Type *Ty) {
   IGC_ASSERT(Ty);
   auto *ScalarTy = Ty->getScalarType();
   return ScalarTy->isFloatTy() || ScalarTy->isHalfTy() ||
-#if LLVM_VERSION_MAJOR > 10
-         ScalarTy->isBFloatTy() ||
-#endif //  LLVM_VERSION_MAJOR > 10
-         ScalarTy->isDoubleTy();
+         ScalarTy->isBFloatTy() || ScalarTy->isDoubleTy();
 }
 
 // Get type that represents OldType as vector of NewScalarType, e.g.

@@ -906,11 +906,9 @@ TypeDetails::TypeDetails(const DataLayout &DL, Type *Ty, Signedness Signed,
   } else if (ElementTy->isHalfTy()) {
     IGC_ASSERT(BytesPerElement == WordBytes);
     VisaType = ISA_TYPE_HF;
-#if LLVM_VERSION_MAJOR > 10
   } else if (ElementTy->isBFloatTy()) {
     IGC_ASSERT(BytesPerElement == WordBytes);
     VisaType = ISA_TYPE_BF;
-#endif
   } else if (ElementTy->isFloatTy()) {
     IGC_ASSERT(BytesPerElement == DWordBytes);
     VisaType = ISA_TYPE_F;

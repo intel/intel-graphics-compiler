@@ -79,8 +79,7 @@ static cl::opt<bool> EmitVLoadStore(
     cl::desc("Emit load/store intrinsic calls for pass-by-ref arguments"));
 
 static cl::opt<bool> PeelLoopsDpasNullAcc(
-    "vc-peel-loops-dpas-null-acc", cl::init(LLVM_VERSION_MAJOR >= 14),
-    cl::Hidden,
+    "vc-peel-loops-dpas-null-acc", cl::init(true), cl::Hidden,
     cl::desc("Peel first iteration of a loop with dpas instructions, when dpas "
              "accumulator operand is zero-initialized"));
 static cl::opt<unsigned> PeelLoopDpasNullAccMaxBlocks(
@@ -211,21 +210,16 @@ void initializeGenXPasses(PassRegistry &registry) {
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
 
-#if LLVM_VERSION_MAJOR >= 15
-TargetTransformInfo GenXTargetMachine::getTargetTransformInfo(const Function &F) const
-#else
-TargetTransformInfo GenXTargetMachine::getTargetTransformInfo(const Function& F)
-#endif
+TargetTransformInfo GenXTargetMachine::getTargetTransformInfo(
+  const Function &F) LLVM_GET_TTI_API_QUAL
 {
   GenXTTIImpl GTTI(F.getParent()->getDataLayout(), *BC, Subtarget);
   return TargetTransformInfo(std::move(GTTI));
 }
 void GenXTTIImpl::getUnrollingPreferences(
-    Loop *L, ScalarEvolution &SE, TargetTransformInfo::UnrollingPreferences &UP
-#if LLVM_VERSION_MAJOR >= 14
-    , OptimizationRemarkEmitter *ORE
-#endif
-) {
+    Loop *L, ScalarEvolution &SE,
+    TargetTransformInfo::UnrollingPreferences &UP,
+    OptimizationRemarkEmitter *ORE) {
   if (BC.ignoreLoopUnrollThresholdOnPragma() &&
       GetUnrollMetadataForLoop(L, "llvm.loop.unroll.enable"))
     UP.Threshold = UP.PartialThreshold = std::numeric_limits<unsigned>::max();
@@ -241,19 +235,11 @@ void GenXTTIImpl::getUnrollingPreferences(
     UP.Partial = false;
     UP.Runtime = false;
   }
-
-#if LLVM_VERSION_MAJOR < 14
-  getPeelingPreferences(L, SE, UP);
-#endif // LLVM_VERSION_MAJOR < 14
 }
 
 void GenXTTIImpl::getPeelingPreferences(
     Loop *L, ScalarEvolution &SE,
-#if LLVM_VERSION_MAJOR >= 14
     TargetTransformInfo::PeelingPreferences &PP) const {
-#else  // LLVM_VERSION_MAJOR >= 14
-    TargetTransformInfo::UnrollingPreferences &PP) const {
-#endif // LLVM_VERSION_MAJOR >= 14
   if (!PeelLoopsDpasNullAcc || ST.hasFusedEU())
     return;
 
@@ -496,11 +482,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   vc::addPass(PM, createSROAPass());
   vc::addPass(PM, createEarlyCSEPass());
   vc::addPass(PM, createLowerExpectIntrinsicPass());
-#if LLVM_VERSION_MAJOR >= 12
   vc::addPass(PM, createCFGSimplificationPass(SimplifyCFGOptions().hoistCommonInsts(true)));
-#else
-  vc::addPass(PM, createCFGSimplificationPass());
-#endif
   vc::addPass(PM, createInstructionCombiningPass());
   vc::addPass(PM, createCFGSimplificationPass());
 
@@ -880,11 +862,7 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
     PM.add(createPromoteMemoryToRegisterPass());
     PM.add(createInferAddressSpacesPass());
     PM.add(createEarlyCSEPass(true));
-#if LLVM_VERSION_MAJOR >= 12
     PM.add(createCFGSimplificationPass(SimplifyCFGOptions().hoistCommonInsts(true)));
-#else
-    PM.add(createCFGSimplificationPass());
-#endif
     PM.add(createInstructionCombiningPass());
     PM.add(createDeadCodeEliminationPass());
     PM.add(createSROAPass());

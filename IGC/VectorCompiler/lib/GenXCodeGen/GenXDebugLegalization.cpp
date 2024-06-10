@@ -97,11 +97,7 @@ bool GenXDebugLegalization::extractAddressClass(Function &F) {
 
         if (newElements.size() < DIExpr->getNumElements()) {
           DIExpression* newDIExpr = di.createExpression(newElements);
-#if LLVM_VERSION_MAJOR < 13
-          DI->setArgOperand(2, MetadataAsValue::get(newDIExpr->getContext(), newDIExpr));
-#else
           DI->setExpression(newDIExpr);
-#endif
           Modified = true;
         }
       }
@@ -114,7 +110,6 @@ bool GenXDebugLegalization::extractAddressClass(Function &F) {
 // In order to prevent crashes, remove such metadata.
 bool GenXDebugLegalization::removeDIArgList(Function &F) {
   bool Modified = false;
-#if LLVM_VERSION_MAJOR > 12
   for (auto &BB : F) {
     for (auto &I : BB) {
       if (auto *dbgInst = dyn_cast<DbgVariableIntrinsic>(&I)) {
@@ -125,7 +120,6 @@ bool GenXDebugLegalization::removeDIArgList(Function &F) {
       }
     }
   }
-#endif
   return Modified;
 }
 

@@ -149,14 +149,10 @@ llvm::DIGlobalVariableExpression *vc::DIBuilder::createGlobalVariableExpression(
   IGC_ASSERT(CU);
   auto &Ctx = M.getContext();
 
-  auto *GV = DIGlobalVariable::getDistinct(
-      Ctx, cast_or_null<DIScope>(CU), Name, LinkageName, CU->getFile(),
-      0 /*Line No*/, Type, true /*IsLocalToUnit*/, true /*isDefined*/,
-      nullptr /*Decl*/, nullptr /*TemplateParams*/, 0 /*AlignInBits*/
-#if LLVM_VERSION_MAJOR >= 14
-      , nullptr /*Annotation*/
-#endif
-      );
+  auto *GV = DIGlobalVariable::getDistinct(Ctx, cast_or_null<DIScope>(CU),
+      Name, LinkageName, CU->getFile(), 0 /*Line No*/, Type,
+      true /*IsLocalToUnit*/, true /*isDefined*/, nullptr /*Decl*/,
+      nullptr /*TemplateParams*/, 0 /*AlignInBits*/, nullptr /*Annotation*/);
   auto *EmptyExpr = DIExpression::get(Ctx, llvm::None);
   auto *GVE = DIGlobalVariableExpression::get(Ctx, GV, EmptyExpr);
 
@@ -188,9 +184,5 @@ llvm::DILocalVariable *vc::DIBuilder::createLocalVariable(
     unsigned LineNo, llvm::DIType *Type, unsigned ArgNo,
     llvm::DINode::DIFlags Flags, unsigned AlignInBits) const {
   return DILocalVariable::get(M.getContext(), Scope, Name, File, LineNo, Type,
-                              ArgNo, Flags, AlignInBits
-#if LLVM_VERSION_MAJOR >= 14
-                            , nullptr
-#endif
-                            );
+                              ArgNo, Flags, AlignInBits, nullptr);
 }

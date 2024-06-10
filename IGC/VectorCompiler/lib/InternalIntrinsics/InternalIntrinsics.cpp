@@ -117,11 +117,7 @@ enum IIT_Info {
 
 static Intrinsic::IITDescriptor getVector(unsigned Width) {
   using namespace Intrinsic;
-#if VC_INTR_LLVM_VERSION_MAJOR >= 11
   return IITDescriptor::getVector(Width, false);
-#else
-  return IITDescriptor::get(IITDescriptor::Vector, Width);
-#endif
 }
 
 static void

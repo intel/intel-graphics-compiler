@@ -1726,12 +1726,7 @@ Value *GenXPacketize::packetizeInstruction(Instruction *pInst) {
       SmallVector<DbgVariableIntrinsic *, 1> DbgUsers;
       llvm::findDbgUsers(DbgUsers, pInst);
       for (auto *DII : DbgUsers) {
-#if LLVM_VERSION_MAJOR >= 13
         DII->replaceVariableLocationOp(pInst, pResult);
-#else
-        DII->setOperand(0, llvm::MetadataAsValue::get(DII->getContext(),
-                                                      llvm::ValueAsMetadata::get(pResult)));
-#endif
       }
     }
 

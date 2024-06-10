@@ -31,12 +31,7 @@ namespace vc {
 
 // Prints \p V to string \p Str.
 template <typename T> void printToString(std::string &Str, T &V) {
-#if LLVM_VERSION_MAJOR < 10
-  llvm::raw_string_ostream StrStream{Str};
-  StrStream << V;
-#else
   llvm::raw_string_ostream{Str} << V;
-#endif
 }
 
 enum class WarningName {

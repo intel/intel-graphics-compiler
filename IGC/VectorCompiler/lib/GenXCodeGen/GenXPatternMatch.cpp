@@ -163,9 +163,7 @@ public:
 
   void visitUDiv(BinaryOperator &I);
 
-#if LLVM_VERSION_MAJOR >= 10
   void visitFreezeInst(FreezeInst &I);
-#endif
 
   bool runOnFunction(Function &F) override;
 
@@ -3387,14 +3385,12 @@ void GenXPatternMatch::visitURem(BinaryOperator &I) {
   return decomposeURemPow2(I);
 }
 
-#if LLVM_VERSION_MAJOR >= 10
-// Quick fix of IGC LLVM 11 based compilation failures.
+// Clean up 'freeze' instances once dependent w/a's have been resolved.
 void GenXPatternMatch::visitFreezeInst(FreezeInst &I) {
   Value *Op = I.getOperand(0);
   I.replaceAllUsesWith(Op);
   Changed = true;
 }
-#endif
 
 // Decompose predicate operand for large vector selects.
 bool GenXPatternMatch::decomposeSelect(Function *F) {
