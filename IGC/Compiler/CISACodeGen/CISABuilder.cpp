@@ -5612,6 +5612,11 @@ namespace IGC
 
         CodeGenContext* context = m_program->GetContext();
 
+        // Using stateless scratch space for private memory means that the entire slot0 is empty.
+        // vISA cannot use the stateless scratch space for spilling.
+        if (m_program->GetContext()->getModuleMetaData()->compOpt.UseStatelessforPrivateMemory)
+            return;
+
         bool noticedScratchSpaceByIGC = context->m_ScratchSpaceUsage.count(m_program->entry) > 0 &&
             context->m_ScratchSpaceUsage[m_program->entry] > 0;
 
