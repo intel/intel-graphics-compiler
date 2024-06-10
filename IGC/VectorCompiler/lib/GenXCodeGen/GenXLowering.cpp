@@ -265,6 +265,7 @@ private:
   bool lowerHardwareThreadID(CallInst *CI);
   bool lowerLogicalThreadID(CallInst *CI);
   bool lowerNamedBarrierArrive(CallInst *CI);
+  bool lowerDpas(CallInst *CI);
 
   Value *swapLowHighHalves(IRBuilder<> &Builder, Value *Arg) const;
   bool lowerByteSwap(CallInst *CI);
@@ -2184,6 +2185,12 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerLogicalThreadID(CI);
     case GenXIntrinsic::genx_nbarrier_arrive:
       return lowerNamedBarrierArrive(CI);
+    case GenXIntrinsic::genx_dpas:
+    case GenXIntrinsic::genx_dpas_nosrc0:
+    case GenXIntrinsic::genx_dpas2:
+      // The genx_dpasw and genx_dpasw_nosrc0 are intentionally not handled
+      // here, because they don't support bfloat accumulator.
+      return lowerDpas(CI);
     }
     return false;
   }
@@ -4870,6 +4877,50 @@ bool GenXLowering::lowerLogicalThreadID(CallInst *CI) {
   }
 
   CI->replaceAllUsesWith(Res);
+  ToErase.push_back(CI);
+  return true;
+}
+
+bool GenXLowering::lowerDpas(CallInst *CI) {
+  const auto IID = vc::getAnyIntrinsicID(CI);
+  bool IsLoweringRequired = false;
+
+  IRBuilder<> Builder(CI);
+  auto *Ty = cast<IGCLLVM::FixedVectorType>(CI->getType());
+  if (Ty->isIntOrIntVectorTy(16)) {
+    Ty = IGCLLVM::FixedVectorType::get(Builder.getBFloatTy(),
+                                       Ty->getNumElements());
+    IsLoweringRequired = true;
+  }
+
+  SmallVector<Value *, 10> Args(CI->args());
+
+  if (IID != GenXIntrinsic::genx_dpas_nosrc0) {
+    auto *Acc = CI->getOperand(0);
+    auto *AccTy = cast<IGCLLVM::FixedVectorType>(Acc->getType());
+    if (AccTy->isIntOrIntVectorTy(16)) {
+      auto *NewAccTy = IGCLLVM::FixedVectorType::get(Builder.getBFloatTy(),
+                                                     AccTy->getNumElements());
+      Args[0] = Builder.CreateBitCast(Acc, NewAccTy);
+      IsLoweringRequired = true;
+    }
+  }
+
+  if (!IsLoweringRequired)
+    return false;
+
+  SmallVector<Type *, 6> Types = {Ty};
+
+  for (auto IdxArg : enumerate(Args))
+    if (vc::isOverloadedArg(IID, IdxArg.index()))
+      Types.push_back(IdxArg.value()->getType());
+
+  auto *F = vc::getAnyDeclaration(CI->getModule(), IID, Types);
+  auto *NewCI = Builder.CreateCall(F, Args);
+  auto *Cast = Builder.CreateBitCast(NewCI, CI->getType());
+
+  NewCI->takeName(CI);
+  CI->replaceAllUsesWith(Cast);
   ToErase.push_back(CI);
   return true;
 }
