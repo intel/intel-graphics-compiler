@@ -2763,10 +2763,10 @@ Imported_Intrinsics = \
 ####################################################################################################
 "GenISA_LSC2DBlockSetAddrPayloadField": ["LSC 2d block : set given field in address payload",
     [("void",                          "No return value"),
-    [("anyptr",                        "arg0: input/output address payload placeholder"),
+    [("anyptr",                        "arg0: input/output address payload (AP) placeholder"),
      ("int",                           "arg1: field name (LSC2DBlockField)"),
      ("anyint",                        "arg2: field value"),
-     ("bool",                          "arg2: false : AP[arg1] = arg2; "+\
+     ("bool",                          "arg3: false : AP[arg1] = arg2; "+\
                                        "       true : AP[arg1] += arg2")],
     "ReadWriteArgMem"]],
 ####################################################################################################
