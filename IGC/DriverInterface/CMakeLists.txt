@@ -56,6 +56,7 @@ endif()
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RTStackFormat.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RayTracingInterface.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/TraceRayInlineLoweringPass.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/DynamicRayManagementPass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/SplitAsyncUtils.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/CrossingAnalysis.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/TraceRayInlinePrepPass.cpp"

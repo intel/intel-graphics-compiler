@@ -1430,6 +1430,12 @@ bool supportsProgrammableOffsets() const
     return isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
+bool isDynamicRayQueryDynamicRayManagementMechanismEnabled() const
+{
+    return (isCoreChildOf(IGFX_XE2_HPG_CORE) &&
+        IGC_IS_FLAG_DISABLED(DisableRayQueryDynamicRayManagementMechanism));
+}
+
 // ***** Below go accessor methods for testing WA data from WA_TABLE *****
 
 bool WaDoNotPushConstantsForAllPulledGSTopologies() const
