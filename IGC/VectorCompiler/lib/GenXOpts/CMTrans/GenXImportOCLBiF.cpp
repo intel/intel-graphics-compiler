@@ -205,26 +205,6 @@ void BIConvert::runOnModule(Module &M) {
         if (id == Intrinsic::lifetime_start || id == Intrinsic::lifetime_end) {
           ListDelete.push_back(InstCall);
           continue;
-        } else if (id == Intrinsic::ctlz) {
-          // convert this to genx_ldz, but genx_lzd only support 32-bit input
-          auto Src = InstCall->getOperand(0);
-          auto SrcTy = Src->getType();
-          IGC_ASSERT(SrcTy->isIntegerTy());
-          IGC_ASSERT(SrcTy->getPrimitiveSizeInBits() == 32);
-          Type *tys[1];
-          SmallVector<llvm::Value *, 1> args;
-          // build type-list for the 1st intrinsic
-          tys[0] = SrcTy;
-          // build argument list for the 1st intrinsic
-          args.push_back(Src);
-          Function *IntrinFunc = GenXIntrinsic::getAnyDeclaration(
-              &M, GenXIntrinsic::genx_lzd, tys);
-          Instruction *IntrinCall =
-              CallInst::Create(IntrinFunc, args, InstCall->getName(), InstCall);
-          IntrinCall->setDebugLoc(InstCall->getDebugLoc());
-          InstCall->replaceAllUsesWith(IntrinCall);
-          ListDelete.push_back(InstCall);
-          continue;
         }
 
         StringRef CalleeName = callee->getName();
