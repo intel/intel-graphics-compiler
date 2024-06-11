@@ -73,6 +73,7 @@ else() #By default use build from sources
  message(STATUS "Option SPIRV_HEADERS_SKIP_INSTALL: ${SPIRV_HEADERS_SKIP_INSTALL}")
  message(STATUS "Option SPIRV_HEADERS_SKIP_EXAMPLES: ${SPIRV_HEADERS_SKIP_EXAMPLES}")
 
+ find_package(Python3 REQUIRED)
  add_subdirectory("${SPIRV-Tools_SOURCE_DIR}" "${SPIRV-Tools_OUTPUT_DIR}" EXCLUDE_FROM_ALL)
  set(IGC_BUILD__PROJ__SPIRV-Tools "SPIRV-Tools") # same name as in subdirectory
 
