@@ -69,52 +69,60 @@ static Type* _struct_RTStackFormat__MemRay(Module &M)
       }(),
       Type::getFloatTy(M.getContext()),
       Type::getFloatTy(M.getContext()),
-      _union_anon(M),
+      _igc_auto_union_anon(M),
       IntegerType::get(M.getContext(), 64),
       IntegerType::get(M.getContext(), 64),
-      _union_anon_1(M),
+      _igc_auto_union_anon_1(M),
     };
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
-static Type* _union_anon(Module &M)
+static Type* _igc_auto_union_anon(Module &M)
 {
   return
   [&] {
-    StringRef StructName = "union.anon";
+    StringRef StructName = "igc.auto.union.anon";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
     Type* Tys[] = {
-      _struct_anon_0(M),
+      _igc_auto_struct_anon_0(M),
     };
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
-static Type* _struct_anon_0(Module &M)
+static Type* _igc_auto_struct_anon_0(Module &M)
 {
   return
   [&] {
-    StringRef StructName = "struct.anon.0";
+    StringRef StructName = "igc.auto.struct.anon.0";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
     Type* Tys[] = {
       IntegerType::get(M.getContext(), 64),
     };
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
-static Type* _union_anon_1(Module &M)
+static Type* _igc_auto_union_anon_1(Module &M)
 {
   return
   [&] {
-    StringRef StructName = "union.anon.1";
+    StringRef StructName = "igc.auto.union.anon.1";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
     Type* Tys[] = {
-      _struct_anon_3(M),
+      _igc_auto_struct_anon_3(M),
     };
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
-static Type* _struct_anon_3(Module &M)
+static Type* _igc_auto_struct_anon_3(Module &M)
 {
   return
   [&] {
-    StringRef StructName = "struct.anon.3";
+    StringRef StructName = "igc.auto.struct.anon.3";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
     Type* Tys[] = {
       IntegerType::get(M.getContext(), 64),
     };
@@ -129,27 +137,31 @@ static Type* _struct_RTStackFormat__MemTravStack(Module &M)
     if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
       return Ty;
     Type* Tys[] = {
-      _union_anon_5(M),
+      _igc_auto_union_anon_5(M),
     };
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
-static Type* _union_anon_5(Module &M)
+static Type* _igc_auto_union_anon_5(Module &M)
 {
   return
   [&] {
-    StringRef StructName = "union.anon.5";
+    StringRef StructName = "igc.auto.union.anon.5";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
     Type* Tys[] = {
-      _struct_anon_7(M),
+      _igc_auto_struct_anon_7(M),
     };
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
-static Type* _struct_anon_7(Module &M)
+static Type* _igc_auto_struct_anon_7(Module &M)
 {
   return
   [&] {
-    StringRef StructName = "struct.anon.7";
+    StringRef StructName = "igc.auto.struct.anon.7";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
     Type* Tys[] = {
       IntegerType::get(M.getContext(), 64),
       IntegerType::get(M.getContext(), 32),
@@ -237,16 +249,18 @@ static Type* _struct_RTStackFormat__StackPtrAndBudges(Module &M)
       return Ty;
     Type* Tys[] = {
       IntegerType::get(M.getContext(), 16),
-      _union_anon_8(M),
+      _igc_auto_union_anon_8(M),
     };
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
-static Type* _union_anon_8(Module &M)
+static Type* _igc_auto_union_anon_8(Module &M)
 {
   return
   [&] {
-    StringRef StructName = "union.anon.8";
+    StringRef StructName = "igc.auto.union.anon.8";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
     Type* Tys[] = {
       IntegerType::get(M.getContext(), 16),
     };
@@ -331,9 +345,9 @@ static Type* _struct_IGC__RayDispatchGlobalData__RT__Xe(Module &M)
     Type* Tys[] = {
       IntegerType::get(M.getContext(), 64),
       IntegerType::get(M.getContext(), 64),
-      _union_anon_10(M),
-      _union_anon_11(M),
-      _union_anon_12(M),
+      _igc_auto_union_anon_10(M),
+      _igc_auto_union_anon_11(M),
+      _igc_auto_union_anon_12(M),
       [&] {
         auto *EltTy =
           IntegerType::get(M.getContext(), 32);
@@ -344,33 +358,39 @@ static Type* _struct_IGC__RayDispatchGlobalData__RT__Xe(Module &M)
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
-static Type* _union_anon_10(Module &M)
+static Type* _igc_auto_union_anon_10(Module &M)
 {
   return
   [&] {
-    StringRef StructName = "union.anon.10";
+    StringRef StructName = "igc.auto.union.anon.10";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
     Type* Tys[] = {
       IntegerType::get(M.getContext(), 32),
     };
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
-static Type* _union_anon_11(Module &M)
+static Type* _igc_auto_union_anon_11(Module &M)
 {
   return
   [&] {
-    StringRef StructName = "union.anon.11";
+    StringRef StructName = "igc.auto.union.anon.11";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
     Type* Tys[] = {
       IntegerType::get(M.getContext(), 32),
     };
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
-static Type* _union_anon_12(Module &M)
+static Type* _igc_auto_union_anon_12(Module &M)
 {
   return
   [&] {
-    StringRef StructName = "union.anon.12";
+    StringRef StructName = "igc.auto.union.anon.12";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
     Type* Tys[] = {
       IntegerType::get(M.getContext(), 32),
     };
@@ -387,18 +407,18 @@ static Type* _struct_IGC__RayDispatchGlobalData__RayDispatchGlobalDataCommon(Mod
     Type* Tys[] = {
       IntegerType::get(M.getContext(), 64),
       IntegerType::get(M.getContext(), 64),
-      _union_anon_13(M),
-      _union_anon_14(M),
+      _igc_auto_union_anon_13(M),
+      _igc_auto_union_anon_14(M),
       IntegerType::get(M.getContext(), 64),
       IntegerType::get(M.getContext(), 32),
       IntegerType::get(M.getContext(), 32),
-      _union_anon_15(M),
+      _igc_auto_union_anon_15(M),
       IntegerType::get(M.getContext(), 64),
       IntegerType::get(M.getContext(), 64),
       IntegerType::get(M.getContext(), 32),
       IntegerType::get(M.getContext(), 32),
       IntegerType::get(M.getContext(), 64),
-      _union_anon_16(M),
+      _igc_auto_union_anon_16(M),
       IntegerType::get(M.getContext(), 32),
       IntegerType::get(M.getContext(), 32),
       IntegerType::get(M.getContext(), 32),
@@ -411,55 +431,65 @@ static Type* _struct_IGC__RayDispatchGlobalData__RayDispatchGlobalDataCommon(Mod
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
-static Type* _union_anon_13(Module &M)
+static Type* _igc_auto_union_anon_13(Module &M)
 {
   return
   [&] {
-    StringRef StructName = "union.anon.13";
+    StringRef StructName = "igc.auto.union.anon.13";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
     Type* Tys[] = {
       IntegerType::get(M.getContext(), 64),
     };
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
-static Type* _union_anon_14(Module &M)
+static Type* _igc_auto_union_anon_14(Module &M)
 {
   return
   [&] {
-    StringRef StructName = "union.anon.14";
+    StringRef StructName = "igc.auto.union.anon.14";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
     Type* Tys[] = {
       IntegerType::get(M.getContext(), 64),
     };
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
-static Type* _union_anon_15(Module &M)
+static Type* _igc_auto_union_anon_15(Module &M)
 {
   return
   [&] {
-    StringRef StructName = "union.anon.15";
+    StringRef StructName = "igc.auto.union.anon.15";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
     Type* Tys[] = {
       IntegerType::get(M.getContext(), 64),
     };
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
-static Type* _union_anon_16(Module &M)
+static Type* _igc_auto_union_anon_16(Module &M)
 {
   return
   [&] {
-    StringRef StructName = "union.anon.16";
+    StringRef StructName = "igc.auto.union.anon.16";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
     Type* Tys[] = {
-      _struct_anon_17(M),
+      _igc_auto_struct_anon_17(M),
     };
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
-static Type* _struct_anon_17(Module &M)
+static Type* _igc_auto_struct_anon_17(Module &M)
 {
   return
   [&] {
-    StringRef StructName = "struct.anon.17";
+    StringRef StructName = "igc.auto.struct.anon.17";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
     Type* Tys[] = {
       IntegerType::get(M.getContext(), 32),
       IntegerType::get(M.getContext(), 32),
@@ -775,11 +805,13 @@ static Type* _struct_RTStackFormat__InstanceLeaf_RTStackFormat__Xe___Part1(Modul
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
-static Type* _struct_anon(Module &M)
+static Type* _igc_auto_struct_anon(Module &M)
 {
   return
   [&] {
-    StringRef StructName = "struct.anon";
+    StringRef StructName = "igc.auto.struct.anon";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
     Type* Tys[] = {
       IntegerType::get(M.getContext(), 16),
       IntegerType::get(M.getContext(), 16),
@@ -1059,8 +1091,8 @@ auto* _getRayInfo_Xe(Value* arg_0, Value* arg_1, Value* arg_2, const Twine& _Ret
 auto* _getRayFlagsSync_Xe(Value* arg_0, const Twine& _ReturnName = "")
 {
   auto* V_1 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2), getInt32(4) });
-  auto* V_2 = CreateBitCast(V_1, PointerType::get(_struct_anon(*Ctx.getModule()), arg_0->getType()->getPointerAddressSpace()));
-  auto* V_3 = CreateInBoundsGEP(_struct_anon(*Ctx.getModule()), V_2, { getInt64(0), getInt32(3) });
+  auto* V_2 = CreateBitCast(V_1, PointerType::get(_igc_auto_struct_anon(*Ctx.getModule()), arg_0->getType()->getPointerAddressSpace()));
+  auto* V_3 = CreateInBoundsGEP(_igc_auto_struct_anon(*Ctx.getModule()), V_2, { getInt64(0), getInt32(3) });
   auto* V_4 = CreateLoad(getInt16Ty(), V_3, _ReturnName);
   return V_4;
 }
@@ -1068,8 +1100,8 @@ auto* _getRayFlagsSync_Xe(Value* arg_0, const Twine& _ReturnName = "")
 void _setRayFlagsSync_Xe(Value* arg_0, Value* arg_1)
 {
   auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2), getInt32(4) });
-  auto* V_3 = CreateBitCast(V_2, PointerType::get(_struct_anon(*Ctx.getModule()), arg_0->getType()->getPointerAddressSpace()));
-  auto* V_4 = CreateInBoundsGEP(_struct_anon(*Ctx.getModule()), V_3, { getInt64(0), getInt32(3) });
+  auto* V_3 = CreateBitCast(V_2, PointerType::get(_igc_auto_struct_anon(*Ctx.getModule()), arg_0->getType()->getPointerAddressSpace()));
+  auto* V_4 = CreateInBoundsGEP(_igc_auto_struct_anon(*Ctx.getModule()), V_3, { getInt64(0), getInt32(3) });
   CreateStore(arg_1, V_4);
   return;
 }
@@ -1488,11 +1520,11 @@ void _createTraceRayInlinePrologue_Xe(Value* arg_0, Value* arg_1, Value* arg_2, 
   auto* V_11 = CreateBitCast(V_10, PointerType::get(IGCLLVM::FixedVectorType::get(getFloatTy(), 8), arg_0->getType()->getPointerAddressSpace()));
   CreateStore(arg_1, V_11);
   auto* V_12 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2), getInt32(4) });
-  auto* V_13 = CreateBitCast(V_12, PointerType::get(_struct_anon(*Ctx.getModule()), arg_0->getType()->getPointerAddressSpace()));
-  auto* V_14 = CreateInBoundsGEP(_struct_anon(*Ctx.getModule()), V_13, { getInt64(0), getInt32(3) });
+  auto* V_13 = CreateBitCast(V_12, PointerType::get(_igc_auto_struct_anon(*Ctx.getModule()), arg_0->getType()->getPointerAddressSpace()));
+  auto* V_14 = CreateInBoundsGEP(_igc_auto_struct_anon(*Ctx.getModule()), V_13, { getInt64(0), getInt32(3) });
   auto* V_15 = CreateLoad(getInt16Ty(), V_14);
   auto* V_16 = CreateZExt(V_15, getInt32Ty());
-  auto* V_17 = CreateGEP(_union_anon(*Ctx.getModule()), V_12, { getInt64(0), getInt32(0), getInt32(0) });
+  auto* V_17 = CreateGEP(_igc_auto_union_anon(*Ctx.getModule()), V_12, { getInt64(0), getInt32(0), getInt32(0) });
   auto* V_18 = CreateAnd(arg_2, getInt64(281474976710655));
   auto* V_19 = CreateOr(V_16, arg_3);
   auto* V_20 = CreateZExt(V_19, getInt64Ty());
