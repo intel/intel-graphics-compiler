@@ -7245,6 +7245,15 @@ int VISAKernelImpl::AppendVISALifetime(VISAVarLifetime startOrEnd,
   return status;
 }
 
+static void setAlignIfLarger(
+    var_info_t *varinfo, VISA_Align A, const IR_Builder& irb) {
+  VISA_Align oldA = varinfo->getAlignment();
+  unsigned grfSize = irb.getGRFSize();
+  if (getAlignInBytes(A, grfSize) > getAlignInBytes(oldA, grfSize)) {
+    varinfo->bit_properties = ((varinfo->bit_properties & ~0xF0) | (A << 4));
+  }
+}
+
 int VISAKernelImpl::AppendVISADpasInstCommon(
     ISA_Opcode opcode, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
     VISA_RawOpnd *tmpDst, VISA_RawOpnd *src0, VISA_RawOpnd *src1,
@@ -7256,32 +7265,25 @@ int VISAKernelImpl::AppendVISADpasInstCommon(
 
   int status = VISA_SUCCESS;
 
-  auto setAlignIfLarger = [this](var_info_t *varinfo, VISA_Align A) {
-    VISA_Align oldA = varinfo->getAlignment();
-    unsigned grfSize = getIRBuilder()->getGRFSize();
-    if (getAlignInBytes(A, grfSize) > getAlignInBytes(oldA, grfSize)) {
-      varinfo->bit_properties = ((varinfo->bit_properties & ~0xF0) | (A << 4));
-    }
-  };
-
+  const IR_Builder& irb = *getIRBuilder();
   // Make sure alignment is set correctly.
   // dst : grf aligned
   var_info_t *dcl = &tmpDst->decl->genVar;
   uint32_t alignBytes = CISATypeTable[dcl->getType()].typeSize *
                         Get_VISA_Exec_Size(executionSize);
-  setAlignIfLarger(dcl, getCISAAlign(alignBytes));
+  setAlignIfLarger(dcl, getCISAAlign(alignBytes), irb);
 
   // src0 : grf aligned (it could be null)
   if (src0->index != 0) {
     dcl = &src0->decl->genVar;
     alignBytes = CISATypeTable[dcl->getType()].typeSize *
                  Get_VISA_Exec_Size(executionSize);
-    setAlignIfLarger(dcl, getCISAAlign(alignBytes));
+    setAlignIfLarger(dcl, getCISAAlign(alignBytes), irb);
   }
 
   // src1 : grf aligned
   dcl = &src1->decl->genVar;
-  setAlignIfLarger(dcl, getCISAAlign(m_builder->getGRFSize()));
+  setAlignIfLarger(dcl, getCISAAlign(irb.getGRFSize()), irb);
 
   if (IS_GEN_BOTH_PATH) {
     {
@@ -7320,7 +7322,7 @@ int VISAKernelImpl::AppendVISADpasInstCommon(
         executionSize, emask, GetGenOpcodeFromVISAOpcode(opcode),
         tmpDst->g4opnd->asDstRegRegion(), src0->g4opnd->asSrcRegRegion(),
         src1->g4opnd->asSrcRegRegion(), src2->g4opnd->asSrcRegRegion(),
-        src3 ? src3->g4opnd->asSrcRegRegion() : nullptr, src2Precision,
+        src3 ? src3->g4opnd->asSrcRegRegion() : nullptr, nullptr, src2Precision,
         src1Precision, Depth, Count);
   }
   if (IS_VISA_BOTH_PATH) {

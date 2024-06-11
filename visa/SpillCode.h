@@ -58,13 +58,14 @@ class SpillManager {
   G4_Declare *createNewTempAddrDeclare(G4_Declare *dcl, uint16_t num_reg);
   void replaceSpilledDst(G4_BB *bb,
                          INST_LIST_ITER it, // where new insts will be inserted
-                         G4_INST *inst, G4_Operand **operands_analyzed,
-                         G4_Declare **declares_created);
+                         G4_INST *inst,
+                         std::vector<G4_Operand *> &operands_analyzed,
+                         std::vector<G4_Declare *> &declares_created);
   void replaceSpilledSrc(G4_BB *bb,
                          INST_LIST_ITER it, // where new insts will be inserted
                          G4_INST *inst, unsigned i,
-                         G4_Operand **operands_analyzed,
-                         G4_Declare **declares_created);
+                         std::vector<G4_Operand *> &operands_analyzed,
+                         std::vector<G4_Declare *> &declares_created);
   void replaceSpilledPredicate(G4_BB *bb, INST_LIST_ITER it, G4_INST *inst);
 
   void createSpillLocations(const G4_Kernel &kernel);

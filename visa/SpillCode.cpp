@@ -196,8 +196,8 @@ void SpillManager::genRegMov(G4_BB *bb, INST_LIST_ITER it, G4_VarBase *src,
 void SpillManager::replaceSpilledDst(
     G4_BB *bb,
     INST_LIST_ITER it, // where new insts will be inserted
-    G4_INST *inst, G4_Operand **operands_analyzed,
-    G4_Declare **declares_created) {
+    G4_INST *inst, std::vector<G4_Operand *> &operands_analyzed,
+    std::vector<G4_Declare *> &declares_created) {
   G4_DstRegRegion *dst = inst->getDst();
   if (dst == NULL)
     return;
@@ -234,7 +234,7 @@ void SpillManager::replaceSpilledDst(
       G4_Declare *tmpDcl = NULL;
       bool match_found = false;
 
-      for (unsigned int j = 0; j < G4_MAX_SRCS; j++) {
+      for (unsigned int j = 0, je = operands_analyzed.size(); j < je; j++) {
         G4_SrcRegRegion *analyzed_src =
             static_cast<G4_SrcRegRegion *>(operands_analyzed[j]);
         if (analyzed_src != NULL &&
@@ -277,8 +277,8 @@ void SpillManager::replaceSpilledDst(
 void SpillManager::replaceSpilledSrc(
     G4_BB *bb,
     INST_LIST_ITER it, // where new insts will be inserted
-    G4_INST *inst, unsigned i, G4_Operand **operands_analyzed,
-    G4_Declare **declares_created) {
+    G4_INST *inst, unsigned i, std::vector<G4_Operand *> &operands_analyzed,
+    std::vector<G4_Declare *> &declares_created) {
   G4_Operand *src = inst->getSrc(i);
   if (src == NULL)
     return;
@@ -672,10 +672,11 @@ void SpillManager::insertSpillCode() {
 
       currCISAOffset = inst->getVISAId();
 
-      G4_Operand *operands_analyzed[G4_MAX_SRCS] = {};
-      G4_Declare *declares_created[G4_MAX_SRCS] = {};
+      const unsigned numSrc = inst->getNumSrc();
+      std::vector<G4_Operand *> operands_analyzed(numSrc, nullptr);
+      std::vector<G4_Declare *> declares_created(numSrc, nullptr);
       // insert spill inst for spilled srcs
-      for (unsigned i = 0; i < G4_MAX_SRCS; i++) {
+      for (unsigned i = 0; i < numSrc; i++) {
         replaceSpilledSrc(bb, inst_it, inst, i, operands_analyzed,
                           declares_created);
       }
