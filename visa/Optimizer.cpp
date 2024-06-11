@@ -2453,6 +2453,7 @@ void Optimizer::localCopyPropagation() {
       }
 
       builder.doConsFolding(inst);
+      inst = builder.doMathConsFolding(ii);
       builder.doSimplification(inst);
 
       G4_INST::MovType MT = inst->canPropagate();

@@ -2381,6 +2381,7 @@ public:
   G4_Imm *foldConstVal(G4_Imm* opnd, G4_INST *op);
   G4_Imm *foldConstVal(G4_Imm *const1, G4_Imm *const2, G4_opcode op);
   void doConsFolding(G4_INST *inst);
+  G4_INST *doMathConsFolding(INST_LIST_ITER &iter);
   void doSimplification(G4_INST *inst);
 
   static G4_Type findConstFoldCommonType(G4_Type type1, G4_Type type2);

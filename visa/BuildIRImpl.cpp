@@ -3248,17 +3248,7 @@ void IR_Builder::doConsFolding(G4_INST *inst) {
     return op && op->isImm() && !op->isRelocImm();
   };
 
-  if (inst->isMath() && inst->asMathInst()->isOneSrcMath()) {
-    G4_Operand* src0 = inst->getSrc(0);
-    if (srcIsFoldableImm(src0)) {
-      G4_Imm* foldedImm =
-        foldConstVal(src0->asImm(), inst);
-      if (foldedImm) {
-        inst->setOpcode(G4_mov);
-        inst->setSrc(foldedImm, 0);
-      }
-    }
-  } else if (inst->getNumSrc() == 2) {
+  if (inst->getNumSrc() == 2) {
     G4_Operand *src0 = inst->getSrc(0);
     G4_Operand *src1 = inst->getSrc(1);
     if (srcIsFoldableImm(src0) && srcIsFoldableImm(src1)) {
@@ -3304,6 +3294,48 @@ void IR_Builder::doConsFolding(G4_INST *inst) {
     } // TODO: integer mad, bfn, bfi, bfe
   }
 }
+
+// Perform constant folding for math instructions
+// op dst, Imm
+// =>
+// mov dst, Imm'
+G4_INST *IR_Builder::doMathConsFolding(INST_LIST_ITER &iter) {
+  G4_INST *inst = *iter;
+
+  if (inst->getSaturate())
+    return inst;
+
+  auto srcIsFoldableImm = [](const G4_Operand *op) {
+    return op && op->isImm() && !op->isRelocImm();
+  };
+
+  if (inst->isMath() && inst->asMathInst()->isOneSrcMath()) {
+    G4_Operand *src0 = inst->getSrc(0);
+    if (srcIsFoldableImm(src0)) {
+      G4_Imm *foldedImm = foldConstVal(src0->asImm(), inst);
+      if (foldedImm) {
+        auto pred = duplicateOperand(inst->getPredicate());
+        auto condMod = duplicateOperand(inst->getCondMod());
+        auto dst = duplicateOperand(inst->getDst());
+        auto execSize = inst->getExecSize();
+        auto sat = inst->getSaturate();
+        auto options = inst->getOption();
+
+        G4_INST *newInst =
+            createInternalInst(pred, G4_mov, condMod, sat, execSize, dst,
+                               foldedImm, nullptr, options);
+        newInst->inheritDIFrom(inst);
+        inst->transferUse(newInst);
+        *iter = newInst;
+
+        return newInst;
+      }
+    }
+  }
+
+  return inst;
+}
+
 // Do the following algebraic simplification:
 // - mul v, src0, 0 ==> 0, commutative
 // - and v, src0, 0 ==> 0, commutative
