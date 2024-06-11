@@ -241,7 +241,7 @@ struct zeInfoContainer
     KernelsMiscInfoTy kernels_misc_info;
 };
 struct PreDefinedAttrGetter{
-    static zeinfo_str_t getVersionNumber() { return "1.44"; }
+    static zeinfo_str_t getVersionNumber() { return "1.43"; }
 
     enum class ArgThreadSchedulingMode {
         age_based,
