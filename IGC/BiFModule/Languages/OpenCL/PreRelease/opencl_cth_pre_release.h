@@ -2386,16 +2386,16 @@ int16 __attribute__((overloadable)) intel_convert_f32_to_bf16_packed(float16 a, 
 // DST: float
 
 // M = 1, K = 8, N = 16, upper 8 channels of a ignored
-float  __attribute__((overloadable)) intel_sub_group_tf32_tf32_matrix_mad_k8_f32(float  a, float8 b, float  acc);
+float  __attribute__((overloadable)) intel_sub_group_tf32_tf32_matrix_mad_k8(float  a, float8 b, float  acc);
 
 // M = 2, K = 8, N = 16, all channels of a are used
-float2 __attribute__((overloadable)) intel_sub_group_tf32_tf32_matrix_mad_k8_f32(float  a, float8 b, float2 acc);
+float2 __attribute__((overloadable)) intel_sub_group_tf32_tf32_matrix_mad_k8(float  a, float8 b, float2 acc);
 
 // M = 4, K = 8, N = 16
-float4 __attribute__((overloadable)) intel_sub_group_tf32_tf32_matrix_mad_k8_f32(float2 a, float8 b, float4 acc);
+float4 __attribute__((overloadable)) intel_sub_group_tf32_tf32_matrix_mad_k8(float2 a, float8 b, float4 acc);
 
 // M = 8, K = 8, N = 16
-float8 __attribute__((overloadable)) intel_sub_group_tf32_tf32_matrix_mad_k8_f32(float4 a, float8 b, float8 acc);
+float8 __attribute__((overloadable)) intel_sub_group_tf32_tf32_matrix_mad_k8(float4 a, float8 b, float8 acc);
 
 // Conversions
 float   intel_convert_tfloat32_as_float(    float   source);
