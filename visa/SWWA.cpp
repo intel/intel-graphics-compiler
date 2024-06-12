@@ -3685,12 +3685,6 @@ void Optimizer::HWWorkaround() {
     while (ii != bb->end()) {
       G4_INST *inst = *ii;
 
-      G4_InstSend *sendInst = inst->asSendInst();
-      if (sendInst && sendInst->isFence() &&
-          !builder.getOption(vISA_skipFenceCommit)) {
-        addFenceCommit(ii, bb, scheduleFenceCommit);
-      }
-
       // To solve truncation issue in compaction table implementation
       if (VISA_WA_CHECK(builder.getPWaTable(), Wa_22010811838) &&
           inst->isDpas()) {

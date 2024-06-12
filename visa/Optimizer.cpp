@@ -5706,43 +5706,6 @@ Optimizer::findFenceCommitPos(INST_LIST_ITER fence, G4_BB *bb) const {
   return I;
 }
 
-bool Optimizer::addFenceCommit(INST_LIST_ITER ii, G4_BB *bb,
-                               bool scheduleFenceCommit) {
-  G4_INST *inst = *ii;
-  G4_InstSend *sendInst = inst->asSendInst();
-  vASSERT(sendInst);
-  if (sendInst && sendInst->getMsgDesc()->getDstLenRegs() > 0) {
-    // commit is enabled for the fence, need to generate a move after to make
-    // sure the fence is complete mov (8) r1.0<1>:ud r1.0<8;8,1>:ud {NoMask}
-    auto nextIter = std::next(ii);
-    if (scheduleFenceCommit) {
-      auto iter = findFenceCommitPos(ii, bb);
-      if (!iter) {
-        return false; // skip commit for this fence
-      }
-      nextIter = *iter;
-    }
-    auto dst = inst->getDst();
-    G4_Declare *fenceDcl = dst->getBase()->asRegVar()->getDeclare();
-    G4_DstRegRegion *movDst = builder.createDst(
-        builder.phyregpool.getNullReg(), 0, 0, 1, fenceDcl->getElemType());
-    G4_SrcRegRegion *movSrc =
-        builder.createSrcRegRegion(fenceDcl, builder.createRegionDesc(8, 8, 1));
-    G4_INST *movInst = builder.createMov(g4::SIMD8, movDst, movSrc,
-                                         InstOpt_WriteEnable, false);
-    movInst->addComment("memory fence commit");
-    bb->insertBefore(nextIter, movInst);
-  } else if (builder.hasFenceControl()) {
-    // null dst, use sync.fence instead
-    auto nextIter = std::next(ii);
-    G4_INST *syncInst = builder.createInternalInst(
-        nullptr, G4_sync_fence, nullptr, g4::NOSAT, g4::SIMD1, nullptr,
-        builder.createNullSrc(Type_UD), nullptr, InstOpt_NoOpt);
-    bb->insertBefore(nextIter, syncInst);
-  }
-  return true;
-}
-
 //
 // rewrite source regions to satisfy various HW requirements.  This pass will
 // not modify the instructions otherwise

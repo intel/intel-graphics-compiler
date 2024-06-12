@@ -431,8 +431,6 @@ private:
   std::optional<INST_LIST_ITER> findFenceCommitPos(INST_LIST_ITER fence,
                                                    G4_BB *bb) const;
 
-  bool addFenceCommit(INST_LIST_ITER iter, G4_BB *bb, bool scheduleFenceCommit);
-
 public:
   Optimizer(vISA::Mem_Manager &m, IR_Builder &b, G4_Kernel &k, FlowGraph &f)
       : builder(b), kernel(k), fg(f), mem(m), RAFail(false) {

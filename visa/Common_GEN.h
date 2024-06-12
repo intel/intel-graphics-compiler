@@ -138,6 +138,7 @@ enum class SFID {
   SLM = 19,    // untyped shared local memory
   UGM = 20,    // untyped global memory
   UGML = 21,   // untyped global memory (low bandwidth)
+  SFID_NUM = 22,
 };
 
 inline int SFIDtoInt(SFID id) {
