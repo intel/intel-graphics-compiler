@@ -91,6 +91,7 @@ DECLARE_IGC_REGKEY(bool, EnableHWGenerateThreadID,      true, "Enable new behavi
 DECLARE_IGC_REGKEY(bool, EnableHWGenerateThreadIDForTileY, true, "Enable HW generating threadID for GPGPU pipe for TileY mode. XeHP and non-OCL only.", true)
 DECLARE_IGC_REGKEY(bool, EnableNonOCLWalkOrderSel,      true, "Enable WalkOrder selection for HW generating threadID for GPGPU pipe. XeHP and non-OCL only.", true)
 DECLARE_IGC_REGKEY(DWORD,EnablePassInlineData,          0,      "1: Force pass 1st GRF of cross-thread payload as inline data; -1: Force disable passing inline data", true)
+DECLARE_IGC_REGKEY(bool, ForceInlineDataForXeHPC,       false,  "Force InlineData for XeHPC. For testing purposes.", true)
 DECLARE_IGC_REGKEY(DWORD,ScratchSpaceSizeReserved,      0,      "Reserved size of scratch space. XeHP and above only. Test only. Remove it once stabalized.", true)
 DECLARE_IGC_REGKEY(DWORD,ScratchSpaceSizeLimit,         0,      "Size limit of scratch space. XeHP and above only. Test only. Remove it once stabalized.", true)
 DECLARE_IGC_REGKEY(bool, EnablePromoteI8,               true,   "Enable promoting i8 (char) to i16 on all ALU insts that does support i8. It's only for XeHPC+ for now.", true)

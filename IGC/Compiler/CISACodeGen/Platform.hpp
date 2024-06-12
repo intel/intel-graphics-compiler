@@ -699,7 +699,7 @@ bool supportInlineData() const
 // TODO: temporary solution, remove this once it's not needed
 bool supportInlineDataOCL() const
 {
-    if (m_platformInfo.eRenderCoreFamily == IGFX_XE_HPC_CORE)
+    if (m_platformInfo.eRenderCoreFamily == IGFX_XE_HPC_CORE && IGC_IS_FLAG_DISABLED(ForceInlineDataForXeHPC))
     {
         return false;
     }
