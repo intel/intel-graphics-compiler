@@ -408,6 +408,7 @@ DECLARE_IGC_REGKEY(bool, PrintPsoDdiHash,               true,  "Print psoDDIHash
 DECLARE_IGC_REGKEY(bool, ShaderDataBaseStats,           false, "Enable gathering sends' sizes for shader statistics", false)
 DECLARE_IGC_REGKEY(bool, DumpLoopSink,                  false,  "Dump debug info in LoopSink", false)
 DECLARE_IGC_REGKEY(debugString, ShaderDataBaseStatsFilePath, 0, "Path to a file with dumped shader stats additional data e.g. data available during compilation only", false)
+DECLARE_IGC_REGKEY(bool, EnableRemarks, false, "Enable remark for Divergent Barrier", false)
 DECLARE_IGC_REGKEY(bool, AddExtraIntfInfo,                false, "Will add extra inteference info from .extraintf files from c:\\Intel\\IGC\\ShaderOverride", false)
 
 DECLARE_IGC_GROUP("Debugging features")

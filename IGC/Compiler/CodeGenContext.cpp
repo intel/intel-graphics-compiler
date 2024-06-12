@@ -17,6 +17,9 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "Probe/Assertion.h"
+#if LLVM_VERSION_MAJOR >= 11
+#include <llvm/IR/LLVMRemarkStreamer.h>
+#endif
 
 namespace IGC
 {
@@ -1026,5 +1029,23 @@ namespace IGC
             return 0;
         }
         return MI->second;
+    }
+    void CodeGenContext::initializeRemarkEmitter(const ShaderHash & hash) {
+#if LLVM_VERSION_MAJOR >= 11
+        //setting up optimization remark emitter
+        if (IGC_IS_FLAG_ENABLED(EnableRemarks))
+        {
+            std::string remark_file_name = IGC::Debug::DumpName("Remark_")
+                .Type(this->type)
+                .Hash(hash)
+                .Extension("yaml")
+                .str();
+            llvm::Expected<std::unique_ptr<llvm::ToolOutputFile>> RemarksFileOrErr =
+                setupLLVMOptimizationRemarks(*this->getLLVMContext(), remark_file_name, "",
+                    "yaml", false, 0);
+            this->RemarksFile = std::move(*RemarksFileOrErr);
+            this->RemarksFile->keep();
+        }
+#endif
     }
 }

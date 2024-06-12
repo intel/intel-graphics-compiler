@@ -44,6 +44,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/IRBuilder.h>
 #include "llvm/IR/Function.h"
 #include "llvm/IR/ValueMap.h"
+#include <llvm/Support/ToolOutputFile.h>
 #include "llvm/IR/AssemblyAnnotationWriter.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "CodeGenPublicEnums.h"
@@ -1010,7 +1011,7 @@ namespace IGC
         std::stringstream oclErrorMessage;
         //For storing warning message
         std::stringstream oclWarningMessage;
-
+        std::unique_ptr<llvm::ToolOutputFile> RemarksFile;
     protected:
         // Objects pointed to by these pointers are owned by this class.
         LLVMContextWrapper* llvmCtxWrapper;
@@ -1226,6 +1227,9 @@ namespace IGC
         int getFunctionID(llvm::Function* F);
         std::string getFunctionDumpName(int functionId);
         bool dumpUseShorterName() const { return m_enableDumpUseShorterName; }
+
+        // For remarks
+        void initializeRemarkEmitter(const ShaderHash& hash);
     };
 
     struct SComputeShaderSecondCompileInput

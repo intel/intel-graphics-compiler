@@ -37,6 +37,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvm/Analysis/OptimizationRemarkEmitter.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -708,7 +709,23 @@ bool DivergentBarrierPass::runOnModule(Module& M)
 
     for (auto* F : Shaders)
     {
-        Changed |= processShader(F);
+        bool hadDivBarrier = processShader(F);
+
+        if (IGC_IS_FLAG_ENABLED(EnableRemarks))
+        {
+            if (hadDivBarrier) {
+                OptimizationRemarkEmitter ORE(F);
+
+                ORE.emit([&]() {
+                    return OptimizationRemark("divergent-barrier-pass", "DivergentBarrierPass", F)
+                        << "Divergent Barriers detected and transformed."
+                        << ore::NV("Function", F);
+                    });
+
+            }
+        }
+        Changed |= hadDivBarrier;
+
     }
 
     IGC_ASSERT(false == llvm::verifyModule(*m_CGCtx->getModule(), &dbgs()));
