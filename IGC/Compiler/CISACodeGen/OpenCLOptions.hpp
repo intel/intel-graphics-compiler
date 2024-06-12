@@ -114,7 +114,7 @@ public:
      uint32_t IntelScratchSpacePrivateMemoryMinimalSizePerThread = 0;
 
      bool EnableDivergentBarrierHandling             = false;
-     std::optional<bool> EnableZEBinary;
+     bool DisableZEBinary                            = false;
      bool EnableBufferBoundsChecking                 = false;
 
      // Compile only up to vISA stage.
@@ -191,8 +191,6 @@ public:
     // This option enables FP64 emulation for conversions
     // This applies to platforms that cannot HW support for double operations
     bool EnableFP64GenConvEmu = false;
-
-    std::optional<bool> EnableZEBinary;
 
 private:
     void parseOptions(const char* opts);

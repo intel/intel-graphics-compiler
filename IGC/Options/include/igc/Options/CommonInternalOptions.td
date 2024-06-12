@@ -25,7 +25,7 @@ def emit_visa_only : PlainFlag<"emit-visa-only">,
 
 // -cl-allow-zebin, -ze-allow-zebin
 defm allow_zebin : CommonFlag<"allow-zebin">,
-  HelpText<"Emit level zero binary">;
+  HelpText<"Deprecated - Emit level zero binary">;
 
 // -cl-disable-zebin, -ze-disable-zebin
 defm disable_zebin : CommonFlag<"disable-zebin">,

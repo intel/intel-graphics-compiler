@@ -204,14 +204,9 @@ void InternalOptions::parseOptions(const char* internalOpts)
         }
     }
 
-    if (internalOptions.hasArg(OPT_allow_zebin_common))
-    {
-        EnableZEBinary = true;
-    }
-
     if (internalOptions.hasArg(OPT_disable_zebin_common))
     {
-        EnableZEBinary = false;
+        DisableZEBinary = true;
     }
 
     if (internalOptions.hasArg(OPT_exclude_ir_from_zebin_common))
@@ -603,14 +598,10 @@ void Options::parseOptions(const char* opts)
         EnableFP64GenConvEmu = true;
     }
 
-    if (apiOptions.hasArg(OPT_enable_zebin_common))
+    if (const llvm::opt::Arg* arg = apiOptions.getLastArg(OPT_Xfinalizer))
     {
-        EnableZEBinary = true;
-    }
-
-    if (apiOptions.hasArg(OPT_disable_zebin_common))
-    {
-        EnableZEBinary = false;
+        Xfinalizer = true;
+        XfinalizerOption = arg->getValue();
     }
 
     if (const llvm::opt::Arg* arg = apiOptions.getLastArg(OPT_Xfinalizer))

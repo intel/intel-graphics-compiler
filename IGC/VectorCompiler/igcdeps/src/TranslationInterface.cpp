@@ -264,21 +264,6 @@ static void adjustDebugStrippingPolicy(vc::CompileOptions &Opts) {
   }
 }
 
-// Overwrite binary format option for backward compatibility with
-// environment variable approach.
-static void adjustBinaryFormat(vc::BinaryKind &Binary) {
-  if (Binary == vc::BinaryKind::CM)
-    return;
-
-  if (Binary != vc::BinaryKind::Default && !IGC_IS_FLAG_SET(EnableZEBinary))
-    return;
-
-  if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
-    Binary = vc::BinaryKind::ZE;
-  else
-    Binary = vc::BinaryKind::OpenCL;
-}
-
 template <typename T> T deriveDefaultableFlagValue(int Flag) {
   switch (Flag) {
   default:
@@ -354,7 +339,6 @@ static void adjustOptions(const IGC::CPlatform &IGCPlatform,
   adjustPlatform(IGCPlatform, Opts);
   adjustFileType(DataFormat, Opts);
   adjustOptLevel(Opts);
-  adjustBinaryFormat(Opts.Binary);
   adjustDumpOptions(Opts);
   adjustStackCalls(Opts, Diag);
   adjustDebugStrippingPolicy(Opts);
