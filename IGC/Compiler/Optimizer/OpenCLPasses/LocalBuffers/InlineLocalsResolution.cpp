@@ -123,8 +123,8 @@ bool InlineLocalsResolution::runOnModule(Module& M)
             totalSize += sizeIter->second;
         }
 
-        // Set the high 16 bits to a non-0 value.
-        totalSize = (totalSize & 0xFFFF);
+        // Set the high bits to a non-0 value.
+        totalSize = (totalSize & LOW_BITS_MASK);
 
         bool IsFirstSLMArgument = true;
         for (Function::arg_iterator A = F.arg_begin(), AE = F.arg_end(); A != AE; ++A)
@@ -516,7 +516,7 @@ void InlineLocalsResolution::computeOffsetList(Module& M, llvm::MapVector<Functi
 #endif
             // Save the offset of the current local
             // (set the high bits to be non-0 here too)
-            offsetMap[F][G] = (offset & 0xFFFF);
+            offsetMap[F][G] = (offset & LOW_BITS_MASK);
 
             // And the total size after this local is added
             Type* varType = G->getValueType();
