@@ -334,8 +334,8 @@ bool has8ByteA64Gather() const { return getPlatform() != GENX_TGLLP; }
 bool WaDisableSendSrcDstOverlap() const {
   return getOption(vISA_noSendSrcDstOverlap) ||
          (m_options->getTarget() == VISA_CM && getPlatform() >= GENX_SKL &&
-          getPlatform() < GENX_TGLLP) ||
-         getPlatform() == GENX_ICLLP;
+          getPlatform() < GENX_TGLLP) || getPlatform() == GENX_ICLLP ||
+          getPlatform() >= Xe_DG2;
 }
 
 bool isXeLP() const { return getPlatform() == GENX_TGLLP; }
