@@ -1738,7 +1738,7 @@ DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(long4, v4i64, long, i64, simd_block_read_4
 DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(long8, v8i64, long, i64, simd_block_read_8_global_l)
 #endif // cl_intel_subgroups_long
 
-#ifdef cl_intel_subgroups_buffer_prefetch
+#ifdef cl_intel_subgroup_buffer_prefetch
 
 void __internal_SubgroupBlockPrefetchINTEL_char_cache_controls(const global uchar* ptr, uint num_bytes, enum LSC_LDCC cacheOpt)
 {
@@ -1859,7 +1859,7 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupBlockPrefetchINTEL, _p1i64, )(cons
 {
     __internal_SubgroupBlockPrefetchINTEL_long_cache_controls(ptr, num_bytes, LSC_LDCC_DEFAULT);
 }
-#endif // cl_intel_subgroups_buffer_prefetch
+#endif // cl_intel_subgroup_buffer_prefetch
 
 #ifdef cl_intel_subgroup_local_block_io
 
