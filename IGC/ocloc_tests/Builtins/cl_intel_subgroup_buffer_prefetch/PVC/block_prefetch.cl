@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 // UNSUPPORTED: sys32
 
 // RUN: ocloc compile -file %s -device pvc -options "-igc_opts 'DumpVISAASMToConsole=1'" \
-// RUN: -internal_options "-cl-ext=-all,+cl_intel_subgroups_buffer_prefetch" | FileCheck %s
+// RUN: -internal_options "-cl-ext=-all,+cl_intel_subgroup_buffer_prefetch" | FileCheck %s
 
 __attribute__((intel_reqd_sub_group_size(16)))
 kernel void test_char(const global uchar* buffer) {

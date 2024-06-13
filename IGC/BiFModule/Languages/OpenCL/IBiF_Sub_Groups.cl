@@ -790,7 +790,7 @@ DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write_ul4, ulong4,
 DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write_ul8, ulong8, ulong, i64, v8i64, __builtin_IB_simd_block_write_8_global_l)
 #endif // cl_intel_subgroups_long
 
-#ifdef cl_intel_subgroups_buffer_prefetch
+#ifdef cl_intel_subgroup_buffer_prefetch
 #define DEFN_INTEL_SUB_GROUP_BLOCK_PREFETCH(FUNC_POSTFIX, PTR_TYPE, PTR_TYPE_MANGLING, NUM_BYTES) \
 void OVERLOADABLE intel_sub_group_block_prefetch_##FUNC_POSTFIX(const global PTR_TYPE* p)         \
 {                                                                                                 \
@@ -818,7 +818,7 @@ DEFN_INTEL_SUB_GROUP_BLOCK_PREFETCH(ul,   ulong,  i64, 8)
 DEFN_INTEL_SUB_GROUP_BLOCK_PREFETCH(ul2,  ulong,  i64, 16)
 DEFN_INTEL_SUB_GROUP_BLOCK_PREFETCH(ul4,  ulong,  i64, 32)
 DEFN_INTEL_SUB_GROUP_BLOCK_PREFETCH(ul8,  ulong,  i64, 64)
-#endif // cl_intel_subgroups_buffer_prefetch
+#endif // cl_intel_subgroup_buffer_prefetch
 
 #ifdef cl_intel_subgroup_local_block_io
 //
