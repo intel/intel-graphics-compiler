@@ -1725,7 +1725,7 @@ Instruction *genx::foldBitCastInst(Instruction *Inst) {
     if (auto CI = dyn_cast<BitCastInst>(LI->user_back())) {
       auto NewPtrTy = PointerType::get(CI->getType(), LI->getPointerAddressSpace());
       auto NewPtr = ConstantExpr::getBitCast(GV, NewPtrTy);
-      auto NewLI = new LoadInst(IGCLLVM::getNonOpaquePtrEltTy(NewPtrTy), NewPtr, "",
+      auto NewLI = new LoadInst(CI->getType(), NewPtr, "",
                                 /*volatile*/ LI->isVolatile(), Inst);
       NewLI->takeName(LI);
       NewLI->setDebugLoc(LI->getDebugLoc());
