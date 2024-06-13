@@ -1136,6 +1136,12 @@ void SWSBAnalyzer::run() {
          ++instIter) {
       m_InstIdCounter.global++;
       inst = *instIter;
+      // skip illeagl instruction. It cannot have dependency to others, nor does
+      // it affect the in-pipe instruction count. Skipping it can avoid we
+      // accidentally set SWSB on it (e.g. when forcing B2B dependency). Illeagl
+      // instructions cannot carry SWSB info.
+      if (inst->getOp() == Op::ILLEGAL)
+        continue;
       DepSet *input = nullptr;
       DepSet *output = nullptr;
       size_t dpas_cnt_in_macro = 0;
