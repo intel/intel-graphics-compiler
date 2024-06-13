@@ -161,44 +161,37 @@ Value* RTBuilder::CreateSyncStackPtrIntrinsic(
     return StackPtr;
 }
 
-RayQueryCheckIntrinsic* RTBuilder::CreateRayQueryCheckIntrinsic(Value* predicate)
+RayQueryCheckIntrinsic* RTBuilder::CreateRayQueryCheckIntrinsic()
 {
     Module* M = this->GetInsertBlock()->getModule();
 
-    if (!predicate)
-        predicate = getTrue();
-
-    Value* rayQueryCheck = CreateCall(GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_RayQueryCheck), predicate);
+    Value* rayQueryCheck = CreateCall(GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_RayQueryCheck));
 
     return cast<RayQueryCheckIntrinsic>(rayQueryCheck);
 }
 
-RayQueryReleaseIntrinsic* RTBuilder::CreateRayQueryReleaseIntrinsic(Value* predicate)
+RayQueryReleaseIntrinsic* RTBuilder::CreateRayQueryReleaseIntrinsic()
 {
     Module* M = this->GetInsertBlock()->getModule();
 
-    if (!predicate)
-        predicate = getTrue();
-
-    Value* rayQueryRelease = CreateCall(GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_RayQueryRelease), predicate);
+    Value* rayQueryRelease = CreateCall(GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_RayQueryRelease));
 
     return cast<RayQueryReleaseIntrinsic>(rayQueryRelease);
 }
 
-PreemptionDisableIntrinsic* RTBuilder::CreatePreemptionDisableIntrinsic(Value* Flag)
+PreemptionDisableIntrinsic* RTBuilder::CreatePreemptionDisableIntrinsic()
 {
     Module* M = this->GetInsertBlock()->getModule();
 
     auto* GII = CreateCall(
         GenISAIntrinsic::getDeclaration(
             M,
-            GenISAIntrinsic::GenISA_PreemptionDisable),
-        Flag ? Flag : getTrue());
+            GenISAIntrinsic::GenISA_PreemptionDisable));
 
     return cast<PreemptionDisableIntrinsic>(GII);
 }
 
-PreemptionEnableIntrinsic* RTBuilder::CreatePreemptionEnableIntrinsic(Value* Flag)
+PreemptionEnableIntrinsic* RTBuilder::CreatePreemptionEnableIntrinsic(Value *Flag)
 {
     Module* M = this->GetInsertBlock()->getModule();
 

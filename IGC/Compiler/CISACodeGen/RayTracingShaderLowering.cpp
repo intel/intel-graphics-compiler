@@ -246,15 +246,13 @@ bool RayTracingShaderLowering::runOnModule(Module& M)
                 if (!ForcePreemptionDisable)
                 {
                     RTB.SetInsertPoint(GII);
-                    RTB.CreatePreemptionDisableIntrinsic(I.getOperand(0));
+                    RTB.CreatePreemptionDisableIntrinsic();
                 }
                 break;
             case GenISAIntrinsic::GenISA_RayQueryRelease:
                 if (!ForcePreemptionDisable)
                 {
                     Value* Flag = isFunc ? checkPreemption(F) : nullptr;
-                    Flag = Flag ? RTB.CreateAnd(Flag, I.getOperand(0)) : I.getOperand(0);
-
                     RTB.SetInsertPoint(GII->getNextNode());
                     RTB.CreatePreemptionEnableIntrinsic(Flag);
                 }

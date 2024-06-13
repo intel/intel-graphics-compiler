@@ -12,11 +12,9 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/InstIterator.h>
-#include <llvm/Analysis/CFG.h>
-#include <llvm/Analysis/InstructionSimplify.h>
 #include <llvm/Analysis/LoopInfo.h>
+#include <llvm/Analysis/CFG.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
-#include <llvm/Transforms/Utils/SSAUpdater.h>
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace IGC;
@@ -58,15 +56,7 @@ private:
         llvm::SmallVector< llvm::LoadInst*, 4>& foundLoads);
 
     bool AddDynamicRayManagement(Function& F);
-    bool TryProceedBasedApproach(Function& F);
     void HandleComplexControlFlow(Function& F);
-    bool requiresSplittingCheckReleaseRegion(Instruction& I);
-    void FindProceedsInOperands(
-        Instruction* I,
-        SetVector<TraceRaySyncProceedHLIntrinsic*>& proceeds,
-        SmallPtrSetImpl<Instruction*>& cache
-    );
-
 
     void HoistBeforeMostInnerLoop(
         BasicBlock*& dominatorBasicBlock,
@@ -121,9 +111,6 @@ bool DynamicRayManagementPass::runOnFunction(Function& F)
     {
         return false;
     }
-
-    if (TryProceedBasedApproach(F))
-        return true;
 
     changed = AddDynamicRayManagement(F);
 
@@ -223,249 +210,6 @@ void DynamicRayManagementPass::FindLoadsFromAlloca(
             }
         }
     }
-}
-
-bool DynamicRayManagementPass::requiresSplittingCheckReleaseRegion(Instruction& I)
-{
-    return
-        isa<ContinuationHLIntrinsic>(I) ||
-        isBarrierIntrinsic(&I) ||
-        isUserFunctionCall(&I);
-}
-
-void DynamicRayManagementPass::FindProceedsInOperands(Instruction* I, SetVector<TraceRaySyncProceedHLIntrinsic*>& proceeds, SmallPtrSetImpl<Instruction*>& cache)
-{
-    if (!I)
-        return;
-
-    if (!cache.insert(I).second)
-        return;
-
-    if (auto* proceedI = dyn_cast<TraceRaySyncProceedHLIntrinsic>(I))
-    {
-        proceeds.insert(proceedI);
-        return;
-    }
-
-    for (auto& op : I->operands())
-    {
-        if (auto* opI = dyn_cast<Instruction>(op))
-        {
-            FindProceedsInOperands(opI, proceeds, cache);
-        }
-    }
-}
-
-bool DynamicRayManagementPass::TryProceedBasedApproach(Function& F)
-{
-
-#if LLVM_VERSION_MAJOR < 10
-    // LLVM 9 doesn't have the necessary API for testing if the loop is guarded
-    // none of the titles that use LLVM 9 use rayquery, so we just return instead of providing our own implementation
-    return false;
-#else
-
-    // this approach assumes all traffic between private memory and RTStack happens on Proceed calls
-    // will be removed once RayQuery will be overhauled to minimize shadowstack usage
-
-    if (IGC_IS_FLAG_ENABLED(DisableProceedBasedApproachForRayQueryDynamicRayManagementMechanism))
-        return false;
-
-    SmallVector<TraceRaySyncProceedHLIntrinsic*> allProceeds;
-
-    for (auto& I : instructions(F))
-    {
-        // we don't want to use this approach in complex control flow situations
-        if (requiresSplittingCheckReleaseRegion(I))
-            return false;
-
-        // collect all Proceed calls, because some of them might be not in any loop
-        if (auto* proceed = dyn_cast<TraceRaySyncProceedHLIntrinsic>(&I))
-            allProceeds.push_back(proceed);
-    }
-
-    if (allProceeds.empty())
-        return false;
-
-    auto* LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
-
-    if (LI->empty())
-        return false;
-
-    // we don't want to do the insertions on the fly, because changing control flow will invalidate the domtrees
-    SetVector<BasicBlock*> checkBBs;
-    SetVector<BasicBlock*> releaseBBs;
-
-    // we iterate over all loops from outermost to innermost
-    // if we find a loop, we skip all loops that are nested in it
-    SmallPtrSet<Loop*, 4> loopsToIgnore;
-    for (auto& loop : LI->getLoopsInPreorder())
-    {
-        if (loopsToIgnore.contains(loop))
-            continue;
-
-        if (!loop->isLoopSimplifyForm())
-            return false;
-
-        SetVector<TraceRaySyncProceedHLIntrinsic*> proceeds;
-        SmallPtrSet<Instruction*, 4> cache;
-        FindProceedsInOperands(loop->getLoopGuardBranch(), proceeds, cache);
-
-        SmallVector<BasicBlock*> exitingBlocks;
-        loop->getExitingBlocks(exitingBlocks);
-
-        for (auto* exitingBB : exitingBlocks)
-            FindProceedsInOperands(exitingBB->getTerminator(), proceeds, cache);
-
-        if (proceeds.empty())
-            continue;
-
-        loopsToIgnore.insert(loop->getSubLoops().begin(), loop->getSubLoops().end());
-
-        bool allProceedsInLoop = llvm::all_of(
-            proceeds,
-            [&](auto* proceed)
-            {
-                return loop->contains(proceed->getParent());
-            }
-        );
-
-        SmallVector<BasicBlock*> exitBlocks;
-        loop->getExitBlocks(exitBlocks);
-
-        if (allProceedsInLoop)
-        {
-            // if all proceed calls are inside the loop, we just check/release the loop itself
-            checkBBs.insert(loop->getLoopPreheader());
-
-            for (auto* exitBB : exitBlocks)
-                releaseBBs.insert(exitBB);
-        }
-        else
-        {
-            // in other cases, we need to expand to make sure all proceed calls are inside the check/release scope
-            auto* start = loop->getLoopPreheader();
-            auto* end = loop->getLoopPreheader();
-
-            for (auto* proceed : proceeds)
-            {
-                start = m_DT->findNearestCommonDominator(start, proceed->getParent());
-                end = m_PDT->findNearestCommonDominator(end, proceed->getParent());
-            }
-
-            // following single entry multiple exits loop model, we insert one check and multiple releases
-            checkBBs.insert(start);
-
-            for (auto* exitBB : exitBlocks)
-                releaseBBs.insert(m_PDT->findNearestCommonDominator(end, exitBB));
-        }
-
-        llvm::erase_if(
-            allProceeds,
-            [&](auto* proceed) {
-                return loop->contains(proceed) || proceeds.contains(proceed);
-            }
-        );
-    }
-
-    // abort if we have any proceeds that don't contribute to loop exit conditions
-    if (!allProceeds.empty())
-        return false;
-
-    // at this point we commit to the approach
-    RTBuilder IRB(&*F.getEntryBlock().begin(), *m_CGCtx);
-
-    SmallVector<Instruction*> guardStoresAndLoads;
-
-    // create a guard boolean to prevent double checking/double releasing
-    // later, we will try to optimize it out with LoadAndStorePromoter
-    auto* guard = IRB.CreateAlloca(IRB.getInt1Ty(), nullptr, VALUE_NAME("RayQueryCheckReleaseGuard"));
-    auto* init_guard = IRB.CreateStore(IRB.getFalse(), guard);
-    guardStoresAndLoads.push_back(init_guard);
-
-    SmallVector<Instruction*> CheckReleaseIntrinsics;
-
-    for (auto* checkBB : checkBBs)
-    {
-        auto* IP = checkBB->getFirstNonPHI();
-        IRB.SetInsertPoint(IP);
-
-        auto* load = IRB.CreateLoad(guard, VALUE_NAME("RQGuardValue"));
-
-        guardStoresAndLoads.push_back(load);
-
-        auto* cond = IRB.CreateNot(
-            load,
-            VALUE_NAME("NegatedRQGuardValue")
-        );
-
-        CheckReleaseIntrinsics.push_back(IRB.CreateRayQueryCheckIntrinsic(cond));
-        guardStoresAndLoads.push_back(IRB.CreateStore(IRB.getTrue(), guard));
-    };
-
-    for (auto* insertBB : releaseBBs)
-    {
-        auto* IP = insertBB->getTerminator();
-        IRB.SetInsertPoint(IP);
-
-        auto* cond = IRB.CreateLoad(guard, VALUE_NAME("RQGuardValue"));
-
-        guardStoresAndLoads.push_back(cond);
-
-        CheckReleaseIntrinsics.push_back(IRB.CreateRayQueryReleaseIntrinsic(cond));
-        guardStoresAndLoads.push_back(IRB.CreateStore(IRB.getFalse(), guard));
-    };
-
-    // make sure guard dominates all uses
-    init_guard->moveBefore(&*F.getEntryBlock().getFirstInsertionPt());
-    guard->moveBefore(&*F.getEntryBlock().getFirstInsertionPt());
-
-    SmallVector<PHINode*> phis;
-
-    SSAUpdater Updater(&phis);
-    LoadAndStorePromoter LSP(guardStoresAndLoads, Updater, "RayQueryCheckReleaseGuardPromotion");
-    LSP.run(guardStoresAndLoads);
-
-    for (auto* phi : phis)
-    {
-        if (auto* V = phi->hasConstantValue())
-        {
-            phi->replaceAllUsesWith(V);
-            phi->eraseFromParent();
-        }
-    }
-
-    SimplifyQuery SQ(F.getParent()->getDataLayout());
-
-    for (auto* I : CheckReleaseIntrinsics)
-    {
-        Value* flag = I->getOperand(0);
-        if (auto* flagAsBinOp = dyn_cast<BinaryOperator>(flag))
-            flag =
-#if LLVM_VERSION_MAJOR >= 15
-            simplifyBinOp(
-#else
-            SimplifyBinOp(
-#endif
-                flagAsBinOp->getOpcode(),
-                flagAsBinOp->getOperand(0),
-                flagAsBinOp->getOperand(1),
-                SQ
-            );
-
-        if (auto* CI = dyn_cast_or_null<ConstantInt>(flag))
-        {
-            if (CI->isZero())
-                I->eraseFromParent();
-
-            if (CI->isOne())
-                I->setOperand(0, IRB.getTrue());
-        }
-    }
-
-    return true;
-
-#endif // LLVM_VERSION_MAJOR >= 10
 }
 
 bool DynamicRayManagementPass::AddDynamicRayManagement(Function& F)
@@ -779,7 +523,9 @@ void DynamicRayManagementPass::HandleComplexControlFlow(Function& F)
     // and GenISA_RayQueryCheck after to avoid deadlocks.
     for (Instruction& I : instructions(F))
     {
-        if (requiresSplittingCheckReleaseRegion(I))
+        if (isa<ContinuationHLIntrinsic>(&I) ||
+            isBarrierIntrinsic(&I) ||
+            isUserFunctionCall(&I))
         {
             // Look through all RaytQueryCheck-Release pairs, and check if the barrier/call
             // instruction is within any of pairs.

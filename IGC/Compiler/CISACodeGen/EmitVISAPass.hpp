@@ -503,7 +503,7 @@ public:
         bool RayQueryReleaseEnable = false
     );
 
-    void emitPreemptionDisable(llvm::PreemptionDisableIntrinsic* PDI);
+    void emitPreemptionDisable();
     void emitPreemptionEnable(llvm::PreemptionEnableIntrinsic* PEI);
 
     enum PreemptionEncoding

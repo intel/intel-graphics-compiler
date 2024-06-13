@@ -256,11 +256,11 @@ public:
 
     Value* CreateSyncStackPtrIntrinsic(Value* Addr, Type* PtrTy, bool AddDecoration);
 
-    RayQueryCheckIntrinsic* CreateRayQueryCheckIntrinsic(Value* predicate = nullptr);
-    RayQueryReleaseIntrinsic* CreateRayQueryReleaseIntrinsic(Value* predicate = nullptr);
+    RayQueryCheckIntrinsic* CreateRayQueryCheckIntrinsic();
+    RayQueryReleaseIntrinsic* CreateRayQueryReleaseIntrinsic();
 
-    PreemptionDisableIntrinsic* CreatePreemptionDisableIntrinsic(Value* Flag = nullptr);
-    PreemptionEnableIntrinsic* CreatePreemptionEnableIntrinsic(Value* Flag = nullptr);
+    PreemptionDisableIntrinsic* CreatePreemptionDisableIntrinsic();
+    PreemptionEnableIntrinsic* CreatePreemptionEnableIntrinsic(Value *Flag = nullptr);
 
     SyncStackPointerVal* getSyncStackPointer();
 
