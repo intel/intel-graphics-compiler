@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -295,6 +295,7 @@ public:
     IMP_IMPL_ARGS_BUFFER = 0xF << AKBitsForCategory,
     IMP_PSEUDO_INPUT = 0x10 << AKBitsForCategory,
     IMP_OCL_ASSERT_BUFFER = 0x11 << AKBitsForCategory,
+    IMP_OCL_SYNC_BUFFER = 0x17 << AKBitsForCategory,
   };
 
   enum { SKIP_OFFSET_VAL = -1 };
@@ -370,6 +371,11 @@ inline bool isByValSVMKind(uint32_t ArgKind) {
 inline bool isImplicitArgsBufferKind(uint32_t ArgKind) {
   return isImplicitArgKind(ArgKind, KernelMetadata::IMP_IMPL_ARGS_BUFFER);
 }
+
+inline bool isSyncBufferKind(uint32_t ArgKind) {
+  return isImplicitArgKind(ArgKind, KernelMetadata::IMP_OCL_SYNC_BUFFER);
+}
+
 
 // Get implicit argument of the kernel \p Kernel defined by ID \p ImplArgID.
 // If kernel has no such argument behavior is undefined.

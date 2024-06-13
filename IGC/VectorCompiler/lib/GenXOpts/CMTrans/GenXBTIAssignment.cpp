@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2023 Intel Corporation
+Copyright (C) 2021-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -189,6 +189,10 @@ int BTIAssignment::assignUAV(int SurfaceID, ZipTy &&Zippy) {
       continue;
     }
     if (Kind & vc::KernelMetadata::IMP_OCL_ASSERT_BUFFER) {
+      Idx = StatelessBti;
+      continue;
+    }
+    if (Kind & vc::KernelMetadata::IMP_OCL_SYNC_BUFFER) {
       Idx = StatelessBti;
       continue;
     }

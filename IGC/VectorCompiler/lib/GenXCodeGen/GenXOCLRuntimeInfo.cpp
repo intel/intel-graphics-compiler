@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2023 Intel Corporation
+Copyright (C) 2020-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -171,6 +171,8 @@ KernelArgBuilder::getOCLArgKind(ArrayRef<StringRef> Tokens,
     return ArgKindType::AssertBuffer;
   if (vc::isPrintBufferKind(RawKind))
     return ArgKindType::PrintBuffer;
+  if (vc::isSyncBufferKind(RawKind))
+    return ArgKindType::SyncBuffer;
   if (vc::isPrivateBaseKind(RawKind))
     return ArgKindType::PrivateBase;
   if (vc::isByValSVMKind(RawKind))

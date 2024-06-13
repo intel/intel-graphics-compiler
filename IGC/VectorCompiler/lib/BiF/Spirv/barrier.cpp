@@ -6,12 +6,15 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include <cm-cl/exec.h>
+#include <cm-cl/barrier.h>
 
 CM_NODEBUG CM_INLINE void __spirv_ControlBarrier(int scope, int memory_scope,
                                                  int memory_semantics) {
   cm::exec::fence(memory_scope, memory_semantics);
-  cm::exec::barrier(scope);
+  if (scope == cm::exec::workgroup)
+    cm::exec::local_barrier();
+  else if (scope == cm::exec::device)
+    cm::exec::global_barrier();
 }
 
 CM_NODEBUG CM_INLINE void __spirv_MemoryBarrier(int scope, int semantics) {

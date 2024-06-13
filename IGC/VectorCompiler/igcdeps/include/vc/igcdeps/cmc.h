@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2023 Intel Corporation
+Copyright (C) 2019-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -106,6 +106,8 @@ public:
                                        unsigned Size, unsigned ArgOffset);
   void createPrintfBufferArgAnnotation(unsigned Index, unsigned BTI,
                                        unsigned Size, unsigned ArgOffset);
+  void createSyncBufferArgAnnotation(unsigned Index, unsigned BTI,
+                                     unsigned Size, unsigned ArgOffset);
 
   void createImplArgsBufferAnnotation(unsigned Size, unsigned ArgOffset);
 

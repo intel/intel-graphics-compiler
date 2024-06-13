@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2023 Intel Corporation
+Copyright (C) 2019-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -482,6 +482,15 @@ void CMKernel::createPrintfBufferArgAnnotation(unsigned Index, unsigned BTI,
       zebin::PreDefinedAttrGetter::ArgType::printf_buffer, ArgOffset, Size);
 }
 
+void CMKernel::createSyncBufferArgAnnotation(unsigned Index, unsigned BTI,
+                                             unsigned Size,
+                                             unsigned ArgOffset) {
+  // EnableZEBinary: ZEBinary related code
+  zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
+      m_kernelInfo.m_zePayloadArgs,
+      zebin::PreDefinedAttrGetter::ArgType::sync_buffer, ArgOffset, Size);
+}
+
 void CMKernel::createImplArgsBufferAnnotation(unsigned Size,
                                               unsigned ArgOffset) {
   auto constInput = std::make_unique<iOpenCL::ConstantInputAnnotation>();
@@ -706,6 +715,10 @@ static void setArgumentsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
     case ArgKind::PrintBuffer:
       Kernel.createPrintfBufferArgAnnotation(Arg.getIndex(), Arg.getBTI(),
                                              Arg.getSizeInBytes(), ArgOffset);
+      break;
+    case ArgKind::SyncBuffer:
+      Kernel.createSyncBufferArgAnnotation(Arg.getIndex(), Arg.getBTI(),
+                                           Arg.getSizeInBytes(), ArgOffset);
       break;
     case ArgKind::PrivateBase: {
       auto PrivMemSize = Info.getStatelessPrivMemSize();

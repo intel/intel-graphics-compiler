@@ -1,6 +1,6 @@
 # ========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2022-2023 Intel Corporation
+# Copyright (C) 2022-2024 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -785,6 +785,16 @@ Imported_Intrinsics = {
 ### --------------------
 ### Thread ID intrinsics
 ### --------------------
+
+## ``llvm.vc.internal.sync.buffer`` : read stateless pointer to sync buffer
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+## ``llvm.vc.internal.sync.buffer`` : read implicit arg sync buffer ptr
+##
+## * Return value: i64 address of sync buffer
+##
+    "sync_buffer" : { "result" : "long",
+                      "arguments": [],
+                      "attributes": "ReadMem", },
 
 ## ``llvm.vc.internal.logical.thread.id`` : logical global thread ID
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

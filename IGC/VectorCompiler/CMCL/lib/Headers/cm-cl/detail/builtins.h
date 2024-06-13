@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2023 Intel Corporation
+Copyright (C) 2021-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -53,6 +53,7 @@ _Noreturn void __cm_cl_trap();
 // FIXME: For legacy issues 64-bit pointer is always returned.
 uint64_t __cm_cl_assert_buffer();
 uint64_t __cm_cl_printf_buffer();
+uint64_t __cm_cl_sync_buffer();
 
 int __cm_cl_printf_format_index(__constant const char *str);
 // DPC++ tend to place constant strings in global address space.
@@ -295,6 +296,11 @@ inline __global void *assert_buffer() {
 inline __global void *printf_buffer() {
   auto ptr = static_cast<uintptr_t>(__cm_cl_printf_buffer());
   return reinterpret_cast<__global void *>(ptr);
+}
+
+inline __global uint8_t *sync_buffer() {
+  auto ptr = static_cast<uintptr_t>(__cm_cl_sync_buffer());
+  return reinterpret_cast<__global uint8_t *>(ptr);
 }
 
 inline int printf_format_index(__constant const char *str) {

@@ -272,6 +272,8 @@ private:
       return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_OCL_ASSERT_BUFFER;
     case vc::InternalIntrinsic::print_buffer:
       return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_OCL_PRINTF_BUFFER;
+    case InternalIntrinsic::sync_buffer:
+      return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_OCL_SYNC_BUFFER;
     case GenXIntrinsic::genx_local_size:
       return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_LOCAL_SIZE;
     case GenXIntrinsic::genx_local_id:
@@ -335,6 +337,7 @@ private:
     switch (IID) {
     case vc::InternalIntrinsic::assert_buffer:
     case vc::InternalIntrinsic::print_buffer:
+    case vc::InternalIntrinsic::sync_buffer:
     case PseudoIntrinsic::PrivateBase:
     case PseudoIntrinsic::ImplicitArgsBuffer:
       return llvm::Type::getInt64Ty(Context);
@@ -895,6 +898,7 @@ static bool isImplicitArgIntrinsic(const Function &F) {
   case GenXIntrinsic::genx_group_count:
   case vc::InternalIntrinsic::assert_buffer:
   case vc::InternalIntrinsic::print_buffer:
+  case vc::InternalIntrinsic::sync_buffer:
     return true;
   case GenXIntrinsic::genx_get_scoreboard_deltas:
   case GenXIntrinsic::genx_get_scoreboard_bti:

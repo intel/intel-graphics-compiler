@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2023 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -16,6 +16,7 @@ target triple = "spir64-unknown-unknown"
 ; CHECK-DAG: @__imparg_llvm.genx.group.count = internal global <3 x i32> undef
 ; CHECK-DAG: @__imparg_llvm.vc.internal.print.buffer = internal global i64 undef
 ; CHECK-DAG: @__imparg_llvm.vc.internal.assert.buffer = internal global i64 undef
+; CHECK-DAG: @__imparg_llvm.vc.internal.sync.buffer = internal global i64 undef
 
 declare <3 x i16> @llvm.genx.local.id16.v3i16()
 declare <3 x i32> @llvm.genx.local.size.v3i32()
@@ -25,6 +26,7 @@ declare i32 @llvm.genx.group.id.z()
 declare <3 x i32> @llvm.genx.group.count.v3i32()
 declare i64 @llvm.vc.internal.print.buffer()
 declare i64 @llvm.vc.internal.assert.buffer()
+declare i64 @llvm.vc.internal.sync.buffer()
 
 define dllexport spir_kernel void @direct() {
 ; CHECK: define dllexport spir_kernel void @direct(
@@ -57,9 +59,11 @@ define dllexport spir_kernel void @direct() {
   %d.grp.sz = call <3 x i32> @llvm.genx.group.count.v3i32()
   %d.print = call i64 @llvm.vc.internal.print.buffer()
   %d.assert = call i64 @llvm.vc.internal.assert.buffer()
+  %d.sync = call i64 @llvm.vc.internal.sync.buffer()
 ; CHECK: %d.grp.sz = load <3 x i32>, <3 x i32>* @__imparg_llvm.genx.group.count
 ; CHECK: %d.print = load i64, i64* @__imparg_llvm.vc.internal.print.buffer
 ; CHECK: %d.assert = load i64, i64* @__imparg_llvm.vc.internal.assert.buffer
+; CHECK: %d.sync = load i64, i64* @__imparg_llvm.vc.internal.sync.buffer
   ret void
 }
 
@@ -84,6 +88,7 @@ define dllexport spir_kernel void @indir() {
 ; CHECK-SAME: <3 x i16> %impl.arg.llvm.genx.local.id16
 ; CHECK-SAME: i64 %impl.arg.llvm.vc.internal.assert.buffer
 ; CHECK-SAME: i64 %impl.arg.llvm.vc.internal.print.buffer
+; CHECK-SAME: i64 %impl.arg.llvm.vc.internal.sync.buffer
 ; CHECK-SAME: ) #[[KERN_ATTR]] {
   call void @indir_func_1()
   call void @indir_func_2()
@@ -114,8 +119,10 @@ define internal spir_func void @indir_func_3() {
 define internal spir_func void @indir_func_common() {
   %i.c.print = call i64 @llvm.vc.internal.print.buffer()
   %i.c.assert = call i64 @llvm.vc.internal.assert.buffer()
+  %i.c.sync = call i64 @llvm.vc.internal.sync.buffer()
 ; CHECK: %i.c.print = load i64, i64* @__imparg_llvm.vc.internal.print.buffer
 ; CHECK: %i.c.assert = load i64, i64* @__imparg_llvm.vc.internal.assert.buffer
+; CHECK: %i.c.sync = load i64, i64* @__imparg_llvm.vc.internal.sync.buffer
   ret void
 }
 
@@ -131,7 +138,7 @@ define internal spir_func void @indir_func_common() {
 !2 = !{void ()* @direct_partial, !"direct_partial", !1, i32 0, !1, !1, !1, i32 0, i32 0}
 !3 = !{void ()* @indir, !"indir", !1, i32 0, !1, !1, !1, i32 0, i32 0}
 ; COM: Arg Kind map: local_size -> 8, group_count -> 16, local_id -> 24, printf_buffer -> 88,
-; COM:               private_base -> 96
+; COM:               private_base -> 96, sync_buffer -> 184
 ; CHECK: ![[D_KERN_MD]] = !{void ({{.*}})* @direct, !"direct", ![[D_KERN_AK_MD:[0-9]+]]
 ; CHECK: ![[D_KERN_AK_MD]] = !{
 ; CHECK-DAG: i32 8
@@ -139,6 +146,7 @@ define internal spir_func void @indir_func_common() {
 ; CHECK-DAG: i32 24
 ; CHECK-DAG: i32 88
 ; CHECK-DAG: i32 96
+; CHECK-DAG: i32 184
 ; CHECK: }
 ; CHECK: ![[DP_KERN_MD]] = !{void ({{.*}})* @direct_partial, !"direct_partial", ![[DP_KERN_AK_MD:[0-9]+]]
 ; CHECK: ![[DP_KERN_AK_MD]] = !{
@@ -147,6 +155,6 @@ define internal spir_func void @indir_func_common() {
 ; CHECK: }
 ; CHECK: ![[I_KERN_MD]] = !{void ({{.*}})* @indir, !"indir", ![[I_KERN_AK_MD:[0-9]+]]
 ; CHECK: ![[I_KERN_AK_MD]] = !{
-; CHECK-COUNT-5: i32 {{[0-9]+}}
+; CHECK-COUNT-6: i32 {{[0-9]+}}
 ; CHECK-NOT: i32 {{[0-9]+}}
 ; CHECK: }
