@@ -39,10 +39,6 @@ def FeatureLSCMaxWidth32 : SubtargetFeature<"lsc_max_width_32",
                                             "LSCMaxWidth",
                                             "32",
                                             "LSC messages have a maximum width of 32">;
-def FeatureTransLegacy : SubtargetFeature<"translate_legacy_message",
-                                          "TranslateLegacyMessages",
-                                          "true",
-                                          "translate legacy message to LSC">;
 def FeaturePartialI64Emulation : SubtargetFeature<"lightweight_i64_emulation",
                                        "PartialI64Emulation",
                                        "true",
@@ -165,6 +161,11 @@ def FeatureHasLSCOffset : SubtargetFeature<"feature_has_lsc_offset",
                                            "HasLSCOffset", "true",
                                            "Target supports constant offset for LSC messages",
                                            [FeatureHasLSC]>;
+def FeatureTransLegacy : SubtargetFeature<"translate_legacy_message",
+                                          "TranslateLegacyMessages",
+                                          "true",
+                                          "translate legacy message to LSC",
+                                          [FeatureHasLSC]>;
 def FeatureHasAdd3 : SubtargetFeature<"feature_has_add3",
                                       "HasAdd3", "true",
                                       "Target supports 3-way addition">;
@@ -506,6 +507,7 @@ def : Proc<"Xe2", [
   FeatureSwitchjmp,
   FeatureSystolicDenormControl,
   FeatureThreadPayloadInMemory,
+  FeatureTransLegacy,
 ]>;
 
 def GenX : Target {
