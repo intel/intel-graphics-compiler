@@ -405,7 +405,7 @@ ulong  __builtin_IB_lsc_atomic_cmpxchg_global_ulong(volatile __global ulong *bas
 ulong  __builtin_IB_lsc_atomic_cmpxchg_local_ulong(volatile __local ulong *base, int immElemOff, ulong cmp, ulong val);
 #endif // cl_intel_pvc_lsc_validation
 
-#ifdef cl_intel_subgroups_buffer_prefetch
+#ifdef cl_intel_subgroup_buffer_prefetch
 // 1D Block prefetches
 void __builtin_IB_lsc_simd_block_prefetch_uchar(const __global uchar*, enum LSC_LDCC cacheOpt);
 void __builtin_IB_lsc_simd_block_prefetch_uchar2(const __global uchar*, enum LSC_LDCC cacheOpt);
@@ -428,7 +428,7 @@ void __builtin_IB_lsc_simd_block_prefetch_ulong(const __global ulong*, enum LSC_
 void __builtin_IB_lsc_simd_block_prefetch_ulong2(const __global ulong*, enum LSC_LDCC cacheOpt);
 void __builtin_IB_lsc_simd_block_prefetch_ulong4(const __global ulong*, enum LSC_LDCC cacheOpt);
 void __builtin_IB_lsc_simd_block_prefetch_ulong8(const __global ulong*, enum LSC_LDCC cacheOpt);
-#endif // cl_intel_subgroups_buffer_prefetch
+#endif // cl_intel_subgroup_buffer_prefetch
 
 #ifdef cl_intel_subgroup_extended_block_read
 // 2d block read

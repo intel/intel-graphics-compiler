@@ -4830,12 +4830,12 @@ long4  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockReadINTEL, _v4i64_img2
 long8  SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockReadINTEL, _v8i64_img2d_ro_v2i32, _Rlong8)(global Img2d_ro* image, int2 coord);
 #endif // cl_intel_subgroups_long
 
-#ifdef cl_intel_subgroups_buffer_prefetch
+#ifdef cl_intel_subgroup_buffer_prefetch
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupBlockPrefetchINTEL, _p1i8, )(const global uchar* ptr, uint num_bytes);
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupBlockPrefetchINTEL, _p1i16, )(const global ushort* ptr, uint num_bytes);
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupBlockPrefetchINTEL, _p1i32, )(const global uint* ptr, uint num_bytes);
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupBlockPrefetchINTEL, _p1i64, )(const global ulong* ptr, uint num_bytes);
-#endif // cl_intel_subgroups_buffer_prefetch
+#endif // cl_intel_subgroup_buffer_prefetch
 
 #define DECL_SUB_GROUP_BROADCAST(TYPE, TYPE_ABBR)       \
 DECL_SUB_GROUP_BROADCAST_BASE(TYPE, TYPE_ABBR)          \
