@@ -63,6 +63,10 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 
+// Custom destructor for cleaning up all LLVM ManagedStatic allocated instances
+static const auto StaticLLVMObjectsDestructor =
+    llvm::make_scope_exit([]() { llvm::llvm_shutdown(); });
+
 static Expected<std::unique_ptr<llvm::Module>>
 getModuleFromLLVMText(ArrayRef<char> Input, LLVMContext &C) {
   SMDiagnostic Err;
