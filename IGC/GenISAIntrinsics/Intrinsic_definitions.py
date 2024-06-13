@@ -3208,17 +3208,17 @@ Imported_Intrinsics = \
 ####################################################################################################
 "GenISA_PreemptionDisable":["Disable Preemption",
     [("void",                          ""),
-    [],
+    [("bool",                          "predication flag")],
     "None"]],
 ####################################################################################################
 "GenISA_RayQueryCheck": ["Raytracing: RayQueryCheck",
     [("void",                           ""),
-    [],
+    [("bool",                           "predicate")],
     "Convergent"]],
 ####################################################################################################
 "GenISA_RayQueryRelease": ["Raytracing: RayQueryRelease",
     [("void",                           ""),
-    [],
+    [("bool",                           "predicate")],
     "Convergent"]],
 ####################################################################################################
 "GenISA_ContinuationSignpost": ["Raytracing: Temporary used to mark continuation entry points",

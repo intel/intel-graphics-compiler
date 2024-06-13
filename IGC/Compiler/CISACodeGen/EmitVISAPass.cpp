@@ -8943,7 +8943,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         emitRayQueryCheckRelease(inst, false, true);
         break;
     case GenISAIntrinsic::GenISA_PreemptionDisable:
-        emitPreemptionDisable();
+        emitPreemptionDisable(cast<PreemptionDisableIntrinsic>(inst));
         break;
     case GenISAIntrinsic::GenISA_PreemptionEnable:
         emitPreemptionEnable(cast<PreemptionEnableIntrinsic>(inst));
@@ -23542,6 +23542,15 @@ void EmitPass::emitRayQueryCheckRelease(
     const uint32_t NumSend =
         (m_currShader->m_SIMDSize == SIMDMode::SIMD32
             ) ? 2 : 1;
+
+    CVariable* flag = nullptr;
+
+    if (auto* CI = dyn_cast<ConstantInt>(I->getOperand(0));
+        !CI || !CI->isAllOnesValue())
+    {
+        flag = GetSymbol(I->getOperand(0));
+    }
+
     for (uint32_t Cnt = 0; Cnt < NumSend; Cnt++)
     {
         if (m_currShader->m_SIMDSize == SIMDMode::SIMD32
@@ -23551,6 +23560,8 @@ void EmitPass::emitRayQueryCheckRelease(
             if (Cnt == 1)
                 m_encoder->SetMask(EMASK_H2);
         }
+
+        m_encoder->SetPredicate(flag);
 
         m_encoder->Sends(
             nullptr,
@@ -23595,11 +23606,24 @@ EmitPass::getEncoderPreemptionMode(EPreemptionMode preemptionMode)
     return PreemptionEncoding::PreemptionEnabled;
 }
 
-void EmitPass::emitPreemptionDisable()
+void EmitPass::emitPreemptionDisable(PreemptionDisableIntrinsic* PDI)
 {
     CVariable *Mask = m_currShader->ImmToVariable(
         ~getEncoderPreemptionMode(PREEMPTION_ENABLED),
         ISA_TYPE_UD);
+
+    CVariable* Flag = nullptr;
+    if (auto* CI = dyn_cast<ConstantInt>(PDI->getFlag()))
+    {
+        if (CI->isZero())
+            return;
+    }
+    else
+    {
+        Flag = GetSymbol(PDI->getFlag());
+    }
+
+    m_encoder->SetPredicate(Flag);
 
     m_encoder->And(m_currShader->GetCR0(), m_currShader->GetCR0(), Mask);
     m_encoder->Push();
