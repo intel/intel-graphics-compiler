@@ -354,6 +354,7 @@ namespace SCEVHelper
 {
     const SCEV *dropExt(const SCEV *S);
 
+    bool isValid(const SCEV *S);
     bool isEqual(const SCEV *A, const SCEV *B);
 
     // ScalarEvolution::getAddExpr requires all operands to have the same
@@ -459,7 +460,7 @@ void ReductionCandidateGroup::print(raw_ostream &OS)
             OS << ", ";
     }
     OS << "], step=";
-    OS << Step;
+    Step->print(OS);
     OS << "}";
 }
 
@@ -927,7 +928,7 @@ void Analyzer::analyzeGEP(GetElementPtrInst *GEP)
     Value *Index = *(GEP->indices().end() - 1);
 
     const SCEV *S = SE.getSCEV(Index);
-    if (isa<SCEVCouldNotCompute>(S))
+    if (!SCEVHelper::isValid(S))
         return;
 
     const SCEV *Start = nullptr;
@@ -1382,6 +1383,55 @@ const SCEV *SCEVHelper::dropExt(const SCEV *S)
     } while (true);
 
     return S;
+}
+
+
+// Returns true is SCEV expression legal.
+bool SCEVHelper::isValid(const SCEV *S)
+{
+    if (isa<SCEVCouldNotCompute>(S))
+        return false;
+
+    // Scalar Evolution doesn't have SCEV expression for bitwise-and. Instead,
+    // if possible, SE produces expressions for any integer size, leaving cleanup
+    // to legalization pass. For example this code:
+    //     %1 = shl i64 %0, 32
+    //     %2 = ashr exact i64 %1, 30
+    // produces i34 integer SCEV.
+    //
+    // By default don't allow illegal integer types.
+    if (IGC_IS_FLAG_ENABLED(EnableGEPLSRAnyIntBitWidth))
+        return true;
+
+    std::function<bool(Type*)> IsInvalidInt = [](Type *Ty)
+    {
+        if (!Ty->isIntegerTy())
+            return false;
+
+        switch (Ty->getScalarSizeInBits())
+        {
+        case 8:
+        case 16:
+        case 32:
+        case 64:
+            return false;
+        default:
+            return true;
+        }
+    };
+
+    bool HasInvalidInt = SCEVExprContains(S, [&](const SCEV *S) {
+        if (auto *Cast = dyn_cast<SCEVCastExpr>(S))
+            return IsInvalidInt(Cast->getOperand()->getType()) || IsInvalidInt(Cast->getType());
+        return false;
+    });
+
+    LLVM_DEBUG(
+        if (HasInvalidInt) {
+            dbgs() << "  Dropping SCEV with invalid integer type: "; S->print(dbgs()); dbgs() << "\n";
+        });
+
+    return !HasInvalidInt;
 }
 
 
