@@ -6,4 +6,4 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-const char* gedVersion = "ce98faa3";
+const char* gedVersion = "d65a2e74";
