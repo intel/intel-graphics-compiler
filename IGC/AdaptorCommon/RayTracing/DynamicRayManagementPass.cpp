@@ -401,6 +401,16 @@ bool DynamicRayManagementPass::TryProceedBasedApproach(Function& F)
     for (auto* checkBB : checkBBs)
     {
         auto* IP = checkBB->getFirstNonPHI();
+
+        // insert the check as far forward as possible into the BB
+        for (auto& I : *checkBB)
+        {
+            IP = &I;
+
+            if (isa<TraceRaySyncProceedHLIntrinsic>(&I))
+                break;
+        }
+
         IRB.SetInsertPoint(IP);
 
         auto* load = IRB.CreateLoad(guard, VALUE_NAME("RQGuardValue"));
@@ -416,9 +426,19 @@ bool DynamicRayManagementPass::TryProceedBasedApproach(Function& F)
         guardStoresAndLoads.push_back(IRB.CreateStore(IRB.getTrue(), guard));
     };
 
-    for (auto* insertBB : releaseBBs)
+    for (auto* releaseBB : releaseBBs)
     {
-        auto* IP = insertBB->getTerminator();
+        auto* IP = releaseBB->getTerminator();
+
+        // insert the release as far back as possible into the BB
+        for (auto& I : llvm::reverse(*releaseBB))
+        {
+            if (isa<TraceRaySyncProceedHLIntrinsic>(&I) || isa<PHINode>(&I))
+                break;
+
+            IP = &I;
+        }
+
         IRB.SetInsertPoint(IP);
 
         auto* cond = IRB.CreateLoad(guard, VALUE_NAME("RQGuardValue"));
