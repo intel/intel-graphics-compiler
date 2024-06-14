@@ -258,6 +258,30 @@ void DynamicRayManagementPass::FindProceedsInOperands(Instruction* I, SetVector<
     }
 }
 
+// extracted from internal instcombine
+/// Return true if this phi node is always equal to NonPhiInVal.
+/// This happens with mutually cyclic phi nodes like:
+///   z = some value; x = phi (y, z); y = phi (x, z)
+static bool PHIsEqualValue(PHINode* PN, Value* NonPhiInVal,
+    SmallPtrSetImpl<PHINode*>& ValueEqualPHIs) {
+    // See if we already saw this PHI node.
+    if (!ValueEqualPHIs.insert(PN).second)
+        return true;
+
+    // Scan the operands to see if they are either phi nodes or are equal to
+    // the value.
+    for (Value* Op : PN->incoming_values()) {
+        if (PHINode* OpPN = dyn_cast<PHINode>(Op)) {
+            if (!PHIsEqualValue(OpPN, NonPhiInVal, ValueEqualPHIs))
+                return false;
+        }
+        else if (Op != NonPhiInVal)
+            return false;
+    }
+
+    return true;
+}
+
 bool DynamicRayManagementPass::TryProceedBasedApproach(Function& F)
 {
 
@@ -464,8 +488,26 @@ bool DynamicRayManagementPass::TryProceedBasedApproach(Function& F)
         if (auto* V = phi->hasConstantValue())
         {
             phi->replaceAllUsesWith(V);
-            phi->eraseFromParent();
         }
+        else
+        {
+            // naive way to check if we have a phi cycle
+            // %x = phi [ false, ... ], [ %y, ...]
+            // %y = phi [ false, ... ], [ %x, ...]
+            // will never evaluate to true
+            for (auto* V : { IRB.getTrue(), IRB.getFalse() })
+            {
+                SmallPtrSet<PHINode*, 4> cache;
+                if (PHIsEqualValue(phi, V, cache))
+                {
+                    phi->replaceAllUsesWith(V);
+                    break;
+                }
+            }
+        }
+
+        if (phi->use_empty())
+            phi->eraseFromParent();
     }
 
     SimplifyQuery SQ(F.getParent()->getDataLayout());
