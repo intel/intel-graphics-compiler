@@ -23612,19 +23612,6 @@ void EmitPass::emitPreemptionDisable(PreemptionDisableIntrinsic* PDI)
         ~getEncoderPreemptionMode(PREEMPTION_ENABLED),
         ISA_TYPE_UD);
 
-    CVariable* Flag = nullptr;
-    if (auto* CI = dyn_cast<ConstantInt>(PDI->getFlag()))
-    {
-        if (CI->isZero())
-            return;
-    }
-    else
-    {
-        Flag = GetSymbol(PDI->getFlag());
-    }
-
-    m_encoder->SetPredicate(Flag);
-
     m_encoder->And(m_currShader->GetCR0(), m_currShader->GetCR0(), Mask);
     m_encoder->Push();
 }

@@ -40,6 +40,8 @@ public:
     {
         AU.setPreservesCFG();
         AU.addRequired<CodeGenContextWrapper>();
+        AU.addRequired<DominatorTreeWrapperPass>();
+        AU.addRequired<PostDominatorTreeWrapperPass>();
     }
 
     StringRef getPassName() const override
@@ -192,6 +194,12 @@ bool RayTracingShaderLowering::runOnModule(Module& M)
 
         SmallVector<Instruction*, 8> DeadInsts;
 
+        BasicBlock* disablePreemptionBB = nullptr;
+        BasicBlock* enablePreemptionBB = nullptr;
+
+        DominatorTree& DT = getAnalysis<DominatorTreeWrapperPass>(F).getDomTree();
+        PostDominatorTree& PDT = getAnalysis<PostDominatorTreeWrapperPass>(F).getPostDomTree();
+
         for (auto II = inst_begin(&F), IE = inst_end(&F); II != IE; /* empty */)
         {
             Instruction& I = *II++;
@@ -245,23 +253,42 @@ bool RayTracingShaderLowering::runOnModule(Module& M)
             case GenISAIntrinsic::GenISA_RayQueryCheck:
                 if (!ForcePreemptionDisable)
                 {
-                    RTB.SetInsertPoint(GII);
-                    RTB.CreatePreemptionDisableIntrinsic(I.getOperand(0));
+                    disablePreemptionBB =
+                        disablePreemptionBB ?
+                        DT.findNearestCommonDominator(disablePreemptionBB, GII->getParent()) :
+                        GII->getParent();
                 }
                 break;
             case GenISAIntrinsic::GenISA_RayQueryRelease:
                 if (!ForcePreemptionDisable)
                 {
-                    Value* Flag = isFunc ? checkPreemption(F) : nullptr;
-                    Flag = Flag ? RTB.CreateAnd(Flag, I.getOperand(0)) : I.getOperand(0);
-
-                    RTB.SetInsertPoint(GII->getNextNode());
-                    RTB.CreatePreemptionEnableIntrinsic(Flag);
+                    enablePreemptionBB =
+                        enablePreemptionBB ?
+                        PDT.findNearestCommonDominator(enablePreemptionBB, GII->getParent()) :
+                        GII->getParent();
                 }
                 break;
             default:
                 break;
             }
+        }
+
+        if (disablePreemptionBB)
+        {
+            IGC_ASSERT(enablePreemptionBB);
+
+            RTB.SetInsertPoint(disablePreemptionBB->getFirstNonPHI());
+            RTB.CreatePreemptionDisableIntrinsic();
+        }
+
+        if (enablePreemptionBB)
+        {
+            IGC_ASSERT(disablePreemptionBB);
+
+            Value* Flag = isFunc ? checkPreemption(F) : nullptr;
+
+            RTB.SetInsertPoint(enablePreemptionBB->getTerminator());
+            RTB.CreatePreemptionEnableIntrinsic(Flag);
         }
 
         for (auto* I : DeadInsts)
@@ -279,6 +306,8 @@ namespace IGC {
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(RayTracingShaderLowering, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
+IGC_INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
 IGC_INITIALIZE_PASS_END(RayTracingShaderLowering, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 ModulePass* CreateRayTracingShaderLowering()

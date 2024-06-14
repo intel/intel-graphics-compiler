@@ -185,15 +185,14 @@ RayQueryReleaseIntrinsic* RTBuilder::CreateRayQueryReleaseIntrinsic(Value* predi
     return cast<RayQueryReleaseIntrinsic>(rayQueryRelease);
 }
 
-PreemptionDisableIntrinsic* RTBuilder::CreatePreemptionDisableIntrinsic(Value* Flag)
+PreemptionDisableIntrinsic* RTBuilder::CreatePreemptionDisableIntrinsic()
 {
     Module* M = this->GetInsertBlock()->getModule();
 
     auto* GII = CreateCall(
         GenISAIntrinsic::getDeclaration(
             M,
-            GenISAIntrinsic::GenISA_PreemptionDisable),
-        Flag ? Flag : getTrue());
+            GenISAIntrinsic::GenISA_PreemptionDisable));
 
     return cast<PreemptionDisableIntrinsic>(GII);
 }

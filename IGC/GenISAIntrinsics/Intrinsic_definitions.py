@@ -3208,7 +3208,7 @@ Imported_Intrinsics = \
 ####################################################################################################
 "GenISA_PreemptionDisable":["Disable Preemption",
     [("void",                          ""),
-    [("bool",                          "predication flag")],
+    [],
     "None"]],
 ####################################################################################################
 "GenISA_RayQueryCheck": ["Raytracing: RayQueryCheck",

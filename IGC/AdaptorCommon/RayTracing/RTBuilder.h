@@ -259,7 +259,7 @@ public:
     RayQueryCheckIntrinsic* CreateRayQueryCheckIntrinsic(Value* predicate = nullptr);
     RayQueryReleaseIntrinsic* CreateRayQueryReleaseIntrinsic(Value* predicate = nullptr);
 
-    PreemptionDisableIntrinsic* CreatePreemptionDisableIntrinsic(Value* Flag = nullptr);
+    PreemptionDisableIntrinsic* CreatePreemptionDisableIntrinsic();
     PreemptionEnableIntrinsic* CreatePreemptionEnableIntrinsic(Value* Flag = nullptr);
 
     SyncStackPointerVal* getSyncStackPointer();
