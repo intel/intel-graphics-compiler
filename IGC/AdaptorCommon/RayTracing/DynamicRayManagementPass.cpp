@@ -299,6 +299,9 @@ bool DynamicRayManagementPass::TryProceedBasedApproach(Function& F)
 
     SmallVector<TraceRaySyncProceedHLIntrinsic*> allProceeds;
 
+    SetVector<BasicBlock*> checkBBs;
+    SetVector<BasicBlock*> releaseBBs;
+
     for (auto& I : instructions(F))
     {
         // we don't want to use this approach in complex control flow situations
@@ -308,6 +311,9 @@ bool DynamicRayManagementPass::TryProceedBasedApproach(Function& F)
         // collect all Proceed calls, because some of them might be not in any loop
         if (auto* proceed = dyn_cast<TraceRaySyncProceedHLIntrinsic>(&I))
             allProceeds.push_back(proceed);
+        // insert "safety" releases at the end of the shader. They should be culled later, but if not, it's an additional protection for us
+        else if (auto* ret = dyn_cast<ReturnInst>(&I))
+            releaseBBs.insert(ret->getParent());
     }
 
     if (allProceeds.empty())
@@ -318,9 +324,6 @@ bool DynamicRayManagementPass::TryProceedBasedApproach(Function& F)
     if (LI->empty())
         return false;
 
-    // we don't want to do the insertions on the fly, because changing control flow will invalidate the domtrees
-    SetVector<BasicBlock*> checkBBs;
-    SetVector<BasicBlock*> releaseBBs;
 
     // we iterate over all loops from outermost to innermost
     // if we find a loop, we skip all loops that are nested in it
