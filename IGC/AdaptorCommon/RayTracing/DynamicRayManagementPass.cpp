@@ -123,13 +123,15 @@ bool DynamicRayManagementPass::runOnFunction(Function& F)
     }
 
     if (TryProceedBasedApproach(F))
-        return true;
-
-    changed = AddDynamicRayManagement(F);
-
-    if (changed)
+        changed = true;
+    else
     {
-        HandleComplexControlFlow(F);
+        changed = AddDynamicRayManagement(F);
+
+        if (changed)
+        {
+            HandleComplexControlFlow(F);
+        }
     }
 
     DumpLLVMIR(m_CGCtx, "DynamicRayManagementPass");
