@@ -4889,7 +4889,7 @@ bool GenXLowering::lowerDpas(CallInst *CI) {
 
   SmallVector<Type *, 6> Types = {Ty};
 
-  for (auto IdxArg : enumerate(Args))
+  for (auto &IdxArg : enumerate(Args))
     if (vc::isOverloadedArg(IID, IdxArg.index()))
       Types.push_back(IdxArg.value()->getType());
 
