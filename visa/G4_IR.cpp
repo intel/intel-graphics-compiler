@@ -7026,9 +7026,18 @@ bool G4_INST::isSupportedAccDstType() const {
   case Type_DF:
   case Type_Q:
   case Type_UQ:
+  case Type_BF:
+    return true;
   case Type_D:
   case Type_UD:
-  case Type_BF:
+    if (getExecSize() != builder.getNativeExecSize()) {
+      switch (opcode()) {
+      case G4_addc:
+        return false;
+      default:
+        return true;
+      }
+    }
     return true;
   default:
     return false;
