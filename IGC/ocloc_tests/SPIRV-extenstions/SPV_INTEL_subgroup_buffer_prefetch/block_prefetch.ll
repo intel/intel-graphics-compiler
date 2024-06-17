@@ -82,20 +82,17 @@ entry:
 
 ; ------------------long variants--------------------
 
-; CHECK: lsc_load.ugm (M1_NM, 1)  %null:d32x32t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm (M1_NM, 1)  %null:d64x16t  flat[{{.*}}]:a64
   call spir_func void @_Z34__spirv_SubgroupBlockPrefetchINTELPU3AS1Kmj(i64 addrspace(1)* %ul_in, i32 8)
 
-; CHECK: lsc_load.ugm (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm (M1_NM, 1)  %null:d64x32t  flat[{{.*}}]:a64
   call spir_func void @_Z34__spirv_SubgroupBlockPrefetchINTELPU3AS1Kmj(i64 addrspace(1)* %ul_in, i32 16)
 
-; CHECK: lsc_load.ugm (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
-; CHECK: lsc_load.ugm (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x100]:a64
+; CHECK: lsc_load.ugm (M1_NM, 1)  %null:d64x64t  flat[{{.*}}]:a64
   call spir_func void @_Z34__spirv_SubgroupBlockPrefetchINTELPU3AS1Kmj(i64 addrspace(1)* %ul_in, i32 32)
 
-; CHECK: lsc_load.ugm (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
-; CHECK: lsc_load.ugm (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x100]:a64
-; CHECK: lsc_load.ugm (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x200]:a64
-; CHECK: lsc_load.ugm (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x300]:a64
+; CHECK: lsc_load.ugm (M1_NM, 1)  %null:d64x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm (M1_NM, 1)  %null:d64x64t  flat[{{.*}}+0x200]:a64
   call spir_func void @_Z34__spirv_SubgroupBlockPrefetchINTELPU3AS1Kmj(i64 addrspace(1)* %ul_in, i32 64)
 
   ret void

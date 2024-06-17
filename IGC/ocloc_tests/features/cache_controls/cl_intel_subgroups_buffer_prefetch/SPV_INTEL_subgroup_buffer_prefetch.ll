@@ -41,7 +41,7 @@ entry:
   call spir_func void @_Z34__spirv_SubgroupBlockPrefetchINTELPU3AS1Kjj(i32 addrspace(1)* %decorated_ui_ptr, i32 8)
 
   %decorated_ul_ptr = getelementptr inbounds i64, i64 addrspace(1)* %ul_in, i32 0, !spirv.Decorations !0
-; CHECK: lsc_load.ugm.uc.uc (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.uc.uc (M1_NM, 1)  %null:d64x32t  flat[{{.*}}]:a64
   call spir_func void @_Z34__spirv_SubgroupBlockPrefetchINTELPU3AS1Kmj(i64 addrspace(1)* %decorated_ul_ptr, i32 16)
 
   ret void
@@ -69,7 +69,7 @@ entry:
   call spir_func void @_Z34__spirv_SubgroupBlockPrefetchINTELPU3AS1Kjj(i32 addrspace(1)* %decorated_ui_ptr, i32 8)
 
   %decorated_ul_ptr = getelementptr inbounds i64, i64 addrspace(1)* %ul_in, i32 0, !spirv.Decorations !3
-; CHECK: lsc_load.ugm.uc.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.uc.ca (M1_NM, 1)  %null:d64x32t  flat[{{.*}}]:a64
   call spir_func void @_Z34__spirv_SubgroupBlockPrefetchINTELPU3AS1Kmj(i64 addrspace(1)* %decorated_ul_ptr, i32 16)
 
   ret void
@@ -97,7 +97,7 @@ entry:
   call spir_func void @_Z34__spirv_SubgroupBlockPrefetchINTELPU3AS1Kjj(i32 addrspace(1)* %decorated_ui_ptr, i32 8)
 
   %decorated_ul_ptr = getelementptr inbounds i64, i64 addrspace(1)* %ul_in, i32 0, !spirv.Decorations !6
-; CHECK: lsc_load.ugm.ca.uc (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.ca.uc (M1_NM, 1)  %null:d64x32t  flat[{{.*}}]:a64
   call spir_func void @_Z34__spirv_SubgroupBlockPrefetchINTELPU3AS1Kmj(i64 addrspace(1)* %decorated_ul_ptr, i32 16)
 
   ret void
@@ -125,7 +125,7 @@ entry:
   call spir_func void @_Z34__spirv_SubgroupBlockPrefetchINTELPU3AS1Kjj(i32 addrspace(1)* %decorated_ui_ptr, i32 8)
 
   %decorated_ul_ptr = getelementptr inbounds i64, i64 addrspace(1)* %ul_in, i32 0, !spirv.Decorations !9
-; CHECK: lsc_load.ugm.ca.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.ca.ca (M1_NM, 1)  %null:d64x32t  flat[{{.*}}]:a64
   call spir_func void @_Z34__spirv_SubgroupBlockPrefetchINTELPU3AS1Kmj(i64 addrspace(1)* %decorated_ul_ptr, i32 16)
 
   ret void
@@ -153,7 +153,7 @@ entry:
   call spir_func void @_Z34__spirv_SubgroupBlockPrefetchINTELPU3AS1Kjj(i32 addrspace(1)* %decorated_ui_ptr, i32 8)
 
   %decorated_ul_ptr = getelementptr inbounds i64, i64 addrspace(1)* %ul_in, i32 0, !spirv.Decorations !12
-; CHECK: lsc_load.ugm.st.uc (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.st.uc (M1_NM, 1)  %null:d64x32t  flat[{{.*}}]:a64
   call spir_func void @_Z34__spirv_SubgroupBlockPrefetchINTELPU3AS1Kmj(i64 addrspace(1)* %decorated_ul_ptr, i32 16)
 
   ret void
@@ -181,7 +181,7 @@ entry:
   call spir_func void @_Z34__spirv_SubgroupBlockPrefetchINTELPU3AS1Kjj(i32 addrspace(1)* %decorated_ui_ptr, i32 8)
 
   %decorated_ul_ptr = getelementptr inbounds i64, i64 addrspace(1)* %ul_in, i32 0, !spirv.Decorations !15
-; CHECK: lsc_load.ugm.st.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.st.ca (M1_NM, 1)  %null:d64x32t  flat[{{.*}}]:a64
   call spir_func void @_Z34__spirv_SubgroupBlockPrefetchINTELPU3AS1Kmj(i64 addrspace(1)* %decorated_ul_ptr, i32 16)
 
   ret void
@@ -209,7 +209,7 @@ entry:
   call spir_func void @_Z34__spirv_SubgroupBlockPrefetchINTELPU3AS1Kjj(i32 addrspace(1)* %decorated_ui_ptr, i32 8)
 
   %decorated_ul_ptr = getelementptr inbounds i64, i64 addrspace(1)* %ul_in, i32 0, !spirv.Decorations !18
-; CHECK: lsc_load.ugm.ri.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.ri.ca (M1_NM, 1)  %null:d64x32t  flat[{{.*}}]:a64
   call spir_func void @_Z34__spirv_SubgroupBlockPrefetchINTELPU3AS1Kmj(i64 addrspace(1)* %decorated_ul_ptr, i32 16)
 
   ret void
@@ -237,7 +237,7 @@ entry:
   call spir_func void @_Z34__spirv_SubgroupBlockPrefetchINTELPU3AS1Kjj(i32 addrspace(1)* %decorated_ui_ptr, i32 8)
 
   %decorated_ul_ptr = getelementptr inbounds i64, i64 addrspace(1)* %ul_in, i32 0, !spirv.Decorations !21
-; CHECK: lsc_load.ugm (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm (M1_NM, 1)  %null:d64x32t  flat[{{.*}}]:a64
   call spir_func void @_Z34__spirv_SubgroupBlockPrefetchINTELPU3AS1Kmj(i64 addrspace(1)* %decorated_ul_ptr, i32 16)
 
   ret void

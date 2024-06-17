@@ -57,16 +57,13 @@ kernel void test_int(const global uint* buffer) {
 
 __attribute__((intel_reqd_sub_group_size(16)))
 kernel void test_long(const global ulong* buffer) {
-// CHECK: lsc_load.ugm (M1_NM, 1) %null:d32x32t  flat[{{.*}}]:a64
+// CHECK: lsc_load.ugm (M1_NM, 1) %null:d64x16t  flat[{{.*}}]:a64
     intel_sub_group_block_prefetch_ul(buffer);
-// CHECK: lsc_load.ugm (M1_NM, 1) %null:d32x64t  flat[{{.*}}]:a64
+// CHECK: lsc_load.ugm (M1_NM, 1) %null:d64x32t  flat[{{.*}}]:a64
     intel_sub_group_block_prefetch_ul2(buffer);
-// CHECK: lsc_load.ugm (M1_NM, 1) %null:d32x64t  flat[{{.*}}]:a64
-// CHECK: lsc_load.ugm (M1_NM, 1) %null:d32x64t  flat[{{.*}}+0x100]:a64
+// CHECK: lsc_load.ugm (M1_NM, 1) %null:d64x64t  flat[{{.*}}]:a64
     intel_sub_group_block_prefetch_ul4(buffer);
-// CHECK: lsc_load.ugm (M1_NM, 1) %null:d32x64t  flat[{{.*}}]:a64
-// CHECK: lsc_load.ugm (M1_NM, 1) %null:d32x64t  flat[{{.*}}+0x100]:a64
-// CHECK: lsc_load.ugm (M1_NM, 1) %null:d32x64t  flat[{{.*}}+0x200]:a64
-// CHECK: lsc_load.ugm (M1_NM, 1) %null:d32x64t  flat[{{.*}}+0x300]:a64
+// CHECK: lsc_load.ugm (M1_NM, 1) %null:d64x64t  flat[{{.*}}]:a64
+// CHECK: lsc_load.ugm (M1_NM, 1) %null:d64x64t  flat[{{.*}}+0x200]:a64
     intel_sub_group_block_prefetch_ul8(buffer);
 }

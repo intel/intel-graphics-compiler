@@ -95,20 +95,17 @@ entry:
 
 
   %decorated_ul_ptr = getelementptr inbounds i64, i64 addrspace(1)* %ul_in, i32 0, !spirv.Decorations !0
-; CHECK: lsc_load.ugm.uc.uc (M1_NM, 1)  %null:d32x32t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.uc.uc (M1_NM, 1)  %null:d64x16t  flat[{{.*}}]:a64
   call spir_func void @_Z33intel_sub_group_block_prefetch_ulPU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
-; CHECK: lsc_load.ugm.uc.uc (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.uc.uc (M1_NM, 1)  %null:d64x32t  flat[{{.*}}]:a64
   call spir_func void @_Z34intel_sub_group_block_prefetch_ul2PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
-; CHECK: lsc_load.ugm.uc.uc (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
-; CHECK: lsc_load.ugm.uc.uc (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x100]:a64
+; CHECK: lsc_load.ugm.uc.uc (M1_NM, 1)  %null:d64x64t  flat[{{.*}}]:a64
   call spir_func void @_Z34intel_sub_group_block_prefetch_ul4PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
-; CHECK: lsc_load.ugm.uc.uc (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
-; CHECK: lsc_load.ugm.uc.uc (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x100]:a64
-; CHECK: lsc_load.ugm.uc.uc (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x200]:a64
-; CHECK: lsc_load.ugm.uc.uc (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x300]:a64
+; CHECK: lsc_load.ugm.uc.uc (M1_NM, 1)  %null:d64x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.uc.uc (M1_NM, 1)  %null:d64x64t  flat[{{.*}}+0x200]:a64
   call spir_func void @_Z34intel_sub_group_block_prefetch_ul8PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
   ret void
@@ -174,20 +171,17 @@ entry:
 
 
   %decorated_ul_ptr = getelementptr inbounds i64, i64 addrspace(1)* %ul_in, i32 0, !spirv.Decorations !3
-; CHECK: lsc_load.ugm.uc.ca (M1_NM, 1)  %null:d32x32t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.uc.ca (M1_NM, 1)  %null:d64x16t  flat[{{.*}}]:a64
   call spir_func void @_Z33intel_sub_group_block_prefetch_ulPU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
-; CHECK: lsc_load.ugm.uc.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.uc.ca (M1_NM, 1)  %null:d64x32t  flat[{{.*}}]:a64
   call spir_func void @_Z34intel_sub_group_block_prefetch_ul2PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
-; CHECK: lsc_load.ugm.uc.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
-; CHECK: lsc_load.ugm.uc.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x100]:a64
+; CHECK: lsc_load.ugm.uc.ca (M1_NM, 1)  %null:d64x64t  flat[{{.*}}]:a64
   call spir_func void @_Z34intel_sub_group_block_prefetch_ul4PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
-; CHECK: lsc_load.ugm.uc.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
-; CHECK: lsc_load.ugm.uc.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x100]:a64
-; CHECK: lsc_load.ugm.uc.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x200]:a64
-; CHECK: lsc_load.ugm.uc.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x300]:a64
+; CHECK: lsc_load.ugm.uc.ca (M1_NM, 1)  %null:d64x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.uc.ca (M1_NM, 1)  %null:d64x64t  flat[{{.*}}+0x200]:a64
   call spir_func void @_Z34intel_sub_group_block_prefetch_ul8PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
   ret void
@@ -253,20 +247,17 @@ entry:
 
 
   %decorated_ul_ptr = getelementptr inbounds i64, i64 addrspace(1)* %ul_in, i32 0, !spirv.Decorations !6
-; CHECK: lsc_load.ugm.ca.uc (M1_NM, 1)  %null:d32x32t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.ca.uc (M1_NM, 1)  %null:d64x16t  flat[{{.*}}]:a64
   call spir_func void @_Z33intel_sub_group_block_prefetch_ulPU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
-; CHECK: lsc_load.ugm.ca.uc (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.ca.uc (M1_NM, 1)  %null:d64x32t  flat[{{.*}}]:a64
   call spir_func void @_Z34intel_sub_group_block_prefetch_ul2PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
-; CHECK: lsc_load.ugm.ca.uc (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
-; CHECK: lsc_load.ugm.ca.uc (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x100]:a64
+; CHECK: lsc_load.ugm.ca.uc (M1_NM, 1)  %null:d64x64t  flat[{{.*}}]:a64
   call spir_func void @_Z34intel_sub_group_block_prefetch_ul4PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
-; CHECK: lsc_load.ugm.ca.uc (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
-; CHECK: lsc_load.ugm.ca.uc (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x100]:a64
-; CHECK: lsc_load.ugm.ca.uc (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x200]:a64
-; CHECK: lsc_load.ugm.ca.uc (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x300]:a64
+; CHECK: lsc_load.ugm.ca.uc (M1_NM, 1)  %null:d64x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.ca.uc (M1_NM, 1)  %null:d64x64t  flat[{{.*}}+0x200]:a64
   call spir_func void @_Z34intel_sub_group_block_prefetch_ul8PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
   ret void
@@ -332,20 +323,17 @@ entry:
 
 
   %decorated_ul_ptr = getelementptr inbounds i64, i64 addrspace(1)* %ul_in, i32 0, !spirv.Decorations !9
-; CHECK: lsc_load.ugm.ca.ca (M1_NM, 1)  %null:d32x32t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.ca.ca (M1_NM, 1)  %null:d64x16t  flat[{{.*}}]:a64
   call spir_func void @_Z33intel_sub_group_block_prefetch_ulPU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
-; CHECK: lsc_load.ugm.ca.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.ca.ca (M1_NM, 1)  %null:d64x32t  flat[{{.*}}]:a64
   call spir_func void @_Z34intel_sub_group_block_prefetch_ul2PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
-; CHECK: lsc_load.ugm.ca.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
-; CHECK: lsc_load.ugm.ca.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x100]:a64
+; CHECK: lsc_load.ugm.ca.ca (M1_NM, 1)  %null:d64x64t  flat[{{.*}}]:a64
   call spir_func void @_Z34intel_sub_group_block_prefetch_ul4PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
-; CHECK: lsc_load.ugm.ca.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
-; CHECK: lsc_load.ugm.ca.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x100]:a64
-; CHECK: lsc_load.ugm.ca.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x200]:a64
-; CHECK: lsc_load.ugm.ca.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x300]:a64
+; CHECK: lsc_load.ugm.ca.ca (M1_NM, 1)  %null:d64x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.ca.ca (M1_NM, 1)  %null:d64x64t  flat[{{.*}}+0x200]:a64
   call spir_func void @_Z34intel_sub_group_block_prefetch_ul8PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
   ret void
@@ -411,20 +399,17 @@ entry:
 
 
   %decorated_ul_ptr = getelementptr inbounds i64, i64 addrspace(1)* %ul_in, i32 0, !spirv.Decorations !12
-; CHECK: lsc_load.ugm.st.uc (M1_NM, 1)  %null:d32x32t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.st.uc (M1_NM, 1)  %null:d64x16t  flat[{{.*}}]:a64
   call spir_func void @_Z33intel_sub_group_block_prefetch_ulPU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
-; CHECK: lsc_load.ugm.st.uc (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.st.uc (M1_NM, 1)  %null:d64x32t  flat[{{.*}}]:a64
   call spir_func void @_Z34intel_sub_group_block_prefetch_ul2PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
-; CHECK: lsc_load.ugm.st.uc (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
-; CHECK: lsc_load.ugm.st.uc (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x100]:a64
+; CHECK: lsc_load.ugm.st.uc (M1_NM, 1)  %null:d64x64t  flat[{{.*}}]:a64
   call spir_func void @_Z34intel_sub_group_block_prefetch_ul4PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
-; CHECK: lsc_load.ugm.st.uc (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
-; CHECK: lsc_load.ugm.st.uc (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x100]:a64
-; CHECK: lsc_load.ugm.st.uc (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x200]:a64
-; CHECK: lsc_load.ugm.st.uc (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x300]:a64
+; CHECK: lsc_load.ugm.st.uc (M1_NM, 1)  %null:d64x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.st.uc (M1_NM, 1)  %null:d64x64t  flat[{{.*}}+0x200]:a64
   call spir_func void @_Z34intel_sub_group_block_prefetch_ul8PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
   ret void
@@ -490,20 +475,17 @@ entry:
 
 
   %decorated_ul_ptr = getelementptr inbounds i64, i64 addrspace(1)* %ul_in, i32 0, !spirv.Decorations !15
-; CHECK: lsc_load.ugm.st.ca (M1_NM, 1)  %null:d32x32t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.st.ca (M1_NM, 1)  %null:d64x16t  flat[{{.*}}]:a64
   call spir_func void @_Z33intel_sub_group_block_prefetch_ulPU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
-; CHECK: lsc_load.ugm.st.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.st.ca (M1_NM, 1)  %null:d64x32t  flat[{{.*}}]:a64
   call spir_func void @_Z34intel_sub_group_block_prefetch_ul2PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
-; CHECK: lsc_load.ugm.st.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
-; CHECK: lsc_load.ugm.st.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x100]:a64
+; CHECK: lsc_load.ugm.st.ca (M1_NM, 1)  %null:d64x64t  flat[{{.*}}]:a64
   call spir_func void @_Z34intel_sub_group_block_prefetch_ul4PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
-; CHECK: lsc_load.ugm.st.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
-; CHECK: lsc_load.ugm.st.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x100]:a64
-; CHECK: lsc_load.ugm.st.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x200]:a64
-; CHECK: lsc_load.ugm.st.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x300]:a64
+; CHECK: lsc_load.ugm.st.ca (M1_NM, 1)  %null:d64x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.st.ca (M1_NM, 1)  %null:d64x64t  flat[{{.*}}+0x200]:a64
   call spir_func void @_Z34intel_sub_group_block_prefetch_ul8PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
   ret void
@@ -569,20 +551,17 @@ entry:
 
 
   %decorated_ul_ptr = getelementptr inbounds i64, i64 addrspace(1)* %ul_in, i32 0, !spirv.Decorations !18
-; CHECK: lsc_load.ugm.ri.ca (M1_NM, 1)  %null:d32x32t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.ri.ca (M1_NM, 1)  %null:d64x16t  flat[{{.*}}]:a64
   call spir_func void @_Z33intel_sub_group_block_prefetch_ulPU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
-; CHECK: lsc_load.ugm.ri.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.ri.ca (M1_NM, 1)  %null:d64x32t  flat[{{.*}}]:a64
   call spir_func void @_Z34intel_sub_group_block_prefetch_ul2PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
-; CHECK: lsc_load.ugm.ri.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
-; CHECK: lsc_load.ugm.ri.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x100]:a64
+; CHECK: lsc_load.ugm.ri.ca (M1_NM, 1)  %null:d64x64t  flat[{{.*}}]:a64
   call spir_func void @_Z34intel_sub_group_block_prefetch_ul4PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
-; CHECK: lsc_load.ugm.ri.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
-; CHECK: lsc_load.ugm.ri.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x100]:a64
-; CHECK: lsc_load.ugm.ri.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x200]:a64
-; CHECK: lsc_load.ugm.ri.ca (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x300]:a64
+; CHECK: lsc_load.ugm.ri.ca (M1_NM, 1)  %null:d64x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.ri.ca (M1_NM, 1)  %null:d64x64t  flat[{{.*}}+0x200]:a64
   call spir_func void @_Z34intel_sub_group_block_prefetch_ul8PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
   ret void
@@ -648,20 +627,17 @@ entry:
 
 
   %decorated_ul_ptr = getelementptr inbounds i64, i64 addrspace(1)* %ul_in, i32 0, !spirv.Decorations !21
-; CHECK: lsc_load.ugm (M1_NM, 1)  %null:d32x32t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm (M1_NM, 1)  %null:d64x16t  flat[{{.*}}]:a64
   call spir_func void @_Z33intel_sub_group_block_prefetch_ulPU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
-; CHECK: lsc_load.ugm (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm (M1_NM, 1)  %null:d64x32t  flat[{{.*}}]:a64
   call spir_func void @_Z34intel_sub_group_block_prefetch_ul2PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
-; CHECK: lsc_load.ugm (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
-; CHECK: lsc_load.ugm (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x100]:a64
+; CHECK: lsc_load.ugm (M1_NM, 1)  %null:d64x64t  flat[{{.*}}]:a64
   call spir_func void @_Z34intel_sub_group_block_prefetch_ul4PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
-; CHECK: lsc_load.ugm (M1_NM, 1)  %null:d32x64t  flat[{{.*}}]:a64
-; CHECK: lsc_load.ugm (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x100]:a64
-; CHECK: lsc_load.ugm (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x200]:a64
-; CHECK: lsc_load.ugm (M1_NM, 1)  %null:d32x64t  flat[{{.*}}+0x300]:a64
+; CHECK: lsc_load.ugm (M1_NM, 1)  %null:d64x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm (M1_NM, 1)  %null:d64x64t  flat[{{.*}}+0x200]:a64
   call spir_func void @_Z34intel_sub_group_block_prefetch_ul8PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
 
   ret void

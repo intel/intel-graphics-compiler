@@ -6664,8 +6664,7 @@ void EmitPass::emitLSCSimdBlockRead(llvm::Instruction* inst, llvm::Value* ptrVal
 
     // If type size >= 8 bytes, assume 8byte aligned and use D64 Transpose message;
     // otherwise, use D32 transpose message.
-    // bool isD64 = (typeSizeInBytes >= 8);
-    bool isD64 = false;  // blk APIs only requires 4-byte alignment.
+    bool isD64 = (typeSizeInBytes >= 8);
     uint32_t blkBits = isD64 ? 64 : 32;
     while (bytesRemaining)
     {

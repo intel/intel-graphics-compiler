@@ -47,7 +47,7 @@ entry:
   store <2 x i32> %ui_value, <2 x i32> addrspace(1)* %ui_out_ptr, align 4
 
   %decorated_ul_ptr = getelementptr inbounds i64, i64 addrspace(1)* %ul_in, i32 0, !spirv.Decorations !0
-; CHECK: lsc_load.ugm.uc.uc (M1_NM, 1)  V{{[0-9]+}}:d32x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.uc.uc (M1_NM, 1)  V{{[0-9]+}}:d64x32t  flat[{{.*}}]:a64
   %ul_value = call spir_func <2 x i64> @_Z30intel_sub_group_block_read_ul2PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
   %ul_out_ptr = getelementptr inbounds <2 x i64>, <2 x i64> addrspace(1)* %ul_out, i64 %gid
   store <2 x i64> %ul_value, <2 x i64> addrspace(1)* %ul_out_ptr, align 8
@@ -84,7 +84,7 @@ entry:
   store <2 x i32> %ui_value, <2 x i32> addrspace(1)* %ui_out_ptr, align 4
 
   %decorated_ul_ptr = getelementptr inbounds i64, i64 addrspace(1)* %ul_in, i32 0, !spirv.Decorations !3
-; CHECK: lsc_load.ugm.uc.ca (M1_NM, 1)  V{{[0-9]+}}:d32x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.uc.ca (M1_NM, 1)  V{{[0-9]+}}:d64x32t  flat[{{.*}}]:a64
   %ul_value = call spir_func <2 x i64> @_Z30intel_sub_group_block_read_ul2PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
   %ul_out_ptr = getelementptr inbounds <2 x i64>, <2 x i64> addrspace(1)* %ul_out, i64 %gid
   store <2 x i64> %ul_value, <2 x i64> addrspace(1)* %ul_out_ptr, align 8
@@ -121,7 +121,7 @@ entry:
   store <2 x i32> %ui_value, <2 x i32> addrspace(1)* %ui_out_ptr, align 4
 
   %decorated_ul_ptr = getelementptr inbounds i64, i64 addrspace(1)* %ul_in, i32 0, !spirv.Decorations !6
-; CHECK: lsc_load.ugm.ca.uc (M1_NM, 1)  V{{[0-9]+}}:d32x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.ca.uc (M1_NM, 1)  V{{[0-9]+}}:d64x32t  flat[{{.*}}]:a64
   %ul_value = call spir_func <2 x i64> @_Z30intel_sub_group_block_read_ul2PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
   %ul_out_ptr = getelementptr inbounds <2 x i64>, <2 x i64> addrspace(1)* %ul_out, i64 %gid
   store <2 x i64> %ul_value, <2 x i64> addrspace(1)* %ul_out_ptr, align 8
@@ -158,7 +158,7 @@ entry:
   store <2 x i32> %ui_value, <2 x i32> addrspace(1)* %ui_out_ptr, align 4
 
   %decorated_ul_ptr = getelementptr inbounds i64, i64 addrspace(1)* %ul_in, i32 0, !spirv.Decorations !9
-; CHECK: lsc_load.ugm.ca.ca (M1_NM, 1)  V{{[0-9]+}}:d32x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.ca.ca (M1_NM, 1)  V{{[0-9]+}}:d64x32t  flat[{{.*}}]:a64
   %ul_value = call spir_func <2 x i64> @_Z30intel_sub_group_block_read_ul2PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
   %ul_out_ptr = getelementptr inbounds <2 x i64>, <2 x i64> addrspace(1)* %ul_out, i64 %gid
   store <2 x i64> %ul_value, <2 x i64> addrspace(1)* %ul_out_ptr, align 8
@@ -195,7 +195,7 @@ entry:
   store <2 x i32> %ui_value, <2 x i32> addrspace(1)* %ui_out_ptr, align 4
 
   %decorated_ul_ptr = getelementptr inbounds i64, i64 addrspace(1)* %ul_in, i32 0, !spirv.Decorations !12
-; CHECK: lsc_load.ugm.st.uc (M1_NM, 1)  V{{[0-9]+}}:d32x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.st.uc (M1_NM, 1)  V{{[0-9]+}}:d64x32t  flat[{{.*}}]:a64
   %ul_value = call spir_func <2 x i64> @_Z30intel_sub_group_block_read_ul2PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
   %ul_out_ptr = getelementptr inbounds <2 x i64>, <2 x i64> addrspace(1)* %ul_out, i64 %gid
   store <2 x i64> %ul_value, <2 x i64> addrspace(1)* %ul_out_ptr, align 8
@@ -232,7 +232,7 @@ entry:
   store <2 x i32> %ui_value, <2 x i32> addrspace(1)* %ui_out_ptr, align 4
 
   %decorated_ul_ptr = getelementptr inbounds i64, i64 addrspace(1)* %ul_in, i32 0, !spirv.Decorations !15
-; CHECK: lsc_load.ugm.st.ca (M1_NM, 1)  V{{[0-9]+}}:d32x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.st.ca (M1_NM, 1)  V{{[0-9]+}}:d64x32t  flat[{{.*}}]:a64
   %ul_value = call spir_func <2 x i64> @_Z30intel_sub_group_block_read_ul2PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
   %ul_out_ptr = getelementptr inbounds <2 x i64>, <2 x i64> addrspace(1)* %ul_out, i64 %gid
   store <2 x i64> %ul_value, <2 x i64> addrspace(1)* %ul_out_ptr, align 8
@@ -269,7 +269,7 @@ entry:
   store <2 x i32> %ui_value, <2 x i32> addrspace(1)* %ui_out_ptr, align 4
 
   %decorated_ul_ptr = getelementptr inbounds i64, i64 addrspace(1)* %ul_in, i32 0, !spirv.Decorations !18
-; CHECK: lsc_load.ugm.ri.ca (M1_NM, 1)  V{{[0-9]+}}:d32x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm.ri.ca (M1_NM, 1)  V{{[0-9]+}}:d64x32t  flat[{{.*}}]:a64
   %ul_value = call spir_func <2 x i64> @_Z30intel_sub_group_block_read_ul2PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
   %ul_out_ptr = getelementptr inbounds <2 x i64>, <2 x i64> addrspace(1)* %ul_out, i64 %gid
   store <2 x i64> %ul_value, <2 x i64> addrspace(1)* %ul_out_ptr, align 8
@@ -306,7 +306,7 @@ entry:
   store <2 x i32> %ui_value, <2 x i32> addrspace(1)* %ui_out_ptr, align 4
 
   %decorated_ul_ptr = getelementptr inbounds i64, i64 addrspace(1)* %ul_in, i32 0, !spirv.Decorations !21
-; CHECK: lsc_load.ugm (M1_NM, 1)  V{{[0-9]+}}:d32x64t  flat[{{.*}}]:a64
+; CHECK: lsc_load.ugm (M1_NM, 1)  V{{[0-9]+}}:d64x32t  flat[{{.*}}]:a64
   %ul_value = call spir_func <2 x i64> @_Z30intel_sub_group_block_read_ul2PU3AS1Km(i64 addrspace(1)* %decorated_ul_ptr)
   %ul_out_ptr = getelementptr inbounds <2 x i64>, <2 x i64> addrspace(1)* %ul_out, i64 %gid
   store <2 x i64> %ul_value, <2 x i64> addrspace(1)* %ul_out_ptr, align 8
