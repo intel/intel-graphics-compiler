@@ -33,6 +33,7 @@ add_subdirectory(KernelFunctionCloning)
 add_subdirectory(BufferBoundsChecking)
 add_subdirectory(LSCFuncs)
 add_subdirectory(LocalBuffers)
+add_subdirectory(MinimumValidAddressChecking)
 add_subdirectory(NamedBarriers)
 add_subdirectory(NontemporalLoadsAndStoresInAssert)
 add_subdirectory(OpenCLPrintf)
@@ -80,6 +81,7 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses_BufferBoundsChecking}
     ${IGC_BUILD__SRC__OpenCLPasses_LSCFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_LocalBuffers}
+    ${IGC_BUILD__SRC__OpenCLPasses_MinimumValidAddressChecking}
     ${IGC_BUILD__SRC__OpenCLPasses_NamedBarriers}
     ${IGC_BUILD__SRC__OpenCLPasses_NontemporalLoadsAndStoresInAssert}
     ${IGC_BUILD__SRC__OpenCLPasses_OpenCLPrintf}
@@ -133,6 +135,7 @@ set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses_BufferBoundsChecking}
     ${IGC_BUILD__HDR__OpenCLPasses_LSCFuncs}
     ${IGC_BUILD__HDR__OpenCLPasses_LocalBuffers}
+    ${IGC_BUILD__HDR__OpenCLPasses_MinimumValidAddressChecking}
     ${IGC_BUILD__HDR__OpenCLPasses_NamedBarriers}
     ${IGC_BUILD__HDR__OpenCLPasses_NontemporalLoadsAndStoresInAssert}
     ${IGC_BUILD__HDR__OpenCLPasses_OpenCLPrintf}
@@ -186,6 +189,7 @@ set(IGC_BUILD_Compiler_OpenCLPasses_Groups
     Compiler__OpenCLPasses_BufferBoundsChecking
     Compiler__OpenCLPasses_LSCFuncs
     Compiler__OpenCLPasses_LocalBuffers
+    Compiler__OpenCLPasses_MinimumValidAddressChecking
     Compiler__OpenCLPasses_NamedBarriers
     Compiler__OpenCLPasses_NontemporalLoadsAndStoresInAssert
     Compiler__OpenCLPasses_OpenCLPrintf

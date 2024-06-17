@@ -414,6 +414,20 @@ void InternalOptions::parseOptions(const char* internalOpts)
     {
         EnableBufferBoundsChecking = true;
     }
+
+    if (const llvm::opt::Arg* arg = internalOptions.getLastArg(OPT_minimum_valid_address_checking_common))
+    {
+        llvm::StringRef valStr = arg->getValue();
+        int val = 0;
+        if (valStr.getAsInteger(16, val) || val < 0)
+        {
+            IGC_ASSERT_MESSAGE(false, "-cl-minimum-valid-address-checking: invalid value, ignored!");
+        }
+        else
+        {
+            MinimumValidAddress = val;
+        }
+    }
 }
 
 void Options::parseOptions(const char* opts)
