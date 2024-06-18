@@ -802,7 +802,7 @@ void TransposePrivMem::handleStoreInst(StoreInst* pStore, Value* pScalarizedIdx)
     }
 
     Value* addrInElt = convertToPtr(IRB, m_DL, addr, pStore->getPointerOperandType());
-    Value* gep = IRB.CreateGEP(addrInElt, eltIx, VALUE_NAME(pStore->getName() + ".SOAPrivMemGEP"));
+    Value* gep = IRB.CreateGEP(pStore->getValueOperand()->getType(), addrInElt, eltIx, VALUE_NAME(pStore->getName() + ".SOAPrivMemGEP"));
     IRB.CreateAlignedStore(pStore->getValueOperand(), gep, IGCLLVM::getAlign(*pStore));
 
     pStore->eraseFromParent();

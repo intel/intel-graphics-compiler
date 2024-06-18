@@ -263,7 +263,7 @@ void GenXGASDynamicResolution::visitLoadInst(LoadInst &LdI) const {
   if (!CanLocalBeGeneric) {
     IGCLLVM::IRBuilder<> Builder{&LdI};
     auto GlobalPtrOp = createASCast(Builder, PtrOp, vc::AddrSpace::Global);
-    auto NewInst = Builder.CreateAlignedLoad(GlobalPtrOp, IGCLLVM::getAlign(LdI),
+    auto NewInst = Builder.CreateAlignedLoad(LdI.getType(), GlobalPtrOp, IGCLLVM::getAlign(LdI),
                                       LdI.isVolatile(), "globalOrPrivateLoad");
     LdI.replaceAllUsesWith(NewInst);
     LdI.eraseFromParent();

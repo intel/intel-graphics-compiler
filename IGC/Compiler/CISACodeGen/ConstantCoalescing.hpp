@@ -139,18 +139,42 @@ namespace IGC
                 return val;
             }
 
+            LoadInst* CreateLoad(Type* Ty, Value* Ptr, const char* Name) {
+                LoadInst* val = IGCIRBuilder<>::CreateLoad(Ty, Ptr, Name);
+                m_TT->RegisterNewValueAndAssignID(val);
+                return val;
+            }
+            // This wrapper function is deprecated because it uses typed pointer and
+            // should no longer be used in LLVM 14+ compatible code.
             LoadInst* CreateLoad(Value* Ptr, const char* Name) {
-                LoadInst* val = IGCIRBuilder<>::CreateLoad(Ptr, Name);
+                llvm::Type* ptrType = IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType());
+                LoadInst* val = IGCIRBuilder<>::CreateLoad(ptrType, Ptr, Name);
                 m_TT->RegisterNewValueAndAssignID(val);
                 return val;
             }
+            LoadInst* CreateLoad(Type* Ty, Value* Ptr, const Twine& Name = "") {
+                LoadInst* val = IGCIRBuilder<>::CreateLoad(Ty, Ptr, Name);
+                m_TT->RegisterNewValueAndAssignID(val);
+                return val;
+            }
+            // This wrapper function is deprecated because it uses typed pointer and
+            // should no longer be used in LLVM 14+ compatible code.
             LoadInst* CreateLoad(Value* Ptr, const Twine& Name = "") {
-                LoadInst* val = IGCIRBuilder<>::CreateLoad(Ptr, Name);
+                llvm::Type* ptrType = IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType());
+                LoadInst* val = IGCIRBuilder<>::CreateLoad(ptrType, Ptr, Name);
                 m_TT->RegisterNewValueAndAssignID(val);
                 return val;
             }
+            LoadInst* CreateLoad(Type* Ty, Value* Ptr, bool isVolatile, const Twine& Name = "") {
+                LoadInst* val = IGCIRBuilder<>::CreateLoad(Ty, Ptr, isVolatile, Name);
+                m_TT->RegisterNewValueAndAssignID(val);
+                return val;
+            }
+            // This wrapper function is deprecated because it uses typed pointer and
+            // should no longer be used in LLVM 14+ compatible code.
             LoadInst* CreateLoad(Value* Ptr, bool isVolatile, const Twine& Name = "") {
-            LoadInst* val = IGCIRBuilder<>::CreateLoad(Ptr, isVolatile, Name);
+                llvm::Type* ptrType = IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType());
+                LoadInst* val = IGCIRBuilder<>::CreateLoad(ptrType, Ptr, isVolatile, Name);
                 m_TT->RegisterNewValueAndAssignID(val);
                 return val;
             }
