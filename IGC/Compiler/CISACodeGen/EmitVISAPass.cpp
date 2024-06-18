@@ -21897,21 +21897,21 @@ EmitPass::cacheOptionsForConstantBufferLoads(Instruction* inst) const
 }
 
 bool EmitPass::tryOverrideCacheOpts(LSC_CACHE_OPTS& cacheOpts, bool isLoad, bool isTGM,
-    const Value* warningContextValue) const
+    const Value* warningContextValue, CacheControlOverride m_CacheControlOption) const
 {
     uint32_t l1l3CacheVal = 0;
 
     if (isTGM)
     {
         l1l3CacheVal = isLoad ?
-            IGC_GET_FLAG_VALUE(TgmLoadCacheControlOverride) :
-            IGC_GET_FLAG_VALUE(TgmStoreCacheControlOverride);
+            (m_CacheControlOption.TgmLoadCacheControlOverride | IGC_GET_FLAG_VALUE(TgmLoadCacheControlOverride)) :
+            (m_CacheControlOption.TgmStoreCacheControlOverride | IGC_GET_FLAG_VALUE(TgmStoreCacheControlOverride));
     }
     else
     {
         l1l3CacheVal = isLoad ?
-            IGC_GET_FLAG_VALUE(LscLoadCacheControlOverride) :
-            IGC_GET_FLAG_VALUE(LscStoreCacheControlOverride);
+            (m_CacheControlOption.LscLoadCacheControlOverride | IGC_GET_FLAG_VALUE(LscLoadCacheControlOverride)) :
+            (m_CacheControlOption.LscStoreCacheControlOverride | IGC_GET_FLAG_VALUE(LscStoreCacheControlOverride));
     }
 
     if (l1l3CacheVal != 0)
@@ -21944,7 +21944,7 @@ LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsFromMetadata(
     {
         if (m_pCtx->platform.supportsNonDefaultLSCCacheSetting())
         {
-            if (tryOverrideCacheOpts(cacheOpts, isLoad, isTGM, inst))
+            if (tryOverrideCacheOpts(cacheOpts, isLoad, isTGM, inst, m_currShader->m_ModuleMetadata->m_CacheControlOption))
             {
                 // global override cache settings have highest priority
                 return cacheOpts;
@@ -21998,7 +21998,7 @@ LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsFromMetadata(
         }
     }
 
-    if (tryOverrideCacheOpts(cacheOpts, isLoad, isTGM, inst))
+    if (tryOverrideCacheOpts(cacheOpts, isLoad, isTGM, inst, m_currShader->m_ModuleMetadata->m_CacheControlOption))
     {
         // global override cache settings have highest priority
         return cacheOpts;

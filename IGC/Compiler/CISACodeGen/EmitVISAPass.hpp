@@ -539,7 +539,8 @@ public:
     void emitHDCuncompressedwrite(llvm::GenIntrinsicInst* I);
     ////////////////////////////////////////////////////////////////////
     // LSC related functions
-    bool tryOverrideCacheOpts(LSC_CACHE_OPTS& cacheOpts, bool isLoad, bool isTGM, const llvm::Value* warningContextValue) const;
+    bool tryOverrideCacheOpts(LSC_CACHE_OPTS& cacheOpts, bool isLoad,
+        bool isTGM, const llvm::Value* warningContextValue, CacheControlOverride m_CacheControlOption) const;
     LSC_CACHE_OPTS translateLSCCacheControlsEnum(LSC_L1_L3_CC l1l3cc, bool isLoad, const llvm::Value* warningContextValue) const;
     LSC_CACHE_OPTS translateLSCCacheControlsFromValue(
         llvm::Value *value, bool isLoad) const;

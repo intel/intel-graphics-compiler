@@ -665,6 +665,13 @@ namespace IGC
         unsigned int numReplicas = 0;
     };
 
+    struct CacheControlOverride
+    {
+        uint8_t LscLoadCacheControlOverride = 0;
+        uint8_t LscStoreCacheControlOverride = 0;
+        uint8_t TgmLoadCacheControlOverride = 0;
+        uint8_t TgmStoreCacheControlOverride = 0;
+    };
     struct SrvMapData
     {
         unsigned int resourceRangeID = 0;
@@ -721,7 +728,6 @@ namespace IGC
         URBLayoutInfo URBInfo;
         bool UseBindlessImage = false;
         bool enableRangeReduce = false;
-
         //when true, compiler enables MatchMad optimization for VS
         bool allowMatchMadOptimizationforVS = false;
 
@@ -764,6 +770,8 @@ namespace IGC
 
         uint8_t SIMD16_SpillThreshold = 0;
         uint8_t SIMD32_SpillThreshold = 0;
+
+        CacheControlOverride m_CacheControlOption;
     };
 
     void serialize(const IGC::ModuleMetaData &moduleMD, llvm::Module* module);
