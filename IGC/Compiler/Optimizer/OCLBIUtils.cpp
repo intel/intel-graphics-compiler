@@ -15,9 +15,11 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "AdaptorCommon/ImplicitArgs.hpp"
 #include "LLVM3DBuilder/BuiltinsFrontend.hpp"
 #include "Probe/Assertion.h"
 #include "IGC/common/StringMacros.hpp"
+#include <llvm/Support/Casting.h>
 
 using namespace llvm;
 using namespace IGC;
@@ -249,7 +251,7 @@ Argument* CImagesBI::CImagesUtils::findImageFromBufferPtr(const MetaDataUtils& M
     return nullptr;
 }
 
-static bool isBindlessImageLoad(Value *v)
+static bool isSYCLBindlessImageLoad(Value *v)
 {
     auto *load = dyn_cast<LoadInst>(v);
     if (!load)
@@ -270,7 +272,7 @@ ConstantInt* CImagesBI::CImagesUtils::getImageIndex(
 {
     ConstantInt* imageIndex = nullptr;
 
-    imageParam = ValueTracker::track(pCallInst, paramIndex, nullptr, nullptr, isBindlessImageLoad);
+    imageParam = ValueTracker::track(pCallInst, paramIndex, nullptr, nullptr, isSYCLBindlessImageLoad);
     IGC_ASSERT(imageParam);
     IGC_ASSERT(isa<Argument>(imageParam) || isa<LoadInst>(imageParam));
     int i = (*pParamMap)[imageParam].index;
@@ -280,7 +282,7 @@ ConstantInt* CImagesBI::CImagesUtils::getImageIndex(
 
 BufferType CImagesBI::CImagesUtils::getImageType(ParamMap* pParamMap, CallInst* pCallInst, unsigned int paramIndex)
 {
-    Value *imageParam = ValueTracker::track(pCallInst, paramIndex, nullptr, nullptr, isBindlessImageLoad);
+    Value *imageParam = ValueTracker::track(pCallInst, paramIndex, nullptr, nullptr, isSYCLBindlessImageLoad);
     IGC_ASSERT(imageParam);
     IGC_ASSERT(isa<Argument>(imageParam) || isa<LoadInst>(imageParam));
     return isa<LoadInst>(imageParam) ? BufferType::BINDLESS : (*pParamMap)[imageParam].type;
@@ -439,62 +441,104 @@ public:
             }
             return false;
         };
-        Value* samplerParam = ValueTracker::track(m_pCallInst, 1, m_pMdUtils, m_modMD, isBindlessSampler);
-        if (!samplerParam) {
+        Value* samplerValue = ValueTracker::track(m_pCallInst, 1, m_pMdUtils, m_modMD, isBindlessSampler);
+        if (!samplerValue) {
             emitError("There are instructions that use a sampler, but no sampler found in the kernel!", m_pCallInst);
             return nullptr;
         }
 
         auto modMD = m_pCodeGenContext->getModuleMetaData();
 
-        // If bindless image is preferred, map the bindless pointer
+        auto addToInlineSamplersMD = [&](int samplerConstantVal)
+        {
+            // Is this sampler already allocated?
+            auto iter = m_pInlineMap->find(samplerConstantVal);
+            if (iter != m_pInlineMap->end())
+            {
+                return ConstantInt::get(m_pIntType, iter->second);
+            }
+
+            // No, allocate it.
+            int currSamplerIdx = (*m_pNextSampler)++;
+            (*m_pInlineMap)[samplerConstantVal] = currSamplerIdx;
+            samplerIndex = ConstantInt::get(m_pIntType, currSamplerIdx);
+
+            // Push this information into the metadata, for the state processor's benefit
+            FunctionMetaData& funcMD = m_modMD->FuncMD[m_pFunc];
+            ResourceAllocMD& resAllocMD = funcMD.resAllocMD;
+            InlineSamplersMD inlineSamplerMD;
+            CreateInlineSamplerAnnotations(inlineSamplerMD, samplerConstantVal);
+            inlineSamplerMD.index = currSamplerIdx;
+            resAllocMD.inlineSamplersMD.push_back(inlineSamplerMD);
+            m_pMdUtils->save(*m_pCtx);
+            return samplerIndex;
+        };
+
         if (modMD->UseBindlessImage)
         {
-            // If sampler is argument, look up index in the parameter map.
-            int i = isa<Argument>(samplerParam) ? (*m_pParamMap)[samplerParam].index : 0;
-            samplerIndex = ConstantInt::get(m_pIntType, i);
-            unsigned int addressSpace = IGC::EncodeAS4GFXResource(*samplerIndex, BufferType::BINDLESS_SAMPLER);
-            Type* ptrTy = llvm::PointerType::get(m_pFloatType, addressSpace);
-            Value* bindlessSampler = isa<IntegerType>(samplerParam->getType()) ?
-                BitCastInst::CreateBitOrPointerCast(samplerParam, ptrTy, "bindless_sampler", m_pCallInst) :
-                BitCastInst::CreatePointerCast(samplerParam, ptrTy, "bindless_sampler", m_pCallInst);
+            // In bindless mode, samplerValue is BinaryOperator::Or computed in ResolveSampledImageBuiltins pass.
+            // Continue to track back the sampler's origin value, which could be one of following values:
+            //   * a constant, e.g. inline sampler.
+            //   * kernel argument, e.g. sampler that is kernel argument.
+            //   * load inst, e.g. sampler in SYCL bindless sampled image.
+            Value *samplerValueOrigin = ValueTracker::track(samplerValue, m_pFunc, m_pMdUtils, m_modMD, isSYCLBindlessImageLoad);
+            if (!samplerValueOrigin) {
+                emitError("There are instructions that use a sampler, but no sampler found in the kernel!", m_pCallInst);
+                return nullptr;
+            }
+            // Map the bindless pointer.
+            Value *bindlessSampler = nullptr;
+            if (auto *samplerConstant = dyn_cast<ConstantInt>(samplerValueOrigin))
+            {
+                // Sampler is constant, e.g. inline sampler.
+                int samplerConstantVal = int_cast<int>(samplerConstant->getZExtValue());
+                samplerIndex = addToInlineSamplersMD(samplerConstantVal);
+
+                // Bindless inline sampler is passed via implicit kernel argument.
+                ImplicitArgs implicitArgs(*m_pFunc, m_pMdUtils);
+
+                Argument *arg = implicitArgs.getNumberedImplicitArg(*m_pFunc, ImplicitArg::INLINE_SAMPLER, samplerConstantVal);
+                if (!arg) {
+                    emitError("Implicit arg isn't found for inline sampler!", m_pCallInst);
+                    return nullptr;
+                }
+                auto *binOp = cast<BinaryOperator>(samplerValue);
+                auto *argExt = new ZExtInst(arg, Type::getInt64Ty(*m_pCtx), "", binOp);
+                binOp->setOperand(0, argExt);
+
+                unsigned addressSpace = IGC::EncodeAS4GFXResource(*samplerIndex, BufferType::BINDLESS_SAMPLER);
+                Type *ptrTy = PointerType::get(m_pFloatType, addressSpace);
+                bindlessSampler = BitCastInst::CreateBitOrPointerCast(m_pCallInst->getOperand(1), ptrTy, "bindless_sampler", m_pCallInst);
+            }
+            else
+            {
+                // Sampler is either sampler that is kernel argument, or sampler in SYCL bindless sampled image.
+                // If sampler is argument, look up index in the parameter map.
+                int i = isa<Argument>(samplerValueOrigin) ? (*m_pParamMap)[samplerValueOrigin].index : 0;
+                samplerIndex = ConstantInt::get(m_pIntType, i);
+                unsigned int addressSpace = IGC::EncodeAS4GFXResource(*samplerIndex, BufferType::BINDLESS_SAMPLER);
+                Type* ptrTy = llvm::PointerType::get(m_pFloatType, addressSpace);
+                bindlessSampler = isa<IntegerType>(samplerValue->getType()) ?
+                    BitCastInst::CreateBitOrPointerCast(samplerValue, ptrTy, "bindless_sampler", m_pCallInst) :
+                    BitCastInst::CreatePointerCast(samplerValue, ptrTy, "bindless_sampler", m_pCallInst);
+            }
             return bindlessSampler;
         }
 
         // Argument samplers are looked up in the parameter map
-        if (isa<Argument>(samplerParam))
+        if (isa<Argument>(samplerValue))
         {
-            int i = (*m_pParamMap)[samplerParam].index;
+            int i = (*m_pParamMap)[samplerValue].index;
             samplerIndex = ConstantInt::get(m_pIntType, i);
             return samplerIndex;
         }
 
         // The sampler is not an argument, make sure it's a constant
-        IGC_ASSERT_MESSAGE(isa<ConstantInt>(samplerParam), "Sampler must be a global variable or a constant");
-        ConstantInt* constSampler = cast<ConstantInt>(samplerParam);
-        int samplerValue = int_cast<int>(constSampler->getZExtValue());
+        IGC_ASSERT_MESSAGE(isa<ConstantInt>(samplerValue), "Sampler must be a global variable or a constant");
+        auto *samplerConstant = cast<ConstantInt>(samplerValue);
+        int samplerConstantVal = int_cast<int>(samplerConstant->getZExtValue());
 
-        // Is this sampler already allocated?
-        auto iter = m_pInlineMap->find(samplerValue);
-        if (iter != m_pInlineMap->end())
-        {
-            return ConstantInt::get(m_pIntType, iter->second);
-        }
-
-        // No, allocate it.
-        int currSamplerIdx = (*m_pNextSampler)++;
-        (*m_pInlineMap)[samplerValue] = currSamplerIdx;
-        samplerIndex = ConstantInt::get(m_pIntType, currSamplerIdx);
-
-        // Push this information into the metadata, for the state processor's benefit
-        FunctionMetaData& funcMD = m_modMD->FuncMD[m_pFunc];
-        ResourceAllocMD& resAllocMD = funcMD.resAllocMD;
-        InlineSamplersMD inlineSamplerMD;
-        CreateInlineSamplerAnnotations(inlineSamplerMD, samplerValue);
-        inlineSamplerMD.index = currSamplerIdx;
-        resAllocMD.inlineSamplersMD.push_back(inlineSamplerMD);
-        m_pMdUtils->save(*m_pCtx);
-        return samplerIndex;
+        return addToInlineSamplersMD(samplerConstantVal);
     }
 
     void CreateInlineSamplerAnnotations(InlineSamplersMD& inlineSamplerMD, int samplerValue)

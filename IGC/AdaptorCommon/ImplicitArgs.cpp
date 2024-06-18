@@ -62,6 +62,7 @@ static const std::vector<ImplicitArg> IMPLICIT_ARGS = {
     ImplicitArg(ImplicitArg::SAMPLER_ADDRESS, "smpAddress", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
     ImplicitArg(ImplicitArg::SAMPLER_NORMALIZED, "smpNormalized", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
     ImplicitArg(ImplicitArg::SAMPLER_SNAP_WA, "smpSnapWA", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
+    ImplicitArg(ImplicitArg::INLINE_SAMPLER, "inlineSampler", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
     ImplicitArg(ImplicitArg::FLAT_IMAGE_BASEOFFSET, "flatImageBaseoffset", ImplicitArg::LONG, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_QWORD, true),
     ImplicitArg(ImplicitArg::FLAT_IMAGE_HEIGHT, "flatImageHeight", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
     ImplicitArg(ImplicitArg::FLAT_IMAGE_WIDTH, "flatImageWidth", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1, ImplicitArg::ALIGN_DWORD, true),
@@ -646,6 +647,27 @@ bool ImplicitArgs::isImplicitImage(ImplicitArg::ArgType argType)
 bool ImplicitArgs::isImplicitStruct(ImplicitArg::ArgType argType)
 {
     return (argType >= ImplicitArg::STRUCT_START) && (argType <= ImplicitArg::STRUCT_END);
+}
+
+bool ImplicitArgs::isImplicitArg(Argument *arg) const
+{
+    unsigned argSize = arg->getParent()->arg_size();
+    unsigned numImplicitArgs = size();
+    IGC_ASSERT_MESSAGE(argSize >= numImplicitArgs, "Function arg size does not match meta data args.");
+    unsigned argNo = arg->getArgNo();
+    return argNo >= (argSize - numImplicitArgs);
+}
+
+int ImplicitArgs::getExplicitArgNumForArg(Argument *implicitArg) const
+{
+    unsigned argSize = implicitArg->getParent()->arg_size();
+    unsigned numImplicitArgs = size();
+    IGC_ASSERT_MESSAGE(argSize >= numImplicitArgs, "Function arg size does not match meta data args.");
+    unsigned argNo = implicitArg->getArgNo();
+    IGC_ASSERT_MESSAGE(argNo >= (argSize - numImplicitArgs), "The arg should be implicit arg");
+    unsigned implicitArgIndex = argNo - (argSize - numImplicitArgs);
+    ArgInfoMetaDataHandle argInfo = m_funcInfoMD->getImplicitArgInfoListItem(implicitArgIndex);
+    return argInfo->getExplicitArgNum();
 }
 
 ImplicitArg::ArgType ImplicitArgs::getArgType(unsigned int index) const {

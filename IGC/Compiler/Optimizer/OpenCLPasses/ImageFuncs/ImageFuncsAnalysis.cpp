@@ -56,8 +56,8 @@ bool ImageFuncsAnalysis::runOnModule(Module& M) {
     m_pMDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
-    m_addImplicitImageArgs = !ctx->getModuleMetaData()->compOpt.UseBindlessMode ||
-                                 ctx->getModuleMetaData()->compOpt.UseLegacyBindlessMode;
+    m_useAdvancedBindlessMode = ctx->getModuleMetaData()->compOpt.UseBindlessMode &&
+                                !ctx->getModuleMetaData()->compOpt.UseLegacyBindlessMode;
 
     // Run on all functions defined in this module
     for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I) {
@@ -81,7 +81,7 @@ bool ImageFuncsAnalysis::runOnFunction(Function& F) {
     // Visit the function
     visit(F);
 
-    ImplicitArgs::addImageArgs(F, m_argMap, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
+    ImplicitArgs::addImageArgs(F, m_argMap, m_pMDUtils);
 
     m_argMap.clear();
 
@@ -100,15 +100,15 @@ void ImageFuncsAnalysis::visitCallInst(CallInst& CI)
     // Check for OpenCL image dimension function calls
     std::set<int>* imageFunc = nullptr;
 
-    if (funcName == GET_IMAGE_HEIGHT && m_addImplicitImageArgs)
+    if (funcName == GET_IMAGE_HEIGHT && !m_useAdvancedBindlessMode)
     {
         imageFunc = &m_argMap[ImplicitArg::IMAGE_HEIGHT];
     }
-    else if (funcName == GET_IMAGE_WIDTH && m_addImplicitImageArgs)
+    else if (funcName == GET_IMAGE_WIDTH && !m_useAdvancedBindlessMode)
     {
         imageFunc = &m_argMap[ImplicitArg::IMAGE_WIDTH];
     }
-    else if (funcName == GET_IMAGE_DEPTH && m_addImplicitImageArgs)
+    else if (funcName == GET_IMAGE_DEPTH && !m_useAdvancedBindlessMode)
     {
         imageFunc = &m_argMap[ImplicitArg::IMAGE_DEPTH];
     }
@@ -128,7 +128,7 @@ void ImageFuncsAnalysis::visitCallInst(CallInst& CI)
     {
         imageFunc = &m_argMap[ImplicitArg::IMAGE_SRGB_CHANNEL_ORDER];
     }
-    else if ((funcName == GET_IMAGE1D_ARRAY_SIZE || funcName == GET_IMAGE2D_ARRAY_SIZE) && m_addImplicitImageArgs)
+    else if ((funcName == GET_IMAGE1D_ARRAY_SIZE || funcName == GET_IMAGE2D_ARRAY_SIZE) && !m_useAdvancedBindlessMode)
     {
         imageFunc = &m_argMap[ImplicitArg::IMAGE_ARRAY_SIZE];
     }
@@ -197,9 +197,21 @@ void ImageFuncsAnalysis::visitCallInst(CallInst& CI)
     // These WAs need to be reworked to support indirect case in the future.
     if (callArg)
     {
-        if (Argument * arg = dyn_cast<Argument>(callArg); arg && isSamplerArgument(arg))
+        if (Argument * arg = dyn_cast<Argument>(callArg))
         {
-            imageFunc->insert(arg->getArgNo());
+            if (isSamplerArgument(arg))
+            {
+                imageFunc->insert(arg->getArgNo());
+                return;
+            }
+        }
+        else if (m_useAdvancedBindlessMode)
+        {
+            IGC_ASSERT_MESSAGE(isa<ConstantInt>(callArg), "Expect inline sampler");
+            auto *inlineSampler = cast<ConstantInt>(callArg);
+            // Inline sampler doesn't associate with an explicit argument.
+            // To avoid adding a new metadata entry, inline sampler value is stored as explicit argument number.
+            m_argMap[ImplicitArg::INLINE_SAMPLER].insert(int_cast<int>(inlineSampler->getZExtValue()));
             return;
         }
     }

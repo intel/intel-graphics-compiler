@@ -81,6 +81,7 @@ namespace IGC
             SAMPLER_ADDRESS,
             SAMPLER_NORMALIZED,
             SAMPLER_SNAP_WA,
+            INLINE_SAMPLER,
             FLAT_IMAGE_BASEOFFSET,
             FLAT_IMAGE_HEIGHT,
             FLAT_IMAGE_WIDTH,
@@ -361,6 +362,14 @@ namespace IGC
         /// @brief  Returns true if the given argument type is a struct
         /// @param  argType The argument type to check.
         static bool isImplicitStruct(ImplicitArg::ArgType argType);
+
+        /// @brief  Returns true if the given argument is an implicit argument.
+        /// @param  arg The argument to check.
+        bool isImplicitArg(llvm::Argument *arg) const;
+
+        /// @brief  Returns explicit argument number associated with the given implicit argument.
+        /// @param  implicitArg The associated implicit argument.
+        int getExplicitArgNumForArg(llvm::Argument *implicitArg) const;
 
         llvm::Value* getImplicitArgValue(llvm::Function& F, ImplicitArg::ArgType argType, const IGCMD::MetaDataUtils* pMdUtils);
 
