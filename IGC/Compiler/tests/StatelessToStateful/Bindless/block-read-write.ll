@@ -18,6 +18,8 @@
 ;     intel_sub_group_block_write(&dst[runtimeOffset], v);
 ; }
 
+; CHECK: target datalayout = "p2490368:32:32:32"
+
 ; CHECK-LABEL: @test_promote
 ; CHECK: [[RUNTIME_OFFSET:%.*]] = sext i32 %runtimeOffset to i64
 ; CHECK: [[TMP0:%.*]] = trunc i64 [[RUNTIME_OFFSET]] to i32

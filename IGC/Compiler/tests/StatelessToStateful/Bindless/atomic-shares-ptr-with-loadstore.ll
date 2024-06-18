@@ -11,6 +11,8 @@
 ; PromoteStatelessToBindless : Test promotion of regular loads and stores when a source pointer is shared with atomic
 ; ------------------------------------------------
 
+; CHECK: target datalayout = "p2490368:32:32:32"
+
 ; CHECK-LABEL: @test_promote
 ; CHECK: [[OFFSET0:%.*]] = add i32 0, 80
 ; CHECK: [[A64PTR:%.*]] = getelementptr inbounds i64, i64 addrspace(1)* %src, i64 10

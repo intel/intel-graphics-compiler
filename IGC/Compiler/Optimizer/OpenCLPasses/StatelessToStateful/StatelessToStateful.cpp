@@ -804,6 +804,7 @@ void StatelessToStateful::promote()
                 IGC::EncodeAS4GFXResource(
                     *UndefValue::get(Type::getInt32Ty(m_Module->getContext())),
                     IGC::BINDLESS);
+            setPointerSizeTo32bit(statefullAddrspace, m_Module);
         }
         else
         {

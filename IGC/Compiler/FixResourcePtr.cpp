@@ -245,6 +245,7 @@ Value* FixResourcePtr::GetByteOffset(Instruction* eltPtr)
 
 Value* FixResourcePtr::CreateLoadIntrinsic(LoadInst* inst, Instruction* bufPtr, Value* offsetVal)
 {
+    IGC_ASSERT(offsetVal->getType()->getScalarSizeInBits() == 32);
     Function* l;
     builder->SetInsertPoint(inst);
     llvm::Type* tys[2];
@@ -278,6 +279,7 @@ Value* FixResourcePtr::CreateLoadIntrinsic(LoadInst* inst, Instruction* bufPtr, 
 
 Value* FixResourcePtr::CreateStoreIntrinsic(StoreInst* inst, Instruction* bufPtr, Value* offsetVal)
 {
+    IGC_ASSERT(offsetVal->getType()->getScalarSizeInBits() == 32);
     Function* l;
     builder->SetInsertPoint(inst);
     Value* storeVal = inst->getValueOperand();
