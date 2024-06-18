@@ -2929,7 +2929,7 @@ public:
     if (v.s64 < 0 || v.s64 > 0x1F) {
       FailAtT(at, "SrcLen out of range");
     } else if (regNum + (int)v.s64 - 1 > regLimit) {
-      FailAtT(at, "SrcLen register range extends past GRF end");
+      WarningAtT(at, "SrcLen register range extends past GRF end");
     }
     if (v.s64 > 32) { // could constrain this more
       FailAtT(at, "invalid payload length");
