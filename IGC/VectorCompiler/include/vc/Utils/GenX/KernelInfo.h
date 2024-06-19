@@ -97,6 +97,8 @@ inline bool isIndirect(const llvm::Function *F) {
     return false;
   if (!F->hasAddressTaken() && F->hasLocalLinkage())
     return false;
+  if (vc::isCMCallable(*F))
+    return false;
   IGC_ASSERT_MESSAGE(
       requiresStackCall(F),
       "The indirectly-called function is expected to be a stack call");
