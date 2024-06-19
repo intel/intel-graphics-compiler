@@ -1168,7 +1168,7 @@ void Decoder::decodeSendInfoXe2(SendDescodeInfo &sdi) {
       // for UGM, src1Length must be in EU field
       GED_DECODE_RAW_TO(Src1Length, sdi.src1Len);
     }
-       sdi.exImmOffDesc &= ~(0x7 << 16); // ExDesc.AddrSubReg
+    sdi.exImmOffDesc &= ~(0x7 << 16); // ExDesc.AddrSubReg
   } else {
     // exDes is Imm, src1.len must be in EU field
     GED_DECODE_RAW_TO(Src1Length, sdi.src1Len);
