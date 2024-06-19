@@ -678,19 +678,18 @@ bool DpasFuncsResolution::processSrnd(CallInst& CI)
         return false;
 
     StringRef funcName = func->getName();
-
     int VecLen;
     bool isSat = false;
     GenISAIntrinsic::ID iid;
-    if (funcName.consume_front("__builtin_IB_srnd_ftohf_"))
+    if (funcName.startswith("__builtin_IB_srnd_ftohf_"))
     {
-        if (!demangleFCvtSuffix(funcName, 0, nullptr, &VecLen, nullptr))
+        if (!demangleFCvtSuffix(funcName, (int)sizeof("__builtin_IB_srnd_ftohf_") - 1, nullptr, &VecLen, nullptr))
             return false;
         iid = GenISAIntrinsic::GenISA_srnd_ftohf;
     }
-    else if (funcName.consume_front("__builtin_IB_srnd_hftobf8_"))
+    else if (funcName.startswith("__builtin_IB_srnd_hftobf8_"))
     {
-        if (!demangleFCvtSuffix(funcName, 0, nullptr, &VecLen, &isSat))
+        if (!demangleFCvtSuffix(funcName, (int)sizeof("__builtin_IB_srnd_hftobf8_") - 1, nullptr, &VecLen, &isSat))
             return false;
         iid = GenISAIntrinsic::GenISA_srnd_hftobf8;
     }
@@ -703,7 +702,7 @@ bool DpasFuncsResolution::processSrnd(CallInst& CI)
     Value* args[3] = { CI.getArgOperand(0), CI.getArgOperand(1), ConstantInt::get(boolTy, isSat) };
     ArrayRef<Value*> ii_args(args, 3);
 
-    Type* ITys[4] = { func->getReturnType(), args[0]->getType(), args[1]->getType(), boolTy };
+    Type* ITys[3] = { func->getReturnType(), args[0]->getType(), boolTy };
     Function* srndFunc = GenISAIntrinsic::getDeclaration(func->getParent(), iid, ITys);
     Instruction* srndCall = CallInst::Create(srndFunc, ii_args, VALUE_NAME("srnd"), &CI);
 
@@ -721,12 +720,11 @@ bool DpasFuncsResolution::processSrnd(CallInst& CI)
         uint32_t n = VTy ? (uint32_t)VTy->getNumElements() : 1;
         uint32_t n0 = VOpnd0Ty ? (uint32_t)VOpnd0Ty->getNumElements() : 1;
 
-        bool supported = false;
-        supported |= (ETy->isHalfTy() && EOpnd0Ty->isFloatTy() && EOpnd1Ty->isIntegerTy(16));
-        supported |= (ETy->isIntegerTy(8) && EOpnd0Ty->isHalfTy() && EOpnd1Ty->isIntegerTy(8));
-        supported |= (ETy->isIntegerTy(8) && EOpnd0Ty->isIntegerTy(16) && EOpnd1Ty->isIntegerTy(8));
-
-        if (n != n0 || n != VecLen || !supported)
+        if (n != n0 || n != VecLen ||
+            !(((ETy->isHalfTy() && EOpnd0Ty->isFloatTy()) &&
+                  EOpnd1Ty->isIntegerTy(16)) ||
+              ((ETy->isIntegerTy(8) && EOpnd0Ty->isHalfTy() &&
+               !EOpnd1Ty->isIntegerTy(8)))))
         {
             m_ErrorMsg = "Wrong argument types in srnd builtin!";
             IGC_ASSERT_MESSAGE(0, "Wrong argument types in srnd builtin!");
