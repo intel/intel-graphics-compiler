@@ -777,9 +777,10 @@ namespace IGC
         /// For group head functions, when having the stack call, the spillSize
         /// returned by vISA is the sum of required stack size of all potential
         /// callee and without considering recursive or indirect calls.
-        uint32_t getSpillMemSizeWithFG(const llvm::Function& curFunc,
+        uint32_t getSpillMemSizeWithFG(const llvm::Function &curFunc,
                                        uint32_t curSize,
-                                       GenXFunctionGroupAnalysis *fga);
+                                       GenXFunctionGroupAnalysis *fga,
+                                       uint32_t gtpinScratchUse);
 
     protected:
         // encoder states

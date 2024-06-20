@@ -6193,7 +6193,9 @@ namespace IGC
 
             uint32_t barrierCount = jitInfo->numBarriers;
             uint32_t privateMemPerThread = (uint32_t)(it.second.argumentStackSize + it.second.allocaStackSize);
-            uint32_t spillMemPerThread = getSpillMemSizeWithFG(*F, jitInfo->stats.spillMemUsed, pFga);
+            uint32_t spillMemPerThread =
+                getSpillMemSizeWithFG(*F, jitInfo->stats.spillMemUsed, pFga,
+                                      jitInfo->numBytesScratchGtpin);
             uint8_t hasRTCalls = (uint8_t)modMD->FuncMD[F].hasSyncRTCalls;
 
             attrs.emplace_back(
@@ -6727,7 +6729,8 @@ namespace IGC
             IGC_IS_FLAG_SET(ForceScratchSpaceSize)
                 ? IGC_GET_FLAG_VALUE(ForceScratchSpaceSize)
                 : getSpillMemSizeWithFG(*m_program->entry,
-                                        jitInfo->stats.spillMemUsed, pFGA);
+                                        jitInfo->stats.spillMemUsed, pFGA,
+                                        jitInfo->numBytesScratchGtpin);
 
         pMainKernel->GetGTPinBuffer(pOutput->m_gtpinBuffer,
                                     pOutput->m_gtpinBufferSize,
@@ -6756,23 +6759,35 @@ namespace IGC
     }
 
     uint32_t CEncoder::getSpillMemSizeWithFG(const llvm::Function &curFunc,
-        uint32_t curSize, GenXFunctionGroupAnalysis *fga)
-    {
+                                             uint32_t curSize,
+                                             GenXFunctionGroupAnalysis *fga,
+                                             uint32_t gtpinScratchUse) {
         if (!fga)
             return curSize;
 
         // Return the precise stack size for non-group-head function, and the
         // estimated conservative value for group head.
         const FunctionGroup *fg = fga->getGroupForHead(&curFunc);
-        if(!fg)
+        if (!fg)
             return curSize;
-        // Since it is difficult to predict amount of space needed to store stack,
-        // we reserve a magic large size. Reserving max PTSS is ideal, but it can
-        // lead to OOM on machines with large number of threads.
+        // Since it is difficult to predict amount of space needed to store
+        // stack, we reserve a magic large size. Reserving max PTSS is
+        // ideal, but it can lead to OOM on machines with large number of
+        // threads.
         auto visaplt = GetVISAPlatform(&(m_program->GetContext()->platform));
         if (fg->hasIndirectCall() || fg->hasRecursion()) {
-            if(visaplt == TARGET_PLATFORM::Xe_PVCXT)
+            if (visaplt == TARGET_PLATFORM::Xe_PVCXT)
                 return 64 * 1024;
+            // gtpin may want to use 8kb for instrumentation. HWord
+            // scratch message supports only 128kb addressing. Whereas
+            // OWord message for 128kb+ addressing requires free GRF
+            // for header. If there are no free GRFs then instrumentation
+            // may fail. So for TGLLP, we assume 120kb is used for spills
+            // so that gtpin may still be able to use 8kb, when needed.
+            // LSC doesn't have restriction of 128kb so this WA is only
+            // used for TGLLP and only when gtpin wants to attach.
+            if (visaplt == TARGET_PLATFORM::GENX_TGLLP && gtpinScratchUse)
+                return 120 * 1024;
             return 128 * 1024;
         }
 
