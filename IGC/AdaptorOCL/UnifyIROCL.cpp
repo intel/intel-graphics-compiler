@@ -566,6 +566,7 @@ static void CommonOCLBasedPasses(
     mpm.add(new ErrorCheck());
     if (pContext->m_Options.EnableUnsupportedFP64Poisoning) {
         mpm.add(new PoisonFP64Kernels());
+        mpm.add(new PurgeMetaDataUtils());
     }
 
     mpm.add(new ImageFuncResolution());
