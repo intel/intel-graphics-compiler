@@ -3220,6 +3220,24 @@ namespace IGC
             // In case retry compilation give worst generated kernel
             // consider using the previous one do not retry on this
             // kernel again
+            std::ostringstream reason("[RetryManager] Used previous version of the kernel, reason : ", std::ostringstream::ate);
+
+            switch (retryType)
+            {
+            case RetryType::NO_Retry_WorseStatelessPrivateMemSize:
+                reason << "NO_Retry_WorseStatelessPrivateMemSize";
+                break;
+            case RetryType::NO_Retry_ExceedScratch:
+                reason << "NO_Retry_ExceedScratch";
+                break;
+            case RetryType::NO_Retry_Pick_Prv:
+                reason << "NO_Retry_Pick_Prv";
+                break;
+            default:
+                reason << "Unknown";
+                break;
+            }
+            ctx->EmitWarning(reason.str().c_str(), pFunc);
 
             if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
             {
@@ -3239,27 +3257,11 @@ namespace IGC
                 FullPath << "_previous_kernel_pick.txt";
 
                 std::ofstream OutF(FullPath.str(), std::ofstream::out);
-                std::ostringstream DataToDump("Reason why picked previous: ", std::ostringstream::ate);
 
-                switch (retryType)
-                {
-                case RetryType::NO_Retry_WorseStatelessPrivateMemSize:
-                    DataToDump << "NO_Retry_WorseStatelessPrivateMemSize";
-                    break;
-                case RetryType::NO_Retry_ExceedScratch:
-                    DataToDump << "NO_Retry_ExceedScratch";
-                    break;
-                case RetryType::NO_Retry_Pick_Prv:
-                    DataToDump << "NO_Retry_Pick_Prv";
-                    break;
-                default:
-                    DataToDump << "Unknown";
-                    break;
-                }
 
                 if (OutF)
-                    OutF.write(DataToDump.str().c_str(),
-                        DataToDump.str().length());
+                    OutF.write(reason.str().c_str(),
+                        reason.str().length());
             }
 
             pSelectedKernel =
@@ -3286,6 +3288,7 @@ namespace IGC
         }
         case RetryType::YES_Retry:
         {
+            ctx->EmitWarning("[RetryManager] Start recompilation of the kernel", pFunc);
             // Collect the current compilation for the next compare
             ctx->m_retryManager.Collect(std::move(pKernel));
             ctx->m_retryManager.kernelSet.insert(pShader->m_kernelInfo.m_kernelName);
