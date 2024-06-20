@@ -508,17 +508,20 @@ StoreInst* STORE(Value *Val, Value *Ptr, bool isVolatile = false)
 
 inline LoadInst* ALIGNED_LOAD(Value *Ptr, IGCLLVM::Align Align, const char *Name)
 {
-    return IRB()->CreateAlignedLoad(Ptr, Align, Name);
+    llvm::Type* ptrType = IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType());
+    return IRB()->CreateAlignedLoad(ptrType, Ptr, Align, Name);
 }
 
 inline LoadInst* ALIGNED_LOAD(Value *Ptr, IGCLLVM::Align Align, const Twine &Name = "")
 {
-    return IRB()->CreateAlignedLoad(Ptr, Align, Name);
+    llvm::Type* ptrType = IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType());
+    return IRB()->CreateAlignedLoad(ptrType, Ptr, Align, Name);
 }
 
 inline LoadInst* ALIGNED_LOAD(Value *Ptr, IGCLLVM::Align Align, bool isVolatile, const Twine &Name = "")
 {
-    return IRB()->CreateAlignedLoad(Ptr, Align, isVolatile, Name);
+    llvm::Type* ptrType = IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType());
+    return IRB()->CreateAlignedLoad(ptrType, Ptr, Align, isVolatile, Name);
 }
 
 inline StoreInst* ALIGNED_STORE(Value *Val, Value *Ptr, IGCLLVM::Align Align, bool isVolatile = false)

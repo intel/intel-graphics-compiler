@@ -400,8 +400,8 @@ void GenXGASDynamicResolution::resolveOnLoadStore(Instruction &I,
     Builder.SetInsertPoint(BB);
     auto NewPtrOp = createASCast(Builder, PtrOp, AS);
     if (LoadInst *LI = dyn_cast<LoadInst>(&I))
-      Load = Builder.CreateAlignedLoad(NewPtrOp, IGCLLVM::getAlign(*LI),
-                                       LI->isVolatile(), LoadName);
+      Load = Builder.CreateAlignedLoad(IGCLLVM::getNonOpaquePtrEltTy(NewPtrOp->getType()),
+          NewPtrOp, IGCLLVM::getAlign(*LI), LI->isVolatile(), LoadName);
     else if (StoreInst *SI = dyn_cast<StoreInst>(&I))
       Builder.CreateAlignedStore(I.getOperand(0), NewPtrOp,
                                  IGCLLVM::getAlign(*SI), SI->isVolatile());

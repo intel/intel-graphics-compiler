@@ -223,47 +223,6 @@ namespace IGCLLVM
 
         // This wrapper function is deprecated because it uses typed pointer and
         // should no longer be used in LLVM 14+ compatible code.
-        /// Provided to resolve 'CreateAlignedLoad(Ptr, Align, "...")'
-        /// correctly, instead of converting the string to 'bool' for the isVolatile
-        /// parameter.
-        inline llvm::LoadInst* CreateAlignedLoad(llvm::Value* Ptr, IGCLLVM::Align Align, const char* Name)
-        {
-            llvm::Type* ptrType = IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType());
-            return llvm::IRBuilder<T, InserterTyDef()>::CreateAlignedLoad(ptrType, Ptr, Align, Name);
-        }
-
-        /// Provided to resolve 'CreateAlignedLoad(ptrType, Ptr, Align, "...")'
-        /// correctly, instead of converting the string to 'bool' for the isVolatile
-        /// parameter.
-        inline llvm::LoadInst* CreateAlignedLoad(llvm::Type* ptrType, llvm::Value* Ptr, IGCLLVM::Align Align, const llvm::Twine& Name = "")
-        {
-            return llvm::IRBuilder<T, InserterTyDef()>::CreateAlignedLoad(ptrType, Ptr, Align, Name);
-        }
-
-        // This wrapper function is deprecated because it uses typed pointer and
-        // should no longer be used in LLVM 14+ compatible code.
-        inline llvm::LoadInst* CreateAlignedLoad(llvm::Value* Ptr, IGCLLVM::Align Align, const llvm::Twine& Name = "")
-        {
-            llvm::Type* ptrType = IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType());
-            return llvm::IRBuilder<T, InserterTyDef()>::CreateAlignedLoad(ptrType, Ptr, Align, Name);
-        }
-
-        /// Provided to resolve 'CreateAlignedLoad(ptrType, Ptr, Align, "...")' correctly.
-        inline llvm::LoadInst* CreateAlignedLoad(llvm::Type* ptrType, llvm::Value* Ptr, IGCLLVM::Align Align, bool isVolatile, const llvm::Twine& Name = "")
-        {
-            return llvm::IRBuilder<T, InserterTyDef()>::CreateAlignedLoad(ptrType, Ptr, Align, isVolatile, Name);
-        }
-
-        // This wrapper function is deprecated because it uses typed pointer and
-        // should no longer be used in LLVM 14+ compatible code.
-        inline llvm::LoadInst* CreateAlignedLoad(llvm::Value* Ptr, IGCLLVM::Align Align, bool isVolatile, const llvm::Twine& Name = "")
-        {
-            llvm::Type* ptrType = IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType());
-            return llvm::IRBuilder<T, InserterTyDef()>::CreateAlignedLoad(ptrType, Ptr, Align, isVolatile, Name);
-        }
-
-        // This wrapper function is deprecated because it uses typed pointer and
-        // should no longer be used in LLVM 14+ compatible code.
         inline llvm::Value* CreateInBoundsGEP(llvm::Value *Ptr, llvm::ArrayRef<llvm::Value*> IdxList,
                            const llvm::Twine &Name = "") {
             llvm::Type *Ty = IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType()->getScalarType());
