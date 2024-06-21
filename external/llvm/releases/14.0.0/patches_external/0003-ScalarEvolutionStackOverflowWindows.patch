@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2023 Intel Corporation
+Copyright (C) 2023-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -16,43 +16,95 @@ SPDX-License-Identifier: Apache-2.0 with LLVM-exception
 
 # TODO: Once upstreamed, update with LLORG revision & adjust per community review
 
-diff -Naur "a/llvm/include/llvm/Analysis/ScalarEvolution.h" "b/llvm/include/llvm/Analysis/ScalarEvolution.h"
---- "a/llvm/include/llvm/Analysis/ScalarEvolution.h"	2023-12-19 12:51:55.043965800 +0100
-+++ "b/llvm/include/llvm/Analysis/ScalarEvolution.h"	2023-12-19 12:28:39.120139600 +0100
-@@ -1295,6 +1295,9 @@
-   /// Set of Phis processed in createSCEVIter.
-   SmallPtrSet<const PHINode*, 6> PendingPhiSCEVIter;
+diff --git a/llvm/lib/Analysis/ScalarEvolution.cpp b/llvm/lib/Analysis/ScalarEvolution.cpp
+index e765a4d54..518683c29 100644
+--- a/llvm/lib/Analysis/ScalarEvolution.cpp
++++ b/llvm/lib/Analysis/ScalarEvolution.cpp
+@@ -5576,12 +5576,14 @@ const SCEV *ScalarEvolution::createAddRecFromPHI(PHINode *PN) {
  
-+  /// Set of Phis processed in createPhiNodeFromSelectLikePHI.
-+  SmallPtrSet<const PHINode*, 6> PendingPhiNodeFromSelectLikePHI;
-+
-   /// Mark SCEVUnknown Phis currently being processed by getRangeRef.
-   SmallPtrSet<const PHINode *, 6> PendingPhiRanges;
+   // First, try to find AddRec expression without creating a fictituos symbolic
+   // value for PN.
+-  if (auto *S = createSimpleAffineAddRec(PN, BEValueV, StartValueV))
+-    return S;
++  // if (auto *S = createSimpleAffineAddRec(PN, BEValueV, StartValueV))
++  //   return S;
  
-diff -Naur "a/llvm/lib/Analysis/ScalarEvolution.cpp" "b/llvm/lib/Analysis/ScalarEvolution.cpp"
---- "a/llvm/lib/Analysis/ScalarEvolution.cpp"	2023-12-19 12:52:55.207074600 +0100
-+++ "b/llvm/lib/Analysis/ScalarEvolution.cpp"	2023-12-19 12:37:39.188525900 +0100
-@@ -5836,11 +5836,18 @@
-     auto *BI = dyn_cast<BranchInst>(IDom->getTerminator());
-     Value *Cond = nullptr, *LHS = nullptr, *RHS = nullptr;
+   // Handle PHI node value symbolically.
+-  const SCEV *SymbolicName = getUnknown(PN);
+-  insertValueToMap(PN, SymbolicName);
++  // const SCEV *SymbolicName = getUnknown(PN);
++  // insertValueToMap(PN, SymbolicName);
++  const SCEV *SymbolicName = getExistingSCEV(PN);
++  assert(SymbolicName);
  
--    if (BI && BI->isConditional() &&
--        BrPHIToSelect(DT, BI, PN, Cond, LHS, RHS) &&
--        IsAvailableOnEntry(L, DT, getSCEV(LHS), PN->getParent()) &&
--        IsAvailableOnEntry(L, DT, getSCEV(RHS), PN->getParent()))
--      return createNodeForSelectOrPHI(PN, Cond, LHS, RHS);
-+    // do not run over cycled PHIs while processing createNodeFromSelectLikePHI
-+    if (PendingPhiNodeFromSelectLikePHI.insert(PN).second) {
-+      const SCEV* S = nullptr;
-+      if (BI && BI->isConditional() &&
-+         BrPHIToSelect(DT, BI, PN, Cond, LHS, RHS) &&
-+         IsAvailableOnEntry(L, DT, getSCEV(LHS), PN->getParent()) &&
-+         IsAvailableOnEntry(L, DT, getSCEV(RHS), PN->getParent())) {
-+          S = createNodeForSelectOrPHI(PN, Cond, LHS, RHS);
-+      }
-+      PendingPhiNodeFromSelectLikePHI.erase(PN);
-+      return S;
-+    }
+   // Using this symbolic name for the PHI, analyze the value coming around
+   // the back-edge.
+@@ -5789,6 +5791,8 @@ static bool IsAvailableOnEntry(const Loop *L, DominatorTree &DT, const SCEV *S,
+ // match.
+ static bool BrPHIToSelect(DominatorTree &DT, PHINode *Merge, Value *&C,
+                           Value *&LHS, Value *&RHS) {
++  if (Merge->getNumIncomingValues() != 2)
++    return false;
+ 
+   BasicBlock *IDom = DT[Merge->getParent()]->getIDom()->getBlock();
+   assert(IDom && "At least the entry block should dominate PN");
+@@ -7094,14 +7098,13 @@ const SCEV *ScalarEvolution::createSCEVIter(Value *V) {
+   using PointerTy = PointerIntPair<Value *, 1, bool>;
+   SmallVector<PointerTy> Stack;
+ 
+-  Stack.emplace_back(V, true);
+   Stack.emplace_back(V, false);
+ 
+   while (!Stack.empty()) {
+     auto E = Stack.pop_back_val();
+     Value *CurV = E.getPointer();
+ 
+-    if (getExistingSCEV(CurV))
++    if (getExistingSCEV(CurV) && !E.getInt())
+       continue;
+ 
+     SmallVector<Value *> Ops;
+@@ -7118,7 +7121,7 @@ const SCEV *ScalarEvolution::createSCEVIter(Value *V) {
+ 
+     if (CreatedSCEV)
+       insertValueToMap(CurV, CreatedSCEV);
+-    else {
++    if (!Ops.empty() || !CreatedSCEV) {
+       // Queue CurV for SCEV creation, followed by its's operands which need to
+       // be constructed first.
+       Stack.emplace_back(CurV, true);
+@@ -7248,21 +7251,19 @@ ScalarEvolution::getOperandsToCreate(Value *V, SmallVectorImpl<Value *> &Ops) {
+ 
+   case Instruction::PHI: {
+     PHINode *PN = cast<PHINode>(U);
+-
+-    if (PN->getNumIncomingValues() == 2) {
+-      std::pair<Value *, Value *> StartAndBEValueV =
+-          getStartAndBackEdgeValues(PN);
+-      if (StartAndBEValueV.first && StartAndBEValueV.second)
+-        // resolve recursively - may create cycles
+-        return nullptr;
+-      else if (BrPHIToSelect(DT, PN))
+-        // resolve iteratively - does not create cycles
+-        for (auto &Op : PN->operands())
+-          Ops.push_back(Op);
+-    }
+-
+-    // resolve iteratively - does not create SCEV cycles (trivially resolved)
+-    return nullptr;
++    // This phi's operands must be attached due to range computations even if it is redundant
++    // to determine its SCEV expression.
++    for (auto &Op : PN->operands())
++      Ops.push_back(Op);
++    if (BrPHIToSelect(DT, PN))
++      // This phi instruction might be classified as a phi-like-select expression.
++      // Any initial definition cannot be applied since this pattern doesn't support
++      // such a path as dedicated to addrec expressions.
++      return nullptr;
++    // This phi instruction is initially defined as undefined and can be replaced
++    // with an addrec expression if it meets requirements. Otherwise,
++    // this will be preserved.
++    return getUnknown(V);
    }
  
-   return nullptr;
+   case Instruction::Select: {
