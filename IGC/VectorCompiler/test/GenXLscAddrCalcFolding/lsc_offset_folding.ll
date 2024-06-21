@@ -1,12 +1,12 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXPatternMatch -march=genx64 -mcpu=Xe2 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXLscAddrCalcFolding -march=genx64 -mcpu=Xe2 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
 declare <4 x i64> @llvm.vc.internal.lsc.load.slm.v4i64.v4i1.v2i8.v4i32(<4 x i1>, i8, i8, i8, <2 x i8>, i32, <4 x i32>, i16, i32, <4 x i64>)
 

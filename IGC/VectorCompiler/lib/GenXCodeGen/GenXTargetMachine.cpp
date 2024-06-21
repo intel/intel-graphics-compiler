@@ -207,6 +207,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXLegacyToLscTranslatorPass(registry);
   initializeGenXSLMResolutionPass(registry);
   initializeGenXTypeLegalizationPass(registry);
+  initializeGenXLscAddrCalcFoldingPass(registry);
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
 
@@ -623,6 +624,10 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
                         BuiltinFunctionKind::PreLegalization));
     vc::addPass(PM, createAlwaysInlinerLegacyPass());
   }
+
+  /// .. include:: GenXLscAddrCalcFolding.cpp
+  vc::addPass(PM, createGenXLscAddrCalcFoldingPass());
+
   /// .. include:: GenXBFloatLowering.cpp
   vc::addPass(PM, createGenXBFloatLoweringPass());
   /// .. include:: GenXLowering.cpp

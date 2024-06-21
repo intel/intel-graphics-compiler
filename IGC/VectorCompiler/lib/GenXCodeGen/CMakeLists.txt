@@ -66,6 +66,7 @@ set(CODEGEN_SOURCES
   GenXLowerAggrCopies.cpp
   GenXLowerJmpTableSwitch.cpp
   GenXLowering.cpp
+  GenXLscAddrCalcFolding.cpp
   GenXModule.cpp
   GenXNumbering.cpp
   GenXOCLInfoExtractor.cpp
