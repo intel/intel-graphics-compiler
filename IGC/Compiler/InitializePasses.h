@@ -89,7 +89,6 @@ void initializeHandleLoadStoreInstructionsPass(llvm::PassRegistry&);
 void initializeIGCConstPropPass(llvm::PassRegistry&);
 void initializeJointMatrixFuncsResolutionPassPass(llvm::PassRegistry&);
 void initializeGatingSimilarSamplesPass(llvm::PassRegistry&);
-void initializeInsertGenericPtrArithmeticMetadataPass(llvm::PassRegistry&);
 void initializeImageFuncResolutionPass(llvm::PassRegistry&);
 void initializeImageFuncsAnalysisPass(llvm::PassRegistry&);
 void initializeImage3dToImage2darrayPass(llvm::PassRegistry&);

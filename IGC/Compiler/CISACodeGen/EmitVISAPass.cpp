@@ -10021,14 +10021,6 @@ void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
         // Address space cast is in the form of {private, local, global} -> generic
         // A tag is added according to the address space of the source
 
-        MDNode* genericMD = addrSpaceCast->getMetadata("generic.arith");
-        if (genericMD)
-        {
-            m_encoder->Cast(m_destination, srcV);
-            m_encoder->Push();
-            return;
-        }
-
         if (sourceAddrSpace == ADDRESS_SPACE_PRIVATE && (!m_pCtx->allocatePrivateAsGlobalBuffer() || m_pCtx->mustDistinguishBetweenPrivateAndGlobalPtr()))
         {
             emitAddrSpaceToGenericCast(addrSpaceCast, srcV, 1);
