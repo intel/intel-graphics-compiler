@@ -512,6 +512,7 @@ namespace IGC
         bool SkipSrc0Alpha                   = false;
         bool DualSourceBlendingDisabled      = false;
         bool ForceEnableSimd32               = false; // forces compilation of simd32; bypass heuristics
+        bool DisableSimd32WithDiscard        = false;
         bool outputDepth                     = false;
         bool outputStencil                   = false;
         bool outputMask                      = false;
