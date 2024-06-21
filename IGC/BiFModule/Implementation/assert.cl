@@ -85,24 +85,27 @@ void __stackoverflow_detection() {
     }
 }
 
-// TODO(mateuszchudyk): Add globalID.
-void __bufferoutofbounds_assert(const char* file, int line, int column, const char* bufferName, long bufferOffsetInBytes, long bufferSize) {
-    printf("[ERROR] Buffer offset is out of bounds!\n"
+void __bufferoutofbounds_assert(const char* file, int line, int column, const char* bufferName, long bufferOffsetInBytes, long bufferSize, int localId0, int localId1, int localId2, int globalId0, int globalId1, int globalId2) {
+    printf("Buffer offset is out of bounds!\n"
            "   Location:      %s:%d:%d\n"
            "   Address:       %s + 0x%X\n"
-           "   Buffer size:   0x%X\n",
-           file, line, column, bufferName, bufferOffsetInBytes, bufferSize);
+           "   Buffer size:   0x%X\n"
+           "   Local ID:      [%d, %d, %d]\n"
+           "   Global ID:     [%d, %d, %d]\n",
+           file, line, column, bufferName, bufferOffsetInBytes, bufferSize, localId0, localId1, localId2, globalId0, globalId1, globalId2);
 
     AssertBufferHeader* header = __builtin_IB_get_assert_buffer();
     header->flag = ERROR_TYPE_BUFFER_OUTOFBOUNDS;
     __builtin_IB_software_exception();
 }
 
-void __bufferoutofbounds_assert_nodebug(long bufferAddress, long bufferOffsetInBytes, long bufferSize) {
-    printf("[ERROR] Buffer offset is out of bounds!\n"
+void __bufferoutofbounds_assert_nodebug(long bufferAddress, long bufferOffsetInBytes, long bufferSize, int localId0, int localId1, int localId2, int globalId0, int globalId1, int globalId2) {
+    printf("Buffer offset is out of bounds!\n"
            "   Address:       0x%X + 0x%X\n"
-           "   Buffer size:   0x%X\n",
-           bufferAddress, bufferOffsetInBytes, bufferSize);
+           "   Buffer size:   0x%X\n"
+           "   Local ID:      [%d, %d, %d]\n"
+           "   Global ID:     [%d, %d, %d]\n",
+           bufferAddress, bufferOffsetInBytes, bufferSize, localId0, localId1, localId2, globalId0, globalId1, globalId2);
 
     AssertBufferHeader* header = __builtin_IB_get_assert_buffer();
     header->flag = ERROR_TYPE_BUFFER_OUTOFBOUNDS;

@@ -69,6 +69,15 @@ namespace IGC
         llvm::DenseMap<llvm::StringRef, llvm::GlobalVariable*> stringsCache;
         llvm::DICompileUnit* compileUnit = nullptr;
         llvm::Function* bufferSizePlaceholderFunction = nullptr;
+        llvm::Value* localId0;
+        llvm::Value* localId1;
+        llvm::Value* localId2;
+        llvm::Value* globalId0;
+        llvm::Value* globalId1;
+        llvm::Value* globalId2;
+
+        std::tuple<llvm::Value*, llvm::Value*, llvm::Value*> getLocalIds(llvm::Function& function);
+        std::tuple<llvm::Value*, llvm::Value*, llvm::Value*> getGlobalIds(llvm::Function& function);
 
         void handleLoadStore(llvm::Instruction* instruction);
 

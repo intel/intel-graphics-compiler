@@ -89,6 +89,10 @@ bool BufferBoundsChecking::runOnModule(Module& M)
         // Kernel args
         kernelArgs = new KernelArgs(function, &function.getParent()->getDataLayout(), metadataUtils, moduleMetadata, context->platform.getGRFSize());
 
+        // Local and global Ids
+        std::tie(localId0, localId1, localId2) = getLocalIds(function);
+        std::tie(globalId0, globalId1, globalId2) = getGlobalIds(function);
+
         // Collect loads/stores
         loadsAndStoresToCheck.clear();
         visit(function);
@@ -111,6 +115,37 @@ void BufferBoundsChecking::visitLoadInst(LoadInst& load)
 void BufferBoundsChecking::visitStoreInst(StoreInst& store)
 {
     loadsAndStoresToCheck.push_back(&store);
+}
+
+std::tuple<Value*, Value*, Value*> BufferBoundsChecking::getLocalIds(Function& function)
+{
+    auto getOrCreateBuiltin = [&function](const char* name)
+    {
+        return function.getParent()->getOrInsertFunction(
+            name,
+            FunctionType::get(Type::getInt32Ty(function.getContext()),
+            false));
+    };
+
+    return {
+        CallInst::Create(getOrCreateBuiltin("__builtin_IB_get_local_id_x"), {}, "localId0", function.getEntryBlock().getFirstNonPHI()),
+        CallInst::Create(getOrCreateBuiltin("__builtin_IB_get_local_id_y"), {}, "localId1", function.getEntryBlock().getFirstNonPHI()),
+        CallInst::Create(getOrCreateBuiltin("__builtin_IB_get_local_id_z"), {}, "localId2", function.getEntryBlock().getFirstNonPHI()),
+    };
+}
+
+std::tuple<Value*, Value*, Value*> BufferBoundsChecking::getGlobalIds(Function& function)
+{
+    auto builtin = function.getParent()->getOrInsertFunction(
+        "__builtin_IB_get_group_id",
+        FunctionType::get(Type::getInt32Ty(function.getContext()), { Type::getInt32Ty(function.getContext()) },
+        false));
+
+    return {
+        CallInst::Create(builtin, { ConstantInt::get(Type::getInt32Ty(function.getContext()), 0) }, "globalId0", function.getEntryBlock().getFirstNonPHI()),
+        CallInst::Create(builtin, { ConstantInt::get(Type::getInt32Ty(function.getContext()), 1) }, "globalId1", function.getEntryBlock().getFirstNonPHI()),
+        CallInst::Create(builtin, { ConstantInt::get(Type::getInt32Ty(function.getContext()), 2) }, "globalId2", function.getEntryBlock().getFirstNonPHI()),
+    };
 }
 
 void BufferBoundsChecking::handleLoadStore(Instruction* instruction)
@@ -232,6 +267,12 @@ SmallVector<Value*, 4> BufferBoundsChecking::createAssertArgs(const AccessInfo& 
     }
     result.push_back(accessInfo.bufferOffsetInBytes);
     result.push_back(createBufferSizePlaceholder(accessInfo.implicitArgBufferSizeIndex, insertBefore));
+    result.push_back(localId0);
+    result.push_back(localId1);
+    result.push_back(localId2);
+    result.push_back(globalId0);
+    result.push_back(globalId1);
+    result.push_back(globalId2);
 
     return result;
 }
