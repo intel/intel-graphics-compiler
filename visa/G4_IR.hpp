@@ -833,6 +833,7 @@ public:
   bool isNoSrcDepSet() const { return (option & InstOpt_NoSrcDepSet) != 0; }
   bool isMixedMode() const;
   bool isIllegalMixedMode() const;
+  bool isAllSrcsAlignedToDst() const;
   bool canSupportCondMod() const;
   bool canSwapSource() const;
   bool canSupportSaturate() const;

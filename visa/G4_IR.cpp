@@ -3499,6 +3499,7 @@ bool G4_INST::isIllegalMixedMode() const {
   return false;
 }
 
+
 void G4_InstSend::setMsgDesc(G4_SendDesc *in) {
   vISA_ASSERT(in, "null descriptor not expected");
   if (in && in->getExecSize() == g4::SIMD_UNDEFINED) {
@@ -7026,9 +7027,18 @@ bool G4_INST::isSupportedAccDstType() const {
   case Type_DF:
   case Type_Q:
   case Type_UQ:
+  case Type_BF:
+    return true;
   case Type_D:
   case Type_UD:
-  case Type_BF:
+    if (getExecSize() != builder.getNativeExecSize()) {
+      switch (opcode()) {
+      case G4_addc:
+        return false;
+      default:
+        return true;
+      }
+    }
     return true;
   default:
     return false;
@@ -7258,6 +7268,15 @@ bool G4_INST::canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const {
     }
   }
 
+  if (builder.removedAccRestrictionsAsGRF() && srcId == 2) {
+    if (!IS_TYPE_FLOAT_ALL(src->getType()) ||
+        (getSrc(0) && !IS_TYPE_FLOAT_ALL(getSrc(0)->getType())) ||
+        (getSrc(1) && !IS_TYPE_FLOAT_ALL(getSrc(1)->getType())) ||
+        (getDst() && !IS_TYPE_FLOAT_ALL(getDst()->getType()))) {
+      return false;
+    }
+  }
+
   if (!builder.removedAccRestrictionsAsGRF() &&
       (IS_TYPE_FLOAT_ALL(src->getType()) ^
        IS_TYPE_FLOAT_ALL(getDst()->getType()))) {
@@ -7432,6 +7451,11 @@ bool G4_INST::canSrcBeAccAfterHWConform(Gen4_Operand_Number opndNum) const {
       }
     } else {
       // no acc for mix mode inst with packed HF dst
+      return false;
+    }
+  } else if (builder.removedAccRestrictionsAsGRF()) {
+    if ((src->getLinearizedStart() % getBuilder().numEltPerGRF<Type_UB>()) !=
+        0) {
       return false;
     }
   }
