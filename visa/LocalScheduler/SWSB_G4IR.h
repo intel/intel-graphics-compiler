@@ -604,7 +604,6 @@ typedef struct _SWSB_INDEXES {
   int longIndex = 0;
   int DPASIndex = 0;
   int mathIndex = 0;
-  std::vector<SFID> hasExposedBarrier;
   unsigned latestDepALUID[PIPE_DPAS] = {0};
   std::vector<unsigned> latestInstID[PIPE_DPAS];
 } SWSB_INDEXES;
@@ -656,13 +655,6 @@ public:
   int last_send_node;
 
   bool tokenAssigned = false;
-
-  // For a fence:
-  // 1) if no barrier in the kernel, no need to add sync.
-  // 2) if there is other send beween fence and barrier, no need add sync.
-  // 3) Otherwise, add sync for the fence
-  bool hasFenceBarrierPair = false;
-  bool hasLiveOutFence = false;
 
   int send_start = -1;
   int send_end = -1;

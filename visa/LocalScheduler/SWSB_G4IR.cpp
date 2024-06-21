@@ -4396,7 +4396,6 @@ void SWSB::insertTokenSync() {
   for (G4_BB *bb : fg) {
     BitSet dstTokens(totalTokenNum, false);
     BitSet srcTokens(totalTokenNum, false);
-    std::map<SFID, unsigned short> activeFences;
 
     std::list<G4_INST *>::iterator inst_it(bb->begin()), iInstNext(bb->begin());
     while (iInstNext != bb->end()) {
@@ -4424,58 +4423,7 @@ void SWSB::insertTokenSync() {
 
       SBNode *node = *node_it;
       vASSERT(node->GetInstruction() == inst);
-      if (!kernel.fg.builder->getOption(vISA_skipFenceCommit) &&
-          (BBVector[bb->getId()]->hasFenceBarrierPair ||
-           (BBVector[bb->getId()]->hasLiveOutFence &&
-            indexes.hasExposedBarrier.size()))) {
-        // If this block has a fence+barrier we must wait for the fence to
-        // complete (SBID to signal) before starting the signal_barrier
-        // operation.
-        if (inst->isCFInst() || inst->isLabel() || inst->isOptBarrier()) {
-          for (auto activeFence : activeFences) {
-            G4_INST *syncInst = insertSyncInstruction(bb, inst_it);
-            syncInst->setToken(activeFence.second);
-            syncInst->setTokenType(SWSBTokenType::AFTER_WRITE);
-          }
-          activeFences.clear();
-        }
 
-        if (inst->isSend()) {
-          G4_SendDesc *MsgDesc = inst->getMsgDesc();
-          bool isFence = MsgDesc->isFence();
-          bool isBarrier = MsgDesc->isBarrier() || MsgDesc->isGTWY();
-          SFID sfid = MsgDesc->getSFID();
-
-          if (isFence) {
-            // The fence insts with same SFID are in-ordered
-            activeFences[sfid] = inst->getToken();
-            if (iInstNext == bb->end() &&
-                indexes.hasExposedBarrier.size()) { // In case the fence instruction is
-                                          // the last instruction of BB
-              for (auto activeFence : activeFences) {
-                G4_INST *syncInst = insertSyncInstructionAfter(bb, inst_it);
-                syncInst->setToken(activeFence.second);
-                syncInst->setTokenType(SWSBTokenType::AFTER_WRITE);
-              }
-              activeFences.clear();
-            }
-          }
-
-          if (isBarrier && activeFences.size()) {
-            for (auto activeFence : activeFences) {
-              G4_INST *syncInst = insertSyncInstruction(bb, inst_it);
-              syncInst->setToken(activeFence.second);
-              syncInst->setTokenType(SWSBTokenType::AFTER_WRITE);
-            }
-            activeFences.clear();
-          }
-
-          if (!isFence &&
-              !isBarrier) { // Other send, clean the fence with same SFID
-            activeFences.erase(sfid);
-          }
-        }
-      }
       bool fusedSync = false;
       // HW W/A
       // For fused URB sends, or typed write, in HW, the dependence info of the
@@ -6093,94 +6041,90 @@ bool G4_BB_SB::hasExtraOverlap(G4_INST *liveInst, G4_INST *curInst,
   //       (W)     add (16|M0)     r7.14<1>:f    r61.14<1;1,0>:f r9.14<1;1,0>:f
   //       (W)     mad (16|M0)     r26.10<1>:f   r20.10<1;0>:f     r6.10<1;0>:f     r101.10<1>:f     {F@1}
   // clang-format on
-if (((!builder->hasFixedCycleMathPipe() && liveInst->isMath() &&
-    !curInst->isMath() && builder->hasRSForSpecificPlatform() &&
-    (!hasSamePredicator(liveInst, curInst) || builder->hasMathRSIsuue())) ||
-    (builder->hasSrc1ReadSuppressionIssue() &&
+  if (((!builder->hasFixedCycleMathPipe() && liveInst->isMath() &&
+        !curInst->isMath() && builder->hasRSForSpecificPlatform() &&
+        (!hasSamePredicator(liveInst, curInst) || builder->hasMathRSIsuue())) ||
+       (builder->hasSrc1ReadSuppressionIssue() &&
         distanceHonourInstruction(curInst) && curOpnd == Opnd_src1 &&
         curInst->getSrc(1) && curInst->getSrc(1)->asSrcRegRegion() &&
         curInst->getSrc(1)->asSrcRegRegion()->crossGRF(*builder)) ||
-    (builder->hasRMWReadSuppressionIssue() &&
+       (builder->hasRMWReadSuppressionIssue() &&
         (liveInst->isMathPipeInst())))) {
     return curFootprint->hasGRFGrainedOverlap(liveFootprint);
-}
+  }
 
-return false;
+  return false;
 }
 
 //
 // Check if there is intra read suppression operand with curOpndNum in the
 // instruction.
 //
-bool G4_BB_SB::hasIntraReadSuppression(SBNode* node,
-    Gen4_Operand_Number curOpndNum,
-    const SBFootprint* curFP) const {
-    if (node->instVec.size() > 1) {
-        return false;
-    }
-
-    for (Gen4_Operand_Number opndNum :
-    {Opnd_src0, Opnd_src1, Opnd_src2}) {
-        if (opndNum == curOpndNum) {
-            continue;
-        }
-        const SBFootprint* fp = node->getFirstFootprint(opndNum);
-        if (fp && fp->hasGRFGrainedOverlap(curFP)) {
-            return true;
-        }
-    }
-
+bool G4_BB_SB::hasIntraReadSuppression(SBNode *node,
+                                       Gen4_Operand_Number curOpndNum,
+                                       const SBFootprint* curFP) const {
+  if (node->instVec.size() > 1) {
     return false;
+  }
+
+  for (Gen4_Operand_Number opndNum :
+       {Opnd_src0, Opnd_src1, Opnd_src2}) {
+    if (opndNum == curOpndNum) {
+      continue;
+    }
+    const SBFootprint *fp = node->getFirstFootprint(opndNum);
+    if (fp && fp->hasGRFGrainedOverlap(curFP)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 static std::string generateALUPipeComment(SB_INST_PIPE aluPipe) {
-    switch (aluPipe) {
-    case PIPE_INT:
-        return "ALU pipe: int";
-    case PIPE_FLOAT:
-        return "ALU pipe: float";
-    case PIPE_LONG:
-        return "ALU pipe: long";
-    case PIPE_MATH:
-        return "ALU pipe: math";
-    default:
-        // non-ALU pipe: do not print anything
-        return "";
-    }
+  switch (aluPipe) {
+  case PIPE_INT:
+    return "ALU pipe: int";
+  case PIPE_FLOAT:
+    return "ALU pipe: float";
+  case PIPE_LONG:
+    return "ALU pipe: long";
+  case PIPE_MATH:
+    return "ALU pipe: math";
+  default:
+    // non-ALU pipe: do not print anything
+    return "";
+  }
 }
 
 // Add commend translating offset to reg so it's easier to follow
-static void handleAddrAddMov(G4_INST* inst)
+static void handleAddrAddMov(G4_INST *inst)
 {
-    if (inst->opcode() == G4_add && inst->getDst()->isAreg() && inst->getSrc(1)->isAddrExp())
-    {
-        std::stringstream ss;
-        ss << "src1 is addr of ";
-        inst->getSrc(1)->asAddrExp()->getRegVar()->emit(ss);
-        inst->addComment(ss.str());
-    }
+  if (inst->opcode() == G4_add && inst->getDst()->isAreg() && inst->getSrc(1)->isAddrExp())
+  {
+    std::stringstream ss;
+    ss << "src1 is addr of ";
+    inst->getSrc(1)->asAddrExp()->getRegVar()->emit(ss);
+    inst->addComment(ss.str());
+  }
 }
 
-void G4_BB_SB::SBDDD(G4_BB* bb, LiveGRFBuckets*& LB,
-    LiveGRFBuckets*& globalSendsLB,
-    LiveGRFBuckets*& GRFAlignedGlobalSendsLB, SBNODE_VECT* SBNodes,
-    SBNODE_VECT* SBSendNodes,
-    SBBUCKET_VECTOR* globalSendOpndList, SWSB_INDEXES* indexes,
-    uint32_t& globalSendNum, PointsToAnalysis& p,
-    std::map<G4_Label*, G4_BB_SB*>* LabelToBlockMap) {
-    nodeID = indexes->instIndex;
-    ALUID = indexes->ALUIndex;
-    integerID = indexes->integerIndex;
-    floatID = indexes->floatIndex;
-    longID = indexes->longIndex;
-    DPASID = indexes->DPASIndex;
-    mathID = indexes->mathIndex;
-    first_DPASID = indexes->DPASIndex;
-    SBNode* lastDpasNode = nullptr;
-    bool hasFence[(int)SFID::SFID_NUM];
-    for (int i = 0; i < (int)SFID::SFID_NUM; i++) {
-      hasFence[i] = false;
-    }
+void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
+                     LiveGRFBuckets *&globalSendsLB,
+                     LiveGRFBuckets *&GRFAlignedGlobalSendsLB, SBNODE_VECT *SBNodes,
+                     SBNODE_VECT *SBSendNodes,
+                     SBBUCKET_VECTOR *globalSendOpndList, SWSB_INDEXES *indexes,
+                     uint32_t &globalSendNum, PointsToAnalysis &p,
+                     std::map<G4_Label *, G4_BB_SB *> *LabelToBlockMap) {
+  nodeID = indexes->instIndex;
+  ALUID = indexes->ALUIndex;
+  integerID = indexes->integerIndex;
+  floatID = indexes->floatIndex;
+  longID = indexes->longIndex;
+  DPASID = indexes->DPASIndex;
+  mathID = indexes->mathIndex;
+  first_DPASID = indexes->DPASIndex;
+  SBNode *lastDpasNode = nullptr;
 
   for (int i = 0; i < PIPE_DPAS; i++) {
     latestDepALUID[i] = indexes->latestDepALUID[i];
@@ -6207,35 +6151,6 @@ void G4_BB_SB::SBDDD(G4_BB* bb, LiveGRFBuckets*& LB,
     if (curInst->isLabel()) {
       (*LabelToBlockMap)[curInst->getLabel()] = this;
       continue;
-    }
-
-    // Check if there is exposed barrier or fence barrier pairs in the BB.
-    // a) The exposed barrier means any other fence which are not killed leading
-    // to the barrier BB need sync. Conservatively, any fence which will not be
-    // killed by a barrier or send needs a sync before the end of BB. b) fence
-    // barrier pair means need sync before barrier.
-    if (curInst->isSend()) {
-      G4_SendDesc *MsgDesc = curInst->getMsgDesc();
-      SFID sfid = MsgDesc->getSFID();
-      bool isFence = MsgDesc->isFence();
-      bool isBarrier = MsgDesc->isBarrier() || MsgDesc->isGTWY();
-
-      if (isBarrier && !hasFence[(int)sfid]) {
-        // There is a exposed barrier in the BB, which means of fence
-        indexes->hasExposedBarrier.push_back(sfid);
-      }
-
-      if (isFence) {
-        hasFence[(int)sfid] = true;
-      } else if (hasFence[(int)sfid]) {
-        // Fence may be killed by a barrier which needs a sync, or other sends
-        if (isBarrier) {
-          // has Fence Barrier pair, need a sync
-          hasFenceBarrierPair = true;
-        } // else, there is no need to add sync, because other send will kill
-          // the requirement.
-        hasFence[(int)sfid] = false;
-      }
     }
 
     // For the instructions not counted in the distance, we assign the same
@@ -7058,14 +6973,6 @@ void G4_BB_SB::SBDDD(G4_BB* bb, LiveGRFBuckets*& LB,
   std::cerr << "\nLIVE OUT: \n";
   LB->dumpLives();
 #endif
-
-  // In case fence is not killed by barrier or other send.
-  for (int i = 0; i < (int)SFID::SFID_NUM; i++) {
-    if (hasFence[i]) {
-      hasLiveOutFence = true;
-      break;
-    }
-  }
 
   return;
 }
