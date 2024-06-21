@@ -1211,6 +1211,9 @@ SpecialCasesDisableLICM::SpecialCasesDisableLICM() : FunctionPass(ID)
 
 bool SpecialCasesDisableLICM::runOnFunction(llvm::Function& F)
 {
+    constexpr size_t HIGH_BB_THRESHOLD_FOR_LICM = 2500;
+    constexpr size_t HIGH_LOOP_THRESHOLD_FOR_LICM = 450;
+
     bool Changed = false;
     LoopInfo* LI = nullptr;
 
@@ -1220,13 +1223,12 @@ bool SpecialCasesDisableLICM::runOnFunction(llvm::Function& F)
         return LI;
     };
 
-    if (constexpr size_t HIGH_BB_THRESHOLD_FOR_LICM = 2500;
-        F.size() > HIGH_BB_THRESHOLD_FOR_LICM)
+    if (F.size() > HIGH_BB_THRESHOLD_FOR_LICM)
     {
         LI = getLoopInfo();
 
-        if (constexpr size_t HIGH_LOOP_THRESHOLD_FOR_LICM = 450;
-            llvm::size(*LI) > HIGH_LOOP_THRESHOLD_FOR_LICM)
+        if (llvm::size(*LI) > HIGH_LOOP_THRESHOLD_FOR_LICM
+            )
         {
             for (auto* L : *LI)
                 AddLICMDisableMedatadaToSpecificLoop(*L);
