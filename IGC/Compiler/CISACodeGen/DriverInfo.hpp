@@ -379,6 +379,7 @@ namespace IGC
         // Informs if it supports to use a logical SSID from msg0.0 instead of a physical ID from sr0
         virtual bool supportsLogicalSSIDInHWTID() const { return false; }
 
+        virtual bool supportLscSamplerRouting() const { return true; }
 protected:
     bool autoGRFSelection = false;
     };
