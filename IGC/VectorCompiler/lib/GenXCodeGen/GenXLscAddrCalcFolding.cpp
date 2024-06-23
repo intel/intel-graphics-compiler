@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/InstVisitor.h"
+#include "llvm/InitializePasses.h"
 #include "llvm/Pass.h"
 
 #define DEBUG_TYPE "genx-lsc-addr-calc-folding"
@@ -47,8 +48,17 @@ private:
 
   Value *applyLscAddrFolding(Value *Offsets, APInt &Scale, APInt &Offset);
 
+  static constexpr unsigned Block2DIndexX = 10;
+  static constexpr unsigned Block2DIndexY = 11;
+  static constexpr unsigned Block2DOffsetX = 12;
+  static constexpr unsigned Block2DOffsetY = 13;
+
+  bool foldLscBlock2DAddrCalculation(CallInst &CI, unsigned IndexArg,
+                                     unsigned OffsetArg);
+
   const GenXSubtarget *ST = nullptr;
 
+  unsigned Supported2DOffsetBits = 0;
   bool Changed = false;
 };
 
@@ -62,6 +72,7 @@ void initializeGenXLscAddrCalcFoldingPass(PassRegistry &);
 
 INITIALIZE_PASS_BEGIN(GenXLscAddrCalcFolding, "GenXLscAddrCalcFolding",
                       "GenXLscAddrCalcFolding", false, false)
+INITIALIZE_PASS_DEPENDENCY(TargetPassConfig)
 INITIALIZE_PASS_END(GenXLscAddrCalcFolding, "GenXLscAddrCalcFolding",
                     "GenXLscAddrCalcFolding", false, false)
 
@@ -112,7 +123,81 @@ void GenXLscAddrCalcFolding::visitCallInst(CallInst &CI) {
   case vc::InternalIntrinsic::lsc_store_quad_bti:
     Changed |= foldLscAddrCalculation(CI);
     break;
+  case vc::InternalIntrinsic::lsc_load_block_2d_ugm:
+  case vc::InternalIntrinsic::lsc_load_block_2d_ugm_transposed:
+  case vc::InternalIntrinsic::lsc_load_block_2d_ugm_vnni:
+  case vc::InternalIntrinsic::lsc_prefetch_block_2d_ugm:
+  case vc::InternalIntrinsic::lsc_store_block_2d_ugm:
+    Changed |= foldLscBlock2DAddrCalculation(CI, Block2DIndexX, Block2DOffsetX);
+    Changed |= foldLscBlock2DAddrCalculation(CI, Block2DIndexY, Block2DOffsetY);
+    break;
   }
+}
+
+bool GenXLscAddrCalcFolding::foldLscBlock2DAddrCalculation(CallInst &CI,
+                                                           unsigned IndexArg,
+                                                           unsigned OffsetArg) {
+  IGC_ASSERT(ST->hasLSCMessages() && ST->hasLSCOffset());
+
+  auto *Index = CI.getArgOperand(IndexArg);
+  auto *OldIndex = Index;
+  auto Offset = cast<ConstantInt>(CI.getArgOperand(OffsetArg))->getValue();
+
+  while (auto *BO = dyn_cast<BinaryOperator>(Index)) {
+    auto Opcode = BO->getOpcode();
+    if (Opcode != Instruction::Add && Opcode != Instruction::Sub)
+      break;
+
+    auto *Const = dyn_cast<ConstantInt>(BO->getOperand(1));
+    if (!Const)
+      break;
+
+    auto ConstValue = Const->getValue();
+
+    APInt NewOffset;
+    bool Overflow = false;
+
+    switch (Opcode) {
+    case Instruction::Add:
+      NewOffset = Offset.sadd_ov(ConstValue, Overflow);
+      break;
+    case Instruction::Sub:
+      NewOffset = Offset.ssub_ov(ConstValue, Overflow);
+      break;
+    default:
+      llvm_unreachable("Unexpected opcode");
+    }
+
+    if (Overflow)
+      break;
+
+    Offset = std::move(NewOffset);
+    Index = BO->getOperand(0);
+
+    LLVM_DEBUG(dbgs() << "LSC address folding found, index: " << *Index
+                      << ", offset: " << Offset.getSExtValue() << "\n");
+  }
+
+  if (Index == OldIndex)
+    return false;
+
+  const auto OffsetV = Offset.getSExtValue();
+  const auto ElementSizeBits =
+      vc::InternalIntrinsic::getMemoryRegisterElementSize(&CI);
+  if (OffsetV * ElementSizeBits % genx::DWordBits != 0) {
+    LLVM_DEBUG(dbgs() << "Offset is not dword-aligned\n");
+    return false;
+  }
+
+  IRBuilder<> Builder(&CI);
+
+  LLVM_DEBUG(dbgs() << "Folding LSC address calculation for instruction: " << CI
+                    << "\n");
+  CI.setArgOperand(IndexArg, Index);
+  CI.setArgOperand(OffsetArg, Builder.getInt32(OffsetV));
+  LLVM_DEBUG(dbgs() << "Updated instruction: " << CI << "\n");
+
+  return true;
 }
 
 bool GenXLscAddrCalcFolding::foldLscAddrCalculation(CallInst &Inst) {
