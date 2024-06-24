@@ -403,19 +403,8 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img1d_ro_
 
 float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img1d_ro_i32_i32_f32, _Rfloat4)(__spirv_SampledImage_1D SampledImage, int Coordinate, int ImageOperands, float Lod)
 {
-    int image_id = (int)__builtin_IB_get_image(SampledImage);
-    int sampler_id = (int)__builtin_IB_get_sampler(SampledImage);
-
-    if ((__builtin_IB_get_address_mode(sampler_id) & 0x07) == CLK_ADDRESS_CLAMP_TO_EDGE)
-    {
-        float floatCoords = convert_float((Coordinate));
-        return __builtin_IB_OCL_1d_sample_l(image_id, sampler_id, floatCoords, Lod);
-    }
-    else
-    {
-        float float_lod = SPIRV_BUILTIN(ConvertFToS, _i32_f32, _Rint)(Lod);
-        return __builtin_IB_OCL_1d_ld(image_id, Coordinate, float_lod);
-    }
+    float floatCoords = convert_float(Coordinate);
+    return SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img1d_ro_f32_i32_f32, _Rfloat4)(SampledImage, floatCoords, ImageOperands, Lod);
 }
 
 uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_1D SampledImage, float Coordinate, int ImageOperands, float Lod)
@@ -1004,10 +993,6 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_arr
 RET_TYPE##4 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate, int ImageOperands, float Lod) \
 {                                                                                                                                                                      \
     return convert_##RET_TYPE##4(__spirv_ImageSampleExplicitLod_R##LOAD_TYPE(Image, Coordinate, ImageOperands, Lod));                                                  \
-}                                                                                                                                                                      \
-RET_TYPE##4 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(__spirv_SampledImage_##DIM##D Image, int##COORD_DIM Coordinate, int ImageOperands, float Lod)   \
-{                                                                                                                                                                      \
-    return convert_##RET_TYPE##4(__spirv_ImageSampleExplicitLod_R##LOAD_TYPE(Image, Coordinate, ImageOperands, Lod));                                                  \
 }
 
 #define DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C(DIM, COORD_DIM)           \
@@ -1041,15 +1026,7 @@ RET_TYPE##4 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(__spirv_S
 {                                                                                                                                                           \
     return __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(Image, Coordinate, ImageOperands, DefaultLod);                                                     \
 }                                                                                                                                                           \
-RET_TYPE##4 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(__spirv_SampledImage_##DIM##D Image, int##COORD_DIM Coordinate, int ImageOperands)   \
-{                                                                                                                                                           \
-    return __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(Image, Coordinate, ImageOperands, DefaultLod);                                                     \
-}                                                                                                                                                           \
 RET_TYPE##4 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate)                    \
-{                                                                                                                                                           \
-    return __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(Image, Coordinate, DefaultImageOperands, DefaultLod);                                              \
-}                                                                                                                                                           \
-RET_TYPE##4 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(__spirv_SampledImage_##DIM##D Image, int##COORD_DIM Coordinate)                      \
 {                                                                                                                                                           \
     return __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(Image, Coordinate, DefaultImageOperands, DefaultLod);                                              \
 }                                                                                                                                                           \
@@ -1057,15 +1034,7 @@ RET_TYPE##2 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##2(__spirv_S
 {                                                                                                                                                           \
     return convert_##RET_TYPE##2(__spirv_ImageSampleExplicitLod_R##LOAD_TYPE(Image, Coordinate, ImageOperands, Lod).xy);                                    \
 }                                                                                                                                                           \
-RET_TYPE##2 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##2(__spirv_SampledImage_##DIM##D Image, int##COORD_DIM Coordinate, int ImageOperands, float Lod) \
-{                                                                                                                                                           \
-    return convert_##RET_TYPE##2(__spirv_ImageSampleExplicitLod_R##LOAD_TYPE(Image, Coordinate, ImageOperands, Lod).xy);                                    \
-}                                                                                                                                                           \
 RET_TYPE##2 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##2(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate, int ImageOperands) \
-{                                                                                                                                                           \
-    return __spirv_ImageSampleExplicitLod_R##RET_TYPE##2(Image, Coordinate, ImageOperands, DefaultLod);                                                     \
-}                                                                                                                                                           \
-RET_TYPE##2 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##2(__spirv_SampledImage_##DIM##D Image, int##COORD_DIM Coordinate, int ImageOperands)   \
 {                                                                                                                                                           \
     return __spirv_ImageSampleExplicitLod_R##RET_TYPE##2(Image, Coordinate, ImageOperands, DefaultLod);                                                     \
 }                                                                                                                                                           \
@@ -1073,15 +1042,7 @@ RET_TYPE##2 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##2(__spirv_S
 {                                                                                                                                                           \
     return __spirv_ImageSampleExplicitLod_R##RET_TYPE##2(Image, Coordinate, DefaultImageOperands, DefaultLod);                                              \
 }                                                                                                                                                           \
-RET_TYPE##2 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##2(__spirv_SampledImage_##DIM##D Image, int##COORD_DIM Coordinate)                      \
-{                                                                                                                                                           \
-    return __spirv_ImageSampleExplicitLod_R##RET_TYPE##2(Image, Coordinate, DefaultImageOperands, DefaultLod);                                              \
-}                                                                                                                                                           \
 RET_TYPE OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate, int ImageOperands, float Lod) \
-{                                                                                                                                                           \
-    return convert_##RET_TYPE(__spirv_ImageSampleExplicitLod_R##LOAD_TYPE(Image, Coordinate, ImageOperands, Lod).x);                                        \
-}                                                                                                                                                           \
-RET_TYPE OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE(__spirv_SampledImage_##DIM##D Image, int##COORD_DIM Coordinate, int ImageOperands, float Lod) \
 {                                                                                                                                                           \
     return convert_##RET_TYPE(__spirv_ImageSampleExplicitLod_R##LOAD_TYPE(Image, Coordinate, ImageOperands, Lod).x);                                        \
 }                                                                                                                                                           \
@@ -1089,15 +1050,7 @@ RET_TYPE OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE(__spirv_Sampled
 {                                                                                                                                                           \
     return __spirv_ImageSampleExplicitLod_R##RET_TYPE(Image, Coordinate, ImageOperands, DefaultLod);                                                        \
 }                                                                                                                                                           \
-RET_TYPE OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE(__spirv_SampledImage_##DIM##D Image, int##COORD_DIM Coordinate, int ImageOperands)         \
-{                                                                                                                                                           \
-    return __spirv_ImageSampleExplicitLod_R##RET_TYPE(Image, Coordinate, ImageOperands, DefaultLod);                                                        \
-}                                                                                                                                                           \
 RET_TYPE OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate)                          \
-{                                                                                                                                                           \
-    return __spirv_ImageSampleExplicitLod_R##RET_TYPE(Image, Coordinate, DefaultImageOperands, DefaultLod);                                                 \
-}                                                                                                                                                           \
-RET_TYPE OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE(__spirv_SampledImage_##DIM##D Image, int##COORD_DIM Coordinate)                            \
 {                                                                                                                                                           \
     return __spirv_ImageSampleExplicitLod_R##RET_TYPE(Image, Coordinate, DefaultImageOperands, DefaultLod);                                                 \
 }
