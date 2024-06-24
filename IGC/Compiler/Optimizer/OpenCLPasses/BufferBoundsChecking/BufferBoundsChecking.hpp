@@ -21,7 +21,6 @@ SPDX-License-Identifier: MIT
 
 namespace IGC
 {
-    // Doc: docs/compiler/passes/BufferBoundsChecking.md
     class BufferBoundsChecking : public llvm::ModulePass, public llvm::InstVisitor<BufferBoundsChecking>
     {
     public:
