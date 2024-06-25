@@ -374,6 +374,11 @@ static void CommonOCLBasedPasses(
         mpm.add(createBIFTransformsPass());
     }
 
+    if (IGC_IS_FLAG_ENABLED(EnableCodeAssumption))
+    {
+        mpm.add(new CodeAssumption());
+    }
+
     if (pContext->m_instrTypes.hasFRem)
     {
         mpm.add(new HandleFRemInstructions());
@@ -399,11 +404,6 @@ static void CommonOCLBasedPasses(
     mpm.add(createBuiltInImportPass(std::move(BuiltinGenericModule), std::move(BuiltinSizeModule)));
     mpm.add(createTimeStatsCounterPass(pContext, TIME_Unify_BuiltinImport, STATS_COUNTER_END));
     mpm.add(new BIFFlagCtrlResolution(pContext));
-
-    if (IGC_IS_FLAG_ENABLED(EnableCodeAssumption))
-    {
-        mpm.add(new CodeAssumption());
-    }
 
     if (IGC_GET_FLAG_VALUE(AllowMem2Reg))
     {

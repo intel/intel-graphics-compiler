@@ -160,8 +160,6 @@ namespace IGC
             bool assume_uniform = false;
         };
 
-        bool check_sg_id(const llvm::Instruction* inst);
-
         /// @brief Update dependency relations between all values
         void updateDeps();
 

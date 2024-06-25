@@ -63,6 +63,9 @@ namespace IGC
 
         IGCMD::MetaDataUtils* m_pMDUtils = nullptr;
 
+        // Simple change to help uniform analysis (later).
+        void uniformHelper(llvm::Module* M);
+
         // Add llvm.assume to assist other optimization such statelessToStateful
         void addAssumption(llvm::Module* M);
 
