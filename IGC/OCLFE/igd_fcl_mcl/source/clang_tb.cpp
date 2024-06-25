@@ -1356,10 +1356,6 @@ namespace TC
                             (strcmp(pParam, "-ze-force-global-mem-allocation") == 0) || // temp
                             (strcmp(pParam, "-cl-no-local-to-generic") == 0) || // temp
                             (strcmp(pParam, "-ze-no-local-to-generic") == 0) || // temp
-                            (strcmp(pParam, "-cl-disable-zebin") == 0) || // deprecated
-                            (strcmp(pParam, "-ze-disable-zebin") == 0) || // deprecated
-                            (strcmp(pParam, "-cl-enable-zebin") == 0) || // deprecated
-                            (strcmp(pParam, "-ze-enable-zebin") == 0) || // deprecated
                             (strcmp(pParam, "-cl-intel-debug-info") == 0) ||
                             (strncmp(pParam, "-dump-opt-llvm", 14) == 0) ||
                             (strcmp(pParam, "-cl-no-subgroup-ifp") == 0) ||
