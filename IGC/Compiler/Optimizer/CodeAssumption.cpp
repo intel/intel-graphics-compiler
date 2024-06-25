@@ -44,7 +44,9 @@ char CodeAssumption::ID = 0;
 
 bool CodeAssumption::runOnModule(Module& M)
 {
-    m_pMDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();;
+    m_pMDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    // Add code assist uniform analysis.
+    uniformHelper(&M);
 
     if (IGC_GET_FLAG_VALUE(EnableCodeAssumption) > 1)
     {
@@ -52,6 +54,57 @@ bool CodeAssumption::runOnModule(Module& M)
     }
 
     return m_changed;
+}
+
+void CodeAssumption::uniformHelper(Module* M)
+{
+    ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+
+    for (Module::iterator I = M->begin(), E = M->end(); I != E; ++I)
+    {
+        Function* F = &(*I);
+
+        StringRef FN = F->getName();
+
+        // sub_group_id
+        if (!FN.equals("_Z25__spirv_BuiltInSubgroupIdv") &&
+            !FN.equals("__builtin_spirv_BuiltInSubgroupId") &&
+            !FN.equals("_Z16get_sub_group_idv"))
+            continue;
+        // find all the callees
+        for (auto ui = F->use_begin(), ue = F->use_end(); ui != ue; ++ui) {
+            auto CI = dyn_cast<CallInst>(ui->getUser());
+            if (!CI) continue;
+            auto BB = CI->getParent();
+            auto KF = BB->getParent();
+
+            if (!IsSGIdUniform(m_pMDUtils, modMD, KF))
+                continue;
+
+            // The value must be uniform. Using shuffle with index=0 to
+            // enforce it. assuming lane-0 is active
+            Type* int32Ty = Type::getInt32Ty(M->getContext());
+            Value* args[3];
+            args[0] = CI;
+            args[1] = ConstantInt::getNullValue(int32Ty);
+            args[2] = ConstantInt::get(int32Ty, 0);
+
+            Type* ITys[3] = { args[0]->getType(), int32Ty, int32Ty};
+            Function* shuffleIntrin = GenISAIntrinsic::getDeclaration(
+                M,
+                GenISAIntrinsic::GenISA_WaveShuffleIndex,
+                ITys);
+
+            Instruction* shuffleCall = CallInst::Create(shuffleIntrin, args, "sgid", CI->getNextNode());
+
+            shuffleCall->setDebugLoc(CI->getDebugLoc());
+
+            CI->replaceAllUsesWith(shuffleCall);
+            shuffleCall->setOperand(0, CI);
+
+            m_changed = true;
+        }
+    }
 }
 
 void CodeAssumption::addAssumption(Module* M)
