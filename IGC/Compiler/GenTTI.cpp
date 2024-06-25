@@ -159,6 +159,21 @@ namespace llvm {
 #endif
         )
     {
+        // Always unroll joint_matrix_apply loop
+        for (auto BB : L->blocks())
+        {
+            for (auto &I : *BB)
+            {
+                if (auto *MD = I.getMetadata("joint_matrix_apply"))
+                {
+                    UP.Threshold = UINT_MAX;
+                    UP.UpperBound = true;
+                    UP.Force = true;
+                    return;
+                }
+            }
+        }
+
         unsigned LoopUnrollThreshold = ctx->m_DriverInfo.GetLoopUnrollThreshold();
 
         // override the LoopUnrollThreshold if the registry key is set

@@ -299,6 +299,7 @@ bool JointMatrixFuncsResolutionPass::runOnFunction(Function& F)
     ResolvedValues.clear();
     ResolvedTypes.clear();
     InstsToErase.clear();
+    MatrixAllocas.clear();
     m_SIMDSize = 0;
 
     // Use reverse post order traversal to reduce level or recursion
@@ -1876,6 +1877,30 @@ static Value *mergeComponentToPackedValue(BuilderT *builder, Value *value, Value
     return builder->CreateOr(value, component);
 }
 
+// Gets pointer to element to process in joint_matrix_apply loop for Accumulator 32x64
+// Also updates MatPtr to point to alloca of [2 x <float x 64>] used inside joint_matrix_apply loop
+Value *JointMatrixFuncsResolutionPass::getAcc32x64ElementPtr(CallInst *CI, Value *matrix, Value *index, IRBuilder<> *builder, Value **MatPtr) {
+    if (LoadInst *loadInst = dyn_cast<LoadInst>(matrix)) {
+        *MatPtr = Resolve(loadInst->getPointerOperand());
+    } else {
+        // Use existing alloca or create alloca in the entry node of the function
+        *MatPtr = MatrixAllocas[matrix];
+        if (!*MatPtr) {
+            builder->SetInsertPoint(&*CI->getFunction()->getEntryBlock().getFirstInsertionPt());
+            builder->SetCurrentDebugLocation(CI->getDebugLoc());
+            *MatPtr = builder->CreateAlloca(matrix->getType(), ADDRESS_SPACE_PRIVATE);
+            MatrixAllocas[matrix] = *MatPtr;
+            builder->SetInsertPoint(CI);
+        }
+        builder->CreateStore(matrix, *MatPtr);
+    }
+
+    Value *FloatPtr = builder->CreateBitCast(*MatPtr, builder->getFloatTy()->getPointerTo((*MatPtr)->getType()->getPointerAddressSpace()));
+
+    // create GEP to extract element by 'index' from 'matrix'
+    return builder->CreateGEP(builder->getFloatTy(), FloatPtr, index);
+}
+
 Value *JointMatrixFuncsResolutionPass::ResolveSliceInsert(CallInst *CI) {
     Value *matrix = Resolve(CI->getArgOperand(0));
     Value *component = CI->getArgOperand(1);
@@ -1906,18 +1931,10 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceInsert(CallInst *CI) {
     // Special case Accumulator 32x64 is represented as [2 x <float x 64>].
     if (isAccumulator32x64(desc))
     {
-        // extract first or second half of array
-        Value *indexArray = builder.CreateICmpUGT(index, ConstantInt::get(index->getType(), 63)); // i1 0 or 1
-        Value *half0 = builder.CreateExtractValue(matrix, {0}, "matrix.slice.half0");
-        Value *half1 = builder.CreateExtractValue(matrix, {1}, "matrix.slice.half1");
-        Value *halfMatrix = builder.CreateSelect(indexArray, half1, half0, "matrix.slice.selected.half"); // <64 x float>
-
-        // insert new component to vector <64 x float> and then insert new vector to array of 2 vectors
-        Value* indexVec = builder.CreateURem(index, ConstantInt::get(index->getType(), 64)); // 0..63
-        slice = builder.CreateInsertElement(halfMatrix, component, indexVec);
-        Value *newHalf0 = builder.CreateSelect(indexArray, half0, slice);
-        Value *newHalf1 = builder.CreateSelect(indexArray, slice, half1);
-        slice = createPair(&builder, getAcc32x64HalfType(builder.getContext()), newHalf0, newHalf1);
+        Value *MatPtr = nullptr;
+        Value *ptrToElem = getAcc32x64ElementPtr(CI, matrix, index, &builder, &MatPtr);
+        builder.CreateStore(component, ptrToElem);
+        slice = builder.CreateLoad(matTy, MatPtr);
     }
     else if (dyn_cast<IGCLLVM::FixedVectorType>(matTy))
         slice = builder.CreateInsertElement(matrix, component, index);
@@ -1942,17 +1959,9 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceExtract(CallInst *CI) {
         Value *indexVec = index;
         element = updateIndexAndCreateSliceExtract(&builder, matrix, &indexVec, desc.contribBitWidth, desc.bitWidth);
     } else if (isAccumulator32x64(desc)) {
-        // Get index of which element of array to use: 0 or 1
-        Value* indexArray = builder.CreateICmpUGT(index, ConstantInt::get(index->getType(), 63));
-
-        // Select half that we need:
-        Value* half0 = builder.CreateExtractValue(matrix, {0}, "matrix.slice.half0");
-        Value* half1 = builder.CreateExtractValue(matrix, {1}, "matrix.slice.half1");
-        Value* halfMatrix = builder.CreateSelect(indexArray, half1, half0, "matrix.slice.selected.half");
-
-        // get index of element inside vector of 64 elements
-        Value* indexVec = builder.CreateURem(index, ConstantInt::get(index->getType(), 64)); // 0..63
-        element = updateIndexAndCreateSliceExtract(&builder, halfMatrix, &indexVec, desc.contribBitWidth, desc.bitWidth);
+        Value *MatPtr = nullptr;
+        Value *ptrToElem = getAcc32x64ElementPtr(CI, matrix, index, &builder, &MatPtr);
+        element = builder.CreateLoad(builder.getFloatTy(), ptrToElem);
     }
 
     // unpack element we need from packed value
@@ -1963,6 +1972,12 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceExtract(CallInst *CI) {
     // We need the bitcast, e.g. for half, as the function call that is
     // being replaced has a half return type and the vectorElementType is i16
     element = builder.CreateBitCast(element, CI->getType());
+
+    // Add metadata to mark this value as part of joint_matrix_apply loop
+    // It will be used in getUnrollingPreferences to make sure this loop is fully unrolled
+    Instruction* elementInst = cast<Instruction>(element);
+    MDNode* node = MDNode::get(CI->getContext(), ConstantAsMetadata::get(builder.getInt1(true)));
+    elementInst->setMetadata("joint_matrix_apply", node);
 
     InstsToErase.insert(CI);
     return element;

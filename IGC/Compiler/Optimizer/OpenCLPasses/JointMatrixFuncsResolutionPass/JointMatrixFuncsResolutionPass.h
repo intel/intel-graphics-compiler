@@ -62,6 +62,7 @@ namespace IGC
         llvm::Value *ResolveFill(llvm::CallInst *CI);
         llvm::Instruction *ResolveFillChecked(llvm::CallInst *CI);
         llvm::Value *ResolveWILength(llvm::CallInst *CI);
+        llvm::Value *getAcc32x64ElementPtr(llvm::CallInst *CI, llvm::Value *matrix, llvm::Value *index, llvm::IRBuilder<> *builder, llvm::Value **MatPtr);
         llvm::Value *ResolveSliceInsert(llvm::CallInst *CI);
         llvm::Value *ResolveSliceExtract(llvm::CallInst *CI);
         llvm::Instruction *ResolveGetCoord(llvm::CallInst *CI);
@@ -113,6 +114,7 @@ namespace IGC
 
         llvm::ValueMap<llvm::Value *, llvm::Instruction *> PlaceholderInstructions;
         llvm::ValueMap<llvm::Value *, llvm::Value *> ResolvedValues;
+        llvm::ValueMap<llvm::Value *, llvm::Value *> MatrixAllocas;
         std::unordered_map<llvm::Type *, llvm::Type *> ResolvedTypes;
         llvm::SmallPtrSet<llvm::Instruction *, 8> InstsToErase;
         // Maps function to it's kernel entry function
