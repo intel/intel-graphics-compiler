@@ -603,11 +603,5 @@ void Options::parseOptions(const char* opts)
         Xfinalizer = true;
         XfinalizerOption = arg->getValue();
     }
-
-    if (const llvm::opt::Arg* arg = apiOptions.getLastArg(OPT_Xfinalizer))
-    {
-        Xfinalizer = true;
-        XfinalizerOption = arg->getValue();
-    }
 }
 } // namespace IGC
