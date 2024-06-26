@@ -1083,6 +1083,9 @@ public:
   void computeRightBound(G4_Operand *opnd) override;
   void setMayNeedWA(bool b) { mayNeedRSWA = b; }
   bool mayNeedWA() const { return mayNeedRSWA; }
+  // The function checks if both dpas instructions satisfy macro rules for
+  // operand types.
+  bool checksMacroTypes(const G4_InstDpas &next) const;
 };
 
 // TODO: move this into G4_InstMath.

@@ -5837,7 +5837,7 @@ bool G4_BB_SB::isLastDpas(SBNode *curNode, SBNode *nextNode)
   G4_INST *nextInst = nextNode->GetInstruction();
 
   // A consecutive DPAS instructions of the same opcode
-  if (nextInst == nullptr || !nextInst->isDpas()) {
+  if (nextInst == nullptr || curInst->opcode() != nextInst->opcode()) {
     return true;
   }
 
@@ -5846,22 +5846,15 @@ bool G4_BB_SB::isLastDpas(SBNode *curNode, SBNode *nextNode)
     return true;
   }
 
-  // Same datatype of the same operand across all instructions
-  for (Gen4_Operand_Number opndNum :
-       {Opnd_src0, Opnd_src1, Opnd_src2, Opnd_src3, Opnd_src4, Opnd_dst}) {
-    if (curNode->getFirstFootprint(opndNum) &&
-        nextNode->getFirstFootprint(opndNum) &&
-        !curNode->getFirstFootprint(opndNum)->hasSameType(
-            nextNode->getFirstFootprint(opndNum))) {
-      return true;
-    }
-  }
-
   G4_InstDpas *dpasInst = curInst->asDpasInst();
+  G4_InstDpas *nextDpasInst = nextInst->asDpasInst();
+
+  if (!dpasInst->checksMacroTypes(*nextDpasInst))
+    return true;
+
   uint8_t curD = dpasInst->getSystolicDepth();
   uint8_t curC = dpasInst->getRepeatCount();
 
-  G4_InstDpas *nextDpasInst = nextInst->asDpasInst();
   uint8_t nextD = nextDpasInst->getSystolicDepth();
   uint8_t nextC = nextDpasInst->getRepeatCount();
   // depth is 8

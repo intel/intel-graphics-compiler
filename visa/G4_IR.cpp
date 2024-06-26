@@ -7978,6 +7978,27 @@ void G4_InstDpas::computeRightBound(G4_Operand *opnd) {
   }
 }
 
+
+bool G4_InstDpas::checksMacroTypes(const G4_InstDpas &next) const {
+  vASSERT(opcode() == next.opcode());
+
+  // Macro rule requires same datatype of the same operand across all
+  // instructions.
+  if (getDst()->getType() != next.getDst()->getType() ||
+      getSrc(0)->getType() != next.getSrc(0)->getType()) {
+    return false;
+  }
+
+  if (!hasSameSrc1Precision(next.getSrc1Precision()))
+    return false;
+
+  if (!hasSameSrc2Precision(next.getSrc2Precision()))
+    return false;
+
+
+  return true;
+}
+
 void G4_INST::inheritDIFrom(const G4_INST *inst) {
   // Copy over debug info from inst
   setLocation(inst->getLocation());

@@ -336,8 +336,6 @@ public:
 private:
   bool hasSameSourceOneDPAS(G4_INST *curInst, G4_INST *nextInst,
                             BitSet &liveDst, BitSet &liveSrc) const;
-  bool DPASHasSameTypesAllOperands(const G4_INST &curInst,
-                                   const G4_INST &nextInst) const;
 
 public:
   DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p);
