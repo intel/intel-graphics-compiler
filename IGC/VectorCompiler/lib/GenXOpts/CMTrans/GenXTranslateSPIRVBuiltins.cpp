@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/IntrinsicsWrapper.h"
 #include "vc/Utils/General/BiF.h"
+#include "vc/Utils/General/Types.h"
 
 #include "Probe/Assertion.h"
 
@@ -382,6 +383,62 @@ static bool isSPIRVBuiltinDecl(const Function &F) {
   return Name.contains("__spirv");
 }
 
+static void emitError(Type *ArgTy, Type *NewArgTy, unsigned Index,
+                      LLVMContext &Ctx, CallInst *CI) {
+  SmallString<128> Message;
+  raw_svector_ostream Out(Message);
+  Out << "Unexpected function argument #" << Index << " type: " << *ArgTy
+      << ", expected: " << *NewArgTy << "\n";
+  vc::diagnose(Ctx, "GenXTranslateSPIRVBuiltins", Message, CI);
+}
+
+static inline void checkTypesFixPtrs(Function *Func, Function *NewFunc) {
+  SmallVector<CallInst *, 1> CallInstList;
+
+  // If types not matched - we try to modify it by cast's
+  if (Func->getFunctionType() != NewFunc->getFunctionType()) {
+    for (auto *U : Func->users()) {
+      auto *CI = dyn_cast<CallInst>(U);
+      if (!CI)
+        continue;
+
+      CallInstList.push_back(CI);
+      IRBuilder<> Builder(CI);
+
+      for (auto &U : CI->args()) {
+        auto Index = U.getOperandNo();
+        auto *ArgTy = U->getType();
+        auto *NewArgTy = NewFunc->getArg(Index)->getType();
+
+        if (isa<PointerType>(ArgTy) && isa<PointerType>(NewArgTy)) {
+          auto AS = cast<PointerType>(ArgTy)->getAddressSpace();
+          auto NewAS = cast<PointerType>(NewArgTy)->getAddressSpace();
+          if (AS != NewAS && NewAS != vc::AddrSpace::Generic)
+            emitError(ArgTy, NewArgTy, Index, CI->getContext(), CI);
+
+          U.set(Builder.CreatePointerBitCastOrAddrSpaceCast(U.get(), NewArgTy));
+        } else if (ArgTy != NewArgTy)
+          emitError(ArgTy, NewArgTy, Index, CI->getContext(), CI);
+      }
+    }
+  }
+  Func->deleteBody();
+
+  if (!CallInstList.empty()) {
+    Func->stealArgumentListFrom(*NewFunc);
+    // A new function is needed to replase FunctionType in all calls
+    auto *CastFunc =
+        Function::Create(NewFunc->getFunctionType(), Func->getLinkage(),
+                         NewFunc->getName(), Func->getParent());
+    CastFunc->copyAttributesFrom(Func);
+    for (auto *CI : CallInstList)
+      CI->setCalledFunction(CastFunc);
+
+    Func->eraseFromParent();
+    CastFunc->setName(NewFunc->getName());
+  }
+}
+
 bool GenXTranslateSPIRVBuiltins::runOnModule(Module &M) {
   bool Changed = false;
   Expander = SPIRVExpander(&M);
@@ -404,10 +461,8 @@ bool GenXTranslateSPIRVBuiltins::runOnModule(Module &M) {
   for (auto &FuncName : SPIRVBuiltins) {
     auto *Func = M.getFunction(FuncName);
     auto *NewFunc = SPIRVBuiltinsModule->getFunction(FuncName);
-    if (Func && !Func->isDeclaration() && NewFunc &&
-        !NewFunc->isDeclaration() &&
-        Func->getFunctionType() == NewFunc->getFunctionType())
-      Func->deleteBody();
+    if (Func && !Func->isDeclaration() && NewFunc && !NewFunc->isDeclaration())
+      checkTypesFixPtrs(Func, NewFunc);
   }
 
   if (Linker::linkModules(M, std::move(SPIRVBuiltinsModule),
