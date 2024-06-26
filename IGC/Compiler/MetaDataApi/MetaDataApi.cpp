@@ -183,6 +183,66 @@ namespace IGC::IGCMD {
         m_ArgDependency.save(context, getNumberedNode(pNode, 1));
     }
 
+    MaxRegPressureMetaData::MaxRegPressureMetaData(const llvm::MDNode* pNode, bool hasId) :
+        _Mybase(pNode, hasId),
+        m_MaxPressure(getNumberedNode(pNode, 0)),
+        m_pNode(pNode)
+    {}
+
+    MaxRegPressureMetaData::MaxRegPressureMetaData() :
+        m_pNode(nullptr)
+    {}
+
+    MaxRegPressureMetaData::MaxRegPressureMetaData(const char* name) :
+        _Mybase(name),
+        m_pNode(nullptr)
+    {}
+
+    bool MaxRegPressureMetaData::hasValue() const
+    {
+        return m_MaxPressure.hasValue() ||
+                nullptr != m_pNode ||
+                dirty();
+    }
+
+    bool MaxRegPressureMetaData::dirty() const
+    {
+        return m_MaxPressure.dirty();
+    }
+
+    void MaxRegPressureMetaData::discardChanges()
+    {
+        m_MaxPressure.discardChanges();
+    }
+
+    llvm::Metadata* MaxRegPressureMetaData::generateNode(llvm::LLVMContext& context) const
+    {
+        llvm::SmallVector<llvm::Metadata*, 5> args;
+
+        llvm::Metadata* pIDNode = IMetaDataObject::generateNode(context);
+        if (nullptr != pIDNode)
+        {
+            args.push_back(pIDNode);
+        }
+
+        args.push_back(m_MaxPressure.generateNode(context));
+
+        return llvm::MDNode::get(context, args);
+    }
+
+    void MaxRegPressureMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode) const
+    {
+        IGC_ASSERT_MESSAGE(nullptr != pNode, "The target node should be valid pointer");
+
+        // we assume that underlying metadata node has not changed under our foot
+        if (pNode == m_pNode && !dirty())
+        {
+            return;
+        }
+
+        m_MaxPressure.save(context, getNumberedNode(pNode, 0));
+    }
+
     SubGroupSizeMetaData::SubGroupSizeMetaData(const llvm::MDNode* pNode, bool hasId) :
         _Mybase(pNode, hasId),
         m_SIMDSize(getNumberedNode(pNode, 0)),
@@ -389,6 +449,7 @@ namespace IGC::IGCMD {
         m_ThreadGroupSize(new ThreadGroupSizeMetaData(getNamedNode(pNode, "thread_group_size"), true)),
         m_ThreadGroupSizeHint(new ThreadGroupSizeMetaData(getNamedNode(pNode, "thread_group_size_hint"), true)),
         m_SubGroupSize(new SubGroupSizeMetaData(getNamedNode(pNode, "sub_group_size"), true)),
+        m_MaxRegPressure(new MaxRegPressureMetaData(getNamedNode(pNode, "max_reg_pressure"), true)),
         m_OpenCLVectorTypeHint(new VectorTypeHintMetaData(getNamedNode(pNode, "opencl_vec_type_hint"), true)),
         m_pNode(pNode)
     {}
@@ -400,6 +461,7 @@ namespace IGC::IGCMD {
         m_ThreadGroupSize(new ThreadGroupSizeMetaDataHandle::ObjectType("thread_group_size")),
         m_ThreadGroupSizeHint(new ThreadGroupSizeMetaDataHandle::ObjectType("thread_group_size_hint")),
         m_SubGroupSize(new SubGroupSizeMetaDataHandle::ObjectType("sub_group_size")),
+        m_MaxRegPressure(new MaxRegPressureMetaDataHandle::ObjectType("max_reg_pressure")),
         m_OpenCLVectorTypeHint(new VectorTypeHintMetaDataHandle::ObjectType("opencl_vec_type_hint")),
         m_pNode(nullptr)
     {}
@@ -411,6 +473,7 @@ namespace IGC::IGCMD {
         m_ThreadGroupSize(new ThreadGroupSizeMetaDataHandle::ObjectType("thread_group_size")),
         m_ThreadGroupSizeHint(new ThreadGroupSizeMetaDataHandle::ObjectType("thread_group_size_hint")),
         m_SubGroupSize(new SubGroupSizeMetaDataHandle::ObjectType("sub_group_size")),
+        m_MaxRegPressure(new MaxRegPressureMetaDataHandle::ObjectType("max_reg_pressure")),
         m_OpenCLVectorTypeHint(new VectorTypeHintMetaDataHandle::ObjectType("opencl_vec_type_hint")),
         m_pNode(nullptr)
     {}
@@ -423,6 +486,7 @@ namespace IGC::IGCMD {
                 m_ThreadGroupSize->hasValue() ||
                 m_ThreadGroupSizeHint->hasValue() ||
                 m_SubGroupSize->hasValue() ||
+                m_MaxRegPressure->hasValue() ||
                 m_OpenCLVectorTypeHint->hasValue() ||
                 nullptr != m_pNode ||
                 dirty();
@@ -436,6 +500,7 @@ namespace IGC::IGCMD {
                 m_ThreadGroupSize.dirty() ||
                 m_ThreadGroupSizeHint.dirty() ||
                 m_SubGroupSize.dirty() ||
+                m_MaxRegPressure.dirty() ||
                 m_OpenCLVectorTypeHint.dirty();
     }
 
@@ -447,6 +512,7 @@ namespace IGC::IGCMD {
         m_ThreadGroupSize.discardChanges();
         m_ThreadGroupSizeHint.discardChanges();
         m_SubGroupSize.discardChanges();
+        m_MaxRegPressure.discardChanges();
         m_OpenCLVectorTypeHint.discardChanges();
     }
 
@@ -481,6 +547,10 @@ namespace IGC::IGCMD {
         {
             args.push_back(m_SubGroupSize.generateNode(context));
         }
+        if (m_MaxRegPressure->hasValue())
+        {
+            args.push_back(m_MaxRegPressure.generateNode(context));
+        }
         if (m_OpenCLVectorTypeHint->hasValue())
         {
             args.push_back(m_OpenCLVectorTypeHint.generateNode(context));
@@ -504,6 +574,7 @@ namespace IGC::IGCMD {
         m_ThreadGroupSize.save(context, getNamedNode(pNode, "thread_group_size"));
         m_ThreadGroupSizeHint.save(context, getNamedNode(pNode, "thread_group_size_hint"));
         m_SubGroupSize.save(context, getNamedNode(pNode, "sub_group_size"));
+        m_MaxRegPressure.save(context, getNamedNode(pNode, "max_reg_pressure"));
         m_OpenCLVectorTypeHint.save(context, getNamedNode(pNode, "opencl_vec_type_hint"));
     }
 }
