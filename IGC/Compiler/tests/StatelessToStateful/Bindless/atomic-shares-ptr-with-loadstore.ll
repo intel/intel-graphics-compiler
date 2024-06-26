@@ -66,5 +66,5 @@ declare i64 @llvm.genx.GenISA.intatomicrawA64.i64.p1i64.p1i64(i64 addrspace(1)*,
 !26 = !{!"explicit_arg_num", i32 0}
 !27 = !{i32 14, !28}
 !28 = !{!"explicit_arg_num", i32 1}
-!29 = !{i32 58, !26}
-!30 = !{i32 58, !28}
+!29 = !{i32 57, !26}
+!30 = !{i32 57, !28}

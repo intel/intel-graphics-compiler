@@ -1213,26 +1213,6 @@ zeInfoPayloadArgument& ZEInfoBuilder::addPayloadArgumentImplicit(
     return arg;
 }
 
-// addPayloadArgumentImplicit - add non-user argument (implicit argument)
-// into given zeKernel. The type must be local_size, group_size,
-// global_id_offset or private_base_stateless
-zeInfoPayloadArgument& ZEInfoBuilder::addPayloadArgumentImplicitInlineSampler(
-    PayloadArgumentsTy& arg_list,
-    PreDefinedAttrGetter::ArgType type,
-    int32_t offset,
-    int32_t size,
-    int32_t sampler_index)
-{
-    zeInfoPayloadArgument& arg = arg_list.emplace_back();
-    arg.arg_type = PreDefinedAttrGetter::get(type);
-    arg.offset = offset;
-    arg.size = size;
-    arg.addrmode = PreDefinedAttrGetter::get(PreDefinedAttrGetter::ArgAddrMode::bindless);
-    arg.addrspace = PreDefinedAttrGetter::get(PreDefinedAttrGetter::ArgAddrSpace::sampler);
-    arg.sampler_index = sampler_index;
-    return arg;
-}
-
 // addPerThreadPayloadArgument - add a per-thread payload argument into
 // given kernel. Currently we only support local id as per-thread argument.
 // The given type must be packed_local_ids or local_id

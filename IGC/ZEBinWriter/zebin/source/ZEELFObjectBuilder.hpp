@@ -495,16 +495,6 @@ public:
         int32_t size,
         bool has_ptr = false);
 
-    // addPayloadArgumentImplicit - add non-user argument (implicit argument)
-    // into given arg_list. The type must be local_size, group_size,
-    // global_id_offset or private_base_stateless
-    static zeInfoPayloadArgument& addPayloadArgumentImplicitInlineSampler(
-        PayloadArgumentsTy& arg_list,
-        PreDefinedAttrGetter::ArgType type,
-        int32_t offset,
-        int32_t size,
-        int32_t sampler_index);
-
     // addPerThreadPayloadArgument - add a per-thread payload argument into
     // arg_list. Currently we only support local id as per-thread argument.
     // The given type must be packed_local_ids or local_id

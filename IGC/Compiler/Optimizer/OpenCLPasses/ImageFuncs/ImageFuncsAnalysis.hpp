@@ -103,10 +103,9 @@ namespace IGC
         /// @brief  MetaData utils used to generate LLVM metadata
         IGCMD::MetaDataUtils* m_pMDUtils = nullptr;
 
-        /// @brief Indicate whether advanced bindless mode is used.
-        ///        If false, implicit image args for information like width, height, etc.
+        /// @brief If true, implicit image args for information like width, height, etc.
         ///        will be added to m_argMap
-        bool m_useAdvancedBindlessMode{};
+        bool m_addImplicitImageArgs{};
     };
 
 } // namespace IGC
