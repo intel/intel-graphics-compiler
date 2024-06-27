@@ -3887,6 +3887,7 @@ namespace IGC
                 // If sub_group_size is set to 32, resize it to 16 so SIMD16 compilation will still succeed
                 if (simd_size == 32)
                 {
+                    pCtx->EmitWarning("Detected 'reqd_sub_group_size=32', but compiling to SIMD16 due to enabling CallWA, which does not support SIMD32 when nested/indirect calls are present.");
                     llvm::Function* Kernel = FG->getHead();
                     funcInfoMD = pMdUtils->getFunctionsInfoItem(Kernel);
                     funcInfoMD->getSubGroupSize()->setSIMDSize(16);
