@@ -191,17 +191,19 @@ Value *GenXLoadStoreLegalization::splitMemoryOperation(Value *InsertTo,
 
   for (; Index + SplitWidth <= ExecSize; Index += SplitWidth) {
     SmallVector<Value *, 13> Args;
-    llvm::transform(CI.args(), std::back_inserter(Args), [&](Value *Arg) {
-      auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Arg->getType());
-      if (!VTy)
-        return Arg;
-      auto NumElements = VTy->getNumElements();
-      bool IsSOA = NumElements == VectorSize * ExecSize;
-      if (NumElements != ExecSize && !IsSOA)
-        return Arg;
-      return createExtractFromSOAValue(&CI, Arg, IsSOA ? VectorSize : 1, Index,
-                                       SplitWidth);
-    });
+    std::transform(CI.arg_begin(), CI.arg_end(), Func->arg_begin(),
+                   std::back_inserter(Args), [&](Value *Arg, auto &NewArg) {
+                     auto *VTy =
+                         dyn_cast<IGCLLVM::FixedVectorType>(Arg->getType());
+                     auto *NewTy = NewArg.getType();
+                     if (!VTy || VTy == NewTy)
+                       return Arg;
+                     auto NumElements = VTy->getNumElements();
+                     bool IsSOA = NumElements == VectorSize * ExecSize;
+                     IGC_ASSERT(NumElements == ExecSize || IsSOA);
+                     return createExtractFromSOAValue(
+                         &CI, Arg, IsSOA ? VectorSize : 1, Index, SplitWidth);
+                   });
 
     auto *NewCI = Builder.CreateCall(Func, Args);
     LLVM_DEBUG(dbgs() << "Created split: " << *NewCI << "\n");
@@ -231,56 +233,61 @@ Value *GenXLoadStoreLegalization::extendMemoryOperation(Value *InsertTo,
   IRBuilder<> Builder(&CI);
 
   SmallVector<Value *, 13> Args;
-  llvm::transform(CI.args(), std::back_inserter(Args), [&](Value *Arg) -> Value* {
-    auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Arg->getType());
-    if (!VTy)
-      return Arg;
+  std::transform(
+      CI.arg_begin(), CI.arg_end(), Func->arg_begin(), std::back_inserter(Args),
+      [&](Value *Arg, auto &NewArg) -> Value * {
+        auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Arg->getType());
+        auto *NewTy = NewArg.getType();
+        if (!VTy || VTy == NewTy)
+          return Arg;
 
-    auto NumElements = VTy->getNumElements();
-    bool IsSOA = NumElements == VectorSize * ExecSize;
-    if (NumElements != ExecSize && !IsSOA)
-      return Arg;
+        auto NumElements = VTy->getNumElements();
+        bool IsSOA = NumElements == VectorSize * ExecSize;
+        if (NumElements != ExecSize && !IsSOA)
+          return Arg;
 
-    if (Index > 0)
-      Arg = createExtractFromSOAValue(&CI, Arg, IsSOA ? VectorSize : 1, Index,
-                                      RestSize);
-    if (RestSize == ExtendWidth)
-      return Arg;
+        if (Index > 0)
+          Arg = createExtractFromSOAValue(&CI, Arg, IsSOA ? VectorSize : 1,
+                                          Index, RestSize);
+        if (RestSize == ExtendWidth)
+          return Arg;
 
-    auto *ETy = VTy->getElementType();
-    auto *InsTy = IGCLLVM::FixedVectorType::get(
-        ETy, IsSOA ? VectorSize * ExtendWidth : ExtendWidth);
-    if (!ETy->isIntegerTy(1))
-      return createInsertToSOAValue(&CI, UndefValue::get(InsTy), Arg,
-                                    IsSOA ? VectorSize : 1, 0, RestSize);
-    if (RestSize == 4 || RestSize == 8 || RestSize == 16 || !isa<CmpInst>(Arg))
-      return createInsertToSOAValue(&CI, Constant::getNullValue(InsTy), Arg,
-                                    IsSOA ? VectorSize : 1, 0, RestSize);
+        auto *ETy = VTy->getElementType();
+        auto *InsTy = IGCLLVM::FixedVectorType::get(
+            ETy, IsSOA ? VectorSize * ExtendWidth : ExtendWidth);
+        if (!ETy->isIntegerTy(1))
+          return createInsertToSOAValue(&CI, UndefValue::get(InsTy), Arg,
+                                        IsSOA ? VectorSize : 1, 0, RestSize);
+        if (RestSize == 4 || RestSize == 8 || RestSize == 16 ||
+            !isa<CmpInst>(Arg))
+          return createInsertToSOAValue(&CI, Constant::getNullValue(InsTy), Arg,
+                                        IsSOA ? VectorSize : 1, 0, RestSize);
 
-    // If a predicate is illegally sized, it will cause problems later in
-    // GenXLegalization pass because wrpredregion must follow offset alignment
-    // restrictions. In case when the illegal predicate is result of cmp
-    // instruction we can also extend this instruction instead of just
-    // writing its result into a legal-sized predicate.
-    auto *Cmp = cast<CmpInst>(Arg);
-    auto *OpVTy = cast<IGCLLVM::FixedVectorType>(Cmp->getOperand(0)->getType());
-    auto *NewOpTy = IGCLLVM::FixedVectorType::get(
-        OpVTy->getElementType(),
-        IsSOA ? VectorSize * ExtendWidth : ExtendWidth);
-    auto *NewOp0 = createInsertToSOAValue(&CI, Constant::getNullValue(NewOpTy),
-                                          Cmp->getOperand(0),
-                                          IsSOA ? VectorSize : 1, 0, RestSize);
-    auto *NewOp1 = createInsertToSOAValue(
-        &CI,
-        Cmp->isTrueWhenEqual() ? Constant::getAllOnesValue(NewOpTy)
-                               : Constant::getNullValue(NewOpTy),
-        Cmp->getOperand(1), IsSOA ? VectorSize : 1, 0, RestSize);
-    auto *NewCmp =
-        CmpInst::Create(Cmp->getOpcode(), Cmp->getPredicate(), NewOp0, NewOp1,
-                        Cmp->getName() + ".extended", &CI);
-    NewCmp->setDebugLoc(Cmp->getDebugLoc());
-    return NewCmp;
-  });
+        // If a predicate is illegally sized, it will cause problems later in
+        // GenXLegalization pass because wrpredregion must follow offset
+        // alignment restrictions. In case when the illegal predicate is result
+        // of cmp instruction we can also extend this instruction instead of
+        // just writing its result into a legal-sized predicate.
+        auto *Cmp = cast<CmpInst>(Arg);
+        auto *OpVTy =
+            cast<IGCLLVM::FixedVectorType>(Cmp->getOperand(0)->getType());
+        auto *NewOpTy = IGCLLVM::FixedVectorType::get(
+            OpVTy->getElementType(),
+            IsSOA ? VectorSize * ExtendWidth : ExtendWidth);
+        auto *NewOp0 = createInsertToSOAValue(
+            &CI, Constant::getNullValue(NewOpTy), Cmp->getOperand(0),
+            IsSOA ? VectorSize : 1, 0, RestSize);
+        auto *NewOp1 = createInsertToSOAValue(
+            &CI,
+            Cmp->isTrueWhenEqual() ? Constant::getAllOnesValue(NewOpTy)
+                                   : Constant::getNullValue(NewOpTy),
+            Cmp->getOperand(1), IsSOA ? VectorSize : 1, 0, RestSize);
+        auto *NewCmp =
+            CmpInst::Create(Cmp->getOpcode(), Cmp->getPredicate(), NewOp0,
+                            NewOp1, Cmp->getName() + ".extended", &CI);
+        NewCmp->setDebugLoc(Cmp->getDebugLoc());
+        return NewCmp;
+      });
 
   Value *Res = Builder.CreateCall(Func, Args);
   LLVM_DEBUG(dbgs() << "Created extend: " << *Res << "\n");
@@ -316,13 +323,14 @@ GenXLoadStoreLegalization::getMemoryIntrinsic(CallInst &CI,
     OverloadedTypes.push_back(VTy);
   }
 
+  const auto CacheControlIndex = vc::InternalIntrinsic::getMemoryCacheControlOperandIndex(&CI);
   for (unsigned I = 0; I < CI.getNumOperands(); I++) {
     if (!vc::InternalIntrinsic::isOverloadedArg(IID, I))
       continue;
 
     auto *Arg = CI.getOperand(I);
     auto *ArgTy = Arg->getType();
-    if (!isa<IGCLLVM::FixedVectorType>(ArgTy)) {
+    if (!isa<IGCLLVM::FixedVectorType>(ArgTy) || CacheControlIndex == I) {
       OverloadedTypes.push_back(ArgTy);
       continue;
     }
