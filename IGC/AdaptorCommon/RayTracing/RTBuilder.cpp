@@ -1994,3 +1994,17 @@ void RTBuilder::commitProceduralPrimitiveHit(
 #undef STYLE
     }
 }
+
+Value* RTBuilder::getHitAddress(StackPointerVal* StackPtr, bool Committed)
+{
+    switch (getMemoryStyle())
+    {
+#define STYLE(X)           \
+    case RTMemoryStyle::X: \
+        return _getHitAddress_##X(StackPtr, VAdapt{ *this, Committed });
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+    }
+    IGC_ASSERT(0);
+    return {};
+}

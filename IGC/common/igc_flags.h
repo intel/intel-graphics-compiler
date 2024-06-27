@@ -955,6 +955,7 @@ DECLARE_IGC_GROUP("Raytracing Options")
     DECLARE_IGC_REGKEY(bool, EnableFillScheduling, false, "Schedule fills for reduced register pressure", false)
     DECLARE_IGC_REGKEY(bool, DisableSWStackOffsetElision, false, "Avoid loading offseting when known at compile-time", false)
     DECLARE_IGC_REGKEY(DWORD, OverrideTMax, 0, "Force TMax to the given value. When 0, do nothing.", false)
+    DECLARE_IGC_REGKEY(bool, DisableLoadAsFenceOpInRaytracing, true, "Disable load as fence op in raytracing (rayquery only)", false)
 
 DECLARE_IGC_GROUP("VectorCompiler Options")
     DECLARE_IGC_REGKEY(bool, DisableEuFusion, false, "Require disable of EU fusion", true)

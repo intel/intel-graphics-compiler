@@ -8980,7 +8980,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_LSCStore:
     case GenISAIntrinsic::GenISA_LSCStoreBlock:
     case GenISAIntrinsic::GenISA_LSCLoad:
-    case GenISAIntrinsic::GenISA_LSCInvalidate:
+    case GenISAIntrinsic::GenISA_LSCLoadWithSideEffects:
     case GenISAIntrinsic::GenISA_LSCLoadBlock:
     case GenISAIntrinsic::GenISA_LSCStoreCmask:
     case GenISAIntrinsic::GenISA_LSCLoadCmask:
@@ -23151,7 +23151,7 @@ void EmitPass::emitLSCIntrinsic(llvm::GenIntrinsicInst* GII)
     GenISAIntrinsic::ID iid = GII->getIntrinsicID();
     switch (iid) {
     case GenISAIntrinsic::GenISA_LSCLoad:
-    case GenISAIntrinsic::GenISA_LSCInvalidate:
+    case GenISAIntrinsic::GenISA_LSCLoadWithSideEffects:
     case GenISAIntrinsic::GenISA_LSCLoadBlock:
         emitLscIntrinsicLoad(GII);
         break;

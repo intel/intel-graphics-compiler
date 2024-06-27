@@ -496,6 +496,8 @@ public:
     Value* getCandidateType(SyncStackPointerVal* SMStackPtr);
 
     void commitProceduralPrimitiveHit(SyncStackPointerVal* SMStackPtr, Value* THit);
+
+    Value* getHitAddress(StackPointerVal* StackPtr, bool Committed);
 };
 
 } // namespace llvm

@@ -1832,3 +1832,12 @@ auto* _getSyncStackID_Xe2(const Twine& _ReturnName = "")
   return V_6;
 }
 
+auto* _getHitAddress_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
+{
+  auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0) });
+  auto* V_3 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1) });
+  auto* V_4 = CreateSelect(arg_1, V_2, V_3);
+  auto* V_5 = CreateBitCast(V_4, PointerType::get(getInt8Ty(), arg_0->getType()->getPointerAddressSpace()), _ReturnName);
+  return V_5;
+}
+

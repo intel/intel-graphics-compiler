@@ -2871,7 +2871,7 @@ Imported_Intrinsics = \
      ("int",                           "cache controls options (LSC_CACHE_OPTS)")],
     "ReadMem"]],
 ####################################################################################################
-"GenISA_LSCInvalidate": ["LSC load meant to be used for cache invalidation",
+"GenISA_LSCLoadWithSideEffects": ["LSC load meant to be used just for issuing load instruction (i.e. making sure writes complete or to invalidate caches)",
     [("anyint",                        ""),
     [("anyptr",                        "address of value to invalidate"),
      ("int",                           "immediate offset (in bytes)"),

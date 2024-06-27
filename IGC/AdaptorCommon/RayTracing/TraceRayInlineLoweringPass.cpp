@@ -361,7 +361,36 @@ Value* TraceRayInlineLoweringPass::emitProceedMainBody(
     Value* ShdowMemRTCtrlPtr = getShMemRTCtrl(builder, queryObjIndex);
     Value* traceRayCtrl = builder.getSyncTraceRayControl(ShdowMemRTCtrlPtr);
 
-    builder.CreateLSCFence(LSC_UGM, LSC_SCOPE_LOCAL, LSC_FENCE_OP_NONE);
+    if (IGC_IS_FLAG_ENABLED(DisableLoadAsFenceOpInRaytracing))
+    {
+        builder.CreateLSCFence(LSC_UGM, LSC_SCOPE_LOCAL, LSC_FENCE_OP_NONE);
+    }
+    else
+    {
+        // this is an optimization
+        // it's based on the idea that stores and loads are queued, so if a load completes, all stores before it are also completed
+        // the requirement is that the load and the store should use the same address, so we use the potential hit (last write in copyMemHitInProceed)
+        auto* potentialHit = builder.getHitAddress(HWStackPointer, false);
+
+        auto* M = builder.GetInsertPoint()->getModule();
+        auto* fn = GenISAIntrinsic::getDeclaration(
+            M,
+            GenISAIntrinsic::GenISA_LSCLoadWithSideEffects,
+            { builder.getInt32Ty(), potentialHit->getType() }
+        );
+
+        builder.CreateCall(
+            fn,
+            {
+                potentialHit,
+                builder.getInt32(0),
+                builder.getInt32(LSC_DATA_SIZE_32b),
+                builder.getInt32(LSC_DATA_ELEMS_1),
+                builder.getInt32(LSC_L1C_WT_L3C_WB)
+            },
+            VALUE_NAME("LSCLoadAsFence")
+        );
+    }
 
     //TraceRay
     Value* retSyncRT = builder.createSyncTraceRay(
@@ -470,9 +499,9 @@ void TraceRayInlineLoweringPass::LowerSyncStackToShadowMemory(Function& F)
 
         if (IGC_IS_FLAG_DISABLED(DisableInvalidateRTStackAfterLastRead))
         {
-            auto* LSCInvalidate = GenISAIntrinsic::getDeclaration(
+            auto* fn = GenISAIntrinsic::getDeclaration(
                 F.getParent(),
-                GenISAIntrinsic::GenISA_LSCInvalidate,
+                GenISAIntrinsic::GenISA_LSCLoadWithSideEffects,
                 { builder.getInt32Ty(), HWStackPointer->getType() }
             );
 
@@ -487,7 +516,7 @@ void TraceRayInlineLoweringPass::LowerSyncStackToShadowMemory(Function& F)
             for (uint i = 0; i < getSyncStackSize() / m_CGCtx->platform.LSCCachelineSize(); i++)
             {
                 builder.CreateCall(
-                    LSCInvalidate,
+                    fn,
                     {
                         HWStackPointer,
                         builder.getInt32(i * m_CGCtx->platform.LSCCachelineSize()),
