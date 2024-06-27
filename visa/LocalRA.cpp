@@ -1159,6 +1159,58 @@ void LocalRA::setLexicalID(bool includePseudo) {
   }
 }
 
+void LocalRA::addOutOfBoundForbidden(G4_Declare *dcl, G4_Operand *opnd) {
+  LocalLiveRange *lr = gra.getLocalLR(dcl);
+  if (!lr) {
+    return;
+  }
+
+  int opndEndGRF = opnd->getLinearizedEnd() / builder.numEltPerGRF<Type_UB>();
+  int dclEndGRF = (dcl->getByteSize() - 1) / builder.numEltPerGRF<Type_UB>();
+  if (opndEndGRF > dclEndGRF) {
+    for (int i = 0; i < (opndEndGRF - dclEndGRF); i++) {
+      lr->addForbidden(kernel.getNumRegTotal() - i + 1);
+    }
+  }
+
+  return;
+}
+
+void LocalRA::markSpecialForbidden(INST_LIST_ITER inst_it) {
+  G4_INST *inst = (*inst_it);
+
+  if (!inst->isSend()) {
+    return;
+  }
+
+  if (!inst->asSendInst()->isSVMScatterRW() ||
+      inst->getExecSize() >= g4::SIMD8) {
+    return;
+  }
+
+  G4_DstRegRegion *dst = inst->getDst();
+  if (dst && !dst->isNullReg()) {
+    G4_Declare *dcl = inst->getDst()->getTopDcl();
+    if (dcl) {
+      dcl = dcl->getRootDeclare();
+      addOutOfBoundForbidden(dcl, dst);
+    }
+  }
+
+  for (unsigned i = 0, numSrc = inst->getNumSrc(); i < numSrc; i++) {
+    G4_Operand *src = inst->getSrc(i);
+    if (src) {
+      G4_Declare *dcl = src->getTopDcl();
+      if (dcl) {
+        dcl = dcl->getRootDeclare();
+        addOutOfBoundForbidden(dcl, src);
+      }
+    }
+  }
+
+  return;
+}
+
 void LocalRA::markReferences(unsigned int &numRowsEOT, bool &lifetimeOpFound) {
   unsigned int id = 0;
   // Iterate over all BBs
@@ -1194,6 +1246,7 @@ void LocalRA::markReferences(unsigned int &numRowsEOT, bool &lifetimeOpFound) {
       }
 
       markReferencesInInst(inst_it);
+      markSpecialForbidden(inst_it);
     }
   }
 }

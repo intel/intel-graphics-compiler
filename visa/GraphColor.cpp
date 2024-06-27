@@ -1862,6 +1862,43 @@ void Interference::markInterferenceForSend(G4_BB *bb, G4_INST *inst,
   }
 }
 
+void Interference::setOutOfBoundForbidden(G4_Operand *opnd) {
+  G4_Declare *dcl = opnd->getBaseRegVarRootDeclare();
+  vISA_ASSERT(dcl, "NULL declare");
+  int dclEndGRF = (dcl->getByteSize() - 1) / builder.numEltPerGRF<Type_UB>();
+  int opndEndGRF = opnd->getLinearizedEnd() / builder.numEltPerGRF<Type_UB>();
+  unsigned lrId = ((G4_RegVar *)opnd->getBase())->getId();
+  LiveRange *lr = lrs[lrId];
+
+  if (lr && (opndEndGRF > dclEndGRF)) {
+    vISA_ASSERT((opndEndGRF - dclEndGRF) == 1,
+                "More register reservation required for svm gather");
+    lr->setForbidden(forbiddenKind::FBD_LASTGRF);
+  }
+}
+
+void Interference::setForbiddenGRFNumForSVMScatter(G4_INST *inst) {
+  G4_DstRegRegion *dst = inst->getDst();
+
+  if (dst && dst->getBase()->isRegVar()) {
+    if (dst->getBase()->isRegAllocPartaker()) {
+      setOutOfBoundForbidden(dst);
+    }
+  }
+
+  for (unsigned j = 0, numSrc = inst->getNumSrc(); j < numSrc; j++) {
+    G4_Operand *src = inst->getSrc(j);
+    if (src && src->isSrcRegRegion() &&
+        src->asSrcRegRegion()->getBase()->isRegVar()) {
+      if (src->asSrcRegRegion()->getBase()->isRegAllocPartaker()) {
+        setOutOfBoundForbidden(src);
+      }
+    }
+  }
+
+  return;
+}
+
 void Interference::markInterferenceToAvoidDstSrcOverlap(G4_BB *bb,
                                                         G4_INST *inst) {
   bool isDstRegAllocPartaker = false;
@@ -2153,6 +2190,11 @@ void Interference::buildInterferenceWithinBB(G4_BB *bb, SparseBitVector &live) {
         auto flagDcl = kernel.fg.fcallToPseudoDclMap[inst->asCFInst()].Flag;
         buildInterferenceWithLive(live, flagDcl->getRegVar()->getId());
       }
+    }
+
+    if (inst->isSend() && inst->asSendInst()->isSVMScatterRW() &&
+        inst->getExecSize() < g4::SIMD8) {
+      setForbiddenGRFNumForSVMScatter(inst);
     }
 
     if ((inst->isSend() || inst->isFillIntrinsic()) && !dst->isNullReg() &&

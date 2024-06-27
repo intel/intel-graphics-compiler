@@ -3510,6 +3510,24 @@ void G4_InstSend::setMsgDesc(G4_SendDesc *in) {
   resetRightBound(srcs[0]);
 }
 
+bool G4_InstSend::isSVMScatterRW() const {
+  SFID funcID = msgDesc->getSFID();
+  const G4_SendDescRaw *desc = getMsgDescRaw();
+  switch (funcID) {
+  case SFID::DP_DC1:
+    switch (desc->getHdcMessageType()) {
+    case DC1_A64_SCATTERED_READ:
+    case DC1_A64_SCATTERED_WRITE:
+      return true;
+    default:
+      break;
+    }
+  default:
+    break;
+  }
+  return false;
+}
+
 bool G4_InstSend::isDirectSplittableSend() const {
   unsigned short elemSize = dst->getElemSize();
   SFID funcID = msgDesc->getSFID();

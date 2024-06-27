@@ -1343,6 +1343,8 @@ public:
 
   bool isFence() const { return getMsgDesc()->isFence(); }
 
+  bool isSVMScatterRW() const;
+
   bool isDirectSplittableSend() const;
 
   void computeRightBound(G4_Operand *opnd) override;

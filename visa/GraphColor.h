@@ -903,6 +903,10 @@ class Interference {
 
   void markInterferenceForSend(G4_BB *bb, G4_INST *inst, G4_DstRegRegion *dst);
 
+  void setOutOfBoundForbidden(G4_Operand *opnd);
+
+  void setForbiddenGRFNumForSVMScatter(G4_INST *inst);
+
   void buildInterferenceWithLocalRA(G4_BB *bb);
 
   void buildInterferenceAmongLiveOuts();

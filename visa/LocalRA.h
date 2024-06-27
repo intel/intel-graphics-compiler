@@ -76,6 +76,8 @@ private:
   void localRAOptReport();
   void markReferencesInOpnd(G4_Operand *opnd, bool isEOT,
                             INST_LIST_ITER inst_it, unsigned int pos);
+  void addOutOfBoundForbidden(G4_Declare *dcl, G4_Operand *opnd);
+  void markSpecialForbidden(INST_LIST_ITER inst_it);
   void markReferencesInInst(INST_LIST_ITER inst_it);
   void setLexicalID(bool includePseudo);
   void markReferences(unsigned int &numRowsEOT, bool &lifetimeOpFound);
