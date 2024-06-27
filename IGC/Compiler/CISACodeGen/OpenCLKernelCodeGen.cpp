@@ -3097,6 +3097,13 @@ namespace IGC
         }
     }
 
+    // Check if recompilation was forced for this kernel.
+    bool COpenCLKernel::IsRecompilationRequestForced() const
+    {
+        auto it = std::find(m_Context->m_kernelsWithForcedRetry.begin(), m_Context->m_kernelsWithForcedRetry.end(), entry);
+        return it != m_Context->m_kernelsWithForcedRetry.end();
+    }
+
     bool COpenCLKernel::IsValidShader(COpenCLKernel* pShader)
     {
         return pShader && (pShader->ProgramOutput()->m_programSize > 0);
@@ -3198,6 +3205,10 @@ namespace IGC
             // For case when we have recompilation but generate 20x more
             // private memory in global memory in recompiled kernel
             return RetryType::NO_Retry_WorseStatelessPrivateMemSize;
+        }
+        else if (pShader->IsRecompilationRequestForced() && !ctx->m_retryManager.IsLastTry())
+        {
+            return RetryType::YES_Retry;
         }
         else if (isWorstThanPrv)
         {

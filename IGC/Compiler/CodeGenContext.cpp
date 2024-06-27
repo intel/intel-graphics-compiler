@@ -434,6 +434,11 @@ namespace IGC
         PRINT_CTX_MEMBER(m_tempCount);
         PRINT_CTX_MEMBER(m_threadCombiningOptDone);
 
+        stream << "\n";
+        for (auto k : m_kernelsWithForcedRetry) {
+            stream << "\nKernel with forced retry: " << k->getName().str();
+        }
+
         stream << "\n\n";
     }
 

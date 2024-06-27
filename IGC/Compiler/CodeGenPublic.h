@@ -978,6 +978,9 @@ namespace IGC
 
         bool m_hasVendorExtension = false;
 
+        // Kernels for which recompilation should be forced.
+        std::vector<llvm::Function*> m_kernelsWithForcedRetry;
+
         std::vector<int> m_hsIdxMap;
         std::vector<int> m_dsIdxMap;
         std::vector<int> m_gsIdxMap;

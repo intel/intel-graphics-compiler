@@ -53,6 +53,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/VectorProcess.hpp"
 #include "Compiler/CISACodeGen/RuntimeValueLegalizationPass.h"
 #include "Compiler/CISACodeGen/LowerGEPForPrivMem.hpp"
+#include "Compiler/CISACodeGen/MatchCommonKernelPatterns.hpp"
 #include "Compiler/CISACodeGen/POSH_RemoveNonPositionOutput.h"
 #include "Compiler/CISACodeGen/RegisterEstimator.hpp"
 #include "Compiler/CISACodeGen/RegisterPressureEstimate.hpp"
@@ -363,6 +364,8 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     //
 
     mpm.add(new DpasScan());
+
+    mpm.add(new MatchCommonKernelPatterns());
 
     // let CleanPHINode be right before Layout
     mpm.add(createCleanPHINodePass());

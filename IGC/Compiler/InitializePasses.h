@@ -110,6 +110,7 @@ void initializeLowPrecisionOptPass(llvm::PassRegistry&);
 void initializeMarkReadOnlyLoadPass(llvm::PassRegistry&);
 void initializeMetaDataUtilsWrapperInitializerPass(llvm::PassRegistry&);
 void initializeMetaDataUtilsWrapperPass(llvm::PassRegistry&);
+void initializeMatchCommonKernelPatternsPass(llvm::PassRegistry&);
 void initializeOpenCLPrintfAnalysisPass(llvm::PassRegistry&);
 void initializeOpenCLPrintfResolutionPass(llvm::PassRegistry&);
 void initializePeepholeTypeLegalizerPass(llvm::PassRegistry&);

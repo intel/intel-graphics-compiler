@@ -228,6 +228,7 @@ DECLARE_IGC_REGKEY(bool, DisableMCSOpt,                 false,  "Disable IGC to 
 DECLARE_IGC_REGKEY(bool, DisableGatingSimilarSamples,   false,  "Disable Gating of similar sample instructions", false)
 DECLARE_IGC_REGKEY(bool, EnableSoftwareVertexFetch,     false, "Enable software vertex fetch for VS.", false)
 DECLARE_IGC_REGKEY(bool, EnableSoftwareStencil,         false, "Enable software stencil for PS.", false)
+DECLARE_IGC_REGKEY(bool, EnableInterpreterPatternMatching,  true, "Enable Interpreter pattern matching and force retry if the pattern was found.", false)
 DECLARE_IGC_REGKEY(bool, EnableSumFractions,            false, "Enable SumFractions optimization in CustomUnsafeOptPass.", false)
 DECLARE_IGC_REGKEY(bool, EnableExtractCommonMultiplier, false, "Enable ExtractCommonMultiplier optimization in CustomUnsafeOptPass.", false)
 DECLARE_IGC_REGKEY(bool, EnablePowToLogMulExp,          false, "Enable pow to exp(log(x)*y) optimization in CustomUnsafeOptPass.", false)
