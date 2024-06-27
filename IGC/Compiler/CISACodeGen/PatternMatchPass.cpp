@@ -2039,7 +2039,7 @@ namespace IGC
                 pass->PredAdd(pred, invertPred, sources, modf);
             }
 
-            // Cannot use the ".sat" modifier as it is applied only to data lanes enabled by the predication 
+            // Cannot use the ".sat" modifier as it is applied only to data lanes enabled by the predication
             // while saturation operation matched MatchFloatingPointSatModifier should be executed
             // irrespective of the predicate value matched by MatchPredAdd.
             bool supportsSaturate() override
@@ -2717,6 +2717,17 @@ namespace IGC
             IGC_ASSERT_MESSAGE(!isConstant0 || !isConstant1,
                 "Both operands are immediate - constants should be folded elsewhere.");
 
+            llvm::Value* varOffset = isConstant0 ?
+                addSubInst->getOperand(1) : addSubInst->getOperand(0);
+
+            // HW does an early bounds check on varOffset for A32 messages. Thus, if varOffset
+            // is negative, then the bounds check fails early even though the immediate offset
+            // would bring the final calculation to a positive number.
+            if (!isA64AddressingModel && !valueIsPositive(varOffset, m_DL))
+                return false;
+
+            MarkAsSource(varOffset, IsSourceOfSample(&I));
+
             unsigned numSources = GetNbSources(I);
             for (unsigned i = 0; i < numSources; i++) {
                 if (I.getOperand(i) != intToPtrInst && I.getOperand(i) != addSubInst) {
@@ -2726,9 +2737,6 @@ namespace IGC
 
             llvm::Value* immOffset = isConstant0 ?
                 addSubInst->getOperand(0) : addSubInst->getOperand(1);
-            llvm::Value* varOffset = isConstant0 ?
-                addSubInst->getOperand(1) : addSubInst->getOperand(0);
-            MarkAsSource(varOffset, IsSourceOfSample(&I));
 
             LSCImmOffsetPattern* pattern = new (m_allocator)
                 LSCImmOffsetPattern(&I, varOffset, llvm::dyn_cast<llvm::ConstantInt>(immOffset));
