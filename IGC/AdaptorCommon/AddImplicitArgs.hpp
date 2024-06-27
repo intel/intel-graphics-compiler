@@ -53,7 +53,7 @@ namespace IGC
         /// @brief  Provides name of pass
         virtual llvm::StringRef getPassName() const override
         {
-            return "AddImplictArgs";
+            return "AddImplicitArgs";
         }
 
         virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override

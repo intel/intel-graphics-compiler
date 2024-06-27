@@ -47,7 +47,7 @@ declare i32 addrspace(1)* @llvm.genx.GenISA.InlinedData(i16)
 !1 = !{!2, !3}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"implicit_arg_desc", !4, !5, !6, !7}
-!4 = !{i32 53}
-!5 = !{i32 54}
-!6 = !{i32 56}
-!7 = !{i32 55}
+!4 = !{i32 54}
+!5 = !{i32 55}
+!6 = !{i32 57}
+!7 = !{i32 56}

@@ -212,7 +212,9 @@ Value* ImageFuncResolution::getSamplerProperty(CallInst& CI)
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     if (Value* sampler = ValueTracker::track(&CI, 0, pMdUtils, modMD))
     {
-        if (isa<Argument>(sampler))
+        auto *arg = dyn_cast<Argument>(sampler);
+        bool isImplicitInlineSamplerArg = arg ? m_implicitArgs.isImplicitArg(arg) : false;
+        if (arg && !isImplicitInlineSamplerArg)
         {
             if (m_implicitArgs.isImplicitArgExist(ArgTy))
             {
@@ -224,13 +226,22 @@ Value* ImageFuncResolution::getSamplerProperty(CallInst& CI)
         {
             llvm::Function* pFunc = CI.getFunction();
 
-            IGC_ASSERT_MESSAGE(isa<ConstantInt>(sampler), "Sampler must be a constant integer");
             uint64_t samplerVal = 0;
             if (modMD->FuncMD.find(pFunc) != modMD->FuncMD.end())
             {
                 FunctionMetaData funcMD = modMD->FuncMD[pFunc];
                 ResourceAllocMD resAllocMD = funcMD.resAllocMD;
-                uint samplerValue = int_cast<unsigned int>(cast<ConstantInt>(sampler)->getZExtValue());
+                unsigned samplerValue;
+                if (isImplicitInlineSamplerArg)
+                {
+                    // Inline sampler value is stored as explicit argument number in ImageFuncsAnalysis pass.
+                    samplerValue = m_implicitArgs.getExplicitArgNumForArg(arg);
+                }
+                else
+                {
+                    IGC_ASSERT_MESSAGE(isa<ConstantInt>(sampler), "Sampler must be a constant integer");
+                    samplerValue = int_cast<unsigned int>(cast<ConstantInt>(sampler)->getZExtValue());
+                }
                 for (auto i = resAllocMD.inlineSamplersMD.begin(), e = resAllocMD.inlineSamplersMD.end(); i != e; i++)
                 {
                     IGC::InlineSamplersMD inlineSamplerMD = *i;

@@ -1302,6 +1302,19 @@ namespace IGC
             break;
         }
 
+        case KernelArg::ArgType::IMPLICIT_INLINE_SAMPLER: {
+            uint32_t arg_idx = kernelArg->getAssociatedArgNo();
+            ResourceAllocMD& resAllocMD = GetContext()->getModuleMetaData()->FuncMD[entry].resAllocMD;
+            auto it = llvm::find_if(resAllocMD.inlineSamplersMD, [&](auto &inlineSamplerMD) {
+              return inlineSamplerMD.m_Value == arg_idx;
+            });
+            IGC_ASSERT_MESSAGE(it != resAllocMD.inlineSamplersMD.end(), "Inline sampler isn't found in metadata.");
+            zebin::ZEInfoBuilder::addPayloadArgumentImplicitInlineSampler(
+                        m_kernelInfo.m_zePayloadArgs, zebin::PreDefinedAttrGetter::ArgType::inline_sampler, payloadPosition,
+                        kernelArg->getAllocateSize(), it->index);
+            break;
+        }
+
         case KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET: {
             zebin::zeInfoPayloadArgument& arg = zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                 zebin::PreDefinedAttrGetter::ArgType::buffer_offset,
