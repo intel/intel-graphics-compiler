@@ -17,7 +17,7 @@ SPDX-License-Identifier: Apache-2.0 with LLVM-exception
 # TODO: Once upstreamed, update with LLORG revision & adjust per community review
 
 diff --git a/llvm/lib/Analysis/ScalarEvolution.cpp b/llvm/lib/Analysis/ScalarEvolution.cpp
-index e765a4d54..518683c29 100644
+index e765a4d54..8712103b5 100644
 --- a/llvm/lib/Analysis/ScalarEvolution.cpp
 +++ b/llvm/lib/Analysis/ScalarEvolution.cpp
 @@ -5576,12 +5576,14 @@ const SCEV *ScalarEvolution::createAddRecFromPHI(PHINode *PN) {
@@ -73,37 +73,54 @@ index e765a4d54..518683c29 100644
        // Queue CurV for SCEV creation, followed by its's operands which need to
        // be constructed first.
        Stack.emplace_back(CurV, true);
-@@ -7248,21 +7251,19 @@ ScalarEvolution::getOperandsToCreate(Value *V, SmallVectorImpl<Value *> &Ops) {
- 
+@@ -7249,20 +7252,43 @@ ScalarEvolution::getOperandsToCreate(Value *V, SmallVectorImpl<Value *> &Ops) {
    case Instruction::PHI: {
      PHINode *PN = cast<PHINode>(U);
--
--    if (PN->getNumIncomingValues() == 2) {
--      std::pair<Value *, Value *> StartAndBEValueV =
--          getStartAndBackEdgeValues(PN);
+ 
++    // This phi's operands must be attached due to range computations even if it is redundant to determine its SCEV expression.
++    for (auto &Op : PN->operands())
++      Ops.push_back(Op);
++
++    // Check if it can be classified as a special scalar evolution expression like:
++    // * addrec,
++    // * phi-like-select.
+     if (PN->getNumIncomingValues() == 2) {
+       std::pair<Value *, Value *> StartAndBEValueV =
+           getStartAndBackEdgeValues(PN);
 -      if (StartAndBEValueV.first && StartAndBEValueV.second)
 -        // resolve recursively - may create cycles
--        return nullptr;
++      Value *BEValueV = StartAndBEValueV.second,
++            *StartValueV = StartAndBEValueV.first;
++      if (BEValueV && StartValueV)
++        // This phi instruction is initially defined as undefined and can be
++        // replaced with an addrec expression if it meets requirements.
++        // This may create cycles.
++        return getUnknown(V);
++
++      if (BrPHIToSelect(DT, PN))
++        // This phi instruction might be classified as a phi-like-select
++        // expression. Any initial definition cannot be applied since this
++        // pattern doesn't support such a path as dedicated to addrec
++        // expressions.
+         return nullptr;
 -      else if (BrPHIToSelect(DT, PN))
 -        // resolve iteratively - does not create cycles
 -        for (auto &Op : PN->operands())
 -          Ops.push_back(Op);
--    }
--
+     }
+ 
 -    // resolve iteratively - does not create SCEV cycles (trivially resolved)
 -    return nullptr;
-+    // This phi's operands must be attached due to range computations even if it is redundant
-+    // to determine its SCEV expression.
-+    for (auto &Op : PN->operands())
-+      Ops.push_back(Op);
-+    if (BrPHIToSelect(DT, PN))
-+      // This phi instruction might be classified as a phi-like-select expression.
-+      // Any initial definition cannot be applied since this pattern doesn't support
-+      // such a path as dedicated to addrec expressions.
-+      return nullptr;
-+    // This phi instruction is initially defined as undefined and can be replaced
-+    // with an addrec expression if it meets requirements. Otherwise,
-+    // this will be preserved.
++    // This means that this phi instruction has one common input value.
++    // This cannot create cycles due to SSA properties (an usage of the value
++    // cannot be before its definition and this leads to a conclusion that it must
++    // dominate over this phi instruction to meet the initial assumptions).
++    if (Value *V = SimplifyInstruction(PN, {getDataLayout(), &TLI, &DT, &AC}))
++      if (LI.replacementPreservesLCSSAForm(PN, V))
++        return nullptr;
++
++    // This phi instruction is classified as undefined due to
++    // an unsupported pattern. This may create cycles.
 +    return getUnknown(V);
    }
  
