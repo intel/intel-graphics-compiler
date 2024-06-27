@@ -2484,33 +2484,41 @@ type __builtin_IB_WorkGroupReduce_##func##_##type_abbr(type X)                  
             }                                                                                                                               \
             SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);                                  \
                                                                                                                                             \
-            type low_data;                                                                                                                  \
-            type high_data;                                                                                                                 \
-            type reduce;                                                                                                                    \
-            if (sg_size == 32) /* SIMD32 */                                                                                                 \
+            if(sg_id == 0)                                                                                                                  \
             {                                                                                                                               \
-                low_data = sg_lid < values_num ? scratch[sg_lid] : identity;                                                                \
-                high_data = sg_lid + 32 < values_num ? scratch[sg_lid + 32] : identity;                                                     \
-                /* 64 (from 64) elements reduces to 32 */                                                                                   \
-                reduce =  op(low_data, high_data);                                                                                          \
-            }                                                                                                                               \
-            else if(sg_size == 16) /* SIMD16 */                                                                                             \
-            {                                                                                                                               \
-                low_data = sg_lid < values_num ? scratch[sg_lid] : identity;                                                                \
-                type mid_low_data = sg_lid + 16 < values_num ? scratch[sg_lid + 16] : identity;                                             \
-                type mid_high_data = sg_lid + 32 < values_num ? scratch[sg_lid + 32] : identity;                                            \
-                high_data = sg_lid + 32 + 16 < values_num ? scratch[sg_lid + 32 + 16] : identity;                                           \
-                /* 32 first part (from 64) elements reduces to 16 */                                                                        \
-                low_data =  op(low_data, mid_low_data);                                                                                     \
-                /* 32 second part (from 64) elements reduces to 16 */                                                                       \
-                high_data =  op(mid_high_data, high_data);                                                                                  \
-                /* 64 (from 64) elements reduces to 16 */                                                                                   \
-                reduce =  op(low_data, high_data);                                                                                          \
-            }                                                                                                                               \
-            /* SIMD8 is not available on PVC */                                                                                             \
+                type low_data;                                                                                                              \
+                type high_data;                                                                                                             \
+                type reduce;                                                                                                                \
                                                                                                                                             \
-            sg_x = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationReduce, reduce);                              \
-            return sg_x;                                                                                                                    \
+                if (sg_size == 32) /* SIMD32 */                                                                                             \
+                {                                                                                                                           \
+                    low_data = sg_lid < values_num ? scratch[sg_lid] : identity;                                                            \
+                    high_data = sg_lid + 32 < values_num ? scratch[sg_lid + 32] : identity;                                                 \
+                    /* 64 (from 64) elements reduces to 32 */                                                                               \
+                    reduce =  op(low_data, high_data);                                                                                      \
+                }                                                                                                                           \
+                else if(sg_size == 16) /* SIMD16 */                                                                                         \
+                {                                                                                                                           \
+                    low_data = sg_lid < values_num ? scratch[sg_lid] : identity;                                                            \
+                    type mid_low_data = sg_lid + 16 < values_num ? scratch[sg_lid + 16] : identity;                                         \
+                    type mid_high_data = sg_lid + 32 < values_num ? scratch[sg_lid + 32] : identity;                                        \
+                    high_data = sg_lid + 32 + 16 < values_num ? scratch[sg_lid + 32 + 16] : identity;                                       \
+                    /* 32 first part (from 64) elements reduces to 16 */                                                                    \
+                    low_data =  op(low_data, mid_low_data);                                                                                 \
+                    /* 32 second part (from 64) elements reduces to 16 */                                                                   \
+                    high_data =  op(mid_high_data, high_data);                                                                              \
+                    /* 64 (from 64) elements reduces to 16 */                                                                               \
+                    reduce =  op(low_data, high_data);                                                                                      \
+                }                                                                                                                           \
+                /* SIMD8 is not available on PVC */                                                                                         \
+                                                                                                                                            \
+                sg_x = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationReduce, reduce);                          \
+                if (sg_lid == 0) {                                                                                                          \
+                    scratch[0] = sg_x;                                                                                                      \
+                }                                                                                                                           \
+            }                                                                                                                               \
+            SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);                                  \
+            return scratch[0];                                                                                                              \
         }                                                                                                                                   \
     }                                                                                                                                       \
     else                                                                                                                                    \
