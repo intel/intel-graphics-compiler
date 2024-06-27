@@ -296,8 +296,6 @@ static GenXBackendData createBackendData(const vc::ExternalData &Data,
   IGC_ASSERT_MESSAGE(PointerSizeInBits == 32 || PointerSizeInBits == 64,
       "only 32 and 64 bit pointers are expected");
   GenXBackendData BackendData;
-  BackendData.BiFModule[BiFKind::OCLGeneric] =
-      llvm::MemoryBufferRef{*Data.OCLGenericBIFModule};
   BackendData.BiFModule[BiFKind::VCBuiltins] =
       llvm::MemoryBufferRef{*Data.VCBuiltinsBIFModule};
   BackendData.BiFModule[BiFKind::VCSPIRVBuiltins] =

@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include <fstream>
 #include <mutex>
 #include <numeric>
+#include <chrono>
 
 #include "AdaptorCommon/customApi.hpp"
 #include "AdaptorOCL/OCL/LoadBuffer.h"
@@ -1127,13 +1128,6 @@ void dumpOCLProgramBinary(OpenCLProgramContext &Ctx, const char *binaryOutput,
   dumpOCLProgramBinary(name.str().data(), binaryOutput, binarySize);
 }
 
-static std::unique_ptr<llvm::MemoryBuffer> GetGenericModuleBuffer()
-{
-    char Resource[5] = {'-'};
-    _snprintf(Resource, sizeof(Resource), "#%d", OCL_BC);
-    return std::unique_ptr<llvm::MemoryBuffer>{llvm::LoadBufferFromResource(Resource, "BC")};
-}
-
 static void WriteSpecConstantsDump(
     const STB_TranslateInputArgs* pInputArgs,
     QWORD hash)
@@ -1416,111 +1410,17 @@ bool TranslateBuildSPMD(
                 splitter.setSplittedModuleInOCLContext();
             }
 
-            std::unique_ptr<llvm::Module> BuiltinGenericModule = nullptr;
-            std::unique_ptr<llvm::Module> BuiltinSizeModule = nullptr;
-            std::unique_ptr<llvm::MemoryBuffer> pGenericBuffer = nullptr;
-            std::unique_ptr<llvm::MemoryBuffer> pSizeTBuffer = nullptr;
-            {
-                // IGC has two BIF Modules:
-                //            1. kernel Module (pKernelModule)
-                //            2. BIF Modules:
-                //                 a) generic Module (BuiltinGenericModule)
-                //                 b) size Module (BuiltinSizeModule)
-                //
-                // OCL builtin types, such as clk_event_t/queue_t, etc., are struct (opaque) types. For
-                // those types, its original names are themselves; the derived names are ones with
-                // '.<digit>' appended to the original names. For example,  clk_event_t is the original
-                // name, its derived names are clk_event_t.0, clk_event_t.1, etc.
-                //
-                // When llvm reads in multiple modules, say, M0, M1, under the same llvmcontext, if both
-                // M0 and M1 has the same struct type,  M0 will have the original name and M1 the derived
-                // name for that type.  For example, clk_event_t,  M0 will have clk_event_t, while M1 will
-                // have clk_event_t.2 (number is arbitrary). After linking, those two named types should be
-                // mapped to the same type, otherwise, we could have type-mismatch (for example, OCL GAS
-                // builtin_functions tests will assertion fail during inlining due to type-mismatch).  Furthermore,
-                // when linking M1 into M0 (M0 : dstModule, M1 : srcModule), the final type is the type
-                // used in M0.
-
-                // Load the builtin module -  Generic BC
-                // Load the builtin module -  Generic BC
-                {
-                    COMPILER_TIME_START(&oclContext, TIME_OCL_LazyBiFLoading);
-
-                    pGenericBuffer = GetGenericModuleBuffer();
-
-                    if (pGenericBuffer == NULL)
-                    {
-                        SetErrorMessage("Error loading the Generic builtin resource", *pOutputArgs);
-                        return false;
-                    }
-
-                    llvm::Expected<std::unique_ptr<llvm::Module>> ModuleOrErr =
-                        getLazyBitcodeModule(pGenericBuffer->getMemBufferRef(), *oclContext.getLLVMContext());
-
-                    if (llvm::Error EC = ModuleOrErr.takeError())
-                    {
-                        std::string error_str = "Error lazily loading bitcode for generic builtins,"
-                                                "is bitcode the right version and correctly formed?";
-                        SetErrorMessage(error_str, *pOutputArgs);
-                        return false;
-                    }
-                    else
-                    {
-                        BuiltinGenericModule = std::move(*ModuleOrErr);
-                    }
-
-                    if (BuiltinGenericModule == NULL)
-                    {
-                        SetErrorMessage("Error loading the Generic builtin module from buffer", *pOutputArgs);
-                        return false;
-                    }
-                    COMPILER_TIME_END(&oclContext, TIME_OCL_LazyBiFLoading);
-                }
-
-                // Load the builtin module -  pointer depended
-                {
-                    char ResNumber[5] = { '-' };
-                    switch (PtrSzInBits)
-                    {
-                    case 32:
-                        _snprintf_s(ResNumber, sizeof(ResNumber), 5, "#%d", OCL_BC_32);
-                        break;
-                    case 64:
-                        _snprintf_s(ResNumber, sizeof(ResNumber), 5, "#%d", OCL_BC_64);
-                        break;
-                    default:
-                        IGC_ASSERT_MESSAGE(0, "Unknown bitness of compiled module");
-                    }
-
-                    // the MemoryBuffer becomes owned by the module and does not need to be managed
-                    pSizeTBuffer.reset(llvm::LoadBufferFromResource(ResNumber, "BC"));
-                    IGC_ASSERT_MESSAGE(pSizeTBuffer, "Error loading builtin resource");
-
-                    llvm::Expected<std::unique_ptr<llvm::Module>> ModuleOrErr =
-                        getLazyBitcodeModule(pSizeTBuffer->getMemBufferRef(), *oclContext.getLLVMContext());
-                    if (llvm::Error EC = ModuleOrErr.takeError())
-                        IGC_ASSERT_MESSAGE(0, "Error lazily loading bitcode for size_t builtins");
-                    else
-                        BuiltinSizeModule = std::move(*ModuleOrErr);
-
-                    IGC_ASSERT_MESSAGE(BuiltinSizeModule, "Error loading builtin module from buffer");
-                }
-
-                BuiltinGenericModule->setDataLayout(BuiltinSizeModule->getDataLayout());
-                BuiltinGenericModule->setTargetTriple(BuiltinSizeModule->getTargetTriple());
-            }
-
             oclContext.getModuleMetaData()->csInfo.forcedSIMDSize |= IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth);
 
             try
             {
                 if (llvm::StringRef(oclContext.getModule()->getTargetTriple()).startswith("spir"))
                 {
-                    IGC::UnifyIRSPIR(&oclContext, std::move(BuiltinGenericModule), std::move(BuiltinSizeModule));
+                    IGC::UnifyIRSPIR(&oclContext);
                 }
                 else // not SPIR
                 {
-                    IGC::UnifyIROCL(&oclContext, std::move(BuiltinGenericModule), std::move(BuiltinSizeModule));
+                    IGC::UnifyIROCL(&oclContext);
                 }
 
                 if (oclContext.HasError())
