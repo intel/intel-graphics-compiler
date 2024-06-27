@@ -929,7 +929,7 @@ namespace IGC
                     V(vKernel->CreateVISAIndirectSrcOperand(
                         operand,
                         var->visaAddrVariable,
-                        MODIFIER_NONE,
+                        ConvertModifierToVisaType(mod.mod),
                         0,
                         immOffset,
                         vStride,
@@ -949,7 +949,7 @@ namespace IGC
                     V(vKernel->CreateVISAIndirectSrcOperand(
                         operand,
                         var->visaAddrVariable,
-                        MODIFIER_NONE,
+                        ConvertModifierToVisaType(mod.mod),
                         0,
                         immOffset,
                         vStride,
@@ -965,6 +965,7 @@ namespace IGC
                     V(vKernel->CreateVISAIndirectOperandVxH(
                         operand,
                         var->visaAddrVariable,
+                        ConvertModifierToVisaType(mod.mod),
                         mod.subReg,
                         0,
                         var->GetType()));

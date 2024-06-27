@@ -222,12 +222,13 @@ public:
                                VISA_Type type) = 0;
 
   /// CreateVISAIndirectOperandVxH -- create a vISA indirect source operand with
-  /// multiple addresses (r[A_N(addrOffset), immedOffset]<1,0>:type) addrOffset
-  /// is in number of elements immedOffset is in byte and must be [-512, 511]
+  /// multiple addresses (r[A_N(addrOffset), immedOffset]<1,0>:type) mod is the
+  /// source modifier addrOffset is in number of elements
+  /// immedOffset is in byte and must be [-512, 511]
   VISA_BUILDER_API virtual int
   CreateVISAIndirectOperandVxH(VISA_VectorOpnd *&cisa_opnd, VISA_AddrVar *decl,
-                               unsigned int addrOffset, short immediateOffset,
-                               VISA_Type type) = 0;
+                               VISA_Modifier mod, unsigned int addrOffset,
+                               short immediateOffset, VISA_Type type) = 0;
 
   /// CreateVISAPredicateOperand -- create a vISA predicate operand that can be
   /// used for predicated execution

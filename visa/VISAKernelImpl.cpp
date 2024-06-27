@@ -1950,10 +1950,11 @@ int VISAKernelImpl::CreateVISAIndirectDstOperand(
 
 int VISAKernelImpl::CreateVISAIndirectOperandVxH(VISA_VectorOpnd *&cisa_opnd,
                                                  VISA_AddrVar *decl,
+                                                 VISA_Modifier mod,
                                                  unsigned int addrOffset,
                                                  short immediateOffset,
                                                  VISA_Type type) {
-  return CreateVISAIndirectGeneralOperand(cisa_opnd, decl, MODIFIER_NONE,
+  return CreateVISAIndirectGeneralOperand(cisa_opnd, decl, mod,
                                           addrOffset, immediateOffset, -1, 1, 0,
                                           type, false);
 }

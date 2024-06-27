@@ -304,6 +304,7 @@ public:
 
   VISA_BUILDER_API int CreateVISAIndirectOperandVxH(VISA_VectorOpnd *&cisa_opnd,
                                                     VISA_AddrVar *decl,
+                                                    VISA_Modifier mod,
                                                     unsigned int addrOffset,
                                                     short immediateOffset,
                                                     VISA_Type type) override;
