@@ -159,18 +159,20 @@ namespace llvm {
 #endif
         )
     {
-        // Always unroll joint_matrix_apply loop
+        bool IsJointMatrixApplyLoop = false;
         for (auto BB : L->blocks())
         {
             for (auto &I : *BB)
             {
                 if (auto *MD = I.getMetadata("joint_matrix_apply"))
                 {
-                    UP.Threshold = UINT_MAX;
-                    UP.UpperBound = true;
-                    UP.Force = true;
-                    return;
+                    IsJointMatrixApplyLoop = true;
+                    break;
                 }
+            }
+            if (IsJointMatrixApplyLoop)
+            {
+                break;
             }
         }
 
@@ -190,6 +192,16 @@ namespace llvm {
             else if (ctx->type == ShaderType::PIXEL_SHADER && ctx->getModuleMetaData()->compOpt.SetLoopUnrollThreshold > 0)
             {
                 LoopUnrollThreshold = ctx->getModuleMetaData()->compOpt.SetLoopUnrollThreshold;
+            }
+            else if (IsJointMatrixApplyLoop)
+            {
+                // For joint_matrix_apply loops, we want to unroll them as much as possible so setting high threshold.
+                // From the other hand, unrolling huge loops can lead to unreasonable compile-time
+                // so we can not just use UINT_MAX.
+                // One case, where we hit the limit is when we print accumulator 32x64 elements
+                // using joint_matrix_apply with sycl::stream.
+                // If you increase this limit, please test that printing with sycl::stream still works.
+                LoopUnrollThreshold = 20000;
             }
         }
 
