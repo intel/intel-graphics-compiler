@@ -1051,7 +1051,7 @@ void ConstantCoalescing::CombineTwoLoads(
                 eac, PointerType::get(vty, addrSpace), "twoScalar", load0);
             m_TT->RegisterNewValueAndAssignID(ptrcast);
             wiAns->incUpdateDepend(ptrcast, WIAnalysis::RANDOM);
-            cov_chunk->chunkIO = irBuilder->CreateLoad(ptrcast, false);
+            cov_chunk->chunkIO = irBuilder->CreateLoad(vty, ptrcast, false);
             cast<LoadInst>(cov_chunk->chunkIO)->setAlignment(getAlign(4)); // \todo, more precise
             wiAns->incUpdateDepend(cov_chunk->chunkIO, WIAnalysis::RANDOM);
         }
@@ -1059,7 +1059,7 @@ void ConstantCoalescing::CombineTwoLoads(
         {
             IGC_ASSERT(isa<IntToPtrInst>(addr_ptr));
             addr_ptr->mutateType(PointerType::get(vty, addrSpace));
-            cov_chunk->chunkIO = irBuilder->CreateLoad(addr_ptr, false);
+            cov_chunk->chunkIO = irBuilder->CreateLoad(cov_chunk->chunkIO->getType(), addr_ptr, false);
             cast<LoadInst>(cov_chunk->chunkIO)->setAlignment(getAlign(4));  // \todo, more precise
             wiAns->incUpdateDepend(cov_chunk->chunkIO, WIAnalysis::RANDOM);
             // modify the address calculation if the chunk-start is changed
@@ -1764,7 +1764,7 @@ Instruction* ConstantCoalescing::CreateChunkLoad(
         // Update debug location
         ptr->setDebugLoc(irBuilder->getCurrentDebugLocation());
         wiAns->incUpdateDepend(ptr, wiAns->whichDepend(seedi));
-        chunkLoad = irBuilder->CreateLoad(ptr);
+        chunkLoad = irBuilder->CreateLoad(vty, ptr);
         chunkLoad->setAlignment(getAlign(alignment));
         CopyMetadata(chunkLoad, seedi);
         chunk->chunkIO = chunkLoad;
