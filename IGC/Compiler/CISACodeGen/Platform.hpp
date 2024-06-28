@@ -870,7 +870,7 @@ SIMDMode getMaxRayQuerySIMDSize() const
 
 SIMDMode getPreferredRayQuerySIMDSize() const
 {
-    const SIMDMode ret = isCoreChildOf(IGFX_XE_HPC_CORE) ? SIMDMode::SIMD16 : SIMDMode::SIMD8;
+    SIMDMode ret = isCoreChildOf(IGFX_XE_HPC_CORE) ? SIMDMode::SIMD16 : SIMDMode::SIMD8;
 
     IGC_ASSERT_MESSAGE(ret <= getMaxRayQuerySIMDSize(), "Preferred SIMD size for RayQuery must not be greater than MaxRayQuerySIMDSize!");
 
