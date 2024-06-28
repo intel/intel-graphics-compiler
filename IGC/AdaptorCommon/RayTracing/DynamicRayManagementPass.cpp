@@ -385,19 +385,8 @@ bool DynamicRayManagementPass::TryProceedBasedApproach(Function& F)
             // following single entry multiple exits loop model, we insert one check and multiple releases
             checkBBs.insert(start);
 
-            if (m_CGCtx->platform.allowDivergentControlFlowRayQueryCheckRelease())
-            {
-                for (auto* exitBB : exitBlocks)
-                    releaseBBs.insert(m_PDT->findNearestCommonDominator(end, exitBB));
-            }
-            else
-            {
-                for (auto* exitBB : exitBlocks)
-                    end = m_PDT->findNearestCommonDominator(end, exitBB);
-
-                releaseBBs.insert(end);
-            }
-
+            for (auto* exitBB : exitBlocks)
+                releaseBBs.insert(m_PDT->findNearestCommonDominator(end, exitBB));
         }
 
         llvm::erase_if(
@@ -423,7 +412,7 @@ bool DynamicRayManagementPass::TryProceedBasedApproach(Function& F)
     auto* init_guard = IRB.CreateStore(IRB.getFalse(), guard);
     guardStoresAndLoads.push_back(init_guard);
 
-    SmallVector<CallInst*> CheckReleaseIntrinsics;
+    SmallVector<Instruction*> CheckReleaseIntrinsics;
 
     for (auto* checkBB : checkBBs)
     {
@@ -515,7 +504,6 @@ bool DynamicRayManagementPass::TryProceedBasedApproach(Function& F)
 
     SimplifyQuery SQ(F.getParent()->getDataLayout());
 
-    SmallVector<Instruction*> toErase;
     for (auto* I : CheckReleaseIntrinsics)
     {
         Value* flag = I->getOperand(0);
@@ -535,41 +523,12 @@ bool DynamicRayManagementPass::TryProceedBasedApproach(Function& F)
         if (auto* CI = dyn_cast_or_null<ConstantInt>(flag))
         {
             if (CI->isZero())
-                toErase.push_back(I);
+                I->eraseFromParent();
 
             if (CI->isOne())
                 I->setOperand(0, IRB.getTrue());
         }
-        else
-        {
-            // if we encounter a nonconstant predicate and the platform can't handle divergent rayquery check/release
-            // we undo as much as we can and bail from approach entirely
-            if (!m_CGCtx->platform.allowDivergentControlFlowRayQueryCheckRelease())
-            {
-                llvm::for_each(
-                    CheckReleaseIntrinsics,
-                    [&](auto* I) {
-                        I->eraseFromParent();
-                    }
-                );
-
-                return false;
-            }
-        }
-
-        // prevent LLVM from merging the calls
-        if (!m_CGCtx->platform.allowDivergentControlFlowRayQueryCheckRelease())
-        {
-            I->addFnAttr(llvm::Attribute::NoMerge);
-        }
     }
-
-    llvm::for_each(
-        toErase,
-        [&](auto* I) {
-            I->eraseFromParent();
-        }
-    );
 
     return true;
 

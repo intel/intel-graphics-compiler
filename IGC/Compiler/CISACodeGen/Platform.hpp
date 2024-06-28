@@ -1743,10 +1743,5 @@ bool preferLSCCache() const
 }
 
 
-bool allowDivergentControlFlowRayQueryCheckRelease() const
-{
-    return false;
-}
-
 };
 }//namespace IGC
