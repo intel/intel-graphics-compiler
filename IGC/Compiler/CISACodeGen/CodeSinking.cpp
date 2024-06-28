@@ -945,20 +945,6 @@ namespace IGC {
         return Max;
     }
 
-    // this function returns the best known regpressure, not up-to-date repgressure
-    // it was implemented this way to cut compilation time costs
-    uint CodeLoopSinking::getMaxRegCountForFunction(Function *F)
-    {
-        unsigned int MaxPressure = 0;
-        for (auto BB : BBPressures)
-        {
-            if (BB.getFirst()->getParent() != F)
-                continue;
-            MaxPressure = std::max(BB.getSecond(), MaxPressure);
-        }
-        return MaxPressure;
-    }
-
     // Find the loops with too high regpressure and sink the instructions from
     // preheaders into them
     bool CodeLoopSinking::loopSink(Function &F)
@@ -972,9 +958,6 @@ namespace IGC {
             if (SinkMode != LoopSinkMode::NoSink)
                 Changed |= loopSink(L, SinkMode);
         }
-
-        unsigned int MaxPressure = getMaxRegCountForFunction(&F);
-        RPE->publishRegPressureMetadata(F, MaxPressure + FRPE->getExternalPressureForFunction(&F));
         return Changed;
     }
 

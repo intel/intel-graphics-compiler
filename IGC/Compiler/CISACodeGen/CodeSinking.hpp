@@ -165,7 +165,6 @@ namespace IGC {
         llvm::DenseMap<llvm::BasicBlock*, uint> BBPressures;
         LoopSinkMode needLoopSink(llvm::Loop* L);
         unsigned getMaxRegCountForLoop(llvm::Loop* L);
-        unsigned getMaxRegCountForFunction(llvm::Function *F);
     };
 
     void initializeCodeLoopSinkingPass(llvm::PassRegistry&);

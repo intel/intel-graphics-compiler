@@ -3684,7 +3684,6 @@ namespace IGC
         FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(&F);
         int simd_size = funcInfoMD->getSubGroupSize()->getSIMDSize();
         bool hasSubGroupForce = hasSubGroupIntrinsicPVC(F);
-        unsigned int max_pressure = funcInfoMD->getMaxRegPressure()->getMaxPressure();
 
         // Finds the kernel and get the group simd size from the kernel
         if (m_FGA)
@@ -3694,7 +3693,6 @@ namespace IGC
             Kernel = FG->getHead();
             funcInfoMD = pMdUtils->getFunctionsInfoItem(Kernel);
             simd_size = funcInfoMD->getSubGroupSize()->getSIMDSize();
-            max_pressure = funcInfoMD->getMaxRegPressure()->getMaxPressure();
         }
 
         auto FG = m_FGA ? m_FGA->getGroup(&F) : nullptr;
@@ -3703,16 +3701,8 @@ namespace IGC
         bool hasSubroutine = FG && !FG->isSingle() && !hasStackCall && !isIndirectGroup;
         bool forceLowestSIMDForStackCalls = IGC_IS_FLAG_ENABLED(ForceLowestSIMDForStackCalls) && (hasStackCall || isIndirectGroup);
 
-
         if (simd_size == 0)
         {
-            if (max_pressure >= IGC_GET_FLAG_VALUE(ForceSIMDRPELimit) &&
-                simdMode != SIMDMode::SIMD16)
-            {
-                pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
-                funcInfoMD->getSubGroupSize()->setSIMDSize(16);
-                return SIMDStatus::SIMD_FUNC_FAIL;
-            }
             if (hasSubroutine &&
                 simdMode != SIMDMode::SIMD16)
             {
@@ -3785,11 +3775,6 @@ namespace IGC
             {
                 return SIMDStatus::SIMD_FUNC_FAIL;
             }
-            if (simdMode == SIMDMode::SIMD16 && !hasSubGroupForce && !forceLowestSIMDForStackCalls && !hasSubroutine)
-            {
-                pCtx->SetSIMDInfo(SIMD_SKIP_PERF, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
-                return SIMDStatus::SIMD_FUNC_FAIL;
-            }
 
             // Check if we force code generation for the current SIMD size.
             // Note that for SIMD8, we always force it!
@@ -3797,6 +3782,12 @@ namespace IGC
             if (numLanes(simdMode) == pCtx->getModuleMetaData()->csInfo.forcedSIMDSize)
             {
                 return SIMDStatus::SIMD_PASS;
+            }
+
+            if (simdMode == SIMDMode::SIMD16 && !hasSubGroupForce && !forceLowestSIMDForStackCalls && !hasSubroutine)
+            {
+                pCtx->SetSIMDInfo(SIMD_SKIP_PERF, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
+                return SIMDStatus::SIMD_FUNC_FAIL;
             }
 
             if (simdMode == SIMDMode::SIMD32 && hasSubGroupForce)
@@ -3849,7 +3840,6 @@ namespace IGC
         ModuleMetaData* modMD = pCtx->getModuleMetaData();
         FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(&F);
         int simd_size = funcInfoMD->getSubGroupSize()->getSIMDSize();
-        unsigned int max_pressure = funcInfoMD->getMaxRegPressure()->getMaxPressure();
 
         // Finds the kernel and get the group simd size from the kernel
         if (m_FGA)
@@ -3859,7 +3849,6 @@ namespace IGC
             Kernel = FG->getHead();
             funcInfoMD = pMdUtils->getFunctionsInfoItem(Kernel);
             simd_size = funcInfoMD->getSubGroupSize()->getSIMDSize();
-            max_pressure = funcInfoMD->getMaxRegPressure()->getMaxPressure();
         }
 
         // For simd variant functions, detect which SIMD sizes are needed
@@ -3915,14 +3904,6 @@ namespace IGC
                 simdMode != SIMDMode::SIMD8)
             {
                 pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
-                return SIMDStatus::SIMD_FUNC_FAIL;
-            }
-
-            if (max_pressure >= IGC_GET_FLAG_VALUE(ForceSIMDRPELimit) &&
-                simdMode != SIMDMode::SIMD8)
-            {
-                pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
-                funcInfoMD->getSubGroupSize()->setSIMDSize(8);
                 return SIMDStatus::SIMD_FUNC_FAIL;
             }
 

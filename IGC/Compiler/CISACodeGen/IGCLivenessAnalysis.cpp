@@ -369,7 +369,7 @@ void IGCRegisterPressurePrinter::printIntraBlock(llvm::BasicBlock &BB,
         }
         unsigned int SizeInBytes = BBListing[Inst];
         unsigned int AmountOfRegistersRoundUp = RPE->bytesToRegisters(SizeInBytes);
-        MaxPressureInFunction = std::max(MaxPressureInFunction, AmountOfRegistersRoundUp);
+        MaxPressureInKernel = std::max(MaxPressureInKernel, AmountOfRegistersRoundUp);
         Output += std::to_string(SizeInBytes) + " (" +
                   std::to_string(AmountOfRegistersRoundUp) + ")" + "    \t";
         printInstruction(Inst, Output);
@@ -419,7 +419,7 @@ void IGCRegisterPressurePrinter::dumpRegPressure(llvm::Function &F,
         }
 
         OutputFile << "==============================================" << "\n";
-        OutputFile << "MaxPressure In Function: " << MaxPressureInFunction << "\n";
+        OutputFile << "MaxPressure In Kernel: " << MaxPressureInKernel << "\n";
 
         OutputFile.close();
     }
@@ -554,7 +554,7 @@ bool IGCRegisterPressurePrinter::runOnFunction(llvm::Function &F) {
     RPE = &getAnalysis<IGCLivenessAnalysis>();
     WI = &getAnalysis<WIAnalysis>();
     CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    MaxPressureInFunction = 0;
+    MaxPressureInKernel = 0;
 
     unsigned int SIMD = numLanes(RPE->bestGuessSIMDSize(&F));
 
@@ -565,15 +565,13 @@ bool IGCRegisterPressurePrinter::runOnFunction(llvm::Function &F) {
         // basically only for LIT testing
         std::string Output;
         // no particular reason behind this, just big enough power of 2
-        // helps to reduce printing time, by preemptively allocating memory
+        // helps to reduce printing time, by preemptively allocating
+        // memory
         Output.reserve(32768);
         Output += "SIMD: " + std::to_string(SIMD) + ", external pressure: " + std::to_string(ExternalPressure) + "\n";
         for (BasicBlock &BB : F) {
             printSets(&BB, Output, SIMD);
         }
-        Output += "\n";
-        Output += "==============================================\n";
-        Output += "MaxPressure In Function: " + F.getName().str() + " --> " + std::to_string(MaxPressureInFunction) + "\n";
         PRINT(Output);
         Output.clear();
     }

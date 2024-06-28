@@ -747,6 +747,8 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         if (IGC_IS_FLAG_ENABLED(EnableAdvMemOpt))
             mpm.add(createAdvMemOptPass());
 
+        if(IGC_IS_FLAG_SET(DumpRegPressureEstimate)) mpm.add(new IGCRegisterPressurePrinter("final"));
+
         if (doLdStCombine(&ctx)) {
             // Once it is stable, no split 64bit store/load anymore.
             mpm.add(createLdStCombinePass());
