@@ -405,9 +405,9 @@ void DepSet::getDpasSrcDependency(const Instruction &inst,
 
   for (unsigned srcIx = 0; srcIx < inst.getSourceCount(); ++srcIx) {
     const Operand &op = inst.getSource(srcIx);
-    // the src0 could be null, in that case no need to set the dependency
-    if (srcIx == 0 && op.getDirRegName() == RegName::ARF_NULL) {
-      // if src0 is null, set the reg range to max() to specify its actually
+    // src could be null, in that case no need to set the dependency
+    if (op.getDirRegName() == RegName::ARF_NULL) {
+      // if src is null, set the reg range to max() to specify its actually
       // empty
       reg_range.push_back(std::make_pair(std::numeric_limits<uint32_t>::max(),
                                          std::numeric_limits<uint32_t>::max()));
