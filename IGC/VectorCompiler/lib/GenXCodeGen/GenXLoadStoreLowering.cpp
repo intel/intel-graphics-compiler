@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2023 Intel Corporation
+Copyright (C) 2021-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 /// The pass:
 /// * replaces all LLVM loads and stores, using correct namespace,
 /// * replaces all @llvm.masked.gather and @llvm.masked.scatter intrinsics,
+/// * replaces all @llvm.vc.internal.atomic intrinsics,
 /// * replaces all atomic instructions,
 /// * removes lifetime builtins as we are not sure how to process those.
 ///
@@ -22,6 +23,8 @@ SPDX-License-Identifier: MIT
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 #include "GenXVisa.h"
+
+#include "BiFModule/Headers/spirv_atomics_common.h"
 
 #include "vc/InternalIntrinsics/InternalIntrinsics.h"
 #include "vc/Support/BackendConfig.h"
@@ -82,6 +85,13 @@ enum class HWAddrSpace : char {
   A32, // Global memory, addressed with 32-bit pointers.
   A64, // Global memory, addressed with 64-bit pointers.
   SLM, // Shared local memory.
+};
+
+enum SPIRVAtomicOp {
+  PointerOp = 0,
+  ScopeOp = 1,
+  SemanticsOp = 2,
+  SourceOp = 3
 };
 
 constexpr const char AlignMDName[] = "VCAlignment";
@@ -175,6 +185,9 @@ private:
   Instruction *createLSCAtomicRMW(AtomicRMWInst &I,
                                   vc::InternalIntrinsic::ID IID, Type *AddrTy,
                                   Value *BTI) const;
+  Instruction *createLSCAtomicRMW(IntrinsicInst &I,
+                                  vc::InternalIntrinsic::ID IID, Type *AddrTy,
+                                  Value *BTI) const;
   Instruction *createLSCAtomicCmpXchg(AtomicCmpXchgInst &I,
                                       vc::InternalIntrinsic::ID IID,
                                       Type *AddrTy, Value *BTI) const;
@@ -232,6 +245,7 @@ public:
   void visitIntrinsicInst(IntrinsicInst &Intrinsic) const;
   void visitLoadInst(LoadInst &LdI) const;
   void visitStoreInst(StoreInst &StI) const;
+  void visitCallInst(CallInst &CI) const;
 
 public:
   static char ID;
@@ -256,6 +270,17 @@ INITIALIZE_PASS_END(GenXLoadStoreLowering, "GenXLoadStoreLowering",
 FunctionPass *llvm::createGenXLoadStoreLoweringPass() {
   initializeGenXLoadStoreLoweringPass(*PassRegistry::getPassRegistry());
   return new GenXLoadStoreLowering;
+}
+
+static bool isSPIRVAtomic(const Value *Val) {
+  unsigned IID = vc::getAnyIntrinsicID(Val);
+  switch (IID) {
+  default:
+    return false;
+  case vc::InternalIntrinsic::atomic_fmin:
+  case vc::InternalIntrinsic::atomic_fmax:
+    return true;
+  }
 }
 
 void GenXLoadStoreLowering::getAnalysisUsage(AnalysisUsage &AU) const {
@@ -287,6 +312,7 @@ bool GenXLoadStoreLowering::runOnFunction(Function &F) {
   //   * visitIntrinsicInst
   //   * visitLoadInst
   //   * visitStoreInst
+  //   * visitCallInst
   visit(F);
 
   return true;
@@ -340,6 +366,15 @@ void GenXLoadStoreLowering::visitStoreInst(StoreInst &StI) const {
   auto *Replacement = createMemoryInstReplacement(StI);
   LLVM_DEBUG(dbgs() << *Replacement << "\n");
   StI.eraseFromParent();
+}
+
+void GenXLoadStoreLowering::visitCallInst(CallInst &CI) const {
+  if (!isSPIRVAtomic(&CI))
+    return;
+  LLVM_DEBUG(dbgs() << "Replacing intrinsic " << CI << " ===>\n");
+  auto *Replacement = createMemoryInstReplacement(cast<IntrinsicInst>(CI));
+  CI.replaceAllUsesWith(Replacement);
+  CI.eraseFromParent();
 }
 
 namespace {
@@ -917,7 +952,6 @@ Instruction *GenXLoadStoreLowering::createLSCGatherScatter(
 std::pair<unsigned, AtomicOrdering>
 GenXLoadStoreLowering::getAddressSpaceAndOrderingOfAtomic(
     const Instruction &AtomicI) const {
-  IGC_ASSERT(AtomicI.isAtomic());
   if (auto *ARMW = dyn_cast<AtomicRMWInst>(&AtomicI))
     return {ARMW->getPointerAddressSpace(), ARMW->getOrdering()};
   if (auto *CmpXchg = dyn_cast<AtomicCmpXchgInst>(&AtomicI))
@@ -933,6 +967,28 @@ GenXLoadStoreLowering::getAddressSpaceAndOrderingOfAtomic(
     unsigned AS = cast<PointerType>(SI->getPointerOperand()->getType())
                       ->getAddressSpace();
     return {AS, SI->getOrdering()};
+  }
+  if (isSPIRVAtomic(&AtomicI)) {
+    auto *II = cast<IntrinsicInst>(&AtomicI);
+    unsigned AS = vc::getAddrSpace(
+        II->getArgOperand(SPIRVAtomicOp::PointerOp)->getType());
+    unsigned Semantics =
+        cast<ConstantInt>(II->getArgOperand(SPIRVAtomicOp::SemanticsOp))
+            ->getZExtValue();
+    switch (Semantics) {
+    default:
+      LLVM_FALLTHROUGH;
+    case SequentiallyConsistent:
+      return {AS, AtomicOrdering::SequentiallyConsistent};
+    case Relaxed:
+      return {AS, AtomicOrdering::Monotonic};
+    case Acquire:
+      return {AS, AtomicOrdering::Acquire};
+    case Release:
+      return {AS, AtomicOrdering::Release};
+    case AcquireRelease:
+      return {AS, AtomicOrdering::AcquireRelease};
+    }
   }
   IGC_ASSERT_MESSAGE(false, "Unimplemented atomic inst");
   return {0, AtomicOrdering::Monotonic};
@@ -985,6 +1041,25 @@ LSC_SCOPE GenXLoadStoreLowering::getLSCFenceScope(Instruction *I) const {
     ScopeID = AI->getSyncScopeID();
   else if (auto *FI = dyn_cast<FenceInst>(I))
     ScopeID = FI->getSyncScopeID();
+  else if (isSPIRVAtomic(I)) {
+    auto *II = cast<IntrinsicInst>(I);
+    unsigned Scope =
+        cast<ConstantInt>(II->getArgOperand(SPIRVAtomicOp::ScopeOp))
+            ->getZExtValue();
+    switch (Scope) {
+    default:
+      LLVM_FALLTHROUGH;
+    case CrossDevice:
+      return LSC_SCOPE_GPUS;
+    case Device:
+      return ST->hasMultiTile() ? LSC_SCOPE_GPU : LSC_SCOPE_TILE;
+    case Workgroup:
+      return LSC_SCOPE_LOCAL;
+    case Subgroup:
+    case Invocation:
+      return LSC_SCOPE_GROUP;
+    }
+  }
 
   switch (ScopeID) {
   case SyncScope::SingleThread:
@@ -1004,8 +1079,6 @@ LSC_SCOPE GenXLoadStoreLowering::getLSCFenceScope(Instruction *I) const {
 void GenXLoadStoreLowering::createLSCAtomicFenceImpl(Instruction &AtomicI,
                                                      IRBuilder<> &Builder,
                                                      bool IsPostFence) const {
-  IGC_ASSERT_EXIT(AtomicI.isAtomic());
-
   auto [AS, Ordering] = getAddressSpaceAndOrderingOfAtomic(AtomicI);
 
   bool IsGlobal = AS != vc::AddrSpace::Local;
@@ -1037,7 +1110,6 @@ void GenXLoadStoreLowering::createLSCAtomicFenceImpl(Instruction &AtomicI,
 Instruction *GenXLoadStoreLowering::createLSCAtomicImpl(
     Instruction &I, vc::InternalIntrinsic::ID IID, LSC_OP AtomicOp, Value *Base,
     Value *Addr, Value *Src0, Value *Src1) const {
-  IGC_ASSERT_EXIT(I.isAtomic());
   IGC_ASSERT_EXIT(IID == vc::InternalIntrinsic::lsc_atomic_bti ||
                   IID == vc::InternalIntrinsic::lsc_atomic_slm ||
                   IID == vc::InternalIntrinsic::lsc_atomic_ugm);
@@ -1214,6 +1286,37 @@ GenXLoadStoreLowering::createLSCAtomicRMW(AtomicRMWInst &I,
 #endif // IGC_LLVM_VERSION_MAJOR >= 15
   default:
     IGC_ASSERT_EXIT_MESSAGE(0, "Unsupported atomic operation");
+    break;
+  }
+
+  return createLSCAtomicImpl(I, IID, AtomicOp, Base, Addr, Src, Undef);
+}
+
+Instruction *
+GenXLoadStoreLowering::createLSCAtomicRMW(IntrinsicInst &I,
+                                          vc::InternalIntrinsic::ID IID,
+                                          Type *AddrTy, Value *Base) const {
+  IGC_ASSERT(isSPIRVAtomic(&I));
+
+  IRBuilder<> Builder(&I);
+  auto *Ptr = I.getArgOperand(SPIRVAtomicOp::PointerOp);
+  auto *Addr = Builder.CreatePtrToInt(Ptr, AddrTy);
+
+  auto *Src = I.getArgOperand(SPIRVAtomicOp::SourceOp);
+  auto *DataTy = Src->getType();
+  auto *Undef = UndefValue::get(DataTy);
+
+  auto AtomicOp = LSC_INVALID;
+  auto ID = vc::getAnyIntrinsicID(&I);
+  switch (ID) {
+  case vc::InternalIntrinsic::atomic_fmin:
+    AtomicOp = LSC_ATOMIC_FMIN;
+    break;
+  case vc::InternalIntrinsic::atomic_fmax:
+    AtomicOp = LSC_ATOMIC_FMAX;
+    break;
+  default:
+    IGC_ASSERT_EXIT_MESSAGE(0, "Unexpected atomic operation");
     break;
   }
 
@@ -2008,6 +2111,14 @@ Instruction *GenXLoadStoreLowering::switchAtomicity(MemoryInstT &I) const {
   return switchMessage<Atomicity::NonAtomic>(I);
 }
 
+template <>
+Instruction *
+GenXLoadStoreLowering::switchAtomicity<IntrinsicInst>(IntrinsicInst &I) const {
+  if (isSPIRVAtomic(&I))
+    return switchMessage<Atomicity::Atomic>(I);
+  return switchMessage<Atomicity::NonAtomic>(I);
+}
+
 template <Atomicity A, typename MemoryInstT>
 Instruction *GenXLoadStoreLowering::switchMessage(MemoryInstT &I) const {
   if (ST->hasLSCMessages())
@@ -2049,12 +2160,17 @@ Instruction *GenXLoadStoreLowering::switchAddrSpace(IntrinsicInst &I) const {
   case Intrinsic::masked_scatter:
     PointerOperandNum = 1;
     break;
+  case vc::InternalIntrinsic::atomic_fmin:
+  case vc::InternalIntrinsic::atomic_fmax:
+    PointerOperandNum = SPIRVAtomicOp::PointerOp;
+    break;
   }
 
   auto *Ptr = I.getArgOperand(PointerOperandNum);
-  auto *PtrVTy = cast<IGCLLVM::FixedVectorType>(Ptr->getType());
-  auto *PtrTy = cast<PointerType>(PtrVTy->getElementType());
-  return switchAddrSpace<MK, A>(I, PtrTy);
+  auto *PtrTy = Ptr->getType();
+  if (auto *PtrVTy = dyn_cast<IGCLLVM::FixedVectorType>(PtrTy))
+    PtrTy = PtrVTy->getElementType();
+  return switchAddrSpace<MK, A>(I, cast<PointerType>(PtrTy));
 }
 
 template <HWAddrSpace HWAS, MessageKind MK, Atomicity A, typename MemoryInstT>
@@ -2347,6 +2463,30 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::LSC,
   return createLSCGatherScatter(I, vc::InternalIntrinsic::lsc_load_slm,
                                 vc::InternalIntrinsic::lsc_store_slm, Base,
                                 AddrTy);
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A64, MessageKind::LSC,
+                                       Atomicity::Atomic, IntrinsicInst>(
+    IntrinsicInst &I) const {
+  IRBuilder<> Builder(&I);
+  auto *Base = Builder.getInt64(0);
+  auto *AddrTy = Builder.getInt64Ty();
+  return createLSCAtomicRMW(I, vc::InternalIntrinsic::lsc_atomic_ugm, AddrTy,
+                            Base);
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::LSC,
+                                       Atomicity::Atomic, IntrinsicInst>(
+    IntrinsicInst &I) const {
+  IRBuilder<> Builder(&I);
+  auto *Base = Builder.getInt32(0);
+  auto *AddrTy = Builder.getInt32Ty();
+  return createLSCAtomicRMW(I, vc::InternalIntrinsic::lsc_atomic_slm, AddrTy,
+                            Base);
 }
 
 template <>

@@ -220,6 +220,25 @@ Value *SPIRVExpander::visitCallInst(CallInst &CI) {
         emitIntrinsic(Builder, Intrinsic::readcyclecounter, llvm::None, {});
     return Builder.CreateBitCast(Intr, CI.getType());
   }
+  // SPV_EXT_shader_atomic_float_min_max extension
+  if (CalleeName.startswith("AtomicFMin") ||
+      CalleeName.startswith("AtomicFMax")) {
+    auto *Ptr = CI.getArgOperand(0);
+    auto *Scope = CI.getArgOperand(1);
+    auto *Semantic = CI.getArgOperand(2);
+    auto *Val = CI.getArgOperand(3);
+
+    IGC_ASSERT(isa<ConstantInt>(Scope));
+    IGC_ASSERT(isa<ConstantInt>(Semantic));
+
+    IID = StringSwitch<unsigned>(CalleeName)
+              .StartsWith("AtomicFMin", vc::InternalIntrinsic::atomic_fmin)
+              .StartsWith("AtomicFMax", vc::InternalIntrinsic::atomic_fmax)
+              .Default(Intrinsic::not_intrinsic);
+    return emitIntrinsic(Builder, IID,
+                         {CI.getType(), Ptr->getType(), CI.getType()},
+                         {Ptr, Scope, Semantic, Val});
+  }
 
   IID = StringSwitch<unsigned>(CalleeName)
             .StartsWith("IAddCarry", GenXIntrinsic::genx_addc)

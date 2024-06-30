@@ -156,6 +156,25 @@ Imported_Intrinsics = {
                                   "arguments": ["anyfloat", "anyint"],
                                   "attributes": "NoMem", },
 
+## ``llvm.vc.internal.atomic.`` : intrinsics to represent SPIR-V atomic instructions
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: ptr to global/local/generic memory (overloaded)
+## * arg1: i32 constant scope
+## * arg2: i32 constant semantics
+## * arg3: f16/f32/f64 scalar value (overloaded)
+##
+## * Return value: atomic result whose type matches a type of the input value (overloaded)
+##
+    "atomic_fmin" : { "result": "anyfloat",
+                      "arguments": [ "anyptr", "int", "int",
+                                     "anyfloat"],
+                      "attributes": "SideEffects", },
+    "atomic_fmax" : { "result": "anyfloat",
+                      "arguments": [ "anyptr", "int", "int",
+                                     "anyfloat"],
+                      "attributes": "SideEffects", },
+
 ### ---------------------------
 ### Low-level memory intrinsics
 ### ---------------------------
