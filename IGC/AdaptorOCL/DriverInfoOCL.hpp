@@ -68,8 +68,6 @@ namespace TC
 
         bool EnableLSCForLdRawAndStoreRawOnDG2() const override { return true; }
 
-        bool supportsLogicalSSIDInHWTID() const override { return true; }
-
         bool supportLscSamplerRouting() const override { return false; }
     };
 

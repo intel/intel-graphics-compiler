@@ -953,7 +953,7 @@ CVariable* CShader::GetHWTID()
             if ((m_Platform->getPlatformInfo().eProductFamily == IGFX_BMG) ||
                 (m_Platform->getPlatformInfo().eProductFamily == IGFX_LUNARLAKE))
             {
-                if (m_DriverInfo->supportsLogicalSSIDInHWTID())
+                if (m_Platform->supportsWMTPForShaderType(m_ctx->type))
                 {
 
                     m_HW_TID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1, "HWTID");

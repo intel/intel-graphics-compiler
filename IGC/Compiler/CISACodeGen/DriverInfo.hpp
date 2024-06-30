@@ -376,9 +376,6 @@ namespace IGC
         virtual unsigned getCSSIMD16_SpillThreshold() const { return IGC_GET_FLAG_VALUE(CSSIMD16_SpillThreshold); }
         virtual unsigned getCSSIMD32_SpillThreshold() const { return IGC_GET_FLAG_VALUE(CSSIMD32_SpillThreshold); }
 
-        // Informs if it supports to use a logical SSID from msg0.0 instead of a physical ID from sr0
-        virtual bool supportsLogicalSSIDInHWTID() const { return false; }
-
         virtual bool supportLscSamplerRouting() const { return true; }
 protected:
     bool autoGRFSelection = false;
