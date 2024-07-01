@@ -21,6 +21,9 @@ namespace IGC::IGCMD
     class SubGroupSizeMetaData;
     using SubGroupSizeMetaDataHandle = MetaObjectHandle<SubGroupSizeMetaData>;
 
+    class MaxRegPressureMetaData;
+    using MaxRegPressureMetaDataHandle = MetaObjectHandle<MaxRegPressureMetaData>;
+
     class VectorTypeHintMetaData;
     using VectorTypeHintMetaDataHandle = MetaObjectHandle<VectorTypeHintMetaData>;
 
@@ -210,6 +213,57 @@ namespace IGC::IGCMD
         // data members
         ArgType m_Arg;
         ArgDependencyType m_ArgDependency;
+    };
+
+    class MaxRegPressureMetaData : public IMetaDataObject
+    {
+    public:
+        using _Mybase = IMetaDataObject;
+
+        MaxRegPressureMetaData(const llvm::MDNode* pNode, bool hasId);
+        MaxRegPressureMetaData();
+        MaxRegPressureMetaData(const char* name);
+
+        // Returns true if any of the ArgInfoMetaData`s members has changed
+        bool dirty() const override;
+
+        // Returns true if the structure was loaded from the metadata or was changed
+        bool hasValue() const;
+
+        // Discards the changes done to the ArgInfoMetaData instance
+        void discardChanges() override;
+
+        // Generates the new MDNode hierarchy for the given structure
+        llvm::Metadata* generateNode(llvm::LLVMContext& context) const;
+
+        // Saves the structure changes to the given MDNode
+        void save(llvm::LLVMContext& context, llvm::MDNode* pNode) const;
+
+        //
+        // Data members
+        //
+        using MaxPressureType = MetaDataValue<int32_t>;
+
+        // SIMDSize
+        MaxPressureType::value_type getMaxPressure() const
+        {
+            return m_MaxPressure.get();
+        }
+        void setMaxPressure(const MaxPressureType::value_type& val)
+        {
+            m_MaxPressure.set(val);
+        }
+        bool isMaxPressureHasValue() const
+        {
+            return m_MaxPressure.hasValue();
+        }
+
+    private:
+        // parent node
+        const llvm::MDNode* m_pNode;
+
+        // data members
+        MaxPressureType m_MaxPressure;
     };
 
     class SubGroupSizeMetaData : public IMetaDataObject
@@ -576,6 +630,11 @@ namespace IGC::IGCMD
             return m_SubGroupSize;
         }
 
+        MaxRegPressureMetaDataHandle getMaxRegPressure()
+        {
+            return m_MaxRegPressure;
+        }
+
         // OpenCLVectorTypeHint
         VectorTypeHintMetaDataHandle getOpenCLVectorTypeHint()
         {
@@ -593,6 +652,7 @@ namespace IGC::IGCMD
         ThreadGroupSizeMetaDataHandle m_ThreadGroupSize;
         ThreadGroupSizeMetaDataHandle m_ThreadGroupSizeHint;
         SubGroupSizeMetaDataHandle m_SubGroupSize;
+        MaxRegPressureMetaDataHandle m_MaxRegPressure;
         VectorTypeHintMetaDataHandle m_OpenCLVectorTypeHint;
     };
 

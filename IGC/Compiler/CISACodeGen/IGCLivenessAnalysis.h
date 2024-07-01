@@ -85,7 +85,12 @@ namespace IGC {
 class IGCLivenessAnalysis : public llvm::FunctionPass, public IGCLivenessAnalysisBase {
   public:
 
-
+    void publishRegPressureMetadata(llvm::Function& F, unsigned int MaxPressure) {
+        if (MDUtils->findFunctionsInfoItem(&F) != MDUtils->end_FunctionsInfo()) {
+            IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = MDUtils->getFunctionsInfoItem(&F);
+            funcInfoMD->getMaxRegPressure()->setMaxPressure(MaxPressure);
+        }
+    }
 
     unsigned int getMaxRegCountForBB(llvm::BasicBlock &BB, unsigned int SIMD, WIAnalysisRunner* WI = nullptr) {
         InsideBlockPressureMap PressureMap;
@@ -255,7 +260,7 @@ class IGCRegisterPressurePrinter : public llvm::FunctionPass {
     unsigned int PrinterType = IGC_GET_FLAG_VALUE(RegPressureVerbocity);
     // maximum potential calling context pressure of a function
     unsigned int ExternalPressure = 0;
-    unsigned int MaxPressureInKernel = 0;
+    unsigned int MaxPressureInFunction = 0;
 
     void intraBlock(llvm::BasicBlock &BB, std::string &Output, unsigned int SIMD);
     void dumpRegPressure(llvm::Function &F, unsigned int SIMD);
