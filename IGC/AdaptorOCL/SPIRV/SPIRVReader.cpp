@@ -2700,9 +2700,7 @@ SPIRVToLLVM::postProcessFunctionsReturnStruct(Function *F) {
       Args.insert(Args.begin(), Alloca);
       auto NewCI = CallInst::Create(NewF, Args, "", CI);
       NewCI->setCallingConv(CI->getCallingConv());
-      auto Load = new LoadInst(
-      IGCLLVM::getNonOpaquePtrEltTy(Alloca->getType()),
-      Alloca,"",CI);
+      auto Load = new LoadInst(Alloca->getAllocatedType(), Alloca,"",CI);
       CI->replaceAllUsesWith(Load);
       CI->eraseFromParent();
     }
@@ -3283,14 +3281,17 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     SPIRVStorageClassKind BS = BVar->getStorageClass();
     SPIRVValue *Init = BVar->getInitializer();
 
-    if (isSPIRVSamplerType(Ty) && BS == StorageClassUniformConstant) {
-      // Skip generating llvm code during translation of a variable definition,
-      // generate code only for its uses
-      if (!BB)
-        return nullptr;
+    if (isa<PointerType>(Ty)) {
+        auto elTy = transType(BVar->getType()->getPointerElementType()->getPointerElementType());
+        if (isSPIRVSamplerType(elTy) && BS == StorageClassUniformConstant) {
+            // Skip generating llvm code during translation of a variable definition,
+            // generate code only for its uses
+            if (!BB)
+                return nullptr;
 
-      IGC_ASSERT_MESSAGE(Init, "UniformConstant OpVariable with sampler type must have an initializer!");
-      return transValue(Init, F, BB);
+            IGC_ASSERT_MESSAGE(Init, "UniformConstant OpVariable with sampler type must have an initializer!");
+            return transValue(Init, F, BB);
+        }
     }
 
     if (Init)
@@ -3483,7 +3484,9 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
             for (unsigned I = 0, E = CS->getNumOperands(); I != E; I++)
             {
                 auto *op = CS->getOperand(I);
-                auto *pGEP = IRB.CreateConstInBoundsGEP2_32(IGCLLVM::getNonOpaquePtrEltTy(pointer->getType()), pointer, 0, I);
+                Type* elTy = isa<AllocaInst>(pointer) ? cast<AllocaInst>(pointer)->getAllocatedType()
+                    : cast<GetElementPtrInst>(pointer)->getResultElementType();
+                auto *pGEP = IRB.CreateConstInBoundsGEP2_32(elTy, pointer, 0, I);
                 if (auto *InnerCS = dyn_cast<ConstantStruct>(op))
                     LowerConstantStructStore(InnerCS, pGEP);
                 else
@@ -3520,7 +3523,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     IGC_ASSERT_MESSAGE(BB, "Invalid BB");
     auto val = transValue(BL->getSrc(), F, BB);
     LoadInst* LI = new LoadInst(
-      IGCLLVM::getNonOpaquePtrEltTy(val->getType()),
+      transType(BL->getType()),
       val,
       BV->getName(),
       BL->hasDecorate(DecorationVolatile) || BL->SPIRVMemoryAccess::isVolatile() != 0,
@@ -3640,7 +3643,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
   case OpInBoundsPtrAccessChain: {
     auto AC = static_cast<SPIRVAccessChainBase *>(BV);
     auto Base = transValue(AC->getBase(), F, BB);
-    Type *BaseTy = IGCLLVM::getNonOpaquePtrEltTy(Base->getType());
+    Type* BaseTy = transType(AC->getBase()->getType()->getPointerElementType());
     auto Index = transValue(AC->getIndices(), F, BB);
     if (!AC->hasPtrIndex())
       Index.insert(Index.begin(), getInt32(M, 0));
