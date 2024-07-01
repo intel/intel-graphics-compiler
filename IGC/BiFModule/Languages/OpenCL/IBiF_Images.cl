@@ -554,7 +554,7 @@ INLINE float OVERLOADABLE read_imagef(read_only image2d_depth_t image, sampler_t
 
 INLINE float4 OVERLOADABLE read_imagef(read_only image2d_array_t image_array, sampler_t sampler, int4 coords) {
     int id = (int)__builtin_astype(image_array, __global void*);
-    float4 tmpCoords = convert_float4(coords);
+    float3 tmpCoords = convert_float3(coords.xyz);
     return __builtin_IB_OCL_2darr_sample_l(id, __builtin_IB_convert_sampler_to_int(sampler), tmpCoords, 0.0f);
 
 }
@@ -567,7 +567,7 @@ INLINE float4 OVERLOADABLE read_imagef(read_only image2d_array_t image_array, sa
         coords.x = ( coords.x < 0) ? -1.0f :  coords.x;
         coords.y = ( coords.y < 0) ? -1.0f :  coords.y;
     }
-    return __builtin_IB_OCL_2darr_sample_l(id, __builtin_IB_convert_sampler_to_int(sampler), coords, 0.0f);
+    return __builtin_IB_OCL_2darr_sample_l(id, __builtin_IB_convert_sampler_to_int(sampler), coords.xyz, 0.0f);
 }
 
 INLINE int4 OVERLOADABLE read_imagei(read_only image2d_array_t image_array, sampler_t sampler, int4 coords) {
@@ -586,7 +586,7 @@ INLINE uint4 OVERLOADABLE read_imageui(read_only image2d_array_t image_array, sa
     if ((__builtin_IB_get_address_mode(__builtin_IB_convert_sampler_to_int(sampler)) & 0x07) == CLK_ADDRESS_CLAMP_TO_EDGE)
     {
         float2 floatCoords = convert_float2(coords.xy);
-        return as_uint4(__builtin_IB_OCL_2darr_sample_l(id, __builtin_IB_convert_sampler_to_int(sampler), (float4)(floatCoords, layer, 0.0f), 0.0f));
+        return as_uint4(__builtin_IB_OCL_2darr_sample_l(id, __builtin_IB_convert_sampler_to_int(sampler), (float3)(floatCoords, layer), 0.0f));
     }
     else
     {
@@ -617,7 +617,7 @@ INLINE uint4 OVERLOADABLE read_imageui(read_only image2d_array_t image_array, sa
             coords.x = ( coords.x < 0) ? -1.0f :  coords.x;
             coords.y = ( coords.y < 0) ? -1.0f :  coords.y;
         }
-        return as_uint4(__builtin_IB_OCL_2darr_sample_l(id, __builtin_IB_convert_sampler_to_int(sampler), coords, 0.0f));
+        return as_uint4(__builtin_IB_OCL_2darr_sample_l(id, __builtin_IB_convert_sampler_to_int(sampler), coords.xyz, 0.0f));
     }
 }
 
@@ -630,7 +630,7 @@ INLINE float4 OVERLOADABLE read_imagef(read_only image2d_array_t image_array, sa
         coords.x = ( coords.x < 0) ? -1.0f :  coords.x;
         coords.y = ( coords.y < 0) ? -1.0f :  coords.y;
     }
-    return __builtin_IB_OCL_2darr_sample_l(id, __builtin_IB_convert_sampler_to_int(sampler), coords, lod);
+    return __builtin_IB_OCL_2darr_sample_l(id, __builtin_IB_convert_sampler_to_int(sampler), coords.xyz, lod);
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -646,7 +646,7 @@ INLINE uint4 OVERLOADABLE read_imageui(read_only image2d_array_t image_array, sa
         coords.x = ( coords.x < 0) ? -1.0f :  coords.x;
         coords.y = ( coords.y < 0) ? -1.0f :  coords.y;
     }
-    return as_uint4(__builtin_IB_OCL_2darr_sample_l(id, __builtin_IB_convert_sampler_to_int(sampler), coords, lod));
+    return as_uint4(__builtin_IB_OCL_2darr_sample_l(id, __builtin_IB_convert_sampler_to_int(sampler), coords.xyz, lod));
 }
 
 // 2D Array Reads with mipmap support using gradients for LOD computation
@@ -658,7 +658,7 @@ INLINE float4 OVERLOADABLE read_imagef(read_only image2d_array_t image_array, sa
         coords.x = ( coords.x < 0) ? -1.0f :  coords.x;
         coords.y = ( coords.y < 0) ? -1.0f :  coords.y;
     }
-    return __builtin_IB_OCL_2darr_sample_d(id, __builtin_IB_convert_sampler_to_int(sampler), coords, gradientX, gradientY);
+    return __builtin_IB_OCL_2darr_sample_d(id, __builtin_IB_convert_sampler_to_int(sampler), coords.xyz, gradientX, gradientY);
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -674,7 +674,7 @@ INLINE uint4 OVERLOADABLE read_imageui(read_only image2d_array_t image_array, sa
         coords.x = ( coords.x < 0) ? -1.0f :  coords.x;
         coords.y = ( coords.y < 0) ? -1.0f :  coords.y;
     }
-    return as_uint4(__builtin_IB_OCL_2darr_sample_d(id, __builtin_IB_convert_sampler_to_int(sampler), coords, gradientX, gradientY));
+    return as_uint4(__builtin_IB_OCL_2darr_sample_d(id, __builtin_IB_convert_sampler_to_int(sampler), coords.xyz, gradientX, gradientY));
 }
 
 // 2D Depth Array Reads with mipmap support
@@ -686,7 +686,7 @@ INLINE float OVERLOADABLE read_imagef(read_only image2d_array_depth_t image, sam
         coords.x = ( coords.x < 0) ? -1.0f :  coords.x;
         coords.y = ( coords.y < 0) ? -1.0f :  coords.y;
     }
-    return __builtin_IB_OCL_2darr_sample_l(id, __builtin_IB_convert_sampler_to_int(sampler), coords, lod).x;
+    return __builtin_IB_OCL_2darr_sample_l(id, __builtin_IB_convert_sampler_to_int(sampler), coords.xyz, lod).x;
 }
 
 // 2D Depth Array Reads with mipmap support using gradients for LOD computation
@@ -698,7 +698,7 @@ INLINE float OVERLOADABLE read_imagef(read_only image2d_array_depth_t image, sam
         coords.x = ( coords.x < 0) ? -1.0f :  coords.x;
         coords.y = ( coords.y < 0) ? -1.0f :  coords.y;
     }
-    return __builtin_IB_OCL_2darr_sample_d(id, __builtin_IB_convert_sampler_to_int(sampler), coords, gradientX, gradientY).x;
+    return __builtin_IB_OCL_2darr_sample_d(id, __builtin_IB_convert_sampler_to_int(sampler), coords.xyz, gradientX, gradientY).x;
 }
 
 // 3D reads with mipmap support
@@ -1052,12 +1052,12 @@ INLINE float OVERLOADABLE read_imagef(read_only image2d_array_depth_t image, sam
         coords.x = ( coords.x < 0) ? -1.0f :  coords.x;
         coords.y = ( coords.y < 0) ? -1.0f :  coords.y;
     }
-    return __builtin_IB_OCL_2darr_sample_l(id, __builtin_IB_convert_sampler_to_int(sampler), coords, 0.0f).x;
+    return __builtin_IB_OCL_2darr_sample_l(id, __builtin_IB_convert_sampler_to_int(sampler), coords.xyz, 0.0f).x;
 }
 
 INLINE float OVERLOADABLE read_imagef(read_only image2d_array_depth_t image, sampler_t sampler, int4 coords) {
     int id = (int)__builtin_astype(image, __global void*);
-    float4 tmpCoords = convert_float4(coords);
+    float3 tmpCoords = convert_float3(coords.xyz);
     return __builtin_IB_OCL_2darr_sample_l(id, __builtin_IB_convert_sampler_to_int(sampler), tmpCoords, 0.0f).x;
 }
 

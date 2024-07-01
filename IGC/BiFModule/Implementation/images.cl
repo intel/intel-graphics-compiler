@@ -288,30 +288,37 @@ half4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f16_img3d_ro_v
 }
 #endif // cl_khr_fp16
 
-float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_array_ro_v4f32_i32_f32, _Rfloat4)(__spirv_SampledImage_2D_array SampledImage, float4 Coordinate, int ImageOperands, float Lod)
+float4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Rfloat4(__spirv_SampledImage_2D_array SampledImage, float3 Coordinate, int ImageOperands, float Lod)
 {
     int image_id = (int)__builtin_IB_get_image(SampledImage);
     int sampler_id = (int)__builtin_IB_get_sampler(SampledImage);
 
-    float4 snappedCoords = Coordinate;
-
     if (__builtin_IB_get_snap_wa_reqd(sampler_id) != 0)
     {
-        snappedCoords.x = (Coordinate.x < 0) ? -1.0f : Coordinate.x;
-        snappedCoords.y = (Coordinate.y < 0) ? -1.0f : Coordinate.y;
-        snappedCoords.z = (Coordinate.z < 0) ? -1.0f : Coordinate.z;
+        Coordinate.x = (Coordinate.x < 0) ? -1.0f : Coordinate.x;
+        Coordinate.y = (Coordinate.y < 0) ? -1.0f : Coordinate.y;
     }
 
-    return __builtin_IB_OCL_2darr_sample_l(image_id, sampler_id, (float4)(snappedCoords.xy, Coordinate.zw), Lod);
+    return __builtin_IB_OCL_2darr_sample_l(image_id, sampler_id, Coordinate, Lod);
+}
+
+float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_array_ro_v4f32_i32_f32, _Rfloat4)(__spirv_SampledImage_2D_array SampledImage, float4 Coordinate, int ImageOperands, float Lod)
+{
+    return __spirv_ImageSampleExplicitLod_Rfloat4(SampledImage, Coordinate.xyz, ImageOperands, Lod);
+}
+
+float4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Rfloat4(__spirv_SampledImage_2D_array SampledImage, int3 Coordinate, int ImageOperands, float Lod)
+{
+    float3 floatCoords = convert_float3(Coordinate);
+    return __spirv_ImageSampleExplicitLod_Rfloat4(SampledImage, floatCoords, ImageOperands, Lod);
 }
 
 float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_array_ro_v4i32_i32_f32, _Rfloat4)(__spirv_SampledImage_2D_array SampledImage, int4 Coordinate, int ImageOperands, float Lod)
 {
-    float4 floatCoords = convert_float4(Coordinate);
-    return SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_array_ro_v4f32_i32_f32, _Rfloat4)(SampledImage, floatCoords, ImageOperands, Lod);
+    return __spirv_ImageSampleExplicitLod_Rfloat4(SampledImage, Coordinate.xyz, ImageOperands, Lod);
 }
 
-uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_2D_array SampledImage, float4 Coordinate, int ImageOperands, float Lod)
+uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_2D_array SampledImage, float3 Coordinate, int ImageOperands, float Lod)
 {
     int image_id = (int)__builtin_IB_get_image(SampledImage);
     int sampler_id = (int)__builtin_IB_get_sampler(SampledImage);
@@ -352,13 +359,23 @@ uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_2D
     }
 }
 
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img2d_array_ro_v4f32_i32_f32, _Rint4)(__spirv_SampledImage_2D_array SampledImage, float4 Coordinate, int ImageOperands, float Lod)
+uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_2D_array SampledImage, float4 Coordinate, int ImageOperands, float Lod)
+{
+    return __spirv_ImageSampleExplicitLod_Ruint4(SampledImage, Coordinate.xyz, ImageOperands, Lod);
+}
+
+int4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Rint4(__spirv_SampledImage_2D_array SampledImage, float3 Coordinate, int ImageOperands, float Lod)
 {
     uint4 res = __spirv_ImageSampleExplicitLod_Ruint4(SampledImage, Coordinate, ImageOperands, Lod);
     return as_int4(res);
 }
 
-uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_2D_array SampledImage, int4 Coordinate, int ImageOperands, float Lod)
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img2d_array_ro_v4f32_i32_f32, _Rint4)(__spirv_SampledImage_2D_array SampledImage, float4 Coordinate, int ImageOperands, float Lod)
+{
+    return __spirv_ImageSampleExplicitLod_Rint4(SampledImage, Coordinate.xyz, ImageOperands, Lod);
+}
+
+uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_2D_array SampledImage, int3 Coordinate, int ImageOperands, float Lod)
 {
     int image_id = (int)__builtin_IB_get_image(SampledImage);
     int sampler_id = (int)__builtin_IB_get_sampler(SampledImage);
@@ -369,7 +386,7 @@ uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_2D
         int dt = __builtin_IB_get_image2d_array_size(image_id);
         float layer = SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(SPIRV_OCL_BUILTIN(rint, _f32, )((float)Coordinate.z), 0.0f, (float)(dt - 1));
         float2 floatCoords = SPIRV_BUILTIN(ConvertSToF, _v2f32_v2i32, _Rfloat2)(Coordinate.xy);
-        return as_uint4(__builtin_IB_OCL_2darr_sample_l(image_id, sampler_id, (float4)(floatCoords, layer, 0.0f), Lod));
+        return as_uint4(__builtin_IB_OCL_2darr_sample_l(image_id, sampler_id, (float3)(floatCoords, layer), Lod));
     }
     else
     {
@@ -380,23 +397,43 @@ uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_2D
     }
 }
 
-int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img2d_array_ro_v4i32_i32_f32, _Rint4)(__spirv_SampledImage_2D_array SampledImage, int4 Coordinate, int ImageOperands, float Lod)
+uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(__spirv_SampledImage_2D_array SampledImage, int4 Coordinate, int ImageOperands, float Lod)
+{
+    return __spirv_ImageSampleExplicitLod_Ruint4(SampledImage, Coordinate.xyz, ImageOperands, Lod);
+}
+
+int4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Rint4(__spirv_SampledImage_2D_array SampledImage, int3 Coordinate, int ImageOperands, float Lod)
 {
     uint4 res = __spirv_ImageSampleExplicitLod_Ruint4(SampledImage, Coordinate, ImageOperands, Lod);
     return as_int4(res);
 }
 
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4i32_img2d_array_ro_v4i32_i32_f32, _Rint4)(__spirv_SampledImage_2D_array SampledImage, int4 Coordinate, int ImageOperands, float Lod)
+{
+    return __spirv_ImageSampleExplicitLod_Rint4(SampledImage, Coordinate.xyz, ImageOperands, Lod);
+}
+
 #ifdef cl_khr_fp16
+half4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Rhalf4(__spirv_SampledImage_2D_array SampledImage, float3 Coordinate, int ImageOperands, float Lod)
+{
+    float4 res = __spirv_ImageSampleExplicitLod_Rfloat4(SampledImage, Coordinate, ImageOperands, Lod);
+    return SPIRV_BUILTIN(FConvert, _v4f16_v4f32, _Rhalf4)(res);
+}
+
 half4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f16_img2d_array_ro_v4f32_i32_f32, _Rhalf4)(__spirv_SampledImage_2D_array SampledImage, float4 Coordinate, int ImageOperands, float Lod)
 {
-    float4 res = SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_array_ro_v4f32_i32_f32, _Rfloat4)(SampledImage, Coordinate, ImageOperands, Lod);
+    return __spirv_ImageSampleExplicitLod_Rhalf4(SampledImage, Coordinate.xyz, ImageOperands, Lod);
+}
+
+half4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Rhalf4(__spirv_SampledImage_2D_array SampledImage, int3 Coordinate, int ImageOperands, float Lod)
+{
+    float4 res = __spirv_ImageSampleExplicitLod_Rfloat4(SampledImage, Coordinate, ImageOperands, Lod);
     return SPIRV_BUILTIN(FConvert, _v4f16_v4f32, _Rhalf4)(res);
 }
 
 half4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f16_img2d_array_ro_v4i32_i32_f32, _Rhalf4)(__spirv_SampledImage_2D_array SampledImage, int4 Coordinate, int ImageOperands, float Lod)
 {
-    float4 res = SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_array_ro_v4i32_i32_f32, _Rfloat4)(SampledImage, Coordinate, ImageOperands, Lod);
-    return SPIRV_BUILTIN(FConvert, _v4f16_v4f32, _Rhalf4)(res);
+    return __spirv_ImageSampleExplicitLod_Rhalf4(SampledImage, Coordinate.xyz, ImageOperands, Lod);
 }
 #endif // cl_khr_fp16
 
@@ -658,7 +695,7 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_arr
         snappedCoords.z = (Coordinate.z < 0) ? -1.0f : Coordinate.z;
     }
 
-    return __builtin_IB_OCL_2darr_sample_l(image_id, sampler_id, (float4)(snappedCoords.xy, Coordinate.zw), Lod);
+    return __builtin_IB_OCL_2darr_sample_l(image_id, sampler_id, (float3)(snappedCoords.xy, Coordinate.z), Lod);
 }
 
 float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_array_depth_ro_v4i32_i32_f32, _Rfloat4)(__spirv_SampledImage_2D_array_depth SampledImage, int4 Coordinate, int ImageOperands, float Lod)
@@ -859,7 +896,7 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_arr
         Coordinate.y = (Coordinate.y < 0) ? -1.0f : Coordinate.y;
     }
 
-    return __builtin_IB_OCL_2darr_sample_d(image_id, sampler_id, Coordinate, dx, dy);
+    return __builtin_IB_OCL_2darr_sample_d(image_id, sampler_id, Coordinate.xyz, dx, dy);
 }
 
 uint4 OVERLOADABLE __spirv_ImageSampleExplicitLod_Ruint4(
@@ -1005,7 +1042,7 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_arr
         Coordinate.y = (Coordinate.y < 0) ? -1.0f : Coordinate.y;
     }
 
-    return __builtin_IB_OCL_2darr_sample_d(image_id, sampler_id, Coordinate, dx, dy);
+    return __builtin_IB_OCL_2darr_sample_d(image_id, sampler_id, Coordinate.xyz, dx, dy);
 }
 
 // Image SampleExplicitLod SYCL Bindless
@@ -1013,21 +1050,21 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageSampleExplicitLod, _v4f32_img2d_arr
 #define DefaultImageOperands 2
 #define DefaultLod 0.f
 
-#define DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C_TY(DIM, COORD_DIM, RET_TYPE, LOAD_TYPE)                                                                       \
-RET_TYPE##4 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate, int ImageOperands, float Lod) \
-{                                                                                                                                                                      \
-    return convert_##RET_TYPE##4(__spirv_ImageSampleExplicitLod_R##LOAD_TYPE(Image, Coordinate, ImageOperands, Lod));                                                  \
-}                                                                                                                                                                      \
-RET_TYPE##4 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(__spirv_SampledImage_##DIM##D Image, int##COORD_DIM Coordinate, int ImageOperands, float Lod)   \
-{                                                                                                                                                                      \
-    return convert_##RET_TYPE##4(__spirv_ImageSampleExplicitLod_R##LOAD_TYPE(Image, Coordinate, ImageOperands, Lod));                                                  \
+#define DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C_TY(DIM, ARRAY, COORD_DIM, RET_TYPE, LOAD_TYPE)                                                                       \
+RET_TYPE##4 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(__spirv_SampledImage_##DIM##D##ARRAY Image, float##COORD_DIM Coordinate, int ImageOperands, float Lod) \
+{                                                                                                                                                                             \
+    return convert_##RET_TYPE##4(__spirv_ImageSampleExplicitLod_R##LOAD_TYPE(Image, Coordinate, ImageOperands, Lod));                                                         \
+}                                                                                                                                                                             \
+RET_TYPE##4 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(__spirv_SampledImage_##DIM##D##ARRAY Image, int##COORD_DIM Coordinate, int ImageOperands, float Lod)   \
+{                                                                                                                                                                             \
+    return convert_##RET_TYPE##4(__spirv_ImageSampleExplicitLod_R##LOAD_TYPE(Image, Coordinate, ImageOperands, Lod));                                                         \
 }
 
-#define DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C(DIM, COORD_DIM)           \
-DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C_TY(DIM, COORD_DIM, char, int4)    \
-DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C_TY(DIM, COORD_DIM, uchar, uint4)  \
-DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C_TY(DIM, COORD_DIM, short, int4)   \
-DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C_TY(DIM, COORD_DIM, ushort, uint4)
+#define DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C(DIM, ARRAY, COORD_DIM)           \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C_TY(DIM, ARRAY, COORD_DIM, char, int4)    \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C_TY(DIM, ARRAY, COORD_DIM, uchar, uint4)  \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C_TY(DIM, ARRAY, COORD_DIM, short, int4)   \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C_TY(DIM, ARRAY, COORD_DIM, ushort, uint4)
 
 #define DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_DX_DY_S_C_TY(DIM, RET_TYPE, LOAD_TYPE, COORD_DIM)                                                                                                \
 RET_TYPE##4 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate, int ImageOperands, float##COORD_DIM dx, float##COORD_DIM dy) \
@@ -1042,75 +1079,77 @@ DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_DX_DY_S_C_TY(DIM, uchar, uint4, COO
 DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_DX_DY_S_C_TY(DIM, ushort, uint4, COORD_DIM)
 
 #if defined(__USE_KHRONOS_SPIRV_TRANSLATOR__)
-DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C(3, 3)
-DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C(2, 2)
-DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C(1,  )
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C(3,       , 3)
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C(2,       , 2)
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C(2, _array, 3)
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C(1,       ,  )
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_S_C(1, _array, 2)
 DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_DX_DY_S_C(2, 2)
 DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_DX_DY_S_C(1,  )
 #endif // defined(__USE_KHRONOS_SPIRV_TRANSLATOR__)
 
-#define DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_TY(DIM, RET_TYPE, LOAD_TYPE, COORD_DIM)                                                                \
-RET_TYPE##4 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate, int ImageOperands) \
+#define DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_TY(DIM, ARRAY, RET_TYPE, LOAD_TYPE, COORD_DIM)                                                                \
+RET_TYPE##4 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(__spirv_SampledImage_##DIM##D##ARRAY Image, float##COORD_DIM Coordinate, int ImageOperands) \
 {                                                                                                                                                           \
     return __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(Image, Coordinate, ImageOperands, DefaultLod);                                                     \
 }                                                                                                                                                           \
-RET_TYPE##4 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(__spirv_SampledImage_##DIM##D Image, int##COORD_DIM Coordinate, int ImageOperands)   \
+RET_TYPE##4 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(__spirv_SampledImage_##DIM##D##ARRAY Image, int##COORD_DIM Coordinate, int ImageOperands)   \
 {                                                                                                                                                           \
     return __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(Image, Coordinate, ImageOperands, DefaultLod);                                                     \
 }                                                                                                                                                           \
-RET_TYPE##4 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate)                    \
+RET_TYPE##4 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(__spirv_SampledImage_##DIM##D##ARRAY Image, float##COORD_DIM Coordinate)             \
 {                                                                                                                                                           \
     return __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(Image, Coordinate, DefaultImageOperands, DefaultLod);                                              \
 }                                                                                                                                                           \
-RET_TYPE##4 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(__spirv_SampledImage_##DIM##D Image, int##COORD_DIM Coordinate)                      \
+RET_TYPE##4 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(__spirv_SampledImage_##DIM##D##ARRAY Image, int##COORD_DIM Coordinate)               \
 {                                                                                                                                                           \
     return __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(Image, Coordinate, DefaultImageOperands, DefaultLod);                                              \
 }                                                                                                                                                           \
-RET_TYPE##2 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##2(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate, int ImageOperands, float Lod) \
+RET_TYPE##2 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##2(__spirv_SampledImage_##DIM##D##ARRAY Image, float##COORD_DIM Coordinate, int ImageOperands, float Lod) \
 {                                                                                                                                                           \
     return convert_##RET_TYPE##2(__spirv_ImageSampleExplicitLod_R##LOAD_TYPE(Image, Coordinate, ImageOperands, Lod).xy);                                    \
 }                                                                                                                                                           \
-RET_TYPE##2 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##2(__spirv_SampledImage_##DIM##D Image, int##COORD_DIM Coordinate, int ImageOperands, float Lod) \
+RET_TYPE##2 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##2(__spirv_SampledImage_##DIM##D##ARRAY Image, int##COORD_DIM Coordinate, int ImageOperands, float Lod) \
 {                                                                                                                                                           \
     return convert_##RET_TYPE##2(__spirv_ImageSampleExplicitLod_R##LOAD_TYPE(Image, Coordinate, ImageOperands, Lod).xy);                                    \
 }                                                                                                                                                           \
-RET_TYPE##2 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##2(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate, int ImageOperands) \
+RET_TYPE##2 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##2(__spirv_SampledImage_##DIM##D##ARRAY Image, float##COORD_DIM Coordinate, int ImageOperands) \
 {                                                                                                                                                           \
     return __spirv_ImageSampleExplicitLod_R##RET_TYPE##2(Image, Coordinate, ImageOperands, DefaultLod);                                                     \
 }                                                                                                                                                           \
-RET_TYPE##2 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##2(__spirv_SampledImage_##DIM##D Image, int##COORD_DIM Coordinate, int ImageOperands)   \
+RET_TYPE##2 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##2(__spirv_SampledImage_##DIM##D##ARRAY Image, int##COORD_DIM Coordinate, int ImageOperands)   \
 {                                                                                                                                                           \
     return __spirv_ImageSampleExplicitLod_R##RET_TYPE##2(Image, Coordinate, ImageOperands, DefaultLod);                                                     \
 }                                                                                                                                                           \
-RET_TYPE##2 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##2(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate)                    \
+RET_TYPE##2 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##2(__spirv_SampledImage_##DIM##D##ARRAY Image, float##COORD_DIM Coordinate)             \
 {                                                                                                                                                           \
     return __spirv_ImageSampleExplicitLod_R##RET_TYPE##2(Image, Coordinate, DefaultImageOperands, DefaultLod);                                              \
 }                                                                                                                                                           \
-RET_TYPE##2 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##2(__spirv_SampledImage_##DIM##D Image, int##COORD_DIM Coordinate)                      \
+RET_TYPE##2 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##2(__spirv_SampledImage_##DIM##D##ARRAY Image, int##COORD_DIM Coordinate)               \
 {                                                                                                                                                           \
     return __spirv_ImageSampleExplicitLod_R##RET_TYPE##2(Image, Coordinate, DefaultImageOperands, DefaultLod);                                              \
 }                                                                                                                                                           \
-RET_TYPE OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate, int ImageOperands, float Lod) \
+RET_TYPE OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE(__spirv_SampledImage_##DIM##D##ARRAY Image, float##COORD_DIM Coordinate, int ImageOperands, float Lod) \
 {                                                                                                                                                           \
     return convert_##RET_TYPE(__spirv_ImageSampleExplicitLod_R##LOAD_TYPE(Image, Coordinate, ImageOperands, Lod).x);                                        \
 }                                                                                                                                                           \
-RET_TYPE OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE(__spirv_SampledImage_##DIM##D Image, int##COORD_DIM Coordinate, int ImageOperands, float Lod) \
+RET_TYPE OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE(__spirv_SampledImage_##DIM##D##ARRAY Image, int##COORD_DIM Coordinate, int ImageOperands, float Lod) \
 {                                                                                                                                                           \
     return convert_##RET_TYPE(__spirv_ImageSampleExplicitLod_R##LOAD_TYPE(Image, Coordinate, ImageOperands, Lod).x);                                        \
 }                                                                                                                                                           \
-RET_TYPE OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate, int ImageOperands)       \
+RET_TYPE OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE(__spirv_SampledImage_##DIM##D##ARRAY Image, float##COORD_DIM Coordinate, int ImageOperands) \
 {                                                                                                                                                           \
     return __spirv_ImageSampleExplicitLod_R##RET_TYPE(Image, Coordinate, ImageOperands, DefaultLod);                                                        \
 }                                                                                                                                                           \
-RET_TYPE OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE(__spirv_SampledImage_##DIM##D Image, int##COORD_DIM Coordinate, int ImageOperands)         \
+RET_TYPE OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE(__spirv_SampledImage_##DIM##D##ARRAY Image, int##COORD_DIM Coordinate, int ImageOperands)  \
 {                                                                                                                                                           \
     return __spirv_ImageSampleExplicitLod_R##RET_TYPE(Image, Coordinate, ImageOperands, DefaultLod);                                                        \
 }                                                                                                                                                           \
-RET_TYPE OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate)                          \
+RET_TYPE OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE(__spirv_SampledImage_##DIM##D##ARRAY Image, float##COORD_DIM Coordinate)                   \
 {                                                                                                                                                           \
     return __spirv_ImageSampleExplicitLod_R##RET_TYPE(Image, Coordinate, DefaultImageOperands, DefaultLod);                                                 \
 }                                                                                                                                                           \
-RET_TYPE OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE(__spirv_SampledImage_##DIM##D Image, int##COORD_DIM Coordinate)                            \
+RET_TYPE OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE(__spirv_SampledImage_##DIM##D##ARRAY Image, int##COORD_DIM Coordinate)                     \
 {                                                                                                                                                           \
     return __spirv_ImageSampleExplicitLod_R##RET_TYPE(Image, Coordinate, DefaultImageOperands, DefaultLod);                                                 \
 }
@@ -1125,14 +1164,14 @@ RET_TYPE OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE(__spirv_Sampled
     return convert_##RET_TYPE(__spirv_ImageSampleExplicitLod_R##LOAD_TYPE(Image, Coordinate, ImageOperands, dx, dy).x);                                                                  \
 }
 
-#define DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD(DIM, COORD_DIM)           \
-DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_TY(DIM, char, int4, COORD_DIM)    \
-DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_TY(DIM, short, int4, COORD_DIM)   \
-DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_TY(DIM, int, int4, COORD_DIM)     \
-DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_TY(DIM, uchar, uint4, COORD_DIM)  \
-DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_TY(DIM, ushort, uint4, COORD_DIM) \
-DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_TY(DIM, uint, uint4, COORD_DIM)   \
-DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_TY(DIM, float, float4, COORD_DIM)
+#define DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD(DIM, ARRAY, COORD_DIM)           \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_TY(DIM, ARRAY, char, int4, COORD_DIM)    \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_TY(DIM, ARRAY, short, int4, COORD_DIM)   \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_TY(DIM, ARRAY, int, int4, COORD_DIM)     \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_TY(DIM, ARRAY, uchar, uint4, COORD_DIM)  \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_TY(DIM, ARRAY, ushort, uint4, COORD_DIM) \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_TY(DIM, ARRAY, uint, uint4, COORD_DIM)   \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_TY(DIM, ARRAY, float, float4, COORD_DIM)
 
 #define DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_DX_DY(DIM, COORD_DIM)           \
 DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_DX_DY_TY(DIM, char, int4, COORD_DIM)    \
@@ -1143,23 +1182,27 @@ DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_DX_DY_TY(DIM, ushort, uint4, COORD_
 DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_DX_DY_TY(DIM, uint, uint4, COORD_DIM)   \
 DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_DX_DY_TY(DIM, float, float4, COORD_DIM)
 
-#define DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_HALF(DIM, COORD_DIM)    \
-DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_TY(DIM, half, half4, COORD_DIM)
+#define DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_HALF(DIM, ARRAY, COORD_DIM)    \
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_TY(DIM, ARRAY, half, half4, COORD_DIM)
 
 #define DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_DX_DY_HALF(DIM, COORD_DIM)    \
 DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_DX_DY_TY(DIM, half, half4, COORD_DIM)
 
 #if defined(__USE_KHRONOS_SPIRV_TRANSLATOR__)
-DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD(3, 3)
-DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD(2, 2)
-DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD(1,  )
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD(3,       , 3)
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD(2,       , 2)
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD(2, _array, 3)
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD(1,       ,  )
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD(1, _array, 2)
 DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_DX_DY(2, 2)
 DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_DX_DY(1,  )
 
 #ifdef cl_khr_fp16
-DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_HALF(3, 3)
-DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_HALF(2, 2)
-DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_HALF(1,  )
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_HALF(3,       , 3)
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_HALF(2,       , 2)
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_HALF(2, _array, 3)
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_HALF(1,       ,  )
+DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_HALF(1, _array, 2)
 DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_DX_DY_HALF(2, 2)
 DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_DX_DY_HALF(1,  )
 #endif // cl_khr_fp16
