@@ -244,10 +244,10 @@ bool GenXPatternMatch::runOnFunction(Function &F) {
     Changed |= reassociateIntegerMad(&F);
   }
 
+  visit(F);
+
   if (EnableBfnMatcher && ST->hasAdd3Bfn())
     matchBFN(F);
-
-  visit(F);
 
   if (Kind == PatternMatchKind::PreLegalization) {
     Changed |= placeConstants(&F);
@@ -398,7 +398,7 @@ private:
   static constexpr StringRef OpNames[] = {"not", "and", "or", "xor"};
   static constexpr unsigned LutValues[] = {0xaa, 0xcc, 0xf0};
 
-  static constexpr unsigned UsesThreshold = 4;
+  static constexpr unsigned UsesThreshold = 2;
   static constexpr unsigned SourceLimit = 3;
 
 public:
@@ -413,7 +413,7 @@ public:
     if (!Ty->isIntOrIntVectorTy(16) && !Ty->isIntOrIntVectorTy(32))
       return false;
 
-    unsigned MatchedOps = 0;
+    MatchedOps = 0;
     Srcs.insert(MainInst);
 
     // Grow the pattern to find the source operands using a BFS.
@@ -424,7 +424,7 @@ public:
       auto *Inst = Queue.front();
       Queue.pop();
 
-      if (Inst->hasNUsesOrMore(UsesThreshold))
+      if (MatchedOps > 0 && Inst->hasNUsesOrMore(UsesThreshold))
         return false;
 
       auto Op = getOperation(Inst);
@@ -538,6 +538,11 @@ private:
         SrcsOrdered[2] = NegCSrc2;
     }
 
+    if (!isProfitable()) {
+      LLVM_DEBUG(dbgs() << "BFN: Not profitable\n");
+      return false;
+    }
+
     IRBuilder<> Builder(MainInst);
 
     auto Lut = getLutValue(MainInst);
@@ -645,10 +650,30 @@ private:
     return false;
   }
 
+  static bool isFlagInput(Value *V) {
+    auto *Cast = dyn_cast<BitCastInst>(V);
+    if (!Cast)
+      return false;
+
+    auto *Src = Cast->getOperand(0);
+    auto *SrcTy = Src->getType();
+    return SrcTy->isIntOrIntVectorTy(1);
+  }
+
+  bool isProfitable() const {
+    unsigned NumOfFlagInputs = llvm::count_if(SrcsOrdered, isFlagInput);
+    if (NumOfFlagInputs >= MatchedOps)
+      return false;
+
+    return true;
+  }
+
   BinaryOperator *MainInst;
   const bool TryGreedy;
   SmallSetVector<Value *, 4> Srcs;
   SmallVector<Value *, 4> SrcsOrdered;
+
+  unsigned MatchedOps = 0;
 };
 
 // Class to identify cases where a comparison and select are equivalent to a
