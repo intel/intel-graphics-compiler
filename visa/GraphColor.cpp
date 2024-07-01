@@ -10954,17 +10954,7 @@ int GlobalRA::coloringRegAlloc() {
   // b. Spill size exceeds what can be represented using hword msg on PVC+
   // c. Xe2+ requires LSC stack (can force on DG2+ via -lscNonStackSpill)
   if (builder.supportsLSC()) {
-
-    const auto scratchAddrType = VISA_LSC_IMMOFF_ADDR_TYPE_SS;
-    const uint32_t immOffOpts =
-        builder.getuint32Option(vISA_lscEnableImmOffsFor);
-    canUseLscImmediateOffsetSpillFill =
-        // HW supports it
-        builder.getPlatform() >= Xe2 &&
-        // the spill/fill is enabled in options
-        (immOffOpts & (1 << VISA_LSC_IMMOFF_SPILL_FILL)) != 0 &&
-        // address type is also enabled in options
-        (immOffOpts & (1 << scratchAddrType)) != 0;
+    canUseLscImmediateOffsetSpillFill = LSCUsesImmOff(builder);
   }
 
   stackCallSaveRestore(hasStackCall);

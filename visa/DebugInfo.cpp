@@ -1991,10 +1991,12 @@ void SaveRestoreManager::addInst(G4_INST *inst) {
         srInfo[srInfo.size() - 2].saveRestoreMap;
   }
 
+  auto *kernel = visaKernel->getKernel();
+
   if (inst->opcode() == G4_add && inst->getSrc(1) && inst->getSrc(1)->isImm() &&
       inst->getSrc(0) && inst->getSrc(0)->isSrcRegRegion() &&
       GetTopDclFromRegRegion(inst->getSrc(0)) ==
-          visaKernel->getKernel()->fg.builder->getBEFP()) {
+          kernel->fg.builder->getBEFP()) {
     memOffset = (int32_t)inst->getSrc(1)->asImm()->getImm();
     regWithMemOffset =
         inst->getDst()->getLinearizedStart() / builder.numEltPerGRF<Type_UB>();
@@ -2009,6 +2011,29 @@ void SaveRestoreManager::addInst(G4_INST *inst) {
     regWithMemOffset =
         inst->getDst()->getLinearizedStart() / builder.numEltPerGRF<Type_UB>();
     absOffset = true;
+  }
+
+  if (inst->isSend()) {
+    auto *sendInst = inst->asSendInst();
+    if (GlobalRA::LSCUsesImmOff(*kernel->fg.builder) &&
+        sendInst->getMsgDesc()->isLSC() && sendInst->getMsgDescRaw() &&
+        sendInst->getMsgDescRaw()->getLscAddrType() == LSC_ADDR_TYPE_SS &&
+        (inst->getSrc(0)->getLinearizedStart() /
+         builder.numEltPerGRF<Type_UB>()) ==
+            kernel->stackCall.getSpillHeaderGRF()) {
+      // Spill offset is inlined in LSC message as:
+      // GlobalRA::SPILL_FILL_IMMOFF_MAX + Inlined offset in LSC
+      auto maxSpillFillImmOffMax = GlobalRA::SPILL_FILL_IMMOFF_MAX;
+
+      auto msgDesc = inst->asSendInst()->getMsgDesc();
+      auto off = msgDesc->getOffset();
+      if (off) {
+        memOffset = (maxSpillFillImmOffMax + off.value().immOff);
+        absOffset = false;
+        regWithMemOffset = inst->getSrc(0)->getLinearizedStart() /
+                           builder.numEltPerGRF<Type_UB>();
+      }
+    }
   }
 
   srInfo.back().update(inst, memOffset, regWithMemOffset, absOffset);

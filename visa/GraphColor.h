@@ -1348,6 +1348,23 @@ public:
 
   const bool use4GRFAlign = false;
 
+  // [-2^16...2^16) in bytes
+  //   (frame pointer is biased 2^16 so that -2^16 references scratch[0x0])
+  static constexpr unsigned SPILL_FILL_IMMOFF_MAX = 0x10000; // 64k
+
+  static bool LSCUsesImmOff(IR_Builder &builder) {
+    const auto scratchAddrType = VISA_LSC_IMMOFF_ADDR_TYPE_SS;
+    const uint32_t immOffOpts =
+        builder.getuint32Option(vISA_lscEnableImmOffsFor);
+    return
+        // HW supports it
+        builder.getPlatform() >= Xe2 &&
+        // the spill/fill is enabled in options
+        (immOffOpts & (1 << VISA_LSC_IMMOFF_SPILL_FILL)) != 0 &&
+        // address type is also enabled in options
+        (immOffOpts & (1 << scratchAddrType)) != 0;
+  }
+
 private:
   template <class REGION_TYPE>
   static unsigned getRegionDisp(REGION_TYPE *region, const IR_Builder &irb);
@@ -1391,10 +1408,6 @@ private:
 
   // store instructions that shouldnt be rematerialized.
   std::unordered_set<G4_INST *> dontRemat;
-
-  // [-2^16...2^16) in bytes
-  //   (frame pointer is biased 2^16 so that -2^16 references scratch[0x0])
-  static constexpr unsigned SPILL_FILL_IMMOFF_MAX = 0x10000; // 64k
 
   // map each BB to its local RA GRF usage summary, populated in local RA.
   std::map<G4_BB *, PhyRegSummary *> bbLocalRAMap;
