@@ -6,9 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include <chrono>
-#include <iostream>
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Support/ScaledNumber.h>
 #include "llvm/ADT/PostOrderIterator.h"
@@ -193,7 +190,10 @@ namespace IGC
         return oclMajor;
     }
 
-static void CommonOCLBasedPasses(OpenCLProgramContext* pContext)
+static void CommonOCLBasedPasses(
+    OpenCLProgramContext* pContext,
+    std::unique_ptr<llvm::Module> BuiltinGenericModule,
+    std::unique_ptr<llvm::Module> BuiltinSizeModule)
 {
 #if defined( _DEBUG )
     bool brokenDebugInfo = false;
@@ -234,6 +234,11 @@ static void CommonOCLBasedPasses(OpenCLProgramContext* pContext)
 
     StringRef dataLayout = layoutstr;
     pContext->getModule()->setDataLayout(dataLayout);
+    BuiltinGenericModule->setDataLayout(dataLayout);
+    if( BuiltinSizeModule )
+    {
+        BuiltinSizeModule->setDataLayout(dataLayout);
+    }
 
     MetaDataUtils *pMdUtils = pContext->getMetaDataUtils();
 
@@ -410,7 +415,7 @@ static void CommonOCLBasedPasses(OpenCLProgramContext* pContext)
     mpm.add(new NamedBarriersResolution(pContext->platform.getPlatformInfo().eRenderCoreFamily));
     mpm.add(new PreBIImportAnalysis());
     mpm.add(createTimeStatsCounterPass(pContext, TIME_Unify_BuiltinImport, STATS_COUNTER_START));
-    mpm.add(createBuiltInImportPass());
+    mpm.add(createBuiltInImportPass(std::move(BuiltinGenericModule), std::move(BuiltinSizeModule)));
     mpm.add(createTimeStatsCounterPass(pContext, TIME_Unify_BuiltinImport, STATS_COUNTER_END));
     mpm.add(new BIFFlagCtrlResolution(pContext));
 
@@ -680,14 +685,20 @@ static void CommonOCLBasedPasses(OpenCLProgramContext* pContext)
     MEM_SNAPSHOT(IGC::SMS_AFTER_UNIFICATION);
 }
 
-void UnifyIROCL(OpenCLProgramContext* pContext)
+void UnifyIROCL(
+    OpenCLProgramContext* pContext,
+    std::unique_ptr<llvm::Module> BuiltinGenericModule,
+    std::unique_ptr<llvm::Module> BuiltinSizeModule)
 {
-    CommonOCLBasedPasses(pContext);
+    CommonOCLBasedPasses(pContext, std::move(BuiltinGenericModule), std::move(BuiltinSizeModule));
 }
 
-void UnifyIRSPIR(OpenCLProgramContext* pContext)
+void UnifyIRSPIR(
+    OpenCLProgramContext* pContext,
+    std::unique_ptr<llvm::Module> BuiltinGenericModule,
+    std::unique_ptr<llvm::Module> BuiltinSizeModule)
 {
-    CommonOCLBasedPasses(pContext);
+    CommonOCLBasedPasses(pContext, std::move(BuiltinGenericModule), std::move(BuiltinSizeModule));
 }
 
 }

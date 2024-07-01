@@ -49,6 +49,12 @@ static cl::opt<std::string> DebugInfoDumpsNameOverrideOpt(
     cl::desc("Override for 'suffix' part of debug info dump name"));
 
 static cl::opt<std::string>
+    OCLGenericBiFPath("vc-ocl-generic-bif-path",
+                      cl::desc("full name (with path) of a BiF file with "
+                               "precompiled OpenCL generic builtins"),
+                      cl::init(""));
+
+static cl::opt<std::string>
     VCBuiltinsBiFPath("vc-builtins-bif-path",
                       cl::desc("full name (with path) of a BiF file with "
                                "precompiled builtin functions"),
@@ -209,6 +215,8 @@ readBiFModuleFromFile(const cl::opt<std::string> &File) {
 }
 
 GenXBackendData::GenXBackendData(InitFromLLMVOpts) {
+  setOwningBiFModuleIf(BiFKind::OCLGeneric,
+                       readBiFModuleFromFile(OCLGenericBiFPath));
   setOwningBiFModuleIf(BiFKind::VCBuiltins,
                        readBiFModuleFromFile(VCBuiltinsBiFPath));
   setOwningBiFModuleIf(BiFKind::VCSPIRVBuiltins,

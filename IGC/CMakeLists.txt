@@ -1266,12 +1266,6 @@ add_compile_definitions(
     $<$<AND:$<STREQUAL:${CMAKE_SYSTEM_NAME},Windows>,$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>>:WIN64>
     )
 
-if(IGC_OPTION__BIF_LINK_BC)
-  add_compile_definitions(
-    BIF_LINK_BC
-  )
-endif()
-
 if(DEFINED VME_TYPES_DEFINED)
 add_compile_definitions(
       VME_TYPES_DEFINED=${VME_TYPES_DEFINED}
@@ -1477,16 +1471,6 @@ if(IGC_BUILD__VC_ENABLED)
   add_subdirectory(CMFE)
 endif()
 
-if (FCL_ENABLED)
-  # Built-in Functions (and resources).
-  if(IGC_OPTION__BIF_LINK_BC)
-      add_subdirectory(BiFModule)
-      add_subdirectory(BiFManager)
-  endif()
-
-  add_subdirectory(OCLFE)
-endif()
-
 if(IGC_BUILD__VC_ENABLED)
   set(IGC_BUILD__CMLIT_ENABLE_DEFAULT OFF)
 
@@ -1511,6 +1495,16 @@ add_subdirectory(Compiler)
 add_subdirectory(DebugInfo)
 add_subdirectory(DriverInterface)
 igc_sg_define(IGC__DriverInterface)
+
+if (FCL_ENABLED)
+  # Built-in Functions (and resources).
+  if(IGC_OPTION__BIF_LINK_BC)
+      add_subdirectory(BiFModule)
+      add_subdirectory(ElfPackager)
+  endif()
+
+  add_subdirectory(OCLFE)
+endif()
 
 add_subdirectory(VISALinkerDriver)
 
@@ -1729,14 +1723,14 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
   if(MSVC AND IGC_OPTION__BIF_LINK_BC)
     add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"   "${IGC_BUILD__PROJ__BiFModule_OCL}")
     add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"   "${IGC_BUILD__PROJ__BiFModuleCache_OCL}")
-    add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"   "${IGC_BUILD__PROJ__BiFManager}")
+    add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"   "${IGC_BUILD__PROJ__ElfPackager}")
   endif()
 endforeach()
 
 if (FCL_ENABLED)
   #FCL
   add_dependencies("${IGC_BUILD__PROJ__fcl_dll}"     "${IGC_BUILD__PROJ__BiFModule_OCL}")
-  add_dependencies("${IGC_BUILD__PROJ__fcl_dll}"     "${IGC_BUILD__PROJ__BiFManager}")
+  add_dependencies("${IGC_BUILD__PROJ__fcl_dll}"     "${IGC_BUILD__PROJ__ElfPackager}")
 endif()
 
 
@@ -1777,10 +1771,6 @@ list(APPEND _targetLinkLineCommon "${IGC_BUILD__PROJ__VISALinkerDriver}")
 
 
 
-    list(APPEND _targetLinkLineCommon
-        "${IGC_BUILD__PROJ__BiFManager}"
-  )
-
 
 
   if(IGC_BUILD__SPIRV_TOOLS_ENABLED)
@@ -1817,7 +1807,6 @@ list(APPEND _targetLinkLineCommon "${IGC_BUILD__PROJ__VISALinkerDriver}")
     list(APPEND _targetLinkLineCommon
       ${IGC_BUILD__PROJ_VC_LIBS_TO_LINK}
       )
-
     if(_targetIsStatic)
       # Add some VC headers for static library manually since there is
       # no private target_link_libraries for static igc library and
@@ -1872,12 +1861,6 @@ list(APPEND _targetLinkLineCommon "${IGC_BUILD__PROJ__VISALinkerDriver}")
       )
   endif()
 endforeach()
-
-if (FCL_ENABLED AND IGC_OPTION__BIF_LINK_BC)
-  # Built-in Functions (and resources).
-  target_link_libraries("${IGC_BUILD__PROJ__Compiler}" "${IGC_BUILD__PROJ__BiFManager}")
-  add_dependencies("${IGC_BUILD__PROJ__Compiler}" "${IGC_BUILD__PROJ__BiFManager}")
-endif()
 
 include(igc_pch_reuse)
 
