@@ -1300,25 +1300,75 @@ DEFINE_LOAD(Accumulator_RowMajor, _SG16, int,   int,   32, 16, ROW_MAJOR, , 32)
 DEFINE_LOAD_CHECKED(Accumulator_RowMajor, _SG16, int,   int,   16, 16, ROW_MAJOR, , 16)
 DEFINE_LOAD_CHECKED(Accumulator_RowMajor, _SG16, int,   int,   32, 16, ROW_MAJOR, , 32)
 
-// _4 in the name is for 4 2d block loads
+/* Optimization for big shapes 1d load, where number of columns is multiple of sub-group size
+   specifically, for sub group size 16 and number of columns 64, we can load 4 elements in one instruction */
+#define DEFINE_LOAD_LARGE_IMPL_4_OPTIMIZED_VECTOR_CONT_IMPL(layout, elem_type, contrib_type, R, address_space) \
+    if (BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) == VECTOR_CONT_IMPL) { \
+      if (_##layout == _Accumulator_RowMajor || _##layout == _PackedB_PackedB) { \
+        for (int i = 0; i < R; i++) { \
+          uint4 row = intel_sub_group_block_read4((__##address_space uint *)(mem + i * stride * sizeof(elem_type))); \
+          *((__private uint *)(dst +  i        * sizeof(contrib_type))) = row.x; \
+          *((__private uint *)(dst + (i + R)   * sizeof(contrib_type))) = row.y; \
+          *((__private uint *)(dst + (i + R*2) * sizeof(contrib_type))) = row.z; \
+          *((__private uint *)(dst + (i + R*3) * sizeof(contrib_type))) = row.w; \
+        } \
+        return; \
+      } \
+      /* B row major case - need to VNNI manually */\
+      for (int i = 0; i < R; i++) { \
+        ushort4 row0 = intel_sub_group_block_read_us4((__##address_space uint *)(mem + (2*i    ) * stride * sizeof(elem_type))); \
+        ushort4 row1 = intel_sub_group_block_read_us4((__##address_space uint *)(mem + (2*i + 1) * stride * sizeof(elem_type))); \
+        *((__private uint *)(dst +  i        * sizeof(contrib_type))) = as_int((ushort2)(row0.x, row1.x)); \
+        *((__private uint *)(dst + (i + R)   * sizeof(contrib_type))) = as_int((ushort2)(row0.y, row1.y)); \
+        *((__private uint *)(dst + (i + R*2) * sizeof(contrib_type))) = as_int((ushort2)(row0.z, row1.z)); \
+        *((__private uint *)(dst + (i + R*3) * sizeof(contrib_type))) = as_int((ushort2)(row0.w, row1.w)); \
+      } \
+      return; \
+    } \
+
+// default implementation for large shapes which is reusing smaller loads
+// _4 in the name is for 4 smaller loads
 // R_orig is original number of rows before VNNI
-#define DEFINE_LOAD_LARGE_IMPL_4(layout, elem_type, elem_bitwidth, contrib_type, R_orig, C, shape, WI_rows, WI_rows_per_load, address_space) \
-  INLINE void __builtin_spriv_OpJointMatrixLoadINTEL_##layout##_SG16_##shape##_i##elem_bitwidth##_##WI_rows##_##address_space##_v8i8_pi32_i32(__private char *dst, char *mem, long stride, int cacheOpt) { \
-      __private char *dst0 = dst; \
-      __private char *dst1 = dst + 1 * WI_rows_per_load * (sizeof (contrib_type)); \
-      __private char *dst2 = dst + 2 * WI_rows_per_load * (sizeof (contrib_type)); \
-      __private char *dst3 = dst + 3 * WI_rows_per_load * (sizeof (contrib_type)); \
+#define DEFINE_LOAD_LARGE_IMPL_4(layout, elem_type, elem_bitwidth, contrib_type, R_orig, WI_rows_per_load, address_space) \
+    __private char *dst0 = dst; \
+    __private char *dst1 = dst + 1 * WI_rows_per_load * (sizeof (contrib_type)); \
+    __private char *dst2 = dst + 2 * WI_rows_per_load * (sizeof (contrib_type)); \
+    __private char *dst3 = dst + 3 * WI_rows_per_load * (sizeof (contrib_type)); \
 \
-      char *mem0 = mem + 0 * MEM_OFFSET_##layout(elem_type, contrib_type); \
-      char *mem1 = mem + 1 * MEM_OFFSET_##layout(elem_type, contrib_type); \
-      char *mem2 = mem + 2 * MEM_OFFSET_##layout(elem_type, contrib_type); \
-      char *mem3 = mem + 3 * MEM_OFFSET_##layout(elem_type, contrib_type); \
+    char *mem0 = mem + 0 * MEM_OFFSET_##layout(elem_type, contrib_type); \
+    char *mem1 = mem + 1 * MEM_OFFSET_##layout(elem_type, contrib_type); \
+    char *mem2 = mem + 2 * MEM_OFFSET_##layout(elem_type, contrib_type); \
+    char *mem3 = mem + 3 * MEM_OFFSET_##layout(elem_type, contrib_type); \
 \
-      __builtin_spriv_OpJointMatrixLoadINTEL_##layout##_SG16_##R_orig##x16_i##elem_bitwidth##_##WI_rows_per_load##_##address_space##_v8i8_pi32_i32(dst0, mem0, stride, cacheOpt); \
-      __builtin_spriv_OpJointMatrixLoadINTEL_##layout##_SG16_##R_orig##x16_i##elem_bitwidth##_##WI_rows_per_load##_##address_space##_v8i8_pi32_i32(dst1, mem1, stride, cacheOpt); \
-      __builtin_spriv_OpJointMatrixLoadINTEL_##layout##_SG16_##R_orig##x16_i##elem_bitwidth##_##WI_rows_per_load##_##address_space##_v8i8_pi32_i32(dst2, mem2, stride, cacheOpt); \
-      __builtin_spriv_OpJointMatrixLoadINTEL_##layout##_SG16_##R_orig##x16_i##elem_bitwidth##_##WI_rows_per_load##_##address_space##_v8i8_pi32_i32(dst3, mem3, stride, cacheOpt); \
-  }
+    __builtin_spriv_OpJointMatrixLoadINTEL_##layout##_SG16_##R_orig##x16_i##elem_bitwidth##_##WI_rows_per_load##_##address_space##_v8i8_pi32_i32(dst0, mem0, stride, cacheOpt); \
+    __builtin_spriv_OpJointMatrixLoadINTEL_##layout##_SG16_##R_orig##x16_i##elem_bitwidth##_##WI_rows_per_load##_##address_space##_v8i8_pi32_i32(dst1, mem1, stride, cacheOpt); \
+    __builtin_spriv_OpJointMatrixLoadINTEL_##layout##_SG16_##R_orig##x16_i##elem_bitwidth##_##WI_rows_per_load##_##address_space##_v8i8_pi32_i32(dst2, mem2, stride, cacheOpt); \
+    __builtin_spriv_OpJointMatrixLoadINTEL_##layout##_SG16_##R_orig##x16_i##elem_bitwidth##_##WI_rows_per_load##_##address_space##_v8i8_pi32_i32(dst3, mem3, stride, cacheOpt); \
+    return; \
+
+#define DEFINE_LOAD_LARGE_IMPL_4_AS_GENERIC(layout, elem_type, elem_bitwidth, contrib_type, R, R_orig, shape, WI_rows, WI_rows_per_load) \
+    INLINE void MANGLE_LOAD_NAME_AS_GENERIC(layout, _SG16, elem_bitwidth, shape, WI_rows) (__private char *dst, char *mem, long stride, int cacheOpt) { \
+        __builtin_assume((__global char*)mem != 0); \
+        int memIsGlobal = (0 != SPIRV_BUILTIN(GenericCastToPtrExplicit, _p1i8_p4i8_i32, _ToGlobal)(__builtin_astype((mem), __generic char*), StorageWorkgroup)); \
+        if (memIsGlobal) { \
+            DEFINE_LOAD_LARGE_IMPL_4_OPTIMIZED_VECTOR_CONT_IMPL(layout, elem_type, contrib_type, R, global) \
+            DEFINE_LOAD_LARGE_IMPL_4(layout, elem_type, elem_bitwidth, contrib_type, R_orig, WI_rows_per_load, global) \
+        } \
+        DEFINE_LOAD_LARGE_IMPL_4_OPTIMIZED_VECTOR_CONT_IMPL(layout, elem_type, contrib_type, R, local) \
+        DEFINE_LOAD_LARGE_IMPL_4(layout, elem_type, elem_bitwidth, contrib_type, R_orig, WI_rows_per_load, local) \
+    }
+
+#define DEFINE_LOAD_LARGE_IMPL_4_AS_LOCAL(layout, elem_type, elem_bitwidth, contrib_type, R, R_orig, shape, WI_rows, WI_rows_per_load) \
+    INLINE void MANGLE_LOAD_NAME_AS_LOCAL(layout, _SG16, elem_bitwidth, shape, WI_rows) (__private char *dst, char *mem, long stride, int cacheOpt) { \
+        DEFINE_LOAD_LARGE_IMPL_4_OPTIMIZED_VECTOR_CONT_IMPL(layout, elem_type, contrib_type, R, local) \
+        DEFINE_LOAD_LARGE_IMPL_4(layout, elem_type, elem_bitwidth, contrib_type, R_orig, WI_rows_per_load, local) \
+    }
+
+#define DEFINE_LOAD_LARGE_IMPL_4_AS_GLOBAL(layout, elem_type, elem_bitwidth, contrib_type, R, R_orig, shape, WI_rows, WI_rows_per_load) \
+    INLINE void MANGLE_LOAD_NAME_AS_GLOBAL(layout, _SG16, elem_bitwidth, shape, WI_rows) (__private char *dst, char *mem, long stride, int cacheOpt) { \
+        DEFINE_LOAD_LARGE_IMPL_4_OPTIMIZED_VECTOR_CONT_IMPL(layout, elem_type, contrib_type, R, global) \
+        DEFINE_LOAD_LARGE_IMPL_4(layout, elem_type, elem_bitwidth, contrib_type, R_orig, WI_rows_per_load, global) \
+    }
 
 // _4 in the name is for 4 2d block loads
 // R_orig is original number of rows before VNNI
@@ -1334,23 +1384,23 @@ DEFINE_LOAD_CHECKED(Accumulator_RowMajor, _SG16, int,   int,   32, 16, ROW_MAJOR
       __builtin_spriv_OpJointMatrixLoadCheckedINTEL_##layout##_SG16_##R_orig##x16_i##elem_bitwidth##_##WI_rows_per_load##_v8i8_pi32_i32(dst3, mem, y, x + 3 * 16 * X_OFFSET_MULTIPLIER_##layout(elem_type, contrib_type), height, width, stride, cacheOpt); \
   }
 
-#define DEFINE_LOAD_LARGE__(layout, elem_type, elem_bitwidth, contrib_type, contrib_bitwidth, R_orig, C, shape, WI_rows, WI_rows_per_load, num_loads) \
-  DEFINE_LOAD_LARGE_IMPL_##num_loads(layout, elem_type, elem_bitwidth, contrib_type, R_orig, C, shape, WI_rows, WI_rows_per_load, generic) \
-  DEFINE_LOAD_LARGE_IMPL_##num_loads(layout, elem_type, elem_bitwidth, contrib_type, R_orig, C, shape, WI_rows, WI_rows_per_load, global ) \
-  DEFINE_LOAD_LARGE_IMPL_##num_loads(layout, elem_type, elem_bitwidth, contrib_type, R_orig, C, shape, WI_rows, WI_rows_per_load, local  )
+#define DEFINE_LOAD_LARGE__(layout, elem_type, elem_bitwidth, contrib_type, R, R_orig, shape, WI_rows, WI_rows_per_load, num_loads) \
+  DEFINE_LOAD_LARGE_IMPL_##num_loads##_AS_GENERIC(layout, elem_type, elem_bitwidth, contrib_type, R, R_orig, shape, WI_rows, WI_rows_per_load) \
+  DEFINE_LOAD_LARGE_IMPL_##num_loads##_AS_LOCAL(  layout, elem_type, elem_bitwidth, contrib_type, R, R_orig, shape, WI_rows, WI_rows_per_load) \
+  DEFINE_LOAD_LARGE_IMPL_##num_loads##_AS_GLOBAL( layout, elem_type, elem_bitwidth, contrib_type, R, R_orig, shape, WI_rows, WI_rows_per_load)
 
 #define DEFINE_LOAD_CHECKED_LARGE__(layout, elem_type, elem_bitwidth, contrib_type, contrib_bitwidth, R_orig, C, shape, WI_rows, WI_rows_per_load, num_loads) \
   DEFINE_LOAD_CHECKED_LARGE_IMPL_##num_loads(layout, elem_type, elem_bitwidth, contrib_type, R_orig, C, shape, WI_rows, WI_rows_per_load)
 
-#define DEFINE_LOAD_LARGE(layout, elem_type, contrib_type, R, C, order, WI_rows, num_loads) \
-  DEFINE_LOAD_LARGE__(layout, elem_type, BITWIDTH(elem_type), contrib_type, BITWIDTH(contrib_type), R_ORIG(R, elem_type, contrib_type), C, SHAPE(layout, R, C, elem_type, contrib_type), WI_rows, MATH_DIV(WI_rows, num_loads), num_loads)
+#define DEFINE_LOAD_LARGE(layout, elem_type, contrib_type, R, C, WI_rows, num_loads) \
+  DEFINE_LOAD_LARGE__(layout, elem_type, BITWIDTH(elem_type), contrib_type, R, R_ORIG(R, elem_type, contrib_type), SHAPE(layout, R, C, elem_type, contrib_type), WI_rows, MATH_DIV(WI_rows, num_loads), num_loads)
 
 #define DEFINE_LOAD_CHECKED_LARGE(layout, elem_type, contrib_type, R, C, order, WI_rows, num_loads) \
   DEFINE_LOAD_CHECKED_LARGE__(layout, elem_type, BITWIDTH(elem_type), contrib_type, BITWIDTH(contrib_type), R_ORIG(R, elem_type, contrib_type), C, SHAPE(layout, R, C, elem_type, contrib_type), WI_rows, MATH_DIV(WI_rows, num_loads), num_loads)
 
-DEFINE_LOAD_LARGE(PackedB_PackedB,    short, int,  8, 128, ROW_MAJOR,  32, 4)
-DEFINE_LOAD_LARGE(PackedB_RowMajor,   short, int,  8, 128, VNNI_TX,    32, 4)
-DEFINE_LOAD_LARGE(Accumulator_RowMajor, int, int, 32,  64, ROW_MAJOR, 128, 4)
+DEFINE_LOAD_LARGE(PackedB_PackedB,    short, int,  8, 128, 32,  4)
+DEFINE_LOAD_LARGE(PackedB_RowMajor,   short, int,  8, 128, 32,  4)
+DEFINE_LOAD_LARGE(Accumulator_RowMajor, int, int, 32,  64, 128, 4)
 
 DEFINE_LOAD_CHECKED_LARGE(PackedB_PackedB,    short, int,  8, 128, ROW_MAJOR,  32, 4)
 DEFINE_LOAD_CHECKED_LARGE(PackedB_RowMajor,   short, int,  8, 128, VNNI_TX,    32, 4)
