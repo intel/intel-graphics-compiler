@@ -13,13 +13,13 @@ import json
 import importlib.util
 import argparse
 from Intrinsic_definition_objects import *
-from Intrinsic_utils import file_path, Path
+from Intrinsic_utils import *
 
 def translate_type_definition(type_description):
     if type_description == None:
         return
     if isinstance(type_description, int):
-        return TypeDefinition(TypeID.ArgumentReference, index=type_description)
+        return TypeDefinition(TypeID.Reference, index=type_description)
     if isinstance(type_description, list):
         internal_types = []
         for type_str in type_description:
@@ -129,7 +129,99 @@ def translate_attribute_list(attribute):
     }
     return attribute_map[attribute]
 
-def generate_type_definitions_from_modules(inputs):
+def topological_sort(input_list : List[TypeDefinition]) -> List[TypeDefinition]:
+    provided = set()
+    def is_provided(type_def : TypeDefinition):
+        if type_def.ID == TypeID.Any:
+            return not type_def.default_type or type_def.default_type in provided
+        elif type_def.ID == TypeID.Vector:
+            return not type_def.element_type or type_def.element_type in provided
+        elif type_def.ID == TypeID.Pointer:
+            return not type_def.pointed_type or type_def.pointed_type in provided
+        elif type_def.ID == TypeID.Struct:
+            return len(type_def.member_types) == 0 or all([member_type in provided for member_type in type_def.member_types])
+        return True
+    copied_input = set(input_list)
+    res = []
+    while copied_input:
+        found_val = None
+        for val in input_list:
+            if val in copied_input and is_provided(val):
+                found_val = val
+                break
+        else:
+            assert(0)
+            break
+        provided.add(found_val)
+        copied_input.remove(found_val)
+        res.append(found_val)
+    return res
+
+def get_unique_types_list(intrinsic_definitions : List[IntrinsicDefinition]):
+    types = {}
+
+    for intrinsic in intrinsic_definitions:
+        if intrinsic.return_definition.type_definition in types:
+            intrinsic.return_definition.type_definition = types[intrinsic.return_definition.type_definition]
+        else:
+            types[intrinsic.return_definition.type_definition] = intrinsic.return_definition.type_definition
+        for arg in intrinsic.arguments:
+            if arg.type_definition in types:
+                arg.type_definition = types[arg.type_definition]
+            else:
+                types[arg.type_definition] = arg.type_definition
+
+    res = list(types.values())
+
+    def process_type(type_def : TypeDefinition):
+        if type_def.ID == TypeID.Any:
+            if not type_def.default_type:
+                return
+            if type_def.default_type in types:
+                if type_def.default_type in types:
+                    type_def.default_type = types[type_def.default_type]
+                else:
+                    types[type_def.default_type] = type_def.default_type
+                    process_type(type_def.default_type)
+        elif type_def.ID == TypeID.Vector:
+            if not type_def.element_type:
+                return
+            if type_def.element_type in types:
+                if type_def.element_type in types:
+                    type_def.element_type = types[type_def.element_type]
+                else:
+                    types[type_def.element_type] = type_def.element_type
+                    process_type(type_def.element_type)
+        elif type_def.ID == TypeID.Pointer:
+            if not type_def.pointed_type:
+                return
+            if type_def.pointed_type in types:
+                if type_def.pointed_type in types:
+                    type_def.pointed_type = types[type_def.pointed_type]
+                else:
+                    types[type_def.pointed_type] = type_def.pointed_type
+                    process_type(type_def.pointed_type)
+        elif type_def.ID == TypeID.Struct:
+            if len(type_def.member_types) == 0:
+                return
+            for i in range(len(type_def.member_types)):
+                if type_def.member_types[i] in types:
+                    if type_def.member_types[i] in types:
+                        type_def.member_types[i] = types[type_def.member_types[i]]
+                    else:
+                        types[type_def.member_types[i]] = type_def.member_types[i]
+                        process_type(type_def.member_types[i])
+
+    for type_def in res:
+        process_type(type_def)
+
+    res = list(types.values())
+    res.sort()
+    res = topological_sort(res)
+
+    return res
+
+def generate_intrinsic_definitions_from_modules(*inputs):
     intrinsics = dict()
     for el in inputs:
         spec = importlib.util.spec_from_file_location(Path(el).stem, el)
@@ -142,19 +234,19 @@ def generate_type_definitions_from_modules(inputs):
         name = key
         comment = value[0]
         func_type_def = value[1]
-        return_type_str = func_type_def[0]
-        if isinstance(return_type_str, list):
-            type_strs = [x[0] for x in return_type_str]
-            comments = '\n'.join(['Member {}: {}'.format(idx, x[1]) for idx, x in enumerate(return_type_str) if x[1] != ''])
-            return_type =  ArgumentTypeDefinition(translate_type_definition(type_strs), comments)
+        return_definition_str = func_type_def[0]
+        if isinstance(return_definition_str, list):
+            type_strs = [x[0] for x in return_definition_str]
+            comments = '\n'.join(['Member {}: {}'.format(idx, x[1]) for idx, x in enumerate(return_definition_str) if x[1] != ''])
+            return_definition =  ReturnDefinition(translate_type_definition(type_strs), comments)
         else:
-            return_type =  ArgumentTypeDefinition(translate_type_definition(return_type_str[0]), return_type_str[1])
+            return_definition =  ReturnDefinition(translate_type_definition(return_definition_str[0]), return_definition_str[1])
         argument_type_strs = func_type_def[1]
-        argument_types = []
-        for type_str in argument_type_strs:
-            argument_types.append(ArgumentTypeDefinition(translate_type_definition(type_str[0]), type_str[1]))
+        arguments = []
+        for index, type_str in enumerate(argument_type_strs):
+            arguments.append(ArgumentDefinition("Arg{}".format(index),translate_type_definition(type_str[0]), type_str[1]))
         attributes = translate_attribute_list(func_type_def[2])
-        intrinsic_definitions.append(IntrinsicDefinition(name, comment, return_type, argument_types, attributes))
+        intrinsic_definitions.append(IntrinsicDefinition(name, comment, return_definition, arguments, attributes))
     return intrinsic_definitions
 
 if __name__ == '__main__':
@@ -162,22 +254,66 @@ if __name__ == '__main__':
         parser = argparse.ArgumentParser(description='Translate from past IGC format to new IGC format.')
         parser.add_argument("inputs", nargs='+', help="the source path to the file with intrinsic defintions (past IGC format)",
                         type=file_path)
+        parser.add_argument('--format',
+                    default='yaml',
+                    choices=['yaml', 'json'],
+                    help='the data representation format of the output')
         parser.add_argument("--output", help="the destination path for the file with intrinsic definitions (current IGC format)",
                         type=str)
         parser.add_argument("-v", "--verbose", help="print intrinsic definitions in the current IGC format to the console",
                         action="store_true")
+        parser.add_argument("-l", "--license_header", help="attaches a license header to the output file",
+                        action="store_true")
+        parser.add_argument("-u", "--update", help="consider the current content of the output file",
+                        action="store_true")
 
-        args = parser.parse_args(args)
+        args = parser.parse_args(args[1:])
 
-        intrinsic_definitions = generate_type_definitions_from_modules(args.inputs)
-        serializable_obj = [el.to_dict() for el in intrinsic_definitions]
-        ret_json_txt = json.dumps(serializable_obj, indent=2)
+        intrinsic_definitions = generate_intrinsic_definitions_from_modules(*args.inputs)
+
+        if args.update and os.path.isfile(args.output):
+            with open(args.output) as f:
+                json_ext = '.json'
+                file_ext = Path(args.output).suffix
+                try:
+                    if file_ext == json_ext:
+                        intrinsic_definitions.extend(InternalGrammar.from_dict(json.load(f)).intrinsics)
+
+                    else:
+                        intrinsic_definitions.extend(yaml.safe_load(f).intrinsics)
+                except Exception as err:
+                    print("Error on loading data from: {}\n{}".format(args.output, err))
+            intrinsic_ids = set()
+            unique_intrinsic_definitions = []
+            for intrinsic_def in intrinsic_definitions:
+                if intrinsic_def.name in intrinsic_ids:
+                    print("WARNING: The following intrinsic definition is repeated: {}.".format(intrinsic_def.name))
+                    continue
+                unique_intrinsic_definitions.append(intrinsic_def)
+                intrinsic_ids.add(intrinsic_def.name)
+            intrinsic_definitions = unique_intrinsic_definitions
+
+        types = get_unique_types_list(intrinsic_definitions)
+        internal_grammar = InternalGrammar(types, intrinsic_definitions)
+
+        if args.format == 'json':
+            text = json.dumps(internal_grammar.to_dict(), indent=2)
+        else:
+            text = yaml.dump(internal_grammar, default_flow_style = False, allow_unicode = True, encoding = None,
+                        sort_keys = False, indent=4)
 
         if args.verbose:
-            print(ret_json_txt)
+            print(text)
 
         if args.output:
-            with open(args.output, 'w') as f:
-                f.write(ret_json_txt)
+            if args.license_header:
+                template_lookup = TemplateLookup(directories=[r'.'])
+                template = Template(filename=r'templates/intrinsic_definition.mako',
+                                    lookup=template_lookup)
+                output_file_path = args.output
+                write_to_file_using_template(output_file_path, template, content=text)
+            else:
+                with open(args.output, 'w') as f:
+                    f.write(text)
 
     main(sys.argv)

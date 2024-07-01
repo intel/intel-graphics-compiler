@@ -8,16 +8,58 @@
 
 from typing import List, Set
 from enum import Enum
+import yaml
+
+def generate_anchor(self, node):
+    if node.tag == TypeDefinition.yaml_tag:
+        return node.anchor_name
+    else:
+        res = super(yaml.Dumper, self).generate_anchor(node)
+        return res
+
+yaml.Dumper.generate_anchor = generate_anchor
+
+def ignore_aliases(self, data):
+    if isinstance(data, TypeDefinition):
+        return False
+    else:
+        return True
+
+yaml.Dumper.ignore_aliases = ignore_aliases
+
+def custom_represent_data(self, data):
+    res = super(yaml.Dumper, self).represent_data(data)
+    if isinstance(data, TypeDefinition):
+        res.anchor_name = str(data)
+    return res
+
+yaml.Dumper.represent_data = custom_represent_data
+
+def increase_indent(self, flow=False, indentless=False):
+    """Ensure that lists items are always indented."""
+    return super(yaml.Dumper, self).increase_indent(
+        flow=flow,
+        indentless=False)
+yaml.Dumper.increase_indent = increase_indent
+
+class QuotedString(str):  # just subclass the built-in str
+    pass
+
+def quoted_scalar(dumper, data):  # a representer to force quotations on scalars
+    return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='"')
+
+# add the QuotedString custom type with a forced quotation representer to your dumper
+yaml.add_representer(QuotedString, quoted_scalar)
 
 class TypeID(Enum):
-    Void = 0,
-    Integer = 1,
-    Float = 2,
-    Vector = 3,
-    Struct = 4,
-    Pointer = 5,
-    Any = 6,
-    ArgumentReference = 7
+    Void = 0
+    Integer = 1
+    Float = 2
+    Vector = 3
+    Struct = 4
+    Pointer = 5
+    Any = 6
+    Reference = 7
 
     def __str__(self):
         return self.name
@@ -30,16 +72,33 @@ class TypeID(Enum):
         else:
             raise ValueError("{value} is not present in {cls.__name__}")
 
+def TypeID_representer(dumper, data):
+    return dumper.represent_scalar(u'!TypeID', u'%s' % str(data), style='"')
+
+yaml.add_representer(TypeID, TypeID_representer)
+
+def TypeID_constructor(loader, node):
+    value = loader.construct_scalar(node)
+    return TypeID.from_str(value)
+
+yaml.SafeLoader.add_constructor(u'!TypeID', TypeID_constructor)
+
 class AddressSpace(Enum):
-    Undefined = 0,
-    Private = 1,
-    Global = 2,
-    Constant = 3,
-    Local = 4,
+    Undefined = 0
+    Private = 1
+    Global = 2
+    Constant = 3
+    Local = 4
     Generic = 5
 
     def __int__(self):
-        return self.value[0] - 1
+        return self.value - 1
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return '%s("%s")' % (self.__class__.__name__, self)
 
     @classmethod
     def from_str(cls, value : str):
@@ -49,20 +108,34 @@ class AddressSpace(Enum):
         else:
             raise ValueError("{value} is not present in {cls.__name__}")
 
+def AddressSpace_representer(dumper, data):
+    return dumper.represent_scalar(u'!AddressSpace', u'%s' % str(data), style='"')
+
+yaml.add_representer(AddressSpace, AddressSpace_representer)
+
+def AddressSpace_constructor(loader, node):
+    value = loader.construct_scalar(node)
+    return AddressSpace.from_str(value)
+
+yaml.SafeLoader.add_constructor(u'!AddressSpace', AddressSpace_constructor)
+
 class AttributeID(Enum):
-    NoUnwind = 0,
-    ReadNone = 1,
-    ReadOnly = 2,
-    ArgMemOnly = 3,
-    WriteOnly = 4,
-    NoReturn = 5,
-    NoDuplicate = 6,
-    Convergent = 7,
+    NoUnwind = 0
+    ReadNone = 1
+    ReadOnly = 2
+    ArgMemOnly = 3
+    WriteOnly = 4
+    NoReturn = 5
+    NoDuplicate = 6
+    Convergent = 7
     InaccessibleMemOnly = 8
 
     def __str__(self):
         return self.name
 
+    def __repr__(self):
+        return '%s("%s")' % (self.__class__.__name__, self)
+
     @classmethod
     def from_str(cls, value : str):
         for key, val in cls.__members__.items():
@@ -71,7 +144,23 @@ class AttributeID(Enum):
         else:
             raise ValueError("{value} is not present in {cls.__name__}")
 
-class TypeDefinition:
+def AttributeID_representer(dumper, data):
+    return dumper.represent_scalar(u'!AttributeID', u'%s' % str(data), style='"')
+
+yaml.add_representer(AttributeID, AttributeID_representer)
+
+def AttributeID_constructor(loader, node):
+    value = loader.construct_scalar(node)
+    return AttributeID.from_str(value)
+
+yaml.SafeLoader.add_constructor(u'!AttributeID', AttributeID_constructor)
+
+class SafeYAMLObject(yaml.YAMLObject):
+    yaml_loader = yaml.SafeLoader
+
+class TypeDefinition(SafeYAMLObject):
+    yaml_tag = u'TypeDefinition'
+
     def __init__(self, typeID : TypeID, bit_width : int  = 0, num_elements : int = 0,
                 address_space : AddressSpace = AddressSpace.Undefined, internal_type = None,
                 index : int = 0, internal_types = None):
@@ -90,8 +179,147 @@ class TypeDefinition:
             self.pointed_type = internal_type
         elif self.ID == TypeID.Struct:
             self.member_types = internal_types
-        elif self.ID == TypeID.ArgumentReference:
+        elif self.ID == TypeID.Reference:
             self.index = index
+
+    def __str__(self):
+        if self.ID == TypeID.Integer:
+            if self.bit_width == 0:
+                return "any_int"
+            else:
+                return "i{}".format(self.bit_width)
+        elif self.ID == TypeID.Float:
+            if self.bit_width == 0:
+                return "any_float"
+            else:
+                return "f{}".format(self.bit_width)
+        elif self.ID == TypeID.Any:
+            if self.default_type:
+                return "any_{}_".format(self.default_type)
+            else:
+                return "any"
+        elif self.ID == TypeID.Vector:
+            if self.element_type and self.num_elements:
+                return "v{}_{}_".format(self.num_elements, self.element_type)
+            elif self.element_type and self.num_elements == 0:
+                return "v_{}_".format(self.element_type)
+            elif not self.element_type and self.num_elements:
+                return "v{}_any_".format(self.num_elements)
+            else:
+                return "any_vector"
+        elif self.ID == TypeID.Pointer:
+            addr_space = int(self.address_space)
+            if addr_space >= 0 and self.pointed_type:
+                return "p{}_{}_".format(addr_space, self.pointed_type)
+            elif self.pointed_type and addr_space < 0:
+                return "p_{}_".format(self.pointed_type)
+            elif not self.pointed_type and addr_space <= 0:
+                return "p{}_any_".format(addr_space)
+            else:
+                return "any_pointer"
+        elif self.ID == TypeID.Struct:
+            if len(self.member_types) > 0:
+                return "s_{}_".format('-'.join([str(m) for m in self.member_types]))
+            else:
+                return "any_struct"
+        elif self.ID == TypeID.Reference:
+            return "ref_{}_".format(self.index)
+        return "void"
+
+    def __repr__(self):
+        if self.ID == TypeID.Integer:
+            return "%s(ID=%r, bit_width=%r)" % (
+                self.__class__.__name__, self.ID, self.bit_width)
+        elif self.ID == TypeID.Float:
+            return "%s(ID=%r, bit_width=%r)" % (
+                self.__class__.__name__, self.ID, self.bit_width)
+        elif self.ID == TypeID.Any:
+            return "%s(ID=%r, default_type=%r)" % (
+                self.__class__.__name__, self.ID, self.default_type)
+        elif self.ID == TypeID.Vector:
+            return "%s(ID=%r, num_elements=%r, element_type=%r)" % (
+                self.__class__.__name__, self.ID, self.num_elements, self.element_type)
+        elif self.ID == TypeID.Pointer:
+            return "%s(ID=%r, address_space=%r, pointed_type=%r)" % (
+                self.__class__.__name__, self.ID, self.address_space, self.pointed_type)
+        elif self.ID == TypeID.Struct:
+            return "%s(ID=%r, member_types=%r)" % (
+                self.__class__.__name__, self.ID, self.member_types)
+        elif self.ID == TypeID.Reference:
+            return "%s(ID=%r, index=%r)" % (
+                self.__class__.__name__, self.ID, self.index)
+        return "%s(ID=%r)" % (
+            self.__class__.__name__, self.ID)
+
+    def __eq__(self, other):
+        if isinstance(other, TypeDefinition) and self.ID == other.ID:
+            if self.ID == TypeID.Integer:
+                return self.bit_width == other.bit_width
+            elif self.ID == TypeID.Float:
+                return self.bit_width == other.bit_width
+            elif self.ID == TypeID.Any:
+                return self.default_type == other.default_type
+            elif self.ID == TypeID.Vector:
+                return self.num_elements == other.num_elements and self.element_type == other.element_type
+            elif self.ID == TypeID.Pointer:
+                return self.address_space == other.address_space and self.pointed_type == other.pointed_type
+            elif self.ID == TypeID.Struct:
+                return tuple(self.member_types) ==  tuple(other.member_types)
+            elif self.ID == TypeID.Reference:
+                return self.index == other.index
+            return True
+        else:
+            return False
+
+    def __lt__(self, other):
+        if isinstance(other, TypeDefinition) and self.ID == other.ID:
+            if self.ID == TypeID.Integer:
+                return self.bit_width < other.bit_width
+            elif self.ID == TypeID.Float:
+                return self.bit_width < other.bit_width
+            elif self.ID == TypeID.Any:
+                if self.default_type and other.default_type:
+                    return self.default_type < other.default_type
+                return not self.default_type
+            elif self.ID == TypeID.Vector:
+                return self.element_type < other.element_type if self.element_type != other.element_type else self.num_elements < other.num_elements
+            elif self.ID == TypeID.Pointer:
+                return int(self.address_space) < int(other.address_space) if int(self.address_space) != int(other.address_space) else self.pointed_type < other.pointed_type
+            elif self.ID == TypeID.Struct:
+                if len(self.member_types) == len(other.member_types):
+                    diffrent_types = [(self.member_types[i], other.member_types[i]) for i in range(len(self.member_types))]
+                    return diffrent_types[0][0] < diffrent_types[0][1]
+                else:
+                   return len(self.member_types) < len(other.member_types)
+            elif self.ID == TypeID.Reference:
+                return self.index < other.index
+            return True
+        else:
+            return self.ID.value < other.ID.value
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        if self.ID == TypeID.Integer:
+            return hash((self.ID, self.bit_width))
+        elif self.ID == TypeID.Float:
+            return hash((self.ID, self.bit_width))
+        elif self.ID == TypeID.Any:
+            return hash((self.ID, self.default_type))
+        elif self.ID == TypeID.Vector:
+            return hash((self.ID, self.num_elements, self.element_type))
+        elif self.ID == TypeID.Pointer:
+            return hash((self.ID, self.address_space, self.pointed_type))
+        elif self.ID == TypeID.Struct:
+            return hash((self.ID,  tuple(self.member_types)))
+        elif self.ID == TypeID.Reference:
+            return hash((self.ID, self.index))
+        elif self.ID == TypeID.Void:
+            return hash((self.ID))
+        else:
+            assert(0)
+            return 0
 
     def to_dict(self):
         if self.ID == TypeID.Integer:
@@ -121,7 +349,7 @@ class TypeDefinition:
                 "ID":  str(self.ID),
                 "member_types": [ el.to_dict()for el in self.member_types ]
             }
-        elif self.ID == TypeID.ArgumentReference:
+        elif self.ID == TypeID.Reference:
             res = {
                 "ID":  str(self.ID),
                 "index": self.index
@@ -154,16 +382,59 @@ class TypeDefinition:
         elif ID == TypeID.Struct:
             member_types = [TypeDefinition.from_dict(el) for el in json_dct['member_types']]
             return TypeDefinition(ID, internal_types=member_types)
-        elif ID == TypeID.ArgumentReference:
+        elif ID == TypeID.Reference:
             return TypeDefinition(ID, index=json_dct['index'])
         elif ID == TypeID.Any:
             internal_type = TypeDefinition.from_dict(json_dct['default_type']) if json_dct['default_type'] else None
             return TypeDefinition(ID, internal_type=internal_type)
 
-class ArgumentTypeDefinition:
+class ArgumentDefinition(SafeYAMLObject):
+
+    yaml_tag = u'ArgumentDefinition'
+
+    @classmethod
+    def from_yaml(cls, loader, node):
+        arg_dict = loader.construct_mapping(node, deep=True)
+        return cls(**arg_dict)
+
+    def __init__(self, name : str, type_definition : TypeDefinition, comment : str):
+        self.name = name
+        self.type_definition = type_definition
+        self.comment = QuotedString(comment)
+
+    def __repr__(self):
+        return "%s(name=%r, type_definition=%r, comment=%r)" % (
+            self.__class__.__name__, self.name, self.type_definition, self.comment)
+
+    def to_dict(self):
+        res =  {
+            "name": self.name,
+            "type_definition": self.type_definition.to_dict(),
+            "comment": self.comment
+        }
+        return res
+
+    @staticmethod
+    def from_dict(json_dct : dict):
+        type_definition = TypeDefinition.from_dict(json_dct['type_definition'])
+        return ArgumentDefinition(json_dct['name'], type_definition, json_dct['comment'])
+
+class ReturnDefinition(SafeYAMLObject):
+
+    yaml_tag = u'ReturnDefinition'
+
+    @classmethod
+    def from_yaml(cls, loader, node):
+        arg_dict = loader.construct_mapping(node, deep=True)
+        return cls(**arg_dict)
+
     def __init__(self, type_definition : TypeDefinition, comment : str):
         self.type_definition = type_definition
-        self.comment = comment
+        self.comment = QuotedString(comment)
+
+    def __repr__(self):
+        return "%s(type_definition=%r, comment=%r)" % (
+            self.__class__.__name__, self.type_definition, self.comment)
 
     def to_dict(self):
         res =  {
@@ -175,33 +446,194 @@ class ArgumentTypeDefinition:
     @staticmethod
     def from_dict(json_dct : dict):
         type_definition = TypeDefinition.from_dict(json_dct['type_definition'])
-        return ArgumentTypeDefinition(type_definition, json_dct['comment'])
+        return ReturnDefinition(type_definition, json_dct['comment'])
 
-class IntrinsicDefinition:
-    def __init__(self, name : str, comment : str, return_type : ArgumentTypeDefinition,
-                 argument_types : List[ArgumentTypeDefinition], attributes : Set[AttributeID]):
-        self.name = name
-        self.comment = comment
-        self.return_type = return_type
-        self.argument_types = argument_types
+class IntrinsicDefinition(SafeYAMLObject):
+
+    yaml_tag = u'IntrinsicDefinition'
+
+    @classmethod
+    def from_yaml(cls, loader, node):
+        arg_dict = loader.construct_mapping(node, deep=True)
+        res = cls(**arg_dict)
+        return res
+
+    def __init__(self, name : str, comment : str, return_definition : ReturnDefinition,
+                 arguments : List[ArgumentDefinition], attributes : Set[AttributeID]):
+        self.name = QuotedString(name)
+        self.comment = QuotedString(comment)
+        self.return_definition = return_definition
+        self.arguments = arguments
         self.attributes = sorted(list(attributes), key=lambda x: x.__str__())
+
+    def __repr__(self):
+        return "%s(name=%r, comment=%r, return_definition=%r, arguments=%r, attributes=%r)" % (
+            self.__class__.__name__, self.name, self.comment, self.return_definition, self.arguments, self.attributes)
 
     def to_dict(self):
         res = {
             "name": self.name,
             "comment": self.comment,
-            "return_type": self.return_type.to_dict(),
-            "argument_types":[ el.to_dict() for el in self.argument_types],
+            "return_definition": self.return_definition.to_dict(),
+            "arguments":[ el.to_dict() for el in self.arguments],
             "attributes": [str(el) for el in self.attributes]
         }
         return res
 
     @staticmethod
     def from_dict(json_dct : dict):
-        return_type = ArgumentTypeDefinition.from_dict(json_dct['return_type'])
-        argument_types = []
-        for arg in json_dct['argument_types']:
-            argument_types.append(ArgumentTypeDefinition.from_dict(arg))
+        return_definition = ArgumentDefinition.from_dict(json_dct['return_definition'])
+        arguments = []
+        for arg in json_dct['arguments']:
+            arguments.append(ArgumentDefinition.from_dict(arg))
         attributes = set(AttributeID.from_str(el) for el in json_dct['attributes'])
-        return IntrinsicDefinition(json_dct['name'], json_dct['comment'], return_type,
-                                   argument_types, attributes)
+        return IntrinsicDefinition(json_dct['name'], json_dct['comment'], return_definition,
+                                   arguments, attributes)
+
+class PrimitiveArgumentDefinition(SafeYAMLObject):
+
+    yaml_tag = u'PrimitiveArgumentDefinition'
+
+    @classmethod
+    def from_yaml(cls, loader, node):
+        arg_dict = loader.construct_mapping(node, deep=True)
+        return cls(**arg_dict)
+
+    def __init__(self, name : str, comment : str):
+        self.name = name
+        self.comment = comment
+
+    def __repr__(self):
+        return "%s(name=%r, comment=%r)" % (
+            self.__class__.__name__, self.name, self.comment)
+
+    def to_dict(self):
+        res =  {
+            "name": self.name.to_dict(),
+            "comment": self.comment.to_dict()
+        }
+        return res
+
+    @staticmethod
+    def from_dict(json_dct : dict):
+        return PrimitiveArgumentDefinition(json_dct['name'], json_dct['commnet'])
+
+class IntrinsicPrimitive(SafeYAMLObject):
+
+    yaml_tag = u'IntrinsicPrimitive'
+
+    @classmethod
+    def from_yaml(cls, loader, node):
+        arg_dict = loader.construct_mapping(node, deep=True)
+        return cls(**arg_dict)
+
+    def __init__(self, name : str, comment : str, arguments : List[PrimitiveArgumentDefinition]):
+        self.name = QuotedString(name)
+        self.comment = QuotedString(comment)
+        self.arguments = arguments
+
+    def __repr__(self):
+        return "%s(name=%r, comment=%r, arguments=%r)" % (
+            self.__class__.__name__, self.name, self.comment, self.arguments)
+
+    def to_dict(self):
+        res = {
+            "name": self.name,
+            "comment": self.comment,
+            "arguments":[ el.to_dict() for el in self.arguments]
+        }
+        return res
+
+    @staticmethod
+    def from_dict(json_dct : dict):
+        arguments = []
+        for arg in json_dct['arguments']:
+            arguments.append(PrimitiveArgumentDefinition.from_dict(arg))
+        return IntrinsicDefinition(json_dct['name'], json_dct['comment'], arguments)
+
+class InternalGrammar(SafeYAMLObject):
+
+    yaml_tag = u'InternalGrammar'
+
+    def __init__(self, types : List[TypeDefinition], intrinsics : List[IntrinsicDefinition]):
+        self.types = types
+        self.intrinsics = intrinsics
+
+    def __repr__(self):
+        return "%s(types=%r, intrinsics=%r)" % (
+            self.__class__.__name__, self.types, self.intrinsics)
+
+    def to_dict(self):
+        res = {
+            "types": [ el.to_dict()for el in self.types ],
+            "intrinsics": [ el.to_dict()for el in self.intrinsics ]
+        }
+        return res
+
+    @staticmethod
+    def from_dict(json_dct : dict):
+        types = []
+        for arg in json_dct['types']:
+            types.append(TypeDefinition.from_dict(arg))
+        intrinsics = []
+        for arg in json_dct['intrinsics']:
+            intrinsics.append(IntrinsicDefinition.from_dict(arg))
+        return InternalGrammar(types, intrinsics)
+
+if __name__ == '__main__':
+    import sys
+    import argparse
+    from Intrinsic_utils import *
+    import json
+
+    def main(args):
+        parser = argparse.ArgumentParser(description='Recreate a file with IGC intrinsic definitions.')
+        parser.add_argument("input", help="the source path to the file with intrinsic defintions")
+        parser.add_argument('--input_format',
+                    default='yaml',
+                    choices=['yaml', 'json'],
+                    help='the data representation format of the input')
+        parser.add_argument('--output_format',
+                    default='yaml',
+                    choices=['yaml', 'json'],
+                    help='the data representation format of the output')
+        parser.add_argument("--output", help="the destination path for the file with intrinsic definitions",
+                        type=str)
+        parser.add_argument("-v", "--verbose", help="print intrinsic definitions in the current IGC format to the console",
+                        action="store_true")
+        parser.add_argument("-l", "--license_header", help="attaches a license header to the output file",
+                        action="store_true")
+
+        args = parser.parse_args(args[1:])
+
+        with open(args.input) as f:
+            try:
+                if args.input_format == 'json':
+                    internal_grammar = InternalGrammar.from_dict(json.load(f))
+
+                else:
+                    internal_grammar = yaml.safe_load(f)
+            except Exception as err:
+                print("Error on loading data from: {}\n{}".format(args.input, err))
+
+        if args.output_format == 'json':
+            text = json.dumps(internal_grammar.to_dict(), indent=2)
+        else:
+            text = yaml.dump(internal_grammar, default_flow_style = False, allow_unicode = True, encoding = None,
+                        sort_keys = False, indent=4)
+
+        if args.verbose:
+            print(text)
+
+        if args.output:
+            if args.license_header:
+                template_lookup = TemplateLookup(directories=[r'.'])
+                template = Template(filename=r'templates/intrinsic_definition.mako',
+                                    lookup=template_lookup)
+                output_file_path = args.output
+                write_to_file_using_template(output_file_path, template, content=text)
+            else:
+                with open(args.output, 'w') as f:
+                    f.write(text)
+
+    main(sys.argv)

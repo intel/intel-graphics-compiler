@@ -20,11 +20,11 @@ const char* IntrinsicDefinition<llvm::GenISAIntrinsic::ID::${el.name}>::scFuncti
 const char* IntrinsicDefinition<llvm::GenISAIntrinsic::ID::${el.name}>::scMainComment =
     ${IntrinsicFormatter.get_comment(el.comment)};
 const char* IntrinsicDefinition<llvm::GenISAIntrinsic::ID::${el.name}>::scResultComment =
-    ${IntrinsicFormatter.get_comment(el.return_type.comment)};
-% if hasattr(el, 'argument_types') and el.argument_types and len(el.argument_types) > 0:
+    ${IntrinsicFormatter.get_comment(el.return_definition.comment)};
+% if hasattr(el, 'arguments') and el.arguments and len(el.arguments) > 0:
 const std::array<const char*, static_cast<uint32_t>(IntrinsicDefinition<llvm::GenISAIntrinsic::ID::${el.name}>::Argument::Count)>
     IntrinsicDefinition<llvm::GenISAIntrinsic::ID::${el.name}>::scArgumentComments {
-    % for arg in el.argument_types:
+    % for arg in el.arguments:
         ${IntrinsicFormatter.get_argument_comment(arg.comment, loop.last)}
     % endfor
     };

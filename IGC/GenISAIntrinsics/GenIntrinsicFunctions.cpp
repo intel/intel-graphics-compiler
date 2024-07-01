@@ -174,7 +174,7 @@ private:
             {
             case TypeID::ArgumentReference:
             {
-                uint8_t argIndex = typeDef.m_ArgumentReference.m_Index;
+                uint8_t argIndex = typeDef.m_Reference.m_Index;
                 IGC_ASSERT_MESSAGE(argIndex < overloadedTypes.size(), "Argument reference index must point out one of the overloaded types");
                 pDest = overloadedTypes[argIndex];
                 break;

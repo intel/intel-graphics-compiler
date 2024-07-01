@@ -27,8 +27,8 @@ public:
 
     enum class Argument : uint32_t
     {
-    % if len(el.argument_types) > 0:
-        % for arg in el.argument_types:
+    % if len(el.arguments) > 0:
+        % for arg in el.arguments:
         ${IntrinsicFormatter.get_argument_name(arg, loop.index)}
         % endfor
         Count

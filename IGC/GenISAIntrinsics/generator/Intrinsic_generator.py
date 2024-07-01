@@ -14,6 +14,8 @@ from Intrinsic_definition_objects import *
 from Intrinsic_utils import *
 from itertools import takewhile
 
+from Intrinsic_definition_translation import generate_intrinsic_definitions_from_modules
+
 class IntrinsicLookupTableEntry:
     def __init__(self, id : str, lookup_name : str, common_prefix_len : int):
         self.id = id
@@ -49,10 +51,10 @@ class IntrinsicFormatter:
         return output
 
     @staticmethod
-    def get_argument_name(argument_type, index):
+    def get_argument_name(argument, index):
         output = "Arg{}".format(index)
-        if hasattr(argument_type, 'name'):
-            output = argument_type.name
+        if hasattr(argument, 'name'):
+            output = argument.name
         if (index == 0):
             output = "{} = 0".format(output)
         output = "{},".format(output)
@@ -108,8 +110,8 @@ class IntrinsicFormatter:
         elif type_def.ID == TypeID.Struct:
             output = "StructTypeHolderT<MemberTypeListHolderT<{}>>".format(
                 ", ".join([ "{}".format(IntrinsicFormatter.get_type_definition(member_type)) for member_type in type_def.member_types ]))
-        elif type_def.ID == TypeID.ArgumentReference:
-            output = "ArgumentReferenceTypeHolderT<{}>".format(type_def.index)
+        elif type_def.ID == TypeID.Reference:
+            output = "ReferenceTypeHolderT<{}>".format(type_def.index)
         elif type_def.ID == TypeID.Void:
             output = "EmptyTypeHolderT"
         elif type_def.ID == TypeID.Any:
@@ -158,6 +160,16 @@ def generate_intrinsic_defintion_files(intrinsic_definitions : List[IntrinsicDef
 
     IntrinsicFormatter.use_comments = use_comments
 
+    intrinsic_ids = set()
+    unique_intrinsic_definitions = []
+    for intrinsic_def in intrinsic_definitions:
+        if intrinsic_def.name in intrinsic_ids:
+            print("WARNING: The following intrinsic definition is repeated: {}.".format(intrinsic_def.name))
+            continue
+        unique_intrinsic_definitions.append(intrinsic_def)
+        intrinsic_ids.add(intrinsic_def.name)
+    intrinsic_definitions = unique_intrinsic_definitions
+
     template_lookup = TemplateLookup(directories=[r'.'])
     template = Template(filename=r'templates/GenIntrinsicEnum.h.mako',
                         lookup=template_lookup)
@@ -198,13 +210,26 @@ if __name__ == '__main__':
                         type=dir_path)
         parser.add_argument("--use_comments", action='store_true')
 
-        args = parser.parse_args(args)
-        raw_data = []
+        args = parser.parse_args(args[1:])
+        intrinsic_definitions = []
         for el in args.inputs:
-            with open(el) as f:
-                raw_data.extend(json.load(f))
-
-        intrinsic_definitions = [ IntrinsicDefinition.from_dict(el) for el in raw_data ]
+            json_ext = '.json'
+            py_ext = '.py'
+            file_ext = Path(el).suffix
+            if file_ext == json_ext:
+                with open(el) as f:
+                    try:
+                        intrinsic_definitions.extend(InternalGrammar.from_dict(json.load(f)).intrinsics)
+                    except Exception as err:
+                        print("Error on loading data from: {}\n{}".format(el, err))
+            elif file_ext == py_ext:
+                intrinsic_definitions.extend(generate_intrinsic_definitions_from_modules(el))
+            else:
+                with open(el) as f:
+                    try:
+                        intrinsic_definitions.extend(yaml.safe_load(f).intrinsics)
+                    except Exception as err:
+                        print("Error on loading data from: {}\n{}".format(el, err))
 
         if len(intrinsic_definitions) > 0:
             generate_intrinsic_defintion_files(intrinsic_definitions, args.output, args.use_comments)

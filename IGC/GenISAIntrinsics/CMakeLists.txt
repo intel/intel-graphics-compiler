@@ -13,12 +13,11 @@ set(IGC_BUILD__PROJ_LABEL__GenISAIntrinsics "${IGC_BUILD__PROJ__GenISAIntrinsics
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
-set(IGC_BUILD__GenISAIntrinsics_GENERATOR_INPUT_MODULES
+set(IGC_BUILD__GenISAIntrinsics_GENERATOR_INPUT_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/Intrinsic_definitions.py"
     )
 
 set(IGC_BUILD__GenISAIntrinsics_GENERATOR_SCRIPTS
-    "${CMAKE_CURRENT_SOURCE_DIR}/generator/generate_intrinsic_files.py"
     "${CMAKE_CURRENT_SOURCE_DIR}/generator/Intrinsic_definition_objects.py"
     "${CMAKE_CURRENT_SOURCE_DIR}/generator/Intrinsic_definition_translation.py"
     "${CMAKE_CURRENT_SOURCE_DIR}/generator/Intrinsic_generator.py"
@@ -50,11 +49,11 @@ OUTPUT
     ${IGC_BUILD__GenISAIntrinsics_GENERATOR_OUTPUT_SOURCES}
 COMMAND
     ${CMAKE_COMMAND} -E env "PYTHONPATH=${BS_DIR_EXTERNAL_COMPONENTS}/build-tools/python-site-packages"
-        ${PYTHON_EXECUTABLE} generate_intrinsic_files.py
-            "${IGC_BUILD__GenISAIntrinsics_GENERATOR_INPUT_MODULES}" --output ${IGC_OPTION__OUTPUT_DIR}/${IGC_CMAKE_CFG_INTDIR}
+        ${PYTHON_EXECUTABLE} Intrinsic_generator.py
+            "${IGC_BUILD__GenISAIntrinsics_GENERATOR_INPUT_FILES}" --output ${IGC_OPTION__OUTPUT_DIR}/${IGC_CMAKE_CFG_INTDIR}
             $<$<NOT:$<CONFIG:Release>>:"--use_comments">
 DEPENDS
-    ${IGC_BUILD__GenISAIntrinsics_GENERATOR_INPUT_MODULES}
+    ${IGC_BUILD__GenISAIntrinsics_GENERATOR_INPUT_FILES}
     ${IGC_BUILD__GenISAIntrinsics_GENERATOR_SCRIPTS}
     ${IGC_BUILD__GenISAIntrinsics_GENERATOR_TEMPLATES}
 WORKING_DIRECTORY
@@ -67,7 +66,7 @@ DEPENDS
     ${IGC_BUILD__GenISAIntrinsics_GENERATOR_OUTPUT_HEADERS}
     ${IGC_BUILD__GenISAIntrinsics_GENERATOR_OUTPUT_SOURCES}
 SOURCES
-    ${IGC_BUILD__GenISAIntrinsics_GENERATOR_INPUT_MODULES}
+    ${IGC_BUILD__GenISAIntrinsics_GENERATOR_INPUT_FILES}
     ${IGC_BUILD__GenISAIntrinsics_GENERATOR_SCRIPTS}
     ${IGC_BUILD__GenISAIntrinsics_GENERATOR_TEMPLATES}
     )

@@ -256,11 +256,11 @@ struct TypeDescriptionTraits<TypeID::ArgumentReference>
 };
 
 
-struct ArgumentReferenceType
+struct ReferenceType
 {
     using Traits = TypeDescriptionTraits<TypeID::ArgumentReference>;
 
-    constexpr ArgumentReferenceType(uint8_t index = 0) :
+    constexpr ReferenceType(uint8_t index = 0) :
         m_Index(index)
     {
 
@@ -322,9 +322,9 @@ struct TypeDescription
     {
     }
 
-    constexpr TypeDescription(const ArgumentReferenceType& def) :
+    constexpr TypeDescription(const ReferenceType& def) :
         m_ID(std::decay_t<decltype(def)>::Traits::scTypeID),
-        m_ArgumentReference{ def }
+        m_Reference{ def }
     {
     }
 
@@ -355,7 +355,7 @@ struct TypeDescription
             func(m_Struct);
             break;
         case TypeID::ArgumentReference:
-            func(m_ArgumentReference);
+            func(m_Reference);
             break;
         default:
             break;
@@ -403,7 +403,7 @@ struct TypeDescription
         AnyType m_Any;
         PointerType m_Pointer;
         StructType m_Struct;
-        ArgumentReferenceType m_ArgumentReference;
+        ReferenceType m_Reference;
     };
 
     const TypeID m_ID;
@@ -420,9 +420,9 @@ struct EmptyTypeHolderT
 };
 
 template<uint8_t index>
-struct ArgumentReferenceTypeHolderT
+struct ReferenceTypeHolderT
 {
-    static constexpr TypeDescription scType = ArgumentReferenceType(index);
+    static constexpr TypeDescription scType = ReferenceType(index);
 };
 
 template<typename TypeHolderT = EmptyTypeHolderT>

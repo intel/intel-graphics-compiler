@@ -41,19 +41,19 @@ public:
     static const char* scFunctionRootName;
 
     static constexpr TypeDescription scResTypes{
-        ${IntrinsicFormatter.get_type_definition(el.return_type.type_definition)}::scType
+        ${IntrinsicFormatter.get_type_definition(el.return_definition.type_definition)}::scType
     };
-    % if hasattr(el, 'argument_types') and el.argument_types and len(el.argument_types) > 0:
+    % if hasattr(el, 'arguments') and el.arguments and len(el.arguments) > 0:
 
     static constexpr std::array<TypeDescription, static_cast<uint32_t>(Argument::Count)> scArgumentTypes{
-        % for arg in el.argument_types:
+        % for arg in el.arguments:
         ${IntrinsicFormatter.get_argument_type_entry(arg.type_definition, loop.last)}
         % endfor
     };
     % endif
     static const char* scMainComment;
     static const char* scResultComment;
-    % if hasattr(el, 'argument_types') and el.argument_types and len(el.argument_types) > 0:
+    % if hasattr(el, 'arguments') and el.arguments and len(el.arguments) > 0:
 
     static const std::array<const char*, static_cast<uint32_t>(Argument::Count)> scArgumentComments;
     % endif
