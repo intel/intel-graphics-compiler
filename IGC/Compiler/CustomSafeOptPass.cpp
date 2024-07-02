@@ -293,34 +293,19 @@ void CustomSafeOptPass::visitAnd(BinaryOperator& I) {
 void CustomSafeOptPass::visitShuffleIndex(llvm::CallInst* I)
 {
     using namespace llvm::PatternMatch;
-
-    bool patternFound = false;
-    Value* simdLaneId = nullptr;
-    ConstantInt* xorValueConstant = nullptr;
-    ConstantInt* andValueConstant = nullptr;
-
     /*
     Pattern match
     %simdLaneId16 = call i16 @llvm.genx.GenISA.simdLaneId()
-    %xor = xor i16 %simdLaneId16, 1
-    %xor.i = zext i16 %xor to i32
-    %simdShuffle = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %x, i32 %xor.i, i32 0)
+    ...[optional1] = %simdLaneId16
+    %xor = xor i16 %[optional1], 1
+    ...[optional2] = %xor
+    %simdShuffle = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %x, i32 %[optional2], i32 0)
 
-    or
-
-    %simdLaneId16 = call i16 @llvm.genx.GenISA.simdLaneId()
-    %simdLaneId = zext i16 %simdLaneId16 to i32
-    %xor = xor i32 %simdLaneId, 2
-    %simdShuffle.2 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %x, i32 %xor, i32 0)
-
-    or
-
-    %simdLaneId16 = call i16 @llvm.genx.GenISA.simdLaneId()
-    %and = and i16 %856, 63
-    %zext = zext i16 %857 to i32
-    %xor = xor i32 %858, 1
-    %simdShuffle.3 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %x, i32
-    %xor, i32 0)
+    Optional can be any combinations of :
+      * %and = and i16 %856, 63
+      * %zext = zext i16 %857 to i32
+    We ignore any combinations of those, as they don't change the final calculated value,
+    and different permutations were observed.
     */
 
     ConstantInt* enableHelperLanes = dyn_cast<ConstantInt>(I->getOperand(2));
@@ -328,23 +313,61 @@ void CustomSafeOptPass::visitShuffleIndex(llvm::CallInst* I)
         return;
     }
 
-    if (match(I->getOperand(1),
-              m_ZExt(m_c_Xor(m_Value(simdLaneId),
-                             m_ConstantInt(xorValueConstant)))) ||
-        match(I->getOperand(1), // Match this pattern first as it's more specialized case than next one
-              m_c_Xor(m_ZExt(m_And(m_Value(simdLaneId),
-                                   m_ConstantInt(andValueConstant))),
-                      m_ConstantInt(xorValueConstant))) ||
-        match(I->getOperand(1), m_c_Xor(m_ZExt(m_Value(simdLaneId)),
-                                        m_ConstantInt(xorValueConstant)))) {
-        if (CallInst* CI = dyn_cast<CallInst>(simdLaneId))
-        {
-            Function* simdIdF = CI->getCalledFunction();
-            if (!simdIdF) return;
-            patternFound =
-                GenISAIntrinsic::getIntrinsicID(simdIdF) == GenISAIntrinsic::GenISA_simdLaneId;
-        }
+    auto getInstructionIgnoringAndZext = []( Value* V, unsigned Opcode ) -> Instruction* {
+            while( auto* VI = dyn_cast<Instruction>( V ) ) {
+                if( VI->getOpcode() == Opcode ) {
+                    return VI;
+                }
+                else if( auto* ZI = dyn_cast<ZExtInst>( VI ) ) {
+                    // Check if zext is from i16 to i32
+                    if( ZI->getSrcTy()->isIntegerTy( 16 ) && ZI->getDestTy()->isIntegerTy( 32 ) ) {
+                        V = ZI->getOperand( 0 ); // Skip over zext
+                    } else {
+                        return nullptr; // Not the zext we are looking for
+                    }
+                }
+                else if( VI->getOpcode() == Instruction::And ) {
+                    ConstantInt* andValueConstant = dyn_cast<ConstantInt>( VI->getOperand( 1 ) );
+                    // We handle "redundant values", so those which bits enable all of
+                    // 32 lanes, so 31, 63 (spotted in nature), 127, 255 etc.
+                    if( andValueConstant && (( andValueConstant->getZExtValue() & 31 ) != 31 ) ) {
+                        return nullptr;
+                    }
+                    V = VI->getOperand( 0 ); // Skip over and
+                } else {
+                    return nullptr; // Not a zext, and, or the specified opcode
+                }
+            }
+            return nullptr; //unreachable
+        };
+
+    Instruction* xorInst = getInstructionIgnoringAndZext( I->getOperand( 1 ), Instruction::Xor );
+    if( !xorInst )
+        return;
+
+    auto xorOperand = xorInst->getOperand( 0 );
+    auto xorValueConstant = dyn_cast<ConstantInt> ( xorInst->getOperand( 1 ) );
+    if( !xorValueConstant )
+        return;
+
+    uint64_t xorValue = xorValueConstant->getZExtValue();
+    if( xorValue >= 16 )
+    {
+        // currently not supported in the emitter
+        return;
     }
+
+    auto simdLaneCandidate = getInstructionIgnoringAndZext( xorOperand, Instruction::Call );
+
+    if (!simdLaneCandidate)
+        return;
+
+    CallInst* CI = cast<CallInst>( simdLaneCandidate );
+    Function* simdIdF = CI->getCalledFunction();
+    if( !simdIdF || GenISAIntrinsic::getIntrinsicID( simdIdF ) != GenISAIntrinsic::GenISA_simdLaneId)
+        return;
+
+    // since we didn't return earlier, pattern is found
 
     auto insertShuffleXor = [](IRBuilder<>& builder,
                                     Value* value,
@@ -359,31 +382,11 @@ void CustomSafeOptPass::visitShuffleIndex(llvm::CallInst* I)
             { value, builder.getInt32(xorValue) }, "simdShuffleXor");
     };
 
-    if (patternFound)
-    {
-        uint64_t xorValue = xorValueConstant->getValue().getZExtValue();
-
-        if (xorValue >= 16) {
-            // currently not supported in the emitter
-            return;
-        }
-
-        if (andValueConstant) {
-            uint64_t andValue = andValueConstant->getValue().getZExtValue();
-
-            // We handle "redundant values", so those which bits enable all of
-            // 32 lanes, so 31, 63 (spotted in nature), 127, 255 etc.
-            if ((andValue & 31) != 31) {
-                return;
-            }
-        }
-
-        Value* value = I->getOperand(0);
-        IRBuilder<> builder(I);
-        Value* result = insertShuffleXor(builder, value, static_cast<uint32_t>(xorValue));
-        I->replaceAllUsesWith(result);
-        I->eraseFromParent();
-    }
+    Value* value = I->getOperand(0);
+    IRBuilder<> builder(I);
+    Value* result = insertShuffleXor(builder, value, static_cast<uint32_t>(xorValue));
+    I->replaceAllUsesWith(result);
+    I->eraseFromParent();
 }
 
 // here we merge dot-product (no acc) and add (as acc) into one dp4a
