@@ -8,6 +8,7 @@
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
+add_subdirectory(AccuracyDecoratedCallsBiFResolution)
 add_subdirectory(AddressSpaceAliasAnalysis)
 add_subdirectory(AggregateArguments)
 add_subdirectory(AlignmentAnalysis)
@@ -55,6 +56,7 @@ add_subdirectory(WGFuncs)
 add_subdirectory(WIFuncs)
 
 set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
+    ${IGC_BUILD__SRC__OpenCLPasses_AccuracyDecoratedCallsBiFResolution}
     ${IGC_BUILD__SRC__OpenCLPasses_AddressSpaceAliasAnalysis}
     ${IGC_BUILD__SRC__OpenCLPasses_AggregateArguments}
     ${IGC_BUILD__SRC__OpenCLPasses_AlignmentAnalysis}
@@ -108,6 +110,7 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses
   )
 
 set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
+    ${IGC_BUILD__HDR__OpenCLPasses_AccuracyDecoratedCallsBiFResolution}
     ${IGC_BUILD__HDR__OpenCLPasses_AddressSpaceAliasAnalysis}
     ${IGC_BUILD__HDR__OpenCLPasses_AggregateArguments}
     ${IGC_BUILD__HDR__OpenCLPasses_AlignmentAnalysis}
@@ -161,6 +164,7 @@ set(IGC_BUILD__HDR__Optimizer_OpenCLPasses
 
 
 set(IGC_BUILD_Compiler_OpenCLPasses_Groups
+    Compiler__OpenCLPasses_AccuracyDecoratedCallsBiFResolution
     Compiler__OpenCLPasses_AddressSpaceAliasAnalysis
     Compiler__OpenCLPasses_AggregateArguments
     Compiler__OpenCLPasses_AlignmentAnalysis

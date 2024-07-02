@@ -15,6 +15,7 @@ namespace llvm {
 }
 
 // The following declarations are placed according to alphabetic order for simplicity
+void initializeAccuracyDecoratedCallsBiFResolutionPass(llvm::PassRegistry&);
 void initializeAddImplicitArgsPass(llvm::PassRegistry&);
 void initializeAddressSpaceAliasAnalysisPass(llvm::PassRegistry&);
 void initializeAnnotateUniformAllocasPass(llvm::PassRegistry&);

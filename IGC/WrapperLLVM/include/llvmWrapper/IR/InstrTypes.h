@@ -43,6 +43,11 @@ namespace IGCLLVM
 #endif
     }
 
+    inline void addFnAttr(llvm::CallInst *CI, llvm::Attribute Attr)
+    {
+        addFnAttr(CI, Attr.getKindAsEnum());
+    }
+
     inline uint64_t getRetDereferenceableBytes(llvm::CallBase* Call)
     {
 #if LLVM_VERSION_MAJOR >= 14

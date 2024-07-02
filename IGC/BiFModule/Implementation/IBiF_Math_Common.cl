@@ -186,3 +186,6 @@ OVERLOADABLE int __intel_relaxed_isnormal(half x );
 #include "Math/modf.cl"
 #include "Math/remquo.cl"
 #include "Math/sincos.cl"
+
+// IMF
+#include "IMF/IBiF_IMF_All.cl"

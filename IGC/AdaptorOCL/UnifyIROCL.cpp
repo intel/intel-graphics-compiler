@@ -111,6 +111,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/NamedBarriers/NamedBarriersResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/JointMatrixFuncsResolutionPass/JointMatrixFuncsResolutionPass.h"
 #include "Compiler/Optimizer/OpenCLPasses/RayTracing/ResolveOCLRaytracingBuiltins.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/AccuracyDecoratedCallsBiFResolution/AccuracyDecoratedCallsBiFResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ScalarArgAsPointer/ScalarArgAsPointer.hpp"
 #include "AdaptorCommon/RayTracing/RayTracingPasses.hpp"
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
@@ -358,6 +359,7 @@ static void CommonOCLBasedPasses(OpenCLProgramContext* pContext)
         mpm.add(new TransformUnmaskedFunctionsPass());
     }
 
+    mpm.add(new AccuracyDecoratedCallsBiFResolution());
     mpm.add(new MoveStaticAllocas());
 
     // Clone kernel function being used as user function.
