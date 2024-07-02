@@ -11,6 +11,8 @@ SPDX-License-Identifier: MIT
 #ifndef _FASTSPARSEVECTOR_H_
 #define _FASTSPARSEVECTOR_H_
 
+#if defined(_WIN64) || defined(_WIN32)
+
 // Following implementation of sparse bitvector is inspired from llvm's
 // SparseBitVector. There are some changes made to make it faster.
 // llvm's version stores SparseBitVectorElement instances as a linked
@@ -674,5 +676,17 @@ operator-(const FastSparseBitVector<ElementSize> &LHS,
 }
 
 typedef FastSparseBitVector<2048> SparseBitVector;
+
+#else
+
+// On Linux, llvm's SparseBitVector offers comparable compilation time
+// with smaller memory footprint. In future, we may consider switching
+// to FastSparseBitVector for Linux as well.
+
+#include "llvm/ADT/SparseBitVector.h"
+
+typedef llvm::SparseBitVector<2048> SparseBitVector;
+
+#endif
 
 #endif
