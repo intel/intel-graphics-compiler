@@ -73,6 +73,7 @@ private:
 
   Value *createLibraryCall(Instruction &I, Function *Func,
                            ArrayRef<Value *> Args);
+  Value *createAtomicLibraryCall(llvm::CallInst &II, StringRef Name);
 
   bool isHandleUgmAtomics(const CallInst &II) const;
   bool isHandleSlmAtomics(const CallInst &II) const;
@@ -281,38 +282,42 @@ Value *GenXBuiltinFunctions::visitURem(BinaryOperator &I) {
 }
 
 bool GenXBuiltinFunctions::isHandleUgmAtomics(const CallInst &II) const {
-  auto *Ty = II.getType();
   auto *Opcode = cast<ConstantInt>(II.getArgOperand(1));
-  auto *VTy = cast<IGCLLVM::FixedVectorType>(Ty);
-  auto *ETy = VTy->getElementType();
+
+  auto *Ty = II.getType();
+  if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty))
+    Ty = VTy->getElementType();
+
   switch (Opcode->getZExtValue()) {
   case LSC_ATOMIC_FADD:
   case LSC_ATOMIC_FSUB:
-    return (ETy->isDoubleTy() && !ST->hasGlobalAtomicAddF64()) ||
+    return (Ty->isDoubleTy() && !ST->hasGlobalAtomicAddF64()) ||
            cast<ConstantInt>(II.getArgOperand(3))->getZExtValue() ==
                LSC_DATA_SIZE_16c32b;
   case LSC_ATOMIC_FMIN:
   case LSC_ATOMIC_FMAX:
   case LSC_ATOMIC_FCAS:
-    return ETy->isDoubleTy();
+    return Ty->isDoubleTy();
   default:
     return false;
   }
 }
 
 bool GenXBuiltinFunctions::isHandleSlmAtomics(const CallInst &II) const {
-  auto *Ty = II.getType();
   auto *Opcode = cast<ConstantInt>(II.getArgOperand(1));
-  auto *VTy = cast<IGCLLVM::FixedVectorType>(Ty);
-  auto *ETy = VTy->getElementType();
+
+  auto *Ty = II.getType();
+  if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty))
+    Ty = VTy->getElementType();
+
   switch (Opcode->getZExtValue()) {
   case LSC_ATOMIC_ICAS:
     return false;
   case LSC_ATOMIC_FADD:
   case LSC_ATOMIC_FSUB:
-    return !ETy->isDoubleTy() || ST->hasLocalIntegerCas64();
+    return !Ty->isDoubleTy() || ST->hasLocalIntegerCas64();
   default:
-    return (ETy->isIntegerTy(64) || ETy->isDoubleTy()) &&
+    return (Ty->isIntegerTy(64) || Ty->isDoubleTy()) &&
            ST->hasLocalIntegerCas64();
   }
 }
@@ -355,52 +360,68 @@ Value *GenXBuiltinFunctions::visitCallInst(CallInst &II) {
     Func = getBuiltinDeclaration(M, "fptoui", false, {STy});
   } break;
 
-  case vc::InternalIntrinsic::lsc_atomic_slm: {
+  case vc::InternalIntrinsic::lsc_atomic_slm:
     if (!isHandleSlmAtomics(II))
       return nullptr;
-    auto *Opcode = cast<ConstantInt>(II.getArgOperand(1));
-    auto *VTy = cast<IGCLLVM::FixedVectorType>(Ty);
-    auto *CacheOpts = vc::InternalIntrinsic::getMemoryCacheControlOperand(&II);
-    auto *CacheOptsTy = CacheOpts->getType();
-
-    Func = getBuiltinDeclaration(M, "atomic_slm", false, {VTy, CacheOptsTy});
-
-    auto *MaskVTy = IGCLLVM::FixedVectorType::get(Builder.getInt8Ty(),
-                                                  VTy->getNumElements());
-    auto *Mask = Builder.CreateZExt(II.getArgOperand(0), MaskVTy);
-
-    Args.clear();
-    Args.push_back(Mask);
-    Args.push_back(Opcode);
-    std::copy(II.arg_begin() + 4, II.arg_end(), std::back_inserter(Args));
-  } break;
-
-  case vc::InternalIntrinsic::lsc_atomic_ugm: {
+    return createAtomicLibraryCall(II, "atomic_slm");
+  case vc::InternalIntrinsic::lsc_atomic_ugm:
     if (!isHandleUgmAtomics(II))
       return nullptr;
-
-    auto *Opcode = cast<ConstantInt>(II.getArgOperand(1));
-    auto *VTy = cast<IGCLLVM::FixedVectorType>(Ty);
-    auto *CacheOpts = vc::InternalIntrinsic::getMemoryCacheControlOperand(&II);
-    auto *CacheOptsTy = CacheOpts->getType();
-
-    Func = getBuiltinDeclaration(M, "atomic_ugm", false, {VTy, CacheOptsTy});
-
-    auto *MaskVTy = IGCLLVM::FixedVectorType::get(Builder.getInt8Ty(),
-                                                  VTy->getNumElements());
-    auto *Mask = Builder.CreateZExt(II.getArgOperand(0), MaskVTy);
-
-    Args.clear();
-    Args.push_back(Mask);
-    Args.push_back(Opcode);
-    std::copy(II.arg_begin() + 4, II.arg_end(), std::back_inserter(Args));
-  } break;
-
+    return createAtomicLibraryCall(II, "atomic_ugm");
   default:
     break;
   }
 
   return createLibraryCall(II, Func, Args);
+}
+
+Value *GenXBuiltinFunctions::createAtomicLibraryCall(CallInst &II,
+                                                     StringRef Name) {
+  IRBuilder<> Builder(&II);
+
+  auto *Ty = II.getType();
+  auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
+  if (!VTy)
+    VTy = IGCLLVM::FixedVectorType::get(Ty, 1);
+
+  auto *Opcode = cast<ConstantInt>(II.getArgOperand(1));
+  auto *CacheOpts = vc::InternalIntrinsic::getMemoryCacheControlOperand(&II);
+  auto *CacheOptsTy = CacheOpts->getType();
+
+  auto *Pred = II.getArgOperand(0);
+  if (auto *PredTy = Pred->getType(); !isa<IGCLLVM::FixedVectorType>(PredTy)) {
+    PredTy = IGCLLVM::FixedVectorType::get(PredTy, 1);
+    Pred = Builder.CreateBitCast(Pred, PredTy);
+  }
+
+  auto *MaskVTy =
+      IGCLLVM::FixedVectorType::get(Builder.getInt8Ty(), VTy->getNumElements());
+  auto *Mask = Builder.CreateZExt(Pred, MaskVTy);
+
+  auto *Index = II.getArgOperand(6);
+  auto *IndexVTy = Index->getType();
+  if (!isa<IGCLLVM::FixedVectorType>(IndexVTy))
+    IndexVTy = IGCLLVM::FixedVectorType::get(IndexVTy, 1);
+  Index = Builder.CreateBitCast(Index, IndexVTy);
+
+  SmallVector<Value *, 12> Args = {
+      Mask,
+      Opcode,
+      CacheOpts,
+      II.getArgOperand(5), // base
+      Index,
+      II.getArgOperand(7), // scale
+      II.getArgOperand(8), // offset
+  };
+
+  std::transform(II.arg_begin() + 9, II.arg_end(), std::back_inserter(Args),
+                 [&](Value *V) { return Builder.CreateBitCast(V, VTy); });
+
+  auto &M = *II.getModule();
+  auto *Func = getBuiltinDeclaration(M, Name, false, {VTy, CacheOptsTy});
+
+  auto *NewCI = createLibraryCall(II, Func, Args);
+  return Builder.CreateBitCast(NewCI, Ty);
 }
 
 static std::string getMangledTypeStr(Type *Ty) {
