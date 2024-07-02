@@ -327,8 +327,12 @@ Value* ValueTracker::findAllocaValue(Value* V, const uint depth)
         {
             if (CI->getCalledFunction()->getIntrinsicID() == Intrinsic::memcpy)
             {
-                // Continue search in current users, handle the memcpy arg in the tracking later.
-                workList.push_back(CI->getOperand(1));
+                // We need to track memcpy source only if this CI was found by destination.
+                if (CI->getOperand(0) == V)
+                {
+                    // Continue search in current users, handle the memcpy arg in the tracking later.
+                    workList.push_back(CI->getOperand(1));
+                }
             }
             else if (!CI->getCalledFunction()->isIntrinsic()) // handle user-defined functions
             {
