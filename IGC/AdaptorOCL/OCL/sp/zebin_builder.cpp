@@ -568,9 +568,10 @@ void ZEBinaryBuilder::addKernelExecEnv(const SOpenCLKernelInfo& annotations,
     env.private_size = annotations.m_executionEnvironment.PerThreadPrivateMemoryUsage;
     env.spill_size = annotations.m_executionEnvironment.PerThreadSpillMemoryUsage;
     env.subgroup_independent_forward_progress = annotations.m_executionEnvironment.SubgroupIndependentForwardProgressRequired;
-    if (annotations.m_executionEnvironment.WorkgroupWalkOrder[0] ||
-        annotations.m_executionEnvironment.WorkgroupWalkOrder[1] ||
-        annotations.m_executionEnvironment.WorkgroupWalkOrder[2]) {
+    // skip setting the value if it is default [0,1,2]
+    if (annotations.m_executionEnvironment.WorkgroupWalkOrder[0] != 0 ||
+        annotations.m_executionEnvironment.WorkgroupWalkOrder[1] != 1 ||
+        annotations.m_executionEnvironment.WorkgroupWalkOrder[2] != 2) {
         env.work_group_walk_order_dimensions.push_back(annotations.m_executionEnvironment.WorkgroupWalkOrder[0]);
         env.work_group_walk_order_dimensions.push_back(annotations.m_executionEnvironment.WorkgroupWalkOrder[1]);
         env.work_group_walk_order_dimensions.push_back(annotations.m_executionEnvironment.WorkgroupWalkOrder[2]);
