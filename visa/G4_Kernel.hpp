@@ -189,6 +189,16 @@ public:
     return found->numGRF;
   }
 
+  // Get GRF number for initial kernel creation
+  unsigned getInitalGRFNum() const {
+    // Max GRF number is used when GRF selection is enabled.
+    // This allows input payload to be allocated to GRFs
+    // beyond 128 if needed.
+    if (options->getOption(vISA_AutoGRFSelection))
+      return configs.back().numGRF;
+    return configs[currentMode].numGRF;
+  }
+
   // Get the next larger GRF available
   unsigned getLargerGRF() const {
     // find the first larger mode that's available for VRT

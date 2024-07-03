@@ -158,7 +158,8 @@ void IR_Builder::bindInputDecl(
   dcl->getRegVar()->setPhyReg(phyregpool.getGreg(regNum), subRegNum);
   dcl->setRegFile(G4_INPUT);
   unsigned int reservedGRFNum = m_options->getuInt32Option(vISA_ReservedGRFNum);
-  if (regNum + dcl->getNumRows() > kernel.getNumRegTotal() - reservedGRFNum) {
+  unsigned int totalGRFNum = kernel.grfMode.getInitalGRFNum();
+  if (regNum + dcl->getNumRows() > totalGRFNum - reservedGRFNum) {
     vISA_ASSERT(false, "INPUT payload execeeds the register number");
   }
 }
@@ -748,9 +749,10 @@ IR_Builder::IR_Builder(INST_LIST_NODE_ALLOCATOR &alloc, G4_Kernel &k,
       m_options(options), CanonicalRegionStride0(0, 1, 0),
       CanonicalRegionStride1(1, 1, 0), CanonicalRegionStride2(2, 1, 0),
       CanonicalRegionStride4(4, 1, 0), mem(m),
-      phyregpool(m, k.getNumRegTotal()), hashtable(m), rgnpool(m),
-      dclpool(m, *this), instList(alloc), kernel(k), metadataMem(4096),
-      debugNameMem(4096), r0AccessMode(getR0AccessFromOptions()), freqInfoManager(this,k) {
+      phyregpool(m, k.grfMode.getInitalGRFNum()),
+      hashtable(m), rgnpool(m), dclpool(m, *this), instList(alloc), kernel(k),
+      metadataMem(4096), debugNameMem(4096),
+      r0AccessMode(getR0AccessFromOptions()), freqInfoManager(this, k) {
   num_temp_dcl = 0;
   kernel.setBuilder(this); // kernel needs pointer to the builder
   if (!getIsPayload())
