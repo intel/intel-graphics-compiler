@@ -2887,15 +2887,38 @@ void SpillManagerGRF::insertSpillRangeCode(INST_LIST::iterator spilledInstIter,
     return noRMWNeeded.find(spilledRegion) == noRMWNeeded.end();
   };
 
-  auto isScatterSpillCandidate = [this, inst]() {
+  auto dstFullOverlapSrc = [this, inst]() {
+    // For inst, check whether dst fully overlaps any source.
+    // Return true if there's an overlap.
+    // This is useful in deciding whether scatter should be used
+    // or block spill should be used. When there's full overlap,
+    // a fill is emitted for the source. So even if inst doesn't
+    // use NoMask, it's preferable to use block spill.
+    auto *dstDcl = inst->getDst()->getTopDcl();
+    auto dstLb = inst->getDst()->getLeftBound();
+    auto dstRb = inst->getDst()->getRightBound();
+    for (unsigned int i = 0; i != inst->getNumSrc(); ++i) {
+      auto *src = inst->getSrc(i);
+      if (!src || src->getTopDcl() != dstDcl)
+        continue;
+      auto srcLb = src->getLeftBound();
+      auto srcRb = src->getRightBound();
+      if (dstLb <= srcLb && dstRb <= srcRb)
+        return true;
+    }
+    return false;
+  };
+
+  auto isScatterSpillCandidate = [this, inst, dstFullOverlapSrc]() {
     // Conditions for scatter spill: inst can't be NoMask,
     // element size is W/DW/Q, isn't dst partial region, and
     // inst isn't predicated
     auto elemSz = inst->getDst()->getElemSize();
+    auto fillAvailable = dstFullOverlapSrc();
     return gra.useLscForScatterSpill && !inst->isWriteEnableInst() &&
            (elemSz == 2 || elemSz == 4 || elemSz == 8) &&
            !isPartialRegion(inst->getDst(), inst->getExecSize()) &&
-           !inst->getPredicate();
+           !inst->getPredicate() && !fillAvailable;
   };
 
 
@@ -2952,6 +2975,8 @@ void SpillManagerGRF::insertSpillRangeCode(INST_LIST::iterator spilledInstIter,
     // Scatter spill is used only when the spill needs RMW.
     // If spill doesn't need RMW then we can use block spill as those
     // can be coalesced with nearby block spills.
+    // If a fill was emitted then there's no need to use scatter as
+    // we can use block spill that can be coalesced.
     auto useScatter = (scatterSpillCandidate && needsRMW);
 
     if (preloadNeeded && needsRMW && !scatterSpillCandidate) {
