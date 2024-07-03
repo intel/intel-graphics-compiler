@@ -129,7 +129,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/IGCInstCombiner/IGCInstructionCombining.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/BufferBoundsChecking/BufferBoundsChecking.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/BufferBoundsChecking/BufferBoundsCheckingPatcher.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/MinimumValidAddressChecking/MinimumValidAddressChecking.hpp"
 
 #include "common/debug/Debug.hpp"
 #include "common/igc_regkeys.hpp"
@@ -397,19 +396,6 @@ static void CommonOCLBasedPasses(
     if (IGC_IS_FLAG_ENABLED(BufferBoundsChecking) || pContext->isBufferBoundsChecking())
     {
         mpm.add(new BufferBoundsChecking());
-    }
-
-    // Minimum valid address checking
-    {
-        uint64_t minimumValidAddress = IGC_GET_FLAG_VALUE(MinimumValidAddress);
-        if (!minimumValidAddress)
-        {
-            minimumValidAddress = pContext->getMinimumValidAddress();
-        }
-        if (minimumValidAddress)
-        {
-            mpm.add(new MinimumValidAddressChecking(minimumValidAddress));
-        }
     }
 
     mpm.add(new NamedBarriersResolution(pContext->platform.getPlatformInfo().eRenderCoreFamily));

@@ -981,11 +981,6 @@ namespace IGC
         return simdMode;
     }
 
-    uint64_t CodeGenContext::getMinimumValidAddress() const
-    {
-        return 0;
-    }
-
     // [used by shader dump] create unqiue id, starting from 1, for each
     // entry function.
     // Each entry function has 1-1 map b/w its name and its dump name.

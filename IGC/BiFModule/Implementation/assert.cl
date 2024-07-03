@@ -111,24 +111,3 @@ void __bufferoutofbounds_assert_nodebug(long bufferAddress, long bufferOffsetInB
     header->flag = ERROR_TYPE_BUFFER_OUTOFBOUNDS;
     __builtin_IB_software_exception();
 }
-
-void __minimumvalidaddresschecking_assert(const char* file, int line, int column, long address) {
-    printf("Load/store uses the address less than the minimum valid address!\n"
-           "   Location:      %s:%d:%d\n"
-           "   Address:       0x%X\n",
-           file, line, column, address);
-
-    AssertBufferHeader* header = __builtin_IB_get_assert_buffer();
-    header->flag = ERROR_TYPE_ASSERT;
-    __builtin_IB_software_exception();
-}
-
-void __minimumvalidaddresschecking_assert_nodebug(long address) {
-    printf("Load/store uses the address less than the minimum valid address!\n"
-           "   Address:       0x%X\n",
-           address);
-
-    AssertBufferHeader* header = __builtin_IB_get_assert_buffer();
-    header->flag = ERROR_TYPE_ASSERT;
-    __builtin_IB_software_exception();
-}

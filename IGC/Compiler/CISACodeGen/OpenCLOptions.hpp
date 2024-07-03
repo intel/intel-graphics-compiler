@@ -120,9 +120,6 @@ public:
      // Compile only up to vISA stage.
      bool EmitVisaOnly                               = false;
 
-
-    uint64_t MinimumValidAddress              = 0;
-
 private:
      void parseOptions(const char* internalOpts);
      };

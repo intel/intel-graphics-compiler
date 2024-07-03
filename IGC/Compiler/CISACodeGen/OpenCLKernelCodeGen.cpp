@@ -256,11 +256,6 @@ namespace IGC
         return platform.getSlmSizePerSsOrDss();
     }
 
-    uint64_t OpenCLProgramContext::getMinimumValidAddress() const
-    {
-        return m_InternalOptions.MinimumValidAddress;
-    }
-
     COpenCLKernel::COpenCLKernel(OpenCLProgramContext* ctx, Function* pFunc, CShaderProgram* pProgram) :
         CComputeShaderBase(pFunc, pProgram)
     {

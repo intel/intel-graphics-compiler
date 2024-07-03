@@ -256,4 +256,3 @@ void initializeStackOverflowDetectionPassPass(llvm::PassRegistry &);
 void initializeBufferBoundsCheckingPass(llvm::PassRegistry&);
 void initializeBufferBoundsCheckingPatcherPass(llvm::PassRegistry&);
 void initializeBfloatFuncsResolutionPass(llvm::PassRegistry &);
-void initializeMinimumValidAddressCheckingPass(llvm::PassRegistry&);
