@@ -4580,6 +4580,15 @@ uint32_t RelocationEntry::getTargetOffset(const IR_Builder &builder) const {
     vASSERT(opndPos == 1);
     // Src1.imm[31:0] mapped to Instruction [127:96]
     return 12;
+  case G4_mad:
+    vASSERT(relocType == R_SYM_ADDR_16);
+    // Src0.imm[15:0] mapped to Instruction [79:64]
+    // Src2.imm[15:0] mapped to Instruction [127:112]
+    if (opndPos == 1)
+      return 8;
+    else if (opndPos == 3)
+      return 14;
+    break;
   case G4_send:
   case G4_sendc:
   case G4_sends:
@@ -4612,6 +4621,8 @@ const char *RelocationEntry::getTypeString(RelocationType relocType) {
     return "R_GLOBAL_IMM_32";
   case RelocationType::R_SEND:
     return "R_SEND";
+  case RelocationType::R_SYM_ADDR_16:
+    return "R_SYM_ADDR_16";
   default:
     vISA_ASSERT_UNREACHABLE("unhandled relocation type");
     return "??";

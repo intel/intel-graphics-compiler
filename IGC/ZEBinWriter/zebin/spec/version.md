@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZEBIN Version
-Version 1.44
+Version 1.45
 
 ## Versioning
 Format: \<_Major number_\>.\<_Minor number_\>
@@ -15,6 +15,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.45**: Add relocation type "R_SYM_ADDR_16" and update supported relocation types.
 - **Version 1.44**: Add implicit arg for inline sampler in bindless mode.
 - **Version 1.43**: Internal changes.
 - **Version 1.42**: Enable is_ptr attribute in indirect payload arguments.

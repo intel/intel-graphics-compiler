@@ -41,10 +41,14 @@ enum SHT_ZEBIN : uint32_t
 // ELF relocation type for ELF32_Rel::ELF32_R_TYPE
 enum R_TYPE_ZEBIN
 {
-    R_ZE_NONE           = 0,
-    R_ZE_SYM_ADDR       = 1, // 64-bit type address
-    R_ZE_SYM_ADDR_32    = 2, // lower 32-bit of 64-bit address.
-    R_ZE_SYM_ADDR_32_HI = 3  // higher 32bits of 64-bit address
+    R_NONE = 0,
+    R_SYM_ADDR = 1,       // 64-bit type address
+    R_SYM_ADDR_32 = 2,    // 32-bit address or lower 32-bit of a 64-bit address.
+    R_SYM_ADDR_32_HI = 3, // higher 32 bits of 64-bit address
+    R_PER_THREAD_PAYLOAD_OFFSET_32 = 4, // *** Deprecated. Do Not Use. ***
+    R_GLOBAL_IMM_32 = 5,  // 32-bit global immediate
+    R_SEND = 6,           // send instruction offset, used for BTI patching
+    R_SYM_ADDR_16 = 7     // 16-bit address or immediate
 };
 
 // ELF note type for INTELGT

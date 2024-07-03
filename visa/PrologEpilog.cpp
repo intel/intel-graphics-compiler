@@ -887,24 +887,22 @@ public:
       // inserted argument), the relocation need to be resolved to the new
       // cross_thread_size.
       G4_Operand *addSrc1 =
-          builder.createRelocImm(GenRelocType::R_PER_THREAD_PAYLOAD_OFFSET_32,
-                                 kernel.getName(), perThreadOffsetMem, Type_UD);
+          builder.createRelocImm(GenRelocType::R_SYM_ADDR_32,
+              PER_THREAD_OFF_RELOCATION_NAME, perThreadOffsetMem, Type_UD);
       auto addDst = builder.createDst(rtmp->getRegVar(), 0, 2, 1, Type_UD);
       // instruction has relocation must not be compacted
       auto addInst =
           builder.createBinOp(G4_add, g4::SIMD1, addDst, addSrc0, addSrc1,
                               InstOpt_WriteEnable | InstOpt_NoCompact, false);
-
-      // FIXME: before RT supports the R_PER_THREAD_PAYLOAD_OFFSET_32 relocation,
-      // we create relocation only when GTPin option is given to avoid the test
-      // failure. We can remove this option check once RT supports it.
-      if (kernel.getOption(vISA_GetFreeGRFInfo)) {
-        // Relocation with the target symbol set to kernel symbol. Note that
-        // currently only ZEBinary will produce kernel symbols
-        RelocationEntry::createRelocation(
-            kernel, *addInst, 1, kernel.getName(),
-            GenRelocType::R_PER_THREAD_PAYLOAD_OFFSET_32);
-      }
+#if 0
+      // disable the relocation entry that gtpin is able to recognize the
+      // instruction pattern and doesn't rely on this relocation. We still mark
+      // addSrc1 as RelocImm (so relocation name is printed in vISA dump), but
+      // the relocation entry won't be emitted to zebin
+      RelocationEntry::createRelocation(builder.kernel, *addInst, 1,
+                                        PER_THREAD_OFF_RELOCATION_NAME,
+                                        GenRelocType::R_SYM_ADDR_32);
+#endif
       instBuffer.push_back(addInst);
 
       if (kernel.getOption(vISA_emitCrossThreadOffR0Reloc)) {
