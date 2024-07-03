@@ -34,6 +34,7 @@ SPDX-License-Identifier: MIT
 //
 //===----------------------------------------------------------------------===//
 
+#include "GenX.h"
 #include "GenXUtil.h"
 
 #include "vc/Support/GenXDiagnostic.h"
@@ -59,14 +60,6 @@ namespace {
 class GenXSLMResolution : public ModulePass {
   CallGraph *CG = nullptr;
   const DataLayout *DL = nullptr;
-  // The null pointer is represented as the zero bit-pattern.
-  // However, SLM address 0 is legal and we want to be able
-  // to use it.
-  // To address this issue a reserved value below will be used
-  // instead of zero pointers within the SLM memory. This approach
-  // is justified by the HW limitations ensuring that the allocated
-  // SLM memory never exceed this threshold.
-  const unsigned NullProtection = 0x10000000;
 
 public:
   static char ID;
@@ -199,7 +192,7 @@ Constant *GenXSLMResolution::getNextOffset(IGCLLVM::Align Alignment,
                                            LLVMContext &Ctx,
                                            unsigned &SLMSize) const {
   SLMSize = IGCLLVM::alignTo(SLMSize, Alignment);
-  unsigned SLMOffset = SLMSize ? SLMSize : NullProtection;
+  unsigned SLMOffset = SLMSize ? SLMSize : genx::SlmNullProtection;
   auto *Offset = ConstantInt::get(Type::getInt32Ty(Ctx), SLMOffset);
   return Offset;
 }

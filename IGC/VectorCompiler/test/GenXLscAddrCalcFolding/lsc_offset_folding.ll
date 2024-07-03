@@ -17,3 +17,12 @@ define <4 x i64> @test1(<4 x i32> %arg) {
   %data = tail call <4 x i64> @llvm.vc.internal.lsc.load.slm.v4i64.v4i1.v2i8.v4i32(<4 x i1> <i1 true, i1 true, i1 true, i1 true>, i8 2, i8 4, i8 1, <2 x i8> zeroinitializer, i32 0, <4 x i32> %addr, i16 1, i32 0, <4 x i64> undef)
   ret <4 x i64> %data
 }
+
+; CHECK-LABEL: test2
+define <4 x i64> @test2(<4 x i32> %arg) {
+  ; 268435472 == 0x10000010 == 0x10000000 + 16
+  %addr = add <4 x i32> %arg, <i32 268435472, i32 268435472, i32 268435472, i32 268435472>
+; CHECK: %data = tail call <4 x i64> @llvm.vc.internal.lsc.load.slm.v4i64.v4i1.v2i8.v4i32(<4 x i1> <i1 true, i1 true, i1 true, i1 true>, i8 2, i8 4, i8 1, <2 x i8> zeroinitializer, i32 0, <4 x i32> %arg, i16 1, i32 16, <4 x i64> undef)
+  %data = tail call <4 x i64> @llvm.vc.internal.lsc.load.slm.v4i64.v4i1.v2i8.v4i32(<4 x i1> <i1 true, i1 true, i1 true, i1 true>, i8 2, i8 4, i8 1, <2 x i8> zeroinitializer, i32 0, <4 x i32> %addr, i16 1, i32 0, <4 x i64> undef)
+  ret <4 x i64> %data
+}

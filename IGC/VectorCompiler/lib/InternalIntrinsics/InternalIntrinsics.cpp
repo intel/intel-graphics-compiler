@@ -736,6 +736,19 @@ bool InternalIntrinsic::isInternalMemoryIntrinsic(InternalIntrinsic::ID id) {
   return false;
 }
 
+bool InternalIntrinsic::isSlmIntrinsic(ID IID) {
+  switch (IID) {
+  default:
+    return false;
+  case InternalIntrinsic::lsc_atomic_slm:
+  case InternalIntrinsic::lsc_load_slm:
+  case InternalIntrinsic::lsc_load_quad_slm:
+  case InternalIntrinsic::lsc_store_slm:
+  case InternalIntrinsic::lsc_store_quad_slm:
+    return true;
+  }
+}
+
 bool InternalIntrinsic::isMemoryBlockIntrinsic(const llvm::Instruction *I) {
   if (!isInternalMemoryIntrinsic(I))
     return false;

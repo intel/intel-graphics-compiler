@@ -193,6 +193,14 @@ constexpr int G4_MIN_ADDR_IMM = -512;
 // Default GRF Width if subtarget is not available
 constexpr unsigned defaultGRFByteSize = 32;
 
+// The null pointer is represented as the zero bit-pattern. However, SLM address
+// 0 is legal and we want to be able to use it. To address this issue a reserved
+// value below will be used instead of zero pointers within the SLM memory. This
+// approach is justified by the HW limitations ensuring that the allocated SLM
+// memory never exceed this threshold.
+constexpr unsigned SlmNullProtection = 0x10000000u;
+constexpr unsigned SlmNullProtectionMask = 0xf0000000u;
+
 // describe integer vector immediate (V, UV)
 enum ImmIntVec : int8_t {
   Width = 8, // num elem in vector

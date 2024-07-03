@@ -225,9 +225,14 @@ bool GenXLscAddrCalcFolding::foldLscAddrCalculation(CallInst &Inst) {
     IRBuilder<> Builder(&Inst);
     LLVM_DEBUG(dbgs() << "Folding LSC address calculation for instruction: "
                       << Inst << "\n");
+    auto OffsetV = Offset.getSExtValue();
+    if (vc::InternalIntrinsic::isSlmIntrinsic(&Inst) &&
+        (OffsetV & SlmNullProtectionMask) == genx::SlmNullProtection)
+      OffsetV &= ~SlmNullProtectionMask;
+
     Inst.setOperand(AddrIndex, Index);
     Inst.setOperand(ScaleIndex, Builder.getInt16(Scale.getZExtValue()));
-    Inst.setOperand(OffsetIndex, Builder.getInt32(Offset.getZExtValue()));
+    Inst.setOperand(OffsetIndex, Builder.getInt32(OffsetV));
     LLVM_DEBUG(dbgs() << "Updated instruction: " << Inst << "\n");
   }
 
