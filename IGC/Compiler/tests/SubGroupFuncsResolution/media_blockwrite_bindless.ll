@@ -17,7 +17,10 @@ entry:
 ; CHECK: [[IMG:%.*]] = ptrtoint %spirv.Image._void_1_0_0_0_0_0_1 addrspace(1)* %image to i64
 ; CHECK-NEXT: [[IMG_TRUNC:%.*]] = trunc i64 [[IMG]] to i32
 ; CHECK: call void @llvm.genx.GenISA.simdMediaBlockWrite.i16(i32 [[IMG_TRUNC]], i32 %xOffset, i32 %yOffset, i32 0, i16
-
+;
+; CHECK:  declare void @llvm.genx.GenISA.simdMediaBlockWrite.i16(i32, i32, i32, i32, i16) [[ATTR:#.*]]
+; CHECK:  attributes [[ATTR]] = { {{.*convergent.*}} }
+;
   %0 = ptrtoint %spirv.Image._void_1_0_0_0_0_0_1 addrspace(1)* %image to i64
   %1 = trunc i64 %0 to i32
   call spir_func void @__builtin_IB_simd_media_block_write_1_h(i32 %1, <2 x i32> zeroinitializer, i16 0)

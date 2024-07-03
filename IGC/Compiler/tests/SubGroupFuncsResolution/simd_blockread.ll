@@ -40,6 +40,9 @@ define spir_kernel void @test_bread(i32 addrspace(1)* %dst, i32 addrspace(1)* %s
 ; CHECK:    [[TMP1:%.*]] = call i32 @llvm.genx.GenISA.simdBlockRead.i32.p1i32(i32 addrspace(1)* [[TMP0]])
 ; CHECK:    store i32 [[TMP1]], i32* [[B_READ]], align 4
 ;
+; CHECK:  declare i32 @llvm.genx.GenISA.simdBlockRead.i32.p1i32(i32 addrspace(1)*) [[ATTR:#.*]]
+; CHECK:  attributes [[ATTR]] = { {{.*convergent.*}} }
+;
 entry:
   %dst.addr = alloca i32 addrspace(1)*, align 8
   %src.addr = alloca i32 addrspace(1)*, align 8

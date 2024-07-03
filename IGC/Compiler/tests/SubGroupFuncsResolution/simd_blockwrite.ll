@@ -34,6 +34,9 @@ define spir_kernel void @test_bwrite(i32 addrspace(1)* %dst, i32 %src) #0 {
 ; CHECK:    [[TMP1:%.*]] = load i32, i32* [[SRC_ADDR]], align 4
 ; CHECK:    call void @llvm.genx.GenISA.simdBlockWrite.p1i32.i32(i32 addrspace(1)* [[TMP0]], i32 [[TMP1]])
 ;
+; CHECK:  declare void @llvm.genx.GenISA.simdBlockWrite.p1i32.i32(i32 addrspace(1)*, i32) [[ATTR:#.*]]
+; CHECK:  attributes [[ATTR]] = { {{.*convergent.*}} }
+;
 entry:
   %dst.addr = alloca i32 addrspace(1)*, align 8
   %src.addr = alloca i32, align 4

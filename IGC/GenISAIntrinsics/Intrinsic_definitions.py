@@ -2212,26 +2212,26 @@ Imported_Intrinsics = \
 "GenISA_simdBlockRead": ["",
     [("anyvector",                     ""),
     [("anyptr",                        "")],
-    "ReadMem"]],
+    "Convergent,ReadMem"]],
 ####################################################################################################
 "GenISA_simdBlockReadBindless": ["",
     [("anyvector",                     ""),
     [("anyptr",                        ""),
      ("int",                           "")],
-    "ReadMem"]],
+    "Convergent,ReadMem"]],
 ####################################################################################################
 "GenISA_simdBlockWrite": ["",
     [("void",                          ""),
     [("anyptr",                        ""),
      ("anyvector",                     "")],
-    "None"]],
+    "Convergent,WriteMem"]],
 ####################################################################################################
 "GenISA_simdBlockWriteBindless": ["",
     [("void",                          ""),
     [("anyptr",                        ""),
      ("anyvector",                     ""),
      ("int",                           "")],
-    "None"]],
+    "Convergent,WriteMem"]],
 ####################################################################################################
 "GenISA_simdGetMessagePhase": ["",
     [("anyint",                        "result"),
@@ -2263,7 +2263,7 @@ Imported_Intrinsics = \
      ("int",                           ""),
      ("int",                           ""),
      ("int",                           "")],
-    "None"]],
+    "Convergent,ReadMem"]],
 ####################################################################################################
 "GenISA_simdMediaBlockWrite": ["",
     [("void",                          ""),
@@ -2272,7 +2272,7 @@ Imported_Intrinsics = \
      ("int",                           ""),
      ("int",                           ""),
      ("anyvector",                     "")],
-    "None"]],
+    "Convergent,WriteMem"]],
 ####################################################################################################
 "GenISA_simdMediaRegionCopy": ["",
     [("void",                          ""),

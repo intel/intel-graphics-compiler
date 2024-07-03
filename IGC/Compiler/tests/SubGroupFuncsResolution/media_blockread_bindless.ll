@@ -17,7 +17,10 @@ entry:
 ; CHECK: [[IMG:%.*]] = ptrtoint %spirv.Image._void_1_0_0_0_0_0_0 addrspace(1)* %image to i64
 ; CHECK-NEXT: [[IMG_TRUNC:%.*]] = trunc i64 [[IMG]] to i32
 ; CHECK: call i16 @llvm.genx.GenISA.simdMediaBlockRead.i16(i32 [[IMG_TRUNC]], i32 %xOffset, i32 %yOffset, i32 0)
-
+;
+; CHECK:  declare i16 @llvm.genx.GenISA.simdMediaBlockRead.i16(i32, i32, i32, i32) [[ATTR:#.*]]
+; CHECK:  attributes [[ATTR]] = { {{.*convergent.*}} }
+;
   %0 = ptrtoint %spirv.Image._void_1_0_0_0_0_0_0 addrspace(1)* %image to i64
   %1 = trunc i64 %0 to i32
   %call.i = call spir_func i16 @__builtin_IB_simd_media_block_read_1_h(i32 %1, <2 x i32> zeroinitializer)
