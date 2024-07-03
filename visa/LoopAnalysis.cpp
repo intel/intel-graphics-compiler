@@ -432,6 +432,15 @@ Loop *Loop::getInnerMostLoop(const G4_BB *bb) {
   return this;
 }
 
+Loop *Loop::getOuterMostChildLoop(const G4_BB *bb) {
+  if (!contains(bb))
+    return nullptr;
+  for (auto &nested : immNested)
+    if (nested->contains(bb))
+      return nested;
+  return nullptr;
+}
+
 std::vector<G4_BB *> &Loop::getLoopExits() {
   // already computed before, so return old list
   if (loopExits.size() > 0)
@@ -593,6 +602,14 @@ Loop *LoopDetection::getInnerMostLoop(const G4_BB *bb) {
     return (*it).second;
 
   return nullptr;
+}
+
+// Return the outer-most loop (top loop) that contains 'bb'
+Loop *LoopDetection::getOuterMostLoop(const G4_BB *bb) {
+  Loop *L = getInnerMostLoop(bb);
+  while (L && L->parent)
+    L = L->parent;
+  return L;
 }
 
 void LoopDetection::computePreheaders() {
@@ -896,7 +913,7 @@ std::vector<Loop *> Loop::getAllSiblings(std::vector<Loop *> &topLoops) {
   return topLoops;
 }
 
-unsigned int Loop::getNestingLevel() {
+unsigned int Loop::getNestingLevel() const {
   if (!parent)
     return 1;
 

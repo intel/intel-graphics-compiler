@@ -238,6 +238,7 @@ set(GenX_Common_Sources_External_Other
   EmuInt64Add.cpp
   InstSplit.cpp
   JitterDataStruct.cpp
+  KernelCost.cpp
   LinearScanRA.cpp
   LocalDataflow.cpp
   LocalRA.cpp
@@ -341,6 +342,7 @@ set(GenX_Common_Headers
   EmuInt64Add.h
   IGfxHwEuIsaCNL.h
   InstSplit.h
+  KernelCost.hpp
   LinearScanRA.h
   LocalDataflow.h
   LocalRA.h
@@ -364,6 +366,7 @@ set(GenX_Common_Headers
   HWCaps.inc
   include/JitterDataStruct.h
   include/KernelInfo.h
+  include/KernelCostInfo.h
   include/RT_Jitter_Interface.h
   include/VISABuilderAPIDefinition.h
   include/VISAOptions.h
@@ -556,4 +559,5 @@ set(headers_to_copy
   include/visa_igc_common_header.h
   include/JitterDataStruct.h
   include/KernelInfo.h
+  include/KernelCostInfo.h
 )

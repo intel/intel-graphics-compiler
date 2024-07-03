@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "IsaVerification.h"
 #include "JitterDataStruct.h"
 #include "KernelInfo.h"
+#include "KernelCostInfo.h"
 #include "Mem_Manager.h"
 #include "VISABuilderAPIDefinition.h"
 #include "visa_wa.h"
@@ -32,7 +33,6 @@ namespace vISA {
 class G4_Kernel;
 class DebugInfoFormat;
 class BinaryEncodingBase;
-
 } // namespace vISA
 
 class VISAKernel_format_provider;
@@ -1081,6 +1081,10 @@ public:
   getVectorOperandName(VISA_VectorOpnd *opnd, bool showRegion) const override;
   VISA_BUILDER_API std::string
   getPredicateOperandName(VISA_PredOpnd *opnd) const override;
+
+  // Get vISA kernel cost metrics
+  VISA_BUILDER_API int
+  getKernelCostInfo(const vISA::KernelCostInfo *&KCInfo) const override;
 
   /********** MISC APIs END *************************/
   int CreateVISAPredicateSrcOperand(VISA_VectorOpnd *&opnd, VISA_PredVar *decl,

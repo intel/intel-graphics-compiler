@@ -632,7 +632,13 @@ DEF_VISA_OPTION(vISA_scatterSpill, ET_BOOL, "-scatterSpill",
 // native int64 adder was removed and then added back (adder lacks saturation)
 // the int64 shifter was never removed
 DEF_VISA_OPTION(vISA_HasNoInt64Add, ET_BOOL, "-hasNoInt64Add", UNUSED, false)
-
+// To enable special kernel cost model as part of performance stats
+DEF_VISA_OPTION(vISA_KernelCostInfo, ET_BOOL, "-kernelCostInfo",
+                "Collect perf stats based on special kernel Cost Model.", false)
+DEF_VISA_OPTION(vISA_dumpKCI, ET_BOOL, "-dumpKCI",
+                "Dump info collected by kernelCostInfo.", false)
+DEF_VISA_OPTION(vISA_dumpDetailKCI, ET_BOOL, "-dumpDetailKCI",
+                "Dump detailed info collected by kernelCostInfo.", false)
 // Corresponds to something slightly different in IGC than vISA_HasInt64Add
 // (C.f. Platform.hpp:hasPartialInt64Support)
 DEF_VISA_OPTION(vISA_HasPartialInt64, ET_BOOL, "-partialInt64", UNUSED, false)

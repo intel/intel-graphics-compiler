@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "G4_BB.hpp"
 #include "VISAKernel.h"
 #include "VarSplit.h"
+#include "KernelCost.hpp"
 #include "iga/IGALibrary/Models/Models.hpp"
 #include "iga/IGALibrary/api/kv.hpp"
 #include "visa_wa.h"
@@ -768,6 +769,43 @@ KernelDebugInfo* G4_Kernel::getKernelDebugInfo() {
   }
 
   return kernelDbgInfo.get();
+}
+
+void G4_Kernel::createKernelCostInfo(KernelCost *KCA) {
+  //
+  // copy data from FuncCost of KernelCostAnalysis to G4_Kernel's kernelCost
+  // (LoopCost is src type, LoopCostInfo is dst type)
+  //
+  m_kernelCost = std::make_unique<KernelCostInfo>();
+  FuncCost &FC = KCA->getKernelCost();
+
+  int sz = FC.m_allLoopsInProgramOrder.size();
+  m_kernelCost.get()->allLoopCosts.resize(sz);
+  m_kernelCost.get()->kernelCost.C = FC.m_funcCost.C.getCostMetrics();
+
+  for (int i = 0; i < sz; ++i) {
+    const Loop *L = FC.m_allLoopsInProgramOrder[i];
+    LoopCost &LC = KCA->getLoopCost(L);
+    LoopCostInfo &LCI = m_kernelCost.get()->allLoopCosts[i];
+
+    LCI.loopId = i;
+    vISA_ASSERT(i == LC.m_loopId, "Kernel Cost Analysis: incorrect loop id");
+
+    LCI.backedge_visaId = LC.m_backedge_visaId;
+    const CostMetrics &cm = LC.m_loopBodyCost.C.getCostMetrics();
+    LCI.loopBodyCost.C = cm;
+    LCI.LCE = nullptr;
+    LCI.numChildLoops = L->getNumImmChildLoops();
+    vISA_ASSERT(LCI.numChildLoops == LC.m_loopBodyCost.LoopCosts.size(),
+                "Kernel Cost Analysis: incorrect number of child loops!");
+    LCI.nestingLevel = L->getNestingLevel();
+
+    for (LoopCost *immLC : LC.m_loopBodyCost.LoopCosts) {
+      int loop_id = immLC->m_loopId;
+      LoopCostInfo &immLCI = m_kernelCost.get()->allLoopCosts[loop_id];
+      LCI.loopBodyCost.loopCosts.push_back(&immLCI);
+    }
+  }
 }
 
 void StackCallABI::setVersion() {

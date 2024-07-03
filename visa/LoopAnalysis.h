@@ -155,7 +155,7 @@ public:
   // BBs not in loop are considered to have nesting level of 0.
   // BBs in outermost loop report nesting level 1.
   // BB in loopn reports nesting level to be 1+it's parent nesting level.
-  unsigned int getNestingLevel();
+  unsigned int getNestingLevel() const;
 
   void dump(std::ostream &os = std::cerr);
 
@@ -163,17 +163,29 @@ public:
 
   unsigned int getBBSize() { return BBs.size(); }
 
-  G4_BB *getHeader() { return be.second; }
-  G4_BB *backEdgeSrc() { return be.first; }
+  // Return the number of direct child loops
+  unsigned int getNumImmChildLoops() const {
+    return (unsigned int)immNested.size();
+  }
+
+  G4_BB *getHeader() const { return be.second; }
+  G4_BB *backEdgeSrc() const { return be.first; }
 
   bool fullSubset(Loop *other);
   bool fullSuperset(Loop *other);
 
   Loop *getInnerMostLoop(const G4_BB *bb);
+  Loop *getOuterMostChildLoop(const G4_BB *bb);
 
   std::vector<G4_BB *> &getLoopExits();
 
   const std::vector<G4_BB *> &getBBs() { return BBs; }
+
+  // iterators for all its immediate child loops
+  std::vector<Loop *>::iterator begin() { return immNested.begin(); }
+  std::vector<Loop *>::iterator end() { return immNested.end(); }
+  std::vector<Loop *>::const_iterator begin() const { return immNested.begin(); }
+  std::vector<Loop *>::const_iterator end() const { return immNested.end(); }
 
 private:
   std::vector<G4_BB *> BBs;
@@ -190,7 +202,13 @@ public:
 
   std::vector<Loop *> getTopLoops();
   Loop *getInnerMostLoop(const G4_BB *);
+  Loop *getOuterMostLoop(const G4_BB *);
   void computePreheaders();
+
+  std::vector<Loop *>::iterator begin() { return topLoops.begin(); }
+  std::vector<Loop *>::iterator end() { return topLoops.end(); }
+  std::vector<Loop *>::const_iterator begin() const { return topLoops.begin(); }
+  std::vector<Loop *>::const_iterator end() const { return topLoops.end(); }
 
 private:
   std::vector<Loop *> topLoops;

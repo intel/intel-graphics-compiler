@@ -118,6 +118,8 @@ private:
 class G4_BB;
 class KernelDebugInfo;
 class VarSplitPass;
+struct KernelCostInfo;
+class KernelCost;
 
 
 // Handles information for GRF selection
@@ -546,6 +548,9 @@ private:
   std::unordered_map<G4_INST *, G4_SrcRegRegion *> instImplicitAccSrc;
   std::unordered_map<G4_INST *, G4_DstRegRegion *> instImplicitAccDef;
 
+  // Kernel cost model
+  std::unique_ptr<KernelCostInfo> m_kernelCost;
+
   // Internal use of updating shared_ptr KernelDebugInfo
   // To access the pointer, use getKernelDebugInfo() instead
   void setKernelDebugInfoSharedPtr(std::shared_ptr<KernelDebugInfo>& k) {
@@ -713,6 +718,10 @@ public:
 
     return gtPinInfo.get();
   }
+
+  // Kernel cost model
+  void createKernelCostInfo(KernelCost *KCA);
+  KernelCostInfo *getKernelCostInfo() { return m_kernelCost.get(); }
 
   G4_INST *setupBE_FP = nullptr;
   G4_INST *setupBE_SP = nullptr;

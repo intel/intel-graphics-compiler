@@ -204,6 +204,14 @@ public:
   bool isLastInstEOT() const; // to check if the last instruction in list is EOT
   G4_opcode getLastOpcode() const;
 
+  // If the last inst is CFInst, return it; otherwise, return nullptr
+  G4_InstCF *getLastCFInst() const {
+    if (empty())
+      return nullptr;
+    const G4_INST* I = back();
+    return I->isFlowControl() ? I->asCFInst() : nullptr;
+  }
+
   unsigned getId() const { return id; }
   void setId(unsigned i);
 

@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "../Timer.h"
 #include "Dependencies_G4IR.h"
 #include "visa_wa.h"
+#include "../KernelCost.hpp"
 
 #include <fstream>
 #include <functional>
@@ -123,6 +124,10 @@ void LocalScheduler::localScheduling() {
   jitInfo->stats.loopNestedStallCycle = loopNestedStallCycle;
   jitInfo->stats.loopNestedCycle = loopNestedCycle;
   jitInfo->stats.numCycles = totalCycles;
+
+  if (options->getOption(vISA_KernelCostInfo)) {
+    collectKernelCostInfo(fg.getKernel(), bbInfo);
+  }
 }
 
 void G4_BB_Schedule::dumpSchedule(G4_BB *bb) {

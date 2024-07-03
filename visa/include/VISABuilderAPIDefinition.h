@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "JitterDataStruct.h"
 #include "KernelInfo.h"
 #include "RelocationInfo.h"
+#include "KernelCostInfo.h"
 #include "VISAOptions.h"
 #include "visa_igc_common_header.h"
 
@@ -1261,6 +1262,11 @@ public:
   /// set or get current block frequency information
   VISA_BUILDER_API virtual int
   encodeBlockFrequency(uint64_t digits, int16_t scale) = 0;
+
+  /// getKernelCost -- get cost for a kernel whose loops' counts are
+  /// based on kernel input arguments.
+  VISA_BUILDER_API virtual int
+  getKernelCostInfo(const vISA::KernelCostInfo *&KCInfo) const = 0;
 };
 
 class VISAFunction : public VISAKernel {

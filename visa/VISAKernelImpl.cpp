@@ -31,6 +31,7 @@ SPDX-License-Identifier: MIT
 #include "Optimizer.h"
 #include "Timer.h"
 #include "VISAKernel.h"
+#include "KernelCost.hpp"
 #include "include/RelocationInfo.h"
 #include "visa_igc_common_header.h"
 
@@ -8721,6 +8722,15 @@ int VISAKernelImpl::GetFreeGRFInfo(void *&buffer, unsigned int &size) {
     if (gtpin) {
       buffer = gtpin->getFreeGRFInfo(size);
     }
+  }
+  return VISA_SUCCESS;
+}
+
+int VISAKernelImpl::getKernelCostInfo(const KernelCostInfo *&KCInfo) const {
+  if (getOptions()->getOption(vISA_KernelCostInfo)) {
+    KCInfo = getKernel()->getKernelCostInfo();
+  } else {
+    KCInfo = nullptr;
   }
   return VISA_SUCCESS;
 }
