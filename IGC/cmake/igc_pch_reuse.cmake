@@ -21,19 +21,20 @@ message(STATUS "Using precompiled headers")
     GenX_IR         #13
     GenXDebugInfo   #14
     ${IGC_BUILD__PROJ__igc_lib} #15
+    BiFManager #16
   )
 
   if(IGC_BUILD__VC_ENABLED)
-    list(APPEND PCHTargets VCIGCDeps)   #16
+    list(APPEND PCHTargets VCIGCDeps)   #17
   endif()
 
   if(IGC_BUILD__VULKAN_FRONTEND_ENABLED)
-    list(APPEND PCHTargets VulkanFrontend)  #17
+    list(APPEND PCHTargets VulkanFrontend)  #18
   endif()
 
   #setting reuse indexs
   set(index 0)
-  set(reuse_ind 1 2 3 4 5 6 7 8 9 10 14)
+  set(reuse_ind 1 2 3 4 5 6 7 8 9 10 14 16)
   #collecting options and definitions pools
   set(opt_list  "")
   set(def_list  "")

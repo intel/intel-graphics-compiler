@@ -114,14 +114,6 @@ static VcPayloadInfo tryExtractPayload(const char *Input, size_t InputSize) {
   return Result;
 }
 
-static std::unique_ptr<llvm::MemoryBuffer>
-getGenericModuleBuffer(int ResourceID) {
-  std::ostringstream SS;
-  SS << '#' << ResourceID;
-  return std::unique_ptr<llvm::MemoryBuffer>{
-      llvm::LoadBufferFromResource(SS.str().c_str(), "BC")};
-}
-
 template <enum vc::bif::RawKind Kind>
 std::unique_ptr<llvm::MemoryBuffer>
 getVCModuleBufferForArch(llvm::StringRef CPUStr = "") {
@@ -474,9 +466,6 @@ fillExternalData(vc::BinaryKind Binary, llvm::StringRef CPUStr,
                  llvm::ArrayRef<const char *> VISALTOStrings,
                  llvm::ArrayRef<const char *> DirectCallFunctions) {
   vc::ExternalData ExtData;
-  ExtData.OCLGenericBIFModule = getGenericModuleBuffer(OCL_BC);
-  if (!ExtData.OCLGenericBIFModule)
-    return {};
   switch (Binary) {
   case vc::BinaryKind::CM:
     if (!fillPrintfData<vc::bif::RawKind::PrintfCM32,

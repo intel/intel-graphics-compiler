@@ -198,7 +198,7 @@ struct GenXBackendOptions {
   GenXBackendOptions(InitFromLLVMOpts) { enforceLLVMOptions(); }
 };
 
-enum BiFKind { OCLGeneric, VCPrintf, VCBuiltins, VCSPIRVBuiltins, Size };
+enum BiFKind { VCPrintf, VCBuiltins, VCSPIRVBuiltins, Size };
 
 class GenXBackendData {
   // The owner of OpenCL generic BiF module.

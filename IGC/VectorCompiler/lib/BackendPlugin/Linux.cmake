@@ -34,5 +34,8 @@ set_target_properties(VCBackendPlugin PROPERTIES
 
 target_link_libraries(VCBackendPlugin
   PRIVATE
+  "${IGC_BUILD__WHOLE_ARCHIVE}"
+  "${IGC_BUILD__PROJ__BiFLib_OCL}"
+  "${IGC_BUILD__NO_WHOLE_ARCHIVE}"
   VCCodeGen
   )
