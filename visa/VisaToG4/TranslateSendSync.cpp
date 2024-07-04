@@ -251,13 +251,13 @@ void IR_Builder::generateSingleBarrier(G4_Predicate *prd) {
   // single barrier: # producer = # consumer = # threads, barrier id = 0
   // For now produce no fence
   // Number of threads per threadgroup is r0.2[31:24]
-  //   mov (1) Hdr.4<1>:uw 0x0:uw
+  //   mov (1) Hdr.2<1>:ud 0x0
   //   mov (2) Hdr.10<1>:ub R0.11<0;1,0>:ub
   // This SIMD2 byte move is broadcasting the thread group size
   // from the r0 header into both the producer and consumer slots.
   //   Hdr.2:d[31:24,23:16]
   G4_Declare *header = createTempVar(8, Type_UD, getGRFAlign());
-  auto dst = createDst(header->getRegVar(), 0, 4, 1, Type_UW);
+  auto dst = createDst(header->getRegVar(), 0, 2, 1, Type_UD);
   uint32_t headerInitValDw2 = 0x0; // initial value for DWord2
   if (getPlatform() >= Xe2 && getOption(vISA_ActiveThreadsOnlyBarrier)) {
     headerInitValDw2 |= (1 << 8);
@@ -268,7 +268,7 @@ void IR_Builder::generateSingleBarrier(G4_Predicate *prd) {
   //  bits[15:14] = 0 (producer/consumer)
   //  bits[23:16] = num producers = r0.11:b (r0.2[31:24] = num threads in tg)
   //  bits[31:24] = num consumers = r0.11:b (r0.2[31:24] = num threads in tg)
-  auto src = createImm(headerInitValDw2, Type_UW);
+  auto src = createImm(headerInitValDw2, Type_UD);
   auto inst0 = createMov(g4::SIMD1, dst, src, InstOpt_WriteEnable, true);
   if (getPlatform() >= Xe2 && getOption(vISA_ActiveThreadsOnlyBarrier)) {
     inst0->addComment("signal barrier payload init (active only)");
