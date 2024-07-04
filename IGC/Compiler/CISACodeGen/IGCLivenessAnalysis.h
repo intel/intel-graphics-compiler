@@ -175,7 +175,6 @@ class IGCLivenessAnalysis : public llvm::FunctionPass, public IGCLivenessAnalysi
     virtual bool runOnFunction(llvm::Function &F) override;
     virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
         AU.setPreservesAll();
-        AU.addRequired<GenXFunctionGroupAnalysis>();
         AU.addRequired<CodeGenContextWrapper>();
         AU.addRequired<MetaDataUtilsWrapper>();
 
@@ -225,7 +224,6 @@ class IGCFunctionExternalRegPressureAnalysis : public llvm::ModulePass, public I
     virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
         AU.setPreservesAll();
 
-        AU.addRequired<GenXFunctionGroupAnalysis>();
         AU.addRequired<CallGraphWrapperPass>();
         AU.addRequired<CodeGenContextWrapper>();
         AU.addRequired<MetaDataUtilsWrapper>();
