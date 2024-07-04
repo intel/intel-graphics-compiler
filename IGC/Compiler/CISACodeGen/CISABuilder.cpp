@@ -1355,7 +1355,7 @@ namespace IGC
 
     VISA_Exec_Size  CEncoder::SplitExecSize(VISA_Exec_Size fromExecSize, unsigned numParts) const
     {
-        IGC_ASSERT_MESSAGE(2 == numParts, "Only know splitting SIMD16 into SIMD8!");
+        IGC_ASSERT_MESSAGE(2 == numParts, "Only know splitting SIMD16 into SIMD8, or SIMD32 into SIMD16!");
 
         switch (fromExecSize) {
         default:
