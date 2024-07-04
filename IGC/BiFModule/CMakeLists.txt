@@ -30,7 +30,7 @@ if(UNIX)
     if(CCLANG_READELF_RESULT AND NOT CCLANG_READELF_RESULT EQUAL 0)
       message(FATAL_ERROR "[IGC\\BiFModule] : Error occurred while executing readelf:  ${CCLANG_READELF_RESULT}")
     endif()
-    string(REGEX MATCH "\\[${COMMON_CLANG_LIB_FULL_NAME}\\.([0-9](\\.[0-9]*)*[a-zA-Z0-9]*)\\]" CCLANG_SONAME_VERSION "${CCLANG_READELF_CALL}")
+    string(REGEX MATCH "\\[${COMMON_CLANG_LIB_FULL_NAME}\\.([0-9]+(\\.[0-9]*)*[a-zA-Z0-9]*)\\]" CCLANG_SONAME_VERSION "${CCLANG_READELF_CALL}")
     set(CCLANG_SONAME_VERSION "${CMAKE_MATCH_1}")
 
     # Check if common clang library is newer than 5.0.0 version on which we have SPIR-V support
