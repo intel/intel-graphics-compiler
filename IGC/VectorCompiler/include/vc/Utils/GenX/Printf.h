@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -83,6 +83,10 @@ bool isLegalPrintFormatIndexGEP(const llvm::Value &V);
 // be format indices.
 bool isPrintFormatIndexGEP(const llvm::Value &V);
 bool isPrintFormatIndexGEP(const llvm::GEPOperator &V);
+
+static inline bool isPrintfName(llvm::StringRef Name) {
+  return Name == "printf" || Name.contains("__spirv_ocl_printf");
+}
 
 } // namespace vc
 

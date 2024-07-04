@@ -147,8 +147,7 @@ static bool isPrintfCall(const CallInst &CI) {
     return false;
   if (!CalledFunc->isDeclaration())
     return false;
-  return CalledFunc->getName() == "printf" ||
-         CalledFunc->getName().contains("__spirv_ocl_printf");
+  return isPrintfName(CalledFunc->getName());
 }
 
 static bool isPrintfCall(const Instruction &Inst) {

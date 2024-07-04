@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2023 Intel Corporation
+Copyright (C) 2019-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -60,6 +60,9 @@ void initializeCMKernelArgOffsetPass(PassRegistry &);
 
 ModulePass *createGenXPrintfResolutionPass();
 void initializeGenXPrintfResolutionPass(PassRegistry &);
+
+ModulePass *createGenXPrintfPhiClonningPass();
+void initializeGenXPrintfPhiClonningPass(PassRegistry &);
 
 ModulePass *createGenXPrintfLegalizationPass();
 void initializeGenXPrintfLegalizationPass(PassRegistry &);

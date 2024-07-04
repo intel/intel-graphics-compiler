@@ -1,6 +1,6 @@
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2019-2021 Intel Corporation
+# Copyright (C) 2019-2024 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -16,6 +16,7 @@ set(OPT_SOURCES
   CMTrans/GenXBIFFlagCtrlResolution.cpp
   CMTrans/GenXPrintfLegalization.cpp
   CMTrans/GenXPrintfResolution.cpp
+  CMTrans/GenXPrintfPhiClonningPass.cpp
   CMTrans/GenXImportOCLBiF.cpp
   CMTrans/GenXTranslateIntrinsics.cpp
   CMTrans/GenXTranslateSPIRVBuiltins.cpp
