@@ -4822,7 +4822,6 @@ namespace IGC
                 else if (m_program->getAnnotatedNumThreads() == 0)
                 {
                     // "Auto" mode per kernel function (by user annotation) - use compiler heuristics to determin number of threads per EU
-                    SaveOption(vISA_TotalGRFNum, unsigned(0));
                     SaveOption(vISA_AutoGRFSelection, true);
                 }
                 else if (ClContext->getExpGRFSize() > 0) {
@@ -4836,7 +4835,6 @@ namespace IGC
                 }
                 else if (ClContext->isAutoGRFSelectionEnabled()) {
                     // "Auto" mode per module (by compiler option) - use compiler heuristics to determine number of threads per EU
-                    SaveOption(vISA_TotalGRFNum, unsigned(0));
                     SaveOption(vISA_AutoGRFSelection, true);
                 }
 
