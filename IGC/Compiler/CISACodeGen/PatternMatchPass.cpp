@@ -2723,7 +2723,7 @@ namespace IGC
             // HW does an early bounds check on varOffset for A32 messages. Thus, if varOffset
             // is negative, then the bounds check fails early even though the immediate offset
             // would bring the final calculation to a positive number.
-            if (!isA64AddressingModel && !valueIsPositive(varOffset, m_DL))
+            if (!isA64AddressingModel && !valueIsPositive(varOffset, m_DL) && IGC_GET_FLAG_VALUE(LscImmOffsMatch) < 3)
                 return false;
 
             MarkAsSource(varOffset, IsSourceOfSample(&I));

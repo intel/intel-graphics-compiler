@@ -582,7 +582,8 @@ DECLARE_IGC_REGKEY(DWORD, LscImmOffsMatch, 1, \
     "Match address patterns that have an immediate offset for the vISA LSC API" \
     "(0 means off/no matching," \
     " 1 means on/match for supported platforms (Xe2+) and APIs," \
-    " 2 means force on for all platforms (vISA will emulate the addition if HW lacks support) and APIs;" \
+    " 2 means force on for all platforms (vISA will emulate the addition if HW lacks support) and APIs," \
+    " 3 is the same as 2 and additionally skip the check if A32 offset is a positive value;" \
     " also see LscImmOffsVisaOpts", true)
 DECLARE_IGC_REGKEY(DWORD, LscImmOffsVisaOpts,           0x3003E, \
     "This maps to vISA_lscEnableImmOffsFor" \
