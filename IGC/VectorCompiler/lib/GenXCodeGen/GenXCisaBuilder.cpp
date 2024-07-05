@@ -186,7 +186,7 @@ VISAChannelMask convertChannelMaskToVisaType(unsigned Mask) {
   case 15:
     return CHANNEL_MASK_RGBA;
   default:
-      IGC_ASSERT_UNREACHABLE(); // Wrong mask
+    IGC_ASSERT_UNREACHABLE(); // Wrong mask
   }
 }
 
@@ -234,7 +234,7 @@ void handleInlineAsmParseError(const GenXBackendConfig &BC, StringRef VisaErr,
  * arg/retval in GenXArgIndirection or it is an EM/RM category.
  */
 bool testPhiNodeHasNoMismatchedRegs(const llvm::PHINode *const Phi,
-  const llvm::GenXLiveness *const Liveness) {
+                                    const llvm::GenXLiveness *const Liveness) {
   IGC_ASSERT(Phi);
   IGC_ASSERT(Liveness);
   bool Result = true;
@@ -242,11 +242,11 @@ bool testPhiNodeHasNoMismatchedRegs(const llvm::PHINode *const Phi,
   for (size_t i = 0; (i < Count) && Result; ++i) {
     const llvm::Value *const Incoming = Phi->getIncomingValue(i);
     if (!isa<UndefValue>(Incoming)) {
-      const genx::SimpleValue SVI(const_cast<llvm::Value *> (Incoming));
+      const genx::SimpleValue SVI(const_cast<llvm::Value *>(Incoming));
       const genx::LiveRange *const LRI = Liveness->getLiveRangeOrNull(SVI);
       if (LRI) {
         if (vc::isRealOrNoneCategory(LRI->getCategory())) {
-          const genx::SimpleValue SVP(const_cast<llvm::PHINode *> (Phi));
+          const genx::SimpleValue SVP(const_cast<llvm::PHINode *>(Phi));
           const genx::LiveRange *const LRP = Liveness->getLiveRangeOrNull(SVP);
           Result = (LRI == LRP);
           IGC_ASSERT_MESSAGE(Result, "mismatched registers in phi node");
@@ -281,7 +281,7 @@ namespace llvm {
 /// stored in CISA Builder object which is provided by finalizer.
 ///
 //===----------------------------------------------------------------------===//
-class GenXCisaBuilder : public ModulePass {
+class GenXCisaBuilder final : public ModulePass {
 public:
   static char ID;
 
@@ -328,7 +328,7 @@ ModulePass *createGenXCisaBuilderPass() {
 /// This class does all the work for creation of vISA kernels.
 ///
 //===----------------------------------------------------------------------===//
-class GenXKernelBuilder {
+class GenXKernelBuilder final {
   using Register = GenXVisaRegAlloc::Reg;
 
   VISAKernel *MainKernel = nullptr;
@@ -344,7 +344,6 @@ class GenXKernelBuilder {
   std::map<const Value *, unsigned> LabelMap;
 
   // loop info for each function
-  std::map<Function *, LoopInfoBase<BasicBlock, Loop> *> Loops;
   ValueMap<Function *, bool> IsInLoopCache;
 
   // whether kernel has barrier or sbarrier instruction
@@ -371,9 +370,6 @@ class GenXKernelBuilder {
   Function *KernFunc = nullptr;
   PreDefined_Surface StackSurf = PreDefined_Surface::PREDEFINED_SURFACE_INVALID;
 
-  std::map<Function *, VISA_GenVar *> FPMap;
-  SmallVector<InsertValueInst *, 10> RetvInserts;
-
   // The default float control from kernel attribute. Each subroutine may
   // overrride this control mask, but it should revert back to the default float
   // control mask before exiting from the subroutine.
@@ -399,7 +395,6 @@ class GenXKernelBuilder {
   // Map from LLVM Value to pointer to the last used register alias for this
   // Value.
   std::map<Value *, Register *> LastUsedAliasMap;
-  unsigned CurrentPadding = 0;
 
 public:
   FunctionGroup *FG = nullptr;
@@ -441,9 +436,9 @@ private:
   VISA_SurfaceVar *getPredefinedSurfaceVar(GlobalVariable &GV);
   VISA_GenVar *getPredefinedGeneralVar(GlobalVariable &GV);
   VISA_EMask_Ctrl getExecMaskFromWrPredRegion(Instruction *WrPredRegion,
-                                                     bool IsNoMask);
+                                              bool IsNoMask);
   VISA_EMask_Ctrl getExecMaskFromWrRegion(const DstOpndDesc &DstDesc,
-                                                 bool IsNoMask = false);
+                                          bool IsNoMask = false);
   unsigned getOrCreateLabel(const Value *V, int Kind);
   int getLabel(const Value *V) const;
   void setLabel(const Value *V, unsigned Num);
@@ -586,11 +581,11 @@ private:
   Register *getLastUsedAlias(Value *V) const;
 
   template <typename... Args>
-  Register *getRegForValueUntypedAndSaveAlias(Args &&... args);
+  Register *getRegForValueUntypedAndSaveAlias(Args &&...args);
   template <typename... Args>
-  Register *getRegForValueOrNullAndSaveAlias(Args &&... args);
+  Register *getRegForValueOrNullAndSaveAlias(Args &&...args);
   template <typename... Args>
-  Register *getRegForValueAndSaveAlias(Args &&... args);
+  Register *getRegForValueAndSaveAlias(Args &&...args);
 
   void runOnKernel();
   void runOnFunction();
@@ -722,16 +717,9 @@ public:
         DL(FG.getModule()->getDataLayout()), FG(&FG) {
     collectKernelInfo();
   }
-  ~GenXKernelBuilder() { clearLoops(); }
+  ~GenXKernelBuilder() {}
   GenXKernelBuilder(const GenXKernelBuilder &) = delete;
   GenXKernelBuilder &operator=(const GenXKernelBuilder &) = delete;
-  void clearLoops() {
-    for (auto i = Loops.begin(), e = Loops.end(); i != e; ++i) {
-      delete i->second;
-      i->second = nullptr;
-    }
-    Loops.clear();
-  }
 
   bool run();
 
@@ -1310,7 +1298,6 @@ void GenXKernelBuilder::buildInstructions() {
                           "SubRoutine");
 
     beginFunctionLight(Func);
-    CurrentPadding = 0;
 
     // If a float control is specified, emit code to make that happen.
     // Float control contains rounding mode, denorm behaviour and single
@@ -1483,7 +1470,7 @@ bool GenXKernelBuilder::buildInstruction(Instruction *Inst) {
     return false;
   }
   IGC_ASSERT(BI.Type == BaleInfo::MAININST || BI.Type == BaleInfo::NOTP ||
-         BI.Type == BaleInfo::ZEXT || BI.Type == BaleInfo::SEXT);
+             BI.Type == BaleInfo::ZEXT || BI.Type == BaleInfo::SEXT);
   return buildMainInst(Inst, BI, Mod, DstDesc);
 }
 
@@ -1875,7 +1862,8 @@ VISA_VectorOpnd *GenXKernelBuilder::createImmediateOperand(Constant *V,
     CISA_CALL(
         Kernel->CreateVISAImmediate(ImmOp, &Val, getVISAImmTy(TD.VisaType)));
     return ImmOp;
-  } if (isa<Function>(V)) {
+  }
+  if (isa<Function>(V)) {
     IGC_ASSERT_MESSAGE(0, "Not baled function address");
     return nullptr;
   } else {
@@ -2337,7 +2325,7 @@ void GenXKernelBuilder::buildSelectInst(SelectInst *SI, BaleInfo BI,
 
   VISA_PredVar *PredDecl =
       createPredicateDeclFromSelect(SI, BI, Control, State, &MaskCtrl);
-  VISA_PredOpnd* PredOp = createPredOperand(PredDecl, State, Control);
+  VISA_PredOpnd *PredOp = createPredOperand(PredDecl, State, Control);
 
   genx::Signedness DstSignedness = DONTCARESIGNED;
   genx::Signedness SrcSignedness = DONTCARESIGNED;
@@ -2422,8 +2410,8 @@ void GenXKernelBuilder::buildNoopCast(CastInst *CI, genx::BaleInfo BI,
       const Register *const Reg2 =
           getRegForValueAndSaveAlias(CI->getOperand(0), DONTCARESIGNED);
       IGC_ASSERT_MESSAGE(Reg1 == Reg2, "uncoalesced phi move of predicate");
-      (void) Reg1;
-      (void) Reg2;
+      (void)Reg1;
+      (void)Reg2;
       return;
     }
 
@@ -2575,7 +2563,7 @@ void GenXKernelBuilder::buildLoneOperand(Instruction *Inst, genx::BaleInfo BI,
   // source
   if ((Mod & MODIFIER_SAT) != 0 &&
       Inst->getType()->getScalarType()->isIntegerTy() &&
-         GenXIntrinsic::isIntegerSat(Inst->user_back()))
+      GenXIntrinsic::isIntegerSat(Inst->user_back()))
     Signed = getISatSrcSign(Inst->user_back());
 
   if (BI.Type == BaleInfo::NOTMOD) {
@@ -2605,7 +2593,7 @@ void GenXKernelBuilder::buildLoneOperand(Instruction *Inst, genx::BaleInfo BI,
 }
 
 // FIXME: use vc::TypeSizeWrapper instead.
-static unsigned getResultedTypeSize(Type *Ty, const DataLayout& DL) {
+static unsigned getResultedTypeSize(Type *Ty, const DataLayout &DL) {
   unsigned TySz = 0;
   if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty))
     TySz =
@@ -5695,7 +5683,7 @@ namespace {
 
 void initializeGenXFinalizerPass(PassRegistry &);
 
-class GenXFinalizer : public ModulePass {
+class GenXFinalizer final : public ModulePass {
   LLVMContext *Ctx = nullptr;
 
 public:
