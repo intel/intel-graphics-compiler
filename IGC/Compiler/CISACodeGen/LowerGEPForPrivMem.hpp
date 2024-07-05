@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -173,5 +173,6 @@ namespace IGC
         std::vector<llvm::Instruction*> m_toBeRemovedGEP;
     private:
         bool m_vectorIndex;
+        std::pair<unsigned int, llvm::Type*> getArrSizeAndEltType(llvm::Type* T);
     };
 }

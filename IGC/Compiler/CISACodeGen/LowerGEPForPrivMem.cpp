@@ -842,6 +842,43 @@ void LowerGEPForPrivMem::handleAllocaInst(llvm::AllocaInst* pAlloca)
     }
 }
 
+std::pair<unsigned int, Type*> TransposeHelper::getArrSizeAndEltType(Type* T)
+{
+    unsigned int arr_sz = 1;
+    Type* retTy{};
+    if (T->isStructTy())
+    {
+        arr_sz = 1;
+        retTy = T->getStructElementType(0);
+    }
+    else if (T->isArrayTy())
+    {
+        arr_sz = int_cast<unsigned int>(T->getArrayNumElements());
+        retTy = T->getArrayElementType();
+    }
+    else if (T->isVectorTy())
+    {
+        // Based on whether we want the index in number of element or number of vector.
+        // Vectors can only contain primitives or pointers, so there's no need for additional
+        // logic to account for vectors contained in vectors.
+        if (m_vectorIndex)
+        {
+            arr_sz = 1;
+        }
+        else
+        {
+            arr_sz = (unsigned)cast<IGCLLVM::FixedVectorType>(T)->getNumElements();
+        }
+        retTy = cast<VectorType>(T)->getElementType();
+    }
+    else
+    {
+        arr_sz = 1;
+        retTy = T; // To preserve past behaviour
+    }
+    return std::make_pair(arr_sz, retTy);
+}
+
 void TransposeHelper::handleGEPInst(
     llvm::GetElementPtrInst* pGEP,
     llvm::Value* idx)
@@ -871,57 +908,26 @@ void TransposeHelper::handleGEPInst(
     Type* T = pGEP->getSourceElementType();
     for (unsigned i = 0, e = pGEP->getNumIndices(); i < e; ++i)
     {
+        // If T is VectorType we should be at the last loop iteration. This will break things only if m_vectorIndex == true.
+        IGC_ASSERT_MESSAGE(!m_vectorIndex || (!T->isVectorTy() || (i == (e - 1))), "GEPs shouldn't index into vector elements.");
+        // https://llvm.org/docs/GetElementPtr.html#can-gep-index-into-vector-elements
+
         auto GepOpnd = IRB.CreateZExtOrTrunc(pGEP->getOperand(i + 1), IRB.getInt32Ty());
-        unsigned int arr_sz = 1;
-        if (T->isStructTy())
-        {
-            arr_sz = 1;
-            T = T->getStructElementType(0);
-        }
-        else if (T->isArrayTy())
-        {
-            arr_sz = int_cast<unsigned int>(T->getArrayNumElements());
-            T = T->getArrayElementType();
-        }
-        else if (T->isVectorTy())
-        {
-            // based on whether we want the index in number of element or number of vector
-            if (m_vectorIndex)
-            {
-                arr_sz = 1;
-            }
-            else
-            {
-                arr_sz = (unsigned)cast<IGCLLVM::FixedVectorType>(T)->getNumElements();
-            }
-            T = cast<VectorType>(T)->getElementType();
-        }
+
+        auto [arr_sz, eltTy] = getArrSizeAndEltType(T);
 
         pScalarizedIdx = IRB.CreateNUWAdd(pScalarizedIdx, GepOpnd);
         pScalarizedIdx = IRB.CreateNUWMul(pScalarizedIdx, IRB.getInt32(arr_sz));
+
+        T = eltTy;
     }
-    while (T->isStructTy() || T->isArrayTy() || T->isVectorTy()) {
-        unsigned int arr_sz = 1;
-        if (T->isStructTy())
-        {
-            IGC_ASSERT(T->getStructNumElements() == 1);
-            T = T->getStructElementType(0);
-        }
-        else if (T->isArrayTy())
-        {
-            arr_sz = int_cast<unsigned int>(T->getArrayNumElements());;
-            T = T->getArrayElementType();
-        }
-        else if (T->isVectorTy())
-        {
-            arr_sz = (unsigned)cast<IGCLLVM::FixedVectorType>(T)->getNumElements();
-            T = cast<VectorType>(T)->getElementType();
-        }
-        else
-        {
-            IGC_ASSERT(0);
-        }
+    while (T->isStructTy() || T->isArrayTy() || T->isVectorTy())
+    {
+        auto [arr_sz, eltTy] = getArrSizeAndEltType(T);
+
         pScalarizedIdx = IRB.CreateNUWMul(pScalarizedIdx, IRB.getInt32(arr_sz));
+
+        T = eltTy;
     }
     ConstantInt* CIidx = dyn_cast<ConstantInt>(idx);
     if (CIidx && CIidx->isNegative())
