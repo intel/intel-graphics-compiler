@@ -76,28 +76,12 @@ namespace IGC
             }
 
 
-            // Logic for native ZEBin support
-            auto supportsZEBin = [&](const CPlatform& platformInfo)
-            {
-                switch (platformInfo.GetProductFamily())
-                {
-                default:
-                    return true;
-                case IGFX_BROADWELL:
-                case IGFX_BROXTON:
-                case IGFX_GEMINILAKE:
-                case IGFX_LAKEFIELD:
-                case IGFX_ELKHARTLAKE:
-                    return false;
-                }
-            };
-
             if (m_InternalOptions.DisableZEBinary) {
                 // Allow to disable ZEBin via internal options
                 m_enableZEBinary = false;
             } else {
                 // Enable ZEBin for all supported platforms
-                m_enableZEBinary = supportsZEBin(platform);
+                m_enableZEBinary = platform.supportsZEBin();
             }
         }
 

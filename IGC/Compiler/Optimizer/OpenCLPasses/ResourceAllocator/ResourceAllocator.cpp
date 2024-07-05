@@ -329,7 +329,7 @@ bool ResourceAllocator::runOnFunction(llvm::Function& F)
             break;
 
         case AllocationType::Other:
-            if (ctx->platform.supportDynamicBTIsAllocation())
+            if (ctx->platform.supportDynamicBTIsAllocation() && ctx->enableZEBinary())
             {
                 // Use default arg allocator for UAV resources
                 // Intentionally not allocating index here, since it will

@@ -813,7 +813,7 @@ void StatelessToStateful::promote()
             // If the support for dynamic BTIs allocation is disabled, then BTIs are pre-assigned
             // in ResourceAllocator pass for all resources independently whether they are
             // accessed through stateful addressing model or not.
-            if (ctx->platform.supportDynamicBTIsAllocation())
+            if (ctx->platform.supportDynamicBTIsAllocation() && ctx->enableZEBinary())
             {
                 argAlloc->type = ResourceTypeEnum::UAVResourceType;
                 argAlloc->indexType = resAllocMD->uavsNumType + bufferPos;

@@ -16,7 +16,9 @@
 ; CHECK: CheckModuleDebugify: PASS
 
 ; Check that resource md is updated
-; CHECK: !{!"uavsNumType", i32 1}
+; COM: uavsNumType is expected to be set to 0, because indices allocation for
+; COM: uavs happens in StatelessToSatefull pass.
+; CHECK: !{!"uavsNumType", i32 0}
 ; CHECK: !{!"srvsNumType", i32 1}
 ; CHECK: !{!"samplersNumType", i32 2}
 

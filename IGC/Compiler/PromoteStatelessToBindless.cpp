@@ -176,7 +176,7 @@ void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function& F) 
     FunctionMetaData* funcMD = &modMD->FuncMD[&F];
     ResourceAllocMD* resourceAlloc = &funcMD->resAllocMD;
 
-    bool supportDynamicBTIsAllocation = ctx->platform.supportDynamicBTIsAllocation();
+    bool supportDynamicBTIsAllocation = ctx->platform.supportDynamicBTIsAllocation() && ctx->enableZEBinary();
 
     for (auto &iter : m_SrcPtrToAccessMap)
     {
