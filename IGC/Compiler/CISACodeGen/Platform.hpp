@@ -1721,6 +1721,19 @@ unsigned int roundUpTgsmSize(DWORD size) const
     return iSTD::RoundPower2(size) * blockSize;
 }
 
+unsigned getRayTracingTileXDim1D() const
+{
+    if (isCoreChildOf(IGFX_XE2_HPG_CORE))
+    {
+        return 512;
+    }
+    return 256;
+}
+
+unsigned getRayTracingTileYDim1D() const
+{
+    return 1;
+}
 
 unsigned getRayTracingTileXDim2D() const
 {
