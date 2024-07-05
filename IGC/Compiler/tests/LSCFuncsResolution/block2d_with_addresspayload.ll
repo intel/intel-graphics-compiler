@@ -47,6 +47,13 @@ define spir_kernel void @test_lsc2DBlock_addressPayload(i64 %base, i64 %out, i32
 ; CHECK: call void @llvm.genx.GenISA.LSC2DBlockWriteAddrPayload.p0i32.v8i16(i32* [[AP1]], i32 0, i32 0, i32 16, i32 16, i32 8, i32 1, i1 false, i1 false, i32 0, <8 x i16> [[TMP1]])
  call spir_func void @__builtin_IB_subgroup_block_write_ap_u16_m8k16v1(i32* %AP.out, i32 0, i32 0, <8 x i16> %V1, i32 0)
 
+; CHECK:  [[AP3:%.*]] = call i32* @llvm.genx.GenISA.LSC2DBlockCreateAddrPayload.p0i32(i64 %base, i32 1023, i32 1023, i32 1023, i32 %x, i32 %y, i32 8, i32 8, i32 1)
+; CHECK:  [[tmp2:%.*]] = call <8 x i16> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v8i16.p0i32(i32* [[AP3]], i32 0, i32 0, i32 32, i32 8, i32 8, i32 1, i1 true, i1 false, i32 0)
+; CHECK:  [[tmp4:%.*]] = call <4 x i16> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v4i16.p0i32(i32* [[AP3]], i32 32, i32 0, i32 16, i32 8, i32 8, i32 1, i1 false, i1 true, i32 0)
+  %AP3 = call spir_func i32* @__builtin_IB_subgroup_createBlock2DAddressPayload(i64 %base, i32 1023, i32 1023, i32 1023, i32 %x, i32 %y, i32 8, i32 8, i32 1);
+  %V3 = call spir_func <8 x i16> @__builtin_IB_subgroup_block_read_ap_transpose_u32_m8k8v1(i32* %AP3, i32 0, i32 0, i32 0)
+  %V4 = call spir_func <4 x i16> @__builtin_IB_subgroup_block_read_ap_transform_u16_m8k8v1(i32* %AP3, i32 32, i32 0, i32 0)
+
 ; CHECK:    ret void
   ret void
 }
@@ -59,6 +66,8 @@ declare spir_func void @__builtin_IB_subgroup_setBlock2DAddressPayloadBase(i32*,
 declare spir_func <8 x i16> @__builtin_IB_subgroup_block_read_ap_u16_m8k16v1(i32*, i32, i32, i32)
 declare spir_func void @__builtin_IB_subgroup_block_write_ap_u16_m8k16v1(i32*, i32, i32, <8 x i16>, i32)
 declare spir_func void @__builtin_IB_subgroup_block_read_ap_prefetch_u16_m8k16v1(i32*, i32, i32, i32)
+declare spir_func <8 x i16> @__builtin_IB_subgroup_block_read_ap_transpose_u32_m8k8v1(i32*, i32, i32, i32)
+declare spir_func <4 x i16> @__builtin_IB_subgroup_block_read_ap_transform_u16_m8k8v1(i32*, i32, i32, i32)
 
 !igc.functions = !{!0}
 
