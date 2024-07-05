@@ -12300,9 +12300,10 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
                 CVariable* dst = m_destination;
                 if (i == 1)
                 {
+                    IGC_ASSERT_MESSAGE(getGRFSize() == 64, "This code should execute for 64 byte GRF register size device");
                     // explicitly set second half as we are manually splitting
                     m_encoder->SetSecondHalf(true);
-                    m_encoder->SetSrcSubReg(1, 16);
+                    m_encoder->SetSrcSubReg(1, vecTypeSize == 8 ? 0 : 16);
                     dst = m_currShader->GetNewAlias(dst, dst->GetType(), 16 * dst->GetElemSize(), 0);
                 }
                 CVariable* pDstArrElm = m_currShader->GetNewAddressVariable(
