@@ -460,6 +460,34 @@ bool EmitPass::IsUndefOrZeroImmediate(const Value* value)
     return false;
 }
 
+// check all functions inside function group (current compilation unit)
+// to find the one with the highest register pressure
+unsigned int EmitPass::getMaxRegPressureInFunctionGroup(llvm::Function* F, const IGCMD::MetaDataUtils* MDU)
+{
+    unsigned int MaxRegPressure = 0;
+    if(!m_FGA)
+    {
+        auto FuncMD = MDU->getFunctionsInfoItem(F);
+        MaxRegPressure = FuncMD->getMaxRegPressure()->getMaxPressure();
+        return MaxRegPressure;
+    }
+
+    FunctionGroup* Group = m_FGA->getGroup(F);
+    if (!Group)
+        return 0;
+
+    for (auto it = Group->begin(), ie = Group->end(); it != ie; ++it)
+    {
+        Function* PtrF = *it;
+        if(MDU->findFunctionsInfoItem(PtrF) == MDU->end_FunctionsInfo())
+            continue;
+        auto FuncMD = MDU->getFunctionsInfoItem(PtrF);
+        unsigned int Pressure = FuncMD->getMaxRegPressure()->getMaxPressure();
+        MaxRegPressure = std::max(MaxRegPressure, Pressure);
+    }
+    return MaxRegPressure;
+}
+
 bool EmitPass::setCurrentShader(llvm::Function* F)
 {
     llvm::Function* Kernel = F;
@@ -660,6 +688,23 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     // Dummy program is only used for symbol table info, so skip compilation if no symbol table is needed
     if (isDummyKernel && !isSymbolTableRequired(&F) && m_pCtx->type == ShaderType::OPENCL_SHADER)
     {
+        return false;
+    }
+
+    unsigned int Threshold = IGC_GET_FLAG_VALUE(EarlyRetryRPEThreshold);
+    unsigned MaxRegPressure = getMaxRegPressureInFunctionGroup(&F, pMdUtils);
+    // we only skip first compilation stage, if compilation pipeline
+    // was configured to start from retry already, we do nothing
+    bool IsFirstStage = m_pCtx->m_retryManager.GetRetryId() == 0;
+    bool IsEntry = isEntryFunc(pMdUtils, &F);
+    bool PassedThreshold = MaxRegPressure >= Threshold;
+    if (PassedThreshold && IsFirstStage && IsEntry)
+    {
+        // we can't reuse kernelSet because EmitPass assumes that if we have
+        // something in kernelSet, it was added by previous compilation stage and passed to this one
+        // to compile, we use this set to prepare data structures and we clear it after
+        // compilation is done, not propagate it to the next stage
+        m_pCtx->m_retryManager.earlyRetryKernelSet.insert(F.getName().str());
         return false;
     }
 

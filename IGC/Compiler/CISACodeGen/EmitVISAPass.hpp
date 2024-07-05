@@ -785,6 +785,10 @@ public:
     /// return true if succeeds, false otherwise.
     bool setCurrentShader(llvm::Function* F);
 
+    /// checks FunctionInfo metadata and returns highest register pressure in the func group
+    /// metadata is stored so subroutines have combined pressure (theirs & calling context)
+    unsigned int getMaxRegPressureInFunctionGroup(llvm::Function* F, const IGCMD::MetaDataUtils* pM);
+
     /// check if symbol table is needed
     bool isSymbolTableRequired(llvm::Function* F);
 

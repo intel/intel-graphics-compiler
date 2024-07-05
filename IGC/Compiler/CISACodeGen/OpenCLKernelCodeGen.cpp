@@ -3439,6 +3439,8 @@ namespace IGC
 
         //Clear spill parameters of retry manager in the very begining of code gen
         ctx->m_retryManager.ClearSpillParams();
+        // early retry kernel set should always be empty before compilation
+        ctx->m_retryManager.earlyRetryKernelSet.clear();
 
         CShaderProgram::KernelShaderMap shaders;
         CodeGen(ctx, shaders);
@@ -3515,6 +3517,11 @@ namespace IGC
                     GatherDataForDriver(ctx, simd16Shader, std::move(pKernel), pFunc, pMdUtils, SIMDMode::SIMD16);
                 else if (COpenCLKernel::IsVisaCompiledSuccessfullyForShader(simd8Shader))
                     GatherDataForDriver(ctx, simd8Shader, std::move(pKernel), pFunc, pMdUtils, SIMDMode::SIMD8);
+            }
+            else if (ctx->m_retryManager.earlyRetryKernelSet.count(pFunc->getName().str()))
+            {
+                ctx->EmitWarning("[RetryManager] Start recompilation of the kernel", pFunc);
+                ctx->m_retryManager.kernelSet.insert(pFunc->getName().str());
             }
             else
             {

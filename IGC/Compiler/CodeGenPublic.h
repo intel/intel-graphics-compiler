@@ -781,6 +781,8 @@ namespace IGC
         std::map<std::string, CShaderProgram::UPtr> previousKernels;
         /// the set of OCL kernels that need to recompile
         std::set<std::string> kernelSet;
+        /// the set of selected OCL kernels that go through early retry
+        std::set<std::string> earlyRetryKernelSet;
         /// the set of OCL kernels that need to skip recompilation
         std::set<std::string> kernelSkip;
         // Check if current shader is better then previous one
