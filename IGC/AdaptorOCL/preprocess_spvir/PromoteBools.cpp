@@ -44,6 +44,32 @@ static void swapNames(Value* value1, Value* value2)
     value2->setName(name1);
 }
 
+static bool isIntegerTy(Value* value, int bitWidth)
+{
+    if (auto vectorType = dyn_cast<VectorType>(value->getType()))
+    {
+        return vectorType->getElementType()->isIntegerTy(bitWidth);
+    }
+    return value->getType()->isIntegerTy(bitWidth);
+}
+
+static Type* createDemotedType(Type* type)
+{
+    Type* newType = type;
+    if (type->isIntegerTy(8))
+    {
+        newType = Type::getInt1Ty(type->getContext());
+    }
+    else if (auto vectorType = dyn_cast<VectorType>(type))
+    {
+        newType = VectorType::get(
+            createDemotedType(vectorType->getElementType()),
+            vectorType->getElementCount());
+    }
+    return newType;
+}
+
+
 // Register pass to igc-opt
 #define PASS_FLAG "igc-promote-bools"
 #define PASS_DESCRIPTION "Promote bools"
@@ -101,19 +127,19 @@ bool PromoteBools::runOnModule(Module& module)
 
 Value* PromoteBools::convertI1ToI8(Value* value, Instruction* insertBefore)
 {
-    if (!value->getType()->isIntegerTy(1))
+    if (!isIntegerTy(value, 1))
     {
         return value;
     }
 
     auto trunc = dyn_cast<TruncInst>(value);
-    if (trunc && trunc->getSrcTy()->isIntegerTy(8))
+    if (trunc && isIntegerTy(trunc->getOperand(0), 8))
     {
         return trunc->getOperand(0);
     }
 
     IRBuilder<> builder(insertBefore);
-    auto zext = builder.CreateZExt(value, Type::getInt8Ty(value->getContext()));
+    auto zext = builder.CreateZExt(value, getOrCreatePromotedType(value->getType()));
     if (isa<Instruction>(zext) && isa<Instruction>(value))
     {
         dyn_cast<Instruction>(zext)->setDebugLoc(dyn_cast<Instruction>(value)->getDebugLoc());
@@ -123,19 +149,19 @@ Value* PromoteBools::convertI1ToI8(Value* value, Instruction* insertBefore)
 
 Value* PromoteBools::convertI8ToI1(Value* value, Instruction* insertBefore)
 {
-    if (!value->getType()->isIntegerTy(8))
+    if (!isIntegerTy(value, 8))
     {
         return value;
     }
 
     auto zext = dyn_cast<ZExtInst>(value);
-    if (zext && zext->getSrcTy()->isIntegerTy(1))
+    if (zext && isIntegerTy(zext->getOperand(0), 1))
     {
         return zext->getOperand(0);
     }
 
     IRBuilder<> builder(insertBefore);
-    auto trunc = builder.CreateTrunc(value, Type::getInt1Ty(value->getContext()));
+    auto trunc = builder.CreateTrunc(value, createDemotedType(value->getType()));
     if (isa<Instruction>(trunc) && isa<Instruction>(value))
     {
         dyn_cast<Instruction>(trunc)->setDebugLoc(dyn_cast<Instruction>(value)->getDebugLoc());
@@ -150,11 +176,11 @@ Value* PromoteBools::castTo(Value* value, Type* desiredType, Instruction* insert
         return value;
     }
 
-    if (value->getType()->isIntegerTy(8) && desiredType->isIntegerTy(1))
+    if (isIntegerTy(value, 8) && desiredType->isIntegerTy(1))
     {
         return convertI8ToI1(value, insertBefore);
     }
-    else if (value->getType()->isIntegerTy(1) && desiredType->isIntegerTy(8))
+    else if (isIntegerTy(value, 1) && desiredType->isIntegerTy(8))
     {
         return convertI1ToI8(value, insertBefore);
     }
@@ -472,7 +498,7 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
             }
         }
 
-        if (value->getType()->isIntegerTy(1))
+        if (isIntegerTy(value, 1))
         {
             auto clone = instruction->clone();
             clone->insertBefore(instruction);
@@ -900,7 +926,7 @@ CallInst* PromoteBools::promoteCall(CallInst* call)
             if (wasPromoted(newArg))
             {
                 newArg = getOrCreatePromotedValue(newArg);
-                if (arg->getType()->isIntegerTy(1) && !newArg->getType()->isIntegerTy(1))
+                if (isIntegerTy(arg, 1) && !isIntegerTy(newArg, 1))
                 {
                     newArg = convertI8ToI1(newArg, call);
                 }
@@ -1102,7 +1128,7 @@ llvm::PHINode* PromoteBools::promotePHI(llvm::PHINode* phi)
         if (wasPromoted(newIncomingValue) || typeNeedsPromotion(newIncomingValue->getType()))
         {
             newIncomingValue = getOrCreatePromotedValue(newIncomingValue);
-            if (newIncomingValue->getType()->isIntegerTy(1))
+            if (isIntegerTy(newIncomingValue, 1))
             {
                 newIncomingValue = convertI1ToI8(newIncomingValue, phi->getIncomingBlock(i)->getTerminator());
             }
