@@ -612,8 +612,9 @@ bool hasAMFSFastClear() const { return getPlatform() >= Xe_XeHPSDV; }
 // Src Type UW/W - Dst Type W/UW/UD/D
 // Src Type F/HF - Dst Type F/HF
 // Src Type DF   - Dst Type DF
+// Fixme: the rule should be removed with removedAccRestrictionsAsGRF().
 bool hasFormatConversionACCRestrictions() const {
-  return getPlatform() >= Xe_XeHPSDV && !removedAccRestrictionsAsGRF();
+  return getPlatform() >= Xe_XeHPSDV;
 }
 
 bool hasScratchSurface() const { return getPlatform() >= Xe_XeHPSDV; }

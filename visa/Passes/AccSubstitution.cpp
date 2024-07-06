@@ -658,8 +658,9 @@ bool AccSubPass::isAccCandidate(G4_INST *inst, int &lastUse, bool &mustBeAcc0,
     int srcId = useInst->getSrcNum(opndNum);
     G4_Operand *src = useInst->getSrc(srcId);
 
-    if ((!kernel.fg.builder->removedAccRestrictionsAsGRF() &&
-                dst->getType() != src->getType()) ||
+    // Fixme: the rule should be removed with
+    // kernel.fg.builder->removedAccRestrictionsAsGRF().
+    if ((dst->getType() != src->getType()) ||
         kernel.fg.globalOpndHT.isOpndGlobal(src) ||
         dst->compareOperand(src, builder) != Rel_eq) {
       return false;
