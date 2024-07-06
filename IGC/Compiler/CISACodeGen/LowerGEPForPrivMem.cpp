@@ -202,7 +202,8 @@ void TransposeHelper::EraseDeadCode()
 {
     for (auto pInst = m_toBeRemovedGEP.rbegin(); pInst != m_toBeRemovedGEP.rend(); ++pInst)
     {
-        IGC_ASSERT_MESSAGE((*pInst)->use_empty(), "Instruction still has usage");
+        Instruction *I = *pInst;
+        IGC_ASSERT_MESSAGE(I->use_empty(), "Instruction still has usage");
         (*pInst)->eraseFromParent();
     }
 }
@@ -581,8 +582,13 @@ bool SOALayoutChecker::visitBitCastInst(BitCastInst& BI)
         StructType* bSTy = dyn_cast<StructType>(baseT);
         StructType* sSTy = dyn_cast<StructType>(sourceType);
         IGC_ASSERT(bSTy || sSTy);
-        return bSTy && sSTy && (bSTy == sSTy || bSTy->isLayoutIdentical(sSTy));
+        if (bSTy && sSTy && (bSTy == sSTy || bSTy->isLayoutIdentical(sSTy))) {
+            return checkUsers(BI);
+        } else {
+            return false;
+        }
     }
+
     if (baseT->getScalarSizeInBits() != 0 &&
         baseT->getScalarSizeInBits() == sourceType->getScalarSizeInBits())
     {
