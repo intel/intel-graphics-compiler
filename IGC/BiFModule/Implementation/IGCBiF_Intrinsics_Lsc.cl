@@ -728,15 +728,15 @@ int16 __builtin_IB_subgroup_block_read_ap_transform_u16_m32k16v1(int* addrPayloa
 // 2d block read with transpose
 //
 // A matrix
-short4   __builtin_IB_subgroup_block_read_ap_transpose_u32_m8k4(int* addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-short8   __builtin_IB_subgroup_block_read_ap_transpose_u32_m8k8(int* addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-short16  __builtin_IB_subgroup_block_read_ap_transpose_u32_m8k16(int* addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-int4     __builtin_IB_subgroup_block_read_ap_transpose_u64_m8k4(int* addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+short4   __builtin_IB_subgroup_block_read_ap_transpose_u32_m8k4v1(int* addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+short8   __builtin_IB_subgroup_block_read_ap_transpose_u32_m8k8v1(int* addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+short16  __builtin_IB_subgroup_block_read_ap_transpose_u32_m8k16v1(int* addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+int4     __builtin_IB_subgroup_block_read_ap_transpose_u64_m8k4v1(int* addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
 // B matrix
-int4     __builtin_IB_subgroup_block_read_ap_transpose_u32_m16k4(int* addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-int8     __builtin_IB_subgroup_block_read_ap_transpose_u32_m16k8(int* addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-int16    __builtin_IB_subgroup_block_read_ap_transpose_u32_m16k16(int* addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
-long8     __builtin_IB_subgroup_block_read_ap_transpose_u64_m16k8(int* addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+int4     __builtin_IB_subgroup_block_read_ap_transpose_u32_m16k4v1(int* addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+int8     __builtin_IB_subgroup_block_read_ap_transpose_u32_m16k8v1(int* addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+int16    __builtin_IB_subgroup_block_read_ap_transpose_u32_m16k16v1(int* addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
+long8    __builtin_IB_subgroup_block_read_ap_transpose_u64_m16k8v1(int* addrPayload, const int immX, const int immY, enum LSC_LDCC cacheOpt);
 
 
 #endif // cl_intel_subgroup_extended_block_read
