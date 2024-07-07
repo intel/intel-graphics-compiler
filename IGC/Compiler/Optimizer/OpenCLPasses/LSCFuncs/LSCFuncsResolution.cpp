@@ -516,7 +516,7 @@ Instruction *LSCFuncsResolution::CreateSubGroup2DBlockOperationAP(
     } else if (funcName.consume_front("_u64")) {
         elemSize = 64;
     } else {
-        IGC_ASSERT_MESSAGE(0, "Invalid element size in: %s\n", fname);
+        IGC_ASSERT_MESSAGE(0, "Invalid or missing element size in: %s\n", fname);
         return nullptr;
     }
 
@@ -534,7 +534,7 @@ Instruction *LSCFuncsResolution::CreateSubGroup2DBlockOperationAP(
         blkHeight = 1;
     } else {
         std::stringstream ss;
-        ss << "Unsupported m element in : " << fname << "\n";
+        ss << "Missing or unsupported m element in : " << fname << "\n";
         reportError(ss.str().c_str());
         IGC_ASSERT_MESSAGE(0, "%s", ss.str().c_str());
         return nullptr;
@@ -556,7 +556,7 @@ Instruction *LSCFuncsResolution::CreateSubGroup2DBlockOperationAP(
         blkWidth = 1;
     } else {
         std::stringstream ss;
-        ss << "Unsupported k element in : " << fname << "\n";
+        ss << "Missing or unsupported k element in : " << fname << "\n";
         reportError(ss.str().c_str());
         IGC_ASSERT_MESSAGE(0, "Unsupported k element in : %s\n", fname);
         return nullptr;
@@ -570,7 +570,7 @@ Instruction *LSCFuncsResolution::CreateSubGroup2DBlockOperationAP(
         numBlks = 4;
     } else {
         std::stringstream ss;
-        ss << "Unsupported v element in : " << fname << "\n";
+        ss << "Missing or unsupported v element in : " << fname << "\n";
         reportError(ss.str().c_str());
         IGC_ASSERT_MESSAGE(0, "Unsupported v element in : %s\n", fname);
         return nullptr;
@@ -591,7 +591,7 @@ Instruction *LSCFuncsResolution::CreateSubGroup2DBlockOperationAP(
 
         bool isValid64 = (elemSize == 64 && blkHeight == 8 &&
              (blkWidth <= 4 ||  (blkWidth == 8 && isLegitW8)));
-        bool isValid32 = (elemSize == 32 && blkHeight <= 8);
+        bool isValid32 = (elemSize == 32 && blkHeight <= 32 && blkWidth <= 8);
         if (!(isValid32 || isValid64)) {
             std::stringstream ss;
             ss << "Unsupported m/k/v transpose combination in: " << fname << "\n";
