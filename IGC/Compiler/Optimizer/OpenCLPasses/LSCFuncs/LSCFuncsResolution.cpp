@@ -592,7 +592,7 @@ Instruction *LSCFuncsResolution::CreateSubGroup2DBlockOperationAP(
         bool isValid64 = (elemSize == 64 && blkHeight == 8 &&
              (blkWidth <= 4 ||  (blkWidth == 8 && isLegitW8)));
         bool isValid32 = (elemSize == 32 && blkHeight <= 32 && blkWidth <= 8);
-        if (!(isValid32 || isValid64)) {
+        if (numBlks != 1 || !(isValid32 || isValid64)) {
             std::stringstream ss;
             ss << "Unsupported m/k/v transpose combination in: " << fname << "\n";
             reportError(ss.str().c_str());
