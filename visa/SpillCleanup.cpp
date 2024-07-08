@@ -1577,6 +1577,35 @@ void CoalesceSpillFills::spillFillCleanup() {
         while (pInstIt != startIt && w > 0 && maxW < cMaxWindowSize) {
           auto pInst = (*pInstIt);
 
+          // If pInst instruction is created by split on spill pass
+          // then skip cleanup. Because if this variable spills
+          // in later RA iteration then the spill will be erased from
+          // the BB rendering this cleanup optimization incorrect. For eg,
+          // consider that split on spill optimization promoted a spilled
+          // variable to a register when executing loop L1. This means
+          // we'll insert a load in pre-header and a spill in loop exit (in
+          // case the variable was updated in the loop). Here's an example
+          // where LOOPSPLIT1 and LOOPSPLIT2 are created to promote 2
+          // spilled variables in L1. Following shows loop exit BB:
+          //
+          // L1_Loop_Exit_BB:
+          // Store LOOPSPLIT1 @ Scratch Offset 0x100 <-- split on spill temp
+          // Store LOOPSPLIT2 @ Scratch Offset 0x200 <-- split on spill temp
+          // ...
+          // Load TMP @ Scratch Offset 0x100 <-- regular fill
+          // Op Dst, TMP
+          //
+          // Under normal circumstances, we can propagate LOOPSPLIT1
+          // to replace Load TMP with a register mov. But when LOOPSPLIT1
+          // is a spill due to split on spill, we cannot do so. Because a
+          // later RA iteration could decide to spill LOOPSPLIT1. When that
+          // happens, we erase LOOPSPLIT1 from program and replace its use in
+          // the loop with original spilled variable. Therefore, there's no
+          // need to load anything in pre-header or store anything in loop exit
+          // BB.
+          if (splitInsts.find(pInst) != splitInsts.end())
+            break;
+
           if (pInst->isSpillIntrinsic()) {
             unsigned int pRowStart, pNumRows;
             getScratchMsgInfo(pInst, pRowStart, pNumRows);
