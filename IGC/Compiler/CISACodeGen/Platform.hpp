@@ -1729,11 +1729,17 @@ unsigned int roundUpTgsmSize(DWORD size) const
 
 unsigned getRayTracingTileXDim2D() const
 {
-    return 32;
+    if (isCoreChildOf(IGFX_XE2_HPG_CORE))
+        return 8;
+    else
+        return 32;
 }
 
 unsigned getRayTracingTileYDim2D() const
 {
+    if (isCoreChildOf(IGFX_XE2_HPG_CORE))
+        return 128;
+    else
         return 4;
 }
 
