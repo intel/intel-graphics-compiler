@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -50,8 +50,15 @@ namespace IGC
         void visitPtrToIntInst(llvm::PtrToIntInst &I);
         void visitStoreInst(llvm::StoreInst &I);
         void visitBitCastInst(llvm::BitCastInst &I);
+        void visitAddrSpaceCastInst(llvm::AddrSpaceCastInst& I);
+        void visitLoadInst(llvm::LoadInst& I);
+        void visitPHINode(llvm::PHINode& I);
+        void visitReturnInst(llvm::ReturnInst& I);
 
     private:
+        std::vector<llvm::Argument*> GetFunctionArgsWithMatrixType(llvm::Function* func);
+        llvm::Function* ResolveFunctionSignature(llvm::Function* OriginalFunction);
+        bool UpdateCallInstAfterFunctionResolve(llvm::Function* ResolvedFunction, llvm::CallInst* OptionalCallInst);
         llvm::Instruction *ResolvePrefetch(llvm::CallInst *CI);
         template <bool IsJointMatrix, bool isChecked>
         llvm::Instruction *ResolveLoad(llvm::CallInst *CI);
@@ -83,6 +90,7 @@ namespace IGC
         void CacheResolvedValue(llvm::Value *oldValue, llvm::Value *newValue);
         void CacheResolvedTypes(llvm::Type *oldType, llvm::Type *newType);
         void InsertPlaceholder(llvm::Value *v);
+        llvm::Function* CloneFunction(llvm::Function* pOriginalFunction);
 
         enum GetMatrixFuncNameOperation {
             GetCoord,
@@ -119,6 +127,7 @@ namespace IGC
         llvm::SmallPtrSet<llvm::Instruction *, 8> InstsToErase;
         // Maps function to it's kernel entry function
         std::unordered_map<llvm::Function *, llvm::Function *> FunctionsMap;
+        std::unordered_map<llvm::Function *, llvm::Function *> ResolvedFunctions;
 
         ModuleMetaData* MMD = nullptr;
         CodeGenContext* m_Ctx = nullptr;

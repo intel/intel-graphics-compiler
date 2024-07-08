@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -23,6 +23,9 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/Sequence.h>
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/PostOrderIterator.h>
+#include "llvm/IR/DebugInfo.h"
+#include "llvm/IR/DIBuilder.h"
+#include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include <llvmWrapper/ADT/Optional.h>
 #include "llvmWrapper/IR/Value.h"
 #include <llvmWrapper/Analysis/ValueTracking.h>
@@ -79,7 +82,6 @@ static const char *CooperativeMatrixLengthPrefx = "CooperativeMatrixLengthKHR";
 static const char *CooperativeMatrixGetElementCoordPrefx ="CooperativeMatrixGetElementCoordINTEL";
 static const char *AccessChainPrefx = "__spirv_AccessChain";
 
-
 // We need module pass, since:
 // 1) we inspect multiple functions to find entry function to get sub group size
 // 2) we maintain map of functions to entry functions across functions we process
@@ -94,6 +96,8 @@ bool JointMatrixFuncsResolutionPass::runOnModule(Module &M)
     m_Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     m_mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     FunctionsMap.clear();
+    ResolvedFunctions.clear();
+    ResolvedTypes.clear();
     Changed = false;
 
     for (auto &F : M) {
@@ -102,6 +106,28 @@ bool JointMatrixFuncsResolutionPass::runOnModule(Module &M)
         StringRef funcName = F.getName();
         if (funcName.contains(AccessChainPrefx))
             preprocessAccessChain(&F);
+    }
+
+    for (auto& F : M) {
+        bool stop = false;
+        for (auto& entry : ResolvedFunctions)
+        {
+            if (entry.second == &F)
+            {
+                stop = true;
+                break;
+            }
+        }
+
+        if (stop)
+            break;
+
+        auto argsWithMatrixType = GetFunctionArgsWithMatrixType(&F);
+
+        if (argsWithMatrixType.size() > 0) {
+            ResolveSIMDSize(&F);
+            ResolveFunctionSignature(&F);
+        }
     }
 
     for (auto &F : M)
@@ -297,12 +323,14 @@ bool JointMatrixFuncsResolutionPass::runOnFunction(Function& F)
 {
     PlaceholderInstructions.clear();
     ResolvedValues.clear();
-    ResolvedTypes.clear();
     InstsToErase.clear();
     MatrixAllocas.clear();
     m_SIMDSize = 0;
 
-    // Use reverse post order traversal to reduce level or recursion
+    if (ResolvedFunctions.count(&F) > 0)
+        return false;
+
+    // Use reverse post order traversal to reduce level or recursion.
     ReversePostOrderTraversal<Function *> RPOT(&F);
     for (BasicBlock *BB : RPOT)
         visit(BB);
@@ -2328,6 +2356,54 @@ Value *JointMatrixFuncsResolutionPass::Resolve(Value *v)
     return nullptr;
 }
 
+Function* JointMatrixFuncsResolutionPass::CloneFunction(Function* pOriginalFunction)
+{
+    if (pOriginalFunction == nullptr) {
+        return nullptr;
+    }
+
+    std::vector<Type*> params;
+
+    for (auto &arg : pOriginalFunction->args())
+    {
+        auto type = isOrContainsMatrixType(arg.getType()) ? ResolveTypes(arg.getType()) : arg.getType();
+        params.push_back(type);
+    }
+
+    auto newFunctionTy = FunctionType::get(ResolveTypes(pOriginalFunction->getReturnType()), params, pOriginalFunction->isVarArg());
+
+    Function* pNewFunction = Function::Create(
+        newFunctionTy,
+        pOriginalFunction->getLinkage(),
+        pOriginalFunction->getAddressSpace(),
+        pOriginalFunction->getName() + "_resolved",
+        pOriginalFunction->getParent());
+
+    pNewFunction->setCallingConv(pOriginalFunction->getCallingConv());
+    pNewFunction->setSubprogram(pOriginalFunction->getSubprogram());
+    pNewFunction->copyAttributesFrom(pOriginalFunction);
+
+    ValueToValueMapTy VMap;
+
+    auto originalFunctionArgIt = pOriginalFunction->arg_begin();
+    auto newFunctionArgIt = pNewFunction->arg_begin();
+
+    while (originalFunctionArgIt != pOriginalFunction->arg_end())
+    {
+        newFunctionArgIt->setName(originalFunctionArgIt->getName());
+        VMap[&(*originalFunctionArgIt++)] = newFunctionArgIt++;
+    }
+
+    if (!pOriginalFunction->isDeclaration())
+    {
+        SmallVector<ReturnInst*, 8> Returns;
+        IGCLLVM::CloneFunctionChangeType changeType = IGCLLVM::CloneFunctionChangeType::LocalChangesOnly;
+        IGCLLVM::CloneFunctionInto(pNewFunction, pOriginalFunction, VMap, changeType, Returns);
+    }
+
+    return pNewFunction;
+}
+
 void JointMatrixFuncsResolutionPass::visitCallInst(CallInst& CI)
 {
     Function* func = CI.getCalledFunction();
@@ -2387,7 +2463,130 @@ void JointMatrixFuncsResolutionPass::visitCallInst(CallInst& CI)
             }
         }
     }
+
+    auto argsWithMatrixType = GetFunctionArgsWithMatrixType(func);
+
+    if (argsWithMatrixType.size() > 0) {
+        auto resolvedFunc = ResolvedFunctions.count(func) > 0 ? ResolvedFunctions[func] : ResolveFunctionSignature(func);
+        UpdateCallInstAfterFunctionResolve(resolvedFunc, &CI);
+    }
 }
+
+std::vector<Argument*> JointMatrixFuncsResolutionPass::GetFunctionArgsWithMatrixType(Function* func)
+{
+    if (func == nullptr)
+        return std::vector<Argument*>();
+
+    std::vector<Argument*> argsWithMatrixType;
+
+    for (Argument &arg : func->args()) {
+        if (isOrContainsMatrixType(arg.getType())) {
+            argsWithMatrixType.push_back(&arg);
+        }
+    }
+
+    return argsWithMatrixType;
+}
+
+bool JointMatrixFuncsResolutionPass::UpdateCallInstAfterFunctionResolve(Function* ResolvedFunction, CallInst* CI)
+{
+    if (!CI || !ResolvedFunction)
+        return false;
+
+    std::vector<Value*> params;
+
+    for (auto& callArg : CI->args())
+    {
+        auto callArgInst = callArg.get();
+        if (isOrContainsMatrixType(callArgInst->getType()))
+        {
+            Value* resolvedArg = ResolvedValues.count(callArgInst) > 0 ?
+                ResolvedValues[callArgInst] :
+                Resolve(callArgInst);
+            params.push_back(resolvedArg);
+        }
+        else
+        {
+            params.push_back(callArg.get());
+        }
+    }
+
+    IRBuilder<> b(CI);
+    auto newCall = b.CreateCall(ResolvedFunction, params);
+    newCall->setDebugLoc(CI->getDebugLoc());
+    newCall->setCallingConv(CI->getCallingConv());
+    newCall->setAttributes(CI->getAttributes());
+
+    if (CI->hasName())
+    {
+        newCall->setName(CI->getName());
+    }
+
+    InstsToErase.insert(CI);
+    return true;
+}
+
+Function* JointMatrixFuncsResolutionPass::ResolveFunctionSignature(Function* OriginalFunction)
+{
+    if (ResolvedFunctions.count(OriginalFunction) > 0 && isa<Function>(ResolvedFunctions[OriginalFunction])) {
+        Function* cachedFunction = dyn_cast<Function>(ResolvedFunctions[OriginalFunction]);
+        return cachedFunction;
+    }
+
+    Function* newFunction = CloneFunction(OriginalFunction);
+
+    CacheResolvedValue(OriginalFunction, newFunction);
+    ResolvedFunctions[OriginalFunction] = newFunction;
+    return newFunction;
+}
+
+std::string getTypeName(Type* T)
+{
+    std::string TypeName;
+    raw_string_ostream TypeStream(TypeName);
+    if (T)
+        T->print(TypeStream);
+    else
+        TypeStream << "Printing <null> Type";
+    TypeStream.flush();
+    return TypeName;
+}
+
+DIType* getOrCreateType(Type* T, Module* M) {
+    DIType* N = nullptr;
+    DIBuilder Builder(*M, true);
+    DataLayout Layout(M);
+
+    if (T->isPointerTy()) {
+
+        uint align = 0;
+        #if LLVM_VERSION_MAJOR < 10
+            align = IGCLLVM::getPrefTypeAlign(Layout, T);
+        #else
+            align = IGCLLVM::getPrefTypeAlign(Layout, T).value();
+        #endif
+
+        llvm::Optional<unsigned int> opt(llvm::None);
+        N = Builder.createPointerType(
+            nullptr, Layout.getPointerTypeSizeInBits(T),
+            align * CHAR_BIT, /*DWARFAddressSpace=*/opt,
+            getTypeName(T));
+    }
+    else
+    {
+        int encoding = llvm::dwarf::DW_ATE_signed;
+        if (T->isIntegerTy())
+            encoding = llvm::dwarf::DW_ATE_unsigned;
+        else if (T->isFloatingPointTy())
+            encoding = llvm::dwarf::DW_ATE_float;
+
+        N = Builder.createBasicType(getTypeName(T), T->getPrimitiveSizeInBits(),
+            encoding);
+    }
+
+    return N;
+}
+
 
 void JointMatrixFuncsResolutionPass::visitAllocaInst(AllocaInst &I)
 {
@@ -2396,6 +2595,79 @@ void JointMatrixFuncsResolutionPass::visitAllocaInst(AllocaInst &I)
 
     if (!isOrContainsMatrixType(I.getAllocatedType()))
         return;
+
+    ResolveSIMDSize(I.getParent()->getParent());
+
+    Value *newInst = ResolveGeneric(&I);
+
+    if (newInst)
+    {
+        TinyPtrVector<DbgDeclareInst*> DDIs;
+        for (DbgVariableIntrinsic* DVI : FindDbgAddrUses(&I))
+            if (auto* DDI = dyn_cast<DbgDeclareInst>(DVI))
+                DDIs.push_back(DDI);
+
+        for (DbgDeclareInst* ddi : DDIs) {
+            auto loc = ddi->getDebugLoc();
+            auto var = ddi->getVariable();
+            auto file = var->getFile();
+            auto lineNo = var->getLine();
+            auto scope = var->getScope();
+
+            auto type = getOrCreateType(newInst->getType(), I.getModule());
+
+            llvm::DIBuilder builder(*(I.getModule()));
+            auto created = builder.createAutoVariable(scope, var->getName(), file, lineNo, type);
+            builder.insertDbgValueIntrinsic(newInst, created, builder.createExpression(), loc, ddi);
+            ddi->eraseFromParent();
+        }
+    }
+}
+
+void JointMatrixFuncsResolutionPass::visitAddrSpaceCastInst(llvm::AddrSpaceCastInst& I)
+{
+    if (ResolvedValues.count(&I) > 0)
+        return;
+
+    if (!isOrContainsMatrixType(I.getType()))
+        return;
+
+    ResolveSIMDSize(I.getParent()->getParent());
+    ResolveGeneric(&I);
+}
+
+void JointMatrixFuncsResolutionPass::visitLoadInst(llvm::LoadInst& I)
+{
+    if (ResolvedValues.count(&I) > 0)
+        return;
+
+    if (!isOrContainsMatrixType(I.getType()))
+        return;
+
+    ResolveSIMDSize(I.getParent()->getParent());
+    ResolveGeneric(&I);
+}
+
+void JointMatrixFuncsResolutionPass::visitPHINode(llvm::PHINode& I)
+{
+    if (ResolvedValues.count(&I) > 0)
+        return;
+
+    if (!isOrContainsMatrixType(I.getType()))
+        return;
+
+    ResolveSIMDSize(I.getParent()->getParent());
+    ResolveGeneric(&I);
+}
+
+void JointMatrixFuncsResolutionPass::visitReturnInst(llvm::ReturnInst& I)
+{
+    if (ResolvedValues.count(&I) > 0)
+        return;
+
+    if (I.getReturnValue() == nullptr || !isOrContainsMatrixType(I.getReturnValue()->getType()))
+        return;
+
     ResolveSIMDSize(I.getParent()->getParent());
     ResolveGeneric(&I);
 }

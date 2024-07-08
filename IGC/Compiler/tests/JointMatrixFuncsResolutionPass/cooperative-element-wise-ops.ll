@@ -4,6 +4,15 @@
 ;
 ; SPDX-License-Identifier: MIT
 ;
+; This software and the related documents are Intel copyrighted materials,
+; and your use of them is governed by the express license under which they were
+; provided to you ("License"). Unless the License provides otherwise,
+; you may not use, modify, copy, publish, distribute, disclose or transmit this
+; software or the related documents without Intel's prior written permission.
+;
+; This software and the related documents are provided as is, with no express or
+; implied warranties, other than those that are expressly stated in the License.
+;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: llvm-14-plus
 
@@ -14,7 +23,7 @@
 ; This is compiled SYCL Matrix/element_wise_ops.cpp test only pvc_uint_8x16x32 case
 
 ; CHECK: [[CAST:%.*]] = addrspacecast <8 x i32>* {{.*}} to <8 x i32> addrspace(4)*
-; CHECK: phi %spirv.CooperativeMatrixKHR._int_3_8_16_2
+; CHECK-LABEL: for.cond.i67
 ; CHECK: [[IDX_PHI:%.*]] = phi i32
 ; CHECK: [[IDX:%.*]] = zext i32 [[IDX_PHI]] to i64
 ; CHECK: [[LOAD_1:%.*]] = load <8 x i32>, <8 x i32> addrspace(4)* [[CAST]], align 8
