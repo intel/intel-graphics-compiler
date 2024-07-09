@@ -679,7 +679,6 @@ namespace IGC
         LegacySymbolTable m_legacySymbolTable;
         ZEBinGlobalHostAccessTable m_zebinGlobalHostAccessTable;
         bool m_hasCrossThreadOffsetRelocations = false;
-        bool m_hasPerThreadOffsetRelocations = false;
     };
 
     class CBTILayout
