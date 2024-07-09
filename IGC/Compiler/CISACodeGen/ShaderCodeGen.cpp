@@ -90,7 +90,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/ScalarArgAsPointer/ScalarArgAsPointer.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/GEPLoopStrengthReduction/GEPLoopStrengthReduction.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/StackOverflowDetection/StackOverflowDetection.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/SubGroupReductionPattern/SubGroupReductionPattern.hpp"
 #include "Compiler/Optimizer/MCSOptimization.hpp"
 #include "Compiler/Optimizer/GatingSimilarSamples.hpp"
 #include "Compiler/Optimizer/IntDivConstantReduction.hpp"
@@ -1417,7 +1416,6 @@ void OptimizeIR(CodeGenContext* const pContext)
         {
             mpm.add(new CustomUnsafeOptPass());
         }
-        mpm.add(createSubGroupReductionPatternPass());
 
         if (IGC_IS_FLAG_ENABLED(EmulateFDIV))
         {

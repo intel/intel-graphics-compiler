@@ -49,7 +49,6 @@ add_subdirectory(SetFastMathFlags)
 add_subdirectory(StackOverflowDetection)
 add_subdirectory(StatelessToStateful)
 add_subdirectory(SubGroupFuncs)
-add_subdirectory(SubGroupReductionPattern)
 add_subdirectory(TransformUnmaskedFunctionsPass)
 add_subdirectory(UndefinedReferences)
 add_subdirectory(UnreachableHandling)
@@ -98,7 +97,6 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses_StackOverflowDetection}
     ${IGC_BUILD__SRC__OpenCLPasses_StatelessToStateful}
     ${IGC_BUILD__SRC__OpenCLPasses_SubGroupFuncs}
-    ${IGC_BUILD__SRC__OpenCLPasses_SubGroupReductionPattern}
     ${IGC_BUILD__SRC__OpenCLPasses_TransformUnmaskedFunctionsPass}
     ${IGC_BUILD__SRC__OpenCLPasses_UndefinedReferences}
     ${IGC_BUILD__SRC__OpenCLPasses_UnreachableHandling}
@@ -152,7 +150,6 @@ set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses_StackOverflowDetection}
     ${IGC_BUILD__HDR__OpenCLPasses_StatelessToStatefull}
     ${IGC_BUILD__HDR__OpenCLPasses_SubGroupFuncs}
-    ${IGC_BUILD__HDR__OpenCLPasses_SubGroupReductionPattern}
     ${IGC_BUILD__HDR__OpenCLPasses_TransformUnmaskedFunctionsPass}
     ${IGC_BUILD__HDR__OpenCLPasses_UndefinedReferences}
     ${IGC_BUILD__HDR__OpenCLPasses_UnreachableHandling}
@@ -207,7 +204,6 @@ set(IGC_BUILD_Compiler_OpenCLPasses_Groups
     Compiler__OpenCLPasses_StackOverflowDetection
     Compiler__OpenCLPasses_StatelessToStateful
     Compiler__OpenCLPasses_SubGroupFuncs
-    Compiler__OpenCLPasses_SubGroupReductionPattern
     Compiler__OpenCLPasses_TransformUnmaskedFunctionsPass
     Compiler__OpenCLPasses_UndefinedReferences
     Compiler__OpenCLPasses_UnreachableHandling
