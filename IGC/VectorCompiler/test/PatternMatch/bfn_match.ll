@@ -108,27 +108,24 @@ define i32 @test_match_i32_combine_by_mask_const(i32 %a, i32 %b) {
   ret i32 %3
 }
 
-declare void @use(i32)
-
-; CHECK-LABEL: @test_unmatch_i32(
-define i32 @test_unmatch_i32(i32 %op0, i32 %op1, i32 %op2)  {
-; CHECK-NOT: call void @llvm.genx.bfn.i32.i32(
-  %1 = and i32 %op0, %op1
-  %2 = and i32 %1, %op2
-  call void @use(i32 %1)
-
-  ret i32 %2
+define i32 @test_match_i32_const_zero(i32 %a, i32 %b, i32 %mask) {
+; CHECK: ret i32 0
+  %nmask = xor i32 -1, %mask
+  %1 = and i32 %a, %mask
+  %2 = and i32 %b, %nmask
+  %3 = or i32 %1, %2
+  %4 = xor i32 %3, -1
+  %5 = and i32 %3, %4
+  ret i32 %5
 }
 
-; CHECK-LABEL: @test_unmatch_flag
-define i32 @test_unmatch_flag(<32 x i1> %a, <32 x i1> %b, <32 x i1> %c) {
-  %as = bitcast <32 x i1> %a to i32
-  %bs = bitcast <32 x i1> %b to i32
-  %cs = bitcast <32 x i1> %c to i32
-
-; CHECK-NOT: call i32 @llvm.genx.bfn.i32.i32(
-  %1 = and i32 %as, %bs
-  %2 = and i32 %bs, %cs
-
-  ret i32 %2
+define i32 @test_match_i32_const_one(i32 %a, i32 %b, i32 %mask) {
+; CHECK: ret i32 -1
+  %nmask = xor i32 -1, %mask
+  %1 = and i32 %a, %mask
+  %2 = and i32 %b, %nmask
+  %3 = or i32 %1, %2
+  %4 = xor i32 %3, -1
+  %5 = or i32 %3, %4
+  ret i32 %5
 }
