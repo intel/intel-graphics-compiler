@@ -858,6 +858,7 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
     PM.add(createAlwaysInlinerLegacyPass());
     PM.add(createAlwaysInlinerLegacyPass());
     PM.add(createGenXPrintfPhiClonningPass());
+    PM.add(createInstructionCombiningPass());
     PM.add(createGenXPrintfResolutionPass());
     PM.add(createGenXImportOCLBiFPass());
     PM.add(createGenXBIFFlagCtrlResolutionPass());
