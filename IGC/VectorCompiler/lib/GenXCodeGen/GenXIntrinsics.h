@@ -100,6 +100,7 @@ public:
       ARGCOUNTMIN1 =        GENX_ITR_FLAGENUM(0, 1), // Must have at least one argument
     BITWIDTH =              GENX_ITR_CATVAL(0x1a), // bit width of svm atomic instructions
     EXECSIZE_NOMASK =       GENX_ITR_CATVAL(0x1b), // execution size with NoMask
+    DATASIZE =              GENX_ITR_CATVAL(0x1c), // deduce LSC data size from element type
 
     // A field that contains an operand number, other than general, and it
     // is the "real" use of the operand, rather than an auxiliary use

@@ -96,3 +96,18 @@ std::string vc::getAnyName(unsigned Id, ArrayRef<Type *> Tys) {
         static_cast<InternalIntrinsic::ID>(Id), Tys);
   return GenXIntrinsic::getAnyName(Id, Tys);
 }
+
+llvm::Function *
+vc::getAnyDeclarationForArgs(llvm::Module *M, unsigned ID, Type *RetTy,
+                             llvm::ArrayRef<llvm::Value *> Args) {
+  SmallVector<Type *, 8> Tys;
+
+  if (vc::isOverloadedRet(ID))
+    Tys.push_back(RetTy);
+
+  for (auto &ArgIdx : llvm::enumerate(Args))
+    if (vc::isOverloadedArg(ID, ArgIdx.index()))
+      Tys.push_back(ArgIdx.value()->getType());
+
+  return vc::getAnyDeclaration(M, ID, Tys);
+}

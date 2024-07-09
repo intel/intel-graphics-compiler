@@ -743,8 +743,104 @@ Imported_Intrinsics = {
                                 ],
                                 "attributes": "WriteMem", },
 
+### ``llvm.vc.internal.lsc.*.2d.ugm.desc.*`` : 2d block load/store/prefetch instructions
+### ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+###
+### * arg0: i1, Predicate
+### * arg1: vNi8, Cache controls, where N is the number of supported cache levels [MBC]
+### * arg2: i8, Number of blocks [MBC]
+### * arg3: i8, Block width (in elements) [MBC]
+### * arg4: i8, Block height [MBC]
+### * arg5: v16i32 Matrix descriptor [MBC]
+### * arg6: i32, Memory block X immediate offset (in elements) [MBC]
+### * arg7: i32, Memory block Y immediate offset [MBC]
+### * arg8: value to passthru when predicate is false on load,
+###         or value to write on store,
+###         or dummy value for prefetch to deduce the matrix element type
+###
+### * Return value: the value read or void
+###
+### The matrix descriptor is a 16-element vector that describes the 2D block layout in memory.
+### The descriptor layout is as follows:
+### desc[0]: low 32 bits of the base address
+### desc[1]: high 32 bits of the base address
+### desc[2]: matrix width in bytes, minus 1
+### desc[3]: matrix height, minus 1
+### desc[4]: matrix pitch in bytes, minus 1
+### desc[5]: block start X in elements, signed
+### desc[6]: block start Y in rows, signed
+### desc[7]: block size encoded as follows:
+###          (block_width - 1) | ((block_height - 1) << 8) | ((number_of_blocks - 1) << 16)
+### desc[8-15]: reserved
+###
+    "lsc_load_2d_ugm_desc" : { "result" : "anyvector",
+                               "arguments" : [
+                                   "bool",      # i1, predicate
+                                   "anyvector", # cache controls
+                                   "char",      # number of blocks
+                                   "short",     # block width
+                                   "short",     # block height
+                                   "int16",     # matrix descriptor
+                                   "int",       # X offset
+                                   "int",       # Y offset
+                                   0,           # value to passthru when predicate is false
+                                ],
+                                "attributes" : "ReadMem", },
+    "lsc_load_2d_ugm_desc_transpose" : { "result" : "anyvector",
+                                         "arguments" : [
+                                             "bool",      # i1, predicate
+                                             "anyvector", # cache controls
+                                             "char",      # number of blocks
+                                             "short",     # block width
+                                             "short",     # block height
+                                             "int16",     # matrix descriptor
+                                             "int",       # X offset
+                                             "int",       # Y offset
+                                             0,           # value to passthru when predicate is false
+                                          ],
+                                          "attributes" : "ReadMem", },
+    "lsc_load_2d_ugm_desc_vnni" : { "result" : "anyvector",
+                                    "arguments" : [
+                                        "bool",      # i1, predicate
+                                        "anyvector", # cache controls
+                                        "char",      # number of blocks
+                                        "short",     # block width
+                                        "short",     # block height
+                                        "int16",     # matrix descriptor
+                                        "int",       # X offset
+                                        "int",       # Y offset
+                                        0,           # value to passthru when predicate is false
+                                     ],
+                                     "attributes" : "ReadMem", },
+    "lsc_prefetch_2d_ugm_desc" : { "result" : "void",
+                                   "arguments" : [
+                                       "bool",      # i1, predicate
+                                       "anyvector", # cache controls
+                                       "char",      # number of blocks
+                                       "short",     # block width
+                                       "short",     # block height
+                                       "int16",     # matrix descriptor
+                                       "int",       # X offset
+                                       "int",       # Y offset
+                                       "anyvector", # dummy value, only element type is used
+                                    ],
+                                    "attributes" : "SideEffects", },
+    "lsc_store_2d_ugm_desc" : { "result" : "void",
+                                "arguments" : [
+                                    "bool",      # i1, predicate
+                                    "anyvector", # cache controls
+                                    "char",      # number of blocks
+                                    "short",     # block width
+                                    "short",     # block height
+                                    "int16",     # matrix descriptor
+                                    "int",       # X offset
+                                    "int",       # Y offset
+                                    "anyvector", # value to store
+                                 ],
+                                 "attributes" : "WriteMem", },
+
 ## ``llvm.vc.internal.lsc.*.quad.tgm`` : Typed LSC load intrinsic
-## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ## * arg0: vNi1 Predicate (overloaded)
 ## * arg1: i8 L1 cache controls [MBC]
 ## * arg2: i8 L3 cache controls [MBC]

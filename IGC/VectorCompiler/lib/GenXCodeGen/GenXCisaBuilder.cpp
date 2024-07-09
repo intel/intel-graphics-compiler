@@ -3879,8 +3879,12 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
 
   auto GetLscCacheControls = [&](II::ArgInfo AI) {
     const auto CacheOptsIndex = AI.getArgIdx();
-    IGC_ASSERT(CacheOptsIndex ==
-               vc::InternalIntrinsic::getMemoryCacheControlOperandIndex(CI));
+
+    auto IID = vc::getAnyIntrinsicID(CI);
+    if (vc::InternalIntrinsic::isInternalIntrinsic(IID))
+      IGC_ASSERT(CacheOptsIndex ==
+                 vc::InternalIntrinsic::getMemoryCacheControlOperandIndex(IID));
+
     auto *CacheOpts = cast<Constant>(CI->getArgOperand(CacheOptsIndex));
 
     LSC_CACHE_OPTS Res(LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT);
@@ -3892,6 +3896,28 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     Res.l3 = static_cast<LSC_CACHE_OPT>(L3Opt->getZExtValue());
 
     return Res;
+  };
+
+  auto GetLscDataSize = [&](II::ArgInfo AI) {
+    const auto DataArgIndex = AI.getArgIdx();
+    auto *Ty = CI->getArgOperand(DataArgIndex)->getType();
+    auto SizeBits = Ty->getScalarSizeInBits();
+
+    switch (SizeBits) {
+    default:
+      IGC_ASSERT("Unsupported LSC data element type");
+      break;
+    case 8:
+      return LSC_DATA_SIZE_8b;
+    case 16:
+      return LSC_DATA_SIZE_16b;
+    case 32:
+      return LSC_DATA_SIZE_32b;
+    case 64:
+      return LSC_DATA_SIZE_64b;
+    }
+
+    return LSC_DATA_SIZE_INVALID;
   };
 
   auto CreateLscAtomic =

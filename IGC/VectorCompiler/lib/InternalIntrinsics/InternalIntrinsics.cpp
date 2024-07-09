@@ -730,6 +730,11 @@ bool InternalIntrinsic::isInternalMemoryIntrinsic(InternalIntrinsic::ID id) {
   case InternalIntrinsic::lsc_load_block_2d_ugm_vnni:
   case InternalIntrinsic::lsc_prefetch_block_2d_ugm:
   case InternalIntrinsic::lsc_store_block_2d_ugm:
+  case InternalIntrinsic::lsc_load_2d_ugm_desc:
+  case InternalIntrinsic::lsc_load_2d_ugm_desc_transpose:
+  case InternalIntrinsic::lsc_load_2d_ugm_desc_vnni:
+  case InternalIntrinsic::lsc_prefetch_2d_ugm_desc:
+  case InternalIntrinsic::lsc_store_2d_ugm_desc:
     return true;
   }
 
@@ -887,6 +892,15 @@ InternalIntrinsic::getMemoryRegisterElementSize(const llvm::Instruction *I) {
   case InternalIntrinsic::lsc_store_block_2d_ugm:
     ElementSizeIndex = 1;
     break;
+  case InternalIntrinsic::lsc_load_2d_ugm_desc:
+  case InternalIntrinsic::lsc_load_2d_ugm_desc_transpose:
+  case InternalIntrinsic::lsc_load_2d_ugm_desc_vnni:
+  case InternalIntrinsic::lsc_prefetch_2d_ugm_desc:
+  case InternalIntrinsic::lsc_store_2d_ugm_desc: {
+    auto *LastArg = I->getOperand(9);
+    auto *Ty = LastArg->getType();
+    return Ty->getScalarType()->getPrimitiveSizeInBits();
+  } break;
   }
 
   auto *ElementSize = cast<ConstantInt>(I->getOperand(ElementSizeIndex));
@@ -907,10 +921,8 @@ InternalIntrinsic::getMemoryRegisterElementSize(const llvm::Instruction *I) {
   IGC_ASSERT_UNREACHABLE();
 }
 
-int InternalIntrinsic::getMemoryCacheControlOperandIndex(
-    const llvm::Instruction *I) {
-  auto IID = getInternalIntrinsicID(I);
-  if (!isInternalMemoryIntrinsic(IID))
+int InternalIntrinsic::getMemoryCacheControlOperandIndex(unsigned IID) {
+  if (!isInternalMemoryIntrinsic(static_cast<ID>(IID)))
     return -1;
 
   switch (IID) {
@@ -920,6 +932,12 @@ int InternalIntrinsic::getMemoryCacheControlOperandIndex(
   case InternalIntrinsic::lsc_prefetch_block_2d_ugm:
   case InternalIntrinsic::lsc_store_block_2d_ugm:
     return 2;
+  case InternalIntrinsic::lsc_load_2d_ugm_desc:
+  case InternalIntrinsic::lsc_load_2d_ugm_desc_transpose:
+  case InternalIntrinsic::lsc_load_2d_ugm_desc_vnni:
+  case InternalIntrinsic::lsc_prefetch_2d_ugm_desc:
+  case InternalIntrinsic::lsc_store_2d_ugm_desc:
+    return 1;
   default:
     break;
   }

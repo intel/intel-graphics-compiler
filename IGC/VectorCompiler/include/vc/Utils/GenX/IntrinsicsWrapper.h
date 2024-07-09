@@ -47,6 +47,10 @@ getAnyDeclaration(llvm::Module *M, unsigned ID,
                   llvm::ArrayRef<llvm::Type *> Tys = llvm::None);
 
 std::string getAnyName(unsigned id, llvm::ArrayRef<llvm::Type *> Tys);
+
+llvm::Function *getAnyDeclarationForArgs(llvm::Module *M, unsigned ID,
+                                         llvm::Type *RetTy,
+                                         llvm::ArrayRef<llvm::Value *> Args);
 } // namespace vc
 
 #endif /* end of include guard: VC_UTILS_INTRINSICS_WRAPPER_H */
