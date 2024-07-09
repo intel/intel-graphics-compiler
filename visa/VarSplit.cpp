@@ -681,7 +681,14 @@ std::vector<Loop *> LoopVarSplit::getLoopsToSplitAround(G4_Declare *dcl) {
     if (dontSplit)
       continue;
 
+    bool forceSplit = kernel.getOption(vISA_ForceSplitOnSpill);
+    if (forceSplit) {
+      loopsToSplitAround.push_back(loop);
+      return loopsToSplitAround;
+    }
+
     auto subRegAlign = coloring->getGRA().getSubRegAlign(dcl);
+
     // apply cost heuristic
     if (dcl->getNumElems() == 1 &&
         subRegAlign != coloring->getGRA().kernel.fg.builder->getGRFAlign()) {

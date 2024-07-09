@@ -315,6 +315,10 @@ DEF_VISA_OPTION(vISA_GlobalSendVarSplit, ET_BOOL, "-globalSendVarSplit", UNUSED,
                 false)
 DEF_VISA_OPTION(vISA_NoRemat, ET_BOOL, "-noremat", UNUSED, false)
 DEF_VISA_OPTION(vISA_ForceRemat, ET_BOOL, "-forceremat", UNUSED, false)
+DEF_VISA_OPTION(vISA_ForceSplitOnSpill, ET_BOOL, "-forcesplitonspill",
+                "Force split on spill heuristic. Only works if there's a"
+                " loop in program that has a spilled variable.",
+                false)
 DEF_VISA_OPTION(vISA_SpillMemOffset, ET_INT32, "-spilloffset",
                 "USAGE: -spilloffset <offset>\n", 0)
 DEF_VISA_OPTION(vISA_ReservedGRFNum, ET_INT32, "-reservedGRFNum",

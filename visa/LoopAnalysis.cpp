@@ -570,16 +570,28 @@ G4_BB *LoopDetection::getPreheader(Loop *loop) {
     }
   }
 
-  // insert new preHeader node in to any subroutines that header exists
-  for (auto &funcInfo : kernel.fg.sortedFuncTable) {
-    auto foundIt =
-        std::find_if(funcInfo->getBBList().begin(), funcInfo->getBBList().end(),
-                     [header](const G4_BB *bb) { return bb == header; });
-    if (foundIt != funcInfo->getBBList().end()) {
-      funcInfo->addBB(preHeader);
-      break;
+  // insert new preHeader node in to subroutine containing header
+  auto addBBToSub = [header, preHeader](const std::vector<FuncInfo *> &subs) {
+    for (auto *funcInfo : subs) {
+      auto foundIt = std::find_if(
+          funcInfo->getBBList().begin(), funcInfo->getBBList().end(),
+          [header](const G4_BB *bb) { return bb == header; });
+      if (foundIt != funcInfo->getBBList().end()) {
+        funcInfo->addBB(preHeader);
+        return true;
+      }
     }
+    return false;
+  };
+
+  auto funcFound = addBBToSub(kernel.fg.sortedFuncTable);
+  if (!funcFound) {
+    vISA_ASSERT(kernel.fg.sortedFuncTable.size() == 0,
+                "didn't find matching FuncInfo*");
+    funcFound = addBBToSub(std::vector<FuncInfo *>({kernel.fg.kernelInfo}));
   }
+
+  vISA_ASSERT(funcFound, "couldn't insert pre-header in FuncInfo*");
 
   loop->preHeader = preHeader;
   if (loop->parent)

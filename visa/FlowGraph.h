@@ -255,7 +255,8 @@ public:
   std::vector<FuncInfo *>
       sortedFuncTable; // subroutines in reverse topographical order (leaf at
                        // top) kernelInfo is the last element with invalid func
-                       // id
+                       // id. When there are no subroutines, this container
+                       // is empty, ie it doesn't contain kernelInfo.
 
   FuncInfo *kernelInfo; // the call info for the kernel function
 
