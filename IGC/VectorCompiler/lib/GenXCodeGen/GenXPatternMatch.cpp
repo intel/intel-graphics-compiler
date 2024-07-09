@@ -89,6 +89,7 @@ SPDX-License-Identifier: MIT
 
 #include <functional>
 #include <limits>
+#include <optional>
 #include <queue>
 
 using namespace llvm;
@@ -242,10 +243,10 @@ bool GenXPatternMatch::runOnFunction(Function &F) {
     Changed |= reassociateIntegerMad(&F);
   }
 
-  if (EnableBfnMatcher && ST->hasAdd3Bfn())
-    matchBFN(F);
-
   visit(F);
+
+  if (EnableBfnMatcher && ST->hasAdd3Bfn())
+    Changed |= matchBFN(F);
 
   if (Kind == PatternMatchKind::PreLegalization) {
     Changed |= placeConstants(&F);
@@ -396,7 +397,7 @@ private:
   static constexpr StringRef OpNames[] = {"not", "and", "or", "xor"};
   static constexpr unsigned LutValues[] = {0xaa, 0xcc, 0xf0};
 
-  static constexpr unsigned UsesThreshold = 4;
+  static constexpr unsigned UsesThreshold = 2;
   static constexpr unsigned SourceLimit = 3;
 
 public:
@@ -411,7 +412,7 @@ public:
     if (!Ty->isIntOrIntVectorTy(16) && !Ty->isIntOrIntVectorTy(32))
       return false;
 
-    unsigned MatchedOps = 0;
+    MatchedOps = 0;
     Srcs.insert(MainInst);
 
     // Grow the pattern to find the source operands using a BFS.
@@ -422,19 +423,22 @@ public:
       auto *Inst = Queue.front();
       Queue.pop();
 
-      if (Inst->hasNUsesOrMore(UsesThreshold))
-        return false;
-
       auto Op = getOperation(Inst);
-      LLVM_DEBUG({
-        if (Op != Unknown)
-          dbgs() << "BFN: Found " << OpNames[Op] << " operation: " << *Inst
-                 << "\n";
-      });
+      if (Op == Unknown)
+        continue;
+
+      LLVM_DEBUG(dbgs() << "BFN: Found " << OpNames[Op]
+                        << " operation: " << *Inst << "\n";);
+
+      if (MatchedOps > 0 && Inst->hasNUsesOrMore(UsesThreshold)) {
+        LLVM_DEBUG(dbgs() << "BFN: Too many uses for the operation: " << *Inst
+                          << "\n");
+        return false;
+      }
 
       switch (Op) {
       case Unknown:
-        break;
+        IGC_ASSERT_UNREACHABLE();
       case Not: {
         auto *Op0 = Inst->getOperand(0);
         auto *Op1 = Inst->getOperand(1);
@@ -487,8 +491,8 @@ public:
   }
 
 private:
-  Constant *getNotConstantIfGreater(const Constant *C,
-                                    uint64_t Threshold = 0) const {
+  std::optional<Value *> getNotConstantIfGreater(const Constant *C,
+                                                 uint64_t Threshold = 0) const {
     auto *Ty = C->getType();
 
     if (auto *CI = dyn_cast<ConstantInt>(C)) {
@@ -498,21 +502,22 @@ private:
       if (Threshold == 0 || (Val > Threshold && NegVal <= Threshold))
         return ConstantInt::get(CI->getType(), NegVal);
 
-      return nullptr;
+      return std::nullopt;
     }
 
     auto *CV = dyn_cast<ConstantVector>(C);
     if (!CV)
-      return nullptr;
+      return std::nullopt;
 
     auto *Splat = CV->getSplatValue();
     if (!Splat)
-      return nullptr;
+      return std::nullopt;
 
-    auto *NegC = getNotConstantIfGreater(Splat, Threshold);
-    if (!NegC)
-      return nullptr;
+    auto MaybeNegC = getNotConstantIfGreater(Splat, Threshold);
+    if (!MaybeNegC)
+      return std::nullopt;
 
+    auto *NegC = cast<Constant>(MaybeNegC.value());
     auto *VTy = cast<IGCLLVM::FixedVectorType>(CV->getType());
     return ConstantVector::getSplat(VTy->getElementCount(), NegC);
   }
@@ -520,20 +525,26 @@ private:
   bool emit() {
     auto *Ty = MainInst->getType();
 
-    SrcsOrdered.assign(Srcs.begin(), Srcs.end());
+    // If the source is a splat or scalar constant, try to fit it into 16-bit.
+    llvm::transform(Srcs, std::back_inserter(SrcsOrdered), [this](Value *V) {
+      if (auto *C = dyn_cast<Constant>(V))
+        return getNotConstantIfGreater(C, 0xffffu).value_or(V);
+      return V;
+    });
+
     if (SrcsOrdered.size() == 2)
       SrcsOrdered.push_back(UndefValue::get(Ty));
 
     // The BFN instruction only supports immediate value to be encoded as Src0
     // or Src2
-    if (isa<Constant>(SrcsOrdered[1]))
-      std::swap(SrcsOrdered[1], SrcsOrdered[2]);
+    if (isa<Constant>(SrcsOrdered[1])) {
+      auto Index = isa<Constant>(SrcsOrdered[2]) ? 0 : 2;
+      std::swap(SrcsOrdered[1], SrcsOrdered[Index]);
+    }
 
-    // If the Src2 is a splat or scalar constant, try to fit it into 16-bit.
-    if (auto *CSrc2 = dyn_cast<Constant>(SrcsOrdered[2])) {
-      const uint64_t Threshold = maskTrailingOnes<uint64_t>(16);
-      if (auto *NegCSrc2 = getNotConstantIfGreater(CSrc2, Threshold))
-        SrcsOrdered[2] = NegCSrc2;
+    if (!isProfitable()) {
+      LLVM_DEBUG(dbgs() << "BFN: Not profitable\n");
+      return false;
     }
 
     IRBuilder<> Builder(MainInst);
@@ -543,7 +554,7 @@ private:
       LLVM_DEBUG(dbgs() << "BFN: LUT value not found\n");
       return false;
     }
-    LLVM_DEBUG(dbgs() << "BFN: LUT value: " << format_hex(Lut, 2) << "\n");
+    LLVM_DEBUG(dbgs() << "BFN: LUT value: " << format_hex(Lut, 4) << "\n");
 
     Value *NewV = nullptr;
 
@@ -585,11 +596,11 @@ private:
       return Lut;
 
     if (auto *C = dyn_cast<Constant>(V)) {
-      auto *NegC = getNotConstantIfGreater(C);
-      if (!NegC)
+      auto MaybeNegC = getNotConstantIfGreater(C);
+      if (!MaybeNegC)
         return ~0;
 
-      auto Lut = getLutValueForSource(NegC);
+      auto Lut = getLutValueForSource(MaybeNegC.value());
       if (Lut != ~0)
         return Lut ^ 0xff;
 
@@ -636,17 +647,37 @@ private:
       return true;
 
     if (const auto *C = dyn_cast<Constant>(V)) {
-      auto *NegC = getNotConstantIfGreater(C);
-      return NegC && Srcs.contains(NegC);
+      auto MaybeNegC = getNotConstantIfGreater(C);
+      return MaybeNegC && Srcs.contains(MaybeNegC.value());
     }
 
     return false;
+  }
+
+  static bool isFlagInput(Value *V) {
+    auto *Cast = dyn_cast<BitCastInst>(V);
+    if (!Cast)
+      return false;
+
+    auto *Src = Cast->getOperand(0);
+    auto *SrcTy = Src->getType();
+    return SrcTy->isIntOrIntVectorTy(1);
+  }
+
+  bool isProfitable() const {
+    unsigned NumOfFlagInputs = llvm::count_if(SrcsOrdered, isFlagInput);
+    if (NumOfFlagInputs >= MatchedOps)
+      return false;
+
+    return true;
   }
 
   BinaryOperator *MainInst;
   const bool TryGreedy;
   SmallSetVector<Value *, 4> Srcs;
   SmallVector<Value *, 4> SrcsOrdered;
+
+  unsigned MatchedOps = 0;
 };
 
 // Class to identify cases where a comparison and select are equivalent to a
