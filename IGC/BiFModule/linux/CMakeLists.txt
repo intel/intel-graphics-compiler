@@ -69,7 +69,7 @@ endfunction()
 set(_oclResSymbolFiles)
 set(_rsResSymbolFiles)
 
-igc_resource_embed_file(_oclResSymbolFiles _igc_bif_BIFBC_122 "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bifbc" "${IGC_BUILD__PROJ__BiFModule_OCL}")
+igc_resource_embed_file(_oclResSymbolFiles _igc_bif_BIFBC_122 "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bifbc")
 
 # =========================================== Custom targets ============================================
 
