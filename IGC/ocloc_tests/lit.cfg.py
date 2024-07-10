@@ -1,6 +1,6 @@
 # ========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2023 Intel Corporation
+# Copyright (C) 2023-2024 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -42,10 +42,10 @@ llvm_config.with_environment('LD_LIBRARY_PATH', [config.ocloc_lib_dir,
 
 tool_dirs = [config.ocloc_dir, config.llvm_tools_dir, config.spirv_as_dir, config.llvm_spirv_dir]
 
-if llvm_config.add_tool_substitutions([ToolSubst('ocloc', unresolved='break')], tool_dirs) :
+if llvm_config.add_tool_substitutions([ToolSubst('ocloc', command=FindTool(config.ocloc_name), unresolved='break')], tool_dirs) :
   ocloc_path = llvm_config.config.substitutions[-1][1]
 else :
-  lit_config.note('Did not find ocloc in %s, ocloc will be used from system paths' % tool_dirs)
+  lit_config.note('Did not find %s in %s, ocloc will be used from system paths' % (config.ocloc_name, tool_dirs))
   ocloc_path = 'ocloc'
 
 llvm_config.add_tool_substitutions([ToolSubst('llvm-dwarfdump')], tool_dirs)

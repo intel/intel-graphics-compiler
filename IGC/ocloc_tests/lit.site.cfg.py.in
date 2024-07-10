@@ -1,6 +1,6 @@
 # ========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2023 Intel Corporation
+# Copyright (C) 2023-2024 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -17,6 +17,7 @@ config.target_triple = "@TARGET_TRIPLE@"
 config.host_arch = "@HOST_ARCH@"
 config.python_executable = "@PYTHON_EXECUTABLE@"
 config.test_run_dir = "@CMAKE_CURRENT_BINARY_DIR@"
+config.ocloc_name = "@IGC_OCLOC_BINARY_NAME@"
 config.ocloc_dir = "@IGC_OCLOC_BINARY_DIR@"
 config.ocloc_lib_dir = "@IGC_OCLOC_LIBRARY_DIR@"
 config.igc_lib_dir = "@IGC_LIBRARY_DIR@"

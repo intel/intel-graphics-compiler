@@ -1,6 +1,6 @@
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2023 Intel Corporation
+# Copyright (C) 2023-2024 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -18,6 +18,7 @@ endif()
   set(IGC_OCLOC_TEST_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
   set(IGC_OCLOC_TEST_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>)
 
+  set(IGC_OCLOC_BINARY_NAME "$<$<TARGET_EXISTS:ocloc>:$<TARGET_FILE_BASE_NAME:ocloc>>")
   set(IGC_OCLOC_BINARY_DIR "$<$<TARGET_EXISTS:ocloc>:$<TARGET_FILE_DIR:ocloc>>")
   set(IGC_BUILD__PROJ__ocloc "$<$<TARGET_EXISTS:ocloc>:ocloc>")
   set(IGC_OCLOC_LIBRARY_DIR "$<$<TARGET_EXISTS:ocloc_lib>:$<TARGET_FILE_DIR:ocloc_lib>>")
