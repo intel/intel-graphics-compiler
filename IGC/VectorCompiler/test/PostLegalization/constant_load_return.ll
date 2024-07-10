@@ -61,8 +61,7 @@ define { <16 x i32> } @const_struct_add_return_big() {
 ; CHECK-LABEL: @const_struct_add_return_big
 ; CHECK-NEXT: [[CONST1:%.+]] = call <8 x i32> @llvm.genx.constanti.v8i32(<8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>)
 ; CHECK-NEXT: [[SPLIT1:%.+]] = call <16 x i32> @llvm.genx.wrregioni.v16i32.v8i32.i16.i1(<16 x i32> undef, <8 x i32> [[CONST1]], i32 8, i32 8, i32 1, i16 0, i32 undef, i1 true)
-; CHECK-NEXT: [[PRE_CONST_ADD:%.+]] = call <8 x i32> @llvm.genx.constanti.v8i32(<8 x i32> <i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8>)
-; CHECK-NEXT: [[ADD:%.+]] = add <8 x i32> [[CONST1]], [[PRE_CONST_ADD]]
+; CHECK-NEXT: [[ADD:%.+]] = add <8 x i32> [[CONST1]], <i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8>
 ; CHECK-NEXT: [[SPLIT2:%.+]] = call <16 x i32> @llvm.genx.wrregioni.v16i32.v8i32.i16.i1(<16 x i32> [[SPLIT1]], <8 x i32> [[ADD]], i32 8, i32 8, i32 1, i16 32, i32 undef, i1 true)
 ; CHECK-NEXT: [[VAL:%.+]] = insertvalue { <16 x i32> } undef, <16 x i32> [[SPLIT2]], 0
 ; CHECK-NEXT: ret { <16 x i32> } [[VAL]]

@@ -36,8 +36,7 @@ define <16 x i32> @legalize_integer_range_0_250_16() {
 ; CHECK-LABEL: @legalize_integer_range_0_250_16(
 ; CHECK-NEXT:  [[CONST0:%.*]] = call <8 x i32> @llvm.genx.constanti.v8i32(<8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>)
 ; CHECK-NEXT:  [[SPLIT0:%.*]] = call <16 x i32> @llvm.genx.wrregioni.v16i32.v8i32.i16.i1(<16 x i32> undef, <8 x i32> [[CONST0]], i32 8, i32 8, i32 1, i16 0, i32 undef, i1 true)
-; CHECK-NEXT:  [[PRE_ADD:%.*]] = call <8 x i32> @llvm.genx.constanti.v8i32(<8 x i32> <i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8>)
-; CHECK-NEXT:  [[ADD:%.*]] = add <8 x i32> [[CONST0]], [[PRE_ADD]]
+; CHECK-NEXT:  [[ADD:%.*]] = add <8 x i32> [[CONST0]], <i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8>
 ; CHECK-NEXT:  [[JOIN:%.*]] = call <16 x i32> @llvm.genx.wrregioni.v16i32.v8i32.i16.i1(<16 x i32> [[SPLIT0]], <8 x i32> [[ADD]], i32 8, i32 8, i32 1, i16 32, i32 undef, i1 true)
 ; CHECK-NEXT:  [[MUL:%.*]] = mul <16 x i32> [[JOIN]], <i32 16, i32 16, i32 16, i32 16, i32 16, i32 16, i32 16, i32 16, i32 16, i32 16, i32 16, i32 16, i32 16, i32 16, i32 16, i32 16>
 ; CHECK-NEXT:  [[ADD:%.*]] = add <16 x i32> [[MUL]], <i32 10, i32 10, i32 10, i32 10, i32 10, i32 10, i32 10, i32 10, i32 10, i32 10, i32 10, i32 10, i32 10, i32 10, i32 10, i32 10>
@@ -50,8 +49,7 @@ define <16 x i32> @legalize_integer_range_0_240_16() {
 ; CHECK-LABEL: @legalize_integer_range_0_240_16(
 ; CHECK-NEXT:  [[CONST0:%.*]] = call <8 x i32> @llvm.genx.constanti.v8i32(<8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>)
 ; CHECK-NEXT:  [[SPLIT0:%.*]] = call <16 x i32> @llvm.genx.wrregioni.v16i32.v8i32.i16.i1(<16 x i32> undef, <8 x i32> [[CONST0]], i32 8, i32 8, i32 1, i16 0, i32 undef, i1 true)
-; CHECK-NEXT:  [[PRE_ADD:%.*]] = call <8 x i32> @llvm.genx.constanti.v8i32(<8 x i32> <i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8>)
-; CHECK-NEXT:  [[ADD:%.*]] = add <8 x i32> [[CONST0]], [[PRE_ADD]]
+; CHECK-NEXT:  [[ADD:%.*]] = add <8 x i32> [[CONST0]], <i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8>
 ; CHECK-NEXT:  [[JOIN:%.*]] = call <16 x i32> @llvm.genx.wrregioni.v16i32.v8i32.i16.i1(<16 x i32> [[SPLIT0]], <8 x i32> [[ADD]], i32 8, i32 8, i32 1, i16 32, i32 undef, i1 true)
 ; CHECK-NEXT:  [[MUL:%.*]] = mul <16 x i32> [[JOIN]], <i32 16, i32 16, i32 16, i32 16, i32 16, i32 16, i32 16, i32 16, i32 16, i32 16, i32 16, i32 16, i32 16, i32 16, i32 16, i32 16>
 ; CHECK-NEXT:  ret <16 x i32> [[MUL]]

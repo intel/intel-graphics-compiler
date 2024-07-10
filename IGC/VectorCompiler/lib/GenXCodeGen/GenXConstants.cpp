@@ -769,21 +769,25 @@ static bool checkApplyAddPattern(CallVecIterator &I, CallVecIterator &J,
   LLVM_DEBUG((*J)->dump());
   LLVM_DEBUG(dbgs() << "delta = " << Delta << "\n");
 
-  auto *SplatVal = ConstantInt::get(Ty, Delta, /*isSigned=*/true);
-  // Create constant <delta x N>
-  auto *NewConst =
-      ConstantVector::getSplat(IGCLLVM::getElementCount(N), SplatVal);
+  auto *OldInst = *J;
+  IRBuilder<> Builder(OldInst);
 
-  Type *OverloadedTypes[] = {IFirst->getType()};
-  Module *M = (*I)->getModule();
-  Function *Decl = GenXIntrinsic::getGenXDeclaration(
-      M, GenXIntrinsic::genx_constanti, OverloadedTypes);
-  Instruction *NewInst = CallInst::Create(Decl, NewConst, "pre_consts_add", *J);
-  // Create add i, <delta x n>
-  auto *NewAdd =
-      BinaryOperator::Create(Instruction::Add, (*I), NewInst, "consts_add", *J);
-  (*J)->replaceAllUsesWith(NewAdd);
-  ToRemove.push_back(*J);
+  auto *DeltaV = ConstantInt::get(Ty, Delta, true);
+  Value *DeltaSplat = ConstantDataVector::getSplat(N, DeltaV);
+
+  // Load 64-bit constant, if it's needed
+  if (Ty->isIntegerTy(64)) {
+    auto *M = OldInst->getModule();
+    auto *VTy = IGCLLVM::FixedVectorType::get(Ty, N);
+    auto *F = vc::getAnyDeclaration(M, GenXIntrinsic::genx_constanti, {VTy});
+
+    DeltaSplat = Builder.CreateCall(F, {DeltaSplat});
+  }
+
+  auto *Add = Builder.CreateAdd(*I, DeltaSplat);
+  OldInst->replaceAllUsesWith(Add);
+  ToRemove.push_back(OldInst);
+
   J = ConstList.erase(J);
   return true;
 }
