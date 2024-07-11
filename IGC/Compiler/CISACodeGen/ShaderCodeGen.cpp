@@ -95,7 +95,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/IntDivConstantReduction.hpp"
 #include "Compiler/Optimizer/IntDivRemCombine.hpp"
 #include "Compiler/Optimizer/SynchronizationObjectCoalescing.hpp"
-#include "Compiler/Optimizer/BarrierControlFlowOptimization.hpp"
 #include "Compiler/Optimizer/RuntimeValueVectorExtractPass.h"
 #include "Compiler/MetaDataApi/PurgeMetaDataUtils.hpp"
 #include "Compiler/HandleLoadStoreInstructions.hpp"
@@ -1443,15 +1442,6 @@ void OptimizeIR(CodeGenContext* const pContext)
                              ((FastestS1Options(pContext) & FCEXP_DISABLE_GOPT) ||
                                FastestS1Options(pContext) == FCEXP_NO_EXPRIMENT ||
                                pContext->getModuleMetaData()->compOpt.DisableFastestGopt));
-
-        if (pContext->m_DriverInfo.supportBarrierControlFlowOptimization() &&
-            pContext->platform.hasBarrierControlFlowOpt() &&
-            !pContext->hasSyncRTCalls() &&
-            (pContext->type != ShaderType::PIXEL_SHADER))
-        {
-            mpm.add(createBarrierControlFlowOptimization());
-        }
-
 
         if (pContext->m_instrTypes.hasMultipleBB && !disableGOPT)
         {
