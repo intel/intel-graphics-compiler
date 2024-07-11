@@ -163,5 +163,6 @@ namespace IGC
 
     llvm::FunctionPass *createLoopSplitWidePHIs();
 
+    llvm::LoopPass* createLoopAllocaUpperbound();
 } // namespace IGC
 

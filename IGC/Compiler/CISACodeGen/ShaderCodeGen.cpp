@@ -1516,6 +1516,8 @@ void OptimizeIR(CodeGenContext* const pContext)
                     mpm.add(createAdvCodeMotionPass(IGC_GET_FLAG_VALUE(AdvCodeMotionControl)));
                 }
 
+                mpm.add(createLoopAllocaUpperbound());
+
                 int LoopUnrollThreshold = pContext->m_DriverInfo.GetLoopUnrollThreshold();
 
                 // override the LoopUnrollThreshold if the registry key is set

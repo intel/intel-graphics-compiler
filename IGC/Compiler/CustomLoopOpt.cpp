@@ -1940,3 +1940,295 @@ namespace IGC
     }
 }
 
+// This pass pattern matches 1-BB loops with non-constant loop upper bound
+// and memory accesses to alloca that is constant size array.
+//
+// Then if all alloca accesses are in bound we could create a new
+// loop count with constant upper bound of alloca array size.
+//
+// Input Loop:
+//
+// loop.header:                                         ; preds = %preheader, %loop.header
+//   %24 = phi i32 [ %29, %loop.header ], [ 0, %preheader ]
+//   %25 = zext i32 %24 to i64
+//   %26 = getelementptr inbounds [8 x %struct.Color], [8 x %struct.Color]* %10, i64 0, i64 %25, i32 0
+//   store float 0.000000e+00, float* %26, align 4
+//   ...
+//   %29 = add nuw nsw i32 %24, 1
+//   %30 = icmp slt i32 %29, %20
+//   br i1 %30, label %loop.header, label %exit
+//
+// Transformed Loop:
+//  Loop is split into head/ifcond/continue blocks, where the ifcond block is entered
+//  by initial loop condition.
+//
+// loop.header:                                         ; preds = %preheader, %loop.continue
+//   %newind = phi i32 [ %newind.next, %loop.continue ], [ 0, %preheader ]
+//   %cond.phi = phi i1 [ %30, %loop.continue ], [ true, %preheader ]
+//   %24 = phi i32 [ %29, %loop.continue ], [ 0, %preheader ]
+//   br i1 %cond.phi, label %loop.cond, label %loop.continue
+//
+// loop.ifcond:
+//   %26 = getelementptr inbounds [8 x %struct.Color], [8 x %struct.Color]* %10, i64 0, i64 %25, i32 0
+//   store float 0.000000e+00, float* %26, align 4
+//   ...
+//   br label %loop.continue
+//
+// loop.continue:
+//   %29 = add nuw nsw i32 %24, 1
+//   %30 = icmp slt i32 %29, %20
+//   %newind.next = add nuw nsw i32 %newind, 1
+//   %newcmp = icmp slt i32 %newind.next, %allocasize
+//   br i1 %newcmp, label %loop.header, label %exit
+//
+class LoopAllocaUpperbound : public llvm::LoopPass
+{
+public:
+    static char ID;
+
+    LoopAllocaUpperbound();
+
+    void getAnalysisUsage(llvm::AnalysisUsage& AU) const
+    {
+        AU.addRequired<llvm::LoopInfoWrapperPass>();
+        AU.addPreservedID(LCSSAID);
+    }
+
+    bool runOnLoop(Loop* L, LPPassManager& LPM);
+
+    llvm::StringRef getPassName() const
+    {
+        return "IGC Loop Alloca Upperbound";
+    }
+
+private:
+};
+
+#undef PASS_FLAG
+#undef PASS_DESC
+#undef PASS_CFG_ONLY
+#undef PASS_ANALYSIS
+#define PASS_FLAG     "igc-loop-alloca-upperbound"
+#define PASS_DESC     "IGC Loop Alloca Upperbound"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
+IGC_INITIALIZE_PASS_BEGIN(LoopAllocaUpperbound, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
+IGC_INITIALIZE_PASS_END(LoopAllocaUpperbound, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+
+
+char LoopAllocaUpperbound::ID = 0;
+
+LoopAllocaUpperbound::LoopAllocaUpperbound() : LoopPass(ID)
+{
+    initializeLoopAllocaUpperboundPass(*PassRegistry::getPassRegistry());
+}
+
+static const unsigned MaxAllocaSize = 32;
+
+// Return the index variable for alloca LD/ST and its range
+// null if LD/ST is not alloca address
+static Value* getArrayIndex(const Instruction* I, unsigned& ArraySize)
+{
+    const Value* Ptr = nullptr;
+    if (auto LD = dyn_cast<LoadInst>(I))
+        Ptr = LD->getPointerOperand();
+    else if (auto ST = dyn_cast<StoreInst>(I))
+        Ptr = ST->getPointerOperand();
+    else
+        return nullptr;
+
+    // Processing GEPs sequence while not find alloca
+    const GEPOperator* GEPOp = dyn_cast_or_null<GEPOperator>(Ptr);
+    const AllocaInst* Alloca = nullptr;
+    while (GEPOp && GEPOp->isInBounds())
+    {
+        Ptr = GEPOp->getPointerOperand();
+        Alloca = dyn_cast_or_null<AllocaInst>(Ptr);
+        if (Alloca)
+            break;
+        GEPOp = dyn_cast_or_null<GEPOperator>(Ptr);
+    }
+
+    if (!Alloca)
+        return nullptr;
+
+    // Consider only simple case with one non-constant index
+    if (GEPOp->countNonConstantIndices() != 1)
+        return nullptr;
+
+    // If alloca type is array then GEP operand corresponding to
+    // array element is number 2
+    Type* AllocaTy = GEPOp->getSourceElementType();
+    if (AllocaTy->isArrayTy() && !isa<ConstantInt>(GEPOp->getOperand(2)))
+    {
+        ArraySize = int_cast<unsigned>(AllocaTy->getArrayNumElements());
+        return GEPOp->getOperand(2);
+    }
+    return nullptr;
+}
+
+bool LoopAllocaUpperbound::runOnLoop(Loop* L, LPPassManager& LPM)
+{
+    LoopInfo* LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+
+    // Check that loop with single BB loop body
+    if (!(L->isSafeToClone() && L->getNumBlocks() == 1 &&
+          L->getNumBackEdges() == 1 && L->getLoopPreheader()))
+    {
+        return false;
+    }
+
+    BasicBlock* Header = L->getHeader();
+    BasicBlock* Incoming = nullptr, * Backedge = nullptr;
+    if (!L->getIncomingAndBackEdge(Incoming, Backedge))
+        return false;
+
+    PHINode* InductionPhi = L->getCanonicalInductionVariable(); // Induction variable pre-increment
+    if (!InductionPhi)
+        return false;
+    Instruction* InductionInc =
+        dyn_cast<Instruction>(InductionPhi->getIncomingValueForBlock(Backedge)); // Induction increment
+    // Check that induction increment has no other uses except induction phi and loop condition
+    if (InductionInc->getNumUses() != 2)
+        return false;
+    ICmpInst* LoopCond = nullptr; // The loop exit condition
+    BranchInst* LoopBranch = nullptr; // The loop branching instruction
+    Value* LoopSize = nullptr; // Loop count
+
+    // Match the loop exit condition and branch
+    LoopBranch = dyn_cast<BranchInst>(Header->getTerminator());
+    if (LoopBranch && LoopBranch->isConditional())
+    {
+        LoopCond = dyn_cast<ICmpInst>(LoopBranch->getCondition());
+        if (LoopCond && (LoopCond->getPredicate() == CmpInst::ICMP_SLT))
+        {
+            if (LoopCond->getOperand(0) == InductionInc)
+            {
+                LoopSize = LoopCond->getOperand(1);
+            }
+        }
+    }
+    if (!LoopBranch || !LoopCond || !LoopSize)
+        return false;
+
+    // Do not apply to the Loops with constant loop count
+    if (isa<ConstantInt>(LoopSize))
+        return false;
+
+    // Form ST/LD list
+    std::vector<const Instruction*> MemRefList;
+    for (const Instruction& I : *Header)
+    {
+        if (I.mayReadOrWriteMemory())
+            MemRefList.push_back(&I);
+    }
+
+    // Find alloca array size
+    unsigned ArraySize = std::numeric_limits<unsigned>::max();
+    for (auto I : MemRefList)
+    {
+        unsigned CurrSize = 0;
+        Instruction* IndexInst = dyn_cast_or_null<Instruction>(getArrayIndex(I, CurrSize));
+        if (!IndexInst)
+            continue;
+
+        // Check that array index derives from inductive variable
+        if (IndexInst != InductionPhi)
+        {
+            auto CInst = dyn_cast<CastInst>(IndexInst);
+            if (!CInst || CInst->getOperand(0) != InductionPhi)
+                continue;
+        }
+        ArraySize = std::min(ArraySize, CurrSize);
+    }
+
+    // Since loop transformation makes sense only in case when loop unroll could be applied
+    // to transformed loop, we need to bound alloca array size we process
+    if (ArraySize > MaxAllocaSize)
+        return false;
+
+    // We now have all the info to apply transformation
+    Instruction* IfTerm;
+    IRBuilder<> IRB(InductionPhi);
+    PHINode* CondPHI = IRB.CreatePHI(LoopCond->getType(), 2, LoopCond->getName() + ".cond.phi");
+    if (CondPHI)
+    {
+        CondPHI->addIncoming(ConstantInt::getTrue(LoopCond->getType()), Incoming);
+        CondPHI->addIncoming(LoopCond, Backedge);
+    }
+    PHINode* NewInductionPHI = IRB.CreatePHI(InductionPhi->getType(), 2, LoopCond->getName() + ".newind.phi");
+    IRB.SetInsertPoint(Header->getTerminator());
+    Value* NewAdd = IRB.CreateAdd(NewInductionPHI, ConstantInt::get(InductionPhi->getType(), 1), ".newind.next");
+    Value* NewCMP = IRB.CreateICmpSLT(NewAdd, ConstantInt::get(InductionPhi->getType(), ArraySize), ".newcmp");
+    if (NewInductionPHI)
+    {
+        NewInductionPHI->addIncoming(ConstantInt::get(NewAdd->getType(), 0), Incoming);
+        NewInductionPHI->addIncoming(NewAdd, Backedge);
+    }
+
+    // Split the Header into:
+    //    Header
+    //    |     \
+    //    |    IfCondBB
+    //    |      /
+    //    |     /
+    //    ContinueBB
+    IfTerm = SplitBlockAndInsertIfThen(CondPHI, Header->getFirstNonPHIOrDbg(), false);
+    BasicBlock* IfCondBB = IfTerm->getParent();
+    BasicBlock* ContinueBB = IfCondBB->getNextNode();
+
+    // Set the new block names
+    IfCondBB->setName(Header->getName() + ".if.cond");
+    ContinueBB->setName(Header->getName() + ".cont");
+
+    // Add new blocks to the current loop
+    L->addBasicBlockToLoop(IfCondBB, *LI);
+    L->addBasicBlockToLoop(ContinueBB, *LI);
+
+    // Move the instructions to IfCondBB block.
+    Instruction* II = cast<Instruction>(ContinueBB->begin());
+    while (II != NewAdd)
+    {
+        Instruction* CurrI = II;
+        II = II->getNextNode();
+
+        CurrI->moveBefore(IfTerm);
+    }
+
+    // Move old loop condition and induction increment to ContinueBB
+    LoopCond->moveBefore(cast<Instruction>(NewAdd));
+    InductionInc->moveBefore(cast<Instruction>(LoopCond));
+    LoopBranch->replaceUsesOfWith(LoopCond, NewCMP);
+
+    // Update Phi to preserve LCSSA form
+    IRB.SetInsertPoint(InductionInc);
+    for (Instruction& I : *Header)
+    {
+        auto* PI = dyn_cast<PHINode>(&I);
+        if (PI)
+        {
+            if (PI == InductionPhi || PI == NewInductionPHI || PI == CondPHI)
+                continue;
+            PHINode* PN = IRB.CreatePHI(I.getType(), 2, PI->getName() + ".cont.phi");
+            if (PN)
+            {
+                PI->replaceUsesOutsideBlock(PN, IfCondBB);
+                PN->addIncoming(PI, Header);
+                auto* U = PI->getIncomingValueForBlock(ContinueBB);
+                U->replaceUsesOutsideBlock(PN, IfCondBB);
+                PN->addIncoming(U, IfCondBB);
+            }
+        }
+    }
+    return true;
+}
+
+namespace IGC
+{
+    LoopPass* createLoopAllocaUpperbound()
+    {
+        return new LoopAllocaUpperbound();
+    }
+}
+
