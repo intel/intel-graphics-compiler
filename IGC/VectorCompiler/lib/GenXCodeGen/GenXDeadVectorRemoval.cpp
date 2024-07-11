@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 //     traditional DCE
 //===----------------------------------------------------------------------===//
 #include "GenX.h"
+#include "GenXGotoJoin.h"
 #include "GenXLiveElements.h"
 
 #include "llvm/ADT/ArrayRef.h"
@@ -119,6 +120,18 @@ bool GenXDeadVectorRemoval::runOnFunction(Function &F) {
         LLVM_DEBUG(dbgs() << "Bypassing " << I << "\n");
         auto OldValueOp = I.getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
         I.replaceAllUsesWith(OldValueOp);
+        ToErase.push_back(&I);
+      }
+    } else if (auto *Sel = dyn_cast<SelectInst>(&I)) {
+      if (GotoJoin::isEMValue(Sel->getCondition()))
+        continue;
+      if (isa<UndefValue>(Sel->getTrueValue())) {
+        LLVM_DEBUG(dbgs() << "Bypassing " << I << "\n");
+        I.replaceAllUsesWith(Sel->getFalseValue());
+        ToErase.push_back(&I);
+      } else if (isa<UndefValue>(Sel->getFalseValue())) {
+        LLVM_DEBUG(dbgs() << "Bypassing " << I << "\n");
+        I.replaceAllUsesWith(Sel->getTrueValue());
         ToErase.push_back(&I);
       }
     }
