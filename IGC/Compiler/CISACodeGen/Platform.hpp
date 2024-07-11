@@ -180,8 +180,6 @@ bool supportsWMTPForShaderType(ShaderType type) const {
     return false;
 }
 
-bool supportDisableMidThreadPreemptionSwitch() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
-
 bool needSWStencil() const
 {
         return (m_platformInfo.eRenderCoreFamily == IGFX_GEN9_CORE && IGC_IS_FLAG_ENABLED(EnableSoftwareStencil));
