@@ -42,7 +42,7 @@ namespace IGC {
             AL_Kernel
         };
 
-        explicit EstimateFunctionSize(AnalysisLevel = AL_Module);
+        explicit EstimateFunctionSize(AnalysisLevel = AL_Module, bool = false);
         ~EstimateFunctionSize();
         EstimateFunctionSize(const EstimateFunctionSize&) = delete;
         EstimateFunctionSize& operator=(const EstimateFunctionSize&) = delete;
@@ -137,9 +137,45 @@ namespace IGC {
         llvm::ScaledNumber<uint64_t> thresholdForTrimming;
         std::unordered_map<llvm::Loop *, llvm::ScaledNumber<uint64_t>>
             LoopIterCnts;
+
+        // Flags for Kernel trimming
+        bool ControlKernelTotalSize;
+        bool ControlUnitSize;
+        unsigned ControlInlineTinySize;
+        unsigned UnitSizeThreshold;
+
+        // Flags for Static Profile-guided trimming
+        bool StaticProfileGuidedTrimming;
+        bool UseFrequencyInfoForSPGT;
+        bool BlockFrequencySampling;
+        bool EnableLeafCollapsing;
+        bool EnableSizeContributionOptimization;
+        bool LoopCountAwareTrimming;
+        bool EnableGreedyTrimming;
+        unsigned SizeWeightForSPGT;
+        unsigned FrequencyWeightForSPGT;
+        unsigned MetricForKernelSizeReduction;
+        unsigned ParameterForColdFuncThreshold;
+        unsigned ControlInlineTinySizeForSPGT;
+        unsigned MaxUnrollCountForFunctionSizeAnalysis;
+        unsigned SkipTrimmingOneCopyFunction;
+        std::string SelectiveTrimming;
+
+        // Flags for Partitioning
+        bool PartitionUnit;
+        bool StaticProfileGuidedPartitioning;
+
+        // Flags for implcit arguments and external functions
+        bool ForceInlineExternalFunctions;
+        bool ForceInlineStackCallWithImplArg;
+        bool ControlInlineImplicitArgs;
+        unsigned SubroutineThreshold;
+        unsigned KernelTotalSizeThreshold;
+        unsigned ExpandedUnitSizeThreshold;
     };
 
     llvm::ModulePass* createEstimateFunctionSizePass();
+    llvm::ModulePass *createEstimateFunctionSizePass(bool);
     llvm::ModulePass* createEstimateFunctionSizePass(EstimateFunctionSize::AnalysisLevel);
 
 } // namespace IGC

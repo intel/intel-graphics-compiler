@@ -1374,7 +1374,9 @@ namespace TC
                             (strcmp(pParam, "-ze-fp64-gen-emu") == 0) || //used by fp64 emulation
                             (strcmp(pParam, "-cl-fp64-gen-conv-emu") == 0) || //used by fp64 conversion emulation
                             (strcmp(pParam, "-ze-fp64-gen-conv-emu") == 0) || //used by fp64 conversion emulation
-                            (strcmp(pParam, "-Xfinalizer") == 0); // used to pass options to visa finalizer
+                            (strcmp(pParam, "-Xfinalizer") == 0) || // used to pass options to visa finalizer
+                            (strcmp(pParam, "-cl-intel-static-profile-guided-trimming") == 0) || //used to enable profile-guided trimming
+                            (strcmp(pParam, "-ze-opt-static-profile-guided-trimming") == 0); //used to enable profile-guided trimming
 
                         if (isCommonOption)
                         {
