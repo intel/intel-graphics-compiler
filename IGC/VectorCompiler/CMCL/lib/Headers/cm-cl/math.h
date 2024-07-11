@@ -271,28 +271,20 @@ vector<T, width> square_root(vector<T, width> src, cm::tag::fast_t) {
 
 template <typename T, int width>
 vector<T, width> minimum(vector<T, width> src0, vector<T, width> src1) {
-  static_assert(cl::is_floating_point<T>::value,
-                "only floating point types supported yet for minimum");
-  return detail::min_float(src0.cl_vector(), src1.cl_vector());
+  return detail::min(src0.cl_vector(), src1.cl_vector());
 }
 
 template <typename T, int width>
 vector<T, width> maximum(vector<T, width> src0, vector<T, width> src1) {
-  static_assert(cl::is_floating_point<T>::value,
-                "only floating point types supported yet for maximum");
-  return detail::max_float(src0.cl_vector(), src1.cl_vector());
+  return detail::max(src0.cl_vector(), src1.cl_vector());
 }
 
 template <typename T> T minimum(T src0, T src1) {
-  static_assert(cl::is_floating_point<T>::value,
-                "only floating point types supported yet for minimum");
-  return detail::min_float(src0, src1);
+  return detail::min(src0, src1);
 }
 
 template <typename T> T maximum(T src0, T src1) {
-  static_assert(cl::is_floating_point<T>::value,
-                "only floating point types supported yet for maximum");
-  return detail::max_float(src0, src1);
+  return detail::max(src0, src1);
 }
 
 /*====================== log_base_2 =====================*/

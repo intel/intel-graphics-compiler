@@ -118,6 +118,11 @@ template <typename T> uint32_t __cm_cl_cbit(T src);
 template <typename T, int width>
 vector_impl<uint32_t, width> __cm_cl_cbit(vector_impl<T, width> src);
 
+template <typename T> T __cm_cl_smin(T src0, T src1);
+template <typename T> T __cm_cl_smax(T src0, T src1);
+template <typename T> T __cm_cl_umin(T src0, T src1);
+template <typename T> T __cm_cl_umax(T src0, T src1);
+
 template <typename T> T __cm_cl_fma(T src0, T src1, T src2);
 
 uint32_t __cm_cl_bfrev(uint32_t src);
@@ -394,6 +399,30 @@ template <typename T> T absolute(T src) {
   return src;
 }
 
+template <typename T> T min(T src0, T src1) {
+  static_assert(cl::is_arithmetic<T>::value,
+                "Min only supports arithmetic types");
+  if constexpr (cl::is_floating_point<T>::value)
+    return __cm_cl_minnum(src0, src1);
+
+  if constexpr (cl::is_signed<T>::value)
+    return __cm_cl_smin(src0, src1);
+
+  return __cm_cl_umin(src0, src1);
+}
+
+template <typename T> T max(T src0, T src1) {
+  static_assert(cl::is_arithmetic<T>::value,
+                "Max only supports arithmetic types");
+  if constexpr (cl::is_floating_point<T>::value)
+    return __cm_cl_maxnum(src0, src1);
+
+  if constexpr (cl::is_signed<T>::value)
+    return __cm_cl_smax(src0, src1);
+
+  return __cm_cl_umax(src0, src1);
+}
+
 template <typename T> T ceil(T src) {
   static_assert(cl::is_floating_point<T>::value,
                 "Ceil function expects floating poing type.");
@@ -416,18 +445,6 @@ template <typename T> T roundne(T src) {
   static_assert(cl::is_floating_point<T>::value,
                 "Roundne function expects floating poing type.");
   return __cm_cl_roundne(src);
-}
-
-template <typename T> T min_float(T src0, T src1) {
-  static_assert(cl::is_floating_point<T>::value,
-                "illegal type provided in min_float");
-  return __cm_cl_minnum(src0, src1);
-}
-
-template <typename T> T max_float(T src0, T src1) {
-  static_assert(cl::is_floating_point<T>::value,
-                "illegal type provided in max_float");
-  return __cm_cl_maxnum(src0, src1);
 }
 
 template <bool use_fast, typename T> T sqrt(T src) {

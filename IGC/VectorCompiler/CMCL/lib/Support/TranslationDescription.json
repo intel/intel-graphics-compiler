@@ -699,6 +699,66 @@
         ]
       }
     },
+    "SMin": {
+      "Name": "smin",
+      "Operands": [
+        {"Name": "Source0", "Kind": "Input"},
+        {"Name": "Source1", "Kind": "Input"}
+      ],
+      "TranslateInto": {
+        "LLVM-Intrinsic": "smin",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"GetBuiltinOperand": ["Source0"]},
+          {"GetBuiltinOperand": ["Source1"]}
+        ]
+      }
+    },
+    "SMax": {
+      "Name": "smax",
+      "Operands": [
+        {"Name": "Source0", "Kind": "Input"},
+        {"Name": "Source1", "Kind": "Input"}
+      ],
+      "TranslateInto": {
+        "LLVM-Intrinsic": "smax",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"GetBuiltinOperand": ["Source0"]},
+          {"GetBuiltinOperand": ["Source1"]}
+        ]
+      }
+    },
+    "UMin": {
+      "Name": "umin",
+      "Operands": [
+        {"Name": "Source0", "Kind": "Input"},
+        {"Name": "Source1", "Kind": "Input"}
+      ],
+      "TranslateInto": {
+        "LLVM-Intrinsic": "umin",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"GetBuiltinOperand": ["Source0"]},
+          {"GetBuiltinOperand": ["Source1"]}
+        ]
+      }
+    },
+    "UMax": {
+      "Name": "umax",
+      "Operands": [
+        {"Name": "Source0", "Kind": "Input"},
+        {"Name": "Source1", "Kind": "Input"}
+      ],
+      "TranslateInto": {
+        "LLVM-Intrinsic": "umax",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"GetBuiltinOperand": ["Source0"]},
+          {"GetBuiltinOperand": ["Source1"]}
+        ]
+      }
+    },
     "Log2": {
       "Name": "log2",
       "Operands": [

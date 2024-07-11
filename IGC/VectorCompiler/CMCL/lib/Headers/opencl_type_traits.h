@@ -101,7 +101,8 @@ template <typename T> struct pointer_traits<__constant T *> {
 template <typename T>
 struct is_floating_point
     : integral_constant<
-          bool, is_same<float, typename remove_cv<T>::type>::value ||
+          bool, is_same<half, typename remove_cv<T>::type>::value ||
+                    is_same<float, typename remove_cv<T>::type>::value ||
                     is_same<double, typename remove_cv<T>::type>::value ||
                     is_same<long double, typename remove_cv<T>::type>::value> {
 };
