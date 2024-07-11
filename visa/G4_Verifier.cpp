@@ -51,6 +51,16 @@ void G4Verifier::verify() {
   for (auto BBI = kernel.fg.cbegin(), BBE = kernel.fg.cend(); BBI != BBE;
        ++BBI) {
     auto bb = *BBI;
+    if (!bb->getFuncInfo() || !bb->getFuncInfo()->contains(bb))
+      vISA_ASSERT(false, "mismatch in bb->funcInfo link");
+    if (bb->isEndWithCall()) {
+      vISA_ASSERT(bb->getFuncInfo() != bb->Succs.front()->getFuncInfo(),
+                  "caller and callee have same FuncInfo*");
+    }
+    if (bb->getBBType() & G4_BB_EXIT_TYPE) {
+      vISA_ASSERT(bb->getFuncInfo() != bb->Succs.front()->getFuncInfo(),
+                  "return and returnee have same FuncInfo*");
+    }
     if (bb->isSpecialEmptyBB()) {
       // Special empty bb should have a single label instruction.
       vISA_ASSERT(bb->size() == 1 && bb->front()->isLabel(),

@@ -1469,6 +1469,7 @@ static void Stitch_Compiled_Units(G4_Kernel *mainFunc,
       .setPhysicalPredSucc(); // this is to locate the next BB after an fcall
 
   auto builder = mainFunc->fg.builder;
+  mainFunc->fg.canUpdateFuncInfo = false;
   // Change fcall/fret to call/ret and setup caller/callee edges
   for (G4_BB *cur : mainFunc->fg) {
     if (cur->isEndWithFCall()) {

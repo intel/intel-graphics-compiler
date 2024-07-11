@@ -1541,7 +1541,7 @@ void Augmentation::verifyHomeLocation() {
     if (allDefs) {
       for (auto &def : *allDefs) {
         auto *bb = std::get<1>(def);
-        if (bbToFunc.at(bb) != func)
+        if (bb->getFuncInfo() != func)
           return false;
       }
     }
@@ -1550,7 +1550,7 @@ void Augmentation::verifyHomeLocation() {
     if (allUses) {
       for (auto &def : *allUses) {
         auto *bb = std::get<1>(def);
-        if (bbToFunc.at(bb) != func)
+        if (bb->getFuncInfo() != func)
           return false;
       }
     }

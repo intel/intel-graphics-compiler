@@ -238,6 +238,11 @@ BB_LIST_ITER FlowGraph::insert(BB_LIST_ITER iter, G4_BB *bb) {
   G4_BB *next = iter != BBs.end() ? *iter : nullptr;
   setPhysicalLink(prev, bb);
   setPhysicalLink(bb, next);
+  if (prev)
+    updateFuncInfoPredSucc(prev, bb);
+  else {
+    updateFuncInfoPredSucc(bb, next);
+  }
   markStale();
   return BBs.insert(iter, bb);
 }
@@ -245,6 +250,11 @@ BB_LIST_ITER FlowGraph::insert(BB_LIST_ITER iter, G4_BB *bb) {
 void FlowGraph::erase(BB_LIST_ITER iter) {
   G4_BB *prev = (iter != BBs.begin()) ? *std::prev(iter) : nullptr;
   G4_BB *next = (std::next(iter) != BBs.end()) ? *std::next(iter) : nullptr;
+  auto *funcInfo = (*iter)->getFuncInfo();
+  if (funcInfo) {
+    funcInfo->eraseBB(*iter);
+    (*iter)->setFuncInfo(nullptr);
+  }
   setPhysicalLink(prev, next);
   BBs.erase(iter);
   markStale();
@@ -614,7 +624,6 @@ void FlowGraph::normalizeFlowGraph() {
         it--;
 
         retBB = newNode;
-        fnInfo->addBB(newNode);
       }
     }
   }
@@ -927,6 +936,16 @@ void FlowGraph::constructFlowGraph(INST_LIST &instlist) {
   builder->materializeGlobalImm(getEntryBB());
   normalizeRegionDescriptors();
   localDataFlowAnalysis();
+
+  for (auto *funcInfo : funcInfoTable) {
+    for (auto *bb : funcInfo->getBBList())
+      bb->setFuncInfo(funcInfo);
+  }
+
+  for (auto *bb : kernelInfo->getBBList())
+    bb->setFuncInfo(kernelInfo);
+
+  canUpdateFuncInfo = true;
 
   markStale();
   setCurrentDebugPass(nullptr);

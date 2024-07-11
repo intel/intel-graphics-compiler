@@ -428,7 +428,6 @@ private:
   std::unordered_map<FuncInfo *, std::unordered_set<G4_Declare *>> retValPerSub;
   std::unordered_map<G4_Declare *, std::unordered_set<FuncInfo *>> unknownArgRetvalRefs;
   std::unordered_map<G4_Declare *, std::unordered_set<FuncInfo *>> nonGRFRefs;
-  std::unordered_map<G4_BB *, FuncInfo *> bbToFunc;
   // Store home function for given variable. Home function is defined as
   // function that contains explicit def or use of the variable. Each regular
   // variable has a unique home function. Arg/retval don't have a unique home

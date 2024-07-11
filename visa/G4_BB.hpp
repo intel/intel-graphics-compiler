@@ -46,49 +46,47 @@ class G4_BB {
   //
   // basic block id
   //
-  unsigned id;
+  unsigned id = 0;
   //
   // traversal is for traversing control flow graph (to indicate the
   // block is visited)
   //
-  unsigned traversal;
+  unsigned traversal = 0;
 
-  //
-  // if the current BB ends with a CALL subroutine, then the calleeInfo points
-  // to the FuncInfo node corresponding to the called function.
-  // else if the block is an INIT/EXIT block of a function, then the funcInfo
-  // points to the FuncInfo node of its function.
-  //
-  union {
-    FuncInfo *calleeInfo;
-    FuncInfo *funcInfo;
-  };
+  // If the current BB ends with a CALL subroutine, then calleeInfo points
+  // to the FuncInfo instance corresponding to the called function. Otherwise,
+  // this member contains no useful information.
+  FuncInfo *calleeInfo = nullptr;
+
+  // Points to FuncInfo instance this G4_BB belongs to. After CFG construction,
+  // all G4_BB instances must have valid pointer in funcInfo.
+  FuncInfo *funcInfo = nullptr;
 
   //
   // the block classification
   //
-  unsigned BBType;
+  unsigned BBType = G4_BB_NONE_TYPE;
 
   // indicate the nest level of the loop
-  unsigned char loopNestLevel;
+  unsigned char loopNestLevel = 0;
 
   // indicates the scoping info in call graph
-  unsigned scopeID;
+  unsigned scopeID = 0;
 
   // If a BB is divergent, this field is set to true. By divergent, it means
   // that among all active lanes on entry to shader/kernel, not all lanes are
   // active in this BB.
-  bool divergent;
+  bool divergent = false;
 
-  bool specialEmptyBB;
+  bool specialEmptyBB = false;
 
   // the physical pred/succ for this block (i.e., the pred/succ for this
   // block in the BB list).  Note that some transformations may rearrange
   // BB layout, so for safety it's best to recompute this
-  G4_BB *physicalPred;
-  G4_BB *physicalSucc;
+  G4_BB *physicalPred = nullptr;
+  G4_BB *physicalSucc = nullptr;
 
-  FlowGraph *parent;
+  FlowGraph *parent = nullptr;
 
   INST_LIST instList;
 
@@ -187,10 +185,7 @@ public:
   BB_LIST Succs;
 
   G4_BB(INST_LIST_NODE_ALLOCATOR &alloc, unsigned i, FlowGraph *fg)
-      : id(i), traversal(0), calleeInfo(NULL), BBType(G4_BB_NONE_TYPE),
-        loopNestLevel(0), scopeID(0), divergent(false),
-        specialEmptyBB(false), physicalPred(NULL), physicalSucc(NULL),
-        parent(fg), instList(alloc) {}
+      : id(i), parent(fg), instList(alloc) {}
 
   ~G4_BB() { instList.clear(); }
   G4_BB(const G4_BB&) = delete;

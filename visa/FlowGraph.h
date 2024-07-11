@@ -113,8 +113,22 @@ public:
     return BBSet.count(bb) > 0;
   }
 
-  void addBB(G4_BB *bb) { BBList.push_back(bb); }
+  void addBB(G4_BB *bb) {
+    vISA_ASSERT(!contains(bb), "duplicate insertion");
+    BBList.push_back(bb);
+  }
   std::vector<G4_BB *> &getBBList() { return BBList; }
+
+  bool eraseBB(G4_BB *bb) {
+    for (auto it = BBList.begin(); it != BBList.end(); ++it) {
+      if (bb == (*it)) {
+        BBList.erase(it);
+        BBSet.erase(bb);
+        return true;
+      }
+    }
+    return false;
+  }
 
   unsigned getScopeID() const { return scopeID; }
   void setScopeID(unsigned id) { scopeID = id; }
@@ -302,6 +316,9 @@ public:
     }
   } BCStats;
 
+  // This flag controls whether addPredSucc will link FuncInfo* to new BB
+  bool canUpdateFuncInfo = false;
+
 public:
   // forwarding functions to the BBs list
   BB_LIST_ITER begin() { return BBs.begin(); }
@@ -446,6 +463,54 @@ public:
 
   void setBuilder(IR_Builder *pBuilder) { builder = pBuilder; }
 
+  bool updateFuncInfoPredSucc(G4_BB* pred, G4_BB* succ) const {
+    // When this flag is set, this method updates FuncInfo with
+    // new G4_BB. When it's false, FuncInfo is not updated.
+    // The flag is false when:
+    // 1. Creating CFG as FuncInfo* is computed towards end of
+    //    constructFlowGraph().
+    // 2. Just before binary emission in presence of stack call.
+    //    Because at this stage, we link kernel and stack call
+    //    functions. However, this linking of CFGs is not
+    //    expected to change FuncInfo* for either pred or succ.
+    // 3. When inserting BB with pred and succ in different
+    //    FuncInfo instances. This is a corner case that requires
+    //    setting the flag to false, inserting the pred/succ link
+    //    and then setting the flag back to true. It's user's
+    //    responsibility to set FuncInfo* of newly inserted G4_BB.
+    if (canUpdateFuncInfo) {
+      // Either pred or succ is newly created. Add newly
+      // created G4_BB to appropriate FuncInfo.
+      // Note that when CFG is still being constructed,
+      // all G4_BBs will have funcInfo == nullptr. This
+      // logic works only after CFG is constructed and
+      // all G4_BBs have valid FuncInfo* attached.
+      if (!pred->getFuncInfo() && succ->getFuncInfo()) {
+        pred->setFuncInfo(succ->getFuncInfo());
+        pred->getFuncInfo()->addBB(pred);
+      } else if (!succ->getFuncInfo() && pred->getFuncInfo()) {
+        succ->setFuncInfo(pred->getFuncInfo());
+        succ->getFuncInfo()->addBB(succ);
+      }
+
+      vISA_ASSERT(pred->getFuncInfo() == succ->getFuncInfo(),
+                  "invalid func info");
+      // check that pred, succ don't straddle subroutine boundary
+      vISA_ASSERT(!(pred->getBBType() == G4_BB_CALL_TYPE &&
+                    succ->getBBType() == G4_BB_INIT_TYPE),
+                  "not expecting to set same FuncInfo for pred/succ from "
+                  "different subroutines");
+      vISA_ASSERT(!(pred->getBBType() == G4_BB_EXIT_TYPE &&
+                    succ->getBBType() == G4_BB_RETURN_TYPE),
+                  "not expecting to set same FuncInfo for pred/succ from "
+                  "different subroutines");
+
+      return true;
+    }
+
+    return false;
+  }
+
   void addPredSuccEdges(G4_BB *pred, G4_BB *succ, bool tofront = true) {
     markStale();
 
@@ -455,6 +520,8 @@ public:
       pred->Succs.push_back(succ);
 
     succ->Preds.push_front(pred);
+
+    updateFuncInfoPredSucc(pred, succ);
   }
 
   void addUniquePredSuccEdges(G4_BB *pred, G4_BB *succ, bool tofront = true) {

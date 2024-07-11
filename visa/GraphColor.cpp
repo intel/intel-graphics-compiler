@@ -2835,7 +2835,7 @@ FuncInfo *Augmentation::computeHomeFunc(G4_Declare *dcl) {
   if (defs) {
     for (auto &def : *defs) {
       auto *bb = std::get<1>(def);
-      auto *curDefFunc = bbToFunc.at(bb);
+      auto *curDefFunc = bb->getFuncInfo();
       if (!homeFunction) {
         homeFunction = curDefFunc;
         continue;
@@ -2849,7 +2849,7 @@ FuncInfo *Augmentation::computeHomeFunc(G4_Declare *dcl) {
   if (uses) {
     for (auto &use : *uses) {
       auto *bb = std::get<1>(use);
-      auto *curUseFunc = bbToFunc.at(bb);
+      auto *curUseFunc = bb->getFuncInfo();
       if (!homeFunction) {
         homeFunction = curUseFunc;
         continue;
@@ -2867,7 +2867,6 @@ void Augmentation::populateFuncMaps() {
   instToFunc.resize(kernel.fg.getBBList().back()->back()->getLexicalId() + 1);
   for (auto &func : kernel.fg.sortedFuncTable) {
     for (auto &bb : func->getBBList()) {
-      bbToFunc[bb] = func;
       for (auto *inst : bb->getInstList()) {
         instToFunc[inst->getLexicalId()] = func;
       }
@@ -4194,7 +4193,7 @@ void Augmentation::handleNonReducibleExtension(FuncInfo *funcInfo) {
     auto &&anSCC = *iter;
     std::unordered_set<G4_BB *> SCCSucc; // any successor BB of the SCC
     G4_BB *headBB = anSCC.getEarliestBB();
-    if (hasSubroutines && bbToFunc.at(headBB) != funcInfo)
+    if (hasSubroutines && headBB->getFuncInfo() != funcInfo)
       continue;
     for (auto BI = anSCC.body_begin(), BIEnd = anSCC.body_end(); BI != BIEnd;
          ++BI) {
@@ -4217,7 +4216,7 @@ void Augmentation::handleLoopExtension(FuncInfo *funcInfo) {
     auto &backEdge = iter.first;
     // Check whether loop is in current function
     if (hasSubroutines &&
-        funcInfo != bbToFunc.at(backEdge.first))
+        funcInfo != backEdge.first->getFuncInfo())
       continue;
     G4_INST *startInst = (backEdge.second)->front();
     const std::set<G4_BB *> &loopBody = iter.second;
