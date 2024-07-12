@@ -1430,6 +1430,15 @@ bool hasLSCSamplerRouting() const
     return isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
+bool hasBarrierControlFlowOpt() const
+{
+    bool enabled =
+        hasLSC() && IGC_IS_FLAG_ENABLED(EnableLSCFence) &&
+        isCoreChildOf(IGFX_XE2_HPG_CORE);
+
+    return enabled;
+}
+
 bool supportStochasticLod() const
 {
     return isCoreChildOf(IGFX_XE2_HPG_CORE);

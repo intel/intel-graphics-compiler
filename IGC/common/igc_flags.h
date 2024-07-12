@@ -295,6 +295,7 @@ DECLARE_IGC_REGKEY(bool, EnableGEPLSRAnyIntBitWidth, false, "Experimental: Enabl
 DECLARE_IGC_REGKEY(DWORD, FPRoundingModeCoalescingMaxDistance, 20, "Max distance in instructions for reordering FP instructions with common rounding mode", false)
 DECLARE_IGC_REGKEY(bool, DisableDotAddToDp4aMerge, false, "Disable Dot and Add ops to Dp4a merge optimization.", false)
 DECLARE_IGC_REGKEY(bool, DisableLoopSplitWidePHIs, false, "Disable splitting of loop PHI values to eliminate subvector extract operations", false)
+DECLARE_IGC_REGKEY(bool, EnableBarrierControlFlowOptimizationPass, false, "Enable barrier control flow optimization pass", false)
 
 DECLARE_IGC_GROUP("Shader debugging")
 DECLARE_IGC_REGKEY(bool, CopyA0ToDBG0,                  false, " Copy a0 used for extended msg descriptor to dbg0 to help debug", false)

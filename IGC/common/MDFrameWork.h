@@ -454,6 +454,7 @@ namespace IGC
         bool DisableFastestForWaveIntrinsicsCS          = false;
         bool ForceLinearWalkOnLinearUAV                 = false;
         bool DisableLscSamplerRouting                   = false;
+        bool UseBarrierControlFlowOptimization          = false;
     };
 
     enum class ThreadIDLayout
