@@ -89,6 +89,7 @@ private:
     void matchShufflePattern(GenIntrinsicInst &ShuffleOp, uint64_t Lane);
 
     bool reduce(ShufflePattern &Pattern);
+    GenISAIntrinsic::ID getReductionType(uint64_t XorMask);
 
     static WaveOps getWaveOp(Instruction* Op);
 
@@ -248,9 +249,7 @@ bool ShufflePattern::append(GenIntrinsicInst *ShuffleOp, Instruction *Op, WaveOp
 
 bool SubGroupReductionPattern::reduce(ShufflePattern &Pattern)
 {
-    // Check XORs pattern.
-    // Full reduction for SIMD16: 8, 4, 2, 1
-
+    // Check what shuffles are engaged in reduction.
     uint64_t XorMask = 0;
     for (auto &Step : Pattern.Steps)
     {
@@ -259,25 +258,94 @@ bool SubGroupReductionPattern::reduce(ShufflePattern &Pattern)
         XorMask |= Step.Lane;
     }
 
-    if (XorMask != (SubGroupSize - 1))
+    GenISAIntrinsic::ID ReductionType = getReductionType(XorMask);
+    if (ReductionType == GenISAIntrinsic::no_intrinsic)
         return false;
 
-    // Can do full reduction.
-    auto &FirstStep = Pattern.Steps.front();
+    auto *FirstShuffle = Pattern.Steps.front().ShuffleOp;
+    auto *LastOp = Pattern.Steps.back().Op;
 
-    IRBuilder<> IRB(FirstStep.ShuffleOp);
-    IRB.SetCurrentDebugLocation(FirstStep.ShuffleOp->getDebugLoc());
+    IRBuilder<> IRB(FirstShuffle);
+    IRB.SetCurrentDebugLocation(LastOp->getDebugLoc());
 
-    Value *Args[3] = { FirstStep.ShuffleOp->getOperand(0), IRB.getInt8((uint8_t) Pattern.OpType), IRB.getInt32(0) };
-    Function *WaveAll = GenISAIntrinsic::getDeclaration(FirstStep.ShuffleOp->getCalledFunction()->getParent(),
-        GenISAIntrinsic::GenISA_WaveAll,
+    SmallVector<Value*, 4> Args;
+    Args.push_back(FirstShuffle->getOperand(0));
+    Args.push_back(IRB.getInt8((uint8_t) Pattern.OpType));
+    if (ReductionType == GenISAIntrinsic::GenISA_WaveClustered)
+        Args.push_back(IRB.getInt32(XorMask + 1));
+    Args.push_back(IRB.getInt32(0));
+
+    Function *WaveFunc = GenISAIntrinsic::getDeclaration(FirstShuffle->getCalledFunction()->getParent(),
+        ReductionType,
         Args[0]->getType());
 
-    auto &LastStep = Pattern.Steps.back();
-    LastStep.Op->replaceAllUsesWith(IRB.CreateCall(WaveAll, Args));
-    RecursivelyDeleteTriviallyDeadInstructions(LastStep.Op);
+    LastOp->replaceAllUsesWith(IRB.CreateCall(WaveFunc, Args));
+    RecursivelyDeleteTriviallyDeadInstructions(LastOp);
 
     return true;
+}
+
+GenISAIntrinsic::ID SubGroupReductionPattern::getReductionType(uint64_t XorMask)
+{
+    // Example for SIMD8
+    //
+    // WaveAll - full reduction, all work items mixed
+    //   xor: 1, 2, 4 (order doesn't matter)
+    //
+    // WaveClustered - lower N xors
+    //
+    //   xor: 4, 2 => cluster size 4
+    //   Work Item |       0 |       1 |       2 |       3 |       4 |       5 |       6 |       7 |
+    //   xor 1     |     0,1 |     0,1 |     2,3 |     2,3 |     4,5 |     4,5 |     6,7 |     6,7 |
+    //   xor 2     | 0,1,2,3 | 0,1,2,3 | 0,1,2,3 | 0,1,2,3 | 4,5,6,7 | 4,5,6,7 | 4,5,6,7 | 4,5,6,7 |
+
+    if (XorMask >= SubGroupSize)
+        return GenISAIntrinsic::no_intrinsic;
+
+    if (XorMask == (SubGroupSize - 1))
+        return GenISAIntrinsic::GenISA_WaveAll;
+
+    if (SubGroupSize == 8)
+    {
+        switch (XorMask)
+        {
+        // Clustered reduction: N lower xors
+        case 1:
+        case 3:
+            return GenISAIntrinsic::GenISA_WaveClustered;
+        default:
+            break;
+        }
+    }
+    else if (SubGroupSize == 16)
+    {
+        switch (XorMask)
+        {
+        // Clustered reduction: N lower xors
+        case 1:
+        case 3:
+        case 7:
+            return GenISAIntrinsic::GenISA_WaveClustered;
+        default:
+            break;
+        }
+    }
+    else if (SubGroupSize == 32)
+    {
+        switch (XorMask)
+        {
+        // Clustered reduction: N lower xors
+        case 1:
+        case 3:
+        case 7:
+        case 15:
+            return GenISAIntrinsic::GenISA_WaveClustered;
+        default:
+            break;
+        }
+    }
+
+    return GenISAIntrinsic::no_intrinsic;
 }
 
 WaveOps SubGroupReductionPattern::getWaveOp(Instruction *Op)
