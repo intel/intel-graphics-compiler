@@ -96,7 +96,7 @@ CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(IgcFeaturesAndWorkarounds, 3, 2) {
 CIF_GENERATE_VERSIONS_LIST(IgcFeaturesAndWorkarounds);
 CIF_MARK_LATEST_VERSION(IgcFeaturesAndWorkaroundsLatest, IgcFeaturesAndWorkarounds);
 
-using IgcFeaturesAndWorkaroundsTagOCL = IgcFeaturesAndWorkarounds<2>; // transition time - remove this using
+using IgcFeaturesAndWorkaroundsTagOCL = IgcFeaturesAndWorkarounds<3>; // transition time - remove this using
                                                                       // and uncomment the one below when finished
 
 //using IgcFeaturesAndWorkaroundsTagOCL = IgcFeaturesAndWorkaroundsLatest; // Note : can tag with different version for
