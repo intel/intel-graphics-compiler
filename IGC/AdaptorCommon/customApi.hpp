@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #pragma once
 
 #include "usc.h"
+#include "API/igc.h"
 #include "common/igc_regkeys.hpp"
 
 #if !defined( IGC_DEBUG_VARIABLES )

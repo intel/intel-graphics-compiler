@@ -13,7 +13,7 @@ endif()
 
   # Variables set here are used by `configure_file` call and by
   # `add_lit_testsuite` later on.
-  set(IGC_LIBRARY_DIR "$<TARGET_FILE_DIR:igc_dll>")
+  set(IGC_LIBRARY_DIR "$<TARGET_FILE_DIR:${IGC_BUILD__PROJ__igc_dll}>")
   set(OPENCL_CLANG_LIB_DIR "$<TARGET_FILE_DIR:opencl-clang-lib>")
   set(IGC_OCLOC_TEST_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
   set(IGC_OCLOC_TEST_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>)

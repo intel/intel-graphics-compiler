@@ -1270,7 +1270,6 @@ bool TranslateBuildSPMD(
         // dump cmd file that has igcstandalone command to compile this kernel.
         std::ostringstream cmdline;
         cmdline << "IGCStandalone -api ocl"
-                << " -llvm " << LLVM_VERSION_MAJOR
                 << std::hex
                 << " -device 0x" << IGCPlatform.GetProductFamily()
                 << ".0x" << IGCPlatform.GetDeviceId()
