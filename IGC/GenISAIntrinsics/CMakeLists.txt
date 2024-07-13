@@ -15,7 +15,6 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
 set(IGC_BUILD__GenISAIntrinsics_GENERATOR_INPUT_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/Intrinsic_definitions.py"
-    "${CMAKE_CURRENT_SOURCE_DIR}/generator/input/Intrinsic_definitions.yml"
     )
 
 set(IGC_BUILD__GenISAIntrinsics_GENERATOR_SCRIPTS
