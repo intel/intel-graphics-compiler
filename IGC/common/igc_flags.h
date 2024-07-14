@@ -725,6 +725,7 @@ DECLARE_IGC_REGKEY(DWORD, ForcePixelShaderSIMDMode,     0,     "Setting it to va
 DECLARE_IGC_REGKEY(DWORD, StagedCompilationExperiments, 0,     "Experiment with staged compilation when != 0", false)
 DECLARE_IGC_REGKEY(bool, RequestStage2,                 true, "Enable staged compilation via requesting stage 2", false)
 DECLARE_IGC_REGKEY(bool, LTOForStage1Compilation,       true, "LTO for stage 1 compilation", false)
+DECLARE_IGC_REGKEY(bool, PSOForStage1Compilation,       false, "PSO for stage 1 compilation", false)
 DECLARE_IGC_REGKEY(bool, EnableTrackPtr,                false, "Track Staging Context alloc/dealloc", false)
 DECLARE_IGC_REGKEY(bool, ExtraRetrySIMD16,              false,  "Enable extra simd16 with retry for STAGE1_BEST_PREF", false)
 DECLARE_IGC_REGKEY(bool, SaveRestoreIR,                 true,  "Save/Restore IR for staged compilation to avoid duplicated compilations", false)
