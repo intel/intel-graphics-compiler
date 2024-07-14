@@ -292,11 +292,6 @@ void WIAnalysisRunner::init(
     m_CGCtx = CGCtx;
     m_ModMD = ModMD;
     m_TT = TransTable;
-
-    // CS uniformness
-    m_localIDxUniform = false;
-    m_localIDyUniform = false;
-    m_localIDzUniform = false;
 }
 
 bool WIAnalysisRunner::run()
@@ -1573,6 +1568,9 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
             case THREAD_ID_X: // global invocation id X in CS or OCL Kernel
             case THREAD_ID_Y: // global invocation id Y in CS or OCL Kernel
             case THREAD_ID_Z: // global invocation id Z in CS or OCL Kernel
+            case THREAD_ID_IN_GROUP_X: // local invocation id X in CS or OCL Kernel
+            case THREAD_ID_IN_GROUP_Y: // local invocation id Y in CS or OCL Kernel
+            case THREAD_ID_IN_GROUP_Z: // local invocation id Z in CS or OCL Kernel
             case OUTPUT_CONTROL_POINT_ID: // unused
             case DOMAIN_POINT_ID_X: // domain point U from DS payload
             case DOMAIN_POINT_ID_Y: // domain point V from DS payload
@@ -1594,21 +1592,6 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
             case POINT_COORD_Y: // point-sprite coordinate Y from PS attributes
             {
                 return WIAnalysis::RANDOM;
-            }
-            case THREAD_ID_IN_GROUP_X: // local invocation id X in CS or OCL Kernel
-            {
-                return m_localIDxUniform ? WIAnalysis::UNIFORM_THREAD
-                                         : WIAnalysis::RANDOM;
-            }
-            case THREAD_ID_IN_GROUP_Y: // local invocation id Y in CS or OCL Kernel
-            {
-                return m_localIDyUniform ? WIAnalysis::UNIFORM_THREAD
-                                         : WIAnalysis::RANDOM;
-            }
-            case THREAD_ID_IN_GROUP_Z: // local invocation id Z in CS or OCL Kernel
-            {
-                return m_localIDzUniform ? WIAnalysis::UNIFORM_THREAD
-                                         : WIAnalysis::RANDOM;
             }
             case MSAA_RATE: // multisample rate from PS payload
             case DISPATCH_DIMENSION_X: // dispatch size X from MS payload
@@ -2088,117 +2071,6 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const VAArgInst* inst)
     return WIAnalysis::RANDOM;
 }
 
-void WIAnalysisRunner::CS_checkLocalIDs(Function *F)
-{
-    if (IGC_IS_FLAG_DISABLED(OverrideCsWalkOrderEnable) ||
-        IGC_IS_FLAG_DISABLED(OverrideCsTileLayoutEnable))
-        return;
-
-    Module *M = F->getParent();
-    uint32_t X = 0, Y = 0, Z = 0;
-    if (GlobalVariable *pX = M->getGlobalVariable("ThreadGroupSize_X")) {
-        X = int_cast<unsigned>(
-            cast<ConstantInt>(pX->getInitializer())->getZExtValue());
-    }
-    if (GlobalVariable *pY = M->getGlobalVariable("ThreadGroupSize_Y")) {
-        Y = int_cast<unsigned>(
-            cast<ConstantInt>(pY->getInitializer())->getZExtValue());
-    }
-    if (GlobalVariable *pZ = M->getGlobalVariable("ThreadGroupSize_Z")) {
-        Z = int_cast<unsigned>(
-            cast<ConstantInt>(pZ->getInitializer())->getZExtValue());
-    }
-
-    // sanity
-    if (X == 0 || Y == 0 || Z == 0) {
-        return;
-    }
-
-    if (X == 1) {
-        m_localIDxUniform = true;
-    }
-    if (Y == 1) {
-        m_localIDyUniform = true;
-    }
-    if (Z == 1) {
-        m_localIDzUniform = true;
-    }
-
-    auto walkOrder = (CS_WALK_ORDER)IGC_GET_FLAG_VALUE(OverrideCsWalkOrder);
-    auto idLayout = (ThreadIDLayout)IGC_GET_FLAG_VALUE(OverrideCsTileLayout);
-    constexpr uint32_t simdSize = 32;
-    if (idLayout == ThreadIDLayout::X)
-    {
-        auto setUniform = [this](int dim) {
-          switch (dim) {
-          case 0:
-            m_localIDxUniform = true;
-            break;
-          case 1:
-            m_localIDyUniform = true;
-            break;
-          case 2:
-            m_localIDzUniform = true;
-            break;
-          default:
-            IGC_ASSERT_UNREACHABLE();
-          }
-        };
-
-        const uint32_t dims[3] = {X, Y, Z};
-        struct {
-            char first;
-            char second;
-            char third;
-        } orders;
-
-        switch (walkOrder) {
-        case CS_WALK_ORDER::WO_XYZ:
-            orders = {0, 1, 2};
-            break;
-        case CS_WALK_ORDER::WO_XZY:
-            orders = {0, 2, 1};
-            break;
-        case CS_WALK_ORDER::WO_YXZ:
-            orders = {1, 0, 2};
-            break;
-        case CS_WALK_ORDER::WO_ZXY:
-            orders = {2, 0, 1};
-            break;
-        case CS_WALK_ORDER::WO_YZX:
-            orders = {1, 2, 0};
-            break;
-        case CS_WALK_ORDER::WO_ZYX:
-            orders = {2, 1, 0};
-            break;
-        default:
-            return;
-        }
-
-        if ((dims[orders.first] % simdSize) == 0)
-        {
-            // first dim is multiple of simd size
-            setUniform(orders.second);
-            setUniform(orders.third);
-        }
-        else if (((dims[orders.first] * dims[orders.second]) % simdSize) == 0)
-        {
-            // combination of first and second dims are multiple of simd size
-            setUniform(orders.third);
-        }
-        return;
-    }
-
-    bool isTileY = (idLayout == ThreadIDLayout::TileY &&
-                    walkOrder == CS_WALK_ORDER::WO_YXZ);
-    bool isQuadTile = (idLayout == ThreadIDLayout::QuadTile &&
-                       walkOrder == CS_WALK_ORDER::WO_XYZ);
-    if ((isTileY || isQuadTile) && ((X * Y) % simdSize) == 0) {
-        // combination of first and second dims is multiple of simd siz
-        m_localIDzUniform = true;
-    }
-}
-
 // Set IsLxUniform/IsLyUniform/IsLxUniform to true if they are uniform;
 // do nothing otherwise.
 void WIAnalysisRunner::checkLocalIdUniform(
@@ -2207,10 +2079,6 @@ void WIAnalysisRunner::checkLocalIdUniform(
     bool& IsLyUniform,
     bool& IsLzUniform)
 {
-    if (m_CGCtx->type == ShaderType::COMPUTE_SHADER) {
-        CS_checkLocalIDs(F);
-        return;
-    }
     if (m_CGCtx->type != ShaderType::OPENCL_SHADER)
     {
         return;
