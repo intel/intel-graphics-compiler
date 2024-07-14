@@ -1694,28 +1694,14 @@ bool BB_Scheduler::scheduleBlockForLatency(unsigned &MaxPressure,
     unsigned Thresholds[] = {144, 128, 112, 104, 96};
     unsigned Iterations = 5;
     float Ratio = (std::max(NumGrfs, 128u) - 48u) / 80.0f;
-    if (!kernel.fg.builder->hasSingleALUPipe()) {
-      Iterations++;
-    } else {
-      // limit the iterative approach to certain platforms for now
-      if (config.DoNotIterate) {
-        Thresholds[0] = getLatencyHidingThreshold(kernel, NumGrfs);
-        Iterations = 1;
-        Ratio = 1.0f; // already adjusted inside getLatencyHidingThreshold
-      }
+    // limit the iterative approach to certain platforms for now
+    if (config.DoNotIterate) {
+      Thresholds[0] = getLatencyHidingThreshold(kernel, NumGrfs);
+      Iterations = 1;
+      Ratio = 1.0f; // already adjusted inside getLatencyHidingThreshold
     }
-    // the last iteration uses the threshold from getLatencyHidingThreshold
     for (unsigned i = 0; i < Iterations; ++i) {
-      unsigned GroupingThreshold = 0;
-      if (!kernel.fg.builder->hasSingleALUPipe() && i == Iterations) {
-        GroupingThreshold = getLatencyHidingThreshold(kernel, NumGrfs);
-        if (GroupingThreshold * 1.0 > Thresholds[i - 1] * Ratio) {
-          break;
-        }
-        Ratio = 1.0f; // already adjusted inside getLatencyHidingThreshold
-      } else {
-        GroupingThreshold = Thresholds[i];
-      }
+      auto GroupingThreshold = Thresholds[i];
       ddd.reset(ReassignID);
       ReassignID = false; // only reassign inst-local-id at most once
       LatencyScheduling(unsigned(GroupingThreshold * Ratio));
