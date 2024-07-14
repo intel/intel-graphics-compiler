@@ -246,6 +246,7 @@ namespace IGC
             bool& IsLyUniform,
             bool& IsLzUniform);
 
+        void CS_checkLocalIDs(llvm::Function *F);
     private:
 
         /// The WIAnalysis follows pointer arithmetic
@@ -296,6 +297,11 @@ namespace IGC
         // Is this analysis providing information that could be used for late
         // stage codegen, or is it just used to determine uniformity early on?
         bool ForCodegen = true;
+
+        // Caching CS local ID's uniformness
+        bool m_localIDxUniform;
+        bool m_localIDyUniform;
+        bool m_localIDzUniform;
     };
 
     /// @brief Work Item Analysis class used to provide information on
