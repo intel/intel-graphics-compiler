@@ -60,8 +60,6 @@ bool CIF_GET_INTERFACE_CLASS(IgcBuiltins, 1)::GetBuiltinMemoryRequired(IGCBuilti
     {
     case BuiltinAlgorithm::sort:
     {
-        return false;
-
         const size_t bits_per_pass = 4;
 
         if (scope == BuiltinMemoryScope::subGroup)
