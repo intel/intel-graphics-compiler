@@ -156,7 +156,7 @@ void GenXPrintfPhiClonning::fillPhiCandidates(BasicBlock *BB,
 void GenXPrintfPhiClonning::updatePhiCandidates(
     BasicBlock *Clone, ValueToValueMapTy &VMap,
     PhiCandidatesType &PhiCandidates) {
-  for (auto [Inst, Phi] : PhiCandidates) {
+  for (const auto &[Inst, Phi] : PhiCandidates) {
     Value *CloneInst = VMap[Inst];
     Phi->addIncoming(CloneInst, Clone);
   }
@@ -166,7 +166,7 @@ void GenXPrintfPhiClonning::doRAUWOrigBB(BasicBlock *BB,
                                          PhiCandidatesType &PhiCandidates,
                                          EraseListType &ToErase) {
   // 1-st setIncomming for mapped values
-  for (auto [Inst, Phi] : PhiCandidates) {
+  for (const auto &[Inst, Phi] : PhiCandidates) {
     Phi->setIncomingValueForBlock(BB, Inst);
     IGC_ASSERT(Phi->isComplete());
   }
@@ -285,7 +285,7 @@ bool GenXPrintfPhiClonning::runOnModule(Module &M) {
     return false;
 
   // We get here very, very rarely
-  for (auto [CallInst, Phi] : ClonningCandidates) {
+  for (auto &[CallInst, Phi] : ClonningCandidates) {
     LLVM_DEBUG(dbgs() << "GenXPrintfPhiClonning:: For function "
                       << CallInst->getFunction()->getName() << "\n"
                       << *Phi << "\n"
