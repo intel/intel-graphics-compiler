@@ -1795,19 +1795,19 @@ bool GenXLowering::widenSIMD8GatherScatter(CallInst *CI, unsigned IID) {
  * lowerLSCTyped2DBlock : handle padding for the typed 2d block messages
  */
 bool GenXLowering::lowerLSCTyped2DBlock(CallInst *CI, unsigned IID) {
-  IGC_ASSERT(IID == GenXIntrinsic::genx_lsc_load2d_typed_bti ||
-             IID == GenXIntrinsic::genx_lsc_store2d_typed_bti);
+  IGC_ASSERT(IID == vc::InternalIntrinsic::lsc_load_2d_tgm_bti ||
+             IID == vc::InternalIntrinsic::lsc_store_2d_tgm_bti);
 
-  auto *L1V = CI->getOperand(0);
-  auto *L3V = CI->getOperand(1);
-  auto *BTIV = CI->getOperand(2);
-  auto *HeightV = cast<ConstantInt>(CI->getOperand(3));
-  auto *WidthV = cast<ConstantInt>(CI->getOperand(4));
-  auto *XOffV = CI->getOperand(5);
-  auto *YOffV = CI->getOperand(6);
+  auto *CacheOpts = CI->getOperand(0);
+  auto *BTIV = CI->getOperand(1);
+  auto *HeightV = cast<ConstantInt>(CI->getOperand(2));
+  auto *WidthV = cast<ConstantInt>(CI->getOperand(3));
+  auto *XOffV = CI->getOperand(4);
+  auto *YOffV = CI->getOperand(5);
   Value *StoreDataV = nullptr;
-  if (IID == GenXIntrinsic::genx_lsc_store2d_typed_bti)
-    StoreDataV = CI->getOperand(7);
+  bool IsStore = IID == vc::InternalIntrinsic::lsc_store_2d_tgm_bti;
+  if (IsStore)
+    StoreDataV = CI->getOperand(6);
 
   auto *DataTy = StoreDataV ? StoreDataV->getType() : CI->getType();
   auto *VTy = cast<IGCLLVM::FixedVectorType>(DataTy);
@@ -1838,9 +1838,15 @@ bool GenXLowering::lowerLSCTyped2DBlock(CallInst *CI, unsigned IID) {
     return false;
 
   auto *TargetVTy = IGCLLVM::FixedVectorType::get(ElementTy, TargetElements);
-  auto IntrinsicID = static_cast<GenXIntrinsic::ID>(IID);
-  auto *Decl = GenXIntrinsic::getGenXDeclaration(CI->getModule(), IntrinsicID,
-                                                 {TargetVTy});
+
+  SmallVector<Type *, 2> Types;
+  if (!IsStore)
+    Types.push_back(TargetVTy);
+  Types.push_back(CacheOpts->getType());
+  if (IsStore)
+    Types.push_back(TargetVTy);
+
+  auto *Decl = vc::getAnyDeclaration(CI->getModule(), IID, Types);
 
   vc::CMRegion R(ElementTy);
   R.NumElements = NElements;
@@ -1855,11 +1861,11 @@ bool GenXLowering::lowerLSCTyped2DBlock(CallInst *CI, unsigned IID) {
     R.VStride = 0;
   }
 
-  SmallVector<Value *, 8> Args = {L1V,    L3V,   BTIV, HeightV,
-                                  WidthV, XOffV, YOffV};
+  SmallVector<Value *, 7> Args = {CacheOpts, BTIV,  HeightV,
+                                  WidthV,    XOffV, YOffV};
 
   switch (IID) {
-  case GenXIntrinsic::genx_lsc_load2d_typed_bti: {
+  case vc::InternalIntrinsic::lsc_load_2d_tgm_bti: {
     auto *NewLoad = CallInst::Create(
         Decl, Args, CI->getName() + VALUE_NAME(".padding"), CI);
     NewLoad->setDebugLoc(CI->getDebugLoc());
@@ -1868,7 +1874,7 @@ bool GenXLowering::lowerLSCTyped2DBlock(CallInst *CI, unsigned IID) {
                          CI->getDebugLoc());
     CI->replaceAllUsesWith(RdRgn);
   } break;
-  case GenXIntrinsic::genx_lsc_store2d_typed_bti: {
+  case vc::InternalIntrinsic::lsc_store_2d_tgm_bti: {
     IGC_ASSERT_EXIT(StoreDataV);
     auto *WrRgn = R.createWrRegion(UndefValue::get(TargetVTy), StoreDataV,
                                    StoreDataV->getName() + ".wrregion", CI,
@@ -2059,8 +2065,8 @@ bool GenXLowering::processInst(Instruction *Inst) {
       ToErase.push_back(Inst);
       return true;
     }
-    case GenXIntrinsic::genx_lsc_load2d_typed_bti:
-    case GenXIntrinsic::genx_lsc_store2d_typed_bti:
+    case vc::InternalIntrinsic::lsc_load_2d_tgm_bti:
+    case vc::InternalIntrinsic::lsc_store_2d_tgm_bti:
       return lowerLSCTyped2DBlock(CI, IntrinsicID);
     case GenXIntrinsic::genx_ssmul:
     case GenXIntrinsic::genx_sumul:

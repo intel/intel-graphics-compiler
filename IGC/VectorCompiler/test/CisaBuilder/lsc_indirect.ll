@@ -10,8 +10,8 @@
 ; RUN: FileCheck %s
 
 declare i32 @llvm.genx.rdregioni.i32.v2i32.i16(<2 x i32>, i32, i32, i32, i16, i32) #1
-declare !genx_intrinsic_id !28 <64 x i8> @llvm.genx.lsc.load2d.typed.bti.v64i8(i8, i8, i32, i32, i32, i32, i32) #2
-declare !genx_intrinsic_id !29 void @llvm.genx.lsc.store2d.typed.bti.v64i8(i8, i8, i32, i32, i32, i32, i32, <64 x i8>) #3
+declare !genx_intrinsic_id !28 <64 x i8> @llvm.vc.internal.lsc.load.2d.tgm.bti.v64i8.v2i8(<2 x i8>, i32, i32, i32, i32, i32) #2
+declare !genx_intrinsic_id !29 void @llvm.vc.internal.lsc.store.2d.tgm.bti.v2i8.v64i8(<2 x i8>, i32, i32, i32, i32, i32, <64 x i8>) #3
 
 declare void @llvm.vc.internal.lsc.store.quad.tgm.v4i1.v4i32.v4i32(<4 x i1>, i8, i8, i8, i32, <4 x i32>, <4 x i32>, <4 x i32>, <4 x i32>, <4 x i32>) #3
 
@@ -22,9 +22,9 @@ define dllexport spir_kernel void @test_genx(<2 x i32> %base, <2 x i32> %x, <2 x
   %base.sc.ld = tail call i32 @llvm.genx.rdregioni.i32.v2i32.i16(<2 x i32> <i32 1, i32 2>, i32 0, i32 1, i32 1, i16 %offset, i32 0)
   %base.sc.st = tail call i32 @llvm.genx.rdregioni.i32.v2i32.i16(<2 x i32> <i32 1, i32 2>, i32 0, i32 1, i32 1, i16 %offset.new, i32 0)
 ; CHECK: lsc_load_block2d.tgm  V{{[0-9]+}}:8x8  bti(V{{[0-9]+}})[V{{[0-9]+}},V{{[0-9]+}}]
-  %ld.tgm = call <64 x i8> @llvm.genx.lsc.load2d.typed.bti.v64i8(i8 0, i8 0, i32 %base.sc.ld, i32 8, i32 8, i32 %x.sc, i32 %y.sc)
+  %ld.tgm = call <64 x i8> @llvm.vc.internal.lsc.load.2d.tgm.bti.v64i8.v2i8(<2 x i8> zeroinitializer, i32 %base.sc.ld, i32 8, i32 8, i32 %x.sc, i32 %y.sc)
 ; CHECK: lsc_store_block2d.tgm  bti(V{{[0-9]+}})[V{{[0-9]+}},V{{[0-9]+}}]  V{{[0-9]+}}:8x8
-  call void @llvm.genx.lsc.store2d.typed.bti.v64i8(i8 0, i8 0, i32 %base.sc.st, i32 8, i32 8, i32 %x.sc, i32 %y.sc, <64 x i8> %ld.tgm)
+  call void @llvm.vc.internal.lsc.store.2d.tgm.bti.v2i8.v64i8(<2 x i8> zeroinitializer, i32 %base.sc.st, i32 8, i32 8, i32 %x.sc, i32 %y.sc, <64 x i8> %ld.tgm)
   ret void
 }
 

@@ -59,6 +59,7 @@ private:
   Value *translateLscLoadStoreBlock2D(CallInst &I) const;
   Value *translateLscLoadStore2DDesc(CallInst &I) const;
   Value *translateLscTyped(CallInst &I) const;
+  Value *translateLscTyped2D(CallInst &I) const;
 };
 } // namespace
 
@@ -156,6 +157,11 @@ void GenXTranslateIntrinsics::visitCallInst(CallInst &I) const {
   case GenXIntrinsic::genx_lsc_prefetch_2d_ugm_desc:
   case GenXIntrinsic::genx_lsc_store_2d_ugm_desc:
     NewI = translateLscLoadStore2DDesc(I);
+    break;
+  case GenXIntrinsic::genx_lsc_load2d_typed_bti:
+  case GenXIntrinsic::genx_lsc_store2d_typed_bti:
+  case GenXIntrinsic::genx_lsc_prefetch2d_typed_bti:
+    NewI = translateLscTyped2D(I);
     break;
   case GenXIntrinsic::genx_lsc_load_merge_quad_typed_bti:
   case GenXIntrinsic::genx_lsc_prefetch_quad_typed_bti:
@@ -648,6 +654,66 @@ Value *GenXTranslateIntrinsics::translateLscTyped(CallInst &I) const {
 
   SmallVector<Value *, 10> Args(I.args());
   auto *Func = vc::getAnyDeclarationForArgs(M, NewIID, I.getType(), Args);
+  auto *NewI = Builder.CreateCall(Func, Args);
+  LLVM_DEBUG(dbgs() << "New intrinsic generated: " << *NewI);
+
+  return NewI;
+}
+
+Value *GenXTranslateIntrinsics::translateLscTyped2D(CallInst &I) const {
+  auto IID = GenXIntrinsic::getGenXIntrinsicID(&I);
+  LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
+  IRBuilder<> Builder(&I);
+  Module *M = I.getModule();
+
+  auto *L1Control = cast<Constant>(I.getArgOperand(0));
+  auto *L3Control = cast<Constant>(I.getArgOperand(1));
+  auto *CacheOpts = translateCacheControls(L1Control, L3Control);
+
+  auto *BTI = I.getArgOperand(2);
+  auto *BlockHeight = I.getArgOperand(3);
+  auto *BlockWidth = I.getArgOperand(4);
+  auto *X = I.getArgOperand(5);
+  auto *Y = I.getArgOperand(6);
+
+  Value *Src = nullptr;
+  auto *Ty = I.getType();
+
+  auto NewIID = vc::InternalIntrinsic::not_internal_intrinsic;
+
+  switch (IID) {
+  default:
+    IGC_ASSERT_UNREACHABLE();
+  case GenXIntrinsic::genx_lsc_load2d_typed_bti:
+    Src = UndefValue::get(Ty);
+    NewIID = vc::InternalIntrinsic::lsc_load_2d_tgm_bti;
+    break;
+  case GenXIntrinsic::genx_lsc_store2d_typed_bti:
+    Src = I.getArgOperand(7);
+    NewIID = vc::InternalIntrinsic::lsc_store_2d_tgm_bti;
+    break;
+  }
+
+  SmallVector<Type *, 2> Types;
+  if (!Ty->isVoidTy())
+    Types.push_back(Ty);
+  Types.push_back(CacheOpts->getType());
+  if (Src && Ty->isVoidTy())
+    Types.push_back(Src->getType());
+
+  auto *Func = vc::InternalIntrinsic::getInternalDeclaration(M, NewIID, Types);
+
+  SmallVector<Value *, 6> Args = {
+      CacheOpts,
+      BTI,
+      BlockWidth,
+      BlockHeight,
+      X,
+      Y,
+  };
+  if (Src)
+    Args.push_back(Src);
+
   auto *NewI = Builder.CreateCall(Func, Args);
   LLVM_DEBUG(dbgs() << "New intrinsic generated: " << *NewI);
 
