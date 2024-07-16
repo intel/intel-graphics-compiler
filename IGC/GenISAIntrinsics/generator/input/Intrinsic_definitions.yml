@@ -7690,6 +7690,7 @@ intrinsics:
         attributes:
             - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
     - !<IntrinsicDefinition>
         name: "GenISA_sub_pair"
         comment: ""
@@ -8752,6 +8753,9 @@ intrinsics:
                 comment: "V - num blocks (2 for simple 2d block read)"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WriteOnly"
+            - !AttributeID "InaccessibleMemOnly"
+            - !AttributeID "WillReturn"
     - !<IntrinsicDefinition>
         name: "GenISA_LSC2DBlockCopyAddrPayload"
         comment: "Copy LSC2DBlock read/write address payload"
@@ -8794,6 +8798,7 @@ intrinsics:
         attributes:
             - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
     - !<IntrinsicDefinition>
         name: "GenISA_LSC2DBlockReadAddrPayload"
         comment: "LSC 2d block read with address payload(AP) as a single arg"
@@ -8846,6 +8851,7 @@ intrinsics:
                 comment: "cache controls options (LSC_CACHE_OPTS)"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
     - !<IntrinsicDefinition>
         name: "GenISA_LSC2DBlockWriteAddrPayload"
         comment: "LSC 2d block write with address payload(AP) as a single arg"
@@ -8902,6 +8908,7 @@ intrinsics:
                 comment: "value to be stored"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
     - !<IntrinsicDefinition>
         name: "GenISA_LSC2DBlockPrefetchAddrPayload"
         comment: "LSC 2d block prefetch with address payload(AP) as a single arg"
@@ -8954,6 +8961,7 @@ intrinsics:
                 comment: "cache controls options (LSC_CACHE_OPTS)"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
     - !<IntrinsicDefinition>
         name: "GenISA_LSCAtomicFP32"
         comment: "LSC atomic FP32 add,sub,min,max,fcas"
