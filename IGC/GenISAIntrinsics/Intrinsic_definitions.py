@@ -11,7 +11,7 @@
 #FloatingPointTypes = ["half","float","double"]
 #IntegerTypes = ["bool","char","short","int","long"]
 #IntrinsicsProperties = ["None","NoMem","ReadArgMem","WriteArgMem","ReadMem","ReadWriteArgMem",
-#                        "WriteMem", "NoReturn","NoDuplicate", "Convergent"]
+#                        "WriteMem", "NoReturn","NoDuplicate", "Convergent", "WillReturn"]
 #IntrinsicsProperties may be specified as a comma separated list (e.g., "Convergent,NoMem")
 
 # EX

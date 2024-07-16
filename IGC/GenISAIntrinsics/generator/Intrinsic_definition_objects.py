@@ -129,6 +129,7 @@ class AttributeID(Enum):
     NoDuplicate = 6
     Convergent = 7
     InaccessibleMemOnly = 8
+    WillReturn = 9
 
     def __str__(self):
         return self.name

@@ -156,6 +156,7 @@ void initializeTransformUnmaskedFunctionsPassPass(llvm::PassRegistry&);
 void initializeIndirectCallOptimizationPass(llvm::PassRegistry&);
 void initializePromoteInt8TypePass(llvm::PassRegistry&);
 void initializeDpasFuncsResolutionPass(llvm::PassRegistry&);
+void initializeDecompose2DBlockFuncsPass(llvm::PassRegistry&);
 void initializeLSCFuncsResolutionPass(llvm::PassRegistry&);
 void initializeConvertMSAAPayloadTo16BitPass(llvm::PassRegistry&);
 void initializeInterfaceOptimizationPass(llvm::PassRegistry&);

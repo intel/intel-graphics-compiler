@@ -125,7 +125,9 @@ def translate_attribute_list(attribute):
         "NoReturn": set([ AttributeID.NoUnwind, AttributeID.NoReturn ]),
         "NoDuplicate": set([ AttributeID.NoUnwind, AttributeID.NoDuplicate ]),
         "Convergent": set([ AttributeID.NoUnwind, AttributeID.Convergent ]),
-        "InaccessibleMemOnly": set([ AttributeID.NoUnwind, AttributeID.InaccessibleMemOnly ])
+        "InaccessibleMemOnly": set([ AttributeID.NoUnwind, AttributeID.InaccessibleMemOnly ]),
+        "WillReturn": set([ AttributeID.WillReturn ]),
+        "WriteOnly": set([ AttributeID.WriteOnly ]),
     }
     return attribute_map[attribute]
 
