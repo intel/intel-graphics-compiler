@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -279,7 +279,7 @@ Alignment AlignmentInfo::get(Value *V)
  */
 Alignment::Alignment(unsigned C)
 {
-  LogAlign = countTrailingZeros(C);
+  LogAlign = C ? countTrailingZeros(C) : 31;
   ExtraBits = 0;
   ConstBits = (C < MaskForUnknown) ? C : MaskForUnknown;
 }
@@ -296,7 +296,7 @@ Alignment Alignment::getAlignmentForConstant(Constant *C) {
     int64_t SVal = CI->getSExtValue();
     // Get least significant bits to count LogAlign
     unsigned LSBBits = SVal & UnsignedAllOnes;
-    A.LogAlign = countTrailingZeros(LSBBits);
+    A.LogAlign = LSBBits ? countTrailingZeros(LSBBits) : 31;
 
     A.ExtraBits = 0;
     A.ConstBits = MaskForUnknown;
