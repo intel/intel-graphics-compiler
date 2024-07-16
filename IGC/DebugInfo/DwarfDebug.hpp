@@ -745,6 +745,27 @@ public:
     return BEFPSubReg_3;
   }
 
+  uint32_t getBESPSubReg() {
+    auto ver = GetABIVersion();
+    if (ver < 3)
+      return BESPSubReg_1_2;
+    return BESPSubReg_3;
+  }
+
+  uint32_t getRetIPSubReg() {
+    auto ver = GetABIVersion();
+    if (ver < 3)
+      return RetIpSubReg_1_2;
+    return RetIpSubReg_3;
+  }
+
+  uint32_t RetIpByteSize() {
+    auto ver = GetABIVersion();
+    if (ver < 3)
+      return 4;
+    return 8;
+  }
+
 private:
   void encodeRange(CompileUnit *TheCU, DIE *ScopeDIE,
                    const llvm::SmallVectorImpl<InsnRange> *Ranges);

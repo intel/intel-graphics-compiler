@@ -2924,7 +2924,7 @@ uint32_t DwarfDebug::writeStackcallCIE() {
   // return address register - uleb128
   // set machine return register to one which is physically
   // absent. later CFA instructions map this to a valid GRF.
-  writeULEB128(data, GetEncodedRegNum<RegisterNumbering::GRFBase>(numGRFs));
+  writeULEB128(data, RegisterNumbering::IP);
 
   // initial instructions (array of ubyte)
   // DW_OP_regx r125
@@ -2933,11 +2933,12 @@ uint32_t DwarfDebug::writeStackcallCIE() {
 
   // The DW_CFA_def_cfa_expression instruction takes a single operand
   // encoded as a DW_FORM_exprloc.
+  // We define DW_CFA_def_cfa_expression to point to caller's BE_SP.
   auto DWRegEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(specialGRF);
   write(data1, (uint8_t)llvm::dwarf::DW_OP_const4u);
   write(data1, (uint32_t)(DWRegEncoded));
   write(data1, (uint8_t)llvm::dwarf::DW_OP_const2u);
-  write(data1, (uint16_t)(getBEFPSubReg() * 4 * 8));
+  write(data1, (uint16_t)(getBESPSubReg() * 4 * 8));
   write(data1, (uint8_t)DW_OP_INTEL_regval_bits);
   write(data1, (uint8_t)32);
 
@@ -2971,10 +2972,20 @@ uint32_t DwarfDebug::writeStackcallCIE() {
   }
 
   // move return address register to actual location
-  // DW_CFA_register     numGRFs      specialGRF
-  write(data, (uint8_t)llvm::dwarf::DW_CFA_register);
-  writeULEB128(data, GetEncodedRegNum<RegisterNumbering::GRFBase>(numGRFs));
-  writeULEB128(data, GetEncodedRegNum<RegisterNumbering::GRFBase>(specialGRF));
+  if (GetABIVersion() < 3) {
+    // DW_CFA_register     IP      specialGRF
+    write(data, (uint8_t)llvm::dwarf::DW_CFA_register);
+    writeULEB128(data, RegisterNumbering::IP);
+    writeULEB128(data,
+                 GetEncodedRegNum<RegisterNumbering::GRFBase>(specialGRF));
+  } else {
+    write(data, (uint8_t)llvm::dwarf::DW_CFA_expression);
+    writeULEB128(data, RegisterNumbering::IP);
+    writeULEB128(data, 6);
+    write(data, (uint8_t)llvm::dwarf::DW_OP_const4u);
+    write(data, (uint32_t)getRetIPSubReg() * 4);
+    write(data, (uint8_t)llvm::dwarf::DW_OP_plus);
+  }
 
   while ((lenSize + data.size()) % ptrSize != 0)
     // Insert DW_CFA_nop
@@ -3103,7 +3114,6 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
   auto sortAsc = [](uint64_t a, uint64_t b) { return a < b; };
   std::map<uint64_t, std::vector<uint8_t>, decltype(sortAsc)> cfaOps(sortAsc);
   const auto &DbgInfo = *VisaDbgInfo;
-  auto numGRFs = GetVISAModule()->getNumGRFs();
   auto specialGRF = GetSpecialGRF();
 
   auto advanceLoc = [&loc](std::vector<uint8_t> &data, uint64_t newLoc) {
@@ -3124,25 +3134,16 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
     loc = newLoc;
   };
 
-  // offset to read off be_fp
-  // deref - decide whether or not to emit DW_OP_deref
-  // normalizeResult - true when reading a value from scratch space that is a
-  // scratch space address
-  auto writeOffBEFP = [specialGRF, this](std::vector<uint8_t> &data,
-                                         uint32_t offset, bool deref,
-                                         bool normalizeResult) {
-    // DW_OP_const1u 12
-    // DW_OP_regx 125
-    // DW_OP_const2u 96
-    // DW_OP_const1u 32
-    // DW_OP_INTEL_push_bit_piece_stack
-    // DW_OP_const1u 16
-    // DW_OP_mul
-    // DW_OP_constu <memory offset>
+  // When useBEFP is true, expression refers to BEFP. Otherwise,
+  // expression refers to BESP.
+  auto writeOffBEStack = [specialGRF, this](std::vector<uint8_t> &data,
+                                            bool useBEFP) {
+    // DW_OP_const4u 127
+    // DW_OP_const2u BE_FP_SubReg
+    // DW_OP_INTEL_regval_bits 32
+    // DW_OP_breg6
     // DW_OP_plus
-    // DW_OP_constu 0x900000000000000
-    // DW_OP_or
-    // DW_OP_deref
+
     std::vector<uint8_t> data1;
 
     auto DWRegEncoded =
@@ -3150,7 +3151,8 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
     write(data1, (uint8_t)llvm::dwarf::DW_OP_const4u);
     write(data1, (uint32_t)(DWRegEncoded));
     write(data1, (uint8_t)llvm::dwarf::DW_OP_const2u);
-    write(data1, (uint16_t)(getBEFPSubReg() * 4 * 8));
+    write(data1,
+          (uint16_t)((useBEFP ? getBEFPSubReg() : getBESPSubReg()) * 4 * 8));
     write(data1, (uint8_t)DW_OP_INTEL_regval_bits);
     write(data1, (uint8_t)32);
 
@@ -3163,49 +3165,20 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
       write(data1, (uint8_t)llvm::dwarf::DW_OP_mul);
     }
 
-    write(data1, (uint8_t)llvm::dwarf::DW_OP_constu);
-    writeULEB128(data1, offset);
-    write(data1, (uint8_t)llvm::dwarf::DW_OP_plus);
-
     // indicate that the resulting address is on BE stack
     encodeScratchAddrSpace(data1);
-
-    if (deref) {
-      write(data1, (uint8_t)llvm::dwarf::DW_OP_deref);
-      // DW_OP_deref reads as many bytes as size of address on target machine.
-      // We set address size to 64 bits in CIE. However, this expression
-      // refers to a slot in scratch space which uses 32-bit addressing. So
-      // mask upper 32 bits read from VISA frame descriptor.
-      write(data1, (uint8_t)llvm::dwarf::DW_OP_const4u);
-      write(data1, (uint32_t)0xffffffff);
-      write(data1, (uint8_t)llvm::dwarf::DW_OP_and);
-    }
-
-    if (EmitSettings.ScratchOffsetInOW && normalizeResult) {
-      // since data stored in scratch space is also in oword units, normalize it
-      write(data1, (uint8_t)llvm::dwarf::DW_OP_const1u);
-      write(data1, (uint8_t)16);
-      write(data1, (uint8_t)llvm::dwarf::DW_OP_mul);
-    }
-
-    if (deref) {
-      // DW_OP_deref earlier causes CFA to be put on top of dwarf stack.
-      // Indicate that the address space of CFA is scratch.
-      encodeScratchAddrSpace(data1);
-    }
 
     writeULEB128(data, data1.size());
     for (auto item : data1)
       write(data, (uint8_t)item);
   };
 
-  auto writeLR = [this, writeOffBEFP](std::vector<uint8_t> &data,
-                                      const DbgDecoder::LiveIntervalGenISA &lr,
-                                      bool deref, bool normalizeResult) {
+  auto writeLR = [this, writeOffBEStack](
+                     std::vector<uint8_t> &data,
+                     const DbgDecoder::LiveIntervalGenISA &lr, bool useBEFP) {
     if (lr.var.physicalType ==
         DbgDecoder::VarAlloc::PhysicalVarType::PhyTypeMemory) {
-      writeOffBEFP(data, (uint32_t)lr.var.mapping.m.memoryOffset, deref,
-                   normalizeResult);
+      writeOffBEStack(data, useBEFP);
 
       IGC_ASSERT_MESSAGE(!lr.var.mapping.m.isBaseOffBEFP,
                          "Expecting location offset from BE_FP");
@@ -3218,6 +3191,23 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
   auto writeSameValue = [](std::vector<uint8_t> &data, uint32_t srcReg) {
     write(data, (uint8_t)llvm::dwarf::DW_CFA_same_value);
     writeULEB128(data, srcReg);
+  };
+
+  // Caller has written DW_CFA_expression and a register. Here, we
+  // emit offset off CFA where the register is stored. For eg,
+  // DW_CFA_expression: r143 (DW_OP_const4u: 0; DW_OP_plus)
+  //
+  // means that r127 is stored at [CFA + 0]
+  auto writeCFAExpr = [](std::vector<uint8_t> &data, uint32_t offset) {
+    std::vector<uint8_t> data1;
+
+    write(data1, (uint8_t)llvm::dwarf::DW_OP_const4u);
+    write(data1, (uint32_t)offset);
+    write(data1, (uint8_t)llvm::dwarf::DW_OP_plus);
+
+    writeULEB128(data, data1.size());
+    for (auto item : data1)
+      write(data, (uint8_t)item);
   };
 
   auto ptrSize = Asm->GetPointerSize();
@@ -3258,7 +3248,7 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
       // map out CFA to an offset on be stack
       write(cfaOps[item.start],
             (uint8_t)llvm::dwarf::DW_CFA_def_cfa_expression);
-      writeLR(cfaOps[item.start], item, true, true);
+      writeLR(cfaOps[item.start], item, true);
     }
 
     // describe r125 is at [r125.3]:ud
@@ -3266,7 +3256,7 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
     write(cfaOps[ip], (uint8_t)llvm::dwarf::DW_CFA_expression);
     writeULEB128(cfaOps[ip],
                  GetEncodedRegNum<RegisterNumbering::GRFBase>(specialGRF));
-    writeOffBEFP(cfaOps[ip], 0, false, false);
+    writeCFAExpr(cfaOps[ip], 0);
     writeSameValue(cfaOps[callerFP.back().end + MovGenInstSizeInBytes],
                    GetEncodedRegNum<RegisterNumbering::GRFBase>(specialGRF));
   }
@@ -3277,9 +3267,8 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
     for (auto &item : retAddr) {
       // start live-range
       write(cfaOps[item.start], (uint8_t)llvm::dwarf::DW_CFA_expression);
-      writeULEB128(cfaOps[item.start],
-                   GetEncodedRegNum<RegisterNumbering::GRFBase>(numGRFs));
-      writeLR(cfaOps[item.start], item, false, false);
+      writeULEB128(cfaOps[item.start], RegisterNumbering::IP);
+      writeCFAExpr(cfaOps[item.start], getRetIPSubReg() * 4);
 
       // end live-range
       // VISA emits following:
@@ -3298,20 +3287,14 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
       // offset 656 should we read ret %ip from r125 directly. This is achieved
       // by taking offset 640 reported by VISA debug info and adding 16 to it
       // which is size of the mov instruction.
-      write(cfaOps[item.end + MovGenInstSizeInBytes],
-            (uint8_t)llvm::dwarf::DW_CFA_register);
-      writeULEB128(cfaOps[item.end + MovGenInstSizeInBytes],
-                   GetEncodedRegNum<RegisterNumbering::GRFBase>(numGRFs));
-      writeULEB128(
-          cfaOps[item.end + MovGenInstSizeInBytes],
-          GetEncodedRegNum<RegisterNumbering::GRFBase>(GetSpecialGRF()));
+      writeSameValue(cfaOps[item.end + MovGenInstSizeInBytes],
+                     RegisterNumbering::IP);
     }
   } else {
     if (m->GetType() == VISAModule::ObjectType::KERNEL) {
       // set return location to be undefined in top frame
       write(cfaOps[0], (uint8_t)llvm::dwarf::DW_CFA_undefined);
-      writeULEB128(cfaOps[0],
-                   GetEncodedRegNum<RegisterNumbering::GRFBase>(numGRFs));
+      writeULEB128(cfaOps[0], RegisterNumbering::IP);
     }
   }
 
@@ -3330,8 +3313,8 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
                 (uint8_t)llvm::dwarf::DW_CFA_expression);
           writeULEB128(cfaOps[item.genIPOffset],
                        GetEncodedRegNum<RegisterNumbering::GRFBase>(regNum));
-          writeOffBEFP(cfaOps[item.genIPOffset],
-                       item.data[idx].dst.m.memoryOffset, false, false);
+          writeCFAExpr(cfaOps[item.genIPOffset],
+                       (uint32_t)item.data[idx].dst.m.memoryOffset);
           calleeSaveRegsSaved.insert(regNum);
         } else {
           // already saved, so no need to emit same save again
