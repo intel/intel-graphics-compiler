@@ -11,7 +11,7 @@
 #FloatingPointTypes = ["half","float","double"]
 #IntegerTypes = ["bool","char","short","int","long"]
 #IntrinsicsProperties = ["None","NoMem","ReadArgMem","WriteArgMem","ReadMem","ReadWriteArgMem",
-#                        "WriteMem", "NoReturn","NoDuplicate", "Convergent"]
+#                        "WriteMem", "NoReturn","NoDuplicate", "Convergent", "WillReturn"]
 #IntrinsicsProperties may be specified as a comma separated list (e.g., "Convergent,NoMem")
 
 # EX
@@ -2414,7 +2414,7 @@ Imported_Intrinsics = \
      ("int",                           "systolic depth"),
      ("int",                           "repeat count"),
      ("bool",                          "isDpasw")],
-    "Convergent","NoMem"]],
+    "Convergent,NoMem,WillReturn"]],
 ####################################################################################################
 "GenISA_sub_pair": ["",
     [[("int",                          ""),
@@ -2764,7 +2764,7 @@ Imported_Intrinsics = \
      ("int",                           "block width"),
      ("int",                           "block height"),
      ("int",                           "V - num blocks (2 for simple 2d block read)")],
-     "None"]],
+     "None,WriteOnly,InaccessibleMemOnly,WillReturn"]],
 ####################################################################################################
 "GenISA_LSC2DBlockCopyAddrPayload": ["Copy LSC2DBlock read/write address payload",
     [("anyptr",                       "output: new address payload placeholder"),
@@ -2778,7 +2778,7 @@ Imported_Intrinsics = \
      ("anyint",                        "arg2: field value"),
      ("bool",                          "arg3: false : AP[arg1] = arg2; "+\
                                        "       true : AP[arg1] += arg2")],
-    "ReadWriteArgMem"]],
+    "ReadWriteArgMem,WillReturn"]],
 ####################################################################################################
 "GenISA_LSC2DBlockReadAddrPayload": ["LSC 2d block read with address payload(AP) as a single arg",
     [("anyint",                        ""),
@@ -2793,7 +2793,7 @@ Imported_Intrinsics = \
      ("bool",                          "vnni transform (for transpose+transform use transpose "+\
                                        "only and elemSize 32)"),
      ("int",                           "cache controls options (LSC_CACHE_OPTS)")],
-    "None"]],
+    "None,WillReturn"]],
 ####################################################################################################
 "GenISA_LSC2DBlockWriteAddrPayload": ["LSC 2d block write with address payload(AP) as a single arg",
     [("void",                          "nothing is returned"),
@@ -2809,7 +2809,7 @@ Imported_Intrinsics = \
                                        "only and elemSize 32)"),
      ("int",                           "cache controls options (LSC_CACHE_OPTS)"),
      ("anyint",                        "value to be stored")],
-    "None"]],
+    "None,WillReturn"]],
 ####################################################################################################
 "GenISA_LSC2DBlockPrefetchAddrPayload": ["LSC 2d block prefetch with address payload(AP) as a single arg",
     [("void",                          "nothing is returned"),
@@ -2824,7 +2824,7 @@ Imported_Intrinsics = \
      ("bool",                          "vnni transform (for transpose+transform use transpose "+\
                                        "only and elemSize 32)"),
      ("int",                           "cache controls options (LSC_CACHE_OPTS)")],
-    "None"]],
+    "None,WillReturn"]],
 ####################################################################################################
 "GenISA_LSCAtomicFP32": ["LSC atomic FP32 add,sub,min,max,fcas",
     [("float",                         "return old value"),

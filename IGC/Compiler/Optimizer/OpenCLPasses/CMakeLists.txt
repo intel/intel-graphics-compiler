@@ -32,6 +32,7 @@ add_subdirectory(KernelArgs)
 add_subdirectory(KernelFunctionCloning)
 add_subdirectory(BufferBoundsChecking)
 add_subdirectory(LSCFuncs)
+add_subdirectory(Decompose2DBlockFuncs)
 add_subdirectory(LocalBuffers)
 add_subdirectory(NamedBarriers)
 add_subdirectory(NontemporalLoadsAndStoresInAssert)
@@ -64,6 +65,7 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses_BreakConstantExpr}
     ${IGC_BUILD__SRC__OpenCLPasses_BreakdownIntrinsic}
     ${IGC_BUILD__SRC__OpenCLPasses_CorrectlyRoundedDivSqrt}
+    ${IGC_BUILD__SRC__OpenCLPasses_Decompose2DBlockFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_DeviceEnqueueFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_DisableLoopUnrollOnRetry}
     ${IGC_BUILD__SRC__OpenCLPasses_DpasFuncs}
@@ -134,6 +136,7 @@ set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses_KernelFunctionCloning}
     ${IGC_BUILD__HDR__OpenCLPasses_BufferBoundsChecking}
     ${IGC_BUILD__HDR__OpenCLPasses_LSCFuncs}
+    ${IGC_BUILD__HDR__OpenCLPasses_IOBlock2DFuncs}
     ${IGC_BUILD__HDR__OpenCLPasses_LocalBuffers}
     ${IGC_BUILD__HDR__OpenCLPasses_NamedBarriers}
     ${IGC_BUILD__HDR__OpenCLPasses_NontemporalLoadsAndStoresInAssert}
@@ -188,6 +191,7 @@ set(IGC_BUILD_Compiler_OpenCLPasses_Groups
     Compiler__OpenCLPasses_KernelFunctionCloning
     Compiler__OpenCLPasses_BufferBoundsChecking
     Compiler__OpenCLPasses_LSCFuncs
+    Compiler__OpenCLPasses_IOBlock2DFuncs
     Compiler__OpenCLPasses_LocalBuffers
     Compiler__OpenCLPasses_NamedBarriers
     Compiler__OpenCLPasses_NontemporalLoadsAndStoresInAssert
