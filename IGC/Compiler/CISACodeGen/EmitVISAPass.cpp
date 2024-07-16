@@ -20486,7 +20486,8 @@ ResourceDescriptor EmitPass::GetResourceVariable(Value* resourcePtr)
         if (as == ADDRESS_SPACE_THREAD_ARG)
             resource.m_isThreadArg = true;
 
-        if (IsBindless(bufType) || !directIndexing)
+        if (IsBindless(bufType) ||
+            !directIndexing)
         {
             if (isa<IntToPtrInst>(resourcePtr))
             {
