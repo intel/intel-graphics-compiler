@@ -154,6 +154,7 @@ namespace IGC
         case IGFX_METEORLAKE:
         case IGFX_ARROWLAKE:
         case IGFX_LUNARLAKE:
+        case IGFX_BMG:
         /* This is just a place holder the WA application has moved below and changed
         its no longer based on platform */
             break;
