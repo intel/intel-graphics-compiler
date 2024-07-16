@@ -1207,17 +1207,13 @@ static int resolveCacheControlDecorations(CodeGenContext *ctx, Value *pointerVal
 Instruction *JointMatrixFuncsResolutionPass::ResolvePrefetch(CallInst *CI)
 {
     Value *ptrVal        = CI->getArgOperand(0);
-    Value *coordXVal     = CI->getArgOperand(1); // unused
-    Value *coordYVal     = CI->getArgOperand(2); // unused
-    Value *numRowsVal    = CI->getArgOperand(3);
-    Value *numColsVal    = CI->getArgOperand(4);
-    Value *cacheLevelVal = CI->getArgOperand(5);
-    Value *layoutVal     = CI->getArgOperand(6); // unused
-    Value *strideVal     = CI->getArgOperand(7);
+    Value *numRowsVal    = CI->getArgOperand(1);
+    Value *numColsVal    = CI->getArgOperand(2);
+    Value *cacheLevelVal = CI->getArgOperand(3);
+    Value *layoutVal     = CI->getArgOperand(4);
+    Value *strideVal     = CI->getArgOperand(5);
     unsigned loadLayout = (unsigned)constIntValue(layoutVal);
     unsigned cacheLevel = (unsigned)constIntValue(cacheLevelVal);
-    (void)coordXVal; // This argument will be removed in future SPIRV translator versions
-    (void)coordYVal; // This argument will be removed in future SPIRV translator versions
 
     JointMatrixTypeDescription desc;
     desc.rows = (unsigned)constIntValue(numRowsVal);
