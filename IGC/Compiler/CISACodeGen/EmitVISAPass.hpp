@@ -301,7 +301,7 @@ public:
     bool ScanReduceIsInt64EmulationNeeded(e_opcode op, VISA_Type type);
     CVariable* ScanReducePrepareSrc(VISA_Type type, uint64_t identityValue, bool negate, bool secondHalf,
         CVariable* src, CVariable* dst, CVariable* flag = nullptr);
-    CVariable* ReductionReduceHelper(e_opcode op, VISA_Type type, SIMDMode simd, CVariable* src);
+    CVariable* ReductionReduceHelper(e_opcode op, VISA_Type type, SIMDMode simd, CVariable* src, CVariable* srcSecondHalf = nullptr);
     void ReductionExpandHelper(e_opcode op, VISA_Type type, CVariable* src, CVariable* dst);
     void ReductionClusteredSrcHelper(CVariable* (&pSrc)[2], CVariable* src, uint16_t numLanes,
         VISA_Type type, uint numInst, bool secondHalf);
@@ -323,6 +323,14 @@ public:
         const VISA_Type type,
         const bool negate,
         const unsigned int clusterSize,
+        CVariable* const src,
+        CVariable* const dst);
+    void emitReductionInterleave(
+        const e_opcode op,
+        const uint64_t identityValue,
+        const VISA_Type type,
+        const bool negate,
+        const unsigned int step,
         CVariable* const src,
         CVariable* const dst);
     void emitPreOrPostFixOp(
@@ -432,6 +440,7 @@ public:
     void emitQuadPrefix(llvm::QuadPrefixIntrinsic* I);
     void emitWaveAll(llvm::GenIntrinsicInst* inst);
     void emitWaveClustered(llvm::GenIntrinsicInst* inst);
+    void emitWaveInterleave(llvm::GenIntrinsicInst* inst);
 
     // Those three "vector" version shall be combined with
     // non-vector version.

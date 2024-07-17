@@ -686,6 +686,16 @@ Imported_Intrinsics = \
                                        "in wave ops, 2: helper lanes do not participate in wave ops.")],
     "Convergent,InaccessibleMemOnly"]],
 ####################################################################################################
+"GenISA_WaveInterleave": ["Accumulate together n-th active lanes and broadcast the result."+\
+                         ",Step n is defined as 1 <= 2^n <= maxSubgroupSize, n >= 0",
+    [("anyint",                        "the result"),
+    [(0,                               "value"),
+     ("char",                          "IGC::WaveOps"),
+     ("int",                           "step - must be a compile time constant and assumed > 1"),
+     ("int",                           "helperLaneMode : 0: not used; 1: helper lanes participate"+\
+                                       "in wave ops, 2: helper lanes do not participate in wave ops.")],
+    "Convergent,InaccessibleMemOnly"]],
+####################################################################################################
 "GenISA_WaveInverseBallot": ["",
     [("bool",                          "return value of n-th bit from the input bitfield"),
     [("int",                           "bitfield"),

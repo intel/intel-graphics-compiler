@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include <llvmWrapper/IR/PatternMatch.h>
 #include "common/LLVMWarningsPop.hpp"
 
+#include "common/igc_regkeys.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 
@@ -273,6 +274,8 @@ bool SubGroupReductionPattern::reduce(ShufflePattern &Pattern)
     Args.push_back(IRB.getInt8((uint8_t) Pattern.OpType));
     if (ReductionType == GenISAIntrinsic::GenISA_WaveClustered)
         Args.push_back(IRB.getInt32(XorMask + 1));
+    else if (ReductionType == GenISAIntrinsic::GenISA_WaveInterleave)
+        Args.push_back(IRB.getInt32(SubGroupSize - XorMask));
     Args.push_back(IRB.getInt32(0));
 
     Function *WaveFunc = GenISAIntrinsic::getDeclaration(FirstShuffle->getCalledFunction()->getParent(),
@@ -289,15 +292,24 @@ GenISAIntrinsic::ID SubGroupReductionPattern::getReductionType(uint64_t XorMask)
 {
     // Example for SIMD8
     //
-    // WaveAll - full reduction, all work items mixed
+    // WaveAll - Full reduction, all work items mixed. Xor mask has all relevant bits set.
     //   xor: 1, 2, 4 (order doesn't matter)
     //
-    // WaveClustered - lower N xors
+    // WaveClustered - Splits subgroup into smaller clusters of consecutive work items and reduces each cluster.
+    //   Xor mask is expressed as lower N bits set.
     //
-    //   xor: 4, 2 => cluster size 4
+    //   xor: 1, 2 => cluster size 4
     //   Work Item |       0 |       1 |       2 |       3 |       4 |       5 |       6 |       7 |
     //   xor 1     |     0,1 |     0,1 |     2,3 |     2,3 |     4,5 |     4,5 |     6,7 |     6,7 |
     //   xor 2     | 0,1,2,3 | 0,1,2,3 | 0,1,2,3 | 0,1,2,3 | 4,5,6,7 | 4,5,6,7 | 4,5,6,7 | 4,5,6,7 |
+    //
+    // WaveInterleave - Reduces together n-th work item, where n defines interleave step.
+    //   Xor mask is expressed as upper N bits set.
+    //
+    //   xor: 2, 4 => interleave step 2
+    //   Work Item |       0 |       1 |       2 |       3 |       4 |       5 |       6 |       7 |
+    //   xor 2     |     0,2 |     1,3 |     0,2 |     1,3 |     4,6 |     5,7 |     4,6 |     5,7 |
+    //   xor 4     | 0,2,4,6 | 1,3,5,7 | 0,2,4,6 | 1,3,5,7 | 0,2,4,6 | 1,3,5,7 | 0,2,4,6 | 1,3,5,7 |
 
     if (XorMask >= SubGroupSize)
         return GenISAIntrinsic::no_intrinsic;
@@ -313,6 +325,10 @@ GenISAIntrinsic::ID SubGroupReductionPattern::getReductionType(uint64_t XorMask)
         case 1:
         case 3:
             return GenISAIntrinsic::GenISA_WaveClustered;
+        // Interleave reduction: N upper xors
+        case 4:
+        case 6:
+            return GenISAIntrinsic::GenISA_WaveInterleave;
         default:
             break;
         }
@@ -326,6 +342,11 @@ GenISAIntrinsic::ID SubGroupReductionPattern::getReductionType(uint64_t XorMask)
         case 3:
         case 7:
             return GenISAIntrinsic::GenISA_WaveClustered;
+        // Interleave reduction: N upper xors
+        case 8:
+        case 12:
+        case 14:
+            return GenISAIntrinsic::GenISA_WaveInterleave;
         default:
             break;
         }
@@ -340,6 +361,12 @@ GenISAIntrinsic::ID SubGroupReductionPattern::getReductionType(uint64_t XorMask)
         case 7:
         case 15:
             return GenISAIntrinsic::GenISA_WaveClustered;
+        // Interleave reduction: N upper xors
+        case 16:
+        case 24:
+        case 28:
+        case 30:
+            return GenISAIntrinsic::GenISA_WaveInterleave;
         default:
             break;
         }

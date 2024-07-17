@@ -1370,6 +1370,7 @@ namespace IGC
             case GenISAIntrinsic::GenISA_WaveInverseBallot:
             case GenISAIntrinsic::GenISA_WaveAll:
             case GenISAIntrinsic::GenISA_WaveClustered:
+            case GenISAIntrinsic::GenISA_WaveInterleave:
             case GenISAIntrinsic::GenISA_WavePrefix:
                 match = MatchWaveInstruction(*GII);
                 break;
@@ -5175,6 +5176,7 @@ namespace IGC
         case GenISAIntrinsic::GenISA_WaveInverseBallot:
             helperLaneIndex = 1;
             break;
+        case GenISAIntrinsic::GenISA_WaveInterleave:
         case GenISAIntrinsic::GenISA_WaveClustered:
             helperLaneIndex = 3;
             break;

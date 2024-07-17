@@ -334,6 +334,7 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
         case GenISAIntrinsic::GenISA_WaveInverseBallot:
         case GenISAIntrinsic::GenISA_WavePrefix:
         case GenISAIntrinsic::GenISA_WaveClustered:
+        case GenISAIntrinsic::GenISA_WaveInterleave:
         case GenISAIntrinsic::GenISA_QuadPrefix:
         case GenISAIntrinsic::GenISA_simdShuffleDown:
         case GenISAIntrinsic::GenISA_simdShuffleXor:
