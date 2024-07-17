@@ -1127,6 +1127,7 @@ namespace IGC
         virtual bool enableZEBinary() const;
         bool isPOSH() const;
         virtual bool isBufferBoundsChecking() const;
+        virtual uint64_t getMinimumValidAddress() const;
 
         UserAddrSpaceMD& getUserAddrSpaceMD() {
             IGC_ASSERT(llvmCtxWrapper);

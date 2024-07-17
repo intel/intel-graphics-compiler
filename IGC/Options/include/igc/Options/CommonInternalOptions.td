@@ -30,5 +30,9 @@ defm disable_zebin : CommonFlag<"disable-zebin">,
 defm buffer_bounds_checking : CommonFlag<"buffer-bounds-checking">,
   HelpText<"Enable buffer bounds checking">;
 
+
+defm minimum_valid_address_checking : CommonSeparate<"minimum-valid-address-checking">,
+  HelpText<"Set minimal valid address">;
+
 }
 // }} Common internal options
