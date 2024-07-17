@@ -85,6 +85,12 @@ CShader::CShader(Function* pFunc, CShaderProgram* pProgram)
         SepSpillPvtSS, SeparateScratchWA);
 }
 
+bool CShader::IsRecompilationRequestForced()
+{
+    auto it = std::find(GetContext()->m_kernelsWithForcedRetry.begin(), GetContext()->m_kernelsWithForcedRetry.end(), entry);
+    return it != GetContext()->m_kernelsWithForcedRetry.end();
+}
+
 void CShader::InitEncoder(SIMDMode simdSize, bool canAbortOnSpill, ShaderDispatchMode shaderMode)
 {
     m_sendStallCycle = 0;

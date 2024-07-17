@@ -93,6 +93,7 @@ public:
         uint32_t getEM() const { return m_EM; }
         uint16_t hasEM() const { return m_hasEM; }
     };
+    bool IsRecompilationRequestForced();
 
     CShader(llvm::Function*, CShaderProgram* pProgram);
     virtual ~CShader();

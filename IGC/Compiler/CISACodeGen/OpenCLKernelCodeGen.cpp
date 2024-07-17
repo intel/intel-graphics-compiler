@@ -3097,13 +3097,6 @@ namespace IGC
         }
     }
 
-    // Check if recompilation was forced for this kernel.
-    bool COpenCLKernel::IsRecompilationRequestForced() const
-    {
-        auto it = std::find(m_Context->m_kernelsWithForcedRetry.begin(), m_Context->m_kernelsWithForcedRetry.end(), entry);
-        return it != m_Context->m_kernelsWithForcedRetry.end();
-    }
-
     bool COpenCLKernel::IsValidShader(COpenCLKernel* pShader)
     {
         return pShader && (pShader->ProgramOutput()->m_programSize > 0);

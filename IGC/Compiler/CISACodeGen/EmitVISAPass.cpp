@@ -699,7 +699,10 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     bool IsFirstStage = m_pCtx->m_retryManager.GetRetryId() == 0;
     bool IsEntry = isEntryFunc(pMdUtils, &F);
     bool PassedThreshold = MaxRegPressure >= Threshold;
-    if (PassedThreshold && IsFirstStage && IsEntry)
+    bool IsRecompilationRequestForced = m_currShader->IsRecompilationRequestForced();
+    bool DoEarlyRetry = PassedThreshold || IsRecompilationRequestForced;
+
+    if (DoEarlyRetry && IsFirstStage && IsEntry)
     {
         // we can't reuse kernelSet because EmitPass assumes that if we have
         // something in kernelSet, it was added by previous compilation stage and passed to this one

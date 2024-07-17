@@ -163,7 +163,6 @@ namespace IGC
         static bool IsValidShader(COpenCLKernel* shader);
         static bool IsVisaCompiledSuccessfullyForShader(COpenCLKernel* shader);
         static bool IsVisaCompileStatusFailureForShader(COpenCLKernel *shader);
-        bool IsRecompilationRequestForced() const;
 
     public:
         SOpenCLProgramInfo* m_programInfo;
