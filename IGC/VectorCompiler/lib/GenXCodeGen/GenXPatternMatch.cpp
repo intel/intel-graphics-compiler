@@ -1257,8 +1257,10 @@ bool GenXPatternMatch::matchFloatAbs(BinaryOperator *I) {
     return false;
 
   uint64_t SplatV = 0;
-
-  if (auto *C = dyn_cast<ConstantData>(I->getOperand(1))) {
+  auto *Op = I->getOperand(1);
+  if (auto *C = dyn_cast<ConstantInt>(Op)) {
+    SplatV = C->getZExtValue();
+  } else if (auto *C = dyn_cast<ConstantData>(Op)) {
     auto *Splat = dyn_cast_or_null<ConstantInt>(C->getSplatValue());
     if (!Splat)
       return false;
