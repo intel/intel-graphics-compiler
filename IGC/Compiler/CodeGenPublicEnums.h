@@ -191,7 +191,8 @@ namespace IGC
     {
         GroupOperationScan,
         GroupOperationReduce,
-        GroupOperationClusteredReduce
+        GroupOperationClusteredReduce,
+        GroupOperationInterleaveReduce
     };
 
     enum SGVUsage

@@ -2088,6 +2088,35 @@ intrinsics:
             - !AttributeID "InaccessibleMemOnly"
             - !AttributeID "NoUnwind"
     - !<IntrinsicDefinition>
+        name: "GenISA_WaveInterleave"
+        comment: "Accumulate together n-th active lanes and broadcast the result. \
+            \ Step n is defined as 1 <= 2^n <= maxSubgroupSize, n >= 0."
+        return_definition: !<ReturnDefinition>
+            type_definition: *any_int
+            comment: "the result"
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *ref_0_
+                comment: "value"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *i8
+                comment: "IGC::WaveOps"
+            - !<ArgumentDefinition>
+                name: Arg2
+                type_definition: *i32
+                comment: "step - must be a compile time constant and assumed > 1"
+            - !<ArgumentDefinition>
+                name: Arg3
+                type_definition: *i32
+                comment: "helperLaneMode : 0: not used; 1: helper lanes participatein\
+                    \ wave ops, 2: helper lanes do not participate in wave ops."
+        attributes:
+            - !AttributeID "Convergent"
+            - !AttributeID "InaccessibleMemOnly"
+            - !AttributeID "NoUnwind"
+    - !<IntrinsicDefinition>
         name: "GenISA_WaveInverseBallot"
         comment: ""
         return_definition: !<ReturnDefinition>
