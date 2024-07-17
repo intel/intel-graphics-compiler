@@ -147,6 +147,7 @@ template <typename T> T __cm_cl_powr(T src0, T src1, bool use_fast);
 template <typename T> T __cm_cl_sin(T src, bool use_fast);
 template <typename T> T __cm_cl_cos(T src, bool use_fast);
 
+template <typename T> T __cm_cl_fdiv_ieee(T src0, T src1);
 template <typename T> T __cm_cl_rsqrt(T src);
 
 vector_impl<uint32_t, 3> __cm_cl_local_id();

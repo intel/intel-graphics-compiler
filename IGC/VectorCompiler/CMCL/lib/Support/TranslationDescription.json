@@ -402,6 +402,23 @@
         ]
       }
     },
+    "FDiv": {
+      "Name": "fdiv_ieee",
+      "Operands": [
+        {"Name": "FirstSrc", "Kind": "Input"},
+        {"Name": "SecondSrc", "Kind": "Input"}
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_ieee_div",
+        "ReturnType": {
+          "GetBuiltinReturnType": []
+        },
+        "Operands": [
+            {"GetBuiltinOperand": ["FirstSrc"]},
+            {"GetBuiltinOperand": ["SecondSrc"]}
+        ]
+      }
+    },
     "RSQRT": {
       "Name": "rsqrt",
       "Operands": [
