@@ -2100,6 +2100,14 @@ void WIAnalysisRunner::CS_checkLocalIDs(Function *F)
         IGC_IS_FLAG_DISABLED(OverrideCsTileLayoutEnable))
         return;
 
+    auto walkOrder = (CS_WALK_ORDER)IGC_GET_FLAG_VALUE(OverrideCsWalkOrder);
+    auto idLayout = (ThreadIDLayout)IGC_GET_FLAG_VALUE(OverrideCsTileLayout);
+    if (idLayout == ThreadIDLayout::TileY ||
+        idLayout == ThreadIDLayout::QuadTile) {
+        // Need clarification on semantics. Skip for now.
+        return;
+    }
+
     Module *M = F->getParent();
     uint32_t X = 0, Y = 0, Z = 0;
     if (GlobalVariable *pX = M->getGlobalVariable("ThreadGroupSize_X")) {
@@ -2130,8 +2138,6 @@ void WIAnalysisRunner::CS_checkLocalIDs(Function *F)
         m_localIDzUniform = true;
     }
 
-    auto walkOrder = (CS_WALK_ORDER)IGC_GET_FLAG_VALUE(OverrideCsWalkOrder);
-    auto idLayout = (ThreadIDLayout)IGC_GET_FLAG_VALUE(OverrideCsTileLayout);
     constexpr uint32_t simdSize = 32;
     if (idLayout == ThreadIDLayout::X)
     {
@@ -2193,15 +2199,6 @@ void WIAnalysisRunner::CS_checkLocalIDs(Function *F)
             setUniform(orders.third);
         }
         return;
-    }
-
-    bool isTileY = (idLayout == ThreadIDLayout::TileY &&
-                    walkOrder == CS_WALK_ORDER::WO_YXZ);
-    bool isQuadTile = (idLayout == ThreadIDLayout::QuadTile &&
-                       walkOrder == CS_WALK_ORDER::WO_XYZ);
-    if ((isTileY || isQuadTile) && ((X * Y) % simdSize) == 0) {
-        // combination of first and second dims is multiple of simd siz
-        m_localIDzUniform = true;
     }
 }
 
