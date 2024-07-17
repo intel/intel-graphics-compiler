@@ -8905,6 +8905,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_WaveAll:
         emitWaveAll(inst);
         break;
+    case GenISAIntrinsic::GenISA_WaveInterleave:
+        emitWaveInterleave(inst);
+        break;
     case GenISAIntrinsic::GenISA_WaveClustered:
         emitWaveClustered(inst);
         break;
@@ -13167,8 +13170,45 @@ CVariable* EmitPass::ScanReducePrepareSrc(VISA_Type type, uint64_t identityValue
 }
 
 // Reduction all reduce helper: dst_lane{k} = src_lane{simd + k} OP src_lane{k}, k = 0..(simd-1)
-CVariable* EmitPass::ReductionReduceHelper(e_opcode op, VISA_Type type, SIMDMode simd, CVariable* src)
+CVariable* EmitPass::ReductionReduceHelper(e_opcode op, VISA_Type type, SIMDMode simd, CVariable* src, CVariable* srcSecondHalf)
 {
+    const bool isInt64Mul = ScanReduceIsInt64Mul(op, type);
+    const bool int64EmulationNeeded = ScanReduceIsInt64EmulationNeeded(op, type);
+
+    if (simd == SIMDMode::SIMD16 && m_currShader->m_numberInstance > 1)
+    {
+        IGC_ASSERT(srcSecondHalf);
+
+        CVariable* temp = m_currShader->GetNewVariable(
+            numLanes(simd),
+            type,
+            EALIGN_GRF,
+            false,
+            CName("reduceDstSecondHalf"));
+
+        if (!int64EmulationNeeded)
+        {
+            m_encoder->SetNoMask();
+            m_encoder->SetSimdSize(simd);
+            m_encoder->GenericAlu(op, temp, src, srcSecondHalf);
+            m_encoder->Push();
+        }
+        else
+        {
+            if (isInt64Mul)
+            {
+                CVariable* tmpMulSrc[2] = { src, srcSecondHalf };
+                Mul64(temp, tmpMulSrc, simd, true /* noMask */);
+            }
+            else
+            {
+                IGC_ASSERT_MESSAGE(0, "Unsupported");
+            }
+        }
+
+        return temp;
+    }
+
     const bool is64bitType = ScanReduceIs64BitType(type);
     const auto alignment = is64bitType ? IGC::EALIGN_QWORD : IGC::EALIGN_DWORD;
     CVariable* temp = m_currShader->GetNewVariable(
@@ -13177,9 +13217,6 @@ CVariable* EmitPass::ReductionReduceHelper(e_opcode op, VISA_Type type, SIMDMode
         alignment,
         false,
         CName("reduceDst_SIMD", std::to_string(numLanes(simd)).c_str()));
-
-    const bool isInt64Mul = ScanReduceIsInt64Mul(op, type);
-    const bool int64EmulationNeeded = ScanReduceIsInt64EmulationNeeded(op, type);
 
     if (!int64EmulationNeeded)
     {
@@ -13546,34 +13583,7 @@ void EmitPass::emitReductionAll(
             CVariable* srcH2 = ScanReducePrepareSrc(type, identityValue, negate, true /* secondHalf */,
                 src, nullptr /* dst */);
 
-            temp = m_currShader->GetNewVariable(
-                numLanes(simd),
-                type,
-                EALIGN_GRF,
-                false,
-                CName("reduceDstSecondHalf"));
-
-            const bool isInt64Mul = ScanReduceIsInt64Mul(op, type);
-            const bool int64EmulationNeeded = ScanReduceIsInt64EmulationNeeded(op, type);
-            if (!int64EmulationNeeded)
-            {
-                m_encoder->SetNoMask();
-                m_encoder->SetSimdSize(simd);
-                m_encoder->GenericAlu(op, temp, srcH1, srcH2);
-                m_encoder->Push();
-            }
-            else
-            {
-                if (isInt64Mul)
-                {
-                    CVariable* tmpMulSrc[2] = { srcH1, srcH2 };
-                    Mul64(temp, tmpMulSrc, simd, true /* noMask */);
-                }
-                else
-                {
-                    IGC_ASSERT_MESSAGE(0, "Unsupported");
-                }
-            }
+            temp = ReductionReduceHelper(op, type, SIMDMode::SIMD16, temp, srcH2);
         }
     }
     if (m_currShader->m_dispatchSize >= SIMDMode::SIMD16)
@@ -13721,6 +13731,54 @@ void EmitPass::emitReductionClustered(const e_opcode op, const uint64_t identity
             }
         }
     }
+}
+
+void EmitPass::emitReductionInterleave(const e_opcode op, const uint64_t identityValue, const VISA_Type type,
+    const bool negate, const unsigned int step, CVariable* const src, CVariable* const dst)
+{
+    if (step == 1)
+    {
+        // TODO: consider if it is possible to detect and handle this case in frontends
+        // and emit GenISA_WaveAll there, to enable optimizations specific to the ReduceAll intrinsic.
+        return emitReductionAll(op, identityValue, type, negate, src, dst);
+    }
+
+    const uint16_t firstStep = numLanes(m_currShader->m_dispatchSize) / 2;
+
+    IGC_ASSERT_MESSAGE(!dst->IsUniform(), "Unsupported: dst must be non-uniform");
+    IGC_ASSERT_MESSAGE(step % 2 == 0 && step <= firstStep, "Invalid reduction interleave step");
+
+    CVariable* srcH1 = ScanReducePrepareSrc(type, identityValue, negate, false /* secondHalf */,
+        src, nullptr /* dst */);
+    CVariable* temp = srcH1;
+
+    // Implementation is similar to emitReductionAll(), but we stop reduction before reaching SIMD1.
+    for (unsigned int currentStep = firstStep; currentStep >= step; currentStep >>= 1)
+    {
+        if (currentStep == 16 && m_currShader->m_numberInstance > 1)
+        {
+            CVariable* srcH2 = ScanReducePrepareSrc(type, identityValue, negate, true /* secondHalf */,
+                src, nullptr /* dst */);
+
+            temp = ReductionReduceHelper(op, type, SIMDMode::SIMD16, temp, srcH2);
+        }
+        else
+        {
+            temp = ReductionReduceHelper(op, type, lanesToSIMDMode(currentStep), temp);
+        }
+    }
+
+    // Broadcast result
+    m_encoder->SetSimdSize(m_currShader->m_SIMDSize);
+    m_encoder->SetSrcRegion(0, 0, step, 1);
+    m_encoder->Copy(dst, temp);
+    if (m_currShader->m_numberInstance > 1)
+    {
+        m_encoder->SetSecondHalf(true);
+        m_encoder->Copy(dst, temp);
+        m_encoder->SetSecondHalf(false);
+    }
+    m_encoder->Push();
 }
 
 // do prefix op across all activate channels
@@ -21135,6 +21193,29 @@ void EmitPass::emitWaveClustered(llvm::GenIntrinsicInst* inst)
     CVariable *dst = m_destination;
     m_encoder->SetSubSpanDestination(false);
     emitReductionClustered(opCode, identity, type, false, clusterSize, src, dst);
+    if (disableHelperLanes)
+    {
+        ResetVMask();
+    }
+}
+
+void EmitPass::emitWaveInterleave(llvm::GenIntrinsicInst* inst)
+{
+    bool disableHelperLanes = int_cast<int>(cast<ConstantInt>(inst->getArgOperand(3))->getSExtValue()) == 2;
+    if (disableHelperLanes)
+    {
+        ForceDMask();
+    }
+    CVariable* src = GetSymbol(inst->getOperand(0));
+    const WaveOps op = static_cast<WaveOps>(cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue());
+    const unsigned int step = int_cast<uint32_t>(cast<llvm::ConstantInt>(inst->getOperand(2))->getZExtValue());
+    VISA_Type type;
+    e_opcode opCode;
+    uint64_t identity = 0;
+    GetReductionOp(op, inst->getOperand(0)->getType(), identity, opCode, type);
+    CVariable* dst = m_destination;
+    m_encoder->SetSubSpanDestination(false);
+    emitReductionInterleave(opCode, identity, type, false, step, src, dst);
     if (disableHelperLanes)
     {
         ResetVMask();
