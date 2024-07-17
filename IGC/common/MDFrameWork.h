@@ -455,6 +455,7 @@ namespace IGC
         bool ForceLinearWalkOnLinearUAV                 = false;
         bool DisableLscSamplerRouting                   = false;
         bool UseBarrierControlFlowOptimization          = false;
+        bool DisableShrinkArrayAllocaPass               = false;
     };
 
     enum class ThreadIDLayout

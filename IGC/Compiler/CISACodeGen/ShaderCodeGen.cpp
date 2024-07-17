@@ -1661,7 +1661,11 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.add(llvm::createEarlyCSEPass());
             if (pContext->m_instrTypes.hasNonPrimitiveAlloca)
             {
-                mpm.add(new ShrinkArrayAllocaPass());
+                if( pContext->getModuleMetaData()->compOpt.DisableShrinkArrayAllocaPass == false &&
+                    IGC_IS_FLAG_DISABLED(DisableShrinkArrayAllocaPass))
+                {
+                    mpm.add(new ShrinkArrayAllocaPass());
+                }
                 // run custom safe opts to potentially get rid of indirect
                 // addressing of private arrays, see visitLoadInst
                 mpm.add(new CustomSafeOptPass());
