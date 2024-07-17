@@ -150,7 +150,12 @@ namespace
             {
                 Type* newPtrType = PointerType::get(returnType, ptr->getType()->getPointerAddressSpace());
                 ptr = builder.CreateBitCast(ptr, newPtrType);
-                return builder.CreateAlignedLoad(returnType, ptr, IGCLLVM::getAlign(alignment), isVolatile);
+                LoadInst* newLI = builder.CreateAlignedLoad(returnType, ptr, IGCLLVM::getAlign(alignment), isVolatile);
+                if (MDNode* lscMetadata = m_inst->getMetadata("lsc.cache.ctrl"))
+                {
+                    newLI->setMetadata("lsc.cache.ctrl", lscMetadata);
+                }
+                return newLI;
             }
             else
             {

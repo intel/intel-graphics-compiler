@@ -146,6 +146,10 @@ bool LdShrink::runOnFunction(Function& F) {
 
             LoadInst* NewLoad = Builder.CreateAlignedLoad(ScalarTy, ScalarPtr, IGCLLVM::getAlign(alignment));
             NewLoad->setDebugLoc(LI->getDebugLoc());
+            if (MDNode* mdNode = LI->getMetadata("lsc.cache.ctrl"))
+            {
+                NewLoad->setMetadata("lsc.cache.ctrl", mdNode);
+            }
 
             ExtractElementInst* EEI = cast<ExtractElementInst>(*LI->user_begin());
             EEI->replaceAllUsesWith(NewLoad);
