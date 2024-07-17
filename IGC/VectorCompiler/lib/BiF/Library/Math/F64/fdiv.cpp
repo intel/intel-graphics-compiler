@@ -6,21 +6,13 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "f64consts.h"
 #include <cm-cl/math.h>
 #include <cm-cl/vector.h>
 
 using namespace cm;
 
 namespace {
-// We have to use 32-bit integers when it's possible
-constexpr unsigned exp_shift = 52 - 32;
-constexpr unsigned exp_mask = 0x7ff;
-constexpr unsigned exp_bias = 0x3ff;
-constexpr unsigned exp_invmask = ~(exp_mask << exp_shift);
-
-constexpr unsigned nan_hi = 0x7ff80000;
-constexpr unsigned inf_hi = 0x7ff00000;
-
 template <bool NNaN, bool NInf, bool NSZ, int N>
 CM_NODEBUG CM_INLINE vector<double, N>
 __impl_fdiv_special(vector<double, N> a, vector<double, N> b) {
@@ -42,8 +34,8 @@ __impl_fdiv_special(vector<double, N> a, vector<double, N> b) {
   auto result_lo = result.template select<N, 2>(0);
   auto result_hi = result.template select<N, 2>(1);
 
-  auto ex_x_max = x_exp == 0x7ff;
-  auto ex_y_max = y_exp == 0x7ff;
+  auto ex_x_max = x_exp == exp_mask;
+  auto ex_y_max = y_exp == exp_mask;
 
   if constexpr (!NInf) // Inf / y == Inf
     result_hi.merge(x_sgn ^ y_sgn | inf_hi, ex_x_max);
@@ -112,28 +104,25 @@ CM_NODEBUG CM_INLINE vector<double, N> __impl_fdiv_fast(vector<double, N> a,
 
   // Long path, scale is needed
   if (long_path.any()) {
-    constexpr double two64 = 0x1p+64;
-    constexpr double twom64 = 0x1p-64;
-
     // Handle subnormal a
     mask<N> x_unorm = x_exp == 0;
     if (x_unorm.any()) {
-      a.merge(a * two64, x_unorm);
+      a.merge(a * twoPow64, x_unorm);
       x_exp = (vector<uint32_t, N>(x_hi) >> exp_shift) & exp_mask;
       // if exp is still 0, we have zero or FTZ enabled
-      scale0.merge(scale0 * twom64, x_unorm & (x_exp != 0));
+      scale0.merge(scale0 * twoPowm64, x_unorm & (x_exp != 0));
     }
 
     // Handle subnormal b
     mask<N> y_unorm = y_exp == 0;
     if (y_unorm.any()) {
-      b.merge(b * two64, y_unorm);
+      b.merge(b * twoPow64, y_unorm);
       y_exp = (vector<uint32_t, N>(y_hi) >> exp_shift) & exp_mask;
       // if exp is still 0, we have zero or FTZ enabled
-      scale0.merge(scale0 * two64, y_unorm & (y_exp != 0));
+      scale0.merge(scale0 * twoPow64, y_unorm & (y_exp != 0));
     }
 
-    auto exp_diff = x_exp - y_exp + 0x7ff;
+    auto exp_diff = x_exp - y_exp + exp_mask;
 
     auto scale1_hi =
         scale1.template format<uint32_t>().template select<N, 2>(1);
@@ -286,28 +275,25 @@ CM_NODEBUG CM_INLINE vector<double, N> __impl_fdiv_ieee(vector<double, N> a,
 
   // Long path, scale is needed
   if (long_path.any()) {
-    constexpr double two64 = 0x1p+64;
-    constexpr double twom64 = 0x1p-64;
-
     // Handle subnormal a
     mask<N> x_unorm = x_exp == 0;
     if (x_unorm.any()) {
-      a.merge(a * two64, x_unorm);
+      a.merge(a * twoPow64, x_unorm);
       x_exp = (vector<uint32_t, N>(x_hi) >> exp_shift) & exp_mask;
       // if exp is still 0, we have zero or FTZ enabled
-      scale0.merge(scale0 * twom64, x_unorm & (x_exp != 0));
+      scale0.merge(scale0 * twoPowm64, x_unorm & (x_exp != 0));
     }
 
     // Handle subnormal b
     mask<N> y_unorm = y_exp == 0;
     if (y_unorm.any()) {
-      b.merge(b * two64, y_unorm);
+      b.merge(b * twoPow64, y_unorm);
       y_exp = (vector<uint32_t, N>(y_hi) >> exp_shift) & exp_mask;
       // if exp is still 0, we have zero or FTZ enabled
-      scale0.merge(scale0 * two64, y_unorm & (y_exp != 0));
+      scale0.merge(scale0 * twoPow64, y_unorm & (y_exp != 0));
     }
 
-    auto exp_diff = x_exp - y_exp + 0x7ff;
+    auto exp_diff = x_exp - y_exp + exp_mask;
 
     auto scale1_hi =
         scale1.template format<uint32_t>().template select<N, 2>(1);
@@ -339,8 +325,8 @@ CM_NODEBUG CM_INLINE vector<double, N> __impl_fdiv_ieee(vector<double, N> a,
     b.merge(mb.template format<double>(), long_path);
 
     // g_ediff value is needed to detect gradual underflow
-    vector<double, N> abs_a = detail::__cm_cl_abs_float(a.cl_vector());
-    vector<double, N> abs_b = detail::__cm_cl_abs_float(b.cl_vector());
+    vector<double, N> abs_a = math::absolute(a.cl_vector());
+    vector<double, N> abs_b = math::absolute(b.cl_vector());
 
     vector<int64_t, N> i_abs_a = abs_a.template format<int64_t>();
     vector<int64_t, N> i_abs_b = abs_b.template format<int64_t>();

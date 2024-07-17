@@ -6,19 +6,13 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "f64consts.h"
 #include <cm-cl/math.h>
 #include <cm-cl/vector.h>
 
 using namespace cm;
 
 namespace {
-// We have to use 32-bit integers when it's possible
-constexpr unsigned exp_shift = 52 - 32;
-constexpr unsigned exp_mask = 0x7ff;
-
-constexpr unsigned nan_hi = 0x7ff80000;
-constexpr unsigned inf_hi = 0x7ff00000;
-
 template <bool NNaN, bool NInf, bool NSZ, int N>
 CM_NODEBUG CM_INLINE vector<double, N>
 __impl_fsqrt_special(vector<double, N> x) {

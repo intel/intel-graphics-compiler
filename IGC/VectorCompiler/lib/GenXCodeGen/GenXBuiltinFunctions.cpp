@@ -56,6 +56,7 @@ public:
   Value *visitUIToFP(CastInst &I);
 
   Value *visitFDiv(BinaryOperator &I);
+  Value *visitFRem(BinaryOperator &I);
   Value *visitSDiv(BinaryOperator &I);
   Value *visitSRem(BinaryOperator &I);
   Value *visitUDiv(BinaryOperator &I);
@@ -222,6 +223,15 @@ Value *GenXBuiltinFunctions::visitFDiv(BinaryOperator &I) {
   auto *Ty = I.getType();
 
   auto *Func = getBuiltinDeclaration(M, "fdiv", I.hasAllowReciprocal(), {Ty});
+  return createLibraryCall(I, Func, {I.getOperand(0), I.getOperand(1)});
+}
+
+Value *GenXBuiltinFunctions::visitFRem(BinaryOperator &I) {
+  auto &M = *I.getModule();
+  auto *Ty = I.getType();
+  StringRef Suffix = "__rte_";
+  auto *Func =
+      getBuiltinDeclaration(M, "frem", I.hasAllowReciprocal(), {Ty}, Suffix);
   return createLibraryCall(I, Func, {I.getOperand(0), I.getOperand(1)});
 }
 

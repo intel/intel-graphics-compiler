@@ -44,6 +44,7 @@ set(BUILTIN_SOURCES
 
   Library/Math/F64/fdiv.cpp
   Library/Math/F64/fptoi.cpp
+  Library/Math/F64/frem.cpp
   Library/Math/F64/fsqrt.cpp
   Library/Math/F64/itofp.cpp
 
