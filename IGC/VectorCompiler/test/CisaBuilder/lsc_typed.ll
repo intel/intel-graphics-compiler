@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2023 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -11,98 +11,98 @@
 
 target triple = "genx64-unknown-unknown"
 
-declare <16 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v16i32.v16i1.v16i32(<16 x i1>, i8, i8, i8, i32, <16 x i32>, <16 x i32>, <16 x i32>, <16 x i32>, <16 x i32>)
-declare <32 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v32i32.v16i1.v16i32(<16 x i1>, i8, i8, i8, i32, <16 x i32>, <16 x i32>, <16 x i32>, <16 x i32>, <32 x i32>)
-declare <48 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v48i32.v16i1.v16i32(<16 x i1>, i8, i8, i8, i32, <16 x i32>, <16 x i32>, <16 x i32>, <16 x i32>, <48 x i32>)
-declare <64 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v64i32.v16i1.v16i32(<16 x i1>, i8, i8, i8, i32, <16 x i32>, <16 x i32>, <16 x i32>, <16 x i32>, <64 x i32>)
+declare <16 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v16i32.v16i1.v2i8.v16i32(<16 x i1>, <2 x i8>, i8, i32, <16 x i32>, <16 x i32>, <16 x i32>, <16 x i32>, <16 x i32>)
+declare <32 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v32i32.v16i1.v2i8.v16i32(<16 x i1>, <2 x i8>, i8, i32, <16 x i32>, <16 x i32>, <16 x i32>, <16 x i32>, <32 x i32>)
+declare <48 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v48i32.v16i1.v2i8.v16i32(<16 x i1>, <2 x i8>, i8, i32, <16 x i32>, <16 x i32>, <16 x i32>, <16 x i32>, <48 x i32>)
+declare <64 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v64i32.v16i1.v2i8.v16i32(<16 x i1>, <2 x i8>, i8, i32, <16 x i32>, <16 x i32>, <16 x i32>, <16 x i32>, <64 x i32>)
 
-declare void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v16i32(<16 x i1>, i8, i8, i8, i32, <16 x i32>, <16 x i32>, <16 x i32>, <16 x i32>)
+declare void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v2i8.v16i32(<16 x i1>, <2 x i8>, i8, i32, <16 x i32>, <16 x i32>, <16 x i32>, <16 x i32>)
 
-declare void @llvm.vc.internal.lsc.store.quad.tgm.v16i1.v16i32.v16i32(<16 x i1>, i8, i8, i8, i32, <16 x i32>, <16 x i32>, <16 x i32>, <16 x i32>, <16 x i32>)
-declare void @llvm.vc.internal.lsc.store.quad.tgm.v16i1.v16i32.v32i32(<16 x i1>, i8, i8, i8, i32, <16 x i32>, <16 x i32>, <16 x i32>, <16 x i32>, <32 x i32>)
-declare void @llvm.vc.internal.lsc.store.quad.tgm.v16i1.v16i32.v48i32(<16 x i1>, i8, i8, i8, i32, <16 x i32>, <16 x i32>, <16 x i32>, <16 x i32>, <48 x i32>)
-declare void @llvm.vc.internal.lsc.store.quad.tgm.v16i1.v16i32.v64i32(<16 x i1>, i8, i8, i8, i32, <16 x i32>, <16 x i32>, <16 x i32>, <16 x i32>, <64 x i32>)
+declare void @llvm.vc.internal.lsc.store.quad.tgm.v16i1.v2i8.v16i32.v16i32(<16 x i1>, <2 x i8>, i8, i32, <16 x i32>, <16 x i32>, <16 x i32>, <16 x i32>, <16 x i32>)
+declare void @llvm.vc.internal.lsc.store.quad.tgm.v16i1.v2i8.v16i32.v32i32(<16 x i1>, <2 x i8>, i8, i32, <16 x i32>, <16 x i32>, <16 x i32>, <16 x i32>, <32 x i32>)
+declare void @llvm.vc.internal.lsc.store.quad.tgm.v16i1.v2i8.v16i32.v48i32(<16 x i1>, <2 x i8>, i8, i32, <16 x i32>, <16 x i32>, <16 x i32>, <16 x i32>, <48 x i32>)
+declare void @llvm.vc.internal.lsc.store.quad.tgm.v16i1.v2i8.v16i32.v64i32(<16 x i1>, <2 x i8>, i8, i32, <16 x i32>, <16 x i32>, <16 x i32>, <16 x i32>, <64 x i32>)
 
 ; CHECK: .decl [[PRED:P[0-9]+]] v_type=P num_elts=16
 
 define spir_kernel void @test_typed(<16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, i16 %pred) local_unnamed_addr #0 {
   %mask = bitcast i16 %pred to <16 x i1>
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm (M1, 16)  [[VX:V[0-9]+]]:d32.x  bti(0x7B){{.}}[[U:V[0-9]+]],[[V:V[0-9]+]],[[R:V[0-9]+]],[[LOD:V[0-9]+]]{{.}}:a32
-  %x = call <16 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v16i32.v16i1.v16i32(<16 x i1> %mask, i8 0, i8 0, i8 1, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <16 x i32> undef)
+  %x = call <16 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v16i32.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> zeroinitializer, i8 1, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <16 x i32> undef)
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm (M1, 16)  V{{[0-9]+}}:d32.y  bti(0x7B){{.}}[[U]],[[V]],[[R]]{{.}}:a32
-  %y = call <16 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v16i32.v16i1.v16i32(<16 x i1> %mask, i8 0, i8 0, i8 2, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> undef, <16 x i32> undef)
+  %y = call <16 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v16i32.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> zeroinitializer, i8 2, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> undef, <16 x i32> undef)
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm (M1, 16)  V{{[0-9]+}}:d32.z  bti(0x7B){{.}}[[U]],[[V]]{{.}}:a32
-  %z = call <16 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v16i32.v16i1.v16i32(<16 x i1> %mask, i8 0, i8 0, i8 4, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> undef, <16 x i32> undef, <16 x i32> undef)
+  %z = call <16 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v16i32.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> zeroinitializer, i8 4, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> undef, <16 x i32> undef, <16 x i32> undef)
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm (M1, 16)  V{{[0-9]+}}:d32.w  bti(0x7B){{.}}[[U]]{{.}}:a32
-  %w = call <16 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v16i32.v16i1.v16i32(<16 x i1> %mask, i8 0, i8 0, i8 8, i32 123, <16 x i32> %u, <16 x i32> undef, <16 x i32> undef, <16 x i32> undef, <16 x i32> undef)
+  %w = call <16 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v16i32.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> zeroinitializer, i8 8, i32 123, <16 x i32> %u, <16 x i32> undef, <16 x i32> undef, <16 x i32> undef, <16 x i32> undef)
 
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm (M1, 16)  [[VXY:V[0-9]+]]:d32.xy  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32
-  %xy = call <32 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v32i32.v16i1.v16i32(<16 x i1> %mask, i8 0, i8 0, i8 3, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <32 x i32> undef)
+  %xy = call <32 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v32i32.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> zeroinitializer, i8 3, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <32 x i32> undef)
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm (M1, 16)  V{{[0-9]+}}:d32.xz  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32
-  %xz = call <32 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v32i32.v16i1.v16i32(<16 x i1> %mask, i8 0, i8 0, i8 5, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <32 x i32> undef)
+  %xz = call <32 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v32i32.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> zeroinitializer, i8 5, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <32 x i32> undef)
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm (M1, 16)  V{{[0-9]+}}:d32.xw  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32
-  %xw = call <32 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v32i32.v16i1.v16i32(<16 x i1> %mask, i8 0, i8 0, i8 9, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <32 x i32> undef)
+  %xw = call <32 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v32i32.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> zeroinitializer, i8 9, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <32 x i32> undef)
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm (M1, 16)  V{{[0-9]+}}:d32.yz  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32
-  %yz = call <32 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v32i32.v16i1.v16i32(<16 x i1> %mask, i8 0, i8 0, i8 6, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <32 x i32> undef)
+  %yz = call <32 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v32i32.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> zeroinitializer, i8 6, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <32 x i32> undef)
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm (M1, 16)  V{{[0-9]+}}:d32.yw  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32
-  %yw = call <32 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v32i32.v16i1.v16i32(<16 x i1> %mask, i8 0, i8 0, i8 10, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <32 x i32> undef)
+  %yw = call <32 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v32i32.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> zeroinitializer, i8 10, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <32 x i32> undef)
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm (M1, 16)  V{{[0-9]+}}:d32.zw  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32
-  %zw = call <32 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v32i32.v16i1.v16i32(<16 x i1> %mask, i8 0, i8 0, i8 12, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <32 x i32> undef)
+  %zw = call <32 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v32i32.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> zeroinitializer, i8 12, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <32 x i32> undef)
 
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm (M1, 16)  [[VXYZ:V[0-9]+]]:d32.xyz  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32
-  %xyz = call <48 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v48i32.v16i1.v16i32(<16 x i1> %mask, i8 0, i8 0, i8 7, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <48 x i32> undef)
+  %xyz = call <48 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v48i32.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> zeroinitializer, i8 7, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <48 x i32> undef)
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm (M1, 16)  V{{[0-9]+}}:d32.xyw  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32
-  %xyw = call <48 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v48i32.v16i1.v16i32(<16 x i1> %mask, i8 0, i8 0, i8 11, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <48 x i32> undef)
+  %xyw = call <48 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v48i32.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> zeroinitializer, i8 11, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <48 x i32> undef)
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm (M1, 16)  V{{[0-9]+}}:d32.xzw  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32
-  %xzw = call <48 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v48i32.v16i1.v16i32(<16 x i1> %mask, i8 0, i8 0, i8 13, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <48 x i32> undef)
+  %xzw = call <48 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v48i32.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> zeroinitializer, i8 13, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <48 x i32> undef)
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm (M1, 16)  V{{[0-9]+}}:d32.yzw  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32
-  %yzw = call <48 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v48i32.v16i1.v16i32(<16 x i1> %mask, i8 0, i8 0, i8 14, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <48 x i32> undef)
+  %yzw = call <48 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v48i32.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> zeroinitializer, i8 14, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <48 x i32> undef)
 
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm (M1, 16)  [[VXYZW:V[0-9]+]]:d32.xyzw  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32
-  %xyzw = call <64 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v64i32.v16i1.v16i32(<16 x i1> %mask, i8 0, i8 0, i8 15, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <64 x i32> undef)
+  %xyzw = call <64 x i32> @llvm.vc.internal.lsc.load.quad.tgm.v64i32.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> zeroinitializer, i8 15, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <64 x i32> undef)
 
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm.ca.ca (M1, 16)  %null:d32.x  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32
-  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v16i32(<16 x i1> %mask, i8 2, i8 2, i8 1, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
+  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> <i8 2, i8 2>, i8 1, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm.ca.ca (M1, 16)  %null:d32.y  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32
-  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v16i32(<16 x i1> %mask, i8 2, i8 2, i8 2, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
+  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> <i8 2, i8 2>, i8 2, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm.ca.ca (M1, 16)  %null:d32.z  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32
-  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v16i32(<16 x i1> %mask, i8 2, i8 2, i8 4, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
+  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> <i8 2, i8 2>, i8 4, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm.ca.ca (M1, 16)  %null:d32.w  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32
-  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v16i32(<16 x i1> %mask, i8 2, i8 2, i8 8, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
+  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> <i8 2, i8 2>, i8 8, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
 
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm.ca.ca (M1, 16)  %null:d32.xy  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32
-  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v16i32(<16 x i1> %mask, i8 2, i8 2, i8 3, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
+  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> <i8 2, i8 2>, i8 3, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm.ca.ca (M1, 16)  %null:d32.xz  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32
-  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v16i32(<16 x i1> %mask, i8 2, i8 2, i8 5, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
+  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> <i8 2, i8 2>, i8 5, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm.ca.ca (M1, 16)  %null:d32.xw  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32
-  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v16i32(<16 x i1> %mask, i8 2, i8 2, i8 9, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
+  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> <i8 2, i8 2>, i8 9, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm.ca.ca (M1, 16)  %null:d32.yz  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32
-  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v16i32(<16 x i1> %mask, i8 2, i8 2, i8 6, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
+  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> <i8 2, i8 2>, i8 6, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm.ca.ca (M1, 16)  %null:d32.yw  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32
-  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v16i32(<16 x i1> %mask, i8 2, i8 2, i8 10, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
+  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> <i8 2, i8 2>, i8 10, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm.ca.ca (M1, 16)  %null:d32.zw  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32
-  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v16i32(<16 x i1> %mask, i8 2, i8 2, i8 12, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
+  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> <i8 2, i8 2>, i8 12, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
 
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm.ca.ca (M1, 16)  %null:d32.xyz  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32
-  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v16i32(<16 x i1> %mask, i8 2, i8 2, i8 7, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
+  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> <i8 2, i8 2>, i8 7, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm.ca.ca (M1, 16)  %null:d32.xyw  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32
-  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v16i32(<16 x i1> %mask, i8 2, i8 2, i8 11, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
+  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> <i8 2, i8 2>, i8 11, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm.ca.ca (M1, 16)  %null:d32.xzw  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32
-  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v16i32(<16 x i1> %mask, i8 2, i8 2, i8 13, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
+  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> <i8 2, i8 2>, i8 13, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm.ca.ca (M1, 16)  %null:d32.yzw  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32
-  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v16i32(<16 x i1> %mask, i8 2, i8 2, i8 14, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
+  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> <i8 2, i8 2>, i8 14, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
 
 ; CHECK: ([[PRED]]) lsc_load_quad.tgm.ca.ca (M1, 16)  %null:d32.xyzw  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32
-  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v16i32(<16 x i1> %mask, i8 2, i8 2, i8 15, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
+  call void @llvm.vc.internal.lsc.prefetch.quad.tgm.v16i1.v2i8.v16i32(<16 x i1> %mask, <2 x i8> <i8 2, i8 2>, i8 15, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod)
 
 ; CHECK: ([[PRED]]) lsc_store_quad.tgm (M1, 16)  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32  [[VX]]:d32.x
-  call void @llvm.vc.internal.lsc.store.quad.tgm.v16i1.v16i32.v16i32(<16 x i1> %mask, i8 0, i8 0, i8 1, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <16 x i32> %x)
+  call void @llvm.vc.internal.lsc.store.quad.tgm.v16i1.v2i8.v16i32.v16i32(<16 x i1> %mask, <2 x i8> zeroinitializer, i8 1, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <16 x i32> %x)
 ; CHECK: ([[PRED]]) lsc_store_quad.tgm (M1, 16)  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32  [[VXY]]:d32.xy
-  call void @llvm.vc.internal.lsc.store.quad.tgm.v16i1.v16i32.v32i32(<16 x i1> %mask, i8 0, i8 0, i8 3, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <32 x i32> %xy)
+  call void @llvm.vc.internal.lsc.store.quad.tgm.v16i1.v2i8.v16i32.v32i32(<16 x i1> %mask, <2 x i8> zeroinitializer, i8 3, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <32 x i32> %xy)
 ; CHECK: ([[PRED]]) lsc_store_quad.tgm (M1, 16)  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32  [[VXYZ]]:d32.xyz
-  call void @llvm.vc.internal.lsc.store.quad.tgm.v16i1.v16i32.v48i32(<16 x i1> %mask, i8 0, i8 0, i8 7, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <48 x i32> %xyz)
+  call void @llvm.vc.internal.lsc.store.quad.tgm.v16i1.v2i8.v16i32.v48i32(<16 x i1> %mask, <2 x i8> zeroinitializer, i8 7, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <48 x i32> %xyz)
 ; CHECK: ([[PRED]]) lsc_store_quad.tgm (M1, 16)  bti(0x7B){{.}}[[U]],[[V]],[[R]],[[LOD]]{{.}}:a32  [[VXYZW]]:d32.xyzw
-  call void @llvm.vc.internal.lsc.store.quad.tgm.v16i1.v16i32.v64i32(<16 x i1> %mask, i8 0, i8 0, i8 15, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <64 x i32> %xyzw)
+  call void @llvm.vc.internal.lsc.store.quad.tgm.v16i1.v2i8.v16i32.v64i32(<16 x i1> %mask, <2 x i8> zeroinitializer, i8 15, i32 123, <16 x i32> %u, <16 x i32> %v, <16 x i32> %r, <16 x i32> %lod, <64 x i32> %xyzw)
 
   ret void
 }

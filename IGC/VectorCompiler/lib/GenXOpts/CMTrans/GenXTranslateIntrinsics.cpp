@@ -688,24 +688,64 @@ Value *GenXTranslateIntrinsics::translateLscTyped(CallInst &I) const {
   IRBuilder<> Builder(&I);
   Module *M = I.getModule();
 
+  auto *Pred = I.getArgOperand(0);
+
+  auto *L1Control = cast<Constant>(I.getArgOperand(1));
+  auto *L3Control = cast<Constant>(I.getArgOperand(2));
+  auto *CacheOpts = translateCacheControls(L1Control, L3Control);
+
+  auto *ChannelMask = I.getArgOperand(3);
+  auto *BTI = I.getArgOperand(4);
+  auto *U = I.getArgOperand(5);
+  auto *V = I.getArgOperand(6);
+  auto *R = I.getArgOperand(7);
+  auto *LOD = I.getArgOperand(8);
+
+  Value *Src = nullptr;
+  auto *Ty = I.getType();
+
   auto NewIID = vc::InternalIntrinsic::not_internal_intrinsic;
 
   switch (IID) {
   default:
     IGC_ASSERT_UNREACHABLE();
   case GenXIntrinsic::genx_lsc_load_merge_quad_typed_bti:
+    Src = I.getArgOperand(9);
     NewIID = vc::InternalIntrinsic::lsc_load_quad_tgm;
     break;
   case GenXIntrinsic::genx_lsc_prefetch_quad_typed_bti:
     NewIID = vc::InternalIntrinsic::lsc_prefetch_quad_tgm;
     break;
   case GenXIntrinsic::genx_lsc_store_quad_typed_bti:
+    Src = I.getArgOperand(9);
     NewIID = vc::InternalIntrinsic::lsc_store_quad_tgm;
     break;
   }
 
-  SmallVector<Value *, 10> Args(I.args());
-  auto *Func = vc::getAnyDeclarationForArgs(M, NewIID, I.getType(), Args);
+  SmallVector<Type *, 4> Types;
+  if (!Ty->isVoidTy())
+    Types.push_back(Ty);
+  Types.push_back(Pred->getType());
+  Types.push_back(CacheOpts->getType());
+  Types.push_back(U->getType());
+  if (Src && Ty->isVoidTy())
+    Types.push_back(Src->getType());
+
+  auto *Func = vc::InternalIntrinsic::getInternalDeclaration(M, NewIID, Types);
+
+  SmallVector<Value *, 9> Args = {
+      Pred,
+      CacheOpts,
+      ChannelMask,
+      BTI,
+      U,
+      V,
+      R,
+      LOD,
+  };
+  if (Src)
+    Args.push_back(Src);
+
   auto *NewI = Builder.CreateCall(Func, Args);
   LLVM_DEBUG(dbgs() << "New intrinsic generated: " << *NewI);
 

@@ -831,9 +831,6 @@ InternalIntrinsic::getMemoryVectorSizePerLane(const llvm::Instruction *I) {
 
     IGC_ASSERT_UNREACHABLE();
   }
-  case InternalIntrinsic::lsc_load_quad_tgm:
-  case InternalIntrinsic::lsc_prefetch_quad_tgm:
-  case InternalIntrinsic::lsc_store_quad_tgm:
   case InternalIntrinsic::lsc_load_quad_bti:
   case InternalIntrinsic::lsc_load_quad_bss:
   case InternalIntrinsic::lsc_load_quad_slm:
@@ -851,6 +848,16 @@ InternalIntrinsic::getMemoryVectorSizePerLane(const llvm::Instruction *I) {
     IGC_ASSERT(Size > 0 && Size <= 4);
     return Size;
   }
+  case InternalIntrinsic::lsc_load_quad_tgm:
+  case InternalIntrinsic::lsc_prefetch_quad_tgm:
+  case InternalIntrinsic::lsc_store_quad_tgm: {
+    auto *ChannelMask = cast<ConstantInt>(I->getOperand(2));
+    auto Mask = ChannelMask->getZExtValue();
+    auto Size = countPopulation(Mask);
+    IGC_ASSERT(Size > 0 && Size <= 4);
+    return Size;
+  }
+
   }
 
   return 1;
@@ -948,6 +955,9 @@ int InternalIntrinsic::getMemoryCacheControlOperandIndex(unsigned IID) {
   case InternalIntrinsic::lsc_load_2d_ugm_desc_vnni:
   case InternalIntrinsic::lsc_prefetch_2d_ugm_desc:
   case InternalIntrinsic::lsc_store_2d_ugm_desc:
+  case InternalIntrinsic::lsc_load_quad_tgm:
+  case InternalIntrinsic::lsc_store_quad_tgm:
+  case InternalIntrinsic::lsc_prefetch_quad_tgm:
     return 1;
   case InternalIntrinsic::lsc_load_2d_tgm_bti:
   case InternalIntrinsic::lsc_store_2d_tgm_bti:

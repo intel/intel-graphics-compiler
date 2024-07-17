@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -13,7 +13,7 @@ declare i32 @llvm.genx.rdregioni.i32.v2i32.i16(<2 x i32>, i32, i32, i32, i16, i3
 declare !genx_intrinsic_id !28 <64 x i8> @llvm.vc.internal.lsc.load.2d.tgm.bti.v64i8.v2i8(<2 x i8>, i32, i32, i32, i32, i32) #2
 declare !genx_intrinsic_id !29 void @llvm.vc.internal.lsc.store.2d.tgm.bti.v2i8.v64i8(<2 x i8>, i32, i32, i32, i32, i32, <64 x i8>) #3
 
-declare void @llvm.vc.internal.lsc.store.quad.tgm.v4i1.v4i32.v4i32(<4 x i1>, i8, i8, i8, i32, <4 x i32>, <4 x i32>, <4 x i32>, <4 x i32>, <4 x i32>) #3
+declare void @llvm.vc.internal.lsc.store.quad.tgm.v4i1.v2i8.v4i32.v4i32(<4 x i1>, <2 x i8>, i8, i32, <4 x i32>, <4 x i32>, <4 x i32>, <4 x i32>, <4 x i32>) #3
 
 define dllexport spir_kernel void @test_genx(<2 x i32> %base, <2 x i32> %x, <2 x i32> %y, i16 %offset) local_unnamed_addr #0 {
   %offset.new = add i16 %offset, 4
@@ -32,7 +32,7 @@ define spir_kernel void @test_internal(<4 x i32> %x, <2 x i32> %base, i16 %offse
   %offset.new = add i16 %offset, 4
   %base.new = tail call i32 @llvm.genx.rdregioni.i32.v2i32.i16(<2 x i32> %base, i32 0, i32 1, i32 1, i16 %offset.new, i32 0)
 ; CHECK: lsc_store_quad.tgm (M1, 4)  bti(V{{[0-9]+}})
-  call void @llvm.vc.internal.lsc.store.quad.tgm.v4i1.v4i32.v4i32(<4 x i1> <i1 true, i1 true, i1 true, i1 true>, i8 0, i8 0, i8 1, i32 %base.new, <4 x i32> %x, <4 x i32> %x, <4 x i32> %x, <4 x i32> %x, <4 x i32> %x)
+  call void @llvm.vc.internal.lsc.store.quad.tgm.v4i1.v2i8.v4i32.v4i32(<4 x i1> <i1 true, i1 true, i1 true, i1 true>, <2 x i8> zeroinitializer, i8 1, i32 %base.new, <4 x i32> %x, <4 x i32> %x, <4 x i32> %x, <4 x i32> %x, <4 x i32> %x)
   ret void
 }
 
