@@ -110,12 +110,11 @@ bool isDpasAccumulator(const Value *V) {
   const auto IID = vc::getAnyIntrinsicID(User);
 
   if (IID != GenXIntrinsic::genx_dpas && IID != GenXIntrinsic::genx_dpas2)
-    return true;
+    return false;
 
   const auto *CI = cast<CallInst>(User);
   return CI->getArgOperand(0) == V;
 }
-
 } // namespace
 
 namespace llvm {
