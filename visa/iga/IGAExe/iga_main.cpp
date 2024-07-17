@@ -406,6 +406,14 @@ extern "C" int iga_main(int argc, const char **argv) {
                   "Send instructions are emitted as load/store instructions",
                   opts::OptAttrs::ALLOW_UNSET, baseOpts.printLdSt);
   xGrp.defineOpt(
+      "swsb-mode", "swsb-mode", "INT",
+      "override iga::SWSB_ENCODE_MODE being used on auto dependency set", "",
+      opts::OptAttrs::ALLOW_UNSET,
+      [](const char *cinp, const opts::ErrorHandler &eh, Opts &baseOpts) {
+        std::string str = cinp;
+        baseOpts.swsbMode = eh.parseInt(cinp);
+      });
+  xGrp.defineOpt(
       "sbid-count", "sbid-count", "INT",
       "number of sbid being used on auto dependency set", "",
       opts::OptAttrs::ALLOW_UNSET,

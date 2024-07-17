@@ -902,7 +902,8 @@ std::pair<DepSet *, DepSet *> DepSetBuilder::createDPASSrcDstDepSet(
   setDEPPipeClass(enc_mode, *oups, **instIt, mPlatformModel);
 
   // identify dpas macro
-  DpasMacroBuilder dmb(*this, mPlatformModel, insList, instIt, *inps, *oups);
+  DpasMacroBuilder dmb(
+      *this, mPlatformModel, insList, instIt, *inps, *oups, enc_mode);
   const Instruction &lastDpas = dmb.formMacro(dpasCnt);
 
   // let the last instruciton in the macro represent this DepSet

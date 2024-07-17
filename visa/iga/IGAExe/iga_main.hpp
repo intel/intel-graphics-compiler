@@ -53,6 +53,7 @@ struct Opts {
   bool legacyDirectives = false;                   // -Xlegacy-directives
   bool errorOnCompactFail = true;                  // -Xwarn-on-compact-fail
   bool autosetDepInfo = false;                     // -Xauto-deps
+  uint32_t swsbMode = 0;                           // -Xswsb-mode
   uint32_t sbidCount = 16;                         // -Xsbid-count
   bool syntaxExts = false;                         // -Xsyntax-exts
   bool useNativeEncoder = false;                   // -Xnative

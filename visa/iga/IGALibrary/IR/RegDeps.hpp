@@ -435,9 +435,9 @@ private:
   public:
     DpasMacroBuilder(const DepSetBuilder &dsBuilder, const Model &model,
                      const InstList &instList, InstListIterator dpasIt,
-                     DepSet &in, DepSet &out)
+                     DepSet &in, DepSet &out, SWSB_ENCODE_MODE enc_mode)
         : m_dsBuilder(dsBuilder), m_model(model), m_instList(instList),
-          m_firstDpasIt(dpasIt), m_inps(in), m_oups(out) {}
+          m_firstDpasIt(dpasIt), m_inps(in), m_oups(out), m_encMode(enc_mode) {}
 
     // form a macro start from dpasIt, and set the register footprint of all
     // instruction in the macro into the given input and output DepSet
@@ -603,6 +603,8 @@ private:
 
     DepSet &m_inps;
     DepSet &m_oups;
+
+    SWSB_ENCODE_MODE m_encMode;
   }; // DpasMacroBuilder
 
 private:
