@@ -882,6 +882,34 @@
       "OffsetY": ["INT", 8],
       "Src": ["RAW", 9]
     },
+    "vc::InternalIntrinsic::lsc_load_2d_tgm_bti" : {
+      "opc": "ISA_LSC_TYPED",
+      "gen_opc": "ISA_LSC_TYPED_2D",
+      "sub_opc": [ "LITERAL", "LSC_LOAD_BLOCK2D" ],
+      "address_model": [ "LITERAL", "LSC_ADDR_TYPE_BTI" ],
+      "Dst": [ "RAW", 0 ],
+      "CacheOpts": ["CACHEOPTS", 1],
+      "Surface": [ "GENERAL", "UNSIGNED", 2 ],
+      "BlockHeight": [ "INT", 3 ],
+      "BlockWidth": [ "INT", 4 ],
+      "XOff": [ "GENERAL", "UNSIGNED", 5 ],
+      "YOff": [ "GENERAL", "UNSIGNED", 6 ],
+      "Src": [ "NULLRAW" ]
+    },
+    "vc::InternalIntrinsic::lsc_store_2d_tgm_bti" : {
+      "opc": "ISA_LSC_TYPED",
+      "gen_opc": "ISA_LSC_TYPED_2D",
+      "sub_opc": [ "LITERAL", "LSC_STORE_BLOCK2D" ],
+      "address_model": [ "LITERAL", "LSC_ADDR_TYPE_BTI" ],
+      "Dst": [ "NULLRAW" ],
+      "CacheOpts": ["CACHEOPTS", 1],
+      "Surface": [ "GENERAL", "UNSIGNED", 2 ],
+      "BlockHeight": [ "INT", 3 ],
+      "BlockWidth": [ "INT", 4 ],
+      "XOff": [ "GENERAL", "UNSIGNED", 5 ],
+      "YOff": [ "GENERAL", "UNSIGNED", 6 ],
+      "Src": [ "RAW", 7 ]
+    },
     // vc-intrinsics
     "genx_fptosi_sat": {
       "opc": "ISA_MOV",
@@ -3818,36 +3846,6 @@
       "barrier_id": [ "GENERAL", 2 ],
       "thread_count": [ "GENERAL", 3 ]
     },
-    "genx_lsc_load2d_typed_bti" : {
-      "opc": "ISA_LSC_TYPED",
-      "gen_opc": "ISA_LSC_TYPED_2D",
-      "sub_opc": [ "LITERAL", "LSC_LOAD_BLOCK2D" ],
-      "address_model": [ "LITERAL", "LSC_ADDR_TYPE_BTI" ],
-      "Dst": [ "RAW", 0 ],
-      "L1_Hints": [ "BYTE", 1 ],
-      "L3_Hints": [ "BYTE", 2 ],
-      "Surface": [ "GENERAL", "UNSIGNED", 3 ],
-      "BlockHeight": [ "BYTE", 4 ],
-      "BlockWidth": [ "BYTE", 5 ],
-      "XOff": [ "GENERAL", "UNSIGNED", 6 ],
-      "YOff": [ "GENERAL", "UNSIGNED", 7 ],
-      "Src": [ "NULLRAW" ]
-    },
-    "genx_lsc_store2d_typed_bti" : {
-      "opc": "ISA_LSC_TYPED",
-      "gen_opc": "ISA_LSC_TYPED_2D",
-      "sub_opc": [ "LITERAL", "LSC_STORE_BLOCK2D" ],
-      "address_model": [ "LITERAL", "LSC_ADDR_TYPE_BTI" ],
-      "Dst": [ "NULLRAW" ],
-      "L1_Hints": [ "BYTE", 1 ],
-      "L3_Hints": [ "BYTE", 2 ],
-      "Surface": [ "GENERAL", "UNSIGNED", 3 ],
-      "BlockHeight": [ "BYTE", 4 ],
-      "BlockWidth": [ "BYTE", 5 ],
-      "XOff": [ "GENERAL", "UNSIGNED", 6 ],
-      "YOff": [ "GENERAL", "UNSIGNED", 7 ],
-      "Src": [ "RAW", 8 ]
-    },
     "genx_lsc_fence": {
       "opc": "ISA_LSC_FENCE",
       "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
@@ -3994,12 +3992,11 @@
     ],
     "ISA_LSC_TYPED_2D": [
       "LSC_DATA_SHAPE_TYPED_BLOCK2D dataShape2D",
-      "LSC_CACHE_OPTS cache {(LSC_CACHE_OPT) L1_Hints, (LSC_CACHE_OPT) L3_Hints}",
       "dataShape2D.height = BlockHeight",
       "dataShape2D.width = BlockWidth",
       [ "CreateLscTyped2D",
         "sub_opc",
-        "cache",
+        "CacheOpts",
         "address_model",
         "Surface",
         "dataShape2D",
