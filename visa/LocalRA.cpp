@@ -1408,7 +1408,7 @@ void LocalRA::calculateInputIntervals() {
 
 bool LocalRA::hasDstSrcOverlapPotential(G4_DstRegRegion *dst,
                                         G4_SrcRegRegion *src) {
-  int dstOpndNumRows = 0;
+  bool dstOpndNumRows = false;
 
   if (dst->getBase()->isRegVar()) {
     G4_Declare *dstDcl = dst->getBase()->asRegVar()->getDeclare();
@@ -1416,7 +1416,8 @@ bool LocalRA::hasDstSrcOverlapPotential(G4_DstRegRegion *dst,
       int dstOffset = (dstDcl->getOffsetFromBase() + dst->getLeftBound()) /
                       kernel.numEltPerGRF<Type_UB>();
       G4_DstRegRegion *dstRgn = dst;
-      dstOpndNumRows = dstRgn->getSubRegOff() * dstRgn->getTypeSize() + dstRgn->getLinearizedEnd() -
+      dstOpndNumRows = dstRgn->getSubRegOff() * dstRgn->getTypeSize() +
+                           dstRgn->getLinearizedEnd() -
                            dstRgn->getLinearizedStart() + 1 >
                        kernel.numEltPerGRF<Type_UB>();
 
@@ -1426,7 +1427,7 @@ bool LocalRA::hasDstSrcOverlapPotential(G4_DstRegRegion *dst,
         G4_Declare *srcDcl = src->getBase()->asRegVar()->getDeclare();
         int srcOffset = (srcDcl->getOffsetFromBase() + src->getLeftBound()) /
                         kernel.numEltPerGRF<Type_UB>();
-        bool srcOpndNumRows = srcRgn->getSubRegOff() * dstRgn->getTypeSize() +
+        bool srcOpndNumRows = srcRgn->getSubRegOff() * srcRgn->getTypeSize() +
                                   srcRgn->getLinearizedEnd() -
                                   srcRgn->getLinearizedStart() + 1 >
                               kernel.numEltPerGRF<Type_UB>();
@@ -2541,6 +2542,7 @@ bool LinearScan::allocateRegs(LocalLiveRange *lr, G4_BB *bb,
   int nrows = 0;
   int size = lr->getSizeInWords();
   G4_Declare *dcl = lr->getTopDcl();
+
   G4_SubReg_Align subalign = gra.getSubRegAlign(dcl);
   BankAlign preBank = BankAlign::Either;
   unsigned short occupiedBundles =
