@@ -188,15 +188,10 @@ inline Value* RepackToOldType(
 // - only bitcast, PHI, load, store and extract element instructions are
 //   supported
 inline bool GetUsedVectorElements(
+    Value* parentVal,
     Value* val,
     SmallVector<bool, 4>& used)
 {
-    // This function only needs to check read access.
-    if (isa<StoreInst>(val))
-    {
-        return true;
-    }
-
     // Check for supported read patterns and update accesses vector elements.
     if (GetElementPtrInst* gepInst = dyn_cast<GetElementPtrInst>(val))
     {
@@ -217,6 +212,8 @@ inline bool GetUsedVectorElements(
             used[index] = true;
             return true;
         }
+        // Bail early if dynamic index was found.
+        return false;
     }
     else if (BitCastInst* bc = dyn_cast<BitCastInst>(val))
     {
@@ -244,6 +241,20 @@ inline bool GetUsedVectorElements(
         {
             return false;
         }
+        // Supported bit cast type, check users for extract element
+        // instructions.
+    }
+    else if (StoreInst* store = dyn_cast<StoreInst>(val))
+    {
+        // This function only needs to check read access.
+        if (store->getPointerOperand() == parentVal)
+        {
+            return true;
+        }
+        // Bail as the entire vector (loaded from a candidate alloca) is stored
+        // elsewhere.
+        IGC_ASSERT(store->getValueOperand()->getType()->isVectorTy());
+        return false;
     }
     else if (!(isa<AllocaInst>(val) ||
         isa<PHINode>(val) ||
@@ -255,7 +266,7 @@ inline bool GetUsedVectorElements(
     // Follow the def-use chain
     for (User* user : val->users())
     {
-        if (!GetUsedVectorElements(user, used))
+        if (!GetUsedVectorElements(val, user, used))
         {
             return false;
         }
@@ -408,7 +419,8 @@ void ShrinkArrayAllocaPass::GatherAllocas(Function& F)
                 cast<IGCLLVM::FixedVectorType>(arrayElementType)->getNumElements());
             UsageInfo used;
             used.resize(numElements, false);
-            if (GetUsedVectorElements(alloca, used) &&
+            Value* dummyParentVal = nullptr;
+            if (GetUsedVectorElements(dummyParentVal, alloca, used) &&
                 PariallyUsed(used))
             {
                 m_AllocaInfo.emplace_back(
