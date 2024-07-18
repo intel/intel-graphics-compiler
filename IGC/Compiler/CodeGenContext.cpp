@@ -373,9 +373,17 @@ namespace IGC
         {
             CreateResourceDimensionTypes(*this);
         }
-#ifdef __IGC_OPAQUE_POINTERS_FORCE_DISABLED__
-        this->setOpaquePointers(false);
-#endif
+        // When opaque pointers are enabled through the environment setting, we
+        // expect the Context to convert any incoming typed pointers
+        // automatically. However, the build system has opaque pointers enabled
+        // in the FE/in the builtin bitcode, that setting gets force-enabled,
+        // as the context will only operate on opaque pointers anyway.
+        // TODO: For transition purposes, consider introducing an IGC internal
+        // option to tweak typed/opaque pointers with a precedence over the
+        // environment flag.
+        this->setOpaquePointers(
+            __IGC_OPAQUE_POINTERS_API_ENABLED ||
+            IGC_IS_FLAG_ENABLED(EnableOpaquePointersBackend));
     }
 
     void LLVMContextWrapper::AddRef()

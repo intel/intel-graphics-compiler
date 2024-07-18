@@ -824,6 +824,7 @@ DECLARE_IGC_REGKEY(bool, EnableLocalIdCalculationInShader, false,
     "used.", true)
 DECLARE_IGC_REGKEY(int, JointMatrixLoadStoreOpt, 3, "Selects subgroup (0), or block read/write (1), or optimized block read/write (2), 2d block read/write (3) implementation of Joint Matrix Load/Store built-ins", true)
 DECLARE_IGC_REGKEY(bool, EnableVector8LoadStore, false, "Enable Vectorizer to generate 8x32i and 4x64i loads and stores", true)
+DECLARE_IGC_REGKEY(bool, EnableOpaquePointersBackend, false, "[Experimental] Force opaque pointers' usage within IGC/LLVM passes", false)
 DECLARE_IGC_REGKEY(bool, ExcludeIRFromZEBinary, false, "Exclude IR sections from ZE binary", true)
 DECLARE_IGC_REGKEY(bool, AllocateZeroInitializedVarsInBss, true,  "Allocate zero initialized global variables in .bss section in ZEBinary", true)
 DECLARE_IGC_REGKEY(DWORD, OverrideOCLMaxParamSize, 0,  "Override the value imposed on the kernel by CL_DEVICE_MAX_PARAMETER_SIZE. Value in bytes, if value==0 no override happens.", true)

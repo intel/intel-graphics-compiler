@@ -1524,9 +1524,12 @@ namespace TC
             optionsEx += " -debug-info-kind=line-tables-only -dwarf-version=4";
         }
 
-#ifdef __IGC_OPAQUE_POINTERS_FORCE_DISABLED__
-        optionsEx += " -no-opaque-pointers";
-#endif
+        // Possibly override the opaque/typed pointers' setting based on what's
+        // passed from the build system.
+        // TODO: Consider introducing a separate FCL environment variable for
+        // tweaking this, similarly to IGC_EnableOpaquePointersBackend.
+        optionsEx += " ";
+        optionsEx += __IGC_OPAQUE_POINTERS_DEFAULT_ARG_CLANG;
 
         std::string extensionsFromInternalOptions = GetSubstring(pInternalOptions, "-cl-ext=");
 

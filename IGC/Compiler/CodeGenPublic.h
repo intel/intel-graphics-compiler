@@ -37,7 +37,6 @@ SPDX-License-Identifier: MIT
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/LLVMContext.h>
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/ADT/StringMap.h>
 #include <llvm/ADT/StringRef.h>
@@ -55,6 +54,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include <optional>
 #include <Metrics/IGCMetric.h>
+#include "llvmWrapper/IR/LLVMContext.h"
 #include "llvmWrapper/IR/Module.h"
 #include "Compiler/UserAddrSpaceMD.hpp"
 
@@ -839,7 +839,7 @@ namespace IGC
     /// This class:
     ///    Add intrinsic cache to LLVM context
     ///    Add llvm metadata cache
-    class LLVMContextWrapper : public llvm::LLVMContext
+    class LLVMContextWrapper : public IGCLLVM::Context
     {
         LLVMContextWrapper(LLVMContextWrapper&) = delete;
         LLVMContextWrapper& operator =(LLVMContextWrapper&) = delete;

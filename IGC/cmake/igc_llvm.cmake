@@ -69,29 +69,41 @@ list(TRANSFORM LLVM_INCLUDE_DIRS PREPEND "-I=" OUTPUT_VARIABLE LLVM_TABLEGEN_FLA
 # Add major version definition for llvm wrapper.
 add_compile_definitions(LLVM_VERSION_MAJOR=${LLVM_VERSION_MAJOR})
 
-set(IGC_LLVM_DEPENDENT_CLANG_FLAGS "")
-set(IGC_LLVM_DEPENDENT_OPT_FLAGS "")
-
-# Disable the opaque pointers' usage explicitly, unless the block below deems that unnecessary
-set(IGC_OPAQUE_POINTERS_FORCE_DISABLED ON)
-if(IGC_OPTION__LLVM_OPAQUE_POINTERS_ENABLED)
-  if(LLVM_VERSION_MAJOR LESS 14)
-    message(WARNING "IGC_OPTION__LLVM_OPAQUE_POINTERS_ENABLED ignored: opaque pointers are not available prior to LLVM 14")
-  endif()
-  set(IGC_OPAQUE_POINTERS_FORCE_DISABLED OFF)
-elseif(LLVM_VERSION_MAJOR LESS 15)
-  # Opaque pointers are either absent (LLVM <14) or disabled by default. No need to force-disable
-  set(IGC_OPAQUE_POINTERS_FORCE_DISABLED OFF)
-endif(IGC_OPTION__LLVM_OPAQUE_POINTERS_ENABLED)
-
-if(IGC_OPAQUE_POINTERS_FORCE_DISABLED)
-  # Once we've figured out that explicit disabling is needed, propagate
-  # corresponding options to all the in-tree calls of clang/opt tools.
-  list(APPEND IGC_LLVM_DEPENDENT_CLANG_FLAGS "-no-opaque-pointers")
-  list(APPEND IGC_LLVM_DEPENDENT_OPT_FLAGS "-opaque-pointers=0")
-  # Also inform the preprocessor.
-  add_compile_definitions(__IGC_OPAQUE_POINTERS_FORCE_DISABLED__)
+set(IGC_BUILD__OPAQUE_POINTERS_DISABLE_OPT "")
+set(IGC_BUILD__OPAQUE_POINTERS_DISABLE_CLANG "")
+set(IGC_BUILD__OPAQUE_POINTERS_ENABLE_OPT "")
+set(IGC_BUILD__OPAQUE_POINTERS_ENABLE_CLANG "")
+# TODO: If/when the base LLVM version of OCL FE gets decoupled from the
+# LLVM_VERSION_MAJOR variable and usage of non-major-release LLVM within
+# core IGC becomes possible, this condition should refer to the FE version.
+if(LLVM_VERSION_MAJOR EQUAL 14)
+  set(IGC_BUILD__OPAQUE_POINTERS_ENABLE_OPT "-opaque-pointers=1")
+  # NB: The option to do the below only got introduced post-LLVM 14
+  # set(IGC_BUILD__OPAQUE_POINTERS_ENABLE_CLANG "-opaque-pointers"
+  #
+  # (see github.com/llvm/llvm-project/commit/d69e9f9d8)
+elseif(LLVM_VERSION_MAJOR GREATER 14)
+  set(IGC_BUILD__OPAQUE_POINTERS_DISABLE_OPT "-opaque-pointers=0")
+  set(IGC_BUILD__OPAQUE_POINTERS_DISABLE_CLANG "-no-opaque-pointers")
 endif()
+
+# Based on the default behavior for opaque/typed pointers, propagate
+# corresponding options to all the in-tree calls of clang/opt tools.
+if(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS)
+  if(LLVM_VERSION_MAJOR LESS 14)
+    message(WARNING "IGC_OPTION__API_ENABLE_OPAQUE_POINTERS ignored: opaque pointers are not available prior to LLVM 14")
+    set(IGC_OPAQUE_POINTERS_FORCE_DISABLED OFF)
+  elseif(LLVM_VERSION_MAJOR)
+    set(IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_OPT ${IGC_BUILD__OPAQUE_POINTERS_ENABLE_OPT})
+    set(IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_CLANG ${IGC_BUILD__OPAQUE_POINTERS_ENABLE_CLANG})
+    add_compile_definitions(__IGC_OPAQUE_POINTERS_API_ENABLED=true)
+  endif()
+else(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS)
+  set(IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_OPT ${IGC_BUILD__OPAQUE_POINTERS_DISABLE_OPT})
+  set(IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_CLANG ${IGC_BUILD__OPAQUE_POINTERS_DISABLE_CLANG})
+  add_compile_definitions(__IGC_OPAQUE_POINTERS_API_ENABLED=false)
+endif()
+add_compile_definitions(__IGC_OPAQUE_POINTERS_DEFAULT_ARG_CLANG="${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_CLANG}")
 
 # Include LLVM headers as system ones.
 # This will disable warnings on linux.

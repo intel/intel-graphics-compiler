@@ -88,7 +88,7 @@ function(vc_build_bif TARGET RES_FILE CMCL_SRC_PATH BIF_NAME PTR_BIT_SIZE)
     add_custom_command(OUTPUT "${BIF_CLANG_BC_PATH}"
       COMMAND ${CMAKE_COMMAND} -E make_directory ${BIF_CLANG_BC_PATH_DIR}
       COMMAND clang-tool -cc1 ${CMCL_INCLUDES} ${VC_INCLUDES}
-               ${EXTRA_CLANG_INCLUDES} ${IGC_LLVM_DEPENDENT_CLANG_FLAGS} ${EXTRA_CLANG_FLAGS}
+               ${EXTRA_CLANG_INCLUDES} ${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_CLANG} ${EXTRA_CLANG_FLAGS}
                -x cl -cl-std=clc++ -triple=${SPIR_TARGET}
                -O2 -disable-llvm-passes -discard-value-names -emit-llvm-bc -o "${BIF_CLANG_BC_NAME}" ${CMCL_SRC}
       COMMENT "vc_build_bif: Compiling CMCL source ${CMCL_SRC} to BC ${BIF_CLANG_BC_NAME}"
@@ -108,7 +108,7 @@ function(vc_build_bif TARGET RES_FILE CMCL_SRC_PATH BIF_NAME PTR_BIT_SIZE)
   add_custom_target(${TARGET}
     COMMENT "vc_build_bif: Translating CMCL builtins:  ${BIF_CLANG_BC_NAME_FINAL} -> ${BIF_OPT_BC_NAME}"
     COMMAND CMCLTranslatorTool -o ${BIF_CMCL_BC_NAME} ${BIF_CLANG_BC_NAME_FINAL}
-    COMMAND ${LLVM_OPT_EXE} ${IGC_LLVM_DEPENDENT_OPT_FLAGS} --O2 -o ${BIF_OPT_BC_NAME} ${BIF_CMCL_BC_NAME}
+    COMMAND ${LLVM_OPT_EXE} ${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_OPT} --O2 -o ${BIF_OPT_BC_NAME} ${BIF_CMCL_BC_NAME}
     DEPENDS CMCLTranslatorTool ${LLVM_OPT_EXE} ${BIF_CLANG_BC_PATH_FINAL}
     BYPRODUCTS ${BIF_OPT_BC_PATH}
     SOURCES ${CMCL_SRC_PATH})

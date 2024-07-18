@@ -62,7 +62,7 @@ tool_dirs = [
 # Add extra args for opt to remove boilerplate from tests.
 vc_extra_args = ['-load', config.llvm_plugin]
 
-opt_tool = ToolSubst('%opt', extra_args=vc_extra_args+[config.llvm_dependent_opt_flags], command=FindTool('opt'))
+opt_tool = ToolSubst('%opt', extra_args=vc_extra_args+[config.opaque_pointers_default_arg_opt], command=FindTool('opt'))
 
 tools = [ToolSubst('not'),
          opt_tool,
@@ -77,6 +77,11 @@ if int(config.llvm_version) < 11:
 else:
   config.substitutions.append(('%not_for_vc_diag%', 'not --crash'))
   config.substitutions.append(('%use_old_pass_manager%', '-enable-new-pm=0'))
+
+# Use one of the substitutes explicitly to override the default setting in the
+# course of LITs' migration to opaque pointers.
+config.substitutions.append(('%disable_opaque_ptrs%', config.opaque_pointers_disable_opt))
+config.substitutions.append(('%enable_opaque_ptrs%', config.opaque_pointers_enable_opt))
 
 if int(config.llvm_version) < 12:
   config.available_features.add('llvm_11_or_less')

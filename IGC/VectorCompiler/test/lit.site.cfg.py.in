@@ -28,7 +28,9 @@ config.vc_builtins_bif_prefix = "$<TARGET_PROPERTY:VCBiFPreparation,BINARY_DIR>/
 config.vc_platform_list = "@SUPPORTED_VC_PLATFORMS@"
 config.use_khronos_spirv_translator_in_sc = "$<BOOL:@IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC@>"
 config.llvm_version = "@LLVM_VERSION_MAJOR@"
-config.llvm_dependent_opt_flags = "@IGC_LLVM_DEPENDENT_OPT_FLAGS@"
+config.opaque_pointers_default_arg_opt = "@IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_OPT@"
+config.opaque_pointers_disable_opt = "@IGC_BUILD__OPAQUE_POINTERS_DISABLE_OPT@"
+config.opaque_pointers_enable_opt = "@IGC_BUILD__OPAQUE_POINTERS_ENABLE_OPT@"
 
 # Support substitution of the tools and libs dirs with user parameters. This is
 # used when we can't determine the tool dir at configuration time.

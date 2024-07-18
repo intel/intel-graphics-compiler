@@ -41,6 +41,7 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/IntrinsicInst.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Intrinsics.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/IRBuilder.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/LLVMContext.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Module.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Operator.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/PatternMatch.h"
