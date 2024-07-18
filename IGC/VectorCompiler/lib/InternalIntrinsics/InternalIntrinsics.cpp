@@ -735,8 +735,6 @@ bool InternalIntrinsic::isInternalMemoryIntrinsic(InternalIntrinsic::ID id) {
   case InternalIntrinsic::lsc_load_2d_ugm_desc_vnni:
   case InternalIntrinsic::lsc_prefetch_2d_ugm_desc:
   case InternalIntrinsic::lsc_store_2d_ugm_desc:
-  case InternalIntrinsic::lsc_load_2d_tgm_bti:
-  case InternalIntrinsic::lsc_store_2d_tgm_bti:
     return true;
   }
 
@@ -903,15 +901,6 @@ InternalIntrinsic::getMemoryRegisterElementSize(const llvm::Instruction *I) {
     auto *Ty = LastArg->getType();
     return Ty->getScalarType()->getPrimitiveSizeInBits();
   } break;
-  case InternalIntrinsic::lsc_store_2d_tgm_bti: {
-    auto *LastArg = I->getOperand(6);
-    auto *Ty = LastArg->getType();
-    return Ty->getScalarType()->getPrimitiveSizeInBits();
-  } break;
-  case InternalIntrinsic::lsc_load_2d_tgm_bti: {
-    auto *Ty = I->getType();
-    return Ty->getScalarType()->getPrimitiveSizeInBits();
-  } break;
   }
 
   auto *ElementSize = cast<ConstantInt>(I->getOperand(ElementSizeIndex));
@@ -949,9 +938,6 @@ int InternalIntrinsic::getMemoryCacheControlOperandIndex(unsigned IID) {
   case InternalIntrinsic::lsc_prefetch_2d_ugm_desc:
   case InternalIntrinsic::lsc_store_2d_ugm_desc:
     return 1;
-  case InternalIntrinsic::lsc_load_2d_tgm_bti:
-  case InternalIntrinsic::lsc_store_2d_tgm_bti:
-    return 0;
   default:
     break;
   }

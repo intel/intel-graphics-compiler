@@ -3826,7 +3826,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     // work around VISA spec pecularity: for typed messages width is in bytes
     // not in elements
     VectorType *VT;
-    constexpr int SrcOperandNum = 6; // to be in sync with json
+    constexpr int SrcOperandNum = 7; // to be in sync with json
     switch (SubOpcode) {
     case LSC_LOAD_BLOCK2D:
       VT = cast<VectorType>(CI->getType());

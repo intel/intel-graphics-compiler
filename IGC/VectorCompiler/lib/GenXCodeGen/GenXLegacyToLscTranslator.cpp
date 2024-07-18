@@ -810,8 +810,8 @@ Value *GenXLegacyToLscTranslator::translateMediaLoadStore(CallInst &CI) const {
   IGC_ASSERT(IID == GenXIntrinsic::genx_media_ld ||
              IID == GenXIntrinsic::genx_media_st);
   auto IsLoad = IID == GenXIntrinsic::genx_media_ld;
-  auto NewIID = IsLoad ? vc::InternalIntrinsic::lsc_load_2d_tgm_bti
-                       : vc::InternalIntrinsic::lsc_store_2d_tgm_bti;
+  auto NewIID = IsLoad ? GenXIntrinsic::genx_lsc_load2d_typed_bti
+                       : GenXIntrinsic::genx_lsc_store2d_typed_bti;
 
   auto *Modifier = cast<ConstantInt>(CI.getArgOperand(0));
   auto *BTI = CI.getArgOperand(1);
@@ -853,18 +853,9 @@ Value *GenXLegacyToLscTranslator::translateMediaLoadStore(CallInst &CI) const {
   IGC_ASSERT(Width % ESize == 0);
   IGC_ASSERT(DataSize % RoundedWidth == 0);
 
-  auto *CacheOpts = ConstantDataVector::getSplat(
-      ST->getNumCacheLevels(), Builder.getInt8(LSC_CACHING_DEFAULT));
-
-  SmallVector<Type *, 2> Types;
-  if (IsLoad)
-    Types.push_back(VTy);
-  Types.push_back(CacheOpts->getType());
-  if (!IsLoad)
-    Types.push_back(VTy);
-
   SmallVector<Value *, 8> Args = {
-      CacheOpts,
+      Builder.getInt8(0), // L1 cache control (default)
+      Builder.getInt8(0), // L3 cache control (default)
       BTI,
       Builder.getInt32(Height),
       Builder.getInt32(Width / ESize),
@@ -874,8 +865,7 @@ Value *GenXLegacyToLscTranslator::translateMediaLoadStore(CallInst &CI) const {
   if (!IsLoad)
     Args.push_back(Data);
 
-  auto *Func = vc::InternalIntrinsic::getInternalDeclaration(CI.getModule(),
-                                                             NewIID, Types);
+  auto *Func = GenXIntrinsic::getGenXDeclaration(CI.getModule(), NewIID, {VTy});
   auto *I = Builder.CreateCall(Func, Args);
   LLVM_DEBUG(dbgs() << "New intrinsic generated: " << *I);
   return I;
