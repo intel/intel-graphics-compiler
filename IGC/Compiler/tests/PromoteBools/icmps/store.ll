@@ -17,6 +17,6 @@ define spir_kernel void @icmps() {
 
 ; CHECK-LABEL:  define spir_kernel void @icmps()
 
-; CHECK:        %C = icmp eq i32 0, 0
-; CHECK-NEXT:   %1 = zext i1 %C to i8
-; CHECK-NEXT:   store i8 %1, i8* null, align 1
+; CHECK:        [[CMP:%[0-9]+]] = icmp eq i32 0, 0
+; CHECK-NEXT:   [[EXT:%[0-9]+]] = zext i1 [[CMP]] to i8
+; CHECK-NEXT:   store i8 [[EXT]], i8* null, align 1

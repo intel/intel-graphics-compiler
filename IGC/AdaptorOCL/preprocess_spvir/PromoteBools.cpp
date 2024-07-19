@@ -1006,7 +1006,7 @@ GetElementPtrInst* PromoteBools::promoteGetElementPtr(GetElementPtrInst* getElem
     return newGetElementPtr;
 }
 
-ICmpInst* PromoteBools::promoteICmp(ICmpInst* icmp)
+Value* PromoteBools::promoteICmp(ICmpInst* icmp)
 {
     if (!icmp)
     {
@@ -1015,11 +1015,6 @@ ICmpInst* PromoteBools::promoteICmp(ICmpInst* icmp)
 
     auto op0 = icmp->getOperand(0);
     auto op1 = icmp->getOperand(1);
-
-    if (!wasPromotedAnyOf(icmp->operands()) && !typeNeedsPromotion(op0->getType()))
-    {
-        return icmp;
-    }
 
     auto promotedOp0 = convertI1ToI8(getOrCreatePromotedValue(op0), icmp);
     auto promotedOp1 = convertI1ToI8(getOrCreatePromotedValue(op1), icmp);
@@ -1032,7 +1027,7 @@ ICmpInst* PromoteBools::promoteICmp(ICmpInst* icmp)
         ""
     );
     newICmp->setDebugLoc(icmp->getDebugLoc());
-    return newICmp;
+    return convertI1ToI8(newICmp, icmp);
 }
 
 InlineAsm* PromoteBools::promoteInlineAsm(InlineAsm* inlineAsm)

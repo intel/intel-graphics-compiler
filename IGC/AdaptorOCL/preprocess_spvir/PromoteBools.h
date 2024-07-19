@@ -92,7 +92,7 @@ namespace IGC
         llvm::CallInst* promoteIndirectCallOrInlineAsm(llvm::CallInst* call);
         llvm::ExtractValueInst* promoteExtractValue(llvm::ExtractValueInst* extractValue);
         llvm::GetElementPtrInst* promoteGetElementPtr(llvm::GetElementPtrInst* getElementPtr);
-        llvm::ICmpInst* promoteICmp(llvm::ICmpInst* icmp);
+        llvm::Value* promoteICmp(llvm::ICmpInst* icmp);
         llvm::InlineAsm* promoteInlineAsm(llvm::InlineAsm* inlineAsm);
         llvm::InsertValueInst* promoteInsertValue(llvm::InsertValueInst* insertValue);
         llvm::LoadInst* promoteLoad(llvm::LoadInst* load);
