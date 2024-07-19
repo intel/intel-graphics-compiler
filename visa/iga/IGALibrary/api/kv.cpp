@@ -339,11 +339,11 @@ kv_status_t kv_get_send_exdesc_immoff(const kv_t *kv, int32_t pc,
 
   const auto exDesc = inst->getExtMsgDescriptor();
   const auto desc = inst->getMsgDescriptor();
-  if (!exDesc.isReg() || !desc.isImm())
-    return KV_DESCRIPTOR_INVALID;
 
   auto addrType = ((desc.imm >> 29) & 0x3); // Desc[30:29]
-  if (addrType != 1 && addrType != 2)       // BSS/SS
+  // when desc is reg, we don't know the addrType so are not able to do this
+  // check
+  if (desc.isImm() && addrType != 1 && addrType != 2)  // BSS/SS
     return KV_DESCRIPTOR_INVALID;
 
   *exdesc_immoff = inst->getExtImmOffDescriptor();
