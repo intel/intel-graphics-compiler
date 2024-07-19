@@ -9,6 +9,12 @@
 ; RUN: %opt %use_old_pass_manager% -GenXPromotePredicate -march=genx64 -mtriple=spir64-unknown-unknown \
 ; RUN: -mcpu=Gen9 -logical-ops-threshold=2 -S < %s | FileCheck %s
 
+; RUN: %opt %use_old_pass_manager% -GenXPromotePredicate -march=genx64 -mtriple=spir64-unknown-unknown \
+; RUN: -mcpu=XeHPG -logical-ops-threshold=2 -S < %s | FileCheck --check-prefix=FUSED %s
+
+; RUN: %opt %use_old_pass_manager% -GenXPromotePredicate -march=genx64 -mtriple=spir64-unknown-unknown \
+; RUN: -mcpu=XeHPC -logical-ops-threshold=2 -S < %s | FileCheck %s
+
 ; CHECK-LABEL: f_f
 ; CHECK-DAG: [[LESSEQUAL_A_LOAD_widened:%.*]] = bitcast <8 x i1> %lessequal_a_load_ to i8
 ; CHECK-DAG: [[EQUAL_A_LOAD5_widened:%.*]] = bitcast <8 x i1> %equal_a_load5_ to i8
@@ -20,6 +26,17 @@
 ; CHECK-DAG: [[NEG_RETURNED_LANES:%.*]] = bitcast i8 [[NEG_RETURNED_LANES_promoted]] to <8 x i1>
 ; CHECK-DAG: call void @llvm.genx.svm.scatter.v8i1.v8i64.v8f32(<8 x i1> [[NEG_RETURNED_LANES]], i32 0, <8 x i64> %new_offsets.i.i34, <8 x float> zeroinitializer)
 ; CHECK-DAG: icmp eq i8 [[LOGICAL_AND_promoted]], -1
+
+; FUSED-LABEL: f_f
+; FUSED-DAG: [[LESSEQUAL_A_LOAD_widened:%.*]] = sext <8 x i1> %lessequal_a_load_ to <8 x i16>
+; FUSED-DAG: [[EQUAL_A_LOAD5_widened:%.*]] = sext <8 x i1> %equal_a_load5_ to <8 x i16>
+; FUSED-DAG: [[LOGICAL_AND_promoted:%.*]] = and <8 x i16> [[LESSEQUAL_A_LOAD_widened]], [[EQUAL_A_LOAD5_widened]]
+; FUSED-DAG: [[LOGICAL_AND:%.*]] = icmp ne <8 x i16> [[LOGICAL_AND_promoted]], zeroinitializer
+; FUSED-DAG: call i1 @llvm.genx.any.v8i1(<8 x i1> [[LOGICAL_AND]])
+; FUSED-DAG: [[RETURNED_LANES_MEMORY_0_promoted:%.*]] = phi <8 x i16> [ [[LOGICAL_AND_promoted]], %safe_if_run_true.safe_if_after_true_crit_edge ], [ zeroinitializer, %allocas.safe_if_after_true_crit_edge ]
+; FUSED-DAG: [[NEG_RETURNED_LANES_promoted:%.*]] = xor <8 x i16> [[RETURNED_LANES_MEMORY_0_promoted]], <i16 -1, i16 -1, i16 -1, i16 -1, i16 -1, i16 -1, i16 -1, i16 -1>
+; FUSED-DAG: [[NEG_RETURNED_LANES:%.*]] = icmp ne <8 x i16> [[NEG_RETURNED_LANES_promoted]], zeroinitializer
+; FUSED-DAG: call void @llvm.genx.svm.scatter.v8i1.v8i64.v8f32(<8 x i1> [[NEG_RETURNED_LANES]], i32 0, <8 x i64> %new_offsets.i.i34, <8 x float> zeroinitializer)
 
 declare void @llvm.genx.svm.scatter.v8i1.v8i64.v8f32(<8 x i1>, i32, <8 x i64>, <8 x float>)
 declare i1 @llvm.genx.any.v8i1(<8 x i1>)
