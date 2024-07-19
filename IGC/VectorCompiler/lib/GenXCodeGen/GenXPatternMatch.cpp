@@ -178,7 +178,7 @@ private:
   // flipBoolNot : flip a (vector) bool not instruction if beneficial
   bool flipBoolNot(Instruction *Inst);
   // foldBoolAnd : fold a (vector) bool and into sel/wrregion if beneficial
-  bool matchInverseSqrt(Instruction *I);
+  bool matchInverseSqrt(CallInst *I);
   bool matchFloatAbs(BinaryOperator *I);
   bool foldBoolAnd(Instruction *Inst);
   bool simplifyPredRegion(CallInst *Inst);
@@ -778,6 +778,11 @@ void GenXPatternMatch::visitCallInst(CallInst &I) {
   case GenXIntrinsic::genx_dpas2:
     Changed |= simplifyDpasNullSrc(&I);
     break;
+  case GenXIntrinsic::genx_inv:
+  case GenXIntrinsic::genx_sqrt:
+  case Intrinsic::sqrt:
+    Changed |= matchInverseSqrt(&I);
+    break;
   }
 
   if (Kind == PatternMatchKind::PostLegalization)
@@ -788,9 +793,6 @@ void GenXPatternMatch::visitCallInst(CallInst &I) {
     break;
   case GenXIntrinsic::genx_any:
     Changed |= matchPredAny(&I);
-    break;
-  case GenXIntrinsic::genx_inv:
-    Changed |= matchInverseSqrt(&I);
     break;
   case GenXIntrinsic::genx_rdpredregion:
     Changed |= simplifyPredRegion(&I);
@@ -1125,13 +1127,68 @@ static bool notHasRealUse(Instruction *Inst) {
   return false;
 }
 
-static Instruction *createInverseSqrt(Value *Op, Instruction *InsertBefore) {
+static Constant *foldInverseSqrt(ConstantFP *F) {
+  const auto &AFP = F->getValueAPF();
+  auto *Ty = F->getType();
+
+  if (AFP.isNegZero())
+    return ConstantFP::getInfinity(Ty, true);
+  if (AFP.isNaN() || AFP.isNegative())
+    return ConstantFP::getQNaN(Ty);
+  if (AFP.isPosZero())
+    return ConstantFP::getInfinity(Ty, false);
+  if (AFP.isInfinity())
+    return ConstantFP::getNullValue(Ty);
+
+  auto Val = AFP.convertToDouble();
+  auto InvSqrt = std::sqrt(1.0 / Val);
+  return ConstantFP::get(Ty, InvSqrt);
+}
+
+static Constant *foldInverseSqrt(Constant *C) {
+  if (auto *FP = dyn_cast<ConstantFP>(C))
+    return foldInverseSqrt(FP);
+
+  if (isa<UndefValue>(C))
+    return C;
+
+  if (isa<ConstantAggregateZero>(C)) {
+    auto *Ty = cast<IGCLLVM::FixedVectorType>(C->getType());
+    auto *ETy = Ty->getElementType();
+    auto *Inf = ConstantFP::getInfinity(ETy, false);
+    return ConstantVector::getSplat(Ty->getElementCount(), Inf);
+  }
+
+  auto *CV = dyn_cast<ConstantDataVector>(C);
+  if (!CV)
+    return nullptr;
+
+  SmallVector<Constant *, 16> Vals;
+  const auto NumElements = CV->getNumElements();
+
+  for (unsigned I = 0; I != NumElements; ++I) {
+    auto *InvSqrt = foldInverseSqrt(CV->getElementAsConstant(I));
+    if (!InvSqrt)
+      return nullptr;
+
+    Vals.push_back(InvSqrt);
+  }
+
+  return ConstantVector::get(Vals);
+}
+
+static Value *createInverseSqrt(Value *Op, Instruction *InsertBefore) {
   IGC_ASSERT(Op && InsertBefore);
-  Function *Decl = GenXIntrinsic::getGenXDeclaration(
-      InsertBefore->getModule(), GenXIntrinsic::genx_rsqrt, {Op->getType()});
-  auto *RSqrt =
-      CallInst::Create(Decl, {Op}, Op->getName() + "inversed", InsertBefore);
-  RSqrt->setDebugLoc(InsertBefore->getDebugLoc());
+  IRBuilder B(InsertBefore);
+  auto *M = InsertBefore->getModule();
+  auto *Ty = Op->getType();
+
+  if (auto *C = dyn_cast<Constant>(Op))
+    if (auto *InvSqrt = foldInverseSqrt(C))
+      return InvSqrt;
+
+  auto *Decl = vc::getAnyDeclaration(M, GenXIntrinsic::genx_rsqrt, {Ty});
+  auto *RSqrt = B.CreateCall(Decl, {Op}, Op->getName() + ".rsqrt");
   return RSqrt;
 }
 
@@ -1193,34 +1250,64 @@ bool GenXPatternMatch::flipBoolNot(Instruction *Inst) {
 }
 
 /// (inv (sqrt x)) -> (rsqrt x)
-bool GenXPatternMatch::matchInverseSqrt(Instruction *I) {
-  IGC_ASSERT(I);
-
-  auto *OpInst = dyn_cast<CallInst>(I->getOperand(0));
-  if (!OpInst)
-    return false;
+/// (sqrt (inv x)) -> (rsqrt x)
+/// (sqrt (fdiv 1.0 x)) -> (rsqrt x)
+bool GenXPatternMatch::matchInverseSqrt(CallInst *I) {
+  IGC_ASSERT(I && I->arg_size() == 1);
 
   // Leave as it is for double types
-  if (OpInst->getType()->getScalarType()->isDoubleTy())
+  if (I->getType()->getScalarType()->isDoubleTy())
     return false;
 
-  // Generate inverse sqrt only if fast flag for llvm intrinsic is used or
-  // genx sqrt intrinsics is specified
-  auto IID = vc::getAnyIntrinsicID(OpInst);
-  if (!(IID == GenXIntrinsic::genx_sqrt ||
-        (IID == Intrinsic::sqrt && OpInst->getFastMathFlags().isFast())))
+  bool IsFast = true;
+  auto IID = vc::getAnyIntrinsicID(I);
+
+  auto *OpInst = dyn_cast<Instruction>(I->getOperand(0));
+  if (!OpInst)
+    return false;
+  auto NextIID = vc::getAnyIntrinsicID(OpInst);
+
+  Value *Src = nullptr;
+
+  switch (IID) {
+  default:
+    IGC_ASSERT_MESSAGE(0, "Unexpected intrinsic");
+    return false;
+  case GenXIntrinsic::genx_inv:
+    if (NextIID != GenXIntrinsic::genx_sqrt && NextIID != Intrinsic::sqrt)
+      return false;
+
+    Src = OpInst->getOperand(0);
+    break;
+  case Intrinsic::sqrt:
+    IsFast = I->hasApproxFunc();
+    LLVM_FALLTHROUGH;
+  case GenXIntrinsic::genx_sqrt:
+    if (NextIID == GenXIntrinsic::genx_inv) {
+      Src = OpInst->getOperand(0);
+      IsFast = true;
+    } else if (auto *BO = dyn_cast<BinaryOperator>(OpInst);
+               BO && BO->getOpcode() == Instruction::FDiv) {
+      if (!match(BO->getOperand(0), m_FPOne()))
+        return false;
+      Src = BO->getOperand(1);
+
+      // Generate inverse sqrt if either division or sqrt is allowed to be fast
+      IsFast = IsFast || BO->hasAllowReciprocal();
+    }
+    break;
+  }
+
+  if (!IsFast || !Src)
     return false;
 
-  // Leave as it if sqrt has multiple uses:
-  // generating rsqrt operation is not beneficial
-  if (OpInst->hasNUsesOrMore(2))
-    return false;
-
-  auto *Rsqrt = createInverseSqrt(OpInst->getOperand(0), I->getNextNode());
-  I->replaceAllUsesWith(Rsqrt);
+  auto *InvSqrt = createInverseSqrt(Src, I);
+  I->replaceAllUsesWith(InvSqrt);
   I->eraseFromParent();
 
-  OpInst->eraseFromParent();
+  if (OpInst->use_empty())
+    OpInst->eraseFromParent();
+
   return true;
 }
 
@@ -2332,10 +2419,6 @@ static Value *getReciprocal(IRBuilder<> &IRB, Value *V,
 /// reciprocal is exact.
 ///
 void GenXPatternMatch::visitFDiv(BinaryOperator &I) {
-  if (Kind == PatternMatchKind::PostLegalization) {
-    return;
-  }
-
   if (isInstructionTriviallyDead(&I)) {
     // Clean up dead 'fdiv', which may be left due to the limitation of
     // iterator used in instruction visitor, where only the instruction being
@@ -2367,16 +2450,12 @@ void GenXPatternMatch::visitFDiv(BinaryOperator &I) {
   if (ST->emulateFDivFSqrt64() && I.getType()->getScalarType()->isDoubleTy())
     return;
 
-  // Skip if reciprocal optimization is not allowed.
-  if (!I.hasAllowReciprocal())
-    return;
-
   Instruction *Divisor = dyn_cast<Instruction>(Op1);
   if (!Divisor)
     return;
 
   auto IsDivisor = [](Instruction *I, Instruction *MaybeDivisor) {
-    return I->getOpcode() == Instruction::FDiv && I->hasAllowReciprocal() &&
+    return I->getOpcode() == Instruction::FDiv &&
            I->getOperand(1) == MaybeDivisor;
   };
 
@@ -2384,12 +2463,10 @@ void GenXPatternMatch::visitFDiv(BinaryOperator &I) {
   IRB.SetInsertPoint(Pos);
 
   // (fdiv 1., (sqrt x)) -> (rsqrt x)
-  // TODO: This can be removed if pattern match is applied
-  // incrementally: first match reciprocal, then generate rsqrt
-  // when visiting it
+  // Allow the pattern even if fdiv has no fast-math flags.
   auto IID = vc::getAnyIntrinsicID(Divisor);
   if ((IID == GenXIntrinsic::genx_sqrt ||
-       (IID == Intrinsic::sqrt && Divisor->getFastMathFlags().isFast())) &&
+       (IID == Intrinsic::sqrt && Divisor->hasApproxFunc())) &&
       match(Op0, m_FPOne()) && Divisor->hasOneUse()) {
     auto *Rsqrt = createInverseSqrt(Divisor->getOperand(0), Pos);
     I.replaceAllUsesWith(Rsqrt);
@@ -2399,6 +2476,10 @@ void GenXPatternMatch::visitFDiv(BinaryOperator &I) {
     Changed |= true;
     return;
   }
+
+  // Skip if reciprocal optimization is not allowed.
+  if (!I.hasAllowReciprocal())
+    return;
 
   auto Rcp = getReciprocal(IRB, Divisor);
   cast<Instruction>(Rcp)->setDebugLoc(I.getDebugLoc());
