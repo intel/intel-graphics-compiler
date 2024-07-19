@@ -1,10 +1,11 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022-2023 Intel Corporation
+Copyright (C) 2022-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
+
 #include "vc/Utils/GenX/IntrinsicsWrapper.h"
 
 using namespace llvm;
@@ -69,7 +70,10 @@ bool vc::isOverloadedRet(unsigned ID) {
     return GenXIntrinsic::isOverloadedRet(ID);
   if (vc::InternalIntrinsic::isInternalNonTrivialIntrinsic(ID))
     return vc::InternalIntrinsic::isOverloadedRet(ID);
-  return false;
+  // Assume that LLVM intrinsics can only be overloaded by the return value
+  // type.
+  // FIXME: This is not true for all LLVM intrinsics.
+  return Intrinsic::isOverloaded(ID);
 }
 
 bool vc::isOverloadedArg(unsigned ID, unsigned ArgumentNum) {
@@ -110,4 +114,10 @@ vc::getAnyDeclarationForArgs(llvm::Module *M, unsigned ID, Type *RetTy,
       Tys.push_back(ArgIdx.value()->getType());
 
   return vc::getAnyDeclaration(M, ID, Tys);
+}
+
+bool vc::isAbsIntrinsic(unsigned ID) {
+  if (ID == Intrinsic::fabs)
+    return true;
+  return GenXIntrinsic::isAbs(ID);
 }

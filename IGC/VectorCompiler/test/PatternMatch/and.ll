@@ -11,10 +11,11 @@
 
 ; Test verifies that there will be no asserts here
 ; CHECK-LABEL: internal spir_func float @and_absf
-define internal spir_func float @and_absf(float %0) {
-; CHECK: call float @llvm.genx.absf.f32
-  %.cast = bitcast float 1.000000e+00 to i32
-  %2 = and i32 %.cast, 2147483647
-  %.cast22 = bitcast i32 %2 to float
-  ret float %.cast22
+define internal spir_func float @and_absf(float %src) {
+; CHECK: [[ABS:%[^ ]+]] = call float @llvm.fabs.f32(float %src)
+; CHECK: ret float [[ABS]]
+  %cast = bitcast float %src to i32
+  %and = and i32 %cast, 2147483647
+  %res = bitcast i32 %and to float
+  ret float %res
 }

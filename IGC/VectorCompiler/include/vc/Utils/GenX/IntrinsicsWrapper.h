@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022-2023 Intel Corporation
+Copyright (C) 2022-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -35,6 +35,14 @@ bool isAnyVcIntrinsic(const llvm::Value *V);
 /// not equal to not_any_intrinsic
 bool isAnyNonTrivialIntrinsic(unsigned ID);
 
+inline bool isAnyNonTrivialIntrinsic(const llvm::Function *F) {
+  return isAnyNonTrivialIntrinsic(getAnyIntrinsicID(F));
+}
+
+inline bool isAnyNonTrivialIntrinsic(const llvm::Value *V) {
+  return isAnyNonTrivialIntrinsic(getAnyIntrinsicID(V));
+}
+
 // getAnyDeclaration - create a LLVM Function declaration
 // for an intrinsic, and return it.
 //
@@ -51,6 +59,17 @@ std::string getAnyName(unsigned id, llvm::ArrayRef<llvm::Type *> Tys);
 llvm::Function *getAnyDeclarationForArgs(llvm::Module *M, unsigned ID,
                                          llvm::Type *RetTy,
                                          llvm::ArrayRef<llvm::Value *> Args);
+
+bool isAbsIntrinsic(unsigned ID);
+
+inline bool isAbsIntrinsic(const llvm::Function *F) {
+  return isAbsIntrinsic(getAnyIntrinsicID(F));
+}
+
+inline bool isAbsIntrinsic(const llvm::Value *V) {
+  return isAbsIntrinsic(getAnyIntrinsicID(V));
+}
+
 } // namespace vc
 
 #endif /* end of include guard: VC_UTILS_INTRINSICS_WRAPPER_H */

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -995,7 +995,7 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForUse(
           if (U->getOperandNo() == 5) // is addr-operand
             Category = vc::RegCategory::Address;
            break;
-        case GenXIntrinsic::genx_absf:
+        case Intrinsic::fabs:
         case GenXIntrinsic::genx_absi:
         case GenXIntrinsic::genx_output:
         case GenXIntrinsic::genx_output_1:

@@ -2033,7 +2033,6 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerWrPredRegion(Inst);
     case GenXIntrinsic::not_any_intrinsic:
       break;
-    case GenXIntrinsic::genx_absf:
     case GenXIntrinsic::genx_absi:
       break; // ignore
     case GenXIntrinsic::genx_thread_x:
@@ -2141,7 +2140,6 @@ bool GenXLowering::processInst(Instruction *Inst) {
     case Intrinsic::fshr:
       return lowerFunnelShift(CI, IntrinsicID);
     case Intrinsic::abs:
-    case Intrinsic::fabs:
       return lowerAbs(CI);
     case Intrinsic::ceil:
       return lowerMathIntrinsic(CI, GenXIntrinsic::genx_rndu);
@@ -4679,24 +4677,16 @@ bool GenXLowering::lowerAddcSubb(CallInst *CI, unsigned IntrinsicID) {
 }
 
 bool GenXLowering::lowerAbs(CallInst *CI) {
-  IGC_ASSERT(CI);
-  // Initialize values to those for FP types and then overwrite in
-  // case we're actually dealing with integer abs.
-  SmallVector<Value *, 2> Args{CI->args()};
-  GenXIntrinsic::ID AbsID = GenXIntrinsic::genx_absf;
+  IGC_ASSERT(CI && vc::getAnyIntrinsicID(CI) == Intrinsic::abs);
+  IRBuilder<> Builder(CI);
+  auto *M = CI->getModule();
   Type *Ty = CI->getType();
-  if (Ty->isIntOrIntVectorTy()) {
-    AbsID = GenXIntrinsic::genx_absi;
-    // Compared to llvm.fabs, llvm.abs has an additional
-    // 'is_int_min_poison' argument. Drop that for genx.absi
-    Args.assign({CI->getArgOperand(0)});
-  } else
-    IGC_ASSERT_MESSAGE(Ty->isFPOrFPVectorTy(),
-                       "Unexpected type of abs/fabs intrinsic");
-  auto *Decl = GenXIntrinsic::getGenXDeclaration(CI->getModule(), AbsID, {Ty});
-  IRBuilder<> Builder{CI};
-  auto *Res = Builder.CreateCall(Decl, Args, CI->getName());
-  CI->replaceAllUsesWith(Res);
+
+  auto *Decl = vc::getAnyDeclaration(M, GenXIntrinsic::genx_absi, {Ty});
+  auto *NewI = Builder.CreateCall(Decl, {CI->getArgOperand(0)});
+  NewI->takeName(CI);
+  CI->replaceAllUsesWith(NewI);
+
   ToErase.push_back(CI);
   return true;
 }

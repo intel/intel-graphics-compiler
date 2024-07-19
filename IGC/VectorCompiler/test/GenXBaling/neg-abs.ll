@@ -11,25 +11,25 @@
 ; GenXBaling
 ; ------------------------------------------------
 
-declare float @llvm.genx.absf.f32(float)
+declare float @llvm.fabs.f32(float)
 declare i32 @llvm.genx.absi.i32(i32)
 
 define float @fneg_fabs(float %a) {
 ; Invalid case: abs(fneg(%a)) cannot be baled
 ; CHECK-LABEL: bales in function: fneg_fabs:
 ; CHECK: %1 = fneg float %a: negmod{{$}}
-; CHECK: %2 = call float @llvm.genx.absf.f32(float %1): absmod{{$}}
+; CHECK: %2 = call float @llvm.fabs.f32(float %1): absmod{{$}}
   %1 = fneg float %a
-  %2 = call float @llvm.genx.absf.f32(float %1)
+  %2 = call float @llvm.fabs.f32(float %1)
   ret float %2
 }
 
 define float @fabs_fneg(float %a) {
 ; Valid case: fneg(abs(%a)) is supported by the hardware
 ; CHECK-LABEL: bales in function: fabs_fneg:
-; CHECK: %1 = call float @llvm.genx.absf.f32(float %a): absmod{{$}}
+; CHECK: %1 = call float @llvm.fabs.f32(float %a): absmod{{$}}
 ; CHECK: %2 = fneg float %1: negmod 0
-  %1 = call float @llvm.genx.absf.f32(float %a)
+  %1 = call float @llvm.fabs.f32(float %a)
   %2 = fneg float %1
   ret float %2
 }
@@ -38,18 +38,18 @@ define float @fsub_fabs(float %a) {
 ; Invalid case: abs(0.0f - %a) cannot be baled
 ; CHECK-LABEL: bales in function: fsub_fabs:
 ; CHECK: %1 = fsub float 0.000000e+00, %a: negmod{{$}}
-; CHECK: %2 = call float @llvm.genx.absf.f32(float %1): absmod{{$}}
+; CHECK: %2 = call float @llvm.fabs.f32(float %1): absmod{{$}}
   %1 = fsub float 0.0, %a
-  %2 = call float @llvm.genx.absf.f32(float %1)
+  %2 = call float @llvm.fabs.f32(float %1)
   ret float %2
 }
 
 define float @fabs_fsub(float %a) {
 ; Valid case: 0.0f - abs(%a) is supported by the hardware
 ; CHECK-LABEL: bales in function: fabs_fsub:
-; CHECK: %1 = call float @llvm.genx.absf.f32(float %a): absmod{{$}}
+; CHECK: %1 = call float @llvm.fabs.f32(float %a): absmod{{$}}
 ; CHECK: %2 = fsub float 0.000000e+00, %1: negmod 1{{$}}
-  %1 = call float @llvm.genx.absf.f32(float %a)
+  %1 = call float @llvm.fabs.f32(float %a)
   %2 = fsub float 0.0, %1
   ret float %2
 }

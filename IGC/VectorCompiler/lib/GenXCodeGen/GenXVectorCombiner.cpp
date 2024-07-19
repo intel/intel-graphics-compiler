@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022-2023 Intel Corporation
+Copyright (C) 2022-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -53,8 +53,8 @@ namespace {
 // fadd
 // bitcast
 // trunc
+// llvm.fabs
 // llvm.genx.absi
-// llvm.genx.absf
 // llvm.vc.internal.cast.from.bf16
 // llvm.vc.internal.cast.to.bf16
 class GenXVectorCombiner final : public FunctionPass {
@@ -88,10 +88,10 @@ private:
   bool checkSameInst(const SmallVectorImpl<InstructionPack> &List);
   void createNewInstruction(Instruction *UnsteadOf, Instruction *Operation,
                             const SmallVectorImpl<Value *> &Vals);
-  bool isSupportedInst(const Instruction *Inst);
-  bool isSupportedGenXIntrinsic(GenXIntrinsic::ID OpCode);
-  bool isSupportedInternalIntrinsic(vc::InternalIntrinsic::ID IID);
-  bool isSupportedOpcode(unsigned OpCode);
+
+  static bool isSupportedInst(const Instruction *Inst);
+  static bool isSupportedIntrinsic(unsigned IID);
+  static bool isSupportedOpcode(unsigned OpCode);
   bool isSuitableRdRegion(Instruction &RdRegionInst);
 };
 } // end namespace
@@ -112,6 +112,7 @@ FunctionPass *createGenXVectorCombinerPass() {
   return new GenXVectorCombiner;
 }
 } // namespace llvm
+
 // Checks whether this instruction can be optimized by this pass.
 bool GenXVectorCombiner::isSupportedOpcode(unsigned OpCode) {
   switch (OpCode) {
@@ -123,36 +124,21 @@ bool GenXVectorCombiner::isSupportedOpcode(unsigned OpCode) {
   case Instruction::Trunc:
     return true;
   }
-  IGC_ASSERT_MESSAGE(false, "unreachable");
+  IGC_ASSERT_UNREACHABLE();
   return false;
 }
 
-// Checks whether this GenXIntrinsic can be optimized by this pass.
-bool GenXVectorCombiner::isSupportedGenXIntrinsic(GenXIntrinsic::ID IdCode) {
-  IGC_ASSERT(IdCode != GenXIntrinsic::not_genx_intrinsic);
-  switch (IdCode) {
-  default:
-    return false;
-  case GenXIntrinsic::genx_absf:
-  case GenXIntrinsic::genx_absi:
-    return true;
-  }
-  IGC_ASSERT(0);
-  return false;
-}
-
-// Checks whether this InternalIntrinsic can be optimized by this pass.
-bool GenXVectorCombiner::isSupportedInternalIntrinsic(
-    vc::InternalIntrinsic::ID IID) {
-  IGC_ASSERT(IID != vc::InternalIntrinsic::not_internal_intrinsic);
+bool GenXVectorCombiner::isSupportedIntrinsic(unsigned IID) {
   switch (IID) {
   default:
     return false;
+  case Intrinsic::fabs:
+  case GenXIntrinsic::genx_absi:
   case vc::InternalIntrinsic::cast_from_bf16:
   case vc::InternalIntrinsic::cast_to_bf16:
     return true;
   }
-  IGC_ASSERT(0);
+  IGC_ASSERT_UNREACHABLE();
   return false;
 }
 
@@ -160,14 +146,8 @@ bool GenXVectorCombiner::isSupportedInst(const Instruction *Inst) {
   IGC_ASSERT_MESSAGE(Inst, "Error: nullptr");
   if (isSupportedOpcode(Inst->getOpcode()))
     return true;
-  if (vc::InternalIntrinsic::isInternalIntrinsic(Inst) &&
-      isSupportedInternalIntrinsic(
-          vc::InternalIntrinsic::getInternalIntrinsicID(Inst)))
-    return true;
-  if (GenXIntrinsic::isGenXIntrinsic(Inst) &&
-      isSupportedGenXIntrinsic(GenXIntrinsic::getGenXIntrinsicID(Inst)))
-    return true;
-  return false;
+  auto IID = vc::getAnyIntrinsicID(Inst);
+  return isSupportedIntrinsic(IID);
 }
 
 bool GenXVectorCombiner::isSuitableRdRegion(Instruction &RdRegionInst) {
@@ -350,32 +330,17 @@ void GenXVectorCombiner::createNewInstruction(
 
   auto IID = vc::getAnyIntrinsicID(Operation);
   if (vc::isAnyNonTrivialIntrinsic(IID)) {
-    Function *Func = nullptr;
     Module *M = Operation->getModule();
-
-    switch (IID) {
-    case GenXIntrinsic::genx_absf:
-    case GenXIntrinsic::genx_absi:
-      Func = vc::getAnyDeclaration(M, IID, {InsteadOf->getType()});
-      break;
-    case vc::InternalIntrinsic::cast_from_bf16:
-    case vc::InternalIntrinsic::cast_to_bf16:
-      Func = vc::getAnyDeclaration(M, IID,
-                                   {InsteadOf->getType(), Vals[0]->getType()});
-      break;
-    default:
-      IGC_ASSERT_MESSAGE(false, "unsupported intrinsic");
-      return;
-    }
-
+    auto *Ty = InsteadOf->getType();
+    auto *Func = vc::getAnyDeclarationForArgs(M, IID, Ty, Vals);
     IGC_ASSERT(Func);
 
-    CallInst *CI = Builder.CreateCall(Func, Vals, VALUE_NAME("widened"));
+    auto *CI = Builder.CreateCall(Func, Vals, VALUE_NAME("widened"));
     InsteadOf->replaceAllUsesWith(CI);
     return;
   }
 
-  Instruction *NewInst = vc::cloneInstWithNewOps(*Operation, Vals);
+  auto *NewInst = vc::cloneInstWithNewOps(*Operation, Vals);
   IGC_ASSERT(NewInst);
   NewInst->insertBefore(InsteadOf);
   NewInst->setDebugLoc(InsteadOf->getDebugLoc());
@@ -397,10 +362,8 @@ bool GenXVectorCombiner::processWorkList() {
     SmallVector<Value *, 2> Vals;
     Vals.push_back(OriginalSrc);
     // two src - second should be const
-    bool IsVCIntrinsic =
-        GenXIntrinsic::isGenXIntrinsic(RefAnyInstPack.Operation) ||
-        vc::InternalIntrinsic::isInternalIntrinsic(RefAnyInstPack.Operation);
-    if (!IsVCIntrinsic && RefAnyInstPack.Operation->getNumOperands() == 2) {
+    bool IsIntrinsic = vc::isAnyNonTrivialIntrinsic(RefAnyInstPack.Operation);
+    if (!IsIntrinsic && RefAnyInstPack.Operation->getNumOperands() == 2) {
       Constant *ScalarSecondOperand =
           cast<Constant>(RefAnyInstPack.Operation->getOperand(1))
               ->getSplatValue();

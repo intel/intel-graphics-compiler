@@ -1311,16 +1311,16 @@ bool GenXPatternMatch::matchInverseSqrt(CallInst *I) {
   return true;
 }
 
-/// Fold the following sequence into genx_absf intrinsic:
+/// Fold the following sequence into fabs intrinsic:
 ///
 /// %1 = bitcast <4 x float> %0 to <4 x i32>
 /// %2 = and <4 x i32> %1, <i32 0x7fffffff, i32 0x7fffffff, ...>
 /// %3 = bitcast <4 x i32> %2 to <4 x float>
 ///
 /// After the folding the sequence will look like:
-/// %1 = call <4 x float> @llvm.genx.absf.v4f32(<4 x float> %0)
+/// %1 = call <4 x float> @llvm.fabs.v4f32(<4 x float> %0)
 ///
-/// The absf intrinsic can be baled with its user and translated into the
+/// The fabs intrinsic can be baled with its user and translated into the
 /// source modifier.
 bool GenXPatternMatch::matchFloatAbs(BinaryOperator *I) {
   if (I->getOpcode() != Instruction::And)
@@ -1358,9 +1358,7 @@ bool GenXPatternMatch::matchFloatAbs(BinaryOperator *I) {
     return false;
 
   IRBuilder<> Builder(I);
-  auto *M = I->getModule();
-  auto *F = vc::getAnyDeclaration(M, GenXIntrinsic::genx_absf, {SrcTy});
-  auto *NewI = Builder.CreateCall(F, {CastSrc});
+  auto *NewI = Builder.CreateUnaryIntrinsic(Intrinsic::fabs, CastSrc);
   NewI->takeName(I);
   User->replaceAllUsesWith(NewI);
 

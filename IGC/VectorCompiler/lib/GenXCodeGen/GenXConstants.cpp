@@ -410,8 +410,8 @@ bool ConstantLoadHelper::visitCallInst(CallInst &CI) {
   case GenXIntrinsic::genx_constanti:
   case GenXIntrinsic::genx_constantf:
     break;
+  case Intrinsic::fabs:
   case GenXIntrinsic::genx_absi:
-  case GenXIntrinsic::genx_absf:
     // abs modifier: disallow constant input.
     U = &CI.getOperandUse(0);
     if (auto C = dyn_cast<Constant>(*U)) {

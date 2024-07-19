@@ -89,6 +89,9 @@ void GenXTranslateIntrinsics::visitCallInst(CallInst &I) const {
   switch (IID) {
   default:
     return;
+  case GenXIntrinsic::genx_absf:
+    NewI = translateMath(I, Intrinsic::fabs, false);
+    break;
   case GenXIntrinsic::genx_fmax:
     NewI = translateMath(I, Intrinsic::maxnum, false);
     break;

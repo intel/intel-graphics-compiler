@@ -448,14 +448,10 @@ static int checkModifier(Instruction *Inst)
     }
     break;
   default:
-    switch (GenXIntrinsic::getGenXIntrinsicID(Inst)) {
-    case GenXIntrinsic::genx_absi:
-    case GenXIntrinsic::genx_absf:
-      LLVM_DEBUG(llvm::dbgs()
-                 << "Instruction " << *Inst << " detected as ABSMOD\n");
+    if (auto IID = vc::getAnyIntrinsicID(Inst);
+        IID == Intrinsic::fabs || IID == GenXIntrinsic::genx_absi) {
+      LLVM_DEBUG(dbgs() << "Instruction " << *Inst << " detected as ABSMOD\n");
       return BaleInfo::ABSMOD;
-    default:
-      break;
     }
     break;
   }
@@ -515,7 +511,7 @@ bool GenXBaling::operandCanBeBaled(
       break;
     case BaleInfo::NEGMOD:
       // Don't bale neg(abs(X)), because the hardware doesn't support it.
-      if (GenXIntrinsic::isAbs(Inst))
+      if (vc::isAbsIntrinsic(Inst))
         return false;
       if (ModType == GenXIntrinsicInfo::MODIFIER_ARITH)
         return true;
@@ -1441,7 +1437,7 @@ void GenXBaling::processMainInst(Instruction *Inst, int IntrinID) {
                               << " to bale in instruction " << *Inst << "\n");
       setOperandBaled(Inst, 0, &BI);
     }
-  } else if (GenXIntrinsic::isAbs(IntrinID)) {
+  } else if (vc::isAbsIntrinsic(IntrinID)) {
     BI.Type = BaleInfo::ABSMOD;
     if (operandCanBeBaled(Inst, 0, GenXIntrinsicInfo::MODIFIER_ARITH)) {
       LLVM_DEBUG(llvm::dbgs() << __FUNCTION__ << " setting operand #" << 0

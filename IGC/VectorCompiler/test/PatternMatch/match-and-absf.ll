@@ -10,7 +10,7 @@
 
 ; CHECK-LABEL: @test(
 define <4 x float> @test(<4 x float> %a, <4 x float> %b) {
-; CHECK: [[ABS:%[^ ]+]] = call <4 x float> @llvm.genx.absf.v4f32(<4 x float> %a)
+; CHECK: [[ABS:%[^ ]+]] = call <4 x float> @llvm.fabs.v4f32(<4 x float> %a)
 ; CHECK: [[ADD:%[^ ]+]] = fadd <4 x float> [[ABS]], %b
   %cast = bitcast <4 x float> %a to <4 x i32>
   %abs = and <4 x i32> %cast, <i32 2147483647, i32 2147483647, i32 2147483647, i32 2147483647>

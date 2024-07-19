@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -8,6 +8,7 @@
 
 ; RUN: %opt %use_old_pass_manager% -GenXTranslateIntrinsics -mcpu=XeHPC -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
+declare <32 x float> @llvm.genx.absf.v32f32(<32 x float>)
 declare <32 x float> @llvm.genx.cos.v32f32(<32 x float>)
 declare <32 x float> @llvm.genx.exp.v32f32(<32 x float>)
 declare <32 x float> @llvm.genx.log.v32f32(<32 x float>)
@@ -46,5 +47,12 @@ define <32 x float> @test_sin(<32 x float> %arg) {
 define <32 x float> @test_pow(<32 x float> %a, <32 x float> %b) {
   ; CHECK: call afn <32 x float> @llvm.pow.v32f32(<32 x float> %a, <32 x float> %b)
   %res = call <32 x float> @llvm.genx.pow.v32f32(<32 x float> %a, <32 x float> %b)
+  ret <32 x float> %res
+}
+
+; CHECK-LABEL: test_abs
+define <32 x float> @test_abs(<32 x float> %arg) {
+  ; CHECK: call <32 x float> @llvm.fabs.v32f32(<32 x float> %arg)
+  %res = call <32 x float> @llvm.genx.absf.v32f32(<32 x float> %arg)
   ret <32 x float> %res
 }
