@@ -16,18 +16,22 @@ SPDX-License-Identifier: MIT
 ///
 //===----------------------------------------------------------------------===//
 
-
 #include "GenX.h"
+#include "GenXSubtarget.h"
+#include "GenXTargetMachine.h"
 #include "GenXUtil.h"
+
 #include "llvm/ADT/EquivalenceClasses.h"
 #include "llvm/ADT/Statistic.h"
+#include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstIterator.h"
+#include "llvm/InitializePasses.h"
 #include "llvm/Pass.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 
-#define DEBUG_TYPE "GENX_PROMOTE_PREDICATE"
+#define DEBUG_TYPE "genx-promote-predicate"
 
 using namespace llvm;
 using namespace genx;
@@ -48,6 +52,7 @@ public:
   bool runOnFunction(Function &F) override;
   StringRef getPassName() const override { return "GenXPromotePredicate"; }
   void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequired<TargetPassConfig>();
     AU.setPreservesCFG();
   }
 };
@@ -61,6 +66,7 @@ void initializeGenXPromotePredicatePass(PassRegistry &);
 }
 INITIALIZE_PASS_BEGIN(GenXPromotePredicate, "GenXPromotePredicate",
                       "GenXPromotePredicate", false, false)
+INITIALIZE_PASS_DEPENDENCY(TargetPassConfig)
 INITIALIZE_PASS_END(GenXPromotePredicate, "GenXPromotePredicate",
                     "GenXPromotePredicate", false, false)
 
@@ -138,8 +144,9 @@ static Value *promoteInstToScalar(Instruction *Inst) {
 
 // Promote one predicate instruction to grf - promote all its operands and
 // instruction itself, and then sink the result back to predicate.
-static Value *promoteInst(Instruction *Inst) {
-  if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Inst->getType())) {
+static Value *promoteInst(Instruction *Inst, bool AllowScalarPromotion) {
+  if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Inst->getType());
+      VTy && AllowScalarPromotion) {
     IGC_ASSERT(VTy->isIntOrIntVectorTy(1));
     auto Width = VTy->getNumElements();
 
@@ -220,7 +227,8 @@ static void foldBitcast(BitCastInst *Cast) {
 class PredicateWeb {
 public:
   template <class InputIt>
-  PredicateWeb(InputIt first, InputIt last) : Web(first, last) {}
+  PredicateWeb(InputIt First, InputIt Last, bool AllowScalar)
+      : Web(First, Last), AllowScalarPromotion(AllowScalar) {}
   void print(llvm::raw_ostream &O) const {
     for (auto Inst : Web)
       O << *Inst << '\n';
@@ -236,7 +244,7 @@ public:
     // Do promotion.
     SmallVector<Instruction *, 8> Worklist;
     for (auto *Inst : Web) {
-      auto *PromotedInst = promoteInst(Inst);
+      auto *PromotedInst = promoteInst(Inst, AllowScalarPromotion);
 
       if (isa<TruncInst>(PromotedInst) || isa<BitCastInst>(PromotedInst))
         Worklist.push_back(cast<Instruction>(PromotedInst));
@@ -254,6 +262,7 @@ public:
 
 private:
   SmallPtrSet<Instruction *, 16> Web;
+  bool AllowScalarPromotion;
 };
 
 constexpr const char IdxMDName[] = "pred.index";
@@ -273,6 +282,11 @@ struct Comparator {
 };
 
 bool GenXPromotePredicate::runOnFunction(Function &F) {
+  auto &ST = getAnalysis<TargetPassConfig>()
+                 .getTM<GenXTargetMachine>()
+                 .getGenXSubtarget();
+  bool AllowScalarPromotion = !ST.hasFusedEU();
+
   // Put every predicate instruction into its own equivalence class.
   long Idx = 0;
   llvm::EquivalenceClasses<Instruction *, Comparator> PredicateWebs;
@@ -303,7 +317,8 @@ bool GenXPromotePredicate::runOnFunction(Function &F) {
   for (auto I = PredicateWebs.begin(), E = PredicateWebs.end(); I != E; ++I) {
     if (!I->isLeader())
       continue;
-    PredicateWeb Web(PredicateWebs.member_begin(I), PredicateWebs.member_end());
+    PredicateWeb Web(PredicateWebs.member_begin(I), PredicateWebs.member_end(),
+                     AllowScalarPromotion);
     LLVM_DEBUG(dbgs() << "Predicate web:\n"; Web.dump());
     ++NumCollectedPredicateWebs;
     if (!Web.isBeneficialToPromote())
