@@ -528,8 +528,7 @@ public:
         CVariable* StackID,
         CVariable* ShaderRecord,
         CVariable* Flag,
-        bool releaseStackID
-        );
+        bool releaseStackID);
 
 
     void emitBindlessThreadDispatch(llvm::BTDIntrinsic *I);

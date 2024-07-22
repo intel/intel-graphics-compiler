@@ -23755,8 +23755,7 @@ void EmitPass::emitBTD(
     CVariable* StackID,
     CVariable* ShaderRecord,
     CVariable* Flag,
-    bool releaseStackID
-)
+    bool releaseStackID)
 {
 
 
@@ -23873,14 +23872,12 @@ void EmitPass::emitBindlessThreadDispatch(BTDIntrinsic* I)
     CVariable* stackID = GetSymbol(I->getStackID());
     CVariable* shaderRecord = GetSymbol(I->getShaderRecordAddress());
 
-
     emitBTD(
         globalBufferPtr,
         stackID,
         shaderRecord,
         nullptr,
-        false
-    );
+        false);
 }
 
 void EmitPass::emitStackIDRelease(StackIDReleaseIntrinsic* I)
@@ -23899,8 +23896,7 @@ void EmitPass::emitStackIDRelease(StackIDReleaseIntrinsic* I)
         stackID,
         nullptr,
         flag,
-        true
-    );
+        true);
 }
 
 void EmitPass::emitGetShaderRecordPtr(GetShaderRecordPtrIntrinsic* I)
