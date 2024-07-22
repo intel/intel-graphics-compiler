@@ -75,6 +75,12 @@ INLINE RETTY OVERLOADABLE intel_convert_##FNAME (SRC0TY a, SRC1TY b)            
     return __builtin_IB_##INTERNAL_FNAME (a, b);                                         \
 }
 
+#define DEFN_INTEL_CVT2CAST(FNAME, RETTY, SRC0TY, SRC0BTY, SRC1TY, SRC1BTY, INTERNAL_FNAME)                 \
+INLINE RETTY OVERLOADABLE intel_convert_##FNAME (SRC0TY a, SRC1TY b)                     \
+{                                                                                        \
+    return as_##RETTY(__builtin_IB_##INTERNAL_FNAME (as_##SRC0BTY(a), as_##SRC1BTY(b)));                                         \
+}
+
 #ifdef cl_intel_subgroup_matrix_multiply_accumulate
 
 ////  XeHP_SDV : simd8 ////
@@ -524,26 +530,26 @@ DEFN_INTEL_CVT( bf8_to_f16,  half16, char16, bf8tohf_16 )
 
 #ifdef cl_intel_stochastic_rounding
 // stochastic rounding
-DEFN_INTEL_CVT2( f16_to_bf8_srnd,  char,   half,   char,   srnd_hftobf8_1_char  )
-DEFN_INTEL_CVT2( f16_to_bf8_srnd,  char2,  half2,  char2,  srnd_hftobf8_2_char  )
-DEFN_INTEL_CVT2( f16_to_bf8_srnd,  char3,  half3,  char3,  srnd_hftobf8_3_char  )
-DEFN_INTEL_CVT2( f16_to_bf8_srnd,  char4,  half4,  char4,  srnd_hftobf8_4_char  )
-DEFN_INTEL_CVT2( f16_to_bf8_srnd,  char8,  half8,  char8,  srnd_hftobf8_8_char  )
-DEFN_INTEL_CVT2( f16_to_bf8_srnd,  char16, half16, char16, srnd_hftobf8_16_char )
+DEFN_INTEL_CVT2CAST( bfloat8_as_uchar_srnd,     uchar,   half,   half,   uchar,   char,   srnd_hftobf8_1 )
+DEFN_INTEL_CVT2CAST( bfloat82_as_uchar2_srnd,   uchar2,  half2,  half2,  uchar2,  char2,  srnd_hftobf8_2 )
+DEFN_INTEL_CVT2CAST( bfloat83_as_uchar3_srnd,   uchar3,  half3,  half3,  uchar3,  char3,  srnd_hftobf8_3 )
+DEFN_INTEL_CVT2CAST( bfloat84_as_uchar4_srnd,   uchar4,  half4,  half4,  uchar4,  char4,  srnd_hftobf8_4 )
+DEFN_INTEL_CVT2CAST( bfloat88_as_uchar8_srnd,   uchar8,  half8,  half8,  uchar8,  char8,  srnd_hftobf8_8 )
+DEFN_INTEL_CVT2CAST( bfloat816_as_uchar16_srnd, uchar16, half16, half16, uchar16, char16, srnd_hftobf8_16 )
 
-DEFN_INTEL_CVT2( f32_to_f16_srnd,  half,   float,   short,   srnd_ftohf_1_short  )
-DEFN_INTEL_CVT2( f32_to_f16_srnd,  half2,  float2,  short2,  srnd_ftohf_2_short  )
-DEFN_INTEL_CVT2( f32_to_f16_srnd,  half3,  float3,  short3,  srnd_ftohf_3_short  )
-DEFN_INTEL_CVT2( f32_to_f16_srnd,  half4,  float4,  short4,  srnd_ftohf_4_short  )
-DEFN_INTEL_CVT2( f32_to_f16_srnd,  half8,  float8,  short8,  srnd_ftohf_8_short  )
-DEFN_INTEL_CVT2( f32_to_f16_srnd,  half16, float16, short16, srnd_ftohf_16_short )
+DEFN_INTEL_CVT2CAST( half_srnd,   half,   float,   float,   ushort,   short,   srnd_ftohf_1 )
+DEFN_INTEL_CVT2CAST( half2_srnd,  half2,  float2,  float2,  ushort2,  short2,  srnd_ftohf_2 )
+DEFN_INTEL_CVT2CAST( half3_srnd,  half3,  float3,  float3,  ushort3,  short3,  srnd_ftohf_3 )
+DEFN_INTEL_CVT2CAST( half4_srnd,  half4,  float4,  float4,  ushort4,  short4,  srnd_ftohf_4 )
+DEFN_INTEL_CVT2CAST( half8_srnd,  half8,  float8,  float8,  ushort8,  short8,  srnd_ftohf_8 )
+DEFN_INTEL_CVT2CAST( half16_srnd, half16, float16, float16, ushort16, short16, srnd_ftohf_16 )
 #endif // cl_intel_stochastic_rounding
 
 #endif  // cl_khr_fp16
 
 #endif // cl_intel_subgroup_matrix_multiply_accumulate_bf8
 
-#endif
+#endif // cl_intel_subgroup_matrix_multiply_accumulate
 
 
 #ifdef cl_intel_subgroup_split_matrix_multiply_accumulate

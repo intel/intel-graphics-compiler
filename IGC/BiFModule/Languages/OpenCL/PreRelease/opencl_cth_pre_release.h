@@ -2483,20 +2483,19 @@ half16 __attribute__((overloadable)) intel_convert_bf8_to_f16(char16 source);
 #ifdef cl_intel_stochastic_rounding
 
 // stochastic rounding
-char   __attribute__((overloadable)) intel_convert_f16_to_bf8_srnd(half   source, half   random);
-char2  __attribute__((overloadable)) intel_convert_f16_to_bf8_srnd(half2  source, half2  random);
-char3  __attribute__((overloadable)) intel_convert_f16_to_bf8_srnd(half3  source, half3  random);
-char4  __attribute__((overloadable)) intel_convert_f16_to_bf8_srnd(half4  source, half4  random);
-char8  __attribute__((overloadable)) intel_convert_f16_to_bf8_srnd(half8  source, half8  random);
-char16 __attribute__((overloadable)) intel_convert_f16_to_bf8_srnd(half16 source, half16 random);
+uchar   __attribute__((overloadable)) intel_convert_bfloat8_as_uchar_srnd(half       source, uchar   random);
+uchar2  __attribute__((overloadable)) intel_convert_bfloat82_as_uchar2_srnd(half2    source, uchar2  random);
+uchar3  __attribute__((overloadable)) intel_convert_bfloat83_as_uchar3_srnd(half3    source, uchar3  random);
+uchar4  __attribute__((overloadable)) intel_convert_bfloat84_as_uchar4_srnd(half4    source, uchar4  random);
+uchar8  __attribute__((overloadable)) intel_convert_bfloat88_as_uchar8_srnd(half8    source, uchar8  random);
+uchar16 __attribute__((overloadable)) intel_convert_bfloat816_as_uchar16_srnd(half16 source, uchar16 random);
 
-half   __attribute__((overloadable)) intel_convert_f32_to_f16_srnd(float   source, float   random);
-half2  __attribute__((overloadable)) intel_convert_f32_to_f16_srnd(float2  source, float2  random);
-half3  __attribute__((overloadable)) intel_convert_f32_to_f16_srnd(float3  source, float3  random);
-half4  __attribute__((overloadable)) intel_convert_f32_to_f16_srnd(float4  source, float4  random);
-half8  __attribute__((overloadable)) intel_convert_f32_to_f16_srnd(float8  source, float8  random);
-half16 __attribute__((overloadable)) intel_convert_f32_to_f16_srnd(float16 source, float16 random);
-
+half   __attribute__((overloadable)) intel_convert_half_srnd(float     source, ushort   random);
+half2  __attribute__((overloadable)) intel_convert_half2_srnd(float2   source, ushort2  random);
+half3  __attribute__((overloadable)) intel_convert_half3_srnd(float3   source, ushort3  random);
+half4  __attribute__((overloadable)) intel_convert_half4_srnd(float4   source, ushort4  random);
+half8  __attribute__((overloadable)) intel_convert_half8_srnd(float8   source, ushort8  random);
+half16 __attribute__((overloadable)) intel_convert_half16_srnd(float16 source, ushort16 random);
 #endif // cl_intel_stochastic_rounding
 
 #endif // cl_khr_fp16

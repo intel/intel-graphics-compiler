@@ -3015,16 +3015,16 @@ Imported_Intrinsics = \
     "NoMem"]],
 ####################################################################################################
 "GenISA_srnd_hftobf8": ["stochastic rounding:  srnd dst  src0  src1",
-    [("anyint",                       "dst: bf8 (as ub)"),
+    [("anyint",                       "dst: bf8. UB"),
     [("anyfloat",                     "src0: HF"),
-     (1,                              "src1: random number. HF(the same as src0's)"),
+     ("anyint",                       "src1: random number. UB"),
      ("bool",                         "saturation (true: sat; false: no)")],
     "NoMem"]],
 ####################################################################################################
 "GenISA_srnd_ftohf": ["stochastic rounding:  srnd dst  src0  src1",
-    [("anyfloat",                     "dst: hf"),
+    [("anyfloat",                     "dst: HF"),
     [("anyfloat",                     "src0: F"),
-     (1,                              "src1: random number. F(the same as src0's)"),
+     ("anyint",                       "src1: random number. UW"),
      ("bool",                         "saturation (true: sat; false: no)")],
     "NoMem"]],
 ####################################################################################################

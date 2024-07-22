@@ -21821,7 +21821,7 @@ void EmitPass::emitSrnd(llvm::GenIntrinsicInst* GII)
             dst = m_currShader->GetNewAlias(dst, ISA_TYPE_UB, 0, 0);
     }
 
-    // set src types
+    // set src0 types
     if (GID == GenISAIntrinsic::GenISA_srnd_ftohf)
     {
         if (src0->GetType() != ISA_TYPE_F)
@@ -21832,6 +21832,15 @@ void EmitPass::emitSrnd(llvm::GenIntrinsicInst* GII)
     {
         if (src0->GetType() != ISA_TYPE_HF)
             src0 = m_currShader->GetNewAlias(src0, ISA_TYPE_HF, 0, 0);
+    }
+
+    // set src1 types
+    if (!src1->IsImmediate())
+    {
+        if (src1->GetType() == ISA_TYPE_W)
+            src1 = m_currShader->GetNewAlias(src1, ISA_TYPE_UW, 0, 0);
+        if (src1->GetType() == ISA_TYPE_B)
+            src1 = m_currShader->GetNewAlias(src1, ISA_TYPE_UB, 0, 0);
     }
 
     uint16_t nsimdsize = numLanes(m_currShader->m_SIMDSize);
