@@ -417,14 +417,6 @@ void ConstantCoalescing::ProcessBlock(
             BufferType bufType = DecodeAS4GFXResource(
                 ldRaw->getResourceValue()->getType()->getPointerAddressSpace(), directIdx, bufId);
 
-            if ((bufType != BINDLESS_CONSTANT_BUFFER)
-                && (bufType != BINDLESS_TEXTURE)
-                && (bufType != SSH_BINDLESS_CONSTANT_BUFFER)
-                && (bufType != BINDLESS)
-                )
-            {
-                continue;
-            }
 
             uint offsetInBytes = 0;
             Value* baseOffsetInBytes = nullptr;
@@ -457,12 +449,9 @@ void ConstantCoalescing::ProcessBlock(
                         Extension,
                         baseOffsetInBytes ? indcb_owloads : dircb_owloads);
                 }
-                else if (bufType == BINDLESS_CONSTANT_BUFFER
-                         || bufType == SSH_BINDLESS_CONSTANT_BUFFER
-                        || bufType == BINDLESS
-                         )
+                else if (IsUntypedBuffer(bufType))
                 {
-                    if (UsesTypedConstantBuffer(m_ctx, bufType) && (bufType != BINDLESS))
+                    if (UsesTypedConstantBuffer(m_ctx, bufType))
                     {
                         ScatterToSampler(
                             ldRaw,
@@ -474,7 +463,8 @@ void ConstantCoalescing::ProcessBlock(
                     }
                     else if (IGC_IS_FLAG_DISABLED(DisableConstantCoalescingOfStatefulNonUniformLoads))
                     {
-                        if (bufType != BINDLESS)
+                        // TODO: remove this condition
+                        if (!IsWritableBuffer(bufType))
                         {
                             MergeScatterLoad(
                                 ldRaw,
@@ -488,7 +478,7 @@ void ConstantCoalescing::ProcessBlock(
                         }
                     }
                 }
-                else if (bufType == BINDLESS_TEXTURE && IGC_IS_FLAG_ENABLED(EnableTextureLoadCoalescing))
+                else if (IsTypedBuffer(bufType) && IGC_IS_FLAG_ENABLED(EnableTextureLoadCoalescing))
                 {
                     MergeScatterLoad(
                         ldRaw,

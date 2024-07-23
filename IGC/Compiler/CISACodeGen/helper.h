@@ -217,13 +217,56 @@ namespace IGC
     bool IsDirectIdx(unsigned addrSpace);
     bool isNaNCheck(llvm::FCmpInst& FC);
 
+    inline bool IsBindfull(BufferType t)
+    {
+        return t == UAV ||
+            t == CONSTANT_BUFFER ||
+            t == RESOURCE;
+    }
     inline bool IsBindless(BufferType t)
     {
-        return t == BINDLESS || t == BINDLESS_CONSTANT_BUFFER || t == BINDLESS_TEXTURE;
+        return t == BINDLESS ||
+            t == BINDLESS_CONSTANT_BUFFER ||
+            t == BINDLESS_TEXTURE;
     }
     inline bool IsSSHbindless(BufferType t)
     {
-        return t == SSH_BINDLESS || t == SSH_BINDLESS_CONSTANT_BUFFER || t == SSH_BINDLESS_TEXTURE;
+        return t == SSH_BINDLESS ||
+            t == SSH_BINDLESS_CONSTANT_BUFFER ||
+            t == SSH_BINDLESS_TEXTURE;
+    }
+    inline bool IsStatelessBuffer(BufferType t)
+    {
+        return t == STATELESS ||
+            t == STATELESS_READONLY ||
+            t == STATELESS_A32;
+    }
+    inline bool IsTypedBuffer(BufferType t)
+    {
+        return t == RESOURCE ||
+            t == BINDLESS_TEXTURE ||
+            t == SSH_BINDLESS_TEXTURE;
+    }
+    inline bool IsUntypedBuffer(BufferType t)
+    {
+        return t == UAV ||
+            t == CONSTANT_BUFFER ||
+            t == BINDLESS ||
+            t == BINDLESS_CONSTANT_BUFFER ||
+            t == SSH_BINDLESS ||
+            t == SSH_BINDLESS_CONSTANT_BUFFER;
+    }
+    inline bool IsWritableBuffer(BufferType t)
+    {
+        BufferAccessType accessType = getDefaultAccessType(t);
+        return accessType == BufferAccessType::ACCESS_WRITE ||
+            accessType == BufferAccessType::ACCESS_READWRITE;
+    }
+    inline bool IsReadableBuffer(BufferType t)
+    {
+        BufferAccessType accessType = getDefaultAccessType(t);
+        return accessType == BufferAccessType::ACCESS_READ ||
+            accessType == BufferAccessType::ACCESS_READWRITE;
     }
 
     bool IsUnsignedCmp(const llvm::CmpInst::Predicate Pred);

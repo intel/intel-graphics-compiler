@@ -182,9 +182,10 @@ namespace IGC
         const CodeGenContext* pContext,
         const BufferType bufType)
     {
-        IGC_ASSERT(bufType == CONSTANT_BUFFER ||
-            bufType == BINDLESS_CONSTANT_BUFFER ||
-            bufType == BINDLESS);
+        if (!IsUntypedBuffer(bufType) || IsWritableBuffer(bufType))
+        {
+            return false;
+        }
 
         if (pContext->m_DriverInfo.ForceUntypedBindlessConstantBuffers() &&
             bufType == BINDLESS_CONSTANT_BUFFER)
