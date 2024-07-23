@@ -333,6 +333,22 @@ void SubGroupFuncsResolution::mediaBlockWrite(llvm::CallInst& CI)
     CI.eraseFromParent();
 }
 
+// If CI parameter is %"class.sycl::_V1::ext::oneapi::bfloat16" type, which is { i16 },
+// then we need to cast it to i16 type before calling simdBlockRead intrinsic.
+static inline Value* castSYCLBFloat16toi16(PointerType* PtrTy, Value* Ptr, CallInst& CI, LLVMContext& C)
+{
+    if (StructType* ST = dyn_cast<StructType>(IGCLLVM::getNonOpaquePtrEltTy(PtrTy)))
+    {
+        // check if ST has only field and this field is i16 type
+        if (ST->getNumElements() == 1 && ST->getElementType(0)->isIntegerTy(16))
+        {
+            return CastInst::CreatePointerCast(Ptr, PointerType::get(Type::getInt16Ty(C), PtrTy->getAddressSpace()), "", &CI);
+        }
+    }
+
+    return Ptr;
+}
+
 void SubGroupFuncsResolution::simdBlockRead(llvm::CallInst& CI, bool hasCacheControls)
 {
     // Creates intrinsics that will be lowered in the CodeGen and will handle the simd_block_read
@@ -341,7 +357,7 @@ void SubGroupFuncsResolution::simdBlockRead(llvm::CallInst& CI, bool hasCacheCon
     PointerType* PtrTy = dyn_cast<PointerType>(Ptr->getType());
     IGC_ASSERT_MESSAGE(PtrTy, "simdBlockRead has non-pointer type!");
     SmallVector<Value*, 1> args;
-    args.push_back(Ptr);
+    args.push_back(castSYCLBFloat16toi16(PtrTy, Ptr, CI, C));
     SmallVector<Type*, 3>  types;
     types.push_back(nullptr); types.push_back(nullptr);
     GenISAIntrinsic::ID  genIntrinID = GenISAIntrinsic::GenISA_simdBlockRead;
@@ -447,7 +463,7 @@ void SubGroupFuncsResolution::simdBlockWrite(llvm::CallInst& CI, bool hasCacheCo
     SmallVector<Type*, 2>  types;
     Value* dataArg = CI.getArgOperand(1);
 
-    args.push_back(CI.getArgOperand(0));
+    args.push_back(castSYCLBFloat16toi16(PtrTy, Ptr, CI, C));
     args.push_back(dataArg);
 
     switch (dataArg->getType()->getScalarType()->getScalarSizeInBits())
