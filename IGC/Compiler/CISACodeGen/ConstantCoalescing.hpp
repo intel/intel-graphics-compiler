@@ -72,9 +72,6 @@ namespace IGC
             std::vector<BufChunk*>& indcb_gathers);
         void ProcessFunction(llvm::Function* function);
 
-        void FindAllDirectCB(llvm::BasicBlock* blk,
-            std::vector<BufChunk*>& dircb_owloads);
-
         virtual bool runOnFunction(llvm::Function& func) override;
 
         virtual StringRef getPassName() const override {
