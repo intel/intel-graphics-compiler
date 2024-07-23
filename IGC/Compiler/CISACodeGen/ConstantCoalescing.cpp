@@ -401,9 +401,6 @@ void ConstantCoalescing::ProcessBlock(
     std::vector<BufChunk*> & indcb_owloads,
     std::vector<BufChunk*> & indcb_gathers)
 {
-    bool isCPS = false;
-
-    bool skipLdrawOpt = isCPS;
     // get work-item analysis, need to update uniformness information
     for (BasicBlock::iterator BBI = blk->begin(), BBE = blk->end();
          BBI != BBE; ++BBI)
@@ -450,18 +447,15 @@ void ConstantCoalescing::ProcessBlock(
                 uint addrSpace = ldRaw->getResourceValue()->getType()->getPointerAddressSpace();
                 if (wiAns->isUniform(ldRaw))
                 {
-                    if (!skipLdrawOpt || (bufType != BINDLESS))
-                    {
-                        MergeUniformLoad(
-                            ldRaw,
-                            ldRaw->getResourceValue(),
-                            addrSpace,
-                            baseOffsetInBytes,
-                            offsetInBytes,
-                            maxEltPlus,
-                            Extension,
-                            baseOffsetInBytes ? indcb_owloads : dircb_owloads);
-                    }
+                    MergeUniformLoad(
+                        ldRaw,
+                        ldRaw->getResourceValue(),
+                        addrSpace,
+                        baseOffsetInBytes,
+                        offsetInBytes,
+                        maxEltPlus,
+                        Extension,
+                        baseOffsetInBytes ? indcb_owloads : dircb_owloads);
                 }
                 else if (bufType == BINDLESS_CONSTANT_BUFFER
                          || bufType == SSH_BINDLESS_CONSTANT_BUFFER
