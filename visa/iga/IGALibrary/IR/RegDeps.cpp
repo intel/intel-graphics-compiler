@@ -378,12 +378,11 @@ uint32_t DepSet::getDPASSrcDepUpBound(unsigned idx, Type srcType,
     upBound += elements_size * repeatCount;
   else if (idx == 1)
     upBound += elements_size * opsPerChan * systolicDepth;
-  else
+  else if (idx == 2)
     upBound += (repeatCount - 1) * opsPerChan * 8 * typeSizeInBits /
                    8 + /* start offset of the last repeated block */
                opsPerChan * systolicDepth * typeSizeInBits /
                    8; /* size of used register in last repeated block */
-
   return upBound;
 }
 
