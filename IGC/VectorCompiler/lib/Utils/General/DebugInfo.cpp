@@ -1,12 +1,13 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
 #include "vc/Utils/General/DebugInfo.h"
+#include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/TypeSize.h"
 
 #include <llvm/BinaryFormat/Dwarf.h>
@@ -33,8 +34,10 @@ bool vc::DIBuilder::checkIfModuleHasDebugInfo(const llvm::Module &M) {
   if (NumDebugCUs == 0)
     return false;
 
-  IGC_ASSERT_MESSAGE(NumDebugCUs == 1,
-                     "only modules with one CU are supported at the moment:");
+  if (NumDebugCUs > 1)
+    vc::warn(M.getContext(), "VCDebugInfo",
+             "only modules with one CU are supported at the moment, "
+             "the debug information for Module will be dropped out.");
   return NumDebugCUs == 1;
 }
 
