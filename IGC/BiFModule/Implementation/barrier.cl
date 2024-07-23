@@ -116,26 +116,26 @@ static void __intel_atomic_work_item_fence( Scope_t Memory, uint Semantics )
     }
 }
 
+void __intel_workgroup_barrier(int Memory, int Semantics)
+{
+    __intel_atomic_work_item_fence( Memory, Semantics );
+    __builtin_IB_thread_group_barrier();
+}
+
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(int Execution, int Memory, int Semantics)
 {
-    if (Execution != Subgroup)
-    {
-        // sub group barrier requires no fence
-        __intel_atomic_work_item_fence( Memory, Semantics );
-    }
-
     if (Execution == Device)
     {
         global_barrier();
-    }
-    else  if( Execution <= Workgroup )
-    {
-        __builtin_IB_thread_group_barrier();
     }
     else  if( Execution == Subgroup )
     {
         // nothing will be emited but we need to prevent optimization splitting control flow
         __builtin_IB_sub_group_barrier();
+    }
+    else  if( Execution <= Workgroup )
+    {
+        __intel_workgroup_barrier(Memory, Semantics);
     }
 }
 
@@ -292,8 +292,7 @@ uint __intel_get_local_size( void );
 void global_barrier()
 {
     //Make sure each WKG item hit the barrier.
-    __intel_atomic_work_item_fence(Device, AcquireRelease | CrossWorkgroupMemory);
-    __builtin_IB_thread_group_barrier();
+    __intel_workgroup_barrier(Device, AcquireRelease | CrossWorkgroupMemory);
 
     __global volatile uchar* syncBuffer = __builtin_IB_get_sync_buffer();
     bool firstThreadPerWg = __intel_is_first_work_group_item();
@@ -323,8 +322,7 @@ void global_barrier()
             }
 
         } while (Value == 0);
-        __intel_atomic_work_item_fence(Device, AcquireRelease | CrossWorkgroupMemory);
-        __builtin_IB_thread_group_barrier();
+        __intel_workgroup_barrier(Device, AcquireRelease | CrossWorkgroupMemory);
 
         for (uint i = __intel_get_local_linear_id(); i < numGroups; i += localSize)
         {
@@ -339,8 +337,7 @@ void global_barrier()
            atomic_work_item_fence(CLK_GLOBAL_MEM_FENCE, memory_order_acquire, memory_scope_device); // == read_mem_fence(CLK_GLOBAL_MEM_FENCE);
         };
     }
-    __intel_atomic_work_item_fence(Device, AcquireRelease | CrossWorkgroupMemory);
-    __builtin_IB_thread_group_barrier();
+    __intel_workgroup_barrier(Device, AcquireRelease | CrossWorkgroupMemory);
 }
 
 void system_memfence(char fence_typed_memory)

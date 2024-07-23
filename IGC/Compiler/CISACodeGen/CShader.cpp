@@ -3238,7 +3238,9 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool,
                 }
                 else
                 {
-                    var = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, WIBaseClass::UNIFORM_GLOBAL, 1, valName);
+                    {
+                        var = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, WIBaseClass::UNIFORM_GLOBAL, 1, valName);
+                    }
                     symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, var));
                     return var;
                 }
