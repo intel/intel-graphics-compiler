@@ -125,7 +125,6 @@ bool JointMatrixFuncsResolutionPass::runOnModule(Module &M)
         auto argsWithMatrixType = GetFunctionArgsWithMatrixType(&F);
 
         if (argsWithMatrixType.size() > 0) {
-            ResolveSIMDSize(&F);
             ResolveFunctionSignature(&F);
         }
     }
@@ -160,40 +159,42 @@ Function *JointMatrixFuncsResolutionPass::getEntryFunction(Function *F)
 
     SmallVector<Function *, 8> toProcess;
     toProcess.push_back(F);
-    SmallPtrSet<Function *, 8> toSetEntry;
-    toSetEntry.insert(F);
 
     while (!toProcess.empty())
     {
-        Function *curFunc = toProcess.pop_back_val();
-        for (auto It = curFunc->use_begin(); It != curFunc->use_end(); It++)
+        Function* curFunc = toProcess.pop_back_val();
+
+        for (auto user : curFunc->users())
         {
-            auto user = It->getUser();
-            if (!isa<CallInst>(user))
+            auto CI = dyn_cast<CallInst>(user);
+
+            if (!CI || CI->getCalledFunction() != curFunc)
                 continue;
 
-            auto *CI = cast<CallInst>(user);
-            if (CI->getCalledFunction() == curFunc)
+            auto parentFunction = CI->getFunction();
+
+            Function* entryFunc = nullptr;
+
+            if (FunctionsMap.count(parentFunction) > 0)
             {
-                auto caller = CI->getFunction();
-                Function *entryFunc = nullptr;
-                if (FunctionsMap.count(caller) > 0)
-                    entryFunc = FunctionsMap[caller];
-                if (!entryFunc && isEntryFunc(m_mdUtils, caller))
-                    entryFunc = caller;
-                if (entryFunc)
-                {
-                    for (auto *fToSetEntry : toSetEntry)
-                        FunctionsMap[fToSetEntry] = entryFunc;
-                    return entryFunc;
-                }
-                if (toSetEntry.count(caller) == 0) {
-                    toProcess.push_back(caller);
-                    toSetEntry.insert(caller);
-                }
+                entryFunc = FunctionsMap[parentFunction];
             }
+            else if (isEntryFunc(m_mdUtils, parentFunction))
+            {
+                entryFunc = parentFunction;
+            }
+
+            if (entryFunc == nullptr)
+            {
+                toProcess.push_back(parentFunction);
+                continue;
+            }
+
+            FunctionsMap[curFunc] = parentFunction;
+            return parentFunction;
         }
     }
+
     FunctionsMap[F] = nullptr;
     return nullptr;
 }
@@ -2533,7 +2534,12 @@ Function* JointMatrixFuncsResolutionPass::ResolveFunctionSignature(Function* Ori
         return cachedFunction;
     }
 
+    ResolveSIMDSize(OriginalFunction);
     Function* newFunction = CloneFunction(OriginalFunction);
+
+    if (FunctionsMap.count(OriginalFunction) > 0 && FunctionsMap[OriginalFunction] != nullptr) {
+        FunctionsMap[newFunction] = FunctionsMap[OriginalFunction];
+    }
 
     CacheResolvedValue(OriginalFunction, newFunction);
     ResolvedFunctions[OriginalFunction] = newFunction;
@@ -2553,7 +2559,7 @@ std::string getTypeName(Type* T)
 }
 
 DIType* getOrCreateType(Type* T, Module* M) {
-    DIType* N = nullptr;
+    DIType* diType = nullptr;
     DIBuilder Builder(*M, true);
     DataLayout Layout(M);
 
@@ -2567,10 +2573,10 @@ DIType* getOrCreateType(Type* T, Module* M) {
         #endif
 
         llvm::Optional<unsigned int> opt(llvm::None);
-        N = Builder.createPointerType(
-            nullptr, Layout.getPointerTypeSizeInBits(T),
-            align * CHAR_BIT, /*DWARFAddressSpace=*/opt,
-            getTypeName(T));
+        diType = Builder.createPointerType(
+                nullptr, Layout.getPointerTypeSizeInBits(T),
+                align * CHAR_BIT, /*DWARFAddressSpace=*/opt,
+                getTypeName(T));
     }
     else
     {
@@ -2580,13 +2586,11 @@ DIType* getOrCreateType(Type* T, Module* M) {
         else if (T->isFloatingPointTy())
             encoding = llvm::dwarf::DW_ATE_float;
 
-        N = Builder.createBasicType(getTypeName(T), T->getPrimitiveSizeInBits(),
-            encoding);
+        diType = Builder.createBasicType(getTypeName(T), T->getPrimitiveSizeInBits(), encoding);
     }
 
-    return N;
+    return diType;
 }
-
 
 void JointMatrixFuncsResolutionPass::visitAllocaInst(AllocaInst &I)
 {
