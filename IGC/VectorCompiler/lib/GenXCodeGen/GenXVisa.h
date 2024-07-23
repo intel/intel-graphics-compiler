@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -32,105 +32,118 @@ SPDX-License-Identifier: MIT
 #include <vector>
 
 namespace llvm {
-  namespace visa {
+namespace visa {
 
-    // vISA relational operators
-    enum { EQ, NE, GT, GE, LT, LE };
+// vISA relational operators
+enum { EQ, NE, GT, GE, LT, LE };
 
+enum {
+  CLASS_GENERAL,
+  CLASS_ADDRESS,
+  CLASS_PREDICATE,
+  CLASS_INDIRECT,
+  CLASS_IMMEDIATE = 5,
+  CLASS_STATE
+};
 
-    enum {
-      CLASS_GENERAL, CLASS_ADDRESS, CLASS_PREDICATE, CLASS_INDIRECT,
-      CLASS_IMMEDIATE = 5, CLASS_STATE };
+// vISA vector operand modifiers
+enum {
+  MOD_ABS = 0x8,
+  MOD_NEG = 0x10,
+  MOD_NEGABS = 0x18,
+  MOD_SAT = 0x20,
+  MOD_NOT = 0x28
+};
 
-    // vISA vector operand modifiers
-    enum { MOD_ABS = 0x8, MOD_NEG = 0x10, MOD_NEGABS = 0x18,
-      MOD_SAT = 0x20, MOD_NOT = 0x28 };
+enum {
+  VISA_NUM_RESERVED_REGS = 32,
+  VISA_NUM_RESERVED_PREDICATES = 1,
+  VISA_NUM_RESERVED_SURFACES = 6
+};
 
-    enum { VISA_NUM_RESERVED_REGS = 32,
-           VISA_NUM_RESERVED_PREDICATES = 1,
-           VISA_NUM_RESERVED_SURFACES = 6 };
+// These reserved indices are used by CM Frontend
+// and some passes (like TPM) to create an stateless/slm/stack accesses
+// TODO: consider introducing as set of new intrinsics with explicit
+// specification of access (to get rid of the relevant hacky code base).
+enum ReservedSurfaceIndex {
+  RSI_Stack = 253,    // 253 is for stack access (T1), used by TPM pass
+  RSI_Slm = 254,      // 254 is SLM, which is T0 in vISA
+  RSI_Stateless = 255 // 255 is stateless, which is T5 in vISA
+};
 
-    // These reserved indices are used by CM Frontend
-    // and some passes (like TPM) to create an stateless/slm/stack accesses
-    // TODO: consider introducing as set of new intrinsics with explicit
-    // specification of access (to get rid of the relevant hacky code base).
-    enum ReservedSurfaceIndex {
-      RSI_Stack = 253, // 253 is for stack access (T1), used by TPM pass
-      RSI_Slm = 254, // 254 is SLM, which is T0 in vISA
-      RSI_Stateless = 255 // 255 is stateless, which is T5 in vISA
-    };
+// In vISA spec max ARG size is 32 registers and RET is 12. But IGC calling
+// convention limits them to 12 and 8.
+constexpr static unsigned ArgRegSizeInGRFs = 12;
+constexpr static unsigned RetRegSizeInGRFs = 8;
+constexpr static alignment_t BytesPerSVMPtr = 8;
+constexpr static unsigned BytesPerOword = 16;
+constexpr static unsigned StackPerThreadScratch = 256;
+constexpr static unsigned StackPerThreadSVM = 8192 * 2;
 
-    // In vISA spec max ARG size is 32 registers and RET is 12. But IGC calling
-    // convention limits them to 12 and 8.
-    constexpr static unsigned ArgRegSizeInGRFs = 12;
-    constexpr static unsigned RetRegSizeInGRFs = 8;
-    constexpr static alignment_t BytesPerSVMPtr = 8;
-    constexpr static unsigned BytesPerOword = 16;
-    constexpr static unsigned StackPerThreadScratch = 256;
-    constexpr static unsigned StackPerThreadSVM = 8192*2;
+// Extracts surface Index (which is expected to be constant)
+// from llvm::Value
+// TODO: consider replacing dync_cast_or_null to dyn_cast
+// TODO: rename convert->extract
+inline int convertToSurfaceIndex(const Value *ValueIdx) {
+  if (const auto CI = dyn_cast_or_null<ConstantInt>(ValueIdx)) {
+    int InputValue = static_cast<int>(CI->getZExtValue());
+    return InputValue;
+  }
+  return -1;
+}
 
-    // Extracts surface Index (which is expected to be constant)
-    // from llvm::Value
-    // TODO: consider replacing dync_cast_or_null to dyn_cast
-    // TODO: rename convert->extract
-    inline int convertToSurfaceIndex(const Value* ValueIdx) {
-      if (const auto CI = dyn_cast_or_null<ConstantInt>(ValueIdx)) {
-        int InputValue = static_cast<int>(CI->getZExtValue());
-        return InputValue;
-      }
-      return -1;
-    }
+inline ReservedSurfaceIndex
+getReservedSurfaceIndex(PreDefined_Surface Surface) {
+  switch (Surface) {
+  case PreDefined_Surface::PREDEFINED_SURFACE_STACK:
+    return RSI_Stack;
+  case PreDefined_Surface::PREDEFINED_SURFACE_SLM:
+    return RSI_Slm;
+  case PreDefined_Surface::PREDEFINED_SURFACE_T255:
+    return RSI_Stateless;
+  default:
+    // other types of prefefined surfaces are not used by CM backend
+    break;
+  }
+  IGC_ASSERT_UNREACHABLE(); // unsupported predefined surface
+}
 
-    inline ReservedSurfaceIndex getReservedSurfaceIndex(PreDefined_Surface Surface) {
-      switch(Surface) {
-      case PreDefined_Surface::PREDEFINED_SURFACE_STACK:
-        return RSI_Stack;
-      case PreDefined_Surface::PREDEFINED_SURFACE_SLM:
-        return RSI_Slm;
-      case PreDefined_Surface::PREDEFINED_SURFACE_T255:
-        return RSI_Stateless;
-      default:
-        // other types of prefefined surfaces are not used by CM backend
-        break;
-      }
-      IGC_ASSERT_UNREACHABLE(); // unsupported predefined surface
-    }
+inline bool isReservedSurfaceIndex(int SurfaceIndex) {
+  return SurfaceIndex == RSI_Stateless || SurfaceIndex == RSI_Slm ||
+         SurfaceIndex == RSI_Stack;
+}
 
-    inline bool isReservedSurfaceIndex(int SurfaceIndex) {
-      return SurfaceIndex == RSI_Stateless || SurfaceIndex == RSI_Slm ||
-             SurfaceIndex == RSI_Stack;
-    }
+inline PreDefined_Surface getReservedSurface(int SurfaceIndex) {
+  IGC_ASSERT(isReservedSurfaceIndex(SurfaceIndex));
+  switch (SurfaceIndex) {
+  case RSI_Stack:
+    return PreDefined_Surface::PREDEFINED_SURFACE_STACK;
+  case RSI_Slm:
+    return PreDefined_Surface::PREDEFINED_SURFACE_SLM;
+  case RSI_Stateless:
+    return PreDefined_Surface::PREDEFINED_SURFACE_T255;
+  }
+  IGC_ASSERT_UNREACHABLE(); // unexpected surface index
+}
 
-    inline PreDefined_Surface getReservedSurface(int SurfaceIndex) {
-      IGC_ASSERT(isReservedSurfaceIndex(SurfaceIndex));
-      switch(SurfaceIndex) {
-      case RSI_Stack:
-        return PreDefined_Surface::PREDEFINED_SURFACE_STACK;
-      case RSI_Slm:
-        return PreDefined_Surface::PREDEFINED_SURFACE_SLM;
-      case RSI_Stateless:
-        return PreDefined_Surface::PREDEFINED_SURFACE_T255;
-      }
-      IGC_ASSERT_UNREACHABLE(); // unexpected surface index
-    }
+enum VisaRegisterLimit {
+  VISA_MAX_GENERAL_REGS = (1 << 24) - 1,
+  VISA_MAX_ADDRESS_REGS = (1 << 24) - 1,
+  VISA_MAX_PREDICATE_REGS = (1 << 24) - 1,
+  VISA_MAX_SAMPLER_REGS = 32 - 1,
+  VISA_MAX_SURFACE_REGS = 256,
+};
 
-    enum { VISA_MAX_GENERAL_REGS = 65536 * 256 - 1,
-           VISA_MAX_ADDRESS_REGS = 4096,
-           VISA_MAX_PREDICATE_REGS = 4096,
-           VISA_MAX_SAMPLER_REGS = 32 - 1,
-           VISA_MAX_SURFACE_REGS = 256 };
+enum { VISA_WIDTH_GENERAL_REG = 32 };
 
-    enum { VISA_WIDTH_GENERAL_REG = 32 };
+enum { VISA_ABI_INPUT_REGS_RESERVED = 1, VISA_ABI_INPUT_REGS_MAX = 128 };
 
-    enum { VISA_ABI_INPUT_REGS_RESERVED = 1,
-           VISA_ABI_INPUT_REGS_MAX = 128 };
-
-    enum InputVarType {
-      VISA_INPUT_GENERAL = 0x0,
-      VISA_INPUT_SAMPLER = 0x1,
-      VISA_INPUT_SURFACE = 0x2,
-      VISA_INPUT_UNKNOWN
-    };
+enum InputVarType {
+  VISA_INPUT_GENERAL = 0x0,
+  VISA_INPUT_SAMPLER = 0x1,
+  VISA_INPUT_SURFACE = 0x2,
+  VISA_INPUT_UNKNOWN,
+};
 
 namespace Variable {
 
