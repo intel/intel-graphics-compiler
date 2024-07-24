@@ -58,6 +58,73 @@ CheckInstrTypes::CheckInstrTypes() : FunctionPass(ID), g_AfterOpts(afterOptsFlag
 CheckInstrTypes::CheckInstrTypes(bool afterOpts, bool metrics) : FunctionPass(ID), g_AfterOpts(afterOpts), g_metrics(metrics)
 {
     initializeCheckInstrTypesPass(*PassRegistry::getPassRegistry());
+    InitCounters();
+}
+
+void CheckInstrTypes::InitCounters()
+{
+    g_InstrTypes.CorrelatedValuePropagationEnable = false;
+    g_InstrTypes.hasMultipleBB = false;
+    g_InstrTypes.hasCmp = false;
+    g_InstrTypes.hasSwitch = false;
+    g_InstrTypes.hasPhi = false;
+    g_InstrTypes.hasLoadStore = false;
+    g_InstrTypes.hasIndirectCall = false;
+    g_InstrTypes.hasInlineAsm = false;
+    g_InstrTypes.hasInlineAsmPointerAccess = false;
+    g_InstrTypes.hasIndirectBranch = false;
+    g_InstrTypes.hasFunctionAddressTaken = false;
+    g_InstrTypes.hasSel = false;
+    g_InstrTypes.hasPointer = 0;
+    g_InstrTypes.hasLocalLoadStore = false;
+    g_InstrTypes.hasGlobalLoad = false;
+    g_InstrTypes.hasGlobalStore = false;
+    g_InstrTypes.hasStorageBufferLoad = false;
+    g_InstrTypes.hasStorageBufferStore = false;
+    g_InstrTypes.hasSubroutines = false;
+    g_InstrTypes.hasPrimitiveAlloca = false;
+    g_InstrTypes.hasNonPrimitiveAlloca = false;
+    g_InstrTypes.hasReadOnlyArray = false;
+    g_InstrTypes.hasBuiltin = false;
+    g_InstrTypes.hasFRem = false;
+    g_InstrTypes.psHasSideEffect = false;
+    g_InstrTypes.hasGenericAddressSpacePointers = false;
+    g_InstrTypes.hasDebugInfo = false;
+    g_InstrTypes.hasAtomics = false;
+    g_InstrTypes.hasDiscard = false;
+    g_InstrTypes.hasTypedRead = false;
+    g_InstrTypes.hasTypedwrite = false;
+    g_InstrTypes.mayHaveIndirectOperands = false;
+    g_InstrTypes.mayHaveIndirectResources = false;
+    g_InstrTypes.hasUniformAssumptions = false;
+    g_InstrTypes.hasPullBary = false;
+    g_InstrTypes.sampleCmpToDiscardOptimizationPossible = false;
+    g_InstrTypes.hasRuntimeValueVector = false;
+    g_InstrTypes.hasDynamicGenericLoadStore = false;
+    g_InstrTypes.hasUnmaskedRegion = false;
+    g_InstrTypes.hasSLM = false;
+    g_InstrTypes.numCall = 0;
+    g_InstrTypes.numBarrier = 0;
+    g_InstrTypes.numLoadStore = 0;
+    g_InstrTypes.numWaveIntrinsics = 0;
+    g_InstrTypes.numAtomics = 0;
+    g_InstrTypes.numTypedReadWrite = 0;
+    g_InstrTypes.numAllInsts = 0;
+    g_InstrTypes.sampleCmpToDiscardOptimizationSlot = 0;
+    g_InstrTypes.numSample = 0;
+    g_InstrTypes.numBB = 0;
+    g_InstrTypes.numLoopInsts = 0;
+    g_InstrTypes.numOfLoop = 0;
+    g_InstrTypes.numInsts = 0;
+    g_InstrTypes.numAllocaInsts = 0;
+    g_InstrTypes.numPsInputs = 0;
+    g_InstrTypes.numGlobalInsts = 0;
+    g_InstrTypes.numLocalInsts = 0;
+    g_InstrTypes.numSamplesVaryingResource = 0;
+    g_InstrTypes.numUntyped = 0;
+    g_InstrTypes.num1DAccesses = 0;
+    g_InstrTypes.num2DAccesses = 0;
+    g_InstrTypes.numSLMAccesses = 0;
 }
 
 void CheckInstrTypes::SetLoopFlags(Function& F)
@@ -169,6 +236,7 @@ void CheckInstrTypes::print(llvm::raw_ostream& OS) const
     OS << "\nhasRuntimeValueVector: " << g_InstrTypes.hasRuntimeValueVector;
     OS << "\nhasDynamicGenericLoadStore: " << g_InstrTypes.hasDynamicGenericLoadStore;
     OS << "\nhasUnmaskedRegion: " << g_InstrTypes.hasUnmaskedRegion;
+    OS << "\nhasSLM: " << g_InstrTypes.hasSLM;
     OS << "\nnumCall: " << g_InstrTypes.numCall;
     OS << "\nnumBarrier: " << g_InstrTypes.numBarrier;
     OS << "\nnumLoadStore: " << g_InstrTypes.numLoadStore;
@@ -187,6 +255,11 @@ void CheckInstrTypes::print(llvm::raw_ostream& OS) const
     OS << "\nhasPullBary: " << g_InstrTypes.hasPullBary;
     OS << "\nnumGlobalInsts: " << g_InstrTypes.numGlobalInsts;
     OS << "\nnumLocalInsts: " << g_InstrTypes.numLocalInsts << "\n\n";
+    OS << "\nnumSamplesVaryingResource: " << g_InstrTypes.numSamplesVaryingResource << "\n\n";
+    OS << "\nnumUntyped: " << g_InstrTypes.numUntyped << "\n\n";
+    OS << "\nnum1DAccesses: " << g_InstrTypes.num1DAccesses << "\n\n";
+    OS << "\nnum2DAccesses: " << g_InstrTypes.num2DAccesses << "\n\n";
+    OS << "\nnumSLMAccesses: " << g_InstrTypes.numSLMAccesses << "\n\n";
 }
 
 void CheckInstrTypes::checkGlobalLocal(llvm::Instruction& I)
@@ -323,10 +396,12 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
         case GenISAIntrinsic::GenISA_typedread:
             g_InstrTypes.hasTypedRead = true;
             g_InstrTypes.numTypedReadWrite++;
+            g_InstrTypes.num2DAccesses++;
             break;
         case GenISAIntrinsic::GenISA_typedwrite:
             g_InstrTypes.hasTypedwrite = true;
             g_InstrTypes.numTypedReadWrite++;
+            g_InstrTypes.num2DAccesses++;
             break;
         case GenISAIntrinsic::GenISA_WaveAll:
         case GenISAIntrinsic::GenISA_WaveBallot:
@@ -358,6 +433,7 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
             {
                 g_InstrTypes.hasStorageBufferLoad = true;
             }
+            g_InstrTypes.num1DAccesses++;
             break;
         }
         case GenISAIntrinsic::GenISA_storeraw_indexed:
@@ -369,6 +445,7 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
             {
                 g_InstrTypes.hasStorageBufferStore = true;
             }
+            g_InstrTypes.num1DAccesses++;
             break;
         }
         case GenISAIntrinsic::GenISA_RuntimeValue:
@@ -379,6 +456,60 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
             }
             break;
         }
+        case GenISAIntrinsic::GenISA_storestructured1:
+        case GenISAIntrinsic::GenISA_storestructured2:
+        case GenISAIntrinsic::GenISA_storestructured3:
+        case GenISAIntrinsic::GenISA_storestructured4:
+            g_InstrTypes.numUntyped++;
+            break;
+        case GenISAIntrinsic::GenISA_ldstructured:
+            g_InstrTypes.numUntyped++;
+            g_InstrTypes.num1DAccesses++;
+            break;
+        case GenISAIntrinsic::GenISA_ldptr:
+        case GenISAIntrinsic::GenISA_ldlptr:
+            if (llvm::ConstantInt* pInt = llvm::dyn_cast<llvm::ConstantInt>(C.getOperand(1)))
+            {
+                int index = int_cast<int>(pInt->getSExtValue());
+                index == 0 ? g_InstrTypes.num1DAccesses++ : g_InstrTypes.num2DAccesses++;
+            }
+            else
+            {
+                g_InstrTypes.num2DAccesses++;
+            }
+            break;
+        case GenISAIntrinsic::GenISA_sampleptr:
+        case GenISAIntrinsic::GenISA_sampleBptr:
+        case GenISAIntrinsic::GenISA_sampleCptr:
+        case GenISAIntrinsic::GenISA_sampleDptr:
+        case GenISAIntrinsic::GenISA_sampleDCptr:
+        case GenISAIntrinsic::GenISA_sampleLptr:
+        case GenISAIntrinsic::GenISA_sampleLCptr:
+        case GenISAIntrinsic::GenISA_sampleBCptr:
+        case GenISAIntrinsic::GenISA_gather4ptr:
+        case GenISAIntrinsic::GenISA_gather4Cptr:
+        case GenISAIntrinsic::GenISA_gather4POptr:
+        case GenISAIntrinsic::GenISA_gather4POCptr:
+        case GenISAIntrinsic::GenISA_gather4Iptr:
+        case GenISAIntrinsic::GenISA_gather4IPOptr:
+        case GenISAIntrinsic::GenISA_gather4Bptr:
+        case GenISAIntrinsic::GenISA_gather4BPOptr:
+        case GenISAIntrinsic::GenISA_gather4Lptr:
+        case GenISAIntrinsic::GenISA_gather4LPOptr:
+        case GenISAIntrinsic::GenISA_gather4ICptr:
+        case GenISAIntrinsic::GenISA_gather4ICPOptr:
+        case GenISAIntrinsic::GenISA_gather4LCptr:
+        case GenISAIntrinsic::GenISA_gather4LCPOptr:
+            if (llvm::ConstantInt* pInt = llvm::dyn_cast<llvm::ConstantInt>(C.getOperand(2)))
+            {
+                int index = int_cast<int>(pInt->getZExtValue());
+                index == 0 ? g_InstrTypes.num1DAccesses++ : g_InstrTypes.num2DAccesses++;
+            }
+            else
+            {
+                g_InstrTypes.num2DAccesses++;
+            }
+            break;
         default:
             break;
         }
@@ -482,40 +613,50 @@ void CheckInstrTypes::visitLoadInst(LoadInst& I)
         g_InstrTypes.hasGlobalLoad = true;
         break;
     default:
-    {
-        BufferType bufferType = DecodeBufferType(as);
-        switch (bufferType)
-        {
-        case IGC::UAV:
-        case IGC::BINDLESS:
-        case IGC::SSH_BINDLESS:
-            g_InstrTypes.hasStorageBufferLoad = true;
-            break;
-        case IGC::STATELESS:
-            g_InstrTypes.hasGlobalLoad = true;
-            break;
-        case IGC::CONSTANT_BUFFER:
-        case IGC::RESOURCE:
-        case IGC::SLM:
-        case IGC::POINTER:
-        case IGC::BINDLESS_CONSTANT_BUFFER:
-        case IGC::BINDLESS_TEXTURE:
-        case IGC::SAMPLER:
-        case IGC::BINDLESS_SAMPLER:
-        case IGC::RENDER_TARGET:
-        case IGC::STATELESS_READONLY:
-        case IGC::STATELESS_A32:
-        case IGC::SSH_BINDLESS_CONSTANT_BUFFER:
-        case IGC::SSH_BINDLESS_TEXTURE:
-        case IGC::BUFFER_TYPE_UNKNOWN:
-            break;
-        }
-        if (isStatefulAddrSpace(as) && !IsDirectIdx(as))
-        {
-            g_InstrTypes.mayHaveIndirectResources = true;
-        }
         break;
     }
+
+    BufferType bufferType = DecodeBufferType(as);
+    switch (bufferType)
+    {
+    case IGC::UAV:
+        g_InstrTypes.hasStorageBufferLoad = true;
+        g_InstrTypes.num1DAccesses++;
+        g_InstrTypes.numUntyped++;
+        break;
+    case IGC::BINDLESS:
+    case IGC::SSH_BINDLESS:
+        g_InstrTypes.hasStorageBufferLoad = true;
+        break;
+    case IGC::STATELESS:
+        g_InstrTypes.hasGlobalLoad = true;
+        break;
+    case IGC::SLM:
+        g_InstrTypes.hasSLM = true;
+        g_InstrTypes.numSLMAccesses++;
+        g_InstrTypes.numUntyped++;
+        break;
+    case IGC::RESOURCE:
+        g_InstrTypes.num1DAccesses++;
+        g_InstrTypes.numUntyped++;
+        break;
+    case IGC::CONSTANT_BUFFER:
+    case IGC::POINTER:
+    case IGC::BINDLESS_CONSTANT_BUFFER:
+    case IGC::BINDLESS_TEXTURE:
+    case IGC::SAMPLER:
+    case IGC::BINDLESS_SAMPLER:
+    case IGC::RENDER_TARGET:
+    case IGC::STATELESS_READONLY:
+    case IGC::STATELESS_A32:
+    case IGC::SSH_BINDLESS_CONSTANT_BUFFER:
+    case IGC::SSH_BINDLESS_TEXTURE:
+    case IGC::BUFFER_TYPE_UNKNOWN:
+        break;
+    }
+    if (isStatefulAddrSpace(as) && !IsDirectIdx(as))
+    {
+        g_InstrTypes.mayHaveIndirectResources = true;
     }
 }
 
@@ -544,40 +685,50 @@ void CheckInstrTypes::visitStoreInst(StoreInst& I)
         g_InstrTypes.hasGlobalStore = true;
         break;
     default:
-    {
-        BufferType bufferType = DecodeBufferType(as);
-        switch (bufferType)
-        {
-        case IGC::UAV:
-        case IGC::BINDLESS:
-        case IGC::SSH_BINDLESS:
-            g_InstrTypes.hasStorageBufferStore = true;
-            break;
-        case IGC::STATELESS:
-            g_InstrTypes.hasGlobalStore = true;
-            break;
-        case IGC::CONSTANT_BUFFER:
-        case IGC::RESOURCE:
-        case IGC::SLM:
-        case IGC::POINTER:
-        case IGC::BINDLESS_CONSTANT_BUFFER:
-        case IGC::BINDLESS_TEXTURE:
-        case IGC::SAMPLER:
-        case IGC::BINDLESS_SAMPLER:
-        case IGC::RENDER_TARGET:
-        case IGC::STATELESS_READONLY:
-        case IGC::STATELESS_A32:
-        case IGC::SSH_BINDLESS_CONSTANT_BUFFER:
-        case IGC::SSH_BINDLESS_TEXTURE:
-        case IGC::BUFFER_TYPE_UNKNOWN:
-            break;
-        }
-        if (isStatefulAddrSpace(as) && !IsDirectIdx(as))
-        {
-            g_InstrTypes.mayHaveIndirectResources = true;
-        }
         break;
     }
+    BufferType bufferType = DecodeBufferType(as);
+    switch (bufferType)
+    {
+    case IGC::UAV:
+        g_InstrTypes.hasStorageBufferStore = true;
+        g_InstrTypes.numUntyped++;
+        g_InstrTypes.num1DAccesses++;
+        break;
+    case IGC::BINDLESS:
+    case IGC::SSH_BINDLESS:
+        g_InstrTypes.hasStorageBufferStore = true;
+        break;
+    case IGC::STATELESS:
+        g_InstrTypes.hasGlobalStore = true;
+        break;
+    case IGC::RESOURCE:
+        g_InstrTypes.numUntyped++;
+        g_InstrTypes.num1DAccesses++;
+        break;
+    case IGC::SLM:
+        g_InstrTypes.numUntyped++;
+        g_InstrTypes.numSLMAccesses++;
+        g_InstrTypes.hasSLM = true;
+        break;
+    case IGC::CONSTANT_BUFFER:
+    case IGC::POINTER:
+    case IGC::BINDLESS_CONSTANT_BUFFER:
+    case IGC::BINDLESS_TEXTURE:
+    case IGC::SAMPLER:
+    case IGC::BINDLESS_SAMPLER:
+    case IGC::RENDER_TARGET:
+    case IGC::STATELESS_READONLY:
+    case IGC::STATELESS_A32:
+    case IGC::SSH_BINDLESS_CONSTANT_BUFFER:
+    case IGC::SSH_BINDLESS_TEXTURE:
+    case IGC::BUFFER_TYPE_UNKNOWN:
+        break;
+    }
+
+    if (isStatefulAddrSpace(as) && !IsDirectIdx(as))
+    {
+        g_InstrTypes.mayHaveIndirectResources = true;
     }
 }
 

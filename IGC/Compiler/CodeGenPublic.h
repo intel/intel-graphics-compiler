@@ -345,6 +345,7 @@ namespace IGC
         bool hasRuntimeValueVector{};
         bool hasDynamicGenericLoadStore{};
         bool hasUnmaskedRegion{};
+        bool hasSLM{};
         unsigned int numCall{};
         unsigned int numBarrier{};
         unsigned int numLoadStore{};
@@ -363,6 +364,12 @@ namespace IGC
         unsigned int numGlobalInsts{};
         unsigned int numLocalInsts{};
         unsigned int numSamplesVaryingResource{}; //<! measured before CodeGen for scheduling heuristic
+        // additional counters for CSWalkOrder
+        unsigned int numUntyped{};
+        unsigned int num1DAccesses{};
+        unsigned int num2DAccesses{};
+        unsigned int numSLMAccesses{};
+
     };
 
     struct SSimplePushInfo
@@ -1255,6 +1262,17 @@ namespace IGC
             , runtimeVal_ConstBufferSize(0)
         {}
     };
+
+    struct SComputeShaderWalkOrder
+    {
+        ThreadIDLayout m_threadIDLayout = ThreadIDLayout::X;
+        CS_WALK_ORDER m_walkOrder = CS_WALK_ORDER::WO_XYZ;
+        EMIT_LOCAL_MASK m_emitMask = EMIT_LOCAL_MASK::EM_NONE;
+        //true if HW generates localIDs and puts them to payload
+        //false if SW generates localIDs and prolog kernel loads them from memory
+        bool m_enableHWGenerateLID = false;
+    };
+
 
     void OptimizeIR(CodeGenContext* ctx);
 

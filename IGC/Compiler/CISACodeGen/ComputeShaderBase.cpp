@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/ScaledNumber.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/ComputeShaderBase.hpp"
+#include "Compiler/CISACodeGen/CSWalkOrder.hpp"
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
 #include "common/allocator.h"
 #include "common/secure_mem.h"
@@ -35,10 +36,21 @@ namespace IGC
         uint numSLMAccesses,
         uint threadGroupSize_X,
         uint threadGroupSize_Y,
-        uint threadGroupSize_Z)
+        uint threadGroupSize_Z,
+        SComputeShaderWalkOrder & walkOrderStruct)
     {
         const CodeGenContext* pCtx = GetContext();
         const ModuleMetaData* MMD = pCtx->getModuleMetaData();
+        ThreadIDLayout& m_ThreadIDLayout = walkOrderStruct.m_threadIDLayout;
+        CS_WALK_ORDER& m_walkOrder = walkOrderStruct.m_walkOrder;
+        EMIT_LOCAL_MASK& m_emitMask = walkOrderStruct.m_emitMask;
+        bool& m_enableHWGenerateLID = walkOrderStruct.m_enableHWGenerateLID;
+
+        if (IGC_IS_FLAG_ENABLED(EnableSelectCSWalkOrderPass) &&
+            pCtx->platform.EnableCSWalkerPass())
+        {
+            return;
+        }
 
         if (MMD->csInfo.neededThreadIdLayout == ThreadIDLayout::QuadTile)
         {
@@ -49,6 +61,7 @@ namespace IGC
         bool is_pow2_x = iSTD::IsPowerOfTwo(threadGroupSize_X);
         bool is_pow2_y = iSTD::IsPowerOfTwo(threadGroupSize_Y);
         bool is_pow2_z = iSTD::IsPowerOfTwo(threadGroupSize_Z);
+
         if (IGC_IS_FLAG_ENABLED(SetDefaultTileYWalk) && is_pow2_x &&
             m_Platform->enableSetDefaultTileYWalk() && m_DriverInfo->SupportHWGenerateTID()) {
             m_ThreadIDLayout = ThreadIDLayout::TileY;
@@ -85,7 +98,7 @@ namespace IGC
             return;
 
         //if no LID is used ever, HWGenerateLID should be disabled
-        if (EMIT_LOCAL_MASK::NONE == m_emitMask) {
+        if (EMIT_LOCAL_MASK::EM_NONE == m_emitMask) {
             m_enableHWGenerateLID = false;
             return;
         }
@@ -108,12 +121,13 @@ namespace IGC
 
         //if not all DIMs are used, we can assume not-used DIM vals are 1, so, HW might generate LIDs even if original not-used DIM val != pow2
         //say, (31, 17, 3), if only X dim is used, HW will generate LID for (31,1,1). If both XY are used, then, HW cannot generate LIDs
-        if (EMIT_LOCAL_MASK::X == m_emitMask){
+        if (EMIT_LOCAL_MASK::EM_X == m_emitMask) {
             threadGroupSize_Y = 1;
             threadGroupSize_Z = 1;
             //it makes no sense to use TileY if no Y is used at all. Disable it.
             m_ThreadIDLayout = ThreadIDLayout::X;
-        }else if (EMIT_LOCAL_MASK::XY == m_emitMask){
+        }
+        else if (EMIT_LOCAL_MASK::EM_XY == m_emitMask) {
             threadGroupSize_Z = 1;
         }//else if (EMIT_LOCAL_MASK::XYZ == m_emitMask)
 
@@ -144,7 +158,7 @@ namespace IGC
             }
             //disable tileY if walkorder cannot be changed
             m_ThreadIDLayout = ThreadIDLayout::X;
-            overrideWalkOrderKeys(is_pow2_x, is_pow2_y, is_pow2_z, MMD->csInfo);
+            overrideWalkOrderKeysInPass(is_pow2_x, is_pow2_y, is_pow2_z, walkOrderStruct, m_ctx);
             return;
         }
 
@@ -152,7 +166,7 @@ namespace IGC
         if ((IGC_IS_FLAG_ENABLED(ForceLinearWalkOnLinearUAV) ||
             MMD->compOpt.ForceLinearWalkOnLinearUAV) &&
             (m_ThreadIDLayout == ThreadIDLayout::TileY) &&
-            EMIT_LOCAL_MASK::XY == m_emitMask &&
+            EMIT_LOCAL_MASK::EM_XY == m_emitMask &&
             num1DAccesses)
         {
             m_ThreadIDLayout = ThreadIDLayout::X;
@@ -165,7 +179,7 @@ namespace IGC
         if (b_EnableNewTileYCheck &&
             IGC_IS_FLAG_ENABLED(SetDefaultTileYWalk) &&
             (m_ThreadIDLayout == ThreadIDLayout::TileY) &&
-            EMIT_LOCAL_MASK::XY == m_emitMask)
+            EMIT_LOCAL_MASK::EM_XY == m_emitMask)
         {
             // check 1D, 2D, SLM accesses
             int num1D = num1DAccesses + (int)(numSLMAccesses / 4);
@@ -177,7 +191,7 @@ namespace IGC
             }
         }
 
-        auto order = selectBestWalkOrder(
+        auto order = selectBestWalkOrderInPass(
             m_ThreadIDLayout, is_pow2_x, is_pow2_y, is_pow2_z);
 
         if (order) {
@@ -189,7 +203,7 @@ namespace IGC
             m_ThreadIDLayout = ThreadIDLayout::X;
             m_walkOrder = CS_WALK_ORDER::WO_XYZ;
         }
-        overrideWalkOrderKeys(is_pow2_x, is_pow2_y, is_pow2_z, MMD->csInfo);
+        overrideWalkOrderKeysInPass(is_pow2_x, is_pow2_y, is_pow2_z, walkOrderStruct, m_ctx);
     }
 
     Optional<CS_WALK_ORDER>
@@ -228,142 +242,12 @@ namespace IGC
         return None;
     }
 
-    Optional<CS_WALK_ORDER>
-    CComputeShaderBase::selectBestWalkOrder(
-        ThreadIDLayout Layout,
-        bool is_pow2_x, bool is_pow2_y, bool is_pow2_z)
-    {
-        constexpr uint UNDEF = std::numeric_limits<uint>::max();
-        uint order0 = UNDEF;
-        uint order1 = UNDEF;
-        if (Layout == ThreadIDLayout::TileY)
-        {
-            IGC_ASSERT(is_pow2_y);
-            order0 = 1;
-            order1 = (is_pow2_x ? 0 : (is_pow2_z ? 2 : UNDEF));
-        }
-        else
-        {
-            //below is from HAS p-code except tileY
-            //try to find walk_order so that HW can generate LID
-            if (is_pow2_x)
-            {
-                // (pow2,pow2,z) or (pow2,y,pow2) or illegal
-                order0 = 0;
-                order1 = (is_pow2_y ? 1 : (is_pow2_z ? 2 : UNDEF));
-            }
-            else if (is_pow2_y)
-            {
-                // (x,pow2,pow2) or illegal
-                order0 = 1;
-                order1 = (is_pow2_z ? 2 : UNDEF);
-            }
-        }
-
-        if (order1 != UNDEF)
-        {
-            // select walkorder
-            return getWalkOrder(order0, order1);
-        }
-
-        return None;
-    }
-
-    bool
-    CComputeShaderBase::enableHWGenerateLID(
-        CS_WALK_ORDER walk_order,
-        bool is_pow2_x, bool is_pow2_y, bool is_pow2_z)
-    {
-        bool bEnableHWGenerateLID = false;
-
-        switch (walk_order)
-        {
-        case CS_WALK_ORDER::WO_XYZ:
-        case CS_WALK_ORDER::WO_YXZ:
-            bEnableHWGenerateLID = (is_pow2_x && is_pow2_y);
-            break;
-
-        case CS_WALK_ORDER::WO_XZY:
-        case CS_WALK_ORDER::WO_ZXY:
-            bEnableHWGenerateLID = (is_pow2_x && is_pow2_z);
-            break;
-
-        case CS_WALK_ORDER::WO_YZX:
-        case CS_WALK_ORDER::WO_ZYX:
-            bEnableHWGenerateLID = (is_pow2_y && is_pow2_z);
-            break;
-        }
-        return bEnableHWGenerateLID;
-    }
-
-    void
-    CComputeShaderBase::overrideWalkOrderKeys(
-        bool is_pow2_x, bool is_pow2_y, bool is_pow2_z, const ComputeShaderInfo& csInfo)
-    {
-        if ((IGC_IS_FLAG_ENABLED(ForceTileY) || GetContext()->getModuleMetaData()->csInfo.forceTileYWalk) &&
-            m_Platform->supportHWGenerateTID() && m_DriverInfo->SupportHWGenerateTID())
-        {
-            m_ThreadIDLayout = ThreadIDLayout::TileY;
-            m_walkOrder = CS_WALK_ORDER::WO_YXZ;
-            m_enableHWGenerateLID = enableHWGenerateLID(m_walkOrder, is_pow2_x, is_pow2_y, is_pow2_z);
-        }
-
-        if (csInfo.walkOrderEnabled)
-        {
-            m_walkOrder = (CS_WALK_ORDER)csInfo.walkOrderOverride;
-            m_enableHWGenerateLID = enableHWGenerateLID(m_walkOrder, is_pow2_x, is_pow2_y, is_pow2_z);
-        }
-
-        if (IGC_IS_FLAG_ENABLED(OverrideCsWalkOrderEnable))
-        {
-            m_walkOrder = (CS_WALK_ORDER)IGC_GET_FLAG_VALUE(OverrideCsWalkOrder);
-            m_enableHWGenerateLID = enableHWGenerateLID(m_walkOrder, is_pow2_x, is_pow2_y, is_pow2_z);
-        }
-
-        if (IGC_IS_FLAG_ENABLED(OverrideCsTileLayoutEnable))
-        {
-            m_ThreadIDLayout = (ThreadIDLayout)IGC_IS_FLAG_ENABLED(OverrideCsTileLayout);
-        }
-    }
-
     //order0: the internal walk dim
     //order1: the intermediate walk dim
     //e.g.: 1, 0 means, YXZ walkorder
     CS_WALK_ORDER CComputeShaderBase::getWalkOrder(uint order0, uint order1)
     {
-        auto getWalkOrderValue = [](uint order0, uint order1) constexpr {
-            return (order0 << 4 | order1 << 2);
-        };
-
-        switch (getWalkOrderValue(order0, order1))
-        {
-        case getWalkOrderValue(0, 1): return CS_WALK_ORDER::WO_XYZ; //012
-        case getWalkOrderValue(0, 2): return CS_WALK_ORDER::WO_XZY; //021
-        case getWalkOrderValue(1, 0): return CS_WALK_ORDER::WO_YXZ; //102
-        case getWalkOrderValue(1, 2): return CS_WALK_ORDER::WO_YZX; //120
-        case getWalkOrderValue(2, 0): return CS_WALK_ORDER::WO_ZXY; //201
-        case getWalkOrderValue(2, 1): return CS_WALK_ORDER::WO_ZYX; //210
-        default:
-            IGC_ASSERT_MESSAGE(0, "unhandled case!");
-            return CS_WALK_ORDER::WO_XYZ;
-        }
+        return getWalkOrderInPass(order0, order1);
     }
 
-    void CComputeShaderBase::setEmitLocalMask(SGVUsage channelNum) {
-        //only 4 patterns are supported: None; X; XY; XYZ
-        switch (channelNum)
-        {
-        case THREAD_ID_IN_GROUP_X:
-            m_emitMask = (EMIT_LOCAL_MASK::NONE == m_emitMask) ? EMIT_LOCAL_MASK::X : m_emitMask;
-            break;
-        case THREAD_ID_IN_GROUP_Y:
-            m_emitMask = (EMIT_LOCAL_MASK::NONE == m_emitMask || EMIT_LOCAL_MASK::X == m_emitMask) ? EMIT_LOCAL_MASK::XY : m_emitMask;
-            break;
-        case THREAD_ID_IN_GROUP_Z:
-            m_emitMask = EMIT_LOCAL_MASK::XYZ;
-            break;
-        default:
-            break;
-        }
-    }
 }
