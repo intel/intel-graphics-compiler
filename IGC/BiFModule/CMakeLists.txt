@@ -643,7 +643,7 @@ set(IGC_BUILD__PROJ__BiFModuleCache_OCL       "${IGC_BUILD__PROJ__BiFModuleCache
 add_custom_command(
     OUTPUT "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.h" "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bifbc"
     COMMAND $<TARGET_FILE:BiFManager-bin> "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc" "${IGC_BUILD__BIF_DIR}/IGCsize_t_32.bc" "${IGC_BUILD__BIF_DIR}/IGCsize_t_64.bc" "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bifbc" "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.h"
-    DEPENDS "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc" $<TARGET_FILE:BiFManager-bin>
+    DEPENDS "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc" "${IGC_BUILD__BIF_DIR}/IGCsize_t_32.bc" "${IGC_BUILD__BIF_DIR}/IGCsize_t_64.bc"$<TARGET_FILE:BiFManager-bin>
     COMMENT "BiF: ${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc: Spliting output .bc."
     COMMAND_EXPAND_LISTS
 )
