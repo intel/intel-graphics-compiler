@@ -2104,10 +2104,17 @@ CVariable* CShader::GetStructVariable(llvm::Value* v)
     {
         if (IGC_IS_FLAG_ENABLED(EnableDeSSA) && m_deSSA)
         {
-            // As struct is represented as byte (a sequence of bytes) in cvar,
-            // createAliasIfNeeded() isn't needed.
             e_alignment pAlign = EALIGN_GRF;
             Value* rVal = m_deSSA->getRootValue(v, &pAlign);
+
+            // If a struct type is coalesced with another non-struct type,
+            // need to call createAliasIfNeeded().  Otherwise, all coalesced
+            // structs are of the same type (Byte).
+            if (rVal && !rVal->getType()->isStructTy()) {
+                CVariable * rootV = GetSymbol(rVal);
+                return createAliasIfNeeded(v, rootV);
+            }
+
             v = rVal ? rVal : v;
             auto it = symbolMapping.find(v);
             if (it != symbolMapping.end())
