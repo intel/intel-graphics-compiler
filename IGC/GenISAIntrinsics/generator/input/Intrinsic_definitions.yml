@@ -6078,6 +6078,10 @@ intrinsics:
                 name: Arg7
                 type_definition: *i1
                 comment: "L1 Evict"
+            - !<ArgumentDefinition>
+                name: Arg8
+                type_definition: *i32
+                comment: "Fence memory scope"
         attributes:
             - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"

@@ -795,7 +795,8 @@ struct LSC_CACHE_OPTS {
  LSC_CACHE_OPTS() = default;
 
  LSC_CACHE_OPTS(LSC_CACHE_OPT _l1, LSC_CACHE_OPT _l3)
-   :  l1(_l1), l3(_l3)
+   : l1(_l1),
+     l3(_l3)
   { }
 
 };
@@ -805,7 +806,7 @@ struct LSC_CACHE_OPTS {
 // vISA representation.
 typedef enum {
 #define LSC_CACHE_CTRL_OPTION(Name, Val, Description) Name = Val,
-#include "igc_regkeys_enums_defs.h"
+#include "IGC/common/igc_regkeys_enums_defs.h"
   LSC_CACHE_CTRL_OPTIONS
 #undef LSC_CACHE_CTRL_OPTION
 #undef LSC_CACHE_CTRL_OPTIONS

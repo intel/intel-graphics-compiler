@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/Casting.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
+#include "visa/include/visa_igc_common_header.h"
 
 typedef union _gfxResourceAddressSpace
 {
@@ -874,6 +875,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_MemoryFence(
         this->getInt1(globalFence),
         this->getInt1(false),
         this->getInt1(false),
+        this->getInt32(globalFence ? LSC_SCOPE_GPU : LSC_SCOPE_GROUP)
     };
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
     return this->CreateCall(

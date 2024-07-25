@@ -56,6 +56,14 @@ void DivergentBarrierPass::updateFenceArgs(
         else
             return true;
     };
+    auto updateScope = [](const Value* V)
+    {
+        // If we don't know at compile-time, conservatively assume LSC_SCOPE_GPU
+        if (auto* C = dyn_cast<ConstantInt>(V))
+            return static_cast<uint32_t>(C->getValue().getZExtValue());
+        else
+            return static_cast<uint32_t>(LSC_SCOPE_GPU);
+    };
 
     // Always CommitEnable
 
@@ -66,6 +74,7 @@ void DivergentBarrierPass::updateFenceArgs(
     Args.Global                 |= update(I->getOperand(5));
     Args.L1_Invalidate          |= update(I->getOperand(6));
     Args.L1_Evict               |= update(I->getOperand(7));
+    Args.Scope                   = updateScope(I->getOperand(8));
 }
 
 CallInst* DivergentBarrierPass::insertFence(
@@ -83,6 +92,7 @@ CallInst* DivergentBarrierPass::insertFence(
         IRB.getInt1(FA.Global),
         IRB.getInt1(FA.L1_Invalidate),
         IRB.getInt1(FA.L1_Evict),
+        IRB.getInt32(FA.Scope)
     };
     return IRB.CreateCall(FenceFn, Args);
 }

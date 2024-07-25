@@ -113,8 +113,7 @@ void     __builtin_IB_write_2d_f(int, int2, float4, int);
 local uchar* __builtin_IB_AllocLocalMemPool(bool allocAllWorkgroups, uint numAdditionalElements, uint elementSize);
 
 // Memory fences
-// See GenISAIntrinsics.td for documentation
-void     __builtin_IB_memfence(bool commitEnable, bool flushRW, bool flushConstant, bool flushTexture, bool flushIcache, bool isGlobal, bool invalidateL1, bool evictL1);
+void     __builtin_IB_memfence(bool commitEnable, bool flushRW, bool flushConstant, bool flushTexture, bool flushIcache, bool isGlobal, bool invalidateL1, bool evictL1, uint scope);
 void     __builtin_IB_flush_sampler_cache(void);
 void     __builtin_IB_typedmemfence(bool invalidateCache);
 
