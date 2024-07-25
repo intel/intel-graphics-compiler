@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2023 Intel Corporation
+Copyright (C) 2021-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -52,7 +52,7 @@ __impl_divrem(vector<int32_t, N> &q, vector<int32_t, N> &r,
   al = la_l;
 
   // y = RCP(bh)
-  y = 1.0f / bh;
+  y = math::reciprocal(bh);
 
   // y = y*(1 - 3*2^(-23))
   vector<float, N> sf = as_float(0xb4c00000u);
@@ -104,7 +104,7 @@ __impl_divrem(vector<int16_t, N> &q, vector<int16_t, N> &r,
               vector<int16_t, N> a, vector<int16_t, N> b) {
   vector<float, N> fa = a;
   vector<float, N> fb = b;
-  vector<float, N> fy = 1.0f / fb;
+  vector<float, N> fy = math::reciprocal(fb);
 
   // s = 1 + 2^(-20)
   vector<float, N> sf = as_float(0x3f800008U);

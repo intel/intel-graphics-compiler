@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2022 Intel Corporation
+Copyright (C) 2021-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -189,6 +189,14 @@ inline uint32_t count_population(uint64_t src) {
 
 inline uint32_t count_population(int64_t src) {
   return count_population(static_cast<uint64_t>(src));
+}
+
+/*========================= Inv ============================*/
+
+template <typename T, int width,
+          cl::enable_if_t<cl::is_floating_point<T>::value, int> = 0>
+vector<T, width> reciprocal(vector<T, width> src) {
+  return detail::reciprocal(src.cl_vector());
 }
 
 /*========================= Mad ============================*/

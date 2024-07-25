@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022-2023 Intel Corporation
+Copyright (C) 2022-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -165,9 +165,8 @@ CM_NODEBUG CM_INLINE vector<double, N> __impl_fdiv_fast(vector<double, N> a,
     b.merge(mb.template format<double>(), long_path);
   }
 
-  // Should be mapped to math.inv
   vector<float, N> bf = b;
-  vector<float, N> y0f = 1.0f / bf;
+  vector<float, N> y0f = math::reciprocal(bf);
   vector<double, N> y0 = y0f;
 
   // step(1): e0 = 1.0 - b * y0
@@ -209,7 +208,7 @@ __impl_div_ieee_steps__rte_(cl_vector<double, N> ca, cl_vector<double, N> cb) {
   vector<double, N> b = cb;
 
   vector<float, N> bf = b;
-  vector<float, N> y0f = 1.0f / bf; // Should be mapped to math.inv
+  vector<float, N> y0f = math::reciprocal(bf);
   vector<double, N> y0 = y0f;
 
   // Because the double-to-float conversion is done in RN mode, we need this fix

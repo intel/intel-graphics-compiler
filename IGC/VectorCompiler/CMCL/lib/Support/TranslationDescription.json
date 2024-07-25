@@ -576,6 +576,19 @@
         ]
       }
     },
+    "FRcp": {
+      "Name": "frcp",
+      "Operands": [
+        {"Name": "Source", "Kind": "Input"}
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_inv",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"GetBuiltinOperand": ["Source"]}
+        ]
+      }
+    },
     "Fma": {
       "Name": "fma",
       "Operands": [

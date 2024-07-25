@@ -131,6 +131,7 @@ vector_impl<uint32_t, width> __cm_cl_bfrev(vector_impl<uint32_t, width> src);
 
 template <typename T> T __cm_cl_abs_int(T src);
 template <typename T> T __cm_cl_abs_float(T src);
+template <typename T> T __cm_cl_frcp(T src);
 
 template <typename T> T __cm_cl_ceil(T src);
 template <typename T> T __cm_cl_floor(T src);
@@ -385,6 +386,13 @@ inline uint32_t bfrev(uint32_t src) { return __cm_cl_bfrev(src); }
 template <int width>
 vector_impl<uint32_t, width> bfrev(vector_impl<uint32_t, width> src) {
   return __cm_cl_bfrev(src);
+}
+
+template <typename T, int width>
+vector_impl<T, width> reciprocal(vector_impl<T, width> src) {
+  static_assert(cl::is_floating_point<T>::value,
+                "illegal type provided in reciprocal");
+  return __cm_cl_frcp(src);
 }
 
 // Usigned values are returned without a change.
