@@ -51,6 +51,7 @@ private:
   Constant *translateCacheControls(Constant *L1, Constant *L3) const;
   Value *translateMath(CallInst &I, Intrinsic::ID IID,
                        bool HasApproxFunc = true) const;
+  Value *translateMinMax(CallInst &I) const;
   Value *translateBFloat16Convert(CallInst &I) const;
   Value *translateTFloat32Convert(CallInst &I) const;
   Value *translateStochasticRounding(CallInst &I) const;
@@ -119,6 +120,12 @@ void GenXTranslateIntrinsics::visitCallInst(CallInst &I) const {
   case GenXIntrinsic::genx_tf32_cvt:
     NewI = translateTFloat32Convert(I);
     break;
+  case GenXIntrinsic::genx_smax:
+  case GenXIntrinsic::genx_smin:
+  case GenXIntrinsic::genx_umax:
+  case GenXIntrinsic::genx_umin:
+    NewI = translateMinMax(I);
+    break;
   case GenXIntrinsic::genx_srnd:
     NewI = translateStochasticRounding(I);
     break;
@@ -183,6 +190,48 @@ void GenXTranslateIntrinsics::visitCallInst(CallInst &I) const {
 
   I.eraseFromParent();
   return;
+}
+
+Value *GenXTranslateIntrinsics::translateMinMax(CallInst &I) const {
+  LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
+  IRBuilder<> Builder(&I);
+
+  auto IID = GenXIntrinsic::getGenXIntrinsicID(&I);
+  auto NewIID = Intrinsic::not_intrinsic;
+  bool IsSigned = false;
+
+  switch (IID) {
+  default:
+    IGC_ASSERT_EXIT_MESSAGE(0, "Unexpected intrinsic");
+  case GenXIntrinsic::genx_smax:
+    IsSigned = true;
+    NewIID = Intrinsic::smax;
+    break;
+  case GenXIntrinsic::genx_smin:
+    IsSigned = true;
+    NewIID = Intrinsic::smin;
+    break;
+  case GenXIntrinsic::genx_umax:
+    NewIID = Intrinsic::umax;
+    break;
+  case GenXIntrinsic::genx_umin:
+    NewIID = Intrinsic::umin;
+    break;
+  }
+
+  auto *Arg0 = I.getArgOperand(0);
+  auto *Arg1 = I.getArgOperand(1);
+  auto *Ty = Arg0->getType();
+
+  Value *NewI = Builder.CreateIntrinsic(NewIID, {Ty}, {Arg0, Arg1});
+  LLVM_DEBUG(dbgs() << "Created: " << *NewI << "\n");
+
+  if (Ty != I.getType()) {
+    NewI = Builder.CreateIntCast(NewI, I.getType(), IsSigned);
+    LLVM_DEBUG(dbgs() << "Created: " << *NewI << "\n");
+  }
+
+  return NewI;
 }
 
 Value *GenXTranslateIntrinsics::translateMath(CallInst &I, Intrinsic::ID IID,

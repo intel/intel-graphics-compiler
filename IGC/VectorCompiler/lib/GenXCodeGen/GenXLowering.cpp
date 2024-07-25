@@ -241,7 +241,6 @@ private:
   bool lowerCttz(CallInst *Inst);
   bool lowerCtlz(CallInst *Inst);
   bool lowerUnorderedFCmpInst(FCmpInst *Inst);
-  bool lowerMinMax(CallInst *CI, unsigned IntrinsicID);
   bool lowerSqrt(CallInst *CI);
   bool widenByteOp(Instruction *Inst);
   bool lowerGenXMul(CallInst *CI, unsigned IntrinsicID);
@@ -2095,11 +2094,6 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerCttz(CI);
     case Intrinsic::ctlz:
       return lowerCtlz(CI);
-    case Intrinsic::smin:
-    case Intrinsic::smax:
-    case Intrinsic::umin:
-    case Intrinsic::umax:
-      return lowerMinMax(CI, IntrinsicID);
     case Intrinsic::sqrt:
       return lowerSqrt(CI);
     case Intrinsic::sadd_sat:
@@ -3692,35 +3686,6 @@ bool GenXLowering::lowerUnorderedFCmpInst(FCmpInst *Inst) {
   Inst->replaceAllUsesWith(Result);
   ToErase.push_back(Inst);
 
-  return true;
-}
-
-static GenXIntrinsic::ID convertMinMaxIntrinsic(unsigned ID) {
-  switch (ID) {
-  default:
-    break;
-  case Intrinsic::smin:
-    return GenXIntrinsic::genx_smin;
-  case Intrinsic::smax:
-    return GenXIntrinsic::genx_smax;
-  case Intrinsic::umin:
-    return GenXIntrinsic::genx_umin;
-  case Intrinsic::umax:
-    return GenXIntrinsic::genx_umax;
-  };
-  IGC_ASSERT_EXIT_MESSAGE(0, "unknown min/max intrinsic");
-  return GenXIntrinsic::not_any_intrinsic;
-}
-
-// Lower llvm min/max intrinsics to genx <ty>min/<ty>max.
-bool GenXLowering::lowerMinMax(CallInst *CI, unsigned IntrinsicID) {
-  auto *ResTy = CI->getType();
-  auto *MinMaxDecl = GenXIntrinsic::getGenXDeclaration(
-      CI->getModule(), convertMinMaxIntrinsic(IntrinsicID), {ResTy, ResTy});
-  Value *Result = IRBuilder<>(CI).CreateCall(
-      MinMaxDecl, {CI->getArgOperand(0), CI->getArgOperand(1)}, CI->getName());
-  CI->replaceAllUsesWith(Result);
-  ToErase.push_back(CI);
   return true;
 }
 

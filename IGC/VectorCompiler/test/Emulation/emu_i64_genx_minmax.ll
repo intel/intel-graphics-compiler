@@ -11,11 +11,11 @@
 
 ; COM: these tests just check that there is no compilation/asserts failures
 
-declare <2 x i64> @llvm.genx.umin.v2i64.v2i64(<2 x i64>, <2 x i64>)
-declare <2 x i64> @llvm.genx.smin.v2i64.v2i64(<2 x i64>, <2 x i64>)
+declare <2 x i64> @llvm.umin.v2i64(<2 x i64>, <2 x i64>)
+declare <2 x i64> @llvm.smin.v2i64(<2 x i64>, <2 x i64>)
 
-declare <2 x i64> @llvm.genx.umax.v2i64.v2i64(<2 x i64>, <2 x i64>)
-declare <2 x i64> @llvm.genx.smax.v2i64.v2i64(<2 x i64>, <2 x i64>)
+declare <2 x i64> @llvm.umax.v2i64(<2 x i64>, <2 x i64>)
+declare <2 x i64> @llvm.smax.v2i64(<2 x i64>, <2 x i64>)
 
 ; CHECK: @test_genx_minU
 ; CHECK: [[IV1:%[^ ]+]] = bitcast <[[RT:2 x i64]]> %left to <[[CT:4 x i32]]>
@@ -48,7 +48,7 @@ declare <2 x i64> @llvm.genx.smax.v2i64.v2i64(<2 x i64>, <2 x i64>)
 ; CHECK-NEXT: [[RECAST:%[^ ]+]] = bitcast <[[CT]]> [[JOINED]] to <[[RT]]>
 ; CHECK-NEXT: [[USER:%[^ ]+]] = bitcast <[[RT]]> [[RECAST]] to <[[RT]]>
 define dllexport spir_kernel void @test_genx_minU(<2 x i64> %left, <2 x i64> %right) {
-  %val = call <2 x i64> @llvm.genx.umin.v2i64.v2i64(<2 x i64> %left, <2 x i64> %right)
+  %val = call <2 x i64> @llvm.umin.v2i64(<2 x i64> %left, <2 x i64> %right)
   %vu = bitcast <2 x i64> %val to <2 x i64>
   ret void
 }
@@ -83,7 +83,7 @@ define dllexport spir_kernel void @test_genx_minU(<2 x i64> %left, <2 x i64> %ri
 ; CHECK-NEXT: [[RECAST:%[^ ]+]] = bitcast <[[CT]]> [[JOINED]] to <[[RT]]>
 ; CHECK-NEXT: [[USER:%[^ ]+]] = bitcast <[[RT]]> [[RECAST]] to <[[RT]]>
 define dllexport spir_kernel void @test_genx_minS(<2 x i64> %left, <2 x i64> %right) {
-  %val = call <2 x i64> @llvm.genx.smin.v2i64.v2i64(<2 x i64> %left, <2 x i64> %right)
+  %val = call <2 x i64> @llvm.smin.v2i64(<2 x i64> %left, <2 x i64> %right)
   %vu = bitcast <2 x i64> %val to <2 x i64>
   ret void
 }
@@ -118,7 +118,7 @@ define dllexport spir_kernel void @test_genx_minS(<2 x i64> %left, <2 x i64> %ri
 ; CHECK-NEXT: [[RECAST:%[^ ]+]] = bitcast <[[CT]]> [[JOINED]] to <[[RT]]>
 ; CHECK-NEXT: [[USER:%[^ ]+]] = bitcast <[[RT]]> [[RECAST]] to <[[RT]]>
 define dllexport spir_kernel void @test_genx_maxS(<2 x i64> %left, <2 x i64> %right) {
-  %val = call <2 x i64> @llvm.genx.smax.v2i64.v2i64(<2 x i64> %left, <2 x i64> %right)
+  %val = call <2 x i64> @llvm.smax.v2i64(<2 x i64> %left, <2 x i64> %right)
   %vu = bitcast <2 x i64> %val to <2 x i64>
   ret void
 }
@@ -153,8 +153,7 @@ define dllexport spir_kernel void @test_genx_maxS(<2 x i64> %left, <2 x i64> %ri
 ; CHECK-NEXT: [[RECAST:%[^ ]+]] = bitcast <[[CT]]> [[JOINED]] to <[[RT]]>
 ; CHECK-NEXT: [[USER:%[^ ]+]] = bitcast <[[RT]]> [[RECAST]] to <[[RT]]>
 define dllexport spir_kernel void @test_genx_maxU(<2 x i64> %left, <2 x i64> %right) {
-  %val = call <2 x i64> @llvm.genx.umax.v2i64.v2i64(<2 x i64> %left, <2 x i64> %right)
+  %val = call <2 x i64> @llvm.umax.v2i64(<2 x i64> %left, <2 x i64> %right)
   %vu = bitcast <2 x i64> %val to <2 x i64>
   ret void
 }
-

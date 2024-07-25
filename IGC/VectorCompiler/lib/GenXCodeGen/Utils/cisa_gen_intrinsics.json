@@ -88,6 +88,42 @@
       "src0": [ "GENERAL", "MODIFIER_ARITH", 1 ],
       "src1": [ "GENERAL", "MODIFIER_ARITH", 2 ]
     },
+    "smax": {
+      "opc": "ISA_FMINMAX",
+      "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
+      "flag_for_max": [ "LITERAL", 1 ],
+      "dst": [ "GENERAL", "SIGNED", "SATURATION_INTALLOWED", 0 ],
+      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "smin": {
+      "opc": "ISA_FMINMAX",
+      "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
+      "flag_for_max": [ "LITERAL", 0 ],
+      "dst": [ "GENERAL", "SIGNED", "SATURATION_INTALLOWED", 0 ],
+      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "umax": {
+      "opc": "ISA_FMINMAX",
+      "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
+      "flag_for_max": [ "LITERAL", 1 ],
+      "dst": [ "GENERAL", "UNSIGNED", "SATURATION_INTALLOWED", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ]
+    },
+    "umin": {
+      "opc": "ISA_FMINMAX",
+      "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
+      "flag_for_max": [ "LITERAL", 0 ],
+      "dst": [ "GENERAL", "UNSIGNED", "SATURATION_INTALLOWED", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ]
+    },
     "readcyclecounter": {
       "opc": "ISA_MOV",
       "exec_size": [ "EXECSIZE" ],
@@ -1839,42 +1875,6 @@
       "exec_size": [ "EXECSIZE" ],
       "dst": [ "PREDICATE", 0 ],
       "src0": [ "CONSTVI1ASI32", 1 ]
-    },
-    "genx_smax": {
-      "opc": "ISA_FMINMAX",
-      "exec_size": [ "EXECSIZE" ],
-      "elementwise": [ "ELEMENTWISE" ],
-      "flag_for_max": [ "LITERAL", 1 ],
-      "dst": [ "GENERAL", "SIGNED", "SATURATION_INTALLOWED", 0 ],
-      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
-      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ]
-    },
-    "genx_umax": {
-      "opc": "ISA_FMINMAX",
-      "exec_size": [ "EXECSIZE" ],
-      "elementwise": [ "ELEMENTWISE" ],
-      "flag_for_max": [ "LITERAL", 1 ],
-      "dst": [ "GENERAL", "UNSIGNED", "SATURATION_INTALLOWED", 0 ],
-      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
-      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ]
-    },
-    "genx_smin": {
-      "opc": "ISA_FMINMAX",
-      "exec_size": [ "EXECSIZE" ],
-      "elementwise": [ "ELEMENTWISE" ],
-      "flag_for_max": [ "LITERAL", 0 ],
-      "dst": [ "GENERAL", "SIGNED", "SATURATION_INTALLOWED", 0 ],
-      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
-      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ]
-    },
-    "genx_umin": {
-      "opc": "ISA_FMINMAX",
-      "exec_size": [ "EXECSIZE" ],
-      "elementwise": [ "ELEMENTWISE" ],
-      "flag_for_max": [ "LITERAL", 0 ],
-      "dst": [ "GENERAL", "UNSIGNED", "SATURATION_INTALLOWED", 0 ],
-      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
-      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ]
     },
     "genx_add_addr": {
       "opc": "ISA_ADDR_ADD",

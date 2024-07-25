@@ -708,13 +708,13 @@ private:
   // The compare instruction
   llvm::CmpInst *CmpInst = nullptr;
   // The min/max intrinsic ID.
-  unsigned ID = GenXIntrinsic::not_any_intrinsic;
+  Intrinsic::ID ID = Intrinsic::not_intrinsic;
   // Source operands for the min/max intrinsic call
   Value *Srcs[2]{nullptr};
   // Effective operands for the cmp ignoring some casts
   Value *CmpSrcs[2]{nullptr};
   // Annotation for the min/max call
-  const char *Annotation = nullptr;
+  StringRef Annotation;
 };
 
 } // namespace
@@ -2222,68 +2222,37 @@ bool MinMaxMatcher::matchMinMax() {
     default:
       // this is not a candidate for min/max
       return false;
-    case llvm::CmpInst::FCMP_OGE:
-    case llvm::CmpInst::FCMP_OGT:
-      if (Inverse) {
-        ID = Intrinsic::minnum;
-        Annotation = "min";
-      } else {
-        ID = Intrinsic::maxnum;
-        Annotation = "max";
-      }
+    case CmpInst::FCMP_OGE:
+    case CmpInst::FCMP_OGT:
+      ID = Inverse ? Intrinsic::minnum : Intrinsic::maxnum;
       break;
-    case llvm::CmpInst::FCMP_OLE:
-    case llvm::CmpInst::FCMP_OLT:
-      if (Inverse) {
-        ID = Intrinsic::maxnum;
-        Annotation = "max";
-      } else {
-        ID = Intrinsic::minnum;
-        Annotation = "min";
-      }
+    case CmpInst::FCMP_OLE:
+    case CmpInst::FCMP_OLT:
+      ID = Inverse ? Intrinsic::maxnum : Intrinsic::minnum;
       break;
-    case llvm::CmpInst::ICMP_SGE:
-    case llvm::CmpInst::ICMP_SGT:
-      if (Inverse) {
-        ID = GenXIntrinsic::genx_smin;
-        Annotation = "min";
-      } else {
-        ID = GenXIntrinsic::genx_smax;
-        Annotation = "max";
-      }
+    case CmpInst::ICMP_SGE:
+    case CmpInst::ICMP_SGT:
+      ID = Inverse ? Intrinsic::smin : Intrinsic::smax;
       break;
-    case llvm::CmpInst::ICMP_SLE:
-    case llvm::CmpInst::ICMP_SLT:
-      if (Inverse) {
-        ID = GenXIntrinsic::genx_smax;
-        Annotation = "max";
-      } else {
-        ID = GenXIntrinsic::genx_smin;
-        Annotation = "min";
-      }
+    case CmpInst::ICMP_SLE:
+    case CmpInst::ICMP_SLT:
+      ID = Inverse ? Intrinsic::smax : Intrinsic::smin;
       break;
-    case llvm::CmpInst::ICMP_UGE:
-    case llvm::CmpInst::ICMP_UGT:
-      if (Inverse) {
-        ID = GenXIntrinsic::genx_umin;
-        Annotation = "min";
-      } else {
-        ID = GenXIntrinsic::genx_umax;
-        Annotation = "max";
-      }
+    case CmpInst::ICMP_UGE:
+    case CmpInst::ICMP_UGT:
+      ID = Inverse ? Intrinsic::umin : Intrinsic::umax;
       break;
-    case llvm::CmpInst::ICMP_ULE:
-    case llvm::CmpInst::ICMP_ULT:
-      if (Inverse) {
-        ID = GenXIntrinsic::genx_umax;
-        Annotation = "max";
-      } else {
-        ID = GenXIntrinsic::genx_umin;
-        Annotation = "min";
-      }
+    case CmpInst::ICMP_ULE:
+    case CmpInst::ICMP_ULT:
+      ID = Inverse ? Intrinsic::umax : Intrinsic::umin;
       break;
     }
   }
+
+  if (ID == Intrinsic::minnum || ID == Intrinsic::smin || ID == Intrinsic::umin)
+    Annotation = "min";
+  else
+    Annotation = "max";
 
   // Emit min/max if matched
   return emit();
@@ -2296,37 +2265,26 @@ Type *MinMaxMatcher::getMinMaxType() const {
   case Intrinsic::minnum:
   case Intrinsic::maxnum:
     return CmpInst->getOperand(0)->getType();
-  case GenXIntrinsic::genx_smax:
-  case GenXIntrinsic::genx_smin:
-  case GenXIntrinsic::genx_umax:
-  case GenXIntrinsic::genx_umin:
+  case Intrinsic::smax:
+  case Intrinsic::smin:
+  case Intrinsic::umax:
+  case Intrinsic::umin:
     return SelInst->getType();
   }
   return nullptr;
 }
 
 bool MinMaxMatcher::emit() {
-  if ((ID == GenXIntrinsic::not_any_intrinsic) || (Srcs[0] == nullptr) ||
-      (Srcs[1] == nullptr))
+  if (ID == Intrinsic::not_intrinsic || !Srcs[0] || !Srcs[1])
     return false;
 
   IRBuilder<> Builder(SelInst);
-  auto *M = SelInst->getModule();
-
   auto *Ty = getMinMaxType();
   IGC_ASSERT_EXIT(Ty);
 
-  SmallVector<Type *, 2> Types = {Ty};
-  if (GenXIntrinsic::isGenXIntrinsic(ID))
-    Types.push_back(Ty);
-  auto *Func = GenXIntrinsic::getAnyDeclaration(M, ID, Types);
-
-  SmallVector<Value *, 2> Args = {Builder.CreateBitCast(Srcs[0], Ty),
-                                  Builder.CreateBitCast(Srcs[1], Ty)};
-
-  auto *CI = Builder.CreateCall(Func, Args, Annotation);
+  transform(Srcs, Srcs, [&](Value *V) { return Builder.CreateBitCast(V, Ty); });
+  auto *CI = Builder.CreateIntrinsic(ID, {Ty}, Srcs, nullptr, Annotation);
   auto *Cast = Builder.CreateBitCast(CI, SelInst->getType());
-
   SelInst->replaceAllUsesWith(Cast);
 
   NumOfMinMaxMatched++;

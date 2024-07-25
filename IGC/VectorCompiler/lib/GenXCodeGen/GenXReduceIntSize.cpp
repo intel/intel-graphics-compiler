@@ -254,11 +254,11 @@ Instruction *GenXReduceIntSize::reverseProcessInst(Instruction *Inst)
   // Round TruncBits up to next power of two no smaller than 8.
   TruncBits = std::max(8, 1 << genx::log2(TruncBits * 2 - 1));
   // If the instruction is not min/max, truncate to no smaller than 16.
-  switch (GenXIntrinsic::getGenXIntrinsicID(Inst)) {
-  case GenXIntrinsic::genx_smin:
-  case GenXIntrinsic::genx_umin:
-  case GenXIntrinsic::genx_smax:
-  case GenXIntrinsic::genx_umax:
+  switch (vc::getAnyIntrinsicID(Inst)) {
+  case Intrinsic::smax:
+  case Intrinsic::smin:
+  case Intrinsic::umax:
+  case Intrinsic::umin:
     break;
   default:
     TruncBits = std::max(TruncBits, 16U);
@@ -633,7 +633,7 @@ Instruction *GenXReduceIntSize::forwardProcessInst(Instruction *Inst) {
   default:
     break;
   }
-  auto IID = GenXIntrinsic::not_any_intrinsic;
+  unsigned IID = GenXIntrinsic::not_any_intrinsic;
   switch (Inst->getOpcode()) {
   case Instruction::ShuffleVector:
     if (Value *V = getSplatValue(cast<ShuffleVectorInst>(Inst))) {
@@ -731,57 +731,55 @@ Instruction *GenXReduceIntSize::forwardProcessInst(Instruction *Inst) {
     break;
   }
   case Instruction::Call:
-    IID = GenXIntrinsic::getGenXIntrinsicID(Inst);
+    IID = vc::getAnyIntrinsicID(Inst);
     switch (IID) {
-    case GenXIntrinsic::genx_umin:
-    case GenXIntrinsic::genx_umax:
-    case GenXIntrinsic::genx_smin:
-    case GenXIntrinsic::genx_smax: {
-        // umin/umax/smin/smax can just truncate as long as both operands
-        // have the same type of extension. The type of extension (zero
-        // or signed) determines whether the truncated op is umin/umax or
-        // smin/smax:
-        //
-        // a = zext i16  1 to i32 = 0x00000001
-        // b = zext i16 -1 to i32 = 0x0000FFFF
-        // umax(a, b) = b = umax(trunc(a), trunc(b))
-        // smax(a, b) = b = umax(trunc(a), trunc(b))
-        //
-        // c = sext i16  1 to i32 = 0x00000001
-        // d = sext i16 -1 to i32 = 0xFFFFFFFF
-        // umax(c, d) = d = smax(trunc(c), trunc(d))
-        // smax(c, d) = c = smax(trunc(c), trunc(d))
-        //
-        auto VNB0 = getValueNumBits(Inst->getOperand(0));
-        auto VNB1 = getValueNumBits(Inst->getOperand(1),
-                                    /*PreferSigned=*/VNB0.IsSignExtended);
-        if (VNB0.IsSignExtended == VNB1.IsSignExtended) {
-          // Round TruncBits up to next power of two no smaller than 8.
-          // For min and max, allow byte operands.
-          TruncBits = std::max(VNB0.NumBits, VNB1.NumBits);
-          TruncBits = std::max(8, 1 << genx::log2(TruncBits * 2 - 1));
+    case Intrinsic::smax:
+    case Intrinsic::smin:
+    case Intrinsic::umax:
+    case Intrinsic::umin: {
+      // umin/umax/smin/smax can just truncate as long as both operands
+      // have the same type of extension. The type of extension (zero
+      // or signed) determines whether the truncated op is umin/umax or
+      // smin/smax:
+      //
+      // a = zext i16  1 to i32 = 0x00000001
+      // b = zext i16 -1 to i32 = 0x0000FFFF
+      // umax(a, b) = b = umax(trunc(a), trunc(b))
+      // smax(a, b) = b = umax(trunc(a), trunc(b))
+      //
+      // c = sext i16  1 to i32 = 0x00000001
+      // d = sext i16 -1 to i32 = 0xFFFFFFFF
+      // umax(c, d) = d = smax(trunc(c), trunc(d))
+      // smax(c, d) = c = smax(trunc(c), trunc(d))
+      //
+      auto VNB0 = getValueNumBits(Inst->getOperand(0));
+      auto VNB1 = getValueNumBits(Inst->getOperand(1),
+                                  /*PreferSigned=*/VNB0.IsSignExtended);
+      if (VNB0.IsSignExtended == VNB1.IsSignExtended) {
+        // Round TruncBits up to next power of two no smaller than 8.
+        // For min and max, allow byte operands.
+        TruncBits = std::max(VNB0.NumBits, VNB1.NumBits);
+        TruncBits = std::max(8, 1 << genx::log2(TruncBits * 2 - 1));
 
-          Type *SrcTy = Inst->getOperand(0)->getType();
-          unsigned SrcBits = SrcTy->getScalarSizeInBits();
-          // Only update IID when there is truncation in the source.
-          if (TruncBits < SrcBits) {
-            switch (IID) {
-            case GenXIntrinsic::genx_smax:
-            case GenXIntrinsic::genx_umax:
-              IID = VNB0.IsSignExtended ? GenXIntrinsic::genx_smax
-                                        : GenXIntrinsic::genx_umax;
-              break;
-            case GenXIntrinsic::genx_smin:
-            case GenXIntrinsic::genx_umin:
-              IID = VNB0.IsSignExtended ? GenXIntrinsic::genx_smin
-                                        : GenXIntrinsic::genx_umin;
-              break;
-            default:
-              IGC_ASSERT_UNREACHABLE();
-            }
+        Type *SrcTy = Inst->getOperand(0)->getType();
+        unsigned SrcBits = SrcTy->getScalarSizeInBits();
+        // Only update IID when there is truncation in the source.
+        if (TruncBits < SrcBits) {
+          switch (IID) {
+          case Intrinsic::smax:
+          case Intrinsic::umax:
+            IID = VNB0.IsSignExtended ? Intrinsic::smax : Intrinsic::umax;
+            break;
+          case Intrinsic::smin:
+          case Intrinsic::umin:
+            IID = VNB0.IsSignExtended ? Intrinsic::smin : Intrinsic::umin;
+            break;
+          default:
+            IGC_ASSERT_UNREACHABLE();
           }
         }
       }
+    }
       goto binop_truncate;
     default:
       break;
@@ -795,61 +793,32 @@ Instruction *GenXReduceIntSize::forwardProcessInst(Instruction *Inst) {
     TruncBits = std::max(16, 1 << genx::log2(TruncBits * 2 - 1));
   binop_truncate:
     if (TruncBits < NumBits) {
-      LLVM_DEBUG(dbgs() << "GenXReduceIntSize::forward: can truncate to " << TruncBits
-          << " bits: " << *Inst << "\n");
-      auto Opnd0 = truncValue(Inst->getOperand(0), TruncBits, InsertBefore, DL);
-      auto Opnd1 = truncValue(Inst->getOperand(1), TruncBits, InsertBefore, DL);
+      LLVM_DEBUG(dbgs() << "GenXReduceIntSize::forward: can truncate to "
+                        << TruncBits << " bits: " << *Inst << "\n");
+      auto *Opnd0 =
+          truncValue(Inst->getOperand(0), TruncBits, InsertBefore, DL);
+      auto *Opnd1 =
+          truncValue(Inst->getOperand(1), TruncBits, InsertBefore, DL);
+
+      IRBuilder<> Builder(InsertBefore);
+
       if (isa<BinaryOperator>(Inst)) {
         // Create the replacement instruction: binary operator.
-        NewInst = BinaryOperator::Create(
-            (Instruction::BinaryOps)Inst->getOpcode(),
-            Opnd0, Opnd1, "", InsertBefore);
+        auto Opcode = static_cast<Instruction::BinaryOps>(Inst->getOpcode());
+        auto *NewOp = Builder.CreateBinOp(Opcode, Opnd0, Opnd1);
+        NewInst = cast<Instruction>(NewOp);
       } else {
         // Create the replacement instruction: intrinsic.
-        // If it is not the case that all uses trunc to TruncBits, then
-        // use the original size as the result type.
-        Type *ResTy = Opnd0->getType();
-        bool IsOneEltVecTy = false;
-        if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(ResTy))
-          IsOneEltVecTy = VTy->getNumElements() == 1;
-        for (auto ui = Inst->use_begin(), ue = Inst->use_end();
-            ui != ue; ++ui) {
-          auto User = cast<Instruction>(ui->getUser());
-          // Trace through 'extractelement' on single-element vector values.
-          if (IsOneEltVecTy &&
-              User->getOpcode() == Instruction::ExtractElement &&
-              User->hasOneUse())
-            User = User->user_back();
-          switch (User->getOpcode()) {
-          case Instruction::Trunc:
-            if (User->getType()->getScalarType()
-                ->getPrimitiveSizeInBits() == TruncBits) {
-              // Use is trunc to TruncBits: allow truncated result type
-              // for intrinsic.
-              continue;
-            }
-            break;
-          case Instruction::And:
-            if (auto C = dyn_cast<Constant>(User->getOperand(1))) {
-              auto VNB = getValueNumBits(C);
-              if (!VNB.IsSignExtended && VNB.NumBits <= TruncBits) {
-                // Use is and with no bits remaining outside bottom
-                // TruncBits: allow truncated result type for intrinsic.
-                continue;
-              }
-            }
-            break;
-          }
-          // Other cases: use the original size as the result type.
-          ResTy = Inst->getType();
-        }
+        auto *ResTy = Opnd0->getType();
+
         IGC_ASSERT_EXIT(IID != GenXIntrinsic::not_any_intrinsic);
         TruncBits = ResTy->getScalarType()->getPrimitiveSizeInBits();
-        Type *Tys[] = { ResTy, Opnd0->getType() };
-        Function *Decl =
-            GenXIntrinsic::getGenXDeclaration(Inst->getModule(), IID, Tys);
-        Value *Args[] = { Opnd0, Opnd1 };
-        NewInst = CallInst::Create(Decl, Args, "", InsertBefore);
+        NeedSignExtend = IID == Intrinsic::smax || IID == Intrinsic::smin;
+
+        SmallVector<Value *, 2> Args = {Opnd0, Opnd1};
+        auto *M = Inst->getModule();
+        auto *Decl = vc::getAnyDeclarationForArgs(M, IID, ResTy, Args);
+        NewInst = Builder.CreateCall(Decl, Args);
       }
     }
     break;

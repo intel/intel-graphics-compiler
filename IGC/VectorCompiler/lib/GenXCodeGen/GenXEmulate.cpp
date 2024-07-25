@@ -170,7 +170,7 @@ class GenXEmulate : public ModulePass {
     Value *visitIntToPtr(IntToPtrInst &I);
 
     Value *visitGenxTrunc(CallInst &CI);
-    Value *visitGenxMinMax(CallInst &CI);
+    Value *visitMinMax(CallInst &CI);
     // genx_absi
     Value *visitGenxAbsi(CallInst &CI);
     // handles genx_{XX}add_sat cases
@@ -306,7 +306,6 @@ class GenXEmulate : public ModulePass {
   };
 
   class LightEmu64Expander : public InstVisitor<LightEmu64Expander, Value *> {
-
     friend InstVisitor<LightEmu64Expander, Value *>;
     Emu64Expander E;
 
@@ -330,23 +329,25 @@ class GenXEmulate : public ModulePass {
     Value *visitSelectInst(SelectInst &I) { return E.visitSelectInst(I); }
     Value *visitICmp(ICmpInst &Cmp) { return E.visitICmp(Cmp); }
     Value *visitInstruction(Instruction &I) { return nullptr; }
+
     Value *visitCallInst(CallInst &CI) {
       switch (vc::getAnyIntrinsicID(&CI)) {
-        // saturated add is not supported
-        case GenXIntrinsic::genx_suadd_sat:
-        case GenXIntrinsic::genx_usadd_sat:
-        case GenXIntrinsic::genx_uuadd_sat:
-        case GenXIntrinsic::genx_ssadd_sat:
-        case GenXIntrinsic::genx_umin:
-        case GenXIntrinsic::genx_umax:
-        case GenXIntrinsic::genx_smin:
-        case GenXIntrinsic::genx_smax:
-        case GenXIntrinsic::genx_absi:
-          return E.visitCallInst(CI);
-        default:
-          return nullptr;
+      case Intrinsic::umin:
+      case Intrinsic::umax:
+      case Intrinsic::smin:
+      case Intrinsic::smax:
+      // saturated add is not supported
+      case GenXIntrinsic::genx_suadd_sat:
+      case GenXIntrinsic::genx_usadd_sat:
+      case GenXIntrinsic::genx_uuadd_sat:
+      case GenXIntrinsic::genx_ssadd_sat:
+      case GenXIntrinsic::genx_absi:
+        return E.visitCallInst(CI);
+      default:
+        return nullptr;
       }
     }
+
   public:
     LightEmu64Expander(const GenXSubtarget &ST, Instruction &I) : E(ST, I) {}
 
@@ -1054,8 +1055,7 @@ Value *GenXEmulate::Emu64Expander::visitGenxTrunc(CallInst &CI) {
   return Result;
 }
 
-Value *GenXEmulate::Emu64Expander::visitGenxMinMax(CallInst &CI) {
-
+Value *GenXEmulate::Emu64Expander::visitMinMax(CallInst &CI) {
   auto Builder = getIRBuilder();
   Value* Lhs = CI.getOperand(0);
   Value* Rhs = CI.getOperand(1);
@@ -1066,16 +1066,16 @@ Value *GenXEmulate::Emu64Expander::visitGenxMinMax(CallInst &CI) {
   // Then we replace those with yet-another expander instance
   auto IID = vc::getAnyIntrinsicID(&Inst);
   switch (IID) {
-  case GenXIntrinsic::genx_umax:
+  case Intrinsic::umax:
     CondVal = Builder.CreateICmpUGT(Lhs, Rhs);
     break;
-  case GenXIntrinsic::genx_smax:
+  case Intrinsic::smax:
     CondVal = Builder.CreateICmpSGT(Lhs, Rhs);
     break;
-  case GenXIntrinsic::genx_umin:
+  case Intrinsic::umin:
     CondVal = Builder.CreateICmpULT(Lhs, Rhs);
     break;
-  case GenXIntrinsic::genx_smin:
+  case Intrinsic::smin:
     CondVal = Builder.CreateICmpSLT(Lhs, Rhs);
     break;
   }
@@ -1207,16 +1207,16 @@ Value *GenXEmulate::Emu64Expander::visitGenxAddSat(CallInst &CI) {
 
 Value *GenXEmulate::Emu64Expander::visitCallInst(CallInst &CI) {
   switch (vc::getAnyIntrinsicID(&Inst)) {
+  case Intrinsic::smax:
+  case Intrinsic::smin:
+  case Intrinsic::umax:
+  case Intrinsic::umin:
+    return visitMinMax(CI);
   case GenXIntrinsic::genx_uutrunc_sat:
   case GenXIntrinsic::genx_sstrunc_sat:
   case GenXIntrinsic::genx_ustrunc_sat:
   case GenXIntrinsic::genx_sutrunc_sat:
     return visitGenxTrunc(CI);
-  case GenXIntrinsic::genx_umin:
-  case GenXIntrinsic::genx_umax:
-  case GenXIntrinsic::genx_smin:
-  case GenXIntrinsic::genx_smax:
-    return visitGenxMinMax(CI);
   case GenXIntrinsic::genx_absi:
     return visitGenxAbsi(CI);
   case GenXIntrinsic::genx_suadd_sat:
