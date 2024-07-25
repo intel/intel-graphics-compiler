@@ -717,6 +717,23 @@ Value &createMainInst<BuiltinID::CmpXchg>(const std::vector<Value *> &Operands,
                                  ".cmpxchg.res");
 }
 
+template <>
+Value &createMainInst<BuiltinID::Fence>(const std::vector<Value *> &Operands,
+                                        Type &, IRBuilder<> &IRB) {
+  assert(Operands.size() == FenceOperand::Size &&
+         "builtin operands should be trasformed into LLVM fence "
+         "instruction operands without changes");
+  auto &Ctx = IRB.getContext();
+  auto Ordering = getLLVMAtomicOrderingFromCMCL(static_cast<CMCLSemantics>(
+      cast<ConstantInt>(Operands[FenceOperand::Semantics])->getZExtValue()));
+  auto ScopeName = cmcl::atomic::MemoryScope::getScopeNameFromCMCL(
+      static_cast<CMCLMemoryScope>(
+          cast<ConstantInt>(Operands[FenceOperand::Scope])->getZExtValue()));
+  auto *FenceInst =
+      IRB.CreateFence(Ordering, Ctx.getOrInsertSyncScopeID(ScopeName));
+  return *FenceInst;
+}
+
 // Produces a vector of main inst results from its value.
 // For multiple output an intrinsic may return a structure. This function will
 // extract all structure elements and put them in index order into resulting

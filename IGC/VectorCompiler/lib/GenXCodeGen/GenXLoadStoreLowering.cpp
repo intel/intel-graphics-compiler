@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 /// * replaces all @llvm.masked.gather and @llvm.masked.scatter intrinsics,
 /// * replaces all @llvm.vc.internal.atomic intrinsics,
 /// * replaces all atomic instructions,
+/// * replaces all fence instructions,
 /// * removes lifetime builtins as we are not sure how to process those.
 ///
 //===----------------------------------------------------------------------===//
@@ -129,11 +130,14 @@ private:
   Instruction *switchAddrSpace(MemoryInstT &I) const;
   template <MessageKind MK, Atomicity A>
   Instruction *switchAddrSpace(IntrinsicInst &I) const;
+  template <MessageKind MK, Atomicity A>
+  Instruction *switchAddrSpace(FenceInst &I) const;
 
   // Creates a replacement for \p I instruction. The template parameters
   // describe the provided instruction and how it should be lowered.
   template <HWAddrSpace HWAS, MessageKind MK, Atomicity A, typename MemoryInstT>
   Instruction *createIntrinsic(MemoryInstT &I) const;
+  template <MessageKind MK> Instruction *createIntrinsic(FenceInst &FI) const;
 
   Instruction *createLegacyLoadStore(Instruction &I, unsigned BTI, Value *Ptr,
                                      Value *Data = nullptr) const;
@@ -196,6 +200,7 @@ private:
                                    vc::InternalIntrinsic::ID IID,
                                    LSC_OP AtomicOp, Value *BTI, Value *Addr,
                                    Value *Src0, Value *Src1) const;
+  Instruction *createLSCStandAloneFence(FenceInst &I) const;
   void createLSCAtomicFenceImpl(Instruction &AtomicI, IRBuilder<> &Builder,
                                 bool IsPostFence) const;
 
@@ -207,6 +212,7 @@ private:
   Instruction *createLegacyAtomicImpl(Instruction &I, GenXIntrinsic::ID IID,
                                       Value *BTI, Value *Addr, Value *Src0,
                                       Value *Src1) const;
+  Instruction *createLegacyStandAloneFence(FenceInst &I) const;
   void createLegacyAtomicFenceImpl(Instruction &I, IRBuilder<> &Builder,
                                    bool IsPostFence) const;
 
@@ -246,6 +252,7 @@ public:
   void visitLoadInst(LoadInst &LdI) const;
   void visitStoreInst(StoreInst &StI) const;
   void visitCallInst(CallInst &CI) const;
+  void visitFenceInst(FenceInst &FI) const;
 
 public:
   static char ID;
@@ -313,6 +320,7 @@ bool GenXLoadStoreLowering::runOnFunction(Function &F) {
   //   * visitLoadInst
   //   * visitStoreInst
   //   * visitCallInst
+  //   * visitFenceInst
   visit(F);
 
   return true;
@@ -375,6 +383,14 @@ void GenXLoadStoreLowering::visitCallInst(CallInst &CI) const {
   auto *Replacement = createMemoryInstReplacement(cast<IntrinsicInst>(CI));
   CI.replaceAllUsesWith(Replacement);
   CI.eraseFromParent();
+}
+
+void GenXLoadStoreLowering::visitFenceInst(FenceInst &FI) const {
+  LLVM_DEBUG(dbgs() << "Replacing fence " << FI << " ===>\n");
+  auto *Replacement = createMemoryInstReplacement(FI);
+  if (Replacement)
+    LLVM_DEBUG(dbgs() << *Replacement << "\n");
+  FI.eraseFromParent();
 }
 
 namespace {
@@ -968,6 +984,15 @@ GenXLoadStoreLowering::getAddressSpaceAndOrderingOfAtomic(
                       ->getAddressSpace();
     return {AS, SI->getOrdering()};
   }
+  if (auto *FI = dyn_cast<FenceInst>(&AtomicI)) {
+    auto ScopeID = FI->getSyncScopeID();
+    auto AS = StringSwitch<unsigned>(SyncScopeNames[ScopeID])
+                  .Case("workitem", vc::AddrSpace::Private)
+                  .Case("subgroup", vc::AddrSpace::Private)
+                  .Case("workgroup", vc::AddrSpace::Local)
+                  .Default(vc::AddrSpace::Global);
+    return {AS, FI->getOrdering()};
+  }
   if (isSPIRVAtomic(&AtomicI)) {
     auto *II = cast<IntrinsicInst>(&AtomicI);
     unsigned AS = vc::getAddrSpace(
@@ -1074,6 +1099,33 @@ LSC_SCOPE GenXLoadStoreLowering::getLSCFenceScope(Instruction *I) const {
       .Case("device", ST->hasMultiTile() ? LSC_SCOPE_GPU : LSC_SCOPE_TILE)
       .Case("all_devices", LSC_SCOPE_GPUS)
       .Default(LSC_SCOPE_GROUP);
+}
+
+Instruction *
+GenXLoadStoreLowering::createLSCStandAloneFence(FenceInst &I) const {
+  IRBuilder<> Builder(&I);
+  auto [AS, Ordering] = getAddressSpaceAndOrderingOfAtomic(I);
+
+  if (AS == vc::AddrSpace::Private ||
+      AS == vc::AddrSpace::Local && ST->hasLocalMemFenceSupress())
+    return nullptr;
+
+  bool IsGlobal = AS == vc::AddrSpace::Global;
+  bool IsInvalidateL1 = Ordering == AtomicOrdering::SequentiallyConsistent ||
+                        Ordering == AtomicOrdering::AcquireRelease ||
+                        Ordering == AtomicOrdering::Acquire;
+  IsInvalidateL1 &= IsGlobal;
+
+  auto SubFuncID = IsGlobal ? LSC_UGM : LSC_SLM;
+  auto FenceOp = IsInvalidateL1 ? LSC_FENCE_OP_INVALIDATE : LSC_FENCE_OP_NONE;
+  auto Scope = getLSCFenceScope(&I);
+
+  auto *M = I.getModule();
+  auto *Func = GenXIntrinsic::getAnyDeclaration(
+      M, GenXIntrinsic::genx_lsc_fence, {Builder.getInt1Ty()});
+  return Builder.CreateCall(Func,
+                            {Builder.getTrue(), Builder.getInt8(SubFuncID),
+                             Builder.getInt8(FenceOp), Builder.getInt8(Scope)});
 }
 
 void GenXLoadStoreLowering::createLSCAtomicFenceImpl(Instruction &AtomicI,
@@ -1346,6 +1398,32 @@ GenXLoadStoreLowering::createLSCAtomicCmpXchg(AtomicCmpXchgInst &I,
   Res = Builder.CreateInsertValue(Res, Atomic, 0);
   Res = Builder.CreateInsertValue(Res, Cmp, 1);
   return cast<Instruction>(Res);
+}
+
+Instruction *
+GenXLoadStoreLowering::createLegacyStandAloneFence(FenceInst &I) const {
+  IRBuilder<> Builder(&I);
+  auto [AS, Ordering] = getAddressSpaceAndOrderingOfAtomic(I);
+
+  if (AS == vc::AddrSpace::Private ||
+      AS == vc::AddrSpace::Local && ST->hasLocalMemFenceSupress())
+    return nullptr;
+
+  bool IsGlobal = AS == vc::AddrSpace::Global;
+  bool IsInvalidateL1 = Ordering == AtomicOrdering::SequentiallyConsistent ||
+                        Ordering == AtomicOrdering::AcquireRelease ||
+                        Ordering == AtomicOrdering::Acquire;
+  IsInvalidateL1 &= IsGlobal;
+
+  uint8_t FenceOp = 1;
+  if (!IsGlobal)
+    FenceOp |= 1 << 5;
+  if (IsInvalidateL1)
+    FenceOp |= 1 << 6;
+
+  auto *M = I.getModule();
+  auto *Func = GenXIntrinsic::getAnyDeclaration(M, GenXIntrinsic::genx_fence);
+  return Builder.CreateCall(Func, {Builder.getInt8(FenceOp)});
 }
 
 void GenXLoadStoreLowering::createLegacyAtomicFenceImpl(
@@ -2100,7 +2178,8 @@ template <typename MemoryInstT>
 Instruction *
 GenXLoadStoreLowering::createMemoryInstReplacement(MemoryInstT &I) const {
   auto *Replacement = switchAtomicity(I);
-  Replacement->takeName(&I);
+  if (Replacement)
+    Replacement->takeName(&I);
   return Replacement;
 }
 
@@ -2171,6 +2250,11 @@ Instruction *GenXLoadStoreLowering::switchAddrSpace(IntrinsicInst &I) const {
   if (auto *PtrVTy = dyn_cast<IGCLLVM::FixedVectorType>(PtrTy))
     PtrTy = PtrVTy->getElementType();
   return switchAddrSpace<MK, A>(I, cast<PointerType>(PtrTy));
+}
+
+template <MessageKind MK, Atomicity A>
+Instruction *GenXLoadStoreLowering::switchAddrSpace(FenceInst &I) const {
+  return createIntrinsic<MK>(I);
 }
 
 template <HWAddrSpace HWAS, MessageKind MK, Atomicity A, typename MemoryInstT>
@@ -2347,6 +2431,12 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::Legacy,
                                        Atomicity::NonAtomic, IntrinsicInst>(
     IntrinsicInst &I) const {
   return createLegacyGatherScatter(I, visa::RSI_Slm);
+}
+
+template <>
+Instruction *GenXLoadStoreLowering::createIntrinsic<MessageKind::Legacy>(
+    FenceInst &I) const {
+  return createLegacyStandAloneFence(I);
 }
 
 template <>
@@ -2631,4 +2721,11 @@ GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::SLM, MessageKind::LSC,
   auto *AddrTy = Builder.getInt32Ty();
   return createLSCAtomicCmpXchg(I, vc::InternalIntrinsic::lsc_atomic_slm,
                                 AddrTy, Base);
+}
+
+template <>
+Instruction *
+GenXLoadStoreLowering::createIntrinsic<MessageKind::LSC>(FenceInst &I) const {
+  IRBuilder<> Builder(&I);
+  return createLSCStandAloneFence(I);
 }

@@ -540,13 +540,15 @@
     "Fence": {
       "Name": "fence",
       "Operands": [
-        {"Name": "Source", "Kind": "Input"}
+        {"Name": "Semantics", "Kind": "Input"},
+        {"Name": "Scope", "Kind": "Input"}
       ],
       "TranslateInto": {
-        "VC-Intrinsic": "genx_fence",
-        "ReturnType": {"GetBuiltinReturnType": []},
+        "Instruction": "FenceInst",
+        "ReturnType":  {"GetBuiltinReturnType": []},
         "Operands": [
-          {"GetBuiltinOperand": ["Source"]}
+          {"GetBuiltinOperand": ["Semantics"]},
+          {"GetBuiltinOperand": ["Scope"]}
         ]
       }
     },

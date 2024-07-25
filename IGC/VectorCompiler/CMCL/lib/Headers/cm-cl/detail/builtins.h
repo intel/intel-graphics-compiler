@@ -162,7 +162,7 @@ int __cm_cl_hw_thread_id();
 
 void __cm_cl_barrier();
 void __cm_cl_sbarrier(uint8_t);
-void __cm_cl_fence(uint8_t);
+void __cm_cl_fence(memory_order semantics, memory_scope scope);
 
 template <typename T>
 T __cm_cl_atomicrmw(__global T *ptr, atomic::operation operation, T operand,
@@ -533,6 +533,11 @@ T cmpxchg(__generic T *ptr, T operand0, T operand1) {
   static_assert(cl::is_integral<T>::value, "illegal type provided in cmpxchg");
   return __cm_cl_cmpxchg(ptr, operand0, operand1, semantics_on_success,
                          semantics_on_failure, scope);
+}
+
+template <memory_order semantics, memory_scope scope> void fence() {
+  static_assert(semantics != memory_order_relaxed);
+  return __cm_cl_fence(semantics, scope);
 }
 
 } // namespace detail
