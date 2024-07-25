@@ -152,6 +152,12 @@ bool StatelessToStateful::runOnFunction(llvm::Function& F)
     MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
+    if (modMD->compOpt.OptDisable)
+    {
+        IGC_ASSERT_MESSAGE(0, "StatelessToStateful should be disabled for -O0!");
+        return false;
+    }
+
     // skip non-entry functions
     if (!isEntryFunc(pMdUtils, &F))
     {

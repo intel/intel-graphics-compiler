@@ -788,7 +788,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         {
             mpm.add(new PromoteStatelessToBindless());
         }
-        else if (!ctx.getModuleMetaData()->compOpt.GreaterThan4GBBufferRequired)
+        else if (!ctx.getModuleMetaData()->compOpt.GreaterThan4GBBufferRequired && !isOptDisabled)
         {
             // Advanced bindless mode used by the regular OpenCL compilation path
             mpm.add(new StatelessToStateful(TargetAddressing::BINDLESS));
