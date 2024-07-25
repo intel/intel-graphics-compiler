@@ -139,6 +139,10 @@ bool GenXBiFPrepare::isNeededForTarget(const Function &F,
       return false;
   }
 
+  if (ST.hasIEEEDivSqrt() && Name.startswith("fdiv") &&
+      F.getReturnType()->getScalarType()->isFloatTy())
+    return false;
+
   static SmallVector<StringRef, 4> IDivRem = {"udiv", "sdiv", "urem", "srem"};
   auto IsDivRem = llvm::any_of(
       IDivRem, [&Name](const auto &Arg) { return Name.startswith(Arg); });

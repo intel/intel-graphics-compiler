@@ -222,6 +222,9 @@ Value *GenXBuiltinFunctions::visitFDiv(BinaryOperator &I) {
   auto &M = *I.getModule();
   auto *Ty = I.getType();
 
+  if (!Ty->getScalarType()->isDoubleTy())
+    return nullptr;
+
   auto *Func = getBuiltinDeclaration(M, "fdiv", I.hasAllowReciprocal(), {Ty});
   return createLibraryCall(I, Func, {I.getOperand(0), I.getOperand(1)});
 }
