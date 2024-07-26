@@ -589,11 +589,8 @@ static void CommonOCLBasedPasses(
     // Break down the intrinsics into smaller operations (eg. fmuladd to fmul add)
     mpm.add(new BreakdownIntrinsicPass());
 
-   // Break down 2D block intrinsics. Should be before a call to LICM. Mostly
-   // useful when LICM is enabled, so we will consider only that case
-   if (IGC_IS_FLAG_ENABLED(allowLICM)) {
-       mpm.add(createDecompose2DBlockFuncsPass());
-   }
+    // Break down 2D block intrinsics. Should be before a call to LICM
+    mpm.add(createDecompose2DBlockFuncsPass());
 
     {
         if(IGC_IS_FLAG_ENABLED(EnableConstantPromotion))
