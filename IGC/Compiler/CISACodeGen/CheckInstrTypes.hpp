@@ -50,7 +50,6 @@ namespace IGC
             AU.setPreservesAll();
         }
 
-        void InitCounters();
         void visitInstruction(llvm::Instruction& I);
 
         void visitCallInst(llvm::CallInst& C);

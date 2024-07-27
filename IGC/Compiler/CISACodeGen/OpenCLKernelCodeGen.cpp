@@ -20,7 +20,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
 #include "Compiler/CISACodeGen/DebugInfo.hpp"
-#include "Compiler/CISACodeGen/CSWalkOrder.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ResourceAllocator/ResourceAllocator.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ProgramScopeConstants/ProgramScopeConstantAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/LocalBuffers/InlineLocalsResolution.hpp"
@@ -392,8 +391,8 @@ namespace IGC
             {
                 ForcedWalkOrder = true;
                 // Don't do TileY if forced in this way.
-                m_Context->m_walkOrderStruct.m_threadIDLayout = ThreadIDLayout::X;
-                m_Context->m_walkOrderStruct.m_walkOrder = *Order;
+                m_ThreadIDLayout = ThreadIDLayout::X;
+                m_walkOrder = *Order;
             }
             else
             {
@@ -414,8 +413,8 @@ namespace IGC
             implicitArgs.isImplicitArgExist(ImplicitArg::LOCAL_ID_Z))
         {
             if (ForcedWalkOrder)
-                m_Context->m_walkOrderStruct.m_enableHWGenerateLID = true;
-            setEmitLocalMaskInPass(THREAD_ID_IN_GROUP_Z, m_Context->m_walkOrderStruct.m_emitMask);
+                m_enableHWGenerateLID = true;
+            setEmitLocalMask(THREAD_ID_IN_GROUP_Z);
         }
 
         if (!ForcedWalkOrder)
@@ -429,10 +428,9 @@ namespace IGC
                 0, /* dummy SLM accessed */
                 (*Dims)[0],
                 (*Dims)[1],
-                (*Dims)[2],
-                m_Context->m_walkOrderStruct);
+                (*Dims)[2]);
         }
-        encoder.GetVISABuilder()->SetOption(vISA_autoLoadLocalID, m_Context->m_walkOrderStruct.m_enableHWGenerateLID);
+        encoder.GetVISABuilder()->SetOption(vISA_autoLoadLocalID, m_enableHWGenerateLID);
     }
 
     WorkGroupWalkOrderMD COpenCLKernel::getWorkGroupWalkOrder()
@@ -2341,12 +2339,12 @@ namespace IGC
         m_kernelInfo.m_threadPayload.HasStageInGridSize = false;
         m_kernelInfo.m_threadPayload.HasRTStackID = false;
 
-        if (m_Context->m_walkOrderStruct.m_enableHWGenerateLID)
+        if (m_enableHWGenerateLID)
         {
             m_kernelInfo.m_threadPayload.generateLocalID = true;
-            m_kernelInfo.m_threadPayload.emitLocalMask = m_Context->m_walkOrderStruct.m_emitMask;
-            m_kernelInfo.m_threadPayload.walkOrder = static_cast<unsigned int>(m_Context->m_walkOrderStruct.m_walkOrder);
-            m_kernelInfo.m_threadPayload.tileY = (m_Context->m_walkOrderStruct.m_threadIDLayout == ThreadIDLayout::TileY);
+            m_kernelInfo.m_threadPayload.emitLocalMask = m_emitMask;
+            m_kernelInfo.m_threadPayload.walkOrder = static_cast<unsigned int>(m_walkOrder);
+            m_kernelInfo.m_threadPayload.tileY = (m_ThreadIDLayout == ThreadIDLayout::TileY);
         }
 
         // Set the amount of the private memory used by the kernel

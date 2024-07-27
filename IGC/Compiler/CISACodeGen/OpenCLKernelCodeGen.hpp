@@ -48,7 +48,6 @@ namespace IGC
         std::vector<const char*> m_VISAAsmToLink;
         // Functions that are forced to be direct calls.
         std::unordered_set<std::string> m_DirectCallFunctions;
-        SComputeShaderWalkOrder m_walkOrderStruct;
 
         OpenCLProgramContext(
             const COCLBTILayout& btiLayout,

@@ -1408,7 +1408,6 @@ void OptimizeIR(CodeGenContext* const pContext)
         {
             mpm.add(new GenerateBlockMemOpsPass());
         }
-
         mpm.add(new BlockMemOpAddrScalarizationPass());
 
         mpm.add(new CustomSafeOptPass());
