@@ -1181,10 +1181,19 @@ Instruction *GenXLoadStoreLowering::createLSCAtomicImpl(
                   ElementSize == LSC_DATA_SIZE_64b);
 
   if (ElementSize == LSC_DATA_SIZE_16c32b) {
-    Src0 = Builder.CreateBitCast(Src0, Builder.getInt16Ty());
-    Src0 = Builder.CreateZExt(Src0, Builder.getInt32Ty());
-    Src1 = Builder.CreateBitCast(Src1, Builder.getInt16Ty());
-    Src1 = Builder.CreateZExt(Src1, Builder.getInt32Ty());
+    // We must preserve undef operands but
+    // zext/sext casts make them zero.
+    if (!isa<UndefValue>(Src0)) {
+      Src0 = Builder.CreateBitCast(Src0, Builder.getInt16Ty());
+      Src0 = Builder.CreateZExt(Src0, Builder.getInt32Ty());
+    } else
+      Src0 = UndefValue::get(Builder.getInt32Ty());
+
+    if (!isa<UndefValue>(Src1)) {
+      Src1 = Builder.CreateBitCast(Src1, Builder.getInt16Ty());
+      Src1 = Builder.CreateZExt(Src1, Builder.getInt32Ty());
+    } else
+      Src1 = UndefValue::get(Builder.getInt32Ty());
   }
 
   auto AddrSize = IID == vc::InternalIntrinsic::lsc_atomic_ugm
