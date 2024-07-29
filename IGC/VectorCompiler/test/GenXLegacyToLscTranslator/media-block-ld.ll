@@ -10,8 +10,7 @@
 ; RUN: -mtriple=spir64-unknown-unknown  -S < %s | FileCheck %s
 
 ; RUN: %opt %use_old_pass_manager% -GenXLegacyToLscTranslator -march=genx64 -mcpu=XeHPG \
-; RUN: -mattr=+translate_legacy_message -mtriple=spir64-unknown-unknown  -S < %s | \
-; RUN: FileCheck --check-prefix=NOTYPED %s
+; RUN: -mtriple=spir64-unknown-unknown  -S < %s | FileCheck --check-prefix=NOTYPED %s
 
 ; COM: media.ld -> llvm.vc.internal.lsc.load.2d.tgm.bti
 
