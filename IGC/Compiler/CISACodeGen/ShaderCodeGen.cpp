@@ -1473,17 +1473,19 @@ void OptimizeIR(CodeGenContext* const pContext)
                 mpm.add(llvm::createLCSSAPass());
                 mpm.add(llvm::createLoopSimplifyPass());
 
-                if (IGC_IS_FLAG_ENABLED(EnableGEPLSR) &&
+                bool allowLICM = IGC_IS_FLAG_ENABLED(allowLICM) && pContext->m_retryManager.AllowLICM();
+                bool runGEPLSR = IGC_IS_FLAG_ENABLED(EnableGEPLSR) &&
                     pContext->type == ShaderType::OPENCL_SHADER &&
                     pContext->platform.getPlatformInfo().eProductFamily == IGFX_PVC &&
                     !useStatelessToStateful(*pContext) &&
-                    pContext->m_retryManager.IsFirstTry())
+                    pContext->m_retryManager.IsFirstTry();
+
+                if (runGEPLSR && IGC_IS_FLAG_DISABLED(RunGEPLSRAfterLICM))
                 {
-                    mpm.add(createGEPLoopStrengthReductionPass(IGC_IS_FLAG_ENABLED(allowLICM) &&
-                            pContext->m_retryManager.AllowLICM()));
+                    mpm.add(createGEPLoopStrengthReductionPass(allowLICM));
                 }
 
-                if (IGC_IS_FLAG_ENABLED(allowLICM) && pContext->m_retryManager.AllowLICM())
+                if (allowLICM)
                 {
                     mpm.add(createSpecialCasesDisableLICM());
                     int licmTh = IGC_GET_FLAG_VALUE(LICMStatThreshold);
@@ -1494,6 +1496,11 @@ void OptimizeIR(CodeGenContext* const pContext)
                     mpm.add(llvm::createLICMPass());
 #endif
                     mpm.add(new InstrStatistic(pContext, LICM_STAT, InstrStatStage::END, licmTh));
+                }
+
+                if (runGEPLSR && IGC_IS_FLAG_ENABLED(RunGEPLSRAfterLICM))
+                {
+                    mpm.add(createGEPLoopStrengthReductionPass(allowLICM));
                 }
 
 
@@ -1546,7 +1553,7 @@ void OptimizeIR(CodeGenContext* const pContext)
                 // LoopUnroll and LICM.
                 mpm.add(createBarrierNoopPass());
 
-                if (IGC_IS_FLAG_ENABLED(allowLICM) && pContext->m_retryManager.AllowLICM())
+                if (allowLICM)
                 {
                     mpm.add(createSpecialCasesDisableLICM());
 #if LLVM_VERSION_MAJOR >= 14
