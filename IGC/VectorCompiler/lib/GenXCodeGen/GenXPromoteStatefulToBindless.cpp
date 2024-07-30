@@ -36,6 +36,7 @@ SPDX-License-Identifier: MIT
 /// samplers can be easily added here.
 
 #include "GenX.h"
+#include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 
 #include "vc/Support/BackendConfig.h"
@@ -46,16 +47,20 @@ SPDX-License-Identifier: MIT
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
 
+#include "visa_igc_common_header.h"
+
 #include "Probe/Assertion.h"
 
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/ADT/StringRef.h>
 #include <llvm/ADT/Twine.h>
+#include <llvm/CodeGen/TargetPassConfig.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/GlobalVariable.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Module.h>
+#include <llvm/InitializePasses.h>
 #include <llvm/Pass.h>
 #include <llvm/Support/ErrorHandling.h>
 
@@ -69,10 +74,12 @@ class PromoteToBindless {
   Module &M;
   const GenXBackendConfig &BC;
   GlobalVariable *BSS = nullptr;
+  const GenXSubtarget &ST;
 
 public:
-  PromoteToBindless(Module &InM, const GenXBackendConfig &InBC)
-      : M{InM}, BC{InBC} {}
+  PromoteToBindless(Module &InM, const GenXBackendConfig &InBC,
+                    const GenXSubtarget &InST)
+      : M{InM}, BC{InBC}, ST(InST) {}
 
   bool run();
 
@@ -97,6 +104,7 @@ public:
   GenXPromoteStatefulToBindless() : ModulePass(ID) {}
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequired<TargetPassConfig>();
     AU.addRequired<GenXBackendConfig>();
   }
 
@@ -114,6 +122,7 @@ INITIALIZE_PASS_BEGIN(GenXPromoteStatefulToBindless,
                       "GenXPromoteStatefulToBindless",
                       "GenXPromoteStatefulToBindless", false, false);
 INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
+INITIALIZE_PASS_DEPENDENCY(TargetPassConfig)
 INITIALIZE_PASS_END(GenXPromoteStatefulToBindless,
                     "GenXPromoteStatefulToBindless",
                     "GenXPromoteStatefulToBindless", false, false);
@@ -128,7 +137,11 @@ ModulePass *createGenXPromoteStatefulToBindlessPass() {
 bool GenXPromoteStatefulToBindless::runOnModule(Module &M) {
   auto &BC = getAnalysis<GenXBackendConfig>();
 
-  PromoteToBindless PTM{M, BC};
+  const GenXSubtarget &ST = getAnalysis<TargetPassConfig>()
+                                .getTM<GenXTargetMachine>()
+                                .getGenXSubtarget();
+
+  PromoteToBindless PTM{M, BC, ST};
 
   return PTM.run();
 }
@@ -441,7 +454,9 @@ PromoteToBindless::createBindlessSurfaceDataportIntrinsicChain(CallInst &CI) {
 
 // Get bindless version of given bti lsc intrinsic.
 static vc::InternalIntrinsic::ID
-getBindlessLscIntrinsicID(vc::InternalIntrinsic::ID IID) {
+getBindlessLscIntrinsicID(vc::InternalIntrinsic::ID IID,
+                          const GenXSubtarget &ST) {
+
 #define MAP(INTR)                                                              \
   case vc::InternalIntrinsic::INTR##_bti:                                      \
     return vc::InternalIntrinsic::INTR##_bss
@@ -468,15 +483,18 @@ getBindlessLscIntrinsicID(vc::InternalIntrinsic::ID IID) {
 // intrinsics. Lsc intrinsics have special addressing mode operand so
 // there is no need to use %bss variable and SSO goes directly to lsc
 // instruction.
-static CallInst *createBindlessLscIntrinsic(CallInst &CI) {
+static CallInst *createBindlessLscIntrinsic(CallInst &CI,
+                                            const GenXSubtarget &ST) {
   const auto ID = vc::InternalIntrinsic::getInternalIntrinsicID(&CI);
-  const auto NewId = getBindlessLscIntrinsicID(ID);
+  const auto NewId = getBindlessLscIntrinsicID(ID, ST);
 
-  auto *Decl = vc::getInternalDeclarationForIdFromArgs(CI.getType(), CI.args(),
+  SmallVector<Value *, 16> Args{CI.args()};
+  IRBuilder<> IRB{&CI};
+
+
+  auto *Decl = vc::getInternalDeclarationForIdFromArgs(CI.getType(), Args,
                                                        NewId, *CI.getModule());
 
-  IRBuilder<> IRB{&CI};
-  SmallVector<Value *, 16> Args{CI.args()};
   return IRB.CreateCall(Decl->getFunctionType(), Decl, Args, CI.getName());
 }
 
@@ -521,7 +539,7 @@ void PromoteToBindless::rewriteBufferIntrinsic(CallInst &CI) {
   case vc::InternalIntrinsic::lsc_prefetch_quad_bti:
   case vc::InternalIntrinsic::lsc_store_bti:
   case vc::InternalIntrinsic::lsc_store_quad_bti:
-    BindlessCI = createBindlessLscIntrinsic(CI);
+    BindlessCI = createBindlessLscIntrinsic(CI, ST);
     break;
   }
 

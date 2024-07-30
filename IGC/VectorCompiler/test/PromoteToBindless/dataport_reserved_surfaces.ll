@@ -10,6 +10,8 @@
 
 ; RUN: %opt %use_old_pass_manager% -GenXPromoteStatefulToBindless -vc-use-bindless-buffers -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
 
+target triple = "spir64-unknown-unknown"
+
 declare <8 x i32> @llvm.genx.oword.ld.v8i32(i32, i32, i32)
 
 declare void @sink.v8i32(<8 x i32>)

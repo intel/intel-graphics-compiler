@@ -30,13 +30,13 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/ADT/StringRef.h"
 
-#include <llvm/Support/CommandLine.h>
 #include <llvm/ADT/StringRef.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Pass.h>
+#include <llvm/Support/CommandLine.h>
 
 #include <tuple>
 #include <utility>
@@ -51,11 +51,14 @@ static cl::opt<bool> EnforceBTIZeroReservation(
 namespace {
 class BTIAssignment final {
   Module &M;
-  const GenXBackendConfig &BC;
+  const bool emitDebuggableKernels;
+  const bool useBindlessBuffers;
 
 public:
-  BTIAssignment(Module &InM, const GenXBackendConfig &InBC)
-      : M(InM), BC(InBC) {}
+  BTIAssignment(Module &InM, bool InEmitDebuggableKernels,
+                bool InUseBindlessBuffers)
+      : M(InM), emitDebuggableKernels(InEmitDebuggableKernels),
+        useBindlessBuffers(InUseBindlessBuffers) {}
 
   bool run();
 
@@ -79,6 +82,7 @@ private:
 };
 
 class GenXBTIAssignment final : public ModulePass {
+
 public:
   static char ID;
 
@@ -111,7 +115,11 @@ ModulePass *createGenXBTIAssignmentPass() {
 
 bool GenXBTIAssignment::runOnModule(Module &M) {
   auto &BC = getAnalysis<GenXBackendConfig>();
-  BTIAssignment BA(M, BC);
+  bool emitDebuggableKernels = BC.emitDebuggableKernelsForLegacyPath();
+  bool useBindlessBuffers = BC.useBindlessBuffers();
+
+
+  BTIAssignment BA(M, emitDebuggableKernels, useBindlessBuffers);
 
   return BA.run();
 }
@@ -212,7 +220,7 @@ std::vector<int> BTIAssignment::computeBTIndices(
   int SurfaceID = 0;
   int SamplerID = 0;
 
-  if (BC.emitDebuggableKernelsForLegacyPath() || EnforceBTIZeroReservation) {
+  if (emitDebuggableKernels || EnforceBTIZeroReservation) {
     // NOTE: at the current moment we don't use BTI=0, since it is reserved
     // for kernel debugging purposes (SIP uses BTI=0 in order to handle
     // breakpoints).
@@ -253,7 +261,7 @@ bool BTIAssignment::rewriteArguments(
       continue;
 
     // For bindless resource argument is ExBSO.
-    if (BC.useBindlessBuffers() && vc::isDescBufferType(Desc))
+    if (useBindlessBuffers && vc::isDescBufferType(Desc))
       continue;
 
     IGC_ASSERT_MESSAGE(BTI >= 0, "unassigned BTI");

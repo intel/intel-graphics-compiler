@@ -973,8 +973,8 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
   PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0, AddCMABI);
 
   // BTI assignment.
-  auto AddBTIAssign = [](const PassManagerBuilder &Builder,
-                         PassManagerBase &PM) {
+  auto AddBTIAssign = [this](const PassManagerBuilder &Builder,
+                             PassManagerBase &PM) {
     PM.add(createGenXBTIAssignmentPass());
   };
   PMBuilder.addExtension(PassManagerBuilder::EP_ModuleOptimizerEarly,
