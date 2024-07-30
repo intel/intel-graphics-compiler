@@ -6,9 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-
-; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --transform-unmasked -S < %s | FileCheck %s
+; RUN: igc_opt --transform-unmasked -S < %s | FileCheck %s
 ; ------------------------------------------------
 
 ; Check that inline attribute is removed marked unmasked functions

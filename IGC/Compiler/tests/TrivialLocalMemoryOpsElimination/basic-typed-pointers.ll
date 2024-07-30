@@ -6,9 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-
-; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -TrivialLocalMemoryOpsElimination -S < %s | FileCheck %s
+; RUN: igc_opt -TrivialLocalMemoryOpsElimination -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; TrivialLocalMemoryOpsElimination
 ; ------------------------------------------------
