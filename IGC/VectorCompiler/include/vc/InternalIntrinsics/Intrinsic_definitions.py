@@ -188,7 +188,7 @@ Imported_Intrinsics = {
 ## * arg3: i8 Element size [MBC]
 ## * arg4: vNi8 Cache controls, where N is a number of supported cache levels [MBC]
 ## * arg5: i64 Address base (for stateless)
-##         i32 BTI (for stateful)
+##         i32 Surface BTI (for stateful)
 ## * arg6: vNxi32 or vNxi64 Address indices (overloaded)
 ## * arg7: i16 Address scale [MBC]
 ## * arg8: i32 Address immediate offset [MBC]
@@ -287,7 +287,7 @@ Imported_Intrinsics = {
 ##         i8 Channel mask (for quad intrinsics) [MBC]
 ## * arg4: vNi8 Cache controls, where N is a number of supported cache levels [MBC]
 ## * arg5: i64 Address base (for stateless)
-##         i32 BTI (for stateful)
+##         i32 Surface BTI (for stateful)
 ## * arg6: vNxi32 or vNxi64 Address indices (overloaded)
 ## * arg7: i16 Address scale [MBC]
 ## * arg8: i32 Address immediate offset [MBC]
@@ -443,7 +443,7 @@ Imported_Intrinsics = {
 ##         i8 Channel mask (for quad intrinsics) [MBC]
 ## * arg4: vNi8 Cache controls, where N is a number of supported cache levels [MBC]
 ## * arg5: i64 Address base (for stateless)
-##         i32 BTI (for stateful)
+##         i32 Surface BTI (for stateful)
 ## * arg6: vNxi32 or vNxi64 Address indices (overloaded)
 ## * arg7: i16 Address scale [MBC]
 ## * arg8: i32 Address immediate offset [MBC]
@@ -558,7 +558,7 @@ Imported_Intrinsics = {
 ##         i8 Channel mask (for quad intrinsics) [MBC]
 ## * arg4: vNi8 Cache controls, where N is a number of supported cache levels [MBC]
 ## * arg5: i64 Address base (for stateless)
-##         i32 BTI (for stateful)
+##         i32 Surface BTI (for stateful)
 ## * arg6: vNxi32 or vNxi64 Address indices (overloaded)
 ## * arg7: i16 Address scale [MBC]
 ## * arg8: i32 Address immediate offset [MBC]
@@ -836,36 +836,36 @@ Imported_Intrinsics = {
                                 ],
                                 "attributes": "WriteMem", },
 
-### ``llvm.vc.internal.lsc.*.2d.ugm.desc.*`` : 2d block load/store/prefetch instructions
-### ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-###
-### * arg0: i1, Predicate
-### * arg1: vNi8, Cache controls, where N is the number of supported cache levels [MBC]
-### * arg2: i8, Number of blocks [MBC]
-### * arg3: i8, Block width (in elements) [MBC]
-### * arg4: i8, Block height [MBC]
-### * arg5: v16i32 Matrix descriptor [MBC]
-### * arg6: i32, Memory block X immediate offset (in elements) [MBC]
-### * arg7: i32, Memory block Y immediate offset [MBC]
-### * arg8: value to passthru when predicate is false on load,
-###         or value to write on store,
-###         or dummy value for prefetch to deduce the matrix element type
-###
-### * Return value: the value read or void
-###
-### The matrix descriptor is a 16-element vector that describes the 2D block layout in memory.
-### The descriptor layout is as follows:
-### desc[0]: low 32 bits of the base address
-### desc[1]: high 32 bits of the base address
-### desc[2]: matrix width in bytes, minus 1
-### desc[3]: matrix height, minus 1
-### desc[4]: matrix pitch in bytes, minus 1
-### desc[5]: block start X in elements, signed
-### desc[6]: block start Y in rows, signed
-### desc[7]: block size encoded as follows:
-###          (block_width - 1) | ((block_height - 1) << 8) | ((number_of_blocks - 1) << 16)
-### desc[8-15]: reserved
-###
+## ``llvm.vc.internal.lsc.*.2d.ugm.desc.*`` : 2d block load/store/prefetch instructions
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: i1, Predicate
+## * arg1: vNi8, Cache controls, where N is the number of supported cache levels [MBC]
+## * arg2: i8, Number of blocks [MBC]
+## * arg3: i8, Block width (in elements) [MBC]
+## * arg4: i8, Block height [MBC]
+## * arg5: v16i32 Matrix descriptor [MBC]
+## * arg6: i32, Memory block X immediate offset (in elements) [MBC]
+## * arg7: i32, Memory block Y immediate offset [MBC]
+## * arg8: value to passthru when predicate is false on load,
+##         or value to write on store,
+##         or dummy value for prefetch to deduce the matrix element type
+##
+## * Return value: the value read or void
+##
+## The matrix descriptor is a 16-element vector that describes the 2D block layout in memory.
+## The descriptor layout is as follows:
+## desc[0]: low 32 bits of the base address
+## desc[1]: high 32 bits of the base address
+## desc[2]: matrix width in bytes, minus 1
+## desc[3]: matrix height, minus 1
+## desc[4]: matrix pitch in bytes, minus 1
+## desc[5]: block start X in elements, signed
+## desc[6]: block start Y in rows, signed
+## desc[7]: block size encoded as follows:
+##          (block_width - 1) | ((block_height - 1) << 8) | ((number_of_blocks - 1) << 16)
+## desc[8-15]: reserved
+##
     "lsc_load_2d_ugm_desc" : { "result" : "anyvector",
                                "arguments" : [
                                    "bool",      # i1, predicate
@@ -947,10 +947,10 @@ Imported_Intrinsics = {
                                  ],
                                  "attributes" : "WriteMem", },
 
-## ``llvm.vc.internal.lsc.*2d.typed.bti.*`` : LSC typed 2d block intrinsics
-## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+## ``llvm.vc.internal.lsc.*2d.typed.bti.*`` : LSC typed 2d block BTI intrinsics
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ## * arg0: vNi8, Cache controls, where N is the number of supported cache levels [MBC]
-## * arg1: i32, Surface
+## * arg1: i32, Surface BTI
 ## * arg2: i32, Block height [MBC]
 ## * arg3: i32, Block width (in elements) [MBC]
 ## * arg4: i32, Memory block X position (in bytes)
@@ -990,16 +990,16 @@ Imported_Intrinsics = {
                                "attributes" : "WriteMem", },
 
 
-## ``llvm.vc.internal.lsc.*.quad.tgm`` : Typed LSC load intrinsic
+## ``llvm.vc.internal.lsc.*.quad.tgm`` : Typed LSC load BTI intrinsic
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-## * arg0: vNi1 Predicate (overloaded)
+## * arg0: vNi1, Predicate (overloaded)
 ## * arg1: vNi8, Cache controls, where N is the number of supported cache levels [MBC]
-## * arg2: i8 Channel mask [MBC]
-## * arg3: i32 BTI
-## * arg4: vNi32 U pixel indices (overloaded)
-## * arg5: vNi32 V pixel indices
-## * arg6: vNi32 R pixel indices
-## * arg7: vNi32 LOD pixel indices
+## * arg2: i8, Channel mask [MBC]
+## * arg3: i32, Surface BTI
+## * arg4: vNi32, U pixel indices (overloaded)
+## * arg5: vNi32, V pixel indices
+## * arg6: vNi32, R pixel indices
+## * arg7: vNi32, LOD pixel indices
 ## * arg8: vector to take values for masked simd lanes from (load)
 ##         vector to take values to write (store)
 ##
