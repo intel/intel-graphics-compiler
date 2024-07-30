@@ -2,7 +2,7 @@
 
 # ========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2022-2023 Intel Corporation
+# Copyright (C) 2022-2024 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -416,6 +416,72 @@ def createAttributeTable():
             "#endif // GET_INTRINSIC_ATTRIBUTES\n\n")
     f.close()
 
+def createPlatformTable():
+    key = 'target'
+
+    # Collect all the required target features
+    targetFeatures = set()
+    for desc in Intrinsics.values():
+        feat = [x[1:] if x[0] == '!' else x for x in desc.get(key, [])]
+        targetFeatures.update(feat)
+
+    # Create bit mask for each target feature
+    targetFeatureMap = {feature: 1 << i for i, feature in enumerate(sorted(targetFeatures))}
+
+    # Generate the tables
+    tableRequired = []
+    tableForbidden = []
+    for i in range(len(ID_array)):
+        desc = Intrinsics[ID_array[i]]
+        features = desc.get(key, [])
+
+        required = [feature for feature in features if not feature.startswith('!')]
+        tableRequired.append(reduce(lambda acc, feature: acc | targetFeatureMap[feature], required, 0))
+
+        forbidden = [feature[1:] for feature in features if feature.startswith('!')]
+        tableForbidden.append(reduce(lambda acc, feature: acc | targetFeatureMap[feature], forbidden, 0))
+
+    numFeatures = len(targetFeatureMap)
+    assert numFeatures <= 64, "Too many target features"
+
+    storageType = 'uint64_t'
+    if numFeatures <= 8:
+        storageType = 'uint8_t'
+    elif numFeatures <= 16:
+        storageType = 'uint16_t'
+    elif numFeatures <= 32:
+        storageType = 'uint32_t'
+
+    # Write the table to the output file
+    with open(outputFile, 'a') as f:
+        f.write("// Platform table\n"
+                "#ifdef GET_INTRINSIC_TARGET_FEATURE_TABLE\n"
+                f"static const {storageType} RequiredTargetFeatures[] = " "{\n")
+
+        for i, mask in enumerate(tableRequired):
+            f.write("  0x{:x}, // llvm.vc.internal.{}\n".format(mask, ID_array[i].replace("_", ".")))
+
+        f.write("};\n"
+                f"static const {storageType} ForbiddenTargetFeatures[] = " "{\n")
+
+        for i, mask in enumerate(tableForbidden):
+            f.write("  0x{:x}, // llvm.vc.internal.{}\n".format(mask, ID_array[i].replace("_", ".")))
+
+        f.write("};\n"
+                "#endif // GET_INTRINSIC_TARGET_FEATURE_TABLE\n\n")
+
+        f.write("// Checker for platform features\n"
+                "#ifdef GET_INTRINSIC_TARGET_FEATURE_CHECKER\n"
+                "unsigned Index = ID - 1 - vc::InternalIntrinsic::not_internal_intrinsic;\n"
+                "auto MaskRequired = RequiredTargetFeatures[Index];\n"
+                "auto MaskForbidden = ForbiddenTargetFeatures[Index];\n")
+
+        for feature, mask in targetFeatureMap.items():
+            f.write(f"if ((MaskRequired & {mask}) && !{feature}()) return false;\n"
+                    f"if ((MaskForbidden & {mask}) && {feature}()) return false;\n")
+        f.write("#endif // GET_INTRINSIC_TARGET_FEATURE_CHECKER\n\n")
+
+
 def emitSuffix():
     f = open(outputFile,"a")
     f.write("#if defined(_MSC_VER) && defined(setjmp_undefined_for_msvc)\n"
@@ -435,4 +501,5 @@ createOverloadArgsTable()
 createOverloadRetTable()
 createTypeTable()
 createAttributeTable()
+createPlatformTable()
 emitSuffix()

@@ -270,6 +270,8 @@ public:
   // \brief Initialize the features for the GenX target.
   void initSubtargetFeatures(StringRef CPU, StringRef FS);
 
+  bool isInternalIntrinsicSupported(unsigned ID) const;
+
 public:
   /// * translateMediaWalker - true if translate media walker APIs
   bool translateMediaWalker() const { return !HasMediaWalker; }
@@ -442,6 +444,8 @@ public:
 
   /// * stackSurface - return a surface that should be used for stack.
   PreDefined_Surface stackSurface() const { return StackSurf; }
+
+  bool isIntrinsicSupported(unsigned ID) const;
 };
 
 } // namespace llvm

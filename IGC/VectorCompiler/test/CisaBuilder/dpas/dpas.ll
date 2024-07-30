@@ -20,7 +20,7 @@
 
 ; CHECK-XeHPCVG: error: LLVM ERROR: GenXCisaBuilder failed for:
 ; CHECK-XeHPCVG-SAME: %acc.1 = call <16 x i32> @llvm.genx.dpas.v16i32.v16i32.v128i32.v8i32(<16 x i32> %acc.0, <128 x i32> %src1, <8 x i32> %src2, i32 17303560)
-; CHECK-XeHPCVG-SAME: Intrinsic is not supported by <XeHPCVG> platform
+; CHECK-XeHPCVG-SAME: Intrinsic is not supported by the <XeHPCVG> platform
 
 
 ; COM: ;;;;;;;;;; KERNEL ;;;;;;;;;;

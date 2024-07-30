@@ -1,6 +1,6 @@
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2020-2021 Intel Corporation
+# Copyright (C) 2020-2024 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -17,7 +17,8 @@ target_include_directories(VCHeaders
   INTERFACE
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_BINARY_DIR}
-  )
+  ${CMAKE_CURRENT_BINARY_DIR}/vc/InternalIntrinsics
+)
 
 add_dependencies(VCHeaders
   intrinsics_gen

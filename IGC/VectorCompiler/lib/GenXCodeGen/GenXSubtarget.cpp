@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -11,10 +11,10 @@ SPDX-License-Identifier: MIT
 //
 //===----------------------------------------------------------------------===//
 
-#include "IGC/common/StringMacros.hpp"
-
 #include "GenXSubtarget.h"
-#include "common/StringMacros.hpp"
+
+#include "vc/Utils/GenX/IntrinsicsWrapper.h"
+
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/IR/Attributes.h"
 #include "llvm/IR/Function.h"
@@ -22,7 +22,10 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/InstrTypes.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
+
+#include "IGC/common/StringMacros.hpp"
 #include "Probe/Assertion.h"
+#include "common/StringMacros.hpp"
 
 using namespace llvm;
 
@@ -250,4 +253,24 @@ TARGET_PLATFORM GenXSubtarget::getVisaPlatform() const {
   default:
     return TARGET_PLATFORM::GENX_NONE;
   }
+}
+
+bool GenXSubtarget::isIntrinsicSupported(unsigned ID) const {
+  if (vc::InternalIntrinsic::isInternalIntrinsic(ID))
+    return isInternalIntrinsicSupported(ID);
+  if (GenXIntrinsic::isGenXIntrinsic(ID))
+    return GenXIntrinsic::isSupportedPlatform(getCPU().str(), ID);
+  return ID < Intrinsic::num_intrinsics;
+}
+
+bool GenXSubtarget::isInternalIntrinsicSupported(unsigned ID) const {
+  IGC_ASSERT(vc::InternalIntrinsic::isInternalIntrinsic(ID));
+
+#define GET_INTRINSIC_TARGET_FEATURE_TABLE
+#define GET_INTRINSIC_TARGET_FEATURE_CHECKER
+#include "InternalIntrinsicDescription.gen"
+#undef GET_INTRINSIC_TARGET_FEATURE_TABLE
+#undef GET_INTRINSIC_TARGET_FEATURE_CHECKER
+
+  return true;
 }

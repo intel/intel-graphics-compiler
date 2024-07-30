@@ -2685,12 +2685,11 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
       Function *Callee = CI->getCalledFunction();
       unsigned IntrinID = vc::getAnyIntrinsicID(Callee);
 
-      if (GenXIntrinsic::isGenXIntrinsic(IntrinID) &&
-          !GenXIntrinsic::isSupportedPlatform(Subtarget->getCPU().str(),
-                                              IntrinID)) {
+      if (vc::isAnyNonTrivialIntrinsic(IntrinID) &&
+          !Subtarget->isIntrinsicSupported(IntrinID)) {
         vc::diagnose(getContext(), "GenXCisaBuilder",
-                     "Intrinsic is not supported by <" + Subtarget->getCPU() +
-                         "> platform",
+                     "Intrinsic is not supported by the <" +
+                         Subtarget->getCPU() + "> platform",
                      Inst);
       }
 

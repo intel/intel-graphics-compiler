@@ -215,6 +215,9 @@ Imported_Intrinsics = {
                             0,        # src2
                             0,        # passthru value
                         ],
+                        "target" : [
+                            "hasLSCMessages",
+                        ],
                         "attributes": "SideEffects", },
     "lsc_atomic_bss": { "result": "anyvector",
                         "arguments": [
@@ -230,6 +233,9 @@ Imported_Intrinsics = {
                             0,        # src1
                             0,        # src2
                             0,        # passthru value
+                        ],
+                        "target" : [
+                            "hasLSCMessages",
                         ],
                         "attributes": "SideEffects", },
     "lsc_atomic_slm": { "result": "anyvector",
@@ -247,7 +253,10 @@ Imported_Intrinsics = {
                             0,        # src2
                             0,        # passthru value
                         ],
-                      "attributes": "SideEffects", },
+                        "target" : [
+                            "hasLSCMessages",
+                        ],
+                        "attributes": "SideEffects", },
     "lsc_atomic_ugm": { "result": "anyvector",
                         "arguments": [
                             "anyint", # vNxi1, predicate
@@ -262,6 +271,9 @@ Imported_Intrinsics = {
                             0,        # src1
                             0,        # src2
                             0,        # passthru value
+                        ],
+                        "target" : [
+                            "hasLSCMessages",
                         ],
                         "attributes": "SideEffects", },
 
@@ -296,6 +308,9 @@ Imported_Intrinsics = {
                           "int",    # address immediate offset
                           0,        # passthru value
                       ],
+                      "target" : [
+                          "hasLSCMessages",
+                      ],
                       "attributes": "ReadMem", },
     "lsc_load_bss": { "result": "anyvector",
                       "arguments": [
@@ -309,6 +324,9 @@ Imported_Intrinsics = {
                           "short",  # address scale
                           "int",    # address immediate offset
                           0,        # passthru value
+                      ],
+                      "target" : [
+                          "hasLSCMessages",
                       ],
                       "attributes": "ReadMem", },
     "lsc_load_slm": { "result": "anyvector",
@@ -324,6 +342,9 @@ Imported_Intrinsics = {
                           "int",    # address immediate offset
                           0,        # passthru value
                       ],
+                      "target" : [
+                          "hasLSCMessages",
+                      ],
                       "attributes": "ReadMem", },
     "lsc_load_ugm": { "result": "anyvector",
                       "arguments": [
@@ -337,6 +358,9 @@ Imported_Intrinsics = {
                           "short",  # address scale
                           "int",    # address immediate offset
                           0,        # passthru value
+                      ],
+                      "target" : [
+                          "hasLSCMessages",
                       ],
                       "attributes": "ReadMem", },
 
@@ -353,6 +377,9 @@ Imported_Intrinsics = {
                                "int",    # address immediate offset
                                0,        # passthru value
                            ],
+                           "target" : [
+                               "hasLSCMessages",
+                           ],
                            "attributes": "ReadMem", },
     "lsc_load_quad_bss": { "result": "anyvector",
                            "arguments": [
@@ -366,6 +393,9 @@ Imported_Intrinsics = {
                                "short",  # address scale
                                "int",    # address immediate offset
                                0,        # passthru value
+                           ],
+                           "target" : [
+                               "hasLSCMessages",
                            ],
                            "attributes": "ReadMem", },
     "lsc_load_quad_slm": { "result": "anyvector",
@@ -381,6 +411,9 @@ Imported_Intrinsics = {
                                "int",    # address immediate offset
                                0,        # passthru value
                            ],
+                           "target" : [
+                               "hasLSCMessages",
+                           ],
                            "attributes": "ReadMem", },
     "lsc_load_quad_ugm": { "result": "anyvector",
                            "arguments": [
@@ -394,6 +427,9 @@ Imported_Intrinsics = {
                                "short",  # address scale
                                "int",    # address immediate offset
                                0,        # passthru value
+                           ],
+                           "target" : [
+                               "hasLSCMessages",
                            ],
                            "attributes": "ReadMem", },
 
@@ -426,6 +462,9 @@ Imported_Intrinsics = {
                               "short",  # address scale
                               "int",    # address immediate offset
                           ],
+                          "target" : [
+                              "hasLSCMessages",
+                          ],
                           "attributes": "SideEffects", },
     "lsc_prefetch_bss": { "result": "void",
                           "arguments": [
@@ -439,6 +478,9 @@ Imported_Intrinsics = {
                               "short",  # address scale
                               "int",    # address immediate offset
                           ],
+                          "target" : [
+                              "hasLSCMessages",
+                          ],
                           "attributes": "SideEffects", },
     "lsc_prefetch_ugm": { "result": "void",
                           "arguments": [
@@ -451,6 +493,9 @@ Imported_Intrinsics = {
                               "anyint", # vNi32 or vNi64 address offsets
                               "short",  # address scale
                               "int",    # address immediate offset
+                          ],
+                          "target" : [
+                              "hasLSCMessages",
                           ],
                           "attributes": "SideEffects", },
 
@@ -466,6 +511,9 @@ Imported_Intrinsics = {
                                    "short",  # address scale
                                    "int",    # address immediate offset
                                ],
+                               "target" : [
+                                   "hasLSCMessages",
+                               ],
                                "attributes": "SideEffects", },
     "lsc_prefetch_quad_bss": { "result": "void",
                                "arguments": [
@@ -479,6 +527,9 @@ Imported_Intrinsics = {
                                    "short",  # address scale
                                    "int",    # address immediate offset
                                ],
+                               "target" : [
+                                   "hasLSCMessages",
+                               ],
                                "attributes": "SideEffects", },
     "lsc_prefetch_quad_ugm": { "result": "void",
                                "arguments": [
@@ -491,6 +542,9 @@ Imported_Intrinsics = {
                                    "anyint", # vNi32 or vNi64 address offsets
                                    "short",  # address scale
                                    "int",    # address immediate offset
+                               ],
+                               "target" : [
+                                   "hasLSCMessages",
                                ],
                                "attributes": "SideEffects", },
 
@@ -525,6 +579,9 @@ Imported_Intrinsics = {
                            "int",    # address immediate offset
                            "anyvector", # Data to write
                        ],
+                       "target" : [
+                           "hasLSCMessages",
+                       ],
                        "attributes": "WriteMem", },
     "lsc_store_bss": { "result": "void",
                        "arguments": [
@@ -538,6 +595,9 @@ Imported_Intrinsics = {
                            "short",  # address scale
                            "int",    # address immediate offset
                            "anyvector", # Data to write
+                       ],
+                       "target" : [
+                           "hasLSCMessages",
                        ],
                        "attributes": "WriteMem", },
     "lsc_store_slm": { "result": "void",
@@ -553,6 +613,9 @@ Imported_Intrinsics = {
                            "int",    # address immediate offset
                            "anyvector", # Data to write
                        ],
+                       "target" : [
+                           "hasLSCMessages",
+                       ],
                        "attributes": "WriteMem", },
     "lsc_store_ugm": { "result": "void",
                        "arguments": [
@@ -566,6 +629,9 @@ Imported_Intrinsics = {
                            "short",  # address scale
                            "int",    # address immediate offset
                            "anyvector", # Data to write
+                       ],
+                       "target" : [
+                           "hasLSCMessages",
                        ],
                        "attributes": "WriteMem", },
 
@@ -582,6 +648,9 @@ Imported_Intrinsics = {
                                 "int",    # address immediate offset
                                 "anyvector", # Data to write
                             ],
+                            "target" : [
+                                "hasLSCMessages",
+                            ],
                             "attributes": "WriteMem", },
     "lsc_store_quad_bss": { "result": "void",
                             "arguments": [
@@ -595,6 +664,9 @@ Imported_Intrinsics = {
                                 "short",  # address scale
                                 "int",    # address immediate offset
                                 "anyvector", # Data to write
+                            ],
+                            "target" : [
+                                "hasLSCMessages",
                             ],
                             "attributes": "WriteMem", },
     "lsc_store_quad_slm": { "result": "void",
@@ -610,6 +682,9 @@ Imported_Intrinsics = {
                                 "int",    # address immediate offset
                                 "anyvector", # Data to write
                             ],
+                            "target" : [
+                                "hasLSCMessages",
+                            ],
                             "attributes": "WriteMem", },
     "lsc_store_quad_ugm": { "result": "void",
                             "arguments": [
@@ -623,6 +698,9 @@ Imported_Intrinsics = {
                                 "short",  # address scale
                                 "int",    # address immediate offset
                                 "anyvector", # Data to write
+                            ],
+                            "target" : [
+                                "hasLSCMessages",
                             ],
                             "attributes": "WriteMem", },
 
@@ -666,6 +744,9 @@ Imported_Intrinsics = {
                                    "int",    # Y offset
                                    0,        # passthru
                                ],
+                               "target" : [
+                                   "hasLSCMessages",
+                               ],
                                "attributes": "ReadMem", },
     "lsc_load_block_2d_ugm_transposed": { "result": "anyvector",
                                           "arguments": [
@@ -684,6 +765,9 @@ Imported_Intrinsics = {
                                               "int",    # X offset
                                               "int",    # Y offset
                                               0,        # passthru
+                                          ],
+                                          "target" : [
+                                              "hasLSCMessages",
                                           ],
                                           "attributes": "ReadMem", },
     "lsc_load_block_2d_ugm_vnni": { "result": "anyvector",
@@ -704,6 +788,9 @@ Imported_Intrinsics = {
                                         "int",    # Y offset
                                         0,        # passthru
                                     ],
+                                    "target" : [
+                                       "hasLSCMessages",
+                                    ],
                                     "attributes": "ReadMem", },
     "lsc_prefetch_block_2d_ugm": { "result": "void",
                                    "arguments": [
@@ -721,6 +808,9 @@ Imported_Intrinsics = {
                                        "int",    # memory block Y position
                                        "int",    # X offset
                                        "int",    # Y offset
+                                   ],
+                                   "target" : [
+                                       "hasLSCMessages",
                                    ],
                                    "attributes": "SideEffects", },
     "lsc_store_block_2d_ugm": { "result": "void",
@@ -740,6 +830,9 @@ Imported_Intrinsics = {
                                     "int",       # X offset
                                     "int",       # Y offset
                                     "anyvector", # data to store
+                                ],
+                                "target" : [
+                                    "hasLSCMessages",
                                 ],
                                 "attributes": "WriteMem", },
 
@@ -785,6 +878,9 @@ Imported_Intrinsics = {
                                    "int",       # Y offset
                                    0,           # value to passthru when predicate is false
                                 ],
+                                "target" : [
+                                   "hasLSCMessages",
+                                ],
                                 "attributes" : "ReadMem", },
     "lsc_load_2d_ugm_desc_transpose" : { "result" : "anyvector",
                                          "arguments" : [
@@ -797,6 +893,9 @@ Imported_Intrinsics = {
                                              "int",       # X offset
                                              "int",       # Y offset
                                              0,           # value to passthru when predicate is false
+                                          ],
+                                          "target" : [
+                                             "hasLSCMessages",
                                           ],
                                           "attributes" : "ReadMem", },
     "lsc_load_2d_ugm_desc_vnni" : { "result" : "anyvector",
@@ -811,6 +910,9 @@ Imported_Intrinsics = {
                                         "int",       # Y offset
                                         0,           # value to passthru when predicate is false
                                      ],
+                                     "target" : [
+                                         "hasLSCMessages",
+                                     ],
                                      "attributes" : "ReadMem", },
     "lsc_prefetch_2d_ugm_desc" : { "result" : "void",
                                    "arguments" : [
@@ -824,6 +926,9 @@ Imported_Intrinsics = {
                                        "int",       # Y offset
                                        "anyvector", # dummy value, only element type is used
                                     ],
+                                    "target" : [
+                                        "hasLSCMessages",
+                                    ],
                                     "attributes" : "SideEffects", },
     "lsc_store_2d_ugm_desc" : { "result" : "void",
                                 "arguments" : [
@@ -836,6 +941,9 @@ Imported_Intrinsics = {
                                     "int",       # X offset
                                     "int",       # Y offset
                                     "anyvector", # value to store
+                                 ],
+                                 "target" : [
+                                     "hasLSCMessages",
                                  ],
                                  "attributes" : "WriteMem", },
 
@@ -859,7 +967,11 @@ Imported_Intrinsics = {
                                   "int",       # block width
                                   "int",       # X offset
                                   "int"        # Y offset
-                                 ],
+                              ],
+                              "target" : [
+                                  "hasLSCMessages",
+                                  "hasLSCTypedMessages",
+                              ],
                               "attributes" : "ReadMem", },
     "lsc_store_2d_tgm_bti" : { "result" : "void",
                                "arguments" : [
@@ -870,7 +982,11 @@ Imported_Intrinsics = {
                                   "int",       # X offset
                                   "int",       # Y offset
                                   "anyvector"
-                                 ],
+                               ],
+                               "target" : [
+                                   "hasLSCMessages",
+                                   "hasLSCTypedMessages",
+                               ],
                                "attributes" : "WriteMem", },
 
 
@@ -901,6 +1017,10 @@ Imported_Intrinsics = {
                                3,           # vNi32 LOD pixel index
                                0,           # passthru value
                            ],
+                           "target" : [
+                               "hasLSCMessages",
+                               "hasLSCTypedMessages",
+                           ],
                            "attributes": "ReadMem", },
     "lsc_store_quad_tgm": { "result": "void",
                             "arguments": [
@@ -914,6 +1034,10 @@ Imported_Intrinsics = {
                                 2,           # vNi32 LOD pixel index
                                 "anyvector", # data to write
                             ],
+                            "target" : [
+                                "hasLSCMessages",
+                                "hasLSCTypedMessages",
+                            ],
                             "attributes": "WriteMem", },
     "lsc_prefetch_quad_tgm": { "result": "void",
                                "arguments": [
@@ -925,6 +1049,10 @@ Imported_Intrinsics = {
                                    2,           # vNi32 V pixel index
                                    2,           # vNi32 R pixel index
                                    2,           # vNi32 LOD pixel index
+                               ],
+                               "target" : [
+                                   "hasLSCMessages",
+                                   "hasLSCTypedMessages",
                                ],
                                "attributes": "SideEffects", },
 
