@@ -1,12 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt -debugify --igc-fold-workgroup-sizes -check-debugify -S < %s 2>&1 | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -debugify --igc-fold-workgroup-sizes -check-debugify -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; FoldKnownWorkGroupSizes
 ; ------------------------------------------------
@@ -20,7 +22,7 @@ define void @test_foldws_global() {
 ; CHECK:    [[TMP1:%.*]] = call spir_func i32 @__builtin_IB_get_global_offset(i32 12)
 ; CHECK:    call void @use.i32(i32 0)
 ; CHECK:    ret void
-;
+
   %1 = call spir_func i32 @__builtin_IB_get_global_offset(i32 12)
   call void @use.i32(i32 %1)
   ret void
@@ -31,7 +33,7 @@ define void @test_foldws_local() {
 ; CHECK:    [[TMP1:%.*]] = call spir_func i32 @__builtin_IB_get_enqueued_local_size(i32 0)
 ; CHECK:    call void @use.i32(i32 13)
 ; CHECK:    ret void
-;
+
   %1 = call spir_func i32 @__builtin_IB_get_enqueued_local_size(i32 0)
   call void @use.i32(i32 %1)
   ret void

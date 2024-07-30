@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -8,7 +8,9 @@
 
 ; Negative test checks that no implicit args are captured in bindless mode
 
-; RUN: igc_opt -igc-image-func-analysis -S %s -o - | FileCheck %s
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-image-func-analysis -S %s -o - | FileCheck %s
 
 declare i32 @__builtin_IB_get_image_height(i32 %img)
 

@@ -1,13 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: regkeys
-;
-; RUN: igc_opt -regkey OverrideOCLMaxParamSize=1 --igc-error-check -S < %s 2>&1 | FileCheck %s
+; REQUIRES: llvm-14-plus, regkeys
+
+; RUN: igc_opt --opaque-pointers -regkey OverrideOCLMaxParamSize=1 --igc-error-check -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; ErrorCheck
 ; ------------------------------------------------

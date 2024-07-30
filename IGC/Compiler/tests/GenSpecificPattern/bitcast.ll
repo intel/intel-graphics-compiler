@@ -1,12 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt -debugify --igc-gen-specific-pattern -check-debugify -S < %s 2>&1 | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -debugify --igc-gen-specific-pattern -check-debugify -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; GenSpecificPattern: bitcast pattern
 ; ------------------------------------------------
@@ -23,7 +25,7 @@ define spir_kernel void @test_bitcast(i32 %src1, i32 %src2) {
 ; CHECK:    [[TMP2:%.*]] = bitcast <2 x i32> [[TMP1]] to double
 ; CHECK:    call void @use.f64(double [[TMP2]])
 ; CHECK:    ret void
-;
+
 entry:
   %0 = insertelement <2 x i32> <i32 0, i32 undef>, i32 %src1, i32 1
   %1 = bitcast <2 x i32> %0 to i64

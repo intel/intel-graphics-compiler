@@ -1,13 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: regkeys
-;
-; RUN: igc_opt --platformrlt --igc-emu64ops -S < %s 2>&1 | FileCheck %s
+; REQUIRES: llvm-14-plus, regkeys
+
+; RUN: igc_opt --opaque-pointers --platformrlt --igc-emu64ops -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; Emu64Ops
 ; ------------------------------------------------
@@ -26,7 +26,7 @@ define void @test_partial(i32 %src1) {
 ; CHECK-NEXT:    [[TMP8:%.*]] = bitcast <2 x i32> [[TMP7]] to i64
 ; CHECK-NEXT:    call void @use.i64(i64 [[TMP8]])
 ; CHECK-NEXT:    ret void
-;
+
   %1 = sext i32 %src1 to i64
   %2 = ashr i64 %1, 13
   call void @use.i64(i64 %2)

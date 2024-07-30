@@ -6,7 +6,9 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -debugify --igc-fp-rounding-mode-coalescing -check-debugify -S < %s 2>&1 | FileCheck %s
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -debugify --igc-fp-rounding-mode-coalescing -check-debugify -S < %s 2>&1 | FileCheck %s
 
 ; Debug-info related check
 ; CHECK: CheckModuleDebugify: PASS

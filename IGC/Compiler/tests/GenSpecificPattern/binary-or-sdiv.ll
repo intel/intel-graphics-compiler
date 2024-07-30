@@ -1,12 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt -debugify --igc-gen-specific-pattern -check-debugify -S  < %s 2>&1 | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -debugify --igc-gen-specific-pattern -check-debugify -S  < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; GenSpecificPattern: Or patterns
 ; ------------------------------------------------
@@ -26,7 +28,7 @@ define spir_kernel void @test_and_or(i64 %src1, i64 %src2) {
 ; CHECK:    [[TMP7:%.*]] = bitcast <2 x i32> [[TMP6]] to i64
 ; CHECK:    call void @use.i64(i64 [[TMP7]])
 ; CHECK:    ret void
-;
+
   %1 = and i64 %src1, 4294967295
   %2 = shl i64 %src2, 32
   %3 = or i64 %1, %2
@@ -44,7 +46,7 @@ define spir_kernel void @test_and_or2(i64 %src1, i64 %src2) {
 ; CHECK:    [[TMP6:%.*]] = bitcast <2 x i32> [[TMP5]] to i64
 ; CHECK:    call void @use.i64(i64 [[TMP6]])
 ; CHECK:    ret void
-;
+
   %1 = trunc i64 %src2 to i32
   %2 = and i64 %src1, 4294967295
   %3 = insertelement <2 x i32> <i32 0, i32 undef>, i32 %1, i32 1
@@ -60,7 +62,7 @@ define spir_kernel void @test_shl_or(i64 %src1) {
 ; CHECK:    [[TMP2:%.*]] = add i64 [[TMP1]], 7
 ; CHECK:    call void @use.i64(i64 [[TMP2]])
 ; CHECK:    ret void
-;
+
   %1 = shl i64 %src1, 3
   %2 = or i64 %1, 7
   call void @use.i64(i64 %2)
@@ -74,7 +76,7 @@ define spir_kernel void @test_sdiv64(i64 %src1) {
 ; CHECK:    [[TMP3:%.*]] = ashr i64 [[TMP2]], 1
 ; CHECK:    call void @use.i64(i64 [[TMP3]])
 ; CHECK:    ret void
-;
+
   %1 = sdiv i64 %src1, 2
   call void @use.i64(i64 %1)
   ret void
@@ -91,7 +93,7 @@ define spir_kernel void @test_sdiv32(i32 %src1) {
 ; CHECK:    [[TMP7:%.*]] = ashr i32 [[TMP6]], 2
 ; CHECK:    call void @use.i32(i32 [[TMP7]])
 ; CHECK:    ret void
-;
+
   %1 = sdiv i32 %src1, 2
   %2 = sdiv i32 %1, 4
   call void @use.i32(i32 %2)

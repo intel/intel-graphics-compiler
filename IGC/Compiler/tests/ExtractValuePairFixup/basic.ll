@@ -1,27 +1,29 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt --igc-extractvalue-pair-fixup -S < %s | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --igc-extractvalue-pair-fixup -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; ExtractValuePairFixup
 ; ------------------------------------------------
 
 ; Case 1:
 ;   Nothing is moved
-;
+
 ; CHECK: entry:
 ; CHECK: [[VAL1:%[A-z0-9]*]] = insertvalue %str {{.*}}, 0
 ; CHECK-NEXT: [[VAL2:%[A-z0-9]*]] = insertvalue %str [[VAL1]]{{.*}}, 1
 ; CHECK-NEXT: [[USE1:[%A-z0-9]*]] = extractvalue %str [[VAL2]], 1
 ; CHECK-NEXT: br label %lbl
-;
+
 ; Case 2:
-;
+
 ;   %5 = extractvalue %str %3, 1
 ;   moved after
 ;   %4 = extractvalue %str %0, 0

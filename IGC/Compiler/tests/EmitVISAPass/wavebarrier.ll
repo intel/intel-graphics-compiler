@@ -6,9 +6,9 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: regkeys
+; REQUIRES: llvm-14-plus, regkeys
 
-; RUN: igc_opt -platformpvc -igc-emit-visa -simd-mode 32 %s -regkey DumpVISAASMToConsole | FileCheck %s
+; RUN: igc_opt --opaque-pointers -platformpvc -igc-emit-visa -simd-mode 32 %s -regkey DumpVISAASMToConsole | FileCheck %s
 
 ; This test verifies whether GenISA.wavebarrier intrinsic is properly translated to the vISA software fence
 

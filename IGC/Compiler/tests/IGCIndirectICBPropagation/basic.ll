@@ -1,12 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt -IGCIndirectICBPropagaion -S < %s | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -IGCIndirectICBPropagaion -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; IGCIndirectICBPropagaion
 ; ------------------------------------------------
@@ -17,7 +19,7 @@ define void @test_load_i32(i32 %src) {
 ; CHECK:    [[TMP2:%.*]] = extractelement <2 x i32> <i32 67305985, i32 134678021>, i32 [[TMP1]]
 ; CHECK:    call void @use.i32(i32 [[TMP2]])
 ; CHECK:    ret void
-;
+
   %1 = inttoptr i32 %src to i32 addrspace(65549)*
   %2 = load i32, i32 addrspace(65549)* %1, align 4
   call void @use.i32(i32 %2)
@@ -30,7 +32,7 @@ define void @test_load_f32(i32 %src) {
 ; CHECK:    [[TMP2:%.*]] = extractelement <2 x float> <float 0x3880604020000000, float 0x3900E0C0A0000000>, i32 [[TMP1]]
 ; CHECK:    call void @use.f32(float [[TMP2]])
 ; CHECK:    ret void
-;
+
   %1 = inttoptr i32 %src to float addrspace(65549)*
   %2 = load float, float addrspace(65549)* %1, align 4
   call void @use.f32(float %2)

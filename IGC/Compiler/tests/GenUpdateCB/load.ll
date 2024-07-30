@@ -1,14 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: regkeys
-;
-; RUN: igc_opt -dx10 -regkey EnableGenUpdateCB=1 -GenUpdateCB -dce -S < %s | FileCheck %s
-;
+; REQUIRES: llvm-14-plus, regkeys
+
+; RUN: igc_opt --opaque-pointers -dx10 -regkey EnableGenUpdateCB=1 -GenUpdateCB -dce -S < %s | FileCheck %s
+
 ; Requires a fix for windows
 ; COM: FileCheck %s --input-file=OCL_gencb.ll -check-prefix=GENCB
 ; ------------------------------------------------
@@ -32,7 +32,7 @@ define void @test_update_cb(float %src1) {
 ; CHECK-NEXT:    [[TMP1:%.*]] = call float @llvm.genx.GenISA.RuntimeValue(i32 0)
 ; CHECK-NEXT:    call void @use.f32(float [[TMP1]])
 ; CHECK-NEXT:    ret void
-;
+
   %1 = load float, float addrspace(65538)* null
   %2 = fadd float %1, %1
   %3 = fadd float %2, 13.0

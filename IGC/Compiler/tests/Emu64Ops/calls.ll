@@ -1,14 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
+
 ; REQUIRES: llvm-14-plus
-;
-; RUN: igc_opt --platformdg2 --enable-debugify --igc-emu64ops -S < %s 2>&1 | FileCheck %s
+
+; RUN: igc_opt --opaque-pointers --platformdg2 --enable-debugify --igc-emu64ops -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; Emu64Ops
 ; ------------------------------------------------
@@ -21,13 +21,13 @@
 ; CHECK: %[[CAST:.+]] = bitcast i64 %arg to <2 x i32>
 ; CHECK: %[[ARG_LO:.+]] = extractelement <2 x i32> %[[CAST]], i32 0
 ; CHECK: %[[ARG_HI:.+]] = extractelement <2 x i32> %[[CAST]], i32 1
-;
+
 ; CHECK: %[[COND_NEG:.+]] = icmp slt i32 %[[ARG_HI]], 0
 ; CHECK: %[[NEGATE:.+]] = call { i32, i32 } @llvm.genx.GenISA.sub.pair(
 ; CHECK-SAME: i32 0, i32 0, i32 %[[ARG_LO]], i32 %[[ARG_HI]])
 ; CHECK: %[[NEG_LO:.+]] = extractvalue { i32, i32 } %[[NEGATE]], 0
 ; CHECK: %[[NEG_HI:.+]] = extractvalue { i32, i32 } %[[NEGATE]], 1
-;
+
 ; CHECK: %[[SEL_LO:.+]] = select i1 %[[COND_NEG]], i32 %[[NEG_LO]], i32 %[[ARG_LO]]
 ; CHECK: %[[SEL_HI:.+]] = select i1 %[[COND_NEG]], i32 %[[NEG_HI]], i32 %[[ARG_HI]]
 ; CHECK: %[[RES_LO:.+]] = insertelement <2 x i32> undef, i32 %[[SEL_LO]], i32 0
@@ -48,7 +48,7 @@ define void @test_abs(i64 %arg) {
 ; CHECK: %[[CAST_RHS:.+]] = bitcast i64 %argR to <2 x i32>
 ; CHECK: %[[RHS_LO:.+]] = extractelement <2 x i32> %[[CAST_RHS]], i32 0
 ; CHECK: %[[RHS_HI:.+]] = extractelement <2 x i32> %[[CAST_RHS]], i32 1
-;
+
 ; COM: Comparing LSBs in case MSB halves are equal
 ; CHECK: %[[CMP_LO:.+]] = icmp ugt i32 %[[LHS_LO]], %[[RHS_LO]]
 ; CHECK: %[[CMP_EQ_HI:.+]] = icmp eq i32 %[[LHS_HI]], %[[RHS_HI]]
@@ -56,7 +56,7 @@ define void @test_abs(i64 %arg) {
 ; COM: Comparing signed MSBs - sgt
 ; CHECK: %[[COND_HI:.+]] = icmp sgt i32 %[[LHS_HI]], %[[RHS_HI]]
 ; CHECK: %[[RES_COND:.+]] = or i1 %[[COND_LO]], %[[COND_HI]]
-;
+
 ; CHECK: %[[SEL_LO:.+]] = select i1 %[[RES_COND]], i32 %[[LHS_LO]], i32 %[[RHS_LO]]
 ; CHECK: %[[SEL_HI:.+]] = select i1 %[[RES_COND]], i32 %[[LHS_HI]], i32 %[[RHS_HI]]
 ; CHECK: %[[RES_LO:.+]] = insertelement <2 x i32> undef, i32 %[[SEL_LO]], i32 0
@@ -77,7 +77,7 @@ define void @test_smax(i64 %argL, i64 %argR) {
 ; CHECK: %[[CAST_RHS:.+]] = bitcast i64 %argR to <2 x i32>
 ; CHECK: %[[RHS_LO:.+]] = extractelement <2 x i32> %[[CAST_RHS]], i32 0
 ; CHECK: %[[RHS_HI:.+]] = extractelement <2 x i32> %[[CAST_RHS]], i32 1
-;
+
 ; COM: Comparing LSBs in case MSB halves are equal
 ; CHECK: %[[CMP_LO:.+]] = icmp ult i32 %[[LHS_LO]], %[[RHS_LO]]
 ; CHECK: %[[CMP_EQ_HI:.+]] = icmp eq i32 %[[LHS_HI]], %[[RHS_HI]]
@@ -85,7 +85,7 @@ define void @test_smax(i64 %argL, i64 %argR) {
 ; COM: Comparing signed MSBs - slt
 ; CHECK: %[[COND_HI:.+]] = icmp slt i32 %[[LHS_HI]], %[[RHS_HI]]
 ; CHECK: %[[RES_COND:.+]] = or i1 %[[COND_LO]], %[[COND_HI]]
-;
+
 ; CHECK: %[[SEL_LO:.+]] = select i1 %[[RES_COND]], i32 %[[LHS_LO]], i32 %[[RHS_LO]]
 ; CHECK: %[[SEL_HI:.+]] = select i1 %[[RES_COND]], i32 %[[LHS_HI]], i32 %[[RHS_HI]]
 ; CHECK: %[[RES_LO:.+]] = insertelement <2 x i32> undef, i32 %[[SEL_LO]], i32 0
@@ -106,7 +106,7 @@ define void @test_smin(i64 %argL, i64 %argR) {
 ; CHECK: %[[CAST_RHS:.+]] = bitcast i64 %argR to <2 x i32>
 ; CHECK: %[[RHS_LO:.+]] = extractelement <2 x i32> %[[CAST_RHS]], i32 0
 ; CHECK: %[[RHS_HI:.+]] = extractelement <2 x i32> %[[CAST_RHS]], i32 1
-;
+
 ; COM: Comparing LSBs in case MSB halves are equal
 ; CHECK: %[[CMP_LO:.+]] = icmp ugt i32 %[[LHS_LO]], %[[RHS_LO]]
 ; CHECK: %[[CMP_EQ_HI:.+]] = icmp eq i32 %[[LHS_HI]], %[[RHS_HI]]
@@ -114,7 +114,7 @@ define void @test_smin(i64 %argL, i64 %argR) {
 ; COM: Comparing unsigned MSBs - ugt
 ; CHECK: %[[COND_HI:.+]] = icmp ugt i32 %[[LHS_HI]], %[[RHS_HI]]
 ; CHECK: %[[RES_COND:.+]] = or i1 %[[COND_LO]], %[[COND_HI]]
-;
+
 ; CHECK: %[[SEL_LO:.+]] = select i1 %[[RES_COND]], i32 %[[LHS_LO]], i32 %[[RHS_LO]]
 ; CHECK: %[[SEL_HI:.+]] = select i1 %[[RES_COND]], i32 %[[LHS_HI]], i32 %[[RHS_HI]]
 ; CHECK: %[[RES_LO:.+]] = insertelement <2 x i32> undef, i32 %[[SEL_LO]], i32 0
@@ -135,7 +135,7 @@ define void @test_umax(i64 %argL, i64 %argR) {
 ; CHECK: %[[CAST_RHS:.+]] = bitcast i64 %argR to <2 x i32>
 ; CHECK: %[[RHS_LO:.+]] = extractelement <2 x i32> %[[CAST_RHS]], i32 0
 ; CHECK: %[[RHS_HI:.+]] = extractelement <2 x i32> %[[CAST_RHS]], i32 1
-;
+
 ; COM: Comparing LSBs in case MSB halves are equal
 ; CHECK: %[[CMP_LO:.+]] = icmp ult i32 %[[LHS_LO]], %[[RHS_LO]]
 ; CHECK: %[[CMP_EQ_HI:.+]] = icmp eq i32 %[[LHS_HI]], %[[RHS_HI]]
@@ -143,7 +143,7 @@ define void @test_umax(i64 %argL, i64 %argR) {
 ; COM: Comparing unsigned MSBs - ult
 ; CHECK: %[[COND_HI:.+]] = icmp ult i32 %[[LHS_HI]], %[[RHS_HI]]
 ; CHECK: %[[RES_COND:.+]] = or i1 %[[COND_LO]], %[[COND_HI]]
-;
+
 ; CHECK: %[[SEL_LO:.+]] = select i1 %[[RES_COND]], i32 %[[LHS_LO]], i32 %[[RHS_LO]]
 ; CHECK: %[[SEL_HI:.+]] = select i1 %[[RES_COND]], i32 %[[LHS_HI]], i32 %[[RHS_HI]]
 ; CHECK: %[[RES_LO:.+]] = insertelement <2 x i32> undef, i32 %[[SEL_LO]], i32 0

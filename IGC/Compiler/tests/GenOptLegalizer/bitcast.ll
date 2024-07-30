@@ -1,12 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt -GenOptLegalizer -S < %s | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -GenOptLegalizer -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; GenOptLegalizer
 ; ------------------------------------------------
@@ -16,7 +18,7 @@ define void @bitcast_trunc_i48_f16(<3 x half> %src) {
 ; CHECK:    [[TMP1:%.*]] = extractelement <3 x half> %src, i32 0
 ; CHECK:    call void @use.f16(half [[TMP1]])
 ; CHECK:    ret void
-;
+
   %1 = bitcast <3 x half> %src to i48
   %2 = trunc i48 %1 to i16
   %3 = bitcast i16 %2 to half
@@ -29,7 +31,7 @@ define void @bitcast_trunc_lshr_i48_f16(<3 x half> %src) {
 ; CHECK:    [[TMP1:%.*]] = extractelement <3 x half> %src, i32 1
 ; CHECK:    call void @use.f16(half [[TMP1]])
 ; CHECK:    ret void
-;
+
   %1 = bitcast <3 x half> %src to i48
   %2 = lshr i48 %1, 16
   %3 = trunc i48 %2 to i16
@@ -47,7 +49,7 @@ define void @bitcast_trunc_i128_f32(<4 x float> %src) {
 ; CHECK:    call void @use.f32(float [[TMP2]])
 ; CHECK:    call void @use.f32(float [[TMP3]])
 ; CHECK:    ret void
-;
+
   %1 = bitcast <4 x float> %src to i128
   %2 = trunc i128 %1 to i96
   %3 = bitcast i96 %2 to <3 x float>
@@ -66,7 +68,7 @@ define void @bitcast_trunc_i128_i8(<4 x i32> %src) {
 ; CHECK:    [[TMP2:%.*]] = extractelement <16 x i8> [[TMP1]], i32 0
 ; CHECK:    call void @use.i8(i8 [[TMP2]])
 ; CHECK:    ret void
-;
+
   %1 = bitcast <4 x i32> %src to i128
   %2 = trunc i128 %1 to i8
   call void @use.i8(i8 %2)
@@ -80,7 +82,7 @@ define void @bitcast_trunc_lshr_i128_i8(<4 x i32> %src) {
 ; CHECK:    [[TMP2:%.*]] = extractelement <16 x i8> [[TMP1]], i32 1
 ; CHECK:    call void @use.i8(i8 [[TMP2]])
 ; CHECK:    ret void
-;
+
   %1 = bitcast <4 x i32> %src to i128
   %2 = lshr i128 %1, 8
   %3 = trunc i128 %2 to i8

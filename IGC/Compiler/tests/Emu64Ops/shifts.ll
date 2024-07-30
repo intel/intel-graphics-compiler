@@ -1,12 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt --platformdg2 --enable-debugify --igc-emu64ops -S < %s 2>&1 | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --platformdg2 --enable-debugify --igc-emu64ops -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; Emu64Ops
 ; ------------------------------------------------
@@ -26,7 +28,7 @@ define void @test_extract0(<2 x i64> %a) {
 ; CHECK:    [[TMP6:%[A-z0-9.]*]] = bitcast <2 x i32> [[TMP5]] to i64
 ; CHECK:    call void @use.i64(i64 [[TMP6]])
 ; CHECK:    ret void
-;
+
   %1 = extractelement <2 x i64> %a, i32 0
   call void @use.i64(i64 %1)
   ret void
@@ -42,7 +44,7 @@ define void @test_extract1(<2 x i64> %a) {
 ; CHECK:    [[TMP6:%[A-z0-9.]*]] = bitcast <2 x i32> [[TMP5]] to i64
 ; CHECK:    call void @use.i64(i64 [[TMP6]])
 ; CHECK:    ret void
-;
+
   %1 = extractelement <2 x i64> %a, i32 1
   call void @use.i64(i64 %1)
   ret void
@@ -59,7 +61,7 @@ define void @test_insert(<2 x i64> %a, i64 %b) {
 ; CHECK:    [[TMP7:%[A-z0-9.]*]] = bitcast <4 x i32> [[TMP6]] to <2 x i64>
 ; CHECK:    call void @use.2i64(<2 x i64> [[TMP7]])
 ; CHECK:    ret void
-;
+
   %1 = insertelement <2 x i64> %a, i64 %b, i32 1
   call void @use.2i64(<2 x i64> %1)
   ret void
@@ -102,7 +104,7 @@ define void @test_shl(i64 %a, i64 %b) {
 ; CHECK:    [[TMP21:%[A-z0-9.]*]] = bitcast <2 x i32> [[TMP20]] to i64
 ; CHECK:    call void @use.i64(i64 [[TMP21]])
 ; CHECK:    ret void
-;
+
   %1 = shl i64 %a, %b
   call void @use.i64(i64 %1)
   ret void
@@ -145,7 +147,7 @@ define void @test_lshr(i64 %a, i64 %b) {
 ; CHECK:    [[TMP21:%[A-z0-9.]*]] = bitcast <2 x i32> [[TMP20]] to i64
 ; CHECK:    call void @use.i64(i64 [[TMP21]])
 ; CHECK:    ret void
-;
+
   %1 = lshr i64 %a, %b
   call void @use.i64(i64 %1)
   ret void
@@ -189,7 +191,7 @@ define void @test_ashr(i64 %a, i64 %b) {
 ; CHECK:    [[TMP22:%[A-z0-9.]*]] = bitcast <2 x i32> [[TMP21]] to i64
 ; CHECK:    call void @use.i64(i64 [[TMP22]])
 ; CHECK:    ret void
-;
+
   %1 = ashr i64 %a, %b
   call void @use.i64(i64 %1)
   ret void

@@ -1,12 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt -ocl -platformdg1 -igc-error-check -S < %s 2>&1 | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -ocl -platformdg1 -igc-error-check -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; ErrorCheck
 ; ------------------------------------------------

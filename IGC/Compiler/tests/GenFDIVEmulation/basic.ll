@@ -1,12 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt -debugify -GenFDIVEmulation -check-debugify -S < %s 2>&1 | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -debugify -GenFDIVEmulation -check-debugify -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; GenFDIVEmulation
 ; ------------------------------------------------
@@ -37,7 +39,7 @@ define void @test_fdiv(float %a, float %b) {
   ; CHECK:    [[TMP18:%[A-z0-9]+]] = select i1 [[TMP17]], float 1.000000e+00, float [[TMP10]]
   ; CHECK:    call void @use.f32(float [[TMP18]])
   ; CHECK:    ret void
-  ;
+
   %1 = fdiv float %a, %b
   call void @use.f32(float %1)
   ret void
@@ -49,7 +51,7 @@ define void @test_fdiv_arcp(float %a, float %b) {
 ; CHECK:    [[TMP2:%[A-z0-9]*]] = fmul arcp float [[TMP1]], [[A:%[A-z0-9]*]]
 ; CHECK:    call void @use.f32(float [[TMP2]])
 ; CHECK:    ret void
-;
+
   %1 = fdiv arcp float %a, %b
   call void @use.f32(float %1)
   ret void
@@ -64,7 +66,7 @@ define void @test_fdiv_half(half %a, half %b) {
 ; CHECK:    [[TMP5:%[A-z0-9]*]] = fptrunc float [[TMP4]] to half
 ; CHECK:    call void @use.f16(half [[TMP5]])
 ; CHECK:    ret void
-;
+
   %1 = fdiv half %a, %b
   call void @use.f16(half %1)
   ret void

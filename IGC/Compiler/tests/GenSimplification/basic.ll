@@ -1,12 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt -debugify -igc-shuffle-simplification -check-debugify -S < %s 2>&1 | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -debugify -igc-shuffle-simplification -check-debugify -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; GenSimplification
 ; ------------------------------------------------
@@ -20,7 +22,7 @@ define void @test_extractelement(i32 %a, i32 %b, i1 %c) {
 ; CHECK:    [[TMP1:%[A-z0-9.]*]] = select i1 %c, i32 %b, i32 %a
 ; CHECK:    call void @use.i32(i32 [[TMP1]])
 ; CHECK:    ret void
-;
+
   %1 = zext i1 %c to i32
   %2 = insertelement <2 x i32> zeroinitializer, i32 %a, i32 0
   %3 = insertelement <2 x i32> %2, i32 %b, i32 1
@@ -43,7 +45,7 @@ define void @test_phi(i32 %a, i1 %c) {
 ; CHECK:    call void @use.i32(i32 [[TMP0]])
 ; CHECK:    call void @use.i32(i32 [[TMP1]])
 ; CHECK:    ret void
-;
+
 entry:
   %0 = insertelement <2 x i32> undef, i32 %a, i32 0
   br i1 %c, label %bb1, label %bb2

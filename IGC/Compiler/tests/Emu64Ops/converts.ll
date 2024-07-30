@@ -1,12 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2023 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt --platformdg2 --enable-debugify --igc-emu64ops -S < %s 2>&1 | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --platformdg2 --enable-debugify --igc-emu64ops -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; Emu64Ops
 ; ------------------------------------------------
@@ -23,7 +25,7 @@ define void @test_fptoui_f16(half %a) {
 ; CHECK:    [[TMP4:%[A-z0-9]*]] = bitcast <2 x i32> [[TMP3]] to i64
 ; CHECK:    call void @use.i64(i64 [[TMP4]])
 ; CHECK:    ret void
-;
+
   %1 = fptoui half %a to i64
   call void @use.i64(i64 %1)
   ret void
@@ -41,7 +43,7 @@ define void @test_fptoui_f32(float %a) {
 ; CHECK:    [[TMP8:%[A-z0-9]*]] = bitcast <2 x i32> [[TMP7]] to i64
 ; CHECK:    call void @use.i64(i64 [[TMP8]])
 ; CHECK:    ret void
-;
+
   %1 = fptoui float %a to i64
   call void @use.i64(i64 %1)
   ret void
@@ -56,7 +58,7 @@ define void @test_fptosi_f16(half %a) {
 ; CHECK:    [[TMP5:%[A-z0-9]*]] = bitcast <2 x i32> [[TMP4]] to i64
 ; CHECK:    call void @use.i64(i64 [[TMP5]])
 ; CHECK:    ret void
-;
+
   %1 = fptosi half %a to i64
   call void @use.i64(i64 %1)
   ret void
@@ -83,7 +85,7 @@ define void @test_fptosi_f64(double %a) {
 ; CHECK:    [[TMP17:%[A-z0-9]*]] = bitcast <2 x i32> [[TMP16]] to i64
 ; CHECK:    call void @use.i64(i64 [[TMP17]])
 ; CHECK:    ret void
-;
+
   %1 = fptosi double %a to i64
   call void @use.i64(i64 %1)
   ret void
@@ -127,7 +129,7 @@ define void @test_uitofp(i64 %a) {
 ; CHECK:    [[TMP21:%[A-z0-9]*]] = fmul float [[TMP17]], [[TMP20]]
 ; CHECK:    call void @use.f32(float [[TMP21]])
 ; CHECK:    ret void
-;
+
   %1 = uitofp i64 %a to float
   call void @use.f32(float %1)
   ret void
@@ -181,7 +183,7 @@ define void @test_sitofp(i64 %a) {
 ; CHECK:    [[TMP31:%[A-z0-9]*]] = bitcast i32 [[TMP30]] to float
 ; CHECK:    call void @use.f32(float [[TMP31]])
 ; CHECK:    ret void
-;
+
   %1 = sitofp i64 %a to float
   call void @use.f32(float %1)
   ret void
