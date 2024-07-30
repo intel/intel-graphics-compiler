@@ -1,6 +1,4 @@
-
-; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -igc-low-precision-opt -inputps -S < %s
+; RUN: igc_opt -igc-low-precision-opt -inputps -S < %s
 ; ------------------------------------------------
 ; LowPrecisionOpt
 ; ------------------------------------------------

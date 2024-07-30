@@ -9,9 +9,7 @@
 ; Test checks that built-ins like __builtin_IB_get_image_width
 ; are kept as is in bindful mode
 
-
-; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers %s -S -o - -igc-conv-ocl-to-common | FileCheck %s
+; RUN: igc_opt %s -S -o - -igc-conv-ocl-to-common | FileCheck %s
 
 %spirv.Image._void_0_0_1_0_0_0_0 = type opaque
 %spirv.Image._void_1_0_1_0_0_0_0 = type opaque

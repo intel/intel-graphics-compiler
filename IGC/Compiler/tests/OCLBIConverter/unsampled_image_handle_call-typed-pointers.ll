@@ -8,9 +8,7 @@
 
 ; Check image builtin is resolved in the case SYCL bindless image handle is result of a call instruction.
 
-
-; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -igc-conv-ocl-to-common -S %s -o - | FileCheck %s
+; RUN: igc_opt -igc-conv-ocl-to-common -S %s -o - | FileCheck %s
 
 ; CHECK: call <4 x float> @llvm.genx.GenISA.ldptr.v4f32
 

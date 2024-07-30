@@ -6,9 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-
-; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers %s -S -o - --igc-lower-implicit-arg-intrinsic --platformdg2 | FileCheck %s
+; RUN: igc_opt %s -S -o - --igc-lower-implicit-arg-intrinsic --platformdg2 | FileCheck %s
 
 ; Explanation:
 ; This tests checks if intrinsic calls are being lowered correctly.

@@ -6,9 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-
-; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -igc-loop-split-wide-phis -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -igc-loop-split-wide-phis -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; LoopSplitWidePHIs
 ; ------------------------------------------------
