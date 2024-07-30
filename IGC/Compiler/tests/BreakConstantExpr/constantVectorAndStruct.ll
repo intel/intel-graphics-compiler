@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -10,7 +10,8 @@
 ; The test is derived from sycl test (multi_ptr_comparison_op).
 ;
 ;
-; RUN: igc_opt -igc-break-const-expr -S %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-break-const-expr -S %s | FileCheck %s
 ;=========================== begin_copyright_notice ============================
 ;
 ; CHECK-LABEL: define spir_kernel void @sycl_multi_ptr_comparison_op

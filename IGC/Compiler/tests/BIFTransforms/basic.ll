@@ -1,13 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: regkeys
+; REQUIRES: llvm-14-plus, regkeys
 ;
-; RUN: igc_opt -regkey EnableIntelFast=1 --igc-bif-transforms -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --opaque-pointers -regkey EnableIntelFast=1 --igc-bif-transforms -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; BIFTransforms
 ; ------------------------------------------------

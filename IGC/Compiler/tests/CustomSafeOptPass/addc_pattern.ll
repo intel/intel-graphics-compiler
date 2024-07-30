@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-gen-specific-pattern -S %s -o %t.ll
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-gen-specific-pattern -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
 define spir_kernel void @testkernel(i32 addrspace(1)* %arg_x) {

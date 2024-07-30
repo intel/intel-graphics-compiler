@@ -1,13 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: regkeys
+; REQUIRES: llvm-14-plus, regkeys
 ;
-; RUN: igc_opt -regkey ForceHoistDp3=1  -igc-custom-safe-opt -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -regkey ForceHoistDp3=1  -igc-custom-safe-opt -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; CustomSafeOptPass: Hoist dp3
 ; ------------------------------------------------

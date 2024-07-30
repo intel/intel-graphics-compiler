@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -debugify --igc-custom-safe-opt -check-debugify -S < %s 2>&1 | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -debugify --igc-custom-safe-opt -check-debugify -S < %s 2>&1 | FileCheck %s
 
 ; Debug-info related check
 ; CHECK-NOT: WARNING

@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-custom-unsafe-opt-pass -S %s -o %t.ll
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-custom-unsafe-opt-pass -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
 define void @test_half(half %x) #0 {

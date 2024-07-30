@@ -8,7 +8,7 @@
 ;
 ; REQUIRES: regkeys, llvm-14-plus
 ;
-; RUN: igc_opt %s -S -o - --igc-bfloat-funcs-resolution | FileCheck %s
+; RUN: igc_opt --opaque-pointers %s -S -o - --igc-bfloat-funcs-resolution | FileCheck %s
 
 ; This test verifies if BfloatFuncsResolution pass will not crash when function pointer is provided.
 

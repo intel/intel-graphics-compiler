@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -debugify -igc-correctly-rounded-div-sqrt -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=%SPV_CHECK_PREFIX%,CHECK
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -debugify -igc-correctly-rounded-div-sqrt -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=%SPV_CHECK_PREFIX%,CHECK
 ; ------------------------------------------------
 ; CorrectlyRoundedDivSqrt
 ; ------------------------------------------------

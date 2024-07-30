@@ -1,13 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: regkeys
+; REQUIRES: llvm-14-plus, regkeys
 ;
-; RUN: igc_opt -regkey PrintToConsole=1 -CoalescingEngine -S 2>&1 < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -regkey PrintToConsole=1 -CoalescingEngine -S 2>&1 < %s | FileCheck %s
 ; ------------------------------------------------
 ; CoalescingEngine
 ; ------------------------------------------------

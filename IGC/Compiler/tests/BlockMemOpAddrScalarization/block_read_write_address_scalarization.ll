@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -block-memop-addr-scalar -S %s -o %t.ll
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -block-memop-addr-scalar -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
 declare void @llvm.genx.GenISA.simdBlockWrite.p1i32.i32(i32 addrspace(1)*, i32)

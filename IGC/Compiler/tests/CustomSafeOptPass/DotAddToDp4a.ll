@@ -6,7 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --platformdg2 -igc-custom-safe-opt -S < %s --dce | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --platformdg2 -igc-custom-safe-opt -S < %s --dce | FileCheck %s
 ; ------------------------------------------------
 ; CustomSafeOptPass: DotAddToDp4a
 ; ------------------------------------------------

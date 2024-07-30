@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2017-2021 Intel Corporation
+; Copyright (C) 2017-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-custom-safe-opt -S %s -o %t.ll
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-custom-safe-opt -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
 define void @testkernel1(i64 %x, i64 %y) nounwind {

@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt  -adv-codemotion-cm=1 -igc-advcodemotion -S < %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers  -adv-codemotion-cm=1 -igc-advcodemotion -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; AdvCodeMotion
 ; ------------------------------------------------

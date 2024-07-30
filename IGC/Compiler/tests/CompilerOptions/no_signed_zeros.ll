@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2017-2021 Intel Corporation
+; Copyright (C) 2017-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-process-func-attributes -igc-set-fast-math-flags -S %s -o %t.ll
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-process-func-attributes -igc-set-fast-math-flags -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
 define void @testnsz1(float %a, float %b) {
