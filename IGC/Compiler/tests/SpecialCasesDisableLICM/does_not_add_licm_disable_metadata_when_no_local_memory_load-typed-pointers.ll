@@ -6,8 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --igc-special-cases-disable-licm -S < %s | FileCheck %s
+; RUN: igc_opt --igc-special-cases-disable-licm -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; SpecialCasesDisableLICM
 ; ------------------------------------------------

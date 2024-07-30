@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023-2024 Intel Corporation
+; Copyright (C) 2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -8,8 +8,8 @@
 ; The test checks if stack overflow detection builtins are inserted to entry point
 ; in the presense of appropriate registry key.
 ;
-; REQUIRES: llvm-14-plus, regkeys
-; RUN: igc_opt --opaque-pointers --igc-stackoverflow-detection -regkey StackOverflowDetection -S %s | FileCheck %s
+; REQUIRES: regkeys
+; RUN: igc_opt --igc-stackoverflow-detection -regkey StackOverflowDetection -S %s | FileCheck %s
 ;
 
 define spir_kernel void @test(i64 %addr) #0 {

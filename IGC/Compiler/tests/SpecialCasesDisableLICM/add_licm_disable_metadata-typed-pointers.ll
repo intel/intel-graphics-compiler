@@ -6,22 +6,20 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --igc-special-cases-disable-licm -S < %s | FileCheck %s
+; RUN: igc_opt --igc-special-cases-disable-licm -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; SpecialCasesDisableLICM
 ; ------------------------------------------------
 
 
 ; CHECK-LABEL: @test_loop(
-; CHECK-NOT: br i1 %loop_exit_compare, label %after_loop, label %header, !llvm.loop !0
+; CHECK: br i1 %loop_exit_compare, label %after_loop, label %header, !llvm.loop !0
 
-; CHECK-NOT: !0 = distinct !{!0, !1}
-; CHECK-NOT: !1 = !{!"llvm.licm.disable"}
+; CHECK: !0 = distinct !{!0, !1}
+; CHECK: !1 = !{!"llvm.licm.disable"}
 
-; In this case the llvm.licm.disable should not be added because
-; not adding barriers when using global memory in a loop is an API issue.
-@.red.__local = internal addrspace(0) global i32 zeroinitializer
+
+@.red.__local = internal addrspace(3) global i32 zeroinitializer
 
 define spir_kernel void @test_loop(i32 addrspace(1)* noalias %out, i32 %what_to_add) {
 entry:
@@ -36,9 +34,9 @@ header:                                           ; preds = %loop_end, %entry
   br i1 %loop_compare, label %loop_body, label %loop_end
 
 loop_body:                                        ; preds = %header
-  %loaded_value = load i32, i32 addrspace(0)* @.red.__local
+  %loaded_value = load i32, i32 addrspace(3)* @.red.__local
   %added_value = add i32 %loaded_value, %what_to_add
-  store i32 %added_value, i32 addrspace(0)* @.red.__local
+  store i32 %added_value, i32 addrspace(3)* @.red.__local
   br label %loop_end
 
 loop_end:                                         ; preds = %loop_body, %header
@@ -47,7 +45,7 @@ loop_end:                                         ; preds = %loop_body, %header
   br i1 %loop_exit_compare, label %after_loop, label %header
 
 after_loop:                                       ; preds = %loop_end
-  %loaded_local_final = load i32, i32 addrspace(0)* @.red.__local
+  %loaded_local_final = load i32, i32 addrspace(3)* @.red.__local
   store i32 %loaded_local_final, i32 addrspace(1)* %out
   ret void
 }

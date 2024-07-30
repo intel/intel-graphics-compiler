@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers %s -S -o - -simplifycfg -gen-tti | FileCheck -check-prefix=CHECK %s
+; RUN: igc_opt %s -S -o - -simplifycfg -gen-tti | FileCheck -check-prefix=CHECK %s
 
 ; This test checks that SimplifyCFG do not merge nodes with expensive math intrinsics
 ; such as sqrt, sin, cos

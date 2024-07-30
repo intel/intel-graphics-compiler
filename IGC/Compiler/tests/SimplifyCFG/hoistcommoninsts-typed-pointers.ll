@@ -1,12 +1,12 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023-2024 Intel Corporation
+; Copyright (C) 2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --opaque-pointers --simplifycfg -hoist-common-insts=true -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --simplifycfg -hoist-common-insts=true -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ;
 ; Checks that SimplyCFG pass hoists common instructions
