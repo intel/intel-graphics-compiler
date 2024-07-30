@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-process-func-attributes -S < %s 2>&1 | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --igc-process-func-attributes -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ;
 ; Checks that alwaysinline attibute is set for __builtin_ and not set for simple function

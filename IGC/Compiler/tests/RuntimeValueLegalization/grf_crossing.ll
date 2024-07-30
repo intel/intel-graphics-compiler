@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-runtimevalue-legalization-pass -S %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-runtimevalue-legalization-pass -S %s | FileCheck %s
 
 define void @main(i32 %idx) #0 {
 entry:
@@ -17,7 +18,7 @@ entry:
   ; CHECK: [[VALUE2:%[a-zA-Z0-9_.%-]+]] = call <9 x i32> @llvm.genx.GenISA.RuntimeValue.v9i32(i32 0)
   ; CHECK-NEXT:[[VALUE3:%[a-zA-Z0-9_.%-]+]] = add i32 %idx, 7
   ; CHECK-NEXT [[VALUE4:%[a-zA-Z0-9_.%-]+]] = extractelement <9 x i32> %[[VALUE3]], i32 %idx
-  ; CHECK-NEXT call void @foo(i32 [[VALUE4]])  
+  ; CHECK-NEXT call void @foo(i32 [[VALUE4]])
   call void @foo(i32 %1)
 
   ; verify that overlapping scalar and vector instructions are merged and GRF aligned
@@ -49,7 +50,7 @@ entry:
   ; CHECK-NEXT: [[VALUE14:%[a-zA-Z0-9_.%-]+]] = add i32 %idx, 14
   ; CHECK-NEXT: [[VALUE15:%[a-zA-Z0-9_.%-]+]] = extractelement <18 x i32> [[VALUE13]], i32 [[VALUE14]]
   ; CHECK-NEXT: call void @foo(i32 [[VALUE15]])
-  
+
   ret void
 }
 

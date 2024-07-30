@@ -1,14 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: regkeys
+; REQUIRES: llvm-14-plus, regkeys
 ;
-; RUN: igc_opt -regkey TestIGCPreCompiledFunctions=1 -regkey ForceEmuKind=213 %s -S -o - --platformmtl --igc-precompiled-import | FileCheck %s
+; RUN: igc_opt --opaque-pointers -regkey TestIGCPreCompiledFunctions=1 -regkey ForceEmuKind=213 %s -S -o - --platformmtl --igc-precompiled-import | FileCheck %s
 ; ------------------------------------------------
 ; PreCompiledFuncImport
 ;

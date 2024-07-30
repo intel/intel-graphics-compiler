@@ -5,8 +5,8 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: regkeys
-; RUN: igc_opt --regkey EnablePrivMemNewSOATranspose=0 --igc-private-mem-resolution -S < %s 2>&1 | FileCheck %s
+; REQUIRES: llvm-14-plus, regkeys
+; RUN: igc_opt --opaque-pointers --regkey EnablePrivMemNewSOATranspose=0 --igc-private-mem-resolution -S < %s 2>&1 | FileCheck %s
 
 ; reduced from the following:
 ; int a[1000];

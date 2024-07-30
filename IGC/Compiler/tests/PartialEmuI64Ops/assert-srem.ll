@@ -1,12 +1,12 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ; UNSUPPORTED: system-windows
-; REQUIRES: debug
+; REQUIRES: llvm-14-plus, debug
 ;
 ; RUN: not igc_opt -platformdg2 --igc-PartialEmuI64Ops -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------

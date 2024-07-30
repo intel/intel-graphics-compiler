@@ -1,13 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2017-2021 Intel Corporation
+; Copyright (C) 2017-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
 ; Ensure that there are no calls to the llvm.memcpy intrinsics
-; RUN: igc_opt -igc-replace-unsupported-intrinsics -verify -S < %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-replace-unsupported-intrinsics -verify -S < %s | FileCheck %s
 
 ; CHECK-NOT: "llvm.memcpy"
 ; CHECK: attributes

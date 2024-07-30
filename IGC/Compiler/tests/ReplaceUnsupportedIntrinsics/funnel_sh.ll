@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-replace-unsupported-intrinsics -verify -S %s -o %t
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-replace-unsupported-intrinsics -verify -S %s -o %t
 ; RUN: FileCheck %s < %t
 
 define i8 @A0(i8, i8, i8) {

@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-runtimevalue-legalization-pass -S %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-runtimevalue-legalization-pass -S %s | FileCheck %s
 
 define void @entry(<8 x i32> %r0, i8* %privateBase) #0 {
 GlobalScopeInitialization:

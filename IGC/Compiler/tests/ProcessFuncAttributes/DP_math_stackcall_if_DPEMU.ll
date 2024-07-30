@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -12,9 +12,9 @@
 ;         When igc_opt's output will include "visaStackCall", this test shall
 ;         test 'visaStackCall"
 ;
-; REQUIRES: regkeys
+; REQUIRES: llvm-14-plus, regkeys
 ;
-; RUN: igc_opt %s -ocl -regkey EnableDPEmulation=1 \
+; RUN: igc_opt --opaque-pointers %s -ocl -regkey EnableDPEmulation=1 \
 ; RUN:            --platformdg2 --igc-process-func-attributes -S \
 ; RUN:   | FileCheck %s
 

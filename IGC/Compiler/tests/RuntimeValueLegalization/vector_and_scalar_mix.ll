@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-runtimevalue-legalization-pass -S %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-runtimevalue-legalization-pass -S %s | FileCheck %s
 
 define void @main(i32 %idx) #0 {
 entry:
@@ -19,7 +20,7 @@ entry:
   ; CHECK: %1 = call i32 @llvm.genx.GenISA.RuntimeValue.i32(i32 1)
   call void @foo(i32 %1)
 
-  ; verify that the vector instruction is not affected by the scalar 
+  ; verify that the vector instruction is not affected by the scalar
   ; instructions with offsets immediately beofre and after
   %2 = call <2 x i32> @llvm.genx.GenISA.RuntimeValue.v2i32(i32 2)
   %3 = extractelement <2 x i32> %2, i32 %idx
@@ -30,7 +31,7 @@ entry:
   ; CHECK: %4 = call i32 @llvm.genx.GenISA.RuntimeValue.i32(i32 4)
   call void @foo(i32 %4)
 
-  ; verify that the two vector instructions with consecutive offsets are not 
+  ; verify that the two vector instructions with consecutive offsets are not
   ; modified
   %5 = call <2 x i32> @llvm.genx.GenISA.RuntimeValue.v2i32(i32 6)
   %6 = extractelement <2 x i32> %5, i32 %idx
@@ -57,7 +58,7 @@ entry:
   ; CHECK-NEXT: [[VALUE3:%[a-zA-Z0-9_.%-]+]] = add i32 %idx, 2
   ; CHECK-NEXT: [[VALUE4:%[a-zA-Z0-9_.%-]+]] = extractelement <6 x i32> [[VALUE2]], i32 [[VALUE3]]
   ; CHECK-NEXT: call void @foo(i32 [[VALUE4]])
-  
+
   ; verify that overlapping scalar and vector instructions are merged
   %13 = call <4 x i32> @llvm.genx.GenISA.RuntimeValue.v4i32(i32 16)
   %14 = extractelement <4 x i32> %13, i32 %idx

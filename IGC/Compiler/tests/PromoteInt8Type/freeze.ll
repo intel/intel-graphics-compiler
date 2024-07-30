@@ -1,12 +1,12 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -enable-debugify --igc-promoteint8type -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --opaque-pointers -enable-debugify --igc-promoteint8type -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; PromoteInt8Type : Freeze
 ; ------------------------------------------------
