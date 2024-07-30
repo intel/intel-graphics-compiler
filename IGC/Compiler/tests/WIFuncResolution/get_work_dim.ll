@@ -1,12 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2017-2021 Intel Corporation
+; Copyright (C) 2017-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-wi-func-resolution -S %s -o %t.ll
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-wi-func-resolution -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
 declare i32 @__builtin_IB_get_work_dim()

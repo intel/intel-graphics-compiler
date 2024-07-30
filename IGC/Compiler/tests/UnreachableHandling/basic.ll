@@ -1,13 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: regkeys
-;
-; RUN: igc_opt -igc-unreachable-handling -S < %s 2>&1 | FileCheck %s
+; REQUIRES: llvm-14-plus, regkeys
+
+; RUN: igc_opt --opaque-pointers -igc-unreachable-handling -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; UnreachableHandling
 ; ------------------------------------------------
@@ -22,7 +22,7 @@ define void @test_unreachable_end(i1 %src) {
 ; CHECK-NEXT:    ret void
 ; CHECK:       b:
 ; CHECK-NEXT:    ret void
-;
+
   br i1 %src, label %a, label %b
 a:
   unreachable
@@ -38,7 +38,7 @@ define void @test_unreachable_inst_after(i1 %src) {
 ; CHECK:       1:
 ; CHECK-NEXT:    [[TMP2:%.*]] = add i1 [[SRC:%.*]], [[SRC]]
 ; CHECK-NEXT:    ret void
-;
+
   unreachable
   %2 = add i1 %src, %src
   ret void

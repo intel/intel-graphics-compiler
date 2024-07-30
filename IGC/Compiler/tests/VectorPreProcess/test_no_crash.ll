@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2017-2021 Intel Corporation
+; Copyright (C) 2017-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -11,7 +11,9 @@
 ;;                When handeleing the instruction and replacing it with another.
 ;;               the mapping needs to be updated with the new instruction
 
-; RUN: igc_opt -igc-vectorpreprocess -S %s -o %t.ll
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-vectorpreprocess -S %s -o %t.ll
 
 ; CHECK: target
 

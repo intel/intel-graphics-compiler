@@ -1,31 +1,31 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: debug
-;
-; RUN: igc_opt --igc-wi-analysis -S < %s 2>&1 | FileCheck %s
+; REQUIRES: llvm-14-plus, debug
+
+; RUN: igc_opt --opaque-pointers --igc-wi-analysis -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; WIAnalysis
 ; ------------------------------------------------
 
 ; This test checks optional warning message for non-uniform OpGroupBroadcast.
-;
+
 ; LLVM IR reduced from OpenCL test kernels:
-;
+
 ; __kernel void test_uniform(global int *dst, int src)
 ; {
 ;     dst[0] = sub_group_broadcast(src, 0);
 ; }
-;
+
 ; __kernel void test_nonuniform(global int *dst, int src)
 ; {
 ;     dst[0] = sub_group_broadcast(src, get_global_id(0));
 ; }
-;
+
 
 ; CHECK-NOT: Detected llvm.genx.GenISA.WaveBroadcast{{.*}}kernel test_uniform
 ; CHECK:     Detected llvm.genx.GenISA.WaveBroadcast{{.*}}kernel test_nonuniform
