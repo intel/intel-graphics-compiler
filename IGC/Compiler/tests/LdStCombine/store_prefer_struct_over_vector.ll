@@ -1,21 +1,21 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2017-2023 Intel Corporation
+; Copyright (C) 2017-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
+
 ; LdStCombine can use either vector and struct as the final stored value.
 ; This test is test that a struct is prefered over a vector to avoid additional
 ; bitcast instructions.
 
-; REQUIRES: regkeys
-;
-; RUN:   igc_opt %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=1 \
+; REQUIRES: llvm-14-plus, regkeys
+
+; RUN: igc_opt --opaque-pointers %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=1 \
 ; RUN:           -platformbmg \
 ; RUN: | FileCheck %s
-;
+
 ; CHECK-LABEL: target datalayout
 ; CHECK:       %__StructSOALayout_ = type <{ float, i32 }>
 ; CHECK-LABEL: define spir_kernel void @test_st

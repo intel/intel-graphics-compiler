@@ -1,18 +1,18 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2017-2023 Intel Corporation
+; Copyright (C) 2017-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: regkeys
-;
-; RUN:   igc_opt %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=5 \
+; REQUIRES: llvm-14-plus, regkeys
+
+; RUN: igc_opt --opaque-pointers %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=5 \
 ; RUN:           -platformbmg \
 ; RUN: | FileCheck %s
 
-;
+
 ; CHECK-LABEL: target datalayout
 ; Those are new struct types, skip check them as their names are not fixed and checking isn't critical
 ; %__StructSOALayout_ = type <{ i32, i32, %__StructAOSLayout_, i32 }>
@@ -38,13 +38,13 @@ entry:
   %add.i.i.i = add i32 %mul.i.i.i, %localIdX2
   %add4.i.i.i = add i32 %add.i.i.i, %scalar27
   %conv.i.i.i = zext i32 %add4.i.i.i to i64
-;
+
 ; case 0: load <2 x i32>; load <2 x i16>; load i32; -> load <4 x i32>
-;
+
 ; CHECK-LABEL: define spir_kernel void @test_st
 ; CHECK: [[T0:%.*]] = load <4 x i32>
 ; CHECK: {{.*}} = call %__StructSOALayout_ @llvm.genx.GenISA.bitcasttostruct.__StructSOALayout_.v4i32(<4 x i32> [[T0]])
-;
+
   %c0.base = add i64 %conv.i.i.i, 16
   %c0.arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %si, i64 %c0.base
   %c0.si.2i32 = bitcast i32 addrspace(1)* %c0.arrayidx to <2 x i32> addrspace(1)*
@@ -67,13 +67,13 @@ entry:
   %c0.addr.1 = bitcast i32 addrspace(1)* %c0.outidx to <4 x i32> addrspace(1)*
   store <4 x i32> %c0.v.2, <4 x i32> addrspace(1)* %c0.addr.1, align 4
 
-;
+
 ; case 1: load i16; load i16, load i64; -> load <3 x i32>
-;
+
 ; CHECK-LABEL: c1.base
 ; CHECK: [[T1:%.*]] = load <3 x i32>
 ; CHECK: {{.*}} = call %__StructSOALayout_.1 @llvm.genx.GenISA.bitcasttostruct.__StructSOALayout_.1.v3i32(<3 x i32> [[T1]])
-;
+
   %c1.base = add i64 %conv.i.i.i, 16
   %c1.arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %si, i64 %c1.base
   %c1.si.i16 = bitcast i32 addrspace(1)* %c1.arrayidx to i16 addrspace(1)*
@@ -96,16 +96,16 @@ entry:
   %c1.addr.1 = bitcast i32 addrspace(1)* %c1.outidx to <3 x i32> addrspace(1)*
   store <3 x i32> %c1.v.2, <3 x i32> addrspace(1)* %c1.addr.1, align 4
 
-;
+
 ; case 2: load i16; load <2xi32>; load i16 -> load <3 x i32>
 ;     note: <2xi32> is split into {i16, i16, i16, i16}
 ;           This happens for packed/mis-aligned loads
-;
+
 ; CHECK-LABEL: c2.base
 ; CHECK: [[T2:%.*]] = load <3 x i32>
 ; CHECK: {{.*}} = call %__StructSOALayout_.2 @llvm.genx.GenISA.bitcasttostruct.__StructSOALayout_.2.v3i32(<3 x i32> [[T2]])
 ; ret void
-;
+
   %c2.base = add i64 %conv.i.i.i, 64
   %c2.arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %si, i64 %c2.base
   %c2.si.i16 = bitcast i32 addrspace(1)* %c2.arrayidx to i16 addrspace(1)*
@@ -127,20 +127,20 @@ entry:
   %c2.addr.1 = bitcast i32 addrspace(1)* %c2.outidx to <3 x i32> addrspace(1)*
   store <3 x i32> %c2.v.2, <3 x i32> addrspace(1)* %c2.addr.1, align 4
 
-;
+
 ; case 3:
-;
+
 ; case 3: load i8; load <2xi8>; load <3xi8>; load <i16> -> load <2 x i32>
 ;     note: <3xi8> is split into {i8, i8, i8} and the first i8 is in the 1st
 ;           AOS struct <{i8, <2xi8>, i8}>, and the remaining two are in the
 ;           second and different AOS struct <{i8, i8, i16}>.
 ;           (This test is actually from OCL conformance basic/vector_creation)
-;
+
 ; CHECK-LABEL: c3.base
 ; CHECK: [[T3:%.*]] = load <2 x i32>
 ; CHECK: {{.*}} = call %__StructSOALayout_.5 @llvm.genx.GenISA.bitcasttostruct.__StructSOALayout_.5.v2i32(<2 x i32> [[T3]])
 ; ret void
-;
+
   %c3.base = add i64 %conv.i.i.i, 96
   %c3.arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %si, i64 %c3.base
   %c3.si.i8 = bitcast i32 addrspace(1)* %c3.arrayidx to i8 addrspace(1)*

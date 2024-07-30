@@ -1,15 +1,15 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2017-2023 Intel Corporation
+; Copyright (C) 2017-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
 
-; REQUIRES: regkeys
-;
-; RUN:   igc_opt %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=5 \
+; REQUIRES: llvm-14-plus, regkeys
+
+; RUN: igc_opt --opaque-pointers %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=5 \
 ; RUN:           -platformbmg \
 ; RUN: | FileCheck %s
 
@@ -21,13 +21,13 @@ target triple = "spir64-unknown-unknown"
 define spir_kernel void @test_usevector(i64 addrspace(1)* %d, i64 addrspace(1)* %ss, i16 %localIdX, i16 %localIdY, i16 %localIdZ) {
 entry:
   %conv.i.i = zext i16 %localIdX to i64
-;
+
 ; case 0:  load i32; load i64; load float; load <4xi32>
 ;          No struct, just a plain vector load
-;
+
 ; CHECK-LABEL: define spir_kernel void @test_usevector
 ; CHECK: load <4 x i32>
-;
+
   %c0.base = add i64 %conv.i.i, 8
   %c0.arrayidx = getelementptr inbounds i64, i64 addrspace(1)* %ss, i64 %c0.base
   %c0.addr = bitcast i64 addrspace(1)* %c0.arrayidx to i32 addrspace(1)*
@@ -38,7 +38,7 @@ entry:
   %c0.arrayidx.2 = getelementptr inbounds i32, i32 addrspace(1)* %c0.addr, i64 3
   %c0.addr.2 = bitcast i32 addrspace(1)* %c0.arrayidx.2 to float addrspace(1)*
   %c0.2 = load float, float addrspace(1)* %c0.addr.2, align 4
-;
+
   %c0.arrayidx1.0 = getelementptr inbounds i64, i64 addrspace(1)* %d, i64 %c0.base
   %c0.0.0 = zext i32 %c0.0 to i64
   %c0.0.1 = shl i64 %c0.0.0, 32
@@ -50,19 +50,19 @@ entry:
   %c0.arrayidx1.1 = getelementptr inbounds i64, i64 addrspace(1)* %d, i64 %c0.add
   store i64 %c0.1, i64 addrspace(1)* %c0.arrayidx1.1, align 8
 
-;
+
 ; case 1:  load i64; load i64; load float; load <2xi64>
-;
+
 ; CHECK-LABEL: c1.base
 ; CHECK: load <2 x i64>
 ; ret void
-;
+
   %c1.base = add i64 %conv.i.i, 64
   %c1.arrayidx = getelementptr inbounds i64, i64 addrspace(1)* %ss, i64 %c1.base
   %c1.0 = load i64, i64 addrspace(1)* %c1.arrayidx, align 8
   %c1.arrayidx.1 = getelementptr inbounds i64, i64 addrspace(1)* %c1.arrayidx, i64 1
   %c1.1 = load i64, i64 addrspace(1)* %c1.arrayidx.1, align 4
-;
+
   %c1.0.0 = insertelement <2 x i64> undef,   i64 %c1.0, i64 0
   %c1.0.1 = insertelement <2 x i64> %c1.0.0, i64 %c1.1, i64 1
   %c1.arrayidx1.0 = getelementptr inbounds i64, i64 addrspace(1)* %d, i64 %c1.base

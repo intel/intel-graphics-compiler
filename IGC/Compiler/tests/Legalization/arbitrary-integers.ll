@@ -1,12 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-type-legalizer -S < %s | FileCheck %s
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-type-legalizer -S < %s | FileCheck %s
 
 ; Test checks illegal integer promotion for binary operands and insert/extract
 ; elements
@@ -22,7 +24,7 @@ define void @test_add(i8 %src) {
 ; CHECK:    [[TMP3:%.*]] = ashr i8 [[TMP2]], 2
 ; CHECK:    call void @use.i8(i8 [[TMP3]])
 ; CHECK:    ret void
-;
+
   %1 = trunc i8 %src to i6
   %2 = add i6 %1, %1
   %3 = sext i6 %2 to i8
@@ -39,7 +41,7 @@ define void @test_udiv(i8 %src1, i8 %src2) {
 ; CHECK:    [[DOTPROMOTE:%.*]] = udiv i8 [[DOTZEXT1]], [[DOTZEXT]]
 ; CHECK:    call void @use.i8(i8 [[DOTPROMOTE]])
 ; CHECK:    ret void
-;
+
   %1 = trunc i8 %src1 to i6
   %2 = trunc i8 %src2 to i6
   %3 = udiv i6 %1, %2
@@ -59,7 +61,7 @@ define void @test_sdiv(i8 %src1, i8 %src2) {
 ; CHECK:    [[DOTPROMOTE:%.*]] = sdiv i8 [[DOTRSEXT2]], [[DOTRSEXT]]
 ; CHECK:    call void @use.i8(i8 [[DOTPROMOTE]])
 ; CHECK:    ret void
-;
+
   %1 = trunc i8 %src1 to i6
   %2 = trunc i8 %src2 to i6
   %3 = sdiv i6 %1, %2
@@ -76,7 +78,7 @@ define void @test_shl(i8 %src1, i8 %src2) {
 ; CHECK:    [[DOTPROMOTE:%.*]] = shl i8 [[TMP1]], [[DOTZEXT]]
 ; CHECK:    call void @use.i8(i8 [[DOTPROMOTE]])
 ; CHECK:    ret void
-;
+
   %1 = trunc i8 %src1 to i6
   %2 = trunc i8 %src2 to i6
   %3 = shl i6 %1, %2
@@ -94,7 +96,7 @@ define void @test_lshr(i8 %src1, i8 %src2) {
 ; CHECK:    [[DOTPROMOTE:%.*]] = lshr i8 [[DOTZEXT1]], [[DOTZEXT]]
 ; CHECK:    call void @use.i8(i8 [[DOTPROMOTE]])
 ; CHECK:    ret void
-;
+
   %1 = trunc i8 %src1 to i6
   %2 = trunc i8 %src2 to i6
   %3 = lshr i6 %1, %2
@@ -112,7 +114,7 @@ define void @test_ashr(i8 %src1, i8 %src2) {
 ; CHECK:    [[DOTPROMOTE:%.*]] = lshr i8 [[DOTZEXT1]], [[DOTZEXT]]
 ; CHECK:    call void @use.i8(i8 [[DOTPROMOTE]])
 ; CHECK:    ret void
-;
+
   %1 = trunc i8 %src1 to i6
   %2 = trunc i8 %src2 to i6
   %3 = lshr i6 %1, %2
@@ -132,7 +134,7 @@ define void @test_extractelement_0(i16 %src) {
 ; CHECK:    [[TMP7:%.*]] = ashr i8 [[TMP6]], 4
 ; CHECK:    call void @use.i8(i8 [[TMP7]])
 ; CHECK:    ret void
-;
+
   %1 = trunc i16 %src to i12
   %2 = bitcast i12 %1 to <3 x i4>
   %3 = extractelement <3 x i4> %2, i32 0
@@ -151,7 +153,7 @@ define void @test_extractelement_1(i16 %src) {
 ; CHECK:    [[TMP6:%.*]] = ashr i8 [[TMP5]], 4
 ; CHECK:    call void @use.i8(i8 [[TMP6]])
 ; CHECK:    ret void
-;
+
   %1 = trunc i16 %src to i12
   %2 = bitcast i12 %1 to <3 x i4>
   %3 = extractelement <3 x i4> %2, i32 1
@@ -172,7 +174,7 @@ define void @test_insertelement_undef(i8 %src) {
 ; CHECK:    [[TMP8:%.*]] = and i16 [[TMP5]], [[TMP7]]
 ; CHECK:    call void @use.i16(i16 [[TMP8]])
 ; CHECK:    ret void
-;
+
   %1 = trunc i8 %src to i4
   %2 = insertelement <3 x i4> undef, i4 %1, i32 0
   %3 = insertelement <3 x i4> %2, i4 %1, i32 1
@@ -189,7 +191,7 @@ define void @test_insertelement_zero(i8 %src) {
 ; CHECK:    [[TMP2:%.*]] = zext i8 [[TMP1]] to i16
 ; CHECK:    call void @use.i16(i16 [[TMP2]])
 ; CHECK:    ret void
-;
+
   %1 = trunc i8 %src to i4
   %2 = insertelement <3 x i4> zeroinitializer, i4 %1, i32 0
   %3 = bitcast <3 x i4> %2 to i12
@@ -207,7 +209,7 @@ define i1 @test_icmp(i1 %src0, i1 %src1) {
 ; CHECK:    [[TMP3:%.*]] = and i8 [[TMP2]], 3
 ; CHECK:    [[TMP4:%.*]] = icmp ne i8 [[TMP3]], 0
 ; CHECK:    ret i1 [[TMP4]]
-;
+
   %1 = insertelement <2 x i1> undef, i1 %src0, i32 0
   %2 = insertelement <2 x i1> %1, i1 %src1, i32 1
   %3 = bitcast <2 x i1> %2 to i2

@@ -1,14 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2017-2023 Intel Corporation
+; Copyright (C) 2017-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: regkeys
-;
-; RUN:   igc_opt %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=5 \
+; REQUIRES: llvm-14-plus, regkeys
+
+; RUN: igc_opt --opaque-pointers %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=5 \
 ; RUN:           -platformbmg \
 ; RUN: | FileCheck %s
 
@@ -18,13 +18,13 @@ target triple = "spir64-unknown-unknown"
 
 ; CHECK-LABEL: target datalayout
 ; layout struct generated. The test needs to be adjusted if their names are different
-;
+
 ; %__StructSOALayout_ = type <{ float, %__StructAOSLayout_ }>
 ; %__StructAOSLayout_ = type <{ i8, i8, i8, i8 }>
 ; %__StructSOALayout_.1 = type <{ i32, %__StructAOSLayout_.0, float }>
 ; %__StructAOSLayout_.0 = type <{ i16, i16 }>
 ; %__StructSOALayout_.2 = type <{ %__StructAOSLayout_, %__StructAOSLayout_ }>
-;
+
 
  ; Function Attrs: convergent nounwind
 define spir_kernel void @test_st(i32 addrspace(1)* %d, i32 addrspace(1)* %si, float addrspace(1)* %sf, <8 x i32> %r0, <8 x i32> %payloadHeader, <3 x i32> %enqueuedLocalSize, i16 %localIdX, i16 %localIdY, i16 %localIdZ) {
@@ -37,13 +37,13 @@ entry:
   %add.i.i.i = add i32 %mul.i.i.i, %localIdX2
   %add4.i.i.i = add i32 %add.i.i.i, %scalar27
   %conv.i.i.i = zext i32 %add4.i.i.i to i64
-;
+
 ; case 0: load float; load i8; load i8; load i8; load i8 --> load <2 x i32>
-;
+
 ; CHECK-LABEL: define spir_kernel void @test_st
 ; CHECK: [[T0:%.*]] = load <2 x i32>
 ; CHECK: {{.*}} = call %__StructSOALayout_ @llvm.genx.GenISA.bitcasttostruct.__StructSOALayout_.v2i32(<2 x i32> [[T0]])
-;
+
   %c0.arrayidx = getelementptr inbounds float, float addrspace(1)* %sf, i64 %conv.i.i.i
   %c0.0 = load float, float addrspace(1)* %c0.arrayidx, align 4
   %c0.add = add nuw nsw i64 %conv.i.i.i, 1
@@ -68,13 +68,13 @@ entry:
   %c0.addr.0 = bitcast i32 addrspace(1)* %c0.outidx to <2 x i32> addrspace(1)*
   store <2 x i32> %c0.v2.1, <2 x i32> addrspace(1)* %c0.addr.0, align 4
 
-;
+
 ; case 1: load i32; load i16; load i16; load float -> load <3 x i32>
-;
+
 ; CHECK-LABEL: %c1.base
 ; CHECK: [[T1:%.*]] = load <3 x i32>
 ; CHECK: {{.*}} = call %__StructSOALayout_.1 @llvm.genx.GenISA.bitcasttostruct.__StructSOALayout_.1.v3i32(<3 x i32> [[T1]])
-;
+
   %c1.base = add i64 %conv.i.i.i, 64
   %c1.arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %si, i64 %c1.base
   %c1.0 = load i32, i32 addrspace(1)* %c1.arrayidx, align 4
@@ -104,12 +104,12 @@ entry:
 ;         Manually created to handle mis-aligned load that could come from packed struct.
 ;         Note: <2xi16> is split into {i8, i8, i8, i8} and the first three i8's are in the first AOS
 ;               struct <{i8, i8, i8, i8}>, where the last i8 is in the second AOS struct <{i8, <3xi8>}>
-;
+
 ; CHECK-LABEL: %c2.base
 ; CHECK: [[T2:%.*]] = load <2 x i32>
 ; CHECK: {{.*}} = call %__StructSOALayout_.2 @llvm.genx.GenISA.bitcasttostruct.__StructSOALayout_.2.v2i32(<2 x i32> [[T2]])
 ; CHECK: ret void
-;
+
   %c2.base = add i64 %conv.i.i.i, 96
   %c2.arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %si, i64 %c2.base
   %c2.si.i8 = bitcast i32 addrspace(1)* %c2.arrayidx to i8 addrspace(1)*

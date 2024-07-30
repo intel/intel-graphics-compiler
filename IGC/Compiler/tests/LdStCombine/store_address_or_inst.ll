@@ -1,15 +1,15 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2017-2023 Intel Corporation
+; Copyright (C) 2017-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
 
-; REQUIRES: regkeys
-;
-; RUN:   igc_opt %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=1 \
+; REQUIRES: llvm-14-plus, regkeys
+
+; RUN: igc_opt --opaque-pointers %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=1 \
 ; RUN:           -platformbmg \
 ; RUN: | FileCheck %s
 
@@ -22,9 +22,9 @@
  ;        store <2 x i32> %v1, <2 x i32> addrspace(1)* %a3, align 8
  ;   combined into
  ;        store <4xi32>
- ;
+
  ; This is to test that symbolic expression can handle 'or' and 'shl' instructions
- ;
+
  ; CHECK-LABEL: target datalayout
  ; CHECK: %__StructSOALayout_ = type <{ <2 x i32>, <2 x i32> }>
  ; CHECK-LABEL: define spir_kernel void @test_st

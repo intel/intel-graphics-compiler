@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2017-2023 Intel Corporation
+; Copyright (C) 2017-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -19,19 +19,19 @@
 ;    int ret = as_int(vc);
 ;    d[ix] = ret;
 ; }
-;
+
 ; The test is to show barrier will block load merging across it.
 ;    load i8; load i8; barrier; load i8; load i8; -> load <2xi8>; barrier; load <2xi8>
 ;      No load <4 x i8>
 
-; REQUIRES: regkeys
-;
-; RUN:   igc_opt %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=5 \
+; REQUIRES: llvm-14-plus, regkeys
+
+; RUN: igc_opt --opaque-pointers %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=5 \
 ; RUN:           -platformbmg \
 ; RUN: | FileCheck %s
 
 
- ;
+
  ; CHECK-LABEL: define spir_kernel void @test_fence
  ; CHECK: load <2 x i8>
  ; CHECK: call void @llvm.genx.GenISA.memoryfence

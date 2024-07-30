@@ -1,46 +1,46 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2017-2023 Intel Corporation
+; Copyright (C) 2017-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
+
 ; To test using vector as the final value. The sub-values have constant, which
 ; is taked as either float or int.
-;
+
 ; The test is derived from the following ocl test:
-;
+
 ; #pragma OPENCL EXTENSION cl_khr_fp64 : enable
-;
+
 ; typedef struct {
 ;   long   l0;
 ;   double d0;
 ; } dw1_t;
-;
-;
+
+
 ; kernel void test_vector(global char* d,
 ;   global long* sl, global double* sd, int offset)
 ; {
 ;    size_t ix = get_local_id(0);
 ;    double d0 = sd[ix];
 ;    long l0 = sl[ix];
-;
+
 ;    dw1_t x0 = {0x10101, d0};
 ;    global dw1_t* p = (global dw1_t*)d;
 ;    p[ix] = x0;
-;
+
 ;    dw1_t x1 = {l0, 1.0};
 ;    p[ix + offset] = x1;
 ; }
 
 
-; REQUIRES: regkeys
-;
-; RUN:   igc_opt %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=1 \
+; REQUIRES: llvm-14-plus, regkeys
+
+; RUN: igc_opt --opaque-pointers %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=1 \
 ; RUN:           -platformbmg \
 ; RUN: | FileCheck %s
-;
+
 ; CHECK-LABEL: define spir_kernel void @test_vector
 ; CHECK:       store <2 x double>
 ; CHECK:       store <2 x i64>

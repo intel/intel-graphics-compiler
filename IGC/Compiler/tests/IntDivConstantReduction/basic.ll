@@ -1,12 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt -igc-intdiv-red -S < %s | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-intdiv-red -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; IntDivConstantReduction
 ; ------------------------------------------------
@@ -15,7 +17,7 @@ define spir_kernel void @test_div_1(i32 %src1) {
 ; CHECK-LABEL: @test_div_1(
 ; CHECK:    call void @use.i32(i32 %src1)
 ; CHECK:    ret void
-;
+
   %1 = udiv i32 %src1, 1
   call void @use.i32(i32 %1)
   ret void
@@ -25,7 +27,7 @@ define spir_kernel void @test_rem_1(i32 %src1) {
 ; CHECK-LABEL: @test_rem_1(
 ; CHECK:    call void @use.i32(i32 0)
 ; CHECK:    ret void
-;
+
   %1 = urem i32 %src1, 1
   call void @use.i32(i32 %1)
   ret void
@@ -36,7 +38,7 @@ define spir_kernel void @test_sdiv_neg1(i32 %src1) {
 ; CHECK:    [[TMP1:%.*]] = sub i32 0, %src1
 ; CHECK:    call void @use.i32(i32 [[TMP1]])
 ; CHECK:    ret void
-;
+
   %1 = sdiv i32 %src1, -1
   call void @use.i32(i32 %1)
   ret void
@@ -46,7 +48,7 @@ define spir_kernel void @test_srem_neg1(i32 %src1) {
 ; CHECK-LABEL: @test_srem_neg1(
 ; CHECK:    call void @use.i32(i32 0)
 ; CHECK:    ret void
-;
+
   %1 = srem i32 %src1, -1
   call void @use.i32(i32 %1)
   ret void
@@ -57,7 +59,7 @@ define spir_kernel void @test_div_4(i32 %src1) {
 ; CHECK:    [[TMP1:%.*]] = lshr i32 %src1, 2
 ; CHECK:    call void @use.i32(i32 [[TMP1]])
 ; CHECK:    ret void
-;
+
   %1 = udiv i32 %src1, 4
   call void @use.i32(i32 %1)
   ret void
@@ -76,7 +78,7 @@ define spir_kernel void @test_sdiv_neg4(i32 %src1) {
 ; CHECK:    [[QOT:%.*]] = sub i32 0, [[NEG_QOT]]
 ; CHECK:    call void @use.i32(i32 [[QOT]])
 ; CHECK:    ret void
-;
+
   %1 = sdiv i32 %src1, -4
   call void @use.i32(i32 %1)
   ret void
@@ -96,7 +98,7 @@ define spir_kernel void @test_sdiv_neg3(i32 %src1) {
 ; CHECK:    [[Q_APPX24:%.*]] = phi i32 [ [[Q_APPX2]], [[TMP0:%.*]] ], [ [[Q_APPX23]], [[COND_ADD]] ]
 ; CHECK:    call void @use.i32(i32 [[Q_APPX24]])
 ; CHECK:    ret void
-;
+
   %1 = sdiv i32 %src1, -3
   call void @use.i32(i32 %1)
   ret void
@@ -108,7 +110,7 @@ define spir_kernel void @test_div_3(i32 %src1) {
 ; CHECK:    [[Q_APPX1:%.*]] = lshr i32 [[Q_APPX]], 1
 ; CHECK:    call void @use.i32(i32 [[Q_APPX1]])
 ; CHECK:    ret void
-;
+
   %1 = udiv i32 %src1, 3
   call void @use.i32(i32 %1)
   ret void
@@ -127,7 +129,7 @@ define spir_kernel void @test_sdiv_max(i32 %src1) {
 ; CHECK:    [[QOT:%.*]] = sub i32 0, [[NEG_QOT]]
 ; CHECK:    call void @use.i32(i32 [[QOT]])
 ; CHECK:    ret void
-;
+
   %1 = sdiv i32 %src1, -2147483648
   call void @use.i32(i32 %1)
   ret void
@@ -139,7 +141,7 @@ define spir_kernel void @test_udiv_max(i32 %src1) {
 ; CHECK:    [[Q_APPX1:%.*]] = lshr i32 [[Q_APPX]], 31
 ; CHECK:    call void @use.i32(i32 [[Q_APPX1]])
 ; CHECK:    ret void
-;
+
   %1 = udiv i32 %src1, 4294967295
   call void @use.i32(i32 %1)
   ret void

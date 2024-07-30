@@ -6,7 +6,9 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-image-func-resolution %s -S -o - | FileCheck %s
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-image-func-resolution %s -S -o - | FileCheck %s
 
 ; Check that __builtin_IB_get_address_mode, __builtin_IB_get_snap_wa_reqd and
 ; __builtin_IB_is_normalized_coords builtins are replaced with 0 when sampler

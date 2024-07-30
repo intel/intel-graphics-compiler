@@ -1,15 +1,15 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2017-2023 Intel Corporation
+; Copyright (C) 2017-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
 
-; REQUIRES: regkeys
-;
-; RUN:   igc_opt %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=1 \
+; REQUIRES: llvm-14-plus, regkeys
+
+; RUN: igc_opt --opaque-pointers %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=1 \
 ; RUN:           -platformbmg \
 ; RUN: | FileCheck %s
 
@@ -22,7 +22,7 @@
  ;        insertvalue
  ;        insertvalue
  ;        store <2xi32>
- ;
+
  ; CHECK-LABEL: target triple
  ; CHECK: %__StructSOALayout_ = type <{ %__StructAOSLayout_, %__StructAOSLayout_.0 }>
  ; CHECK: %__StructAOSLayout_ = type <{ <2 x i16> }>

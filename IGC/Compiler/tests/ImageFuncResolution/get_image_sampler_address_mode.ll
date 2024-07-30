@@ -6,7 +6,9 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-image-func-resolution -S %s -o %t.ll
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-image-func-resolution -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
 %opencl.image2d_t = type opaque

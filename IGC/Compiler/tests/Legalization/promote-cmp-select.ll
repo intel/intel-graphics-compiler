@@ -1,12 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-type-legalizer -S < %s | FileCheck %s
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-type-legalizer -S < %s | FileCheck %s
 
 ; Test checks illegal integer promotion for cmp and select
 
@@ -27,7 +29,7 @@ define void @test_cmp(i8 %src1, i8 %src2) {
 ; CHECK:    [[TMP8:%.*]] = ashr i8 [[TMP7]], 5
 ; CHECK:    call void @use.i8(i8 [[TMP8]])
 ; CHECK:    ret void
-;
+
   %s1 = trunc i8 %src1 to i3
   %s2 = trunc i8 %src2 to i3
   %1 = icmp sle i3 %s1, %s2

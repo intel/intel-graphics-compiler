@@ -1,12 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2017-2022 Intel Corporation
+; Copyright (C) 2017-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-legalization -verify -S %s -o - | FileCheck %s
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-legalization -verify -S %s -o - | FileCheck %s
 
 define i8 @f1(i8 %a) #0 {
   %r = call i8 @llvm.bitreverse.i8(i8 %a)

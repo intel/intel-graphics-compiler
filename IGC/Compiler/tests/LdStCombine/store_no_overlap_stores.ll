@@ -1,30 +1,30 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2017-2023 Intel Corporation
+; Copyright (C) 2017-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
+
 ; The basicaa fail to find out that those store half instructions are not aliased
 ; to each other. Thus, for store instructions that share the same base and their
 ; offsets to the shared base are constant, checking their address overlapping can
 ; be done easily and can detect aliasing precisely without using basicaa. This test
 ; is to test such overlappin checking in store combining.
-;
-; Note: this test is from ocl test test_spir half (test.vstore_half_private_float3)
-;
-; REQUIRES: regkeys
-;
-; RUN:  igc_opt -S -inputocl %enable-basic-aa% -platformbmg \
-; RUN:          -igc-ldstcombine -regkey=EnableLdStCombine=1 %s | FileCheck %s
-;
 
-;
+; Note: this test is from ocl test test_spir half (test.vstore_half_private_float3)
+
+; REQUIRES: llvm-14-plus, regkeys
+
+; RUN: igc_opt --opaque-pointers -S -inputocl %enable-basic-aa% -platformbmg \
+; RUN:          -igc-ldstcombine -regkey=EnableLdStCombine=1 %s | FileCheck %s
+
+
+
 ; CHECK-LABEL: target triple
 ; CHECK:  %__StructSOALayout_ = type <{ %__StructAOSLayout_ }>
 ; CHECK:  %__StructAOSLayout_ = type <{ half, half }>
-;
+
 ; CHECK-LABEL: define spir_kernel void @test
 ; CHECK: [[TMP0:%.*]] = call i32 @llvm.genx.GenISA.bitcastfromstruct.i32.__StructSOALayout_
 ; CHECK: store i32 [[TMP0]],

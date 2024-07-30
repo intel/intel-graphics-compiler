@@ -1,12 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-type-legalizer -S < %s | FileCheck %s
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-type-legalizer -S < %s | FileCheck %s
 
 ; Test checks phi promotion
 
@@ -19,7 +21,7 @@ define void @test_phi(i1 %src) {
 ; CHECK:    [[TMP2:%.*]] = ashr i8 [[TMP1]], 4
 ; CHECK:    call void @use.i8(i8 [[TMP2]])
 ; CHECK:    ret void
-;
+
   br i1 %src, label %b1, label %b2
 b1:
   %1 = add i4 5, 7

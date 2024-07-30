@@ -1,14 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; REQUIRES: regkeys
-; RUN: igc_opt --regkey PrintToConsole --igc-inst-stat-licm --igc-inst-stat-th 4 --licm --enable-instrstat-print -igc-serialize-metadata -S < %s 2>&1 | FileCheck %s --check-prefix=EXCEEDED
-; RUN: igc_opt --regkey PrintToConsole --igc-inst-stat-licm --igc-inst-stat-th 5 --licm --enable-instrstat-print -igc-serialize-metadata -S < %s 2>&1 | FileCheck %s
+
+; REQUIRES: llvm-14-plus, regkeys
+; RUN: igc_opt --opaque-pointers --regkey PrintToConsole --igc-inst-stat-licm --igc-inst-stat-th 4 --licm --enable-instrstat-print -igc-serialize-metadata -S < %s 2>&1 | FileCheck %s --check-prefix=EXCEEDED
+; RUN: igc_opt --opaque-pointers --regkey PrintToConsole --igc-inst-stat-licm --igc-inst-stat-th 5 --licm --enable-instrstat-print -igc-serialize-metadata -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; InstrStatistic
 ; ------------------------------------------------

@@ -6,8 +6,10 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-int-type-legalizer -S < %s | FileCheck %s
-;
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-int-type-legalizer -S < %s | FileCheck %s
+
 ; Tests for array of i1 types.
 
 target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f16:16:16-f32:32:32-f64:64:64-f80:128:128-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-a:64:64-f80:128:128-n8:16:32:64"
@@ -18,7 +20,7 @@ define i8 @test_x_on_least_significant_index_plus_zeros_constants(i1 %a, i1 %b) 
 ; CHECK:    [[V1:%.*]] = select i1 %b, i8 2, i8 0
 ; CHECK:    [[RESULT:%.*]] = or i8 [[V0]], [[V1]]
 ; CHECK:    ret i8 [[RESULT]]
-;
+
   %1 = insertelement <8 x i1> undef, i1 %a, i32 0
   %2 = insertelement <8 x i1> %1, i1 %b, i32 1
   %3 = insertelement <8 x i1> %2, i1 false, i32 2
@@ -38,7 +40,7 @@ define i8 @test_x_on_least_significant_index_plus_random_constants(i1 %a, i1 %b)
 ; CHECK:    [[V1:%.*]] = select i1 %b, i8 2, i8 0
 ; CHECK:    [[RESULT1:%.*]] = or i8 [[RESULT0]], [[V1]]
 ; CHECK:    ret i8 [[RESULT1]]
-;
+
   %1 = insertelement <8 x i1> undef, i1 %a, i32 0
   %2 = insertelement <8 x i1> %1, i1 %b, i32 1
   %3 = insertelement <8 x i1> %2, i1 false, i32 2
@@ -57,7 +59,7 @@ define i8 @test_x_on_random_index_plus_zeros_constants(i1 %a, i1 %b) {
 ; CHECK:    [[V1:%.*]] = select i1 %b, i8 32, i8 0
 ; CHECK:    [[RESULT:%.*]] = or i8 [[V0]], [[V1]]
 ; CHECK:    ret i8 [[RESULT]]
-;
+
   %1 = insertelement <8 x i1> undef, i1 false, i32 0
   %2 = insertelement <8 x i1> %1, i1 false, i32 1
   %3 = insertelement <8 x i1> %2, i1 %a, i32 2
@@ -77,7 +79,7 @@ define i8 @test_x_on_random_index_plus_random_constants(i1 %a, i1 %b) {
 ; CHECK:    [[V1:%.*]] = select i1 %b, i8 32, i8 0
 ; CHECK:    [[RESULT1:%.*]] = or i8 [[RESULT0]], [[V1]]
 ; CHECK:    ret i8 [[RESULT1]]
-;
+
   %1 = insertelement <8 x i1> undef, i1 true, i32 0
   %2 = insertelement <8 x i1> %1, i1 false, i32 1
   %3 = insertelement <8 x i1> %2, i1 %a, i32 2
@@ -93,7 +95,7 @@ define i8 @test_x_on_random_index_plus_random_constants(i1 %a, i1 %b) {
 define i8 @test_no_x_plus_zeros_constants(i1 %a, i1 %b) {
 ; CHECK-LABEL: @test_no_x_plus_zeros_constants(
 ; CHECK:    ret i8 0
-;
+
   %1 = insertelement <8 x i1> undef, i1 false, i32 0
   %2 = insertelement <8 x i1> %1, i1 false, i32 1
   %3 = insertelement <8 x i1> %2, i1 false, i32 2
@@ -109,7 +111,7 @@ define i8 @test_no_x_plus_zeros_constants(i1 %a, i1 %b) {
 define i8 @test_no_x_plus_random_constants(i1 %a, i1 %b) {
 ; CHECK-LABEL: @test_no_x_plus_random_constants(
 ; CHECK:    ret i8 40
-;
+
   %1 = insertelement <8 x i1> undef, i1 false, i32 0
   %2 = insertelement <8 x i1> %1, i1 false, i32 1
   %3 = insertelement <8 x i1> %2, i1 false, i32 2

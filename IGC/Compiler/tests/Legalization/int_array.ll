@@ -1,12 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-int-type-legalizer -S < %s | FileCheck %s
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-int-type-legalizer -S < %s | FileCheck %s
 
 ; Test checks arrays of illegal integers
 
@@ -29,7 +31,7 @@ target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f3
 ; CHECK:    [[V15:%.*]] = insertelement <12 x i8> [[V14]], i8 0, i32 11
 ; CHECK:    [[V16:%.*]] = bitcast <12 x i8> [[V15]] to <3 x i32>
 ; CHECK:    ret <3 x i32> [[V16]]
-;
+
 define <3 x i32> @foo1(<2 x i8>) #0 {
   %2 = zext <2 x i8> %0 to <2 x i48>
   %3 = bitcast <2 x i48> %2 to <3 x i32>
@@ -49,7 +51,7 @@ define <3 x i32> @foo1(<2 x i8>) #0 {
 ; CHECK:    [[V11:%.*]] = insertelement <6 x i16> [[V9]], i16 [[V10]], i32 4
 ; CHECK:    [[V12:%.*]] = insertelement <6 x i16> [[V11]], i16 0, i32 5
 ; CHECK:    ret <6 x i16> [[V12]]
-;
+
 define <6 x i16> @foo2(<2 x i32>) #0 {
   %2 = zext <2 x i32> %0 to <2 x i48>
   %3 = bitcast <2 x i48> %2 to <6 x i16>
@@ -63,7 +65,7 @@ define <6 x i16> @foo2(<2 x i32>) #0 {
 ; CHECK:    [[V5:%.*]] = extractelement <6 x i16> %2, i32 3
 ; CHECK:    [[V6:%.*]] = insertelement <2 x i16> [[V4]], i16 [[V5]], i32 1
 ; CHECK:    ret <2 x i16> [[V6]]
-;
+
 define <2 x i16> @foo3(<3 x i32>) #0 {
   %2 = bitcast <3 x i32> %0 to <2 x i48>
   %3 = trunc <2 x i48> %2 to <2 x i16>
@@ -82,7 +84,7 @@ define <2 x i16> @foo3(<3 x i32>) #0 {
 ; CHECK:    [[V10:%.*]] = insertelement <4 x i16> [[V8]], i16 [[V9]], i32 3
 ; CHECK:    [[V11:%.*]] = bitcast <4 x i16> [[V10]] to <2 x i32>
 ; CHECK:    ret <2 x i32> [[V11]]
-;
+
 define <2 x i32> @foo4(<12 x i8>) #0 {
   %2 = bitcast <12 x i8> %0 to <2 x i48>
   %3 = trunc <2 x i48> %2 to <2 x i32>

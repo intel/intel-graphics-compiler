@@ -1,26 +1,26 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2017-2023 Intel Corporation
+; Copyright (C) 2017-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
 
-; REQUIRES: regkeys
-;
-; RUN:   igc_opt %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=5 \
+; REQUIRES: llvm-14-plus, regkeys
+
+; RUN: igc_opt --opaque-pointers %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=5 \
 ; RUN:           -platformbmg \
 ; RUN: | FileCheck %s
 
 
- ;
+
  ; CHECK-LABEL: target datalayout
  ; %__StructSOALayout_ = type <{ i32, i32, i32, %__StructAOSLayout_ }>
  ; %__StructAOSLayout_ = type <{ i8, i8, i8, i8 }>
  ; %__StructSOALayout_.1 = type <{ <2 x i32>, %__StructAOSLayout_.0 }>
  ; %__StructAOSLayout_.0 = type <{ <2 x i8>, <2 x i8> }>
- ;
+
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
 target triple = "spir64-unknown-unknown"
@@ -29,14 +29,14 @@ target triple = "spir64-unknown-unknown"
 define spir_kernel void @test_vecmember(i32 addrspace(1)* %d, <3 x i32> addrspace(1)* %ss, float addrspace(1)* %sf, i16 %localIdX, i16 %localIdY, i16 %localIdZ) {
 entry:
   %conv.i.i = zext i16 %localIdX to i64
-;
+
 ; case 0:  load <3xi32>; load <3xi8>; load i8 -> load <4xi32>
 ;          no vec3 as member
-;
+
 ; CHECK-LABEL: define spir_kernel void @test_vecmember
 ; CHECK: [[T0:%.*]] = load <4 x i32>
 ; CHECK: {{.*}} = call %__StructSOALayout_ @llvm.genx.GenISA.bitcasttostruct.__StructSOALayout_.v4i32(<4 x i32> [[T0]])
-;
+
   %c0.arrayidx = getelementptr inbounds <3 x i32>, <3 x i32> addrspace(1)* %ss, i64 %conv.i.i
   %c0.0 = load <3 x i32>, <3 x i32> addrspace(1)* %c0.arrayidx, align 4
   %c0.addr = bitcast <3 x i32> addrspace(1)* %c0.arrayidx to <4 x i8> addrspace(1)*
@@ -58,15 +58,15 @@ entry:
   %c0.daddr2.1 = bitcast i32 addrspace(1)* %c0.arrayidx1.2 to i8 addrspace(1)*
   store i8 %c0.2, i8 addrspace(1)* %c0.daddr2.1, align 1
 
-;
+
 ; case 1:  load <2xi32>; load <2xi8>; load <2xi8>; load <3xi32>
 ;          vector as struct's member
-;
+
 ; CHECK-LABEL: c1.base
 ; CHECK: [[T1:%.*]] = load <3 x i32>
 ; CHECK: {{.*}} = call %__StructSOALayout_.1 @llvm.genx.GenISA.bitcasttostruct.__StructSOALayout_.1.v3i32(<3 x i32> [[T1]])
 ; CHECK: ret void
-;
+
   %c1.base = add i64 %conv.i.i, 128
   %c1.arrayidx = getelementptr inbounds <3 x i32>, <3 x i32> addrspace(1)* %ss, i64 %c1.base
   %c1.addr = bitcast <3 x i32> addrspace(1)* %c1.arrayidx to <2 x i32> addrspace(1)*
