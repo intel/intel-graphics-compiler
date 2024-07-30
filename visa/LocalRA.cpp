@@ -2104,7 +2104,7 @@ void PhyRegsLocalRA::markPhyRegs(G4_Declare *topdcl) {
   unsigned numwords = 0;
   unsigned int regnum = 0;
 
-  if (rvar->getPhyReg() == nullptr) {
+  if (!rvar->getPhyReg() || !rvar->isGreg()) {
     return;
   }
   // Calculate number of physical registers required by this dcl
