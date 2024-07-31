@@ -33,7 +33,6 @@ SPDX-License-Identifier: MIT
 #include <unordered_set>
 #include <unordered_map>
 #include "Probe/Assertion.h"
-#include <BiFManager/BiFManagerHandler.hpp>
 
 using namespace llvm;
 using namespace IGC;
@@ -52,8 +51,10 @@ IGC_INITIALIZE_PASS_END(BIImport, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PA
 
 char BIImport::ID = 0;
 
-BIImport::BIImport() :
-    ModulePass(ID)
+BIImport::BIImport(std::unique_ptr<Module> pGenericModule, std::unique_ptr<Module> pSizeModule) :
+    ModulePass(ID),
+    m_GenericModule(std::move(pGenericModule)),
+    m_SizeModule(std::move(pSizeModule))
 {
     initializeBIImportPass(*PassRegistry::getPassRegistry());
 }
@@ -268,6 +269,18 @@ Function* BIImport::GetBuiltinFunction(llvm::StringRef funcName, llvm::Module* G
     return nullptr;
 }
 
+Function* BIImport::GetBuiltinFunction2(llvm::StringRef funcName) const
+{
+    Function* pFunc = nullptr;
+    if ((pFunc = m_GenericModule->getFunction(funcName)) && !pFunc->isDeclaration())
+        return pFunc;
+    // If the generic and size modules are linked before hand, don't
+    // look in the size module because it doesn't exist.
+    else if (m_SizeModule && (pFunc = m_SizeModule->getFunction(funcName)) && !pFunc->isDeclaration())
+        return pFunc;
+
+    return nullptr;
+}
 
 static bool materialized_use_empty(const Value* v)
 {
@@ -460,7 +473,6 @@ std::unique_ptr<llvm::Module> BIImport::Construct(Module& M, CLElfLib::CElfReade
     return BIM;
 }
 
-
 // OpenCL C builtins that do not have a corresponding SPIRV specification are represented
 // as a regular user functions (OpFunction). Since IGC SPIRV-LLVM Translator promotes i1
 // type to i8 type for all user-defined functions, such builtins are also promoted. It leads
@@ -576,6 +588,11 @@ void BIImport::fixInvalidBitcasts(llvm::Module &M)
 
 bool BIImport::runOnModule(Module& M)
 {
+    if (m_GenericModule == nullptr)
+    {
+        return false;
+    }
+
     fixSPIRFunctionsReturnType(M);
 
     for (auto& F : M)
@@ -612,32 +629,102 @@ bool BIImport::runOnModule(Module& M)
         }
     }
 
-#ifdef BIF_LINK_BC
-    // Link all needed Bif instr
+    std::function<void(Function*)> Explore = [&](Function* pRoot)
     {
-        auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-        BiFManager::FuncTimer startTime =
-            [&](COMPILE_TIME_INTERVALS interval) {
-            COMPILER_TIME_START(pCtx, interval);
-            };
-        BiFManager::FuncTimer endTime =
-            [&](COMPILE_TIME_INTERVALS interval) {
-            COMPILER_TIME_END(pCtx, interval);
-            };
+        TFunctionsVec calledFuncs;
+        GetCalledFunctions(pRoot, calledFuncs);
 
-        BiFManager::BiFManagerHandler bifLinker(M.getContext());
+        for (auto* pCallee : calledFuncs)
+        {
+            Function* pFunc = nullptr;
+            if (pCallee->isDeclaration())
+            {
+                auto funcName = pCallee->getName();
+                Function* pSrcFunc = GetBuiltinFunction2(funcName);
+                if (!pSrcFunc) continue;
+                pFunc = pSrcFunc;
+            }
+            else
+            {
+                pFunc = pCallee;
+            }
 
-        bifLinker.SetFuncTimers(&startTime, &endTime);
+            if (pFunc->isMaterializable())
+            {
+                if (Error Err = pFunc->materialize()) {
+                    std::string Msg;
+                    handleAllErrors(std::move(Err), [&](ErrorInfoBase& EIB) {
+                        errs() << "===> Materialize Failure: " << EIB.message().c_str() << '\n';
+                    });
+                    IGC_ASSERT_MESSAGE(0, "Failed to materialize Global Variables");
+                }
+                else {
+                    pFunc->addFnAttr("OclBuiltin");
+                    Explore(pFunc);
+                }
+            }
 
-        bifLinker.LinkBiF(M);
+            if (pFunc->getName().startswith("__builtin_IB_kmp_"))
+            {
+                pFunc->addFnAttr(llvm::Attribute::NoInline);
+                pFunc->addFnAttr("KMPLOCK");
+            }
+        }
+    };
+
+    for (auto& func : M)
+    {
+        Explore(&func);
     }
-#endif // BIF_LINK_BC
+
+    // nuke the unused functions so we can materializeAll() quickly
+    auto CleanUnused = [](Module* Module)
+    {
+        for (auto I = Module->begin(), E = Module->end(); I != E; )
+        {
+            auto* F = &(*I++);
+            if (F->isDeclaration() || F->isMaterializable())
+            {
+                if (materialized_use_empty(F))
+                {
+                    F->eraseFromParent();
+                }
+            }
+        }
+    };
+
+    CleanUnused(m_GenericModule.get());
+    Linker ld(M);
+
+    if (Error err = m_GenericModule->materializeAll()) {
+        IGC_ASSERT_MESSAGE(0, "materializeAll failed for generic builtin module");
+    }
+
+    if (ld.linkInModule(std::move(m_GenericModule)))
+    {
+        IGC_ASSERT_MESSAGE(0, "Error linking generic builtin module");
+    }
+
+    if (m_SizeModule)
+    {
+        CleanUnused(m_SizeModule.get());
+        if (Error err = m_SizeModule->materializeAll())
+        {
+            IGC_ASSERT_MESSAGE(0, "materializeAll failed for size_t builtin module");
+        }
+
+        if (ld.linkInModule(std::move(m_SizeModule)))
+        {
+            IGC_ASSERT_MESSAGE(0, "Error linking size_t builtin module");
+        }
+    }
 
     InitializeBIFlags(M);
     removeFunctionBitcasts(M);
     fixInvalidBitcasts(M);
 
     std::vector<Instruction*> InstToRemove;
+
     //temporary work around for sampler types and pipes
     for (auto& func : M)
     {
@@ -1000,9 +1087,11 @@ void BIImport::InitializeBIFlags(Module& M)
     makeVarExternal("__SubDeviceID");
 }
 
-extern "C" llvm::ModulePass* createBuiltInImportPass()
+extern "C" llvm::ModulePass* createBuiltInImportPass(
+    std::unique_ptr<Module> pGenericModule,
+    std::unique_ptr<Module> pSizeModule)
 {
-    return new BIImport();
+    return new BIImport(std::move(pGenericModule), std::move(pSizeModule));
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////

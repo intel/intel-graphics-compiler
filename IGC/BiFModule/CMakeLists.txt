@@ -639,32 +639,6 @@ generate_bif_src_checksum(${IGC_BUILD__PROJ__BiFModule_OCL})
 generate_bif_prebuild_pack(${IGC_BUILD__PROJ__BiFModule_OCL} "${IGC_BUILD__PROJ_DEPENDS_BiFModule_OCL}")
 set(IGC_BUILD__PROJ__BiFModuleCache_OCL       "${IGC_BUILD__PROJ__BiFModuleCache_OCL}" PARENT_SCOPE)
 
-
-add_custom_command(
-    OUTPUT "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.h" "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bifbc"
-    COMMAND $<TARGET_FILE:BiFManager-bin> "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc" "${IGC_BUILD__BIF_DIR}/IGCsize_t_32.bc" "${IGC_BUILD__BIF_DIR}/IGCsize_t_64.bc" "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bifbc" "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.h"
-    DEPENDS "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc" "${IGC_BUILD__BIF_DIR}/IGCsize_t_32.bc" "${IGC_BUILD__BIF_DIR}/IGCsize_t_64.bc"$<TARGET_FILE:BiFManager-bin>
-    COMMENT "BiF: ${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc: Spliting output .bc."
-    COMMAND_EXPAND_LISTS
-)
-
-set(IGC_BUILD__PROJ__BiFManagerSplitTask       "${IGC_BUILD__PROJ_NAME_PREFIX}BiFManager-SplitTask")
-set(IGC_BUILD__PROJ__BiFManagerSplitTask       "${IGC_BUILD__PROJ__BiFManagerSplitTask}" PARENT_SCOPE)
-
-add_custom_target(
-    "${IGC_BUILD__PROJ__BiFManagerSplitTask}"
-    DEPENDS "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.h" "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bifbc"
-    )
-
-add_dependencies("${IGC_BUILD__PROJ__BiFManagerSplitTask}" "${IGC_BUILD__PROJ__BiFModule_OCL}")
-
-if(LLVM_ON_UNIX)
-  add_subdirectory(linux)
-  add_dependencies("${IGC_BUILD__PROJ__BiFLib_OCL}" "${IGC_BUILD__PROJ__BiFManagerSplitTask}")
-  #NOTE: Transfer names of projects to parent scope.
-  set(IGC_BUILD__PROJ__BiFLib_OCL "${IGC_BUILD__PROJ__BiFLib_OCL}" PARENT_SCOPE)
-endif()
-
 # =========================================== SPIRV Headers ============================================
 
 add_library(IGCSPIRVHeaders INTERFACE)

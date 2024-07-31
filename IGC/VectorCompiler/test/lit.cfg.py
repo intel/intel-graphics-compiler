@@ -41,6 +41,7 @@ llvm_config.with_environment('LD_LIBRARY_PATH', config.cm_opt_lib_dir, append_pa
 llvm_config.use_default_substitutions()
 
 config.substitutions.append(('%PATH%', config.environment['PATH']))
+config.substitutions.append(('%OCL_GENERIC_BIF%', config.ocl_generic_bif))
 config.substitutions.append(('%VC_PRITF_OCL_BIF%', config.vc_printf_ocl_bif))
 config.substitutions.append(('%VC_SPIRV_OCL_BIF%', config.vc_spirv_ocl_bif))
 

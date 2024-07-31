@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXImportOCLBiF -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXImportOCLBiF -vc-ocl-generic-bif-path=%OCL_GENERIC_BIF% -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
 
 ; To run GenXImportOCLBiF there is must be at least 1 func decl.
 declare spir_func i8 @dummy()
