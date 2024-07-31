@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023-2024 Intel Corporation
+; Copyright (C) 2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -14,7 +14,6 @@
 
 ; COM: ;;;;;;;;;; CHECKERS ;;;;;;;;;;
 
-; CHECK: .decl  {{V[^ ]+}} v_type=G type=f num_elts=8
 ; CHECK: .decl  [[SRC:V[^ ]+]] v_type=G type=f num_elts=8
 ; CHECK: cos (M1, 8) [[COS:V[^ ]+]](0,0)<1> [[SRC]](0,0)<1;1,0>
 ; CHECK: exp (M1, 8) [[EXP:V[^ ]+]](0,0)<1> [[SRC]](0,0)<1;1,0>
