@@ -10,11 +10,11 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
-#include "llvm/IR/Dominators.h"
+#include <llvm/IR/Dominators.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/ADT/DenseMap.h>
-#include "llvm/ADT/MapVector.h"
+#include <llvm/ADT/MapVector.h>
 #include <llvm/ADT/ilist.h>
 #include <llvm/ADT/SetVector.h>
 #include <llvm/ADT/SmallPtrSet.h>
@@ -23,13 +23,10 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DataLayout.h>
-#include "common/LLVMWarningsPop.hpp"
 #include <llvm/ADT/DenseSet.h>
-
-#include <string>
-#include <sstream>
+#include "common/LLVMWarningsPop.hpp"
 #include <set>
-#include <map>
+#include <utility>
 
 namespace IGC
 {
@@ -54,10 +51,9 @@ namespace IGC
     public:
         static char ID; // Pass identification, replacement for typeid
 
-        ScalarizeFunction(bool selectiveScalarization = false);
+        ScalarizeFunction(bool selectiveScalarization = true);
         ScalarizeFunction(const ScalarizeFunction&) = delete;
         ScalarizeFunction& operator=(const ScalarizeFunction&) = delete;
-        ~ScalarizeFunction();
 
         /// @brief Provides name of pass
         virtual llvm::StringRef getPassName() const override
@@ -72,12 +68,14 @@ namespace IGC
             AU.setPreservesCFG();
         }
 
+        virtual bool doFinalization(llvm::Module& M) override;
         virtual bool runOnFunction(llvm::Function& F) override;
 
     private:
 
         /// @brief select an exclusive set that would not be scalarized
         void buildExclusiveSet();
+
         /// @brief main Method for dispatching instructions (according to inst type) for scalarization
         /// @param I instruction to dispatch
         void dispatchInstructionToScalarize(llvm::Instruction* I);
@@ -190,7 +188,24 @@ namespace IGC
         inline llvm::Function* getOrCreateDummyFunc(llvm::Type* dummyType, llvm::Module* module) {
             if (createdDummyFunctions.find(dummyType) == createdDummyFunctions.end()) {
                 llvm::FunctionType* funcType = llvm::FunctionType::get(dummyType, false);
-                llvm::Function* function = llvm::Function::Create(funcType, llvm::Function::InternalLinkage, "", module);
+                // Below: change of Internal linkage to External
+                //
+                // Dummy functions are tools used by the pass and they are never defined.
+                // If any dummy functions survive, they are removed in the destructor of the pass.
+                // Thus, the change of the linkage does not impact the net effect of the pass.
+                //
+                // The change is due to the fact that erasing dummy functions in the destructor is not thread-safe.
+                // In my runs of "igc_opt" the LLVM IR code generation would begin before the destructor call.
+                // This crashes LLVM due to the presence of undefined functions.
+                //
+                // It's difficult to properly fix this bug without significant changes to the pass.
+                // Unfortunately, overriding doFinalization does not resolve the problem.
+                //
+                // By changing internal linkage to external, "real-life" compilations go as before:
+                // the destructor always gets called, as there are many other passes in the pipeline.
+                // In the testing conditions, however, the LLVM does not crash anymore,
+                // but declarations of external functions may appear in the LLVM IR.
+                llvm::Function* function = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "", module);
                 createdDummyFunctions[dummyType] = function;
                 return function;
             }
@@ -250,5 +265,11 @@ namespace IGC
 
 } // namespace IGC
 
-/// By default (no argument given to this function), vector load/store are kept as is.
-extern "C" llvm::FunctionPass* createScalarizerPass(bool selectiveScalarization = false);
+/// @brief By default (no argument given to this function), selective scalarization is off.
+/// Selective scalarization keeps some instructions vectorized, if the vector is used as the whole entity.
+/// The pass builds a web of instructions protected from scalarization.
+/// The ending legs of the web consist of vectorial instructions such as insert and extract elements,
+/// vector shuffles, GenISA intrinsics and function calls.
+/// The vectorial instructions inside the web consist of bitcasts and PHI nodes.
+extern "C" llvm::FunctionPass * createScalarizerPass(bool selectiveScalarization = false);
+
