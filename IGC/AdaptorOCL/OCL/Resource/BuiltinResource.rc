@@ -10,9 +10,10 @@ SPDX-License-Identifier: MIT
 
 /////////////////////////////////////////////////////////////////////////////
 //
-// BIFBC
+// BC
 //
 
-OCL_BIFBC                      BIFBC        "OCLBiFImpl.bifbc"
-
+OCL_BC                      BC           "OCLBiFImpl.bc"
+OCL_BC_32                   BC           "IGCsize_t_32.bc"
+OCL_BC_64                   BC           "IGCsize_t_64.bc"
 /////////////////////////////////////////////////////////////////////////////

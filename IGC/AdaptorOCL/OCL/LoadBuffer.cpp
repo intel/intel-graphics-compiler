@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -17,8 +17,6 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 #ifdef LLVM_ON_UNIX
-
-#include "Probe/Assertion.h"
 #include <dlfcn.h>
 #include <stdio.h>
 
@@ -40,7 +38,6 @@ MemoryBuffer *llvm::LoadBufferFromResource(const char *pResName,
     symbol = dlsym(module, size_name);
     if (!symbol)
     {
-        IGC_ASSERT_EXIT_MESSAGE(0, "LoadBufferFromResource: [%s]\n", dlerror());
         return NULL;
     }
     size = *(uint32_t *)symbol;
@@ -48,7 +45,6 @@ MemoryBuffer *llvm::LoadBufferFromResource(const char *pResName,
     symbol = dlsym(module, name);
     if (!symbol)
     {
-        IGC_ASSERT_EXIT_MESSAGE(0, "LoadBufferFromResource: [%s]\n", dlerror());
         return NULL;
     }
 

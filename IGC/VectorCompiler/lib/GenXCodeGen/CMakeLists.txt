@@ -150,7 +150,6 @@ target_link_libraries(VCCodeGen
   VCSupport
   VCGeneralUtils
   VCGenXUtils
-  BiFManager
   GenXDebugInfo
   GenX_IR
   )
