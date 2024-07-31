@@ -867,7 +867,10 @@ std::pair<unsigned int, Type*> TransposeHelper::getArrSizeAndEltType(Type* T)
         }
         else
         {
-            arr_sz = (unsigned)cast<IGCLLVM::FixedVectorType>(T)->getNumElements();
+            auto* vTy = cast<IGCLLVM::FixedVectorType>(T);
+            unsigned int vector_size_in_bytes = int_cast<unsigned int>(m_DL.getTypeAllocSize(T));
+            unsigned int elt_size_in_bytes = int_cast<unsigned int>(m_DL.getTypeAllocSize(vTy->getElementType()));
+            arr_sz = vector_size_in_bytes / elt_size_in_bytes;
         }
         retTy = cast<VectorType>(T)->getElementType();
     }
