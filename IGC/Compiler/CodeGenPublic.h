@@ -344,6 +344,7 @@ namespace IGC
         bool hasRuntimeValueVector{};
         bool hasDynamicGenericLoadStore{};
         bool hasUnmaskedRegion{};
+        bool hasSLM{};
         unsigned int numCall{};
         unsigned int numBarrier{};
         unsigned int numLoadStore{};
@@ -362,6 +363,11 @@ namespace IGC
         unsigned int numGlobalInsts{};
         unsigned int numLocalInsts{};
         unsigned int numSamplesVaryingResource{}; //<! measured before CodeGen for scheduling heuristic
+        // additional counters for CSWalkOrder
+        unsigned int numUntyped{};
+        unsigned int num1DAccesses{};
+        unsigned int num2DAccesses{};
+        unsigned int numSLMAccesses{};
     };
 
     struct SSimplePushInfo

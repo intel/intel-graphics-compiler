@@ -52,6 +52,7 @@
 ; CHECK: hasRuntimeValueVector: 0
 ; CHECK: hasDynamicGenericLoadStore: 0
 ; CHECK: hasUnmaskedRegion: 0
+; CHECK: hasSLM: 0
 ; CHECK: numCall: 2
 ; CHECK: numBarrier: 0
 ; CHECK: numLoadStore: 4
@@ -70,6 +71,12 @@
 ; CHECK: hasPullBary: 0
 ; CHECK: numGlobalInsts: 2
 ; CHECK: numLocalInsts: 22
+; CHECK: numSamplesVaryingResource: 0
+; CHECK: numUntyped: 0
+; CHECK: num1DAccesses: 0
+; CHECK: num2DAccesses: 0
+; CHECK: numSLMAccesses: 0
+
 
 declare void @use_int(i32)
 
