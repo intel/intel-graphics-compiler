@@ -227,8 +227,8 @@ static void foldBitcast(BitCastInst *Cast) {
 class PredicateWeb {
 public:
   template <class InputIt>
-  PredicateWeb(InputIt First, InputIt Last, bool AllowScalar)
-      : Web(First, Last), AllowScalarPromotion(AllowScalar) {}
+  PredicateWeb(InputIt First, InputIt Last, bool AllowScalarAllAny)
+      : Web(First, Last), AllowScalarAllAny(AllowScalarAllAny) {}
   void print(llvm::raw_ostream &O) const {
     for (auto Inst : Web)
       O << *Inst << '\n';
@@ -241,10 +241,20 @@ public:
     return NumBinaryOps >= LogicOpsThreshold;
   }
   void doPromotion() const {
+    auto AllowScalar = true;
+    if (!AllowScalarAllAny)
+      AllowScalar = llvm::none_of(Web, [](auto *Inst) {
+        return llvm::any_of(Inst->users(), [](auto *U) {
+          auto IID = vc::getAnyIntrinsicID(U);
+          return IID == GenXIntrinsic::genx_any ||
+                 IID == GenXIntrinsic::genx_all;
+        });
+      });
+
     // Do promotion.
     SmallVector<Instruction *, 8> Worklist;
     for (auto *Inst : Web) {
-      auto *PromotedInst = promoteInst(Inst, AllowScalarPromotion);
+      auto *PromotedInst = promoteInst(Inst, AllowScalar);
 
       if (isa<TruncInst>(PromotedInst) || isa<BitCastInst>(PromotedInst))
         Worklist.push_back(cast<Instruction>(PromotedInst));
@@ -262,7 +272,7 @@ public:
 
 private:
   SmallPtrSet<Instruction *, 16> Web;
-  bool AllowScalarPromotion;
+  bool AllowScalarAllAny;
 };
 
 constexpr const char IdxMDName[] = "pred.index";
@@ -285,7 +295,7 @@ bool GenXPromotePredicate::runOnFunction(Function &F) {
   auto &ST = getAnalysis<TargetPassConfig>()
                  .getTM<GenXTargetMachine>()
                  .getGenXSubtarget();
-  bool AllowScalarPromotion = !ST.hasFusedEU();
+  bool AllowScalarAllAny = !ST.hasFusedEU();
 
   // Put every predicate instruction into its own equivalence class.
   long Idx = 0;
@@ -318,7 +328,7 @@ bool GenXPromotePredicate::runOnFunction(Function &F) {
     if (!I->isLeader())
       continue;
     PredicateWeb Web(PredicateWebs.member_begin(I), PredicateWebs.member_end(),
-                     AllowScalarPromotion);
+                     AllowScalarAllAny);
     LLVM_DEBUG(dbgs() << "Predicate web:\n"; Web.dump());
     ++NumCollectedPredicateWebs;
     if (!Web.isBeneficialToPromote())
