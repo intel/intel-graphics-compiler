@@ -28,7 +28,7 @@ define void @fence_rel() {
 
 define void @fence_acq_rel() {
   ; CHECK: call void @llvm.genx.fence(i8 33)
-  ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 1)
+  ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
   fence syncscope("workgroup") acq_rel
   ret void
 }

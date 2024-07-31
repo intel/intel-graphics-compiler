@@ -23,9 +23,9 @@ define i16 @inc_i16(i16 addrspace(1)* %ptr) {
 define i16 @dec_i16(i16 addrspace(1)* %ptr) {
   ; CHECK-LSC: [[DEC_ADDR:%[^ ]+]] = ptrtoint i16 addrspace(1)* %ptr to i64
   ; CHECK-LSC: [[DEC_VADDR:%[^ ]+]] = bitcast i64 [[DEC_ADDR]] to <1 x i64>
-  ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 0, i8 0, i8 1)
+  ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 0, i8 0, i8 0)
   ; CHECK-LSC: [[DEC_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.ugm.v1i32.v1i1.v2i8.v1i64(<1 x i1> <i1 true>, i8 9, i8 3, i8 6, <2 x i8> zeroinitializer, i64 0, <1 x i64> [[DEC_VADDR]], i16 1, i32 0, <1 x i32> undef, <1 x i32> undef, <1 x i32> undef)
-  ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 0, i8 0, i8 1)
+  ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 0, i8 0, i8 0)
   ; CHECK-LSC: [[DEC_BCAST:%[^ ]+]] = bitcast <1 x i32> [[DEC_VRES]] to i32
   ; CHECK-LSC: %res = trunc i32 [[DEC_BCAST]] to i16
   %res = atomicrmw sub i16 addrspace(1)* %ptr, i16 1 syncscope("workgroup") seq_cst

@@ -114,9 +114,9 @@ define i32 @sub_i32(i32 addrspace(3)* %ptr, i32 %arg) {
   ; CHECK-LSC: [[SUB_ADDR:%[^ ]+]] = ptrtoint i32 addrspace(3)* %ptr to i32
   ; CHECK-LSC: [[SUB_VADDR:%[^ ]+]] = bitcast i32 [[SUB_ADDR]] to <1 x i32>
   ; CHECK-LSC: [[SUB_VDATA:%[^ ]+]] = bitcast i32 %arg to <1 x i32>
-  ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 1)
+  ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
   ; CHECK-LSC: [[SUB_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v2i8.v1i32(<1 x i1> <i1 true>, i8 13, i8 2, i8 3, <2 x i8> zeroinitializer, i32 0, <1 x i32> [[SUB_VADDR]], i16 1, i32 0, <1 x i32> [[SUB_VDATA]], <1 x i32> undef, <1 x i32> undef)
-  ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 1)
+  ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
   ; CHECK-LSC: %res = bitcast <1 x i32> [[SUB_VRES]] to i32
   %res = atomicrmw sub i32 addrspace(3)* %ptr, i32 %arg syncscope("workgroup") acq_rel
   ret i32 %res
@@ -131,9 +131,9 @@ define i32 @dec_i32(i32 addrspace(3)* %ptr) {
   ; CHECK: %res = bitcast <1 x i32> [[DEC_VRES]] to i32
   ; CHECK-LSC: [[DEC_ADDR:%[^ ]+]] = ptrtoint i32 addrspace(3)* %ptr to i32
   ; CHECK-LSC: [[DEC_VADDR:%[^ ]+]] = bitcast i32 [[DEC_ADDR]] to <1 x i32>
-  ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 1)
+  ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
   ; CHECK-LSC: [[DEC_VRES:%[^ ]+]] = call <1 x i32> @llvm.vc.internal.lsc.atomic.slm.v1i32.v1i1.v2i8.v1i32(<1 x i1> <i1 true>, i8 9, i8 2, i8 3, <2 x i8> zeroinitializer, i32 0, <1 x i32> [[DEC_VADDR]], i16 1, i32 0, <1 x i32> undef, <1 x i32> undef, <1 x i32> undef)
-  ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 1)
+  ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
   ; CHECK-LSC: %res = bitcast <1 x i32> [[DEC_VRES]] to i32
   %res = atomicrmw sub i32 addrspace(3)* %ptr, i32 1 syncscope("workgroup") seq_cst
   ret i32 %res

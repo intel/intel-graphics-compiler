@@ -1079,7 +1079,6 @@ LSC_SCOPE GenXLoadStoreLowering::getLSCFenceScope(Instruction *I) const {
     case Device:
       return ST->hasMultiTile() ? LSC_SCOPE_GPU : LSC_SCOPE_TILE;
     case Workgroup:
-      return LSC_SCOPE_LOCAL;
     case Subgroup:
     case Invocation:
       return LSC_SCOPE_GROUP;
@@ -1095,7 +1094,7 @@ LSC_SCOPE GenXLoadStoreLowering::getLSCFenceScope(Instruction *I) const {
 
   return StringSwitch<LSC_SCOPE>(SyncScopeNames[ScopeID])
       .Case("subgroup", LSC_SCOPE_GROUP)
-      .Case("workgroup", LSC_SCOPE_LOCAL)
+      .Case("workgroup", LSC_SCOPE_GROUP)
       .Case("device", ST->hasMultiTile() ? LSC_SCOPE_GPU : LSC_SCOPE_TILE)
       .Case("all_devices", LSC_SCOPE_GPUS)
       .Default(LSC_SCOPE_GROUP);
