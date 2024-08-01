@@ -72,6 +72,7 @@ namespace IGC
         bool isIdentityMatrix(llvm::ExtractElementInst& I);
         void visitAnd(llvm::BinaryOperator& I);
         void visitXor(llvm::Instruction& XorInstr);
+        void visitLSC2DBlockPrefetch(llvm::CallInst* I);
         void visitShuffleIndex(llvm::CallInst* I);
         void visitSelectInst(llvm::SelectInst& S);
         void mergeDotAddToDp4a(llvm::CallInst* I);
