@@ -452,6 +452,30 @@ void CustomSafeOptPass::mergeDotAddToDp4a(llvm::CallInst* I)
     }
 }
 
+// Reform prefetch instructions to maximize width and minimize the number of blocks. This function assumes that
+// it operates on the correct form of the intrinsic (width X array_length matches the requirements).
+void CustomSafeOptPass::visitLSC2DBlockPrefetch(CallInst* I) {
+    const size_t widthInd = 7;
+    const size_t numBlocksInd = 9;
+
+    ConstantInt *constWidth = dyn_cast<ConstantInt>(I->getArgOperand(widthInd));
+    ConstantInt *constNumBlocks = dyn_cast<ConstantInt>(I->getArgOperand(numBlocksInd));
+
+    if (!constWidth || !constNumBlocks) {
+        return;
+    }
+
+    uint64_t width = constWidth->getZExtValue();
+    uint64_t numBlocks = constNumBlocks->getZExtValue();
+
+    if (numBlocks == 1) {
+        return;
+    }
+
+    I->setArgOperand(widthInd, ConstantInt::get(Type::getInt32Ty(I->getContext()), width * numBlocks));
+    I->setArgOperand(numBlocksInd, ConstantInt::get(Type::getInt32Ty(I->getContext()), 1));
+}
+
 // Check if Lower 64b to 32b transformation is applicable for binary operator
 // i.e. trunc(a op b) == trunc(a) op trunc(b)
 static bool isTruncInvariant(unsigned Opcode) {
@@ -875,6 +899,12 @@ void CustomSafeOptPass::visitCallInst(CallInst& C)
         case GenISAIntrinsic::GenISA_dp4a_uu:
         {
             mergeDotAddToDp4a(&C);
+            break;
+        }
+
+        case GenISAIntrinsic::GenISA_LSC2DBlockPrefetch:
+        {
+            visitLSC2DBlockPrefetch(inst);
             break;
         }
 
