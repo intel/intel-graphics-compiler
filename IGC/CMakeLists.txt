@@ -1,6 +1,6 @@
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2017-2021 Intel Corporation
+# Copyright (C) 2017-2024 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -241,11 +241,7 @@ unset(_debugConfigs)
 # ========================================= BUILD CMAKE OPTIONS ========================================
 # ======================================================================================================
 
-if(DEFINED IGC_OPTION__LIBRARY_NAME)
-  set(IGC_LIBRARY_NAME "${IGC_OPTION__LIBRARY_NAME}")
-else()
-  set(IGC_LIBRARY_NAME "igc")
-endif()
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/igc_library_name.cmake")
 set(IGC_LIBRARY_NAME ${IGC_LIBRARY_NAME} PARENT_SCOPE)
 
 set(FCL_ENABLED ON)
