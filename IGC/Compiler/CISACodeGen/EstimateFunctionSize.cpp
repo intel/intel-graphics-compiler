@@ -48,76 +48,15 @@ llvm::ModulePass* IGC::createEstimateFunctionSizePass() {
     return new EstimateFunctionSize;
 }
 
-llvm::ModulePass *
-IGC::createEstimateFunctionSizePass(bool EnableStaticProfileGuidedTrimming) {
-    initializeEstimateFunctionSizePass(*PassRegistry::getPassRegistry());
-    return new EstimateFunctionSize(
-        EstimateFunctionSize::AnalysisLevel::AL_Module,
-        EnableStaticProfileGuidedTrimming);
-}
-
 llvm::ModulePass*
 IGC::createEstimateFunctionSizePass(EstimateFunctionSize::AnalysisLevel AL) {
     initializeEstimateFunctionSizePass(*PassRegistry::getPassRegistry());
-    return new EstimateFunctionSize(AL, false);
+    return new EstimateFunctionSize(AL);
 }
 
-EstimateFunctionSize::EstimateFunctionSize(AnalysisLevel AL, bool EnableStaticProfileGuidedTrimming)
-    : ModulePass(ID), M(nullptr), AL(AL), tmpHasImplicitArg(false), HasRecursion(false), EnableSubroutine(false) {
-    thresholdForTrimming =
-        Scaled64::get(IGC_GET_FLAG_VALUE(ControlInlineTinySizeForSPGT));
-    threshold_func_freq = Scaled64::getLargest();
-
-    // Flags for Kernel trimming
-    ControlKernelTotalSize = IGC_IS_FLAG_ENABLED(ControlKernelTotalSize);
-    ControlUnitSize = IGC_IS_FLAG_ENABLED(ControlUnitSize);
-    ControlInlineTinySize = IGC_GET_FLAG_VALUE(ControlInlineTinySize);
-    UnitSizeThreshold = IGC_GET_FLAG_VALUE(UnitSizeThreshold);
-
-    // Flags for Static Profile-guided trimming
-    StaticProfileGuidedTrimming =
-        IGC_IS_FLAG_ENABLED(StaticProfileGuidedTrimming);
-    UseFrequencyInfoForSPGT = IGC_IS_FLAG_ENABLED(UseFrequencyInfoForSPGT);
-    BlockFrequencySampling = IGC_IS_FLAG_ENABLED(BlockFrequencySampling);
-    EnableLeafCollapsing = IGC_IS_FLAG_ENABLED(EnableLeafCollapsing);
-    EnableSizeContributionOptimization =
-        IGC_IS_FLAG_ENABLED(EnableSizeContributionOptimization);
-    LoopCountAwareTrimming = IGC_IS_FLAG_ENABLED(LoopCountAwareTrimming);
-    EnableGreedyTrimming = IGC_IS_FLAG_ENABLED(EnableGreedyTrimming);
-    SizeWeightForSPGT = IGC_GET_FLAG_VALUE(SizeWeightForSPGT);
-    FrequencyWeightForSPGT = IGC_GET_FLAG_VALUE(FrequencyWeightForSPGT);
-    MetricForKernelSizeReduction =
-        IGC_GET_FLAG_VALUE(MetricForKernelSizeReduction);
-    ParameterForColdFuncThreshold =
-        IGC_GET_FLAG_VALUE(ParameterForColdFuncThreshold);
-    ControlInlineTinySizeForSPGT =
-        IGC_GET_FLAG_VALUE(ControlInlineTinySizeForSPGT);
-    MaxUnrollCountForFunctionSizeAnalysis =
-        IGC_GET_FLAG_VALUE(MaxUnrollCountForFunctionSizeAnalysis);
-    SkipTrimmingOneCopyFunction =
-        IGC_GET_FLAG_VALUE(SkipTrimmingOneCopyFunction);
-    SelectiveTrimming = IGC_GET_REGKEYSTRING(SelectiveTrimming);
-    // Flags for Partitioning
-    PartitionUnit = IGC_IS_FLAG_ENABLED(PartitionUnit);
-    StaticProfileGuidedPartitioning =
-        IGC_IS_FLAG_ENABLED(StaticProfileGuidedPartitioning);
-
-    // Flags for implcit arguments and external functions
-    ForceInlineExternalFunctions =
-        IGC_IS_FLAG_ENABLED(ForceInlineExternalFunctions);
-    ForceInlineStackCallWithImplArg =
-        IGC_IS_FLAG_ENABLED(ForceInlineStackCallWithImplArg);
-    ControlInlineImplicitArgs = IGC_IS_FLAG_ENABLED(ControlInlineImplicitArgs);
-    SubroutineThreshold = IGC_GET_FLAG_VALUE(SubroutineThreshold);
-    KernelTotalSizeThreshold = IGC_GET_FLAG_VALUE(KernelTotalSizeThreshold);
-    ExpandedUnitSizeThreshold = IGC_GET_FLAG_VALUE(ExpandedUnitSizeThreshold);
-    if (EnableStaticProfileGuidedTrimming) {
-        StaticProfileGuidedTrimming = true;
-        EnableLeafCollapsing = true;
-        EnableSizeContributionOptimization = true;
-        LoopCountAwareTrimming = true;
-    }
-}
+EstimateFunctionSize::EstimateFunctionSize(AnalysisLevel AL)
+    : ModulePass(ID), M(nullptr), AL(AL), tmpHasImplicitArg(false), HasRecursion(false), EnableSubroutine(false),
+      threshold_func_freq(Scaled64::getLargest()), thresholdForTrimming(Scaled64::get(IGC_GET_FLAG_VALUE(ControlInlineTinySizeForSPGT))){}
 
 EstimateFunctionSize::~EstimateFunctionSize() { clear(); }
 
@@ -175,17 +114,15 @@ namespace {
 #define PrintFunctionSizeAnalysis(hex_val,contents) if ((IGC_GET_FLAG_VALUE(PrintFunctionSizeAnalysis) & hex_val) != 0) {dbgs() << "FunctionSizeAnalysis0x" << hex_val << ": " << contents << "\n";}
 #define PrintStaticProfileGuidedKernelSizeReduction(hex_val,contents) if ((IGC_GET_FLAG_VALUE(PrintStaticProfileGuidedKernelSizeReduction) & hex_val) != 0) {dbgs() << "StaticProfileGuidedKernelSizeReduction0x" << hex_val << ": " << contents << "\n";}
 
-  static Scaled64 getSPGTWeight(unsigned Size, Scaled64 Freq,
-                              unsigned SizeWeightForSPGT,
-                              unsigned FrequencyWeightForSPGT) {
+  static Scaled64 getSPGTWeight(unsigned Size, Scaled64 Freq) {
     Scaled64 ScaledSize = Scaled64::get(Size);
-    unsigned SizeWeight = SizeWeightForSPGT;
+    unsigned SizeWeight = IGC_GET_FLAG_VALUE(SizeWeightForSPGT);
     Scaled64 WeightedSize = Scaled64::getOne();
     for (unsigned i = 0; i < SizeWeight; i++)
       WeightedSize *= ScaledSize;
     if (Freq == 0)
       return WeightedSize;
-    unsigned FreqWeight = FrequencyWeightForSPGT;
+    unsigned FreqWeight = IGC_GET_FLAG_VALUE(FrequencyWeightForSPGT);
     Scaled64 WeightedFreq = Scaled64::getOne();
     for (unsigned i = 0; i < FreqWeight; i++)
       WeightedFreq *= Freq;
@@ -274,34 +211,6 @@ namespace {
         /// \brief All functions that call this function F.
         std::unordered_map<FunctionNode*, uint16_t> CallerList;
 
-        bool EnableLeafCollapsing;
-        bool EnableSizeContributionOptimization;
-        bool StaticProfileGuidedTrimming;
-        bool UseFrequencyInfoForSPGT;
-        bool ForceInlineExternalFunctions;
-        bool ControlInlineTinySize;
-        bool ForceInlineStackCallWithImplArg;
-        bool ControlInlineImplicitArgs;
-        unsigned SizeWeightForSPGT;
-        unsigned FrequencyWeightForSPGT;
-
-        void setFlags(bool EnableLC, bool EnableSCO, bool SPGT,
-                      bool UseFreqInfo, bool ForceInlineExtFun, bool TinySize,
-                      bool InlineStkCallWithImplArg, bool InlineImplArgs,
-                      unsigned SizeWeight, unsigned FreqWeight) {
-            EnableLeafCollapsing = EnableLC;
-            EnableSizeContributionOptimization = EnableSCO;
-            StaticProfileGuidedTrimming = SPGT;
-            UseFrequencyInfoForSPGT = UseFreqInfo;
-            ForceInlineExternalFunctions = ForceInlineExtFun;
-            ControlInlineTinySize = TinySize;
-            ForceInlineStackCallWithImplArg = InlineStkCallWithImplArg;
-            ControlInlineImplicitArgs = InlineImplArgs;
-            SizeWeightForSPGT = SizeWeight;
-            FrequencyWeightForSPGT = FreqWeight;
-            return;
-        }
-
         void setStaticFuncFreq(Scaled64 freq) { staticFuncFreq = freq; }
 
         Scaled64 getStaticFuncFreq() { return staticFuncFreq; }
@@ -309,17 +218,16 @@ namespace {
         std::string getStaticFuncFreqStr() { return staticFuncFreq.toString(); }
 
         // \brief return the size used for Static Profile Guided Trimming
-        uint64_t getPotentialBodySize() { return EnableLeafCollapsing ? SizeAfterCollapsing : InitialSize; }
+        uint64_t getPotentialBodySize() { return  IGC_IS_FLAG_ENABLED(EnableLeafCollapsing) ? SizeAfterCollapsing : InitialSize; }
 
         uint64_t getSizeContribution() {return Inline_cnt == 0 ? getPotentialBodySize() : static_cast<uint64_t>(Inline_cnt) * getPotentialBodySize(); }
 
-        uint64_t getSizeForTrimming() {return EnableSizeContributionOptimization ? getSizeContribution() : getPotentialBodySize();}
+        uint64_t getSizeForTrimming() {return IGC_IS_FLAG_ENABLED(EnableSizeContributionOptimization) ? getSizeContribution() : getPotentialBodySize();}
 
         Scaled64 getWeightForTrimming() {
-          if (StaticProfileGuidedTrimming && UseFrequencyInfoForSPGT) {
-              return getSPGTWeight(getSizeForTrimming(), staticFuncFreq,
-                                   SizeWeightForSPGT,
-                                   FrequencyWeightForSPGT);
+          if (IGC_IS_FLAG_ENABLED(StaticProfileGuidedTrimming) &&
+              IGC_IS_FLAG_ENABLED(UseFrequencyInfoForSPGT)) {
+            return getSPGTWeight(getSizeForTrimming(), staticFuncFreq);
           }
           return Scaled64::get(getSizeForTrimming());
         }
@@ -405,15 +313,15 @@ namespace {
             if (FunctionAttr != FA_BEST_EFFORT_INLINE) //Only best effort inline can be trimmed
                 return FT_NOT_BEST_EFFORT;
             // to allow trimming functions called from other kernels, set the regkey to false
-            if (ForceInlineExternalFunctions && InMultipleUnit)
+            if (IGC_IS_FLAG_ENABLED(ForceInlineExternalFunctions) && InMultipleUnit)
                 return FT_MUL_KERNEL;
 
-            uint64_t tinySize = ControlInlineTinySize;
+            uint64_t tinySize = IGC_GET_FLAG_VALUE(ControlInlineTinySize);
 
             if (getPotentialBodySize() < tinySize) //It's too small to trim
                 return FT_TOO_TINY;
 
-            if (StaticProfileGuidedTrimming)
+            if (IGC_IS_FLAG_ENABLED(StaticProfileGuidedTrimming))
             {
                 if (getWeightForTrimming() < thresholdForTrimming) {
                     return FT_LOWER_WEIGHT;
@@ -452,22 +360,22 @@ namespace {
             dumpInfo += F->getName().str();
             dumpInfo += ", Function Attribute: ";dumpInfo += getFuncAttrStr();
             dumpInfo += ", Function size: "; dumpInfo += std::to_string(InitialSize);
-            if (EnableLeafCollapsing)
+            if (IGC_IS_FLAG_ENABLED(EnableLeafCollapsing))
             {
                 dumpInfo += ", Size after collapsing: ";
                 dumpInfo += std::to_string(SizeAfterCollapsing);
             }
-            if (EnableSizeContributionOptimization)
+            if (IGC_IS_FLAG_ENABLED(EnableSizeContributionOptimization))
             {
                 dumpInfo += ", Size contribution: ";
                 dumpInfo += std::to_string(getSizeContribution());
             }
-            if (UseFrequencyInfoForSPGT)
+            if (IGC_IS_FLAG_ENABLED(UseFrequencyInfoForSPGT))
             {
                 dumpInfo += ", Freq: ";
                 dumpInfo += getStaticFuncFreqStr();
             }
-            if (StaticProfileGuidedTrimming)
+            if (IGC_IS_FLAG_ENABLED(StaticProfileGuidedTrimming))
             {
                 dumpInfo += ", Weight: ";
                 dumpInfo += getWeightForTrimming().toString();
@@ -516,9 +424,9 @@ namespace {
                 if (!hasNoCaller()) //Can't inline kernel entry or address taken functions
                 {
                     if (isStackCallAssigned()) {//When stackcall is assigned we need to determine based on the flag
-                        if (ForceInlineStackCallWithImplArg)
+                        if (IGC_IS_FLAG_ENABLED(ForceInlineStackCallWithImplArg))
                             setForceInline();
-                    } else if (ControlInlineImplicitArgs) {//Force inline ordinary functions with implicit arguments
+                    } else if (IGC_IS_FLAG_ENABLED(ControlInlineImplicitArgs)) {//Force inline ordinary functions with implicit arguments
                         setForceInline();
                     }
                 }
@@ -710,7 +618,7 @@ void EstimateFunctionSize::runStaticAnalysis()
     }
     updateStaticFuncFreq();
     std::vector<Scaled64> freqLog;
-    if (BlockFrequencySampling) {//Set basic blocks as the sample space
+    if (IGC_GET_FLAG_VALUE(BlockFrequencySampling)) {//Set basic blocks as the sample space
         for (auto& F : M->getFunctionList()) {
             if (F.empty())
                 continue;
@@ -740,8 +648,8 @@ void EstimateFunctionSize::runStaticAnalysis()
         }
     }
 
-    if ((MetricForKernelSizeReduction & SP_NORMAL_DISTRIBUTION) != 0 && !freqLog.empty()) {//When using a normal distribution. Ignore when there are no frequency data
-        IGC_ASSERT(ParameterForColdFuncThreshold >= 0 && ParameterForColdFuncThreshold <= 30);
+    if ((IGC_GET_FLAG_VALUE(MetricForKernelSizeReduction) & SP_NORMAL_DISTRIBUTION) != 0 && !freqLog.empty()) {//When using a normal distribution. Ignore when there are no frequency data
+        IGC_ASSERT(IGC_GET_FLAG_VALUE(ParameterForColdFuncThreshold) >= 0 && IGC_GET_FLAG_VALUE(ParameterForColdFuncThreshold) <= 30);
         //Find a threshold from a normal distribution
         std::sort(freqLog.begin(), freqLog.end());  //Sort frequency data
         std::vector<double> freqLogDbl;
@@ -759,7 +667,7 @@ void EstimateFunctionSize::runStaticAnalysis()
             [](double const& x, double const& y) {return x + y;},
             [mean](double const& x, double const& y) {return (x - mean) * (y - mean);});
         double standard_deviation = std::sqrt(sq_sum / freqLogDbl.size());
-        float C = (float)ParameterForColdFuncThreshold / 10; //Since 1 STD is too wide in the majority case, we need to scale down
+        float C = (float)IGC_GET_FLAG_VALUE(ParameterForColdFuncThreshold) / 10; //Since 1 STD is too wide in the majority case, we need to scale down
         double threshold_log10 = mean - C * standard_deviation;
         auto it_lower = std::lower_bound(freqLogDbl.begin(), freqLogDbl.end(), threshold_log10);
         if (it_lower == freqLogDbl.end())
@@ -771,10 +679,10 @@ void EstimateFunctionSize::runStaticAnalysis()
         PrintStaticProfileGuidedKernelSizeReduction(0x1, "Execution frequency mean (Log10 scale): " << mean);
         PrintStaticProfileGuidedKernelSizeReduction(0x1, "Standard deviation (Log10 scale): " << standard_deviation);
         PrintStaticProfileGuidedKernelSizeReduction(0x1, "Execution frequency threshold with Constant(C) " << C << ": " << threshold_func_freq.toString());
-    } else if ((MetricForKernelSizeReduction & SP_LONGTAIL_DISTRIBUTION) != 0 && !freqLog.empty()) { //When using a long-tail distribution. Ignore when there are no frequency data
-        IGC_ASSERT(ParameterForColdFuncThreshold > 0 && ParameterForColdFuncThreshold <= 100);
+    } else if ((IGC_GET_FLAG_VALUE(MetricForKernelSizeReduction) & SP_LONGTAIL_DISTRIBUTION) != 0 && !freqLog.empty()) { //When using a long-tail distribution. Ignore when there are no frequency data
+        IGC_ASSERT(IGC_GET_FLAG_VALUE(ParameterForColdFuncThreshold) > 0 && IGC_GET_FLAG_VALUE(ParameterForColdFuncThreshold) <= 100);
         //Find a threshold from a long tail distribution
-        uint32_t threshold_cold = (uint32_t)ParameterForColdFuncThreshold;
+        uint32_t threshold_cold = (uint32_t)IGC_GET_FLAG_VALUE(ParameterForColdFuncThreshold);
         uint32_t C_pos = freqLog.size() * threshold_cold / 100;
         std::nth_element(freqLog.begin(), freqLog.begin() + C_pos, freqLog.end(),
             [](Scaled64& x, Scaled64& y) {return x < y;}); //Low C%
@@ -782,21 +690,20 @@ void EstimateFunctionSize::runStaticAnalysis()
         PrintStaticProfileGuidedKernelSizeReduction(0x1, "Metric: Long tail distribution");
         PrintStaticProfileGuidedKernelSizeReduction(0x1, "Low " << threshold_cold << "% pos: " << C_pos << " out of " << freqLog.size());
         PrintStaticProfileGuidedKernelSizeReduction(0x1, "Execution frequency threshold: " << threshold_func_freq);
-    } else if ((MetricForKernelSizeReduction & SP_AVERAGE_PERCENTAGE) != 0 && !freqLog.empty()) {//When using a average C%
+    } else if ((IGC_GET_FLAG_VALUE(MetricForKernelSizeReduction) & SP_AVERAGE_PERCENTAGE) != 0 && !freqLog.empty()) {//When using a average C%
         Scaled64 sum_val = std::accumulate(freqLog.begin(), freqLog.end(), Scaled64::getZero());
         Scaled64 mean = sum_val / Scaled64::get(freqLog.size());
-        Scaled64 C = Scaled64::get(ParameterForColdFuncThreshold) / Scaled64::get(10); //Scale down /10
+        Scaled64 C = Scaled64::get(IGC_GET_FLAG_VALUE(ParameterForColdFuncThreshold)) / Scaled64::get(10); //Scale down /10
         IGC_ASSERT(C > 0 && C <= 100);
         threshold_func_freq = mean * (C / Scaled64::get(100));
         PrintStaticProfileGuidedKernelSizeReduction(0x1, "Metric: Average%");
         PrintStaticProfileGuidedKernelSizeReduction(0x1, "Average threshold * " << C.toString() << "%: " << threshold_func_freq.toString());
     }
 
-    unsigned sizeThreshold = ControlInlineTinySizeForSPGT;
-    if (UseFrequencyInfoForSPGT) {
+    unsigned sizeThreshold = IGC_GET_FLAG_VALUE(ControlInlineTinySizeForSPGT);
+    if (IGC_IS_FLAG_ENABLED(UseFrequencyInfoForSPGT)) {
         thresholdForTrimming =
-            getSPGTWeight(sizeThreshold, threshold_func_freq, SizeWeightForSPGT,
-                          FrequencyWeightForSPGT);
+            getSPGTWeight(sizeThreshold, threshold_func_freq);
     } else {
         thresholdForTrimming =
             Scaled64::get(sizeThreshold); // If we don't want to use freq data,
@@ -828,7 +735,8 @@ void EstimateFunctionSize::estimateTotalLoopIteration(llvm::Function &F,
                             TripCount = TC;
             if (TripCount) {
                 // We assume that loop unrolling will not exceed 16 times
-                unsigned MaxUnrollCount = MaxUnrollCountForFunctionSizeAnalysis;
+                unsigned MaxUnrollCount =
+                    IGC_GET_FLAG_VALUE(MaxUnrollCountForFunctionSizeAnalysis);
                 TripCount = std::min(TripCount, MaxUnrollCount);
                 LoopIterCnts[L] = ParentLCnt * Scaled64::get(TripCount);
                 LoopCntAttr = " Trip count available";
@@ -880,7 +788,7 @@ void EstimateFunctionSize::analyze() {
         if (F.empty())
             continue;
         FunctionNode *node = nullptr;
-        if (LoopCountAwareTrimming) {
+        if (IGC_IS_FLAG_ENABLED(LoopCountAwareTrimming)) {
             auto &LI = getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
             estimateTotalLoopIteration(F, &LI);
             size_t FuncSize = getSize(F);
@@ -893,15 +801,10 @@ void EstimateFunctionSize::analyze() {
         } else {
             node = new FunctionNode(&F, getSize(F));
         }
-        node->setFlags(EnableLeafCollapsing, EnableSizeContributionOptimization,
-                       StaticProfileGuidedTrimming, UseFrequencyInfoForSPGT,
-                       ForceInlineExternalFunctions, ControlInlineTinySize,
-                       ForceInlineStackCallWithImplArg,
-                       ControlInlineImplicitArgs, SizeWeightForSPGT,
-                       FrequencyWeightForSPGT);
         bool isForceTrim = false;
-        if (!SelectiveTrimming.empty()) {
-            std::string functionToTrim = SelectiveTrimming;
+        if (IGC_IS_FLAG_ENABLED(SelectiveTrimming))
+        {
+            std::string functionToTrim = IGC_GET_REGKEYSTRING(SelectiveTrimming);
             if (F.getName().str() == functionToTrim)
             {
                 isForceTrim = true;
@@ -936,7 +839,7 @@ void EstimateFunctionSize::analyze() {
                 Function* G = BB->getParent();
                 FunctionNode* GN = get<FunctionNode>(G);
                 unsigned LoopCnt = 1;
-                if (LoopCountAwareTrimming) {
+                if (IGC_IS_FLAG_ENABLED(LoopCountAwareTrimming)) {
                     Loop *L = LI.getLoopFor(BB);
                     if (L) {
                         IGC_ASSERT(LoopIterCnts.find(L) !=
@@ -959,7 +862,7 @@ void EstimateFunctionSize::analyze() {
             Node->setAddressTaken();
     }
 
-    bool needImplAnalysis = ControlInlineImplicitArgs || ForceInlineStackCallWithImplArg;
+    bool needImplAnalysis = IGC_IS_FLAG_ENABLED(ControlInlineImplicitArgs) || IGC_IS_FLAG_ENABLED(ForceInlineStackCallWithImplArg);
     // check functions and mark those that use implicit args.
     PrintFunctionSizeAnalysis(0x1, "--------------------------Function size analysis start--------------------------");
     if (needImplAnalysis)
@@ -1024,13 +927,13 @@ void EstimateFunctionSize::performImplArgsAnalysis()
 
         if (Node->isStackCallAssigned()) //When stackcall is assigned we need to determine based on the flag
         {
-            if (ForceInlineStackCallWithImplArg)
+            if (IGC_IS_FLAG_ENABLED(ForceInlineStackCallWithImplArg))
                 Node->setForceInline();
             continue;
         }
 
         //For other cases
-        if (ControlInlineImplicitArgs) //Force inline ordinary functions with implicit arguments
+        if (IGC_IS_FLAG_ENABLED(ControlInlineImplicitArgs)) //Force inline ordinary functions with implicit arguments
             Node->setForceInline();
     }
     return;
@@ -1063,7 +966,7 @@ void EstimateFunctionSize::checkSubroutine() {
 
     if (EnableSubroutine)
     {
-        uint32_t subroutineThreshold = SubroutineThreshold;
+        uint32_t subroutineThreshold = IGC_GET_FLAG_VALUE(SubroutineThreshold);
         uint32_t expandedMaxSize = getMaxExpandedSize();
 
         if (AL != AL_Module) // at the second call of EstimationFucntionSize, halve the threshold
@@ -1076,14 +979,15 @@ void EstimateFunctionSize::checkSubroutine() {
         } else if (AL == AL_Module && IGC_IS_FLAG_DISABLED(DisableAddingAlwaysAttribute)) {//kernel trimming and partitioning only kick in at the first EstimationFunctionSize
             //Analyze Function/Block frequencies
 
-            if (StaticProfileGuidedPartitioning || StaticProfileGuidedTrimming) // Either a normal or long-tail distribution is enabled
+            if (IGC_IS_FLAG_ENABLED(StaticProfileGuidedPartitioning) ||
+                IGC_IS_FLAG_ENABLED(StaticProfileGuidedTrimming)) // Either a normal or long-tail distribution is enabled
                 runStaticAnalysis();
 
             // If the max unit size exceeds threshold, do partitioning
-            if (PartitionUnit)
+            if (IGC_IS_FLAG_ENABLED(PartitionUnit))
             {
                 PrintPartitionUnit(0x1, "--------------------------Partition unit start--------------------------");
-                uint32_t unitThreshold = UnitSizeThreshold;
+                uint32_t unitThreshold = IGC_GET_FLAG_VALUE(UnitSizeThreshold);
                 uint32_t maxUnitSize = getMaxUnitSize();
                 if (maxUnitSize > unitThreshold) {
                     PrintPartitionUnit(0x1, "Max unit size " << maxUnitSize << " is larger than the threshold (to partition) " << unitThreshold)
@@ -1096,9 +1000,9 @@ void EstimateFunctionSize::checkSubroutine() {
 
             PrintTrimUnit(0x1, "Need to reduce the kernel size. (The max expanded kernel size is large) " << expandedMaxSize << " > " << subroutineThreshold)
             PrintTrimUnit(0x1, "-----------------------------Trimming start-----------------------------")
-            if (ControlKernelTotalSize) {
+            if (IGC_IS_FLAG_ENABLED(ControlKernelTotalSize)) {
                 reduceKernelSize();
-            } else if (ControlUnitSize) {
+            } else if (IGC_IS_FLAG_ENABLED(ControlUnitSize)) {
                 reduceCompilationUnitSize();
             }
             PrintTrimUnit(0x1, "-----------------------------Trimming end-----------------------------\n")
@@ -1153,7 +1057,7 @@ bool EstimateFunctionSize::onlyCalledOnce(const Function* F) {
 
 
 void EstimateFunctionSize::reduceKernelSize() {
-    uint32_t threshold = KernelTotalSizeThreshold;
+    uint32_t threshold = IGC_GET_FLAG_VALUE(KernelTotalSizeThreshold);
     llvm::SmallVector<void*, 64> unitHeads;
     for (auto node : kernelEntries)
         unitHeads.push_back((FunctionNode*)node);
@@ -1297,7 +1201,7 @@ void EstimateFunctionSize::UpdateSizeAfterCollapsing(std::deque<void*> &nodesToP
     {
         FunctionNode* Node = (FunctionNode*)nodesToProcess.front();nodesToProcess.pop_front();
         bool hasCallee = hasCalleesAfterInline.find(Node) != hasCalleesAfterInline.end();
-        if (Node->willBeInlined() && !hasCallee && Node->SizeAfterCollapsing < ControlInlineTinySizeForSPGT)
+        if (Node->willBeInlined() && !hasCallee && Node->SizeAfterCollapsing < IGC_GET_FLAG_VALUE(ControlInlineTinySizeForSPGT))
         {
             if (!Node->isForcedInlined())
             {
@@ -1383,7 +1287,7 @@ uint32_t EstimateFunctionSize::updateExpandedUnitSize(Function* F, bool ignoreSt
 
 //Partition kernels using bottom-up heristic.
 uint32_t EstimateFunctionSize::bottomUpHeuristic(Function* F, uint32_t& stackCall_cnt) {
-    uint32_t threshold = UnitSizeThreshold;
+    uint32_t threshold = IGC_GET_FLAG_VALUE(UnitSizeThreshold);
     std::deque<void*> BottomUpQueue;
     std::unordered_map<void*, uint32_t> FunctionsInUnit; //Set of functions in the boundary of a kernel. Record unprocessed callee counter for topological sort.
     initializeTopologicalVisit(F, FunctionsInUnit, BottomUpQueue, false);
@@ -1457,7 +1361,7 @@ uint32_t EstimateFunctionSize::bottomUpHeuristic(Function* F, uint32_t& stackCal
 //    ENDIF
 //ENDFOR
 void EstimateFunctionSize::partitionKernel() {
-    uint32_t threshold = UnitSizeThreshold;
+    uint32_t threshold = IGC_GET_FLAG_VALUE(UnitSizeThreshold);
     uint32_t max_unit_size = 0;
     uint32_t stackCall_cnt = 0;
 
@@ -1490,7 +1394,7 @@ void EstimateFunctionSize::partitionKernel() {
 
 //Work same as reduceKernel except for stackcall functions
 void EstimateFunctionSize::reduceCompilationUnitSize() {
-    uint32_t threshold = ExpandedUnitSizeThreshold;
+    uint32_t threshold = IGC_GET_FLAG_VALUE(ExpandedUnitSizeThreshold);
     llvm::SmallVector<void*, 64> unitHeads;
     for (auto node : kernelEntries)
         unitHeads.push_back((FunctionNode*)node);
@@ -1513,7 +1417,7 @@ void EstimateFunctionSize::getFunctionsToTrim(llvm::Function* root, llvm::SmallV
     visit.insert((void*)unitHead);
 
     SmallVector<FunctionNode*, 64> funcsInKernel;
-    uint64_t tinySizeThreshold = ControlInlineTinySize;
+    uint64_t tinySizeThreshold = IGC_GET_FLAG_VALUE(ControlInlineTinySize);
 
     std::deque<void*> bottomUpQueue;
 
@@ -1536,12 +1440,12 @@ void EstimateFunctionSize::getFunctionsToTrim(llvm::Function* root, llvm::SmallV
     }
     func_cnt += visit.size();
 
-    if (EnableSizeContributionOptimization)
+    if (IGC_IS_FLAG_ENABLED(EnableSizeContributionOptimization))
         updateInlineCnt(root);
-    if (EnableLeafCollapsing)
+    if (IGC_IS_FLAG_ENABLED(EnableLeafCollapsing))
         UpdateSizeAfterCollapsing(bottomUpQueue, visit);
 
-    if (EnableGreedyTrimming)
+    if (IGC_GET_FLAG_VALUE(EnableGreedyTrimming))
     {
         trimming_pool = llvm::SmallVector<void*, 64>(funcsInKernel.size());
         //Node with best effort and larger size contribution could be trimmed
@@ -1647,7 +1551,7 @@ void EstimateFunctionSize::trimCompilationUnit(llvm::SmallVector<void*, 64> &uni
             continue; // all functions are tiny.
         }
         uint64_t size_before_trimming = unit->ExpandedSize;
-        if (EnableGreedyTrimming) {
+        if (IGC_GET_FLAG_VALUE(EnableGreedyTrimming)) {
             performGreedyTrimming(unit->F, trimming_pool, threshold, ignoreStackCallBoundary);
         } else {
             performTrimming(unit->F, trimming_pool, threshold, ignoreStackCallBoundary);
@@ -1769,11 +1673,11 @@ void EstimateFunctionSize::performTrimming(Function *head, llvm::SmallVector<voi
         functions_to_trim.pop_back();
         uint64_t original_expandedSize = unitHead->ExpandedSize;
 
-        if (EnableSizeContributionOptimization) {
+        if (IGC_IS_FLAG_ENABLED(EnableSizeContributionOptimization)) {
             uint64_t size_contribution = functionToTrim->getSizeContribution();
             uint64_t FuncSize = functionToTrim->getPotentialBodySize();
             if (FuncSize == size_contribution &&
-                FuncSize < SkipTrimmingOneCopyFunction) {
+                FuncSize < IGC_GET_FLAG_VALUE(SkipTrimmingOneCopyFunction)) {
                 functionToTrim->dumpFuncInfo(
                     0x8, "Don't trim (Same size contribution and too small)");
                 continue;

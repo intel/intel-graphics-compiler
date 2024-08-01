@@ -603,9 +603,5 @@ void Options::parseOptions(const char* opts)
         Xfinalizer = true;
         XfinalizerOption = arg->getValue();
     }
-
-    if (apiOptions.hasArg(OPT_static_profile_guided_trimming_common)) {
-        StaticProfileGuidedTrimming = true;
-    }
 }
 } // namespace IGC

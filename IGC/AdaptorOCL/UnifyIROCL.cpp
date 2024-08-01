@@ -430,10 +430,8 @@ static void CommonOCLBasedPasses(
         mpm.add(createSCCPPass());
         mpm.add(new ResolveConstExprCalls());
 
-        // Estimate maximal function size in the module and disable subroutine
-        // if not profitable.
-        mpm.add(createEstimateFunctionSizePass(
-            pContext->m_Options.StaticProfileGuidedTrimming));
+        // Estimate maximal function size in the module and disable subroutine if not profitable.
+        mpm.add(createEstimateFunctionSizePass());
         mpm.add(createProcessFuncAttributesPass());
         FastMathFlags Mask;
         Mask.setFast();
