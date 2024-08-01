@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2023 Intel Corporation
+Copyright (C) 2021-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -84,7 +84,6 @@ public:
   bool run();
 
 private:
-  Optional<unsigned> tryConvertBuffer(unsigned Kind, StringRef Desc);
   unsigned convertSingleArg(unsigned Kind, StringRef Desc);
   bool convertKernelArguments(Function &F);
   bool convertArguments();
@@ -92,8 +91,8 @@ private:
   GlobalVariable &getOrCreateBSSVariable();
 
   CallInst *createBindlessSurfaceDataportIntrinsicChain(CallInst &CI);
-  void rewriteBufferIntrinsic(CallInst &CI);
-  bool rewriteBufferIntrinsics();
+  void rewriteStatefulIntrinsic(CallInst &CI);
+  bool rewriteStatefulIntrinsics();
   bool rewriteIntrinsics();
 };
 
@@ -146,48 +145,16 @@ bool GenXPromoteStatefulToBindless::runOnModule(Module &M) {
   return PTM.run();
 }
 
-// Error reporting function for not yet supported functionality.
-// When every intrinsic will be supported there will be no need for this.
-// Currently, simply fail on unsupported ones.
-static void reportUnhandledIntrinsic(const char *Func, GenXIntrinsic::ID Id) {
-  std::ostringstream SS;
-  SS << "In function '" << Func << "': Intrinsic '" << getGenXName(Id)
-     << "' is not yet supported";
-  llvm::report_fatal_error(llvm::StringRef(SS.str()));
-}
-
-static void reportUnhandledIntrinsic(const char *Func,
-                                     vc::InternalIntrinsic::ID Id) {
-  std::ostringstream SS;
-  SS << "In function '" << Func << "': Intrinsic '"
-     << vc::InternalIntrinsic::getInternalName(Id) << "' is not yet supported";
-  llvm::report_fatal_error(llvm::StringRef(SS.str()));
-}
-
-// Buffer argument kind is converted to GENERAL to denote that
-// argument is not BTI but SSO.
-Optional<unsigned> PromoteToBindless::tryConvertBuffer(unsigned Kind,
-                                                       StringRef Desc) {
-  // Do not change kind if promotion is not enabled.
-  if (!BC.useBindlessBuffers())
-    return None;
+// Convert single stateful argument to bindless counterpart.
+// Currently only buffers and images are supported
+// extra objects can be easily added here later.
+unsigned PromoteToBindless::convertSingleArg(unsigned Kind, StringRef Desc) {
 
   if (Kind != vc::KernelMetadata::AK_SURFACE)
-    return None;
+    return Kind;
 
-  if (!vc::isDescBufferType(Desc))
-    return None;
-
-  // If this is a buffer, change argument kind to general value.
-  return vc::KernelMetadata::AK_NORMAL;
-}
-
-// Convert single stateful argument to bindless counterpart.
-// Currently only buffers are supported -- extra objects can be easily added
-// here later.
-unsigned PromoteToBindless::convertSingleArg(unsigned Kind, StringRef Desc) {
-  if (auto MaybeKind = tryConvertBuffer(Kind, Desc))
-    return MaybeKind.getValue();
+  if (BC.useBindlessBuffers() && vc::isDescBufferType(Desc))
+    return vc::KernelMetadata::AK_NORMAL;
 
   return Kind;
 }
@@ -232,7 +199,7 @@ GlobalVariable &PromoteToBindless::getOrCreateBSSVariable() {
 }
 
 // Get surface operand number for given intrinsic.
-static unsigned getSurfaceOperandNo(GenXIntrinsic::ID Id) {
+static int getSurfaceOperandNo(unsigned Id) {
   using namespace GenXIntrinsic;
 
   switch (Id) {
@@ -270,17 +237,43 @@ static unsigned getSurfaceOperandNo(GenXIntrinsic::ID Id) {
 
   case genx_oword_st:
     return 0;
+
+  case vc::InternalIntrinsic::lsc_atomic_bti:
+  case vc::InternalIntrinsic::lsc_load_bti:
+  case vc::InternalIntrinsic::lsc_prefetch_bti:
+  case vc::InternalIntrinsic::lsc_store_bti:
+  case vc::InternalIntrinsic::lsc_load_quad_bti:
+  case vc::InternalIntrinsic::lsc_prefetch_quad_bti:
+  case vc::InternalIntrinsic::lsc_store_quad_bti:
+    return 5;
+
+
   default:
-    reportUnhandledIntrinsic("getSurfaceOperandNo", Id);
+    return -1;
   }
-  return 0;
 }
 
-// Check whether instruction operates on buffer surface.
+// Get address size operand number for given intrinsic.
+static int getAddrSizeOperandNo(unsigned Id) {
+  switch (Id) {
+  case vc::InternalIntrinsic::lsc_atomic_bti:
+  case vc::InternalIntrinsic::lsc_load_bti:
+  case vc::InternalIntrinsic::lsc_prefetch_bti:
+  case vc::InternalIntrinsic::lsc_store_bti:
+  case vc::InternalIntrinsic::lsc_load_quad_bti:
+  case vc::InternalIntrinsic::lsc_prefetch_quad_bti:
+  case vc::InternalIntrinsic::lsc_store_quad_bti:
+    return 1;
+  default:
+    return -1;
+  }
+}
+
+// Check whether instruction operates on BTI surface.
 // Only new versions of intrinsics are handled.
 // They are coming from CM and this also allows to prevent
 // code bloat because of supporting of legacy versions.
-static bool isBufferIntrinsic(const Instruction &I) {
+static bool isStatefulIntrinsic(const Instruction &I) {
   const auto ID = vc::getAnyIntrinsicID(&I);
   switch (ID) {
   // LSC.
@@ -332,9 +325,9 @@ static bool isBufferIntrinsic(const Instruction &I) {
     // Check additionally that surface argument in not a constant.
     // If argument is a constant then promotion cannot happen because
     // it can be SLM, stack or stateless access.
-    const unsigned SurfOpNo =
-        getSurfaceOperandNo(static_cast<GenXIntrinsic::ID>(ID));
-    return !isa<ConstantInt>(cast<CallInst>(I).getArgOperand(SurfOpNo));
+    const auto SurfaceOpNo = getSurfaceOperandNo(ID);
+    IGC_ASSERT_EXIT_MESSAGE(SurfaceOpNo >= 0, "Unknown surface operand number");
+    return !isa<ConstantInt>(cast<CallInst>(I).getArgOperand(SurfaceOpNo));
   }
   default:
     break;
@@ -342,12 +335,12 @@ static bool isBufferIntrinsic(const Instruction &I) {
   return false;
 }
 
-static std::vector<CallInst *> collectBufferIntrinsics(Module &M) {
+static std::vector<CallInst *> collectStatefulIntrinsics(Module &M) {
   std::vector<CallInst *> Collected;
 
   for (Function &F : M)
     for (auto &I : instructions(F)) {
-      if (isBufferIntrinsic(I))
+      if (isStatefulIntrinsic(I))
         Collected.push_back(cast<CallInst>(&I));
     }
 
@@ -367,7 +360,7 @@ static void createSurfaceStateOffsetWrite(Value &SSO, IRBuilder<> &IRB,
 
 // For given intrinsic ID get version with predefined surface variable
 // that allows to use it with %bss variable.
-static GenXIntrinsic::ID getBindlessDataportIntrinsicID(GenXIntrinsic::ID Id) {
+static GenXIntrinsic::ID getBindlessDataportIntrinsicID(unsigned Id) {
   using namespace GenXIntrinsic;
 
 #define MAP(intr)                                                              \
@@ -406,11 +399,10 @@ static GenXIntrinsic::ID getBindlessDataportIntrinsicID(GenXIntrinsic::ID Id) {
     MAP(genx_oword_ld_unaligned);
     MAP(genx_oword_st);
   default:
-    reportUnhandledIntrinsic("getBindlessDataportIntrinsicID", Id);
+    return not_genx_intrinsic;
   }
 #undef MAP
 
-  return not_genx_intrinsic;
 }
 
 // Second part of transformation for dataport intrinsic: create bindless version
@@ -418,7 +410,7 @@ static GenXIntrinsic::ID getBindlessDataportIntrinsicID(GenXIntrinsic::ID Id) {
 // change: BSS global is used instead of BTI.
 static CallInst *createBindlessSurfaceDataportIntrinsic(
     CallInst &CI, IRBuilder<> &IRB, Module &M, GlobalVariable &BSS,
-    GenXIntrinsic::ID Id, unsigned SurfaceOpNo) {
+    unsigned Id, unsigned SurfaceOpNo) {
   using namespace GenXIntrinsic;
 
   SmallVector<Value *, 8> Args{CI.arg_begin(), CI.arg_end()};
@@ -438,8 +430,9 @@ static CallInst *createBindlessSurfaceDataportIntrinsic(
 // Return newly created bindless instruction (second instruction in chain).
 CallInst *
 PromoteToBindless::createBindlessSurfaceDataportIntrinsicChain(CallInst &CI) {
-  const auto ID = GenXIntrinsic::getGenXIntrinsicID(&CI);
-  const unsigned SurfaceOpNo = getSurfaceOperandNo(ID);
+  const auto ID = vc::getAnyIntrinsicID(&CI);
+  const auto SurfaceOpNo = getSurfaceOperandNo(ID);
+  IGC_ASSERT_EXIT_MESSAGE(SurfaceOpNo >= 0, "Unknown surface operand number");
 
   IRBuilder<> IRB{&CI};
   GlobalVariable &BSS = getOrCreateBSSVariable();
@@ -454,8 +447,7 @@ PromoteToBindless::createBindlessSurfaceDataportIntrinsicChain(CallInst &CI) {
 
 // Get bindless version of given bti lsc intrinsic.
 static vc::InternalIntrinsic::ID
-getBindlessLscIntrinsicID(vc::InternalIntrinsic::ID IID,
-                          const GenXSubtarget &ST) {
+getBindlessLscIntrinsicID(unsigned IID, const GenXSubtarget &ST) {
 
 #define MAP(INTR)                                                              \
   case vc::InternalIntrinsic::INTR##_bti:                                      \
@@ -470,11 +462,10 @@ getBindlessLscIntrinsicID(vc::InternalIntrinsic::ID IID,
     MAP(lsc_store);
     MAP(lsc_store_quad);
   default:
-    reportUnhandledIntrinsic("getBindlessLscIntrinsicID", IID);
+    return vc::InternalIntrinsic::not_any_intrinsic;
   }
 #undef MAP
 
-  return vc::InternalIntrinsic::not_any_intrinsic;
 }
 
 // Create bindless version of lsc bti intrinsic.
@@ -485,12 +476,11 @@ getBindlessLscIntrinsicID(vc::InternalIntrinsic::ID IID,
 // instruction.
 static CallInst *createBindlessLscIntrinsic(CallInst &CI,
                                             const GenXSubtarget &ST) {
-  const auto ID = vc::InternalIntrinsic::getInternalIntrinsicID(&CI);
+  const auto ID = vc::getAnyIntrinsicID(&CI);
   const auto NewId = getBindlessLscIntrinsicID(ID, ST);
 
   SmallVector<Value *, 16> Args{CI.args()};
   IRBuilder<> IRB{&CI};
-
 
   auto *Decl = vc::getInternalDeclarationForIdFromArgs(CI.getType(), Args,
                                                        NewId, *CI.getModule());
@@ -498,7 +488,7 @@ static CallInst *createBindlessLscIntrinsic(CallInst &CI,
   return IRB.CreateCall(Decl->getFunctionType(), Decl, Args, CI.getName());
 }
 
-void PromoteToBindless::rewriteBufferIntrinsic(CallInst &CI) {
+void PromoteToBindless::rewriteStatefulIntrinsic(CallInst &CI) {
   const auto ID = vc::getAnyIntrinsicID(&CI);
   CallInst *BindlessCI = nullptr;
   switch (ID) {
@@ -551,14 +541,14 @@ void PromoteToBindless::rewriteBufferIntrinsic(CallInst &CI) {
   CI.eraseFromParent();
 }
 
-bool PromoteToBindless::rewriteBufferIntrinsics() {
-  std::vector<CallInst *> bufferIntrinsics = collectBufferIntrinsics(M);
+bool PromoteToBindless::rewriteStatefulIntrinsics() {
+  std::vector<CallInst *> Intrinsics = collectStatefulIntrinsics(M);
 
-  if (bufferIntrinsics.empty())
+  if (Intrinsics.empty())
     return false;
 
-  for (CallInst *CI : bufferIntrinsics)
-    rewriteBufferIntrinsic(*CI);
+  for (CallInst *CI : Intrinsics)
+    rewriteStatefulIntrinsic(*CI);
 
   return true;
 }
@@ -570,7 +560,7 @@ bool PromoteToBindless::rewriteIntrinsics() {
   if (!BC.useBindlessBuffers())
     return false;
 
-  return rewriteBufferIntrinsics();
+  return rewriteStatefulIntrinsics();
 }
 
 bool PromoteToBindless::run() {

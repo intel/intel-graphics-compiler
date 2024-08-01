@@ -145,6 +145,24 @@ inline bool isDescBufferType(llvm::StringRef TypeDesc) {
           !IGCLLVM::contains_insensitive(TypeDesc, "image1d_buffer_t"));
 }
 
+inline bool isDescImageType(llvm::StringRef TypeDesc) {
+  return IGCLLVM::contains_insensitive(TypeDesc, "image1d_t") ||
+         IGCLLVM::contains_insensitive(TypeDesc, "image1d_array_t") ||
+         IGCLLVM::contains_insensitive(TypeDesc, "image2d_t") ||
+         IGCLLVM::contains_insensitive(TypeDesc, "image2d_array_t") ||
+         IGCLLVM::contains_insensitive(TypeDesc, "image2d_media_block_t") ||
+         IGCLLVM::contains_insensitive(TypeDesc, "image3d_t") ||
+         IGCLLVM::contains_insensitive(TypeDesc, "image1d_buffer_t");
+}
+
+inline bool isDescReadOnly(llvm::StringRef TypeDesc) {
+  return IGCLLVM::contains_insensitive(TypeDesc, "read_only");
+}
+
+inline bool isDescSvmPtr(llvm::StringRef TypeDesc) {
+  return IGCLLVM::contains_insensitive(TypeDesc, "svmptr_t");
+}
+
 /// KernelMetadata : class to parse and update kernel metadata
 class KernelMetadata {
 public:

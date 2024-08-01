@@ -53,12 +53,14 @@ class BTIAssignment final {
   Module &M;
   const bool emitDebuggableKernels;
   const bool useBindlessBuffers;
+  const bool useBindlessImages;
 
 public:
   BTIAssignment(Module &InM, bool InEmitDebuggableKernels,
-                bool InUseBindlessBuffers)
+                bool InUseBindlessBuffers, bool InUseBindlessImages)
       : M(InM), emitDebuggableKernels(InEmitDebuggableKernels),
-        useBindlessBuffers(InUseBindlessBuffers) {}
+        useBindlessBuffers(InUseBindlessBuffers),
+        useBindlessImages(InUseBindlessImages) {}
 
   bool run();
 
@@ -117,9 +119,10 @@ bool GenXBTIAssignment::runOnModule(Module &M) {
   auto &BC = getAnalysis<GenXBackendConfig>();
   bool emitDebuggableKernels = BC.emitDebuggableKernelsForLegacyPath();
   bool useBindlessBuffers = BC.useBindlessBuffers();
+  bool useBindlessImages = false;
 
-
-  BTIAssignment BA(M, emitDebuggableKernels, useBindlessBuffers);
+  BTIAssignment BA(M, emitDebuggableKernels, useBindlessBuffers,
+                   useBindlessImages);
 
   return BA.run();
 }
@@ -128,24 +131,6 @@ bool GenXBTIAssignment::runOnModule(Module &M) {
 static constexpr int MaxAvailableSurfaceIndex = 239;
 static constexpr int StatelessBti = 255;
 static constexpr int MaxAvailableSamplerIndex = 14;
-
-static bool isDescImageType(StringRef TypeDesc) {
-  return IGCLLVM::contains_insensitive(TypeDesc, "image1d_t") ||
-         IGCLLVM::contains_insensitive(TypeDesc, "image1d_array_t") ||
-         IGCLLVM::contains_insensitive(TypeDesc, "image2d_t") ||
-         IGCLLVM::contains_insensitive(TypeDesc, "image2d_array_t") ||
-         IGCLLVM::contains_insensitive(TypeDesc, "image2d_media_block_t") ||
-         IGCLLVM::contains_insensitive(TypeDesc, "image3d_t") ||
-         IGCLLVM::contains_insensitive(TypeDesc, "image1d_buffer_t");
-}
-
-static bool isDescReadOnly(StringRef TypeDesc) {
-  return IGCLLVM::contains_insensitive(TypeDesc, "read_only");
-}
-
-static bool isDescSvmPtr(StringRef TypeDesc) {
-  return IGCLLVM::contains_insensitive(TypeDesc, "svmptr_t");
-}
 
 template <typename ZipTy>
 std::pair<int, int> BTIAssignment::assignSRV(int SurfaceID, int SamplerID,
@@ -156,8 +141,8 @@ std::pair<int, int> BTIAssignment::assignSRV(int SurfaceID, int SamplerID,
       Idx = SamplerID++;
       continue;
     }
-    if (Kind == vc::KernelMetadata::AK_SURFACE && isDescReadOnly(Desc)) {
-      IGC_ASSERT_MESSAGE(isDescImageType(Desc),
+    if (Kind == vc::KernelMetadata::AK_SURFACE && vc::isDescReadOnly(Desc)) {
+      IGC_ASSERT_MESSAGE(vc::isDescImageType(Desc),
                          "RW qualifiers are allowed on images only");
       Idx = SurfaceID++;
       continue;
@@ -178,7 +163,7 @@ int BTIAssignment::assignUAV(int SurfaceID, ZipTy &&Zippy) {
       Idx = SurfaceID++;
       continue;
     }
-    if (Kind == vc::KernelMetadata::AK_NORMAL && isDescSvmPtr(Desc)) {
+    if (Kind == vc::KernelMetadata::AK_NORMAL && vc::isDescSvmPtr(Desc)) {
       Idx = StatelessBti;
       continue;
     }
@@ -260,8 +245,12 @@ bool BTIAssignment::rewriteArguments(
         Kind != vc::KernelMetadata::AK_SURFACE)
       continue;
 
-    // For bindless resource argument is ExBSO.
+    // For bindless buffer resource argument is ExBSO.
     if (useBindlessBuffers && vc::isDescBufferType(Desc))
+      continue;
+
+    // For bindless image resource argument is ExBSO.
+    if (useBindlessImages && vc::isDescImageType(Desc))
       continue;
 
     IGC_ASSERT_MESSAGE(BTI >= 0, "unassigned BTI");
