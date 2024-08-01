@@ -1,12 +1,13 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2018-2023 Intel Corporation
+Copyright (C) 2018-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#pragma once
+#ifndef PACKET_BUILDER_H
+#define PACKET_BUILDER_H
 
 #include "llvm/Analysis/CFG.h"
 #include "llvm/Analysis/LoopInfo.h"
@@ -17,10 +18,10 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Module.h"
 #include "llvm/Pass.h"
 
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/InstrTypes.h"
 #include "llvmWrapper/IR/Module.h"
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/Alignment.h"
 
 #include <deque>
@@ -28,303 +29,271 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 
-namespace pktz
-{
-    struct PacketBuilder
-    {
-    public:
-        PacketBuilder(Module* pModule, uint32_t width = 16);
-        virtual ~PacketBuilder()
-        {
-            if (mpIRBuilder)
-                delete mpIRBuilder;
-        }
-        PacketBuilder(const PacketBuilder &) = delete;
-        PacketBuilder &operator=(const PacketBuilder &) = delete;
+namespace pktz {
+struct PacketBuilder {
+public:
+  PacketBuilder(Module *MIn, uint32_t Width = 16);
+  virtual ~PacketBuilder() {
+    if (IRB)
+      delete IRB;
+  }
+  PacketBuilder(const PacketBuilder &) = delete;
+  PacketBuilder &operator=(const PacketBuilder &) = delete;
 
-        IGCLLVM::IRBuilder<>* IRB() { return mpIRBuilder; };
-        LLVMContext &getContext() { return mpModule->getContext(); }
+  LLVMContext &getContext() { return M->getContext(); }
 
-        IGCLLVM::Module*     mpModule;
-        IGCLLVM::IRBuilder<>* mpIRBuilder;
+  IGCLLVM::Module *M;
+  IGCLLVM::IRBuilder<> *IRB;
 
-        uint32_t mVWidth;   // vector width target simd
-        uint32_t mVWidth16; // vector width simd16
+  uint32_t VWidth;   // vector width target simd
+  uint32_t VWidth16; // vector width simd16
 
-        // Built in types: scalar
-        Type* mVoidTy;
-        Type* mInt1Ty;
-        Type* mInt8Ty;
-        Type* mInt16Ty;
-        Type* mInt32Ty;
-        Type* mInt64Ty;
-        Type* mIntPtrTy;
-        Type* mFP16Ty;
-        Type* mFP32Ty;
-        Type* mFP32PtrTy;
-        Type* mDoubleTy;
-        Type* mInt8PtrTy;
-        Type* mInt16PtrTy;
-        Type* mInt32PtrTy;
+  // Built in types: scalar
+  Type *VoidTy;
+  Type *Int1Ty;
+  Type *Int8Ty;
+  Type *Int16Ty;
+  Type *Int32Ty;
+  Type *Int64Ty;
+  Type *IntPtrTy;
+  Type *FP16Ty;
+  Type *FP32Ty;
+  Type *FP32PtrTy;
+  Type *DoubleTy;
+  Type *Int8PtrTy;
+  Type *Int16PtrTy;
+  Type *Int32PtrTy;
 
-        Type* mSimd4FP64Ty;
+  Type *Simd4FP64Ty;
 
-        // Built in types: target SIMD
-        Type* mSimdFP16Ty;
-        Type* mSimdFP32Ty;
-        Type* mSimdInt1Ty;
-        Type* mSimdInt16Ty;
-        Type* mSimdInt32Ty;
-        Type* mSimdInt64Ty;
-        Type* mSimdIntPtrTy;
+  // Built in types: target SIMD
+  Type *SimdFP16Ty;
+  Type *SimdFP32Ty;
+  Type *SimdInt1Ty;
+  Type *SimdInt16Ty;
+  Type *SimdInt32Ty;
+  Type *SimdInt64Ty;
+  Type *SimdIntPtrTy;
 
-        // Built in types: simd16
+  // Built in types: simd16
 
-        Type* mSimd16FP16Ty;
-        Type* mSimd16FP32Ty;
-        Type* mSimd16Int1Ty;
-        Type* mSimd16Int16Ty;
-        Type* mSimd16Int32Ty;
-        Type* mSimd16Int64Ty;
-        Type* mSimd16IntPtrTy;
+  Type *Simd16FP16Ty;
+  Type *Simd16FP32Ty;
+  Type *Simd16Int1Ty;
+  Type *Simd16Int16Ty;
+  Type *Simd16Int32Ty;
+  Type *Simd16Int64Ty;
+  Type *Simd16IntPtrTy;
 
-        Type* mSimd32Int8Ty;
+  Type *Simd32Int8Ty;
 
-        void  SetTargetWidth(uint32_t width);
-        void  SetTempAlloca(Value* inst);
-        bool  IsTempAlloca(Value* inst);
-        bool  SetNamedMetaDataOnCallInstr(Instruction* inst, StringRef mdName);
-        bool  HasNamedMetaDataOnCallInstr(Instruction* inst, StringRef mdName);
-        Type* GetVectorType(Type* pType);
-        void  SetMetadata(StringRef s, uint32_t val)
-        {
-            llvm::NamedMDNode* metaData = mpModule->getOrInsertNamedMetadata(s);
-            Constant*          cval     = IRB()->getInt32(val);
-            llvm::MDNode*      mdNode   = llvm::MDNode::get(getContext(),
-                                                     llvm::ConstantAsMetadata::get(cval));
-            if (metaData->getNumOperands())
-            {
-                metaData->setOperand(0, mdNode);
-            }
-            else
-            {
-                metaData->addOperand(mdNode);
-            }
-        }
-        uint32_t GetMetadata(StringRef s)
-        {
-            NamedMDNode* metaData = mpModule->getNamedMetadata(s);
-            if (metaData)
-            {
-                MDNode*   mdNode = metaData->getOperand(0);
-                Metadata* val    = mdNode->getOperand(0);
-                return mdconst::dyn_extract<ConstantInt>(val)->getZExtValue();
-            }
-            else
-            {
-                return 0;
-            }
-        }
+  void setTargetWidth(uint32_t Width);
+  void setTempAlloca(Value *Inst);
+  bool isTempAlloca(Value *Inst);
+  bool setNamedMetaDataOnCallInstr(Instruction *Inst, StringRef MDName);
+  bool hasNamedMetaDataOnCallInstr(Instruction *Inst, StringRef MDName);
+  Type *getVectorType(Type *Ty);
+
+  void setMetadata(StringRef MDName, uint32_t Val) {
+    auto *MD = M->getOrInsertNamedMetadata(MDName);
+    auto *N = llvm::MDNode::get(
+        getContext(), llvm::ConstantAsMetadata::get(IRB->getInt32(Val)));
+    if (MD->getNumOperands())
+      MD->setOperand(0, N);
+    else
+      MD->addOperand(N);
+  }
+
+  uint32_t getMetadata(StringRef MDName) {
+    auto *MD = M->getNamedMetadata(MDName);
+    if (MD) {
+      auto *N = MD->getOperand(0);
+      return mdconst::dyn_extract<ConstantInt>(N->getOperand(0))
+          ->getZExtValue();
+    }
+    return 0;
+  }
+
 #include "gen_builder.hpp"
 #include "gen_builder_intrin.hpp"
 #include "gen_builder_meta.hpp"
 
-        Value* VLOG2PS(Value* src);
-        Value* VPOW24PS(Value* src);
-        Value* VEXP2PS(Value* src);
+  Value *VLOG2PS(Value *A);
+  Value *VPOW24PS(Value *A);
+  Value *VEXP2PS(Value *A);
 
-        //#include "PacketBuilder_misc.h"
-        Constant* C(bool i);
-        Constant* C(char i);
-        Constant* C(uint8_t i);
-        Constant* C(int i);
-        Constant* C(int64_t i);
-        Constant* C(uint64_t i);
-        Constant* C(uint16_t i);
-        Constant* C(uint32_t i);
-        Constant* C(float i);
+  //#include "PacketBuilder_misc.h"
+  Constant *C(bool Val);
+  Constant *C(char Val);
+  Constant *C(uint8_t Val);
+  Constant *C(int Val);
+  Constant *C(int64_t Val);
+  Constant *C(uint64_t Val);
+  Constant *C(uint16_t Val);
+  Constant *C(uint32_t Val);
+  Constant *C(float Val);
 
-        template <typename Ty>
-        Constant* C(const std::initializer_list<Ty>& constList)
-        {
-          std::vector<Constant*> vConsts;
-          for (auto i : constList)
-          {
-            vConsts.push_back(C((Ty)i));
-          }
-          return ConstantVector::get(vConsts);
-        }
+  template <typename T> Constant *C(const std::initializer_list<T> &ConstList) {
+    std::vector<Constant *> Consts;
+    for (T Val : ConstList) {
+      Consts.push_back(C(Val));
+    }
+    return ConstantVector::get(Consts);
+  }
 
-        template <typename Ty>
-        Constant* CA(LLVMContext& ctx, ArrayRef<Ty> constList)
-        {
-          return ConstantDataArray::get(ctx, constList);
-        }
+  template <typename T> Constant *CA(LLVMContext &Ctx, ArrayRef<T> ConstList) {
+    return ConstantDataArray::get(Ctx, ConstList);
+  }
 
-        template <typename Ty>
-        Constant* CInc(uint32_t base, uint32_t count)
-        {
-          std::vector<Constant*> vConsts;
+  template <typename T> Constant *CInc(uint32_t Base, uint32_t Count) {
+    std::vector<Constant *> Consts;
+    for (uint32_t Idx = 0; Idx < Count; Idx++) {
+      Consts.push_back(C(static_cast<T>(Base + Idx)));
+    }
+    return ConstantVector::get(Consts);
+  }
 
-          for (uint32_t i = 0; i < count; i++)
-          {
-            vConsts.push_back(C((Ty)base));
-            base++;
-          }
-          return ConstantVector::get(vConsts);
-        }
+  Constant *PRED(bool Pred);
 
-        Constant* PRED(bool pred);
+  Value *VIMMED1(int Val);
+  Value *VIMMED1_16(int Val);
 
-        Value* VIMMED1(int i);
-        Value* VIMMED1_16(int i);
+  Value *VIMMED1(uint32_t Val);
+  Value *VIMMED1_16(uint32_t Val);
 
-        Value* VIMMED1(uint32_t i);
-        Value* VIMMED1_16(uint32_t i);
+  Value *VIMMED1(float Val);
+  Value *VIMMED1_16(float Val);
 
-        Value* VIMMED1(float i);
-        Value* VIMMED1_16(float i);
+  Value *VIMMED1(bool Val);
+  Value *VIMMED1_16(bool Val);
 
-        Value* VIMMED1(bool i);
-        Value* VIMMED1_16(bool i);
+  Value *VUNDEF(Type *Ty);
 
-        Value* VUNDEF(Type* t);
+  Value *VUNDEF_F();
+  Value *VUNDEF_F_16();
 
-        Value* VUNDEF_F();
-        Value* VUNDEF_F_16();
+  Value *VUNDEF_I();
+  Value *VUNDEF_I_16();
 
-        Value* VUNDEF_I();
-        Value* VUNDEF_I_16();
+  Value *VUNDEF(Type *Ty, uint32_t Size);
 
-        Value* VUNDEF(Type* ty, uint32_t size);
+  Value *VUNDEF_IPTR();
 
-        Value* VUNDEF_IPTR();
+  Value *VBROADCAST(Value *Src, const llvm::Twine &Name = "");
+  Value *VBROADCAST_16(Value *src);
 
-        Value* VBROADCAST(Value* src, const llvm::Twine& name = "");
-        Value* VBROADCAST_16(Value* src);
+  Value *VRCP(Value *A, const llvm::Twine &Name = "");
+  Value *VPLANEPS(Value *vA, Value *vB, Value *vC, Value *&vX, Value *&vY);
 
-        Value* VRCP(Value* va, const llvm::Twine& name = "");
-        Value* VPLANEPS(Value* vA, Value* vB, Value* vC, Value*& vX, Value*& vY);
+  uint32_t IMMED(Value *V);
+  int32_t S_IMMED(Value *V);
 
-        uint32_t IMMED(Value* i);
-        int32_t  S_IMMED(Value* i);
+  CallInst *CALL(Value *Callee, const std::initializer_list<Value *> &ArgsList,
+                 const llvm::Twine &Name = "");
+  CallInst *CALL(Value *Callee) { return CALLA(Callee); }
+  CallInst *CALL(Value *Callee, Value *Arg);
+  CallInst *CALL2(Value *Callee, Value *Arg1, Value *Arg2);
+  CallInst *CALL3(Value *Callee, Value *Arg1, Value *Arg2, Value *Arg3);
 
-        CallInst* CALL(Value* Callee, const std::initializer_list<Value*>& args, const llvm::Twine& name = "");
-        CallInst* CALL(Value* Callee)
-        {
-          return CALLA(Callee);
-        }
-        CallInst* CALL(Value* Callee, Value* arg);
-        CallInst* CALL2(Value* Callee, Value* arg1, Value* arg2);
-        CallInst* CALL3(Value* Callee, Value* arg1, Value* arg2, Value* arg3);
+  Value *MASK(Value *VMask);
+  Value *MASK_16(Value *VMask);
 
-        Value* MASK(Value* vmask);
-        Value* MASK_16(Value* vmask);
+  Value *VMASK(Value *Mask);
+  Value *VMASK_16(Value *Mask);
 
-        Value* VMASK(Value* mask);
-        Value* VMASK_16(Value* mask);
+  Value *VMOVMSK(Value *Mask);
 
-        Value* VMOVMSK(Value* mask);
+  //////////////////////////////////////////////////////////////////////////
+  /// @brief functions that build IR to call x86 intrinsics directly, or
+  /// emulate them with other instructions if not available on the host
+  //////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
-        /// @brief functions that build IR to call x86 intrinsics directly, or
-        /// emulate them with other instructions if not available on the host
-        //////////////////////////////////////////////////////////////////////////
+  Value *EXTRACT_16(Value *A, uint32_t Imm);
+  Value *JOIN_16(Value *A, Value *B);
 
-        Value* EXTRACT_16(Value* x, uint32_t imm);
-        Value* JOIN_16(Value* a, Value* b);
+  Value *PSHUFB(Value *A, Value *B);
+  Value *PMOVSXBD(Value *A);
+  Value *PMOVSXWD(Value *A);
+  Value *PMAXSD(Value *A, Value *B);
+  Value *PMINSD(Value *A, Value *B);
+  Value *PMAXUD(Value *A, Value *B);
+  Value *PMINUD(Value *A, Value *B);
+  Value *VABSPS(Value *A);
+  Value *FMADDPS(Value *A, Value *B, Value *C);
 
-        Value* PSHUFB(Value* a, Value* b);
-        Value* PMOVSXBD(Value* a);
-        Value* PMOVSXWD(Value* a);
-        Value* PMAXSD(Value* a, Value* b);
-        Value* PMINSD(Value* a, Value* b);
-        Value* PMAXUD(Value* a, Value* b);
-        Value* PMINUD(Value* a, Value* b);
-        Value* VABSPS(Value* a);
-        Value* FMADDPS(Value* a, Value* b, Value* c);
+  Value *ICLAMP(Value *Src, Value *Low, Value *High,
+                const llvm::Twine &Name = "");
+  Value *FCLAMP(Value *Src, Value *Low, Value *High);
+  Value *FCLAMP(Value *Src, float Low, float High);
 
-        Value* ICLAMP(Value* src, Value* low, Value* high, const llvm::Twine& name = "");
-        Value* FCLAMP(Value* src, Value* low, Value* high);
-        Value* FCLAMP(Value* src, float low, float high);
+  Value *VPOPCNT(Value *A);
 
-        Value* VPOPCNT(Value* a);
+  Value *VEXTRACTI128(Value *A, Constant *Imm8);
+  Value *VINSERTI128(Value *A, Value *B, Constant *Imm8);
 
-        Value* VEXTRACTI128(Value* a, Constant* imm8);
-        Value* VINSERTI128(Value* a, Value* b, Constant* imm8);
+  Value *createEntryAlloca(Function *F, Type *Ty);
+  Value *createEntryAlloca(Function *F, Type *Ty, Value *ArrSize);
 
-        Value* CreateEntryAlloca(Function* pFunc, Type* pType);
-        Value* CreateEntryAlloca(Function* pFunc, Type* pType, Value* pArraySize);
+  uint32_t getTypeSize(Type *Ty);
 
-        uint32_t GetTypeSize(Type* pType);
+  // #include "PacketBuilder_mem.h"
+protected:
+  virtual Value *OFFSET_TO_NEXT_COMPONENT(Value *Base, Constant *Offset);
+  void assertMemoryUsageParams(Value *Ptr);
 
-      // #include "PacketBuilder_mem.h"
-      public:
-        typedef enum _JIT_MEM_CLIENT
-        {
-          MEM_CLIENT_INTERNAL,
-          GFX_MEM_CLIENT_FETCH,
-          GFX_MEM_CLIENT_SAMPLER,
-          GFX_MEM_CLIENT_SHADER,
-        } JIT_MEM_CLIENT;
+public:
+  virtual Value *GEP(Value *Ptr, Value *Idx, Type *Ty = nullptr,
+                     const Twine &Name = "");
+  virtual Value *GEP(Type *Ty, Value *Ptr, Value *Idx, const Twine &Name = "");
+  virtual Value *GEP(Value *Ptr,
+                     const std::initializer_list<Value *> &IndexList,
+                     Type *Ty = nullptr);
+  virtual Value *GEP(Value *Ptr,
+                     const std::initializer_list<uint32_t> &IndexList,
+                     Type *Ty = nullptr);
 
-      protected:
-        virtual Value* OFFSET_TO_NEXT_COMPONENT(Value* base, Constant* offset);
-        void           AssertMemoryUsageParams(Value* ptr, JIT_MEM_CLIENT usage);
+  Value *GEPA(Value *Ptr, ArrayRef<Value *> IdxList, const Twine &Name = "");
+  Value *GEPA(Type *Ty, Value *Ptr, ArrayRef<Value *> IdxList,
+              const Twine &Name = "");
 
-      public:
-        virtual Value* GEP(Value* Ptr, Value* Idx, Type* Ty = nullptr, const Twine& Name = "");
-        virtual Value* GEP(Type* Ty, Value* Ptr, Value* Idx, const Twine& Name = "");
-        virtual Value* GEP(Value* ptr, const std::initializer_list<Value*>& indexList, Type* Ty = nullptr);
-        virtual Value* GEP(Value* ptr, const std::initializer_list<uint32_t>& indexList, Type* Ty = nullptr);
+  Value *IN_BOUNDS_GEP(Value *Ptr,
+                       const std::initializer_list<Value *> &IndexList);
+  Value *IN_BOUNDS_GEP(Value *Ptr,
+                       const std::initializer_list<uint32_t> &IndexList);
 
-        Value* GEPA(Value* Ptr, ArrayRef<Value*> IdxList, const Twine& Name = "");
-        Value* GEPA(Type* Ty, Value* Ptr, ArrayRef<Value*> IdxList, const Twine& Name = "");
+  virtual LoadInst *LOAD(Value *Ptr, const char *Name, Type *Ty = nullptr);
 
-        Value* IN_BOUNDS_GEP(Value* ptr, const std::initializer_list<Value*>& indexList);
-        Value* IN_BOUNDS_GEP(Value* ptr, const std::initializer_list<uint32_t>& indexList);
+  virtual LoadInst *LOAD(Value *Ptr, const Twine &Name = "", Type *Ty = nullptr);
 
-        virtual LoadInst* LOAD(Value* Ptr, const char* Name, Type* Ty = nullptr, JIT_MEM_CLIENT usage = MEM_CLIENT_INTERNAL);
+  virtual LoadInst *LOAD(Type *Ty, Value *Ptr, const Twine &Name = "");
 
-        virtual LoadInst* LOAD(Value*         Ptr,
-          const Twine&   Name = "",
-          Type*          Ty = nullptr,
-          JIT_MEM_CLIENT usage = MEM_CLIENT_INTERNAL);
+  virtual LoadInst *LOAD(Value *Ptr, bool IsVolatile, const Twine &Name = "",
+                         Type *Ty = nullptr);
 
-        virtual LoadInst* LOAD(Type* Ty, Value* Ptr, const Twine& Name = "", JIT_MEM_CLIENT usage = MEM_CLIENT_INTERNAL);
+  virtual LoadInst *LOAD(Value *BasePtr,
+                         const std::initializer_list<uint32_t> &IndexList,
+                         const llvm::Twine &Name = "", Type *Ty = nullptr);
 
-        virtual LoadInst* LOAD(Value*         Ptr,
-          bool           isVolatile,
-          const Twine&   Name = "",
-          Type*          Ty = nullptr,
-          JIT_MEM_CLIENT usage = MEM_CLIENT_INTERNAL);
+  virtual CallInst *MASKED_LOAD(Value *Ptr, unsigned Alignment, Value *Mask,
+                                Value *PassThru = nullptr,
+                                const Twine &Name = "", Type *Ty = nullptr) {
+    return IRB->CreateMaskedLoad(
+        Ptr, IGCLLVM::getAlignmentValueIfNeeded(IGCLLVM::getAlign(Alignment)),
+        Mask, PassThru, Name);
+  }
 
-        virtual LoadInst* LOAD(Value*                                 BasePtr,
-          const std::initializer_list<uint32_t>& offset,
-          const llvm::Twine&                     Name = "",
-          Type*                                  Ty = nullptr,
-          JIT_MEM_CLIENT                         usage = MEM_CLIENT_INTERNAL);
+  LoadInst *LOADV(Value *BasePtr,
+                  const std::initializer_list<Value *> &IndexList,
+                  const llvm::Twine &Name = "");
+  StoreInst *STORE(Value *Val, Value *BasePtr,
+                   const std::initializer_list<uint32_t> &IndexList);
+  StoreInst *STOREV(Value *Val, Value *BasePtr,
+                    const std::initializer_list<Value *> &IndexList);
 
-        virtual CallInst* MASKED_LOAD(Value*         Ptr,
-          unsigned       Alignment,
-          Value*         Mask,
-          Value*         PassThru = nullptr,
-          const Twine&   Name = "",
-          Type*          Ty = nullptr,
-          JIT_MEM_CLIENT usage = MEM_CLIENT_INTERNAL)
-        {
-          return IRB()->CreateMaskedLoad(
-              Ptr, IGCLLVM::getAlignmentValueIfNeeded(IGCLLVM::getAlign(Alignment)),
-              Mask, PassThru, Name);
-        }
-
-        LoadInst*  LOADV(Value* BasePtr, const std::initializer_list<Value*>& offset, const llvm::Twine& name = "");
-        StoreInst* STORE(Value* Val, Value* BasePtr, const std::initializer_list<uint32_t>& offset);
-        StoreInst* STOREV(Value* Val, Value* BasePtr, const std::initializer_list<Value*>& offset);
-
-        Value* MEM_ADD(Value*                                 i32Incr,
-          Value*                                 basePtr,
-          const std::initializer_list<uint32_t>& indices,
-          const llvm::Twine&                     name = "");
-    };
+  Value *MEM_ADD(Value *Increment, Value *BasePtr,
+                 const std::initializer_list<uint32_t> &IndexList,
+                 const llvm::Twine &Name = "");
+};
 } // end of namespace pktz
+
+#endif // PACKET_BUILDER_H

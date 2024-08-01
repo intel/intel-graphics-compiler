@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2018-2021 Intel Corporation
+Copyright (C) 2018-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -12,504 +12,416 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/TypeSize.h"
 
-namespace pktz
-{
-    Constant* PacketBuilder::C(bool i) { return ConstantInt::get(IRB()->getInt1Ty(), (i ? 1 : 0)); }
-
-    Constant* PacketBuilder::C(char i) { return ConstantInt::get(IRB()->getInt8Ty(), i); }
-
-    Constant* PacketBuilder::C(uint8_t i) { return ConstantInt::get(IRB()->getInt8Ty(), i); }
-
-    Constant* PacketBuilder::C(int i) { return ConstantInt::get(IRB()->getInt32Ty(), i); }
-
-    Constant* PacketBuilder::C(int64_t i) { return ConstantInt::get(IRB()->getInt64Ty(), i); }
-
-    Constant* PacketBuilder::C(uint16_t i) { return ConstantInt::get(mInt16Ty, i); }
-
-    Constant* PacketBuilder::C(uint32_t i) { return ConstantInt::get(IRB()->getInt32Ty(), i); }
-
-    Constant* PacketBuilder::C(uint64_t i) { return ConstantInt::get(IRB()->getInt64Ty(), i); }
-
-    Constant* PacketBuilder::C(float i) { return ConstantFP::get(IRB()->getFloatTy(), i); }
-
-    Constant* PacketBuilder::PRED(bool pred)
-    {
-        return ConstantInt::get(IRB()->getInt1Ty(), (pred ? 1 : 0));
-    }
-
-    Value* PacketBuilder::VIMMED1(int i)
-    {
-      return ConstantVector::getSplat(IGCLLVM::getElementCount(mVWidth),
-                                      cast<ConstantInt>(C(i)));
-    }
-
-    Value* PacketBuilder::VIMMED1_16(int i)
-    {
-      return ConstantVector::getSplat(IGCLLVM::getElementCount(mVWidth16),
-                                      cast<ConstantInt>(C(i)));
-    }
-
-    Value* PacketBuilder::VIMMED1(uint32_t i)
-    {
-      return ConstantVector::getSplat(IGCLLVM::getElementCount(mVWidth),
-                                      cast<ConstantInt>(C(i)));
-    }
-
-    Value* PacketBuilder::VIMMED1_16(uint32_t i)
-    {
-      return ConstantVector::getSplat(IGCLLVM::getElementCount(mVWidth16),
-                                      cast<ConstantInt>(C(i)));
-    }
-
-    Value* PacketBuilder::VIMMED1(float i)
-    {
-      return ConstantVector::getSplat(IGCLLVM::getElementCount(mVWidth),
-                                      cast<ConstantFP>(C(i)));
-    }
-
-    Value* PacketBuilder::VIMMED1_16(float i)
-    {
-      return ConstantVector::getSplat(IGCLLVM::getElementCount(mVWidth16),
-                                      cast<ConstantFP>(C(i)));
-    }
-
-    Value* PacketBuilder::VIMMED1(bool i)
-    {
-      return ConstantVector::getSplat(IGCLLVM::getElementCount(mVWidth),
-                                      cast<ConstantInt>(C(i)));
-    }
-
-    Value* PacketBuilder::VIMMED1_16(bool i)
-    {
-      return ConstantVector::getSplat(IGCLLVM::getElementCount(mVWidth16),
-                                      cast<ConstantInt>(C(i)));
-    }
-
-    Value *PacketBuilder::VUNDEF_IPTR() {
-      return UndefValue::get(
-          IGCLLVM::FixedVectorType::get(mInt32PtrTy, mVWidth));
-    }
-
-    Value *PacketBuilder::VUNDEF(Type *t) {
-      return UndefValue::get(IGCLLVM::FixedVectorType::get(t, mVWidth));
-    }
-
-    Value *PacketBuilder::VUNDEF_I() {
-      return UndefValue::get(IGCLLVM::FixedVectorType::get(mInt32Ty, mVWidth));
-    }
-
-    Value *PacketBuilder::VUNDEF_I_16() {
-      return UndefValue::get(
-          IGCLLVM::FixedVectorType::get(mInt32Ty, mVWidth16));
-    }
-
-    Value *PacketBuilder::VUNDEF_F() {
-      return UndefValue::get(IGCLLVM::FixedVectorType::get(mFP32Ty, mVWidth));
-    }
-
-    Value *PacketBuilder::VUNDEF_F_16() {
-      return UndefValue::get(IGCLLVM::FixedVectorType::get(mFP32Ty, mVWidth16));
-    }
-
-    Value* PacketBuilder::VUNDEF(Type* ty, uint32_t size)
-    {
-      return UndefValue::get(IGCLLVM::FixedVectorType::get(ty, size));
-    }
-
-    Value* PacketBuilder::VBROADCAST(Value* src, const llvm::Twine& name)
-    {
-        // check if src is already a vector
-        if (src->getType()->isVectorTy())
-        {
-          if (auto CV = dyn_cast<ConstantVector>(src)) {
-            if (CV->getSplatValue()) {
-              return VECTOR_SPLAT(
-                  mVWidth * cast<IGCLLVM::FixedVectorType>(src->getType())
-                                ->getNumElements(),
-                  CV->getSplatValue(), name);
-            }
-          }
-          return src;
-        }
-
-        return VECTOR_SPLAT(mVWidth, src, name);
-    }
-
-    Value* PacketBuilder::VBROADCAST_16(Value* src)
-    {
-        // check if src is already a vector
-        if (src->getType()->isVectorTy())
-        {
-            return src;
-        }
-
-        return VECTOR_SPLAT(mVWidth16, src);
-    }
-
-    uint32_t PacketBuilder::IMMED(Value* v)
-    {
-        IGC_ASSERT(isa<ConstantInt>(v));
-        ConstantInt* pValConst = cast<ConstantInt>(v);
-        return pValConst->getZExtValue();
-    }
-
-    int32_t PacketBuilder::S_IMMED(Value* v)
-    {
-        IGC_ASSERT(isa<ConstantInt>(v));
-        ConstantInt* pValConst = cast<ConstantInt>(v);
-        return pValConst->getSExtValue();
-    }
-
-    CallInst* PacketBuilder::CALL(Value*                               Callee,
-                            const std::initializer_list<Value*>& argsList,
-                            const llvm::Twine&                   name)
-    {
-        std::vector<Value*> args;
-        for (auto arg : argsList)
-            args.push_back(arg);
-        return CALLA(Callee, args, name);
-    }
-
-    CallInst* PacketBuilder::CALL(Value* Callee, Value* arg)
-    {
-        std::vector<Value*> args;
-        args.push_back(arg);
-        return CALLA(Callee, args);
-    }
-
-    CallInst* PacketBuilder::CALL2(Value* Callee, Value* arg1, Value* arg2)
-    {
-        std::vector<Value*> args;
-        args.push_back(arg1);
-        args.push_back(arg2);
-        return CALLA(Callee, args);
-    }
-
-    CallInst* PacketBuilder::CALL3(Value* Callee, Value* arg1, Value* arg2, Value* arg3)
-    {
-        std::vector<Value*> args;
-        args.push_back(arg1);
-        args.push_back(arg2);
-        args.push_back(arg3);
-        return CALLA(Callee, args);
-    }
-
-    Value* PacketBuilder::VRCP(Value* va, const llvm::Twine& name)
-    {
-        return FDIV(VIMMED1(1.0f), va, name); // 1 / a
-    }
-
-    Value* PacketBuilder::VPLANEPS(Value* vA, Value* vB, Value* vC, Value*& vX, Value*& vY)
-    {
-        Value* vOut = FMADDPS(vA, vX, vC);
-        vOut        = FMADDPS(vB, vY, vOut);
-        return vOut;
-    }
-
-    Value* PacketBuilder::EXTRACT_16(Value* x, uint32_t imm)
-    {
-        if (imm == 0)
-        {
-            return VSHUFFLE(x, UndefValue::get(x->getType()), {0, 1, 2, 3, 4, 5, 6, 7});
-        }
-        else
-        {
-            return VSHUFFLE(x, UndefValue::get(x->getType()), {8, 9, 10, 11, 12, 13, 14, 15});
-        }
-    }
-
-    Value* PacketBuilder::JOIN_16(Value* a, Value* b)
-    {
-        return VSHUFFLE(a, b, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
-    }
-
-    //////////////////////////////////////////////////////////////////////////
-    /// @brief convert x86 <N x float> mask to llvm <N x i1> mask
-    Value* PacketBuilder::MASK(Value* vmask)
-    {
-        Value* src = BITCAST(vmask, mSimdInt32Ty);
-        return ICMP_SLT(src, VIMMED1(0));
-    }
-
-    Value* PacketBuilder::MASK_16(Value* vmask)
-    {
-        Value* src = BITCAST(vmask, mSimd16Int32Ty);
-        return ICMP_SLT(src, VIMMED1_16(0));
-    }
-
-    //////////////////////////////////////////////////////////////////////////
-    /// @brief convert llvm <N x i1> mask to x86 <N x i32> mask
-    Value* PacketBuilder::VMASK(Value* mask) { return S_EXT(mask, mSimdInt32Ty); }
-
-    Value* PacketBuilder::VMASK_16(Value* mask) { return S_EXT(mask, mSimd16Int32Ty); }
-
-    /// @brief Convert <Nxi1> llvm mask to integer
-    Value* PacketBuilder::VMOVMSK(Value* mask)
-    {
-      IGC_ASSERT(cast<VectorType>(mask->getType())->getElementType() ==
-                 mInt1Ty);
-      uint32_t numLanes =
-          cast<IGCLLVM::FixedVectorType>(mask->getType())->getNumElements();
-      Value *i32Result;
-      if (numLanes == 8) {
-        i32Result = BITCAST(mask, mInt8Ty);
-        }
-        else if (numLanes == 16)
-        {
-            i32Result = BITCAST(mask, mInt16Ty);
-        }
-        else
-        {
-            IGC_ASSERT_MESSAGE(0, "Unsupported vector width");
-            i32Result = BITCAST(mask, mInt8Ty);
-        }
-        return Z_EXT(i32Result, mInt32Ty);
-    }
-
-    //////////////////////////////////////////////////////////////////////////
-    /// @brief Generate a VPSHUFB operation in LLVM IR.  If not
-    /// supported on the underlying platform, emulate it
-    /// @param a - 256bit SIMD(32x8bit) of 8bit integer values
-    /// @param b - 256bit SIMD(32x8bit) of 8bit integer mask values
-    /// Byte masks in lower 128 lane of b selects 8 bit values from lower
-    /// 128bits of a, and vice versa for the upper lanes.  If the mask
-    /// value is negative, '0' is inserted.
-    Value* PacketBuilder::PSHUFB(Value* a, Value* b)
-    {
-        Value* res;
-        Constant* cB = dyn_cast<Constant>(b);
-        IGC_ASSERT(cB);
-        // number of 8 bit elements in b
-        uint32_t numElms =
-            cast<IGCLLVM::FixedVectorType>(cB->getType())->getNumElements();
-        // output vector
-        Value *vShuf =
-            UndefValue::get(IGCLLVM::FixedVectorType::get(mInt8Ty, numElms));
-
-        // insert an 8 bit value from the high and low lanes of a per loop iteration
-        numElms /= 2;
-        for (uint32_t i = 0; i < numElms; i++)
-        {
-            ConstantInt* cLow128b  = cast<ConstantInt>(cB->getAggregateElement(i));
-            ConstantInt* cHigh128b = cast<ConstantInt>(cB->getAggregateElement(i + numElms));
-
-            // extract values from constant mask
-            char valLow128bLane  = (char)(cLow128b->getSExtValue());
-            char valHigh128bLane = (char)(cHigh128b->getSExtValue());
-
-            Value* insertValLow128b;
-            Value* insertValHigh128b;
-
-            // if the mask value is negative, insert a '0' in the respective output position
-            // otherwise, lookup the value at mask position (bits 3..0 of the respective mask
-            // byte) in a and insert in output vector
-            insertValLow128b =
-                (valLow128bLane < 0) ? C((char)0) : VEXTRACT(a, C((valLow128bLane & 0xF)));
-            insertValHigh128b = (valHigh128bLane < 0)
-                                    ? C((char)0)
-                                    : VEXTRACT(a, C((valHigh128bLane & 0xF) + numElms));
-
-            vShuf = VINSERT(vShuf, insertValLow128b, i);
-            vShuf = VINSERT(vShuf, insertValHigh128b, (i + numElms));
-        }
-        res = vShuf;
-        return res;
-    }
-
-    //////////////////////////////////////////////////////////////////////////
-    /// @brief Generate a VPSHUFB operation (sign extend 8 8bit values to 32
-    /// bits)in LLVM IR.  If not supported on the underlying platform, emulate it
-    /// @param a - 128bit SIMD lane(16x8bit) of 8bit integer values.  Only
-    /// lower 8 values are used.
-    Value* PacketBuilder::PMOVSXBD(Value* a)
-    {
-        // VPMOVSXBD output type
-        Type *v8x32Ty = IGCLLVM::FixedVectorType::get(mInt32Ty, 8);
-        // Extract 8 values from 128bit lane and sign extend
-        return S_EXT(VSHUFFLE(a, a, C<int>({0, 1, 2, 3, 4, 5, 6, 7})), v8x32Ty);
-    }
-
-    //////////////////////////////////////////////////////////////////////////
-    /// @brief Generate a VPSHUFB operation (sign extend 8 16bit values to 32
-    /// bits)in LLVM IR.  If not supported on the underlying platform, emulate it
-    /// @param a - 128bit SIMD lane(8x16bit) of 16bit integer values.
-    Value* PacketBuilder::PMOVSXWD(Value* a)
-    {
-        // VPMOVSXWD output type
-        Type *v8x32Ty = IGCLLVM::FixedVectorType::get(mInt32Ty, 8);
-        // Extract 8 values from 128bit lane and sign extend
-        return S_EXT(VSHUFFLE(a, a, C<int>({0, 1, 2, 3, 4, 5, 6, 7})), v8x32Ty);
-    }
-
-    Value* PacketBuilder::PMAXSD(Value* a, Value* b)
-    {
-        Value* cmp = ICMP_SGT(a, b);
-        return SELECT(cmp, a, b);
-    }
-
-    Value* PacketBuilder::PMINSD(Value* a, Value* b)
-    {
-        Value* cmp = ICMP_SLT(a, b);
-        return SELECT(cmp, a, b);
-    }
-
-    Value* PacketBuilder::PMAXUD(Value* a, Value* b)
-    {
-        Value* cmp = ICMP_UGT(a, b);
-        return SELECT(cmp, a, b);
-    }
-
-    Value* PacketBuilder::PMINUD(Value* a, Value* b)
-    {
-        Value* cmp = ICMP_ULT(a, b);
-        return SELECT(cmp, a, b);
-    }
-
-    // Helper function to create alloca in entry block of function
-    Value* PacketBuilder::CreateEntryAlloca(Function* pFunc, Type* pType)
-    {
-        auto saveIP = IRB()->saveIP();
-        IRB()->SetInsertPoint(&pFunc->getEntryBlock(), pFunc->getEntryBlock().begin());
-        Value* pAlloca = ALLOCA(pType);
-        if (saveIP.isSet())
-            IRB()->restoreIP(saveIP);
-        return pAlloca;
-    }
-
-    Value* PacketBuilder::CreateEntryAlloca(Function* pFunc, Type* pType, Value* pArraySize)
-    {
-        auto saveIP = IRB()->saveIP();
-        IRB()->SetInsertPoint(&pFunc->getEntryBlock(), pFunc->getEntryBlock().begin());
-        Value* pAlloca = ALLOCA(pType, pArraySize);
-        if (saveIP.isSet())
-            IRB()->restoreIP(saveIP);
-        return pAlloca;
-    }
-
-    Value* PacketBuilder::VABSPS(Value* a)
-    {
-        Value* asInt  = BITCAST(a, mSimdInt32Ty);
-        Value* result = BITCAST(AND(asInt, VIMMED1(0x7fffffff)), mSimdFP32Ty);
-        return result;
-    }
-
-    Value* PacketBuilder::ICLAMP(Value* src, Value* low, Value* high, const llvm::Twine& name)
-    {
-        Value* lowCmp = ICMP_SLT(src, low);
-        Value* ret    = SELECT(lowCmp, low, src);
-
-        Value* highCmp = ICMP_SGT(ret, high);
-        ret            = SELECT(highCmp, high, ret, name);
-
-        return ret;
-    }
-
-    Value* PacketBuilder::FCLAMP(Value* src, Value* low, Value* high)
-    {
-        Value* lowCmp = FCMP_OLT(src, low);
-        Value* ret    = SELECT(lowCmp, low, src);
-
-        Value* highCmp = FCMP_OGT(ret, high);
-        ret            = SELECT(highCmp, high, ret);
-
-        return ret;
-    }
-
-    Value* PacketBuilder::FCLAMP(Value* src, float low, float high)
-    {
-        Value* result = VMAXPS(src, VIMMED1(low));
-        result        = VMINPS(result, VIMMED1(high));
-
-        return result;
-    }
-
-    Value* PacketBuilder::FMADDPS(Value* a, Value* b, Value* c)
-    {
-        Value* vOut;
-
-        vOut = FADD(FMUL(a, b), c);
-        return vOut;
-    }
-
-    //////////////////////////////////////////////////////////////////////////
-    /// @brief pop count on vector mask (e.g. <8 x i1>)
-    Value* PacketBuilder::VPOPCNT(Value* a) { return POPCNT(VMOVMSK(a)); }
-
-    //////////////////////////////////////////////////////////////////////////
-    /// @brief C functions called by LLVM IR
-    //////////////////////////////////////////////////////////////////////////
-
-    Value* PacketBuilder::VEXTRACTI128(Value* a, Constant* imm8)
-    {
-        bool                      flag = !imm8->isZeroValue();
-        SmallVector<Constant*, 8> idx;
-        for (unsigned i = 0; i < mVWidth / 2; i++)
-        {
-            idx.push_back(C(flag ? i + mVWidth / 2 : i));
-        }
-        return VSHUFFLE(a, VUNDEF_I(), ConstantVector::get(idx));
-    }
-
-    Value* PacketBuilder::VINSERTI128(Value* a, Value* b, Constant* imm8)
-    {
-        bool                      flag = !imm8->isZeroValue();
-        SmallVector<Constant*, 8> idx;
-        for (unsigned i = 0; i < mVWidth; i++)
-        {
-            idx.push_back(C(i));
-        }
-        Value* inter = VSHUFFLE(b, VUNDEF_I(), ConstantVector::get(idx));
-
-        SmallVector<Constant*, 8> idx2;
-        for (unsigned i = 0; i < mVWidth / 2; i++)
-        {
-            idx2.push_back(C(flag ? i : i + mVWidth));
-        }
-        for (unsigned i = mVWidth / 2; i < mVWidth; i++)
-        {
-            idx2.push_back(C(flag ? i + mVWidth / 2 : i));
-        }
-        return VSHUFFLE(a, inter, ConstantVector::get(idx2));
-    }
-
-    uint32_t PacketBuilder::GetTypeSize(Type* pType)
-    {
-        if (pType->isStructTy())
-        {
-            uint32_t numElems = pType->getStructNumElements();
-            Type*    pElemTy  = pType->getStructElementType(0);
-            return numElems * GetTypeSize(pElemTy);
-        }
-
-        if (pType->isArrayTy())
-        {
-            uint32_t numElems = pType->getArrayNumElements();
-            Type*    pElemTy  = pType->getArrayElementType();
-            return numElems * GetTypeSize(pElemTy);
-        }
-
-        if (pType->isIntegerTy())
-        {
-            uint32_t bitSize = pType->getIntegerBitWidth();
-            return bitSize / 8;
-        }
-
-        if (pType->isFloatTy())
-        {
-            return 4;
-        }
-
-        if (pType->isHalfTy())
-        {
-            return 2;
-        }
-
-        if (pType->isDoubleTy())
-        {
-            return 8;
-        }
-
-        IGC_ASSERT_MESSAGE(0, "Unimplemented type.");
-        return 0;
-    }
+namespace pktz {
+Constant *PacketBuilder::C(bool Val) {
+  return ConstantInt::get(IRB->getInt1Ty(), (Val ? 1 : 0));
 }
+
+Constant *PacketBuilder::C(char Val) {
+  return ConstantInt::get(IRB->getInt8Ty(), Val);
+}
+
+Constant *PacketBuilder::C(uint8_t Val) {
+  return ConstantInt::get(IRB->getInt8Ty(), Val);
+}
+
+Constant *PacketBuilder::C(int Val) {
+  return ConstantInt::get(IRB->getInt32Ty(), Val);
+}
+
+Constant *PacketBuilder::C(int64_t Val) {
+  return ConstantInt::get(IRB->getInt64Ty(), Val);
+}
+
+Constant *PacketBuilder::C(uint16_t Val) {
+  return ConstantInt::get(Int16Ty, Val);
+}
+
+Constant *PacketBuilder::C(uint32_t Val) {
+  return ConstantInt::get(IRB->getInt32Ty(), Val);
+}
+
+Constant *PacketBuilder::C(uint64_t Val) {
+  return ConstantInt::get(IRB->getInt64Ty(), Val);
+}
+
+Constant *PacketBuilder::C(float Val) {
+  return ConstantFP::get(IRB->getFloatTy(), Val);
+}
+
+Constant *PacketBuilder::PRED(bool Pred) {
+  return ConstantInt::get(IRB->getInt1Ty(), (Pred ? 1 : 0));
+}
+
+Value *PacketBuilder::VIMMED1(int Val) {
+  return ConstantVector::getSplat(IGCLLVM::getElementCount(VWidth),
+                                  cast<ConstantInt>(C(Val)));
+}
+
+Value *PacketBuilder::VIMMED1_16(int Val) {
+  return ConstantVector::getSplat(IGCLLVM::getElementCount(VWidth16),
+                                  cast<ConstantInt>(C(Val)));
+}
+
+Value *PacketBuilder::VIMMED1(uint32_t Val) {
+  return ConstantVector::getSplat(IGCLLVM::getElementCount(VWidth),
+                                  cast<ConstantInt>(C(Val)));
+}
+
+Value *PacketBuilder::VIMMED1_16(uint32_t Val) {
+  return ConstantVector::getSplat(IGCLLVM::getElementCount(VWidth16),
+                                  cast<ConstantInt>(C(Val)));
+}
+
+Value *PacketBuilder::VIMMED1(float Val) {
+  return ConstantVector::getSplat(IGCLLVM::getElementCount(VWidth),
+                                  cast<ConstantFP>(C(Val)));
+}
+
+Value *PacketBuilder::VIMMED1_16(float Val) {
+  return ConstantVector::getSplat(IGCLLVM::getElementCount(VWidth16),
+                                  cast<ConstantFP>(C(Val)));
+}
+
+Value *PacketBuilder::VIMMED1(bool Val) {
+  return ConstantVector::getSplat(IGCLLVM::getElementCount(VWidth),
+                                  cast<ConstantInt>(C(Val)));
+}
+
+Value *PacketBuilder::VIMMED1_16(bool Val) {
+  return ConstantVector::getSplat(IGCLLVM::getElementCount(VWidth16),
+                                  cast<ConstantInt>(C(Val)));
+}
+
+Value *PacketBuilder::VUNDEF_IPTR() {
+  return UndefValue::get(IGCLLVM::FixedVectorType::get(Int32PtrTy, VWidth));
+}
+
+Value *PacketBuilder::VUNDEF(Type *Ty) {
+  return UndefValue::get(IGCLLVM::FixedVectorType::get(Ty, VWidth));
+}
+
+Value *PacketBuilder::VUNDEF_I() {
+  return UndefValue::get(IGCLLVM::FixedVectorType::get(Int32Ty, VWidth));
+}
+
+Value *PacketBuilder::VUNDEF_I_16() {
+  return UndefValue::get(IGCLLVM::FixedVectorType::get(Int32Ty, VWidth16));
+}
+
+Value *PacketBuilder::VUNDEF_F() {
+  return UndefValue::get(IGCLLVM::FixedVectorType::get(FP32Ty, VWidth));
+}
+
+Value *PacketBuilder::VUNDEF_F_16() {
+  return UndefValue::get(IGCLLVM::FixedVectorType::get(FP32Ty, VWidth16));
+}
+
+Value *PacketBuilder::VUNDEF(Type *Ty, uint32_t Size) {
+  return UndefValue::get(IGCLLVM::FixedVectorType::get(Ty, Size));
+}
+
+Value *PacketBuilder::VBROADCAST(Value *Src, const llvm::Twine &Name) {
+  // check if Src is already a vector
+  if (Src->getType()->isVectorTy()) {
+    if (auto *CV = dyn_cast<ConstantVector>(Src)) {
+      if (CV->getSplatValue()) {
+        return VECTOR_SPLAT(VWidth *
+                                cast<IGCLLVM::FixedVectorType>(Src->getType())
+                                    ->getNumElements(),
+                            CV->getSplatValue(), Name);
+      }
+    }
+    return Src;
+  }
+  return VECTOR_SPLAT(VWidth, Src, Name);
+}
+
+Value *PacketBuilder::VBROADCAST_16(Value *Src) {
+  // check if Src is already a vector
+  if (Src->getType()->isVectorTy()) {
+    return Src;
+  }
+  return VECTOR_SPLAT(VWidth16, Src);
+}
+
+uint32_t PacketBuilder::IMMED(Value *V) {
+  return cast<ConstantInt>(V)->getZExtValue();
+}
+
+int32_t PacketBuilder::S_IMMED(Value *V) {
+  return cast<ConstantInt>(V)->getSExtValue();
+}
+
+CallInst *PacketBuilder::CALL(Value *Callee,
+                              const std::initializer_list<Value *> &ArgsList,
+                              const llvm::Twine &Name) {
+  std::vector<Value *> Args;
+  for (auto *Arg : ArgsList)
+    Args.push_back(Arg);
+  return CALLA(Callee, Args, Name);
+}
+
+CallInst *PacketBuilder::CALL(Value *Callee, Value *Arg) {
+  SmallVector<Value *, 1> Args;
+  Args.push_back(Arg);
+  return CALLA(Callee, Args);
+}
+
+CallInst *PacketBuilder::CALL2(Value *Callee, Value *Arg1, Value *Arg2) {
+  SmallVector<Value *, 2> Args;
+  Args.push_back(Arg1);
+  Args.push_back(Arg2);
+  return CALLA(Callee, Args);
+}
+
+CallInst *PacketBuilder::CALL3(Value *Callee, Value *Arg1, Value *Arg2,
+                               Value *Arg3) {
+  SmallVector<Value *, 3> Args;
+  Args.push_back(Arg1);
+  Args.push_back(Arg2);
+  Args.push_back(Arg3);
+  return CALLA(Callee, Args);
+}
+
+Value *PacketBuilder::VRCP(Value *A, const llvm::Twine &Name) {
+  return FDIV(VIMMED1(1.0f), A, Name); // 1 / A
+}
+
+Value *PacketBuilder::VPLANEPS(Value *A, Value *B, Value *C, Value *&X,
+                               Value *&Y) {
+  return FMADDPS(B, Y, FMADDPS(A, X, C));
+}
+
+Value *PacketBuilder::EXTRACT_16(Value *A, uint32_t Imm) {
+  if (Imm == 0)
+    return VSHUFFLE(A, UndefValue::get(A->getType()), {0, 1, 2, 3, 4, 5, 6, 7});
+  else
+    return VSHUFFLE(A, UndefValue::get(A->getType()),
+                    {8, 9, 10, 11, 12, 13, 14, 15});
+}
+
+Value *PacketBuilder::JOIN_16(Value *A, Value *B) {
+  return VSHUFFLE(A, B, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
+}
+
+//////////////////////////////////////////////////////////////////////////
+/// @brief convert x86 <N x float> mask to llvm <N x i1> mask
+Value *PacketBuilder::MASK(Value *VMask) {
+  return ICMP_SLT(BITCAST(VMask, SimdInt32Ty), VIMMED1(0));
+}
+
+Value *PacketBuilder::MASK_16(Value *VMask) {
+  return ICMP_SLT(BITCAST(VMask, Simd16Int32Ty), VIMMED1_16(0));
+}
+
+//////////////////////////////////////////////////////////////////////////
+/// @brief convert llvm <N x i1> mask to x86 <N x i32> mask
+Value *PacketBuilder::VMASK(Value *Mask) { return S_EXT(Mask, SimdInt32Ty); }
+
+Value *PacketBuilder::VMASK_16(Value *Mask) {
+  return S_EXT(Mask, Simd16Int32Ty);
+}
+
+/// @brief Convert <N x i1> llvm mask to integer
+Value *PacketBuilder::VMOVMSK(Value *Mask) {
+  IGC_ASSERT(cast<VectorType>(Mask->getType())->getElementType() == Int1Ty);
+  uint32_t NumLanes =
+      cast<IGCLLVM::FixedVectorType>(Mask->getType())->getNumElements();
+  Value *Result = nullptr;
+  if (NumLanes == 8) {
+    Result = BITCAST(Mask, Int8Ty);
+  } else if (NumLanes == 16) {
+    Result = BITCAST(Mask, Int16Ty);
+  } else {
+    IGC_ASSERT_MESSAGE(0, "Unsupported vector width");
+    Result = BITCAST(Mask, Int8Ty);
+  }
+  return Z_EXT(Result, Int32Ty);
+}
+
+//////////////////////////////////////////////////////////////////////////
+/// @brief Generate a VPSHUFB operation in LLVM IR.  If not
+/// supported on the underlying platform, emulate it
+/// @param A - 256bit SIMD(32x8bit) of 8bit integer values
+/// @param B - 256bit SIMD(32x8bit) of 8bit integer mask values
+/// Byte masks in lower 128 lane of b selects 8 bit values from lower
+/// 128bits of a, and vice versa for the upper lanes.  If the mask
+/// value is negative, '0' is inserted.
+Value *PacketBuilder::PSHUFB(Value *A, Value *B) {
+  auto *CB = cast<Constant>(B);
+  // number of 8 bit elements in B
+  uint32_t NumElems =
+      cast<IGCLLVM::FixedVectorType>(CB->getType())->getNumElements();
+  // output vector
+  Value *Result =
+      UndefValue::get(IGCLLVM::FixedVectorType::get(Int8Ty, NumElems));
+  // insert an 8 bit value from the high and low lanes of a per loop iteration
+  NumElems /= 2;
+  for (uint32_t Idx = 0; Idx < NumElems; Idx++) {
+    auto *Low128b = cast<ConstantInt>(CB->getAggregateElement(Idx));
+    auto *High128b = cast<ConstantInt>(CB->getAggregateElement(NumElems + Idx));
+    // extract values from constant mask
+    char ValLow128bLane = static_cast<char>(Low128b->getSExtValue());
+    char ValHigh128bLane = static_cast<char>(High128b->getSExtValue());
+    // if the mask value is negative, insert a '0' in the respective output
+    // position otherwise, lookup the value at mask position (bits 3..0 of the
+    // respective mask byte) in a and insert in output vector
+    Value *InsertValLow128b = (ValLow128bLane < 0)
+                                  ? C((char)0)
+                                  : VEXTRACT(A, C((ValLow128bLane & 0xF)));
+    Value *InsertValHigh128b =
+        (ValHigh128bLane < 0)
+            ? C((char)0)
+            : VEXTRACT(A, C((ValHigh128bLane & 0xF) + NumElems));
+
+    Result = VINSERT(Result, InsertValLow128b, Idx);
+    Result = VINSERT(Result, InsertValHigh128b, NumElems + Idx);
+  }
+  return Result;
+}
+
+//////////////////////////////////////////////////////////////////////////
+/// @brief Generate a VPSHUFB operation (sign extend 8 8bit values to 32
+/// bits) in LLVM IR.  If not supported on the underlying platform, emulate it
+/// @param A - 128bit SIMD lane(16x8bit) of 8bit integer values.  Only
+/// lower 8 values are used.
+Value *PacketBuilder::PMOVSXBD(Value *A) {
+  // VPMOVSXBD output type
+  auto *Ty = IGCLLVM::FixedVectorType::get(Int32Ty, 8);
+  // Extract 8 values from 128bit lane and sign extend
+  return S_EXT(VSHUFFLE(A, A, C<int>({0, 1, 2, 3, 4, 5, 6, 7})), Ty);
+}
+
+//////////////////////////////////////////////////////////////////////////
+/// @brief Generate a VPSHUFB operation (sign extend 8 16bit values to 32
+/// bits) in LLVM IR.  If not supported on the underlying platform, emulate it
+/// @param A - 128bit SIMD lane(8x16bit) of 16bit integer values.
+Value *PacketBuilder::PMOVSXWD(Value *A) {
+  // VPMOVSXWD output type
+  auto *Ty = IGCLLVM::FixedVectorType::get(Int32Ty, 8);
+  // Extract 8 values from 128bit lane and sign extend
+  return S_EXT(VSHUFFLE(A, A, C<int>({0, 1, 2, 3, 4, 5, 6, 7})), Ty);
+}
+
+Value *PacketBuilder::PMAXSD(Value *A, Value *B) {
+  return SELECT(ICMP_SGT(A, B), A, B);
+}
+
+Value *PacketBuilder::PMINSD(Value *A, Value *B) {
+  return SELECT(ICMP_SLT(A, B), A, B);
+}
+
+Value *PacketBuilder::PMAXUD(Value *A, Value *B) {
+  return SELECT(ICMP_UGT(A, B), A, B);
+}
+
+Value *PacketBuilder::PMINUD(Value *A, Value *B) {
+  return SELECT(ICMP_ULT(A, B), A, B);
+}
+
+// Helper function to create alloca in entry block of function
+Value *PacketBuilder::createEntryAlloca(Function *F, Type *Ty) {
+  auto IP = IRB->saveIP();
+  IRB->SetInsertPoint(&F->getEntryBlock(), F->getEntryBlock().begin());
+  auto *Alloca = ALLOCA(Ty);
+  if (IP.isSet())
+    IRB->restoreIP(IP);
+  return Alloca;
+}
+
+Value *PacketBuilder::createEntryAlloca(Function *F, Type *Ty, Value *ArrSize) {
+  auto IP = IRB->saveIP();
+  IRB->SetInsertPoint(&F->getEntryBlock(), F->getEntryBlock().begin());
+  auto *Alloca = ALLOCA(Ty, ArrSize);
+  if (IP.isSet())
+    IRB->restoreIP(IP);
+  return Alloca;
+}
+
+Value *PacketBuilder::VABSPS(Value *A) {
+  return BITCAST(AND(BITCAST(A, SimdInt32Ty), VIMMED1(0x7fffffff)), SimdFP32Ty);
+}
+
+Value *PacketBuilder::ICLAMP(Value *Src, Value *Low, Value *High,
+                             const llvm::Twine &Name) {
+  auto *LowCmp = ICMP_SLT(Src, Low);
+  auto *Tmp = SELECT(LowCmp, Low, Src);
+  auto *HighCmp = ICMP_SGT(Tmp, High);
+  return SELECT(HighCmp, High, Tmp, Name);
+}
+
+Value *PacketBuilder::FCLAMP(Value *Src, Value *Low, Value *High) {
+  auto *LowCmp = FCMP_OLT(Src, Low);
+  auto *Tmp = SELECT(LowCmp, Low, Src);
+  auto *HighCmp = FCMP_OGT(Tmp, High);
+  return SELECT(HighCmp, High, Tmp);
+}
+
+Value *PacketBuilder::FCLAMP(Value *Src, float Low, float High) {
+  return VMINPS(VMAXPS(Src, VIMMED1(Low)), VIMMED1(High));
+}
+
+Value *PacketBuilder::FMADDPS(Value *A, Value *B, Value *C) {
+  return FADD(FMUL(A, B), C);
+}
+
+//////////////////////////////////////////////////////////////////////////
+/// @brief pop count on vector mask (e.g. <8 x i1>)
+Value *PacketBuilder::VPOPCNT(Value *A) { return POPCNT(VMOVMSK(A)); }
+
+//////////////////////////////////////////////////////////////////////////
+/// @brief C functions called by LLVM IR
+//////////////////////////////////////////////////////////////////////////
+
+Value *PacketBuilder::VEXTRACTI128(Value *A, Constant *Imm8) {
+  bool Flag = !Imm8->isZeroValue();
+  SmallVector<Constant *, 8> Indices;
+  for (unsigned Idx = 0; Idx < VWidth / 2; Idx++) {
+    Indices.push_back(C(Flag ? Idx + VWidth / 2 : Idx));
+  }
+  return VSHUFFLE(A, VUNDEF_I(), ConstantVector::get(Indices));
+}
+
+Value *PacketBuilder::VINSERTI128(Value *A, Value *B, Constant *Imm8) {
+  bool Flag = !Imm8->isZeroValue();
+  SmallVector<Constant *, 8> Indices;
+  for (unsigned Idx = 0; Idx < VWidth; Idx++) {
+    Indices.push_back(C(Idx));
+  }
+  Value *Tmp = VSHUFFLE(B, VUNDEF_I(), ConstantVector::get(Indices));
+  SmallVector<Constant *, 8> Indices2;
+  for (unsigned Idx = 0; Idx < VWidth / 2; Idx++) {
+    Indices2.push_back(C(Flag ? Idx : Idx + VWidth));
+  }
+  for (unsigned Idx = VWidth / 2; Idx < VWidth; Idx++) {
+    Indices2.push_back(C(Flag ? Idx + VWidth / 2 : Idx));
+  }
+  return VSHUFFLE(A, Tmp, ConstantVector::get(Indices2));
+}
+
+uint32_t PacketBuilder::getTypeSize(Type *Ty) {
+  if (Ty->isStructTy()) {
+    uint32_t NumElems = Ty->getStructNumElements();
+    auto *ElemTy = Ty->getStructElementType(0);
+    return NumElems * getTypeSize(ElemTy);
+  }
+  if (Ty->isArrayTy()) {
+    uint32_t NumElems = Ty->getArrayNumElements();
+    auto *ElemTy = Ty->getArrayElementType();
+    return NumElems * getTypeSize(ElemTy);
+  }
+  if (Ty->isIntegerTy()) {
+    uint32_t BitSize = Ty->getIntegerBitWidth();
+    return BitSize / 8;
+  }
+  if (Ty->isFloatTy())
+    return 4;
+  if (Ty->isHalfTy())
+    return 2;
+  if (Ty->isDoubleTy())
+    return 8;
+  IGC_ASSERT_MESSAGE(0, "Unimplemented type.");
+  return 0;
+}
+} // namespace pktz
