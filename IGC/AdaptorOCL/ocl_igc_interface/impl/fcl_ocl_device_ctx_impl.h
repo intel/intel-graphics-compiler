@@ -13,6 +13,8 @@ SPDX-License-Identifier: MIT
 
 #include <cinttypes>
 #include <mutex>
+#include <signal.h>
+#include <setjmp.h>
 
 #include "cif/common/cif.h"
 #include "cif/export/cif_main_impl.h"
@@ -72,3 +74,66 @@ CIF_DEFINE_INTERFACE_TO_PIMPL_FORWARDING_CTOR_DTOR(FclOclDeviceCtx);
 }
 
 #include "cif/macros/disable.h"
+
+#if defined(NDEBUG)
+#if defined(WIN32)
+OCL_API_CALL int ex_filter(unsigned int code, struct _EXCEPTION_POINTERS* ep);
+
+#define EX_GUARD_BEGIN                                                        \
+__try                                                                         \
+{                                                                             \
+
+#define EX_GUARD_END                                                          \
+}                                                                             \
+__except (ex_filter(GetExceptionCode(), GetExceptionInformation()))           \
+{                                                                             \
+    return nullptr;                                                            \
+}                                                                             \
+
+#else
+OCL_API_CALL void signalHandler(int sig, siginfo_t* info, void* ucontext);
+
+#define SET_SIG_HANDLER(SIG)                                                  \
+struct sigaction saold_##SIG;                                                 \
+sigaction(SIG, NULL, &saold_##SIG);                                           \
+if (saold_##SIG.sa_handler == SIG_DFL)                                        \
+{                                                                             \
+    sigaction(SIG, &sa, NULL);                                                \
+}                                                                             \
+
+#define REMOVE_SIG_HANDLER(SIG)                                               \
+if (saold_##SIG.sa_handler == SIG_DFL)                                        \
+{                                                                             \
+    sigaction(SIG, &saold_##SIG, NULL);                                       \
+}                                                                             \
+
+#define EX_GUARD_BEGIN                                                        \
+struct sigaction sa;                                                          \
+sigemptyset(&sa.sa_mask);                                                     \
+sa.sa_sigaction = signalHandler;                                              \
+sa.sa_flags = 0;                                                              \
+SET_SIG_HANDLER(SIGABRT)                                                      \
+SET_SIG_HANDLER(SIGFPE)                                                       \
+SET_SIG_HANDLER(SIGILL)                                                       \
+SET_SIG_HANDLER(SIGINT)                                                       \
+SET_SIG_HANDLER(SIGSEGV)                                                      \
+SET_SIG_HANDLER(SIGTERM)                                                      \
+int sig = setjmp(sig_jmp_buf);                                                \
+if (sig == 0) {                                                               \
+
+#define EX_GUARD_END                                                          \
+} else {                                                                      \
+    return nullptr;                                                            \
+}                                                                             \
+REMOVE_SIG_HANDLER(SIGABRT)                                                   \
+REMOVE_SIG_HANDLER(SIGFPE)                                                    \
+REMOVE_SIG_HANDLER(SIGILL)                                                    \
+REMOVE_SIG_HANDLER(SIGINT)                                                    \
+REMOVE_SIG_HANDLER(SIGSEGV)                                                   \
+REMOVE_SIG_HANDLER(SIGTERM)                                                   \
+
+#endif
+#else
+#define EX_GUARD_BEGIN
+#define EX_GUARD_END
+#endif
