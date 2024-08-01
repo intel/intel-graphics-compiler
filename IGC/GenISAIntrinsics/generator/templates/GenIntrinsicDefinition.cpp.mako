@@ -13,6 +13,9 @@ namespace IGC
 <%!
 from Intrinsic_generator import IntrinsicFormatter
 %>\
+<%
+IntrinsicFormatter.use_comments=use_comments
+%>\
 % for el in intrinsic_definitions:
 
 const char* IntrinsicDefinition<llvm::GenISAIntrinsic::ID::${el.name}>::scFunctionRootName =

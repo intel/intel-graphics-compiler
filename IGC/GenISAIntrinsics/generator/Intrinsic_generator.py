@@ -157,9 +157,6 @@ class IntrinsicFormatter:
         return prefix
 
 def generate_intrinsic_defintion_files(intrinsic_definitions : List[IntrinsicDefinition], output_directory : str, use_comments):
-
-    IntrinsicFormatter.use_comments = use_comments
-
     intrinsic_ids = set()
     unique_intrinsic_definitions = []
     for intrinsic_def in intrinsic_definitions:
@@ -193,7 +190,7 @@ def generate_intrinsic_defintion_files(intrinsic_definitions : List[IntrinsicDef
                         lookup=template_lookup)
     output_file_path = os.path.join(
         output_directory, from_template_name_to_destination_name(template.filename))
-    write_to_file_using_template(output_file_path, template, intrinsic_definitions=intrinsic_definitions)
+    write_to_file_using_template(output_file_path, template, intrinsic_definitions=intrinsic_definitions, use_comments=use_comments)
 
     template = Template(filename=r'templates/GenIntrinsicLookupTable.h.mako',
                         lookup=template_lookup)
