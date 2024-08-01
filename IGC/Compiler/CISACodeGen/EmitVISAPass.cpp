@@ -1392,6 +1392,20 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         }
     }
 
+    if ((m_currShader->GetShaderType() == ShaderType::COMPUTE_SHADER ||
+        m_currShader->GetShaderType() == ShaderType::OPENCL_SHADER) &&
+        m_currShader->m_Platform->supportDisableMidThreadPreemptionSwitch() &&
+        IGC_IS_FLAG_ENABLED(EnableDisableMidThreadPreemptionOpt) &&
+        (m_currShader->GetContext()->m_instrTypes.numLoopInsts == 0) &&
+        (m_currShader->ProgramOutput()->m_InstructionCount < IGC_GET_FLAG_VALUE(MidThreadPreemptionDisableThreshold)))
+    {
+
+        {
+            COpenCLKernel* kernel = static_cast<COpenCLKernel*>(m_currShader);
+            kernel->SetDisableMidthreadPreemption();
+        }
+    }
+
     if (IGC_IS_FLAG_ENABLED(ForceBestSIMD))
     {
         return false;
