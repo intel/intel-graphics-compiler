@@ -857,7 +857,6 @@ InternalIntrinsic::getMemoryVectorSizePerLane(const llvm::Instruction *I) {
     IGC_ASSERT(Size > 0 && Size <= 4);
     return Size;
   }
-
   }
 
   return 1;
@@ -865,14 +864,22 @@ InternalIntrinsic::getMemoryVectorSizePerLane(const llvm::Instruction *I) {
 
 unsigned InternalIntrinsic::getMemorySimdWidth(const Instruction *I) {
   IGC_ASSERT_EXIT(isInternalMemoryIntrinsic(I));
+  auto IID = getInternalIntrinsicID(I);
 
-  auto *Pred = I->getOperand(0);
-  auto *PredTy = Pred->getType();
+  switch (IID) {
+  case InternalIntrinsic::lsc_load_2d_tgm_bti:
+  case InternalIntrinsic::lsc_store_2d_tgm_bti:
+    return 1;
+  default: {
+    auto *Pred = I->getOperand(0);
+    auto *PredTy = Pred->getType();
 
-  if (auto *PredVTy = dyn_cast<IGCLLVM::FixedVectorType>(PredTy))
-    return PredVTy->getNumElements();
+    if (auto *PredVTy = dyn_cast<IGCLLVM::FixedVectorType>(PredTy))
+      return PredVTy->getNumElements();
 
-  return 1;
+    return 1;
+  }
+  }
 }
 
 unsigned
