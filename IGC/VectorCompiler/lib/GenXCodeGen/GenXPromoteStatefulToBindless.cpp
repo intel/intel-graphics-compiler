@@ -257,6 +257,7 @@ static int getSurfaceOperandNo(unsigned Id) {
 static int getAddrSizeOperandNo(unsigned Id) {
   switch (Id) {
   case vc::InternalIntrinsic::lsc_atomic_bti:
+    return 2;
   case vc::InternalIntrinsic::lsc_load_bti:
   case vc::InternalIntrinsic::lsc_prefetch_bti:
   case vc::InternalIntrinsic::lsc_store_bti:
