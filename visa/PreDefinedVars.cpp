@@ -55,6 +55,7 @@ static const PreDefinedVarInfo preDefinedVarTable[static_cast<int>(
     {PreDefinedVarsInternal::LOCAL_ID_BUF_PTR, ISA_TYPE_UQ, 3, false, false, 0,
      1, "%local_id_buf_ptr"},
     {PreDefinedVarsInternal::MSG0, ISA_TYPE_UD, 3, false, false, 0, 3, "%msg0"},
+    {PreDefinedVarsInternal::SCRATCHLOC, ISA_TYPE_UQ, 1, false, false, 0, 1, "%scratchloc"},
 };
 
 // This is the same as visa_igc_common_header.h/PreDefined_Vars

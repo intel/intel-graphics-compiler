@@ -41,7 +41,8 @@ enum class PreDefinedVarsInternal {
   IMPL_ARG_BUF_PTR = 24,
   LOCAL_ID_BUF_PTR = 25,
   MSG0 = 26,
-  VAR_LAST = 27
+  SCRATCHLOC = 27,
+  VAR_LAST = 28
 };
 
 const std::array<PreDefinedVarsInternal, (int)PreDefinedVarsInternal::VAR_LAST>
