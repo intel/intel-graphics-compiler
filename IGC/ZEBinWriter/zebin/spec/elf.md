@@ -14,7 +14,8 @@ be documented properly in version.md.
 | ------ | ------ |  ------ |
 | ELF header | Standard ELF header contains version and platform information ||
 | Section headers | Standard ELF section headers ||
-| .text.{*kernel_name*} | Gen binary of kernel/functions in this compiled module | SHT_PROGBITS |
+| .text.{*kernel_name*} | ISA binary of kernel in this compiled module | SHT_PROGBITS |
+| .text | ISA binary of this compiled module that is not included in above .text.* sections. E.g. external functions | SHT_PROGBITS |
 | .data.const | Constant data section (if any) | SHT_PROGBITS |
 | .bss.const | Constant data with zero-initialized variables (if any) | SHT_NOBITS |
 | .data.global | Global data section (if any) | SHT_PROGBITS |
