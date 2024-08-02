@@ -108,7 +108,7 @@ CoalesceSpillFills::createCoalescedSpillDcl(unsigned int payloadSize) {
 
 void CoalesceSpillFills::coalesceSpills(
     std::list<INST_LIST_ITER> &coalesceableSpills, unsigned int min,
-    unsigned int max, bool useNoMask, G4_InstOption mask, G4_BB *bb) {
+    unsigned int max, bool useNoMask, G4_InstOption mask) {
   // Generate fill with minimum size = max-min. This should be compatible with
   // payload sizes supported by hardware.
   unsigned int payloadSize = (max - min) + 1;
@@ -163,15 +163,15 @@ void CoalesceSpillFills::coalesceSpills(
   for (const auto &spill : coalesceableSpills) {
     gra.incRA.markForIntfUpdate(
         (*spill)->asSpillIntrinsic()->getPayload()->getTopDcl());
-    bb->erase(spill);
+    curBB->erase(spill);
   }
   coalesceableSpills.clear();
-  bb->insertBefore(f, coalescedSpillSrc->getInst());
+  curBB->insertBefore(f, coalescedSpillSrc->getInst());
 }
 
 void CoalesceSpillFills::coalesceFills(
     std::list<INST_LIST_ITER> &coalesceableFills, unsigned int min,
-    unsigned int max, G4_BB *bb) {
+    unsigned int max) {
   // Generate fill with minimum size = max-min. This should be compatible with
   // payload sizes supported by hardware.
   unsigned int payloadSize = (max - min) + 1;
@@ -235,11 +235,11 @@ void CoalesceSpillFills::coalesceFills(
     if (fill == f) {
       f++;
     }
-    bb->erase(fill);
+    curBB->erase(fill);
   }
 
   coalesceableFills.clear();
-  bb->insertBefore(f, newFill);
+  curBB->insertBefore(f, newFill);
 }
 
 // Return true if heuristic agrees to coalescing.
@@ -637,7 +637,7 @@ void CoalesceSpillFills::keepConsecutiveSpills(
 INST_LIST_ITER
 CoalesceSpillFills::analyzeSpillCoalescing(std::list<INST_LIST_ITER> &instList,
                                            INST_LIST_ITER start,
-                                           INST_LIST_ITER end, G4_BB *bb) {
+                                           INST_LIST_ITER end) {
   // Check and perform coalescing, if possible, amongst spills in instList.
   // Return inst iter points to either last inst+1 in instList if all spills
   // were coalesced. Otherwise, it points to first spill that wasnt coalesced.
@@ -657,7 +657,7 @@ CoalesceSpillFills::analyzeSpillCoalescing(std::list<INST_LIST_ITER> &instList,
   keepConsecutiveSpills(instList, coalesceableSpills, cMaxSpillPayloadSize, min,
                         max, useNoMask, mask);
   if (coalesceableSpills.size() > 1) {
-    coalesceSpills(coalesceableSpills, min, max, useNoMask, mask, bb);
+    coalesceSpills(coalesceableSpills, min, max, useNoMask, mask);
   } else {
     // When coalescing is not done, we want to
     // move to second instruction in instList in
@@ -675,7 +675,7 @@ CoalesceSpillFills::analyzeSpillCoalescing(std::list<INST_LIST_ITER> &instList,
 INST_LIST_ITER
 CoalesceSpillFills::analyzeFillCoalescing(std::list<INST_LIST_ITER> &instList,
                                           INST_LIST_ITER start,
-                                          INST_LIST_ITER end, G4_BB *bb) {
+                                          INST_LIST_ITER end) {
   // Check and perform coalescing, if possible, amongst fills in instList.
   // Return inst iter points to either last inst+1 in instList if all fills
   // were coalesced. Otherwise, it points to first fill that wasnt coalesced.
@@ -704,7 +704,7 @@ CoalesceSpillFills::analyzeFillCoalescing(std::list<INST_LIST_ITER> &instList,
   }
 
   if (coalesceableFills.size() > 1) {
-    coalesceFills(coalesceableFills, min, max, bb);
+    coalesceFills(coalesceableFills, min, max);
   }
 
   if (instList.size() == 0) {
@@ -733,7 +733,7 @@ bool CoalesceSpillFills::overlap(G4_INST *inst1, G4_INST *inst2,
     if (scratchEnd1 >= scratchOffset2) {
       if (scratchOffset1 <= scratchOffset2 &&
           (scratchOffset1 + scratchSize1) >= (scratchOffset2 + scratchSize2)) {
-        isFullOverlap = true;
+        isFullOverlap = !isIncompatibleEMCm(inst1, inst2);
       }
 
       return true;
@@ -744,7 +744,7 @@ bool CoalesceSpillFills::overlap(G4_INST *inst1, G4_INST *inst2,
     if (scratchEnd2 >= scratchOffset1) {
       if (scratchOffset1 <= scratchOffset2 &&
           (scratchOffset1 + scratchSize1) >= (scratchOffset2 + scratchSize2)) {
-        isFullOverlap = true;
+        isFullOverlap = !isIncompatibleEMCm(inst1, inst2);
       }
 
       return true;
@@ -762,7 +762,6 @@ bool CoalesceSpillFills::overlap(G4_INST *inst,
     if (overlap(inst, spillInst, t))
       return true;
   }
-
   return false;
 }
 
@@ -853,6 +852,7 @@ void CoalesceSpillFills::fills() {
   for (auto bb : kernel.fg) {
     if (!gra.hasSpillCodeInBB(bb))
       continue;
+    curBB = bb;
     auto endIter = bb->end();
     std::list<INST_LIST_ITER> fillsToCoalesce;
     std::list<INST_LIST_ITER> spills;
@@ -944,7 +944,7 @@ void CoalesceSpillFills::fills() {
           earlyCoalesce) {
         if (fillsToCoalesce.size() > 1) {
           auto nextInst =
-              analyzeFillCoalescing(fillsToCoalesce, startIter, instIter, bb);
+              analyzeFillCoalescing(fillsToCoalesce, startIter, instIter);
           if (earlyCoalesce)
             instIter++;
           else
@@ -1028,6 +1028,7 @@ void CoalesceSpillFills::spills() {
   for (auto bb : kernel.fg) {
     if (!gra.hasSpillCodeInBB(bb))
       continue;
+    curBB = bb;
     auto endIter = bb->end();
     std::list<INST_LIST_ITER> spillsToCoalesce;
     INST_LIST_ITER startIter = bb->begin();
@@ -1143,7 +1144,7 @@ void CoalesceSpillFills::spills() {
           earlyCoalesce) {
         if (spillsToCoalesce.size() > 1) {
           auto nextInst =
-              analyzeSpillCoalescing(spillsToCoalesce, startIter, instIter, bb);
+              analyzeSpillCoalescing(spillsToCoalesce, startIter, instIter);
           if (earlyCoalesce)
             instIter++;
           else
@@ -1205,6 +1206,7 @@ void CoalesceSpillFills::fixSendsSrcOverlap() {
   // where V441 and V449 are both scalars of type :uq and :ud respectively
   //
   for (auto bb : kernel.fg) {
+    curBB = bb;
     for (auto instIt = bb->begin(); instIt != bb->end(); instIt++) {
       auto inst = (*instIt);
 
@@ -1522,6 +1524,7 @@ void CoalesceSpillFills::spillFillCleanup() {
   for (auto bb : kernel.fg) {
     if (!gra.hasSpillCodeInBB(bb))
       continue;
+    curBB = bb;
     auto startIt = bb->begin();
     auto endIt = bb->end();
     const auto &splitInsts = LoopVarSplit::getSplitInsts(&gra, bb);
@@ -1685,7 +1688,9 @@ void CoalesceSpillFills::spillFillCleanup() {
         // Check whether writes for all rows were found
         bool found = true;
         for (auto row = rowStart; row <= lastRow; row++) {
-          if (writesPerOffset.find(row) == writesPerOffset.end()) {
+          auto spillIt = writesPerOffset.find(row);
+          if (spillIt == writesPerOffset.end() ||
+              isIncompatibleEMCm((*spillIt).second, inst)) {
             found = false;
             break;
           }
@@ -1757,6 +1762,33 @@ void CoalesceSpillFills::spillFillCleanup() {
   }
 }
 
+bool CoalesceSpillFills::isIncompatibleEMCm(G4_INST *inst1,
+                                            G4_INST *inst2) const {
+  vISA_ASSERT(curBB, "expecting valid G4_BB* containing inst1, inst2");
+  vISA_ASSERT(std::find(curBB->begin(), curBB->end(), inst1) != curBB->end(),
+              "expecting inst1 in bb");
+  vISA_ASSERT(std::find(curBB->begin(), curBB->end(), inst2) != curBB->end(),
+              "expecting inst2 in bb");
+
+  if (curBB->isDivergent() && isCm) {
+    // Cm program may write a variable using NoMask once and then
+    // write it again with default EM. Later use of the variable could
+    // use NoMask. For eg,
+    // op1 (16) V10, ... {NoMask}
+    // op2 (16) V10, ... {H1}
+    // op3 (16) ..., V10 {NoMask}
+    //
+    // If V10 is spilled in above snippet, we'll emit 2 spill operations
+    // and 1 fill operation. Spill for op2 doesn't use NoMask as send msg
+    // can directly rely on EM behavior. Since fill uses NoMask, spill
+    // cleanup cannot coalesce the second spill and fill away. So for Cm,
+    // we disallow spill cleanup between a NoMask fill and default EM
+    // spill in divergent BBs.
+    return (inst1->isWriteEnableInst() ^ inst2->isWriteEnableInst());
+  }
+  return false;
+}
+
 void CoalesceSpillFills::removeRedundantWrites() {
   typedef std::list<std::pair<G4_BB *, INST_LIST_ITER>> SPILLS;
   typedef std::list<std::pair<G4_BB *, INST_LIST_ITER>> FILLS;
@@ -1766,6 +1798,7 @@ void CoalesceSpillFills::removeRedundantWrites() {
   // 1. Successive writes to same offset without a fill in between,
   // 2. Writes in program without any fill from that slot throughout
   for (auto bb : kernel.fg) {
+    curBB = bb;
     auto endIt = bb->end();
     endIt--;
     // Store spill slots that are written in to alongwith emask used
