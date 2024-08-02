@@ -13787,6 +13787,27 @@ void EmitPass::emitReductionInterleave(const e_opcode op, const uint64_t identit
     }
 
     // Broadcast result
+    // For XeHP, for low interleave step, broadcast of 64-bit result
+    // can be optimized as a separate mov of low/high 32-bit.
+    bool use32bitMove = ScanReduceIs64BitType(type) && m_currShader->m_Platform->doScalar64bScan() && m_currShader->m_numberInstance == 1;
+    if (use32bitMove && (step == 2 || step == 4))
+    {
+        CVariable* result32b = m_currShader->GetNewAlias(temp, ISA_TYPE_UD, 0, 2 * step);
+        CVariable* dst32b = m_currShader->GetNewAlias(dst, ISA_TYPE_UD, 0, 2 * numLanes(m_currShader->m_SIMDSize));
+
+        m_encoder->SetSimdSize(m_currShader->m_SIMDSize);
+        m_encoder->SetSrcRegion(0, 0, step, 2);
+        m_encoder->SetDstRegion(2);
+        m_encoder->Copy(dst32b, result32b);
+
+        m_encoder->SetSrcSubReg(0, 1);
+        m_encoder->SetDstSubReg(1);
+        m_encoder->Copy(dst32b, result32b);
+
+        m_encoder->Push();
+        return;
+    }
+
     m_encoder->SetSimdSize(m_currShader->m_SIMDSize);
     m_encoder->SetSrcRegion(0, 0, step, 1);
     m_encoder->Copy(dst, temp);
