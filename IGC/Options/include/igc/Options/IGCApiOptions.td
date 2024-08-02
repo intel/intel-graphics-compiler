@@ -58,6 +58,9 @@ defm fp64_gen_emu : CommonFlag<"fp64-gen-emu">;
 // -cl-fp64-gen-conv-emu  -ze-fp64-gen-conv-emu
 defm fp64_gen_conv_emu : CommonFlag<"fp64-gen-conv-emu">;
 
+// -cl-intel-profile-guided-trimming, -ze-opt-profile-guided-trimming
+defm static_profile_guided_trimming : CommonFlag<"static-profile-guided-trimming">;
+
 // }} Backend API options
 
 // API options from source translation {{
