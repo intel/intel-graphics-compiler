@@ -287,9 +287,38 @@ void __builtin_spirv_OpMemoryNamedBarrierWrapperOCL_p3__namedBarrier_i32_i32(loc
 
 __global volatile uchar* __builtin_IB_get_sync_buffer();
 uint __intel_get_local_linear_id( void );
+uint __intel_get_global_linear_id( void );
 uint __intel_get_local_size( void );
 
-void global_barrier()
+// Implementation of global_barrier using atomic instructions.
+void __global_barrier_atomic()
+{
+    barrier(CLK_GLOBAL_MEM_FENCE);
+
+    __global volatile int* syncBuffer = (__global volatile int*)__builtin_IB_get_sync_buffer();
+
+    bool firstThreadPerWg = (__builtin_IB_get_local_id_x() == 0) && (__builtin_IB_get_local_id_y() == 0) && (__builtin_IB_get_local_id_z() == 0);
+    size_t numGroups = __builtin_IB_get_num_groups(0) * __builtin_IB_get_num_groups(1) * __builtin_IB_get_num_groups(2);
+
+    if (firstThreadPerWg)
+    {
+        if (__intel_get_global_linear_id() == 0)
+        {
+            atomic_sub(syncBuffer, numGroups-1);
+        }
+        else
+        {
+            atomic_inc(syncBuffer);
+        }
+
+        while (atomic_or(syncBuffer, 0) != 0) {}
+    }
+
+    barrier(CLK_GLOBAL_MEM_FENCE);
+}
+
+// Implementation of global_barrier without using atomic instructions except for fences.
+void __global_barrier_nonatomic()
 {
     //Make sure each WKG item hit the barrier.
     __intel_workgroup_barrier(Device, AcquireRelease | CrossWorkgroupMemory);
@@ -338,6 +367,10 @@ void global_barrier()
         };
     }
     __intel_workgroup_barrier(Device, AcquireRelease | CrossWorkgroupMemory);
+}
+
+void global_barrier() {
+    __global_barrier_nonatomic();
 }
 
 void system_memfence(char fence_typed_memory)

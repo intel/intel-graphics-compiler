@@ -140,6 +140,11 @@ uint __intel_get_local_linear_id( void )
     return get_local_linear_id();
 }
 
+uint __intel_get_global_linear_id( void )
+{
+    return get_global_linear_id();
+}
+
 bool __intel_is_first_work_group_item( void )
 {
     return get_local_id(0) == 0 &
