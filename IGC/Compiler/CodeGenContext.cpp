@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/ScaledNumber.h>
 #include <llvm/Demangle/Demangle.h>
 #include <llvm/IR/DebugInfo.h>
+#include "llvmWrapper/IR/LLVMContext.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
@@ -373,6 +374,7 @@ namespace IGC
         {
             CreateResourceDimensionTypes(*this);
         }
+        auto* basePtr = static_cast<llvm::LLVMContext*>(this);
         // When opaque pointers are enabled through the environment setting, we
         // expect the Context to convert any incoming typed pointers
         // automatically. However, the build system has opaque pointers enabled
@@ -381,9 +383,12 @@ namespace IGC
         // TODO: For transition purposes, consider introducing an IGC internal
         // option to tweak typed/opaque pointers with a precedence over the
         // environment flag.
-        this->setOpaquePointers(
-            __IGC_OPAQUE_POINTERS_API_ENABLED ||
-            IGC_IS_FLAG_ENABLED(EnableOpaquePointersBackend));
+        if (IGC::canOverwriteLLVMCtxPtrMode(basePtr))
+        {
+            IGCLLVM::setOpaquePointers(basePtr,
+                __IGC_OPAQUE_POINTERS_API_ENABLED ||
+                IGC_IS_FLAG_ENABLED(EnableOpaquePointersBackend));
+        }
     }
 
     void LLVMContextWrapper::AddRef()

@@ -54,7 +54,6 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include <optional>
 #include <Metrics/IGCMetric.h>
-#include "llvmWrapper/IR/LLVMContext.h"
 #include "llvmWrapper/IR/Module.h"
 #include "Compiler/UserAddrSpaceMD.hpp"
 
@@ -839,7 +838,7 @@ namespace IGC
     /// This class:
     ///    Add intrinsic cache to LLVM context
     ///    Add llvm metadata cache
-    class LLVMContextWrapper : public IGCLLVM::Context
+    class LLVMContextWrapper : public llvm::LLVMContext
     {
         LLVMContextWrapper(LLVMContextWrapper&) = delete;
         LLVMContextWrapper& operator =(LLVMContextWrapper&) = delete;
