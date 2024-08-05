@@ -10,8 +10,6 @@ SPDX-License-Identifier: MIT
 // Used by BuiltinResource.rc
 //
 #define OCL_BC_START                    120
-#define OCL_BC_32                       120
-#define OCL_BC_64                       121
-#define OCL_BC                          122
+#define OCL_BIFBC                       122
 #define OCL_BC_END                      125
 

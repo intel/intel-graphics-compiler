@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2023 Intel Corporation
+Copyright (C) 2019-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -57,6 +57,7 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 #include "llvm/GenXIntrinsics/GenXIntrinsicInst.h"
+#include <BiFManager/BiFManagerHandler.hpp>
 
 using namespace llvm;
 
@@ -466,9 +467,6 @@ public:
   StringRef getPassName() const override { return "GenX import OCL BiF"; }
   void getAnalysisUsage(AnalysisUsage &AU) const override;
   bool runOnModule(Module &M) override;
-
-private:
-  std::unique_ptr<Module> getBiFModule(BiFKind Kind, LLVMContext &Ctx);
 };
 
 char GenXImportOCLBiF::ID = 0;
@@ -507,29 +505,28 @@ static void forceInlining(Module &M, const StringSet<> &GVS) {
 bool GenXImportOCLBiF::runOnModule(Module &M) {
   if (llvm::none_of(M, [](const Function &F) { return isOCLBuiltinDecl(F); }))
     return false;
-  std::unique_ptr<Module> GenericBiFModule =
-      getBiFModule(BiFKind::OCLGeneric, M.getContext());
-  GenericBiFModule->setDataLayout(M.getDataLayout());
-  GenericBiFModule->setTargetTriple(M.getTargetTriple());
-  auto LinkerCallback = [](Module &M, const StringSet<> &GVS) {
-    internalizeModule(M, [&GVS](const GlobalValue &GV) {
-      return !GV.hasName() || (GVS.count(GV.getName()) == 0);
+
+#ifdef BIF_LINK_BC
+  // Link all needed Bif instr
+  {
+    IGC::BiFManager::BiFManagerHandler bifLinker(M.getContext());
+
+    bifLinker.SetTargetTriple(M.getTargetTriple());
+    bifLinker.SetDataLayout(M.getDataLayout());
+    bifLinker.SetCallbackLinker([](Module &M, const StringSet<> &GVS) {
+      internalizeModule(M, [&GVS](const GlobalValue &GV) {
+        return !GV.hasName() || (GVS.count(GV.getName()) == 0);
+      });
+      // FIXME: workaround to solve several issues in the backend, remove it
+      forceInlining(M, GVS);
     });
-    // FIXME: workaround to solve several issues in the backend, remove it
-    forceInlining(M, GVS);
-  };
-  if (Linker::linkModules(M, std::move(GenericBiFModule),
-                          Linker::Flags::LinkOnlyNeeded, LinkerCallback)) {
-    IGC_ASSERT_MESSAGE(0, "Error OCL builtin implementation module");
+
+    bifLinker.LinkBiF(M);
   }
+#endif // BIF_LINK_BC
+
   removeFunctionBitcasts(M);
   BIConvert{}.runOnModule(M);
   return true;
 }
 
-std::unique_ptr<Module> GenXImportOCLBiF::getBiFModule(BiFKind Kind,
-                                                       LLVMContext &Ctx) {
-  MemoryBufferRef BiFModuleBuffer =
-      getAnalysis<GenXBackendConfig>().getBiFModule(Kind);
-  return vc::getLazyBiFModuleOrReportError(BiFModuleBuffer, Ctx);
-}

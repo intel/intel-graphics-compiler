@@ -14,16 +14,15 @@ SPDX-License-Identifier: MIT
 
 // Check for the flag FastRelaxedMath
 // Check in base run if we have setup to false FastRelaxedMath flag
-// CHECK-BASE: @__bif_flag_FastRelaxedMath = local_unnamed_addr addrspace(2) constant i8 0,
+// CHECK-BASE: @__bif_flag_FastRelaxedMath = local_unnamed_addr addrspace(2) constant i8 0
 // Check in run with option -cl-fast-relaxed-math we have setup to true FastRelaxedMath flag
-// CHECK-FastRelaxedMath: @__bif_flag_FastRelaxedMath = local_unnamed_addr addrspace(2) constant i8 1,
-
+// CHECK-FastRelaxedMath: @__bif_flag_FastRelaxedMath = local_unnamed_addr addrspace(2) constant i8 1
 
 // Check for the flag hasHWLocalThreadID
 // Check in base run if we have setup to true hasHWLocalThreadID flag
-// CHECK-BASE: @__bif_flag_hasHWLocalThreadID = local_unnamed_addr addrspace(2) constant i8 0,
+// CHECK-BASE: @__bif_flag_hasHWLocalThreadID = local_unnamed_addr addrspace(2) constant i8 0
 // Check in run with pvc compilation if we have setup to true hasHWLocalThreadID flag
-// CHECK-HasHWLocalThreadID: @__bif_flag_hasHWLocalThreadID = local_unnamed_addr addrspace(2) constant i8 1,
+// CHECK-HasHWLocalThreadID: @__bif_flag_hasHWLocalThreadID = local_unnamed_addr addrspace(2) constant i8 1
 
 kernel void test(global float* out, global float* in)
 {
