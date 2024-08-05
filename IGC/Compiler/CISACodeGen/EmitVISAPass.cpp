@@ -16785,7 +16785,49 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
         bool splitDst = (!dstUniform && (dstEltBytes * width > m_currShader->getGRFSize() * 2));
         IGC_ASSERT_MESSAGE((!splitDst || (width == 16) || (width == 32)),
             "Internal Error: Dst needs splitting only under SIMD16!");
-        if (N > 4)
+
+        // kind of a special case, such as with TotalGRFNum4RQ=256
+        //
+        // from .ll:
+        // %.bc = bitcast <64 x i32> %BlockLoad to <32 x i64>
+        // in .visaasm, there 64 mov(M1_NM, 1):
+        // .decl V0042 v_type=G type=d num_elts=64 align=wordx32
+        // .decl _bc v_type=G type=q num_elts=32 align=qword
+        // .decl _bc_0 v_type=G type=d num_elts=64 align=qword alias=<_bc, 0>
+        // ......
+        // mov(M1_NM, 1) _bc_0(0,0)<1> V0042(0,0)<0;1,0>
+        // mov(M1_NM, 1) _bc_0(0,1)<1> V0042(0,1)<0;1,0>
+        // ......
+        // mov(M1_NM, 1) _bc_0(3,14)<1> V0042(3,14)<0;1,0>
+        // mov(M1_NM, 1) _bc_0(3,15)<1> V0042(3,15)<0;1,0>
+        //
+        // this is changed to 8 mov(M1_NM, 8) if simd8, or
+        // 4 mov(M1_NM, 16) if simd16
+        //
+        // .decl V0042 v_type=G type=d num_elts=64 align=wordx32
+        // .decl _bc v_type=G type=q num_elts=32 align=qword
+        // .decl _bc_0 v_type=G type=d num_elts=64 align=qword alias=<_bc, 0>
+        // ......
+        // mov(M1_NM, 16) _bc_0(0,0)<1> V0042(0,0)<1;1,0>
+        // mov(M1_NM, 16) _bc_0(1,0)<1> V0042(1,0)<1;1,0>
+        // mov(M1_NM, 16) _bc_0(2,0)<1> V0042(2,0)<1;1,0>
+        // mov(M1_NM, 16) _bc_0(3,0)<1> V0042(3,0)<1;1,0>
+
+        if (srcUniform && dstUniform &&
+            srcNElts == 64 && dstNElts == 32 &&
+            m_destination->GetType() == ISA_TYPE_Q &&
+            src->GetType() == ISA_TYPE_D &&
+            m_currShader->m_Platform->canDoMultipleLineMOVOpt())
+        {
+            IGC_ASSERT(N == 2);
+            IGC_ASSERT(srcEltBytes == 4);
+
+            // re-route to emitVectorCopy
+            emitVectorCopy(aliasDst, src, srcNElts, 0, 0,
+                (m_currShader->m_SIMDSize > SIMDMode::SIMD8));
+            return;
+        }
+        else if (N > 4)
         {
             // Special case for N = 8 as dst's stride can be 1/2/4, not 8.
             //   for example, <1xi64> Y = bitcast <8xi8> X
@@ -19545,7 +19587,7 @@ void EmitPass::emitLscUniformAtomicCounter(llvm::GenIntrinsicInst* pInst)
 
 // DstSubRegOffset and SrcSubRegOffset are in unit of element size.
 void EmitPass::emitUniformVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
-    uint32_t DstSubRegOffset, uint32_t SrcSubRegOffset)
+    uint32_t DstSubRegOffset, uint32_t SrcSubRegOffset, bool allowLargerSIMDSize)
 {
     IGC_ASSERT(Dst->IsUniform() && Src->IsUniform());
 
@@ -19574,8 +19616,7 @@ void EmitPass::emitUniformVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nE
         return true;
     };
 
-    // True, allow simd32/simd16; otherwise, no simd32/simd16.
-    const bool allowLargerSIMDSize = false;
+    // allowLargerSIMDSize: True, allow simd32/simd16; otherwise, no simd32/simd16.
 
     // Start with the max execution size that is legal for the vector element
     // and is no greater than the current simdsize.
@@ -19603,7 +19644,7 @@ void EmitPass::emitUniformVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nE
 
 // DstSubRegOffset and SrcSubRegOffset are in unit of element size.
 void EmitPass::emitVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
-    uint32_t DstSubRegOffset, uint32_t SrcSubRegOffset)
+    uint32_t DstSubRegOffset, uint32_t SrcSubRegOffset, bool allowLargerSIMDSize)
 {
     bool srcUniform = Src->IsUniform();
     bool dstUniform = Dst->IsUniform();
@@ -19611,7 +19652,8 @@ void EmitPass::emitVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
     // Uniform vector copy.
     if (srcUniform && dstUniform) {
         emitUniformVectorCopy(
-            Dst, Src, nElts, DstSubRegOffset, SrcSubRegOffset);
+            Dst, Src, nElts, DstSubRegOffset, SrcSubRegOffset,
+            allowLargerSIMDSize);
         return;
     }
 

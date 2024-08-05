@@ -1439,6 +1439,11 @@ bool hasBarrierControlFlowOpt() const
     return enabled;
 }
 
+bool canDoMultipleLineMOVOpt() const
+{
+    return isCoreChildOf(IGFX_XE2_HPG_CORE);
+}
+
 bool supportStochasticLod() const
 {
     return isCoreChildOf(IGFX_XE2_HPG_CORE);

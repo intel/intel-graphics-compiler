@@ -464,9 +464,11 @@ public:
                             LSC_DOC_ADDR_SPACE addrSpace
       );
     void emitUniformVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
-        uint32_t DstSubRegOffset = 0, uint32_t SrcSubRegOffset = 0);
+        uint32_t DstSubRegOffset = 0, uint32_t SrcSubRegOffset = 0,
+        bool allowLargerSIMDSize = false);
     void emitVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
-        uint32_t DstSubRegOffset = 0, uint32_t SrcSubRegOffset = 0);
+        uint32_t DstSubRegOffset = 0, uint32_t SrcSubRegOffset = 0,
+        bool allowLargerSIMDSize = false);
     void emitCopyAll(CVariable* Dst, CVariable* Src, llvm::Type* Ty);
 
     void emitPushFrameToStack(Function* ParentFunction, unsigned& pushSize);
