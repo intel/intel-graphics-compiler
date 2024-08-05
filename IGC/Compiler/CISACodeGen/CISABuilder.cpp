@@ -4316,10 +4316,11 @@ namespace IGC
 
         CodeGenContext* pCtx = m_program->GetContext();
         bool needsDenormRetainForMathInstructions =
-            (pCtx->m_floatDenormMode16 == FLOAT_DENORM_FLUSH_TO_ZERO) ||
-            (pCtx->m_floatDenormMode32 == FLOAT_DENORM_FLUSH_TO_ZERO) ||
-            (pCtx->m_floatDenormMode64 == FLOAT_DENORM_FLUSH_TO_ZERO) ||
-            (pCtx->m_floatDenormModeBFTF == FLOAT_DENORM_FLUSH_TO_ZERO);
+            (context->type != ShaderType::OPENCL_SHADER) &&
+            ((pCtx->m_floatDenormMode16 == FLOAT_DENORM_FLUSH_TO_ZERO) ||
+             (pCtx->m_floatDenormMode32 == FLOAT_DENORM_FLUSH_TO_ZERO) ||
+             (pCtx->m_floatDenormMode64 == FLOAT_DENORM_FLUSH_TO_ZERO) ||
+             (pCtx->m_floatDenormModeBFTF == FLOAT_DENORM_FLUSH_TO_ZERO));
 
         if (m_program->m_Platform->hasCorrectlyRoundedMacros() && needsDenormRetainForMathInstructions)
         {
