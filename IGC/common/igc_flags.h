@@ -291,6 +291,8 @@ DECLARE_IGC_REGKEY(bool, EnableGEPLSR, true, "Enables GEP Loop Strength Reductio
 DECLARE_IGC_REGKEY(DWORD, GEPLSRThresholdRatio, 100, "Ratio for register pressure threshold in GEP Loop Strength Reduction pass", false)
 DECLARE_IGC_REGKEY(bool, EnableGEPLSRToPreheader, true, "Enables reduction to loop's preheader in GEP Loop Strength Reduction pass", false)
 DECLARE_IGC_REGKEY(bool, EnableGEPLSRAnyIntBitWidth, false, "Experimental: Enables reduction of SCEV with illegal integers. Requires legalization pass to clear up expanded code.", true)
+DECLARE_IGC_REGKEY(bool, EnableGEPLSRMulExpr, false, "Experimental: Enables reduction of SCEV with mul expression.", true)
+DECLARE_IGC_REGKEY(bool, EnableGEPLSRUnknownConstantStep, false, "Experimental: Enables reduction of SCEV with step expressed with constant value unknown at compilation time.", true)
 DECLARE_IGC_REGKEY(DWORD, FPRoundingModeCoalescingMaxDistance, 20, "Max distance in instructions for reordering FP instructions with common rounding mode", false)
 DECLARE_IGC_REGKEY(bool, DisableDotAddToDp4aMerge, false, "Disable Dot and Add ops to Dp4a merge optimization.", false)
 DECLARE_IGC_REGKEY(bool, DisableLoopSplitWidePHIs, false, "Disable splitting of loop PHI values to eliminate subvector extract operations", false)

@@ -937,6 +937,9 @@ void Analyzer::analyzeGEP(GetElementPtrInst *GEP)
     if (!deconstructSCEV(S, Start, Step))
         return;
 
+    if (Step->getSCEVType() != scConstant && IGC_IS_FLAG_DISABLED(EnableGEPLSRUnknownConstantStep) && IGC_IS_FLAG_DISABLED(EnableGEPLSRMulExpr))
+        return;
+
     if (S->getType() != Start->getType())
         Start = isa<SCEVSignExtendExpr>(S) ? SE.getSignExtendExpr(Start, S->getType()) : SE.getZeroExtendExpr(Start, S->getType());
 
@@ -1115,6 +1118,9 @@ bool Analyzer::deconstructSCEV(const SCEV *S, const SCEV *&Start, const SCEV *&S
     // Warning: GEP's new index will not be a constant integer, but a new SCEV expression.
     if (auto *Mul = dyn_cast<SCEVMulExpr>(S))
     {
+        if (IGC_IS_FLAG_DISABLED(EnableGEPLSRMulExpr))
+            return false;
+
         // SCEVAddRecExpr will be SCEV with step != 0. Any other SCEV is a multiplier.
         bool FoundAddRec = false;
         SCEVHelper::SCEVMulBuilder StartBuilder(SE), StepBuilder(SE);
