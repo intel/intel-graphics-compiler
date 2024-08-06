@@ -1538,9 +1538,16 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         if (intrinsic_name == llvm_input ||
             intrinsic_name == llvm_shaderinputvec)
         {
-            e_interpolation mode = (e_interpolation)cast<ConstantInt>(inst->getOperand(1))->getZExtValue();
-            if (mode != EINTERPOLATION_CONSTANT
-                )
+            if (auto* CI = dyn_cast<ConstantInt>(inst->getOperand(1)))
+            {
+                e_interpolation mode = (e_interpolation)CI->getZExtValue();
+                if (mode != EINTERPOLATION_CONSTANT
+                    )
+                {
+                    return WIAnalysis::RANDOM;
+                }
+            }
+            else
             {
                 return WIAnalysis::RANDOM;
             }
