@@ -147,6 +147,8 @@ unsigned getMemoryVectorSizePerLane(const llvm::Instruction *I);
 unsigned getMemorySimdWidth(const llvm::Instruction *I);
 unsigned getMemoryRegisterElementSize(const llvm::Instruction *I);
 
+int getMemorySurfaceOperandIndex(unsigned IID);
+
 int getMemoryCacheControlOperandIndex(unsigned IID);
 
 inline int getMemoryCacheControlOperandIndex(const llvm::Value *V) {

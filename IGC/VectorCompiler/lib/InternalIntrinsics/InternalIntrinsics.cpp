@@ -975,3 +975,27 @@ int InternalIntrinsic::getMemoryCacheControlOperandIndex(unsigned IID) {
 
   return 4;
 }
+
+int InternalIntrinsic::getMemorySurfaceOperandIndex(unsigned IID) {
+  switch (IID) {
+  case vc::InternalIntrinsic::lsc_atomic_bti:
+  case vc::InternalIntrinsic::lsc_load_bti:
+  case vc::InternalIntrinsic::lsc_prefetch_bti:
+  case vc::InternalIntrinsic::lsc_store_bti:
+  case vc::InternalIntrinsic::lsc_load_quad_bti:
+  case vc::InternalIntrinsic::lsc_prefetch_quad_bti:
+  case vc::InternalIntrinsic::lsc_store_quad_bti:
+    return 5;
+  case vc::InternalIntrinsic::lsc_load_2d_tgm_bti:
+  case vc::InternalIntrinsic::lsc_store_2d_tgm_bti:
+    return 1;
+  case vc::InternalIntrinsic::lsc_load_quad_tgm:
+  case vc::InternalIntrinsic::lsc_store_quad_tgm:
+  case vc::InternalIntrinsic::lsc_prefetch_quad_tgm:
+    return 3;
+  default:
+    break;
+  }
+
+  return -1;
+}

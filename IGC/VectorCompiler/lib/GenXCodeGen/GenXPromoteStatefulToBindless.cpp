@@ -238,16 +238,6 @@ static int getSurfaceOperandNo(unsigned Id) {
   case genx_oword_st:
     return 0;
 
-  case vc::InternalIntrinsic::lsc_atomic_bti:
-  case vc::InternalIntrinsic::lsc_load_bti:
-  case vc::InternalIntrinsic::lsc_prefetch_bti:
-  case vc::InternalIntrinsic::lsc_store_bti:
-  case vc::InternalIntrinsic::lsc_load_quad_bti:
-  case vc::InternalIntrinsic::lsc_prefetch_quad_bti:
-  case vc::InternalIntrinsic::lsc_store_quad_bti:
-    return 5;
-
-
   default:
     return -1;
   }
