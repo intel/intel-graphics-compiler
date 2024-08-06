@@ -11,12 +11,12 @@
 ; JointMatrixFuncsResolutionPass
 ; ------------------------------------------------
 
-declare spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4flliil(float addrspace(3)*, i64, i64, i32, i32, i64)
+declare spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4flllliil(float addrspace(3)*, i64, i64, i64, i64, i32, i32, i64)
 
 define spir_kernel void @matrix_prefetch(float addrspace(3)* %src) {
 ; CHECK-LABEL: define spir_kernel void @matrix_prefetch(
   entry:
-  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4flliil(float addrspace(3)* %src, i64 8, i64 16, i32 1, i32 0, i64 64)
+  call spir_func void @_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4flllliil(float addrspace(3)* %src, i64 0, i64 0, i64 8, i64 16, i32 1, i32 0, i64 64)
   ret void
 ; CHECK: error: Unsupported address space. Matrix prefetch supports generic and global pointers
 }
