@@ -74,4 +74,4 @@ set_target_properties(check-igc
 
 # Line below is just used to group LIT-related targets in single directory
 # in IDE. This is completely optional.
-set_target_properties(check-igc PROPERTIES FOLDER "LIT Tests")
+set_target_properties(check-igc PROPERTIES FOLDER "Tests/LIT Tests")

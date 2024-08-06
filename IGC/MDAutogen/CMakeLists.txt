@@ -21,6 +21,7 @@ add_custom_command(OUTPUT "${_autogenTarget}"
 add_custom_target(MDAutogen
                   DEPENDS "${_autogenTarget}"
                   COMMENT "Building custom target for Metadata Framework")
+set_target_properties(MDAutogen PROPERTIES FOLDER "Misc")
 
 set_property(TARGET MDAutogen
              PROPERTY PROJECT_LABEL "MetadataFrameWorkAutogen")

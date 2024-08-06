@@ -43,6 +43,8 @@ add_custom_target("${IGC_BUILD__PROJ__BiFModuleCache_INIT}"
     DEPENDS "${BiFModule_Init}"
 )
 
+set_target_properties("${IGC_BUILD__PROJ__BiFModuleCache_INIT}" PROPERTIES FOLDER "Misc/BiF")
+
 # Function generates BiFModule-SRC checksum
 # @param bifModuleTgt BiFModule target
 function(generate_bif_src_checksum bifModuleTgt)
@@ -62,6 +64,7 @@ function(generate_bif_src_checksum bifModuleTgt)
     add_custom_target("${IGC_BUILD__PROJ__BiFModuleCache_SRC_CHECKSUM_OCL}"
         DEPENDS "${BiFModule_SRC_SHA_PATH}"
     )
+    set_target_properties("${IGC_BUILD__PROJ__BiFModuleCache_SRC_CHECKSUM_OCL}" PROPERTIES FOLDER "Misc/BiF")
 
 add_dependencies(${bifModuleTgt} ${IGC_BUILD__PROJ__BiFModuleCache_SRC_CHECKSUM_OCL})
 
@@ -89,4 +92,5 @@ function(generate_bif_prebuild_pack bifModuleTgt bifModuleDepends)
     add_custom_target("${IGC_BUILD__PROJ__BiFModuleCache_OCL}"
         DEPENDS ${bifModuleTgt} "${BiFModule_PREBUILD_SHA_PATH}"
     )
+    set_target_properties("${IGC_BUILD__PROJ__BiFModuleCache_OCL}" PROPERTIES FOLDER "Misc/BiF")
 endfunction()

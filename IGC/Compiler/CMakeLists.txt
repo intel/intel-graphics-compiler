@@ -202,6 +202,8 @@ add_library("${IGC_BUILD__PROJ__Compiler}" STATIC
     ${IGC_BUILD__HDR__Compiler}
     ${IGC_BUILD__HDR_Win_Lin_Dar__Compiler}
   )
+
+set_target_properties("${IGC_BUILD__PROJ__Compiler}" PROPERTIES FOLDER "Libraries")
 set_property(TARGET "${IGC_BUILD__PROJ__Compiler}" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__Compiler}")
 
 target_link_libraries("${IGC_BUILD__PROJ__Compiler}" IGCOptions)

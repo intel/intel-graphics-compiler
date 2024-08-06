@@ -82,7 +82,7 @@ set_target_properties(FC_EXE PROPERTIES
     COMPILE_DEFINITIONS                        "${FC_EXE_DEFINITIONS}"
     PDB_NAME                                   "fc_exe"
     LINK_FLAGS                                 "${FC_EXE_LINK_FLAGS}"
-    FOLDER                                     "FCProjs"
+    FOLDER                                     "Tools/FCProjs"
   )
 
 target_include_directories(FC_EXE PUBLIC "../include")

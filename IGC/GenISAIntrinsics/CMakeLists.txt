@@ -81,7 +81,7 @@ FILES
     ${IGC_BUILD__GenISAIntrinsics_GENERATOR_TEMPLATES}
     )
 
-set_property(TARGET IntrinsicDefintionGenerator PROPERTY FOLDER "CommonGenerators")
+set_property(TARGET IntrinsicDefintionGenerator PROPERTY FOLDER "Misc/CommonGenerators")
 
 set(IGC_BUILD__SRC__GenISAIntrinsics
     ${IGC_BUILD__GenISAIntrinsics_GENERATOR_OUTPUT_SOURCES}
@@ -104,6 +104,9 @@ add_library("${IGC_BUILD__PROJ__GenISAIntrinsics}" STATIC
     ${IGC_BUILD__SRC__GenISAIntrinsics}
     ${IGC_BUILD__HDR__GenISAIntrinsics}
   )
+
+set_target_properties("${IGC_BUILD__PROJ__GenISAIntrinsics}" PROPERTIES FOLDER "Libraries")
+
 target_include_directories("${IGC_BUILD__PROJ__GenISAIntrinsics}"
 PRIVATE
     ${IGC_OPTION__OUTPUT_DIR}/${IGC_CMAKE_CFG_INTDIR}

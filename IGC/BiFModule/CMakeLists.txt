@@ -634,6 +634,8 @@ add_custom_target("${IGC_BUILD__PROJ__BiFModule_OCL}"
   )
 set_property(TARGET "${IGC_BUILD__PROJ__BiFModule_OCL}" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__BiFModule_OCL}")
 
+set_target_properties("${IGC_BUILD__PROJ__BiFModule_OCL}" PROPERTIES FOLDER "Misc/BiF")
+
 generate_bif_src_checksum(${IGC_BUILD__PROJ__BiFModule_OCL})
 
 generate_bif_prebuild_pack(${IGC_BUILD__PROJ__BiFModule_OCL} "${IGC_BUILD__PROJ_DEPENDS_BiFModule_OCL}")

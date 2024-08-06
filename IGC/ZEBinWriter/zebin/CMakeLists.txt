@@ -24,3 +24,5 @@ if(MSVC)
     )
     target_compile_options(zebinlib PRIVATE ${ZEBIN_COMPILER_OPTIONS})
 endif()
+
+set_target_properties(zebinlib PROPERTIES FOLDER "Libraries")

@@ -1604,6 +1604,8 @@ if (FCL_ENABLED)
         ${IGC_BUILD__RES__IGC__fcl_dll}
       )
 
+  set_target_properties("${IGC_BUILD__PROJ__fcl_dll}" PROPERTIES FOLDER "Libraries")
+
   add_dependencies("${IGC_BUILD__PROJ__fcl_dll}" opencl-clang-lib)
 endif()
 
@@ -1714,6 +1716,8 @@ if(IGC_OPTION__BUILD_IGC_OPT OR IGC_OPTION__INCLUDE_IGC_COMPILER_TOOLS)
       ${IGC_BUILD__SRC__IGC__igc_lib}
       ${IGC_BUILD__HDR__IGC__igc_lib}
     )
+  set_target_properties("${IGC_BUILD__PROJ__igc_lib}" PROPERTIES FOLDER "Libraries")
+
   if(IGC_OPTION__LINK_KHRONOS_SPIRV_TRANSLATOR)
     target_link_libraries("${IGC_BUILD__PROJ__igc_lib}" PRIVATE LLVMSPIRVLib)
   endif()

@@ -84,6 +84,8 @@ endif(WIN32)
 # In the case where this is the IGC build we need to add a dummy custom target check_headers
 add_custom_target(check_headers)
 
+set_target_properties(check_headers PROPERTIES FOLDER "Misc")
+
 if(MSVC)
   bs_set_wdk(check_headers)
 endif(MSVC)
@@ -143,6 +145,8 @@ list(APPEND CISAScanner_dependencies
     ${BISON_CISAParser_OUTPUTS})
 
 add_custom_target(CISAScanner_target DEPENDS ${CISAScanner_dependencies})
+
+set_target_properties(CISAScanner_target PROPERTIES FOLDER "Misc")
 
 if (MSVC)
   #set up standard defines from the common WDK path.
@@ -461,7 +465,7 @@ if (UNIX OR WIN32)
 
   set_target_properties(GenX_IR_Exe PROPERTIES
           COMPILE_DEFINITIONS "${GenX_IR_Exe_DEFINITIONS}"
-          FOLDER CM_JITTER_EXE)
+          FOLDER "Tools/CM_JITTER_EXE")
 
   if (MSVC)
   #set up standard defines from the common WDK path.
@@ -521,6 +525,7 @@ endif()
        ${FLEX_CISAScanner_OUTPUTS}
        ${GenX_IR_EXE_lex_yacc}
     )
+  set_target_properties(GenX_IR PROPERTIES FOLDER "Libraries")
   add_dependencies(GenX_IR CISAScanner_target)
   set_target_properties( GenX_IR PROPERTIES OUTPUT_NAME "igfxcmjit${TARGET_MODIFIER}")
   if(WIN32)

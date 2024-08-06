@@ -41,6 +41,7 @@ if(NOT TARGET ${IGC_BUILD__PROJ__ElfPackager})
       ${IGC_SOURCE_DIR}/AdaptorOCL/CLElfLib/ElfWriter.h
       ${IGC_SOURCE_DIR}/AdaptorOCL/CLElfLib/ElfReader.h
     )
+  set_target_properties("${IGC_BUILD__PROJ__ElfPackager}" PROPERTIES FOLDER "Tools")
 
   add_dependencies("${IGC_BUILD__PROJ__ElfPackager}" "${IGC_BUILD__PROJ__GenISAIntrinsics}")
 

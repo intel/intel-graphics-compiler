@@ -212,7 +212,7 @@ set_target_properties(IGA_OLIB PROPERTIES
     COMPILE_DEFINITIONS                        "${IGA_DEFINITIONS}"
     COMPILER_FLAGS                             "${IGA_COMPILER_FLAGS}"
     LINK_FLAGS                                 "${IGA_LINK_FLAGS}"
-    FOLDER                                     "IGAProjs"
+    FOLDER                                     "Libraries/IGAProjs"
   )
 
 if(IGC_BUILD AND MSVC)
@@ -244,7 +244,7 @@ set_target_properties(IGA_SLIB PROPERTIES
     COMPILE_DEFINITIONS                        "${IGA_SLIB_DEFINITIONS}"
     COMPILER_FLAGS                             "${IGA_COMPILER_FLAGS}"
     LINK_FLAGS                                 "${IGA_SLIB_LINK_FLAGS}"
-    FOLDER                                     "IGAProjs"
+    FOLDER                                     "Libraries/IGAProjs"
   )
 
 if(IGC_BUILD AND MSVC)
@@ -285,7 +285,7 @@ set_target_properties(IGA_ENC_LIB PROPERTIES
     COMPILE_DEFINITIONS                        "${IGA_ENC_LIB_DEFINITIONS}"
     COMPILER_FLAGS                             "${IGA_COMPILER_FLAGS}"
     LINK_FLAGS                                 "${IGA_LINK_FLAGS}"
-    FOLDER                                     "IGAProjs"
+    FOLDER                                     "Libraries/IGAProjs"
   )
 
 if(IGC_BUILD AND MSVC)
@@ -326,7 +326,7 @@ set_property(TARGET IGA_DLL APPEND PROPERTY
     LINK_FLAGS                                  "${IGA_DLL_LINK_FLAGS}"
   )
 set_property(TARGET IGA_DLL APPEND PROPERTY
-    FOLDER                                      "IGAProjs"
+    FOLDER                                      "Libraries/IGAProjs"
   )
 
 if(IGC_BUILD AND MSVC)

@@ -8,6 +8,8 @@
 
 add_library(IGCOptions STATIC "")
 
+set_target_properties(IGCOptions PROPERTIES FOLDER "Misc")
+
 add_subdirectory(src)
 add_subdirectory(include/igc/Options)
 

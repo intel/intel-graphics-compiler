@@ -27,6 +27,7 @@ if(IGC_METRICS)
   add_custom_target(igc_metric_proto_sources_generator
     DEPENDS ${IGC_METRICS_SRC} ${IGC_METRICS_SRC}
     SOURCES ${IGC_METRICS_PROTO_SCHEMAS})
+  set_target_properties(igc_metric_proto_sources_generator PROPERTIES FOLDER "Misc")
 
   get_target_property(PROTOBUF_HDRS protobuf::libprotobuf INTERFACE_INCLUDE_DIRECTORIES)
 
@@ -55,6 +56,7 @@ if(IGC_METRICS)
       DEPENDS ${_proto_files}
       SOURCES "${CMAKE_CURRENT_LIST_DIR}/create_metrics_version_header.cmake"
   )
+  set_target_properties(igc_metric_version_header_generator PROPERTIES FOLDER "Misc")
 
   list(APPEND IGC_METRICS_HDRS ${IGCMetricsVerFile})
 
@@ -71,6 +73,7 @@ list(APPEND IGC_METRICS_HDRS "Metrics/IGCMetric.h")
 list(APPEND IGC_METRICS_HDRS "Metrics/IGCMetricImpl.h")
 
 add_library(igc_metric STATIC ${IGC_METRICS_SRCS} ${IGC_METRICS_HDRS})
+set_target_properties(igc_metric PROPERTIES FOLDER "Libraries")
 
 add_dependencies(igc_metric intrinsics_gen)
 add_dependencies(igc_metric ${IGC_BUILD__PROJ__GenISAIntrinsics})

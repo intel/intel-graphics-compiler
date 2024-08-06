@@ -22,6 +22,8 @@ set(DEBUG_INFO_LIBRARY_SOURCES
 add_library(GenXDebugInfo STATIC ${DEBUG_INFO_LIBRARY_SOURCES})
 add_dependencies(GenXDebugInfo intrinsics_gen ${IGC_BUILD__PROJ__GenISAIntrinsics})
 
+set_target_properties(GenXDebugInfo PROPERTIES FOLDER "Libraries")
+
 igc_get_llvm_targets(LLVM_LIBS
   BinaryFormat
   Core

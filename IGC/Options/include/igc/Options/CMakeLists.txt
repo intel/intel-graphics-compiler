@@ -13,3 +13,4 @@ set(LLVM_TARGET_DEFINITIONS InternalOptions.td)
 igc_tablegen(LLVM InternalOptions.inc -gen-opt-parser-defs)
 
 add_public_tablegen_target(IGCOptionsTablegen)
+set_target_properties(IGCOptionsTablegen PROPERTIES FOLDER "Misc")

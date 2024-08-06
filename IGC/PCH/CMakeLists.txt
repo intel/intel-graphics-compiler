@@ -12,3 +12,4 @@ if(MSVC)
 endif()
 
 add_library(${IGC_BUILD__PROJ__PCH} STATIC ${PCH_FILES})
+set_target_properties(${IGC_BUILD__PROJ__PCH} PROPERTIES FOLDER "Misc")
