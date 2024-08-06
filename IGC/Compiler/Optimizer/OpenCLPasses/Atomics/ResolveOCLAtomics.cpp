@@ -323,7 +323,7 @@ void ResolveOCLAtomics::findLockUsers(Value* V)
 // br label %init_spinlock_var.end
 //
 // init_spinlock_var.end:                            ; preds = %init_spinlock_var.start, %entry
-//     call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 true, i1 false, i32 0)
+//     call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 true)
 //     call void @llvm.genx.GenISA.threadgroupbarrier()
 void ResolveOCLAtomics::generateLockInitilization(Function* F)
 {
@@ -361,12 +361,11 @@ void ResolveOCLAtomics::generateLockInitilization(Function* F)
     m_builder->CreateStore(m_localLock->getInitializer(), m_localLock);
     m_builder->CreateBr(initSpinLockEndBB);
 
-    // insert call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 true, i1 false, i32 0)
+    // insert call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 true, i1 false)
     //        call void @llvm.genx.GenISA.threadgroupbarrier()
     // to guarantee synchronization in accessing spin lock variable
     Value* trueValue = m_builder->getTrue();
     Value* falseValue = m_builder->getFalse();
-    Value* groupScopeValue = m_builder->getInt32(LSC_SCOPE_GROUP);
     Value* localMemFenceArgs[] =
     {
         trueValue,
@@ -377,7 +376,6 @@ void ResolveOCLAtomics::generateLockInitilization(Function* F)
         falseValue,
         trueValue,
         falseValue,
-        groupScopeValue
     };
     m_builder->SetInsertPoint(initSpinLockEndBB, initSpinLockEndBB->getFirstInsertionPt());
     Function* localMemFence = GenISAIntrinsic::getDeclaration(m_pModule, GenISAIntrinsic::GenISA_memoryfence);

@@ -15879,9 +15879,8 @@ LSC_FENCE_OP EmitPass::getLSCMemoryFenceOp(bool IsGlobalMemFence, bool Invalidat
 
 void EmitPass::emitMemoryFence(llvm::Instruction* inst)
 {
-    static constexpr int ExpectedNumberOfBoolArguments = 8;
-    static constexpr int ScopeArgumentNumber = 8;
-    IGC_ASSERT(IGCLLVM::getNumArgOperands(cast<CallInst>(inst)) == (ExpectedNumberOfBoolArguments + 1));
+    static constexpr int ExpectedNumberOfArguments = 8;
+    IGC_ASSERT(IGCLLVM::getNumArgOperands(cast<CallInst>(inst)) == ExpectedNumberOfArguments);
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
     // If passed a non-constant value for any of the parameters,
@@ -15897,9 +15896,8 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
     // Note: this flag is respected only for LSC case currently.
     // TODO: add support for non-LSC and typed fence.
     bool L1_Evict = true;
-    LSC_SCOPE Scope = LSC_SCOPE_GPU;
 
-    std::array<reference_wrapper<bool>, ExpectedNumberOfBoolArguments> MemFenceArguments{
+    std::array<reference_wrapper<bool>, ExpectedNumberOfArguments> MemFenceArguments{
       CommitEnable,
       L3_Flush_RW_Data,
       L3_Flush_Constant_Data,
@@ -15915,11 +15913,6 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
         {
             MemFenceArguments[i] &= CI->getValue().getBoolValue();
         }
-    }
-
-    if (ConstantInt* CI = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(ScopeArgumentNumber)))
-    {
-        Scope = (LSC_SCOPE) CI->getValue().getZExtValue();
     }
 
     bool EmitFence = true;
@@ -15950,11 +15943,8 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
     {
         // tgm should use GenISA_typedmemoryfence
         LSC_SFID sfid = Global_Mem_Fence ? LSC_UGM : LSC_SLM;
-        // SLM only gets .group and .none
-        if(!Global_Mem_Fence && Scope >= LSC_SCOPE_LOCAL)
-        {
-            Scope = LSC_SCOPE_GROUP;
-        }
+        // ToDo: replace with fence instrinsics that take scope/op
+        LSC_SCOPE scope = Global_Mem_Fence ? LSC_SCOPE_GPU : LSC_SCOPE_GROUP;
         // Do L1 evict only when default L1 cache policy is write-back.
         if (L1_Evict && m_pCtx->type == ShaderType::OPENCL_SHADER)
         {
@@ -15963,32 +15953,19 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
                 L1_Evict = static_cast<LSC_L1_L3_CC>(CLCtx->m_InternalOptions.StoreCacheDefault) == LSC_L1IAR_WB_L3C_WB;
         }
         // Change the scope from `GPU` to `Tile` on single-tile platforms to avoid L3 flush on DG2 and MTL and ARL.
-        if (Scope == LSC_SCOPE_GPU &&
+        if (scope == LSC_SCOPE_GPU &&
             !m_currShader->m_Platform->hasMultiTile() &&
             m_currShader->m_Platform->hasL3FlushOnGPUScopeInvalidate() &&
             IGC_IS_FLAG_DISABLED(EnableGPUFenceScopeOnSingleTileGPUs))
         {
-            Scope = LSC_SCOPE_TILE;
+            scope = LSC_SCOPE_TILE;
         }
-
-        // On some products cache is not flushed for scope < tile.
-        if (Global_Mem_Fence && (L1_Invalidate || L1_Evict) &&
-            (Scope < LSC_SCOPE_TILE) && (
-               m_currShader->m_Platform->getPlatformInfo().eProductFamily == IGFX_DG2
-            || m_currShader->m_Platform->getPlatformInfo().eProductFamily == IGFX_PVC
-            || m_currShader->m_Platform->getPlatformInfo().eProductFamily == IGFX_METEORLAKE
-            || m_currShader->m_Platform->getPlatformInfo().eProductFamily == IGFX_ARROWLAKE
-            ))
-        {
-            Scope = LSC_SCOPE_TILE;
-        }
-
         LSC_FENCE_OP op = getLSCMemoryFenceOp(Global_Mem_Fence, L1_Invalidate, L1_Evict);
         if (inst->getMetadata("forceFlushNone") || sfid == LSC_SLM)
         {
             op = LSC_FENCE_OP_NONE;
         }
-        m_encoder->LSC_Fence(sfid, Scope, op);
+        m_encoder->LSC_Fence(sfid, scope, op);
         m_encoder->Push();
         return;
     }

@@ -263,7 +263,7 @@ bool __builtin_IB_lsc_load_status_global_ulong8(const __global ulong8 *base, int
 ///////////////////////////////////////////////////////////////////////
 
 // FS - Fence Scope
-typedef enum {
+enum LSC_FS {
     LSC_FS_THREAD_GROUP,
     LSC_FS_LOCAL,
     LSC_FS_TILE,
@@ -271,21 +271,21 @@ typedef enum {
     LSC_FS_GPUs,
     LSC_FS_SYSTEM_RELEASE,
     LSC_FS_SYSTEM_ACQUIRE
-} LSC_FS;
+};
 
 // FT - Fence Type
-typedef enum {
+enum LSC_FT {
     LSC_FT_DEFAULT,
     LSC_FT_EVICT,
     LSC_FT_INVALIDATE,
     LSC_FT_DISCARD,
     LSC_FT_CLEAN,
     LSC_FT_L3
-} LSC_FT;
+};
 
-void  __builtin_IB_lsc_fence_global_untyped(LSC_FS scope, LSC_FT flushType);             // Mem Port - UGM
-void  __builtin_IB_lsc_fence_global_untyped_cross_tile(LSC_FS scope, LSC_FT flushType);  // Mem Port - UGML
-void  __builtin_IB_lsc_fence_global_typed(LSC_FS scope, LSC_FT flushType);               // Mem Port - TGM
+void  __builtin_IB_lsc_fence_global_untyped(enum LSC_FS scope, enum LSC_FT flushType);   // Mem Port - UGM
+void  __builtin_IB_lsc_fence_global_untyped_cross_tile(enum LSC_FS scope, enum LSC_FT flushType);  // Mem Port - UGML
+void  __builtin_IB_lsc_fence_global_typed(enum LSC_FS scope, enum LSC_FT flushType);     // Mem Port - TGM
 void  __builtin_IB_lsc_fence_local();                                                    // Mem Port - SLM
 void  __builtin_IB_lsc_fence_evict_to_memory();                                          // Mem Port - UGM
 

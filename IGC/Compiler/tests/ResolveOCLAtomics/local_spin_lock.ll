@@ -46,7 +46,7 @@ entry:
 ; CHECK:   br label %init_spinlock_var.end
 
 ; CHECK: init_spinlock_var.end:
-; CHECK:   call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 true, i1 false, i32 0)
+; CHECK:   call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 true, i1 false)
 ; CHECK:   call void @llvm.genx.GenISA.threadgroupbarrier()
 
 ; ---------- LOCAL_SPINLOCK_START() --------------------
@@ -74,11 +74,11 @@ if.then3.i:                                       ; preds = %while.body.i
   store volatile i8 1, i8* %done_alloca, align 1
 ; CHECK-NOT: __builtin_IB_get_local_lock
   %call4.i = call spir_func i32 addrspace(3)* @__builtin_IB_get_local_lock()
-  call spir_func void @__builtin_IB_memfence(i1 zeroext true, i1 zeroext false, i1 zeroext false, i1 zeroext false, i1 zeroext false, i1 zeroext false, i1 zeroext false, i32 0)
+  call spir_func void @__builtin_IB_memfence(i1 zeroext true, i1 zeroext false, i1 zeroext false, i1 zeroext false, i1 zeroext false, i1 zeroext false, i1 zeroext false)
 ; CHECK: %[[SPINLOCK_AS_INT1:.*]] = ptrtoint i32 addrspace(3)* @spinlock to i32
 ; CHECK: call i32 @llvm.genx.GenISA.intatomicraw.i32.p3i32.i32(i32 addrspace(3)* @spinlock, i32 %[[SPINLOCK_AS_INT1]], i32 0, i32 6)
   %call.i1.i = call spir_func i32 @__builtin_IB_atomic_xchg_local_i32(i32 addrspace(3)* %call4.i, i32 0)
-  call spir_func void @__builtin_IB_memfence(i1 zeroext true, i1 zeroext false, i1 zeroext false, i1 zeroext false, i1 zeroext false, i1 zeroext false, i1 zeroext false, i32 0)
+  call spir_func void @__builtin_IB_memfence(i1 zeroext true, i1 zeroext false, i1 zeroext false, i1 zeroext false, i1 zeroext false, i1 zeroext false, i1 zeroext false)
   br label %if.end5.i
 
 if.end5.i:                                        ; preds = %if.then3.i, %while.body.i
@@ -94,12 +94,12 @@ test_spinlock.exit:                               ; preds = %entry, %if.end5.i
 declare spir_func i32 addrspace(3)* @__builtin_IB_get_local_lock()
 declare spir_func i32 @__builtin_IB_atomic_xchg_local_i32(i32 addrspace(3)*, i32)
 declare spir_func i32 @__builtin_IB_atomic_cmpxchg_local_i32(i32 addrspace(3)*, i32, i32)
-declare spir_func void @__builtin_IB_memfence(i1 zeroext, i1 zeroext, i1 zeroext, i1 zeroext, i1 zeroext, i1 zeroext, i1 zeroext, i32)
+declare spir_func void @__builtin_IB_memfence(i1 zeroext, i1 zeroext, i1 zeroext, i1 zeroext, i1 zeroext, i1 zeroext, i1 zeroext)
 
 ; CHECK: declare i32 @llvm.genx.GenISA.icmpxchgatomicraw.i32.p3i32.i32(i32 addrspace(3)*, i32, i32, i32)
 ; CHECK: declare i32 @llvm.genx.GenISA.intatomicraw.i32.p3i32.i32(i32 addrspace(3)*, i32, i32, i32)
 ; CHECK: declare i32 @__builtin_IB_get_local_id_x()
 ; CHECK: declare i32 @__builtin_IB_get_local_id_y()
 ; CHECK: declare i32 @__builtin_IB_get_local_id_z()
-; CHECK: declare void @llvm.genx.GenISA.memoryfence(i1, i1, i1, i1, i1, i1, i1, i1, i32)
+; CHECK: declare void @llvm.genx.GenISA.memoryfence(i1, i1, i1, i1, i1, i1, i1, i1)
 ; CHECK: declare void @llvm.genx.GenISA.threadgroupbarrier()

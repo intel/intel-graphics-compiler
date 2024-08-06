@@ -630,8 +630,6 @@ void SynchronizationObjectCoalescing::EraseRedundantGlobalScope(llvm::Instructio
     {
         constexpr uint32_t globalMemFenceArg = 5;
         pGenIntrinsicInst->setOperand(globalMemFenceArg, llvm::ConstantInt::getFalse(pGenIntrinsicInst->getOperand(globalMemFenceArg)->getType()));
-        constexpr uint32_t scopeMemFenceArg = 8;
-        pGenIntrinsicInst->setOperand(scopeMemFenceArg, llvm::ConstantInt::get(pGenIntrinsicInst->getOperand(scopeMemFenceArg)->getType(), static_cast<uint32_t>(LSC_SCOPE::LSC_SCOPE_GROUP)));
         break;
     }
     case llvm::GenISAIntrinsic::GenISA_LSCFence:
