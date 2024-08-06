@@ -111,8 +111,6 @@ def translate_type_definition(type_description):
         return None
 
 def translate_attribute_list(attribute):
-    if isinstance(attribute, list):
-        return set(ID for x in attribute for ID in translate_attribute_list(x))
     if ',' in attribute:
         attributes = attribute.split(",")
         return set(ID for attribute in attributes for ID in translate_attribute_list(attribute))
@@ -247,7 +245,7 @@ def generate_intrinsic_definitions_from_modules(*inputs):
         arguments = []
         for index, type_str in enumerate(argument_type_strs):
             arguments.append(ArgumentDefinition("Arg{}".format(index),translate_type_definition(type_str[0]), type_str[1]))
-        attributes = translate_attribute_list(func_type_def[2:])
+        attributes = translate_attribute_list(func_type_def[2])
         intrinsic_definitions.append(IntrinsicDefinition(name, comment, return_definition, arguments, attributes))
     return intrinsic_definitions
 
