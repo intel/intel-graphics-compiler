@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -10,7 +10,13 @@ SPDX-License-Identifier: MIT
 
 #include <stddef.h>
 #include <stdint.h>
-#if !defined(__clang__) || (__clang_major__ >= 15)
+#undef HAS_INCLUDE_TYPE_TRAITS
+#ifdef _MSC_VER
+#if !defined(__clang__) || (__clang_major__ >= 16)
+#define HAS_INCLUDE_TYPE_TRAITS
+#endif
+#endif  // _MSC_VER
+#ifdef HAS_INCLUDE_TYPE_TRAITS
 #include <type_traits>
 #endif
 
@@ -242,9 +248,9 @@ static_assert(RTStackAlign % RayDispatchGlobalData::StackChunkSize == 0, "no?");
 
 static_assert(sizeof(RayDispatchGlobalData) == 176, "unexpected size?");
 static_assert(sizeof(RayDispatchGlobalData::RT::Xe) == sizeof(RayDispatchGlobalData), "unexpected size?");
-#if !defined(__clang__) || (__clang_major__ >= 15)
+#ifdef HAS_INCLUDE_TYPE_TRAITS
 static_assert(std::is_standard_layout<RayDispatchGlobalData>::value, "no?");
-#endif
+#endif // HAS_INCLUDE_TYPE_TRAITS
 
 // This data is passed in as inline data into the raygeneration shader
 // by the UMD.

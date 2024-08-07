@@ -18,9 +18,6 @@ SPDX-License-Identifier: MIT
 
 #include <stdint.h>
 #include <stddef.h>
-#if !defined(__clang__) || (__clang_major__ >= 15)
-#include <type_traits>
-#endif
 
 
 // This code defines a set of macros, that allows us to intentionally disable certain warnings
@@ -644,10 +641,10 @@ using SMStack2 = SMStack<GenT, MAX_BVH_LEVELS>;
 template <typename RTStack2T>
 constexpr size_t sizeofRTStack2() { return sizeof(RTStack2T); }
 
-#if !defined(__clang__) || (__clang_major__ >= 15)
+#ifdef HAS_INCLUDE_TYPE_TRAITS
 static_assert(std::is_standard_layout_v<RTStack2<Xe>>);
 static_assert(std::is_standard_layout_v<SMStack2<Xe>>);
-#endif
+#endif // HAS_INCLUDE_TYPE_TRAITS
 
 // Makes sure that important fields are at their proper offset from the start
 // of the structure. Update this if the structure changes.  This is just for
