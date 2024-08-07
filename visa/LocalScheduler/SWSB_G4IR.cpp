@@ -2449,6 +2449,9 @@ void SWSB::assignDepToken(SBNode *node) {
     // set dependence token if live
     SWSBTokenType tokenType =
         type == WAR ? SWSBTokenType::AFTER_READ : SWSBTokenType::AFTER_WRITE;
+    if (fg.builder->getOptions()->getOption(vISA_SWSBReplaceARWithAW)) {
+      tokenType = SWSBTokenType::AFTER_WRITE; //Always use after write dependence
+    }
     succ->setDepToken(token, tokenType, node);
     auto jitInfo = kernel.fg.builder->getJitInfo();
     if (tokenType == SWSBTokenType::AFTER_WRITE) {

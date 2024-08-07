@@ -75,6 +75,7 @@ DECLARE_IGC_REGKEY(DWORD,EnableSWSBInstStallEnd,        0,     "Enable force sta
 DECLARE_IGC_REGKEY(bool, SWSBMakeLocalWAR,              false, "make WAR SBID dependence tracking BB local",  true)
 DECLARE_IGC_REGKEY(DWORD,WARSWSBLocalStart,             0,     "WAR localization start BB", true)
 DECLARE_IGC_REGKEY(DWORD,WARSWSBLocalEnd,               0,     "WAR localization end BB", true)
+DECLARE_IGC_REGKEY(bool, SWSBReplaceARWithAW,           false, "replace .src with .dst",  true)
 DECLARE_IGC_REGKEY(DWORD,EnableSWSBTokenBarrier,        0,     "Enable force specific instruction as a barrier for software scoreboard generation", true)
 DECLARE_IGC_REGKEY(DWORD,SWSBTokenNum,                  0,     "Total tokens used for SWSB.", true)
 DECLARE_IGC_REGKEY(bool, EnableGroupScheduleForBC,      false,  "Enable bank conflict reduction in scheduling.", true)

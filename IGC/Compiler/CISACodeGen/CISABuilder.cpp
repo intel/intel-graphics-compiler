@@ -5038,6 +5038,11 @@ namespace IGC
             SaveOption(vISA_SWSBMakeLocalWAR, true);
         }
 
+        if (IGC_IS_FLAG_ENABLED(SWSBReplaceARWithAW))
+        {
+            SaveOption(vISA_SWSBReplaceARWithAW, true);
+        }
+
         if (IGC_IS_FLAG_ENABLED(WARSWSBLocalEnd))
         {
             SaveOption(vISA_WARSWSBLocalStart, IGC_GET_FLAG_VALUE(WARSWSBLocalStart));
