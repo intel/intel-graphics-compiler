@@ -1,12 +1,12 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023-2024 Intel Corporation
+; Copyright (C) 2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -enable-debugify -GenXLegacyToLscTranslator -march=genx64 -mcpu=XeHPC -mtriple=spir64-unknown-unknown -S < %s 2>&1 | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -enable-debugify -GenXLegacyToLscTranslator -march=genx64 -mcpu=XeHPC -mtriple=spir64-unknown-unknown -mattr=+translate_legacy_message -S < %s 2>&1 | FileCheck %s
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
 target triple = "genx64-unknown-unknown"

@@ -14,22 +14,19 @@
 
 ; COM: ;;;;;;;;;; CHECKERS ;;;;;;;;;;
 
-; CHECK: .decl [[SURF:V[^ ]+]] v_type=G type=d num_elts=1 align=dword
 ; CHECK: .decl [[TMC_1:V[^ ]+]] v_type=G type=q num_elts=1 align=qword
 ; CHECK: .decl [[TMC_2:V[^ ]+]] v_type=G type=q num_elts=1 align=qword
 ; CHECK: .decl [[RES:V[^ ]+]] v_type=G type=d num_elts=8 align=GRF
-; CHECK: .decl [[ALIAS_SURF:V[^ ]+]] v_type=G type=ud num_elts=1 alias=<[[SURF]], 0>
 ; CHECK: .decl [[ALIAS_1:V[^ ]+]] v_type=G type=d num_elts=2 alias=<[[TMC_1]], 0>
 ; CHECK: .decl [[ALIAS_2:V[^ ]+]] v_type=G type=d num_elts=2 alias=<[[TMC_2]], 0>
 ; CHECK: .decl [[ALIAS_RES:V[^ ]+]] v_type=G type=q num_elts=4 alias=<[[RES]], 0>
 ; CHECK: .decl [[SURFACE:T[^ ]+]] v_type=T num_elts=1
 
-; CHECK: movs (M1, 1) [[ALIAS_SURF]](0,0)<1> [[SURFACE]](0)
 ; CHECK: mov (M1, 2) [[ALIAS_1]](0,0)<1> %tsc(0,0)<1;1,0>
 ; CHECK: mov (M1, 2) [[ALIAS_2]](0,0)<1> %tsc(0,0)<1;1,0>
 ; CHECK: mov (M1, 1) [[ALIAS_RES]](0,0)<1> [[TMC_1]](0,0)<0;1,0>
 ; CHECK: mov (M1, 1) [[ALIAS_RES]](0,1)<1> [[TMC_2]](0,0)<0;1,0>
-; CHECK: lsc_store.ugm (M1, 1)  bti([[SURF]])[{{V[^ ]+}}]:a32  [[RES]]:d32x8t
+; CHECK: oword_st (2) [[SURFACE]] 0x0:ud [[RES]]
 
 ; COM: ;;;;;;;;;; KERNEL ;;;;;;;;;;
 

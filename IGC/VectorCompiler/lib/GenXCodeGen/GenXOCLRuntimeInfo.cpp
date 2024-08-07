@@ -212,7 +212,7 @@ KernelArgBuilder::getOCLArgKind(ArrayRef<StringRef> Tokens,
     if (any_of(Tokens, getStrPred(OCLAttributes::Image2dArray)))
       return ArgKindType::Image2DArray;
     if (any_of(Tokens, getStrPred(OCLAttributes::Image2dMediaBlock))) {
-      if (ST.translateMediaBlockMessages())
+      if (ST.translateLegacyMessages())
         return ArgKindType::Image2D;
       return ArgKindType::Image2DMediaBlock;
     }
