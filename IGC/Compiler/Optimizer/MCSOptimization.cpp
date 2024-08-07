@@ -182,6 +182,7 @@ void MCSOptimization::visitCallInst(llvm::CallInst& I)
             for (auto BB : useBlocks)
             {
                 std::vector<LdmsInstrinsic*> ldmsInstsToMove;
+                std::vector<LdmsInstrinsic*> ldmsInstsToClub;
                 for (auto inst = BB->begin(); inst != BB->end(); inst++)
                 {
                     if (LdmsInstrinsic * ldmsIntr = dyn_cast<LdmsInstrinsic>(inst))
@@ -203,7 +204,7 @@ void MCSOptimization::visitCallInst(llvm::CallInst& I)
 
                 while (!allInstsWillBeMoved)
                 {
-                    std::vector<LdmsInstrinsic*> ldmsInstsToClub;
+                    ldmsInstsToClub.clear();
                     //Threshold is more than # of insts that are to be moved. So move all.
                     if (instClubThreshold >= static_cast<int>(ldmsInstsToMove.size()))
                     {
