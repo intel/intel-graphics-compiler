@@ -456,6 +456,10 @@ private:
     bool nextIsNotMacroCandidate(const Instruction &dpas,
                                  const Instruction &next_inst) const;
 
+    // A helper function to check if the given types are valid mixed types to
+    // form a macro
+    bool isValidMixedTypes(Type curType, Type nextType) const;
+
     // set register range from start_reg to upper_reg into bit_set
     void setBits(BitSet<> &bit_set, uint32_t start_reg,
                  uint32_t upper_reg) const;

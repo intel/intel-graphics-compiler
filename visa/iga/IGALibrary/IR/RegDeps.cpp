@@ -790,14 +790,27 @@ bool DepSetBuilder::DpasMacroBuilder::nextIsNotMacroCandidate(
   if (dpasSystolicDepth != nextSystolicDepth)
     return true;
 
-  // dpas in the same macro must have the same datatypes in all src and dst
+  // Dpas in the same macro must have the same datatypes in all src and dst
+  // Except for src0 and dst which can accept having a mix of bf16 and fp32
+  // datatypes
   assert(dpas.getSourceCount() == next_inst.getSourceCount());
   for (size_t i = 0; i < dpas.getSourceCount(); ++i) {
-    if (dpas.getSource(i).getType() != next_inst.getSource(i).getType())
+    Type curType = dpas.getSource(i).getType();
+    Type nextType = next_inst.getSource(i).getType();
+    if (curType != nextType &&
+        (i != 0 || !isValidMixedTypes(curType, nextType)))
       return true;
   }
-  if (dpas.getDestination().getType() != next_inst.getDestination().getType())
+  Type curDstType = dpas.getDestination().getType();
+  Type nextDstType = next_inst.getDestination().getType();
+  if (curDstType != nextDstType &&
+      !isValidMixedTypes(curDstType, nextDstType))
     return true;
+  return false;
+}
+
+bool DepSetBuilder::DpasMacroBuilder::isValidMixedTypes(Type curType,
+                                                        Type nextType) const {
   return false;
 }
 
@@ -856,8 +869,8 @@ bool DepSetBuilder::DpasMacroBuilder::hasEntireOverlapOrNoOverlap(
 }
 
 // check if the instruction having internal dependency
-// Instruction having internal dependency on dst to src is not allowed to bein a
-// macro. Only for depth 8 dpas, internal dep on dst and src0 is allowed, but
+// Instruction having internal dependency on dst to src is not allowed to be in
+// a macro. Only for depth 8 dpas, internal dep on dst and src0 is allowed, but
 // only when src0 and dst memory footprint is entirely the same
 bool DepSetBuilder::DpasMacroBuilder::hasInternalDep(
     const DstRegRangeType &dst_range, const SrcRegRangeType &src_range,
