@@ -2013,15 +2013,19 @@ void JointMatrixFuncsResolutionPass::preprocessAccessChain(Function *F) {
     // and more effecient to preprocess it and map on VectorInsertDynamic
     // and VectorExtractDynamic here, before resolving and substituting matrix
     // types
-    llvm::SmallPtrSet<llvm::Instruction *, 8> toErase;
+    SmallVector<Instruction*, 16> toErase;
+    SmallVector<std::pair<Instruction*, Instruction*>, 8> replaces;
     for (auto It = F->use_begin(); It != F->use_end(); It++) {
         auto user = It->getUser();
         if (!isa<CallInst>(user))
             continue;
         auto *CI = cast<CallInst>(user);
         IRBuilder<> builder(CI);
-        IGC_ASSERT_MESSAGE(CI->hasOneUse(),
-                           "Unexpected matrix insert/extract format");
+        if (CI->getNumUses() == 0) {
+            toErase.push_back(CI);
+            continue;
+        }
+
         Type *chainBaseTy =
             IGCLLVM::getNonOpaquePtrEltTy(CI->getArgOperand(0)->getType());
         IGC_ASSERT_MESSAGE(isMatrixType(chainBaseTy),
@@ -2030,53 +2034,86 @@ void JointMatrixFuncsResolutionPass::preprocessAccessChain(Function *F) {
         Value *matrix = builder.CreateLoad(chainBaseTy, ptrToMatrix, "");
         Value *index = CI->getArgOperand(1);
 
-        Instruction *memInst =
-            cast<Instruction>(IGCLLVM::getUniqueUndroppableUser(CI));
-        // Expected format is:
-        // %matrix_ptr = alloca %matrix_type
-        // (may be some casts)
-        // %element_ptr = __spirv_AccessChain(%matrix_ptr, %index)
-        // 1. For extract
-        // %element = load %element_ptr
-        // 2. For insert
-        // store %element %element_tr
-        IGC_ASSERT_MESSAGE(isa<LoadInst>(memInst) || isa<StoreInst>(memInst),
-                           "Unexpected matrix insert/extract format");
-        // Get __spirv_AccessChain function's mangling postfix to reuse it for
-        // overloading of insert/extract
-        constexpr unsigned ACNameLenght = 23;
-        std::string funcPostfix = (F->getName().drop_front(ACNameLenght)).str();
-        if (isa<LoadInst>(memInst)) {
-            std::vector<Value *> Args = { matrix, index };
-            FunctionType *funcType = FunctionType::get(
-                memInst->getType(), { matrix->getType(), index->getType() },
-                false);
-            std::string funcName = std::string(SPIRVPrefix) +
-                                   std::string(JointMatrixSliceExtract) +
-                                   funcPostfix;
-            Instruction *extractCall = builder.CreateCall(
-                F->getParent()->getOrInsertFunction(funcName, funcType), Args);
-            memInst->replaceAllUsesWith(extractCall);
+        for (const auto &U : CI->users()) {
+            Instruction *memInst = dyn_cast<Instruction>(U);
+            if (!memInst)
+                continue;
+            // In case of sycl::half and sycl::bfloat16 storage will be accessed
+            // via zero GEP or pointer cast that we need to strip, for example:
+            // %call = call spir_func %structtype addrspace(4)* @__spirv_AccessChain(
+            //     %spirv.CooperativeMatrixKHR._half_3_8_16_0 addrspace(1)* addrspace(4)* %matrix,
+            //     i64 %idx)
+            // %gep = getelementptr inbounds %structtype, %structtype addrspace(4)* %call, i64 0, i32 0
+            // %cast = bitcast i16 addrspace(4)* %gep to half addrspace(4)*
+            // %extract = load half, half addrspace(4)* %cast
+            while (isa<GetElementPtrInst>(memInst) ||
+                   isa<BitCastInst>(memInst) ||
+                   isa<AddrSpaceCastInst>(memInst)) {
+                if (isa<GetElementPtrInst>(memInst))
+                  IGC_ASSERT_MESSAGE(
+                      cast<GetElementPtrInst>(memInst)->hasAllZeroIndices(),
+                      "Unexpected matrix insert/extract format");
+                toErase.push_back(memInst);
+                memInst = cast<Instruction>(
+                    IGCLLVM::getUniqueUndroppableUser(memInst));
+            }
+            // Expected format is:
+            // %matrix_ptr = alloca %matrix_type
+            // (may be some casts)
+            // %element_ptr = __spirv_AccessChain(%matrix_ptr, %index)
+            // 1. For extract
+            // %element = load %element_ptr
+            // 2. For insert
+            // store %element %element_ptr
+            IGC_ASSERT_MESSAGE(
+              isa<LoadInst>(memInst) || isa<StoreInst>(memInst),
+              "Unexpected matrix insert/extract format");
+            // Get __spirv_AccessChain function's mangling postfix to reuse it
+            // for overloading of insert/extract
+            constexpr unsigned ACNameLength = 23; // "_Z19__spirv_AccessChain"
+            std::string funcPostfix =
+                (F->getName().drop_front(ACNameLength)).str();
+            builder.SetInsertPoint(memInst);
+            if (isa<LoadInst>(memInst)) {
+                std::vector<Value *> Args = { matrix, index };
+                FunctionType *funcType = FunctionType::get(
+                    memInst->getType(), { matrix->getType(), index->getType() },
+                    false);
+                std::string funcName = std::string("_Z28") +
+                                       std::string(SPIRVPrefix) +
+                                       std::string(JointMatrixSliceExtract) +
+                                       funcPostfix;
+                Instruction *extractCall = builder.CreateCall(
+                    F->getParent()->getOrInsertFunction(funcName, funcType),
+                    Args);
+                replaces.push_back(std::make_pair(memInst, extractCall));
+            }
+            if (isa<StoreInst>(memInst)) {
+                Value *component = cast<StoreInst>(memInst)->getValueOperand();
+                std::vector<Value *> Args = { matrix, component, index };
+                FunctionType *funcType = FunctionType::get(
+                    chainBaseTy, { matrix->getType(), component->getType(),
+                                   index->getType() }, false);
+                std::string funcName = std::string("_Z27") +
+                                       std::string(SPIRVPrefix) +
+                                       std::string(JointMatrixSliceInsert) +
+                                       funcPostfix;
+                Instruction *extractCall =
+                    builder.CreateCall(F->getParent()->getOrInsertFunction(
+                          funcName, funcType), Args);
+                builder.CreateStore(extractCall, ptrToMatrix);
+            }
+            toErase.push_back(memInst);
         }
-        if (isa<StoreInst>(memInst)) {
-            Value *component = cast<StoreInst>(memInst)->getValueOperand();
-            std::vector<Value *> Args = { matrix, component, index };
-            FunctionType *funcType = FunctionType::get(
-                chainBaseTy, { matrix->getType(), component->getType(),
-                               index->getType() }, false);
-            std::string funcName = std::string(SPIRVPrefix) +
-                                   std::string(JointMatrixSliceInsert) +
-                                   funcPostfix;
-            Instruction *extractCall =
-                builder.CreateCall(F->getParent()->getOrInsertFunction(
-                      funcName, funcType), Args);
-            builder.CreateStore(extractCall, ptrToMatrix);
-        }
-        toErase.insert(memInst);
-        toErase.insert(CI);
+        toErase.push_back(CI);
+    }
+    for (const auto &InstPair : replaces) {
+        InstPair.first->replaceAllUsesWith(InstPair.second);
+    }
+    for (Instruction *I : llvm::reverse(toErase)) {
+        I->dropAllReferences();
     }
     for (Instruction *I : toErase) {
-        I->dropAllReferences();
         I->eraseFromParent();
     }
 }
