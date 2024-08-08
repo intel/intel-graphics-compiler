@@ -27,7 +27,7 @@ SPDX-License-Identifier: MIT
 // each other (prevents from race in common SLM memory spot).
 #define GET_SAFE_MEMPOOL_PTR(_ptr, _type, _allocAllWorkgroups, _additionalElems) \
   /* Wait for any prev mempool usage to finish before overwrite */               \
-  __builtin_IB_thread_group_barrier();                                           \
+  __intel_workgroup_barrier(0, AcquireRelease | WorkgroupMemory);                \
   GET_MEMPOOL_PTR(_ptr, _type, _allocAllWorkgroups, _additionalElems)
 
 // Macro for async work copy implementation.
