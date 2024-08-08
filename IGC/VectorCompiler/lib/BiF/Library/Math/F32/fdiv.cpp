@@ -52,34 +52,44 @@ CM_NODEBUG CM_INLINE mask<N> check_special(vector<float, N> a,
 }
 
 template <int N> CM_NODEBUG CM_INLINE mask<N> check_is_nan(vector<float, N> q) {
-  vector<uint32_t, N> q_int = q.template format<uint32_t>();
+  vector<float, N> q_abs = math::absolute(q.cl_vector());
+  vector<uint32_t, N> q_int = q_abs.template format<uint32_t>();
   return (q_int > exp_bitmask);
 }
 
 template <int N>
-CM_NODEBUG CM_INLINE mask<N> check_is_denormak(vector<float, N> q) {
+CM_NODEBUG CM_INLINE mask<N> check_is_denormal(vector<float, N> q) {
   vector<uint32_t, N> q_int = q.template format<uint32_t>();
   return ((q_int & exp_bitmask) == 0);
 }
 
 template <int N>
 CM_NODEBUG CM_INLINE vector<float, N> normalize_exp(vector<float, N> a) {
+  // normalize (scale by 2^32)
   vector<uint32_t, N> local_s = normalize_bitmask;
   vector<float, N> local_s_f = local_s.template format<float>();
   auto local_a = a * local_s_f;
-  // normalize (scale by 2^32)
   return local_a;
 }
 
 template <int N>
-CM_NODEBUG CM_INLINE vector<int32_t, N> get_exp_diff(vector<float, N> a,
-                                                     vector<float, N> b) {
-  vector<float, N> a_abs = math::absolute(a.cl_vector());
-  vector<float, N> b_abs = math::absolute(b.cl_vector());
-  vector<uint32_t, N> a_int = a_abs.template format<uint32_t>();
-  vector<uint32_t, N> b_int = a_abs.template format<uint32_t>();
+CM_NODEBUG CM_INLINE static vector<int32_t, N>
+get_exp_diff(vector<float, N> a, vector<float, N> b) {
+  vector<float, N> a_abs = math::absolute(a);
+  vector<float, N> b_abs = math::absolute(b);
+  vector<int32_t, N> a_int = a_abs.template format<int32_t>();
+  vector<int32_t, N> b_int = b_abs.template format<int32_t>();
   vector<int32_t, N> diff = a_int - b_int;
-  return diff >> exp_shift;
+  diff = diff >> exp_shift;
+  return diff;
+}
+
+template <int N>
+CM_NODEBUG CM_NOINLINE static cl_vector<float, N>
+__impl_div_ieee_step_7__rtz_(cl_vector<float, N> cr1, cl_vector<float, N> cy3,
+                             cl_vector<float, N> cq1) {
+  vector<float, N> r1 = cr1, y3 = cy3, q1 = cq1;
+  return math::mad(r1, y3, q1).cl_vector();
 }
 
 template <int N>
@@ -87,8 +97,7 @@ CM_NODEBUG CM_INLINE vector<float, N> cut_mantissa_and_sign(vector<float, N> a,
                                                             unsigned or_data) {
   vector<uint32_t, N> a_int = a.template format<uint32_t>();
   auto mantissa_and_sign = a_int & (mantissa_bitmask | sign_bit);
-  vector<uint32_t, N> zero = or_data;
-  mantissa_and_sign |= zero;
+  mantissa_and_sign |= or_data;
   return mantissa_and_sign.template format<float>();
 }
 
@@ -110,8 +119,19 @@ template <int N>
 CM_NODEBUG CM_INLINE vector<float, N> or_with_pred(vector<float, N> a,
                                                    mask<N> mask) {
   vector<uint32_t, N> a_int = a.template format<uint32_t>();
-  a_int |= mask;
+  vector<uint32_t, N> mask_or = 0x1;
+  mask_or.merge(0x0, mask);
+  a_int |= mask_or;
   return a_int.template format<float>();
+}
+
+template <int N>
+CM_NODEBUG CM_INLINE vector<uint32_t, N> or_with_pred(vector<uint32_t, N> a_int,
+                                                      mask<N> mask) {
+  vector<uint32_t, N> mask_or = 0x1;
+  mask_or.merge(0x0, mask);
+  a_int |= mask_or;
+  return a_int;
 }
 
 template <int N>
@@ -141,7 +161,7 @@ __impl_fdiv_ieee_special_div(vector<float, N> a, vector<float, N> b,
   // a is Inf?
   auto a_isInf = (exp_a == exp_mask) & (filled_out == 0);
   // return NaN_Indef if y is also Inf;  Inf with proper sign otherwise
-  result.merge(xor_sign(a, sgn_x) - xor_sign(b, sgn_y), a_isInf);
+  result.merge(xor_sign(a, sgn_y) - xor_sign(b, sgn_x), a_isInf);
   filled_out |= a_isInf;
 
   auto exp_b = get_exp(b);
@@ -152,9 +172,9 @@ __impl_fdiv_ieee_special_div(vector<float, N> a, vector<float, N> b,
   filled_out |= b_isInf;
 
   // b is 0?
-  mask<N> b_isZero = (xor_sign(b, sgn_y) == 0.0f) & (filled_out == 0);
+  mask<N> b_isZero = (b_abs == 0.0f) & (filled_out == 0);
   if (b_isZero.any()) {
-    mask<N> a_isZero = (xor_sign(a, sgn_x) == 0.0f);
+    mask<N> a_isZero = (a_abs == 0.0f);
     auto mq = xor_sign(b, exp_bitmask);
     mq.merge(xor_sign(mq, sgn_x), (a_isZero == 0));
     mq.merge(a * mq, a_isZero);
@@ -162,19 +182,11 @@ __impl_fdiv_ieee_special_div(vector<float, N> a, vector<float, N> b,
     filled_out |= b_isZero;
   }
   // a is 0?
-  mask<N> a_isZero = (xor_sign(a, sgn_x) == 0.0f) & (filled_out == 0);
+  mask<N> a_isZero = (a_abs == 0.0f) & (filled_out == 0);
   result.merge(a * b, a_isZero);
   filled_out |= a_isZero;
 
   return result;
-}
-
-template <int N>
-CM_NODEBUG CM_NOINLINE static cl_vector<float, N>
-__impl_div_ieee_step_7__rtz_(cl_vector<float, N> cr1, cl_vector<float, N> cy3,
-                             cl_vector<float, N> cq1) {
-  vector<float, N> r1 = cr1, y3 = cy3, q1 = cq1;
-  return math::mad(r1, y3, q1).cl_vector();
 }
 
 template <int N>
@@ -190,7 +202,7 @@ __impl_fdiv_ieee_undeflow_case(vector<float, N> mr1, vector<float, N> y1,
   // is normal quotient exact?
   // test whether r1==0
   // auto inexact_bit = ((mr1.w << 1)) ? 1 : 0;
-  mask<N> r1_is_not_zero = mr1 != 0.0;
+  mask<N> r1_is_zero = mr1 == 0.0f;
 
   // shift amount is -(ediff5+126)=-itmp1
   // shift_amount >= 1
@@ -199,31 +211,53 @@ __impl_fdiv_ieee_undeflow_case(vector<float, N> mr1, vector<float, N> y1,
   // if shift_amount>1, then inexact bit is OR-ed into sticky bit (last mantissa
   // bit) for round-to-nearest and shift_amount==1, last mantissa bit is a round
   // bit and inexact_bit is used to complete the rounding
-  mask<N> ammount_ge1 = (shift_amount > 1) | r1_is_not_zero;
+  mask<N> ammount_ge1 = (shift_amount > 1) | r1_is_zero;
   if (ammount_ge1.any()) {
     // signed mantissa of quotient
-    auto mq_u = cut_mantissa_and_sign(mq, exp_float_min);
-    mq_u = or_with_pred(mq_u, (r1_is_not_zero == 0));
+    auto mq_u_local = cut_mantissa_and_sign(mq, exp_float_min);
+    mq_u_local = or_with_pred(mq_u_local, (r1_is_zero == 0));
     // perform scaling in user rounding mode
-    mq_u = mq_u * scaling_factor(itmp1);
-    result.merge(mq_u, ammount_ge1);
+    mq_u_local = mq_u_local * scaling_factor(itmp1);
+    result.merge(mq_u_local, ammount_ge1);
   }
 
   // mantissa
   auto mq_u = cut_mantissa(mq);
   auto sgn_q = get_sign(mq);
   // will shift result by 2
+
+  vector<uint32_t, N> mq_u_uint = mq_u.template format<uint32_t>();
+  mq_u_uint = (mq_u_uint << 1) | sgn_q;
+  mq_u_uint = or_with_pred(mq_u_uint, (r1_is_zero == 0));
+
+  vector<uint32_t, N> s_e2 = 0x3e800000;
   auto s_e1 = sgn_q | exp_float_min;
 
-  // force UF flag to be set
+  mask<N> mq_u_isDenormal = (mq_u_uint & exp_float_min) == 0;
+  vector<uint32_t, N> s_e3 = 0x00c00000;
+  // ensure mq_u.f is not denormal (so it is not flushed to zero)
+  s_e3.merge(0x00a00000, mq_u_isDenormal);
+  mq_u_uint |= exp_float_min;
+  // add sign to shifted leading bit + correction
+  s_e3 |= sgn_q;
+  vector<float, N> s_e3_float = s_e3.template format<float>();
+  mq = mq_u_uint.template format<float>();
+
+  vector<float, N> s_e2_f = s_e2.template format<float>();
+  mq = math::mad(mq, s_e2_f, s_e3_float);
+  // eliminate leading bit (but UF flag will not be set)
   vector<float, N> s_e1_float = s_e1.template format<float>();
+  mq = mq - s_e1_float;
+
+  // force UF flag to be set
   s_e1_float *= s_e1_float;
   vector<uint32_t, N> mq_u_int = s_e1_float.template format<uint32_t>();
 
   // artificial dependency
-  sgn_q |= (mq_u_int & mantissa_loss);
-  vector<float, N> sgn_q_float = sgn_q.template format<float>();
-  result.merge(sgn_q_float, ammount_ge1 == 0);
+  vector<uint32_t, N> mq_uint = mq.template format<uint32_t>();
+  mq_uint |= (mq_u_int & mantissa_loss);
+  mq = mq_uint.template format<float>();
+  result.merge(mq, ammount_ge1 == 0);
   return result;
 }
 
@@ -232,9 +266,10 @@ CM_NODEBUG CM_INLINE vector<float, N>
 __impl_fdiv_ieee_long_path(vector<float, N> a, vector<float, N> b) {
 
   vector<float, N> result;
+  vector<int32_t, N> ediff5;
+
   auto expon_x = get_exp(a);
   auto expon_y = get_exp(b);
-  vector<int32_t, N> ediff5;
 
   // filter out Inf/NaN, zeroes, denormals
   mask<N> special_div = check_special(a, b);
@@ -242,21 +277,22 @@ __impl_fdiv_ieee_long_path(vector<float, N> a, vector<float, N> b) {
   if (special_div.any()) {
     auto special_div_res = __impl_fdiv_ieee_special_div(a, b, filled_out);
     result.merge(special_div_res, filled_out);
-
+    if (filled_out.all())
+      return result;
+    special_div &= (filled_out == 0);
     // for denormal inputs, zeroes, NaNs, Inf
     // a denormal, or b denormal
     // initialize scale exponents
-
     vector<uint32_t, N> isx = 0;
     vector<uint32_t, N> isy = 0;
 
-    auto a_isDenormal = check_is_denormak(a) & special_div;
+    auto a_isDenormal = check_is_denormal(a) & special_div;
     if (a_isDenormal.any()) {
       a.merge(normalize_exp(a), a_isDenormal);
       expon_x.merge(get_exp(a) - 32, a_isDenormal);
       isx.merge(32, a_isDenormal);
     }
-    auto b_isDenormal = check_is_denormak(b) & special_div;
+    auto b_isDenormal = check_is_denormal(b) & special_div;
     if (b_isDenormal.any()) {
       b.merge(normalize_exp(b), b_isDenormal);
       expon_y.merge(get_exp(b) - 32, b_isDenormal);
@@ -264,28 +300,27 @@ __impl_fdiv_ieee_long_path(vector<float, N> a, vector<float, N> b) {
     }
     // used to detect gradual underflow
     ediff5.merge(get_exp_diff(a, b) - isx + isy, special_div);
-    // signed mantissas, needed for long path computation
-    // return to long computation path
   }
+  // signed mantissas, needed for long path computation
+  // return to long computation path
+  vector<float, N> ma = cut_mantissa_and_sign(a, exp_float_zero);
+  vector<float, N> mb = cut_mantissa_and_sign(b, exp_float_zero);
 
   ediff5.merge(get_exp_diff(a, b), (special_div == 0));
-  vector<uint32_t, N> e_diff = expon_x - expon_y;
-  // signed mantissas
-  auto ma = cut_mantissa_and_sign(a, exp_float_zero);
-  auto mb = cut_mantissa_and_sign(b, exp_float_zero);
+  vector<uint32_t, N> ediff = expon_x - expon_y;
 
   // will check whether quotient is in gradual underflow range
   vector<int32_t, N> itmp1 = ediff5 + 126;
   vector<int32_t, N> itmp2 = ediff5 + 126 + 25;
   vector<int32_t, N> ig_uf = itmp1 & (~itmp2);
+  mask<N> gradual_underflow = ig_uf < 0;
 
-  mask<N> gradual_underflow = (ediff5 < 126 + 25) & (ediff5 >= 101);
-  const vector<float, N> one = 1.0f;
   // perform division on signed mantissas:  ma.f/mb.f
   auto y0 = math::reciprocal(mb);
   // Step(1), q0=a*y0
   auto q0 = ma * y0;
   // Step(2), e0=(1-b*y0)
+  const vector<float, N> one = 1.0f;
   auto e0 = math::mad(-mb, y0, one);
   // Step(3), y1=y0+e0*y0
   auto y1 = math::mad(e0, y0, y0);
@@ -306,7 +341,21 @@ __impl_fdiv_ieee_long_path(vector<float, N> a, vector<float, N> b) {
   // Step(7), q=q1+r1*y1
   auto mq = math::mad(mr1, y1, q1);
 
-  vector<int32_t, N> se_diff = e_diff.template format<int32_t>();
+  // scale by 2^exponent_q
+  // split exponent difference into smaller parts (so that scale factors can be
+  // represented in SP format) three scale factors are needed when inputs may be
+  // denormal limit range of e_diff, so that two scale factors are sufficient
+  // (to avoid incorrect flag settings)
+  mask<N> fix_exp = (ediff + 126) > (126 * 2 + 126);
+  if (fix_exp.any()) {
+    vector<int32_t, N> sgn_e = ediff.template format<int32_t>();
+    sgn_e.merge(0, fix_exp == 0);
+    sgn_e = sgn_e >> 11;
+    // set e_diff to 124*2 with proper sign
+    ediff.merge(sgn_e ^ (124 + 124 + sgn_e), fix_exp);
+  }
+
+  vector<int32_t, N> se_diff = ediff.template format<int32_t>();
   auto es1 = (se_diff) >> 1;
   auto es2 = se_diff - es1;
 
@@ -316,8 +365,6 @@ __impl_fdiv_ieee_long_path(vector<float, N> a, vector<float, N> b) {
   umq += (ues1 << exp_shift);
   // one more scale factor
   auto s_e2 = scaling_factor(es2);
-
-  // result
   mq = umq.template format<float>();
   mq *= s_e2;
 
@@ -337,8 +384,10 @@ CM_NODEBUG CM_INLINE vector<float, N> __impl_fdiv_ieee(vector<float, N> a,
   // check exponent ranges
   // Main path will be taken for expon_x in [bias-62, bias+63] and expon_y in
   // [bias-63, bias+63]
-  mask<N> x_long_path = (expon_x + 62 - exp_bias) >= (64 + 62);
-  mask<N> y_long_path = (expon_y + 63 - exp_bias) >= (64 + 63);
+  auto exp_x_bias = math::absolute((expon_x + 62 - exp_bias).cl_vector());
+  auto exp_y_bias = math::absolute((expon_y + 63 - exp_bias).cl_vector());
+  mask<N> x_long_path = exp_x_bias >= (64 + 62);
+  mask<N> y_long_path = exp_y_bias >= (64 + 63);
   mask<N> long_path = x_long_path | y_long_path;
 
   if (long_path.any())
