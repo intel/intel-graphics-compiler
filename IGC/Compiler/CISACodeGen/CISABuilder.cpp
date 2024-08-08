@@ -5394,6 +5394,10 @@ namespace IGC
               PrintStaticProfileGuidedSpillCostAnalysis);
           SaveOption(vISA_DumpFreqBasedSpillCost, print_val);
         }
+
+        if (IGC_IS_FLAG_ENABLED(EnableKeepDpasMacro)) {
+          SaveOption(vISA_KeepDPASMacroInSchedule, true);
+        }
     } // InitVISABuilderOptions
 
     // Get a unqiue label for inline asm instruction blocks at the module level.

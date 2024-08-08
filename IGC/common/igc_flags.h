@@ -56,6 +56,7 @@ DECLARE_IGC_REGKEY(bool, EnableCallUniform,             true,  "[tmp, testing] I
 DECLARE_IGC_REGKEY(bool, EnableCallWA,                  true,  "Control call WA when EU fusion is on. 0: off; 1: on", true)
 DECLARE_IGC_REGKEY(bool, EnableMathDPASWA,              false, "PVC math instruction running with DPAS issue", false)
 DECLARE_IGC_REGKEY(bool, ForceSubReturn,                true,  "If a subroutine does not have a return, generate a dummy return if this key is set (to meet visa requirement)", false)
+DECLARE_IGC_REGKEY(bool, EnableKeepDpasMacro,           false, "If enabled, dpas macro sequence from input will not be broken up by visa scheduler", false)
 DECLARE_IGC_REGKEY(DWORD,UnifiedSendCycle,              0,     "Using unified send cycle.", false)
 DECLARE_IGC_REGKEY(DWORD,DisableMixMode,                0,     "Disables mix mode in vISA BE.", false)
 DECLARE_IGC_REGKEY(DWORD,DisableHFMath,                 0,     "Disables HF math instructions.", false)
