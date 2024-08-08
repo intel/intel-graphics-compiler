@@ -1183,8 +1183,8 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst,
 }
 
 
-bool DDD::hasSameSourceOneDPAS(G4_INST *curInst, G4_INST *nextInst,
-                               BitSet &liveDst, BitSet &liveSrc) const {
+bool DDD::canInSameDPASMacro(G4_INST *curInst, G4_INST *nextInst,
+                               BitSet &liveDst, BitSet &liveSrc, bool sameSrcOneOnly) const {
   G4_InstDpas *curDpasInst = curInst->asDpasInst();
   G4_InstDpas *nextDpasInst = nextInst->asDpasInst();
   // Actually cur and next are in reverse order, but we should be able to check
@@ -1227,7 +1227,7 @@ bool DDD::hasSameSourceOneDPAS(G4_INST *curInst, G4_INST *nextInst,
       }
 
       // Not same src1 register
-      if (i == 1 && c_srcLB != n_srcLB) {
+      if (sameSrcOneOnly && i == 1 && c_srcLB != n_srcLB) {
         return false;
       }
     }
@@ -1375,7 +1375,14 @@ DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
         // dpas macro
         while (nextInst->isDpas()) {
           bool canGroup = false;
-            canGroup = hasSameSourceOneDPAS(curInst, nextInst, liveDst, liveSrc);
+            if (getOptions()->getOption(vISA_KeepDPASMacroInSchedule)) {
+              canGroup = canInSameDPASMacro(curInst, nextInst, liveDst,
+                                              liveSrc, false);
+            } else {
+              canGroup =
+                  canInSameDPASMacro(curInst, nextInst, liveDst,
+                                              liveSrc, true);
+            }
           if (!canGroup)
             break;
 

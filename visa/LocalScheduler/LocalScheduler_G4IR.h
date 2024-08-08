@@ -334,8 +334,9 @@ public:
                           bool multipSuppression) const;
 
 private:
-  bool hasSameSourceOneDPAS(G4_INST *curInst, G4_INST *nextInst,
-                            BitSet &liveDst, BitSet &liveSrc) const;
+  bool canInSameDPASMacro(G4_INST *curInst, G4_INST *nextInst,
+                            BitSet &liveDst, BitSet &liveSrc,
+                            bool sameSrcOneOnly) const;
 
 public:
   DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p);
