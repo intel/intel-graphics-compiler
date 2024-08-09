@@ -2109,7 +2109,10 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 
         patch.UseBindlessMode = annotations.m_executionEnvironment.UseBindlessMode;
         patch.HasStackCalls = annotations.m_executionEnvironment.HasStackCalls;
-        patch.SIMDInfo = annotations.m_executionEnvironment.SIMDInfo;
+
+        for (uint32_t i = 0; i < patch.SIMDInfo.size(); i++)
+            patch.SIMDInfo[i] = annotations.m_executionEnvironment.SIMDInfo[i];
+
         patch.RequireDisableEUFusion = annotations.m_executionEnvironment.RequireDisableEUFusion;
 
         retValue = AddPatchItem(

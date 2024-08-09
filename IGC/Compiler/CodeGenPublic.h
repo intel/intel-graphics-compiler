@@ -443,13 +443,7 @@ namespace IGC
         SIMD_INFO_RESERVED   // 11: *** If new entry is added, make sure it still fits in m_SIMDInfo ***
     };
 
-    enum SIMDInfoOffset
-    {
-        SIMD8_OFFSET = 0,
-        SIMD16_OFFSET = SIMD_INFO_RESERVED,
-        SIMD32_OFFSET = SIMD_INFO_RESERVED*2,
-        DUAL_SIMD8_OFFSET = SIMD_INFO_RESERVED * 3,
-    };
+    static_assert(SIMD_INFO_RESERVED <= 32, "m_SIMDInfo base type can only hold 32 bits per element");
 
     struct SKernelProgram
     {
@@ -486,7 +480,7 @@ namespace IGC
 
         SSimplePushInfo simplePushInfoArr[g_c_maxNumberOfBufferPushed];
 
-        uint64_t    SIMDInfo = 0;
+        std::array<uint32_t, NUM_SIMD_INFO_INDEX> SIMDInfo = { 0 };
         void* m_StagingCtx;
         bool m_RequestStage2;
     };
@@ -996,7 +990,7 @@ namespace IGC
         std::vector<int> m_gsNonDefaultIdxMap;
         std::vector<int> m_psIdxMap;
         DWORD LtoUsedMask = 0;
-        uint64_t m_SIMDInfo = 0;
+        std::array<uint32_t, NUM_SIMD_INFO_INDEX> m_SIMDInfo = { 0 };
         uint32_t HdcEnableIndexSize = 0;
         std::vector<RoutingIndex> HdcEnableIndexValues;
 
@@ -1043,7 +1037,7 @@ namespace IGC
             const bool          createResourceDimTypes = true,
             LLVMContextWrapper* LLVMContext = nullptr)///< LLVM context to use, if null a new one will be created
             : type(_type), platform(_platform), btiLayout(_bitLayout), m_DriverInfo(driverInfo),
-            llvmCtxWrapper(LLVMContext), m_SIMDInfo(0)
+            llvmCtxWrapper(LLVMContext), m_SIMDInfo{ 0 }
         {
             if (llvmCtxWrapper == nullptr)
             {
@@ -1143,21 +1137,21 @@ namespace IGC
             return llvmCtxWrapper->m_allLayoutStructTypes;
         }
 
-        unsigned int GetSIMDInfoOffset(SIMDMode simd, ShaderDispatchMode mode)
+        unsigned int GetSIMDInfoIndex(SIMDMode simd, ShaderDispatchMode mode)
         {
-            unsigned int offset = 0;
+            unsigned int index = 0;
 
             switch (mode) {
             case ShaderDispatchMode::NOT_APPLICABLE:
                 switch (simd) {
                 case SIMDMode::SIMD8:
-                    offset = SIMD8_OFFSET;
+                    index = SIMD8_INDEX;
                     break;
                 case SIMDMode::SIMD16:
-                    offset = SIMD16_OFFSET;
+                    index = SIMD16_INDEX;
                     break;
                 case SIMDMode::SIMD32:
-                    offset = SIMD32_OFFSET;
+                    index = SIMD32_INDEX;
                     break;
                 default:
                     break;
@@ -1165,31 +1159,29 @@ namespace IGC
                 break;
 
             case ShaderDispatchMode::DUAL_SIMD8:
-                offset = DUAL_SIMD8_OFFSET;
+                index = DUAL_SIMD8_INDEX;
                 break;
 
             default:
+                IGC_ASSERT_MESSAGE(0, "Invalid ShaderDispatchMode");
                 break;
             }
-            return offset;
+            return index;
         }
 
         void SetSIMDInfo(SIMDInfoBit bit, SIMDMode simd, ShaderDispatchMode mode)
         {
-            unsigned int offset = GetSIMDInfoOffset(simd, mode);
-            unsigned int shift = bit + offset;
-            IGC_ASSERT(shift < 64);
-            m_SIMDInfo |= 1ULL << shift;
+            unsigned int index = GetSIMDInfoIndex(simd, mode);
+            m_SIMDInfo[index] |= 1ULL << bit;
         }
 
         void ClearSIMDInfo(SIMDMode simd, ShaderDispatchMode mode)
         {
-            unsigned int offset = GetSIMDInfoOffset(simd, mode);
-            IGC_ASSERT(offset < 64);
-            m_SIMDInfo &= ~(0xffULL << offset);
+            unsigned int index = GetSIMDInfoIndex(simd, mode);
+            m_SIMDInfo[index] = 0;
         }
 
-        uint64_t GetSIMDInfo() { return m_SIMDInfo; }
+        std::array<uint32_t, NUM_SIMD_INFO_INDEX> GetSIMDInfo() { return m_SIMDInfo; }
 
         SIMDMode GetSIMDMode();
 

@@ -9,8 +9,10 @@ SPDX-License-Identifier: MIT
 #ifndef _KERNEL_ANNOTATIONS_H_
 #define _KERNEL_ANNOTATIONS_H_
 
+#include <array>
 #include <string>
 #include "AdaptorOCL/ocl_igc_shared/executable_format/patch_list.h"
+#include "Compiler/CodeGenPublicEnums.h"
 
 namespace iOpenCL
 {
@@ -302,38 +304,38 @@ struct ExecutionEnvironment
     // The same information for path token based format is passed in
     // PrivateMemSizeAnnotation which will point to a PrivateInputAnnotation
     // that contains the size
-    DWORD  PerThreadPrivateOnStatelessSize            = 0;
+    DWORD  PerThreadPrivateOnStatelessSize                  = 0;
     //legacy design:not used
     //new design:   hold private memory used by shader if non-ZERO
-    DWORD  SumFixedTGSMSizes                          = 0;
-    bool   HasDeviceEnqueue                           = false;
+    DWORD  SumFixedTGSMSizes                                = 0;
+    bool   HasDeviceEnqueue                                 = false;
     // for PVC+ targets this field preserves the number of barriers
-    uint32_t HasBarriers                              = 0;
-    bool   HasSample                                  = false;
-    bool   IsSingleProgramFlow                        = false;
-    //DWORD  PerSIMDLanePrivateMemorySize               = 0;
-    bool   HasFixedWorkGroupSize                      = false;
-    bool   HasReadWriteImages                         = false;
-    bool   DisableMidThreadPreemption                 = false;
-    bool   IsInitializer                              = false;
-    bool   IsFinalizer                                = false;
-    bool   SubgroupIndependentForwardProgressRequired = false;
-    bool   CompiledForGreaterThan4GBBuffers           = false;
-    DWORD  FixedWorkgroupSize[3]                      = {};
-    DWORD  NumGRFRequired                             = 0;
-    DWORD  WorkgroupWalkOrder[3]                      = {};
-    bool   HasGlobalAtomics                           = false;
-    bool   UseBindlessMode                            = false;
-    uint64_t SIMDInfo                                 = 0;
-    bool  HasDPAS                                     = false;
-    bool  HasRTCalls                                  = false;
-    DWORD StatelessWritesCount                        = 0;
-    DWORD IndirectStatelessCount                      = 0;
-    DWORD numThreads                                  = 0;
-    bool  HasStackCalls                               = false;
-    bool  RequireDisableEUFusion                      = false;
-    DWORD PerThreadSpillMemoryUsage                   = 0;
-    DWORD PerThreadPrivateMemoryUsage                 = 0;
+    uint32_t HasBarriers                                    = 0;
+    bool   HasSample                                        = false;
+    bool   IsSingleProgramFlow                              = false;
+    //DWORD  PerSIMDLanePrivateMemorySize                     = 0;
+    bool   HasFixedWorkGroupSize                            = false;
+    bool   HasReadWriteImages                               = false;
+    bool   DisableMidThreadPreemption                       = false;
+    bool   IsInitializer                                    = false;
+    bool   IsFinalizer                                      = false;
+    bool   SubgroupIndependentForwardProgressRequired       = false;
+    bool   CompiledForGreaterThan4GBBuffers                 = false;
+    DWORD  FixedWorkgroupSize[3]                            = {};
+    DWORD  NumGRFRequired                                   = 0;
+    DWORD  WorkgroupWalkOrder[3]                            = {};
+    bool   HasGlobalAtomics                                 = false;
+    bool   UseBindlessMode                                  = false;
+    std::array<uint32_t, IGC::NUM_SIMD_INFO_INDEX> SIMDInfo = {};
+    bool  HasDPAS                                           = false;
+    bool  HasRTCalls                                        = false;
+    DWORD StatelessWritesCount                              = 0;
+    DWORD IndirectStatelessCount                            = 0;
+    DWORD numThreads                                        = 0;
+    bool  HasStackCalls                                     = false;
+    bool  RequireDisableEUFusion                            = false;
+    DWORD PerThreadSpillMemoryUsage                         = 0;
+    DWORD PerThreadPrivateMemoryUsage                       = 0;
 };
 
 struct KernelTypeProgramBinaryInfo
