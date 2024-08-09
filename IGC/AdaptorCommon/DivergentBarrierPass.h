@@ -49,6 +49,9 @@ namespace IGC
             bool Global                 = false;
             bool L1_Invalidate          = false;
             bool L1_Evict               = false;
+            // init Scope with GROUP which should be used for SLM barriers
+            // to be consistent with Global argument initialized to false
+            uint Scope                  = LSC_SCOPE_GROUP;
         };
 
         typedef llvm::DenseMap<uint64_t, WIAnalysis::WIDependancy> SlotDepMap;

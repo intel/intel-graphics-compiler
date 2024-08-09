@@ -16,12 +16,32 @@ SPDX-License-Identifier: MIT
 
 // MEMFENCE IMPLEMENTATION
 
+// Below choice of some HW scopes is explained.
+// 1. TODO: CrossDevice should be mapped to LSC_FS_SYSTEM_RELEASE or LSC_FS_SYSTEM_ACQUIRE.
+//     sycl::memory_scope::system and OpenCL's memory_scope_all_svm_devices are
+//     lowered to SPIR-V CrossDevice. SYCL SPEC 2020 for system scope:
+//     "applies to any work-item or host thread in the system that is currently permitted to access
+//     the memory allocation containing the referenced object".
+// 2. Subgroup and Invocation --> LSC_FS_THREAD_GROUP:
+//     our HW spec doesn’t have corresponding scope for Invocation or Subgroup, hence mapping to
+//     lowest possible scope
+#define CONVERT_SCOPE_SPIRV_TO_VISA(scope)            \
+    ((scope) == CrossDevice ? LSC_FS_GPU :            \
+     (scope) == Device      ? LSC_FS_GPU :            \
+     LSC_FS_THREAD_GROUP)
+
+// Adding scope parameter to 'MEMFENCE_IF' macro causes huge compilation time increase
+// due to number of calls to __builtin_IB_memfence inside __intel_memfence_optnone increases from
+// 16 (2 * 2 * 2 * 2) to <number of possible scope values> * 16.
+// So for optnone version keep old behavior: use GPU scope for global memory fence
+// and GROUP scope for local memory fence.
 void OPTNONE __intel_memfence_optnone(bool flushRW, bool isGlobal, bool invalidateL1, bool evictL1)
 {
-#define MEMFENCE_IF(V1, V5, V6, V7)                                           \
-if (flushRW == V1 && isGlobal == V5 && invalidateL1 == V6 && evictL1 == V7)   \
-{                                                                             \
-    __builtin_IB_memfence(true, V1, false, false, false, V5, V6, V7);         \
+#define MEMFENCE_IF(V1, V5, V6, V7)                                              \
+if (flushRW == V1 && isGlobal == V5 && invalidateL1 == V6 && evictL1 == V7)      \
+{                                                                                \
+    LSC_FS lsc_scope = (V5 ? LSC_FS_GPU : LSC_FS_THREAD_GROUP);                  \
+    __builtin_IB_memfence(true, V1, false, false, false, V5, V6, V7, lsc_scope); \
 } else
 
 // Generate combinations for all MEMFENCE_IF cases, e.g.:
@@ -38,17 +58,18 @@ MF_L3(true) {}
 #undef MF_L2
 #undef MF_L1
 }
-void __intel_memfence(bool flushRW, bool isGlobal, bool invalidateL1, bool evictL1)
+void __intel_memfence(bool flushRW, bool isGlobal, bool invalidateL1, bool evictL1, Scope_t scope)
 {
-    __builtin_IB_memfence(true, flushRW, false, false, false, isGlobal, invalidateL1, evictL1);
+    LSC_FS lsc_scope = CONVERT_SCOPE_SPIRV_TO_VISA(scope);
+    __builtin_IB_memfence(true, flushRW, false, false, false, isGlobal, invalidateL1, evictL1, lsc_scope);
 }
 
-void __intel_memfence_handler(bool flushRW, bool isGlobal, bool invalidateL1, bool evictL1)
+void __intel_memfence_handler(bool flushRW, bool isGlobal, bool invalidateL1, bool evictL1, Scope_t scope)
 {
     if (BIF_FLAG_CTRL_GET(OptDisable))
         __intel_memfence_optnone(flushRW, isGlobal, invalidateL1, evictL1);
     else
-        __intel_memfence(flushRW, isGlobal, invalidateL1, evictL1);
+        __intel_memfence(flushRW, isGlobal, invalidateL1, evictL1, scope);
 }
 
 // TYPEDMEMFENCE IMPLEMENTATION
@@ -98,19 +119,19 @@ static void __intel_atomic_work_item_fence( Scope_t Memory, uint Semantics )
         // although on some platforms they may be elided; platform-specific checks are performed in codegen
         if (Semantics & WorkgroupMemory)
         {
-           __intel_memfence_handler(false, false, false, false);
+           __intel_memfence_handler(false, false, false, false, Memory);
         }
         if (Semantics & CrossWorkgroupMemory)
         {
            if (Memory == Device || Memory == CrossDevice)
            {
-               __intel_memfence_handler(true, true, invalidateL1, evictL1);
+               __intel_memfence_handler(true, true, invalidateL1, evictL1, Memory);
            }
            else
            {
                // Single workgroup executes on one DSS and shares the same L1 cache.
                // If scope doesn't reach outside of workgroup, L1 flush can be skipped.
-               __intel_memfence_handler(false, true, false, false);
+               __intel_memfence_handler(false, true, false, false, Memory);
            }
         }
     }

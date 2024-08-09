@@ -241,11 +241,16 @@ void NamedBarriersResolution::HandleNamedBarrierSyncHW(CallInst& NBarrierSyncCal
 
     Value* trueValue = IRB.getInt1(true);
     Value* falseValue = IRB.getInt1(false);
+    Value* gpuScopeValue = IRB.getInt32(LSC_SCOPE_GPU);
+    Value* groupScopeValue = IRB.getInt32(LSC_SCOPE_GROUP);
 
     ConstantInt* memFenceType = cast<ConstantInt>(NBarrierSyncCall.getArgOperand(1));
     // LOCAL = 1
     // GLOBAL = 2
-    Value* isGlobal = ( (int)memFenceType->getValue().getSExtValue() & 2 ) == 2 ? trueValue : falseValue;
+    bool isGlobal = ( (int)memFenceType->getValue().getSExtValue() & 2 ) == 2;
+    Value* isGlobalValue = isGlobal ? trueValue : falseValue;
+    // Conservatively for local barrier set GROUP scope, for global barrier set GPU scope
+    Value* scopeValue = isGlobal ? gpuScopeValue : groupScopeValue;
 
     GenIntrinsicInst::Create(
         GenISAIntrinsic::getDeclaration(module, GenISAIntrinsic::GenISA_memoryfence),
@@ -255,9 +260,10 @@ void NamedBarriersResolution::HandleNamedBarrierSyncHW(CallInst& NBarrierSyncCal
             falseValue, // bool flushConstant
             falseValue, // bool flushTexture
             falseValue, // bool flushIcache
-            isGlobal,   // bool isGlobal
+            isGlobalValue,   // bool isGlobal
             falseValue, // bool invalidateL1
             falseValue, // bool evictL1
+            scopeValue // int memory scope
         },
         "",
         &(NBarrierSyncCall));
