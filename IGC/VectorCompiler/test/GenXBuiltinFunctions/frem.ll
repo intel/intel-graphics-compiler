@@ -22,6 +22,14 @@ define dllexport spir_kernel void @test_scalar_double(double %a, double %b) {
   ret void
 }
 
+; CHECK-LABEL: @test_scalar_float
+define dllexport spir_kernel void @test_scalar_float(float %a, float %b) {
+  %result = frem float %a, %b
+; CHECK-NOT: frem float
+; CHECK-FDIV-NOT: frem float
+  ret void
+}
+
 ; CHECK-LABEL: @test_V4_double
 define dllexport spir_kernel void @test_V4_double(<4 x double> %a, <4 x double> %b) {
   %result = frem <4 x double> %a, %b
@@ -29,6 +37,17 @@ define dllexport spir_kernel void @test_V4_double(<4 x double> %a, <4 x double> 
 ; CHECK-FDIV-NOT: frem <4 x double>
   ret void
 }
+
+; CHECK-LABEL: @test_V4_float
+define dllexport spir_kernel void @test_V4_float(<4 x float> %a, <4 x float> %b) {
+  %result = frem <4 x float> %a, %b
+; CHECK-NOT: frem <4 x float>
+; CHECK-FDIV-NOT: frem <4 x float>
+  ret void
+}
+
+; If frem implemented - not expected genx intrinsics:
+; CHECK-NOT: call {{.*}} @llvm.genx.ieee.div
 
 ; CHECK-FDIV: define internal spir_func double @{{.*}}__vc_builtin_frem_f64__rte_{{.*}}#[[REF_SC:[0-9]+]] {
 ; CHECK-FDIV: tail call <1 x double> @llvm.genx.ieee.div
@@ -40,6 +59,3 @@ define dllexport spir_kernel void @test_V4_double(<4 x double> %a, <4 x double> 
 ; 0 << 4 | 1 << 6 | 1 << 7 | 1 << 10
 ; CHECK-FDIV-DAG: attributes #[[REF_SC]] = {{.*}} "CMFloatControl"="1216" {{.*}}
 ; CHECK-FDIV-DAG: attributes #[[REF_V]] = {{.*}} "CMFloatControl"="1216" {{.*}}
-
-
-

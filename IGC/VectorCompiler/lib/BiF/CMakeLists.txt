@@ -40,6 +40,7 @@ set(BUILTIN_SOURCES
   Library/Math/F16/itofp.cpp
 
   Library/Math/F32/fdiv.cpp
+  Library/Math/F32/frem.cpp
   Library/Math/F32/fptoi.cpp
   Library/Math/F32/itofp.cpp
 
