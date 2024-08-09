@@ -61,6 +61,23 @@ enum {
   VISA_NUM_RESERVED_SURFACES = 6
 };
 
+enum CRBits {
+  SinglePrecisionMode = 1,
+  // Rounding Mode:
+  RTNE = 0 << 4, //  Round to Nearest or Even
+  RU = 1 << 4,   //  Round Up, toward +inf
+  RD = 2 << 4,   //  Round Down, toward -inf
+  RTZ = 3 << 4,  //  Round Toward Zero
+  RoundingBitMask = 3 << 4,
+  // Denorm Mode:
+  DoublePrecisionDenorm = 1 << 6,
+  SinglePrecisionDenorm = 1 << 7,
+  HalfPrecisionDenorm = 1 << 10,
+  SystolicDenorm = 1 << 30,
+  FullDenormMode =
+      DoublePrecisionDenorm | SinglePrecisionDenorm | HalfPrecisionDenorm,
+};
+
 // These reserved indices are used by CM Frontend
 // and some passes (like TPM) to create an stateless/slm/stack accesses
 // TODO: consider introducing as set of new intrinsics with explicit

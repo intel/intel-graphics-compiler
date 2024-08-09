@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
+#include "GenXVisa.h"
 
 #include "vc/Support/BackendConfig.h"
 #include "vc/Support/GenXDiagnostic.h"
@@ -25,10 +26,12 @@ static constexpr const char *RoundingRteSuffix = "__rte_";
 static constexpr const char *RoundingRtpSuffix = "__rtp_";
 static constexpr const char *RoundingRtnSuffix = "__rtn_";
 
-static constexpr int VCRoundingRTE = 0;
-static constexpr int VCRoundingRTP = 1 << 4;
-static constexpr int VCRoundingRTN = 2 << 4;
-static constexpr int VCRoundingRTZ = 3 << 4;
+using namespace visa;
+// For specific rounding modes we allow denormals
+static constexpr int VCRoundingRTE = CRBits::RTNE | CRBits::FullDenormMode;
+static constexpr int VCRoundingRTP = CRBits::RU | CRBits::FullDenormMode;
+static constexpr int VCRoundingRTN = CRBits::RD | CRBits::FullDenormMode;
+static constexpr int VCRoundingRTZ = CRBits::RTZ | CRBits::FullDenormMode;
 
 template <typename T> static void processToEraseList(T &EraseList) {
   std::for_each(EraseList.begin(), EraseList.end(),

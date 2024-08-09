@@ -30,8 +30,16 @@ define dllexport spir_kernel void @test_V4_double(<4 x double> %a, <4 x double> 
   ret void
 }
 
-; CHECK-FDIV-LABEL: define internal spir_func double @{{.*}}__vc_builtin_frem_f64__rte_{{.*}}
+; CHECK-FDIV: define internal spir_func double @{{.*}}__vc_builtin_frem_f64__rte_{{.*}}#[[REF_SC:[0-9]+]] {
 ; CHECK-FDIV: tail call <1 x double> @llvm.genx.ieee.div
 
-; CHECK-FDIV-LABEL: define internal spir_func <4 x double> @{{.*}}__vc_builtin_frem_v4f64__rte_{{.*}}
+; CHECK-FDIV: define internal spir_func <4 x double> @{{.*}}__vc_builtin_frem_v4f64__rte_{{.*}}#[[REF_V:[0-9]+]] {
 ; CHECK-FDIV: tail call <4 x double> @llvm.genx.ieee.div.v4f64
+
+; Float-control mask = 0x4c0 = RTNE | DoublePrecisionDenorm | SinglePrecisionDenorm | HalfPrecisionDenorm =
+; 0 << 4 | 1 << 6 | 1 << 7 | 1 << 10
+; CHECK-FDIV-DAG: attributes #[[REF_SC]] = {{.*}} "CMFloatControl"="1216" {{.*}}
+; CHECK-FDIV-DAG: attributes #[[REF_V]] = {{.*}} "CMFloatControl"="1216" {{.*}}
+
+
+

@@ -33,6 +33,7 @@ SPDX-License-Identifier: MIT
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
+#include "GenXVisa.h"
 #include "GenXVisaRegAlloc.h"
 
 #include "vc/Support/BackendConfig.h"
@@ -375,14 +376,6 @@ class GenXKernelBuilder final {
   // control mask before exiting from the subroutine.
   uint32_t DefaultFloatControl = 0;
 
-  enum CRBits {
-    SinglePrecisionMode = 1,
-    RoundingMode = 3 << 4,
-    DoublePrecisionDenorm = 1 << 6,
-    SinglePrecisionDenorm = 1 << 7,
-    HalfPrecisionDenorm = 1 << 10,
-    SystolicDenorm = 1 << 30,
-  };
 
   uint32_t CRMask = 0;
 
@@ -1102,7 +1095,8 @@ bool GenXKernelBuilder::run() {
   GrfByteSize = Subtarget->getGRFByteSize();
   StackSurf = Subtarget->stackSurface();
 
-  CRMask = CRBits::RoundingMode | CRBits::DoublePrecisionDenorm |
+  using namespace visa;
+  CRMask = CRBits::RoundingBitMask | CRBits::DoublePrecisionDenorm |
            CRBits::SinglePrecisionDenorm | CRBits::HalfPrecisionDenorm;
 
   if (Subtarget->hasSystolicDenormControl())
