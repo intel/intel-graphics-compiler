@@ -45,6 +45,7 @@ namespace IGC
 {
     typedef union _gfxResourceAddrSpace
     {
+        static_assert(BufferType::BUFFER_TYPE_UNKNOWN < 32, "Please also adjust bufType bit size");
         struct _bits
         {
             unsigned int       bufId : 16;
@@ -628,6 +629,7 @@ namespace IGC
 
     BufferAccessType getDefaultAccessType(BufferType bufTy)
     {
+        static_assert(BufferType::BUFFER_TYPE_UNKNOWN == 17, "Please also update switch() below");
         switch (bufTy)
         {
         case BufferType::CONSTANT_BUFFER:
@@ -636,14 +638,18 @@ namespace IGC
         case BufferType::BINDLESS_CONSTANT_BUFFER:
         case BufferType::STATELESS_READONLY:
         case BufferType::SAMPLER:
+        case BufferType::BINDLESS_SAMPLER:
+        case BufferType::SSH_BINDLESS_CONSTANT_BUFFER:
+        case BufferType::SSH_BINDLESS_TEXTURE:
             return BufferAccessType::ACCESS_READ;
 
         case BufferType::UAV:
         case BufferType::SLM:
         case BufferType::POINTER:
         case BufferType::BINDLESS:
-        case BufferType::STATELESS:
         case BufferType::SSH_BINDLESS:
+        case BufferType::STATELESS:
+        case BufferType::STATELESS_A32:
             return BufferAccessType::ACCESS_READWRITE;
 
         case BufferType::RENDER_TARGET:
