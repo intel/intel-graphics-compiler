@@ -643,11 +643,11 @@ namespace IGC
         case BufferType::POINTER:
         case BufferType::BINDLESS:
         case BufferType::STATELESS:
+        case BufferType::SSH_BINDLESS:
             return BufferAccessType::ACCESS_READWRITE;
 
         case BufferType::RENDER_TARGET:
             return BufferAccessType::ACCESS_WRITE;
-
         default:
             IGC_ASSERT_MESSAGE(0, "Invalid buffer type");
             return BufferAccessType::ACCESS_READWRITE;
