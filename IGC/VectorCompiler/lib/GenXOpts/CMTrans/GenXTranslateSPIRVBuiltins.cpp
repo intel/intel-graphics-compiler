@@ -480,7 +480,7 @@ bool GenXTranslateSPIRVBuiltins::runOnModule(Module &M) {
   for (auto &FuncName : SPIRVBuiltins) {
     auto *Func = M.getFunction(FuncName);
     auto *NewFunc = SPIRVBuiltinsModule->getFunction(FuncName);
-    if (Func && !Func->isDeclaration() && NewFunc && !NewFunc->isDeclaration())
+    if (Func && NewFunc && !NewFunc->isDeclaration())
       checkTypesFixPtrs(Func, NewFunc);
   }
 
