@@ -1,31 +1,33 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt -igc-layout -S < %s | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-layout -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; Layout
 ; ------------------------------------------------
 ; This test checks that Layout pass follows
 ; 'How to Update Debug Info' llvm guideline.
-;
+
 ; This pass does some block reordering, check that Debug stays correct.
-;
+
 ; ------------------------------------------------
 
 ; CHECK: define void @test_layout{{.*}} !dbg [[SCOPE:![0-9]*]]
-;
+
 ; CHECK: entry:
 ; CHECK: [[LOAD_V:%[0-9]*]] = {{.*}} !dbg [[LOAD_LOC:![0-9]*]]
 ; CHECK: call void @llvm.dbg.value(metadata i32 [[LOAD_V]], metadata [[LOAD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD_LOC]]
 ; CHECK: [[CMP_V:%[0-9]*]] = {{.*}} !dbg [[CMP_LOC:![0-9]*]]
 ; CHECK: call void @llvm.dbg.value(metadata i1 [[CMP_V]], metadata [[CMP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CMP_LOC]]
 ; CHECK: br{{.*}} !dbg [[BR1_LOC:![0-9]*]]
-;
+
 ; CHECK: lbl:
 ; CHECK: [[P2I_V:%[0-9]*]] = {{.*}} !dbg [[P2I_LOC:![0-9]*]]
 ; CHECK: call void @llvm.dbg.value(metadata i32 [[P2I_V]], metadata [[P2I_MD:![0-9]*]], metadata !DIExpression()), !dbg [[P2I_LOC]]
@@ -74,13 +76,13 @@ end:                                              ; preds = %entry
 ; CHECK-DAG: [[CMP_MD]] = !DILocalVariable(name: "2", scope: [[SCOPE]], file: [[FILE]], line: 2
 ; CHECK-DAG: [[CMP_LOC]] = !DILocation(line: 2, column: 1, scope: [[SCOPE]])
 ; CHECK-DAG: [[BR1_LOC]] = !DILocation(line: 3, column: 1, scope: [[SCOPE]])
-;
+
 ; CHECK-DAG: [[P2I_MD]] = !DILocalVariable(name: "3", scope: [[SCOPE]], file: [[FILE]], line: 4
 ; CHECK-DAG: [[P2I_LOC]] = !DILocation(line: 4, column: 1, scope: [[SCOPE]])
 ; CHECK-DAG: [[SHL_MD]] = !DILocalVariable(name: "4", scope: [[SCOPE]], file: [[FILE]], line: 5
 ; CHECK-DAG: [[SHL_LOC]] = !DILocation(line: 5, column: 1, scope: [[SCOPE]])
 ; CHECK-DAG: [[BR2_LOC]] = !DILocation(line: 6, column: 1, scope: [[SCOPE]])
-;
+
 ; CHECK-DAG: [[STORE1_LOC]] = !DILocation(line: 7, column: 1, scope: [[SCOPE]])
 ; CHECK-DAG: [[ADD_MD]] = !DILocalVariable(name: "5", scope: [[SCOPE]], file: [[FILE]], line: 9
 ; CHECK-DAG: [[ADD_LOC]] = !DILocation(line: 9, column: 1, scope: [[SCOPE]])

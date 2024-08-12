@@ -1,24 +1,26 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt --igc-vectorpreprocess -S < %s | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --igc-vectorpreprocess -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; VectorPreProcess : store unaligned
 ; ------------------------------------------------
 ; This test checks that VectorPreProcess pass follows
 ; 'How to Update Debug Info' llvm guideline.
-;
+
 ; Debug MD for this test was created with debugify pass.
 ; ------------------------------------------------
 
 ; CHECK:  spir_kernel void @test_vecpre
 ; CHECK-SAME: !dbg [[SCOPE:![0-9]*]]
-;
+
 ; CHECK: store{{.*}} [[STORE1_LOC:![0-9]*]]
 ; CHECK: call{{.*}}store{{.*}} [[STORE2_LOC:![0-9]*]]
 

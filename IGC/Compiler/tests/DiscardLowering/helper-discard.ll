@@ -1,12 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt --igc-lower-discard -S < %s 2>&1 | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --igc-lower-discard -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; DiscardLowering
 ; ------------------------------------------------
@@ -25,7 +27,7 @@ define void @test_discardlow(i1 %a) {
 ; CHECK:    br label [[DISCARDRET]]
 ; CHECK:  DiscardRet:
 ; CHECK:    ret void
-;
+
 entry:
   %0 = call i1 @llvm.genx.GenISA.IsHelperInvocation()
   call void @llvm.genx.GenISA.discard(i1 %0)

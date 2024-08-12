@@ -1,31 +1,33 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt -undefined-references -S < %s | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -undefined-references -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; UndefinedReferencesPass
 ; ------------------------------------------------
 ; This test checks that UndefinedReferencesPass pass follows
 ; 'How to Update Debug Info' llvm guideline.
-;
+
 ; And was reduced from ocl test kernel:
-;
+
 ; static __constant int a[2] = {0, 1};
 ; __global int b;
 ; static __global int c;
 ; static __constant int* d = a;
-;
+
 ; __kernel void test_(global int *dst)
 ; {
 ;     int aa = a[1];
 ;     c = *d;
 ; }
-;
+
 ; ------------------------------------------------
 
 ; Check that internal gvars with at least 1 use are preserved and their MD is preserved
@@ -33,7 +35,7 @@
 ; CHECK: @c = {{.*}}, !dbg [[C_MDE:![0-9]*]]
 ; CHECK-NOT: @e
 ; CHECK: @b = {{.*}}, !dbg [[B_MDE:![0-9]*]]
-;
+
 ; CHECK-DAG: [[FILE:![0-9]*]] = !DIFile(filename: "UndefinedReferencesPass.ll", directory: "dir")
 ; CHECK-DAG: [[SCOPE:![0-9]*]] = distinct !DICompileUnit(language: DW_LANG_C99, file: {{.*}}, producer: "spirv", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, enums: {{.*}}, globals: [[GLOBAL_MD:![0-9]*]])
 ; CHECK-DAG:[[A_MDE]] = !DIGlobalVariableExpression(var: [[A_MD:![0-9]*]], expr: !DIExpression())

@@ -1,18 +1,20 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt -igc-synchronization-object-coalescing -S < %s | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-synchronization-object-coalescing -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; SynchronizationObjectCoalescing
 ; ------------------------------------------------
 ; This test checks that SynchronizationObjectCoalescing pass follows
 ; 'How to Update Debug Info' llvm guideline.
-;
+
 ; Debug MD for this test was created with debugify pass.
 ; ------------------------------------------------
 

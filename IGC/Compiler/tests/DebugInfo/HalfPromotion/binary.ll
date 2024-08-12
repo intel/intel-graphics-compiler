@@ -1,18 +1,20 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt --half-promotion  -S < %s | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --half-promotion  -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; HalfPromotion
 ; ------------------------------------------------
 ; This test checks that HalfPromotion pass follows
 ; 'How to Update Debug Info' llvm guideline.
-;
+
 ; Debug MD for this test was created with debugify pass.
 ; ------------------------------------------------
 
@@ -20,19 +22,19 @@
 ; CHECK-SAME: !dbg [[SCOPE:![0-9]*]]
 ; CHECK-DAG: @llvm.dbg.value(metadata half [[FADD_V:%[0-9]*]], metadata [[FADD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FADD_LOC:![0-9]*]]
 ; CHECK-DAG: [[FADD_V]] = {{.*}}, !dbg [[FADD_LOC:![0-9]*]]
-;
+
 ; CHECK-DAG: @llvm.dbg.value(metadata half [[FMUL_V:%[0-9]*]], metadata [[FMUL_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FMUL_LOC:![0-9]*]]
 ; CHECK-DAG: [[FMUL_V]] = {{.*}}, !dbg [[FMUL_LOC:![0-9]*]]
-;
+
 ; CHECK-DAG: @llvm.dbg.value(metadata half [[UITO_V:%[0-9]*]], metadata [[UITO_MD:![0-9]*]], metadata !DIExpression()), !dbg [[UITO_LOC:![0-9]*]]
 ; CHECK-DAG: [[UITO_V]] = {{.*}}, !dbg [[UITO_LOC:![0-9]*]]
-;
+
 ; CHECK-DAG: @llvm.dbg.value(metadata half [[SITO_V:%[0-9]*]], metadata [[SITO_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SITO_LOC:![0-9]*]]
 ; CHECK-DAG: [[SITO_V]] = {{.*}}, !dbg [[SITO_LOC:![0-9]*]]
-;
+
 ; CHECK-DAG: @llvm.dbg.value(metadata i16 [[TOUI_V:%[0-9]*]], metadata [[TOUI_MD:![0-9]*]], metadata !DIExpression()), !dbg [[TOUI_LOC:![0-9]*]]
 ; CHECK-DAG: [[TOUI_V]] = {{.*}}, !dbg [[TOUI_LOC:![0-9]*]]
-;
+
 ; CHECK-DAG: @llvm.dbg.value(metadata i16 [[TOSI_V:%[0-9]*]], metadata [[TOSI_MD:![0-9]*]], metadata !DIExpression()), !dbg [[TOSI_LOC:![0-9]*]]
 ; CHECK-DAG: [[TOSI_V]] = {{.*}}, !dbg [[TOSI_LOC:![0-9]*]]
 

@@ -1,17 +1,19 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt -igc-callgraphscc-analysis -S < %s | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-callgraphscc-analysis -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; BuiltinCallGraphAnalysis
 ; ------------------------------------------------
 ; This test checks that debug info is properly handled by BuiltinCallGraphAnalysis pass.
-;
+
 ; This is analysis pass that updates function(subroutine) attributes, check that debuginfo is not affected.
 ; ------------------------------------------------
 
@@ -131,27 +133,27 @@ entry:
 }
 
 ; FOO_F
-;
+
 ; CHECK-DAG: [[FILE:![0-9]*]] = !DIFile(filename: "BuiltinCallGraphAnalysis.ll", directory: "/")
 ; CHECK-DAG: [[FOO_SCOPE]] = distinct !DISubprogram(name: "foo", scope: null, file: [[FILE]], line: 7, type: [[FOO_TYPE:![0-9]*]]
 ; CHECK-DAG: [[FOO_TYPE]] = !DISubroutineType(types: [[FOO_ARGS:![0-9]*]])
 ; CHECK-DAG: [[FOO_ARGS]] = !{[[INT_TYPE:![0-9]*]], [[STRUCT_TYPE:![0-9]*]]}
 ; CHECK-DAG: [[INT_TYPE]] = !DIBasicType(name: "int", size: 32, encoding: DW_ATE_signed)
 ; CHECK-DAG: [[STRUCT_TYPE]] = !DICompositeType(tag: DW_TAG_structure_type, name: "_st_foo", file: [[FILE]], line: 1, size: 64
-;
+
 ; CHECK-DAG: [[S_MD]] = !DILocalVariable(name: "s", arg: 1, scope: [[FOO_SCOPE]], file: [[FILE]], line: 7, type: [[STRUCT_TYPE]])
 ; CHECK-DAG: [[S_LOC]] = !DILocation(line: 7, column: 24, scope: [[FOO_SCOPE]])
 ; CHECK-DAG: [[A_LOC]] = !DILocation(line: 9, column: 12, scope: [[FOO_SCOPE]])
 ; CHECK-DAG: [[B_LOC]] = !DILocation(line: 9, column: 18, scope: [[FOO_SCOPE]])
 
 ; BAR_K
-;
+
 ; CHECK-DAG: [[BAR_SCOPE]] = distinct !DISubprogram(name: "bar", scope: null, file: [[FILE]], line: 12, type: [[BAR_TYPE:![0-9]*]]
 ; CHECK-DAG: [[BAR_TYPE]] = !DISubroutineType(types: [[BAR_ARGS:![0-9]*]])
 ; CHECK-DAG: [[BAR_ARGS]] = !{[[AS_TYPE:![0-9]*]], [[PTR_TYPE:![0-9]*]], [[INT_TYPE]]}
 ; CHECK-DAG: [[AS_TYPE]] = !DIBasicType(name: "int", size: 4)
 ; CHECK-DAG: [[PTR_TYPE]] = !DIDerivedType(tag: DW_TAG_pointer_type
-;
+
 ; CHECK-DAG: [[BDST_MD]] = !DILocalVariable(name: "bdst", arg: 1, scope: [[BAR_SCOPE]], file: [[FILE]], line: 12, type: [[PTR_TYPE]])
 ; CHECK-DAG: [[BDST_LOC]] = !DILocation(line: 12, column: 34, scope: [[BAR_SCOPE]])
 ; CHECK-DAG: [[BS1_MD]] = !DILocalVariable(name: "bs1", arg: 2, scope: [[BAR_SCOPE]], file: [[FILE]], line: 12, type: [[INT_TYPE]])
@@ -160,11 +162,11 @@ entry:
 ; CHECK-DAG: [[BDSTV_LOC]] = !DILocation(line: 14, column: 3, scope: [[BAR_SCOPE]])
 
 ; TEST_K
-;
+
 ; CHECK-DAG: [[TEST_SCOPE]] = distinct !DISubprogram(name: "test_arg", scope: null, file: [[FILE]], line: 17, type: [[TEST_TYPE:![0-9]*]]
 ; CHECK-DAG: [[TEST_TYPE]] = !DISubroutineType(types: [[TEST_ARGS:![0-9]*]])
 ; CHECK-DAG: [[TEST_ARGS]] = !{[[AS_TYPE]], [[PTR_TYPE]], [[STRUCT_TYPE]]}
-;
+
 ; CHECK-DAG: [[DST_MD]] = !DILocalVariable(name: "dst", arg: 1, scope: [[TEST_SCOPE]], file: [[FILE]], line: 17, type: [[PTR_TYPE]])
 ; CHECK-DAG: [[DST_LOC]] = !DILocation(line: 17, column: 41, scope: [[TEST_SCOPE]])
 ; CHECK-DAG: [[SRC_MD]] = !DILocalVariable(name: "src", arg: 2, scope: [[TEST_SCOPE]], file: [[FILE]], line: 17, type: [[STRUCT_TYPE]])
@@ -173,9 +175,9 @@ entry:
 ; CHECK-DAG: [[CALLB_LOC]] = !DILocation(line: 20, column: 3, scope: [[TEST_SCOPE]])
 
 ; BAR_F
-;
+
 ; CHECK-DAG: [[BAR1_SCOPE]] = distinct !DISubprogram(name: "bar", scope: null, file: [[FILE]], line: 12, type: [[BAR_TYPE]]
-;
+
 ; CHECK-DAG: [[BBDST_MD]] = !DILocalVariable(name: "bdst", arg: 1, scope: [[BAR1_SCOPE]], file: [[FILE]], line: 12, type: [[PTR_TYPE]])
 ; CHECK-DAG: [[BBDST_LOC]] = !DILocation(line: 12, column: 34, scope: [[BAR1_SCOPE]])
 ; CHECK-DAG: [[BBS1_MD]] = !DILocalVariable(name: "bs1", arg: 2, scope: [[BAR1_SCOPE]], file: [[FILE]], line: 12, type: [[INT_TYPE]])

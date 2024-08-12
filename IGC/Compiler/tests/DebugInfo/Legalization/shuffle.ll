@@ -1,18 +1,20 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt --igc-legalization -S < %s | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --igc-legalization -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; Legalization: shufflevector patterns
 ; ------------------------------------------------
 ; This test checks that Legalization pass follows
 ; 'How to Update Debug Info' llvm guideline.
-;
+
 ; Debug MD for this test was created with debugify pass.
 ; ------------------------------------------------
 
@@ -22,7 +24,7 @@ source_filename = "ShuffleVector.ll"
 define spir_kernel void @test_shuffle(<4 x i32> %src1, <4 x i32> %src2) !dbg !7 {
 
 ; Testcase 1 shuffle vector with non const vectors
-;
+
 ; CHECK: [[EXTR0_V:%[0-9]*]] = extractelement <4 x i32> %src1, i32 0
 ; CHECK-NEXT: [[INS0_V:%[0-9]*]] = insertelement <6 x i32> undef, i32 [[EXTR0_V]], i32 0
 ; CHECK-NEXT: [[EXTR1_V:%[0-9]*]] = extractelement <4 x i32> %src1, i32 1
@@ -41,7 +43,7 @@ define spir_kernel void @test_shuffle(<4 x i32> %src1, <4 x i32> %src2) !dbg !7 
   call void @llvm.dbg.value(metadata <6 x i32> %1, metadata !10, metadata !DIExpression()), !dbg !16
 
 ; Testcase 2 shuffle vector with const vector
-;
+
 ; CHECK-NEXT: [[INS0_V:%[0-9]*]] = insertelement <6 x i32> undef, i32 1, i32 0
 ; CHECK-NEXT: [[INS1_V:%[0-9]*]] = insertelement <6 x i32> [[INS0_V]], i32 0, i32 1
 ; CHECK-NEXT: [[INS2_V:%[0-9]*]] = insertelement <6 x i32> [[INS1_V]], i32 4, i32 2
@@ -56,7 +58,7 @@ define spir_kernel void @test_shuffle(<4 x i32> %src1, <4 x i32> %src2) !dbg !7 
   call void @llvm.dbg.value(metadata <6 x i32> %2, metadata !12, metadata !DIExpression()), !dbg !17
 
 ; Testcase 3 shuffle vector with undef mask
-;
+
 ; CHECK-NEXT: [[EXTR0_V:%[0-9]*]] = extractelement <4 x i32> %src2, i32 0
 ; CHECK-NEXT: [[INS1_V:%[0-9]*]] = insertelement <4 x i32> undef, i32 [[EXTR0_V]], i32 1
 ; CHECK-NEXT: [[EXTR2_V:%[0-9]*]] = extractelement <4 x i32> %src1, i32 2
@@ -67,7 +69,7 @@ define spir_kernel void @test_shuffle(<4 x i32> %src1, <4 x i32> %src2) !dbg !7 
   call void @llvm.dbg.value(metadata <4 x i32> %3, metadata !13, metadata !DIExpression()), !dbg !18
 
 ; Testcase 4 reuse source vector
-;
+
 ; CHECK-NEXT: [[EXTR0_V:%[0-9]*]] = extractelement <4 x i32> %src2, i32 0
 ; CHECK-NEXT: [[INS2_V:%[0-9]*]] = insertelement <4 x i32> %src1, i32 [[EXTR0_V]], i32 2
 ; CHECK-NEXT: [[EXTR1_V:%[0-9]*]] = extractelement <4 x i32> %src2, i32 1

@@ -1,18 +1,20 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt -igc-early-out-patterns-pass -S -inputcs < %s | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-early-out-patterns-pass -S -inputcs < %s | FileCheck %s
 ; ------------------------------------------------
 ; EarlyOutPatterns
 ; ------------------------------------------------
 ; This test checks that EarlyOutPatterns pass follows
 ; 'How to Update Debug Info' llvm guideline.
-;
+
 ; Debug MD for this test was created with debugify pass.
 ; ------------------------------------------------
 
@@ -27,7 +29,7 @@
 ; CHECK-DAG: [[VAL7_V:%[A-z0-9]*]] = fadd {{.*}}, !dbg [[VAL7_LOC:![0-9]*]]
 ; CHECK-DAG: [[VAL8_V:%[A-z0-9]*]] = fadd {{.*}}, !dbg [[VAL8_LOC:![0-9]*]]
 ; CHECK-DAG: [[VAL9_V:%[A-z0-9]*]] = fcmp {{.*}}, !dbg [[VAL9_LOC:![0-9]*]]
-;
+
 ; CHECK: {{.*}}:
 ; CHECK: void @llvm.dbg.value(metadata float [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
 ; CHECK: void @llvm.dbg.value(metadata float [[VAL2_V]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC]]
@@ -38,7 +40,7 @@
 ; CHECK: void @llvm.dbg.value(metadata float [[VAL7_V]], metadata [[VAL7_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL7_LOC]]
 ; CHECK: void @llvm.dbg.value(metadata float [[VAL8_V]], metadata [[VAL8_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL8_LOC]]
 ; CHECK: void @llvm.dbg.value(metadata i1 [[VAL9_V]], metadata [[VAL9_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL9_LOC]]
-;
+
 ; CHECK: [[VAL17_V:%[A-z0-9]*]] = fmul {{.*}}, !dbg [[VAL17_LOC:![0-9]*]]
 ; CHECK: void @llvm.dbg.value(metadata float [[VAL17_V]], metadata [[VAL17_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL17_LOC]]
 
@@ -52,7 +54,7 @@
 ; CHECK: void @llvm.dbg.value(metadata float [[VAL7_V]], metadata [[VAL7_MD]], metadata !DIExpression()), !dbg [[VAL7_LOC]]
 ; CHECK: void @llvm.dbg.value(metadata float [[VAL8_V]], metadata [[VAL8_MD]], metadata !DIExpression()), !dbg [[VAL8_LOC]]
 ; CHECK: void @llvm.dbg.value(metadata i1 [[VAL9_V]], metadata [[VAL9_MD]], metadata !DIExpression()), !dbg [[VAL9_LOC]]
-;
+
 ; CHECK: [[VAL17_V:%[A-z0-9]*]] = fmul {{.*}}, !dbg [[VAL17_LOC]]
 ; CHECK: void @llvm.dbg.value(metadata float {{0.0.*}}, metadata [[VAL17_MD]], metadata !DIExpression()), !dbg [[VAL17_LOC]]
 

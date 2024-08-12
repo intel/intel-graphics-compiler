@@ -1,23 +1,25 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt --igc-scalarize -S < %s | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --igc-scalarize -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; ScalarizeFunction : select operands
 ; ------------------------------------------------
 ; This test checks that ScalarizeFunction pass follows
 ; 'How to Update Debug Info' llvm guideline.
-;
+
 ; Debug MD for this test was created with debugify pass.
 ; ------------------------------------------------
 
 ; Check IR:
-;
+
 ; CHECK: alloca {{.*}}, !dbg [[ALLOC32_LOC:![0-9]*]]
 ; CHECK: dbg.declare({{.*}}, metadata [[R32_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOC32_LOC]]
 ; CHECK: alloca {{.*}}, !dbg [[ALLOC16_LOC:![0-9]*]]
@@ -25,11 +27,11 @@
 ; CHECK-DAG: dbg.value(metadata <2 x i32> [[SELECT32_V:%[a-z0-9\.]*]], metadata [[SELECT32_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SELECT32_LOC:![0-9]*]]
 ; CHECK-DAG: [[SELECT32_V]] = {{.*}}, !dbg [[SELECT32_LOC]]
 ; CHECK-DAG: store <2 x i32> [[SELECT32_V]], {{.*}}, !dbg [[STORE32_LOC:![0-9]*]]
-;
+
 ; CHECK-DAG: dbg.value(metadata <4 x i16> [[SELECT16_V:%[a-z0-9\.]*]], metadata [[SELECT16_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SELECT16_LOC:![0-9]*]]
 ; CHECK-DAG: [[SELECT16_V]] = {{.*}}, !dbg [[SELECT16_LOC]]
 ; CHECK-DAG: store <4 x i16> [[SELECT16_V]], {{.*}}, !dbg [[STORE16_LOC:![0-9]*]]
-;
+
 ; CHECK-DAG: dbg.value(metadata <4 x i16> [[SELECT16_1_V:%[a-z0-9\.]*]], metadata [[SELECT16_1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SELECT16_1_LOC:![0-9]*]]
 ; CHECK-DAG: [[SELECT16_1_V]] = {{.*}}, !dbg [[SELECT16_1_LOC]]
 

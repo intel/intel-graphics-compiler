@@ -1,18 +1,20 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt --half-promotion  -S < %s | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --half-promotion  -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; HalfPromotion
 ; ------------------------------------------------
 ; This test checks that HalfPromotion pass follows
 ; 'How to Update Debug Info' llvm guideline.
-;
+
 ; Debug MD for this test was created with debugify pass.
 ; ------------------------------------------------
 
@@ -20,19 +22,19 @@
 ; CHECK-SAME: !dbg [[SCOPE:![0-9]*]]
 ; CHECK-DAG: @llvm.dbg.value(metadata i1 [[FCMP_V:%[0-9]*]], metadata [[FCMP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FCMP_LOC:![0-9]*]]
 ; CHECK-DAG: [[FCMP_V]] = {{.*}}, !dbg [[FCMP_LOC:![0-9]*]]
-;
+
 ; CHECK-DAG: @llvm.dbg.value(metadata half [[COS_V:%[0-9]*]], metadata [[COS_MD:![0-9]*]], metadata !DIExpression()), !dbg [[COS_LOC:![0-9]*]]
 ; CHECK-DAG: [[COS_V]] = {{.*}}, !dbg [[COS_LOC:![0-9]*]]
-;
+
 ; CHECK-DAG: @llvm.dbg.value(metadata half [[WAVE_V:%[0-9]*]], metadata [[WAVE_MD:![0-9]*]], metadata !DIExpression()), !dbg [[WAVE_LOC:![0-9]*]]
 ; CHECK-DAG: [[WAVE_V]] = {{.*}}, !dbg [[WAVE_LOC:![0-9]*]]
-;
+
 ; CHECK-DAG: @llvm.dbg.value(metadata half [[SELECT_V:%[0-9]*]], metadata [[SELECT_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SELECT_LOC:![0-9]*]]
 ; CHECK-DAG: [[SELECT_V]] = {{.*}}, !dbg [[SELECT_LOC:![0-9]*]]
-;
+
 ; CHECK-DAG: @llvm.dbg.value(metadata half [[PHI_V:%[0-9]*]], metadata [[PHI_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PHI_LOC:![0-9]*]]
 ; CHECK-DAG: [[PHI_V]] = {{.*}}, !dbg [[PHI_LOC:![0-9]*]]
-;
+
 
 define void @test_half(half %src1, half %src2, half* %dst) !dbg !6 {
 entry:

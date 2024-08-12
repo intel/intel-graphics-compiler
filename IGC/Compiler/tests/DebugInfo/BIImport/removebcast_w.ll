@@ -1,17 +1,19 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt -igc-builtin-import -disable-verify -S < %s | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-builtin-import -disable-verify -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; BIImport
 ; ------------------------------------------------
 ; This test checks that debug info is properly handled by BIImport pass
-;
+
 ; Check that indirect function call is correcty substitued and debuginfo not lost
 ; Testcase without return value
 ; ------------------------------------------------

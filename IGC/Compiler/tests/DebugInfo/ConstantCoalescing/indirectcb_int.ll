@@ -1,27 +1,29 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt --igc-constant-coalescing -S < %s | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --igc-constant-coalescing -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; ConstantCoalescing
 ; ------------------------------------------------
 ; This test checks that ConstantCoalescing pass follows
 ; 'How to Update Debug Info' llvm guideline.
-;
+
 ; Debug MD for this test was created with debugify pass.
-;
+
 ; Note: Vector value changes are not salvagable for now
-;
+
 ; ------------------------------------------------
 
 
 ; CHECK: @test_constcoal{{.*}} !dbg [[SCOPE:![0-9]*]]
-;
+
 ; CHECK: entry:
 ; CHECK-DAG: [[EXTR1_V:%[A-z0-9]*]] = extractelement {{.*}}[[LOAD1_V:%[A-z0-9]*]]{{.*}} !dbg [[EXTR1_LOC:![0-9]*]]
 ; CHECK-DAG: [[LOAD1_V]] = call <2 x float> {{.*}} !dbg [[LOAD1_LOC:![0-9]*]]

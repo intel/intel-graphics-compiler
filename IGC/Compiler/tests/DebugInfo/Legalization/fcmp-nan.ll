@@ -1,18 +1,20 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt --igc-legalization --preserve-nan=1 -S < %s | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --igc-legalization --preserve-nan=1 -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; Legalization: fcmp patterns with preserve NaN
 ; ------------------------------------------------
 ; This test checks that Legalization pass follows
 ; 'How to Update Debug Info' llvm guideline.
-;
+
 ; Debug MD for this test was created with debugify pass.
 ; ------------------------------------------------
 
@@ -21,7 +23,7 @@ source_filename = "FCmpNaN.ll"
 
 define spir_kernel void @test_fcmp(float %src1, float %src2) !dbg !7 {
 ; NaN check is performed separately and then logically or'd or and'd
-;
+
 ; Testcase 1
 ; cmp ord to and(oeq,oeq)
 ; CHECK: [[FCMP_OEQ2:%[0-9]*]] = fcmp oeq float %src2, %src2

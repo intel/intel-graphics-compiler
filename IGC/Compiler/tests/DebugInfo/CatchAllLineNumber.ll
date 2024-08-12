@@ -1,31 +1,33 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt -igc-catch-all-linenum -S < %s | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-catch-all-linenum -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; CatchAllLineNumber
 ; ------------------------------------------------
 ; This test checks that CatchAllLineNumber pass follows
 ; 'How to Update Debug Info' llvm guideline.
-;
+
 ; Debug MD for this test was created with debugify pass.
 ; ------------------------------------------------
 
 ; Testcase 1:
 ; Check that debug info is not lost
 ; and CatchAllLineNumber call has proper dbg node.
-;
+
 ; CHECK: define {{.*}} @catchline{{.*}} !dbg [[CL_SCOPE:![0-9]*]]
 ; CHECK-DAG: [[ADD_V:%[0-9]*]] = add i32 {{.*}} !dbg [[ADD_LOC:![0-9]*]]
 ; CHECK-DAG: call {{.*}}CatchAllDebugLine(), !dbg [[CALL_LOC:![0-9]*]]
 ; CHECK: dbg.value(metadata i32 [[ADD_V]], metadata [[ADD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ADD_LOC]]
 ; CHECK-NEXT: br label %end, !dbg [[BR_LOC:![0-9]*]]
-;
+
 define spir_kernel void @catchline(i32 %a) !dbg !6 {
 entry:
   %0 = add i32 %a, 1, !dbg !12
@@ -54,7 +56,7 @@ define spir_func i32 @no_catchline(i32 %a) !dbg !16 {
 }
 
 ; Testcase 1 MD:
-;
+
 ; CHECK-DAG: [[FILE:![0-9]*]] = !DIFile(filename: "CatchAllLineNumber.ll", directory: "/")
 ; CHECK-DAG: [[CL_SCOPE]] = distinct !DISubprogram(name: "catchline", linkageName: "catchline", scope: null, file: [[FILE]], line: 1
 ; CHECK-DAG: [[ADD_LOC]] = !DILocation(line: 3, column: 1, scope: [[CL_SCOPE]])
@@ -63,7 +65,7 @@ define spir_func i32 @no_catchline(i32 %a) !dbg !16 {
 
 
 ; Testcase 2 MD:
-;
+
 ; CHECK-DAG: [[NCL_SCOPE]] = distinct !DISubprogram(name: "no_catchline", linkageName: "no_catchline", scope: null, file: [[FILE]], line: 5
 ; CHECK-DAG: [[ADD1_LOC]] = !DILocation(line: 7, column: 1, scope: [[NCL_SCOPE]])
 ; CHECK-DAG: [[ADD1_MD]] = !DILocalVariable(name: "3", scope: [[NCL_SCOPE]], file: [[FILE]], line: 6

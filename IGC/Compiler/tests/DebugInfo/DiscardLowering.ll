@@ -1,24 +1,26 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt --igc-lower-discard -S < %s | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --igc-lower-discard -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; DiscardLowering
 ; ------------------------------------------------
 ; This test checks that DiscardLowering pass follows
 ; 'How to Update Debug Info' llvm guideline.
-;
+
 ; Debug MD for this test was created with debugify pass.
 ; ------------------------------------------------
 
 ; CHECK: void @test_discardlow
 ; CHECK-SAME: !dbg [[SCOPE:![0-9]*]]
-;
+
 ; CHECK-DAG: @llvm.dbg.value(metadata i1 [[HELP_V:%[A-z0-9]*]], metadata [[HELP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[HELP_LOC:![0-9]*]]
 ; CHECK-DAG: [[HELP_V]] = {{.*}}, !dbg [[HELP_LOC]]
 ; CHECK: !dbg [[DISCARD_LOC:![0-9]*]]

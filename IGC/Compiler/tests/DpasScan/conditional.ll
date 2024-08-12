@@ -1,18 +1,20 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt %s -S -o - -igc-dpas-scan -igc-serialize-metadata -platformpvc | FileCheck %s
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers %s -S -o - -igc-dpas-scan -igc-serialize-metadata -platformpvc | FileCheck %s
 ; CHECK: !{!"DisableEUFusion", i1 true}
 
 ; .cl source
-;
+
 ; float  __builtin_IB_sub_group_fdpas_hf_hf_8_1 (float  acc, int  a, int8 b) __attribute__((const));
-;
+
 ;__kernel void SimpleArg(float acc, int src1, int8 src2, __global float *dst) {
 ;    for (int i = 0; i < 3; i++) {
 ;        dst[i] =  __builtin_IB_sub_group_fdpas_hf_hf_8_1(acc, src1, src2);

@@ -1,31 +1,33 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-kernel-function-cloning -S < %s | FileCheck %s
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-kernel-function-cloning -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; KernelFunctionCloning
 ; ------------------------------------------------
 ; This test checks that KernelFunctionCloning pass follows
 ; 'How to Update Debug Info' llvm guideline.
-;
+
 ; And was reThis test is reduced from ocl test kernel:
 ; __kernel void bar(__global int *dst, int src)
 ; {
 ;     dst[0] = src;
-;
+
 ; }
-;
+
 ; __kernel void foo(__global int *srcA)
 ; {
 ;     int src = srcA[1];
 ;     bar(srcA, src);
 ; }
-;
+
 ; ------------------------------------------------
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
@@ -64,17 +66,17 @@ entry:
   store i32 %1, i32* %src, align 4, !dbg !39
   %2 = load i32 addrspace(1)*, i32 addrspace(1)** %srcA.addr, align 8, !dbg !41
   %3 = load i32, i32* %src, align 4, !dbg !42
-;
+
 ; Check cloned kernel call location
-;
+
 ; CHECK: call spir_kernel void @bar{{.*}}, !dbg [[CALL_LOC:![0-9]*]]
 
   call spir_kernel void @bar(i32 addrspace(1)* %2, i32 %3) #0, !dbg !43
   ret void, !dbg !44
 }
-;
+
 ; Check cloned function
-;
+
 ; CHECK: internal {{.*}} @bar{{.*}} !dbg [[CFUNC_MD:![0-9]*]] {
 ; CHECK: dbg.declare({{.*}}, metadata [[CDECL_DST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CDECL_DST_LOC:![0-9]*]]
 ; CHECK: dbg.declare({{.*}}, metadata [[CDECL_SRC_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CDECL_SRC_LOC:![0-9]*]]
@@ -84,7 +86,7 @@ entry:
 ; CHECK-NEXT: store {{.*}}, !dbg [[STORE_LOC:![0-9]*]]
 
 ; Checked cloned MD
-;
+
 ; CHECK-DAG: [[FOO_MD:![0-9]*]] = distinct !DISubprogram(name: "foo"
 ; CHECK-DAG: [[CALL_LOC]] = !DILocation(line: 10, column: 5, scope: [[FOO_MD]])
 ; CHECK-DAG: [[CFUNC_MD]] = distinct !DISubprogram(name: "bar"

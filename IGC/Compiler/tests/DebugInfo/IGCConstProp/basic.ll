@@ -1,26 +1,28 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt -igc-const-prop -S < %s | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-const-prop -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; IGCConstProp
 ; ------------------------------------------------
 ; This test checks that IGCConstProp pass follows
 ; 'How to Update Debug Info' llvm guideline.
-;
+
 ; Debug MD for this test was created with debugify pass.
 ; ------------------------------------------------
 
 ; CHECK: define spir_kernel void @test_slmconst{{.*}} !dbg [[SCOPE:![0-9]*]]
-;
+
 ; First value is dead
 ; CHECK: call void @llvm.dbg.value
-;
+
 ; CHECK: void @llvm.dbg.value(metadata i1 false, metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC:![0-9]*]]
 ; CHECK: [[VAL3_V:%[A-z0-9]*]] = {{.*}}, !dbg [[VAL3_LOC:![0-9]*]]
 ; CHECK: void @llvm.dbg.value(metadata i32 [[VAL3_V]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC]]

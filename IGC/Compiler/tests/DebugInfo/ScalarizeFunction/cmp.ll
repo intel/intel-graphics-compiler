@@ -1,29 +1,31 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt --igc-scalarize -S < %s | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --igc-scalarize -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; ScalarizeFunction : cmp insn operands
 ; ------------------------------------------------
 ; This test checks that ScalarizeFunction pass follows
 ; 'How to Update Debug Info' llvm guideline.
-;
+
 ; Debug MD for this test was created with debugify pass.
 ; ------------------------------------------------
 
 ; Check IR:
-;
+
 ; CHECK: alloca {{.*}}, !dbg [[ALLOC_LOC:![0-9]*]]
 ; CHECK: dbg.declare({{.*}}, metadata [[R_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOC_LOC]]
 ; CHECK-DAG: dbg.value(metadata <2 x i1> [[CMP_V:%[a-z0-9\.]*]], metadata [[CMP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CMP_LOC:![0-9]*]]
 ; CHECK-DAG: [[CMP_V]] = {{.*}}, !dbg [[CMP_LOC]]
 ; CHECK-DAG: store <2 x i1> [[CMP_V]], {{.*}}, !dbg [[STORE_LOC:![0-9]*]]
-;
+
 
 define spir_kernel void @test_cmp(<2 x i32> %src1, <2 x i32> %src2) !dbg !6 {
   %1 = alloca <2 x i1>, align 4, !dbg !13

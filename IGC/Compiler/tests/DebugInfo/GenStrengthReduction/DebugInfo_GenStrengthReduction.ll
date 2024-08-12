@@ -1,18 +1,20 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt -GenStrengthReduction -S < %s | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -GenStrengthReduction -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; GenStrengthReduction
 ; ------------------------------------------------
 ; This test checks that GenStrengthReduction pass follows
 ; 'How to Update Debug Info' llvm guideline.
-;
+
 ; Debug MD for this test was created with debugify pass.
 
 ; CHECK: define spir_kernel void @test{{.*}} !dbg [[SCOPE:![0-9]*]]

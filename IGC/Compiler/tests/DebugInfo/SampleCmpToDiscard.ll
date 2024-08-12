@@ -1,21 +1,23 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt --igc-discard-samplecmp -inputps -S < %s | FileCheck %s
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --igc-discard-samplecmp -inputps -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; SampleCmpToDiscard
 ; ------------------------------------------------
 ; This test checks that SampleCmpToDiscard pass follows
 ; 'How to Update Debug Info' llvm guideline.
-;
+
 ; Debug MD for this test was created with debugify pass.
 ; ------------------------------------------------
-;
+
 ; This is essentially analisys pass, thus check that nothing was modified
 
 

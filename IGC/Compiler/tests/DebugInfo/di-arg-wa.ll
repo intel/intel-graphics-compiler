@@ -1,19 +1,19 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: llvm-14-plus
-;
-; RUN: igc_opt -igc-debug-finalize -S < %s | FileCheck %s
+
+; RUN: igc_opt --opaque-pointers -igc-debug-finalize -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; DebugInfoPass
 ; ------------------------------------------------
-;
+
 ; Test checks DIArgList WA that replaces Arglist values with undef(if multiple).
-;
+
 ; CHECK:  call void @llvm.dbg.value(metadata !DIArgList(i32 %a)
 ; CHECK-NEXT:  call void @llvm.dbg.value(metadata !DIArgList(i32 %b)
 ; CHECK-NEXT:  call void @llvm.dbg.value(metadata !DIArgList(i32 undef, i32 undef)

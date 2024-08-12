@@ -1,23 +1,25 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-;
-; RUN: igc_opt --igc-scalarize -S < %s | FileCheck %s
+
+
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --igc-scalarize -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; ScalarizeFunction : castInst operands
 ; ------------------------------------------------
 ; This test checks that ScalarizeFunction pass follows
 ; 'How to Update Debug Info' llvm guideline.
-;
+
 ; Debug MD for this test was created with debugify pass.
 ; ------------------------------------------------
 
 ; Check IR:
-;
+
 ; CHECK: alloca {{.*}}, !dbg [[ALLOC64_LOC:![0-9]*]]
 ; CHECK: dbg.declare({{.*}}, metadata [[R64_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOC64_LOC]]
 ; CHECK: alloca {{.*}}, !dbg [[ALLOC16_LOC:![0-9]*]]
@@ -25,7 +27,7 @@
 ; CHECK-DAG: dbg.value(metadata <2 x i64> [[CAST_V:%[a-z0-9\.]*]], metadata [[CAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CAST_LOC:![0-9]*]]
 ; CHECK-DAG: [[CAST_V]] = {{.*}}, !dbg [[CAST_LOC]]
 ; CHECK-DAG: store <2 x i64> [[CAST_V]], {{.*}}, !dbg [[STORE64_LOC:![0-9]*]]
-;
+
 ; CHECK-DAG: dbg.value(metadata <4 x i16> [[BITCAST_V:%[a-z0-9\.]*]], metadata [[BITCAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[BITCAST_LOC:![0-9]*]]
 ; CHECK-DAG: [[BITCAST_V]] = {{.*}}, !dbg [[BITCAST_LOC]]
 ; CHECK-DAG: store <4 x i16> [[BITCAST_V]], {{.*}}, !dbg [[STORE16_LOC:![0-9]*]]

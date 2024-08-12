@@ -1,18 +1,18 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ; Was reduced for llvm-14, different loop-unroll results for llvm9
 ; REQUIRES: debug, llvm-14-plus
-;
-; RUN: igc_opt -igc-disable-loop-unroll -loop-unroll -gen-tti -debug-only="loop-unroll" -disable-output 2>&1 < %s | FileCheck %s
+
+; RUN: igc_opt --opaque-pointers -igc-disable-loop-unroll -loop-unroll -gen-tti -debug-only="loop-unroll" -disable-output 2>&1 < %s | FileCheck %s
 ; ------------------------------------------------
 ; DisableLoopUnrollOnRetry
 ; ------------------------------------------------
-;
+
 ; Test checks llvm.loop.unroll hints support on retry
 
 ; CHECK: Loop Unroll: F[test_enable] Loop %bb_enable
