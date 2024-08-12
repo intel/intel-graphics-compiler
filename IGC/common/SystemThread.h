@@ -83,8 +83,8 @@ namespace SIP
     enum SLM_SIZE_SUPPORTED
     {
         SLM_ANY,
-        SLM_128,
-        SLM_160
+        SLM_128 = 128,
+        SLM_160 = 160
     };
 
     class CSystemThread
@@ -95,13 +95,6 @@ namespace SIP
             const USC::SYSTEM_THREAD_MODE mode,
             USC::SSystemThreadKernelOutput* &pSystemThread,
             bool bindlessmode = false);
-
-        static bool CreateSystemThreadKernel_v2(const PLATFORM &platform,
-            const IGC::SCompilerHwCaps &Caps,
-            const GT_SYSTEM_INFO &sysInfo,
-            const USC::SYSTEM_THREAD_MODE mode,
-            USC::SSystemThreadKernelOutput *&pSystemThread,
-            SLM_SIZE_SUPPORTED slmSize);
 
         static void   DeleteSystemThreadKernel(
             USC::SSystemThreadKernelOutput* &pSystemThread );
@@ -117,8 +110,7 @@ namespace SIP
         CGenSystemInstructionKernelProgram* Create(
             const IGC::CPlatform &platform,
             const USC::SYSTEM_THREAD_MODE mode,
-            const bool bindlessMode,
-            SLM_SIZE_SUPPORTED slmSize);
+            const bool bindlessMode);
 
             void Delete(CGenSystemInstructionKernelProgram* &pKernelProgram );
 

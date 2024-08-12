@@ -143,4 +143,11 @@ struct StateSaveAreaHeaderV3
     struct intelgt_state_save_area_V3 regHeader;
 };
 
+// versionHeader.version.major = 4
+struct StateSaveAreaHeaderV4
+{
+    struct StateSaveArea versionHeader;
+    uint64_t total_wmtp_data_size;
+};
+
 }  // namespace SIP
