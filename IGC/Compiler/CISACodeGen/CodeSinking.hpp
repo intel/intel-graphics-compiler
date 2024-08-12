@@ -66,6 +66,7 @@ namespace IGC {
             bool& reducePressure,
             bool& hasAliasConcern,
             SmallPtrSetImpl<Instruction*>& Stores);
+        bool localSink(BasicBlock *BB);
 
         uint estimateLiveOutPressure(llvm::BasicBlock* blk, const llvm::DataLayout* DL);
 
@@ -84,6 +85,7 @@ namespace IGC {
 
 
     typedef enum { NoSink=0, SinkWhileRegpressureIsHigh, FullSink } LoopSinkMode;
+    typedef enum { Unknown=0, MaybeSink, Sink, IntraLoopSink } LoopSinkWorthiness;
 
     class CodeLoopSinking : public llvm::FunctionPass {
         llvm::DominatorTree* DT = nullptr;
@@ -96,6 +98,7 @@ namespace IGC {
         IGCLivenessAnalysis* RPE = nullptr;
         IGCFunctionExternalRegPressureAnalysis* FRPE = nullptr;
         CodeGenContext* CTX = nullptr;
+        TargetLibraryInfo* TLI = nullptr;
 
     public:
         static char ID; // Pass identification
@@ -115,6 +118,7 @@ namespace IGC {
             AU.addRequired<TranslationTable>();
             AU.addRequired<IGCLivenessAnalysis>();
             AU.addRequired<IGCFunctionExternalRegPressureAnalysis>();
+            AU.addRequired<TargetLibraryInfoWrapperPass>();
             AU.addRequired<CodeGenContextWrapper>();
 
             AU.addPreserved<llvm::DominatorTreeWrapperPass>();
@@ -125,27 +129,107 @@ namespace IGC {
         }
     private:
 
+        typedef llvm::SmallPtrSet<llvm::Instruction*, 32> InstSet;
+
+        // Candidate for a sinking - POD structure to describe instructions to be sinked in a loop
+
+        // Instructions - list of instructions to be sinked in reverse order (from last to first)
+        //     All instructions must be from the same basic block, not necessarily consecutive
+        // TgtBB - target basic block where instructions should be sinked
+        // Worthiness - worthiness of the candidate to be sinked
+        //     Unknown - candidate is not checked yet
+        //     MaybeSink - candidate is checked and can be sinked if it's beneficial
+        //         (it depends on whether the other candidates that use it's operands are going to be sinked)
+        //     Sink - candidate is checked and should be sinked
+        //     IntraLoopSink - candidate is already in the loop, but might be sinked to another basic block
+        //         or scheduled within the basic block
+
+        struct Candidate {
+            typedef llvm::SmallVector<llvm::Instruction*, 16> InstrVec;
+
+            Candidate(InstrVec Instructions, BasicBlock* TgtBB, LoopSinkWorthiness Worthiness)
+                : Instructions(Instructions), TgtBB(TgtBB), Worthiness(Worthiness) {}
+
+            Candidate(llvm::Instruction* Instruction, BasicBlock* TgtBB, LoopSinkWorthiness Worthiness)
+                : Instructions(InstrVec{Instruction}), TgtBB(TgtBB), Worthiness(Worthiness) {}
+
+            InstrVec Instructions;
+
+            BasicBlock *TgtBB;
+            LoopSinkWorthiness Worthiness = Unknown;
+
+            // iterator of instructions
+            typedef llvm::SmallVector<llvm::Instruction*, 16>::iterator iterator;
+            iterator begin() { return Instructions.begin(); }
+            iterator end() { return Instructions.end(); }
+
+            // const iterator of instructions
+            typedef llvm::SmallVector<llvm::Instruction*, 16>::const_iterator const_iterator;
+            const_iterator begin() const { return Instructions.begin(); }
+            const_iterator end() const { return Instructions.end(); }
+
+            // first instruction - comes last in the BB but first in the list
+            Instruction *first() const { return Instructions.front(); }
+
+            size_t size() const { return Instructions.size(); }
+
+            void print(llvm::raw_ostream& OS) const {
+                auto worthinessToString = [](LoopSinkWorthiness Worthiness) {
+                    switch (Worthiness) {
+                    case Unknown: return "Unknown";
+                    case MaybeSink: return "MaybeSink";
+                    case Sink: return "Sink";
+                    case IntraLoopSink: return "IntraLoopSink";
+                    default: return "Unknown";
+                    }
+                };
+
+                OS << "Candidate: Target BB: " << TgtBB->getName() << " Worthiness: " << worthinessToString(Worthiness) << " Instructions: \n";
+                for (auto I : Instructions) {
+                    OS << *I << " ";
+                }
+            }
+        };
+
+        typedef llvm::SmallVector<Candidate, 64> CandidateVec;
+        typedef llvm::SmallVector<Candidate*, 64> CandidatePtrVec;
+        typedef llvm::DenseMap<Instruction*, Candidate*> InstToCandidateMap;
+
         /// sinking
         bool loopSink(llvm::Function& F);
         bool loopSink(llvm::Loop* LoopWithPressure, LoopSinkMode Mode);
 
-        bool loopSinkInstructions(
-            llvm::SmallVector<llvm::Instruction*, 64>& SinkCandidates,
-            llvm::SmallPtrSet<llvm::Instruction*, 32>& LoadChains,
+        bool localSink(llvm::BasicBlock* BB, InstToCandidateMap& InstToCandidate);
+
+        /// candidates creation
+        bool tryCreateShufflePatternCandidates(
+            llvm::Loop* L,
+            InstSet& SkipInstructions,
+            CandidateVec& SinkCandidates
+        );
+        bool tryCreate2dBlockReadGroupSinkingCandidate(
+            llvm::Instruction *I,
+            llvm::Loop *L,
+            InstSet& SkipInstructions,
+            CandidateVec& SinkCandidates
+        );
+        CandidatePtrVec refineLoopSinkCandidates(
+            CandidateVec& SinkCandidates,
+            InstSet& LoadChains,
             llvm::Loop* L);
 
         bool isSafeToLoopSinkLoad(llvm::Instruction* I, llvm::Loop* Loop);
         bool isAlwaysSinkInstruction(llvm::Instruction* I);
-        bool sinkInstruction(llvm::Instruction* I);
+        bool allUsesAreInLoop(llvm::Instruction* I, llvm::Loop* L);
 
-        // pre-condition to sink an instruction into a loop
-        bool isLoopSinkCandidate(llvm::Instruction* I, llvm::Loop* L, bool AllowLoadSinking);
-        bool isLoadChain(llvm::Instruction* I, SmallPtrSet<Instruction*, 32>& LoadChains, bool EnsureSingleUser=false);
-        void prepopulateLoadChains(llvm::Loop* I, SmallPtrSet<Instruction*, 32>& LoadChains);
+        BasicBlock* findLowestLoopSinkTarget(llvm::Instruction* I, llvm::Loop* L);
+
+        /// load chain heuristic
+        bool isLoadChain(llvm::Instruction* I, InstSet& LoadChains, bool EnsureSingleUser=false);
+        void prepopulateLoadChains(llvm::Loop* I, InstSet& LoadChains);
 
         /// data members for local-sinking
         llvm::SmallPtrSet<llvm::BasicBlock*, 8> LocalBlkSet;
-        llvm::SmallPtrSet<llvm::Instruction*, 8> LocalInstSet;
         /// data members for undo
         std::vector<llvm::Instruction*> MovedInsts;
         std::vector<llvm::Instruction*> UndoLocas;
@@ -161,11 +245,12 @@ namespace IGC {
         llvm::SmallPtrSet<llvm::Loop*, 8> BlacklistedLoops;
         StoresVec getAllStoresInLoop(llvm::Loop* L);
 
-        /// checking if sinking is beneficial
+        /// checking if sinking in a particular loop is beneficial
         llvm::DenseMap<llvm::BasicBlock*, uint> BBPressures;
-        LoopSinkMode needLoopSink(llvm::Loop* L);
+        bool mayBeLoopSinkCandidate(llvm::Instruction* I, llvm::Loop* L);
         unsigned getMaxRegCountForLoop(llvm::Loop* L);
         unsigned getMaxRegCountForFunction(llvm::Function* F);
+        LoopSinkMode needLoopSink(llvm::Loop* L);
     };
 
     void initializeCodeLoopSinkingPass(llvm::PassRegistry&);

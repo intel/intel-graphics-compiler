@@ -26,8 +26,8 @@ define void @foo(float addrspace(1)* %in0, double addrspace(1)* %in1, float addr
 ; These 5 adds are beneficial to sink at once, because now only one value is alive in the loop (L_1), instead of 5
 
 ; CHECK:         [[INDEX:%.*]] = phi i32 [ 0, [[ENTRY_PREHEADER]] ], [ [[INC:%.*]], [[LOOP]] ]
-; CHECK:         [[ADDF_2:%.*]] = fadd float [[L_1]], 2.000000e+00
 ; CHECK:         [[ADDF_1:%.*]] = fadd float [[L_1]], 1.000000e+00
+; CHECK:         [[ADDF_2:%.*]] = fadd float [[L_1]], 2.000000e+00
 ; CHECK:         [[ACC0:%.*]] = fadd float [[ADDF_1]], [[ADDF_2]]
 ; CHECK:         [[ADDF_3:%.*]] = fadd float [[L_1]], 3.000000e+00
 ; CHECK:         [[ACC1:%.*]] = fadd float [[ACC0]], [[ADDF_3]]
