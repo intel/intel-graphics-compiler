@@ -36,13 +36,7 @@ namespace IGC
         ThreadIDLayout m_ThreadIDLayout = ThreadIDLayout::X;
 
         CS_WALK_ORDER m_walkOrder = CS_WALK_ORDER::WO_XYZ;
-        enum EMIT_LOCAL_MASK {
-            NONE = 0,
-            X    = 1,
-            XY   = 3,
-            XYZ  = 7
-        };
-        EMIT_LOCAL_MASK m_emitMask = EMIT_LOCAL_MASK::NONE;
+        EMIT_LOCAL_MASK m_emitMask = EMIT_LOCAL_MASK::EM_NONE;
         //true if HW generates localIDs and puts them to payload
         //false if SW generates localIDs and prolog kernel loads them from memory
         bool m_enableHWGenerateLID = false;

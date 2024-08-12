@@ -85,7 +85,7 @@ namespace IGC
             return;
 
         //if no LID is used ever, HWGenerateLID should be disabled
-        if (EMIT_LOCAL_MASK::NONE == m_emitMask) {
+        if (EMIT_LOCAL_MASK::EM_NONE == m_emitMask) {
             m_enableHWGenerateLID = false;
             return;
         }
@@ -108,14 +108,14 @@ namespace IGC
 
         //if not all DIMs are used, we can assume not-used DIM vals are 1, so, HW might generate LIDs even if original not-used DIM val != pow2
         //say, (31, 17, 3), if only X dim is used, HW will generate LID for (31,1,1). If both XY are used, then, HW cannot generate LIDs
-        if (EMIT_LOCAL_MASK::X == m_emitMask){
+        if (EMIT_LOCAL_MASK::EM_X == m_emitMask){
             threadGroupSize_Y = 1;
             threadGroupSize_Z = 1;
             //it makes no sense to use TileY if no Y is used at all. Disable it.
             m_ThreadIDLayout = ThreadIDLayout::X;
-        }else if (EMIT_LOCAL_MASK::XY == m_emitMask){
+        }else if (EMIT_LOCAL_MASK::EM_XY == m_emitMask){
             threadGroupSize_Z = 1;
-        }//else if (EMIT_LOCAL_MASK::XYZ == m_emitMask)
+        }//else if (EMIT_LOCAL_MASK::EM_XY == m_emitMask)
 
         // Will use linear for the case like 64x1x1.
         // Open: How about 1x32x1?
@@ -152,7 +152,7 @@ namespace IGC
         if ((IGC_IS_FLAG_ENABLED(ForceLinearWalkOnLinearUAV) ||
             MMD->compOpt.ForceLinearWalkOnLinearUAV) &&
             (m_ThreadIDLayout == ThreadIDLayout::TileY) &&
-            EMIT_LOCAL_MASK::XY == m_emitMask &&
+            EMIT_LOCAL_MASK::EM_XY == m_emitMask &&
             num1DAccesses)
         {
             m_ThreadIDLayout = ThreadIDLayout::X;
@@ -165,7 +165,7 @@ namespace IGC
         if (b_EnableNewTileYCheck &&
             IGC_IS_FLAG_ENABLED(SetDefaultTileYWalk) &&
             (m_ThreadIDLayout == ThreadIDLayout::TileY) &&
-            EMIT_LOCAL_MASK::XY == m_emitMask)
+            EMIT_LOCAL_MASK::EM_XY == m_emitMask)
         {
             // check 1D, 2D, SLM accesses
             int num1D = num1DAccesses + (int)(numSLMAccesses / 4);
@@ -354,13 +354,13 @@ namespace IGC
         switch (channelNum)
         {
         case THREAD_ID_IN_GROUP_X:
-            m_emitMask = (EMIT_LOCAL_MASK::NONE == m_emitMask) ? EMIT_LOCAL_MASK::X : m_emitMask;
+            m_emitMask = (EMIT_LOCAL_MASK::EM_NONE == m_emitMask) ? EMIT_LOCAL_MASK::EM_X : m_emitMask;
             break;
         case THREAD_ID_IN_GROUP_Y:
-            m_emitMask = (EMIT_LOCAL_MASK::NONE == m_emitMask || EMIT_LOCAL_MASK::X == m_emitMask) ? EMIT_LOCAL_MASK::XY : m_emitMask;
+            m_emitMask = (EMIT_LOCAL_MASK::EM_NONE == m_emitMask || EMIT_LOCAL_MASK::EM_X == m_emitMask) ? EMIT_LOCAL_MASK::EM_XY : m_emitMask;
             break;
         case THREAD_ID_IN_GROUP_Z:
-            m_emitMask = EMIT_LOCAL_MASK::XYZ;
+            m_emitMask = EMIT_LOCAL_MASK::EM_XYZ;
             break;
         default:
             break;

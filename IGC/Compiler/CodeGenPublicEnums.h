@@ -332,6 +332,13 @@ namespace IGC
         WO_ZYX = 5
     };
 
+    enum EMIT_LOCAL_MASK {
+        EM_NONE = 0,
+        EM_X    = 1,
+        EM_XY   = 3,
+        EM_XYZ  = 7
+    };
+
     enum ARG_SPACE_RESERVATION_SLOTS {
         RTX_GLOBAL_BUFFER_PTR,
 
