@@ -89,6 +89,13 @@ OCL_API_CALL inline void PopulateInterfaceWith(IGC::GTSystemInfo<3>& dst,
   COPY_VAL_EXACT(DualSubSliceCount);
 }
 
+template <typename SrcStructT>
+OCL_API_CALL inline void PopulateInterfaceWith(IGC::GTSystemInfo<4>& dst,
+                                  const SrcStructT& src) {
+  PopulateInterfaceWith<3>(dst, src);
+  COPY_VAL_EXACT(SLMSizeInKb);
+}
+
 }
 
 namespace IgcPlatformFeaturesHelper {
