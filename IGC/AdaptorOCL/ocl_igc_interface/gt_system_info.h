@@ -89,6 +89,13 @@ CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(GTSystemInfo, 3, 1) {
    OCL_API_CALL virtual void SetDualSubSliceCount(uint32_t v);
 };
 
+CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(GTSystemInfo, 4, 3) {
+    CIF_INHERIT_CONSTRUCTOR();
+
+    OCL_API_CALL virtual uint32_t GetSLMSizeInKb() const;
+    OCL_API_CALL virtual void SetSLMSizeInKb(uint32_t v);
+};
+
 CIF_GENERATE_VERSIONS_LIST(GTSystemInfo);
 CIF_MARK_LATEST_VERSION(GTSystemInfoLatest, GTSystemInfo);
 using GTSystemInfoTagOCL = GTSystemInfo<3>;    // Note : can tag with different version for
