@@ -1633,9 +1633,7 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
 
         for (uint instance = 0; instance < dst->GetNumberInstance(); instance++)
         {
-            m_encoder->SetSubSpanDestination(m_pattern->NeedVMask());
             m_encoder->SetSecondHalf(instance == 1 ? true : false);
-
             unsigned int numVTyElt = dstVTyMap[dst];
             if (numVTyElt > 0)
             {
