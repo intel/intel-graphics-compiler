@@ -152,3 +152,29 @@ void ScalarizerCodeGen::visitCastInst(llvm::CastInst& I)
         }
     }
 }
+
+#if LLVM_VERSION_MAJOR >= 10
+void ScalarizerCodeGen::visitFNeg(llvm::UnaryOperator& I)
+{
+    if (I.getType()->isVectorTy())
+    {
+        IGCLLVM::FixedVectorType* InstType = cast<IGCLLVM::FixedVectorType>(I.getType());
+        unsigned NumElements = int_cast<unsigned>(InstType->getNumElements());
+        Value* Src = I.getOperand(0);
+        m_builder->SetInsertPoint(&I);
+
+        Value* LastOp = UndefValue::get(InstType);
+        for (unsigned Idx = 0; Idx < NumElements; Idx++)
+        {
+            Value* ConstIndex = ConstantInt::get(m_builder->getInt32Ty(), Idx);
+            Value* EESrc0 = m_builder->CreateExtractElement(Src, ConstIndex);
+            Value* NewFNegInst = m_builder->CreateFNeg(EESrc0);
+            LastOp = m_builder->CreateInsertElement(LastOp, NewFNegInst, ConstIndex);
+        }
+
+        // Now replace all the instruction users with the newly created instruction
+        I.replaceAllUsesWith(LastOp);
+        I.eraseFromParent();
+    }
+}
+#endif
