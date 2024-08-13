@@ -442,7 +442,8 @@ namespace llvm {
 
         llvm::BasicBlock::InstListType::iterator I;
         llvm::BasicBlock::InstListType& instructionList = L->getBlocks()[0]->getInstList();
-        int instCount = instructionList.size();
+        llvm::BasicBlock* loopBlock = L->getBlocks()[0];
+        int instCount = std::distance(loopBlock->instructionsWithoutDebug().begin(), loopBlock->instructionsWithoutDebug().end());
 
         // Check if the specific basic block has block read or write.
         auto hasBlockReadWrite = [](BasicBlock* BB) {
