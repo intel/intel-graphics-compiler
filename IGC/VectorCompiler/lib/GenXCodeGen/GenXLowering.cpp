@@ -4772,6 +4772,7 @@ static Value *extractBitfields(IRBuilder<> &IRB, Value *To, Value *From,
     To = To ? IRB.CreateOr(To, ShiftV) : ShiftV;
     InsertTo += Width;
   }
+  IGC_ASSERT_EXIT(To);
   return To;
 }
 
@@ -4814,6 +4815,7 @@ bool GenXLowering::lowerLogicalThreadID(CallInst *CI) {
     auto *Mul = IRB.CreateMul(Res, ConstantInt::get(Ty, NumThreads));
     Res = IRB.CreateAdd(Mul, TID);
   }
+  IGC_ASSERT_EXIT(Res);
 
   CI->replaceAllUsesWith(Res);
   ToErase.push_back(CI);

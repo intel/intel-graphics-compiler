@@ -203,6 +203,7 @@ Value *GenXTranslateIntrinsics::translateMinMax(CallInst &I) const {
   switch (IID) {
   default:
     IGC_ASSERT_EXIT_MESSAGE(0, "Unexpected intrinsic");
+    break;
   case GenXIntrinsic::genx_smax:
     IsSigned = true;
     NewIID = Intrinsic::smax;
