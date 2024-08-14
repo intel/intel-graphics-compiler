@@ -53,31 +53,6 @@ Value *PacketBuilder::VLOG2PS(Value *A) {
   return Result;
 }
 
-//////////////////////////////////////////////////////////////////////////
-/// @brief Computes A^2.4 using either scalar pow function from the runtime
-///        or vector approximation
-/// @param A - src float vector
-Value *PacketBuilder::VPOW24PS(Value *A) {
-  Value *Result = nullptr;
-  // approximation algorithm from
-  // http://stackoverflow.com/questions/6475373/optimizations-for-pow-with-const-non-integer-exponent
-  // computes a^2.4 with approximately 5% overestimate.
-  // can reduce the error further with a few more terms
-  const float EXPNUM = 24;
-  const float EXPDEN = 10;
-  const float COEFFNUM = 1.0f;
-  const float COEFFDEN = 1.0f;
-  auto *CorrectionFactor =
-      VIMMED1(exp2f(127.f * EXPDEN / EXPNUM - 127.f) *
-              powf(1.f * COEFFNUM / COEFFDEN, 1.0f * EXPDEN / EXPNUM));
-  Result = FMUL(A, CorrectionFactor);
-  Result = SI_TO_FP(BITCAST(Result, SimdInt32Ty), SimdFP32Ty);
-  Result = FMUL(Result, VIMMED1(1.f * EXPNUM / EXPDEN));
-  Result = BITCAST(FP_TO_SI(Result, SimdInt32Ty), SimdFP32Ty);
-  Result->setName("pow24.");
-  return Result;
-}
-
 #define EXP_POLY_DEGREE 3
 
 #define POLY0(x, c0) VIMMED1(c0)
@@ -117,5 +92,136 @@ Value *PacketBuilder::VEXP2PS(Value *A) {
 #endif // EXP_POLY_DEGREE
   Result = FMUL(ExpIPart, ExpFPart, "exp2.");
   return Result;
+}
+
+Value *PacketBuilder::ADD(Value *LHS, Value *RHS, const Twine &Name,
+                          bool HasNUW, bool HasNSW) {
+  return IRB->CreateAdd(LHS, RHS, Name, HasNUW, HasNSW);
+}
+
+Value *PacketBuilder::AND(Value *LHS, Value *RHS, const Twine &Name) {
+  return IRB->CreateAnd(LHS, RHS, Name);
+}
+
+Value *PacketBuilder::AND(Value *LHS, uint64_t RHS, const Twine &Name) {
+  return IRB->CreateAnd(LHS, RHS, Name);
+}
+
+Value *PacketBuilder::ASHR(Value *LHS, uint64_t RHS, const Twine &Name,
+                           bool IsExact) {
+  return IRB->CreateAShr(LHS, RHS, Name, IsExact);
+}
+
+Value *PacketBuilder::EXP2(Value *A, const llvm::Twine &Name) {
+  SmallVector<Type *, 1> Args;
+  Args.push_back(A->getType());
+  auto *Decl = Intrinsic::getDeclaration(M, Intrinsic::exp2, Args);
+  return CALL(Decl, std::initializer_list<Value *>{A}, Name);
+}
+
+Value *PacketBuilder::FABS(Value *A, const llvm::Twine &Name) {
+  SmallVector<Type *, 1> Args;
+  Args.push_back(A->getType());
+  auto *Decl = Intrinsic::getDeclaration(M, Intrinsic::fabs, Args);
+  return CALL(Decl, std::initializer_list<Value *>{A}, Name);
+}
+
+Value *PacketBuilder::FADD(Value *LHS, Value *RHS, const Twine &Name,
+                           MDNode *FPMathTag) {
+  return IRB->CreateFAdd(LHS, RHS, Name, FPMathTag);
+}
+
+Value *PacketBuilder::FCMP_OEQ(Value *LHS, Value *RHS, const Twine &Name,
+                               MDNode *FPMathTag) {
+  return IRB->CreateFCmpOEQ(LHS, RHS, Name, FPMathTag);
+}
+
+Value *PacketBuilder::FCMP_OLT(Value *LHS, Value *RHS, const Twine &Name,
+                               MDNode *FPMathTag) {
+  return IRB->CreateFCmpOLT(LHS, RHS, Name, FPMathTag);
+}
+
+Value *PacketBuilder::FCMP_UNO(Value *LHS, Value *RHS, const Twine &Name,
+                               MDNode *FPMathTag) {
+  return IRB->CreateFCmpUNO(LHS, RHS, Name, FPMathTag);
+}
+
+Value *PacketBuilder::FMUL(Value *LHS, Value *RHS, const Twine &Name,
+                           MDNode *FPMathTag) {
+  return IRB->CreateFMul(LHS, RHS, Name, FPMathTag);
+}
+
+Value *PacketBuilder::FP_TO_SI(Value *V, Type *DestTy, const Twine &Name) {
+  return IRB->CreateFPToSI(V, DestTy, Name);
+}
+
+Value *PacketBuilder::FSUB(Value *LHS, Value *RHS, const Twine &Name,
+                           MDNode *FPMathTag) {
+  return IRB->CreateFSub(LHS, RHS, Name, FPMathTag);
+}
+
+Value *PacketBuilder::MUL(Value *LHS, Value *RHS, const Twine &Name,
+                          bool HasNUW, bool HasNSW) {
+  return IRB->CreateMul(LHS, RHS, Name, HasNUW, HasNSW);
+}
+
+Value *PacketBuilder::NOT(Value *V, const Twine &Name) {
+  return IRB->CreateNot(V, Name);
+}
+
+Value *PacketBuilder::OR(Value *LHS, Value *RHS, const Twine &Name) {
+  return IRB->CreateOr(LHS, RHS, Name);
+}
+
+Value *PacketBuilder::SHL(Value *LHS, Value *RHS, const Twine &Name,
+                          bool HasNUW, bool HasNSW) {
+  return IRB->CreateShl(LHS, RHS, Name, HasNUW, HasNSW);
+}
+
+Value *PacketBuilder::SHL(Value *LHS, uint64_t RHS, const Twine &Name,
+                          bool HasNUW, bool HasNSW) {
+  return IRB->CreateShl(LHS, RHS, Name, HasNUW, HasNSW);
+}
+
+Value *PacketBuilder::SI_TO_FP(Value *V, Type *DestTy, const Twine &Name) {
+  return IRB->CreateSIToFP(V, DestTy, Name);
+}
+
+Value *PacketBuilder::SUB(Value *LHS, Value *RHS, const Twine &Name,
+                          bool HasNUW, bool HasNSW) {
+  return IRB->CreateSub(LHS, RHS, Name, HasNUW, HasNSW);
+}
+
+Value *PacketBuilder::S_EXT(Value *V, Type *DestTy, const Twine &Name) {
+  return IRB->CreateSExt(V, DestTy, Name);
+}
+
+Value *PacketBuilder::TRUNC(Value *V, Type *DestTy, const Twine &Name) {
+  return IRB->CreateTrunc(V, DestTy, Name);
+}
+
+Value *PacketBuilder::VMINPS(Value *A, Value *B, const llvm::Twine &Name) {
+  SmallVector<Type *, 1> Args;
+  Args.push_back(A->getType());
+  auto *Decl = Intrinsic::getDeclaration(M, Intrinsic::minnum, Args);
+  return CALL(Decl, std::initializer_list<Value *>{A, B}, Name);
+}
+
+Value *PacketBuilder::VMAXPS(Value *A, Value *B, const llvm::Twine &Name) {
+  SmallVector<Type *, 1> Args;
+  Args.push_back(A->getType());
+  auto *Decl = Intrinsic::getDeclaration(M, Intrinsic::maxnum, Args);
+  return CALL(Decl, std::initializer_list<Value *>{A, B}, Name);
+}
+
+Value *PacketBuilder::VSQRTPS(Value *A, const llvm::Twine &Name) {
+  SmallVector<Type *, 1> Args;
+  Args.push_back(A->getType());
+  auto *Decl = Intrinsic::getDeclaration(M, Intrinsic::sqrt, Args);
+  return CALL(Decl, std::initializer_list<Value *>{A}, Name);
+}
+
+Value *PacketBuilder::UI_TO_FP(Value *V, Type *DestTy, const Twine &Name) {
+  return IRB->CreateUIToFP(V, DestTy, Name);
 }
 } // namespace pktz
