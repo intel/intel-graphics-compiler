@@ -265,36 +265,28 @@ bool GenXBaling::isRegionOKForIntrinsic(unsigned ArgInfoBits,
   unsigned Restriction = AI.getRestriction();
   if (!Restriction)
     return true;
-  unsigned GRFWidth = ST ? ST->getGRFByteSize() : defaultGRFByteSize;
-  unsigned ElementsPerGrf = GRFWidth / R.ElementBytes;
-  unsigned GRFLogAlign = Log2_32(GRFWidth);
-  if (AI.Info & GenXIntrinsicInfo::GRFALIGNED) {
+
+  const unsigned GRFWidth = ST ? ST->getGRFByteSize() : defaultGRFByteSize;
+  const auto Align = AI.getAlignment();
+  const auto Log2Align = getLogAlignment(Align, GRFWidth * ByteBits);
+
+  if (Log2Align > 0) {
+    const auto ElementsPerAlign = (1 << Log2Align) / R.ElementBytes;
+
     if (R.Indirect) {
       // Instructions that cannot be splitted also cannot allow indirect
       if (!CanSplitBale)
         return false;
       Alignment AL = AlignInfo.get(R.Indirect);
-      if (AL.getLogAlign() < GRFLogAlign || AL.getExtraBits() != 0)
+      if (AL.getLogAlign() < Log2Align || AL.getExtraBits() != 0)
         return false;
-    } else if (R.Offset & (GRFWidth - 1))
+    } else if ((R.Offset & (ElementsPerAlign - 1)) != 0)
       return false;
-    if (R.is2D() && (R.VStride & (ElementsPerGrf - 1)))
+
+    if (R.is2D() && (R.VStride & (ElementsPerAlign - 1)) != 0)
       return false;
   }
-  if (AI.Info & GenXIntrinsicInfo::OWALIGNED) {
-    // Instructions that cannot be splitted also cannot allow indirect
-    if (R.Indirect) {
-      if (!CanSplitBale)
-        return false;
-      Alignment AL = AlignInfo.get(R.Indirect);
-      if (AL.getLogAlign() < 4 || AL.getExtraBits() != 0)
-        return false;
-    }
-    if (R.Offset & 15)
-      return false;
-    if (R.is2D() && (R.VStride & ((ElementsPerGrf >> 1) - 1)))
-      return false;
-  }
+
   switch (Restriction) {
   case GenXIntrinsicInfo::SCALARORCONTIGUOUS:
     if (!R.Stride && R.Width == R.NumElements)

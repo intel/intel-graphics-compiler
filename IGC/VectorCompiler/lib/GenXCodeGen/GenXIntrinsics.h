@@ -144,8 +144,11 @@ public:
     // Modifiers for destination or source, 7 bits used
     UNSIGNED =              GENX_ITR_FLAGVAL(0), // int type forced to unsigned
     SIGNED =                GENX_ITR_FLAGVAL(1), // int type forced to signed
-    OWALIGNED =             GENX_ITR_FLAGVAL(2), // must be oword aligned
-    GRFALIGNED =            GENX_ITR_FLAGVAL(3), // must be grf aligned
+    ALIGNMENT =             GENX_ITR_FLAGMASK(2, 2),
+      UNALIGNED =           GENX_ITR_FLAGENUM(2, 0), // no alignment requirements (default)
+      QWALIGNED =           GENX_ITR_FLAGENUM(2, 1), // must be qword aligned
+      OWALIGNED =           GENX_ITR_FLAGENUM(2, 2), // must be oword aligned
+      GRFALIGNED =          GENX_ITR_FLAGENUM(2, 3), // must be grf aligned
     RESTRICTION =           GENX_ITR_FLAGMASK(4, 3), // field with operand width restriction
       FIXED4 =              GENX_ITR_FLAGENUM(4, 1), // operand is fixed size 4 vector and contiguous
       CONTIGUOUS =          GENX_ITR_FLAGENUM(4, 2), // operand must be contiguous
@@ -188,10 +191,18 @@ public:
     // byte
     VISA_Align getAlignment() const {
       if (isGeneral()) {
-        if (Info & GRFALIGNED)
-          return VISA_Align::ALIGN_GRF;
-        if (Info & OWALIGNED)
+        switch (Info & ALIGNMENT) {
+        case UNALIGNED:
+          break;
+        case QWALIGNED:
+          return VISA_Align::ALIGN_QWORD;
+        case OWALIGNED:
           return VISA_Align::ALIGN_OWORD;
+        case GRFALIGNED:
+          return VISA_Align::ALIGN_GRF;
+        default:
+          break;
+        }
         return VISA_Align::ALIGN_BYTE;
       }
       if (isRaw())
