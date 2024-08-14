@@ -164,7 +164,8 @@ struct RayDispatchGlobalData
 
         };
 
-        uint32_t paddingBits4;
+        uint64_t uberTilesMap;              // base address of the uber tiles map used for AtomicPull model
+        uint32_t paddingBits4;              // 1 dword of padding to make sure the struct size is multiple of 8 on all platforms
 
         uint32_t pStackSizePerRay;          // maximal stack size of a ray
         uint32_t swStackSizePerRay;         // size in bytes per ray of the SWStack
@@ -246,7 +247,7 @@ constexpr uint32_t RTGlobalsAlign = 256;
 constexpr uint32_t RTStackAlign = 128;
 static_assert(RTStackAlign % RayDispatchGlobalData::StackChunkSize == 0, "no?");
 
-static_assert(sizeof(RayDispatchGlobalData) == 176, "unexpected size?");
+static_assert(sizeof(RayDispatchGlobalData) == 184, "unexpected size?");
 static_assert(sizeof(RayDispatchGlobalData::RT::Xe) == sizeof(RayDispatchGlobalData), "unexpected size?");
 #ifdef HAS_INCLUDE_TYPE_TRAITS
 static_assert(std::is_standard_layout<RayDispatchGlobalData>::value, "no?");

@@ -419,6 +419,7 @@ static Type* _struct_IGC__RayDispatchGlobalData__RayDispatchGlobalDataCommon(Mod
       IntegerType::get(M.getContext(), 32),
       IntegerType::get(M.getContext(), 64),
       _igc_auto_union_anon_16(M),
+      IntegerType::get(M.getContext(), 64),
       IntegerType::get(M.getContext(), 32),
       IntegerType::get(M.getContext(), 32),
       IntegerType::get(M.getContext(), 32),
