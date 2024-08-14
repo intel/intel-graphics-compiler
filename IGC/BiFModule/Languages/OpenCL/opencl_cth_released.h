@@ -467,35 +467,6 @@ atomic_fetch_supported_prototype(and)
 
 #undef atomic_fetch_supported_prototype
 
-// atomic_fetch_min/max() [min and max are not c11 functions]
-
-int __attribute__((overloadable)) atomic_fetch_min_explicit(volatile generic atomic_int *object, int operand, memory_order order);
-int __attribute__((overloadable)) atomic_fetch_min_explicit(volatile generic atomic_int *object, int operand, memory_order order, memory_scope scope);
-
-uint __attribute__((overloadable)) atomic_fetch_min_explicit(volatile generic atomic_uint *object, uint operand, memory_order order);
-uint __attribute__((overloadable)) atomic_fetch_min_explicit(volatile generic atomic_uint *object, uint operand, memory_order order, memory_scope scope);
-
-uint __attribute__((overloadable)) atomic_fetch_min_explicit(volatile generic atomic_uint *object, int operand, memory_order order);
-uint __attribute__((overloadable)) atomic_fetch_min_explicit(volatile generic atomic_uint *object, int operand, memory_order order, memory_scope scope);
-
-int __attribute__((overloadable)) atomic_fetch_max_explicit(volatile generic atomic_int *object, int operand, memory_order order);
-int __attribute__((overloadable)) atomic_fetch_max_explicit(volatile generic atomic_int *object, int operand, memory_order order, memory_scope scope);
-
-uint __attribute__((overloadable)) atomic_fetch_max_explicit(volatile generic atomic_uint *object, uint operand, memory_order order);
-uint __attribute__((overloadable)) atomic_fetch_max_explicit(volatile generic atomic_uint *object, uint operand, memory_order order, memory_scope scope);
-
-uint __attribute__((overloadable)) atomic_fetch_max_explicit(volatile generic atomic_uint *object, int operand, memory_order order);
-uint __attribute__((overloadable)) atomic_fetch_max_explicit(volatile generic atomic_uint *object, int operand, memory_order order, memory_scope scope);
-
-#if defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
-int __attribute__((overloadable)) atomic_fetch_min(volatile generic atomic_int *object, int operand);
-uint __attribute__((overloadable)) atomic_fetch_min(volatile generic atomic_uint *object, uint operand);
-uint __attribute__((overloadable)) atomic_fetch_min(volatile generic atomic_uint *object, int operand);
-int __attribute__((overloadable)) atomic_fetch_max(volatile generic atomic_int *object, int operand);
-uint __attribute__((overloadable)) atomic_fetch_max(volatile generic atomic_uint *object, uint operand);
-uint __attribute__((overloadable)) atomic_fetch_max(volatile generic atomic_uint *object, int operand);
-#endif // defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
-
 #endif // (__LLVM_VERSION_MAJOR__ < 14)
 
 // atomic_store()
