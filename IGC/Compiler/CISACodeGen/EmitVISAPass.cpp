@@ -23671,9 +23671,6 @@ void EmitPass::emitRayQueryCheckRelease(
 
     m_encoder->Lifetime(LIFETIME_START, dummySource);
 
-    const uint32_t NumSend =
-        (m_currShader->m_SIMDSize == SIMDMode::SIMD32
-            ) ? 2 : 1;
 
     CVariable* flag = nullptr;
 
@@ -23683,28 +23680,17 @@ void EmitPass::emitRayQueryCheckRelease(
         flag = GetSymbol(I->getOperand(0));
     }
 
-    for (uint32_t Cnt = 0; Cnt < NumSend; Cnt++)
-    {
-        if (m_currShader->m_SIMDSize == SIMDMode::SIMD32
-            )
-        {
-            m_encoder->SetSimdSize(SIMDMode::SIMD16);
-            if (Cnt == 1)
-                m_encoder->SetMask(EMASK_H2);
-        }
+    m_encoder->SetPredicate(flag);
 
-        m_encoder->SetPredicate(flag);
+    m_encoder->Sends(
+        nullptr,
+        header,
+        dummySource,
+        extDescriptor,
+        exDesc,
+        pMessDesc);
 
-        m_encoder->Sends(
-            nullptr,
-            header,
-            dummySource,
-            extDescriptor,
-            exDesc,
-            pMessDesc);
-
-        m_encoder->Push();
-    }
+    m_encoder->Push();
 
     // Insert a software fence after the send.rta so no IO operations get
     // scheduled across the send from below.  We should be able to remove this

@@ -1040,31 +1040,6 @@ private:
 
 char RTGlobalsPointerLoweringPass::ID = 0;
 
-bool RTGlobalsPointerLoweringPass::needsSplitting(const CodeGenContext* Ctx)
-{
-    // In general, we don't want to compile SIMD32 for rayquery.
-    // Determine if we are forced to do so.
-
-    if (Ctx->type != ShaderType::COMPUTE_SHADER)
-        return false;
-
-    auto& csInfo = Ctx->getModuleMetaData()->csInfo;
-
-    if (IGC_IS_FLAG_ENABLED(ForceCSSIMD32) ||
-        IGC_GET_FLAG_VALUE(ForceCSSimdSize4RQ) == 32)
-        return true;
-    if (IGC_IS_FLAG_ENABLED(ForceCSSIMD16))
-        return false;
-    if (csInfo.forcedSIMDSize == 32)
-        return true;
-    if (csInfo.forcedSIMDSize == 16)
-        return false;
-    if (csInfo.waveSize == 32)
-        return true;
-
-    return false;
-}
-
 bool RTGlobalsPointerLoweringPass::runOnFunction(Function& F)
 {
     m_CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
@@ -1085,7 +1060,7 @@ bool RTGlobalsPointerLoweringPass::runOnFunction(Function& F)
     IGC_ASSERT_MESSAGE(nullptr != modMD,
         "Invalid Module Metadata in RTGlobalsPointerLoweringPass");
 
-    const bool NeedsSplitting = needsSplitting(m_CGCtx);
+    const bool NeedsSplitting = m_CGCtx->syncRTCallsNeedSplitting();
 
     for (auto* GBP : globalBuffPtrs)
     {

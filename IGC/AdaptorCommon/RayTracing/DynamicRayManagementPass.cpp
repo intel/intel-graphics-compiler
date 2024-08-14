@@ -115,9 +115,11 @@ bool DynamicRayManagementPass::runOnFunction(Function& F)
     // 1. RayTracing is not supported on this platform.
     // 2. Shader does not use RayQuery at all.
     // 3. There are more than 1 exit block.
+    // 4. RayQuery needs splitting due to forced SIMD32
     if ((m_CGCtx->platform.supportRayTracing() == false) ||
         (!m_CGCtx->hasSyncRTCalls()) ||
-        (getNumberOfExitBlocks(F) > 1))
+        (getNumberOfExitBlocks(F) > 1) ||
+        m_CGCtx->syncRTCallsNeedSplitting())
     {
         return false;
     }
