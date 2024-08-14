@@ -115,6 +115,11 @@ bool GenXPostLegalization::runOnFunction(Function &F)
         Modified |= loadNonSimpleConstants(Inst, *ST, *DL, nullptr);
         break;
       case Intrinsic::fma:
+      case GenXIntrinsic::genx_dpas:
+      case GenXIntrinsic::genx_dpas2:
+      case GenXIntrinsic::genx_dpas_nosrc0:
+      case GenXIntrinsic::genx_dpasw:
+      case GenXIntrinsic::genx_dpasw_nosrc0:
         Modified |= loadConstants(Inst, *ST, *DL);
         break;
       }
