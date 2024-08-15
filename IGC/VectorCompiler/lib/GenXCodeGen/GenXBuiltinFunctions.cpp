@@ -357,7 +357,9 @@ Value *GenXBuiltinFunctions::visitCallInst(CallInst &II) {
   case GenXIntrinsic::genx_ieee_div:
     Func = getBuiltinDeclaration(M, "fdiv", false, {Ty});
     break;
-
+  case GenXIntrinsic::genx_rsqrt:
+    Func = getBuiltinDeclaration(M, "rsqrt", false, {Ty}, "__rte_");
+    break;
   case GenXIntrinsic::genx_fptosi_sat: {
     auto *Arg = II.getArgOperand(0);
     auto *STy = Arg->getType();

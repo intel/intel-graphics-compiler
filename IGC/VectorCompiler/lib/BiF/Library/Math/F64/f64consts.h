@@ -20,11 +20,13 @@ constexpr unsigned mantissa_32loss = -2;
 constexpr unsigned nan_hi = 0x7ff80000;
 constexpr unsigned inf_hi = 0x7ff00000;
 constexpr unsigned sign_32bit = 1 << (63 - 32);
+constexpr unsigned min_sign_exp = 1 << exp_shift;
 
 // Double consts
 constexpr double twoPow1023 = 0x1p+1023;
 constexpr double twoPow1022 = 0x1p+1022;
 constexpr double twoPow64 = 0x1p+64;
+constexpr double twoPow32 = 0x1p+32;
 constexpr double twoPowm64 = 0x1p-64;
 constexpr double roundInt = 0x1.8p+52;
 

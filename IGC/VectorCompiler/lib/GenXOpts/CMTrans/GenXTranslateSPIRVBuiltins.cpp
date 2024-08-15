@@ -267,6 +267,7 @@ Value *SPIRVExpander::visitCallInst(CallInst &CI) {
             .StartsWith("fmin", Intrinsic::minnum)
             .StartsWith("mad", Intrinsic::fmuladd)
             .StartsWith("sqrt", Intrinsic::sqrt)
+            .StartsWith("rsqrt", GenXIntrinsic::genx_rsqrt)
             .Default(Intrinsic::not_intrinsic);
 
   if (IID != Intrinsic::not_intrinsic) {
