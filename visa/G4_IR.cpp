@@ -1350,8 +1350,16 @@ G4_Type G4_INST::getOpExecType(int &extypesize) const {
   return extype;
 }
 
-static G4_INST::MovType getMovType(const G4_INST *Inst, G4_Type dstTy,
-                                   G4_Type srcTy, G4_SrcModifier srcMod) {
+static G4_INST::MovType getMovType(const G4_INST *Inst) {
+  vASSERT(Inst->opcode() == G4_mov);
+  G4_Type dstTy = Inst->getDst()->getType();
+  G4_Operand *src = Inst->getSrc(0);
+  G4_Type srcTy = src->getType();
+  G4_SrcModifier srcMod = Mod_src_undef;
+  if (src->isSrcRegRegion()) {
+    srcMod = src->asSrcRegRegion()->getModifier();
+  }
+
   // COPY when dst & src types are the same.
   if (dstTy == srcTy)
     return G4_INST::Copy;
@@ -1521,12 +1529,7 @@ G4_INST::MovType G4_INST::canPropagate() const {
     return SuperMov;
   }
 
-  G4_SrcModifier srcMod = Mod_src_undef;
-  if (src->isSrcRegRegion()) {
-    srcMod = src->asSrcRegRegion()->getModifier();
-  }
-
-  MovType MT = getMovType(this, dstType, srcType, srcMod);
+  MovType MT = getMovType(this);
 
   // Disabling mix mode copy propogation
   if (!builder.hasMixMode() &&
@@ -2338,11 +2341,12 @@ bool G4_INST::canHoist(bool simdBB, const Options *opt) const {
   dstType = dst->getType();
   srcType = src->getType();
 
-  // no dst type promotion after hoisting
-  if (!Is_Type_Included(dstType, srcType, builder) ||
+  // no dst type promotion after hoisting but allow the copy case
+  MovType MT = getMovType(this);
+  if (!(Is_Type_Included(dstType, srcType, builder) || MT == G4_INST::Copy) ||
       // if multi def, src and dst should have the same type size
       (defInstList.size() > 1 &&
-       (Operand_Type_Rank(srcType) != Operand_Type_Rank(dstType) ||
+       (TypeSize(srcType) != TypeSize(dstType) ||
         // if multidef and used as a scalar, execution size should be one.
         (src->isSrcRegRegion() && src->asSrcRegRegion()->isScalar() &&
          execSize > g4::SIMD1)))) {
@@ -2365,6 +2369,12 @@ bool G4_INST::canHoist(bool simdBB, const Options *opt) const {
   }
 
   return true;
+}
+
+bool G4_INST::isCopyMov() const {
+  return op == G4_mov && !sat && getMovType(this) == G4_INST::Copy &&
+         !getCondMod() && srcs[0]->isSrcRegRegion() &&
+         srcs[0]->asSrcRegRegion()->getModifier() == Mod_src_undef;
 }
 
 // check if this instruction can be hoisted to defInst
@@ -2395,7 +2405,7 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const {
     return false;
   }
 
-  bool rawMovInst = isRawMov();
+  bool copyMovInst = isCopyMov();
   bool cantHoistMAD =
       (defInst->opcode() == G4_pseudo_mad &&
        !(IS_TYPE_FLOAT_ALL(dstType) && IS_TYPE_FLOAT_ALL(defDstType)));
@@ -2404,7 +2414,7 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const {
       (defInst->opcode() == G4_cbit && dstType != defDstType) ||
       (defInst->opcode() == G4_dp4a && dstType != defDstType) ||
       ((cantHoistMAD || (defInst->opcode() == G4_math)) &&
-       (indirect_dst || (dstType != defDstType && !rawMovInst)))) {
+       (indirect_dst || (dstType != defDstType && !copyMovInst)))) {
     return false;
   }
 
@@ -2456,13 +2466,13 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const {
   if ((!(defInst->isRawMov() && (defDstType == srcType)) &&
        ((IS_FTYPE(dstType) && (IS_TYPE_INT(srcType) || IS_VINTTYPE(srcType))) ||
         ((IS_FTYPE(srcType) || IS_VFTYPE(srcType)) && IS_TYPE_INT(dstType)))) ||
-      (!rawMovInst &&
+      (!copyMovInst &&
        ((IS_FTYPE(defDstType) && IS_TYPE_INT(defInst->getExecType())) ||
         (IS_FTYPE(defInst->getExecType()) && IS_TYPE_INT(defDstType))))) {
     return false;
   }
 
-  if (!rawMovInst &&
+  if (!copyMovInst &&
       (defInst->getSrc(0) && (IS_DFTYPE(defInst->getSrc(0)->getType()) ||
                               IS_FTYPE(defInst->getSrc(0)->getType()))) &&
       (IS_SIGNED_INT(defDstType) || IS_UNSIGNED_INT(defDstType))) {
@@ -2581,7 +2591,7 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const {
   }
 
   // For mov HF F, we have to check if the def Inst supports HF
-  if (dstType != Type_F && defInst->isFloatOnly() && !isRawMov()) {
+  if (dstType != Type_F && defInst->isFloatOnly() && !copyMovInst) {
     return false;
   }
 
@@ -2594,10 +2604,8 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const {
   // After (invalid optimization):
   // or (8) V100(0,0)<1>:d ...
   // or (8) V100(0,4)<1>:d ...
-  if (defDstType != srcType) {
-    if (isRawMov() == false) {
-      return false;
-    }
+  if (defDstType != srcType && !copyMovInst) {
+    return false;
   }
 
   // As dst's type of shl inst decides what shifting amt should be used,

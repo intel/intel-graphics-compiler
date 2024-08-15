@@ -781,6 +781,7 @@ public:
   bool hasACCSrc() const;
   bool hasACCOpnd() const;
   G4_Type getOpExecType(int &extypesize) const;
+  bool isCopyMov() const;
   bool canHoistTo(const G4_INST *defInst, bool simdBB) const;
   enum MovType {
     Copy = 0,           // MOV is a copy.
