@@ -565,6 +565,7 @@ $ export IGC_ShaderDumpEnable=1
 | `TestGEPSimplification` | [Test] Testing GEP simplification without actually lowering GEP. Used in lit test | - |
 | `UniformMemOpt4OW` | increase uniform memory optimization from 2 owords to 4 owords | Available |
 | `allowLICM` | Enable LICM in IGC. | Available |
+| `allowDecompose2DBlockFuncs` | Enable decomposition of 2D block intrinsics in IGC. | Available |
 ## Performance experiments
 | Flag  | Description | Release builds |
 |:---- | :---- | :----: |
