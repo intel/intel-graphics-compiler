@@ -1630,11 +1630,12 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *Inst) {
 Value *GenXPacketize::packetizeInstruction(Instruction *Inst) {
   // determine instruction type and call its packetizer
   auto *Result = packetizeGenXIntrinsic(Inst);
-  if (!Result)
+  if (!Result) {
     if (IsLLVMIntrinsic(Inst))
       Result = packetizeLLVMIntrinsic(Inst);
     else
       Result = packetizeLLVMInstruction(Inst);
+  }
   if (Result) {
     if (Inst->getName() != "")
       Result->setName(Inst->getName());
