@@ -102,7 +102,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/BfloatFuncs/BfloatFuncsResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/DpasFuncs/DpasFuncsResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/LSCFuncs/LSCFuncsResolution.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/Decompose2DBlockFuncs/Decompose2DBlockFuncs.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/NamedBarriers/NamedBarriersResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/JointMatrixFuncsResolutionPass/JointMatrixFuncsResolutionPass.h"
 #include "Compiler/Optimizer/OpenCLPasses/RayTracing/ResolveOCLRaytracingBuiltins.hpp"
@@ -604,9 +603,6 @@ static void CommonOCLBasedPasses(
 
     // Break down the intrinsics into smaller operations (eg. fmuladd to fmul add)
     mpm.add(new BreakdownIntrinsicPass());
-
-    // Break down 2D block intrinsics. Should be before a call to LICM
-    mpm.add(createDecompose2DBlockFuncsPass());
 
     {
         if(IGC_IS_FLAG_ENABLED(EnableConstantPromotion))
