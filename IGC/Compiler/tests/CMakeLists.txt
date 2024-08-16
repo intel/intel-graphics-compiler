@@ -45,8 +45,11 @@ set(IGC_LIT_TEST_DEPENDS
 # 2) the suffix must be consistent with config.suffixes
 # The consistency can be achived by calling a process which returns the list of tests.
 file(GLOB_RECURSE _tests "${IGC_TEST_SOURCE_DIR}/*.ll")
+file(GLOB_RECURSE _site_config_files "${CMAKE_CURRENT_BINARY_DIR}/*/lit.site.cfg.py")
 if(MSVC)
   source_group(TREE "${IGC_TEST_SOURCE_DIR}" PREFIX "tests" FILES ${_tests})
+  source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" PREFIX "config" FILES ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.py.in ${CMAKE_CURRENT_SOURCE_DIR}/lit.cfg.py)
+  source_group(TREE "${CMAKE_CURRENT_BINARY_DIR}" PREFIX "config/generated" FILES ${_site_config_files})
 endif()
 
 # This will create a target called `check-igc`, which will run all tests from
@@ -56,7 +59,7 @@ endif()
 if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
   igc_add_lit_target(check-igc "${IGC_TEST_BINARY_DIR}" "Running the IGC LIT tests"
     DEPENDS ${IGC_LIT_TEST_DEPENDS} ${_tests}
-    SOURCES ${_tests} ${CMAKE_CURRENT_SOURCE_DIR}/lit.cfg.py
+    SOURCES ${_tests} ${CMAKE_CURRENT_SOURCE_DIR}/lit.cfg.py ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.py.in ${IGC_LIT_CONFIG_FILE}
     )
 else()
   add_lit_testsuite(check-igc "Running the IGC LIT tests"
