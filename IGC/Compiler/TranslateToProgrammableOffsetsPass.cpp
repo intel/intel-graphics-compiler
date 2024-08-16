@@ -125,9 +125,9 @@ struct TranslateIntrinsicBase
         return loadIntr->getCalledFunction();
     }
 
-    template<class Traits, class SampleOrGatherInstrinsic>
+    template<class Traits, class SampleOrGatherInstrinsic, class ArgsT>
     static llvm::CallInst* CreateTranslatedCall(SampleOrGatherInstrinsic* sampleOrGatherIntr,
-        const llvm::SmallVector<llvm::Value*, 10>& args)
+        const ArgsT& args)
     {
         IRBuilder<> builder(sampleOrGatherIntr->getContext());
         builder.SetInsertPoint(sampleOrGatherIntr);
