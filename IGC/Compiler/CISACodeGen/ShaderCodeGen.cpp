@@ -42,6 +42,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/PreRARematFlag.h"
 #include "Compiler/CISACodeGen/PromoteConstantStructs.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/AlignmentAnalysis/AlignmentAnalysis.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/Decompose2DBlockFuncs/Decompose2DBlockFuncs.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GASResolving.h"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/LowerByValAttribute.hpp"
 #include "Compiler/CISACodeGen/ResolvePredefinedConstant.h"
@@ -179,7 +180,6 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "Compiler/CISACodeGen/PartialEmuI64OpsPass.h"
 #include "Compiler/TranslateToProgrammableOffsetsPass.hpp"
-
 
 /***********************************************************************************
 This file contains the generic code generation functions for all the shaders
@@ -1561,6 +1561,12 @@ void OptimizeIR(CodeGenContext* const pContext)
                 {
                     mpm.add(llvm::createLoopUnrollPass(2, false, false, -1, -1,
                                                        -1, -1, -1, -1));
+                }
+                //Should be after LICM to accurately reason about which
+                //instructions are loop-dependent or not. Needs to be before
+                //another LICM call which will hoist relevant intrinsics
+                if (IGC_GET_FLAG_VALUE(allowDecompose2DBlockFuncs)) {
+                    mpm.add(createDecompose2DBlockFuncsPass());
                 }
 
                 mpm.add(llvm::createLoopLoadEliminationPass());

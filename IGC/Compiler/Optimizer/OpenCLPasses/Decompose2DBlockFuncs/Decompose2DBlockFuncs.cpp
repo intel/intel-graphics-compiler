@@ -218,6 +218,7 @@ CallBase* Decompose2DBlockFuncs::createPayload(
     BlockCreateFunc->removeFnAttr(llvm::Attribute::WriteOnly);
     BlockCreateFunc->removeFnAttr(llvm::Attribute::InaccessibleMemOnly);
 
+    BlockCreateFunc->addFnAttr(llvm::Attribute::Speculatable);
     BlockCreateFunc->addFnAttr(
         llvm::Attribute::ReadNone);  // = setDoesNotAccessMemory();
   }
