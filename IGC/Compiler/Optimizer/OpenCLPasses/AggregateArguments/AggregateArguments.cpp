@@ -46,7 +46,7 @@ bool isSupportedAggregateArgument(Argument* arg)
 {
     if (arg->getType()->isPointerTy() && arg->hasByValAttr())
     {
-        Type* type = IGCLLVM::getNonOpaquePtrEltTy(arg->getType());
+        Type* type = arg->getParamByValType();
 
         if (StructType * structType = dyn_cast<StructType>(type))
         {
@@ -99,7 +99,7 @@ bool AggregateArgumentsAnalysis::runOnModule(Module& M)
             // Handling case where array is passed as a pointer with byVal attribute
             else if (arg->getType()->isPointerTy() && arg->hasByValAttr())
             {
-                Type* type = IGCLLVM::getNonOpaquePtrEltTy(arg->getType());
+                Type* type = arg->getParamByValType();
 
                 if (ArrayType* arrayType = dyn_cast<ArrayType>(type))
                 {

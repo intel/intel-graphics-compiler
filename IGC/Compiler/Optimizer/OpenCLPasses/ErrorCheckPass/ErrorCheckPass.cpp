@@ -72,7 +72,7 @@ void ErrorCheck::checkArgsSize(Function& F)
     {
         auto Arg = KernelArg.getArg();
         Type* ArgType = Arg->getType();
-        ArgType = Arg->hasByValAttr() ? IGCLLVM::getNonOpaquePtrEltTy(ArgType) : ArgType;
+        ArgType = Arg->hasByValAttr() ? Arg->getParamByValType() : ArgType;
         if (!KernelArg.isImplicitArg())
         {
             TotalSize += DL.getTypeAllocSize(ArgType);

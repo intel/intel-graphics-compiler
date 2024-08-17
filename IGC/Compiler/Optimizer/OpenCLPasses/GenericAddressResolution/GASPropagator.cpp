@@ -120,20 +120,21 @@ bool GASPropagator::visitBitCastInst(BitCastInst& I) {
     PointerType* SrcPtrTy = cast<PointerType>(TheVal->getType());
     PointerType* DstPtrTy = cast<PointerType>(I.getType());
 
-    BuilderType::InsertPointGuard Guard(IRB);
-    IRB.SetInsertPoint(I.getNextNode());
-    // Push `addrspacecast` forward by replacing this `bitcast` on GAS with the
-    // one on non-GAS followed by a new `addrspacecast` to GAS.
-    Type* DstTy = IGCLLVM::getNonOpaquePtrEltTy(DstPtrTy);
-    PointerType* TransPtrTy =
-        PointerType::get(DstTy, SrcPtrTy->getAddressSpace());
-    Value* Src = TheVal;
-    if (IGCLLVM::getNonOpaquePtrEltTy(SrcPtrTy) != DstTy)
-        Src = IRB.CreateBitCast(Src, TransPtrTy);
-    Value* NewPtr = IRB.CreateAddrSpaceCast(Src, DstPtrTy);
-    I.replaceAllUsesWith(NewPtr);
-    I.eraseFromParent();
-
+    if (!IGCLLVM::isOpaquePointerTy(SrcPtrTy)) {
+        BuilderType::InsertPointGuard Guard(IRB);
+        IRB.SetInsertPoint(I.getNextNode());
+        // Push `addrspacecast` forward by replacing this `bitcast` on GAS with the
+        // one on non-GAS followed by a new `addrspacecast` to GAS.
+        Type* DstTy = IGCLLVM::getNonOpaquePtrEltTy(DstPtrTy);
+        PointerType* TransPtrTy =
+            PointerType::get(DstTy, SrcPtrTy->getAddressSpace());
+        Value* Src = TheVal;
+        if (IGCLLVM::getNonOpaquePtrEltTy(SrcPtrTy) != DstTy)
+            Src = IRB.CreateBitCast(Src, TransPtrTy);
+        Value* NewPtr = IRB.CreateAddrSpaceCast(Src, DstPtrTy);
+        I.replaceAllUsesWith(NewPtr);
+        I.eraseFromParent();
+    }
     return true;
 }
 
@@ -151,7 +152,7 @@ bool GASPropagator::visitGetElementPtrInst(GetElementPtrInst& I) {
     IRB.SetInsertPoint(I.getNextNode());
     // Push `getelementptr` forward by replacing this `bitcast` on GAS with the
     // one on non-GAS followed by a new `addrspacecast` to GAS.
-    Type* DstTy = IGCLLVM::getNonOpaquePtrEltTy(DstPtrTy);
+    Type* DstTy = I.getResultElementType();
     PointerType* TransPtrTy =
         PointerType::get(DstTy, SrcPtrTy->getAddressSpace());
     TheUse->set(TheVal);

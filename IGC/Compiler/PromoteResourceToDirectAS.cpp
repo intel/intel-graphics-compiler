@@ -149,7 +149,7 @@ Value* FindArrayIndex(const std::vector<Value*>& instList, IGCIRBuilder<>& build
                 arrayIndex = nullptr;
                 break;
             }
-            auto pointerElementTy = IGCLLVM::getNonOpaquePtrEltTy(gep->getPointerOperandType());
+            auto pointerElementTy = gep->getSourceElementType();
             if (pointerElementTy->isStructTy())
             {
                 // Example: %1 = getelementptr inbounds %"struct.texture", %"struct.texture"* %aot, i64 %arrayIndex, i32 0

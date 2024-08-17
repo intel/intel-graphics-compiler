@@ -108,7 +108,7 @@ struct DivergentPointer
 struct CommonBaseGroup
 {
     SmallVector<DivergentPointer, 2> DivergentPointers;
-    MapVector<BasicBlock*, std::pair<Value*, SmallVector<Value*, 4>>> GroupFactor;
+    MapVector<BasicBlock*, std::pair<std::pair<Type*, Value*>, SmallVector<Value*, 4>>> GroupFactor;
     MapVector<BasicBlock*, AddrSpaceCastInst*> Casts;
     BasicBlock* Successor = nullptr;
 };
@@ -245,7 +245,7 @@ bool DivergentPointersGroups::isBelongedToGroup(const CommonBaseGroup& Group, co
 
     for (auto& IT : Group.GroupFactor) {
         BasicBlock* BB      = IT.first;
-        Value* PtrOperand   = IT.second.first;
+        Value* PtrOperand   = IT.second.first.second;
         auto& Indices       = IT.second.second;
 
         if (CurGroupFactor[BB].first != PtrOperand)
@@ -279,7 +279,8 @@ bool DivergentPointersGroups::createAddNewGroups(const DivergentPointer& DP) {
 
         SmallVector<Value*, 4> Indices(GEP->idx_begin(), GEP->idx_end() - 1);
         Value* PtrOperand = GEP->getPointerOperand();
-        Group.GroupFactor[BB] = std::make_pair(PtrOperand, Indices);
+        Type* PtrOperandTy = GEP->getSourceElementType();
+        Group.GroupFactor[BB] = std::make_pair(std::make_pair(PtrOperandTy, PtrOperand), Indices);
         Group.Casts[BB] = ASC;
     }
     Group.Successor = DP.Phi->getParent();
@@ -355,32 +356,35 @@ static bool sinkCommonOffsetForGroup(const CommonBaseGroup& Group) {
 
     SmallVector<std::pair<Value*, BasicBlock*>, 2> NewPointers;
     bool NewGEP = false;
+    Type* PhiElType = nullptr;
     // Create GEP for the common base in every basic block
     for (auto& IT : Group.GroupFactor) {
         BasicBlock* BB      = IT.first;
-        Value* PtrOperand   = IT.second.first;
+        Type* PtrOperandTy  = IT.second.first.first;
+        Value* PtrOperand   = IT.second.first.second;
         auto BaseIndices    = IT.second.second;
 
-        auto EType = IGCLLVM::getNonOpaquePtrEltTy(PtrOperand->getType());
         Value * NewPointer = PtrOperand;
         if (NewPointer == nullptr)
             return false;
 
         // If we have gep(A, constant) just take pure A without creating new GEP
-        auto NewPointerType = PtrOperand->getType();
+        auto NewPointerElType = PtrOperandTy;
         if (BaseIndices.size() > 0) {
-            auto BaseGEP = GetElementPtrInst::Create(EType, PtrOperand, BaseIndices, "", BB->getTerminator());
+            auto BaseGEP = GetElementPtrInst::Create(PtrOperandTy, PtrOperand, BaseIndices, "", BB->getTerminator());
             NewPointer = BaseGEP;
-            NewPointerType = BaseGEP->getResultElementType();
+            NewPointerElType = BaseGEP->getResultElementType();
+
             NewGEP = true;
         }
 
 
         if (auto ASC = Group.Casts.find(BB)->second) {
-            auto PType = PointerType::get(NewPointerType, ASC->getDestAddressSpace());
+            auto PType = PointerType::get(NewPointerElType, ASC->getDestAddressSpace());
             auto BaseASC = new AddrSpaceCastInst(NewPointer, PType, "", BB->getTerminator());
             NewPointer = BaseASC;
         }
+        PhiElType = NewPointerElType;
         NewPointers.push_back(std::make_pair(NewPointer, BB));
     }
 
@@ -401,8 +405,7 @@ static bool sinkCommonOffsetForGroup(const CommonBaseGroup& Group) {
             Indices.push_back(ConstantInt::get(Offset->getType(), 0));
         Indices.push_back(Offset);
 
-        auto OffsetType = IGCLLVM::getNonOpaquePtrEltTy(BasePhi->getType());
-        auto OffsetGEP = GetElementPtrInst::Create(OffsetType, BasePhi, Indices, "", BasePhi->getNextNonDebugInstruction());
+        auto OffsetGEP = GetElementPtrInst::Create(PhiElType, BasePhi, Indices, "", BasePhi->getNextNonDebugInstruction());
 
         bool isInBounds = false;
         for (const auto& Gep : Geps)

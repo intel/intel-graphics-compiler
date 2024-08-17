@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvmWrapper/IR/Instructions.h>
+#include "llvmWrapper/IR/Function.h"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
 #include "llvm/IR/InstIterator.h"
@@ -225,12 +226,12 @@ inline void StoreToStruct(IGCLLVM::IRBuilder<>& builder, Value* strVal, Value* s
 }
 
 // BE does not handle struct load/store, so instead load each element from the GEP struct pointer and insert it into the struct value
-inline Value* LoadFromStruct(IGCLLVM::IRBuilder<>& builder, Value* strPtr)
+inline Value* LoadFromStruct(IGCLLVM::IRBuilder<>& builder, Value* strPtr, Type* ty)
 {
     IGC_ASSERT(strPtr->getType()->isPointerTy());
-    IGC_ASSERT(IGCLLVM::getNonOpaquePtrEltTy(strPtr->getType())->isStructTy());
+    IGC_ASSERT(ty->isStructTy());
 
-    Value* strVal = UndefValue::get(IGCLLVM::getNonOpaquePtrEltTy(strPtr->getType()));
+    Value* strVal = UndefValue::get(ty);
     StructType* sTy = cast<StructType>(strVal->getType());
     for (unsigned i = 0; i < sTy->getNumElements(); i++)
     {
@@ -370,6 +371,7 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
             ReturnOpt retTypeOption = ReturnOpt::RETURN_DEFAULT;
             bool isStackCall = pFunc->hasFnAttribute("visaStackCall");
             Value* tempAllocaForSRetPointer = nullptr;
+            Type* tempAllocaForSRetPointerTy = nullptr;
             llvm::SmallVector<llvm::Argument*, 8> ArgByVal;
 
             if (FunctionHasPromotableSRetArg(M, pFunc)) {
@@ -391,7 +393,8 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
                 if (OldArgIt == pFunc->arg_begin() && retTypeOption == ReturnOpt::RETURN_STRUCT)
                 {
                     // Create a temp alloca to map the old argument. This will be removed later by SROA.
-                    tempAllocaForSRetPointer = builder.CreateAlloca(PromotedStructValueType(M, OldArgIt->getType()));
+                    tempAllocaForSRetPointerTy = PromotedStructValueType(M, OldArgIt->getType());
+                    tempAllocaForSRetPointer = builder.CreateAlloca(tempAllocaForSRetPointerTy);
                     tempAllocaForSRetPointer = builder.CreateAddrSpaceCast(tempAllocaForSRetPointer, OldArgIt->getType());
                     VMap[&*OldArgIt] = tempAllocaForSRetPointer;
                     continue;
@@ -477,7 +480,7 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
                 for (auto RetInst : Returns)
                 {
                     IGCLLVM::IRBuilder<> builder(RetInst);
-                    Value* retVal = LoadFromStruct(builder, tempAllocaForSRetPointer);
+                    Value* retVal = LoadFromStruct(builder, tempAllocaForSRetPointer, tempAllocaForSRetPointerTy);
                     builder.CreateRet(retVal);
                     RetInst->eraseFromParent();
                 }
@@ -615,7 +618,8 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
         {
             // Map the new operand to the loaded value of the struct pointer
             IGCLLVM::IRBuilder<> builder(callInst);
-            Value* newOp = LoadFromStruct(builder, arg);
+            Argument* callArg = IGCLLVM::getArg(*calledFunc, opNum);
+            Value* newOp = LoadFromStruct(builder, arg, callArg->getParamByValType());
             callArgs.push_back(newOp);
             ArgAttrVec.push_back(AttributeSet());
             fixArgType = true;

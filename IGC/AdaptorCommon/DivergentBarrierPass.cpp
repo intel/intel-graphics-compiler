@@ -400,7 +400,7 @@ void DivergentBarrierPass::generateBody(
         IRB.CreateCall(BarrierFn);
 
         auto* ThreadDoneCnt = IRB.CreateLoad(
-            IGCLLVM::getNonOpaquePtrEltTy(ThreadDoneCntPtr->getType()),
+            IRB.getInt32Ty(),
             ThreadDoneCntPtr, VALUE_NAME("thread.done.cnt"));
 
         Value* GroupSize = getGroupSize(*Wrapper);
@@ -480,7 +480,7 @@ void DivergentBarrierPass::handleSpillFill(Function* F, SlotDepMap& depMap)
             }
             Builder.SetInsertPoint(FI);
             Instruction* LI = Builder.CreateLoad(
-                IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType()), Ptr);
+                cast<AllocaInst>(Ptr)->getAllocatedType(), Ptr);
             LI->takeName(FI);
 
             // If the values spilled to this slot are all uniform, then force uniform load on fill via readFirstLane.
