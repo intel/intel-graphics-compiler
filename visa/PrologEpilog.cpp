@@ -59,8 +59,9 @@ void Optimizer::createR0Copy() {
       builder.createDst(builder.getBuiltinR0()->getRegVar(), 0, 0, 1, Type_UD);
 
   unsigned int options = InstOpt_WriteEnable;
-  G4_INST *movInst =
-      builder.createMov(g4::SIMD8, R0CopyOpnd, R0Opnd, options, false);
+  unsigned numElt = kernel.getGRFSize() / TypeSize(Type_UD);
+  G4_INST *movInst = builder.createMov(G4_ExecSize(numElt),
+                                       R0CopyOpnd, R0Opnd, options, false);
 
   for (G4_BB *bb : kernel.fg) {
     INST_LIST_ITER ii = bb->begin();
