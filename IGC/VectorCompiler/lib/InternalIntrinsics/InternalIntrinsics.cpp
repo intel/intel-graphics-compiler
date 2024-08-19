@@ -737,6 +737,8 @@ bool InternalIntrinsic::isInternalMemoryIntrinsic(InternalIntrinsic::ID id) {
   case InternalIntrinsic::lsc_store_2d_ugm_desc:
   case InternalIntrinsic::lsc_load_2d_tgm_bti:
   case InternalIntrinsic::lsc_store_2d_tgm_bti:
+  case InternalIntrinsic::sample_bti:
+  case InternalIntrinsic::sampler_load_bti:
     return true;
   }
 
@@ -754,6 +756,17 @@ bool InternalIntrinsic::isSlmIntrinsic(ID IID) {
   case InternalIntrinsic::lsc_store_quad_slm:
     return true;
   }
+}
+
+bool InternalIntrinsic::isInternalSamplerIntrinsic(ID IID) {
+  switch (IID) {
+  default:
+    break;
+  case InternalIntrinsic::sample_bti:
+  case InternalIntrinsic::sampler_load_bti:
+    return true;
+  }
+  return false;
 }
 
 bool InternalIntrinsic::isMemoryBlockIntrinsic(const llvm::Instruction *I) {
@@ -850,7 +863,9 @@ InternalIntrinsic::getMemoryVectorSizePerLane(const llvm::Instruction *I) {
   }
   case InternalIntrinsic::lsc_load_quad_tgm:
   case InternalIntrinsic::lsc_prefetch_quad_tgm:
-  case InternalIntrinsic::lsc_store_quad_tgm: {
+  case InternalIntrinsic::lsc_store_quad_tgm:
+  case InternalIntrinsic::sample_bti:
+  case InternalIntrinsic::sampler_load_bti: {
     auto *ChannelMask = cast<ConstantInt>(I->getOperand(2));
     auto Mask = ChannelMask->getZExtValue();
     auto Size = countPopulation(Mask);
@@ -922,6 +937,8 @@ InternalIntrinsic::getMemoryRegisterElementSize(const llvm::Instruction *I) {
     auto *Ty = LastArg->getType();
     return Ty->getScalarType()->getPrimitiveSizeInBits();
   } break;
+  case InternalIntrinsic::sample_bti:
+  case InternalIntrinsic::sampler_load_bti:
   case InternalIntrinsic::lsc_load_2d_tgm_bti: {
     auto *Ty = I->getType();
     return Ty->getScalarType()->getPrimitiveSizeInBits();
@@ -969,6 +986,9 @@ int InternalIntrinsic::getMemoryCacheControlOperandIndex(unsigned IID) {
   case InternalIntrinsic::lsc_load_2d_tgm_bti:
   case InternalIntrinsic::lsc_store_2d_tgm_bti:
     return 0;
+  case InternalIntrinsic::sample_bti:
+  case InternalIntrinsic::sampler_load_bti:
+    return -1;
   default:
     break;
   }
@@ -993,9 +1013,37 @@ int InternalIntrinsic::getMemorySurfaceOperandIndex(unsigned IID) {
   case vc::InternalIntrinsic::lsc_store_quad_tgm:
   case vc::InternalIntrinsic::lsc_prefetch_quad_tgm:
     return 3;
+  case vc::InternalIntrinsic::sampler_load_bti:
+  case vc::InternalIntrinsic::sample_bti:
+    return 4;
   default:
     break;
   }
 
   return -1;
+}
+
+int InternalIntrinsic::getMemorySamplerOperandIndex(unsigned IID) {
+  switch (IID) {
+  case vc::InternalIntrinsic::sample_bti:
+    return 5;
+  default:
+    break;
+  }
+
+  return -1;
+}
+
+int InternalIntrinsic::getTwoAddrOpIndex(const llvm::CallInst *CI) {
+  auto IID = getInternalIntrinsicID(CI);
+  switch (IID) {
+  default:
+    break;
+  case InternalIntrinsic::sampler_load_bti:
+    return 5;
+  case InternalIntrinsic::sample_bti:
+    return 6;
+  }
+
+  return CI->arg_size() - 1;
 }

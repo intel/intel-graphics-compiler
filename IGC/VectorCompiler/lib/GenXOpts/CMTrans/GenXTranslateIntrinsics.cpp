@@ -61,6 +61,8 @@ private:
   Value *translateLscLoadStore2DDesc(CallInst &I) const;
   Value *translateLscTyped(CallInst &I) const;
   Value *translateLscTyped2D(CallInst &I) const;
+  Value *translateSamplerSimple(CallInst &I) const;
+  Value *translateSampler(CallInst &I) const;
 };
 } // namespace
 
@@ -177,6 +179,15 @@ void GenXTranslateIntrinsics::visitCallInst(CallInst &I) const {
   case GenXIntrinsic::genx_lsc_prefetch_quad_typed_bti:
   case GenXIntrinsic::genx_lsc_store_quad_typed_bti:
     NewI = translateLscTyped(I);
+    break;
+  // Sampler intrinsics
+  case GenXIntrinsic::genx_load:
+  case GenXIntrinsic::genx_sample:
+    NewI = translateSamplerSimple(I);
+    break;
+  case GenXIntrinsic::genx_3d_load:
+  case GenXIntrinsic::genx_3d_sample:
+    NewI = translateSampler(I);
     break;
   }
 
@@ -811,3 +822,123 @@ Value *GenXTranslateIntrinsics::translateLscTyped2D(CallInst &I) const {
 
   return NewI;
 }
+
+Value *GenXTranslateIntrinsics::translateSamplerSimple(CallInst &I) const {
+  auto IID = GenXIntrinsic::getGenXIntrinsicID(&I);
+  IGC_ASSERT_EXIT(IID == GenXIntrinsic::genx_load ||
+                  IID == GenXIntrinsic::genx_sample);
+  LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
+
+  auto *ResTy = I.getType();
+
+  unsigned Index = 0;
+  auto *ChannelMask = I.getArgOperand(Index++);
+  Value *STI = nullptr;
+
+  auto NewIID = vc::InternalIntrinsic::not_internal_intrinsic;
+  auto Opcode = VISA_3D_TOTAL_NUM_OPS;
+  if (IID == GenXIntrinsic::genx_load) {
+    NewIID = vc::InternalIntrinsic::sampler_load_bti;
+    Opcode = VISA_3D_LD_LZ;
+  } else {
+    NewIID = vc::InternalIntrinsic::sample_bti;
+    Opcode = VISA_3D_SAMPLE;
+    STI = I.getArgOperand(Index++);
+  }
+
+  auto *BTI = I.getArgOperand(Index++);
+  auto *U = I.getArgOperand(Index++);
+  auto *V = I.getArgOperand(Index++);
+  auto *R = I.getArgOperand(Index++);
+
+  auto *AddrTy = cast<IGCLLVM::FixedVectorType>(U->getType());
+  auto NumElements = AddrTy->getNumElements();
+
+  IRBuilder<> Builder(&I);
+
+  auto *PredTy =
+      IGCLLVM::FixedVectorType::get(Builder.getInt1Ty(), NumElements);
+
+  SmallVector<Type *, 3> Types = {ResTy, PredTy, AddrTy};
+  auto *F = vc::getAnyDeclaration(I.getModule(), NewIID, Types);
+
+  SmallVector<Value *, 20> Args = {
+      Constant::getAllOnesValue(PredTy),                     // pred
+      Builder.getInt16(Opcode),                              // opcode
+      Builder.CreateTrunc(ChannelMask, Builder.getInt8Ty()), // channel mask
+      Builder.getInt16(0),                                   // aoffimmi
+      BTI,                                                   // surface index
+  };
+
+  if (STI)
+    Args.push_back(STI);
+
+  Args.push_back(UndefValue::get(ResTy)); // pass-thru
+  Args.push_back(U);
+  Args.push_back(V);
+  Args.push_back(R);
+
+  auto *NullAddr = Constant::getNullValue(AddrTy);
+  for (unsigned I = Args.size(); I < F->arg_size(); I++)
+    Args.push_back(NullAddr);
+
+  auto *NewI = Builder.CreateCall(F, Args);
+  LLVM_DEBUG(dbgs() << "New intrinsic generated: " << *NewI);
+
+  return NewI;
+}
+
+Value *GenXTranslateIntrinsics::translateSampler(CallInst &I) const {
+  auto IID = GenXIntrinsic::getGenXIntrinsicID(&I);
+  IGC_ASSERT_EXIT(IID == GenXIntrinsic::genx_3d_load ||
+                  IID == GenXIntrinsic::genx_3d_sample);
+  LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
+
+  IRBuilder<> Builder(&I);
+  auto *ResTy = I.getType();
+
+  unsigned Index = 0;
+  auto *Opcode =
+      Builder.CreateTrunc(I.getArgOperand(Index++), Builder.getInt16Ty());
+  auto *Pred = I.getArgOperand(Index++);
+  auto *ChannelMask =
+      Builder.CreateTrunc(I.getArgOperand(Index++), Builder.getInt8Ty());
+  auto *AOffImmI = I.getArgOperand(Index++);
+
+  auto NewIID = vc::InternalIntrinsic::not_internal_intrinsic;
+  Value *STI = nullptr;
+  if (IID == GenXIntrinsic::genx_3d_load) {
+    NewIID = vc::InternalIntrinsic::sampler_load_bti;
+  } else {
+    NewIID = vc::InternalIntrinsic::sample_bti;
+    STI = I.getArgOperand(Index++);
+  }
+
+  auto *BTI = I.getArgOperand(Index++);
+  auto *U = I.getArgOperand(Index);
+  auto *AddrTy = U->getType();
+
+  SmallVector<Value *, 16> Args = {
+      Pred, Opcode, ChannelMask, AOffImmI, BTI,
+  };
+
+  if (STI)
+    Args.push_back(STI);
+
+  Args.push_back(UndefValue::get(ResTy)); // pass-thru
+
+  SmallVector<Type *, 3> Types = {ResTy, Pred->getType(), AddrTy};
+  auto *F = vc::getAnyDeclaration(I.getModule(), NewIID, Types);
+
+  // Rest of the arguments should have the same type as U
+  auto AddrBegin = I.arg_begin() + Index;
+  auto AddrEnd = AddrBegin + F->arg_size() - Args.size();
+  std::transform(AddrBegin, AddrEnd, std::back_inserter(Args),
+                 [&](Value *V) { return Builder.CreateBitCast(V, AddrTy); });
+
+  auto *NewI = Builder.CreateCall(F, Args);
+  LLVM_DEBUG(dbgs() << "New intrinsic generated: " << *NewI);
+
+  return NewI;
+}
+

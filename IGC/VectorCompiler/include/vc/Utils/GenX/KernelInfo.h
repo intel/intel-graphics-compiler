@@ -155,6 +155,10 @@ inline bool isDescImageType(llvm::StringRef TypeDesc) {
          IGCLLVM::contains_insensitive(TypeDesc, "image1d_buffer_t");
 }
 
+inline bool isDescSamplerType(llvm::StringRef TypeDesc) {
+  return IGCLLVM::contains_insensitive(TypeDesc, "sampler_t");
+}
+
 inline bool isDescReadOnly(llvm::StringRef TypeDesc) {
   return IGCLLVM::contains_insensitive(TypeDesc, "read_only");
 }

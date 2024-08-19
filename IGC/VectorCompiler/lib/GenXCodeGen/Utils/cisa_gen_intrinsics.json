@@ -943,6 +943,35 @@
       "YOff": [ "GENERAL", "UNSIGNED", 6 ],
       "Src": [ "RAW", 7 ]
     },
+    "vc::InternalIntrinsic::sampler_load_bti" : {
+      "opc": "ISA_3D_LOAD",
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": ["PREDICATION", 1],
+      "sub_opc": [ "SHORT", 2 ],
+      "ChMask": [ "BYTE", 3 ],
+      "Dst": [ "RAW", 0 ],
+      "AOffImmI": [ "GENERAL", "UNSIGNED", 4 ],
+      "Surface": [ "SURFACE", 5 ],
+      "PairedSurface": [ "NULLRAW" ],
+      "twoaddr": [ "TWOADDR", 6 ],
+      "NumSrcs": [ "ARGCOUNT", "ARGCOUNTMIN1", 7 ],
+      "Srcs": [ "RAW_OPERANDS", "RAW", 7 ]
+    },
+    "vc::InternalIntrinsic::sample_bti" : {
+      "opc": "ISA_3D_SAMPLE",
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": ["PREDICATION", 1],
+      "sub_opc": [ "SHORT", 2 ],
+      "ChMask": [ "BYTE", 3 ],
+      "Dst": [ "RAW", 0 ],
+      "AOffImmI": [ "GENERAL", "UNSIGNED", 4 ],
+      "Surface": [ "SURFACE", 5 ],
+      "Sampler": [ "SAMPLER", 6 ],
+      "PairedSurface": [ "NULLRAW" ],
+      "twoaddr": [ "TWOADDR", 7 ],
+      "NumSrcs": [ "ARGCOUNT", "ARGCOUNTMIN1", 8 ],
+      "Srcs": [ "RAW_OPERANDS", "RAW", 8 ]
+    },
     // vc-intrinsics
     "genx_fptosi_sat": {
       "opc": "ISA_MOV",
@@ -1879,20 +1908,6 @@
       "dst": [ "ADDRESS", 0 ],
       "src0": [ "ADDRESS", 1 ],
       "src1": [ "GENERAL", "UNSIGNED", 2 ]
-    },
-    "genx_3d_sample": {
-      "opc": "ISA_3D_SAMPLE",
-      "sampling3d_opcode": [ "BYTE", 1 ],
-      "exec_size": [ "EXECSIZE_FROM_ARG", 2 ],
-      "pred": [ "PREDICATION", 2 ],
-      "channel_mask": [ "BYTE", 3 ],
-      "aoffimmi_value": [ "GENERAL", "UNSIGNED", 4 ],
-      "sampler": [ "SAMPLER", 5 ],
-      "surface": [ "SURFACE", 6 ],
-      "paired_surface": [ "NULLRAW" ],
-      "dst": [ "RAW", 0 ],
-      "number_of_additional_operands": [ "ARGCOUNT", "ARGCOUNTMIN1", 7 ],
-      "raw_operands": [ "RAW_OPERANDS", "RAW", 7 ]
     },
     "genx_sqrt": {
       "opc": "ISA_SQRT",
@@ -3207,19 +3222,6 @@
       "mode": [ "BYTE", 4 ],
       "Destination": [ "RAW", 0 ]
     },
-    "genx_3d_load": {
-      "opc": "ISA_3D_LOAD",
-      "sampling3d_opcode": [ "BYTE", 1 ],
-      "exec_size": [ "EXECSIZE_FROM_ARG", 2 ],
-      "pred": [ "PREDICATION", 2 ],
-      "channel_mask": [ "BYTE", 3 ],
-      "aoffimmi_value": [ "GENERAL", "UNSIGNED", 4 ],
-      "surface": [ "SURFACE", 5 ],
-      "paired_surface": [ "NULLRAW" ],
-      "dst": [ "RAW", 0 ],
-      "number_of_additional_operands": [ "ARGCOUNT", "ARGCOUNTMIN1", 6 ],
-      "raw_operands": [ "RAW_OPERANDS", "RAW", 6 ]
-    },
     "genx_frc": {
       "opc": "ISA_FRC",
       "exec_size": [ "EXECSIZE" ],
@@ -3531,15 +3533,6 @@
       "src0": [ "GENERAL", "FIXED4", "NOIMM", 1 ],
       "src1": [ "GENERAL", 2 ]
     },
-    "genx_load": {
-      "opc": "ISA_LOAD",
-      "channel_mask": [ "SAMPLECHMASK", 1 ],
-      "surface": [ "SURFACE", 2 ],
-      "U_pixel_address": [ "RAW", 3 ],
-      "V_pixel_address": [ "RAW", 4 ],
-      "R_pixel_address": [ "RAW", 5 ],
-      "dst": [ "RAW", 0 ]
-    },
     "genx_lrp": {
       "opc": "ISA_LRP",
       "exec_size": [ "EXECSIZE_GE4" ],
@@ -3574,16 +3567,6 @@
       "dst": [ "GENERAL", 0 ],
       "src0": [ "GENERAL", "OWALIGNED", "FIXED4", "NOIMM", 1 ],
       "src1": [ "GENERAL", "GRFALIGNED", "TWICEWIDTH", "NOIMM", 2 ]
-    },
-    "genx_sample": {
-      "opc": "ISA_SAMPLE",
-      "channel_mask": [ "SAMPLECHMASK", 1 ],
-      "sampler": [ "SAMPLER", 2 ],
-      "surface": [ "SURFACE", 3 ],
-      "U_pixel_address": [ "RAW", 4 ],
-      "V_pixel_address": [ "RAW", 5 ],
-      "R_pixel_address": [ "RAW", 6 ],
-      "dst": [ "RAW", 0 ]
     },
     "genx_svm_atomic_add": {
       "opc": "ISA_SVM",
@@ -4315,27 +4298,6 @@
           "dst",
           "src0",
           "src1"
-        ]
-      ]
-    ],
-    "ISA_3D_SAMPLE": [
-      [ "CISA_CALL",
-        [ "Kernel->AppendVISA3dSampler",
-          "(VISASampler3DSubOpCode)sampling3d_opcode",
-          "false",
-          "false",
-          "false",
-          "pred",
-          "exec_mask",
-          "exec_size",
-          "static_cast<VISAChannelMask>(channel_mask)",
-          "aoffimmi_value",
-          "sampler",
-          "surface",
-          "paired_surface",
-          "dst",
-          "number_of_additional_operands",
-          "raw_operands"
         ]
       ]
     ],
@@ -5177,18 +5139,39 @@
     "ISA_3D_LOAD": [
       [ "CISA_CALL",
         [ "Kernel->AppendVISA3dLoad",
-          "(VISASampler3DSubOpCode)sampling3d_opcode",
+          "static_cast<VISASampler3DSubOpCode>(sub_opc & 0x1f)",
+          "sub_opc & (1<<5)",
+          "pred",
+          "exec_mask",
+          "exec_size",
+          "convertChannelMaskToVisaType(ChMask)",
+          "AOffImmI",
+          "reinterpret_cast<VISA_StateOpndHandle *>(Surface)",
+          "PairedSurface",
+          "Dst",
+          "NumSrcs",
+          "Srcs.data()"
+        ]
+      ]
+    ],
+    "ISA_3D_SAMPLE": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISA3dSampler",
+          "static_cast<VISASampler3DSubOpCode>(sub_opc & 0x1f)",
+          "sub_opc & (1<<5)",
+          "sub_opc & (1<<6)",
           "false",
           "pred",
           "exec_mask",
           "exec_size",
-          "convertChannelMaskToVisaType(channel_mask)",
-          "aoffimmi_value",
-          "surface",
-          "paired_surface",
-          "dst",
-          "number_of_additional_operands",
-          "raw_operands"
+          "convertChannelMaskToVisaType(ChMask)",
+          "AOffImmI",
+          "reinterpret_cast<VISA_StateOpndHandle *>(Sampler)",
+          "reinterpret_cast<VISA_StateOpndHandle *>(Surface)",
+          "PairedSurface",
+          "Dst",
+          "NumSrcs",
+          "Srcs.data()"
         ]
       ]
     ],
@@ -5513,19 +5496,6 @@
         ]
       ]
     ],
-    "ISA_LOAD": [
-      [ "CISA_CALL",
-        [ "Kernel->AppendVISASILoad",
-          "surface",
-          "convertChannelMaskToVisaType(channel_mask & 0xf)",
-          "(channel_mask >> 4) & 0x3",
-          "U_pixel_address",
-          "V_pixel_address",
-          "R_pixel_address",
-          "dst"
-        ]
-      ]
-    ],
     "ISA_SAMPLE": [
       [ "CISA_CALL",
         [ "Kernel->AppendVISASISample",
@@ -5708,7 +5678,10 @@
     "ARGCOUNT":     "GetArgCount(II::ArgInfo({args}))",
     "NUMGRFS":      "GetNumGrfs(II::ArgInfo({args}))",
     "SAMPLECHMASK": "GetSampleChMask(II::ArgInfo({args}))",
-    "RAW_OPERANDS": ["VISA_RawOpnd* {dst}[16]", "CreateRawOperands(II::ArgInfo({args}), {dst})"],
+    "RAW_OPERANDS": [
+      "SmallVector<VISA_RawOpnd *, 16> {dst}",
+      "CreateRawOperands(II::ArgInfo({args}), {dst})"
+    ],
     "LITERAL":      "{value1}",
     "ISBARRIER":    "HasBarrier = true",
     "BITWIDTH":     "GetBitWidth(II::ArgInfo({args}))",

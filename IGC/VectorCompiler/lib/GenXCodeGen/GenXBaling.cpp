@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include "GenXUtil.h"
 
 #include "vc/Utils/GenX/GlobalVariable.h"
+#include "vc/Utils/GenX/IntrinsicsWrapper.h"
 
 #include "llvm/ADT/DepthFirstIterator.h"
 #include "llvm/Analysis/CFG.h"
@@ -1630,7 +1631,7 @@ void GenXBaling::processBranch(BranchInst *Branch)
  */
 void GenXBaling::processTwoAddrSend(CallInst *CI)
 {
-  unsigned TwoAddrOperandNum = IGCLLVM::getNumArgOperands(CI) - 1;
+  unsigned TwoAddrOperandNum = vc::getTwoAddrOpIndex(CI);
   IGC_ASSERT(GenXIntrinsicInfo(vc::getAnyIntrinsicID(CI))
       .getArgInfo(TwoAddrOperandNum)
       .getCategory() == GenXIntrinsicInfo::TWOADDR);

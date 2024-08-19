@@ -1057,12 +1057,79 @@ Imported_Intrinsics = {
                                "attributes": "SideEffects", },
 
 
+### ----------------------------
+### Low-level sampler intrinsics
+### ----------------------------
+
+## ``llvm.vc.internal.sampler.load.bti.*`` : Sampler load intrinsic
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: vNi1 Predicate (overloaded)
+## * arg1: i16, Opcode [MBC]
+## * arg2: i8, Channel mask [MBC]
+## * arg3: i16, Address offset packed immediates (aoffimmi) [MBC]
+## * arg4: i32, Surface BTI
+## * arg5: vector to take values for masked simd lanes from
+## * arg6: vNi32 or vNi16, first sampler message parameter (overloaded)
+## * arg7-arg14: sampler message parameters, same type as arg6
+##
+## * Return value: the value read from image (overloaded)
+##
+    "sampler_load_bti" : { "result" : "anyvector",
+                           "arguments" : [
+                               "anyint", # vNxi1, predicate
+                               "short",  # opcode
+                               "char",   # channel mask
+                               "short",  # aoffimmi
+                               "int",    # BTI
+                               0,        # passthru
+                               "anyint", # first sampler message parameter
+                               2, 2, 2, 2, 2, 2, 2, 2, # sampler message parameters
+                           ],
+                           "target" : [
+                               "hasSampler",
+                           ],
+                           "attributes" : "ReadMem", },
+
+## ``llvm.vc.internal.sample.bti.*`` : Sampler load intrinsic
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: vNi1 Predicate (overloaded)
+## * arg1: i16, Opcode [MBC]
+## * arg2: i8, Channel mask [MBC]
+## * arg3: i16, Address offset packed immediates (aoffimmi) [MBC]
+## * arg4: i32, Surface BTI
+## * arg5: i32, Sampler Index
+## * arg6: vector to take values for masked simd lanes from
+## * arg7: vNi32 or vNi16, first sampler message parameter (overloaded)
+## * arg8-arg18: sampler message parameters, same type as arg7
+##
+## * Return value: the value read from image (overloaded)
+##
+    "sample_bti" : { "result" : "anyvector",
+                     "arguments" : [
+                         "anyint", # vNxi1, predicate
+                         "short",  # opcode
+                         "char",   # channel mask
+                         "short",  # aoffimmi
+                         "int",    # BTI
+                         "int",    # Sampler index
+                         0,        # passthru
+                         "anyint", # first sampler message parameter
+                         2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, # sampler message parameters
+                     ],
+                     "target" : [
+                         "hasSampler",
+                     ],
+                     "attributes" : "ReadMem", },
+
+
 ### --------------------
 ### Thread ID intrinsics
 ### --------------------
 
 ## ``llvm.vc.internal.sync.buffer`` : read stateless pointer to sync buffer
-## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ## ``llvm.vc.internal.sync.buffer`` : read implicit arg sync buffer ptr
 ##
 ## * Return value: i64 address of sync buffer

@@ -3410,13 +3410,14 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     return ResultOperand;
   };
 
-  auto CreateRawOperands = [&](II::ArgInfo AI, VISA_RawOpnd **Operands) {
+  auto CreateRawOperands = [&](II::ArgInfo AI,
+                               SmallVectorImpl<VISA_RawOpnd *> &Operands) {
     LLVM_DEBUG(dbgs() << "CreateRawOperands\n");
     IGC_ASSERT_MESSAGE(MaxRawOperands != std::numeric_limits<int>::max(),
                        "MaxRawOperands must be defined");
-    for (int i = 0; i < AI.getArgIdx() + MaxRawOperands; ++i) {
-      Operands[i] = CreateRawOperand(II::ArgInfo(II::RAW | (AI.Info + i)));
-    }
+    for (int I = 0; I < AI.getArgIdx() + MaxRawOperands; ++I)
+      Operands.push_back(
+          CreateRawOperand(II::ArgInfo(II::RAW | (AI.Info + I))));
   };
 
   auto GetOwords = [&](II::ArgInfo AI) {
@@ -3605,8 +3606,8 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     MaxRawOperands = BaseArg;
 
     for (unsigned Idx = BaseArg; Idx < IGCLLVM::getNumArgOperands(CI); ++Idx) {
-      if (auto CA = dyn_cast<Constant>(CI->getArgOperand(Idx))) {
-        if (CA->isNullValue())
+      if (auto *CA = dyn_cast<Constant>(CI->getArgOperand(Idx))) {
+        if (CA->isNullValue() || isa<UndefValue>(CA))
           continue;
       }
       MaxRawOperands = Idx + 1;

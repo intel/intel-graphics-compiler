@@ -70,6 +70,8 @@ inline bool isAbsIntrinsic(const llvm::Value *V) {
   return isAbsIntrinsic(getAnyIntrinsicID(V));
 }
 
+int getTwoAddrOpIndex(llvm::CallInst *CI);
+
 } // namespace vc
 
 #endif /* end of include guard: VC_UTILS_INTRINSICS_WRAPPER_H */

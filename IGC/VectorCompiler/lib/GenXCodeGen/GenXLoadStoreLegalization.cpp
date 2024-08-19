@@ -357,6 +357,9 @@ GenXLoadStoreLegalization::getMemoryIntrinsic(CallInst &CI,
 
 unsigned GenXLoadStoreLegalization::getMaxLegalSimdWidth(CallInst &CI) const {
   IGC_ASSERT(vc::InternalIntrinsic::isInternalMemoryIntrinsic(&CI));
+  if (vc::InternalIntrinsic::isInternalSamplerIntrinsic(&CI))
+    return ST->getSamplerMaxWidth();
+
   // FIXME: support legacy memory intrinsics
 
   auto VectorSize = vc::InternalIntrinsic::getMemoryVectorSizePerLane(&CI);
@@ -373,6 +376,9 @@ unsigned GenXLoadStoreLegalization::getMaxLegalSimdWidth(CallInst &CI) const {
 
 unsigned GenXLoadStoreLegalization::getMinLegalSimdWidth(CallInst &CI) const {
   IGC_ASSERT(vc::InternalIntrinsic::isInternalMemoryIntrinsic(&CI));
+
+  if (vc::InternalIntrinsic::isInternalSamplerIntrinsic(&CI))
+    return ST->getSamplerMinWidth();
 
   auto VectorSize = vc::InternalIntrinsic::getMemoryVectorSizePerLane(&CI);
   if (VectorSize == 1)
@@ -398,10 +404,11 @@ Value *GenXLoadStoreLegalization::createExtractFromSOAValue(
   auto *ETy = VTy->getElementType();
   auto OrigWidth = VTy->getNumElements() / VectorSize;
 
-  if (isa<UndefValue>(Data)) {
-    auto *ResTy = IGCLLVM::FixedVectorType::get(ETy, Width * VectorSize);
+  auto *ResTy = IGCLLVM::FixedVectorType::get(ETy, Width * VectorSize);
+  if (isa<UndefValue>(Data))
     return UndefValue::get(ResTy);
-  }
+  if (auto *C = dyn_cast<Constant>(Data); C && C->isNullValue())
+    return Constant::getNullValue(ResTy);
 
   Value *Extract = nullptr;
   const auto &DL = InsertBefore->getDebugLoc();
@@ -431,6 +438,12 @@ Value *GenXLoadStoreLegalization::createInsertToSOAValue(
 
   Value *Insert = nullptr;
   const auto &DL = InsertBefore->getDebugLoc();
+
+  if (isa<UndefValue>(Data))
+    return InsertTo;
+  if (auto *C = dyn_cast<Constant>(Data);
+      C && C->isNullValue() && isa<UndefValue>(InsertTo))
+    return Constant::getNullValue(VTy);
 
   if (VTy->getElementType()->isIntegerTy(1)) {
     IGC_ASSERT(VectorSize == 1);

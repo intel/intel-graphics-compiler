@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022-2023 Intel Corporation
+Copyright (C) 2022-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -141,6 +141,16 @@ inline bool isSlmIntrinsic(const llvm::Function *F) {
   return isSlmIntrinsic(getInternalIntrinsicID(F));
 }
 
+bool isInternalSamplerIntrinsic(ID IID);
+
+inline bool isInternalSamplerIntrinsic(const llvm::Value *V) {
+  return isInternalSamplerIntrinsic(getInternalIntrinsicID(V));
+}
+
+inline bool isInternalSamplerIntrinsic(const llvm::Function *F) {
+  return isInternalSamplerIntrinsic(getInternalIntrinsicID(F));
+}
+
 bool isMemoryBlockIntrinsic(const llvm::Instruction *I);
 
 unsigned getMemoryVectorSizePerLane(const llvm::Instruction *I);
@@ -148,6 +158,7 @@ unsigned getMemorySimdWidth(const llvm::Instruction *I);
 unsigned getMemoryRegisterElementSize(const llvm::Instruction *I);
 
 int getMemorySurfaceOperandIndex(unsigned IID);
+int getMemorySamplerOperandIndex(unsigned IID);
 
 int getMemoryCacheControlOperandIndex(unsigned IID);
 
@@ -161,6 +172,8 @@ inline llvm::Value *getMemoryCacheControlOperand(const llvm::Instruction *I) {
     return nullptr;
   return I->getOperand(Index);
 }
+
+int getTwoAddrOpIndex(const llvm::CallInst *CI);
 
 } // namespace vc::InternalIntrinsic
 

@@ -330,9 +330,9 @@ void GenXOCLRuntimeInfo::FunctionInfo::initInstructionLevelProperties(
       NumBarriers = 1;
       LLVM_DEBUG(dbgs() << ">> NumBarriers: " << NumBarriers << "\n");
       break;
-    case GenXIntrinsic::genx_3d_sample:
-    case GenXIntrinsic::genx_sample:
     case GenXIntrinsic::genx_sample_unorm:
+    case vc::InternalIntrinsic::sample_bti:
+    case vc::InternalIntrinsic::sampler_load_bti:
       UsesSample = true;
       LLVM_DEBUG(dbgs() << ">> UsesSample: true\n");
       break;

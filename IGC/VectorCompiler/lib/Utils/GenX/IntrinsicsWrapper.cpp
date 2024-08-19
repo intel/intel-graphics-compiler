@@ -121,3 +121,11 @@ bool vc::isAbsIntrinsic(unsigned ID) {
     return true;
   return GenXIntrinsic::isAbs(ID);
 }
+
+int vc::getTwoAddrOpIndex(CallInst *CI) {
+  if (InternalIntrinsic::isInternalNonTrivialIntrinsic(CI))
+    return InternalIntrinsic::getTwoAddrOpIndex(CI);
+  if (GenXIntrinsic::isGenXNonTrivialIntrinsic(CI))
+    return CI->arg_size() - 1;
+  return -1;
+}
