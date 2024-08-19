@@ -9855,7 +9855,17 @@ intrinsics:
             - !AttributeID "ReadNone"
     - !<IntrinsicDefinition>
         name: "GenISA_GlobalBufferPointer"
-        comment: "Raytracing: per lane stack size"
+        comment: "Raytracing: Pointer to the global ray"
+        return_definition: !<ReturnDefinition>
+            type_definition: *p_any_
+            comment: ""
+        arguments: []
+        attributes:
+            - !AttributeID "NoUnwind"
+            - !AttributeID "ReadNone"
+    - !<IntrinsicDefinition>
+        name: "GenISA_GlobalQueuePointer"
+        comment: "Raytracing/AtomicPullSWTileWalk: Pointer to the global queue struct"
         return_definition: !<ReturnDefinition>
             type_definition: *p_any_
             comment: ""
