@@ -60,7 +60,7 @@ entry:
   %arrayidx1 = getelementptr inbounds float, float addrspace(1)* %out, i64 %conv.i
   store float %2, float addrspace(1)* %arrayidx1, align 4
 
-  ; CHECK-NOT: %{{.*}} = simdBlockWrite
+  ; CHECK-NOT: simdBlockWrite
 
   ret void
 
@@ -68,14 +68,47 @@ entry:
 
 }
 
-!igc.functions = !{!1, !2}
+define spir_kernel void @testYZUnifLoop(float addrspace(1)* %out, float addrspace(1)* %in, <8 x i32> %r0, <8 x i32> %payloadHeader, <3 x i32> %localSize, i16 %localIdX, i16 %localIdY, i16 %localIdZ, i32 %bufferOffset, i64 %limit) {
+; CHECK: %{{.*}} = load
+; CHECK: store
+; CHECK: [[TMP0:%.*]] = call float @llvm.genx.GenISA.simdBlockRead.f32.p1f32(float addrspace(1)* %{{.*}})
+; CHECK: call void @llvm.genx.GenISA.simdBlockWrite.p1f32.f32(float addrspace(1)* %{{.*}}, float [[TMP0]])
+entry:
+  %offset = extractelement <8 x i32> %payloadHeader, i64 0
+  %groupNumX = extractelement <8 x i32> %r0, i64 1
+  %shl = shl i32 %groupNumX, 5
+  %localIdX31 = zext i16 %localIdX to i32
+  %globalIdX = add i32 %shl, %localIdX31
+  %sum = add i32 %globalIdX, %offset
+  %sum64 = zext i32 %sum to i64
+  %precond = icmp slt i64 %sum64, %limit
+  br i1 %precond, label %preheader, label %terminator
+preheader:
+  br label %latch
+latch:
+  %ind = phi i64 [ %sum64, %preheader ], [ %incr, %latch ]
+  %arrayidx = getelementptr inbounds float, float addrspace(1)* %in, i64 %ind
+  %load = load float, float addrspace(1)* %arrayidx, align 4
+  %arrayidx1 = getelementptr inbounds float, float addrspace(1)* %out, i64 %ind
+  store float %load, float addrspace(1)* %arrayidx1, align 4
+  %incr = add nsw i64 %ind, 32
+  %cond = icmp slt i64 %incr, %limit
+  br i1 %cond, label %latch, label %exit
+exit:
+  br label %terminator
+terminator:
+  ret void
+}
+
+!igc.functions = !{!1, !2, !3}
 !IGCMetadata = !{!19}
 
 !1 = !{void (float addrspace(1)*, float addrspace(1)*, <8 x i32>, <8 x i32>, <3 x i32>, i16, i16, i16, i32, i32)* @testYZUnif, !41}
 !2 = !{void (float addrspace(1)*, float addrspace(1)*, <8 x i32>, <8 x i32>, <3 x i32>, i16, i16, i16, i32, i32)* @testNoUnif, !42}
+!3 = !{void (float addrspace(1)*, float addrspace(1)*, <8 x i32>, <8 x i32>, <3 x i32>, i16, i16, i16, i32, i64)* @testYZUnifLoop, !43}
 !41 = !{!5, !6, !17}
 !42 = !{!5, !6}
-!43 = !{!5, !6, !18}
+!43 = !{!5, !6, !17}
 !5 = !{!"function_type", i32 0}
 !6 = !{!"implicit_arg_desc", !7, !8, !9, !10, !11, !12, !13, !15}
 !7 = !{i32 0}
@@ -99,11 +132,13 @@ entry:
 
 !18 = !{!"thread_group_size", i32 16, i32 32, i32 32}
 !19 = !{!"ModuleMD", !112}
-!112 = !{!"FuncMD", !113, !114, !333, !334}
+!112 = !{!"FuncMD", !113, !114, !333, !334, !335, !336}
 !113 = !{!"FuncMDMap[0]", void (float addrspace(1)*, float addrspace(1)*, <8 x i32>, <8 x i32>, <3 x i32>, i16, i16, i16, i32, i32)* @testYZUnif}
 !114 = !{!"FuncMDValue[0]", !116}
 !333 = !{!"FuncMDMap[1]", void (float addrspace(1)*, float addrspace(1)*, <8 x i32>, <8 x i32>, <3 x i32>, i16, i16, i16, i32, i32)* @testNoUnif}
 !334 = !{!"FuncMDValue[1]", !116}
+!335 = !{!"FuncMDMap[2]", void (float addrspace(1)*, float addrspace(1)*, <8 x i32>, <8 x i32>, <3 x i32>, i16, i16, i16, i32, i64)* @testYZUnifLoop}
+!336 = !{!"FuncMDValue[2]", !116}
 !116 = !{!"workGroupWalkOrder", !117, !118, !119}
 !117 = !{!"dim0", i32 0}
 !118 = !{!"dim1", i32 1}

@@ -1408,12 +1408,6 @@ void OptimizeIR(CodeGenContext* const pContext)
         mpm.add(new IGCConstProp());
         GFX_ONLY_PASS { mpm.add(createTranslateToProgrammableOffsetsPass()); }
 
-        // This pass needs to be extended for other devices
-        if (pContext->platform.getPlatformInfo().eProductFamily == IGFX_PVC)
-        {
-            mpm.add(new GenerateBlockMemOpsPass());
-        }
-        mpm.add(new BlockMemOpAddrScalarizationPass());
 
         mpm.add(new CustomSafeOptPass());
         if (!pContext->m_DriverInfo.WADisableCustomPass())
@@ -1477,7 +1471,20 @@ void OptimizeIR(CodeGenContext* const pContext)
                 mpm.add(llvm::createLoopRotatePass(LOOP_ROTATION_HEADER_INST_THRESHOLD));
                 mpm.add(llvm::createLCSSAPass());
                 mpm.add(llvm::createLoopSimplifyPass());
+            }
+        }
 
+        // This pass needs to be extended for other devices
+        if (pContext->platform.getPlatformInfo().eProductFamily == IGFX_PVC)
+        {
+            mpm.add(new GenerateBlockMemOpsPass());
+        }
+        mpm.add(new BlockMemOpAddrScalarizationPass());
+
+        if (pContext->m_instrTypes.hasMultipleBB && !disableGOPT)
+        {
+            if (pContext->m_instrTypes.numOfLoop)
+            {
                 bool allowLICM = IGC_IS_FLAG_ENABLED(allowLICM) && pContext->m_retryManager.AllowLICM();
                 bool runGEPLSR = IGC_IS_FLAG_ENABLED(EnableGEPLSR) &&
                     pContext->type == ShaderType::OPENCL_SHADER &&
