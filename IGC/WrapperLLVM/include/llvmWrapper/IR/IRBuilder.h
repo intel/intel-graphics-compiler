@@ -268,16 +268,6 @@ namespace IGCLLVM
           return createAtomicRMW(*this, Op, Ptr, Val, Ordering, SSID);
         }
 
-        // This wrapper function is deprecated because it uses typed pointer and
-        // should no longer be used in LLVM 14+ compatible code.
-        llvm::CallInst *CreateMaskedLoad(llvm::Value *Ptr, Align Alignment, llvm::Value *Mask,
-                                   llvm::Value *PassThru, const llvm::Twine &Name) {
-          auto *PtrTy = llvm::cast<llvm::PointerType>(Ptr->getType());
-          llvm::Type *Ty = IGCLLVM::getNonOpaquePtrEltTy(PtrTy);
-          return llvm::IRBuilder<T, InserterTyDef()>::CreateMaskedLoad(
-              Ty, Ptr, Alignment, Mask, PassThru, Name);
-        }
-
 #endif
 
 #if LLVM_VERSION_MAJOR >= 14

@@ -40,7 +40,8 @@ llvm::Value* FunctionUpgrader::AddArgument(llvm::StringRef argName, llvm::Type* 
     }
     llvm::AllocaInst* pPlaceHolderArgAlloc = builder.CreateAlloca(argType, 0, "");
     // Create place holder load, which will simulate the argument for now
-    llvm::LoadInst* PlaceHolderArg = builder.CreateLoad(pPlaceHolderArgAlloc, argName);
+    llvm::LoadInst* PlaceHolderArg = builder.CreateLoad(pPlaceHolderArgAlloc->getAllocatedType(),
+        pPlaceHolderArgAlloc, argName);
 
     m_pNewArguments[PlaceHolderArg] = nullptr;
     m_placeHolders.push_back(PlaceHolderArg);

@@ -442,7 +442,7 @@ bool DynamicRayManagementPass::TryProceedBasedApproach(Function& F)
 
         IRB.SetInsertPoint(IP);
 
-        auto* load = IRB.CreateLoad(guard, VALUE_NAME("RQGuardValue"));
+        auto* load = IRB.CreateLoad(IRB.getInt1Ty(), guard, VALUE_NAME("RQGuardValue"));
 
         guardStoresAndLoads.push_back(load);
 
@@ -470,7 +470,7 @@ bool DynamicRayManagementPass::TryProceedBasedApproach(Function& F)
 
         IRB.SetInsertPoint(IP);
 
-        auto* cond = IRB.CreateLoad(guard, VALUE_NAME("RQGuardValue"));
+        auto* cond = IRB.CreateLoad(IRB.getInt1Ty(), guard, VALUE_NAME("RQGuardValue"));
 
         guardStoresAndLoads.push_back(cond);
 

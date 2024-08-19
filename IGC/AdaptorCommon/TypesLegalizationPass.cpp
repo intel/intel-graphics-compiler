@@ -138,7 +138,7 @@ void TypesLegalizationPass::ResolvePhiNode( PHINode *phi ) {
     IGCLLVM::IRBuilder<> builder( phi );
     BasicBlock *block = builder.GetInsertBlock();
     builder.SetInsertPoint( &(*block->getFirstInsertionPt()) );
-    Value* newLoad = builder.CreateLoad( allocaPtr );
+    Value* newLoad = builder.CreateLoad(allocaPtr->getAllocatedType(), allocaPtr);
     phi->replaceAllUsesWith( newLoad );
     phi->eraseFromParent();
   }

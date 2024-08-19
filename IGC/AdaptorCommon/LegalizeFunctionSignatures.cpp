@@ -680,7 +680,7 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
         {
             // Load the return value from the arg pointer before using it
             IGC_ASSERT(returnPtr);
-            Value* load = builder.CreateLoad(returnPtr);
+            Value* load = builder.CreateLoad(cast<AllocaInst>(returnPtr)->getAllocatedType(), returnPtr);
             callInst->replaceAllUsesWith(load);
         }
         else if (retTypeOption == ReturnOpt::RETURN_STRUCT)

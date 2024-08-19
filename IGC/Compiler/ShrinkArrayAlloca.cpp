@@ -286,6 +286,7 @@ inline bool GetUsedVectorElements(
 inline void ReplaceUseWith(
     Value* user,
     Value* oldOp,
+    Type* newOpTy,
     Value* newOp,
     const SmallVector<bool, 4>& used,
     const SmallVector<uint32_t, 4>& mapping)
@@ -294,6 +295,7 @@ inline void ReplaceUseWith(
     bool isScalar = 1 == numElements;
 
     Value* newInst = nullptr;
+    Type* newInstElTy = nullptr;
     if (GetElementPtrInst* gepInst = dyn_cast<GetElementPtrInst>(user))
     {
         IGCLLVM::IRBuilder<> builder(gepInst);
@@ -303,22 +305,25 @@ inline void ReplaceUseWith(
         SmallVector<Value*, 4> indices(gepInst->indices());
 
         newInst = gepInst->isInBounds() ?
-            builder.CreateInBoundsGEP(newOp, indices, gepInst->getName()) :
-            builder.CreateGEP(newOp, indices, gepInst->getName());
+            builder.CreateInBoundsGEP(newOpTy, newOp, indices, gepInst->getName()) :
+            builder.CreateGEP(newOpTy, newOp, indices, gepInst->getName());
+        newInstElTy = cast<llvm::GetElementPtrInst>(newInst)->getResultElementType();
     }
     else if (LoadInst* load = dyn_cast<LoadInst>(user))
     {
         IGCLLVM::IRBuilder<> builder(load);
-        LoadInst* newLoad = builder.CreateLoad(newOp, load->getName());
+        LoadInst* newLoad = builder.CreateLoad(newOpTy, newOp, load->getName());
         newLoad->setAlignment(
             IGCLLVM::getCorrectAlign(newLoad->getType()->getPrimitiveSizeInBits() / 8));
         newInst = newLoad;
+        newInstElTy = newLoad->getType();
     }
     else if (BitCastInst* bc = dyn_cast<BitCastInst>(user))
     {
         IGCLLVM::IRBuilder<> builder(bc);
         Type* scalarType = GetScalarType(bc->getType());
         Type* newDstType = GetNewType(scalarType, numElements);
+        newInstElTy = newDstType;
         if (bc->getType()->isPointerTy())
         {
             newDstType = PointerType::get(newDstType, ADDRESS_SPACE_PRIVATE);
@@ -384,7 +389,7 @@ inline void ReplaceUseWith(
         for (auto uit = user->user_begin(), eit = user->user_end(); uit != eit;)
         {
             Value* user1 = *uit++;
-            ReplaceUseWith(user1, user, newInst, used, mapping);
+            ReplaceUseWith(user1, user, newInstElTy, newInst, used, mapping);
         }
         cast<Instruction>(user)->eraseFromParent();
     }
@@ -468,7 +473,7 @@ bool ShrinkArrayAllocaPass::Resolve()
         for (auto uit = allocaInst->user_begin(), eit = allocaInst->user_end(); uit != eit;)
         {
             Value* user = *uit++;
-            ReplaceUseWith(user, allocaInst, newAlloca, used, mapping);
+            ReplaceUseWith(user, allocaInst, newAlloca->getAllocatedType(), newAlloca, used, mapping);
         }
 
         allocaInst->eraseFromParent();

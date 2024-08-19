@@ -384,7 +384,7 @@ void ResolveOCLRaytracingBuiltins::handleInitRayQuery(llvm::CallInst& callInst) 
 
     auto storeToAlloca = [&](unsigned argIndex)
     {
-        auto ptr = m_builder->CreateGEP(alloca, { m_builder->getInt32(0), m_builder->getInt32(argIndex) });
+        auto ptr = m_builder->CreateGEP(alloca->getAllocatedType(), alloca, { m_builder->getInt32(0), m_builder->getInt32(argIndex) });
         auto arg = callInst.getOperand(argIndex);
         m_builder->CreateStore(arg, ptr);
     };
