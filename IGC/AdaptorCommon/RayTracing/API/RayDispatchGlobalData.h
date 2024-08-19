@@ -259,9 +259,8 @@ struct RayDispatchInlinedData
 {
     uint64_t RayDispatchDescriptorAddress; // ShaderRecord*, r2.0:uq
     uint64_t RayDispatchGlobalDataPtr;     //                r2.1:uq
-    uint64_t AtomicPullGlobalQueuePtr;     //                r2.2:uq
 
-    static constexpr unsigned NumElts = 3;
+    static constexpr unsigned NumElts = 2;
 };
 
 
