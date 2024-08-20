@@ -45,6 +45,8 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Intrinsics.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
+#include "ZEBinWriter/zebin/source/ZEELFObjectBuilder.hpp"
+#include "Compiler/CISACodeGen/LoopCountAnalysis.hpp"
 
 #include <fstream>
 
@@ -165,6 +167,7 @@ IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(VariableReuseAnalysis)
 IGC_INITIALIZE_PASS_DEPENDENCY(CastToGASInfo)
 IGC_INITIALIZE_PASS_DEPENDENCY(ResourceLoopAnalysis)
+IGC_INITIALIZE_PASS_DEPENDENCY(CollectLoopCount)
 IGC_INITIALIZE_PASS_END(EmitPass, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 }
 
@@ -517,6 +520,27 @@ bool EmitPass::setCurrentShader(llvm::Function* F)
         return false;
     }
     m_currShader = Iter->second->GetOrCreateShader(m_SimdMode, m_ShaderDispatchMode);
+
+    if (m_CLC && IGC_IS_FLAG_ENABLED(EnableKernelCostInfo)) {
+
+        COpenCLKernel* openCLkernel = static_cast<COpenCLKernel*>(m_currShader);
+        std::vector<CollectLoopCount::ArgSym>& loopargs = m_CLC->getloopArgs();
+        for (CollectLoopCount::ArgSym argsym : loopargs) {
+            zebin::zeInfoKCMArgSym& argSym = openCLkernel->m_kernelCostexpInfo.argsSym.emplace_back();
+            argSym.argNo = argsym.argNo;
+            argSym.byteOffset = argsym.byteOffset;
+            argSym.sizeInBytes = argsym.sizeInBytes;
+            argSym.isInDirect = argsym.isInDirect;
+        }
+
+        std::vector<CollectLoopCount::LCE>& loopLCE = m_CLC->getLCE();
+        for (CollectLoopCount::LCE lce : loopLCE) {
+            zebin::zeInfoKCMLoopCountExp& lceInfo = openCLkernel->m_kernelCostexpInfo.loopLCE.emplace_back();
+            lceInfo.factor = lce.factor;
+            lceInfo.argsym_index = lce.argIndex;
+            lceInfo.C = lce.C;
+        }
+    }
     m_encoder = &(m_currShader->GetEncoder());
     return true;
 }
@@ -676,6 +700,9 @@ bool EmitPass::runOnFunction(llvm::Function& F)
             simd16Program->ProgramOutput()->m_programBin != 0 &&
             simd16Program->ProgramOutput()->m_scratchSpaceUsedBySpills == 0)
             return false;
+    }
+    if (IGC_IS_FLAG_ENABLED(EnableKernelCostInfo)) {
+        m_CLC = getAnalysisIfAvailable<CollectLoopCount>();
     }
 
     if (!setCurrentShader(&F))
@@ -1365,6 +1392,30 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         if (!skipPrologue)
         {
             m_encoder->Compile(compileWithSymbolTable, m_FGA);
+            if (m_pCtx->type == ShaderType::OPENCL_SHADER && IGC_IS_FLAG_ENABLED(EnableKernelCostInfo)) {
+                if (m_encoder->kci != nullptr) {
+                    COpenCLKernel* openCLkernel = static_cast<COpenCLKernel*>(m_currShader);
+                    zebin::KCMLoopCostsTy costInfoVector;
+                    const vISA::CostExpr& costExpr = m_encoder->kci->kernelCost;
+
+                    zebin::zeInfoKCMLoopCost costInfo = { (int32_t)costExpr.C.cycles, (int32_t)costExpr.C.loadBytes,
+                        (int32_t)costExpr.C.storeBytes, (int32_t)costExpr.loopCosts.size() };
+                    costInfoVector.push_back(costInfo);
+                    int toplevelLoops = 0;
+                    for (const vISA::LoopCostInfo& LCI : m_encoder->kci->allLoopCosts) {
+                        int level = LCI.nestingLevel;
+                        if (level == 1) {
+                            toplevelLoops += 1;
+                        }
+                        const vISA::CostExpr& loopCostExpression = LCI.loopBodyCost;
+                        const vISA::CostMetrics& CM = loopCostExpression.C;
+                        costInfo = { (int)CM.cycles, (int)CM.loadBytes, (int)CM.storeBytes, LCI.numChildLoops };
+                        costInfoVector.push_back(costInfo);
+                    }
+                    costInfoVector.at(0).num_loops = toplevelLoops;
+                    openCLkernel->m_kernelCostexpInfo.kernelCost = costInfoVector;
+                }
+            }
         }
         m_pCtx->m_prevShader = m_currShader;
     }

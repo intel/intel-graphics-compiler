@@ -39,6 +39,10 @@ LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zeInfoInlineSampler)
 LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zeInfoHostAccess)
 LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zeInfoKernelMiscInfo)
 LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zeInfoArgInfo)
+LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zeInfoKernelCostInfo)
+LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zeInfoKCMArgSym)
+LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zeInfoKCMLoopCountExp)
+LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zeInfoKCMLoopCost)
 namespace llvm {
     namespace yaml{
         template<>
@@ -100,6 +104,22 @@ namespace llvm {
         template<>
         struct MappingTraits<zebin::zeInfoArgInfo> {
             static void mapping(IO& io, zebin::zeInfoArgInfo& info);
+        };
+        template<>
+        struct MappingTraits<zebin::zeInfoKernelCostInfo> {
+            static void mapping(IO& io, zebin::zeInfoKernelCostInfo& info);
+        };
+        template<>
+        struct MappingTraits<zebin::zeInfoKCMArgSym> {
+            static void mapping(IO& io, zebin::zeInfoKCMArgSym& info);
+        };
+        template<>
+        struct MappingTraits<zebin::zeInfoKCMLoopCountExp> {
+            static void mapping(IO& io, zebin::zeInfoKCMLoopCountExp& info);
+        };
+        template<>
+        struct MappingTraits<zebin::zeInfoKCMLoopCost> {
+            static void mapping(IO& io, zebin::zeInfoKCMLoopCost& info);
         };
     }
 }

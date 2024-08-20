@@ -1060,6 +1060,12 @@ zeInfoKernelMiscInfo& ZEInfoBuilder::createKernelMiscInfo(const std::string& nam
     return m;
 }
 
+zeInfoKernelCostInfo& ZEInfoBuilder::createKernelCostInfo(const std::string &name) {
+    zeInfoKernelCostInfo &m = mContainer.kernels_cost_info.emplace_back();
+    m.name = name;
+    return m;
+}
+
 bool ZEInfoBuilder::empty() const
 {
     return mContainer.kernels.empty();

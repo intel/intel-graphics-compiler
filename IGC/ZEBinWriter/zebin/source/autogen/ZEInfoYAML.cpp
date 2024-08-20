@@ -26,6 +26,7 @@ void MappingTraits<zeInfoContainer>::mapping(IO& io, zeInfoContainer& info)
     io.mapOptional("functions", info.functions, FunctionsTy());
     io.mapOptional("global_host_access_table", info.global_host_access_table, HostAccessesTy());
     io.mapOptional("kernels_misc_info", info.kernels_misc_info, KernelsMiscInfoTy());
+    io.mapOptional("kernels_cost_info", info.kernels_cost_info, KernelsCostInfoTy());
 }
 void MappingTraits<zeInfoKernel>::mapping(IO& io, zeInfoKernel& info)
 {
@@ -160,4 +161,31 @@ void MappingTraits<zeInfoArgInfo>::mapping(IO& io, zeInfoArgInfo& info)
     io.mapRequired("access_qualifier", info.access_qualifier);
     io.mapRequired("type_name", info.type_name);
     io.mapRequired("type_qualifiers", info.type_qualifiers);
+}
+void MappingTraits<zeInfoKernelCostInfo>::mapping(IO& io, zeInfoKernelCostInfo& info)
+{
+    io.mapRequired("name", info.name);
+    io.mapOptional("kcm_args_sym", info.kcm_args_sym, KCMArgsSymTy());
+    io.mapRequired("kcm_loop_count_exps", info.kcm_loop_count_exps);
+    io.mapRequired("Kcm_loop_costs", info.Kcm_loop_costs);
+}
+void MappingTraits<zeInfoKCMArgSym>::mapping(IO& io, zeInfoKCMArgSym& info)
+{
+    io.mapRequired("argNo", info.argNo);
+    io.mapRequired("byteOffset", info.byteOffset);
+    io.mapRequired("sizeInBytes", info.sizeInBytes);
+    io.mapRequired("isInDirect", info.isInDirect);
+}
+void MappingTraits<zeInfoKCMLoopCountExp>::mapping(IO& io, zeInfoKCMLoopCountExp& info)
+{
+    io.mapRequired("factor", info.factor);
+    io.mapRequired("argsym_index", info.argsym_index);
+    io.mapRequired("C", info.C);
+}
+void MappingTraits<zeInfoKCMLoopCost>::mapping(IO& io, zeInfoKCMLoopCost& info)
+{
+    io.mapRequired("cycle", info.cycle);
+    io.mapRequired("bytes_loaded", info.bytes_loaded);
+    io.mapRequired("bytes_stored", info.bytes_stored);
+    io.mapRequired("num_loops", info.num_loops);
 }

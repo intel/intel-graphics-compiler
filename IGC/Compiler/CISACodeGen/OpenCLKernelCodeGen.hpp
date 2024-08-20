@@ -167,6 +167,7 @@ namespace IGC
     public:
         SOpenCLProgramInfo* m_programInfo;
         SOpenCLKernelInfo m_kernelInfo;
+        SOpenCLKernelCostExpInfo m_kernelCostexpInfo;
 
         unsigned int m_perWIStatelessPrivateMemSize;
 

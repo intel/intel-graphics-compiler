@@ -363,6 +363,7 @@ namespace IGC
         vKernelTmp = nullptr;
         dummySurface = nullptr;
         samplervar = nullptr;
+        kci = nullptr;
     }
 
     uint32_t CEncoder::getGRFSize() const { return m_program->getGRFSize(); }
@@ -5394,9 +5395,12 @@ namespace IGC
               PrintStaticProfileGuidedSpillCostAnalysis);
           SaveOption(vISA_DumpFreqBasedSpillCost, print_val);
         }
-
         if (IGC_IS_FLAG_ENABLED(EnableKeepDpasMacro)) {
           SaveOption(vISA_KeepDPASMacroInSchedule, true);
+        }
+        if(context->type == ShaderType::OPENCL_SHADER &&
+          IGC_IS_FLAG_ENABLED(EnableKernelCostInfo)) {
+          SaveOption(vISA_KernelCostInfo, true);
         }
     } // InitVISABuilderOptions
 
@@ -6765,6 +6769,12 @@ namespace IGC
         pOutput->m_numThreads = jitInfo->stats.numThreads;
 
         pOutput->m_perThreadArgumentStackSize = m_argumentStackSize;
+
+        if (context->enableZEBinary() &&
+            context->type == ShaderType::OPENCL_SHADER &&
+            IGC_IS_FLAG_ENABLED(EnableKernelCostInfo)) {
+            kci = createKernelCostInfo(*pMainKernel);
+        }
     }
 
     uint32_t CEncoder::getSpillMemSizeWithFG(const llvm::Function &curFunc,
@@ -6830,6 +6840,43 @@ namespace IGC
                 pOutput->m_funcRelocationTableEntries);
         }
     }
+    const vISA::KernelCostInfo* CEncoder::createKernelCostInfo(VISAKernel &pMainKernel)
+    {
+        CodeGenContext *context = m_program->GetContext();
+        IGC_ASSERT(context->enableZEBinary());
+        const vISA::KernelCostInfo* KCI = nullptr;
+        pMainKernel.getKernelCostInfo(KCI);
+        if (!KCI) {
+            return nullptr;
+        }
+        const vISA::CostExpr& FCE = KCI->kernelCost;
+        if (IGC_IS_FLAG_ENABLED(EnableKernelCostDebug)) {
+            dbgs() << "\nKernel Cost Metrics : " << GetShaderName() << "\n"
+                << "    Cycles (excluding loops) = " << FCE.C.cycles << "\n"
+                << "    Bytes Loaded (excluding loops) = " << FCE.C.loadBytes
+                << "\n"
+                << "    Bytes Stored (excluding loops) = " << FCE.C.storeBytes
+                << "\n\n";
+
+
+            for (const vISA::LoopCostInfo& LCI : KCI->allLoopCosts) {
+                const vISA::CostExpr& lce = LCI.loopBodyCost;
+
+                int level = LCI.nestingLevel;
+                std::string indent(4 * level, ' ');
+
+                dbgs() << indent << "L[" << LCI.loopId << "] "
+                    << "[visaid: " << LCI.backedge_visaId << "]\n";
+                const vISA::CostMetrics& CM = lce.C;
+                dbgs() << indent << "  Loop body only, excluding nested loops\n"
+                    << indent << "    Cycles = " << CM.cycles << "\n"
+                    << indent << "    Bytes Loaded = " << CM.loadBytes << "\n"
+                    << indent << "    Bytes Stored = " << CM.storeBytes << "\n";
+            }
+        }
+        return KCI;
+    }
+
 
     void CEncoder::createSymbolAndGlobalHostAccessTables(bool hasSymbolTable, VISAKernel& pMainKernel, unsigned int scratchOffset)
     {

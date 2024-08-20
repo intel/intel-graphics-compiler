@@ -77,6 +77,7 @@ void ZEBinaryBuilder::createKernel(
     const char*  rawIsaBinary,
     unsigned int rawIsaBinarySize,
     const SOpenCLKernelInfo& annotations,
+    const IGC::SOpenCLKernelCostExpInfo& costExpAnnotation,
     const uint32_t grfSize,
     const CBTILayout& layout,
     const std::vector<NamedVISAAsm>& visaasm,
@@ -111,6 +112,12 @@ void ZEBinaryBuilder::createKernel(
         zeInfoKernelMiscInfo& kernelMisc =
             mZEInfoBuilder.createKernelMiscInfo(annotations.m_kernelName);
         addKernelArgInfo(annotations, kernelMisc);
+    }
+
+    if (hasKernelCostInfo(costExpAnnotation)) {
+        zeInfoKernelCostInfo &kernelCost =
+            mZEInfoBuilder.createKernelCostInfo(annotations.m_kernelName);
+        addKernelCostInfo(costExpAnnotation, kernelCost);
     }
 
     addGTPinInfo(annotations);
@@ -630,12 +637,27 @@ bool ZEBinaryBuilder::hasKernelMiscInfo(
     return !annotations.m_zeKernelArgsInfo.empty();
 }
 
+bool ZEBinaryBuilder::hasKernelCostInfo(
+    const IGC::SOpenCLKernelCostExpInfo &costExpAnnotation) const
+{
+    return !costExpAnnotation.kernelCost.empty();
+}
+
 void ZEBinaryBuilder::addKernelArgInfo(
     const IGC::SOpenCLKernelInfo& annotations,
     zeInfoKernelMiscInfo& zeinfoKernelMisc)
 {
     // copy kernel args info into zeinfoKernelMisc
     zeinfoKernelMisc.args_info = annotations.m_zeKernelArgsInfo;
+}
+
+void ZEBinaryBuilder::addKernelCostInfo(
+    const IGC::SOpenCLKernelCostExpInfo &costExpAnnotation,
+    zeInfoKernelCostInfo &zeinfoKernelCost) {
+    // copy kernel args info into zeinfoKernelCost
+    zeinfoKernelCost.kcm_args_sym = costExpAnnotation.argsSym;
+    zeinfoKernelCost.kcm_loop_count_exps = costExpAnnotation.loopLCE;
+    zeinfoKernelCost.Kcm_loop_costs = costExpAnnotation.kernelCost;
 }
 
 // Calculate correct (pure) size of ELF binary, because debugDataSize taken from pOutput->m_debugDataVISASize

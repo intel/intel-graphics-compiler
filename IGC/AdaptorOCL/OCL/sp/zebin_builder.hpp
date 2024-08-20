@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 namespace IGC
 {
     struct SOpenCLKernelInfo;
+    struct SOpenCLKernelCostExpInfo;
     struct SOpenCLProgramInfo;
     class CBTILayout;
     class OpenCLProgramContext;
@@ -67,6 +68,7 @@ public:
         const char*  rawIsaBinary,
         unsigned int rawIsaBinarySize,
         const IGC::SOpenCLKernelInfo& annotations,
+        const IGC::SOpenCLKernelCostExpInfo& costExpAnnotation,
         const uint32_t grfSize,
         const IGC::CBTILayout& layout,
         const std::vector<NamedVISAAsm>& visaasm,
@@ -209,10 +211,19 @@ private:
     /// true
     bool hasKernelMiscInfo(const IGC::SOpenCLKernelInfo &annotations) const;
 
+    /// check if the kernel has cost info. The kernels_cost_info entry
+    /// should only be created when this function return true
+    bool hasKernelCostInfo(const IGC::SOpenCLKernelCostExpInfo &annotations) const;
+
     /// Add kernel arg info
     void addKernelArgInfo(
         const IGC::SOpenCLKernelInfo& annotations,
         zebin::zeInfoKernelMiscInfo& zeinfoKernelMisc);
+
+    ///  Add kernel cost info
+    void addKernelCostInfo(
+        const IGC::SOpenCLKernelCostExpInfo &costExpAnnotation,
+        zebin::zeInfoKernelCostInfo &zeinfoKernelCost);
 
     /// Calculate correct (pure) size of ELF binary, because m_debugDataSize in kernel output
     /// contains something else.

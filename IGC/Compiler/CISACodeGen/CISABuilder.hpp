@@ -138,6 +138,7 @@ namespace IGC
         void MarkAsPayloadLiveOut(CVariable* var);
         void Compile(bool hasSymbolTable, GenXFunctionGroupAnalysis*& pFGA);
         std::string GetShaderName();
+        const vISA::KernelCostInfo* kci;
 
         CEncoder();
         void SetProgram(CShader* program);
@@ -781,6 +782,8 @@ namespace IGC
                                        uint32_t curSize,
                                        GenXFunctionGroupAnalysis *fga,
                                        uint32_t gtpinScratchUse);
+
+    const vISA::KernelCostInfo* createKernelCostInfo(VISAKernel &pMainKenrel);
 
     protected:
         // encoder states

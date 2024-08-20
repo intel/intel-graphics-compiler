@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
+#include "LoopCountAnalysis.hpp"
 #include "BlockCoalescing.hpp"
 #include "PatternMatchPass.hpp"
 #include "ShaderCodeGen.hpp"
@@ -844,6 +845,7 @@ public:
     CoalescingEngine* m_CE = nullptr;
     VariableReuseAnalysis* m_VRA = nullptr;
     ResourceLoopAnalysis *m_RLA = nullptr;
+    CollectLoopCount* m_CLC = nullptr;
     ModuleMetaData* m_moduleMD = nullptr;
     bool m_canAbortOnSpill;
     PSSignature* const m_pSignature;

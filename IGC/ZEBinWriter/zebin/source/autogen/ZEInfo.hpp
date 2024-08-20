@@ -28,6 +28,7 @@ typedef int64_t     zeinfo_int64_t;
 typedef int32_t     zeinfo_int32_t;
 typedef bool        zeinfo_bool_t;
 typedef std::string zeinfo_str_t;
+typedef float     zeinfo_float_t;
 struct zeInfoUserAttribute
 {
     bool operator==(const zeInfoUserAttribute& other) const
@@ -183,6 +184,38 @@ struct zeInfoArgInfo
     zeinfo_str_t type_name;
     zeinfo_str_t type_qualifiers;
 };
+struct zeInfoKCMArgSym
+{
+    bool operator==(const zeInfoKCMArgSym& other) const
+    {
+        return argNo == other.argNo && byteOffset == other.byteOffset && sizeInBytes == other.sizeInBytes && isInDirect == other.isInDirect;
+    }
+    zeinfo_int32_t argNo = 0;
+    zeinfo_int32_t byteOffset = 0;
+    zeinfo_int32_t sizeInBytes = 0;
+    zeinfo_bool_t isInDirect = false;
+};
+struct zeInfoKCMLoopCountExp
+{
+    bool operator==(const zeInfoKCMLoopCountExp& other) const
+    {
+        return factor == other.factor && argsym_index == other.argsym_index && C == other.C;
+    }
+    zeinfo_float_t factor = 0;
+    zeinfo_int32_t argsym_index = 0;
+    zeinfo_float_t C = 0;
+};
+struct zeInfoKCMLoopCost
+{
+    bool operator==(const zeInfoKCMLoopCost& other) const
+    {
+        return cycle == other.cycle && bytes_loaded == other.bytes_loaded && bytes_stored == other.bytes_stored && num_loops == other.num_loops;
+    }
+    zeinfo_int32_t cycle = 0;
+    zeinfo_int32_t bytes_loaded = 0;
+    zeinfo_int32_t bytes_stored = 0;
+    zeinfo_int32_t num_loops = 0;
+};
 typedef std::vector<zeInfoPayloadArgument> PayloadArgumentsTy;
 typedef std::vector<zeInfoPerThreadPayloadArgument> PerThreadPayloadArgumentsTy;
 typedef std::vector<zeInfoBindingTableIndex> BindingTableIndicesTy;
@@ -224,24 +257,40 @@ struct zeInfoKernelMiscInfo
     zeinfo_str_t name;
     ArgsInfoTy args_info;
 };
+typedef std::vector<zeInfoKCMArgSym> KCMArgsSymTy;
+typedef std::vector<zeInfoKCMLoopCountExp> KCMLoopCountExpsTy;
+typedef std::vector<zeInfoKCMLoopCost> KCMLoopCostsTy;
+struct zeInfoKernelCostInfo
+{
+    bool operator==(const zeInfoKernelCostInfo& other) const
+    {
+        return name == other.name && kcm_args_sym == other.kcm_args_sym && kcm_loop_count_exps == other.kcm_loop_count_exps && Kcm_loop_costs == other.Kcm_loop_costs;
+    }
+    zeinfo_str_t name;
+    KCMArgsSymTy kcm_args_sym;
+    KCMLoopCountExpsTy kcm_loop_count_exps;
+    KCMLoopCostsTy Kcm_loop_costs;
+};
 typedef std::vector<zeInfoKernel> KernelsTy;
 typedef std::vector<zeInfoFunction> FunctionsTy;
 typedef std::vector<zeInfoHostAccess> HostAccessesTy;
 typedef std::vector<zeInfoKernelMiscInfo> KernelsMiscInfoTy;
+typedef std::vector<zeInfoKernelCostInfo> KernelsCostInfoTy;
 struct zeInfoContainer
 {
     bool operator==(const zeInfoContainer& other) const
     {
-        return version == other.version && kernels == other.kernels && functions == other.functions && global_host_access_table == other.global_host_access_table && kernels_misc_info == other.kernels_misc_info;
+        return version == other.version && kernels == other.kernels && functions == other.functions && global_host_access_table == other.global_host_access_table && kernels_misc_info == other.kernels_misc_info && kernels_cost_info == other.kernels_cost_info;
     }
     zeinfo_str_t version;
     KernelsTy kernels;
     FunctionsTy functions;
     HostAccessesTy global_host_access_table;
     KernelsMiscInfoTy kernels_misc_info;
+    KernelsCostInfoTy kernels_cost_info;
 };
 struct PreDefinedAttrGetter{
-    static zeinfo_str_t getVersionNumber() { return "1.45"; }
+    static zeinfo_str_t getVersionNumber() { return "1.49"; }
 
     enum class ArgThreadSchedulingMode {
         age_based,

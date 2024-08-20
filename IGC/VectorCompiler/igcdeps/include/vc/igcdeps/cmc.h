@@ -49,6 +49,7 @@ public:
 
   PLATFORM m_platform;
   IGC::SOpenCLKernelInfo m_kernelInfo;
+  IGC::SOpenCLKernelCostExpInfo m_kernelCostExpInfo;
   IGC::COCLBTILayout m_btiLayout;
   uint32_t m_GRFSizeInBytes = 0;
   bool m_SupportsDebugging = false;

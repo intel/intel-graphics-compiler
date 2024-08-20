@@ -594,6 +594,8 @@ DECLARE_IGC_REGKEY(DWORD, CheckCSSLMLimit, 2, "Check SLM or threads limit on com
     "0 - off, 1 - SLM limit heuristic, 2 - platform based heuristic (XE2 - threads limit, others - SLM limit)", false)
 DECLARE_IGC_REGKEY(DWORD, Enable2xGRF,                         2,     "Enable 2x GRF for high SLM or high threads usage"\
     "0 - off, 1 - on, 2 - platform default", false)
+DECLARE_IGC_REGKEY(bool, EnableKernelCostInfo,                 false, "Enable collecting kernel cost info", true)
+DECLARE_IGC_REGKEY(bool, EnableKernelCostDebug,                false, "Enable kernel cost info debuging", false)
 DECLARE_IGC_REGKEY(bool, EnableTileYForExperiments, false, "Enable TileY heuristics for experiments", false)
 DECLARE_IGC_REGKEY(bool, EnableDG2LSCSIMD8WA, true, "Enables WA for DG2 LSC simd8 d32-v8/d64-v3/d64-v4. [temp, should be replaced with WA id", false)
 DECLARE_IGC_REGKEY(bool, EnableScratchMessageD64WA, false, "Enables WA to legalize D64 scratch messages to D32", false)

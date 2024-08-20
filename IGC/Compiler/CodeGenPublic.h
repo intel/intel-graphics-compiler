@@ -648,6 +648,13 @@ namespace IGC
         int m_hasNonKernelArgAtomic = -1;
     };
 
+    struct SOpenCLKernelCostExpInfo
+    {
+        zebin::KCMArgsSymTy argsSym;
+        zebin::KCMLoopCountExpsTy loopLCE;
+        zebin::KCMLoopCostsTy kernelCost;
+    };
+
     struct SOpenCLProgramInfo
     {
         struct ZEBinRelocTable

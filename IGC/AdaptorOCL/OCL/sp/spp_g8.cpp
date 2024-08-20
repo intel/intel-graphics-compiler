@@ -567,6 +567,7 @@ bool CGen8OpenCLProgram::GetZEBinary(
                 (const char*)pOutput->m_programBin,
                 pOutput->m_programSize,
                 kernel->m_kernelInfo,
+                kernel->m_kernelCostexpInfo,
                 kernel->getGRFSize(),
                 m_Context.btiLayout,
                 pOutput->m_VISAAsm,

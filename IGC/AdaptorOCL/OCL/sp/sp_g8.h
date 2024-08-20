@@ -31,6 +31,7 @@ namespace IGC
 {
     struct SOpenCLKernelInfo;
     struct SOpenCLProgramInfo;
+    struct SOpenCLKernelCostExpInfo;
     class CBTILayout;
     class OpenCLProgramContext;
 }

@@ -30,6 +30,7 @@ All **literals** have one of the following types:
 - int32: typedef int32_t     zeinfo_int32_t
 - bool: typedef bool        zeinfo_bool_t
 - str: typedef std::string zeinfo_str_t
+- float: typedef float     zeinfo_float_t
 
 # Container
 | Attribute | Type | Required/Optional | Description |
@@ -39,6 +40,7 @@ All **literals** have one of the following types:
 | functions | FunctionsTy | Optional | vector |
 | global_host_access_table | HostAccessesTy | Optional | vector |
 | kernels_misc_info | KernelsMiscInfoTy | Optional | vector. Other miscellaneous kernel information which is required by certain API requesters, but is not necessary for kernel execution. |
+| kernels_cost_info | KernelsCostInfoTy | Optional | vector. kernel cost information which is experimental and required by certain API requesters, but is not necessary for kernel execution. |
 <!--- Container --->
 
 # Kernel Attributes
@@ -442,4 +444,50 @@ This section defines the supported attribute for args_info.
 | type_name | str | Required | | |
 | type_qualifiers | str | Required | | |
 <!--- ArgInfo ArgsInfo --->
+
+# Kernel Cost Attributes
+This section defines the supported attribute for kernel_cost_info.
+
+| Attribute | Type | Required/Optional | Description |
+| ----- | ----- | ------ | ----- |
+| name | str | Required | kernel name |
+| kcm_args_sym | KCMArgsSymTy | Optional | vector. Argument symbols used for kernel cost model. |
+| kcm_loop_count_exps | KCMLoopCountExpsTy | Required | vector. Loop count expression for every loop used for kernel cost estimation. |
+| Kcm_loop_costs| KCMLoopCostsTy | Required |vector. Cost of every loop in the kernel in cycles bytes loaded and stored. |
+<!--- KernelCostInfo KernelsCostInfo --->
+
+
+## KCMArgSym Attributes
+This section defines the supported attribute for kernel cost model argument symbol .
+
+| Attribute | Type | Required/Optional | Default | Description |
+| ----- | ----- | ------ | ----- | ----- |
+| argNo | int32 | Required | | position of the kernel argument this symbol is based on |
+| byteOffset | int32 | Required | | offset from memory pointer if indirect argument symbol|
+| sizeInBytes | int32 | Required | | the size of this argument symbol in bytes|
+| isInDirect | bool | Required | |true when argument symbol is a pointer |
+<!--- KCMArgSym KCMArgsSym --->
+
+## KCMLoopCountExp Attributes
+This section defines the supported attribute for kernel cost model loop count expression.
+Loop count expression keeps track of argument index and uses factor and constant (C) to generate LCE
+
+| Attribute | Type | Required/Optional | Default | Description |
+| ----- | ----- | ------ | ----- | ----- |
+| factor | float | Required | | LCE = factor * argument symbol + C |
+| argsym_index | int32 | Required | | index for the argument symbol used for LCE|
+| C | float | Required | |LCE = factor * argument symbol + C |
+<!--- KCMLoopCountExp KCMLoopCountExps --->
+
+## KCMLoopCost Attributes
+This section defines the supported attribute for kernel cost model loop cost information.
+Loop Cost is multiplied by Loop count expression to generate total kernel cost
+
+| Attribute | Type | Required/Optional | Description |
+| ----- | ----- | ------ | ----- | ----- |
+| cycle | int32 | Required | Total cycles for the of a single loop |
+| bytes_loaded | int32 | Required | total bytes loaded by a loop|
+| bytes_stored | int32 | Required | total bytes stored by a loop |
+| num_loops | int32 | Required | number of immediate child loops |
+<!--- KCMLoopCost KCMLoopCosts --->
 

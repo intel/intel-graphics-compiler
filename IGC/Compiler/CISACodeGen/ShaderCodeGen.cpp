@@ -1079,6 +1079,10 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         // on illegal types) instructions.
         mpm.add(llvm::createDeadCodeEliminationPass());
 
+        if (ctx.type == ShaderType::OPENCL_SHADER && IGC_IS_FLAG_ENABLED(EnableKernelCostInfo)) {
+            mpm.add(createLoopCountAnalysisPass());
+        }
+
         if (ctx.platform.hasPartialEmuI64Enabled())
         {
             mpm.add(createPartialEmuI64OpsPass());
