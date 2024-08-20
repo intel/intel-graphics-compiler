@@ -54,13 +54,16 @@ class BTIAssignment final {
   const bool emitDebuggableKernels;
   const bool useBindlessBuffers;
   const bool useBindlessImages;
+  const bool useBindlessSamplers;
 
 public:
   BTIAssignment(Module &InM, bool InEmitDebuggableKernels,
-                bool InUseBindlessBuffers, bool InUseBindlessImages)
+                bool InUseBindlessBuffers, bool InUseBindlessImages,
+                bool InUseBindlessSamplers)
       : M(InM), emitDebuggableKernels(InEmitDebuggableKernels),
         useBindlessBuffers(InUseBindlessBuffers),
-        useBindlessImages(InUseBindlessImages) {}
+        useBindlessImages(InUseBindlessImages),
+        useBindlessSamplers(InUseBindlessSamplers) {}
 
   bool run();
 
@@ -120,9 +123,10 @@ bool GenXBTIAssignment::runOnModule(Module &M) {
   bool emitDebuggableKernels = BC.emitDebuggableKernelsForLegacyPath();
   bool useBindlessBuffers = BC.useBindlessBuffers();
   bool useBindlessImages = false;
+  bool useBindlessSamplers = false;
 
   BTIAssignment BA(M, emitDebuggableKernels, useBindlessBuffers,
-                   useBindlessImages);
+                   useBindlessImages, useBindlessSamplers);
 
   return BA.run();
 }
@@ -251,6 +255,10 @@ bool BTIAssignment::rewriteArguments(
 
     // For bindless image resource argument is ExBSO.
     if (useBindlessImages && vc::isDescImageType(Desc))
+      continue;
+
+    // For bindless sampler resource argument is ExBSO.
+    if (useBindlessSamplers && vc::isDescSamplerType(Desc))
       continue;
 
     IGC_ASSERT_MESSAGE(BTI >= 0, "unassigned BTI");

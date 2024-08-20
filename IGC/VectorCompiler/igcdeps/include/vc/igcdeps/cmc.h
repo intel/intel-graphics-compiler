@@ -35,9 +35,12 @@ struct CompileOptions;
 
 // Interface to compile and package cm kernels into OpenCL binars.
 class CMKernel {
+  using KernelArgInfo = llvm::GenXOCLRuntimeInfo::KernelArgInfo;
+
 public:
-  using ArgKind = llvm::GenXOCLRuntimeInfo::KernelArgInfo::KindType;
-  using ArgAccessKind = llvm::GenXOCLRuntimeInfo::KernelArgInfo::AccessKindType;
+  using ArgKind = KernelArgInfo::KindType;
+  using ArgAccessKind = KernelArgInfo::AccessKindType;
+  using ArgAddressMode = KernelArgInfo::AddressModeType;
 
   explicit CMKernel(const PLATFORM &platform);
   ~CMKernel();
@@ -70,16 +73,11 @@ public:
                                      unsigned offsetInArg);
 
   // 1D/2D/3D Surface
-  void
-  createImageAnnotation(unsigned argNo, unsigned BTI,
-                        llvm::GenXOCLRuntimeInfo::KernelArgInfo::KindType Kind,
-                        ArgAccessKind Access);
+  void createImageAnnotation(const KernelArgInfo &ArgInfo, unsigned Offset);
 
   // add a pointer patch token.
-  void createPointerGlobalAnnotation(unsigned index, unsigned offset,
-                                     unsigned sizeInBytes, unsigned BTI,
-                                     ArgAccessKind access, bool isBindless,
-                                     bool isStateful);
+  void createPointerGlobalAnnotation(const KernelArgInfo &ArgInfo,
+                                     unsigned Offset);
 
   void createPointerLocalAnnotation(unsigned index, unsigned offset,
                                     unsigned sizeInBytes, unsigned alignment);
@@ -100,7 +98,7 @@ public:
   void createImplicitArgumentsAnnotation(unsigned payloadPosition);
 
   // Sampler
-  void createSamplerAnnotation(unsigned argNo, unsigned BTI);
+  void createSamplerAnnotation(const KernelArgInfo &ArgInfo, unsigned Offset);
 
   void createAssertBufferArgAnnotation(unsigned Index, unsigned BTI,
                                        unsigned Size, unsigned ArgOffset);

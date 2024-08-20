@@ -63,11 +63,13 @@ public:
     };
 
     enum class AccessKindType { None, ReadOnly, WriteOnly, ReadWrite };
+    enum class AddressModeType { None, Stateful, Bindless, Stateless };
 
   private:
     unsigned Index;
     KindType Kind;
     AccessKindType AccessKind;
+    AddressModeType AddrMode;
     unsigned Offset;
     unsigned OffsetInArg; // Implicit arguments may be mapped to some part of an
                           // explicit argument. This field shows offset in the
@@ -83,6 +85,7 @@ public:
     unsigned getIndex() const { return Index; }
     KindType getKind() const { return Kind; }
     AccessKindType getAccessKind() const { return AccessKind; }
+    AddressModeType getAddressMode() const { return AddrMode; }
     unsigned getOffset() const { return Offset; }
     unsigned getSizeInBytes() const { return SizeInBytes; }
     unsigned getBTI() const { return BTI; }

@@ -89,6 +89,7 @@ namespace llvm {
 class KernelArgBuilder final {
   using ArgKindType = GenXOCLRuntimeInfo::KernelArgInfo::KindType;
   using ArgAccessKindType = GenXOCLRuntimeInfo::KernelArgInfo::AccessKindType;
+  using ArgAddressModeType = GenXOCLRuntimeInfo::KernelArgInfo::AddressModeType;
 
   const vc::KernelMetadata &KM;
   const DataLayout &DL;
@@ -112,8 +113,12 @@ private:
                             const Argument &Arg) const;
   ArgAccessKindType getOCLArgAccessKind(ArrayRef<StringRef> Tokens,
                                         ArgKindType Kind) const;
-  std::pair<ArgKindType, ArgAccessKindType>
+  ArgAddressModeType getOCLArgAddressMode(ArgKindType Kind,
+                                          const Argument &Arg) const;
+
+  std::tuple<ArgKindType, ArgAddressModeType, ArgAccessKindType>
   translateArgDesc(const Argument &Arg) const;
+
   unsigned getArgSizeInBytes(const Argument &Arg) const;
 };
 } // namespace llvm
@@ -143,7 +148,6 @@ KernelArgBuilder::getOCLArgAccessKind(ArrayRef<StringRef> Tokens,
   case ArgKindType::Image2DMediaBlock:
   case ArgKindType::Image3D:
   case ArgKindType::SVM:
-  case ArgKindType::BindlessBuffer:
     if (any_of(Tokens, getStrPred(OCLAttributes::ReadOnly)))
       return ArgAccessKindType::ReadOnly;
     if (any_of(Tokens, getStrPred(OCLAttributes::WriteOnly)))
@@ -153,6 +157,43 @@ KernelArgBuilder::getOCLArgAccessKind(ArrayRef<StringRef> Tokens,
   default:
     return ArgAccessKindType::None;
   }
+}
+
+KernelArgBuilder::ArgAddressModeType
+KernelArgBuilder::getOCLArgAddressMode(ArgKindType Kind,
+                                       const Argument &Arg) const {
+  unsigned ArgNo = Arg.getArgNo();
+
+  switch (Kind) {
+  default:
+    break;
+  case ArgKindType::SVM:
+  case ArgKindType::AssertBuffer:
+  case ArgKindType::PrintBuffer:
+  case ArgKindType::SyncBuffer:
+  case ArgKindType::PrivateBase:
+    return ArgAddressModeType::Stateless;
+  case ArgKindType::Sampler:
+    if (KM.getArgCategory(ArgNo) == vc::RegCategory::Sampler)
+      return ArgAddressModeType::Stateful;
+    IGC_ASSERT_MESSAGE(KM.getArgCategory(ArgNo) == vc::RegCategory::General,
+                       "Expected general category");
+    return ArgAddressModeType::Bindless;
+  case ArgKindType::Buffer:
+  case ArgKindType::Image1D:
+  case ArgKindType::Image1DArray:
+  case ArgKindType::Image2D:
+  case ArgKindType::Image2DArray:
+  case ArgKindType::Image2DMediaBlock:
+  case ArgKindType::Image3D:
+    if (KM.getArgCategory(ArgNo) == vc::RegCategory::Surface)
+      return ArgAddressModeType::Stateful;
+    IGC_ASSERT_MESSAGE(KM.getArgCategory(ArgNo) == vc::RegCategory::General,
+                       "Expected general category");
+    return ArgAddressModeType::Bindless;
+  }
+
+  return ArgAddressModeType::None;
 }
 
 KernelArgBuilder::ArgKindType
@@ -181,19 +222,15 @@ KernelArgBuilder::getOCLArgKind(ArrayRef<StringRef> Tokens,
     return ArgKindType::ImplicitArgsBuffer;
 
   // Explicit arguments.
-  switch (KM.getArgCategory(ArgNo)) {
+  switch (auto Cat = KM.getArgCategory(ArgNo)) {
   default:
-    return ArgKindType::General;
+    break;
   case vc::RegCategory::General:
     if (any_of(Tokens, getStrPred(OCLAttributes::SVM)))
       return ArgKindType::SVM;
-    // Bindless buffers have general category but buffer annotation.
-    if (any_of(Tokens, getStrPred(OCLAttributes::Buffer)))
-      return ArgKindType::BindlessBuffer;
-    if (ArgTy->isPointerTy())
-      if (vc::getAddrSpace(ArgTy) == vc::AddrSpace::Local)
-        return ArgKindType::SLM;
-    return ArgKindType::General;
+    if (ArgTy->isPointerTy() && vc::getAddrSpace(ArgTy) == vc::AddrSpace::Local)
+      return ArgKindType::SLM;
+    LLVM_FALLTHROUGH;
   case vc::RegCategory::Surface:
     if (any_of(Tokens, getStrPred(OCLAttributes::Image1d)))
       return ArgKindType::Image1D;
@@ -202,9 +239,7 @@ KernelArgBuilder::getOCLArgKind(ArrayRef<StringRef> Tokens,
     if (any_of(Tokens, getStrPred(OCLAttributes::Image1dBuffer)))
       return ArgKindType::Image1D;
     if (any_of(Tokens, getStrPred(OCLAttributes::Image2d))) {
-      if (ST.noLegacyDataport())
-        return ArgKindType::Image2D;
-      if (BC.usePlain2DImages())
+      if (ST.noLegacyDataport() || BC.usePlain2DImages())
         return ArgKindType::Image2D;
       // Legacy behavior to treat all 2d images as media block.
       return ArgKindType::Image2DMediaBlock;
@@ -212,20 +247,25 @@ KernelArgBuilder::getOCLArgKind(ArrayRef<StringRef> Tokens,
     if (any_of(Tokens, getStrPred(OCLAttributes::Image2dArray)))
       return ArgKindType::Image2DArray;
     if (any_of(Tokens, getStrPred(OCLAttributes::Image2dMediaBlock))) {
-      if (ST.translateLegacyMessages())
+      if (ST.translateMediaBlockMessages())
         return ArgKindType::Image2D;
       return ArgKindType::Image2DMediaBlock;
     }
     if (any_of(Tokens, getStrPred(OCLAttributes::Image3d)))
       return ArgKindType::Image3D;
-    return ArgKindType::Buffer;
+    if (Cat == vc::RegCategory::Surface)
+      return ArgKindType::Buffer;
+    break;
   case vc::RegCategory::Sampler:
     return ArgKindType::Sampler;
   }
+
+  return ArgKindType::General;
 }
 
 // Retrieve Kind and AccessKind from given ArgTypeDesc in metadata.
-std::pair<KernelArgBuilder::ArgKindType, KernelArgBuilder::ArgAccessKindType>
+std::tuple<KernelArgBuilder::ArgKindType, KernelArgBuilder::ArgAddressModeType,
+           KernelArgBuilder::ArgAccessKindType>
 KernelArgBuilder::translateArgDesc(const Argument &Arg) const {
   unsigned ArgNo = Arg.getArgNo();
   std::string Translated{KM.getArgTypeDesc(ArgNo)};
@@ -244,9 +284,10 @@ KernelArgBuilder::translateArgDesc(const Argument &Arg) const {
   std::sort(Tokens.begin(), Tokens.end());
   Tokens.erase(std::unique(Tokens.begin(), Tokens.end()), Tokens.end());
 
-  const ArgKindType Kind = getOCLArgKind(Tokens, Arg);
-  const ArgAccessKindType AccessKind = getOCLArgAccessKind(Tokens, Kind);
-  return {Kind, AccessKind};
+  const auto Kind = getOCLArgKind(Tokens, Arg);
+  const auto AddressMode = getOCLArgAddressMode(Kind, Arg);
+  const auto AccessKind = getOCLArgAccessKind(Tokens, Kind);
+  return {Kind, AddressMode, AccessKind};
 }
 
 unsigned KernelArgBuilder::getArgSizeInBytes(const Argument &Arg) const {
@@ -262,7 +303,9 @@ GenXOCLRuntimeInfo::KernelArgInfo
 KernelArgBuilder::translateArgument(const Argument &Arg) const {
   GenXOCLRuntimeInfo::KernelArgInfo Info;
   unsigned ArgNo = Arg.getArgNo();
-  std::tie(Info.Kind, Info.AccessKind) = translateArgDesc(Arg);
+
+  std::tie(Info.Kind, Info.AddrMode, Info.AccessKind) = translateArgDesc(Arg);
+
   Info.Offset = KM.getArgOffset(ArgNo);
   Info.SizeInBytes = getArgSizeInBytes(Arg);
   Info.BTI = KM.getBTI(ArgNo);

@@ -129,7 +129,6 @@ class KernelArgInfoBuilder
                 case ArgKind::Image2DArray:
                 case ArgKind::Image2DMediaBlock:
                 case ArgKind::Image3D:
-                case ArgKind::BindlessBuffer:
                   return Global;
                 case ArgKind::Sampler:
                   return Constant;
@@ -224,34 +223,44 @@ void CMKernel::createConstArgumentAnnotation(unsigned argNo,
         payloadPosition, sizeInBytes, argNo, offsetInArg, false);
 }
 
-// TODO: this is incomplete. Media sampler types are not supported now.
-void CMKernel::createSamplerAnnotation(unsigned argNo, unsigned BTI)
-{
-    iOpenCL::SAMPLER_OBJECT_TYPE samplerType;
-    samplerType = iOpenCL::SAMPLER_OBJECT_TEXTURE;
+void CMKernel::createSamplerAnnotation(const KernelArgInfo &ArgInfo,
+                                       unsigned Offset) {
+  using namespace zebin;
+  using namespace iOpenCL;
 
-    // No bindless support yet.
-    constexpr int PayloadPosition = 0;
-    constexpr int ArgSize = 0;
+  const auto Index = ArgInfo.getIndex();
+  const auto Kind = ArgInfo.getKind();
+  const auto Access = ArgInfo.getAccessKind();
+  const auto AddrMode = ArgInfo.getAddressMode();
+  const auto BTI = ArgInfo.getBTI();
+  const auto Size = ArgInfo.getSizeInBytes();
 
-    auto samplerArg = std::make_unique<iOpenCL::SamplerArgumentAnnotation>();
-    samplerArg->SamplerType = samplerType;
-    samplerArg->ArgumentNumber = argNo;
-    samplerArg->SamplerTableIndex = BTI;
-    samplerArg->LocationIndex = 0;
-    samplerArg->LocationCount = 0;
-    samplerArg->IsBindlessAccess = false;
-    samplerArg->IsEmulationArgument = false;
-    samplerArg->PayloadPosition = PayloadPosition;
+  IGC_ASSERT(AddrMode == ArgAddressMode::Stateful ||
+             AddrMode == ArgAddressMode::Bindless);
 
-    m_kernelInfo.m_samplerArgument.push_back(std::move(samplerArg));
+  bool IsBindless = AddrMode == ArgAddressMode::Bindless;
+  const auto SamplerType = SAMPLER_OBJECT_TEXTURE;
 
-    constexpr auto ZeAddrMode = zebin::PreDefinedAttrGetter::ArgAddrMode::stateful;
-    constexpr auto ZeAccessType = zebin::PreDefinedAttrGetter::ArgAccessType::readwrite;
+  auto SamplerArg = std::make_unique<SamplerArgumentAnnotation>();
+  SamplerArg->SamplerType = SamplerType;
+  SamplerArg->ArgumentNumber = Index;
+  SamplerArg->SamplerTableIndex = BTI;
+  SamplerArg->LocationIndex = 0;
+  SamplerArg->LocationCount = 0;
+  SamplerArg->IsBindlessAccess = IsBindless;
+  SamplerArg->IsEmulationArgument = false;
+  SamplerArg->PayloadPosition = Offset;
 
-    zebin::ZEInfoBuilder::addPayloadArgumentSampler(m_kernelInfo.m_zePayloadArgs,
-       PayloadPosition, ArgSize, argNo, BTI, ZeAddrMode, ZeAccessType,
-       iOpenCL::getZESamplerType(samplerType));
+  m_kernelInfo.m_samplerArgument.push_back(std::move(SamplerArg));
+
+  const auto ZeAddrMode = IsBindless
+                              ? PreDefinedAttrGetter::ArgAddrMode::bindless
+                              : PreDefinedAttrGetter::ArgAddrMode::stateful;
+  const auto ZeAccessType = PreDefinedAttrGetter::ArgAccessType::readwrite;
+
+  ZEInfoBuilder::addPayloadArgumentSampler(
+      m_kernelInfo.m_zePayloadArgs, Offset, Size, Index, BTI, ZeAddrMode,
+      ZeAccessType, getZESamplerType(SamplerType));
 }
 
 static iOpenCL::IMAGE_MEMORY_OBJECT_TYPE
@@ -285,36 +294,49 @@ static inline bool checkStateful(unsigned int BTI) {
   return (BTI < STATELESS_NONCOHERENT_BTI || BTI > STATELESS_BTI);
 }
 
-void CMKernel::createImageAnnotation(
-    unsigned argNo, unsigned BTI,
-    llvm::GenXOCLRuntimeInfo::KernelArgInfo::KindType Kind,
-    ArgAccessKind Access)
-{
-    auto imageInput = std::make_unique<iOpenCL::ImageArgumentAnnotation>();
-    // As VC uses only stateful addrmode.
-    constexpr int PayloadPosition = 0;
-    constexpr int ArgSize = 0;
-    iOpenCL::IMAGE_MEMORY_OBJECT_TYPE imageType = getOCLImageType(Kind);
+void CMKernel::createImageAnnotation(const KernelArgInfo &ArgInfo,
+                                     unsigned Offset) {
+  using namespace zebin;
+  using namespace iOpenCL;
 
-    imageInput->ArgumentNumber = argNo;
-    imageInput->IsFixedBindingTableIndex = true;
-    imageInput->BindingTableIndex = BTI;
-    imageInput->ImageType = imageType;
-    imageInput->LocationIndex = 0;
-    imageInput->LocationCount = 0;
-    imageInput->IsEmulationArgument = false;
-    imageInput->AccessedByFloatCoords = false;
-    imageInput->AccessedByIntCoords = false;
-    imageInput->IsBindlessAccess = false;
-    imageInput->PayloadPosition = PayloadPosition;
-    imageInput->Writeable = Access != ArgAccessKind::ReadOnly;
-    m_kernelInfo.m_imageInputAnnotations.push_back(std::move(imageInput));
+  const auto Index = ArgInfo.getIndex();
+  const auto Kind = ArgInfo.getKind();
+  const auto Access = ArgInfo.getAccessKind();
+  const auto AddrMode = ArgInfo.getAddressMode();
+  const auto BTI = ArgInfo.getBTI();
 
-    zebin::ZEInfoBuilder::addPayloadArgumentImage(m_kernelInfo.m_zePayloadArgs,
-        PayloadPosition, ArgSize, argNo, zebin::PreDefinedAttrGetter::ArgAddrMode::stateful,
-        getZEArgAccessType(Access), iOpenCL::getZEImageType(imageType));
-    zebin::ZEInfoBuilder::addBindingTableIndex(m_kernelInfo.m_zeBTIArgs, BTI,
-                                               argNo);
+  IGC_ASSERT(AddrMode == ArgAddressMode::Stateful ||
+             AddrMode == ArgAddressMode::Bindless);
+
+  bool IsBindless = AddrMode == ArgAddressMode::Bindless;
+
+  auto ImageInput = std::make_unique<ImageArgumentAnnotation>();
+  auto ImageType = getOCLImageType(Kind);
+
+  ImageInput->ArgumentNumber = Index;
+  ImageInput->IsFixedBindingTableIndex = !IsBindless;
+  ImageInput->BindingTableIndex = BTI;
+  ImageInput->ImageType = ImageType;
+  ImageInput->LocationIndex = 0;
+  ImageInput->LocationCount = 0;
+  ImageInput->IsEmulationArgument = false;
+  ImageInput->AccessedByFloatCoords = false;
+  ImageInput->AccessedByIntCoords = false;
+  ImageInput->IsBindlessAccess = IsBindless;
+  ImageInput->PayloadPosition = Offset;
+  ImageInput->Writeable = Access != ArgAccessKind::ReadOnly;
+  m_kernelInfo.m_imageInputAnnotations.push_back(std::move(ImageInput));
+
+  const auto ZeAddrMode = IsBindless
+                              ? PreDefinedAttrGetter::ArgAddrMode::bindless
+                              : PreDefinedAttrGetter::ArgAddrMode::stateful;
+
+  ZEInfoBuilder::addPayloadArgumentImage(
+      m_kernelInfo.m_zePayloadArgs, Offset, Size, Index, ZeAddrMode,
+      getZEArgAccessType(Access), getZEImageType(ImageType));
+
+  if (!IsBindless)
+    ZEInfoBuilder::addBindingTableIndex(m_kernelInfo.m_zeBTIArgs, BTI, Index);
 }
 
 void CMKernel::createImplicitArgumentsAnnotation(unsigned payloadPosition)
@@ -324,44 +346,49 @@ void CMKernel::createImplicitArgumentsAnnotation(unsigned payloadPosition)
     createSizeAnnotation(payloadPosition, iOpenCL::DATA_PARAMETER_LOCAL_WORK_SIZE);
 }
 
-void CMKernel::createPointerGlobalAnnotation(unsigned index, unsigned offset,
-                                             unsigned sizeInBytes, unsigned BTI,
-                                             ArgAccessKind access,
-                                             bool isBindless, bool isStateful) {
-  auto ptrAnnotation = std::make_unique<iOpenCL::PointerArgumentAnnotation>();
-  // must be only one true or all false
-  IGC_ASSERT(!(isBindless && isStateful));
-  // TODO igorban: next line must be (!isBindless && !isStateful)
-  ptrAnnotation->IsStateless = !isBindless;
-  ptrAnnotation->IsBindlessAccess = isBindless;
-  ptrAnnotation->HasStatefulAccess = isStateful;
-  ptrAnnotation->AddressSpace = iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_GLOBAL;
-  ptrAnnotation->ArgumentNumber = index;
-  ptrAnnotation->BindingTableIndex = BTI;
-  ptrAnnotation->PayloadPosition = offset;
-  ptrAnnotation->PayloadSizeInBytes = sizeInBytes;
-  ptrAnnotation->LocationIndex = 0;
-  ptrAnnotation->LocationCount = 0;
-  ptrAnnotation->IsEmulationArgument = false;
-  m_kernelInfo.m_pointerArgument.push_back(std::move(ptrAnnotation));
+void CMKernel::createPointerGlobalAnnotation(const KernelArgInfo &ArgInfo,
+                                             unsigned Offset) {
+  using namespace zebin;
+  using namespace iOpenCL;
 
-  zebin::PreDefinedAttrGetter::ArgAddrMode zeAddrMode;
-  if (isBindless) {
-    zeAddrMode = zebin::PreDefinedAttrGetter::ArgAddrMode::bindless;
-  } else if (isStateful) {
-    zeAddrMode = zebin::PreDefinedAttrGetter::ArgAddrMode::stateful;
+  const auto Index = ArgInfo.getIndex();
+  const auto Kind = ArgInfo.getKind();
+  const auto Access = ArgInfo.getAccessKind();
+  const auto AddrMode = ArgInfo.getAddressMode();
+  const auto BTI = ArgInfo.getBTI();
+  const auto Size = ArgInfo.getSizeInBytes();
+
+  auto PtrAnnotation = std::make_unique<PointerArgumentAnnotation>();
+
+  PtrAnnotation->IsStateless = AddrMode == ArgAddressMode::Stateless;
+  PtrAnnotation->IsBindlessAccess = AddrMode == ArgAddressMode::Bindless;
+  PtrAnnotation->HasStatefulAccess = AddrMode == ArgAddressMode::Stateful;
+  PtrAnnotation->AddressSpace = KERNEL_ARGUMENT_ADDRESS_SPACE_GLOBAL;
+  PtrAnnotation->ArgumentNumber = Index;
+  PtrAnnotation->BindingTableIndex = BTI;
+  PtrAnnotation->PayloadPosition = Offset;
+  PtrAnnotation->PayloadSizeInBytes = Size;
+  PtrAnnotation->LocationIndex = 0;
+  PtrAnnotation->LocationCount = 0;
+  PtrAnnotation->IsEmulationArgument = false;
+  m_kernelInfo.m_pointerArgument.push_back(std::move(PtrAnnotation));
+
+  PreDefinedAttrGetter::ArgAddrMode ZeAddrMode;
+  if (AddrMode == ArgAddressMode::Bindless) {
+    ZeAddrMode = PreDefinedAttrGetter::ArgAddrMode::bindless;
+  } else if (AddrMode == ArgAddressMode::Stateful) {
+    ZeAddrMode = PreDefinedAttrGetter::ArgAddrMode::stateful;
   } else {
-    zeAddrMode = zebin::PreDefinedAttrGetter::ArgAddrMode::stateless;
+    IGC_ASSERT(AddrMode == ArgAddressMode::Stateless);
+    ZeAddrMode = PreDefinedAttrGetter::ArgAddrMode::stateless;
   }
 
-  // EnableZEBinary: ZEBinary related code
-  zebin::ZEInfoBuilder::addPayloadArgumentByPointer(
-      m_kernelInfo.m_zePayloadArgs, offset, sizeInBytes, index, zeAddrMode,
-      zebin::PreDefinedAttrGetter::ArgAddrSpace::global,
-      getZEArgAccessType(access));
-  if (isStateful)
-    zebin::ZEInfoBuilder::addBindingTableIndex(m_kernelInfo.m_zeBTIArgs, BTI,
-                                               index);
+  ZEInfoBuilder::addPayloadArgumentByPointer(
+      m_kernelInfo.m_zePayloadArgs, Offset, Size, Index, ZeAddrMode,
+      PreDefinedAttrGetter::ArgAddrSpace::global, getZEArgAccessType(Access));
+
+  if (AddrMode == ArgAddressMode::Stateful)
+    ZEInfoBuilder::addBindingTableIndex(m_kernelInfo.m_zeBTIArgs, BTI, Index);
 }
 
 void CMKernel::createPointerLocalAnnotation(unsigned index, unsigned offset,
@@ -606,7 +633,6 @@ static void generateKernelArgInfo(
     case KindType::Image2DArray:
     case KindType::Image2DMediaBlock:
     case KindType::Image3D:
-    case KindType::BindlessBuffer:
       ArgsAnnotationBuilder.insert(Arg.getIndex(), Arg.getKind(),
                                    Arg.getAccessKind());
       break;
@@ -666,36 +692,22 @@ static void setArgumentsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
                                   iOpenCL::DATA_PARAMETER_NUM_WORK_GROUPS);
       break;
     case ArgKind::Buffer:
-      Kernel.createPointerGlobalAnnotation(
-          Arg.getIndex(), ArgOffset, Arg.getSizeInBytes(), Arg.getBTI(),
-          Arg.getAccessKind(), /*isBindless=*/false,
-          checkStateful(Arg.getBTI()));
+      Kernel.createPointerGlobalAnnotation(Arg, ArgOffset);
       if (checkStateful(Arg.getBTI()))
         Kernel.createBufferStatefulAnnotation(Arg.getIndex(),
                                               Arg.getAccessKind());
       Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
       break;
-    case ArgKind::BindlessBuffer:
-      Kernel.createPointerGlobalAnnotation(
-          Arg.getIndex(), ArgOffset, Arg.getSizeInBytes(), Arg.getBTI(),
-          Arg.getAccessKind(), /*isBindless=*/true,
-          /*isStateful=*/false);
-      Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
-      break;
     case ArgKind::SVM:
-      Kernel.createPointerGlobalAnnotation(
-          Arg.getIndex(), ArgOffset, Arg.getSizeInBytes(), Arg.getBTI(),
-          Arg.getAccessKind(), /*isBindless=*/false,
-          /*isStateful=*/false);
+      Kernel.createPointerGlobalAnnotation(Arg, ArgOffset);
       Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
-
       break;
     case ArgKind::SLM:
       Kernel.createPointerLocalAnnotation(
           Arg.getIndex(), ArgOffset, Arg.getSizeInBytes(), Arg.getAlignment());
       break;
     case ArgKind::Sampler:
-      Kernel.createSamplerAnnotation(Arg.getIndex(), Arg.getBTI());
+      Kernel.createSamplerAnnotation(Arg, ArgOffset);
       Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
       break;
     case ArgKind::Image1D:
@@ -704,8 +716,7 @@ static void setArgumentsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
     case ArgKind::Image2DArray:
     case ArgKind::Image2DMediaBlock:
     case ArgKind::Image3D:
-      Kernel.createImageAnnotation(Arg.getIndex(), Arg.getBTI(), Arg.getKind(),
-                                   Arg.getAccessKind());
+      Kernel.createImageAnnotation(Arg, ArgOffset);
       Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
       break;
     case ArgKind::AssertBuffer:
