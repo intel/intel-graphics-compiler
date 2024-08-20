@@ -187,11 +187,11 @@ void CheckInstrTypes::print(llvm::raw_ostream& OS) const
     OS << "\nnumPsInputs: " << g_InstrTypes.numPsInputs;
     OS << "\nhasPullBary: " << g_InstrTypes.hasPullBary;
     OS << "\nnumGlobalInsts: " << g_InstrTypes.numGlobalInsts;
-    OS << "\nnumLocalInsts: " << g_InstrTypes.numLocalInsts << "\n\n";
-    OS << "\nnumSamplesVaryingResource: " << g_InstrTypes.numSamplesVaryingResource << "\n\n";
-    OS << "\nnumUntyped: " << g_InstrTypes.numUntyped << "\n\n";
-    OS << "\nnum1DAccesses: " << g_InstrTypes.num1DAccesses << "\n\n";
-    OS << "\nnum2DAccesses: " << g_InstrTypes.num2DAccesses << "\n\n";
+    OS << "\nnumLocalInsts: " << g_InstrTypes.numLocalInsts;
+    OS << "\nnumSamplesVaryingResource: " << g_InstrTypes.numSamplesVaryingResource;
+    OS << "\nnumUntyped: " << g_InstrTypes.numUntyped;
+    OS << "\nnum1DAccesses: " << g_InstrTypes.num1DAccesses;
+    OS << "\nnum2DAccesses: " << g_InstrTypes.num2DAccesses;
     OS << "\nnumSLMAccesses: " << g_InstrTypes.numSLMAccesses << "\n\n";
 }
 
