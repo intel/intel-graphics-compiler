@@ -344,14 +344,6 @@ namespace IGC
 
         NUM_ARG_SPACE_RESERVATION_SLOTS
     };
-
-    enum SIMDInfoIndex {
-        SIMD8_INDEX,
-        SIMD16_INDEX,
-        SIMD32_INDEX,
-        DUAL_SIMD8_INDEX,
-        NUM_SIMD_INFO_INDEX
-    };
 }
 
 #endif //CODE_GEN_PUBLIC_ENUMS_H_

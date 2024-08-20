@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #pragma once
-#include <array>
 #include <stdint.h>
 #include "patch_list.h"
 
@@ -206,12 +205,12 @@ struct SPatchExecutionEnvironment :
     uint32_t    IndirectStatelessCount;
     uint32_t    UseBindlessMode;
     uint32_t    HasStackCalls;
-    std::array<uint32_t, 4>    SIMDInfo;
+    uint64_t    SIMDInfo;
     uint32_t    RequireDisableEUFusion;
 };
 
 // Update CURRENT_ICBE_VERSION when modifying the patch list
-static_assert(sizeof(SPatchExecutionEnvironment) == (144 + sizeof(SPatchItemHeader)), "The size of SPatchExecutionEnvironment is not what is expected");
+static_assert(sizeof(SPatchExecutionEnvironment) == (136 + sizeof(SPatchItemHeader)), "The size of SPatchExecutionEnvironment is not what is expected");
 
 /*****************************************************************************\
 STRUCT: SPatchString
