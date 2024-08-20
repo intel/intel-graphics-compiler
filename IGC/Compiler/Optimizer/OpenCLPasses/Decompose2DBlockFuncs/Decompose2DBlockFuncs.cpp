@@ -214,7 +214,7 @@ CallBase* Decompose2DBlockFuncs::createPayload(
   // We can only set this since we know with certainty that the associated
   // LSC2DBlockSetAddrPayloadField are not in the mode true : AP[arg1] += arg2
   // (i.e., arg3 = false)
-  if (dyn_cast<llvm::ConstantInt>(IV.IsAddend)->isZero()) {
+  if (cast<llvm::ConstantInt>(IV.IsAddend)->isZero()) {
     BlockCreateFunc->removeFnAttr(llvm::Attribute::WriteOnly);
     BlockCreateFunc->removeFnAttr(llvm::Attribute::InaccessibleMemOnly);
 
@@ -261,7 +261,7 @@ CallInst* Decompose2DBlockFuncs::createSetAdd(GenIntrinsicInst& GII,
   // We can only set this since we know with certainty that the associated
   // LSC2DBlockSetAddrPayloadField are not in the mode true : AP[arg1] += arg2
   // (i.e., arg3 = false)
-  if (dyn_cast<llvm::ConstantInt>(IV.IsAddend)->isZero()) {
+  if (cast<llvm::ConstantInt>(IV.IsAddend)->isZero()) {
     BlockSetAddrFunc->removeFnAttr(llvm::Attribute::ReadOnly);
     BlockSetAddrFunc->addFnAttr(
         llvm::Attribute::WriteOnly);  // = setOnlyWritesMemory();
