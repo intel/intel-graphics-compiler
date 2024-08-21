@@ -1790,6 +1790,7 @@ namespace IGC
         return (opcode == llvm_waveAll ||
             opcode == llvm_waveClustered ||
             opcode == llvm_waveInterleave ||
+            opcode == llvm_waveClusteredInterleave ||
             opcode == llvm_wavePrefix ||
             opcode == llvm_waveShuffleIndex ||
             opcode == llvm_waveBroadcast ||

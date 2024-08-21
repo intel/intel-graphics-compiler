@@ -88,6 +88,25 @@ struct VectorShufflePattern
     uint64_t VectorIndex;
 };
 
+// See SubGroupReductionPattern::getReductionType for explanation on each reduction type.
+struct ReductionType
+{
+    static ReductionType Invalid() { return { GenISAIntrinsic::no_intrinsic, 0, 0 }; }
+    static ReductionType WaveAll() { return { GenISAIntrinsic::GenISA_WaveAll, 0, 0 }; }
+    static ReductionType WaveClustered(int ClusterSize) { return { GenISAIntrinsic::GenISA_WaveClustered, ClusterSize, 0 }; }
+    static ReductionType WaveInterleave(int InterleaveStep) { return { GenISAIntrinsic::GenISA_WaveInterleave, 0, InterleaveStep }; }
+    static ReductionType WaveClusteredInterleave(int ClusterSize, int InterleaveStep)
+    {
+        return { GenISAIntrinsic::GenISA_WaveClusteredInterleave, ClusterSize, InterleaveStep };
+    }
+
+    bool isValid() const { return IntrinsicType != GenISAIntrinsic::no_intrinsic; }
+
+    const GenISAIntrinsic::ID IntrinsicType;
+    const int ClusterSize;
+    const int InterleaveStep;
+};
+
 // Pass for matching common manual subgroup reduction pattern and replacing them
 // with corresponding GenISA.Wave* call.
 class SubGroupReductionPattern : public llvm::FunctionPass, public llvm::InstVisitor<SubGroupReductionPattern>
@@ -118,7 +137,8 @@ private:
     void addShufflePattern(Value *InputValue, GenIntrinsicInst &ShuffleOp, Instruction *Op, uint64_t Lane);
 
     bool reduce(ShufflePattern &Pattern);
-    GenISAIntrinsic::ID getReductionType(uint64_t XorMask);
+    ReductionType getReductionType(ShufflePattern &Pattern);
+    bool isSupportedWaveClusteredInterleave(ShufflePattern &Pattern, int ClusterSize, int InterleaveStep);
 
     static WaveOps getWaveOp(Instruction* Op);
 
@@ -423,17 +443,8 @@ bool ShufflePattern::append(Value *InputValue, GenIntrinsicInst *ShuffleOp, Inst
 
 bool SubGroupReductionPattern::reduce(ShufflePattern &Pattern)
 {
-    // Check what shuffles are engaged in reduction.
-    uint64_t XorMask = 0;
-    for (auto &Step : Pattern.Steps)
-    {
-        if (XorMask & Step.Lane)
-            return false; // Each xor must be unique
-        XorMask |= Step.Lane;
-    }
-
-    GenISAIntrinsic::ID ReductionType = getReductionType(XorMask);
-    if (ReductionType == GenISAIntrinsic::no_intrinsic)
+    auto RTy = getReductionType(Pattern);
+    if (!RTy.isValid())
         return false;
 
     auto *InputValue = Pattern.Steps.front().InputValue;
@@ -446,14 +457,25 @@ bool SubGroupReductionPattern::reduce(ShufflePattern &Pattern)
     SmallVector<Value*, 4> Args;
     Args.push_back(InputValue);
     Args.push_back(IRB.getInt8((uint8_t) Pattern.OpType));
-    if (ReductionType == GenISAIntrinsic::GenISA_WaveClustered)
-        Args.push_back(IRB.getInt32(XorMask + 1));
-    else if (ReductionType == GenISAIntrinsic::GenISA_WaveInterleave)
-        Args.push_back(IRB.getInt32(SubGroupSize - XorMask));
+    switch (RTy.IntrinsicType)
+    {
+    case GenISAIntrinsic::GenISA_WaveClustered:
+        Args.push_back(IRB.getInt32(RTy.ClusterSize));
+        break;
+    case GenISAIntrinsic::GenISA_WaveInterleave:
+        Args.push_back(IRB.getInt32(RTy.InterleaveStep));
+        break;
+    case GenISAIntrinsic::GenISA_WaveClusteredInterleave:
+        Args.push_back(IRB.getInt32(RTy.ClusterSize));
+        Args.push_back(IRB.getInt32(RTy.InterleaveStep));
+        break;
+    default:
+        break;
+    }
     Args.push_back(IRB.getInt32(0));
 
     Function *WaveFunc = GenISAIntrinsic::getDeclaration(FirstShuffle->getCalledFunction()->getParent(),
-        ReductionType,
+        RTy.IntrinsicType,
         Args[0]->getType());
 
     LastOp->replaceAllUsesWith(IRB.CreateCall(WaveFunc, Args));
@@ -462,91 +484,114 @@ bool SubGroupReductionPattern::reduce(ShufflePattern &Pattern)
     return true;
 }
 
-GenISAIntrinsic::ID SubGroupReductionPattern::getReductionType(uint64_t XorMask)
+ReductionType SubGroupReductionPattern::getReductionType(ShufflePattern &Pattern)
 {
-    // Example for SIMD8
-    //
+    // Check what shuffles are engaged in reduction.
+    uint64_t XorMask = 0;
+    for (auto& Step : Pattern.Steps)
+    {
+        if (XorMask & Step.Lane)
+            return ReductionType::Invalid(); // Each xor must be unique
+        XorMask |= Step.Lane;
+    }
+
+    if (XorMask == 0 || XorMask >= SubGroupSize)
+        return ReductionType::Invalid();
+
     // WaveAll - Full reduction, all work items mixed. Xor mask has all relevant bits set.
-    //   xor: 1, 2, 4 (order doesn't matter)
     //
+    // Example for SIMD8:
+    //   XorMask = 111 => xors 1, 2, 4 (order doesn't matter)
+    if (XorMask == (SubGroupSize - 1))
+        return ReductionType::WaveAll();
+
+    int LowBit = 0;
+    for (; (XorMask & 1) == 0; XorMask >>= 1)
+        LowBit += 1;
+
+    int HighBit = LowBit;
+    for (; (XorMask & 1) == 1; XorMask >>= 1)
+        HighBit += 1;
+
+    // Mask should be zero.
+    if (XorMask)
+        return ReductionType::Invalid();
+
+    int ClusterSize = 1 << HighBit;
+    int InterleaveStep = 1 << LowBit;
+
     // WaveClustered - Splits subgroup into smaller clusters of consecutive work items and reduces each cluster.
     //   Xor mask is expressed as lower N bits set.
     //
-    //   xor: 1, 2 => cluster size 4
+    // Example for SIMD8:
+    //   XorMask = 011 => xors 1, 2 => cluster size 4
+    //
     //   Work Item |       0 |       1 |       2 |       3 |       4 |       5 |       6 |       7 |
     //   xor 1     |     0,1 |     0,1 |     2,3 |     2,3 |     4,5 |     4,5 |     6,7 |     6,7 |
     //   xor 2     | 0,1,2,3 | 0,1,2,3 | 0,1,2,3 | 0,1,2,3 | 4,5,6,7 | 4,5,6,7 | 4,5,6,7 | 4,5,6,7 |
-    //
-    // WaveInterleave - Reduces together n-th work item, where n defines interleave step.
+    if (InterleaveStep == 1)
+        return ReductionType::WaveClustered(ClusterSize);
+
+    // WaveInterleave - Reduces together every n-th work item, where n defines interleave step.
     //   Xor mask is expressed as upper N bits set.
     //
-    //   xor: 2, 4 => interleave step 2
+    // Example for SIMD8:
+    //   XorMask = 110 => xors 2, 4 => interleave step 2
+    //
     //   Work Item |       0 |       1 |       2 |       3 |       4 |       5 |       6 |       7 |
     //   xor 2     |     0,2 |     1,3 |     0,2 |     1,3 |     4,6 |     5,7 |     4,6 |     5,7 |
     //   xor 4     | 0,2,4,6 | 1,3,5,7 | 0,2,4,6 | 1,3,5,7 | 0,2,4,6 | 1,3,5,7 | 0,2,4,6 | 1,3,5,7 |
+    if (SubGroupSize == ClusterSize)
+        return ReductionType::WaveInterleave(InterleaveStep);
 
-    if (XorMask >= SubGroupSize)
-        return GenISAIntrinsic::no_intrinsic;
+    // WaveClusteredInterleave - Splits subgroup into smaller clusters (WaveClustered) and executes
+    //   interleave reduction on each cluster (WaveInterleave).
+    //
+    // Example for SIMD8:
+    //   XorMask = 010 => xors 2 => cluster size 4, interleave step 2
+    //   clusters: { 0, 1, 2, 3 }, { 4, 5, 6, 7 }
+    //
+    //   Work Item |       0 |       1 |       2 |       3 |       4 |       5 |       6 |       7 |
+    //   xor 2     |     0,2 |     1,3 |     0,2 |     1,3 |     4,6 |     5,7 |     4,6 |     5,7 |
+    if (isSupportedWaveClusteredInterleave(Pattern, ClusterSize, InterleaveStep))
+        return ReductionType::WaveClusteredInterleave(ClusterSize, InterleaveStep);
 
-    if (XorMask == (SubGroupSize - 1))
-        return GenISAIntrinsic::GenISA_WaveAll;
+    return ReductionType::Invalid();
+}
 
-    if (SubGroupSize == 8)
+bool SubGroupReductionPattern::isSupportedWaveClusteredInterleave(ShufflePattern &Pattern, int ClusterSize, int InterleaveStep)
+{
+    // WaveClusteredInterleave has very limited opportunity to optimize over normal shuffles. The basic
+    // rule is that the longer the pattern, the more likely it is WaveClusteredInterleave will be more
+    // efficient. Require at least two shuffles.
+    if (Pattern.Steps.size() < 2)
+        return false;
+
+    // Only HPC platforms are supported.
+    bool Valid = CGC->platform.isProductChildOf(IGFX_PVC);
+
+    // At the moment only a selected number of scenarios are supported.
+    auto *Type = Pattern.Steps.front().Op->getType();
+    bool Is32BitType = Type->isIntegerTy(32) || Type->isFloatTy();
+    bool Is64BitType = Type->isIntegerTy(64) || Type->isDoubleTy();
+
+    Valid &= (SubGroupSize == 32 && ClusterSize == 16 && InterleaveStep == 2 && (Is32BitType || Is64BitType)) ||
+             (SubGroupSize == 32 && ClusterSize == 8  && InterleaveStep == 2 && Is32BitType);
+
+    if (IGC_IS_FLAG_ENABLED(PrintWaveClusteredInterleave))
     {
-        switch (XorMask)
-        {
-        // Clustered reduction: N lower xors
-        case 1:
-        case 3:
-            return GenISAIntrinsic::GenISA_WaveClustered;
-        // Interleave reduction: N upper xors
-        case 4:
-        case 6:
-            return GenISAIntrinsic::GenISA_WaveInterleave;
-        default:
-            break;
-        }
-    }
-    else if (SubGroupSize == 16)
-    {
-        switch (XorMask)
-        {
-        // Clustered reduction: N lower xors
-        case 1:
-        case 3:
-        case 7:
-            return GenISAIntrinsic::GenISA_WaveClustered;
-        // Interleave reduction: N upper xors
-        case 8:
-        case 12:
-        case 14:
-            return GenISAIntrinsic::GenISA_WaveInterleave;
-        default:
-            break;
-        }
-    }
-    else if (SubGroupSize == 32)
-    {
-        switch (XorMask)
-        {
-        // Clustered reduction: N lower xors
-        case 1:
-        case 3:
-        case 7:
-        case 15:
-            return GenISAIntrinsic::GenISA_WaveClustered;
-        // Interleave reduction: N upper xors
-        case 16:
-        case 24:
-        case 28:
-        case 30:
-            return GenISAIntrinsic::GenISA_WaveInterleave;
-        default:
-            break;
-        }
+        std::string DebugStr;
+        llvm::raw_string_ostream OS(DebugStr);
+        OS << (Valid ? "Replacing" : "Ignoring")
+           << " ClusteredInterleave pattern in [" << Pattern.Steps.front().Op->getParent()->getParent()->getName() << "]"
+           << "; SubGroupSize=" << SubGroupSize
+           << "; ClusterSize=" << ClusterSize
+           << "; InterleaveStep=" << InterleaveStep
+           << "; Type="; Pattern.Steps.front().Op->getType()->print(OS);
+        CGC->EmitWarning(OS.str().c_str());
     }
 
-    return GenISAIntrinsic::no_intrinsic;
+    return Valid;
 }
 
 WaveOps SubGroupReductionPattern::getWaveOp(Instruction *Op)
