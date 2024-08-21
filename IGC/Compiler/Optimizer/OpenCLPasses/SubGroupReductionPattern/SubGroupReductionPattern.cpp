@@ -12,12 +12,10 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/Transforms/Utils/Local.h>
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvmWrapper/IR/PatternMatch.h>
 #include "common/LLVMWarningsPop.hpp"
 
 #include "common/igc_regkeys.hpp"
-#include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 
@@ -44,48 +42,24 @@ public:
 
     struct PatternStep
     {
-        PatternStep(Value *InputValue, GenIntrinsicInst *ShuffleOp, Instruction *Op, uint64_t Lane)
-            : InputValue(InputValue), ShuffleOp(ShuffleOp), Op(Op), Lane(Lane) { }
+        PatternStep(GenIntrinsicInst *ShuffleOp, Instruction *Op, uint64_t Lane)
+            : ShuffleOp(ShuffleOp), Op(Op), Lane(Lane) { }
 
-        Value *InputValue;
-
-        // Shuffle InputValue with other SIMD lane.
         GenIntrinsicInst *ShuffleOp;
-        uint64_t Lane;
-
-        // Op on InputValue and ShuffleOp result.
         Instruction *Op;
+        uint64_t Lane;
     };
 
-    ShufflePattern(Value *InputValue, GenIntrinsicInst *ShuffleOp, Instruction *Op, WaveOps OpType, uint64_t Lane)
+    ShufflePattern(GenIntrinsicInst *ShuffleOp, Instruction *Op, WaveOps OpType, uint64_t Lane)
         : OpType(OpType)
     {
-        Steps.emplace_back(InputValue, ShuffleOp, Op, Lane);
+        Steps.emplace_back(ShuffleOp, Op, Lane);
     }
 
-    bool append(Value *InputValue, GenIntrinsicInst *ShuffleOp, Instruction *Op, WaveOps OpType, uint64_t Lane);
+    bool append(GenIntrinsicInst *ShuffleOp, Instruction *Op, WaveOps OpType, uint64_t Lane);
 
     WaveOps OpType;
     SmallVector<PatternStep, 8> Steps;
-};
-
-// A half of i64 shuffled as <2 x i32>.
-// See SubGroupReductionPattern::matchVectorShufflePattern for details.
-struct VectorShufflePattern
-{
-    VectorShufflePattern(Instruction *Op, uint64_t Lane, uint64_t VectorIndex)
-        : Op(Op), Lane(Lane), VectorIndex(VectorIndex) {}
-
-    bool match(Instruction* Op, uint64_t Lane, uint64_t VectorIndex)
-    {
-        return this->Op == Op &&
-               this->Lane == Lane &&
-               ((this->VectorIndex == 0 && VectorIndex == 1) || (this->VectorIndex == 1 && VectorIndex == 0));
-    }
-
-    Instruction *Op;
-    uint64_t Lane;
-    uint64_t VectorIndex;
 };
 
 // Pass for matching common manual subgroup reduction pattern and replacing them
@@ -114,25 +88,16 @@ private:
     void visitWaveShuffleIndex(GenIntrinsicInst &ShuffleOp);
 
     void matchShufflePattern(GenIntrinsicInst &ShuffleOp, uint64_t Lane);
-    void matchVectorShufflePattern(GenIntrinsicInst &ShuffleOp, uint64_t Lane);
-    void addShufflePattern(Value *InputValue, GenIntrinsicInst &ShuffleOp, Instruction *Op, uint64_t Lane);
 
     bool reduce(ShufflePattern &Pattern);
     GenISAIntrinsic::ID getReductionType(uint64_t XorMask);
 
     static WaveOps getWaveOp(Instruction* Op);
 
-    CodeGenContext *CGC = nullptr;
-
     int SubGroupSize = 0;
     bool Modified = false;
 
     SmallVector<ShufflePattern, 8> Matches;
-
-    // For i64 shuffle done as two i32 shuffles (vector <2 x i32>), each
-    // of i32 shuffle is matched as separate pattern. This map temporary
-    // holds first of the matched pair.
-    DenseMap<Instruction*, VectorShufflePattern> VectorShufflePatterns;
 };
 
 SubGroupReductionPattern::SubGroupReductionPattern() : FunctionPass(ID)
@@ -142,7 +107,6 @@ SubGroupReductionPattern::SubGroupReductionPattern() : FunctionPass(ID)
 
 void SubGroupReductionPattern::getAnalysisUsage(llvm::AnalysisUsage &AU) const
 {
-    AU.addRequired<CodeGenContextWrapper>();
     AU.addRequired<MetaDataUtilsWrapper>();
     AU.setPreservesCFG();
 }
@@ -152,7 +116,6 @@ bool SubGroupReductionPattern::runOnFunction(llvm::Function &F)
     if (F.hasOptNone())
         return false;
 
-    CGC = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     auto MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     auto FII = MDU->findFunctionsInfoItem(&F);
     if (FII == MDU->end_FunctionsInfo())
@@ -243,165 +206,29 @@ void SubGroupReductionPattern::matchShufflePattern(GenIntrinsicInst &ShuffleOp, 
         return;
 
     Instruction *Op = ShuffleOp.user_back();
-
-    if (isa<InsertElementInst>(Op))
-    {
-        return matchVectorShufflePattern(ShuffleOp, Lane);
-    }
-
-    Value *InputValue = ShuffleOp.getOperand(0);
-    if (((Op->getOperand(0) == InputValue && Op->getOperand(1) == &ShuffleOp) || (Op->getOperand(0) == &ShuffleOp && Op->getOperand(1) == InputValue)) == false)
+    if (!Op)
         return;
 
-    addShufflePattern(InputValue, ShuffleOp, Op, Lane);
-}
-
-void SubGroupReductionPattern::addShufflePattern(Value *InputValue, GenIntrinsicInst &ShuffleOp, Instruction *Op, uint64_t Lane)
-{
     WaveOps OpType = getWaveOp(Op);
     if (OpType == WaveOps::UNDEF)
         return;
 
-    // Check if type is supported.
-    if (Op->getType()->isIntegerTy(64) && CGC->platform.need64BitEmulation())
+    Value* Other = ShuffleOp.getOperand(0);
+    if (((Op->getOperand(0) == Other && Op->getOperand(1) == &ShuffleOp) || (Op->getOperand(0) == &ShuffleOp && Op->getOperand(1) == Other)) == false)
         return;
 
     // Continues previous pattern?
     for (auto &Match : Matches)
     {
-        if (Match.append(InputValue, &ShuffleOp, Op, OpType, Lane))
+        if (Match.append(&ShuffleOp, Op, OpType, Lane))
             return;
     }
 
     // New pattern.
-    Matches.emplace_back(InputValue, &ShuffleOp, Op, OpType, Lane);
+    Matches.emplace_back(&ShuffleOp, Op, OpType, Lane);
 }
 
-// Shuffle of i64 type can be split into two shuffles of i32 type. This method handles
-// such case; it matches the following pattern:
-//
-//   %3 = bitcast i64 %value to <2 x i32>
-//   %value1 = extractelement <2 x i32> %3, i64 0
-//   %value2 = extractelement <2 x i32> %3, i64 1
-//   %simdShuffleXor1 = call i32 @llvm.genx.GenISA.simdShuffleXor.i32(i32 %value1, i32 8)
-//   %simdShuffleXor2 = call i32 @llvm.genx.GenISA.simdShuffleXor.i32(i32 %value2, i32 8)
-//   %shuffledVec1 = insertelement <2 x i32> undef, i32 %simdShuffleXor1, i64 0
-//   %shuffledVec2 = insertelement <2 x i32> %shuffledVec1, i32 %simdShuffleXor2, i64 1
-//   %shuffled = bitcast <2 x i32> %shuffledVec2 to i64
-//   %result = <op> i64 %value, %shuffled
-void SubGroupReductionPattern::matchVectorShufflePattern(GenIntrinsicInst &ShuffleOp, uint64_t Lane)
-{
-    auto CheckVectorType = [](Type *Ty)
-    {
-        if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty))
-            return VTy->getNumElements() == 2;
-        return false;
-    };
-
-    // Match instructions that happen before shuffle, that is:
-    //
-    //   %3 = bitcast i64 %value to <2 x i32>
-    //   %value1 = extractelement <2 x i32> %3, i64 0
-    //   %value2 = extractelement <2 x i32> %3, i64 1
-    //   %simdShuffleXor1 = call i32 @llvm.genx.GenISA.simdShuffleXor.i32(i32 %value1, i32 8)
-    //   %simdShuffleXor2 = call i32 @llvm.genx.GenISA.simdShuffleXor.i32(i32 %value2, i32 8)
-    //
-    // Collect:
-    //    1. Input value.
-    //    2. BitCast instruction (to validate type).
-    //    2. ExtractElement index.
-
-    Value *InputValue = nullptr;
-    Instruction *BitCast = nullptr;
-    uint64_t VectorIndex = 0;
-
-    if (!match(ShuffleOp.getOperand(0), m_OneUse(
-        m_ExtractElt(
-            m_CombineAnd(
-                m_Instruction(BitCast),
-                m_BitCast(m_Value(InputValue)
-                )),
-            m_ConstantInt(VectorIndex)))))
-        return;
-
-    if (VectorIndex != 0 && VectorIndex != 1)
-        return;
-
-    if (InputValue->getType()->isVectorTy() || !CheckVectorType(BitCast->getType()))
-        return;
-
-    // Match instructions that happen after shuffle, that is:
-    //
-    //   %simdShuffleXor1 = call i32 @llvm.genx.GenISA.simdShuffleXor.i32(i32 %value1, i32 8)
-    //   %simdShuffleXor2 = call i32 @llvm.genx.GenISA.simdShuffleXor.i32(i32 %value2, i32 8)
-    //   %shuffledVec1 = insertelement <2 x i32> undef, i32 %simdShuffleXor1, i64 0
-    //   %shuffledVec2 = insertelement <2 x i32> %shuffledVec1, i32 %simdShuffleXor2, i64 1
-    //   %shuffled = bitcast <2 x i32> %shuffledVec2 to i64
-    //   %result = <op> i64 %value, %shuffled
-    //
-    // Collect:
-    //    1. InsertElement instruction (to validate type).
-
-    Instruction *InsertElement = nullptr;
-
-    // First pattern - shuffle is used in second insertelement.
-    auto Pattern1 = m_OneUse(
-        m_BitCast(
-            m_OneUse(
-                m_CombineAnd(
-                    m_Instruction(InsertElement),
-                    m_InsertElt(
-                        m_Value(),
-                        m_OneUse(m_Specific(&ShuffleOp)),
-                        m_SpecificInt(VectorIndex)
-                    )))));
-
-    // Second pattern - shuffle is used in first insertelement.
-    auto Pattern2 = m_OneUse(
-        m_BitCast(
-            m_OneUse(
-                m_InsertElt(
-                    m_OneUse(
-                        m_CombineAnd(
-                            m_Instruction(InsertElement),
-                            m_InsertElt(
-                                m_Undef(),
-                                m_OneUse(m_Specific(&ShuffleOp)),
-                                m_SpecificInt(VectorIndex)))),
-                    m_Value(),
-                    m_SpecificInt(VectorIndex ? 0 : 1)
-                ))));
-
-    for (auto *User : InputValue->users())
-    {
-        Instruction *Op = dyn_cast<Instruction>(User);
-
-        if (match(Op, m_c_BinOp(m_Specific(InputValue), Pattern1)) || match(Op, m_c_BinOp(m_Specific(InputValue), Pattern2)))
-        {
-            if (!CheckVectorType(InsertElement->getType()))
-                return;
-
-            // Now that pattern is matched, check if this is the first or second shuffle of the pair.
-            if (VectorShufflePatterns.count(Op))
-            {
-                if (VectorShufflePatterns.find(Op)->second.match(Op, Lane, VectorIndex))
-                {
-                    // Collected two parts of i64 shuffle, create new pattern.
-                    addShufflePattern(InputValue, ShuffleOp, Op, Lane);
-                }
-            }
-            else
-            {
-                // First part of i64 shuffle, store for later matching.
-                VectorShufflePatterns.try_emplace(Op, Op, Lane, VectorIndex);
-            }
-
-            return;
-        }
-    }
-}
-
-bool ShufflePattern::append(Value *InputValue, GenIntrinsicInst *ShuffleOp, Instruction *Op, WaveOps OpType, uint64_t Lane)
+bool ShufflePattern::append(GenIntrinsicInst *ShuffleOp, Instruction *Op, WaveOps OpType, uint64_t Lane)
 {
     if (this->OpType != OpType)
         return false;
@@ -411,13 +238,13 @@ bool ShufflePattern::append(Value *InputValue, GenIntrinsicInst *ShuffleOp, Inst
     if (PreviousValue->getNumUses() != 2)
         return false;
 
-    if (InputValue != PreviousValue)
+    if (ShuffleOp->getOperand(0) != PreviousValue)
         return false;
 
-    if (Op->getOperand(0) != InputValue && Op->getOperand(1) != InputValue)
+    if (Op->getOperand(0) != PreviousValue && Op->getOperand(1) != PreviousValue)
         return false;
 
-    Steps.emplace_back(InputValue, ShuffleOp, Op, Lane);
+    Steps.emplace_back(ShuffleOp, Op, Lane);
     return true;
 }
 
@@ -436,7 +263,6 @@ bool SubGroupReductionPattern::reduce(ShufflePattern &Pattern)
     if (ReductionType == GenISAIntrinsic::no_intrinsic)
         return false;
 
-    auto *InputValue = Pattern.Steps.front().InputValue;
     auto *FirstShuffle = Pattern.Steps.front().ShuffleOp;
     auto *LastOp = Pattern.Steps.back().Op;
 
@@ -444,7 +270,7 @@ bool SubGroupReductionPattern::reduce(ShufflePattern &Pattern)
     IRB.SetCurrentDebugLocation(LastOp->getDebugLoc());
 
     SmallVector<Value*, 4> Args;
-    Args.push_back(InputValue);
+    Args.push_back(FirstShuffle->getOperand(0));
     Args.push_back(IRB.getInt8((uint8_t) Pattern.OpType));
     if (ReductionType == GenISAIntrinsic::GenISA_WaveClustered)
         Args.push_back(IRB.getInt32(XorMask + 1));
@@ -605,7 +431,6 @@ WaveOps SubGroupReductionPattern::getWaveOp(Instruction *Op)
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(SubGroupReductionPattern, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_END(SubGroupReductionPattern, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
