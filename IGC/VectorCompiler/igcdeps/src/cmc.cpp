@@ -228,18 +228,26 @@ void CMKernel::createSamplerAnnotation(const KernelArgInfo &ArgInfo,
   using namespace zebin;
   using namespace iOpenCL;
 
+  const auto SamplerType = SAMPLER_OBJECT_TEXTURE;
+
   const auto Index = ArgInfo.getIndex();
   const auto Kind = ArgInfo.getKind();
   const auto Access = ArgInfo.getAccessKind();
   const auto AddrMode = ArgInfo.getAddressMode();
   const auto BTI = ArgInfo.getBTI();
-  const auto Size = ArgInfo.getSizeInBytes();
+  auto Size = ArgInfo.getSizeInBytes();
 
   IGC_ASSERT(AddrMode == ArgAddressMode::Stateful ||
              AddrMode == ArgAddressMode::Bindless);
 
   bool IsBindless = AddrMode == ArgAddressMode::Bindless;
-  const auto SamplerType = SAMPLER_OBJECT_TEXTURE;
+
+  // For stateful image, we don't need any data to be passed thru the kernel
+  // argument buffer.
+  if (!IsBindless) {
+    Size = 0;
+    Offset = 0;
+  }
 
   auto SamplerArg = std::make_unique<SamplerArgumentAnnotation>();
   SamplerArg->SamplerType = SamplerType;
@@ -304,11 +312,19 @@ void CMKernel::createImageAnnotation(const KernelArgInfo &ArgInfo,
   const auto Access = ArgInfo.getAccessKind();
   const auto AddrMode = ArgInfo.getAddressMode();
   const auto BTI = ArgInfo.getBTI();
+  auto Size = ArgInfo.getSizeInBytes();
 
   IGC_ASSERT(AddrMode == ArgAddressMode::Stateful ||
              AddrMode == ArgAddressMode::Bindless);
 
   bool IsBindless = AddrMode == ArgAddressMode::Bindless;
+
+  // For stateful image, we don't need any data to be passed thru the kernel
+  // argument buffer.
+  if (!IsBindless) {
+    Size = 0;
+    Offset = 0;
+  }
 
   auto ImageInput = std::make_unique<ImageArgumentAnnotation>();
   auto ImageType = getOCLImageType(Kind);
