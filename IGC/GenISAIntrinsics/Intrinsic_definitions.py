@@ -689,9 +689,21 @@ Imported_Intrinsics = \
 "GenISA_WaveInterleave": ["",
     [("anyint",                        "return value of n-th bit from the input bitfield "+\
                                        "Step n is defined as 1 <= 2^n <= maxSubgroupSize, n >= 0."),
-    [(0,                               "bitfield"),
-     ("char",                          "helperLaneMode : 0: not used; 1: helper lanes participate"),
+    [(0,                               "value"),
+     ("char",                          "IGC::WaveOps"),
      ("int",                           "step - must be a compile time constant and assumed > 1"),
+     ("int",                           "helperLaneMode : 0: not used; 1: helper lanes participatein "+\
+                                       "wave ops, 2: helper lanes do not participate in wave ops.")],
+    "Convergent,InaccessibleMemOnly"]],
+####################################################################################################
+"GenISA_WaveClusteredInterleave": ["A combination of WaveClustered and WaveInterleave. First splits subgroup "+\
+                                   "into clusters (like WaveClustered), and then does interleave reduction "+\
+                                   "(WaveInterleave) on each cluster. The result is undefined in case of non-uniformity.",
+    [("anyint",                        ""),
+    [(0,                               "value"),
+     ("char",                          "IGC::WaveOps"),
+     ("int",                           "cluster size - must be a compile time constant and assumed > 1"),
+     ("int",                           "interleave step - must be a compile time constant and assumed > 1"),
      ("int",                           "helperLaneMode : 0: not used; 1: helper lanes participatein "+\
                                        "wave ops, 2: helper lanes do not participate in wave ops.")],
     "Convergent,InaccessibleMemOnly"]],

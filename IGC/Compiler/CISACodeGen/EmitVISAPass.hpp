@@ -333,6 +333,24 @@ public:
         const unsigned int step,
         CVariable* const src,
         CVariable* const dst);
+    void emitReductionInterleave(
+        const e_opcode op,
+        const VISA_Type type,
+        const SIMDMode simd,
+        const unsigned int step,
+        const bool noMaskBroadcast,
+        CVariable* const src1,
+        CVariable* const src2,
+        CVariable* const dst);
+    void emitReductionClusteredInterleave(
+        const e_opcode op,
+        const uint64_t identityValue,
+        const VISA_Type type,
+        const bool negate,
+        const unsigned int clusterSize,
+        const unsigned int interleaveStep,
+        CVariable* const src,
+        CVariable* const dst);
     void emitPreOrPostFixOp(
         e_opcode op,
         uint64_t identityValue,
@@ -441,6 +459,7 @@ public:
     void emitWaveAll(llvm::GenIntrinsicInst* inst);
     void emitWaveClustered(llvm::GenIntrinsicInst* inst);
     void emitWaveInterleave(llvm::GenIntrinsicInst* inst);
+    void emitWaveClusteredInterleave(llvm::GenIntrinsicInst* inst);
 
     // Those three "vector" version shall be combined with
     // non-vector version.

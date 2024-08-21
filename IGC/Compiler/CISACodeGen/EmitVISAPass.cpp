@@ -8912,6 +8912,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_WaveClustered:
         emitWaveClustered(inst);
         break;
+    case GenISAIntrinsic::GenISA_WaveClusteredInterleave:
+        emitWaveClusteredInterleave(inst);
+        break;
     case GenISAIntrinsic::GenISA_dp4a_ss:
     case GenISAIntrinsic::GenISA_dp4a_uu:
     case GenISAIntrinsic::GenISA_dp4a_su:
@@ -13734,6 +13737,8 @@ void EmitPass::emitReductionClustered(const e_opcode op, const uint64_t identity
     }
 }
 
+// Emits interleave reduction, first preparing the input data. This guarantees to produce
+// correct result even if not all lanes are active.
 void EmitPass::emitReductionInterleave(const e_opcode op, const uint64_t identityValue, const VISA_Type type,
     const bool negate, const unsigned int step, CVariable* const src, CVariable* const dst)
 {
@@ -13751,17 +13756,31 @@ void EmitPass::emitReductionInterleave(const e_opcode op, const uint64_t identit
 
     CVariable* srcH1 = ScanReducePrepareSrc(type, identityValue, negate, false /* secondHalf */,
         src, nullptr /* dst */);
-    CVariable* temp = srcH1;
+
+    CVariable* srcH2 = nullptr;
+    if (firstStep == 16 && m_currShader->m_numberInstance > 1)
+    {
+        srcH2 = ScanReducePrepareSrc(type, identityValue, negate, true /* secondHalf */,
+            src, nullptr /* dst */);
+    }
+
+    emitReductionInterleave(op, type, m_currShader->m_SIMDSize, step, false, srcH1, srcH2, dst);
+}
+
+// Directly emits interleave reduction on input data, without preparing the input.
+void EmitPass::emitReductionInterleave(const e_opcode op, const VISA_Type type, const SIMDMode simd,
+    const unsigned int step, const bool noMaskBroadcast, CVariable* const src1, CVariable* const src2, CVariable* const dst)
+{
+    const uint16_t firstStep = m_currShader->m_numberInstance * numLanes(simd) / 2;
+
+    CVariable* temp = src1;
 
     // Implementation is similar to emitReductionAll(), but we stop reduction before reaching SIMD1.
     for (unsigned int currentStep = firstStep; currentStep >= step; currentStep >>= 1)
     {
         if (currentStep == 16 && m_currShader->m_numberInstance > 1)
         {
-            CVariable* srcH2 = ScanReducePrepareSrc(type, identityValue, negate, true /* secondHalf */,
-                src, nullptr /* dst */);
-
-            temp = ReductionReduceHelper(op, type, SIMDMode::SIMD16, temp, srcH2);
+            temp = ReductionReduceHelper(op, type, SIMDMode::SIMD16, temp, src2);
         }
         else
         {
@@ -13770,15 +13789,18 @@ void EmitPass::emitReductionInterleave(const e_opcode op, const uint64_t identit
     }
 
     // Broadcast result
+    if (noMaskBroadcast)
+        m_encoder->SetNoMask();
+
     // For XeHP, for low interleave step, broadcast of 64-bit result
     // can be optimized as a separate mov of low/high 32-bit.
     bool use32bitMove = ScanReduceIs64BitType(type) && m_currShader->m_Platform->doScalar64bScan() && m_currShader->m_numberInstance == 1;
     if (use32bitMove && (step == 2 || step == 4))
     {
         CVariable* result32b = m_currShader->GetNewAlias(temp, ISA_TYPE_UD, 0, 2 * step);
-        CVariable* dst32b = m_currShader->GetNewAlias(dst, ISA_TYPE_UD, 0, 2 * numLanes(m_currShader->m_SIMDSize));
+        CVariable* dst32b = m_currShader->GetNewAlias(dst, ISA_TYPE_UD, 0, 2 * numLanes(simd));
 
-        m_encoder->SetSimdSize(m_currShader->m_SIMDSize);
+        m_encoder->SetSimdSize(simd);
         m_encoder->SetSrcRegion(0, 0, step, 2);
         m_encoder->SetDstRegion(2);
         m_encoder->Copy(dst32b, result32b);
@@ -13791,7 +13813,7 @@ void EmitPass::emitReductionInterleave(const e_opcode op, const uint64_t identit
         return;
     }
 
-    m_encoder->SetSimdSize(m_currShader->m_SIMDSize);
+    m_encoder->SetSimdSize(simd);
     m_encoder->SetSrcRegion(0, 0, step, 1);
     m_encoder->Copy(dst, temp);
     if (m_currShader->m_numberInstance > 1)
@@ -13801,6 +13823,119 @@ void EmitPass::emitReductionInterleave(const e_opcode op, const uint64_t identit
         m_encoder->SetSecondHalf(false);
     }
     m_encoder->Push();
+}
+
+void EmitPass::emitReductionClusteredInterleave(const e_opcode op, const uint64_t identityValue, const VISA_Type type,
+    const bool negate, const unsigned int clusterSize, const unsigned int interleaveStep, CVariable* const src, CVariable* const dst)
+{
+    IGC_ASSERT_MESSAGE(!dst->IsUniform(), "Unsupported: dst must be non-uniform");
+
+    auto simd = m_currShader->m_SIMDSize;
+    auto dataSizeInBytes = CEncoder::GetCISADataTypeSize(type);
+
+    // If src spans 4 GRFs and cluster spans 2 GRFs (2 clusters total), then WaveClusterInterleave can be expressed
+    // as 2 x WaveInterleave, one for each pair of GRFs.
+    if (m_currShader->m_numberInstance == 1 && 2 * clusterSize == numLanes(simd) &&
+        numLanes(simd) * dataSizeInBytes == 4 * m_currShader->getGRFSize())
+    {
+        auto interleaveLanes = numLanes(simd) / 2;
+        SIMDMode interleaveSIMD = lanesToSIMDMode(interleaveLanes);
+
+        for (int i = 0; i < 2; ++i)
+        {
+            CVariable* srcAlias = m_currShader->GetNewAlias(src, type, i * interleaveLanes * dataSizeInBytes, interleaveLanes);
+            CVariable* dstAlias = m_currShader->GetNewAlias(dst, type, i * interleaveLanes * dataSizeInBytes, interleaveLanes);
+
+            emitReductionInterleave(op, type, interleaveSIMD, interleaveStep, true, srcAlias, nullptr, dstAlias);
+        }
+
+        return;
+    }
+
+    // Implementation for each case is custom, with no general solution.
+
+    if (m_currShader->m_numberInstance == 1 && simd == SIMDMode::SIMD32 && dataSizeInBytes == 4 && clusterSize == 16 && interleaveStep == 2)
+    {
+        CVariable* temp = m_currShader->GetNewVariable(numLanes(simd), type, EALIGN_GRF, false, "reduceSrc");
+
+        // Reorder input. Spread every value by two lanes.
+        //
+        // |  0 | 16 |  1 | 17 |  2 | 18 | ... | 15 | 31 |
+        for (int i = 0; i < 2; ++i)
+        {
+            m_encoder->SetNoMask();
+            m_encoder->SetSimdSize(SIMDMode::SIMD16);
+            m_encoder->SetSrcRegion(0, 1, 1, 0);
+            m_encoder->SetSrcSubReg(0, 16 * i);
+            m_encoder->SetDstRegion(2);
+            m_encoder->SetDstSubReg(i);
+            m_encoder->Copy(temp, src);
+            m_encoder->Push();
+        }
+
+        // Reduce.
+        temp = ReductionReduceHelper(op, type, SIMDMode::SIMD16, temp);
+        temp = ReductionReduceHelper(op, type, SIMDMode::SIMD8, temp);
+        temp = ReductionReduceHelper(op, type, SIMDMode::SIMD4, temp);
+
+        // Propagate output. Repeat each value 8 times.
+        // temp: | a | b | c | d |
+        // dst:  | a | c | a | c | a | c | a | c | ... | b | d | b | d | b | d | b | d |
+        for (int i = 0; i < 2; ++i)
+        {
+            m_encoder->SetNoMask();
+            m_encoder->SetSimdSize(SIMDMode::SIMD16);
+            m_encoder->SetSrcRegion(0, 1, 8, 0);
+            m_encoder->SetSrcSubReg(0, 2 * i);
+            m_encoder->SetDstRegion(2);
+            m_encoder->SetDstSubReg(i);
+            m_encoder->Copy(dst, temp);
+            m_encoder->Push();
+        }
+    }
+    else if (m_currShader->m_numberInstance == 1 && simd == SIMDMode::SIMD32 && dataSizeInBytes == 4 && clusterSize == 8 && interleaveStep == 2)
+    {
+        CVariable* temp = m_currShader->GetNewVariable(numLanes(simd), type, EALIGN_GRF, false, "reduceSrc");
+
+        // Reorder input. Spread every next two values by 8 lanes:
+        //
+        // |  0 |  1 |  8 |  9 |  16 | 17 | ... | 14 | 15 | 22 | 23 | 30 | 31 |
+        for (int i = 0; i < 4; ++i)
+        {
+            m_encoder->SetNoMask();
+            m_encoder->SetSimdSize(SIMDMode::SIMD8);
+            m_encoder->SetSrcRegion(0, 8, 2, 1);
+            m_encoder->SetSrcSubReg(0, 2 * i);
+            m_encoder->SetDstRegion(1);
+            m_encoder->SetDstSubReg(8 * i);
+            m_encoder->Copy(temp, src);
+            m_encoder->Push();
+        }
+
+        // Reduce.
+        temp = ReductionReduceHelper(op, type, SIMDMode::SIMD16, temp);
+        temp = ReductionReduceHelper(op, type, SIMDMode::SIMD8, temp);
+
+        // Propagate output. Repeat each pair of values 4 times.
+        //
+        // temp: | a | b | c | d | e | f | g | h |
+        // dst:  | a | b | a | b | a | b | a | b | ... | g | h | g | h | g | h | g | h |
+        for (int i = 0; i < 2; ++i)
+        {
+            m_encoder->SetNoMask();
+            m_encoder->SetSimdSize(SIMDMode::SIMD16);
+            m_encoder->SetSrcRegion(0, 2, 4, 0);
+            m_encoder->SetSrcSubReg(0, i);
+            m_encoder->SetDstRegion(2);
+            m_encoder->SetDstSubReg(i);
+            m_encoder->Copy(dst, temp);
+            m_encoder->Push();
+        }
+    }
+    else
+    {
+        IGC_ASSERT_MESSAGE(false, "Invalid WaveClusteredInterleave.");
+    }
 }
 
 // do prefix op across all activate channels
@@ -21238,6 +21373,30 @@ void EmitPass::emitWaveInterleave(llvm::GenIntrinsicInst* inst)
     CVariable* dst = m_destination;
     m_encoder->SetSubSpanDestination(false);
     emitReductionInterleave(opCode, identity, type, false, step, src, dst);
+    if (disableHelperLanes)
+    {
+        ResetVMask();
+    }
+}
+
+void EmitPass::emitWaveClusteredInterleave(llvm::GenIntrinsicInst* inst)
+{
+    bool disableHelperLanes = int_cast<int>(cast<ConstantInt>(inst->getArgOperand(3))->getSExtValue()) == 2;
+    if (disableHelperLanes)
+    {
+        ForceDMask();
+    }
+    CVariable* src = GetSymbol(inst->getOperand(0));
+    const WaveOps op = static_cast<WaveOps>(cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue());
+    const unsigned int clusterSize = int_cast<uint32_t>(cast<llvm::ConstantInt>(inst->getOperand(2))->getZExtValue());
+    const unsigned int interleaveStep = int_cast<uint32_t>(cast<llvm::ConstantInt>(inst->getOperand(3))->getZExtValue());
+    VISA_Type type;
+    e_opcode opCode;
+    uint64_t identity = 0;
+    GetReductionOp(op, inst->getOperand(0)->getType(), identity, opCode, type);
+    CVariable* dst = m_destination;
+    m_encoder->SetSubSpanDestination(false);
+    emitReductionClusteredInterleave(opCode, identity, type, false, clusterSize, interleaveStep, src, dst);
     if (disableHelperLanes)
     {
         ResetVMask();

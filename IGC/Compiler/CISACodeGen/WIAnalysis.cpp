@@ -1423,6 +1423,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         intrinsic_name == llvm_waveAll ||
         intrinsic_name == llvm_waveClustered ||
         intrinsic_name == llvm_waveInterleave ||
+        intrinsic_name == llvm_waveClusteredInterleave ||
         intrinsic_name == llvm_ld_ptr ||
         intrinsic_name == llvm_ldlptr ||
         (IGC_IS_FLAG_DISABLED(DisableUniformTypedAccess) && intrinsic_name == llvm_typed_read) ||
@@ -1726,7 +1727,8 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
             }
         }
 
-        if (intrinsic_name == llvm_waveInterleave)
+        if (intrinsic_name == llvm_waveInterleave ||
+            intrinsic_name == llvm_waveClusteredInterleave)
         {
             return WIAnalysis::RANDOM;
         }
