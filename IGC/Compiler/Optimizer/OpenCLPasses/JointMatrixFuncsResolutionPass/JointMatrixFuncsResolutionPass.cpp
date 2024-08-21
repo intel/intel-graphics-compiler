@@ -580,8 +580,21 @@ static const char *nameLayout(unsigned layout) {
 }
 
 static bool isSupprtedLargeSlice(const JointMatrixTypeDescription *desc, bool useSG16) {
-    if (!useSG16)
+    if (!useSG16) {
+        if(desc->layout == LayoutPackedA) {
+            if (desc->rows == 32 && desc->columns == 16 && desc->bitWidth == 16)
+                return true;
+        }
+        if (desc->layout == LayoutPackedB) {
+            if (desc->rows == 16 && desc->columns == 32 && desc->bitWidth == 16)
+                return true;
+        }
+        if (desc->layout == LayoutRowMajor) {
+            if (desc->rows == 32 && desc->columns == 32 && desc->bitWidth == 32)
+                return true;
+        }
         return false;
+    }
 
     if (desc->layout == LayoutPackedA) {
         if (desc->rows == 16 && desc->columns == 16 && desc->bitWidth == 16)
@@ -1117,14 +1130,18 @@ unsigned JointMatrixFuncsResolutionPass::getNumRowsPerWI(const JointMatrixTypeDe
     return totalBits / canHandleBits + (totalBits % canHandleBits ? 1 : 0);
 }
 
-// Create <float x 64> type used for Accumulator 32x64 in array [2 x <float x 64>].
-static Type* getAcc32x64HalfType(LLVMContext &ctx) {
+// Create <float x 64> type used for Accumulator 32x64 and 32x32 in array [2 x <float x 64>].
+static Type* getAccFloatVec64Type(LLVMContext &ctx) {
     return IGCLLVM::FixedVectorType::get(Type::getFloatTy(ctx), 64);
 }
 
 // Check if it is one off special case: Accumulator 32x64.
 static bool isAccumulator32x64(const JointMatrixTypeDescription &desc) {
     return (desc.layout == LayoutRowMajor && desc.rows == 32 && desc.columns == 64);
+}
+// Check if it is one off special case: Accumulator 32x32.
+static bool isAccumulator32x32(const JointMatrixTypeDescription &desc) {
+    return (desc.layout == LayoutRowMajor && desc.rows == 32 && desc.columns == 32);
 }
 
 Type *JointMatrixFuncsResolutionPass::ResolveType(Type *opaqueType, JointMatrixTypeDescription *outDesc)
@@ -1162,8 +1179,8 @@ Type *JointMatrixFuncsResolutionPass::ResolveType(Type *opaqueType, JointMatrixT
     // One off special case: this should ideally be a vector of <float x 128>. However since IGC
     // code gen supports vector operations only on vectors up to 64
     // entries, we model this slice as array of [2 x <float x 64>].
-    if (isAccumulator32x64(desc))
-        resolvedType = ArrayType::get(getAcc32x64HalfType(ctx), 2);
+    if (isAccumulator32x64(desc) || isAccumulator32x32(desc))
+        resolvedType = ArrayType::get(getAccFloatVec64Type(ctx), 2);
     else
     {
         unsigned vectorSize = getNumRowsPerWI(&desc);
@@ -1199,7 +1216,7 @@ static Instruction *loadSlice(BuilderT *builder, Type *matTy, Value *sliceArray)
           || matTy->isIntegerTy() || matTy->isFloatingPointTy()) {
         return builder->CreateLoad(matTy, sliceArray);
     } else if (matTy->isArrayTy() && matTy->getArrayNumElements() == 2) {
-        Type *halfTy = getAcc32x64HalfType(builder->getContext());
+        Type *halfTy = getAccFloatVec64Type(builder->getContext());
         Type *halfPtrTy = halfTy->getPointerTo(ADDRESS_SPACE_PRIVATE);
 
         Value *ptr0 = builder->CreateBitCast(sliceArray, halfPtrTy);
@@ -1492,6 +1509,8 @@ static const char *getElementName(PrecisionType P) {
 static bool isMADSupportedAsBuiltin(unsigned M, unsigned N, unsigned K) {
     if (M == 16 && N == 16 && K == 16)
         return true;
+    if (M == 32 && N == 32 && K == 16)
+        return true;
     if (M == 32 && N == 64 && K == 16)
         return true;
     if (M == 1 && N == 64 && K == 16)
@@ -1556,8 +1575,8 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveMad(CallInst *CI, unsigned O
 
     IGC_ASSERT_MESSAGE(aDesc.layout == LayoutPackedA || aDesc.layout == LayoutRowMajor,
                        "Unexpected layout for matrix A in MAD operation.");
-    IGC_ASSERT_MESSAGE(bDesc.layout == LayoutPackedB, "Unexpected layout for matrix A in MAD operation.");
-    IGC_ASSERT_MESSAGE(cDesc.layout == LayoutRowMajor, "Unexpected layout for matrix A in MAD operation.");
+    IGC_ASSERT_MESSAGE(bDesc.layout == LayoutPackedB, "Unexpected layout for matrix B in MAD operation.");
+    IGC_ASSERT_MESSAGE(cDesc.layout == LayoutRowMajor, "Unexpected layout for matrix C in MAD operation.");
 
     const bool floatMad = cDesc.isFloating;
 
@@ -1741,10 +1760,10 @@ Value *JointMatrixFuncsResolutionPass::ResolveFill(CallInst *CI) {
             slice = builder.CreateInsertElement(slice, fillValue, i);
         }
     }
-    // Special case Accumulator 32x64 is represented as [2 x <float x 64>].
-    else if (isAccumulator32x64(desc))
+    // Special cases Accumulator 32x64 and 32x32 is represented as [2 x <float x 64>].
+    else if (isAccumulator32x64(desc) || isAccumulator32x32(desc))
     {
-        Type *halfTy = getAcc32x64HalfType(builder.getContext());
+        Type *halfTy = getAccFloatVec64Type(builder.getContext());
         Value *slice0 = UndefValue::get(halfTy);
         Value *slice1 = UndefValue::get(halfTy);
 
@@ -1902,9 +1921,9 @@ static Value *mergeComponentToPackedValue(BuilderT *builder, Value *value, Value
     return builder->CreateOr(value, component);
 }
 
-// Gets pointer to element to process in joint_matrix_apply loop for Accumulator 32x64
+// Gets pointer to element to process in joint_matrix_apply loop for Accumulator 32x64 and 32x32
 // Also updates MatPtr to point to alloca of [2 x <float x 64>] used inside joint_matrix_apply loop
-Value *JointMatrixFuncsResolutionPass::getAcc32x64ElementPtr(CallInst *CI, Value *matrix, Value *index, IRBuilder<> *builder, Value **MatPtr) {
+Value *JointMatrixFuncsResolutionPass::getAcc2x64xFloatElementPtr(CallInst *CI, Value *matrix, Value *index, IRBuilder<> *builder, Value **MatPtr) {
     if (LoadInst *loadInst = dyn_cast<LoadInst>(matrix)) {
         *MatPtr = Resolve(loadInst->getPointerOperand());
     } else {
@@ -1953,11 +1972,11 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceInsert(CallInst *CI) {
     else if (IntegerType *vectorElementType = dyn_cast<IntegerType>(getResolvedVectorElementType(matTy, &builder)))
         component = builder.CreateBitCast(component, vectorElementType);
 
-    // Special case Accumulator 32x64 is represented as [2 x <float x 64>].
-    if (isAccumulator32x64(desc))
+    // Special case Accumulator 32x64 and 32x32 is represented as [2 x <float x 64>].
+    if (isAccumulator32x64(desc) || isAccumulator32x32(desc))
     {
         Value *MatPtr = nullptr;
-        Value *ptrToElem = getAcc32x64ElementPtr(CI, matrix, index, &builder, &MatPtr);
+        Value *ptrToElem = getAcc2x64xFloatElementPtr(CI, matrix, index, &builder, &MatPtr);
         builder.CreateStore(component, ptrToElem);
         slice = builder.CreateLoad(matTy, MatPtr);
     }
@@ -1983,9 +2002,9 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceExtract(CallInst *CI) {
     if (dyn_cast<IGCLLVM::FixedVectorType>(matTy)) {
         Value *indexVec = index;
         element = updateIndexAndCreateSliceExtract(&builder, matrix, &indexVec, desc.contribBitWidth, desc.bitWidth);
-    } else if (isAccumulator32x64(desc)) {
+    } else if (isAccumulator32x64(desc) || isAccumulator32x32(desc)) {
         Value *MatPtr = nullptr;
-        Value *ptrToElem = getAcc32x64ElementPtr(CI, matrix, index, &builder, &MatPtr);
+        Value *ptrToElem = getAcc2x64xFloatElementPtr(CI, matrix, index, &builder, &MatPtr);
         element = builder.CreateLoad(builder.getFloatTy(), ptrToElem);
     }
 

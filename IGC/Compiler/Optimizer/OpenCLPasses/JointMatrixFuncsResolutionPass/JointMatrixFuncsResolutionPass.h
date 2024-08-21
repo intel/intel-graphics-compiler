@@ -69,7 +69,7 @@ namespace IGC
         llvm::Value *ResolveFill(llvm::CallInst *CI);
         llvm::Instruction *ResolveFillChecked(llvm::CallInst *CI);
         llvm::Value *ResolveWILength(llvm::CallInst *CI);
-        llvm::Value *getAcc32x64ElementPtr(llvm::CallInst *CI, llvm::Value *matrix, llvm::Value *index, llvm::IRBuilder<> *builder, llvm::Value **MatPtr);
+        llvm::Value *getAcc2x64xFloatElementPtr(llvm::CallInst *CI, llvm::Value *matrix, llvm::Value *index, llvm::IRBuilder<> *builder, llvm::Value **MatPtr);
         llvm::Value *ResolveSliceInsert(llvm::CallInst *CI);
         llvm::Value *ResolveSliceExtract(llvm::CallInst *CI);
         llvm::Instruction *ResolveGetCoord(llvm::CallInst *CI);
