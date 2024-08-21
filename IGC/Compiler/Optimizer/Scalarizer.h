@@ -39,6 +39,12 @@ namespace IGC
 // Define estimated amount of instructions in function
 #define ESTIMATED_INST_NUM 128
 
+    enum class SelectiveScalarizer {
+      Off,
+      On,
+      Auto ///< Based on IGC_EnableSelectiveScalarizer (0 = off, 1 = on)
+    };
+
 /// @brief Scalarization pass used for converting code in functions
 ///  which operate on vector types, to work on scalar types (by breaking
 ///  data elements to scalars, and breaking each vector operation
@@ -51,7 +57,10 @@ namespace IGC
     public:
         static char ID; // Pass identification, replacement for typeid
 
-        ScalarizeFunction(bool selectiveScalarization = true);
+        // Default value differs from createScalarizerPass to allow control over selective
+        // scalarization when pass is directly called from the command line (via igc_opt).
+        ScalarizeFunction(
+            SelectiveScalarizer selectiveMode = IGC::SelectiveScalarizer::Auto);
         ScalarizeFunction(const ScalarizeFunction&) = delete;
         ScalarizeFunction& operator=(const ScalarizeFunction&) = delete;
 
@@ -271,5 +280,5 @@ namespace IGC
 /// The ending legs of the web consist of vectorial instructions such as insert and extract elements,
 /// vector shuffles, GenISA intrinsics and function calls.
 /// The vectorial instructions inside the web consist of bitcasts and PHI nodes.
-extern "C" llvm::FunctionPass * createScalarizerPass(bool selectiveScalarization = false);
-
+extern "C" llvm::FunctionPass *createScalarizerPass(
+    IGC::SelectiveScalarizer selectiveMode = IGC::SelectiveScalarizer::Off);
