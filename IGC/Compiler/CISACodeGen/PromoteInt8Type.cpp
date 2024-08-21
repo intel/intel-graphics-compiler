@@ -1135,6 +1135,7 @@ void PromoteInt8Type::promoteIntrinsic()
             GII->isGenIntrinsic(GenISAIntrinsic::GenISA_WaveAll) ||
             GII->isGenIntrinsic(GenISAIntrinsic::GenISA_WaveClustered) ||
             GII->isGenIntrinsic(GenISAIntrinsic::GenISA_WaveInterleave) ||
+            GII->isGenIntrinsic(GenISAIntrinsic::GenISA_WaveClusteredInterleave) ||
             GII->isGenIntrinsic(GenISAIntrinsic::GenISA_WavePrefix) ||
             GII->isGenIntrinsic(GenISAIntrinsic::GenISA_QuadPrefix))
         {
@@ -1160,6 +1161,7 @@ void PromoteInt8Type::promoteIntrinsic()
             if (gid == GenISAIntrinsic::GenISA_WaveAll ||
                 gid == GenISAIntrinsic::GenISA_WaveClustered ||
                 gid == GenISAIntrinsic::GenISA_WaveInterleave ||
+                gid == GenISAIntrinsic::GenISA_WaveClusteredInterleave ||
                 gid == GenISAIntrinsic::GenISA_WavePrefix ||
                 gid == GenISAIntrinsic::GenISA_QuadPrefix ||
                 gid == GenISAIntrinsic::GenISA_WaveShuffleIndex ||
@@ -1212,8 +1214,10 @@ void PromoteInt8Type::promoteIntrinsic()
                     break;
                 }
                 case GenISAIntrinsic::GenISA_WavePrefix:
+                case GenISAIntrinsic::GenISA_WaveClusteredInterleave:
                 {
                     // prototype:  Ty <waveprefix> (Ty, char, bool, bool, int)
+                    // prototype:  Ty <clusteredInterleave> (Ty, char, int, int, int)
                     iArgs.push_back(GII->getArgOperand(1));
                     iArgs.push_back(GII->getArgOperand(2));
                     iArgs.push_back(GII->getArgOperand(3));

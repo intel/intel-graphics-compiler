@@ -2082,7 +2082,7 @@ intrinsics:
             - !<ArgumentDefinition>
                 name: Arg3
                 type_definition: *i32
-                comment: "helperLaneMode : 0: not used; 1: helper lanes participatein\
+                comment: "helperLaneMode : 0: not used; 1: helper lanes participate in\
                     \ wave ops, 2: helper lanes do not participate in wave ops."
         attributes:
             - !AttributeID "Convergent"
@@ -2090,7 +2090,8 @@ intrinsics:
             - !AttributeID "NoUnwind"
     - !<IntrinsicDefinition>
         name: "GenISA_WaveInterleave"
-        comment: ""
+        comment: "Accumulate together every n-th active lane, where n defines\
+            \ interleave step as 1 < 2^p < maxSubgroupSize; p > 0."
         return_definition: !<ReturnDefinition>
             type_definition: *any_int
             comment: "return value of n-th bit from the input bitfield Step n is defined\
@@ -2099,11 +2100,11 @@ intrinsics:
             - !<ArgumentDefinition>
                 name: Arg0
                 type_definition: *ref_0_
-                comment: "bitfield"
+                comment: "value"
             - !<ArgumentDefinition>
                 name: Arg1
                 type_definition: *i8
-                comment: "helperLaneMode : 0: not used; 1: helper lanes participate"
+                comment: "IGC::WaveOps"
             - !<ArgumentDefinition>
                 name: Arg2
                 type_definition: *i32
@@ -2111,7 +2112,41 @@ intrinsics:
             - !<ArgumentDefinition>
                 name: Arg3
                 type_definition: *i32
-                comment: "helperLaneMode : 0: not used; 1: helper lanes participatein\
+                comment: "helperLaneMode : 0: not used; 1: helper lanes participate in\
+                    \ wave ops, 2: helper lanes do not participate in wave ops."
+        attributes:
+            - !AttributeID "Convergent"
+            - !AttributeID "InaccessibleMemOnly"
+            - !AttributeID "NoUnwind"
+    - !<IntrinsicDefinition>
+        name: "GenISA_WaveClusteredInterleave"
+        comment: "A combination of WaveClustered and WaveInterleave. First splits subgroup\
+            \ into clusters (like WaveClustered), and then does interleave reduction\
+            \ (WaveInterleave) on each cluster. The result is undefined in case of non-uniformity."
+        return_definition: !<ReturnDefinition>
+            type_definition: *any_int
+            comment: ""
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *ref_0_
+                comment: "value"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *i8
+                comment: "IGC::WaveOps"
+            - !<ArgumentDefinition>
+                name: Arg2
+                type_definition: *i32
+                comment: "cluster size - must be a compile time constant and assumed > 1"
+            - !<ArgumentDefinition>
+                name: Arg3
+                type_definition: *i32
+                comment: "interleave step - must be a compile time constant and assumed > 1"
+            - !<ArgumentDefinition>
+                name: Arg4
+                type_definition: *i32
+                comment: "helperLaneMode : 0: not used; 1: helper lanes participate in\
                     \ wave ops, 2: helper lanes do not participate in wave ops."
         attributes:
             - !AttributeID "Convergent"
