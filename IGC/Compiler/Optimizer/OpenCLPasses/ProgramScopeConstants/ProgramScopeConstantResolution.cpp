@@ -62,8 +62,7 @@ static bool needRunConservatively(const Module& M) {
 static bool isLoweredToRelocation(const GlobalVariable *GV)
 {
   StringRef name = GV->getName();
-  if (name == "__SubDeviceID" ||
-      name == BIF_FLAG_CTRL_N_S(MaxHWThreadIDPerSubDevice))
+  if (name == "__SubDeviceID" || name == BIF_FLAG_CTRL_N_S(MaxHWThreadIDPerSubDevice))
       return true;
   return false;
 }
