@@ -2774,10 +2774,10 @@ void CustomSafeOptPass::matchReverse(BinaryOperator& I)
         %8 = insertelement <2 x i32> %vec, %6, i32 1
         %9 = bitcast <2 x i32> %8 to i64
  */
-bool GenSpecificPattern::createBitcastExtractInsertPattern(BinaryOperator& I, Value* OpLow, Value* OpHi, unsigned extractNum1, unsigned extractNum2)
+void GenSpecificPattern::createBitcastExtractInsertPattern(BinaryOperator& I, Value* OpLow, Value* OpHi, unsigned extractNum1, unsigned extractNum2)
 {
     if (IGC_IS_FLAG_DISABLED(EnableBitcastExtractInsertPattern)) {
-        return false;
+        return;
     }
 
     llvm::IRBuilder<> builder(&I);
@@ -2816,14 +2816,13 @@ bool GenSpecificPattern::createBitcastExtractInsertPattern(BinaryOperator& I, Va
     elemHi = (OpHi == nullptr) ? builder.getInt32(0) : zeroextorNot(OpHi, extractNum2);
 
     if (elemHi == nullptr || elemLow == nullptr)
-        return false;
+        return;
 
     vec = builder.CreateInsertElement(vec, elemLow, builder.getInt32(0));
     vec = builder.CreateInsertElement(vec, elemHi, builder.getInt32(1));
     vec = builder.CreateBitCast(vec, builder.getInt64Ty());
     I.replaceAllUsesWith(vec);
     I.eraseFromParent();
-    return true;
 }
 
 void GenSpecificPattern::createAddcIntrinsicPattern(Instruction& ZEI, Value* val1, Value* val2, Value* val3, Instruction& addInst)
@@ -2968,11 +2967,9 @@ void GenSpecificPattern::visitAnd(BinaryOperator& I)
             Value* AI = builder.CreateAnd(EE, builder.getInt32(0x7FFFFFFF));
             I.replaceAllUsesWith(AI);
             I.eraseFromParent();
-            return;
         }
     }
-
-    if (match(&I, fabs_on_int_pattern2))
+    else if (match(&I, fabs_on_int_pattern2))
     {
         BitCastInst* bitcast = dyn_cast<BitCastInst>(inst);
         bool bitcastValid = bitcast && bitcast->getDestTy()->isIntegerTy(64) && bitcast->getSrcTy()->isDoubleTy();
@@ -2983,17 +2980,15 @@ void GenSpecificPattern::visitAnd(BinaryOperator& I)
             Value* AI = builder.CreateAnd(BC, builder.getInt64(0x7FFFFFFF00000000));
             I.replaceAllUsesWith(AI);
             I.eraseFromParent();
-            return;
         }
     }
-
-    if (match(&I, pattern1) && I.getType()->isIntegerTy(64))
+    else if (match(&I, pattern1) && I.getType()->isIntegerTy(64))
     {
-        if (createBitcastExtractInsertPattern(I, nullptr, I.getOperand(0), 0, 1))
-            return;
+        createBitcastExtractInsertPattern(I, nullptr, I.getOperand(0), 0, 1);
     }
-
+    else
     {
+
         Instruction* AndSrc = nullptr;
         ConstantInt* CI = nullptr;
 
@@ -3034,7 +3029,6 @@ void GenSpecificPattern::visitAnd(BinaryOperator& I)
                 Value* Zext = builder.CreateZExt(EE, builder.getInt32Ty());
                 I.replaceAllUsesWith(Zext);
                 I.eraseFromParent();
-                return;
             }
         }
     }
@@ -3143,13 +3137,9 @@ void GenSpecificPattern::visitOr(BinaryOperator& I)
         m_BitCast(m_InsertElt(m_Value(VecOp), m_Value(EltOp2), m_SpecificInt(1))));
     if (match(&I, pattern1) && AndOp1 && AndOp1->getType()->isIntegerTy(64))
     {
-        if (createBitcastExtractInsertPattern(I, AndOp1, EltOp1, 0, 0))
-        {
-            return;
-        }
+        createBitcastExtractInsertPattern(I, AndOp1, EltOp1, 0, 0);
     }
-
-    if (match(&I, pattern2) && AndOp2 && AndOp2->getType()->isIntegerTy(64))
+    else if (match(&I, pattern2) && AndOp2 && AndOp2->getType()->isIntegerTy(64))
     {
         ConstantVector* cVec = dyn_cast<ConstantVector>(VecOp);
         if (cVec)
@@ -3162,13 +3152,11 @@ void GenSpecificPattern::visitOr(BinaryOperator& I)
                 vector_type->getNumElements() == 2)
             {
                 auto InsertOp = cast<BitCastInst>(I.getOperand(1))->getOperand(0);
-                if (createBitcastExtractInsertPattern(I, AndOp2, InsertOp, 0, 0))
-                {
-                    return;
-                }
+                createBitcastExtractInsertPattern(I, AndOp2, InsertOp, 0, 0);
             }
         }
     }
+    else
     {
         /*
         from
