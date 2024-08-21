@@ -848,15 +848,15 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *Inst) {
                                Inst->getType()->getPointerAddressSpace());
         else {
           // Map <N x OldTy>* to <N x NewTy*> using cast then GEP
-          auto *TmpTy =
-              PointerType::get(llvm::ArrayType::get(DstScalarTy, B->VWidth),
-                               Inst->getType()->getPointerAddressSpace());
+          auto *TmpTy = llvm::ArrayType::get(DstScalarTy, B->VWidth);
+          auto *TmpPtrTy = PointerType::get(
+              TmpTy, Inst->getType()->getPointerAddressSpace());
           auto *TmpInst =
-              B->CAST((Instruction::CastOps)Opcode, PacketizedSrc, TmpTy);
+              B->CAST((Instruction::CastOps)Opcode, PacketizedSrc, TmpPtrTy);
           SmallVector<Value *, 2> VecIndices;
           VecIndices.push_back(B->C(0));
           VecIndices.push_back(B->CInc<uint32_t>(0, B->VWidth));
-          ReplacedInst = B->GEPA(TmpInst, VecIndices);
+          ReplacedInst = B->GEPA(TmpTy, TmpInst, VecIndices);
           break;
         }
       }
@@ -869,23 +869,18 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *Inst) {
   }
   case Instruction::GetElementPtr: {
     auto *GepInst = cast<GetElementPtrInst>(Inst);
-    auto *Base = GepInst->getPointerOperand();
-    Value *VecSrc = nullptr;
-    if (isa<GlobalValue>(Base))
-      VecSrc = Base;
-    else if (isa<Argument>(Base))
-      VecSrc = Base;
-    else if (isa<Instruction>(Base) &&
-             UniformInsts.count(cast<Instruction>(Base)))
-      VecSrc = Base;
-    else
-      VecSrc = getPacketizeValue(Base);
+    auto *VecSrc = GepInst->getPointerOperand();
+    auto *VecSrcTy = GepInst->getSourceElementType();
+    if (!isa<GlobalValue>(VecSrc) && !isa<Argument>(VecSrc) &&
+        !(isa<Instruction>(VecSrc) &&
+          UniformInsts.count(cast<Instruction>(VecSrc))))
+      VecSrc = getPacketizeValue(VecSrc);
     if (!isa<AllocaInst>(VecSrc)) {
       // just packetize the GEP to a vector GEP.
       SmallVector<Value *, 8> VecIndices;
       for (uint32_t Idx = 0; Idx < GepInst->getNumIndices(); ++Idx)
         VecIndices.push_back(getPacketizeValue(GepInst->getOperand(1 + Idx)));
-      ReplacedInst = B->GEPA(VecSrc, VecIndices);
+      ReplacedInst = B->GEPA(VecSrcTy, VecSrc, VecIndices);
     } else {
       if (GepInst->hasAllConstantIndices()) {
         // SOA GEP with scalar src and constant indices, result will be <N x
@@ -893,7 +888,7 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *Inst) {
         SmallVector<Value *, 8> VecIndices;
         for (uint32_t Idx = 0; Idx < GepInst->getNumIndices(); ++Idx)
           VecIndices.push_back(GepInst->getOperand(1 + Idx));
-        ReplacedInst = B->GEPA(VecSrc, VecIndices);
+        ReplacedInst = B->GEPA(VecSrcTy, VecSrc, VecIndices);
       } else {
         //// SOA GEP with non-uniform indices. Need to vector GEP to each SIMD
         /// lane.
@@ -903,22 +898,22 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *Inst) {
           VecIndices.push_back(getPacketizeValue(GepInst->getOperand(1 + Idx)));
         // Step to the SIMD lane
         VecIndices.push_back(B->CInc<uint32_t>(0, B->VWidth));
-        ReplacedInst = B->GEPA(VecSrc, VecIndices);
+        ReplacedInst = B->GEPA(VecSrcTy, VecSrc, VecIndices);
       }
     }
     break;
   }
   case Instruction::Load: {
     auto *LI = cast<LoadInst>(Inst);
-    auto *Src = LI->getPointerOperand();
-    auto *VecSrc = getPacketizeValue(Src);
+    auto *VecSrc = getPacketizeValue(LI->getPointerOperand());
+    auto *VecSrcTy = B->getVectorType(LI->getType());
     if (VecSrc->getType()->isVectorTy()) {
       IGC_ASSERT(
           cast<VectorType>(VecSrc->getType())->getElementType()->isPointerTy());
       auto Align = IGCLLVM::getAlignmentValue(LI);
-      ReplacedInst = B->MASKED_GATHER(VecSrc, Align);
+      ReplacedInst = B->MASKED_GATHER(VecSrcTy, VecSrc, Align);
     } else
-      ReplacedInst = B->ALIGNED_LOAD(VecSrc, IGCLLVM::getAlign(*LI));
+      ReplacedInst = B->ALIGNED_LOAD(VecSrcTy, VecSrc, IGCLLVM::getAlign(*LI));
     break;
   }
   case Instruction::Store: {
@@ -1068,15 +1063,15 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *Inst) {
     } else {
       // vector struct input, need to loop over components and build up new
       // struct allocation
-      auto *Alloca = B->ALLOCA(
-          B->getVectorType(IGCLLVM::getNonOpaquePtrEltTy(Inst->getType())));
-      uint32_t NumElems =
-          IGCLLVM::getNonOpaquePtrEltTy(Inst->getType())->getArrayNumElements();
+      auto *Ty = IGCLLVM::getNonOpaquePtrEltTy(Inst->getType());
+      auto *VecTy = B->getVectorType(Ty);
+      auto *Alloca = B->ALLOCA(VecTy);
+      uint32_t NumElems = Ty->getArrayNumElements();
       for (uint32_t Idx = 0; Idx < NumElems; ++Idx) {
-        auto *TrueSrcElem = B->LOAD(TrueSrc, {0, Idx});
-        auto *FalseSrcElem = B->LOAD(FalseSrc, {0, Idx});
+        auto *TrueSrcElem = B->LOAD(VecTy, TrueSrc, {0, Idx});
+        auto *FalseSrcElem = B->LOAD(VecTy, FalseSrc, {0, Idx});
         // mask store true components
-        auto *GEP = B->GEP(Alloca, {0, Idx});
+        auto *GEP = B->GEP(VecTy, Alloca, {0, Idx});
         B->MASKED_STORE(TrueSrcElem, GEP, 4, VecCond);
         // store false components to inverted mask
         B->MASKED_STORE(FalseSrcElem, GEP, 4, B->NOT(VecCond));
@@ -1743,7 +1738,7 @@ void GenXPacketize::fixupLLVMIntrinsics(Function &F) {
 GlobalVariable *GenXPacketize::findGlobalExecMask() {
   // look for the global EMask variable if exists
   for (auto &Global : M->getGlobalList()) {
-    auto *Ty = IGCLLVM::getNonOpaquePtrEltTy(Global.getType());
+    auto *Ty = Global.getValueType();
     if (Ty->isVectorTy() &&
         cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements() ==
             CMSimdCFLower::MAX_SIMD_CF_WIDTH) {

@@ -253,6 +253,8 @@ namespace IGCLLVM
               Ty, Ptrs, Alignment, Mask, PassThru, Name);
         }
 
+        using llvm::IRBuilder<T, InserterTyDef()>::CreateMaskedGather;
+
         llvm::AtomicCmpXchgInst *
         CreateAtomicCmpXchg(llvm::Value *Ptr, llvm::Value *Cmp, llvm::Value *New,
                             llvm::AtomicOrdering SuccessOrdering,

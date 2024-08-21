@@ -157,24 +157,21 @@ protected:
   void assertMemoryUsageParams(Value *Ptr);
 
 public:
-  virtual Value *GEP(Value *Ptr,
-                     const std::initializer_list<uint32_t> &IndexList,
-                     Type *Ty = nullptr);
-
-  Value *GEPA(Value *Ptr, ArrayRef<Value *> IdxList, const Twine &Name = "");
-
-  virtual LoadInst *LOAD(Value *Ptr, const Twine &Name = "", Type *Ty = nullptr);
-
-  virtual LoadInst *LOAD(Value *BasePtr,
+  GetElementPtrInst *GEP(Type *Ty, Value *Ptr,
                          const std::initializer_list<uint32_t> &IndexList,
-                         const llvm::Twine &Name = "", Type *Ty = nullptr);
-
-  LoadInst *ALIGNED_LOAD(Value *Ptr, IGCLLVM::Align Align,
+                         const Twine &Name = "");
+  GetElementPtrInst *GEPA(Type *Ty, Value *Ptr, ArrayRef<Value *> IdxList,
+                          const Twine &Name = "");
+  LoadInst *LOAD(Type *Ty, Value *Ptr, const Twine &Name = "");
+  LoadInst *LOAD(Type *Ty, Value *BasePtr,
+                 const std::initializer_list<uint32_t> &IndexList,
+                 const llvm::Twine &Name = "");
+  LoadInst *ALIGNED_LOAD(Type *Ty, Value *Ptr, IGCLLVM::Align Align,
                          const Twine &Name = "");
   AllocaInst *ALLOCA(Type *Ty, Value *ArraySize = nullptr,
                      const Twine &Name = "");
   Value *INT_TO_PTR(Value *V, Type *DestTy, const Twine &Name = "");
-  CallInst *MASKED_GATHER(Value *Ptrs, unsigned Align, Value *Mask = nullptr,
+  CallInst *MASKED_GATHER(Type *Ty, Value *Ptrs, unsigned Align, Value *Mask = nullptr,
                           Value *PassThru = nullptr, const Twine &Name = "");
   CallInst *MASKED_SCATTER(Value *Val, Value *Ptrs, unsigned Align,
                            Value *Mask = nullptr);
