@@ -234,8 +234,8 @@ namespace IGC
         /// @brief return true if all the source operands are defined outside the region
         bool isRegionInvariant(const llvm::Instruction* inst, BranchInfo* brInfo, unsigned level);
 
-        /// @brief return true if instruction in lane ID in subgroup broadcast
-        bool isWaveBroadcastIndex(const llvm::Instruction* inst);
+        /// @brief return true if instruction is used as lane ID in subgroup broadcast
+        bool isUsedByWaveBroadcastAsLocalID(const llvm::Instruction* inst);
 
         /// @brief update dependency structure for Alloca
         bool TrackAllocaDep(const llvm::Value* I, AllocaDep& dep);
