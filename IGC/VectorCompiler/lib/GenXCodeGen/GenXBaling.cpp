@@ -1631,7 +1631,8 @@ void GenXBaling::processBranch(BranchInst *Branch)
  */
 void GenXBaling::processTwoAddrSend(CallInst *CI)
 {
-  unsigned TwoAddrOperandNum = vc::getTwoAddrOpIndex(CI);
+  auto TwoAddrOperandNum = vc::getTwoAddrOpIndex(CI);
+  IGC_ASSERT(TwoAddrOperandNum >= 0);
   IGC_ASSERT(GenXIntrinsicInfo(vc::getAnyIntrinsicID(CI))
       .getArgInfo(TwoAddrOperandNum)
       .getCategory() == GenXIntrinsicInfo::TWOADDR);
