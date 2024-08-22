@@ -31,9 +31,6 @@ namespace IGC
         virtual bool runOnFunction(llvm::Function& F);
         void visitBinaryOperator(llvm::BinaryOperator& I);
         void visitCastInst(llvm::CastInst& I);
-#if LLVM_VERSION_MAJOR >= 10
-        void visitFNeg(llvm::UnaryOperator& I);
-#endif
 
     private:
         llvm::IRBuilder<>* m_builder = nullptr;

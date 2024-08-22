@@ -426,7 +426,7 @@ void ScalarizeFunction::scalarizeInstruction(UnaryOperator* UI)
     IGCLLVM::FixedVectorType* instType = dyn_cast<IGCLLVM::FixedVectorType>(UI->getType());
     // Do not apply if optnone function
     if (UI->getFunction()->hasOptNone())
-        return recoverNonScalarizableInst(UI);
+        return;
 
     // Only need handling for vector binary ops
     if (!instType) return;
