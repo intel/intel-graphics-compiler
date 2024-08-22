@@ -1077,6 +1077,31 @@ void PeepholeTypeLegalizer::cleanupZExtInst(Instruction& I) {
         I.setOperand(0, prevInst->getOperand(0));
     }
     break;
+    case Instruction::Load:
+    {
+      // Handling the following case
+      //%a = load i56, i56 addrspace(3) * %b, align 1
+      //%result = zext i56 %a to i64
+      //----->
+      //%bitcast = i56 addrspace(3) * %b to i64 addrspace(3)*
+      //%a = load i64, i64 addrspace(3)* %bitcast, align 1
+      //%result = and i64 %a, 7.2057594e+16 [2^56]
+
+      auto Load = cast<LoadInst>(prevInst);
+      unsigned zext_size = I.getType()->getScalarSizeInBits();
+      auto max_srcSize = APInt::getMaxValue(srcSize).getZExtValue();
+      auto ptrTy = Type::getIntNPtrTy(I.getContext(), zext_size,
+                                      Load->getPointerAddressSpace());
+      auto ldTy = Type::getIntNTy(I.getContext(), zext_size);
+
+      auto newBitcast = m_builder->CreateBitCast(prevInst->getOperand(0), ptrTy);
+      auto newLI = m_builder->CreateAlignedLoad(ldTy, newBitcast, IGCLLVM::getAlign(*Load));
+      auto andInst = m_builder->CreateAnd(newLI, max_srcSize);
+      I.replaceAllUsesWith(andInst);
+      I.eraseFromParent();
+      Changed = true;
+    }
+    break;
     default:
         IGC_ASSERT_MESSAGE(0, "Unhandled source to ZExt Instruction seen with illegal int type. Legalization support missing.");
         break;
