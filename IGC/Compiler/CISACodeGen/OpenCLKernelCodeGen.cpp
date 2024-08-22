@@ -3702,7 +3702,7 @@ namespace IGC
         auto FG = m_FGA ? m_FGA->getGroup(&F) : nullptr;
         bool hasStackCall = FG && FG->hasStackCall();
         bool isIndirectGroup = FG && m_FGA->isIndirectCallGroup(FG);
-        bool hasSubroutine = FG && !FG->isSingle() && !hasStackCall && !isIndirectGroup;
+        bool hasSubroutine = FG && !FG->isSingleIgnoringStackOverflowDetection() && !hasStackCall && !isIndirectGroup;
         bool forceLowestSIMDForStackCalls = IGC_IS_FLAG_ENABLED(ForceLowestSIMDForStackCalls) && (hasStackCall || isIndirectGroup);
 
 

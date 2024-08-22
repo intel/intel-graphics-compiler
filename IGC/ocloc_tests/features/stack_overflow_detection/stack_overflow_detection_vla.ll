@@ -19,9 +19,9 @@
 ; RUN: ocloc compile -spirv_input -file %t.spv -options " -igc_opts 'DumpVISAASMToConsole=1,StackOverflowDetection=1'" -device pvc | FileCheck %s --check-prefix=CHECK-VISA
 
 ; CHECK-VISA: .kernel "test_simple"
-; CHECK-VISA: call (M1, {{(8)|(16)}}) __stackoverflow_init{{.*}}
-; CHECK-VISA-NOT: call (M1, {{(8)|(16)}}) __stackoverflow_init{{.*}}
-; CHECK-VISA: call (M1, {{(8)|(16)}}) __stackoverflow_detection{{.*}}
+; CHECK-VISA: call (M1, {{(8)|(16)|(32)}}) __stackoverflow_init{{.*}}
+; CHECK-VISA-NOT: call (M1, {{(8)|(16)|(32)}}) __stackoverflow_init{{.*}}
+; CHECK-VISA: call (M1, {{(8)|(16)|(32)}}) __stackoverflow_detection{{.*}}
 ;
 ; CHECK-VISA: warning: VLA has been detected
 

@@ -143,6 +143,14 @@ namespace IGC {
         bool isSingle() const {
             return (Functions.size() == 1 && Functions.front()->size() == 1);
         }
+        /// \brief Only one function in this group ignoring stack overflow detection methods
+        bool isSingleIgnoringStackOverflowDetection() const {
+            auto isNotStackOverflowDetection = [](const llvm::Function* F) {
+                return !F->getName().startswith("__stackoverflow_detection") && !F->getName().startswith("__stackoverflow_init");
+            };
+            return (Functions.size() == 1 &&
+                    std::count_if(Functions.front()->begin(), Functions.front()->end(), isNotStackOverflowDetection) == 1);
+        }
         /// \brief Function group has a subroutine
         bool hasSubroutine() const {
             return m_hasSubroutine;
