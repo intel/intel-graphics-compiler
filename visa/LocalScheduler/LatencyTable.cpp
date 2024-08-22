@@ -214,7 +214,8 @@ uint16_t LatencyTableXe<Gen>::getMsgLatency(const G4_INST *Inst) const {
       return MsgDesc->isTyped() ? value_of(LI::LSC_TYPED_FENCE)
                                 : value_of(LI::LSC_UNTYPED_FENCE);
     } else {
-      bool isCachedInL1 = MsgDesc->getCachingL1() == Caching::CA ||
+      bool isCachedInL1 = (MsgDesc->getCachingL1() == Caching::CA &&
+                           !m_builder.getOption(vISA_ignoreL1Hit)) ||
                           (MsgDesc->getCachingL1() != Caching::UC &&
                            m_builder.getOption(vISA_assumeL1Hit));
       if (MsgDesc->isTyped()) {

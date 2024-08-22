@@ -460,6 +460,8 @@ DEF_VISA_OPTION(vISA_LocalSchedulingStartBB, ET_INT32, "-scheduleStartBB",
 DEF_VISA_OPTION(vISA_LocalSchedulingEndBB, ET_INT32, "-scheduleEndBB", UNUSED,
                 UINT_MAX)
 DEF_VISA_OPTION(vISA_assumeL1Hit, ET_BOOL, "-assumeL1Hit", UNUSED, false)
+DEF_VISA_OPTION(vISA_ignoreL1Hit, ET_BOOL, "-ignoreL1Hit",
+                "Ignore LSC L1Hit cache option when calculating latency in scheduling", false)
 DEF_VISA_OPTION(vISA_writeCombine, ET_BOOL, "-writeCombine", UNUSED, true)
 DEF_VISA_OPTION(vISA_Q2FInIntegerPipe, ET_BOOL, "-Q2FInteger", UNUSED, false)
 DEF_VISA_OPTION(vISA_LocalScheduleingStartKernel, ET_INT32,
