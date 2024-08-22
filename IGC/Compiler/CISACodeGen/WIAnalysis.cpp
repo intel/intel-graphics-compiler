@@ -851,7 +851,7 @@ void WIAnalysisRunner::calculate_dep(const Value* val)
         }
 
         // Spec enforces subgroup broadcast to use thread-uniform local ID.
-        if (isWaveBroadcastIndex(inst))
+        if (isUsedByWaveBroadcastAsLocalID(inst))
         {
 #ifdef _DEBUG
             // Print warning exactly once per kernel.
@@ -864,7 +864,14 @@ void WIAnalysisRunner::calculate_dep(const Value* val)
                 m_CGCtx->EmitWarning(msg.c_str());
             }
 #endif // DEBUG
-            dep = WIAnalysis::UNIFORM_THREAD;
+            // If the local ID comes directly from a load instruction, then we can't mark
+            // it as uniform, because we'll end up with a load instruction that has a uniform
+            // `dst` and a non-uniform `src`. Such a case cannot be handled properly by
+            // EmitVISAPass as we don't know which channel `src` should be taken from.
+            if (!isa<LoadInst>(inst))
+            {
+                dep = WIAnalysis::UNIFORM_THREAD;
+            }
         }
 
         // If the value was changed in this calculation
@@ -924,7 +931,7 @@ bool WIAnalysisRunner::isRegionInvariant(const llvm::Instruction* defi, BranchIn
     return true;
 }
 
-bool WIAnalysisRunner::isWaveBroadcastIndex(const llvm::Instruction* inst)
+bool WIAnalysisRunner::isUsedByWaveBroadcastAsLocalID(const llvm::Instruction* inst)
 {
     for (auto it = inst->users().begin(); it != inst->users().end(); ++it)
     {
