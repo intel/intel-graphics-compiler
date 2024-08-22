@@ -17,34 +17,34 @@ namespace {
 
 template <int N>
 CM_NODEBUG CM_INLINE mask<N> check_is_nan_or_inf(vector<double, N> q) {
-  vector<uint32_t, 2 * N> q_split = q.template format<uint32_t>();
+  vector<uint32_t, 2 *N> q_split = q.template format<uint32_t>();
   vector<uint32_t, N> q_hi = q_split.template select<N, 2>(1);
   return (q_hi >= exp_32bitmask);
 }
 
 template <int N>
 CM_NODEBUG CM_INLINE vector<uint32_t, N> get_exp(vector<double, N> x) {
-  vector<uint32_t, 2 * N> x_split = x.template format<uint32_t>();
+  vector<uint32_t, 2 *N> x_split = x.template format<uint32_t>();
   vector<uint32_t, N> x_hi = x_split.template select<N, 2>(1);
   return (x_hi >> exp_shift) & exp_mask;
 }
 
 template <int N>
 CM_NODEBUG CM_INLINE vector<uint32_t, N> get_sign(vector<double, N> x) {
-  vector<uint32_t, 2 * N> x_split = x.template format<uint32_t>();
+  vector<uint32_t, 2 *N> x_split = x.template format<uint32_t>();
   vector<uint32_t, N> x_hi = x_split.template select<N, 2>(1);
   return x_hi & sign_32bit;
 }
 
 template <int N> CM_NODEBUG CM_INLINE mask<N> is_denormal(vector<double, N> x) {
-  vector<uint32_t, 2 * N>  x_int = x.template format<uint32_t>();
+  vector<uint32_t, 2 *N> x_int = x.template format<uint32_t>();
   vector<uint32_t, N> x_hi = x_int.template select<N, 2>(1);
   return x_hi < min_sign_exp;
 }
 
 template <int N>
 CM_NODEBUG CM_INLINE vector<uint32_t, N> sep_exp(vector<double, N> x) {
-  vector<uint32_t, 2 * N> x_int = x.template format<uint32_t>();
+  vector<uint32_t, 2 *N> x_int = x.template format<uint32_t>();
   vector<uint32_t, N> x_hi = x_int.template select<N, 2>(1);
   vector<uint32_t, N> res = (x_hi >> exp_shift) - exp_bias;
   return res >> 1;
@@ -84,8 +84,9 @@ CM_NODEBUG CM_INLINE vector<double, N> rsqrt_float(vector<double, N> x) {
 }
 
 template <int N>
-CM_NODEBUG CM_INLINE vector<double, N> uint64_sub_hi(vector<double, N> x, vector<uint32_t, N> hi) {
-  vector<uint32_t, 2 * N> ex_mx_int = 0;
+CM_NODEBUG CM_INLINE vector<double, N> uint64_sub_hi(vector<double, N> x,
+                                                     vector<uint32_t, N> hi) {
+  vector<uint32_t, 2 *N> ex_mx_int = 0;
   ex_mx_int.template select<N, 2>(1) = hi;
   vector<uint64_t, N> ex_u64 = ex_mx_int.template format<uint64_t>();
   vector<uint64_t, N> mx_u64 = x.template format<uint64_t>();
@@ -163,9 +164,10 @@ CM_NODEBUG CM_INLINE vector<double, N> sqrt_special(vector<double, N> a) {
 }
 
 template <int N>
-CM_NODEBUG CM_INLINE vector<double, N> calc_sqrt(vector<double, N> x, mask<N> special) {
+CM_NODEBUG CM_INLINE vector<double, N> calc_sqrt(vector<double, N> x,
+                                                 mask<N> special) {
   // Now start the SQRT computation
-    // Use math.rsqtm (emulated here)
+  // Use math.rsqtm (emulated here)
   vector<double, N> y0 = math_rsqt_dp(x);
   // predicate is set for 0, neg a, Inf, NaN inputs
   y0.merge(sqrt_special(x), special);
@@ -174,7 +176,8 @@ CM_NODEBUG CM_INLINE vector<double, N> calc_sqrt(vector<double, N> x, mask<N> sp
 }
 
 template <int N>
-CM_NODEBUG CM_INLINE vector<double, N> invert_calc(vector<double, N> a, vector<double, N> y0) {
+CM_NODEBUG CM_INLINE vector<double, N> invert_calc(vector<double, N> a,
+                                                   vector<double, N> y0) {
   // IEEE SQRT computes H0 = 0.5*y0 (can be skipped)
   // Step 3: S0 = a*y0
   vector<double, N> S0 = a * y0;
@@ -235,15 +238,17 @@ __vc_builtin_rsqrt_f64__rte_(double a) {
   return __impl_rsqrt_f64(va)[0];
 }
 
-#define FREM(WIDTH)                                                            \
+#define RSQRT(WIDTH)                                                           \
   CM_NODEBUG CM_NOINLINE extern "C" cl_vector<double, WIDTH>                   \
-      __vc_builtin_rsqrt_v##WIDTH##f64__rte_(cl_vector<double, WIDTH> a) {   \
+      __vc_builtin_rsqrt_v##WIDTH##f64__rte_(cl_vector<double, WIDTH> a) {     \
     vector<double, WIDTH> va{a};                                               \
-    auto r = __impl_rsqrt_f64(va);                                           \
+    auto r = __impl_rsqrt_f64(va);                                             \
     return r.cl_vector();                                                      \
   }
 
-FREM(1)
-FREM(2)
-FREM(4)
-FREM(8)
+RSQRT(1)
+RSQRT(2)
+RSQRT(4)
+RSQRT(8)
+RSQRT(16)
+RSQRT(32)

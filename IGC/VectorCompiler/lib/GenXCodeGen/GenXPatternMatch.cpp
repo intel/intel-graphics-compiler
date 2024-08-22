@@ -1255,8 +1255,9 @@ bool GenXPatternMatch::flipBoolNot(Instruction *Inst) {
 bool GenXPatternMatch::matchInverseSqrt(CallInst *I) {
   IGC_ASSERT(I && I->arg_size() == 1);
 
-  // Leave as it is for double types
-  if (I->getType()->getScalarType()->isDoubleTy())
+  // Double rsqrt may be generated only before legalization
+  if (I->getType()->getScalarType()->isDoubleTy() &&
+      (!ST->hasFP64() || Kind == PatternMatchKind::PostLegalization))
     return false;
 
   bool IsFast = true;
@@ -2293,9 +2294,9 @@ bool MinMaxMatcher::emit() {
 
 // For a given instruction, find the insertion position which is the closest
 // to all the similar users to the specified reference user.
-static Instruction *findOptimalInsertionPos(
-    Instruction *I, Instruction *Ref, DominatorTree *DT,
-    std::function<bool(Instruction *, Instruction *)> IsDivisor) {
+static Instruction *
+findOptimalInsertionPos(Value *I, Instruction *Ref, DominatorTree *DT,
+                        std::function<bool(Instruction *, Value *)> IsDivisor) {
   IGC_ASSERT_MESSAGE(!isa<PHINode>(Ref), "PHINode is not expected!");
 
   // Shortcut case. If it's single-used, insert just before that user.
@@ -2402,48 +2403,48 @@ void GenXPatternMatch::visitFDiv(BinaryOperator &I) {
     return;
   }
 
-  // Skip if FP64 emulation is required for this platform
-  if (ST->emulateFDivFSqrt64() && I.getType()->getScalarType()->isDoubleTy())
-    return;
-
   Instruction *Divisor = dyn_cast<Instruction>(Op1);
-  if (!Divisor)
-    return;
 
-  auto IsDivisor = [](Instruction *I, Instruction *MaybeDivisor) {
+  auto IsDivisor = [](Instruction *I, Value *MaybeDivisor) {
     return I->getOpcode() == Instruction::FDiv &&
            I->getOperand(1) == MaybeDivisor;
   };
 
-  Instruction *Pos = findOptimalInsertionPos(Divisor, &I, DT, IsDivisor);
+  Instruction *Pos = findOptimalInsertionPos(Op1, &I, DT, IsDivisor);
   IRB.SetInsertPoint(Pos);
 
   // (fdiv 1., (sqrt x)) -> (rsqrt x)
   // Allow the pattern even if fdiv has no fast-math flags.
-  auto IID = vc::getAnyIntrinsicID(Divisor);
-  if ((IID == GenXIntrinsic::genx_sqrt ||
-       (IID == Intrinsic::sqrt && Divisor->hasApproxFunc())) &&
-      match(Op0, m_FPOne()) && Divisor->hasOneUse()) {
-    auto *Rsqrt = createInverseSqrt(Divisor->getOperand(0), Pos);
-    I.replaceAllUsesWith(Rsqrt);
-    I.eraseFromParent();
-    Divisor->eraseFromParent();
+  if (Divisor) {
+    auto IID = vc::getAnyIntrinsicID(Divisor);
+    if ((IID == GenXIntrinsic::genx_sqrt ||
+         (IID == Intrinsic::sqrt && Divisor->hasApproxFunc())) &&
+        match(Op0, m_FPOne()) && Divisor->hasOneUse()) {
+      auto *Rsqrt = createInverseSqrt(Divisor->getOperand(0), Pos);
+      I.replaceAllUsesWith(Rsqrt);
+      I.eraseFromParent();
+      Divisor->eraseFromParent();
 
-    Changed |= true;
-    return;
+      Changed |= true;
+      return;
+    }
   }
+
+  // Skip if FP64 emulation is required for this platform
+  if (ST->emulateFDivFSqrt64() && I.getType()->getScalarType()->isDoubleTy())
+    return;
 
   // Skip if reciprocal optimization is not allowed.
   if (!I.hasAllowReciprocal())
     return;
 
-  auto Rcp = getReciprocal(IRB, Divisor);
+  auto *Rcp = getReciprocal(IRB, Op1);
   cast<Instruction>(Rcp)->setDebugLoc(I.getDebugLoc());
 
-  for (auto UI = Divisor->user_begin(); UI != Divisor->user_end();) {
+  for (auto UI = Op1->user_begin(); UI != Op1->user_end();) {
     auto *U = *UI++;
     Instruction *UserInst = dyn_cast<Instruction>(U);
-    if (!UserInst || UserInst == Rcp || !IsDivisor(UserInst, Divisor))
+    if (!UserInst || UserInst == Rcp || !IsDivisor(UserInst, Op1))
       continue;
     Op0 = UserInst->getOperand(0);
     Value *NewVal = Rcp;
