@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/Utils/Local.h>
 #include "llvmWrapper/Transforms/Utils/LoopUtils.h"
 #include "llvmWrapper/Transforms/Utils/ScalarEvolutionExpander.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "common/LLVMWarningsPop.hpp"
 
 #include "Probe/Assertion.h"
@@ -636,6 +637,7 @@ void ReductionCandidateGroup::reduceToPreheader(IGCLLVM::IRBuilder<> &IRB, SCEVE
     SmallVector<Value*, 4> Indices(Base.GEP->indices().begin(), Base.GEP->indices().end() - 1);
     Indices.push_back(StartIndex);
     Value *Pointer = IRB.CreateGEP(Base.GEP->getSourceElementType(), Base.GEP->getPointerOperand(), Indices);
+    Type* ptrElTy = IGCLLVM::getGEPIndexedType(Base.GEP->getSourceElementType(), Indices);
 
     // Create phi node if pointer is moved in loop
     if (!Step->isZero())
@@ -653,7 +655,7 @@ void ReductionCandidateGroup::reduceToPreheader(IGCLLVM::IRBuilder<> &IRB, SCEVE
         for (auto *L : Latches)
         {
             IRB.SetInsertPoint(&L->back());
-            Value *Inc = IRB.CreateGEP(Phi, getStepValue(IRB, E, L));
+            Value *Inc = IRB.CreateGEP(ptrElTy, Phi, getStepValue(IRB, E, L));
             Phi->addIncoming(Inc, L);
         }
 
@@ -668,7 +670,7 @@ void ReductionCandidateGroup::reduceToPreheader(IGCLLVM::IRBuilder<> &IRB, SCEVE
     for (auto &Other : Others)
     {
         IRB.SetInsertPoint(Other.GEP);
-        Other.GEP->replaceAllUsesWith(Other.Delta == 0 ? Pointer : IRB.CreateGEP(Pointer, IRB.getInt64(Other.Delta)));
+        Other.GEP->replaceAllUsesWith(Other.Delta == 0 ? Pointer : IRB.CreateGEP(ptrElTy, Pointer, IRB.getInt64(Other.Delta)));
         Reduced.push_back(Other.GEP);
     }
 }

@@ -377,7 +377,7 @@ void ResolveOCLRaytracingBuiltins::handleInitRayQuery(llvm::CallInst& callInst) 
     unsigned numArgs = IGCLLVM::getNumArgOperands(&callInst);
     IGC_ASSERT(numArgs == 5);
 
-    auto* allocaType = IGCLLVM::getNonOpaquePtrEltTy(callInst.getType());
+    auto* allocaType = IGCLLVM::getTypeByName(callInst.getModule(), "struct.intel_ray_query_opaque_t");
     auto* alloca = m_builder->CreateAlloca(allocaType);
 
     m_builder->SetInsertPoint(&callInst);
@@ -411,10 +411,12 @@ void ResolveOCLRaytracingBuiltins::handleUpdateRayQuery(llvm::CallInst& callInst
     IGC_ASSERT(numArgs == 6);
 
     Value* rayQuery = callInst.getOperand(0);
+    StructType* rayQueryTy = IGCLLVM::getTypeByName(callInst.getModule(), "struct.intel_ray_query_opaque_t");
+
 
     for (unsigned argIndex = 1; argIndex < numArgs; argIndex++)
     {
-        auto* ptr = m_builder->CreateGEP(rayQuery, { m_builder->getInt32(0), m_builder->getInt32(argIndex - 1) });
+        auto* ptr = m_builder->CreateGEP(rayQueryTy, rayQuery, { m_builder->getInt32(0), m_builder->getInt32(argIndex - 1) });
         Value* arg = callInst.getOperand(argIndex);
         m_builder->CreateStore(arg, ptr);
     }
@@ -455,9 +457,10 @@ void ResolveOCLRaytracingBuiltins::handleQuery(llvm::CallInst& callInst) {
 
     IGC_ASSERT(IGCLLVM::getNumArgOperands(&callInst) == 1);
     Value* rayQuery = callInst.getArgOperand(0);
+    StructType* rayQueryTy = IGCLLVM::getTypeByName(callInst.getModule(), "struct.intel_ray_query_opaque_t");
 
     unsigned argIndex = builtinToArgIndex.at(callInst.getCalledFunction()->getName().str());
-    auto* ptr = m_builder->CreateGEP(rayQuery, { m_builder->getInt32(0), m_builder->getInt32(argIndex) });
+    auto* ptr = m_builder->CreateGEP(rayQueryTy, rayQuery, { m_builder->getInt32(0), m_builder->getInt32(argIndex) });
     auto* queriedValue = m_builder->CreateLoad(cast<llvm::GetElementPtrInst>(ptr)->getResultElementType(), ptr);
 
     callInst.replaceAllUsesWith(queriedValue);

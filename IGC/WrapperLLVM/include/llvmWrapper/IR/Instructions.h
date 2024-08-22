@@ -242,7 +242,7 @@ inline bool comesBefore(llvm::Instruction* A, llvm::Instruction* B)
 #endif
 }
 
-inline llvm::Type *getGEPIndexedType(llvm::Type* Ty, llvm::SmallVector<unsigned, 8>& indices) {
+inline llvm::Type *getGEPIndexedType(llvm::Type* Ty, llvm::SmallVectorImpl<unsigned>& indices) {
     llvm::SmallVector< llvm::Value*, 8> gepIndices;
     gepIndices.reserve(indices.size() + 1);
     auto* int32Ty = llvm::IntegerType::getInt32Ty(Ty->getContext());
@@ -251,6 +251,10 @@ inline llvm::Type *getGEPIndexedType(llvm::Type* Ty, llvm::SmallVector<unsigned,
         gepIndices.push_back(llvm::ConstantInt::get(int32Ty, idx));
     }
     return llvm::GetElementPtrInst::getIndexedType(Ty, gepIndices);
+}
+
+inline llvm::Type* getGEPIndexedType(llvm::Type* Ty, llvm::ArrayRef<llvm::Value*> indices) {
+    return llvm::GetElementPtrInst::getIndexedType(Ty, indices);
 }
 
 }

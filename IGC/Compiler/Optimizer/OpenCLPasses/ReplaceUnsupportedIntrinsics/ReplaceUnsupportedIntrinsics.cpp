@@ -493,7 +493,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemcpy(IntrinsicInst* I)
     // or different value if want to keep size of base type to further optimizations
     PointerType *ptrTy= cast<PointerType>(Dst->stripPointerCasts()->getType());
     uint32_t BaseSize = 0;
-    Type* RawDstType = IGCLLVM::isOpaquePointerTy(ptrTy) ? Builder.getInt8Ty() : IGCLLVM::getNonOpaquePtrEltTy(ptrTy);
+    Type* RawDstType = IGCLLVM::isOpaquePointerTy(ptrTy) ? Builder.getInt8Ty() : IGCLLVM::getNonOpaquePtrEltTy(ptrTy);  // Legacy code: getNonOpaquePtrEltTy
     if (Type* BaseType = GetBaseType(RawDstType))
         BaseSize = BaseType->getScalarSizeInBits();
 

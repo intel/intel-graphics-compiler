@@ -121,7 +121,7 @@ void FixResourcePtr::RemoveGetBufferPtr(GenIntrinsicInst* bufPtr, Value* bufIdx)
         }
         else
         {
-            Type* eltType = IGCLLVM::getNonOpaquePtrEltTy(instType);
+            Type* eltType = IGCLLVM::getNonOpaquePtrEltTy(instType);    // Legacy code: getNonOpaquePtrEltTy
             ptrType = PointerType::get(eltType, outAS);
         }
         inst->mutateType(ptrType);
