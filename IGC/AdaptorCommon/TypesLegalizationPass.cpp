@@ -13,7 +13,6 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/Support/Alignment.h"
 #include <llvm/IR/InstIterator.h>
-#include <llvmWrapper/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
@@ -236,10 +235,9 @@ TypesLegalizationPass::ResolveValue( Instruction *ip,Value *val,SmallVector<unsi
     Value* gep = CreateGEP( builder, ld->getType(), ld->getOperand( 0 ),indices );
     auto alignment = IGCLLVM::getAlignmentValue(ld);
     unsigned pointerTypeSize = ld->getType()->getScalarSizeInBits() / 8;
-    Type* gepTy = IGCLLVM::getGEPIndexedType(ld->getType(), indices);
     if ( alignment && (alignment_t)pointerTypeSize == alignment )
-      return builder.CreateAlignedLoad(gepTy, gep, IGCLLVM::getAlign(alignment));
-    return builder.CreateLoad(gepTy, gep);
+      return builder.CreateAlignedLoad(ld->getType(), gep, IGCLLVM::getAlign(alignment) );
+    return builder.CreateLoad( gep );
   }
   else if(Constant *c = dyn_cast<Constant>(val)) {
     IRBuilder<> builder( ip );
