@@ -7079,6 +7079,19 @@ bool G4_INST::isSupportedAccDstType() const {
 // -- contiguous regions
 // -- simd8 for D/UD, simd8/16 for F, simd16 for HF/W, other types not allowed
 bool G4_INST::canDstBeAcc() const {
+
+  auto cross2GRFDst = [this](G4_DstRegRegion *dst) {
+    if (dst->isNullReg() || dst->isIndirect()) { //No acc
+      return true;
+    }
+    if (dst->getSubRegOff() * dst->getTypeSize() + dst->getLinearizedEnd() -
+            dst->getLinearizedStart() + 1 >
+        (getBuilder().numEltPerGRF<Type_UB>() * 2u)) {
+      return true;
+    }
+    return false;
+  };
+
   if (isSend() || isDpas()) {
     return false;
   }
@@ -7100,6 +7113,10 @@ bool G4_INST::canDstBeAcc() const {
   }
 
   if (!builder.useAccForDF() && dst->getType() == Type_DF) {
+    return false;
+  }
+
+  if (cross2GRFDst(dst)) {
     return false;
   }
 
