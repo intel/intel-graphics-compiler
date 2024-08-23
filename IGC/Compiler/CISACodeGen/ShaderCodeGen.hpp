@@ -137,9 +137,7 @@ public:
 
     // if true, HW will pass one GRF NOS of inlinedata to payload, (compute only right now)
     virtual bool passNOSInlineData() { return false; }
-    virtual bool loadThreadPayload() {
-            return false;
-    }
+    virtual bool loadThreadPayload() { return false; }
     virtual int getAnnotatedNumThreads() { return -1; }
     virtual bool IsRegularGRFRequested() { return false; }
     virtual bool IsLargeGRFRequested() { return false; }
