@@ -14685,11 +14685,12 @@ void EmitPass::emitScalarAtomics(llvm::Instruction *pInst,
     }
     if (shouldGenerateLSC(pInst))
     {
+        auto cacheOpts = LSC_DEFAULT_CACHING;
         if (pU || pV || pR)
         {
             m_encoder->LSC_TypedAtomic(uniformAtomicOp, &resource, pU, pV, pR,
                                        pFinalAtomicSrcVal, nullptr /*src1*/,
-                                       pReturnVal, bitWidth, LSC_ADDR_SIZE_32b);
+                                       pReturnVal, bitWidth, LSC_ADDR_SIZE_32b, cacheOpts);
         }
         else
         {
@@ -14704,7 +14705,7 @@ void EmitPass::emitScalarAtomics(llvm::Instruction *pInst,
                 addrSize,
                 immOffset,
                 immScale,
-                LSC_DEFAULT_CACHING);
+                cacheOpts);
         }
     }
     else
@@ -14823,6 +14824,7 @@ void EmitPass::emitScalarAtomicLoad(
             pDstAddr ? pDstAddr->getName() : CName::NONE) : nullptr;
     if (shouldGenerateLSC(pInst))
     {
+        auto cacheOpts = LSC_DEFAULT_CACHING;
         if (pU || pV || pR)
         {
             m_encoder->LSC_TypedAtomic(
@@ -14835,7 +14837,8 @@ void EmitPass::emitScalarAtomicLoad(
                 nullptr /*src1*/,
                 atomicDst,
                 bitWidth,
-                LSC_ADDR_SIZE_32b);
+                LSC_ADDR_SIZE_32b,
+                cacheOpts);
         }
         else
         {
@@ -14850,7 +14853,7 @@ void EmitPass::emitScalarAtomicLoad(
                 addrSize,
                 immOffset,
                 immScale,
-                LSC_DEFAULT_CACHING);
+                cacheOpts);
         }
     }
     else
@@ -15213,10 +15216,11 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *dstAddr,
             else
             {
                 if (shouldGenerateLSC()) {
+                    auto cacheOpts = LSC_DEFAULT_CACHING;
                     m_encoder->LSC_AtomicRaw(atomic_op, pDst,
                                              pDstAddr, pSrc0, pSrc1, bitwidth,
                                              &resource, addrSize, immOffsetVal,
-                                             immScaleVal, LSC_DEFAULT_CACHING);
+                                             immScaleVal, cacheOpts);
                 }
                 else
                 {
@@ -15263,10 +15267,11 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *dstAddr,
             CVariable* flag = nullptr;
             bool needLoop = ResourceLoopHeader(resource, flag, label);
             if (shouldGenerateLSC(pInst)) {
+                auto cacheOpts = LSC_DEFAULT_CACHING;
                 m_encoder->LSC_AtomicRaw(atomic_op, pDst,
                                          pDstAddr, pSrc0, pSrc1, bitwidth,
                                          &resource, addrSize, immOffsetVal,
-                                         immScaleVal, LSC_DEFAULT_CACHING);
+                                         immScaleVal, cacheOpts);
             }
             else
             {
@@ -19566,10 +19571,11 @@ void EmitPass::emitLSCAtomicTyped(llvm::GenIntrinsicInst* inst)
         uint regsPerAddrChannel = 32 * numLanes(instWidth) / 8 / getGRFSize();
         uint regsPerDataChannel = eltSizeInBits * numLanes(instWidth) / 8 / getGRFSize();
         LSC_ADDR_SIZE addrSize = LSC_ADDR_SIZE_32b;
+        auto cacheOpts = LSC_DEFAULT_CACHING;
         if (!needsSplit)
         {
             m_encoder->SetPredicate(flag);
-            m_encoder->LSC_TypedAtomic(atomic_op, &resource, pU, pV, pR, pSrc0, pSrc1, returnsImmValue ? m_destination : nullptr, eltSizeInBits, addrSize);
+            m_encoder->LSC_TypedAtomic(atomic_op, &resource, pU, pV, pR, pSrc0, pSrc1, returnsImmValue ? m_destination : nullptr, eltSizeInBits, addrSize, cacheOpts);
             m_encoder->Push();
         }
         else
@@ -19590,7 +19596,7 @@ void EmitPass::emitLSCAtomicTyped(llvm::GenIntrinsicInst* inst)
                 setSIMDSizeMask(m_encoder, m_currShader, i);
                 m_encoder->SetSrcSubVar(0, i * regsPerAddrChannel);
                 m_encoder->SetSrcSubVar(1, i * regsPerDataChannel);
-                m_encoder->LSC_TypedAtomic(atomic_op, &resource, pU, pV, pR, pSrc0, pSrc1, tempdst[i], eltSizeInBits, addrSize);
+                m_encoder->LSC_TypedAtomic(atomic_op, &resource, pU, pV, pR, pSrc0, pSrc1, tempdst[i], eltSizeInBits, addrSize, cacheOpts);
                 m_encoder->Push();
             }
         }

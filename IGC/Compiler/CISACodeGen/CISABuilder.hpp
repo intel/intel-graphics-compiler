@@ -333,7 +333,7 @@ namespace IGC
             AtomicOp subOp, ResourceDescriptor* resource,
             CVariable* pU, CVariable* pV, CVariable* pR,
             CVariable* pSrc0, CVariable* pSrc1, CVariable* pSrcDst,
-            unsigned elemSize, LSC_ADDR_SIZE addr_size);
+            unsigned elemSize, LSC_ADDR_SIZE addr_size, LSC_CACHE_OPTS cacheOpts);
 
 
         void LSC_Typed2dBlock(
