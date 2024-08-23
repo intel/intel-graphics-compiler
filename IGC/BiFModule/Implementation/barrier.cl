@@ -314,7 +314,7 @@ uint __intel_get_local_size( void );
 // Implementation of global_barrier using atomic instructions.
 void __global_barrier_atomic()
 {
-    barrier(CLK_GLOBAL_MEM_FENCE);
+    __intel_workgroup_barrier(Device, AcquireRelease | CrossWorkgroupMemory);
 
     __global volatile int* syncBuffer = (__global volatile int*)__builtin_IB_get_sync_buffer();
 
@@ -335,7 +335,7 @@ void __global_barrier_atomic()
         while (atomic_or(syncBuffer, 0) != 0) {}
     }
 
-    barrier(CLK_GLOBAL_MEM_FENCE);
+    __intel_workgroup_barrier(Device, AcquireRelease | CrossWorkgroupMemory);
 }
 
 // Implementation of global_barrier without using atomic instructions except for fences.
