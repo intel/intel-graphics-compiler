@@ -893,4 +893,9 @@ uint32_t getSizeOfSendQueue() const {
 bool hasImmOnSrc0Src2ForAlign1Ternary() const {
   return getPlatformGeneration() >= PlatformGen::XE;
 }
+
+bool needTGMDoubleFenceWA() const {
+  return VISA_WA_CHECK(getPWaTable(), Wa_14021891663) &&
+      getOption(vISA_TGMDoubleFenceWA);
+}
 // end HW capabilities

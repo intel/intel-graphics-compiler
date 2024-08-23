@@ -700,6 +700,12 @@ LSC_DATA_ORDER G4_SendDescRaw::getLscDataOrder() const {
   }
 }
 
+LSC_FENCE_OP G4_SendDescRaw::getLscFenceOp() const {
+  vISA_ASSERT(isLscOp(), "must be LSC op");
+  vISA_ASSERT(isFence(), "must be fence op");
+  return static_cast<LSC_FENCE_OP>((desc.value >> 12) & 0x7);
+}
+
 int G4_SendDescRaw::getLscImmOff() const {
   vISA_ASSERT(isLscOp(), "must be LSC op");
   if (getSFID() == SFID::TGM)

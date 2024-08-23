@@ -3906,6 +3906,15 @@ void Optimizer::HWWorkaround() {
       if (inst->isIEEEExceptionTrap())
         expandIEEEExceptionTrap(ii, bb);
 
+      // Double up every TGM fence instruction if fenceOp is not
+      // LSC_FENCE_OP_NONE
+      if (builder.needTGMDoubleFenceWA() && inst->isSend() &&
+          inst->asSendInst()->isFence() &&
+          inst->asSendInst()->getMsgDesc()->getSFID() == SFID::TGM &&
+          inst->asSendInst()->getMsgDescRaw()->getLscFenceOp() !=
+              LSC_FENCE_OP_NONE)
+        bb->insertBefore(ii, inst->cloneInst());
+
       ii++;
     }
   }

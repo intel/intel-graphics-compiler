@@ -741,6 +741,10 @@ DEF_VISA_OPTION(vISA_noIndirectSrcForCompressedInstWA, ET_BOOL,
                 "Disable WA for fixing compressed instructions with indirect "
                 "src0 and cross-grf dst",
                 false)
+DEF_VISA_OPTION(vISA_TGMDoubleFenceWA, ET_BOOL, "-tgmDoubleFenceWA",
+                "enable the WA to double any TGM fence instruction with "
+                "flush-type is not FLUSH_NONE",
+                false)
 
 //=== HW debugging options ===
 DEF_VISA_OPTION(vISA_GenerateDebugInfo, ET_BOOL, "-generateDebugInfo", UNUSED,

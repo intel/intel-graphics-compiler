@@ -508,6 +508,7 @@ public:
   LSC_ADDR_TYPE getLscAddrType() const;
   int getLscAddrSizeBytes() const; // e.g. a64 => 8
   LSC_DATA_ORDER getLscDataOrder() const;
+  LSC_FENCE_OP getLscFenceOp() const;
 
   int getLscImmOff() const;
   void setLscImmOff(int off);
