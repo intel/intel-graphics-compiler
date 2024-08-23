@@ -945,7 +945,7 @@ void InlineHelper::InlineAndOptimize(CallInst* callInst)
     auto* fn = callInst->getFunction();
 
     InlineFunctionInfo IFI;
-    bool CanInline = IGCLLVM::InlineFunction(callInst, IFI);
+    bool CanInline = IGCLLVM::InlineFunction(*callInst, IFI);
     IGC_ASSERT_MESSAGE(CanInline, "failed to inline?");
 
     auto& perFnAllocas = m_InlinedStaticArrayAllocas[fn];

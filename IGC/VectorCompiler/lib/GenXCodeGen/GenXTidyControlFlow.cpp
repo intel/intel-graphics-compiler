@@ -152,7 +152,7 @@ static void moveDbgBeforeBlockRemoval(BasicBlock *BB, Instruction *InsertBefore,
   while (auto *DBG = dyn_cast<llvm::DbgVariableIntrinsic>(BB->begin())) {
     DBG->moveBefore(InsertBefore);
     if (MakeUndef)
-      IGCLLVM::setDbgVariableLocationToUndef(DBG);
+      IGCLLVM::setKillLocation(DBG);
   }
   IGC_ASSERT_MESSAGE(BB->front().isTerminator(), "Expected that only terminator instruction remains");
 }

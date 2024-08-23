@@ -345,7 +345,7 @@ bool InlineUnmaskedFunctionsPass::runOnModule(llvm::Module& M)
 
         llvm::InlineFunctionInfo IFI;
         for (auto *CB : Calls)
-            IGCLLVM::InlineFunction(CB, IFI);
+            IGCLLVM::InlineFunction(*CB, IFI);
 
         for (Function *F : Funcs) {
             F->removeDeadConstantUsers();

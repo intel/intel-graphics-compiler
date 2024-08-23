@@ -28,6 +28,7 @@ SPDX-License-Identifier: MIT
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Probe/Assertion.h"
 #include "LLVM3DBuilder/BuiltinsFrontend.hpp"
+#include "llvm/Support/Casting.h"
 
 
 using namespace llvm;
@@ -2200,7 +2201,7 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
                     Value* result = (llvmBuilder.*replacementFunc)(argument);
                     InlineFunctionInfo IFI;
                     I.replaceAllUsesWith(result);
-                    IGCLLVM::InlineFunction(static_cast<CallInst*>(result), IFI, nullptr, false);
+                    IGCLLVM::InlineFunction(*cast<CallBase>(result), IFI, nullptr, false);
                     I.eraseFromParent();
                 }
             };

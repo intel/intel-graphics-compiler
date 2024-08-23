@@ -3918,7 +3918,7 @@ static void fixBlockDataBeforeRemoval(BasicBlock *BB, BasicBlock *SuccBB) {
   while (auto *DBG = dyn_cast<DbgVariableIntrinsic>(BB->begin())) {
     DBG->moveBefore(InsertBefore);
     if (!HasOnePred)
-      IGCLLVM::setDbgVariableLocationToUndef(DBG);
+      IGCLLVM::setKillLocation(DBG);
   }
 }
 

@@ -11,25 +11,25 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Transforms/Utils/Cloning.h"
+#include "llvm/Support/Casting.h"
+#include "Probe/Assertion.h"
 
 namespace IGCLLVM
 {
-    inline bool InlineFunction(llvm::CallInst* CB, llvm::InlineFunctionInfo& IFI,
+    inline bool InlineFunction(llvm::CallBase& CB, llvm::InlineFunctionInfo& IFI,
         llvm::AAResults* CalleeAAR = nullptr,
         bool InsertLifetime = true,
         llvm::Function* ForwardVarArgsTo = nullptr)
     {
-        return llvm::InlineFunction(
 #if LLVM_VERSION_MAJOR < 11
-            CB
-#else
-            *llvm::dyn_cast<llvm::CallBase>(CB)
+        auto* CI = llvm::dyn_cast<llvm::CallInst>(&CB);
+        IGC_ASSERT(CI);
+        return llvm::InlineFunction(CI, IFI, CalleeAAR, InsertLifetime, ForwardVarArgsTo);
+#elif LLVM_VERSION_MAJOR <= 15
+        return llvm::InlineFunction(CB, IFI, CalleeAAR, InsertLifetime, ForwardVarArgsTo).isSuccess();
+#else  // LLVM_VERSION_MAJOR >= 16
+        return llvm::InlineFunction(CB, IFI, true, CalleeAAR, InsertLifetime, ForwardVarArgsTo).isSuccess();
 #endif
-            , IFI, CalleeAAR, InsertLifetime, ForwardVarArgsTo)
-#if LLVM_VERSION_MAJOR >= 11
-            .isSuccess()
-#endif
-            ;
     }
 
 #if LLVM_VERSION_MAJOR < 13
