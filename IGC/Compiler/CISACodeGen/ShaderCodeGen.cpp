@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/AdvCodeMotion.h"
 #include "Compiler/CISACodeGen/RematAddressArithmetic.h"
 #include "Compiler/CISACodeGen/IGCLivenessAnalysis.h"
+#include "Compiler/CISACodeGen/IGCVectorizer.h"
 #include "Compiler/CISACodeGen/AdvMemOpt.h"
 #include "Compiler/CISACodeGen/Emu64OpsPass.h"
 #include "Compiler/CISACodeGen/PullConstantHeuristics.hpp"
@@ -1885,6 +1886,7 @@ void OptimizeIR(CodeGenContext* const pContext)
         if (IGC_IS_FLAG_ENABLED(EnableMadLoopSlice)) {
             mpm.add(createMadLoopSlicePass());
         }
+        mpm.add(new IGCVectorizer());
 
         mpm.run(*pContext->getModule());
     } // end scope
