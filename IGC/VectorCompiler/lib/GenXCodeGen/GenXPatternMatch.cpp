@@ -720,6 +720,9 @@ private:
 } // namespace
 
 void GenXPatternMatch::visitBinaryOperator(BinaryOperator &I) {
+  if (I.use_empty())
+    return;
+
   if (Kind == PatternMatchKind::PreLegalization) {
     if (isPredNot(&I))
       Changed |= flipBoolNot(&I);
@@ -769,6 +772,9 @@ void GenXPatternMatch::visitBinaryOperator(BinaryOperator &I) {
 }
 
 void GenXPatternMatch::visitCallInst(CallInst &I) {
+  if (I.use_empty())
+    return;
+
   auto IID = vc::getAnyIntrinsicID(&I);
 
   switch (IID) {
@@ -854,12 +860,8 @@ void GenXPatternMatch::visitCallInst(CallInst &I) {
 }
 
 void GenXPatternMatch::visitICmpInst(ICmpInst &I) {
-  if (Kind == PatternMatchKind::PostLegalization) {
-    return;
-  }
-
   // Ignore dead comparison.
-  if (I.use_empty())
+  if (I.use_empty() || Kind == PatternMatchKind::PostLegalization)
     return;
 
   Value *V0 = nullptr;
@@ -1343,6 +1345,8 @@ bool GenXPatternMatch::matchFloatAbs(BinaryOperator *I) {
   auto *User = I->user_back();
   if (!isa<BitCastInst>(User) || User->getType() != SrcTy)
     return false;
+  if (User->use_empty())
+    return false;
 
   uint64_t SplatV = 0;
   auto *Op = I->getOperand(1);
@@ -1383,6 +1387,14 @@ bool GenXPatternMatch::foldBoolAnd(Instruction *Inst) {
   if (!Inst->hasOneUse())
     return false; // more than one use
   auto user = cast<Instruction>(Inst->use_begin()->getUser());
+  if (user && user->getOperand(1)) {
+    auto *Ty = user->getOperand(1)->getType();
+    auto *DTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
+    if (!DTy || (DTy->getNumElements() == 1))
+      return false;
+  } else
+    return false;
+
   if (auto Sel = dyn_cast<SelectInst>(user)) {
     // Fold and into sel.
     auto NewSel1 = SelectInst::Create(Inst->getOperand(0), Sel->getOperand(1),
@@ -1419,6 +1431,8 @@ bool GenXPatternMatch::foldBoolAnd(Instruction *Inst) {
 }
 
 void GenXPatternMatch::visitSelectInst(SelectInst &I) {
+  if (I.use_empty())
+    return;
   Changed |= (Kind == PatternMatchKind::PreLegalization) &&
              MinMaxMatcher::isEnabled() && MinMaxMatcher(&I).matchMinMax();
 }
@@ -2682,6 +2696,8 @@ bool GenXPatternMatch::simplifyRdRegion(CallInst *Inst) {
 
 bool GenXPatternMatch::simplifyWrRegion(CallInst *Inst) {
   IGC_ASSERT(GenXIntrinsic::isWrRegion(Inst));
+  if (Inst->use_empty())
+    return false;
   Value *NewV = Inst->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum);
   Type *NewVTy = NewV->getType();
 
@@ -3114,9 +3130,8 @@ static void decomposeSDivPow2(BinaryOperator &SDivOp) {
 }
 
 void GenXPatternMatch::visitSDiv(BinaryOperator &I) {
-  if (Kind == PatternMatchKind::PostLegalization) {
+  if (I.use_empty() || Kind == PatternMatchKind::PostLegalization)
     return;
-  }
 
   auto CheckRes = isSuitableSDivSRemOperand(I.getOperand(1));
   if (CheckRes == DivRemOptimize::Not)
@@ -3228,9 +3243,8 @@ static void decomposeUDivNotPow2(BinaryOperator &UDivOp) {
 }
 
 void GenXPatternMatch::visitUDiv(BinaryOperator &I) {
-  if (Kind == PatternMatchKind::PostLegalization) {
+  if (I.use_empty() || Kind == PatternMatchKind::PostLegalization)
     return;
-  }
 
   auto CheckRes = isSuitableUDivURemOperand(I.getOperand(1));
   if (CheckRes == DivRemOptimize::Not)
@@ -3269,9 +3283,8 @@ static void decomposeSRemPow2(BinaryOperator &SRemOp) {
 }
 
 void GenXPatternMatch::visitSRem(BinaryOperator &I) {
-  if (Kind == PatternMatchKind::PostLegalization) {
+  if (I.use_empty() || Kind == PatternMatchKind::PostLegalization)
     return;
-  }
 
   auto CheckRes = isSuitableSDivSRemOperand(I.getOperand(1));
   if (CheckRes == DivRemOptimize::Not)
@@ -3350,9 +3363,8 @@ static void decomposeURemNotPow2(BinaryOperator &URemOp) {
 }
 
 void GenXPatternMatch::visitURem(BinaryOperator &I) {
-  if (Kind == PatternMatchKind::PostLegalization) {
+  if (I.use_empty() || Kind == PatternMatchKind::PostLegalization)
     return;
-  }
 
   auto CheckRes = isSuitableUDivURemOperand(I.getOperand(1));
   if (CheckRes == DivRemOptimize::Not)
@@ -3366,6 +3378,9 @@ void GenXPatternMatch::visitURem(BinaryOperator &I) {
 
 // Clean up 'freeze' instances once dependent w/a's have been resolved.
 void GenXPatternMatch::visitFreezeInst(FreezeInst &I) {
+  if (I.use_empty())
+    return;
+
   Value *Op = I.getOperand(0);
   I.replaceAllUsesWith(Op);
   Changed = true;
@@ -4058,7 +4073,7 @@ bool GenXPatternMatch::extendMask(BinaryOperator *BO) {
 }
 
 void GenXPatternMatch::visitPHINode(PHINode &I) {
-  if (Kind != PatternMatchKind::PreLegalization)
+  if (I.use_empty() || Kind != PatternMatchKind::PreLegalization)
     return;
 
   std::unordered_set<PHINode *> Visited;
