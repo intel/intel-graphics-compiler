@@ -374,10 +374,11 @@ class GenXKernelBuilder final {
   // The default float control from kernel attribute. Each subroutine may
   // overrride this control mask, but it should revert back to the default float
   // control mask before exiting from the subroutine.
-  uint32_t DefaultFloatControl = 0;
+  uint32_t FloatControlKernel = 0;
+  uint32_t FloatControlMask = 0;
 
-
-  uint32_t CRMask = 0;
+  // The hardware-initialization value for the float control register.
+  static constexpr uint32_t FloatControlDefault = 0x0;
 
   // normally false, set to true if there is any SIMD CF in the func or this is
   // (indirectly) called inside any SIMD CF.
@@ -1096,11 +1097,15 @@ bool GenXKernelBuilder::run() {
   StackSurf = Subtarget->stackSurface();
 
   using namespace visa;
-  CRMask = CRBits::RoundingBitMask | CRBits::DoublePrecisionDenorm |
-           CRBits::SinglePrecisionDenorm | CRBits::HalfPrecisionDenorm;
+  FloatControlMask = CRBits::DoublePrecisionDenorm |
+                     CRBits::SinglePrecisionDenorm |
+                     CRBits::HalfPrecisionDenorm | CRBits::RoundingBitMask;
+  FloatControlKernel = CRBits::RTNE;
 
+  // If the subtarget supports systolic denorm control, retain denormals for the
+  // systolic.
   if (Subtarget->hasSystolicDenormControl())
-    CRMask |= CRBits::SystolicDenorm;
+    FloatControlKernel |= CRBits::SystolicDenorm;
 
   StackCallExecSize =
       getExecSizeFromValue(BackendConfig->getInteropSubgroupSize());
@@ -1294,25 +1299,30 @@ void GenXKernelBuilder::buildInstructions() {
     beginFunctionLight(Func);
 
     // If a float control is specified, emit code to make that happen.
-    // Float control contains rounding mode, denorm behaviour and single
-    // precision float mode (ALT or IEEE) Relevant bits are already set as
-    // defined for VISA control reg in header definition on enums
+    // Float control contains rounding mode and denorm behaviour. Relevant bits
+    // are already set as defined for VISA control reg in header definition on
+    // enums.
+    uint32_t FloatControl = FloatControlKernel;
+
     if (Func->hasFnAttribute(genx::FunctionMD::CMFloatControl)) {
-      uint32_t FloatControl = 0;
       Func->getFnAttribute(genx::FunctionMD::CMFloatControl)
           .getValueAsString()
           .getAsInteger(0, FloatControl);
 
-      // Clear current float control bits to known zero state
-      buildControlRegUpdate(CRMask, true);
-
       // Set rounding mode to required state if that isn't zero
-      FloatControl &= CRMask;
-      if (FloatControl) {
-        if (FG->getHead() == Func)
-          DefaultFloatControl = FloatControl;
-        buildControlRegUpdate(FloatControl, false);
+      FloatControl &= FloatControlMask;
+      FloatControl |= FloatControlKernel & ~FloatControlMask;
+      if (FloatControl != (FloatControlKernel & FloatControlMask) &&
+          vc::isKernel(Func)) {
+        FloatControlKernel &= ~FloatControlMask;
+        FloatControlKernel |= FloatControl;
       }
+    }
+
+    if ((vc::isKernel(Func) && FloatControlKernel != 0) ||
+        FloatControl != (FloatControlKernel & FloatControlMask)) {
+      buildControlRegUpdate(FloatControlMask, true);
+      buildControlRegUpdate(FloatControl, false);
     }
 
     // Only output a label for the initial basic block if it is used from
@@ -5475,11 +5485,11 @@ void GenXKernelBuilder::buildRet(ReturnInst *RI) {
   F->getFnAttribute(genx::FunctionMD::CMFloatControl)
       .getValueAsString()
       .getAsInteger(0, FloatControl);
-  FloatControl &= CRMask;
-  if (FloatControl != DefaultFloatControl) {
-    buildControlRegUpdate(CRMask, true);
-    if (DefaultFloatControl)
-      buildControlRegUpdate(DefaultFloatControl, false);
+  FloatControl &= FloatControlMask;
+  if (FloatControl != (FloatControlKernel & FloatControlMask)) {
+    buildControlRegUpdate(FloatControlMask, true);
+    if (FloatControlKernel & FloatControlMask)
+      buildControlRegUpdate(FloatControlKernel, false);
   }
   if (vc::requiresStackCall(Func)) {
     appendVISACFFunctionRetInst(nullptr, vISA_EMASK_M1, StackCallExecSize);
