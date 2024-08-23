@@ -1293,6 +1293,16 @@ namespace IGC
         {}
     };
 
+    struct SComputeShaderWalkOrder
+    {
+        ThreadIDLayout m_threadIDLayout = ThreadIDLayout::X;
+        CS_WALK_ORDER m_walkOrder = CS_WALK_ORDER::WO_XYZ;
+        EMIT_LOCAL_MASK m_emitMask = EMIT_LOCAL_MASK::EM_NONE;
+        //true if HW generates localIDs and puts them to payload
+        //false if SW generates localIDs and prolog kernel loads them from memory
+        bool m_enableHWGenerateLID = false;
+    };
+
     void OptimizeIR(CodeGenContext* ctx);
 
     /**

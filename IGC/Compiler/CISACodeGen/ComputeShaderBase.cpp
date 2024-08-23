@@ -40,6 +40,12 @@ namespace IGC
         const CodeGenContext* pCtx = GetContext();
         const ModuleMetaData* MMD = pCtx->getModuleMetaData();
 
+        if (IGC_IS_FLAG_ENABLED(EnableSelectCSWalkOrderPass) &&
+            pCtx->platform.EnableCSWalkerPass())
+        {
+            return;
+        }
+
         if (MMD->csInfo.neededThreadIdLayout == ThreadIDLayout::QuadTile)
         {
             m_ThreadIDLayout = ThreadIDLayout::QuadTile;
