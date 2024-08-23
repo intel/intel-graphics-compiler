@@ -237,7 +237,7 @@ inline Value* LoadFromStruct(IGCLLVM::IRBuilder<>& builder, Value* strPtr, Type*
     {
         Value* indices[] = { builder.getInt32(0), builder.getInt32(i) };
         Value* elementPtr = builder.CreateInBoundsGEP(strPtr, indices);
-        Value* element = builder.CreateLoad(elementPtr);
+        Value* element = builder.CreateLoad(sTy->getElementType(i), elementPtr);
         strVal = builder.CreateInsertValue(strVal, element, i);
     }
     return strVal;
