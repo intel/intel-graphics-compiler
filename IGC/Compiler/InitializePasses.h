@@ -247,6 +247,7 @@ void initializeCatchAllLineNumberPass(llvm::PassRegistry&);
 void initializeDebugInfoPassPass(llvm::PassRegistry&);
 void initializeIGCLivenessAnalysisPass(llvm::PassRegistry&);
 void initializeIGCRegisterPressurePrinterPass(llvm::PassRegistry&);
+void initializeIGCVectorizerPass(llvm::PassRegistry&);
 void initializeIGCFunctionExternalRegPressureAnalysisPass(llvm::PassRegistry&);
 void initializePromoteConstantStructsPass(llvm::PassRegistry&);
 void initializeLowerInvokeSIMDPass(llvm::PassRegistry&);

@@ -810,6 +810,7 @@ DECLARE_IGC_REGKEY(bool, RematAllowOneUseLoad, false, "Remat allow to move loads
 DECLARE_IGC_REGKEY(bool, RematAllowLoads, false, "Remat allow to move loads, no checks, exclusively for testing purposes", false)
 DECLARE_IGC_REGKEY(bool, DumpRegPressureEstimate, false,  "Dump RegPressureEstimate to a file", false)
 DECLARE_IGC_REGKEY(debugString, DumpRegPressureEstimateFilter, 0, "Only dump RegPressureEstimate for functions matching the given regex", false)
+DECLARE_IGC_REGKEY(bool, VectorizerLog, false, "Dump Vectorizer Log, usefull for analyzing vectorization issues", false)
 DECLARE_IGC_REGKEY(bool, EnableReusingXYZWStoreConstPayload, true, "Enable reusing XYZW stores const payload", false)
 DECLARE_IGC_REGKEY(bool, EnableReusingLSCStoreConstPayload,  false, "Enable reusing LSC stores const payload", false)
 DECLARE_IGC_REGKEY(DWORD, RegPressureVerbocity,   0,  "Different printing types", false)
