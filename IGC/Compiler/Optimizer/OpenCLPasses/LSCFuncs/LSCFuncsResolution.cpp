@@ -962,7 +962,8 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
             numBlocksV = 1;
             tileHeight = subGrpSize;
 
-            if (funcName.consume_front("_k4"))
+            funcName.consume_front("_");
+            if (funcName.consume_front("k4"))
             {
             // __builtin_IB_subgroup_block_read_flat_transpose_u64_k4
                 tileWidth = 4;
