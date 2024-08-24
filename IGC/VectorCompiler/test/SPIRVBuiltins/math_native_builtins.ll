@@ -38,6 +38,7 @@ declare spir_func <16 x float> @_Z15__spirv_ocl_madDv16_fS_S_(<16 x float>, <16 
 declare spir_func <7 x double> @_Z15__spirv_ocl_fmaDv7_dS_S_(<7 x double>, <7 x double>, <7 x double>)
 declare spir_func <7 x double> @_Z15__spirv_ocl_fmaxDv7_dS_S_(<7 x double>, <7 x double>)
 declare spir_func <16 x double> @_Z16__spirv_ocl_fabsDv16_d(<16 x double>)
+declare spir_func <7 x double> @_Z15__spirv_ocl_copysignDv7_dS_S_(<7 x double>, <7 x double>)
 
 define spir_func i32 @popcount(i32 %arg) {
 ; CHECK-LABEL: @popcount
@@ -228,4 +229,11 @@ define spir_func <16 x double> @abs_vector(<16 x double> %arg) {
 ; CHECK: %res = call <16 x double> @llvm.fabs.v16f64(<16 x double> %arg)
   %res = call spir_func <16 x double> @_Z16__spirv_ocl_fabsDv16_d(<16 x double> %arg)
   ret <16 x double> %res
+}
+
+define spir_func <7 x double> @copysign_vector(<7 x double> %arg1, <7 x double> %arg2) {
+; CHECK-LABEL: @copysign_vector
+; CHECK: %res = call <7 x double> @llvm.copysign.v7f64(<7 x double> %arg1, <7 x double> %arg2)
+  %res = call spir_func <7 x double> @_Z15__spirv_ocl_copysignDv7_dS_S_(<7 x double> %arg1, <7 x double> %arg2)
+  ret <7 x double> %res
 }

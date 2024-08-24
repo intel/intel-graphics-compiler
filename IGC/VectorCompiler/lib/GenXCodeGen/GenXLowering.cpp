@@ -276,6 +276,8 @@ private:
   bool lowerReduction(CallInst *CI, Instruction::BinaryOps Opcode);
   bool lowerReduction(CallInst *CI, Intrinsic::ID);
 
+  bool lowerCopySign(CallInst *CI);
+
   bool generatePredicatedWrrForNewLoad(CallInst *CI);
 };
 
@@ -2157,6 +2159,8 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerReduction(CI, Intrinsic::maxnum);
     case Intrinsic::vector_reduce_fmin:
       return lowerReduction(CI, Intrinsic::minnum);
+    case Intrinsic::copysign:
+      return lowerCopySign(CI);
     case GenXIntrinsic::genx_get_hwid:
       return lowerHardwareThreadID(CI);
     case vc::InternalIntrinsic::logical_thread_id:
@@ -5024,6 +5028,66 @@ bool GenXLowering::lowerReduction(CallInst *CI, Intrinsic::ID IID) {
   return lowerReduction(CI, Src, Start, [&](Value *LHS, Value *RHS) {
     return Builder.CreateBinaryIntrinsic(IID, LHS, RHS);
   });
+}
+
+bool GenXLowering::lowerCopySign(CallInst *CI) {
+  IRBuilder<> Builder(CI);
+
+  auto *Ty = CI->getType()->getScalarType();
+  auto ElementSize = Ty->getPrimitiveSizeInBits();
+  auto Stride = ElementSize / genx::WordBits;
+  IGC_ASSERT(ElementSize % genx::WordBits == 0);
+  IGC_ASSERT(Stride == 1 || Stride == 2 || Stride == 4);
+
+  auto NumElements = 1;
+  if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(CI->getType()))
+    NumElements = VTy->getNumElements();
+  auto CastNumElements = NumElements * Stride;
+
+  auto *Int16Ty = Builder.getInt16Ty();
+  auto *CastTy = IGCLLVM::FixedVectorType::get(Int16Ty, CastNumElements);
+  auto *LowerTy = IGCLLVM::FixedVectorType::get(Int16Ty, NumElements);
+
+  auto *Mag = CI->getOperand(0);
+  auto *Sign = CI->getOperand(1);
+
+  auto *MagCast = Builder.CreateBitCast(Mag, CastTy);
+  auto *MagInt = MagCast;
+  auto *SignInt = Builder.CreateBitCast(Sign, CastTy);
+
+  vc::CMRegion R(LowerTy, DL);
+  auto &DebugLoc = CI->getDebugLoc();
+
+  if (Stride > 1) {
+    R.VStride = Stride;
+    R.Width = 1;
+    R.Stride = 0;
+    R.Offset = (Stride - 1) * genx::WordBytes;
+
+    MagInt = R.createRdRegion(MagInt, "", CI, DebugLoc);
+    SignInt = R.createRdRegion(SignInt, "", CI, DebugLoc);
+  }
+
+  auto *MagMask = ConstantInt::get(Int16Ty, 0x7FFF);
+  auto *SignMask = ConstantInt::get(Int16Ty, 0x8000);
+
+  auto *MagAbs = Builder.CreateAnd(
+      MagInt, Builder.CreateVectorSplat(NumElements, MagMask));
+  auto *SignBit = Builder.CreateAnd(
+      SignInt, Builder.CreateVectorSplat(NumElements, SignMask));
+
+  auto *Res = Builder.CreateOr(MagAbs, SignBit);
+
+  if (Stride > 1)
+    Res = R.createWrRegion(MagCast, Res, "", CI, DebugLoc);
+
+  Res = Builder.CreateBitCast(Res, CI->getType());
+
+  Res->takeName(CI);
+  CI->replaceAllUsesWith(Res);
+  ToErase.push_back(CI);
+
+  return true;
 }
 
 /***********************************************************************

@@ -505,7 +505,7 @@ private:
       return std::nullopt;
     }
 
-    auto *CV = dyn_cast<ConstantVector>(C);
+    auto *CV = dyn_cast<ConstantDataVector>(C);
     if (!CV)
       return std::nullopt;
 

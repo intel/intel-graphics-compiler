@@ -261,6 +261,7 @@ Value *SPIRVExpander::visitCallInst(CallInst &CI) {
             .StartsWith("popcount", Intrinsic::ctpop)
             .StartsWith("s_abs", GenXIntrinsic::genx_absi)
             // Floating-point intrinsics
+            .StartsWith("copysign", Intrinsic::copysign)
             .StartsWith("fabs", Intrinsic::fabs)
             .StartsWith("fmax", Intrinsic::maxnum)
             .StartsWith("fma", Intrinsic::fma)
