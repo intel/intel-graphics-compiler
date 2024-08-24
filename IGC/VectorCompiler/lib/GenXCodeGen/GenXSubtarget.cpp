@@ -27,8 +27,6 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "common/StringMacros.hpp"
 
-#include <unordered_set>
-
 using namespace llvm;
 
 #define DEBUG_TYPE "subtarget"
@@ -275,19 +273,4 @@ bool GenXSubtarget::isInternalIntrinsicSupported(unsigned ID) const {
 #undef GET_INTRINSIC_TARGET_FEATURE_CHECKER
 
   return true;
-}
-
-bool GenXSubtarget::isValidGRFSize(unsigned Size) const {
-  switch (TargetId) {
-  case GenXSubtarget::XeHP:
-  case GenXSubtarget::XeHPG:
-  case GenXSubtarget::XeLPG:
-  case GenXSubtarget::XeLPGPlus:
-  case GenXSubtarget::XeHPC:
-  case GenXSubtarget::XeHPCVG:
-  case GenXSubtarget::Xe2:
-    return Size == 128 || Size == 256;
-  default:
-    return Size == 128; // platforms <= TGL
-  }
 }
