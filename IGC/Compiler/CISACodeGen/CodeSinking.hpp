@@ -66,7 +66,8 @@ namespace IGC {
             bool& reducePressure,
             bool& hasAliasConcern,
             SmallPtrSetImpl<Instruction*>& Stores);
-        bool localSink(BasicBlock *BB);
+        bool localSink(BasicBlock* BB);
+        void rollbackSinking(BasicBlock* BB);
 
         uint estimateLiveOutPressure(llvm::BasicBlock* blk, const llvm::DataLayout* DL);
 
@@ -147,16 +148,20 @@ namespace IGC {
         struct Candidate {
             typedef llvm::SmallVector<llvm::Instruction*, 16> InstrVec;
 
-            Candidate(InstrVec Instructions, BasicBlock* TgtBB, LoopSinkWorthiness Worthiness)
-                : Instructions(Instructions), TgtBB(TgtBB), Worthiness(Worthiness) {}
+            Candidate(InstrVec Instructions, BasicBlock* TgtBB, LoopSinkWorthiness Worthiness, llvm::Instruction* UndoPos)
+                : Instructions(Instructions), TgtBB(TgtBB), Worthiness(Worthiness), UndoPos(UndoPos) {}
 
-            Candidate(llvm::Instruction* Instruction, BasicBlock* TgtBB, LoopSinkWorthiness Worthiness)
-                : Instructions(InstrVec{Instruction}), TgtBB(TgtBB), Worthiness(Worthiness) {}
+            Candidate(llvm::Instruction* Instruction, BasicBlock* TgtBB, LoopSinkWorthiness Worthiness, llvm::Instruction* UndoPos)
+                : Instructions(InstrVec{Instruction}), TgtBB(TgtBB), Worthiness(Worthiness), UndoPos(UndoPos) {}
+
+            Candidate(const Candidate& Other)
+                : Instructions(Other.Instructions), TgtBB(Other.TgtBB), Worthiness(Other.Worthiness), UndoPos(Other.UndoPos) {}
 
             InstrVec Instructions;
 
             BasicBlock *TgtBB;
             LoopSinkWorthiness Worthiness = Unknown;
+            Instruction *UndoPos = nullptr;
 
             // iterator of instructions
             typedef llvm::SmallVector<llvm::Instruction*, 16>::iterator iterator;
@@ -191,7 +196,7 @@ namespace IGC {
             }
         };
 
-        typedef llvm::SmallVector<Candidate, 64> CandidateVec;
+        typedef llvm::SmallVector<std::unique_ptr<Candidate>, 64> CandidateVec;
         typedef llvm::SmallVector<Candidate*, 64> CandidatePtrVec;
         typedef llvm::DenseMap<Instruction*, Candidate*> InstToCandidateMap;
 
@@ -213,7 +218,7 @@ namespace IGC {
             InstSet& SkipInstructions,
             CandidateVec& SinkCandidates
         );
-        CandidatePtrVec refineLoopSinkCandidates(
+        CandidateVec refineLoopSinkCandidates(
             CandidateVec& SinkCandidates,
             InstSet& LoadChains,
             llvm::Loop* L);
@@ -231,8 +236,7 @@ namespace IGC {
         /// data members for local-sinking
         llvm::SmallPtrSet<llvm::BasicBlock*, 8> LocalBlkSet;
         /// data members for undo
-        std::vector<llvm::Instruction*> MovedInsts;
-        std::vector<llvm::Instruction*> UndoLocas;
+        llvm::SmallPtrSet<llvm::BasicBlock*, 8> UndoBlkSet;
         /// dumping
         std::string Log;
         llvm::raw_string_ostream LogStream;
