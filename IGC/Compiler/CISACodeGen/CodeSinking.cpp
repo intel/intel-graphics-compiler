@@ -111,24 +111,6 @@ namespace IGC {
         return false;
     }
 
-    static void rollbackSinking(
-        bool ReverseOrder,
-        BasicBlock* BB,
-        std::vector<llvm::Instruction*> &UndoLocas,
-        std::vector<llvm::Instruction*> &MovedInsts)
-    {
-        // undo code motion
-        int NumChanges = MovedInsts.size();
-        for (int i = 0; i < NumChanges; ++i)
-        {
-            int Index = ReverseOrder ? NumChanges - i - 1 : i;
-            Instruction* UndoLoca = UndoLocas[Index];
-            if (BB)
-                IGC_ASSERT(UndoLoca->getParent() == BB);
-            MovedInsts[Index]->moveBefore(UndoLoca);
-        }
-    }
-
     // Find the BasicBlock to sink
     // return nullptr if instruction cannot be moved to another block
     static BasicBlock* findLowestSinkTarget(Instruction* inst,
@@ -424,7 +406,7 @@ namespace IGC {
                 uint pressure1 = estimateLiveOutPressure(&blk, DL);
                 if (pressure1 > pressure0 + registerPressureThreshold)
                 {
-                    rollbackSinking(false, &blk, UndoLocas, MovedInsts);
+                    rollbackSinking(&blk);
                     madeChange = false;
                 }
                 else
@@ -786,6 +768,18 @@ namespace IGC {
         return pressure;
     }
 
+    void CodeSinking::rollbackSinking(BasicBlock* BB)
+    {
+        // undo code motion
+        int NumChanges = MovedInsts.size();
+        for (int i = 0; i < NumChanges; ++i)
+        {
+            Instruction* UndoLoca = UndoLocas[i];
+            IGC_ASSERT(UndoLoca->getParent() == BB);
+            MovedInsts[i]->moveBefore(UndoLoca);
+        }
+    }
+
     /// ==================///
     /// Loop code sinking ///
     /// ==================///
@@ -796,7 +790,7 @@ namespace IGC {
 
     // Helper functions for loop sink debug dumps
 #define PrintDump(Contents) if (IGC_IS_FLAG_ENABLED(DumpLoopSink)) {LogStream << Contents;}
-#define PrintInstructionDump(Inst) if (IGC_IS_FLAG_ENABLED(DumpLoopSink)) {Inst->print(LogStream, false); LogStream << "\n";}
+#define PrintInstructionDump(Inst) if (IGC_IS_FLAG_ENABLED(DumpLoopSink)) {(Inst)->print(LogStream, false); LogStream << "\n";}
 #define PrintOUGDump(OUG) if (IGC_IS_FLAG_ENABLED(DumpLoopSink)) {OUG.print(LogStream); LogStream << "\n";}
 
 
@@ -1160,33 +1154,9 @@ namespace IGC {
             RPE->rerunLivenessAnalysis(*F, &AffectedBBs);
         };
 
-        // get size of the sinked candidates
-        auto getSizeInRegs = [&](const CandidatePtrVec &Candidates)
-        {
-            auto SIMD = numLanes(RPE->bestGuessSIMDSize(F));
-            ValueSet InstsSet;
-
-            for (Candidate *C : Candidates)
-            {
-                if (C->Worthiness != LoopSinkWorthiness::Sink)
-                    continue;
-                for (Instruction *I : *C)
-                    InstsSet.insert(I);
-            }
-
-            unsigned int SizeInBytes = RPE->estimateSizeInBytes(InstsSet, *F, SIMD, &WI);
-            return RPE->bytesToRegisters(SizeInBytes);
-        };
-
         bool EverChanged = false;
 
-        // Find LIs in preheader that would definitely reduce
-        // register pressure after moving those LIs inside the loop
-        CandidateVec SinkCandidates;
         InstSet LoadChains;
-
-        MovedInsts.clear();
-        UndoLocas.clear();
 
         if (IGC_IS_FLAG_ENABLED(PrepopulateLoadChainLoopSink))
             prepopulateLoadChains(L, LoadChains);
@@ -1303,7 +1273,7 @@ namespace IGC {
                         continue;
 
                     Changed = true;
-                    SinkCandidates.push_back(Candidate(I, TgtBB, Worthiness));
+                    SinkCandidates.push_back(std::make_unique<Candidate>(I, TgtBB, Worthiness, I->getNextNode()));
                     continue;
                 }
 
@@ -1319,9 +1289,27 @@ namespace IGC {
             return Changed;
         };
 
+        CandidateVec SinkedCandidates;
+        InstToCandidateMap InstToCandidate;
+
+        CandidateVec CurrentSinkCandidates;
+        InstToCandidateMap CurrentInstToCandidate;
+
+        // Candidate ownership:
+        // Unique pointers are created in CurrentSinkCandidates on every iteration.
+        // Then they are moved to ToSink collection to be sinked (done in refineLoopSinkCandidates).
+        // Then they are moved to SinkedCandidates within iteration if they are actually sinked.
+        // The actually sinked Candidates have therefore live time until the end ot loopSink function.
+
+        // CurrentInstToCandidate and InstToCandidate are maps Instruction->Candidate *
+
+        // It's assumed the pointers are never invalidated, because the Candidate object is created
+        // via make_unique and is not relocated and destroyed until the end of the function
+
         do
         {
-            SinkCandidates.clear();
+            CurrentSinkCandidates.clear();
+            CurrentInstToCandidate.clear();
 
             // Moving LI back to the loop
             // If we sinked something we could allow sinking of the previous instructions as well
@@ -1340,12 +1328,14 @@ namespace IGC {
             PrintDump("Starting sinking iteration...\n");
 
             InstSet SkipInstructions;
+            for (auto &Pair : InstToCandidate)
+                SkipInstructions.insert(Pair.first);
 
             // lowered vector shuffle patterns are beneficial to sink,
             // because they can enable further sinking of the large loads
             // Create such candidates first
             if (IGC_IS_FLAG_ENABLED(LoopSinkEnableVectorShuffle))
-                tryCreateShufflePatternCandidates(L, SkipInstructions, SinkCandidates);
+                tryCreateShufflePatternCandidates(L, SkipInstructions, CurrentSinkCandidates);
 
             // Try rescheduling the loads that are already in the loop
             // by adding them as a candidates, so that they are moved to the first use by LocalSink
@@ -1362,42 +1352,40 @@ namespace IGC {
                     for (auto BI = BB->rbegin(), BE = BB->rend(); BI != BE; BI++)
                     {
                         Instruction *I = &*BI;
-                        tryCreate2dBlockReadGroupSinkingCandidate(I, L, SkipInstructions, SinkCandidates);
+                        tryCreate2dBlockReadGroupSinkingCandidate(I, L, SkipInstructions, CurrentSinkCandidates);
                     }
                 }
                 RescheduledLoads = true;
             }
 
             // Create simple (1-instr) candidates for sinking by traversing the preheader once
-            createSimpleCandidates(SkipInstructions, SinkCandidates);
+            createSimpleCandidates(SkipInstructions, CurrentSinkCandidates);
 
             // Make decisions for "MaybeSink" candidates
-            CandidatePtrVec ToSink = refineLoopSinkCandidates(SinkCandidates, LoadChains, L);
+            CandidateVec ToSink = refineLoopSinkCandidates(CurrentSinkCandidates, LoadChains, L);
 
             // Sink the beneficial instructions
             bool IterChanged = false;
 
-            InstToCandidateMap InstToCandidate;
-
-            for (Candidate *C : ToSink)
+            for (auto &C : ToSink)
             {
                 if (C->Worthiness == LoopSinkWorthiness::Sink || C->Worthiness == LoopSinkWorthiness::IntraLoopSink)
                 {
-                    bool SinkFromPH = C->Worthiness == LoopSinkWorthiness::Sink;
                     IGC_ASSERT(C->size() > 0);
 
-                    Instruction *InsertPoint = SinkFromPH ?
-                        &*C->TgtBB->getFirstInsertionPt() : C->first()->getNextNode();
+                    SinkedCandidates.push_back(std::move(C));
+                    Candidate *SC = SinkedCandidates.back().get();
 
-                    for (Instruction *I : *C) {
+                    bool SinkFromPH = SC->Worthiness == LoopSinkWorthiness::Sink;
+                    Instruction *InsertPoint = SinkFromPH ?
+                        &*SC->TgtBB->getFirstInsertionPt() : SC->first()->getNextNode();
+
+                    for (Instruction *I : *SC) {
                         PrintDump((SinkFromPH ? "Sinking instruction:\n" : "Scheduling instruction for local sink:\n"));
                         PrintInstructionDump(I);
 
-                        Instruction *PrevLoc = I->getNextNode();
-                        UndoLocas.push_back(PrevLoc);
-                        MovedInsts.push_back(I);
-                        InstToCandidate[I] = C;
-                        LocalBlkSet.insert(C->TgtBB);
+                        CurrentInstToCandidate[I] = SC;
+                        InstToCandidate[I] = SC;
 
                         I->moveBefore(InsertPoint);
                         InsertPoint = I;
@@ -1408,6 +1396,10 @@ namespace IGC {
                                 LoadChains.insert(I);
                         }
                     }
+
+                    UndoBlkSet.insert(SC->UndoPos->getParent());
+                    LocalBlkSet.insert(SC->TgtBB);
+
                     PrintDump("\n");
                     IterChanged = true;
                 }
@@ -1417,18 +1409,31 @@ namespace IGC {
             {
                 EverChanged = true;
 
+                // Getting the size of the sinked on this iteration candidates
+                // Must be before local sinking
+                auto SIMD = numLanes(RPE->bestGuessSIMDSize(F));
+                ValueSet InstsSet;
+                for (auto &Pair : CurrentInstToCandidate)
+                {
+                    bool SinkedFromPH = Pair.second->Worthiness == LoopSinkWorthiness::Sink;
+                    if (SinkedFromPH)
+                        InstsSet.insert(Pair.first);
+                }
+                uint SinkedSizeInBytes = RPE->estimateSizeInBytes(InstsSet, *F, SIMD, &WI);
+                uint SinkedSizeInRegs = RPE->bytesToRegisters(SinkedSizeInBytes);
+
                 // Invoke LocalSink() to move def to its first use
                 if (LocalBlkSet.size() > 0)
                 {
                     for (auto BI = LocalBlkSet.begin(), BE = LocalBlkSet.end(); BI != BE; BI++)
                     {
                         BasicBlock *BB = *BI;
-                        localSink(BB, InstToCandidate);
+                        localSink(BB, CurrentInstToCandidate);
                     }
                     LocalBlkSet.clear();
                 }
 
-                if (MaxLoopPressure - getSizeInRegs(ToSink) > NeededRegpressure)
+                if (MaxLoopPressure - SinkedSizeInRegs > NeededRegpressure)
                 {
                     // Heuristic to save recalculation of liveness
                     // The size of the candidates set is not enough to reach the needed regpressure
@@ -1525,20 +1530,44 @@ namespace IGC {
         if (NeedToRollback && IGC_IS_FLAG_DISABLED(LoopSinkDisableRollback))
         {
             PrintDump(">> Reverting the changes.\n");
-            rollbackSinking(true, Preheader, UndoLocas, MovedInsts);
+
+            for (auto CI = SinkedCandidates.rbegin(), CE = SinkedCandidates.rend(); CI != CE; CI++)
+            {
+                Candidate *C = CI->get();
+                Instruction *UndoPos = C->UndoPos;
+                IGC_ASSERT(UndoPos);
+                while (InstToCandidate.count(UndoPos))
+                {
+                    UndoPos = InstToCandidate[UndoPos]->UndoPos;
+                }
+                for (Instruction *I : *C)
+                {
+                    I->moveBefore(UndoPos);
+                    UndoPos = I;
+                }
+            }
+
             rerunLiveness();
             return false;
         }
 
         if (CTX->m_instrTypes.hasDebugInfo)
-            ProcessDbgValueInst(*Preheader, DT);
+        {
+            for (BasicBlock *BB : UndoBlkSet)
+            {
+                ProcessDbgValueInst(*BB, DT);
+            }
+        }
 
         // We decided we don't rollback, change the names of the instructions in IR
-        for (Instruction *I : MovedInsts)
+        for (auto &Pair : InstToCandidate)
         {
+            Instruction *I = Pair.first;
+            Candidate *C = Pair.second;
             if (I->getType()->isVoidTy())
                 continue;
-            I->setName("sink_" + I->getName());
+            std::string Prefix = C->Worthiness == LoopSinkWorthiness::IntraLoopSink ? "sched" : "sink";
+            I->setName(Prefix + "_" + I->getName());
         }
 
         return true;
@@ -1763,7 +1792,7 @@ namespace IGC {
                 allUsesAreDominatedByRemainingUses(CurrentCandidateInsts, RemainingCandidateInsts))
             {
                 NCandidates++;
-                SinkCandidates.push_back(Candidate(CurrentCandidateInsts, TgtBB, Worthiness));
+                SinkCandidates.push_back(std::make_unique<Candidate>(CurrentCandidateInsts, TgtBB, Worthiness, CurrentCandidateInsts[0]->getNextNode()));
                 CurrentCandidateInsts.clear();
             }
             CurrentCandidateInsts.push_back(I);
@@ -1772,7 +1801,7 @@ namespace IGC {
         if (CurrentCandidateInsts.size() > 0)
         {
             NCandidates++;
-            SinkCandidates.push_back(Candidate(CurrentCandidateInsts, TgtBB, Worthiness));
+            SinkCandidates.push_back(std::make_unique<Candidate>(CurrentCandidateInsts, TgtBB, Worthiness, CurrentCandidateInsts[0]->getNextNode()));
         }
 
         PrintDump("Successfully created " << NCandidates << " candidates.\n");
@@ -1928,6 +1957,7 @@ namespace IGC {
         }
 
         DenseMap<InsertElementInst *, InstSet> DestVecToShuffleInst;
+        SmallVector<Candidate, 16> ShuffleCandidates;
         DenseMap<Instruction *, Candidate *> ShuffleInstToCandidate;
 
         for (auto &VecIEs : SourceVectors)
@@ -1961,7 +1991,6 @@ namespace IGC {
                 DestVecToTgtBB[DestVec] = TgtBB;
             }
 
-
             if (DestVecToTgtBB.size() == DestVecToShuffleInst.size())
             {
                 // Found the target BB for all the dest vectors, safe to sink for every dest vector
@@ -1977,18 +2006,21 @@ namespace IGC {
                     PrintDump("DestVector used in the loop:\n");
                     PrintInstructionDump(DestVec);
 
-                    SinkCandidates.push_back(Candidate(Candidate::InstrVec{}, TgtBB, LoopSinkWorthiness::Sink));
+                    ShuffleCandidates.emplace_back(Candidate::InstrVec{}, TgtBB, LoopSinkWorthiness::Sink, nullptr);
                     Changed = true;
 
                     for (Instruction *I : ShuffleInst)
                     {
-                        ShuffleInstToCandidate[I] = &SinkCandidates.back();
+                        ShuffleInstToCandidate[I] = &ShuffleCandidates.back();
                     }
                 }
             }
         }
 
-        // Traverse PH in reverse order and populate Candidates instruction so that they are in the right order
+        CandidatePtrVec ShuffleCandidatesOrdered;
+
+        // Traverse PH in reverse order and populate Candidates instructions so that they are in the right order
+        // Populate the ShuffleCandidatesOrdered with Candidates in the right order
         for (auto IB = Preheader->rbegin(), IE = Preheader->rend(); IB != IE; ++IB)
         {
             Instruction *I = &*IB;
@@ -1996,11 +2028,21 @@ namespace IGC {
             if (ShuffleInstToCandidate.count(I))
             {
                 Candidate *C = ShuffleInstToCandidate[I];
+                if (C->size() == 0)
+                {
+                    C->UndoPos = I->getNextNode();
+                    ShuffleCandidatesOrdered.push_back(C);
+                }
                 C->Instructions.push_back(I);
                 SkipInstructions.insert(I);
             }
         }
 
+        // Add the candidates to the main list
+        for (auto *C : ShuffleCandidatesOrdered)
+        {
+            SinkCandidates.push_back(std::make_unique<Candidate>(*C));
+        }
         return Changed;
     }
 
@@ -2245,14 +2287,14 @@ namespace IGC {
         return false;
     }
 
-    CodeLoopSinking::CandidatePtrVec CodeLoopSinking::refineLoopSinkCandidates(
+    CodeLoopSinking::CandidateVec CodeLoopSinking::refineLoopSinkCandidates(
         CandidateVec &SinkCandidates,
         InstSet &LoadChains,
         Loop *L)
     {
         struct OperandUseGroup {
             SmallPtrSet<Value *, 4> Operands;
-            SmallVector<Candidate *, 16> Users;
+            SmallVector<std::unique_ptr<Candidate> *, 16> Users;
 
             void print(raw_ostream &OS)
             {
@@ -2265,10 +2307,10 @@ namespace IGC {
                     OS << "\n";
                 }
                 OS << "    Users:\n";
-                for (Candidate *C : Users)
+                for (auto &C : Users)
                 {
                     OS << "  ";
-                    C->print(OS);
+                    (*C)->print(OS);
                     OS << "\n";
                 }
             }
@@ -2355,8 +2397,8 @@ namespace IGC {
             auto allUsersAreLoadChains = [&](OperandUseGroup &OUG)
             {
                 return std::all_of(OUG.Users.begin(), OUG.Users.end(),
-                    [&](Candidate *C) {
-                        return std::all_of(C->begin(), C->end(),
+                    [&](std::unique_ptr<Candidate> *C) {
+                        return std::all_of((*C)->begin(), (*C)->end(),
                             [&](Instruction *I) {
                                 return isLoadChain(I, LoadChains);
                             });
@@ -2379,9 +2421,9 @@ namespace IGC {
             }
 
             bool AllUsersAreUniform = true;
-            for (Candidate *C : OUG.Users)
+            for (auto &C : OUG.Users)
             {
-                for (Value *V : *C)
+                for (Value *V : **C)
                 {
                     if (!V->hasNUsesOrMore(1))
                         continue;
@@ -2452,17 +2494,17 @@ namespace IGC {
         SmallVector<OperandUseGroup, 16> InstUseInfo;
         InstUseInfo.reserve(SinkCandidates.size());
 
-        CandidatePtrVec ToSink;
+        CandidateVec ToSink;
 
-        for (Candidate &C : SinkCandidates)
+        for (auto &C : SinkCandidates)
         {
-            if (C.Worthiness == LoopSinkWorthiness::Sink || C.Worthiness == LoopSinkWorthiness::IntraLoopSink)
+            if (C->Worthiness == LoopSinkWorthiness::Sink || C->Worthiness == LoopSinkWorthiness::IntraLoopSink)
             {
-                ToSink.push_back(&C);
+                ToSink.push_back(std::move(C));
                 continue;
             }
 
-            SmallPtrSet<Value *, 4> CandidateOperands = getNonConstCandidateOperandsOutsideLoop(&C, L);
+            SmallPtrSet<Value *, 4> CandidateOperands = getNonConstCandidateOperandsOutsideLoop(C.get(), L);
 
             // If this set of uses have been referenced by other instructions,
             // put this inst in the same group. Note that we don't union sets
@@ -2488,10 +2530,10 @@ namespace IGC {
             if (!isBeneficialToSink(OUG))
                 continue;
             PrintDump(">> Beneficial to sink.\n\n");
-            for (Candidate *C : OUG.Users)
+            for (auto &C : OUG.Users)
             {
-                C->Worthiness = LoopSinkWorthiness::Sink;
-                ToSink.push_back(C);
+                (*C)->Worthiness = LoopSinkWorthiness::Sink;
+                ToSink.push_back(std::move(*C));
             }
         }
 
@@ -2608,6 +2650,8 @@ namespace IGC {
                 PrintInstructionDump(Def);
 
                 Candidate *C = Cit->second;
+
+                IGC_ASSERT(C->size() > 0);
                 Instruction *MainInst = C->first();
 
                 Instruction *InsertPoint = getInsertPointBeforeUse(MainInst, Use);
