@@ -35,11 +35,16 @@ namespace IGC
       "__2D_DIM_Resource", "__2D_ARRAY_DIM_Resource",
       "__3D_DIM_Resource", "__Cube_DIM_Resource", "__Cube_ARRAY_DIM_Resource" };
 
+    inline llvm::Type* CreateResourceDimensionType(llvm::LLVMContext& llvmCtx, RESOURCE_DIMENSION_TYPE resourceDimType)
+    {
+        return llvm::StructType::create(llvmCtx, ResourceDimensionTypeName[resourceDimType]);
+    }
+
     inline void CreateResourceDimensionTypes(llvm::LLVMContext& llvmCtx)
     {
         for (unsigned int resourceDimTypeId = 0; resourceDimTypeId < (unsigned int)RESOURCE_DIMENSION_TYPE::NUM_RESOURCE_DIMENSION_TYPES; resourceDimTypeId++)
         {
-            llvm::StructType::create(llvmCtx, ResourceDimensionTypeName[(RESOURCE_DIMENSION_TYPE)resourceDimTypeId]);
+            CreateResourceDimensionType(llvmCtx, static_cast<RESOURCE_DIMENSION_TYPE>(resourceDimTypeId));
         }
     }
 
@@ -56,5 +61,15 @@ namespace IGC
 #else
          return module.getTypeByName(ResourceDimensionTypeName[resourceDimTypeId]);
 #endif
+    }
+
+    inline llvm::Type* GetOrCreateResourceDimensionType(const llvm::Module& module, RESOURCE_DIMENSION_TYPE resourceDimTypeId)
+    {
+        llvm::Type* pRet = GetResourceDimensionType(module, resourceDimTypeId);
+        if (pRet == nullptr)
+        {
+            pRet = CreateResourceDimensionType(module.getContext(), resourceDimTypeId);
+        }
+        return pRet;
     }
 }
