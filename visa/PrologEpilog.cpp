@@ -363,7 +363,6 @@ public:
         AlignUp(k.getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize),
                 k.numEltPerGRF<Type_UB>()) / k.numEltPerGRF<Type_UB>())
   {
-
     auto rtmpRegNum = k.getNumRegTotal() - 1;
     rtmp = b.createHardwiredDeclare(k.numEltPerGRF<Type_UD>(), Type_UD, rtmpRegNum, 0);
 
