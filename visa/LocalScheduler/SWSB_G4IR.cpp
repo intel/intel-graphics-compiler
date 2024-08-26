@@ -1184,10 +1184,11 @@ SBFootprint *G4_BB_SB::getFootprintForFlag(G4_Operand *opnd,
   unsigned short RB = 0;
   G4_Type type = opnd->getType();
   bool valid = true;
+  unsigned regOff = opnd->getBase()->ExRegNum(valid);
   unsigned subRegOff = opnd->getBase()->ExSubRegNum(valid);
-  LB =
-      (unsigned short)(opnd->getLeftBound() + subRegOff * 16) * FLAG_TO_GRF_MAP;
-  RB = (unsigned short)(opnd->getRightBound() + subRegOff * 16) *
+  LB = (unsigned short)(regOff * 32 + subRegOff * 16) * FLAG_TO_GRF_MAP;
+  RB = (unsigned short)(regOff * 32 + subRegOff * 16 + opnd->getRightBound() -
+                        opnd->getLeftBound()) *
        FLAG_TO_GRF_MAP;
 
   LB += (builder.kernel.getNumRegTotal() + builder.getNumScalarRegisters() +
