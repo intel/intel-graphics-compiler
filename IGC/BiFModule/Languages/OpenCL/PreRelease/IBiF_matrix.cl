@@ -1644,22 +1644,22 @@ DEFINE_LOAD_CHECKED_LARGE(Accumulator_RowMajor, int, int, 32,  64, 128, 4)
       __private char *c13 = src + 13 * 8 * (sizeof (contrib_type)); \
       __private char *c14 = src + 14 * 8 * (sizeof (contrib_type)); \
       __private char *c15 = src + 15 * 8 * (sizeof (contrib_type)); \
-      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c0, y + 0 * column_stride, x + 0 * row_stride, height, width, stride, cacheOpt); \
-      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c1, y + 1 * column_stride, x + 0 * row_stride, height, width, stride, cacheOpt); \
-      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c2, y + 2 * column_stride, x + 0 * row_stride, height, width, stride, cacheOpt); \
-      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c3, y + 3 * column_stride, x + 0 * row_stride, height, width, stride, cacheOpt); \
-      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c4, y + 0 * column_stride, x + 1 * row_stride, height, width, stride, cacheOpt); \
-      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c5, y + 1 * column_stride, x + 1 * row_stride, height, width, stride, cacheOpt); \
-      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c6, y + 2 * column_stride, x + 1 * row_stride, height, width, stride, cacheOpt); \
-      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c7, y + 3 * column_stride, x + 1 * row_stride, height, width, stride, cacheOpt); \
-      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c8, y + 0 * column_stride, x + 2 * row_stride, height, width, stride, cacheOpt); \
-      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c9, y + 1 * column_stride, x + 2 * row_stride, height, width, stride, cacheOpt); \
-      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c10, y + 2 * column_stride, x + 2 * row_stride, height, width, stride, cacheOpt); \
-      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c11, y + 3 * column_stride, x + 2 * row_stride, height, width, stride, cacheOpt); \
-      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c12, y + 0 * column_stride, x + 3 * row_stride, height, width, stride, cacheOpt); \
-      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c13, y + 1 * column_stride, x + 3 * row_stride, height, width, stride, cacheOpt); \
-      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c14, y + 2 * column_stride, x + 3 * row_stride, height, width, stride, cacheOpt); \
-      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c15, y + 3 * column_stride, x + 3 * row_stride, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c0, y + 0 * row_stride, x + 0 * column_stride, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c1, y + 1 * row_stride, x + 0 * column_stride, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c2, y + 2 * row_stride, x + 0 * column_stride, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c3, y + 3 * row_stride, x + 0 * column_stride, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c4, y + 0 * row_stride, x + 1 * column_stride, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c5, y + 1 * row_stride, x + 1 * column_stride, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c6, y + 2 * row_stride, x + 1 * column_stride, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c7, y + 3 * row_stride, x + 1 * column_stride, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c8, y + 0 * row_stride, x + 2 * column_stride, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c9, y + 1 * row_stride, x + 2 * column_stride, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c10, y + 2 * row_stride, x + 2 * column_stride, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c11, y + 3 * row_stride, x + 2 * column_stride, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c12, y + 0 * row_stride, x + 3 * column_stride, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c13, y + 1 * row_stride, x + 3 * column_stride, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c14, y + 2 * row_stride, x + 3 * column_stride, height, width, stride, cacheOpt); \
+      __builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_SG16_##store_shape##_i32_8_pi64_v8i8(mem, c15, y + 3 * row_stride, x + 3 * column_stride, height, width, stride, cacheOpt); \
   }
 
 #define DEFINE_STORE_LARGE_IMPL_(layout, sg, elem_type, elem_bitwidth, contrib_type, shape, WI_rows, num_stores, row_stride, column_stride, store_shape) \
