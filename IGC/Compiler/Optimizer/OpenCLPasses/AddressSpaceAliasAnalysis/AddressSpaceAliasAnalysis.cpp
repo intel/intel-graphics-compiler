@@ -213,11 +213,10 @@ ImmutablePass* IGC::createAddressSpaceAAWrapperPass() {
     return new AddressSpaceAAWrapperPass();
 }
 
-void IGC::addAddressSpaceAAResult(Pass& P, Function&, AAResults& AAR) {
+void IGC::addJointAddressSpaceAAResults(Pass& P, Function& F, AAResults& AAR) {
     if (auto * WrapperPass = P.getAnalysisIfAvailable<AddressSpaceAAWrapperPass>())
         AAR.addAAResult(WrapperPass->getResult());
-    if (auto * WrapperPass = P.getAnalysisIfAvailable<RayTracingAddressSpaceAAWrapperPass>())
-        AAR.addAAResult(WrapperPass->getResult());
+    addRayTracingAddressSpaceAAResult(P, F, AAR);
 }
 
 // Wrapper around LLVM's ExternalAAWrapperPass so that the default constructor
@@ -226,8 +225,12 @@ class IGCExternalAAWrapper : public ExternalAAWrapperPass {
 public:
   static char ID;
 
-  IGCExternalAAWrapper() : ExternalAAWrapperPass(&addAddressSpaceAAResult) {}
+  IGCExternalAAWrapper() : ExternalAAWrapperPass(&addJointAddressSpaceAAResults) {}
 };
+
+ImmutablePass* IGC::createIGCExternalAAWrapper() {
+    return new IGCExternalAAWrapper();
+}
 
 char IGCExternalAAWrapper::ID = 0;
 

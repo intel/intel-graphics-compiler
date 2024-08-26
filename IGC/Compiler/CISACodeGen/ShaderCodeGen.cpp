@@ -475,7 +475,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
             mpm.add(createRayTracingAddressSpaceAAWrapperPass());
     }
 
-    mpm.add(createExternalAAWrapperPass(&addAddressSpaceAAResult));
+    mpm.add(createIGCExternalAAWrapper());
     mpm.add(createScopedNoAliasAAWrapperPass());
 
     TODO("remove the following once all IGC passes are registered to PassRegistery in their constructor")
@@ -1386,7 +1386,7 @@ void OptimizeIR(CodeGenContext* const pContext)
                 mpm.add(createRayTracingAddressSpaceAAWrapperPass());
         }
 
-        mpm.add(createExternalAAWrapperPass(&addAddressSpaceAAResult));
+        mpm.add(createIGCExternalAAWrapper());
         mpm.add(createScopedNoAliasAAWrapperPass());
 
         if (pContext->m_instrTypes.hasLoadStore)
