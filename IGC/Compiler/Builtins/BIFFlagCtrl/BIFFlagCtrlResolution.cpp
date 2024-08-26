@@ -95,8 +95,13 @@ void BIFFlagCtrlResolution::FillFlagCtrl() {
                     IGC_GET_FLAG_VALUE(cl_khr_srgb_image_writes));
   BIF_FLAG_CTRL_SET(MaxHWThreadIDPerSubDevice,
                     PtrCGC->platform.GetGTSystemInfo().ThreadCount);
-  BIF_FLAG_CTRL_SET(JointMatrixLoadStoreOpt,
-                    IGC_GET_FLAG_VALUE(JointMatrixLoadStoreOpt));
+
+  // Set JointMatrixLoadStoreOpt to 2 for systems without 2D block load/store support (default is 3).
+  if(!PtrCGC->platform.hasExecSize16DPAS() && IGC_GET_FLAG_VALUE(JointMatrixLoadStoreOpt) == 3) {
+    BIF_FLAG_CTRL_SET(JointMatrixLoadStoreOpt, 2);
+  } else {
+    BIF_FLAG_CTRL_SET(JointMatrixLoadStoreOpt, IGC_GET_FLAG_VALUE(JointMatrixLoadStoreOpt));
+  }
 
 }
 
