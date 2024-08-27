@@ -5404,18 +5404,57 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
     else
     {
         // Emits below instructions when simdChannel isn't immediate.
-        //shl (16) r8.0<1>:ud r6.0<0;1,0>:d 0x2:uw {Align1, H1, NoMask}
-        //add (16) a0.0<1>:uw r8.0<16;8,2>:uw 0x80:uw {Align1, H1, NoMask}
-        //mov (16) r10.0<1>:d r[a0.0, 0]<1,0>:d {Align1, H1}
-        // For SIMD32:
-        //    shl(M1, 32) V465(0, 0)<1> V464(0, 0)<16; 8, 2> 0x2:uw                           /// $592
-        //    mov(M1, 32) V466(0, 0)<1> V70(0, 0)<1; 1, 0>                                    /// $593
-        //    addr_add(M1, 16) A0(0)<1> &V466 + 0 V465(0, 0)<1; 1, 0>                          /// $594
-        //    mov(M1, 16) V463(0, 0)<1> r[A0(0), 0]<1, 0> : f                                  /// $595
-        //    addr_add(M5, 16) A0(0)<1> &V466 + 0 V465(0, 16)<1; 1, 0>                         /// $596
-        //    mov(M5, 16) V463(1, 0)<1> r[A0(0), 0]<1, 0> : f                                  /// $597
+        //
+        // 1) GenISA_WaveShuffleIndex:
+        //
+        //    a) SIMD16
+        //      shl (M1, 16) ShuffleTmp(0,0)<1> {{.+}}(0,0)<16;8,2> 0x2:uw
+        //      addr_add (M1, 16) A0(0)<1> &{{V[0-9]+}} ShuffleTmp(0,0)<1;1,0>
+        //      mov (M1, 16) simdShuffle(0,0)<1> r[A0(0),0]<1,0>:d
+        //
+        //    b) SIMD32 (two SIMD16 ADDR_ADD instructions must be generated,
+        //               because address register has only 16 elements):
+        //      shl(M1, 32) V465(0,0)<1> V464(0,0)<16;8,2> 0x2:uw
+        //      mov(M1, 32) V466(0,0)<1> V70(0,0)<1;1,0>
+        //      addr_add(M1, 16) A0(0)<1> &V466 + 0 V465(0, 0)<1;1,0>
+        //      mov(M1, 16) V463(0,0)<1> r[A0(0),0]<1, 0>:f
+        //      addr_add(M5, 16) A0(0)<1> &V466 + 0 V465(0,16)<1;1,0>
+        //      mov(M5, 16) V463(1,0)<1> r[A0(0),0]<1,0>:f
+        //
+        // 2) GenISA_WaveBroadcast:
+        //
+        //   shl (M1_NM, 1) ShuffleTmp(0,0)<1> {{.+}}(0,0)<0;1,0> 0x2:uw
+        //   addr_add(M1_NM, 1) A0(0) <1> &{{V[0 - 9]+}} ShuffleTmp(0, 0) < 0;1,0 >
+        //   a) SIMD16:
+        //      mov(M1, 16) simdBroadcast(0,0) <1> r[A0(0),0] <0;1,0>:d
+        //   b) SIMD32 (no need for two SIMD16 instructions, because offset in A0 is uniform):
+        //      mov(M1, 32) simdBroadcast(0,0) <1> r[A0(0),0] <0;1,0>:d
 
         bool channelUniform = simdChannel->IsUniform();
+
+        auto* GII = dyn_cast<GenIntrinsicInst>(inst);
+        if (GII && GII->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveBroadcast &&
+            !channelUniform)
+        {
+            // OpGroupBroadcast guarantees that all channels must be enabled and the
+            // simdChannel value must be the same for all of them. Therefore, even though
+            // it was not possible to deduce, during compilation time, that simdChannel is
+            // uniform, let's force it to be uniform by taking it always from the first channel.
+            CVariable* valueFromFirstChannel = m_currShader->GetNewVariable(
+                numLanes(SIMDMode::SIMD1),
+                simdChannel->GetType(),
+                simdChannel->GetAlign(), true, CName::NONE);
+
+            m_encoder->SetSimdSize(SIMDMode::SIMD1);
+            m_encoder->SetNoMask();
+            m_encoder->SetSrcRegion(0, 0, 1, 0);
+
+            m_encoder->Copy(valueFromFirstChannel, simdChannel);
+            m_encoder->Push();
+
+            simdChannel = valueFromFirstChannel;
+            channelUniform = true;
+        }
 
         IGC_ASSERT_MESSAGE(m_encoder->GetCISADataTypeSize(simdChannel->GetType()) == 4,
             "simdChannel size of simdShuffle should be 4 bytes!");
@@ -5450,7 +5489,6 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
         CVariable* src = data;
         if (m_currShader->m_numberInstance == 1 && m_currShader->m_SIMDSize == SIMDMode::SIMD32)
         {
-
             uint16_t addrSize = channelUniform ? 1 : numLanes(SIMDMode::SIMD16);
 
             // VectorUniform for shuffle is true as all simd lanes will
@@ -5462,34 +5500,43 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
                 true,
                 m_destination->getName());
 
-            m_encoder->SetSimdSize(SIMDMode::SIMD16);
-
-            m_encoder->AddrAdd(pDstArrElm, src, pSrcElm);
-            m_encoder->Push();
-
-            m_encoder->SetSimdSize(SIMDMode::SIMD16);
-
-            m_encoder->Copy(m_destination, pDstArrElm);
-            m_encoder->Push();
-
-            // If destination is uniform, don't execute second half.
-            if (!channelUniform && !m_destination->IsUniform())
+            if (GII && GII->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveBroadcast)
             {
-
+                m_encoder->AddrAdd(pDstArrElm, src, pSrcElm);
+                m_encoder->Push();
+                m_encoder->Copy(m_destination, pDstArrElm);
+                m_encoder->Push();
+            }
+            else if(GII && GII->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveShuffleIndex)
+            {
                 m_encoder->SetSimdSize(SIMDMode::SIMD16);
-                m_encoder->SetMask(EMASK_H2);
-                m_encoder->SetSrcSubReg(0, 16);
-                m_encoder->SetSrcSubReg(1, 16);
+
                 m_encoder->AddrAdd(pDstArrElm, src, pSrcElm);
                 m_encoder->Push();
 
                 m_encoder->SetSimdSize(SIMDMode::SIMD16);
 
-                m_encoder->SetMask(EMASK_H2);
-                m_encoder->SetDstSubReg(16);
                 m_encoder->Copy(m_destination, pDstArrElm);
                 m_encoder->Push();
-                m_encoder->SetSecondHalf(false);
+
+                if (!channelUniform)
+                {
+
+                    m_encoder->SetSimdSize(SIMDMode::SIMD16);
+                    m_encoder->SetMask(EMASK_H2);
+                    m_encoder->SetSrcSubReg(0, 16);
+                    m_encoder->SetSrcSubReg(1, 16);
+                    m_encoder->AddrAdd(pDstArrElm, src, pSrcElm);
+                    m_encoder->Push();
+
+                    m_encoder->SetSimdSize(SIMDMode::SIMD16);
+
+                    m_encoder->SetMask(EMASK_H2);
+                    m_encoder->SetDstSubReg(16);
+                    m_encoder->Copy(m_destination, pDstArrElm);
+                    m_encoder->Push();
+                    m_encoder->SetSecondHalf(false);
+                }
             }
             if (disableHelperLanes)
             {
