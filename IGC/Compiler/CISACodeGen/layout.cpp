@@ -571,7 +571,7 @@ void Layout::LayoutBlocks(Function& func, LoopInfo& LI)
 
     // if function has a single exit, then the last block must be an exit
     // comment this out due to infinite loop example in OCL
-    // IGC_ASSERT(PDT.getRootNode()->getBlock() == 0x0 || PDT.getRootNode()->getBlock() == &(func.getBasicBlockList().back()));
+    // IGC_ASSERT(PDT.getRootNode()->getBlock() == 0x0 || PDT.getRootNode()->getBlock() == &(func.back()));
     // fix the loop-exit pattern, put break-blocks into the loop
     for (llvm::Function::iterator blkIter = func.begin(), blkEnd = func.end();
         blkIter != blkEnd; ++blkIter)
