@@ -23805,6 +23805,7 @@ void EmitPass::emitTraceRay(TraceRayIntrinsic* I, bool RayQueryEnable)
         (m_currShader->m_SIMDSize == SIMDMode::SIMD32
             ) ? 2 : 1;
 
+
     for (uint32_t Cnt = 0; Cnt < NumSend; Cnt++)
     {
         // 'payload' contains bvhLevel, traceRayCtrl, and stackID as per
@@ -23944,6 +23945,7 @@ void EmitPass::emitTraceRay(TraceRayIntrinsic* I, bool RayQueryEnable)
             }
         }
 
+
         m_encoder->Sends(
             Dst,
             header,
@@ -23954,6 +23956,7 @@ void EmitPass::emitTraceRay(TraceRayIntrinsic* I, bool RayQueryEnable)
             false);
 
         m_encoder->Push();
+
     }
 
     // Insert a software fence after the send.rta so no IO operations get

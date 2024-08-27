@@ -2273,7 +2273,7 @@ namespace IGC
         unsigned char sendc = isSendc ? 1 : 0;
         unsigned char src0Size = src0->GetSize() / getGRFSize();
         unsigned char src1Size = src1 ? src1->GetSize() / getGRFSize() : 0;
-        unsigned char dstSize = dst ? dst->GetSize() / getGRFSize() : 0;
+        unsigned char dstSize = dst ? (dst->GetSize() + getGRFSize() - 1) / getGRFSize() : 0;
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
         VISA_RawOpnd* srcOpnd0 = GetRawSource(src0);
         VISA_RawOpnd* srcOpnd1 = GetRawSource(src1);
