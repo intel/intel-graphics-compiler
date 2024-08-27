@@ -5039,6 +5039,11 @@ namespace IGC
             SaveOption(vISA_SWSBMakeLocalWAR, true);
         }
 
+        if (IGC_IS_FLAG_ENABLED(PVCSendWARWA))
+        {
+            SaveOption(vISA_PVCSendWARWA, true);
+        }
+
         if (IGC_IS_FLAG_ENABLED(SWSBReplaceARWithAW))
         {
             SaveOption(vISA_SWSBReplaceARWithAW, true);

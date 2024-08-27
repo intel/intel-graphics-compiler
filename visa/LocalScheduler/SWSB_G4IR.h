@@ -67,7 +67,8 @@ typedef enum _DPAS_DEP { REP_1 = 1, REP_2 = 2, REP_4 = 4, REP_8 = 8 } DPAS_DEP;
 
 constexpr int INVALID_ID = -1;
 
-#define UNKNOWN_TOKEN -1
+#define UNKNOWN_TOKEN (unsigned short)-1
+#define INVALID_GRF (unsigned short)-1
 #define UNINIT_BUCKET -1
 
 namespace vISA {
@@ -604,6 +605,7 @@ typedef struct _SWSB_INDEXES {
   int longIndex = 0;
   int DPASIndex = 0;
   int mathIndex = 0;
+  bool hasDPASorDP = false;
   unsigned latestDepALUID[PIPE_DPAS] = {0};
   std::vector<unsigned> latestInstID[PIPE_DPAS];
 } SWSB_INDEXES;
@@ -902,6 +904,8 @@ public:
   }
 };
 
+using FIFOQueueType = std::pair<unsigned short, unsigned short>;
+
 class SWSB {
   G4_Kernel &kernel;
   FlowGraph &fg;
@@ -1052,6 +1056,17 @@ class SWSB {
                   INST_LIST_ITER inst_it, int newInstID, BitSet *dstTokens,
                   BitSet *srcTokens);
   void insertTokenSync();
+
+  void getLastTwoGRFsOfSend(FIFOQueueType &GRFs, FIFOQueueType &token,
+                            G4_INST *inst);
+  void insertDummyImmMov(G4_BB *bb, unsigned token, INST_LIST_ITER inst_iter);
+  void insertDummyGRFMov(G4_BB *bb, unsigned short grf, INST_LIST_ITER inst_iter);
+  void insertSyncInt1(G4_BB *bb, INST_LIST_ITER inst_iter);
+  bool insertDummyMovs(G4_BB *bb, INST_LIST_ITER inst_it, unsigned short token,
+                       std::vector<FIFOQueueType> &lastTwoGRFsOfToken,
+                       std::vector<FIFOQueueType> &nonLSCLastTwoGRFsOfToken);
+
+  void insertPVCWA();
 
   // Insert sync instructions
   G4_INST *insertSyncInstruction(G4_BB *bb, INST_LIST_ITER nextIter);

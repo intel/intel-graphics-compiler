@@ -835,6 +835,18 @@ bool WARLocalization() const {
   if (getOption(vISA_SWSBMakeLocalWAR) && (getPlatform() >= Xe2)) {
     return true;
   }
+
+  return false;
+}
+
+bool hasPVCSendWARWA() const {
+  return getPlatform() == Xe_PVC;
+}
+
+bool PVCSendWARWA() const {
+  if (getOption(vISA_PVCSendWARWA) && getPlatform() == Xe_PVC) {
+    return true;
+  }
   return false;
 }
 

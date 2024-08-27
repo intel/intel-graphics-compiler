@@ -74,6 +74,7 @@ DECLARE_IGC_REGKEY(bool, EnableForceDebugSWSB,          false, "Enable force deb
 DECLARE_IGC_REGKEY(DWORD,EnableSWSBInstStall,           0,     "Enable force stall to specific(start) instruction start for software scoreboard generation", true)
 DECLARE_IGC_REGKEY(DWORD,EnableSWSBInstStallEnd,        0,     "Enable force stall to end instruction for software scoreboard generation", true)
 DECLARE_IGC_REGKEY(bool, SWSBMakeLocalWAR,              false, "make WAR SBID dependence tracking BB local",  true)
+DECLARE_IGC_REGKEY(bool, PVCSendWARWA,                  false, "enable PVC send WAR WA",  true)
 DECLARE_IGC_REGKEY(DWORD,WARSWSBLocalStart,             0,     "WAR localization start BB", true)
 DECLARE_IGC_REGKEY(DWORD,WARSWSBLocalEnd,               0,     "WAR localization end BB", true)
 DECLARE_IGC_REGKEY(bool, SWSBReplaceARWithAW,           false, "replace .src with .dst",  true)

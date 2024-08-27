@@ -1965,6 +1965,13 @@ void SWSB::SWSBGenerator() {
     insertTokenSync();
   }
 
+  // FIXME: replace hasPVCSendWARWA with WA ID
+  if (fg.builder->PVCSendWARWA() ||
+      (fg.builder->hasPVCSendWARWA() &&
+       indexes.hasDPASorDP)) {
+    insertPVCWA();
+  }
+
   if (fg.builder->getFCPatchInfo()->getFCComposableKernel()) {
     genSWSBPatchInfo();
   }
@@ -2505,8 +2512,7 @@ void SWSB::updateTokensForNodeSuccs(SBNode *node, unsigned short token) {
       if ((fg.builder->getOptions()->getOption(vISA_EnableISBIDBUNDLE) ||
            distance < totalTokenNum)) {
         if ((curItem.type == RAW || curItem.type == WAW) &&
-            curNode->getLastInstruction()->getSBIDSetToken() ==
-                (unsigned short)UNKNOWN_TOKEN) {
+            curNode->getLastInstruction()->getSBIDSetToken() == UNKNOWN_TOKEN) {
           if (fg.builder->getOptions()->getOption(
                   vISA_EnableDPASTokenReduction)) {
             //  If no instruction depends on DPAS, no SBID
@@ -2534,9 +2540,9 @@ void SWSB::updateTokensForNodeSuccs(SBNode *node, unsigned short token) {
 void SWSB::assignToken(SBNode *node, unsigned short assignedToken,
                        uint32_t &AWtokenReuseCount, uint32_t &ARtokenReuseCount,
                        uint32_t &AAtokenReuseCount) {
-  unsigned short token = (unsigned short)UNKNOWN_TOKEN;
+  unsigned short token = UNKNOWN_TOKEN;
 
-  if (assignedToken == (unsigned short)UNKNOWN_TOKEN) {
+  if (assignedToken == UNKNOWN_TOKEN) {
     // Get token
     if (topIndex != INVALID_ID) {
       // Have free token
@@ -2881,8 +2887,7 @@ void SWSB::quickTokenAllocation() {
   // Linear scan
   for (SBNode *node : SBSendNodes) {
 
-    vASSERT(node->getLastInstruction()->getSBIDSetToken() ==
-           (unsigned short)UNKNOWN_TOKEN);
+    vASSERT(node->getLastInstruction()->getSBIDSetToken() == UNKNOWN_TOKEN);
     node->getLastInstruction()->setSBIDSetToken(token);
     if (token >= totalTokenNum - 1) {
       token = 0;
@@ -3014,7 +3019,7 @@ unsigned short SWSB::reuseTokenSelectionGlobal(SBNode *node, G4_BB *bb,
                                                bool &fromSibling) {
   SBBitSets temp_live_in;
   temp_live_in = BBVector[bb->getId()]->send_live_in;
-  unsigned short reuseToken = (unsigned short)UNKNOWN_TOKEN;
+  unsigned short reuseToken = UNKNOWN_TOKEN;
   unsigned nodeReuseOverhead = -1;
 
   kernel.fg.builder->getJitInfo()->statsVerbose.tokenReuseCount++;
@@ -3022,7 +3027,7 @@ unsigned short SWSB::reuseTokenSelectionGlobal(SBNode *node, G4_BB *bb,
     unsigned nodeDist = -1;
     unsigned tokenReuseOverhead = 0;
     SBNode *candidateTokenNode = nullptr;
-    unsigned short curToken = (unsigned short)UNKNOWN_TOKEN;
+    unsigned short curToken = UNKNOWN_TOKEN;
     bool fromUse = false;
 
     for (SBNode *liveNode : reachTokenArray[i]) {
@@ -3129,8 +3134,7 @@ void SWSB::assignTokenToPred(SBNode *node, SBNode *pred, G4_BB *bb) {
   unsigned predDist = -1;
   SBNode *candidateNode = nullptr;
 
-  vASSERT(pred->getLastInstruction()->getSBIDSetToken() !=
-         (unsigned short)UNKNOWN_TOKEN);
+  vASSERT(pred->getLastInstruction()->getSBIDSetToken() != UNKNOWN_TOKEN);
 
   for (auto node_it = node->preds.begin(); node_it != node->preds.end();
        node_it++) {
@@ -3144,8 +3148,7 @@ void SWSB::assignTokenToPred(SBNode *node, SBNode *pred, G4_BB *bb) {
     }
 
     if (tokenHonourInstruction(otherPred->getLastInstruction()) &&
-        (otherPred->getLastInstruction()->getSBIDSetToken() ==
-         (unsigned short)UNKNOWN_TOKEN) &&
+        (otherPred->getLastInstruction()->getSBIDSetToken() == UNKNOWN_TOKEN) &&
         (type == RAW || type == WAW ||
          otherPred->getLastInstruction()->getDst() == nullptr)) {
       if ((!otherPred->reachingSends.isDstSet(pred->sendID)) &&
@@ -3190,8 +3193,7 @@ bool SWSB::assignTokenWithPred(SBNode *node, G4_BB *bb) {
     unsigned dist = 0;
 
     if (tokenHonourInstruction(pred->getLastInstruction()) &&
-        (pred->getLastInstruction()->getSBIDSetToken() !=
-         (unsigned short)UNKNOWN_TOKEN) &&
+        (pred->getLastInstruction()->getSBIDSetToken() != UNKNOWN_TOKEN) &&
         ((type == RAW) || (type == WAW) ||
          (pred->getLastInstruction()->getDst() == nullptr))) {
       if ((pred->globalID != -1) &&
@@ -3255,8 +3257,7 @@ void SWSB::allocateToken(G4_BB *bb) {
        i <= BBVector[bb->getId()]->last_send_node; i++) {
     SBNode *node = SBSendNodes[i];
 
-    if (node->getLastInstruction()->getSBIDSetToken() !=
-        (unsigned short)UNKNOWN_TOKEN) {
+    if (node->getLastInstruction()->getSBIDSetToken() != UNKNOWN_TOKEN) {
       continue;
     }
 
@@ -3277,7 +3278,7 @@ void SWSB::allocateToken(G4_BB *bb) {
     for (size_t k = 0; k < SBSendNodes.size(); k++) {
       SBNode *liveNode = SBSendNodes[k];
       if ((liveNode->getLastInstruction()->getSBIDSetToken() !=
-           (unsigned short)UNKNOWN_TOKEN) &&
+           UNKNOWN_TOKEN) &&
           (send_live.isDstSet(k) ||
            (send_live.isSrcSet(k) &&
             isPrefetch(liveNode->getLastInstruction())))) {
@@ -3297,7 +3298,7 @@ void SWSB::allocateToken(G4_BB *bb) {
             SBDEP_ITEM &curPred = liveNode->preds[m];
             SBNode *pred = curPred.node;
             if (pred->getLastInstruction()->getSBIDSetToken() !=
-                (unsigned short)UNKNOWN_TOKEN) {
+                UNKNOWN_TOKEN) {
               reachUseArray[pred->getLastInstruction()->getSBIDSetToken()]
                   .push_back(liveNode);
             }
@@ -3323,7 +3324,7 @@ void SWSB::allocateToken(G4_BB *bb) {
             SBNode *exclusiveNode = curSucc.exclusiveNodes[j];
             unsigned short exToken =
                 exclusiveNode->getLastInstruction()->getSBIDSetToken();
-            if (exToken != (unsigned short)UNKNOWN_TOKEN) {
+            if (exToken != UNKNOWN_TOKEN) {
               if (reachTokenArray[exToken].empty() &&
                   reachUseArray[exToken].empty()) {
                 node->getLastInstruction()->setSBIDSetToken(exToken);
@@ -3694,7 +3695,7 @@ bool SWSB::insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst,
     token = node->getDepToken(i, type);
     unsigned depNodeID = node->getDepTokenNodeID(i);
     unsigned short bitToken = (unsigned short)(1 << token);
-    vASSERT(token != (unsigned short)UNKNOWN_TOKEN);
+    vASSERT(token != UNKNOWN_TOKEN);
 
     switch (type) {
     case SWSBTokenType::AFTER_WRITE:
@@ -3731,7 +3732,7 @@ bool SWSB::insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst,
           inst->setToken(token);
           inst->setTokenType(type);
           inst->setTokenLoc(token, depNodeID);
-          token = (unsigned short)UNKNOWN_TOKEN;
+          token = UNKNOWN_TOKEN;
           i++;
           continue;
         }
@@ -3760,7 +3761,7 @@ bool SWSB::insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst,
       }
     } break;
     case SWSBTokenType::READ_ALL: {
-      vASSERT(token == (unsigned short)UNKNOWN_TOKEN);
+      vASSERT(token == UNKNOWN_TOKEN);
       node->eraseDepToken(i);
       synAllInst = insertSyncAllRDInstruction(bb, 0, inst_it);
       synAllInst->setLexicalId(newInstID);
@@ -3768,7 +3769,7 @@ bool SWSB::insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst,
       continue;
     } break;
     case SWSBTokenType::WRITE_ALL: {
-      vASSERT(token == (unsigned short)UNKNOWN_TOKEN);
+      vASSERT(token == UNKNOWN_TOKEN);
       node->eraseDepToken(i);
       synAllInst = insertSyncAllWRInstruction(bb, 0, inst_it);
       synAllInst->setLexicalId(newInstID);
@@ -3986,7 +3987,7 @@ bool SWSB::insertSyncTokenPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
     token = node->getDepToken(i, type);
     unsigned depNodeID = node->getDepTokenNodeID(i);
     unsigned int bitToken = (unsigned int)(1 << token);
-    vASSERT(token != (unsigned short)UNKNOWN_TOKEN);
+    vASSERT(token != UNKNOWN_TOKEN);
 
     switch (type) {
     case SWSBTokenType::AFTER_WRITE: {
@@ -4013,7 +4014,7 @@ bool SWSB::insertSyncTokenPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
           inst->setToken(token);
           inst->setTokenType(SWSBTokenType::AFTER_WRITE);
           inst->setTokenLoc(token, depNodeID);
-          token = (unsigned short)UNKNOWN_TOKEN;
+          token = UNKNOWN_TOKEN;
           i++;
           continue;
         }
@@ -4042,7 +4043,7 @@ bool SWSB::insertSyncTokenPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
     token = node->getDepToken(i, type);
     unsigned depNodeID = node->getDepTokenNodeID(i);
     unsigned int bitToken = (unsigned int)(1 << token);
-    vASSERT(token != (unsigned short)UNKNOWN_TOKEN);
+    vASSERT(token != UNKNOWN_TOKEN);
 
     switch (type) {
     case SWSBTokenType::AFTER_READ: {
@@ -4057,7 +4058,7 @@ bool SWSB::insertSyncTokenPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
           inst->setToken(token);
           inst->setTokenType(SWSBTokenType::AFTER_READ);
           inst->setTokenLoc(token, depNodeID);
-          token = (unsigned short)UNKNOWN_TOKEN;
+          token = UNKNOWN_TOKEN;
           i++;
           continue;
         }
@@ -4182,7 +4183,7 @@ bool SWSB::insertSyncPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
           inst->isMathPipeInst()) // math Will be filtered out by
                                   // tokenHonourInstruction in PVC
       {
-        if (inst->getSBIDSetToken() != (unsigned short)UNKNOWN_TOKEN ||
+        if (inst->getSBIDSetToken() != UNKNOWN_TOKEN ||
             node->getDepTokenNum()) {
           if (!operandTypeIndicated) {
             G4_INST *synInst = insertSyncInstruction(bb, inst_it);
@@ -4205,8 +4206,7 @@ bool SWSB::insertSyncPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
       //     RegDistInt     SBID.set
       if (inst->isSend()) {
         if (inst->getSBIDSetToken() !=
-            (unsigned short)
-                UNKNOWN_TOKEN) { // SBID.set > SBID.dst > SBID.src > distance
+            UNKNOWN_TOKEN) { // SBID.set > SBID.dst > SBID.src > distance
           if (!(distType == G4_INST::DistanceType::DISTALL ||
                 distType == G4_INST::DistanceType::DISTINT ||
                 distType == G4_INST::DistanceType::DISTFLOAT) ||
@@ -4284,8 +4284,7 @@ bool SWSB::insertSyncPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
     }
   }
 
-  bool removeAllTokenDep =
-      (inst->getSBIDSetToken() != (unsigned short)UNKNOWN_TOKEN);
+  bool removeAllTokenDep = (inst->getSBIDSetToken() != UNKNOWN_TOKEN);
   removeAllTokenDep =
       removeAllTokenDep || (inst->opcode() == G4_mad && inst->hasNoACCSBSet());
   // For out-of-order instruction, all dependence token will be moved out to
@@ -4449,7 +4448,7 @@ void SWSB::insertTokenSync() {
               synInst->setLexicalId(newInstID);
             } else {
               fusedSync = true;
-              if (inst->getSBIDSetToken() != (unsigned short)UNKNOWN_TOKEN) {
+              if (inst->getSBIDSetToken() != UNKNOWN_TOKEN) {
                 dstTokens.set(inst->getSBIDSetToken(), false);
                 srcTokens.set(inst->getSBIDSetToken(), false);
               }
@@ -4504,14 +4503,14 @@ void SWSB::insertTokenSync() {
         node_it++;
         inst = *inst_it;
         node = *node_it;
-        if (inst->getSBIDSetToken() != (unsigned short)UNKNOWN_TOKEN) {
+        if (inst->getSBIDSetToken() != UNKNOWN_TOKEN) {
           dstTokens.set(inst->getSBIDSetToken(), false);
           srcTokens.set(inst->getSBIDSetToken(), false);
         }
         // tmp_it keeps the position to insert new generated instructions.
         insertSync(bb, node, inst, tmp_it, newInstID, &dstTokens, &srcTokens);
         unsigned short token = inst->getSBIDSetToken();
-        if (token != (unsigned short)UNKNOWN_TOKEN) {
+        if (token != UNKNOWN_TOKEN) {
           G4_INST *synInst = insertSyncInstruction(bb, tmp_it);
           synInst->setToken(token);
           synInst->setTokenType(SWSBTokenType::AFTER_WRITE);
@@ -4521,7 +4520,7 @@ void SWSB::insertTokenSync() {
         insertSync(bb, node, inst, inst_it, newInstID, &dstTokens, &srcTokens);
       }
 
-      if (inst->getSBIDSetToken() != (unsigned short)UNKNOWN_TOKEN) {
+      if (inst->getSBIDSetToken() != UNKNOWN_TOKEN) {
         dstTokens.set(inst->getSBIDSetToken(), false);
         srcTokens.set(inst->getSBIDSetToken(), false);
       }
@@ -4534,7 +4533,7 @@ void SWSB::insertTokenSync() {
       }
 
       if (tokenHonourInstruction(inst) &&
-          inst->getSBIDSetToken() != (unsigned short)UNKNOWN_TOKEN) {
+          inst->getSBIDSetToken() != UNKNOWN_TOKEN) {
         dstTokens.set(inst->getSBIDSetToken(), false);
         srcTokens.set(inst->getSBIDSetToken(), false);
       }
@@ -4585,6 +4584,345 @@ void SWSB::insertTokenSync() {
   tokenProfile.setARSyncInstCount(ARSyncInstCount);
   tokenProfile.setAWSyncAllCount(AWSyncAllCount);
   tokenProfile.setARSyncAllCount(ARSyncAllCount);
+}
+
+// The GRF read of send is in-order, from src0 to src1, and from first to last
+// in each src payload.
+void SWSB::getLastTwoGRFsOfSend(FIFOQueueType &GRFs, FIFOQueueType &tokens,
+                                G4_INST *inst) {
+  unsigned short token = inst->getToken();
+
+  // Only src0, src1 have GRF access
+  for (unsigned i = 0; i < 2; i++) {
+    G4_Operand *srcOpnd = inst->getSrc(i);
+    int startingGRF = UNINIT_BUCKET;
+    int endingGRF = UNINIT_BUCKET;
+
+    if (srcOpnd && srcOpnd->isGreg()) {
+      unsigned short LB = (unsigned short)srcOpnd->getLinearizedStart();
+      unsigned short RB = (unsigned short)srcOpnd->getLinearizedEnd();
+      // For the operands of the send instructions,
+      // we are using the message length to avoid the in-consistence
+      // with the HW requirement.
+      //
+      if (i == 0) {
+        RB = LB +
+             fg.builder->numEltPerGRF<Type_UB>() *
+                 inst->getMsgDesc()->getSrc0LenRegs() -
+             1;
+      }
+
+      if (inst->isSplitSend() && i == 1) {
+        RB = LB +
+             fg.builder->numEltPerGRF<Type_UB>() *
+                 inst->getMsgDesc()->getSrc1LenRegs() -
+             1;
+      }
+      startingGRF = LB / fg.builder->numEltPerGRF<Type_UB>();
+      endingGRF = RB / fg.builder->numEltPerGRF<Type_UB>();
+    }
+
+    if (startingGRF != UNINIT_BUCKET) {
+      if (startingGRF != endingGRF) {// two GRFs
+        tokens.first = tokens.second = token;
+        GRFs.first = endingGRF - 1;
+        GRFs.second = endingGRF;
+      } else if (GRFs.first == INVALID_GRF) { // one GRF, empty queue
+        GRFs.first = endingGRF;
+        tokens.first = token;
+      } else { // GRFs[0] always has value if queue is not empty()
+        if (GRFs.second != INVALID_GRF) { // queue is full
+          tokens.first = tokens.second;
+          GRFs.first = GRFs.second;
+        }
+        GRFs.second = endingGRF; // single item or queue is full
+        tokens.second = token;
+      }
+    }
+  } // no GRF read
+}
+
+// (W) mov(1 | M0) null<1> : ud 0x1 : ud { token.src }
+void SWSB::insertDummyImmMov(G4_BB *bb, unsigned token,
+                             INST_LIST_ITER inst_iter) {
+
+  auto immSrc = fg.builder->createImm(0x30433, Type_UD);
+  G4_INST *dummyMov =
+      fg.builder->createMov(g4::SIMD1, fg.builder->createNullDst(Type_UD),
+                            immSrc, InstOpt_WriteEnable, false);
+  dummyMov->setToken(token);
+  dummyMov->setTokenType(SWSBTokenType::AFTER_READ);
+  bb->insertBefore(inst_iter, dummyMov);
+}
+
+// sync.nop  null  {I@1}
+void SWSB::insertSyncInt1(G4_BB *bb, INST_LIST_ITER inst_iter) {
+
+  G4_SrcRegRegion *src0 = fg.builder->createNullSrc(Type_UD);
+  G4_INST *syncInst = fg.builder->createSync(G4_sync_nop, src0);
+  syncInst->setDistance(1);
+  syncInst->setDistanceTypeXe(G4_INST::DistanceType::DISTINT);
+
+  bb->insertBefore(inst_iter, syncInst);
+}
+
+// (W)  mov (1|M0)    null<1>:ud    grf.0<0;1,0>:ud
+ void SWSB::insertDummyGRFMov(G4_BB *bb, unsigned short grf,
+                           INST_LIST_ITER inst_iter) {
+
+  G4_Declare *tempDcl =
+      fg.builder->createHardwiredDeclare(1, Type_UD, grf, 0);
+  G4_SrcRegRegion *srcOpnd =
+      kernel.fg.builder->createSrcRegRegion(tempDcl, fg.builder->getRegionScalar());
+  G4_INST *dummyMov =
+      fg.builder->createMov(g4::SIMD1, fg.builder->createNullDst(Type_UD),
+                            srcOpnd, InstOpt_WriteEnable, false);
+  bb->insertBefore(inst_iter, dummyMov);
+}
+
+// Insert dummy mov instructions
+// (W) mov(1 | M0) null<1> : ud 0x1 : ud { token.src }
+// (W) mov (1|M0)    null<1>:ud    grf.0<0;1,0>:ud
+//  ...
+// sync.nop  null  {I@1}
+ bool SWSB::insertDummyMovs(
+    G4_BB *bb, INST_LIST_ITER inst_it, unsigned short token,
+    std::vector<FIFOQueueType> &LSCLastTwoGRFsOfToken,
+    std::vector<FIFOQueueType> &nonLSCLastTwoGRFsOfToken) {
+  bool WA = false;
+  FIFOQueueType lastTwoGRFsOfToken = {INVALID_GRF, INVALID_GRF};
+
+  // In WAR instruction: one token can appear in either LSC or NonLSC live
+  // tokens, but cannot be both
+  if (LSCLastTwoGRFsOfToken[token].first != INVALID_GRF) {
+    assert(nonLSCLastTwoGRFsOfToken[token].first == INVALID_GRF);
+    lastTwoGRFsOfToken = LSCLastTwoGRFsOfToken[token];
+  }
+
+  if (nonLSCLastTwoGRFsOfToken[token].first != INVALID_GRF) {
+    assert(LSCLastTwoGRFsOfToken[token].first == INVALID_GRF);
+    lastTwoGRFsOfToken = nonLSCLastTwoGRFsOfToken[token];
+  }
+
+  if (lastTwoGRFsOfToken.first != INVALID_GRF) {
+    insertDummyImmMov(bb, token, inst_it);
+    insertDummyGRFMov(bb, lastTwoGRFsOfToken.first, inst_it);
+    WA = true;
+  }
+
+  if (lastTwoGRFsOfToken.second != INVALID_GRF &&
+      lastTwoGRFsOfToken.second !=
+          lastTwoGRFsOfToken.first) { // Same register may be read multiple times
+    insertDummyGRFMov(bb, lastTwoGRFsOfToken.second, inst_it);
+    assert(WA == true);
+  }
+  return WA;
+}
+void SWSB::insertPVCWA() {
+  for (G4_BB *bb : fg) {
+    // When scanning current instruction, the last two GRFs read by sends
+    // There are two class sends, LSC and nonLSC. Each class has a fifo
+    // queue with size 2 GRFs, and it's possible the two GRFs are from different
+    // sends. As a result two tokens are set.
+    // In the queue, [0] is head, [1] is tail.
+    FIFOQueueType LSCLastTwoGRFs = {INVALID_GRF, INVALID_GRF};
+    FIFOQueueType nonLSCLastTwoGRFs = {INVALID_GRF, INVALID_GRF};
+    FIFOQueueType LSCLastTwoTokens = {UNKNOWN_TOKEN, UNKNOWN_TOKEN};
+    FIFOQueueType nonLSCLastTwoTokens = {UNKNOWN_TOKEN, UNKNOWN_TOKEN};
+
+    // There may be other sends between the token and the wait instructions. But
+    // when WAR happens, the token must be live, and not reused.
+    std::vector<FIFOQueueType> LSCLastTwoGRFsOfToken(totalTokenNum);
+    std::vector<FIFOQueueType> nonLSClastTwoGRFsOfToken(totalTokenNum);
+
+    auto cleanGRF = [&](unsigned short i) {
+      LSCLastTwoGRFsOfToken[i].first = LSCLastTwoGRFsOfToken[i].second =
+          INVALID_GRF;
+      nonLSClastTwoGRFsOfToken[i].first = nonLSClastTwoGRFsOfToken[i].second =
+          INVALID_GRF;
+    };
+
+    auto cleanGRFs = [&]() {
+      for (unsigned short i = 0; i < (unsigned short)totalTokenNum; i++) {
+        cleanGRF(i);
+      }
+    };
+
+    auto cleanLSCGRFs = [&](uint16_t &WATokens) {
+      for (uint32_t i = 0; i < totalTokenNum; i++) {
+        if (LSCLastTwoGRFsOfToken[i].first != INVALID_GRF) {
+          WATokens |= 1 << i;
+        }
+        LSCLastTwoGRFsOfToken[i].first = INVALID_GRF;
+        LSCLastTwoGRFsOfToken[i].second = INVALID_GRF;
+      }
+    };
+
+    auto cleanNonLSCGRFs = [&](uint16_t &WATokens) {
+      for (uint32_t i = 0; i < totalTokenNum; i++) {
+        if (nonLSClastTwoGRFsOfToken[i].first != INVALID_GRF) {
+          WATokens |= 1 << i;
+        }
+        nonLSClastTwoGRFsOfToken[i].first = INVALID_GRF;
+        nonLSClastTwoGRFsOfToken[i].second = INVALID_GRF;
+      }
+    };
+
+    auto assignLSCGRF = [&](unsigned short token) {
+      if (LSCLastTwoTokens.second == token) {
+        LSCLastTwoGRFsOfToken[token].first = LSCLastTwoGRFs.first;
+        LSCLastTwoGRFsOfToken[token].second = LSCLastTwoGRFs.second;
+      } else if (LSCLastTwoTokens.first == token) {
+        LSCLastTwoGRFsOfToken[token].first = LSCLastTwoGRFs.first;
+      } // else No GRF read in the send, do nothing
+    };
+
+    auto assignNonLSCGRF = [&](unsigned short token) {
+      if (nonLSCLastTwoTokens.second == token) {
+        nonLSClastTwoGRFsOfToken[token].first = nonLSCLastTwoGRFs.first;
+        nonLSClastTwoGRFsOfToken[token].second = nonLSCLastTwoGRFs.second;
+      } else if (nonLSCLastTwoTokens.first == token) {
+        nonLSClastTwoGRFsOfToken[token].first = nonLSCLastTwoGRFs.first;
+      } // else No GRF read in the send, do nothing
+    };
+
+    auto getLastToken = [&](FIFOQueueType &lastTwoTokens, unsigned tokens) {
+      if (lastTwoTokens.second != UNKNOWN_TOKEN) {
+        if (tokens & (1 << lastTwoTokens.second)) {
+          return lastTwoTokens.second;
+        }
+      } else if (lastTwoTokens.first != UNKNOWN_TOKEN) {
+        if (tokens & (1 << lastTwoTokens.first)) {
+          return lastTwoTokens.first;
+        }
+      }
+      return UNKNOWN_TOKEN;
+    };
+
+    cleanGRFs();
+
+    // Scan instructions in BB, one by one
+    std::list<G4_INST *>::iterator inst_it(bb->begin()), iInstNext(bb->begin());
+    while (iInstNext != bb->end()) {
+      inst_it = iInstNext;
+      iInstNext++;
+      G4_INST *inst = *inst_it;
+
+      if (inst->isLabel()) {
+        continue;
+      }
+
+      if (inst->isSend()) {
+        // .set will not exist together with .src or .dst. So we only need
+        // handle GRF read for send.
+        unsigned short token = (unsigned short)inst->getToken();
+
+        if (inst->getMsgDesc()->isLSC()) {
+          getLastTwoGRFsOfSend(LSCLastTwoGRFs, LSCLastTwoTokens, inst);
+          assignLSCGRF(token);
+        } else {
+          getLastTwoGRFsOfSend(nonLSCLastTwoGRFs, nonLSCLastTwoTokens, inst);
+          assignNonLSCGRF(token);
+        }
+        continue;
+      }
+
+      // for non-send .src may happen
+      // sync.allrd
+      if (inst->opcode() == G4_sync_allrd) {
+        uint16_t tokens = 0xFFFF;            // all set if src0 is NULL
+        if (inst->getSrc(0)->isImm()) {      // src0 is imm
+          tokens = (uint16_t)inst->getSrc(0)->asImm()->getImm();
+        } else {
+          assert(inst->getSrc(0)->isNullReg());
+        }
+        uint16_t WAtokens = 0; // Tokens resolved by WA
+        unsigned short LSCLastToken = getLastToken(LSCLastTwoTokens, tokens);
+        unsigned short nonLSCLastToken =
+            getLastToken(nonLSCLastTwoTokens, tokens);
+
+        // last token for LSC sends
+        if (LSCLastToken != UNKNOWN_TOKEN) {
+          if (insertDummyMovs(bb, inst_it, LSCLastToken, LSCLastTwoGRFsOfToken,
+                              nonLSClastTwoGRFsOfToken)) {
+            cleanLSCGRFs(WAtokens);
+          }
+        }
+
+        // last token for non LSC sends
+        if (nonLSCLastToken != UNKNOWN_TOKEN) {
+          if (insertDummyMovs(bb, inst_it, nonLSCLastToken,
+                              LSCLastTwoGRFsOfToken,
+                              nonLSClastTwoGRFsOfToken)) {
+            cleanNonLSCGRFs(WAtokens);
+          }
+        }
+
+        tokens &= ~WAtokens; // Remove the tokens handled by WA
+        if (tokens) {        // If there is still active token
+          // In case last tokens are not found
+          for (unsigned short token = 0; token < (unsigned short)totalTokenNum;
+               token++) {
+            if (tokens & (1 << token)) {
+              if (insertDummyMovs(bb, inst_it, token, LSCLastTwoGRFsOfToken,
+                                  nonLSClastTwoGRFsOfToken)) {
+                cleanGRF(token);
+                WAtokens |= 1 << token;
+              }
+            }
+          }
+        }
+        if (WAtokens) {                // WA applied
+          insertSyncInt1(bb, inst_it); // I@1
+          tokens &= ~WAtokens;
+          if (tokens) { // There are other tokens exist
+            G4_Imm *src0 = fg.builder->createImm(tokens, Type_UD);
+            inst->setSrc(src0, 0);
+          } else { // else remove the instruction
+            bb->remove(inst);
+          }
+        }
+        continue;
+      }
+
+      // Other instructions, including sync.nop, only handle .src
+      if (inst->getTokenType() != SWSBTokenType::AFTER_READ) {
+        continue;
+      }
+
+      unsigned short token = (unsigned short)inst->getToken();
+      // if WAR is from sync.nop
+      if (inst->opcode() == G4_sync_nop && iInstNext != bb->end()) {
+        G4_INST *nextInst = *iInstNext;
+
+        if (nextInst->isSend()) {
+          if ((nextInst->getMsgDesc()->isLSC() &&
+               LSCLastTwoGRFsOfToken[token].first != INVALID_GRF) ||
+              (!nextInst->getMsgDesc()->isLSC() &&
+               nonLSClastTwoGRFsOfToken[token].first !=
+                   INVALID_GRF)) {
+            continue; // WAR from same pipeline, no WA needed
+          }
+        }
+      }
+
+      // Add WA for .src
+      if (insertDummyMovs(bb, inst_it, token, LSCLastTwoGRFsOfToken,
+                          nonLSClastTwoGRFsOfToken)) {
+        cleanGRFs();
+        insertSyncInt1(bb, inst_it);
+        if (inst->opcode() == G4_sync_nop &&
+            inst->getDistanceTypeXe() ==
+                G4_INST::DistanceType::DIST_NONE) { // If it's sync.nop,
+                                                    // and with only WAR
+                                                    // dep
+          bb->remove(inst);
+        } else { // Otherwise, just remove token dep
+          inst->setTokenType(G4_INST::SWSBTokenType::TOKEN_NONE);
+        }
+      }
+    }
+  }
 }
 
 void SWSB::dumpDepInfo() const {
@@ -4933,7 +5271,7 @@ void SWSB::tokenEdgePrune(unsigned &prunedEdgeNum,
             // What about WAR?
             if (type == RAW || type == WAW) {
               int token = predNode->getLastInstruction()->getSBIDSetToken();
-              if (token != (unsigned short)UNKNOWN_TOKEN) {
+              if (token != UNKNOWN_TOKEN) {
                 activateLiveIn -= allTokenNodesMap[token].bitset;
                 killedToken.set(token, true);
               }
@@ -4948,7 +5286,7 @@ void SWSB::tokenEdgePrune(unsigned &prunedEdgeNum,
       if (tokenHonourInstruction(node->GetInstruction()) &&
           !node->GetInstruction()->isEOT()) {
         int token = node->getLastInstruction()->getSBIDSetToken();
-        if (token != (unsigned short)UNKNOWN_TOKEN) {
+        if (token != UNKNOWN_TOKEN) {
           activateLiveIn -= allTokenNodesMap[token].bitset;
           activateLiveIn.set(node->sendID, true);
         }
@@ -4992,7 +5330,7 @@ void G4_BB_SB::getLiveOutToken(unsigned allSendNum,
       if (tokenHonourInstruction(predNode->getLastInstruction()) &&
           (type == RAW || type == WAW)) {
         if (predNode->getLastInstruction()->getSBIDSetToken() !=
-            (unsigned short)UNKNOWN_TOKEN) {
+            UNKNOWN_TOKEN) {
           unsigned short token = predNode->getLastInstruction()->getSBIDSetToken();
           // 1:  send r112                   {$9}
           // 2:  send r18                    {$9}
@@ -5019,8 +5357,7 @@ void G4_BB_SB::getLiveOutToken(unsigned allSendNum,
     // Will have only one?, yes, for BB local scan
     if (tokenHonourInstruction(node->getLastInstruction()) &&
         !node->getLastInstruction()->isEOT() &&
-        node->getLastInstruction()->getSBIDSetToken() !=
-            (unsigned short)UNKNOWN_TOKEN) {
+        node->getLastInstruction()->getSBIDSetToken() != UNKNOWN_TOKEN) {
       unsigned short token = node->getLastInstruction()->getSBIDSetToken();
       tokeNodesMap[token].clear();
 
@@ -6156,6 +6493,9 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
     SBNode *node = new (allocator) SBNode(nodeID, ALUID, bb->getId(), curInst);
     SBNodes->emplace_back(node);
     curInst->setLocalId(0);
+    if (curInst->isDFInstruction()) {
+      indexes->hasDPASorDP = true;
+    }
 
     if (builder.hasA0WARHWissue() &&
         (builder.hasThreeALUPipes() || builder.hasFourALUPipes())) {
@@ -6403,6 +6743,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
     }
 
     if (curInst->isDpas()) {
+      indexes->hasDPASorDP = true;
       node->setDPASID(DPASID);
       DPASID += node->getDPASSize();
       lastDpasNode = node;
@@ -6900,9 +7241,10 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
              (bb->getId() >=
               builder.getOptions()->getuInt32Option(vISA_WARSWSBLocalStart)));
 
-        if (!builder.WARLocalization() || !validWARLocalizeBB ||
-            opndNum == Opnd_dst || node->getLastInstruction()->isDpas() ||
-            bb->isEndWithCall() || bb->isEndWithFCall()) {
+        if (!(builder.WARLocalization() || builder.PVCSendWARWA()) ||
+            !validWARLocalizeBB || opndNum == Opnd_dst ||
+            node->getLastInstruction()->isDpas() || bb->isEndWithCall() ||
+            bb->isEndWithFCall()) {
           if (liveBN->getSendID() == INVALID_ID) {
             if (send_start == INVALID_ID) {
               send_start = static_cast<int>(globalSendOpndList->size());
