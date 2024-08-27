@@ -250,6 +250,10 @@ namespace IGC
 
         RTMemoryStyle MemStyle = RTMemoryStyle::Xe;
         RayDispatchInlinedDataStyle GlobalDataStyle = RayDispatchInlinedDataStyle::Xe;
+
+        // existence of this value indicates we are opting into atomic pull tile walk
+        // this field carries the uber tile dimensions, which needs to be passed on to the UMD.
+        std::optional<std::array<uint32_t, 2>> uberTileDimensions;
     };
 
     // Info specific to each raytracing shader

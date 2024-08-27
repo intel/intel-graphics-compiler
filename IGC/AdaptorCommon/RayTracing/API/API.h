@@ -16,3 +16,4 @@ SPDX-License-Identifier: MIT
 #include "BVHInfo.h"
 #include "MemoryStyleEnum.h"
 #include "RayDispatchGlobalData.h"
+#include "AtomicPullSWTileWalkInterface.h"
