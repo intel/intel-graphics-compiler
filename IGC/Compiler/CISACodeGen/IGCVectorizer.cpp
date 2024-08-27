@@ -195,6 +195,7 @@ bool IGCVectorizer::compareOperands(Value *A, Value *B) {
 
     if (ConstA && ConstB) {
         bool BothZero = ConstA->isZeroValue() && ConstB->isZeroValue();
+        BothZero &= !(ConstA->isNegativeZeroValue() || ConstB->isNegativeZeroValue());
         return BothZero;
     } else if (InstA && InstB) {
         if (!ScalarToVector.count(InstA)) {

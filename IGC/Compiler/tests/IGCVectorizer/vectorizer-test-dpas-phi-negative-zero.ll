@@ -8,36 +8,36 @@ define spir_kernel void @quux() {
 ; CHECK:       bb60:
 ; CHECK-NEXT:    br label [[BB88:%.*]]
 ; CHECK:       bb88:
-; CHECK-NEXT:    [[VECTORIZED_PHI:%.*]] = phi <8 x float> [ zeroinitializer, [[BB60:%.*]] ], [ [[TMP113:%.*]], [[BB88]] ]
-; CHECK-NEXT:    [[TMP112:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> [[VECTORIZED_PHI]], <8 x i16> zeroinitializer, <8 x i32> zeroinitializer, i32 0, i32 0, i32 0, i32 0, i1 false)
-; CHECK-NEXT:    [[TMP113]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> zeroinitializer, <8 x i32> zeroinitializer, i32 0, i32 0, i32 0, i32 0, i1 false)
-; CHECK-NEXT:    [[TMP114:%.*]] = extractelement <8 x float> [[TMP113]], i64 0
-; CHECK-NEXT:    [[TMP115:%.*]] = extractelement <8 x float> [[TMP113]], i64 1
-; CHECK-NEXT:    [[TMP116:%.*]] = extractelement <8 x float> [[TMP113]], i64 2
-; CHECK-NEXT:    [[TMP117:%.*]] = extractelement <8 x float> [[TMP113]], i64 3
-; CHECK-NEXT:    [[TMP118:%.*]] = extractelement <8 x float> [[TMP113]], i64 4
-; CHECK-NEXT:    [[TMP119:%.*]] = extractelement <8 x float> [[TMP113]], i64 5
-; CHECK-NEXT:    [[TMP120:%.*]] = extractelement <8 x float> [[TMP113]], i64 6
-; CHECK-NEXT:    [[TMP121:%.*]] = extractelement <8 x float> [[TMP113]], i64 7
+; CHECK-NEXT:    [[TMP90:%.*]] = phi float [ 0.000000e+00, [[BB60:%.*]] ], [ [[TMP114:%.*]], [[BB88]] ]
+; CHECK-NEXT:    [[TMP91:%.*]] = phi float [ -0.000000e+00, [[BB60]] ], [ [[TMP115:%.*]], [[BB88]] ]
+; CHECK-NEXT:    [[TMP92:%.*]] = phi float [ 0.000000e+00, [[BB60]] ], [ [[TMP116:%.*]], [[BB88]] ]
+; CHECK-NEXT:    [[TMP93:%.*]] = phi float [ 0.000000e+00, [[BB60]] ], [ [[TMP117:%.*]], [[BB88]] ]
+; CHECK-NEXT:    [[TMP94:%.*]] = phi float [ 0.000000e+00, [[BB60]] ], [ [[TMP118:%.*]], [[BB88]] ]
+; CHECK-NEXT:    [[TMP95:%.*]] = phi float [ 0.000000e+00, [[BB60]] ], [ [[TMP119:%.*]], [[BB88]] ]
+; CHECK-NEXT:    [[TMP96:%.*]] = phi float [ 0.000000e+00, [[BB60]] ], [ [[TMP120:%.*]], [[BB88]] ]
+; CHECK-NEXT:    [[TMP97:%.*]] = phi float [ 0.000000e+00, [[BB60]] ], [ [[TMP121:%.*]], [[BB88]] ]
+; CHECK-NEXT:    [[TMP104:%.*]] = insertelement <8 x float> zeroinitializer, float [[TMP90]], i64 0
+; CHECK-NEXT:    [[TMP105:%.*]] = insertelement <8 x float> [[TMP104]], float [[TMP91]], i64 1
+; CHECK-NEXT:    [[TMP106:%.*]] = insertelement <8 x float> [[TMP105]], float [[TMP92]], i64 2
+; CHECK-NEXT:    [[TMP107:%.*]] = insertelement <8 x float> [[TMP106]], float [[TMP93]], i64 3
+; CHECK-NEXT:    [[TMP108:%.*]] = insertelement <8 x float> [[TMP107]], float [[TMP94]], i64 4
+; CHECK-NEXT:    [[TMP109:%.*]] = insertelement <8 x float> [[TMP108]], float [[TMP95]], i64 5
+; CHECK-NEXT:    [[TMP110:%.*]] = insertelement <8 x float> [[TMP109]], float [[TMP96]], i64 6
+; CHECK-NEXT:    [[TMP111:%.*]] = insertelement <8 x float> [[TMP110]], float [[TMP97]], i64 7
+; CHECK-NEXT:    [[TMP112:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> [[TMP111]], <8 x i16> zeroinitializer, <8 x i32> zeroinitializer, i32 0, i32 0, i32 0, i32 0, i1 false)
+; CHECK-NEXT:    [[TMP113:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> zeroinitializer, <8 x i32> zeroinitializer, i32 0, i32 0, i32 0, i32 0, i1 false)
+; CHECK-NEXT:    [[TMP114]] = extractelement <8 x float> [[TMP113]], i64 0
+; CHECK-NEXT:    [[TMP115]] = extractelement <8 x float> [[TMP113]], i64 1
+; CHECK-NEXT:    [[TMP116]] = extractelement <8 x float> [[TMP113]], i64 2
+; CHECK-NEXT:    [[TMP117]] = extractelement <8 x float> [[TMP113]], i64 3
+; CHECK-NEXT:    [[TMP118]] = extractelement <8 x float> [[TMP113]], i64 4
+; CHECK-NEXT:    [[TMP119]] = extractelement <8 x float> [[TMP113]], i64 5
+; CHECK-NEXT:    [[TMP120]] = extractelement <8 x float> [[TMP113]], i64 6
+; CHECK-NEXT:    [[TMP121]] = extractelement <8 x float> [[TMP113]], i64 7
 ; CHECK-NEXT:    br i1 false, label [[BB88]], label [[BB123]]
 ; CHECK:       bb123:
-; CHECK-NEXT:    [[TMP133:%.*]] = phi float [ 0.000000e+00, [[BB43:%.*]] ], [ [[TMP114]], [[BB88]] ]
-; CHECK-NEXT:    [[TMP134:%.*]] = phi float [ 0.000000e+00, [[BB43]] ], [ [[TMP115]], [[BB88]] ]
-; CHECK-NEXT:    [[TMP135:%.*]] = phi float [ 0.000000e+00, [[BB43]] ], [ [[TMP116]], [[BB88]] ]
-; CHECK-NEXT:    [[TMP136:%.*]] = phi float [ 0.000000e+00, [[BB43]] ], [ [[TMP117]], [[BB88]] ]
-; CHECK-NEXT:    [[TMP137:%.*]] = phi float [ 0.000000e+00, [[BB43]] ], [ [[TMP118]], [[BB88]] ]
-; CHECK-NEXT:    [[TMP138:%.*]] = phi float [ 0.000000e+00, [[BB43]] ], [ [[TMP119]], [[BB88]] ]
-; CHECK-NEXT:    [[TMP139:%.*]] = phi float [ 0.000000e+00, [[BB43]] ], [ [[TMP120]], [[BB88]] ]
-; CHECK-NEXT:    [[TMP140:%.*]] = phi float [ 0.000000e+00, [[BB43]] ], [ [[TMP121]], [[BB88]] ]
-; CHECK-NEXT:    [[TMP143:%.*]] = insertelement <8 x float> zeroinitializer, float [[TMP134]], i64 0
-; CHECK-NEXT:    [[TMP144:%.*]] = insertelement <8 x float> [[TMP143]], float [[TMP133]], i64 1
-; CHECK-NEXT:    [[TMP145:%.*]] = insertelement <8 x float> [[TMP144]], float [[TMP135]], i64 2
-; CHECK-NEXT:    [[TMP146:%.*]] = insertelement <8 x float> [[TMP145]], float [[TMP136]], i64 3
-; CHECK-NEXT:    [[TMP147:%.*]] = insertelement <8 x float> [[TMP146]], float [[TMP137]], i64 4
-; CHECK-NEXT:    [[TMP148:%.*]] = insertelement <8 x float> [[TMP147]], float [[TMP138]], i64 5
-; CHECK-NEXT:    [[TMP149:%.*]] = insertelement <8 x float> [[TMP148]], float [[TMP139]], i64 6
-; CHECK-NEXT:    [[TMP150:%.*]] = insertelement <8 x float> [[TMP149]], float [[TMP140]], i64 7
-; CHECK-NEXT:    [[TMP151:%.*]] = bitcast <8 x float> [[TMP150]] to <8 x i32>
+; CHECK-NEXT:    [[VECTORIZED_PHI:%.*]] = phi <8 x float> [ zeroinitializer, [[BB43:%.*]] ], [ [[TMP113]], [[BB88]] ]
+; CHECK-NEXT:    [[TMP151:%.*]] = bitcast <8 x float> [[VECTORIZED_PHI]] to <8 x i32>
 ; CHECK-NEXT:    call void @llvm.genx.GenISA.LSC2DBlockWrite.v8i32(i64 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i1 false, i1 false, i32 0, <8 x i32> [[TMP151]])
 ; CHECK-NEXT:    ret void
 ;
@@ -49,7 +49,7 @@ bb60:                                             ; No predecessors!
 
 bb88:                                             ; preds = %bb88, %bb60
   %tmp90 = phi float [ 0.000000e+00, %bb60 ], [ %tmp114, %bb88 ]
-  %tmp91 = phi float [ 0.000000e+00, %bb60 ], [ %tmp115, %bb88 ]
+  %tmp91 = phi float [ -0.000000e+00, %bb60 ], [ %tmp115, %bb88 ]
   %tmp92 = phi float [ 0.000000e+00, %bb60 ], [ %tmp116, %bb88 ]
   %tmp93 = phi float [ 0.000000e+00, %bb60 ], [ %tmp117, %bb88 ]
   %tmp94 = phi float [ 0.000000e+00, %bb60 ], [ %tmp118, %bb88 ]
@@ -77,7 +77,6 @@ bb88:                                             ; preds = %bb88, %bb60
   br i1 false, label %bb88, label %bb123
 
 bb123:                                            ; preds = %bb88, %bb43
-
   %tmp133 = phi float [ 0.000000e+00, %bb43 ], [ %tmp114, %bb88 ]
   %tmp134 = phi float [ 0.000000e+00, %bb43 ], [ %tmp115, %bb88 ]
   %tmp135 = phi float [ 0.000000e+00, %bb43 ], [ %tmp116, %bb88 ]
@@ -86,8 +85,8 @@ bb123:                                            ; preds = %bb88, %bb43
   %tmp138 = phi float [ 0.000000e+00, %bb43 ], [ %tmp119, %bb88 ]
   %tmp139 = phi float [ 0.000000e+00, %bb43 ], [ %tmp120, %bb88 ]
   %tmp140 = phi float [ 0.000000e+00, %bb43 ], [ %tmp121, %bb88 ]
-  %tmp143 = insertelement <8 x float> zeroinitializer, float %tmp134, i64 0 ; data layout is broken %134 --> %133
-  %tmp144 = insertelement <8 x float> %tmp143, float %tmp133, i64 1
+  %tmp143 = insertelement <8 x float> zeroinitializer, float %tmp133, i64 0
+  %tmp144 = insertelement <8 x float> %tmp143, float %tmp134, i64 1
   %tmp145 = insertelement <8 x float> %tmp144, float %tmp135, i64 2
   %tmp146 = insertelement <8 x float> %tmp145, float %tmp136, i64 3
   %tmp147 = insertelement <8 x float> %tmp146, float %tmp137, i64 4
@@ -107,5 +106,3 @@ declare <8 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v8i32(i64, i32, i32, i32, i32
 
 declare void @llvm.genx.GenISA.LSC2DBlockWrite.v8i32(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32, <8 x i32>)
 
-; uselistorder directives
-uselistorder <8 x float> (<8 x float>, <8 x i16>, <8 x i32>, i32, i32, i32, i32, i1)* @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32, { 1, 0 }
