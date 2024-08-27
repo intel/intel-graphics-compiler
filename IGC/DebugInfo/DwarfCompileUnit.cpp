@@ -695,6 +695,10 @@ IGC::DIE *CompileUnit::getOrCreateTypeDIE(const MDNode *TyNode) {
 
   if (isa<DIBasicType>(Ty))
     constructTypeDIE(*TyDIE, cast<DIBasicType>(Ty));
+#if LLVM_VERSION_MAJOR >= 12
+  else if (isa<DIStringType>(Ty))
+    constructTypeDIE(*TyDIE, cast<DIStringType>(Ty));
+#endif
   else if (isa<DICompositeType>(Ty))
     constructTypeDIE(*TyDIE, cast<DICompositeType>(Ty));
   else if (isa<DISubroutineType>(Ty))
@@ -1431,6 +1435,43 @@ void CompileUnit::constructTypeDIE(DIE &Buffer, DIBasicType *BTy) {
   uint64_t Size = BTy->getSizeInBits() >> 3;
   addUInt(&Buffer, dwarf::DW_AT_byte_size, None, Size);
 }
+
+#if LLVM_VERSION_MAJOR >= 12
+/// constructTypeDIE - Construct basic type die from DIStringType.
+void CompileUnit::constructTypeDIE(DIE &Buffer, DIStringType *STy) {
+  // Get core information.
+  StringRef Name = STy->getName();
+  // Add name if not anonymous or intermediate type.
+  if (!Name.empty())
+    addString(&Buffer, dwarf::DW_AT_name, Name);
+
+  if (DIVariable *Var = STy->getStringLength()) {
+    if (auto *VarDIE = getDIE(Var))
+      addDIEEntry(&Buffer, dwarf::DW_AT_string_length, VarDIE);
+  } else if (DIExpression *Expr = STy->getStringLengthExp()) {
+    DIEBlock *Loc = new (DIEValueAllocator) DIEBlock;
+    DIEDwarfExpression DwarfExpr(*Asm, getCU(), *Loc);
+    DwarfExpr.addExpression(Expr);
+    addBlock(&Buffer, dwarf::DW_AT_string_length, DwarfExpr.finalize());
+  } else {
+    uint64_t Size = STy->getSizeInBits() >> 3;
+    addUInt(&Buffer, dwarf::DW_AT_byte_size, None, Size);
+  }
+
+  if (DIExpression *Expr = STy->getStringLocationExp()) {
+    DIEBlock *Loc = new (DIEValueAllocator) DIEBlock;
+    DIEDwarfExpression DwarfExpr(*Asm, getCU(), *Loc);
+    DwarfExpr.addExpression(Expr);
+    addBlock(&Buffer, dwarf::DW_AT_data_location, DwarfExpr.finalize());
+  }
+
+  if (STy->getEncoding()) {
+    // For eventual Unicode support.
+    addUInt(&Buffer, dwarf::DW_AT_encoding, dwarf::DW_FORM_data1,
+            STy->getEncoding());
+  }
+}
+#endif
 
 /// constructTypeDIE - Construct derived type die from DIDerivedType.
 void CompileUnit::constructTypeDIE(DIE &Buffer, DIDerivedType *DTy) {

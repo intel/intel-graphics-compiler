@@ -442,6 +442,11 @@ private:
   /// constructTypeDIE - Construct derived type die from llvm::DIDerivedType.
   void constructTypeDIE(DIE &Buffer, llvm::DIDerivedType *DTy);
 
+#if LLVM_VERSION_MAJOR >= 12
+  /// constructTypeDIE - Construct derived type die from llvm::DIStringType.
+  void constructTypeDIE(DIE &Buffer, llvm::DIStringType *DTy);
+#endif
+
   /// constructTypeDIE - Construct type DIE from DICompositeType.
   void constructTypeDIE(DIE &Buffer, llvm::DICompositeType *CTy);
 
