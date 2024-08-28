@@ -773,22 +773,20 @@ namespace IGC
         IGC_ASSERT(RootNode);
 
         if (evictFullCongruenceClass) {
-            Value* NewParent = GetActualDominatingParent(RootNode->value, inst);
-
-            while (NewParent) {
-                if (getRegRoot(NewParent)) {
-                    isolateReg(NewParent);
+            Value* dominatingParent = GetActualDominatingParent(RootNode->value, inst);
+            // It might turn out that the root node does not dominate the
+            // 'inst' since it is in an another branch of DT. In such case,
+            // isolate all nodes in the CC.
+            llvm::Value* CCVal = dominatingParent ?
+                dominatingParent : CurrentDominatingParent[RootNode->value];
+            while (CCVal)
+            {
+                if (getRegRoot(CCVal))
+                {
+                    isolateReg(CCVal);
                 }
-                NewParent = ImmediateDominatingParent[NewParent];
+                CCVal = ImmediateDominatingParent[CCVal];
             }
-
-            //it might turn out, that rootNode does not dominate 'inst'
-            //since it is in another branch of DT
-            //do not forget to delete it as well
-            if (getRegRoot(RootNode->value)) {
-                isolateReg(RootNode->value);
-            }
-
         }
         else {
             //Evict dominating parent from CC.
