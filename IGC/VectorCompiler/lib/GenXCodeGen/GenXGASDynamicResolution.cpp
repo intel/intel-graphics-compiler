@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022-2023 Intel Corporation
+Copyright (C) 2022-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -400,8 +400,9 @@ void GenXGASDynamicResolution::resolveOnLoadStore(Instruction &I,
     Builder.SetInsertPoint(BB);
     auto NewPtrOp = createASCast(Builder, PtrOp, AS);
     if (LoadInst *LI = dyn_cast<LoadInst>(&I))
-      Load = Builder.CreateAlignedLoad(IGCLLVM::getNonOpaquePtrEltTy(NewPtrOp->getType()),
-          NewPtrOp, IGCLLVM::getAlign(*LI), LI->isVolatile(), LoadName);
+      Load = Builder.CreateAlignedLoad(LI->getType(), NewPtrOp,
+                                       IGCLLVM::getAlign(*LI), LI->isVolatile(),
+                                       LoadName);
     else if (StoreInst *SI = dyn_cast<StoreInst>(&I))
       Builder.CreateAlignedStore(I.getOperand(0), NewPtrOp,
                                  IGCLLVM::getAlign(*SI), SI->isVolatile());

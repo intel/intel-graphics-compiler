@@ -2612,8 +2612,8 @@ static unsigned getResultedTypeSize(Type *Ty, const DataLayout &DL) {
       TySz += getResultedTypeSize(Ty, DL);
   } else if (Ty->isPointerTy())
     // FIXME: fix data layout description.
-    TySz = IGCLLVM::getNonOpaquePtrEltTy(Ty)->isFunctionTy() ? genx::DWordBytes
-                                                       : DL.getPointerSize();
+    TySz =
+        vc::isFunctionPointerType(Ty) ? genx::DWordBytes : DL.getPointerSize();
   else {
     TySz = Ty->getPrimitiveSizeInBits() / CHAR_BIT;
     IGC_ASSERT_MESSAGE(TySz, "Ty is not primitive?");
@@ -4824,8 +4824,10 @@ void GenXKernelBuilder::buildConvertAddr(CallInst *CI, genx::BaleInfo BI,
   // we need a different type.
   Type *OverrideTy = nullptr;
   Type *BaseTy = Base->getType();
-  if (BaseTy->isPointerTy())
-    BaseTy = IGCLLVM::getNonOpaquePtrEltTy(BaseTy);
+  if (BaseTy->isPointerTy()) {
+    auto *GV = cast<GlobalVariable>(Base);
+    BaseTy = GV->getValueType();
+  }
   unsigned ElementBytes =
       BaseTy->getScalarType()->getPrimitiveSizeInBits() >> 3;
   int Offset = cast<ConstantInt>(CI->getArgOperand(1))->getSExtValue();
