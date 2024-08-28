@@ -237,7 +237,7 @@ DECLARE_IGC_REGKEY(bool, EnableSplitIndirectEEtoSel,    true,  "Enable the split
 DECLARE_IGC_REGKEY(DWORD, SplitIndirectEEtoSelThreshold, 8,    "Split indirect extractelement cost threshold", false)
 DECLARE_IGC_REGKEY(bool, DisableImmConstantOpt,         false, "Disable IGC IndirectICBPropagaion optimization", false)
 DECLARE_IGC_REGKEY(DWORD,MaxImmConstantSizePushed,      256,   "Set the max size of immediate constant buffer pushed", false)
-DECLARE_IGC_REGKEY(bool, RemoveUnusedSLM,               false, "Remove SLM that are not used", false)
+DECLARE_IGC_REGKEY(bool, RemoveUnusedSLM,               true,  "Remove SLM that are not used", false)
 DECLARE_IGC_REGKEY(bool, EnableCustomLoopVersioning,    true,  "Enable IGC to do custom loop versioning", false)
 DECLARE_IGC_REGKEY(bool, DisableMCSOpt,                 false,  "Disable IGC to run MCS optimization", false)
 DECLARE_IGC_REGKEY(bool, DisableGatingSimilarSamples,   false,  "Disable Gating of similar sample instructions", false)
