@@ -63,6 +63,14 @@ inline bool onlyWritesMemory(llvm::Function *F) {
 #endif
 }
 
+inline void pushBackBasicBlock(llvm::Function* F, llvm::BasicBlock* BB) {
+#if LLVM_VERSION_MAJOR < 16
+    F->getBasicBlockList().push_back(BB);
+#else
+    F->insert(F->end(), BB);
+#endif
+}
+
 } // namespace IGCLLVM
 
 #endif

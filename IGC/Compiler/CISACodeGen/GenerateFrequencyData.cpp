@@ -107,7 +107,7 @@ void GenerateFrequencyData::runStaticAnalysis()
              PGSS_IGC_DUMP_BLK) != 0)
             dbgs() << "Function frequency of " << F.getName().str() << ": " << F_freqs[&F].toString() << "\n";
 
-        for (auto& B : F.getBasicBlockList())
+        for (auto& B : F)
         {
             Scaled64 BBCount(BFI.getBlockFreq(&B).getFrequency(), 0);
             BBCount /= EntryFreq;
@@ -153,7 +153,7 @@ void GenerateFrequencyData::updateStaticFuncFreq(DenseMap<Function*, ScaledNumbe
         {
             auto& BFI = getAnalysis<BlockFrequencyInfoWrapperPass>(F).getBFI();
             entryFreqs[&F] = Scaled64(BFI.getEntryFreq(), 0);
-            for (auto& B : F.getBasicBlockList())
+            for (auto& B : F)
                 blockFreqs[&B] = Scaled64(BFI.getBlockFreq(&B).getFrequency(), 0);
         }
         if (F.isDeclaration())

@@ -2811,7 +2811,7 @@ void CustomUnsafeOptPass::reassociateMulAdd(Function& F)
 
     using namespace PatternMatch;
 
-    for (auto& BB : F.getBasicBlockList())
+    for (auto& BB : F)
     {
         for (auto I = BB.begin(); I != BB.end(); /*Empty*/)
         {

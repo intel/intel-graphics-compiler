@@ -705,7 +705,7 @@ void EstimateFunctionSize::runStaticAnalysis()
         FunctionNode* Node = get<FunctionNode>(&F);
         Node->setEntryFrequency(BFI.getEntryFreq(), 0);
 
-        for (auto& B : F.getBasicBlockList())
+        for (auto& B : F)
             Node->blockFreqs[&B] = Scaled64(BFI.getBlockFreq(&B).getFrequency(), 0);
     }
     updateStaticFuncFreq();
@@ -717,7 +717,7 @@ void EstimateFunctionSize::runStaticAnalysis()
             FunctionNode* Node = get<FunctionNode>(&F);
             Scaled64 EntryFreq = Node->getEntryFrequency();
             PrintStaticProfileGuidedKernelSizeReduction(0x1, "Function frequency of " << Node->F->getName().str() << ": " << Node->getStaticFuncFreqStr())
-            for (auto& B : F.getBasicBlockList())
+            for (auto& B : F)
             {
                 Scaled64 BBCount = Node->blockFreqs[&B];
                 BBCount /= EntryFreq;
@@ -853,7 +853,7 @@ void EstimateFunctionSize::estimateTotalLoopIteration(llvm::Function &F,
 void EstimateFunctionSize::analyze() {
     auto getSize = [&](llvm::Function &F) {
       std::size_t Size = 0;
-      for (auto &BB : F.getBasicBlockList()) {
+      for (auto &BB : F) {
         std::size_t BlkSize = IGCLLVM::sizeWithoutDebug(&BB);
         Size += BlkSize;
       }
@@ -862,7 +862,7 @@ void EstimateFunctionSize::analyze() {
 
     auto getSizeWithLoopCnt = [&](llvm::Function &F, LoopInfo &LI) {
       std::size_t Size = 0;
-      for (auto &BB : F.getBasicBlockList()) {
+      for (auto &BB : F) {
         std::size_t BlkSize = IGCLLVM::sizeWithoutDebug(&BB);
         Loop *L = LI.getLoopFor(&BB);
         if (L) {

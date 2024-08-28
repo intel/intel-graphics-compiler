@@ -340,7 +340,7 @@ bool FPRoundingModeCoalescing::runOnFunction(Function &F) {
 
     bool result = false;
 
-    for (auto &BB : F.getBasicBlockList()) {
+    for (auto &BB : F) {
         result |= FPRoundingModeCoalescingImpl(MMD, BB).coalesce();
     }
 

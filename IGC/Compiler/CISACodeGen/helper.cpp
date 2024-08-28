@@ -243,7 +243,7 @@ namespace IGC
     {
         unsigned numberOfExitBlocks = 0;
 
-        for (llvm::BasicBlock& block : function.getBasicBlockList())
+        for (llvm::BasicBlock& block : function)
         {
             llvm::Instruction* terminator = block.getTerminator();
 
