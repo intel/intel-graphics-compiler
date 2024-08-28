@@ -4516,6 +4516,9 @@ bool HWConformity::checkDPASSrcDstOverlap(INST_LIST_ITER iter, G4_BB *bb) {
   if (dst && !inst->hasNULLDst()) {
     for (int i = 0; i < inst->getNumSrc(); i++) {
       G4_CmpRelation rel = dst->compareOperand(srcs[i], builder);
+      if (rel == Rel_eq && i == 0) { // src0 is allowed to be same as dst
+        continue;
+      }
       if (rel != Rel_disjoint) {
         unsigned int src_l = srcs[i]->getLinearizedStart();
         unsigned int src_r = srcs[i]->getLinearizedEnd();
