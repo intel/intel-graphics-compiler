@@ -115,6 +115,7 @@ public:
     uint64_t GetProfilingBufferGpuVa() const { return 0; };
     uint64_t GetStatelessScratchPtr() const { return 0; };
     uint32_t GetBaseSSHOffset() const { return 0; };
+    uint32_t GetUberTilesMap() const { return 0; };
 };
 
 // Layout used to pass global data to the shaders
@@ -193,6 +194,7 @@ struct RayDispatchGlobalData
             dispatchRaysDimensions[0] = umd.GetDispatchWidth();
             dispatchRaysDimensions[1] = umd.GetDispatchHeight();
             dispatchRaysDimensions[2] = umd.GetDispatchDepth();
+            uberTilesMap              = umd.GetUberTilesMap();
         }
     };
 

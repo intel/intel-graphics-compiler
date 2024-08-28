@@ -378,6 +378,9 @@ namespace IGC
 
         virtual bool supportLscSamplerRouting() const { return true; }
         virtual bool supportBarrierControlFlowOptimization() const { return false; }
+
+        // Informs if the UMD understands atomic pull tile walk for raytracing
+        virtual bool supportsAtomicPullSWTileWalk() const { return false; }
 protected:
     bool autoGRFSelection = false;
     };

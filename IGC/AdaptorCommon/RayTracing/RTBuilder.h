@@ -389,6 +389,8 @@ public:
 
     Value* getGlobalSyncStackID();
 
+    Value* getGlobalDSSID();
+
 private:
     TraceRayIntrinsic* createTraceRay(Value* bvhLevel, Value* traceRayCtrl, bool isRayQuery, const Twine& PayloadName = "");
 
@@ -439,8 +441,6 @@ private:
     std::pair<uint32_t, uint32_t> getDualSubsliceIDBitsInSR0() const;
     std::pair<uint32_t, uint32_t> getSubsliceIDBitsInSR0() const;
 
-
-    Value* getGlobalDSSID();
 
     void setReturnAlignment(CallInst* CI, uint32_t AlignVal);
     void setDereferenceable(CallInst* CI, uint32_t Size);
