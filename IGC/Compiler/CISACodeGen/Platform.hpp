@@ -1567,10 +1567,12 @@ bool WaGeoShaderURBAllocReduction() const
 
 bool WaDisableSendSrcDstOverlap() const
 {
-    return (!IGC_IS_FLAG_ENABLED(DisableSendSrcDstOverlapWA)) &&
-        (m_SkuTable.FtrWddm2Svm != 0 || m_platformInfo.eRenderCoreFamily == IGFX_GEN10_CORE ||
-            m_platformInfo.eRenderCoreFamily == IGFX_GEN11_CORE);
-
+  return (!IGC_IS_FLAG_ENABLED(DisableSendSrcDstOverlapWA)) &&
+         (m_SkuTable.FtrWddm2Svm != 0 ||
+          m_platformInfo.eRenderCoreFamily == IGFX_GEN10_CORE ||
+          m_platformInfo.eRenderCoreFamily == IGFX_GEN11_CORE ||
+          (m_platformInfo.eProductFamily >= IGFX_PVC &&
+           m_platformInfo.eProductFamily <= IGFX_ARROWLAKE));
 }
 
 bool WaInsertHDCFenceBeforeEOTWhenSparseAliasedResources() const

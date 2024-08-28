@@ -5251,11 +5251,6 @@ namespace IGC
             SaveOption(vISA_noSendSrcDstOverlap, true);
         }
 
-        if (m_program->m_Platform->WaDisableSendSrcDstOverlap())
-        {
-            SaveOption(vISA_noSendSrcDstOverlap, true);
-        }
-
         // Set to stitch all functions to all kernels in a VISABuidler
         SaveOption(vISA_noStitchExternFunc, false);
 
