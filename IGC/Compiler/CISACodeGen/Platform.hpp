@@ -1782,7 +1782,7 @@ bool preferLSCCache() const
 
 bool allowDivergentControlFlowRayQueryCheckRelease() const
 {
-    return false;
+    return m_WaTable.Wa_22019804511 != 0;
 }
 
 };
