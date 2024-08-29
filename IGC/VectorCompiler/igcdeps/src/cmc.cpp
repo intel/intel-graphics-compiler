@@ -376,7 +376,7 @@ void CMKernel::createPointerGlobalAnnotation(const KernelArgInfo &ArgInfo,
 
   auto PtrAnnotation = std::make_unique<PointerArgumentAnnotation>();
 
-  PtrAnnotation->IsStateless = AddrMode == ArgAddressMode::Stateless;
+  PtrAnnotation->IsStateless = AddrMode != ArgAddressMode::Bindless;
   PtrAnnotation->IsBindlessAccess = AddrMode == ArgAddressMode::Bindless;
   PtrAnnotation->HasStatefulAccess = AddrMode == ArgAddressMode::Stateful;
   PtrAnnotation->AddressSpace = KERNEL_ARGUMENT_ADDRESS_SPACE_GLOBAL;
