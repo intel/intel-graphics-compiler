@@ -1380,14 +1380,15 @@ namespace IGC
                 int urbReadOffsetForPush = 0;
 
 
-                bool pushCondition = ((urbOffset >= urbReadOffsetForPush) && (urbOffset - urbReadOffsetForPush) < (int)numberOfElementsPerVertexThatAreGoingToBePushed);
+                bool pushCondition = ((urbOffset >= urbReadOffsetForPush) && ((urbOffset - urbReadOffsetForPush) < (int)numberOfElementsPerVertexThatAreGoingToBePushed));
 
                 // If the attribute index of URBRead is a constant then we pull
                 // inputs if elementIndex <= numberOfElementsPerVertexThatAreGoingToBePushed
                 if (pElementIndex && pushCondition)
                 {
-                    uint elementIndex = urbOffset - urbReadOffsetForPush;
-                    uint currentElementIndex = (vertexIndex * numberOfElementsPerVertexThatAreGoingToBePushed * 4) + (elementIndex * 4);
+                    uint lanesPerElement = 1;
+                    uint elementIndex = urbOffset * lanesPerElement - urbReadOffsetForPush;
+                    uint currentElementIndex = (vertexIndex * numberOfElementsPerVertexThatAreGoingToBePushed * 4 * lanesPerElement) + (elementIndex * 4);
 
                     for (auto I = inst->user_begin(), E = inst->user_end(); I != E; ++I)
                     {
