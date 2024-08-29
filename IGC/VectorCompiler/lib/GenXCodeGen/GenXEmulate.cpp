@@ -1688,7 +1688,7 @@ bool GenXEmulate::runOnModule(Module &M) {
 }
 
 void GenXEmulate::runOnFunction(Function &F) {
-  for (auto &BB : F.getBasicBlockList()) {
+  for (auto &BB : F) {
     for (auto I = BB.begin(); I != BB.end(); ++I) {
 
       Instruction *Inst = &*I;

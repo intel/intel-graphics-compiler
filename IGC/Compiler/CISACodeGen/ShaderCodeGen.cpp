@@ -1205,7 +1205,7 @@ void unify_opt_PreProcess(CodeGenContext* pContext)
         !pContext->m_instrTypes.hasSubroutines)
     {
         pContext->m_instrTypes.numBB =
-            pContext->getMetaDataUtils()->begin_FunctionsInfo()->first->getBasicBlockList().size();
+            pContext->getMetaDataUtils()->begin_FunctionsInfo()->first->size();
         pContext->m_instrTypes.hasMultipleBB = (pContext->m_instrTypes.numBB != 1);
     }
     else

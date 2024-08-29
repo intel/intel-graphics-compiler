@@ -2301,7 +2301,7 @@ bool GenXBaling::preBalingCleanAndOptimize(Function &F) {
     return I->getPrevNode();
   };
 
-  for (auto &BB : F.getBasicBlockList()) {
+  for (auto &BB : F) {
     // scan the block backwards.
     for (auto Inst = &BB.back(); Inst; Inst = nextInst(BB, Inst)) {
       //
@@ -2366,7 +2366,7 @@ bool GenXBaling::preBalingCleanAndOptimize(Function &F) {
 
   // fold bitcast into store/load if any. This allows to bale a g_store instruction
   // crossing a bitcast.
-  for (auto &BB : F.getBasicBlockList()) {
+  for (auto &BB : F) {
     for (auto I = BB.begin(); I != BB.end(); /*empty*/) {
       Instruction *Inst = &*I++;
       using namespace llvm::PatternMatch;
@@ -2439,8 +2439,8 @@ bool GenXBaling::preBalingCleanAndOptimize(Function &F) {
   // otherwise baling will force baled instructions
   // to locate far away from inline asm call
   // which will lead to live range increasing.
-  for (auto &BB : F.getBasicBlockList()) {
-    for (auto &Inst : BB.getInstList()) {
+  for (auto &BB : F) {
+    for (auto &Inst : BB) {
       auto CI = dyn_cast<CallInst>(&Inst);
       if (!CI || !CI->isInlineAsm())
         continue;
@@ -2481,7 +2481,7 @@ bool GenXBaling::preBalingCleanAndOptimize(Function &F) {
   normalizeGStores(F);
 
   // Remove Phi node with single incoming value
-  for (auto &BB : F.getBasicBlockList()) {
+  for (auto &BB : F) {
     for (BasicBlock::iterator bi = BB.begin(), be = BB.end(); bi != be; ) {
       Instruction *Inst = &*bi;
       ++bi;

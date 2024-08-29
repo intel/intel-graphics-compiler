@@ -41,6 +41,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Utils/General/IRBuilder.h"
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <map>
+#include "llvmWrapper/IR/Function.h"
 
 #define DEBUG_TYPE "print-phi-clonning"
 
@@ -233,7 +234,8 @@ void GenXPrintfPhiClonning::cloneBBs(CallInst *CI, PHINode *Phi) {
     auto *CloneBB = CloneBasicBlock(BB, VMap);
 
     // Fix phis from incoming for every block
-    BB->getParent()->getBasicBlockList().insert(BB->getIterator(), CloneBB);
+    IGCLLVM::insertBasicBlock(BB->getParent(), BB->getIterator(), CloneBB);
+
     for (auto &Inst : *CloneBB)
       RemapInstruction(&Inst, VMap,
                        RF_NoModuleLevelChanges | RF_IgnoreMissingLocals);

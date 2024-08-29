@@ -1194,7 +1194,7 @@ bool llvm::genx::simplifyRegionInsts(Function *F, const DataLayout *DL,
                                      const GenXSubtarget *ST,
                                      const DominatorTree *DT) {
   bool Changed = false;
-  for (auto &BB : F->getBasicBlockList()) {
+  for (auto &BB : *F) {
     for (auto I = BB.begin(); I != BB.end();) {
       Instruction *Inst = &*I++;
       if (auto V = simplifyRegionInst(Inst, DL, ST, DT)) {

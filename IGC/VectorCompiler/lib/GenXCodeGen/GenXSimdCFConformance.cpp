@@ -3030,7 +3030,7 @@ void GenXSimdCFConformance::canonicalizeEM() {
   std::vector<Instruction *> DeadInstructions;
 
   for (auto &F : M->getFunctionList())
-    for (auto &BB : F.getBasicBlockList()) {
+    for (auto &BB : F) {
       for (Instruction *Inst = BB.getTerminator(); Inst;) {
         // select(C0&C1, a, b) -> select(C0, select(C1, a, b), b)
         // select(C0|C1, a, b) -> select(C0, a, select(C1, a, b))

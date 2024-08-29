@@ -25,8 +25,8 @@ See LICENSE.TXT for details.
 #include "common/igc_regkeys.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Intrinsics.h>
-#include <llvm/IR/Function.h>
 #include <llvm/IR/InstIterator.h>
+#include "llvmWrapper/IR/Function.h"
 #include <llvm/Transforms/Utils/Local.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
@@ -109,14 +109,12 @@ namespace IGC
         }
 
         // Assign a number to basic blocks and instructions.
-        auto& BBs = m_pFunc->getBasicBlockList();
-        for (auto BI = BBs.begin(), BE = BBs.end(); BI != BE; ++BI)
+        for (auto &BB : *m_pFunc)
         {
-            BasicBlock* BB = &*BI;
-            unsigned BlockNum = m_pNumbers[BB] = Num++;
-            for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
+            unsigned BlockNum = m_pNumbers[&BB] = Num++;
+            for (auto &II : BB)
             {
-                Instruction* Inst = &(*II);
+                Instruction* Inst = &II;
                 if (isa<DbgInfoIntrinsic>(Inst))
                 {
                     continue;
@@ -153,9 +151,8 @@ namespace IGC
 
     void RegisterPressureEstimate::printNumbering(raw_ostream& OS)
     {
-        auto& BBs = m_pFunc->getBasicBlockList();
         unsigned UnamedBBNum = 1;
-        for (auto BI = BBs.begin(), BE = BBs.end(); BI != BE; ++BI)
+        for (auto BI = m_pFunc->begin(), BE = m_pFunc->end(); BI != BE; ++BI)
         {
             if (m_pNumbers.count(&(*BI)))
             {
@@ -355,9 +352,8 @@ namespace IGC
             return false;
 
         DenseMap<BasicBlock*, std::set<Value*>> BlockLiveMap;
-        auto& BBs = m_pFunc->getBasicBlockList();
         // Top level loop to visit each block once in reverse order.
-        for (auto BI = BBs.rbegin(), BE = BBs.rend(); BI != BE; ++BI)
+        for (auto BI = IGCLLVM::rbegin(m_pFunc), BE = IGCLLVM::rend(m_pFunc); BI != BE; ++BI)
         {
             BasicBlock* BB = &*BI;
             auto Result = BlockLiveMap.insert(std::make_pair(BB, std::set<Value*>()));

@@ -224,7 +224,7 @@ inline bool isFreezeInst(llvm::Instruction* I)
 #endif
 }
 
-inline bool isDebugOrPseudoInst(llvm::Instruction& I)
+inline bool isDebugOrPseudoInst(const llvm::Instruction& I)
 {
 #if LLVM_VERSION_MAJOR < 14
     return llvm::isa<llvm::DbgInfoIntrinsic>(&I);

@@ -161,6 +161,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Function.h"
 
 #define DEBUG_TYPE "GENX_ARGINDIRECTION"
 
@@ -1270,7 +1271,7 @@ std::pair<Value *, Value *> SubroutineArg::addAddressArg() {
   // Set the name of the new address arg.
   NewArgs[OldArgs.size()]->setName(Arg->getName() + ".addr");
   // Move the function code across.
-  NewFunc->getBasicBlockList().splice(NewFunc->begin(), F->getBasicBlockList());
+  IGCLLVM::splice(NewFunc, NewFunc->begin(), F);
 
   return std::make_pair(OldArg, AddressArgument);
 }

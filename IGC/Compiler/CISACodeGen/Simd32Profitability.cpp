@@ -818,7 +818,7 @@ static float NestedLoopsWithMultipleExitsRatio(Function* F, LoopInfo* LI,
     // number of instructions. A higher ratio means these loops dominate this
     // kernel.
     unsigned FuncSize = 0;
-    for (auto& BB : F->getBasicBlockList())
+    for (auto& BB : *F)
         FuncSize += (unsigned)BB.size();
 
     if (FuncSize > 0)

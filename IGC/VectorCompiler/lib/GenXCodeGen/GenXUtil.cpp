@@ -32,7 +32,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Dominators.h"
-#include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Intrinsics.h"
@@ -44,6 +43,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/InstrTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/Value.h"
+#include "llvmWrapper/IR/Function.h"
 
 #include "Probe/Assertion.h"
 
@@ -1499,9 +1499,7 @@ void genx::LayoutBlocks(Function &func, LoopInfo &LI)
           else {
             // loop-header is not moved yet, so should be at the end
             // use splice
-            llvm::Function::BasicBlockListType& BBList = func.getBasicBlockList();
-            BBList.splice(insp->getIterator(), BBList, LoopStart->getIterator(),
-              hd->getIterator());
+            IGCLLVM::splice(&func, insp->getIterator(), &func, LoopStart->getIterator(), hd->getIterator());
             hd->moveBefore(LoopStart);
           }
           InsPos[PaHd] = hd;

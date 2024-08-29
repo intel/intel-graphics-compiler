@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/BinaryFormat/Dwarf.h"
+#include "llvmWrapper/IR/Function.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "DebugInfo/DwarfDebug.hpp"
@@ -177,7 +178,7 @@ Function* GASRetValuePropagator::createNewFunctionDecl(Function* oldFunc, Type* 
 void GASRetValuePropagator::transferFunctionBody(Function* oldFunc, Function* newFunc)
 {
     newFunc->stealArgumentListFrom(*oldFunc);
-    newFunc->getBasicBlockList().splice(newFunc->begin(), oldFunc->getBasicBlockList());
+    IGCLLVM::splice(newFunc, newFunc->begin(), oldFunc);
 }
 
 void GASRetValuePropagator::updateFunctionRetInstruction(Function* F)

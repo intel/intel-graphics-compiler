@@ -15,10 +15,11 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OCLBIUtils.h"
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "LLVM3DBuilder/MetadataBuilder.h"
+
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/SCCIterator.h"
 #include <llvm/IR/Module.h>
-#include <llvm/IR/Function.h>
+#include "llvmWrapper/IR/Function.h"
 #include <llvmWrapper/ADT/STLExtras.h>
 #include <llvmWrapper/IR/Instructions.h>
 #include <llvm/IR/Instructions.h>
@@ -26,6 +27,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/DIBuilder.h"
 #include <llvm/ADT/DepthFirstIterator.h>
 #include "common/LLVMWarningsPop.hpp"
+
 #include "common/debug/Debug.hpp"
 #include "DebugInfo/VISADebugEmitter.hpp"
 #include <map>
@@ -119,7 +121,7 @@ bool AddImplicitArgs::runOnModule(Module &M)
 
         // Since we have now created the new function, splice the body of the old
         // function right into the new function, leaving the old body of the function empty.
-        pNewFunc->getBasicBlockList().splice(pNewFunc->begin(), func.getBasicBlockList());
+        IGCLLVM::splice(pNewFunc, pNewFunc->begin(), &func);
 
         // Loop over the argument list, transferring uses of the old arguments over to
         // the new arguments

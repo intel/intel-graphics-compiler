@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvmWrapper/IR/Constants.h>
 #include <llvmWrapper/IR/DerivedTypes.h>
+#include "llvmWrapper/IR/Function.h"
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Transforms/Utils/LoopUtils.h>
@@ -762,7 +763,7 @@ static BasicBlock* insertUniqueBackedgeBlock(Loop* L, BasicBlock* Preheader,
 
     // Move the new backedge block to right after the last backedge block.
     Function::iterator InsertPos = ++BackedgeBlocks.back()->getIterator();
-    F->getBasicBlockList().splice(InsertPos, F->getBasicBlockList(), BEBlock);
+    IGCLLVM::splice(F, InsertPos, F, BEBlock);
 
     // Now that the block has been inserted into the function, create PHI nodes in
     // the backedge block which correspond to any PHI nodes in the header block.

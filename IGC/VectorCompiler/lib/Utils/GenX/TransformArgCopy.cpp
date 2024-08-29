@@ -764,8 +764,7 @@ CallInst *vc::FuncUsersUpdater::updateFuncDirectUser(CallInst &OrigCall) {
 void vc::FuncBodyTransfer::run() {
   // Since we have now created the new function, splice the body of the old
   // function right into the new function.
-  NewFunc.getBasicBlockList().splice(NewFunc.begin(),
-                                     OrigFunc.getBasicBlockList());
+  IGCLLVM::splice(&NewFunc, NewFunc.begin(), &OrigFunc);
 
   std::vector<Value *> OrigArgReplacements = handleTransformedFuncArgs();
   std::vector<Value *> LocalizedGlobals =

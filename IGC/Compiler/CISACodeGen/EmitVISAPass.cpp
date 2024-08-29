@@ -38,6 +38,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Function.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/FormattedStream.h"
@@ -1277,7 +1278,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     {
         bool hasReturn = false;
         // Find if any return insts exist in all BBs
-        for (auto it = F.getBasicBlockList().rbegin(), ie = F.getBasicBlockList().rend(); it != ie; it++)
+        for (auto it = IGCLLVM::rbegin(&F), ie = IGCLLVM::rend(&F); it != ie; it++)
         {
             if (isa_and_nonnull<ReturnInst>(it->getTerminator()))
             {

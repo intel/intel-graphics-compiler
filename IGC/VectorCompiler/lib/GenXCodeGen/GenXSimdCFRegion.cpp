@@ -1130,7 +1130,7 @@ SimdCFRegionsT GenXPredToSimdCF::findSimdCFRegions(Function &F) {
   std::set<BasicBlock *> Visited; // set because we need unique values
   auto &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
 
-  for (auto &BB : F.getBasicBlockList()) {
+  for (auto &BB : F) {
     if (Visited.count(&BB) != 0) {
       LLVM_DEBUG(dbgs() << "Skipping already visited BB " << BB.getName()
                         << '\n');

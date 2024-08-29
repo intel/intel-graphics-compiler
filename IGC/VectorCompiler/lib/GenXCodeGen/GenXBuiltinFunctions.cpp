@@ -139,7 +139,7 @@ bool GenXBuiltinFunctions::runOnModule(Module &M) {
 
 void GenXBuiltinFunctions::runOnFunction(Function &F) {
   std::vector<Instruction *> ToErase;
-  for (auto &BB : F.getBasicBlockList())
+  for (auto &BB : F)
     for (auto &Inst : BB)
       if (auto *NewVal = visit(Inst)) {
         Inst.replaceAllUsesWith(NewVal);

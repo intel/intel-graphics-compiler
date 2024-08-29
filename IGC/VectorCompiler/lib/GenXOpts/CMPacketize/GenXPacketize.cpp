@@ -1691,8 +1691,8 @@ void GenXPacketize::removeDeadInstructions(Function &F) {
 /// @param F - function to analyze
 void GenXPacketize::fixupLLVMIntrinsics(Function &F) {
   std::unordered_set<Instruction *> RemoveSet;
-  for (auto &BB : F.getBasicBlockList()) {
-    for (auto &I : BB.getInstList()) {
+  for (auto &BB : F) {
+    for (auto &I : BB) {
       if (isa<CallInst>(I)) {
         auto *CI = cast<CallInst>(&I);
         auto *F = CI->getCalledFunction();

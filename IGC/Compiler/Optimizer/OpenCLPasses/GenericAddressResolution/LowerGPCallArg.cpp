@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/PostOrderIterator.h"
 #include <llvm/IR/DIBuilder.h>
+#include "llvmWrapper/IR/Function.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 
@@ -169,7 +170,7 @@ Function* LowerGPCallArg::createFuncWithLoweredArgs(Function* F, GenericPointerA
     newFunc->setSubprogram(F->getSubprogram());
     m_module->getFunctionList().insert(F->getIterator(), newFunc);
     newFunc->takeName(F);
-    newFunc->getBasicBlockList().splice(newFunc->begin(), F->getBasicBlockList());
+    IGCLLVM::splice(newFunc, newFunc->begin(), F);
 
     return newFunc;
 }

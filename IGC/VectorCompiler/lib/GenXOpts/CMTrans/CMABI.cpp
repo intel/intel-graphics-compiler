@@ -27,6 +27,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/Alignment.h"
+#include "llvmWrapper/IR/Function.h"
 
 #include "Probe/Assertion.h"
 
@@ -59,7 +60,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
 #include "llvm/IR/Dominators.h"
-#include "llvm/IR/Function.h"
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstIterator.h"
@@ -557,7 +557,7 @@ CallGraphNode *CMABI::TransformKernel(Function *F) {
 
   // Since we have now created the new function, splice the body of the old
   // function right into the new function.
-  NF->getBasicBlockList().splice(NF->begin(), F->getBasicBlockList());
+  IGCLLVM::splice(NF, NF->begin(), F);
 
   // Loop over the argument list, transferring uses of the old arguments over to
   // the new arguments, also transferring over the names as well.

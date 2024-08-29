@@ -103,7 +103,7 @@ bool CheckInstrTypes::runOnFunction(Function& F)
 
     // check if module has debug info
     g_InstrTypes.hasDebugInfo = F.getParent()->getNamedMetadata("llvm.dbg.cu") != nullptr;
-    g_InstrTypes.numBB = F.getBasicBlockList().size();
+    g_InstrTypes.numBB = F.size();
 
     for (auto BI = F.begin(), BE = F.end(); BI != BE; BI++)
     {

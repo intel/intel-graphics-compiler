@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include <set>
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/BasicBlock.h"
+#include "llvmWrapper/IR/Function.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -354,9 +355,7 @@ BasicBlock* Layout::getLastReturnBlock(Function& Func)
     // otherwise, return the last BB that has no succ;
     //     or nullptr if every BB has Succ (infinite looping)
     BasicBlock* noRetAndNoSucc = nullptr;  // for func that never returns
-    Function::BasicBlockListType& bblist = Func.getBasicBlockList();
-    for (Function::BasicBlockListType::reverse_iterator RI = bblist.rbegin(),
-        RE = bblist.rend();  RI != RE; ++RI)
+    for (auto RI = IGCLLVM::rbegin(&Func), RE = IGCLLVM::rend(&Func); RI != RE; ++RI)
     {
         BasicBlock* bb = &*RI;
         if (succ_begin(bb) == succ_end(bb))
@@ -546,10 +545,7 @@ void Layout::LayoutBlocks(Function& func, LoopInfo& LI)
                     {
                         // loop-header is not moved yet, so should be at the end
                         // use splice
-                        llvm::Function::BasicBlockListType& BBList = func.getBasicBlockList();
-                        BBList.splice(insp->getIterator(), BBList,
-                            LoopStart->getIterator(),
-                            hd->getIterator());
+                        IGCLLVM::splice(&func, insp->getIterator(), &func, LoopStart->getIterator(), hd->getIterator());
                         hd->moveBefore(LoopStart);
                     }
                     InsPos[PaHd] = hd;

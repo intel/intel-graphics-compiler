@@ -175,8 +175,8 @@ void PressureTracker::getLiveRanges(std::vector<LiveRange *> &LRs) {
       getLiveRangesForValue(&Arg, LRs);
     if (I != FG.begin() && !F->getReturnType()->isVoidTy())
       getLiveRangesForValue(Liveness->getUnifiedRet(F), LRs);
-    for (auto &BB : F->getBasicBlockList())
-      for (auto &Inst : BB.getInstList())
+    for (auto &BB : *F)
+      for (auto &Inst : BB)
         getLiveRangesForValue(&Inst, LRs);
   }
 }

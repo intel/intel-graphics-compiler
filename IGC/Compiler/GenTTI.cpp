@@ -53,7 +53,7 @@ namespace llvm {
     }
 
 
-    bool isSendMessage(GenIntrinsicInst* inst)
+    bool isSendMessage(const llvm::GenIntrinsicInst* inst)
     {
         if (isa<SamplerLoadIntrinsic>(inst) ||
             isa<SampleIntrinsic>(inst) ||
@@ -79,14 +79,14 @@ namespace llvm {
 
     unsigned countTotalInstructions(const Function* F, bool CheckSendMsg = true) {
         unsigned EstimatedInstCnt = 0;
-        for (auto BBI = F->getBasicBlockList().begin(); BBI != F->getBasicBlockList().end(); BBI++)
+        for (const auto &BB : *F)
         {
-            llvm::BasicBlock* BB = const_cast<llvm::BasicBlock*>(&*BBI);
-            for (auto II = BB->begin(); II != BB->end(); II++)
+            for (const auto &II : BB)
             {
-                if (IGCLLVM::isDebugOrPseudoInst(*II))
+                if (IGCLLVM::isDebugOrPseudoInst(II))
                     continue;
-                if (llvm::GenIntrinsicInst* pIntrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(II))
+
+                if (auto pIntrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(&II))
                 {
                     if (CheckSendMsg && isSendMessage(pIntrinsic))
                     {
@@ -477,7 +477,7 @@ namespace llvm {
 
         for (I = instructionList.begin(); I != instructionList.end(); I++)
         {
-            if (llvm::GenIntrinsicInst* pIntrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(I))
+            if (const auto pIntrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(I))
             {
                 if (isSendMessage(pIntrinsic))
                 {

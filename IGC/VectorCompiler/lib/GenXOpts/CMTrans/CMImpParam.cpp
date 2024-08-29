@@ -1106,7 +1106,7 @@ CMImpParam::processKernelParameters(Function *F,
   LLVM_DEBUG(dbgs() << "  --> To: " << *NF << "\n");
 
   // Now to splice the body of the old function into the new function
-  NF->getBasicBlockList().splice(NF->begin(), F->getBasicBlockList());
+  IGCLLVM::splice(NF, NF->begin(), F);
 
   // Loop over the argument list, transferring uses of the old arguments to the
   // new arguments, also tranferring over the names as well

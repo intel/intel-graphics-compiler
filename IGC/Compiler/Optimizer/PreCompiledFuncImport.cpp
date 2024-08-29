@@ -1023,7 +1023,7 @@ PreCompiledFuncImport::ImportedFunction::ImportedFunction(Function* F)
     : F(F), type(EmuType::OTHER), funcInstructions(0), totalInstructions(0)
 {
     // Count number of new instructions added by inlining.
-    for (BasicBlock& BB : F->getBasicBlockList())
+    for (BasicBlock& BB : *F)
         funcInstructions += BB.getInstList().size();
 
     updateUses();
@@ -2525,7 +2525,7 @@ void PreCompiledFuncImport::createFuncWithIA()
 
         // Since we have now created the new function, splice the body of the old
         // function right into the new function, leaving the old body of the function empty.
-        pNewFunc->getBasicBlockList().splice(pNewFunc->begin(), pFunc->getBasicBlockList());
+        IGCLLVM::splice(pNewFunc, pNewFunc->begin(), pFunc);
 
         // Loop over the argument list, transferring uses of the old arguments over to
         // the new arguments

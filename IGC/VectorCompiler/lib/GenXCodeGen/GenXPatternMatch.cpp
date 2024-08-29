@@ -3002,7 +3002,7 @@ bool GenXPatternMatch::simplifySelect(Function *F) {
 // Perform volatile global related simplifications.
 bool GenXPatternMatch::simplifyVolatileGlobals(Function *F) {
   bool Changed = false;
-  for (auto &BB : F->getBasicBlockList()) {
+  for (auto &BB : *F) {
     for (auto I = BB.begin(); I != BB.end(); /*empty*/) {
       Instruction *Inst = &*I++;
       if (isa<LoadInst>(Inst))
@@ -3392,8 +3392,8 @@ bool GenXPatternMatch::decomposeSelect(Function *F) {
                                  .getTM<GenXTargetMachine>()
                                  .getGenXSubtarget();
   SelectDecomposer SD(ST);
-  for (auto &BB : F->getBasicBlockList())
-    for (auto &Inst : BB.getInstList())
+  for (auto &BB : *F)
+    for (auto &Inst : BB)
       if (isa<SelectInst>(Inst))
         SD.addStartSelect(&Inst);
 
@@ -3483,8 +3483,8 @@ bool GenXPatternMatch::mergeApply(CallInst *CI) {
 //  ..., %merge_data)
 bool GenXPatternMatch::mergeLscLoad(Function *F) {
   bool Changed = false;
-  for (auto &BB : F->getBasicBlockList()) {
-    for (auto &Inst : BB.getInstList()) {
+  for (auto &BB : *F) {
+    for (auto &Inst : BB) {
       if (auto *CI = dyn_cast<CallInst>(&Inst)) {
         Changed |= mergeApply(CI);
       }
@@ -3760,7 +3760,7 @@ static bool analyzeForShiftPattern(Constant *C,
 
 bool GenXPatternMatch::vectorizeConstants(Function *F) {
   bool Changed = false;
-  for (auto &BB : F->getBasicBlockList()) {
+  for (auto &BB : *F) {
     for (auto I = BB.begin(); I != BB.end();) {
       Instruction *Inst = &*I++;
       if (isa<PHINode>(Inst))
@@ -3852,7 +3852,7 @@ static Instruction *insertConstantLoad(Constant *C, Instruction *InsertBefore) {
 
 bool GenXPatternMatch::placeConstants(Function *F) {
   bool Changed = false;
-  for (auto &BB : F->getBasicBlockList()) {
+  for (auto &BB : *F) {
     for (auto I = BB.begin(); I != BB.end();) {
       Instruction *Inst = &*I++;
       auto ID = GenXIntrinsic::getGenXIntrinsicID(Inst);

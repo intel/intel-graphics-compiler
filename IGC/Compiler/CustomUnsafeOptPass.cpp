@@ -46,7 +46,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/Statistic.h>
 #include <llvm/BinaryFormat/Dwarf.h>
 #include <llvm/IR/Constants.h>
-#include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/Transforms/Utils/Cloning.h>
@@ -58,6 +57,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/LoopPass.h>
 #include "llvm/IR/DebugInfo.h"
 #include "llvmWrapper/IR/IntrinsicInst.h"
+#include "llvmWrapper/IR/Function.h"
 #include "common/LLVMWarningsPop.hpp"
 #include <set>
 #include "Probe/Assertion.h"
@@ -4010,7 +4010,7 @@ BasicBlock* EarlyOutPatterns::SplitBasicBlock(Instruction* inst, const DenseSet<
 
     BasicBlock* ifBlock = CloneBasicBlock(elseBlock, VMap);
     ifBlock->setName(VALUE_NAME("EO_IF"));
-    currentBB->getParent()->getBasicBlockList().insert(endifBlock->getIterator(), ifBlock);
+    IGCLLVM::insertBasicBlock(currentBB->getParent(), endifBlock->getIterator(), ifBlock);
 
     for (auto &Inst : *ifBlock)
       RemapInstruction(&Inst, VMap, RF_NoModuleLevelChanges | RF_IgnoreMissingLocals);

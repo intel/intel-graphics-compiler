@@ -35,7 +35,7 @@ static unsigned estimateShaderLifetime(unsigned int EUCnt, unsigned SendMsgCnt, 
     return EUCnt * EUInstCycleCount + SendMsgCnt * SendInstCycleCount + RTWriteCnt * RTWriteInstCycleCount;
 }
 
-static bool isSendMessage(GenIntrinsicInst* inst)
+static bool isSendMessage(const GenIntrinsicInst* inst)
 {
     if (isSampleInstruction(inst) || isSampleLoadGather4InfoInstruction(inst))
     {
@@ -45,7 +45,7 @@ static bool isSendMessage(GenIntrinsicInst* inst)
 }
 
 //approximating EU insts count - TODO: need a better way to do this
-static unsigned getEUInstEstimate(Instruction* inst)
+static unsigned getEUInstEstimate(const Instruction* inst)
 {
     //handle ALU, Logical, and load-store insts
     //Presently we're restricting to shaders with 1 BB only, i.e, short shaders
@@ -74,12 +74,11 @@ static std::tuple<unsigned, unsigned, unsigned> getInstStats(const Function& F) 
     unsigned EUInstCnt = 0;
     unsigned int SendMsgInstCnt = 0;
     unsigned int RTWriteInstCnt = 0;
-    for (auto BBI = F.getBasicBlockList().begin(); BBI != F.getBasicBlockList().end(); BBI++)
+    for (auto &BB : F)
     {
-        llvm::BasicBlock* BB = const_cast<llvm::BasicBlock*>(&*BBI);
-        for (auto II = BB->begin(); II != BB->end(); II++)
+        for (auto &II : BB)
         {
-            if (llvm::GenIntrinsicInst * pIntrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(II))
+            if (auto pIntrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(&II))
             {
                 if (isSendMessage(pIntrinsic))
                     SendMsgInstCnt++;
@@ -88,7 +87,7 @@ static std::tuple<unsigned, unsigned, unsigned> getInstStats(const Function& F) 
             }
             else
             {
-                EUInstCnt += getEUInstEstimate(&*II);
+                EUInstCnt += getEUInstEstimate(&II);
             }
         }
     }
@@ -129,17 +128,18 @@ static unsigned getCurrentPayloadSizeEstimate(const Function& F)
     //helper variables
     unsigned maxValueFromInputVec = 0;
     std::set<unsigned> countOfDifferentBary;
-    for (auto BBI = F.getBasicBlockList().begin(); BBI != F.getBasicBlockList().end(); BBI++)
+    for (auto &BB : F)
     {
-        llvm::BasicBlock* BB = const_cast<llvm::BasicBlock*>(&*BBI);
-        for (auto II = BB->begin(); II != BB->end(); II++)
+        for (auto &II : BB)
         {
-            if (llvm::GenIntrinsicInst * pIntrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(II))
+            if (auto pIntrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(&II))
             {
                 if (pIntrinsic->getIntrinsicID() == GenISAIntrinsic::GenISA_DCL_inputVec)
                 {
-                    countOfDifferentBary.insert((unsigned)llvm::cast<llvm::ConstantInt>(II->getOperand(1))->getZExtValue());
-                    maxValueFromInputVec = std::max(maxValueFromInputVec, (unsigned)llvm::cast<llvm::ConstantInt>(II->getOperand(0))->getZExtValue());
+                    countOfDifferentBary.insert((unsigned)llvm::cast<llvm::ConstantInt>(II.getOperand(1))->getZExtValue());
+                    maxValueFromInputVec = std::max(
+                        maxValueFromInputVec,
+                        (unsigned) llvm::cast<llvm::ConstantInt>(II.getOperand(0))->getZExtValue());
                 }
             }
         }
@@ -161,7 +161,7 @@ bool PullConstantHeuristics::runOnModule(Module& M)
     {
         for (auto& F : M)
         {
-            if (F.getBasicBlockList().size() == 1)
+            if (F.size() == 1)
             {
                 BasicBlock* BB = &(*F.begin());
                 if (BB->getInstList().size() < 200)

@@ -501,7 +501,7 @@ bool GenXTranslateSPIRVBuiltins::runOnModule(Module &M) {
 bool GenXTranslateSPIRVBuiltins::runOnFunction(Function &F) {
   std::vector<Instruction *> ToErase;
 
-  for (auto &BB : F.getBasicBlockList()) {
+  for (auto &BB : F) {
     for (auto I = BB.begin(); I != BB.end(); ++I) {
       Instruction *Inst = &*I;
       if (Expander.tryReplace(Inst))

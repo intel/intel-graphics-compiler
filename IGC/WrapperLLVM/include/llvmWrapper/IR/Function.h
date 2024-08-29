@@ -9,8 +9,8 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_IR_FUNCTION_H
 #define IGCLLVM_IR_FUNCTION_H
 
+#include <iterator>
 #include "llvm/IR/Function.h"
-
 #include "Probe/Assertion.h"
 
 namespace IGCLLVM {
@@ -68,6 +68,62 @@ inline void pushBackBasicBlock(llvm::Function* F, llvm::BasicBlock* BB) {
     F->getBasicBlockList().push_back(BB);
 #else
     F->insert(F->end(), BB);
+#endif
+}
+
+inline void splice(llvm::Function* pNewFunc, llvm::Function::iterator it, llvm::Function* pOldFunc) {
+#if LLVM_VERSION_MAJOR < 16
+    pNewFunc->getBasicBlockList().splice(it, pOldFunc->getBasicBlockList());
+#else
+    pNewFunc->splice(it, pOldFunc);
+#endif
+}
+
+inline void splice(llvm::Function* pNewFunc, llvm::Function::iterator it, llvm::Function* pOldFunc, llvm::BasicBlock* BB) {
+#if LLVM_VERSION_MAJOR < 16
+    pNewFunc->getBasicBlockList().splice(it, pOldFunc->getBasicBlockList(), BB);
+#else
+    pNewFunc->splice(it, pOldFunc);
+#endif
+}
+
+inline void splice(
+    llvm::Function* pNewFunc,
+    llvm::Function::iterator it,
+    llvm::Function* pOldFunc,
+    llvm::Function::iterator itBegin,
+    llvm::Function::iterator itEnd) {
+#if LLVM_VERSION_MAJOR < 16
+    pNewFunc->getBasicBlockList().splice(it, pOldFunc->getBasicBlockList(), itBegin, itEnd);
+#else
+    pNewFunc->splice(it, pOldFunc, itBegin, itEnd);
+#endif
+}
+
+inline auto rbegin(llvm::Function* pFunc) {
+#if LLVM_VERSION_MAJOR < 16
+    return pFunc->getBasicBlockList().rbegin();
+#else
+    return std::make_reverse_iterator(pFunc->end());
+#endif
+}
+
+inline auto rend(llvm::Function* pFunc) {
+#if LLVM_VERSION_MAJOR < 16
+    return pFunc->getBasicBlockList().rend();
+#else
+    return std::make_reverse_iterator(pFunc->begin());
+#endif
+}
+
+inline void insertBasicBlock(
+    llvm::Function* pFunc,
+    llvm::ilist_iterator<llvm::ilist_detail::node_options<llvm::BasicBlock, false, false, void>, false, false> it,
+    llvm::BasicBlock* BB) {
+#if LLVM_VERSION_MAJOR < 16
+    pFunc->getBasicBlockList().insert(it, BB);
+#else
+    pFunc->insert(it, BB);
 #endif
 }
 
