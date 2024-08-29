@@ -1787,5 +1787,11 @@ bool allowDivergentControlFlowRayQueryCheckRelease() const
     return m_WaTable.Wa_22019804511 != 0;
 }
 
+bool allowFastestSIMDVectorLoad4Perf() const
+{
+    return m_platformInfo.eProductFamily == IGFX_ALDERLAKE_P &&
+        m_platformInfo.usDeviceID == 0x4626;
+}
+
 };
 }//namespace IGC
