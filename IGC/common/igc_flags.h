@@ -567,7 +567,7 @@ DECLARE_IGC_REGKEY(bool, AdvCodeMotionControl,          true,  "Control bits to 
 DECLARE_IGC_REGKEY(bool, EnableAdvRuntimeUnroll,        true,  "Enable advanced runtime unroll", false)
 DECLARE_IGC_REGKEY(DWORD, AdvRuntimeUnrollCount,        0, "Advanced runtime unroll count", false)
 DECLARE_IGC_REGKEY(bool, EnableAdvMemOpt,               true,  "Enable advanced memory optimization", false)
-DECLARE_IGC_REGKEY(bool, UniformMemOpt4OW,              false, "increase uniform memory optimization from 2 owords to 4 owords", true)
+DECLARE_IGC_REGKEY(bool, UniformMemOpt4OW,              true, "increase uniform memory optimization from 2 owords to 4 owords", true)
 DECLARE_IGC_REGKEY(bool, EnableFunctionPointer,         true,  "Enables support for function pointers and indirect calls", false)
 DECLARE_IGC_REGKEY(bool, EnableIndirectCallOptimization, true, "Enables inlining indirect calls by comparing function addresses", false)
 DECLARE_IGC_REGKEY(bool, EnableSIMDVariantCompilation,  false,  "Enables compiling kernels in variant SIMD sizes", false)
