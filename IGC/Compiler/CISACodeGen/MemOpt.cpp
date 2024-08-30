@@ -1134,9 +1134,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     if (!ProfitVectorLengths.count(TypeSizeInBits))
         return false;
     SmallVector<unsigned, 8> profitVec;
-    // FIXME: Enable for OCL shader only as other clients have regressions but
-    // there's no way to trace down.
-    bool isUniformLoad = (CGC->type == ShaderType::OPENCL_SHADER) && (WI->isUniform(LeadingLoad));
+    bool isUniformLoad = WI->isUniform(LeadingLoad);
     if (isUniformLoad) {
         unsigned C = IGC_GET_FLAG_VALUE(UniformMemOpt4OW);
         C = (C == 1) ? 512 : 256;
