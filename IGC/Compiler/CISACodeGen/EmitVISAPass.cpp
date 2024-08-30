@@ -5509,18 +5509,47 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
             }
             else if(GII && GII->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveShuffleIndex)
             {
-                m_encoder->SetSimdSize(SIMDMode::SIMD16);
-
-                m_encoder->AddrAdd(pDstArrElm, src, pSrcElm);
-                m_encoder->Push();
-
-                m_encoder->SetSimdSize(SIMDMode::SIMD16);
-
-                m_encoder->Copy(m_destination, pDstArrElm);
-                m_encoder->Push();
-
-                if (!channelUniform)
+                if (channelUniform)
                 {
+                    m_encoder->AddrAdd(pDstArrElm, src, pSrcElm);
+                    m_encoder->Push();
+
+                    m_encoder->Copy(m_destination, pDstArrElm);
+                    m_encoder->Push();
+                }
+                else // !channelUniform
+                {
+                    m_encoder->SetSimdSize(SIMDMode::SIMD16);
+
+                    m_encoder->AddrAdd(pDstArrElm, src, pSrcElm);
+                    m_encoder->Push();
+
+                    m_encoder->SetSimdSize(SIMDMode::SIMD16);
+
+                    // If `src` variable is the same as `m_destination` variable, we cannot write the result
+                    // for the first 16 channels to `m_destionation` right away, because it may overwrite `src`
+                    // values used by the last 16 channels. Instead, the result for the first 16 channels
+                    // gets written into a temporary variable, then shuffle index for the last 16 channels
+                    // is generated and, at the end, the result for first 16 channels is rewritten from
+                    // the temporary variable into the `m_destination`.
+                    const bool isSrcSameAsDst = src == m_destination;
+                    CVariable* first16LanesResult = nullptr;
+                    if (isSrcSameAsDst)
+                    {
+                        first16LanesResult = m_currShader->GetNewVariable(
+                            16,
+                            m_destination->GetType(),
+                            m_destination->GetAlign(),
+                            false, // isUniform
+                            "first16LanesResult");
+
+                        m_encoder->Copy(first16LanesResult, pDstArrElm);
+                    }
+                    else
+                    {
+                        m_encoder->Copy(m_destination, pDstArrElm);
+                    }
+                    m_encoder->Push();
 
                     m_encoder->SetSimdSize(SIMDMode::SIMD16);
                     m_encoder->SetMask(EMASK_H2);
@@ -5536,6 +5565,16 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
                     m_encoder->Copy(m_destination, pDstArrElm);
                     m_encoder->Push();
                     m_encoder->SetSecondHalf(false);
+
+                    m_encoder->Push();
+
+                    if (isSrcSameAsDst)
+                    {
+                        IGC_ASSERT(first16LanesResult);
+                        m_encoder->SetSimdSize(SIMDMode::SIMD16);
+                        m_encoder->Copy(m_destination, first16LanesResult);
+                        m_encoder->Push();
+                    }
                 }
             }
             if (disableHelperLanes)
