@@ -1,0 +1,60 @@
+; Input spv:
+;   1. Defines struct struct.complex = { double, double }
+;   2. Defines local array variable [5 x [6 x struct.complex ]]
+;   3. Defines global array variable [16 x i8] = { 0 }
+;   4. Kernel sets first struct in array to zero by doing memcpy of global i8 array.
+;
+; Legacy translator does early optimization by replacing memcpy to memset.
+; Khronos translator emits memcpy as-it, which is later optimized to memset by compiler.
+; Test if in both cases AlignmentAnalysis pass assigns correct allignment to pointer.
+
+; REQUIRES: regkeys, spirv-as, pvc-supported
+; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
+; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'PrintToConsole=1 PrintAfter=AlignmentAnalysisPass'" 2>&1 | FileCheck %s
+
+               OpCapability Addresses
+               OpCapability Kernel
+               OpMemoryModel Physical32 OpenCL
+               OpEntryPoint Kernel %1 "test"
+               OpName %cpx "struct.complex" ; 0x00000884
+       %void = OpTypeVoid
+     %double = OpTypeFloat 64
+      %uchar = OpTypeInt 8 0
+       %uint = OpTypeInt 32 0
+      %ulong = OpTypeInt 64 0
+     %uint_0 = OpConstant %uint 0
+    %ulong_0 = OpConstant %ulong 0
+    %ulong_5 = OpConstant %ulong 5
+    %ulong_6 = OpConstant %ulong 6
+   %ulong_16 = OpConstant %ulong 16
+  %ptr_uchar = OpTypePointer UniformConstant %uchar
+  %arr_uchar = OpTypeArray %uchar %ulong_16
+%ptr_arr_uchar = OpTypePointer UniformConstant %arr_uchar
+        %cpx = OpTypeStruct %double %double
+    %arr_cpx = OpTypeArray %cpx %ulong_6
+%arr_arr_cpx = OpTypeArray %arr_cpx %ulong_5
+%ptr_arr_arr_cpx = OpTypePointer Function %arr_arr_cpx
+    %ptr_cpx = OpTypePointer Function %cpx
+ %ptr_double = OpTypePointer Function %double
+   %ptr_char = OpTypePointer Function %uchar
+               OpDecorate %349 Constant
+        %347 = OpConstantNull %arr_uchar
+        %349 = OpVariable %ptr_arr_uchar UniformConstant %347
+          %7 = OpTypeFunction %void
+          %1 = OpFunction %void None %7
+         %10 = OpLabel
+        %317 = OpVariable %ptr_arr_arr_cpx Function
+        %334 = OpInBoundsPtrAccessChain %ptr_cpx %317 %ulong_0 %ulong_0 %ulong_0
+        %339 = OpInBoundsPtrAccessChain %ptr_double %334 %ulong_0 %uint_0
+        %345 = OpBitcast %ptr_char %339
+        %351 = OpBitcast %ptr_uchar %349
+               OpCopyMemorySized %345 %351 %ulong_16 Aligned 0
+               OpReturn
+               OpFunctionEnd
+
+; CHECK-LABEL: @test(
+; CHECK-NOT:     call void @llvm.memcpy
+; CHECK:         [[ALLOCA:%.*]] = alloca %struct.complex
+; CHECK:         [[PTR:%.*]] = bitcast %struct.complex* [[ALLOCA]] to i8*
+; CHECK:         call void @llvm.memset.p0i8.i64(i8* align 8 [[PTR]], i8 0, i64 16, i1 false)
+; CHECK:         ret void
