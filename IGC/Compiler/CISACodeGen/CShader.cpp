@@ -74,7 +74,7 @@ CShader::CShader(Function* pFunc, CShaderProgram* pProgram)
 
     bool SepSpillPvtSS = m_ctx->platform.hasScratchSurface() &&
         m_ctx->m_DriverInfo.supportsSeparatingSpillAndPrivateScratchMemorySpace() &&
-        !m_ctx->getModuleMetaData()->disableSeparateSpillPvtScratchSpace;
+        m_ctx->getModuleMetaData()->enableSeparateSpillPvtScratchSpace;
     bool SeparateScratchWA =
         IGC_IS_FLAG_ENABLED(EnableSeparateScratchWA) &&
         !m_ctx->getModuleMetaData()->disableSeparateScratchWA;
@@ -4081,7 +4081,7 @@ bool CShader::CompileSIMDSizeInCommon(SIMDMode simdMode)
 
     if (m_ctx->platform.hasScratchSurface() &&
         m_ctx->m_DriverInfo.supportsSeparatingSpillAndPrivateScratchMemorySpace() &&
-        !m_ctx->getModuleMetaData()->disableSeparateSpillPvtScratchSpace)
+        m_ctx->getModuleMetaData()->enableSeparateSpillPvtScratchSpace)
     {
         ret = ((m_simdProgram.getScratchSpaceUsageInSlot0() <= maxPerThreadScratchSpace) &&
             (m_simdProgram.getScratchSpaceUsageInSlot1() <= maxPerThreadScratchSpace));
