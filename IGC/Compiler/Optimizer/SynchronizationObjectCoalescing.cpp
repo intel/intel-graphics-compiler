@@ -69,6 +69,18 @@ enum InstructionMask : uint32_t
     LastMaskPlusOne,
 };
 
+////////////////////////////////////////////////////////////////////////////////
+enum class SyncInstMask : uint32_t
+{
+    None = 0x0,
+    UntypedMemoryFence = (1 << 0),
+    TypedMemoryFence = (1 << 1),
+    SharedMemoryFence = (1 << 2),
+    UrbMemoryFence = (1 << 3),
+    ThreadGroupBarrier = (1 << 4)
+};
+
+
 constexpr InstructionMask AllInstructionsMask =
     InstructionMask{ ((InstructionMask::LastMaskPlusOne - 1) << 1) - 1 };
 
@@ -80,6 +92,15 @@ inline constexpr InstructionMask operator|(InstructionMask a, InstructionMask b)
     return InstructionMask(uint32_t(a) | uint32_t(b));
 }
 inline constexpr InstructionMask& operator|=(InstructionMask& a, InstructionMask b)
+{
+    a = a | b;
+    return a;
+}
+inline constexpr SyncInstMask operator|(SyncInstMask a, SyncInstMask b)
+{
+    return SyncInstMask(uint32_t(a) | uint32_t(b));
+}
+inline constexpr SyncInstMask& operator|=(SyncInstMask& a, SyncInstMask b)
 {
     a = a | b;
     return a;
@@ -443,7 +464,16 @@ private:
     bool IsUntypedMemoryLscFenceOperationForGlobalAccess(const llvm::Instruction* pInst) const;
 
     ////////////////////////////////////////////////////////////////////////
+    bool IsSharedLscFenceOperation(const llvm::Instruction* pInst) const;
+
+    ////////////////////////////////////////////////////////////////////////
+    bool IsUrbLscFenceOperation(const llvm::Instruction* pInst) const;
+
+    ////////////////////////////////////////////////////////////////////////
     static bool IsTypedMemoryFenceOperation(const llvm::Instruction* pInst);
+
+    ////////////////////////////////////////////////////////////////////////
+    bool IsTypedMemoryLscFenceOperation(const llvm::Instruction* pInst) const;
 
     ////////////////////////////////////////////////////////////////////////
     bool IsTypedMemoryFenceOperationWithInvalidationFunctionality(const llvm::Instruction* pInst) const;
@@ -663,6 +693,39 @@ bool SynchronizationObjectCoalescing::FindRedundancies()
 
         for (llvm::Instruction* pInst : synchronizationOperations)
         {
+            SyncInstMask instType = SyncInstMask::None;
+            if (IsUntypedMemoryFenceOperationForGlobalAccess(pInst) ||
+                IsUntypedMemoryLscFenceOperationForGlobalAccess(pInst))
+            {
+                instType |= SyncInstMask::UntypedMemoryFence;
+            }
+            if (IsTypedMemoryFenceOperation(pInst) ||
+                IsTypedMemoryLscFenceOperation(pInst))
+            {
+                instType |= SyncInstMask::TypedMemoryFence;
+            }
+            if (IsUntypedMemoryFenceOperationForSharedMemoryAccess(pInst) ||
+                IsSharedLscFenceOperation(pInst))
+            {
+                instType |= SyncInstMask::SharedMemoryFence;
+            }
+            if (IsUrbFenceOperation(pInst) ||
+                IsUrbLscFenceOperation(pInst))
+            {
+                instType |= SyncInstMask::UrbMemoryFence;
+            }
+            if (isBarrierIntrinsic(pInst))
+            {
+                instType |= SyncInstMask::ThreadGroupBarrier;
+            }
+            IGC_ASSERT(instType != SyncInstMask::None);
+            bool isDisabled = instType != SyncInstMask::None &&
+                (IGC_GET_FLAG_VALUE(DisableCoalescingSynchronizationObjectMask) & static_cast<DWORD>(instType)) == static_cast<DWORD>(instType);
+            if (isDisabled)
+            {
+                continue;
+            }
+
             if ((m_GlobalMemoryInstructionMask & GetDefaultWriteMemoryInstructionMask(pInst)) == 0)
             {
 #if _DEBUG
@@ -2616,6 +2679,28 @@ bool SynchronizationObjectCoalescing::IsUntypedMemoryLscFenceOperationForGlobalA
 }
 
 ////////////////////////////////////////////////////////////////////////
+bool SynchronizationObjectCoalescing::IsSharedLscFenceOperation(const llvm::Instruction* pInst) const
+{
+    if (IsLscFenceOperation(pInst))
+    {
+        LSC_SFID mem = GetLscMem(pInst);
+        return mem == LSC_SFID::LSC_SLM;
+    }
+    return false;
+}
+
+////////////////////////////////////////////////////////////////////////
+bool SynchronizationObjectCoalescing::IsTypedMemoryLscFenceOperation(const llvm::Instruction* pInst) const
+{
+    if (IsLscFenceOperation(pInst))
+    {
+        LSC_SFID mem = GetLscMem(pInst);
+        return mem == LSC_SFID::LSC_TGM;
+    }
+    return false;
+}
+
+////////////////////////////////////////////////////////////////////////
 bool SynchronizationObjectCoalescing::IsTypedMemoryFenceOperation(const llvm::Instruction* pInst)
 {
     if (llvm::isa<llvm::GenIntrinsicInst>(pInst))
@@ -2640,6 +2725,17 @@ bool SynchronizationObjectCoalescing::IsTypedMemoryFenceOperationWithInvalidatio
     constexpr uint32_t L1CacheInvalidateArg = 0;
     return IsTypedMemoryFenceOperation(pInst) &&
         llvm::cast<llvm::ConstantInt>(pInst->getOperand(L1CacheInvalidateArg))->getValue().getBoolValue();
+}
+
+////////////////////////////////////////////////////////////////////////
+bool SynchronizationObjectCoalescing::IsUrbLscFenceOperation(const llvm::Instruction* pInst) const
+{
+    if (IsLscFenceOperation(pInst))
+    {
+        LSC_SFID mem = GetLscMem(pInst);
+        return mem == LSC_SFID::LSC_URB;
+    }
+    return false;
 }
 
 ////////////////////////////////////////////////////////////////////////
