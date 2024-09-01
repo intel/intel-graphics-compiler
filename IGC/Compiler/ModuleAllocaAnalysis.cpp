@@ -204,7 +204,7 @@ bool ModuleAllocaAnalysis::safeToUseScratchSpace() const
         // which can hold more pvt_data to avoid error out.
         if (Ctx.platform.hasScratchSurface() &&
             Ctx.m_DriverInfo.supportsSeparatingSpillAndPrivateScratchMemorySpace() &&
-            Ctx.getModuleMetaData()->enableSeparateSpillPvtScratchSpace &&
+            !Ctx.getModuleMetaData()->disableSeparateSpillPvtScratchSpace &&
             !supportsStatelessSpacePrivateMemory)
             simd_size = numLanes(Ctx.platform.getMinDispatchMode());
 

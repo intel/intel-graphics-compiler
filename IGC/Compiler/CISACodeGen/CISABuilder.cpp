@@ -5649,7 +5649,7 @@ namespace IGC
         // and Slot0 is used for IGC private memory
         if (m_program->m_Platform->hasScratchSurface() &&
             m_program->m_DriverInfo->supportsSeparatingSpillAndPrivateScratchMemorySpace() &&
-            m_program->GetContext()->getModuleMetaData()->enableSeparateSpillPvtScratchSpace)
+            !m_program->GetContext()->getModuleMetaData()->disableSeparateSpillPvtScratchSpace)
         {
             V(vKernel->AddKernelAttribute("SepSpillPvtSS", 0, nullptr));
         }
