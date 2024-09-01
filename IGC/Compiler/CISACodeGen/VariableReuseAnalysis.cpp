@@ -1149,14 +1149,27 @@ bool VariableReuseAnalysis::getElementValue(
 
 void VariableReuseAnalysis::InsertElementAliasing(Function* F)
 {
+    // There are dead blocks that are still not removed, don't count them
+    // Should use F->size() once dead BBs are removed
+    auto getNumBBs = [](Function* aF) {
+        int32_t i = 1;  // count entry
+        for (BasicBlock &aBB  : aF->getBasicBlockList()) {
+            if (aBB.hasNPredecessors(0)) {
+                continue;
+            }
+            ++i;
+        }
+        return i;
+    };
+
     // Do it if VectorAlias != 0.
     // VectorAlias=0x1: subvec aliasing for isolated values (getRootValue()=null)
     //            =0x2: subvec aliasing for both isolated and non-isolated value)
     const auto control = (m_pCtx->getVectorCoalescingControl() & 0x3);
     // To avoid increasing GRF pressure, skip if F is too large or not an entry
-    const uint32_t NumBBThreshold = (int)IGC_GET_FLAG_VALUE(VectorAliasBBThreshold);
+    const int32_t NumBBThreshold = (int)IGC_GET_FLAG_VALUE(VectorAliasBBThreshold);
     MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    if (control == 0 || !isEntryFunc(pMdUtils, F) || F->size() > NumBBThreshold) {
+    if (control == 0 || !isEntryFunc(pMdUtils, F) || getNumBBs(F) > NumBBThreshold) {
         return;
     }
     for (auto BI = F->begin(), BE = F->end(); BI != BE; ++BI)
