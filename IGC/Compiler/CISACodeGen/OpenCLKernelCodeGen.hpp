@@ -263,6 +263,9 @@ namespace IGC
         std::string getKernelArgTypeQualifier(const FunctionMetaData& funcMD, uint argIndex) const;
         std::string getKernelArgAddressQualifier(const FunctionMetaData& funcMD, uint argIndex) const;
         std::string getKernelArgAccessQualifier(const FunctionMetaData& funcMD, uint argIndex) const;
+        // Helper function to get SIMD size specified in intel_reqd_sub_group_size attribute
+        uint32_t getReqdSubGroupSize(llvm::Function& F, IGC::IGCMD::MetaDataUtils* MDUtils) const;
+        uint32_t getMaxPressure(llvm::Function& F, IGC::IGCMD::MetaDataUtils* MDUtils) const;
     };
 
     void CodeGen(OpenCLProgramContext* ctx);

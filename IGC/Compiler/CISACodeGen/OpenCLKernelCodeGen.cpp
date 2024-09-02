@@ -643,6 +643,39 @@ namespace IGC
         return result;
     }
 
+    uint32_t COpenCLKernel::getReqdSubGroupSize(llvm::Function& F, MetaDataUtils* MDUtils) const
+    {
+        FunctionInfoMetaDataHandle funcInfoMD = MDUtils->getFunctionsInfoItem(&F);
+        int simd_size = funcInfoMD->getSubGroupSize()->getSIMDSize();
+
+        // Finds the kernel and get the group simd size from the kernel
+        if (m_FGA)
+        {
+            llvm::Function* Kernel = &F;
+            auto FG = m_FGA->getGroup(&F);
+            Kernel = FG->getHead();
+            funcInfoMD = MDUtils->getFunctionsInfoItem(Kernel);
+            simd_size = funcInfoMD->getSubGroupSize()->getSIMDSize();
+        }
+        return simd_size;
+    }
+
+    uint32_t COpenCLKernel::getMaxPressure(llvm::Function& F, MetaDataUtils* MDUtils) const
+    {
+        FunctionInfoMetaDataHandle funcInfoMD = MDUtils->getFunctionsInfoItem(&F);
+        unsigned int maxPressure = funcInfoMD->getMaxRegPressure()->getMaxPressure();
+
+        if (m_FGA)
+        {
+            llvm::Function* Kernel = &F;
+            auto FG = m_FGA->getGroup(&F);
+            Kernel = FG->getHead();
+            funcInfoMD = MDUtils->getFunctionsInfoItem(Kernel);
+            maxPressure = funcInfoMD->getMaxRegPressure()->getMaxPressure();
+        }
+        return maxPressure;
+    }
+
     void COpenCLKernel::CreateKernelArgInfo()
     {
         auto funcMDIt = m_Context->getModuleMetaData()->FuncMD.find(entry);
@@ -3659,7 +3692,25 @@ namespace IGC
 
         // Func and Perf checks pass, compile this SIMD
         if (simdStatus == SIMDStatus::SIMD_PASS)
+        {
             return true;
+        }
+        // Report an error if intel_reqd_sub_group_size cannot be satisfied
+        else
+        {
+            MetaDataUtils* pMdUtils = EP.getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+            CodeGenContext* ctx = GetContext();
+            auto reqdSubGroupSize = getReqdSubGroupSize(F, pMdUtils);
+            if (reqdSubGroupSize == numLanes(simdMode))
+            {
+                ctx->EmitError(
+                    (std::string("Cannot compile a kernel in the SIMD mode specified by intel_reqd_sub_group_size(") +
+                        std::to_string(reqdSubGroupSize) +
+                        std::string(")")).c_str(),
+                    &F);
+                return false;
+            }
+        }
 
         // Functional failure, skip compiling this SIMD
         if (simdStatus == SIMDStatus::SIMD_FUNC_FAIL)
@@ -3682,27 +3733,15 @@ namespace IGC
         CodeGenContext* pCtx = GetContext();
         MetaDataUtils* pMdUtils = EP.getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
         FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(&F);
-        int simd_size = funcInfoMD->getSubGroupSize()->getSIMDSize();
+        uint32_t simd_size = getReqdSubGroupSize(F, pMdUtils);
         bool hasSubGroupForce = hasSubGroupIntrinsicPVC(F);
-        unsigned int maxPressure = funcInfoMD->getMaxRegPressure()->getMaxPressure();
-
-        // Finds the kernel and get the group simd size from the kernel
-        if (m_FGA)
-        {
-            llvm::Function* Kernel = &F;
-            auto FG = m_FGA->getGroup(&F);
-            Kernel = FG->getHead();
-            funcInfoMD = pMdUtils->getFunctionsInfoItem(Kernel);
-            simd_size = funcInfoMD->getSubGroupSize()->getSIMDSize();
-            maxPressure = funcInfoMD->getMaxRegPressure()->getMaxPressure();
-        }
+        uint32_t maxPressure = getMaxPressure(F, pMdUtils);
 
         auto FG = m_FGA ? m_FGA->getGroup(&F) : nullptr;
         bool hasStackCall = FG && FG->hasStackCall();
         bool isIndirectGroup = FG && m_FGA->isIndirectCallGroup(FG);
         bool hasSubroutine = FG && !FG->isSingleIgnoringStackOverflowDetection() && !hasStackCall && !isIndirectGroup;
         bool forceLowestSIMDForStackCalls = IGC_IS_FLAG_ENABLED(ForceLowestSIMDForStackCalls) && (hasStackCall || isIndirectGroup);
-
 
         if (simd_size == 0)
         {
@@ -3849,19 +3888,8 @@ namespace IGC
         MetaDataUtils* pMdUtils = EP.getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
         ModuleMetaData* modMD = pCtx->getModuleMetaData();
         FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(&F);
-        int simd_size = funcInfoMD->getSubGroupSize()->getSIMDSize();
-        unsigned int maxPressure = funcInfoMD->getMaxRegPressure()->getMaxPressure();
-
-        // Finds the kernel and get the group simd size from the kernel
-        if (m_FGA)
-        {
-            llvm::Function* Kernel = &F;
-            auto FG = m_FGA->getGroup(&F);
-            Kernel = FG->getHead();
-            funcInfoMD = pMdUtils->getFunctionsInfoItem(Kernel);
-            simd_size = funcInfoMD->getSubGroupSize()->getSIMDSize();
-            maxPressure = funcInfoMD->getMaxRegPressure()->getMaxPressure();
-        }
+        uint32_t simd_size = getReqdSubGroupSize(F, pMdUtils);
+        uint32_t maxPressure = getMaxPressure(F, pMdUtils);
 
         // For simd variant functions, detect which SIMD sizes are needed
         if (compileFunctionVariants && F.hasFnAttribute("variant-function-def"))
@@ -3896,14 +3924,6 @@ namespace IGC
             bool hasIndirectCall = FG && FG->hasIndirectCall();
             if (hasNestedCall || hasIndirectCall || isIndirectGroup)
             {
-                // If sub_group_size is set to 32, resize it to 16 so SIMD16 compilation will still succeed
-                if (simd_size == 32)
-                {
-                    pCtx->EmitWarning("Detected 'reqd_sub_group_size=32', but compiling to SIMD16 due to enabling CallWA, which does not support SIMD32 when nested/indirect calls are present.");
-                    llvm::Function* Kernel = FG->getHead();
-                    funcInfoMD = pMdUtils->getFunctionsInfoItem(Kernel);
-                    funcInfoMD->getSubGroupSize()->setSIMDSize(16);
-                }
                 pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
                 return SIMDStatus::SIMD_FUNC_FAIL;
             }
