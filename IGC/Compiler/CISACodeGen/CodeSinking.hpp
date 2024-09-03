@@ -157,6 +157,8 @@ namespace IGC {
             Candidate(const Candidate& Other)
                 : Instructions(Other.Instructions), TgtBB(Other.TgtBB), Worthiness(Other.Worthiness), UndoPos(Other.UndoPos) {}
 
+            Candidate& operator=(const Candidate&) = delete;
+
             InstrVec Instructions;
 
             BasicBlock *TgtBB;

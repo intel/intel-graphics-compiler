@@ -499,21 +499,15 @@ void LoopCountAnalysis::processLoop(Loop* L) {
         }
 
         if (IGC_IS_FLAG_ENABLED(EnableKernelCostDebug)) {
-            if (I0) {
-                dbgs() << " init value: ";
-                I0->print(output);
-                dbgs() << "\n";
-            }
-            if (In) {
-                dbgs() << " end value: ";
-                In->print(output);
-                dbgs() << "\n";
-            }
-            if (step) {
-                dbgs() << " step value: ";
-                step->print(output);
-                dbgs() << "\n";
-            }
+            dbgs() << " init value: ";
+            I0->print(output);
+            dbgs() << "\n";
+            dbgs() << " end value: ";
+            In->print(output);
+            dbgs() << "\n";
+            dbgs() << " step value: ";
+            step->print(output);
+            dbgs() << "\n";
         }
 
         ConstantInt* addValue = nullptr;

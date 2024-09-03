@@ -394,7 +394,7 @@ void SubGroupReductionPattern::matchVectorShufflePattern(GenIntrinsicInst &Shuff
 
     for (auto *User : InputValue->users())
     {
-        Instruction *Op = dyn_cast<Instruction>(User);
+        Instruction *Op = cast<Instruction>(User);
 
         if (match(Op, m_c_BinOp(m_Specific(InputValue), Pattern1)) || match(Op, m_c_BinOp(m_Specific(InputValue), Pattern2)))
         {

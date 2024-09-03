@@ -76,6 +76,8 @@ class IGCVectorizer : public llvm::FunctionPass {
     public:
     llvm::StringRef getPassName() const override { return "IGCVectorizer"; }
     virtual ~IGCVectorizer() { ScalarToVector.clear(); }
+    IGCVectorizer(const IGCVectorizer&) = delete;
+    IGCVectorizer& operator=(const IGCVectorizer&) = delete;
     virtual bool runOnFunction(llvm::Function &F) override;
     virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
         AU.addRequired<CodeGenContextWrapper>();
