@@ -663,6 +663,41 @@ public:
         return hasImmediateOffsets() ? getOperand(operandCoordIndex) : nullptr;
     }
 
+    bool hasDynamicOffsets() const
+    {
+        for (unsigned int i = 0; i < 3; ++i)
+        {
+            Value* offset = getImmediateOffsetsValue(i);
+            if (offset && !isa<Constant>(offset))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool hasImmediateOffsetsInS3Range() const
+    {
+        constexpr int64_t cMinImmediateOffset = -8;
+        constexpr int64_t cMaxImmediateOffset = 7;
+        for (unsigned int i = 0; i < 3; ++i)
+        {
+            Value* offset = getImmediateOffsetsValue(i);
+            if (!offset)
+            {
+                continue;
+            }
+            ConstantInt* imm = dyn_cast<ConstantInt>(offset);
+            if (!imm ||
+                imm->getSExtValue() < cMinImmediateOffset ||
+                imm->getSExtValue() > cMaxImmediateOffset)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
     inline Value* getSamplerValue() const
     {
         unsigned int index = getSamplerIndex();

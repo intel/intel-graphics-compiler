@@ -437,6 +437,26 @@ struct TranslateIntrinsicImpl<GenISAIntrinsic::GenISA_sampleCptr>
     };
 };
 
+// Checks if a sample_d instruction samples a Cube or a 3D texture.
+inline bool needsSampleDEmulation(const SampleIntrinsic* inst)
+{
+    IGC_ASSERT(
+        inst->getIntrinsicID() == GenISAIntrinsic::GenISA_sampleDptr);
+
+    const llvm::Module& M = *(inst->getModule());
+    Type* volumeTextureType = GetResourceDimensionType(M, RESOURCE_DIMENSION_TYPE::DIM_3D_TYPE);
+    Type* cubeTextureType = GetResourceDimensionType(M, RESOURCE_DIMENSION_TYPE::DIM_CUBE_TYPE);
+    Type* cubeArrayTextureType = GetResourceDimensionType(M, RESOURCE_DIMENSION_TYPE::DIM_CUBE_ARRAY_TYPE);
+    Type* textureType = IGCLLVM::getNonOpaquePtrEltTy(inst->getTextureValue()->getType());
+    if (textureType == cubeTextureType ||
+        textureType == cubeArrayTextureType ||
+        textureType == volumeTextureType)
+    {
+        return true;
+    }
+    return false;
+}
+
 template<>
 struct TranslateIntrinsicImpl<GenISAIntrinsic::GenISA_sampleDptr>
 {
@@ -444,12 +464,7 @@ struct TranslateIntrinsicImpl<GenISAIntrinsic::GenISA_sampleDptr>
 
     static bool IsApplicable(SampleIntrinsic* sampleIntr)
     {
-        // Don't translate sample_d with 3D texture.
-        // If the offset is non const it will be translated in EmitPass::emulateSampleD().
-        Type* textureType = IGCLLVM::getNonOpaquePtrEltTy(sampleIntr->getTextureValue()->getType());
-        Type* volumeTextureType = GetResourceDimensionType(*sampleIntr->getModule(),
-            RESOURCE_DIMENSION_TYPE::DIM_3D_TYPE);
-        return textureType != volumeTextureType;
+        return !needsSampleDEmulation(sampleIntr);
     }
 
     static llvm::Value* PackOffsetUVRCoordR(SampleIntrinsic* sampleIntr)

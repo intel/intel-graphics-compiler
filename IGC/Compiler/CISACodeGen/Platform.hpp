@@ -914,8 +914,7 @@ bool supports3DAndCubeSampleD() const
         m_platformInfo.eProductFamily != IGFX_ARROWLAKE &&
         m_platformInfo.eProductFamily != IGFX_BMG &&
         m_platformInfo.eProductFamily != IGFX_LUNARLAKE
-        ) ||
-        IGC_IS_FLAG_DISABLED(EnableSampleDEmulation);
+        );
 }
 
 bool LSCEnabled(SIMDMode m = SIMDMode::UNKNOWN) const

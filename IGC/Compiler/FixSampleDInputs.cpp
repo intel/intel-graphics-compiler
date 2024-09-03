@@ -33,6 +33,7 @@ namespace IGC
 
         virtual void getAnalysisUsage(AnalysisUsage& AU) const override
         {
+            AU.addRequired<CodeGenContextWrapper>();
             AU.setPreservesCFG();
         }
 
@@ -45,6 +46,7 @@ namespace IGC
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(FixSampleDInputsPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(FixSampleDInputsPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
     bool FixSampleDInputsPass::runOnFunction(Function& F)
