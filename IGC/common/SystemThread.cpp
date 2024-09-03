@@ -1132,7 +1132,7 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
     const SYSTEM_THREAD_MODE mode,
     const bool bindlessMode)
 {
-    unsigned char SIPIndex = GEN_SIP_MAX_INDEX;
+    unsigned char SIPIndex = 0;
     std::map< unsigned char, std::tuple<void*, unsigned int, void*, unsigned int> > SIPKernelInfo;
     populateSIPKernelInfo(platform, SIPKernelInfo);
 
