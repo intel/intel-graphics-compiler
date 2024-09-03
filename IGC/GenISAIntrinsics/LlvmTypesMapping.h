@@ -454,7 +454,7 @@ struct FloatTypeHolderT
 template<typename TypeHolderT, uint32_t numElements = 0>
 struct VectorTypeHolderT
 {
-    static_assert(numElements == 0 || numElements == 2 || numElements == 4 || numElements == 8 || numElements == 16);
+    static_assert(numElements == 0 || numElements == 2 || numElements == 4 || numElements == 8 || numElements == 16 || numElements == 32);
     static constexpr const TypeDescription& scElementType = TypeHolderT::scType;
     static constexpr TypeDescription scType = VectorType(scElementType, numElements);
 };
