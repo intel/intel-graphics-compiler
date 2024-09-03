@@ -273,7 +273,12 @@ static unsigned getDwarfVersionFromModule(const Module *M) {
       cast_or_null<ConstantAsMetadata>(M->getModuleFlag("Dwarf Version"));
   if (!Val)
     return dwarf::DWARF_VERSION;
-  return (unsigned)(cast<ConstantInt>(Val->getValue())->getZExtValue());
+
+  unsigned Version = cast<ConstantInt>(Val->getValue())->getZExtValue();
+  if (Version == 0)
+    return dwarf::DWARF_VERSION;
+
+  return Version;
 }
 
 void DwarfDISubprogramCache::updateDISPCache(const llvm::Function *F) {
