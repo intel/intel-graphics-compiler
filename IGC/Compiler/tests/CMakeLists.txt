@@ -13,6 +13,10 @@ if(NOT TARGET igc_opt)
   message("[check-igc] LIT tests disabled. Missing igc_opt target.")
   return()
 endif()
+if(DEFINED ENV{DISABLE_check-igc})
+  message("[check-igc] LIT tests disabled. DISABLE_check-igc is defined as an env variable.")
+  return()
+endif()
 if(NOT IGC_OPTION__ENABLE_LIT_TESTS)
   return()
 endif()
@@ -46,11 +50,6 @@ set(IGC_LIT_TEST_DEPENDS
 # The consistency can be achived by calling a process which returns the list of tests.
 file(GLOB_RECURSE _tests "${IGC_TEST_SOURCE_DIR}/*.ll")
 file(GLOB_RECURSE _site_config_files "${CMAKE_CURRENT_BINARY_DIR}/*/lit.site.cfg.py")
-if(MSVC)
-  source_group(TREE "${IGC_TEST_SOURCE_DIR}" PREFIX "tests" FILES ${_tests})
-  source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" PREFIX "config" FILES ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.py.in ${CMAKE_CURRENT_SOURCE_DIR}/lit.cfg.py)
-  source_group(TREE "${CMAKE_CURRENT_BINARY_DIR}" PREFIX "config/generated" FILES ${_site_config_files})
-endif()
 
 # This will create a target called `check-igc`, which will run all tests from
 # IGC/Compiler/tests directory. The tests will be run on files in the source
@@ -66,6 +65,12 @@ else()
     ${IGC_TEST_BINARY_DIR}
     DEPENDS ${IGC_LIT_TEST_DEPENDS}
     )
+endif()
+
+if(MSVC)
+  source_group(TREE "${IGC_TEST_SOURCE_DIR}" PREFIX "tests" FILES ${_tests})
+  source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" PREFIX "config" FILES ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.py.in ${CMAKE_CURRENT_SOURCE_DIR}/lit.cfg.py)
+  source_group(TREE "${CMAKE_CURRENT_BINARY_DIR}" PREFIX "config/generated" FILES ${_site_config_files})
 endif()
 
 # Tests should not be excluded from "Build Solution" in VS.
