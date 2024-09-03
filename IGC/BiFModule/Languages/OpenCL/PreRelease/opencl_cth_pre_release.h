@@ -2672,6 +2672,15 @@ void __attribute__((overloadable)) intel_sub_group_2d_block_prefetch_8b_32r32x2c
 
 ////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////
+// 2D Block Load / Prefetch, 8-bit data, Rows in [1*, 2*, 4*, 8, 16*, 32*], Columns in [16x4]:
+
+void __attribute__((overloadable)) intel_sub_group_2d_block_read_8b_8r16x4c(__global void* base_address, int width, int height, int pitch, int2 coord, __private uint* destination);
+
+void __attribute__((overloadable)) intel_sub_group_2d_block_prefetch_8b_8r16x4c(__global void* base_address, int width, int height, int pitch, int2 coord);
+
+////////////////////////////////////////////////////////////////
+
 
 ////////////////////////////////////////////////////////////////
 // 2D Block Load / Prefetch, 16-bit data, Rows in [1, 2, 4, 8, 16, 32], Columns in [16]:
@@ -2812,6 +2821,14 @@ void __attribute__((overloadable)) intel_sub_group_2d_block_read_transform_16b_3
 // 8 columns version implemented in opencl_cth_released.h
 
 // 1, 2 and 4 columns version TBD
+
+////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////
+// 2D Block Load with Transpose, 32-bit data, Rows in [32], Columns in [1*, 2*, 4*, 8]:
+
+void __attribute__((overloadable)) intel_sub_group_2d_block_read_transpose_32b_32r8x1c(__global void* base_address, int width, int height, int pitch, int2 coord, __private uint* destination);
 
 ////////////////////////////////////////////////////////////////
 

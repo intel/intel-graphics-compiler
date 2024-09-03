@@ -946,7 +946,7 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
         {
             numBlocksV = 1;
         }
-        else if (isPrefetch && funcName.consume_front("v4"))
+        else if (isRead && funcName.consume_front("v4"))
         {
             numBlocksV = 4;
         }
@@ -983,17 +983,25 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
             // transpose_transform_u16_k16
             numBlocksV = 1;
             tileHeight = subGrpSize;
+            if (funcName.consume_front("_m32"))
+            {
+                // not tied to subgroup size,
+                // each SIMD lane gets two rows in SIMD16
+                tileHeight = 32;
+            }
             tileWidth = 8;
 
-            if (funcName.consume_front("_k8"))
+            funcName.consume_front("_");
+
+            if (funcName.consume_front("k8"))
             {
                 tileWidth = 8;
             }
-            else if (funcName.consume_front("_k4"))
+            else if (funcName.consume_front("k4"))
             {
                 tileWidth = 4;
             }
-            else if (funcName.consume_front("_k2"))
+            else if (funcName.consume_front("k2"))
             {
                 tileWidth = 2;
             }
