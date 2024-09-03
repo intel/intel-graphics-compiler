@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 
 #include <iterator>
 #include <limits>
+#include <optional>
 
 using namespace iga;
 
@@ -251,7 +252,7 @@ void SWSBAnalyzer::checkAccFlagRAW(bool &isRAW, const DepSet &currDep,
 void SWSBAnalyzer::calculateDependence(DepSet &currDep,
                                        SWSB &swsb,
                                        const Instruction &currInst,
-                                       std::vector<SBID> &activeSBID,
+                                       activeSBIDsTy &activeSBIDs,
                                        bool &needSyncForShootDownInst) {
   needSyncForShootDownInst = false;
   auto currDepType = currDep.getDepType();
@@ -271,7 +272,7 @@ void SWSBAnalyzer::calculateDependence(DepSet &currDep,
         // force to sync with dep
         if (dep->getDepClass() == DEP_CLASS::OUT_OF_ORDER) {
           setSbidDependency(*dep, currInst, needSyncForShootDownInst,
-                            activeSBID);
+                            activeSBIDs);
         } else {
           // Set to sync with all in-order-pipes. WRITE/READ_ALWAYS_INTERFERE
           // could be used to mark arf dependency, which is required to be all
@@ -353,7 +354,7 @@ void SWSBAnalyzer::calculateDependence(DepSet &currDep,
                                   currInst);
           } else if (prevDepClass == DEP_CLASS::OUT_OF_ORDER) {
             setSbidDependency(*dep, currInst, needSyncForShootDownInst,
-                              activeSBID);
+                              activeSBIDs);
           }
           // for the instruction in "OTHER" DEP_CLASS, such as sync, we don't
           // need to consider their dependency that is implied by hardware
@@ -450,7 +451,7 @@ void SWSBAnalyzer::setDistanceDependency(DepSet *dep, SWSB &swsb, bool isWAW,
 
 void SWSBAnalyzer::setSbidDependency(DepSet &dep, const Instruction &currInst,
                                      bool &needSyncForShootDownInst,
-                                     std::vector<SBID> &activeSBID) {
+                                     activeSBIDsTy &activeSBIDs) {
   /* For out of order we don't know how long it will finish
    * so need to test for SBID.
    * Instruction can depend on more then one SBID
@@ -480,29 +481,35 @@ void SWSBAnalyzer::setSbidDependency(DepSet &dep, const Instruction &currInst,
   // used to set read or write dependency
   depSBID.dType = dep.getDepType();
 
-  // activeSBID stores all sbid that this inst has dependency on
-  // and it'll be processed in processActiveSBID
-  bool push_back = true;
+  // activeSBIDs stores all sbid that this inst has dependency on
+  // and it'll be processed in processactiveSBIDs
+  bool insert_new_sbid = true;
   // making sure there are no duplicates
-  for (auto &aSBID : activeSBID) {
-    if (aSBID.sbid == depSBID.sbid) {
+  for (auto &aSBID : activeSBIDs) {
+    if (aSBID.first.sbid == depSBID.sbid) {
       // write takes longer then read
       // force the SBID to WRITE type (e.g. $10.dst) if the newly added
       // dependency is a write dependency.
       if (depSBID.dType == DEP_TYPE::WRITE ||
           depSBID.dType == DEP_TYPE::WRITE_ALWAYS_INTERFERE) {
-        aSBID.dType = depSBID.dType;
+        aSBID.first.dType = depSBID.dType;
       }
-      push_back = false;
+      // add DepSet into this activeSBIDs's associated list
+      aSBID.second.push_back(&dep);
+      // the sbid is already in the list, we don't need to add it to
+      // activeSBIDs
+      insert_new_sbid = false;
       break;
     }
   }
+
   // adding to active SBID
   // in Run function we will see how many this instruction relies on
   // and generate approriate SWSB and if needed test instruction
   // in that level also will add them back to free list
-  if (push_back) {
-    activeSBID.push_back(depSBID);
+  if (insert_new_sbid) {
+    activeSBIDs.push_back(std::make_pair(depSBID, std::vector<DepSet*>()));
+    activeSBIDs.back().second.push_back(&dep);
   }
 }
 
@@ -623,13 +630,26 @@ void SWSBAnalyzer::clearBuckets(DepSet *input, DepSet *output) {
   }
 }
 
-void SWSBAnalyzer::processActiveSBID(SWSB &swsb,
-                                     const DepSet *input, Block *bb,
-                                     InstList::iterator instIter,
-                                     std::vector<SBID> &activeSBID) {
+
+void SWSBAnalyzer::processactiveSBIDs(SWSB &swsb,
+                                      const DepSet *input, Block *bb,
+                                      InstList::iterator instIter,
+                                      activeSBIDsTy &activeSBIDs) {
+  // free SBID in activeSBIDs and clear the dependecies of associated
+  // DepSet
+  auto clearSBID = [&](const SBID& in) {
+    m_freeSBIDList[in.sbid].reset();
+    assert(m_IdToDepSetMap.find(in.sbid) != m_IdToDepSetMap.end());
+    assert(m_IdToDepSetMap[in.sbid].first->getDepClass() ==
+           DEP_CLASS::OUT_OF_ORDER);
+    clearDepBuckets(*m_IdToDepSetMap[in.sbid].first);
+    clearDepBuckets(*m_IdToDepSetMap[in.sbid].second);
+  };
+
+
   // If instruction depends on one or more SBIDS, first one goes in to SWSB
   // field for rest we generate wait instructions.
-  for (const auto &aSBID : activeSBID) {
+  for (const auto &aSBID : activeSBIDs) {
     // Could be we had operation depending on the write
     /*
      *   This case also gets triggered when we have send in BB and dependence in
@@ -641,26 +661,20 @@ void SWSBAnalyzer::processActiveSBID(SWSB &swsb,
      * BB in which sendc.rc ends we clear all SBID and generate sync
      * instructions On mov it detects dependense, but all SBID are freed.
      */
-    if (m_freeSBIDList[aSBID.sbid].isFree) {
+    if (m_freeSBIDList[aSBID.first.sbid].isFree) {
       continue;
     }
 
     SWSB::TokenType tType = SWSB::TokenType::NOTOKEN;
-    if (aSBID.dType == DEP_TYPE::READ ||
-        aSBID.dType == DEP_TYPE::READ_ALWAYS_INTERFERE) {
+    if (aSBID.first.dType == DEP_TYPE::READ ||
+        aSBID.first.dType == DEP_TYPE::READ_ALWAYS_INTERFERE) {
       tType = SWSB::TokenType::SRC;
     } else {
       tType = SWSB::TokenType::DST;
       // if SBID is cleared add it back to free pool
       // write is last thing. So if instruction depends on it we know read is
       // done but not vice versa
-      m_freeSBIDList[aSBID.sbid].reset();
-      // clean up the dependency
-      assert(m_IdToDepSetMap.find(aSBID.sbid) != m_IdToDepSetMap.end());
-      assert(m_IdToDepSetMap[aSBID.sbid].first->getDepClass() ==
-             DEP_CLASS::OUT_OF_ORDER);
-      clearDepBuckets(*m_IdToDepSetMap[aSBID.sbid].first);
-      clearDepBuckets(*m_IdToDepSetMap[aSBID.sbid].second);
+      clearSBID(aSBID.first);
     }
 
     // Setting first SBID as part of instruction
@@ -668,10 +682,10 @@ void SWSBAnalyzer::processActiveSBID(SWSB &swsb,
     // TODO: Is it safe to clear SBID here?
     if (swsb.tokenType == SWSB::TokenType::NOTOKEN) {
       swsb.tokenType = tType;
-      swsb.sbid = aSBID.sbid;
+      swsb.sbid = aSBID.first.sbid;
     } else {
       // add sync for the id
-      SWSB sync_swsb(SWSB::DistType::NO_DIST, tType, 0, aSBID.sbid);
+      SWSB sync_swsb(SWSB::DistType::NO_DIST, tType, 0, aSBID.first.sbid);
       auto nopInst = m_kernel.createSyncNopInstruction(sync_swsb);
       bb->insertInstBefore(instIter, nopInst);
     }
@@ -679,7 +693,31 @@ void SWSBAnalyzer::processActiveSBID(SWSB &swsb,
 
   // verify if the combination of token and dist is valid, if not, move the
   // token dependency out and add a sync for it
-  adjustSWSB(*bb, instIter, swsb, true);
+  auto syncInsts = adjustSWSB(*bb, instIter, swsb, true);
+
+  // update the DepSet's SrcDepInsts if current instruction or any newly added
+  // sync is associated with it
+  auto checkAndUpdateSrcDepInsts =
+      [&activeSBIDs](Instruction* inst, SWSB swsb) {
+    if (!swsb.hasToken())
+      return;
+    if (swsb.tokenType != SWSB::TokenType::SET &&
+        swsb.tokenType != SWSB::TokenType::SRC)
+      return;
+    for (const auto &aSBID : activeSBIDs) {
+      if (swsb.sbid == aSBID.first.sbid) {
+        for (auto& ds : aSBID.second) {
+          ds->addSrcDepInsts(inst);
+          ds->getCompanion()->addSrcDepInsts(inst);
+        }
+      }
+    }
+  };
+
+  for (auto sync : syncInsts) {
+    checkAndUpdateSrcDepInsts(sync, sync->getSWSB());
+  }
+  checkAndUpdateSrcDepInsts(*instIter, swsb);
 }
 
 uint32_t SWSBAnalyzer::getNumOfDistPipe() {
@@ -807,16 +845,19 @@ void SWSBAnalyzer::addSWSBToInst(InstListIterator instIt, const SWSB &swsb,
   inst.setSWSB(new_swsb);
 }
 
-void SWSBAnalyzer::adjustSWSB(Block &block, const InstListIterator instIt,
-                                       SWSB &swsb, bool preferMoveOutSBID) {
+std::vector<Instruction*>
+SWSBAnalyzer::adjustSWSB(Block &block, const InstListIterator instIt,
+                         SWSB &swsb, bool preferMoveOutSBID) {
+  std::vector<Instruction*> syncInsts;
   const Instruction* inst = *instIt;
   if (swsb.verify(m_swsbMode, inst->getSWSBInstType(m_swsbMode)))
-    return;
+    return syncInsts;
 
   auto movDistToSync = [&]() {
       assert(swsb.hasDist());
       SWSB tmp_swsb(swsb.distType, SWSB::TokenType::NOTOKEN, swsb.minDist, 0);
       Instruction *sync_inst = m_kernel.createSyncNopInstruction(tmp_swsb);
+      syncInsts.push_back(sync_inst);
       block.insertInstBefore(instIt, sync_inst);
       swsb.distType = SWSB::DistType::NO_DIST;
       swsb.minDist = 0;
@@ -825,6 +866,7 @@ void SWSBAnalyzer::adjustSWSB(Block &block, const InstListIterator instIt,
       assert(swsb.hasToken());
       SWSB tmp_swsb(SWSB::DistType::NO_DIST, swsb.tokenType , 0, swsb.sbid);
       Instruction *sync_inst = m_kernel.createSyncNopInstruction(tmp_swsb);
+      syncInsts.push_back(sync_inst);
       block.insertInstBefore(instIt, sync_inst);
       swsb.tokenType = SWSB::TokenType::NOTOKEN;
       swsb.sbid = 0;
@@ -845,7 +887,7 @@ void SWSBAnalyzer::adjustSWSB(Block &block, const InstListIterator instIt,
       if (swsb.hasToken())
         movTokenToSync();
     }
-    return;
+    return syncInsts;
   }
 
   // For other instructions, solely SBID or DIST are valid SWSB.
@@ -855,15 +897,14 @@ void SWSBAnalyzer::adjustSWSB(Block &block, const InstListIterator instIt,
   else
     movDistToSync();
   assert(swsb.verify(m_swsbMode, inst->getSWSBInstType(m_swsbMode)));
-  return;
+  return syncInsts;
 }
 
 static bool isSyncNop(const Instruction &i) {
   return i.is(Op::SYNC) && i.getSyncFc() == SyncFC::NOP;
 };
 
-void SWSBAnalyzer::postProcess() {
-  // revisit all instructions to handle write-combined Atomic block:
+void SWSBAnalyzer::postProcessReadModifiedWriteOnByteDst() {
   // move all swsb set within the Atomic block out for the "instruction write
   // combined" cases Atomic are provided in the input so assume they are correct
   // and have no internal dependency within the macro. Move all swsb to the
@@ -875,148 +916,168 @@ void SWSBAnalyzer::postProcess() {
   //      (W) mov (32|M0)  r13.2<2>:ub   r54.0<1;1,0>:uw   {Atomic}
   //      (W) mov (32|M0)  r13.3<2>:ub   r56.0<1;1,0>:uw
   //          add (1)      r13.0<1>:df   r100.0<0;1,0>:df  {I@1}
-  if (m_kernel.getModel().hasReadModifiedWriteOnByteDst()) {
-
-    for (Block *bb : m_kernel.getBlockList()) {
+  for (Block *bb : m_kernel.getBlockList()) {
       InstList &instList = bb->getInstList();
-      for (auto inst_it = instList.begin(); inst_it != instList.end();
-           ++inst_it) {
-        auto isWriteCombinedCandidate = [&](Instruction &inst) {
-          return (inst.is(Op::MOV) || inst.is(Op::SRND)) &&
-                 inst.getDestination().getKind() == Operand::Kind::DIRECT &&
-                 inst.getDestination().getDirRegName() == RegName::GRF_R &&
-                 TypeSizeInBitsWithDefault(inst.getDestination().getType(),
-                                           32) == 8;
-        };
-        // add distance swsb in "from" into "to"
-        auto updateDistanceSWSB = [](const SWSB &from, SWSB &to) {
-          if (!from.hasDist())
-            return;
+    for (auto inst_it = instList.begin(); inst_it != instList.end();
+         ++inst_it) {
+      auto isWriteCombinedCandidate = [&](Instruction &inst) {
+        return (inst.is(Op::MOV) || inst.is(Op::SRND)) &&
+               inst.getDestination().getKind() == Operand::Kind::DIRECT &&
+               inst.getDestination().getDirRegName() == RegName::GRF_R &&
+               TypeSizeInBitsWithDefault(inst.getDestination().getType(),
+                                         32) == 8;
+      };
+      // add distance swsb in "from" into "to"
+      auto updateDistanceSWSB = [](const SWSB &from, SWSB &to) {
+        if (!from.hasDist())
+          return;
 
-          if (!to.hasDist()) {
-            to.distType = from.distType;
-            to.minDist = from.minDist;
-          } else {
-            to.distType = (to.distType == from.distType)
-                              ? to.distType
-                              : SWSB::DistType::REG_DIST_ALL;
-            to.minDist = std::min(to.minDist, from.minDist);
-          }
-        };
-
-        if ((*inst_it)->hasInstOpt(InstOpt::ATOMIC) &&
-            isWriteCombinedCandidate(**inst_it)) {
-          // found the marcro start
-          InstListIterator firstit = inst_it;
-          SWSB allDistSWSB = SWSB();
-          ++inst_it;
-          InstList sync_insts;
-          // iterate to the end of the macro and move all swsb to the first
-          for (; inst_it != instList.end(); ++inst_it) {
-            Instruction &cur_inst = **inst_it;
-            // found sync, prepare to move to before the firstinst
-            if (cur_inst.is(Op::SYNC)) {
-              sync_insts.push_back(
-                  m_kernel.createSyncNopInstruction(cur_inst.getSWSB()));
-              // remove swsb in current sync so that this sync will be removed
-              // in the following pass
-              cur_inst.setSWSB(SWSB());
-              continue;
-            }
-            // All instructions within the write-combined atomic block must be
-            // write-combined candidate
-            if (isWriteCombinedCandidate(cur_inst)) {
-              // move the swsb within the atomic block to the firstinst and keep
-              // track of distance swsb
-              if (cur_inst.getSWSB().hasSWSB()) {
-                updateDistanceSWSB(cur_inst.getSWSB(), allDistSWSB);
-                addSWSBToInst(firstit, cur_inst.getSWSB(), *bb);
-                cur_inst.setSWSB(SWSB());
-              }
-              // found the last instruction of the Atomic block
-              if (!cur_inst.hasInstOpt(InstOpt::ATOMIC))
-                break;
-            } else {
-              m_errorHandler.reportError(
-                  cur_inst.getPC(),
-                  "Instruction found in the write-combined atomic block is not "
-                  "a write-combined candidate");
-              break;
-            }
-          }
-          // insert sync to before firstinst
-          if (!sync_insts.empty())
-            instList.insert(firstit, sync_insts.begin(), sync_insts.end());
-
-          if (inst_it == instList.end()) {
-            m_errorHandler.reportError(
-                (*firstit)->getPC(),
-                "The last instruction in this write-combined atomic block has "
-                "{Atomic} set");
-            break;
-          }
-
-          // insert distance dependency to the instruction following the block
-          InstListIterator next = inst_it;
-          next++;
-          // if the last instruction in the atomic block is the last instruction
-          // in the BB, insert a sync.nop to carry the required SWSB info
-          // For example:
-          //      BB0:
-          //      (W) mov (32|M0)  r13.0<2>:ub   r50.0<1;1,0>:uw   {Atomic}
-          //      (W) mov (32|M0)  r13.1<2>:ub   r52.0<1;1,0>:uw   {Atomic}
-          //      (W) mov (32|M0)  r13.2<2>:ub   r54.0<1;1,0>:uw   {Atomic}
-          //      (W) mov (32|M0)  r13.3<2>:ub   r56.0<1;1,0>:uw
-          //      (W) sync.nop  {I@1} // insert nop
-          //      BB1:
-          //          add (1)      r13.0<1>:df   r100.0<0;1,0>:df
-          if (next == instList.end()) {
-            instList.push_back(m_kernel.createSyncNopInstruction(allDistSWSB));
-            break;
-          }
-          addSWSBToInst(next, allDistSWSB, *bb);
+        if (!to.hasDist()) {
+          to.distType = from.distType;
+          to.minDist = from.minDist;
+        } else {
+          to.distType = (to.distType == from.distType)
+                            ? to.distType
+                            : SWSB::DistType::REG_DIST_ALL;
+          to.minDist = std::min(to.minDist, from.minDist);
         }
+      };
+
+      if ((*inst_it)->hasInstOpt(InstOpt::ATOMIC) &&
+          isWriteCombinedCandidate(**inst_it)) {
+        // found the marcro start
+        InstListIterator firstit = inst_it;
+        SWSB allDistSWSB = SWSB();
+        ++inst_it;
+        InstList sync_insts;
+        // iterate to the end of the macro and move all swsb to the first
+        for (; inst_it != instList.end(); ++inst_it) {
+          Instruction &cur_inst = **inst_it;
+          // found sync, prepare to move to before the firstinst
+          if (cur_inst.is(Op::SYNC)) {
+            sync_insts.push_back(
+                m_kernel.createSyncNopInstruction(cur_inst.getSWSB()));
+            // remove swsb in current sync so that this sync will be removed
+            // in the following pass
+            cur_inst.setSWSB(SWSB());
+            continue;
+          }
+          // All instructions within the write-combined atomic block must be
+          // write-combined candidate
+          if (isWriteCombinedCandidate(cur_inst)) {
+            // move the swsb within the atomic block to the firstinst and keep
+            // track of distance swsb
+            if (cur_inst.getSWSB().hasSWSB()) {
+              updateDistanceSWSB(cur_inst.getSWSB(), allDistSWSB);
+              addSWSBToInst(firstit, cur_inst.getSWSB(), *bb);
+              cur_inst.setSWSB(SWSB());
+            }
+            // found the last instruction of the Atomic block
+            if (!cur_inst.hasInstOpt(InstOpt::ATOMIC))
+              break;
+          } else {
+            m_errorHandler.reportError(
+                cur_inst.getPC(),
+                "Instruction found in the write-combined atomic block is not "
+                "a write-combined candidate");
+            break;
+          }
+        }
+        // insert sync to before firstinst
+        if (!sync_insts.empty())
+          instList.insert(firstit, sync_insts.begin(), sync_insts.end());
+
+        if (inst_it == instList.end()) {
+          m_errorHandler.reportError(
+              (*firstit)->getPC(),
+              "The last instruction in this write-combined atomic block has "
+              "{Atomic} set");
+          break;
+        }
+
+        // insert distance dependency to the instruction following the block
+        InstListIterator next = inst_it;
+        next++;
+        // if the last instruction in the atomic block is the last instruction
+        // in the BB, insert a sync.nop to carry the required SWSB info
+        // For example:
+        //      BB0:
+        //      (W) mov (32|M0)  r13.0<2>:ub   r50.0<1;1,0>:uw   {Atomic}
+        //      (W) mov (32|M0)  r13.1<2>:ub   r52.0<1;1,0>:uw   {Atomic}
+        //      (W) mov (32|M0)  r13.2<2>:ub   r54.0<1;1,0>:uw   {Atomic}
+        //      (W) mov (32|M0)  r13.3<2>:ub   r56.0<1;1,0>:uw
+        //      (W) sync.nop  {I@1} // insert nop
+        //      BB1:
+        //          add (1)      r13.0<1>:df   r100.0<0;1,0>:df
+        if (next == instList.end()) {
+          instList.push_back(m_kernel.createSyncNopInstruction(allDistSWSB));
+          break;
+        }
+        addSWSBToInst(next, allDistSWSB, *bb);
       }
     }
   }
+}
 
-  // revisit all instructions to remove redundant sync.nop
+
+void SWSBAnalyzer::postProcessRemoveRedundantSync() {
+  // Case 1:
   // sync.nop carry the sbid the same as the sbid set on the following
   // instruction can be removed since it'll automatically be sync-ed when sbid
-  // is reused. For example: sync.nop        null                       {$0.dst}
-  // // can be removed math.exp(8|M0)  r12.0<1>:f  r10.0<8;8,1>:f {$0}
+  // is reused. For example:
+  //   sync.nop null {$0.dst} // can be removed
+  //   math.exp(8|M0)  r12.0<1>:f  r10.0<8;8,1>:f {$0}
+  // Case 2:
+  // Continuous sync.nop with the same swsb. One of it can be removed:
+  //   sync.nop null {$0.src}
+  //   sync.nop null {$0.src}
   for (Block *bb : m_kernel.getBlockList()) {
     InstList &instList = bb->getInstList();
     if (instList.empty())
       continue;
     auto inst_it = instList.begin();
     // skip the first instruction, which must not be sync
-
     ++inst_it;
     for (; inst_it != instList.end(); ++inst_it) {
       Instruction *inst = *inst_it;
       if (isSyncNop(*inst))
         continue;
+
       SWSB cur_swsb = inst->getSWSB();
-      if (cur_swsb.hasToken() && (cur_swsb.tokenType == SWSB::TokenType::SET)) {
-        // iterate through the previous sync
-        auto sync_it = inst_it;
-        --sync_it;
-        while (sync_it != instList.begin()) {
-          Instruction *sync_inst = *sync_it;
-          if (!isSyncNop(*sync_inst))
-            break;
-          SWSB sync_swsb = sync_inst->getSWSB();
-          // if the sync has sbid set, it could be the reserved sbid for shoot
-          // down instructions, we should keep it.
+      // iterate through the previous sync if any
+      auto sync_it = inst_it;
+      --sync_it;
+      // keep track of the seen SWSB's TokenType and sbid number
+      std::set<std::pair<SWSB::TokenType, uint32_t>> seenSBID;
+      while (sync_it != instList.begin()) {
+        Instruction *sync_inst = *sync_it;
+        if (!isSyncNop(*sync_inst))
+          break;
+        SWSB sync_swsb = sync_inst->getSWSB();
+        // Case 1
+        // if the sync has sbid set, it could be the reserved sbid for shoot
+        // down instructions, we should keep it. Otherwise if the its sbid
+        // is the same as current's instrcutions' sbid.set, we can remove it.
+        if(cur_swsb.hasToken() && cur_swsb.tokenType == SWSB::TokenType::SET) {
           if (sync_swsb.hasToken() &&
               sync_swsb.tokenType != SWSB::TokenType::SET &&
               sync_swsb.sbid == cur_swsb.sbid) {
             // clean the swsb so that we can remove this instruction later
             sync_inst->setSWSB(SWSB());
           }
-          --sync_it;
         }
+        // Case 2
+        // keep track of visited SWSB on sync and remove the duplicated one
+        sync_swsb = sync_inst->getSWSB();
+        if (sync_swsb.hasToken()) {
+          auto sbidPair = std::make_pair(sync_swsb.tokenType, sync_swsb.sbid);
+          if (seenSBID.find(sbidPair) != seenSBID.end()) {
+            sync_inst->setSWSB(SWSB());
+          } else {
+            seenSBID.insert(sbidPair);
+          }
+        }
+        --sync_it;
       }
     }
     // remove the redundant sync.nop (sync.nop with no swsb)
@@ -1024,6 +1085,17 @@ void SWSBAnalyzer::postProcess() {
       return isSyncNop(*inst) && !inst->getSWSB().hasSWSB();
     });
   }
+}
+
+void SWSBAnalyzer::postProcess() {
+  // revisit all instructions to handle write-combined Atomic block
+  if (m_kernel.getModel().hasReadModifiedWriteOnByteDst()) {
+    postProcessReadModifiedWriteOnByteDst();
+  }
+
+
+  // revisit all instructions to remove redundant sync.nop
+  postProcessRemoveRedundantSync();
 }
 
 SBID &SWSBAnalyzer::assignSBID(DepSet *input, DepSet *output, Instruction &inst,
@@ -1083,8 +1155,10 @@ SBID &SWSBAnalyzer::assignSBID(DepSet *input, DepSet *output, Instruction &inst,
     }
     // add a sync to preserve the token for possibly shooting down instruction
     SWSB tDep(SWSB::DistType::NO_DIST, SWSB::TokenType::SET, 0, sbidFree->sbid);
-    curBB->insertInstBefore(insertPoint,
-                            m_kernel.createSyncNopInstruction(tDep));
+    auto syncInst = m_kernel.createSyncNopInstruction(tDep);
+    curBB->insertInstBefore(insertPoint, syncInst);
+    input->addSrcDepInsts(syncInst);
+    output->addSrcDepInsts(syncInst);
   }
 
   // adding the set for this SBID
@@ -1243,7 +1317,7 @@ void SWSBAnalyzer::run() {
         if (math_wa_info.previous_is_math) {
           math_wa_info.reset();
         }
-        // early out, no need to calculateDependenc that all dependencies are
+        // early out, no need to calculateDependence that all dependencies are
         // resolved.
         continue;
       } // end indirect access handling
@@ -1264,13 +1338,15 @@ void SWSBAnalyzer::run() {
         }
       }
 
-      std::vector<SBID> activeSBID;
+      // keep track of the depended SBID current inst depends on,
+      // and the list of DepSet where this SBID comes from
+      activeSBIDsTy activeSBIDs;
       bool needSyncForShootDown = false;
       // Calculates dependence between this instruction dependencies and
       // previous ones.
-      calculateDependence(*input, swsb, *inst, activeSBID,
+      calculateDependence(*input, swsb, *inst, activeSBIDs,
                           needSyncForShootDown);
-      calculateDependence(*output, swsb, *inst, activeSBID,
+      calculateDependence(*output, swsb, *inst, activeSBIDs,
                           needSyncForShootDown);
 
       // clean up math_wa_info
@@ -1281,10 +1357,10 @@ void SWSBAnalyzer::run() {
       }
 
       if (first_inst_in_dpas_macro != instList.end())
-        processActiveSBID(swsb, input, bb,
-                          first_inst_in_dpas_macro, activeSBID);
+        processactiveSBIDs(swsb, input, bb,
+                          first_inst_in_dpas_macro, activeSBIDs);
       else
-        processActiveSBID(swsb, input, bb, instIter, activeSBID);
+        processactiveSBIDs(swsb, input, bb, instIter, activeSBIDs);
 
       // Need to set SBID
       if (output->getDepClass() == DEP_CLASS::OUT_OF_ORDER) {

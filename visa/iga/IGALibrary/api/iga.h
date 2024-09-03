@@ -284,7 +284,6 @@ static_assert(sizeof(iga_assemble_options_t) == 8 * 4,
 /* forcely NoCompact to all instructions even if {Compacted} is set on the
    instruction This option will overried IGA_ENCODER_OPT_AUTO_COMPACT */
 #define IGA_ENCODER_OPT_FORCE_NO_COMPACT 0x00000010u
-
 /*
  * options for the parsing phase
  */

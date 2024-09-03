@@ -53,7 +53,8 @@ public:
 public:
   // Blocks have already been created
   SWSBAnalyzer(Kernel &k, ErrorHandler &errHandler,
-               SWSB_ENCODE_MODE encode_mode, int sbid_count)
+               SWSB_ENCODE_MODE encode_mode, int sbid_count
+               )
       : m_kernel(k), m_errorHandler(errHandler), m_SBIDRRCounter(0),
         m_initPoint(false),
         MAX_VALID_DISTANCE(k.getModel().getSWSBMaxValidDistance()) {
@@ -95,20 +96,27 @@ private:
   // postProcess - last step of "run"
   void postProcess();
 
+  void postProcessReadModifiedWriteOnByteDst();
+  void postProcessRemoveRedundantSync();
+
 private:
-  // activeSBID: input list that the sbid this dep has dependency on will be
-  // added into. This list will later on be pass to processActiveSBID to set the
+  // activeSBIDsTy - keep track of the depended SBID an inst depends on,
+  // and the list of DepSet where this SBID comes from
+  typedef std::vector<std::pair<SBID,  std::vector<DepSet*>>> activeSBIDsTy;
+
+  // activeSBIDs: input list that the sbid this dep has dependency on will be
+  // added into. This list will later on be pass to processactiveSBIDs to set the
   // swsb id dependency to inst accordingly needSyncForShootDownInst: if the
   // sync to the sbid on the instruction is required. If the instruction is
   // possiblely being shoot down, we have to add a sync to the id is synced with
   // because we will clear the dependency
   void calculateDependence(DepSet &dep, SWSB &swsb,
                            const Instruction &currInst,
-                           std::vector<SBID> &activeSBID,
+                           activeSBIDsTy &activeSBIDs,
                            bool &needSyncForShootDownInst);
-  void processActiveSBID(SWSB &distanceDependency, const DepSet *input,
-                         Block *bb, InstList::iterator iter,
-                         std::vector<SBID> &activeSBID);
+  void processactiveSBIDs(SWSB &distanceDependency, const DepSet *input,
+                          Block *bb, InstList::iterator iter,
+                          activeSBIDsTy &activeSBIDs);
 
   // helper function to pick a free SBID and set it to distanceDependency.
   // This function only set SBID to distanceDependency, will not assign
@@ -119,10 +127,10 @@ private:
 
   // helper fuction to set out-of-order dependecy. Called by
   // calculateDependence. This function create SBID with depedency to given dep,
-  // and add it to activeSBID it also set needSyncForShootDownInst if required.
+  // and add it to activeSBIDs it also set needSyncForShootDownInst if required.
   void setSbidDependency(DepSet &dep, const Instruction &currInst,
                          bool &needSyncForShootDownInst,
-                         std::vector<SBID> &activeSBID);
+                         activeSBIDsTy &activeSBIDs);
 
   // helper fuction to set swsb for dependency to in-order instructions.
   void setDistanceDependency(DepSet *dep, SWSB &swsb, bool isWAW,
@@ -170,8 +178,11 @@ private:
   // for swsb information until it is valid, but do not set swsb to the instruction.
   // preferMoveOutSBID - perfer move out sbid to sync.nop if possible. If set to
   // false, try to move distance out first.
-  void adjustSWSB(Block &block, const InstListIterator instIt,
-                  SWSB &swsb, bool preferMoveOutSBID);
+  // Return the newly inserted sync.nop instructions if any
+  std::vector<Instruction*>
+  adjustSWSB(Block &block, const InstListIterator instIt,
+             SWSB &swsb, bool preferMoveOutSBID);
+
 
   /// ------------ HW Workaround Information ------------ ///
   // MathWAInfo: For a math instruction, when the following instruction has
@@ -241,6 +252,7 @@ private:
   SWSB_ENCODE_MODE m_swsbMode;
 
   const int MAX_VALID_DISTANCE;
+
 };
 } // namespace iga
 #endif

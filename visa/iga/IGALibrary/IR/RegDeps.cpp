@@ -724,7 +724,7 @@ void DepSetBuilder::DpasMacroBuilder::updateRegFootprintsToDepSets(
   m_oups.addDependency(dst_range);
 };
 
-const Instruction &DepSetBuilder::DpasMacroBuilder::formMacro(size_t &dpasCnt) {
+Instruction &DepSetBuilder::DpasMacroBuilder::formMacro(size_t &dpasCnt) {
   dpasCnt = 1;
   InstListIterator cur = m_firstDpasIt;
 
@@ -916,7 +916,7 @@ std::pair<DepSet *, DepSet *> DepSetBuilder::createDPASSrcDstDepSet(
   // identify dpas macro
   DpasMacroBuilder dmb(
       *this, mPlatformModel, insList, instIt, *inps, *oups, enc_mode);
-  const Instruction &lastDpas = dmb.formMacro(dpasCnt);
+  Instruction &lastDpas = dmb.formMacro(dpasCnt);
 
   // let the last instruciton in the macro represent this DepSet
   inps->m_instruction = &lastDpas;
@@ -925,7 +925,7 @@ std::pair<DepSet *, DepSet *> DepSetBuilder::createDPASSrcDstDepSet(
   return std::make_pair(inps, oups);
 }
 
-DepSet *DepSetBuilder::createSrcDepSet(const Instruction &i,
+DepSet *DepSetBuilder::createSrcDepSet(Instruction &i,
                                        const InstIDs &inst_id_counter,
                                        SWSB_ENCODE_MODE enc_mode) {
   DepSet *inps = new DepSet(inst_id_counter, *this);
@@ -1334,7 +1334,7 @@ void DepSet::setOutputsDstDep() {
 }
 
 
-DepSet *DepSetBuilder::createDstDepSet(const Instruction &i,
+DepSet *DepSetBuilder::createDstDepSet(Instruction &i,
                                        const InstIDs &inst_id_counter,
                                        SWSB_ENCODE_MODE enc_mode) {
   DepSet *oups = new DepSet(inst_id_counter, *this);
@@ -1350,7 +1350,7 @@ DepSet *DepSetBuilder::createDstDepSet(const Instruction &i,
   return oups;
 }
 
-DepSet *DepSetBuilder::createDstDepSetFullGrf(const Instruction &i,
+DepSet *DepSetBuilder::createDstDepSetFullGrf(Instruction &i,
                                               const InstIDs &inst_id_counter,
                                               SWSB_ENCODE_MODE enc_mode,
                                               bool setFlagDep) {

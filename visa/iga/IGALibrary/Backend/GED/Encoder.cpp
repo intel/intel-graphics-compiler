@@ -64,7 +64,8 @@ void Encoder::encodeKernelPreProcess(Kernel &k) { doEncodeKernelPreProcess(k); }
 void Encoder::doEncodeKernelPreProcess(Kernel &k) {
   if (m_opts.autoDepSet && platform() >= Platform::XE) {
     SWSBAnalyzer swsbAnalyzer(k, errorHandler(), m_opts.swsbEncodeMode,
-                              m_opts.sbidCount);
+                              m_opts.sbidCount
+         );
     swsbAnalyzer.run();
   }
 }

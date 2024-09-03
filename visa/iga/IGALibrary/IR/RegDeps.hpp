@@ -60,6 +60,12 @@ struct SBID {
   SBID(uint32_t id, bool isfree, DEP_TYPE type)
       : sbid(id), dType(type), isFree(isfree) {}
 
+  SBID(const SBID& from) {
+    sbid = from.sbid;
+    dType = from.dType;
+    isFree = from.isFree;
+  }
+
   void reset() {
     sbid = 0;
     dType = DEP_TYPE::NONE;
@@ -152,6 +158,7 @@ public:
   bool hasIndirect() const { return m_hasIndirect; }
   bool hasSR() const { return m_hasSR; }
   const Instruction *getInstruction() const { return m_instruction; }
+  Instruction *getInstruction() { return m_instruction; }
   const InstIDs &getInstIDs() const { return m_InstIDs; }
   size_t getInstGlobalID() const { return m_InstIDs.global; }
 
@@ -170,6 +177,9 @@ public:
   DepSet *getCompanion() { return m_companion; }
 
   void setCompanion(DepSet *companion) { m_companion = companion; }
+
+  std::vector<Instruction*> getSrcDepInsts() { return m_SrcDepInsts; }
+  void addSrcDepInsts(Instruction* inst) { m_SrcDepInsts.push_back(inst); }
 
 private:
   void setInputsFlagDep();
@@ -225,7 +235,7 @@ private:
   uint32_t getDPASOpsPerChan(Type src1_ty, Type src2_ty, bool isDF);
 
 private:
-  const Instruction *m_instruction;
+  Instruction *m_instruction;
 
   // track the inst id counters when it reach to this instruction
   const InstIDs m_InstIDs;
@@ -251,6 +261,9 @@ private:
   // DepSet. This is for the use of when we clear an in-order instruction's
   // dependency, we'd like to clear its both input and output DepSets
   DepSet *m_companion = nullptr;
+
+  // A list of instructions those having sbid.src dependency to this DepSet
+  std::vector<Instruction*> m_SrcDepInsts;
 };
 
 /// DepSetBuilder - create the DepSet, also keep track of Model dependend
@@ -277,10 +290,10 @@ public:
 public:
   // DepSet creater
   /// createSrcDepSet - create DepSet for src operands of instruction i
-  DepSet *createSrcDepSet(const Instruction &i, const InstIDs &inst_id_counter,
+  DepSet *createSrcDepSet(Instruction &i, const InstIDs &inst_id_counter,
                           SWSB_ENCODE_MODE enc_mode);
   /// createDstDepSet - create DepSet for dst operands of instruction i
-  DepSet *createDstDepSet(const Instruction &i, const InstIDs &inst_id_counter,
+  DepSet *createDstDepSet(Instruction &i, const InstIDs &inst_id_counter,
                           SWSB_ENCODE_MODE enc_mode);
 
   /// createSrcDstDepSetForDpas - Find the DPAS macro and set the dependency for
@@ -299,7 +312,7 @@ public:
   ///                     additional dependecny for an instruction which already
   ///                     has DepSet created (e.g. for MathWA)
   /// This is the WA to fix the HW read suppression issue
-  DepSet *createDstDepSetFullGrf(const Instruction &i,
+  DepSet *createDstDepSetFullGrf(Instruction &i,
                                  const InstIDs &inst_id_counter,
                                  SWSB_ENCODE_MODE enc_mode, bool setFlagDep);
 
@@ -443,7 +456,7 @@ private:
     // instruction in the macro into the given input and output DepSet
     // - dpasCnt is the output of number of instructions in the macro
     // - return the last intruction in the formed macro
-    const Instruction &formMacro(size_t &dpasCnt);
+    Instruction &formMacro(size_t &dpasCnt);
 
   private:
     typedef DepSet::RegRangeListType RegRangeListType;
