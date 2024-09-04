@@ -1205,7 +1205,7 @@ namespace IGC
 
                 CVariable* dataElement = outProgram->GetSymbol(val);
                 //FIXME: need to do additional checks for size
-                uint subVar = payloadToCCTupleRelativeOffset + index * numSubVarsPerOperand;
+                uint subVar = (payloadToCCTupleRelativeOffset + index) * numSubVarsPerOperand;
                 encoder->SetDstSubVar(subVar);
                 payload = outProgram->GetCCTupleToVariableMapping(ccTuple);
 
