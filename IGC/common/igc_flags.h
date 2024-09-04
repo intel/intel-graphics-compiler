@@ -150,6 +150,7 @@ DECLARE_IGC_REGKEY(DWORD, LoopSinkMinSave,              1,  "If loop sink can ha
 DECLARE_IGC_REGKEY(DWORD, LoopSinkThresholdDelta,       30,  "Do loop sink If the estimated register pressure is higher than this + #avaialble registers", false)
 DECLARE_IGC_REGKEY(DWORD, LoopSinkRollbackThreshold,    15,  "Rollback loop sinking if the estimated regpressure after the sinking is still higher than this + #available registers, and the number of registers can be increased", false)
 DECLARE_IGC_REGKEY(bool, LoopSinkEnableLoadsRescheduling, true, "Allow sinking the loads that are already in the loop", false)
+DECLARE_IGC_REGKEY(bool, LoopSinkCoarserLoadsRescheduling, true, "Try to reschedule multi-instruction load candidates in larger chunks", false)
 DECLARE_IGC_REGKEY(bool, LoopSinkEnable2dBlockReads,    true,  "Allow sinking of the 2d block reads", false)
 DECLARE_IGC_REGKEY(bool, LoopSinkEnableVectorShuffle,   true,  "Allow sinking of the lowered vector shuffle pattern", false)
 DECLARE_IGC_REGKEY(bool, LoopSinkForceRollback,         false,  "Rollback every loop sinking change (for debug purposes only)", false)
