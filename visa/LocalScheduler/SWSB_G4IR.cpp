@@ -4735,6 +4735,16 @@ void SWSB::insertPVCWA() {
     std::vector<FIFOQueueType> LSCLastTwoGRFsOfToken(totalTokenNum);
     std::vector<FIFOQueueType> nonLSClastTwoGRFsOfToken(totalTokenNum);
 
+    auto cleanLSCGRF = [&](unsigned short i) {
+      LSCLastTwoGRFsOfToken[i].first = LSCLastTwoGRFsOfToken[i].second =
+          INVALID_GRF;
+    };
+
+    auto cleanNonLSCGRF = [&](unsigned short i) {
+      nonLSClastTwoGRFsOfToken[i].first = nonLSClastTwoGRFsOfToken[i].second =
+          INVALID_GRF;
+    };
+
     auto cleanGRF = [&](unsigned short i) {
       LSCLastTwoGRFsOfToken[i].first = LSCLastTwoGRFsOfToken[i].second =
           INVALID_GRF;
@@ -4820,9 +4830,11 @@ void SWSB::insertPVCWA() {
         if (inst->getMsgDesc()->isLSC()) {
           getLastTwoGRFsOfSend(LSCLastTwoGRFs, LSCLastTwoTokens, inst);
           assignLSCGRF(token);
+          cleanNonLSCGRF(token);
         } else {
           getLastTwoGRFsOfSend(nonLSCLastTwoGRFs, nonLSCLastTwoTokens, inst);
           assignNonLSCGRF(token);
+          cleanLSCGRF(token);
         }
         continue;
       }
@@ -4909,7 +4921,7 @@ void SWSB::insertPVCWA() {
       // Add WA for .src
       if (insertDummyMovs(bb, inst_it, token, LSCLastTwoGRFsOfToken,
                           nonLSClastTwoGRFsOfToken)) {
-        cleanGRFs();
+        cleanGRF(token);
         insertSyncInt1(bb, inst_it);
         if (inst->opcode() == G4_sync_nop &&
             inst->getDistanceTypeXe() ==
