@@ -272,6 +272,7 @@ bool GenXBaling::isRegionOKForIntrinsic(unsigned ArgInfoBits,
   const auto Log2Align = getLogAlignment(Align, GRFWidth * ByteBits);
 
   if (Log2Align > 0) {
+    IGC_ASSERT_EXIT(Log2Align < 32);
     const auto ElementsPerAlign = (1 << Log2Align) / R.ElementBytes;
 
     if (R.Indirect) {
@@ -1632,7 +1633,7 @@ void GenXBaling::processBranch(BranchInst *Branch)
 void GenXBaling::processTwoAddrSend(CallInst *CI)
 {
   auto TwoAddrOperandNum = vc::getTwoAddrOpIndex(CI);
-  IGC_ASSERT(TwoAddrOperandNum >= 0);
+  IGC_ASSERT_EXIT(TwoAddrOperandNum >= 0);
   IGC_ASSERT(GenXIntrinsicInfo(vc::getAnyIntrinsicID(CI))
       .getArgInfo(TwoAddrOperandNum)
       .getCategory() == GenXIntrinsicInfo::TWOADDR);
