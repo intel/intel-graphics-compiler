@@ -312,27 +312,37 @@ uint __intel_get_global_linear_id( void );
 uint __intel_get_local_size( void );
 
 // Implementation of global_barrier using atomic instructions.
+// First two integers in the sync buffer are used for global synchronization, they are used interchangeably:
+// first call to global_barrier() will use syncBuffer + 0, second call will use syncBuffer + 1, third call will use syncBuffer + 0 again, etc.
+// This is to prevent a race condition, where one of the workgroups returned from the barrier and some other still wait for the value of the synchronization variable.
 void __global_barrier_atomic()
 {
     __intel_workgroup_barrier(Device, AcquireRelease | CrossWorkgroupMemory);
 
-    __global volatile int* syncBuffer = (__global volatile int*)__builtin_IB_get_sync_buffer();
-
+    uint groupLinearId = (__builtin_IB_get_group_id(2) * __builtin_IB_get_num_groups(1) * __builtin_IB_get_num_groups(0)) + (__builtin_IB_get_group_id(1) * __builtin_IB_get_num_groups(0)) + __builtin_IB_get_group_id(0);
     bool firstThreadPerWg = (__builtin_IB_get_local_id_x() == 0) && (__builtin_IB_get_local_id_y() == 0) && (__builtin_IB_get_local_id_z() == 0);
     size_t numGroups = __builtin_IB_get_num_groups(0) * __builtin_IB_get_num_groups(1) * __builtin_IB_get_num_groups(2);
+
+    __global volatile int* syncBuffer = (__global volatile int*)__builtin_IB_get_sync_buffer();
+    __global volatile char* syncBufferChar = (__global volatile char*)syncBuffer;
+    __global volatile char* offsetLocationInBuffer = syncBufferChar + groupLinearId + 8;
+    int offset = *offsetLocationInBuffer;
+    __global volatile int* syncVar = syncBuffer + offset;
 
     if (firstThreadPerWg)
     {
         if (__intel_get_global_linear_id() == 0)
         {
-            atomic_sub(syncBuffer, numGroups-1);
+            atomic_sub(syncVar, numGroups-1);
         }
         else
         {
-            atomic_inc(syncBuffer);
+            atomic_inc(syncVar);
         }
 
-        while (atomic_or(syncBuffer, 0) != 0) {}
+        while (atomic_or(syncVar, 0) != 0) {}
+
+        *offsetLocationInBuffer = !offset;
     }
 
     __intel_workgroup_barrier(Device, AcquireRelease | CrossWorkgroupMemory);
