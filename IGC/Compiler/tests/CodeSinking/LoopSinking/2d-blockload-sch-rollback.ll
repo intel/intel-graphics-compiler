@@ -108,6 +108,44 @@ for.body19.i:                                     ; preds = %for.body19.i.for.bo
   br label %for.body19.i
 }
 
+
+; If all block reads are considered a single candidate and we don't check the undo point is dominated
+; We might generate incorrect IR by placing the first block read after the first dpas
+; Checking it's not happening
+
+define spir_kernel void @bar() {
+; CHECK-LABEL: @bar(
+; CHECK:         br label [[DOT_CRIT_EDGE:%.*]]
+; CHECK:       ._crit_edge:
+; CHECK:         [[BLOCK2D_ADDRPAYLOAD456:%.*]] = call i32* @llvm.genx.GenISA.LSC2DBlockCreateAddrPayload.p0i32(i64 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0)
+; CHECK:         [[BLOCK2D_READADDRPAYLOAD457:%.*]] = call <8 x i32> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v8i32.p0i32(i32* [[BLOCK2D_ADDRPAYLOAD456]], i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i1 false, i1 false, i32 0)
+; CHECK:         [[TMP1:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> zeroinitializer, <8 x i32> [[BLOCK2D_READADDRPAYLOAD457]], i32 0, i32 0, i32 0, i32 0, i1 false)
+; CHECK:         [[TMP2:%.*]] = insertelement <8 x half> zeroinitializer, half 0xH0000, i64 0
+; CHECK:         [[TMP3:%.*]] = insertelement <8 x half> [[TMP2]], half 0xH0000, i64 0
+; CHECK:         [[BLOCK2D_READADDRPAYLOAD459:%.*]] = call <8 x i32> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v8i32.p0i32(i32* [[BLOCK2D_ADDRPAYLOAD456]], i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i1 false, i1 false, i32 0)
+; CHECK:         [[TMP4:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> zeroinitializer, <8 x i32> [[BLOCK2D_READADDRPAYLOAD459]], i32 0, i32 0, i32 0, i32 0, i1 false)
+; CHECK:         [[TMP5:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> zeroinitializer, <8 x i32> [[BLOCK2D_READADDRPAYLOAD457]], i32 0, i32 0, i32 0, i32 0, i1 false)
+; CHECK:         br label [[DOT_CRIT_EDGE___CRIT_EDGE_CRIT_EDGE:%.*]]
+; CHECK:       ._crit_edge.._crit_edge_crit_edge:
+; CHECK:         br label [[DOT_CRIT_EDGE]]
+;
+  br label %._crit_edge
+
+._crit_edge:                                      ; preds = %._crit_edge.._crit_edge_crit_edge, %0
+  %Block2D_AddrPayload456 = call i32* @llvm.genx.GenISA.LSC2DBlockCreateAddrPayload.p0i32(i64 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0)
+  %Block2D_ReadAddrPayload457 = call <8 x i32> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v8i32.p0i32(i32* %Block2D_AddrPayload456, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i1 false, i1 false, i32 0)
+  %1 = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> zeroinitializer, <8 x i32> %Block2D_ReadAddrPayload457, i32 0, i32 0, i32 0, i32 0, i1 false)
+  %2 = insertelement <8 x half> zeroinitializer, half 0xH0000, i64 0
+  %3 = insertelement <8 x half> %2, half 0xH0000, i64 0
+  %Block2D_ReadAddrPayload459 = call <8 x i32> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v8i32.p0i32(i32* %Block2D_AddrPayload456, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i1 false, i1 false, i32 0)
+  %4 = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> zeroinitializer, <8 x i32> %Block2D_ReadAddrPayload459, i32 0, i32 0, i32 0, i32 0, i1 false)
+  %5 = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> zeroinitializer, <8 x i32> %Block2D_ReadAddrPayload457, i32 0, i32 0, i32 0, i32 0, i1 false)
+  br label %._crit_edge.._crit_edge_crit_edge
+
+._crit_edge.._crit_edge_crit_edge:                ; preds = %._crit_edge
+  br label %._crit_edge
+}
+
 declare <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float>, <8 x i16>, <8 x i32>, i32, i32, i32, i32, i1)
 
 declare i32* @llvm.genx.GenISA.LSC2DBlockCreateAddrPayload.p0i32(i64, i32, i32, i32, i32, i32, i32, i32, i32)
