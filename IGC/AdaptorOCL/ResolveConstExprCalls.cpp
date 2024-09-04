@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/IR/Type.h"
+#include "llvmWrapper/IR/Function.h"
 
 #include <llvm/Pass.h>
 #include <llvm/IR/Module.h>
@@ -124,12 +125,12 @@ bool transformConstExprCastCall(CallInst& Call) {
         // sized type and the sized type has to have the same size as the old type.
         if (ParamTy != ActTy && IGCLLVM::hasParamAttr(CallerPAL, i, llvm::Attribute::ByVal)) {
             PointerType* ParamPTy = dyn_cast<PointerType>(ParamTy);
-            if (!ParamPTy || !IGCLLVM::getNonOpaquePtrEltTy(ParamPTy)->isSized())
+            if (!ParamPTy || !IGCLLVM::getArg(*Callee, i)->getParamByValType()->isSized())
                 return false;
 
             Type* CurElTy = Call.getParamByValType(i);
             if (DL.getTypeAllocSize(CurElTy) !=
-                DL.getTypeAllocSize(IGCLLVM::getNonOpaquePtrEltTy(ParamPTy)))
+                DL.getTypeAllocSize(IGCLLVM::getArg(*Callee, i)->getParamByValType()))
                 return false;
         }
     }
@@ -177,7 +178,7 @@ bool transformConstExprCastCall(CallInst& Call) {
         // Add any parameter attributes.
         if (IGCLLVM::hasParamAttr(CallerPAL, i, llvm::Attribute::ByVal)) {
             IGCLLVM::AttrBuilder AB(FT->getContext(), IGCLLVM::getParamAttrs(CallerPAL, i));
-            AB.addByValAttr(IGCLLVM::getNonOpaquePtrEltTy(NewArg->getType()));
+            AB.addByValAttr(IGCLLVM::getArg(*Callee, i)->getParamByValType());
             ArgAttrs.push_back(AttributeSet::get(Ctx, AB));
         }
         else

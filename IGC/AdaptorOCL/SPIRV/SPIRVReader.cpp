@@ -2700,9 +2700,7 @@ SPIRVToLLVM::postProcessFunctionsReturnStruct(Function *F) {
       Args.insert(Args.begin(), Alloca);
       auto NewCI = CallInst::Create(NewF, Args, "", CI);
       NewCI->setCallingConv(CI->getCallingConv());
-      auto Load = new LoadInst(
-      IGCLLVM::getNonOpaquePtrEltTy(Alloca->getType()),
-      Alloca,"",CI);
+      auto Load = new LoadInst(Alloca->getAllocatedType(), Alloca, "", CI);
       CI->replaceAllUsesWith(Load);
       CI->eraseFromParent();
     }
@@ -3483,7 +3481,9 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
             for (unsigned I = 0, E = CS->getNumOperands(); I != E; I++)
             {
                 auto *op = CS->getOperand(I);
-                auto *pGEP = IRB.CreateConstInBoundsGEP2_32(IGCLLVM::getNonOpaquePtrEltTy(pointer->getType()), pointer, 0, I);
+                Type* elTy = isa<AllocaInst>(pointer) ? cast<AllocaInst>(pointer)->getAllocatedType()
+                    : cast<GetElementPtrInst>(pointer)->getResultElementType();
+                auto* pGEP = IRB.CreateConstInBoundsGEP2_32(elTy, pointer, 0, I);
                 if (auto *InnerCS = dyn_cast<ConstantStruct>(op))
                     LowerConstantStructStore(InnerCS, pGEP);
                 else
@@ -3520,7 +3520,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     IGC_ASSERT_MESSAGE(BB, "Invalid BB");
     auto val = transValue(BL->getSrc(), F, BB);
     LoadInst* LI = new LoadInst(
-      IGCLLVM::getNonOpaquePtrEltTy(val->getType()),
+      transType(BL->getType()),
       val,
       BV->getName(),
       BL->hasDecorate(DecorationVolatile) || BL->SPIRVMemoryAccess::isVolatile() != 0,
@@ -3555,11 +3555,13 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
               Type* Int8Ty = Type::getInt8Ty(Dst->getContext());
               llvm::Value* Src = ConstantInt::get(Int8Ty, 0);
               llvm::Value* newDst = Dst;
-              if (!IGCLLVM::getNonOpaquePtrEltTy(Dst->getType())->isIntegerTy(8)) {
-                  Type* Int8PointerTy = Type::getInt8PtrTy(Dst->getContext(),
-                      Dst->getType()->getPointerAddressSpace());
-                  newDst = llvm::BitCastInst::CreatePointerCast(Dst,
-                      Int8PointerTy, "", BB);
+              if (!IGCLLVM::isOpaquePointerTy(Dst->getType())) {
+                  if (!IGCLLVM::getNonOpaquePtrEltTy(Dst->getType())->isIntegerTy(8)) {      // Legacy code: getNonOpaquePtrEltTy
+                      Type* Int8PointerTy = Type::getInt8PtrTy(Dst->getContext(),
+                          Dst->getType()->getPointerAddressSpace());
+                      newDst = llvm::BitCastInst::CreatePointerCast(Dst,
+                          Int8PointerTy, "", BB);
+                  }
               }
               CI = Builder.CreateMemSet(newDst, Src, Size, IGCLLVM::getCorrectAlign(Align), IsVolatile);
           }
@@ -3640,7 +3642,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
   case OpInBoundsPtrAccessChain: {
     auto AC = static_cast<SPIRVAccessChainBase *>(BV);
     auto Base = transValue(AC->getBase(), F, BB);
-    Type *BaseTy = IGCLLVM::getNonOpaquePtrEltTy(Base->getType());
+    Type* BaseTy = transType(AC->getBase()->getType()->getPointerElementType());
     auto Index = transValue(AC->getIndices(), F, BB);
     if (!AC->hasPtrIndex())
       Index.insert(Index.begin(), getInt32(M, 0));
@@ -3841,7 +3843,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     auto func = transValue(BC->getCalledValue(), F, BB);
     auto Call = CallInst::Create(
         llvm::cast<llvm::FunctionType>(
-            IGCLLVM::getNonOpaquePtrEltTy(func->getType())),
+            transType(BC->getCalledValue()->getType()->getPointerElementType())),
         func,
         transValue(BC->getArgumentValues(), F, BB),
         BC->getName(),
@@ -4243,8 +4245,10 @@ SPIRVToLLVM::transFunction(SPIRVFunction *BF) {
 #if LLVM_VERSION_MAJOR >= 12
      Attribute::AttrKind LLVMKind = SPIRSPIRVFuncParamAttrMap::rmap(Kind);
      Type *AttrTy = nullptr;
-     if (LLVMKind == Attribute::AttrKind::ByVal || LLVMKind == Attribute::AttrKind::StructRet)
-       AttrTy = IGCLLVM::getNonOpaquePtrEltTy(I->getType());
+     if (LLVMKind == Attribute::AttrKind::ByVal)
+         AttrTy = I->getParamByValType();
+     else if (LLVMKind == Attribute::AttrKind::StructRet)
+         AttrTy = I->getParamStructRetType();
 
      // Make sure to use a correct constructor for a typed/typeless attribute
      auto A = AttrTy ? Attribute::get(*Context, LLVMKind, AttrTy)

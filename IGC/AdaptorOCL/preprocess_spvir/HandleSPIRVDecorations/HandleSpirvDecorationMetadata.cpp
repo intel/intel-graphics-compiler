@@ -529,9 +529,6 @@ void HandleSpirvDecorationMetadata::handleCacheControlINTELForOCL1DBlockPrefetch
     Function* F = I.getCalledFunction();
     IGC_ASSERT(F);
 
-    Type* pointeeTy = IGCLLVM::getNonOpaquePtrEltTy(I.getArgOperand(0)->getType());
-    IGC_ASSERT(pointeeTy->isIntegerTy());
-
     StringRef numElementsFromName = Matches[3] != "" ? Matches[3] : "1";
     uint32_t numElementsToPrefetch = std::stoi(numElementsFromName.str());
     IGC_ASSERT(numElementsToPrefetch == 1 ||
@@ -540,10 +537,17 @@ void HandleSpirvDecorationMetadata::handleCacheControlINTELForOCL1DBlockPrefetch
                numElementsToPrefetch == 8 ||
                numElementsToPrefetch == 16);
 
-    uint32_t typeSizeInBytes = pointeeTy->getIntegerBitWidth() / 8;
-
-    Value* numBytesArg =
-        (ConstantInt::get(Type::getInt32Ty(I.getContext()), (typeSizeInBytes * numElementsToPrefetch)));
+    uint32_t typeSizeInBytes = 0;
+    if (Matches[2].equals("uc"))
+        typeSizeInBytes = 1;
+    else if (Matches[2].equals("us"))
+        typeSizeInBytes = 2;
+    else if (Matches[2].equals("ui"))
+        typeSizeInBytes = 4;
+    else if (Matches[2].equals("ul"))
+        typeSizeInBytes = 8;
+    else
+        IGC_ASSERT(0 && "Unsupported type prefetch!");
 
     std::string typeName;
     switch (typeSizeInBytes)
@@ -564,6 +568,9 @@ void HandleSpirvDecorationMetadata::handleCacheControlINTELForOCL1DBlockPrefetch
             IGC_ASSERT(0 && "Unsupported block prefetch!");
             break;
     }
+
+    Value* numBytesArg =
+        (ConstantInt::get(Type::getInt32Ty(I.getContext()), (typeSizeInBytes * numElementsToPrefetch)));
 
     SmallVector<Value*, 3> args(I.args());
     args.push_back(numBytesArg);
