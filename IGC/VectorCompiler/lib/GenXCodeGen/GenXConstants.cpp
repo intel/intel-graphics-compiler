@@ -1949,6 +1949,9 @@ void ConstantLoader::analyze() {
 }
 
 void ConstantLoader::analyzeForPackedInt(unsigned NumElements) {
+  if (isa<UndefValue>(C))
+    return;
+
   int64_t Min = std::numeric_limits<int64_t>::max();
   int64_t Max = std::numeric_limits<int64_t>::min();
 
@@ -1979,12 +1982,11 @@ void ConstantLoader::analyzeForPackedInt(unsigned NumElements) {
     Min = std::min(Min, Element);
     Max = std::max(Max, Element);
   }
-  if (Elements.empty()) {
-    // Constant is undef.
-    IGC_ASSERT_MESSAGE(C == UndefValue::get(C->getType()),
-      "constant consists only of undef elements only if it's undef itself");
+
+  // Constant is a mix of undef and poison values.
+  if (Elements.empty())
     return;
-  }
+
   if (Elements.size() == 1) {
     // if we don't have an immediate user - do not create new constant
     // (constant materilization expects that NewC is cleared)
