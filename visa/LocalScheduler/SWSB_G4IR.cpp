@@ -6743,7 +6743,6 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
     }
 
     if (curInst->isDpas()) {
-      indexes->hasDPASorDP = true;
       node->setDPASID(DPASID);
       DPASID += node->getDPASSize();
       lastDpasNode = node;
