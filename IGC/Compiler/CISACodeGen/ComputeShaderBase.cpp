@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/ScaledNumber.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/ComputeShaderBase.hpp"
+#include "Compiler/CISACodeGen/CSWalkOrder.hpp"
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
 #include "common/allocator.h"
 #include "common/secure_mem.h"
@@ -35,10 +36,15 @@ namespace IGC
         uint numSLMAccesses,
         uint threadGroupSize_X,
         uint threadGroupSize_Y,
-        uint threadGroupSize_Z)
+        uint threadGroupSize_Z,
+        SComputeShaderWalkOrder& walkOrderStruct)
     {
         const CodeGenContext* pCtx = GetContext();
         const ModuleMetaData* MMD = pCtx->getModuleMetaData();
+        ThreadIDLayout& m_ThreadIDLayout = walkOrderStruct.m_threadIDLayout;
+        CS_WALK_ORDER& m_walkOrder = walkOrderStruct.m_walkOrder;
+        EMIT_LOCAL_MASK& m_emitMask = walkOrderStruct.m_emitMask;
+        bool& m_enableHWGenerateLID = walkOrderStruct.m_enableHWGenerateLID;
 
         if (IGC_IS_FLAG_ENABLED(EnableSelectCSWalkOrderPass) &&
             pCtx->platform.EnableCSWalkerPass())
@@ -150,7 +156,7 @@ namespace IGC
             }
             //disable tileY if walkorder cannot be changed
             m_ThreadIDLayout = ThreadIDLayout::X;
-            overrideWalkOrderKeys(is_pow2_x, is_pow2_y, is_pow2_z, MMD->csInfo);
+            overrideWalkOrderKeysInPass(is_pow2_x, is_pow2_y, is_pow2_z, walkOrderStruct, m_ctx);
             return;
         }
 
@@ -183,7 +189,7 @@ namespace IGC
             }
         }
 
-        auto order = selectBestWalkOrder(
+        auto order = selectBestWalkOrderInPass(
             m_ThreadIDLayout, is_pow2_x, is_pow2_y, is_pow2_z);
 
         if (order) {
@@ -195,7 +201,7 @@ namespace IGC
             m_ThreadIDLayout = ThreadIDLayout::X;
             m_walkOrder = CS_WALK_ORDER::WO_XYZ;
         }
-        overrideWalkOrderKeys(is_pow2_x, is_pow2_y, is_pow2_z, MMD->csInfo);
+        overrideWalkOrderKeysInPass(is_pow2_x, is_pow2_y, is_pow2_z, walkOrderStruct, m_ctx);
     }
 
     Optional<CS_WALK_ORDER>
@@ -228,12 +234,13 @@ namespace IGC
             )
         {
             // Legal walk order for HW auto-gen
-            return getWalkOrder(order0, order1);
+            return getWalkOrderInPass(order0, order1);
         }
 
         return None;
     }
 
+    // obsolete, remove later
     Optional<CS_WALK_ORDER>
     CComputeShaderBase::selectBestWalkOrder(
         ThreadIDLayout Layout,
@@ -269,12 +276,13 @@ namespace IGC
         if (order1 != UNDEF)
         {
             // select walkorder
-            return getWalkOrder(order0, order1);
+            return getWalkOrderInPass(order0, order1);
         }
 
         return None;
     }
 
+    // obsolete, remove later
     bool
     CComputeShaderBase::enableHWGenerateLID(
         CS_WALK_ORDER walk_order,
@@ -302,6 +310,7 @@ namespace IGC
         return bEnableHWGenerateLID;
     }
 
+    // obsolete, remove later
     void
     CComputeShaderBase::overrideWalkOrderKeys(
         bool is_pow2_x, bool is_pow2_y, bool is_pow2_z, const ComputeShaderInfo& csInfo)
@@ -311,19 +320,19 @@ namespace IGC
         {
             m_ThreadIDLayout = ThreadIDLayout::TileY;
             m_walkOrder = CS_WALK_ORDER::WO_YXZ;
-            m_enableHWGenerateLID = enableHWGenerateLID(m_walkOrder, is_pow2_x, is_pow2_y, is_pow2_z);
+            m_enableHWGenerateLID = enableHWGenerateLIDInPass(m_walkOrder, is_pow2_x, is_pow2_y, is_pow2_z);
         }
 
         if (csInfo.walkOrderEnabled)
         {
             m_walkOrder = (CS_WALK_ORDER)csInfo.walkOrderOverride;
-            m_enableHWGenerateLID = enableHWGenerateLID(m_walkOrder, is_pow2_x, is_pow2_y, is_pow2_z);
+            m_enableHWGenerateLID = enableHWGenerateLIDInPass(m_walkOrder, is_pow2_x, is_pow2_y, is_pow2_z);
         }
 
         if (IGC_IS_FLAG_ENABLED(OverrideCsWalkOrderEnable))
         {
             m_walkOrder = (CS_WALK_ORDER)IGC_GET_FLAG_VALUE(OverrideCsWalkOrder);
-            m_enableHWGenerateLID = enableHWGenerateLID(m_walkOrder, is_pow2_x, is_pow2_y, is_pow2_z);
+            m_enableHWGenerateLID = enableHWGenerateLIDInPass(m_walkOrder, is_pow2_x, is_pow2_y, is_pow2_z);
         }
 
         if (IGC_IS_FLAG_ENABLED(OverrideCsTileLayoutEnable))
@@ -332,6 +341,7 @@ namespace IGC
         }
     }
 
+    // obsolete, remove later
     //order0: the internal walk dim
     //order1: the intermediate walk dim
     //e.g.: 1, 0 means, YXZ walkorder
@@ -355,6 +365,7 @@ namespace IGC
         }
     }
 
+    // obsolete, remove later
     void CComputeShaderBase::setEmitLocalMask(SGVUsage channelNum) {
         //only 4 patterns are supported: None; X; XY; XYZ
         switch (channelNum)

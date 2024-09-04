@@ -14,6 +14,9 @@
 
 %__2D_DIM_Resource = type opaque
 %dx.types.Handle = type { i8* }
+@ThreadGroupSize_X = constant i32 8
+@ThreadGroupSize_Y = constant i32 1
+@ThreadGroupSize_Z = constant i32 1
 
 define void @main(<8 x i32> %r0) {
 ; CHECK:    [[TMP1:%.*]] = call fast float @llvm.genx.GenISA.DCL.SystemValue.f32(i32 14)

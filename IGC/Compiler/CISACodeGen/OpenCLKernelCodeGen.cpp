@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
 #include "Compiler/CISACodeGen/DebugInfo.hpp"
+#include "Compiler/CISACodeGen/CSWalkOrder.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ResourceAllocator/ResourceAllocator.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ProgramScopeConstants/ProgramScopeConstantAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/LocalBuffers/InlineLocalsResolution.hpp"
@@ -358,6 +359,9 @@ namespace IGC
 
         RecomputeBTLayout();
 
+        // need to clear m_walkOrderStruct for each shader compile
+        m_Context->m_walkOrderStruct = {};
+
         ModuleMetaData* modMD = m_Context->getModuleMetaData();
         auto funcIter = modMD->FuncMD.find(entry);
 
@@ -391,12 +395,12 @@ namespace IGC
             {
                 ForcedWalkOrder = true;
                 // Don't do TileY if forced in this way.
-                m_ThreadIDLayout = ThreadIDLayout::X;
-                m_walkOrder = *Order;
+                m_Context->m_walkOrderStruct.m_threadIDLayout = ThreadIDLayout::X;
+                m_Context->m_walkOrderStruct.m_walkOrder = *Order;
             }
             else
             {
-                auto WalkOrder = getWalkOrder(WO.dim0, WO.dim1);
+                auto WalkOrder = getWalkOrderInPass(WO.dim0, WO.dim1);
                 if (WalkOrder != CS_WALK_ORDER::WO_XYZ)
                 {
                     IGC_ASSERT_MESSAGE(0, "unhandled walk order!");
@@ -413,8 +417,8 @@ namespace IGC
             implicitArgs.isImplicitArgExist(ImplicitArg::LOCAL_ID_Z))
         {
             if (ForcedWalkOrder)
-                m_enableHWGenerateLID = true;
-            setEmitLocalMask(THREAD_ID_IN_GROUP_Z);
+                m_Context->m_walkOrderStruct.m_enableHWGenerateLID = true;
+            setEmitLocalMaskInPass(THREAD_ID_IN_GROUP_Z, m_Context->m_walkOrderStruct.m_emitMask);
         }
 
         if (!ForcedWalkOrder)
@@ -428,9 +432,10 @@ namespace IGC
                 0, /* dummy SLM accessed */
                 (*Dims)[0],
                 (*Dims)[1],
-                (*Dims)[2]);
+                (*Dims)[2],
+                m_Context->m_walkOrderStruct);
         }
-        encoder.GetVISABuilder()->SetOption(vISA_autoLoadLocalID, m_enableHWGenerateLID);
+        encoder.GetVISABuilder()->SetOption(vISA_autoLoadLocalID, m_Context->m_walkOrderStruct.m_enableHWGenerateLID);
     }
 
     WorkGroupWalkOrderMD COpenCLKernel::getWorkGroupWalkOrder()
@@ -2372,12 +2377,12 @@ namespace IGC
         m_kernelInfo.m_threadPayload.HasStageInGridSize = false;
         m_kernelInfo.m_threadPayload.HasRTStackID = false;
 
-        if (m_enableHWGenerateLID)
+        if (m_Context->m_walkOrderStruct.m_enableHWGenerateLID)
         {
             m_kernelInfo.m_threadPayload.generateLocalID = true;
-            m_kernelInfo.m_threadPayload.emitLocalMask = m_emitMask;
-            m_kernelInfo.m_threadPayload.walkOrder = static_cast<unsigned int>(m_walkOrder);
-            m_kernelInfo.m_threadPayload.tileY = (m_ThreadIDLayout == ThreadIDLayout::TileY);
+            m_kernelInfo.m_threadPayload.emitLocalMask = m_Context->m_walkOrderStruct.m_emitMask;
+            m_kernelInfo.m_threadPayload.walkOrder = static_cast<unsigned int>(m_Context->m_walkOrderStruct.m_walkOrder);
+            m_kernelInfo.m_threadPayload.tileY = (m_Context->m_walkOrderStruct.m_threadIDLayout == ThreadIDLayout::TileY);
         }
 
         // Set the amount of the private memory used by the kernel
