@@ -198,7 +198,7 @@ Imported_Intrinsics = {
 ##          must be undef for unary and binary operations
 ## * arg11: vector to take values for masked simd lanes from
 ##
-## * Return value: the value read from memory, merged with arg12 by predicate
+## * Return value: the value read from memory, merged with arg11 by predicate
 ##
     "lsc_atomic_bti": { "result": "anyvector",
                         "arguments": [
@@ -293,7 +293,7 @@ Imported_Intrinsics = {
 ## * arg8: i32 Address immediate offset [MBC]
 ## * arg9: vector to take values for masked simd lanes from
 ##
-## * Return value: the value read from memory, merged with arg10 by predicate
+## * Return value: the value read from memory, merged with arg9 by predicate
 ##
     "lsc_load_bti": { "result": "anyvector",
                       "arguments": [

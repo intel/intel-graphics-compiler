@@ -3830,13 +3830,12 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     // work around VISA spec pecularity: for typed messages width is in bytes
     // not in elements
     VectorType *VT;
-    constexpr int SrcOperandNum = 6; // to be in sync with json
     switch (SubOpcode) {
     case LSC_LOAD_BLOCK2D:
       VT = cast<VectorType>(CI->getType());
       break;
     case LSC_STORE_BLOCK2D:
-      VT = cast<VectorType>(CI->getArgOperand(SrcOperandNum)->getType());
+      VT = cast<VectorType>(CI->getArgOperand(CI->arg_size() - 1)->getType());
       break;
     default:
       vc::fatal(getContext(), "GenXCisaBuilder",
@@ -3870,7 +3869,9 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
                ElementSize == LSC_DATA_SIZE_32b ||
                ElementSize == LSC_DATA_SIZE_64b);
 
-    constexpr unsigned AddressOperandNum = 6;
+    auto AddressOperandNum =
+        vc::InternalIntrinsic::getMemoryAddressOperandIndex(CI);
+    IGC_ASSERT_EXIT(AddressOperandNum >= 0);
     auto *AddrV = CI->getArgOperand(AddressOperandNum);
     auto *AddrTy = AddrV->getType();
     if (auto *AddrVTy = dyn_cast<IGCLLVM::FixedVectorType>(AddrTy))
