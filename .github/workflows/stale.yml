@@ -1,0 +1,27 @@
+#=========================== begin_copyright_notice ============================
+#
+# Copyright (C) 2021-2023 Intel Corporation
+#
+# SPDX-License-Identifier: MIT
+#
+#============================ end_copyright_notice =============================
+
+name: Stale Pull Requests
+on:
+  schedule:
+    - cron: '30 1 * * *'  # run every day
+  workflow_dispatch: {}
+
+jobs:
+  stale:
+    runs-on: [self-hosted, Linux]
+    steps:
+      - uses: actions/stale@v9
+        with:
+          stale-pr-label: stale
+          stale-pr-message: 'This PR is stale because it has been open 60 days with no activity. Make a comment or remove the "stale" label to avoid closing the PR after 7 days.'
+          close-pr-message: 'This PR was closed because it was flagged as "stale" for over 7 days with no activity.'
+          days-before-stale: 60
+          days-before-close: 7
+          operations-per-run: 2000
+          delete-branch: true
