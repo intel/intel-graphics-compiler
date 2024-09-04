@@ -1822,6 +1822,12 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator& I)
                         patternFound = visitBinaryOperatorFmulFaddPropagation(I);
                     }
 
+                    // remove casting to half when assigning to float
+                    if (!patternFound)
+                    {
+                        patternFound = visitBinaryOperatorRemoveHftoFCast(I);
+                    }
+
                     // A/B +C/D can be changed to (A * D +C * B)/(B * D).
                     if (!patternFound && IGC_IS_FLAG_ENABLED(EnableSumFractions))
                     {
@@ -2027,6 +2033,167 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator& I)
             m_isChanged = true;
         }
     }
+}
+
+// Attempt to create new float instruction if both operands are from FPTruncInst instructions.
+// Example with fadd:
+//  %Temp-31.prec.i = fptrunc float %34 to half
+//  %Temp-30.prec.i = fptrunc float %33 to half
+//  %41 = fadd fast half %Temp-31.prec.i, %Temp-30.prec.i
+//  %Temp-32.i = fpext half %41 to float
+//
+//  This fadd is used as a float, and doesn't need the operands to be cased to half.
+//  We can remove the extra casts in this case.
+//  This becomes:
+//  %41 = fadd fast float %34, %33
+// Can also do matches with fadd/fmul that will later become an mad instruction.
+// mad example:
+//  %.prec70.i = fptrunc float %273 to half
+//  %.prec78.i = fptrunc float %276 to half
+//  %279 = fmul fast half %233, %.prec70.i
+//  %282 = fadd fast half %279, %.prec78.i
+//  %.prec84.i = fpext half %282 to float
+// This becomes:
+//  %279 = fpext half %233 to float
+//  %280 = fmul fast float %273, %279
+//  %281 = fadd fast float %280, %276
+bool CustomUnsafeOptPass::visitBinaryOperatorRemoveHftoFCast(BinaryOperator& I)
+{
+    // Allow only if the reassoc or afn flags are used
+    if (!(I.hasAllowReassoc() || I.hasApproxFunc()))
+        return false;
+
+    // Check if the only user is a FPExtInst
+    if (!I.hasOneUse())
+        return false;
+
+    // Check if this instruction is used in a single FPExtInst
+    FPExtInst* CastInst = NULL;
+    User* U = *I.user_begin();
+    if (FPExtInst* inst = dyn_cast<FPExtInst>(U))
+    {
+        if (inst->getType()->isFloatTy())
+        {
+            CastInst = inst;
+        }
+    }
+    if (!CastInst || CastInst->use_empty())
+        return false;
+
+
+    // Check for fmad pattern
+    if (I.getOpcode() == Instruction::FAdd)
+    {
+        Value* Src0 = nullptr, * Src1 = nullptr, * Src2 = nullptr;
+
+        // CodeGenPatternMatch::MatchMad matches the first fmul.
+        Instruction* FmulInst = nullptr;
+        for (uint i = 0; i < 2; i++)
+        {
+            FmulInst = dyn_cast<Instruction>(I.getOperand(i));
+            if (FmulInst && FmulInst->getOpcode() == Instruction::FMul)
+            {
+                Src0 = FmulInst->getOperand(0);
+                Src1 = FmulInst->getOperand(1);
+                Src2 = I.getOperand(1 - i);
+                break;
+            }
+            else
+            {
+                // Prevent other non-fmul instructions from getting used
+                FmulInst = nullptr;
+            }
+        }
+        if (FmulInst && (I.hasAllowReassoc() || I.hasApproxFunc()))
+        {
+            // Used to get the new float operands for the new instructions
+            auto getFloatValue = [](Value* operand, Instruction* I, Type* type)
+                {
+                    if (FPTruncInst* Inst = dyn_cast<FPTruncInst>(operand))
+                    {
+                        // Use the float input of the FPTrunc
+                        if (Inst->getOperand(0)->getType()->isFloatTy())
+                        {
+                            return Inst->getOperand(0);
+                        }
+                        else
+                        {
+                            return (Value*)NULL;
+                        }
+                    }
+                    else if (operand->getType()->isHalfTy())
+                    {
+                        return dyn_cast<Value>(new FPExtInst(operand, type, "", I));
+                    }
+                    return (Value*)NULL;
+                };
+
+            int ConvertCount = 0;
+            if (dyn_cast<FPTruncInst>(Src0))
+                ConvertCount++;
+            if (dyn_cast<FPTruncInst>(Src1))
+                ConvertCount++;
+            if (dyn_cast<FPTruncInst>(Src2))
+                ConvertCount++;
+            if (ConvertCount >= 2)
+            {
+                // Conversion for the hf values
+                auto FloatTy = CastInst->getType();
+                Src0 = getFloatValue(Src0, FmulInst, FloatTy);
+                Src1 = getFloatValue(Src1, FmulInst, FloatTy);
+                Src2 = getFloatValue(Src2, &I, FloatTy);
+
+                if (!Src0 || !Src1 || !Src2)
+                    return false;
+
+                // Create new float fmul and fadd instructions
+                Value* NewFmul = BinaryOperator::Create(Instruction::FMul, Src0, Src1, "", &I);
+                Value* NewFadd = BinaryOperator::Create(Instruction::FAdd, NewFmul, Src2, "", &I);
+
+                // Copy fast math flags
+                Instruction* FmulInst = dyn_cast<Instruction>(NewFmul);
+                Instruction* FaddInst = dyn_cast<Instruction>(NewFadd);
+                FmulInst->copyFastMathFlags(FmulInst);
+                FaddInst->copyFastMathFlags(&I);
+                FaddInst->setDebugLoc(CastInst->getDebugLoc());
+                CastInst->replaceAllUsesWith(FaddInst);
+                collectForErase(*CastInst, 3);
+                return true;
+            }
+        }
+    }
+
+    // Check if operands come from a Float to HF Cast
+    Value* S1 = NULL, * S2 = NULL;
+    if (FPTruncInst* Inst = dyn_cast<FPTruncInst>(I.getOperand(0)))
+    {
+        if (!Inst->getType()->isHalfTy())
+            return false;
+        S1 = Inst->getOperand(0);
+    }
+    if (FPTruncInst* Inst = dyn_cast<FPTruncInst>(I.getOperand(1)))
+    {
+        if (!Inst->getType()->isHalfTy())
+            return false;
+        S2 = Inst->getOperand(0);
+    }
+    if (!S1 || !S2)
+    {
+        return false;
+    }
+
+    Value* newInst = NULL;
+    if (BinaryOperator* BinOp = dyn_cast<BinaryOperator>(&I))
+    {
+        newInst = BinaryOperator::Create(BinOp->getOpcode(), S1, S2, "", &I);
+        Instruction* Inst = dyn_cast<Instruction>(newInst);
+        Inst->copyFastMathFlags(&I);
+        Inst->setDebugLoc(CastInst->getDebugLoc());
+        CastInst->replaceAllUsesWith(Inst);
+        collectForErase(*CastInst, 2);
+        return true;
+    }
+    return false;
 }
 
 // Optimize mix operation if detected.
