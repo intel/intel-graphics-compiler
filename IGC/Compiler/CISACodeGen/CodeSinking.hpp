@@ -239,7 +239,8 @@ namespace IGC {
         llvm::SmallPtrSet<llvm::BasicBlock*, 8> UndoBlkSet;
         /// dumping
         std::string Log;
-        llvm::raw_string_ostream LogStream;
+        llvm::raw_string_ostream LogStringStream;
+        llvm::raw_ostream *LogStream = nullptr;
 
         void dumpToFile(const std::string& Log);
 

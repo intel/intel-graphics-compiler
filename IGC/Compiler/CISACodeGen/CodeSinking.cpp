@@ -789,9 +789,9 @@ namespace IGC {
 #define LOOPSINK_PREHEADER_IMPACT_THRESHOLD 0.2
 
     // Helper functions for loop sink debug dumps
-#define PrintDump(Contents) if (IGC_IS_FLAG_ENABLED(DumpLoopSink)) {LogStream << Contents;}
-#define PrintInstructionDump(Inst) if (IGC_IS_FLAG_ENABLED(DumpLoopSink)) {(Inst)->print(LogStream, false); LogStream << "\n";}
-#define PrintOUGDump(OUG) if (IGC_IS_FLAG_ENABLED(DumpLoopSink)) {OUG.print(LogStream); LogStream << "\n";}
+#define PrintDump(Contents) if (IGC_IS_FLAG_ENABLED(DumpLoopSink)) {*LogStream << Contents;}
+#define PrintInstructionDump(Inst) if (IGC_IS_FLAG_ENABLED(DumpLoopSink)) {(Inst)->print(*LogStream, false); *LogStream << "\n";}
+#define PrintOUGDump(OUG) if (IGC_IS_FLAG_ENABLED(DumpLoopSink)) {OUG.print(*LogStream); *LogStream << "\n";}
 
 
     // Register pass to igc-opt
@@ -812,7 +812,11 @@ namespace IGC {
         IGC_INITIALIZE_PASS_END(CodeLoopSinking, PASS_FLAG1, PASS_DESCRIPTION1, PASS_CFG_ONLY1, PASS_ANALYSIS1)
 
         char CodeLoopSinking::ID = 0;
-        CodeLoopSinking::CodeLoopSinking() : FunctionPass(ID), LogStream(Log) {
+        CodeLoopSinking::CodeLoopSinking() : FunctionPass(ID), LogStringStream(Log) {
+            if (IGC_IS_FLAG_ENABLED(PrintToConsole))
+                LogStream = &IGC::Debug::ods();
+            else
+                LogStream = &LogStringStream;
             initializeCodeLoopSinkingPass(*PassRegistry::getPassRegistry());
     }
 
@@ -834,7 +838,7 @@ namespace IGC {
 
         if (IGC_IS_FLAG_ENABLED(DumpLoopSink))
         {
-            auto printGlobalSettings = [](llvm::raw_string_ostream &LogStream)
+            auto printGlobalSettings = [](llvm::raw_ostream &LogStream)
             {
                 // print every value to the dump
                 LogStream << "ForceLoopSink: " << IGC_GET_FLAG_VALUE(ForceLoopSink) << "\n";
@@ -859,7 +863,7 @@ namespace IGC {
 
             Log.clear();
 
-            printGlobalSettings(LogStream);
+            printGlobalSettings(*LogStream);
 
             PrintDump("=====================================\n");
             PrintDump("Function " << F.getName() << "\n");
@@ -900,12 +904,9 @@ namespace IGC {
             IGC_ASSERT(false == verifyFunction(F, &dbgs()));
         }
 
-        if (IGC_IS_FLAG_ENABLED(DumpLoopSink))
+        if (IGC_IS_FLAG_ENABLED(DumpLoopSink) && IGC_IS_FLAG_DISABLED(PrintToConsole))
         {
-            if (IGC_IS_FLAG_ENABLED(PrintToConsole))
-                IGC::Debug::ods() << Log;
-            else
-                dumpToFile(Log);
+            dumpToFile(Log);
         }
 
         return Changed;
@@ -1749,7 +1750,7 @@ namespace IGC {
         auto allUsesAreDominatedByRemainingUses = [&](SmallVector<Instruction *, 16> &CurrentCandidateInsts,
             SmallPtrSet<Instruction *, 16> &RemainingCandidateInsts)
         {
-            for (Instruction *RI : RemainingCandidateInsts)
+            auto instUsesDominateAllCurrentCandidateUses = [&](Instruction *RI)
             {
                 for (User *RU : RI->users())
                 {
@@ -1768,13 +1769,38 @@ namespace IGC {
                         }
                     }
                 }
+                return true;
+            };
+
+            if (IGC_IS_FLAG_ENABLED(LoopSinkCoarserLoadsRescheduling))
+                return std::all_of(RemainingCandidateInsts.begin(), RemainingCandidateInsts.end(), instUsesDominateAllCurrentCandidateUses);
+            else
+                return std::any_of(RemainingCandidateInsts.begin(), RemainingCandidateInsts.end(), instUsesDominateAllCurrentCandidateUses);
+        };
+
+        // If the uses are not dominated by the UndoPoint
+        // It's possible that we put some instructions after their uses on rollback
+        // So it needs to be checked if we sink not from PH
+        auto allUsesAreDominatedByUndoPoint = [&](SmallVector<Instruction *, 16> &CurrentCandidateInsts, Instruction *UndoPoint)
+        {
+            for (Instruction *CI : CurrentCandidateInsts)
+            {
+                for (User *CU : CI->users())
+                {
+                    Instruction *CUI = dyn_cast<Instruction>(CU);
+                    if (!CUI)
+                        return false;
+                    if (!DT->dominates(UndoPoint, CUI))
+                        return false;
+                }
             }
             return true;
         };
 
         // All the uses are a candidate
         // Try splitting then into separate candidates for better scheduling within a BB
-        auto Worthiness = I->getParent() == PH ? LoopSinkWorthiness::Sink : LoopSinkWorthiness::IntraLoopSink;
+        bool SinkFromPH = I->getParent() == PH;
+        auto Worthiness = SinkFromPH ? LoopSinkWorthiness::Sink : LoopSinkWorthiness::IntraLoopSink;
         SmallVector<Instruction *, 16> CurrentCandidateInsts;
         SmallPtrSet<Instruction *, 16> RemainingCandidateInsts(CandidateInsts.begin(), CandidateInsts.end());
 
@@ -1789,7 +1815,8 @@ namespace IGC {
 
             if (CurrentCandidateInsts.size() > 0 &&
                 Id == GenISAIntrinsic::GenISA_LSC2DBlockReadAddrPayload &&
-                allUsesAreDominatedByRemainingUses(CurrentCandidateInsts, RemainingCandidateInsts))
+                allUsesAreDominatedByRemainingUses(CurrentCandidateInsts, RemainingCandidateInsts) &&
+                (SinkFromPH || allUsesAreDominatedByUndoPoint(CurrentCandidateInsts, CurrentCandidateInsts[0]->getNextNode())))
             {
                 NCandidates++;
                 SinkCandidates.push_back(std::make_unique<Candidate>(CurrentCandidateInsts, TgtBB, Worthiness, CurrentCandidateInsts[0]->getNextNode()));
@@ -1798,7 +1825,8 @@ namespace IGC {
             CurrentCandidateInsts.push_back(I);
             RemainingCandidateInsts.erase(I);
         }
-        if (CurrentCandidateInsts.size() > 0)
+        if (CurrentCandidateInsts.size() > 0 &&
+            (SinkFromPH || allUsesAreDominatedByUndoPoint(CurrentCandidateInsts, CurrentCandidateInsts[0]->getNextNode())))
         {
             NCandidates++;
             SinkCandidates.push_back(std::make_unique<Candidate>(CurrentCandidateInsts, TgtBB, Worthiness, CurrentCandidateInsts[0]->getNextNode()));
