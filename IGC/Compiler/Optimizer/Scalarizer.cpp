@@ -57,24 +57,34 @@ IGC_INITIALIZE_PASS_END(ScalarizeFunction, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG
 
 char ScalarizeFunction::ID = 0;
 
-ScalarizeFunction::ScalarizeFunction(bool selectiveScalarization) : FunctionPass(ID)
+ScalarizeFunction::ScalarizeFunction(IGC::SelectiveScalarizer selectiveMode) : FunctionPass(ID)
 {
     initializeScalarizeFunctionPass(*PassRegistry::getPassRegistry());
 
     for (int i = 0; i < Instruction::OtherOpsEnd; i++) m_transposeCtr[i] = 0;
 
-    // Needs IGC_EnableSelectiveScalarizer = 1
-    m_SelectiveScalarization = selectiveScalarization;
+    V_PRINT(scalarizer, "ScalarizeFunction constructor\n");
+    switch(selectiveMode) {
+    case IGC::SelectiveScalarizer::Off:
+        V_PRINT(scalarizer, "IGC_EnableSelectiveScalarizer forced off");
+        m_SelectiveScalarization = false;
+        break;
+    case IGC::SelectiveScalarizer::On:
+        V_PRINT(scalarizer, "IGC_EnableSelectiveScalarizer forced on");
+        m_SelectiveScalarization = true;
+        break;
+    case IGC::SelectiveScalarizer::Auto:
+        V_PRINT(scalarizer, "IGC_EnableSelectiveScalarizer = ");
+        V_PRINT(scalarizer, IGC_IS_FLAG_ENABLED(EnableSelectiveScalarizer));
+        m_SelectiveScalarization = IGC_IS_FLAG_ENABLED(EnableSelectiveScalarizer);
+        break;
+    }
+    V_PRINT(scalarizer, "\n");
 
     // Initialize SCM buffers and allocation
     m_SCMAllocationArray = new SCMEntry[ESTIMATED_INST_NUM];
     m_SCMArrays.push_back(m_SCMAllocationArray);
     m_SCMArrayLocation = 0;
-
-    V_PRINT(scalarizer, "ScalarizeFunction constructor\n");
-    V_PRINT(scalarizer, "IGC_EnableSelectiveScalarizer = ");
-    V_PRINT(scalarizer, IGC_IS_FLAG_ENABLED(EnableSelectiveScalarizer));
-    V_PRINT(scalarizer, "\n");
 }
 
 bool ScalarizeFunction::doFinalization(llvm::Module& M) {
@@ -244,20 +254,40 @@ void ScalarizeFunction::buildExclusiveSet()
             }
             else if (BitCastInst* BCI = dyn_cast<BitCastInst>(currInst))
             {
+              auto isBitcastSink = [](BitCastInst *BCI) -> bool {
+                auto *SrcVTy = dyn_cast<IGCLLVM::FixedVectorType>(
+                    BCI->getOperand(0)->getType());
+
+                // If source is not a vector, we don't care about this bitcast
+                if (!SrcVTy)
+                  return false;
+
+                // If destination is a vector then we scalarize if the number of
+                // elements are the same (elementwise bitcast)
+                if (auto *DestVTy =
+                        dyn_cast<IGCLLVM::FixedVectorType>(BCI->getType()))
+                  return DestVTy->getNumElements() != SrcVTy->getNumElements();
+
+                // If destination is not a vector, we don't want to scalarize
+                return true;
+              };
+
+              if (isBitcastSink(BCI)) {
                 workset.push_back(BCI->getOperand(0));
+              }
             }
             // try to find a web from the seed
             std::set<Value*> defweb;
             while (!workset.empty())
             {
-                auto Def = workset.back();
+                auto* Def = workset.back();
                 workset.pop_back();
                 if (m_Excludes.count(Def) || defweb.count(Def))
                 {
                     continue;
                 }
 
-                // The web grows "up" through BitCasts and PHI nodes
+                // The web grows "up" (towards producers) through BitCasts and PHI nodes
                 // but insert/extract elements and vector shuffles should be scalarized
                 if (!isAddToWeb(Def)) continue;
 
@@ -285,7 +315,7 @@ void ScalarizeFunction::buildExclusiveSet()
                     continue;
                 }
 
-                // The web grows "down" through BitCasts and PHI nodes as well
+                // The web grows "down" (towards users) through BitCasts and PHI nodes as well
                 for (auto U : Def->users())
                 {
                     if (!defweb.count(U) && isAddToWeb(U))
@@ -1458,8 +1488,8 @@ void ScalarizeFunction::resolveDeferredInstructions()
     m_DRL.clear();
 }
 
-extern "C" FunctionPass * createScalarizerPass(bool selectiveScalarization)
+extern "C" FunctionPass * createScalarizerPass(IGC::SelectiveScalarizer selectiveMode)
 {
-    return new ScalarizeFunction(selectiveScalarization);
+    return new ScalarizeFunction(selectiveMode);
 }
 

@@ -641,8 +641,7 @@ static void CommonOCLBasedPasses(
 
     mpm.add(new ScalarArgAsPointerAnalysis());
 
-    // true means selective scalarization
-    mpm.add(createScalarizerPass(IGC_IS_FLAG_ENABLED(EnableSelectiveScalarizer)));
+    mpm.add(createScalarizerPass(SelectiveScalarizer::Auto));
 
     // Create a dummy kernel to attach the symbol table if necessary
     // Only needed if function pointers, externally linked functions, or relocatable global variables are present
