@@ -316,20 +316,28 @@ void SWSBAnalyzer::calculateDependence(DepSet &currDep,
           }
         }
 
-        bool isRAW =
-            currDepType == DEP_TYPE::READ && prevDepType == DEP_TYPE::WRITE;
+        auto isRead = [](DEP_TYPE ty) {
+          return ty == DEP_TYPE::READ ||
+                 ty == DEP_TYPE::READ_ALWAYS_INTERFERE;
+        };
+        auto isWrite = [](DEP_TYPE ty) {
+          return ty == DEP_TYPE::WRITE ||
+                 ty == DEP_TYPE::WRITE_ALWAYS_INTERFERE;
+        };
+
+        bool isRAW = isRead(currDepType) && isWrite(prevDepType);
         // WAW: different pipelines W2 kill W1  W2-->live      explict
         // dependence
         bool isWAW =
-            (currDepType == DEP_TYPE::WRITE && prevDepType == DEP_TYPE::WRITE &&
+            (isWrite(currDepType) && isWrite(prevDepType) &&
              (currDepPipe != prevDepPipe || sendInDiffPipe));
         // WAR: different pipelines W kill R    W-->live       explict
         // dependence
-        bool isWAR = currDepType == DEP_TYPE::WRITE &&
-                     prevDepType == DEP_TYPE::READ &&
+        bool isWAR = isWrite(currDepType) &&
+                     isRead(prevDepType) &&
                      (currDepPipe != prevDepPipe || sendInDiffPipe);
         bool isWAW_out_of_order =
-            (currDepType == DEP_TYPE::WRITE && prevDepType == DEP_TYPE::WRITE &&
+            (isWrite(currDepType) && isWrite(prevDepType) &&
              prevDepClass == DEP_CLASS::OUT_OF_ORDER);
 
         // Special case handling for acc/flag dependency:
