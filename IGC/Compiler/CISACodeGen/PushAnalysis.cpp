@@ -1386,9 +1386,8 @@ namespace IGC
                 // inputs if elementIndex <= numberOfElementsPerVertexThatAreGoingToBePushed
                 if (pElementIndex && pushCondition)
                 {
-                    uint lanesPerElement = 1;
-                    uint elementIndex = urbOffset * lanesPerElement - urbReadOffsetForPush;
-                    uint currentElementIndex = (vertexIndex * numberOfElementsPerVertexThatAreGoingToBePushed * 4 * lanesPerElement) + (elementIndex * 4);
+                    uint elementIndex = urbOffset - urbReadOffsetForPush;
+                    uint currentElementIndex = (vertexIndex * numberOfElementsPerVertexThatAreGoingToBePushed * 4) + (elementIndex * 4);
 
                     for (auto I = inst->user_begin(), E = inst->user_end(); I != E; ++I)
                     {
