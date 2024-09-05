@@ -35,6 +35,7 @@ define void @sink1(half addrspace(1)* %in0, <32 x i16> addrspace(1)* noalias %ou
 
 ; CHECK:         store <32 x i16> [[SINK_LOAD]], <32 x i16> addrspace(1)* [[ADDR:%.*]], align 64
 
+; CHECK:         call void @llvm.genx.GenISA.LSC2DBlockSetAddrPayloadField.p0i8.i32(i8* [[BLOCK2D_ADDRPAYLOAD]], i32 2, i32 80, i1 false)
 ; CHECK:         call void @llvm.genx.GenISA.LSC2DBlockSetAddrPayloadField.p0i8.i32(i8* [[BLOCK2D_ADDRPAYLOAD]], i32 5, i32 3, i1 false)
 ; CHECK:         call void @llvm.genx.GenISA.LSC2DBlockSetAddrPayloadField.p0i8.i32(i8* [[BLOCK2D_ADDRPAYLOAD]], i32 6, i32 3, i1 false)
 ; CHECK:         [[SINK_LOAD3:%.*]] = call <32 x i16> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v32i16.p0i8(i8* [[BLOCK2D_ADDRPAYLOAD]], i32 0, i32 0, i32 16, i32 16, i32 16, i32 2, i1 false, i1 false, i32 4)
@@ -72,6 +73,7 @@ loop:                                             ; preds = %loop, %entry_prehea
   %z = add i32 %index, 12
   %x1 = mul i32 %index, %x
 
+  call void @llvm.genx.GenISA.LSC2DBlockSetAddrPayloadField.p0i8.i32(i8* %Block2D_AddrPayload, i32 2, i32 80, i1 false)
   call void @llvm.genx.GenISA.LSC2DBlockSetAddrPayloadField.p0i8.i32(i8* %Block2D_AddrPayload, i32 5, i32 3, i1 false)
   call void @llvm.genx.GenISA.LSC2DBlockSetAddrPayloadField.p0i8.i32(i8* %Block2D_AddrPayload, i32 6, i32 3, i1 false)
   %load3 = call <32 x i16> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v32i16.p0i8(i8* %Block2D_AddrPayload, i32 0, i32 0, i32 16, i32 16, i32 16, i32 2, i1 false, i1 false, i32 4)

@@ -7,8 +7,29 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys, llvm-14-plus
-; RUN: igc_opt -platformpvc --regkey LoopSinkForceRollback=1 --regkey LoopSinkMinSave=1 --regkey LoopSinkEnable2dBlockReads=1 --regkey LoopSinkEnableLoadsRescheduling=1 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 --regkey CodeSinkingLoadSchedulingInstr=10 %enable-basic-aa% --igc-code-loop-sinking -S %s 2>&1 | FileCheck %s
+; RUN: igc_opt -platformpvc --regkey LoopSinkForceRollback=1 --regkey LoopSinkMinSave=1 --regkey LoopSinkEnable2dBlockReads=1 --regkey LoopSinkEnableLoadsRescheduling=1 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 --regkey CodeSinkingLoadSchedulingInstr=10 --regkey LoopSinkCoarserLoadsRescheduling=1 --regkey DumpLoopSink=1 --regkey PrintToConsole=1 %enable-basic-aa% --igc-code-loop-sinking -S %s 2>&1 | FileCheck %s
 
+; 1st example:
+
+; Check that the order of the first loads and SetField calls is not changed after rollback
+
+; CHECK: Function foo
+; CHECK: Successfully created 4 candidates
+; CHECK: >> Reverting the changes.
+
+; 2nd example:
+
+; If all block reads are considered a single candidate and we don't check the undo point is dominated
+; We might generate incorrect IR by placing the first block read after the first dpas on revert
+
+; So in this case we cannot create a candidate, checking it in the dumps
+
+; CHECK: Function bar
+; CHECK: Successfully created 0 candidates.
+; CHECK: No changes were made in this loop.
+
+
+define spir_kernel void @foo(i8 addrspace(1)* %_arg_A, i8 addrspace(1)* %_arg_B, i16 %localIdY) {
 
 ; Check that the order of the first loads and SetField calls is not changed after rollback
 
@@ -31,8 +52,6 @@
 ; CHECK:         call void @llvm.genx.GenISA.LSC2DBlockSetAddrPayloadField.p0i32.i32(i32* [[BLOCK2D_ADDRPAYLOAD]], i32 6, i32 [[CONV_I9_1]], i1 false)
 ; CHECK:         [[BLOCK2D_READADDRPAYLOAD105:%.*]] = call <8 x i16> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v8i16.p0i32(i32* [[BLOCK2D_ADDRPAYLOAD]], i32 0, i32 0, i32 16, i32 16, i32 8, i32 1, i1 false, i1 false, i32 0)
 
-
-define spir_kernel void @foo(i8 addrspace(1)* %_arg_A, i8 addrspace(1)* %_arg_B, i16 %localIdY) {
 __igcbuiltin_u64_udiv_dp.exit:
   %mul56.i = shl i32 0, 8
   %0 = zext i16 %localIdY to i32
@@ -109,11 +128,12 @@ for.body19.i:                                     ; preds = %for.body19.i.for.bo
 }
 
 
-; If all block reads are considered a single candidate and we don't check the undo point is dominated
-; We might generate incorrect IR by placing the first block read after the first dpas
-; Checking it's not happening
+
 
 define spir_kernel void @bar() {
+
+; Check that nothing is changed at all
+
 ; CHECK-LABEL: @bar(
 ; CHECK:         br label [[DOT_CRIT_EDGE:%.*]]
 ; CHECK:       ._crit_edge:
