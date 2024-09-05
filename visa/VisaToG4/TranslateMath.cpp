@@ -2218,3 +2218,164 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
 
   return VISA_SUCCESS;
 }
+
+int IR_Builder::translateVISAInvmRsqtmInst(
+    ISA_Opcode opcode, VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask,
+    G4_Predicate *predOpnd, G4_Sat saturate, G4_DstRegRegion *dstOpnd,
+    VISA_PredVar *dstPred, G4_Operand *src0Opnd, G4_Operand *src1Opnd) {
+  TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
+  vISA_ASSERT(opcode == ISA_INVM || opcode == ISA_RSQTM,
+              "cocode should either invm or rsqtm");
+  G4_Type Ty = dstOpnd->getType();
+  vISA_ASSERT(Ty == Type_F || Ty == Type_DF,
+              "invm/rsqtm only supports F or DF");
+  vISA_ASSERT(saturate == g4::NOSAT, "sat not supported for invm/rsqtm!");
+
+  // Given
+  //   (p) math.invm   dstOpnd  predDst  src0Opnd src1Opnd
+  //   (p) math.rsqtm  dstOpnd  predDst  src0Opnd null
+  //
+  // it is tranlated to
+  //   tdst = null
+  //   noDstMove = !(dstOpnd has sat && p);
+  //   if (!noDstMov)
+  //      tdst = temp
+  //
+  //   src0RR = null
+  //   if (src0Opnd needs mov)
+  //     mov t0  src0RR
+  //     src0RR = t0
+  //
+  //   src1RR = null
+  //   if (src1Opnd && src1Opnd needs mov)
+  //     mov t1  src1RR
+  //     src1RR = t1
+  //
+  //   // note: may split into multiple math
+  //   dst = tdst ? tdst : dstOpnd
+  //   math.invm predDst(eo) dst src0RR src1RR
+  //
+  //   if (!noDstMov)
+  //     (p) mov dstOpnd dst
+  //
+  G4_INST *inst;
+  G4_ExecSize instExecSize = toExecSize(executionSize);
+
+  // It seems math.invm/rsqtm can have any execsize
+  G4_ExecSize exsize = getNativeExecSize();
+  if (instExecSize == 32 && supportNativeSIMD32())
+    exsize = instExecSize;
+  else if (instExecSize < exsize)
+    exsize = instExecSize;
+
+  G4_InstOpts instOpt = Get_Gen4_Emask(emask, instExecSize);
+  instOpt |= isNoMask(emask) ? InstOpt_WriteEnable : 0;
+  uint32_t loopCount;
+  uint8_t element_size = instExecSize;
+  if (instExecSize <= exsize)
+    loopCount = 1;
+  else
+    loopCount = instExecSize / exsize;
+
+  bool noDstMove =
+      !predOpnd && tryToAlignOperand(dstOpnd, getGRFSize()) &&
+      dstOpnd->getRegAccess() == Direct && dstOpnd->getHorzStride() == 1;
+  if (noDstMove &&
+      (dstOpnd->getTopDcl() == src0Opnd->getTopDcl() ||
+       (src1Opnd && dstOpnd->getTopDcl() == src1Opnd->getTopDcl()))) {
+    noDstMove = false;
+  }
+
+  G4_Declare *tdst = nullptr;
+  if (!noDstMove) {
+    tdst = createTempVarWithNoSpill(element_size, Ty, Any);
+    createPseudoKills({tdst}, PseudoKillType::Src);
+  }
+
+  G4_SrcRegRegion *src0RR = operandToDirectSrcRegRegion(
+      *this, src0Opnd, G4_ExecSize(element_size), instExecSize);
+  const bool src0Copied = (src0RR->getTopDcl() != src0Opnd->getTopDcl());
+  G4_SrcRegRegion *src1RR = nullptr;
+  if (src1Opnd)
+    src1RR = operandToDirectSrcRegRegion(
+        *this, src1Opnd, G4_ExecSize(element_size), instExecSize);
+  const bool src1Copied =
+      (src1RR && (src1RR->getTopDcl() != src1Opnd->getTopDcl()));
+
+  bool needsSrc0Move =
+       (src0RR->getModifier() != Mod_src_undef ||
+        (!src0RR->isScalar() && !tryToAlignOperand(src0RR, getGRFSize())));
+  if (needsSrc0Move) {
+    G4_Declare *tsrc0 = createTempVarWithNoSpill(element_size, Ty, Any);
+    createPseudoKills({tsrc0}, PseudoKillType::Src);
+
+    G4_DstRegRegion *tSrc0 = createDst(tsrc0->getRegVar(), 0, 0, 1, Ty);
+    (void)createMov(instExecSize, tSrc0, src0RR, instOpt, true);
+    src0RR = createSrcRegRegion(tsrc0, element_size == 1 ? getRegionScalar()
+                                                         : getRegionStride1());
+  }
+  bool needsSrc1Move =
+      (src1RR &&
+       (src1RR->getModifier() != Mod_src_undef ||
+        (!src1RR->isScalar() && !tryToAlignOperand(src1RR, getGRFSize()))));
+  if (needsSrc1Move) {
+    G4_Declare *tsrc1 = createTempVarWithNoSpill(element_size, Ty, Any);
+    createPseudoKills({tsrc1}, PseudoKillType::Src);
+
+    G4_DstRegRegion *tSrc1 = createDst(tsrc1->getRegVar(), 0, 0, 1, Ty);
+    (void)createMov(instExecSize, tSrc1, src1RR, instOpt, true);
+    src1RR = createSrcRegRegion(tsrc1, element_size == 1 ? getRegionScalar()
+                                                         : getRegionStride1());
+  }
+
+  uint16_t splitInstGRFSize =
+      (uint16_t)((TypeSize(Ty) * exsize + getGRFSize() - 1) / getGRFSize());
+  VISA_EMask_Ctrl currEMask = emask;
+  for (uint16_t ix = 0; currEMask != vISA_NUM_EMASK && ix < loopCount;
+       ++ix, currEMask = Get_Next_EMask(currEMask, exsize)) {
+    uint16_t regIndex = ix * splitInstGRFSize;
+    G4_InstOpts mathInstOpt = Get_Gen4_Emask(currEMask, exsize);
+    mathInstOpt |= isNoMask(emask) ? InstOpt_WriteEnable : 0;
+
+    G4_DstRegRegion *D =
+        createDst(tdst ? tdst->getRegVar() : dstOpnd->getBase(),
+                  tdst ? regIndex : dstOpnd->getRegOff() + regIndex, 0, 1, Ty);
+    G4_SrcRegRegion *S0 = createSrc(
+        src0RR->getBase(),
+        src0RR->getRegOff() + (src0RR->isScalar() ? 0 : regIndex),
+        src0RR->getSubRegOff(),
+        src0RR->isScalar() ? getRegionScalar() : getRegionStride1(), Ty);
+    G4_SrcRegRegion *S1;
+    if (src1RR) {
+      S1 = createSrc(
+          src1RR->getBase(),
+          src1RR->getRegOff() + (src1RR->isScalar() ? 0 : regIndex),
+          src1RR->getSubRegOff(),
+          src1RR->isScalar() ? getRegionScalar() : getRegionStride1(), Ty);
+    } else {
+      S1 = createNullSrc(Ty);
+    }
+
+    // Only INVM/RSQTM without using acc are exposed.
+    D->setAccRegSel(NOACC);
+    S0->setAccRegSel(NOACC);
+    if (src1RR)
+      S1->setAccRegSel(NOACC);
+    inst = createMathInst(NULL, g4::NOSAT, exsize, D, S0, S1,
+                          opcode == ISA_INVM ? MATH_INVM : MATH_RSQRTM,
+                          mathInstOpt, true);
+    G4_CondMod *condModOverflow =
+        createCondMod(Mod_o, dstPred->predVar.dcl->getRegVar(), 0);
+    inst->setCondMod(condModOverflow);
+  }
+
+  if (!noDstMove) {
+    G4_SrcRegRegion *tS = createSrc(
+        tdst->getRegVar(), 0, 0,
+        instExecSize == 1 ? getRegionScalar() : getRegionStride1(), Ty);
+    (void)createInst(predOpnd, G4_mov, nullptr, g4::NOSAT, instExecSize, dstOpnd,
+                     tS, nullptr, instOpt, true);
+  }
+
+  return VISA_SUCCESS;
+}

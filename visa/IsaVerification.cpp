@@ -1655,6 +1655,8 @@ void vISAVerifier::verifyInstructionArith(const CISA_INST *inst) {
     case ISA_MOD:
     case ISA_MULH:
     case ISA_MADW:
+    case ISA_INVM:
+    case ISA_RSQTM:
       REPORT_INSTRUCTION(options, false, "%s does not support saturation",
                          ISA_Inst_Table[opcode].str);
       break;
@@ -1671,10 +1673,12 @@ void vISAVerifier::verifyInstructionArith(const CISA_INST *inst) {
   if (dstType == ISA_TYPE_DF) {
     if (opcode != ISA_MUL && opcode != ISA_ADD && opcode != ISA_MAD &&
         opcode != ISA_DIV && opcode != ISA_INV && opcode != ISA_SQRTM &&
-        opcode != ISA_SQRT && opcode != ISA_DIVM) {
+        opcode != ISA_SQRT && opcode != ISA_DIVM &&
+        opcode != ISA_INVM && opcode != ISA_RSQTM) {
       REPORT_INSTRUCTION(options, false,
-                         "Only mul/add/mad/div/inv/sqrtm/sqrt/divm are allowed "
-                         "to use double precision floating point operands.");
+                         "Only mul/add/mad/div/inv/sqrtm/sqrt/divm/invm/rsqtm "
+                         "are allowed to use double precision floating point "
+                         "operands.");
     }
   }
 
@@ -1804,11 +1808,12 @@ void vISAVerifier::verifyInstructionArith(const CISA_INST *inst) {
     if (srcType == ISA_TYPE_DF) {
       if (opcode != ISA_MUL && opcode != ISA_ADD && opcode != ISA_MAD &&
           opcode != ISA_DIV && opcode != ISA_INV && opcode != ISA_SQRTM &&
-          opcode != ISA_SQRT && opcode != ISA_DIVM) {
+          opcode != ISA_SQRT && opcode != ISA_DIVM &&
+          opcode != ISA_INVM && opcode != ISA_RSQTM) {
         REPORT_INSTRUCTION(
             options, false,
-            "Only mul/add/mad/div/inv/sqrtm/sqrt/divm are allowed to use "
-            "double precision floating point operands.");
+            "Only mul/add/mad/div/inv/sqrtm/sqrt/divm/invm/rsqtm are allowed "
+            "to use double precision floating point operands.");
       }
     }
 
@@ -1878,6 +1883,13 @@ void vISAVerifier::verifyInstructionArith(const CISA_INST *inst) {
               srcType == ISA_TYPE_VF,
           "ieee sqrt does not support types for src%d, other than F/DF/VF", i);
       break;
+    case ISA_INVM:
+    case ISA_RSQTM:
+      REPORT_INSTRUCTION(
+          options,
+          srcType == ISA_TYPE_F || srcType == ISA_TYPE_DF,
+          "invm/rsqtm do not support types for src%d, other than F/DF", i);
+      break;
     case ISA_ADDC:
     case ISA_SUBB: {
       REPORT_INSTRUCTION(options,
@@ -1917,6 +1929,12 @@ void vISAVerifier::verifyInstructionArith(const CISA_INST *inst) {
                        !(dstType == ISA_TYPE_DF && dfOpcodeIEEE) &&
                            !(dstType == ISA_TYPE_F && fOpcodeIEEE),
                        "IEEE instruction %s is not supported on %s platform",
+                       ISA_Inst_Table[opcode].str,
+                       irBuilder->getGenxPlatformString());
+
+    REPORT_INSTRUCTION(options,
+                       (opcode != ISA_INVM && opcode != ISA_RSQTM),
+                       "Instruction %s is not supported on %s platform",
                        ISA_Inst_Table[opcode].str,
                        irBuilder->getGenxPlatformString());
   }

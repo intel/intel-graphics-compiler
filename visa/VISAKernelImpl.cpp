@@ -2670,6 +2670,62 @@ int VISAKernelImpl::AppendVISATwoDstArithmeticInst(
   return status;
 }
 
+int VISAKernelImpl::AppendVISAPredDstArithmeticInst(
+    ISA_Opcode opcode, VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
+    VISA_Exec_Size executionSize, VISA_VectorOpnd *vecDst,
+    VISA_PredVar *predDst, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1) {
+  TIME_SCOPE(VISA_BUILDER_APPEND_INST);
+
+  if (!(opcode == ISA_INVM || opcode == ISA_RSQTM)) {
+    std::stringstream msg;
+    msg << "Two-destination instruction (dst, pred) not "
+        << "supported for opcode: " << ISA_Inst_Table[opcode].str;
+    vISA_ASSERT_INPUT(false, msg.str().c_str());
+    return VISA_FAILURE;
+  }
+
+  AppendVISAInstCommon();
+
+  int status = VISA_SUCCESS;
+  uint32_t exSize = Get_VISA_Exec_Size(executionSize);
+  VISA_VectorOpnd *predOpnd= NULL;
+  CreateVISAPredicateDstOperand(predOpnd, predDst, exSize);
+  G4_Predicate *g4Pred = (pred != NULL) ? pred->g4opnd->asPredicate() : NULL;
+  if (IS_GEN_BOTH_PATH) {
+    status = m_builder->translateVISAInvmRsqtmInst(
+        opcode, executionSize, emask, g4Pred, g4::NOSAT,
+        vecDst->g4opnd->asDstRegRegion(), predDst, src0->g4opnd,
+        opcode == ISA_INVM ? src1->g4opnd : nullptr);
+  }
+  if (IS_VISA_BOTH_PATH) {
+    VISA_INST_Desc *inst_desc = NULL;
+    VISA_opnd *opnd[4];
+    int num_pred_desc_operands = 1;
+    inst_desc = &CISA_INST_table[opcode];
+    GET_NUM_PRED_DESC_OPNDS(num_pred_desc_operands, inst_desc);
+    int num_operands = 0;
+
+    ADD_OPND(num_operands, opnd, vecDst);
+
+    ADD_OPND(num_operands, opnd, predOpnd);
+
+    ADD_OPND(num_operands, opnd, src0);
+
+    ADD_OPND(num_operands, opnd, src1);
+
+    CHECK_NUM_OPNDS(inst_desc, num_operands, num_pred_desc_operands);
+
+    unsigned char size = executionSize;
+    size += emask << 4;
+    CisaFramework::CisaInst *inst = new (m_mem) CisaFramework::CisaInst(m_mem);
+    inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(),
+                                opnd, num_operands, inst_desc);
+    addInstructionToEnd(inst);
+  }
+
+  return status;
+}
+
 int VISAKernelImpl::AppendVISALogicOrShiftInst(
     ISA_Opcode opcode, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
     VISA_PredVar *dst, VISA_PredVar *src0, VISA_PredVar *src1) {

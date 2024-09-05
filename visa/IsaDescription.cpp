@@ -170,6 +170,14 @@ struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE] = {
     {ISA_ADD3O, ISA_Inst_Arith, "add3.o", 3, 1},
     {ISA_RESERVED_93, ISA_Inst_Reserved, "reserved93", 0, 0},
     {ISA_BREAKPOINT, ISA_Inst_Misc, "breakpoint", 0, 0},
+    {ISA_RESERVED_95, ISA_Inst_Reserved, "reserved95", 0, 0},
+    {ISA_RESERVED_96, ISA_Inst_Reserved, "reserved96", 0, 0},
+    {ISA_RESERVED_97, ISA_Inst_Reserved, "reserved97", 0, 0},
+    {ISA_RESERVED_98, ISA_Inst_Reserved, "reserved98", 0, 0},
+    {ISA_RESERVED_99, ISA_Inst_Reserved, "reserved99", 0, 0},
+    {ISA_RESERVED_9A, ISA_Inst_Reserved, "reserved9a", 0, 0},
+    {ISA_INVM,  ISA_Inst_Arith, "invm",  2, 2},
+    {ISA_RSQTM, ISA_Inst_Arith, "rsqtm", 1, 2}
 };
 
 VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
@@ -2705,6 +2713,106 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
         0,
         0,
         { }
+    },
+    /// 149 (0x95)
+    {
+        ALL,
+        ISA_RESERVED_95,
+        ISA_Inst_Reserved,
+        "reserved_95",
+        0,
+        0,
+        {},
+    },
+
+    // 150 (0x96)
+    {
+        ALL,
+        ISA_RESERVED_96,
+        ISA_Inst_Reserved,
+        "reserved_96",
+        0,
+        0,
+        {},
+    },
+
+    // 151 (0x97)
+    {
+        ALL,
+        ISA_RESERVED_97,
+        ISA_Inst_Reserved,
+        "reserved_97",
+        0,
+        0,
+        {},
+    },
+
+    // 152 (0x98)
+    {
+        ALL,
+        ISA_RESERVED_98,
+        ISA_Inst_Reserved,
+        "reserved_98",
+        0,
+        0,
+        {},
+    },
+
+    // 153 (0x99)
+    {
+        ALL,
+        ISA_RESERVED_99,
+        ISA_Inst_Reserved,
+        "reserved_99",
+        0,
+        0,
+        {},
+    },
+
+    // 154 (0x9A)
+    {
+        ALL,
+        ISA_RESERVED_9A,
+        ISA_Inst_Reserved,
+        "reserved_9a",
+        0,
+        0,
+        {},
+    },
+
+    /// 155 (0x9B)
+    {
+        ALL,
+        ISA_INVM,
+        ISA_Inst_Arith,
+        "invm",
+        5,
+        SAME_DATA_TYPE,
+        {
+            {OPND_EXECSIZE, ISA_TYPE_UB, 0},
+            {OPND_VECTOR_DST_G_I, ISA_TYPE_DF | ISA_TYPE_F, 0},      // dst = invm(src0/src1)
+            {OPND_DST_PRED, ISA_TYPE_UD | ISA_TYPE_UW, 0},           // flag = (eo) of invm
+            {OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_DF | ISA_TYPE_F, 0},  // src0
+            {OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_DF | ISA_TYPE_F, 0},  // src1
+        },
+
+    },
+
+    /// 156 (0x9C)
+    {
+        ALL,
+        ISA_RSQTM,
+        ISA_Inst_Arith,
+        "rsqtm",
+        4,
+        SAME_DATA_TYPE,
+        {
+            {OPND_EXECSIZE, ISA_TYPE_UB, 0},
+            {OPND_VECTOR_DST_G_I, ISA_TYPE_DF | ISA_TYPE_F, 0},      // dst = rsqtm(src0)
+            {OPND_DST_PRED, ISA_TYPE_UD | ISA_TYPE_UW, 0},           // flag = (eo) of rsqtm
+            {OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_DF | ISA_TYPE_F, 0},  // src0
+        },
+
     },
 };
 

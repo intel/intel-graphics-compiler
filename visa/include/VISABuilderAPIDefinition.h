@@ -341,6 +341,14 @@ public:
       VISA_VectorOpnd *carry_borrow, VISA_VectorOpnd *src0,
       VISA_VectorOpnd *src1) = 0;
 
+  // AppendVISAPredDstArithmeticInst -- append an arithmetic instruction with
+  // two dsts (one grf dst, one pred dst) and one or two srcs to this kernel.
+  //   (p) op (emask, execSize) dst predDst, src0  src1
+  VISA_BUILDER_API virtual int AppendVISAPredDstArithmeticInst(
+      ISA_Opcode opcode, VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
+      VISA_Exec_Size executionSize, VISA_VectorOpnd *vecDst,
+      VISA_PredVar *predDst, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1) = 0;
+
   /// AppendVISADpasInst -- append a DPAS instruction to this kernel.
   ///    op (execSize) dst src0 src1 src2
   /// Precision, depth, repeat count are constant and considered as fields

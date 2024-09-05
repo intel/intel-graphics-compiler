@@ -347,6 +347,12 @@ addc|subb {
         return ARITH4_OP2;
     }
 
+invm|rsqtm {
+        TRACE("** MATH MACRO INST");
+        CISAlval.opcode = str2opcode(yytext);
+        return ARITH5_OP2;
+    }
+
 asin|acos|atan {
         TRACE("** ANTI TRIGONOMETRIC INST");
         CISAlval.opcode = str2opcode(yytext);

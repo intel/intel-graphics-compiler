@@ -236,6 +236,10 @@ public:
                                       VISA_opnd *dst_cisa, VISA_opnd *src0_cisa,
                                       VISA_opnd *src1_cisa,
                                       VISA_opnd *src2_cisa, int lineNum);
+  bool CISA_create_arith_instruction2_predDst(
+      VISA_opnd *cisa_pred, ISA_Opcode opcode, VISA_EMask_Ctrl emask,
+      unsigned exec_size, VISA_opnd *dst, CISA_GEN_VAR *dst_pred,
+      VISA_opnd *src0, VISA_opnd *src1, int lineNum);
 
   bool CISA_create_breakpoint_instruction(int lineNum);
 

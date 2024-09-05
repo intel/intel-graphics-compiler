@@ -406,6 +406,14 @@ public:
       VISA_VectorOpnd *carry_borrow, VISA_VectorOpnd *src0,
       VISA_VectorOpnd *src1) override;
 
+  // Two dst instructon
+  //   (vecDst, predDst) = opcode src0, src1
+  VISA_BUILDER_API int AppendVISAPredDstArithmeticInst(
+      ISA_Opcode opcode, VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
+      VISA_Exec_Size executionSize, VISA_VectorOpnd *vecDst,
+      VISA_PredVar *predDst, VISA_VectorOpnd *src0,
+      VISA_VectorOpnd *src1) override;
+
   VISA_BUILDER_API int AppendVISALogicOrShiftInst(
       ISA_Opcode opcode, VISA_PredOpnd *pred, bool satMode,
       VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize, VISA_VectorOpnd *dst,

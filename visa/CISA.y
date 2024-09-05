@@ -425,6 +425,7 @@ std::vector<attr_gen_struct*> AttrOptVar;
 %token <opcode> ARITH3_OP
 %token <opcode> ARITH4_OP
 %token <opcode> ARITH4_OP2
+%token <opcode> ARITH5_OP2
 %token <opcode> CMP_OP
 %token <opcode> SVM_OP
 %token <opcode> SVM_SCATTER_OP
@@ -1053,6 +1054,13 @@ ArithInstruction_3OPND:
             $1, $2, $3, $4.emask, $4.exec_size,
             $5.cisa_gen_opnd, $6.cisa_gen_opnd, $7.cisa_gen_opnd, NULL, CISAlineno);
     }
+    |
+    //  1          2            3            4             5             6
+    Predicate  ARITH5_OP2    ExecSize VecDstOperand_G_I PredVar VecSrcOperand_G_I_IMM
+    {
+        pBuilder->CISA_create_arith_instruction2_predDst($1, $2, $3.emask, $3.exec_size,
+            $4.cisa_gen_opnd, $5, $6.cisa_gen_opnd, nullptr, CISAlineno);
+    }
 
 
 ArithInstruction_4OPND:
@@ -1068,6 +1076,13 @@ ArithInstruction_4OPND:
      {
         pBuilder->CISA_create_arith_instruction2($1, $2, $3.emask, $3.exec_size,
             $4.cisa_gen_opnd, $5.cisa_gen_opnd, $6.cisa_gen_opnd, $7.cisa_gen_opnd, CISAlineno);
+     }
+     |
+     //  1          2            3            4             5              6                     7
+     Predicate  ARITH5_OP2    ExecSize VecDstOperand_G_I PredVar VecSrcOperand_G_I_IMM  VecSrcOperand_G_I_IMM
+     {
+        pBuilder->CISA_create_arith_instruction2_predDst($1, $2, $3.emask, $3.exec_size,
+            $4.cisa_gen_opnd, $5, $6.cisa_gen_opnd, $7.cisa_gen_opnd, CISAlineno);
      }
 
 

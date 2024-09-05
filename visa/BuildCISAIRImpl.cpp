@@ -2644,6 +2644,20 @@ bool CISA_IR_Builder::CISA_create_arith_instruction2(
   return true;
 }
 
+// Two destination instruction:
+//    (p) op  (dst pred_dst)  src0   src1
+bool CISA_IR_Builder::CISA_create_arith_instruction2_predDst(
+    VISA_opnd *pred, ISA_Opcode opcode, VISA_EMask_Ctrl emask,
+    unsigned exec_size, VISA_opnd *dst, CISA_GEN_VAR *pred_dst, VISA_opnd *src0,
+    VISA_opnd *src1, int lineNum) {
+  VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
+  VISA_CALL_TO_BOOL(AppendVISAPredDstArithmeticInst, opcode,
+                    (VISA_PredOpnd *)pred, emask, executionSize,
+                    (VISA_VectorOpnd *)dst, (VISA_PredVar *)pred_dst,
+                    (VISA_VectorOpnd *)src0, (VISA_VectorOpnd *)src1);
+  return true;
+}
+
 bool CISA_IR_Builder::CISA_create_breakpoint_instruction(int lineNum) {
   VISA_CALL_TO_BOOL(AppendVISABreakpointInst);
   return true;

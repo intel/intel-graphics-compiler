@@ -1633,6 +1633,11 @@ public:
       G4_Predicate *predOpnd, G4_Sat saturate, G4_CondMod *condMod,
       G4_DstRegRegion *dstOpnd, G4_Operand *src0Opnd);
 
+  int translateVISAInvmRsqtmInst(ISA_Opcode opcode,
+      VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask,
+      G4_Predicate *predOpnd, G4_Sat saturate, G4_DstRegRegion *dstOpnd,
+      VISA_PredVar *predDst, G4_Operand *src0Opnd, G4_Operand *Src1Opnd);
+
   ///////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////
   // Members related miscellaneous instructions that don't fit any other
