@@ -479,7 +479,7 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
     }
   } else {
     // Only valid ARF type are NULL and Accumulator for ternary instructions
-    if (inst->getNumSrc() == 3) {
+    if (passIndex == Optimizer::PI_HWConformityChk && inst->getNumSrc() == 3) {
       if (opnd->isAreg() && !opnd->isNullReg() && !opnd->isAccReg() &&
           !(opnd == inst->getSrc(0) && opnd->isSrReg()))
         vISA_ASSERT(false, "Not allowed ARF in ternary instruction");
