@@ -331,7 +331,6 @@ static void CommonOCLBasedPasses(
 #ifdef IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
     mpmSPIR.add(new PreprocessSPVIR());
     mpmSPIR.add(new PromoteBools());
-    mpmSPIR.add(llvm::createMemCpyOptPass());
 #endif // IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
     mpmSPIR.add(new TypesLegalizationPass());
     mpmSPIR.add(new TargetLibraryInfoWrapperPass());
