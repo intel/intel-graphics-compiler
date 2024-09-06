@@ -17826,17 +17826,6 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
             bool needTemp = (!destUniform || !IsGRFAligned(m_destination, EALIGN_GRF));
             CVariable * loadDest = m_destination;
 
-            // (needTemp = false) means GRF aligned as (destUniform = true)
-            if (!useDWAligned && useOWAligned && !needTemp &&
-                srcUniform && destUniform &&
-                destType == VISA_Type::ISA_TYPE_F &&
-                eOffset->GetType() == VISA_Type::ISA_TYPE_UD &&
-                m_currShader->m_Platform->allowFastestSIMDVectorLoad4Perf())
-            {
-                emitVectorCopy(loadDest, eOffset, elts);
-                return;
-            }
-
             if (useOWAligned)
             {
                 // Offset needs to be in OW!
