@@ -474,6 +474,32 @@ void AlignmentAnalysis::SetInstAlignment(MemSetInst& I)
 
 void AlignmentAnalysis::SetInstAlignment(MemCpyInst& I)
 {
+    std::function<bool(Value*)> isConstGlobalZero = [&](Value* V)
+    {
+        if (auto* GEP = dyn_cast<GetElementPtrInst>(V))
+            return isConstGlobalZero(GEP->getPointerOperand());
+
+        if (auto* GV = dyn_cast<GlobalVariable>(V))
+        {
+            if (!GV->isConstant())
+                return false;
+
+            if (auto* initializer = GV->getInitializer())
+                return initializer->isZeroValue();
+        }
+
+        return false;
+    };
+
+    // If memcpy source is zeroinitialized constant global, memcpy is equivalent to memset to zero.
+    // In this case, we can set the alignment of memcpy to the alignment of its destination only.
+    if (isConstGlobalZero(I.getRawSource()))
+    {
+        auto alignment = IGCLLVM::Max(IGCLLVM::getDestAlign(I), IGCLLVM::Align(getAlignValue(I.getRawDest())));
+        I.setDestAlignment(alignment);
+        return;
+    }
+
     // Set the align attribute of the memcpy based on the minimum alignment of its source and dest fields
     auto minRawAlignment = iSTD::Min(getAlignValue(I.getRawDest()), getAlignValue(I.getRawSource()));
     auto alignment = IGCLLVM::Max(IGCLLVM::getDestAlign(I), IGCLLVM::Align(minRawAlignment));
