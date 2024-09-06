@@ -605,7 +605,6 @@ typedef struct _SWSB_INDEXES {
   int longIndex = 0;
   int DPASIndex = 0;
   int mathIndex = 0;
-  bool hasDPASorDP = false;
   unsigned latestDepALUID[PIPE_DPAS] = {0};
   std::vector<unsigned> latestInstID[PIPE_DPAS];
 } SWSB_INDEXES;

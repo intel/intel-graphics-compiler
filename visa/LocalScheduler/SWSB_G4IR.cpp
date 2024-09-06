@@ -1966,9 +1966,7 @@ void SWSB::SWSBGenerator() {
   }
 
   // FIXME: replace hasPVCSendWARWA with WA ID
-  if (fg.builder->PVCSendWARWA() ||
-      (fg.builder->hasPVCSendWARWA() &&
-       indexes.hasDPASorDP)) {
+  if (fg.builder->PVCSendWARWA()) {
     insertPVCWA();
   }
 
@@ -4735,6 +4733,16 @@ void SWSB::insertPVCWA() {
     std::vector<FIFOQueueType> LSCLastTwoGRFsOfToken(totalTokenNum);
     std::vector<FIFOQueueType> nonLSClastTwoGRFsOfToken(totalTokenNum);
 
+    auto cleanLSCGRF = [&](unsigned short i) {
+      LSCLastTwoGRFsOfToken[i].first = LSCLastTwoGRFsOfToken[i].second =
+          INVALID_GRF;
+    };
+
+    auto cleanNonLSCGRF = [&](unsigned short i) {
+      nonLSClastTwoGRFsOfToken[i].first = nonLSClastTwoGRFsOfToken[i].second =
+          INVALID_GRF;
+    };
+
     auto cleanGRF = [&](unsigned short i) {
       LSCLastTwoGRFsOfToken[i].first = LSCLastTwoGRFsOfToken[i].second =
           INVALID_GRF;
@@ -4748,7 +4756,7 @@ void SWSB::insertPVCWA() {
       }
     };
 
-    auto cleanLSCGRFs = [&](uint16_t &WATokens) {
+    auto cleanLSCGRFs = [&](uint32_t &WATokens) {
       for (uint32_t i = 0; i < totalTokenNum; i++) {
         if (LSCLastTwoGRFsOfToken[i].first != INVALID_GRF) {
           WATokens |= 1 << i;
@@ -4758,7 +4766,7 @@ void SWSB::insertPVCWA() {
       }
     };
 
-    auto cleanNonLSCGRFs = [&](uint16_t &WATokens) {
+    auto cleanNonLSCGRFs = [&](uint32_t &WATokens) {
       for (uint32_t i = 0; i < totalTokenNum; i++) {
         if (nonLSClastTwoGRFsOfToken[i].first != INVALID_GRF) {
           WATokens |= 1 << i;
@@ -4820,9 +4828,11 @@ void SWSB::insertPVCWA() {
         if (inst->getMsgDesc()->isLSC()) {
           getLastTwoGRFsOfSend(LSCLastTwoGRFs, LSCLastTwoTokens, inst);
           assignLSCGRF(token);
+          cleanNonLSCGRF(token);
         } else {
           getLastTwoGRFsOfSend(nonLSCLastTwoGRFs, nonLSCLastTwoTokens, inst);
           assignNonLSCGRF(token);
+          cleanLSCGRF(token);
         }
         continue;
       }
@@ -4830,13 +4840,13 @@ void SWSB::insertPVCWA() {
       // for non-send .src may happen
       // sync.allrd
       if (inst->opcode() == G4_sync_allrd) {
-        uint16_t tokens = 0xFFFF;            // all set if src0 is NULL
+        uint32_t tokens = 0xFFFFFFFF;       // all set if src0 is NULL
         if (inst->getSrc(0)->isImm()) {      // src0 is imm
-          tokens = (uint16_t)inst->getSrc(0)->asImm()->getImm();
+          tokens = (uint32_t)inst->getSrc(0)->asImm()->getImm();
         } else {
           assert(inst->getSrc(0)->isNullReg());
         }
-        uint16_t WAtokens = 0; // Tokens resolved by WA
+        uint32_t WAtokens = 0; // Tokens resolved by WA
         unsigned short LSCLastToken = getLastToken(LSCLastTwoTokens, tokens);
         unsigned short nonLSCLastToken =
             getLastToken(nonLSCLastTwoTokens, tokens);
@@ -4909,7 +4919,7 @@ void SWSB::insertPVCWA() {
       // Add WA for .src
       if (insertDummyMovs(bb, inst_it, token, LSCLastTwoGRFsOfToken,
                           nonLSClastTwoGRFsOfToken)) {
-        cleanGRFs();
+        cleanGRF(token);
         insertSyncInt1(bb, inst_it);
         if (inst->opcode() == G4_sync_nop &&
             inst->getDistanceTypeXe() ==
@@ -6493,9 +6503,6 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
     SBNode *node = new (allocator) SBNode(nodeID, ALUID, bb->getId(), curInst);
     SBNodes->emplace_back(node);
     curInst->setLocalId(0);
-    if (curInst->isDFInstruction()) {
-      indexes->hasDPASorDP = true;
-    }
 
     if (builder.hasA0WARHWissue() &&
         (builder.hasThreeALUPipes() || builder.hasFourALUPipes())) {
@@ -7242,8 +7249,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
 
         if (!(builder.WARLocalization() || builder.PVCSendWARWA()) ||
             !validWARLocalizeBB || opndNum == Opnd_dst ||
-            node->getLastInstruction()->isDpas() || bb->isEndWithCall() ||
-            bb->isEndWithFCall()) {
+            node->getLastInstruction()->isDpas()) {
           if (liveBN->getSendID() == INVALID_ID) {
             if (send_start == INVALID_ID) {
               send_start = static_cast<int>(globalSendOpndList->size());

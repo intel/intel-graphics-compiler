@@ -5909,6 +5909,9 @@ void Optimizer::collectStats() {
       if (inst->isSend()) {
         numSends++;
       }
+      if (!builder.hasDFInst() && inst->isDFInstruction()) {
+        builder.setHasDFInst(true);
+      }
     }
   }
 }

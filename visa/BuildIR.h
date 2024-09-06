@@ -354,7 +354,8 @@ private:
   // initialized with r0 contents.
   // Used only when vISA_cacheSamplerHeader option is set.
   bool builtinSamplerHeaderInitialized;
-
+  // for PVC send WAR WA
+  bool hasDF = false;
   // function call related declares
   G4_Declare *be_sp = nullptr;
   G4_Declare *be_fp = nullptr;
@@ -648,6 +649,7 @@ public:
 
   G4_Declare *getOldA0Dot2Temp();
   bool hasValidOldA0Dot2() { return oldA0Dot2Temp; }
+  bool hasDFInst() const { return hasDF; }
 
   IR_Builder(INST_LIST_NODE_ALLOCATOR &alloc, G4_Kernel &k, Mem_Manager &m,
              Options *options, CISA_IR_Builder *parent, FINALIZER_INFO *jitInfo,
@@ -740,7 +742,7 @@ public:
   }
   G4_Declare *getBuiltinSamplerHeader() const { return builtinSamplerHeader; }
   G4_Declare *getOldA0Dot2Temp() const { return oldA0Dot2Temp; }
-
+  void setHasDFInst(bool b) { hasDF = b; }
   G4_Declare *getInputR1() { return inputR1; }
   void setInputR1(G4_Declare *r1) { inputR1 = r1; }
 
