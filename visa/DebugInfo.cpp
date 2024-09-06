@@ -152,14 +152,22 @@ template <class T> void DbgDecoder::ddLiveInterval() {
   std::cout << "\n";
 }
 
-void DbgDecoder::ddCalleeCallerSave(uint32_t relocOffset) {
-  uint16_t num;
-
+void DbgDecoder::ddCalleeCallerSave(uint32_t relocOffset, CallerCallee callCase) {
   if (feof(dbgFile)) {
     return;
   }
 
-  auto retval = fread(&num, sizeof(uint16_t), 1, dbgFile);
+  size_t retval;
+
+  uint32_t num = 0;
+  switch (callCase) {
+  case CALLER:
+    retval = fread(&num, sizeof(uint32_t), 1, dbgFile);
+    break;
+  case CALLEE:
+    retval = fread(&num, sizeof(uint16_t), 1, dbgFile);
+    break;
+  }
   if (!retval)
     return;
 
@@ -417,11 +425,11 @@ int DbgDecoder::ddDbg() {
     std::cout << "\n";
 
     std::cout << "Callee save:\n";
-    ddCalleeCallerSave(reloc_offset);
+    ddCalleeCallerSave(reloc_offset, CALLEE);
     std::cout << "\n";
 
     std::cout << "Caller save:\n";
-    ddCalleeCallerSave(reloc_offset);
+    ddCalleeCallerSave(reloc_offset, CALLER);
     std::cout << "\n";
   }
 
@@ -1181,7 +1189,7 @@ void SaveRestoreManager::sieveInstructions(CallerOrCallee c) {
 template <class T> void emitDataCallerSave(VISAKernelImpl *visaKernel, T &t) {
   auto kernel = visaKernel->getKernel();
 
-  uint16_t numCallerSaveEntries = 0;
+  uint32_t numCallerSaveEntries = 0;
   // Compute total caller save entries to emit
   for (auto bbs : kernel->fg) {
     if (bbs->size() > 0 &&
@@ -1204,7 +1212,7 @@ template <class T> void emitDataCallerSave(VISAKernelImpl *visaKernel, T &t) {
 
       mgr.sieveInstructions(SaveRestoreManager::CallerOrCallee::Caller);
 
-      numCallerSaveEntries += (uint16_t)srInfo.size();
+      numCallerSaveEntries += (uint32_t)srInfo.size();
       for (const auto &sr : srInfo) {
         if (sr.getInst()->getGenOffset() == UNDEFINED_GEN_OFFSET) {
           numCallerSaveEntries--;
@@ -1213,7 +1221,7 @@ template <class T> void emitDataCallerSave(VISAKernelImpl *visaKernel, T &t) {
     }
   }
 
-  emitDataUInt16(numCallerSaveEntries, t);
+  emitDataUInt32(numCallerSaveEntries, t);
 
   if (numCallerSaveEntries > 0) {
     for (auto bbs : kernel->fg) {

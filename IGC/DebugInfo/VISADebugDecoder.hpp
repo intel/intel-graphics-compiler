@@ -184,7 +184,7 @@ public:
     std::vector<LiveIntervalGenISA> retAddr;
     uint16_t numCalleeSaveEntries = 0;
     std::vector<PhyRegSaveInfoPerIP> calleeSaveEntry;
-    uint16_t numCallerSaveEntries = 0;
+    uint32_t numCallerSaveEntries = 0;
     std::vector<PhyRegSaveInfoPerIP> callerSaveEntry;
 
     bool getBEFPRegNum(uint32_t &regNum, uint32_t &subRegNum) const {
@@ -387,7 +387,7 @@ private:
         f.cfi.calleeSaveEntry.push_back(phyRegSave);
       }
 
-      f.cfi.numCallerSaveEntries = read<uint16_t>(dbg);
+      f.cfi.numCallerSaveEntries = read<uint32_t>(dbg);
       for (unsigned int j = 0; j != f.cfi.numCallerSaveEntries; j++) {
         PhyRegSaveInfoPerIP phyRegSave;
         phyRegSave.genIPOffset = read<uint32_t>(dbg);

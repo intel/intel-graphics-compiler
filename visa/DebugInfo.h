@@ -434,13 +434,17 @@ public:
 
 class DbgDecoder {
 private:
+  enum CallerCallee {
+    CALLER = 0,
+    CALLEE = 1
+  };
   const char *const filename;
   std::FILE *dbgFile = nullptr;
   const PlatformInfo *platInfo = nullptr;
 
   void ddName();
   template <class T> void ddLiveInterval();
-  void ddCalleeCallerSave(uint32_t relocOffset);
+  void ddCalleeCallerSave(uint32_t relocOffset, CallerCallee callCase);
 
 public:
   DbgDecoder(const char *f, TARGET_PLATFORM platform) : filename(f) {
@@ -549,7 +553,7 @@ calleeSaveEntry[numCalleeSaveEntries];
     // r4.2 =...
     // send (16) null:w   r4 <-- Writes 4 GRFs (r5, r6, r7, r8)
     //
-    uint16_t numCallerSaveEntries;
+    uint32_t numCallerSaveEntries;
     PhyRegSaveInfoPerIP callerSaveEntry[numCallerSaveEntries];
 }
 
