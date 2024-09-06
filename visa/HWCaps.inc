@@ -840,11 +840,11 @@ bool WARLocalization() const {
 }
 
 bool hasPVCSendWARWA() const {
-  return getPlatform() == Xe_PVC || getPlatform() == Xe_PVCXT;
+  return getPlatform() == Xe_PVC;
 }
 
 bool PVCSendWARWA() const {
-  if (getOption(vISA_PVCSendWARWA) && (getPlatform() == Xe_PVC || getPlatform() == Xe_PVCXT)) {
+  if (getOption(vISA_PVCSendWARWA) && getPlatform() == Xe_PVC) {
     return true;
   }
   return false;
