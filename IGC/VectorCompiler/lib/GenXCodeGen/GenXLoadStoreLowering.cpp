@@ -290,6 +290,20 @@ static bool isSPIRVAtomic(const Value *Val) {
   }
 }
 
+static LSC_FENCE_OP getLSCFenceOp(AtomicOrdering Ordering) {
+  switch (Ordering) {
+  default:
+    return LSC_FENCE_OP_NONE;
+  case AtomicOrdering::Acquire:
+    return LSC_FENCE_OP_INVALIDATE;
+  case AtomicOrdering::Release:
+    return LSC_FENCE_OP_CLEAN;
+  case AtomicOrdering::AcquireRelease:
+  case AtomicOrdering::SequentiallyConsistent:
+    return LSC_FENCE_OP_EVICT;
+  }
+}
+
 void GenXLoadStoreLowering::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<TargetPassConfig>();
   AU.addRequired<GenXBackendConfig>();
@@ -1110,13 +1124,8 @@ GenXLoadStoreLowering::createLSCStandAloneFence(FenceInst &I) const {
     return nullptr;
 
   bool IsGlobal = AS == vc::AddrSpace::Global;
-  bool IsInvalidateL1 = Ordering == AtomicOrdering::SequentiallyConsistent ||
-                        Ordering == AtomicOrdering::AcquireRelease ||
-                        Ordering == AtomicOrdering::Acquire;
-  IsInvalidateL1 &= IsGlobal;
-
+  auto FenceOp = IsGlobal ? getLSCFenceOp(Ordering) : LSC_FENCE_OP_NONE;
   auto SubFuncID = IsGlobal ? LSC_UGM : LSC_SLM;
-  auto FenceOp = IsInvalidateL1 ? LSC_FENCE_OP_INVALIDATE : LSC_FENCE_OP_NONE;
   auto Scope = getLSCFenceScope(&I);
 
   auto *M = I.getModule();
