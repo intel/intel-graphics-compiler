@@ -650,6 +650,8 @@ DEF_VISA_OPTION(vISA_dumpKCI, ET_BOOL, "-dumpKCI",
                 "Dump info collected by kernelCostInfo.", false)
 DEF_VISA_OPTION(vISA_dumpDetailKCI, ET_BOOL, "-dumpDetailKCI",
                 "Dump detailed info collected by kernelCostInfo.", false)
+DEF_VISA_OPTION(vISA_dumpKCIForLit, ET_BOOL, "-dumpKCIForLit",
+                "Dump kernel cost info for lit testing only", false)
 // Corresponds to something slightly different in IGC than vISA_HasInt64Add
 // (C.f. Platform.hpp:hasPartialInt64Support)
 DEF_VISA_OPTION(vISA_HasPartialInt64, ET_BOOL, "-partialInt64", UNUSED, false)

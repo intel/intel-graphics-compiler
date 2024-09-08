@@ -178,6 +178,7 @@ private:
 
   // helpers
   void print(std::ostream &OS);
+  void printForLit(std::ostream &OS);
   void dump();
   void dump() const;
 };

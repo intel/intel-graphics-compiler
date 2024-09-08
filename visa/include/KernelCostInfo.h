@@ -72,11 +72,13 @@ struct LoopCostInfo {
 
   CostExpr loopBodyCost;
 
+  // calculated by IGC
   struct LoopCountExpr *LCE;
 };
 
 struct KernelCostInfo {
   CostExpr kernelCost;
+  // all loops in program order.
   std::vector<LoopCostInfo> allLoopCosts;
 };
 

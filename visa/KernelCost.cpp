@@ -471,10 +471,22 @@ void KernelCost::collectPerfMetrics()
 
     // Loop part of cost expr, set up in program order.
     for (auto L: FC.m_allLoopsInProgramOrder) {
+      if (L->getNumImmChildLoops() == 0)
+        continue;
+
       LoopCost &LC = m_loopCosts[L];
       CostExprInternal& lce = LC.m_loopBodyCost;
-      for (auto LI = L->begin(), LE = L->end(); LI != LE; ++LI) {
-        Loop *nested = *LI;
+
+      // make sure to iterate loops in program order
+      std::list<Loop *> immLoops(L->begin(), L->end());
+      immLoops.sort([this](Loop *a, Loop *b) {
+        LoopCost *aLC = &m_loopCosts[a];
+        LoopCost *bLC = &m_loopCosts[b];
+        return aLC->m_loopId < bLC->m_loopId;
+      });
+
+      for (auto LI : immLoops) {
+        Loop *nested = LI;
         LoopCost &nestedLC = m_loopCosts[nested];
         lce.LoopCosts.push_back(&nestedLC);
       }
@@ -483,6 +495,10 @@ void KernelCost::collectPerfMetrics()
     if (m_kernel->getOption(vISA_dumpKCI) ||
       m_kernel->getOption(vISA_dumpDetailKCI))
       print(std::cout);
+
+    if (m_kernel->getOption(vISA_dumpKCIForLit)) {
+      printForLit(std::cout);
+    }
   }
 }
 
@@ -554,6 +570,17 @@ void KernelCost::print(std::ostream &OS)
        << indent << "    Bytes Stored = " << LCM.getStoreBytes() << "\n";
     if (aL->getNumImmChildLoops() > 0)
       OS << "\n";
+  }
+}
+
+void KernelCost::printForLit(std::ostream &OS) {
+  const FuncCost &FC = m_metrics.back();
+  int i = 0;
+  for (const Loop *aL : FC.m_allLoopsInProgramOrder) {
+    LoopCost &LC = m_loopCosts[aL];
+    OS << "Loop " << i << ": id " << LC.m_loopId
+       << ", level " << aL->getNestingLevel() << "\n";
+    ++i;
   }
 }
 

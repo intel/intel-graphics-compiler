@@ -71,7 +71,7 @@ namespace
         Optional<LoopBoundInfo> getBounds(Loop* L, ScalarEvolution& SE);
         void processLoop(Loop* L);
 
-        CollectLoopCount* collectLoopCout;
+        CollectLoopCount* collectCount;
     };
 }
 
@@ -121,7 +121,7 @@ bool LoopCountAnalysis::runOnFunction(Function& F)
 {
     LoopInfo& LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
     SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
-    collectLoopCout = &getAnalysis<CollectLoopCount>();
+    collectCount = &getAnalysis<CollectLoopCount>();
     Module* M = F.getParent();
     dl = &(M->getDataLayout());
 
@@ -420,9 +420,11 @@ void getMultiplicationFactorFromValue(Value* val, Value** shlOperand, uint64_t& 
         }
     }
 }
-//loop bounds with constant value. End value and step bounded by the same variable
-//for (size_t j = 0; j < sgSize * 16; j += sgSize)
-void getConstantBoundLCE(Value* In, Value* step, float& C) {
+// loop bounds with constant value. End value and step bounded by the same variable
+// for (size_t j = 0; j < sgSize * 16; j += sgSize)
+//
+// Return true if it finds constant count; return false otherwise.
+bool getConstantBoundLCE(Value* In, Value* step, float& C) {
     Value* shlEndOperand = nullptr;
     Value* shlStepOperand = nullptr;
     uint64_t endmultiplicationFactor = 0;
@@ -437,12 +439,14 @@ void getConstantBoundLCE(Value* In, Value* step, float& C) {
         //check if end shift operand and step shift operand are the same
         if (shlStepOperand && shlEndOperand == shlStepOperand) {
             C = (float)endmultiplicationFactor / (float)stepmultiplicationFactor;
+            return true;
         }
         //end = shl nuw nsw i32 %endShl, 4
         //step = phi instruction
         //Check if endOperand and step are the same
-        else if (shlEndOperand == step) {
+        if (shlEndOperand == step) {
             C = float(endmultiplicationFactor);
+            return true;
         }
         //end = zext i32 %endZext to i64
         // %endZext = shl nsw i32 %endShl, 4
@@ -452,10 +456,11 @@ void getConstantBoundLCE(Value* In, Value* step, float& C) {
             Value* sextOperand = sextStepInst->getOperand(0);
             if (shlEndOperand == sextOperand) {
                 C = float(endmultiplicationFactor);
+                return true;
             }
         }
-
     }
+    return false;
 }
 
 bool checkLegalArgument(const Argument* arg) {
@@ -517,6 +522,7 @@ void LoopCountAnalysis::processLoop(Loop* L) {
         //get argument for end value if argument is tracable to argument list and update addValue if argument is pointer
         const Argument* arg = getArgumentFromEndValue(In, &addValue);
 
+        bool hasCount = true;
         //Check if argument is legal and initial value is constant
         if (checkLegalArgument(arg) && initialValue && stepInt) {
             //update argument symbol based on argument and addvalue
@@ -533,8 +539,14 @@ void LoopCountAnalysis::processLoop(Loop* L) {
             //If loop bound is a constant
             //loop bounds with constant value. End value and step bounded by the same variable
             //for (size_t j = 0; j < sgSize * 16; j += sgSize)
-            getConstantBoundLCE(In, step, C);
+            hasCount = getConstantBoundLCE(In, step, C);
         }
-        collectLoopCout->addLCE(argumentIndex, byteOffset, sizeInBytes, isInDirect, factor, C);
+        if (hasCount) {
+            collectCount->addLCE(argumentIndex, byteOffset, sizeInBytes,
+                                    isInDirect, factor, C);
+        } else {
+            collectCount->addLCE(-1, 0, 0, false, 1, 0);
+        }
+
     }
 }
