@@ -21,12 +21,19 @@ define void @fence_acq() {
 
 define void @fence_rel() {
   ; CHECK: call void @llvm.genx.fence(i8 1)
-  ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 0, i8 0, i8 2)
+  ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 0, i8 4, i8 2)
   fence syncscope("device") release
   ret void
 }
 
 define void @fence_acq_rel() {
+  ; CHECK: call void @llvm.genx.fence(i8 65)
+  ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 0, i8 1, i8 2)
+  fence syncscope("device") acq_rel
+  ret void
+}
+
+define void @fence_acq_rel_wg() {
   ; CHECK: call void @llvm.genx.fence(i8 33)
   ; CHECK-LSC: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
   fence syncscope("workgroup") acq_rel
@@ -34,8 +41,8 @@ define void @fence_acq_rel() {
 }
 
 define void @fence_seq_cst() {
-  ; CHECK-NOT: call void @llvm.genx.fence(i8 33)
-  ; CHECK-LSC-NOT: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
+  ; CHECK-NOT: call void @llvm.genx.fence
+  ; CHECK-LSC-NOT: call void @llvm.genx.lsc.fence.i1
   fence syncscope("subgroup") seq_cst
   ret void
 }
