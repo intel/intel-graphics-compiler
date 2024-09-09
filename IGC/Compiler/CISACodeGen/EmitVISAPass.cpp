@@ -9558,6 +9558,46 @@ void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
     str << "/// End Inlined ASM" << endl << endl;
 }
 
+void EmitPass::EmitInitializePHI(llvm::PHINode* phi)
+{
+    CVariable* phiVar = GetSymbol(phi);
+    if (phiVar->GetType() == ISA_TYPE_BOOL)
+    {
+        CVariable* initializedTempVar = m_currShader->GetNewVariable(phiVar->GetNumberElement(), ISA_TYPE_UD, EALIGN_GRF, CName::NONE);
+        m_encoder->SetNoMask();
+        m_encoder->Copy(initializedTempVar, m_currShader->ImmToVariable(0, ISA_TYPE_UD));
+        m_encoder->Push();
+
+        m_encoder->Select(phiVar, initializedTempVar, m_currShader->ImmToVariable(0xFFFFFFFFULL, ISA_TYPE_UD), m_currShader->ImmToVariable(0, ISA_TYPE_UD));
+        m_encoder->Push();
+
+        CVariable* initializedFlag = m_currShader->GetNewVariable(phiVar);
+        VISA_Type type = GetTypeFromSize(phiVar->GetNumberElement() / BITS_PER_BYTE);
+        m_encoder->SetNoMask();
+        m_encoder->SetP(initializedFlag, m_currShader->ImmToVariable(0, type));
+        m_encoder->Push();
+
+        m_encoder->Cmp(EPREDICATE_EQ, initializedFlag, initializedTempVar, m_currShader->ImmToVariable(0xFFFFFFFFULL, ISA_TYPE_UD));
+        m_encoder->Push();
+    }
+    else
+    {
+        VISA_Type unsignedType = GetUnsignedIntegerType(phiVar->GetType());
+        CVariable* initializedVar = m_currShader->GetNewVariable(phiVar);
+        CVariable* udAlias = m_currShader->GetNewAlias(initializedVar, unsignedType, 0, phiVar->GetNumberElement());
+        m_encoder->SetNoMask();
+        m_encoder->Copy(udAlias, m_currShader->ImmToVariable(0, unsignedType));
+        m_encoder->Push();
+
+        m_encoder->Copy(initializedVar, phiVar);
+        m_encoder->Push();
+
+        m_encoder->SetNoMask();
+        m_encoder->Copy(phiVar, initializedVar);
+        m_encoder->Push();
+    }
+}
+
 CVariable* EmitPass::Mul(CVariable* Src0, CVariable* Src1, const CVariable* DstPrototype)
 {
     bool IsSrc0Imm = Src0->IsImmediate();

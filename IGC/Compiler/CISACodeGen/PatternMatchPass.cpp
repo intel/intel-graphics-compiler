@@ -1056,6 +1056,11 @@ namespace IGC
                 // If a phi is used in a subspan we cannot propagate the subspan use and need to use VMask
                 m_NeedVMask = true;
 
+                if (isSampleSource && isa<PHINode>(v))
+                {
+                    m_sampleSource.insert(v);
+                }
+
                 if (Instruction* I = dyn_cast<Instruction>(v))
                 {
                     // this is WA for situation where application has early return (not discard) from shader
@@ -1561,7 +1566,22 @@ namespace IGC
 
     void CodeGenPatternMatch::visitPHINode(PHINode& I)
     {
-        // nothing to do
+        struct PHIPattern : Pattern
+        {
+            llvm::PHINode* phi;
+            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
+            {
+                IGC_ASSERT(modifier.sat == false);
+                IGC_ASSERT(modifier.flag == nullptr);
+                pass->EmitInitializePHI(phi);
+            }
+        };
+        if (IsSourceOfSample(&I))
+        {
+            PHIPattern* pattern = new (m_allocator) PHIPattern();
+            pattern->phi = &I;
+            AddPattern(pattern);
+        }
     }
 
     void CodeGenPatternMatch::visitBitCastInst(BitCastInst& I)
