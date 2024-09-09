@@ -319,18 +319,17 @@ void __global_barrier_atomic()
 {
     __intel_workgroup_barrier(Device, AcquireRelease | CrossWorkgroupMemory);
 
-    uint groupLinearId = (__builtin_IB_get_group_id(2) * __builtin_IB_get_num_groups(1) * __builtin_IB_get_num_groups(0)) + (__builtin_IB_get_group_id(1) * __builtin_IB_get_num_groups(0)) + __builtin_IB_get_group_id(0);
     bool firstThreadPerWg = (__builtin_IB_get_local_id_x() == 0) && (__builtin_IB_get_local_id_y() == 0) && (__builtin_IB_get_local_id_z() == 0);
     size_t numGroups = __builtin_IB_get_num_groups(0) * __builtin_IB_get_num_groups(1) * __builtin_IB_get_num_groups(2);
 
     __global volatile int* syncBuffer = (__global volatile int*)__builtin_IB_get_sync_buffer();
-    __global volatile char* syncBufferChar = (__global volatile char*)syncBuffer;
-    __global volatile char* offsetLocationInBuffer = syncBufferChar + groupLinearId + 8;
-    int offset = *offsetLocationInBuffer;
-    __global volatile int* syncVar = syncBuffer + offset;
+    __global volatile int* offsetVar = syncBuffer + 2;
 
     if (firstThreadPerWg)
     {
+        int offset = atomic_or(offsetVar, 0);
+        __global volatile int* syncVar = syncBuffer + offset;
+
         if (__intel_get_global_linear_id() == 0)
         {
             atomic_sub(syncVar, numGroups-1);
@@ -342,7 +341,11 @@ void __global_barrier_atomic()
 
         while (atomic_or(syncVar, 0) != 0) {}
 
-        *offsetLocationInBuffer = !offset;
+        if (offset) {
+            atomic_and(offsetVar, 0);
+        } else {
+            atomic_or(offsetVar, 1);
+        }
     }
 
     __intel_workgroup_barrier(Device, AcquireRelease | CrossWorkgroupMemory);
