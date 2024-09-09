@@ -296,7 +296,7 @@ bool DynamicRayManagementPass::TryProceedBasedApproach(Function& F)
     // this approach assumes all traffic between private memory and RTStack happens on Proceed calls
     // will be removed once RayQuery will be overhauled to minimize shadowstack usage
 
-    if (IGC_IS_FLAG_ENABLED(DisableProceedBasedApproachForRayQueryDynamicRayManagementMechanism))
+    if (!m_CGCtx->platform.allowProceedBasedApproachForRayQueryDynamicRayManagementMechanism())
         return false;
 
     SmallVector<TraceRaySyncProceedHLIntrinsic*> allProceeds;

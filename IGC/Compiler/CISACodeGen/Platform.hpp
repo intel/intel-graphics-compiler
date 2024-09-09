@@ -1792,5 +1792,11 @@ bool allowDivergentControlFlowRayQueryCheckRelease() const
     return m_WaTable.Wa_22019804511 != 0;
 }
 
+bool allowProceedBasedApproachForRayQueryDynamicRayManagementMechanism() const
+{
+
+    return IGC_IS_FLAG_DISABLED(DisableProceedBasedApproachForRayQueryDynamicRayManagementMechanism);
+}
+
 };
 }//namespace IGC
