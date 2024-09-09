@@ -1233,11 +1233,6 @@ namespace IGC {
 
                 LoopSinkWorthiness Worthiness = LoopSinkWorthiness::Unknown;
 
-                if (isAlwaysSinkInstruction(I))
-                {
-                    Worthiness = LoopSinkWorthiness::Sink;
-                }
-
                 if (AllowOnlySingleUseLoadChainSinking)
                 {
                     if (!isLoadChain(I, LoadChains, true))
@@ -1254,6 +1249,11 @@ namespace IGC {
 
                     if (isBeneficialToSinkBitcast(I, L, AllowLoadSinking))
                         Worthiness = LoopSinkWorthiness::Sink;
+                }
+
+                if (isAlwaysSinkInstruction(I))
+                {
+                    Worthiness = LoopSinkWorthiness::Sink;
                 }
 
                 if (isa<LoadInst>(I))
