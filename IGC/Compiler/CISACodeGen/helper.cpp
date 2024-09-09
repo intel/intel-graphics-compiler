@@ -1809,6 +1809,18 @@ namespace IGC
             opcode == llvm_gradientYfine);
     }
 
+    bool IsMemLoadIntrinsic(llvm::GenISAIntrinsic::ID id)
+    {
+        switch (id)
+        {
+        case GenISAIntrinsic::GenISA_ldraw_indexed:
+        case GenISAIntrinsic::GenISA_ldrawvector_indexed:
+            return true;
+        default:
+            return IsStatelessMemLoadIntrinsic(id);
+        }
+    }
+
     bool IsStatelessMemLoadIntrinsic(llvm::GenISAIntrinsic::ID id)
     {
         switch(id)

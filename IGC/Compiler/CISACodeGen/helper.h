@@ -188,6 +188,8 @@ namespace IGC
 
     bool isUserFunctionCall(const llvm::Instruction* I);
 
+    bool IsMemLoadIntrinsic(llvm::GenISAIntrinsic::ID id);
+
     bool IsStatelessMemLoadIntrinsic(llvm::GenISAIntrinsic::ID id);
     bool IsStatelessMemStoreIntrinsic(llvm::GenISAIntrinsic::ID id);
     bool IsStatelessMemAtomicIntrinsic(llvm::GenIntrinsicInst& inst, llvm::GenISAIntrinsic::ID id);

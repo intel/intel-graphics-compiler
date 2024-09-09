@@ -12358,6 +12358,11 @@ bool EmitPass::IsIndirectAccess(llvm::Value* pointer)
         {
             isIndirect = true;
         }
+        else
+        {
+            // If this is intrinsic, check if this is memory access.
+            isIndirect = IsMemLoadIntrinsic(pIntrinsic->getIntrinsicID());
+        }
     }
 
     if (!isIndirect)
