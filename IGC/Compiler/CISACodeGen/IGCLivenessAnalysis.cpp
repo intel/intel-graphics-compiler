@@ -419,7 +419,8 @@ void IGCRegisterPressurePrinter::dumpRegPressure(llvm::Function &F,
         }
 
         OutputFile << "==============================================" << "\n";
-        OutputFile << "MaxPressure In Function: " << MaxPressureInFunction << "\n";
+        OutputFile << "MaxPressure In Function: " << MaxPressureInFunction + ExternalPressure << "\n";
+        OutputFile << "MaxPressure In Function Isolated: " << MaxPressureInFunction << "\n";
 
         OutputFile.close();
     }
