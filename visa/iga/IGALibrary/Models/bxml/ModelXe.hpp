@@ -596,7 +596,8 @@ static const iga::OpSpec MODEL_XE_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
   {Op::INVALID, Platform::XE, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
   {Op::INVALID, Platform::XE, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
   {Op::INVALID, Platform::XE, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
-  {Op::SHL /* Op::82 */, Platform::XE, 0x69,
+  {Op::INVALID, Platform::XE, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
+  {Op::SHL /* Op::83 */, Platform::XE, 0x69,
     "shl",
     "Shift Left",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -606,7 +607,7 @@ static const iga::OpSpec MODEL_XE_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
-  {Op::SHR /* Op::83 */, Platform::XE, 0x68,
+  {Op::SHR /* Op::84 */, Platform::XE, 0x68,
     "shr",
     "Shift Right",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -618,7 +619,7 @@ static const iga::OpSpec MODEL_XE_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
   },
   {Op::INVALID, Platform::XE, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
   {Op::INVALID, Platform::XE, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
-  {Op::SUBB /* Op::86 */, Platform::XE, 0x4F,
+  {Op::SUBB /* Op::87 */, Platform::XE, 0x4F,
     "subb",
     "Subtraction with Borrow",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -628,7 +629,7 @@ static const iga::OpSpec MODEL_XE_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION
   },
-  {Op::SYNC /* Op::87 */, Platform::XE, 0x01,
+  {Op::SYNC /* Op::88 */, Platform::XE, 0x01,
     "sync",
     "Synchronize",
     OpSpec::Format::SYNC_UNARY,
@@ -639,14 +640,14 @@ static const iga::OpSpec MODEL_XE_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     OpSpec::Attr::NONE
   },
   {Op::INVALID, Platform::XE, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
-  {Op::WHILE /* Op::89 */, Platform::XE, 0x27,
+  {Op::WHILE /* Op::90 */, Platform::XE, 0x27,
     "while",
     "While",
     OpSpec::Format::JUMP_UNARY_IMM,
     {}, // no type mappings
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
-  {Op::XOR /* Op::90 */, Platform::XE, 0x67,
+  {Op::XOR /* Op::91 */, Platform::XE, 0x67,
     "xor",
     "Logic Xor",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
