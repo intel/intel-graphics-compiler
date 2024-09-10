@@ -1946,7 +1946,7 @@ namespace IGC {
                 if (IEIndices.size() != IEVectorType->getNumElements())
                     return false;
 
-                DestVecMap[LastIE] = ShuffleInst;
+                DestVecMap[LastIE] = std::move(ShuffleInst);
             }
 
             // The same logic with EE of the source vector:
@@ -2376,7 +2376,7 @@ namespace IGC {
                 });
         };
 
-        auto isSameSet = [](SmallPtrSet <Value *, 4> &S0, SmallPtrSet <Value *, 4> &S1) {
+        auto isSameSet = [](const SmallPtrSet <Value *, 4> &S0, const SmallPtrSet <Value *, 4> &S1) {
             if (S0.size() == S1.size())
             {
                 for (auto I : S1)
@@ -2537,7 +2537,7 @@ namespace IGC {
                 continue;
             }
 
-            SmallPtrSet<Value *, 4> CandidateOperands = getNonConstCandidateOperandsOutsideLoop(C.get(), L);
+            const SmallPtrSet<Value *, 4>& CandidateOperands = getNonConstCandidateOperandsOutsideLoop(C.get(), L);
 
             // If this set of uses have been referenced by other instructions,
             // put this inst in the same group. Note that we don't union sets

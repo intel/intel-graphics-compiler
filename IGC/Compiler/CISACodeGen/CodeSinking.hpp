@@ -148,7 +148,7 @@ namespace IGC {
         struct Candidate {
             typedef llvm::SmallVector<llvm::Instruction*, 16> InstrVec;
 
-            Candidate(InstrVec Instructions, BasicBlock* TgtBB, LoopSinkWorthiness Worthiness, llvm::Instruction* UndoPos)
+            Candidate(const InstrVec& Instructions, BasicBlock* TgtBB, LoopSinkWorthiness Worthiness, llvm::Instruction* UndoPos)
                 : Instructions(Instructions), TgtBB(TgtBB), Worthiness(Worthiness), UndoPos(UndoPos) {}
 
             Candidate(llvm::Instruction* Instruction, BasicBlock* TgtBB, LoopSinkWorthiness Worthiness, llvm::Instruction* UndoPos)

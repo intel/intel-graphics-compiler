@@ -1414,7 +1414,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                         costInfoVector.push_back(costInfo);
                     }
                     costInfoVector.at(0).num_loops = toplevelLoops;
-                    openCLkernel->m_kernelCostexpInfo.kernelCost = costInfoVector;
+                    openCLkernel->m_kernelCostexpInfo.kernelCost = std::move(costInfoVector);
                 }
             }
         }

@@ -362,14 +362,14 @@ bool GenerateBlockMemOpsPass::getOffset(Value *Init, SmallVector<Value*, 2> &Off
 }
 
 bool GenerateBlockMemOpsPass::isLoopPattern(Loop *L) {
+    // Check that Loop has good shape so it safe to use llvm methods to work with it.
+    if (!L || !L->isSafeToClone() || (L->getNumBlocks() != 1) || !L->isLCSSAForm(*DT))
+        return false;
+
     BasicBlock *Header = L->getHeader();
     BasicBlock *Latch = L->getLoopLatch();
     BasicBlock *Preheader = L->getLoopPreheader();
     PHINode *Phi = L->getInductionVariable(*SE);
-
-    // Check that Loop has good shape so it safe to use llvm methods to work with it.
-    if (!L || !L->isSafeToClone() || (L->getNumBlocks() != 1) || !L->isLCSSAForm(*DT))
-        return false;
 
     // Check that all parts of the loop can be found.
     if (!Phi || !Preheader || !Latch || !Header)
