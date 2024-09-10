@@ -4155,10 +4155,19 @@ namespace IGC
             {
                 if (m_program->m_Platform->getGRFSize() >= 64)
                 {
-                    if (m_program->m_dispatchSize == SIMDMode::SIMD16)
-                        SaveOption(vISA_AbortOnSpillThreshold, GetSpillThreshold(m_program->m_dispatchSize) * 4);
-                    else if (m_program->m_dispatchSize == SIMDMode::SIMD32)
-                        SaveOption(vISA_AbortOnSpillThreshold, GetSpillThreshold(m_program->m_dispatchSize) * 4);
+                    // increase the threshold for small shaders
+                    if (m_program->m_dispatchSize == SIMDMode::SIMD32 &&
+                        context->m_instrTypes.numAllInsts < IGC_GET_FLAG_VALUE(CSSIMD32_HighThresholdInstCount))
+                    {
+                        SaveOption(vISA_AbortOnSpillThreshold, GetSpillThreshold(m_program->m_dispatchSize) * 6);
+                    }
+                    else
+                    {
+                        if (m_program->m_dispatchSize == SIMDMode::SIMD16)
+                            SaveOption(vISA_AbortOnSpillThreshold, GetSpillThreshold(m_program->m_dispatchSize) * 4);
+                        else if (m_program->m_dispatchSize == SIMDMode::SIMD32)
+                            SaveOption(vISA_AbortOnSpillThreshold, GetSpillThreshold(m_program->m_dispatchSize) * 4);
+                    }
                 }
                 else
                 {

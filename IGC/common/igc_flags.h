@@ -33,6 +33,7 @@ DECLARE_IGC_REGKEY(DWORD, SIMD16_SpillThreshold,        1,     "Percentage of in
 DECLARE_IGC_REGKEY(DWORD, SIMD32_SpillThreshold,        1,     "Percentage of instructions allowed for spilling on SIMD32", false)
 DECLARE_IGC_REGKEY(DWORD, CSSIMD16_SpillThreshold,      1,     "Percentage of instructions allowed for spilling on CS SIMD16", false)
 DECLARE_IGC_REGKEY(DWORD, CSSIMD32_SpillThreshold,      1,     "Percentage of instructions allowed for spilling on CS SIMD32", false)
+DECLARE_IGC_REGKEY(DWORD, CSSIMD32_HighThresholdInstCount, 1000, "Instructions count limit to allow higher spill threshold on CS SIMD32", false)
 DECLARE_IGC_REGKEY(bool, DisableCSEL,                   false, "disable csel peep-hole", false)
 DECLARE_IGC_REGKEY(bool, DisableFlagOpt,                false, "Disable optimization cmp with logic op", false)
 DECLARE_IGC_REGKEY(bool, DisableIfCvt,                  false, "Disable ifcvt", false)
@@ -593,8 +594,8 @@ DECLARE_IGC_REGKEY(bool, EnablePromotionToSampleMlod,          true,
     "Enables promotion of sample and sample_c to sample_mlod and sample_c_mlod instructions when min lod is present", false)
 DECLARE_IGC_REGKEY(bool, DisableCorrectlyRoundedMacros,     false, "Tmp flag to disable correcly rounded macros for BMG+. This flag will be removed in the future.", false)
 DECLARE_IGC_REGKEY(bool, EnableLscSamplerRouting, true, "Enables conversion of LD to LD_L instructions.", false)
-DECLARE_IGC_REGKEY(bool, EnableSIMD16ForXe2, false, "Enable SIMD16 for Xe2", false)
-DECLARE_IGC_REGKEY(bool, EnableSIMD16ForNonWaveXe2, true, "Enable SIMD16 for Xe2 if the shader doesn't have wave", false)
+DECLARE_IGC_REGKEY(bool, EnableSIMD16ForXe2, false, "Enable CS SIMD16 for Xe2", false)
+DECLARE_IGC_REGKEY(bool, EnableSIMD16ForNonWaveXe2, true, "Enable CS SIMD16 for Xe2 if the shader doesn't have wave", false)
 DECLARE_IGC_REGKEY(DWORD, CheckCSSLMLimit, 2, "Check SLM or threads limit on compute shader to turn on Enable2xGRF on DG2+"\
     "0 - off, 1 - SLM limit heuristic, 2 - platform based heuristic (XE2 - threads limit, others - SLM limit)", false)
 DECLARE_IGC_REGKEY(DWORD, Enable2xGRF,                         2,     "Enable 2x GRF for high SLM or high threads usage"\
