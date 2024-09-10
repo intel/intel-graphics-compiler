@@ -157,6 +157,7 @@ ModulePass *createGenXBuiltinFunctionsPass(BuiltinFunctionKind Kind);
 FunctionPass *createGenXLegacyToLscTranslatorPass();
 ModulePass *createGenXSLMResolution();
 FunctionPass *createGenXLscAddrCalcFoldingPass();
+ModulePass *createGenXDetectPointerArgPass();
 
 namespace genx {
 

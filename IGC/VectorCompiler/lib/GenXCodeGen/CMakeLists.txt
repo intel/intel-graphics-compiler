@@ -101,6 +101,7 @@ set(CODEGEN_SOURCES
   GenXVisaRegAlloc.cpp
   OCLRuntimeInfoPrinter.cpp
   GenXGlobalUniform.cpp
+  GenXDetectPointerArg.cpp
 )
 
 add_library(VCCodeGen STATIC ${CODEGEN_SOURCES})

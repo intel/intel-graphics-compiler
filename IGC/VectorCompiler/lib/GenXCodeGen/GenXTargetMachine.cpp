@@ -208,6 +208,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXSLMResolutionPass(registry);
   initializeGenXTypeLegalizationPass(registry);
   initializeGenXLscAddrCalcFoldingPass(registry);
+  initializeGenXDetectPointerArgPass(registry);
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
 
@@ -501,9 +502,11 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   vc::addPass(PM, createDeadCodeEliminationPass());
   vc::addPass(PM, createGenXPromoteArrayPass());
   vc::addPass(PM, createPromoteMemoryToRegisterPass());
+  /// .. include:: GenXDetectPointerArg.cpp
+  vc::addPass(PM, createGenXDetectPointerArgPass());
+
   // All passes which modify the LLVM IR are now complete; run the verifier
   // to ensure that the IR is valid.
-
   if (!DisableVerify) {
     vc::addPass(PM, createVerifierPass());
     vc::addPass(PM, createGenXVerifyPass(GenXVerifyStage::PostIrAdaptors));

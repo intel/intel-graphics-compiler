@@ -318,6 +318,17 @@ void vc::KernelMetadata::updateArgIndexesMD(
                internal::KernelMDOp::ArgIndexes);
 }
 
+void vc::KernelMetadata::updateArgTypeDescsMD(
+    SmallVectorImpl<StringRef> &&Descs) {
+  ArgTypeDescs = std::move(Descs);
+  auto &Ctx = F->getContext();
+  SmallVector<Metadata *, 4> DescMDs;
+  llvm::transform(ArgTypeDescs, std::back_inserter(DescMDs),
+                  [&Ctx](StringRef Desc) { return MDString::get(Ctx, Desc); });
+  ExternalNode->replaceOperandWith(genx::KernelMDOp::ArgTypeDescs,
+                                   MDNode::get(Ctx, DescMDs));
+}
+
 void vc::KernelMetadata::updateOffsetInArgsMD(
     SmallVectorImpl<unsigned> &&Offsets) {
   OffsetInArgs = std::move(Offsets);

@@ -745,6 +745,32 @@ bool InternalIntrinsic::isInternalMemoryIntrinsic(InternalIntrinsic::ID id) {
   return false;
 }
 
+bool InternalIntrinsic::isStatelessIntrinsic(ID IID) {
+  switch (IID) {
+  default:
+    break;
+  case InternalIntrinsic::lsc_atomic_ugm:
+  case InternalIntrinsic::lsc_load_2d_ugm_desc:
+  case InternalIntrinsic::lsc_load_2d_ugm_desc_transpose:
+  case InternalIntrinsic::lsc_load_2d_ugm_desc_vnni:
+  case InternalIntrinsic::lsc_load_block_2d_ugm:
+  case InternalIntrinsic::lsc_load_block_2d_ugm_transposed:
+  case InternalIntrinsic::lsc_load_block_2d_ugm_vnni:
+  case InternalIntrinsic::lsc_load_quad_ugm:
+  case InternalIntrinsic::lsc_load_ugm:
+  case InternalIntrinsic::lsc_prefetch_2d_ugm_desc:
+  case InternalIntrinsic::lsc_prefetch_block_2d_ugm:
+  case InternalIntrinsic::lsc_prefetch_quad_ugm:
+  case InternalIntrinsic::lsc_prefetch_ugm:
+  case InternalIntrinsic::lsc_store_2d_ugm_desc:
+  case InternalIntrinsic::lsc_store_block_2d_ugm:
+  case InternalIntrinsic::lsc_store_quad_ugm:
+  case InternalIntrinsic::lsc_store_ugm:
+    return true;
+  }
+  return false;
+}
+
 bool InternalIntrinsic::isSlmIntrinsic(ID IID) {
   switch (IID) {
   default:
@@ -1031,6 +1057,76 @@ int InternalIntrinsic::getMemorySamplerOperandIndex(unsigned IID) {
     break;
   }
 
+  return -1;
+}
+
+int InternalIntrinsic::getMemoryAddressOperandIndex(unsigned IID) {
+  switch (IID) {
+  default:
+    break;
+  case InternalIntrinsic::lsc_atomic_bti:
+  case InternalIntrinsic::lsc_atomic_bss:
+  case InternalIntrinsic::lsc_atomic_slm:
+  case InternalIntrinsic::lsc_atomic_ugm:
+  case InternalIntrinsic::lsc_load_bti:
+  case InternalIntrinsic::lsc_load_bss:
+  case InternalIntrinsic::lsc_load_slm:
+  case InternalIntrinsic::lsc_load_ugm:
+  case InternalIntrinsic::lsc_prefetch_bti:
+  case InternalIntrinsic::lsc_prefetch_bss:
+  case InternalIntrinsic::lsc_prefetch_ugm:
+  case InternalIntrinsic::lsc_store_bti:
+  case InternalIntrinsic::lsc_store_bss:
+  case InternalIntrinsic::lsc_store_slm:
+  case InternalIntrinsic::lsc_store_ugm:
+  case InternalIntrinsic::lsc_load_quad_bti:
+  case InternalIntrinsic::lsc_load_quad_bss:
+  case InternalIntrinsic::lsc_load_quad_slm:
+  case InternalIntrinsic::lsc_load_quad_ugm:
+  case InternalIntrinsic::lsc_prefetch_quad_bti:
+  case InternalIntrinsic::lsc_prefetch_quad_bss:
+  case InternalIntrinsic::lsc_prefetch_quad_ugm:
+  case InternalIntrinsic::lsc_store_quad_bti:
+  case InternalIntrinsic::lsc_store_quad_bss:
+  case InternalIntrinsic::lsc_store_quad_slm:
+  case InternalIntrinsic::lsc_store_quad_ugm:
+  case InternalIntrinsic::lsc_load_quad_tgm:
+  case InternalIntrinsic::lsc_prefetch_quad_tgm:
+  case InternalIntrinsic::lsc_store_quad_tgm:
+  case InternalIntrinsic::lsc_load_block_2d_ugm:
+  case InternalIntrinsic::lsc_load_block_2d_ugm_transposed:
+  case InternalIntrinsic::lsc_load_block_2d_ugm_vnni:
+  case InternalIntrinsic::lsc_prefetch_block_2d_ugm:
+  case InternalIntrinsic::lsc_store_block_2d_ugm:
+    return 6;
+  case InternalIntrinsic::lsc_load_2d_ugm_desc:
+  case InternalIntrinsic::lsc_load_2d_ugm_desc_transpose:
+  case InternalIntrinsic::lsc_load_2d_ugm_desc_vnni:
+  case InternalIntrinsic::lsc_prefetch_2d_ugm_desc:
+  case InternalIntrinsic::lsc_store_2d_ugm_desc:
+    return 5; // threat the matrix descriptor as an address operand
+  }
+  return -1;
+}
+
+int InternalIntrinsic::getMemoryBaseOperandIndex(unsigned IID) {
+  switch (IID) {
+  default:
+    break;
+  case InternalIntrinsic::lsc_atomic_slm:
+  case InternalIntrinsic::lsc_atomic_ugm:
+  case InternalIntrinsic::lsc_load_slm:
+  case InternalIntrinsic::lsc_load_ugm:
+  case InternalIntrinsic::lsc_prefetch_ugm:
+  case InternalIntrinsic::lsc_store_slm:
+  case InternalIntrinsic::lsc_store_ugm:
+  case InternalIntrinsic::lsc_load_quad_slm:
+  case InternalIntrinsic::lsc_load_quad_ugm:
+  case InternalIntrinsic::lsc_prefetch_quad_ugm:
+  case InternalIntrinsic::lsc_store_quad_slm:
+  case InternalIntrinsic::lsc_store_quad_ugm:
+    return 5;
+  }
   return -1;
 }
 

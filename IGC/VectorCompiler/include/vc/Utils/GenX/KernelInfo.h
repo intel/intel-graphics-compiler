@@ -35,6 +35,28 @@ enum { VISA_MAJOR_VERSION = 3, VISA_MINOR_VERSION = 6 };
 
 enum { VC_STACK_USAGE_UNKNOWN = -1 };
 
+struct OCLAttributes {
+  // Type qualifiers for resources.
+  static constexpr auto ReadOnly = "read_only";
+  static constexpr auto WriteOnly = "write_only";
+  static constexpr auto ReadWrite = "read_write";
+
+  // Buffer surface.
+  static constexpr auto Buffer = "buffer_t";
+  // SVM pointer to buffer.
+  static constexpr auto SVM = "svmptr_t";
+  // OpenCL-like types.
+  static constexpr auto Sampler = "sampler_t";
+  static constexpr auto Image1d = "image1d_t";
+  static constexpr auto Image1dArray = "image1d_array_t";
+  // Same as 1D image. Seems that there is no difference in runtime.
+  static constexpr auto Image1dBuffer = "image1d_buffer_t";
+  static constexpr auto Image2d = "image2d_t";
+  static constexpr auto Image2dArray = "image2d_array_t";
+  static constexpr auto Image2dMediaBlock = "image2d_media_block_t";
+  static constexpr auto Image3d = "image3d_t";
+};
+
 // Utility function to tell how much stack required
 // returns VC_STACK_USAGE_UNKNOWN if no attribute found
 inline int getStackAmount(const llvm::Function *F,
@@ -141,30 +163,31 @@ using ArgToImplicitLinearization =
     std::unordered_map<llvm::Argument *, LinearizedArgInfo>;
 
 inline bool isDescBufferType(llvm::StringRef TypeDesc) {
-  return (IGCLLVM::contains_insensitive(TypeDesc, "buffer_t") &&
-          !IGCLLVM::contains_insensitive(TypeDesc, "image1d_buffer_t"));
+  return IGCLLVM::contains_insensitive(TypeDesc, OCLAttributes::Buffer) &&
+         !IGCLLVM::contains_insensitive(TypeDesc, OCLAttributes::Image1dBuffer);
 }
 
 inline bool isDescImageType(llvm::StringRef TypeDesc) {
-  return IGCLLVM::contains_insensitive(TypeDesc, "image1d_t") ||
-         IGCLLVM::contains_insensitive(TypeDesc, "image1d_array_t") ||
-         IGCLLVM::contains_insensitive(TypeDesc, "image2d_t") ||
-         IGCLLVM::contains_insensitive(TypeDesc, "image2d_array_t") ||
-         IGCLLVM::contains_insensitive(TypeDesc, "image2d_media_block_t") ||
-         IGCLLVM::contains_insensitive(TypeDesc, "image3d_t") ||
-         IGCLLVM::contains_insensitive(TypeDesc, "image1d_buffer_t");
+  using namespace IGCLLVM;
+  return contains_insensitive(TypeDesc, OCLAttributes::Image1d) ||
+         contains_insensitive(TypeDesc, OCLAttributes::Image1dArray) ||
+         contains_insensitive(TypeDesc, OCLAttributes::Image1dBuffer) ||
+         contains_insensitive(TypeDesc, OCLAttributes::Image2d) ||
+         contains_insensitive(TypeDesc, OCLAttributes::Image2dArray) ||
+         contains_insensitive(TypeDesc, OCLAttributes::Image2dMediaBlock) ||
+         contains_insensitive(TypeDesc, OCLAttributes::Image3d);
 }
 
 inline bool isDescSamplerType(llvm::StringRef TypeDesc) {
-  return IGCLLVM::contains_insensitive(TypeDesc, "sampler_t");
+  return IGCLLVM::contains_insensitive(TypeDesc, OCLAttributes::Sampler);
 }
 
 inline bool isDescReadOnly(llvm::StringRef TypeDesc) {
-  return IGCLLVM::contains_insensitive(TypeDesc, "read_only");
+  return IGCLLVM::contains_insensitive(TypeDesc, OCLAttributes::ReadOnly);
 }
 
 inline bool isDescSvmPtr(llvm::StringRef TypeDesc) {
-  return IGCLLVM::contains_insensitive(TypeDesc, "svmptr_t");
+  return IGCLLVM::contains_insensitive(TypeDesc, OCLAttributes::SVM);
 }
 
 /// KernelMetadata : class to parse and update kernel metadata
@@ -216,6 +239,7 @@ public:
   void updateArgOffsetsMD(llvm::SmallVectorImpl<unsigned> &&Offsets);
   void updateArgKindsMD(llvm::SmallVectorImpl<unsigned> &&Kinds);
   void updateArgIndexesMD(llvm::SmallVectorImpl<unsigned> &&Indexes);
+  void updateArgTypeDescsMD(llvm::SmallVectorImpl<llvm::StringRef> &&Descs);
   void updateOffsetInArgsMD(llvm::SmallVectorImpl<unsigned> &&Offsets);
   void updateLinearizationMD(ArgToImplicitLinearization &&Lin);
   void updateBTIndicesMD(std::vector<int> &&BTIs);

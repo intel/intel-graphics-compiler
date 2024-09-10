@@ -131,6 +131,16 @@ inline bool isInternalMemoryIntrinsic(const llvm::Function *F) {
   return isInternalMemoryIntrinsic(getInternalIntrinsicID(F));
 }
 
+bool isStatelessIntrinsic(ID IID);
+
+inline bool isStatelessIntrinsic(const llvm::Value *V) {
+  return isStatelessIntrinsic(getInternalIntrinsicID(V));
+}
+
+inline bool isStatelessIntrinsic(const llvm::Function *F) {
+  return isStatelessIntrinsic(getInternalIntrinsicID(F));
+}
+
 bool isSlmIntrinsic(ID IID);
 
 inline bool isSlmIntrinsic(const llvm::Value *V) {
@@ -168,6 +178,26 @@ inline int getMemoryCacheControlOperandIndex(const llvm::Value *V) {
 
 inline llvm::Value *getMemoryCacheControlOperand(const llvm::Instruction *I) {
   const auto Index = getMemoryCacheControlOperandIndex(I);
+  if (Index < 0)
+    return nullptr;
+  return I->getOperand(Index);
+}
+
+int getMemoryAddressOperandIndex(unsigned IID);
+
+inline llvm::Value *getMemoryAddressOperand(const llvm::Instruction *I) {
+  auto IID = getInternalIntrinsicID(I);
+  const auto Index = getMemoryAddressOperandIndex(IID);
+  if (Index < 0)
+    return nullptr;
+  return I->getOperand(Index);
+}
+
+int getMemoryBaseOperandIndex(unsigned IID);
+
+inline llvm::Value *getMemoryBaseOperand(const llvm::Instruction *I) {
+  auto IID = getInternalIntrinsicID(I);
+  const auto Index = getMemoryBaseOperandIndex(IID);
   if (Index < 0)
     return nullptr;
   return I->getOperand(Index);

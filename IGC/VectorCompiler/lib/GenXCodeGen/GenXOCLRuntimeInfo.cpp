@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 
 #include "vc/Utils/GenX/GlobalVariable.h"
 #include "vc/Utils/GenX/InternalMetadata.h"
+#include "vc/Utils/GenX/KernelInfo.h"
 #include "vc/Utils/GenX/Printf.h"
 #include "vc/Utils/GenX/RegCategory.h"
 
@@ -54,6 +55,7 @@ SPDX-License-Identifier: MIT
   } while (0);
 
 using namespace llvm;
+using namespace vc;
 
 char GenXOCLRuntimeInfo::ID = 0;
 
@@ -62,29 +64,6 @@ char GenXOCLRuntimeInfo::ID = 0;
 // Kernel argument info implementation.
 //
 //===----------------------------------------------------------------------===//
-// Supported kernel argument attributes.
-struct OCLAttributes {
-  // Type qualifiers for resources.
-  static constexpr auto ReadOnly = "read_only";
-  static constexpr auto WriteOnly = "write_only";
-  static constexpr auto ReadWrite = "read_write";
-
-  // Buffer surface.
-  static constexpr auto Buffer = "buffer_t";
-  // SVM pointer to buffer.
-  static constexpr auto SVM = "svmptr_t";
-  // OpenCL-like types.
-  static constexpr auto Sampler = "sampler_t";
-  static constexpr auto Image1d = "image1d_t";
-  static constexpr auto Image1dArray = "image1d_array_t";
-  // Same as 1D image. Seems that there is no difference in runtime.
-  static constexpr auto Image1dBuffer = "image1d_buffer_t";
-  static constexpr auto Image2d = "image2d_t";
-  static constexpr auto Image2dArray = "image2d_array_t";
-  static constexpr auto Image2dMediaBlock = "image2d_media_block_t";
-  static constexpr auto Image3d = "image3d_t";
-};
-
 namespace llvm {
 class KernelArgBuilder final {
   using ArgKindType = GenXOCLRuntimeInfo::KernelArgInfo::KindType;
