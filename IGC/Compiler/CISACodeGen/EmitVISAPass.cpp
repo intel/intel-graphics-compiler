@@ -9005,7 +9005,8 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
             emitStateRegID(8, 11);
         else if (m_currShader->m_Platform->GetPlatformFamily() ==
                  IGFX_XE_HPC_CORE) {
-          emitStateRegID(4, 5);
+          emitStateRegID(4, 8);
+          m_currShader->RemoveBitRange(m_destination, 2, 2);
         }
         else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE2_HPG_CORE)
             emitStateRegID(4, 6);
