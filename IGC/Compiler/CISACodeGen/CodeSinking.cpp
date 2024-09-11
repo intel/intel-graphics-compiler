@@ -1213,8 +1213,8 @@ namespace IGC {
             return isSafeToLoopSinkLoad(LI, L);
         };
 
-        // We'll reschedule loads only once, on the first iteration when loads are allowed
-        bool RescheduledLoads = false;
+        // We'll reschedule loads only once, on the first iteration
+        bool ReschedulingIteration = IGC_IS_FLAG_ENABLED(LoopSinkEnableLoadsRescheduling);
 
         auto createSimpleCandidates = [&](
             InstSet &SkipInstructions,
@@ -1307,10 +1307,13 @@ namespace IGC {
         // It's assumed the pointers are never invalidated, because the Candidate object is created
         // via make_unique and is not relocated and destroyed until the end of the function
 
+        InstSet SkipInstructions;
+
         do
         {
             CurrentSinkCandidates.clear();
             CurrentInstToCandidate.clear();
+            SkipInstructions.clear();
 
             // Moving LI back to the loop
             // If we sinked something we could allow sinking of the previous instructions as well
@@ -1326,41 +1329,42 @@ namespace IGC {
 
             IterChanged = false;
 
-            PrintDump("Starting sinking iteration...\n");
-
-            InstSet SkipInstructions;
-            for (auto &Pair : InstToCandidate)
-                SkipInstructions.insert(Pair.first);
-
-            // lowered vector shuffle patterns are beneficial to sink,
-            // because they can enable further sinking of the large loads
-            // Create such candidates first
-            if (IGC_IS_FLAG_ENABLED(LoopSinkEnableVectorShuffle))
-                tryCreateShufflePatternCandidates(L, SkipInstructions, CurrentSinkCandidates);
-
             // Try rescheduling the loads that are already in the loop
             // by adding them as a candidates, so that they are moved to the first use by LocalSink
-            if (AllowLoadSinking && !RescheduledLoads &&
-                IGC_IS_FLAG_ENABLED(LoopSinkEnableLoadsRescheduling) &&
-                IGC_IS_FLAG_ENABLED(LoopSinkEnable2dBlockReads)
-                )
+            // Do it only once before starting sinking
+            if (ReschedulingIteration)
             {
                 PrintDump("Trying to find loads to reschedule...\n");
-                // traverse Loop in the reverse order
-                for (auto BBI = L->block_begin(), BBE = L->block_end(); BBI != BBE; BBI++)
+                if (IGC_IS_FLAG_ENABLED(LoopSinkEnable2dBlockReads))
                 {
-                    BasicBlock *BB = *BBI;
-                    for (auto BI = BB->rbegin(), BE = BB->rend(); BI != BE; BI++)
+                    // traverse Loop in the reverse order
+                    for (auto BBI = L->block_begin(), BBE = L->block_end(); BBI != BBE; BBI++)
                     {
-                        Instruction *I = &*BI;
-                        tryCreate2dBlockReadGroupSinkingCandidate(I, L, SkipInstructions, CurrentSinkCandidates);
+                        BasicBlock *BB = *BBI;
+                        for (auto BI = BB->rbegin(), BE = BB->rend(); BI != BE; BI++)
+                        {
+                            Instruction *I = &*BI;
+                            tryCreate2dBlockReadGroupSinkingCandidate(I, L, SkipInstructions, CurrentSinkCandidates);
+                        }
                     }
                 }
-                RescheduledLoads = true;
             }
+            else
+            {
+                PrintDump("Starting sinking iteration...\n");
 
-            // Create simple (1-instr) candidates for sinking by traversing the preheader once
-            createSimpleCandidates(SkipInstructions, CurrentSinkCandidates);
+                for (auto &Pair : InstToCandidate)
+                    SkipInstructions.insert(Pair.first);
+
+                // lowered vector shuffle patterns are beneficial to sink,
+                // because they can enable further sinking of the large loads
+                // Create such candidates first
+                if (IGC_IS_FLAG_ENABLED(LoopSinkEnableVectorShuffle))
+                    tryCreateShufflePatternCandidates(L, SkipInstructions, CurrentSinkCandidates);
+
+                // Create simple (1-instr) candidates for sinking by traversing the preheader once
+                createSimpleCandidates(SkipInstructions, CurrentSinkCandidates);
+            }
 
             // Make decisions for "MaybeSink" candidates
             CandidateVec ToSink = refineLoopSinkCandidates(CurrentSinkCandidates, LoadChains, L);
@@ -1416,9 +1420,7 @@ namespace IGC {
                 ValueSet InstsSet;
                 for (auto &Pair : CurrentInstToCandidate)
                 {
-                    bool SinkedFromPH = Pair.second->Worthiness == LoopSinkWorthiness::Sink;
-                    if (SinkedFromPH)
-                        InstsSet.insert(Pair.first);
+                    InstsSet.insert(Pair.first);
                 }
                 uint SinkedSizeInBytes = RPE->estimateSizeInBytes(InstsSet, *F, SIMD, &WI);
                 uint SinkedSizeInRegs = RPE->bytesToRegisters(SinkedSizeInBytes);
@@ -1440,6 +1442,7 @@ namespace IGC {
                     // The size of the candidates set is not enough to reach the needed regpressure
                     PrintDump("Running one more iteration without recalculating liveness...\n");
                     RecomputeMaxLoopPressure = true;
+                    ReschedulingIteration = false;
                     continue;
                 }
 
@@ -1464,7 +1467,7 @@ namespace IGC {
                     }
                 }
             }
-            else
+            else if (!ReschedulingIteration)
             {
                 if (!AllowLoadSinking && IGC_IS_FLAG_ENABLED(EnableLoadsLoopSink))
                 {
@@ -1477,6 +1480,8 @@ namespace IGC {
                     break;
                 }
             }
+
+            ReschedulingIteration = false;
         } while (true);
 
         if (!EverChanged)
