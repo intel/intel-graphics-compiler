@@ -1222,6 +1222,13 @@ static void LoadFromRegKeyOrEnvVarOrOptions(
                     }
                     memcpy_s(pRegKeyVariable[i].m_string, sizeof(valueFromOptions), valueFromOptions, sizeof(valueFromOptions));
                 }
+                else if (found > 0 && options[found - 1] != ' ' && options[found - 1] != ',')
+                {
+                    // some keywords are a substring of another keywords
+                    // for example, "ControlKernelTotalSize" and "PrintControlKernelTotalSize"
+                    // so we need to check it and skip executing the keyword if it is not the expected one
+                    continue;
+                }
                 else if(RegFlagNameError != nullptr)
                 {
                     *RegFlagNameError = true;
