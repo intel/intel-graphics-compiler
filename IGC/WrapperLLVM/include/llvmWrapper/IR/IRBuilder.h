@@ -241,20 +241,6 @@ namespace IGCLLVM
 
         using llvm::IRBuilder<T, InserterTyDef()>::CreateGEP;
 
-        // This wrapper function is deprecated because it uses typed pointer and
-        // should no longer be used in LLVM 14+ compatible code.
-        llvm::CallInst *CreateMaskedGather(llvm::Value *Ptrs, Align Alignment, llvm::Value *Mask,
-                                     llvm::Value *PassThru, const llvm::Twine &Name) {
-          auto *PtrsTy = llvm::cast<llvm::FixedVectorType>(Ptrs->getType());
-          auto *PtrTy = llvm::cast<llvm::PointerType>(PtrsTy->getElementType());
-          unsigned NumElts = PtrsTy->getNumElements();
-          auto *Ty = llvm::FixedVectorType::get(IGCLLVM::getNonOpaquePtrEltTy(PtrTy), NumElts);
-          return llvm::IRBuilder<T, InserterTyDef()>::CreateMaskedGather(
-              Ty, Ptrs, Alignment, Mask, PassThru, Name);
-        }
-
-        using llvm::IRBuilder<T, InserterTyDef()>::CreateMaskedGather;
-
         llvm::AtomicCmpXchgInst *
         CreateAtomicCmpXchg(llvm::Value *Ptr, llvm::Value *Cmp, llvm::Value *New,
                             llvm::AtomicOrdering SuccessOrdering,

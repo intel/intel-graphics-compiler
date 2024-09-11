@@ -63,6 +63,17 @@ Value* InstPromoter::getSinglePromotedValueIfExist(Value* OriginalValue)
     return nullptr;
 }
 
+Type* InstPromoter::getSinglePromotedTypeIfExist(Type* OriginalType)
+{
+    if (TL->TypeMap.find(OriginalType) != TL->TypeMap.end())
+    {
+        const TypeSeq LegalizedTypes = TL->TypeMap[OriginalType];
+        // Instruction should be promoted only by one instruction, not by combination
+        if (LegalizedTypes.size() == 1) return (*LegalizedTypes.begin());
+    }
+    return nullptr;
+}
+
 // By default, capture all missing instructions!
 bool InstPromoter::visitInstruction(Instruction& I) {
     LLVM_DEBUG(dbgs() << "PROMOTE: " << I << '\n');
@@ -216,7 +227,9 @@ bool InstPromoter::visitLoadInst(LoadInst& I) {
     // Check if Load operand was legalized before
     if (Value* LegalizedNewPtr = getSinglePromotedValueIfExist(OldPtr))
     {
-        LoadInst* NewLoad = IRB->CreateLoad(LegalizedNewPtr, Twine(I.getName(), ".promotedLoad"));
+        Type* NewType = getSinglePromotedTypeIfExist(I.getType());
+        IGC_ASSERT(NewType);
+        LoadInst* NewLoad = IRB->CreateLoad(NewType, LegalizedNewPtr, Twine(I.getName(), ".promotedLoad"));
         NewLoad->setAlignment(IGCLLVM::getAlign(I));
         Promoted = NewLoad;
         return true;

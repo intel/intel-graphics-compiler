@@ -35,6 +35,7 @@ namespace IGC {
             /// Helpers
             const char* getSuffix() const { return TL->getSuffix(Promote); }
             Value* getSinglePromotedValueIfExist(Value* OriginalValue);
+            Type* getSinglePromotedTypeIfExist(Type* OriginalType);
 
         private:
             // By default, capture all missing instructions!

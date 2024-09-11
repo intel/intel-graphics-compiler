@@ -1389,7 +1389,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
                 // Manually zero-extend the offset to 64-bits to prevent it from being sign-extended by InstructionCombining
                 totalOffset = builder.CreateZExt(totalOffset, typeInt64);
             }
-            bufferBase = builder.CreateGEP(privateMemPtr, totalOffset, VALUE_NAME(pAI->getName() + ".privateBufferGEP"));
+            bufferBase = builder.CreateGEP(builder.getInt8Ty(), privateMemPtr, totalOffset, VALUE_NAME(pAI->getName() + ".privateBufferGEP"));
         }
         Value* privateBuffer = builder.CreatePointerCast(bufferBase, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));
 

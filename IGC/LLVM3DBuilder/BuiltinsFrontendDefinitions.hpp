@@ -2588,7 +2588,7 @@ inline SampleParamsFromCube LLVM3DBuilder<preserveNames, T, Inserter>::Prepare_S
     for (unsigned i = 0; i < 3; i++) {
         indexList[1] = this->getInt32(i);
         elt = this->CreateGEP(row, llvm::ArrayRef<llvm::Value*>(indexList, 2));
-        finalCoords[i] = this->CreateLoad(elt);
+        finalCoords[i] = this->CreateLoad(this->getFloatTy(), elt);
     }
 
     SampleParamsFromCube CubeRetParams;

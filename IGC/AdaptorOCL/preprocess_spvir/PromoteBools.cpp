@@ -276,7 +276,8 @@ bool PromoteBools::typeNeedsPromotion(Type* type, DenseSet<Type*> visitedTypes)
     }
     else if (auto pointerType = dyn_cast<PointerType>(type))
     {
-        return typeNeedsPromotion(IGCLLVM::getNonOpaquePtrEltTy(type), visitedTypes);
+        return IGCLLVM::isOpaquePointerTy(pointerType) ? false :
+            typeNeedsPromotion(IGCLLVM::getNonOpaquePtrEltTy(type), visitedTypes);       // Legacy code: getNonOpaquePtrEltTy
     }
     else if (auto arrayType = dyn_cast<ArrayType>(type))
     {
@@ -327,8 +328,9 @@ Type* PromoteBools::getOrCreatePromotedType(Type* type)
     }
     else if (auto pointerType = dyn_cast<PointerType>(type))
     {
-        newType = PointerType::get(
-            getOrCreatePromotedType(IGCLLVM::getNonOpaquePtrEltTy(type)),
+        newType = IGCLLVM::isOpaquePointerTy(pointerType) ? pointerType :
+            PointerType::get(
+            getOrCreatePromotedType(IGCLLVM::getNonOpaquePtrEltTy(type)),       // Legacy code: getNonOpaquePtrEltTy
             pointerType->getAddressSpace());
     }
     else if (auto arrayType = dyn_cast<ArrayType>(type))
@@ -729,12 +731,16 @@ Constant* PromoteBools::promoteConstant(Constant* constant)
     }
     else if (auto constantPointerNull = dyn_cast<ConstantPointerNull>(constant))
     {
-        if (!typeNeedsPromotion(IGCLLVM::getNonOpaquePtrEltTy(constantPointerNull->getType())))
+        if (IGCLLVM::isOpaquePointerTy(constantPointerNull->getType()))
+        {
+            return constant;
+        }
+        if (!typeNeedsPromotion(IGCLLVM::getNonOpaquePtrEltTy(constantPointerNull->getType())))       // Legacy code: getNonOpaquePtrEltTy
         {
             return constant;
         }
 
-        auto newPointerElementType = getOrCreatePromotedType(IGCLLVM::getNonOpaquePtrEltTy(constantPointerNull->getType()));
+        auto newPointerElementType = getOrCreatePromotedType(IGCLLVM::getNonOpaquePtrEltTy(constantPointerNull->getType()));       // Legacy code: getNonOpaquePtrEltTy
         return ConstantPointerNull::get(PointerType::get(newPointerElementType, constantPointerNull->getType()->getAddressSpace()));
     }
     else if (auto constantVector = dyn_cast<ConstantVector>(constant))
@@ -992,10 +998,11 @@ GetElementPtrInst* PromoteBools::promoteGetElementPtr(GetElementPtrInst* getElem
     }
 
     auto promotedOperand = getOrCreatePromotedValue(getElementPtr->getPointerOperand());
+    auto promotedType = getOrCreatePromotedType(getElementPtr->getSourceElementType());
     auto indices = SmallVector<Value*, 8>(getElementPtr->idx_begin(), getElementPtr->idx_end());
 
     auto newGetElementPtr = GetElementPtrInst::Create(
-        IGCLLVM::getNonOpaquePtrEltTy(promotedOperand->getType()),
+        promotedType,
         promotedOperand,
         indices,
         "",
@@ -1090,8 +1097,9 @@ LoadInst* PromoteBools::promoteLoad(LoadInst* load)
     }
 
     auto newSrc = getOrCreatePromotedValue(src);
+    auto newType = getOrCreatePromotedType(load->getType());
     auto newLoad = new LoadInst(
-        IGCLLVM::getNonOpaquePtrEltTy(newSrc->getType()),
+        newType,
         newSrc,
         "",
         load
