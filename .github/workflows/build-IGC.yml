@@ -99,7 +99,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ubuntu_version: [ '20.04', '22.04' ]
+        ubuntu_version: [ '22.04', '24.04' ]
         llvm_ver: [ 14 ]
         compiler: [ gcc, clang ]
         include:
@@ -186,7 +186,7 @@ jobs:
         run: mkdir Artifacts
       - name: copying artifact from docker to github host
         run: sudo docker cp buildigc:/workspace/igc/build/DEB-FILES ./Artifacts
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: IGC_Ubuntu${{ matrix.ubuntu_version }}_llvm${{ matrix.llvm_ver }}_${{ matrix.compiler }}-${{ steps.igc-current-short-Hash.outputs.sha_short }}
           path: ./Artifacts/DEB-FILES/*.deb

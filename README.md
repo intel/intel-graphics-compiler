@@ -39,8 +39,8 @@ https://opensource.org/licenses/MIT
 
 IGC is continuously built and tested on the following 64-bit Linux operating systems:
 
+* Ubuntu 24.04
 * Ubuntu 22.04
-* Ubuntu 20.04
 
 
 ## Documentation
@@ -68,5 +68,5 @@ If you have any feedback or questions, please open an issue through the native g
 
 ## How to contribute
 
-Create a pull request on github.com with your changes. Ensure that your modifications build without errors. 
+Create a pull request on github.com with your changes. Ensure that your modifications build without errors.
 A maintainer will get in touch with you if there are any inquiries or concerns.
