@@ -1866,39 +1866,79 @@ void IGC::CustomSafeOptPass::visitLdRawVec(llvm::CallInst* inst)
     //%b = call float @llvm.genx.GenISA.ldraw.indexed.f32.p1441792f32.i32.i32.i1(
     //.....float addrspace(1441792) * %251, i32 %new_offset, i32 4, i1 false)
 
-    if (inst->hasOneUse() &&
-        isa<ExtractElementInst>(inst->user_back()))
+    if (inst->hasOneUse())
     {
-        auto EE = cast<ExtractElementInst>(inst->user_back());
-        if (auto constIndex = dyn_cast<ConstantInt>(EE->getIndexOperand()))
+        if (auto EE = dyn_cast<ExtractElementInst>(inst->user_back()))
         {
-            llvm::IRBuilder<> builder(inst);
+            if (auto constIndex = dyn_cast<ConstantInt>(EE->getIndexOperand()))
+            {
+                llvm::IRBuilder<> builder(inst);
 
-            llvm::SmallVector<llvm::Type*, 2> ovldtypes{
-                EE->getType(), //float type
-                inst->getOperand(0)->getType(),
-            };
+                llvm::SmallVector<llvm::Type*, 2> ovldtypes{
+                    EE->getType(), //float type
+                    inst->getOperand(0)->getType(),
+                };
 
-            // For new_offset we need to take into acount the index of the Extract
-            // and convert it to bytes and add it to the existing offset
-            const llvm::DataLayout& dataLayout = inst->getModule()->getDataLayout();
-            const uint32_t numBytesPerElement = int_cast<uint32_t>(dataLayout.getTypeAllocSize(EE->getType()));
-            auto new_offset = constIndex->getZExtValue() * numBytesPerElement;
+                // For new_offset we need to take into acount the index of the Extract
+                // and convert it to bytes and add it to the existing offset
+                const llvm::DataLayout& dataLayout = inst->getModule()->getDataLayout();
+                const uint32_t numBytesPerElement = int_cast<uint32_t>(dataLayout.getTypeAllocSize(EE->getType()));
+                auto new_offset = constIndex->getZExtValue() * numBytesPerElement;
 
-            llvm::SmallVector<llvm::Value*, 4> new_args{
-                inst->getOperand(0),
-                builder.CreateAdd(inst->getOperand(1),builder.getInt32((unsigned)new_offset)),
-                inst->getOperand(2),
-                inst->getOperand(3)
-            };
+                llvm::SmallVector<llvm::Value*, 4> new_args{
+                    inst->getOperand(0),
+                    builder.CreateAdd(inst->getOperand(1),builder.getInt32((unsigned)new_offset)),
+                    inst->getOperand(2),
+                    inst->getOperand(3)
+                };
 
-            Function* pLdraw_indexed_intrinsic = llvm::GenISAIntrinsic::getDeclaration(
-                inst->getModule(),
-                GenISAIntrinsic::GenISA_ldraw_indexed,
-                ovldtypes);
+                Function* pLdraw_indexed_intrinsic = llvm::GenISAIntrinsic::getDeclaration(
+                    inst->getModule(),
+                    GenISAIntrinsic::GenISA_ldraw_indexed,
+                    ovldtypes);
 
-            llvm::Value* ldraw_indexed = builder.CreateCall(pLdraw_indexed_intrinsic, new_args, "");
-            EE->replaceAllUsesWith(ldraw_indexed);
+                llvm::Value* ldraw_indexed = builder.CreateCall(pLdraw_indexed_intrinsic, new_args, "");
+                EE->replaceAllUsesWith(ldraw_indexed);
+            }
+        }
+        else if (auto SV = dyn_cast<ShuffleVectorInst>(inst->user_back()))
+        {
+            // %4 = call i32 @llvm.genx.GenISA.RuntimeValue.i32(i32 0)
+            // %u0 = inttoptr i32 %4 to <4 x float> addrspace(2490368)*
+            // %16 = shl i32 %13, 1
+            // %17 = call <4 x i16> @llvm.genx.GenISA.ldrawvector.indexed.v4i16.p2490368v4f32(<4 x float> addrspace(2490368)* %u0, i32 % 16, i32 2, i1 false)
+            // %18 = shufflevector <4 x i16> %17, <4 x i16> undef, <1 x i32> zeroinitializer
+            // ====>
+            // %15 = shl i32 %12, 1
+            // %16 = call <1 x i16> @llvm.genx.GenISA.ldraw.indexed.v1i16.p2490368v4f32(<4 x float> addrspace(2490368) * %u0, i32 % 15, i32 2, i1 false)
+
+            if (SV->getOperand(0) == inst &&
+                SV->getShuffleMask().size() == 1 &&
+                SV->getShuffleMask().front() == 0)
+            {
+                llvm::IRBuilder<> builder(inst);
+
+                llvm::SmallVector<llvm::Type*, 2> ovldtypes{
+                    SV->getType(),
+                    inst->getOperand(0)->getType(),
+                };
+
+                llvm::SmallVector<llvm::Value*, 4> new_args{
+                        inst->getOperand(0),
+                        inst->getOperand(1),
+                        inst->getOperand(2),
+                        inst->getOperand(3)
+                };
+
+                Function* pLdraw_indexed_intrinsic = llvm::GenISAIntrinsic::getDeclaration(
+                    inst->getModule(),
+                    GenISAIntrinsic::GenISA_ldraw_indexed,
+                    ovldtypes);
+
+                llvm::Value* ldraw_indexed = builder.CreateCall(pLdraw_indexed_intrinsic, new_args, "");
+
+                SV->replaceAllUsesWith(ldraw_indexed);
+            }
         }
     }
 }
