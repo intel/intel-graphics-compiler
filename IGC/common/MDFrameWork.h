@@ -460,6 +460,7 @@ namespace IGC
         bool DisableLscSamplerRouting                   = false;
         bool UseBarrierControlFlowOptimization          = false;
         bool DisableShrinkArrayAllocaPass               = false;
+        bool disableDynamicRQManagement                 = false;
     };
 
     enum class ThreadIDLayout
