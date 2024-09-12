@@ -727,6 +727,10 @@ int IR_Builder::translateLscUntypedBlock2DInst(
   }
 
   G4_SrcRegRegion* src0Addr = src0AddrRgn->asSrcRegRegion();
+  // Emulate imediate offset
+  if (emuImmOffX || emuImmOffY)
+    src0Addr =
+        emulateImmOffsetBlock2D(pred, src0AddrRgn, emuImmOffX, emuImmOffY);
 
   SFID sfid = SFID::NULL_SFID;
   switch (lscSfid) {
@@ -2230,4 +2234,38 @@ int IR_Builder::translateLscUntypedAppendCounterAtomicInst(
                     addrType, ssIdx, true);
 
   return status;
+}
+
+G4_SrcRegRegion *IR_Builder::emulateImmOffsetBlock2D(G4_Predicate *pred,
+                                                     G4_Operand *addrPayload,
+                                                     int immOffX,
+                                                     int immOffY) {
+  // Copy address payload
+  unsigned int numElt = getGRFSize() / 4;
+  G4_Declare *addrTmpDecl = createSendPayloadDcl(numElt, Type_D);
+  createInst(pred, G4_mov, nullptr, g4::NOSAT, G4_ExecSize(numElt),
+             createDst(addrTmpDecl->getRegVar(), 0, 0, 1, Type_D),
+             duplicateOperand(addrPayload), nullptr,
+             Get_Gen4_Emask(vISA_EMASK_M1_NM, G4_ExecSize(numElt)), true);
+
+  auto addD = [&](int subReg, int imm, const char *comm) {
+    G4_DstRegRegion *payloadDst =
+        createDst(addrTmpDecl->getRegVar(), 0, subReg, 1, Type_D);
+    G4_SrcRegRegion *payloadSrc = createSrc(addrTmpDecl->getRegVar(), 0, subReg,
+                                            getRegionScalar(), Type_D);
+    auto *i = createInst(pred, G4_add, nullptr, g4::NOSAT, g4::SIMD1,
+                         payloadDst, payloadSrc, createImm(imm, Type_D),
+                         Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1), true);
+    if (comm)
+      i->addComment(comm);
+  };
+  // Add X_offset immediate value to address payload
+  if (immOffX)
+    addD(5, immOffX, "blk2d.X");
+  // Add X_offset immediate value to address payload
+  if (immOffY)
+    addD(6, immOffY, "blk2d.Y");
+
+  return createSrc(addrTmpDecl->getRegVar(), 0, 0, getRegionScalar(),
+                   Type_D);
 }

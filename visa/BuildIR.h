@@ -2150,6 +2150,10 @@ public:
                                           G4_Predicate *pred,
                                           G4_Operand *src0Addrs[6],
                                           int immOffX, int immOffY);
+  G4_SrcRegRegion *emulateImmOffsetBlock2D(G4_Predicate *pred,
+                                           G4_Operand *addrPayload,
+                                           int immOffX,
+                                           int immOffY);
 
   //
   // LSC allows users to pass an immediate scale and immediate addend.
