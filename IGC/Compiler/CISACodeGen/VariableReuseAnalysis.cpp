@@ -119,7 +119,8 @@ VariableReuseAnalysis::VariableReuseAnalysis()
     m_pCtx(nullptr), m_WIA(nullptr), m_LV(nullptr), m_DeSSA(nullptr),
     m_PatternMatch(nullptr), m_coalescingEngine(nullptr),
     m_RPE(nullptr), m_SimdSize(0), m_IsFunctionPressureLow(Status::Undef),
-    m_IsBlockPressureLow(Status::Undef) {
+    m_IsBlockPressureLow(Status::Undef),
+    m_BBSizeThreshold(IGC_GET_FLAG_VALUE(ScalarAliasBBSizeThreshold)) {
     initializeVariableReuseAnalysisPass(*PassRegistry::getPassRegistry());
 }
 
@@ -1727,5 +1728,5 @@ bool VariableReuseAnalysis::checkSubAlign(e_alignment& BaseAlign,
 bool VariableReuseAnalysis::skipScalarAliaser(BasicBlock* BB, Value* ScalarVal) const
 {
     Instruction* I = dyn_cast<Instruction>(ScalarVal);
-    return ((BB->size() > 500) || !I || I->getParent() != BB);
+    return ((BB->size() > m_BBSizeThreshold) || !I || I->getParent() != BB);
 }

@@ -766,6 +766,7 @@ $ export IGC_ShaderDumpEnable=1
 | `VariableReuseByteSize` | The byte size threshold for variable reuse | - |
 | `VectorAlias` | Vector aliasing control under EnableVariableAlias. Some features are still experimental | Available |
 | `VectorAliasBBThreshold` | Max number of BBs of a function that VectorAlias will apply. VectorAlias will skip for funtions beyond this threshold | Available |
+| `ScalarAliasBBSizeThreshold` | Max size of BB for which scalar aliasing will apply. Scalar aliasing will skip for BBs beyond this threshold | Available |
 | `cl_khr_srgb_image_writes` | Enable cl_khr_srgb_image_writes extension | - |
 | `disableRemat` | disable re-materialization | - |
 | `disableUnormTypedReadWA` | disable software conversion for UNORM surface in Dx10 | - |

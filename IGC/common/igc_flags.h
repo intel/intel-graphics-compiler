@@ -722,6 +722,7 @@ DECLARE_IGC_REGKEY(bool, EnableVariableReuse,           true, "Enable local vari
 DECLARE_IGC_REGKEY(bool, EnableVariableAlias,           true, "Enable variable aliases (part of VariableReuse Pass, but separate functionality)", false)
 DECLARE_IGC_REGKEY(DWORD, VectorAlias,                     1, "Vector aliasing control under EnableVariableAlias. Some features are still experimental", true)
 DECLARE_IGC_REGKEY(DWORD, VectorAliasBBThreshold,        200, "Max number of BBs of a function that VectorAlias will apply. VectorAlias will skip for funtions beyond this threshold", true)
+DECLARE_IGC_REGKEY(DWORD, ScalarAliasBBSizeThreshold,    500, "Max size of BB for which scalar aliasing will apply. Scalar aliasing will skip for BBs beyond this threshold", true)
 DECLARE_IGC_REGKEY(bool, EnableExtractMask,             false, "When enabled, it is mostly for reducing response size of send messages.", false)
 DECLARE_IGC_REGKEY(DWORD, VariableReuseByteSize,        64, "The byte size threshold for variable reuse", false)
 DECLARE_IGC_REGKEY(bool, EnableGather4cpoWA,            true, "Enable WA transforming gather4cpo/gather4po into gather4c/gather4", false)

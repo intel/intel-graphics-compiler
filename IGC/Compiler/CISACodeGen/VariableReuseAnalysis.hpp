@@ -524,6 +524,10 @@ namespace IGC {
         // value in a dessa CC has been aliased (either aliaser or aliasee)
         Val2ValMapTy m_root2AliasMap;
 
+        // Max size of BB for which scalar aliasing will apply.
+        // Scalar aliasing will skip for BBs beyond this threshold
+        const size_t m_BBSizeThreshold;
+
         // For vector aliasing heuristic to prevent possible high-reg pressure
         bool skipScalarAliaser(llvm::BasicBlock* BB, llvm::Value* V) const;
     };
