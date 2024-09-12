@@ -69,6 +69,7 @@ $ export IGC_ShaderDumpEnable=1
 | `EnablePromoteI8` | Enable promoting i8 (char) to i16 on all ALU insts that does support i8. It's only for XeHPC+ for now. | Available |
 | `EnablePromoteI8Vec` | Control if a certain i8 vector needs to be promoted (detail in code) | Available |
 | `EnablePvtMemHalfToFloat` | Enable conversion from half to float for private memory. | Available |
+| `EnableRemoveLoopDependency` | Enable removing of fantom loop dependency introduced by SROA | Available |
 | `EnableQWRotateInstructions` | Enable QW type support for rotate instructions. PVC only. | Available |
 | `EnableQuickTokenAlloc` | Insert dependence resolve for kernel stitching | Available |
 | `EnableSWSBInstStall` | Enable force stall to specific(start) instruction start for software scoreboard generation | Available |

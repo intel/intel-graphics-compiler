@@ -181,6 +181,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "Compiler/CISACodeGen/PartialEmuI64OpsPass.h"
 #include "Compiler/TranslateToProgrammableOffsetsPass.hpp"
+#include "Compiler/CISACodeGen/RemoveLoopDependency.hpp"
 
 /***********************************************************************************
 This file contains the generic code generation functions for all the shaders
@@ -1603,6 +1604,11 @@ void OptimizeIR(CodeGenContext* const pContext)
                         mpm.add(createSROAPass());
                     }
                 }
+            }
+
+            if (IGC_IS_FLAG_ENABLED(EnableRemoveLoopDependency))
+            {
+                mpm.add(new RemoveLoopDependency());
             }
 
             // Note:
