@@ -71,6 +71,7 @@ private:
 
   void setupBankConflictsforTwoGRFs(G4_INST *inst);
   void setupBankConflictsforMad(G4_INST *inst);
+  void setupBundleConflictsforTwoSrcsInst(G4_INST *inst);
   void setupBankConflictsForBB(G4_BB *bb, unsigned &threeSourceInstNum,
                                unsigned &sendInstNum, unsigned numRegLRA,
                                unsigned &internalConflict);
@@ -1518,6 +1519,8 @@ public:
   bool useFastRA = false;
   bool useHybridRAwithSpill = false;
   bool useLocalRA = false;
+  bool forceBCR = false;
+  bool twoSrcBundleBCR = false;
   uint32_t nextSpillOffset = 0;
   uint32_t scratchOffset = 0;
 
@@ -1951,7 +1954,8 @@ public:
     if (kernel.getOptions()->getOption(vISA_VerifyAugmentation)) {
       verifyAugmentation = std::make_unique<VerifyAugmentation>();
     }
-
+    forceBCR = kernel.getOption(vISA_forceBCR);
+    twoSrcBundleBCR = kernel.getOption(vISA_twoSrcBundleBCR);
     // Set callWA condition.
     //    Call return ip and mask need wa only for non-entry functions. As call
     //    WA also needs a temp, we conservatively add WA for

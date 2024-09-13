@@ -807,6 +807,39 @@ void BankConflictPass::setupBankConflictsforDPAS(G4_INST *inst) {
   return;
 }
 
+
+void BankConflictPass::setupBundleConflictsforTwoSrcsInst(G4_INST *inst) {
+  vISA_ASSERT(inst->getNumSrc() == 2, "Only support two source operands instructions");
+
+  G4_Declare *dcls[2];
+  G4_Declare *opndDcls[2];
+  unsigned offset[2];
+
+  for (int i = 0; i < 2; i += 1) {
+    dcls[i] = nullptr;
+    opndDcls[i] = nullptr;
+
+    G4_Operand *src = inst->getSrc(i);
+    if (!src || !src->isSrcRegRegion() || src->isAreg()) {
+      // bank conflict not possible
+      continue;
+    }
+
+    dcls[i] = GetTopDclFromRegRegion(src);
+    opndDcls[i] = src->getBase()->asRegVar()->getDeclare();
+    offset[i] = (opndDcls[i]->getOffsetFromBase() + src->getLeftBound()) /
+                gra.kernel.numEltPerGRF<Type_UB>();
+  }
+
+  // Add potential bundle conflicts
+  if (dcls[0] && dcls[1]) {
+    gra.addBundleConflictDcl(dcls[0], dcls[1], offset[0] - offset[1]);
+    gra.addBundleConflictDcl(dcls[1], dcls[0], offset[1] - offset[0]);
+  }
+
+  return;
+}
+
 void BankConflictPass::setupBankConflictsforMad(G4_INST *inst) {
   BankConflict srcBC[3];
   unsigned offset[3];
@@ -1023,10 +1056,16 @@ void BankConflictPass::setupBankConflictsForBBTGL(G4_BB *bb,
       } else {
         setupBankConflictsforMad(inst);
       }
-    } else if (gra.kernel.getOption(vISA_forceBCR) && !forGlobal &&
+    } else if (!forGlobal &&
                inst->getNumSrc() == 2) {
-      threeSourceInstNum++;
-      setupBankConflictsforMad(inst);
+      if (gra.forceBCR) {
+        threeSourceInstNum++;
+        setupBankConflictsforMad(inst);
+      }
+      if (gra.twoSrcBundleBCR) {
+        threeSourceInstNum++;
+        setupBundleConflictsforTwoSrcsInst(inst);
+      }
     }
   }
 
