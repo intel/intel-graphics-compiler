@@ -373,6 +373,7 @@ void CMKernel::createPointerGlobalAnnotation(const KernelArgInfo &ArgInfo,
   const auto AddrMode = ArgInfo.getAddressMode();
   const auto BTI = ArgInfo.getBTI();
   const auto Size = ArgInfo.getSizeInBytes();
+  const auto SourceOffset = ArgInfo.getOffsetInArg();
 
   auto PtrAnnotation = std::make_unique<PointerArgumentAnnotation>();
 
@@ -391,17 +392,25 @@ void CMKernel::createPointerGlobalAnnotation(const KernelArgInfo &ArgInfo,
 
   PreDefinedAttrGetter::ArgAddrMode ZeAddrMode;
   if (AddrMode == ArgAddressMode::Bindless) {
+    IGC_ASSERT(SourceOffset == 0);
     ZeAddrMode = PreDefinedAttrGetter::ArgAddrMode::bindless;
   } else if (AddrMode == ArgAddressMode::Stateful) {
+    IGC_ASSERT(SourceOffset == 0);
     ZeAddrMode = PreDefinedAttrGetter::ArgAddrMode::stateful;
   } else {
     IGC_ASSERT(AddrMode == ArgAddressMode::Stateless);
     ZeAddrMode = PreDefinedAttrGetter::ArgAddrMode::stateless;
   }
 
-  ZEInfoBuilder::addPayloadArgumentByPointer(
-      m_kernelInfo.m_zePayloadArgs, Offset, Size, Index, ZeAddrMode,
-      PreDefinedAttrGetter::ArgAddrSpace::global, getZEArgAccessType(Access));
+  if (SourceOffset == 0) {
+    ZEInfoBuilder::addPayloadArgumentByPointer(
+        m_kernelInfo.m_zePayloadArgs, Offset, Size, Index, ZeAddrMode,
+        PreDefinedAttrGetter::ArgAddrSpace::global, getZEArgAccessType(Access));
+  } else { // Pass the argument as by_value with is_ptr = true
+    IGC_ASSERT(AddrMode == ArgAddressMode::Stateless);
+    ZEInfoBuilder::addPayloadArgumentByValue(
+        m_kernelInfo.m_zePayloadArgs, Offset, Size, Index, SourceOffset, true);
+  }
 
   if (AddrMode == ArgAddressMode::Stateful)
     ZEInfoBuilder::addBindingTableIndex(m_kernelInfo.m_zeBTIArgs, BTI, Index);
