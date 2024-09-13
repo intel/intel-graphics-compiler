@@ -186,7 +186,7 @@ jobs:
         run: mkdir Artifacts
       - name: copying artifact from docker to github host
         run: sudo docker cp buildigc:/workspace/igc/build/DEB-FILES ./Artifacts
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: IGC_Ubuntu${{ matrix.ubuntu_version }}_llvm${{ matrix.llvm_ver }}_${{ matrix.compiler }}-${{ steps.igc-current-short-Hash.outputs.sha_short }}
           path: ./Artifacts/DEB-FILES/*.deb
