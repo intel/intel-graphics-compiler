@@ -9,7 +9,8 @@
 ; Check new implicit arg is added for __builtin_IB_get_snap_wa_reqd when
 ; sampler is bindless (offset is or'ed with 1).
 
-; RUN: igc_opt -igc-image-func-analysis -S %s -o %t.ll
+; REQUIRES: opaque-ptr-fix, llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-image-func-analysis -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
 %spirv.Sampler = type opaque

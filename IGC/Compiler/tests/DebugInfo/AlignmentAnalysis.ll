@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-fix-alignment -S < %s | FileCheck %s
+; REQUIRES: opaque-ptr-fix, llvm-14-plus
+; RUN: igc_opt --opaque-pointers --igc-fix-alignment -S < %s | FileCheck %s
 ; AlignmentAnalysis
 ; ------------------------------------------------
 ; This test checks that debug info is properly handled by AlignmentAnalysis pass

@@ -6,7 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt %s -S -o - -igc-joint-matrix-resolution --platformpvc 2>&1 | FileCheck %s
+; REQUIRES: opaque-ptr-fix, llvm-14-plus
+; RUN: igc_opt --opaque-pointers %s -S -o - -igc-joint-matrix-resolution --platformpvc 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; JointMatrixFuncsResolutionPass
 ; ------------------------------------------------

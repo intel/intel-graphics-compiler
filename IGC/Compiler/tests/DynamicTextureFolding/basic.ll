@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -debugify -igc-dynamic-texture-folding -check-debugify -S < %s 2>&1 | FileCheck %s
+; REQUIRES: opaque-ptr-fix, llvm-14-plus
+; RUN: igc_opt --opaque-pointers -debugify -igc-dynamic-texture-folding -check-debugify -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; DynamicTextureFolding
 ; ------------------------------------------------

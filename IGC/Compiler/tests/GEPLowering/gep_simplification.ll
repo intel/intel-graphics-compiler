@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -8,9 +8,9 @@
 ;
 ; ------------------------------------------------
 ;
-; REQUIRES: regkeys
+; REQUIRES: opaque-ptr-fix, llvm-14-plus, regkeys
 ;
-; RUN: igc_opt -platformpvc --igc-gep-lowering -regkey=EnableGEPSimplification=1,TestGEPSimplification=1 -S %s  | FileCheck %s
+; RUN: igc_opt --opaque-pointers -platformpvc --igc-gep-lowering -regkey=EnableGEPSimplification=1,TestGEPSimplification=1 -S %s  | FileCheck %s
 ; ------------------------------------------------
 ; GEPLowering/GEP simplification : testing GEP strength reduction
 ; ------------------------------------------------
