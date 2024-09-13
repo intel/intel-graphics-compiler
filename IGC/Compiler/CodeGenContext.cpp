@@ -970,7 +970,6 @@ namespace IGC
     {
         SIMDMode simdMode = SIMDMode::UNKNOWN;
 
-        uint32_t forcedSIMDSize = 0;
         bool isGeomFF = (type == ShaderType::VERTEX_SHADER) ||
             (type == ShaderType::HULL_SHADER) ||
             (type == ShaderType::DOMAIN_SHADER) ||
