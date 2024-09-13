@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2023 Intel Corporation
+Copyright (C) 2023-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -78,6 +78,8 @@ bool GenXInitBiFConstants::runOnModule(Module &Mod) {
 
   Result |= initGlobalConstant("__cm_cl_MaxHWThreadIDPerSubDevice",
                                ST->getMaxThreadsNumPerSubDevice());
+  Result |= initGlobalConstant("__cm_cl_TargetSupportsIEEE",
+                               ST->hasIEEEDivSqrt());
 
   return Result;
 }

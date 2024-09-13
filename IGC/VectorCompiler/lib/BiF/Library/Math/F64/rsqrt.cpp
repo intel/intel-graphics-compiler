@@ -13,6 +13,8 @@ SPDX-License-Identifier: MIT
 
 using namespace cm;
 
+int __cm_cl_TargetSupportsIEEE;
+
 namespace {
 
 template <int N>
@@ -176,8 +178,8 @@ CM_NODEBUG CM_INLINE vector<double, N> calc_sqrt(vector<double, N> x,
 }
 
 template <int N>
-CM_NODEBUG CM_INLINE vector<double, N> invert_calc(vector<double, N> a,
-                                                   vector<double, N> y0) {
+CM_NODEBUG CM_INLINE vector<double, N> sqrt_late_steps(vector<double, N> a,
+                                                       vector<double, N> y0) {
   // IEEE SQRT computes H0 = 0.5*y0 (can be skipped)
   // Step 3: S0 = a*y0
   vector<double, N> S0 = a * y0;
@@ -217,12 +219,27 @@ CM_NODEBUG CM_INLINE vector<double, N> __impl_rsqrt_f64(vector<double, N> x) {
 
   vector<double, N> a = x;
   vector<double, N> result = 0;
+
+  if (__cm_cl_TargetSupportsIEEE) {
+    // Fast path for targets with rsqtm/invm instructions
+    auto mrsqrt_res = detail::mrsqrt(a.cl_vector());
+    mask<N> special_case = mrsqrt_res.second;
+    vector<double, N> y0 = mrsqrt_res.first;
+
+    result.merge(sqrt_late_steps(a, y0), (special_case == 0));
+
+    vector<double, N> one = 1.0f;
+    auto invm = detail::invm(one.cl_vector(), y0.cl_vector());
+    result.merge(invm.first, special_case);
+    return result;
+  }
+
   mask<N> special_case = (x <= 0.0f) | check_is_nan_or_inf(x);
 
   // Save user rounding mode here, set new rounding mode to RN  (RTE in CM)
   vector<double, N> y0 = calc_sqrt(a, special_case);
 
-  result.merge(invert_calc(a, y0), (special_case == 0));
+  result.merge(sqrt_late_steps(a, y0), (special_case == 0));
 
   // This is the path for special inputs (INVM can be used to cover DP inputs)
   result.merge(invert_float(y0), special_case);
