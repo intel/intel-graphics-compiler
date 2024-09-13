@@ -3746,11 +3746,12 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     return src;
   };
 
-  auto MakeAdd3oPredicate = [&]() {
+  auto MakeAdd3oPredicate = [&](int Idx) {
     LLVM_DEBUG(dbgs() << "MakeAdd30Destination\n");
     IGC_ASSERT(GenXIntrinsic::getGenXIntrinsicID(CI) ==
                llvm::GenXIntrinsic::genx_add3c);
-    auto SV = SimpleValue(CI, GenXIntrinsic::GenXResult::IdxAdd3c_Carry);
+    auto MemberIdx = (GenXIntrinsic::GenXResult::ResultIndexes)Idx;
+    auto SV = SimpleValue(CI, MemberIdx);
     VISA_PredVar *PredVar = getPredicateVar(CI);
     VISA_PREDICATE_STATE State = PredState_NO_INVERSE;
     VISA_PREDICATE_CONTROL Control = PRED_CTRL_NON;
@@ -3758,34 +3759,33 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     return PredOperand;
   };
 
-  auto MakeSubbAddcDestination =
-      [&](GenXIntrinsic::GenXResult::ResultIndexes MemberIdx) {
-        LLVM_DEBUG(dbgs() << "MakeSubbAddcDestination\n");
-        IGC_ASSERT(GenXIntrinsic::getGenXIntrinsicID(CI) ==
-                       llvm::GenXIntrinsic::genx_addc ||
-                   GenXIntrinsic::getGenXIntrinsicID(CI) ==
-                       llvm::GenXIntrinsic::genx_subb ||
-                   GenXIntrinsic::getGenXIntrinsicID(CI) ==
-                       llvm::GenXIntrinsic::genx_add3c);
-        IGC_ASSERT(IndexFlattener::getNumElements(CI->getType()) == 2);
+  auto MakeStructValDst = [&](int Idx) {
+    LLVM_DEBUG(dbgs() << "MakeStructValDst\n");
+    auto MemberIdx = (GenXIntrinsic::GenXResult::ResultIndexes)Idx;
 
-        auto SV = SimpleValue(CI, MemberIdx);
-        auto *DstType = SV.getType();
+    auto SV = SimpleValue(CI, MemberIdx);
+    auto *DstType = SV.getType();
 
-        IGC_ASSERT(DstType->getScalarType()->isIntegerTy(genx::DWordBits));
+    auto *Reg = getRegForValueAndSaveAlias(SV, UNSIGNED);
 
-        auto *Reg = getRegForValueAndSaveAlias(SV, UNSIGNED);
+    const auto TypeSize = CISATypeTable[ISA_TYPE_UD].typeSize;
+    auto Elements = 1;
+    if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(DstType))
+      Elements = VT->getNumElements();
 
-        const auto TypeSize = CISATypeTable[ISA_TYPE_UD].typeSize;
-        auto Elements = 1;
-        if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(DstType))
-          Elements = VT->getNumElements();
+    Region R(IGCLLVM::FixedVectorType::get(
+        IntegerType::get(Ctx, TypeSize * genx::ByteBits), Elements));
+    return createRegionOperand(&R, Reg->GetVar<VISA_GenVar>(Kernel), UNSIGNED,
+                               Mod, true /* Dst */);
+  };
 
-        Region R(IGCLLVM::FixedVectorType::get(
-            IntegerType::get(Ctx, TypeSize * genx::ByteBits), Elements));
-        return createRegionOperand(&R, Reg->GetVar<VISA_GenVar>(Kernel),
-                                   UNSIGNED, Mod, true /* Dst */);
-      };
+  auto MakeStructPredDst = [&](int Idx) {
+    LLVM_DEBUG(dbgs() << "MakeStructPredDst\n");
+    auto MemberIdx = (GenXIntrinsic::GenXResult::ResultIndexes)(Idx);
+    auto SV = SimpleValue(CI, MemberIdx);
+    auto *Reg = getRegForValueAndSaveAlias(SV);
+    return getPredicateVar(Reg);
+  };
 
   auto CreateLscTypedLoadQuad =
       [&](VISA_PredOpnd *Pred, VISA_Exec_Size ExecSize,

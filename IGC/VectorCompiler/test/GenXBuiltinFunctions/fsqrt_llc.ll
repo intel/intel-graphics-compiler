@@ -135,6 +135,3 @@ attributes #5 = { nounwind }
 !23 = !{void (i8 addrspace(1)*, i8 addrspace(1)*, i8 addrspace(1)*, i64)* @foo_double_RTE, !18, !19, !4, !20}
 !24 = !{i32 10994}
 !25 = !{i32 10884}
-
-
-

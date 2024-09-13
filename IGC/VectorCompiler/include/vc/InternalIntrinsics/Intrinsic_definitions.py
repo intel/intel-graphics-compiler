@@ -175,6 +175,39 @@ Imported_Intrinsics = {
                                      "anyfloat"],
                       "attributes": "SideEffects", },
 
+## ``llvm.vc.internal.rsqrtm`` : computes component-wise reciprocal square root
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: input data, floating-point scalar or vector, same as return value
+##
+## * Return structure:
+## * result: vNfloat - rsqrtm result (overloaded)
+## * pred:   vNxi1   - result predicate, indicates special number (NAN/INF/ZERO)
+##
+## Intrinsic converts to RSQTM visa-instruction
+##
+    "rsqrtm": { "result": ["anyfloat", "anyint"],
+                "arguments": [0],
+                "target" : ["hasIEEEDivSqrt"],
+                "attributes": "NoMem", },
+
+## ``llvm.vc.internal.invm`` : compute component-wise divide
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: input data, floating-point scalar or vector, same as return value
+##
+## * Return structure:
+## * result: vNfloat - rsqrtm result (overloaded)
+## * pred:   vNxi1   - result predicate, indicates special number (NAN/INF/ZERO)
+##
+## Intrinsic converts to INVM visa-instruction
+##
+    "invm": { "result": ["anyfloat", "anyint"],
+              "arguments": [0, 0],
+              "target" : ["hasIEEEDivSqrt"],
+              "attributes": "NoMem", },
+
+
 ### ---------------------------
 ### Low-level memory intrinsics
 ### ---------------------------

@@ -151,6 +151,31 @@ template <typename T> T __cm_cl_cos(T src, bool use_fast);
 template <typename T> T __cm_cl_fdiv_ieee(T src0, T src1);
 template <typename T> T __cm_cl_rsqrt(T src);
 
+template <typename T, int width>
+vector_impl<T, width> __cm_cl_mrsqrt(vector_impl<char, width> *dst_pred,
+                                     vector_impl<T, width> src);
+
+template <typename T, int width>
+cl::pair<vector_impl<T, width>, vector_impl<char, width>>
+mrsqrt(vector_impl<T, width> src0) {
+  vector_impl<char, width> dst_pred;
+  vector_impl<T, width> res = __cm_cl_mrsqrt(&dst_pred, src0);
+  return {res, dst_pred};
+}
+
+template <typename T, int width>
+vector_impl<T, width> __cm_cl_invm(vector_impl<char, width> *out,
+                                   vector_impl<T, width> src0,
+                                   vector_impl<T, width> src1);
+
+template <typename T, int width>
+cl::pair<vector_impl<T, width>, vector_impl<char, width>>
+invm(vector_impl<T, width> src0, vector_impl<T, width> src1) {
+  vector_impl<char, width> dst_pred;
+  vector_impl<T, width> res = __cm_cl_invm(&dst_pred, src0, src1);
+  return {res, dst_pred};
+}
+
 vector_impl<uint32_t, 3> __cm_cl_local_id();
 vector_impl<uint32_t, 3> __cm_cl_local_size();
 vector_impl<uint32_t, 3> __cm_cl_group_count();

@@ -441,6 +441,48 @@
         ]
       }
     },
+    "MRsqrt": {
+      "Name": "mrsqrt",
+      "Operands": [
+        {"Name": "InOut", "Kind": "Output"},
+        {"Name": "Src", "Kind": "Input" }
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "rsqrtm",
+        "ReturnType": {
+          "Code": [
+            "getStructureOf({}, {})",
+            {"GetBuiltinReturnType": []},
+            {"GetBuiltinOperandType": ["InOut"]}
+          ]
+        },
+        "Operands": [
+          {"GetBuiltinOperand": ["Src"]}
+        ]
+      }
+    },
+    "InvM": {
+      "Name": "invm",
+      "Operands": [
+        {"Name": "InOut", "Kind": "Output"},
+        {"Name": "Src1", "Kind": "Input"},
+        {"Name": "Src2", "Kind": "Input"}
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "invm",
+        "ReturnType": {
+          "Code": [
+            "getStructureOf({}, {})",
+            {"GetBuiltinReturnType": []},
+            {"GetBuiltinOperandType": ["InOut"]}
+          ]
+        },
+        "Operands": [
+          {"GetBuiltinOperand": ["Src1"]},
+          {"GetBuiltinOperand": ["Src2"]}
+        ]
+      }
+    },
     "LocalID": {
       "Name": "local_id",
       "Operands": [],

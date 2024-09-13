@@ -132,6 +132,25 @@
       "src0": "CreateOpndPredefinedSrc(PREDEFINED_TSC, 0, 0, 1, 1, 0)"
     },
     // Internal vc intrinsics
+    "vc::InternalIntrinsic::rsqrtm": {
+      "opc": "ISA_RSQTM",
+      "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst0": "MakeStructValDst(0)",
+      "dst1": "MakeStructPredDst(1)",
+      "src0": [ "GENERAL", 1 ]
+    },
+    "vc::InternalIntrinsic::invm": {
+      "opc": "ISA_INVM",
+      "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst0": "MakeStructValDst(0)",
+      "dst1": "MakeStructPredDst(1)",
+      "src0": [ "GENERAL", 1 ],
+      "src1": [ "GENERAL", 2 ]
+    },
     "vc::InternalIntrinsic::cast_from_bf16": {
       "opc": "ISA_MOV",
       "exec_size": [ "EXECSIZE" ],
@@ -2603,8 +2622,8 @@
       "opc": "ISA_ADDC",
       "exec_size": [ "EXECSIZE" ],
       "pred": [ "IMPLICITPRED" ],
-      "dst0": "MakeSubbAddcDestination(GenXIntrinsic::GenXResult::IdxAddc_Add)",
-      "dst1": "MakeSubbAddcDestination(GenXIntrinsic::GenXResult::IdxAddc_Carry)",
+      "dst0": "MakeStructValDst(GenXIntrinsic::GenXResult::IdxAddc_Add)",
+      "dst1": "MakeStructValDst(GenXIntrinsic::GenXResult::IdxAddc_Carry)",
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
       "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ]
     },
@@ -2612,8 +2631,8 @@
       "opc": "ISA_SUBB",
       "exec_size": [ "EXECSIZE" ],
       "pred": [ "IMPLICITPRED" ],
-      "dst0": "MakeSubbAddcDestination(GenXIntrinsic::GenXResult::IdxSubb_Sub)",
-      "dst1": "MakeSubbAddcDestination(GenXIntrinsic::GenXResult::IdxSubb_Borrow)",
+      "dst0": "MakeStructValDst(GenXIntrinsic::GenXResult::IdxSubb_Sub)",
+      "dst1": "MakeStructValDst(GenXIntrinsic::GenXResult::IdxSubb_Borrow)",
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
       "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ]
     },
@@ -2672,8 +2691,8 @@
       "opc": "ISA_ADD3O",
       "exec_size": [ "EXECSIZE" ],
       "elementwise": [ "ELEMENTWISE" ],
-      "dst0": "MakeSubbAddcDestination(GenXIntrinsic::GenXResult::IdxAdd3c_Add)",
-      "dst1": "MakeAdd3oPredicate()",
+      "dst0": "MakeStructValDst(GenXIntrinsic::GenXResult::IdxAdd3c_Add)",
+      "dst1": "MakeAdd3oPredicate(GenXIntrinsic::GenXResult::IdxAdd3c_Carry)",
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
       "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ],
       "src2": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 3 ]
@@ -4963,6 +4982,34 @@
           "dst",
           "src0",
           "src1",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_INVM": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAPredDstArithmeticInst",
+          "opc",
+          "pred",
+          "exec_mask",
+          "exec_size",
+          "dst0",
+          "dst1",
+          "src0",
+          "src1"
+        ]
+      ]
+    ],
+    "ISA_RSQTM": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAPredDstArithmeticInst",
+          "opc",
+          "pred",
+          "exec_mask",
+          "exec_size",
+          "dst0",
+          "dst1",
+          "src0",
           "nullptr"
         ]
       ]

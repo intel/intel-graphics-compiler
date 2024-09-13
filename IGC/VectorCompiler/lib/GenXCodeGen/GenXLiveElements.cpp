@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2023 Intel Corporation
+Copyright (C) 2023-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -304,7 +304,8 @@ LiveElements GenXLiveElements::getOperandLiveElements(
   if (GenXIntrinsic::isWrRegion(Inst) || ID == GenXIntrinsic::genx_wrpredregion)
     return getWrRegionLiveElements(Inst, OperandNo, InstLiveElems);
 
-  if (ID == GenXIntrinsic::genx_addc || ID == GenXIntrinsic::genx_subb)
+  if (ID == GenXIntrinsic::genx_addc || ID == GenXIntrinsic::genx_subb ||
+      ID == vc::InternalIntrinsic::invm || ID == vc::InternalIntrinsic::rsqrtm)
     return getTwoDstInstLiveElements(InstLiveElems);
 
   auto OpLiveElems = LiveElements(OpTy);

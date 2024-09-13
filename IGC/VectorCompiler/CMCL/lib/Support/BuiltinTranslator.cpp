@@ -235,6 +235,21 @@ Type &getTypeFromBuiltinOperand(CallInst &BiCall, int OpIdx) {
   switch (BuiltinOperandKind[BiID][OpIdx]) {
   case OperandKind::Output:
     switch (BiID) {
+    case BuiltinID::MRsqrt:
+    case BuiltinID::InvM: {
+      auto *OpInst = BiCall.getArgOperand(OpIdx);
+      while (auto *Inst = dyn_cast<CastInst>(OpInst))
+        OpInst = Inst->getOperand(0);
+      auto *Alloc = dyn_cast<AllocaInst>(OpInst);
+      assert(Alloc);
+      auto *RetVTy =
+          dyn_cast<IGCLLVM::FixedVectorType>(Alloc->getAllocatedType());
+      assert(RetVTy);
+      IRBuilder<> IRB(Alloc);
+      RetVTy = IGCLLVM::FixedVectorType::get(IRB.getInt1Ty(),
+                                             RetVTy->getNumElements());
+      return *RetVTy;
+    }
     case BuiltinID::AddCarry:
       return *BiCall.getType();
     default:
@@ -546,6 +561,43 @@ Value &createMainInst<BuiltinID::Sqrt>(const std::vector<Value *> &Operands,
   if (cast<ConstantInt>(Operands[SqrtOperand::IsFast])->getSExtValue())
     InstSqrt->setFast(true);
   return *InstSqrt;
+}
+
+template <BuiltinID::Enum BiID>
+static inline Value &createInvmRsqrtm(const std::vector<Value *> &Operands,
+                                      Type &RetTy, IRBuilder<> &IRB,
+                                      const Twine &Suffix) {
+  auto *Decl =
+      getAnyDeclarationForIdFromArgs(RetTy, Operands, IntrinsicForBuiltin[BiID],
+                                     *IRB.GetInsertBlock()->getModule());
+
+  Value *CI = IRB.CreateCall(Decl, Operands, "cmcl.builtin" + Suffix);
+  auto *Res = IRB.CreateExtractValue(CI, 0, Suffix + ".res");
+  auto *Mask = IRB.CreateExtractValue(CI, 1, Suffix + ".mask");
+
+  // Cast from i1-mask to i8 to store result
+  auto *ResTy = dyn_cast<IGCLLVM::FixedVectorType>(Res->getType());
+  auto *RetI8Ty =
+      IGCLLVM::FixedVectorType::get(IRB.getInt8Ty(), ResTy->getNumElements());
+  auto *ExtMask = IRB.CreateZExt(Mask, RetI8Ty);
+  auto *StructTy = StructType::create("", ResTy, RetI8Ty);
+
+  CI = IRB.CreateInsertValue(UndefValue::get(StructTy), Res, 0);
+  CI = IRB.CreateInsertValue(CI, ExtMask, 1);
+
+  return *CI;
+}
+
+template <>
+Value &createMainInst<BuiltinID::InvM>(const std::vector<Value *> &Operands,
+                                       Type &RetTy, IRBuilder<> &IRB) {
+  return createInvmRsqrtm<BuiltinID::InvM>(Operands, RetTy, IRB, ".InvM");
+}
+
+template <>
+Value &createMainInst<BuiltinID::MRsqrt>(const std::vector<Value *> &Operands,
+                                         Type &RetTy, IRBuilder<> &IRB) {
+  return createInvmRsqrtm<BuiltinID::MRsqrt>(Operands, RetTy, IRB, ".MRsqrt");
 }
 
 template <>
