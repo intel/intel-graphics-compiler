@@ -8078,9 +8078,9 @@ bool G4_INST::isIEEEExceptionTrap() const {
 
 // In general a flag register can only be src0 for an instruction.
 // This funcion is not for general usage. It is dedicated for copy propagation,
-// for now we just limit to logic instructions.
+// for now we just limit to logic instructions and another mov.
 bool G4_INST::canSrcBeFlagForPropagation(Gen4_Operand_Number opndNum) const {
-  if (!isLogic())
+  if (!isLogic() && !isMov())
     return false;
 
   // flag register is not allowed in ternary instruction

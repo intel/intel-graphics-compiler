@@ -8466,6 +8466,7 @@ void EmitPass::emitAluNoModifier(llvm::GenIntrinsicInst* inst)
     CVariable* pSrc1;
     CVariable* pSrc2;
     CVariable* dst;
+    CVariable* srcUD;
 
     switch (inst->getIntrinsicID())
     {
@@ -8493,7 +8494,8 @@ void EmitPass::emitAluNoModifier(llvm::GenIntrinsicInst* inst)
         break;
     case GenISAIntrinsic::GenISA_firstbitLo:
         dst = m_currShader->BitCast(m_destination, GetUnsignedType(m_destination->GetType()));
-        m_encoder->Fbl(dst, pSrc0);
+        srcUD = m_currShader->BitCast(pSrc0, GetUnsignedType(pSrc0->GetType()));
+        m_encoder->Fbl(dst, srcUD);
         break;
     case GenISAIntrinsic::GenISA_firstbitHi:
         pSrc0 = m_currShader->BitCast(pSrc0, ISA_TYPE_UD);
@@ -21219,6 +21221,18 @@ void EmitPass::emitWaveBallot(llvm::GenIntrinsicInst* inst)
     {
         ForceDMask();
     }
+    // If single user of this opt is firstbitLo intrinsic, than cast the destination type to UD
+    if (inst->hasOneUse())
+    {
+        if (GenIntrinsicInst * userInst = dyn_cast<GenIntrinsicInst>(inst->user_back()))
+        {
+            if (userInst->getIntrinsicID() == GenISAIntrinsic::GenISA_firstbitLo)
+            {
+                m_destination = m_currShader->BitCast( m_destination, GetUnsignedType( m_destination->GetType() ) );
+            }
+        }
+    }
+
     CVariable* destination = m_destination;
     if (!m_destination->IsUniform())
     {
