@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/Regex.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "PreprocessSPVIR.h"
+#include "BiFManager/BiFManagerHandler.hpp"
 
 using namespace llvm;
 using namespace IGC;
@@ -589,6 +590,13 @@ Function* PromoteBools::promoteFunction(Function* function)
     {
         return function;
     }
+
+#if !defined(WDDM_ANDROID_IGC)
+    if (BiFManager::BiFManagerHandler::IsBiF(function))
+    {
+        return function;
+    }
+#endif
 
     auto newFunction = Function::Create(
         dyn_cast<FunctionType>(getOrCreatePromotedType(function->getFunctionType())),
