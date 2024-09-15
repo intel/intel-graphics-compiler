@@ -1,13 +1,15 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2023 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXFuncBaling -print-baling-info -disable-output \
-; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXFuncBaling -print-baling-info -disable-output \
+; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXFuncBaling -print-baling-info -disable-output \
+; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 @All = internal global <1024 x i32> undef, align 4096
 
@@ -16,8 +18,10 @@ declare <2048 x i16> @llvm.genx.wrregioni.v2048i16.v64i16.i16.i1(<2048 x i16>, <
 declare i1 @llvm.genx.any.v16i1(<16 x i1>)
 
 ; CHECK-LABEL: test
-; CHECK: store volatile <2048 x i16> %wrr1, <2048 x i16>* bitcast (<1024 x i32>* @All to <2048 x i16>*){{(, align 4096)?}}: g_store 0
-; CHECK: store volatile <1024 x i32> %wrr2, <1024 x i32>* @All{{(, align 4096)?}}: g_store 0
+; CHECK-TYPED-PTRS: store volatile <2048 x i16> %wrr1, <2048 x i16>* bitcast (<1024 x i32>* @All to <2048 x i16>*){{(, align 4096)?}}: g_store 0
+; CHECK-TYPED-PTRS: store volatile <1024 x i32> %wrr2, <1024 x i32>* @All{{(, align 4096)?}}: g_store 0
+; CHECK-OPAQUE-PTRS: store volatile <2048 x i16> %wrr1, ptr @All{{(, align 4096)?}}: g_store 0
+; CHECK-OPAQUE-PTRS: store volatile <1024 x i32> %wrr2, ptr @All{{(, align 4096)?}}: g_store 0
 
 define void @test(<64 x i16> %data1, <32 x i32> %data2, <16 x i1> %mask) {
 entry:

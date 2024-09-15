@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2023 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: %opt %use_old_pass_manager% -GenXGASDynamicResolution -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXGASDynamicResolution -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXGASDynamicResolution -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 ;
 target datalayout = "e-p:64:64-p3:32:32-i64:64-n8:16:32:64"
 
@@ -27,7 +28,8 @@ define spir_kernel void @kernelA(i8 addrspace(1)* %global_buffer) #1 {
   %call3 = tail call i8 addrspace(1)* @llvm.vc.internal.cast.to.ptr.explicit.p1i8(i8 addrspace(4)* %.p1top4)
 
   call spir_func void @foo(i8* %call1, i8 addrspace(3)* %call2, i8 addrspace(1)* %call3)
-  ; CHECK-DAG: call spir_func void @foo(i8* null, i8 addrspace(3)* null
+  ; CHECK-TYPED-PTRS-DAG: call spir_func void @foo(i8* null, i8 addrspace(3)* null
+  ; CHECK-OPAQUE-PTRS-DAG: call spir_func void @foo(ptr null, ptr addrspace(3) null
   ret void
 }
 
@@ -37,27 +39,34 @@ define spir_kernel void @kernelB(i8* %private_buffer, i8 addrspace(3)* %local_bu
   %.p0top4 = addrspacecast i8* %private_buffer to i8 addrspace(4)*
 
   %call1 = tail call i8* @llvm.vc.internal.cast.to.ptr.explicit.p0i8(i8 addrspace(4)* %.p0top4)
-  ; CHECK-DAG: %[[P2I_0:[^ ]+]] = ptrtoint i8 addrspace(4)* %.p0top4 to i64
+  ; CHECK-TYPED-PTRS-DAG: %[[P2I_0:[^ ]+]] = ptrtoint i8 addrspace(4)* %.p0top4 to i64
+  ; CHECK-OPAQUE-PTRS-DAG: %[[P2I_0:[^ ]+]] = ptrtoint ptr addrspace(4) %.p0top4 to i64
   ; CHECK-DAG: %[[BCAST_0:[^ ]+]] = bitcast i64 %[[P2I_0:[^ ]+]] to <2 x i32>
   ; CHECK-DAG: %[[EXTRACT_0:[^ ]+]] = extractelement <2 x i32> %[[BCAST_0:[^ ]+]], i64 1
   ; CHECK-DAG: %[[AND:[^ ]+]] = and i32 %[[EXTRACT_0:[^ ]+]], -536870912
   ; CHECK-DAG: %isPrivateTag = icmp eq i32 %[[AND:[^ ]+]], 536870912
-  ; CHECK-DAG: %[[P4_TO_P0:[^ ]+]] = addrspacecast i8 addrspace(4)* %.p0top4 to i8*
-  ; CHECK-DAG: %[[CALL1:[^ ]+]] = select i1 %isPrivateTag, i8* %[[P4_TO_P0:[^ ]+]], i8* null
+  ; CHECK-TYPED-PTRS-DAG: %[[P4_TO_P0:[^ ]+]] = addrspacecast i8 addrspace(4)* %.p0top4 to i8*
+  ; CHECK-TYPED-PTRS-DAG: %[[CALL1:[^ ]+]] = select i1 %isPrivateTag, i8* %[[P4_TO_P0:[^ ]+]], i8* null
+  ; CHECK-OPAQUE-PTRS-DAG: %[[P4_TO_P0:[^ ]+]] = addrspacecast ptr addrspace(4) %.p0top4 to ptr
+  ; CHECK-OPAQUE-PTRS-DAG: %[[CALL1:[^ ]+]] = select i1 %isPrivateTag, ptr %[[P4_TO_P0:[^ ]+]], ptr null
 
   %call2 = tail call i8 addrspace(3)* @llvm.vc.internal.cast.to.ptr.explicit.p3i8(i8 addrspace(4)* %.p3top4)
-  ; CHECK-DAG: %[[P2I_1:[^ ]+]] = ptrtoint i8 addrspace(4)* %.p3top4.tagged to i64
+  ; CHECK-TYPED-PTRS-DAG: %[[P2I_1:[^ ]+]] = ptrtoint i8 addrspace(4)* %.p3top4.tagged to i64
+  ; CHECK-OPAQUE-PTRS-DAG: %[[P2I_1:[^ ]+]] = ptrtoint ptr addrspace(4) %.p3top4.tagged to i64
   ; CHECK-DAG: %[[BCAST_1:[^ ]+]] = bitcast i64 %[[P2I_1:[^ ]+]] to <2 x i32>
   ; CHECK-DAG: %[[EXTRACT_1:[^ ]+]] = extractelement <2 x i32> %[[BCAST_1:[^ ]+]], i64 1
   ; CHECK-DAG: %isLocalTag = icmp eq i32 %[[EXTRACT_1:[^ ]+]], 1073741824
-  ; CHECK-DAG: %[[P4_TO_P3:[^ ]+]] = addrspacecast i8 addrspace(4)* %.p3top4.tagged to i8 addrspace(3)*
-  ; CHECK-DAG: %[[CALL2:[^ ]+]] = select i1 %isLocalTag, i8 addrspace(3)* %[[P4_TO_P3:[^ ]+]], i8 addrspace(3)* null
+  ; CHECK-TYPED-PTRS-DAG: %[[P4_TO_P3:[^ ]+]] = addrspacecast i8 addrspace(4)* %.p3top4.tagged to i8 addrspace(3)*
+  ; CHECK-TYPED-PTRS-DAG: %[[CALL2:[^ ]+]] = select i1 %isLocalTag, i8 addrspace(3)* %[[P4_TO_P3:[^ ]+]], i8 addrspace(3)* null
+  ; CHECK-OPAQUE-PTRS-DAG: %[[P4_TO_P3:[^ ]+]] = addrspacecast ptr addrspace(4) %.p3top4.tagged to ptr addrspace(3)
+  ; CHECK-OPAQUE-PTRS-DAG: %[[CALL2:[^ ]+]] = select i1 %isLocalTag, ptr addrspace(3) %[[P4_TO_P3:[^ ]+]], ptr addrspace(3) null
 
   ; COM: Since there are no global->generic casts to.global.explicit will return null.
   %call3 = tail call i8 addrspace(1)* @llvm.vc.internal.cast.to.ptr.explicit.p1i8(i8 addrspace(4)* %.p0top4)
 
   call spir_func void @foo(i8* %call1, i8 addrspace(3)* %call2, i8 addrspace(1)* %call3)
-  ; CHECK-DAG: call spir_func void @foo(i8* %[[CALL1:[^ ]+]], i8 addrspace(3)* %[[CALL2:[^ ]+]], i8 addrspace(1)* null)
+  ; CHECK-TYPED-PTRS-DAG: call spir_func void @foo(i8* %[[CALL1:[^ ]+]], i8 addrspace(3)* %[[CALL2:[^ ]+]], i8 addrspace(1)* null)
+  ; CHECK-OPAQUE-PTRS-DAG: call spir_func void @foo(ptr %[[CALL1:[^ ]+]], ptr addrspace(3) %[[CALL2:[^ ]+]], ptr addrspace(1) null)
 
   ret void
 }

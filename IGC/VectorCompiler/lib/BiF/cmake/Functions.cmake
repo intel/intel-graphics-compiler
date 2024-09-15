@@ -172,7 +172,7 @@ function(vc_generate_optimized_bif TARGET RES_FILE BIF_OPT_BC_NAME MANGLED_BIF_N
     set(PLTF_BC_PATH ${CMAKE_CURRENT_BINARY_DIR}/${PLTF_BC_NAME})
     add_custom_target("${TARGET}-${PLTF}-BC"
       COMMENT "vc_generate_optimized_bif: compile optimized BiF for ${PLTF}"
-      COMMAND ${VCB_EXE} -o ${PLTF_BC_NAME} -cpu ${PLTF} ${BIF_OPT_BC_NAME}
+      COMMAND ${VCB_EXE} ${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_OPT} -o ${PLTF_BC_NAME} -cpu ${PLTF} ${BIF_OPT_BC_NAME}
       DEPENDS ${VCB_EXE} ${BIF_OPT_BC_PATH}
       BYPRODUCTS ${PLTF_BC_NAME})
     list(APPEND PLTF_BC_PATH_LIST ${PLTF_BC_PATH})

@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2023 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: %opt %use_old_pass_manager% -GenXGASDynamicResolution -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXGASDynamicResolution -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXGASDynamicResolution -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-p3:32:32-i64:64-n8:16:32:64"
 
@@ -14,42 +15,54 @@ declare <8 x float> @llvm.masked.gather.v8f32.v8p4f32(<8 x float addrspace(4)*>,
 declare void @llvm.masked.scatter.v8f32.v8p4f32(<8 x float>, <8 x float addrspace(4)*>, i32 immarg, <8 x i1>)
 
 define spir_kernel void @kernelA(<8 x float addrspace(3)*> %local_v_ptrs) #0 {
-  ; CHECK: %[[V8P3_2_V8I64:[^ ]+]] = ptrtoint <8 x float addrspace(4)*> %generic_v_ptrs to <8 x i64>
+  ; CHECK-TYPED-PTRS: %[[V8P3_2_V8I64:[^ ]+]] = ptrtoint <8 x float addrspace(4)*> %generic_v_ptrs to <8 x i64>
+  ; CHECK-OPAQUE-PTRS: %[[V8P3_2_V8I64:[^ ]+]] = ptrtoint <8 x ptr addrspace(4)> %generic_v_ptrs to <8 x i64>
   ; CHECK: %[[V8P3_2_V16I32:[^ ]+]] = bitcast <8 x i64> %[[V8P3_2_V8I64:[^ ]+]] to <16 x i32>
   ; CHECK: %[[TAGGED_V16I32:[^ ]+]] = call <16 x i32> @llvm.genx.wrregioni.v16i32.v8i32.i16.i1(<16 x i32> %[[V8P3_2_V16I32:[^ ]+]], <8 x i32> <i32 1073741824, i32 1073741824, i32 1073741824, i32 1073741824, i32 1073741824, i32 1073741824, i32 1073741824, i32 1073741824>, i32 2, i32 1, i32 0, i16 4, i32 undef, i1 true)
   ; CHECK: %[[V16I32_2_V8I64:[^ ]+]] = bitcast <16 x i32> %[[TAGGED_V16I32:[^ ]+]] to <8 x i64>
-  ; CHECK: generic_v_ptrs.tagged = inttoptr <8 x i64> %[[V16I32_2_V8I64:[^ ]+]] to <8 x float addrspace(4)*>
+  ; CHECK-TYPED-PTRS: generic_v_ptrs.tagged = inttoptr <8 x i64> %[[V16I32_2_V8I64:[^ ]+]] to <8 x float addrspace(4)*>
+  ; CHECK-OPAQUE-PTRS: generic_v_ptrs.tagged = inttoptr <8 x i64> %[[V16I32_2_V8I64:[^ ]+]] to <8 x ptr addrspace(4)>
   %generic_v_ptrs = addrspacecast <8 x float addrspace(3)*> %local_v_ptrs to <8 x float addrspace(4)*>
 
-  ; CHECK: %[[GT_V8P4__2_V8I64:[^ ]+]] = ptrtoint <8 x float addrspace(4)*> %generic_v_ptrs.tagged to <8 x i64>
+  ; CHECK-TYPED-PTRS: %[[GT_V8P4__2_V8I64:[^ ]+]] = ptrtoint <8 x float addrspace(4)*> %generic_v_ptrs.tagged to <8 x i64>
+  ; CHECK-OPAQUE-PTRS: %[[GT_V8P4__2_V8I64:[^ ]+]] = ptrtoint <8 x ptr addrspace(4)> %generic_v_ptrs.tagged to <8 x i64>
   ; CHECK: %[[GT_V8P4_2_V16I32:[^ ]+]] = bitcast <8 x i64> %[[GT_V8P4__2_V8I64:[^ ]+]] to <16 x i32>
   ; CHECK: %[[GT_V8P4_HIGH32:[^ ]+]] = call <8 x i32> @llvm.genx.rdregioni.v8i32.v16i32.i16(<16 x i32> %[[GT_V8P4_2_V16I32:[^ ]+]], i32 2, i32 1, i32 0, i16 4, i32 undef)
   ; CHECK: %[[GT_ISLOCAL:[^ ]+]] = icmp eq <8 x i32> %[[GT_V8P4_HIGH32:[^ ]+]], <i32 1073741824, i32 1073741824, i32 1073741824, i32 1073741824, i32 1073741824, i32 1073741824, i32 1073741824, i32 1073741824>
   ; CHECK: %[[GT_ISGLOBAL:[^ ]+]] = xor <8 x i1> %[[GT_ISLOCAL:[^ ]+]], <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>
 
   ; CHECK: %[[GT_LOCAL_MASK:[^ ]+]] = and <8 x i1> %[[GT_ISLOCAL:[^ ]+]], <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>
-  ; CHECK: %[[GT_V8P4_2_V8P3:[^ ]+]] = addrspacecast <8 x float addrspace(4)*> %generic_v_ptrs.tagged to <8 x float addrspace(3)*>
-  ; CHECK: %val.local = call <8 x float> @llvm.masked.gather.v8f32.v8p3f32(<8 x float addrspace(3)*> %[[GT_V8P4_2_V8P3:[^ ]+]], i32 4, <8 x i1> %[[GT_LOCAL_MASK:[^ ]+]], <8 x float> undef)
+  ; CHECK-TYPED-PTRS: %[[GT_V8P4_2_V8P3:[^ ]+]] = addrspacecast <8 x float addrspace(4)*> %generic_v_ptrs.tagged to <8 x float addrspace(3)*>
+  ; CHECK-TYPED-PTRS: %val.local = call <8 x float> @llvm.masked.gather.v8f32.v8p3f32(<8 x float addrspace(3)*> %[[GT_V8P4_2_V8P3:[^ ]+]], i32 4, <8 x i1> %[[GT_LOCAL_MASK:[^ ]+]], <8 x float> undef)
+  ; CHECK-OPAQUE-PTRS: %[[GT_V8P4_2_V8P3:[^ ]+]] = addrspacecast <8 x ptr addrspace(4)> %generic_v_ptrs.tagged to <8 x ptr addrspace(3)>
+  ; CHECK-OPAQUE-PTRS: %val.local = call <8 x float> @llvm.masked.gather.v8f32.v8p3(<8 x ptr addrspace(3)> %[[GT_V8P4_2_V8P3:[^ ]+]], i32 4, <8 x i1> %[[GT_LOCAL_MASK:[^ ]+]], <8 x float> undef)
 
   ; CHECK: %[[GT_GLOBAL_MASK:[^ ]+]] = and <8 x i1> %[[GT_ISGLOBAL:[^ ]+]], <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>
-  ; CHECK: %[[GT_V8P4_2_V8P1:[^ ]+]] = addrspacecast <8 x float addrspace(4)*> %generic_v_ptrs.tagged to <8 x float addrspace(1)*>
-  ; CHECK: %val.global = call <8 x float> @llvm.masked.gather.v8f32.v8p1f32(<8 x float addrspace(1)*> %[[GT_V8P4_2_V8P1:[^ ]+]], i32 4, <8 x i1> %[[GT_GLOBAL_MASK:[^ ]+]], <8 x float> %val.local)
+  ; CHECK-TYPED-PTRS: %[[GT_V8P4_2_V8P1:[^ ]+]] = addrspacecast <8 x float addrspace(4)*> %generic_v_ptrs.tagged to <8 x float addrspace(1)*>
+  ; CHECK-TYPED-PTRS: %val.global = call <8 x float> @llvm.masked.gather.v8f32.v8p1f32(<8 x float addrspace(1)*> %[[GT_V8P4_2_V8P1:[^ ]+]], i32 4, <8 x i1> %[[GT_GLOBAL_MASK:[^ ]+]], <8 x float> %val.local)
+  ; CHECK-OPAQUE-PTRS: %[[GT_V8P4_2_V8P1:[^ ]+]] = addrspacecast <8 x ptr addrspace(4)> %generic_v_ptrs.tagged to <8 x ptr addrspace(1)>
+  ; CHECK-OPAQUE-PTRS: %val.global = call <8 x float> @llvm.masked.gather.v8f32.v8p1(<8 x ptr addrspace(1)> %[[GT_V8P4_2_V8P1:[^ ]+]], i32 4, <8 x i1> %[[GT_GLOBAL_MASK:[^ ]+]], <8 x float> %val.local)
 
   %val = call <8 x float> @llvm.masked.gather.v8f32.v8p4f32(<8 x float addrspace(4)*> %generic_v_ptrs, i32 4, <8 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>, <8 x float> undef)
 
-  ; CHECK: %[[SC_V8P4_2_V8I64:[^ ]+]] = ptrtoint <8 x float addrspace(4)*> %generic_v_ptrs.tagged to <8 x i64>
+  ; CHECK-TYPED-PTRS: %[[SC_V8P4_2_V8I64:[^ ]+]] = ptrtoint <8 x float addrspace(4)*> %generic_v_ptrs.tagged to <8 x i64>
+  ; CHECK-OPAQUE-PTRS: %[[SC_V8P4_2_V8I64:[^ ]+]] = ptrtoint <8 x ptr addrspace(4)> %generic_v_ptrs.tagged to <8 x i64>
   ; CHECK: %[[SC_V8P4_2_V16I32:[^ ]+]] = bitcast <8 x i64> %[[SC_V8P4_2_V8I64:[^ ]+]] to <16 x i32>
   ; CHECK: %[[SC_V8P4_HIGH32:[^ ]+]] = call <8 x i32> @llvm.genx.rdregioni.v8i32.v16i32.i16(<16 x i32> %[[SC_V8P4_2_V16I32:[^ ]+]], i32 2, i32 1, i32 0, i16 4, i32 undef)
   ; CHECK: %[[SC_ISLOCAL:[^ ]+]] = icmp eq <8 x i32> %[[SC_V8P4_HIGH32:[^ ]+]], <i32 1073741824, i32 1073741824, i32 1073741824, i32 1073741824, i32 1073741824, i32 1073741824, i32 1073741824, i32 1073741824>
   ; CHECK: %[[SC_ISGLOBAL:[^ ]+]] = xor <8 x i1> %[[SC_ISLOCAL:[^ ]+]], <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>
 
   ; CHECK: %[[SCATTER_LOCAL_MASK:[^ ]+]] = and <8 x i1> %[[SC_ISLOCAL:[^ ]+]], <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>
-  ; CHECK: %[[SC_V8P4_2_V8P3:[^ ]+]] = addrspacecast <8 x float addrspace(4)*> %generic_v_ptrs.tagged to <8 x float addrspace(3)*>
-  ; CHECK: call void @llvm.masked.scatter.v8f32.v8p3f32(<8 x float> %val.global, <8 x float addrspace(3)*> %[[SC_V8P4_2_V8P3:[^ ]+]], i32 4, <8 x i1> %[[SCATTER_LOCAL_MASK:[^ ]+]])
+  ; CHECK-TYPED-PTRS: %[[SC_V8P4_2_V8P3:[^ ]+]] = addrspacecast <8 x float addrspace(4)*> %generic_v_ptrs.tagged to <8 x float addrspace(3)*>
+  ; CHECK-TYPED-PTRS: call void @llvm.masked.scatter.v8f32.v8p3f32(<8 x float> %val.global, <8 x float addrspace(3)*> %[[SC_V8P4_2_V8P3:[^ ]+]], i32 4, <8 x i1> %[[SCATTER_LOCAL_MASK:[^ ]+]])
+  ; CHECK-OPAQUE-PTRS: %[[SC_V8P4_2_V8P3:[^ ]+]] = addrspacecast <8 x ptr addrspace(4)> %generic_v_ptrs.tagged to <8 x ptr addrspace(3)>
+  ; CHECK-OPAQUE-PTRS: call void @llvm.masked.scatter.v8f32.v8p3(<8 x float> %val.global, <8 x ptr addrspace(3)> %[[SC_V8P4_2_V8P3:[^ ]+]], i32 4, <8 x i1> %[[SCATTER_LOCAL_MASK:[^ ]+]])
 
   ; CHECK: %[[SC_GLOBAL_MASK:[^ ]+]] = and <8 x i1> %[[SC_ISGLOBAL:[^ ]+]], <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>
-  ; CHECK: %[[SC_V8P4_2_V8P1:[^ ]+]] = addrspacecast <8 x float addrspace(4)*> %generic_v_ptrs.tagged to <8 x float addrspace(1)*>
-  ; CHECK: call void @llvm.masked.scatter.v8f32.v8p1f32(<8 x float> %val.global, <8 x float addrspace(1)*> %[[SC_V8P4_2_V8P1:[^ ]+]], i32 4, <8 x i1> %[[SC_GLOBAL_MASK:[^ ]+]])
+  ; CHECK-TYPED-PTRS: %[[SC_V8P4_2_V8P1:[^ ]+]] = addrspacecast <8 x float addrspace(4)*> %generic_v_ptrs.tagged to <8 x float addrspace(1)*>
+  ; CHECK-TYPED-PTRS: call void @llvm.masked.scatter.v8f32.v8p1f32(<8 x float> %val.global, <8 x float addrspace(1)*> %[[SC_V8P4_2_V8P1:[^ ]+]], i32 4, <8 x i1> %[[SC_GLOBAL_MASK:[^ ]+]])
+  ; CHECK-OPAQUE-PTRS: %[[SC_V8P4_2_V8P1:[^ ]+]] = addrspacecast <8 x ptr addrspace(4)> %generic_v_ptrs.tagged to <8 x ptr addrspace(1)>
+  ; CHECK-OPAQUE-PTRS: call void @llvm.masked.scatter.v8f32.v8p1(<8 x float> %val.global, <8 x ptr addrspace(1)> %[[SC_V8P4_2_V8P1:[^ ]+]], i32 4, <8 x i1> %[[SC_GLOBAL_MASK:[^ ]+]])
   call void @llvm.masked.scatter.v8f32.v8p4f32(<8 x float> %val, <8 x float addrspace(4)*> %generic_v_ptrs, i32 4, <8 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>)
   ret void
 }
@@ -57,12 +70,16 @@ define spir_kernel void @kernelA(<8 x float addrspace(3)*> %local_v_ptrs) #0 {
 define dllexport spir_kernel void @kernelB(<8 x float addrspace(1)*> %global_v_ptrs) #0 {
   %generic_v_ptrs = addrspacecast <8 x float addrspace(1)*> %global_v_ptrs to <8 x float addrspace(4)*>
 
-  ; CHECK: %[[GLOBAL_V_PTR_GATHER:[^ ]+]] = addrspacecast <8 x float addrspace(4)*> %generic_v_ptrs to <8 x float addrspace(1)*>
-  ; CHECK: %[[VAL:[^ ]+]] = call <8 x float> @llvm.masked.gather.v8f32.v8p1f32(<8 x float addrspace(1)*> %[[GLOBAL_V_PTR_GATHER:[^ ]+]], i32 4, <8 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>, <8 x float> undef)
+  ; CHECK-TYPED-PTRS: %[[GLOBAL_V_PTR_GATHER:[^ ]+]] = addrspacecast <8 x float addrspace(4)*> %generic_v_ptrs to <8 x float addrspace(1)*>
+  ; CHECK-TYPED-PTRS: %[[VAL:[^ ]+]] = call <8 x float> @llvm.masked.gather.v8f32.v8p1f32(<8 x float addrspace(1)*> %[[GLOBAL_V_PTR_GATHER:[^ ]+]], i32 4, <8 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>, <8 x float> undef)
+  ; CHECK-OPAQUE-PTRS: %[[GLOBAL_V_PTR_GATHER:[^ ]+]] = addrspacecast <8 x ptr addrspace(4)> %generic_v_ptrs to <8 x ptr addrspace(1)>
+  ; CHECK-OPAQUE-PTRS: %[[VAL:[^ ]+]] = call <8 x float> @llvm.masked.gather.v8f32.v8p1(<8 x ptr addrspace(1)> %[[GLOBAL_V_PTR_GATHER:[^ ]+]], i32 4, <8 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>, <8 x float> undef)
   %val = call <8 x float> @llvm.masked.gather.v8f32.v8p4f32(<8 x float addrspace(4)*> %generic_v_ptrs, i32 4, <8 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>, <8 x float> undef)
 
-  ; CHECK: %[[GLOBAL_V_PTR_SCATTER:[^ ]+]] = addrspacecast <8 x float addrspace(4)*> %generic_v_ptrs to <8 x float addrspace(1)*>
-  ; CHECK: call void @llvm.masked.scatter.v8f32.v8p1f32(<8 x float> %[[VAL:[^ ]+]], <8 x float addrspace(1)*> %[[GLOBAL_V_PTR_SCATTER:[^ ]+]], i32 4, <8 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>)
+  ; CHECK-TYPED-PTRS: %[[GLOBAL_V_PTR_SCATTER:[^ ]+]] = addrspacecast <8 x float addrspace(4)*> %generic_v_ptrs to <8 x float addrspace(1)*>
+  ; CHECK-TYPED-PTRS: call void @llvm.masked.scatter.v8f32.v8p1f32(<8 x float> %[[VAL:[^ ]+]], <8 x float addrspace(1)*> %[[GLOBAL_V_PTR_SCATTER:[^ ]+]], i32 4, <8 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>)
+  ; CHECK-OPAQUE-PTRS: %[[GLOBAL_V_PTR_SCATTER:[^ ]+]] = addrspacecast <8 x ptr addrspace(4)> %generic_v_ptrs to <8 x ptr addrspace(1)>
+  ; CHECK-OPAQUE-PTRS: call void @llvm.masked.scatter.v8f32.v8p1(<8 x float> %[[VAL:[^ ]+]], <8 x ptr addrspace(1)> %[[GLOBAL_V_PTR_SCATTER:[^ ]+]], i32 4, <8 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>)
   call void @llvm.masked.scatter.v8f32.v8p4f32(<8 x float> %val, <8 x float addrspace(4)*> %generic_v_ptrs, i32 4, <8 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>)
   ret void
 }

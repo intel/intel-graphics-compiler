@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2023 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -cmkernelargoffset -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -cmkernelargoffset -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -cmkernelargoffset -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
 target triple = "spir64-unknown-unknown"
@@ -17,8 +18,10 @@ target triple = "spir64-unknown-unknown"
 ; COM: Find the kernel definition
 ; CHECK: define dllexport [[FTYPE:void]] @[[FNAME:foo]]
 ; COM: Explicit arguments. The first argument must be byval svmptr_t
-; CHECK-SAME: [[STRUCT]]* byval(%struct.state) %_arg_
-; CHECK-SAME: [[EXPARG2:i32 addrspace\(1\)\*]] %_arg_1
+; CHECK-TYPED-PTRS-SAME: [[STRUCT]]* byval(%struct.state) %_arg_
+; CHECK-TYPED-PTRS-SAME: [[EXPARG2:i32 addrspace\(1\)\*]] %_arg_1
+; CHECK-OPAQUE-PTRS-SAME: ptr byval(%struct.state) %_arg_
+; CHECK-OPAQUE-PTRS-SAME: ptr addrspace(1) %_arg_1
 ; COM: Private base
 ; CHECK-SAME: [[PRIVBASE:i64]]
 ; COM: Implicit linearization of %_arg_
@@ -33,23 +36,31 @@ entry:
 ; COM: Check linearization transformation.
 ; COM: [[STRUCT]] allocation.
 ; CHECK: [[ALLOCA:%_arg_.linearization]] = alloca [[STRUCT]]
-; CHECK: [[I8P:%_arg_.linearization.i8]] = bitcast [[STRUCT]]* [[ALLOCA]] to i8*
+; CHECK-TYPED-PTRS: [[I8P:%_arg_.linearization.i8]] = bitcast [[STRUCT]]* [[ALLOCA]] to i8*
 ;
 ; COM: The first linearization arg has i8 type, so it must be stored as-is in the right position
-; CHECK: [[LIN1POS:%0]] = getelementptr i8, i8* [[I8P]], i32 [[LIN1OFF:0]]
-; CHECK: store [[IMPLIN1]] [[LIN1NAME]], [[IMPLIN1]]* [[LIN1POS]]
+; CHECK-TYPED-PTRS: [[LIN1POS:%0]] = getelementptr i8, i8* [[I8P]], i32 [[LIN1OFF:0]]
+; CHECK-TYPED-PTRS: store [[IMPLIN1]] [[LIN1NAME]], [[IMPLIN1]]* [[LIN1POS]]
+; CHECK-OPAQUE-PTRS: [[LIN1POS:%0]] = getelementptr i8, ptr [[ALLOCA]], i32 [[LIN1OFF:0]]
+; CHECK-OPAQUE-PTRS: store [[IMPLIN1]] [[LIN1NAME]], ptr [[LIN1POS]]
 ;
 ; COM: All the next linearization arguments
 ; COM: The check-count-4 itselt is confusing, but it checks the following sequence (additionally checking types correctness):
 ;   %1 = getelementptr i8, i8* %_arg_.linearization.i8, i32 4
 ;   %2 = bitcast i8* %1 to i32*
 ;   store i32 %__arg_lin__arg_.4, i32* %2
-; CHECK-COUNT-4: [[POS:%[0-9]+]] = getelementptr {{.+}}[[I8P]]{{.+[[:space:]]+}}[[CAST:%[0-9]+]] = bitcast i8* [[POS]] to [[LINTY:[[:alnum:]]+]]*{{[[:space:]]+}}store [[LINTY]]{{.+}} [[LINTY]]* [[CAST]]
+; CHECK-TYPED-PTRS-COUNT-4: [[POS:%[0-9]+]] = getelementptr {{.+}}[[I8P]]{{.+[[:space:]]+}}[[CAST:%[0-9]+]] = bitcast i8* [[POS]] to [[LINTY:[[:alnum:]]+]]*{{[[:space:]]+}}store [[LINTY]]{{.+}} [[LINTY]]* [[CAST]]
+; CHECK-OPAQUE-PTRS-COUNT-3: [[POS:%[0-9]+]] = getelementptr i8, ptr [[ALLOCA]]{{.+[[:space:]]+}}store i32 {{.+}}, ptr [[POS]]
+; CHECK-OPAQUE-PTRS-NEXT: [[LIN5POS:%[0-9]+]] = getelementptr i8, ptr [[ALLOCA]]
+; CHECK-OPAQUE-PTRS-NEXT: store float {{.+}}, ptr [[LIN5POS]]
 ;
 ; COM: Uses of the linearized %_arg_ must be replaced with ALLOCA
-; CHECK: %.sroa.0.0..sroa_idx = getelementptr inbounds %struct.state, %struct.state* [[ALLOCA]], i64 0, i32 0
-; CHECK: %.sroa.44.0..sroa_idx = getelementptr inbounds %struct.state, %struct.state* [[ALLOCA]], i64 0, i32 1, i64 1
-; CHECK: %.sroa.57.0..sroa_idx = getelementptr inbounds %struct.state, %struct.state* [[ALLOCA]], i64 0, i32 2
+; CHECK-TYPED-PTRS: %.sroa.0.0..sroa_idx = getelementptr inbounds %struct.state, %struct.state* [[ALLOCA]], i64 0, i32 0
+; CHECK-TYPED-PTRS: %.sroa.44.0..sroa_idx = getelementptr inbounds %struct.state, %struct.state* [[ALLOCA]], i64 0, i32 1, i64 1
+; CHECK-TYPED-PTRS: %.sroa.57.0..sroa_idx = getelementptr inbounds %struct.state, %struct.state* [[ALLOCA]], i64 0, i32 2
+; CHECK-OPAQUE-PTRS: %.sroa.0.0..sroa_idx = getelementptr inbounds %struct.state, ptr [[ALLOCA]], i64 0, i32 0
+; CHECK-OPAQUE-PTRS: %.sroa.44.0..sroa_idx = getelementptr inbounds %struct.state, ptr [[ALLOCA]], i64 0, i32 1, i64 1
+; CHECK-OPAQUE-PTRS: %.sroa.57.0..sroa_idx = getelementptr inbounds %struct.state, ptr [[ALLOCA]], i64 0, i32 2
     %.sroa.0.0..sroa_idx = getelementptr inbounds %struct.state, %struct.state* %_arg_, i64 0, i32 0
     %.sroa.0.0.copyload = load i8, i8* %.sroa.0.0..sroa_idx, align 4
     %.sroa.44.0..sroa_idx = getelementptr inbounds %struct.state, %struct.state* %_arg_, i64 0, i32 1, i64 1
@@ -89,7 +100,8 @@ attributes #0 = { nounwind "CMGenxMain" "oclrt"="1" }
 !8 = !{!"svmptr_t", !"svmptr_t"}
 !9 = !{void (%struct.state*, i32 addrspace(1)*, i64, i8, i32, i32, i32, float)* @foo, null, null, !10, null}
 ; COM: Check OffsetInArgs and ArgIndexes
-; CHECK: [[INTERNAL]] = !{[[FTYPE]] ([[STRUCT]]*, [[EXPARG2]], [[PRIVBASE]], [[IMPLIN1]], [[IMPLIN2]], [[IMPLIN3]], [[IMPLIN4]], [[IMPLIN5]])* @[[FNAME]], [[OFFSETINARGS:![0-9]+]], [[ARGINDEXES:![0-9]+]], [[LINMD:![0-9]+]], null}
+; CHECK-TYPED-PTRS: [[INTERNAL]] = !{[[FTYPE]] ([[STRUCT]]*, [[EXPARG2]], [[PRIVBASE]], [[IMPLIN1]], [[IMPLIN2]], [[IMPLIN3]], [[IMPLIN4]], [[IMPLIN5]])* @[[FNAME]], [[OFFSETINARGS:![0-9]+]], [[ARGINDEXES:![0-9]+]], [[LINMD:![0-9]+]], null}
+; CHECK-OPAQUE-PTRS: [[INTERNAL]] = !{ptr @[[FNAME]], [[OFFSETINARGS:![0-9]+]], [[ARGINDEXES:![0-9]+]], [[LINMD:![0-9]+]], null}
 ; CHECK: [[OFFSETINARGS]] = !{i32 0, i32 0, i32 0, i32 0, i32 4, i32 8, i32 12, i32 16}
 ; CHECK: [[ARGINDEXES]] = !{i32 0, i32 1, i32 2, i32 0, i32 0, i32 0, i32 0, i32 0}
 !10 = !{!11}

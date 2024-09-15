@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2023 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: %opt %use_old_pass_manager% -GenXGASDynamicResolution -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXGASDynamicResolution -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXGASDynamicResolution -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 ;
 ; This test verifies whether optimization which allows to avoid additional control flow
 ; generation is blocked when a kernel calls a function indirectly. In such case, we don't
@@ -25,19 +26,24 @@ define spir_kernel void @kernel(i32 addrspace(1)* %global_buffer) #0 {
   call spir_func void %f(i32 addrspace(4)* %generic_ptr)
 
   store i32 5, i32 addrspace(4)* %generic_ptr, align 4
-  ; CHECK: %[[P4I32_TO_I64:.*]] = ptrtoint i32 addrspace(4)* %generic_ptr to i64
+  ; CHECK-TYPED-PTRS: %[[P4I32_TO_I64:.*]] = ptrtoint i32 addrspace(4)* %generic_ptr to i64
+  ; CHECK-OPAQUE-PTRS: %[[P4I32_TO_I64:.*]] = ptrtoint ptr addrspace(4) %generic_ptr to i64
   ; CHECK: %[[I64_TO_V2I32:.*]] = bitcast i64 %[[P4I32_TO_I64:.*]] to <2 x i32>
   ; CHECK: %[[TAG:.*]] = extractelement <2 x i32> %[[I64_TO_V2I32:.*]], i64 1
   ; CHECK: %isLocalTag = icmp eq i32 %[[TAG:.*]], 1073741824
   ; CHECK: br i1 %isLocalTag, label %LocalBlock, label %GlobalBlock
 
   ; CHECK: LocalBlock:
-  ; CHECK:   %[[LOCAL_PTR:.*]] = addrspacecast i32 addrspace(4)* %generic_ptr to i32 addrspace(3)*
-  ; CHECK:   store i32 5, i32 addrspace(3)* %[[LOCAL_PTR]], align 4
+  ; CHECK-TYPED-PTRS: %[[LOCAL_PTR:.*]] = addrspacecast i32 addrspace(4)* %generic_ptr to i32 addrspace(3)*
+  ; CHECK-TYPED-PTRS: store i32 5, i32 addrspace(3)* %[[LOCAL_PTR]], align 4
+  ; CHECK-OPAQUE-PTRS: %[[LOCAL_PTR:.*]] = addrspacecast ptr addrspace(4) %generic_ptr to ptr addrspace(3)
+  ; CHECK-OPAQUE-PTRS: store i32 5, ptr addrspace(3) %[[LOCAL_PTR]], align 4
 
   ; CHECK: GlobalBlock:
-  ; CHECK:   %[[GLOBAL_PTR:.*]] = addrspacecast i32 addrspace(4)* %generic_ptr to i32 addrspace(1)*
-  ; CHECK:   store i32 5, i32 addrspace(1)* %[[GLOBAL_PTR]], align 4
+  ; CHECK-TYPED-PTRS: %[[GLOBAL_PTR:.*]] = addrspacecast i32 addrspace(4)* %generic_ptr to i32 addrspace(1)*
+  ; CHECK-TYPED-PTRS: store i32 5, i32 addrspace(1)* %[[GLOBAL_PTR]], align 4
+  ; CHECK-OPAQUE-PTRS: %[[GLOBAL_PTR:.*]] = addrspacecast ptr addrspace(4) %generic_ptr to ptr addrspace(1)
+  ; CHECK-OPAQUE-PTRS: store i32 5, ptr addrspace(1) %[[GLOBAL_PTR]], align 4
   ret void
 }
 

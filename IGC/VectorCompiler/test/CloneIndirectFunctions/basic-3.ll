@@ -1,19 +1,21 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXCloneIndirectFunctions -vc-enable-clone-indirect-functions=true -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXCloneIndirectFunctions -vc-enable-clone-indirect-functions=true -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXCloneIndirectFunctions -vc-enable-clone-indirect-functions=true -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 
 ; COM: direct with internal linkage type
 ; CHECK: define internal spir_func void @foo
 ; CHECK-SAME: #[[IndirectAttrs:[0-9]]]
-; CHECK-NEXT: %vec.ref.ld = load <8 x i32>, <8 x i32>* %vec.ref
+; CHECK-TYPED-PTRS-NEXT: %vec.ref.ld = load <8 x i32>, <8 x i32>* %vec.ref
+; CHECK-OPAQUE-PTRS-NEXT: %vec.ref.ld = load <8 x i32>, ptr %vec.ref
 ; CHECK-NEXT: ret void
 
 define internal spir_func void @foo(<8 x i32>* %vec.ref) {
@@ -34,7 +36,8 @@ define dllexport void @kernel() {
 
 ; COM: indirect with internal linkage type (as originaly foo was internal)
 ; CHECK: define internal spir_func void @foo_direct
-; CHECK-NEXT: %vec.ref.ld = load <8 x i32>, <8 x i32>* %vec.ref
+; CHECK-TYPED-PTRS-NEXT: %vec.ref.ld = load <8 x i32>, <8 x i32>* %vec.ref
+; CHECK-OPAQUE-PTRS-NEXT: %vec.ref.ld = load <8 x i32>, ptr %vec.ref
 ; CHECK-NEXT: ret void
 
 ; CHECK: attributes #[[IndirectAttrs]] = { "CMStackCall" }

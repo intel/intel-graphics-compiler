@@ -453,8 +453,9 @@ static std::string getMangledTypeStr(Type *Ty) {
     return Result;
 
   if (PointerType *PTyp = dyn_cast<PointerType>(Ty)) {
-    Result += "p" + utostr(PTyp->getAddressSpace()) +
-              getMangledTypeStr(IGCLLVM::getNonOpaquePtrEltTy(PTyp));
+    Result += "p" + utostr(PTyp->getAddressSpace());
+    if (!PTyp->isOpaque())
+      Result += getMangledTypeStr(IGCLLVM::getNonOpaquePtrEltTy(PTyp));
   } else if (ArrayType *ATyp = dyn_cast<ArrayType>(Ty)) {
     Result += "a" + utostr(ATyp->getNumElements()) +
               getMangledTypeStr(ATyp->getElementType());

@@ -1,19 +1,23 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2023 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -cmimpparam \
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -cmimpparam \
 ; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
-; RUN: -S < %s | FileCheck %s
+; RUN: -S < %s | FileCheck %s --check-prefix=CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -cmimpparam \
+; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
+; RUN: -S < %s | FileCheck %s --check-prefix=CHECK-OPAQUE-PTRS
 
 ; Test case #1
 ; Ensures that when we replace intrinsics with a read from a global location
 ; is preserved
-; CHECK: <3 x i16>* @__imparg_llvm.genx.local.id16{{(, align 1)?}}, !dbg
+; CHECK-TYPED-PTRS: <3 x i16>* @__imparg_llvm.genx.local.id16{{(, align 1)?}}, !dbg
+; CHECK-OPAQUE-PTRS: ptr @__imparg_llvm.genx.local.id16{{(, align 1)?}}, !dbg
 define dllexport spir_kernel void @test_implicit_line() #0 !dbg !6 {
   %1 = call <3 x i32> @llvm.genx.local.id.v3i32(), !dbg !5
   ret void

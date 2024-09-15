@@ -1,15 +1,19 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2023 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -cmimpparam -march=genx64 -mcpu=XeHP -S < %s \
-; RUN:    | FileCheck --check-prefix=XeHP-OCL %s
-; RUN: %opt %use_old_pass_manager% -cmimpparam -cmimpparam-payload-in-memory=false \
-; RUN:    -march=genx64 -mcpu=Gen9 -S < %s | FileCheck --check-prefix=Gen9-OCL %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -cmimpparam -march=genx64 -mcpu=XeHP -S < %s \
+; RUN:    | FileCheck %s --check-prefixes=XeHP-OCL,XeHP-OCL-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -cmimpparam -march=genx64 -mcpu=XeHP -S < %s \
+; RUN:    | FileCheck %s --check-prefixes=XeHP-OCL,XeHP-OCL-OPAQUE-PTRS
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -cmimpparam -cmimpparam-payload-in-memory=false \
+; RUN:    -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=Gen9-OCL,Gen9-OCL-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -cmimpparam -cmimpparam-payload-in-memory=false \
+; RUN:    -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=Gen9-OCL,Gen9-OCL-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
 target triple = "spir64-unknown-unknown"
@@ -59,7 +63,8 @@ define dllexport spir_kernel void @kernel() {
 ; Gen9-OCL-NOT: <3 x i32> %impl.arg.llvm.genx.group.count
 ; Gen9-OCL-DAG: i64 %impl.arg.impl.args.buffer
 ; Gen9-OCL-SAME: ) #[[KERNEL_ATTR:[0-9]+]]
-; Gen9-OCL-NEXT: call void @llvm.vc.internal.write.variable.region.p0i64.i64.i1(i64* @llvm.vc.predef.var.impl.args.buf, i64 %impl.arg.impl.args.buffer, i32 1, i32 0, i1 true)
+; Gen9-OCL-TYPED-PTRS-NEXT: call void @llvm.vc.internal.write.variable.region.p0i64.i64.i1(i64* @llvm.vc.predef.var.impl.args.buf, i64 %impl.arg.impl.args.buffer, i32 1, i32 0, i1 true)
+; Gen9-OCL-OPAQUE-PTRS-NEXT: call void @llvm.vc.internal.write.variable.region.p0.i64.i1(ptr @llvm.vc.predef.var.impl.args.buf, i64 %impl.arg.impl.args.buffer, i32 1, i32 0, i1 true)
   call spir_func void @with_printf()
   call spir_func void @with_local_size()
   call spir_func void @with_group_count()
@@ -74,25 +79,36 @@ define spir_func void @with_printf() {
 ; COM: Next 3 instructions obtain implicit args buffer (IAB) pointer:
 ; XeHP-OCL: %[[PRINTF_R0:[^ ]+]] = call i32 @llvm.genx.r0.i32()
 ; XeHP-OCL: %[[PRINTF_IAB_PTR_INT:[^ ]+]] = and i32 %[[PRINTF_R0]], -64
-; XeHP-OCL: %[[PRINTF_IAB_PTR:[^ ]+]] = inttoptr i32 %[[PRINTF_IAB_PTR_INT]] to %vc.implicit.args.buf.type addrspace(6)*
+; XeHP-OCL-TYPED-PTRS: %[[PRINTF_IAB_PTR:[^ ]+]] = inttoptr i32 %[[PRINTF_IAB_PTR_INT]] to %vc.implicit.args.buf.type addrspace(6)*
+; XeHP-OCL-OPAQUE-PTRS: %[[PRINTF_IAB_PTR:[^ ]+]] = inttoptr i32 %[[PRINTF_IAB_PTR_INT]] to ptr addrspace(6)
 
 ; COM: Next 2 instructions obtain implicit args buffer (IAB) pointer:
-; Gen9-OCL: %[[PRINTF_IAB_PTR_INT:[^ ]+]] = call i64 @llvm.vc.internal.read.variable.region.i64.p0i64(i64* @llvm.vc.predef.var.impl.args.buf, i32 0, i32 1, i32 1, i32 0)
-; Gen9-OCL: %[[PRINTF_IAB_PTR:[^ ]+]] = inttoptr i64 %[[PRINTF_IAB_PTR_INT]] to %vc.implicit.args.buf.type addrspace(1)*
+; Gen9-OCL-TYPED-PTRS: %[[PRINTF_IAB_PTR_INT:[^ ]+]] = call i64 @llvm.vc.internal.read.variable.region.i64.p0i64(i64* @llvm.vc.predef.var.impl.args.buf, i32 0, i32 1, i32 1, i32 0)
+; Gen9-OCL-TYPED-PTRS: %[[PRINTF_IAB_PTR:[^ ]+]] = inttoptr i64 %[[PRINTF_IAB_PTR_INT]] to %vc.implicit.args.buf.type addrspace(1)*
+; Gen9-OCL-OPAQUE-PTRS: %[[PRINTF_IAB_PTR_INT:[^ ]+]] = call i64 @llvm.vc.internal.read.variable.region.i64.p0(ptr @llvm.vc.predef.var.impl.args.buf, i32 0, i32 1, i32 1, i32 0)
+; Gen9-OCL-OPAQUE-PTRS: %[[PRINTF_IAB_PTR:[^ ]+]] = inttoptr i64 %[[PRINTF_IAB_PTR_INT]] to ptr addrspace(1)
 
 ; COM: Loading printf buffer ptr from IAB and storing it to implict arg global:
-; XeHP-OCL: %[[PRINTF_PBP_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(6)* %[[PRINTF_IAB_PTR]], i32 0, i32 10
-; XeHP-OCL: %[[PRINTF_PBP:[^ ]+]] = load i64, i64 addrspace(6)* %[[PRINTF_PBP_PTR]]
-; XeHP-OCL: store i64 %[[PRINTF_PBP]], i64* @__imparg_llvm.vc.internal.print.buffer
+; XeHP-OCL-TYPED-PTRS: %[[PRINTF_PBP_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(6)* %[[PRINTF_IAB_PTR]], i32 0, i32 10
+; XeHP-OCL-TYPED-PTRS: %[[PRINTF_PBP:[^ ]+]] = load i64, i64 addrspace(6)* %[[PRINTF_PBP_PTR]]
+; XeHP-OCL-TYPED-PTRS: store i64 %[[PRINTF_PBP]], i64* @__imparg_llvm.vc.internal.print.buffer
+; XeHP-OCL-OPAQUE-PTRS: %[[PRINTF_PBP_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, ptr addrspace(6) %[[PRINTF_IAB_PTR]], i32 0, i32 10
+; XeHP-OCL-OPAQUE-PTRS: %[[PRINTF_PBP:[^ ]+]] = load i64, ptr addrspace(6) %[[PRINTF_PBP_PTR]]
+; XeHP-OCL-OPAQUE-PTRS: store i64 %[[PRINTF_PBP]], ptr @__imparg_llvm.vc.internal.print.buffer
 
 ; COM: Loading printf buffer ptr from IAB and storing it to implict arg global:
-; Gen9-OCL: %[[PRINTF_PBP_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(1)* %[[PRINTF_IAB_PTR]], i32 0, i32 10
-; Gen9-OCL: %[[PRINTF_PBP:[^ ]+]] = load i64, i64 addrspace(1)* %[[PRINTF_PBP_PTR]]
-; Gen9-OCL: store i64 %[[PRINTF_PBP]], i64* @__imparg_llvm.vc.internal.print.buffer
+; Gen9-OCL-TYPED-PTRS: %[[PRINTF_PBP_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(1)* %[[PRINTF_IAB_PTR]], i32 0, i32 10
+; Gen9-OCL-TYPED-PTRS: %[[PRINTF_PBP:[^ ]+]] = load i64, i64 addrspace(1)* %[[PRINTF_PBP_PTR]]
+; Gen9-OCL-TYPED-PTRS: store i64 %[[PRINTF_PBP]], i64* @__imparg_llvm.vc.internal.print.buffer
+; Gen9-OCL-OPAQUE-PTRS: %[[PRINTF_PBP_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, ptr addrspace(1) %[[PRINTF_IAB_PTR]], i32 0, i32 10
+; Gen9-OCL-OPAQUE-PTRS: %[[PRINTF_PBP:[^ ]+]] = load i64, ptr addrspace(1) %[[PRINTF_PBP_PTR]]
+; Gen9-OCL-OPAQUE-PTRS: store i64 %[[PRINTF_PBP]], ptr @__imparg_llvm.vc.internal.print.buffer
 
   %wp.print = call i64 @llvm.vc.internal.print.buffer()
-; XeHP-OCL: %wp.print = load i64, i64* @__imparg_llvm.vc.internal.print.buffer
-; Gen9-OCL:  %wp.print = load i64, i64* @__imparg_llvm.vc.internal.print.buffer
+; XeHP-OCL-TYPED-PTRS: %wp.print = load i64, i64* @__imparg_llvm.vc.internal.print.buffer
+; Gen9-OCL-TYPED-PTRS: %wp.print = load i64, i64* @__imparg_llvm.vc.internal.print.buffer
+; XeHP-OCL-OPAQUE-PTRS: %wp.print = load i64, ptr @__imparg_llvm.vc.internal.print.buffer
+; Gen9-OCL-OPAQUE-PTRS: %wp.print = load i64, ptr @__imparg_llvm.vc.internal.print.buffer
   ret void
 }
 
@@ -103,34 +119,53 @@ define spir_func void @with_local_size() {
 
 ; XeHP-OCL: %[[LOCSZ_R0:[^ ]+]] = call i32 @llvm.genx.r0.i32()
 ; XeHP-OCL: %[[LOCSZ_IAB_PTR_INT:[^ ]+]] = and i32 %[[LOCSZ_R0]], -64
-; XeHP-OCL: %[[LOCSZ_IAB_PTR:[^ ]+]] = inttoptr i32 %[[LOCSZ_IAB_PTR_INT]] to %vc.implicit.args.buf.type addrspace(6)*
-; XeHP-OCL-DAG: %[[LOCSZ_LSZ_X_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(6)* %[[LOCSZ_IAB_PTR]], i32 0, i32 4
-; XeHP-OCL-DAG: %[[LOCSZ_LSZ_X:[^ ]+]] = load i32, i32 addrspace(6)* %[[LOCSZ_LSZ_X_PTR]]
-; XeHP-OCL-DAG: %[[LOCSZ_LSZ_Y_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(6)* %[[LOCSZ_IAB_PTR]], i32 0, i32 5
-; XeHP-OCL-DAG: %[[LOCSZ_LSZ_Y:[^ ]+]] = load i32, i32 addrspace(6)* %[[LOCSZ_LSZ_Y_PTR]]
-; XeHP-OCL-DAG: %[[LOCSZ_LSZ_Z_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(6)* %[[LOCSZ_IAB_PTR]], i32 0, i32 6
-; XeHP-OCL-DAG: %[[LOCSZ_LSZ_Z:[^ ]+]] = load i32, i32 addrspace(6)* %[[LOCSZ_LSZ_Z_PTR]]
+; XeHP-OCL-TYPED-PTRS: %[[LOCSZ_IAB_PTR:[^ ]+]] = inttoptr i32 %[[LOCSZ_IAB_PTR_INT]] to %vc.implicit.args.buf.type addrspace(6)*
+; XeHP-OCL-TYPED-PTRS-DAG: %[[LOCSZ_LSZ_X_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(6)* %[[LOCSZ_IAB_PTR]], i32 0, i32 4
+; XeHP-OCL-TYPED-PTRS-DAG: %[[LOCSZ_LSZ_X:[^ ]+]] = load i32, i32 addrspace(6)* %[[LOCSZ_LSZ_X_PTR]]
+; XeHP-OCL-TYPED-PTRS-DAG: %[[LOCSZ_LSZ_Y_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(6)* %[[LOCSZ_IAB_PTR]], i32 0, i32 5
+; XeHP-OCL-TYPED-PTRS-DAG: %[[LOCSZ_LSZ_Y:[^ ]+]] = load i32, i32 addrspace(6)* %[[LOCSZ_LSZ_Y_PTR]]
+; XeHP-OCL-TYPED-PTRS-DAG: %[[LOCSZ_LSZ_Z_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(6)* %[[LOCSZ_IAB_PTR]], i32 0, i32 6
+; XeHP-OCL-TYPED-PTRS-DAG: %[[LOCSZ_LSZ_Z:[^ ]+]] = load i32, i32 addrspace(6)* %[[LOCSZ_LSZ_Z_PTR]]
+; XeHP-OCL-OPAQUE-PTRS: %[[LOCSZ_IAB_PTR:[^ ]+]] = inttoptr i32 %[[LOCSZ_IAB_PTR_INT]] to ptr addrspace(6)
+; XeHP-OCL-OPAQUE-PTRS-DAG: %[[LOCSZ_LSZ_X_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, ptr addrspace(6) %[[LOCSZ_IAB_PTR]], i32 0, i32 4
+; XeHP-OCL-OPAQUE-PTRS-DAG: %[[LOCSZ_LSZ_X:[^ ]+]] = load i32, ptr addrspace(6) %[[LOCSZ_LSZ_X_PTR]]
+; XeHP-OCL-OPAQUE-PTRS-DAG: %[[LOCSZ_LSZ_Y_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, ptr addrspace(6) %[[LOCSZ_IAB_PTR]], i32 0, i32 5
+; XeHP-OCL-OPAQUE-PTRS-DAG: %[[LOCSZ_LSZ_Y:[^ ]+]] = load i32, ptr addrspace(6) %[[LOCSZ_LSZ_Y_PTR]]
+; XeHP-OCL-OPAQUE-PTRS-DAG: %[[LOCSZ_LSZ_Z_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, ptr addrspace(6) %[[LOCSZ_IAB_PTR]], i32 0, i32 6
+; XeHP-OCL-OPAQUE-PTRS-DAG: %[[LOCSZ_LSZ_Z:[^ ]+]] = load i32, ptr addrspace(6) %[[LOCSZ_LSZ_Z_PTR]]
 ; XeHP-OCL: %[[LOCSZ_LSZ_PART_0:[^ ]+]] = insertelement <3 x i32> undef, i32 %[[LOCSZ_LSZ_X]], i64 0
 ; XeHP-OCL: %[[LOCSZ_LSZ_PART_1:[^ ]+]] = insertelement <3 x i32> %[[LOCSZ_LSZ_PART_0]], i32 %[[LOCSZ_LSZ_Y]], i64 1
 ; XeHP-OCL: %[[LOCSZ_LSZ:[^ ]+]] = insertelement <3 x i32> %[[LOCSZ_LSZ_PART_1]], i32 %[[LOCSZ_LSZ_Z]], i64 2
-; XeHP-OCL: store <3 x i32> %[[LOCSZ_LSZ]], <3 x i32>* @__imparg_llvm.genx.local.size
+; XeHP-OCL-TYPED-PTRS: store <3 x i32> %[[LOCSZ_LSZ]], <3 x i32>* @__imparg_llvm.genx.local.size
+; XeHP-OCL-OPAQUE-PTRS: store <3 x i32> %[[LOCSZ_LSZ]], ptr @__imparg_llvm.genx.local.size
 
-; Gen9-OCL: %[[LOCSZ_IAB_PTR_INT:[^ ]+]] = call i64 @llvm.vc.internal.read.variable.region.i64.p0i64(i64* @llvm.vc.predef.var.impl.args.buf, i32 0, i32 1, i32 1, i32 0)
-; Gen9-OCL: %[[LOCSZ_IAB_PTR:[^ ]+]] = inttoptr i64 %[[PRINTF_IAB_PTR_INT]] to %vc.implicit.args.buf.type addrspace(1)*
-; Gen9-OCL-DAG: %[[LOCSZ_LSZ_X_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(1)* %[[LOCSZ_IAB_PTR]], i32 0, i32 4
-; Gen9-OCL-DAG: %[[LOCSZ_LSZ_X:[^ ]+]] = load i32, i32 addrspace(1)* %[[LOCSZ_LSZ_X_PTR]]
-; Gen9-OCL-DAG: %[[LOCSZ_LSZ_Y_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(1)* %[[LOCSZ_IAB_PTR]], i32 0, i32 5
-; Gen9-OCL-DAG: %[[LOCSZ_LSZ_Y:[^ ]+]] = load i32, i32 addrspace(1)* %[[LOCSZ_LSZ_Y_PTR]]
-; Gen9-OCL-DAG: %[[LOCSZ_LSZ_Z_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(1)* %[[LOCSZ_IAB_PTR]], i32 0, i32 6
-; Gen9-OCL-DAG: %[[LOCSZ_LSZ_Z:[^ ]+]] = load i32, i32 addrspace(1)* %[[LOCSZ_LSZ_Z_PTR]]
+; Gen9-OCL-TYPED-PTRS: %[[LOCSZ_IAB_PTR_INT:[^ ]+]] = call i64 @llvm.vc.internal.read.variable.region.i64.p0i64(i64* @llvm.vc.predef.var.impl.args.buf, i32 0, i32 1, i32 1, i32 0)
+; Gen9-OCL-TYPED-PTRS: %[[LOCSZ_IAB_PTR:[^ ]+]] = inttoptr i64 %[[PRINTF_IAB_PTR_INT]] to %vc.implicit.args.buf.type addrspace(1)*
+; Gen9-OCL-TYPED-PTRS-DAG: %[[LOCSZ_LSZ_X_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(1)* %[[LOCSZ_IAB_PTR]], i32 0, i32 4
+; Gen9-OCL-TYPED-PTRS-DAG: %[[LOCSZ_LSZ_X:[^ ]+]] = load i32, i32 addrspace(1)* %[[LOCSZ_LSZ_X_PTR]]
+; Gen9-OCL-TYPED-PTRS-DAG: %[[LOCSZ_LSZ_Y_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(1)* %[[LOCSZ_IAB_PTR]], i32 0, i32 5
+; Gen9-OCL-TYPED-PTRS-DAG: %[[LOCSZ_LSZ_Y:[^ ]+]] = load i32, i32 addrspace(1)* %[[LOCSZ_LSZ_Y_PTR]]
+; Gen9-OCL-TYPED-PTRS-DAG: %[[LOCSZ_LSZ_Z_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(1)* %[[LOCSZ_IAB_PTR]], i32 0, i32 6
+; Gen9-OCL-TYPED-PTRS-DAG: %[[LOCSZ_LSZ_Z:[^ ]+]] = load i32, i32 addrspace(1)* %[[LOCSZ_LSZ_Z_PTR]]
+; Gen9-OCL-OPAQUE-PTRS: %[[LOCSZ_IAB_PTR_INT:[^ ]+]] = call i64 @llvm.vc.internal.read.variable.region.i64.p0(ptr @llvm.vc.predef.var.impl.args.buf, i32 0, i32 1, i32 1, i32 0)
+; Gen9-OCL-OPAQUE-PTRS: %[[LOCSZ_IAB_PTR:[^ ]+]] = inttoptr i64 %[[PRINTF_IAB_PTR_INT]] to ptr addrspace(1)
+; Gen9-OCL-OPAQUE-PTRS-DAG: %[[LOCSZ_LSZ_X_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, ptr addrspace(1) %[[LOCSZ_IAB_PTR]], i32 0, i32 4
+; Gen9-OCL-OPAQUE-PTRS-DAG: %[[LOCSZ_LSZ_X:[^ ]+]] = load i32, ptr addrspace(1) %[[LOCSZ_LSZ_X_PTR]]
+; Gen9-OCL-OPAQUE-PTRS-DAG: %[[LOCSZ_LSZ_Y_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, ptr addrspace(1) %[[LOCSZ_IAB_PTR]], i32 0, i32 5
+; Gen9-OCL-OPAQUE-PTRS-DAG: %[[LOCSZ_LSZ_Y:[^ ]+]] = load i32, ptr addrspace(1) %[[LOCSZ_LSZ_Y_PTR]]
+; Gen9-OCL-OPAQUE-PTRS-DAG: %[[LOCSZ_LSZ_Z_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, ptr addrspace(1) %[[LOCSZ_IAB_PTR]], i32 0, i32 6
+; Gen9-OCL-OPAQUE-PTRS-DAG: %[[LOCSZ_LSZ_Z:[^ ]+]] = load i32, ptr addrspace(1) %[[LOCSZ_LSZ_Z_PTR]]
 ; Gen9-OCL: %[[LOCSZ_LSZ_PART_0:[^ ]+]] = insertelement <3 x i32> undef, i32 %[[LOCSZ_LSZ_X]], i64 0
 ; Gen9-OCL: %[[LOCSZ_LSZ_PART_1:[^ ]+]] = insertelement <3 x i32> %[[LOCSZ_LSZ_PART_0]], i32 %[[LOCSZ_LSZ_Y]], i64 1
 ; Gen9-OCL: %[[LOCSZ_LSZ:[^ ]+]] = insertelement <3 x i32> %[[LOCSZ_LSZ_PART_1]], i32 %[[LOCSZ_LSZ_Z]], i64 2
-; Gen9-OCL: store <3 x i32> %[[LOCSZ_LSZ]], <3 x i32>* @__imparg_llvm.genx.local.size
+; Gen9-OCL-TYPED-PTRS: store <3 x i32> %[[LOCSZ_LSZ]], <3 x i32>* @__imparg_llvm.genx.local.size
+; Gen9-OCL-OPAQUE-PTRS: store <3 x i32> %[[LOCSZ_LSZ]], ptr @__imparg_llvm.genx.local.size
 
   %wls.local.size = call <3 x i32> @llvm.genx.local.size.v3i32()
-; XeHP-OCL: %wls.local.size = load <3 x i32>, <3 x i32>* @__imparg_llvm.genx.local.size
-; Gen9-OCL:  %wls.local.size = load <3 x i32>, <3 x i32>* @__imparg_llvm.genx.local.size
+; XeHP-OCL-TYPED-PTRS: %wls.local.size = load <3 x i32>, <3 x i32>* @__imparg_llvm.genx.local.size
+; Gen9-OCL-TYPED-PTRS: %wls.local.size = load <3 x i32>, <3 x i32>* @__imparg_llvm.genx.local.size
+; XeHP-OCL-OPAQUE-PTRS: %wls.local.size = load <3 x i32>, ptr @__imparg_llvm.genx.local.size
+; Gen9-OCL-OPAQUE-PTRS: %wls.local.size = load <3 x i32>, ptr @__imparg_llvm.genx.local.size
   ret void
 }
 
@@ -141,34 +176,53 @@ define spir_func void @with_group_count() {
 
 ; XeHP-OCL: %[[GRPCNT_R0:[^ ]+]] = call i32 @llvm.genx.r0.i32()
 ; XeHP-OCL: %[[GRPCNT_IAB_PTR_INT:[^ ]+]] = and i32 %[[GRPCNT_R0]], -64
-; XeHP-OCL: %[[GRPCNT_IAB_PTR:[^ ]+]] = inttoptr i32 %[[GRPCNT_IAB_PTR_INT]] to %vc.implicit.args.buf.type addrspace(6)*
-; XeHP-OCL-DAG: %[[GRPCNT_CNT_X_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(6)* %[[GRPCNT_IAB_PTR]], i32 0, i32 15
-; XeHP-OCL-DAG: %[[GRPCNT_CNT_X:[^ ]+]] = load i32, i32 addrspace(6)* %[[GRPCNT_CNT_X_PTR]]
-; XeHP-OCL-DAG: %[[GRPCNT_CNT_Y_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(6)* %[[GRPCNT_IAB_PTR]], i32 0, i32 16
-; XeHP-OCL-DAG: %[[GRPCNT_CNT_Y:[^ ]+]] = load i32, i32 addrspace(6)* %[[GRPCNT_CNT_Y_PTR]]
-; XeHP-OCL-DAG: %[[GRPCNT_CNT_Z_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(6)* %[[GRPCNT_IAB_PTR]], i32 0, i32 17
-; XeHP-OCL-DAG: %[[GRPCNT_CNT_Z:[^ ]+]] = load i32, i32 addrspace(6)* %[[GRPCNT_CNT_Z_PTR]]
+; XeHP-OCL-TYPED-PTRS: %[[GRPCNT_IAB_PTR:[^ ]+]] = inttoptr i32 %[[GRPCNT_IAB_PTR_INT]] to %vc.implicit.args.buf.type addrspace(6)*
+; XeHP-OCL-TYPED-PTRS-DAG: %[[GRPCNT_CNT_X_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(6)* %[[GRPCNT_IAB_PTR]], i32 0, i32 15
+; XeHP-OCL-TYPED-PTRS-DAG: %[[GRPCNT_CNT_X:[^ ]+]] = load i32, i32 addrspace(6)* %[[GRPCNT_CNT_X_PTR]]
+; XeHP-OCL-TYPED-PTRS-DAG: %[[GRPCNT_CNT_Y_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(6)* %[[GRPCNT_IAB_PTR]], i32 0, i32 16
+; XeHP-OCL-TYPED-PTRS-DAG: %[[GRPCNT_CNT_Y:[^ ]+]] = load i32, i32 addrspace(6)* %[[GRPCNT_CNT_Y_PTR]]
+; XeHP-OCL-TYPED-PTRS-DAG: %[[GRPCNT_CNT_Z_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(6)* %[[GRPCNT_IAB_PTR]], i32 0, i32 17
+; XeHP-OCL-TYPED-PTRS-DAG: %[[GRPCNT_CNT_Z:[^ ]+]] = load i32, i32 addrspace(6)* %[[GRPCNT_CNT_Z_PTR]]
+; XeHP-OCL-OPAQUE-PTRS: %[[GRPCNT_IAB_PTR:[^ ]+]] = inttoptr i32 %[[GRPCNT_IAB_PTR_INT]] to ptr addrspace(6)
+; XeHP-OCL-OPAQUE-PTRS-DAG: %[[GRPCNT_CNT_X_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, ptr addrspace(6) %[[GRPCNT_IAB_PTR]], i32 0, i32 15
+; XeHP-OCL-OPAQUE-PTRS-DAG: %[[GRPCNT_CNT_X:[^ ]+]] = load i32, ptr addrspace(6) %[[GRPCNT_CNT_X_PTR]]
+; XeHP-OCL-OPAQUE-PTRS-DAG: %[[GRPCNT_CNT_Y_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, ptr addrspace(6) %[[GRPCNT_IAB_PTR]], i32 0, i32 16
+; XeHP-OCL-OPAQUE-PTRS-DAG: %[[GRPCNT_CNT_Y:[^ ]+]] = load i32, ptr addrspace(6) %[[GRPCNT_CNT_Y_PTR]]
+; XeHP-OCL-OPAQUE-PTRS-DAG: %[[GRPCNT_CNT_Z_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, ptr addrspace(6) %[[GRPCNT_IAB_PTR]], i32 0, i32 17
+; XeHP-OCL-OPAQUE-PTRS-DAG: %[[GRPCNT_CNT_Z:[^ ]+]] = load i32, ptr addrspace(6) %[[GRPCNT_CNT_Z_PTR]]
 ; XeHP-OCL: %[[GRPCNT_CNT_PART_0:[^ ]+]] = insertelement <3 x i32> undef, i32 %[[GRPCNT_CNT_X]], i64 0
 ; XeHP-OCL: %[[GRPCNT_CNT_PART_1:[^ ]+]] = insertelement <3 x i32> %[[GRPCNT_CNT_PART_0]], i32 %[[GRPCNT_CNT_Y]], i64 1
 ; XeHP-OCL: %[[GRPCNT_CNT:[^ ]+]] = insertelement <3 x i32> %[[GRPCNT_CNT_PART_1]], i32 %[[GRPCNT_CNT_Z]], i64 2
-; XeHP-OCL: store <3 x i32> %[[GRPCNT_CNT]], <3 x i32>* @__imparg_llvm.genx.group.count
+; XeHP-OCL-TYPED-PTRS: store <3 x i32> %[[GRPCNT_CNT]], <3 x i32>* @__imparg_llvm.genx.group.count
+; XeHP-OCL-OPAQUE-PTRS: store <3 x i32> %[[GRPCNT_CNT]], ptr @__imparg_llvm.genx.group.count
 
-; Gen9-OCL: %[[GRPCNT_IAB_PTR_INT:[^ ]+]] = call i64 @llvm.vc.internal.read.variable.region.i64.p0i64(i64* @llvm.vc.predef.var.impl.args.buf, i32 0, i32 1, i32 1, i32 0)
-; Gen9-OCL: %[[GRPCNT_IAB_PTR:[^ ]+]] = inttoptr i64 %[[PRINTF_IAB_PTR_INT]] to %vc.implicit.args.buf.type addrspace(1)*
-; Gen9-OCL-DAG: %[[GRPCNT_CNT_X_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(1)* %[[GRPCNT_IAB_PTR]], i32 0, i32 15
-; Gen9-OCL-DAG: %[[GRPCNT_CNT_X:[^ ]+]] = load i32, i32 addrspace(1)* %[[GRPCNT_CNT_X_PTR]]
-; Gen9-OCL-DAG: %[[GRPCNT_CNT_Y_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(1)* %[[GRPCNT_IAB_PTR]], i32 0, i32 16
-; Gen9-OCL-DAG: %[[GRPCNT_CNT_Y:[^ ]+]] = load i32, i32 addrspace(1)* %[[GRPCNT_CNT_Y_PTR]]
-; Gen9-OCL-DAG: %[[GRPCNT_CNT_Z_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(1)* %[[GRPCNT_IAB_PTR]], i32 0, i32 17
-; Gen9-OCL-DAG: %[[GRPCNT_CNT_Z:[^ ]+]] = load i32, i32 addrspace(1)* %[[GRPCNT_CNT_Z_PTR]]
+; Gen9-OCL-TYPED-PTRS: %[[GRPCNT_IAB_PTR_INT:[^ ]+]] = call i64 @llvm.vc.internal.read.variable.region.i64.p0i64(i64* @llvm.vc.predef.var.impl.args.buf, i32 0, i32 1, i32 1, i32 0)
+; Gen9-OCL-TYPED-PTRS: %[[GRPCNT_IAB_PTR:[^ ]+]] = inttoptr i64 %[[PRINTF_IAB_PTR_INT]] to %vc.implicit.args.buf.type addrspace(1)*
+; Gen9-OCL-TYPED-PTRS-DAG: %[[GRPCNT_CNT_X_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(1)* %[[GRPCNT_IAB_PTR]], i32 0, i32 15
+; Gen9-OCL-TYPED-PTRS-DAG: %[[GRPCNT_CNT_X:[^ ]+]] = load i32, i32 addrspace(1)* %[[GRPCNT_CNT_X_PTR]]
+; Gen9-OCL-TYPED-PTRS-DAG: %[[GRPCNT_CNT_Y_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(1)* %[[GRPCNT_IAB_PTR]], i32 0, i32 16
+; Gen9-OCL-TYPED-PTRS-DAG: %[[GRPCNT_CNT_Y:[^ ]+]] = load i32, i32 addrspace(1)* %[[GRPCNT_CNT_Y_PTR]]
+; Gen9-OCL-TYPED-PTRS-DAG: %[[GRPCNT_CNT_Z_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, %vc.implicit.args.buf.type addrspace(1)* %[[GRPCNT_IAB_PTR]], i32 0, i32 17
+; Gen9-OCL-TYPED-PTRS-DAG: %[[GRPCNT_CNT_Z:[^ ]+]] = load i32, i32 addrspace(1)* %[[GRPCNT_CNT_Z_PTR]]
+; Gen9-OCL-OPAQUE-PTRS: %[[GRPCNT_IAB_PTR_INT:[^ ]+]] = call i64 @llvm.vc.internal.read.variable.region.i64.p0(ptr @llvm.vc.predef.var.impl.args.buf, i32 0, i32 1, i32 1, i32 0)
+; Gen9-OCL-OPAQUE-PTRS: %[[GRPCNT_IAB_PTR:[^ ]+]] = inttoptr i64 %[[PRINTF_IAB_PTR_INT]] to ptr addrspace(1)
+; Gen9-OCL-OPAQUE-PTRS-DAG: %[[GRPCNT_CNT_X_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, ptr addrspace(1) %[[GRPCNT_IAB_PTR]], i32 0, i32 15
+; Gen9-OCL-OPAQUE-PTRS-DAG: %[[GRPCNT_CNT_X:[^ ]+]] = load i32, ptr addrspace(1) %[[GRPCNT_CNT_X_PTR]]
+; Gen9-OCL-OPAQUE-PTRS-DAG: %[[GRPCNT_CNT_Y_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, ptr addrspace(1) %[[GRPCNT_IAB_PTR]], i32 0, i32 16
+; Gen9-OCL-OPAQUE-PTRS-DAG: %[[GRPCNT_CNT_Y:[^ ]+]] = load i32, ptr addrspace(1) %[[GRPCNT_CNT_Y_PTR]]
+; Gen9-OCL-OPAQUE-PTRS-DAG: %[[GRPCNT_CNT_Z_PTR:[^ ]+]] = getelementptr inbounds %vc.implicit.args.buf.type, ptr addrspace(1) %[[GRPCNT_IAB_PTR]], i32 0, i32 17
+; Gen9-OCL-OPAQUE-PTRS-DAG: %[[GRPCNT_CNT_Z:[^ ]+]] = load i32, ptr addrspace(1) %[[GRPCNT_CNT_Z_PTR]]
 ; Gen9-OCL: %[[GRPCNT_CNT_PART_0:[^ ]+]] = insertelement <3 x i32> undef, i32 %[[GRPCNT_CNT_X]], i64 0
 ; Gen9-OCL: %[[GRPCNT_CNT_PART_1:[^ ]+]] = insertelement <3 x i32> %[[GRPCNT_CNT_PART_0]], i32 %[[GRPCNT_CNT_Y]], i64 1
 ; Gen9-OCL: %[[GRPCNT_CNT:[^ ]+]] = insertelement <3 x i32> %[[GRPCNT_CNT_PART_1]], i32 %[[GRPCNT_CNT_Z]], i64 2
-; Gen9-OCL: store <3 x i32> %[[GRPCNT_CNT]], <3 x i32>* @__imparg_llvm.genx.group.count
+; Gen9-OCL-TYPED-PTRS: store <3 x i32> %[[GRPCNT_CNT]], <3 x i32>* @__imparg_llvm.genx.group.count
+; Gen9-OCL-OPAQUE-PTRS: store <3 x i32> %[[GRPCNT_CNT]], ptr @__imparg_llvm.genx.group.count
 
   %wgc.group.count = call <3 x i32> @llvm.genx.group.count.v3i32()
-; XeHP-OCL: %wgc.group.count = load <3 x i32>, <3 x i32>* @__imparg_llvm.genx.group.count
-; Gen9-OCL:  %wgc.group.count = load <3 x i32>, <3 x i32>* @__imparg_llvm.genx.group.count
+; XeHP-OCL-TYPED-PTRS: %wgc.group.count = load <3 x i32>, <3 x i32>* @__imparg_llvm.genx.group.count
+; Gen9-OCL-TYPED-PTRS:  %wgc.group.count = load <3 x i32>, <3 x i32>* @__imparg_llvm.genx.group.count
+; XeHP-OCL-OPAQUE-PTRS: %wgc.group.count = load <3 x i32>, ptr @__imparg_llvm.genx.group.count
+; Gen9-OCL-OPAQUE-PTRS:  %wgc.group.count = load <3 x i32>, ptr @__imparg_llvm.genx.group.count
   ret void
 }
 

@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: %opt %use_old_pass_manager% -GenXDeadVectorRemoval -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXDeadVectorRemoval -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXDeadVectorRemoval -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 ; ------------------------------------------------
 ; GenXDeadVectorRemoval
 ; ------------------------------------------------
@@ -19,8 +20,10 @@
 
 ; CHECK: void @test_dead{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: [[VAL1_V:%[A-z0-9]*]] = {{.*}}, !dbg [[VAL1_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata <4 x i32>* [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
-; CHECK-DAG: store <4 x i32> [[VAL6_V:%[A-z0-9]*]], <4 x i32>* [[VAL1_V]]{{.*}}, !dbg [[STORE_LOC:![0-9]*]]
+; CHECK-TYPED-PTRS: void @llvm.dbg.value(metadata <4 x i32>* [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
+; CHECK-TYPED-PTRS-DAG: store <4 x i32> [[VAL6_V:%[A-z0-9]*]], <4 x i32>* [[VAL1_V]]{{.*}}, !dbg [[STORE_LOC:![0-9]*]]
+; CHECK-OPAQUE-PTRS: void @llvm.dbg.value(metadata ptr [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
+; CHECK-OPAQUE-PTRS-DAG: store <4 x i32> [[VAL6_V:%[A-z0-9]*]], ptr [[VAL1_V]]{{.*}}, !dbg [[STORE_LOC:![0-9]*]]
 ; CHECK-DAG: void @llvm.dbg.value(metadata <4 x i32> [[VAL6_V]], metadata [[VAL6_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL6_LOC:![0-9]*]]
 ; CHECK-DAG: [[VAL6_V]] = {{.*}}(<4 x i32> [[VAL5_V:%[A-z0-9.]*]],{{.*}}, !dbg [[VAL6_LOC]]
 ; CHECK-DAG: void @llvm.dbg.value(metadata <4 x i32> [[VAL5_V]], metadata [[VAL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL5_LOC:![0-9]*]]

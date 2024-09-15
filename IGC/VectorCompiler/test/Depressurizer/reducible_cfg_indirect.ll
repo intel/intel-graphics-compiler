@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXModule -GenXDepressurizerWrapper -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXModule -GenXDepressurizerWrapper -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXModule -GenXDepressurizerWrapper -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 ; COM: Sanity checker: nothing should be changed, compilation should not fail.
 
@@ -42,8 +43,10 @@ outer_loop_exit:
 ; CHECK-LABEL: inner_loop_header.crit_edge:
 ; CHECK-NEXT: br label %inner_loop_header
 ; CHECK-LABEL: inner_loop_header:
-; CHECK-NEXT: %dst = call i8* (i8, ...) @llvm.genx.jump.table.p0i8.i8.p0i8.p0i8(i8 0, i8* blockaddress(@test, %outer_loop_header), i8* blockaddress(@test, %inner_loop_body))
-; CHECK-NEXT: indirectbr i8* %dst, [label %outer_loop_header, label %inner_loop_body]
+; CHECK-TYPED-PTRS-NEXT: %dst = call i8* (i8, ...) @llvm.genx.jump.table.p0i8.i8.p0i8.p0i8(i8 0, i8* blockaddress(@test, %outer_loop_header), i8* blockaddress(@test, %inner_loop_body))
+; CHECK-TYPED-PTRS-NEXT: indirectbr i8* %dst, [label %outer_loop_header, label %inner_loop_body]
+; CHECK-OPAQUE-PTRS-NEXT: %dst = call ptr (i8, ...) @llvm.genx.jump.table.p0i8.i8.p0i8.p0i8(i8 0, ptr blockaddress(@test, %outer_loop_header), ptr blockaddress(@test, %inner_loop_body))
+; CHECK-OPAQUE-PTRS-NEXT: indirectbr ptr %dst, [label %outer_loop_header, label %inner_loop_body]
 ; CHECK-LABEL: inner_loop_body:
 ; CHECK-NEXT: br label %inner_loop_header
 ; CHECK-LABEL: outer_loop_exit:

@@ -1,20 +1,24 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2021 Intel Corporation
+; Copyright (C) 2020-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXEmulate -march=genx64 -mtriple=spir64-unknown-unknown \
-; RUN: -mcpu=Gen9 -mattr=+emulate_i64 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXEmulate -march=genx64 -mtriple=spir64-unknown-unknown \
+; RUN: -mcpu=Gen9 -mattr=+emulate_i64 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXEmulate -march=genx64 -mtriple=spir64-unknown-unknown \
+; RUN: -mcpu=Gen9 -mattr=+emulate_i64 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 ; COM: "CT" stands for "casted type"
 ; COM: "ET" valid type (the type by which we emulate an operation)
 
 ; CHECK: @test_scalar_icmp_ptr_eq
-; CHECK-NEXT: [[PTRCAST_L:%[^ ]+]] = ptrtoint %struct_Type* %left to i64
-; CHECK-NEXT: [[PTRCAST_R:%[^ ]+]] = ptrtoint %struct_Type* %right to i64
+; CHECK-TYPED-PTRS-NEXT: [[PTRCAST_L:%[^ ]+]] = ptrtoint %struct_Type* %left to i64
+; CHECK-TYPED-PTRS-NEXT: [[PTRCAST_R:%[^ ]+]] = ptrtoint %struct_Type* %right to i64
+; CHECK-OPAQUE-PTRS-NEXT: [[PTRCAST_L:%[^ ]+]] = ptrtoint ptr %left to i64
+; CHECK-OPAQUE-PTRS-NEXT: [[PTRCAST_R:%[^ ]+]] = ptrtoint ptr %right to i64
 ; CHECK-NEXT: [[IV1:%[^ ]+]] = bitcast i64 [[PTRCAST_L]] to <[[CT:2 x i32]]>
 ; CHECK-NEXT: [[Lo_l:%[^ ]+]] = call <[[ET:1 x i32]]> [[rgn:@llvm.genx.rdregioni.[^(]+]](<[[CT]]> [[IV1]], [[low_reg:i32 0, i32 1, i32 2, i16 0,]]
 ; CHECK-NEXT: [[Hi_l:%[^ ]+]] = call <[[ET]]> [[rgn]](<[[CT]]> [[IV1]], [[high_reg:i32 0, i32 1, i32 2, i16 4,]]
@@ -34,7 +38,8 @@ define i1 @test_scalar_icmp_ptr_eq(%struct_Type* %left, %struct_Type* %right) {
 }
 
 ; CHECK: @test_scalar_icmp_ptr_eq_null
-; CHECK-NEXT: [[PTRCAST_L:%[^ ]+]] = ptrtoint %struct_Type* %left to i64
+; CHECK-TYPED-PTRS-NEXT: [[PTRCAST_L:%[^ ]+]] = ptrtoint %struct_Type* %left to i64
+; CHECK-OPAQUE-PTRS-NEXT: [[PTRCAST_L:%[^ ]+]] = ptrtoint ptr %left to i64
 ; CHECK-NEXT: [[IV1:%[^ ]+]] = bitcast i64 [[PTRCAST_L]] to <[[CT:2 x i32]]>
 ; CHECK-NEXT: [[Lo_l:%[^ ]+]] = call <[[ET:1 x i32]]> [[rgn:@llvm.genx.rdregioni.[^(]+]](<[[CT]]> [[IV1]], [[low_reg:i32 0, i32 1, i32 2, i16 0,]]
 ; CHECK-NEXT: [[Hi_l:%[^ ]+]] = call <[[ET]]> [[rgn]](<[[CT]]> [[IV1]], [[high_reg:i32 0, i32 1, i32 2, i16 4,]]
@@ -49,8 +54,10 @@ define i1 @test_scalar_icmp_ptr_eq_null(%struct_Type* %left) {
 }
 
 ; CHECK: @test_scalar_icmp_ptr_eqv
-; CHECK-NEXT: [[PTRCAST_L:%[^ ]+]] = ptrtoint <2 x %struct_Type*> %lv to <2 x i64>
-; CHECK-NEXT: [[PTRCAST_R:%[^ ]+]] = ptrtoint <2 x %struct_Type*> %rv to <2 x i64>
+; CHECK-TYPED-PTRS-NEXT: [[PTRCAST_L:%[^ ]+]] = ptrtoint <2 x %struct_Type*> %lv to <2 x i64>
+; CHECK-TYPED-PTRS-NEXT: [[PTRCAST_R:%[^ ]+]] = ptrtoint <2 x %struct_Type*> %rv to <2 x i64>
+; CHECK-OPAQUE-PTRS-NEXT: [[PTRCAST_L:%[^ ]+]] = ptrtoint <2 x ptr> %lv to <2 x i64>
+; CHECK-OPAQUE-PTRS-NEXT: [[PTRCAST_R:%[^ ]+]] = ptrtoint <2 x ptr> %rv to <2 x i64>
 ; CHECK-NEXT: [[IV1:%[^ ]+]] = bitcast <2 x i64> [[PTRCAST_L]] to <[[CT:4 x i32]]>
 ; CHECK-NEXT: [[Lo_l:%[^ ]+]] = call <[[ET:2 x i32]]> [[rgn:@llvm.genx.rdregioni.[^(]+]](<[[CT]]> [[IV1]], [[low_reg:i32 0, i32 2, i32 2, i16 0,]]
 ; CHECK-NEXT: [[Hi_l:%[^ ]+]] = call <[[ET]]> [[rgn]](<[[CT]]> [[IV1]], [[high_reg:i32 0, i32 2, i32 2, i16 4,]]
@@ -67,7 +74,8 @@ define <2 x i1> @test_scalar_icmp_ptr_eqv(<2 x %struct_Type*> %lv, <2 x %struct_
 }
 
 ; CHECK: @test_scalar_icmp_ptr_eqv_null
-; CHECK-NEXT: [[PTRCAST_L:%[^ ]+]] = ptrtoint <2 x %struct_Type*> %lv to <2 x i64>
+; CHECK-TYPED-PTRS-NEXT: [[PTRCAST_L:%[^ ]+]] = ptrtoint <2 x %struct_Type*> %lv to <2 x i64>
+; CHECK-OPAQUE-PTRS-NEXT: [[PTRCAST_L:%[^ ]+]] = ptrtoint <2 x ptr> %lv to <2 x i64>
 ; CHECK-NEXT: [[IV1:%[^ ]+]] = bitcast <2 x i64> [[PTRCAST_L]] to <[[CT:4 x i32]]>
 ; CHECK-NEXT: [[Lo_l:%[^ ]+]] = call <[[ET:2 x i32]]> [[rgn:@llvm.genx.rdregioni.[^(]+]](<[[CT]]> [[IV1]], [[low_reg:i32 0, i32 2, i32 2, i16 0,]]
 ; CHECK-NEXT: [[Hi_l:%[^ ]+]] = call <[[ET]]> [[rgn]](<[[CT]]> [[IV1]], [[high_reg:i32 0, i32 2, i32 2, i16 4,]]

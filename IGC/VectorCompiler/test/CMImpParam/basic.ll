@@ -6,7 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -cmimpparam -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -cmimpparam -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -cmimpparam -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
 target triple = "spir64-unknown-unknown"
@@ -38,15 +39,21 @@ define dllexport spir_kernel void @direct() {
 ; CHECK-SAME: ) #[[KERN_ATTR:[0-9]+]] {
 
 ; COM: Check saving implicit args at the beginning of the kernel.
-; CHECK-DAG: store <3 x i16> %impl.arg.llvm.genx.local.id16, <3 x i16>* @__imparg_llvm.genx.local.id16
-; CHECK-DAG: store <3 x i32> %impl.arg.llvm.genx.local.size, <3 x i32>* @__imparg_llvm.genx.local.size
-; CHECK-DAG: store <3 x i32> %impl.arg.llvm.genx.group.count, <3 x i32>* @__imparg_llvm.genx.group.count
-; CHECK-DAG: store i64 %impl.arg.llvm.vc.internal.print.buffer, i64* @__imparg_llvm.vc.internal.print.buffer
+; CHECK-TYPED-PTRS-DAG: store <3 x i16> %impl.arg.llvm.genx.local.id16, <3 x i16>* @__imparg_llvm.genx.local.id16
+; CHECK-TYPED-PTRS-DAG: store <3 x i32> %impl.arg.llvm.genx.local.size, <3 x i32>* @__imparg_llvm.genx.local.size
+; CHECK-TYPED-PTRS-DAG: store <3 x i32> %impl.arg.llvm.genx.group.count, <3 x i32>* @__imparg_llvm.genx.group.count
+; CHECK-TYPED-PTRS-DAG: store i64 %impl.arg.llvm.vc.internal.print.buffer, i64* @__imparg_llvm.vc.internal.print.buffer
+; CHECK-OPAQUE-PTRS-DAG: store <3 x i16> %impl.arg.llvm.genx.local.id16, ptr @__imparg_llvm.genx.local.id16
+; CHECK-OPAQUE-PTRS-DAG: store <3 x i32> %impl.arg.llvm.genx.local.size, ptr @__imparg_llvm.genx.local.size
+; CHECK-OPAQUE-PTRS-DAG: store <3 x i32> %impl.arg.llvm.genx.group.count, ptr @__imparg_llvm.genx.group.count
+; CHECK-OPAQUE-PTRS-DAG: store i64 %impl.arg.llvm.vc.internal.print.buffer, ptr @__imparg_llvm.vc.internal.print.buffer
 
   %d.loc.id = call <3 x i16> @llvm.genx.local.id16.v3i16()
   %d.loc.sz = call <3 x i32> @llvm.genx.local.size.v3i32()
-; CHECK: %d.loc.id = load <3 x i16>, <3 x i16>* @__imparg_llvm.genx.local.id16
-; CHECK: %d.loc.sz = load <3 x i32>, <3 x i32>* @__imparg_llvm.genx.local.size
+; CHECK-TYPED-PTRS: %d.loc.id = load <3 x i16>, <3 x i16>* @__imparg_llvm.genx.local.id16
+; CHECK-TYPED-PTRS: %d.loc.sz = load <3 x i32>, <3 x i32>* @__imparg_llvm.genx.local.size
+; CHECK-OPAQUE-PTRS: %d.loc.id = load <3 x i16>, ptr @__imparg_llvm.genx.local.id16
+; CHECK-OPAQUE-PTRS: %d.loc.sz = load <3 x i32>, ptr @__imparg_llvm.genx.local.size
 
   %d.grp.x = call i32 @llvm.genx.group.id.x()
   %d.grp.y = call i32 @llvm.genx.group.id.y()
@@ -60,10 +67,14 @@ define dllexport spir_kernel void @direct() {
   %d.print = call i64 @llvm.vc.internal.print.buffer()
   %d.assert = call i64 @llvm.vc.internal.assert.buffer()
   %d.sync = call i64 @llvm.vc.internal.sync.buffer()
-; CHECK: %d.grp.sz = load <3 x i32>, <3 x i32>* @__imparg_llvm.genx.group.count
-; CHECK: %d.print = load i64, i64* @__imparg_llvm.vc.internal.print.buffer
-; CHECK: %d.assert = load i64, i64* @__imparg_llvm.vc.internal.assert.buffer
-; CHECK: %d.sync = load i64, i64* @__imparg_llvm.vc.internal.sync.buffer
+; CHECK-TYPED-PTRS: %d.grp.sz = load <3 x i32>, <3 x i32>* @__imparg_llvm.genx.group.count
+; CHECK-TYPED-PTRS: %d.print = load i64, i64* @__imparg_llvm.vc.internal.print.buffer
+; CHECK-TYPED-PTRS: %d.assert = load i64, i64* @__imparg_llvm.vc.internal.assert.buffer
+; CHECK-TYPED-PTRS: %d.sync = load i64, i64* @__imparg_llvm.vc.internal.sync.buffer
+; CHECK-OPAQUE-PTRS: %d.grp.sz = load <3 x i32>, ptr @__imparg_llvm.genx.group.count
+; CHECK-OPAQUE-PTRS: %d.print = load i64, ptr @__imparg_llvm.vc.internal.print.buffer
+; CHECK-OPAQUE-PTRS: %d.assert = load i64, ptr @__imparg_llvm.vc.internal.assert.buffer
+; CHECK-OPAQUE-PTRS: %d.sync = load i64, ptr @__imparg_llvm.vc.internal.sync.buffer
   ret void
 }
 
@@ -75,8 +86,8 @@ define dllexport spir_kernel void @direct_partial() {
 
   %dp.loc.sz = call <3 x i32> @llvm.genx.local.size.v3i32()
   %dp.grp.sz = call <3 x i32> @llvm.genx.group.count.v3i32()
-; CHECK: %dp.loc.sz = load <3 x i32>, <3 x i32>* @__imparg_llvm.genx.local.size
-; CHECK: %dp.grp.sz = load <3 x i32>, <3 x i32>* @__imparg_llvm.genx.group.count
+; CHECK-TYPED-PTRS: %dp.loc.sz = load <3 x i32>, <3 x i32>* @__imparg_llvm.genx.local.size
+; CHECK-OPAQUE-PTRS: %dp.grp.sz = load <3 x i32>, ptr @__imparg_llvm.genx.group.count
   ret void
 }
 
@@ -98,15 +109,18 @@ define dllexport spir_kernel void @indir() {
 
 define internal spir_func void @indir_func_1() {
   %i.1.loc.id = call <3 x i16> @llvm.genx.local.id16.v3i16()
-; CHECK: %i.1.loc.id = load <3 x i16>, <3 x i16>* @__imparg_llvm.genx.local.id16
+; CHECK-TYPED-PTRS: %i.1.loc.id = load <3 x i16>, <3 x i16>* @__imparg_llvm.genx.local.id16
+; CHECK-OPAQUE-PTRS: %i.1.loc.id = load <3 x i16>, ptr @__imparg_llvm.genx.local.id16
   ret void
 }
 
 define internal spir_func void @indir_func_2() {
   %i.2.loc.id = call <3 x i16> @llvm.genx.local.id16.v3i16()
   %i.2.grp.sz = call <3 x i32> @llvm.genx.group.count.v3i32()
-; CHECK: %i.2.loc.id = load <3 x i16>, <3 x i16>* @__imparg_llvm.genx.local.id16
-; CHECK: %i.2.grp.sz = load <3 x i32>, <3 x i32>* @__imparg_llvm.genx.group.count
+; CHECK-TYPED-PTRS: %i.2.loc.id = load <3 x i16>, <3 x i16>* @__imparg_llvm.genx.local.id16
+; CHECK-TYPED-PTRS: %i.2.grp.sz = load <3 x i32>, <3 x i32>* @__imparg_llvm.genx.group.count
+; CHECK-OPAQUE-PTRS: %i.2.loc.id = load <3 x i16>, ptr @__imparg_llvm.genx.local.id16
+; CHECK-OPAQUE-PTRS: %i.2.grp.sz = load <3 x i32>, ptr @__imparg_llvm.genx.group.count
   call void @indir_func_common()
   ret void
 }
@@ -120,9 +134,12 @@ define internal spir_func void @indir_func_common() {
   %i.c.print = call i64 @llvm.vc.internal.print.buffer()
   %i.c.assert = call i64 @llvm.vc.internal.assert.buffer()
   %i.c.sync = call i64 @llvm.vc.internal.sync.buffer()
-; CHECK: %i.c.print = load i64, i64* @__imparg_llvm.vc.internal.print.buffer
-; CHECK: %i.c.assert = load i64, i64* @__imparg_llvm.vc.internal.assert.buffer
-; CHECK: %i.c.sync = load i64, i64* @__imparg_llvm.vc.internal.sync.buffer
+; CHECK-TYPED-PTRS: %i.c.print = load i64, i64* @__imparg_llvm.vc.internal.print.buffer
+; CHECK-TYPED-PTRS: %i.c.assert = load i64, i64* @__imparg_llvm.vc.internal.assert.buffer
+; CHECK-TYPED-PTRS: %i.c.sync = load i64, i64* @__imparg_llvm.vc.internal.sync.buffer
+; CHECK-OPAQUE-PTRS: %i.c.print = load i64, ptr @__imparg_llvm.vc.internal.print.buffer
+; CHECK-OPAQUE-PTRS: %i.c.assert = load i64, ptr @__imparg_llvm.vc.internal.assert.buffer
+; CHECK-OPAQUE-PTRS: %i.c.sync = load i64, ptr @__imparg_llvm.vc.internal.sync.buffer
   ret void
 }
 
@@ -139,7 +156,8 @@ define internal spir_func void @indir_func_common() {
 !3 = !{void ()* @indir, !"indir", !1, i32 0, !1, !1, !1, i32 0, i32 0}
 ; COM: Arg Kind map: local_size -> 8, group_count -> 16, local_id -> 24, printf_buffer -> 88,
 ; COM:               private_base -> 96, sync_buffer -> 184
-; CHECK: ![[D_KERN_MD]] = !{void ({{.*}})* @direct, !"direct", ![[D_KERN_AK_MD:[0-9]+]]
+; CHECK-TYPED-PTRS: ![[D_KERN_MD]] = !{void ({{.*}})* @direct, !"direct", ![[D_KERN_AK_MD:[0-9]+]]
+; CHECK-OPAQUE-PTRS: ![[D_KERN_MD]] = !{ptr @direct, !"direct", ![[D_KERN_AK_MD:[0-9]+]]
 ; CHECK: ![[D_KERN_AK_MD]] = !{
 ; CHECK-DAG: i32 8
 ; CHECK-DAG: i32 16
@@ -148,12 +166,14 @@ define internal spir_func void @indir_func_common() {
 ; CHECK-DAG: i32 96
 ; CHECK-DAG: i32 184
 ; CHECK: }
-; CHECK: ![[DP_KERN_MD]] = !{void ({{.*}})* @direct_partial, !"direct_partial", ![[DP_KERN_AK_MD:[0-9]+]]
+; CHECK-TYPED-PTRS: ![[DP_KERN_MD]] = !{void ({{.*}})* @direct_partial, !"direct_partial", ![[DP_KERN_AK_MD:[0-9]+]]
+; CHECK-OPAQUE-PTRS: ![[DP_KERN_MD]] = !{ptr @direct_partial, !"direct_partial", ![[DP_KERN_AK_MD:[0-9]+]]
 ; CHECK: ![[DP_KERN_AK_MD]] = !{
 ; CHECK-NOT: i32 24
 ; CHECK-NOT: i32 88
 ; CHECK: }
-; CHECK: ![[I_KERN_MD]] = !{void ({{.*}})* @indir, !"indir", ![[I_KERN_AK_MD:[0-9]+]]
+; CHECK-TYPED-PTRS: ![[I_KERN_MD]] = !{void ({{.*}})* @indir, !"indir", ![[I_KERN_AK_MD:[0-9]+]]
+; CHECK-OPAQUE-PTRS: ![[I_KERN_MD]] = !{ptr @indir, !"indir", ![[I_KERN_AK_MD:[0-9]+]]
 ; CHECK: ![[I_KERN_AK_MD]] = !{
 ; CHECK-COUNT-6: i32 {{[0-9]+}}
 ; CHECK-NOT: i32 {{[0-9]+}}

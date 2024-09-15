@@ -1,19 +1,21 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -CMLowerVLoadVStore -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -CMLowerVLoadVStore -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -CMLowerVLoadVStore -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 ; ------------------------------------------------
 ; CMLowerVLoadVStore
 ; ------------------------------------------------
 ; Test checks, what pass is applied even with gdb-info
 ;
 ; CHECK: void @test_vloadvstore{{.*}} !dbg [[SCOPE:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata <4 x i32>* %a, metadata {{.*}}, metadata !DIExpression()), !dbg {{.*}}
+; CHECK-TYPED-PTRS: call void @llvm.dbg.value(metadata <4 x i32>* %a, metadata {{.*}}, metadata !DIExpression()), !dbg {{.*}}
+; CHECK-OPAQUE-PTRS: call void @llvm.dbg.value(metadata ptr %a, metadata {{.*}}, metadata !DIExpression()), !dbg {{.*}}
 ; CHECK: [[VAL1_V:%[A-z0-9.]*]] = alloca {{.*}}
 ; CHECK: [[VAL2_V:%[A-z0-9.]*]] = load {{.*}}
 ; CHECK: [[VAL3_V:%[A-z0-9.]*]] = {{.*}}@llvm.genx.rdregioni{{.*}}

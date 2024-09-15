@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2023 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -cmimpparam -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -cmimpparam -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -cmimpparam -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
 target triple = "spir64-unknown-unknown"
@@ -16,8 +17,10 @@ target triple = "spir64-unknown-unknown"
 ; COM: Find the kernel definition
 ; CHECK: define dllexport spir_kernel [[FTYPE:void]] @[[FNAME:foo]]
 ; COM: Explicit arguments. The first argument must be byval svmptr_t
-; CHECK-SAME: [[EXPARG1:%struct.state\*]] byval(%struct.state) %_arg_
-; CHECK-SAME: [[EXPARG2:i32 addrspace\(1\)\*]] %_arg_1
+; CHECK-TYPED-PTRS-SAME: [[EXPARG1:%struct.state\*]] byval(%struct.state) %_arg_
+; CHECK-TYPED-PTRS-SAME: [[EXPARG2:i32 addrspace\(1\)\*]] %_arg_1
+; CHECK-OPAQUE-PTRS-SAME: ptr byval(%struct.state) %_arg_
+; CHECK-OPAQUE-PTRS-SAME: ptr addrspace(1) %_arg_1
 ; COM: Private base
 ; CHECK-SAME: [[PRIVBASE:i64]]
 ; COM: Implicit linearization of %_arg_
@@ -65,7 +68,8 @@ attributes #0 = { nounwind "CMGenxMain" "oclrt"="1" }
 !6 = !{i32 0, i32 0}
 !7 = !{!"svmptr_t", !"svmptr_t"}
 !8 = !{i32 1}
-; CHECK: [[INTERNAL]] = !{[[FTYPE]] ([[EXPARG1]], [[EXPARG2]], [[PRIVBASE]], [[IMPLIN1]], [[IMPLIN2]], [[IMPLIN3]], [[IMPLIN4]], [[IMPLIN5]])* @[[FNAME]], null, null, [[LINMD:![0-9]+]], null}
+; CHECK-TYPED-PTRS: [[INTERNAL]] = !{[[FTYPE]] ([[EXPARG1]], [[EXPARG2]], [[PRIVBASE]], [[IMPLIN1]], [[IMPLIN2]], [[IMPLIN3]], [[IMPLIN4]], [[IMPLIN5]])* @[[FNAME]], null, null, [[LINMD:![0-9]+]], null}
+; CHECK-OPAQUE-PTRS: [[INTERNAL]] = !{ptr @[[FNAME]], null, null, [[LINMD:![0-9]+]], null}
 ; CHECK: [[LINMD]] = !{[[ARG1LINMD:![0-9]+]]}
 ; CHECK: [[ARG1LINMD]] = !{i32 0, [[IMPLIN:![0-9]+]]}
 ; CHECK: [[IMPLIN]] = !{[[IMPLINMD1:![0-9]+]], [[IMPLINMD2:![0-9]+]], [[IMPLINMD3:![0-9]+]], [[IMPLINMD4:![0-9]+]], [[IMPLINMD5:![0-9]+]]}

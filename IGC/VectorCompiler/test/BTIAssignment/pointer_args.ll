@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -8,8 +8,10 @@
 
 ; Check that bti is assigned to opaque pointer state arguments.
 
-; RUN: %opt %use_old_pass_manager% -GenXBTIAssignment -march=genx64 -mcpu=Gen9 -S < %s | FileCheck --check-prefix RAW %s
-; RUN: %opt %use_old_pass_manager% -GenXBTIAssignment -instcombine -march=genx64 -mcpu=Gen9 -S < %s | FileCheck --check-prefix CLEAN %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXBTIAssignment -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS,RAW,RAW-TYPED-PTRS
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXBTIAssignment -instcombine -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS,CLEAN
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXBTIAssignment -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS,RAW,RAW-OPAQUE-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXBTIAssignment -instcombine -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS,CLEAN
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
 target triple = "spir64-unknown-unknown"
@@ -24,8 +26,10 @@ declare void @use_value(i32)
 ; RAW-LABEL: @simple(
 ; CLEAN-LABEL: @simple(
 define dllexport spir_kernel void @simple(%buf_rw_t* %surf, %ocl.sampler_t* %samp) #0 {
-; RAW:        [[SURF_INT:%[^ ]+]] = ptrtoint %buf_rw_t* null to i32
-; RAW-NEXT:   [[SAMP_INT:%[^ ]+]] = ptrtoint %ocl.sampler_t* null to i32
+; RAW-TYPED-PTRS:      [[SURF_INT:%[^ ]+]] = ptrtoint %buf_rw_t* null to i32
+; RAW-TYPED-PTRS-NEXT: [[SAMP_INT:%[^ ]+]] = ptrtoint %ocl.sampler_t* null to i32
+; RAW-OPAQUE-PTRS:      [[SURF_INT:%[^ ]+]] = ptrtoint ptr null to i32
+; RAW-OPAQUE-PTRS-NEXT: [[SAMP_INT:%[^ ]+]] = ptrtoint ptr null to i32
 ; RAW-NEXT:   call void @use_value(i32 [[SURF_INT]])
 ; RAW-NEXT:   call void @use_value(i32 [[SAMP_INT]])
 
@@ -45,10 +49,14 @@ define dllexport spir_kernel void @mixed_srv_uav(%ocl.image2d_ro_t* %image_ro,
                                                  %ocl.image2d_rw_t* %image_rw,
                                                  %buf_rw_t* %buf,
                                                  %ocl.image2d_ro_t* %image_ro2) #0 {
-; RAW:        [[SURF_INT1:%[^ ]+]] = ptrtoint %ocl.image2d_ro_t* null to i32
-; RAW-NEXT:   [[SURF_INT2:%[^ ]+]] = ptrtoint %ocl.image2d_rw_t* inttoptr (i32 2 to %ocl.image2d_rw_t*) to i32
-; RAW-NEXT:   [[SURF_INT3:%[^ ]+]] = ptrtoint %buf_rw_t* inttoptr (i32 3 to %buf_rw_t*) to i32
-; RAW-NEXT:   [[SURF_INT4:%[^ ]+]] = ptrtoint %ocl.image2d_ro_t* inttoptr (i32 1 to %ocl.image2d_ro_t*) to i32
+; RAW-TYPED-PTRS:      [[SURF_INT1:%[^ ]+]] = ptrtoint %ocl.image2d_ro_t* null to i32
+; RAW-TYPED-PTRS-NEXT: [[SURF_INT2:%[^ ]+]] = ptrtoint %ocl.image2d_rw_t* inttoptr (i32 2 to %ocl.image2d_rw_t*) to i32
+; RAW-TYPED-PTRS-NEXT: [[SURF_INT3:%[^ ]+]] = ptrtoint %buf_rw_t* inttoptr (i32 3 to %buf_rw_t*) to i32
+; RAW-TYPED-PTRS-NEXT: [[SURF_INT4:%[^ ]+]] = ptrtoint %ocl.image2d_ro_t* inttoptr (i32 1 to %ocl.image2d_ro_t*) to i32
+; RAW-OPAQUE-PTRS:      [[SURF_INT1:%[^ ]+]] = ptrtoint ptr null to i32
+; RAW-OPAQUE-PTRS-NEXT: [[SURF_INT2:%[^ ]+]] = ptrtoint ptr inttoptr (i32 2 to ptr) to i32
+; RAW-OPAQUE-PTRS-NEXT: [[SURF_INT3:%[^ ]+]] = ptrtoint ptr inttoptr (i32 3 to ptr) to i32
+; RAW-OPAQUE-PTRS-NEXT: [[SURF_INT4:%[^ ]+]] = ptrtoint ptr inttoptr (i32 1 to ptr) to i32
 ; RAW-NEXT:   call void @use_value(i32 [[SURF_INT1]])
 ; RAW-NEXT:   call void @use_value(i32 [[SURF_INT2]])
 ; RAW-NEXT:   call void @use_value(i32 [[SURF_INT3]])
@@ -76,9 +84,11 @@ attributes #0 = { "CMGenxMain" }
 !genx.kernels = !{!0, !5}
 !genx.kernel.internal = !{!4, !9}
 ; CHECK: !genx.kernel.internal = !{[[SIMPLE_NODE:![0-9]+]], [[MIXED_NODE:![0-9]+]]}
-; CHECK-DAG: [[SIMPLE_NODE]] = !{void (%buf_rw_t*, %ocl.sampler_t*)* @simple, null, null, null, [[SIMPLE_BTIS:![0-9]+]]}
+; CHECK-TYPED-PTRS-DAG: [[SIMPLE_NODE]] = !{void (%buf_rw_t*, %ocl.sampler_t*)* @simple, null, null, null, [[SIMPLE_BTIS:![0-9]+]]}
+; CHECK-OPAQUE-PTRS-DAG: [[SIMPLE_NODE]] = !{ptr @simple, null, null, null, [[SIMPLE_BTIS:![0-9]+]]}
 ; CHECK-DAG: [[SIMPLE_BTIS]] = !{i32 0, i32 0}
-; CHECK-DAG: [[MIXED_NODE]] = !{void (%ocl.image2d_ro_t*, %ocl.image2d_rw_t*, %buf_rw_t*, %ocl.image2d_ro_t*)* @mixed_srv_uav, null, null, null, [[MIXED_BTIS:![0-9]+]]}
+; CHECK-TYPED-PTRS-DAG: [[MIXED_NODE]] = !{void (%ocl.image2d_ro_t*, %ocl.image2d_rw_t*, %buf_rw_t*, %ocl.image2d_ro_t*)* @mixed_srv_uav, null, null, null, [[MIXED_BTIS:![0-9]+]]}
+; CHECK-OPAQUE-PTRS-DAG: [[MIXED_NODE]] = !{ptr @mixed_srv_uav, null, null, null, [[MIXED_BTIS:![0-9]+]]}
 ; CHECK-DAG: [[MIXED_BTIS]] = !{i32 0, i32 2, i32 3, i32 1}
 
 !0 = !{void (%buf_rw_t*, %ocl.sampler_t*)* @simple, !"simple", !1, i32 0, i32 0, !2, !3, i32 0}

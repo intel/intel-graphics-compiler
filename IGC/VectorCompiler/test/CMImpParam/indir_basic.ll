@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2023 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -cmimpparam -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -cmimpparam -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -cmimpparam -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
 target triple = "spir64-unknown-unknown"
@@ -20,7 +21,8 @@ define dllexport spir_kernel void @just_indir_call() {
 }
 ; COM: Should stay the same (except privBase arg).
 ; CHECK: define dllexport spir_kernel void @just_indir_call(
-; CHECK-NEXT: %func.ptr = call void ()* @llvm.ssa.copy.p0f_isVoidf(void ()* @empty)
+; CHECK-TYPED-PTRS-NEXT: %func.ptr = call void ()* @llvm.ssa.copy.p0f_isVoidf(void ()* @empty)
+; CHECK-OPAQUE-PTRS-NEXT: %func.ptr = call ptr @llvm.ssa.copy.p0(ptr @empty)
 ; CHECK-NEXT: call void %func.ptr()
 ; CHECK-NEXT: ret void
 

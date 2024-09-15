@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -9,13 +9,16 @@
 ;-----------------------------------------------------------------------------------------
 ; Standalone mode
 ;-----------------------------------------------------------------------------------------
-; RUN: %opt %use_old_pass_manager% -GenXGVClobberChecker -check-gv-clobbering-standalone-mode=true -check-gv-clobbering=true -check-gv-clobbering-collect-kill-call-sites=true -check-gv-clobbering-try-fixup=true -check-gv-clobbering-abort-on-detection=false -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXGVClobberChecker -check-gv-clobbering-standalone-mode=true -check-gv-clobbering=true -check-gv-clobbering-collect-kill-call-sites=true -check-gv-clobbering-try-fixup=true -check-gv-clobbering-abort-on-detection=false -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXGVClobberChecker -check-gv-clobbering-standalone-mode=true -check-gv-clobbering=true -check-gv-clobbering-collect-kill-call-sites=true -check-gv-clobbering-try-fixup=true -check-gv-clobbering-abort-on-detection=false -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 ;-----------------------------------------------------------------------------------------
-; RUN: %opt %use_old_pass_manager% -GenXGVClobberChecker -check-gv-clobbering-standalone-mode=true -check-gv-clobbering=true -check-gv-clobbering-collect-kill-call-sites=false -check-gv-clobbering-try-fixup=true -check-gv-clobbering-abort-on-detection=false -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXGVClobberChecker -check-gv-clobbering-standalone-mode=true -check-gv-clobbering=true -check-gv-clobbering-collect-kill-call-sites=false -check-gv-clobbering-try-fixup=true -check-gv-clobbering-abort-on-detection=false -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXGVClobberChecker -check-gv-clobbering-standalone-mode=true -check-gv-clobbering=true -check-gv-clobbering-collect-kill-call-sites=false -check-gv-clobbering-try-fixup=true -check-gv-clobbering-abort-on-detection=false -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 ;-----------------------------------------------------------------------------------------
 ; In-pipeline mode (simulating situation when running during normal compilation)
 ;-----------------------------------------------------------------------------------------
-; RUN: %opt %use_old_pass_manager% -GenXModule -GenXCategoryWrapper -GenXGVClobberChecker -check-gv-clobbering-standalone-mode=false -check-gv-clobbering=true -check-gv-clobbering-collect-kill-call-sites=true -check-gv-clobbering-try-fixup=true -check-gv-clobbering-abort-on-detection=false -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXModule -GenXCategoryWrapper -GenXGVClobberChecker -check-gv-clobbering-standalone-mode=false -check-gv-clobbering=true -check-gv-clobbering-collect-kill-call-sites=true -check-gv-clobbering-try-fixup=true -check-gv-clobbering-abort-on-detection=false -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXModule -GenXCategoryWrapper -GenXGVClobberChecker -check-gv-clobbering-standalone-mode=false -check-gv-clobbering=true -check-gv-clobbering-collect-kill-call-sites=true -check-gv-clobbering-try-fixup=true -check-gv-clobbering-abort-on-detection=false -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 ; ------------------------------------------------
 ; This test checks global volatile clobbering checker/fixup introduced late in pipeline to catch over-optimizations of global volatile access. This is an auxiliary utility used to help in detecting and fixing erroneous over-optimizations cases. The checker/fixup is only available under the -check-gv-clobbering=true option and for a limited number of cases.
 
@@ -39,7 +42,8 @@ entry:
 
 ; CHECK: define spir_kernel void @CheckGVClobberingFixUpUndefinedFunctionCall
 ; CHECK: entry:
-; CHECK:   %call.i.i.i8.i.esimd6 = load volatile <4 x i32>, <4 x i32>* @_ZL8g_global, align 16
+; CHECK-TYPED-PTRS: %call.i.i.i8.i.esimd6 = load volatile <4 x i32>, <4 x i32>* @_ZL8g_global, align 16
+; CHECK-OPAQUE-PTRS: %call.i.i.i8.i.esimd6 = load volatile <4 x i32>, ptr @_ZL8g_global, align 16
 ; CHECK:   %vecext.i.i1.regioncollapsed = tail call i32 @llvm.genx.rdregioni.i32.v4i32.i16(<4 x i32> %call.i.i.i8.i.esimd6, i32 0, i32 1, i32 1, i16 0, i32 undef)
 ; CHECK:   tail call spir_func void @UserFunctionUndefined()
 ; CHECK:   %cmp.i.i = icmp eq i32 %vecext.i.i1.regioncollapsed, 55
@@ -70,7 +74,8 @@ entry:
 
 ;-------------------------------------------------------------------------------------------
 ; CHECK: define spir_kernel void @TestGVClobberingFixupStoreInCall
-; CHECK:  %call.i.i.i8.i.esimd6 = load volatile <4 x i32>, <4 x i32>* @_ZL8g_global
+; CHECK-TYPED-PTRS: %call.i.i.i8.i.esimd6 = load volatile <4 x i32>, <4 x i32>* @_ZL8g_global
+; CHECK-OPAQUE-PTRS: %call.i.i.i8.i.esimd6 = load volatile <4 x i32>, ptr @_ZL8g_global
 ; CHECK-NEXT:  %vecext.i.i1.regioncollapsed = tail call i32 @llvm.genx.rdregioni.i32.v4i32.i16(<4 x i32> %call.i.i.i8.i.esimd6, i32 0, i32 1, i32 1, i16 0, i32 undef)
 ; COM: if -check-gv-clobbering-collect-kill-call-sites=true is supplied
 ; COM: store interference is precisely detected here down the call chain.
@@ -96,7 +101,8 @@ entry:
 
 ;-------------------------------------------------------------------------------------------
 ; CHECK: define spir_kernel void @TestGVClobberingFixupStoreInCallIndirect
-; CHECK:   %call.i.i.i8.i.esimd6 = load volatile <4 x i32>, <4 x i32>* @_ZL8g_global, align 16
+; CHECK-TYPED-PTRS: %call.i.i.i8.i.esimd6 = load volatile <4 x i32>, <4 x i32>* @_ZL8g_global, align 16
+; CHECK-OPAQUE-PTRS: %call.i.i.i8.i.esimd6 = load volatile <4 x i32>, ptr @_ZL8g_global, align 16
 ; CHECK:   %vecext.i.i1.regioncollapsed = tail call i32 @llvm.genx.rdregioni.i32.v4i32.i16(<4 x i32> %call.i.i.i8.i.esimd6, i32 0, i32 1, i32 1, i16 0, i32 undef)
 ; CHECK:   tail call spir_func void %func_ptr()
 
@@ -115,11 +121,13 @@ entry:
 
 ;-------------------------------------------------------------------------------------------
 ; CHECK: define spir_kernel void @TestGVClobberingFixupLocalStore
-; CHECK:  %call.i.i.i8.i.esimd6 = load volatile <4 x i32>, <4 x i32>* @_ZL8g_global
+; CHECK-TYPED-PTRS: %call.i.i.i8.i.esimd6 = load volatile <4 x i32>, <4 x i32>* @_ZL8g_global
+; CHECK-OPAQUE-PTRS: %call.i.i.i8.i.esimd6 = load volatile <4 x i32>, ptr @_ZL8g_global
 ; CHECK-NEXT:  %vecext.i.i1.regioncollapsed = tail call i32 @llvm.genx.rdregioni.i32.v4i32.i16(<4 x i32> %call.i.i.i8.i.esimd6, i32 0, i32 1, i32 1, i16 0, i32 undef)
 ; COM: store interference is directly detected in this function.
 ; CHECK-NEXT:  %call4.i.i.i.i.i.i.esimd = tail call <4 x i32> @llvm.genx.wrregioni.v4i32.v1i32.i16.v1i1(<4 x i32> %call.i.i.i8.i.esimd6, <1 x i32> <i32 42>, i32 0, i32 1, i32 1, i16 0, i32 0, <1 x i1> <i1 true>)
-; CHECK-NEXT: store volatile <4 x i32> %call4.i.i.i.i.i.i.esimd, <4 x i32>* @_ZL8g_global
+; CHECK-TYPED-PTRS-NEXT: store volatile <4 x i32> %call4.i.i.i.i.i.i.esimd, <4 x i32>* @_ZL8g_global
+; CHECK-OPAQUE-PTRS-NEXT: store volatile <4 x i32> %call4.i.i.i.i.i.i.esimd, ptr @_ZL8g_global
 ; CHECK-NOT:  %vecext.i.i1.regioncollapsed = tail call i32 @llvm.genx.rdregioni.i32.v4i32.i16(<4 x i32> %call.i.i.i8.i.esimd6, i32 0, i32 1, i32 1, i16 0, i32 undef)
 ; CHECK-NEXT:  %cmp.i.i = icmp eq i32 %vecext.i.i1.regioncollapsed, 55
 
@@ -151,7 +159,8 @@ while.body.i.while.body.i_crit_edge:              ; preds = %while.body.i
 
 ;-------------------------------------------------------------------------------------------
 ; CHECK: define spir_kernel void @TestGVClobberingFixupLoopLocalStore
-; CHECK:  %call.i.i.i17.i.esimd8 = load volatile <4 x i32>, <4 x i32>* @_ZL8g_global
+; CHECK-TYPED-PTRS:  %call.i.i.i17.i.esimd8 = load volatile <4 x i32>, <4 x i32>* @_ZL8g_global
+; CHECK-OPAQUE-PTRS:  %call.i.i.i17.i.esimd8 = load volatile <4 x i32>, ptr @_ZL8g_global
 ; CHECK-NEXT:  %vecext.i.i3.regioncollapsed = call <1 x i32> @llvm.genx.rdregioni.v1i32.v4i32.i16(<4 x i32> %call.i.i.i17.i.esimd8, i32 0, i32 1, i32 1, i16 0, i32 undef)
 ; CHECK-NEXT:  %cmp.i1 = icmp sgt i32 %bitcast, 0
 

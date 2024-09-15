@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -8,7 +8,8 @@
 
 ; Check that kernel arg offsets pass will not touch arguments with IO annotations.
 
-; RUN: %opt %use_old_pass_manager% -cmkernelargoffset -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -cmkernelargoffset -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -cmkernelargoffset -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
 target triple = "spir64-unknown-unknown"
@@ -23,7 +24,8 @@ attributes #0 = { "CMGenxMain" }
 !genx.kernels = !{!0}
 !genx.kernel.internal = !{!3}
 
-; CHECK: [[KERNEL]] = !{void (i32, <6 x i32>)* @barfoo, !"barfoo", !1, i32 0, [[OFFSETS:![0-9]+]]
+; CHECK-TYPED-PTRS: [[KERNEL]] = !{void (i32, <6 x i32>)* @barfoo, !"barfoo", !1, i32 0, [[OFFSETS:![0-9]+]]
+; CHECK-OPAQUE-PTRS: [[KERNEL]] = !{ptr @barfoo, !"barfoo", !1, i32 0, [[OFFSETS:![0-9]+]]
 ; CHECK: [[OFFSETS]] = !{i32 64, i32 68}
 !0 = !{void (i32, <6 x i32>)* @barfoo, !"barfoo", !1, i32 0, i32 0, !4, !2, i32 0}
 !1 = !{i32 0, i32 0}

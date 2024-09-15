@@ -365,7 +365,7 @@ void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
         Alignment = IGCLLVM::getAlignmentValue(DL.getPointerABIAlignment(0));
       } else if (Ty->isPointerTy()) {
         if (Arg.hasByValAttr()) {
-          Ty = Ty->getContainedType(0);
+          Ty = Arg.getParamByValType();
           Bytes = DL.getTypeAllocSize(Ty);
           Alignment = IGCLLVM::getAlignmentValue(Bytes);
         } else {
