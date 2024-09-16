@@ -105,6 +105,9 @@ namespace IGC
             // Function which checks if the pFunc is a built-in function from BiFModule
             // pFunc : Function to be check
             static bool IsBiF(llvm::Function* pFunc);
+            // Function which checks if the pVar is a global variable from built-in function from BiFModule
+            // pVar : Global variable to be check
+            static bool IsBiF(llvm::GlobalVariable* pVar);
         };
     }
 }

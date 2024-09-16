@@ -338,6 +338,31 @@ int BiFManagerTool::findDependency(BiFDictionary& BiFMapBitType)
     return MaxDependencyList;
 }
 
+void BiFManagerTool::markBuiltinFunc(llvm::Module* pM)
+{
+    for (auto& f : pM->functions())
+    {
+        if (!f.isDeclaration())
+        {
+            LLVMContext& C = f.getContext();
+            MDNode* N = MDNode::get(C, MDString::get(C, "IGC built-in function"));
+
+            f.setMetadata(bifMark, N);
+        }
+    }
+
+    for (auto& g : pM->globals())
+    {
+        if(!g.isDeclaration())
+        {
+            LLVMContext& C = g.getContext();
+            MDNode* N = MDNode::get(C, MDString::get(C, "IGC global variable from built-in function"));
+
+            g.setMetadata(bifMark, N);
+        }
+    }
+}
+
 void BiFManagerTool::MakeBiFPackage(
     llvm::Module* pBiFModuleMain,
     llvm::Module* pBiFModuleSize32,
@@ -369,6 +394,9 @@ void BiFManagerTool::MakeBiFPackage(
     for (auto& module_i : BiFSections)
     {
         llvm::Module* md = module_i.second.get();
+
+        // Mark all built-in functions and global variables
+        markBuiltinFunc(md);
 
         for (auto& func_i : md->functions())
         {
@@ -443,6 +471,7 @@ void BiFManagerTool::generateSplitedBiFModules(llvm::Module* pMainModule)
         mpm.add(createGlobalDCEPass());           // Delete unreachable globals.
         mpm.add(createStripDeadDebugInfoPass());  // Remove dead debug info.
         mpm.add(createStripDeadPrototypesPass()); // Remove dead func decls.
+
         mpm.run(*kernelM.get());
         BiFSections[setData.first] = (std::move(kernelM));
     }

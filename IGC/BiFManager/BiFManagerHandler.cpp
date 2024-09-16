@@ -140,9 +140,20 @@ void BiFManagerHandler::LinkBiF(llvm::Module& Module)
             bool isLastItem = std::next(bifsection_i) == LoadedBiFSections.end();
             if (isLastItem)
             {
-                for (auto& global : Module.getGlobalList())
+                for (auto& f : Module.functions())
                 {
-                    global.setLinkage(GlobalValue::ExternalLinkage);
+                    if(IsBiF(&f))
+                    {
+                        f.setLinkage(GlobalValue::ExternalLinkage);
+                    }
+                }
+
+                for (auto& g : Module.globals())
+                {
+                    if(IsBiF(&g))
+                    {
+                        g.setLinkage(GlobalValue::ExternalLinkage);
+                    }
                 }
             }
         }
@@ -176,15 +187,12 @@ void BiFManagerHandler::LinkBiF(llvm::Module& Module)
 
 bool BiFManagerHandler::IsBiF(llvm::Function* pFunc)
 {
-    bool isPtrSize32 = isModulePtrSize32(pFunc->getParent());
-    auto funcName = pFunc->getName().str();
-    return
-        (isPtrSize32 ?
-            GetDepList32(funcName) :
-            GetDepList64(funcName))
-        // if returned vector from GetDepList[32|64], is one element vector
-        // containing -1, then it means that the pFunc is not a BiF
-        [0] != -1;
+    return pFunc->getMetadata(bifMark) != nullptr;
+}
+
+bool BiFManagerHandler::IsBiF(llvm::GlobalVariable* pVar)
+{
+    return pVar->getMetadata(bifMark) != nullptr;
 }
 
 void BiFManagerHandler::SetCallbackLinker(std::function<void(llvm::Module&, const llvm::StringSet<>&)> CallbackLinker)

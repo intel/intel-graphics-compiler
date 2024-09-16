@@ -99,6 +99,8 @@ namespace IGC
                 BiFDictionary* ListOfFunctions,
                 int MaxDependencyList, int SizeType);
 
+            static void markBuiltinFunc(llvm::Module* pM);
+
         public:
         // Function which is making the bif-stream package
             void MakeBiFPackage(
