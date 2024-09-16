@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMUtils.h"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/ADT/BreadthFirstIterator.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/Analysis/CFG.h>
 #include <llvm/Analysis/InstructionSimplify.h>
@@ -662,7 +663,7 @@ bool DynamicRayManagementPass::AddDynamicRayManagement(Function& F)
 
     // Find the Block which dominates all AllocateRayQueryIntrinsics
     // This will be the place to put RayQueryCheck().
-    BasicBlock* dominatorBasicBlock = allocateRayQueries[0]->getParent();
+    BasicBlock* dominatorBasicBlock = commonPostDominatorForRayQueryUsers;
 
     for (AllocateRayQueryIntrinsic* allocateRayQueryIntrinsic : allocateRayQueries)
     {
@@ -872,6 +873,29 @@ bool DynamicRayManagementPass::AddDynamicRayManagement(Function& F)
     // The third argument is a value returned by RayQueryCheck, it is used only
     // RayQueryCheck-Release pair identification.
     RayQueryReleaseIntrinsic* rayQueryRelease = builder.CreateRayQueryReleaseIntrinsic();
+
+    // There is a possibility that the check is no longer post-dominated by the release now (because release insertion logic changes the domtrees)
+    // If that's the case, iterate over descendants of the check and find a block thats both dominated by the current check and postdominated by the current release
+    if (!m_PDT->dominates(rayQueryRelease->getParent(), rayQueryCheck->getParent()))
+    {
+        for (auto* node : llvm::breadth_first(m_DT->getNode(rayQueryCheck->getParent())))
+        {
+            auto* bb = node->getBlock();
+            if (m_PDT->dominates(rayQueryRelease->getParent(), bb))
+            {
+                for (auto& I : *bb)
+                {
+                    if (isa<AllocateRayQueryIntrinsic>(&I) || &I == bb->getTerminator() || &I == rayQueryRelease)
+                    {
+                        rayQueryCheck->moveBefore(&I);
+                        break;
+                    }
+                }
+
+                break;
+            }
+        }
+    }
 
     // Add created RayQueryCheck-Release to the list, which
     // will be used during complex control flow handling.
