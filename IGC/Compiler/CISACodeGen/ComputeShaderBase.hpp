@@ -34,28 +34,10 @@ namespace IGC
             uint threadGroupSize_Z,
             SComputeShaderWalkOrder& walkOrderStruct);
 
-        ThreadIDLayout m_ThreadIDLayout = ThreadIDLayout::X;    // obsolete, remove later
-
-        CS_WALK_ORDER m_walkOrder = CS_WALK_ORDER::WO_XYZ;      // obsolete, remove later
-        EMIT_LOCAL_MASK m_emitMask = EMIT_LOCAL_MASK::EM_NONE;  // obsolete, remove later
-        //true if HW generates localIDs and puts them to payload
-        //false if SW generates localIDs and prolog kernel loads them from memory
-        bool m_enableHWGenerateLID = false;                     // obsolete, remove later
-
-        void setEmitLocalMask(SGVUsage channelNum); // obsolete, remove later
-        static llvm::Optional<CS_WALK_ORDER> selectBestWalkOrder( // obsolete, remove later
-            ThreadIDLayout Layout,
-            bool is_pow2_x, bool is_pow2_y, bool is_pow2_z);
         // Determines if HW can handle auto generating local IDs with this
         // order
         static llvm::Optional<CS_WALK_ORDER> checkLegalWalkOrder(
             const std::array<uint32_t, 3>& Dims,
             const WorkGroupWalkOrderMD& WO);
-        static bool enableHWGenerateLID(             // obsolete, remove later
-            CS_WALK_ORDER walk_order,
-            bool is_pow2_x, bool is_pow2_y, bool is_pow2_z);
-        void overrideWalkOrderKeys(                  // obsolete, remove later
-            bool is_pow2_x, bool is_pow2_y, bool is_pow2_z, const ComputeShaderInfo& csInfo);
-        static CS_WALK_ORDER getWalkOrder(uint order0, uint order1);    // obsolete, remove later
     };
 }

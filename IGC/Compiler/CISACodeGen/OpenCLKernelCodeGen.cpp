@@ -423,7 +423,7 @@ namespace IGC
 
         if (!ForcedWalkOrder)
         {
-            selectWalkOrder(
+            selectWalkOrderInPass(
                 false,
                 0,
                 0,
@@ -433,6 +433,7 @@ namespace IGC
                 (*Dims)[0],
                 (*Dims)[1],
                 (*Dims)[2],
+                m_Context,
                 m_Context->m_walkOrderStruct);
         }
         encoder.GetVISABuilder()->SetOption(vISA_autoLoadLocalID, m_Context->m_walkOrderStruct.m_enableHWGenerateLID);

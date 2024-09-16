@@ -15,6 +15,18 @@ SPDX-License-Identifier: MIT
 using namespace IGC;
 
 namespace IGC {
+    void selectWalkOrderInPass(
+        bool useLinearWalk,
+        uint numberOfTypedAccess,
+        uint numberOfUntypedAccess,
+        uint num1DAccesses,
+        uint num2DAccesses,
+        uint numSLMAccesses,
+        uint threadGroupSize_X,
+        uint threadGroupSize_Y,
+        uint threadGroupSize_Z,
+        CodeGenContext* ctx,
+        SComputeShaderWalkOrder& walkOrderStruct);
 
     void overrideWalkOrderKeysInPass(
         bool is_pow2_x, bool is_pow2_y, bool is_pow2_z,
