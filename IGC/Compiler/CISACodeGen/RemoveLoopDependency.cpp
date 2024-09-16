@@ -64,7 +64,7 @@ bool RemoveLoopDependency::RemoveDependency(PHINode *PHI, Loop *L) {
             return false;
 
         if (InsertElementInst *IEI = dyn_cast<InsertElementInst>(currentVector->user_back())) {
-            if (IEI->getOperand(0) != currentVector || !L->contains(IEI))
+            if (!L->contains(IEI))
                 return false;
 
             if (ConstantInt *indexConst = dyn_cast<ConstantInt>(IEI->getOperand(2))) {

@@ -24,6 +24,7 @@ header:                                           ; preds = %header, %entry
 ; CHECK-NEXT:    [[VEC_NOTCONSTIND_1:%.*]] = phi <4 x i32> [ zeroinitializer, [[ENTRY]] ], [ zeroinitializer, %header ]
 ; CHECK-NEXT:    [[VEC_OUTOFRANGE_1:%.*]] = phi <4 x i32> [ zeroinitializer, [[ENTRY]] ], [ zeroinitializer, %header ]
 ; CHECK-NEXT:    [[SCALAR:%.*]] = phi i32 [ 0, [[ENTRY]] ], [ 0, %header ]
+; CHECK-NEXT:    [[VEC_NOTINSERT_1:%.*]] = phi <4 x i32> [ zeroinitializer, [[ENTRY]] ], [ zeroinitializer, %header ]
   %vec.inorder.1 = phi <4 x i32> [ zeroinitializer, %entry ], [ zeroinitializer, %header ]
   %vec.outorder.1 = phi <4 x i32> [ zeroinitializer, %entry ], [ zeroinitializer, %header ]
   %vec.partial.1 = phi <4 x i32> [ zeroinitializer, %entry ], [ zeroinitializer, %header ]
@@ -33,6 +34,7 @@ header:                                           ; preds = %header, %entry
   %vec.notconstind.1 = phi <4 x i32> [ zeroinitializer, %entry ], [ zeroinitializer, %header ]
   %vec.outofrange.1 = phi <4 x i32> [ zeroinitializer, %entry ], [ zeroinitializer, %header ]
   %scalar = phi i32 [ 0, %entry ], [ 0, %header ]
+  %vec.notinsert.1 = phi <4 x i32> [ zeroinitializer, %entry ], [ zeroinitializer, %header ]
 
 ; whole vector is overwritten, so can replace with undef
 ; CHECK:    [[VEC_INORDER_2:%.*]] = insertelement <4 x i32> undef, i32 5, i32 0
@@ -111,6 +113,16 @@ header:                                           ; preds = %header, %entry
   %vec.notloop.2 = insertelement <4 x i32> %vec.notloop.1, i32 5, i32 0
   %vec.notloop.3 = insertelement <4 x i32> %vec.notloop.2, i32 5, i32 1
   %vec.notloop.4 = insertelement <4 x i32> %vec.notloop.3, i32 5, i32 2
+
+; single use is not insertelement
+; CHECK:         [[VEC_NOTINSERT_2:%.*]] = insertelement <4 x i32> [[VEC_NOTINSERT_1]], i32 5, i32 0
+; CHECK-NEXT:    [[VEC_NOTINSERT_3:%.*]] = insertelement <4 x i32> [[VEC_NOTINSERT_2]], i32 5, i32 1
+; CHECK-NEXT:    [[VEC_NOTINSERT_4:%.*]] = insertelement <4 x i32> [[VEC_NOTINSERT_3]], i32 5, i32 2
+; CHECK-NEXT:    %notinsert.5 = extractelement <4 x i32> [[VEC_NOTINSERT_4]], i32 3
+  %vec.notinsert.2 = insertelement <4 x i32> %vec.notinsert.1, i32 5, i32 0
+  %vec.notinsert.3 = insertelement <4 x i32> %vec.notinsert.2, i32 5, i32 1
+  %vec.notinsert.4 = insertelement <4 x i32> %vec.notinsert.3, i32 5, i32 2
+  %notinsert.5 = extractelement <4 x i32> %vec.notinsert.4, i32 3
 
 ; scalar
 ; CHECK:    [[INC:%.*]] = add i32 [[SCALAR]], 1
