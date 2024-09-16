@@ -3869,10 +3869,8 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
                ElementSize == LSC_DATA_SIZE_32b ||
                ElementSize == LSC_DATA_SIZE_64b);
 
-    auto AddressOperandNum =
-        vc::InternalIntrinsic::getMemoryAddressOperandIndex(CI);
-    IGC_ASSERT_EXIT(AddressOperandNum >= 0);
-    auto *AddrV = CI->getArgOperand(AddressOperandNum);
+    auto *AddrV = vc::InternalIntrinsic::getMemoryAddressOperand(CI);
+    IGC_ASSERT_EXIT(AddrV);
     auto *AddrTy = AddrV->getType();
     if (auto *AddrVTy = dyn_cast<IGCLLVM::FixedVectorType>(AddrTy))
       AddrTy = AddrVTy->getElementType();

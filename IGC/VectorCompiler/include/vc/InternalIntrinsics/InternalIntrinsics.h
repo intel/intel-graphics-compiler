@@ -205,8 +205,6 @@ inline llvm::Value *getMemoryBaseOperand(const llvm::Instruction *I) {
 
 int getTwoAddrOpIndex(const llvm::CallInst *CI);
 
-int getMemoryAddressOperandIndex(const llvm::CallInst *CI);
-
 } // namespace vc::InternalIntrinsic
 
 #endif
