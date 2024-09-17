@@ -1525,6 +1525,11 @@ void OptimizeIR(CodeGenContext* const pContext)
 
                 mpm.add(createIGCInstructionCombiningPass());
 
+                if (IGC_IS_FLAG_ENABLED(EnableIndVarSimplification))
+                {
+                    mpm.add(llvm::createIndVarSimplifyPass());
+                }
+
                 if (IGC_IS_FLAG_ENABLED(EnableLoopHoistConstant))
                 {
                     mpm.add(createLoopHoistConstant());

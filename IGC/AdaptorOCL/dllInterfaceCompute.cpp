@@ -1219,6 +1219,26 @@ bool TranslateBuildSPMD(
             }
         }
 
+        // From pass IndVarSimplify we are only interested in optimization done by -replexitval.
+        // Disable other features that can have a negative impact on performance.
+        std::array<llvm::StringRef, 4> indVarSimplifyFlags = {
+            "-indvars-post-increment-ranges=0",
+            "-disable-lftr=1",
+            "-indvars-widen-indvars=0",
+            "-verify-indvars=0"
+        };
+        for (auto indVarSimplifyFlag : indVarSimplifyFlags)
+        {
+            auto indVarSimplifySwitch = optionsMap.find(indVarSimplifyFlag.drop_front(1).split("=").first);
+            if (indVarSimplifySwitch != optionsMap.end())
+            {
+                if (indVarSimplifySwitch->getValue()->getNumOccurrences() == 0)
+                {
+                    args.push_back(indVarSimplifyFlag.data());
+                }
+            }
+        }
+
         if (std::size(args) > 1)
         {
             llvm::cl::ParseCommandLineOptions(std::size(args), &args[0]);
