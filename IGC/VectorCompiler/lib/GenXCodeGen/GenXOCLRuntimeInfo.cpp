@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include "OCLRuntimeInfoPrinter.h"
 #include "GenXGlobalUniform.h"
 
+#include "vc/Utils/GenX/CostInfo.h"
 #include "vc/Utils/GenX/GlobalVariable.h"
 #include "vc/Utils/GenX/InternalMetadata.h"
 #include "vc/Utils/GenX/KernelInfo.h"
@@ -450,14 +451,11 @@ GenXOCLRuntimeInfo::KernelInfo::KernelInfo(const FunctionGroup &FG,
 // Compiled kernel implementation.
 //
 //===----------------------------------------------------------------------===//
-GenXOCLRuntimeInfo::CompiledKernel::CompiledKernel(KernelInfo &&KI,
-                                                   const vISA::FINALIZER_INFO &JI,
-                                                   const GTPinInfo &GI,
-                                                   std::vector<char> DbgInfoIn)
-    : CompilerInfo(std::move(KI)), JitterInfo(JI),
-      GtpinInfo(GI),
-      DebugInfo{std::move(DbgInfoIn)} {
-}
+GenXOCLRuntimeInfo::CompiledKernel::CompiledKernel(
+    KernelInfo &&KI, const CostInfoT &CI, const vISA::FINALIZER_INFO &JI,
+    const GTPinInfo &GI, std::vector<char> DbgInfoIn)
+    : CompilerInfo(std::move(KI)), CostInfo(CI), JitterInfo(JI),
+      GtpinInfo(GI), DebugInfo{std::move(DbgInfoIn)} {}
 
 //===----------------------------------------------------------------------===//
 //
@@ -853,6 +851,7 @@ RuntimeInfoCollector::CompiledModuleT RuntimeInfoCollector::run() {
 RuntimeInfoCollector::CompiledKernel
 RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
   using KernelInfo = GenXOCLRuntimeInfo::KernelInfo;
+  using CostInfoT = GenXOCLRuntimeInfo::CostInfoT;
   using GTPinInfo = GenXOCLRuntimeInfo::GTPinInfo;
   using CompiledKernel = GenXOCLRuntimeInfo::CompiledKernel;
 
@@ -907,8 +906,52 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
   GTPinInfo gtpin{GTPinBytes, GTPinBytes + GTPinBufferSize};
 
   Info.Func.Data.Buffer = std::move(TextSection.Data).emitConsolidatedData();
-  return CompiledKernel{std::move(Info), *JitInfo, std::move(gtpin),
-                        std::move(DebugData)};
+
+  CostInfoT CInfo{};
+  if (BC.isCostModelEnabled()) {
+    // Get cost metrics from finalizer.
+    const vISA::KernelCostInfo *KernelCostInfo = nullptr;
+    VISAKernel *VF = VB.GetVISAKernel(FG.getName().str());
+    VF->getKernelCostInfo(KernelCostInfo);
+    if (KernelCostInfo) {
+      auto &VISAKernelMetric = KernelCostInfo->kernelCost.C;
+      CInfo.Costs.push_back({(int)VISAKernelMetric.cycles,
+                             (int)VISAKernelMetric.loadBytes,
+                             (int)VISAKernelMetric.storeBytes, 0});
+      for (auto &VISACost : KernelCostInfo->allLoopCosts) {
+        auto &VISAMetric = VISACost.loopBodyCost.C;
+        CInfo.Costs.push_back(
+            {(int)VISAMetric.cycles, (int)VISAMetric.loadBytes,
+             (int)VISAMetric.storeBytes, VISACost.numChildLoops});
+        // Count the number of top-level loops for the kernel.
+        if (VISACost.nestingLevel == 1)
+          CInfo.Costs[0].NumLoops += 1;
+      }
+    } else
+      IGC_ASSERT_MESSAGE(0, "Failed to get cost metrics from finalizer");
+
+    // Finalize cost expressions.
+    auto &LI = RI.getAnalysis<LoopInfoWrapperPass>(*FG.getHead()).getLoopInfo();
+    SmallVector<Loop *, 4> Loops = LI.getLoopsInPreorder();
+    for (auto *L : Loops) {
+      auto Expression = vc::restoreLCEFromMetadata(*L);
+      if (Expression.IsUndef || Expression.Factor == 0.0f) {
+        CInfo.Expressions.push_back({Expression.Factor, -1, Expression.Addend});
+        continue;
+      }
+      CostInfoT::ArgSymInfo Symbol{
+          Expression.Symbol.Num, Expression.Symbol.Offset,
+          Expression.Symbol.Size, Expression.Symbol.IsIndirect};
+      auto SymIt =
+          std::find(CInfo.Symbols.begin(), CInfo.Symbols.end(), Symbol);
+      int Idx = std::distance(CInfo.Symbols.begin(), SymIt);
+      if (SymIt == CInfo.Symbols.end())
+        CInfo.Symbols.push_back(Symbol);
+      CInfo.Expressions.push_back({Expression.Factor, Idx, Expression.Addend});
+    }
+  }
+  return CompiledKernel{std::move(Info), std::move(CInfo), *JitInfo,
+                        std::move(gtpin), std::move(DebugData)};
 }
 
 // Goes through function groups in FGRange and collects their vISA asms into a
@@ -962,7 +1005,8 @@ RuntimeInfoCollector::collectFunctionSubgroupsInfo(
                                    Decl.getName().str());
   Info.Func.Data.Buffer = TextSection.Data.emitConsolidatedData();
 
-  return CompiledKernel{std::move(Info), vISA::FINALIZER_INFO{},
+  return CompiledKernel{std::move(Info), /*CostInfo*/ {},
+                        vISA::FINALIZER_INFO{},
                         /*GtpinInfo*/ {}, std::move(DebugInfo)};
 }
 
@@ -973,6 +1017,7 @@ void GenXOCLRuntimeInfo::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<GenXDebugInfo>();
   AU.addRequired<TargetPassConfig>();
   AU.addRequired<GenXGlobalUniformAnalysis>();
+  AU.addRequired<LoopInfoWrapperPass>();
   AU.setPreservesAll();
 }
 
@@ -1005,5 +1050,6 @@ INITIALIZE_PASS_DEPENDENCY(GenXModule);
 INITIALIZE_PASS_DEPENDENCY(GenXDebugInfo);
 INITIALIZE_PASS_DEPENDENCY(TargetPassConfig);
 INITIALIZE_PASS_DEPENDENCY(GenXGlobalUniformAnalysis);
+INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass);
 INITIALIZE_PASS_END(GenXOCLRuntimeInfo, "GenXOCLRuntimeInfo",
                     "GenXOCLRuntimeInfo", false, true)

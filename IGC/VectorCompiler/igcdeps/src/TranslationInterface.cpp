@@ -306,6 +306,11 @@ static void adjustTransformationsAndOptimizations(vc::CompileOptions &Opts) {
           IGC_GET_FLAG_VALUE(VCDisableExtraCoalescing));
 }
 
+static void adjustKernelMetrics(vc::CompileOptions &Opts) {
+  if (IGC_IS_FLAG_ENABLED(EnableKernelCostInfo))
+    Opts.EnableCostModel = true;
+}
+
 static void adjustDumpOptions(vc::CompileOptions &Opts) {
   if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable)) {
     Opts.DumpIR = true;
@@ -337,6 +342,7 @@ static void adjustOptions(const IGC::CPlatform &IGCPlatform,
   adjustHashOptions(Opts, Hash);
 
   adjustTransformationsAndOptimizations(Opts);
+  adjustKernelMetrics(Opts);
 }
 
 static void setErrorMessage(llvm::StringRef ErrorMessage,

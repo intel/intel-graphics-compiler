@@ -248,6 +248,7 @@ void initializeGenXBuiltinFunctionsPass(PassRegistry &);
 void initializeGenXSLMResolutionPass(PassRegistry &);
 void initializeGenXLscAddrCalcFoldingPass(PassRegistry &);
 void initializeGenXDetectPointerArgPass(PassRegistry &);
+void initializeGenXLCECalculationPass(PassRegistry &);
 } // End llvm namespace
 
 #endif

@@ -285,15 +285,46 @@ public:
 
   using GTPinInfo = std::vector<char>;
 
+  struct CostInfoT {
+    struct ArgSymInfo {
+      int ArgNo;
+      int ByteOffset;
+      int SizeInBytes;
+      bool IsIndirect;
+
+      bool operator==(const ArgSymInfo &RHS) const {
+        return ArgNo == RHS.ArgNo && ByteOffset == RHS.ByteOffset &&
+               SizeInBytes == RHS.SizeInBytes && IsIndirect == RHS.IsIndirect;
+      }
+    };
+    struct LoopCountExpr {
+      float Factor;
+      int ArgSymIdx;
+      float C;
+    };
+    struct LoopCost {
+      int Cycle;
+      int BytesLoaded;
+      int BytesStored;
+      int NumLoops;
+    };
+
+    std::vector<ArgSymInfo> Symbols;
+    std::vector<LoopCountExpr> Expressions;
+    std::vector<LoopCost> Costs;
+  };
+
   class CompiledKernel {
     KernelInfo CompilerInfo;
+    CostInfoT CostInfo;
     vISA::FINALIZER_INFO JitterInfo;
     GTPinInfo GtpinInfo;
     std::vector<char> DebugInfo;
 
   public:
-    CompiledKernel(KernelInfo &&KI, const vISA::FINALIZER_INFO &JI,
-                   const GTPinInfo &GI, std::vector<char> DebugInfo);
+    CompiledKernel(KernelInfo &&KI, const CostInfoT &CI,
+                   const vISA::FINALIZER_INFO &JI, const GTPinInfo &GI,
+                   std::vector<char> DebugInfo);
 
     const KernelInfo &getKernelInfo() const { return CompilerInfo; }
     const vISA::FINALIZER_INFO &getJitterInfo() const { return JitterInfo; }
@@ -302,6 +333,7 @@ public:
       return CompilerInfo.Func.Data.Buffer;
     }
     const std::vector<char> &getDebugInfo() const { return DebugInfo; }
+    const CostInfoT &getCostInfo() const { return CostInfo; }
   };
 
   struct ModuleInfoT {

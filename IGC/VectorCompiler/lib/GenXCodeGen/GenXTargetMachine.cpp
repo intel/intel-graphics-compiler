@@ -209,6 +209,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXTypeLegalizationPass(registry);
   initializeGenXLscAddrCalcFoldingPass(registry);
   initializeGenXDetectPointerArgPass(registry);
+  initializeGenXLCECalculationPass(registry);
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
 
@@ -547,6 +548,18 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// This is a standard LLVM pass, used at this point in the GenX backend.
   ///
   vc::addPass(PM, createCFGSimplificationPass());
+
+  if (BackendConfig.isCostModelEnabled()) {
+    /// LoopSimplify
+    /// ------------
+    /// This is a standard LLVM pass, run at this point in the GenX backend.
+    /// It is required since llvm loop bounds are used for LCE calculations.
+    ///
+    vc::addPass(PM, createLoopSimplifyPass());
+    /// .. include:: GenXLCECalculation.cpp
+    vc::addPass(PM, createGenXLCECalculationPass());
+  }
+
   /// .. include:: GenXInlineAsmLowering.cpp
   vc::addPass(PM, createGenXInlineAsmLoweringPass());
   /// .. include:: GenXReduceIntSize.cpp

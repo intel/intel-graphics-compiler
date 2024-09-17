@@ -185,6 +185,8 @@ struct GenXBackendOptions {
   bool EnableHashMovsAtPrologue = false;
   uint64_t AsmHash = 0;
 
+  bool EnableCostModel = false;
+
   // Calling enforceLLVMOptions queries the state of LLVM options and
   // updates BackendOptions accordingly.
   // Note: current implementation allows backend options to be configured by
@@ -384,6 +386,8 @@ public:
   }
 
   uint64_t getAsmHash() const { return Options.AsmHash; }
+
+  bool isCostModelEnabled() const { return Options.EnableCostModel; }
 
   vc::BinaryKind getBinaryFormat() const { return Options.Binary; }
 };

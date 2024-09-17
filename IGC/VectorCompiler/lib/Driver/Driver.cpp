@@ -288,6 +288,8 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   BackendOpts.EnableHashMovsAtPrologue = Opts.EnableHashMovsAtPrologue;
   BackendOpts.AsmHash = Opts.AsmHash;
 
+  BackendOpts.EnableCostModel = Opts.EnableCostModel;
+
   return BackendOpts;
 }
 

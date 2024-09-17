@@ -19,6 +19,7 @@ set(GENX_UTILS_SOURCES
   IRBuilder.cpp
   GlobalVariable.cpp
   TransformArgCopy.cpp
+  CostInfo.cpp
   )
 
 add_library(VCGenXUtils OBJECT ${GENX_UTILS_SOURCES})

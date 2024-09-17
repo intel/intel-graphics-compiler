@@ -56,6 +56,7 @@ set(CODEGEN_SOURCES
   GenXInitBiFConstants.cpp
   GenXInlineAsmLowering.cpp
   GenXIntrinsics.cpp
+  GenXLCECalculation.cpp
   GenXLegacyToLscTranslator.cpp
   GenXLegalization.cpp
   GenXLiveElements.cpp

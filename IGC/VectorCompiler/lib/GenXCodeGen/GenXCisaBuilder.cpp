@@ -5860,6 +5860,9 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
       addArgument("-hashatprologue");
   }
 
+  if (BC.isCostModelEnabled())
+    addArgument("-kernelCostInfo");
+
   return Argv;
 }
 

@@ -927,6 +927,30 @@ static void setGtpinInfo(const vISA::FINALIZER_INFO &JitterInfo,
   }
 }
 
+static void setCostInfo(const GenXOCLRuntimeInfo::CostInfoT &CostInfo,
+                        CMKernel &Kernel) {
+  for (auto &Sym : CostInfo.Symbols) {
+    auto &ZeSym = Kernel.m_kernelCostExpInfo.argsSym.emplace_back();
+    ZeSym.argNo = Sym.ArgNo;
+    ZeSym.byteOffset = Sym.ByteOffset;
+    ZeSym.sizeInBytes = Sym.SizeInBytes;
+    ZeSym.isInDirect = Sym.IsIndirect;
+  }
+  for (auto &Expr : CostInfo.Expressions) {
+    auto &ZeExpr = Kernel.m_kernelCostExpInfo.loopLCE.emplace_back();
+    ZeExpr.factor = Expr.Factor;
+    ZeExpr.argsym_index = Expr.ArgSymIdx;
+    ZeExpr.C = Expr.C;
+  }
+  for (auto &Cost : CostInfo.Costs) {
+    auto &ZeCost = Kernel.m_kernelCostExpInfo.kernelCost.emplace_back();
+    ZeCost.cycle = Cost.Cycle;
+    ZeCost.bytes_loaded = Cost.BytesLoaded;
+    ZeCost.bytes_stored = Cost.BytesStored;
+    ZeCost.num_loops = Cost.NumLoops;
+  }
+}
+
 // Transform backend collected into encoder format (OCL patchtokens or L0
 // structures).
 static void fillKernelInfo(const GenXOCLRuntimeInfo::CompiledKernel &CompKernel,
@@ -942,6 +966,7 @@ static void fillKernelInfo(const GenXOCLRuntimeInfo::CompiledKernel &CompKernel,
   setDebugInfo(CompKernel.getDebugInfo(), ResKernel);
   setGtpinInfo(CompKernel.getJitterInfo(), CompKernel.getGTPinInfo(),
                ResKernel);
+  setCostInfo(CompKernel.getCostInfo(), ResKernel);
 }
 
 template <typename AnnotationT>
