@@ -35,9 +35,10 @@ SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 
 #include "vc/GenXOpts/GenXOpts.h"
+#include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/Printf.h"
-#include "vc/Utils/General/InstRebuilder.h"
 #include "vc/Utils/General/IRBuilder.h"
+#include "vc/Utils/General/InstRebuilder.h"
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/Support/Alignment.h"
@@ -266,8 +267,11 @@ void recursivelyTraverseFormatIndexPreds(Value &Pred,
   if (Visited.count(&Pred))
     return;
   Visited.insert(&Pred);
-  if (!isa<SelectInst>(Pred))
-    report_fatal_error(PrintfStringAccessError);
+  if (!isa<SelectInst>(Pred)) {
+    vc::diagnose(Pred.getContext(), "GenXPrintfLegalization",
+                 "illegal format index predecessor");
+    return;
+  }
   auto &Sel = cast<SelectInst>(Pred);
   std::array<OperandTreatment, 2> OperandInfos = {
       traverseSelectOperand(Sel, Sel.getOperandUse(1), ToRebuild, Visited),

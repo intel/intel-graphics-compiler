@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %not_for_vc_diag% llc %s -march=genx64 -mcpu=Gen9 -o /dev/null 2>&1 | FileCheck %s
+; RUN: not llc %s -march=genx64 -mcpu=Gen9 -o /dev/null 2>&1 | FileCheck %s
 
 define dllexport spir_kernel void @test(i64 %privBase) #0 {
 ; CHECK: error: LLVM ERROR: GenXCisaBuilder: Failed to parse inline visa assembly

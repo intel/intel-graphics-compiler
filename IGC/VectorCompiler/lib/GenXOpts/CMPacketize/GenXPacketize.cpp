@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
 
+#include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/Region.h"
 
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
@@ -1040,8 +1041,9 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *Inst) {
       else
         ReplacedInst = getPacketizeValue(Src1);
     } else {
-      report_fatal_error(
-          "ShuffleVector should've been replaced by Scalarizer.");
+      vc::diagnose(Inst->getContext(), "GenXPacketize",
+                   "ShuffleVector should've been replaced by Scalarizer.",
+                   Inst);
     }
     break;
   }
@@ -1104,7 +1106,8 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *Inst) {
       if (V)
         Op.set(V);
       else if (!isa<PHINode>(Inst))
-        report_fatal_error("Cannot find packetized value!");
+        vc::diagnose(Inst->getContext(), "GenXPacketize",
+                     "Failed to packetize instruction", Inst);
     }
     ReplacedInst = Inst;
   }
@@ -1192,7 +1195,8 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *Inst) {
       case GenXIntrinsic::genx_raw_send_noresult:
       case GenXIntrinsic::genx_raw_sends:
       case GenXIntrinsic::genx_raw_sends_noresult:
-        report_fatal_error("Unsupported genx intrinsic in SIMT mode.");
+        vc::diagnose(CI->getContext(), "GenXPacketize",
+                     "Unsupported genx intrinsic in SIMT mode.", CI);
         return nullptr;
       case GenXIntrinsic::genx_dword_atomic_add:
       case GenXIntrinsic::genx_dword_atomic_sub:

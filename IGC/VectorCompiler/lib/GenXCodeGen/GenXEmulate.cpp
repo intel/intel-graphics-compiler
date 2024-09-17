@@ -1180,12 +1180,12 @@ Value *GenXEmulate::Emu64Expander::visitGenxAddSat(CallInst &CI) {
                                            CI.getType()->isIntegerTy());
   } break;
   case GenXIntrinsic::genx_suadd_sat:
-    report_fatal_error(
-        "int_emu: genx_suadd_sat is not supported by VC backend");
+    vc::diagnose(CI.getContext(), "GenXEmulate",
+                 "genx_suadd_sat is not supported by VC backend", &CI);
     break;
   case GenXIntrinsic::genx_usadd_sat:
-    report_fatal_error(
-        "int_emu: genx_usadd_sat is not supported by VC backend");
+    vc::diagnose(CI.getContext(), "GenXEmulate",
+                 "genx_usadd_sat is not supported by VC backend", &CI);
     break;
   default:
     IGC_ASSERT_MESSAGE(0, "unknown intrinsic passed to saturation add emu");
@@ -1679,10 +1679,11 @@ bool GenXEmulate::runOnModule(Module &M) {
   processToEraseList(ToErase);
 
   if (!DiscracedList.empty()) {
-    for (const auto *Insn : DiscracedList) {
-      llvm::errs() << "I64EMU-FAILURE: " << *Insn << "\n";
-    }
-    report_fatal_error("int_emu: strict emulation requirements failure", false);
+    for (const auto *Insn : DiscracedList)
+      vc::diagnose(M.getContext(), "GenXEmulate",
+                   "instruction emulation is not implemented", Insn);
+    vc::diagnose(M.getContext(), "GenXEmulate",
+                 "strict emulation requirements failure");
   }
   return Changed;
 }
@@ -1738,12 +1739,11 @@ Instruction *llvm::genx::emulateI64Operation(const GenXSubtarget *ST,
     NewInst = cast_or_null<Instruction>(EmulatedResult);
     // If there is no explicit request to enable i64 emulation - report
     // an error
-    if (NewInst && !ST->emulateLongLong() && OptStrictEmulationRequests) {
-      report_fatal_error("int_emu: target does not suport i64 types", false);
-    }
-  }
-  else if (ST->partialI64Emulation()) {
-    Value *EmulatedResult =
+    if (NewInst && !ST->emulateLongLong() && OptStrictEmulationRequests)
+      vc::diagnose(Inst->getContext(), "GenXEmulate",
+                   "64-bit integer operations are not supported", Inst);
+  } else if (ST->partialI64Emulation()) {
+    auto *EmulatedResult =
         GenXEmulate::LightEmu64Expander(*ST, *Inst).tryExpand();
     NewInst = cast_or_null<Instruction>(EmulatedResult);
   }

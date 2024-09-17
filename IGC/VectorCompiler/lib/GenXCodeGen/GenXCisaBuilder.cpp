@@ -204,7 +204,7 @@ static std::string cutString(const Twine &Str) {
 }
 
 void handleCisaCallError(const Twine &Call, LLVMContext &Ctx) {
-  vc::fatal(Ctx, "VISA builder API call failed", Call);
+  vc::diagnose(Ctx, "VISA builder API call failed", Call);
 }
 
 void handleInlineAsmParseError(const GenXBackendConfig &BC, StringRef VisaErr,
@@ -224,7 +224,7 @@ void handleInlineAsmParseError(const GenXBackendConfig &BC, StringRef VisaErr,
     SS << "Enable dumps to see failed visa module\n";
   }
 
-  vc::fatal(Ctx, "GenXCisaBuilder", SS.str().c_str());
+  vc::diagnose(Ctx, "GenXCisaBuilder", ErrMsg);
 }
 
 /***********************************************************************
@@ -260,15 +260,16 @@ bool testPhiNodeHasNoMismatchedRegs(const llvm::PHINode *const Phi,
 
 } // namespace
 
-#define CISA_CALL_CTX(c, ctx)                                                  \
+#define CISA_CALL_CTX(C, CTX, GM)                                              \
   do {                                                                         \
-    auto result = c;                                                           \
-    if (result != 0) {                                                         \
-      handleCisaCallError(#c, (ctx));                                          \
+    auto Result = C;                                                           \
+    if (Result != 0) {                                                         \
+      GM->setHasError();                                                       \
+      handleCisaCallError(#C, (CTX));                                          \
     }                                                                          \
-  } while (0);
+  } while (0)
 
-#define CISA_CALL(c) CISA_CALL_CTX(c, getContext())
+#define CISA_CALL(C) CISA_CALL_CTX(C, getContext(), getGenXModule())
 
 namespace llvm {
 
@@ -300,6 +301,8 @@ public:
   }
 
 private:
+  GenXModule *getGenXModule() const { return GM; }
+
   LLVMContext *Ctx = nullptr;
 
   GenXModule *GM = nullptr;
@@ -404,6 +407,8 @@ public:
   VISABuilder *CisaBuilder = nullptr;
 
 private:
+  GenXModule *getGenXModule() const { return GM; }
+
   void collectKernelInfo();
   void buildVariables();
   void buildInstructions();
@@ -786,11 +791,17 @@ bool GenXCisaBuilder::runOnModule(Module &M) {
   if (GM->HasInlineAsm() || !LTOStrings.empty()) {
     auto *VISAAsmTextReader = GM->GetVISAAsmReader();
     auto *CisaBuilder = GM->GetCisaBuilder();
+    if (!CisaBuilder || !VISAAsmTextReader)
+      return Changed;
 
     auto ParseVISA = [&](const std::string &Text) {
-      if (VISAAsmTextReader->ParseVISAText(Text, "") != 0)
-        handleInlineAsmParseError(*BC, VISAAsmTextReader->GetCriticalMsg(),
-                                  Text, *Ctx);
+      auto Result = VISAAsmTextReader->ParseVISAText(Text, "");
+      if (Result == 0)
+        return;
+
+      GM->setHasError();
+      auto Msg = VISAAsmTextReader->GetCriticalMsg();
+      handleInlineAsmParseError(*BC, Msg, Text, *Ctx);
     };
 
     ParseVISA(CisaBuilder->GetAsmTextStream().str());
@@ -912,20 +923,14 @@ void addKernelAttrsFromMetadata(VISAKernel &Kernel,
                                 const vc::KernelMetadata &KM,
                                 const GenXSubtarget *Subtarget,
                                 bool HasBarrier) {
+  auto &Ctx = KM.getFunction()->getContext();
   unsigned SLMSizeInKb = divideCeil(KM.getSLMSize(), 1024);
   if (SLMSizeInKb > Subtarget->getMaxSlmSize())
-    report_fatal_error("SLM size exceeds target limits");
+    Ctx.emitError("SLM size exceeds target limits");
   Kernel.AddKernelAttribute("SLMSize", sizeof(SLMSizeInKb), &SLMSizeInKb);
 
   // Load thread payload from memory.
   if (Subtarget->hasThreadPayloadInMemory()) {
-    // The number of GRFs for per thread inputs (thread local IDs)
-    unsigned NumGRFs = 0;
-    bool HasImplicit = false;
-    for (auto Kind : KM.getArgKinds()) {
-      if (Kind & 0x8)
-        HasImplicit = true;
-    }
     // OCL runtime dispatches CM kernel in a
     // special "SIMD1" mode (aka "Programmable Media Kernels").
     // This mode implies that we always have a "full" thread payload,
@@ -933,8 +938,7 @@ void addKernelAttrsFromMetadata(VISAKernel &Kernel,
     // Payload format:
     // | 0-15     | 16 - 31  | 32 - 47  | 46 - 256 |
     // | localIDX | localIDY | localIDZ | unused   |
-    NumGRFs = 1;
-
+    unsigned NumGRFs = 1;
     uint16_t Bytes = NumGRFs * Subtarget->getGRFByteSize();
     Kernel.AddKernelAttribute("PerThreadInputSize", sizeof(Bytes), &Bytes);
   }
@@ -1091,8 +1095,14 @@ bool GenXKernelBuilder::run() {
   if (!Subtarget) {
     vc::diagnose(getContext(), "GenXKernelBuilder",
                  "Invalid kernel without subtarget");
-    IGC_ASSERT_UNREACHABLE();
+    return false;
   }
+  if (!CisaBuilder) {
+    vc::diagnose(getContext(), "GenXKernelBuilder",
+                 "Invalid kernel without CISA builder");
+    return false;
+  }
+
   GrfByteSize = Subtarget->getGRFByteSize();
   StackSurf = Subtarget->stackSurface();
 
@@ -1210,7 +1220,7 @@ void GenXKernelBuilder::buildInputs(Function *F, bool NeedRetIP) {
       break;
 
     default:
-      report_fatal_error("Unknown input category");
+      IGC_ASSERT_EXIT_MESSAGE(0, "Unknown input category");
       break;
     }
   }
@@ -2686,18 +2696,18 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
         "cannot bale subroutine call into anything");
       buildCall(CI, DstDesc);
     } else {
-      Function *Callee = CI->getCalledFunction();
-      unsigned IntrinID = vc::getAnyIntrinsicID(Callee);
+      auto IID = vc::getAnyIntrinsicID(CI);
 
-      if (vc::isAnyNonTrivialIntrinsic(IntrinID) &&
-          !Subtarget->isIntrinsicSupported(IntrinID)) {
+      if (vc::isAnyNonTrivialIntrinsic(IID) &&
+          !Subtarget->isIntrinsicSupported(IID)) {
         vc::diagnose(getContext(), "GenXCisaBuilder",
                      "Intrinsic is not supported by the <" +
                          Subtarget->getCPU() + "> platform",
                      Inst);
+        return false;
       }
 
-      switch (IntrinID) {
+      switch (IID) {
       case Intrinsic::dbg_value:
       case Intrinsic::dbg_declare:
       case GenXIntrinsic::genx_predefined_surface:
@@ -2718,7 +2728,7 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
         buildConvert(CI, BI, Mod, DstDesc);
         break;
       case vc::InternalIntrinsic::print_format_index:
-        buildPrintIndex(CI, IntrinID, Mod, DstDesc);
+        buildPrintIndex(CI, IID, Mod, DstDesc);
         break;
       case GenXIntrinsic::genx_convert_addr:
         buildConvertAddr(CI, BI, Mod, DstDesc);
@@ -2747,15 +2757,11 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
           return false; // Omit llvm.genx.constantpred that is EM or RM and so
                         // does not have a register allocated.
                         // fall through...
-      default:
-        if (!(CI->user_empty() &&
-              vc::getAnyIntrinsicID(CI->getCalledFunction()) ==
-                  GenXIntrinsic::genx_any))
-          buildIntrinsic(CI, IntrinID, BI, Mod, DstDesc);
-        if (vc::getAnyIntrinsicID(CI->getCalledFunction()) ==
-            GenXIntrinsic::genx_simdcf_get_em)
-          HasSimdCF = true;
-        break;
+      default: {
+        if (!(CI->user_empty() && IID == GenXIntrinsic::genx_any))
+          buildIntrinsic(CI, IID, BI, Mod, DstDesc);
+        HasSimdCF |= IID == GenXIntrinsic::genx_simdcf_get_em;
+      } break;
       case GenXIntrinsic::not_any_intrinsic:
         IGC_ASSERT_MESSAGE(!Mod, "cannot bale subroutine call into anything");
         IGC_ASSERT_MESSAGE(!DstDesc.WrRegion,
@@ -3173,7 +3179,7 @@ void GenXKernelBuilder::buildVariables() {
     } break;
 
     default:
-      report_fatal_error("Unknown category for register");
+      IGC_ASSERT_EXIT_MESSAGE(0, "Unknown category for register");
       break;
     }
   }
@@ -3273,15 +3279,12 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
 
   int MaxRawOperands = std::numeric_limits<int>::max();
 
-  // TODO: replace lambdas by methods
-
   auto GetUnsignedValue = [&](II::ArgInfo AI) {
-    ConstantInt *Const =
-        dyn_cast<ConstantInt>(CI->getArgOperand(AI.getArgIdx()));
+    auto *Const = dyn_cast<ConstantInt>(CI->getArgOperand(AI.getArgIdx()));
     if (!Const) {
       vc::diagnose(getContext(), "GenXCisaBuilder",
                    "Incorrect args to intrinsic call", CI);
-      IGC_ASSERT_UNREACHABLE();
+      return 0u;
     }
     unsigned val = Const->getSExtValue();
     LLVM_DEBUG(dbgs() << "GetUnsignedValue from op #" << AI.getArgIdx()
@@ -3436,14 +3439,12 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     Value *Arg = CI;
     if (!AI.isRet())
       Arg = CI->getOperand(AI.getArgIdx());
-    auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Arg->getType());
-    if (!VT)
-      report_fatal_error("Invalid number of owords");
+    auto *VT = cast<IGCLLVM::FixedVectorType>(Arg->getType());
     int DataSize =
         VT->getNumElements() * DL.getTypeSizeInBits(VT->getElementType()) / 8;
     DataSize = std::max(0, genx::exactLog2(DataSize) - 4);
-    if (DataSize > 4)
-      report_fatal_error("Invalid number of words");
+    IGC_ASSERT_EXIT_MESSAGE(DataSize >= 0 && DataSize <= 4,
+                            "Invalid number of owords");
     return static_cast<VISA_Oword_Num>(DataSize);
   };
 
@@ -4386,7 +4387,8 @@ void GenXKernelBuilder::buildBinaryOperator(BinaryOperator *BO, BaleInfo BI,
     IsLogic = true;
     break;
   default:
-    report_fatal_error("buildBinaryOperator: unimplemented binary operator");
+    vc::diagnose(getContext(), "GenXCisaBuilder", "unsupported binary operator",
+                 BO);
     break;
   }
 
@@ -4462,8 +4464,8 @@ void GenXKernelBuilder::buildBoolBinaryOperator(BinaryOperator *BO) {
       Opcode = ISA_NOT;
     break;
   default:
-    report_fatal_error(
-        "buildBoolBinaryOperator: unimplemented binary operator");
+    vc::diagnose(getContext(), "GenXCisaBuilder",
+                 "unsupported boolean binary operator", BO);
     break;
   }
 
@@ -5167,7 +5169,7 @@ void GenXKernelBuilder::addLifetimeStartInst(Instruction *Inst) {
       break;
 #endif // 0
   default:
-    report_fatal_error("createLifetimeStartInst: Invalid register category");
+    IGC_ASSERT_EXIT_MESSAGE(0, "Invalid register category");
     break;
   }
   CISA_CALL(Kernel->AppendVISALifetime(LIFETIME_START, opnd));
@@ -5704,9 +5706,9 @@ static void dumpGlobalAnnotations(Module &M) {
     auto *Str = dyn_cast<ConstantDataArray>(GlobalStr->getInitializer());
     if (!Str)
       continue;
-    auto FuncAnnotation = Str->getAsString();
-    errs() << "Warning: Annotation \"" << FuncAnnotation << "\" for function "
-           << FuncName << " is ignored\n";
+    auto FuncAnnotation = Str->getAsCString();
+    vc::warn(M.getContext(), "GenXCisaBuilder",
+             "Annotation \"" + FuncAnnotation + "\" is ignored", Func);
   }
 }
 
@@ -5743,14 +5745,24 @@ public:
     auto &FGA = getAnalysis<FunctionGroupAnalysis>();
     auto &GM = getAnalysis<GenXModule>();
     std::stringstream ss;
-    VISABuilder *CisaBuilder = GM.GetCisaBuilder();
-    if (GM.HasInlineAsm() || !BC->getVISALTOStrings().empty())
-      CisaBuilder = GM.GetVISAAsmReader();
-    CISA_CALL(CisaBuilder->Compile(
-        BC->isaDumpsEnabled() && BC->hasShaderDumper()
-            ? BC->getShaderDumper().composeDumpPath("final.isaasm").c_str()
-            : "",
-        BC->emitVisaOnly()));
+
+    // Terminate compilation, if we caught an error in the CISA builder.
+    if (GM.hasError())
+      return false;
+
+    auto getGenXModule = [&GM]() { return &GM; };
+
+    bool HasTextAsm = GM.HasInlineAsm() || !BC->getVISALTOStrings().empty();
+    auto *CisaBuilder =
+        HasTextAsm ? GM.GetVISAAsmReader() : GM.GetCisaBuilder();
+    if (!CisaBuilder)
+      return false;
+
+    bool IsDumpEnabled = BC->isaDumpsEnabled() && BC->hasShaderDumper();
+    std::string DumpPath =
+        IsDumpEnabled ? BC->getShaderDumper().composeDumpPath("final.isaasm")
+                      : "";
+    CISA_CALL(CisaBuilder->Compile(DumpPath.c_str(), BC->emitVisaOnly()));
 
     if (!BC->isDisableFinalizerMsg())
       dbgs() << CisaBuilder->GetCriticalMsg();
@@ -5759,15 +5771,15 @@ public:
 
     // Collect some useful statistics
     for (auto *FG : FGA) {
-      VISAKernel *Kernel = CisaBuilder->GetVISAKernel(FG->getName().str());
+      auto *Kernel = CisaBuilder->GetVISAKernel(FG->getName().str());
       IGC_ASSERT(Kernel);
-      vISA::FINALIZER_INFO *jitInfo = nullptr;
-      CISA_CALL(Kernel->GetJitInfo(jitInfo));
-      IGC_ASSERT(jitInfo);
-      NumAsmInsts += jitInfo->stats.numAsmCountUnweighted;
-      SpillMemUsed += jitInfo->stats.spillMemUsed;
-      NumFlagSpillStore += jitInfo->stats.numFlagSpillStore;
-      NumFlagSpillLoad += jitInfo->stats.numFlagSpillLoad;
+      vISA::FINALIZER_INFO *JitInfo = nullptr;
+      CISA_CALL(Kernel->GetJitInfo(JitInfo));
+      IGC_ASSERT(JitInfo);
+      NumAsmInsts += JitInfo->stats.numAsmCountUnweighted;
+      SpillMemUsed += JitInfo->stats.spillMemUsed;
+      NumFlagSpillStore += JitInfo->stats.numFlagSpillStore;
+      NumFlagSpillLoad += JitInfo->stats.numFlagSpillLoad;
     }
     return false;
   }
@@ -5870,8 +5882,7 @@ static void dumpFinalizerArgs(const SmallVectorImpl<const char *> &Argv,
                               StringRef CPU) {
   // NOTE: CPU is not the Platform used by finalizer
   // The mapping is described by getVisaPlatform from GenXSubtarget.h
-  outs() << "GenXCpu: " << CPU << "\n";
-  outs() << "Finalizer Parameters:\n\t";
+  outs() << "GenXCpu: " << CPU << "\nFinalizer Parameters:";
   std::for_each(Argv.begin(), Argv.end(),
                 [](const char *Arg) { outs() << " " << Arg; });
   outs() << "\n";
@@ -5889,8 +5900,10 @@ static VISABuilder *createVISABuilder(const GenXSubtarget &ST,
                                       BumpPtrAllocator &Alloc) {
   auto Platform = ST.getVisaPlatform();
   // Fail for unknown platforms
-  if (Platform == TARGET_PLATFORM::GENX_NONE)
-    report_fatal_error("Platform unknown");
+  if (Platform == TARGET_PLATFORM::GENX_NONE) {
+    vc::diagnose(Ctx, "GenXCisaBuilder", "Unknown platform");
+    return nullptr;
+  }
 
   // Prepare array of arguments for Builder API.
   StringSaver Saver{Alloc};
@@ -5906,22 +5919,23 @@ static VISABuilder *createVISABuilder(const GenXSubtarget &ST,
   int Result = CreateVISABuilder(VB, Mode, VISA_BUILDER_BOTH, Platform,
                                  Argv.size(), Argv.data(), BC.getWATable());
   if (Result != 0 || VB == nullptr) {
-    std::string Str;
-    llvm::raw_string_ostream Os(Str);
-    Os << "VISA builder creation failed\n";
-    Os << "Mode: " << Mode << "\n";
-    Os << "Args:\n";
+    std::string ErrMsg;
+    llvm::raw_string_ostream Os(ErrMsg);
+    Os << "VISA builder creation failed" << "\nMode: " << Mode << "\nArgs: ";
     for (const char *Arg : Argv)
       Os << Arg << " ";
-    Os << "Visa only: " << (BC.emitVisaOnly() ? "yes" : "no") << "\n";
-    Os << "Platform: " << ST.getVisaPlatform() << "\n";
-    vc::diagnose(Ctx, "GenXCisaBuilder", Os.str().c_str());
+
+    Os << "\nVisa only: " << (BC.emitVisaOnly() ? "yes" : "no")
+       << "\nPlatform: " << Platform << "\n";
+
+    vc::diagnose(Ctx, "GenXCisaBuilder", ErrMsg);
+    return nullptr;
   }
 
   std::unordered_set<std::string> DirectCallFunctions;
-  for (auto &FuncName : BC.getDirectCallFunctionsSet()) {
-    DirectCallFunctions.insert(FuncName.getKey().str());
-  }
+  auto InsIt = std::inserter(DirectCallFunctions, DirectCallFunctions.end());
+  llvm::transform(BC.getDirectCallFunctionsSet(), InsIt,
+                  [](auto &FuncName) { return FuncName.getKey().str(); });
   VB->SetDirectCallFunctionSet(DirectCallFunctions);
 
   return VB;
@@ -5943,10 +5957,10 @@ VISABuilder *GenXModule::GetCisaBuilder() {
 }
 
 void GenXModule::DestroyCISABuilder() {
-  if (CisaBuilder) {
-    CISA_CALL(DestroyVISABuilder(CisaBuilder));
-    CisaBuilder = nullptr;
-  }
+  if (!CisaBuilder)
+    return;
+  CISA_CALL(DestroyVISABuilder(CisaBuilder));
+  CisaBuilder = nullptr;
 }
 
 void GenXModule::InitVISAAsmReader() {
@@ -5963,8 +5977,8 @@ VISABuilder *GenXModule::GetVISAAsmReader() {
 }
 
 void GenXModule::DestroyVISAAsmReader() {
-  if (VISAAsmTextReader) {
-    CISA_CALL(DestroyVISABuilder(VISAAsmTextReader));
-    VISAAsmTextReader = nullptr;
-  }
+  if (!VISAAsmTextReader)
+    return;
+  CISA_CALL(DestroyVISABuilder(VISAAsmTextReader));
+  VISAAsmTextReader = nullptr;
 }

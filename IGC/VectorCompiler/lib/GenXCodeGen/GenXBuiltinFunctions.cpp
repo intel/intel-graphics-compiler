@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
 
+#include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/IntrinsicsWrapper.h"
 #include "vc/Utils/GenX/KernelInfo.h"
 #include "vc/Utils/General/BiF.h"
@@ -113,10 +114,13 @@ bool GenXBuiltinFunctions::runOnModule(Module &M) {
             .getTM<GenXTargetMachine>()
             .getGenXSubtarget();
 
-  auto Lib =
-      loadBuiltinLib(M.getContext(), M.getDataLayout(), M.getTargetTriple());
-  if (Lib && Linker::linkModules(M, std::move(Lib)))
-    report_fatal_error("Error linking built-in functions");
+  auto &Ctx = M.getContext();
+  auto Lib = loadBuiltinLib(Ctx, M.getDataLayout(), M.getTargetTriple());
+  if (Lib && Linker::linkModules(M, std::move(Lib))) {
+    vc::diagnose(Ctx, "GenXBuiltinFunctions",
+                 "Error linking built-in functions");
+    return true;
+  }
 
   for (auto &F : M.getFunctionList())
     runOnFunction(F);

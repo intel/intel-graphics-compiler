@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/Support/BackendConfig.h"
+#include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/KernelInfo.h"
 
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
@@ -223,10 +224,11 @@ std::vector<int> BTIAssignment::computeBTIndices(
   std::tie(SurfaceID, SamplerID) = assignSRV(SurfaceID, SamplerID, Zippy);
   SurfaceID = assignUAV(SurfaceID, Zippy);
 
+  auto &Ctx = KM.getFunction()->getContext();
   if (SurfaceID > MaxAvailableSurfaceIndex)
-    llvm::report_fatal_error("not enough surface indices");
+    vc::diagnose(Ctx, "BTIAssignment", "not enough surface indices");
   if (SamplerID > MaxAvailableSamplerIndex)
-    llvm::report_fatal_error("not enough sampler indices");
+    vc::diagnose(Ctx, "BTIAssignment", "not enough sampler indices");
 
   return Indices;
 }

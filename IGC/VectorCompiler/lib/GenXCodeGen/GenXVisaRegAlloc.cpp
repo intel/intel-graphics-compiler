@@ -922,12 +922,14 @@ TypeDetails::TypeDetails(const DataLayout &DL, Type *Ty, Signedness Signed,
     else if (BytesPerElement == QWordBytes)
       VisaType = ISA_TYPE_UQ;
     else
-      report_fatal_error("unsupported pointer type size");
+      vc::diagnose(Ty->getContext(), "TypeDetails",
+                   "unsupported pointer type size", Ty);
   } else {
     IGC_ASSERT_MESSAGE(0, "Unsupported vector element type");
   }
   if (NumElements > 16384 || NumElements * BytesPerElement > 16384 * 8)
-    report_fatal_error("Variable too big");
+    vc::diagnose(Ty->getContext(), "TypeDetails",
+                 "vector size is too big for vISA", Ty);
 }
 
 struct LiveRangeAndLength {

@@ -626,7 +626,8 @@ bool GenXLegalization::processInst(Instruction *Inst) {
     case GenXIntrinsic::genx_ussad2add_sat:
     case GenXIntrinsic::genx_uusad2add:
     case GenXIntrinsic::genx_uusad2add_sat:
-      report_fatal_error("'sad2' and 'sada2' are not supported by this target");
+      vc::diagnose(Inst->getContext(), "GenXLegalization",
+                   "sad2 and sada2 are not supported by this target", Inst);
     default:
       break;
     }
@@ -779,7 +780,9 @@ bool GenXLegalization::processInst(Instruction *Inst) {
     dbgs() << "processBale: ";
     B.print(dbgs());
 #endif
-    report_fatal_error("this g_store bale is not supported yet!");
+    vc::diagnose(Inst->getContext(), "GenXLegalization",
+                 "g_store bale is not supported yet", Inst);
+    return true;
   }
 
   return processBale(InsertBefore);

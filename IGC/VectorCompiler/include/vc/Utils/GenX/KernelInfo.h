@@ -143,15 +143,9 @@ template <typename Ty = llvm::Value> Ty *getValueAsMetadata(llvm::Metadata *M) {
 static unsigned alignBarrierCnt(unsigned BarrierCnt) {
   if (BarrierCnt == 0)
     return 0;
-  if (BarrierCnt > 32) {
-    llvm::report_fatal_error("named barrier count must not exceed 32");
-    return 0;
-  }
   if (BarrierCnt > 16 && BarrierCnt <= 24)
     return 24;
-  if (llvm::isPowerOf2_32(BarrierCnt))
-    return BarrierCnt;
-  return llvm::NextPowerOf2(BarrierCnt);
+  return llvm::PowerOf2Ceil(BarrierCnt);
 }
 
 struct ImplicitLinearizationInfo {

@@ -227,9 +227,7 @@ def generate(dscr_filename, out_path):
             file.write('  } break;\n\n')
 
         file.write('''  default:
-    CI->print(errs());
-    errs() << '\\n';
-    report_fatal_error("Unsupported intrinsic!");
+    vc::diagnose(CI->getContext(), "GenXKernelBuilder", "Unsupported intrinsic!", CI);
     break;
 }''')
 

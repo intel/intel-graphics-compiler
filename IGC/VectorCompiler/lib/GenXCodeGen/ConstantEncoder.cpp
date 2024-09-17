@@ -129,7 +129,8 @@ encodeGlobalValue(const GlobalValue &GV, const DataLayout &DL) {
     RelType = vISA::GenRelocType::R_SYM_ADDR;
     break;
   default:
-    report_fatal_error("Relocation of the provided pointer is not supported");
+    vc::diagnose(GV.getContext(), "ConstantEncoder",
+                 "Relocation of the provided pointer is not supported", &GV);
   }
   return {APInt::getNullValue(Size.inBits()),
           {vISA::ZERelocEntry{RelType, 0, GV.getName().str()}}};

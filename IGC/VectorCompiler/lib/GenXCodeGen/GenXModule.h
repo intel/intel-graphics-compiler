@@ -93,6 +93,8 @@ namespace llvm {
     // stores vISA mappings for each *function* (including kernel subroutines)
     std::unordered_map<const Function *, genx::di::VisaMapping> VisaMapping;
 
+    bool HasError = false;
+
   private:
     void cleanup() {
       VisaMapping.clear();
@@ -100,7 +102,10 @@ namespace llvm {
       DestroyCISABuilder();
       DestroyVISAAsmReader();
       ArgStorage.Reset();
+      HasError = false;
     }
+
+    GenXModule *getGenXModule() { return this; }
 
   public:
     static char ID;
@@ -129,6 +134,9 @@ namespace llvm {
     void DestroyCISABuilder();
     void DestroyVISAAsmReader();
     LLVMContext &getContext();
+
+    void setHasError() { HasError = true; }
+    bool hasError() const { return HasError; }
 
     bool emitDebugInformation() const { return EmitDebugInformation; }
     void updateVisaMapping(const Function *F, const Instruction *Inst,
