@@ -784,6 +784,9 @@ public:
                                     bool &sameDstSrc);
 
   // Global SBID dependence analysis
+  bool handleCallForMayKilled(SparseBitVector *allDstGlobalIDs,
+                              SparseBitVector *allSrcGlobalIDs);
+
   void setSendOpndMayKilled(LiveGRFBuckets *globalSendsLB, SBNODE_VECT &SBNodes,
                             PointsToAnalysis &p);
   void
@@ -1078,6 +1081,10 @@ class SWSB {
   bool insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst,
                        INST_LIST_ITER inst_it, int newInstID, BitSet *dstTokens,
                        BitSet *srcTokens, bool &keepDst, bool removeAllToken);
+
+  void SWSBInitializeGlobalSends(SparseBitVector &allDstGlobalIDs,
+                                 SparseBitVector &allSrcGlobalIDs,
+                                 LiveGRFBuckets &globalSendsLB);
 
   void
   SWSBInitializeGlobalNodesInBuckets(std::vector<SparseBitVector> &dstGlobalIDs,
