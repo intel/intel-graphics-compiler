@@ -25,7 +25,7 @@ SPDX-License-Identifier: MIT
 #include "getCacheOpts.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Function.h"
-#include "llvm/ADT/Optional.h"
+#include <optional>
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
@@ -84,7 +84,7 @@ void LSCControlsAnalysisPass::visitCallInst(CallInst& CI)
     if (!GII)
         return;
 
-    Optional<LSC_L1_L3_CC> cacheOpts;
+    std::optional<LSC_L1_L3_CC> cacheOpts;
 
     switch (GII->getIntrinsicID())
     {

@@ -34,26 +34,26 @@ namespace IGC
         /// @param  Id          the wanted GenISA_ISA intrinsic
         /// @param  ptrTy       for intrinsic with overloaded types.
         /// @returns    llvm Function
-        llvm::Function* getFunctionDeclaration(llvm::GenISAIntrinsic::ID id, llvm::ArrayRef<llvm::Type*> Tys = llvm::None);
+        llvm::Function* getFunctionDeclaration(llvm::GenISAIntrinsic::ID id, llvm::ArrayRef<llvm::Type*> Tys = llvm::ArrayRef<llvm::Type*>());
 
         /// @brief  gets llvm function declaration for LLVM Intrinsic
         /// @param  Id          the wanted LLVM intrinsic
         /// @param  ptrTy       for intrinsic with overloaded types.
         /// @returns    llvm Function
-        llvm::Function* getFunctionDeclaration(IGCLLVM::Intrinsic id, llvm::ArrayRef<llvm::Type*> Tys = llvm::None);
+        llvm::Function* getFunctionDeclaration(IGCLLVM::Intrinsic id, llvm::ArrayRef<llvm::Type*> Tys = llvm::ArrayRef<llvm::Type*>());
 
         /// @brief  Creates llvm function call for LLVM Intrinsic and replace the
         ///         current instruction with the new function call.
         /// @param  Id          the wanted LLVM intrinsic
         /// @param  ptrTy       for intrinsic with overloaded types.
-        void replaceCallInst(IGCLLVM::Intrinsic intrinsicName, llvm::ArrayRef<llvm::Type*> Tys = llvm::None);
+        void replaceCallInst(IGCLLVM::Intrinsic intrinsicName, llvm::ArrayRef<llvm::Type*> Tys = llvm::ArrayRef<llvm::Type*>());
 
 
         /// @brief  Creates llvm function call for GenISA_ISA Intrinsic and replace the
         ///         current instruction with the new function call.
         /// @param  Id          the wanted GenISA_ISA intrinsic
         /// @param  ptrTy       for intrinsic with overloaded types.
-        void replaceGenISACallInst(llvm::GenISAIntrinsic::ID intrinsicName, llvm::ArrayRef<llvm::Type*> Tys = llvm::None);
+        void replaceGenISACallInst(llvm::GenISAIntrinsic::ID intrinsicName, llvm::ArrayRef<llvm::Type*> Tys = llvm::ArrayRef<llvm::Type*>());
 
         /// @brief  reap init() and createIntrinsic().
         /// @param  Inst            the call instruction that need to be replaced.

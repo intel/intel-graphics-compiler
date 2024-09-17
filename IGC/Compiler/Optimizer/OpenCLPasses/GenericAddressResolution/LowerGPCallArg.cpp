@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Function.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include <optional>
 
 // (1)
 // Optimization pass to lower generic pointers in function arguments.

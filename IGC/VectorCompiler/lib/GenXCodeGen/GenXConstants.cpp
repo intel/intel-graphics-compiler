@@ -871,7 +871,7 @@ bool genx::loadPhiConstants(Function &F, DominatorTree *DT,
           if (isa<PHINode>(V))
             return true;
           if (auto CI = dyn_cast<CallInst>(V))
-            return getTwoAddressOperandNum(CI).hasValue();
+            return getTwoAddressOperandNum(CI).has_value();
           return false;
         };
 

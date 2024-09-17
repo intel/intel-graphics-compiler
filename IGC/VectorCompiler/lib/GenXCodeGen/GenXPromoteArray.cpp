@@ -32,6 +32,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/Support/TypeSize.h"
+#include <llvmWrapper/ADT/Optional.h>
 
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/IR/DiagnosticInfo.h"
@@ -774,9 +775,9 @@ bool GenXPromoteArray::runOnFunction(Function &F) {
 IGCLLVM::FixedVectorType &
 GenXPromoteArray::getVectorTypeForAlloca(AllocaInst &Alloca,
                                          Type &ElemTy) const {
-  auto AllocaSize = Alloca.getAllocationSizeInBits(*DL);
-  IGC_ASSERT_MESSAGE(AllocaSize.hasValue(), "VLA is not expected");
-  auto NumElem = AllocaSize.getValue() / DL->getTypeAllocSizeInBits(&ElemTy);
+  auto AllocaSize = IGCLLVM::makeOptional(Alloca.getAllocationSizeInBits(*DL));
+  IGC_ASSERT_MESSAGE(AllocaSize.has_value(), "VLA is not expected");
+  auto NumElem = AllocaSize.value() / DL->getTypeAllocSizeInBits(&ElemTy);
   return *IGCLLVM::FixedVectorType::get(&ElemTy, NumElem);
 }
 
@@ -1021,10 +1022,12 @@ bool GenXPromoteArray::checkAllocaUsesInternal(Instruction *I, Type *CurBaseTy, 
 
 bool GenXPromoteArray::isAllocaPromotable(AllocaInst &Alloca) {
   // Cannot promote VLA.
-  auto MaybeSize = Alloca.getAllocationSizeInBits(*DL);
-  if (!MaybeSize.hasValue())
+  auto MaybeSize = IGCLLVM::makeOptional(Alloca.getAllocationSizeInBits(*DL));
+
+  if (!MaybeSize.has_value())
     return false;
-  auto AllocaSize = MaybeSize.getValue() / genx::ByteBits;
+
+  auto AllocaSize = MaybeSize.value() / genx::ByteBits;
   if (!ForcePromotion && AllocaSize > SingleAllocaLimitOpt.getValue()) {
     LargeAllocasWereLeft = true;
     return false;
@@ -1078,16 +1081,19 @@ void GenXPromoteArray::selectAllocasToHandle() {
     return;
 
   std::sort(AllocasToPrivMem.begin(), AllocasToPrivMem.end(),
-            [this](const AllocaInst *LHS, const AllocaInst *RHS) {
-              return LHS->getAllocationSizeInBits(*DL).getValue() <
-                     RHS->getAllocationSizeInBits(*DL).getValue();
+            [this](const AllocaInst *LHS, const AllocaInst *RHS)
+            {
+              auto LHSSize = IGCLLVM::makeOptional(LHS->getAllocationSizeInBits(*DL));
+              auto RHSSize = IGCLLVM::makeOptional(RHS->getAllocationSizeInBits(*DL));
+
+              return LHSSize.value() < RHSSize.value();
             });
   auto LastIt = vc::upper_partial_sum_bound(
       AllocasToPrivMem.begin(), AllocasToPrivMem.end(),
       TotalAllocaLimitOpt.getValue(),
       [this](std::size_t PrevSum, const AllocaInst *CurAlloca) {
-        return PrevSum + CurAlloca->getAllocationSizeInBits(*DL).getValue() /
-                             genx::ByteBits;
+        auto CurAllocaSize = IGCLLVM::makeOptional(CurAlloca->getAllocationSizeInBits(*DL));
+        return PrevSum + CurAllocaSize.value() / genx::ByteBits;
       });
 
   // if alloca size exceeds alloc size threshold, emit warning

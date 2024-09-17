@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "PhyRegUsage.h"
 #include "FlowGraph.h"
+#include <optional>
 #include "GraphColor.h"
 
 using namespace vISA;

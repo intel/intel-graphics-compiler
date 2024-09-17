@@ -43,7 +43,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Linker/Linker.h>
 #include <llvm/Pass.h>
 #include <llvm/Support/ErrorHandling.h>
-
+#include <llvmWrapper/ADT/Optional.h>
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Operator.h"
 #include "llvmWrapper/IR/Instructions.h"
@@ -282,7 +282,7 @@ analyzeFormatString(const Value &FmtStrOp) {
   if (!FmtStr)
     vc::fatal(FmtStrOp.getContext(), "GenXPrintfResolution",
               PrintfStringAccessError);
-  return {FmtStr.getValue().size() + 1, parseFormatString(FmtStr.getValue())};
+  return {FmtStr.value().size() + 1, parseFormatString(FmtStr.value())};
 }
 
 // Marks strings passed as "%s" arguments in printf.

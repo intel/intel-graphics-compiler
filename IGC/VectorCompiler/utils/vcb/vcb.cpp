@@ -13,6 +13,8 @@ SPDX-License-Identifier: MIT
 #include <vc/Support/PassManager.h>
 #include <vc/Support/Status.h>
 
+#include <optional>
+
 #include <llvm/ADT/Triple.h>
 #include <llvm/Bitcode/BitcodeWriterPass.h>
 #include <llvm/CodeGen/TargetSubtargetInfo.h>
@@ -80,8 +82,8 @@ createTargetMachine(Triple &TheTriple, std::string CPUStr) {
   CodeGenOpt::Level OptLevel = CodeGenOpt::Default;
 
   std::unique_ptr<TargetMachine> TM{TheTarget->createTargetMachine(
-      TheTriple.getTriple(), CPUStr, FeaturesStr, Options, /*RelocModel=*/None,
-      /*CodeModel=*/None, OptLevel)};
+      TheTriple.getTriple(), CPUStr, FeaturesStr, Options, /*RelocModel=*/llvm::None,
+      /*CodeModel=*/llvm::None, OptLevel)};
   if (!TM)
     return make_error<vc::TargetMachineError>();
   return {std::move(TM)};

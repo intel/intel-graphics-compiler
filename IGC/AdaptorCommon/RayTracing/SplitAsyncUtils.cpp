@@ -18,11 +18,14 @@ SPDX-License-Identifier: MIT
 #include "SplitAsyncUtils.h"
 #include "RTBuilder.h"
 #include "RTArgs.h"
+
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/CFG.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include "common/LLVMWarningsPop.hpp"
+
+#include <optional>
 
 using namespace llvm;
 using namespace IGC;
@@ -304,7 +307,7 @@ bool RematChecker::canFullyRemat(
     return true;
 }
 
-Optional<std::vector<Instruction*>>
+std::optional<std::vector<Instruction*>>
 RematChecker::canFullyRemat(
     Instruction* I,
     uint32_t Threshold,
@@ -313,7 +316,7 @@ RematChecker::canFullyRemat(
     std::vector<Instruction*> Insts;
     std::unordered_set<Instruction*> Visited;
     if (!canFullyRemat(I, Insts, Visited, Threshold, Threshold, VM))
-        return None;
+        return std::nullopt;
 
     return Insts;
 }

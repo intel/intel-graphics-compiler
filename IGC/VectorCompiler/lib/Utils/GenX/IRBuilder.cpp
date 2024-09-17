@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Value.h>
+#include <optional>
 
 using namespace llvm;
 
@@ -35,7 +36,7 @@ Value *vc::getGroupThreadIDForPIM(IRBuilder<> &IRB) {
   auto *R0Decl = GenXIntrinsic::getGenXDeclaration(
       IRB.GetInsertBlock()->getModule(), GenXIntrinsic::genx_r0,
       IGCLLVM::FixedVectorType::get(IRB.getInt32Ty(), UsedR0DWords));
-  auto *R0 = IRB.CreateCall(R0Decl, None, "r0");
+  auto *R0 = IRB.CreateCall(R0Decl, llvm::ArrayRef<llvm::Value*>(), "r0");
   auto *R0InBytes = IRB.CreateBitCast(
       R0, IGCLLVM::FixedVectorType::get(IRB.getInt8Ty(), UsedR0Bytes),
       "r0.bytes");

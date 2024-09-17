@@ -17,6 +17,8 @@ SPDX-License-Identifier: MIT
 #include "3d/common/iStdLib/File.h"
 #include "OCLFE/igd_fcl_mcl/headers/clang_tb.h"
 
+#include <optional>
+
 #pragma warning(disable:4141)
 #pragma warning(disable:4146)
 #pragma warning(disable:4242)
@@ -217,10 +219,10 @@ void CIF_GET_INTERFACE_CLASS(FclOclTranslationCtx, 2)::GetFclInternalOptions(CIF
    CIF_GET_PIMPL()->GetFclInternalOptions(opts);
 }
 
-llvm::Optional<std::vector<char>> readBinaryFile(const std::string& fileName) {
+std::optional<std::vector<char>> readBinaryFile(const std::string& fileName) {
     std::ifstream file(fileName, std::ios_base::binary);
     if (!file.good()) {
-        return llvm::Optional<std::vector<char>>::create(nullptr);
+        return std::nullopt;
     }
     size_t length;
     file.seekg(0, file.end);
@@ -330,7 +332,7 @@ static void finalizeFEOutput(const IGC::AdaptorCM::Frontend::IOutputArgs& FEOutp
     }
 }
 
-static llvm::Optional<std::string> MakeTemporaryCMSource(
+static std::optional<std::string> MakeTemporaryCMSource(
     CIF::Builtins::BufferSimple* Src,
     std::string tmpFilename,
     OclTranslationOutputBase& outI);
@@ -402,7 +404,7 @@ static std::vector<const char*>
         auto OptSrc = MakeTemporaryCMSource(Src, inputFile, outI);
         if (!OptSrc)
             return {};
-        inputFile = OptSrc.getValue();
+        inputFile = OptSrc.value();
     }
 
     std::vector<const char *> result = {
@@ -431,7 +433,7 @@ static std::vector<const char*>
 
 // TODO: most probably we should remove this function once FrontendWrapper
 // is capable to handle in-memory objects properly
-static llvm::Optional<std::string> MakeTemporaryCMSource(
+static std::optional<std::string> MakeTemporaryCMSource(
     CIF::Builtins::BufferSimple* Src,
     std::string tmpFilename,
     OclTranslationOutputBase& outI) {

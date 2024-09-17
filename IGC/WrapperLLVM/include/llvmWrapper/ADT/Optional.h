@@ -10,38 +10,17 @@ SPDX-License-Identifier: MIT
 #define IGCLLVM_ADT_OPTIONAL_H
 
 #include <llvm/ADT/Optional.h>
+#include <optional>
 
 namespace IGCLLVM {
-template <typename T> class Optional : public llvm::Optional<T> {
-public:
-  using BaseT = llvm::Optional<T>;
-  constexpr Optional(const BaseT &O) : BaseT(O) {}
-  constexpr Optional(BaseT &&O) : BaseT(std::move(O)) {}
-
-/* ---------------------|
-| Deprecated in LLVM 15 |
-| -------------------- */
-#if LLVM_VERSION_MAJOR < 15
-  template <typename U> constexpr T value_or(U &&alt) const & {
-    return this->getValueOr(std::forward<U>(alt));
-  }
-
-  template <typename U> T value_or(U &&alt) && {
-    return this->getValueOr(std::forward<U>(alt));
-  }
-#endif
-
-  // TODO: Once relevant, add similar wrappers per LLVM 16 deprecations.
-  // Example:
-  // T &value() &noexcept {
-  //   return getValue();
-  // }
-};
-
 template <typename T>
-Optional<T> wrapOptional(const llvm::Optional<T> &O) {
-  return { O };
-}
+    static std::optional<T> makeOptional(const llvm::Optional<T>& O) {
+#if LLVM_VERSION_MAJOR < 16
+        return O.hasValue() ? std::optional<T>(O.getValue()) : std::optional<T>(std::nullopt);
+#else
+        return O.has_value() ? std::optional<T>(O.value()) : std::optional<T>(std::nullopt);
+#endif
+    }
 } // namespace IGCLLVM
 
 #endif // IGCLLVM_ADT_OPTIONAL_H

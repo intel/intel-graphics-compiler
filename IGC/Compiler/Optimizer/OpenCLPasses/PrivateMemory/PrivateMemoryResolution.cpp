@@ -25,9 +25,11 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/Dominators.h"
+#include <llvmWrapper/ADT/Optional.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
+#include <optional>
 #include <utility>
 
 using namespace llvm;
@@ -932,16 +934,16 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
 
     for (AllocaInst* aInst : allocaInsts)
     {
-        auto allocationSize = aInst->getAllocationSizeInBits(m_currFunction->getParent()->getDataLayout());
+        auto allocationSize = IGCLLVM::makeOptional(aInst->getAllocationSizeInBits(m_currFunction->getParent()->getDataLayout()));
 
-        if (allocationSize)
+        if (allocationSize.has_value())
         {
             auto scratchUsage_i = Ctx.m_ScratchSpaceUsage.find(m_currFunction);
             if (scratchUsage_i == Ctx.m_ScratchSpaceUsage.end())
             {
                 Ctx.m_ScratchSpaceUsage.insert({ m_currFunction, 0 });
             }
-            Ctx.m_ScratchSpaceUsage[m_currFunction] += allocationSize.getValue() / 8;
+            Ctx.m_ScratchSpaceUsage[m_currFunction] += allocationSize.value() / 8;
         }
     }
 

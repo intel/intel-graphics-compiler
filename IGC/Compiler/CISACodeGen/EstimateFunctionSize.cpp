@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instructions.h"
+#include <optional>
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
 #include "llvm/Analysis/BranchProbabilityInfo.h"
@@ -649,7 +650,7 @@ void EstimateFunctionSize::updateStaticFuncFreq()
     auto GetCallSiteProfCount = [&](const CallGraphNode*,
         const CallGraphNode::CallRecord& Edge) {
 #if LLVM_VERSION_MAJOR < 11
-            Optional<Scaled64> Res = None;
+            llvm::Optional<Scaled64> Res = llvm::None;
             if (!Edge.first)
                 return Res;
             assert(isa<Instruction>(Edge.first));
@@ -657,7 +658,7 @@ void EstimateFunctionSize::updateStaticFuncFreq()
             Function* Caller = CS.getCaller();
             BasicBlock* CSBB = CS.getInstruction()->getParent();
 #else
-            Optional<Scaled64> Res = None;
+            llvm::Optional<Scaled64> Res = llvm::None;
             if (!Edge.first)
                 return Res;
             CallBase& CB = *cast<CallBase>(*Edge.first);
@@ -671,7 +672,7 @@ void EstimateFunctionSize::updateStaticFuncFreq()
             IGC_ASSERT(EntryFreq != 0);
             BBCount /= EntryFreq;
             BBCount *= Counts[Caller];
-            return Optional<Scaled64>(BBCount);
+            return llvm::Optional<Scaled64>(BBCount);
     };
     CallGraph CG(*M);
     // Propgate the entry counts on the callgraph.

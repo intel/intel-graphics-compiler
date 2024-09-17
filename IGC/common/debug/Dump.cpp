@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/raw_os_ostream.h>
 #include <llvm/Support/FormattedStream.h>
 #include <llvm/Support/FileSystem.h>
+#include <optional>
 #include "common/LLVMWarningsPop.hpp"
 
 #include <stdarg.h>
@@ -183,7 +184,7 @@ DumpName DumpName::PostFix(std::string const& postfixStr) const
     return copy;
 }
 
-DumpName DumpName::Pass(std::string const& name, llvm::Optional<unsigned int> index) const
+DumpName DumpName::Pass(std::string const& name, std::optional<unsigned int> index) const
 {
     std::string newName = name;
     //remove spaces
@@ -214,29 +215,29 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
 
     //    m_dumpName = IGC::Debug::GetShaderOutputName();
 
-    if(m_dumpName.hasValue() && m_dumpName.getValue() != "")
+    if(m_dumpName.has_value() && m_dumpName.value() != "")
     {
-        ss << m_dumpName.getValue();
+        ss << m_dumpName.value();
         underscore = true;
     }
-    if(m_shaderName.hasValue())
+    if(m_shaderName.has_value())
     {
         ss << (underscore ? "_" : "")
-            << m_shaderName.getValue();
+            << m_shaderName.value();
         underscore = true;
     }
-    if(m_type.hasValue())
+    if(m_type.has_value())
     {
         ss << (underscore ? "_" : "");
-        ss << GetShaderTypeAcronym(m_type.getValue());
+        ss << GetShaderTypeAcronym(m_type.value());
         underscore = true;
     }
-    if(m_psPhase.hasValue())
+    if(m_psPhase.has_value())
     {
-        if(m_psPhase.getValue() != PixelShaderPhaseType::PSPHASE_LEGACY)
+        if(m_psPhase.value() != PixelShaderPhaseType::PSPHASE_LEGACY)
         {
             ss << (underscore ? "_" : "");
-            switch(m_psPhase.getValue())
+            switch(m_psPhase.value())
             {
             case PixelShaderPhaseType::PSPHASE_COARSE: ss << "CPS"; break;
             case PixelShaderPhaseType::PSPHASE_PIXEL: ss << "PS"; break;
@@ -244,10 +245,10 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
             }
         }
     }
-    if(m_hash.hasValue())
+    if(m_hash.has_value())
     {
 
-        if (m_type.hasValue() && IGC_IS_FLAG_ENABLED(EnableShaderNumbering)) {
+        if (m_type.has_value() && IGC_IS_FLAG_ENABLED(EnableShaderNumbering)) {
             bool increment = shaderHashMap.insert({ m_hash->asmHash, shaderNum }).second;
             //Need to serialize access to the shaderNum counter in case different threads need to dump the same shader at once.
             hashMapLock.lock();
@@ -307,14 +308,14 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
 
         underscore = true;
     }
-    if(m_pass.hasValue())
+    if(m_pass.has_value())
     {
-        if(m_pass->m_index.hasValue())
+        if(m_pass->m_index.has_value())
         {
             ss << (underscore ? "_" : "")
                 << std::setfill('0')
                 << std::setw(4)
-                << m_pass->m_index.getValue()
+                << m_pass->m_index.value()
                 << std::setfill(' ');
             underscore = true;
         }
@@ -323,62 +324,62 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
         underscore = true;
     }
 
-    if (m_cgFlag.hasValue() && m_cgFlag.getValue() != FLAG_CG_ALL_SIMDS)
+    if (m_cgFlag.has_value() && m_cgFlag.value() != FLAG_CG_ALL_SIMDS)
     {
         ss << (underscore ? "_" : "");
-        if (m_cgFlag.getValue() == FLAG_CG_STAGE1_FAST_COMPILE)
+        if (m_cgFlag.value() == FLAG_CG_STAGE1_FAST_COMPILE)
         {
             ss << "FastStage1";
         }
-        else if (m_cgFlag.getValue() == FLAG_CG_STAGE1_BEST_PERF)
+        else if (m_cgFlag.value() == FLAG_CG_STAGE1_BEST_PERF)
         {
             ss << "BestStage1";
         }
         else
         {
-            IGC_ASSERT(m_cgFlag.getValue() == FLAG_CG_STAGE1_FASTEST_COMPILE);
+            IGC_ASSERT(m_cgFlag.value() == FLAG_CG_STAGE1_FASTEST_COMPILE);
             ss << "FastestStage1";
         }
 
         underscore = true;
     }
-    else if (m_cgFlag.hasValue())
+    else if (m_cgFlag.has_value())
     {
         ss << (underscore ? "_" : "");
         ss << "RestStage2";
         underscore = true;
     }
 
-    if (m_retryId.hasValue())
+    if (m_retryId.has_value())
     {
-        if (m_retryId.getValue())
+        if (m_retryId.value())
         {
-            ss << "_" << m_retryId.getValue();
+            ss << "_" << m_retryId.value();
         }
     }
-    if(m_simdWidth.hasValue())
+    if(m_simdWidth.has_value())
     {
         ss << (underscore ? "_" : "")
             << "simd"
-            << numLanes(m_simdWidth.getValue());
+            << numLanes(m_simdWidth.value());
         underscore = true;
     }
 
-    if(m_ShaderMode.hasValue())
+    if(m_ShaderMode.has_value())
     {
-        if(m_ShaderMode.getValue() == ShaderDispatchMode::SINGLE_PATCH)
+        if(m_ShaderMode.value() == ShaderDispatchMode::SINGLE_PATCH)
         {
             ss << (underscore ? "_" : "")
                 << "SinglePatch";
             underscore = true;
         }
-        if (m_ShaderMode.getValue() == ShaderDispatchMode::DUAL_PATCH)
+        if (m_ShaderMode.value() == ShaderDispatchMode::DUAL_PATCH)
         {
             ss << (underscore ? "_" : "")
                 << "DualPatch";
             underscore = true;
         }
-        if(m_ShaderMode.getValue() == ShaderDispatchMode::EIGHT_PATCH)
+        if(m_ShaderMode.value() == ShaderDispatchMode::EIGHT_PATCH)
         {
             ss << (underscore ? "_" : "")
                 << "EightPatch";
@@ -386,9 +387,9 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
         }
     }
 
-    if(m_postfixStr.hasValue() && !m_postfixStr.getValue().empty())
+    if(m_postfixStr.has_value() && !m_postfixStr.value().empty())
     {
-        std::string s = m_postfixStr.getValue();
+        std::string s = m_postfixStr.value();
         // sanitize the function name
         std::replace(s.begin(), s.end(), (char)1, '_');
         std::replace(s.begin(), s.end(), '/', '_');
@@ -410,7 +411,7 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
         const size_t MAX_VISA_STRING_LENGTH = 240;
         const size_t curLen = static_cast<size_t>(ss.tellp());
         const size_t extSize =
-            !m_extension.hasValue() ? 0 : 1 + m_extension.getValue().size();
+            !m_extension.has_value() ? 0 : 1 + m_extension.value().size();
         if (curLen + 1 + s.size() + extSize > MAX_VISA_STRING_LENGTH)
         {
             s.resize(MAX_VISA_STRING_LENGTH - curLen - 1 - extSize);
@@ -419,9 +420,9 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
             << s;
     }
 
-    if(m_extension.hasValue())
+    if(m_extension.has_value())
     {
-        ss << "." << m_extension.getValue();
+        ss << "." << m_extension.value();
     }
     return ss.str();
 }
@@ -429,9 +430,9 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
 std::string DumpName::GetKernelDumpName() const
 {
     std::string kernelDumpName = "";
-    if (m_postfixStr.hasValue() && !m_postfixStr.getValue().empty())
+    if (m_postfixStr.has_value() && !m_postfixStr.value().empty())
     {
-        kernelDumpName = m_postfixStr.getValue();
+        kernelDumpName = m_postfixStr.value();
     }
     return kernelDumpName;
 }

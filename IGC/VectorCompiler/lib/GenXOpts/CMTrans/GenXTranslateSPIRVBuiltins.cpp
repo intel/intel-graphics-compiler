@@ -34,6 +34,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Module.h>
 #include <llvm/Linker/Linker.h>
 #include <llvm/Pass.h>
+#include <optional>
 
 #define DEBUG_TYPE "GENX_SPIRV_BUILTINS"
 
@@ -216,8 +217,7 @@ Value *SPIRVExpander::visitCallInst(CallInst &CI) {
   }
   // SPV_KHR_shader_clock extension.
   if (CalleeName.startswith("ReadClockKHR")) {
-    auto *Intr =
-        emitIntrinsic(Builder, Intrinsic::readcyclecounter, llvm::None, {});
+    auto *Intr = emitIntrinsic(Builder, Intrinsic::readcyclecounter, llvm::ArrayRef<llvm::Type *>(), {});
     return Builder.CreateBitCast(Intr, CI.getType());
   }
   // SPV_EXT_shader_atomic_float_min_max extension

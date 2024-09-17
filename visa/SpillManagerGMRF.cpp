@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include <math.h>
 #include <sstream>
 #include <unordered_set>
+#include <optional>
 
 using namespace vISA;
 

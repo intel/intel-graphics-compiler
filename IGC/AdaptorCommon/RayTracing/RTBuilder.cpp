@@ -24,12 +24,15 @@ SPDX-License-Identifier: MIT
 #include "RTStackFormat.h"
 #include "Probe/Assertion.h"
 
+#include "common/LLVMWarningsPush.hpp"
+#include <llvmWrapper/ADT/Optional.h>
 #include "llvmWrapper/IR/Argument.h"
 #include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/Alignment.h"
-#include "common/LLVMWarningsPush.hpp"
 #include "common/LLVMWarningsPop.hpp"
+
+#include <optional>
 
 
 using namespace llvm;

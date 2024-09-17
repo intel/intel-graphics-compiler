@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "Option.h"
+#include <optional>
 #include "DebugInfo.h"
 #include "IGC/common/StringMacros.hpp"
 #include "PlatformInfo.h"

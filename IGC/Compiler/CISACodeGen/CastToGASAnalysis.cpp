@@ -19,6 +19,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/Analysis/CallGraph.h>
+#include <llvmWrapper/ADT/Optional.h>
+#include <optional>
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
@@ -58,7 +60,12 @@ void CastToGASAnalysis::getAllFuncsAccessibleFromKernel(const Function* F, CallG
             const Function* child = CE.second->getFunction();
             if (!child)
             {
-                if (CallBase* CB = dyn_cast_or_null<CallBase>(CE.first.getValue()))
+                std::optional<llvm::WeakTrackingVH> CEVal = IGCLLVM::makeOptional(CE.first);
+
+                if (!CEVal.has_value())
+                    continue;
+
+                if (CallBase* CB = dyn_cast_or_null<CallBase>(CEVal.value()))
                 {
                     if (CB->isIndirectCall())
                     {

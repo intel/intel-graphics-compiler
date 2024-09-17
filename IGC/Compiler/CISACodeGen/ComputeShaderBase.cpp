@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Support/ScaledNumber.h>
+#include <optional>
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/ComputeShaderBase.hpp"
 #include "Compiler/CISACodeGen/CSWalkOrder.hpp"
@@ -213,7 +214,7 @@ namespace IGC
         overrideWalkOrderKeysInPass(is_pow2_x, is_pow2_y, is_pow2_z, walkOrderStruct, m_ctx);
     }
 
-    Optional<CS_WALK_ORDER>
+    std::optional<CS_WALK_ORDER>
     CComputeShaderBase::checkLegalWalkOrder(
         const std::array<uint32_t, 3>& Dims,
         const WorkGroupWalkOrderMD& WO)
@@ -246,6 +247,6 @@ namespace IGC
             return getWalkOrderInPass(order0, order1);
         }
 
-        return None;
+        return std::nullopt;
     }
 }

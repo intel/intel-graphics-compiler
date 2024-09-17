@@ -141,6 +141,7 @@ SPDX-License-Identifier: MIT
 #include <numeric>
 #include <set>
 #include <stack>
+#include <optional>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -151,6 +152,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/Support/Alignment.h"
+#include <llvmWrapper/ADT/Optional.h>
 
 using namespace llvm;
 
@@ -165,7 +167,7 @@ static cl::opt<bool>
 // vector represents it. When the vector is not set, the full list cannot be
 // defined but it is not empty. Empty vector means that the full set can be
 // defined but it is just empty.
-template <typename T> using MaybeUndefSeq = Optional<std::vector<T>>;
+template <typename T> using MaybeUndefSeq = std::optional<std::vector<T>>;
 using MaybeUndefFuncSeq = MaybeUndefSeq<Function *>;
 using FunctionRef = std::reference_wrapper<Function>;
 
@@ -302,7 +304,7 @@ private:
     Type * Ty = getIntrinRetType(F->getContext(), IID);
     IGC_ASSERT(Ty);
 
-    auto IntrinsicName = vc::getAnyName(IID, None);
+    auto IntrinsicName = vc::getAnyName(IID, ArrayRef<Type*>());
     GlobalVariable *NewVar = new GlobalVariable(
         *F->getParent(), Ty, false, GlobalVariable::InternalLinkage,
         UndefValue::get(Ty), "__imparg_" + IntrinsicName);
@@ -394,8 +396,8 @@ public:
         vc::isFixedSignatureDefinition(F) | vc::isKernel(&F),
         "entry point must be a fixed signature function or a kernel");
     visitFunction</*IsEntry =*/true>(F);
-    if (CalledFixedSignFuncs.hasValue()) {
-      IGC_ASSERT_MESSAGE(isUnique(CalledFixedSignFuncs.getValue()),
+    if (CalledFixedSignFuncs.has_value()) {
+      IGC_ASSERT_MESSAGE(isUnique(CalledFixedSignFuncs.value()),
                          "values in CalledFixedSignFuncs must be unique");
     }
     return {CollectedIID, CalledFixedSignFuncs};
@@ -421,11 +423,11 @@ static bool isPseudoIntrinsic(unsigned IID) {
 bool kernelRequiresImplArgBuffer(
     const MaybeUndefFuncSeq &CalledFixedSignFuncs,
     const std::unordered_set<Function *> &RequireImplArgsBuffer) {
-  if (!CalledFixedSignFuncs.hasValue())
+  if (!CalledFixedSignFuncs.has_value())
     // Set of called functions cannot be defined. Presume that the buffer is
     // required.
     return true;
-  return llvm::any_of(CalledFixedSignFuncs.getValue(),
+  return llvm::any_of(CalledFixedSignFuncs.value(),
                       [&RequireImplArgsBuffer](Function *F) {
                         return RequireImplArgsBuffer.count(F);
                       });
@@ -619,8 +621,8 @@ CMImpParam::analyzeFixedSignatureFunctions(Module &M,
         CallGraphTraverser{CG, UsedIntrInfo}.collectIndirectlyUsedImplArgs(F);
     // Function should be marked if it uses implicit args or it calls some
     // function that may use it via implicit args buffer.
-    if (!RequiredImplArgs.empty() || !CalledFixedSignFuncs.hasValue() ||
-        !CalledFixedSignFuncs.getValue().empty())
+    if (!RequiredImplArgs.empty() || !CalledFixedSignFuncs.has_value() ||
+        !CalledFixedSignFuncs.value().empty())
       RequireImplArgsBuffer.emplace(&F);
 
     if (!RequiredImplArgs.empty())
@@ -959,7 +961,7 @@ void CMImpParam::ConvertToOCLPayload(Module &M) {
       auto UInst = dyn_cast<Instruction>(*UI++);
       if (UInst) {
         IRBuilder<> Builder(UInst);
-        Value *Val = Builder.CreateCall(LID16, None, UInst->getName() + ".i16");
+        Value *Val = Builder.CreateCall(LID16, llvm::ArrayRef<Value *>(), UInst->getName() + ".i16");
         Val = Builder.CreateZExt(Val, Ty32);
         Val->takeName(UInst);
         UInst->replaceAllUsesWith(Val);
@@ -990,9 +992,9 @@ template <bool IsEntry> void CallGraphTraverser::visitFunction(Function &F) {
       IGC_ASSERT_MESSAGE(!F.isDeclaration(),
                          "declarations are unexpected: call graph edge cannot "
                          "lead to a declaration");
-      if (CalledFixedSignFuncs.hasValue())
+      if (CalledFixedSignFuncs.has_value())
         // Adding only if undef calling endge haven't been met.
-        CalledFixedSignFuncs.getValue().push_back(&F);
+        CalledFixedSignFuncs.value().push_back(&F);
       return;
     }
   }
@@ -1008,7 +1010,7 @@ template <bool IsEntry> void CallGraphTraverser::visitFunction(Function &F) {
     // Skipping reference edges.
     if (!CallEdge.first)
       continue;
-    Value *CI = CallEdge.first.getValue();
+    Value *CI = IGCLLVM::makeOptional(CallEdge.first).value();
     // Skipping inline asm.
     if (isa<CallInst>(CI) && cast<CallInst>(CI)->isInlineAsm())
       continue;
@@ -1029,7 +1031,7 @@ template <bool IsEntry> void CallGraphTraverser::visitFunction(Function &F) {
 
 static std::string getImplicitArgName(unsigned IID) {
   if (!isPseudoIntrinsic(IID))
-    return "impl.arg." + vc::getAnyName(IID, None);
+    return "impl.arg." + vc::getAnyName(IID, llvm::ArrayRef<Type*>());
   switch (IID) {
   case PseudoIntrinsic::ImplicitArgsBuffer:
     return "impl.arg.impl.args.buffer";

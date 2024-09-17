@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Module.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include <llvmWrapper/ADT/Optional.h>
 
 #include "Probe/Assertion.h"
 
@@ -250,7 +251,7 @@ inline bool skipOptWithLargeBlock(const Function &F) {
 bool skipOptWithLargeBlock(FunctionGroup &FG);
 
 // getTwoAddressOperandNum : get operand number of two address operand
-llvm::Optional<unsigned> getTwoAddressOperandNum(CallInst *II);
+std::optional<unsigned> getTwoAddressOperandNum(CallInst *II);
 
 // isPredicate : test whether an instruction has predicate (i1 or vector of i1)
 // type

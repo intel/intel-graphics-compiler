@@ -13,7 +13,7 @@ SPDX-License-Identifier: MIT
 #include "SCCAnalysis.h"
 #include "SpillManagerGMRF.h"
 #include "common.h"
-
+#include <optional>
 #include <fstream>
 #include <tuple>
 

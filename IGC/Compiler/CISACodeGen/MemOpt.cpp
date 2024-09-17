@@ -31,6 +31,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/raw_ostream.h>
 #include "llvm/Support/CommandLine.h"
 #include <llvm/Transforms/Utils/Local.h>
+#include <optional>
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
@@ -126,7 +127,7 @@ namespace {
         bool removeRedBlockRead(GenIntrinsicInst* LeadingLoad, MemRefListTy::iterator MI,
             MemRefListTy& MemRefs, TrivialMemRefListTy& ToOpt, unsigned& SimdSize);
 
-        Optional<unsigned> chainedSelectAndPhis(Instruction* Inst, unsigned depth,
+        std::optional<unsigned> chainedSelectAndPhis(Instruction* Inst, unsigned depth,
             llvm::DenseMap<Instruction*, unsigned> &depthTracking);
 
         void removeVectorBlockRead(Instruction* BlockReadToOptimize, Instruction* BlockReadToRemove,
@@ -991,19 +992,19 @@ Value* MemOpt::getShuffle(Value* ShflId,
 // The following function "chainedSelectAndPhis" is designed to avoid going into SCEV in special circumstances
 // when the shader has a large set of chained phi nodes and selects. One of the downsides of SCEV is it is a
 // recursive approach and can cause a stack overflow when tracing back instructions.
-Optional<unsigned> MemOpt::chainedSelectAndPhis(Instruction* Inst , unsigned depth,
+std::optional<unsigned> MemOpt::chainedSelectAndPhis(Instruction* Inst , unsigned depth,
     llvm::DenseMap<Instruction*, unsigned> &depthTracking)
 {
     //Max depth set to 300
     if (depth >= 300)
     {
-        return None;
+        return std::nullopt;
     }
 
     if (auto I = depthTracking.find(Inst); I != depthTracking.end())
     {
         if ((depth + I->second) >= 300)
-            return None;
+            return std::nullopt;
 
         return I->second;
     }
@@ -1015,9 +1016,9 @@ Optional<unsigned> MemOpt::chainedSelectAndPhis(Instruction* Inst , unsigned dep
         {
             if (isa<PHINode>(op_inst) || isa<SelectInst>(op_inst))
             {
-                Optional<unsigned> RemDepth = chainedSelectAndPhis(op_inst, depth + 1, depthTracking);
+                std::optional<unsigned> RemDepth = chainedSelectAndPhis(op_inst, depth + 1, depthTracking);
                 if (!RemDepth)
-                    return None;
+                    return std::nullopt;
                 MaxRemDepth = std::max(MaxRemDepth, *RemDepth + 1);
             }
         }

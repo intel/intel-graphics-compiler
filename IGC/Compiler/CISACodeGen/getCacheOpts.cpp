@@ -21,12 +21,12 @@ SPDX-License-Identifier: MIT
 #include "AdaptorCommon/RayTracing/MemRegionAnalysis.h"  // for getRTRegion(), RTMemRegion
 
 #include "common/LLVMWarningsPush.hpp"                   // for suppressing LLVM warnings
-#include "llvm/ADT/Optional.h"                           // for llvm::Optional
 #include "llvm/IR/Instruction.h"                         // for llvm::Instruction
 #include "llvm/IR/Instructions.h"                        // for llvm::StoreInst, llvm::LoadInst
 #include "common/LLVMWarningsPop.hpp"                    // for suppressing LLVM warnings
 
 #include "getCacheOpts.h"
+#include <optional>
 
 using namespace llvm;
 
@@ -138,16 +138,16 @@ LSC_L1_L3_CC SWStackLoadPolicy(const CodeGenContext& Ctx)
     return cacheOpts;
 }
 
-Optional<LSC_L1_L3_CC> getCacheOptsStorePolicy(
+std::optional<LSC_L1_L3_CC> getCacheOptsStorePolicy(
     const Value* Ptr,
     const CodeGenContext &Ctx)
 {
     auto Region = getRTRegion(Ptr, *Ctx.getModuleMetaData());
 
     if (!Region)
-        return None;
+        return std::nullopt;
 
-    Optional<LSC_L1_L3_CC> cacheOpts;
+    std::optional<LSC_L1_L3_CC> cacheOpts;
 
     switch (*Region)
     {
@@ -168,23 +168,23 @@ Optional<LSC_L1_L3_CC> getCacheOptsStorePolicy(
     return cacheOpts;
 }
 
-Optional<LSC_L1_L3_CC> getCacheOptsStorePolicy(
+std::optional<LSC_L1_L3_CC> getCacheOptsStorePolicy(
     const StoreInst& storeInst,
     const CodeGenContext &Ctx)
 {
     return getCacheOptsStorePolicy(storeInst.getPointerOperand(), Ctx);
 }
 
-Optional<LSC_L1_L3_CC> getCacheOptsLoadPolicy(
+std::optional<LSC_L1_L3_CC> getCacheOptsLoadPolicy(
     const Value* Ptr,
     const CodeGenContext &Ctx)
 {
     auto Region = getRTRegion(Ptr, *Ctx.getModuleMetaData());
 
     if (!Region)
-        return None;
+        return std::nullopt;
 
-    Optional<LSC_L1_L3_CC> cacheOpts;
+    std::optional<LSC_L1_L3_CC> cacheOpts;
 
     switch (*Region)
     {
@@ -205,7 +205,7 @@ Optional<LSC_L1_L3_CC> getCacheOptsLoadPolicy(
     return cacheOpts;
 }
 
-Optional<LSC_L1_L3_CC> getCacheOptsLoadPolicy(
+std::optional<LSC_L1_L3_CC> getCacheOptsLoadPolicy(
     const LoadInst& loadInst,
     const CodeGenContext &Ctx)
 {

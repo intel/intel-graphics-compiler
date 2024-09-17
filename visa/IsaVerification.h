@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include <map>
 #include <string>
 #include <vector>
+#include <optional>
 
 // forward declaration
 class VISAKernelImpl;

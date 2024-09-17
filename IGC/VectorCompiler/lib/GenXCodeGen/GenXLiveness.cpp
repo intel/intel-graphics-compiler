@@ -48,6 +48,7 @@ SPDX-License-Identifier: MIT
 #define DEBUG_TYPE "GENX_LIVENESS"
 
 #include <unordered_set>
+#include <optional>
 
 using namespace llvm;
 using namespace genx;
@@ -644,7 +645,7 @@ LiveRange *GenXLiveness::getOrCreateLiveRange(SimpleValue V)
       unsigned IID = vc::getAnyIntrinsicID(V.getValue());
       if (vc::isAnyNonTrivialIntrinsic(IID)) {
         // For an intrinsic call, use the intrinsic name after the final period.
-        NameBuf = vc::getAnyName(IID, None);
+        NameBuf = vc::getAnyName(IID, llvm::ArrayRef<llvm::Type *>());
         Name = NameBuf;
         size_t Period = Name.rfind('.');
         if (Period != StringRef::npos)

@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include "common/igc_regkeys.hpp"
 
 #include <iostream>
+#include <optional>
 
 using namespace llvm;
 

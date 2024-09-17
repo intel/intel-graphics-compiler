@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include "MDFrameWork.h"
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/IRBuilder.h"
+#include <optional>
 #include "Compiler/CISACodeGen/getCacheOpts.h"
 
 using namespace llvm;
@@ -95,19 +96,19 @@ Argument* ArgQuery::getHitAttribArg(const Function* F) const
     return const_cast<Argument*>(getArg(F, getHitAttribArgNo()));
 }
 
-Optional<uint32_t> ArgQuery::getPayloadArgNo() const
+std::optional<uint32_t> ArgQuery::getPayloadArgNo() const
 {
     if (ShaderTy == Callable)
         return CallableShaderPayloadIdx;
     else
         return TraceRayPayloadIdx;
 
-    return None;
+    return std::nullopt;
 }
 
 const Argument* ArgQuery::getArg(
     const Function* F,
-    Optional<uint32_t> ArgNo) const
+    std::optional<uint32_t> ArgNo) const
 {
     // Not specified
     if (!ArgNo)
@@ -122,7 +123,7 @@ const Argument* ArgQuery::getArg(
     return Arg;
 }
 
-Optional<uint32_t> ArgQuery::getHitAttribArgNo() const
+std::optional<uint32_t> ArgQuery::getHitAttribArgNo() const
 {
     return HitAttributeIdx;
 }

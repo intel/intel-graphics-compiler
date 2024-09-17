@@ -55,6 +55,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Option/OptTable.h"
 #include "llvmWrapper/Support/TargetRegistry.h"
 #include "llvmWrapper/Target/TargetMachine.h"
+#include <llvmWrapper/ADT/Optional.h>
 
 #include "Probe/Assertion.h"
 
@@ -219,8 +220,8 @@ template <typename T> bool getDefaultOverridableFlag(T OptFlag, bool Default) {
 static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   GenXBackendOptions BackendOpts;
   if (Opts.StackMemSize) {
-    BackendOpts.StackSurfaceMaxSize = Opts.StackMemSize.getValue();
-    BackendOpts.StatelessPrivateMemSize = Opts.StackMemSize.getValue();
+    BackendOpts.StackSurfaceMaxSize = IGCLLVM::makeOptional(Opts.StackMemSize).value();
+    BackendOpts.StatelessPrivateMemSize = IGCLLVM::makeOptional(Opts.StackMemSize).value();
   }
 
   BackendOpts.DebuggabilityEmitDebuggableKernels = Opts.EmitDebuggableKernels;
@@ -251,7 +252,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   BackendOpts.FCtrl = Opts.FCtrl;
   BackendOpts.WATable = Opts.WATable;
   if (Opts.GRFSize)
-    BackendOpts.GRFSize = Opts.GRFSize.getValue();
+    BackendOpts.GRFSize = IGCLLVM::makeOptional(Opts.GRFSize).value();
   BackendOpts.AutoLargeGRF = Opts.EnableAutoLargeGRF;
   BackendOpts.UseBindlessBuffers = Opts.UseBindlessBuffers;
   if (Opts.SaveStackCallLinkage)
@@ -334,7 +335,7 @@ createTargetMachine(const vc::CompileOptions &Opts,
       createBackendData(ExtData, vc::is32BitArch(TheTriple) ? 32 : 64));
   std::unique_ptr<TargetMachine> TM{vc::createGenXTargetMachine(
       *TheTarget, TheTriple, Opts.CPUStr, FeaturesStr, Options,
-      /*RelocModel=*/None, /*CodeModel=*/None, OptLevel, std::move(BC))};
+      /*RelocModel=*/llvm::None, /*CodeModel=*/llvm::None, OptLevel, std::move(BC))};
   if (!TM)
     return make_error<vc::TargetMachineError>();
   return {std::move(TM)};
@@ -683,16 +684,16 @@ static Error makeOptionError(const opt::Arg &A, const opt::ArgList &Opts,
   return make_error<vc::OptionError>(BadOpt, IsInternal);
 }
 
-static Optional<vc::OptimizerLevel>
+static std::optional<vc::OptimizerLevel>
 parseOptimizationLevelString(StringRef Val) {
-  return StringSwitch<Optional<vc::OptimizerLevel>>(Val)
+  return StringSwitch<std::optional<vc::OptimizerLevel>>(Val)
       .Case("none", vc::OptimizerLevel::None)
       .Case("full", vc::OptimizerLevel::Full)
-      .Default(None);
+      .Default(std::nullopt);
 }
 
 template <typename OptSpecifier>
-static Optional<vc::OptimizerLevel>
+static std::optional<vc::OptimizerLevel>
 deriveOptimizationLevel(opt::Arg *A, OptSpecifier PrimaryOpt) {
   using namespace IGC::options::api;
   if (A->getOption().matches(PrimaryOpt)) {
@@ -735,10 +736,10 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
 
   if (opt::Arg *A = ApiOptions.getLastArg(OPT_exp_register_file_size_common)) {
     StringRef V = A->getValue();
-    auto MaybeGRFSize = StringSwitch<Optional<unsigned>>(V)
+    auto MaybeGRFSize = StringSwitch<llvm::Optional<unsigned>>(V)
                             .Case("128", 128)
                             .Case("256", 256)
-                            .Default(None);
+                            .Default(llvm::None);
     if (!MaybeGRFSize)
       return makeOptionError(*A, ApiOptions, /*IsInternal=*/false);
     Opts.GRFSize = MaybeGRFSize;
@@ -747,14 +748,14 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
   if (opt::Arg *A = ApiOptions.getLastArg(OPT_fp_contract)) {
     StringRef Val = A->getValue();
     auto MayBeAllowFPOPFusion =
-        StringSwitch<Optional<FPOpFusion::FPOpFusionMode>>(Val)
+        StringSwitch<std::optional<FPOpFusion::FPOpFusionMode>>(Val)
             .Case("on", FPOpFusion::Standard)
             .Case("fast", FPOpFusion::Fast)
             .Case("off", FPOpFusion::Strict)
-            .Default(None);
+            .Default(std::nullopt);
     if (!MayBeAllowFPOPFusion)
       return makeOptionError(*A, ApiOptions, /*IsInternal=*/false);
-    Opts.AllowFPOpFusion = MayBeAllowFPOPFusion.getValue();
+    Opts.AllowFPOpFusion = MayBeAllowFPOPFusion.value();
   }
 
   if (opt::Arg *A =
@@ -762,10 +763,10 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
     auto MaybeLevel = deriveOptimizationLevel(A, OPT_vc_optimize);
     if (!MaybeLevel)
       return makeOptionError(*A, ApiOptions, /*IsInternal=*/false);
-    Opts.IROptLevel = MaybeLevel.getValue();
+    Opts.IROptLevel = MaybeLevel.value();
 
     if (ApiOptions.hasArg(OPT_emit_debug) &&
-        MaybeLevel.getValue() == vc::OptimizerLevel::None)
+        MaybeLevel.value() == vc::OptimizerLevel::None)
       Opts.CodegenOptLevel = vc::OptimizerLevel::None;
   }
 
@@ -774,7 +775,7 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
     auto MaybeLevel = deriveOptimizationLevel(A, OPT_vc_codegen_optimize);
     if (!MaybeLevel)
       return makeOptionError(*A, ApiOptions, /*IsInternal=*/false);
-    Opts.CodegenOptLevel = MaybeLevel.getValue();
+    Opts.CodegenOptLevel = MaybeLevel.value();
   }
 
   if (opt::Arg *A = ApiOptions.getLastArg(OPT_vc_stateless_private_size)) {
@@ -824,14 +825,14 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
 
   if (opt::Arg *A = InternalOptions.getLastArg(OPT_vc_interop_subgroup_size)) {
     StringRef Val = A->getValue();
-    auto MaybeSize = StringSwitch<Optional<unsigned>>(Val)
+    auto MaybeSize = StringSwitch<std::optional<unsigned>>(Val)
                          .Case("8", 8)
                          .Case("16", 16)
                          .Case("32", 32)
-                         .Default(None);
+                         .Default(std::nullopt);
     if (!MaybeSize)
       return makeOptionError(*A, InternalOptions, /*IsInternal=*/true);
-    Opts.InteropSubgroupSize = MaybeSize.getValue();
+    Opts.InteropSubgroupSize = MaybeSize.value();
   }
 
   Opts.Binary = vc::BinaryKind::ZE;
@@ -842,14 +843,14 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
         Opts.Binary = vc::BinaryKind::OpenCL;
     else {
       StringRef Val = A->getValue();
-      auto MaybeBinary = StringSwitch<Optional<vc::BinaryKind>>(Val)
+      auto MaybeBinary = StringSwitch<std::optional<vc::BinaryKind>>(Val)
                              .Case("cm", vc::BinaryKind::CM)
                              .Case("ocl", vc::BinaryKind::OpenCL)
                              .Case("ze", vc::BinaryKind::ZE)
-                             .Default(None);
+                             .Default(std::nullopt);
       if (!MaybeBinary)
         return makeOptionError(*A, InternalOptions, /*IsInternal=*/true);
-      Opts.Binary = MaybeBinary.getValue();
+      Opts.Binary = MaybeBinary.value();
     }
   }
 

@@ -21,11 +21,12 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Function.h>
 #include <llvm/ADT/SmallVector.h>
-#include <llvm/ADT/Optional.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/ValueHandle.h>
 #include <llvm/Transforms/Utils/ValueMapper.h>
 #include "common/LLVMWarningsPop.hpp"
+
+#include <optional>
 
 namespace IGC {
 
@@ -60,7 +61,7 @@ class RematChecker
 {
 public:
     RematChecker(CodeGenContext& Ctx, RematStage Stage);
-    llvm::Optional<std::vector<llvm::Instruction*>>
+    std::optional<std::vector<llvm::Instruction*>>
     canFullyRemat(
         llvm::Instruction* I,
         uint32_t Threshold,

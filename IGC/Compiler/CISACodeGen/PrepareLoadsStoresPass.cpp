@@ -31,6 +31,7 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/Support/Alignment.h"
+#include <optional>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/InstIterator.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -61,9 +62,9 @@ public:
 
     static char ID;
 private:
-    Optional<uint32_t> RTAsyncStackAddrSpace;
-    Optional<uint32_t> RTSyncStackAddrSpace;
-    Optional<uint32_t> SWStackAddrSpace;
+    std::optional<uint32_t> RTAsyncStackAddrSpace;
+    std::optional<uint32_t> RTSyncStackAddrSpace;
+    std::optional<uint32_t> SWStackAddrSpace;
 
     bool shouldSplit(uint32_t AddrSpace) const;
 };

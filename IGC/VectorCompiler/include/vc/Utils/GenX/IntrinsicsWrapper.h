@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 
 #include "vc/InternalIntrinsics/InternalIntrinsics.h"
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
+#include <optional>
 
 namespace vc {
 // getAnyIntrinsicID: Return LLVM, GenX or Internal intrinsic ID
@@ -52,7 +53,7 @@ inline bool isAnyNonTrivialIntrinsic(const llvm::Value *V) {
 // Tys must provide exactly one type for each overloaded type in the intrinsic.
 llvm::Function *
 getAnyDeclaration(llvm::Module *M, unsigned ID,
-                  llvm::ArrayRef<llvm::Type *> Tys = llvm::None);
+                  llvm::ArrayRef<llvm::Type *> Tys = llvm::ArrayRef<llvm::Type*>());
 
 std::string getAnyName(unsigned id, llvm::ArrayRef<llvm::Type *> Tys);
 

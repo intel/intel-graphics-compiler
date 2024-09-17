@@ -25,6 +25,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/Process.h>
 #include <llvm/Support/raw_ostream.h>
 
+#include <llvmWrapper/ADT/Optional.h>
+
 #include <AdaptorOCL/OCL/BuiltinResource.h>
 #include <AdaptorOCL/OCL/LoadBuffer.h>
 #include <AdaptorOCL/OCL/TB/igc_tb.h>
@@ -467,7 +469,7 @@ bool fillPrintfData(vc::ExternalData &ExtData) {
   return static_cast<bool>(ExtData.VCPrintf64BIFModule);
 }
 
-static llvm::Optional<vc::ExternalData>
+static std::optional<vc::ExternalData>
 fillExternalData(vc::BinaryKind Binary, llvm::StringRef CPUStr,
                  llvm::ArrayRef<const char *> VISALTOStrings,
                  llvm::ArrayRef<const char *> DirectCallFunctions) {
@@ -606,7 +608,10 @@ translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
                                         InputArgs->SpecConstantsSize};
   llvm::ArrayRef<uint64_t> SpecConstValues{InputArgs->pSpecConstantsValues,
                                            InputArgs->SpecConstantsSize};
-  auto ExpOutput = vc::Compile(Input, Opts, ExtData.getValue(), SpecConstIds,
+
+  vc::ExternalData &extDataValue = ExtData.value();
+
+  auto ExpOutput = vc::Compile(Input, Opts, extDataValue, SpecConstIds,
                                SpecConstValues, BuildLogOut);
   if (!ExpOutput)
     return ExpOutput.takeError();

@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "DebugInfo/DwarfDebug.hpp"
+#include <optional>
 
 #define PASS_FLAG "igc-gas-ret-value-propagator"
 #define PASS_DESC "Resolve generic pointer return value"

@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 
 #include "Probe/Assertion.h"
+#include <optional>
 
 namespace vc::InternalIntrinsic {
 
@@ -108,7 +109,7 @@ inline bool isInternalNonTrivialIntrinsic(const llvm::Value *V) {
 /// the intrinsic.
 llvm::Function *
 getInternalDeclaration(llvm::Module *M, ID id,
-                       llvm::ArrayRef<llvm::Type *> Tys = llvm::None);
+                       llvm::ArrayRef<llvm::Type *> Tys = llvm::ArrayRef<llvm::Type*>());
 
 /// InternalIntrinsic::isOverloadedArg(ID, ArgNum) - Return true if ArgNum
 /// in intrinsic overloaded
@@ -119,7 +120,7 @@ bool isOverloadedArg(unsigned IntrinID, unsigned ArgNum);
 bool isOverloadedRet(unsigned IntrinID);
 
 std::string getInternalName(ID id,
-                            llvm::ArrayRef<llvm::Type *> Tys = llvm::None);
+                            llvm::ArrayRef<llvm::Type *> Tys = llvm::ArrayRef<llvm::Type*>());
 
 bool isInternalMemoryIntrinsic(ID id);
 

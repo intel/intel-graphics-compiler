@@ -32,6 +32,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/ADT/StringRef.h"
 #include "llvmWrapper/IR/Operator.h"
 #include "llvmWrapper/Support/Regex.h"
+#include <llvmWrapper/ADT/Optional.h>
 
 using namespace llvm;
 using namespace vc;
@@ -114,7 +115,7 @@ GlobalVariable &vc::getConstStringGVFromOperand(Value &Op) {
       getConstStringGVFromOperand(static_cast<const Value &>(Op)));
 }
 
-Optional<StringRef> vc::getConstStringFromOperandOptional(const Value &Op) {
+std::optional<StringRef> vc::getConstStringFromOperandOptional(const Value &Op) {
   auto *GV = getConstStringGVFromOperandOptional(Op);
   if (!GV)
     return {};
@@ -123,9 +124,9 @@ Optional<StringRef> vc::getConstStringFromOperandOptional(const Value &Op) {
 
 StringRef vc::getConstStringFromOperand(const Value &Op) {
   auto FmtStr = getConstStringFromOperandOptional(Op);
-  IGC_ASSERT_MESSAGE(FmtStr.hasValue(),
+  IGC_ASSERT_MESSAGE(FmtStr.has_value(),
                      "couldn't reach constexpr string through pointer operand");
-  return FmtStr.getValue();
+  return FmtStr.value();
 }
 
 // Given that \p ArgDesc describes integer conversion with signedness equal to

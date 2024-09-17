@@ -50,6 +50,7 @@ THE SOFTWARE.
 #include "SPIRVDebug.h"
 #include "SPIRVModule.h"
 #include "SPIRVExtInst.h"
+#include <optional>
 #include <algorithm>
 #include <cstdint>
 #include <iostream>
@@ -122,7 +123,7 @@ operator>>(const SPIRVDecoder& I, std::vector<T> &V) {
 
 template <typename T>
 const SPIRVDecoder&
-operator>>(const SPIRVDecoder& I, llvm::Optional<T>& V) {
+operator>>(const SPIRVDecoder& I, std::optional<T>& V) {
   if (V)
     I >> V.getValue();
   return I;

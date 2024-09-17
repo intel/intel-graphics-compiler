@@ -24,6 +24,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InlineAsm.h>
 #include "llvm/IR/GetElementPtrTypeIterator.h"
 #include "llvm/Analysis/CallGraph.h"
+#include <optional>
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
@@ -382,9 +383,9 @@ public:
     void emitFastClear(llvm::LoadInst* inst);
     void emitFastClearSend(llvm::Instruction* pInst);
     void setRovCacheCtrl(llvm::GenIntrinsicInst* inst);
-    llvm::Optional<LSC_CACHE_OPTS>
+    std::optional<LSC_CACHE_OPTS>
         cacheOptionsForConstantBufferLoads(Instruction* inst, LSC_L1_L3_CC Ctrl) const;
-    llvm::Optional<LSC_CACHE_OPTS>
+    std::optional<LSC_CACHE_OPTS>
         cacheOptionsForConstantBufferLoads(Instruction* inst) const;
     bool useRasterizerOrderedByteAddressBuffer(llvm::GenIntrinsicInst* inst);
     void emitUniformAtomicCounter(llvm::GenIntrinsicInst* pInst);

@@ -58,7 +58,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Constants.h>                           // for llvm::ConstantInt, llvm::ConstantFP, llvm::ConstantVector, llvm::ConstantDataVector, llvm::UndefValue
 #include <llvm/IR/Instruction.h>                         // for llvm::Instruction
 #include <llvm/IR/Instructions.h>                        // for llvm::StoreInst, llvm::CallInst
-#include <llvm/ADT/Optional.h>                           // for llvm::Optional
+#include <optional>
 #include <llvm/ADT/APInt.h>                              // for llvm::APInt, llvm::ArrayRef
 #include <llvm/Support/raw_ostream.h>                    // for llvm::raw_ostream, llvm::raw_string_ostream, llvm::outs(), llvm::errs()
 #include "common/LLVMWarningsPop.hpp"                    // for suppressing LLVM warnings
@@ -224,7 +224,7 @@ void LSCCacheOptimizationPass::visitStoreInst(StoreInst& storeInst)
     if (!cacheOpts)
         return;
 
-    auto store_cache_policy = cacheOpts.getValue();
+    auto store_cache_policy = cacheOpts.value();
     if (store_cache_policy == LSC_L1UC_L3UC || store_cache_policy == LSC_L1UC_L3C_WB) {
         // The cache policy is uncached for the L1 cache.
         // unsuccessful early exit

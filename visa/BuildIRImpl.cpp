@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include "Timer.h"
 #include "common.h"
 #include "visa_igc_common_header.h"
+#include <optional>
 
 
 using namespace vISA;

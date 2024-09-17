@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include <iomanip>
 #include <sstream>
 #include <limits>
+#include <optional>
 
 using namespace vISA;
 

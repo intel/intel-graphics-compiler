@@ -15,8 +15,9 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Function.h>
-#include <llvm/ADT/Optional.h>
 #include "common/LLVMWarningsPop.hpp"
+
+#include <optional>
 
 namespace IGC
 {
@@ -33,17 +34,17 @@ namespace IGC
     private:
         // Unlike DXR, Vulkan raytracing allows the optional specification of these
         // values.
-        llvm::Optional<uint32_t> TraceRayPayloadIdx;
-        llvm::Optional<uint32_t> HitAttributeIdx;
-        llvm::Optional<uint32_t> CallableShaderPayloadIdx;
+        std::optional<uint32_t> TraceRayPayloadIdx;
+        std::optional<uint32_t> HitAttributeIdx;
+        std::optional<uint32_t> CallableShaderPayloadIdx;
 
         CallableShaderTypeMD ShaderTy = NumberOfCallableShaderTypes;
     private:
-        llvm::Optional<uint32_t> getPayloadArgNo() const;
-        llvm::Optional<uint32_t> getHitAttribArgNo() const;
+        std::optional<uint32_t> getPayloadArgNo() const;
+        std::optional<uint32_t> getHitAttribArgNo() const;
         const llvm::Argument* getArg(
             const llvm::Function* F,
-            llvm::Optional<uint32_t> ArgNo) const;
+            std::optional<uint32_t> ArgNo) const;
 
         void init(CallableShaderTypeMD FuncType, const FunctionMetaData& FMD);
     };

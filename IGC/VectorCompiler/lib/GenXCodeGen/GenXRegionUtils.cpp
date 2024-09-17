@@ -32,6 +32,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Instructions.h"
 #include "llvm/Support/Debug.h"
 #include <unordered_map>
+#include <optional>
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/TypeSize.h"
@@ -950,7 +951,7 @@ static Instruction *simplifyConstIndirectRegion(Instruction *Inst) {
   return nullptr;
 }
 
-static Optional<std::pair<IGCLLVM::FixedVectorType *, Region>>
+static std::optional<std::pair<IGCLLVM::FixedVectorType *, Region>>
 convertRegionInstType(Instruction *Inst, Type *NewScalarTy,
                       const DataLayout &DL, const GenXSubtarget &ST) {
   using namespace GenXIntrinsic::GenXRegion;
@@ -959,18 +960,18 @@ convertRegionInstType(Instruction *Inst, Type *NewScalarTy,
   auto *OldVal = Inst->getOperand(OldValueOperandNum);
   // Do not change register category to predicate.
   if (NewScalarTy->isIntegerTy(1))
-    return None;
+    return std::nullopt;
   auto *NewVecTy = genx::changeVectorType(OldVal->getType(), NewScalarTy, &DL);
   if (!NewVecTy)
-    return None;
+    return std::nullopt;
   Region R = makeRegionFromBaleInfo(Inst, BaleInfo());
   if (!R.changeElementType(NewScalarTy, &DL))
-    return None;
+    return std::nullopt;
   // Transformation is not profitable for 2D regions or if it will require
   // legalization.
   if (R.is2D() || R.NumElements > llvm::PowerOf2Floor(
                                       genx::getExecSizeAllowedBits(Inst, &ST)))
-    return None;
+    return std::nullopt;
   return std::make_pair(NewVecTy, R);
 }
 

@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/ScalarEvolutionAliasAnalysis.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/InstrTypes.h>
+#include <optional>
 #include "common/LLVMWarningsPop.hpp"
 
 #include <algorithm>
@@ -68,7 +69,7 @@ namespace
         ICmpInst* getLatchCmpInst(Loop* L) const;
         PHINode* getInductionVariable(Loop* L, ScalarEvolution& SE, bool& signedCM, bool& decCompare) const;
         Value* findFinalIVValue(Loop& L, PHINode& IndVar, Instruction& StepInst) const;
-        Optional<LoopBoundInfo> getBounds(Loop* L, ScalarEvolution& SE);
+        std::optional<LoopBoundInfo> getBounds(Loop* L, ScalarEvolution& SE);
         void processLoop(Loop* L);
 
         CollectLoopCount* collectCount;
@@ -290,7 +291,7 @@ Value* LoopCountAnalysis::findFinalIVValue(Loop& L, PHINode& IndVar,
     return nullptr;
 }
 
-Optional<LoopCountAnalysis::LoopBoundInfo> LoopCountAnalysis::getBounds(
+std::optional<LoopCountAnalysis::LoopBoundInfo> LoopCountAnalysis::getBounds(
     Loop* L, ScalarEvolution& SE)
 {
     bool signedComp = false;
@@ -298,12 +299,12 @@ Optional<LoopCountAnalysis::LoopBoundInfo> LoopCountAnalysis::getBounds(
     if (PHINode* IndVar = getInductionVariable(L, SE, signedComp, decComp)) {
         InductionDescriptor IndDesc;
         if (!InductionDescriptor::isInductionPHI(IndVar, L, &SE, IndDesc))
-            return None;
+            return std::nullopt;
 
         Value* InitialIVValue = IndDesc.getStartValue();
         Instruction* StepInst = IndDesc.getInductionBinOp();
         if (!InitialIVValue || !StepInst)
-            return None;
+            return std::nullopt;
 
         const SCEV* Step = IndDesc.getStep();
         Value* StepInstOp1 = StepInst->getOperand(1);
@@ -316,11 +317,11 @@ Optional<LoopCountAnalysis::LoopBoundInfo> LoopCountAnalysis::getBounds(
 
         Value* FinalIVValue = findFinalIVValue(*L, *IndVar, *StepInst);
         if (!FinalIVValue)
-            return None;
+            return std::nullopt;
 
         return LoopBoundInfo(InitialIVValue, StepValue, FinalIVValue, signedComp, decComp);
     }
-    return None;
+    return std::nullopt;
 }
 
 //return argument from loop end value
@@ -469,15 +470,15 @@ bool checkLegalArgument(const Argument* arg) {
 
 void LoopCountAnalysis::processLoop(Loop* L) {
     raw_ostream& output = llvm::outs();
-    Optional<LoopBoundInfo> bounds = getBounds(L, *SE);
+    std::optional<LoopBoundInfo> bounds = getBounds(L, *SE);
     //Values used for Nested loop analysis
 
     if (IGC_IS_FLAG_ENABLED(EnableKernelCostDebug)) {
         dbgs() << "Loop at depth " << L->getLoopDepth() << " with header " << L->getHeader()->getName() << "\n";
     }
 
-    if (bounds.hasValue()) {
-        LoopBoundInfo* LB = bounds.getPointer();
+    if (bounds.has_value()) {
+        LoopBoundInfo* LB = &bounds.value();
 
         //Values for ArgSym
         //Argumnent Index will be -1 for loops with untracable argument

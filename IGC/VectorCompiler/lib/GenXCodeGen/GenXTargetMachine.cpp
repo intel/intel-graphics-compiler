@@ -57,6 +57,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/PassRegistry.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvmWrapper/Support/TargetRegistry.h"
+#include <llvmWrapper/ADT/Optional.h>
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
@@ -376,8 +377,8 @@ static std::unique_ptr<TargetLoweringObjectFile> createTLOF(const Triple &TT) {
 GenXTargetMachine::GenXTargetMachine(const Target &T, const Triple &TT,
                                      StringRef CPU, StringRef FS,
                                      const TargetOptions &Options,
-                                     Optional<Reloc::Model> RM,
-                                     Optional<CodeModel::Model> CM,
+                                     llvm::Optional<Reloc::Model> RM,
+                                     llvm::Optional<CodeModel::Model> CM,
                                      CodeGenOpt::Level OL, bool Is64Bit,
                                      std::unique_ptr<GenXBackendConfig> BC)
     : IGCLLVM::LLVMTargetMachine(T, getDL(Is64Bit), TT, CPU, FS, Options,
@@ -401,8 +402,8 @@ TargetPassConfig *GenXTargetMachine::createPassConfig(PassManagerBase &PM) {
 GenXTargetMachine32::GenXTargetMachine32(const Target &T, const Triple &TT,
                                          StringRef CPU, StringRef FS,
                                          const TargetOptions &Options,
-                                         Optional<Reloc::Model> RM,
-                                         Optional<CodeModel::Model> CM,
+                                         llvm::Optional<Reloc::Model> RM,
+                                         llvm::Optional<CodeModel::Model> CM,
                                          CodeGenOpt::Level OL, bool JIT,
                                          std::unique_ptr<GenXBackendConfig> BC)
     : GenXTargetMachine(T, TT, CPU, FS, Options, RM, CM, OL, false,
@@ -411,8 +412,8 @@ GenXTargetMachine32::GenXTargetMachine32(const Target &T, const Triple &TT,
 GenXTargetMachine64::GenXTargetMachine64(const Target &T, const Triple &TT,
                                          StringRef CPU, StringRef FS,
                                          const TargetOptions &Options,
-                                         Optional<Reloc::Model> RM,
-                                         Optional<CodeModel::Model> CM,
+                                         llvm::Optional<Reloc::Model> RM,
+                                         llvm::Optional<CodeModel::Model> CM,
                                          CodeGenOpt::Level OL, bool JIT,
                                          std::unique_ptr<GenXBackendConfig> BC)
     : GenXTargetMachine(T, TT, CPU, FS, Options, RM, CM, OL, true,
@@ -422,8 +423,8 @@ namespace vc {
 std::unique_ptr<llvm::TargetMachine>
 createGenXTargetMachine(const Target &T, Triple TT, StringRef CPU,
                         StringRef Features, const TargetOptions &Options,
-                        Optional<Reloc::Model> RM,
-                        Optional<CodeModel::Model> CM, CodeGenOpt::Level OL,
+                        llvm::Optional<Reloc::Model> RM,
+                        llvm::Optional<CodeModel::Model> CM, CodeGenOpt::Level OL,
                         std::unique_ptr<GenXBackendConfig> BC) {
   if (is32BitArch(TT))
     return std::make_unique<GenXTargetMachine32>(T, TT, CPU, Features, Options,

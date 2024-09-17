@@ -63,6 +63,7 @@ SPDX-License-Identifier: MIT
 #include "GenX.h"
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
+#include <optional>
 
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/IntrinsicsWrapper.h"
@@ -79,6 +80,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/Debug.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Transforms/Utils/Local.h>
+#include <llvmWrapper/ADT/Optional.h>
 #include <llvmWrapper/Support/Alignment.h>
 
 #include "Probe/Assertion.h"
@@ -492,10 +494,10 @@ private:
 
   static std::tuple<DependencyGraph::SElementsOfType, std::vector<Type *>>
   getIndicesPath(GetElementPtrInst &GEPI);
-  static Optional<
+  static std::optional<
       std::tuple<std::vector<GetElementPtrInst *>, std::vector<PtrToIntInst *>>>
   getInstUses(Instruction &I);
-  static Optional<uint64_t> processAddOrInst(Instruction &I,
+  static std::optional<uint64_t> processAddOrInst(Instruction &I,
                                              BinaryOperator &BO);
 
   bool processGEP(GetElementPtrInst &GEPI, const TypeToInstrMap &NewInstr,
@@ -1204,11 +1206,11 @@ void Substituter::createLifetime(Instruction *OldI, AllocaInst *NewAI) {
     if (auto *CastI = dyn_cast<BitCastInst>(User)) {
       createLifetime(CastI, NewAI);
     } else if (auto *II = dyn_cast<IntrinsicInst>(User)) {
-      auto MaybeSize = NewAI->getAllocationSizeInBits(DL);
-      IGC_ASSERT_EXIT(MaybeSize.hasValue());
+      auto MaybeSize = IGCLLVM::makeOptional(NewAI->getAllocationSizeInBits(DL));
+      IGC_ASSERT_EXIT(MaybeSize.has_value());
 
       IRBuilder<> Builder(II);
-      auto *SizeC = Builder.getInt64(MaybeSize.getValue() / genx::ByteBits);
+      auto *SizeC = Builder.getInt64(MaybeSize.value() / genx::ByteBits);
 
       switch (II->getIntrinsicID()) {
       case Intrinsic::lifetime_start:
@@ -1328,12 +1330,13 @@ void Substituter::updateDbgInfo(ArrayRef<Type *> TypesToGenerateDI,
       // Offset from OrigStruct.
       Offset = getOffsetInBits(IdxOfOrigStruct, &STy);
 
-    auto FragExpr = DIExpression::createFragmentExpression(
-        &Expr, Offset, DL.getTypeAllocSizeInBits(TyToGenDI));
-    IGC_ASSERT_MESSAGE(FragExpr.hasValue(), "Failed to create new expression");
+    auto FragExpr = IGCLLVM::makeOptional(
+        DIExpression::createFragmentExpression(&Expr, Offset, DL.getTypeAllocSizeInBits(TyToGenDI)));
+
+    IGC_ASSERT_MESSAGE(FragExpr.has_value(), "Failed to create new expression");
 
     Instruction &NewDbgDeclare =
-        *DIB.createDbgDeclare(NewAI, Var, *FragExpr.getValue(), DbgLoc, AI);
+        *DIB.createDbgDeclare(NewAI, Var, *FragExpr.value(), DbgLoc, AI);
     LLVM_DEBUG(dbgs() << "New dbg.declare is created: " << NewDbgDeclare
                       << '\n';);
   }
@@ -1445,7 +1448,7 @@ bool Substituter::processAlloca(AllocaInst &Alloca) {
   auto InstUses = getInstUses(Alloca);
   if (!InstUses)
     return false;
-  auto [UsesGEP, UsesPTI] = std::move(InstUses.getValue());
+  auto [UsesGEP, UsesPTI] = std::move(InstUses.value());
 
   TypeToInstrMap NewInstrs = generateNewAllocas(Alloca);
 
@@ -1507,7 +1510,7 @@ Substituter::getIndicesPath(GetElementPtrInst &GEPI) {
 //
 // Gets GEP and PTI users of instruction I.
 //
-Optional<
+std::optional<
     std::tuple<std::vector<GetElementPtrInst *>, std::vector<PtrToIntInst *>>>
 Substituter::getInstUses(Instruction &I) {
   // Checks That users of Instruction are appropriate.
@@ -1532,14 +1535,14 @@ Substituter::getInstUses(Instruction &I) {
             dbgs()
             << "WARN:: Bitcast is used where it cannot be used!\n\tBitcast: "
             << *BC << "\n\tUser:    " << **UnsupportedBCUser << "\n");
-        return None;
+        return std::nullopt;
       }
     } else {
       LLVM_DEBUG(
           dbgs()
           << "WARN:: Struct is used where it cannot be used!\n\tInstruction: "
           << *U.getUser() << "\n");
-      return None;
+      return std::nullopt;
     }
   return std::make_tuple(std::move(UsesGEP), std::move(UsesPTI));
 }
@@ -1579,7 +1582,7 @@ bool Substituter::processGEP(GetElementPtrInst &GEPI,
     auto InstUses = getInstUses(GEPI);
     if (!InstUses)
       return false;
-    auto [UsesGEP, UsesPTI] = std::move(InstUses.getValue());
+    auto [UsesGEP, UsesPTI] = std::move(InstUses.value());
 
     // That means that we are getting split struct so we need to create GEPs.
     // STyToBeSplit is the result of the instruction.
@@ -1734,7 +1737,7 @@ bool Substituter::processPTI(PtrToIntInst &PTI, Type *Ty,
 //
 // Callculates offset after add instruction.
 //
-Optional<uint64_t> Substituter::processAddOrInst(Instruction &User,
+std::optional<uint64_t> Substituter::processAddOrInst(Instruction &User,
                                                  BinaryOperator &BO) {
   IGC_ASSERT_EXIT(BO.getOpcode() == Instruction::Add ||
                   BO.getOpcode() == Instruction::Or);
@@ -1751,7 +1754,7 @@ Optional<uint64_t> Substituter::processAddOrInst(Instruction &User,
     LLVM_DEBUG(dbgs() << "WARN:: Calculation of the pointer offset has to "
                          "be staticly known\n. Bad instruction: "
                       << BO << "\n");
-    return None;
+    return std::nullopt;
   }
   Type *OffsetTy = ToCalculateOffset->getType();
   if (OffsetTy->isVectorTy()) {
@@ -1771,7 +1774,7 @@ Optional<uint64_t> Substituter::processAddOrInst(Instruction &User,
         dbgs()
         << "Offset is unsupported type. Has to be Integer or Vector, but: "
         << *OffsetTy << "\n");
-    return None;
+    return std::nullopt;
   }
   return LocalPtrOffset;
 }
@@ -1793,7 +1796,7 @@ bool Substituter::processPTIsUses(Instruction &I,
       auto Offset = processAddOrInst(I, *BO);
       if (!Offset)
         return false;
-      LocalPtrOffset = std::max(LocalPtrOffset, Offset.getValue());
+      LocalPtrOffset = std::max(LocalPtrOffset, Offset.value());
     } else if (auto *LdI = dyn_cast<LoadInst>(User)) {
       // simple loads are allowed
       if (!LdI->isSimple())

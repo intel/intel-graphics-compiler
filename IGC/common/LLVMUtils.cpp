@@ -749,7 +749,7 @@ void IGCPassManager::addPrintPass(Pass* P, bool isBefore)
         IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName())
         .Type(m_pContext->type)
         .Hash(m_pContext->hash)
-        .Pass(passName, m_pContext->m_numPasses++)
+        .Pass(passName, std::optional<uint32_t>(m_pContext->m_numPasses++))
         .StagedInfo(m_pContext)
         .Extension("ll");
 

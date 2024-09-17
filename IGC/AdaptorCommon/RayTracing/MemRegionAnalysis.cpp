@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "API/RayDispatchGlobalData.h"
 #include "llvmWrapper/IR/Value.h"
+#include <optional>
 
 using namespace llvm;
 using namespace IGC;
@@ -38,7 +39,7 @@ static bool isGlobalPtr(const InlineDataIntrinsic *I, const IGC::ModuleMetaData&
     return (I->getArg() == globalPtrOffset);
 }
 
-static Optional<RTMemRegion> getIntrinsicRegion(
+static std::optional<RTMemRegion> getIntrinsicRegion(
     const GenIntrinsicInst* GII,
     const IGC::ModuleMetaData& moduleMetaData)
 {
@@ -61,20 +62,20 @@ static Optional<RTMemRegion> getIntrinsicRegion(
         if (isGlobalPtr(cast<InlineDataIntrinsic>(GII), moduleMetaData))
             return RTMemRegion::RTGlobals;
         else
-            return None;
+            return std::nullopt;
     default:
-        return None;
+        return std::nullopt;
     }
 }
 
 namespace IGC {
 
-Optional<RTMemRegion>
+std::optional<RTMemRegion>
 getRTRegionByAddrspace(const Value* V, const ModuleMetaData &MMD)
 {
     auto* PtrTy = dyn_cast<PointerType>(V->getType());
     if (!PtrTy)
-        return None;
+        return std::nullopt;
 
     uint32_t Addrspace = PtrTy->getPointerAddressSpace();
 
@@ -89,10 +90,10 @@ getRTRegionByAddrspace(const Value* V, const ModuleMetaData &MMD)
     else if (Addrspace == rtInfo.RTSyncStackAddrspace)
         return RTMemRegion::RTSyncStack;
 
-    return None;
+    return std::nullopt;
 }
 
-Optional<RTMemRegion> getRegionOffset(
+std::optional<RTMemRegion> getRegionOffset(
     const Value* Ptr,
     const IGC::ModuleMetaData& moduleMetaData,
     const DataLayout *DL,
@@ -124,7 +125,7 @@ Optional<RTMemRegion> getRegionOffset(
                 // If there is a non-constant or variable offset on the getelementptr instruction like i64 %x
                 // we cannot evaluate it at compile time, only at run time
                 else {
-                    return None;
+                    return std::nullopt;
                 }
             }
         }
@@ -151,7 +152,7 @@ Optional<RTMemRegion> getRegionOffset(
         }
     }
 
-    return None;
+    return std::nullopt;
 }
 
 // This is conceptually the same idea as getRegionOffset() but it doesn't
@@ -161,7 +162,7 @@ Optional<RTMemRegion> getRegionOffset(
 //
 // Currently, the only user of this is for late stage LSC cache controls
 // determination.
-Optional<RTMemRegion> getRTRegion(const Value* V, const ModuleMetaData &MMD)
+std::optional<RTMemRegion> getRTRegion(const Value* V, const ModuleMetaData &MMD)
 {
     if (auto Region = getRTRegionByAddrspace(V, MMD))
         return Region;
@@ -170,7 +171,7 @@ Optional<RTMemRegion> getRTRegion(const Value* V, const ModuleMetaData &MMD)
     {
         auto* I = dyn_cast<Instruction>(V);
         if (!I)
-            return None;
+            return std::nullopt;
 
         switch (I->getOpcode())
         {
@@ -185,13 +186,13 @@ Optional<RTMemRegion> getRTRegion(const Value* V, const ModuleMetaData &MMD)
         case Instruction::Call:
             if (auto* GII = dyn_cast<GenIntrinsicInst>(I))
                 return getIntrinsicRegion(GII, MMD);
-            return None;
+            return std::nullopt;
         default:
-            return None;
+            return std::nullopt;
         }
     }
 
-    return None;
+    return std::nullopt;
 }
 
 } // namespace IGC

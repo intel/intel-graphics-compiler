@@ -65,6 +65,6 @@ namespace IGC {
 
     void defineOpaqueTypes();
 
-    llvm::Value* getIntrinsicValue(llvm::GenISAIntrinsic::ID intrinsicId, llvm::ArrayRef<llvm::Value*> args = llvm::None);
+    llvm::Value* getIntrinsicValue(llvm::GenISAIntrinsic::ID intrinsicId, llvm::ArrayRef<llvm::Value*> args = llvm::ArrayRef<llvm::Value*>());
   };
 }

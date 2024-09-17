@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "common/MDFrameWork.h"
+#include <optional>
 
 using namespace IGC;
 using namespace IGC::IGCMD;
@@ -62,19 +63,19 @@ void IGCMetaDataHelper::removeFunction(
     }
 }
 
-llvm::Optional<std::array<uint32_t, 3>>
+std::optional<std::array<uint32_t, 3>>
 IGCMetaDataHelper::getThreadGroupDims(
     MetaDataUtils& mdUtils,
     llvm::Function* pKernelFunc)
 {
     auto finfo = mdUtils.findFunctionsInfoItem(pKernelFunc);
     if (finfo == mdUtils.end_FunctionsInfo())
-        return llvm::None;
+        return std::nullopt;
 
     auto& FI = finfo->second;
 
     if (!FI->getThreadGroupSize()->hasValue())
-        return llvm::None;
+        return std::nullopt;
 
     auto Dims = FI->getThreadGroupSize();
 

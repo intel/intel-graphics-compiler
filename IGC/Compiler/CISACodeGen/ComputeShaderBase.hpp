@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/ADT/Optional.h"
+#include <optional>
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC
@@ -36,7 +36,7 @@ namespace IGC
 
         // Determines if HW can handle auto generating local IDs with this
         // order
-        static llvm::Optional<CS_WALK_ORDER> checkLegalWalkOrder(
+        static std::optional<CS_WALK_ORDER> checkLegalWalkOrder(
             const std::array<uint32_t, 3>& Dims,
             const WorkGroupWalkOrderMD& WO);
     };

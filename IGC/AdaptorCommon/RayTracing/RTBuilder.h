@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Module.h"
+#include <optional>
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
@@ -194,7 +195,7 @@ public:
         Instruction* IP,
         const IGC::CodeGenContext& Ctx,
         MDNode* FPMathTag = nullptr,
-        ArrayRef<OperandBundleDef> OpBundles = None)
+        ArrayRef<OperandBundleDef> OpBundles = ArrayRef<OperandBundleDef>())
         : IGCIRBuilder<>(IP, FPMathTag, OpBundles),
           Ctx(Ctx),
           SysInfo(Ctx.platform.GetGTSystemInfo()) {
@@ -206,7 +207,7 @@ public:
         BasicBlock::iterator IP,
         const IGC::CodeGenContext& Ctx,
         MDNode* FPMathTag = nullptr,
-        ArrayRef<OperandBundleDef> OpBundles = None)
+        ArrayRef<OperandBundleDef> OpBundles = ArrayRef<OperandBundleDef>())
         : IGCIRBuilder<>(TheBB->getContext(), FPMathTag, OpBundles),
           Ctx(Ctx),
           SysInfo(Ctx.platform.GetGTSystemInfo()) {

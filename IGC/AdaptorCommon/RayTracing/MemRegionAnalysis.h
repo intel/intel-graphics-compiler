@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 
 #include "common/MDFrameWork.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/ADT/Optional.h"
+#include <optional>
 #include "common/LLVMWarningsPop.hpp"
 
 namespace llvm {
@@ -30,17 +30,17 @@ enum class RTMemRegion : uint32_t
     LocalArgs,
 };
 
-llvm::Optional<RTMemRegion>
+std::optional<RTMemRegion>
 getRTRegionByAddrspace(const llvm::Value* V, const ModuleMetaData& MMD);
 
-llvm::Optional<RTMemRegion> getRegionOffset(
+std::optional<RTMemRegion> getRegionOffset(
     const llvm::Value* Ptr,
     const ModuleMetaData& moduleMetaData,
     const llvm::DataLayout* DL = nullptr,
     uint64_t* Offset = nullptr,
     uint64_t* dereferenceable_value = nullptr);
 
-llvm::Optional<RTMemRegion>
+std::optional<RTMemRegion>
 getRTRegion(const llvm::Value* Ptr, const ModuleMetaData &MMD);
 
 } // namespace IGC

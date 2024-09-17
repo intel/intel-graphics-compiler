@@ -18,7 +18,6 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/IR/Module.h>
-#include <llvm/ADT/Optional.h>
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "AdaptorCommon/API/igc.h"
@@ -27,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include <vector>
 #include <stdarg.h>
 #include <mutex>
+#include <optional>
 
 // Forward declarations
 struct D3D10DDIARG_SIGNATURE_ENTRY;
@@ -70,7 +70,7 @@ public:
     DumpName DispatchMode(ShaderDispatchMode mode) const;
     DumpName Hash(ShaderHash hash) const;
     DumpName PostFix(std::string const& postfixStr) const;
-    DumpName Pass(std::string const& name, llvm::Optional<uint32_t> index = llvm::Optional<uint32_t>()) const;
+    DumpName Pass(std::string const& name, std::optional<uint32_t> index = std::optional<uint32_t>()) const;
     DumpName PSPhase(PixelShaderPhaseType phase) const;
     DumpName Retry(unsigned retryId) const;
     std::string str() const;
@@ -85,21 +85,21 @@ private:
     {
     public:
         std::string               m_name;
-        llvm::Optional<unsigned int>    m_index;
+        std::optional<unsigned int>    m_index;
     };
 
-    llvm::Optional<std::string>         m_dumpName;
-    llvm::Optional<std::string>         m_shaderName;
-    llvm::Optional<ShaderType>          m_type;
-    llvm::Optional<PixelShaderPhaseType> m_psPhase;
-    llvm::Optional<std::string>         m_extension;
-    llvm::Optional<SIMDMode>            m_simdWidth;
-    llvm::Optional<CG_FLAG_t>           m_cgFlag;
-    llvm::Optional<ShaderDispatchMode>  m_ShaderMode;
-    llvm::Optional<ShaderHash>          m_hash;
-    llvm::Optional<std::string>         m_postfixStr;
-    llvm::Optional<CPassDescriptor>     m_pass;
-    llvm::Optional<unsigned>            m_retryId;
+    std::optional<std::string>         m_dumpName;
+    std::optional<std::string>         m_shaderName;
+    std::optional<ShaderType>          m_type;
+    std::optional<PixelShaderPhaseType> m_psPhase;
+    std::optional<std::string>         m_extension;
+    std::optional<SIMDMode>            m_simdWidth;
+    std::optional<CG_FLAG_t>           m_cgFlag;
+    std::optional<ShaderDispatchMode>  m_ShaderMode;
+    std::optional<ShaderHash>          m_hash;
+    std::optional<std::string>         m_postfixStr;
+    std::optional<CPassDescriptor>     m_pass;
+    std::optional<unsigned>            m_retryId;
 };
 
 /// return the name of the file to dump

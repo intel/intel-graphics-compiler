@@ -29,6 +29,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 // clang-format on
 
+#include <optional>
 #include <algorithm>
 #include <chrono>
 #include <fstream>

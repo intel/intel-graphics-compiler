@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
+#include <optional>
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
@@ -263,7 +264,7 @@ bool IGC::enableHWGenerateLIDInPass(
     return bEnableHWGenerateLID;
 }
 
-Optional<CS_WALK_ORDER>
+std::optional<CS_WALK_ORDER>
 IGC::selectBestWalkOrderInPass(
     ThreadIDLayout Layout,
     bool is_pow2_x, bool is_pow2_y, bool is_pow2_z)
@@ -301,7 +302,7 @@ IGC::selectBestWalkOrderInPass(
         return getWalkOrderInPass(order0, order1);
     }
 
-    return None;
+    return std::nullopt;
 }
 
 void IGC::setEmitLocalMaskInPass(SGVUsage channelNum, EMIT_LOCAL_MASK& emitMask)

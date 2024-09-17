@@ -42,8 +42,8 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/Support/Alignment.h"
+#include <llvmWrapper/ADT/Optional.h>
 
-#include <llvm/ADT/Optional.h>
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/IR/GlobalVariable.h>
 #include <llvm/IR/IRBuilder.h>
@@ -234,7 +234,7 @@ namespace {
 struct OperandTreatment {
   bool IsEntry;
   unsigned OperandNo;
-  Optional<Value *> NewOperand;
+  std::optional<Value *> NewOperand;
 };
 } // anonymous namespace
 
@@ -280,10 +280,10 @@ void recursivelyTraverseFormatIndexPreds(Value &Pred,
   for (const OperandTreatment &OperandInfo : OperandInfos) {
     if (OperandInfo.IsEntry) {
       ToRebuild.addEntry(Sel, OperandInfo.OperandNo,
-                         *OperandInfo.NewOperand.getValue());
+                         *OperandInfo.NewOperand.value());
       continue;
     }
-    IGC_ASSERT_MESSAGE(!OperandInfo.NewOperand.hasValue(),
+    IGC_ASSERT_MESSAGE(!OperandInfo.NewOperand.has_value(),
                        "shouldn't have new operand for not entry");
     ToRebuild.addNodeIfRequired(Sel, OperandInfo.OperandNo);
   }

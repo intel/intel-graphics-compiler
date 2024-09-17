@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "G4_Kernel.hpp"
 #include "Timer.h"
 
+#include <optional>
 #include <unordered_map>
 
 ///////////////////////////////////////////////////////////////////////////////

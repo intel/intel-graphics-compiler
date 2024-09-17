@@ -30,6 +30,7 @@ SPDX-License-Identifier: MIT
 #include <iostream>
 #include <list>
 #include <sstream>
+#include <optional>
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/SmallString.h>

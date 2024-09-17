@@ -34,6 +34,7 @@ See LICENSE.TXT for details.
 #include "llvm/MC/MCSymbol.h"
 #include "llvm/MC/MCSymbolELF.h"
 #include "llvm/MC/MachineLocation.h"
+#include <optional>
 #include "common/LLVMWarningsPop.hpp"
 // clang-format on
 
@@ -228,7 +229,7 @@ void CompileUnit::addFlag(DIE *Die, dwarf::Attribute Attribute) {
 /// addUInt - Add an unsigned integer attribute data and value.
 ///
 void CompileUnit::addUInt(DIE *Die, dwarf::Attribute Attribute,
-                          Optional<dwarf::Form> Form, uint64_t Integer) {
+                          std::optional<dwarf::Form> Form, uint64_t Integer) {
   if (!Form) {
     Form = DIEInteger::BestForm(false, Integer);
   }
@@ -263,7 +264,7 @@ void CompileUnit::addBitPiece(IGC::DIEBlock *Block, uint64_t SizeBits,
 /// addSInt - Add an signed integer attribute data and value.
 ///
 void CompileUnit::addSInt(DIE *Die, dwarf::Attribute Attribute,
-                          Optional<dwarf::Form> Form, int64_t Integer) {
+                          std::optional<dwarf::Form> Form, int64_t Integer) {
   if (!Form) {
     Form = DIEInteger::BestForm(true, Integer);
   }
@@ -271,7 +272,7 @@ void CompileUnit::addSInt(DIE *Die, dwarf::Attribute Attribute,
   Die->addValue(Attribute, *Form, Value);
 }
 
-void CompileUnit::addSInt(IGC::DIEBlock *Die, Optional<dwarf::Form> Form,
+void CompileUnit::addSInt(IGC::DIEBlock *Die, std::optional<dwarf::Form> Form,
                           int64_t Integer) {
   IGC_ASSERT_MESSAGE((Form == dwarf::Form::DW_FORM_data1 &&
                       Integer >= std::numeric_limits<signed char>::min() &&
@@ -424,8 +425,8 @@ void CompileUnit::addSourceLine(DIE *Die, DIScope *S, unsigned Line) {
   unsigned FileID = DD->getOrCreateSourceID(S->getFilename(), S->getDirectory(),
                                             getUniqueID());
   IGC_ASSERT_MESSAGE(FileID, "Invalid file id");
-  addUInt(Die, dwarf::DW_AT_decl_file, None, FileID);
-  addUInt(Die, dwarf::DW_AT_decl_line, None, Line);
+  addUInt(Die, dwarf::DW_AT_decl_file, std::nullopt, FileID);
+  addUInt(Die, dwarf::DW_AT_decl_line, std::nullopt, Line);
 }
 
 /// addSourceLine - Add location information to specified debug information
@@ -439,8 +440,8 @@ void CompileUnit::addSourceLine(DIE *Die, DIImportedEntity *IE, unsigned Line) {
       DD->getOrCreateSourceID(IE->getFile()->getFilename(),
                               IE->getFile()->getDirectory(), getUniqueID());
   IGC_ASSERT_MESSAGE(FileID, "Invalid file id");
-  addUInt(Die, dwarf::DW_AT_decl_file, None, FileID);
-  addUInt(Die, dwarf::DW_AT_decl_line, None, Line);
+  addUInt(Die, dwarf::DW_AT_decl_file, std::nullopt, FileID);
+  addUInt(Die, dwarf::DW_AT_decl_line, std::nullopt, Line);
 }
 
 /// addSourceLine - Add location information to specified debug information
@@ -1433,7 +1434,7 @@ void CompileUnit::constructTypeDIE(DIE &Buffer, DIBasicType *BTy) {
           BTy->getEncoding());
 
   uint64_t Size = BTy->getSizeInBits() >> 3;
-  addUInt(&Buffer, dwarf::DW_AT_byte_size, None, Size);
+  addUInt(&Buffer, dwarf::DW_AT_byte_size, std::nullopt, Size);
 }
 
 #if LLVM_VERSION_MAJOR >= 12
@@ -1455,7 +1456,7 @@ void CompileUnit::constructTypeDIE(DIE &Buffer, DIStringType *STy) {
     addBlock(&Buffer, dwarf::DW_AT_string_length, DwarfExpr.finalize());
   } else {
     uint64_t Size = STy->getSizeInBits() >> 3;
-    addUInt(&Buffer, dwarf::DW_AT_byte_size, None, Size);
+    addUInt(&Buffer, dwarf::DW_AT_byte_size, std::nullopt, Size);
   }
 
   if (DIExpression *Expr = STy->getStringLocationExp()) {
@@ -1491,7 +1492,7 @@ void CompileUnit::constructTypeDIE(DIE &Buffer, DIDerivedType *DTy) {
 
   // Add size if non-zero (derived types might be zero-sized.)
   if (Size && Tag != dwarf::DW_TAG_pointer_type)
-    addUInt(&Buffer, dwarf::DW_AT_byte_size, None, Size);
+    addUInt(&Buffer, dwarf::DW_AT_byte_size, std::nullopt, Size);
 
   if (Tag == dwarf::DW_TAG_ptr_to_member_type)
     addDIEEntry(&Buffer, dwarf::DW_AT_containing_type,
@@ -1500,9 +1501,12 @@ void CompileUnit::constructTypeDIE(DIE &Buffer, DIDerivedType *DTy) {
   if (!DTy->isForwardDecl())
     addSourceLine(&Buffer, DTy);
 
-  if (DTy->getDWARFAddressSpace().hasValue() &&
-      isSLMAddressSpaceTag(DTy->getDWARFAddressSpace().getValue())) {
-    addUInt(&Buffer, dwarf::DW_AT_address_class, None, 1);
+  auto dwarfAddressSpaceOptional =
+      IGCLLVM::makeOptional(DTy->getDWARFAddressSpace());
+
+  if (dwarfAddressSpaceOptional &&
+      isSLMAddressSpaceTag(*dwarfAddressSpaceOptional)) {
+    addUInt(&Buffer, dwarf::DW_AT_address_class, std::nullopt, 1);
   }
 }
 
@@ -1684,10 +1688,10 @@ void CompileUnit::constructTypeDIE(DIE &Buffer, DICompositeType *CTy) {
     // Add size if non-zero (derived types might be zero-sized.)
     // TODO: Do we care about size for enum forward declarations?
     if (Size) {
-      addUInt(&Buffer, dwarf::DW_AT_byte_size, None, Size);
+      addUInt(&Buffer, dwarf::DW_AT_byte_size, std::nullopt, Size);
     } else if (!CTy->isForwardDecl()) {
       // Add zero size if it is not a forward declaration.
-      addUInt(&Buffer, dwarf::DW_AT_byte_size, None, 0);
+      addUInt(&Buffer, dwarf::DW_AT_byte_size, std::nullopt, 0);
     }
 
     // If we're a forward decl, say so.
@@ -1978,13 +1982,13 @@ IGC::DIE *CompileUnit::getOrCreateModuleDIE(DIModule *MD) {
 
   // Emit a line number and a file only if line number is significant
   if (line > 0)
-    addUInt(MDDie, dwarf::DW_AT_decl_line, None, line);
+    addUInt(MDDie, dwarf::DW_AT_decl_line, std::nullopt, line);
   // Emit a file if not empty name
   if (!file.empty() || !directory.empty()) {
     StringRef fileRef(file);
     StringRef dirRef(directory);
     unsigned FileID = DD->getOrCreateSourceID(fileRef, dirRef, getUniqueID());
-    addUInt(MDDie, dwarf::DW_AT_decl_file, None, FileID);
+    addUInt(MDDie, dwarf::DW_AT_decl_file, std::nullopt, FileID);
   }
 #else // LLVM_VERSION_MAJOR >= 11
 #if LLVM_VERSION_MAJOR == 11
@@ -2055,7 +2059,7 @@ void CompileUnit::constructSubrangeDIE(DIE &Buffer, DISubrange *SR,
     } else if (auto *BI = Bound.dyn_cast<ConstantInt *>()) {
       if (Attr == dwarf::DW_AT_count) {
         if (BI->getSExtValue() != -1)
-          addUInt(DW_Subrange, Attr, None, BI->getSExtValue());
+          addUInt(DW_Subrange, Attr, std::nullopt, BI->getSExtValue());
       } else if (Attr != dwarf::DW_AT_lower_bound || DefaultLowerBound == -1 ||
                  BI->getSExtValue() != DefaultLowerBound)
         addSInt(DW_Subrange, Attr, dwarf::DW_FORM_sdata, BI->getSExtValue());
@@ -2075,7 +2079,7 @@ void CompileUnit::constructSubrangeDIE(DIE &Buffer, DISubrange *SR,
   auto *CI = SR->getCount().dyn_cast<ConstantInt *>();
 
   if (DefaultLowerBound == -1 || LowerBound != DefaultLowerBound) {
-    addUInt(DW_Subrange, dwarf::DW_AT_lower_bound, None, LowerBound);
+    addUInt(DW_Subrange, dwarf::DW_AT_lower_bound, std::nullopt, LowerBound);
   }
 
   if (CI) {
@@ -2083,7 +2087,7 @@ void CompileUnit::constructSubrangeDIE(DIE &Buffer, DISubrange *SR,
     if (Count != -1 && Count != 0) {
       // FIXME: An unbounded array should reference the expression that defines
       // the array.
-      addUInt(DW_Subrange, dwarf::DW_AT_upper_bound, None,
+      addUInt(DW_Subrange, dwarf::DW_AT_upper_bound, std::nullopt,
               LowerBound + Count - 1);
     }
   }
@@ -2135,7 +2139,7 @@ void CompileUnit::constructArrayTypeDIE(DIE &Buffer, DICompositeType *CTy) {
     // Construct an anonymous type for index type.
     IdxTy = createAndAddDIE(dwarf::DW_TAG_base_type, *CUDie);
     addString(IdxTy, dwarf::DW_AT_name, "int");
-    addUInt(IdxTy, dwarf::DW_AT_byte_size, None, sizeof(int32_t));
+    addUInt(IdxTy, dwarf::DW_AT_byte_size, std::nullopt, sizeof(int32_t));
     addUInt(IdxTy, dwarf::DW_AT_encoding, dwarf::DW_FORM_data1,
             dwarf::DW_ATE_signed);
     setIndexTyDie(IdxTy);
@@ -2376,7 +2380,7 @@ IGC::DIEBlock *CompileUnit::buildSLM(const DbgVariable &var,
   addUInt(Block, dwarf::DW_FORM_addr, (uint64_t)offset);
   IGC_ASSERT_MESSAGE(VariableDie,
                      "Expected variable DIE to emit address_class for SLM");
-  addUInt(VariableDie, dwarf::DW_AT_address_class, None, 1);
+  addUInt(VariableDie, dwarf::DW_AT_address_class, std::nullopt, 1);
   return Block;
 }
 
@@ -2835,8 +2839,8 @@ void CompileUnit::constructMemberDIE(DIE &Buffer, DIDerivedType *DT) {
     bool IsBitfield = Size < FieldSize;
     if (IsBitfield) {
       // Handle bitfield.
-      addUInt(MemberDie, dwarf::DW_AT_byte_size, None, FieldSize >> 3);
-      addUInt(MemberDie, dwarf::DW_AT_bit_size, None, Size);
+      addUInt(MemberDie, dwarf::DW_AT_byte_size, std::nullopt, FieldSize >> 3);
+      addUInt(MemberDie, dwarf::DW_AT_bit_size, std::nullopt, Size);
 
       uint64_t Offset = DT->getOffsetInBits();
       uint64_t AlignMask = ~(DT->getAlignInBits() - 1);
@@ -2847,7 +2851,7 @@ void CompileUnit::constructMemberDIE(DIE &Buffer, DIDerivedType *DT) {
       // Maybe we need to work from the other end.
       if (Asm->IsLittleEndian())
         Offset = FieldSize - (Offset + Size);
-      addUInt(MemberDie, dwarf::DW_AT_bit_offset, None, Offset);
+      addUInt(MemberDie, dwarf::DW_AT_bit_offset, std::nullopt, Offset);
 
       // Here DW_AT_data_member_location points to the anonymous
       // field that includes this bit field.
@@ -2856,7 +2860,8 @@ void CompileUnit::constructMemberDIE(DIE &Buffer, DIDerivedType *DT) {
       // This is not a bitfield.
       OffsetInBytes = DT->getOffsetInBits() >> 3;
     }
-    addUInt(MemberDie, dwarf::DW_AT_data_member_location, None, OffsetInBytes);
+    addUInt(MemberDie, dwarf::DW_AT_data_member_location, std::nullopt,
+            OffsetInBytes);
   }
   dwarf::AccessAttribute dw_access =
       (DT->isProtected()) ? dwarf::DW_ACCESS_protected

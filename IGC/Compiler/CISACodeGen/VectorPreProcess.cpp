@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/Utils/Local.h>
 #include <llvmWrapper/IR/DerivedTypes.h>
 #include <llvmWrapper/Support/Alignment.h>
+#include <optional>
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
@@ -188,7 +189,7 @@ namespace
                 return builder.CreateAdd(offsetInBytes, getLdRaw()->getOffsetValue());
             }
         }
-        static Optional<AbstractLoadInst> get(llvm::Value* value, const DataLayout &DL)
+        static std::optional<AbstractLoadInst> get(llvm::Value* value, const DataLayout &DL)
         {
             if (LoadInst * LI = dyn_cast<LoadInst>(value))
             {
@@ -200,7 +201,7 @@ namespace
             }
             else
             {
-                return None;
+                return std::nullopt;
             }
         }
     };
@@ -300,7 +301,7 @@ namespace
                 return builder.CreateAdd(offsetInBytes, getStoreRaw()->getArgOperand(1));
             }
         }
-        static Optional<AbstractStoreInst> get(llvm::Value* value, const DataLayout &DL)
+        static std::optional<AbstractStoreInst> get(llvm::Value* value, const DataLayout &DL)
         {
             if (StoreInst * SI = dyn_cast<StoreInst>(value))
             {
@@ -310,7 +311,7 @@ namespace
             {
                 return AbstractStoreInst{ SRI, DL };
             }
-            return None;
+            return std::nullopt;
         }
     };
 
@@ -974,8 +975,8 @@ bool VectorPreProcess::splitLoad(
 bool VectorPreProcess::splitLoadStore(
     Instruction* Inst, V2SMap& vecToSubVec, WIAnalysisRunner& WI)
 {
-    Optional<AbstractLoadInst> ALI = AbstractLoadInst::get(Inst, *m_DL);
-    Optional<AbstractStoreInst> ASI = AbstractStoreInst::get(Inst, *m_DL);
+    std::optional<AbstractLoadInst> ALI = AbstractLoadInst::get(Inst, *m_DL);
+    std::optional<AbstractStoreInst> ASI = AbstractStoreInst::get(Inst, *m_DL);
     IGC_ASSERT_MESSAGE((ALI || ASI), "Inst should be either load or store");
     Type* Ty = ALI ? ALI->getInst()->getType() : ASI->getValueOperand()->getType();
     IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
@@ -1011,17 +1012,19 @@ bool VectorPreProcess::splitLoadStore(
     // has not been splitted yet, then splitting the load first
     // so that the stored value will be directly from loaded values
     // without adding insert/extract instructions.
-    Optional<AbstractLoadInst> aALI = ASI && !InMap(ASI->getValueOperand()) ?
+    std::optional<AbstractLoadInst> aALI = ASI && !InMap(ASI->getValueOperand()) ?
         AbstractLoadInst::get(ASI->getValueOperand(), *m_DL) : std::move(ALI);
 
     if (aALI)
     {
-        splitLoad(aALI.getValue(), vecToSubVec, WI);
+        auto aALIValue = aALI.value();
+        splitLoad(aALIValue, vecToSubVec, WI);
     }
 
     if (ASI)
     {
-        splitStore(ASI.getValue(), vecToSubVec, WI);
+        auto ASIValue = ASI.value();
+        splitStore(ASIValue, vecToSubVec, WI);
     }
 
     return true;
@@ -1036,10 +1039,12 @@ bool VectorPreProcess::splitLoadStore(
 // payloads larger than 4 DW.
 bool VectorPreProcess::splitVector3LoadStore(Instruction* Inst)
 {
-    Optional<AbstractLoadInst> optionalALI = AbstractLoadInst::get(Inst, *m_DL);
-    AbstractLoadInst* ALI = optionalALI ? optionalALI.getPointer() : nullptr;
-    Optional<AbstractStoreInst> optionalASI = AbstractStoreInst::get(Inst, *m_DL);
-    AbstractStoreInst* ASI = optionalASI ? optionalASI.getPointer() : nullptr;
+    std::optional<AbstractLoadInst> optionalALI = AbstractLoadInst::get(Inst, *m_DL);
+    AbstractLoadInst* ALI = optionalALI.has_value() ? &optionalALI.value() : nullptr;
+    std::optional<AbstractStoreInst> optionalASI = AbstractStoreInst::get(Inst, *m_DL);
+    AbstractStoreInst* ASI = optionalASI.has_value() ? &optionalASI.value() : nullptr;
+
+    llvm::Optional<int> a;
     IGC_ASSERT_MESSAGE((optionalALI || optionalASI), "Inst should be either load or store");
     Type* Ty = ALI ? ALI->getInst()->getType() : ASI->getValueOperand()->getType();
     IGCLLVM::FixedVectorType *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
@@ -1342,7 +1347,7 @@ void VectorPreProcess::getOrGenScalarValues(
 //
 Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
 {
-    if (Optional<AbstractLoadInst> optionalALI = AbstractLoadInst::get(Inst, *m_DL))
+    if (std::optional<AbstractLoadInst> optionalALI = AbstractLoadInst::get(Inst, *m_DL))
     {
         bool optReportEnabled = IGC_IS_FLAG_ENABLED(EnableOptReportLoadNarrowing);
         auto emitOptReport = [&](std::string report, Instruction* from, Instruction* to)
@@ -1366,7 +1371,7 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
                 << rsoTo.str() << std::endl;
         };
 
-        AbstractLoadInst& ALI = optionalALI.getValue();
+        auto ALI = optionalALI.value();
         if (!Inst->getType()->isVectorTy() || ALI.getAlignment() < 4)
             return Inst;
 
@@ -1596,8 +1601,8 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
     // store <3 x float> %8, <3 x float>* %5, align 16
     //
     IGC_ASSERT(isAbstractStoreInst(Inst));
-    Optional<AbstractStoreInst> optionalASI = AbstractStoreInst::get(Inst, *m_DL);
-    AbstractStoreInst& ASI = optionalASI.getValue();
+    std::optional<AbstractStoreInst> optionalASI = AbstractStoreInst::get(Inst, *m_DL);
+    auto ASI = optionalASI.value();
     Value* Val = ASI.getValueOperand();
     if (isa<UndefValue>(Val))
     {
@@ -1845,12 +1850,12 @@ bool VectorPreProcess::runOnFunction(Function& F)
         for (uint32_t i = 0; i < m_Temps.size(); ++i)
         {
             Value* V = m_Temps[i];
-            Optional<AbstractLoadInst> ALI = AbstractLoadInst::get(V, *m_DL);
+            std::optional<AbstractLoadInst> ALI = AbstractLoadInst::get(V, *m_DL);
             if (!ALI)
             {
                 continue;
             }
-            Instruction* LI = ALI.getValue().getInst();
+            Instruction* LI = ALI.value().getInst();
 
             for (auto& it : vecToSubVec[LI])
             {

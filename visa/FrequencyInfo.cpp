@@ -15,7 +15,6 @@ SPDX-License-Identifier: MIT
 #include "GraphColor.h"
 #include "RegAlloc.h"
 #include "RPE.h"
-
 #include <cmath>
 
 using Scaled64 = llvm::ScaledNumber<uint64_t>;

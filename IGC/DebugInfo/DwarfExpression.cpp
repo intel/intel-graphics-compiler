@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "DwarfExpression.hpp"
+#include <optional>
 
 using namespace IGC;
 
@@ -32,7 +33,7 @@ bool DwarfExpression::addExpression(
   // assert(!IsEmittingEntryValue && "Can't emit entry value around
   // expression");
 
-  Optional<DIExpression::ExprOperand> PrevConvertOp = None;
+  std::optional<DIExpression::ExprOperand> PrevConvertOp = std::nullopt;
 
   while (ExprCursor) {
     auto Op = ExprCursor.take();

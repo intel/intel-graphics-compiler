@@ -24,6 +24,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Module.h"
 #include "llvmWrapper/Support/Alignment.h"
 
+#include <optional>
 #include <deque>
 #include <unordered_map>
 
@@ -142,7 +143,7 @@ public:
   uint32_t getTypeSize(Type *Ty);
 
   Value *BITCAST(Value *V, Type *DestTy, const Twine &Name = "");
-  CallInst *CALLA(Value *Callee, ArrayRef<Value *> Args = None,
+  CallInst *CALLA(Value *Callee, ArrayRef<Value *> Args = ArrayRef<Value*>(),
                   const Twine &Name = "", MDNode *FPMathTag = nullptr);
   Value *CAST(Instruction::CastOps Op, Value *V, Type *DestTy,
               const Twine &Name = "");

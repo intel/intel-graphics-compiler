@@ -19,7 +19,7 @@ SPDX-License-Identifier: MIT
 #include "visa_igc_common_header.h"                      // for LSC_L1_L3_CC
 
 #include "common/LLVMWarningsPush.hpp"                   // for suppressing LLVM warnings
-#include "llvm/ADT/Optional.h"                           // for llvm::Optional
+#include <optional>                                      // for Optional
 #include "llvm/IR/Instructions.h"                        // for llvm::StoreInst, llvm::LoadInst
 #include "common/LLVMWarningsPop.hpp"                    // for suppressing LLVM warnings
 
@@ -34,7 +34,7 @@ namespace IGC {
      *          if the RTRegion is RTAsynctack, SWStack, SWHotZone, RTSynctack
      *          or empty Optional if the RTRegion cannot be known, or if it is a RTGlobals or LocalArgs
      */
-    llvm::Optional<LSC_L1_L3_CC> getCacheOptsStorePolicy(
+    std::optional<LSC_L1_L3_CC> getCacheOptsStorePolicy(
         const llvm::Value* Ptr,
         const CodeGenContext &Ctx);
 
@@ -46,7 +46,7 @@ namespace IGC {
      *          if the RTRegion is RTAsynctack, SWStack, SWHotZone, RTSynctack
      *          or empty Optional if the RTRegion cannot be known, or if it is a RTGlobals or LocalArgs
      */
-    llvm::Optional<LSC_L1_L3_CC> getCacheOptsStorePolicy(
+    std::optional<LSC_L1_L3_CC> getCacheOptsStorePolicy(
         const llvm::StoreInst& storeInst,
         const CodeGenContext &Ctx);
 
@@ -58,7 +58,7 @@ namespace IGC {
      *          if the RTRegion is RTAsynctack, SWStack, SWHotZone, RTSynctack
      *          or empty Optional if the RTRegion cannot be known, or if it is a RTGlobals or LocalArgs
      */
-    llvm::Optional<LSC_L1_L3_CC> getCacheOptsLoadPolicy(
+    std::optional<LSC_L1_L3_CC> getCacheOptsLoadPolicy(
         const llvm::Value* Ptr,
         const CodeGenContext &Ctx);
 
@@ -70,7 +70,7 @@ namespace IGC {
      *          if the RTRegion is RTAsynctack, SWStack, SWHotZone, RTSynctack
      *          or empty Optional if the RTRegion cannot be known, or if it is a RTGlobals or LocalArgs
      */
-    llvm::Optional<LSC_L1_L3_CC> getCacheOptsLoadPolicy(
+    std::optional<LSC_L1_L3_CC> getCacheOptsLoadPolicy(
         const llvm::LoadInst& loadInst,
         const CodeGenContext &Ctx);
 

@@ -37,6 +37,7 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 
+#include <optional>
 #include <type_traits>
 
 using namespace llvm;
@@ -2508,10 +2509,10 @@ void JointMatrixFuncsResolutionPass::visitCallInst(CallInst& CI)
 
                 ResolveSIMDSize(CI.getParent()->getParent());
                 AllocaInst *NAI = cast<AllocaInst>(Resolve(AI));
-                auto allocaSizeInBits = IGCLLVM::wrapOptional(NAI->getAllocationSizeInBits(DL));
-                if (!allocaSizeInBits.hasValue())
+                auto allocaSizeInBits = IGCLLVM::makeOptional(NAI->getAllocationSizeInBits(DL));
+                if (!allocaSizeInBits.has_value())
                     return;
-                uint64_t newSize = (uint64_t)(allocaSizeInBits.getValue() / 8);
+                uint64_t newSize = (uint64_t)(allocaSizeInBits.value() / 8);
 
                 // update first argument, if it is constant int
                 if (auto *ConstInt = dyn_cast<ConstantInt>(CI.getOperand(0))) {

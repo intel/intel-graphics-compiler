@@ -9,12 +9,12 @@ SPDX-License-Identifier: MIT
 #ifndef VC_UTILS_GENX_PRINTF_H
 #define VC_UTILS_GENX_PRINTF_H
 
-#include <llvm/ADT/Optional.h>
 #include <llvm/ADT/StringRef.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Operator.h>
 #include <llvm/IR/Value.h>
 
+#include <optional>
 #include <vector>
 
 namespace vc {
@@ -46,8 +46,7 @@ llvm::GlobalVariable *getConstStringGVFromOperandOptional(llvm::Value &Op);
 const llvm::GlobalVariable &getConstStringGVFromOperand(const llvm::Value &Op);
 llvm::GlobalVariable &getConstStringGVFromOperand(llvm::Value &Op);
 
-llvm::Optional<llvm::StringRef>
-getConstStringFromOperandOptional(const llvm::Value &Op);
+std::optional<llvm::StringRef> getConstStringFromOperandOptional(const llvm::Value &Op);
 llvm::StringRef getConstStringFromOperand(const llvm::Value &Op);
 
 // Information about a single printf argument.

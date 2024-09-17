@@ -24,6 +24,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/CallGraph.h>
 #include <llvm/CodeGen/TargetPassConfig.h>
 #include <llvm/GenXIntrinsics/GenXMetadata.h>
+#include <llvmWrapper/ADT/Optional.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/Pass.h>
@@ -33,6 +34,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 #include <sstream>
+#include <optional>
 
 using namespace llvm;
 
@@ -113,7 +115,7 @@ class StackAnalysis : public InstVisitor<StackAnalysis> {
   // map between Function and its State
   std::unordered_map<Function *, FunctionState> m_ProcessedFs{};
 
-  llvm::Optional<std::pair<uint64_t, alignment_t>> checkFunction(Function &F);
+  std::optional<std::pair<uint64_t, alignment_t>> checkFunction(Function &F);
   std::string GenerateCallSequence(Function &F);
   void checkKernel(Function &Kernel);
 
@@ -167,7 +169,7 @@ void StackAnalysis::visitFunction(Function &F) {
 }
 
 // Check CallGraph and usage of allocas in function
-llvm::Optional<std::pair<uint64_t, alignment_t>>
+std::optional<std::pair<uint64_t, alignment_t>>
 StackAnalysis::checkFunction(Function &F) {
   auto pOnF = m_ProcessedFs.find(&F);
   IGC_ASSERT_EXIT_MESSAGE(pOnF != m_ProcessedFs.end(),
@@ -178,11 +180,11 @@ StackAnalysis::checkFunction(Function &F) {
   // Can't predict stack usage if there are indirect calls
   // or variable length arrays
   if (StateOfF.m_HasIndirect || StateOfF.m_HasNonStatic)
-    return None;
+    return std::nullopt;
 
   // if function is stack call, we do not know stack usage
   if (vc::requiresStackCall(&F))
-    return None;
+    return std::nullopt;
 
   StateOfF.m_ProcessingFlag = FunctionState::ProcessingState::Started;
 
@@ -202,12 +204,12 @@ StackAnalysis::checkFunction(Function &F) {
                "Recursion has been found in call graph. Called function: \"" +
                    NextCalledF->getName() + "\" from \"" + F.getName() +
                    "\"\nStack overflow can occur, but cannot be diagnosed.");
-      return None;
+      return std::nullopt;
     }
     case FunctionState::ProcessingState::NotStarted: {
       auto Res = checkFunction(*NextCalledF);
       if (!Res)
-        return None;
+        return std::nullopt;
       std::tie(UsedStackSize, std::ignore) = *Res;
       break;
     }

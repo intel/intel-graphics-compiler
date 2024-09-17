@@ -44,6 +44,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/IR/AssemblyAnnotationWriter.h"
 #include "llvmWrapper/IR/Intrinsics.h"
+#include <optional>
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 #include "ZEBinWriter/zebin/source/ZEELFObjectBuilder.hpp"
@@ -22398,7 +22399,7 @@ LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsFromValue(
         isLoad, value);
 }
 
-Optional<LSC_CACHE_OPTS>
+std::optional<LSC_CACHE_OPTS>
 EmitPass::cacheOptionsForConstantBufferLoads(Instruction* inst, LSC_L1_L3_CC Ctrl) const
 {
     if (const Value* resourcePointer = GetBufferOperand(inst))
@@ -22413,13 +22414,13 @@ EmitPass::cacheOptionsForConstantBufferLoads(Instruction* inst, LSC_L1_L3_CC Ctr
             return translateLSCCacheControlsEnum(Ctrl, true, inst);
         }
     }
-    return None;
+    return std::nullopt;
 }
 
-Optional<LSC_CACHE_OPTS>
+std::optional<LSC_CACHE_OPTS>
 EmitPass::cacheOptionsForConstantBufferLoads(Instruction* inst) const
 {
-    Optional<LSC_CACHE_OPTS> cacheOpts;
+    std::optional<LSC_CACHE_OPTS> cacheOpts;
     if (IGC_IS_FLAG_DISABLED(DisableSystemMemoryCachingInGPUForConstantBuffers) &&
         m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_HPG_CORE))
     {
