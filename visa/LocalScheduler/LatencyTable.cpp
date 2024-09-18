@@ -239,6 +239,7 @@ uint16_t LatencyTableXe<Gen>::getMsgLatency(const G4_INST *Inst) const {
   return value_of(LI::SEND_OTHERS);
 }
 
+
 template<PlatformGen Gen>
 uint16_t LatencyTableXe<Gen>::getMathLatency(const G4_INST *Inst) const {
   vASSERT(Inst->isMath());
@@ -349,6 +350,8 @@ LatencyTableXe<PlatformGen::XE>::getDPASLatency(uint8_t repeatCount) const {
     return 46;
   }
 }
+
+
 template<>
 uint16_t
 LatencyTableXe<PlatformGen::XE>::getMathLatency(const G4_INST *Inst) const {
