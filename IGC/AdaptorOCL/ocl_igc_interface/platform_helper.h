@@ -92,7 +92,7 @@ OCL_API_CALL inline void PopulateInterfaceWith(IGC::GTSystemInfo<3>& dst,
 template <typename SrcStructT>
 OCL_API_CALL inline void PopulateInterfaceWith(IGC::GTSystemInfo<4>& dst,
                                   const SrcStructT& src) {
-  PopulateInterfaceWith<3>(dst, src);
+  PopulateInterfaceWith<SrcStructT>(static_cast<IGC::GTSystemInfo<3> &>(dst), src);
   COPY_VAL_EXACT(SLMSizeInKb);
 }
 
