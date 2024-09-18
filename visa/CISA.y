@@ -86,7 +86,7 @@ std::vector<attr_gen_struct*> AttrOptVar;
     double                 fltval;
 
     struct strlitbuf_struct {
-        char      decoded[4096];
+        char *    decoded;
         size_t    len;
     } strlit;
     char *                 string;

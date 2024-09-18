@@ -29,6 +29,7 @@ SPDX-License-Identifier: MIT
 
 #include "CISA.tab.hpp"
 
+#define MAX_STRLIT_SIZE 4096
 #define TRACE(S) \
     do { \
       if (CISAout && pBuilder->debugParse()) \
@@ -79,7 +80,14 @@ static void                    appendStringLiteralChar(char c, char *buf, size_t
 <eat_comment>"*"+"/"  BEGIN(INITIAL);
 
 
-\" {CISAlval.strlit.len = 0; CISAlval.strlit.decoded[0] = 0; BEGIN(string_literal);}
+\" {
+     CISAlval.strlit.len = 0;
+     CISAlval.strlit.decoded = (char *) malloc(sizeof(char) * MAX_STRLIT_SIZE);
+     if (!CISAlval.strlit.decoded)
+       YY_FATAL_ERROR("unable to allocate memory to lex strlit");
+     CISAlval.strlit.decoded[0] = 0;
+     BEGIN(string_literal);
+}
 <string_literal>{
     \n                        YY_FATAL_ERROR("lexical error: newline in string literal");
     <<EOF>>                   YY_FATAL_ERROR("lexical error: unterminated string (reached EOF)");
@@ -113,7 +121,13 @@ static void                    appendStringLiteralChar(char c, char *buf, size_t
         appendStringLiteralChar(val,CISAlval.strlit.decoded,&CISAlval.strlit.len);
     }
     \\.                       YY_FATAL_ERROR("lexical error: illegal escape sequence");
-    \"                        {CISAlval.string = strdup(CISAlval.strlit.decoded); BEGIN(INITIAL); return STRING_LIT;}
+    \"  {
+          char *tmp = strdup(CISAlval.strlit.decoded);
+          free(CISAlval.strlit.decoded);
+          CISAlval.string = tmp;
+          BEGIN(INITIAL);
+          return STRING_LIT;
+    }
     .                         {
     /* important: this must succeed the exit rule above (\"); lex prefers the first match */
         appendStringLiteralChar(yytext[0],CISAlval.strlit.decoded,&CISAlval.strlit.len);
@@ -1628,7 +1642,7 @@ static CHANNEL_OUTPUT_FORMAT Get_Channel_Output(const char* str)
 
 static void appendStringLiteralChar(char c, char *buf, size_t *len)
 {
-    if (*len == sizeof(CISAlval.strlit)) {
+    if (*len == MAX_STRLIT_SIZE) {
         YY_FATAL_ERROR("string literal too long");
     }
     buf[(*len)++] = c;
