@@ -12479,18 +12479,14 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
                     execSizeNew = lanesToSIMDMode(memSizeMinDisp * 8 / dataTypeSize);
                     uint32_t lanesNew = numLanes(execSizeNew);
                     int cnt = memSizeToUse / memSizeMinDisp;
-                    if (dataTypeSize == 64 && m_currShader->m_dispatchSize == SIMDMode::SIMD32)
-                        cnt++;
-
-                    for (int i=1; i<=cnt && cnt != 1; i+=2)
+                    for (int i=1; i<cnt; i++)
                     {
-                        CVariable* pOffset1_2ndHalf = m_currShader->ImmToVariable(memSizeMinDisp, ISA_TYPE_UW);
+                        CVariable* pOffset1_2ndHalf = m_currShader->ImmToVariable(memSizeMinDisp * i, ISA_TYPE_UW);
                         uint32_t laneIdx = lanesNew * i;
                         CVariable* pOffset2_2ndHalf = m_currShader->GetNewAlias(pOffset2, ISA_TYPE_UW, laneIdx * SIZE_WORD, 0);
-                        e_mask mask = (laneIdx / 8) % 2 ? EMASK_Q2 : EMASK_Q1;
                         m_encoder->SetSrcRegion(0, lanesNew, lanesNew, 1);
                         m_encoder->SetSimdSize(execSizeNew);
-                        m_encoder->SetMask(i != 1 ? EMASK_Q4 : mask);
+                        m_encoder->SetMask((laneIdx / 8) % 2 ? EMASK_Q2 : EMASK_Q1);
                         m_encoder->SetSecondNibble((laneIdx / 4) % 2 ? true : false);
                         m_encoder->Add(pOffset2_2ndHalf, pOffset2_2ndHalf, pOffset1_2ndHalf);
                         m_encoder->Push();
@@ -12508,7 +12504,7 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
                     IGC_ASSERT_MESSAGE(getGRFSize() == 64, "This code should execute for 64 byte GRF register size device");
                     // explicitly set second half as we are manually splitting
                     m_encoder->SetSecondHalf(true);
-                    m_encoder->SetSrcSubReg(1, 16);
+                    m_encoder->SetSrcSubReg(1, vecTypeSize == 8 ? 0 : 16);
                     dst = m_currShader->GetNewAlias(dst, dst->GetType(), 16 * dst->GetElemSize(), 0);
                 }
                 CVariable* pDstArrElm = m_currShader->GetNewAddressVariable(
