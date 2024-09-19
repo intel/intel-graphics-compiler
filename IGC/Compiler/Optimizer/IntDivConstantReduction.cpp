@@ -170,8 +170,11 @@ struct IntDivConstantReduction : public FunctionPass
         int shiftAmt = divisor.logBase2();
         Value *result;
         if (isMod) {
-            // X % 2^K = (X & ((1<<K)-1))
-            result = B.CreateAnd(dividend, ((1ull << shiftAmt)-1));
+            if (shiftAmt == bitSize) { // X % MAX_VAL = X
+                result = dividend;
+            } else { // X % 2^K = (X & ((1<<K)-1))
+                result = B.CreateAnd(dividend, ((1ull << shiftAmt)-1));
+            }
         } else {
             result = B.CreateLShr(dividend, shiftAmt);
         }

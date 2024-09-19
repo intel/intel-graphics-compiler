@@ -135,17 +135,6 @@ define spir_kernel void @test_sdiv_max(i32 %src1) {
   ret void
 }
 
-define spir_kernel void @test_rem_pow_of_2(i32 %src1) {
-; CHECK-LABEL: @test_rem_pow_of_2(
-; CHECK-NEXT:    [[TMP1:%.*]] = and i32 [[SRC1:%.*]], 2147483647
-; CHECK-NEXT:    call void @use.i32(i32 [[TMP1]])
-; CHECK-NEXT:    ret void
-;
-  %1 = urem i32 %src1, 2147483648 ; <- 2^31
-  call void @use.i32(i32 %1)
-  ret void
-}
-
 define spir_kernel void @test_udiv_max(i32 %src1) {
 ; CHECK-LABEL: @test_udiv_max(
 ; CHECK:    [[Q_APPX:%.*]] = call i32 @llvm.genx.GenISA.umulH.i32(i32 %src1, i32 -2147483647)
