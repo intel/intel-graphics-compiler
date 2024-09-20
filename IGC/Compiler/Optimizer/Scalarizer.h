@@ -274,12 +274,11 @@ namespace IGC
 
 } // namespace IGC
 
-/// @brief By default (no argument given to this function), selective scalarization is controlled
-/// by the `EnableSelectiveScalarizer` regkey.
+/// @brief By default (no argument given to this function), selective scalarization is off.
 /// Selective scalarization keeps some instructions vectorized, if the vector is used as the whole entity.
 /// The pass builds a web of instructions protected from scalarization.
 /// The ending legs of the web consist of vectorial instructions such as insert and extract elements,
 /// vector shuffles, GenISA intrinsics and function calls.
 /// The vectorial instructions inside the web consist of bitcasts and PHI nodes.
 extern "C" llvm::FunctionPass *createScalarizerPass(
-    IGC::SelectiveScalarizer selectiveMode = IGC::SelectiveScalarizer::Auto);
+    IGC::SelectiveScalarizer selectiveMode = IGC::SelectiveScalarizer::Off);
