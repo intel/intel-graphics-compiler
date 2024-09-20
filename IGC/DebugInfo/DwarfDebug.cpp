@@ -496,6 +496,13 @@ DIE *DwarfDebug::updateSubprogramScopeDIE(CompileUnit *SPCU, DISubprogram *SP) {
     }
   }
 
+  if (m_pModule && m_pModule->getFunction() &&
+      m_pModule->getFunction()->getSubprogram() == SP &&
+      m_pModule->GetType() == VISAModule::ObjectType::SUBROUTINE) {
+    SPCU->addUInt(SPDie, dwarf::DW_AT_calling_convention, dwarf::DW_FORM_data1,
+                  dwarf::DW_CC_nocall);
+  }
+
   if (EmitSettings.EnableRelocation) {
     auto Id = m_pModule->GetFuncId();
     SPCU->addLabelAddress(SPDie, dwarf::DW_AT_low_pc,
@@ -1131,15 +1138,11 @@ void DwarfDebug::beginModule() {
   SectionMap[Asm->GetTextSection()];
 
   Asm->SwitchSection(Asm->GetDwarfFrameSection());
-  if (m_pModule->getSubroutines(*VisaDbgInfo)->empty()) {
-    // First stack call CIE is written out,
-    // next subroutine CIE if required.
-    offsetCIEStackCall = 0;
-    offsetCIESubroutine = writeStackcallCIE();
-  } else {
-    // TODO: .debug_frame for subrotuines is currently unsupported.
-    // writeSubroutineCIE();
-  }
+  offsetCIEStackCall = 0;
+  offsetCIESubroutine = writeStackcallCIE();
+  // First stack call CIE is written out,
+  // next subroutine CIE.
+  writeSubroutineCIE();
 }
 
 // Attach DW_AT_inline attribute with inlined subprogram DIEs.
@@ -2312,13 +2315,13 @@ void DwarfDebug::endFunction(const Function *MF) {
   }
 
   Asm->SwitchSection(Asm->GetDwarfFrameSection());
-  if (m_pModule->getSubroutines(*VisaDbgInfo)->empty()) {
-    LLVM_DEBUG(dbgs() << "[DwarfDebug] writing FDEStackCall start ---\n");
-    writeFDEStackCall(m_pModule);
-    LLVM_DEBUG(dbgs() << "[DwarfDebug] writing FDEStackCall end  ***\n");
+
+  if (m_pModule->GetType() == VISAModule::ObjectType::SUBROUTINE) {
+    LLVM_DEBUG(dbgs() << "[DwarfDebug] writing FDESubproutine ***\n");
+    writeFDESubroutine(m_pModule);
   } else {
-    LLVM_DEBUG(dbgs() << "[DwarfDebug] FDESubproutine skipped  ***\n");
-    // writeFDESubroutine(m_pModule);
+    LLVM_DEBUG(dbgs() << "[DwarfDebug] writing FDEStackCall ***\n");
+    writeFDEStackCall(m_pModule);
   }
 
   ScopeVariables.clear();
@@ -2808,6 +2811,11 @@ uint32_t DwarfDebug::writeSubroutineCIE() {
   std::vector<uint8_t> data;
   auto numGRFs = GetVISAModule()->getNumGRFs();
 
+  auto writeSameValue = [](std::vector<uint8_t> &data, uint32_t srcReg) {
+    write(data, (uint8_t)llvm::dwarf::DW_CFA_same_value);
+    writeULEB128(data, srcReg);
+  };
+
   // Emit CIE
   auto ptrSize = Asm->GetPointerSize();
   // The size of the length field plus the value of length must be an integral
@@ -2818,7 +2826,7 @@ uint32_t DwarfDebug::writeSubroutineCIE() {
 
   // Write CIE_id
   write(data,
-        ptrSize == 4 ? (uint32_t)0xfffffffe : (uint64_t)0xfffffffffffffffe);
+        ptrSize == 4 ? (uint32_t)0xffffffff : (uint64_t)0xffffffffffffffff);
 
   // version - ubyte
   write(data, (uint8_t)4);
@@ -2841,13 +2849,13 @@ uint32_t DwarfDebug::writeSubroutineCIE() {
   // return address register - uleb128
   // set machine return register to one which is physically
   // absent. later CFA instructions map this to a valid GRF.
-  writeULEB128(data, numGRFs);
+  writeULEB128(data, RegisterNumbering::IP);
 
   // initial instructions (array of ubyte)
-  // DW_CFA_def_cfa -> fpreg+0
-  write(data, (uint8_t)llvm::dwarf::DW_CFA_def_cfa);
-  writeULEB128(data, 0);
-  writeULEB128(data, 0);
+  // same value rule for all GRFs
+  for (unsigned int grf = 0; grf != numGRFs; ++grf) {
+    writeSameValue(data, GetEncodedRegNum<RegisterNumbering::GRFBase>(grf));
+  }
 
   while ((lenSize + data.size()) % ptrSize != 0)
     // Insert DW_CFA_nop
@@ -3028,7 +3036,8 @@ uint32_t DwarfDebug::writeStackcallCIE() {
 }
 
 void DwarfDebug::writeFDESubroutine(VISAModule *m) {
-  std::vector<uint8_t> data;
+  std::vector<uint8_t> data, data1;
+  uint64_t LabelOffset = std::numeric_limits<uint64_t>::max();
 
   auto firstInst = (m->GetInstInfoMap()->begin())->first;
   // TODO: fixup to a proper name getter
@@ -3044,8 +3053,6 @@ void DwarfDebug::writeFDESubroutine(VISAModule *m) {
 
   if (!sub)
     return;
-
-  auto numGRFs = GetVISAModule()->getNumGRFs();
 
   // Emit CIE
   auto ptrSize = Asm->GetPointerSize();
@@ -3081,27 +3088,68 @@ void DwarfDebug::writeFDESubroutine(VISAModule *m) {
 
   // assume ret var is live throughout sub-routine and it is contained
   // in same GRF.
-  uint32_t linearAddr =
-      (retvarLR.front().var.mapping.r.regNum * m_pModule->getGRFSizeInBytes()) +
-      retvarLR.front().var.mapping.r.subRegNum;
+  uint16_t retRegNum = retvarLR.front().var.mapping.r.regNum;
+  uint16_t retSubRegNum = retvarLR.front().var.mapping.r.subRegNum;
 
   // initial location
-  write(data, ptrSize == 4 ? (uint32_t)genOffStart : genOffStart);
+  // LabelOffset holds offset where start %ip is written to buffer.
+  // Code later uses this to insert label for relocation.
+  LabelOffset = data.size();
+  if (EmitSettings.EnableRelocation) {
+    write(data,
+          ptrSize == 4 ? (uint32_t)0xfefefefe : (uint64_t)0xfefefefefefefefe);
+  } else {
+    write(data, ptrSize == 4 ? (uint32_t)genOffStart : (uint64_t)genOffStart);
+  }
 
   // address range
   write(data, ptrSize == 4 ? (uint32_t)(genOffEnd - genOffStart)
-                           : (genOffEnd - genOffStart));
+                           : (uint64_t)(genOffEnd - genOffStart));
 
   // instruction - ubyte
-  write(data, (uint8_t)llvm::dwarf::DW_CFA_register);
+  write(data, (uint8_t)llvm::dwarf::DW_CFA_val_expression);
 
   // return reg operand
-  writeULEB128(data, numGRFs);
+  writeULEB128(data, RegisterNumbering ::IP);
 
   // actual reg holding retval
-  writeULEB128(data, linearAddr);
+  data1.clear();
+  write(data1, (uint8_t)llvm::dwarf::DW_OP_const2u);
+  write(data1,
+        (uint16_t)GetEncodedRegNum<RegisterNumbering::GRFBase>(retRegNum));
+  write(data1, (uint8_t)llvm::dwarf::DW_OP_const2u);
+  write(data1, (uint16_t)(retSubRegNum * 8));
+  write(data1, (uint8_t)DW_OP_INTEL_regval_bits);
+  write(data1, (uint8_t)32);
+
+  writeULEB128(data, data1.size());
+  for (auto item : data1)
+    write(data, (uint8_t)item);
 
   // initial instructions (array of ubyte)
+  // DW_CFA_def_cfa_expression = DW_OP_lit0
+  write(data, (uint8_t)llvm::dwarf::DW_CFA_def_cfa_expression);
+  data1.clear();
+  if (m->StackCallContext()) {
+    // CFA is BE_SP location
+    write(data1, (uint8_t)llvm::dwarf::DW_OP_const2u);
+    write(data1, (uint16_t)GetEncodedRegNum<RegisterNumbering::GRFBase>(
+                     GetSpecialGRF()));
+    write(data1, (uint8_t)llvm::dwarf::DW_OP_const1u);
+    if (GetABIVersion() == 3)
+      write(data1, (uint8_t)(BESPSubReg_3 * 32));
+    else
+      write(data1, (uint8_t)(BESPSubReg_1_2 * 32));
+    write(data1, (uint8_t)DW_OP_INTEL_regval_bits);
+    write(data1, (uint8_t)32);
+    encodeScratchAddrSpace(data1);
+  } else {
+    write(data1, (uint8_t)llvm::dwarf::DW_OP_lit0);
+  }
+  writeULEB128(data, data1.size());
+  for (auto item : data1)
+    write(data, (uint8_t)item);
+
   while ((lenSize + data.size()) % ptrSize != 0)
     // Insert DW_CFA_nop
     write(data, (uint8_t)llvm::dwarf::DW_CFA_nop);
@@ -3111,8 +3159,24 @@ void DwarfDebug::writeFDESubroutine(VISAModule *m) {
     Asm->EmitInt32(0xffffffff);
   Asm->EmitIntValue(data.size(), ptrSize);
 
-  for (auto &byte : data)
-    Asm->EmitInt8(byte);
+  if (EmitSettings.EnableRelocation) {
+    uint32_t ByteOffset = 0;
+
+    for (auto it = data.begin(); it != data.end(); ++it) {
+      auto byte = *it;
+      if (ByteOffset++ == (uint32_t)LabelOffset) {
+        auto Label = GetLabelBeforeIp(genOffStart);
+        Asm->EmitLabelReference(Label, ptrSize, false);
+        // Now skip ptrSize number of bytes from data
+        std::advance(it, ptrSize);
+        byte = *it;
+      }
+      Asm->EmitInt8(byte);
+    }
+  } else {
+    for (auto &byte : data)
+      Asm->EmitInt8(byte);
+  }
 }
 
 void DwarfDebug::writeFDEStackCall(VISAModule *m) {
@@ -3316,7 +3380,7 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
         write(data1, (uint8_t)llvm::dwarf::DW_OP_const4u);
         write(data1, (uint32_t)(DWRegEncoded));
         write(data1, (uint8_t)llvm::dwarf::DW_OP_const2u);
-        write(data1, (uint16_t)(getRetIPSubReg() * 4));
+        write(data1, (uint16_t)(getRetIPSubReg() * 4 * 8));
         write(data1, (uint8_t)DW_OP_INTEL_regval_bits);
         write(data1, (uint8_t)32);
         writeULEB128(cfaOps[item.end + MovGenInstSizeInBytes], data1.size());

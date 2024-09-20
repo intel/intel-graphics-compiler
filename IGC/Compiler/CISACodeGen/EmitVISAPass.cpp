@@ -1060,8 +1060,9 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         m_currShader->GetDebugInfoData().m_pDebugEmitter = m_pDebugEmitter;
 
         const bool IsPrimary = isFuncGroupHead;
-        m_pDebugEmitter->resetModule(
-            IGC::ScalarVisaModule::BuildNew(m_currShader, &F, IsPrimary));
+        bool GroupHasStackCall = m_FGA && m_FGA->getGroup(&F)->hasStackCall();
+        m_pDebugEmitter->resetModule(IGC::ScalarVisaModule::BuildNew(
+            m_currShader, &F, IsPrimary, GroupHasStackCall));
     }
 
     // We only invoke EndEncodingMark() to update last VISA id.

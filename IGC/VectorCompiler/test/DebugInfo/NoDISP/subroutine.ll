@@ -12,22 +12,24 @@
 ; RUN: -vc-dbginfo-dumps-name-override=%basename_t \
 ; RUN: -finalizer-opts='-generateDebugInfo' -o /dev/null
 
-; RUN: llvm-dwarfdump -a dbginfo_%basename_t_test_kernel_dwarf.elf | FileCheck %s
+; REQUIRES: oneapi-readelf
+; RUN: oneapi-readelf --debug-dump dbginfo_%basename_t_test_kernel_dwarf.elf | FileCheck %s
 
-; CHECK: .debug_abbrev contents:
-; CHECK: .debug_info contents:
+; CHECK: Contents of the .debug_info section:
 
 ; CHECK: DW_TAG_compile_unit
-; CHECK: DW_AT_name ("kernel_genx.cpp")
+; CHECK: DW_AT_name : kernel_genx.cpp
 
 ; CHECK: DW_TAG_subprogram
-; CHECK: DW_AT_name ("test_kernel")
+; CHECK: DW_AT_name : test_kernel
 
-; CHECK: .debug_line contents:
-; CHECK: total_length: 0x[[#]]
-; CHECK: version: 4
-; CHECK: file_names{{\[}} [[#]]{{]}}:
-; CHECK: Address Line Column File ISA Discriminator Flags
+; CHECK: Contents of the .debug_abbrev section:
+
+; CHECK: Raw dump of debug contents of section .debug_line:
+; CHECK: Length: [[#]]
+; CHECK: DWARF Version: 4
+; CHECK: The Directory Table
+; CHECK: The File Name Table
 
 ; ModuleID = 'Deserialized SPIRV Module'
 target datalayout = "e-p:64:64-i64:64-n8:16:32"

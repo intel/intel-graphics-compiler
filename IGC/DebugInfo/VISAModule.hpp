@@ -412,6 +412,8 @@ private:
 
   std::unique_ptr<VarInfoCache> VICache = std::make_unique<VarInfoCache>();
 
+  bool IsStackCallContext = false;
+
 public:
   /// @brief Constructor.
   /// @param AssociatedFunc holds llvm IR function associated with
@@ -421,8 +423,14 @@ public:
   /// "Primary entry point" is a function that spawns a separate
   /// gen object (compiled gen isa code). Currently, such functions
   /// correspond to kernel functions or indirectly called functions.
-  VISAModule(llvm::Function *AssociatedFunc, bool IsPrimary)
-      : m_Func(AssociatedFunc), IsPrimaryFunc(IsPrimary) {}
+  /// @param StackCallContext is true for subroutines when caller is
+  /// a stack call function. For non-subroutines this field contains
+  /// no useful meaning.
+  VISAModule(llvm::Function *AssociatedFunc, bool IsPrimary,
+             bool StackCallContext = false)
+      : m_Func(AssociatedFunc), IsPrimaryFunc(IsPrimary) {
+    IsStackCallContext = StackCallContext;
+  }
 
   virtual ~VISAModule() {}
 
@@ -580,6 +588,8 @@ public:
 
   llvm::Function *getFunction() const { return m_Func; }
   uint64_t GetFuncId() const { return (uint64_t)m_Func; }
+
+  bool StackCallContext() const { return IsStackCallContext; }
 
   void dump() const { print(llvm::dbgs()); }
   void print(llvm::raw_ostream &OS) const;

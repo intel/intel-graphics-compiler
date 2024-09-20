@@ -33,7 +33,8 @@ class ScalarVisaModule final : public IGC::VISAModule {
 public:
 
     static std::unique_ptr<IGC::VISAModule>
-        BuildNew(CShader* S, llvm::Function *F, bool IsPrimary = false);
+  BuildNew(CShader *S, llvm::Function *F, bool IsPrimary = false,
+           bool IsCallerStackCall = false);
 
     unsigned int getUnpaddedProgramSize() const override {
         return m_pShader->ProgramOutput()->m_unpaddedProgramSize;
@@ -125,8 +126,11 @@ private:
     /// used to emit vISA code.
     /// @param IsPrimary indicates if the currently processed function
     /// is a "primary entry point" to the corresponding Shader object.
+    /// @param IsStackCallContext is set to true if current instance
+    /// is a subroutine and caller context is stack call.
     /// See Source/IGC/DebugInfo/VISAModule.hpp for more details
-    ScalarVisaModule(CShader* TheShader, llvm::Function *TheFunction, bool IsPrimary);
+    ScalarVisaModule(CShader *TheShader, llvm::Function *TheFunction,
+                     bool IsPrimary, bool IsStackCallContext);
     /// @brief Trace given value to its origin value, searching for LLVM Argument.
     /// @param pVal value to process.
     /// @param isAddress indecates if the value represents an address.

@@ -1046,7 +1046,25 @@ template <class T> void emitDataSubroutines(VISAKernelImpl *visaKernel, T &t) {
           }
         }
         vISA_ASSERT(retval && subLabel, "All of the basic blocks are empty.");
-        emitDataName(subLabel->getLabelName(), t);
+        auto sanitizeSubLabel = [&](const char *lbl) {
+          // VISA appends L_f#_ prefix to subroutines contained
+          // in stack call functions. This causes a mismatch
+          // with function name in llvm IR. When emitting VISA
+          // VISA debug info, we remove this prefix.
+          std::string newName = lbl;
+          if (visaKernel->getIsFunction()) {
+            // Sanity check for first char of prefix
+            if (newName.find("L_f") != 0)
+              return newName;
+            // Eliminate L_f
+            newName = newName.substr(3);
+            auto delim = newName.find('_');
+            newName = newName.substr(delim + 1);
+            return newName;
+          }
+          return newName;
+        };
+        emitDataName(sanitizeSubLabel(subLabel->getLabelName()), t);
         emitDataUInt32(start, t);
         emitDataUInt32(end, t);
 
