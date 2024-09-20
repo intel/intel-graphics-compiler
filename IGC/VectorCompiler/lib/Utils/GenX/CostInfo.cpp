@@ -31,7 +31,7 @@ static float extractConstantFloatMD(const MDOperand &Op) {
   ConstantFP *V = nullptr;
   if (auto *VM = dyn_cast<ValueAsMetadata>(Op))
     V = dyn_cast<ConstantFP>(VM->getValue());
-  IGC_ASSERT_MESSAGE(V, "Unexpected null value in metadata");
+  IGC_ASSERT_EXIT_MESSAGE(V, "Unexpected null value in metadata");
   return V->getValue().convertToFloat();
 }
 
@@ -39,7 +39,7 @@ static int extractConstantIntMD(const MDOperand &Op) {
   ConstantInt *V = nullptr;
   if (auto *VM = dyn_cast<ValueAsMetadata>(Op))
     V = dyn_cast<ConstantInt>(VM->getValue());
-  IGC_ASSERT_MESSAGE(V, "Unexpected null value in metadata");
+  IGC_ASSERT_EXIT_MESSAGE(V, "Unexpected null value in metadata");
   return V->getSExtValue();
 }
 
