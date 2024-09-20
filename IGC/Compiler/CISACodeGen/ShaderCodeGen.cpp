@@ -1409,7 +1409,6 @@ void OptimizeIR(CodeGenContext* const pContext)
         mpm.add(new IGCConstProp());
         GFX_ONLY_PASS { mpm.add(createTranslateToProgrammableOffsetsPass()); }
 
-
         mpm.add(new CustomSafeOptPass());
         if (!pContext->m_DriverInfo.WADisableCustomPass())
         {
