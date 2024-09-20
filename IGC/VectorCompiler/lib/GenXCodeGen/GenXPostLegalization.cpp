@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -100,7 +100,7 @@ bool GenXPostLegalization::runOnFunction(Function &F)
             .getTM<GenXTargetMachine>()
             .getGenXSubtarget();
 
-  VectorDecomposer VD(ST);
+  VectorDecomposer VD;
 
   bool Modified = false;
   Modified |= vc::breakConstantExprs(&F, vc::LegalizationStage::Legalized);
