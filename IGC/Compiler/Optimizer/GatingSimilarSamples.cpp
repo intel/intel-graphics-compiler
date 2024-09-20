@@ -13,7 +13,6 @@ SPDX-License-Identifier: MIT
 #include "IGC/LLVM3DBuilder/BuiltinsFrontend.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Function.h>
-#include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/InstrTypes.h>
 #include <llvm/IR/Constant.h>
 #include <llvm/IR/Dominators.h>
@@ -21,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/ADT/ilist.h>
 #include <llvmWrapper/IR/InstrTypes.h>
+#include <llvmWrapper/IR/BasicBlock.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
@@ -217,7 +217,7 @@ detectSampleAveragePattern2(const std::vector<Instruction*>& sampleInsts, Instru
 // @llvm.genx.GenISA.sampleptr5 => samples(tex1....)
 bool GatingSimilarSamples::checkAndSaveSimilarSampleInsts()
 {
-    for (auto& I : BB->getInstList())
+    for (auto& I : *BB)
     {
         if (SampleIntrinsic * SI = dyn_cast<SampleIntrinsic>(&I))
         {
@@ -458,8 +458,7 @@ bool GatingSimilarSamples::runOnFunction(llvm::Function& F)
 
     //move all insts starting from similarSampleInst[0] upto resultInst(non-inluding) into the new then block
     BasicBlock* tailBlock = thenBlockTerminator->getSuccessor(0);
-    thenBlock->getInstList().splice(thenBlock->begin(), tailBlock->getInstList(), similarSampleInsts[0]->getIterator(), resultInst->getIterator());
-
+    IGCLLVM::splice(thenBlock, thenBlock->begin(), tailBlock, similarSampleInsts[0]->getIterator(), resultInst->getIterator());
 
     Value* avg_color_x = resultInst->getOperand(0);
     Value* avg_color_y = resultInst->getOperand(1);

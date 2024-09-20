@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/Target/TargetMachine.h"
 #include <llvmWrapper/ADT/Optional.h>
+#include "llvmWrapper/Analysis/TargetTransformInfo.h"
 
 #include "GenXIntrinsics.h"
 #include "GenXSubtarget.h"
@@ -120,9 +121,9 @@ public:
 // the GenX backend.
 // FIXME: inherit from BasicTTImpl. This requires introducing
 // TargetLowering in VC.
-class GenXTTIImpl : public TargetTransformInfoImplCRTPBase<GenXTTIImpl>
+class GenXTTIImpl : public IGCLLVM::TTIImplCRTPBase<GenXTTIImpl>
 {
-  using BaseT = TargetTransformInfoImplCRTPBase<GenXTTIImpl>;
+  using BaseT = IGCLLVM::TTIImplCRTPBase<GenXTTIImpl>;
   using TTI = TargetTransformInfo;
   friend BaseT;
 
@@ -156,7 +157,7 @@ public:
       }
     }
 
-    return BaseT::getUserCost(U, Operands, CostKind);
+    return BaseT::getInstructionCost(U, Operands, CostKind);
   }
 
   bool isProfitableToHoist(Instruction *I) const {

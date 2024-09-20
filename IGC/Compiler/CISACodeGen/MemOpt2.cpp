@@ -265,7 +265,7 @@ bool MemInstCluster::clusterMediaBlockRead(BasicBlock* BB) {
     unsigned Count = 0;
     Scheduled.clear();
 
-    for (auto& BI : BB->getInstList()) {
+    for (auto& BI : *BB) {
         if (GenIntrinsicInst * GII = dyn_cast<GenIntrinsicInst>(&BI)) {
             if (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_simdMediaBlockRead) {
                 if (!InsertPos)

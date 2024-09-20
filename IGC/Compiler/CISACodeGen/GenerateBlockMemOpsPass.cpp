@@ -11,12 +11,15 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/helper.h"
+
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/IR/Function.h>
 #include "llvm/IR/Verifier.h"
 #include <llvmWrapper/IR/PatternMatch.h>
+#include <llvmWrapper/IR/BasicBlock.h>
 #include "common/LLVMWarningsPop.hpp"
+
 #include "GenerateBlockMemOpsPass.hpp"
 #include "IGCIRBuilder.h"
 #include "IGC/WrapperLLVM/include/llvmWrapper/IR/Attributes.h"
@@ -171,8 +174,8 @@ bool GenerateBlockMemOpsPass::runOnFunction(Function &F) {
         // Clone the pre-condition and pre-condition branch instructions in the separator block.
         ICmpInst *ClonedPreCondition = cast<ICmpInst>(PreCondition->clone());
         BranchInst *ClonedPreConditionBranch = cast<BranchInst>(PreConditionBranch->clone());
-        SeparatorBasicBlock->getInstList().push_back(ClonedPreCondition);
-        SeparatorBasicBlock->getInstList().push_back(ClonedPreConditionBranch);
+        IGCLLVM::pushBackInstruction(SeparatorBasicBlock, ClonedPreCondition);
+        IGCLLVM::pushBackInstruction(SeparatorBasicBlock, ClonedPreConditionBranch);
 
         // Create empty exit for the new loop.
         BasicBlock *ExitForTheNewLoop = BasicBlock::Create(Context, ".new.exit", &F);

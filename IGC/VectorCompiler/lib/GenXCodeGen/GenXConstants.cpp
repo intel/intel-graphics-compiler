@@ -108,6 +108,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Support/TypeSize.h"
 
 #include <iterator>
+#include <numeric>
 
 #define DEBUG_TYPE "GENX_CONSTANTS"
 
@@ -1295,8 +1296,8 @@ unsigned ConstantLoader::getRegionBits(unsigned NeededBits,
   if (!NeededBits)
     return 0;
   // Get the first and last element numbers in NeededBits.
-  unsigned FirstNeeded = countTrailingZeros(NeededBits, ZB_Undefined);
-  unsigned LastNeeded = 31 - countLeadingZeros((uint32_t)NeededBits, ZB_Undefined);
+  unsigned FirstNeeded = llvm::countTrailingZeros(NeededBits);
+  unsigned LastNeeded = 31 - llvm::countLeadingZeros((uint32_t)NeededBits);
   // Set the max width to the min size including both those elements
   // rounded up to the next power of two.
   unsigned MaxWidth = LastNeeded - FirstNeeded + 1;
@@ -2072,7 +2073,7 @@ void ConstantLoader::analyzeForPackedInt(unsigned NumElements) {
   uint64_t GCD = Diffs[0];
   if (Diffs.size() > 1) {
     for(unsigned i = 1; i < Diffs.size(); i++)
-      GCD = GreatestCommonDivisor64(GCD, Diffs[i]);
+      GCD = std::gcd(GCD, Diffs[i]);
   }
   // Scale should fit in signed integer
   if (GCD > static_cast<uint64_t>(std::numeric_limits<int64_t>::max()))

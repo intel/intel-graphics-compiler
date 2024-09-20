@@ -174,6 +174,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/DiagnosticPrinter.h"
 #include "llvm/IR/Function.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include <llvmWrapper/Support/MathExtras.h>
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/Module.h"
@@ -1205,7 +1206,7 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
     ExecSizeAllowedBits &= 0x1f;
 
   unsigned MainInstMinWidth =
-      1 << countTrailingZeros(ExecSizeAllowedBits, ZB_Undefined);
+      1 << llvm::countTrailingZeros(ExecSizeAllowedBits);
   // Determine the vector width that we need to split into.
   bool IsReadSameVector = false;
   unsigned Width = WholeWidth - StartIdx;

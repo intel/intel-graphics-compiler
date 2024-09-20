@@ -476,7 +476,7 @@ static bool commonUpPredicate(BasicBlock *BB) {
   using key_type = std::pair<char, uint64_t>;
   SmallDenseMap<key_type, SmallVector<Instruction *, 8>> ValMap;
 
-  for (auto &Inst : BB->getInstList()) {
+  for (auto &Inst : *BB) {
     if (GenXIntrinsic::getGenXIntrinsicID(&Inst) == GenXIntrinsic::genx_constantpred) {
       Constant *V = cast<Constant>(Inst.getOperand(0));
       if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(V->getType())) {

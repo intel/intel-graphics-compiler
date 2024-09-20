@@ -513,7 +513,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         {
             bool isSet = false;
             for (auto& BB : *F) {
-                for (auto& Inst : BB.getInstList()) {
+                for (auto& Inst : BB) {
                     if (AllocaInst* AI = dyn_cast<AllocaInst>(&Inst)) {
                         if (!isa<ConstantInt>(AI->getArraySize())) {
                             F->addFnAttr("hasVLA");
@@ -648,7 +648,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 // Prefer stackcall if a func has double operations
                 bool isSet = false;
                 for (auto& BB : *F) {
-                    for (auto& aI : BB.getInstList()) {
+                    for (auto& aI : BB) {
                         auto opc = aI.getOpcode();
                         if (opc == Instruction::FMul || opc == Instruction::FDiv ||
                             opc == Instruction::FAdd || opc == Instruction::FSub ||

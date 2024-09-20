@@ -14,6 +14,9 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/raw_ostream.h"
 
 #include "lld/Common/Driver.h"
+#if LLVM_VERSION_MAJOR >= 14
+#include "lld/Common/CommonLinkerContext.h"
+#endif
 
 namespace IGCLLD {
     namespace elf {

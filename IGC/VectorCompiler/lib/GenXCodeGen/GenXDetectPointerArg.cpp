@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Pass.h"
 
 #include <stack>
+#include <optional>
 
 #define DEBUG_TYPE "genx-detect-pointer-arg"
 
@@ -200,7 +201,7 @@ void GenXDetectPointerArg::visitLoadInst(LoadInst &LI) {
   analyzeValue(LI.getPointerOperand());
 }
 
-static Optional<int64_t> accumulateConstantOffset(GetElementPtrInst &GEPI) {
+static std::optional<int64_t> accumulateConstantOffset(GetElementPtrInst &GEPI) {
   int64_t Offset = 0;
   auto &DL = GEPI.getModule()->getDataLayout();
 

@@ -79,6 +79,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/TypeSize.h"
 #include "llvmWrapper/Transforms/Utils/Local.h"
+#include "llvmWrapper/Transforms/Utils/BasicBlockUtils.h"
 
 #include "vc/Utils/GenX/Intrinsics.h"
 #include "vc/Utils/General/InstRebuilder.h"
@@ -3097,7 +3098,7 @@ static bool mergeToWrRegion(SelectInst *SI) {
                                                    : SI->getTrueValue(),
                                           Wr->getName(), Wr, Wr->getDebugLoc());
       BasicBlock::iterator WrIt(Wr);
-      ReplaceInstWithValue(Wr->getParent()->getInstList(), WrIt, NewWr);
+      IGCLLVM::ReplaceInstWithValue(WrIt->getParent()->getInstList(), WrIt, NewWr);
     };
 
     if (std::all_of(SI->use_begin(), SI->use_end(), CanMergeToWrRegion)) {
@@ -4076,7 +4077,7 @@ bool GenXPatternMatch::placeConstants(Function *F) {
         Instruction *InsertBefore = InsertBB->getTerminator();
         for (auto UseInst : ConstantUsers) {
           if (InsertBB == UseInst->getParent()) {
-            for (auto &I : InsertBB->getInstList()) {
+            for (auto &I : *InsertBB) {
               if (ConstantUsers.find(&I) != ConstantUsers.end()) {
                 InsertBefore = &I;
                 goto Found;

@@ -686,7 +686,7 @@ bool DynamicRayManagementPass::AddDynamicRayManagement(Function& F)
     // immediately before this first AllocateRayQueryIntrinsic.
     Instruction* rayQueryCheckInsertPoint = nullptr;
 
-    for (Instruction& I : dominatorBasicBlock->getInstList())
+    for (Instruction& I : *dominatorBasicBlock)
     {
         if (AllocateRayQueryIntrinsic* allocateRayQueryIntrinsic = dyn_cast<AllocateRayQueryIntrinsic>(&I))
         {
@@ -1219,8 +1219,9 @@ Instruction* DynamicRayManagementPass::FindReleaseInsertPoint(
 {
     // Start from the last instruction in the Block that post dominates all
     // uses.
-    for (Instruction& instruction : reverse(commonPostDominatorForRayQueryUsers->getInstList()))
+    for (auto I = commonPostDominatorForRayQueryUsers->rbegin(); I != commonPostDominatorForRayQueryUsers->rend(); I++)
     {
+        Instruction &instruction = *I;
         // For each instruction the Block check if it is a user of any
         // AllocateRayQueryIntrinsic. Stop at first match.
         for (AllocateRayQueryIntrinsic* allocateRayQueryIntrinsic : allocateRayQueries)

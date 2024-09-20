@@ -12,7 +12,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
-#include "llvm/Analysis/TargetTransformInfoImpl.h"
+#include "llvmWrapper/Analysis/TargetTransformInfo.h"
 #include "common/LLVMWarningsPop.hpp"
 
 namespace llvm
@@ -21,9 +21,9 @@ namespace llvm
     // This implementation allows us to define our own costs for the GenIntrinsics
     // Did not use BasicTTIImplBase because the overloaded constructors have TragetMachine as an argument,
     // so I inherited from its parent which has only DL as its arguments
-    class GenIntrinsicsTTIImpl : public TargetTransformInfoImplCRTPBase<GenIntrinsicsTTIImpl>
+    class GenIntrinsicsTTIImpl : public IGCLLVM::TTIImplCRTPBase<GenIntrinsicsTTIImpl>
     {
-        typedef TargetTransformInfoImplCRTPBase<GenIntrinsicsTTIImpl> BaseT;
+        typedef IGCLLVM::TTIImplCRTPBase<GenIntrinsicsTTIImpl> BaseT;
         typedef TargetTransformInfo TTI;
         friend BaseT;
         IGC::CodeGenContext* ctx;

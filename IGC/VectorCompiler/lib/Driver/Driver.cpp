@@ -27,6 +27,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/Statistic.h>
 #include <llvm/ADT/StringExtras.h>
 #include <llvm/ADT/Triple.h>
+#include <llvm/ADT/None.h>
 #include <llvm/Analysis/TargetLibraryInfo.h>
 #include <llvm/Analysis/TargetTransformInfo.h>
 #include <llvm/Bitcode/BitcodeReader.h>

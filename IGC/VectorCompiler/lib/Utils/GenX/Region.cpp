@@ -217,11 +217,11 @@ CMRegion::CMRegion(unsigned Bits, unsigned ElementBytes)
       IndirectAddrOffset(0), Mask(0), ParentWidth(0)
 {
   IGC_ASSERT(Bits);
-  Offset = countTrailingZeros(Bits, ZB_Undefined);
+  Offset = llvm::countTrailingZeros(Bits);
   Bits >>= Offset;
   Offset *= ElementBytes;
   if (Bits != 1) {
-    Stride = countTrailingZeros(Bits & ~1, ZB_Undefined);
+    Stride = llvm::countTrailingZeros(Bits & ~1);
     NumElements = Width = countPopulation(Bits);
   }
 }

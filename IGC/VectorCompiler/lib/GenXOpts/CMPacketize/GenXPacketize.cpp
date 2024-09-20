@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 
 #include "PacketBuilder.h"
 
+#include <llvmWrapper/IR/BasicBlock.h>
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/Alignment.h"
@@ -179,8 +180,7 @@ static bool GenXUnifyReturnBlocks(Function &F) {
   } else {
     // If the function doesn't return void... add a PHI node to the block...
     PN = PHINode::Create(F.getReturnType(), ReturningBlocks.size(),
-                         "UnifiedRetVal");
-    NewRetBlock->getInstList().push_back(PN);
+                         "UnifiedRetVal", NewRetBlock);
     ReturnInst::Create(F.getContext(), PN, NewRetBlock);
   }
   // Loop over all of the blocks, replacing the return instruction with an
@@ -191,7 +191,8 @@ static bool GenXUnifyReturnBlocks(Function &F) {
     if (PN)
       PN->addIncoming(BB->getTerminator()->getOperand(0), BB);
 
-    BB->getInstList().pop_back(); // Remove the return insn
+    IGCLLVM::popBackInstruction(BB); // Remove the return insn
+
     BranchInst::Create(NewRetBlock, BB);
   }
   return true;
@@ -322,7 +323,7 @@ Function *GenXPacketize::vectorizeSIMTFunction(Function *F, unsigned Width) {
   for (auto DI = df_begin(DT.getRootNode()), DE = df_end(DT.getRootNode());
        DI != DE; ++DI) {
     auto *BB = DI->getBlock();
-    for (auto &I : BB->getInstList()) {
+    for (auto &I : *BB) {
       if (!UniformInsts.count(&I)) {
         Value *PacketizedInst = packetizeInstruction(&I);
         ReplaceMap[&I] = PacketizedInst;
@@ -368,7 +369,7 @@ bool GenXPacketize::vectorizeSIMTEntry(Function &F) {
   for (auto DI = df_begin(DT.getRootNode()), DE = df_end(DT.getRootNode());
        DI != DE; ++DI) {
     auto *BB = DI->getBlock();
-    for (auto &I : BB->getInstList()) {
+    for (auto &I : *BB) {
       if (!UniformInsts.count(&I)) {
         auto *PacketizedInst = packetizeInstruction(&I);
         ReplaceMap[&I] = PacketizedInst;

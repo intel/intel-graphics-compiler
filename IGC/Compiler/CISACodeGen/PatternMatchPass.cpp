@@ -501,14 +501,13 @@ namespace IGC
 
     void CodeGenPatternMatch::CodeGenBlock(llvm::BasicBlock* bb)
     {
-        llvm::BasicBlock::InstListType& instructionList = bb->getInstList();
         llvm::BasicBlock::InstListType::reverse_iterator I, E;
         auto it = m_blockMap.find(bb);
         IGC_ASSERT(it != m_blockMap.end());
         SBasicBlock* block = it->second;
 
         // loop through instructions bottom up
-        for (I = instructionList.rbegin(), E = instructionList.rend(); I != E; ++I)
+        for (I = bb->rbegin(), E = bb->rend(); I != E; ++I)
         {
             llvm::Instruction& inst = (*I);
 

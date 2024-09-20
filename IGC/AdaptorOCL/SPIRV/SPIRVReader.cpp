@@ -51,9 +51,11 @@ THE SOFTWARE.
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/DIBuilder.h"
 #include "llvmWrapper/IR/InstrTypes.h"
+#include <llvmWrapper/IR/BasicBlock.h>
 #include "llvmWrapper/IR/Module.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/Support/TypeSize.h"
+
 
 #include <llvm/Support/ScaledNumber.h>
 #include <llvm/IR/IntrinsicInst.h>
@@ -2061,7 +2063,7 @@ void SPIRVToLLVM::setLLVMLoopMetadata(const LoopInstType* LM, Instruction* BI) {
 
   IGC_ASSERT(BI && isa<BranchInst>(BI));
 
-  auto Temp = MDNode::getTemporary(*Context, None);
+  auto Temp = MDNode::getTemporary(*Context, ArrayRef<Metadata*>());
   auto Self = MDNode::get(*Context, Temp.get());
   Self->replaceOperandWith(0, Self);
 
@@ -2889,14 +2891,14 @@ Value *SPIRVToLLVM::truncBool(Value *pVal, BasicBlock *BB)
     auto* nextInst = pInst->getNextNonDebugInstruction();
     if (nullptr != nextInst && nextInst->getOpcode() == Instruction::Trunc && (nextInst->getOperand(0) == Cast->getOperand(0)))
     {
-      BB->getInstList().push_back(Cast);
+      IGCLLVM::pushBackInstruction(BB, Cast);
       return Cast;
     }
     // Insert Cast instruction into BB if pInst is placeholder
     if (isa<LoadInst>(pInst) && isa<GlobalVariable>(dyn_cast<LoadInst>(pInst)->getPointerOperand()) &&
         dyn_cast<GlobalVariable>(dyn_cast<LoadInst>(pInst)->getPointerOperand())->getName().startswith(kPlaceholderPrefix))
     {
-        BB->getInstList().push_back(Cast);
+        IGCLLVM::pushBackInstruction(BB, Cast);
         return Cast;
     }
 

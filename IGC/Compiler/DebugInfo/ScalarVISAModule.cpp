@@ -623,7 +623,7 @@ void insertOCLMissingDebugConstMetadata(CodeGenContext* ctx)
 
                 if (!GlobalValue::isLocalLinkage(g->getLinkage()) || isConstForThisFunc)
                 {
-                    Utils::UpdateGlobalVarDebugInfo(g, init, &func.getEntryBlock().getInstList().front(), false);
+                    Utils::UpdateGlobalVarDebugInfo(g, init, &func.getEntryBlock().front(), false);
                 }
             }
         }

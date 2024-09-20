@@ -20,6 +20,7 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/InstructionSimplify.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/MemoryLocation.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/TargetLibraryInfo.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/TargetTransformInfo.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/CodeGen/CommandFlags.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/MC/MCContext.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/MC/MCStreamer.h"
@@ -36,6 +37,7 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/DerivedTypes.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/DIBuilder.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Function.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/BasicBlock.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/InstrTypes.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Instructions.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/IntrinsicInst.h"
@@ -64,6 +66,7 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Utils/Local.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Utils/ScalarEvolutionExpander.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Utils/ValueMapper.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Utils/BasicBlockUtils.h"
 
     "${CMAKE_CURRENT_SOURCE_DIR}/include/lldWrapper/Common/Driver.h"
   )

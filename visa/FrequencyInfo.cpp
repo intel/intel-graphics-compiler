@@ -220,7 +220,7 @@ void FrequencyInfo::computeFreqSpillCosts(GlobalRA &gra,
     // gather all instructions with indirect operands
     // for ref count computation once.
     for (auto bb : kernel.fg.getBBList()) {
-      for (auto inst : bb->getInstList()) {
+      for (auto inst : *bb) {
         auto dst = inst->getDst();
         if (dst && dst->isIndirect()) {
           auto pointsTo = liveAnalysis->getPointsToAnalysis().getAllInPointsTo(

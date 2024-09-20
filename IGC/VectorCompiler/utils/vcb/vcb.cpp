@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include <optional>
 
 #include <llvm/ADT/Triple.h>
+#include <llvm/ADT/None.h>
 #include <llvm/Bitcode/BitcodeWriterPass.h>
 #include <llvm/CodeGen/TargetSubtargetInfo.h>
 #include <llvm/IR/DiagnosticInfo.h>
@@ -31,7 +32,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include <llvmWrapper/Target/TargetMachine.h>
 #include <llvmWrapper/Support/TargetRegistry.h>
-
 using namespace llvm;
 
 void vcbCompileModule(std::unique_ptr<Module> &M, std::string Platform);

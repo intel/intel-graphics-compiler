@@ -1,0 +1,27 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2024 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
+#ifndef IGCLLVM_TRANSFORMS_UTILS_BASICBLOCKUTILS_H
+#define IGCLLVM_TRANSFORMS_UTILS_BASICBLOCKUTILS_H
+
+#include "llvm/Transforms/Utils/BasicBlockUtils.h"
+#include "llvm/IR/BasicBlock.h"
+#include "llvm/IR/Value.h"
+
+namespace IGCLLVM {
+    void ReplaceInstWithValue(llvm::BasicBlock::InstListType& BIL, llvm::BasicBlock::iterator& BI, llvm::Value* V)
+    {
+#if LLVM_VERSION_MAJOR < 16
+        llvm::ReplaceInstWithValue(BIL, BI, V);
+#else
+        llvm::ReplaceInstWithValue(BI, V);
+#endif
+    }
+}
+
+#endif

@@ -17,6 +17,8 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "llvm/IR/IntrinsicInst.h"
 
+#include "llvmWrapper/IR/IntrinsicInst.h"
+
 using namespace llvm;
 using namespace IGC;
 using namespace IGC::IGCMD;
@@ -79,7 +81,7 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
         for (auto &I : BB) {
           if (auto *dbgInst = dyn_cast<DbgVariableIntrinsic>(&I)) {
             if (dbgInst->getNumVariableLocationOps() > 1) {
-              dbgInst->setUndef();
+              IGCLLVM::setKillLocation(dbgInst);
             }
           }
         }

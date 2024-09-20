@@ -12,9 +12,8 @@ SPDX-License-Identifier: MIT
 #include "common/igc_regkeys.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
-
 #include "llvmWrapper/IR/Instructions.h"
-
+#include <llvmWrapper/IR/BasicBlock.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
@@ -58,7 +57,7 @@ void IGC::UnreachableHandling::replaceUnreachable(llvm::UnreachableInst* I)
 
     // If this is the last instruction in the BB, just replace it with return instruction.
     if (&I->getParent()->back() == I) {
-        I->getParent()->getInstList().push_back(ret);
+        IGCLLVM::pushBackInstruction(I->getParent(), ret);
         I->eraseFromParent();
         return;
     }
@@ -67,7 +66,7 @@ void IGC::UnreachableHandling::replaceUnreachable(llvm::UnreachableInst* I)
     auto BB = I->getParent();
     BB->splitBasicBlock(I);
     auto BBWithRet = BasicBlock::Create(F->getContext(), "", F);
-    BBWithRet->getInstList().push_back(ret);
+    IGCLLVM::pushBackInstruction(BBWithRet, ret);
     cast<BranchInst>(BB->getTerminator())->setSuccessor(0, BBWithRet);
     I->eraseFromParent();
 }

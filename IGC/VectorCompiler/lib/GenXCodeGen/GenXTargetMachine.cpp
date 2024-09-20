@@ -382,8 +382,8 @@ GenXTargetMachine::GenXTargetMachine(const Target &T, const Triple &TT,
                                      CodeGenOpt::Level OL, bool Is64Bit,
                                      std::unique_ptr<GenXBackendConfig> BC)
     : IGCLLVM::LLVMTargetMachine(T, getDL(Is64Bit), TT, CPU, FS, Options,
-                                 RM ? RM.getValue() : Reloc::Model::Static,
-                                 CM ? CM.getValue() : CodeModel::Model::Small,
+                                 RM ? IGCLLVM::makeOptional(RM).value() : Reloc::Model::Static,
+                                 CM ? IGCLLVM::makeOptional(CM).value() : CodeModel::Model::Small,
                                  OL),
       TLOF(createTLOF(getTargetTriple())), BC(std::move(BC)), Is64Bit(Is64Bit),
       Subtarget(TT, CPU.str(), FS.str()) {}

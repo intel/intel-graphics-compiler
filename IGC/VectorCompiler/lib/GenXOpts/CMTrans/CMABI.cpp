@@ -804,8 +804,10 @@ void CMABI::diagnoseOverlappingArgs(CallInst *CI)
                                    ->getType()
                                    ->getScalarType()
                                    ->getPrimitiveSizeInBits();
-      int LogRatio = countTrailingZeros(OutElementSize, ZB_Undefined) -
-                     countTrailingZeros(InElementSize, ZB_Undefined);
+
+      int LogRatio = llvm::countTrailingZeros(OutElementSize) -
+                     llvm::countTrailingZeros(InElementSize);
+
       auto OpndEntry = &ValMap[BC->getOperand(0)];
       if (!LogRatio)
         VectorToMerge = OpndEntry;
@@ -1369,7 +1371,7 @@ bool CMLowerVLoadVStore::promoteAllocas(Function &F) {
   bool Modified = false;
 
   SmallVector<AllocaInst *, 8> Allocas;
-  for (auto &Inst : F.front().getInstList()) {
+  for (auto &Inst : F.front()) {
     if (auto AI = dyn_cast<AllocaInst>(&Inst))
       Allocas.push_back(AI);
   }

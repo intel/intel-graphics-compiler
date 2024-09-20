@@ -73,7 +73,7 @@ void CheckInstrTypes::SetLoopFlags(Function& F)
             Loop* L = (*it);
             for (uint i = 0; i < L->getNumBlocks(); i++)
             {
-                g_InstrTypes.numLoopInsts += L->getBlocks()[i]->getInstList().size();
+                g_InstrTypes.numLoopInsts += L->getBlocks()[i]->size();
             }
         }
     }

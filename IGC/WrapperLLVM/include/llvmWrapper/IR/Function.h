@@ -118,7 +118,7 @@ inline auto rend(llvm::Function* pFunc) {
 
 inline void insertBasicBlock(
     llvm::Function* pFunc,
-    llvm::ilist_iterator<llvm::ilist_detail::node_options<llvm::BasicBlock, false, false, void>, false, false> it,
+    llvm::Function::iterator it,
     llvm::BasicBlock* BB) {
 #if LLVM_VERSION_MAJOR < 16
     pFunc->getBasicBlockList().insert(it, BB);

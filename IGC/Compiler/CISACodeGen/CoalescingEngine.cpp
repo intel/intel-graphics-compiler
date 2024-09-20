@@ -1432,11 +1432,10 @@ namespace IGC
 
     void CoalescingEngine::ProcessBlock(llvm::BasicBlock* bb)
     {
-        llvm::BasicBlock::InstListType& instructionList = bb->getInstList();
         llvm::BasicBlock::InstListType::iterator I, E;
 
         //Loop through instructions top to bottom
-        for (I = instructionList.begin(), E = instructionList.end(); I != E; ++I) {
+        for (I = bb->begin(), E = bb->end(); I != E; ++I) {
             llvm::Instruction& inst = (*I);
             auto loopMarker =
                 RLA->GetResourceLoopMarker(&inst);

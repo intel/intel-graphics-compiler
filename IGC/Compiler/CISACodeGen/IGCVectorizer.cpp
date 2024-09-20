@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "IGCVectorizer.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include <llvmWrapper/IR/BasicBlock.h>
 #include <algorithm>
 
 //
@@ -236,7 +237,7 @@ bool IGCVectorizer::handlePHI(VecArr &Slice, Type *VectorType) {
 
     auto BB = ScalarPhi->getParent();
     Phi->setDebugLoc(ScalarPhi->getDebugLoc());
-    BB->getInstList().insert(BB->begin(), Phi);
+    IGCLLVM::pushFrontInstruction(BB, Phi);
     CreatedVectorInstructions.push_back(Phi);
 
     for (auto &El : Slice)

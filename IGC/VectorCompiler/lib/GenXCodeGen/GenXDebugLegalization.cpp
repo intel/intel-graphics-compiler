@@ -32,6 +32,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Pass.h"
 #include "llvm/Support/Debug.h"
 
+#include "llvmWrapper/IR/IntrinsicInst.h"
+
 #define DEBUG_TYPE "GENX_DEBUGLEGALIZATION"
 
 using namespace llvm;
@@ -114,7 +116,7 @@ bool GenXDebugLegalization::removeDIArgList(Function &F) {
     for (auto &I : BB) {
       if (auto *dbgInst = dyn_cast<DbgVariableIntrinsic>(&I)) {
         if (dbgInst->getNumVariableLocationOps() > 1) {
-          dbgInst->setUndef();
+          IGCLLVM::setKillLocation(dbgInst);
           Modified = true;
         }
       }

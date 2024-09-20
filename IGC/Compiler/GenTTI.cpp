@@ -441,7 +441,6 @@ namespace llvm {
         }
 
         llvm::BasicBlock::InstListType::iterator I;
-        llvm::BasicBlock::InstListType& instructionList = L->getBlocks()[0]->getInstList();
         llvm::BasicBlock* loopBlock = L->getBlocks()[0];
         int instCount = std::distance(loopBlock->instructionsWithoutDebug().begin(), loopBlock->instructionsWithoutDebug().end());
 
@@ -475,7 +474,7 @@ namespace llvm {
             return;
         }
 
-        for (I = instructionList.begin(); I != instructionList.end(); I++)
+        for (I = loopBlock->begin(); I != loopBlock->end(); I++)
         {
             if (const auto pIntrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(I))
             {
@@ -612,11 +611,9 @@ namespace llvm {
     }
 
 #if LLVM_VERSION_MAJOR <= 10
-    unsigned GenIntrinsicsTTIImpl::getCallCost(const Function* F, ArrayRef<const Value*> Arguments
-#if LLVM_VERSION_MAJOR >= 9
-        , const User* U
-#endif
-    ) {
+    unsigned GenIntrinsicsTTIImpl::getCallCost(const Function* F,
+        ArrayRef<const Value*> Arguments, const User* U)
+    {
         // The extra cost of speculative execution for math intrinsics
         if (auto *II = dyn_cast_or_null<IntrinsicInst>(U)) {
             if (Intrinsic::ID IID = II->getIntrinsicID()) {
@@ -647,11 +644,7 @@ namespace llvm {
             unsigned FuncSize = countTotalInstructions(F, false);
             return TargetTransformInfo::TCC_Basic * FuncSize;
         }
-        return BaseT::getCallCost(F, Arguments
-#if LLVM_VERSION_MAJOR >= 9
-            , U
-#endif
-        );
+        return BaseT::getCallCost(F, Arguments, U);
     }
 #else
     // [LLVM-UPGRADE] moved from getCallCost to getUserCost
@@ -660,6 +653,7 @@ namespace llvm {
 #if LLVM_VERSION_MAJOR <= 12
     int GenIntrinsicsTTIImpl::getUserCost(const User* U, ArrayRef<const Value*> Operands, TTI::TargetCostKind CostKind)
 #else
+    // TODO: Upon the complete removal of pre-LLVM 14 conditions, move to 'getInstructionCost' per LLVM 16 API
     llvm::InstructionCost GenIntrinsicsTTIImpl::getUserCost(const User* U, ArrayRef<const Value*> Operands, TTI::TargetCostKind CostKind)
 #endif
     {
@@ -697,7 +691,8 @@ namespace llvm {
                 return TargetTransformInfo::TCC_Basic * FuncSize;
             }
         }
-        return BaseT::getUserCost(U, Operands, CostKind);
+
+        return BaseT::getInstructionCost(U, Operands, CostKind);
     }
 #endif
 

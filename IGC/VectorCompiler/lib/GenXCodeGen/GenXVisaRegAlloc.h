@@ -72,7 +72,7 @@ namespace llvm {
     inline static const char *Prefix[] = {"ERR", "V", "A", "P", "S", "T"};
 
     static StringRef categoryToString(vc::RegCategory Category) {
-      if (static_cast<unsigned>(Category) >= array_lengthof(Prefix))
+      if (static_cast<unsigned>(Category) >= std::size(Prefix))
         Category = vc::RegCategory::None;
       return accessContainer(Prefix, Category);
     }

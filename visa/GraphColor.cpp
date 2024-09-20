@@ -2907,7 +2907,7 @@ void Augmentation::populateFuncMaps() {
   instToFunc.resize(kernel.fg.getBBList().back()->back()->getLexicalId() + 1);
   for (auto &func : kernel.fg.sortedFuncTable) {
     for (auto &bb : func->getBBList()) {
-      for (auto *inst : bb->getInstList()) {
+      for (auto *inst : *bb) {
         instToFunc[inst->getLexicalId()] = func;
       }
     }
@@ -5268,7 +5268,7 @@ void Augmentation::discoverArgs(FuncInfo *func) {
 void Augmentation::dumpSortedIntervals() {
   if (kernel.getOption(vISA_DumpProgramWithLexicalId)) {
     for (auto bb : kernel.fg.getBBList()) {
-      for (auto inst : bb->getInstList()) {
+      for (auto inst : *bb) {
         std::cout << inst->getLexicalId() << ":\t";
         inst->print(std::cout);
       }
@@ -6220,7 +6220,7 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic, const RPE *rpe) {
     // gather all instructions with indirect operands
     // for ref count computation once.
     for (auto bb : kernel.fg.getBBList()) {
-      for (auto inst : bb->getInstList()) {
+      for (auto inst : *bb) {
         auto dst = inst->getDst();
         if (dst && dst->isIndirect()) {
           auto pointsTo = liveAnalysis.getPointsToAnalysis().getAllInPointsTo(
@@ -7332,7 +7332,7 @@ void GraphColor::gatherScatterForbiddenWA() {
   // We fix such cases by looking them up and marking upper GRFs
   // as forbidden for allocation.
   for (auto bb : kernel.fg.getBBList()) {
-    for (auto inst : bb->getInstList()) {
+    for (auto inst : *bb) {
       if (!inst->isSend() || inst->getExecSize().value >= 8)
         continue;
 

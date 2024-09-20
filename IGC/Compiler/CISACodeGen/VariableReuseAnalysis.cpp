@@ -1154,7 +1154,7 @@ void VariableReuseAnalysis::InsertElementAliasing(Function* F)
     // Should use F->size() once dead BBs are removed
     auto getNumBBs = [](Function* aF) {
         int32_t i = 1;  // count entry
-        for (BasicBlock &aBB  : aF->getBasicBlockList()) {
+        for (BasicBlock &aBB  : *aF) {
             if (aBB.hasNPredecessors(0)) {
                 continue;
             }

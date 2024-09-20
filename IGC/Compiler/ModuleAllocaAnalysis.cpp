@@ -356,7 +356,7 @@ void ModuleAllocaAnalysis::analyze(Function* F, unsigned& Offset, alignment_t& M
     // Collect allocas.
     SmallVector<AllocaInst*, 8> Allocas;
     for (auto& BB : *F) {
-        for (auto& Inst : BB.getInstList()) {
+        for (auto& Inst : BB) {
             if (AllocaInst* AI = dyn_cast<AllocaInst>(&Inst)) {
                 Allocas.push_back(AI);
             }

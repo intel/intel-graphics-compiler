@@ -48,7 +48,7 @@ class Bale;
 // the input is not a power of 2.
 inline int exactLog2(unsigned Val)
 {
-  unsigned CLZ = countLeadingZeros(Val, ZB_Width);
+  unsigned CLZ = llvm::countLeadingZeros(Val);
   if (CLZ != 32 && 1U << (31 - CLZ) == Val)
     return 31 - CLZ;
   return -1;
@@ -61,7 +61,7 @@ inline int log2(T Val)
 {
   if (Val <= 0)
     return -1;
-  unsigned CLZ = countLeadingZeros((uint32_t)Val, ZB_Width);
+  unsigned CLZ = llvm::countLeadingZeros((uint32_t)Val);
   return 31 - CLZ;
 }
 

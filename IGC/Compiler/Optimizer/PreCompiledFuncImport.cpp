@@ -1024,7 +1024,7 @@ PreCompiledFuncImport::ImportedFunction::ImportedFunction(Function* F)
 {
     // Count number of new instructions added by inlining.
     for (BasicBlock& BB : *F)
-        funcInstructions += BB.getInstList().size();
+        funcInstructions += BB.size();
 
     updateUses();
 

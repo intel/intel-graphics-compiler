@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvmWrapper/IR/InstrTypes.h"
+#include <llvmWrapper/IR/BasicBlock.h>
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -141,8 +142,7 @@ void Legalization::unifyReturnInsts(llvm::Function& F)
     {
         // If the function doesn't return void... add a PHI node to the block...
         PN = PHINode::Create(F.getReturnType(), ReturningBlocks.size(),
-            "UnifiedRetVal");
-        NewRetBlock->getInstList().push_back(PN);
+                             "UnifiedRetVal", PN);
         ReturnInst::Create(F.getContext(), PN, NewRetBlock);
     }
 
@@ -155,7 +155,7 @@ void Legalization::unifyReturnInsts(llvm::Function& F)
         if (PN)
             PN->addIncoming(BB->getTerminator()->getOperand(0), BB);
 
-        BB->getInstList().pop_back(); // Remove the return inst.
+        IGCLLVM::popBackInstruction(BB); // Remove the return inst.
         BranchInst::Create(NewRetBlock, BB);
     }
 }

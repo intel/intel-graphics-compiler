@@ -74,6 +74,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvmWrapper/IR/IntrinsicInst.h"
+#include <llvmWrapper/IR/BasicBlock.h>
 #include "Probe/Assertion.h"
 
 #define DEBUG_TYPE "GENX_TIDYCONTROLFLOW"
@@ -314,7 +315,7 @@ void GenXTidyControlFlow::fixReturns(Function *F) {
       // If the function doesn't return void, add a PHI node to the block.
       PN = PHINode::Create(F->getReturnType(), ReturningBlocks.size(),
                            "UnifiedRetVal");
-      NewRetBlock->getInstList().push_back(PN);
+      IGCLLVM::pushBackInstruction(NewRetBlock, PN);
       ReturnInst::Create(F->getContext(), PN, NewRetBlock);
     }
 
@@ -332,7 +333,7 @@ void GenXTidyControlFlow::fixReturns(Function *F) {
       if (PN)
         PN->addIncoming(BB->getTerminator()->getOperand(0), BB);
 
-      BB->getInstList().pop_back(); // Remove the return inst.
+      IGCLLVM::popBackInstruction(BB); // Remove the return inst.
       BranchInst::Create(NewRetBlock, BB);
     }
     Modified = true;
