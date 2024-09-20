@@ -2024,19 +2024,19 @@ void SaveRestoreManager::addInst(G4_INST *inst) {
   if (inst->isSend()) {
     auto *sendInst = inst->asSendInst();
     if (GlobalRA::LSCUsesImmOff(*kernel->fg.builder) &&
-        sendInst->getMsgDesc()->isLSC() && sendInst->getMsgDescRaw() &&
-        sendInst->getMsgDescRaw()->getLscAddrType() == LSC_ADDR_TYPE_SS &&
+        sendInst->getMsgDesc()->isLSC() &&
+        sendInst->getMsgDesc()->isScratch() &&
         (inst->getSrc(0)->getLinearizedStart() /
          builder.numEltPerGRF<Type_UB>()) ==
             kernel->stackCall.getSpillHeaderGRF()) {
       // Spill offset is inlined in LSC message as:
       // GlobalRA::SPILL_FILL_IMMOFF_MAX + Inlined offset in LSC
-      auto maxSpillFillImmOffMax = GlobalRA::SPILL_FILL_IMMOFF_MAX;
+      auto bias = GlobalRA::SPILL_FILL_IMMOFF_MAX;
 
       auto msgDesc = inst->asSendInst()->getMsgDesc();
       auto off = msgDesc->getOffset();
       if (off) {
-        memOffset = (maxSpillFillImmOffMax + off.value().immOff);
+        memOffset = (bias + off.value().immOff);
         absOffset = false;
         regWithMemOffset = inst->getSrc(0)->getLinearizedStart() /
                            builder.numEltPerGRF<Type_UB>();
