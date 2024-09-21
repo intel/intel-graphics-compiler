@@ -84,6 +84,7 @@ private:
 
     CodeGenContext*    m_CGCtx = nullptr;
     DominatorTree*     m_DT    = nullptr;
+    LoopInfo*          m_LI    = nullptr;
     PostDominatorTree* m_PDT   = nullptr;
 
     std::vector<std::tuple<RayQueryCheckIntrinsic*, RayQueryReleaseIntrinsic*>> m_RayQueryCheckReleasePairs;
@@ -109,6 +110,7 @@ bool DynamicRayManagementPass::runOnFunction(Function& F)
     m_CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     m_DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
     m_PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
+    m_LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
 
     bool changed = false;
 
@@ -322,16 +324,14 @@ bool DynamicRayManagementPass::TryProceedBasedApproach(Function& F)
     if (allProceeds.empty())
         return false;
 
-    auto* LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
-
-    if (LI->empty())
+    if (m_LI->empty())
         return false;
 
 
     // we iterate over all loops from outermost to innermost
     // if we find a loop, we skip all loops that are nested in it
     SmallPtrSet<Loop*, 4> loopsToIgnore;
-    for (auto& loop : LI->getLoopsInPreorder())
+    for (auto& loop : m_LI->getLoopsInPreorder())
     {
         if (loopsToIgnore.contains(loop))
             continue;
@@ -593,10 +593,8 @@ bool DynamicRayManagementPass::AddDynamicRayManagement(Function& F)
     {
         if (AllocateRayQueryIntrinsic* allocateRayQueryIntrinsic = dyn_cast<AllocateRayQueryIntrinsic>(&I))
         {
-            if (allocateRayQueryIntrinsic->hasNUses(0))
-            {
+            if (allocateRayQueryIntrinsic->use_empty())
                 continue;
-            }
 
             allocateRayQueries.push_back(allocateRayQueryIntrinsic);
 
@@ -858,7 +856,12 @@ bool DynamicRayManagementPass::AddDynamicRayManagement(Function& F)
 
         // Create new BasicBlock, which will post dominate only
         // Blocks related to RayQuery.
-        BasicBlock* blockWhichPostDominatesOnlyRayQueryUsers = llvm::SplitBlockPredecessors(commonPostDominatorForRayQueryUsers, blocksToBranchToNewPostDominator, "blockWhichPostDominatesOnlyRayQueryUsers", m_DT);
+        BasicBlock* blockWhichPostDominatesOnlyRayQueryUsers = llvm::SplitBlockPredecessors(
+            commonPostDominatorForRayQueryUsers,
+            blocksToBranchToNewPostDominator,
+            "blockWhichPostDominatesOnlyRayQueryUsers",
+            m_DT,
+            m_LI);
 
         // Insert an unconditional Branch from new blockWhichPostDominatesOnlyRayQueryUsers to
         // commonPostDominatorForRayQueryUsers, and set insert point before the Branch,
@@ -874,8 +877,11 @@ bool DynamicRayManagementPass::AddDynamicRayManagement(Function& F)
     // RayQueryCheck-Release pair identification.
     RayQueryReleaseIntrinsic* rayQueryRelease = builder.CreateRayQueryReleaseIntrinsic();
 
-    // There is a possibility that the check is no longer post-dominated by the release now (because release insertion logic changes the domtrees)
-    // If that's the case, iterate over descendants of the check and find a block thats both dominated by the current check and postdominated by the current release
+    // There is a possibility that the check is no longer post-dominated by the
+    // release now (because release insertion logic changes the control flow).
+    // If that's the case, iterate over descendants of the check and find a
+    // block that's both dominated by the current check and postdominated by the
+    // current release.
     if (!m_PDT->dominates(rayQueryRelease->getParent(), rayQueryCheck->getParent()))
     {
         for (auto* node : llvm::breadth_first(m_DT->getNode(rayQueryCheck->getParent())))
@@ -897,6 +903,52 @@ bool DynamicRayManagementPass::AddDynamicRayManagement(Function& F)
         }
     }
 
+    // The above check attempts to sink the check such that the release still
+    // post-dominates it. However, this may cause the check to no longer
+    // dominate the release. If that's the case, we do a final fixup where
+    // we iteratively hoist the check and sink the release until they are
+    // guaranteed to to maintain the dom/post-dom relation.
+    auto getIDom = [&](auto *DomTree, const BasicBlock* BB) -> BasicBlock*
+    {
+        auto* Node = DomTree->getNode(BB);
+        IGC_ASSERT(Node);
+        auto* IDom = Node->getIDom();
+        IGC_ASSERT(IDom);
+        return IDom->getBlock();
+    };
+
+    auto isBalanced = [&](BasicBlock* CheckBB, BasicBlock* ReleaseBB) {
+        return m_DT->dominates(CheckBB, ReleaseBB) &&
+               m_PDT->dominates(ReleaseBB, CheckBB) &&
+               m_LI->getLoopFor(CheckBB) == m_LI->getLoopFor(ReleaseBB);
+    };
+
+    auto *CheckBB = rayQueryCheck->getParent();
+    auto *ReleaseBB = rayQueryRelease->getParent();
+
+    // Check that check and release are connected to the CFG. If not, domination
+    // checks can be surprising because everything dominates unreachable blocks.
+    if (!m_DT->isReachableFromEntry(CheckBB) ||
+        !m_DT->isReachableFromEntry(ReleaseBB))
+    {
+        rayQueryCheck->eraseFromParent();
+        rayQueryRelease->eraseFromParent();
+        return true;
+    }
+
+    while (!isBalanced(CheckBB, ReleaseBB))
+    {
+        while (!m_DT->dominates(CheckBB, ReleaseBB))
+            CheckBB = getIDom(m_DT, CheckBB);
+
+        while (!m_PDT->dominates(ReleaseBB, CheckBB))
+            ReleaseBB = getIDom(m_PDT, ReleaseBB);
+    }
+    if (CheckBB != rayQueryCheck->getParent())
+        rayQueryCheck->moveBefore(CheckBB->getTerminator());
+    if (ReleaseBB != rayQueryRelease->getParent())
+        rayQueryRelease->moveBefore(&*ReleaseBB->getFirstInsertionPt());
+
     // Add created RayQueryCheck-Release to the list, which
     // will be used during complex control flow handling.
     m_RayQueryCheckReleasePairs.push_back(std::make_tuple(rayQueryCheck, rayQueryRelease));
@@ -913,78 +965,80 @@ void DynamicRayManagementPass::HandleComplexControlFlow(Function& F)
     // and GenISA_RayQueryCheck after to avoid deadlocks.
     for (Instruction& I : instructions(F))
     {
-        if (requiresSplittingCheckReleaseRegion(I))
+        if (!requiresSplittingCheckReleaseRegion(I))
+            continue;
+        // Look through all RaytQueryCheck-Release pairs, and check if the barrier/call
+        // instruction is within any of pairs.
+        for (uint32_t rayQueryCheckReleasePairIndex = 0; rayQueryCheckReleasePairIndex < m_RayQueryCheckReleasePairs.size(); ++rayQueryCheckReleasePairIndex)
         {
-            // Look through all RaytQueryCheck-Release pairs, and check if the barrier/call
-            // instruction is within any of pairs.
-            for (uint32_t rayQueryCheckReleasePairIndex = 0; rayQueryCheckReleasePairIndex < m_RayQueryCheckReleasePairs.size(); ++rayQueryCheckReleasePairIndex)
+            auto [rayQueryCheckIntrinsic, rayQueryReleaseIntrinsic] = m_RayQueryCheckReleasePairs[rayQueryCheckReleasePairIndex];
+
+            if (m_DT->dominates(rayQueryCheckIntrinsic, &I) &&
+#if LLVM_VERSION_MAJOR <= 9
+                PDT_dominates(*m_PDT, rayQueryReleaseIntrinsic, &I)
+#else
+                m_PDT->dominates(rayQueryReleaseIntrinsic, &I)
+#endif
+                )
             {
-                auto [rayQueryCheckIntrinsic, rayQueryReleaseIntrinsic] = m_RayQueryCheckReleasePairs[rayQueryCheckReleasePairIndex];
-
-                BasicBlock* insertBlock = I.getParent();
-
-                if (m_DT->dominates(rayQueryCheckIntrinsic->getParent(), insertBlock) &&
-                    m_PDT->dominates(rayQueryReleaseIntrinsic->getParent(), insertBlock))
+                // If the DisableRayQueryDynamicRayManagementMechanismForExternalFunctionsCalls flag
+                // is enabled, remove Check/Release pairs which encapsulates any external function call.
+                if (IGC_IS_FLAG_ENABLED(DisableRayQueryDynamicRayManagementMechanismForExternalFunctionsCalls) &&
+                    isa<ContinuationHLIntrinsic>(&I))
                 {
-                    // If the DisableRayQueryDynamicRayManagementMechanismForExternalFunctionsCalls flag
-                    // is enabled, remove Check/Release pairs which encapsulates any external function call.
-                    if (IGC_IS_FLAG_ENABLED(DisableRayQueryDynamicRayManagementMechanismForExternalFunctionsCalls) &&
-                        isa<ContinuationHLIntrinsic>(&I))
-                    {
-                        rayQueryReleaseIntrinsic->eraseFromParent();
-                        rayQueryCheckIntrinsic->eraseFromParent();
+                    rayQueryReleaseIntrinsic->eraseFromParent();
+                    rayQueryCheckIntrinsic->eraseFromParent();
 
-                        // Remove the pair from the vector in case more Barriers or External
-                        // calls are between them.
-                        m_RayQueryCheckReleasePairs.erase(m_RayQueryCheckReleasePairs.begin() + rayQueryCheckReleasePairIndex);
-
-                        break;
-                    }
-
-                    // If the DisableRayQueryDynamicRayManagementMechanismForBarriers flag
-                    // is enabled, remove Check/Release pairs which encapsulates any Barrier.
-                    if (IGC_IS_FLAG_ENABLED(DisableRayQueryDynamicRayManagementMechanismForBarriers) &&
-                        isBarrierIntrinsic(&I))
-                    {
-                        rayQueryReleaseIntrinsic->eraseFromParent();
-                        rayQueryCheckIntrinsic->eraseFromParent();
-
-                        // Remove the pair from the vector in case more Barriers or External
-                        // calls are between them.
-                        m_RayQueryCheckReleasePairs.erase(m_RayQueryCheckReleasePairs.begin() + rayQueryCheckReleasePairIndex);
-
-                        break;
-                    }
-
-                    // The barrier/call instruction is within the RayQueryCheck-Release pair.
-                    // Insert RayQueryRelease before it, and RaytQueryCheck after, to re-enable
-                    // Dynamic Ray Management.
-                    builder.SetInsertPoint(&I);
-
-                    RayQueryReleaseIntrinsic* rayQueryRelease = builder.CreateRayQueryReleaseIntrinsic();
-
-                    builder.SetInsertPoint(I.getNextNode());
-
-                    RayQueryCheckIntrinsic* rayQueryCheck = builder.CreateRayQueryCheckIntrinsic();
-
-                    // Add new pair to the list.
-                    m_RayQueryCheckReleasePairs.push_back(std::make_tuple(rayQueryCheck, rayQueryRelease));
-
-                    // TODO: Make sure this is correct for the case:
-                    //
-                    // RayQueryCheck()
-                    //
-                    // if(non_uniform)
-                    // {
-                    //      TraceRay()
-                    // }
-                    //
-                    // barrier()
-                    //
-                    // RayQueryRelease()
+                    // Remove the pair from the vector in case more Barriers or External
+                    // calls are between them.
+                    m_RayQueryCheckReleasePairs.erase(m_RayQueryCheckReleasePairs.begin() + rayQueryCheckReleasePairIndex);
 
                     break;
                 }
+
+                // If the DisableRayQueryDynamicRayManagementMechanismForBarriers flag
+                // is enabled, remove Check/Release pairs which encapsulates any Barrier.
+                if (IGC_IS_FLAG_ENABLED(DisableRayQueryDynamicRayManagementMechanismForBarriers) &&
+                    isBarrierIntrinsic(&I))
+                {
+                    rayQueryReleaseIntrinsic->eraseFromParent();
+                    rayQueryCheckIntrinsic->eraseFromParent();
+
+                    // Remove the pair from the vector in case more Barriers or External
+                    // calls are between them.
+                    m_RayQueryCheckReleasePairs.erase(m_RayQueryCheckReleasePairs.begin() + rayQueryCheckReleasePairIndex);
+
+                    break;
+                }
+
+                // The barrier/call instruction is within the RayQueryCheck-Release pair.
+                // Insert RayQueryRelease before it, and RaytQueryCheck after, to re-enable
+                // Dynamic Ray Management.
+                builder.SetInsertPoint(&I);
+
+                RayQueryReleaseIntrinsic* rayQueryRelease = builder.CreateRayQueryReleaseIntrinsic();
+
+                builder.SetInsertPoint(I.getNextNode());
+
+                RayQueryCheckIntrinsic* rayQueryCheck = builder.CreateRayQueryCheckIntrinsic();
+
+                // Add new pair to the list.
+                m_RayQueryCheckReleasePairs.push_back(std::make_tuple(rayQueryCheck, rayQueryRelease));
+
+                // TODO: Make sure this is correct for the case:
+                //
+                // RayQueryCheck()
+                //
+                // if(non_uniform)
+                // {
+                //      TraceRay()
+                // }
+                //
+                // barrier()
+                //
+                // RayQueryRelease()
+
+                break;
             }
         }
     }
@@ -1025,10 +1079,8 @@ void DynamicRayManagementPass::HoistBeforeMostInnerLoop(
     BasicBlock*& dominatorBasicBlock,
     BasicBlock*& commonPostDominatorForRayQueryUsers)
 {
-    LoopInfo* LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
-
-    Loop* loopForDominator = LI->getLoopFor(dominatorBasicBlock);
-    Loop* loopForPostDominator = LI->getLoopFor(commonPostDominatorForRayQueryUsers);
+    Loop* loopForDominator = m_LI->getLoopFor(dominatorBasicBlock);
+    Loop* loopForPostDominator = m_LI->getLoopFor(commonPostDominatorForRayQueryUsers);
     Loop* currentLoop = nullptr;
 
     // If the PostDominator is not in the loop, there is nothing to be hoisted.
@@ -1091,10 +1143,8 @@ void DynamicRayManagementPass::HoistBeforeMostOuterLoop(
     BasicBlock*& dominatorBasicBlock,
     BasicBlock*& commonPostDominatorForRayQueryUsers)
 {
-    LoopInfo* LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
-
-    Loop* loopForDominator = LI->getLoopFor(dominatorBasicBlock);
-    Loop* loopForPostDominator = LI->getLoopFor(commonPostDominatorForRayQueryUsers);
+    Loop* loopForDominator = m_LI->getLoopFor(dominatorBasicBlock);
+    Loop* loopForPostDominator = m_LI->getLoopFor(commonPostDominatorForRayQueryUsers);
 
     // Move Dominator outside the nested loops
     // to keep the LSC locked for all the RayQuery objects lifetime.
