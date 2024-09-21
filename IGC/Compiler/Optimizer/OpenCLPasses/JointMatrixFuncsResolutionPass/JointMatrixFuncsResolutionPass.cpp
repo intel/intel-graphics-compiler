@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2024 Intel Corporation
+Copyright (C) 2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -25,11 +25,12 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/PostOrderIterator.h>
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DIBuilder.h"
+#include "llvm/Support/Debug.h"
+
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include <llvmWrapper/ADT/Optional.h>
 #include "llvmWrapper/IR/Value.h"
 #include <llvmWrapper/Analysis/ValueTracking.h>
-
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Module.h"
 #include "llvmWrapper/Support/Alignment.h"
@@ -50,6 +51,7 @@ char JointMatrixFuncsResolutionPass::ID = 0;
 #define PASS_DESC     "Lowering of INTEL Joint Matrix SPIR-V instructions"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
+#define DEBUG_TYPE "joint-matrix-resolution"
 
 IGC_INITIALIZE_PASS_BEGIN(JointMatrixFuncsResolutionPass, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
@@ -92,51 +94,136 @@ JointMatrixFuncsResolutionPass::JointMatrixFuncsResolutionPass() : ModulePass(ID
     initializeJointMatrixFuncsResolutionPassPass(*PassRegistry::getPassRegistry());
 }
 
+// Static helper functions for type traversal
+static bool isMatrixType(const Type *type)
+{
+    // TODO: isOpaquePointerTy check here and below in other places will skip resolving of matrix types, when opaque pointers are enabled.
+    // As soon as target extension types are available in LLVM16, replace this check with target extension type check.
+    if (!type->isPointerTy() || IGCLLVM::isOpaquePointerTy(type))
+        return false;
+
+    Type *eltType = IGCLLVM::getNonOpaquePtrEltTy(type);
+    if (!eltType || !eltType->isStructTy())
+        return false;
+
+    if (cast<StructType>(eltType)->isLiteral())
+        return false;
+
+    StringRef name = eltType->getStructName();
+    if (name.startswith("intel.joint_matrix") || name.startswith("spirv.JointMatrixINTEL._")
+        || name.startswith("spirv.CooperativeMatrixKHR._"))
+        return true;
+
+    return false;
+}
+
+static void PreOrderTypeTraversal(Type *t, std::unordered_set<Type *> &set)
+{
+    if (set.find(t) != set.end())
+        return;
+
+    if (StructType *ST = dyn_cast<StructType>(t))
+    {
+        set.insert(t);
+        for (auto subT : ST->elements())
+            PreOrderTypeTraversal(subT, set);
+        return;
+    }
+
+    if (ArrayType *AT = dyn_cast<ArrayType>(t))
+    {
+        set.insert(t);
+        return PreOrderTypeTraversal(AT->getElementType(), set);
+    }
+
+    if (PointerType *PT = dyn_cast<PointerType>(t))
+    {
+        set.insert(t);
+        if (IGCLLVM::isOpaquePointerTy(PT))
+            return;
+        return PreOrderTypeTraversal(IGCLLVM::getNonOpaquePtrEltTy(PT), set);
+    }
+
+    return;
+}
+
+static Type* getContainedMatrixType(Type *root)
+{
+    std::unordered_set<Type *> set;
+    PreOrderTypeTraversal(root, set);
+
+    for (auto &t : set)
+    {
+        if (isMatrixType(t))
+            return t;
+    }
+
+    return nullptr;
+}
+
+static bool isOrContainsMatrixType(Type *root)
+{
+    return getContainedMatrixType(root) != nullptr;
+}
+
+static bool isAnyFunctionArgMatrixType(Function* F)
+{
+    if (!F)
+        return false;
+
+    for (Argument &arg : F->args()) {
+        if (isOrContainsMatrixType(arg.getType()))
+            return true;
+    }
+
+    return false;
+}
+
+template <typename F>
+static bool isAnyOperand(const User& U, F&& lambda)
+{
+    return llvm::any_of(U.operands(), [&lambda](const Use& op) {
+        return lambda(op->getType());
+    });
+}
+
+// Member functions
 bool JointMatrixFuncsResolutionPass::runOnModule(Module &M)
 {
     m_Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     m_mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    FunctionsMap.clear();
-    ResolvedFunctions.clear();
+    FunctionEntryMap.clear();
+    ResolvedFuncSignatures.clear();
+    NewFuncWithResolvedSignatures.clear();
     ResolvedTypes.clear();
     Changed = false;
 
     for (auto &F : M) {
         if (!F.isDeclaration())
             continue;
-        StringRef funcName = F.getName();
-        if (funcName.contains(AccessChainPrefx))
-            preprocessAccessChain(&F);
+
+        if (F.getName().contains(AccessChainPrefx))
+            Changed |= preprocessAccessChain(&F);
     }
 
     for (auto& F : M) {
-        bool stop = false;
-        for (auto& entry : ResolvedFunctions)
-        {
-            if (entry.second == &F)
-            {
-                stop = true;
-                break;
-            }
-        }
-
-        if (stop)
-            break;
-
-        auto argsWithMatrixType = GetFunctionArgsWithMatrixType(&F);
-
-        if (argsWithMatrixType.size() > 0) {
-            ResolveFunctionSignature(&F);
+        if (F.isDeclaration() || NewFuncWithResolvedSignatures.count(&F) > 0)
+            continue;
+        if (isAnyFunctionArgMatrixType(&F)) {
+            LLVM_DEBUG(dbgs() << "\nRESOLVE FUNC: " << F.getName() << "\n");
+            clearFunctionCache();
+            Changed |= ResolveFunction(&F);
         }
     }
 
     for (auto &F : M)
     {
-        if (F.isDeclaration())
+        if (F.isDeclaration() || ResolvedFuncSignatures.count(&F) > 0 || NewFuncWithResolvedSignatures.count(&F) > 0)
             continue;
 
-        if (runOnFunction(F))
-            Changed = true;
+        LLVM_DEBUG(dbgs() << "\nRUN ON FUNC:\n" << F);
+        clearFunctionCache();
+        Changed |= runOnFunction(F);
     }
 
     return Changed;
@@ -149,12 +236,15 @@ bool JointMatrixFuncsResolutionPass::runOnModule(Module &M)
 // not supported and behavior is undefined.
 Function *JointMatrixFuncsResolutionPass::getEntryFunction(Function *F)
 {
-    if (FunctionsMap.count(F) > 0)
-        return FunctionsMap[F];
+    if (FunctionEntryMap.count(F) > 0) {
+        LLVM_DEBUG(dbgs() << " - FOUND CACHED ENTRY FUNCTION: " << FunctionEntryMap[F]->getName() << "\n");
+        return FunctionEntryMap[F];
+    }
 
     if (isEntryFunc(m_mdUtils, F))
     {
-        FunctionsMap[F] = F;
+        FunctionEntryMap[F] = F;
+        LLVM_DEBUG(dbgs() << " - FUNCTION IS ENTRY FUNCTION\n");
         return F;
     }
 
@@ -173,12 +263,12 @@ Function *JointMatrixFuncsResolutionPass::getEntryFunction(Function *F)
                 continue;
 
             auto parentFunction = CI->getFunction();
-
+            LLVM_DEBUG(dbgs() << " - CHECK PARENT FUNCTION: " << parentFunction->getName() << "\n");
             Function* entryFunc = nullptr;
 
-            if (FunctionsMap.count(parentFunction) > 0)
+            if (FunctionEntryMap.count(parentFunction) > 0)
             {
-                entryFunc = FunctionsMap[parentFunction];
+                entryFunc = FunctionEntryMap[parentFunction];
             }
             else if (isEntryFunc(m_mdUtils, parentFunction))
             {
@@ -191,12 +281,14 @@ Function *JointMatrixFuncsResolutionPass::getEntryFunction(Function *F)
                 continue;
             }
 
-            FunctionsMap[curFunc] = parentFunction;
-            return parentFunction;
+            FunctionEntryMap[curFunc] = entryFunc;
+            LLVM_DEBUG(dbgs() << " - FOUND ENTRY FUNCTION: " << entryFunc->getName() << "\n");
+            return entryFunc;
         }
     }
 
-    FunctionsMap[F] = nullptr;
+    FunctionEntryMap[F] = nullptr;
+    LLVM_DEBUG(dbgs() << " - NOT FOUND ENTRY FUNCTION\n");
     return nullptr;
 }
 
@@ -321,17 +413,16 @@ void JointMatrixFuncsResolutionPass::ResolveSIMDSize(Function *F)
     m_Ctx->getModuleMetaData()->csInfo.forcedSIMDSize = (unsigned char)m_SIMDSize;
 }
 
-bool JointMatrixFuncsResolutionPass::runOnFunction(Function& F)
-{
+void JointMatrixFuncsResolutionPass::clearFunctionCache() {
     PlaceholderInstructions.clear();
     ResolvedValues.clear();
     InstsToErase.clear();
     MatrixAllocas.clear();
     m_SIMDSize = 0;
+}
 
-    if (ResolvedFunctions.count(&F) > 0)
-        return false;
-
+bool JointMatrixFuncsResolutionPass::runOnFunction(Function& F)
+{
     // Use reverse post order traversal to reduce level or recursion.
     ReversePostOrderTraversal<Function *> RPOT(&F);
     for (BasicBlock *BB : RPOT)
@@ -904,6 +995,7 @@ bool JointMatrixFuncsResolutionPass::parseMatrixTypeNameLegacy(const Type *opaqu
         offset += sizeof "intel.joint_matrix_acc_";
     } else {
         std::string msg = "Unexpected Joint Matrix type name: '" + name.str() + "', unknown layout.";
+        LLVM_DEBUG(dbgs() << msg << "\n");
         m_Ctx->EmitError(msg.c_str(), nullptr);
         return false;
     }
@@ -955,6 +1047,7 @@ bool JointMatrixFuncsResolutionPass::ParseMatrixTypeName(Type *opaqueType, Joint
     if (!IsJointMatrix && !name.consume_front("spirv.CooperativeMatrixKHR._")) {
         std::string msg = "Unexpected Matrix type name: '"
                         + fullName.str() + "', unknown prefix.";
+        LLVM_DEBUG(dbgs() << msg << "\n");
         m_Ctx->EmitError(msg.c_str(), nullptr);
         return false;
     }
@@ -977,6 +1070,7 @@ bool JointMatrixFuncsResolutionPass::ParseMatrixTypeName(Type *opaqueType, Joint
     } else {
         std::string msg = "Unexpected Matrix type name: '"
                         + fullName.str() + "', unknown element type.";
+        LLVM_DEBUG(dbgs() << msg << "\n");
         m_Ctx->EmitError(msg.c_str(), nullptr);
         return false;
     }
@@ -1033,77 +1127,11 @@ bool JointMatrixFuncsResolutionPass::ParseMatrixTypeName(Type *opaqueType, Joint
     } else {
         std::string msg = "Unexpected Matrix type name: '"
                         + fullName.str() + "', unknown use type.";
+        LLVM_DEBUG(dbgs() << msg << "\n");
         m_Ctx->EmitError(msg.c_str(), nullptr);
         return false;
     }
     return true;
-}
-
-static bool isMatrixType(const Type *type)
-{
-    if (!type->isPointerTy())
-        return false;
-
-    Type *eltType = IGCLLVM::getNonOpaquePtrEltTy(type);
-    if (!eltType || !eltType->isStructTy())
-        return false;
-
-    if (cast<StructType>(eltType)->isLiteral())
-        return false;
-
-    StringRef name = eltType->getStructName();
-    if (name.startswith("intel.joint_matrix") || name.startswith("spirv.JointMatrixINTEL._")
-        || name.startswith("spirv.CooperativeMatrixKHR._"))
-        return true;
-
-    return false;
-}
-
-static void PreOrderTypeTraversal(Type *t, std::unordered_set<Type *> &set)
-{
-    if (set.find(t) != set.end())
-        return;
-
-    if (StructType *ST = dyn_cast<StructType>(t))
-    {
-        set.insert(t);
-        for (auto subT : ST->elements())
-            PreOrderTypeTraversal(subT, set);
-        return;
-    }
-
-    if (ArrayType *AT = dyn_cast<ArrayType>(t))
-    {
-        set.insert(t);
-        return PreOrderTypeTraversal(AT->getElementType(), set);
-    }
-
-    if (PointerType *PT = dyn_cast<PointerType>(t))
-    {
-        set.insert(t);
-        return PreOrderTypeTraversal(IGCLLVM::getNonOpaquePtrEltTy(PT), set);
-    }
-
-    return;
-}
-
-static Type* getContainedMatrixType(Type *root)
-{
-    std::unordered_set<Type *> set;
-    PreOrderTypeTraversal(root, set);
-
-    for (auto &t : set)
-    {
-        if (isMatrixType(t))
-            return t;
-    }
-
-    return nullptr;
-}
-
-static bool isOrContainsMatrixType(Type *root)
-{
-    return getContainedMatrixType(root) != nullptr;
 }
 
 // As both float and tf32 types are represented as float, the TF32 type info
@@ -1322,6 +1350,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolvePrefetch(CallInst *CI)
 template <bool IsJointMatrix, bool IsChecked>
 Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
 {
+    LLVM_DEBUG(dbgs() << "   -- RESOLVE LOAD: " << *CI << "\n");
     using OpVariant = typename std::conditional_t<IsJointMatrix,
         std::conditional_t<IsChecked, JointMatrix::LoadChecked::Op, JointMatrix::Load::Op>,
         CoopMatrix::Load::Op>;
@@ -1385,6 +1414,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
 template <bool IsJointMatrix, bool IsChecked>
 Instruction *JointMatrixFuncsResolutionPass::ResolveStore(CallInst *CI)
 {
+    LLVM_DEBUG(dbgs() << "   -- RESOLVE STORE: " << *CI << "\n");
     using OpVariant = typename std::conditional_t<IsJointMatrix,
         std::conditional_t<IsChecked, JointMatrix::StoreChecked::Op, JointMatrix::Store::Op>,
         CoopMatrix::Store::Op>;
@@ -1823,6 +1853,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveFillChecked(CallInst *CI)
 }
 
 Value *JointMatrixFuncsResolutionPass::ResolveWILength(CallInst *CI) {
+    LLVM_DEBUG(dbgs() << "   -- RESOLVE WI LENGTH: " << *CI << "\n");
     JointMatrixTypeDescription desc;
     ResolveType(CI->getArgOperand(0)->getType(), &desc);
 
@@ -1947,6 +1978,8 @@ Value *JointMatrixFuncsResolutionPass::getAcc2x64xFloatElementPtr(CallInst *CI, 
 }
 
 Value *JointMatrixFuncsResolutionPass::ResolveSliceInsert(CallInst *CI) {
+    LLVM_DEBUG(dbgs() << "   -- RESOLVE SLICE INSERT: " << *CI << "\n");
+
     Value *matrix = Resolve(CI->getArgOperand(0));
     Value *component = CI->getArgOperand(1);
     Value *index = CI->getArgOperand(2);
@@ -1991,6 +2024,7 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceInsert(CallInst *CI) {
 }
 
 Value *JointMatrixFuncsResolutionPass::ResolveSliceExtract(CallInst *CI) {
+    LLVM_DEBUG(dbgs() << "   -- RESOLVE SLICE EXTRACT: " << *CI << "\n");
     Value *matrix = Resolve(CI->getArgOperand(0));
     Value *index = CI->getArgOperand(1);
 
@@ -2010,9 +2044,8 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceExtract(CallInst *CI) {
     }
 
     // unpack element we need from packed value
-    if (desc.bitWidth != desc.contribBitWidth) {
+    if (desc.bitWidth != desc.contribBitWidth)
         element = unpackElementFromPackedValue(&builder, index, element, desc.contribBitWidth, desc.bitWidth);
-    }
 
     // We need the bitcast, e.g. for half, as the function call that is
     // being replaced has a half return type and the vectorElementType is i16
@@ -2028,7 +2061,7 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceExtract(CallInst *CI) {
     return element;
 }
 
-void JointMatrixFuncsResolutionPass::preprocessAccessChain(Function *F) {
+bool JointMatrixFuncsResolutionPass::preprocessAccessChain(Function *F) {
     // We could resolve __spirv_AccessChain call, but apparently it's easier
     // and more effecient to preprocess it and map on VectorInsertDynamic
     // and VectorExtractDynamic here, before resolving and substituting matrix
@@ -2045,6 +2078,11 @@ void JointMatrixFuncsResolutionPass::preprocessAccessChain(Function *F) {
             toErase.push_back(CI);
             continue;
         }
+
+        if(IGCLLVM::isOpaquePointerTy(CI->getArgOperand(0)->getType()))
+            continue;
+
+        LLVM_DEBUG(dbgs() << " - PREPROCESS ACCESS CHAIN: " << *CI << "\n");
 
         Type *chainBaseTy =
             IGCLLVM::getNonOpaquePtrEltTy(CI->getArgOperand(0)->getType());
@@ -2136,6 +2174,8 @@ void JointMatrixFuncsResolutionPass::preprocessAccessChain(Function *F) {
     for (Instruction *I : toErase) {
         I->eraseFromParent();
     }
+
+    return !replaces.empty() || !toErase.empty();
 }
 
 void JointMatrixFuncsResolutionPass::InsertPlaceholder(Value *v) {
@@ -2143,6 +2183,7 @@ void JointMatrixFuncsResolutionPass::InsertPlaceholder(Value *v) {
         return;
     }
 
+    LLVM_DEBUG(dbgs() << "   -- INSERT PLACEHOLDER FOR: " << *v << "\n");
     Type *type = v->getType();
     if (type->isPointerTy()) {
         type = ResolveTypes(v->getType());
@@ -2160,6 +2201,7 @@ void JointMatrixFuncsResolutionPass::InsertPlaceholder(Value *v) {
     if (!type->isArrayTy()) {
         /* Using bit-casts as placeholder values. Undefs of each type are unique per
          * module and cannot be used as unique placeholders. */
+        LLVM_DEBUG(dbgs() << "   -- CREATE UNDEF BITCAST TO: " << *type << "\n");
         placeholder =
             BitCastInst::Create(Instruction::BitCast, UndefValue::get(type),
                                 type, "tmp.value", predecesor);
@@ -2172,9 +2214,11 @@ void JointMatrixFuncsResolutionPass::InsertPlaceholder(Value *v) {
     }
     ResolvedValues[v] = placeholder;
     PlaceholderInstructions[v] = placeholder;
+    LLVM_DEBUG(dbgs() << "   -- PLACEHOLDER: " << *placeholder << "\n");
 }
 
 Value *JointMatrixFuncsResolutionPass::ResolveCall(CallInst *CI) {
+    LLVM_DEBUG(dbgs() << "   -- RESOLVE CALL: " << *CI << "\n");
     Function* func = CI->getCalledFunction();
     IGC_ASSERT_MESSAGE(func, "Unexpected missing function.");
     if (!func)
@@ -2256,6 +2300,7 @@ void JointMatrixFuncsResolutionPass::CacheResolvedValue(Value *oldValue, Value *
     }
 
     ResolvedValues[oldValue] = newValue;
+    LLVM_DEBUG(dbgs() << " - RESOLVED: " << *newValue << "\n");
 }
 
 void JointMatrixFuncsResolutionPass::CacheResolvedTypes(Type *oldType, Type *newType)
@@ -2268,6 +2313,7 @@ void JointMatrixFuncsResolutionPass::CacheResolvedTypes(Type *oldType, Type *new
 
 Value *JointMatrixFuncsResolutionPass::ResolveGeneric(Instruction *OldInst)
 {
+    LLVM_DEBUG(dbgs() << "   -- RESOLVE GENERIC: " << *OldInst << "\n");
     InsertPlaceholder(OldInst);
     Instruction *NewInst = OldInst->clone();
 
@@ -2339,8 +2385,7 @@ Type *JointMatrixFuncsResolutionPass::ResolveStructType(Type *oldType)
     CacheResolvedTypes(oldType, newType);
 
     SmallVector<Type *, 1> elements;
-    llvm::transform(structType->elements(), std::back_inserter(elements), [&](Type *t)
-                    {
+    llvm::transform(structType->elements(), std::back_inserter(elements), [&](Type *t) {
                         if (isOrContainsMatrixType(t))
                             return ResolveTypes(t);
                         return t; });
@@ -2370,6 +2415,9 @@ Type *JointMatrixFuncsResolutionPass::ResolvePointerType(Type *oldType)
         return ResolvedTypes[oldType];
 
     PointerType *ptrType = dyn_cast<PointerType>(oldType);
+    if (IGCLLVM::isOpaquePointerTy(ptrType))
+        return oldType;
+
     Type *elemType = IGCLLVM::getNonOpaquePtrEltTy(ptrType);
     if (!isOrContainsMatrixType(elemType))
         return oldType;
@@ -2381,33 +2429,43 @@ Type *JointMatrixFuncsResolutionPass::ResolvePointerType(Type *oldType)
 
 Value *JointMatrixFuncsResolutionPass::Resolve(Value *v)
 {
+    LLVM_DEBUG(dbgs() << "   -- RESOLVE: " << *v << "\n");
+
     if (ResolvedValues.count(v) > 0) {
+        LLVM_DEBUG(dbgs() << "   -- FOUND IN CACHE: " << *ResolvedValues[v] << "\n");
         return ResolvedValues[v];
     }
 
-    if (CallInst *CI = dyn_cast<CallInst>(v)) {
+    if (CallInst *CI = dyn_cast<CallInst>(v))
         return ResolveCall(CI);
-    } else if (PHINode *PN = dyn_cast<PHINode>(v)) {
+
+    if (PHINode *PN = dyn_cast<PHINode>(v)) {
         unsigned IncomingCount = PN->getNumIncomingValues();
 
         Type *type = ResolveTypes(v->getType());
+        LLVM_DEBUG(dbgs() << "   -- RESOLVED PHI TYPE: " << *type << "\n");
         PHINode *NewPN = PHINode::Create(type, IncomingCount, PN->getName(), PN);
         NewPN->setDebugLoc(PN->getDebugLoc());
         CacheResolvedValue(v, NewPN);
 
         for (unsigned i = 0; i < IncomingCount; i++) {
-            Value *oldOperand = PN->getIncomingValue(i);
-            Value *operand = Resolve(oldOperand);
+            Value *operand = Resolve(PN->getIncomingValue(i));
+            LLVM_DEBUG(dbgs() << "   -- RESOLVED PHI INCOMING BLOCK " << i << ": " << *operand << "\n");
             NewPN->addIncoming(operand, PN->getIncomingBlock(i));
         }
 
         InstsToErase.insert(PN);
+        LLVM_DEBUG(dbgs() << " - RESOLVED: " << *NewPN << "\n");
         return NewPN;
-    } else if (Instruction *I = dyn_cast<Instruction>(v)) {
+    }
+
+    if (Instruction *I = dyn_cast<Instruction>(v))
         return ResolveGeneric(I);
-    } else if (isa<UndefValue>(v)) {
-        Type *type = ResolveType(v->getType(), nullptr);
-        return UndefValue::get(type);
+
+    if (isa<UndefValue>(v)) {
+        Value *resolved = UndefValue::get(ResolveType(v->getType(), nullptr));
+        LLVM_DEBUG(dbgs() << " - RESOLVED: " << *resolved << "\n");
+        return resolved;
     }
 
     IGC_ASSERT_MESSAGE(false, "Resolve failure.");
@@ -2416,12 +2474,10 @@ Value *JointMatrixFuncsResolutionPass::Resolve(Value *v)
 
 Function* JointMatrixFuncsResolutionPass::CloneFunction(Function* pOriginalFunction)
 {
-    if (pOriginalFunction == nullptr) {
+    if (!pOriginalFunction)
         return nullptr;
-    }
 
     std::vector<Type*> params;
-
     for (auto &arg : pOriginalFunction->args())
     {
         auto type = isOrContainsMatrixType(arg.getType()) ? ResolveTypes(arg.getType()) : arg.getType();
@@ -2442,28 +2498,41 @@ Function* JointMatrixFuncsResolutionPass::CloneFunction(Function* pOriginalFunct
     pNewFunction->copyAttributesFrom(pOriginalFunction);
 
     ValueToValueMapTy VMap;
-
     auto originalFunctionArgIt = pOriginalFunction->arg_begin();
     auto newFunctionArgIt = pNewFunction->arg_begin();
+    std::unordered_set<Argument*> needsResolve;
 
     while (originalFunctionArgIt != pOriginalFunction->arg_end())
     {
         newFunctionArgIt->setName(originalFunctionArgIt->getName());
+        if(newFunctionArgIt->getType() != originalFunctionArgIt->getType())
+            needsResolve.insert(&*newFunctionArgIt);
         VMap[&(*originalFunctionArgIt++)] = newFunctionArgIt++;
     }
 
-    if (!pOriginalFunction->isDeclaration())
-    {
-        SmallVector<ReturnInst*, 8> Returns;
-        IGCLLVM::CloneFunctionChangeType changeType = IGCLLVM::CloneFunctionChangeType::LocalChangesOnly;
-        IGCLLVM::CloneFunctionInto(pNewFunction, pOriginalFunction, VMap, changeType, Returns);
+    SmallVector<ReturnInst*, 8> Returns;
+    IGCLLVM::CloneFunctionInto(pNewFunction, pOriginalFunction, VMap, IGCLLVM::CloneFunctionChangeType::LocalChangesOnly, Returns);
+
+    for (auto *arg : needsResolve) {
+        for (auto *U : arg->users()){
+            if (Instruction *I = dyn_cast<Instruction>(U)) {
+                for (unsigned i = 0; i < I->getNumOperands(); ++i) {
+                    Value *oldOp = I->getOperand(i);
+                    if (!isOrContainsMatrixType(oldOp->getType()))
+                        continue;
+                    I->setOperand(i, Resolve(oldOp));
+                }
+            }
+        }
     }
 
+    runOnFunction(*pNewFunction);
     return pNewFunction;
 }
 
 void JointMatrixFuncsResolutionPass::visitCallInst(CallInst& CI)
 {
+    LLVM_DEBUG(dbgs() << " - VISIT: " << CI << "\n");
     Function* func = CI.getCalledFunction();
     if (!func)
         return;
@@ -2473,6 +2542,9 @@ void JointMatrixFuncsResolutionPass::visitCallInst(CallInst& CI)
       return;
 
     StringRef funcName = func->getName();
+
+    if(IGCLLVM::isOpaquePointerTy(CI.getType()) || isAnyOperand(CI, IGCLLVM::isOpaquePointerTy))
+        return;
 
     /* Resolve calls to JointMatrix BIs that haven't been resolved yet. In
      * future when returning and passing matrices by argument is
@@ -2517,56 +2589,31 @@ void JointMatrixFuncsResolutionPass::visitCallInst(CallInst& CI)
                 // update first argument, if it is constant int
                 if (auto *ConstInt = dyn_cast<ConstantInt>(CI.getOperand(0))) {
                     CI.setOperand(0, ConstantInt::get(ConstInt->getType(), newSize));
+                    LLVM_DEBUG(dbgs() << "   -- UPDATED CALL: " << CI << "\n");
                 }
             }
         }
     }
 
-    auto argsWithMatrixType = GetFunctionArgsWithMatrixType(func);
-
-    if (argsWithMatrixType.size() > 0) {
-        auto resolvedFunc = ResolvedFunctions.count(func) > 0 ? ResolvedFunctions[func] : ResolveFunctionSignature(func);
-        UpdateCallInstAfterFunctionResolve(resolvedFunc, &CI);
-    }
+    if (isAnyFunctionArgMatrixType(func))
+        ResolveCallFuncWithMatrixArgs(ResolvedFuncSignatures[func], &CI);
 }
 
-std::vector<Argument*> JointMatrixFuncsResolutionPass::GetFunctionArgsWithMatrixType(Function* func)
-{
-    if (func == nullptr)
-        return std::vector<Argument*>();
-
-    std::vector<Argument*> argsWithMatrixType;
-
-    for (Argument &arg : func->args()) {
-        if (isOrContainsMatrixType(arg.getType())) {
-            argsWithMatrixType.push_back(&arg);
-        }
-    }
-
-    return argsWithMatrixType;
-}
-
-bool JointMatrixFuncsResolutionPass::UpdateCallInstAfterFunctionResolve(Function* ResolvedFunction, CallInst* CI)
+bool JointMatrixFuncsResolutionPass::ResolveCallFuncWithMatrixArgs(Function* ResolvedFunction, CallInst* CI)
 {
     if (!CI || !ResolvedFunction)
         return false;
 
+    LLVM_DEBUG(dbgs() << "   -- RESOLVE CALL: " << *CI << "\n");
+    InsertPlaceholder(CI);
     std::vector<Value*> params;
-
     for (auto& callArg : CI->args())
     {
         auto callArgInst = callArg.get();
         if (isOrContainsMatrixType(callArgInst->getType()))
-        {
-            Value* resolvedArg = ResolvedValues.count(callArgInst) > 0 ?
-                ResolvedValues[callArgInst] :
-                Resolve(callArgInst);
-            params.push_back(resolvedArg);
-        }
+            params.push_back(Resolve(callArgInst));
         else
-        {
-            params.push_back(callArg.get());
-        }
+            params.push_back(callArgInst);
     }
 
     IRBuilder<> b(CI);
@@ -2580,27 +2627,24 @@ bool JointMatrixFuncsResolutionPass::UpdateCallInstAfterFunctionResolve(Function
         newCall->setName(CI->getName());
     }
 
+    CacheResolvedValue(CI, newCall);
     InstsToErase.insert(CI);
     return true;
 }
 
-Function* JointMatrixFuncsResolutionPass::ResolveFunctionSignature(Function* OriginalFunction)
+bool JointMatrixFuncsResolutionPass::ResolveFunction(Function* OriginalFunction)
 {
-    if (ResolvedFunctions.count(OriginalFunction) > 0 && isa<Function>(ResolvedFunctions[OriginalFunction])) {
-        Function* cachedFunction = dyn_cast<Function>(ResolvedFunctions[OriginalFunction]);
-        return cachedFunction;
-    }
-
     ResolveSIMDSize(OriginalFunction);
     Function* newFunction = CloneFunction(OriginalFunction);
 
-    if (FunctionsMap.count(OriginalFunction) > 0 && FunctionsMap[OriginalFunction] != nullptr) {
-        FunctionsMap[newFunction] = FunctionsMap[OriginalFunction];
+    if (FunctionEntryMap.count(OriginalFunction) > 0 && FunctionEntryMap[OriginalFunction] != nullptr) {
+        FunctionEntryMap[newFunction] = FunctionEntryMap[OriginalFunction];
     }
 
-    CacheResolvedValue(OriginalFunction, newFunction);
-    ResolvedFunctions[OriginalFunction] = newFunction;
-    return newFunction;
+    ResolvedFuncSignatures[OriginalFunction] = newFunction;
+    NewFuncWithResolvedSignatures.insert(newFunction);
+    LLVM_DEBUG(dbgs() << " - RESOLVED FUNC:\n" << *newFunction);
+    return true;
 }
 
 std::string getTypeName(Type* T)
@@ -2651,6 +2695,8 @@ DIType* getOrCreateType(Type* T, Module* M) {
 
 void JointMatrixFuncsResolutionPass::visitAllocaInst(AllocaInst &I)
 {
+    LLVM_DEBUG(dbgs() << " - VISIT: " << I << "\n");
+
     if (ResolvedValues.count(&I) > 0)
         return;
 
@@ -2687,6 +2733,7 @@ void JointMatrixFuncsResolutionPass::visitAllocaInst(AllocaInst &I)
 
 void JointMatrixFuncsResolutionPass::visitAddrSpaceCastInst(llvm::AddrSpaceCastInst& I)
 {
+    LLVM_DEBUG(dbgs() << " - VISIT: " << I << "\n");
     if (ResolvedValues.count(&I) > 0)
         return;
 
@@ -2699,6 +2746,7 @@ void JointMatrixFuncsResolutionPass::visitAddrSpaceCastInst(llvm::AddrSpaceCastI
 
 void JointMatrixFuncsResolutionPass::visitLoadInst(llvm::LoadInst& I)
 {
+    LLVM_DEBUG(dbgs() << " - VISIT: " << I << "\n");
     if (ResolvedValues.count(&I) > 0)
         return;
 
@@ -2711,6 +2759,7 @@ void JointMatrixFuncsResolutionPass::visitLoadInst(llvm::LoadInst& I)
 
 void JointMatrixFuncsResolutionPass::visitPHINode(llvm::PHINode& I)
 {
+    LLVM_DEBUG(dbgs() << " - VISIT: " << I << "\n");
     if (ResolvedValues.count(&I) > 0)
         return;
 
@@ -2723,6 +2772,7 @@ void JointMatrixFuncsResolutionPass::visitPHINode(llvm::PHINode& I)
 
 void JointMatrixFuncsResolutionPass::visitReturnInst(llvm::ReturnInst& I)
 {
+    LLVM_DEBUG(dbgs() << " - VISIT: " << I << "\n");
     if (ResolvedValues.count(&I) > 0)
         return;
 
@@ -2735,6 +2785,7 @@ void JointMatrixFuncsResolutionPass::visitReturnInst(llvm::ReturnInst& I)
 
 void JointMatrixFuncsResolutionPass::visitGetElementPtrInst(GetElementPtrInst &GEP)
 {
+    LLVM_DEBUG(dbgs() << " - VISIT: " << GEP << "\n");
     if (ResolvedValues.count(&GEP) > 0)
         return;
 
@@ -2788,11 +2839,11 @@ void JointMatrixFuncsResolutionPass::visitGetElementPtrInst(GetElementPtrInst &G
 
 void JointMatrixFuncsResolutionPass::visitStoreInst(StoreInst &I)
 {
+    LLVM_DEBUG(dbgs() << " - VISIT: " << I << "\n");
     if (ResolvedValues.count(&I) > 0)
         return;
 
-    Value *val = I.getValueOperand();
-    if (isOrContainsMatrixType(val->getType()))
+    if (isAnyOperand(I, isOrContainsMatrixType))
     {
         ResolveSIMDSize(I.getParent()->getParent());
         ResolveGeneric(&I);
@@ -2809,7 +2860,7 @@ void JointMatrixFuncsResolutionPass::visitStoreInst(StoreInst &I)
     // %59 = ptrtoint <8 x float> %23 to i64
     // Since this value is used in store, we need to replace it's usage in store.
     // The same for bitcast which is done for the Ptr value, where the val is stored.
-    PtrToIntInst *PTI = dyn_cast<PtrToIntInst>(val);
+    PtrToIntInst *PTI = dyn_cast<PtrToIntInst>(I.getValueOperand());
     BitCastInst *BC = dyn_cast<BitCastInst>(I.getPointerOperand());
 
     if (PTI == nullptr || !isMatrixType(PTI->getPointerOperand()->getType()) ||
@@ -2844,6 +2895,7 @@ void JointMatrixFuncsResolutionPass::visitStoreInst(StoreInst &I)
 
 void JointMatrixFuncsResolutionPass::visitBitCastInst(BitCastInst &I)
 {
+    LLVM_DEBUG(dbgs() << " - VISIT: " << I << "\n");
     // In cases when Joint Matrix is used in arrays, front end sometimes
     // inserts pointer manipulations, which are incorrect for
     // pointers to matrix types. Hence, need to remove bitcast
@@ -2854,7 +2906,7 @@ void JointMatrixFuncsResolutionPass::visitBitCastInst(BitCastInst &I)
     // it returns in visitStoreInst and then remove it.
     PointerType *srcPtr = dyn_cast<PointerType>(I.getSrcTy());
     PointerType *dstPtr = dyn_cast<PointerType>(I.getDestTy());
-    if (srcPtr != nullptr && dstPtr != nullptr)
+    if (srcPtr && dstPtr && !IGCLLVM::isOpaquePointerTy(srcPtr) && !IGCLLVM::isOpaquePointerTy(dstPtr))
     {
         Type *srcPtrType = IGCLLVM::getNonOpaquePtrEltTy(srcPtr);
         Type *dstPtrType = IGCLLVM::getNonOpaquePtrEltTy(dstPtr);
@@ -2880,6 +2932,7 @@ void JointMatrixFuncsResolutionPass::visitBitCastInst(BitCastInst &I)
 
 void JointMatrixFuncsResolutionPass::visitPtrToIntInst(PtrToIntInst &I)
 {
+    LLVM_DEBUG(dbgs() << " - VISIT: " << I << "\n");
     // In cases when Joint Matrix is used in arrays, front end sometimes
     // inserts pointer manipulations, which are incorrect for
     // pointers to matrix types. Hence, need to remove ptrtoint

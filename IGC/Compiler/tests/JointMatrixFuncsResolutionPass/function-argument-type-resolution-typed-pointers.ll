@@ -15,8 +15,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: opaque-ptr-fix
-; RUN: igc_opt --opaque-pointers -platformpvc -igc-joint-matrix-resolution -S %s 2>&1 | FileCheck %s
+; RUN: igc_opt -platformpvc -igc-joint-matrix-resolution -S %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; JointMatrixFuncsResolutionPass
 ; ------------------------------------------------
@@ -139,7 +138,9 @@ bfalse:                                     ; preds = %2
   br label %end
 
 end:                                     ; preds = %btrue, %bfalse
+
   %retval = phi %jm* [%this1, %btrue], [%this2, %bfalse]
+
   ret %jm* %retval
 }
 

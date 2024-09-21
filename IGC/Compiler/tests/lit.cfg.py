@@ -69,6 +69,8 @@ else:
   config.available_features.add('legacy-translator')
 if not config.regkeys_disabled:
   config.available_features.add('regkeys')
+if config.opaque_pointers == '1':
+  config.available_features.add('opaque-ptr-fix')
 
   config.substitutions.append(('%RT_CHECK_PREFIX%', 'CHECK-RT'))
 

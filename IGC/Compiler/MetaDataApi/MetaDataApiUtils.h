@@ -498,7 +498,7 @@ namespace IGC
             lazyLoad();
             if (find(key) == end())
             {
-                IGC_ASSERT_MESSAGE(0, "Trying to get key that does not exists in Metadata map");
+                IGC_ASSERT_MESSAGE(0, "Trying to get key that does not exists in Metadata map. Key: %s", key->getName().str().c_str());
                 std::string Msg = "Invalid user defined function being processed: ";
                 Msg += key->getName();
                 Msg += "()\n";

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: opaque-ptr-fix, llvm-14-plus
+; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers %s -S -o - -igc-joint-matrix-resolution --platformpvc --device-id 0x0BD4 2>&1 | FileCheck %s --check-prefix=CHECK-PVC-VG
 ; ------------------------------------------------
 ; JointMatrixFuncsResolutionPass - verify whether matrix functionality without usage of

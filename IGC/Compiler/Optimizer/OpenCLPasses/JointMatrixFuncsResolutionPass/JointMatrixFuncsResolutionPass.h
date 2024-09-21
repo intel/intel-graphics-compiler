@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2024 Intel Corporation
+Copyright (C) 2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -56,9 +56,8 @@ namespace IGC
         void visitReturnInst(llvm::ReturnInst& I);
 
     private:
-        std::vector<llvm::Argument*> GetFunctionArgsWithMatrixType(llvm::Function* func);
-        llvm::Function* ResolveFunctionSignature(llvm::Function* OriginalFunction);
-        bool UpdateCallInstAfterFunctionResolve(llvm::Function* ResolvedFunction, llvm::CallInst* OptionalCallInst);
+        bool ResolveFunction(llvm::Function* OriginalFunction);
+        bool ResolveCallFuncWithMatrixArgs(llvm::Function* ResolvedFunction, llvm::CallInst* CI);
         llvm::Instruction *ResolvePrefetch(llvm::CallInst *CI);
         template <bool IsJointMatrix, bool isChecked>
         llvm::Instruction *ResolveLoad(llvm::CallInst *CI);
@@ -75,8 +74,11 @@ namespace IGC
         llvm::Instruction *ResolveGetCoord(llvm::CallInst *CI);
         llvm::Value *ResolveCall(llvm::CallInst *CI);
         llvm::Value *ResolveGeneric(llvm::Instruction *OldInst);
+        void clearFunctionCache();
+
+        // Main recursive method used across pass to resolve Joint Matrix-related values
         llvm::Value *Resolve(llvm::Value *value);
-        void preprocessAccessChain(llvm::Function *F);
+        bool preprocessAccessChain(llvm::Function *F);
 
         bool parseMatrixTypeNameLegacy(const llvm::Type *opaqueType, JointMatrixTypeDescription *outDescription);
         bool ParseMatrixTypeName(llvm::Type *opaqueType, JointMatrixTypeDescription *outDescription);
@@ -89,6 +91,9 @@ namespace IGC
         llvm::Type *ResolvePointerType(llvm::Type *t);
         void CacheResolvedValue(llvm::Value *oldValue, llvm::Value *newValue);
         void CacheResolvedTypes(llvm::Type *oldType, llvm::Type *newType);
+
+        // Inserts undef placeholder with the correct resolved type
+        // to unblock recursive resolving of dependencies
         void InsertPlaceholder(llvm::Value *v);
         llvm::Function* CloneFunction(llvm::Function* pOriginalFunction);
 
@@ -126,8 +131,11 @@ namespace IGC
         std::unordered_map<llvm::Type *, llvm::Type *> ResolvedTypes;
         llvm::SmallPtrSet<llvm::Instruction *, 8> InstsToErase;
         // Maps function to it's kernel entry function
-        std::unordered_map<llvm::Function *, llvm::Function *> FunctionsMap;
-        std::unordered_map<llvm::Function *, llvm::Function *> ResolvedFunctions;
+        std::unordered_map<llvm::Function *, llvm::Function *> FunctionEntryMap;
+        // Maps function with old signature to function with new signature
+        std::unordered_map<llvm::Function *, llvm::Function *> ResolvedFuncSignatures;
+        // Keeps track of new functions with new signature
+        std::unordered_set<llvm::Function *> NewFuncWithResolvedSignatures;
 
         ModuleMetaData* MMD = nullptr;
         CodeGenContext* m_Ctx = nullptr;
