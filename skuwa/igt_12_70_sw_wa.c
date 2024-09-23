@@ -27,4 +27,4 @@ void InitGt_12_70_HASWaTable(PHW_DEVICE_EXTENSION pKchContext, PWA_TABLE pWaTabl
 
 
 }
-#endif 
+#endif
