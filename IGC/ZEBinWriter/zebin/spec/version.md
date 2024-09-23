@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZEBIN Version
-Version 1.48
+Version 1.47
 
 ## Versioning
 Format: \<_Major number_\>.\<_Minor number_\>
@@ -15,7 +15,6 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
-- **Version 1.48**: Internal changes.
 - **Version 1.47**: Added kernel cost analysis.
 - **Version 1.46**: Change cmake target directory from IGC/zebinlib to IGC/Libraries/zebinlib
 - **Version 1.45**: Add .text section into ELF section content.
