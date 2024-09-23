@@ -873,52 +873,6 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchange, _p4i64_i32_i32_i32_
 
 #endif // defined(cl_khr_int64_base_atomics)
 
-float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchange, _p0f32_i32_i32_i32_f32_f32, )( __private float *Pointer, int Scope, int Equal, int Unequal, float Value, float Comparator)
-{
-    float orig = *Pointer;
-
-    if( orig == Comparator )
-    {
-        *Pointer = Value;
-    }
-
-    return orig;
-}
-
-// Float compare-and-exchange builtins are handled as integer builtins, because OpenCL C specification says that the float atomics are
-// doing bitwise comparisons, not float comparisons
-
-float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchange, _p1f32_i32_i32_i32_f32_f32, )( __global float *Pointer, int Scope, int Equal, int Unequal, float Value, float Comparator)
-{
-    atomic_cmpxhg_as_float( __builtin_IB_atomic_cmpxchg_global_i32, float, (global int*)Pointer, Scope, Equal, as_uint(Value), as_uint(Comparator), true );
-}
-
-
-float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchange, _p3f32_i32_i32_i32_f32_f32, )( __local float *Pointer, int Scope, int Equal, int Unequal, float Value, float Comparator)
-{
-    atomic_cmpxhg_as_float( __builtin_IB_atomic_cmpxchg_local_i32, float, (local int*)Pointer, Scope, Equal, as_uint(Value), as_uint(Comparator), false );
-}
-
-#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-
-float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchange, _p4f32_i32_i32_i32_f32_f32, )( __generic float *Pointer, int Scope, int Equal, int Unequal, float Value, float Comparator)
-{
-    __builtin_assume((__local float*)Pointer != 0);
-    if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
-    {
-        atomic_cmpxhg_as_float( __builtin_IB_atomic_cmpxchg_local_i32, float, (__local int*)Pointer, Scope, Equal, as_uint(Value), as_uint(Comparator), false );
-    }
-    else if (SPIRV_BUILTIN(GenericCastToPtrExplicit, _p0i8_p4i8_i32, _ToPrivate)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
-    {
-        return SPIRV_BUILTIN(AtomicCompareExchange, _p0f32_i32_i32_i32_f32_f32, )((__private int*)Pointer, Scope, Equal, Unequal, Value, Comparator);
-    }
-    else
-    {
-        atomic_cmpxhg_as_float( __builtin_IB_atomic_cmpxchg_global_i32, float, (__global int*)Pointer, Scope, Equal, as_uint(Value), as_uint(Comparator), true );
-    }
-}
-
-#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
 int SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicCompareExchangeWeak, _p0i32_i32_i32_i32_i32_i32, )( __private int *Pointer, int Scope, int Equal, int Unequal, int Value, int Comparator)
 {
