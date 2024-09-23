@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 // REQUIRES: regkeys,pvc-supported,llvm-14-plus
 
-// RUN: ocloc compile -file %s -device pvc -options "-igc_opts 'PrintToConsole=1,PrintAfter=EmitPass'" 2>&1 | FileCheck %s
+// RUN: ocloc compile -file %s -device pvc -options "-igc_opts 'EnableIndVarSimplification=1,PrintToConsole=1,PrintAfter=EmitPass'" 2>&1 | FileCheck %s
 
 // CHECK-NOT: phi
 // CHECK: [[LOAD:%.*]] = load i32, i32 addrspace(1)* [[PTR:%.*]]
