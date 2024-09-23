@@ -886,6 +886,7 @@ void TransposeHelper::handleGEPInst(
     llvm::GetElementPtrInst* pGEP,
     llvm::Value* idx)
 {
+    // TODO: Add support for GEP attributes: nsw, nuw, inbounds. Currently, neigher the old nor the new algorithm handles them.
     if (useNewAlgo()) {
         handleGEPInstNew(pGEP, idx);
         return;
@@ -919,8 +920,8 @@ void TransposeHelper::handleGEPInst(
 
         auto [arr_sz, eltTy] = getArrSizeAndEltType(T);
 
-        pScalarizedIdx = IRB.CreateNUWAdd(pScalarizedIdx, GepOpnd);
-        pScalarizedIdx = IRB.CreateNUWMul(pScalarizedIdx, IRB.getInt32(arr_sz));
+        pScalarizedIdx = IRB.CreateAdd(pScalarizedIdx, GepOpnd);
+        pScalarizedIdx = IRB.CreateMul(pScalarizedIdx, IRB.getInt32(arr_sz));
 
         T = eltTy;
     }
@@ -928,19 +929,11 @@ void TransposeHelper::handleGEPInst(
     {
         auto [arr_sz, eltTy] = getArrSizeAndEltType(T);
 
-        pScalarizedIdx = IRB.CreateNUWMul(pScalarizedIdx, IRB.getInt32(arr_sz));
+        pScalarizedIdx = IRB.CreateMul(pScalarizedIdx, IRB.getInt32(arr_sz));
 
         T = eltTy;
     }
-    ConstantInt* CIidx = dyn_cast<ConstantInt>(idx);
-    if (CIidx && CIidx->isNegative())
-    {
-        pScalarizedIdx = IRB.CreateAdd(pScalarizedIdx, idx);
-    }
-    else
-    {
-        pScalarizedIdx = IRB.CreateNUWAdd(pScalarizedIdx, idx);
-    }
+    pScalarizedIdx = IRB.CreateAdd(pScalarizedIdx, idx);
     HandleAllocaSources(pGEP, pScalarizedIdx);
 }
 
