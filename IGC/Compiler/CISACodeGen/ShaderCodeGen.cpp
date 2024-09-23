@@ -1537,7 +1537,8 @@ void OptimizeIR(CodeGenContext* const pContext)
 
                 mpm.add(createIGCInstructionCombiningPass());
 
-                if (IGC_IS_FLAG_ENABLED(EnableIndVarSimplification))
+                if (IGC_IS_FLAG_ENABLED(EnableIndVarSimplification) &&
+                    pContext->type == ShaderType::OPENCL_SHADER)
                 {
                     mpm.add(llvm::createIndVarSimplifyPass());
                 }
