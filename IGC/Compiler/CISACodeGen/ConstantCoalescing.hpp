@@ -245,6 +245,7 @@ namespace IGC
         const llvm::DataLayout* dataLayout;
         TranslationTable* m_TT;
 
+
         /// Examines the uniformity of the load and the number of used elements
         /// to determine whether we should try to merge it.
         bool isProfitableLoad(const Instruction* I, uint32_t &MaxEltPlus) const;
@@ -256,7 +257,7 @@ namespace IGC
         /// find element base and element imm-offset
         llvm::Value* SimpleBaseOffset(llvm::Value* elt_idxv, uint& offset, ExtensionKind &Extension);
         /// finds the minimum power-of-2 alignment for an offset in buffer
-        uint GetOffsetAlignment(Value* val, PHINode* currPhi) const;
+        uint GetOffsetAlignment(llvm::Value* val) const;
         /// used along ocl path, based upon int2ptr
         bool   DecomposePtrExp(
             llvm::Value* ptr_val, llvm::Value*& buf_idxv,
