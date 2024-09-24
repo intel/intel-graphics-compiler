@@ -60,12 +60,6 @@ struct SBID {
   SBID(uint32_t id, bool isfree, DEP_TYPE type)
       : sbid(id), dType(type), isFree(isfree) {}
 
-  SBID(const SBID& from) {
-    sbid = from.sbid;
-    dType = from.dType;
-    isFree = from.isFree;
-  }
-
   void reset() {
     sbid = 0;
     dType = DEP_TYPE::NONE;
