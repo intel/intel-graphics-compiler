@@ -280,6 +280,7 @@ public:
   bool visitInstruction(Instruction &) { return false; }
 
   bool visitBinaryOperator(BinaryOperator &BO);
+  bool visitFCmpInst(FCmpInst &I);
   bool visitSelectInst(SelectInst &SI);
   bool visitInsertValueInst(InsertValueInst &IV);
   bool visitBranchInst(BranchInst &Br);
@@ -315,6 +316,28 @@ bool ConstantLoadHelper::visitBinaryOperator(BinaryOperator &BO) {
       BO.setOperand(I, NewC);
       Modified = true;
     }
+  }
+
+  return Modified;
+}
+
+bool ConstantLoadHelper::visitFCmpInst(FCmpInst &CmpI) {
+  auto *Ty = CmpI.getOperand(0)->getType();
+  auto *STy = Ty->getScalarType();
+
+  // BFloat immediate values are not supported.
+  if (!STy->isBFloatTy())
+    return false;
+
+  bool Modified = false;
+
+  for (int I = 0; I < 2; I++) {
+    auto *C = dyn_cast<Constant>(CmpI.getOperand(I));
+    if (!C)
+      continue;
+    auto *NewC = ConstantLoader(C, ST, DL, nullptr, AddedInst).load(&CmpI);
+    CmpI.setOperand(I, NewC);
+    Modified = true;
   }
 
   return Modified;

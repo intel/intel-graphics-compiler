@@ -26,6 +26,23 @@ define dllexport spir_kernel void @const_zero(i32 %buf) local_unnamed_addr #0 {
   ret void
 }
 
+; CHECK-LABEL: @const_cmp
+; CHECK: [[CONST_CMP:%[^ ]+]] = call <1 x i16> @llvm.genx.constanti.v1i16(<1 x i16> zeroinitializer)
+; CHECK: [[CAST_CMP:%[^ ]+]] = bitcast <1 x i16> [[CONST_CMP]] to <1 x bfloat>
+; CHECK: [[SPLAT_CMP:%[^ ]+]] = call <16 x bfloat> @llvm.genx.rdregionf.v16bf16.v1bf16.i16(<1 x bfloat> [[CAST_CMP]], i32 0, i32 16, i32 0, i16 0, i32 undef)
+; CHECK: %pred = fcmp olt <16 x bfloat> %src, [[SPLAT_CMP]]
+; CHECK: [[CONST_SEL:%[^ ]+]] = call <1 x i16> @llvm.genx.constanti.v1i16(<1 x i16> zeroinitializer)
+; CHECK: [[CAST_SEL:%[^ ]+]] = bitcast <1 x i16> [[CONST_SEL]] to <1 x bfloat>
+; CHECK: [[SPLAT_SEL:%[^ ]+]] = call <16 x bfloat> @llvm.genx.rdregionf.v16bf16.v1bf16.i16(<1 x bfloat> [[CAST_SEL]], i32 0, i32 16, i32 0, i16 0, i32 undef)
+; CHECK: %res = select <16 x i1> %pred, <16 x bfloat> %src, <16 x bfloat> [[SPLAT_SEL]]
+define dllexport spir_kernel void @const_cmp(i32 %buf) local_unnamed_addr #0 {
+  %src = call <16 x bfloat> @llvm.genx.oword.ld.v16bf16(i32 0, i32 %buf, i32 0)
+  %pred = fcmp olt <16 x bfloat> %src, zeroinitializer
+  %res = select <16 x i1> %pred, <16 x bfloat> %src, <16 x bfloat> zeroinitializer
+  call void @llvm.genx.oword.st.v16bf16(i32 %buf, i32 0, <16 x bfloat> %res)
+  ret void
+}
+
 ; CHECK-LABEL: @const_one
 ; CHECK: [[CONST:%[^ ]+]] = call <1 x i16> @llvm.genx.constanti.v1i16(<1 x i16> <i16 16256>)
 ; CHECK: [[CAST:%[^ ]+]] = bitcast <1 x i16> [[CONST]] to <1 x bfloat>
@@ -59,8 +76,8 @@ define dllexport spir_kernel void @const_vector(i32 %buf) local_unnamed_addr #0 
 
 attributes #0 = { noinline nounwind "CMGenxMain" }
 
-!genx.kernels = !{!0, !5, !6}
-!genx.kernel.internal = !{!7, !8, !9}
+!genx.kernels = !{!0, !5, !6, !10}
+!genx.kernel.internal = !{!7, !8, !9, !11}
 
 !0 = !{void (i32)* @const_zero, !"const_zero", !1, i32 0, !2, !3, !4, i32 0}
 !1 = !{i32 2}
@@ -72,3 +89,6 @@ attributes #0 = { noinline nounwind "CMGenxMain" }
 !7 = !{void (i32)* @const_zero, null, null, null, null}
 !8 = !{void (i32)* @const_one, null, null, null, null}
 !9 = !{void (i32)* @const_vector, null, null, null, null}
+
+!10 = !{void (i32)* @const_cmp, !"const_cmp", !1, i32 0, !2, !3, !4, i32 0}
+!11 = !{void (i32)* @const_cmp, null, null, null, null}
