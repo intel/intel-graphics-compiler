@@ -152,98 +152,126 @@ G4_INST *IR_Builder::translateLscFence(G4_Predicate *pred, SFID sfid,
   return fenceInst;
 }
 
+static void generateNamedBarrier(int &status, IR_Builder &irb,
+                                        G4_Predicate *prd, G4_Operand *numProds,
+                                        G4_Operand *numCons,
+                                        G4_Operand *barrierType,
+                                        G4_Operand *barrierId) {
+  // We only need three dwords but they must be GRF aligned
+  // (The payload only uses HDR.2:d)
+  G4_Declare *header = irb.createTempVar(3, Type_UD, irb.getGRFAlign());
+  //
+  // The approach here is to set all immediate values via an initial mov;
+  // then copy in arguments that come from variable after the fact.
+  //   HDR.2[31:24] = Num Consumers
+  //   HDR.2[23:16] = Num Producers
+  //   HDR.2[15:14] = BarrierType
+  //   HDR.2[13:8] = [undefined]
+  //   HDR.2[7:0] = Named BarrierID
+  uint32_t immVal = 0;
+  auto tryEncImmOp =
+    [&](G4_Operand *op, int offset, uint64_t mask) {
+      if (op->isImm()) {
+        auto imm = op->asImm()->getImm();
+        vISA_ASSERT((imm & ~mask) == 0, "invalid operand count");
+        immVal |= imm << offset;
+      }
+      return !op->isImm();
+    };
+  // collect and group all immediate parameters into the initial value
+  bool typeNeedsMov = tryEncImmOp(barrierType, 14, 0x3);
+  bool consNeedsMov = tryEncImmOp(numCons, 24, 0xFF);
+  bool prodsNeedsMov = tryEncImmOp(numProds, 16, 0xFF);
+  bool barIdNeedsMov = tryEncImmOp(barrierId, 0, 0xFF);
 
-void IR_Builder::generateNamedBarrier(G4_Predicate *prd, int numProducer,
-                                      int numConsumer, NamedBarrierType type,
-                                      G4_Operand *barrierId) {
-  struct NamedBarrierPayload {
-    uint32_t id : 8;
-    uint32_t fence : 4;
-    uint32_t padding : 2;
-    uint32_t type : 2;
-    uint32_t consumer : 8;
-    uint32_t producer : 8;
-  };
-
-  union {
-    NamedBarrierPayload payload;
-    uint32_t data;
-  } payload;
-
-  payload.data = 0;
-  payload.payload.consumer = numConsumer;
-  payload.payload.producer = numProducer;
-
-  auto getVal = [](NamedBarrierType type) {
-    switch (type) {
-    case NamedBarrierType::BOTH:
-      return 0;
-    case NamedBarrierType::PRODUCER:
-      return 1;
-    case NamedBarrierType::CONSUMER:
-      return 2;
-    default:
-      vISA_ASSERT_UNREACHABLE("unrecognized NM barreir type");
-      return -1;
-    }
-  };
-  payload.payload.type = getVal(type);
-
-  G4_Declare *header = createTempVar(8, Type_UD, getGRFAlign());
-  if (barrierId->isImm()) {
-    payload.payload.id = (uint8_t)barrierId->asImm()->getInt();
-    auto dst = createDst(header->getRegVar(), 0, 2, 1, Type_UD);
-    auto src = createImm(payload.data, Type_UD);
-    createMov(prd, g4::SIMD1, dst, src, InstOpt_WriteEnable, true);
-  } else {
-    // barrier id should be a srcRegion with int type
-    // and (1) Hdr.2:ud barrierId 0xFF
-    // or (1) Hdr.2:ud Hdr.2 payload.data
-    vISA_ASSERT(barrierId->isSrcRegRegion() && IS_INT(barrierId->getType()),
-           "expect barrier id to be int");
-    auto dst = createDst(header->getRegVar(), 0, 2, 1, Type_UD);
-    auto src1 = createImm(0xFF, Type_UD);
-    createBinOp(prd, G4_and, g4::SIMD1, dst, barrierId, src1,
-                InstOpt_WriteEnable, true);
-    dst = createDst(header->getRegVar(), 0, 2, 1, Type_UD);
-    auto orSrc0 =
-        createSrc(header->getRegVar(), 0, 2, getRegionScalar(), Type_UD);
-    auto orSrc1 = createImm(payload.data, Type_UD);
-    createBinOp(prd, G4_or, g4::SIMD1, dst, orSrc0, orSrc1, InstOpt_WriteEnable,
-                true);
+  if (prd) {
+    // if the sequence accepts a predicate and one is given
+    // we must emulate
+    prd = irb.duplicateOperand(prd);
+    vISA_ASSERT(prd->getControl() == PRED_DEFAULT,
+                "predication must be default");
+    prd->setControl(G4_Predicate_Control::PRED_ANY_WHOLE);
   }
 
-  // 1 message length, 0 response length, no header, no ack
+  // at the very least we need to encode the barrier type (even if 0's)
+  // Start that as the value in HDR.2:ud
+  //
+  // Special case:
+  //   if immVal is zero and barIdNeedsMov. Just create a barrierId mov as
+  //   the initialization to payload.ud[2].
+  if (immVal == 0 && barIdNeedsMov) {
+    // Avoid redundant inst: mov payload.ud[2], 0
+    // Just do:  mov payload.ud[2], barrierId:ub
+    vISA_ASSERT(barrierId->isSrcRegRegion() &&
+                IS_BTYPE(barrierId->getType()),
+                "barrier id should be srcRegRegion with byte type");
+    G4_DstRegRegion *dst = irb.createDst(header->getRegVar(), 0, 2, 1, Type_UD);
+    G4_SrcRegRegion *src = barrierId->asSrcRegRegion();
+    G4_INST *i =
+        irb.createMov(prd, g4::SIMD1, dst, src, InstOpt_WriteEnable, true);
+    i->setComments("init payload.ud[2] for prod+cons with barrierId");
+    barIdNeedsMov = false;
+  } else {
+    G4_INST *i = irb.createMov(
+        prd, g4::SIMD1, irb.createDst(header->getRegVar(), 0, 2, 1, Type_UD),
+        irb.createImm(immVal, Type_UD), InstOpt_WriteEnable, true);
+    i->setComments("init payload.ud[2] with all immediates");
+  }
+
+  auto isSame = [](G4_Operand *O0, G4_Operand *O1) {
+    return (O0 == O1 || (O0->isSrcRegRegion() && O1->isSrcRegRegion() &&
+                         *O0->asSrcRegRegion() == *O1->asSrcRegRegion()));
+  };
+
+  // For anything that was indirect (probably most things here)
+  // we must move manually.
+  if (prodsNeedsMov && consNeedsMov && isSame(numProds, numCons)) {
+    // optimization to use SIMD2 byte move for both producer and consumer thread counts
+    G4_DstRegRegion *dst = irb.createDst(header->getRegVar(), 0, 10, 1, Type_UB);
+    G4_INST *i = irb.createMov(prd, g4::SIMD2, dst, numProds, InstOpt_WriteEnable, true);
+    i->setComments("set producer+consumer");
+    consNeedsMov = prodsNeedsMov = false;
+  }
+  // Explicity move in the non-immediate stragglers that come from registers
+  if (barIdNeedsMov) {
+    G4_DstRegRegion *dst =
+      irb.createDst(header->getRegVar(), 0, 8, 1, Type_UB);
+    G4_INST *i = irb.createMov(prd, g4::SIMD1, dst, barrierId, InstOpt_WriteEnable, true);
+    i->setComments("set barrierId");
+  }
+  if (typeNeedsMov) {
+    G4_Declare *tmpUD = irb.createTempVar(1, Type_UD, G4_SubReg_Align::Even_Word);
+    auto tDst = irb.createDst(tmpUD->getRegVar(), 0, 0, 1, Type_UD);
+    G4_INST *typeI = irb.createBinOp(nullptr, G4_shl, g4::SIMD1, tDst, barrierType,
+                                   irb.createImm(6, Type_UW), InstOpt_WriteEnable, true);
+    typeI->setComments("prepare barrierType(shl)");
+    G4_DstRegRegion *dst = irb.createDst(header->getRegVar(), 0, 9, 1, Type_UB);
+    auto tSrc =
+        irb.createSrc(tmpUD->getRegVar(), 0, 0, irb.getRegionScalar(), Type_UB);
+    G4_INST *i =
+        irb.createMov(prd, g4::SIMD1, dst, tSrc, InstOpt_WriteEnable, true);
+    i->setComments("set barrierType");
+  }
+  if (prodsNeedsMov) {
+    G4_DstRegRegion *dst =
+      irb.createDst(header->getRegVar(), 0, 10, 1, Type_UB);
+    G4_INST *i = irb.createMov(prd, g4::SIMD1, dst, numProds, InstOpt_WriteEnable, true);
+    i->setComments("set producer");
+  }
+  if (consNeedsMov) {
+    G4_DstRegRegion *dst =
+      irb.createDst(header->getRegVar(), 0, 11, 1, Type_UB);
+    G4_INST *i = irb.createMov(prd, g4::SIMD1, dst, numCons, InstOpt_WriteEnable, true);
+    i->setComments("set consumer");
+  }
+
   int desc = (0x1 << 25) + 0x4;
 
-  auto msgDesc = createSyncMsgDesc(SFID::GATEWAY, desc);
-  createSendInst(prd, G4_send, g4::SIMD1, createNullDst(Type_UD),
-                 createSrcRegRegion(header, getRegionStride1()),
-                 createImm(desc, Type_UD), InstOpt_WriteEnable, msgDesc, true);
-}
-
-void IR_Builder::generateNamedBarrier(G4_Predicate *prd, G4_Operand *barrierId,
-                                      G4_SrcRegRegion *threadCount) {
-  G4_Declare *header = createTempVar(8, Type_UD, getGRFAlign());
-
-  // mov (1) Hdr.2<1>:ud 0x0
-  // mov (2) Hdr.10<1>:ub threadcount:ub
-  // mov (1) Hdr.8<1>:ub barrierId:ub
-  auto dst = createDst(header->getRegVar(), 0, 2, 1, Type_UD);
-  auto src = createImm(0, Type_UD);
-  createMov(g4::SIMD1, dst, src, InstOpt_WriteEnable, true);
-  dst = createDst(header->getRegVar(), 0, 10, 1, Type_UB);
-  createMov(g4::SIMD2, dst, threadCount, InstOpt_WriteEnable, true);
-  dst = createDst(header->getRegVar(), 0, 8, 1, Type_UB);
-  createMov(g4::SIMD1, dst, barrierId, InstOpt_WriteEnable, true);
-
-  // 1 message length, 0 response length, no header, no ack
-  int desc = (0x1 << 25) + 0x4;
-
-  auto msgDesc = createSyncMsgDesc(SFID::GATEWAY, desc);
-  createSendInst(nullptr, G4_send, g4::SIMD1, createNullDst(Type_UD),
-                 createSrcRegRegion(header, getRegionStride1()),
-                 createImm(desc, Type_UD), InstOpt_WriteEnable, msgDesc, true);
+  auto msgDesc = irb.createSyncMsgDesc(SFID::GATEWAY, desc);
+  (void)irb.createSendInst(
+      prd, G4_send, g4::SIMD1, irb.createNullDst(Type_UD),
+      irb.createSrcRegRegion(header, irb.getRegionStride1()),
+      irb.createImm(desc, Type_UD), InstOpt_WriteEnable, msgDesc, true);
 }
 
 
@@ -306,6 +334,21 @@ static void checkNamedBarrierSrc(G4_Operand *src, bool isBarrierId,
     vISA_ASSERT(IS_BTYPE(src->getType()), "illegal barrier operand type");
   } else {
     vISA_ASSERT(false, "illegal barrier id operand");
+  }
+}
+
+static void checkNamedBarrierType(G4_Operand *src) {
+  enum class NamedBarrierType { BOTH = 0, PRODUCER = 1, CONSUMER = 2 };
+  if (src->isImm()) {
+    uint32_t val = (uint32_t)src->asImm()->getInt();
+    vISA_ASSERT(val == 0 || val == 1 || val == 2, "illegal named barrier type");
+  } else if (src->isSrcRegRegion()) {
+    vISA_ASSERT(src->asSrcRegRegion()->isScalar(),
+                "barrier type should have scalar region");
+    vISA_ASSERT(IS_WTYPE(src->getType()) && IS_INT(src->getType()),
+                "barrier type operand should be byte type");
+  } else {
+    vISA_ASSERT(false, "illegal barrier type operand");
   }
 }
 
@@ -378,23 +421,22 @@ int IR_Builder::translateVISANamedBarrierWait(G4_Predicate *pred,
 
 int IR_Builder::translateVISANamedBarrierSignal(G4_Predicate *pred,
                                                 G4_Operand *barrierId,
-                                                G4_Operand *threadCount) {
+                                                G4_Operand *barrierType,
+                                                G4_Operand *numProducers,
+                                                G4_Operand *numConsumers) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-  checkNamedBarrierSrc(barrierId, true, kernel);
-  checkNamedBarrierSrc(threadCount, false, kernel);
+  checkNamedBarrierSrc(barrierId, true /* barierId */, kernel);
+  checkNamedBarrierType(barrierType);
+  checkNamedBarrierSrc(numProducers, false /* numProds */, kernel);
+  checkNamedBarrierSrc(numConsumers, false /* numCons */, kernel);
 
   updateNamedBarrier(barrierId);
 
-  if (threadCount->isImm()) {
-    int numThreads = (int)threadCount->asImm()->getInt();
-    generateNamedBarrier(pred, numThreads, numThreads, NamedBarrierType::BOTH,
-                         barrierId);
-  } else {
-    generateNamedBarrier(pred, barrierId, threadCount->asSrcRegRegion());
-  }
-
-  return VISA_SUCCESS;
+  int status = VISA_SUCCESS;
+  generateNamedBarrier(status, *this, pred, numProducers, numConsumers,
+                              barrierType, barrierId);
+  return status;
 }
 
 // create a fence instruction to the data cache

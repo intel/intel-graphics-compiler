@@ -918,9 +918,14 @@ public:
   VISA_BUILDER_API int
   AppendVISANamedBarrierWait(VISA_VectorOpnd *barrierId) override;
 
+  // Named barrier with the same number of producers and consumers
   VISA_BUILDER_API int
   AppendVISANamedBarrierSignal(VISA_VectorOpnd *barrierId,
                                VISA_VectorOpnd *barrierCount) override;
+  // General producer-consumer named barrier
+  VISA_BUILDER_API int AppendVISANamedBarrierSignal(
+      VISA_VectorOpnd *barrierId, VISA_VectorOpnd *barrierType,
+      VISA_VectorOpnd *numProducers, VISA_VectorOpnd *numConsumers) override;
 
   /********** APPEND INSTRUCTION APIS END   ******************/
 

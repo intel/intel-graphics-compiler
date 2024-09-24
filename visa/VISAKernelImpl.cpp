@@ -8417,20 +8417,69 @@ VISAKernelImpl::AppendVISANamedBarrierSignal(VISA_VectorOpnd *barrierId,
 
   int status = VISA_SUCCESS;
 
+  VISA_VectorOpnd *barrierType;
+  uint16_t value = 0;
+  status = CreateVISAImmediate(barrierType, &value, ISA_TYPE_UW);
+  if (status != VISA_SUCCESS)
+    return status;
+
   if (IS_GEN_BOTH_PATH) {
     status = m_builder->translateVISANamedBarrierSignal(
-        nullptr, barrierId->g4opnd, barrierCount->g4opnd);
+        nullptr, barrierId->g4opnd, barrierType->g4opnd, barrierCount->g4opnd,
+        barrierCount->g4opnd);
   }
   if (IS_VISA_BOTH_PATH) {
     VISA_INST_Desc *inst_desc = &CISA_INST_table[ISA_NBARRIER];
-    VISA_opnd *opnd[3];
+    VISA_opnd *opnd[5];
     int num_operands = 0;
 
-    uint8_t mode = 1; // signal
+    // signal 1: nbarrier.signal <id> <num_threads>
+    uint8_t mode = 1;
     ADD_OPND(num_operands, opnd,
              CreateOtherOpndHelper(0, num_operands, inst_desc, mode));
     ADD_OPND(num_operands, opnd, barrierId);
+    ADD_OPND(num_operands, opnd, barrierType);
     ADD_OPND(num_operands, opnd, barrierCount);
+    ADD_OPND(num_operands, opnd, barrierCount);
+
+    CisaFramework::CisaInst *inst = new (m_mem) CisaFramework::CisaInst(m_mem);
+
+    inst->createCisaInstruction(ISA_NBARRIER, EXEC_SIZE_1, 0,
+                                PredicateOpnd::getNullPred(), opnd,
+                                num_operands, inst_desc);
+    addInstructionToEnd(inst);
+  }
+
+  return status;
+}
+
+VISA_BUILDER_API int VISAKernelImpl::AppendVISANamedBarrierSignal(
+    VISA_VectorOpnd *barrierId, VISA_VectorOpnd *barrierType,
+    VISA_VectorOpnd *numProducers, VISA_VectorOpnd *numConsumers) {
+  TIME_SCOPE(VISA_BUILDER_APPEND_INST);
+
+  AppendVISAInstCommon();
+
+  int status = VISA_SUCCESS;
+
+  if (IS_GEN_BOTH_PATH) {
+    status = m_builder->translateVISANamedBarrierSignal(
+        nullptr, barrierId->g4opnd, barrierType->g4opnd, numProducers->g4opnd,
+        numConsumers->g4opnd);
+  }
+  if (IS_VISA_BOTH_PATH) {
+    VISA_INST_Desc *inst_desc = &CISA_INST_table[ISA_NBARRIER];
+    VISA_opnd *opnd[5];
+    int num_operands = 0;
+
+    // signal : nbarrier.signal <id> <type> <numProds> <numCons>
+    uint8_t mode = 2;
+    ADD_OPND(num_operands, opnd,
+             CreateOtherOpndHelper(0, num_operands, inst_desc, mode));
+    ADD_OPND(num_operands, opnd, barrierId);
+    ADD_OPND(num_operands, opnd, barrierType);
+    ADD_OPND(num_operands, opnd, numProducers);
+    ADD_OPND(num_operands, opnd, numConsumers);
 
     CisaFramework::CisaInst *inst = new (m_mem) CisaFramework::CisaInst(m_mem);
 

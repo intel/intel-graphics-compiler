@@ -886,11 +886,19 @@ static std::string printInstructionCommon(const print_format_provider_t *header,
       sstr << (mode ? ".signal" : ".wait");
     } else if (opcode == ISA_NBARRIER) {
       uint8_t mode = getPrimitiveOperand<uint8_t>(inst, i);
-      bool isSignal = mode & 1;
+      bool isSignal = (mode > 0);
       sstr << (isSignal ? ".signal" : ".wait");
       sstr << printOperand(header, inst, 1, opt);
       if (isSignal) {
-        sstr << printOperand(header, inst, 2, opt);
+        if (mode == 1) {
+          // nbarrier.signal <id> <num_threads>
+          sstr << printOperand(header, inst, 3, opt);
+        } else {
+          // nbarrier.signal <id> <<type> <num_prods> <num_cons>
+          sstr << printOperand(header, inst, 2, opt);
+          sstr << printOperand(header, inst, 3, opt);
+          sstr << printOperand(header, inst, 4, opt);
+        }
       }
     }
   }

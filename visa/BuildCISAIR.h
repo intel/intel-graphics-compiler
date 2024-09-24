@@ -669,6 +669,9 @@ public:
 
   bool CISA_create_nbarrier(bool isWait, VISA_opnd *barrierId,
                             VISA_opnd *threadCount, int lineNum);
+  bool CISA_create_nbarrier_signal(VISA_opnd *barrierId, VISA_opnd *barrierType,
+                                   VISA_opnd *numProds, VISA_opnd *numCons,
+                                   int lineNum);
 
 
   bool CISA_create_lsc_typed_block2d_inst(

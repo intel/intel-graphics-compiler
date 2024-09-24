@@ -725,15 +725,27 @@ static void readInstructionCommonNG(unsigned &bytePos, const char *buf,
       uint32_t mode = readOtherOperandNG(bytePos, buf, ISA_TYPE_UB);
       kernelBuilder->AppendVISASplitBarrierInst(mode != 0);
     } else if (opcode == ISA_NBARRIER) {
+      // Still support reading visa binary ?
       uint32_t mode = readOtherOperandNG(bytePos, buf, ISA_TYPE_UB);
       auto barrierId = readVectorOperandNG(bytePos, buf, container, false);
-      VISA_VectorOpnd *threadCount =
+      VISA_VectorOpnd *barrierType =
           readVectorOperandNG(bytePos, buf, container, false);
-      bool isWait = (mode & 1) == 0;
+      VISA_VectorOpnd *numProds =
+          readVectorOperandNG(bytePos, buf, container, false);
+      VISA_VectorOpnd *numCons =
+          readVectorOperandNG(bytePos, buf, container, false);
+      bool isWait = (mode == 0);
       if (isWait) {
         kernelBuilder->AppendVISANamedBarrierWait(barrierId);
       } else {
-        kernelBuilder->AppendVISANamedBarrierSignal(barrierId, threadCount);
+        const auto &vo = barrierType->_opnd.v_opnd;
+        if ((vo.tag & 0x7) == OPERAND_IMMEDIATE &&
+            vo.opnd_val.const_opnd._val.lval == 0 && numProds == numCons) {
+          kernelBuilder->AppendVISANamedBarrierSignal(barrierId, numProds);
+        } else {
+          kernelBuilder->AppendVISANamedBarrierSignal(barrierId, barrierType,
+                                                      numProds, numCons);
+        }
       }
     } else {
       bool hasMask = (opcode == ISA_FENCE);

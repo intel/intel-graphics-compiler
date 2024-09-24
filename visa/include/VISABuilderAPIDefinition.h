@@ -544,6 +544,10 @@ public:
   AppendVISANamedBarrierSignal(VISA_VectorOpnd *barrierId,
                                VISA_VectorOpnd *barrierCount) = 0;
 
+  VISA_BUILDER_API virtual int AppendVISANamedBarrierSignal(
+      VISA_VectorOpnd *barrierId, VISA_VectorOpnd *barrierType,
+      VISA_VectorOpnd *numProducers, VISA_VectorOpnd *numConsumers) = 0;
+
   /// FIXME: we should probably have separate API for logic and shift
   /// instructions, as the arguments they expect are quite different
   /// AppendVISALogicOrShiftInst -- append a two-dst, two-source vISA arithmetic

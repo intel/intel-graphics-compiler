@@ -4192,17 +4192,33 @@ bool CISA_IR_Builder::CISA_create_lsc_fence(LSC_SFID sfid, LSC_FENCE_OP fence,
   return true;
 }
 
-bool CISA_IR_Builder::CISA_create_nbarrier(bool isWait, VISA_opnd *barrierId,
+bool CISA_IR_Builder::CISA_create_nbarrier(bool isWait,
+                                           VISA_opnd *barrierId,
                                            VISA_opnd *threadCount,
                                            int lineNum) {
   if (isWait) {
+    // wait
     VISA_CALL_TO_BOOL(AppendVISANamedBarrierWait,
                       static_cast<VISA_VectorOpnd *>(barrierId));
   } else {
+    // signal
     VISA_CALL_TO_BOOL(AppendVISANamedBarrierSignal,
                       static_cast<VISA_VectorOpnd *>(barrierId),
                       static_cast<VISA_VectorOpnd *>(threadCount));
   }
+  return true;
+}
+
+bool CISA_IR_Builder::CISA_create_nbarrier_signal(VISA_opnd *barrierId,
+                                                  VISA_opnd *barrierType,
+                                                  VISA_opnd *numProds,
+                                                  VISA_opnd *numCons,
+                                                  int lineNum) {
+  VISA_CALL_TO_BOOL(AppendVISANamedBarrierSignal,
+                    static_cast<VISA_VectorOpnd *>(barrierId),
+                    static_cast<VISA_VectorOpnd *>(barrierType),
+                    static_cast<VISA_VectorOpnd *>(numProds),
+                    static_cast<VISA_VectorOpnd *>(numCons));
   return true;
 }
 

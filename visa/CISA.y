@@ -1306,6 +1306,9 @@ SynchronizationInstruction:
     | SBARRIER_WAIT {
         pBuilder->CISA_create_sbarrier_instruction(false, CISAlineno);
     }
+    | NBARRIER_SIGNAL VecSrcOperand_G_I_IMM VecSrcOperand_G_I_IMM VecSrcOperand_G_I_IMM VecSrcOperand_G_I_IMM {
+        pBuilder->CISA_create_nbarrier_signal($2.cisa_gen_opnd, $3.cisa_gen_opnd, $4.cisa_gen_opnd, $5.cisa_gen_opnd, CISAlineno);
+    }
     | NBARRIER_SIGNAL VecSrcOperand_G_I_IMM VecSrcOperand_G_I_IMM {
         pBuilder->CISA_create_nbarrier(false, $2.cisa_gen_opnd, $3.cisa_gen_opnd, CISAlineno);
     }

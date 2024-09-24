@@ -2308,7 +2308,6 @@ public:
     int status = VISA_SUCCESS;
     return translateLscFence(pred, sfid, fenceOp, scope, status);
   }
-  enum class NamedBarrierType { PRODUCER, CONSUMER, BOTH };
 
   ////////////////////////////////////////////////////////////////////////
   // default barrier functions
@@ -2320,12 +2319,10 @@ public:
   ////////////////////////////////////////////////////////////////////////
   // named barrier functions
   int translateVISANamedBarrierSignal(G4_Predicate *prd, G4_Operand *barrierId,
-                                      G4_Operand *threadCount);
+                                      G4_Operand *barrierType,
+                                      G4_Operand *numProducers,
+                                      G4_Operand *numConsumers);
   int translateVISANamedBarrierWait(G4_Predicate *prd, G4_Operand *barrierId);
-  void generateNamedBarrier(G4_Predicate *prd, int numProducer, int numConsumer,
-                            NamedBarrierType type, G4_Operand *barrierId);
-  void generateNamedBarrier(G4_Predicate *prd, G4_Operand *barrierId,
-                            G4_SrcRegRegion *threadValue);
 
   ////////////////////////////////////////////////////////////////////////
   // fence etc
