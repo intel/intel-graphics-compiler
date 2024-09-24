@@ -419,6 +419,8 @@ public:
     std::queue<BinaryOperator *> Queue;
     Queue.push(MainInst);
 
+    SmallPtrSet<Value *, 4> Visited;
+
     while (!Queue.empty()) {
       auto *Inst = Queue.front();
       Queue.pop();
@@ -430,10 +432,15 @@ public:
       LLVM_DEBUG(dbgs() << "BFN: Found " << OpNames[Op]
                         << " operation: " << *Inst << "\n";);
 
-      if (MatchedOps > 0 && Inst->hasNUsesOrMore(UsesThreshold)) {
+      Visited.insert(Inst);
+
+      auto NumUses = count_if(
+          Inst->users(), [&](const User *U) { return !Visited.contains(U); });
+
+      if (MatchedOps > 0 && NumUses >= UsesThreshold && Op != Not) {
         LLVM_DEBUG(dbgs() << "BFN: Too many uses for the operation: " << *Inst
                           << "\n");
-        return false;
+        continue;
       }
 
       switch (Op) {
@@ -715,6 +722,30 @@ private:
   Value *CmpSrcs[2]{nullptr};
   // Annotation for the min/max call
   StringRef Annotation;
+};
+
+// Class to identify cases where a comparison and select can be replaced by a
+// sequence of icmp+sext+and. The backend can emit cmp instruction with
+// an integer destination instead of a predicate. This transformation reduces
+// flag register pressure and eliminates the ARF latency.
+class CmpSextAndMatcher {
+public:
+  explicit CmpSextAndMatcher(SelectInst *I) : SI(I) {
+    IGC_ASSERT_EXIT_MESSAGE(I, "null instruction");
+  }
+
+  // Match select instruction that can be replaced by icmp+sext+and
+  bool match(bool HasBFN = false);
+
+private:
+  bool emit();
+
+  SelectInst *SI;
+  CmpInst *CmpI = nullptr;
+
+  unsigned ResultSize = 0;
+  Value *Src0 = nullptr;
+  Value *Src1 = nullptr;
 };
 
 } // namespace
@@ -1433,8 +1464,13 @@ bool GenXPatternMatch::foldBoolAnd(Instruction *Inst) {
 void GenXPatternMatch::visitSelectInst(SelectInst &I) {
   if (I.use_empty())
     return;
-  Changed |= (Kind == PatternMatchKind::PreLegalization) &&
-             MinMaxMatcher::isEnabled() && MinMaxMatcher(&I).matchMinMax();
+  if (Kind != PatternMatchKind::PreLegalization)
+    return;
+  if (MinMaxMatcher::isEnabled() && MinMaxMatcher(&I).matchMinMax()) {
+    Changed = true;
+    return;
+  }
+  Changed |= CmpSextAndMatcher(&I).match(ST->hasAdd3Bfn());
 }
 
 // Trace the def-use chain and return the first non up-cast related value.
@@ -2303,6 +2339,101 @@ bool MinMaxMatcher::emit() {
   SelInst->replaceAllUsesWith(Cast);
 
   NumOfMinMaxMatched++;
+  return true;
+}
+
+bool CmpSextAndMatcher::match(bool HasBFN) {
+  LLVM_DEBUG(dbgs() << "CmpSextAnd: matching " << *SI << "\n");
+  auto *Ty = dyn_cast<IGCLLVM::FixedVectorType>(SI->getType());
+  if (!Ty || !Ty->isIntOrIntVectorTy())
+    return false;
+
+  auto *ETy = Ty->getElementType();
+  auto NumElts = Ty->getNumElements();
+  ResultSize = ETy->getPrimitiveSizeInBits() * NumElts;
+
+  if (ResultSize % genx::DWordBits != 0)
+    return false;
+
+  CmpI = dyn_cast<ICmpInst>(SI->getCondition());
+  if (!CmpI)
+    return false;
+
+  LLVM_DEBUG(dbgs() << "CmpSextAnd: found cmp " << *CmpI << "\n");
+
+  auto *PredTy = CmpI->getType();
+  if (PredTy->isVectorTy())
+    return false;
+
+  Src0 = SI->getTrueValue();
+  Src1 = SI->getFalseValue();
+
+  if (auto *C = dyn_cast<Constant>(Src0); C && C->isNullValue())
+    Src0 = nullptr;
+  else if (auto *C = dyn_cast<Constant>(Src1); C && C->isNullValue())
+    Src1 = nullptr;
+  else if (!HasBFN) {
+    // It's not profitable to replace select with bitwise instructions, unless
+    // they can be fused into BFN.
+    return false;
+  }
+
+  if (isa_and_nonnull<Constant>(Src0) || isa_and_nonnull<Constant>(Src1))
+    return false;
+
+  if (Src0)
+    LLVM_DEBUG(dbgs() << "CmpSextAnd: found src0 " << *Src0 << "\n");
+  if (Src1)
+    LLVM_DEBUG(dbgs() << "CmpSextAnd: found src1 " << *Src1 << "\n");
+
+  return emit();
+}
+
+bool CmpSextAndMatcher::emit() {
+  IGC_ASSERT_EXIT(Src0 || Src1);
+  IRBuilder<> Builder(SI);
+
+  auto NumElts = ResultSize / genx::DWordBits;
+  auto *IntTy = Builder.getInt32Ty();
+  auto *IntV1Ty = IGCLLVM::FixedVectorType::get(IntTy, 1);
+  auto *IntVTy = IGCLLVM::FixedVectorType::get(IntTy, NumElts);
+
+  auto *TrueV = Constant::getAllOnesValue(IntV1Ty);
+  auto *FalseV = Constant::getNullValue(IntV1Ty);
+
+  auto *NewSel = Builder.CreateSelect(CmpI, TrueV, FalseV);
+
+  vc::Region R(IntVTy);
+  R.VStride = R.Stride = R.Offset = 0;
+  R.Width = 1;
+
+  Value *Mask = R.createRdRegion(NewSel, "", SI, SI->getDebugLoc());
+
+  Value *And0 = nullptr;
+  Value *And1 = nullptr;
+  if (Src0) {
+    auto *Cast = Builder.CreateBitCast(Src0, IntVTy);
+    And0 = Builder.CreateAnd(Cast, Mask);
+  }
+  if (Src1) {
+    auto *Cast = Builder.CreateBitCast(Src1, IntVTy);
+    auto *NotMask = Builder.CreateNot(Mask);
+    And1 = Builder.CreateAnd(Cast, NotMask);
+  }
+
+  Value *Res = nullptr;
+  if (And0 && And1)
+    Res = Builder.CreateOr(And0, And1);
+  else if (And0)
+    Res = And0;
+  else
+    Res = And1;
+
+  Res = Builder.CreateBitCast(Res, SI->getType());
+
+  Res->takeName(SI);
+  SI->replaceAllUsesWith(Res);
+
   return true;
 }
 
