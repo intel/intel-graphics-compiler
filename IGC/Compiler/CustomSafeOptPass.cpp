@@ -3223,7 +3223,8 @@ void GenSpecificPattern::visitOr(BinaryOperator& I)
                     uint64_t ShlIntValue = *(ShlConstant->getValue()).getRawData();
                     uint64_t OrIntValue = *(OrConstant->getValue()).getRawData();
 
-                    if (OrIntValue < pow(2, ShlIntValue))
+                    // Check that OrIntValue is less than 2^ShlIntValue
+                    if (OrIntValue < (1ull << ShlIntValue))
                     {
                         Value* newAdd = builder.CreateAdd(I.getOperand(0), I.getOperand(1));
                         I.replaceAllUsesWith(newAdd);
