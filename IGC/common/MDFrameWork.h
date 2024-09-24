@@ -459,7 +459,6 @@ namespace IGC
         bool ForceLinearWalkOnLinearUAV                 = false;
         bool DisableLscSamplerRouting                   = false;
         bool UseBarrierControlFlowOptimization          = false;
-        bool DisableShrinkArrayAllocaPass               = false;
         bool disableDynamicRQManagement                 = false;
     };
 
