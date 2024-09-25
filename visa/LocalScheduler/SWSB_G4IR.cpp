@@ -181,6 +181,32 @@ static bool operandOverlap(G4_Operand *opnd1, G4_Operand *opnd2) {
           opnd2->getLinearizedEnd() > opnd1->getLinearizedStart());
 }
 
+static bool isExclusiveLoad(SBNode *node1, SBNode *node2, DepType type) {
+  if (type != WAW) {
+    return false;
+  }
+
+  G4_INST *inst1 = node1->getLastInstruction();
+  G4_INST *inst2 = node2->getLastInstruction();
+
+  if (!inst1->isSend() || !inst2->isSend()) {
+    return false;
+  }
+
+  G4_Declare *dcl1 = inst1->getDst()->getTopDcl();
+  G4_Declare *dcl2 = inst2->getDst()->getTopDcl();
+
+  if (dcl1 != dcl2) {
+    return false;
+  }
+
+  if (dcl1->isExclusiveLoad()) {
+    return true;
+  }
+
+  return false;
+}
+
 bool SBFootprint::hasOverlap(const SBFootprint *liveFootprint,
                              unsigned short &internalOffset) const {
   for (const SBFootprint *curFootprintPtr = this; curFootprintPtr;
@@ -2540,34 +2566,52 @@ void SWSB::updateTokensForNodeSuccs(SBNode *node, unsigned short token) {
     //  1. math.rsqrt   r20 r10           { $1 }
     //  2. math.in      r50  r20          { $1 }
     //  3. mul          r60 r50 r40       { $1.dst }
-    if (tokenHonourInstruction(curNode->getLastInstruction())) {
-      unsigned distance = curNode->getSendID() > node->getSendID()
-                              ? curNode->getSendID() - node->getSendID()
-                              : node->getSendID() - curNode->getSendID();
-      if ((fg.builder->getOptions()->getOption(vISA_EnableISBIDBUNDLE) ||
-           distance < totalTokenNum)) {
-        if ((curItem.type == RAW || curItem.type == WAW) &&
-            curNode->getLastInstruction()->getSBIDSetToken() == UNKNOWN_TOKEN) {
-          if (fg.builder->getOptions()->getOption(
-                  vISA_EnableDPASTokenReduction)) {
-            //  If no instruction depends on DPAS, no SBID
-            if (!(curNode->GetInstruction()->isDpas() && curNode->succs.empty())) {
-              curNode->getLastInstruction()->setSBIDSetToken(token);
-              node->setLiveLaterID(curNode->getLiveEndID());
-              allTokenNodesMap[token].set(curNode->sendID);
-              curNode->setTokenReuseNode(node);
-              continue;
-            }
-          } else {
-            curNode->getLastInstruction()->setSBIDSetToken(token);
-            node->setLiveLaterID(curNode->getLiveEndID());
-            allTokenNodesMap[token].set(curNode->sendID);
-            curNode->setTokenReuseNode(node);
-            continue;
-          }
-        }
-      }
+    if (!tokenHonourInstruction(curNode->getLastInstruction())) {
+      node_it++;
+      continue;
     }
+
+    unsigned distance = curNode->getSendID() > node->getSendID()
+                            ? curNode->getSendID() - node->getSendID()
+                            : node->getSendID() - curNode->getSendID();
+    if (!(fg.builder->getOptions()->getOption(vISA_EnableISBIDBUNDLE) ||
+         distance < totalTokenNum)) {
+      node_it++;
+      continue;
+    }
+
+    if (curItem.type != RAW && curItem.type != WAW) {
+      node_it++;
+      continue;
+    }
+
+    if (curNode->getLastInstruction()->getSBIDSetToken() != UNKNOWN_TOKEN) {
+      node_it++;
+      continue;
+    }
+
+    if (isExclusiveLoad(node, curNode, curItem.type)) {
+      node_it = node->succs.erase(node_it);
+      continue;
+    }
+
+    if (fg.builder->getOptions()->getOption(vISA_EnableDPASTokenReduction)) {
+      //  If no instruction depends on DPAS, no SBID
+      if (!(curNode->GetInstruction()->isDpas() && curNode->succs.empty())) {
+        curNode->getLastInstruction()->setSBIDSetToken(token);
+        node->setLiveLaterID(curNode->getLiveEndID());
+        allTokenNodesMap[token].set(curNode->sendID);
+        curNode->setTokenReuseNode(node);
+        continue;
+      }
+    } else {
+      curNode->getLastInstruction()->setSBIDSetToken(token);
+      node->setLiveLaterID(curNode->getLiveEndID());
+      allTokenNodesMap[token].set(curNode->sendID);
+      curNode->setTokenReuseNode(node);
+      continue;
+    }
+
     node_it++;
   }
 }
@@ -8468,6 +8512,9 @@ void SWSB::removePredsEdges(SBNode *node, SBNode *pred) {
 
 void G4_BB_SB::createAddGRFEdge(SBNode *pred, SBNode *succ, DepType d,
                                 SBDependenceAttr a) {
+  if (isExclusiveLoad(pred, succ, d)) {
+    return;
+  }
   // When there are multiple dependence edges between two instructions
   // We think the RAW and WAW > WAR, which means if WAR co-exists with any
   // other, it will be dropped. This is especially important for send

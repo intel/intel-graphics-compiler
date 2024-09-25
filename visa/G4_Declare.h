@@ -92,6 +92,7 @@ class G4_Declare {
   uint16_t PreDefinedVar : 1;
   uint16_t addrSpillFill : 1;
   uint16_t forceSpilled : 1;
+  uint16_t exclusiveLoad : 1;
 
   unsigned declId; // global decl id for this builder
 
@@ -124,6 +125,9 @@ public:
   void setLiveOut() { liveOut = true; }
   void resetLiveOut() { liveOut = false; }
   void setPayloadLiveOut() { payloadLiveOut = true; }
+
+  void setExclusiveLoad() { exclusiveLoad = true; }
+  bool isExclusiveLoad() { return exclusiveLoad; }
 
   void setDoNotWiden() { noWidening = true; }
   bool doNotWiden() const { return noWidening; }

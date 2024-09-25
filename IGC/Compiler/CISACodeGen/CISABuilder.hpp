@@ -136,6 +136,7 @@ namespace IGC
         void DeclarePred(CVariable* var, uint offset);
         void MarkAsOutput(CVariable* var);
         void MarkAsPayloadLiveOut(CVariable* var);
+        void MarkAsExclusiveLoad(CVariable* var);
         void Compile(bool hasSymbolTable, GenXFunctionGroupAnalysis*& pFGA);
         std::string GetShaderName();
         const vISA::KernelCostInfo* kci;

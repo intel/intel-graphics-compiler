@@ -5936,6 +5936,14 @@ namespace IGC
         }
     }
 
+    void CEncoder::MarkAsExclusiveLoad(CVariable* var)
+    {
+        for (unsigned int i = 0; i < var->GetNumberInstance(); i++)
+        {
+            V(vKernel->AddAttributeToVar(var->visaGenVariable[i], "ExclusiveLoad", 0, nullptr));
+        }
+    }
+
     bool CEncoder::AvoidRetryOnSmallSpill() const
     {
         if (IGC_GET_FLAG_VALUE(ForceAllowSmallSpill))

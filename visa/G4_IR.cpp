@@ -5077,6 +5077,7 @@ G4_Declare::G4_Declare(const IR_Builder &builder, const char *n,
   capableOfReuse = false;
   addrSpillFill = false;
   forceSpilled = false;
+  exclusiveLoad = false;
   scopeID = 0;
 
   declId = (unsigned)dcllist.size();

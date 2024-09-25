@@ -1547,6 +1547,9 @@ int VISAKernelImpl::AddAttributeToVarGeneric(CISA_GEN_VAR *decl,
       if (Attributes::isAttribute(Attributes::ATTR_PayloadLiveOut, attrName)) {
         rootDcl->setPayloadLiveOut();
       }
+      if (Attributes::isAttribute(Attributes::ATTR_ExclusiveLoad, attrName)) {
+        rootDcl->setExclusiveLoad();
+      }
     }
     break;
   }
