@@ -37,7 +37,7 @@ namespace IGC
         public:
             CollectBuiltinsPass(
                 TFunctionsVec& neededBuiltinsFunc,
-                std::function<bool(llvm::Function*)> predicate);
+                const std::function<bool(llvm::Function*)>& predicate);
             ~CollectBuiltinsPass();
 
             void visitCallInst(llvm::CallInst& callInst);
@@ -79,7 +79,7 @@ namespace IGC
             template<class T>
             void FindAllBuiltins(
                 T* ptr,
-                std::function<bool(llvm::Function*)> predicate,
+                const std::function<bool(llvm::Function*)>& predicate,
                 TFunctionsVec& neededBuiltinInstr)
             {
                 CollectBuiltinsPass pass(neededBuiltinInstr, predicate);

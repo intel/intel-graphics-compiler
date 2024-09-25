@@ -1227,7 +1227,7 @@ bool TranslateBuildSPMD(
             "-indvars-widen-indvars=0",
             "-verify-indvars=0"
         };
-        for (auto indVarSimplifyFlag : indVarSimplifyFlags)
+        for (const auto indVarSimplifyFlag : indVarSimplifyFlags)
         {
             auto indVarSimplifySwitch = optionsMap.find(indVarSimplifyFlag.drop_front(1).split("=").first);
             if (indVarSimplifySwitch != optionsMap.end())

@@ -103,7 +103,7 @@ void BiFManagerTool::writeHashMap(llvm::raw_fd_ostream& fileDataHeader, BiFDicti
     for (auto rec_i = ListOfFunctions->begin(); rec_i != ListOfFunctions->end(); ++rec_i)
     {
         auto record_inst = *rec_i;
-        std::string funcName =
+        const std::string& funcName =
             record_inst.first;
 
         auto funcNameSize = funcName.size();
@@ -438,7 +438,7 @@ void BiFManagerTool::generateSplitedBiFModules(llvm::Module* pMainModule)
     splitBiFModules(pMainModule);
 
     // Per section do...
-    for (auto setData : FuncPerSections)
+    for (const auto& setData : FuncPerSections)
     {
         if (BiFSections.count(setData.first) > 0)
         {
@@ -488,4 +488,4 @@ void BiFManagerTool::findAllBuiltins(
             return BiFMap->count(pFunc->getName().str()) > 0;
         };
     FindAllBuiltins(pFunction, checker, neededBuiltinInstr);
-}
+}

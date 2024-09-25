@@ -34,7 +34,7 @@ size_t BiFManagerCommon::getHash(const std::string& FlagName)
 
 CollectBuiltinsPass::CollectBuiltinsPass(
     TFunctionsVec& neededBuiltinsFunc,
-    std::function<bool(llvm::Function*)> predicate) :
+    const std::function<bool(llvm::Function*)>& predicate) :
     neededBuiltinsFunc(neededBuiltinsFunc),
     predicate(predicate)
 {}

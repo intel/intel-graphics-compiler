@@ -159,7 +159,7 @@ void BiFManagerHandler::LinkBiF(llvm::Module& Module)
         }
         else
         {
-            LinkerCallback collectInternalizeLinkList =
+            const LinkerCallback& collectInternalizeLinkList =
                 [&](llvm::Module& M, const StringSet<>& GVS)
                 {
                     for (auto& GVS_i : GVS)
@@ -195,7 +195,7 @@ bool BiFManagerHandler::IsBiF(llvm::GlobalVariable* pVar)
     return pVar->getMetadata(bifMark) != nullptr;
 }
 
-void BiFManagerHandler::SetCallbackLinker(std::function<void(llvm::Module&, const llvm::StringSet<>&)> CallbackLinker)
+void BiFManagerHandler::SetCallbackLinker(const std::function<void(llvm::Module&, const llvm::StringSet<>&)>& CallbackLinker)
 {
     this->CallbackLinker = CallbackLinker;
 }
@@ -322,7 +322,7 @@ void BiFManagerHandler::preapareBiFSections(llvm::Module& pMainModule, TFunction
     }
 
     // Load and preapre BiF Modules
-    for (auto bif_record : neededModules)
+    for (const auto& bif_record : neededModules)
     {
         // Localize the module in stream
         BiFDataRecord* record = bif_record.second;

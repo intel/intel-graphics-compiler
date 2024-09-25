@@ -90,7 +90,7 @@ namespace IGC
         public:
             void SetDataLayout(const llvm::DataLayout& DL);
             void SetTargetTriple(llvm::StringRef T);
-            void SetCallbackLinker(std::function<void(llvm::Module&, const llvm::StringSet<>&)> CallbackLinker);
+            void SetCallbackLinker(const std::function<void(llvm::Module&, const llvm::StringSet<>&)>& CallbackLinker);
 
             void SetFuncTimers(FuncTimer* startTimer, FuncTimer* endTimer)
             {

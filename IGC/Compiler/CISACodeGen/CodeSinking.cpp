@@ -956,7 +956,7 @@ namespace IGC {
     uint CodeLoopSinking::getMaxRegCountForFunction(Function *F)
     {
         unsigned int MaxPressure = 0;
-        for (auto BB : BBPressures)
+        for (const auto& BB : BBPressures)
         {
             if (BB.getFirst()->getParent() != F)
                 continue;

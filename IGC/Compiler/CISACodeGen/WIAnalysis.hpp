@@ -299,9 +299,9 @@ namespace IGC
         bool ForCodegen = true;
 
         // Caching CS local ID's uniformness
-        bool m_localIDxUniform;
-        bool m_localIDyUniform;
-        bool m_localIDzUniform;
+        bool m_localIDxUniform = false;
+        bool m_localIDyUniform = false;
+        bool m_localIDzUniform = false;
     };
 
     /// @brief Work Item Analysis class used to provide information on
