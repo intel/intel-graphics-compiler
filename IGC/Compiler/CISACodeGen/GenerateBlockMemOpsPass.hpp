@@ -53,6 +53,7 @@ class GenerateBlockMemOpsPass : public llvm::FunctionPass
         bool getOffset(llvm::Value *Init, llvm::SmallVector<llvm::Value*, 2> &Offset);
         bool canOptLoadStore(llvm::Instruction *I);
         bool isLoopPattern(llvm::Loop *L);
+        void setAlignmentAttr(llvm::CallInst *CI, const unsigned &Alignment);
 
         WIAnalysis *WI = nullptr;
         IGC::CodeGenContext *CGCtx = nullptr;

@@ -49,6 +49,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "ZEBinWriter/zebin/source/ZEELFObjectBuilder.hpp"
 #include "Compiler/CISACodeGen/LoopCountAnalysis.hpp"
+#include "IGC/WrapperLLVM/include/llvmWrapper/IR/Attributes.h"
 
 #include <fstream>
 
@@ -6676,6 +6677,24 @@ void EmitPass::emitLegacySimdBlockRead(llvm::Instruction* inst, llvm::Value* ptr
     }
 }
 
+// If Block Write/Read was created in GenerateBlockMemOpsPass special alignment can be requiered.
+// This function extracts alignment requirements from the attributes of the call instruction.
+uint32_t EmitPass::getReqBlkBitsForBlockStLd(CallInst *call) {
+    llvm::AttributeList attrs = call->getAttributes();
+    llvm::AttributeSet set = IGCLLVM::getFnAttrs(attrs);
+
+    if (set.hasAttribute("alignmentrequirements")) {
+        llvm::Attribute attr = set.getAttribute("alignmentrequirements");
+        llvm::StringRef attrValue = attr.getValueAsString();
+        // 4-byte alignment is requied
+        if (attrValue == "4") {
+            return 32;
+        }
+    }
+
+    return 0;
+}
+
 void EmitPass::emitLSCSimdBlockWrite(llvm::Instruction* inst, llvm::Value* ptrVal)
 {
     Value* llPtr = inst->getOperand(0);
@@ -6745,8 +6764,14 @@ void EmitPass::emitLSCSimdBlockWrite(llvm::Instruction* inst, llvm::Value* ptrVa
     while (bytesRemaining)
     {
         uint32_t bytesToRead = getLSCBlockMsgSize(bytesRemaining, m_currShader->m_Platform->getMaxLSCBlockMsgSize());
-        uint32_t blkBits = 64;
-        uint32_t nBlks = bytesToRead * 8 / 64;
+
+        uint32_t blkBits = getReqBlkBitsForBlockStLd(cast<CallInst>(inst));
+        if (!blkBits)
+        {
+            blkBits = 64;
+        }
+
+        uint32_t nBlks = bytesToRead * 8 / blkBits;
 
         emitLSCStore(inst, data, pTempVar, blkBits, nBlks, srcOffset, &resource, addrSize, LSC_DATA_ORDER_TRANSPOSE, immOffset, 1);
         m_encoder->Push();
@@ -6853,7 +6878,12 @@ void EmitPass::emitLSCSimdBlockRead(llvm::Instruction* inst, llvm::Value* ptrVal
     // If type size >= 8 bytes, assume 8byte aligned and use D64 Transpose message;
     // otherwise, use D32 transpose message.
     bool isD64 = (typeSizeInBytes >= 8);
-    uint32_t blkBits = isD64 ? 64 : 32;
+    uint32_t blkBits = getReqBlkBitsForBlockStLd(cast<CallInst>(inst));
+    if (!blkBits)
+    {
+        blkBits = isD64 ? 64 : 32;
+    }
+
     while (bytesRemaining)
     {
         uint32_t bytesToRead = getLSCBlockMsgSize(bytesRemaining, m_currShader->m_Platform->getMaxLSCBlockMsgSize(isD64));

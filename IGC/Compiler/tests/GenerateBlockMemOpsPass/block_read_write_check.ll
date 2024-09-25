@@ -24,12 +24,12 @@ entry:
   %arrayidx = getelementptr inbounds float, float addrspace(1)* %in, i64 %conv.i
   %2 = load float, float addrspace(1)* %arrayidx, align 4
 
-  ; CHECK: [[TMP0:%.*]] = call float @llvm.genx.GenISA.simdBlockRead.f32.p1f32(float addrspace(1)* %arrayidx)
+  ; CHECK: [[TMP0:%.*]] = call float @llvm.genx.GenISA.simdBlockRead.f32.p1f32(float addrspace(1)* %arrayidx) [[ATTR_NUM:#.*]]
 
   %arrayidx1 = getelementptr inbounds float, float addrspace(1)* %out, i64 %conv.i
   store float %2, float addrspace(1)* %arrayidx1, align 4
 
-  ; CHECK: call void @llvm.genx.GenISA.simdBlockWrite.p1f32.f32(float addrspace(1)* %arrayidx1, float [[TMP0]])
+  ; CHECK: call void @llvm.genx.GenISA.simdBlockWrite.p1f32.f32(float addrspace(1)* %arrayidx1, float [[TMP0]]) [[ATTR_NUM]]
 
   ret void
 }
@@ -71,8 +71,8 @@ entry:
 define spir_kernel void @testYZUnifLoop(float addrspace(1)* %out, float addrspace(1)* %in, <8 x i32> %r0, <8 x i32> %payloadHeader, <3 x i32> %localSize, i16 %localIdX, i16 %localIdY, i16 %localIdZ, i32 %bufferOffset, i64 %limit) {
 ; CHECK: %{{.*}} = load
 ; CHECK: store
-; CHECK: [[TMP0:%.*]] = call float @llvm.genx.GenISA.simdBlockRead.f32.p1f32(float addrspace(1)* %{{.*}})
-; CHECK: call void @llvm.genx.GenISA.simdBlockWrite.p1f32.f32(float addrspace(1)* %{{.*}}, float [[TMP0]])
+; CHECK: [[TMP0:%.*]] = call float @llvm.genx.GenISA.simdBlockRead.f32.p1f32(float addrspace(1)* %{{.*}}) [[ATTR_NUM]]
+; CHECK: call void @llvm.genx.GenISA.simdBlockWrite.p1f32.f32(float addrspace(1)* %{{.*}}, float [[TMP0]]) [[ATTR_NUM]]
 entry:
   %offset = extractelement <8 x i32> %payloadHeader, i64 0
   %groupNumX = extractelement <8 x i32> %r0, i64 1
@@ -99,6 +99,8 @@ exit:
 terminator:
   ret void
 }
+
+; CHECK: attributes #2 = { "alignmentrequirements"="4" }
 
 !igc.functions = !{!1, !2, !3}
 !IGCMetadata = !{!19}

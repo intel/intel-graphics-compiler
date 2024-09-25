@@ -1071,6 +1071,7 @@ private:
                                      bool EvictL1) const;
 
     CVariable *getStackSizePerThread(llvm::Function* parentFunc);
+    uint32_t getReqBlkBitsForBlockStLd(llvm::CallInst *call);
 
     bool m_isDuplicate;
     CVariable *m_tmpDest = nullptr;

@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "GenerateBlockMemOpsPass.hpp"
 #include "IGCIRBuilder.h"
+#include "IGC/WrapperLLVM/include/llvmWrapper/IR/Attributes.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -687,6 +688,7 @@ bool GenerateBlockMemOpsPass::changeToBlockInst(Instruction *I) {
     IRBuilder<> Builder(I);
     Function *BlockOpDecl = nullptr;
     CallInst *BlockOpCall = nullptr;
+    alignment_t AlignmentOnInstruction = 0;
 
     if (isa<LoadInst>(I)) {
         Value *Args[1] = {I->getOperand(0)};
@@ -695,6 +697,7 @@ bool GenerateBlockMemOpsPass::changeToBlockInst(Instruction *I) {
             GenISAIntrinsic::GenISA_simdBlockRead,
             Types);
         BlockOpCall = Builder.CreateCall(BlockOpDecl, Args);
+        AlignmentOnInstruction = IGCLLVM::getAlignmentValue(cast<LoadInst>(I));
     } else {
         Value *Args[2] = {I->getOperand(1), I->getOperand(0)};
         Type *Types[2] = {I->getOperand(1)->getType(), I->getOperand(0)->getType()};
@@ -702,15 +705,26 @@ bool GenerateBlockMemOpsPass::changeToBlockInst(Instruction *I) {
             GenISAIntrinsic::GenISA_simdBlockWrite,
             Types);
         BlockOpCall = Builder.CreateCall(BlockOpDecl, Args);
+        AlignmentOnInstruction = IGCLLVM::getAlignmentValue(cast<StoreInst>(I));
     }
 
     if (!BlockOpCall)
         return false;
 
+    setAlignmentAttr(BlockOpCall, AlignmentOnInstruction);
     I->replaceAllUsesWith(BlockOpCall);
     I->eraseFromParent();
 
     return true;
+}
+
+void GenerateBlockMemOpsPass::setAlignmentAttr(CallInst *CI, const unsigned &Alignment) {
+    llvm::Attribute CustomAttr = llvm::Attribute::get(CI->getContext(), "alignmentrequirements", std::to_string(Alignment));
+    IGCLLVM::AttrBuilder B {CI->getContext()};
+    B.addAttribute("alignmentrequirements", std::to_string(Alignment));
+    llvm::AttributeList CurrentAttrs = CI->getAttributes();
+    llvm::AttributeList NewAttrs = IGCLLVM::addFnAttributes(CurrentAttrs, CI->getContext(), B);
+    CI->setAttributes(NewAttrs);
 }
 
 Value *GenerateBlockMemOpsPass::checkGep(Instruction *PtrInstr) {
