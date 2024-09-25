@@ -22,18 +22,6 @@ namespace IGC
         CComputeShaderBase(llvm::Function* pFunc, CShaderProgram* pProgram);
         virtual ~CComputeShaderBase();
     protected:
-        void selectWalkOrder(
-            bool useLinearWalk,
-            uint numberOfTypedAccess,
-            uint numberOfUntypedAccess,
-            uint num1DAccesses,
-            uint num2DAccesses,
-            uint numSLMAccesses,
-            uint threadGroupSize_X,
-            uint threadGroupSize_Y,
-            uint threadGroupSize_Z,
-            SComputeShaderWalkOrder& walkOrderStruct);
-
         // Determines if HW can handle auto generating local IDs with this
         // order
         static std::optional<CS_WALK_ORDER> checkLegalWalkOrder(
