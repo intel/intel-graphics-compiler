@@ -75,18 +75,21 @@ bool GASResolving::canonicalizeAddrSpaceCasts(Function& F) const {
     std::vector<AddrSpaceCastInst*> GASAddrSpaceCasts;
     for (auto& I : make_range(inst_begin(F), inst_end(F)))
         if (AddrSpaceCastInst* ASCI = dyn_cast<AddrSpaceCastInst>(&I))
+        {
+            if (IGCLLVM::isOpaquePointerTy(ASCI->getType()))
+                return false;
             if (ASCI->getDestAddressSpace() == GAS)
                 GASAddrSpaceCasts.push_back(ASCI);
-
+        }
     bool changed = false;
     BuilderType::InsertPointGuard Guard(*IRB);
     for (auto ASCI : GASAddrSpaceCasts)
     {
         Value* Src = ASCI->getPointerOperand();
         Type* SrcType = Src->getType();
-        Type* DstElementType = IGCLLVM::getNonOpaquePtrEltTy(ASCI->getType());
+        Type* DstElementType = IGCLLVM::getNonOpaquePtrEltTy(ASCI->getType());  // Legacy code: getNonOpaquePtrEltTy
 
-        if (IGCLLVM::getNonOpaquePtrEltTy(SrcType) == DstElementType)
+        if (IGCLLVM::getNonOpaquePtrEltTy(SrcType) == DstElementType)           // Legacy code: getNonOpaquePtrEltTy
             continue;
 
         PointerType* TransPtrTy = PointerType::get(DstElementType, SrcType->getPointerAddressSpace());

@@ -65,26 +65,14 @@ inline uint32_t NumUsed(const SmallVector<bool, 4>& used)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Extracts a scalar type from the input type. The input type may be
-/// a scalar or vector or a pointer to a scalar or vector.
-inline Type* GetScalarType(Type* type)
-{
-    if (type->isPointerTy())
-    {
-        type = IGCLLVM::getNonOpaquePtrEltTy(type);
-    }
-    return type->getScalarType();
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // @brief Returns the number of elements in the vector type. The input type may
 // be a scalar or vector or a pointer to a scalar or vector. If the input type
 // is a scalar or a pointer to a scalar the function returns 1.
 inline uint32_t GetNumElements(Type* type)
 {
-    if (type->isPointerTy())
+    if (type->isPointerTy() && !IGCLLVM::isOpaquePointerTy(type))
     {
-        type = IGCLLVM::getNonOpaquePtrEltTy(type);
+        type = IGCLLVM::getNonOpaquePtrEltTy(type);     // Legacy code: getNonOpaquePtrEltTy
     }
     IGC_ASSERT(type->isSingleValueType());
     uint32_t numElements = 1;
@@ -228,8 +216,9 @@ inline bool GetUsedVectorElements(
         }
         if (srcTy->isPointerTy() && dstTy->isPointerTy())
         {
-            srcTy = IGCLLVM::getNonOpaquePtrEltTy(srcTy);
-            dstTy = IGCLLVM::getNonOpaquePtrEltTy(dstTy);
+            if (IGCLLVM::isOpaquePointerTy(srcTy)) return false;
+            srcTy = IGCLLVM::getNonOpaquePtrEltTy(srcTy);     // Legacy code: getNonOpaquePtrEltTy
+            dstTy = IGCLLVM::getNonOpaquePtrEltTy(dstTy);     // Legacy code: getNonOpaquePtrEltTy
         }
         if (!srcTy->isVectorTy() || !dstTy->isVectorTy())
         {
@@ -320,15 +309,23 @@ inline void ReplaceUseWith(
     }
     else if (BitCastInst* bc = dyn_cast<BitCastInst>(user))
     {
-        IGCLLVM::IRBuilder<> builder(bc);
-        Type* scalarType = GetScalarType(bc->getType());
-        Type* newDstType = GetNewType(scalarType, numElements);
-        newInstElTy = newDstType;
-        if (bc->getType()->isPointerTy())
+        Type* bcType = bc->getType();
+        if (!bcType->isPointerTy() || !IGCLLVM::isOpaquePointerTy(bcType))
         {
-            newDstType = PointerType::get(newDstType, ADDRESS_SPACE_PRIVATE);
+            IGCLLVM::IRBuilder<> builder(bc);
+            if (bcType->isPointerTy())
+            {
+                bcType = IGCLLVM::getNonOpaquePtrEltTy(bcType);     // Legacy code: getNonOpaquePtrEltTy
+            }
+            Type* scalarType = bcType->getScalarType();
+            Type* newDstType = GetNewType(scalarType, numElements);
+            newInstElTy = newDstType;
+            if (bc->getType()->isPointerTy())
+            {
+                newDstType = PointerType::get(newDstType, ADDRESS_SPACE_PRIVATE);
+            }
+            newInst = builder.CreateBitCast(newOp, newDstType, bc->getName());
         }
-        newInst = builder.CreateBitCast(newOp, newDstType, bc->getName());
     }
     else if (ExtractElementInst* ee = dyn_cast<ExtractElementInst>(user))
     {

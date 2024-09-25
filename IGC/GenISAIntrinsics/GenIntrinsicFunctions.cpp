@@ -45,7 +45,7 @@ std::string getMangledTypeStr(llvm::Type* Ty) {
         Result += "p" + llvm::utostr(PTyp->getAddressSpace());
         if (!IGCLLVM::isOpaquePointerTy(PTyp))
         {
-            Result += getMangledTypeStr(IGCLLVM::getNonOpaquePtrEltTy(PTyp));
+            Result += getMangledTypeStr(IGCLLVM::getNonOpaquePtrEltTy(PTyp));     // Legacy code: getNonOpaquePtrEltTy
         }
     }
     else if (llvm::ArrayType* ATyp = llvm::dyn_cast<llvm::ArrayType>(Ty)) {

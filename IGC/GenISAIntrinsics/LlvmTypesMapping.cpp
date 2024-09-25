@@ -182,7 +182,7 @@ bool PointerType::VerifyType(llvm::Type* pType) const
     }
     if (!IGCLLVM::isOpaquePointerTy(pType))
     {
-        isCorrect = isCorrect && m_Type.VerifyType(IGCLLVM::getNonOpaquePtrEltTy(pType));
+        isCorrect = isCorrect && m_Type.VerifyType(IGCLLVM::getNonOpaquePtrEltTy(pType));     // Legacy code: getNonOpaquePtrEltTy
     }
     return isCorrect;
 }

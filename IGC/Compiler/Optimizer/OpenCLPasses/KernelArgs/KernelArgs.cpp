@@ -172,7 +172,7 @@ KernelArg::ArgType KernelArg::calcArgType(const Argument* arg, const StringRef t
             }
             else if (arg->hasByValAttr() &&
                 type->isPointerTy() &&
-                IGCLLVM::getNonOpaquePtrEltTy(type)->isStructTy())
+                arg->getParamByValType()->isStructTy())
             {
                 // Pass by value structs will show up as private pointer
                 // arguments in the function signiture.
