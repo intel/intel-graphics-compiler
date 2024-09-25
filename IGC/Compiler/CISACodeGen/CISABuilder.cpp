@@ -5486,8 +5486,9 @@ namespace IGC
         if (L.size() > 0 && nLeft > 0) {
             // if not the empty string then add a separator
             lbl << "_";
-            nLeft--;
+            charsLeft--;
         }
+        nLeft = std::min( charsLeft, L.size() );
         // suffix as many characters of the label as we can
         for (size_t i = 0; i < nLeft; i++) {
             lbl << sanitizeChar(L[i]);
