@@ -1537,10 +1537,40 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
         Value* dstRootV; // root value of dst (dessa)
         Value* srcRootV; // root value of src (dessa)
     };
+
+    struct VTyInfo {
+        unsigned numElt;
+        bool isSplat;
+        uint64_t splatValue;
+
+        VTyInfo() : numElt(0), isSplat(false), splatValue(0) { }
+        explicit VTyInfo(Value * V) : numElt(0), isSplat(false), splatValue(0) {
+            if (IGCLLVM::FixedVectorType * vTy = dyn_cast<IGCLLVM::FixedVectorType>(V->getType())) {
+                numElt = vTy->getNumElements();
+                if (isa<ConstantAggregateZero>(V)) {
+                    isSplat = true;
+                    splatValue = 0;
+                }
+                else if (ConstantDataVector * CDV = dyn_cast<ConstantDataVector>(V)) {
+                    if (Constant * C = CDV->getSplatValue()) {
+                        if (ConstantInt * CInt = dyn_cast<ConstantInt>(C)) {
+                            isSplat = true;
+                            splatValue = CInt->getZExtValue();
+                        }
+                        else if (ConstantFP * CFP = dyn_cast<ConstantFP>(C)) {
+                            isSplat = true;
+                            splatValue = CFP->getValueAPF().bitcastToAPInt().getZExtValue();
+                        }
+                    }
+                }
+            }
+        }
+    };
+
     BumpPtrAllocator phiAllocator;
     std::list<PhiSrcMoveInfo*> phiSrcDstList;
     std::vector<std::pair<CVariable*, CVariable*>> emitList;
-    std::map<CVariable*, unsigned int> dstVTyMap;
+    std::map<CVariable*, VTyInfo> dstVTyMap;
     llvm::BasicBlock* bb = aBB;
     IGCLLVM::TerminatorInst* TI = aBB->getTerminator();
     IGC_ASSERT(nullptr != TI);
@@ -1565,7 +1595,6 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
                 if (PN->getIncomingBlock(i) == bb)
                 {
                     Value* Src = PN->getOperand(i);
-
                     Value* dstRootV = m_deSSA ? m_deSSA->getRootValue(PN) : PN;
                     Value* srcRootV = m_deSSA ? m_deSSA->getRootValue(Src) : Src;
                     dstRootV = dstRootV ? dstRootV : PN;
@@ -1575,19 +1604,14 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
                     // might have the same variable with two different CVariable.
                     if (dstRootV != srcRootV)
                     {
+                        VTyInfo vTyInfo(Src);
                         PhiSrcMoveInfo* phiInfo = new (phiAllocator) PhiSrcMoveInfo();
+                        phiInfo->srcCVar = vTyInfo.isSplat ? nullptr : m_currShader->GetSymbol(Src);
                         phiInfo->dstCVar = m_currShader->GetSymbol(PN);
-                        phiInfo->srcCVar = m_currShader->GetSymbol(Src);
                         phiInfo->dstRootV = dstRootV;
                         phiInfo->srcRootV = srcRootV;
                         phiSrcDstList.push_back(phiInfo);
-
-                        int numElt = 0;
-                        if (IGCLLVM::FixedVectorType * vTy = dyn_cast<IGCLLVM::FixedVectorType>(PN->getType()))
-                        {
-                            numElt = int_cast<int>(vTy->getNumElements());
-                        }
-                        dstVTyMap.insert(std::pair<CVariable*, unsigned int>(phiInfo->dstCVar, numElt));
+                        dstVTyMap.insert(std::make_pair(phiInfo->dstCVar, vTyInfo));
                     }
                 }
             }
@@ -1651,14 +1675,16 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
                 if (phiinfo->srcRootV == dRootV) {
                     CVariable* sVar = phiinfo->srcCVar;
                     CVariable* nVar;
-                    if (sVar->GetType() != T->GetType()) {
-                        nVar = m_currShader->GetNewAlias(
-                            T, sVar->GetType(), 0, sVar->GetNumberElement());
+                    if (sVar) { // sVar is null if srcCVar is a constant splat vector
+                        if (sVar->GetType() != T->GetType()) {
+                            nVar = m_currShader->GetNewAlias(
+                                T, sVar->GetType(), 0, sVar->GetNumberElement());
+                        }
+                        else {
+                            nVar = T;
+                        }
+                        phiinfo->srcCVar = nVar;
                     }
-                    else {
-                        nVar = T;
-                    }
-                    phiinfo->srcCVar = nVar;
                 }
             }
         }
@@ -1688,13 +1714,14 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
         for (uint instance = 0; instance < dst->GetNumberInstance(); instance++)
         {
             m_encoder->SetSecondHalf(instance == 1 ? true : false);
-            unsigned int numVTyElt = dstVTyMap[dst];
-            if (numVTyElt > 0)
-            {
-                emitVectorCopy(dst, src, numVTyElt);
+            const VTyInfo & vTyInfo = dstVTyMap[dst];
+            if (vTyInfo.isSplat) {
+                emitConstantVector(dst, vTyInfo.splatValue);
             }
-            else
-            {
+            else if (vTyInfo.numElt > 0) {
+                emitVectorCopy(dst, src, vTyInfo.numElt);
+            }
+            else {
                 m_encoder->Copy(dst, src);
                 m_encoder->Push();
             }
@@ -20099,6 +20126,18 @@ void EmitPass::emitVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
         m_encoder->SetSrcSubReg(0, SrcSubReg);
         m_encoder->SetDstSubReg(DstSubReg);
         m_encoder->Copy(Dst, Src);
+        m_encoder->Push();
+    }
+}
+
+void EmitPass::emitConstantVector(CVariable* Dst, uint64_t value)
+{
+    uint16_t width = Dst->IsUniform() ? 1 : numLanes(m_currShader->m_SIMDSize);
+    CVariable * constant = m_currShader->ImmToVariable(value, Dst->GetType());
+    for (uint16_t i = 0; width * i < Dst->GetNumberElement(); ++i)
+    {
+        m_encoder->SetDstSubReg(width * i);
+        m_encoder->Copy(Dst, constant);
         m_encoder->Push();
     }
 }

@@ -490,6 +490,7 @@ public:
     void emitVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
         uint32_t DstSubRegOffset = 0, uint32_t SrcSubRegOffset = 0,
         bool allowLargerSIMDSize = false);
+    void emitConstantVector(CVariable* Dst, uint64_t value = 0);
     void emitCopyAll(CVariable* Dst, CVariable* Src, llvm::Type* Ty);
 
     void emitPushFrameToStack(Function* ParentFunction, unsigned& pushSize);
