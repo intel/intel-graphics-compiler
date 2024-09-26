@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include <algorithm>
+#include <vector>
 #include "common/debug/Debug.hpp"
 #include "common/debug/Dump.hpp"
 #include "common/LLVMUtils.h"
@@ -19,7 +21,6 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "common/LLVMWarningsPop.hpp"
-#include <list>
 #include "Probe/Assertion.h"
 
 /// @brief ConstantCoalescing merges multiple constant loads into one load
@@ -1205,7 +1206,8 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
     }
 }
 
-uint ConstantCoalescing::GetOffsetAlignment(Value* val) const
+#define IDENTICAL_PHI 0
+uint ConstantCoalescing::GetOffsetAlignment(Value* val, PHINode* currPhi) const
 {
     GenIntrinsicInst* intr = dyn_cast<llvm::GenIntrinsicInst>(val);
     if (m_ctx->m_DriverInfo.SupportsDynamicUniformBuffers() &&
@@ -1239,8 +1241,15 @@ uint ConstantCoalescing::GetOffsetAlignment(Value* val) const
         Value* src1 = inst->getOperand(1);
         ConstantInt* cSrc1 = dyn_cast<ConstantInt>(src1);
         uint imm1 = cSrc1 ? int_cast<uint>(cSrc1->getZExtValue()) : 0;
-        uint align0 = GetOffsetAlignment(src0);
-        uint align1 = (!cSrc1) ? GetOffsetAlignment(src1) : 1;
+        uint align0 = GetOffsetAlignment(src0, currPhi);
+        uint align1 = (!cSrc1) ? GetOffsetAlignment(src1, currPhi) : 1;
+
+        if (align0 == IDENTICAL_PHI && align1 == IDENTICAL_PHI)
+            return 1;
+        if (align0 != IDENTICAL_PHI && align1 == IDENTICAL_PHI)
+            return align0;
+        // In the case of align0 == IDENTICAL_PHI we cannot immediately return align1 bc in following code
+        // align1 might be changed based on whether it is a constant.
         switch (inst->getOpcode())
         {
         case Instruction::Add:
@@ -1250,6 +1259,8 @@ uint ConstantCoalescing::GetOffsetAlignment(Value* val) const
             {
                 align1 = (1 << iSTD::bsf(imm1));
             }
+            if (align0 == IDENTICAL_PHI)
+                return align1;
             return std::min(align0, align1);
         }
         case Instruction::And:
@@ -1258,6 +1269,8 @@ uint ConstantCoalescing::GetOffsetAlignment(Value* val) const
             {
                 align1 = (1 << iSTD::bsf(imm1));
             }
+            if (align0 == IDENTICAL_PHI)
+                return align1;
             return std::max(align0, align1);
         }
         case Instruction::Mul:
@@ -1266,6 +1279,8 @@ uint ConstantCoalescing::GetOffsetAlignment(Value* val) const
             {
                 align1 = (1 << iSTD::bsf(imm1));
             }
+            if (align0 == IDENTICAL_PHI)
+                return align1;
             return align0 * align1;
         }
         case Instruction::Shl:
@@ -1274,12 +1289,56 @@ uint ConstantCoalescing::GetOffsetAlignment(Value* val) const
             {
                 align1 = imm1;
             }
+            if (align0 == IDENTICAL_PHI)
+                return align1;
             return align0 << align1;
         }
         default:
             break;
         }
     }
+
+    /**
+     * Including the alignment calculation passing a phi node. example:
+     *
+     * ```llvm
+     *   %BB0_end = mul i32 %LocalID_Z, 288
+     *   br label %1
+     * 1:
+     *   %phi = phi i32 [ %BB0_end, %0 ], [ %BB1_end, %1 ]
+     *   %shl = shl i32 %phi, 4
+     *   %ldraw0_0 = call <4 x i32> @llvm.genx.GenISA.ldrawvector ... %shl
+     *   ...
+     *   %or0_0 = or i32 %shl, 16
+     *   %ldraw0_1 = call <4 x i32> @llvm.genx.GenISA.ldrawvector ... %or0_0
+     *   ...
+     *   %BB1_end = add nsw i32 %phi, 144
+     *   br label %1
+     * ```
+     * The alignment for `or0_0` has to consider both `%shl` and `%BB0_end` from a phi
+     */
+    if (auto* phi = dyn_cast<PHINode>(val))
+    {
+        if (currPhi) {
+            if (phi == currPhi)
+                return IDENTICAL_PHI;
+            else
+                return 1;
+        }
+
+        std::vector<uint> aligns;
+        aligns.reserve(phi->getNumIncomingValues());
+        for (uint i = 0; i < phi->getNumIncomingValues(); ++i) {
+            uint m_align = GetOffsetAlignment(phi->getIncomingValue(i), phi);
+            if (m_align != IDENTICAL_PHI)
+                aligns.push_back(m_align);
+        }
+        if (aligns.empty()) // in case all are IDENTICAL_PHI
+            return 1;
+
+        return *std::min_element(aligns.begin(), aligns.end());
+    }
+
     return 1;
 }
 
@@ -1383,7 +1442,7 @@ Value* ConstantCoalescing::SimpleBaseOffset(
                 }
             }
 
-            if (or_offset < GetOffsetAlignment(inst0))
+            if (or_offset < GetOffsetAlignment(inst0, NULL))
             {
                 return src0;
             }
