@@ -41,6 +41,10 @@ namespace {
             initializeTimeStatsCounterPass(*PassRegistry::getPassRegistry());
         }
 
+        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+            AU.setPreservesAll();
+        }
+
         bool runOnModule(Module&) override;
 
     private:
