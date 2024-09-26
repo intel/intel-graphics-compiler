@@ -2590,11 +2590,6 @@ void SWSB::updateTokensForNodeSuccs(SBNode *node, unsigned short token) {
       continue;
     }
 
-    if (isExclusiveLoad(node, curNode, curItem.type)) {
-      node_it = node->succs.erase(node_it);
-      continue;
-    }
-
     if (fg.builder->getOptions()->getOption(vISA_EnableDPASTokenReduction)) {
       //  If no instruction depends on DPAS, no SBID
       if (!(curNode->GetInstruction()->isDpas() && curNode->succs.empty())) {
@@ -5562,6 +5557,12 @@ void G4_BB_SB::setSendOpndMayKilled(LiveGRFBuckets *globalSendsLB,
           continue;
         }
 
+        // Exclusive WAW has no overlap
+        if (isExclusiveLoad(curLiveNode, node, dep)) {
+          ++bn_it;
+          continue;
+        }
+
         // For SBID global liveness analysis, both explicit and implicit kill
         // counted.
         if (dep == RAW || dep == WAW) {
@@ -7023,6 +7024,11 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
           continue;
         }
 
+        if (isExclusiveLoad(liveNode, node, dep)) {
+          ++bn_it;
+          continue;
+        }
+
         if (tokenHonourInstruction(liveInst)) {
           if (dep == RAW || dep == WAW) {
             if (builder.getOption(vISA_EnableDPASTokenReduction) &&
@@ -7911,7 +7917,6 @@ void SWSB::addGlobalDependence(unsigned globalSendNum,
                                        curFootprint, curOpnd, fg.builder);
           }
 
-
           // clang-format off
           // RAW:                           R kill W    R-->live        explicit dependence
           // WAW:                           W2 kill W1  W2-->live       explicit dependence
@@ -7923,6 +7928,11 @@ void SWSB::addGlobalDependence(unsigned globalSendNum,
           // clang-format on
           if (hasOverlap) {
             vASSERT(tokenHonourInstruction(liveInst));
+            if (isExclusiveLoad(curLiveNode, node, dep)) {
+              ++bn_it;
+              continue;
+            }
+
             if (dep == RAW || dep == WAW) {
               if (sb_bb->isGRFEdgeAdded(curLiveNode, node, dep, DEP_EXPLICT)) {
                 send_use_kills.killOperand(bn_it);
@@ -8280,6 +8290,11 @@ void SWSB::addGlobalDependenceWithReachingDef(
           // clang-format on
           if (hasOverlap) {
             vASSERT(tokenHonourInstruction(liveInst));
+            if (isExclusiveLoad(curLiveNode, node, dep)) {
+              ++bn_it;
+              continue;
+            }
+
             if (dep == RAW || dep == WAW) {
               if (BBVector[i]->isGRFEdgeAdded(curLiveNode, node, dep,
                                               DEP_EXPLICT)) {
@@ -8512,9 +8527,6 @@ void SWSB::removePredsEdges(SBNode *node, SBNode *pred) {
 
 void G4_BB_SB::createAddGRFEdge(SBNode *pred, SBNode *succ, DepType d,
                                 SBDependenceAttr a) {
-  if (isExclusiveLoad(pred, succ, d)) {
-    return;
-  }
   // When there are multiple dependence edges between two instructions
   // We think the RAW and WAW > WAR, which means if WAR co-exists with any
   // other, it will be dropped. This is especially important for send
