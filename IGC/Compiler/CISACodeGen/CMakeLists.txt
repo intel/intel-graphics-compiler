@@ -104,6 +104,7 @@ set(IGC_BUILD__SRC__CISACodeGen_Common
     "${CMAKE_CURRENT_SOURCE_DIR}/IGCFunctionExternalPressure.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/LoopCountAnalysis.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/IGCVectorizer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ResourceLoopUnroll.cpp"
   )
 
 
@@ -208,6 +209,7 @@ set(IGC_BUILD__HDR__CISACodeGen_Common
     "${CMAKE_CURRENT_SOURCE_DIR}/IGCLivenessAnalysis.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/LoopCountAnalysis.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/IGCVectorizer.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ResourceLoopUnroll.hpp"
   )
 
 

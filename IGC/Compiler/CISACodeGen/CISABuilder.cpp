@@ -5532,6 +5532,7 @@ namespace IGC
         m_enableVISAdump = false;
         m_nestLevelForcedNoMaskRegion = 0;
         m_hasInlineAsm = hasInlineAsmCall;
+        m_hasUniqueExclusiveLoad = false;
 
         InitLabelMap(m_program->entry);
 

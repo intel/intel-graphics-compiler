@@ -504,6 +504,8 @@ namespace IGC
         inline bool HasPrevKernel();
         inline void BeginForcedNoMaskRegion();
         inline void EndForcedNoMaskRegion();
+        inline bool GetUniqueExclusiveLoad();
+        inline void SetUniqueExcusiveLoad(bool v);
 
         void Wait();
 
@@ -829,6 +831,8 @@ namespace IGC
         unsigned int m_argumentStackSize = 0;
 
         bool m_isCodePatchCandidate = false;
+
+        bool m_hasUniqueExclusiveLoad = false;
 
         int m_nestLevelForcedNoMaskRegion = 0;
 
@@ -1203,6 +1207,16 @@ namespace IGC
     inline bool CEncoder::HasPrevKernel()
     {
         return m_hasPrevKernel;
+    }
+
+    inline bool CEncoder::GetUniqueExclusiveLoad()
+    {
+        return m_hasUniqueExclusiveLoad;
+    }
+
+    inline void CEncoder::SetUniqueExcusiveLoad(bool v)
+    {
+        m_hasUniqueExclusiveLoad = v;
     }
 
     inline void CEncoder::BeginForcedNoMaskRegion()

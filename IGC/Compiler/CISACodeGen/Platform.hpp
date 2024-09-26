@@ -1444,6 +1444,11 @@ bool hasBarrierControlFlowOpt() const
     return enabled;
 }
 
+bool hasSlowSameSBIDLoad() const
+{
+    return isCoreChildOf(IGFX_XE2_HPG_CORE);
+}
+
 bool canDoMultipleLineMOVOpt() const
 {
     return isCoreChildOf(IGFX_XE2_HPG_CORE);

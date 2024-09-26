@@ -52,6 +52,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/TimeStatsCounter.h"
 #include "Compiler/CISACodeGen/TypeDemote.h"
 #include "Compiler/CISACodeGen/UniformAssumptions.hpp"
+#include "Compiler/CISACodeGen/ResourceLoopUnroll.hpp"
 #include "Compiler/CISACodeGen/VectorProcess.hpp"
 #include "Compiler/CISACodeGen/RuntimeValueLegalizationPass.h"
 #include "Compiler/CISACodeGen/LowerGEPForPrivMem.hpp"
@@ -371,6 +372,7 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     if(IGC_IS_FLAG_SET(DumpRegPressureEstimate)) mpm.add(new IGCRegisterPressurePrinter("final"));
     // Let Layout be the last pass before Emit Pass
     mpm.add(new Layout());
+
 
     mpm.add(createTimeStatsCounterPass(&ctx, TIME_CG_Analysis, STATS_COUNTER_END));
 

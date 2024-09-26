@@ -1615,6 +1615,12 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
                         phiSrcDstList.push_back(phiInfo);
                         dstVTyMap.insert(std::make_pair(phiInfo->dstCVar, vTyInfo));
                     }
+
+                    // only handled in resource loop emit pass
+                    if (PN->getMetadata("MyUniqueExclusiveLoadMetadata") != nullptr)
+                    {
+                        m_encoder->SetUniqueExcusiveLoad(true);
+                    }
                 }
             }
         }
@@ -5182,8 +5188,10 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
     CVariable* flag = nullptr;
     Value* ptr = inst->getOperand(textureArgIdx);
     ResourceDescriptor resource = GetResourceVariable(ptr);
-    bool needLoop = ResourceLoopHeader(resource, flag, label,
-                                       m_RLA->GetResourceLoopMarker(inst));
+    uint ResourceLoopMarker = m_RLA->GetResourceLoopMarker(inst);
+    bool needLoop = ResourceLoopHeader(resource, flag, label, ResourceLoopMarker);
+    ResourceLoopSubIteration(resource, flag, label, ResourceLoopMarker);
+
     m_encoder->SetPredicate(flag);
     if (m_destination->IsUniform())
     {
@@ -7970,52 +7978,53 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
     //Hence the movs to handle this layout in SIMD8 mode
     bool simd8HFRet = isHalfGRFReturn(m_destination, m_SimdMode);
 
-        if (simd8HFRet)
-        {
-            dst = m_currShader->GetNewVariable(
-                m_destination->GetNumberElement() * 2, ISA_TYPE_HF, EALIGN_GRF, false, CName::NONE);
-        }
-    uint label = 0;
-    CVariable* flag = nullptr;
     bool zeroLOD = m_currShader->m_Platform->supportSampleAndLd_lz() && inst->ZeroLOD() &&
                    !m_currShader->m_Platform->WaDisableSampleLz();
-    bool needLoop = ResourceLoopHeader(resource, sampler, flag, label,
-                                       m_RLA->GetResourceLoopMarker(inst));
 
-    if (m_currShader->m_Platform->getWATable().Wa_22011157800 && !IGC_IS_FLAG_DISABLED(DiableWaSamplerNoMask))
-    {
-        m_encoder->SetNoMask();
-    }
-    else
-    {
-        m_encoder->SetPredicate(flag);
-    }
-    m_encoder->Sample(
-        opCode,
-        writeMask.getEM(),
-        immOffset,
-        resource,
-        pairedResource,
-        sampler,
-        numSources,
-        dst,
-        payload,
-        zeroLOD,
-        cpsEnable,
-        hasMaskResponse,
-        needLoop);
-    m_encoder->Push();
+    ResourceLoop(resource, sampler, [&](CVariable* flag, CVariable*& destination,
+        ResourceDescriptor resource, bool needLoop) {
 
-    if (m_currShader->hasReadWriteImage(*(inst->getParent()->getParent())))
-    {
-        CVariable* tempdest = m_currShader->BitCast(m_destination, GetUnsignedIntegerType(m_destination->GetType()));
-        m_encoder->Cast(m_currShader->GetNULL(), tempdest);
+        dst = destination;
+            if (simd8HFRet)
+            {
+                dst = m_currShader->GetNewVariable(
+                    destination->GetNumberElement() * 2, ISA_TYPE_HF, EALIGN_GRF, false, CName::NONE);
+            }
+
+        if (m_currShader->m_Platform->getWATable().Wa_22011157800 && !IGC_IS_FLAG_DISABLED(DiableWaSamplerNoMask))
+        {
+            m_encoder->SetNoMask();
+        }
+        else
+        {
+            m_encoder->SetPredicate(flag);
+        }
+        m_encoder->Sample(
+            opCode,
+            writeMask.getEM(),
+            immOffset,
+            resource,
+            pairedResource,
+            sampler,
+            numSources,
+            dst,
+            payload,
+            zeroLOD,
+            cpsEnable,
+            hasMaskResponse,
+            needLoop);
         m_encoder->Push();
-        m_encoder->Copy(m_currShader->GetNULL(), m_currShader->GetTSC());
-        m_encoder->Push();
-    }
-    ResourceLoopBackEdge(needLoop, flag, label,
-                         m_RLA->GetResourceLoopMarker(inst));
+
+        if (m_currShader->hasReadWriteImage(*(inst->getParent()->getParent())))
+        {
+            CVariable* tempdest = m_currShader->BitCast(destination, GetUnsignedIntegerType(destination->GetType()));
+            m_encoder->Cast(m_currShader->GetNULL(), tempdest);
+            m_encoder->Push();
+            m_encoder->Copy(m_currShader->GetNULL(), m_currShader->GetTSC());
+            m_encoder->Push();
+        }
+
+        }, m_RLA->GetResourceLoopMarker(inst));
 
     {
         if (simd8HFRet)
@@ -8094,6 +8103,7 @@ void EmitPass::emitInfoInstruction(InfoIntrinsic* inst)
     uint label = 0;
     CVariable* flag = nullptr;
     bool needLoop = ResourceLoopHeader(resource, flag, label);
+    ResourceLoopSubIteration(resource, flag, label);
 
     if (opCode == llvm_readsurfacetypeandformat)
     {
@@ -8216,6 +8226,7 @@ void EmitPass::emitSurfaceInfo(GenIntrinsicInst* inst)
     uint label = 0;
     CVariable* flag = nullptr;
     bool needLoop = ResourceLoopHeader(resource, flag, label);
+    ResourceLoopSubIteration(resource, flag, label);
     CVariable* payload = m_currShader->GetNewVariable(8, ISA_TYPE_UD, EALIGN_GRF, CName::NONE);
 
     m_encoder->SetSimdSize(SIMDMode::SIMD8);
@@ -8376,6 +8387,7 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic* inst)
     uint label = 0;
     CVariable* flag = nullptr;
     bool needLoop = ResourceLoopHeader(resource, sampler, flag, label);
+    ResourceLoopSubIteration(resource, sampler, flag, label);
     m_encoder->SetPredicate(flag);
     m_encoder->Gather4Inst(
         opCode,
@@ -8466,6 +8478,7 @@ void EmitPass::emitLdmsInstruction(llvm::Instruction* inst)
     uint label = 0;
     CVariable* flag = nullptr;
     bool needLoop = ResourceLoopHeader(resource, flag, label);
+    ResourceLoopSubIteration(resource, flag, label);
     m_encoder->SetPredicate(flag);
     m_encoder->LoadMS(opCode, writeMask.getEM(), offset, resource, numSources, dst, payload, feedbackEnable);
     m_encoder->Push();
@@ -10859,6 +10872,7 @@ void EmitPass::emitLoad3DInner(LdRawIntrinsic* inst, ResourceDescriptor& resourc
         uint label = 0;
         CVariable* flag = nullptr;
         bool needLoop = ResourceLoopHeader(resource, flag, label);
+        ResourceLoopSubIteration(resource, flag, label);
         uint sizeInBits = GetPrimitiveTypeSizeInRegisterInBits(inst->getType());
         IGC_ASSERT_MESSAGE((sizeInBits == 8) || (sizeInBits == 16) || (sizeInBits == 32) || (sizeInBits == 64) || (sizeInBits == 96) || (sizeInBits == 128),
             "load type must be 1/2/4/8/12/16 bytes long");
@@ -12164,6 +12178,7 @@ void EmitPass::emitStore3DInner(Value* pllValToStore, Value* pllDstPtr, Value* p
     uint label = 0;
     CVariable* flag = nullptr;
     bool needLoop = ResourceLoopHeader(resource, flag, label);
+    ResourceLoopSubIteration(resource, flag, label);
     if (sizeInBits == 32)
     {
         if (resource.m_surfaceType == ESURFACE_STATELESS &&
@@ -13040,7 +13055,7 @@ CVariable* EmitPass::UniformCopy(CVariable* var, bool doSub)
 
 /// Uniform copy allowing to reuse the off calculated by a previous call
 /// This allow avoiding redundant code
-CVariable* EmitPass::UniformCopy(CVariable* var, CVariable*& off, CVariable* eMask, bool doSub)
+CVariable* EmitPass::UniformCopy(CVariable* var, CVariable*& off, CVariable* eMask, bool doSub, bool safeGuard)
 {
     IGC_ASSERT_MESSAGE(!var->IsUniform(), "Expect non-uniform source!");
 
@@ -13063,6 +13078,12 @@ CVariable* EmitPass::UniformCopy(CVariable* var, CVariable*& off, CVariable* eMa
         {
             m_encoder->Fbl(off, eMask);
         }
+
+        if (safeGuard)
+        {
+            m_encoder->And(off, off, m_currShader->ImmToVariable(numLanes(m_currShader->m_SIMDSize) - 1, ISA_TYPE_UD));
+        }
+
         m_encoder->Push();
 
         // Calculate byte offset
@@ -15540,6 +15561,7 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *dstAddr,
             uint label = 0;
             CVariable* flag = nullptr;
             bool needLoop = ResourceLoopHeader(resource, flag, label);
+            ResourceLoopSubIteration(resource, flag, label);
             if (shouldGenerateLSC(pInst)) {
                 auto cacheOpts = LSC_DEFAULT_CACHING;
                 m_encoder->LSC_AtomicRaw(atomic_op, pDst,
@@ -15749,6 +15771,7 @@ void EmitPass::emitAtomicTyped(GenIntrinsicInst* pInsn)
         uint label = 0;
         CVariable* flag = nullptr;
         bool needLoop = ResourceLoopHeader(resource, flag, label);
+        ResourceLoopSubIteration(resource, flag, label);
         for (uint i = 0; i < loopIter; ++i)
         {
             m_encoder->SetPredicate(flag);
@@ -15856,6 +15879,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
         uint label = 0;
         CVariable* flag = nullptr;
         bool needLoop = ResourceLoopHeader(resource, flag, label);
+        ResourceLoopSubIteration(resource, flag, label);
         CVariable* tempdst[4] = { nullptr, nullptr, nullptr, nullptr };
         SIMDMode instWidth = std::min(
             m_currShader->m_Platform->supportsSIMD16TypedRW() ? SIMDMode::SIMD16 : SIMDMode::SIMD8,
@@ -15975,6 +15999,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
         uint label = 0;
         CVariable* flag = nullptr;
         bool needLoop = ResourceLoopHeader(resource, flag, label);
+        ResourceLoopSubIteration(resource, flag, label);
         uint parameterLength = 4;
 
         SIMDMode instWidth = std::min(
@@ -16621,6 +16646,7 @@ void EmitPass::emitAtomicCounter(llvm::GenIntrinsicInst* pInsn)
     uint label = 0;
     CVariable* flag = nullptr;
     bool needLoop = ResourceLoopHeader(resource, flag, label);
+    ResourceLoopSubIteration(resource, flag, label);
 
     uint messageDescriptor = encodeMessageDescriptorForAtomicUnaryOp(
         1,
@@ -18844,7 +18870,9 @@ void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32,
         gatherDst = m_currShader->GetNewAlias(gatherDst, gatherDst->GetType(), 0, nbelts);
     }
 
-    ResourceLoop(Resource, [&](CVariable* flag) {
+    SamplerDescriptor sampler;
+    ResourceLoop(Resource, sampler, [&](CVariable* flag, CVariable*& destination,
+        ResourceDescriptor resource, bool needloop) {
         if (doUniformLoad)
             m_encoder->SetNoMask();
         else
@@ -19042,7 +19070,9 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
 
     eOffset = BroadcastIfUniform(eOffset);
 
-    ResourceLoop(resource, [&](CVariable* flag) {
+    SamplerDescriptor sampler;
+    ResourceLoop(resource, sampler, [&](CVariable* flag, CVariable*& destination,
+        ResourceDescriptor resource, bool needLoop) {
         for (uint32_t i = 0; i < VecMessInfo.numInsts; ++i)
         {
             // raw operand, eltOffBytes is in bytes.
@@ -19054,6 +19084,9 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
             uint32_t instTotalBytes = blkInBytes * numBlks;
             uint32_t instElts = instTotalBytes / eltBytes;
             uint32_t nbelts = instElts * width;
+
+            destCVar = destination;
+            dVisaTy = destCVar->GetType();
 
             CVariable* rawAddrVar;
             int currImmOffsetInt = immOffsetInt;
@@ -19078,11 +19111,13 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
             }
 
             bool needTemp = (!IsGRFAligned(destCVar, EALIGN_GRF));
-            CVariable* gatherDst;
+
+            CVariable* gatherDst = nullptr;
             if (needTemp)
             {
                 gatherDst = m_currShader->GetNewVariable(
                     (uint16_t)nbelts, dVisaTy, EALIGN_GRF, CName(destCVar->getName(), "Tmp"));
+                destination = gatherDst;
             }
             else
             {
@@ -19166,7 +19201,9 @@ void EmitPass::emitLSCVectorStore_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32,
         stVar = BroadcastAndExtend(stVar);
     }
 
-    ResourceLoop(Resource, [&](CVariable* flag) {
+    SamplerDescriptor sampler;
+    ResourceLoop(Resource, sampler, [&](CVariable* flag, CVariable*& destination,
+        ResourceDescriptor resource, bool needLoop) {
         // no need for discard predicate if we are writing to scratch - this is our
         // internal memory, shader output remain the same, but we avoid problems
         // when, for example, texture coordinates are spilled
@@ -19248,7 +19285,9 @@ void EmitPass::emitLSCVectorStore_uniform(LSC_CACHE_OPTS CacheOpts, bool UseA32,
         CVariable* new_eoff = prepareAddressForUniform(eOffset, dSize, vSize, requiredVSize, addrAlign);
         CVariable* new_stVar = prepareDataForUniform(stVar, requiredVSize, dataAlign);
 
-        ResourceLoop(Resource, [&](CVariable* /*flag*/) {
+        SamplerDescriptor sampler;
+        ResourceLoop(Resource, sampler, [&](CVariable* /*flag*/, CVariable*& /*destination*/,
+            ResourceDescriptor /*resource*/, bool /*needLoop*/) {
             m_encoder->SetNoMask();
           emitLSCStore(CacheOpts,
                        new_stVar, new_eoff, dSize * 8, 1, 0, &Resource,
@@ -19269,7 +19308,9 @@ void EmitPass::emitLSCVectorStore_uniform(LSC_CACHE_OPTS CacheOpts, bool UseA32,
     }
     eOffset = ReAlignUniformVariable(eOffset, EALIGN_GRF);
 
-    ResourceLoop(Resource, [&](CVariable* /*flag*/) {
+    SamplerDescriptor sampler;
+    ResourceLoop(Resource, sampler, [&](CVariable* /*flag*/, CVariable*& /*destination*/,
+        ResourceDescriptor /*resource*/, bool /*needLoop*/) {
         m_encoder->SetUniformSIMDSize(SIMDMode::SIMD1);
         m_encoder->SetNoMask();
         emitLSCStore(CacheOpts,
@@ -19374,7 +19415,9 @@ void EmitPass::emitLSCVectorStore(Value *Ptr,
     CVariable* broadcastedVar = tryReusingConstVectorStoreData(storedVal, BB, true);
     storedVar = broadcastedVar ? broadcastedVar : BroadcastIfUniform(storedVar);
 
-    ResourceLoop(resource, [&](CVariable* flag) {
+    SamplerDescriptor sampler;
+    ResourceLoop(resource, sampler, [&](CVariable* flag, CVariable*& destination,
+        ResourceDescriptor resource, bool needLoop) {
         for (uint32_t i = 0; i < VecMessInfo.numInsts; ++i)
         {
             // raw operand, eltOff is in bytes
@@ -19504,6 +19547,7 @@ void EmitPass::emitLSCTypedRead(llvm::Instruction* pInsn)
         uint label = 0;
         CVariable* flag = nullptr;
         bool needLoop = ResourceLoopHeader(resource, flag, label);
+        ResourceLoopSubIteration(resource, flag, label);
         CVariable* tempdst[4] = { nullptr, nullptr, nullptr, nullptr };
         auto instWidth = m_currShader->m_Platform->getMaxLSCTypedMessageSize();
         bool needsSplit = m_currShader->m_SIMDSize > instWidth;
@@ -19592,6 +19636,7 @@ void EmitPass::emitLSCTypedWrite(llvm::Instruction* pInsn)
     uint label = 0;
     CVariable* flag = nullptr;
     bool needLoop = ResourceLoopHeader(resource, flag, label);
+    ResourceLoopSubIteration(resource, flag, label);
     uint parameterLength = 4;
 
     bool needsSplit = m_currShader->m_SIMDSize > m_currShader->m_Platform->getMaxLSCTypedMessageSize();
@@ -19842,6 +19887,7 @@ void EmitPass::emitLSCAtomicTyped(llvm::GenIntrinsicInst* inst)
         uint label = 0;
         CVariable* flag = nullptr;
         bool needLoop = ResourceLoopHeader(resource, flag, label);
+        ResourceLoopSubIteration(resource, flag, label);
         CVariable* tempdst[4] = { nullptr, nullptr, nullptr, nullptr };
         auto instWidth = m_currShader->m_Platform->getMaxLSCTypedMessageSize();
         bool needsSplit = m_currShader->m_SIMDSize > instWidth;
@@ -20018,6 +20064,52 @@ void EmitPass::emitUniformVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nE
     partialCopy(SIMDMode::SIMD4);
     partialCopy(SIMDMode::SIMD2);
     partialCopy(SIMDMode::SIMD1);
+}
+
+void EmitPass::emitPredicatedVectorCopy(CVariable* Dst, CVariable* Src, CVariable* pred)
+{
+    unsigned int width = numLanes(m_currShader->m_SIMDSize);
+    unsigned doff = 0, soff = 0;
+
+    IGC_ASSERT(IsGRFAligned(Dst, EALIGN_GRF));
+    IGC_ASSERT(IsGRFAligned(Src, EALIGN_GRF));
+
+    uint32_t nElts = Src->GetSize() / getGRFSize();
+
+    for (uint32_t i = 0; i < nElts; ++i)
+    {
+        uint SrcSubReg = soff + width * i;
+        uint DstSubReg = doff + width * i;
+
+        m_encoder->SetPredicate(pred);
+        m_encoder->SetSrcSubReg(0, SrcSubReg);
+        m_encoder->SetDstSubReg(DstSubReg);
+        m_encoder->Copy(Dst, Src);
+        m_encoder->Push();
+    }
+}
+
+void EmitPass::emitPredicatedVectorSelect(CVariable* Dst, CVariable* Src0, CVariable* Src1, CVariable* pred)
+{
+    unsigned int width = numLanes(m_currShader->m_SIMDSize);
+    unsigned doff = 0, soff = 0;
+
+    IGC_ASSERT(IsGRFAligned(Dst, EALIGN_GRF));
+
+    uint32_t nElts = Dst->GetSize() / getGRFSize();
+
+    for (uint32_t i = 0; i < nElts; ++i)
+    {
+        uint SrcSubReg = soff + width * i;
+        uint DstSubReg = doff + width * i;
+
+        m_encoder->SetNoMask();
+        m_encoder->SetSrcSubReg(0, SrcSubReg);
+        m_encoder->SetSrcSubReg(1, SrcSubReg);
+        m_encoder->SetDstSubReg(DstSubReg);
+        m_encoder->Select(pred, Dst, Src0, Src1);
+        m_encoder->Push();
+    }
 }
 
 // DstSubRegOffset and SrcSubRegOffset are in unit of element size.
@@ -21073,10 +21165,11 @@ bool EmitPass::ResourceLoopHeader(
     ResourceDescriptor& resource,
     CVariable*& flag,
     uint& label,
-    uint ResourceLoopMarker)
+    uint ResourceLoopMarker,
+    int* subInteration)
 {
     SamplerDescriptor sampler;
-    return ResourceLoopHeader(resource, sampler, flag, label, ResourceLoopMarker);
+    return ResourceLoopHeader(resource, sampler, flag, label, ResourceLoopMarker, subInteration);
 }
 
 // Insert loop header to handle non-uniform resource and sampler
@@ -21086,7 +21179,8 @@ bool EmitPass::ResourceLoopHeader(
     SamplerDescriptor& sampler,
     CVariable*& flag,
     uint& label,
-    uint ResourceLoopMarker)
+    uint ResourceLoopMarker,
+    int* subInteration)
 {
     if (resource.m_surfaceType != ESURFACE_BINDLESS &&
         resource.m_surfaceType != ESURFACE_SSHBINDLESS &&
@@ -21117,18 +21211,111 @@ bool EmitPass::ResourceLoopHeader(
         return true;
     }
     m_currShader->IncNumSampleBallotLoops();
-    CVariable* resourceFlag = nullptr;
-    CVariable* samplerFlag = nullptr;
-    CVariable* offset = nullptr;
+
     label = m_encoder->GetNewLabelID("_opt_resource_loop");
     m_encoder->AddDivergentResourceLoopLabel(label);
     m_encoder->Push();
+
+    if (subInteration && m_currShader->m_Platform->hasSlowSameSBIDLoad())
+    {
+        // return with res loop label added and ready for the first unroll
+        if (*subInteration == 0)
+        {
+            *subInteration = 1;
+        }
+    }
+
+    return true;
+}
+
+bool EmitPass::ResourceLoopNeedsLoop(
+    ResourceDescriptor& resource,
+    SamplerDescriptor& sampler,
+    CVariable*& flag,
+    uint ResourceLoopMarker)
+{
+    if (resource.m_surfaceType != ESURFACE_BINDLESS &&
+        resource.m_surfaceType != ESURFACE_SSHBINDLESS &&
+        resource.m_surfaceType != ESURFACE_NORMAL)
+    {
+        // Loop only needed for access with surface state
+        IGC_ASSERT(ResourceLoopMarker == 0);
+        return false;
+    }
+    bool uniformResource = resource.m_resource == nullptr || resource.m_resource->IsUniform();
+    bool uniformSampler = sampler.m_sampler == nullptr || sampler.m_sampler->IsUniform();
+    if (uniformResource && uniformSampler)
+    {
+        IGC_ASSERT(ResourceLoopMarker == 0);
+        return false;
+    }
+
+    if (m_SimdMode == SIMDMode::SIMD32 && m_currShader->m_numberInstance >= 2)
+    {
+        ResourceLoopMarker = 0;
+    }
+    if (ResourceLoopMarker & ResourceLoopAnalysis::MarkResourceLoopInside)
+    {
+        resource = m_RLA->GetResourceLoopResource();
+        sampler = m_RLA->GetResourceLoopSampler();
+        flag = m_RLA->GetResourceLoopFlag();
+    }
+
+    return true;
+}
+
+bool EmitPass::ResourceLoopSubIteration(
+    ResourceDescriptor& resource,
+    CVariable*& flag,
+    uint& label,
+    uint ResourceLoopMarker,
+    int iteration,
+    CVariable* prevFlag)
+{
+    SamplerDescriptor sampler;
+    return ResourceLoopSubIteration(resource, sampler, flag, label, ResourceLoopMarker, iteration, prevFlag);
+}
+
+bool EmitPass::ResourceLoopSubIteration(
+    ResourceDescriptor& resource,
+    SamplerDescriptor& sampler,
+    CVariable*& flag,
+    uint& label,
+    uint ResourceLoopMarker,
+    int iteration,
+    CVariable* prevFlag)
+{
+    // Even though the check is done in header setup,
+    // recheck again to make sure only handle non-uniform
+    if (resource.m_surfaceType != ESURFACE_BINDLESS &&
+        resource.m_surfaceType != ESURFACE_SSHBINDLESS &&
+        resource.m_surfaceType != ESURFACE_NORMAL)
+    {
+        // Loop only needed for access with surface state
+        IGC_ASSERT(ResourceLoopMarker == 0);
+        return false;
+    }
+    bool uniformResource = resource.m_resource == nullptr || resource.m_resource->IsUniform();
+    bool uniformSampler = sampler.m_sampler == nullptr || sampler.m_sampler->IsUniform();
+    if (uniformResource && uniformSampler)
+    {
+        IGC_ASSERT(ResourceLoopMarker == 0);
+        return false;
+    }
+
+    // only for second and next unrolled iterations we need to handle this (first is guaranteed to have nonzero emask)
+    bool needSafeguard = (iteration > 1);
+
+    CVariable* resourceFlag = nullptr;
+    CVariable* samplerFlag = nullptr;
+    CVariable* offset = nullptr;
+
     if (!uniformResource)
     {
         ResourceDescriptor uniformResource;
         resourceFlag = m_currShader->GetNewVariable(numLanes(m_SimdMode), ISA_TYPE_BOOL, EALIGN_BYTE, CName::NONE);
         uniformResource.m_surfaceType = resource.m_surfaceType;
-        uniformResource.m_resource = UniformCopy(resource.m_resource, offset);
+        uniformResource.m_resource = UniformCopy(resource.m_resource, offset, prevFlag, false, needSafeguard);
         uniformResource.m_isConstant = resource.m_isConstant;
         {
             m_encoder->Cmp(EPREDICATE_EQ, resourceFlag, uniformResource.m_resource, resource.m_resource);
@@ -21136,6 +21323,7 @@ bool EmitPass::ResourceLoopHeader(
         }
         resource = uniformResource;
     }
+
     if (!uniformSampler)
     {
         SamplerDescriptor uniformSampler;

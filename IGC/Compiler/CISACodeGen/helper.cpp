@@ -1271,6 +1271,94 @@ namespace IGC
         return pBuffer;
     }
 
+    void GetResourceOperand(Instruction* inst,
+        Value*& resValue, Value*& pairTexValue, Value*& texValue, Value*& sampleValue)
+    {
+        llvm::GenIntrinsicInst* pIntr = llvm::dyn_cast<llvm::GenIntrinsicInst>(inst);
+
+        if (dyn_cast<LdRawIntrinsic>(pIntr))
+        {
+            resValue = GetBufferOperand(pIntr);
+        }
+        else if (dyn_cast<SampleIntrinsic>(pIntr))
+        {
+            getTextureAndSamplerOperands(
+                pIntr,
+                pairTexValue,
+                texValue,
+                sampleValue);
+        }
+    }
+
+    void setBufOperand( Instruction* inst, Value* newBufOp )
+    {
+        if( LoadInst* load = dyn_cast<LoadInst>( inst ) )
+        {
+            load->setOperand( 0, newBufOp );
+        }
+        else if( StoreInst* store = dyn_cast<StoreInst>( inst ) )
+        {
+            store->setOperand( 1, newBufOp );
+        }
+        else if( GenIntrinsicInst* intr = dyn_cast<GenIntrinsicInst>( inst ) )
+        {
+            switch( intr->getIntrinsicID() )
+            {
+            case GenISAIntrinsic::GenISA_storerawvector_indexed:
+            case GenISAIntrinsic::GenISA_ldrawvector_indexed:
+            case GenISAIntrinsic::GenISA_storeraw_indexed:
+            case GenISAIntrinsic::GenISA_ldraw_indexed:
+            case GenISAIntrinsic::GenISA_intatomicraw:
+            case GenISAIntrinsic::GenISA_intatomictyped:
+            case GenISAIntrinsic::GenISA_icmpxchgatomictyped:
+            case GenISAIntrinsic::GenISA_floatatomicraw:
+            case GenISAIntrinsic::GenISA_floatatomictyped:
+            case GenISAIntrinsic::GenISA_fcmpxchgatomictyped:
+            case GenISAIntrinsic::GenISA_icmpxchgatomicraw:
+            case GenISAIntrinsic::GenISA_fcmpxchgatomicraw:
+            case GenISAIntrinsic::GenISA_simdBlockRead:
+            case GenISAIntrinsic::GenISA_simdBlockWrite:
+            case GenISAIntrinsic::GenISA_LSCLoad:
+            case GenISAIntrinsic::GenISA_LSCLoadBlock:
+            case GenISAIntrinsic::GenISA_LSCLoadCmask:
+                intr->setOperand( 0, newBufOp );
+                break;
+            case GenISAIntrinsic::GenISA_intatomicrawA64:
+            case GenISAIntrinsic::GenISA_floatatomicrawA64:
+            case GenISAIntrinsic::GenISA_icmpxchgatomicrawA64:
+            case GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64:
+                intr->setOperand( 1, newBufOp );
+                intr->setOperand( 0, newBufOp ); // Note: it's not used in EmitVISA, but for consistency all other pass sets both
+                break;
+            default:
+                ASSERT( ! "unhandled intrinsic type" );
+                break;
+            }
+        }
+        else
+        {
+            ASSERT( ! "unhandled instruction type" );
+        }
+    }
+
+    void SetResourceOperand(Instruction* inst,
+        Value* newResourceOp, Value* newPairTextureOp, Value* newTextureOp, Value* newSamplerOp)
+    {
+        if (llvm::GenIntrinsicInst* pIntr = llvm::dyn_cast<llvm::GenIntrinsicInst>(inst))
+        {
+            if (dyn_cast<LdRawIntrinsic>(pIntr))
+            {
+                setBufOperand(inst, newResourceOp);
+            }
+            else if (auto* SI = dyn_cast<SampleIntrinsic>(pIntr))
+            {
+                pIntr->setOperand(SI->getSamplerIndex(), newSamplerOp);
+                pIntr->setOperand(SI->getTextureIndex(), newTextureOp);
+                pIntr->setOperand(SI->getPairedTextureIndex(), newPairTextureOp);
+            }
+        }
+    }
+
     EOPCODE GetOpCode(const llvm::Instruction* inst)
     {
         if (const GenIntrinsicInst * CI = dyn_cast<GenIntrinsicInst>(inst))

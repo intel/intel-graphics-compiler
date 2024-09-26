@@ -146,6 +146,11 @@ namespace IGC
     int findSampleInstructionTextureIdx(llvm::Instruction* inst);
     llvm::Value* getTextureIndexArgBasedOnOpcode(llvm::Instruction* inst);
     llvm::Value* GetBufferOperand(llvm::Instruction* inst);
+    void GetResourceOperand(llvm::Instruction* inst,
+        llvm::Value*& resValue, llvm::Value*& pairTexValue, llvm::Value*& texValue, llvm::Value*& sampleValue);
+    void SetResourceOperand(llvm::Instruction* inst,
+        llvm::Value* newResourceOp, llvm::Value* newPairTexureOp, llvm::Value* newTextureOp, llvm::Value* newSamplerOp);
+    void setBufOperand( llvm::Instruction* inst, llvm::Value* newOp );
 
     llvm::LoadInst* cloneLoad(llvm::LoadInst* Orig, llvm::Type* Ty, llvm::Value* Ptr);
     llvm::StoreInst* cloneStore(llvm::StoreInst* Orig, llvm::Value* Val, llvm::Value* Ptr);

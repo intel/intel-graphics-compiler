@@ -493,6 +493,10 @@ public:
     void emitConstantVector(CVariable* Dst, uint64_t value = 0);
     void emitCopyAll(CVariable* Dst, CVariable* Src, llvm::Type* Ty);
 
+    void emitPredicatedVectorCopy(CVariable* Dst, CVariable* Src, CVariable* pred);
+    void emitPredicatedVectorSelect(CVariable* Dst, CVariable* Src0,
+        CVariable* Src1, CVariable* pred);
+
     void emitPushFrameToStack(Function* ParentFunction, unsigned& pushSize);
     // emitMul64 - emulate 64bit multiply by 32-bit operations.
     // Dst must be a 64-bit type variable.
@@ -772,7 +776,7 @@ public:
     CVariable* GetExecutionMask(CVariable* &vecMaskVar);
     CVariable* GetHalfExecutionMask();
     CVariable* UniformCopy(CVariable* var, bool doSub = false);
-    CVariable* UniformCopy(CVariable* var, CVariable*& LaneOffset, CVariable* eMask = nullptr, bool doSub = false);
+    CVariable* UniformCopy(CVariable* var, CVariable*& LaneOffset, CVariable* eMask = nullptr, bool doSub = false, bool safeGuard = false);
 
     // generate loop header to process sample instruction with varying resource/sampler
     bool ResourceLoopHeader(
@@ -780,26 +784,141 @@ public:
         SamplerDescriptor& sampler,
         CVariable*& flag,
         uint& label,
-        uint ResourceLoopMarker = 0);
+        uint ResourceLoopMarker = 0,
+        int* subInteration = nullptr);
     bool ResourceLoopHeader(
         ResourceDescriptor& resource,
         CVariable*& flag,
         uint& label,
-        uint ResourceLoopMarker = 0);
+        uint ResourceLoopMarker = 0,
+        int* subInteration = nullptr);
+    bool ResourceLoopSubIteration(
+        ResourceDescriptor& resource,
+        SamplerDescriptor& sampler,
+        CVariable*& flag,
+        uint& label,
+        uint ResourceLoopMarker = 0,
+        int iteration = 0,
+        CVariable* prevFlag = nullptr);
+    bool ResourceLoopSubIteration(
+        ResourceDescriptor& resource,
+        CVariable*& flag,
+        uint& label,
+        uint ResourceLoopMarker = 0,
+        int iteration = 0,
+        CVariable* prevFlag = nullptr);
     void ResourceLoopBackEdge(
         bool needLoop,
         CVariable* flag,
         uint label,
         uint ResourceLoopMarker = 0);
+    bool ResourceLoopNeedsLoop(
+        ResourceDescriptor& resource,
+        SamplerDescriptor& sampler,
+        CVariable*& flag,
+        uint ResourceLoopMarker);
     template<typename Func>
-    void ResourceLoop(ResourceDescriptor &resource, Func Fn,
-                      uint ResourceLoopMarker = 0)
+    void ResourceLoop(ResourceDescriptor &resource, SamplerDescriptor& sampler,
+        Func Fn, uint ResourceLoopMarker = 0)
     {
         uint label = 0;
         CVariable* flag = nullptr;
-        bool needLoop = ResourceLoopHeader(resource, flag, label, ResourceLoopMarker);
 
-        Fn(flag);
+        // 0 - default (loop header is set up)
+        // 1 - first unroll (no safe guard)
+        // 2 - second unroll, and so on.
+        int subInteration = 0;
+        int iterations = m_pCtx->platform.hasSlowSameSBIDLoad() ? IGC_GET_FLAG_VALUE(ResourceLoopUnrollIteration) : 1;
+
+        CVariable* currentDestination = m_destination;
+        std::vector<std::pair<CVariable*, CVariable*>> fills;
+
+        // check if need loop
+        bool needLoop = ResourceLoopNeedsLoop(resource, sampler, flag, ResourceLoopMarker);
+
+        std::vector<CVariable*> cumulativeFlags;
+
+        // nested unroll won't need loop as the resources are uniformed
+        if (needLoop)
+        {
+            // we init this before label;
+            for (int iter = 0; iter < iterations - 1; iter++)
+            {
+                cumulativeFlags.push_back(m_currShader->ImmToVariable(0x0, ISA_TYPE_BOOL));
+            }
+
+            // label resource loop
+            ResourceLoopHeader(resource, sampler, flag, label, ResourceLoopMarker, &subInteration);
+        }
+
+        if (subInteration == 0)
+        {
+            // get exclusive load info from nested loop unroll meta data
+            if (m_encoder->GetUniqueExclusiveLoad() && m_destination &&
+                IGC_IS_FLAG_DISABLED(DisableResourceLoopUnrollExclusiveLoad))
+            {
+                m_encoder->MarkAsExclusiveLoad(m_destination);
+            }
+            ResourceLoopSubIteration(resource, sampler, flag, label, ResourceLoopMarker);
+            Fn(flag, m_destination, resource, needLoop);
+        }
+        else
+        {
+            // This will be sum of lanes that did something so exit loop
+            CVariable* flagSumMask = m_currShader->ImmToVariable(0x0, ISA_TYPE_BOOL);
+
+            // This will be used as remaining exec mask
+            CVariable* flagExecMask = nullptr;
+            // it's also the remaining exec mask but in dword (for fbl)
+            CVariable* dwordPrevFlag = GetExecutionMask(flagExecMask);
+            // save the original input resource, as resource will be used in Fn()
+            ResourceDescriptor resourceOrig = resource;
+
+            if ((iterations > 1) && IGC_IS_FLAG_DISABLED(DisableResourceLoopUnrollExclusiveLoad))
+            {
+                m_encoder->MarkAsExclusiveLoad(currentDestination);
+            }
+
+            for (int iter = 0; iter < iterations; iter++, subInteration++)
+            {
+                CVariable* flagSameLaneFlag = nullptr;
+
+                // Use original reource as ResourceLoopHeader needs non-uniform
+                resource = resourceOrig;
+                ResourceLoopSubIteration(resource, sampler, flagSameLaneFlag, label, ResourceLoopMarker, subInteration, dwordPrevFlag);
+
+                // First iteration does not need to safeguard.
+                if (iter > 0 && flagSameLaneFlag)
+                {
+                    // We safeguard against case when all lanes were the same in first addr
+                    // like <10 10 10 10> -> we handled all in first iteration
+                    // so we want to zero other iterations, so we don't load 3 times the same
+                    m_encoder->SetNoMask();
+                    m_encoder->And(flagSameLaneFlag, flagSameLaneFlag, flagExecMask);
+                    m_encoder->Push();
+                }
+
+                // need a temp (iter > 0) to save the unroll dst result to avoid shared SBID
+                Fn(flagSameLaneFlag, currentDestination, resource, needLoop);
+
+                m_encoder->SetNoMask();
+                // Sum lanes that did something (for correct goto at the end)
+                m_encoder->Or(flagSumMask, flagSumMask, flagSameLaneFlag);
+                m_encoder->Push();
+
+                // Last iteration does not need this
+                if ((iter < (iterations - 1)) && flagExecMask)
+                {
+                    m_encoder->SetNoMask();
+                    // mask out handled lanes out of remaining ExecMask
+                    m_encoder->Xor(flagExecMask, flagExecMask, flagSameLaneFlag);
+                    m_encoder->Cast(dwordPrevFlag, flagExecMask);
+                    m_encoder->Push();
+                }
+            }
+
+            flag = flagSumMask;
+        }
 
         ResourceLoopBackEdge(needLoop, flag, label, ResourceLoopMarker);
     }
