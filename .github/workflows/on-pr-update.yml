@@ -15,7 +15,7 @@ permissions: read-all
 
 jobs:
   notify:
-    runs-on: self-hosted
+    runs-on: [self-hosted, linux]
     steps:
       - name: Get branch name if status changed
         if: github.event_name == 'status'
