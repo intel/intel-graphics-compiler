@@ -7162,20 +7162,6 @@ namespace IGC
         }
     }
 
-    void CEncoder::CopyWithImplicitConversion(CVariable* dst, CVariable* src)
-    {
-        // This function allows to issue a mov instruction
-        // even if dst and src types are different
-
-        IGC_ASSERT(nullptr != dst);
-        IGC_ASSERT(nullptr != src);
-        // undef value are not copied
-        if (!src->IsUndef() || IGC_IS_FLAG_ENABLED(InitializeUndefValueEnable))
-        {
-            DataMov(ISA_MOV, dst, src);
-        }
-    }
-
     void CEncoder::BoolToInt(CVariable* dst, CVariable* src)
     {
         IGC_ASSERT(nullptr != dst);

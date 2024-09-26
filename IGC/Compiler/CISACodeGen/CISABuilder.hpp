@@ -362,7 +362,6 @@ namespace IGC
         void Scatter4A64(CVariable* src, CVariable* offset);
         void BoolToInt(CVariable* dst, CVariable* src);
         void Copy(CVariable* dst, CVariable* src);
-        void CopyWithImplicitConversion(CVariable* dst, CVariable* src);
         void SubroutineCall(CVariable* flag, llvm::Function* F);
         void SubroutineRet(CVariable* flag, llvm::Function* F);
         void StackCall(CVariable* flag, llvm::Function* F, unsigned char argSize, unsigned char retSize);
