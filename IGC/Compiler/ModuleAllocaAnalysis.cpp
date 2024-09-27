@@ -202,9 +202,7 @@ bool ModuleAllocaAnalysis::safeToUseScratchSpace() const
 
         // if one API doesn't support stateless, we should try to use smallest dispatch mode
         // which can hold more pvt_data to avoid error out.
-        if (Ctx.platform.hasScratchSurface() &&
-            Ctx.m_DriverInfo.supportsSeparatingSpillAndPrivateScratchMemorySpace() &&
-            !Ctx.getModuleMetaData()->disableSeparateSpillPvtScratchSpace &&
+        if (SeparateSpillAndScratch(&Ctx) &&
             !supportsStatelessSpacePrivateMemory)
             simd_size = numLanes(Ctx.platform.getMinDispatchMode());
 

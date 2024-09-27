@@ -3415,4 +3415,15 @@ void RecursivelyDeleteDeadInstructions(
 #endif
     }
 }
+
+bool SeparateSpillAndScratch(const CodeGenContext* ctx)
+{
+    bool separate = false;
+    if (ctx->m_DriverInfo.supportsSeparatingSpillAndPrivateScratchMemorySpace())
+        separate = !ctx->getModuleMetaData()->disableSeparateSpillPvtScratchSpace;
+    else
+        separate = ctx->getModuleMetaData()->enableSeparateSpillPvtScratchSpace;
+
+    return (ctx->platform.hasScratchSurface() && separate);
+}
 } // namespace IGC

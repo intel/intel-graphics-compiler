@@ -754,8 +754,9 @@ namespace IGC
         // some memory accesses.
         bool genericAccessesResolved = false;
 
-        //when true, compiler disables separate spill pvt scratch space
+        //when true, compiler disables/enables separate spill pvt scratch space
         bool disableSeparateSpillPvtScratchSpace = false;
+        bool enableSeparateSpillPvtScratchSpace = false;
 
         //when true, compiler disables scratch space slot0/slot1 sizes workaround
         bool disableSeparateScratchWA = false;

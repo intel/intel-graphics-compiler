@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/GenCodeGenModule.h"
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
 #include "Compiler/CISACodeGen/VariableReuseAnalysis.hpp"
+#include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/CISACodeGen/VectorProcess.hpp"
 #include "Compiler/CISACodeGen/EmitVISAPass.hpp"
@@ -72,9 +73,7 @@ CShader::CShader(Function* pFunc, CShaderProgram* pProgram)
     m_FP = nullptr;
     m_SavedFP = nullptr;
 
-    bool SepSpillPvtSS = m_ctx->platform.hasScratchSurface() &&
-        m_ctx->m_DriverInfo.supportsSeparatingSpillAndPrivateScratchMemorySpace() &&
-        !m_ctx->getModuleMetaData()->disableSeparateSpillPvtScratchSpace;
+    bool SepSpillPvtSS = SeparateSpillAndScratch(m_ctx);
     bool SeparateScratchWA =
         IGC_IS_FLAG_ENABLED(EnableSeparateScratchWA) &&
         !m_ctx->getModuleMetaData()->disableSeparateScratchWA;
@@ -4077,9 +4076,7 @@ bool CShader::CompileSIMDSizeInCommon(SIMDMode simdMode)
 
     m_simdProgram.setScratchSpaceUsedByShader(m_ScratchSpaceSize);
 
-    if (m_ctx->platform.hasScratchSurface() &&
-        m_ctx->m_DriverInfo.supportsSeparatingSpillAndPrivateScratchMemorySpace() &&
-        !m_ctx->getModuleMetaData()->disableSeparateSpillPvtScratchSpace)
+    if (SeparateSpillAndScratch(m_ctx))
     {
         ret = ((m_simdProgram.getScratchSpaceUsageInSlot0() <= maxPerThreadScratchSpace) &&
             (m_simdProgram.getScratchSpaceUsageInSlot1() <= maxPerThreadScratchSpace));

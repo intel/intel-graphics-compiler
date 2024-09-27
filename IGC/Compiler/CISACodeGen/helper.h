@@ -684,4 +684,6 @@ namespace IGC
         llvm::MemorySSAUpdater* MSSAU = nullptr,
         const std::function<void(llvm::Value*)>& AboutToDeleteCallback =
             std::function<void(llvm::Value*)>());
+
+    bool SeparateSpillAndScratch(const CodeGenContext* ctx);
 } // namespace IGC
