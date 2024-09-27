@@ -335,6 +335,7 @@ $ export IGC_ShaderDumpEnable=1
 | `ForceMemoryFenceBeforeEOT` | Forces inserting SLM or gloabal memory fence before EOT if shader writes to SLM or goblam memory respectively. | - |
 | `ForcePerThreadPrivateMemorySize` | Useful for ensuring a certain amount of private memory when doing a shader override. | Available |
 | `ForceStatelessForQueueT` | In OCL, force to use stateless memory to hold queue_t*. This is a legacy feature to be removed. | - |
+| `ForceRecompilation` | Force RetryManager to make recompilation. | - |
 | `MSAAClearedKernel` | Insert the discard code for MSAA_MSC_Cleared kernels. 2/4/8/16 | - |
 | `PrintVerboseGenericControlFlowLog` | Forces compiler to print detailed log about additional control flow generated due to a presence of generic memory operations | Available |
 | `RetryManagerFirstStateId` | For debugging purposes, it can be useful to start on a particular id rather than id 0. | - |

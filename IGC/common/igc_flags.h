@@ -354,6 +354,7 @@ DECLARE_IGC_REGKEY(bool, EnableCSSIMD32,                false, "Enable computer 
 DECLARE_IGC_REGKEY(bool, ForceCSSIMD32,                 false, "Force computer shader SIMD32 mode", false)
 DECLARE_IGC_REGKEY(bool, ForceCSSIMD16,                 false, "Force computer shader SIMD16 mode if allowed, otherwise it will use SIMD32", false)
 DECLARE_IGC_REGKEY(bool, ForceCSLeastSIMD,              false, "Force computer shader to the lowest allowed SIMD mode", false)
+DECLARE_IGC_REGKEY(bool, ForceRecompilation,             false, "Force RetryManager to make recompilation", false)
 DECLARE_IGC_REGKEY(DWORD, RouteByLodHint,               0,     "An integer offset addon to route the resource to HDC on DG2", false)
 DECLARE_IGC_REGKEY(bool, EnableTrivialEmulateSinCos,    false, "Enable Emulation for Sine and Cosine instructions", false)
 DECLARE_IGC_REGKEY(DWORD, ld2dmsInstsClubbingThreshold, 3,     "Do not club more than these ld2dms insts into the new BB during MCSOpt", false)

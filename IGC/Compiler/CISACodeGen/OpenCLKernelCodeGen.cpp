@@ -3156,7 +3156,8 @@ namespace IGC
         NO_Retry_Pick_Prv,
         NO_Retry_ExceedScratch,
         NO_Retry_WorseStatelessPrivateMemSize,
-        YES_Retry
+        YES_Retry,
+        YES_ForceRecompilation
     };
 
     static unsigned long getScratchUse(CShader* shader, OpenCLProgramContext* ctx)
@@ -3230,6 +3231,10 @@ namespace IGC
             // For case when we have recompilation but exceed
             // the scratch space in recompiled kernel
             return RetryType::NO_Retry_ExceedScratch;
+        }
+        else if (IGC_IS_FLAG_ENABLED(ForceRecompilation) && !ctx->m_retryManager.IsLastTry())
+        {
+            return RetryType::YES_ForceRecompilation;
         }
         else if(pPreviousKernel &&
             isWorsePrivateMemSize(program, pPreviousKernel))
@@ -3348,6 +3353,7 @@ namespace IGC
             break;
         }
         case RetryType::YES_Retry:
+        case RetryType::YES_ForceRecompilation:
         {
             ctx->EmitWarning("[RetryManager] Start recompilation of the kernel", pFunc);
             // Collect the current compilation for the next compare
