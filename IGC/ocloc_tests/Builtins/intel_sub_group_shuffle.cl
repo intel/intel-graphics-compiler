@@ -47,8 +47,10 @@ kernel void test_intel_sub_group_shuffle_non_uniform_non_immediate_index_simd32(
     uint which_sub_group_local_id = ids[gid];
 
 // CHECK: shl (M1, 32) ShuffleTmp(0,0)<1> {{V[0-9]+}}(0,0)<16;8,2> 0x2:uw
+// CHECK-NEXT: mov (M1_NM, 16) A0(0)<1> 0x0:uw
 // CHECK-NEXT: addr_add (M1, 16) A0(0)<1> &[[X:V[0-9]+]] ShuffleTmp(0,0)<1;1,0>
 // CHECK-NEXT: mov (M1, 16) simdShuffle(0,0)<1> r[A0(0),0]<1,0>:d
+// CHECK-NEXT: mov (M5_NM, 16) A0(0)<1> 0x0:uw
 // CHECK-NEXT: addr_add (M5, 16) A0(0)<1> &[[X]] ShuffleTmp(0,16)<1;1,0>
 // CHECK-NEXT: mov (M5, 16) simdShuffle(1,0)<1> r[A0(0),0]<1,0>:d
 
@@ -66,8 +68,10 @@ kernel void test_intel_sub_group_shuffle_non_uniform_non_immediate_index_src_the
     for (uint i = 0; i < num_iterations; ++i)
     {
 // CHECK: shl (M1, 32) ShuffleTmp(0,0)<1> {{V[0-9]+}}(0,0)<16;8,2> 0x2:uw
+// CHECK-NEXT: mov (M1_NM, 16) A0(0)<1> 0x0:uw
 // CHECK-NEXT: addr_add (M1, 16) A0(0)<1> &[[X:V[0-9]+]] ShuffleTmp(0,0)<1;1,0>
 // CHECK-NEXT: mov (M1, 16) first16LanesResult(0,0)<1> r[A0(0),0]<1,0>:d
+// CHECK-NEXT: mov (M5_NM, 16) A0(0)<1> 0x0:uw
 // CHECK-NEXT: addr_add (M5, 16) A0(0)<1> &[[X]] ShuffleTmp(0,16)<1;1,0>
 // CHECK-NEXT: mov (M5, 16) [[X]](1,0)<1> r[A0(0),0]<1,0>:d
 // CHECK-NEXT: mov (M1, 16) [[X]](0,0)<1> first16LanesResult(0,0)<1;1,0>

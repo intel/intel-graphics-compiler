@@ -1020,6 +1020,10 @@ namespace IGC
         // Ignore per module fast math flag and use only per instruction fast math flags
         // Add few changes to CustomUnsafeOptPass related to fast flag propagation
         bool m_checkFastFlagPerInstructionInCustomUnsafeOptPass = false;
+        // Specifies if this compilation uses indirect addressing with
+        // differently aligned types. This can result in cross grf boundary
+        // access in inactive channels of address register.
+        bool m_mayHaveUnalignedAddressRegister = false;
         // Map to store global offsets in original global buffer
         std::map<std::string, uint64_t> inlineProgramScopeGlobalOffsets;
         std::vector<std::string> entry_names;

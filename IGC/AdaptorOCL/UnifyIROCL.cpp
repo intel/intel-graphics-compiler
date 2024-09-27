@@ -211,6 +211,7 @@ static void CommonOCLBasedPasses(OpenCLProgramContext* pContext)
 
     unify_opt_PreProcess(pContext);
     pContext->m_checkFastFlagPerInstructionInCustomUnsafeOptPass = true;
+    pContext->m_mayHaveUnalignedAddressRegister = true;
 
     DumpLLVMIR(pContext, "beforeUnification");
 

@@ -2775,20 +2775,27 @@ namespace IGC
     void CEncoder::AddrAdd(CVariable* dst, CVariable* src0, CVariable* src1)
     {
         // On ICL+ platforms address register must be initialized if it is used
-        // in VxH indirect addressing to avoid out-of-bounds access on inactive
-        // lanes. VISA initializes address register at the beginning of the
-        // shader which is sufficient for shaders that use address register only
-        // for indirect addressing but is not sufficient if shader also uses
-        // address register in send descriptors. The latter case is handled by
-        // the initialization below.
-        // see VISA Optimizer::resetA0()
+        // in VxH indirect addressing to avoid out-of-bounds on inactive lanes.
+        // VISA initializes address register [see VISA Optimizer::resetA0()]
+        // at the beginning of the shader which is sufficient for some shaders.
+        // It is insufficient if the shader uses:
+        // 1. address register in send descriptors (may cause out of bounds access).
+        // 2. indirect addressing on types with different alignment (may cause cross grf boundary access).
+        // To cover these cases we introduce zero initialization of address register below.
+
         const bool mayUseA0InSendDesc =
             m_program->GetContext()->m_instrTypes.mayHaveIndirectResources;
-        const bool needsA0Reset =
-            m_program->m_Platform->NeedResetA0forVxHA0();
+        const bool mayHaveUnalignedA0 =
+            m_program->GetContext()->m_mayHaveUnalignedAddressRegister;
 
-        if (((mayUseA0InSendDesc && needsA0Reset) ||
-            IGC_IS_FLAG_ENABLED(InitializeAddressRegistersBeforeUse)) &&
+        const bool softwareNeedsA0Reset =
+            mayUseA0InSendDesc || mayHaveUnalignedA0;
+        const bool platformNeedsA0Reset =
+            m_program->m_Platform->NeedResetA0forVxHA0();
+        const bool initializeA0 = (softwareNeedsA0Reset && platformNeedsA0Reset) ||
+            IGC_IS_FLAG_ENABLED(InitializeAddressRegistersBeforeUse);
+
+        if (initializeA0 &&
             !dst->IsUniform() &&
             !m_encoderState.m_noMask)
         {
