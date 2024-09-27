@@ -64,6 +64,7 @@ private:
     //where it's for initialization
     //FIXME: hack code, fix this hack in stage 2.
     bool singleRQProceed = true;
+    bool usesDeprecatedCopyMemHitInRQProceed = true;
 
     void LowerAllocateRayQuery(Function& F, unsigned numProceeds);
     void LowerTraceRayInline(Function& F);
@@ -355,7 +356,7 @@ Value* TraceRayInlineLoweringPass::emitProceedMainBody(
     auto* const HWStackPointer = builder.getSyncStackPointer();
     auto* const ShadowMemStackPointer = getShMemRayQueryRTStack(builder, queryObjIndex);
 
-    builder.copyMemHitInProceed(HWStackPointer, ShadowMemStackPointer, singleRQProceed);
+    builder.copyMemHitInProceed(HWStackPointer, ShadowMemStackPointer, singleRQProceed, usesDeprecatedCopyMemHitInRQProceed);
 
     //get ray Current ray control for object
     Value* ShdowMemRTCtrlPtr = getShMemRTCtrl(builder, queryObjIndex);
