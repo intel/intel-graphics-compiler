@@ -61,7 +61,7 @@ inline int log2(T Val)
 {
   if (Val <= 0)
     return -1;
-  unsigned CLZ = llvm::countLeadingZeros((uint32_t)Val);
+  unsigned CLZ = llvm::countLeadingZeros<uint32_t>(Val);
   return 31 - CLZ;
 }
 

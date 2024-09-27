@@ -2079,9 +2079,13 @@ void ConstantLoader::analyzeForPackedInt(unsigned NumElements) {
   if (GCD > static_cast<uint64_t>(std::numeric_limits<int64_t>::max()))
     return;
   int64_t CurScale = static_cast<int64_t>(GCD);
-  if (!IGCLLVM::MulOverflow(CurScale, static_cast<int64_t>(ImmIntVec::MaxUInt), ResArith) &&
-      (Max - Min) > ResArith)
-    return; // range of values too big
+  auto MulOvrf = IGCLLVM::MulOverflow(
+      CurScale, static_cast<int64_t>(ImmIntVec::MaxUInt), ResArith);
+  if (!MulOvrf) {
+    IGC_ASSERT_EXIT(Max > Min);
+    if ((Max - Min) > ResArith)
+      return; // range of values too big
+  }
   PackedIntScale = CurScale;
   PackedIntMax = ImmIntVec::MaxUInt;
   // Special case adjust of 0 or -8 as then we can save doing an adjust at all

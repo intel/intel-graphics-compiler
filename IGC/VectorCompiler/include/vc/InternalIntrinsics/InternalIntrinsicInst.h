@@ -33,10 +33,6 @@ namespace llvm {
 /// work with calls to intrinsic functions.
 class InternalIntrinsicInst : public CallInst {
 public:
-  InternalIntrinsicInst() = delete;
-  InternalIntrinsicInst(const InternalIntrinsicInst &) = delete;
-  void operator=(const InternalIntrinsicInst &) = delete;
-
   /// getIntrinsicID - Return the intrinsic ID of this intrinsic.
   ///
   vc::InternalIntrinsic::ID getIntrinsicID() const {

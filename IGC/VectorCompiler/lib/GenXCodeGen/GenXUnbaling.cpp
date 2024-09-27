@@ -929,7 +929,7 @@ bool GenXUnbaling::scanUsesForUnbaleAndMove(Instruction *Inst,
                      << Found->getHead()->Inst->getName() << "\n");
         CommonBaleMap[Unbale] = Found->getHead()->Inst;
       } else {
-        CommonBales.insert(B);
+        CommonBales.insert(std::move(B));
         // If there will actually be an unbale, count it.
         UnbaleCount += Baling->isBaled(Unbale);
       }

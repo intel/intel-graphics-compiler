@@ -876,6 +876,8 @@ void DependencyGraph::remakeParent(Node &SNode, Node &SNodeToChange,
       // If element of structure is split element, then we need to replace
       // this element with new.
       for (auto &&NewSTy : NewReplaceTypes) {
+        IGC_ASSERT_EXIT((uint64_t)Index + (uint64_t)ExpandIndicies + 1ull <
+                        std::numeric_limits<uint32_t>::max());
         NewElements.emplace_back(NewSTy);
         NewIndices[Index].emplace_back(BeforeSplitingS,
                                        Index + ExpandIndicies++);

@@ -259,8 +259,9 @@ getMaximumNumberOfVariablesForCategory(vc::RegCategory Category) {
 unsigned
 GenXVisaRegAlloc::getMaximumVariableIDForCategory(vc::RegCategory Category) {
   const unsigned Result = getMaximumNumberOfVariablesForCategory(Category);
-  IGC_ASSERT_MESSAGE(Result > 0, "could not detect maximum number of variables "
-                                 "for the specified category");
+  IGC_ASSERT_EXIT_MESSAGE(Result > 0,
+                          "could not detect maximum number of variables "
+                          "for the specified category");
   return Result - 1;
 }
 

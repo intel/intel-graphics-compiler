@@ -355,7 +355,7 @@ void GenXLiveElements::processFunction(const Function &F) {
   while (!Worklist.empty()) {
     auto Inst = Worklist.pop_back_val();
     IGC_ASSERT(LiveMap.count(Inst));
-    auto InstLiveElems = LiveMap[Inst];
+    const auto &InstLiveElems = LiveMap.lookup(Inst);
     LLVM_DEBUG(dbgs() << "Visiting:\n" << *Inst << " " << InstLiveElems << "\n");
     // Estimate each operand
     for (auto &Op : Inst->operands()) {

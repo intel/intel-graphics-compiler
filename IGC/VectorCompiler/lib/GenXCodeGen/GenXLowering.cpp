@@ -4747,7 +4747,9 @@ bool GenXLowering::lowerHardwareThreadID(CallInst *CI) {
       Res = IRB.CreateOr(AndNot, And);
     }
 
-    auto *MaskC = ConstantInt::get(Ty, ST->getMaxThreadsNumPerSubDevice() - 1);
+    auto MaxThread = ST->getMaxThreadsNumPerSubDevice();
+    IGC_ASSERT_EXIT(MaxThread > 0);
+    auto *MaskC = ConstantInt::get(Ty, MaxThread - 1);
     Res = IRB.CreateAnd(Res, MaskC);
   }
 

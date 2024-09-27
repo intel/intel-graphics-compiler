@@ -342,6 +342,7 @@ unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
   unsigned ValidWidth = 1;
   unsigned GRFByteSize = ST.getGRFByteSize();
   int MaxStride = 4;
+  IGC_ASSERT_EXIT(GRFByteSize > 0);
   unsigned LogGRFWidth = genx::log2(GRFByteSize);
   unsigned NumGRF = 2;
 

@@ -1507,7 +1507,7 @@ void Liveness::copyValues(Liveness *Other) {
 void Liveness::print(raw_ostream &OS) {
   OS << "[addrpressure=" << Pressures[ADDR]
      << ",flagpressure=" << Pressures[FLAG] << ",pressure=" << Pressure << ']';
-  for (unsigned Cat = NUMCATS; Cat--; /*EMPTY*/) {
+  for (int Cat = NUMCATS; Cat-- > 0; /*EMPTY*/) {
     if (!Values[Cat].empty()) {
       const char *CatName = (Cat == FLAG ? "flag." :
                              Cat == ADDR ? "addr." : "");

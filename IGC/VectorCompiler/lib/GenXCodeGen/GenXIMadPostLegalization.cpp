@@ -298,7 +298,7 @@ bool GenXIMadPostLegalization::fixMadChain(BasicBlock *BB) {
     std::set<Instruction *> Inputs;
     // The mad chain itself.
     std::vector<Bale> BaleChain;
-    BaleChain.push_back(OutB);
+    BaleChain.push_back(std::move(OutB));
     FMAs.insert(CandidateInsn);
     do {
       auto &OutB = BaleChain.back();
@@ -352,7 +352,7 @@ bool GenXIMadPostLegalization::fixMadChain(BasicBlock *BB) {
         }
         if (!In)
           break;
-        BaleChain.push_back(OpB);
+        BaleChain.push_back(std::move(OpB));
       }
       if (!In)
         break;

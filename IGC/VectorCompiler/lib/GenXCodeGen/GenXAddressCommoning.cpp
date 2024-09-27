@@ -486,7 +486,7 @@ bool GenXAddressCommoning::processCommonAddrs(ArrayRef<Instruction *> Addrs)
   SmallVector<Instruction *, 4> OutOfRangeAddrs;
   int MaxOffset = INT_MIN;
   for (unsigned i = 0, e = Offsets.size(); i != e; ++i) {
-    if (Offsets[i] < MinOffset + 1024) {
+    if (Offsets[i] - MinOffset < 1024) {
       InRangeAddrs.push_back(Addrs[i]);
       MaxOffset = std::max(MaxOffset, Offsets[i]);
     } else

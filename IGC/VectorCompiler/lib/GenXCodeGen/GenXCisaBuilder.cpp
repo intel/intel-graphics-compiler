@@ -853,12 +853,12 @@ static unsigned get8bitPackedFloat(float f) {
   if (Exp == 0 && Frac == 0)
     return Sign;
 
-  IGC_ASSERT(Exp >= 124);
-  IGC_ASSERT(Exp <= 131);
+  IGC_ASSERT_EXIT(Exp >= 124);
+  IGC_ASSERT_EXIT(Exp <= 131);
   Exp -= 124;
-  IGC_ASSERT((Frac & 0x780000) == Frac);
+  IGC_ASSERT_EXIT((Frac & 0x780000) == Frac);
   Frac >>= 19;
-  IGC_ASSERT(!(Exp == 124 && Frac == 0));
+  IGC_ASSERT_EXIT(!(Exp == 124 && Frac == 0));
 
   Sign |= (Exp << 4);
   Sign |= Frac;
@@ -960,7 +960,7 @@ static std::string legalizeName(std::string Name) {
 
 std::string GenXKernelBuilder::buildAsmName() const {
   std::string AsmName;
-  auto UserAsmName = AsmNameOpt.getValue();
+  auto &UserAsmName = AsmNameOpt.getValue();
   if (UserAsmName.empty()) {
     AsmName = vc::legalizeShaderDumpName(TheKernelMetadata.getName());
   } else {
@@ -5608,7 +5608,7 @@ void GenXKernelBuilder::setLabel(const Value *V, unsigned Num) {
 
 unsigned GenXKernelBuilder::addStringToPool(StringRef Str) {
   auto val = std::pair<std::string, unsigned>(Str.begin(), StringPool.size());
-  auto Res = StringPool.insert(val);
+  auto Res = StringPool.insert(std::move(val));
   return Res.first->second;
 }
 
