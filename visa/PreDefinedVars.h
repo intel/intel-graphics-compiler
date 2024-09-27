@@ -72,7 +72,8 @@ const std::array<PreDefinedVarsInternal, (int)PreDefinedVarsInternal::VAR_LAST>
                      PreDefinedVarsInternal::COLOR,
                      PreDefinedVarsInternal::IMPL_ARG_BUF_PTR,
                      PreDefinedVarsInternal::LOCAL_ID_BUF_PTR,
-                     PreDefinedVarsInternal::MSG0};
+                     PreDefinedVarsInternal::MSG0,
+                     };
 
 typedef struct {
   PreDefinedVarsInternal id;
