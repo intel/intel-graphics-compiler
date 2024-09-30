@@ -9399,8 +9399,16 @@ intrinsics:
                 comment: "thread group named barrier ID"
             - !<ArgumentDefinition>
                 name: Arg1
+                type_definition: *i16
+                comment: "barrier type (ProducerConsumer = 0, Producer = 1, Consumer = 2)"
+            - !<ArgumentDefinition>
+                name: Arg2
                 type_definition: *i32
-                comment: "thread group count"
+                comment: "Producer count"
+            - !<ArgumentDefinition>
+                name: Arg3
+                type_definition: *i32
+                comment: "Consumer count"
         attributes:
             - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"

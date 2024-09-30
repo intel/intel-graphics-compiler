@@ -2850,13 +2850,16 @@ namespace IGC
         V(vKernel->AppendVISASyncInst(ISA_BARRIER));
     }
 
-    void CEncoder::NamedBarrier(e_barrierKind BarrierKind, CVariable* src0, CVariable* src1)
+    void CEncoder::NamedBarrier(e_barrierKind BarrierKind, CVariable* src0, CVariable* src1, CVariable* src2, CVariable* src3)
     {
         VISA_VectorOpnd* barrierID = GetSourceOperand(src0, m_encoderState.m_srcOperand[0]);
         if (BarrierKind == EBARRIER_SIGNAL) {
+
+            VISA_VectorOpnd* barrierType = GetSourceOperand(src1, m_encoderState.m_srcOperand[1]);
+            VISA_VectorOpnd* numProducers = GetSourceOperand(src2, m_encoderState.m_srcOperand[2]);
+            VISA_VectorOpnd* numConsumers = GetSourceOperand(src3, m_encoderState.m_srcOperand[3]);
             // signal only
-            VISA_VectorOpnd* barrierCount = GetSourceOperand(src1, m_encoderState.m_srcOperand[1]);
-            V(vKernel->AppendVISANamedBarrierSignal(barrierID, barrierCount));
+            V(vKernel->AppendVISANamedBarrierSignal(barrierID, barrierType, numProducers, numConsumers));
         }
         else if (BarrierKind == EBARRIER_WAIT) {
             // wait only

@@ -264,8 +264,8 @@ public:
     void emitTypedRead(llvm::Instruction* inst);
     void emitTypedWrite(llvm::Instruction* inst);
     void emitThreadGroupBarrier(llvm::Instruction* inst);
-    void emitThreadGroupNamedBarriersInit(llvm::Instruction* inst);
-    void emitThreadGroupNamedBarriersBarrier(llvm::Instruction* inst);
+    void emitThreadGroupNamedBarriersSignal(llvm::Instruction* inst);
+    void emitThreadGroupNamedBarriersWait(llvm::Instruction* inst);
     void emitLSCTypedRead(llvm::Instruction* inst);
     void emitLSCTypedWrite(llvm::Instruction* inst);
     void emitLSCAtomicTyped(llvm::GenIntrinsicInst* inst);

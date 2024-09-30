@@ -319,7 +319,7 @@ namespace IGC
             uint32_t blockWidth, uint32_t blockHeight, uint32_t numBlocks,
             bool isTranspose, bool isVnni,
             LSC_CACHE_OPTS cacheOpts = { LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT });
-        void NamedBarrier(e_barrierKind BarrierKind, CVariable* src0, CVariable* src1);
+        void NamedBarrier(e_barrierKind BarrierKind, CVariable* src0, CVariable* src1, CVariable* src2, CVariable* src3);
         void LSC_TypedReadWrite(
             LSC_OP subOp, ResourceDescriptor* resource,
             CVariable* pU, CVariable* pV, CVariable* pR,

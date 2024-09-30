@@ -243,6 +243,8 @@ void NamedBarriersResolution::HandleNamedBarrierSyncHW(CallInst& NBarrierSyncCal
     Value* falseValue = IRB.getInt1(false);
     Value* gpuScopeValue = IRB.getInt32(LSC_SCOPE_GPU);
     Value* groupScopeValue = IRB.getInt32(LSC_SCOPE_GROUP);
+    // Producer and Consumer
+    Value* barrierType = IRB.getInt16(0);
 
     ConstantInt* memFenceType = cast<ConstantInt>(NBarrierSyncCall.getArgOperand(1));
     // LOCAL = 1
@@ -270,7 +272,7 @@ void NamedBarriersResolution::HandleNamedBarrierSyncHW(CallInst& NBarrierSyncCal
 
     GenIntrinsicInst::Create(
         GenISAIntrinsic::getDeclaration(module, GenISAIntrinsic::GenISA_threadgroupnamedbarriers_signal),
-        { nbStruct.threadGroupNBarrierID, nbStruct.threadGroupNBarrierCount },
+        { nbStruct.threadGroupNBarrierID, barrierType, nbStruct.threadGroupNBarrierCount,  nbStruct.threadGroupNBarrierCount },
         "",
         &(NBarrierSyncCall));
 
