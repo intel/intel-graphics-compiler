@@ -41,11 +41,7 @@ namespace IGCLLVM
 
     inline bool isScalable(const FixedVectorType &Ty)
     {
-#if LLVM_VERSION_MAJOR < 9
-        // There were no scalable vectors before LLVM-9
-        IGC_UNUSED(Ty);
-        return false;
-#elif LLVM_VERSION_MAJOR < 11
+#if LLVM_VERSION_MAJOR < 11
         return Ty.isScalable();
 #else
         // Scalable vectors became a separate type since LLVM-11
