@@ -656,10 +656,12 @@ DECLARE_IGC_REGKEY(bool, ForceDisableSrc0Alpha,         false, "Force the compil
 DECLARE_IGC_REGKEY(bool, EnableLTO,                     true,  "Enable link time optimization", false)
 DECLARE_IGC_REGKEY(bool, EnableLTODebug,                false, "Enable debug information for LTO", true)
 DECLARE_IGC_REGKEY(DWORD, FunctionControl,              0,     "Control function inlining/subroutine/stackcall. See value defs in igc_flags.hpp.", true)
-DECLARE_IGC_REGKEY(DWORD, SelectiveFunctionControl, 0,  "Selectively enables FunctionControl for a list of line-separated function names in 'FunctionDebug.txt' in the IGC output dir." \
-    "When set by this flag, the functions in the FunctionDebug list will override the default FunctionControl mode." \
-    "0 - Disable, 1 - Enable and read from FunctionDebug.txt, 2 - Print all callable functions to FunctionDebug.txt" \
+DECLARE_IGC_REGKEY(DWORD, SelectiveFunctionControl, 0,  "Selectively enables FunctionControl for a list of line-separated function names in " \
+    "file specified by SelectiveFunctionControlFile or 'FunctionDebug.txt' in the IGC output dir, in that order." \
+    "When set by this flag, the functions in the list will override the default FunctionControl mode." \
+    "0 - Disable, 1 - Enable and read from SelectiveFunctionControlFile, 2 - Print all callable functions to file" \
     "See comments in ProcessFuncAttributes.cpp for how to use this flag.", true)
+DECLARE_IGC_REGKEY(debugString, SelectiveFunctionControlFile, 0, "Set file with path that'll be used by SelectiveFunctionControl", true)
 DECLARE_IGC_REGKEY(bool, EnableStackCallFuncCall,       false, "If enabled, the default function call mode will be set to stack call. Otherwise, subroutine call is used.", false)
 DECLARE_IGC_REGKEY(bool, EnableByValStructArgPromotion, true, "If enabled, byval/sret struct arguments are promoted to pass-by-value if possible.", true)
 DECLARE_IGC_REGKEY(bool, ForceInlineStackCallWithImplArg, false, "If enabled, stack calls that uses implicit args will be force inlined.", true)

@@ -583,7 +583,11 @@ namespace IGC
             {
                 static std::mutex m;
                 std::lock_guard<std::mutex> lck(m);
-                static std::string functionDebugFilePath;
+                // If a custom file is specified by SelectiveFunctionControlFile
+                // then use that for SelectiveFunctionControl. Otherwise,
+                // fallback to FunctionDebug.txt in IGC output folder.
+                static std::string functionDebugFilePath =
+                    IGC_GET_REGKEYSTRING(SelectiveFunctionControlFile);
                 if (functionDebugFilePath == "")
                 {
                     functionDebugFilePath = std::string(GetBaseIGCOutputFolder()) + "FunctionDebug.txt";
