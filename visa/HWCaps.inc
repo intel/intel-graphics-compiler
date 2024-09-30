@@ -462,7 +462,12 @@ uint32_t getNumFlagRegisters(void) { return getPlatform() >= Xe_PVC ? 8 : 4; }
 
 uint32_t getNumAddrRegisters() const {
     return 16;
-  }
+}
+
+uint32_t getGRFNumOfAddrRegisters() const {
+    // The element size of address register is 16 bits
+    return ((getNumAddrRegisters() * 2 - 1) / numEltPerGRF<Type_UB>() + 1);
+}
 
 uint32_t getNumScalarRegisters(void) {
   if (enableSendIndirect()) {
@@ -876,6 +881,10 @@ bool supportNativeSIMD32() const {
 }
 
 bool supports4GRFAlign() const {
+  return false;
+}
+
+bool needA0WARForSend() const {
   return false;
 }
 

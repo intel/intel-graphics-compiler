@@ -1185,7 +1185,7 @@ SBFootprint *G4_BB_SB::getFootprintForACC(G4_Operand *opnd,
   else if (opnd->isSrcRegRegion())
     regNum = opnd->asSrcRegRegion()->getRegOff();
 
-  regNum += builder.kernel.getNumRegTotal() + builder.getNumScalarRegisters();
+  regNum += globalRegisterNum;
 
   LB += regNum * builder.numEltPerGRF<Type_UB>();
   RB += regNum * builder.numEltPerGRF<Type_UB>();
@@ -1217,16 +1217,38 @@ SBFootprint *G4_BB_SB::getFootprintForFlag(G4_Operand *opnd,
                         opnd->getLeftBound()) *
        FLAG_TO_GRF_MAP;
 
-  LB += (builder.kernel.getNumRegTotal() + builder.getNumScalarRegisters() +
-         builder.kernel.getNumAcc()) *
+  LB += (globalRegisterNum + builder.kernel.getNumAcc()) *
         builder.numEltPerGRF<Type_UB>();
-  RB += (builder.kernel.getNumRegTotal() + builder.getNumScalarRegisters() +
-         builder.kernel.getNumAcc()) *
+  RB += (globalRegisterNum + builder.kernel.getNumAcc()) *
         builder.numEltPerGRF<Type_UB>();
 
   void *allocedMem = mem.alloc(sizeof(SBFootprint));
   SBFootprint *footprint =
       new (allocedMem) SBFootprint(FLAG_T, type, LB, RB, inst);
+
+  return footprint;
+}
+
+SBFootprint *G4_BB_SB::getFootprintForA0(G4_Operand *opnd,
+                                         Gen4_Operand_Number opnd_num,
+                                         G4_INST *inst) {
+  unsigned short LB = 0;
+  unsigned short RB = 0;
+  G4_Type type = opnd->getType();
+
+  bool valid = true;
+  unsigned subRegOff = opnd->getBase()->ExSubRegNum(valid);
+  G4_Type addrType = opnd->isIndirect() ? Type_UW : opnd->getType();
+
+  LB = (unsigned short)(subRegOff * TypeSize(addrType));
+  RB = (unsigned short)(LB + opnd->getRightBound() - opnd->getLeftBound());
+
+  LB += builder.kernel.getNumRegTotal() * builder.numEltPerGRF<Type_UB>();
+  RB += builder.kernel.getNumRegTotal() * builder.numEltPerGRF<Type_UB>();
+
+  void *allocedMem = mem.alloc(sizeof(SBFootprint));
+  SBFootprint *footprint =
+      new (allocedMem) SBFootprint(A0_T, type, LB, RB, inst);
 
   return footprint;
 }
@@ -1501,11 +1523,8 @@ void SWSB::SWSBInitializeGlobalSends(
 
   // Scan the global send LB to set the node bit in dst or src bit set of each
   // bucket that node touches.
-  for (unsigned curBucket = 0;
-       curBucket <
-       kernel.getNumRegTotal() + fg.builder->getNumScalarRegisters();
+  for (unsigned curBucket = 0; curBucket < (unsigned)globalRegisterNum;
        curBucket++) {
-
     for (LiveGRFBuckets::BN_iterator bn_it = globalSendsLB.begin(curBucket);
          bn_it != globalSendsLB.end(curBucket); ++bn_it) {
       SBBucketNode *liveBN = (*bn_it);
@@ -1533,16 +1552,12 @@ void SWSB::SWSBInitializeGlobalNodesInBuckets(
                        // operands
     LiveGRFBuckets &GRFAlignedGlobalSendsLB) { // live buckets of global sends
 
-  dstGlobalIDs.resize(kernel.getNumRegTotal() +
-                      fg.builder->getNumScalarRegisters());
-  srcGlobalIDs.resize(kernel.getNumRegTotal() +
-                      fg.builder->getNumScalarRegisters());
+  dstGlobalIDs.resize(globalRegisterNum);
+  srcGlobalIDs.resize(globalRegisterNum);
 
   // Scan the global send LB to set the node bit in dst or src bit set of each
   // bucket that node touches.
-  for (unsigned curBucket = 0;
-       curBucket <
-       kernel.getNumRegTotal() + fg.builder->getNumScalarRegisters();
+  for (unsigned curBucket = 0; curBucket < (unsigned)globalRegisterNum;
        curBucket++) {
     SparseBitVector dstBitSet;
     SparseBitVector srcBitSet;
@@ -1901,8 +1916,7 @@ void SWSB::genSWSBPatchInfo() {
   // kernel.
   for (G4_BB *bb : fg) {
     if (bb->Succs.empty() && BBVector[bb->getId()]->Succs.empty()) {
-      LiveGRFBuckets send_use_out(kernel.getNumRegTotal() +
-                                  fg.builder->getNumScalarRegisters());
+      LiveGRFBuckets send_use_out(globalRegisterNum);
       for (size_t i = 0; i < globalSendOpndList.size(); i++) {
         SBBucketNode *sBucketNode = globalSendOpndList[i];
         SBNode *sNode = sBucketNode->node;
@@ -1979,8 +1993,7 @@ void SWSB::SWSBGenerator() {
   kernel.fg.reassignBlockIDs();
 
   // Note that getNumFlagRegisters() treat each 16 bits as a flag register
-  int numBuckets = kernel.getNumRegTotal() +
-                   fg.builder->getNumScalarRegisters() + kernel.getNumAcc() +
+  int numBuckets = globalRegisterNum + kernel.getNumAcc() +
                    fg.builder->getNumFlagRegisters();
   LiveGRFBuckets LB(numBuckets);
   LiveGRFBuckets globalSendsLB(numBuckets);
@@ -5669,6 +5682,7 @@ bool G4_BB_SB::getFootprintForOperand(SBNode *node, G4_INST *inst,
   bool footprintOperand = false;
   bool isAccReg = false;
   bool isFlagReg = false;
+  bool isA0 = false;
   SBFootprint *footprint = nullptr;
   G4_VarBase *base = opnd->getBase();
 
@@ -5690,6 +5704,7 @@ bool G4_BB_SB::getFootprintForOperand(SBNode *node, G4_INST *inst,
     }
     isAccReg = phyReg->isAccReg();
     isFlagReg = phyReg->isFlag();
+    isA0 = phyReg->isA0();
     break;
   case G4_VarBase::VK_regVar:
     vISA_ASSERT_UNREACHABLE("Should not be a regvar. PhyReg is extracted from regvar.");
@@ -5715,6 +5730,11 @@ bool G4_BB_SB::getFootprintForOperand(SBNode *node, G4_INST *inst,
       footprint = getFootprintForFlag(opnd, opndNum, inst);
       node->setFootprint(footprint, opndNum);
     }
+  }
+
+  if (builder.needA0WARForSend() && isA0) {
+    footprint = getFootprintForA0(opnd, opndNum, inst);
+    node->setFootprint(footprint, opndNum);
   }
 
 
@@ -7029,6 +7049,15 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
           continue;
         }
 
+        if (builder.needA0WARForSend() &&
+            curBucket == builder.kernel.getNumRegTotal()) {
+          if (!tokenHonourInstruction(liveInst) || dep != WAR ||
+              hasSameFunctionID(liveInst, curInst)) {
+            ++bn_it;
+            continue;
+          }
+        }
+
         if (tokenHonourInstruction(liveInst)) {
           if (dep == RAW || dep == WAW) {
             if (builder.getOption(vISA_EnableDPASTokenReduction) &&
@@ -7137,9 +7166,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
 
         if (distanceHonourInstruction(liveInst)) {
           if (dep == RAW &&
-              (curBucket <
-               (totalGRFNum +
-                (int)builder.getNumScalarRegisters()))) { // Only need track GRF
+              (curBucket < globalRegisterNum)) { // Only need track GRF
                                                           // RAW dependence
             LB->killOperand(bn_it);
             setDistance(curFootprint, node, liveNode, false);
@@ -7305,8 +7332,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
         }
 
         // For global dependence tracking, we need only check buckets GRF + SRF
-        if (BD.bucket < (int)(builder.kernel.getNumRegTotal() +
-                            builder.getNumScalarRegisters())) {
+        if (BD.bucket < globalRegisterNum) {
           if (BD.opndNum == Opnd_dst) {
             BBGRF.setDst(BD.bucket, true);
           } else {
@@ -7326,8 +7352,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
         }
 
         LB->add(bucketNodes[BD.opndNum], BD.bucket);
-        if (BD.bucket < (int)(builder.kernel.getNumRegTotal() +
-                              builder.getNumScalarRegisters())) {
+        if (BD.bucket < globalRegisterNum) {
           if (BD.opndNum == Opnd_dst) {
             BBGRF.setDst(BD.bucket, true);
           } else {

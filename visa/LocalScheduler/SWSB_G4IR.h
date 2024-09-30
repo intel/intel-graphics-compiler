@@ -128,6 +128,7 @@ typedef enum _FOOTPRINT_TYPE {
   GRF_T = 1,
   ACC_T = 2,
   FLAG_T = 4,
+  A0_T = 16
 } FOOTPRINT_TYPE;
 
 struct SBFootprint {
@@ -636,6 +637,7 @@ private:
 
   int totalGRFNum;
   int tokenAfterDPASCycle;
+  int globalRegisterNum = 0;
 
 private:
   // dpas read suppression buffer size
@@ -708,7 +710,12 @@ public:
     }
     first_send_node = -1;
     last_send_node = -1;
-    totalGRFNum = block->getKernel().getNumRegTotal();
+    totalGRFNum = builder.kernel.getNumRegTotal();
+    globalRegisterNum = totalGRFNum + builder.getNumScalarRegisters();
+    if (builder.needA0WARForSend()) {
+      globalRegisterNum += builder.getGRFNumOfAddrRegisters();
+    }
+
     SBDDD(bb, lb, globalLB, GRFAlignedGlobalSendsLB, SBNodes, SBSendNodes,
           globalSendOpndList, indexes,
           globalSendNum, p, LabelToBlockMap);
@@ -732,6 +739,8 @@ public:
                                   Gen4_Operand_Number opnd_num, G4_INST *inst);
   SBFootprint *getFootprintForFlag(G4_Operand *opnd,
                                    Gen4_Operand_Number opnd_num, G4_INST *inst);
+  SBFootprint *getFootprintForA0(G4_Operand *opnd, Gen4_Operand_Number opnd_num,
+                                 G4_INST *inst);
   bool getFootprintForOperand(SBNode *node, G4_INST *inst, G4_Operand *opnd,
                               Gen4_Operand_Number opnd_num);
   void getGRFBuckets(const SBFootprint *footprint, Gen4_Operand_Number opndNum,
@@ -962,7 +971,7 @@ class SWSB {
   SBNODE_VECT localTokenUsage;
 
   int topIndex = -1;
-
+  int globalRegisterNum = 0;
   std::map<G4_Label *, G4_BB_SB *> labelToBlockMap;
 
   // TokenAllocation uses a BitSet to track nodes assigned by marking the
@@ -1148,6 +1157,12 @@ public:
                        : 210u) // TOKEN_AFTER_WRITE_SEND_L3_SAMPLER_CYCLE
                 : 60u)         // TOKEN_AFTER_WRITE_SEND_L1_SAMPLER_CYCLE
   {
+    globalRegisterNum =
+        kernel.getNumRegTotal() + k.fg.builder->getNumScalarRegisters();
+    if (k.fg.builder->needA0WARForSend()) {
+      globalRegisterNum += k.fg.builder->getGRFNumOfAddrRegisters();
+    }
+
     indexes.instIndex = 0;
     indexes.ALUIndex = 0;
     indexes.integerIndex = 0;
