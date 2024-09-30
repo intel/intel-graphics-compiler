@@ -43,6 +43,9 @@ SPDX-License-Identifier: MIT
 #include "common/SIPKernels/wmtp/XE2_LNL_2x4_128.h"
 #include "common/SIPKernels/wmtp/XE2_LNL_1x4_160.h"
 #include "common/SIPKernels/wmtp/XE2_LNL_2x4_160.h"
+#include "common/SIPKernels/wmtp/XE2_BMG_config4.h"
+#include "common/SIPKernels/wmtp/XE2_BMG_config5.h"
+
 
 using namespace llvm;
 using namespace USC;
@@ -1123,6 +1126,14 @@ void populateSIPKernelInfo(const IGC::CPlatform &platform,
             (void *)&XE2_LNL_2x4_160, (int)sizeof(XE2_LNL_2x4_160),
             (void *)&Xe2SIP_WMTP_CSRDebugBindlessDebugHeader,  (int)sizeof(Xe2SIP_WMTP_CSRDebugBindlessDebugHeader));
 
+
+        SIPKernelInfo[XE2_CSR_DEBUG_BINDLESS_BMG_config4] = std::make_tuple(
+            (void *)&XE2_BMG_config4, (int)sizeof(XE2_BMG_config4),
+            (void *)&Xe2SIP_WMTP_CSRDebugBindlessDebugHeader,  (int)sizeof(Xe2SIP_WMTP_CSRDebugBindlessDebugHeader));
+
+        SIPKernelInfo[XE2_CSR_DEBUG_BINDLESS_BMG_config5] = std::make_tuple(
+            (void *)&XE2_BMG_config5, (int)sizeof(XE2_BMG_config5),
+            (void *)&Xe2SIP_WMTP_CSRDebugBindlessDebugHeader,  (int)sizeof(Xe2SIP_WMTP_CSRDebugBindlessDebugHeader));
      }
 
 }
@@ -1321,6 +1332,24 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
                     IGC_ASSERT(false);
                 }
                 break;
+
+                case IGFX_BMG :
+                {
+                    if (sysInfo.SLMSizeInKb == SLM_128)
+                    {
+                        SIPIndex = XE2_CSR_DEBUG_BINDLESS_BMG_config4;
+                        Xe2SIP_WMTP_CSRDebugBindlessDebugHeader.total_wmtp_data_size = XE2_CSR_DEBUG_BINDLESS_BMG_config4_WMTP_DATA_SIZE;
+                    }
+                    else if (sysInfo.SLMSizeInKb == SLM_160)
+                    {
+                        SIPIndex = XE2_CSR_DEBUG_BINDLESS_BMG_config5;
+                        Xe2SIP_WMTP_CSRDebugBindlessDebugHeader.total_wmtp_data_size = XE2_CSR_DEBUG_BINDLESS_BMG_config5_WMTP_DATA_SIZE;
+                    }
+                    else
+                    {
+                        IGC_ASSERT(false);
+                    }
+                }
 
             default:
                 break;
