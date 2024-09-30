@@ -14,11 +14,12 @@ SPDX-License-Identifier: MIT
 #include "llvm/Config/llvm-config.h"
 #include "llvm/AsmParser/Parser.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Function.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvm/Support/Casting.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 #include "visa/include/visa_igc_common_header.h"
-#include "llvmWrapper/IR/Function.h"
 
 typedef union _gfxResourceAddressSpace
 {
@@ -4439,13 +4440,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_wavePrefix
 inline llvm::CallInst* setUnsafeToHoistAttr(llvm::CallInst *CI)
     {
         CI->setConvergent();
-#if LLVM_VERSION_MAJOR >= 14
-        CI->setOnlyAccessesInaccessibleMemory();
-        CI->removeAttributeAtIndex(llvm::AttributeList::FunctionIndex, llvm::Attribute::ReadNone);
-#else
-        CI->setOnlyAccessesInaccessibleMemory();
-        CI->removeAttribute(llvm::AttributeList::FunctionIndex, llvm::Attribute::ReadNone);
-#endif
+        IGCLLVM::setOnlyAccessesInaccessibleMemory(*CI);
         llvm::OperandBundleDef OpDef("nohoist", llvm::ArrayRef<llvm::Value*>());
 
         // An operand bundle cannot be appended onto a call after creation.

@@ -13,6 +13,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/User.h"
+#include "llvmWrapper/IR/Attributes.h"
+#include "llvmWrapper/Support/ModRef.h"
 
 #if LLVM_VERSION_MAJOR < 11
 #include "llvm/Analysis/OrderedBasicBlock.h"
@@ -194,6 +196,39 @@ inline unsigned getArgOperandNo(llvm::CallInst &CI, const llvm::Use *U) {
 #else
     return CI.getArgOperandNo(U);
 #endif
+}
+
+// We repeat the implementation for llvm::Function here - trying to proxy the
+// calls through CB.getCalledFunction() would leave indirect calls unhandled.
+inline void setMemoryEffects(llvm::CallBase &CB, IGCLLVM::MemoryEffects ME) {
+  for (auto Kind : ME.getOverridenAttrKinds())
+    IGCLLVM::removeFnAttr(CB, Kind);
+  for (auto MemAttr : ME.getAsAttributeSet(CB.getContext()))
+    IGCLLVM::addFnAttr(CB, MemAttr);
+}
+
+inline void setDoesNotAccessMemory(llvm::CallBase &CB) {
+  setMemoryEffects(CB, IGCLLVM::MemoryEffects::none());
+}
+
+inline void setOnlyReadsMemory(llvm::CallBase &CB) {
+  setMemoryEffects(CB, IGCLLVM::MemoryEffects::readOnly());
+}
+
+inline void setOnlyWritesMemory(llvm::CallBase &CB) {
+  setMemoryEffects(CB, IGCLLVM::MemoryEffects::writeOnly());
+}
+
+inline void setOnlyAccessesArgMemory(llvm::CallBase &CB) {
+  setMemoryEffects(CB, IGCLLVM::MemoryEffects::argMemOnly());
+}
+
+inline void setOnlyAccessesInaccessibleMemory(llvm::CallBase &CB) {
+  setMemoryEffects(CB, IGCLLVM::MemoryEffects::inaccessibleMemOnly());
+}
+
+inline void setOnlyAccessesInaccessibleMemOrArgMem(llvm::CallBase &CB) {
+  setMemoryEffects(CB, IGCLLVM::MemoryEffects::inaccessibleOrArgMemOnly());
 }
 
 inline llvm::Constant* getShuffleMaskForBitcode(llvm::ShuffleVectorInst* SVI)

@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/Decompose2DBlockFuncs/Decompose2DBlockFuncs.hpp"
 
 #include <llvm/Analysis/LoopInfo.h>
-#include <llvm/IR/Function.h>
+#include <llvmWrapper/IR/Function.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/Pass.h>
@@ -358,12 +358,8 @@ CallBase* Decompose2DBlockFuncs::createPayload(
   // LSC2DBlockSetAddrPayloadField are not in the mode true : AP[arg1] += arg2
   // (i.e., arg3 = false)
   if (cast<llvm::ConstantInt>(IV.IsAddend)->isZero()) {
-    BlockCreateFunc->removeFnAttr(llvm::Attribute::WriteOnly);
-    BlockCreateFunc->removeFnAttr(llvm::Attribute::InaccessibleMemOnly);
-
     BlockCreateFunc->addFnAttr(llvm::Attribute::Speculatable);
-    BlockCreateFunc->addFnAttr(
-        llvm::Attribute::ReadNone);  // = setDoesNotAccessMemory();
+    IGCLLVM::setDoesNotAccessMemory(*BlockCreateFunc);
   }
 
   auto* PayloadInst{CallInst::Create(BlockCreateFunc,
@@ -407,10 +403,8 @@ CallInst* Decompose2DBlockFuncs::createSetAdd(GenIntrinsicInst& GII,
   // LSC2DBlockSetAddrPayloadField are not in the mode true : AP[arg1] += arg2
   // (i.e., arg3 = false)
   if (cast<llvm::ConstantInt>(IV.IsAddend)->isZero()) {
-    BlockSetAddrFunc->removeFnAttr(llvm::Attribute::ReadOnly);
     BlockSetAddrFunc->addFnAttr(llvm::Attribute::Speculatable);
-    BlockSetAddrFunc->addFnAttr(
-        llvm::Attribute::WriteOnly);  // = setOnlyWritesMemory();
+    IGCLLVM::setOnlyWritesMemory(*BlockSetAddrFunc);
   }
 
   return CallInst::Create(BlockSetAddrFunc, SetAddrPayloadArgs, "", &GII);

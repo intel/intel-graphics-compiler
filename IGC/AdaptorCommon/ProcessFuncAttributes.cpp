@@ -20,12 +20,12 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 
 #include "llvm/IR/Attributes.h"
+#include <llvmWrapper/IR/Function.h>
 #include "llvmWrapper/IR/InstrTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 
 #include <llvm/Pass.h>
 #include <llvm/IR/Module.h>
-#include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Value.h>
@@ -433,7 +433,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         if (F->isDeclaration())
         {
             if (F->getName() == "__translate_sampler_initializer")
-                F->addFnAttr(llvm::Attribute::ReadOnly);
+                IGCLLVM::setOnlyReadsMemory(*F);
 
             // Functions requiring import from external module
             if (F->hasFnAttribute("referenced-indirectly") || NeedsLinking(F))

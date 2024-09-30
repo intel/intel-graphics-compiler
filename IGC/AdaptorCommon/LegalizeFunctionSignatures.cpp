@@ -339,12 +339,13 @@ void LegalizeFunctionSignatures::FixFunctionSignatures(Module& M)
             pNewFunc->setCallingConv(pFunc->getCallingConv());
             pNewFunc->setAttributes(pFunc->getAttributes());
 
-            // Since we need to pass in pointers to be dereferenced by the new function, remove the "readnone" attribute
+            // Since we need to pass in pointers to be dereferenced by the new function,
+            // remove the memory attribute restrictions on read access.
             // Also we need to create allocas for these pointers, so set the flag to true
             if (retTypeOption == ReturnOpt::RETURN_BY_REF)
             {
-                pNewFunc->removeFnAttr(llvm::Attribute::ReadNone);
-                pNewFunc->removeFnAttr(llvm::Attribute::ReadOnly);
+                IGCLLVM::MemoryEffects ME(IGCLLVM::ModRefInfo::ModRef);
+                IGCLLVM::setMemoryEffects(*pNewFunc, ME);
                 pContext->m_instrTypes.hasNonPrimitiveAlloca = true;
             }
 

@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Config/llvm-config.h"
 
 #include <llvm/IR/Attributes.h>
+#include <llvm/IR/InstrTypes.h>
 
 namespace IGCLLVM {
     /// Return the attribute object that exists at the given index.
@@ -28,6 +29,22 @@ namespace IGCLLVM {
         return llvm::Attribute::get(Context, llvm::Attribute::StructRet);
 #else
         return llvm::Attribute::getWithStructRetType(Context, Ty);
+#endif
+    }
+
+    inline void addFnAttr(llvm::CallBase& CB, llvm::Attribute Attr) {
+#if LLVM_VERSION_MAJOR >= 14
+        CB.addFnAttr(Attr);
+#else
+        CB.addAttribute(llvm::AttributeList::FunctionIndex, Attr);
+#endif
+    }
+
+    inline void removeFnAttr(llvm::CallBase& CB, llvm::Attribute::AttrKind Kind) {
+#if LLVM_VERSION_MAJOR >= 14
+        CB.removeFnAttr(Kind);
+#else
+        CB.removeAttribute(llvm::AttributeList::FunctionIndex, Kind);
 #endif
     }
 

@@ -193,9 +193,7 @@ TEST_F(SpirvConvertionsTest, FunctionAttrs) {
     { "NoReturn", Attribute::NoReturn },
     { "NoInline", Attribute::NoInline },
     { "NoUnwind", Attribute::NoUnwind },
-    { "ReadNone", Attribute::ReadNone },
     { "SafeStack", Attribute::SafeStack },
-    { "WriteOnly", Attribute::WriteOnly },
   };
   for (const auto& k : kinds) {
     Type *FArgTy[] = {Type::getInt32PtrTy(Ctx_)};

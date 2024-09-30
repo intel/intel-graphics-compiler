@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 
 #include <iterator>
 #include "llvm/IR/Function.h"
+#include "llvmWrapper/Support/ModRef.h"
 #include "Probe/Assertion.h"
 
 namespace IGCLLVM {
@@ -125,6 +126,37 @@ inline void insertBasicBlock(
 #else
     pFunc->insert(it, BB);
 #endif
+}
+
+inline void setMemoryEffects(llvm::Function& F, IGCLLVM::MemoryEffects ME) {
+  for (auto Kind : ME.getOverridenAttrKinds())
+    F.removeFnAttr(Kind);
+  for (const auto MemAttr : ME.getAsAttributeSet(F.getContext()))
+    F.addFnAttr(MemAttr);
+}
+
+inline void setDoesNotAccessMemory(llvm::Function& F) {
+  setMemoryEffects(F, IGCLLVM::MemoryEffects::none());
+}
+
+inline void setOnlyReadsMemory(llvm::Function& F) {
+  setMemoryEffects(F, IGCLLVM::MemoryEffects::readOnly());
+}
+
+inline void setOnlyWritesMemory(llvm::Function& F) {
+  setMemoryEffects(F, IGCLLVM::MemoryEffects::writeOnly());
+}
+
+inline void setOnlyAccessesArgMemory(llvm::Function& F) {
+  setMemoryEffects(F, IGCLLVM::MemoryEffects::argMemOnly());
+}
+
+inline void setOnlyAccessesInaccessibleMemory(llvm::Function& F) {
+  setMemoryEffects(F, IGCLLVM::MemoryEffects::inaccessibleMemOnly());
+}
+
+inline void setOnlyAccessesInaccessibleMemOrArgMem(llvm::Function& F) {
+  setMemoryEffects(F, IGCLLVM::MemoryEffects::inaccessibleOrArgMemOnly());
 }
 
 } // namespace IGCLLVM

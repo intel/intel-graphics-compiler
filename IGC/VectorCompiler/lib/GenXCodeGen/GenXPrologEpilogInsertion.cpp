@@ -401,23 +401,16 @@ bool GenXPrologEpilogInsertion::isStackPrimitivesUsed() const {
   return StackUsed || ArgRegUsed || RetRegUsed;
 }
 
-// If stack or ARG/RET reg used, the function cannot be readnone, readonly or
-// writeonly.
+// If stack or ARG/RET reg used, the function cannot have restrictions on
+// read/write memory accesses.
 // FIXME: actually, it can, but it requires deeper analysis. Maybe we can
 // improve this after stack usage analysis improvement.
 void GenXPrologEpilogInsertion::removeAttrs(Function &F) const {
   if (!isStackPrimitivesUsed())
     return;
 
-  F.removeFnAttr(Attribute::ReadNone);
-  F.removeFnAttr(Attribute::ReadOnly);
-  F.removeFnAttr(Attribute::WriteOnly);
-}
-
-static void removeCallInstAttrs(CallInst &CI) {
-  IGCLLVM::removeFnAttr(&CI, Attribute::ReadNone);
-  IGCLLVM::removeFnAttr(&CI, Attribute::ReadOnly);
-  IGCLLVM::removeFnAttr(&CI, Attribute::WriteOnly);
+  IGCLLVM::MemoryEffects ME(IGCLLVM::ModRefInfo::ModRef);
+  IGCLLVM::setMemoryEffects(F, ME);
 }
 
 bool GenXPrologEpilogInsertion::runOnFunction(Function &F) {
@@ -807,7 +800,8 @@ void GenXPrologEpilogInsertion::visitCallInst(CallInst &I) {
     return;
 
   generateStackCall(I);
-  removeCallInstAttrs(I);
+  IGCLLVM::MemoryEffects ME(IGCLLVM::ModRefInfo::ModRef);
+  IGCLLVM::setMemoryEffects(I, ME);
 }
 
 void GenXPrologEpilogInsertion::clear() {
