@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -167,15 +167,15 @@ bool VectorDecomposer::determineDecomposition(Instruction *Inst) {
   NotDecomposingReportInst = Inst;
   Web.clear();
   Decomposition.clear();
-  unsigned ChunkWidth = genx::ByteBits * ChunkByteSize;
-  unsigned NumChunks =
-      alignTo(DL->getTypeSizeInBits(Inst->getType()), ChunkWidth) / ChunkWidth;
-  if (NumChunks == 1)
-    return false; // Ignore single chunk vector.
+  unsigned GRFWidth = genx::ByteBits * GRFByteSize;
+  unsigned NumGrfs =
+      alignTo(DL->getTypeSizeInBits(Inst->getType()), GRFWidth) / GRFWidth;
+  if (NumGrfs == 1)
+    return false; // Ignore single GRF vector.
   LLVM_DEBUG(dbgs() << "VectorDecomposer::determineDecomposition(" << *Inst
-                    << " NumChunks: " << NumChunks << ")\n");
+                    << ")\n");
   NotDecomposing = false;
-  for (unsigned i = 0; i != NumChunks; ++i)
+  for (unsigned i = 0; i != NumGrfs; ++i)
     Decomposition.push_back(i);
   addToWeb(Inst);
   for (unsigned Idx = 0; Idx != Web.size(); ++Idx) {
@@ -263,7 +263,7 @@ bool VectorDecomposer::determineDecomposition(Instruction *Inst) {
   //
   // Change Decomposition[] so the indices used are contiguous, changing the
   // example above to { 0, 0, 1, 1, 2, 2, 2, 2, 3, 3 }, and create the Offsets[]
-  // array to translate a value from Decomposition[] into the chunk offset, so
+  // array to translate a value from Decomposition[] into the GRF offset, so
   // for this example { 0, 2, 4, 8 }.
   Offsets.clear();
   for (unsigned Last = UINT_MAX, i = 0, e = Decomposition.size(); i != e; ++i) {
@@ -349,15 +349,15 @@ void VectorDecomposer::adjustDecomposition(Instruction *Inst) {
     Last = (R.NumElements / R.Width - 1) * R.VStride;
   Last += (R.Width - 1) * R.Stride;
   Last = R.Offset + Last * R.ElementBytes;
-  // Compute the chunk number of the first and last byte of the region.
-  unsigned First = R.Offset / ChunkByteSize;
-  Last /= ChunkByteSize;
+  // Compute the GRF number of the first and last byte of the region.
+  unsigned First = R.Offset / GRFByteSize;
+  Last /= GRFByteSize;
   if ((First >= Decomposition.size()) || (Last >= Decomposition.size())) {
     setNotDecomposing(Inst, "out-of-bounds");
     return; // don't attempt to decompose out-of-bounds accesses
   }
   if (First != Last) {
-    // This region spans more than one chunk. Ensure they are all in the same
+    // This region spans more than one GRF. Ensure they are all in the same
     // decomposed vector.
     for (unsigned i = Last + 1;
          i != Decomposition.size() && Decomposition[i] == Decomposition[Last];
@@ -705,15 +705,15 @@ void VectorDecomposer::decomposeBitCast(Instruction *Inst,
  * VectorDecomposer::getPartIndex : get the part index for the region
  */
 unsigned VectorDecomposer::getPartIndex(vc::Region *R) {
-  return Decomposition[R->Offset / ChunkByteSize];
+  return Decomposition[R->Offset / GRFByteSize];
 }
 
 /***********************************************************************
  * VectorDecomposer::getPartOffset : get the byte offset of a part
  */
 unsigned VectorDecomposer::getPartOffset(unsigned PartIndex) {
-  // Offsets[] has the index in chunks.
-  return Offsets[PartIndex] * ChunkByteSize;
+  // Offsets[] has the index in GRFs.
+  return Offsets[PartIndex] * GRFByteSize;
 }
 
 /***********************************************************************
@@ -721,12 +721,12 @@ unsigned VectorDecomposer::getPartOffset(unsigned PartIndex) {
  */
 unsigned VectorDecomposer::getPartNumBytes(Type *WholeTy, unsigned PartIndex) {
   if (PartIndex + 1 != Offsets.size()) {
-    // Not the last part. We can use the offset (in chunks) difference.
-    return ChunkByteSize * (Offsets[PartIndex + 1] - Offsets[PartIndex]);
+    // Not the last part. We can use the offset (in GRFs) difference.
+    return GRFByteSize * (Offsets[PartIndex + 1] - Offsets[PartIndex]);
   }
   // For the last part, we need to get the total size from WholeTy.
   return DL->getTypeSizeInBits(WholeTy) / genx::ByteBits -
-         ChunkByteSize * Offsets[PartIndex];
+         GRFByteSize * Offsets[PartIndex];
 }
 
 /***********************************************************************
