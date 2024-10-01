@@ -233,7 +233,8 @@ KernelArgBuilder::getOCLArgKind(ArrayRef<StringRef> Tokens,
     }
     if (any_of(Tokens, getStrPred(OCLAttributes::Image3d)))
       return ArgKindType::Image3D;
-    if (Cat == vc::RegCategory::Surface)
+    if (Cat == vc::RegCategory::Surface ||
+        any_of(Tokens, getStrPred(OCLAttributes::Buffer)))
       return ArgKindType::Buffer;
     break;
   case vc::RegCategory::Sampler:

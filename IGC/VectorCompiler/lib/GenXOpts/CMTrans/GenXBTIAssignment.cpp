@@ -165,7 +165,7 @@ int BTIAssignment::assignUAV(int SurfaceID, ZipTy &&Zippy) {
       continue;
 
     if (Kind == vc::KernelMetadata::AK_SURFACE) {
-      Idx = SurfaceID++;
+      Idx = useBindlessBuffers ? StatelessBti : SurfaceID++;
       continue;
     }
     if (Kind == vc::KernelMetadata::AK_NORMAL && vc::isDescSvmPtr(Desc)) {

@@ -30,7 +30,7 @@ define dllexport spir_kernel void @simple(i32 %surf, i32 %samp) #0 {
 ; CHECK-LABEL: @mixed_srv_uav(
 define dllexport spir_kernel void @mixed_srv_uav(i32 %image_ro, i32 %image_rw, i32 %buf, i32 %image_ro2) #0 {
 ; CHECK:      call void @use_value(i32 0)
-; CHECK-NEXT: call void @use_value(i32 2)
+; CHECK-NEXT: call void @use_value(i32 255)
 ; CHECK-NEXT: call void @use_value(i32 %buf)
 ; CHECK-NEXT: call void @use_value(i32 1)
   call void @use_value(i32 %image_ro)
@@ -42,7 +42,7 @@ define dllexport spir_kernel void @mixed_srv_uav(i32 %image_ro, i32 %image_rw, i
 
 ; CHECK-LABEL: @mixed_all(
 define dllexport spir_kernel void @mixed_all(i32 %imwo, i32 %imro, i32 %plain, i32 %samp1, i64 %svm, i32 %buf, i32 %samp2) #0 {
-; CHECK:      call void @use_value(i32 1)
+; CHECK:      call void @use_value(i32 255)
 ; CHECK-NEXT: call void @use_value(i32 0)
 ; CHECK-NEXT: call void @use_value(i32 %plain)
 ; CHECK-NEXT: call void @use_value(i32 0)
@@ -66,13 +66,13 @@ attributes #0 = { "CMGenxMain" }
 ; CHECK: !genx.kernel.internal = !{[[SIMPLE_NODE:![0-9]+]], [[MIXED_NODE:![0-9]+]], [[MIXED_ALL_NODE:![0-9]+]]}
 ; CHECK-TYPED-PTRS-DAG: [[SIMPLE_NODE]] = !{void (i32, i32)* @simple, null, null, null, [[SIMPLE_BTIS:![0-9]+]]}
 ; CHECK-OPAQUE-PTRS-DAG: [[SIMPLE_NODE]] = !{ptr @simple, null, null, null, [[SIMPLE_BTIS:![0-9]+]]}
-; CHECK-DAG: [[SIMPLE_BTIS]] = !{i32 0, i32 0}
+; CHECK-DAG: [[SIMPLE_BTIS]] = !{i32 255, i32 0}
 ; CHECK-TYPED-PTRS-DAG: [[MIXED_NODE]] = !{void (i32, i32, i32, i32)* @mixed_srv_uav, null, null, null, [[MIXED_BTIS:![0-9]+]]}
 ; CHECK-OPAQUE-PTRS-DAG: [[MIXED_NODE]] = !{ptr @mixed_srv_uav, null, null, null, [[MIXED_BTIS:![0-9]+]]}
-; CHECK-DAG: [[MIXED_BTIS]] = !{i32 0, i32 2, i32 3, i32 1}
+; CHECK-DAG: [[MIXED_BTIS]] = !{i32 0, i32 255, i32 255, i32 1}
 ; CHECK-TYPED-PTRS-DAG: [[MIXED_ALL_NODE]] = !{void (i32, i32, i32, i32, i64, i32, i32)* @mixed_all, null, null, null, [[MIXED_ALL_BTIS:![0-9]+]]}
 ; CHECK-OPAQUE-PTRS-DAG: [[MIXED_ALL_NODE]] = !{ptr @mixed_all, null, null, null, [[MIXED_ALL_BTIS:![0-9]+]]}
-; CHECK-DAG: [[MIXED_ALL_BTIS]] = !{i32 1, i32 0, i32 -1, i32 0, i32 255, i32 2, i32 1}
+; CHECK-DAG: [[MIXED_ALL_BTIS]] = !{i32 255, i32 0, i32 -1, i32 0, i32 255, i32 255, i32 1}
 
 !0 = !{void (i32, i32)* @simple, !"simple", !1, i32 0, i32 0, !2, !3, i32 0}
 !1 = !{i32 2, i32 1}
