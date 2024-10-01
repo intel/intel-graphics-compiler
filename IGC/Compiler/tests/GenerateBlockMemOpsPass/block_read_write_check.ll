@@ -7,9 +7,10 @@
 ;============================ end_copyright_notice =============================
 ;
 
-; RUN: igc_opt %s -S -o - -generate-block-mem-ops -platformpvc | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers %s -S -o - -generate-block-mem-ops -platformpvc | FileCheck %s
 
-define spir_kernel void @testYZUnif(float addrspace(1)* %out, float addrspace(1)* %in, <8 x i32> %r0, <8 x i32> %payloadHeader, <3 x i32> %localSize, i16 %localIdX, i16 %localIdY, i16 %localIdZ, i32 %bufferOffset, i32 %bufferOffset1) {
+define spir_kernel void @testYZUnif(ptr addrspace(1) %out, ptr addrspace(1) %in, <8 x i32> %r0, <8 x i32> %payloadHeader, <3 x i32> %localSize, i16 %localIdX, i16 %localIdY, i16 %localIdZ, i32 %bufferOffset, i32 %bufferOffset1) {
 entry:
   %0 = extractelement <3 x i32> %localSize, i64 0
   %1 = extractelement <3 x i32> %localSize, i64 1
@@ -21,15 +22,15 @@ entry:
   %localIdX6 = zext i16 %localIdX to i32
   %add6.i.i = add i32 %mul4.i.i, %localIdX6
   %conv.i = zext i32 %add6.i.i to i64
-  %arrayidx = getelementptr inbounds float, float addrspace(1)* %in, i64 %conv.i
-  %2 = load float, float addrspace(1)* %arrayidx, align 4
+  %arrayidx = getelementptr inbounds float, ptr addrspace(1) %in, i64 %conv.i
+  %2 = load float, ptr addrspace(1) %arrayidx, align 4
 
-  ; CHECK: [[TMP0:%.*]] = call float @llvm.genx.GenISA.simdBlockRead.f32.p1f32(float addrspace(1)* %arrayidx) [[ATTR_NUM:#.*]]
+  ; CHECK: [[TMP0:%.*]] = call float @llvm.genx.GenISA.simdBlockRead.f32.p1(ptr addrspace(1) %arrayidx) [[ATTR_NUM:#.*]]
 
-  %arrayidx1 = getelementptr inbounds float, float addrspace(1)* %out, i64 %conv.i
-  store float %2, float addrspace(1)* %arrayidx1, align 4
+  %arrayidx1 = getelementptr inbounds float, ptr addrspace(1) %out, i64 %conv.i
+  store float %2, ptr addrspace(1) %arrayidx1, align 4
 
-  ; CHECK: call void @llvm.genx.GenISA.simdBlockWrite.p1f32.f32(float addrspace(1)* %arrayidx1, float [[TMP0]]) [[ATTR_NUM]]
+  ; CHECK: call void @llvm.genx.GenISA.simdBlockWrite.p1.f32(ptr addrspace(1) %arrayidx1, float [[TMP0]]) [[ATTR_NUM]]
 
   ret void
 }
@@ -37,7 +38,7 @@ entry:
 ; IGC cannot turn load/store statements into block statements for the testNoUnif function, since these instructions
 ; work with non-contiguous memory relative to the subgroup. See thread_group_size metadata below.
 
-define spir_kernel void @testNoUnif(float addrspace(1)* %out, float addrspace(1)* %in, <8 x i32> %r0, <8 x i32> %payloadHeader, <3 x i32> %localSize, i16 %localIdX, i16 %localIdY, i16 %localIdZ, i32 %bufferOffset, i32 %bufferOffset1) {
+define spir_kernel void @testNoUnif(ptr addrspace(1) %out, ptr addrspace(1) %in, <8 x i32> %r0, <8 x i32> %payloadHeader, <3 x i32> %localSize, i16 %localIdX, i16 %localIdY, i16 %localIdZ, i32 %bufferOffset, i32 %bufferOffset1) {
 
 ; CHECK-LABEL: @testNoUnif(
 
@@ -52,13 +53,13 @@ entry:
   %localIdX6 = zext i16 %localIdX to i32
   %add6.i.i = add i32 %mul4.i.i, %localIdX6
   %conv.i = zext i32 %add6.i.i to i64
-  %arrayidx = getelementptr inbounds float, float addrspace(1)* %in, i64 %conv.i
-  %2 = load float, float addrspace(1)* %arrayidx, align 4
+  %arrayidx = getelementptr inbounds float, ptr addrspace(1) %in, i64 %conv.i
+  %2 = load float, ptr addrspace(1) %arrayidx, align 4
 
   ; CHECK-NOT: %{{.*}} = simdBlockRead
 
-  %arrayidx1 = getelementptr inbounds float, float addrspace(1)* %out, i64 %conv.i
-  store float %2, float addrspace(1)* %arrayidx1, align 4
+  %arrayidx1 = getelementptr inbounds float, ptr addrspace(1) %out, i64 %conv.i
+  store float %2, ptr addrspace(1) %arrayidx1, align 4
 
   ; CHECK-NOT: simdBlockWrite
 
@@ -68,11 +69,11 @@ entry:
 
 }
 
-define spir_kernel void @testYZUnifLoop(float addrspace(1)* %out, float addrspace(1)* %in, <8 x i32> %r0, <8 x i32> %payloadHeader, <3 x i32> %localSize, i16 %localIdX, i16 %localIdY, i16 %localIdZ, i32 %bufferOffset, i64 %limit) {
+define spir_kernel void @testYZUnifLoop(ptr addrspace(1) %out, ptr addrspace(1) %in, <8 x i32> %r0, <8 x i32> %payloadHeader, <3 x i32> %localSize, i16 %localIdX, i16 %localIdY, i16 %localIdZ, i32 %bufferOffset, i64 %limit) {
 ; CHECK: %{{.*}} = load
 ; CHECK: store
-; CHECK: [[TMP0:%.*]] = call float @llvm.genx.GenISA.simdBlockRead.f32.p1f32(float addrspace(1)* %{{.*}}) [[ATTR_NUM]]
-; CHECK: call void @llvm.genx.GenISA.simdBlockWrite.p1f32.f32(float addrspace(1)* %{{.*}}, float [[TMP0]]) [[ATTR_NUM]]
+; CHECK: [[TMP0:%.*]] = call float @llvm.genx.GenISA.simdBlockRead.f32.p1(ptr addrspace(1) %{{.*}}) [[ATTR_NUM]]
+; CHECK: call void @llvm.genx.GenISA.simdBlockWrite.p1.f32(ptr addrspace(1) %{{.*}}, float [[TMP0]]) [[ATTR_NUM]]
 entry:
   %offset = extractelement <8 x i32> %payloadHeader, i64 0
   %groupNumX = extractelement <8 x i32> %r0, i64 1
@@ -87,10 +88,10 @@ preheader:
   br label %latch
 latch:
   %ind = phi i64 [ %sum64, %preheader ], [ %incr, %latch ]
-  %arrayidx = getelementptr inbounds float, float addrspace(1)* %in, i64 %ind
-  %load = load float, float addrspace(1)* %arrayidx, align 4
-  %arrayidx1 = getelementptr inbounds float, float addrspace(1)* %out, i64 %ind
-  store float %load, float addrspace(1)* %arrayidx1, align 4
+  %arrayidx = getelementptr inbounds float, ptr addrspace(1) %in, i64 %ind
+  %load = load float, ptr addrspace(1) %arrayidx, align 4
+  %arrayidx1 = getelementptr inbounds float, ptr addrspace(1) %out, i64 %ind
+  store float %load, ptr addrspace(1) %arrayidx1, align 4
   %incr = add nsw i64 %ind, 32
   %cond = icmp slt i64 %incr, %limit
   br i1 %cond, label %latch, label %exit
@@ -105,9 +106,9 @@ terminator:
 !igc.functions = !{!1, !2, !3}
 !IGCMetadata = !{!19}
 
-!1 = !{void (float addrspace(1)*, float addrspace(1)*, <8 x i32>, <8 x i32>, <3 x i32>, i16, i16, i16, i32, i32)* @testYZUnif, !41}
-!2 = !{void (float addrspace(1)*, float addrspace(1)*, <8 x i32>, <8 x i32>, <3 x i32>, i16, i16, i16, i32, i32)* @testNoUnif, !42}
-!3 = !{void (float addrspace(1)*, float addrspace(1)*, <8 x i32>, <8 x i32>, <3 x i32>, i16, i16, i16, i32, i64)* @testYZUnifLoop, !43}
+!1 = !{ptr @testYZUnif, !41}
+!2 = !{ptr @testNoUnif, !42}
+!3 = !{ptr @testYZUnifLoop, !43}
 !41 = !{!5, !6, !17}
 !42 = !{!5, !6}
 !43 = !{!5, !6, !17}
@@ -135,11 +136,11 @@ terminator:
 !18 = !{!"thread_group_size", i32 16, i32 32, i32 32}
 !19 = !{!"ModuleMD", !112}
 !112 = !{!"FuncMD", !113, !114, !333, !334, !335, !336}
-!113 = !{!"FuncMDMap[0]", void (float addrspace(1)*, float addrspace(1)*, <8 x i32>, <8 x i32>, <3 x i32>, i16, i16, i16, i32, i32)* @testYZUnif}
+!113 = !{!"FuncMDMap[0]", ptr @testYZUnif}
 !114 = !{!"FuncMDValue[0]", !116}
-!333 = !{!"FuncMDMap[1]", void (float addrspace(1)*, float addrspace(1)*, <8 x i32>, <8 x i32>, <3 x i32>, i16, i16, i16, i32, i32)* @testNoUnif}
+!333 = !{!"FuncMDMap[1]", ptr @testNoUnif}
 !334 = !{!"FuncMDValue[1]", !116}
-!335 = !{!"FuncMDMap[2]", void (float addrspace(1)*, float addrspace(1)*, <8 x i32>, <8 x i32>, <3 x i32>, i16, i16, i16, i32, i64)* @testYZUnifLoop}
+!335 = !{!"FuncMDMap[2]", ptr @testYZUnifLoop}
 !336 = !{!"FuncMDValue[2]", !116}
 !116 = !{!"workGroupWalkOrder", !117, !118, !119}
 !117 = !{!"dim0", i32 0}

@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -debugify -fix-invalid-func-name -check-debugify -S < %s 2>&1 | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -debugify -fix-invalid-func-name -check-debugify -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; FixInvalidFuncName
 ; ------------------------------------------------
@@ -15,22 +16,22 @@
 ; CHECK-NOT: WARNING
 ; CHECK: CheckModuleDebugify: PASS
 
-define spir_kernel void @test(i64* %dst) {
+define spir_kernel void @test(ptr %dst) {
 ; CHECK: @test(
-; CHECK:    [[TMP1:%.*]] = call spir_func i64 @in_li_d_func(i64* [[DST:%.*]])
-; CHECK:    store i64 [[TMP1]], i64* [[DST]]
+; CHECK:    [[TMP1:%.*]] = call spir_func i64 @in_li_d_func(ptr [[DST:%.*]])
+; CHECK:    store i64 [[TMP1]], ptr [[DST]]
 ; CHECK:    ret void
 ;
-  %1 = call spir_func i64 @"in$li.d_func"(i64* %dst)
-  store i64 %1, i64* %dst
+  %1 = call spir_func i64 @"in$li.d_func"(ptr %dst)
+  store i64 %1, ptr %dst
   ret void
 }
 
-define spir_func i64 @"in$li.d_func"(i64* %src) {
+define spir_func i64 @"in$li.d_func"(ptr %src) {
 ; CHECK:  define spir_func i64 @in_li_d_func(
-; CHECK:    [[TMP1:%.*]] = load i64, i64* %src
+; CHECK:    [[TMP1:%.*]] = load i64, ptr %src
 ; CHECK:    ret i64 [[TMP1]]
 ;
-  %1 = load i64, i64* %src
+  %1 = load i64, ptr %src
   ret i64 %1
 }

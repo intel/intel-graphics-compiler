@@ -1,17 +1,18 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -igc-early-out-patterns-pass -S -inputcs < %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-early-out-patterns-pass -S -inputcs < %s | FileCheck %s
 ; ------------------------------------------------
 ; EarlyOutPatterns
 ; ------------------------------------------------
 
-define spir_kernel void @test_earlyout(i32 %a, i32 %b, i32 %c, float* %d) {
+define spir_kernel void @test_earlyout(i32 %a, i32 %b, i32 %c, ptr %d) {
 ; CHECK-LABEL: @test_earlyout(
 ; CHECK:  entry:
 ; CHECK:    [[BT1:%.*]] = uitofp i32 [[A:%.*]] to float
@@ -61,7 +62,7 @@ define spir_kernel void @test_earlyout(i32 %a, i32 %b, i32 %c, float* %d) {
 ; CHECK:    [[TMP31:%.*]] = phi float [ [[TMP13]], %[[EO_ELSE]] ], [ 0.000000e+00, %[[EO_IF]] ]
 ; CHECK:    [[TMP32:%.*]] = fadd float [[TMP31]], [[TMP30]]
 ; CHECK:    [[TMP33:%.*]] = fadd float [[TMP32]], [[TMP29]]
-; CHECK:    store float [[TMP33]], float* [[D:%.*]], align 4
+; CHECK:    store float [[TMP33]], ptr [[D:%.*]], align 4
 ; CHECK:    ret void
 ;
 entry:
@@ -89,7 +90,7 @@ entry:
   %14 = call fast float @llvm.maxnum.f32(float %11, float 0.000000e+00)
   %15 = fadd float %12, %13
   %16 = fadd float %15, %14
-  store float %16, float* %d, align 4
+  store float %16, ptr %d, align 4
   ret void
 }
 

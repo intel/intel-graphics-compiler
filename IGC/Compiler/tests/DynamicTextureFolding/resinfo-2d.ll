@@ -1,12 +1,12 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: regkeys
-; RUN: igc_opt -enable-debugify -regkey DisableDynamicResInfoFolding=0 -igc-dynamic-texture-folding -S < %s 2>&1 | FileCheck %s
+; REQUIRES: llvm-14-plus, regkeys
+; RUN: igc_opt --opaque-pointers -enable-debugify -regkey DisableDynamicResInfoFolding=0 -igc-dynamic-texture-folding -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; DynamicTextureFolding
 ; ------------------------------------------------
@@ -18,32 +18,32 @@
 ; CHECK: CheckModuleDebugify: PASS
 
 
-define void @test(i32 %src1, i32* %dst) {
+define void @test(i32 %src1, ptr %dst) {
 ; CHECK-LABEL: @test(
 ; CHECK:    [[TMP1:%.*]] = lshr i32 2, %src1
 ; CHECK:    [[TMP2:%.*]] = mul i32 [[TMP1]], 6
 ; CHECK:    [[TMP3:%.*]] = lshr i32 3, %src1
 ; CHECK:    [[TMP4:%.*]] = mul i32 [[TMP3]], 7
-; CHECK:    [[TMP5:%.*]] = call <4 x i32> @llvm.genx.GenISA.resinfoptr.p131077i8(i8 addrspace(131077)* null, i32 %src1)
-; CHECK:    store i32 [[TMP2]], i32* [[DST:%[A-z0-9]*]]
-; CHECK:    store i32 [[TMP4]], i32* [[DST]]
-; CHECK:    store i32 4, i32* [[DST]]
-; CHECK:    store i32 7, i32* [[DST]]
+; CHECK:    [[TMP5:%.*]] = call <4 x i32> @llvm.genx.GenISA.resinfoptr.p131077(ptr addrspace(131077) null, i32 %src1)
+; CHECK:    store i32 [[TMP2]], ptr [[DST:%[A-z0-9]*]]
+; CHECK:    store i32 [[TMP4]], ptr [[DST]]
+; CHECK:    store i32 4, ptr [[DST]]
+; CHECK:    store i32 7, ptr [[DST]]
 ; CHECK:    ret void
 ;
-  %1 = call <4 x i32> @llvm.genx.GenISA.resinfoptr.p131077i8(i8 addrspace(131077)* null, i32 %src1)
+  %1 = call <4 x i32> @llvm.genx.GenISA.resinfoptr.p131077(ptr addrspace(131077) null, i32 %src1)
   %2 = extractelement <4 x i32> %1, i32 0
-  store i32 %2, i32* %dst, align 4
+  store i32 %2, ptr %dst, align 4
   %3 = extractelement <4 x i32> %1, i32 1
-  store i32 %3, i32* %dst, align 4
+  store i32 %3, ptr %dst, align 4
   %4 = extractelement <4 x i32> %1, i32 2
-  store i32 %4, i32* %dst, align 4
+  store i32 %4, ptr %dst, align 4
   %5 = extractelement <4 x i32> %1, i32 3
-  store i32 %5, i32* %dst, align 4
+  store i32 %5, ptr %dst, align 4
   ret void
 }
 
-declare <4 x i32> @llvm.genx.GenISA.resinfoptr.p131077i8(i8 addrspace(131077)*, i32)
+declare <4 x i32> @llvm.genx.GenISA.resinfoptr.p131077(ptr addrspace(131077), i32)
 
 !IGCMetadata = !{!0}
 !igc.functions = !{}

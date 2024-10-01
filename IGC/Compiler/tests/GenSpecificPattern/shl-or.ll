@@ -6,7 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-gen-specific-pattern -S -dce < %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --igc-gen-specific-pattern -S -dce < %s | FileCheck %s
 ; ------------------------------------------------
 ; GenSpecificPattern: shl + or
 ; ------------------------------------------------

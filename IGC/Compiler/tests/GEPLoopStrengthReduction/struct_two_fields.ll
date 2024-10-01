@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -debugify --igc-gep-loop-strength-reduction -check-debugify -S < %s 2>&1 | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -debugify --igc-gep-loop-strength-reduction -check-debugify -S < %s 2>&1 | FileCheck %s
 ;
 ; Input:
 ;
@@ -29,7 +30,7 @@
 
 %struct.Foo = type { float, double, float }
 
-define spir_kernel void @test(%struct.Foo addrspace(1)* %p, i32 %n) #0 {
+define spir_kernel void @test(ptr addrspace(1) %p, i32 %n) #0 {
 entry:
   %cmp1 = icmp slt i32 0, %n
   br i1 %cmp1, label %for.body.lr.ph, label %for.end
@@ -43,13 +44,13 @@ for.body.lr.ph:                                   ; preds = %entry
 ; CHECK-LABEL: for.body:
 ; CHECK:         %i.02 = phi i32 [ 0, %for.body.lr.ph ], [ %add4, %for.body ]
 ; CHECK:         %conv = sitofp i32 %i.02 to float
-; CHECK:         %a = getelementptr inbounds %struct.Foo, %struct.Foo addrspace(1)* %p, i32 0, i32 0
-; CHECK:         %0 = load float, float addrspace(1)* %a, align 4
+; CHECK:         %a = getelementptr inbounds %struct.Foo, ptr addrspace(1) %p, i32 0, i32 0
+; CHECK:         %0 = load float, ptr addrspace(1) %a, align 4
 ; CHECK:         %add = fadd float %0, %conv
-; CHECK:         store float %add, float addrspace(1)* %a, align 4
+; CHECK:         store float %add, ptr addrspace(1) %p, align 4
 ; CHECK:         %conv1 = sitofp i32 %i.02 to float
-; CHECK:         %c = getelementptr inbounds %struct.Foo, %struct.Foo addrspace(1)* %p, i32 0, i32 2
-; CHECK:         %1 = load float, float addrspace(1)* %c, align 4
+; CHECK:         %c = getelementptr inbounds %struct.Foo, ptr addrspace(1) %p, i32 0, i32 2
+; CHECK:         %1 = load float, ptr addrspace(1) %c, align 4
 ; CHECK:         %add2 = fadd float %1, %conv1
 ; CHECK:         %add4 = add nuw nsw i32 %i.02, 2
 ; CHECK:         %cmp = icmp slt i32 %add4, %n
@@ -57,13 +58,13 @@ for.body.lr.ph:                                   ; preds = %entry
 for.body:                                         ; preds = %for.body.lr.ph, %for.body
   %i.02 = phi i32 [ 0, %for.body.lr.ph ], [ %add4, %for.body ]
   %conv = sitofp i32 %i.02 to float
-  %a = getelementptr inbounds %struct.Foo, %struct.Foo addrspace(1)* %p, i32 0, i32 0
-  %0 = load float, float addrspace(1)* %a, align 4
+  %a = getelementptr inbounds %struct.Foo, ptr addrspace(1) %p, i32 0, i32 0
+  %0 = load float, ptr addrspace(1) %a, align 4
   %add = fadd float %0, %conv
-  store float %add, float addrspace(1)* %a, align 4
+  store float %add, ptr addrspace(1) %p, align 4
   %conv1 = sitofp i32 %i.02 to float
-  %c = getelementptr inbounds %struct.Foo, %struct.Foo addrspace(1)* %p, i32 0, i32 2
-  %1 = load float, float addrspace(1)* %c, align 4
+  %c = getelementptr inbounds %struct.Foo, ptr addrspace(1) %p, i32 0, i32 2
+  %1 = load float, ptr addrspace(1) %c, align 4
   %add2 = fadd float %1, %conv1
   %add4 = add nuw nsw i32 %i.02, 2
   %cmp = icmp slt i32 %add4, %n
@@ -78,6 +79,6 @@ for.end:                                          ; preds = %for.cond.for.end_cr
 
 !igc.functions = !{!0}
 
-!0 = !{void (%struct.Foo addrspace(1)*, i32)* @test, !1}
+!0 = !{ptr @test, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}

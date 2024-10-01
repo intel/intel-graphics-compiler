@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -enable-debugify -loop-gating -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,%LLVM_DEPENDENT_CHECK_PREFIX%
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -enable-debugify -loop-gating -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,%LLVM_DEPENDENT_CHECK_PREFIX%
 ; ------------------------------------------------
 ; GatingSimilarSamples
 ; ------------------------------------------------
@@ -19,13 +20,13 @@
 ; CHECK-NOT: WARNING
 ; CHECK: CheckModuleDebugify: PASS
 
-define void @test(float %src1, float %src2, float %src3, float* %dst) {
+define void @test(float %src1, float %src2, float %src3, ptr %dst) {
 ; CHECK-LABEL: @test(
 ; CHECK:    [[MUL_1:%[A-z0-9]*]] = fmul float [[SRC1:%[A-z0-9]*]], [[SRC2:%[A-z0-9]*]]
 ; CHECK:    [[A:%[A-z0-9]*]] = fsub float [[SRC1]], [[MUL_1]]
 ; CHECK:    [[B:%[A-z0-9]*]] = fadd float [[SRC1]], [[MUL_1]]
-; CHECK:    [[TMP1:%[A-z0-9]*]] = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.p196609i8.p524293i8(float [[SRC1]], float [[SRC2]], float 0.000000e+00, float 1.000000e+00, float [[SRC2]], float [[SRC3:%[A-z0-9]*]], i8 addrspace(196609)* null, i8 addrspace(524293)* inttoptr (i64 5 to i8 addrspace(524293)*), i32 0, i32 0, i32 0)
-; CHECK:    [[TMP2:%[A-z0-9]*]] = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.p196609i8.p524293i8(float [[B]], float [[A]], float [[SRC3]], float 1.000000e+00, float [[SRC2]], float [[SRC3]], i8 addrspace(196609)* null, i8 addrspace(524293)* inttoptr (i64 5 to i8 addrspace(524293)*), i32 0, i32 0, i32 0)
+; CHECK:    [[TMP1:%[A-z0-9]*]] = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.p196609.p524293(float [[SRC1]], float [[SRC2]], float 0.000000e+00, float 1.000000e+00, float [[SRC2]], float [[SRC3:%[A-z0-9]*]], ptr addrspace(196609) null, ptr addrspace(524293) inttoptr (i64 5 to ptr addrspace(524293)), i32 0, i32 0, i32 0)
+; CHECK:    [[TMP2:%[A-z0-9]*]] = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.p196609.p524293(float [[B]], float [[A]], float [[SRC3]], float 1.000000e+00, float [[SRC2]], float [[SRC3]], ptr addrspace(196609) null, ptr addrspace(524293) inttoptr (i64 5 to ptr addrspace(524293)), i32 0, i32 0, i32 0)
 ; CHECK:    [[TMP3:%[A-z0-9]*]] = extractelement <4 x float> [[TMP2]], i32 0
 ; CHECK:    [[TMP4:%[A-z0-9]*]] = extractelement <4 x float> [[TMP2]], i32 1
 ; CHECK:    [[TMP5:%[A-z0-9]*]] = extractelement <4 x float> [[TMP2]], i32 2
@@ -34,7 +35,7 @@ define void @test(float %src1, float %src2, float %src3, float* %dst) {
 ; CHECK:    [[TMP8:%[A-z0-9]*]] = or i1 [[TMP6]], [[TMP7]]
 ; CHECK:    br i1 [[TMP8]], label %[[TMP9:[A-z0-9]*]], label %[[TMP20:[A-z0-9]*]]
 ; CHECK:  [[TMP9]]:
-; CHECK:    [[TMP10:%[A-z0-9]*]] = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.p196609i8.p524293i8(float [[A]], float [[B]], float [[SRC3]], float 1.000000e+00, float [[SRC2]], float [[SRC3]], i8 addrspace(196609)* null, i8 addrspace(524293)* inttoptr (i64 5 to i8 addrspace(524293)*), i32 0, i32 0, i32 0)
+; CHECK:    [[TMP10:%[A-z0-9]*]] = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.p196609.p524293(float [[A]], float [[B]], float [[SRC3]], float 1.000000e+00, float [[SRC2]], float [[SRC3]], ptr addrspace(196609) null, ptr addrspace(524293) inttoptr (i64 5 to ptr addrspace(524293)), i32 0, i32 0, i32 0)
 ; CHECK:    [[TMP11:%[A-z0-9]*]] = extractelement <4 x float> [[TMP10]], i32 0
 ; CHECK:    [[TMP12:%[A-z0-9]*]] = extractelement <4 x float> [[TMP10]], i32 1
 ; CHECK:    [[TMP13:%[A-z0-9]*]] = extractelement <4 x float> [[TMP10]], i32 2
@@ -60,12 +61,12 @@ define void @test(float %src1, float %src2, float %src3, float* %dst) {
   %mul = fmul float %src1, %src2
   %a = fsub float %src1, %mul
   %b = fadd float %src1, %mul
-  %1 = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.p196609i8.p524293i8(float %src1, float %src2, float 0.000000e+00, float 1.000000e+00, float %src2, float %src3, i8 addrspace(196609)* null, i8 addrspace(524293)* inttoptr (i64 5 to i8 addrspace(524293)*), i32 0, i32 0, i32 0)
-  %2 = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.p196609i8.p524293i8(float %b, float %a, float %src3, float 1.000000e+00, float %src2, float %src3, i8 addrspace(196609)* null, i8 addrspace(524293)* inttoptr (i64 5 to i8 addrspace(524293)*), i32 0, i32 0, i32 0)
+  %1 = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.p196609.p524293(float %src1, float %src2, float 0.000000e+00, float 1.000000e+00, float %src2, float %src3, ptr addrspace(196609) null, ptr addrspace(524293) inttoptr (i64 5 to ptr addrspace(524293)), i32 0, i32 0, i32 0)
+  %2 = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.p196609.p524293(float %b, float %a, float %src3, float 1.000000e+00, float %src2, float %src3, ptr addrspace(196609) null, ptr addrspace(524293) inttoptr (i64 5 to ptr addrspace(524293)), i32 0, i32 0, i32 0)
   %3 = extractelement <4 x float> %2, i32 0
   %4 = extractelement <4 x float> %2, i32 1
   %5 = extractelement <4 x float> %2, i32 2
-  %6 = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.p196609i8.p524293i8(float %a, float %b, float %src3, float 1.000000e+00, float %src2, float %src3, i8 addrspace(196609)* null, i8 addrspace(524293)* inttoptr (i64 5 to i8 addrspace(524293)*), i32 0, i32 0, i32 0)
+  %6 = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.p196609.p524293(float %a, float %b, float %src3, float 1.000000e+00, float %src2, float %src3, ptr addrspace(196609) null, ptr addrspace(524293) inttoptr (i64 5 to ptr addrspace(524293)), i32 0, i32 0, i32 0)
   %7 = extractelement <4 x float> %6, i32 0
   %8 = extractelement <4 x float> %6, i32 1
   %9 = extractelement <4 x float> %6, i32 2
@@ -79,6 +80,6 @@ define void @test(float %src1, float %src2, float %src3, float* %dst) {
   ret void
 }
 
-declare <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.p196609i8.p524293i8(float, float, float, float, float, float, i8 addrspace(196609)*, i8 addrspace(524293)*, i32, i32, i32)
+declare <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.p196609.p524293(float, float, float, float, float, float, ptr addrspace(196609), ptr addrspace(524293), i32, i32, i32)
 declare void @llvm.genx.GenISA.OUTPUT.f32(float, float, float, float, i32, i32, i32)
 

@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --transform-unmasked -S < %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --transform-unmasked -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; TransformUnmaskedFunctionsPass
 ; ------------------------------------------------
@@ -33,24 +34,24 @@
 ; CHECK: define {{.*}} @foo
 ; CHECK-SAME: !dbg [[FOO_SCOPE:![0-9]*]]
 ;
-; CHECK: call void @llvm.dbg.declare(metadata i32* %
+; CHECK: call void @llvm.dbg.declare(metadata ptr %
 ; CHECK-SAME: metadata [[SRC_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SRC_LOC:![0-9]*]]
 ;
-; CHECK: call void @llvm.dbg.declare(metadata i32* %
+; CHECK: call void @llvm.dbg.declare(metadata ptr %
 ; CHECK-SAME: metadata [[R_MD:![0-9]*]], metadata !DIExpression()), !dbg [[R_LOC:![0-9]*]]
 ;
-; CHECK: call void @llvm.dbg.declare(metadata i8* %
+; CHECK: call void @llvm.dbg.declare(metadata ptr %
 ; CHECK-SAME: metadata [[L_MD:![0-9]*]], metadata !DIExpression()), !dbg [[L_LOC:![0-9]*]]
 ;
 ; CHECK: call spir_func i8 @__builtin_spirv_OpSConvert{{.*}} !dbg [[OPS_LOC:![0-9]*]]
 ;
-; CHECK: call void @llvm.dbg.declare(metadata i8* %
+; CHECK: call void @llvm.dbg.declare(metadata ptr %
 ; CHECK-SAME: metadata [[A_MD:![0-9]*]], metadata !DIExpression()), !dbg [[A_LOC:![0-9]*]]
 ;
-; CHECK: call void @llvm.dbg.declare(metadata i8* %
+; CHECK: call void @llvm.dbg.declare(metadata ptr %
 ; CHECK-SAME: metadata [[B_MD:![0-9]*]], metadata !DIExpression()), !dbg [[B_LOC:![0-9]*]]
 ;
-; CHECK: call void @llvm.dbg.declare(metadata i8* %
+; CHECK: call void @llvm.dbg.declare(metadata ptr %
 ; CHECK-SAME: metadata [[C_MD:![0-9]*]], metadata !DIExpression()), !dbg [[C_LOC:![0-9]*]]
 
 define spir_func i32 @foo(i32 %src, i32 %r) #0 !dbg !5 {
@@ -61,32 +62,32 @@ entry:
   %a = alloca i8, align 1
   %b = alloca i8, align 1
   %c = alloca i8, align 1
-  store i32 %src, i32* %src.addr, align 4
-  call void @llvm.dbg.declare(metadata i32* %src.addr, metadata !10, metadata !DIExpression()), !dbg !11
-  store i32 %r, i32* %r.addr, align 4
-  call void @llvm.dbg.declare(metadata i32* %r.addr, metadata !12, metadata !DIExpression()), !dbg !13
-  call void @llvm.dbg.declare(metadata i8* %l, metadata !14, metadata !DIExpression()), !dbg !18
-  %0 = load i32, i32* %src.addr, align 4, !dbg !19
+  store i32 %src, ptr %src.addr, align 4
+  call void @llvm.dbg.declare(metadata ptr %src.addr, metadata !10, metadata !DIExpression()), !dbg !11
+  store i32 %r, ptr %r.addr, align 4
+  call void @llvm.dbg.declare(metadata ptr %r.addr, metadata !12, metadata !DIExpression()), !dbg !13
+  call void @llvm.dbg.declare(metadata ptr %l, metadata !14, metadata !DIExpression()), !dbg !18
+  %0 = load i32, ptr %src.addr, align 4, !dbg !19
   %call = call spir_func i8 @__builtin_spirv_OpSConvert_i8_i32(i32 %0) #2, !dbg !20
-  store i8 %call, i8* %l, align 1, !dbg !18
-  call void @llvm.dbg.declare(metadata i8* %a, metadata !21, metadata !DIExpression()), !dbg !23
-  %1 = load i8, i8* %l, align 1, !dbg !24
+  store i8 %call, ptr %l, align 1, !dbg !18
+  call void @llvm.dbg.declare(metadata ptr %a, metadata !21, metadata !DIExpression()), !dbg !23
+  %1 = load i8, ptr %l, align 1, !dbg !24
   %conv = call spir_func i32 @__builtin_spirv_OpUConvert_i32_i8(i8 %1) #2, !dbg !24
   %cmp = icmp slt i32 %conv, 10, !dbg !25
   %frombool = select i1 %cmp, i8 1, i8 0
-  store i8 %frombool, i8* %a, align 1, !dbg !23
-  call void @llvm.dbg.declare(metadata i8* %b, metadata !26, metadata !DIExpression()), !dbg !27
-  %2 = load i32, i32* %r.addr, align 4, !dbg !28
+  store i8 %frombool, ptr %a, align 1, !dbg !23
+  call void @llvm.dbg.declare(metadata ptr %b, metadata !26, metadata !DIExpression()), !dbg !27
+  %2 = load i32, ptr %r.addr, align 4, !dbg !28
   %cmp2 = icmp sgt i32 %2, 20, !dbg !29
   %frombool4 = select i1 %cmp2, i8 1, i8 0
-  store i8 %frombool4, i8* %b, align 1, !dbg !27
-  call void @llvm.dbg.declare(metadata i8* %c, metadata !30, metadata !DIExpression()), !dbg !31
-  %3 = load i8, i8* %a, align 1, !dbg !32
+  store i8 %frombool4, ptr %b, align 1, !dbg !27
+  call void @llvm.dbg.declare(metadata ptr %c, metadata !30, metadata !DIExpression()), !dbg !31
+  %3 = load i8, ptr %a, align 1, !dbg !32
   %tobool = icmp ne i8 %3, 0
   br i1 %tobool, label %lor.end, label %lor.rhs, !dbg !33
 
 lor.rhs:                                          ; preds = %entry
-  %4 = load i8, i8* %b, align 1, !dbg !34
+  %4 = load i8, ptr %b, align 1, !dbg !34
   %tobool6 = icmp ne i8 %4, 0
   %i1promo = zext i1 %tobool6 to i8
   br label %lor.end, !dbg !33
@@ -95,18 +96,18 @@ lor.end:                                          ; preds = %lor.rhs, %entry
   %5 = phi i8 [ 1, %entry ], [ %i1promo, %lor.rhs ]
   %i1trunc = trunc i8 %5 to i1
   %frombool8 = select i1 %i1trunc, i8 1, i8 0
-  store i8 %frombool8, i8* %c, align 1, !dbg !31
-  %6 = load i8, i8* %c, align 1, !dbg !35
+  store i8 %frombool8, ptr %c, align 1, !dbg !31
+  %6 = load i8, ptr %c, align 1, !dbg !35
   %tobool9 = icmp ne i8 %6, 0
   br i1 %tobool9, label %cond.true, label %cond.false, !dbg !35
 
 cond.true:                                        ; preds = %lor.end
-  %7 = load i8, i8* %l, align 1, !dbg !36
+  %7 = load i8, ptr %l, align 1, !dbg !36
   %conv11 = call spir_func i32 @__builtin_spirv_OpUConvert_i32_i8(i8 %7) #2, !dbg !36
   br label %cond.end, !dbg !35
 
 cond.false:                                       ; preds = %lor.end
-  %8 = load i32, i32* %r.addr, align 4, !dbg !37
+  %8 = load i32, ptr %r.addr, align 4, !dbg !37
   br label %cond.end, !dbg !35
 
 cond.end:                                         ; preds = %cond.false, %cond.true
@@ -136,23 +137,23 @@ declare spir_func i8 @__builtin_spirv_OpSConvert_i8_i32(i32) #2
 
 declare spir_func i32 @__builtin_spirv_OpUConvert_i32_i8(i8) #2
 
-define spir_kernel void @test_const(i32 addrspace(1)* %dst, i32 %s1, i32 %s2) #3 !dbg !39 {
+define spir_kernel void @test_const(ptr addrspace(1) %dst, i32 %s1, i32 %s2) #3 !dbg !39 {
 entry:
-  %dst.addr = alloca i32 addrspace(1)*, align 8
+  %dst.addr = alloca ptr addrspace(1), align 8
   %s1.addr = alloca i32, align 4
   %s2.addr = alloca i32, align 4
-  store i32 addrspace(1)* %dst, i32 addrspace(1)** %dst.addr, align 8
-  call void @llvm.dbg.declare(metadata i32 addrspace(1)** %dst.addr, metadata !46, metadata !DIExpression()), !dbg !47
-  store i32 %s1, i32* %s1.addr, align 4
-  call void @llvm.dbg.declare(metadata i32* %s1.addr, metadata !48, metadata !DIExpression()), !dbg !49
-  store i32 %s2, i32* %s2.addr, align 4
-  call void @llvm.dbg.declare(metadata i32* %s2.addr, metadata !50, metadata !DIExpression()), !dbg !51
-  %0 = load i32, i32* %s1.addr, align 4, !dbg !52
-  %1 = load i32, i32* %s2.addr, align 4, !dbg !53
+  store ptr addrspace(1) %dst, ptr %dst.addr, align 8
+  call void @llvm.dbg.declare(metadata ptr %dst.addr, metadata !46, metadata !DIExpression()), !dbg !47
+  store i32 %s1, ptr %s1.addr, align 4
+  call void @llvm.dbg.declare(metadata ptr %s1.addr, metadata !48, metadata !DIExpression()), !dbg !49
+  store i32 %s2, ptr %s2.addr, align 4
+  call void @llvm.dbg.declare(metadata ptr %s2.addr, metadata !50, metadata !DIExpression()), !dbg !51
+  %0 = load i32, ptr %s1.addr, align 4, !dbg !52
+  %1 = load i32, ptr %s2.addr, align 4, !dbg !53
   %call = call spir_func i32 @foo(i32 %0, i32 %1) #3, !dbg !54
-  %2 = load i32 addrspace(1)*, i32 addrspace(1)** %dst.addr, align 8, !dbg !55
-  %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %2, i64 0, !dbg !55
-  store i32 %call, i32 addrspace(1)* %arrayidx, align 4, !dbg !56
+  %arrayidx = load ptr addrspace(1), ptr %dst.addr, align 8, !dbg !55
+
+  store i32 %call, ptr addrspace(1) %arrayidx, align 4, !dbg !56
   ret void, !dbg !57
 }
 

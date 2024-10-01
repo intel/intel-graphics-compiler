@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -debugify --igc-gen-specific-pattern -check-debugify -S < %s 2>&1 | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -debugify --igc-gen-specific-pattern -check-debugify -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; GenSpecificPattern: zext, trunc patterns
 ; ------------------------------------------------
@@ -31,13 +32,13 @@ define spir_kernel void @test_zext_i1(i32 %src1) {
 
 define spir_kernel void @test_zext_ptr(i32 %src1) {
 ; CHECK-LABEL: @test_zext_ptr(
-; CHECK:    [[TMP1:%[A-z0-9]*]] = inttoptr i32 [[SRC1:%[A-z0-9]*]] to i64*
-; CHECK:    call void @use.p64(i64* [[TMP1]])
+; CHECK:    [[TMP1:%[A-z0-9]*]] = inttoptr i32 [[SRC1:%[A-z0-9]*]] to ptr
+; CHECK:    call void @use.p64(ptr [[TMP1]])
 ; CHECK:    ret void
 ;
   %1 = zext i32 %src1 to i64
-  %2 = inttoptr i64 %1 to i64*
-  call void @use.p64(i64* %2)
+  %2 = inttoptr i64 %1 to ptr
+  call void @use.p64(ptr %2)
   ret void
 }
 
@@ -56,4 +57,4 @@ define spir_kernel void @test_trunc(i64 %src1) {
 }
 
 declare void @use.i32(i32)
-declare void @use.p64(i64*)
+declare void @use.p64(ptr)

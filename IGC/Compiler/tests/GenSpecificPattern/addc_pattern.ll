@@ -10,11 +10,11 @@
 ; RUN: igc_opt --opaque-pointers -igc-gen-specific-pattern -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
-define spir_kernel void @testkernel(i32 addrspace(1)* %arg_x) {
+define spir_kernel void @testkernel(ptr addrspace(1) %arg_x) {
 entry:
-  %ptrtoint = ptrtoint i32 addrspace(1)* %arg_x to i64
-  %inttoptr = inttoptr i64 %ptrtoint to <4 x i32> addrspace(1)*
-  %load = load <4 x i32>, <4 x i32> addrspace(1)* %inttoptr, align 4
+  %ptrtoint = ptrtoint ptr addrspace(1) %arg_x to i64
+  %inttoptr = inttoptr i64 %ptrtoint to ptr addrspace(1)
+  %load = load <4 x i32>, ptr addrspace(1) %inttoptr, align 4
   %w = extractelement <4 x i32> %load, i32 0
   %x = extractelement <4 x i32> %load, i32 1
   %y = extractelement <4 x i32> %load, i32 2

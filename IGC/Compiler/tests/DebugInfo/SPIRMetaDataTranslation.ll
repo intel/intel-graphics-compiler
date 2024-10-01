@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -igc-spir-metadata-translation -S < %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-spir-metadata-translation -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; SPIRMetaDataTranslation
 ; ------------------------------------------------
@@ -17,55 +18,55 @@
 
 ; CHECK: @test_spir{{.*}} !dbg [[SCOPE:![0-9]*]]
 
-; CHECK: @llvm.dbg.declare(metadata i64 addrspace(1)** {{.*}}, metadata [[DST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[DST_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.declare(metadata i32* {{.*}}, metadata [[GID_MD:![0-9]*]], metadata !DIExpression()), !dbg [[GID_LOC:![0-9]*]]
+; CHECK: @llvm.dbg.declare(metadata ptr {{.*}}, metadata [[DST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[DST_LOC:![0-9]*]]
+; CHECK: @llvm.dbg.declare(metadata ptr {{.*}}, metadata [[GID_MD:![0-9]*]], metadata !DIExpression()), !dbg [[GID_LOC:![0-9]*]]
 ; CHECK: [[EXTR_V:%[A-z0-9]*]] = extractelement {{.*}} !dbg [[EXTR_LOC:![0-9]*]]
 ; CHECK: [[CALLB1_V:%[A-z0-9]*]] = call spir_func {{.*}} !dbg [[EXTR_LOC]]
 ; CHECK: store {{.*}} !dbg [[GID_LOC]]
-; CHECK: @llvm.dbg.declare(metadata i32* {{.*}}, metadata [[TID_MD:![0-9]*]], metadata !DIExpression()), !dbg [[TID_LOC:![0-9]*]]
+; CHECK: @llvm.dbg.declare(metadata ptr {{.*}}, metadata [[TID_MD:![0-9]*]], metadata !DIExpression()), !dbg [[TID_LOC:![0-9]*]]
 ; CHECK: store {{.*}} !dbg [[TID_LOC]]
-; CHECK: @llvm.dbg.declare(metadata i32* {{.*}}, metadata [[DIM_MD:![0-9]*]], metadata !DIExpression()), !dbg [[DIM_LOC:![0-9]*]]
+; CHECK: @llvm.dbg.declare(metadata ptr {{.*}}, metadata [[DIM_MD:![0-9]*]], metadata !DIExpression()), !dbg [[DIM_LOC:![0-9]*]]
 ; CHECK: store {{.*}} !dbg [[DIM_LOC]]
 ; CHECK: [[LOAD_V:%[A-z0-9]*]] = load {{.*}} !dbg [[LOAD1_LOC:![0-9]*]]
 ; CHECK: [[LOAD_V:%[A-z0-9]*]] = load {{.*}} !dbg [[LOAD2_LOC:![0-9]*]]
 
-define spir_kernel void @test_spir(i64 addrspace(1)* %dst) #0 !dbg !70 {
+define spir_kernel void @test_spir(ptr addrspace(1) %dst) #0 !dbg !70 {
 entry:
-  %dst.addr = alloca i64 addrspace(1)*, align 8
+  %dst.addr = alloca ptr addrspace(1), align 8
   %gid = alloca i32, align 4
   %tid = alloca i32, align 4
   %dim = alloca i32, align 4
   %c = alloca i64, align 8
-  store i64 addrspace(1)* %dst, i64 addrspace(1)** %dst.addr, align 8
-  call void @llvm.dbg.declare(metadata i64 addrspace(1)** %dst.addr, metadata !78, metadata !DIExpression()), !dbg !79
-  call void @llvm.dbg.declare(metadata i32* %gid, metadata !80, metadata !DIExpression()), !dbg !82
+  store ptr addrspace(1) %dst, ptr %dst.addr, align 8
+  call void @llvm.dbg.declare(metadata ptr %dst.addr, metadata !78, metadata !DIExpression()), !dbg !79
+  call void @llvm.dbg.declare(metadata ptr %gid, metadata !80, metadata !DIExpression()), !dbg !82
   %0 = call spir_func <3 x i64> @__builtin_spirv_BuiltInWorkgroupId() #3
   %call = extractelement <3 x i64> %0, i32 0, !dbg !83
   %conv = call spir_func i32 @__builtin_spirv_OpUConvert_i32_i64(i64 %call) #2, !dbg !83
-  store i32 %conv, i32* %gid, align 4, !dbg !82
-  call void @llvm.dbg.declare(metadata i32* %tid, metadata !84, metadata !DIExpression()), !dbg !85
+  store i32 %conv, ptr %gid, align 4, !dbg !82
+  call void @llvm.dbg.declare(metadata ptr %tid, metadata !84, metadata !DIExpression()), !dbg !85
   %call1 = call spir_func i32 @__builtin_spirv_BuiltInSubgroupId() #3
-  store i32 %call1, i32* %tid, align 4, !dbg !85
-  call void @llvm.dbg.declare(metadata i32* %dim, metadata !86, metadata !DIExpression()), !dbg !87
+  store i32 %call1, ptr %tid, align 4, !dbg !85
+  call void @llvm.dbg.declare(metadata ptr %dim, metadata !86, metadata !DIExpression()), !dbg !87
   %call2 = call spir_func i32 @__builtin_spirv_BuiltInWorkDim() #3
-  store i32 %call2, i32* %dim, align 4, !dbg !87
-  %1 = load i32, i32* %gid, align 4, !dbg !88
-  %2 = load i32, i32* %tid, align 4, !dbg !89
+  store i32 %call2, ptr %dim, align 4, !dbg !87
+  %1 = load i32, ptr %gid, align 4, !dbg !88
+  %2 = load i32, ptr %tid, align 4, !dbg !89
   %add = add nsw i32 %1, %2, !dbg !90
   %conv3 = call spir_func i64 @__builtin_spirv_OpSConvert_i64_i32(i32 %add) #2, !dbg !88
-  %3 = load i64 addrspace(1)*, i64 addrspace(1)** %dst.addr, align 8, !dbg !91
-  %arrayidx = getelementptr inbounds i64, i64 addrspace(1)* %3, i64 0, !dbg !91
-  store volatile i64 %conv3, i64 addrspace(1)* %arrayidx, align 8, !dbg !92
-  call void @llvm.dbg.declare(metadata i64* %c, metadata !93, metadata !DIExpression()), !dbg !94
-  %4 = load i64 addrspace(1)*, i64 addrspace(1)** %dst.addr, align 8, !dbg !95
-  %5 = load i32, i32* %dim, align 4, !dbg !96
+  %3 = load ptr addrspace(1), ptr %dst.addr, align 8, !dbg !91
+
+  store volatile i64 %conv3, ptr addrspace(1) %3, align 8, !dbg !92
+  call void @llvm.dbg.declare(metadata ptr %c, metadata !93, metadata !DIExpression()), !dbg !94
+  %4 = load ptr addrspace(1), ptr %dst.addr, align 8, !dbg !95
+  %5 = load i32, ptr %dim, align 4, !dbg !96
   %conv4 = call spir_func i64 @__builtin_spirv_OpSConvert_i64_i32(i32 %5) #2, !dbg !96
-  %call5 = call spir_func i64 @__builtin_spirv_OpAtomicOr_p1i64_i32_i32_i64(i64 addrspace(1)* %4, i32 1, i32 16, i64 %conv4) #2, !dbg !97
-  store i64 %call5, i64* %c, align 8, !dbg !94
-  %6 = load i64, i64* %c, align 8, !dbg !98
-  %7 = load i64 addrspace(1)*, i64 addrspace(1)** %dst.addr, align 8, !dbg !99
-  %arrayidx6 = getelementptr inbounds i64, i64 addrspace(1)* %7, i64 1, !dbg !99
-  store volatile i64 %6, i64 addrspace(1)* %arrayidx6, align 8, !dbg !100
+  %call5 = call spir_func i64 @__builtin_spirv_OpAtomicOr_p1i64_i32_i32_i64(ptr addrspace(1) %4, i32 1, i32 16, i64 %conv4) #2, !dbg !97
+  store i64 %call5, ptr %c, align 8, !dbg !94
+  %6 = load i64, ptr %c, align 8, !dbg !98
+  %7 = load ptr addrspace(1), ptr %dst.addr, align 8, !dbg !99
+  %arrayidx6 = getelementptr inbounds i64, ptr addrspace(1) %7, i64 1, !dbg !99
+  store volatile i64 %6, ptr addrspace(1) %arrayidx6, align 8, !dbg !100
   ret void, !dbg !101
 }
 
@@ -93,7 +94,7 @@ declare spir_func i32 @__builtin_spirv_OpUConvert_i32_i64(i64) #2
 declare spir_func i64 @__builtin_spirv_OpSConvert_i64_i32(i32) #2
 
 ; Function Attrs: nounwind
-declare spir_func i64 @__builtin_spirv_OpAtomicOr_p1i64_i32_i32_i64(i64 addrspace(1)*, i32, i32, i64) #2
+declare spir_func i64 @__builtin_spirv_OpAtomicOr_p1i64_i32_i32_i64(ptr addrspace(1), i32, i32, i64) #2
 
 ; Function Attrs: nounwind readnone
 declare spir_func <3 x i64> @__builtin_spirv_BuiltInWorkgroupId() #3
@@ -126,7 +127,7 @@ attributes #3 = { nounwind readnone }
 !2 = !{}
 !3 = !{i32 2, !"Dwarf Version", i32 4}
 !4 = !{i32 2, !"Debug Info Version", i32 3}
-!5 = !{void (i64 addrspace(1)*)* @test_spir, !6, !7, !8, !9, !10, !11, !12, !13, !14, !15}
+!5 = !{ptr @test_spir, !6, !7, !8, !9, !10, !11, !12, !13, !14, !15}
 !6 = !{!"kernel_arg_addr_space", i32 1}
 !7 = !{!"kernel_arg_access_qual", !"none"}
 !8 = !{!"kernel_arg_type", !"long*"}
@@ -180,7 +181,7 @@ attributes #3 = { nounwind readnone }
 !56 = !{!"MatchSinCosPi", i1 false}
 !57 = !{!"CaptureCompilerStats", i1 false}
 !59 = !{!"FuncMD", !60, !61}
-!60 = !{!"FuncMDMap[0]", void (i64 addrspace(1)*)* @test_spir}
+!60 = !{!"FuncMDMap[0]", ptr @test_spir}
 !61 = !{!"FuncMDValue[0]", !62, !63}
 !62 = !{!"localOffsets"}
 !63 = !{!"workGroupWalkOrder", !64, !65, !66}

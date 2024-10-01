@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -enable-debugify -flattenSmallSwitch -S < %s 2>&1 | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -enable-debugify -flattenSmallSwitch -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; FlattenSmallSwitch
 ; ------------------------------------------------
@@ -15,7 +16,7 @@
 ; CHECK-NOT: WARNING
 ; CHECK: CheckModuleDebugify: PASS
 
-define void @test_flatten(i32 %a, i32 %b, i32* %c) {
+define void @test_flatten(i32 %a, i32 %b, ptr %c) {
 ; CHECK-LABEL: @test_flatten(
 ; CHECK:  entry:
 ; CHECK:    [[TMP0:%[A-z0-9]*]] = add i32 %a, [[B:%[A-z0-9]*]]
@@ -28,7 +29,7 @@ define void @test_flatten(i32 %a, i32 %b, i32* %c) {
 ; CHECK:    br label [[END:[A-z0-9]*]]
 ; CHECK:  [[END]]:
 ; CHECK:    [[TMP7:%[A-z0-9]*]] = add i32 [[B]], [[TMP6]]
-; CHECK:    store i32 [[TMP7]], i32* %c, align 4
+; CHECK:    store i32 [[TMP7]], ptr %c, align 4
 ; CHECK:    ret void
 ;
 entry:
@@ -52,6 +53,6 @@ br3:                                              ; preds = %entry
 end:                                              ; preds = %br3, %br2, %br1
   %3 = phi i32 [ %0, %br3 ], [ %1, %br1 ], [ %2, %br2 ]
   %4 = add i32 %b, %3
-  store i32 %4, i32* %c, align 4
+  store i32 %4, ptr %c, align 4
   ret void
 }

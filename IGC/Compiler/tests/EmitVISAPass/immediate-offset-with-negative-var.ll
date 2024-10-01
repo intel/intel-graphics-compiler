@@ -5,9 +5,9 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: regkeys
+; REQUIRES: llvm-14-plus, regkeys
 ;
-; RUN: igc_opt -platformbmg -igc-emit-visa %s -regkey DumpVISAASMToConsole | FileCheck %s
+; RUN: igc_opt --opaque-pointers -platformbmg -igc-emit-visa %s -regkey DumpVISAASMToConsole | FileCheck %s
 ; ------------------------------------------------
 ; EmitVISAPass
 ; ------------------------------------------------
@@ -33,7 +33,7 @@
 ; This test verifies whether immediate offset pattern match is ONLY applied
 ; when VAR is proven to be a positive value.
 
-define spir_kernel void @test(i32 addrspace(1)* %out0, i32 addrspace(1)* %out1, <8 x i32> %r0, <8 x i32> %payloadHeader, i32 %bufferOffset, i16 %localIdX, i16 %localIdY, i16 %localIdZ) {
+define spir_kernel void @test(ptr addrspace(1) %out0, ptr addrspace(1) %out1, <8 x i32> %r0, <8 x i32> %payloadHeader, i32 %bufferOffset, i16 %localIdX, i16 %localIdY, i16 %localIdZ) {
 entry:
   %0 = zext i16 %localIdX to i32
   %1 = zext i16 %localIdY to i32
@@ -43,20 +43,20 @@ entry:
   %4 = sub i32 0, %3
   %5 = sub i32 %4, %2
   %6 = add nsw i32 %5, 1020
-  %7 = inttoptr i32 %6 to i32 addrspace(3)*
+  %7 = inttoptr i32 %6 to ptr addrspace(3)
 ; COM: VAR (%5) is a negative value, so immediate global offset cannot be applied
 ; CHECK-NOT: lsc_load.slm (M1_NM, 1)  {{V[0-9]+}}:d32t  flat[{{V[0-9]+}}+0x3FC]:a32
 ; CHECK:     lsc_load.slm (M1_NM, 1)  {{V[0-9]+}}:d32t  flat[{{V[0-9]+}}]:a32
-  %8 = load i32, i32 addrspace(3)* %7, align 4
-  store i32 %8, i32 addrspace(1)* %out0
+  %8 = load i32, ptr addrspace(3) %7, align 4
+  store i32 %8, ptr addrspace(1) %out0
 
   ; Test positive var offset
   %9 = add nuw nsw i32 %0, 256
-  %10 = inttoptr i32 %9 to i32 addrspace(3)*
+  %10 = inttoptr i32 %9 to ptr addrspace(3)
 ; COM: VAR (%0) is a positive value, so immediate global offset can be applied
 ; CHECK: lsc_load.slm (M1_NM, 1)  {{V[0-9]+}}:d32t  flat[{{.*}}+0x100]:a32
-  %11 = load i32, i32 addrspace(3)* %10, align 4
-  store i32 %11, i32 addrspace(1)* %out1
+  %11 = load i32, ptr addrspace(3) %10, align 4
+  store i32 %11, ptr addrspace(1) %out1
   ret void
 }
 
@@ -65,7 +65,7 @@ entry:
 
 !0 = !{!"ModuleMD", !1, !21}
 !1 = !{!"FuncMD", !2, !3}
-!2 = !{!"FuncMDMap[0]", void (i32 addrspace(1)*, i32 addrspace(1)*, <8 x i32>, <8 x i32>, i32, i16, i16, i16)* @test}
+!2 = !{!"FuncMDMap[0]", ptr @test}
 !3 = !{!"FuncMDValue[0]", !4, !17}
 !4 = !{!"resAllocMD", !5}
 !5 = !{!"argAllocMDList", !6, !10, !11, !14, !15, !16}
@@ -85,7 +85,7 @@ entry:
 !19 = !{!"m_OpenCLArgTypeQualifiersVec[1]", !""}
 !20 = !{!"m_OpenCLArgTypeQualifiersVec[2]", !""}
 !21 = !{!"isHDCFastClearShader", i1 false}
-!22 = !{void (i32 addrspace(1)*, i32 addrspace(1)*, <8 x i32>, <8 x i32>, i32, i16, i16, i16)* @test, !23}
+!22 = !{ptr @test, !23}
 !23 = !{!24, !25}
 !24 = !{!"function_type", i32 0}
 !25 = !{!"implicit_arg_desc", !26, !27, !28}
