@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -68,7 +68,10 @@ class VectorDecomposer {
   using Value = llvm::Value;
   using VectorType = llvm::VectorType;
 
+  using GenXSubtarget = llvm::GenXSubtarget;
+
   const DataLayout *DL = nullptr;
+  const GenXSubtarget *ST;
 
   llvm::SmallVector<Instruction *, 16> StartWrRegions;
   std::set<Instruction *> Seen;
@@ -81,9 +84,11 @@ class VectorDecomposer {
   std::map<PHINode *, llvm::SmallVector<Value *, 8>> PhiParts;
   llvm::SmallVector<Instruction *, 8> NewInsts;
   unsigned DecomposedCount = 0;
-  static constexpr unsigned ChunkByteSize = 32;
+  const unsigned GRFByteSize;
 
 public:
+  explicit VectorDecomposer(const GenXSubtarget *ST)
+      : ST(ST), GRFByteSize(ST ? ST->getGRFByteSize() : llvm::genx::defaultGRFByteSize) {}
 
   // clear : clear anything stored
   void clear() {
