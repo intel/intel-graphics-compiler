@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -15,13 +15,13 @@ SPDX-License-Identifier: MIT
 #define SPIRV_WRAPPER_H
 
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/IR/LLVMContext.h"
 #include "llvm/Support/Error.h"
 
 namespace vc {
-llvm::Expected<std::vector<char>>
-translateSPIRVToIR(llvm::ArrayRef<char> Input,
-                   llvm::ArrayRef<uint32_t> SpecConstIds,
-                   llvm::ArrayRef<uint64_t> SpecConstValues);
+llvm::Expected<std::vector<char>> translateSPIRVToIR(
+    llvm::ArrayRef<char> Input, llvm::ArrayRef<uint32_t> SpecConstIds,
+    llvm::ArrayRef<uint64_t> SpecConstValues, llvm::LLVMContext &Ctx);
 }
 
 #endif // SPIRV_WRAPPER_H

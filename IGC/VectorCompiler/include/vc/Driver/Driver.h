@@ -162,6 +162,7 @@ struct CompileOptions {
   uint64_t AsmHash = 0;
 
   bool EnableCostModel = false;
+  bool EnableOpaquePointers = false;
 };
 
 struct ExternalData {

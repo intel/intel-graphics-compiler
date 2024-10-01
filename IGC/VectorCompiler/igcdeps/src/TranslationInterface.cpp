@@ -306,6 +306,9 @@ static void adjustTransformationsAndOptimizations(vc::CompileOptions &Opts) {
   Opts.DisableExtraCoalescingMode =
       deriveDefaultableFlagValue<vc::DisableExtraCoalescingControl>(
           IGC_GET_FLAG_VALUE(VCDisableExtraCoalescing));
+  if (__IGC_OPAQUE_POINTERS_API_ENABLED ||
+      IGC_IS_FLAG_ENABLED(EnableOpaquePointersBackend))
+    Opts.EnableOpaquePointers = true;
 }
 
 static void adjustKernelMetrics(vc::CompileOptions &Opts) {

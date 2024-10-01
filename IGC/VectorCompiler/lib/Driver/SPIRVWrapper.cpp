@@ -30,7 +30,7 @@ namespace {
 
 using SpirvReadVerifyType = int(
     const char *pIn, size_t InSz, const uint32_t *SpecConstIds,
-    const uint64_t *SpecConstVals, unsigned SpecConstSz,
+    const uint64_t *SpecConstVals, unsigned SpecConstSz, LLVMContext &Context,
     void (*OutSaver)(const char *pOut, size_t OutSize, void *OutUserData),
     void *OutUserData, void (*ErrSaver)(const char *pErrMsg, void *ErrUserData),
     void *ErrUserData);
@@ -98,13 +98,12 @@ void PrepareModuleStructs(Module &M) {
 }
 
 int spirvReadVerify(const char *pIn, size_t InSz, const uint32_t *SpecConstIds,
-                    const uint64_t *SpecConstVals, unsigned SpecConstSz,
+                    const uint64_t *SpecConstVals, unsigned SpecConstSz, LLVMContext &Context,
                     void (*OutSaver)(const char *pOut, size_t OutSize,
                                      void *OutUserData),
                     void *OutUserData,
                     void (*ErrSaver)(const char *pErrMsg, void *ErrUserData),
                     void *ErrUserData) {
-  llvm::LLVMContext Context;
   llvm::StringRef SpirvInput = llvm::StringRef(pIn, InSz);
   std::istringstream IS(SpirvInput.str());
   std::unique_ptr<llvm::Module> M;
@@ -155,7 +154,7 @@ Expected<SpirvReadVerifyType *> getSpirvReadVerifyFunction() {
 
 Expected<std::vector<char>>
 vc::translateSPIRVToIR(ArrayRef<char> Input, ArrayRef<uint32_t> SpecConstIds,
-                       ArrayRef<uint64_t> SpecConstValues) {
+                       ArrayRef<uint64_t> SpecConstValues, LLVMContext &Ctx) {
   IGC_ASSERT(SpecConstIds.size() == SpecConstValues.size());
   auto OutSaver = [](const char *pOut, size_t OutSize, void *OutData) {
     auto *Vec = reinterpret_cast<std::vector<char> *>(OutData);
@@ -174,7 +173,7 @@ vc::translateSPIRVToIR(ArrayRef<char> Input, ArrayRef<uint32_t> SpecConstIds,
 
   int Status = SpirvReadVerifyFunction(
       Input.data(), Input.size(), SpecConstIds.data(), SpecConstValues.data(),
-      SpecConstValues.size(), OutSaver, &Result, ErrSaver, &ErrMsg);
+      SpecConstValues.size(), Ctx, OutSaver, &Result, ErrSaver, &ErrMsg);
 
   if (Status != 0)
     return make_error<vc::BadSpirvError>(ErrMsg);

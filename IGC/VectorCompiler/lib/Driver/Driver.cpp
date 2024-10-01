@@ -53,6 +53,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
 #include <llvm/Transforms/Scalar.h>
 
+#include "llvmWrapper/IR/LLVMContext.h"
 #include "llvmWrapper/Option/OptTable.h"
 #include "llvmWrapper/Support/TargetRegistry.h"
 #include "llvmWrapper/Target/TargetMachine.h"
@@ -112,7 +113,8 @@ getModuleFromLLVMBinary(ArrayRef<char> Input, LLVMContext& C) {
 static Expected<std::unique_ptr<llvm::Module>>
 getModuleFromSPIRV(ArrayRef<char> Input, ArrayRef<uint32_t> SpecConstIds,
                    ArrayRef<uint64_t> SpecConstValues, LLVMContext &Ctx) {
-  auto ExpIR = vc::translateSPIRVToIR(Input, SpecConstIds, SpecConstValues);
+  auto ExpIR =
+      vc::translateSPIRVToIR(Input, SpecConstIds, SpecConstValues, Ctx);
   if (!ExpIR)
     return ExpIR.takeError();
 
@@ -519,6 +521,8 @@ vc::Compile(ArrayRef<char> Input, const vc::CompileOptions &Opts,
 
   DiagnosticContext DiagCtx{Log, false};
   Context.setDiagnosticHandlerCallBack(diagnosticHandlerCallback, &DiagCtx);
+
+  IGCLLVM::setOpaquePointers(&Context, Opts.EnableOpaquePointers);
 
   Expected<std::unique_ptr<llvm::Module>> ExpModule =
       getModule(Input, Opts.FType, SpecConstIds, SpecConstValues, Context);
