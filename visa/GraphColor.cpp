@@ -1048,7 +1048,7 @@ void BankConflictPass::setupBankConflictsForBBTGL(G4_BB *bb,
       }
       continue;
     }
-    if (inst->getNumSrc() == 3) {
+    if (inst->getNumSrc() >= 3) {
       threeSourceInstNum++;
       if (inst->isDpas()) {
         hasDpasInst = true;
