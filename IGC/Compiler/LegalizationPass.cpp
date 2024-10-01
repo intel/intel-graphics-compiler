@@ -142,7 +142,9 @@ void Legalization::unifyReturnInsts(llvm::Function& F)
     {
         // If the function doesn't return void... add a PHI node to the block...
         PN = PHINode::Create(F.getReturnType(), ReturningBlocks.size(),
-                             "UnifiedRetVal", PN);
+                             "UnifiedRetVal");
+
+        IGCLLVM::pushBackInstruction(NewRetBlock, PN);
         ReturnInst::Create(F.getContext(), PN, NewRetBlock);
     }
 
