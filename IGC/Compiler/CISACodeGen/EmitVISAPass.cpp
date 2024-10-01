@@ -12526,6 +12526,8 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
             SIMDMode simdMode = std::min(m_currShader->m_SIMDSize, SIMDMode::SIMD16);
             SIMDMode minDispatchMode = m_currShader->m_Platform->getMinDispatchMode();
             SIMDMode execSizeNew = minDispatchMode;
+
+            bool hasSecondHalf = (m_currShader->m_dispatchSize == SIMDMode::SIMD32) && (m_currShader->m_numberInstance == 1);
             bool bWAMultiGRF = false;
             if (!pInstVar->IsUniform() && m_currShader->m_Platform->enableMultiGRFAccessWA())
             {
@@ -12537,24 +12539,38 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
                 {
                     execSizeNew = lanesToSIMDMode(memSizeMinDisp * 8 / dataTypeSize);
                     uint32_t lanesNew = numLanes(execSizeNew);
-                    int cnt = memSizeToUse / memSizeMinDisp;
-                    for (int i=1; i<cnt; i++)
+
+                    auto generateAddforAddresRegister = [&](uint32_t laneIdx, e_mask mask, uint32_t imm)
                     {
-                        CVariable* pOffset1_2ndHalf = m_currShader->ImmToVariable(memSizeMinDisp * i, ISA_TYPE_UW);
-                        uint32_t laneIdx = lanesNew * i;
+                        CVariable* pOffset1_2ndHalf = m_currShader->ImmToVariable(imm, ISA_TYPE_UW);
                         CVariable* pOffset2_2ndHalf = m_currShader->GetNewAlias(pOffset2, ISA_TYPE_UW, laneIdx * SIZE_WORD, 0);
                         m_encoder->SetSrcRegion(0, lanesNew, lanesNew, 1);
                         m_encoder->SetSimdSize(execSizeNew);
-                        m_encoder->SetMask((laneIdx / 8) % 2 ? EMASK_Q2 : EMASK_Q1);
+                        m_encoder->SetMask(mask);
                         m_encoder->SetSecondNibble((laneIdx / 4) % 2 ? true : false);
                         m_encoder->Add(pOffset2_2ndHalf, pOffset2_2ndHalf, pOffset1_2ndHalf);
                         m_encoder->Push();
+                    };
+
+                    int cnt = memSizeToUse / memSizeMinDisp;
+                    for (int i=1; i<cnt; i++)
+                    {
+                        uint32_t laneIdx = lanesNew * i;
+                        e_mask mask = (laneIdx / 8) % 2 ? EMASK_Q2 : EMASK_Q1;
+                        generateAddforAddresRegister(laneIdx, mask, memSizeMinDisp * i);
+                    }
+
+                    // When datatype is 64 bits and hasSecondHalf is true it should be another "add" generated to corretly
+                    // create same offset for second loopCount iteration.
+                    if (dataTypeSize == 64 && hasSecondHalf)
+                    {
+                        generateAddforAddresRegister(lanesNew * 3, EMASK_Q4, memSizeMinDisp);
                     }
                     m_encoder->SetSecondNibble(false);
                 }
             }
 
-            int loopCount = (m_currShader->m_dispatchSize == SIMDMode::SIMD32 && m_currShader->m_numberInstance == 1) ? 2 : 1;
+            int loopCount = hasSecondHalf ? 2 : 1;
             for (int i = 0; i < loopCount; ++i)
             {
                 CVariable* dst = m_destination;
@@ -12563,7 +12579,7 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
                     IGC_ASSERT_MESSAGE(getGRFSize() == 64, "This code should execute for 64 byte GRF register size device");
                     // explicitly set second half as we are manually splitting
                     m_encoder->SetSecondHalf(true);
-                    m_encoder->SetSrcSubReg(1, vecTypeSize == 8 ? 0 : 16);
+                    m_encoder->SetSrcSubReg(1, 16);
                     dst = m_currShader->GetNewAlias(dst, dst->GetType(), 16 * dst->GetElemSize(), 0);
                 }
                 CVariable* pDstArrElm = m_currShader->GetNewAddressVariable(
