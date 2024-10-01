@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-constant-coalescing -S < %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --igc-constant-coalescing -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; ConstantCoalescing
 ; ------------------------------------------------
@@ -32,29 +33,29 @@
 ; CHECK-DAG: [[EXTR4_V:%[A-z0-9]*]] = extractelement {{.*}}[[LOAD4_V:%[A-z0-9]*]]{{.*}} !dbg [[EXTR4_LOC:![0-9]*]]
 ; CHECK-DAG: [[LOAD4_V]] = load {{.*}} !dbg [[LOAD4_LOC:![0-9]*]]
 
-define void @test_constcoal(i32 %a, float* %dst) !dbg !10 {
+define void @test_constcoal(i32 %a, ptr %dst) !dbg !10 {
 entry:
-  %0 = load <2 x float>, <2 x float> addrspace(65537)* null, align 4, !dbg !30
+  %0 = load <2 x float>, ptr addrspace(65537) null, align 4, !dbg !30
   call void @llvm.dbg.value(metadata <2 x float> %0, metadata !13, metadata !DIExpression()), !dbg !30
-  %1 = load <2 x float>, <2 x float> addrspace(65536)* null, align 4, !dbg !31
+  %1 = load <2 x float>, ptr addrspace(65536) null, align 4, !dbg !31
   call void @llvm.dbg.value(metadata <2 x float> %1, metadata !15, metadata !DIExpression()), !dbg !31
   br label %lbl1, !dbg !32
 
 lbl1:                                             ; preds = %entry
   %2 = add i32 15, 16, !dbg !33
   call void @llvm.dbg.value(metadata i32 %2, metadata !16, metadata !DIExpression()), !dbg !33
-  %3 = inttoptr i32 %2 to <2 x float> addrspace(65536)*, !dbg !34
-  call void @llvm.dbg.value(metadata <2 x float> addrspace(65536)* %3, metadata !18, metadata !DIExpression()), !dbg !34
-  %4 = load <2 x float>, <2 x float> addrspace(65536)* %3, align 4, !dbg !35
+  %3 = inttoptr i32 %2 to ptr addrspace(65536), !dbg !34
+  call void @llvm.dbg.value(metadata ptr addrspace(65536) %3, metadata !18, metadata !DIExpression()), !dbg !34
+  %4 = load <2 x float>, ptr addrspace(65536) %3, align 4, !dbg !35
   call void @llvm.dbg.value(metadata <2 x float> %4, metadata !19, metadata !DIExpression()), !dbg !35
   br label %lbl2, !dbg !36
 
 lbl2:                                             ; preds = %lbl1
   %5 = or i32 %2, 24, !dbg !37
   call void @llvm.dbg.value(metadata i32 %5, metadata !20, metadata !DIExpression()), !dbg !37
-  %6 = inttoptr i32 %5 to <2 x float> addrspace(65536)*, !dbg !38
-  call void @llvm.dbg.value(metadata <2 x float> addrspace(65536)* %6, metadata !21, metadata !DIExpression()), !dbg !38
-  %7 = load <2 x float>, <2 x float> addrspace(65536)* %6, align 4, !dbg !39
+  %6 = inttoptr i32 %5 to ptr addrspace(65536), !dbg !38
+  call void @llvm.dbg.value(metadata ptr addrspace(65536) %6, metadata !21, metadata !DIExpression()), !dbg !38
+  %7 = load <2 x float>, ptr addrspace(65536) %6, align 4, !dbg !39
   call void @llvm.dbg.value(metadata <2 x float> %7, metadata !22, metadata !DIExpression()), !dbg !39
   br label %end, !dbg !40
 
@@ -73,7 +74,7 @@ end:                                              ; preds = %lbl2
   call void @llvm.dbg.value(metadata float %13, metadata !28, metadata !DIExpression()), !dbg !46
   %14 = fadd float %13, %12, !dbg !47
   call void @llvm.dbg.value(metadata float %14, metadata !29, metadata !DIExpression()), !dbg !47
-  store float %14, float* %dst, !dbg !48
+  store float %14, ptr %dst, !dbg !48
   ret void, !dbg !49
 }
 
@@ -98,7 +99,7 @@ attributes #0 = { nounwind readnone speculatable }
 !llvm.debugify = !{!7, !8}
 !llvm.module.flags = !{!9}
 
-!0 = !{void (i32, float*)* @test_constcoal, !1}
+!0 = !{ptr @test_constcoal, !1}
 !1 = !{!2, !3}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"implicit_arg_desc"}

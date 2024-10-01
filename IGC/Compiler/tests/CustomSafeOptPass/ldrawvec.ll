@@ -22,7 +22,7 @@ define float @test_loadvec(ptr addrspace(1) %src, i32 %offset) {
 ; CHECK:    [[TMP2:%.*]] = call float @llvm.genx.GenISA.ldraw.indexed.f32.p1(ptr addrspace(1) [[SRC]], i32 [[TMP1]], i32 4, i1 true)
 ; CHECK:    ret float [[TMP2]]
 ;
-  %1 = call <4 x float> @llvm.genx.GenISA.ldrawvector.indexed.p1v4f32(ptr addrspace(1) %src, i32 %offset, i32 4, i1 true)
+  %1 = call <4 x float> @llvm.genx.GenISA.ldrawvector.indexed.p1(ptr addrspace(1) %src, i32 %offset, i32 4, i1 true)
   %2 = extractelement <4 x float> %1, i32 3
   ret float %2
 }
@@ -34,4 +34,4 @@ define float @test_loadvec(ptr addrspace(1) %src, i32 %offset) {
 ; Arg 2: aligment in bytes
 ; Arg 3: volatile, must be an immediate
 ; Function Attrs: argmemonly nounwind readonly
-declare <4 x float> @llvm.genx.GenISA.ldrawvector.indexed.p1v4f32(ptr addrspace(1), i32, i32, i1)
+declare <4 x float> @llvm.genx.GenISA.ldrawvector.indexed.p1(ptr addrspace(1), i32, i32, i1)

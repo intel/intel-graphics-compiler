@@ -1,13 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: regkeys
+; REQUIRES: llvm-14-plus, regkeys
 ;
-; RUN: igc_opt -enable-debugify -regkey EnableCodeAssumption=2 -igc-codeassumption -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --opaque-pointers -enable-debugify -regkey EnableCodeAssumption=2 -igc-codeassumption -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; CodeAssumption : addAssumption part
 ; ------------------------------------------------
@@ -20,7 +20,7 @@ target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f3
 ; CHECK-NOT: WARNING
 ; CHECK: CheckModuleDebugify: PASS
 
-define spir_kernel void @test_global(i32* %dst) {
+define spir_kernel void @test_global(ptr %dst) {
 ; CHECK-LABEL: @test_global(
 ; CHECK:    [[TMP1:%.*]] = call spir_func i64 @_Z13get_global_idj()
 ; CHECK:    [[ASSUMECOND:%.*]] = icmp sge i64 [[TMP1]], 0
@@ -28,16 +28,16 @@ define spir_kernel void @test_global(i32* %dst) {
 ; CHECK:    [[TMP2:%.*]] = trunc i64 [[TMP1]] to i32
 ; CHECK:    [[ASSUMECOND1:%.*]] = icmp sge i32 [[TMP2]], 0
 ; CHECK:    call void @llvm.assume(i1 [[ASSUMECOND1]])
-; CHECK:    store i32 [[TMP2]], i32* [[DST:%.*]]
+; CHECK:    store i32 [[TMP2]], ptr [[DST:%.*]]
 ; CHECK:    ret void
 ;
   %1 = call spir_func i64 @_Z13get_global_idj()
   %2 = trunc i64 %1 to i32
-  store i32 %2, i32* %dst
+  store i32 %2, ptr %dst
   ret void
 }
 
-define spir_kernel void @test_local(i32* %dst) {
+define spir_kernel void @test_local(ptr %dst) {
 ; CHECK-LABEL: @test_local(
 ; CHECK:    [[TMP1:%.*]] = call spir_func i64 @_Z12get_local_idj()
 ; CHECK:    [[ASSUMECOND:%.*]] = icmp sge i64 [[TMP1]], 0
@@ -45,16 +45,16 @@ define spir_kernel void @test_local(i32* %dst) {
 ; CHECK:    [[TMP2:%.*]] = trunc i64 [[TMP1]] to i32
 ; CHECK:    [[ASSUMECOND1:%.*]] = icmp sge i32 [[TMP2]], 0
 ; CHECK:    call void @llvm.assume(i1 [[ASSUMECOND1]])
-; CHECK:    store i32 [[TMP2]], i32* [[DST:%.*]]
+; CHECK:    store i32 [[TMP2]], ptr [[DST:%.*]]
 ; CHECK:    ret void
 ;
   %1 = call spir_func i64 @_Z12get_local_idj()
   %2 = trunc i64 %1 to i32
-  store i32 %2, i32* %dst
+  store i32 %2, ptr %dst
   ret void
 }
 
-define spir_kernel void @test_group(i32* %dst) {
+define spir_kernel void @test_group(ptr %dst) {
 ; CHECK-LABEL: @test_group(
 ; CHECK:    [[TMP1:%.*]] = call spir_func i64 @_Z12get_group_idj()
 ; CHECK:    [[ASSUMECOND:%.*]] = icmp sge i64 [[TMP1]], 0
@@ -62,12 +62,12 @@ define spir_kernel void @test_group(i32* %dst) {
 ; CHECK:    [[TMP2:%.*]] = trunc i64 [[TMP1]] to i32
 ; CHECK:    [[ASSUMECOND1:%.*]] = icmp sge i32 [[TMP2]], 0
 ; CHECK:    call void @llvm.assume(i1 [[ASSUMECOND1]])
-; CHECK:    store i32 [[TMP2]], i32* [[DST:%.*]]
+; CHECK:    store i32 [[TMP2]], ptr [[DST:%.*]]
 ; CHECK:    ret void
 ;
   %1 = call spir_func i64 @_Z12get_group_idj()
   %2 = trunc i64 %1 to i32
-  store i32 %2, i32* %dst
+  store i32 %2, ptr %dst
   ret void
 }
 

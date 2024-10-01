@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -debugify -igc-custom-loop-opt -S < %s 2>&1 | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -debugify -igc-custom-loop-opt -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; CustomLoopVersioning
 ; ------------------------------------------------
@@ -14,19 +15,19 @@
 ; Test checks that debug intrinsics don't affect CustomLoopVersioning pass operation
 ; Dbg intrinsics calls are added using debugify pass
 
-define spir_kernel void @test_customloop(float addrspace(65549)* %a, float %b, float %c, float %d) {
+define spir_kernel void @test_customloop(ptr addrspace(65549) %a, float %b, float %c, float %d) {
 
 ; Entry bb is not modified
 ;
 ; CHECK: @test_customloop(
 ; CHECK:  entry:
-; CHECK:    [[AA:%.*]] = inttoptr i32 42 to float addrspace(65549)*
+; CHECK:    [[AA:%.*]] = inttoptr i32 42 to ptr addrspace(65549)
 ; CHECK:    [[CC:%.*]] = call float @llvm.maxnum.f32(float %c, float 3.000000e+00)
 ; CHECK:    [[DD:%.*]] = call float @llvm.minnum.f32(float %d, float 2.000000e+00)
 ; CHECK:    br label %[[PRE_HEADER:[A-z0-9.]*]]
 ;
 entry:
-  %aa = inttoptr i32 42 to float addrspace(65549)*
+  %aa = inttoptr i32 42 to ptr addrspace(65549)
   %cc = call float @llvm.maxnum.f32(float %c, float 3.000000e+00)
   %dd = call float @llvm.minnum.f32(float %d, float 2.000000e+00)
   br label %pre_header
@@ -34,7 +35,7 @@ entry:
 ; Additional condition is added to preheader bb
 ;
 ; CHECK:  [[PRE_HEADER]]:
-; CHECK:    [[TMP0:%.*]] = load float, float addrspace(65549)* [[AA]], align 4
+; CHECK:    [[TMP0:%.*]] = load float, ptr addrspace(65549) [[AA]], align 4
 ; CHECK:    [[TMP1:%.*]] = fmul float %b, [[TMP0]]
 ; CHECK:    [[TMP2:%.*]] = fcmp fast ogt float [[TMP0]], 1.000000e+00
 ; CHECK:    [[TMP3:%.*]] = fmul fast float [[CC]], [[TMP0]]
@@ -45,7 +46,7 @@ entry:
 ; CHECK:    br label %[[LOOP_BODY_SEG1:[A-z0-9.]*]]
 
 pre_header:
-  %0 = load float, float addrspace(65549)* %aa, align 4
+  %0 = load float, ptr addrspace(65549) %aa, align 4
   %1 = fmul float %b, %0
   br label %loop_body
 
@@ -56,7 +57,7 @@ pre_header:
 ; CHECK:    [[TMP7]] = phi float [ [[TMP1]], %[[PRE_HEADER_SPLIT_SEG1]] ], [ [[TMP11:%.*]], %[[LOOP_BODY_SEG1]] ]
 ; CHECK:    [[TMP8:%.*]] = call float @llvm.maxnum.f32(float [[CC]], float [[TMP6]])
 ; CHECK:    [[TMP9:%.*]] = call float @llvm.minnum.f32(float [[DD]], float [[TMP7]])
-; CHECK:    [[TMP10:%.*]] = load float, float addrspace(65549)* [[AA]], align 4
+; CHECK:    [[TMP10:%.*]] = load float, ptr addrspace(65549) [[AA]], align 4
 ; CHECK:    [[TMP11]] = fmul float [[TMP7]], [[TMP10]]
 ; CHECK:    [[TMP12:%.*]] = fcmp ult float [[TMP7]], [[CC]]
 ; CHECK:    br i1 [[TMP12]], label %[[LOOP_BODY_SEG1]], label %[[PRE_HEADER_SPLIT_SEG2:[A-z0-9.]*]]
@@ -67,7 +68,7 @@ pre_header:
 ; CHECK:    [[TMP14]] = phi float [ [[TMP11]], %[[PRE_HEADER_SPLIT_SEG2]] ], [ [[TMP18:%.*]], %[[LOOP_BODY_SEG2]] ]
 ; CHECK:    [[TMP15:%.*]] = call float @llvm.maxnum.f32(float [[CC]], float [[TMP13]])
 ; CHECK:    [[TMP16:%.*]] = call float @llvm.minnum.f32(float [[DD]], float [[TMP14]])
-; CHECK:    [[TMP17:%.*]] = load float, float addrspace(65549)* [[AA]], align 4
+; CHECK:    [[TMP17:%.*]] = load float, ptr addrspace(65549) [[AA]], align 4
 ; CHECK:    [[TMP18]] = fmul float [[TMP14]], [[TMP17]]
 ; CHECK:    [[TMP19:%.*]] = fdiv fast float [[DD]], [[TMP0]]
 ; CHECK:    [[TMP20:%.*]] = fcmp ult float [[TMP14]], [[TMP19]]
@@ -77,7 +78,7 @@ pre_header:
 ; CHECK:  [[LOOP_BODY_SEG3]]:
 ; CHECK:    [[TMP21:%.*]] = call float @llvm.maxnum.f32(float [[CC]], float [[TMP14]])
 ; CHECK:    [[TMP22:%.*]] = call float @llvm.minnum.f32(float [[DD]], float [[TMP18]])
-; CHECK:    [[TMP23:%.*]] = load float, float addrspace(65549)* [[AA]], align 4
+; CHECK:    [[TMP23:%.*]] = load float, ptr addrspace(65549) [[AA]], align 4
 ; CHECK:    [[TMP24:%.*]] = fmul float [[TMP18]], [[TMP23]]
 ; CHECK:    [[TMP25:%.*]] = fcmp ult float [[TMP18]], [[DD]]
 ; CHECK:    br label %[[END:[A-z0-9.]*]]
@@ -91,7 +92,7 @@ pre_header:
 ; CHECK:    [[TMP27]] = phi float [ [[TMP1]], %[[PRE_HEADER_SPLIT]] ], [ [[TMP31:%.*]], %[[LOOP_BODY]] ]
 ; CHECK:    [[TMP28:%.*]] = call float @llvm.maxnum.f32(float [[CC]], float [[TMP26]])
 ; CHECK:    [[TMP29:%.*]] = call float @llvm.minnum.f32(float [[DD]], float [[TMP27]])
-; CHECK:    [[TMP30:%.*]] = load float, float addrspace(65549)* [[AA]], align 4
+; CHECK:    [[TMP30:%.*]] = load float, ptr addrspace(65549) [[AA]], align 4
 ; CHECK:    [[TMP31]] = fmul float [[TMP27]], [[TMP30]]
 ; CHECK:    [[TMP32:%.*]] = fcmp ult float [[TMP27]], [[DD]]
 ; CHECK:    br i1 [[TMP32]], label %[[LOOP_BODY]], label %[[END]]
@@ -101,7 +102,7 @@ loop_body:
   %3 = phi float [ %1, %pre_header ], [ %7, %loop_body ]
   %4 = call float @llvm.maxnum.f32(float %cc, float %2)
   %5 = call float @llvm.minnum.f32(float %dd, float %3)
-  %6 = load float, float addrspace(65549)* %aa, align 4
+  %6 = load float, ptr addrspace(65549) %aa, align 4
   %7 = fmul float %3, %6
   %8 = fcmp ult float %3, %dd
   br i1 %8, label %loop_body, label %end
@@ -110,10 +111,10 @@ loop_body:
 ;
 ; CHECK:  [[END]]:
 ; CHECK:    [[TMP33:%.*]] = phi float [ [[TMP18]], %[[LOOP_BODY_SEG3]] ], [ [[TMP27]], %[[LOOP_BODY]] ]
-; CHECK:    store float [[TMP33]], float addrspace(65549)* %a, align 4
+; CHECK:    store float [[TMP33]], ptr addrspace(65549) %a, align 4
 ; CHECK:    ret void
 end:
-  store float %3, float addrspace(65549)* %a, align 4
+  store float %3, ptr addrspace(65549) %a, align 4
   ret void
 }
 
@@ -123,6 +124,6 @@ declare float @llvm.minnum.f32(float, float) #0
 
 !igc.functions = !{!0}
 
-!0 = !{void (float addrspace(65549)*, float, float, float)* @test_customloop, !1}
+!0 = !{ptr @test_customloop, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}

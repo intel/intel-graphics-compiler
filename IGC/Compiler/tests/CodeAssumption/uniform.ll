@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -enable-debugify -igc-codeassumption -S < %s 2>&1 | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -enable-debugify -igc-codeassumption -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; CodeAssumption : Uniform part
 ; ------------------------------------------------
@@ -29,19 +30,19 @@ define spir_kernel void @bar(i32 %a) #0 {
 ; CHECK:    %subid = alloca i32, align 4
 ; CHECK:    [[CALL:%.*]] = call spir_func i32 @__builtin_spirv_BuiltInSubgroupId()
 ; CHECK:    [[SGID:%.*]] = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32.i32.i32(i32 [[CALL]], i32 0, i32 0)
-; CHECK:    store i32 [[SGID]], i32* %subid, align 4
+; CHECK:    store i32 [[SGID]], ptr %subid, align 4
 ;
 entry:
   %a.addr = alloca i32, align 4
   %subid = alloca i32, align 4
   %sum = alloca i32, align 4
-  store i32 %a, i32* %a.addr, align 4
+  store i32 %a, ptr %a.addr, align 4
   %call = call spir_func i32 @__builtin_spirv_BuiltInSubgroupId() #2
-  store i32 %call, i32* %subid, align 4
-  %0 = load i32, i32* %subid, align 4
-  %1 = load i32, i32* %a.addr, align 4
+  store i32 %call, ptr %subid, align 4
+  %0 = load i32, ptr %subid, align 4
+  %1 = load i32, ptr %a.addr, align 4
   %add = add nsw i32 %0, %1
-  store i32 %add, i32* %sum, align 4
+  store i32 %add, ptr %sum, align 4
   ret void
 }
 
@@ -56,7 +57,7 @@ attributes #2 = { nounwind readnone }
 
 !2 = !{!"ModuleMD", !3}
 !3 = !{!"FuncMD", !4, !5}
-!4 = !{!"FuncMDMap[0]", void (i32)* @bar}
+!4 = !{!"FuncMDMap[0]", ptr @bar}
 !5 = !{!"FuncMDValue[0]", !6, !7, !11, !12}
 !6 = !{!"localOffsets"}
 !7 = !{!"workGroupWalkOrder", !8, !9, !10}
@@ -65,6 +66,6 @@ attributes #2 = { nounwind readnone }
 !10 = !{!"dim2", i32 2}
 !11 = !{!"funcArgs"}
 !12 = !{!"functionType", !"KernelFunction"}
-!13 = !{void (i32)* @bar, !14}
+!13 = !{ptr @bar, !14}
 !14 = !{!15}
 !15 = !{!"function_type", i32 0}

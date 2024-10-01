@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt -igc-custom-safe-opt -dce -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -igc-custom-safe-opt -dce -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; CustomSafeOptPass: ldrawvector
 ; ------------------------------------------------
@@ -19,13 +19,13 @@ define <1 x i16> @test_loadvec(i32 %src0, i32 %src1, i32 %src2) {
 ; CHECK-LABEL: define <1 x i16> @test_loadvec(
 ; CHECK-SAME: i32 [[SRC0:%.*]], i32 [[SRC1:%.*]], i32 [[SRC2:%.*]]) {
 ; CHECK: [[TMP1:%.*]] = shl i32 [[SRC2]], 1
-; CHECK: [[TMP2:%.*]] = call <1 x i16> @llvm.genx.GenISA.ldraw.indexed.v1i16.p2490368v4f32(<4 x float> addrspace(2490368)* %1, i32 [[TMP1]], i32 2, i1 false)
+; CHECK: [[TMP2:%.*]] = call <1 x i16> @llvm.genx.GenISA.ldraw.indexed.v1i16.p2490368(ptr addrspace(2490368) %1, i32 [[TMP1]], i32 2, i1 false)
 ; CHECK: ret <1 x i16> [[TMP2]]
 ;
-  %1 = inttoptr i32 %src0 to <4 x float> addrspace(2490368)*
-  %2 = inttoptr i32 %src1 to <4 x float> addrspace(2490369)*
+  %1 = inttoptr i32 %src0 to ptr addrspace(2490368)
+  %2 = inttoptr i32 %src1 to ptr addrspace(2490369)
   %3 = shl i32 %src2, 1
-  %4 = call <4 x i16> @llvm.genx.GenISA.ldrawvector.indexed.v4i16.p2490368v4f32(<4 x float> addrspace(2490368)* %1, i32 %3, i32 2, i1 false)
+  %4 = call <4 x i16> @llvm.genx.GenISA.ldrawvector.indexed.v4i16.p2490368(ptr addrspace(2490368) %1, i32 %3, i32 2, i1 false)
   %5 = shufflevector <4 x i16> %4, <4 x i16> undef, <1 x i32> zeroinitializer
   ret <1 x i16> %5
 }
@@ -37,4 +37,4 @@ define <1 x i16> @test_loadvec(i32 %src0, i32 %src1, i32 %src2) {
 ; Arg 2: aligment in bytes
 ; Arg 3: volatile, must be an immediate
 ; Function Attrs: argmemonly nounwind readonly
-declare <4 x i16> @llvm.genx.GenISA.ldrawvector.indexed.v4i16.p2490368v4f32(<4 x float> addrspace(2490368)*, i32, i32, i1)
+declare <4 x i16> @llvm.genx.GenISA.ldrawvector.indexed.v4i16.p2490368(ptr addrspace(2490368), i32, i32, i1)

@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2017-2021 Intel Corporation
+; Copyright (C) 2017-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-add-implicit-args -S %s -o - | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-add-implicit-args -S %s -o - | FileCheck %s
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; This LIT test checks that AddImplicitArgs pass handles variable debug info.
@@ -14,13 +15,13 @@
 
 target triple = "igil_32_GEN8"
 
-define void @test(float addrspace(1)* %dst) #0 {
+define void @test(ptr addrspace(1) %dst) #0 {
 entry:
-  call void @llvm.dbg.value(metadata float addrspace(1)* %dst, i64 0, metadata !9, metadata !DIExpression()), !dbg !12
-  store float 1.000000e+00, float addrspace(1)* %dst, align 4
+  call void @llvm.dbg.value(metadata ptr addrspace(1) %dst, i64 0, metadata !9, metadata !DIExpression()), !dbg !12
+  store float 1.000000e+00, ptr addrspace(1) %dst, align 4
   ret void
 
-; CHECK: define void @test(float addrspace(1)* %dst, <8 x i32> %r0, <8 x i32> %payloadHeader)
+; CHECK: define void @test(ptr addrspace(1) %dst, <8 x i32> %r0, <8 x i32> %payloadHeader)
 ; CHECK: call void @llvm.dbg.value({{.*}})
 }
 
@@ -36,7 +37,7 @@ attributes #1 = { nounwind readnone }
 !4 = !{i32 1}  ;; PAYLOAD_HEADER
 !5 = !{!"implicit_arg_desc", !3, !4}
 !6 = !{!2, !5}
-!7 = !{void (float addrspace(1)*)* @test, !6}
+!7 = !{ptr @test, !6}
 
 !llvm.module.flags = !{!8}
 !8 = !{i32 2, !"Debug Info Version", i32 3}

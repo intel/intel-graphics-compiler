@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-generic-address-dynamic-resolution -S < %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --igc-generic-address-dynamic-resolution -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; GenericAddressDynamicResolution
 ; ------------------------------------------------
@@ -21,7 +22,7 @@
 ;
 ; CHECK: [[ACAST_V:%[0-9A-z]*]] = addrspacecast
 ; CHECK-SAME: !dbg [[ACAST_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata float addrspace(4)* [[ACAST_V]]
+; CHECK: @llvm.dbg.value(metadata ptr addrspace(4) [[ACAST_V]]
 ; CHECK-SAME: metadata [[ACAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ACAST_LOC]]
 ;
 ; CHECK-DAG: @llvm.dbg.value(metadata float [[LOAD_V:%[A-z0-9.]*]], metadata [[LOAD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD_LOC:![0-9]*]]
@@ -33,14 +34,14 @@
 ; CHECK: store float [[FADD_V]]
 ; CHECK-SAME: !dbg [[STORE_LOC:![0-9]*]]
 
-define spir_kernel void @test_kernel(i32 addrspace(1)* %src) !dbg !6 {
-  %1 = addrspacecast i32 addrspace(1)* %src to float addrspace(4)*, !dbg !14
-  call void @llvm.dbg.value(metadata float addrspace(4)* %1, metadata !9, metadata !DIExpression()), !dbg !14
-  %2 = load float, float addrspace(4)* %1, align 8, !dbg !15
+define spir_kernel void @test_kernel(ptr addrspace(1) %src) !dbg !6 {
+  %1 = addrspacecast ptr addrspace(1) %src to ptr addrspace(4), !dbg !14
+  call void @llvm.dbg.value(metadata ptr addrspace(4) %1, metadata !9, metadata !DIExpression()), !dbg !14
+  %2 = load float, ptr addrspace(4) %1, align 8, !dbg !15
   call void @llvm.dbg.value(metadata float %2, metadata !11, metadata !DIExpression()), !dbg !15
   %3 = fadd float %2, 1.000000e+00, !dbg !16
   call void @llvm.dbg.value(metadata float %3, metadata !13, metadata !DIExpression()), !dbg !16
-  store float %3, float addrspace(4)* %1, align 4, !dbg !17
+  store float %3, ptr addrspace(4) %1, align 4, !dbg !17
   ret void, !dbg !18
 }
 

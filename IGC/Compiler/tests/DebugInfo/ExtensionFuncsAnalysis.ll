@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -igc-extension-funcs-analysis -S < %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-extension-funcs-analysis -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; ExtensionFuncsAnalysis
 ; ------------------------------------------------
@@ -36,14 +37,14 @@
 ; CHECK: [[ADD3_V:%[A-z0-9]*]] = add i32{{.*}} !dbg [[ADD3_LOC:![0-9]*]]
 ; CHECK: @llvm.dbg.value(metadata i32 [[ADD3_V]], metadata [[ADD3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ADD3_LOC]]
 ; CHECK: store {{.*}} !dbg [[STORE1_LOC:![0-9]*]]
-; CHECK: [[CALL5_V:%[A-z0-9]*]] = call spir_func %struct.mce_payload_t*{{.*}} !dbg [[CALL5_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata %struct.mce_payload_t* [[CALL5_V]], metadata [[CALL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL5_LOC]]
+; CHECK: [[CALL5_V:%[A-z0-9]*]] = call spir_func ptr{{.*}} !dbg [[CALL5_LOC:![0-9]*]]
+; CHECK: @llvm.dbg.value(metadata ptr [[CALL5_V]], metadata [[CALL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL5_LOC]]
 ; CHECK: [[CALL6_V:%[A-z0-9]*]] = call spir_func <4 x i32>{{.*}} !dbg [[CALL6_LOC:![0-9]*]]
 ; CHECK: @llvm.dbg.value(metadata <4 x i32> [[CALL6_V]], metadata [[CALL6_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL6_LOC]]
 
 %struct.mce_payload_t = type opaque
 
-define spir_kernel void @test_extfunca(<4 x i32> %a, i32* %b) !dbg !10 {
+define spir_kernel void @test_extfunca(<4 x i32> %a, ptr %b) !dbg !10 {
   %1 = call spir_func i32 @__builtin_IB_vme_mb_block_type(), !dbg !25
   call void @llvm.dbg.value(metadata i32 %1, metadata !13, metadata !DIExpression()), !dbg !25
   %2 = call spir_func i32 @__builtin_IB_vme_subpixel_mode(), !dbg !26
@@ -58,10 +59,10 @@ define spir_kernel void @test_extfunca(<4 x i32> %a, i32* %b) !dbg !10 {
   call void @llvm.dbg.value(metadata i32 %6, metadata !19, metadata !DIExpression()), !dbg !30
   %7 = add i32 %5, %6, !dbg !31
   call void @llvm.dbg.value(metadata i32 %7, metadata !20, metadata !DIExpression()), !dbg !31
-  store i32 %7, i32* %b, align 4, !dbg !32
-  %8 = call spir_func %struct.mce_payload_t* @__builtin_IB_vme_helper_get_as_avc_mce_payload_t(<4 x i32> %a), !dbg !33
-  call void @llvm.dbg.value(metadata %struct.mce_payload_t* %8, metadata !21, metadata !DIExpression()), !dbg !33
-  %9 = call spir_func <4 x i32> @__builtin_IB_vme_helper_get_handle_avc_mce_payload_t(%struct.mce_payload_t* %8), !dbg !34
+  store i32 %7, ptr %b, align 4, !dbg !32
+  %8 = call spir_func ptr @__builtin_IB_vme_helper_get_as_avc_mce_payload_t(<4 x i32> %a), !dbg !33
+  call void @llvm.dbg.value(metadata ptr %8, metadata !21, metadata !DIExpression()), !dbg !33
+  %9 = call spir_func <4 x i32> @__builtin_IB_vme_helper_get_handle_avc_mce_payload_t(ptr %8), !dbg !34
   call void @llvm.dbg.value(metadata <4 x i32> %9, metadata !23, metadata !DIExpression()), !dbg !34
   ret void, !dbg !35
 }
@@ -96,9 +97,9 @@ declare spir_func i32 @__builtin_IB_vme_sad_adjust_mode()
 
 declare spir_func i32 @__builtin_IB_vme_search_path_type()
 
-declare spir_func <4 x i32> @__builtin_IB_vme_helper_get_handle_avc_mce_payload_t(%struct.mce_payload_t*)
+declare spir_func <4 x i32> @__builtin_IB_vme_helper_get_handle_avc_mce_payload_t(ptr)
 
-declare spir_func %struct.mce_payload_t* @__builtin_IB_vme_helper_get_as_avc_mce_payload_t(<4 x i32>)
+declare spir_func ptr @__builtin_IB_vme_helper_get_as_avc_mce_payload_t(<4 x i32>)
 
 ; Function Attrs: nounwind readnone speculatable
 declare void @llvm.dbg.value(metadata, metadata, metadata) #0
@@ -110,7 +111,7 @@ attributes #0 = { nounwind readnone speculatable }
 !llvm.debugify = !{!7, !8}
 !llvm.module.flags = !{!9}
 
-!0 = !{void (<4 x i32>, i32*)* @test_extfunca, !1}
+!0 = !{ptr @test_extfunca, !1}
 !1 = !{!2, !3}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"implicit_arg_desc"}

@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-push-analysis --inputds --igc-collect-domain-shader-properties -S < %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --igc-push-analysis --inputds --igc-collect-domain-shader-properties -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; PushAnalysis
 ; ------------------------------------------------
@@ -37,34 +38,34 @@
 ; CHECK: store i32 [[CB_V]]{{.*}} [[STORE_LOC:![0-9]*]]
 ;
 
-define void @test_pusha(i32* %src1) !dbg !17 {
+define void @test_pusha(ptr %src1) !dbg !17 {
   %1 = call float @llvm.genx.GenISA.DCL.SystemValue.f32(i32 21), !dbg !34
   call void @llvm.dbg.value(metadata float %1, metadata !20, metadata !DIExpression()), !dbg !34
   %2 = fptoui float %1 to i32, !dbg !35
   call void @llvm.dbg.value(metadata i32 %2, metadata !22, metadata !DIExpression()), !dbg !35
-  store i32 %2, i32* %src1, !dbg !36
+  store i32 %2, ptr %src1, !dbg !36
   %3 = call float @llvm.genx.GenISA.DCL.inputVec.f32(i32 13, i32 8), !dbg !37
   call void @llvm.dbg.value(metadata float %3, metadata !23, metadata !DIExpression()), !dbg !37
   %4 = fptoui float %3 to i32, !dbg !38
   call void @llvm.dbg.value(metadata i32 %4, metadata !24, metadata !DIExpression()), !dbg !38
-  store i32 %4, i32* %src1, !dbg !39
+  store i32 %4, ptr %src1, !dbg !39
   %5 = call <4 x float> @llvm.genx.GenISA.DCL.ShaderInputVec.4f32(i32 14, i32 8), !dbg !40
   call void @llvm.dbg.value(metadata <4 x float> %5, metadata !25, metadata !DIExpression()), !dbg !40
   %6 = extractelement <4 x float> %5, i32 2, !dbg !41
   call void @llvm.dbg.value(metadata float %6, metadata !27, metadata !DIExpression()), !dbg !41
   %7 = fptoui float %6 to i32, !dbg !42
   call void @llvm.dbg.value(metadata i32 %7, metadata !28, metadata !DIExpression()), !dbg !42
-  store i32 %7, i32* %src1, !dbg !43
+  store i32 %7, ptr %src1, !dbg !43
   %8 = call float @llvm.genx.GenISA.RuntimeValue.f32(i32 16), !dbg !44
   call void @llvm.dbg.value(metadata float %8, metadata !29, metadata !DIExpression()), !dbg !44
   %9 = fptoui float %8 to i32, !dbg !45
   call void @llvm.dbg.value(metadata i32 %9, metadata !30, metadata !DIExpression()), !dbg !45
-  store i32 %9, i32* %src1, !dbg !46
-  %10 = inttoptr i32 16 to i32 addrspace(65536)*, !dbg !47
-  call void @llvm.dbg.value(metadata i32 addrspace(65536)* %10, metadata !31, metadata !DIExpression()), !dbg !47
-  %11 = load i32, i32 addrspace(65536)* %10, !dbg !48
+  store i32 %9, ptr %src1, !dbg !46
+  %10 = inttoptr i32 16 to ptr addrspace(65536), !dbg !47
+  call void @llvm.dbg.value(metadata ptr addrspace(65536) %10, metadata !31, metadata !DIExpression()), !dbg !47
+  %11 = load i32, ptr addrspace(65536) %10, !dbg !48
   call void @llvm.dbg.value(metadata i32 %11, metadata !33, metadata !DIExpression()), !dbg !48
-  store i32 %11, i32* %src1, !dbg !49
+  store i32 %11, ptr %src1, !dbg !49
   ret void, !dbg !50
 }
 
@@ -102,7 +103,7 @@ declare <4 x float> @llvm.genx.GenISA.DCL.ShaderInputVec.4f32(i32, i32)
 
 declare float @llvm.genx.GenISA.RuntimeValue.f32(i32)
 
-declare <4 x float> @llvm.genx.GenISA.ldrawvector.indexed.p2555904.v4f32(<4 x float> addrspace(2555904)*, i32, i32, i1)
+declare <4 x float> @llvm.genx.GenISA.ldrawvector.indexed.p2555904.v4f32(ptr addrspace(2555904), i32, i32, i1)
 
 ; Function Attrs: nounwind readnone speculatable
 declare void @llvm.dbg.value(metadata, metadata, metadata) #0
@@ -115,7 +116,7 @@ attributes #0 = { nounwind readnone speculatable }
 !llvm.debugify = !{!14, !15}
 !llvm.module.flags = !{!16}
 
-!0 = !{void (i32*)* @test_pusha, !1}
+!0 = !{ptr @test_pusha, !1}
 !1 = !{!2, !3}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"implicit_arg_desc"}

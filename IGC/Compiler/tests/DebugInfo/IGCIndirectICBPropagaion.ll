@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -IGCIndirectICBPropagaion -S < %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -IGCIndirectICBPropagaion -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; IGCIndirectICBPropagaion
 ; ------------------------------------------------
@@ -19,28 +20,28 @@
 ; CHECK: define void @test_indirectprop{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: entry:
 ; CHECK: [[VAL1_V:%[A-z0-9]*]] = {{.*}}, !dbg [[VAL1_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 addrspace(65549)* [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
+; CHECK: void @llvm.dbg.value(metadata ptr addrspace(65549) [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
 ; CHECK-DAG: void @llvm.dbg.value(metadata i32 [[VAL2_V:%[A-z0-9]*]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC:![0-9]*]]
 ; CHECK-DAG: [[VAL2_V]] = {{.*}}, !dbg [[VAL2_LOC]]
 ; CHECK: store i32 [[VAL2_V]]{{.*}}, !dbg [[STORE1_LOC:![0-9]*]]
 ; CHECK: [[VAL3_V:%[A-z0-9]*]] = {{.*}}, !dbg [[VAL3_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata float addrspace(65549)* [[VAL3_V]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC]]
+; CHECK: void @llvm.dbg.value(metadata ptr addrspace(65549) [[VAL3_V]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC]]
 ; CHECK-DAG: void @llvm.dbg.value(metadata float [[VAL4_V:%[A-z0-9]*]], metadata [[VAL4_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL4_LOC:![0-9]*]]
 ; CHECK-DAG: [[VAL4_V]] = {{.*}}, !dbg [[VAL4_LOC]]
 ; CHECK: store float [[VAL4_V]]{{.*}}, !dbg [[STORE2_LOC:![0-9]*]]
 
-define void @test_indirectprop(i32 %a, i32* %b, float* %c) !dbg !20 {
+define void @test_indirectprop(i32 %a, ptr %b, ptr %c) !dbg !20 {
 entry:
-  %0 = inttoptr i32 %a to i32 addrspace(65549)*, !dbg !29
-  call void @llvm.dbg.value(metadata i32 addrspace(65549)* %0, metadata !23, metadata !DIExpression()), !dbg !29
-  %1 = load i32, i32 addrspace(65549)* %0, !dbg !30
+  %0 = inttoptr i32 %a to ptr addrspace(65549), !dbg !29
+  call void @llvm.dbg.value(metadata ptr addrspace(65549) %0, metadata !23, metadata !DIExpression()), !dbg !29
+  %1 = load i32, ptr addrspace(65549) %0, !dbg !30
   call void @llvm.dbg.value(metadata i32 %1, metadata !25, metadata !DIExpression()), !dbg !30
-  store i32 %1, i32* %b, !dbg !31
-  %2 = inttoptr i32 %a to float addrspace(65549)*, !dbg !32
-  call void @llvm.dbg.value(metadata float addrspace(65549)* %2, metadata !27, metadata !DIExpression()), !dbg !32
-  %3 = load float, float addrspace(65549)* %2, !dbg !33
+  store i32 %1, ptr %b, !dbg !31
+  %2 = inttoptr i32 %a to ptr addrspace(65549), !dbg !32
+  call void @llvm.dbg.value(metadata ptr addrspace(65549) %2, metadata !27, metadata !DIExpression()), !dbg !32
+  %3 = load float, ptr addrspace(65549) %2, !dbg !33
   call void @llvm.dbg.value(metadata float %3, metadata !28, metadata !DIExpression()), !dbg !33
-  store float %3, float* %c, !dbg !34
+  store float %3, ptr %c, !dbg !34
   ret void, !dbg !35
 }
 

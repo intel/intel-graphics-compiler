@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-extractvalue-pair-fixup -S < %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --igc-extractvalue-pair-fixup -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; ExtractValuePairFixup
 ; ------------------------------------------------
@@ -31,7 +32,7 @@
 ;
 ; but dbg calls should remain in same order
 ;
-; CHECK: @llvm.dbg.value(metadata i64* [[ALLOCA_V]], metadata [[ALLOCA_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOCA_LOC]]
+; CHECK: @llvm.dbg.value(metadata ptr [[ALLOCA_V]], metadata [[ALLOCA_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOCA_LOC]]
 ; CHECK: @llvm.dbg.value(metadata i64 [[EV1_V]], metadata [[EV1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EV1_LOC]]
 ; check that nothing moved between BBs.
 ; CHECK: lbl:
@@ -49,7 +50,7 @@ entry:
   %1 = insertvalue %str %0, i64 %src2, 1, !dbg !24
   call void @llvm.dbg.value(metadata %str %1, metadata !14, metadata !DIExpression()), !dbg !24
   %2 = alloca i64, align 8, !dbg !25
-  call void @llvm.dbg.value(metadata i64* %2, metadata !15, metadata !DIExpression()), !dbg !25
+  call void @llvm.dbg.value(metadata ptr %2, metadata !15, metadata !DIExpression()), !dbg !25
   %3 = extractvalue %str %1, 1, !dbg !26
   call void @llvm.dbg.value(metadata i64 %3, metadata !17, metadata !DIExpression()), !dbg !26
   %4 = add i64 %src2, %3, !dbg !27
@@ -65,7 +66,7 @@ lbl:                                              ; preds = %entry
   call void @llvm.dbg.value(metadata i64 %7, metadata !21, metadata !DIExpression()), !dbg !31
   %8 = add i64 %7, %6, !dbg !32
   call void @llvm.dbg.value(metadata i64 %8, metadata !22, metadata !DIExpression()), !dbg !32
-  store i64 %8, i64* %2, !dbg !33
+  store i64 %8, ptr %2, !dbg !33
   ret void, !dbg !34
 }
 
@@ -96,7 +97,7 @@ attributes #0 = { nounwind readnone speculatable }
 !llvm.debugify = !{!6, !7}
 !llvm.module.flags = !{!8}
 
-!0 = !{void (i32, i64)* @test_extr, !1}
+!0 = !{ptr @test_extr, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
 !3 = distinct !DICompileUnit(language: DW_LANG_C, file: !4, producer: "debugify", isOptimized: true, runtimeVersion: 0, emissionKind: FullDebug, enums: !5)

@@ -1,17 +1,18 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -adv-codemotion-cm=1 -igc-advcodemotion -S < %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -adv-codemotion-cm=1 -igc-advcodemotion -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; AdvCodeMotion
 ; ------------------------------------------------
 
-define spir_kernel void @test(i32 addrspace(1)* %dst, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ, <3 x i32> %globalSize, <3 x i32> %enqueuedLocalSize, <3 x i32> %localSize, i8* %privateBase, i32 %bufferOffset) #0 {
+define spir_kernel void @test(ptr addrspace(1) %dst, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ, <3 x i32> %globalSize, <3 x i32> %enqueuedLocalSize, <3 x i32> %localSize, ptr %privateBase, i32 %bufferOffset) #0 {
 
 ; CHECK-LABEL: @test(
 ; CHECK-NEXT:  entry:
@@ -52,12 +53,12 @@ define spir_kernel void @test(i32 addrspace(1)* %dst, <8 x i32> %r0, <8 x i32> %
 ; CHECK:       join2:
 ; CHECK-NEXT:    [[J2PHI:%.*]] = phi i32 [ [[BBB]], [[TBB2]] ], [ 0, [[FBB2]] ]
 ; CHECK-NEXT:    [[ORPHI:%.*]] = phi i32 [ 1, [[TBB2]] ], [ [[TMP1]], [[FBB2]] ]
-; CHECK-NEXT:    store i32 [[J2PHI]], i32 addrspace(1)* [[DST:%.*]], align 4
-; CHECK-NEXT:    store i32 [[ORPHI]], i32 addrspace(1)* [[DST]], align 4
-; CHECK-NEXT:    store i32 -1, i32 addrspace(1)* [[DST]], align 4
+; CHECK-NEXT:    store i32 [[J2PHI]], ptr addrspace(1) [[DST:%.*]], align 4
+; CHECK-NEXT:    store i32 [[ORPHI]], ptr addrspace(1) [[DST]], align 4
+; CHECK-NEXT:    store i32 -1, ptr addrspace(1) [[DST]], align 4
 ; CHECK-NEXT:    br label [[BB3]]
 ; CHECK:       end:
-; CHECK-NEXT:    store i32 [[TMP8]], i32 addrspace(1)* [[DST]], align 4
+; CHECK-NEXT:    store i32 [[TMP8]], ptr addrspace(1) [[DST]], align 4
 ; CHECK-NEXT:    ret void
 
 entry:
@@ -109,18 +110,18 @@ tbb2:                                             ; preds = %bb4
 join2:                                            ; preds = %tbb2, %fbb2
   %j2phi = phi i32 [ %bbb, %tbb2 ], [ 0, %fbb2 ]
   %orphi = phi i32 [ 1, %tbb2 ], [ 0, %fbb2 ]
-  store i32 %j2phi, i32 addrspace(1)* %dst, align 4
+  store i32 %j2phi, ptr addrspace(1) %dst, align 4
   %oropt = or i32 %1, %orphi
-  store i32 %oropt, i32 addrspace(1)* %dst, align 4
+  store i32 %oropt, ptr addrspace(1) %dst, align 4
   br label %join
 
 join:                                             ; preds = %join2, %fbb
   %jphi = phi i32 [ -1, %join2 ], [ 0, %fbb ]
-  store i32 %jphi, i32 addrspace(1)* %dst, align 4
+  store i32 %jphi, ptr addrspace(1) %dst, align 4
   br label %bb3
 
 end:                                              ; preds = %bb3
-  store i32 %8, i32 addrspace(1)* %dst, align 4
+  store i32 %8, ptr addrspace(1) %dst, align 4
   ret void
 }
 
@@ -142,7 +143,7 @@ attributes #2 = { convergent nounwind readnone }
 
 !igc.functions = !{!0}
 
-!0 = !{void (i32 addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, <3 x i32>, <3 x i32>, <3 x i32>, i8*, i32)* @test, !1}
+!0 = !{ptr @test, !1}
 !1 = !{!2, !3}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"implicit_arg_desc", !4, !5, !6, !7, !8, !9}

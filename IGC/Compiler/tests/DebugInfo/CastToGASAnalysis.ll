@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -generic-pointer-analysis -S < %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -generic-pointer-analysis -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; CastToGASAnalysis
 ; ------------------------------------------------
@@ -18,10 +19,10 @@
 
 ; CHECK: define void @test{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: [[VAL1_V:%[A-z0-9.]*]] = {{.*}}, !dbg [[VAL1_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 addrspace(4)* [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
+; CHECK: void @llvm.dbg.value(metadata ptr addrspace(4) [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
 ; CHECK: store {{.*}}, !dbg [[STR1_LOC:![0-9]*]]
 ; CHECK: [[VAL2_V:%[A-z0-9.]*]] = {{.*}}, !dbg [[VAL2_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 addrspace(4)* [[VAL2_V]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC]]
+; CHECK: void @llvm.dbg.value(metadata ptr addrspace(4) [[VAL2_V]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC]]
 ; CHECK: store {{.*}}, !dbg [[STR2_LOC:![0-9]*]]
 ; CHECK: [[VAL3_V:%[A-z0-9.]*]] = {{.*}}, !dbg [[VAL3_LOC:![0-9]*]]
 ; CHECK: void @llvm.dbg.value(metadata i32 [[VAL3_V]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC]]
@@ -30,25 +31,25 @@
 ; CHECK: [[VAL5_V:%[A-z0-9.]*]] = {{.*}}, !dbg [[VAL5_LOC:![0-9]*]]
 ; CHECK: void @llvm.dbg.value(metadata i32 [[VAL5_V]], metadata [[VAL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL5_LOC]]
 ; CHECK: [[VAL6_V:%[A-z0-9.]*]] = {{.*}}, !dbg [[VAL6_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 addrspace(4)* [[VAL6_V]], metadata [[VAL6_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL6_LOC]]
+; CHECK: void @llvm.dbg.value(metadata ptr addrspace(4) [[VAL6_V]], metadata [[VAL6_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL6_LOC]]
 
-define void @test(i32* %src1, i32 addrspace(3)* %src2) !dbg !6 {
+define void @test(ptr %src1, ptr addrspace(3) %src2) !dbg !6 {
 entry:
-  %0 = addrspacecast i32* %src1 to i32 addrspace(4)*, !dbg !17
-  call void @llvm.dbg.value(metadata i32 addrspace(4)* %0, metadata !9, metadata !DIExpression()), !dbg !17
-  store i32 13, i32 addrspace(4)* %0, !dbg !18
-  %1 = addrspacecast i32 addrspace(3)* %src2 to i32 addrspace(4)*, !dbg !19
-  call void @llvm.dbg.value(metadata i32 addrspace(4)* %1, metadata !11, metadata !DIExpression()), !dbg !19
-  store i32 15, i32 addrspace(4)* %1, !dbg !20
-  %2 = ptrtoint i32 addrspace(3)* %src2 to i32, !dbg !21
+  %0 = addrspacecast ptr %src1 to ptr addrspace(4), !dbg !17
+  call void @llvm.dbg.value(metadata ptr addrspace(4) %0, metadata !9, metadata !DIExpression()), !dbg !17
+  store i32 13, ptr addrspace(4) %0, !dbg !18
+  %1 = addrspacecast ptr addrspace(3) %src2 to ptr addrspace(4), !dbg !19
+  call void @llvm.dbg.value(metadata ptr addrspace(4) %1, metadata !11, metadata !DIExpression()), !dbg !19
+  store i32 15, ptr addrspace(4) %1, !dbg !20
+  %2 = ptrtoint ptr addrspace(3) %src2 to i32, !dbg !21
   call void @llvm.dbg.value(metadata i32 %2, metadata !12, metadata !DIExpression()), !dbg !21
-  %3 = ptrtoint i32* %src1 to i32, !dbg !22
+  %3 = ptrtoint ptr %src1 to i32, !dbg !22
   call void @llvm.dbg.value(metadata i32 %3, metadata !14, metadata !DIExpression()), !dbg !22
   %4 = add i32 %2, %3, !dbg !23
   call void @llvm.dbg.value(metadata i32 %4, metadata !15, metadata !DIExpression()), !dbg !23
-  %5 = inttoptr i32 %4 to i32 addrspace(4)*, !dbg !24
-  call void @llvm.dbg.value(metadata i32 addrspace(4)* %5, metadata !16, metadata !DIExpression()), !dbg !24
-  store i32 42, i32 addrspace(4)* %5, !dbg !25
+  %5 = inttoptr i32 %4 to ptr addrspace(4), !dbg !24
+  call void @llvm.dbg.value(metadata ptr addrspace(4) %5, metadata !16, metadata !DIExpression()), !dbg !24
+  store i32 42, ptr addrspace(4) %5, !dbg !25
   ret void, !dbg !26
 }
 

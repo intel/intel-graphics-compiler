@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-loop-canonicalization -S < %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --igc-loop-canonicalization -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; LoopCanonicalization
 ; ------------------------------------------------
@@ -30,9 +31,9 @@
 ; CHECK: br {{.*}} !dbg [[PREHEADER_LOC:![0-9]*]]
 ;
 ; CHECK: for.body:
-; CHECK: [[PHI0_V:%[A-z0-9.]*]] = phi i32* {{.*}} !dbg [[PHI0_LOC:![0-9]*]]
+; CHECK: [[PHI0_V:%[A-z0-9.]*]] = phi ptr {{.*}} !dbg [[PHI0_LOC:![0-9]*]]
 ; CHECK: [[PHI1_V:%[A-z0-9.]*]] = phi i32 {{.*}} !dbg [[PHI1_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata i32* [[PHI0_V]], metadata [[PHI0_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PHI0_LOC]]
+; CHECK: @llvm.dbg.value(metadata ptr [[PHI0_V]], metadata [[PHI0_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PHI0_LOC]]
 ; CHECK: @llvm.dbg.value(metadata i32 [[PHI1_V]], metadata [[PHI1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PHI1_LOC]]
 ; CHECK: br {{.*}} !dbg [[PREHEADER_LOC]]
 ;
@@ -46,18 +47,18 @@
 ; CHECK: for.else:
 ; CHECK: br {{.*}} !dbg [[FORELSE_LOC:![0-9]*]]
 
-define spir_kernel void @test_loop(i32* %a, i32* %b, i32 %c) !dbg !6 {
+define spir_kernel void @test_loop(ptr %a, ptr %b, i32 %c) !dbg !6 {
 entry:
-  %cmp.0 = icmp eq i32* %a, %b, !dbg !19
+  %cmp.0 = icmp eq ptr %a, %b, !dbg !19
   call void @llvm.dbg.value(metadata i1 %cmp.0, metadata !9, metadata !DIExpression()), !dbg !19
   br i1 %cmp.0, label %for.end, label %for.body, !dbg !20
 
 for.body:                                         ; preds = %for.else, %for.if, %entry
-  %p.0 = phi i32* [ %inc.p, %for.else ], [ %a, %entry ], [ %b, %for.if ], !dbg !21
+  %p.0 = phi ptr [ %inc.p, %for.else ], [ %a, %entry ], [ %b, %for.if ], !dbg !21
   %p.1 = phi i32 [ 42, %entry ], [ %p.1, %for.else ], [ %p.1, %for.if ], !dbg !22
-  call void @llvm.dbg.value(metadata i32* %p.0, metadata !11, metadata !DIExpression()), !dbg !21
+  call void @llvm.dbg.value(metadata ptr %p.0, metadata !11, metadata !DIExpression()), !dbg !21
   call void @llvm.dbg.value(metadata i32 %p.1, metadata !13, metadata !DIExpression()), !dbg !22
-  %0 = load i32, i32* %p.0, align 4, !dbg !23
+  %0 = load i32, ptr %p.0, align 4, !dbg !23
   call void @llvm.dbg.value(metadata i32 %0, metadata !15, metadata !DIExpression()), !dbg !23
   %cmp.1 = icmp eq i32 %0, %p.1, !dbg !24
   call void @llvm.dbg.value(metadata i1 %cmp.1, metadata !16, metadata !DIExpression()), !dbg !24
@@ -67,9 +68,9 @@ for.if:                                           ; preds = %for.body
   br label %for.body, !dbg !26
 
 for.else:                                         ; preds = %for.body
-  %inc.p = getelementptr inbounds i32, i32* %p.0, i64 1, !dbg !27
-  call void @llvm.dbg.value(metadata i32* %inc.p, metadata !17, metadata !DIExpression()), !dbg !27
-  %cmp.2 = icmp eq i32* %inc.p, %b, !dbg !28
+  %inc.p = getelementptr inbounds i32, ptr %p.0, i64 1, !dbg !27
+  call void @llvm.dbg.value(metadata ptr %inc.p, metadata !17, metadata !DIExpression()), !dbg !27
+  %cmp.2 = icmp eq ptr %inc.p, %b, !dbg !28
   call void @llvm.dbg.value(metadata i1 %cmp.2, metadata !18, metadata !DIExpression()), !dbg !28
   br i1 %cmp.2, label %for.end, label %for.body, !dbg !29
 

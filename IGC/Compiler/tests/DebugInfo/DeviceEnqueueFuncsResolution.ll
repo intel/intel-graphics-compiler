@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-device-enqueue-func-resolution -S < %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --igc-device-enqueue-func-resolution -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; DeviceEnqueueFuncsResolution
 ; ------------------------------------------------
@@ -21,12 +22,12 @@
 ; CHECK-SAME: !dbg [[SCOPE:![0-9]*]]
 ;
 ; CHECK: call void @llvm.dbg.value
-; CHECK-SAME: metadata i8 addrspace(1)* [[DDQ_V:%[A-z0-9]*]]
+; CHECK-SAME: metadata ptr addrspace(1) [[DDQ_V:%[A-z0-9]*]]
 ; CHECK-SAME: metadata [[DDQ_MD:![0-9]*]], metadata !DIExpression()
 ; CHECK-SAME: !dbg [[DDQ_LOC:![0-9]*]]
 ;
 ; CHECK: call void @llvm.dbg.value
-; CHECK-SAME: metadata i8 addrspace(1)* [[EP_V:%[A-z0-9]*]]
+; CHECK-SAME: metadata ptr addrspace(1) [[EP_V:%[A-z0-9]*]]
 ; CHECK-SAME: metadata [[EP_MD:![0-9]*]], metadata !DIExpression()
 ; CHECK-SAME: !dbg [[EP_LOC:![0-9]*]]
 ;
@@ -58,24 +59,24 @@
 ; CHECK-SAME: !dbg [[SPWM_LOC:![0-9]*]]
 
 
-define spir_kernel void @test_device(i8 addrspace(1)* %deviceEnqueueDefaultDeviceQueue, i8 addrspace(1)* %deviceEnqueueEventPool, i32 %deviceEnqueueMaxWorkgroupSize, i32 %deviceEnqueueParentEvent, i32 %deviceEnqueuePreferedWorkgroupMultiple) !dbg !15 {
-  %1 = call i8 addrspace(1)* @__builtin_IB_get_default_device_queue(), !dbg !27
-  call void @llvm.dbg.value(metadata i8 addrspace(1)* %1, metadata !18, metadata !DIExpression()), !dbg !27
-  %2 = call i8 addrspace(1)* @__builtin_IB_get_event_pool(), !dbg !28
-  call void @llvm.dbg.value(metadata i8 addrspace(1)* %2, metadata !20, metadata !DIExpression()), !dbg !28
+define spir_kernel void @test_device(ptr addrspace(1) %deviceEnqueueDefaultDeviceQueue, ptr addrspace(1) %deviceEnqueueEventPool, i32 %deviceEnqueueMaxWorkgroupSize, i32 %deviceEnqueueParentEvent, i32 %deviceEnqueuePreferedWorkgroupMultiple) !dbg !15 {
+  %1 = call ptr addrspace(1) @__builtin_IB_get_default_device_queue(), !dbg !27
+  call void @llvm.dbg.value(metadata ptr addrspace(1) %1, metadata !18, metadata !DIExpression()), !dbg !27
+  %2 = call ptr addrspace(1) @__builtin_IB_get_event_pool(), !dbg !28
+  call void @llvm.dbg.value(metadata ptr addrspace(1) %2, metadata !20, metadata !DIExpression()), !dbg !28
   %3 = call i32 @__builtin_IB_get_max_workgroup_size(), !dbg !29
   call void @llvm.dbg.value(metadata i32 %3, metadata !21, metadata !DIExpression()), !dbg !29
   %4 = call i32 @__builtin_IB_get_parent_event(), !dbg !30
   call void @llvm.dbg.value(metadata i32 %4, metadata !23, metadata !DIExpression()), !dbg !30
   %5 = call i32 @__builtin_IB_get_prefered_workgroup_multiple(), !dbg !31
   call void @llvm.dbg.value(metadata i32 %5, metadata !24, metadata !DIExpression()), !dbg !31
-  %6 = bitcast i8 addrspace(1)* %1 to i32 addrspace(1)*, !dbg !32
-  call void @llvm.dbg.value(metadata i32 addrspace(1)* %6, metadata !25, metadata !DIExpression()), !dbg !32
-  %7 = bitcast i8 addrspace(1)* %2 to i32 addrspace(1)*, !dbg !33
-  call void @llvm.dbg.value(metadata i32 addrspace(1)* %7, metadata !26, metadata !DIExpression()), !dbg !33
-  store i32 %3, i32 addrspace(1)* %6, !dbg !34
-  store i32 %4, i32 addrspace(1)* %7, !dbg !35
-  store i32 %5, i32 addrspace(1)* %6, !dbg !36
+
+  call void @llvm.dbg.value(metadata ptr addrspace(1) %1, metadata !25, metadata !DIExpression()), !dbg !32
+
+  call void @llvm.dbg.value(metadata ptr addrspace(1) %2, metadata !26, metadata !DIExpression()), !dbg !33
+  store i32 %3, ptr addrspace(1) %1, !dbg !34
+  store i32 %4, ptr addrspace(1) %2, !dbg !35
+  store i32 %5, ptr addrspace(1) %1, !dbg !36
   ret void, !dbg !37
 }
 
@@ -103,9 +104,9 @@ define spir_kernel void @test_device(i8 addrspace(1)* %deviceEnqueueDefaultDevic
 ; CHECK-DAG: [[SPWM_LOC]] = !DILocation(line: 10, column: 1, scope: [[SCOPE]])
 
 
-declare i8 addrspace(1)* @__builtin_IB_get_default_device_queue()
+declare ptr addrspace(1) @__builtin_IB_get_default_device_queue()
 
-declare i8 addrspace(1)* @__builtin_IB_get_event_pool()
+declare ptr addrspace(1) @__builtin_IB_get_event_pool()
 
 declare i32 @__builtin_IB_get_max_workgroup_size()
 
@@ -123,7 +124,7 @@ attributes #0 = { nounwind readnone speculatable }
 !llvm.debugify = !{!12, !13}
 !llvm.module.flags = !{!14}
 
-!0 = !{void (i8 addrspace(1)*, i8 addrspace(1)*, i32, i32, i32)* @test_device, !1}
+!0 = !{ptr @test_device, !1}
 !1 = !{!2, !3}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"implicit_arg_desc", !4, !5, !6, !7, !8}

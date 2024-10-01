@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --debugify -igc-code-sinking -inputcs -S < %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --debugify -igc-code-sinking -inputcs -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; CodeSinking
 ; ------------------------------------------------
@@ -19,11 +20,11 @@
 ; which are less than CODE_SINKING_MIN_SIZE
 
 
-define spir_kernel void @test_custom(float %a, float* %b) {
+define spir_kernel void @test_custom(float %a, ptr %b) {
 ; CHECK-LABEL: @test_custom(
 ; CHECK:  entry:
 ; CHECK:    call void @llvm.genx.GenISA.CatchAllDebugLine()
-; CHECK:    [[TMP0:%.*]] = load float, float* [[B:%.*]], align 4
+; CHECK:    [[TMP0:%.*]] = load float, ptr [[B:%.*]], align 4
 ; CHECK:    [[TMP1:%.*]] = fcmp ueq float [[A:%.*]], [[TMP0]]
 ; CHECK:    [[TMP2:%.*]] = fdiv float [[A]], [[TMP0]]
 ; CHECK:    [[TMP3:%.*]] = fdiv float [[TMP2]], [[TMP0]]
@@ -52,12 +53,12 @@ define spir_kernel void @test_custom(float %a, float* %b) {
 ; CHECK:    [[TMP26:%.*]] = fadd float [[TMP14]], [[TMP0]]
 ; CHECK:    [[TMP27:%.*]] = fadd float [[TMP14]], [[TMP0]]
 ; CHECK:    [[SEL:%.*]] = select i1 [[TMP1]], float [[TMP27]], float [[TMP0]]
-; CHECK:    store float [[SEL]], float* [[B]], align 4
+; CHECK:    store float [[SEL]], ptr [[B]], align 4
 ; CHECK:    ret void
 ;
 entry:
   call void @llvm.genx.GenISA.CatchAllDebugLine()
-  %0 = load float, float* %b, align 4
+  %0 = load float, ptr %b, align 4
   %1 = fcmp ueq float %a, %0
   %2 = fdiv float %a, %0
   %3 = fdiv float %2, %0
@@ -86,7 +87,7 @@ entry:
   %26 = fadd float %14, %0
   %27 = fadd float %14, %0
   %sel = select i1 %1, float %27, float %0
-  store float %sel, float* %b, align 4
+  store float %sel, ptr %b, align 4
   ret void
 }
 

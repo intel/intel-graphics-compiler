@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -igc-resolve-atomics -S < %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-resolve-atomics -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; ResolveOCLAtomics : atomics part with 32bit pointers
 ; ------------------------------------------------
@@ -20,50 +21,50 @@
 source_filename = "ResolveOCLAtomics/atomics.ll"
 target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
 
-define spir_kernel void @test_atomics(i32* %dst, i32 %isrc, float %fsrc) !dbg !6 {
+define spir_kernel void @test_atomics(ptr %dst, i32 %isrc, float %fsrc) !dbg !6 {
 
 ; Testcase 1:
 ; Check that call dbg info is preserved for icmpxchg32 atomic
-; CHECK: [[ICMP_V:%[0-9]*]] = call i32 @llvm.genx.GenISA.icmpxchgatomicraw.i32.p0i32.i32(i32* %dst, {{.*}} !dbg [[ICMP_LOC:![0-9]*]]
+; CHECK: [[ICMP_V:%[0-9]*]] = call i32 @llvm.genx.GenISA.icmpxchgatomicraw.i32.p0.i32(ptr %dst, {{.*}} !dbg [[ICMP_LOC:![0-9]*]]
 ; CHECK-NEXT: [[DBG_VALUE_CALL:dbg.value\(metadata]] i32 [[ICMP_V]],  metadata [[ICMP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ICMP_LOC]]
-  %1 = call i32 @__builtin_IB_atomic_cmpxchg_global_i32(i32* %dst, i32 %isrc, i32 0), !dbg !21
+  %1 = call i32 @__builtin_IB_atomic_cmpxchg_global_i32(ptr %dst, i32 %isrc, i32 0), !dbg !21
   call void @llvm.dbg.value(metadata i32 %1, metadata !9, metadata !DIExpression()), !dbg !21
 ; Testcase 2:
 ; Check that call dbg info is preserved for inc64 atomic
 ; CHECK: [[INC_A:%[0-9]*]] = alloca i64
-; CHECK: [[INC_V:%[0-9]*]] = call i64 @llvm.genx.GenISA.intatomicraw.i64.p0i64.i32(i64* [[INC_A]], {{.*}} !dbg [[INC_LOC:![0-9]*]]
-; CHECK-NEXT: [[DBG_DECLARE_CALL:dbg.declare\(metadata]] i64* [[INC_A]],  metadata [[INC_A_MD:![0-9]*]], metadata !DIExpression()), !dbg [[INC_LOC]]
+; CHECK: [[INC_V:%[0-9]*]] = call i64 @llvm.genx.GenISA.intatomicraw.i64.p0.i32(ptr [[INC_A]], {{.*}} !dbg [[INC_LOC:![0-9]*]]
+; CHECK-NEXT: [[DBG_DECLARE_CALL:dbg.declare\(metadata]] ptr [[INC_A]],  metadata [[INC_A_MD:![0-9]*]], metadata !DIExpression()), !dbg [[INC_LOC]]
 ; CHECK-NEXT: [[DBG_VALUE_CALL]] i64 [[INC_V]],  metadata [[INC_MD:![0-9]*]], metadata !DIExpression()), !dbg [[INC_LOC]]
   %2 = alloca i64, align 4, !dbg !22
-  %3 = call i64 @__builtin_IB_atomic_inc_global_i64(i64* %2), !dbg !23
-  call void @llvm.dbg.declare(metadata i64* %2, metadata !11, metadata !DIExpression()), !dbg !23
+  %3 = call i64 @__builtin_IB_atomic_inc_global_i64(ptr %2), !dbg !23
+  call void @llvm.dbg.declare(metadata ptr %2, metadata !11, metadata !DIExpression()), !dbg !23
   call void @llvm.dbg.value(metadata i64 %3, metadata !13, metadata !DIExpression()), !dbg !23
 ; Testcase 3:
 ; Check that call dbg info is preserved for or16 atomic
 ; CHECK: [[OR_A:%[0-9]*]] = alloca i16
-; CHECK: [[OR_V:%[0-9]*]] = call i16 @llvm.genx.GenISA.intatomicraw.i16.p0i16.i32(i16* [[OR_A]], {{.*}} !dbg [[OR_LOC:![0-9]*]]
-; CHECK-NEXT: [[DBG_DECLARE_CALL]] i16* [[OR_A]],  metadata [[OR_A_MD:![0-9]*]], metadata !DIExpression()), !dbg [[OR_LOC]]
+; CHECK: [[OR_V:%[0-9]*]] = call i16 @llvm.genx.GenISA.intatomicraw.i16.p0.i32(ptr [[OR_A]], {{.*}} !dbg [[OR_LOC:![0-9]*]]
+; CHECK-NEXT: [[DBG_DECLARE_CALL]] ptr [[OR_A]],  metadata [[OR_A_MD:![0-9]*]], metadata !DIExpression()), !dbg [[OR_LOC]]
 ; CHECK-NEXT: [[DBG_VALUE_CALL]] i16 [[OR_V]],  metadata [[OR_MD:![0-9]*]], metadata !DIExpression()), !dbg [[OR_LOC]]
   %4 = alloca i16, align 4, !dbg !24
   %5 = trunc i32 %isrc to i16, !dbg !25
   call void @llvm.dbg.value(metadata i16 %5, metadata !15, metadata !DIExpression()), !dbg !25
-  %6 = call i16 @__builtin_IB_atomic_or_global_i16(i16* %4, i16 %5), !dbg !26
-  call void @llvm.dbg.declare(metadata i16* %4, metadata !14, metadata !DIExpression()), !dbg !26
+  %6 = call i16 @__builtin_IB_atomic_or_global_i16(ptr %4, i16 %5), !dbg !26
+  call void @llvm.dbg.declare(metadata ptr %4, metadata !14, metadata !DIExpression()), !dbg !26
   call void @llvm.dbg.value(metadata i16 %6, metadata !17, metadata !DIExpression()), !dbg !26
 ; Testcase 4:
 ; Check that call dbg info is preserved for fcmpxchg32 atomic
-; CHECK: [[FCMP_V:%[0-9]*]] = call float @llvm.genx.GenISA.fcmpxchgatomicraw.f32.p0f32.i32({{.*}} !dbg [[FCMP_LOC:![0-9]*]]
+; CHECK: [[FCMP_V:%[0-9]*]] = call float @llvm.genx.GenISA.fcmpxchgatomicraw.f32.p0.i32({{.*}} !dbg [[FCMP_LOC:![0-9]*]]
 ; CHECK-NEXT: [[DBG_VALUE_CALL]] float [[FCMP_V]],  metadata [[FCMP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FCMP_LOC]]
-  %7 = bitcast i32* %dst to float*, !dbg !27
-  call void @llvm.dbg.value(metadata float* %7, metadata !18, metadata !DIExpression()), !dbg !27
-  %8 = call float @__builtin_IB_atomic_cmpxchg_global_f32(float* %7, float %fsrc, float 0.000000e+00), !dbg !28
-  call void @llvm.dbg.value(metadata float %8, metadata !19, metadata !DIExpression()), !dbg !28
+
+  call void @llvm.dbg.value(metadata ptr %dst, metadata !18, metadata !DIExpression()), !dbg !27
+  %7 = call float @__builtin_IB_atomic_cmpxchg_global_f32(ptr %dst, float %fsrc, float 0.000000e+00), !dbg !28
+  call void @llvm.dbg.value(metadata float %7, metadata !19, metadata !DIExpression()), !dbg !28
 ; Testcase 5:
 ; Check that call dbg info is preserved for fmin32 atomic
-; CHECK: [[FMIN_V:%[0-9]*]] = call float @llvm.genx.GenISA.floatatomicraw.f32.p0f32.i32({{.*}} !dbg [[FMIN_LOC:![0-9]*]]
+; CHECK: [[FMIN_V:%[0-9]*]] = call float @llvm.genx.GenISA.floatatomicraw.f32.p0.i32({{.*}} !dbg [[FMIN_LOC:![0-9]*]]
 ; CHECK-NEXT: [[DBG_VALUE_CALL]] float [[FMIN_V]],  metadata [[FMIN_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FMIN_LOC]]
-  %9 = call float @__builtin_IB_atomic_min_global_f32(float* %7, float %fsrc), !dbg !29
-  call void @llvm.dbg.value(metadata float %9, metadata !20, metadata !DIExpression()), !dbg !29
+  %8 = call float @__builtin_IB_atomic_min_global_f32(ptr %dst, float %fsrc), !dbg !29
+  call void @llvm.dbg.value(metadata float %8, metadata !20, metadata !DIExpression()), !dbg !29
   ret void, !dbg !30
 }
 
@@ -89,15 +90,15 @@ define spir_kernel void @test_atomics(i32* %dst, i32 %isrc, float %fsrc) !dbg !6
 ; CHECK-DAG: [[FMIN_LOC]] = !DILocation(line: 9
 ; CHECK-DAG: [[FMIN_MD]] = !DILocalVariable(name: "9", scope: !6, file: !1, line: 9, type: !10)
 
-declare i64 @__builtin_IB_atomic_inc_global_i64(i64*)
+declare i64 @__builtin_IB_atomic_inc_global_i64(ptr)
 
-declare i16 @__builtin_IB_atomic_or_global_i16(i16*, i16)
+declare i16 @__builtin_IB_atomic_or_global_i16(ptr, i16)
 
-declare i32 @__builtin_IB_atomic_cmpxchg_global_i32(i32*, i32, i32)
+declare i32 @__builtin_IB_atomic_cmpxchg_global_i32(ptr, i32, i32)
 
-declare float @__builtin_IB_atomic_cmpxchg_global_f32(float*, float, float)
+declare float @__builtin_IB_atomic_cmpxchg_global_f32(ptr, float, float)
 
-declare float @__builtin_IB_atomic_min_global_f32(float*, float)
+declare float @__builtin_IB_atomic_min_global_f32(ptr, float)
 
 ; Function Attrs: nounwind readnone speculatable
 declare void @llvm.dbg.value(metadata, metadata, metadata) #0

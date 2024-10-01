@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-generic-address-dynamic-resolution -S < %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --igc-generic-address-dynamic-resolution -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; GenericAddressDynamicResolution
 ; ------------------------------------------------
@@ -23,7 +24,7 @@
 ;
 ; CHECK: [[ACAST_V:%[0-9A-z]*]] = addrspacecast
 ; CHECK-SAME: !dbg [[ACAST_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata float addrspace(4)* [[ACAST_V]]
+; CHECK: @llvm.dbg.value(metadata ptr addrspace(4) [[ACAST_V]]
 ; CHECK-SAME: metadata [[ACAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ACAST_LOC]]
 ;
 ; CHECK: [[PTRI1_V:%[0-9A-z]*]] = ptrtoint
@@ -33,7 +34,7 @@
 ;
 ; CHECK: [[GEP_V:%[0-9A-z]*]] = getelementptr
 ; CHECK-SAME: !dbg [[GEP_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata float addrspace(4)* [[GEP_V]]
+; CHECK: @llvm.dbg.value(metadata ptr addrspace(4) [[GEP_V]]
 ; CHECK-SAME: metadata [[GEP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[GEP_LOC]]
 ;
 ; CHECK: [[PTRI2_V:%[0-9A-z]*]] = ptrtoint
@@ -47,14 +48,14 @@
 ; CHECK-SAME: metadata [[ADD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ADD_LOC]]
 
 
-define spir_kernel void @test_kernel(i32 addrspace(1)* %src) !dbg !6 {
-  %1 = addrspacecast i32 addrspace(1)* %src to float addrspace(4)*, !dbg !16
-  call void @llvm.dbg.value(metadata float addrspace(4)* %1, metadata !9, metadata !DIExpression()), !dbg !16
-  %2 = ptrtoint float addrspace(4)* %1 to i32, !dbg !17
+define spir_kernel void @test_kernel(ptr addrspace(1) %src) !dbg !6 {
+  %1 = addrspacecast ptr addrspace(1) %src to ptr addrspace(4), !dbg !16
+  call void @llvm.dbg.value(metadata ptr addrspace(4) %1, metadata !9, metadata !DIExpression()), !dbg !16
+  %2 = ptrtoint ptr addrspace(4) %1 to i32, !dbg !17
   call void @llvm.dbg.value(metadata i32 %2, metadata !11, metadata !DIExpression()), !dbg !17
-  %3 = getelementptr inbounds float, float addrspace(4)* %1, i16 13, !dbg !18
-  call void @llvm.dbg.value(metadata float addrspace(4)* %3, metadata !13, metadata !DIExpression()), !dbg !18
-  %4 = ptrtoint float addrspace(4)* %3 to i32, !dbg !19
+  %3 = getelementptr inbounds float, ptr addrspace(4) %1, i16 13, !dbg !18
+  call void @llvm.dbg.value(metadata ptr addrspace(4) %3, metadata !13, metadata !DIExpression()), !dbg !18
+  %4 = ptrtoint ptr addrspace(4) %3 to i32, !dbg !19
   call void @llvm.dbg.value(metadata i32 %4, metadata !14, metadata !DIExpression()), !dbg !19
   %5 = add i32 %2, %4, !dbg !20
   call void @llvm.dbg.value(metadata i32 %5, metadata !15, metadata !DIExpression()), !dbg !20

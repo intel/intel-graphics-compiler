@@ -1,54 +1,55 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-add-implicit-args -S %s -o %t.ll
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-add-implicit-args -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
-; CHECK:     define spir_kernel void @test_rti(i8 addrspace(1)* %globalPointer, i8 addrspace(1)* %localPointer, i16 %stackID, <2 x i8 addrspace(1)*> %inlinedData)
+; CHECK:     define spir_kernel void @test_rti(ptr addrspace(1) %globalPointer, ptr addrspace(1) %localPointer, i16 %stackID, <2 x ptr addrspace(1)> %inlinedData)
 ; CHECK-NOT: define spir_kernel void @test_rti()
-; CHECK:     call spir_func void @foo(i8 addrspace(1)* %globalPointer, i8 addrspace(1)* %localPointer, i16 %stackID, <2 x i8 addrspace(1)*> %inlinedData)
+; CHECK:     call spir_func void @foo(ptr addrspace(1) %globalPointer, ptr addrspace(1) %localPointer, i16 %stackID, <2 x ptr addrspace(1)> %inlinedData)
 
 define spir_kernel void @test_rti() {
   call spir_func void @foo()
   ret void
 }
 
-; CHECK:     define spir_func void @foo(i8 addrspace(1)* %globalPointer, i8 addrspace(1)* %localPointer, i16 %stackID, <2 x i8 addrspace(1)*> %inlinedData)
+; CHECK:     define spir_func void @foo(ptr addrspace(1) %globalPointer, ptr addrspace(1) %localPointer, i16 %stackID, <2 x ptr addrspace(1)> %inlinedData)
 ; CHECK-NOT: define spir_func void @foo()
-; CHECK:     call spir_func void @rti(i8 addrspace(1)* %globalPointer, i8 addrspace(1)* %localPointer, i16 %stackID, <2 x i8 addrspace(1)*> %inlinedData)
+; CHECK:     call spir_func void @rti(ptr addrspace(1) %globalPointer, ptr addrspace(1) %localPointer, i16 %stackID, <2 x ptr addrspace(1)> %inlinedData)
 
 define spir_func void @foo() {
   call spir_func void @rti()
   ret void
 }
 
-; CHECK:     define spir_func void @rti(i8 addrspace(1)* %globalPointer, i8 addrspace(1)* %localPointer, i16 %stackID, <2 x i8 addrspace(1)*> %inlinedData)
+; CHECK:     define spir_func void @rti(ptr addrspace(1) %globalPointer, ptr addrspace(1) %localPointer, i16 %stackID, <2 x ptr addrspace(1)> %inlinedData)
 ; CHECK-NOT: define spir_func void @rti()
 
 define spir_func void @rti() {
-  %1 = call i8 addrspace(1)* @llvm.genx.GenISA.GlobalBufferPointer()
-  %2 = call i32 addrspace(1)* @llvm.genx.GenISA.LocalBufferPointer()
+  %1 = call ptr addrspace(1) @llvm.genx.GenISA.GlobalBufferPointer()
+  %2 = call ptr addrspace(1) @llvm.genx.GenISA.LocalBufferPointer()
   %3 = call i16 @llvm.genx.GenISA.AsyncStackID()
-  %4 = call i32 addrspace(1)* @llvm.genx.GenISA.InlinedData(i16 %3)
+  %4 = call ptr addrspace(1) @llvm.genx.GenISA.InlinedData(i16 %3)
   ret void
 }
 
-declare i8 addrspace(1)* @llvm.genx.GenISA.GlobalBufferPointer()
+declare ptr addrspace(1) @llvm.genx.GenISA.GlobalBufferPointer()
 
-declare i32 addrspace(1)* @llvm.genx.GenISA.LocalBufferPointer()
+declare ptr addrspace(1) @llvm.genx.GenISA.LocalBufferPointer()
 
 declare i16 @llvm.genx.GenISA.AsyncStackID()
 
-declare i32 addrspace(1)* @llvm.genx.GenISA.InlinedData(i16)
+declare ptr addrspace(1) @llvm.genx.GenISA.InlinedData(i16)
 
 !igc.functions = !{!0, !8, !9}
 
-!0 = !{void ()* @test_rti, !1}
+!0 = !{ptr @test_rti, !1}
 !1 = !{!2, !3}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"implicit_arg_desc", !4, !5, !6, !7}
@@ -56,5 +57,5 @@ declare i32 addrspace(1)* @llvm.genx.GenISA.InlinedData(i16)
 !5 = !{i32 55}
 !6 = !{i32 57}
 !7 = !{i32 56}
-!8 = !{void ()* @rti, !1}
-!9 = !{void ()* @foo, !1}
+!8 = !{ptr @rti, !1}
+!9 = !{ptr @foo, !1}

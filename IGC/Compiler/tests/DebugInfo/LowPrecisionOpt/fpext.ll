@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -igc-low-precision-opt -S < %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-low-precision-opt -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; LowPrecisionOpt
 ; ------------------------------------------------
@@ -35,15 +36,15 @@ entry:
 ; Check that fpext is removed and its value is RAUW
 ;
 ; CHECK-NEXT: dbg.value(metadata float [[ADD_V]], metadata [[EXT_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EXT_LOC:![0-9]*]]
-; CHECK: store float [[ADD_V]], float* [[STORE_A:%[0-9]*]],{{.*}} !dbg [[STORE_LOC:![0-9]*]]
-; CHECK-NEXT: dbg.declare(metadata float* [[STORE_A]], metadata [[STORE_MD:![0-9]*]], metadata !DIExpression()), !dbg [[STORE_LOC]]
+; CHECK: store float [[ADD_V]], ptr [[STORE_A:%[0-9]*]],{{.*}} !dbg [[STORE_LOC:![0-9]*]]
+; CHECK-NEXT: dbg.declare(metadata ptr [[STORE_A]], metadata [[STORE_MD:![0-9]*]], metadata !DIExpression()), !dbg [[STORE_LOC]]
   %2 = fptrunc float %1 to half, !dbg !24
   call void @llvm.dbg.value(metadata half %2, metadata !15, metadata !DIExpression()), !dbg !24
   %3 = fpext half %2 to float, !dbg !25
   call void @llvm.dbg.value(metadata float %3, metadata !17, metadata !DIExpression()), !dbg !25
   %4 = alloca float, align 4, !dbg !26
-  store float %3, float* %4, align 4, !dbg !27
-  call void @llvm.dbg.declare(metadata float* %4, metadata !18, metadata !DIExpression()), !dbg !27
+  store float %3, ptr %4, align 4, !dbg !27
+  call void @llvm.dbg.declare(metadata ptr %4, metadata !18, metadata !DIExpression()), !dbg !27
 ;
 ; Testcase 2:
 ; fpext and half intrinsic
@@ -52,12 +53,12 @@ entry:
 ;
 ; CHECK: [[CALL_V:%[0-9]*]] = call float @llvm.genx{{.*}} !dbg [[CALL_LOC:![0-9]*]]
 ; CHECK: dbg.value(metadata float [[CALL_V]], metadata [[EXT2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EXT2_LOC:![0-9]*]]
-; CHECK: store float [[CALL_V]], float* [[STORE_A]], align 4, !dbg [[STORE2_LOC:![0-9]*]]
+; CHECK: store float [[CALL_V]], ptr [[STORE_A]], align 4, !dbg [[STORE2_LOC:![0-9]*]]
   %5 = call half @llvm.genx.GenISA.DCL.inputVec.f16(i32 1, i32 2), !dbg !28
   call void @llvm.dbg.value(metadata half %5, metadata !20, metadata !DIExpression()), !dbg !28
   %6 = fpext half %5 to float, !dbg !29
   call void @llvm.dbg.value(metadata float %6, metadata !21, metadata !DIExpression()), !dbg !29
-  store float %6, float* %4, align 4, !dbg !30
+  store float %6, ptr %4, align 4, !dbg !30
   ret void, !dbg !31
 }
 
@@ -94,7 +95,7 @@ attributes #0 = { nounwind readnone speculatable }
 !llvm.debugify = !{!6, !7}
 !llvm.module.flags = !{!8}
 
-!0 = !{void (float)* @test_low, !1}
+!0 = !{ptr @test_low, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
 !3 = distinct !DICompileUnit(language: DW_LANG_C, file: !4, producer: "debugify", isOptimized: true, runtimeVersion: 0, emissionKind: FullDebug, enums: !5)

@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-generic-address-dynamic-resolution -S < %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --igc-generic-address-dynamic-resolution -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; GenericAddressDynamicResolution
 ; ------------------------------------------------
@@ -21,28 +22,28 @@
 ;
 ; CHECK: [[ACAST_V:%[0-9A-z]*]] = addrspacecast
 ; CHECK-SAME: !dbg [[ACAST_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata i8 addrspace(4)* [[ACAST_V]]
+; CHECK: @llvm.dbg.value(metadata ptr addrspace(4) [[ACAST_V]]
 ; CHECK-SAME: metadata [[ACAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ACAST_LOC]]
 ;
-; CHECK-DAG: @llvm.dbg.value(metadata i8* [[IBP_V:%[A-z0-9.]*]], metadata [[IBP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[IBP_LOC:![0-9]*]]
+; CHECK-DAG: @llvm.dbg.value(metadata ptr [[IBP_V:%[A-z0-9.]*]], metadata [[IBP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[IBP_LOC:![0-9]*]]
 ; CHECK-DAG: [[IBP_V]] = {{.*}} !dbg [[IBP_LOC]]
 ;
-; CHECK-DAG: @llvm.dbg.value(metadata i8 addrspace(1)* [[IBG_V:%[A-z0-9.]*]], metadata [[IBG_MD:![0-9]*]], metadata !DIExpression()), !dbg [[IBG_LOC:![0-9]*]]
+; CHECK-DAG: @llvm.dbg.value(metadata ptr addrspace(1) [[IBG_V:%[A-z0-9.]*]], metadata [[IBG_MD:![0-9]*]], metadata !DIExpression()), !dbg [[IBG_LOC:![0-9]*]]
 ; CHECK-DAG: [[IBG_V]] = {{.*}} !dbg [[IBG_LOC]]
 ;
-; CHECK-DAG: @llvm.dbg.value(metadata i8 addrspace(3)* [[IBL_V:%[A-z0-9.]*]], metadata [[IBL_MD:![0-9]*]], metadata !DIExpression()), !dbg [[IBL_LOC:![0-9]*]]
+; CHECK-DAG: @llvm.dbg.value(metadata ptr addrspace(3) [[IBL_V:%[A-z0-9.]*]], metadata [[IBL_MD:![0-9]*]], metadata !DIExpression()), !dbg [[IBL_LOC:![0-9]*]]
 ; CHECK-DAG: [[IBL_V]] = {{.*}} !dbg [[IBL_LOC]]
 
 
-define spir_kernel void @test_kernel(i32 addrspace(1)* %src) !dbg !6 {
-  %1 = addrspacecast i32 addrspace(1)* %src to i8 addrspace(4)*, !dbg !14
-  call void @llvm.dbg.value(metadata i8 addrspace(4)* %1, metadata !9, metadata !DIExpression()), !dbg !14
-  %2 = call i8* @__builtin_IB_to_private(i8 addrspace(4)* %1), !dbg !15
-  call void @llvm.dbg.value(metadata i8* %2, metadata !11, metadata !DIExpression()), !dbg !15
-  %3 = call i8 addrspace(1)* @__builtin_IB_to_global(i8 addrspace(4)* %1), !dbg !16
-  call void @llvm.dbg.value(metadata i8 addrspace(1)* %3, metadata !12, metadata !DIExpression()), !dbg !16
-  %4 = call i8 addrspace(3)* @__builtin_IB_to_local(i8 addrspace(4)* %1), !dbg !17
-  call void @llvm.dbg.value(metadata i8 addrspace(3)* %4, metadata !13, metadata !DIExpression()), !dbg !17
+define spir_kernel void @test_kernel(ptr addrspace(1) %src) !dbg !6 {
+  %1 = addrspacecast ptr addrspace(1) %src to ptr addrspace(4), !dbg !14
+  call void @llvm.dbg.value(metadata ptr addrspace(4) %1, metadata !9, metadata !DIExpression()), !dbg !14
+  %2 = call ptr @__builtin_IB_to_private(ptr addrspace(4) %1), !dbg !15
+  call void @llvm.dbg.value(metadata ptr %2, metadata !11, metadata !DIExpression()), !dbg !15
+  %3 = call ptr addrspace(1) @__builtin_IB_to_global(ptr addrspace(4) %1), !dbg !16
+  call void @llvm.dbg.value(metadata ptr addrspace(1) %3, metadata !12, metadata !DIExpression()), !dbg !16
+  %4 = call ptr addrspace(3) @__builtin_IB_to_local(ptr addrspace(4) %1), !dbg !17
+  call void @llvm.dbg.value(metadata ptr addrspace(3) %4, metadata !13, metadata !DIExpression()), !dbg !17
   ret void, !dbg !18
 }
 
@@ -57,11 +58,11 @@ define spir_kernel void @test_kernel(i32 addrspace(1)* %src) !dbg !6 {
 ; CHECK-DAG: [[IBL_MD]] = !DILocalVariable(name: "4", scope: [[SCOPE]], file: [[FILE]], line: 4
 ; CHECK-DAG: [[IBL_LOC]] =  !DILocation(line: 4, column: 1, scope: [[SCOPE]])
 
-declare i8 addrspace(1)* @__builtin_IB_to_global(i8 addrspace(4)*)
+declare ptr addrspace(1) @__builtin_IB_to_global(ptr addrspace(4))
 
-declare i8 addrspace(3)* @__builtin_IB_to_local(i8 addrspace(4)*)
+declare ptr addrspace(3) @__builtin_IB_to_local(ptr addrspace(4))
 
-declare i8* @__builtin_IB_to_private(i8 addrspace(4)*)
+declare ptr @__builtin_IB_to_private(ptr addrspace(4))
 
 ; Function Attrs: nounwind readnone speculatable
 declare void @llvm.dbg.value(metadata, metadata, metadata) #0

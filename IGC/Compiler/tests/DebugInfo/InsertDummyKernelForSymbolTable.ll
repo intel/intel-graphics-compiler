@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-insert-dummy-kernel-for-symbol-table -S < %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --igc-insert-dummy-kernel-for-symbol-table -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; InsertDummyKernelForSymbolTable
 ; ------------------------------------------------
@@ -21,8 +22,8 @@
 ; CHECK: define spir_kernel void @bar
 ; CHECK-SAME: !dbg [[SCOPE:![0-9]*]]
 
-; CHECK: @llvm.dbg.declare(metadata i32* %{{.*}}, metadata [[A_MD:![0-9]*]], metadata !DIExpression()), !dbg [[A_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.declare(metadata i32* %{{.*}}, metadata [[SID_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SID_LOC:![0-9]*]]
+; CHECK: @llvm.dbg.declare(metadata ptr %{{.*}}, metadata [[A_MD:![0-9]*]], metadata !DIExpression()), !dbg [[A_LOC:![0-9]*]]
+; CHECK: @llvm.dbg.declare(metadata ptr %{{.*}}, metadata [[SID_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SID_LOC:![0-9]*]]
 ; CHECK: [[CALL_V:%[A-z0-9]*]] = call spir_func i32 {{.*}} !dbg [[SIDCALL_LOC:![0-9]*]]
 ; CHECK: store i32 [[CALL_V]], {{.*}} !dbg [[SID_LOC]]
 
@@ -34,16 +35,16 @@ entry:
   %a.addr = alloca i32, align 4
   %subid = alloca i32, align 4
   %sum = alloca i32, align 4
-  store i32 %a, i32* %a.addr, align 4
-  call void @llvm.dbg.declare(metadata i32* %a.addr, metadata !30, metadata !DIExpression()), !dbg !31
-  call void @llvm.dbg.declare(metadata i32* %subid, metadata !32, metadata !DIExpression()), !dbg !33
+  store i32 %a, ptr %a.addr, align 4
+  call void @llvm.dbg.declare(metadata ptr %a.addr, metadata !30, metadata !DIExpression()), !dbg !31
+  call void @llvm.dbg.declare(metadata ptr %subid, metadata !32, metadata !DIExpression()), !dbg !33
   %call = call spir_func i32 @__builtin_spirv_BuiltInSubgroupId() #2, !dbg !34
-  store i32 %call, i32* %subid, align 4, !dbg !33
-  call void @llvm.dbg.declare(metadata i32* %sum, metadata !35, metadata !DIExpression()), !dbg !36
-  %0 = load i32, i32* %subid, align 4, !dbg !37
-  %1 = load i32, i32* %a.addr, align 4, !dbg !38
+  store i32 %call, ptr %subid, align 4, !dbg !33
+  call void @llvm.dbg.declare(metadata ptr %sum, metadata !35, metadata !DIExpression()), !dbg !36
+  %0 = load i32, ptr %subid, align 4, !dbg !37
+  %1 = load i32, ptr %a.addr, align 4, !dbg !38
   %add = add nsw i32 %0, %1, !dbg !39
-  store i32 %add, i32* %sum, align 4, !dbg !36
+  store i32 %add, ptr %sum, align 4, !dbg !36
   ret void, !dbg !40
 }
 
@@ -84,7 +85,7 @@ attributes #2 = { nounwind readnone }
 !7 = !{i32 2, !"Debug Info Version", i32 3}
 !8 = !{!"ModuleMD", !9, !19}
 !9 = !{!"FuncMD", !10, !11}
-!10 = !{!"FuncMDMap[0]", void (i32)* @bar}
+!10 = !{!"FuncMDMap[0]", ptr @bar}
 !11 = !{!"FuncMDValue[0]", !12, !13, !17, !18}
 !12 = !{!"localOffsets"}
 !13 = !{!"workGroupWalkOrder", !14, !15, !16}
@@ -94,9 +95,9 @@ attributes #2 = { nounwind readnone }
 !17 = !{!"funcArgs"}
 !18 = !{!"functionType", !"KernelFunction"}
 !19 = !{!"inlineProgramScopeOffsets", !20, !21}
-!20 = !{!"inlineProgramScopeOffsetsMap[0]", i32 addrspace(1)* @b}
+!20 = !{!"inlineProgramScopeOffsetsMap[0]", ptr addrspace(1) @b}
 !21 = !{!"inlineProgramScopeOffsetsValue[0]", i32 0}
-!22 = !{void (i32)* @bar, !23}
+!22 = !{ptr @bar, !23}
 !23 = !{!24}
 !24 = !{!"function_type", i32 0}
 !25 = distinct !DISubprogram(name: "bar", scope: null, file: !26, line: 1, type: !27, flags: DIFlagPrototyped, unit: !2, templateParams: !4, retainedNodes: !4)

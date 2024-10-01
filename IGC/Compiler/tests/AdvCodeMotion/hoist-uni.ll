@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -debugify -adv-codemotion-cm=1 -igc-advcodemotion -check-debugify -S < %s 2>&1 | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -debugify -adv-codemotion-cm=1 -igc-advcodemotion -check-debugify -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; AdvCodeMotion
 ; ------------------------------------------------
@@ -15,7 +16,7 @@
 ; CHECK-NOT: WARNING
 ; CHECK: CheckModuleDebugify: PASS
 
-define spir_kernel void @test(i32 addrspace(1)* %dst, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ, <3 x i32> %globalSize, <3 x i32> %enqueuedLocalSize, <3 x i32> %localSize, i8* %privateBase, i32 %bufferOffset) #0 {
+define spir_kernel void @test(ptr addrspace(1) %dst, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ, <3 x i32> %globalSize, <3 x i32> %enqueuedLocalSize, <3 x i32> %localSize, ptr %privateBase, i32 %bufferOffset) #0 {
 
 ; CHECK-LABEL: @test(
 ; CHECK:  entry:
@@ -53,7 +54,7 @@ define spir_kernel void @test(i32 addrspace(1)* %dst, <8 x i32> %r0, <8 x i32> %
 ; CHECK:  join:
 ; CHECK:    br label [[BB3]]
 ; CHECK:  end:
-; CHECK:    store i32 [[TMP8]], i32 addrspace(1)* [[DST:%[A-z0-9]*]], align 4
+; CHECK:    store i32 [[TMP8]], ptr addrspace(1) [[DST:%[A-z0-9]*]], align 4
 ; CHECK:    ret void
 
 entry:
@@ -98,7 +99,7 @@ join:                                             ; preds = %fbb, %tbb
   br label %bb3
 
 end:                                              ; preds = %bb3
-  store i32 %8, i32 addrspace(1)* %dst, align 4
+  store i32 %8, ptr addrspace(1) %dst, align 4
   ret void
 }
 
@@ -120,7 +121,7 @@ attributes #2 = { convergent nounwind readnone }
 
 !igc.functions = !{!3}
 
-!3 = !{void (i32 addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, <3 x i32>, <3 x i32>, <3 x i32>, i8*, i32)* @test, !4}
+!3 = !{ptr @test, !4}
 !4 = !{!5, !6}
 !5 = !{!"function_type", i32 0}
 !6 = !{!"implicit_arg_desc", !7, !8, !9, !10, !11, !12}

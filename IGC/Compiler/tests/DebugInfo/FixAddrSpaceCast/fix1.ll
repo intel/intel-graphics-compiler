@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-addrspacecast-fix -S < %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --igc-addrspacecast-fix -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; FixAddrSpaceCast
 ; ------------------------------------------------
@@ -18,21 +19,21 @@
 
 ; CHECK: @test_fixaddr{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: [[ITOPTR_V:%[0-9A-z.]*]] = bitcast{{.*}}, !dbg [[ITOPTR_LOC:![0-9]*]]
-; CHECK: llvm.dbg.value(metadata i64* [[ITOPTR_V]], metadata [[ITOPTR_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ITOPTR_LOC]]
+; CHECK: llvm.dbg.value(metadata ptr [[ITOPTR_V]], metadata [[ITOPTR_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ITOPTR_LOC]]
 ; CHECK: [[ACAST_V:%[0-9A-z.]*]] = addrspacecast{{.*}}, !dbg [[ACAST_LOC:![0-9]*]]
-; CHECK: llvm.dbg.value(metadata i64 addrspace(2)* [[ACAST_V]], metadata [[ACAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ACAST_LOC]]
+; CHECK: llvm.dbg.value(metadata ptr addrspace(2) [[ACAST_V]], metadata [[ACAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ACAST_LOC]]
 ; CHECK: store {{.*}}, !dbg [[STORE_LOC:![0-9]*]]
 
-define void @test_fixaddr(i64* %src) !dbg !6 {
-  %1 = ptrtoint i64* %src to i64, !dbg !14
+define void @test_fixaddr(ptr %src) !dbg !6 {
+  %1 = ptrtoint ptr %src to i64, !dbg !14
   call void @llvm.dbg.value(metadata i64 %1, metadata !9, metadata !DIExpression()), !dbg !14
-  %2 = inttoptr i64 %1 to i64*, !dbg !15
-  call void @llvm.dbg.value(metadata i64* %2, metadata !11, metadata !DIExpression()), !dbg !15
-  %3 = ptrtoint i64* %2 to i64, !dbg !16
+  %2 = inttoptr i64 %1 to ptr, !dbg !15
+  call void @llvm.dbg.value(metadata ptr %2, metadata !11, metadata !DIExpression()), !dbg !15
+  %3 = ptrtoint ptr %2 to i64, !dbg !16
   call void @llvm.dbg.value(metadata i64 %3, metadata !12, metadata !DIExpression()), !dbg !16
-  %4 = inttoptr i64 %3 to i64 addrspace(2)*, !dbg !17
-  call void @llvm.dbg.value(metadata i64 addrspace(2)* %4, metadata !13, metadata !DIExpression()), !dbg !17
-  store i64 13, i64 addrspace(2)* %4, !dbg !18
+  %4 = inttoptr i64 %3 to ptr addrspace(2), !dbg !17
+  call void @llvm.dbg.value(metadata ptr addrspace(2) %4, metadata !13, metadata !DIExpression()), !dbg !17
+  store i64 13, ptr addrspace(2) %4, !dbg !18
   ret void, !dbg !19
 }
 

@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-promote-resources-to-direct-addrspace -S < %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --igc-promote-resources-to-direct-addrspace -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; PromoteResourceToDirectAS : sampler promotion part
 ; ------------------------------------------------
@@ -21,16 +22,16 @@
 ;
 ; CHECK: [[ACAST_V:%[0-9A-z]*]] = addrspacecast
 ; CHECK-SAME: !dbg [[ACAST_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata {{.*}} addrspace(2293760)* [[ACAST_V]]
+; CHECK: @llvm.dbg.value(metadata ptr addrspace(2293760) [[ACAST_V]]
 ; CHECK-SAME: metadata [[ACAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ACAST_LOC]]
 ;
 ; CHECK: !dbg [[CALL_LOC:[0-9]*]]
 ; CHECK: ret void
 
-define spir_kernel void @test_indirect(i32 %a, i32 %b, i32* %ptr) !dbg !42 {
-  %1 = addrspacecast i32* %ptr to float addrspace(2293760)*, !dbg !47
-  call void @llvm.dbg.value(metadata float addrspace(2293760)* %1, metadata !45, metadata !DIExpression()), !dbg !47
-  call void @llvm.genx.GenISA.typedwrite.p2293760f32(float addrspace(2293760)* %1, i32 1, i32 2, i32 3, i32 4, float 5.000000e+00, float 6.000000e+00, float 7.000000e+00, float 8.000000e+00), !dbg !48
+define spir_kernel void @test_indirect(i32 %a, i32 %b, ptr %ptr) !dbg !42 {
+  %1 = addrspacecast ptr %ptr to ptr addrspace(2293760), !dbg !47
+  call void @llvm.dbg.value(metadata ptr addrspace(2293760) %1, metadata !45, metadata !DIExpression()), !dbg !47
+  call void @llvm.genx.GenISA.typedwrite.p2293760(ptr addrspace(2293760) %1, i32 1, i32 2, i32 3, i32 4, float 5.000000e+00, float 6.000000e+00, float 7.000000e+00, float 8.000000e+00), !dbg !48
   ret void, !dbg !49
 }
 
@@ -40,7 +41,7 @@ define spir_kernel void @test_indirect(i32 %a, i32 %b, i32* %ptr) !dbg !42 {
 ; CHECK-DAG: [[ACAST_LOC]] = !DILocation(line: 1, column: 1, scope: [[SCOPE]])
 ; CHECK-DAG: [[CALL_LOC]] = !DILocation(line: 2, column: 1, scope: [[SCOPE]])
 
-declare void @llvm.genx.GenISA.typedwrite.p2293760f32(float addrspace(2293760)*, i32, i32, i32, i32, float, float, float, float)
+declare void @llvm.genx.GenISA.typedwrite.p2293760(ptr addrspace(2293760), i32, i32, i32, i32, float, float, float, float)
 
 ; Function Attrs: nounwind readnone speculatable
 declare void @llvm.dbg.value(metadata, metadata, metadata) #0
@@ -61,7 +62,7 @@ attributes #0 = { nounwind readnone speculatable }
 !5 = !{!"textureStateStride", i32 0}
 !6 = !{!"textureStateOffset", i32 0}
 !7 = !{!"FuncMD", !8, !9}
-!8 = !{!"FuncMDMap[0]", void (i32, i32, i32*)* @test_indirect}
+!8 = !{!"FuncMDMap[0]", ptr @test_indirect}
 !9 = !{!"FuncMDValue[0]", !10}
 !10 = !{!"resAllocMD", !11, !12, !13, !14}
 !11 = !{!"uavsNumType", i32 2}
@@ -86,7 +87,7 @@ attributes #0 = { nounwind readnone speculatable }
 !30 = !{!"argAllocMDListVec[7]", !23, !24, !25}
 !31 = !{!"argAllocMDListVec[8]", !23, !24, !25}
 !32 = !{!"argAllocMDListVec[9]", !20, !24, !18}
-!33 = !{void (i32, i32, i32*)* @test_indirect, !34}
+!33 = !{ptr @test_indirect, !34}
 !34 = !{!35}
 !35 = !{!"function_type", i32 0}
 !36 = distinct !DICompileUnit(language: DW_LANG_C, file: !37, producer: "debugify", isOptimized: true, runtimeVersion: 0, emissionKind: FullDebug, enums: !38)

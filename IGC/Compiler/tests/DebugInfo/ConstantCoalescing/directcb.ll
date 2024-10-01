@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-constant-coalescing -S < %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --igc-constant-coalescing -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; ConstantCoalescing
 ; ------------------------------------------------
@@ -26,32 +27,32 @@
 ; CHECK-DAG: @llvm.dbg.value(metadata i32 [[LOAD3_V:%[A-z0-9]*]], metadata [[LOAD3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD3_LOC:![0-9]*]]
 ; CHECK-DAG: [[LOAD3_V]] = {{.*}} !dbg [[LOAD1_LOC]]
 
-define void @test_constcoal(i32* %a) !dbg !10 {
+define void @test_constcoal(ptr %a) !dbg !10 {
 entry:
-  %0 = inttoptr i32 4 to i32 addrspace(65536)*, !dbg !21
-  call void @llvm.dbg.value(metadata i32 addrspace(65536)* %0, metadata !13, metadata !DIExpression()), !dbg !21
-  %1 = inttoptr i32 8 to i32 addrspace(65536)*, !dbg !22
-  call void @llvm.dbg.value(metadata i32 addrspace(65536)* %1, metadata !15, metadata !DIExpression()), !dbg !22
-  %2 = inttoptr i32 16 to i32 addrspace(65536)*, !dbg !23
-  call void @llvm.dbg.value(metadata i32 addrspace(65536)* %2, metadata !16, metadata !DIExpression()), !dbg !23
-  %3 = load i32, i32 addrspace(65536)* %0, align 4, !dbg !24
+  %0 = inttoptr i32 4 to ptr addrspace(65536), !dbg !21
+  call void @llvm.dbg.value(metadata ptr addrspace(65536) %0, metadata !13, metadata !DIExpression()), !dbg !21
+  %1 = inttoptr i32 8 to ptr addrspace(65536), !dbg !22
+  call void @llvm.dbg.value(metadata ptr addrspace(65536) %1, metadata !15, metadata !DIExpression()), !dbg !22
+  %2 = inttoptr i32 16 to ptr addrspace(65536), !dbg !23
+  call void @llvm.dbg.value(metadata ptr addrspace(65536) %2, metadata !16, metadata !DIExpression()), !dbg !23
+  %3 = load i32, ptr addrspace(65536) %0, align 4, !dbg !24
   call void @llvm.dbg.value(metadata i32 %3, metadata !17, metadata !DIExpression()), !dbg !24
   br label %lbl1, !dbg !25
 
 lbl1:                                             ; preds = %entry
-  %4 = load i32, i32 addrspace(65536)* %1, align 4, !dbg !26
+  %4 = load i32, ptr addrspace(65536) %1, align 4, !dbg !26
   call void @llvm.dbg.value(metadata i32 %4, metadata !19, metadata !DIExpression()), !dbg !26
   br label %lbl2, !dbg !27
 
 lbl2:                                             ; preds = %lbl1
-  %5 = load i32, i32 addrspace(65536)* %2, align 4, !dbg !28
+  %5 = load i32, ptr addrspace(65536) %2, align 4, !dbg !28
   call void @llvm.dbg.value(metadata i32 %5, metadata !20, metadata !DIExpression()), !dbg !28
   br label %end, !dbg !29
 
 end:                                              ; preds = %lbl2
-  store i32 %3, i32* %a, !dbg !30
-  store i32 %4, i32* %a, !dbg !31
-  store i32 %5, i32* %a, !dbg !32
+  store i32 %3, ptr %a, !dbg !30
+  store i32 %4, ptr %a, !dbg !31
+  store i32 %5, ptr %a, !dbg !32
   ret void, !dbg !33
 }
 
@@ -74,7 +75,7 @@ attributes #0 = { nounwind readnone speculatable }
 !llvm.debugify = !{!7, !8}
 !llvm.module.flags = !{!9}
 
-!0 = !{void (i32*)* @test_constcoal, !1}
+!0 = !{ptr @test_constcoal, !1}
 !1 = !{!2, !3}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"implicit_arg_desc"}

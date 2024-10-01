@@ -1,11 +1,12 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; RUN: igc_opt --EstimateFunctionSize -S < %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --EstimateFunctionSize -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; EstimateFunctionSize
 ; ------------------------------------------------
@@ -18,7 +19,7 @@
 ; CHECK: define spir_kernel void @test_estimate{{.*}}!dbg [[SCOPEK:![0-9]*]]
 ; CHECK: entry:
 ; CHECK: [[ALLOCA_V:%[0-9]*]] = {{.*}} !dbg [[ALLOCA_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata i32* [[ALLOCA_V]]
+; CHECK: call void @llvm.dbg.value(metadata ptr [[ALLOCA_V]]
 ; CHECK-SAME: metadata [[ALLOCA_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOCA_LOC]]
 ; CHECK: [[CALLF_V:%[0-9]*]] = {{.*}} !dbg [[CALLF_LOC:![0-9]*]]
 ; CHECK: call void @llvm.dbg.value(metadata i32 [[CALLF_V]]
@@ -31,11 +32,11 @@
 ; CHECK: call void @llvm.dbg.value(metadata i32 [[ADD_V]]
 ; CHECK-SAME: metadata [[ADD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ADD_LOC]]
 
-define spir_kernel void @test_estimate(i32* %s) !dbg !6 {
+define spir_kernel void @test_estimate(ptr %s) !dbg !6 {
 entry:
   %0 = alloca i32, align 4, !dbg !15
-  call void @llvm.dbg.value(metadata i32* %0, metadata !9, metadata !DIExpression()), !dbg !15
-  %1 = call spir_func i32 @foo(i32* %s), !dbg !16
+  call void @llvm.dbg.value(metadata ptr %0, metadata !9, metadata !DIExpression()), !dbg !15
+  %1 = call spir_func i32 @foo(ptr %s), !dbg !16
   call void @llvm.dbg.value(metadata i32 %1, metadata !11, metadata !DIExpression()), !dbg !16
   br label %end, !dbg !17
 
@@ -44,7 +45,7 @@ end:                                              ; preds = %entry
   call void @llvm.dbg.value(metadata i32 %2, metadata !13, metadata !DIExpression()), !dbg !18
   %3 = add i32 %2, %1, !dbg !19
   call void @llvm.dbg.value(metadata i32 %3, metadata !14, metadata !DIExpression()), !dbg !19
-  store i32 %3, i32* %0, !dbg !20
+  store i32 %3, ptr %0, !dbg !20
   ret void, !dbg !21
 }
 
@@ -61,26 +62,26 @@ end:                                              ; preds = %entry
 ; CHECK-SAME: metadata [[CMP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CMP_LOC]]
 ; CHECK: continue:
 ; CHECK: [[ITOPTR_V:%[0-9]*]] = {{.*}} !dbg [[ITOPTR_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata i32* [[ITOPTR_V]]
+; CHECK: call void @llvm.dbg.value(metadata ptr [[ITOPTR_V]]
 ; CHECK-SAME: metadata [[ITOPTR_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ITOPTR_LOC]]
 ; CHECK: [[CALLF2_V:%[0-9]*]] = {{.*}} !dbg [[CALLF2_LOC:![0-9]*]]
 ; CHECK: call void @llvm.dbg.value(metadata i32 [[CALLF2_V]]
 ; CHECK-SAME: metadata [[CALLF2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALLF2_LOC]]
 
-define spir_func i32 @foo(i32* %a) !dbg !22 {
+define spir_func i32 @foo(ptr %a) !dbg !22 {
 entry:
-  %0 = load i32, i32* %a, !dbg !31
+  %0 = load i32, ptr %a, !dbg !31
   call void @llvm.dbg.value(metadata i32 %0, metadata !24, metadata !DIExpression()), !dbg !31
-  %1 = ptrtoint i32* %a to i32, !dbg !32
+  %1 = ptrtoint ptr %a to i32, !dbg !32
   call void @llvm.dbg.value(metadata i32 %1, metadata !25, metadata !DIExpression()), !dbg !32
   %2 = icmp slt i32 %0, %1, !dbg !33
   call void @llvm.dbg.value(metadata i1 %2, metadata !26, metadata !DIExpression()), !dbg !33
   br i1 %2, label %end, label %continue, !dbg !34
 
 continue:                                         ; preds = %entry
-  %3 = inttoptr i32 %0 to i32*, !dbg !35
-  call void @llvm.dbg.value(metadata i32* %3, metadata !28, metadata !DIExpression()), !dbg !35
-  %4 = call spir_func i32 @foo(i32* %3), !dbg !36
+  %3 = inttoptr i32 %0 to ptr, !dbg !35
+  call void @llvm.dbg.value(metadata ptr %3, metadata !28, metadata !DIExpression()), !dbg !35
+  %4 = call spir_func i32 @foo(ptr %3), !dbg !36
   call void @llvm.dbg.value(metadata i32 %4, metadata !29, metadata !DIExpression()), !dbg !36
   br label %end, !dbg !37
 

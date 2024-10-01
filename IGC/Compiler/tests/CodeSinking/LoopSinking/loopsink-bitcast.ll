@@ -5,18 +5,18 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: regkeys
-; RUN: igc_opt --regkey CodeSinkingLoadSchedulingInstr=1 --regkey LoopSinkMinSave=1 --regkey ForceLoadsLoopSink=1 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 %enable-basic-aa% --igc-code-loop-sinking -S %s | FileCheck %s
+; REQUIRES: llvm-14-plus, regkeys
+; RUN: igc_opt --opaque-pointers --regkey CodeSinkingLoadSchedulingInstr=1 --regkey LoopSinkMinSave=1 --regkey ForceLoadsLoopSink=1 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 %enable-basic-aa% --igc-code-loop-sinking -S %s | FileCheck %s
 
 
 
-define void @nosink_bc(<2 x i32> addrspace(3)* %in0, i64 addrspace(3)* %out0, i32 %count, i32 %offsetIn0) {
+define void @nosink_bc(ptr addrspace(3) %in0, ptr addrspace(3) %out0, i32 %count, i32 %offsetIn0) {
 ; CHECK-LABEL: @nosink_bc(
 ; CHECK:       entry:
-; CHECK:         [[IN0_SHIFTED:%.*]] = getelementptr <2 x i32>, <2 x i32> addrspace(3)* [[IN0:%.*]], i32 [[OFFSETIN0:%.*]]
+; CHECK:         [[IN0_SHIFTED:%.*]] = getelementptr <2 x i32>, ptr addrspace(3) [[IN0:%.*]], i32 [[OFFSETIN0:%.*]]
 ; CHECK:         br label [[ENTRY_PREHEADER:%.*]]
 ; CHECK:       entry_preheader:
-; CHECK:         [[L0:%.*]] = load <2 x i32>, <2 x i32> addrspace(3)* [[IN0_SHIFTED]], align 16
+; CHECK:         [[L0:%.*]] = load <2 x i32>, ptr addrspace(3) [[IN0_SHIFTED]], align 16
 
 ; Bitcast is not sinked, because it has second use in loop
 ; And the load is not a candidate
@@ -32,8 +32,8 @@ define void @nosink_bc(<2 x i32> addrspace(3)* %in0, i64 addrspace(3)* %out0, i3
 ; CHECK:         [[X:%.*]] = add i64 [[BC]], 1234
 ; CHECK:         [[ADD2:%.*]] = add i64 [[BC]], 2
 ; CHECK:         [[TOSTORE:%.*]] = mul i64 [[X]], [[ADD2]]
-; CHECK:         [[OUT0_SHIFTED:%.*]] = getelementptr i64, i64 addrspace(3)* [[OUT0:%.*]], i32 [[INDEX]]
-; CHECK:         store i64 [[TOSTORE]], i64 addrspace(3)* [[OUT0_SHIFTED]], align 16
+; CHECK:         [[OUT0_SHIFTED:%.*]] = getelementptr i64, ptr addrspace(3) [[OUT0:%.*]], i32 [[INDEX]]
+; CHECK:         store i64 [[TOSTORE]], ptr addrspace(3) [[OUT0_SHIFTED]], align 16
 ; CHECK:         [[CMPTMP:%.*]] = icmp ult i32 [[INDEX]], [[COUNT:%.*]]
 ; CHECK:         [[INC]] = add i32 [[INDEX]], 1
 ; CHECK:         br i1 [[CMPTMP]], label [[LOOP]], label [[AFTERLOOP:%.*]]
@@ -41,11 +41,11 @@ define void @nosink_bc(<2 x i32> addrspace(3)* %in0, i64 addrspace(3)* %out0, i3
 ; CHECK:         ret void
 ;
 entry:
-  %in0_shifted = getelementptr <2 x i32>, <2 x i32> addrspace(3)* %in0, i32 %offsetIn0
+  %in0_shifted = getelementptr <2 x i32>, ptr addrspace(3) %in0, i32 %offsetIn0
   br label %entry_preheader
 
 entry_preheader:                                  ; preds = %entry
-  %l0 = load <2 x i32>, <2 x i32> addrspace(3)* %in0_shifted, align 16
+  %l0 = load <2 x i32>, ptr addrspace(3) %in0_shifted, align 16
   %bc = bitcast <2 x i32> %l0 to i64
   br label %loop
 
@@ -54,8 +54,8 @@ loop:                                             ; preds = %loop, %entry_prehea
   %x = add i64 %bc, 1234
   %add2 = add i64 %bc, 2
   %toStore = mul i64 %x, %add2
-  %out0_shifted = getelementptr i64, i64 addrspace(3)* %out0, i32 %index
-  store i64 %toStore, i64 addrspace(3)* %out0_shifted, align 16
+  %out0_shifted = getelementptr i64, ptr addrspace(3) %out0, i32 %index
+  store i64 %toStore, ptr addrspace(3) %out0_shifted, align 16
   %cmptmp = icmp ult i32 %index, %count
   %inc = add i32 %index, 1
   br i1 %cmptmp, label %loop, label %afterloop
@@ -65,13 +65,13 @@ afterloop:                                        ; preds = %loop
 }
 
 
-define void @sink_bc(<2 x i32> addrspace(3)* %in0, i64 addrspace(3)* %out0, i32 %count, i32 %offsetIn0) {
+define void @sink_bc(ptr addrspace(3) %in0, ptr addrspace(3) %out0, i32 %count, i32 %offsetIn0) {
 ; CHECK-LABEL: @sink_bc(
 ; CHECK:       entry:
-; CHECK:         [[IN0_SHIFTED:%.*]] = getelementptr <2 x i32>, <2 x i32> addrspace(3)* [[IN0:%.*]], i32 [[OFFSETIN0:%.*]]
+; CHECK:         [[IN0_SHIFTED:%.*]] = getelementptr <2 x i32>, ptr addrspace(3) [[IN0:%.*]], i32 [[OFFSETIN0:%.*]]
 ; CHECK:         br label [[ENTRY_PREHEADER:%.*]]
 ; CHECK:       entry_preheader:
-; CHECK:         [[L0:%.*]] = load <2 x i32>, <2 x i32> addrspace(3)* [[IN0_SHIFTED]], align 16
+; CHECK:         [[L0:%.*]] = load <2 x i32>, ptr addrspace(3) [[IN0_SHIFTED]], align 16
 ; CHECK:         br label [[LOOP:%.*]]
 ; CHECK:       loop:
 ; CHECK:         [[INDEX:%.*]] = phi i32 [ 0, [[ENTRY_PREHEADER]] ], [ [[INC:%.*]], [[LOOP]] ]
@@ -81,8 +81,8 @@ define void @sink_bc(<2 x i32> addrspace(3)* %in0, i64 addrspace(3)* %out0, i32 
 
 ; CHECK:         [[SINK_BC:%.*]] = bitcast <2 x i32> [[L0]] to i64
 ; CHECK:         [[TOSTORE:%.*]] = add i64 [[SINK_BC]], 1234
-; CHECK:         [[OUT0_SHIFTED:%.*]] = getelementptr i64, i64 addrspace(3)* [[OUT0:%.*]], i32 [[INDEX]]
-; CHECK:         store i64 [[TOSTORE]], i64 addrspace(3)* [[OUT0_SHIFTED]], align 16
+; CHECK:         [[OUT0_SHIFTED:%.*]] = getelementptr i64, ptr addrspace(3) [[OUT0:%.*]], i32 [[INDEX]]
+; CHECK:         store i64 [[TOSTORE]], ptr addrspace(3) [[OUT0_SHIFTED]], align 16
 ; CHECK:         [[CMPTMP:%.*]] = icmp ult i32 [[INDEX]], [[COUNT:%.*]]
 ; CHECK:         [[INC]] = add i32 [[INDEX]], 1
 ; CHECK:         br i1 [[CMPTMP]], label [[LOOP]], label [[AFTERLOOP:%.*]]
@@ -92,11 +92,11 @@ define void @sink_bc(<2 x i32> addrspace(3)* %in0, i64 addrspace(3)* %out0, i32 
 
 
 entry:
-  %in0_shifted = getelementptr <2 x i32>, <2 x i32> addrspace(3)* %in0, i32 %offsetIn0
+  %in0_shifted = getelementptr <2 x i32>, ptr addrspace(3) %in0, i32 %offsetIn0
   br label %entry_preheader
 
 entry_preheader:                                  ; preds = %entry
-  %l0 = load <2 x i32>, <2 x i32> addrspace(3)* %in0_shifted, align 16
+  %l0 = load <2 x i32>, ptr addrspace(3) %in0_shifted, align 16
   %bc = bitcast <2 x i32> %l0 to i64
   br label %loop
 
@@ -104,8 +104,8 @@ loop:                                             ; preds = %loop, %entry_prehea
   %index = phi i32 [ 0, %entry_preheader ], [ %inc, %loop ]
 
   %toStore = add i64 %bc, 1234
-  %out0_shifted = getelementptr i64, i64 addrspace(3)* %out0, i32 %index
-  store i64 %toStore, i64 addrspace(3)* %out0_shifted, align 16
+  %out0_shifted = getelementptr i64, ptr addrspace(3) %out0, i32 %index
+  store i64 %toStore, ptr addrspace(3) %out0_shifted, align 16
   %cmptmp = icmp ult i32 %index, %count
   %inc = add i32 %index, 1
   br i1 %cmptmp, label %loop, label %afterloop
@@ -115,23 +115,23 @@ afterloop:                                        ; preds = %loop
 }
 
 
-define void @sink_bc2(<2 x i32> addrspace(3)* noalias %in0, i64 addrspace(3)* noalias %out0, i32 %count, i32 %offsetIn0) {
+define void @sink_bc2(ptr addrspace(3) noalias %in0, ptr addrspace(3) noalias %out0, i32 %count, i32 %offsetIn0) {
 ; CHECK-LABEL: @sink_bc2(
 ; CHECK:       entry:
-; CHECK:         [[IN0_SHIFTED:%.*]] = getelementptr <2 x i32>, <2 x i32> addrspace(3)* [[IN0:%.*]], i32 [[OFFSETIN0:%.*]]
+; CHECK:         [[IN0_SHIFTED:%.*]] = getelementptr <2 x i32>, ptr addrspace(3) [[IN0:%.*]], i32 [[OFFSETIN0:%.*]]
 ; CHECK:         br label [[ENTRY_PREHEADER:%.*]]
 ; CHECK:       entry_preheader:
 ; CHECK:         br label [[LOOP:%.*]]
 ; CHECK:       loop:
 ; CHECK:         [[INDEX:%.*]] = phi i32 [ 0, [[ENTRY_PREHEADER]] ], [ [[INC:%.*]], [[LOOP]] ]
-; CHECK:         [[SINK_L0:%.*]] = load <2 x i32>, <2 x i32> addrspace(3)* [[IN0_SHIFTED]], align 16
+; CHECK:         [[SINK_L0:%.*]] = load <2 x i32>, ptr addrspace(3) [[IN0_SHIFTED]], align 16
 
 ; bitcast is sinked and enabled load sinking
 
 ; CHECK:         [[SINK_BC:%.*]] = bitcast <2 x i32> [[SINK_L0]] to i64
 ; CHECK:         [[TOSTORE:%.*]] = add i64 [[SINK_BC]], 1234
-; CHECK:         [[OUT0_SHIFTED:%.*]] = getelementptr i64, i64 addrspace(3)* [[OUT0:%.*]], i32 [[INDEX]]
-; CHECK:         store i64 [[TOSTORE]], i64 addrspace(3)* [[OUT0_SHIFTED]], align 16
+; CHECK:         [[OUT0_SHIFTED:%.*]] = getelementptr i64, ptr addrspace(3) [[OUT0:%.*]], i32 [[INDEX]]
+; CHECK:         store i64 [[TOSTORE]], ptr addrspace(3) [[OUT0_SHIFTED]], align 16
 ; CHECK:         [[CMPTMP:%.*]] = icmp ult i32 [[INDEX]], [[COUNT:%.*]]
 ; CHECK:         [[INC]] = add i32 [[INDEX]], 1
 ; CHECK:         br i1 [[CMPTMP]], label [[LOOP]], label [[AFTERLOOP:%.*]]
@@ -140,11 +140,11 @@ define void @sink_bc2(<2 x i32> addrspace(3)* noalias %in0, i64 addrspace(3)* no
 ;
 
 entry:
-  %in0_shifted = getelementptr <2 x i32>, <2 x i32> addrspace(3)* %in0, i32 %offsetIn0
+  %in0_shifted = getelementptr <2 x i32>, ptr addrspace(3) %in0, i32 %offsetIn0
   br label %entry_preheader
 
 entry_preheader:                                  ; preds = %entry
-  %l0 = load <2 x i32>, <2 x i32> addrspace(3)* %in0_shifted, align 16
+  %l0 = load <2 x i32>, ptr addrspace(3) %in0_shifted, align 16
   %bc = bitcast <2 x i32> %l0 to i64
   br label %loop
 
@@ -152,8 +152,8 @@ loop:                                             ; preds = %loop, %entry_prehea
   %index = phi i32 [ 0, %entry_preheader ], [ %inc, %loop ]
 
   %toStore = add i64 %bc, 1234
-  %out0_shifted = getelementptr i64, i64 addrspace(3)* %out0, i32 %index
-  store i64 %toStore, i64 addrspace(3)* %out0_shifted, align 16
+  %out0_shifted = getelementptr i64, ptr addrspace(3) %out0, i32 %index
+  store i64 %toStore, ptr addrspace(3) %out0_shifted, align 16
   %cmptmp = icmp ult i32 %index, %count
   %inc = add i32 %index, 1
   br i1 %cmptmp, label %loop, label %afterloop
