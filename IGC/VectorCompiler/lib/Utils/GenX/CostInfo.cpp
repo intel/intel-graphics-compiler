@@ -100,8 +100,8 @@ LoopCountExpr vc::restoreLCEFromMetadata(const llvm::Loop &L) {
   auto *ArgNode = dyn_cast<MDNode>(ExprNode->getOperand(1));
   IGC_ASSERT(ArgNode && ArgNode->getNumOperands() == MDNumOperands::Argument);
   LCE.Symbol.Num = extractConstantIntMD(ArgNode->getOperand(0));
-  LCE.Symbol.Size = extractConstantIntMD(ArgNode->getOperand(1));
-  LCE.Symbol.Offset = extractConstantIntMD(ArgNode->getOperand(2));
+  LCE.Symbol.Offset = extractConstantIntMD(ArgNode->getOperand(1));
+  LCE.Symbol.Size = extractConstantIntMD(ArgNode->getOperand(2));
   LCE.Symbol.IsIndirect = extractConstantIntMD(ArgNode->getOperand(3));
   return LCE;
 }

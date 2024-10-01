@@ -292,7 +292,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   BackendOpts.EnableHashMovsAtPrologue = Opts.EnableHashMovsAtPrologue;
   BackendOpts.AsmHash = Opts.AsmHash;
 
-  BackendOpts.EnableCostModel = Opts.EnableCostModel;
+  BackendOpts.EnableCostModel = Opts.CollectCostInfo;
 
   return BackendOpts;
 }
@@ -738,6 +738,8 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
     Opts.ForceDisableIndvarsOpt = true;
   if (ApiOptions.hasArg(OPT_enable_auto_large_GRF_mode_common))
     Opts.EnableAutoLargeGRF = true;
+  if (ApiOptions.hasArg(OPT_collect_cost_info_common))
+    Opts.CollectCostInfo = true;
 
   if (opt::Arg *A = ApiOptions.getLastArg(OPT_exp_register_file_size_common)) {
     StringRef V = A->getValue();

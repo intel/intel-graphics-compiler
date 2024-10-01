@@ -313,7 +313,7 @@ static void adjustTransformationsAndOptimizations(vc::CompileOptions &Opts) {
 
 static void adjustKernelMetrics(vc::CompileOptions &Opts) {
   if (IGC_IS_FLAG_ENABLED(EnableKernelCostInfo))
-    Opts.EnableCostModel = true;
+    Opts.CollectCostInfo = true;
 }
 
 static void adjustDumpOptions(vc::CompileOptions &Opts) {

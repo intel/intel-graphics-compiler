@@ -161,8 +161,8 @@ struct CompileOptions {
   bool EnableHashMovsAtPrologue = false;
   uint64_t AsmHash = 0;
 
-  bool EnableCostModel = false;
   bool EnableOpaquePointers = false;
+  bool CollectCostInfo = false;
 };
 
 struct ExternalData {

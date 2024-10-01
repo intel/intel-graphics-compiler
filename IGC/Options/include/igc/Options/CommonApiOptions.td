@@ -64,5 +64,9 @@ defm enable_auto_large_GRF_mode : CommonFlag<"enable-auto-large-GRF-mode">,
 // Pass <arg> to the visa finalizer
 def Xfinalizer : PlainSeparate<"Xfinalizer">,
   HelpText<"Pass <arg> to the visa finalizer">, MetaVarName<"<arg>">;
+
+// -ze-collect-cost-info
+defm collect_cost_info : CommonFlag<"collect-cost-info">,
+  HelpText<"Find argument symbols, calculate loop count and loop cost expressions">;
 }
 // }} Common API options
