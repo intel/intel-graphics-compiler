@@ -224,6 +224,7 @@ private:
   bool lowerBoolScalarSelect(SelectInst *SI);
   bool lowerBoolVectorSelect(SelectInst *SI);
   bool lowerBoolShuffle(ShuffleVectorInst *Inst);
+  bool lowerBoolShuffleReplicatedSlice(ShuffleVectorInst *Inst);
   bool lowerBoolSplat(ShuffleVectorInst *SI, Value *In, unsigned Idx);
   bool lowerShuffle(ShuffleVectorInst *Inst);
   void lowerShuffleSplat(ShuffleVectorInst *SI,
@@ -2879,7 +2880,7 @@ bool GenXLowering::lowerBoolShuffle(ShuffleVectorInst *SI) {
 
   // Do not lower replicated slices.
   if (SVA.isReplicatedSlice())
-    return false;
+    return lowerBoolShuffleReplicatedSlice(SI);
 
   // 4. General case.
 
@@ -2906,6 +2907,46 @@ bool GenXLowering::lowerBoolShuffle(ShuffleVectorInst *SI) {
   Value *Result = B.CreateICmpNE(SI1, C2);
   SI->replaceAllUsesWith(Result);
   ToErase.push_back(SI);
+
+  return true;
+}
+
+bool GenXLowering::lowerBoolShuffleReplicatedSlice(ShuffleVectorInst *Inst) {
+  auto *Src = dyn_cast<ShuffleVectorInst>(Inst->getOperand(0));
+  if (!Src)
+    return false;
+
+  if (!isa<UndefValue>(Inst->getOperand(1)))
+    return false;
+
+  ShuffleVectorAnalyzer SVA(Src);
+  if (!SVA.isReplicatedSlice())
+    return false;
+
+  SmallVector<int, 32> InstMask;
+  SmallVector<int, 32> SrcMask;
+
+  Inst->getShuffleMask(InstMask);
+  Src->getShuffleMask(SrcMask);
+
+  transform(InstMask, InstMask.begin(), [&](int Idx) {
+    if (Idx == UndefMaskElem)
+      return UndefMaskElem;
+    return SrcMask[Idx];
+  });
+
+  IRBuilder<> Builder(Inst);
+
+  auto *NewShuffle = Builder.CreateShuffleVector(Src->getOperand(0),
+                                                 Src->getOperand(1), InstMask);
+  NewShuffle->takeName(Inst);
+  Inst->replaceAllUsesWith(NewShuffle);
+  Inst->setOperand(0, UndefValue::get(Src->getType()));
+
+  if (Src->use_empty())
+    Src->eraseFromParent();
+
+  ToErase.push_back(Inst);
 
   return true;
 }
