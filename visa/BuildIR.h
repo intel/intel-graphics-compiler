@@ -874,6 +874,9 @@ public:
 
   G4_Declare *createScalar(uint16_t numFlagElements, const char *name);
 
+  G4_Declare *createTempAddress(uint16_t numAddressElements,
+                                const char *prefix = "TEMP_ADDR");
+
   G4_Declare *createPreVar(PreDefinedVarsInternal preDefVar_index,
                            unsigned short numElements, G4_Type type);
 

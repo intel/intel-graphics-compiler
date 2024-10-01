@@ -1228,6 +1228,14 @@ G4_Declare *IR_Builder::createFlag(uint16_t numFlagElements, const char *name) {
   return dcl;
 }
 
+G4_Declare *IR_Builder::createTempAddress(uint16_t numAddressElements,
+                                          const char *prefix) {
+  const char *name = getNameString(20, "%s%d", prefix, num_temp_dcl++);
+  G4_Declare *dcl =
+      createDeclare(name, G4_ADDRESS, numAddressElements, 1, Type_UD);
+  return dcl;
+}
+
 G4_Declare *IR_Builder::createTempScalar(uint16_t numFlagElements,
                                          const char *prefix) {
   const char *name = getNameString(20, "%s%d", prefix, num_temp_dcl++);
@@ -2600,6 +2608,7 @@ G4_InstSend *IR_Builder::createLscSendInst(
   uint32_t exDesc = msgDesc->getExtendedDesc();
   G4_Operand *surface = msgDesc->getBti(); // BTI or SS/BSS
   G4_Operand *exDescOpnd = nullptr;
+  G4_Declare *addrDecl = builtinA0Dot2;
 
   if (surface && surface->isSrcRegRegion()) {
     if (emitA0RegDef) {
@@ -2621,13 +2630,18 @@ G4_InstSend *IR_Builder::createLscSendInst(
         // set src1.length into exDesc. BTI message is required to be on ExBSO=0
         // mode, so the src.length is part of exDesc
         exDesc = (exDesc & (~0x7FF)) | ((uint32_t)msgDesc->extMessageLength() << 6);
-        G4_DstRegRegion *addrDstOpnd = createDstRegRegion(builtinA0Dot2, 1);
+        G4_DstRegRegion *addrDstOpnd = createDstRegRegion(addrDecl, 1);
         // add a0.2 tmpSrc exdesc
         createBinOp(G4_add, g4::SIMD1, addrDstOpnd, tmpSrc,
                     createImm(exDesc, Type_UD), InstOpt_WriteEnable, true);
       } else {
         // SS or BSS
-        G4_DstRegRegion *addrDstOpnd = createDstRegRegion(builtinA0Dot2, 1);
+        // The payload keeps reusing fixed a0.2 serializes loads. To improve the
+        // the performance issue caused by this, we create temp address
+        // variables and let RA to assign to spread out a0 usage.
+        if (getOption(vISA_dynamicAddrForExDescInLscSend))
+          addrDecl = createTempAddress(1);
+        G4_DstRegRegion *addrDstOpnd = createDstRegRegion(addrDecl, 1);
         if ((addrType == LSC_ADDR_TYPE_BSS) || (addrType == LSC_ADDR_TYPE_SS)) {
           if (ssIdx == 0x0) {
             //   (W) mov (1)  a0.2  surface
@@ -2646,12 +2660,12 @@ G4_InstSend *IR_Builder::createLscSendInst(
     }
 
     if (getOption(vISA_CopyA0ToDBG0)) {
-      G4_SrcRegRegion *srcA0 = createSrcRegRegion(builtinA0Dot2, getRegionScalar());
+      G4_SrcRegRegion *srcA0 = createSrcRegRegion(addrDecl, getRegionScalar());
       G4_DstRegRegion *dstDbg0 =
           createDst(phyregpool.getDbgReg(), 0, 0, 1, Type_UD);
       createMov(g4::SIMD1, dstDbg0, srcA0, InstOpt_WriteEnable, true);
     }
-    exDescOpnd = createSrcRegRegion(builtinA0Dot2, getRegionScalar());
+    exDescOpnd = createSrcRegRegion(addrDecl, getRegionScalar());
     msgDesc->setSurface(exDescOpnd); // link a0.2 to the send descriptor
   } else if (surface && surface->isImm()) {
     // If by some chance the surface is an immediate value that didn't fold
@@ -2664,7 +2678,7 @@ G4_InstSend *IR_Builder::createLscSendInst(
     //
     // Callers that fold the ExDesc value into an immediate descriptor
     // should pass nullptr as the surface.
-    G4_DstRegRegion *addrDstOpnd = createDstRegRegion(builtinA0Dot2, 1);
+    G4_DstRegRegion *addrDstOpnd = createDstRegRegion(addrDecl, 1);
     if (addrType == LSC_ADDR_TYPE_BSS || addrType == LSC_ADDR_TYPE_SS) {
       //   mov    a0.2   SurfaceAddrImm
       auto imm = surface->asImm()->getImm();
@@ -2674,12 +2688,13 @@ G4_InstSend *IR_Builder::createLscSendInst(
                 InstOpt_WriteEnable, true);
 
       if (getOption(vISA_CopyA0ToDBG0)) {
-        G4_SrcRegRegion *srcA0 = createSrcRegRegion(builtinA0Dot2, getRegionScalar());
+        G4_SrcRegRegion *srcA0 =
+            createSrcRegRegion(addrDecl, getRegionScalar());
         G4_DstRegRegion *dstDbg0 =
             createDst(phyregpool.getDbgReg(), 0, 0, 1, Type_UD);
         createMov(g4::SIMD1, dstDbg0, srcA0, InstOpt_WriteEnable, true);
       }
-      exDescOpnd = createSrcRegRegion(builtinA0Dot2, getRegionScalar());
+      exDescOpnd = createSrcRegRegion(addrDecl, getRegionScalar());
       msgDesc->setSurface(exDescOpnd); // link a0.2 to the send descriptor
     } else {
       // BTI is in ExDesc[31:24] and that is always available.

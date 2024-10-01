@@ -175,6 +175,11 @@ DEF_VISA_OPTION(vISA_SinkBarrierWait, ET_BOOL_TRUE, "-sinkBarrierWait",
                 "The option is used to sink barrier wait away from signal as "
                 "far as possible.",
                 false)
+DEF_VISA_OPTION(vISA_dynamicAddrForExDescInLscSend, ET_BOOL_TRUE,
+                "-dynamicAddrForExDescInLscSend",
+                "Use unfixed address which is assigned by RA instead of a0.2 as "
+                "the extend messaged descriptor in LSC send messages",
+                false)
 
 //=== code gen options ===
 DEF_VISA_OPTION(vISA_noSrc1Byte, ET_BOOL, "-nosrc1byte", UNUSED, false)
