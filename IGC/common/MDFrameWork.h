@@ -446,6 +446,8 @@ namespace IGC
         bool DisableConstantCoalescing                  = false;
         bool EnableUndefAlphaOutputAsRed                = true;
         bool WaEnableALTModeVisaWA                      = false;
+        bool EnableLdStCombineforLoad                   = false;
+        bool EnableLdStCombinewithDummyLoad             = false;
         bool NewSpillCostFunction                       = false;
         bool ForceLargeGRFNum4RQ                        = false;
         bool DisableEUFusion                            = false;
