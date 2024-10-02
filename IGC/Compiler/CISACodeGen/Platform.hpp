@@ -682,8 +682,7 @@ bool has16OWSLMBlockRW() const
 
 bool hasLargeMaxConstantBufferSize() const
 {
-    return IGC_IS_FLAG_DISABLED(Force32bitConstantGEPLowering) &&
-        m_platformInfo.eProductFamily == IGFX_PVC;
+    return IGC_IS_FLAG_DISABLED(Force32bitConstantGEPLowering) && isCoreChildOf(IGFX_XE_HPC_CORE);
 }
 
 bool supportInlineData() const
