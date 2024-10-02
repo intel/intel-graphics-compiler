@@ -123,11 +123,11 @@ inline MemoryEffectsLLVMTy translateMemoryEffect(ExclusiveIRMemLoc Loc) {
     // No restrictions
     IGC_ASSERT_MESSAGE(Loc == ExclusiveIRMemLoc::Any,
         "Unknown ExclusiveIRMemLoc value");
-    return {};
+    return IGCLLVM_SELECT_LLVM_16(llvm::MemoryEffects::unknown(), std::nullopt);
 }
 inline MemoryEffectsLLVMTy translateMemoryEffect(ModRefInfo MR) {
 #if LLVM_VERSION_MAJOR >= 16
-    return MR;
+    return MemoryEffectsLLVMTy(MR);
 #else // LLVM_VERSION_MAJOR
     if (MR == ModRefInfo::NoModRef)
         return llvm::Attribute::ReadNone;
