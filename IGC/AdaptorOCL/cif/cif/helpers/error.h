@@ -9,11 +9,16 @@ SPDX-License-Identifier: MIT
 #pragma once
 
 #include <cstdlib>
+#include <stdexcept>
 
 namespace CIF {
 
 inline void AbortImpl(){
+#if defined(NDEBUG)
+    throw std::runtime_error("Internal Error.");
+#else
     std::abort();
+#endif
 }
 
 template<typename T = void>
