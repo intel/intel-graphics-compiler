@@ -495,7 +495,7 @@ void __builtin_IB_subgroup_block_write_cacheopts_u16_m8k16v1(long base_address, 
 
 #ifdef cl_intel_subgroup_2d_block_io
 
-typedef ushort uchar32 __attribute__((ext_vector_type(32)));
+typedef uchar uchar32 __attribute__((ext_vector_type(32)));
 
 typedef ushort ushort32 __attribute__((ext_vector_type(32)));
 typedef ushort ushort64 __attribute__((ext_vector_type(64)));
