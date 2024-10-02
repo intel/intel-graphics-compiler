@@ -1458,7 +1458,7 @@ IR_Builder::constructSrcPayloadRenderTarget(vISA_RT_CONTROLS cntrls,
   }
 
   auto checkType = [](G4_SrcRegRegion *src) {
-    return src->getType() == Type_F || src->isNullReg();
+    return src == nullptr || src->getType() == Type_F || src->isNullReg();
   };
   vISA_ASSERT_INPUT(checkType(R) && checkType(G) && checkType(B) && checkType(A),
          "RGBA type must be F");
@@ -1490,135 +1490,152 @@ IR_Builder::constructSrcPayloadRenderTarget(vISA_RT_CONTROLS cntrls,
 
   G4_SrcRegRegion *srcToUse = nullptr;
 
-  // creating payload
-  unsigned int numElts = numRows * getGRFSize() / TypeSize(Type_F);
-  auto payloadUD = createSendPayloadDcl(numElts, Type_UD);
-  auto payloadUW = createSendPayloadDcl(numElts, Type_UW);
-  auto payloadF = createSendPayloadDcl(numElts, Type_F);
-  auto payloadUB = createSendPayloadDcl(numElts, Type_UB);
+  if (numRows > 0)
+  {
+    // creating payload
+    unsigned int numElts = numRows * getGRFSize() / TypeSize(Type_F);
+    auto payloadUD = createSendPayloadDcl(numElts, Type_UD);
+    auto payloadUW = createSendPayloadDcl(numElts, Type_UW);
+    auto payloadF = createSendPayloadDcl(numElts, Type_F);
+    auto payloadUB = createSendPayloadDcl(numElts, Type_UB);
 
-  payloadUW->setAliasDeclare(payloadUD, 0);
-  payloadF->setAliasDeclare(payloadUD, 0);
-  payloadUB->setAliasDeclare(payloadUD, 0);
+    payloadUW->setAliasDeclare(payloadUD, 0);
+    payloadF->setAliasDeclare(payloadUD, 0);
+    payloadUB->setAliasDeclare(payloadUD, 0);
 
-  // Check whether coalescing is possible
-  // coalesc payload by checking whether the source is already prepared in a
-  // continuous region. If so, we could reuse the source region directly
-  // instead of copying it again.
-  bool canCoalesce = true;
-  G4_SrcRegRegion *leadingParam =
-      cntrls.s0aPresent ? s0a : (cntrls.oMPresent ? oM : R);
+    // Check whether coalescing is possible
+    // coalesc payload by checking whether the source is already prepared in a
+    // continuous region. If so, we could reuse the source region directly
+    // instead of copying it again.
+    bool canCoalesce = true;
+    G4_SrcRegRegion *leadingParam =
+        cntrls.s0aPresent ? s0a : (cntrls.oMPresent ? oM : R);
 
-  if (R->isNullReg() || G->isNullReg() || B->isNullReg() || A->isNullReg()) {
-    canCoalesce = false;
-  }
-
-  if (canCoalesce) {
-    auto payloadDcl = leadingParam->getTopDcl()->getRootDeclare();
-    uint32_t nextOffset = getByteOffsetSrcRegion(leadingParam);
-
-    // s0a is leading param if present, so no need to check for its
-    // contiguousness
-    auto isContiguous = [this](G4_SrcRegRegion *src, uint32_t offset,
-                               G4_Declare *dcl) {
-      auto srcDcl = src->getTopDcl()->getRootDeclare();
-      if (srcDcl != dcl) {
-        return false; // different declares are not contiguous
-      }
-      return offset ==
-             getByteOffsetSrcRegion(
-                 src); // offset must be equal to the src's byte offset
-    };
-
-    if (canCoalesce && cntrls.oMPresent) {
-      canCoalesce = isContiguous(oM, nextOffset, payloadDcl);
-      nextOffset += getGRFSize();
+    if (R == nullptr || R->isNullReg() ||
+        G == nullptr || G->isNullReg() ||
+        B == nullptr || B->isNullReg() ||
+        A == nullptr || A->isNullReg()) {
+      canCoalesce = false;
     }
 
     if (canCoalesce) {
-      canCoalesce = isContiguous(R, nextOffset, payloadDcl);
-      nextOffset += getGRFSize() * mult;
+      auto payloadDcl = leadingParam->getTopDcl()->getRootDeclare();
+      uint32_t nextOffset = getByteOffsetSrcRegion(leadingParam);
+
+      // s0a is leading param if present, so no need to check for its
+      // contiguousness
+      auto isContiguous = [this](G4_SrcRegRegion *src, uint32_t offset,
+                                 G4_Declare *dcl) {
+        auto srcDcl = src->getTopDcl()->getRootDeclare();
+        if (srcDcl != dcl) {
+          return false; // different declares are not contiguous
+        }
+        return offset ==
+               getByteOffsetSrcRegion(
+                   src); // offset must be equal to the src's byte offset
+      };
+
+      if (canCoalesce && cntrls.oMPresent) {
+        canCoalesce = isContiguous(oM, nextOffset, payloadDcl);
+        nextOffset += getGRFSize();
+      }
+
       if (canCoalesce) {
-        canCoalesce = isContiguous(G, nextOffset, payloadDcl);
+        canCoalesce = isContiguous(R, nextOffset, payloadDcl);
+        nextOffset += getGRFSize() * mult;
+        if (canCoalesce) {
+          canCoalesce = isContiguous(G, nextOffset, payloadDcl);
+          nextOffset += getGRFSize() * mult;
+        }
+        if (canCoalesce) {
+          canCoalesce = isContiguous(B, nextOffset, payloadDcl);
+          nextOffset += getGRFSize() * mult;
+        }
+        if (canCoalesce) {
+          canCoalesce = isContiguous(A, nextOffset, payloadDcl);
+          nextOffset += getGRFSize() * mult;
+        }
+      }
+
+      if (canCoalesce && cntrls.zPresent) {
+        canCoalesce = isContiguous(Z, nextOffset, payloadDcl);
         nextOffset += getGRFSize() * mult;
       }
-      if (canCoalesce) {
-        canCoalesce = isContiguous(B, nextOffset, payloadDcl);
-        nextOffset += getGRFSize() * mult;
-      }
-      if (canCoalesce) {
-        canCoalesce = isContiguous(A, nextOffset, payloadDcl);
-        nextOffset += getGRFSize() * mult;
+
+      // last element is stencil
+      if (canCoalesce && cntrls.isStencil) {
+        canCoalesce = isContiguous(S, nextOffset, payloadDcl);
       }
     }
 
-    if (canCoalesce && cntrls.zPresent) {
-      canCoalesce = isContiguous(Z, nextOffset, payloadDcl);
-      nextOffset += getGRFSize() * mult;
+    if (!canCoalesce) {
+      // Copy parameters to payload
+      // ToDo: optimize to generate split send
+      unsigned regOff = 0;
+
+      if (cntrls.s0aPresent) {
+        Copy_SrcRegRegion_To_Payload(payloadF, regOff, s0a, execSize, instOpt);
+      }
+
+      if (cntrls.oMPresent) {
+        Copy_SrcRegRegion_To_Payload(payloadUW, regOff, oM, execSize, instOpt);
+      }
+
+      auto offIncrement = mult;
+
+      if (R != nullptr) {
+        if (!R->isNullReg())
+          Copy_SrcRegRegion_To_Payload(payloadF, regOff, R, execSize, instOpt);
+        else
+          regOff += offIncrement;
+      }
+
+      if (G != nullptr) {
+        if (!G->isNullReg())
+          Copy_SrcRegRegion_To_Payload(payloadF, regOff, G, execSize, instOpt);
+        else
+          regOff += offIncrement;
+      }
+
+      if (B != nullptr) {
+        if (!B->isNullReg())
+          Copy_SrcRegRegion_To_Payload(payloadF, regOff, B, execSize, instOpt);
+        else
+          regOff += offIncrement;
+      }
+
+      if (A != nullptr) {
+        if (!A->isNullReg())
+          Copy_SrcRegRegion_To_Payload(payloadF, regOff, A, execSize, instOpt);
+        else
+          regOff += offIncrement;
+      }
+
+      if (cntrls.zPresent) {
+        Copy_SrcRegRegion_To_Payload(payloadF, regOff, Z, execSize, instOpt);
+      }
+
+      if (cntrls.isStencil) {
+        Copy_SrcRegRegion_To_Payload(payloadUB, regOff, S, execSize, instOpt);
+      }
+
+      srcToUse = createSrcRegRegion(payloadUD, getRegionStride1());
+    } else {
+      // Coalesce and directly use original raw operand
+      leadingParam->setType(*this,
+                            R->getType()); // it shouldn't matter, but change it
+                                           // in case leading param is oM
+      srcToUse = leadingParam;
     }
-
-    // last element is stencil
-    if (canCoalesce && cntrls.isStencil) {
-      canCoalesce = isContiguous(S, nextOffset, payloadDcl);
-    }
-  }
-
-  if (!canCoalesce) {
-    // Copy parameters to payload
-    // ToDo: optimize to generate split send
-    unsigned regOff = 0;
-
-    if (cntrls.s0aPresent) {
-      Copy_SrcRegRegion_To_Payload(payloadF, regOff, s0a, execSize, instOpt);
-    }
-
-    if (cntrls.oMPresent) {
-      Copy_SrcRegRegion_To_Payload(payloadUW, regOff, oM, execSize, instOpt);
-    }
-
-    auto offIncrement = mult;
-
-    if (!R->isNullReg())
-      Copy_SrcRegRegion_To_Payload(payloadF, regOff, R, execSize, instOpt);
-    else
-      regOff += offIncrement;
-
-    if (!G->isNullReg())
-      Copy_SrcRegRegion_To_Payload(payloadF, regOff, G, execSize, instOpt);
-    else
-      regOff += offIncrement;
-
-    if (!B->isNullReg())
-      Copy_SrcRegRegion_To_Payload(payloadF, regOff, B, execSize, instOpt);
-    else
-      regOff += offIncrement;
-
-    if (!A->isNullReg())
-      Copy_SrcRegRegion_To_Payload(payloadF, regOff, A, execSize, instOpt);
-    else
-      regOff += offIncrement;
-
-    if (cntrls.zPresent) {
-      Copy_SrcRegRegion_To_Payload(payloadF, regOff, Z, execSize, instOpt);
-    }
-
-    if (cntrls.isStencil) {
-      Copy_SrcRegRegion_To_Payload(payloadUB, regOff, S, execSize, instOpt);
-    }
-
-    srcToUse = createSrcRegRegion(payloadUD, getRegionStride1());
   } else {
-    // Coalesce and directly use original raw operand
-    leadingParam->setType(*this,
-                          R->getType()); // it shouldn't matter, but change it
-                                         // in case leading param is oM
-    srcToUse = leadingParam;
+      numRows = 1;
+      srcToUse = createNullSrc(Type_UD);
   }
   // set chmask
-  uint32_t chMask = (!R->isNullReg() ? 0x1 : 0) |
-                    ((!G->isNullReg() ? 0x1 : 0) << 0x1) |
-                    ((!B->isNullReg() ? 0x1 : 0) << 0x2) |
-                    (((!A->isNullReg() || cntrls.s0aPresent) ? 0x1 : 0) << 0x3);
+  uint32_t chMask = (R && !R->isNullReg() ? 0x1 : 0) |
+                    ((G && !G->isNullReg() ? 0x1 : 0) << 0x1) |
+                    ((B && !B->isNullReg() ? 0x1 : 0) << 0x2) |
+                    (((A && !A->isNullReg() || cntrls.s0aPresent) ? 0x1 : 0) << 0x3);
 
   return std::make_tuple(srcToUse, numRows, chMask);
 }
