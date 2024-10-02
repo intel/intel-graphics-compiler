@@ -157,9 +157,22 @@ static bool argToTransform(const Argument &Arg,
   if (!PtrTy)
     return false;
   Type *ElemTy = IGCLLVM::getNonOpaquePtrEltTy(PtrTy);
-  if ((ElemTy->isVectorTy() || onlyUsedBySimpleValueLoadStore(Arg)) &&
-      (ElemTy->isIntOrIntVectorTy() || ElemTy->isFPOrFPVectorTy()))
-    return true;
+  if (ElemTy->isIntOrIntVectorTy() || ElemTy->isFPOrFPVectorTy()) {
+    if (ElemTy->isVectorTy()) {
+      for (auto *U : Arg.users()) {
+        auto *GEP = dyn_cast<GetElementPtrInst>(U);
+        if (!GEP)
+          continue;
+        if (&Arg != GEP->getPointerOperand())
+          continue;
+        auto *ConstIdx = dyn_cast<ConstantInt>(*GEP->idx_begin());
+        if (!ConstIdx || ConstIdx->getZExtValue() != 0)
+          return false;
+      }
+      return true;
+    }
+    return onlyUsedBySimpleValueLoadStore(Arg);
+  }
   if (auto *StrTy = dyn_cast<StructType>(ElemTy)) {
     const DataLayout &DL = Arg.getParent()->getParent()->getDataLayout();
     if (structSafeToPassByVal(Arg) &&
