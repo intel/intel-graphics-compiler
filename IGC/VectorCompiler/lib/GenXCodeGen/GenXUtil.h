@@ -341,6 +341,8 @@ public:
     return ShuffleVectorAnalyzer(SI).getReplicatedSliceDescriptor();
   }
 
+  bool isVNNIShuffle(unsigned ExecSize) const;
+
   // getAsUnslice : see if the shufflevector is an
   //     unslice where the "old value" is operand 0 and operand 1 is another
   //     shufflevector and operand 0 of that is the "new value" Returns start

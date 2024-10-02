@@ -230,6 +230,7 @@ private:
   void lowerShuffleSplat(ShuffleVectorInst *SI,
                          ShuffleVectorAnalyzer::SplatInfo Splat);
   bool lowerShuffleToSelect(ShuffleVectorInst *Inst);
+  bool lowerShuffleToVNNI(ShuffleVectorInst *Inst, unsigned ExecSize);
   void lowerShuffleToMove(ShuffleVectorInst *SI);
   bool lowerShr(Instruction *Inst);
   bool lowerExtractValue(ExtractValueInst *Inst);
@@ -3126,14 +3127,59 @@ void GenXLowering::lowerShuffleSplat(ShuffleVectorInst *SI,
  * Any other shuffle is currently unsupported
  */
 bool GenXLowering::lowerShuffle(ShuffleVectorInst *SI) {
-  auto Splat = ShuffleVectorAnalyzer(SI).getAsSplat();
+  ShuffleVectorAnalyzer SVA(SI);
+
+  auto Splat = SVA.getAsSplat();
   if (Splat.Input) {
     lowerShuffleSplat(SI, Splat);
     return true;
   }
   if (lowerShuffleToSelect(SI))
     return true;
+
+  if (auto ExecSize = ST->getGRFByteSize() / genx::DWordBytes;
+      SVA.isVNNIShuffle(ExecSize))
+    return lowerShuffleToVNNI(SI, ExecSize);
+
   lowerShuffleToMove(SI);
+  return true;
+}
+
+bool GenXLowering::lowerShuffleToVNNI(ShuffleVectorInst *SI,
+                                      unsigned ExecSize) {
+  auto *Ty = cast<IGCLLVM::FixedVectorType>(SI->getType());
+  auto *EltTy = Ty->getElementType();
+  auto EltSize = DL->getTypeSizeInBits(EltTy);
+
+  auto VNNIFactor = genx::DWordBits / EltSize;
+
+  auto *Src = SI->getOperand(0);
+  Value *Res = UndefValue::get(Ty);
+
+  vc::Region ReadRgn(SI);
+  ReadRgn.VStride = ExecSize * VNNIFactor;
+  ReadRgn.Width = ExecSize;
+  ReadRgn.Stride = 1;
+  ReadRgn.Offset = 0;
+
+  vc::Region WriteRgn(SI);
+  WriteRgn.VStride = VNNIFactor;
+  WriteRgn.Width = 1;
+  WriteRgn.Stride = 0;
+  WriteRgn.Offset = 0;
+
+  for (int I = 0; I < VNNIFactor; I++) {
+    auto *Read = ReadRgn.createRdRegion(Src, "", SI, SI->getDebugLoc());
+    Res = WriteRgn.createWrRegion(Res, Read, "", SI, SI->getDebugLoc());
+    ReadRgn.Offset += ExecSize * ReadRgn.ElementBytes;
+    WriteRgn.Offset += WriteRgn.ElementBytes;
+  }
+
+  auto *NewInst = cast<Instruction>(Res);
+  NewInst->takeName(SI);
+  SI->replaceAllUsesWith(NewInst);
+  ToErase.push_back(SI);
+
   return true;
 }
 
