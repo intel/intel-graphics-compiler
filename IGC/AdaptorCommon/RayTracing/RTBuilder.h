@@ -485,7 +485,7 @@ public:
     void copyMemHitInProceed(
         SyncStackPointerVal* HWStackPtr,
         SyncStackPointerVal* SMStackPtr,
-        bool singleRQProceed, 
+        bool singleRQProceed,
         bool useDeprecated);
 
     Value* syncStackToShadowMemory(
