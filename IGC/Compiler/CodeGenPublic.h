@@ -1155,6 +1155,7 @@ namespace IGC
             return llvmCtxWrapper->m_allLayoutStructTypes;
         }
 
+
         unsigned int GetSIMDInfoOffset(SIMDMode simd, ShaderDispatchMode mode)
         {
             unsigned int offset = 0;
