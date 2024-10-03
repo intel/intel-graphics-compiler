@@ -254,7 +254,7 @@ LoopCountExprWrapper LCEFinder::getLCE(Value &Start) {
 
   auto *Prev = &Start;
   Instruction *NextInst = nullptr;
-  while (NextInst = dyn_cast_or_null<Instruction>(Prev))
+  while ((NextInst = dyn_cast_or_null<Instruction>(Prev)))
     Prev = visit(NextInst);
 
   auto *Arg = dyn_cast_or_null<Argument>(Prev);
