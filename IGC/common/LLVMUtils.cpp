@@ -877,8 +877,7 @@ void DumpHashToOptions(const ShaderHash& hashs, const ShaderType type)
     static std::mutex options_gen_mutex;
 
     // Enable for certain type(s) of shader(s)
-    if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable) &&
-        ((1 << (uint32_t)type) & IGC_GET_FLAG_VALUE(GenerateOptionsFile)))
+    if ((1 << (uint32_t)type) & IGC_GET_FLAG_VALUE(GenerateOptionsFile))
     {
         auto dump_file = IGC::Debug::DumpName("Options.txt").str();
         std::ostringstream content;
