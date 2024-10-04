@@ -1031,7 +1031,15 @@ void G4_Kernel::setKernelParameters(unsigned newGRF) {
 
   // Set number of GRFs
   numRegTotal = overrideGRFNum ? overrideGRFNum : grfMode.getNumGRF();
-  stackCall.setCallerSaveLastGRF(((numRegTotal - 8) / 2) - 1);
+  auto lastCallerSavedGRF =
+      getOptions()->getuInt32Option(vISA_LastCallerSavedGRF);
+  // When vISA_LastCallerSavedGRF is set, it's an ABI breaking change.
+  // Kernel and entire callee nest must be compiled with same
+  // value of vISA_LastCallerSavedGRF for correctness.
+  if (lastCallerSavedGRF)
+    stackCall.setCallerSaveLastGRF(lastCallerSavedGRF);
+  else
+    stackCall.setCallerSaveLastGRF(((numRegTotal - 8) / 2) - 1);
 
   // Set number of threads
   numThreads = grfMode.getNumThreads();
