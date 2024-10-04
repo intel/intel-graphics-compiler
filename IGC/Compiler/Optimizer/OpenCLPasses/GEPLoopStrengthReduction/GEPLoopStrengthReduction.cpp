@@ -481,7 +481,21 @@ void ReductionCandidateGroup::print(raw_ostream &OS)
 // first iteration, it can't be reduced to preheader, as value could be invalid.
 bool ReductionCandidate::isValidForReduction(const Loop* L, const DominatorTree* DT)
 {
-    return DT->dominates(GEP->getParent(), L->getLoopLatch());
+    if (!DT->dominates(GEP->getParent(), L->getLoopLatch()))
+        return false;
+
+    // Even if address is always calculated, it might not always be used.
+    // Find at least one always-executed use to proof address is safe.
+    for (auto U = GEP->users().begin(); U != GEP->users().end(); ++U)
+    {
+        if (auto *I = dyn_cast<Instruction>(*U))
+        {
+            if (L->contains(I) && DT->dominates(I->getParent(), L->getLoopLatch()))
+                return true;
+        }
+    }
+
+    return false;
 }
 
 
@@ -914,7 +928,15 @@ void Analyzer::analyze(SmallVectorImpl<ReductionCandidateGroup> &Result)
     // at least one valid pointer to use as a base for reduction.
     Candidates.erase(
         std::remove_if(Candidates.begin(), Candidates.end(),
-            [](ReductionCandidateGroup& C) { return !C.isValid(); }),
+            [](ReductionCandidateGroup& C) {
+                if (C.isValid())
+                    return false;
+                LLVM_DEBUG(
+                    dbgs() << "  dropping candidate with no GEP valid for reduction: ";
+                    C.print(dbgs());
+                    dbgs() << "\n");
+                return true;
+            }),
         Candidates.end());
 
     Result.append(Candidates.begin(), Candidates.end());
