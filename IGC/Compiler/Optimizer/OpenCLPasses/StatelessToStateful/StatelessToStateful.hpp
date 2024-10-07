@@ -63,6 +63,8 @@ namespace IGC
         void visitStoreInst(llvm::StoreInst& I);
         void visitCallInst(llvm::CallInst& I);
 
+        static bool WA_ForcedUsedOfBindfulMode(const llvm::Function& F);
+
     private:
         struct InstructionInfo {
             InstructionInfo(llvm::Instruction* I, llvm::Value* ptr, llvm::Value* offset):

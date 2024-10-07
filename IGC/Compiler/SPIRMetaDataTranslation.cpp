@@ -393,6 +393,21 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
 
     pIgcMDUtils->save(M.getContext());
 
+    WA_ForceUseBindfulModeIfSpecificKernelExistsInModule(M);
+
     return true;
 }
 
+void SPIRMetaDataTranslation::WA_ForceUseBindfulModeIfSpecificKernelExistsInModule(Module& M)
+{
+    auto modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    for (const auto& function : M.functions())
+    {
+        if (StatelessToStateful::WA_ForcedUsedOfBindfulMode(function))
+        {
+            modMD->compOpt.UseBindlessMode = false;
+            modMD->compOpt.UseLegacyBindlessMode = true;
+            break;
+        }
+    }
+}
