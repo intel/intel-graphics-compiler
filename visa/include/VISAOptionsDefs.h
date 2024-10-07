@@ -367,8 +367,8 @@ DEF_VISA_OPTION(vISA_SplitGRFAlignedScalar, ET_BOOL, "-nosplitGRFalignedscalar",
 DEF_VISA_OPTION(vISA_DoSplitOnSpill, ET_BOOL, "-nosplitonspill", UNUSED, true)
 DEF_VISA_OPTION(vISA_IncSpillCostAllAddrTaken, ET_BOOL, "-allowaddrtakenspill",
                 UNUSED, false)
-DEF_VISA_OPTION(vISA_NewSpillCostFunction, ET_BOOL_TRUE, "-newspillcost",
-                UNUSED, true)
+DEF_VISA_OPTION(vISA_NewSpillCostFunction, ET_BOOL, "-newspillcost", UNUSED,
+                false)
 DEF_VISA_OPTION(vISA_NewSpillCostFunctionISPC, ET_BOOL, "-newspillcostispc", UNUSED,
                 false)
 
