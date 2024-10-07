@@ -227,7 +227,10 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
     BackendOpts.StatelessPrivateMemSize = IGCLLVM::makeOptional(Opts.StackMemSize).value();
   }
 
-  BackendOpts.DebuggabilityEmitDebuggableKernels = Opts.EmitDebuggableKernels;
+  // disabled because mixed bindless and bindful addressing is not supported
+  // by NEO (kernel debug leverages BTI #0)
+  BackendOpts.DebuggabilityEmitDebuggableKernels =
+      Opts.EmitDebuggableKernels && !Opts.UseBindlessBuffers;
   BackendOpts.DebuggabilityForLegacyPath =
       (Opts.Binary != vc::BinaryKind::CM) && Opts.EmitDebuggableKernels;
   BackendOpts.DebuggabilityZeBinCompatibleDWARF =
@@ -728,6 +731,8 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
     Opts.DisableFinalizerMsg = true;
   if (ApiOptions.hasArg(OPT_vc_use_plain_2d_images))
     Opts.UsePlain2DImages = true;
+  if (ApiOptions.hasArg(OPT_vc_use_bindless_buffers))
+    Opts.UseBindlessBuffers = true;
   if (ApiOptions.hasArg(OPT_vc_enable_preemption))
     Opts.EnablePreemption = true;
   if (ApiOptions.hasArg(OPT_library_compilation_common))
