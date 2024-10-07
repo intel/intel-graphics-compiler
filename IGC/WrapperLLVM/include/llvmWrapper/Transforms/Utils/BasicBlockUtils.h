@@ -14,10 +14,10 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Value.h"
 
 namespace IGCLLVM {
-    void ReplaceInstWithValue(llvm::BasicBlock::InstListType& BIL, llvm::BasicBlock::iterator& BI, llvm::Value* V)
+    void ReplaceInstWithValue(llvm::BasicBlock& BB, llvm::BasicBlock::iterator& BI, llvm::Value* V)
     {
 #if LLVM_VERSION_MAJOR < 16
-        llvm::ReplaceInstWithValue(BIL, BI, V);
+        llvm::ReplaceInstWithValue(BB.getInstList(), BI, V);
 #else
         llvm::ReplaceInstWithValue(BI, V);
 #endif

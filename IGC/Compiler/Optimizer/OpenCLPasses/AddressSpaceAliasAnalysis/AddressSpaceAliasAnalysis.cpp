@@ -13,30 +13,34 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
 
+#include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/Analysis/AliasAnalysis.h"
+#include "common/LLVMWarningsPop.hpp"
+
 using namespace llvm;
 using namespace IGC;
 
 namespace {
-
-    class AddressSpaceAAResult : public AAResultBase<AddressSpaceAAResult> {
-        friend AAResultBase<AddressSpaceAAResult>;
+    class AddressSpaceAAResult : public IGCLLVM::AAResultBaseWrapper<AddressSpaceAAResult> {
+        using BaseT = IGCLLVM::AAResultBaseWrapper<AddressSpaceAAResult>;
+        friend BaseT;
         const TargetLibraryInfo& TLI;
         const CodeGenContext& CGC;
     public:
         explicit AddressSpaceAAResult(
             const TargetLibraryInfo& TLI,
             const CodeGenContext& ctx)
-            : AAResultBase(), TLI(TLI), CGC(ctx) {}
+            : BaseT(), TLI(TLI), CGC(ctx) {}
         AddressSpaceAAResult(AddressSpaceAAResult&& Arg)
-            : AAResultBase(std::move(Arg)), TLI(Arg.TLI), CGC(Arg.CGC) {}
+            : BaseT(std::move(Arg)), TLI(Arg.TLI), CGC(Arg.CGC) {}
 
         AddressSpaceAAResult(const AddressSpaceAAResult&) = delete;
         AddressSpaceAAResult& operator=(const AddressSpaceAAResult&) = delete;
         AddressSpaceAAResult& operator=(AddressSpaceAAResult&&) = delete;
 
-        IGCLLVM::AliasResultEnum alias(const MemoryLocation& LocA, const MemoryLocation& LocB
-            , AAQueryInfo & AAQI
-        ) {
+        IGCLLVM::AliasResultEnum alias(const MemoryLocation& LocA, const MemoryLocation& LocB,
+            AAQueryInfo & AAQI)
+        {
             // DO NOT strip any casting as the address space is encoded in pointer
             // type. For `addrspacecast`, the current implementation in LLVM is too
             // aggressive to strip them. With address space resolution, we should not
@@ -129,9 +133,7 @@ namespace {
             }
 
 
-            return AAResultBase::alias(LocA, LocB
-                , AAQI
-            );
+            return AAResultBase::alias(LocA, LocB, AAQI);
         }
 
         bool pointsToConstantMemory(const llvm::MemoryLocation& Loc,

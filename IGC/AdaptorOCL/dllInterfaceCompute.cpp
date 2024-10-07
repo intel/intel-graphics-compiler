@@ -1041,7 +1041,19 @@ bool ReadSpecConstantsFromSPIRV(
     // Parse SPIRV Module and add all decorated specialization constants to OutSCInfo vector
     // as a pair of <spec-const-id, spec-const-size-in-bytes>. It's crucial for OCL Runtime to
     // properly validate clSetProgramSpecializationConstant API call.
-    return llvm::getSpecConstInfo(IS, OutSCInfo);
+#if LLVM_VERSION_MAJOR < 16
+  return llvm::getSpecConstInfo(IS, OutSCInfo);
+#else
+  auto scInfoVec = std::vector<llvm::SpecConstInfoTy>();
+  bool result = llvm::getSpecConstInfo(IS, scInfoVec);
+
+  for (auto& entry : scInfoVec)
+  {
+    OutSCInfo.emplace_back(entry.ID, entry.Size);
+  }
+
+  return result;
+#endif
 #else // IGC Legacy SPIRV Translator
     using namespace igc_spv;
 

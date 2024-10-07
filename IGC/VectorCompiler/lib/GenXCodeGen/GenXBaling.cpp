@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/DepthFirstIterator.h"
 #include "llvm/Analysis/CFG.h"
 #include "llvm/Analysis/ValueTracking.h"
+#include "llvm/Analysis/ConstantFolding.h"
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DerivedTypes.h"
@@ -1513,14 +1514,14 @@ void GenXBaling::processMainInst(Instruction *Inst, int IntrinID) {
       if (auto C = dyn_cast<Constant>(Inst->getOperand(0))) {
         if (C->getType()->isIntOrIntVectorTy()) {
           if (!ConstantExpr::getICmp(CmpInst::ICMP_SLT, C,
-                                     Constant::getNullValue(C->getType()))
-                   ->isNullValue())
+              Constant::getNullValue(C->getType()))->isNullValue())
+
             C = ConstantExpr::getNeg(C);
         } else {
           if (!ConstantExpr::getFCmp(CmpInst::FCMP_OLT, C,
-                                     Constant::getNullValue(C->getType()))
-                   ->isNullValue())
-            C = ConstantExpr::getFNeg(C);
+                Constant::getNullValue(C->getType()))->isNullValue()) {
+                C = llvm::ConstantFoldUnaryOpOperand(llvm::Instruction::FNeg, C, Inst->getModule()->getDataLayout());
+            }
         }
         Simplified = C;
       }

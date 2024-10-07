@@ -16,23 +16,24 @@ SPDX-License-Identifier: MIT
 #include <llvmWrapper/Analysis/AliasAnalysis.h>
 #include <llvm/Analysis/BasicAliasAnalysis.h>
 #include <llvmWrapper/Analysis/TargetLibraryInfo.h>
+#include "llvmWrapper/Analysis/AliasAnalysis.h"
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC {
-
-class RayTracingAddressSpaceAAResult : public llvm::AAResultBase<RayTracingAddressSpaceAAResult>
+class RayTracingAddressSpaceAAResult : public IGCLLVM::AAResultBaseWrapper<RayTracingAddressSpaceAAResult>
 {
-    friend llvm::AAResultBase<RayTracingAddressSpaceAAResult>;
+    using BaseT = IGCLLVM::AAResultBaseWrapper<RayTracingAddressSpaceAAResult>;
+    friend BaseT;
     const llvm::TargetLibraryInfo& TLI;
     const CodeGenContext& CGC;
 public:
     explicit RayTracingAddressSpaceAAResult(
         const llvm::TargetLibraryInfo& TLI,
         const CodeGenContext& ctx)
-        : llvm::AAResultBase<RayTracingAddressSpaceAAResult>(),
+        : BaseT(),
           TLI(TLI), CGC(ctx), allStateful(checkStateful(ctx)) {}
     RayTracingAddressSpaceAAResult(RayTracingAddressSpaceAAResult&& Arg)
-        : llvm::AAResultBase<RayTracingAddressSpaceAAResult>(std::move(Arg)),
+        : BaseT(std::move(Arg)),
           TLI(Arg.TLI), CGC(Arg.CGC), allStateful(checkStateful(Arg.CGC)) {}
     RayTracingAddressSpaceAAResult(const RayTracingAddressSpaceAAResult&) = delete;
     RayTracingAddressSpaceAAResult& operator=(const RayTracingAddressSpaceAAResult&) = delete;

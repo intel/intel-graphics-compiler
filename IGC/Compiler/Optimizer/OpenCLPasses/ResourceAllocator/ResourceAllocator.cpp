@@ -31,7 +31,7 @@ IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(ExtensionArgAnalysis)
 IGC_INITIALIZE_PASS_END(ResourceAllocator, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-enum class AllocationType
+enum class AllocationTypeEnum
 {
     BindlessImage, BindlessSampler, Image, Sampler, Other, None
 };
@@ -99,7 +99,7 @@ static bool isArgumentBindless(KernelArg::ArgType argType)
     }
 }
 
-static AllocationType getAllocationType(KernelArg::ArgType argType, BindlessAllocationMode mode)
+static AllocationTypeEnum getAllocationType(KernelArg::ArgType argType, BindlessAllocationMode mode)
 {
     switch (argType)
     {
@@ -120,8 +120,8 @@ static AllocationType getAllocationType(KernelArg::ArgType argType, BindlessAllo
     case KernelArg::ArgType::IMAGE_CUBE_ARRAY:
     case KernelArg::ArgType::IMAGE_CUBE_DEPTH_ARRAY:
         if (mode == BindlessAllocationMode::Preferred)
-            return AllocationType::BindlessImage;
-        return AllocationType::Image;
+            return AllocationTypeEnum::BindlessImage;
+        return AllocationTypeEnum::Image;
 
     case KernelArg::ArgType::BINDLESS_IMAGE_1D:
     case KernelArg::ArgType::BINDLESS_IMAGE_1D_BUFFER:
@@ -140,18 +140,18 @@ static AllocationType getAllocationType(KernelArg::ArgType argType, BindlessAllo
     case KernelArg::ArgType::BINDLESS_IMAGE_CUBE_ARRAY:
     case KernelArg::ArgType::BINDLESS_IMAGE_CUBE_DEPTH_ARRAY:
         if (mode == BindlessAllocationMode::Unsupported)
-            return AllocationType::Image;
-        return AllocationType::BindlessImage;
+            return AllocationTypeEnum::Image;
+        return AllocationTypeEnum::BindlessImage;
 
     case KernelArg::ArgType::SAMPLER:
         if (mode == BindlessAllocationMode::Preferred)
-            return AllocationType::BindlessSampler;
-        return AllocationType::Sampler;
+            return AllocationTypeEnum::BindlessSampler;
+        return AllocationTypeEnum::Sampler;
 
     case KernelArg::ArgType::BINDLESS_SAMPLER:
         if (mode == BindlessAllocationMode::Unsupported)
-            return AllocationType::Sampler;
-        return AllocationType::BindlessSampler;
+            return AllocationTypeEnum::Sampler;
+        return AllocationTypeEnum::BindlessSampler;
 
     case KernelArg::ArgType::PTR_GLOBAL:
     case KernelArg::ArgType::PTR_CONSTANT:
@@ -165,10 +165,10 @@ static AllocationType getAllocationType(KernelArg::ArgType argType, BindlessAllo
     case KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_DEFAULT_DEVICE_QUEUE:
     case KernelArg::ArgType::IMPLICIT_BINDLESS_OFFSET:
     case KernelArg::ArgType::IMPLICIT_ASSERT_BUFFER:
-        return AllocationType::Other;
+        return AllocationTypeEnum::Other;
 
     default:
-        return AllocationType::None;
+        return AllocationTypeEnum::None;
     }
 }
 
@@ -266,19 +266,19 @@ bool ResourceAllocator::runOnFunction(llvm::Function& F)
 
     for (const auto &arg : kernelArgs)
     {
-        const AllocationType allocType = getAllocationType(arg.getArgType(), allocationMode);
+        const AllocationTypeEnum allocType = getAllocationType(arg.getArgType(), allocationMode);
 
         ArgAllocMD argAlloc;
         switch (allocType)
         {
-        case AllocationType::BindlessImage:
+        case AllocationTypeEnum::BindlessImage:
             argAlloc.type = ResourceTypeEnum::BindlessUAVResourceType;
             argAlloc.indexType = numUAVs;
             argAlloc.extensionType = getImageExtensionType(EAA, arg.getArg());
             numUAVs++;
             break;
 
-        case AllocationType::Image:
+        case AllocationTypeEnum::Image:
             // Allocating bindless as bindful
             if (isArgumentBindless(arg.getArgType()))
             {
@@ -305,13 +305,13 @@ bool ResourceAllocator::runOnFunction(llvm::Function& F)
             argAlloc.extensionType = getImageExtensionType(EAA, arg.getArg());
             break;
 
-        case AllocationType::BindlessSampler:
+        case AllocationTypeEnum::BindlessSampler:
             argAlloc.type = ResourceTypeEnum::BindlessSamplerResourceType;
             argAlloc.indexType = numSamplers;
             numSamplers++;
             break;
 
-        case AllocationType::Sampler:
+        case AllocationTypeEnum::Sampler:
             // Allocating bindless as bindful
             if (isArgumentBindless(arg.getArgType()))
             {
@@ -328,7 +328,7 @@ bool ResourceAllocator::runOnFunction(llvm::Function& F)
             }
             break;
 
-        case AllocationType::Other:
+        case AllocationTypeEnum::Other:
             if (ctx->platform.supportDynamicBTIsAllocation() && ctx->enableZEBinary())
             {
                 // Use default arg allocator for UAV resources
@@ -345,7 +345,7 @@ bool ResourceAllocator::runOnFunction(llvm::Function& F)
             break;
 
         default:
-        case AllocationType::None:
+        case AllocationTypeEnum::None:
             continue;
         }
         // We want the location to be arg.getArgNo() and not i, because

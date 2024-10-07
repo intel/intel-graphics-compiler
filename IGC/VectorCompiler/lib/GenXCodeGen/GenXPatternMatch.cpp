@@ -3098,7 +3098,7 @@ static bool mergeToWrRegion(SelectInst *SI) {
                                                    : SI->getTrueValue(),
                                           Wr->getName(), Wr, Wr->getDebugLoc());
       BasicBlock::iterator WrIt(Wr);
-      IGCLLVM::ReplaceInstWithValue(WrIt->getParent()->getInstList(), WrIt, NewWr);
+      IGCLLVM::ReplaceInstWithValue(*(Wr->getParent()), WrIt, NewWr);
     };
 
     if (std::all_of(SI->use_begin(), SI->use_end(), CanMergeToWrRegion)) {

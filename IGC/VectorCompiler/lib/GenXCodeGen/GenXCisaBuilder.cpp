@@ -57,6 +57,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/Statistic.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/Analysis/LoopInfo.h"
+#include "llvm/Analysis/ConstantFolding.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/InitializePasses.h"
@@ -507,13 +508,18 @@ private:
                       unsigned OperandNum, genx::BaleInfo BI, unsigned Mod = 0,
                       genx::Signedness *SignedRes = nullptr,
                       unsigned MaxWidth = 16, bool IsNullAllowed = false);
-  VISA_VectorOpnd *createSource(Value *V, genx::Signedness Signed, bool Baled,
+
+  VISA_VectorOpnd *createSource(Value *V, genx::Signedness Signed,
+                                const DataLayout &DL,
+                                bool Baled,
                                 unsigned Mod = 0,
                                 genx::Signedness *SignedRes = nullptr,
                                 unsigned MaxWidth = 16,
                                 unsigned *Offset = nullptr, bool IsBF = false,
                                 bool IsNullAllowed = false);
+
   VISA_VectorOpnd *createSource(Value *V, genx::Signedness Signed,
+                                const DataLayout& DL,
                                 unsigned MaxWidth = 16,
                                 unsigned *Offset = nullptr);
 
@@ -1727,8 +1733,8 @@ GenXKernelBuilder::createSourceOperand(Instruction *Inst, Signedness Signed,
   Value *V = Inst->getOperand(OperandNum);
   auto IID = vc::InternalIntrinsic::getInternalIntrinsicID(Inst);
   bool IsBF = IID == vc::InternalIntrinsic::cast_from_bf16;
-
-  return createSource(V, Signed, BI.isOperandBaled(OperandNum), Mod, SignedRes,
+  return createSource(V, Signed, Inst->getModule()->getDataLayout(),
+                      BI.isOperandBaled(OperandNum), Mod, SignedRes,
                       MaxWidth, nullptr, IsBF, IsNullAllowed);
 }
 
@@ -1995,12 +2001,14 @@ void GenXKernelBuilder::buildConvert(CallInst *CI, BaleInfo BI, unsigned Mod,
 }
 
 VISA_VectorOpnd *GenXKernelBuilder::createSource(Value *V, Signedness Signed,
+                                                 const DataLayout& DL,
                                                  unsigned MaxWidth,
                                                  unsigned *Offset) {
-  return createSource(V, Signed, false, 0, nullptr, MaxWidth, Offset);
+  return createSource(V, Signed, DL, false, 0, nullptr, MaxWidth, Offset);
 }
 
 VISA_VectorOpnd *GenXKernelBuilder::createSource(Value *V, Signedness Signed,
+                                                 const DataLayout &DL,
                                                  bool Baled, unsigned Mod,
                                                  Signedness *SignedRes,
                                                  unsigned MaxWidth,
@@ -2033,7 +2041,7 @@ VISA_VectorOpnd *GenXKernelBuilder::createSource(Value *V, Signedness Signed,
       if (C->getType()->isIntOrIntVectorTy())
         C = ConstantExpr::getNeg(C);
       else
-        C = ConstantExpr::getFNeg(C);
+        C = llvm::ConstantFoldUnaryOpOperand(llvm::Instruction::FNeg, C, DL);
     }
     return createImmediateOperand(C, Signed);
   }
@@ -2123,8 +2131,8 @@ VISA_VectorOpnd *GenXKernelBuilder::createSource(Value *V, Signedness Signed,
     IGC_ASSERT_EXIT_MESSAGE(0, "unknown bale type");
     break;
   }
-  return createSource(Inst->getOperand(Idx), Signed, BI.isOperandBaled(Idx),
-                      Mod, SignedRes, MaxWidth);
+  return createSource(Inst->getOperand(Idx), Signed, Inst->getModule()->getDataLayout(),
+                      BI.isOperandBaled(Idx), Mod, SignedRes, MaxWidth);
 }
 
 static void diagnoseInlineAsm(llvm::LLVMContext &Context,
@@ -2239,7 +2247,7 @@ std::string GenXKernelBuilder::createInlineAsmSourceOperand(
         if (C->getType()->isIntOrIntVectorTy())
           C = ConstantExpr::getNeg(C);
         else
-          C = ConstantExpr::getFNeg(C);
+          C = llvm::ConstantFoldUnaryOpOperand(llvm::Instruction::FNeg, C, AsmInst->getModule()->getDataLayout());
       }
       VISA_VectorOpnd *ImmOp = createImmediateOperand(C, Signed);
       return Kernel->getVectorOperandName(ImmOp, false);
@@ -2515,7 +2523,7 @@ void GenXKernelBuilder::buildLoneWrRegion(const DstOpndDesc &DstDesc) {
   VISA_EMask_Ctrl ExecMask = getExecMaskFromWrRegion(DstDesc);
 
   // TODO: fix signedness of the source
-  auto *Src = createSource(Input, DONTCARESIGNED, false, 0);
+  auto* Src = createSource(Input, DONTCARESIGNED, DstDesc.WrRegion->getModule()->getDataLayout(), false, 0);
   auto *Dst = createDestination(Input, DONTCARESIGNED, 0, DstDesc);
   appendVISADataMovementInst(ISA_MOV, createPredFromWrRegion(DstDesc), false,
                              ExecMask, ExecSize, Dst, Src);
@@ -2603,7 +2611,7 @@ void GenXKernelBuilder::buildLoneOperand(Instruction *Inst, genx::BaleInfo BI,
   appendVISADataMovementInst(
       Opcode, (Opcode != ISA_MOVS ? createPredFromWrRegion(DstDesc) : nullptr),
       Mod & MODIFIER_SAT, ExecMask, ExecSize, Dest,
-      createSource(Src, Signed, Baled, 0));
+      createSource(Src, Signed, Inst->getModule()->getDataLayout(), Baled, 0));
 }
 
 // FIXME: use vc::TypeSizeWrapper instead.
@@ -4159,7 +4167,7 @@ void GenXKernelBuilder::buildIndirectBr(IndirectBrInst *Br) {
   IGC_ASSERT(IID == vc::InternalIntrinsic::jump_table);
   Value *Idx = JumpTable->getArgOperand(0);
 
-  VISA_VectorOpnd *JMPIdx = createSource(Idx, UNSIGNED);
+  VISA_VectorOpnd *JMPIdx = createSource(Idx, UNSIGNED, Br->getModule()->getDataLayout());
   unsigned NumDest = Br->getNumDestinations();
   std::vector<VISA_LabelOpnd *> JMPLabels(NumDest, nullptr);
   for (unsigned I = 0; I < NumDest; ++I)
@@ -4590,7 +4598,7 @@ void GenXKernelBuilder::buildLoneWriteVariableRegion(CallInst &CI) {
   VISA_GenVar *Variable = getPredefinedGeneralVar(WVR.getVariable());
   Region R = createRegion(WVR);
   VISA_VectorOpnd *SrcOp =
-      createSource(&WVR.getInput(), Signedness::DONTCARESIGNED);
+      createSource(&WVR.getInput(), Signedness::DONTCARESIGNED, CI.getModule()->getDataLayout());
   VISA_VectorOpnd *DstOp =
       createGeneralOperand(&R, Variable, Signedness::DONTCARESIGNED,
                            MODIFIER_NONE, /* IsDest=*/true);
@@ -4614,7 +4622,7 @@ void GenXKernelBuilder::buildWritePredefSurface(CallInst &CI) {
   VISA_VectorOpnd *SurfOpnd = nullptr;
   CISA_CALL(Kernel->CreateVISAStateOperand(SurfOpnd, SurfVar, /*offset=*/0,
                                            /*useAsDst=*/true));
-  VISA_VectorOpnd *SrcOpnd = createSource(CI.getArgOperand(1), genx::UNSIGNED);
+  VISA_VectorOpnd *SrcOpnd = createSource(CI.getArgOperand(1), genx::UNSIGNED, CI.getModule()->getDataLayout());
   appendVISADataMovementInst(ISA_MOVS, /*pred=*/nullptr, /*satMod=*/false,
                              vISA_EMASK_M1_NM, EXEC_SIZE_1, SurfOpnd, SrcOpnd);
 }
@@ -5675,7 +5683,7 @@ void GenXKernelBuilder::buildStackCallLight(CallInst *CI,
         Pred, (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1), StackCallExecSize,
         Callee->getName().str(), ArgSize, RetSize);
   } else {
-    auto *FuncAddr = createSource(IGCLLVM::getCalledValue(CI), DONTCARESIGNED);
+    auto *FuncAddr = createSource(IGCLLVM::getCalledValue(CI), DONTCARESIGNED, CI->getModule()->getDataLayout());
     IGC_ASSERT(FuncAddr);
     appendVISACFIndirectFuncCallInst(
         Pred, (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1), StackCallExecSize,

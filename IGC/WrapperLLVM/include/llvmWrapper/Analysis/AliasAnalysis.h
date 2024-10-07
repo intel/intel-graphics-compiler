@@ -14,6 +14,13 @@ SPDX-License-Identifier: MIT
 
 namespace IGCLLVM
 {
+  template <typename T>
+  class AAResultBaseWrapper : public llvm::AAResultBase
+#if LLVM_VERSION_MAJOR < 16
+    <T>
+#endif // LLVM_VERSION_MAJOR
+    {};
+
 #if LLVM_VERSION_MAJOR < 13
   using AliasResultEnum = llvm::AliasResult;
 #else
