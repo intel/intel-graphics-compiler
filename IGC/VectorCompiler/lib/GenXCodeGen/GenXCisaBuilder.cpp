@@ -925,10 +925,11 @@ static bool isExtOperandBaled(Use &U, const GenXBaling *Baling) {
 
 // Args:
 //    HasBarrier - whether kernel has barrier or sbarrier
-void addKernelAttrsFromMetadata(VISAKernel &Kernel,
-                                const vc::KernelMetadata &KM,
-                                const GenXSubtarget *Subtarget,
-                                bool HasBarrier) {
+static void addKernelAttrsFromMetadata(VISAKernel &Kernel,
+                                       const vc::KernelMetadata &KM,
+                                       const GenXSubtarget *Subtarget,
+                                       const GenXBackendConfig *BC,
+                                       bool HasBarrier) {
   auto &Ctx = KM.getFunction()->getContext();
   unsigned SLMSizeInKb = divideCeil(KM.getSLMSize(), 1024);
   if (SLMSizeInKb > Subtarget->getMaxSlmSize())
@@ -954,6 +955,21 @@ void addKernelAttrsFromMetadata(VISAKernel &Kernel,
         static_cast<uint8_t>(KM.getAlignedBarrierCnt(HasBarrier));
     Kernel.AddKernelAttribute("NBarrierCnt", sizeof(BarrierCnt), &BarrierCnt);
   }
+
+  // Default number of registers.
+  unsigned NumGRF = 128;
+  // Set by compile option.
+  if (BC->isAutoLargeGRFMode())
+    NumGRF = 0;
+  if (BC->getGRFSize())
+    NumGRF = BC->getGRFSize();
+  // Set by kernel metadata.
+  if (KM.getGRFSize()) {
+    unsigned NumGRFPerKernel = *KM.getGRFSize();
+    if (NumGRFPerKernel == 0 || Subtarget->isValidGRFSize(NumGRFPerKernel))
+      NumGRF = NumGRFPerKernel;
+  }
+  Kernel.AddKernelAttribute("NumGRF", sizeof(NumGRF), &NumGRF);
 }
 
 // Legalize name for using as filename or in visa asm
@@ -1012,7 +1028,8 @@ void GenXKernelBuilder::runOnKernel() {
   IGC_ASSERT_MESSAGE(Kernel, "Kernel initialization failed!");
   LLVM_DEBUG(dbgs() << "=== PROCESS KERNEL(" << KernelName << ") ===\n");
 
-  addKernelAttrsFromMetadata(*Kernel, TheKernelMetadata, Subtarget, HasBarrier);
+  addKernelAttrsFromMetadata(*Kernel, TheKernelMetadata, Subtarget,
+                             BackendConfig, HasBarrier);
 
   // Set CM target for all functions produced by VC.
   // See visa spec for CMTarget value (section 4, Kernel).
@@ -5848,13 +5865,6 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
   }
   if (ST.needsWANoMaskFusedEU() && !DisableNoMaskWA)
     addArgument("-noMaskWA");
-
-  unsigned GRFSize = BC.getGRFSize();
-  if (GRFSize > 0) {
-    addArgument("-TotalGRFNum");
-    addArgument(to_string(GRFSize));
-  } else if (BC.isAutoLargeGRFMode())
-    addArgument("-autoGRFSelection");
 
   if (ST.hasFusedEU()) {
     addArgument("-fusedCallWA");
