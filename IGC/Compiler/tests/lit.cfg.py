@@ -40,7 +40,7 @@ llvm_config.use_default_substitutions()
 config.substitutions.append(('%PATH%', config.environment['PATH']))
 
 tool_dirs = [config.igc_opt_dir, config.llvm_tools_dir]
-tools = [ToolSubst('not'), ToolSubst('igc_opt')]
+tools = [ToolSubst('not'), ToolSubst('split-file'), ToolSubst('igc_opt')]
 
 llvm_config.add_tool_substitutions(tools, tool_dirs)
 

@@ -51,6 +51,7 @@ else :
 llvm_config.add_tool_substitutions([ToolSubst('llvm-dwarfdump')], tool_dirs)
 llvm_config.add_tool_substitutions([ToolSubst('llvm-as')], tool_dirs)
 llvm_config.add_tool_substitutions([ToolSubst('not')], tool_dirs)
+llvm_config.add_tool_substitutions([ToolSubst('split-file')], tool_dirs)
 
 
 def get_available_devices(tool_path, ld_path):

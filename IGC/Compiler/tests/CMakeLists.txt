@@ -37,6 +37,7 @@ igc_configure_lit_site_cfg(
 # If any new tool is required by any of the LIT tests add it here:
 set(IGC_LIT_TEST_DEPENDS
   FileCheck
+  split-file
   count
   not
   "${IGC_BUILD__PROJ__igc_opt}"
