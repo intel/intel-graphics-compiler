@@ -528,7 +528,7 @@ CallGraphNode *CMABI::TransformKernel(Function *F) {
       // Unchanged argument
       AttributeSet attrs = IGCLLVM::getParamAttrs(PAL, ArgIndex);
       if (attrs.hasAttributes()) {
-        IGCLLVM::AttrBuilder B{ Context, attrs };
+        auto B = IGCLLVM::makeAttrBuilder(Context, attrs);
         AttrVec = AttrVec.addParamAttributes(Context, ArgTys.size(), B);
       }
       ArgTys.push_back(I->getType());
@@ -542,7 +542,7 @@ CallGraphNode *CMABI::TransformKernel(Function *F) {
   // Add any function attributes.
   AttributeSet FnAttrs = IGCLLVM::getFnAttrs(PAL);
   if (FnAttrs.hasAttributes()) {
-    IGCLLVM::AttrBuilder B(Context, FnAttrs);
+    auto B = IGCLLVM::makeAttrBuilder(Context, FnAttrs);
     AttrVec = IGCLLVM::addAttributesAtIndex(AttrVec, Context, AttributeList::FunctionIndex, B);
   }
 

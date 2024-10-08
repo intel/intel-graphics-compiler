@@ -1494,7 +1494,8 @@ Value* RTBuilder::canonizePointer(Value* Ptr)
 void RTBuilder::setReturnAlignment(CallInst* CI, uint32_t AlignVal)
 {
     auto Attrs = CI->getAttributes();
-    IGCLLVM::AttrBuilder AB { CI->getContext(), Attrs.getAttributes(AttributeList::ReturnIndex)};
+    auto AB =
+        IGCLLVM::makeAttrBuilder(CI->getContext(), Attrs.getAttributes(AttributeList::ReturnIndex));
     AB.addAlignmentAttr(AlignVal);
     auto AL =
         IGCLLVM::addAttributesAtIndex(Attrs, CI->getContext(), AttributeList::ReturnIndex, AB);
@@ -1504,7 +1505,8 @@ void RTBuilder::setReturnAlignment(CallInst* CI, uint32_t AlignVal)
 void RTBuilder::setDereferenceable(CallInst* CI, uint32_t Size)
 {
     auto Attrs = CI->getAttributes();
-    IGCLLVM::AttrBuilder AB{ CI->getContext(), Attrs.getAttributes(AttributeList::ReturnIndex) };
+    auto AB =
+        IGCLLVM::makeAttrBuilder(CI->getContext(), Attrs.getAttributes(AttributeList::ReturnIndex));
     AB.addDereferenceableAttr(Size);
     auto AL =
         IGCLLVM::addAttributesAtIndex(Attrs, CI->getContext(), AttributeList::ReturnIndex, AB);

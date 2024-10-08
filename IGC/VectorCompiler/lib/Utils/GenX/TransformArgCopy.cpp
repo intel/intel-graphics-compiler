@@ -389,14 +389,14 @@ vc::TransformedFuncInfo::gatherAttributes(LLVMContext &Context,
       if (ArgAttrs.hasAttributes())
         GatheredAttrs = GatheredAttrs.addParamAttributes(
             Context, OrigArgInfoEntry.getNewIdx(),
-            IGCLLVM::AttrBuilder{Context, ArgAttrs});
+            IGCLLVM::makeAttrBuilder(Context, ArgAttrs));
     }
   }
 
   // Gather function attributes.
   AttributeSet FnAttrs = IGCLLVM::getFnAttrs(AL);
   if (FnAttrs.hasAttributes()) {
-    IGCLLVM::AttrBuilder B(Context, FnAttrs);
+    auto B = IGCLLVM::makeAttrBuilder(Context, FnAttrs);
     GatheredAttrs = IGCLLVM::addAttributesAtIndex(GatheredAttrs, Context, AttributeList::FunctionIndex, B);
   }
 

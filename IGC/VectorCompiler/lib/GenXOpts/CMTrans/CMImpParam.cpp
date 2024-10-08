@@ -1070,7 +1070,7 @@ CMImpParam::processKernelParameters(Function *F,
     ArgTys.push_back(I->getType());
     AttributeSet attrs = IGCLLVM::getParamAttrs(PAL, ArgIndex);
     if (attrs.hasAttributes()) {
-      IGCLLVM::AttrBuilder B(Context, attrs);
+      auto B = IGCLLVM::makeAttrBuilder(Context, attrs);
       AttrVec = AttrVec.addParamAttributes(Context, ArgIndex, B);
     }
   }
@@ -1094,7 +1094,7 @@ CMImpParam::processKernelParameters(Function *F,
   // Add any function attributes
   AttributeSet FnAttrs = IGCLLVM::getFnAttrs(PAL);
   if (FnAttrs.hasAttributes()) {
-    IGCLLVM::AttrBuilder B(Context, FnAttrs);
+    auto B = IGCLLVM::makeAttrBuilder(Context, FnAttrs);
     AttrVec = IGCLLVM::addAttributesAtIndex(AttrVec, Context, AttributeList::FunctionIndex, B);
   }
 

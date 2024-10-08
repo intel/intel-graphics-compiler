@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_IR_ATTRIBUTES_H
 #define IGCLLVM_IR_ATTRIBUTES_H
 
+
 #include "llvm/Config/llvm-config.h"
 
 #include <llvm/IR/Attributes.h>
@@ -125,29 +126,30 @@ namespace IGCLLVM {
 #endif
     }
 
-    class AttrBuilder : public llvm::AttrBuilder {
-    public:
-        AttrBuilder() = delete;
-        AttrBuilder(llvm::LLVMContext &Ctx)
-        #if LLVM_VERSION_MAJOR >= 14
-        : llvm::AttrBuilder(Ctx) {}
-        #else
-        : llvm::AttrBuilder() {}
-        #endif
+    inline llvm::AttrBuilder makeAttrBuilder(llvm::LLVMContext &Ctx) {
+        return llvm::AttrBuilder(
+#if LLVM_VERSION_MAJOR >= 14
+            Ctx
+#endif // LLVM_VERSION_MAJOR
+            );
+    }
 
-        AttrBuilder(llvm::LLVMContext &Ctx, llvm::AttributeSet AS)
-        #if LLVM_VERSION_MAJOR >= 14
-        : llvm::AttrBuilder(Ctx, AS) {}
-        #else
-        : llvm::AttrBuilder(AS) {}
-        #endif
-        #if LLVM_VERSION_MAJOR <= 11
-        AttrBuilder &addStructRetAttr(llvm::Type* Ty) {
-            addAttribute(llvm::Attribute::StructRet);
-            return *this;
-        };
-        #endif
-    };
+    inline llvm::AttrBuilder makeAttrBuilder(llvm::LLVMContext &Ctx, llvm::AttributeSet AS) {
+        return llvm::AttrBuilder(
+#if LLVM_VERSION_MAJOR >= 14
+            Ctx,
+#endif // LLVM_VERSION_MAJOR
+            AS);
+    }
+
+    inline llvm::AttrBuilder &addStructRetAttr(llvm::AttrBuilder &AB, llvm::Type *Ty) {
+#if LLVM_VERSION_MAJOR >= 12
+        return AB.addStructRetAttr(Ty);
+#else // LLVM_VERSION_MAJOR
+        (void)Ty;
+        return AB.addAttribute(llvm::Attribute::StructRet);
+#endif // LLVM_VERSION_MAJOR
+    }
 }
 
 #endif

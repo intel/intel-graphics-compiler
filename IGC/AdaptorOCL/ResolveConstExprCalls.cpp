@@ -110,8 +110,9 @@ bool transformConstExprCastCall(CallInst& Call) {
         if (!CastInst::isBitOrNoopPointerCastable(ActTy, ParamTy, DL))
             return false;   // Cannot transform this parameter value.
 
-        if (IGCLLVM::AttrBuilder(FT->getContext(), IGCLLVM::getParamAttrs(CallerPAL, i))
-            .overlaps(AttributeFuncs::typeIncompatible(ParamTy)))
+        auto AB = IGCLLVM::makeAttrBuilder(
+            FT->getContext(), IGCLLVM::getParamAttrs(CallerPAL, i));
+        if (AB.overlaps(AttributeFuncs::typeIncompatible(ParamTy)))
             return false;   // Attribute not compatible with transformed value.
 
         if (Call.isInAllocaArgument(i))
@@ -158,7 +159,8 @@ bool transformConstExprCastCall(CallInst& Call) {
     ArgAttrs.reserve(NumActualArgs);
 
     // Get any return attributes.
-    IGCLLVM::AttrBuilder RAttrs(FT->getContext(), CallerPAL.getAttributes(AttributeList::ReturnIndex));
+    auto RAttrs = IGCLLVM::makeAttrBuilder(
+        FT->getContext(), CallerPAL.getAttributes(AttributeList::ReturnIndex));
 
     // If the return value is not being used, the type may not be compatible
     // with the existing attributes.  Wipe out any problematic attributes.
@@ -177,7 +179,8 @@ bool transformConstExprCastCall(CallInst& Call) {
 
         // Add any parameter attributes.
         if (IGCLLVM::hasParamAttr(CallerPAL, i, llvm::Attribute::ByVal)) {
-            IGCLLVM::AttrBuilder AB(FT->getContext(), IGCLLVM::getParamAttrs(CallerPAL, i));
+            auto AB = IGCLLVM::makeAttrBuilder(
+                FT->getContext(), IGCLLVM::getParamAttrs(CallerPAL, i));
             AB.addByValAttr(IGCLLVM::getArg(*Callee, i)->getParamByValType());
             ArgAttrs.push_back(AttributeSet::get(Ctx, AB));
         }
