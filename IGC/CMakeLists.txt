@@ -1001,13 +1001,17 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
           -Bsymbolic
     )
     endif()
+    string(FIND ${CMAKE_CXX_FLAGS} "-D_FORTIFY_SOURCE=3" __FORTIFY_SOURCE_3_SET)
+    set(flags -fstack-protector)
+    if(${__FORTIFY_SOURCE_3_SET} EQUAL -1)
+      list(APPEND flags -D_FORTIFY_SOURCE=2)
+    endif()
     igc_config_flag_apply_settings(
         CompilerOptions
         "${_compilerFlagName}"
         PATTERN "${IGC_BUILD__RELEASE_PATTERN}"
         SET_RAW
-          -D_FORTIFY_SOURCE=2
-          -fstack-protector
+          ${flags}
     )
     if(_igc_compiler_is_gnu OR (_igc_compiler_is_clang AND NOT CMAKE_C_COMPILER_VERSION LESS "4.0"))
       igc_config_flag_apply_settings(
