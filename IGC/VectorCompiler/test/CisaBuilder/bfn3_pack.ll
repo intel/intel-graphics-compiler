@@ -7,18 +7,15 @@
 ;============================ end_copyright_notice =============================
 
 ; RUN: %opt %use_old_pass_manager% -GenXModule -GenXCategoryWrapper -GenXCisaBuilderPass -GenXFinalizer -o /dev/null \
-; RUN: -march=genx64 -mtriple=spir64-unknown-unknown -finalizer-opts="-dumpcommonisa" -mcpu=XeHPC %s
-; RUN: cat < test_bfn_1i32.visaasm | FileCheck --check-prefix=CHECK-1I32 %s
-; RUN: cat < test_bfn_v1i16.visaasm | FileCheck --check-prefix=CHECK-V1I16 %s
-; RUN: cat < test_bfn_v4i16.visaasm | FileCheck --check-prefix=CHECK-V4I16 %s
-; RUN: cat < test_bfn_v16i32.visaasm | FileCheck --check-prefix=CHECK-V16I32 %s
+; RUN: -march=genx64 -mtriple=spir64-unknown-unknown -finalizer-opts="-dumpcommonisa -isaasmToConsole" -mcpu=XeHPC %s \
+; RUN: | FileCheck %s
 
 ; COM: ;;;;;;;;;; KERNEL ;;;;;;;;;;
 
 declare i32 @llvm.genx.bfn.i32(i32, i32, i32, i8)
 declare <1 x i32> @llvm.genx.oword.ld.v1i32(i32, i32, i32) #0
 declare void @llvm.genx.oword.st.v1i32(i32, i32, <1 x i32>) #0
-; CHECK-1I32-LABEL: test_bfn_1i32_BB_0
+; CHECK-LABEL: .kernel "test_bfn_1i32"
 define dllexport spir_kernel void @test_bfn_1i32(i32 %0, i32 %1) local_unnamed_addr #1 {
   %vec1i16 = tail call <1 x i32> @llvm.genx.oword.ld.v1i32(i32 0, i32 %0, i32 0) #2
   %in_scal = bitcast <1 x i32> %vec1i16 to i32
@@ -42,7 +39,7 @@ define dllexport spir_kernel void @test_bfn_1i32(i32 %0, i32 %1) local_unnamed_a
 declare <1 x i16> @llvm.genx.bfn.v1i16(<1 x i16>, <1 x i16>, <1 x i16>, i8)
 declare <1 x i16> @llvm.genx.oword.ld.v1i16(i32, i32, i32) #0
 declare void @llvm.genx.oword.st.v1i16(i32, i32, <1 x i16>) #0
-; CHECK-V1I16-LABEL: test_bfn_v1i16_BB_0
+; CHECK-LABEL: .kernel "test_bfn_v1i16"
 define dllexport spir_kernel void @test_bfn_v1i16(i32 %0, i32 %1) local_unnamed_addr #1 {
   %vec1i16 = tail call <1 x i16> @llvm.genx.oword.ld.v1i16(i32 0, i32 %0, i32 0) #2
 ; Constants propagate succsess
@@ -62,7 +59,7 @@ define dllexport spir_kernel void @test_bfn_v1i16(i32 %0, i32 %1) local_unnamed_
 declare <4 x i16> @llvm.genx.oword.ld.v4i16(i32, i32, i32) #0
 declare void @llvm.genx.oword.st.v4i16(i32, i32, <4 x i16>) #0
 declare <4 x i16> @llvm.genx.bfn.v4i16(<4 x i16>, <4 x i16>, <4 x i16>, i8)
-; CHECK-V4I16-LABEL: test_bfn_v4i16_BB_0
+; CHECK-LABEL: .kernel "test_bfn_v4i16"
 define dllexport spir_kernel void @test_bfn_v4i16(i32 %0, i32 %1) local_unnamed_addr #1 {
   %vec4i16 = tail call <4 x i16> @llvm.genx.oword.ld.v4i16(i32 0, i32 %0, i32 0) #2
 ; CHECK-V4I16: mov (M1, 4) {{[V0-9]*}}(0,0)<1> 0x10011001:v                                         /// $2
@@ -82,7 +79,7 @@ define dllexport spir_kernel void @test_bfn_v4i16(i32 %0, i32 %1) local_unnamed_
 declare <16 x i32> @llvm.genx.oword.ld.v16i32(i32, i32, i32) #0
 declare void @llvm.genx.oword.st.v16i32(i32, i32, <16 x i32>) #0
 declare <16 x i32> @llvm.genx.bfn.v16i32(<16 x i32>, <16 x i32>, <16 x i32>, i8)
-; CHECK-V16I32-LABEL: test_bfn_v16i32_BB_0
+; CHECK-LABEL: .kernel "test_bfn_v16i32"
 define dllexport spir_kernel void @test_bfn_v16i32(i32 %0, i32 %1) local_unnamed_addr #1 {
   %vec4i32 = tail call <16 x i32> @llvm.genx.oword.ld.v16i32(i32 0, i32 %0, i32 0) #2
 ; CHECK-V16I32: mov (M1, 8) {{[V0-9]*}}(0,0)<1> 0x10001100:v

@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: llc %s -march=genx64 -mcpu=Xe2 -vc-skip-ocl-runtime-info -finalizer-opts='-dumpvisa -dumpcommonisa' -o /dev/null
-; RUN: cat test_typed.visaasm | FileCheck %s --check-prefix=CHECK
+; RUN: llc %s -march=genx64 -mcpu=Xe2 -vc-skip-ocl-runtime-info -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null \
+; RUN: | FileCheck %s
 
 target triple = "genx64-unknown-unknown"
 
