@@ -1,15 +1,16 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2023 Intel Corporation
+Copyright (C) 2023-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "spirv-tools/libspirv.h"
 #include <llvm/Support/Error.h>
-#include <unordered_set>
+
+#include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "VLD.hpp"
@@ -28,8 +29,8 @@ llvm::Expected<std::pair<ProgramStreamType, ProgramStreamType>>
 SplitSPMDAndESIMD(const char *spvBuffer, uint32_t spvBufferSizeInBytes);
 
 // Detects the type of the SPIR-V module, e.g. SPMD, ESIMD, SPMD+ESIMD
-llvm::Expected<SPVMetadata> GetVLDMetadata(const char* spv_buffer,
-  uint32_t spv_buffer_size_in_bytes);
+llvm::Expected<SPVMetadata> GetVLDMetadata(const char *spv_buffer,
+                                           uint32_t spv_buffer_size_in_bytes);
 
 // Class used to split SPMD and ESIMD parts of input SPIR-V module.
 class SpvSplitter {
@@ -41,72 +42,51 @@ public:
   Split(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes);
 
   // Parses the SPIR-V module and returns metadata necessary for visa linking.
-  llvm::Expected<SPVMetadata>
-  Parse(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes);
-
-  const std::string& GetErrorMessage() const;
+  llvm::Expected<SPVMetadata> Parse(const char *spv_buffer,
+                                    uint32_t spv_buffer_size_in_bytes);
 
   const uint32_t GetForcedSubgroupSize() const;
 
-  bool HasError() const;
-
   bool HasEntryPoints() const;
 
-  const std::vector<std::string>& GetExportedFunctions() const;
+  const std::vector<std::string> &GetExportedFunctions() const;
 
-  const std::vector<std::string>& GetImportedFunctions() const;
+  const std::vector<std::string> &GetImportedFunctions() const;
 
   SPVMetadata GetVLDMetadata() const;
 
   void Reset();
 
-  // Callbacks used by SPIR-V Tools parser.
-  static spv_result_t
-  HandleInstructionCallback(void *user_data,
-                            const spv_parsed_instruction_t *parsed_instruction);
-
-  static spv_result_t HandleHeaderCallback(void *user_data,
-                                           spv_endianness_t endian,
-                                           uint32_t magic, uint32_t version,
-                                           uint32_t generator,
-                                           uint32_t id_bound, uint32_t schema);
-
   const ProgramStreamType &spmd_program() const { return spmd_program_; }
   const ProgramStreamType &esimd_program() const { return esimd_program_; }
 
 private:
-  spv_result_t HandleHeader(spv_endianness_t endian, uint32_t magic,
-                            uint32_t version, uint32_t generator,
-                            uint32_t id_bound, uint32_t schema);
+  llvm::Error HandleHeader(llvm::ArrayRef<uint32_t> words);
 
-  spv_result_t
-  HandleInstruction(const spv_parsed_instruction_t *parsed_instruction);
+  llvm::Error HandleInstruction(llvm::ArrayRef<uint32_t> words);
 
-  spv_result_t
-  HandleDecorate(const spv_parsed_instruction_t *parsed_instruction);
+  llvm::Error HandleDecorate(llvm::ArrayRef<uint32_t> words);
 
-  spv_result_t
-  HandleGroupDecorate(const spv_parsed_instruction_t *parsed_instruction);
+  llvm::Error HandleGroupDecorate(llvm::ArrayRef<uint32_t> words);
 
-  spv_result_t
-  HandleFunctionStart(const spv_parsed_instruction_t *parsed_instruction);
+  llvm::Error HandleFunctionStart(llvm::ArrayRef<uint32_t> words);
 
-  spv_result_t
-  HandleFunctionParameter(const spv_parsed_instruction_t *parsed_instruction);
+  llvm::Error HandleFunctionParameter(llvm::ArrayRef<uint32_t> words);
 
-  spv_result_t
-  HandleFunctionEnd(const spv_parsed_instruction_t *parsed_instruction);
+  llvm::Error HandleFunctionEnd(llvm::ArrayRef<uint32_t> words);
 
-  spv_result_t
-  HandleEntryPoint(const spv_parsed_instruction_t *parsed_instruction);
+  llvm::Error HandleEntryPoint(llvm::ArrayRef<uint32_t> words);
 
-  spv_result_t
-  HandleExecutionMode(const spv_parsed_instruction_t *parsed_instruction);
+  llvm::Error HandleExecutionMode(llvm::ArrayRef<uint32_t> words);
 
-  void AddInstToProgram(const spv_parsed_instruction_t *parsed_instruction,
+  void AddInstToProgram(llvm::ArrayRef<uint32_t> words,
                         ProgramStreamType &program);
 
-  llvm::Expected<spv_result_t> ParseSPIRV(const char* spv_buffer, uint32_t spv_buffer_size_in_bytes);
+  std::string DecodeStringLiteral(llvm::ArrayRef<uint32_t> words,
+                                  size_t startIndex);
+
+  llvm::Error ParseSPIRV(const char *spv_buffer,
+                         uint32_t spv_buffer_size_in_bytes);
 
   // Returns current SPIR-V Module type. Must be called after ParseSPIRV
   SPIRVTypeEnum GetCurrentSPIRVType() const;
@@ -130,8 +110,6 @@ private:
   bool has_spmd_functions_ = false;
   bool has_esimd_functions_ = false;
   int cur_esimd_function_id_ = -1;
-
-  std::string error_message_;
 };
 
 } // namespace VLD

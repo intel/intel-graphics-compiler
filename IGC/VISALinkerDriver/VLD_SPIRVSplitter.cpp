@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2023 Intel Corporation
+Copyright (C) 2023-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -8,22 +8,15 @@ SPDX-License-Identifier: MIT
 
 #include "VLD_SPIRVSplitter.hpp"
 
-#include <llvm/ADT/ScopeExit.h>
-
 #include "Probe/Assertion.h"
 #include "spirv/unified1/spirv.hpp"
-#include "spirv-tools/libspirv.h"
-
-// helper function from SPIR-V Tools.
-std::string spvDecodeLiteralStringOperand(const spv_parsed_instruction_t& inst,
-  const uint16_t operand_index);
 
 namespace IGC {
 namespace VLD {
 
 llvm::Expected<SPVMetadata> GetVLDMetadata(const char *spv_buffer,
-                                   uint32_t spv_buffer_size_in_bytes) {
-    return SpvSplitter().Parse(spv_buffer, spv_buffer_size_in_bytes);
+                                           uint32_t spv_buffer_size_in_bytes) {
+  return SpvSplitter().Parse(spv_buffer, spv_buffer_size_in_bytes);
 }
 
 llvm::Expected<std::pair<ProgramStreamType, ProgramStreamType>>
@@ -33,37 +26,59 @@ SplitSPMDAndESIMD(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes) {
   return splitter.Split(spv_buffer, spv_buffer_size_in_bytes);
 }
 
-llvm::Expected<spv_result_t> SpvSplitter::ParseSPIRV(const char* spv_buffer, uint32_t spv_buffer_size_in_bytes) {
-  const spv_target_env target_env = SPV_ENV_UNIVERSAL_1_5;
-  spv_context context = spvContextCreate(target_env);
-  if (!context) {
-      return llvm::createStringError(llvm::inconvertibleErrorCode(),
-          "Couldn't create SPIR-V Tools context!");
-  }
+llvm::Error SpvSplitter::ParseSPIRV(const char *spv_buffer,
+                                    uint32_t spv_buffer_size_in_bytes) {
   const uint32_t *const binary = reinterpret_cast<const uint32_t *>(spv_buffer);
   const size_t word_count = (spv_buffer_size_in_bytes / sizeof(uint32_t));
-  spv_diagnostic diagnostic = nullptr;
-  auto scope_exit = llvm::make_scope_exit([&] {
-    spvDiagnosticDestroy(diagnostic);
-    spvContextDestroy(context);
-    });
 
-  const spv_result_t result = spvBinaryParse(
-    context, this, binary, word_count, SpvSplitter::HandleHeaderCallback,
-    SpvSplitter::HandleInstructionCallback, &diagnostic);
-
-  if (result != SPV_SUCCESS) {
+  if (word_count < 5) {
     return llvm::createStringError(llvm::inconvertibleErrorCode(),
-      diagnostic->error);
+                                   "SPIR-V binary is too short!");
+  }
+
+  // Skip the header (magic, version, generator, bound, schema)
+  size_t offset = 5;
+
+  llvm::Error err = HandleHeader(llvm::ArrayRef<uint32_t>(&binary[0], 5));
+  if (err)
+    return std::move(err);
+
+  // Now read the instructions
+  while (offset < word_count) {
+    uint32_t word = binary[offset];
+    uint16_t wordCount = word >> 16;
+
+    if (wordCount == 0) {
+      return llvm::createStringError(
+          llvm::inconvertibleErrorCode(),
+          "Invalid SPIR-V instruction with word count 0 at offset " +
+              std::to_string(offset));
+    }
+
+    if (offset + wordCount > word_count) {
+      return llvm::createStringError(
+          llvm::inconvertibleErrorCode(),
+          "SPIR-V instruction at offset " + std::to_string(offset) +
+              " extends beyond the end of the binary");
+    }
+
+    llvm::ArrayRef<uint32_t> instWords(&binary[offset], wordCount);
+
+    // Handle the instruction
+    err = HandleInstruction(instWords);
+    if (err)
+      return std::move(err);
+
+    offset += wordCount;
   }
 
   if (!has_spmd_functions_ && !has_esimd_functions_) {
     return llvm::createStringError(
-      llvm::inconvertibleErrorCode(),
-      "SPIR-V file did not contain any SPMD or ESIMD functions!");
+        llvm::inconvertibleErrorCode(),
+        "SPIR-V file did not contain any SPMD or ESIMD functions!");
   }
 
-  return result;
+  return llvm::Error::success();
 }
 
 SPIRVTypeEnum SpvSplitter::GetCurrentSPIRVType() const {
@@ -75,15 +90,14 @@ SPIRVTypeEnum SpvSplitter::GetCurrentSPIRVType() const {
 
   return SPIRVTypeEnum::SPIRV_ESIMD;
 }
-
 llvm::Expected<std::pair<ProgramStreamType, ProgramStreamType>>
 SpvSplitter::Split(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes) {
   this->Reset();
   this->only_detect_ = false;
-  auto result = ParseSPIRV(spv_buffer, spv_buffer_size_in_bytes);
+  auto parseError = ParseSPIRV(spv_buffer, spv_buffer_size_in_bytes);
 
-  if (!result) {
-    return result.takeError();
+  if (parseError) {
+    return std::move(parseError);
   }
 
   // Add declarations of ESIMD functions that are called from SPMD module,
@@ -117,27 +131,22 @@ SpvSplitter::Split(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes) {
 }
 
 llvm::Expected<SPVMetadata>
-SpvSplitter::Parse(const char* spv_buffer, uint32_t spv_buffer_size_in_bytes) {
+SpvSplitter::Parse(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes) {
   this->Reset();
   this->only_detect_ = true;
-  auto result = ParseSPIRV(spv_buffer, spv_buffer_size_in_bytes);
+  auto parseError = ParseSPIRV(spv_buffer, spv_buffer_size_in_bytes);
 
-  if (!result) {
-    return result.takeError();
+  if (parseError) {
+    return std::move(parseError);
   }
 
   return GetVLDMetadata();
 }
 
-const std::string &SpvSplitter::GetErrorMessage() const {
-  return error_message_;
-}
-
-bool SpvSplitter::HasError() const { return !error_message_.empty(); }
-
 bool SpvSplitter::HasEntryPoints() const {
   auto CurSPIRVType = GetCurrentSPIRVType();
-  if (entry_points_.size() == 0) return false;
+  if (entry_points_.size() == 0)
+    return false;
 
   bool AllEntryPointsAreSPMD =
       std::all_of(entry_points_.begin(), entry_points_.end(), [&](auto el) {
@@ -145,8 +154,8 @@ bool SpvSplitter::HasEntryPoints() const {
       });
 
   bool AllEntryPointsAreESIMD =
-    std::all_of(entry_points_.begin(), entry_points_.end(), [&](auto el) {
-    return esimd_decorated_ids_.find(el) != esimd_decorated_ids_.end();
+      std::all_of(entry_points_.begin(), entry_points_.end(), [&](auto el) {
+        return esimd_decorated_ids_.find(el) != esimd_decorated_ids_.end();
       });
 
   if (CurSPIRVType == SPIRVTypeEnum::SPIRV_ESIMD && AllEntryPointsAreSPMD) {
@@ -161,7 +170,6 @@ bool SpvSplitter::HasEntryPoints() const {
   IGC_ASSERT(AllEntryPointsAreESIMD || AllEntryPointsAreSPMD);
 
   return true;
-
 }
 
 SPVMetadata SpvSplitter::GetVLDMetadata() const {
@@ -175,19 +183,22 @@ SPVMetadata SpvSplitter::GetVLDMetadata() const {
 }
 
 const uint32_t SpvSplitter::GetForcedSubgroupSize() const {
-  if (entry_point_to_subgroup_size_map_.size() == 0) return 0;
-  IGC_ASSERT(std::all_of(entry_point_to_subgroup_size_map_.begin(), entry_point_to_subgroup_size_map_.end(), [&](auto& el) {
-    return el.second == entry_point_to_subgroup_size_map_.begin()->second;
-    }));
+  if (entry_point_to_subgroup_size_map_.size() == 0)
+    return 0;
+  IGC_ASSERT(std::all_of(
+      entry_point_to_subgroup_size_map_.begin(),
+      entry_point_to_subgroup_size_map_.end(), [&](auto &el) {
+        return el.second == entry_point_to_subgroup_size_map_.begin()->second;
+      }));
 
   return entry_point_to_subgroup_size_map_.begin()->second;
 }
 
-const std::vector<std::string>& SpvSplitter::GetExportedFunctions() const {
+const std::vector<std::string> &SpvSplitter::GetExportedFunctions() const {
   return exported_functions_;
 }
 
-const std::vector<std::string>& SpvSplitter::GetImportedFunctions() const {
+const std::vector<std::string> &SpvSplitter::GetImportedFunctions() const {
   return imported_functions_;
 }
 
@@ -209,252 +220,245 @@ void SpvSplitter::Reset() {
   cur_esimd_function_id_ = -1;
 }
 
-spv_result_t SpvSplitter::HandleInstructionCallback(
-    void *user_data, const spv_parsed_instruction_t *parsed_instruction) {
-  IGC_ASSERT(user_data);
-  auto splitter = static_cast<SpvSplitter *>(user_data);
-  return splitter->HandleInstruction(parsed_instruction);
-}
-
-spv_result_t SpvSplitter::HandleHeaderCallback(
-    void *user_data, spv_endianness_t endian, uint32_t magic, uint32_t version,
-    uint32_t generator, uint32_t id_bound, uint32_t schema) {
-  IGC_ASSERT(user_data);
-  auto splitter = static_cast<SpvSplitter *>(user_data);
-  return splitter->HandleHeader(endian, magic, version, generator, id_bound,
-                                schema);
-}
-
-spv_result_t SpvSplitter::HandleHeader(spv_endianness_t endian, uint32_t magic,
-                                       uint32_t version, uint32_t generator,
-                                       uint32_t id_bound, uint32_t schema) {
+llvm::Error SpvSplitter::HandleHeader(llvm::ArrayRef<uint32_t> words) {
   // insert the same header to both spmd and esimd programs.
-  auto append_header = [&](std::vector<uint32_t> &programVector) {
-    programVector.insert(programVector.end(),
-                         {magic, version, generator, id_bound, schema});
-  };
-  if(!only_detect_) {
-    append_header(spmd_program_);
-    append_header(esimd_program_);
+  if (!only_detect_) {
+    spmd_program_.insert(spmd_program_.end(), words.begin(), words.end());
+    esimd_program_.insert(esimd_program_.end(), words.begin(), words.end());
   }
-  return SPV_SUCCESS;
+  return llvm::Error::success();
 }
 
-spv_result_t SpvSplitter::HandleInstruction(
-    const spv_parsed_instruction_t *parsed_instruction) {
-  spv_result_t ret = SPV_SUCCESS;
+llvm::Error SpvSplitter::HandleInstruction(llvm::ArrayRef<uint32_t> words) {
+  uint16_t opcode = words[0] & 0xFFFF;
 
-  // Handlers decide if given instruction should be addded.
-  switch (parsed_instruction->opcode) {
+  switch (opcode) {
   case spv::OpDecorate:
-    ret = HandleDecorate(parsed_instruction);
-    break;
+    return HandleDecorate(words);
   case spv::OpGroupDecorate:
-    ret = HandleGroupDecorate(parsed_instruction);
-    break;
+    return HandleGroupDecorate(words);
   case spv::OpFunction:
-    ret = HandleFunctionStart(parsed_instruction);
-    break;
+    return HandleFunctionStart(words);
   case spv::OpFunctionParameter:
-    ret = HandleFunctionParameter(parsed_instruction);
-    break;
+    return HandleFunctionParameter(words);
   case spv::OpFunctionEnd:
-    ret = HandleFunctionEnd(parsed_instruction);
-    break;
+    return HandleFunctionEnd(words);
   case spv::OpEntryPoint:
-    ret = HandleEntryPoint(parsed_instruction);
-    break;
+    return HandleEntryPoint(words);
   case spv::OpExecutionMode:
-    ret = HandleExecutionMode(parsed_instruction);
-    break;
+    return HandleExecutionMode(words);
   default:
     if (!is_inside_spmd_function_) {
-      AddInstToProgram(parsed_instruction, esimd_program_);
+      AddInstToProgram(words, esimd_program_);
     }
     if (!is_inside_esimd_function_) {
-      AddInstToProgram(parsed_instruction, spmd_program_);
+      AddInstToProgram(words, spmd_program_);
     }
     break;
   }
-  return ret;
+
+  return llvm::Error::success();
 }
 
+llvm::Error SpvSplitter::HandleDecorate(llvm::ArrayRef<uint32_t> words) {
+  // OpDecorate instruction format:
+  // Word 0: WordCount and Opcode
+  // Word 1: Target ID
+  // Word 2: Decoration (enum)
+  // Word 3..N: Extra operands depending on decoration
 
-// Looks for decorations that mark functions specific to ESIMD module.
-spv_result_t SpvSplitter::HandleDecorate(
-    const spv_parsed_instruction_t *parsed_instruction) {
-  IGC_ASSERT(parsed_instruction &&
-             parsed_instruction->opcode == spv::OpDecorate);
+  IGC_ASSERT(words.size() >= 3);
 
-  auto getOperand = [&parsed_instruction](int operandNumber) {
-    return parsed_instruction->words[parsed_instruction->operands[operandNumber].offset];
-  };
+  uint32_t targetId = words[1];
+  uint32_t decoration = words[2];
 
-  auto isSpecificFunctionDecoration = [&parsed_instruction, &getOperand](
-                                          auto decoration_type) {
-    if (parsed_instruction->num_operands == 2 &&
-        parsed_instruction->operands[1].type == SPV_OPERAND_TYPE_DECORATION &&
-        getOperand(1) == decoration_type) {
-      uint32_t function_id = getOperand(0);
-      return function_id;
-    }
-    return (uint32_t)0;
-  };
-
-  // Look for VectorComputeFunctionINTEL decoration.
-  if (auto function_id = isSpecificFunctionDecoration(spv::DecorationVectorComputeFunctionINTEL)) {
-    esimd_decorated_ids_.insert(function_id);
-  } else if (auto function_id = isSpecificFunctionDecoration(spv::DecorationStackCallINTEL)) {
-    // StackCallINTEL is a decoration specific to ESIMD, so do not add it to SPMD program.
-    esimd_functions_to_declare_.insert(function_id);
-  } else if (getOperand(1) == spv::DecorationLinkageAttributes) {
-    if (parsed_instruction->num_operands == 4 &&
-        parsed_instruction->operands[2].type ==
-            SPV_OPERAND_TYPE_LITERAL_STRING) {
-      auto funcName = spvDecodeLiteralStringOperand(*parsed_instruction, 2);
-      if (getOperand(3) == spv::LinkageTypeExport) {
+  // Check if it's DecorationVectorComputeFunctionINTEL
+  if (decoration == spv::DecorationVectorComputeFunctionINTEL) {
+    esimd_decorated_ids_.insert(targetId);
+  } else if (decoration == spv::DecorationStackCallINTEL) {
+    // StackCallINTEL is a decoration specific to ESIMD
+    esimd_functions_to_declare_.insert(targetId);
+  } else if (decoration == spv::DecorationLinkageAttributes) {
+    // DecorationLinkageAttributes has the following operands:
+    // Target (ID), Decoration, Name (string), LinkageType (enum)
+    if (words.size() >= 5) {
+      // Extract the name from words[3..N-2]
+      std::string funcName = DecodeStringLiteral(words, 3);
+      uint32_t linkageType = words[words.size() - 1];
+      if (linkageType == spv::LinkageTypeExport) {
         exported_functions_.push_back(funcName);
-      } else if (getOperand(3) == spv::LinkageTypeImport) {
+      } else if (linkageType == spv::LinkageTypeImport) {
         imported_functions_.push_back(funcName);
       }
     }
 
-    AddInstToProgram(parsed_instruction, spmd_program_);
-    AddInstToProgram(parsed_instruction, esimd_program_);
+    AddInstToProgram(words, spmd_program_);
+    AddInstToProgram(words, esimd_program_);
   } else {
-    AddInstToProgram(parsed_instruction, spmd_program_);
+    AddInstToProgram(words, spmd_program_);
   }
-  AddInstToProgram(parsed_instruction, esimd_program_);
+  AddInstToProgram(words, esimd_program_);
 
-  return SPV_SUCCESS;
+  return llvm::Error::success();
 }
 
-// Looks for group decorations that mark functions specific to ESIMD module.
-spv_result_t SpvSplitter::HandleGroupDecorate(
-    const spv_parsed_instruction_t *parsed_instruction) {
-  IGC_ASSERT(parsed_instruction &&
-             parsed_instruction->opcode == spv::OpGroupDecorate);
-  IGC_ASSERT(parsed_instruction->num_operands > 0);
-  // Look for decoration groups previously marked with
-  // VectorComputeFunctionINTEL decoration.
-  uint32_t group_id =
-      parsed_instruction->words[parsed_instruction->operands[0].offset];
-  if (esimd_decorated_ids_.find(group_id) != esimd_decorated_ids_.end()) {
-    for (uint32_t i = 1; i < parsed_instruction->num_operands; ++i) {
-      uint32_t id =
-          parsed_instruction->words[parsed_instruction->operands[i].offset];
-      esimd_decorated_ids_.insert(id);
+llvm::Error SpvSplitter::HandleGroupDecorate(llvm::ArrayRef<uint32_t> words) {
+  // OpGroupDecorate instruction format:
+  // Word 0: WordCount and Opcode
+  // Word 1: Decoration Group ID
+  // Words 2..N: Target IDs to be decorated with the group
+
+  IGC_ASSERT(words.size() >= 2);
+
+  uint32_t groupId = words[1];
+
+  if (esimd_decorated_ids_.find(groupId) != esimd_decorated_ids_.end()) {
+    // Apply the group decoration to the target IDs
+    for (size_t i = 2; i < words.size(); ++i) {
+      uint32_t targetId = words[i];
+      esimd_decorated_ids_.insert(targetId);
     }
   } else {
-    AddInstToProgram(parsed_instruction, spmd_program_);
+    AddInstToProgram(words, spmd_program_);
   }
-  AddInstToProgram(parsed_instruction, esimd_program_);
+  AddInstToProgram(words, esimd_program_);
 
-  return SPV_SUCCESS;
+  return llvm::Error::success();
 }
 
-spv_result_t SpvSplitter::HandleFunctionStart(
-    const spv_parsed_instruction_t *parsed_instruction) {
-  IGC_ASSERT(parsed_instruction &&
-             parsed_instruction->opcode == spv::OpFunction);
-  if (esimd_decorated_ids_.find(parsed_instruction->result_id) !=
-      esimd_decorated_ids_.end()) {
+llvm::Error SpvSplitter::HandleFunctionStart(llvm::ArrayRef<uint32_t> words) {
+  // OpFunction instruction format:
+  // Word 0: WordCount and Opcode
+  // Word 1: Result Type ID
+  // Word 2: Result ID
+  // Word 3: Function Control
+  // Word 4: Function Type ID
+
+  IGC_ASSERT(words.size() >= 5);
+
+  uint32_t resultId = words[2];
+
+  if (esimd_decorated_ids_.find(resultId) != esimd_decorated_ids_.end()) {
     is_inside_esimd_function_ = true;
     has_esimd_functions_ = true;
-    cur_esimd_function_id_ = parsed_instruction->result_id;
+    cur_esimd_function_id_ = resultId;
 
-    AddInstToProgram(parsed_instruction, esimd_program_);
-    AddInstToProgram(parsed_instruction,
+    AddInstToProgram(words, esimd_program_);
+    AddInstToProgram(words,
                      esimd_function_declarations_[cur_esimd_function_id_]);
   } else {
     is_inside_spmd_function_ = true;
     has_spmd_functions_ = true;
-    AddInstToProgram(parsed_instruction, spmd_program_);
+    AddInstToProgram(words, spmd_program_);
   }
 
-  return SPV_SUCCESS;
+  return llvm::Error::success();
 }
 
-spv_result_t SpvSplitter::HandleFunctionParameter(
-    const spv_parsed_instruction_t *parsed_instruction) {
-  IGC_ASSERT(parsed_instruction &&
-             parsed_instruction->opcode == spv::OpFunctionParameter);
+llvm::Error
+SpvSplitter::HandleFunctionParameter(llvm::ArrayRef<uint32_t> words) {
+  // OpFunctionParameter instruction format:
+  // Word 0: WordCount and Opcode
+  // Word 1: Result Type ID
+  // Word 2: Result ID
+
   if (is_inside_esimd_function_) {
-    AddInstToProgram(parsed_instruction, esimd_program_);
-    AddInstToProgram(parsed_instruction,
+    AddInstToProgram(words, esimd_program_);
+    AddInstToProgram(words,
                      esimd_function_declarations_[cur_esimd_function_id_]);
   } else {
-    AddInstToProgram(parsed_instruction, spmd_program_);
+    AddInstToProgram(words, spmd_program_);
   }
-  return SPV_SUCCESS;
+  return llvm::Error::success();
 }
 
-spv_result_t SpvSplitter::HandleFunctionEnd(
-    const spv_parsed_instruction_t *parsed_instruction) {
-  IGC_ASSERT(parsed_instruction &&
-             parsed_instruction->opcode == spv::OpFunctionEnd);
+llvm::Error SpvSplitter::HandleFunctionEnd(llvm::ArrayRef<uint32_t> words) {
+  // OpFunctionEnd instruction has no operands other than the opcode and word
+  // count
 
   if (is_inside_esimd_function_) {
-    AddInstToProgram(parsed_instruction, esimd_program_);
-    AddInstToProgram(parsed_instruction,
+    AddInstToProgram(words, esimd_program_);
+    AddInstToProgram(words,
                      esimd_function_declarations_[cur_esimd_function_id_]);
     cur_esimd_function_id_ = -1;
   }
   if (is_inside_spmd_function_) {
-    AddInstToProgram(parsed_instruction, spmd_program_);
+    AddInstToProgram(words, spmd_program_);
   }
 
   is_inside_esimd_function_ = false;
   is_inside_spmd_function_ = false;
-  return SPV_SUCCESS;
+  return llvm::Error::success();
 }
 
-spv_result_t SpvSplitter::HandleEntryPoint(
-    const spv_parsed_instruction_t *parsed_instruction) {
-  IGC_ASSERT(parsed_instruction &&
-             parsed_instruction->opcode == spv::OpEntryPoint);
-  IGC_ASSERT(parsed_instruction->num_operands > 0);
+llvm::Error SpvSplitter::HandleEntryPoint(llvm::ArrayRef<uint32_t> words) {
+  // OpEntryPoint instruction format:
+  // Word 0: WordCount and Opcode
+  // Word 1: Execution Model
+  // Word 2: Entry Point ID
+  // Words 3..N: Name (string), Interface IDs
 
-  uint32_t id =
-      parsed_instruction->words[parsed_instruction->operands[1].offset];
-  entry_points_.insert(id);
-  AddInstToProgram(parsed_instruction, spmd_program_);
-  AddInstToProgram(parsed_instruction, esimd_program_);
+  IGC_ASSERT(words.size() >= 3);
 
-  return SPV_SUCCESS;
+  uint32_t entryPointId = words[2];
+  entry_points_.insert(entryPointId);
+
+  AddInstToProgram(words, spmd_program_);
+  AddInstToProgram(words, esimd_program_);
+
+  return llvm::Error::success();
 }
 
-spv_result_t SpvSplitter::HandleExecutionMode(
-  const spv_parsed_instruction_t *parsed_instruction) {
-  IGC_ASSERT(parsed_instruction &&
-    parsed_instruction->opcode == spv::OpExecutionMode);
-  IGC_ASSERT(parsed_instruction->num_operands > 0);
+llvm::Error SpvSplitter::HandleExecutionMode(llvm::ArrayRef<uint32_t> words) {
+  // OpExecutionMode instruction format:
+  // Word 0: WordCount and Opcode
+  // Word 1: Entry Point ID
+  // Word 2: Execution Mode
+  // Words 3..N: Optional operands
 
-  uint32_t id =
-    parsed_instruction->words[parsed_instruction->operands[0].offset];
+  IGC_ASSERT(words.size() >= 3);
 
-  uint32_t execMode =
-    parsed_instruction->words[parsed_instruction->operands[1].offset];
-  if (execMode == spv::ExecutionModeSubgroupSize)
-  {
-    uint32_t sgSize =
-      parsed_instruction->words[parsed_instruction->operands[2].offset];
-    entry_point_to_subgroup_size_map_.insert({ id,sgSize });
+  uint32_t entryPointId = words[1];
+  uint32_t execMode = words[2];
+
+  if (execMode == spv::ExecutionModeSubgroupSize) {
+    if (words.size() >= 4) {
+      uint32_t sgSize = words[3];
+      entry_point_to_subgroup_size_map_.insert({entryPointId, sgSize});
+    } else {
+      return llvm::createStringError(
+          llvm::inconvertibleErrorCode(),
+          "OpExecutionMode SubgroupSize requires an additional operand");
+    }
   }
 
-  AddInstToProgram(parsed_instruction, spmd_program_);
-  AddInstToProgram(parsed_instruction, esimd_program_);
+  AddInstToProgram(words, spmd_program_);
+  AddInstToProgram(words, esimd_program_);
 
-  return SPV_SUCCESS;
+  return llvm::Error::success();
 }
 
-void SpvSplitter::AddInstToProgram(
-    const spv_parsed_instruction_t *parsed_instruction,
-    ProgramStreamType &program) {
+void SpvSplitter::AddInstToProgram(llvm::ArrayRef<uint32_t> words,
+                                   ProgramStreamType &program) {
   if (!only_detect_) {
-    program.insert(program.end(), parsed_instruction->words,
-                   parsed_instruction->words + parsed_instruction->num_words);
+    program.insert(program.end(), words.begin(), words.end());
   }
+}
+
+std::string SpvSplitter::DecodeStringLiteral(llvm::ArrayRef<uint32_t> words,
+                                             size_t startIndex) {
+  std::string result;
+  for (size_t i = startIndex; i < words.size(); ++i) {
+    uint32_t word = words[i];
+    for (int j = 0; j < 4; ++j) {
+      char c = (char)((word >> (j * 8)) & 0xFF);
+      if (c == '\0') {
+        return result;
+      }
+      result += c;
+    }
+  }
+  return result;
 }
 
 } // namespace VLD
