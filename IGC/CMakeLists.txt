@@ -1486,6 +1486,22 @@ add_subdirectory(common)
 igc_sg_define(IGC__common)
 igc_sg_define(IGC__Common_CLElfLib)
 
+# Recognize if we need to use LLVM interim mode and set appropriate definition
+if (DEFINED IGC_LLVM_INTERIM)
+    # Switch on IGC_BUILD_LLVM_INTERIM when -DIGC_LLVM_INTERIM=1 option is provided for locally build
+    set(IGC_BUILD_LLVM_INTERIM ON)
+elseif($ENV{IGC_LLVM_INTERIM})
+    # Switch on IGC_BUILD_LLVM_INTERIM when IGC_LLVM_INTERIM is set in environment e.g. yaml file
+    set(IGC_BUILD_LLVM_INTERIM ON)
+else()
+    set(IGC_BUILD_LLVM_INTERIM OFF)
+endif()
+
+if(IGC_BUILD_LLVM_INTERIM)
+  message(STATUS "[IGC] IGC_BUILD_LLVM_INTERIM = ${IGC_BUILD_LLVM_INTERIM}")
+  add_compile_definitions(IGC_LLVM_TRUNK_REVISION)
+endif()
+
 
 # Add protobuf
 include(igc_find_protobuf)
