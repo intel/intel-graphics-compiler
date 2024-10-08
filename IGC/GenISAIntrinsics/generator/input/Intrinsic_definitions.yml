@@ -117,7 +117,9 @@ intrinsics:
                 comment: ""
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_assume_uniform"
         comment: "used by compiler to mark a uniform private array"
@@ -144,7 +146,9 @@ intrinsics:
                 comment: "bf16 source"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_CatchAllDebugLine"
         comment: ""
@@ -154,7 +158,9 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_DCL_DSCntrlPtInputVec"
         comment: ""
@@ -172,7 +178,9 @@ intrinsics:
                 comment: "element index"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_DCL_DSInputTessFactor"
         comment: ""
@@ -186,7 +194,9 @@ intrinsics:
                 comment: "system interpreted tessellation factor"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_DCL_DSPatchConstInputVec"
         comment: ""
@@ -200,7 +210,9 @@ intrinsics:
                 comment: "input index"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_DCL_GSinputVec"
         comment: ""
@@ -218,7 +230,9 @@ intrinsics:
                 comment: "Attribute Idx"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_DCL_GSsystemValue"
         comment: ""
@@ -236,7 +250,9 @@ intrinsics:
                 comment: "usage"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_DCL_HSControlPointID"
         comment: ""
@@ -263,7 +279,9 @@ intrinsics:
                 comment: "owordAttributeIndex"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType Ref
     - !<IntrinsicDefinition>
         name: "GenISA_DCL_HSPatchConstInputVec"
         comment: ""
@@ -277,7 +295,9 @@ intrinsics:
                 comment: "owordAttributeIndex"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType Ref
     - !<IntrinsicDefinition>
         name: "GenISA_DCL_HSinputVec"
         comment: ""
@@ -295,7 +315,9 @@ intrinsics:
                 comment: "Attribute Idx"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_DCL_ShaderInputVec"
         comment: ""
@@ -313,7 +335,9 @@ intrinsics:
                 comment: "interpolation mode: e_interpolation_PSOnly"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_DCL_SystemValue"
         comment: ""
@@ -327,7 +351,9 @@ intrinsics:
                 comment: "usage"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_DCL_input"
         comment: ""
@@ -362,7 +388,9 @@ intrinsics:
                 comment: "interpolation mode"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_dpas"
         comment: ""
@@ -405,7 +433,9 @@ intrinsics:
         attributes:
             - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_EmitHitAttributes"
         comment: ""
@@ -415,7 +445,9 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_EndPrimitive"
         comment: ""
@@ -446,7 +478,9 @@ intrinsics:
                 comment: "Rounding mode (ERoundingMode)"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_GetBufferPtr"
         comment: ""
@@ -464,7 +498,9 @@ intrinsics:
                 comment: "Resource Type (CB, UAV, etc"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_GetImplicitBufferPtr"
         comment: ""
@@ -473,8 +509,10 @@ intrinsics:
             comment: "implicit buffer pointer for use in stack call"
         arguments: []
         attributes:
-            - !AttributeID "InaccessibleMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation InaccessibleMem
     - !<IntrinsicDefinition>
         name: "GenISA_GetLocalIdBufferPtr"
         comment: ""
@@ -483,8 +521,10 @@ intrinsics:
             comment: "pointer to local id buffer for use in stack call"
         arguments: []
         attributes:
-            - !AttributeID "InaccessibleMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation InaccessibleMem
     - !<IntrinsicDefinition>
         name: "GenISA_GetGlobalBufferArg"
         comment: ""
@@ -493,8 +533,10 @@ intrinsics:
             comment: "implicit argument value"
         arguments: []
         attributes:
-            - !AttributeID "InaccessibleMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation InaccessibleMem
     - !<IntrinsicDefinition>
         name: "GenISA_GetPixelMask"
         comment: "Get live pixel mask from dmask"
@@ -521,7 +563,9 @@ intrinsics:
                 comment: "coordinates x"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_GradientXfine"
         comment: ""
@@ -535,7 +579,9 @@ intrinsics:
                 comment: "coordinates x"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_GradientY"
         comment: ""
@@ -549,7 +595,9 @@ intrinsics:
                 comment: "coordinates y"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_GradientYfine"
         comment: ""
@@ -563,7 +611,9 @@ intrinsics:
                 comment: "coordinates y"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_GsCutControlHeader"
         comment: ""
@@ -919,7 +969,9 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType Ref
     - !<IntrinsicDefinition>
         name: "GenISA_IEEE_Divide"
         comment: "Correctly Rounded divide instrinsic -> produces ISA_DIVM"
@@ -937,7 +989,9 @@ intrinsics:
                 comment: "src1"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_IEEE_Sqrt"
         comment: "Correctly Rounded sqrt instrinsic -> produces ISA_SQRTM"
@@ -951,7 +1005,9 @@ intrinsics:
                 comment: "src0"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_InitDiscardMask"
         comment: ""
@@ -995,7 +1051,9 @@ intrinsics:
                 comment: ""
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_Interpolate"
         comment: ""
@@ -1013,7 +1071,9 @@ intrinsics:
                 comment: "bary"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_Interpolate2"
         comment: ""
@@ -1031,7 +1091,9 @@ intrinsics:
                 comment: ""
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_IsHelperInvocation"
         comment: "Check whether invocation is a helper invocation"
@@ -1045,8 +1107,10 @@ intrinsics:
                 comment: ""
         attributes:
             - !AttributeID "Convergent"
-            - !AttributeID "InaccessibleMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation InaccessibleMem
     - !<IntrinsicDefinition>
         name: "GenISA_MediaBlockRead"
         comment: ""
@@ -1304,7 +1368,9 @@ intrinsics:
                 comment: "index"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_PHASE_INPUTVEC"
         comment: ""
@@ -1326,7 +1392,9 @@ intrinsics:
                 comment: ""
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_PHASE_OUTPUT"
         comment: ""
@@ -1403,7 +1471,9 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_PixelPositionY"
         comment: ""
@@ -1413,7 +1483,9 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_PullCentroidBarys"
         comment: ""
@@ -1427,7 +1499,9 @@ intrinsics:
                 comment: ""
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_PullSampleIndexBarys"
         comment: ""
@@ -1445,7 +1519,9 @@ intrinsics:
                 comment: "perspective"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_PullSnappedBarys"
         comment: ""
@@ -1467,7 +1543,9 @@ intrinsics:
                 comment: "perspective"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_QuadPrefix"
         comment: ""
@@ -1489,8 +1567,10 @@ intrinsics:
                 comment: ""
         attributes:
             - !AttributeID "Convergent"
-            - !AttributeID "InaccessibleMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation InaccessibleMem
     - !<IntrinsicDefinition>
         name: "GenISA_ROUNDNE"
         comment: ""
@@ -1504,7 +1584,9 @@ intrinsics:
                 comment: "source"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_RTDualBlendSource"
         comment: ""
@@ -1672,8 +1754,10 @@ intrinsics:
                 type_definition: *i32
                 comment: "slot number"
         attributes:
-            - !AttributeID "InaccessibleMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation InaccessibleMem
     - !<IntrinsicDefinition>
         name: "GenISA_RenderTargetRead"
         comment: ""
@@ -1687,7 +1771,9 @@ intrinsics:
                 comment: "render target slot"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType Ref
     - !<IntrinsicDefinition>
         name: "GenISA_RenderTargetReadSampleFreq"
         comment: ""
@@ -1705,7 +1791,9 @@ intrinsics:
                 comment: "sample index"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType Ref
     - !<IntrinsicDefinition>
         name: "GenISA_RuntimeValue"
         comment: ""
@@ -1719,7 +1807,9 @@ intrinsics:
                 comment: "index"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_SampleOffsetX"
         comment: ""
@@ -1733,7 +1823,9 @@ intrinsics:
                 comment: "sample index"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_SampleOffsetY"
         comment: ""
@@ -1747,7 +1839,9 @@ intrinsics:
                 comment: "sample index"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_SaveInReservedArgSpace"
         comment: "Saves value to a reserved slot in ARGV variable when using stack\
@@ -1765,8 +1859,10 @@ intrinsics:
                 type_definition: *any
                 comment: "data"
         attributes:
-            - !AttributeID "InaccessibleMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation InaccessibleMem
     - !<IntrinsicDefinition>
         name: "GenISA_SetStackCallsBaseAddress"
         comment: "Set the base value for StackAlloca calculations. This address should\
@@ -1780,8 +1876,10 @@ intrinsics:
                 type_definition: *p_any_
                 comment: "buffer pointer passed by runtime"
         attributes:
-            - !AttributeID "InaccessibleMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation InaccessibleMem
     - !<IntrinsicDefinition>
         name: "GenISA_SetImplicitBufferPtr"
         comment: ""
@@ -1794,8 +1892,10 @@ intrinsics:
                 type_definition: *p_any_
                 comment: "buffer pointer passed by runtime"
         attributes:
-            - !AttributeID "InaccessibleMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation InaccessibleMem
     - !<IntrinsicDefinition>
         name: "GenISA_SetGlobalBufferArg"
         comment: ""
@@ -1808,8 +1908,10 @@ intrinsics:
                 type_definition: *v_any_
                 comment: "implicit arg values"
         attributes:
-            - !AttributeID "InaccessibleMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation InaccessibleMem
     - !<IntrinsicDefinition>
         name: "GenISA_SetDebugReg"
         comment: ""
@@ -1835,8 +1937,10 @@ intrinsics:
                 type_definition: *p_any_
                 comment: "local id buffer pointer passed by runtime"
         attributes:
-            - !AttributeID "InaccessibleMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation InaccessibleMem
     - !<IntrinsicDefinition>
         name: "GenISA_SetStream"
         comment: ""
@@ -1867,7 +1971,9 @@ intrinsics:
                 comment: "offset"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_VLAStackAlloca"
         comment: ""
@@ -1885,7 +1991,9 @@ intrinsics:
                 comment: "size"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_UnmaskedRegionBegin"
         comment: ""
@@ -1929,7 +2037,9 @@ intrinsics:
                 comment: "urb offset"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_URBReadOutput"
         comment: "In-place data read using URB Write Handle"
@@ -1943,7 +2053,9 @@ intrinsics:
                 comment: "urb offset"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType Ref
     - !<IntrinsicDefinition>
         name: "GenISA_URBWrite"
         comment: ""
@@ -2032,8 +2144,10 @@ intrinsics:
                     \ wave ops, 2: helper lanes do not participate in wave ops."
         attributes:
             - !AttributeID "Convergent"
-            - !AttributeID "InaccessibleMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation InaccessibleMem
     - !<IntrinsicDefinition>
         name: "GenISA_WaveBallot"
         comment: "All lanes get the same value"
@@ -2053,8 +2167,10 @@ intrinsics:
                     \ wave ops, 2: helper lanes do not participate in wave ops."
         attributes:
             - !AttributeID "Convergent"
-            - !AttributeID "InaccessibleMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation InaccessibleMem
     - !<IntrinsicDefinition>
         name: "GenISA_WaveClustered"
         comment: "Accumulate all active lanes within consecutive input clusters and\
@@ -2086,8 +2202,10 @@ intrinsics:
                     \ wave ops, 2: helper lanes do not participate in wave ops."
         attributes:
             - !AttributeID "Convergent"
-            - !AttributeID "InaccessibleMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation InaccessibleMem
     - !<IntrinsicDefinition>
         name: "GenISA_WaveInterleave"
         comment: "Accumulate together every n-th active lane, where n defines\
@@ -2116,8 +2234,10 @@ intrinsics:
                     \ wave ops, 2: helper lanes do not participate in wave ops."
         attributes:
             - !AttributeID "Convergent"
-            - !AttributeID "InaccessibleMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation InaccessibleMem
     - !<IntrinsicDefinition>
         name: "GenISA_WaveClusteredInterleave"
         comment: "A combination of WaveClustered and WaveInterleave. First splits subgroup\
@@ -2150,8 +2270,10 @@ intrinsics:
                     \ wave ops, 2: helper lanes do not participate in wave ops."
         attributes:
             - !AttributeID "Convergent"
-            - !AttributeID "InaccessibleMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation InaccessibleMem
     - !<IntrinsicDefinition>
         name: "GenISA_WaveInverseBallot"
         comment: ""
@@ -2170,8 +2292,10 @@ intrinsics:
                     \ wave ops, 2: helper lanes do not participate in wave ops."
         attributes:
             - !AttributeID "Convergent"
-            - !AttributeID "InaccessibleMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation InaccessibleMem
     - !<IntrinsicDefinition>
         name: "GenISA_WavePrefix"
         comment: "Accumulate and keep the intermediate results in each lane"
@@ -2202,8 +2326,10 @@ intrinsics:
                     \ wave ops, 2: helper lanes do not participate in wave ops."
         attributes:
             - !AttributeID "Convergent"
-            - !AttributeID "InaccessibleMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation InaccessibleMem
     - !<IntrinsicDefinition>
         name: "GenISA_WaveShuffleIndex"
         comment: "Read from a specific lane"
@@ -2228,7 +2354,9 @@ intrinsics:
         attributes:
             - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_WaveBroadcast"
         comment: "Broadcasts from specific lane to all lanes. Overlaps with WaveShuffleIndex,\
@@ -2252,7 +2380,9 @@ intrinsics:
         attributes:
             - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_WorkGroupAny"
         comment: "This intrinsic implies a barrier"
@@ -2291,7 +2421,9 @@ intrinsics:
                 comment: ""
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_add_rtz"
         comment: ""
@@ -2309,7 +2441,9 @@ intrinsics:
                 comment: ""
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_atomiccounterinc"
         comment: ""
@@ -2322,8 +2456,10 @@ intrinsics:
                 type_definition: *p_any_
                 comment: "Structured Buffer UaV with Count or Append flag"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
     - !<IntrinsicDefinition>
         name: "GenISA_atomiccounterpredec"
         comment: ""
@@ -2336,8 +2472,10 @@ intrinsics:
                 type_definition: *p_any_
                 comment: "Structured Buffer UAV with Count or Append flag"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
     - !<IntrinsicDefinition>
         name: "GenISA_bfi"
         comment: ""
@@ -2363,7 +2501,9 @@ intrinsics:
                 comment: "src3"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_bfrev"
         comment: ""
@@ -2377,7 +2517,9 @@ intrinsics:
                 comment: "src0"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_broadcastMessagePhase"
         comment: ""
@@ -2481,8 +2623,10 @@ intrinsics:
                 type_definition: *i32
                 comment: "src1"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
     - !<IntrinsicDefinition>
         name: "GenISA_createMessagePhases"
         comment: ""
@@ -2578,7 +2722,9 @@ intrinsics:
                 comment: "b of char4"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_dp4a_su"
         comment: "Accumulate byte-wise dot-product"
@@ -2600,7 +2746,9 @@ intrinsics:
                 comment: "b of uchar4"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_dp4a_us"
         comment: "Accumulate byte-wise dot-product"
@@ -2622,7 +2770,9 @@ intrinsics:
                 comment: "b of char4"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_dp4a_uu"
         comment: "Accumulate byte-wise dot-product"
@@ -2644,7 +2794,9 @@ intrinsics:
                 comment: "b of uchar4"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_dummyInst"
         comment: ""
@@ -2680,7 +2832,9 @@ intrinsics:
                 comment: "value to be laundered"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_dwordatomicstructured"
         comment: ""
@@ -2709,8 +2863,10 @@ intrinsics:
                 type_definition: *i32
                 comment: "Instruction type (add, or, xor etc)"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
     - !<IntrinsicDefinition>
         name: "GenISA_eu_id"
         comment: "returns the eu id that is defined in the state register 'PREDEFINED_SR0'"
@@ -2720,7 +2876,9 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_eu_thread_id"
         comment: "returns the eu id that is defined in the state register 'PREDEFINED_SR0'"
@@ -2730,7 +2888,9 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_eu_thread_pause"
         comment: ""
@@ -2795,7 +2955,9 @@ intrinsics:
                 comment: "input"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_fcmpxchgatomicraw"
         comment: ""
@@ -2845,8 +3007,10 @@ intrinsics:
                 type_definition: *ref_0_
                 comment: "src1"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
     - !<IntrinsicDefinition>
         name: "GenISA_fcmpxchgatomicstructured"
         comment: ""
@@ -2875,8 +3039,10 @@ intrinsics:
                 type_definition: *f32
                 comment: "src1"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
     - !<IntrinsicDefinition>
         name: "GenISA_firstbitHi"
         comment: ""
@@ -2890,7 +3056,9 @@ intrinsics:
                 comment: ""
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_firstbitLo"
         comment: ""
@@ -2904,7 +3072,9 @@ intrinsics:
                 comment: "src0"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_firstbitShi"
         comment: ""
@@ -2918,7 +3088,9 @@ intrinsics:
                 comment: "src0"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_floatatomicraw"
         comment: ""
@@ -2943,8 +3115,10 @@ intrinsics:
                 type_definition: *i32
                 comment: "Instruction type (add, or, xor etc)"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
     - !<IntrinsicDefinition>
         name: "GenISA_floatatomicrawA64"
         comment: ""
@@ -2969,8 +3143,10 @@ intrinsics:
                 type_definition: *i32
                 comment: "Instruction type (add, or, xor etc)"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
     - !<IntrinsicDefinition>
         name: "GenISA_floatatomicstructured"
         comment: ""
@@ -2999,8 +3175,10 @@ intrinsics:
                 type_definition: *i32
                 comment: "Instruction type (add, or, xor etc)"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
     - !<IntrinsicDefinition>
         name: "GenISA_flushsampler"
         comment: ""
@@ -3031,7 +3209,9 @@ intrinsics:
                 comment: ""
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_fma_rtp"
         comment: ""
@@ -3053,7 +3233,9 @@ intrinsics:
                 comment: ""
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_fma_rtn"
         comment: ""
@@ -3075,7 +3257,9 @@ intrinsics:
                 comment: ""
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_fsat"
         comment: ""
@@ -3089,7 +3273,9 @@ intrinsics:
                 comment: "source"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_usat"
         comment: ""
@@ -3103,7 +3289,9 @@ intrinsics:
                 comment: "source"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_isat"
         comment: ""
@@ -3117,7 +3305,9 @@ intrinsics:
                 comment: "source"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_ftof_rte"
         comment: ""
@@ -3131,7 +3321,9 @@ intrinsics:
                 comment: "input"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_ftof_rtn"
         comment: ""
@@ -3145,7 +3337,9 @@ intrinsics:
                 comment: "input"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_ftof_rtp"
         comment: ""
@@ -3159,7 +3353,9 @@ intrinsics:
                 comment: "input"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_ftof_rtz"
         comment: ""
@@ -3173,7 +3369,9 @@ intrinsics:
                 comment: "input"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_ftoi_rte"
         comment: ""
@@ -3187,7 +3385,9 @@ intrinsics:
                 comment: "input"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_ftoi_rtn"
         comment: ""
@@ -3201,7 +3401,9 @@ intrinsics:
                 comment: "input"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_ftoi_rtp"
         comment: ""
@@ -3215,7 +3417,9 @@ intrinsics:
                 comment: "input"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_ftoui_rte"
         comment: ""
@@ -3229,7 +3433,9 @@ intrinsics:
                 comment: "input"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_ftoui_rtn"
         comment: ""
@@ -3243,7 +3449,9 @@ intrinsics:
                 comment: "input"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_ftoui_rtp"
         comment: ""
@@ -3257,7 +3465,9 @@ intrinsics:
                 comment: "input"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_sampleMlodptr"
         comment: "Optimized version of sample instruction with min lod as the 0th\
@@ -3312,7 +3522,9 @@ intrinsics:
                 comment: "immediate offset w"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_sampleCMlodptr"
         comment: "Optimized version of sample_c instruction with min lod as the 0th\
@@ -3371,7 +3583,9 @@ intrinsics:
                 comment: "immediate offset w"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_sampleBCMlodptr"
         comment: "sample_b_c version with min lod parameter. Xe2+"
@@ -3433,7 +3647,9 @@ intrinsics:
                 comment: "immediate offset w"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_sampleDCMlodptr"
         comment: "sample_d_c version with min lod parameter, Xe2+"
@@ -3515,7 +3731,9 @@ intrinsics:
                 comment: "immediate offset w"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_samplePOptr"
         comment: ""
@@ -3569,7 +3787,9 @@ intrinsics:
                 comment: "immediate offset w"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_samplePOBptr"
         comment: ""
@@ -3623,7 +3843,9 @@ intrinsics:
                 comment: "immediate offset w"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_samplePOLptr"
         comment: ""
@@ -3673,7 +3895,9 @@ intrinsics:
                 comment: "immediate offset w"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_samplePOCptr"
         comment: ""
@@ -3727,7 +3951,9 @@ intrinsics:
                 comment: "immediate offset w"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_samplePODptr"
         comment: ""
@@ -3801,7 +4027,9 @@ intrinsics:
                 comment: "immediate offset w"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_gather4Iptr"
         comment: "GenISA_gather4ptr with implicit LOD, XE2+"
@@ -3855,7 +4083,9 @@ intrinsics:
                 comment: "src channel offset"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_gather4Bptr"
         comment: "GenISA_gather4ptr with explicit bias and implicit LOD, XE2+"
@@ -3913,7 +4143,9 @@ intrinsics:
                 comment: "src channel offset"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_gather4Lptr"
         comment: "GenISA_gather4ptr with explicit LOD, XE2+"
@@ -3971,7 +4203,9 @@ intrinsics:
                 comment: "src channel offset"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_samplePOLCptr"
         comment: ""
@@ -4025,7 +4259,9 @@ intrinsics:
                 comment: "immediate offset w"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_gather4ICptr"
         comment: "GenISA_gather4ptr with implicit LOD and compare with ref value,\
@@ -4084,7 +4320,9 @@ intrinsics:
                 comment: "src channel offset"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_gather4LCptr"
         comment: "GenISA_gather4ptr with explicit LOD and compare with ref value,\
@@ -4147,7 +4385,9 @@ intrinsics:
                 comment: "src channel offset"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_gather4POPackedptr"
         comment: "Instrinsic corresponding to gather4_po_* messages, XE2+"
@@ -4201,7 +4441,9 @@ intrinsics:
                 comment: "src channel offset"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_gather4POPackedLptr"
         comment: "Instrinsic corresponding to gather4_po_* messages, XE2+"
@@ -4255,7 +4497,9 @@ intrinsics:
                 comment: "src channel offset"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_gather4POPackedBptr"
         comment: "Instrinsic corresponding to gather4_po_* messages, XE2+"
@@ -4309,7 +4553,9 @@ intrinsics:
                 comment: "src channel offset"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_gather4POPackedIptr"
         comment: "Instrinsic corresponding to gather4_po_* messages, XE2+"
@@ -4363,7 +4609,9 @@ intrinsics:
                 comment: "src channel offset"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_gather4POPackedICptr"
         comment: "Instrinsic corresponding to gather4_po_* messages, XE2+"
@@ -4417,7 +4665,9 @@ intrinsics:
                 comment: "src channel offset"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_gather4POPackedLCptr"
         comment: "Instrinsic corresponding to gather4_po_* messages, XE2+"
@@ -4475,7 +4725,9 @@ intrinsics:
                 comment: "src channel offset"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_gather4POPackedCptr"
         comment: "Instrinsic corresponding to gather4_po_* messages, XE2+"
@@ -4529,7 +4781,9 @@ intrinsics:
                 comment: "src channel select"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_gather4IPOptr"
         comment: "GenISA_gather4POptr with implicit LOD, XE2+"
@@ -4587,7 +4841,9 @@ intrinsics:
                 comment: "src channel select"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_gather4BPOptr"
         comment: "GenISA_gather4POptr with explicit bias and implicit LOD, XE2+"
@@ -4649,7 +4905,9 @@ intrinsics:
                 comment: "src channel select"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_gather4LPOptr"
         comment: "GenISA_gather4POptr with explicit LOD, XE2+"
@@ -4711,7 +4969,9 @@ intrinsics:
                 comment: "src channel select"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_gather4ICPOptr"
         comment: "GenISA_gather4POptr with implicit LOD and compare with ref value,\
@@ -4774,7 +5034,9 @@ intrinsics:
                 comment: "src channel select"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_gather4LCPOptr"
         comment: "GenISA_gather4POptr with explicit LOD and compare with ref value,\
@@ -4841,7 +5103,9 @@ intrinsics:
                 comment: "src channel select"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_gather4Cptr"
         comment: ""
@@ -4899,7 +5163,9 @@ intrinsics:
                 comment: "src channel select"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_gather4POCptr"
         comment: ""
@@ -4961,7 +5227,9 @@ intrinsics:
                 comment: "src channel offset"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_gather4POptr"
         comment: ""
@@ -5019,7 +5287,9 @@ intrinsics:
                 comment: "src channel select"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_gather4ptr"
         comment: ""
@@ -5073,7 +5343,9 @@ intrinsics:
                 comment: "src channel offset"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_getMessagePhase"
         comment: ""
@@ -5159,7 +5431,9 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_getPayloadHeader"
         comment: ""
@@ -5344,7 +5618,9 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_globalSync"
         comment: ""
@@ -5364,7 +5640,9 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_hw_thread_id_alloca"
         comment: "returns the hardware thread id that is located at 'PREDEFINED_HW_TID'\
@@ -5375,7 +5653,9 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_ibfe"
         comment: ""
@@ -5397,7 +5677,9 @@ intrinsics:
                 comment: "bit field src"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_icmpxchgatomicraw"
         comment: ""
@@ -5447,8 +5729,10 @@ intrinsics:
                 type_definition: *ref_0_
                 comment: "src1"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
     - !<IntrinsicDefinition>
         name: "GenISA_icmpxchgatomictyped"
         comment: ""
@@ -5481,8 +5765,10 @@ intrinsics:
                 type_definition: *ref_0_
                 comment: "src1"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
     - !<IntrinsicDefinition>
         name: "GenISA_fcmpxchgatomictyped"
         comment: "Floating point atomic compare exchange operation on a typed image"
@@ -5515,8 +5801,10 @@ intrinsics:
                 type_definition: *ref_0_
                 comment: "src1"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
     - !<IntrinsicDefinition>
         name: "GenISA_imulH"
         comment: ""
@@ -5534,7 +5822,9 @@ intrinsics:
                 comment: "source1"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_intatomicraw"
         comment: ""
@@ -5559,8 +5849,10 @@ intrinsics:
                 type_definition: *i32
                 comment: "Instruction type (add, or, xor etc)"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
     - !<IntrinsicDefinition>
         name: "GenISA_intatomicrawA64"
         comment: ""
@@ -5585,8 +5877,10 @@ intrinsics:
                 type_definition: *i32
                 comment: "Instruction type (add, or, xor etc)"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
     - !<IntrinsicDefinition>
         name: "GenISA_intatomictyped"
         comment: ""
@@ -5619,8 +5913,10 @@ intrinsics:
                 type_definition: *i32
                 comment: "Instruction type (add, or, xor etc)"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
     - !<IntrinsicDefinition>
         name: "GenISA_floatatomictyped"
         comment: "Floating point atomic operation on a typed image"
@@ -5653,8 +5949,10 @@ intrinsics:
                 type_definition: *i32
                 comment: "Instruction type (fadd, fsub, fmin, fmax etc)"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
     - !<IntrinsicDefinition>
         name: "GenISA_is_uniform"
         comment: ""
@@ -5668,7 +5966,9 @@ intrinsics:
                 comment: ""
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_itof_rtn"
         comment: ""
@@ -5682,7 +5982,9 @@ intrinsics:
                 comment: "input"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_itof_rtp"
         comment: ""
@@ -5696,7 +5998,9 @@ intrinsics:
                 comment: "input"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_itof_rtz"
         comment: ""
@@ -5710,7 +6014,9 @@ intrinsics:
                 comment: "input"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_ldmcsptr"
         comment: ""
@@ -5752,7 +6058,9 @@ intrinsics:
                 comment: "immediate offset w"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_ldmsptr"
         comment: ""
@@ -5806,7 +6114,9 @@ intrinsics:
                 comment: "immediate offset w"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_ldmsptr16bit"
         comment: ""
@@ -5868,7 +6178,9 @@ intrinsics:
                 comment: "immediate offset w"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_ldptr"
         comment: ""
@@ -5913,9 +6225,11 @@ intrinsics:
                 type_definition: *i32
                 comment: "immediate offset w"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
+                memory_access: !MemoryAccessType Ref
     - !<IntrinsicDefinition>
         name: "GenISA_ldlptr"
         comment: "ld_l, Xe2+"
@@ -5960,9 +6274,11 @@ intrinsics:
                 type_definition: *i32
                 comment: "immediate offset w"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
+                memory_access: !MemoryAccessType Ref
     - !<IntrinsicDefinition>
         name: "GenISA_ldraw_indexed"
         comment: "Read a scalar value from a buffer pointer at byte offset"
@@ -5987,9 +6303,11 @@ intrinsics:
                 type_definition: *i1
                 comment: "volatile, must be an immediate"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
+                memory_access: !MemoryAccessType Ref
     - !<IntrinsicDefinition>
         name: "GenISA_ldrawvector_indexed"
         comment: "Read a vector from a buffer pointer at byte offset"
@@ -6014,9 +6332,11 @@ intrinsics:
                 type_definition: *i1
                 comment: "volatile, must be an immediate"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
+                memory_access: !MemoryAccessType Ref
     - !<IntrinsicDefinition>
         name: "GenISA_ldstructured"
         comment: ""
@@ -6037,9 +6357,11 @@ intrinsics:
                 type_definition: *i32
                 comment: "byte offset in structure"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
+                memory_access: !MemoryAccessType Ref
     - !<IntrinsicDefinition>
         name: "GenISA_lodptr"
         comment: ""
@@ -6073,7 +6395,9 @@ intrinsics:
                 comment: "sampler"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_memoryfence"
         comment: ""
@@ -6202,7 +6526,9 @@ intrinsics:
                 comment: ""
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_mul_rtz"
         comment: ""
@@ -6220,7 +6546,9 @@ intrinsics:
                 comment: ""
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_pair_to_ptr"
         comment: ""
@@ -6238,7 +6566,9 @@ intrinsics:
                 comment: ""
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_patchInstanceId"
         comment: ""
@@ -6248,7 +6578,9 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_ptr_to_pair"
         comment: ""
@@ -6262,7 +6594,9 @@ intrinsics:
                 comment: ""
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_readsurfacetypeandformat"
         comment: "Queries the surface info on the specified resource and returns the\
@@ -6277,7 +6611,9 @@ intrinsics:
                 comment: "source buffer"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_resinfoptr"
         comment: ""
@@ -6295,7 +6631,9 @@ intrinsics:
                 comment: "miplevel"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_rsq"
         comment: ""
@@ -6309,7 +6647,9 @@ intrinsics:
                 comment: "source"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_sampleBCptr"
         comment: ""
@@ -6367,7 +6707,9 @@ intrinsics:
                 comment: "immediate offset w"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_sampleBptr"
         comment: ""
@@ -6425,7 +6767,9 @@ intrinsics:
                 comment: "immediate offset w"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_sampleCptr"
         comment: ""
@@ -6483,7 +6827,9 @@ intrinsics:
                 comment: "immediate offset w"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_sampleDCptr"
         comment: ""
@@ -6561,7 +6907,9 @@ intrinsics:
                 comment: "immediate offset w"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_sampleDptr"
         comment: ""
@@ -6639,7 +6987,9 @@ intrinsics:
                 comment: "immediate offset w"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_sampleKillPix"
         comment: ""
@@ -6681,7 +7031,9 @@ intrinsics:
                 comment: "immediate offset w"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_sampleLCptr"
         comment: ""
@@ -6739,7 +7091,9 @@ intrinsics:
                 comment: "immediate offset w"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_sampleLptr"
         comment: ""
@@ -6793,7 +7147,9 @@ intrinsics:
                 comment: "immediate offset w"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_sampleinfoptr"
         comment: ""
@@ -6807,7 +7163,9 @@ intrinsics:
                 comment: "source buffer"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_sampleptr"
         comment: ""
@@ -6861,7 +7219,9 @@ intrinsics:
                 comment: "immediate offset w"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_setMessagePhase"
         comment: ""
@@ -7014,7 +7374,9 @@ intrinsics:
         attributes:
             - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType Ref
     - !<IntrinsicDefinition>
         name: "GenISA_simdBlockReadBindless"
         comment: ""
@@ -7033,7 +7395,9 @@ intrinsics:
         attributes:
             - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType Ref
     - !<IntrinsicDefinition>
         name: "GenISA_simdBlockWrite"
         comment: ""
@@ -7052,7 +7416,9 @@ intrinsics:
         attributes:
             - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
-            - !AttributeID "WriteOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType Mod
     - !<IntrinsicDefinition>
         name: "GenISA_simdBlockWriteBindless"
         comment: ""
@@ -7075,7 +7441,9 @@ intrinsics:
         attributes:
             - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
-            - !AttributeID "WriteOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType Mod
     - !<IntrinsicDefinition>
         name: "GenISA_simdGetMessagePhase"
         comment: ""
@@ -7127,7 +7495,9 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_simdLaneIdReplicate"
         comment: "replicates the bottom 16 ids in the top 16 for SIMD32"
@@ -7137,7 +7507,9 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_simdMediaBlockRead"
         comment: ""
@@ -7164,7 +7536,9 @@ intrinsics:
         attributes:
             - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType Ref
     - !<IntrinsicDefinition>
         name: "GenISA_simdMediaBlockWrite"
         comment: ""
@@ -7195,7 +7569,9 @@ intrinsics:
         attributes:
             - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
-            - !AttributeID "WriteOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType Mod
     - !<IntrinsicDefinition>
         name: "GenISA_simdMediaRegionCopy"
         comment: ""
@@ -7341,7 +7717,9 @@ intrinsics:
         attributes:
             - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_simdShuffleXor"
         comment: ""
@@ -7360,7 +7738,9 @@ intrinsics:
         attributes:
             - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_simdSize"
         comment: ""
@@ -7370,7 +7750,9 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_slice_id"
         comment: "returns the slice id that is defined in the state register 'PREDEFINED_SR0'"
@@ -7380,7 +7762,9 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_source_value"
         comment: "returns creates a mov from source to a null register"
@@ -7422,9 +7806,11 @@ intrinsics:
                 type_definition: *i1
                 comment: "volatile, must be an immediate"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
-            - !AttributeID "WriteOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
+                memory_access: !MemoryAccessType Mod
     - !<IntrinsicDefinition>
         name: "GenISA_storerawvector_indexed"
         comment: "Write a vector to a buffer pointer at byte offset"
@@ -7453,9 +7839,11 @@ intrinsics:
                 type_definition: *i1
                 comment: "volatile, must be an immediate"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
-            - !AttributeID "WriteOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
+                memory_access: !MemoryAccessType Mod
     - !<IntrinsicDefinition>
         name: "GenISA_storestructured1"
         comment: ""
@@ -7622,8 +8010,10 @@ intrinsics:
         attributes:
             - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
             - !AttributeID "WillReturn"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_sub_pair"
         comment: ""
@@ -7649,7 +8039,9 @@ intrinsics:
                 comment: ""
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_subslice_id"
         comment: "returns the subslice id defined in the state register 'PREDEFINED_SR0'"
@@ -7659,7 +8051,9 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_logical_subslice_id"
         comment: "returns the logical SSID defined in the MSG0 'PREDEFINED_MSG0'"
@@ -7669,7 +8063,9 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_dual_subslice_id"
         comment: ""
@@ -7679,7 +8075,9 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_threadgroupbarrier"
         comment: ""
@@ -7752,9 +8150,11 @@ intrinsics:
                 type_definition: *i32
                 comment: "LOD"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
+                memory_access: !MemoryAccessType Ref
     - !<IntrinsicDefinition>
         name: "GenISA_typedwrite"
         comment: ""
@@ -7799,9 +8199,11 @@ intrinsics:
                 type_definition: *f32
                 comment: "w (4 elements since uav_typed will always write 4 destinations)"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
-            - !AttributeID "WriteOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
+                memory_access: !MemoryAccessType Mod
     - !<IntrinsicDefinition>
         name: "GenISA_uaddc"
         comment: ""
@@ -7819,7 +8221,9 @@ intrinsics:
                 comment: "source1"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_uavSerializeAll"
         comment: ""
@@ -7863,7 +8267,9 @@ intrinsics:
                 comment: "bit field src"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_uitof_rtn"
         comment: ""
@@ -7877,7 +8283,9 @@ intrinsics:
                 comment: "input"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_uitof_rtp"
         comment: ""
@@ -7891,7 +8299,9 @@ intrinsics:
                 comment: "input"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_uitof_rtz"
         comment: ""
@@ -7905,7 +8315,9 @@ intrinsics:
                 comment: "input"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_umulH"
         comment: ""
@@ -7923,7 +8335,9 @@ intrinsics:
                 comment: "source1"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_usubb"
         comment: ""
@@ -7941,7 +8355,9 @@ intrinsics:
                 comment: "source1"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_vaBoolCentroid"
         comment: ""
@@ -8422,7 +8838,9 @@ intrinsics:
                 comment: "src0"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_staticConstantPatchValue"
         comment: "GenISA_staticConstantPatchValue returns a static constant patch\
@@ -8437,7 +8855,9 @@ intrinsics:
                 comment: "symbol name"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_HDCCCSFastClear"
         comment: "Fast Clearing CCS Surface using HDC Send"
@@ -8685,10 +9105,12 @@ intrinsics:
                 type_definition: *i32
                 comment: "V - num blocks (2 for simple 2d block read)"
         attributes:
-            - !AttributeID "InaccessibleMemOnly"
             - !AttributeID "NoUnwind"
             - !AttributeID "WillReturn"
-            - !AttributeID "WriteOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation InaccessibleMem
+                memory_access: !MemoryAccessType Mod
     - !<IntrinsicDefinition>
         name: "GenISA_LSC2DBlockCopyAddrPayload"
         comment: "Copy LSC2DBlock read/write address payload"
@@ -8701,9 +9123,11 @@ intrinsics:
                 type_definition: *ref_0_
                 comment: "input : address payload to be copied"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
+                memory_access: !MemoryAccessType Ref
     - !<IntrinsicDefinition>
         name: "GenISA_LSC2DBlockSetAddrPayloadField"
         comment: "LSC 2d block : set given field in address payload"
@@ -8729,9 +9153,11 @@ intrinsics:
                 comment: "arg3: false : AP[arg1] = arg2;        true : AP[arg1] +=\
                     \ arg2"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
             - !AttributeID "WillReturn"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
     - !<IntrinsicDefinition>
         name: "GenISA_LSC2DBlockReadAddrPayload"
         comment: "LSC 2d block read with address payload(AP) as a single arg"
@@ -8929,8 +9355,10 @@ intrinsics:
                 type_definition: *i32
                 comment: "cache controls options (LSC_CACHE_OPTS)"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
     - !<IntrinsicDefinition>
         name: "GenISA_LSCAtomicFP64"
         comment: "LSC atomic FP64 add,sub,fcas"
@@ -8965,8 +9393,10 @@ intrinsics:
                 type_definition: *i32
                 comment: "cache controls options (LSC_CACHE_OPTS)"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
     - !<IntrinsicDefinition>
         name: "GenISA_LSCAtomicInts"
         comment: "LSC atomic I16,U16,I32,U32,I64,U64 add,sub,min,max,cas,inc,dec,and,or,xor,load,store"
@@ -9001,8 +9431,10 @@ intrinsics:
                 type_definition: *i32
                 comment: "cache controls options (LSC_CACHE_OPTS)"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
     - !<IntrinsicDefinition>
         name: "GenISA_LSCFence"
         comment: "LSC fence operation"
@@ -9055,7 +9487,9 @@ intrinsics:
                 comment: "cache controls options (LSC_CACHE_OPTS)"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType Ref
     - !<IntrinsicDefinition>
         name: "GenISA_LSCLoadWithSideEffects"
         comment: "LSC load meant to be used just for issuing load instruction (i.e.\
@@ -9115,7 +9549,9 @@ intrinsics:
                 comment: "cache controls options (LSC_CACHE_OPTS)"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType Ref
     - !<IntrinsicDefinition>
         name: "GenISA_LSCLoadBlock"
         comment: "LSC one-dimensional block load instruction"
@@ -9145,7 +9581,9 @@ intrinsics:
                 comment: "cache controls options (LSC_CACHE_OPTS)"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType Ref
     - !<IntrinsicDefinition>
         name: "GenISA_LSCLoadStatus"
         comment: "LSC load-status of address"
@@ -9174,8 +9612,10 @@ intrinsics:
                 type_definition: *i32
                 comment: "cache controls options (LSC_CACHE_OPTS)"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
     - !<IntrinsicDefinition>
         name: "GenISA_LSCPrefetch"
         comment: "LSC prefetch (loads to cache)"
@@ -9204,8 +9644,10 @@ intrinsics:
                 type_definition: *i32
                 comment: "cache controls options (LSC_CACHE_OPTS)"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
     - !<IntrinsicDefinition>
         name: "GenISA_LSCSimdBlockPrefetch"
         comment: "LSC 1D block prefetch (loads to cache)"
@@ -9230,8 +9672,10 @@ intrinsics:
                 type_definition: *i32
                 comment: "cache controls options (LSC_CACHE_OPTS)"
         attributes:
-            - !AttributeID "ArgMemOnly"
             - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation ArgMem
     - !<IntrinsicDefinition>
         name: "GenISA_LSCStore"
         comment: "LSC store instruction"
@@ -9344,7 +9788,9 @@ intrinsics:
                 comment: "bf8 source (as char)"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_HDCuncompressedwrite"
         comment: "XeHP SDV surface compression - HDC flat CCS builtin"
@@ -9447,7 +9893,9 @@ intrinsics:
                 comment: "saturation (true: sat; false: no)"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_ftotf32"
         comment: "float to tf32 conversion"
@@ -9465,7 +9913,9 @@ intrinsics:
                 comment: "Rounding mode(ERoundingMode)"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_srnd_hftobf8"
         comment: "stochastic rounding:  srnd dst  src0  src1"
@@ -9487,7 +9937,9 @@ intrinsics:
                 comment: "saturation (true: sat; false: no)"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_srnd_ftohf"
         comment: "stochastic rounding:  srnd dst  src0  src1"
@@ -9509,7 +9961,9 @@ intrinsics:
                 comment: "saturation (true: sat; false: no)"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_OutputMeshPrimitiveData"
         comment: ""
@@ -9573,7 +10027,9 @@ intrinsics:
                 comment: "primitiveIndex"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType Ref
     - !<IntrinsicDefinition>
         name: "GenISA_OutputMeshSivDataInput"
         comment: "Load data from mesh siv output"
@@ -9591,7 +10047,9 @@ intrinsics:
                 comment: "primitiveIndex : ignored for PrimitiveCount"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType Ref
     - !<IntrinsicDefinition>
         name: "GenISA_OutputMeshVertexData"
         comment: ""
@@ -9659,7 +10117,9 @@ intrinsics:
                 comment: "vertexIndex"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType Ref
     - !<IntrinsicDefinition>
         name: "GenISA_OutputTaskData"
         comment: ""
@@ -9714,7 +10174,9 @@ intrinsics:
                 comment: "owordOffset"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType Ref
     - !<IntrinsicDefinition>
         name: "GenISA_AcceptHitAndEndSearchHL"
         comment: "Raytracing: equivalent to DXR AcceptHitAndEndSearch()"
@@ -9760,7 +10222,9 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_AsyncStackPtr"
         comment: "Raytracing: Intrinsic used as marker in later passes to find per\
@@ -9777,7 +10241,9 @@ intrinsics:
         attributes:
             - !AttributeID "NoDuplicate"
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_SyncStackPtr"
         comment: "Raytracing: Intrinsic used as marker in later passes to find per\
@@ -9794,7 +10260,9 @@ intrinsics:
         attributes:
             - !AttributeID "NoDuplicate"
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_BindlessThreadDispatch"
         comment: "Raytracing: codegens to send.btd"
@@ -9854,7 +10322,9 @@ intrinsics:
                 comment: ""
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_DispatchRayIndex"
         comment: "Raytracing: Dispatch Ray Index - input: 'Dimension'"
@@ -9868,7 +10338,9 @@ intrinsics:
                 comment: ""
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_FillValue"
         comment: "Raytracing: Fill value from the stack"
@@ -9895,7 +10367,9 @@ intrinsics:
                 comment: ""
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_GlobalBufferPointer"
         comment: "Raytracing: Pointer to the global ray"
@@ -9905,7 +10379,9 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_GlobalQueuePointer"
         comment: "Raytracing/AtomicPullSWTileWalk: Pointer to the global queue struct"
@@ -9915,7 +10391,9 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_GlobalRootSignatureValue"
         comment: "Raytracing: ephemeral intrinsic later lowered to GlobalBufferPointer\
@@ -9934,7 +10412,9 @@ intrinsics:
                 comment: "true if the root signature value is a constant buffer pointer"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_HitKind"
         comment: "Raytracing: equivalent to DXR HitKind()"
@@ -9944,7 +10424,9 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_IgnoreHitHL"
         comment: "Raytracing: equivalent to DXR IgnoreHit()"
@@ -9968,7 +10450,9 @@ intrinsics:
                 comment: ""
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_LocalBufferPointer"
         comment: "Raytracing: Pointer to local args in shader record"
@@ -9978,7 +10462,9 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_LocalRootSignatureValue"
         comment: "Raytracing: ephemeral intrinsic later lowered to LocalBufferPointer/InlinedData"
@@ -9996,7 +10482,9 @@ intrinsics:
                 comment: "size of local root signature dereferenceable data"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_PayloadPtr"
         comment: "Raytracing: Temporary used to mark payload pointer after intrinsic\
@@ -10015,7 +10503,9 @@ intrinsics:
                 comment: "The SWStack base pointer"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_PreemptionEnable"
         comment: "Enable Preemption"
@@ -10102,7 +10592,9 @@ intrinsics:
                     \ state base address)"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_RayInfo"
         comment: "Raytracing: Query for different ray info. Input is query type, and\
@@ -10121,7 +10613,9 @@ intrinsics:
                 comment: ""
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_RayTCurrent"
         comment: "Raytracing: Signature retained so it is processed the same as the\
@@ -10140,7 +10634,9 @@ intrinsics:
                 comment: ""
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType Ref
     - !<IntrinsicDefinition>
         name: "GenISA_ReportHitHL"
         comment: "Raytracing: equivalent to DXR ReportHit()"
@@ -10196,7 +10692,9 @@ intrinsics:
                 comment: "predicate flag"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "WriteOnly"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType Mod
     - !<IntrinsicDefinition>
         name: "GenISA_StackSize"
         comment: "Raytracing: per lane stack size in bytes"
@@ -10206,7 +10704,9 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_SWHotZonePtr"
         comment: "Raytracing: Intrinsic used as marker in later passes to find hot\
@@ -10222,7 +10722,9 @@ intrinsics:
         attributes:
             - !AttributeID "NoDuplicate"
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_SWStackPtr"
         comment: "Raytracing: Intrinsic used as marker in later passes to find SWStack\
@@ -10237,7 +10739,9 @@ intrinsics:
                 comment: ""
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_TraceRayAsync"
         comment: "Raytracing: codegens to send.rta (sync bit not set)"
@@ -10599,7 +11103,9 @@ intrinsics:
                 comment: "input value"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_FPBinaryOperator"
         comment: "Represents a generic intrinsic for fadd,fsub,fmul,fdiv"
@@ -10621,7 +11127,9 @@ intrinsics:
                 comment: "0x1:fadd, 0x2:fsub, 0x4:fmul, 0x8:fdiv"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_bitcastfromstruct"
         comment: "bitcast from a struct to an int (or int vector), GRF layout related"
@@ -10635,7 +11143,9 @@ intrinsics:
                 comment: "input"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_bitcasttostruct"
         comment: "bitcast from a int (or int vector) to a struct, GRF layout related"
@@ -10649,7 +11159,9 @@ intrinsics:
                 comment: "input"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_inv"
         comment: "Inv math function"
@@ -10663,4 +11175,6 @@ intrinsics:
                 comment: "src0"
         attributes:
             - !AttributeID "NoUnwind"
-            - !AttributeID "ReadNone"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef

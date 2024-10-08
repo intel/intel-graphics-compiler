@@ -6,7 +6,7 @@
 #
 # =========================== end_copyright_notice =============================
 
-from typing import List, Set
+from typing import List, Set, Optional
 from enum import Enum
 import yaml
 
@@ -121,15 +121,10 @@ yaml.SafeLoader.add_constructor(u'!AddressSpace', AddressSpace_constructor)
 
 class AttributeID(Enum):
     NoUnwind = 0
-    ReadNone = 1
-    ReadOnly = 2
-    ArgMemOnly = 3
-    WriteOnly = 4
-    NoReturn = 5
-    NoDuplicate = 6
-    Convergent = 7
-    InaccessibleMemOnly = 8
-    WillReturn = 9
+    NoReturn = 1
+    NoDuplicate = 2
+    Convergent = 3
+    WillReturn = 4
 
     def __str__(self):
         return self.name
@@ -155,6 +150,73 @@ def AttributeID_constructor(loader, node):
     return AttributeID.from_str(value)
 
 yaml.SafeLoader.add_constructor(u'!AttributeID', AttributeID_constructor)
+
+class MemoryLocation(Enum):
+    ArgMem = 0
+    InaccessibleMem = 1
+    # Other = 2
+    # TODO: Support InaccessibleOrArgMem in a way compatible with LLVM <16 and 16+
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return '%s("%s")' % (self.__class__.__name__, self)
+
+    @classmethod
+    def from_str(cls, value : str):
+        for key, val in cls.__members__.items():
+            if key == value:
+                return val
+        else:
+            raise ValueError("{value} is not present in {cls.__name__}")
+
+def MemoryLocation_representer(dumper, data):
+    return dumper.represent_scalar(u'!MemoryLocation', u'%s' % str(data), style='"')
+
+yaml.add_representer(MemoryLocation, MemoryLocation_representer)
+
+def MemoryLocation_constructor(loader, node):
+    value = loader.construct_scalar(node)
+    return MemoryLocation.from_str(value)
+
+yaml.SafeLoader.add_constructor(u'!MemoryLocation', MemoryLocation_constructor)
+
+# The naming for enum values is aligned with LLVM 16 MemoryEffects/ModRefInfo syntax.
+# TODO: Consider adding a static constructor that would translate from "read / write"
+# semantics respresented as strings. This could improve readibility for YAML intrinsic
+# definitions, as the syntax would map directly onto LLVM 16 IR layout (i.e. onto the
+# unified 'memory' attribute syntax).
+class MemoryAccessType(Enum):
+    NoModRef = 0 # LLVM 16: memory(none)
+    Ref = 1      # LLVM 16: memory(read)
+    Mod = 2      # LLVM 16: memory(write)
+    ModRef = 3   # LLVM 16: memory(readwrite)
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return '%s("%s")' % (self.__class__.__name__, self)
+
+    @classmethod
+    def from_str(cls, value : str):
+        for key, val in cls.__members__.items():
+            if key == value:
+                return val
+        else:
+            raise ValueError("{value} is not present in {cls.__name__}")
+
+def MemoryAccessType_representer(dumper, data):
+    return dumper.represent_scalar(u'!MemoryAccessType', u'%s' % str(data), style='"')
+
+yaml.add_representer(MemoryAccessType, MemoryAccessType_representer)
+
+def MemoryAccessType_constructor(loader, node):
+    value = loader.construct_scalar(node)
+    return MemoryAccessType.from_str(value)
+
+yaml.SafeLoader.add_constructor(u'!MemoryAccessType', MemoryAccessType_constructor)
 
 class SafeYAMLObject(yaml.YAMLObject):
     yaml_loader = yaml.SafeLoader
@@ -420,6 +482,44 @@ class ArgumentDefinition(SafeYAMLObject):
         type_definition = TypeDefinition.from_dict(json_dct['type_definition'])
         return ArgumentDefinition(json_dct['name'], type_definition, json_dct['comment'])
 
+class MemoryRestriction(SafeYAMLObject):
+
+    yaml_tag = u'MemoryRestriction'
+
+    @classmethod
+    def from_yaml(cls, loader, node):
+        arg_dict = loader.construct_mapping(node, deep=True)
+        return cls(**arg_dict)
+
+    def __init__(self, memory_location : Optional[MemoryLocation] = None,
+                 memory_access : MemoryAccessType = MemoryAccessType['ModRef']):
+        self.memory_location = memory_location
+        self.memory_access = memory_access
+
+    def __repr__(self):
+        memory_loc_str = ("memory_location=%r, " % (self.memory_location)
+                              if self.memory_location else ")"
+                         )
+        memory_acc_str = "memory_access=%r" % (self.memory_access)
+        return "%s(%r%r)" % (self.__class__.__name__, memory_loc_str, memory_acc_str)
+
+    def to_dict(self):
+        res = {
+            "memory_access": memory_access.__str__()
+        }
+        if memory_location != None:
+            res["memory_location"] = memory_location.__str__()
+        return res
+
+    @staticmethod
+    def from_dict(json_dct : dict):
+        loc_entry = json_dct.get("memory_location")
+        memory_location = MemoryLocation.from_str(loc_entry) if loc_entry else None
+        acc_entry = json_dct.get("memory_access")
+        if acc_entry != None:
+            return MemoryRestriction(memory_location, MemoryAccessType.from_str(acc_entry))
+        return MemoryRestriction(memory_location)
+
 class ReturnDefinition(SafeYAMLObject):
 
     yaml_tag = u'ReturnDefinition'
@@ -460,16 +560,25 @@ class IntrinsicDefinition(SafeYAMLObject):
         return res
 
     def __init__(self, name : str, comment : str, return_definition : ReturnDefinition,
-                 arguments : List[ArgumentDefinition], attributes : Set[AttributeID]):
+                 arguments : List[ArgumentDefinition], attributes : Set[AttributeID],
+                 memory_effects : List[MemoryRestriction] = [ MemoryRestriction() ]):
         self.name = QuotedString(name)
         self.comment = QuotedString(comment)
         self.return_definition = return_definition
         self.arguments = arguments
         self.attributes = sorted(list(attributes), key=lambda x: x.__str__())
+        if len(memory_effects) > 1:
+            # TODO: To support LLVM 16-style memory effects per multiple locations,
+            # we'll need to gather multiple MemoryRestriction entries into a
+            # 'location <- access' dict.
+            raise TypeError("Multiple MemoryRestriction entries cannot be supported"
+                            "until IGC fully switches to LLVM 16")
+        self.memory_effects = memory_effects
 
     def __repr__(self):
-        return "%s(name=%r, comment=%r, return_definition=%r, arguments=%r, attributes=%r)" % (
-            self.__class__.__name__, self.name, self.comment, self.return_definition, self.arguments, self.attributes)
+        return "%s(name=%r, comment=%r, return_definition=%r, arguments=%r, attributes=%r, memory_effects=%r)" % (
+            self.__class__.__name__, self.name, self.comment, self.return_definition,
+            self.arguments, self.attributes, self.memory_effects)
 
     def to_dict(self):
         res = {
@@ -477,7 +586,8 @@ class IntrinsicDefinition(SafeYAMLObject):
             "comment": self.comment,
             "return_definition": self.return_definition.to_dict(),
             "arguments":[ el.to_dict() for el in self.arguments],
-            "attributes": [str(el) for el in self.attributes]
+            "attributes": [str(el) for el in self.attributes],
+            "memory_effects": [ el.to_dict() for el in self.memory_effects ]
         }
         return res
 
@@ -488,8 +598,12 @@ class IntrinsicDefinition(SafeYAMLObject):
         for arg in json_dct['arguments']:
             arguments.append(ArgumentDefinition.from_dict(arg))
         attributes = set(AttributeID.from_str(el) for el in json_dct['attributes'])
+        memory_effects_entry = json_dct.get('memory_effects')
+        memory_effects = (list(MemoryRestriction.from_dict(el) for el in memory_effects_entry)
+                              if memory_effects_entry else []
+                         )
         return IntrinsicDefinition(json_dct['name'], json_dct['comment'], return_definition,
-                                   arguments, attributes)
+                                   arguments, attributes, memory_effects)
 
 class PrimitiveArgumentDefinition(SafeYAMLObject):
 

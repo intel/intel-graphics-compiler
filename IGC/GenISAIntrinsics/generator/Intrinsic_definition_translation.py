@@ -118,18 +118,10 @@ def translate_attribute_list(attribute):
         return set(ID for attribute in attributes for ID in translate_attribute_list(attribute))
     attribute_map = {
         "None": set([ AttributeID.NoUnwind ]),
-        "NoMem": set([ AttributeID.NoUnwind, AttributeID.ReadNone ]),
-        "ReadMem": set([ AttributeID.NoUnwind, AttributeID.ReadOnly ]),
-        "ReadArgMem": set([ AttributeID.NoUnwind, AttributeID.ArgMemOnly, AttributeID.ReadOnly ]),
-        "WriteArgMem": set([ AttributeID.NoUnwind, AttributeID.WriteOnly, AttributeID.ArgMemOnly ]),
-        "WriteMem": set([ AttributeID.NoUnwind, AttributeID.WriteOnly ]),
-        "ReadWriteArgMem": set([ AttributeID.NoUnwind, AttributeID.ArgMemOnly ]),
         "NoReturn": set([ AttributeID.NoUnwind, AttributeID.NoReturn ]),
         "NoDuplicate": set([ AttributeID.NoUnwind, AttributeID.NoDuplicate ]),
         "Convergent": set([ AttributeID.NoUnwind, AttributeID.Convergent ]),
-        "InaccessibleMemOnly": set([ AttributeID.NoUnwind, AttributeID.InaccessibleMemOnly ]),
         "WillReturn": set([ AttributeID.WillReturn ]),
-        "WriteOnly": set([ AttributeID.WriteOnly ]),
     }
     return attribute_map[attribute]
 

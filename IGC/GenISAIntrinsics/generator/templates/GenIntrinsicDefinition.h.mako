@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Attributes.h"
+#include "llvmWrapper/Support/ModRef.h"
 #include "common/LLVMWarningsPop.hpp"
 
 #include <string_view>
@@ -64,6 +65,11 @@ public:
         ${IntrinsicFormatter.get_attribute_entry(attr, loop.last)}
         % endfor
     };
+    % endif
+
+    % if hasattr(el, 'memory_effects'):
+    static constexpr auto scMemoryEffects =
+        ${IntrinsicFormatter.get_memory_effects_from_restrictions(el.memory_effects)};
     % endif
 };
 

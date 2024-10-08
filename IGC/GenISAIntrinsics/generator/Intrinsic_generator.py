@@ -152,6 +152,25 @@ class IntrinsicFormatter:
         return output
 
     @staticmethod
+    def get_memory_effects_instance(memory_restriction : MemoryRestriction):
+        modref_arg = "IGCLLVM::ModRefInfo::{}".format(memory_restriction.memory_access)
+        if not memory_restriction.memory_location:
+            return "IGCLLVM::MemoryEffects({})".format(modref_arg)
+        loc_arg = "IGCLLVM::ExclusiveIRMemLoc::{}".format(memory_restriction.memory_location)
+        return "IGCLLVM::MemoryEffects({}, {})".format(loc_arg, modref_arg)
+
+    @staticmethod
+    def get_memory_effects_from_restrictions(memory_restrictions : List[MemoryRestriction]):
+        output = __class__.get_memory_effects_instance(memory_restrictions[0])
+        # NB: The code below can take effect once IGC is fully switched to LLVM 16,
+        #     and IntrinsicDefinition is adjusted to support multiple MemoryRestriction
+        #     entries per each unique location
+        #
+        # for entry in memory_restrictions[1:]:
+        #     output += " & {}".format(get_memory_effects_instance(entry))
+        return output
+
+    @staticmethod
     def get_prefix():
         prefix = 'llvm.genx.GenISA.'
         return prefix
