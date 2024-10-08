@@ -2714,8 +2714,6 @@ namespace {
             return splitVectorType(V, LdStKind::IS_LOAD);
         }
 
-        void AllowDummyLoadCoalescing(InstAndOffsetPairs Loads);
-
         // GatherCopy:
         //   copy multiple values (arg: Vals) into a single Dst (return value)
         //   (It's a packed copy, thus size(all Vals) = size(Dst).
@@ -3346,9 +3344,12 @@ void LdStCombine::combineStores()
 
 void LdStCombine::combineLoads()
 {
+    // this check's for testing, and to be removed when stable.
+    if ((IGC_GET_FLAG_VALUE(EnableLdStCombine) & 0x4) == 0)
+        return;
 
-    if (m_CGC->type != ShaderType::OPENCL_SHADER &&
-        (!m_CGC->getModuleMetaData()->compOpt.EnableLdStCombineforLoad))
+    // Start with OCL, then apply to other APIs.
+    if (m_CGC->type != ShaderType::OPENCL_SHADER)
         return;
 
     // All load candidates with addr = common-base + const-offset
@@ -3434,10 +3435,6 @@ void LdStCombine::combineLoads()
                     }
                 }
             }
-            //Experiment: If its the last element of the load and does not fit the DWORD alignment,
-            //It creates a dummy load with the same alignment type as the previous load
-            if (m_CGC->getModuleMetaData()->compOpt.EnableLdStCombinewithDummyLoad)
-                AllowDummyLoadCoalescing(Loads);
 
             //   Note: For now, each load is considered once. For example,
             //     load a
@@ -3800,64 +3797,6 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& LoadStores)
     }
 
     markVisited(LoadStores);
-}
-void LdStCombine::AllowDummyLoadCoalescing(InstAndOffsetPairs Loads)
-{
-    // Currently supports only this pattern.
-    // % 164 = add i32 % 114, 1020
-    // % 165 = and i32 % 164, 1020
-    // % 166 = getelementptr[1024 x half], [1024 x half] addrspace(3) * null, i32 0, i32 % 165
-    // %167 = load half, half addrspace(3) * %166, align 8
-    // % 168 = or i32 % 165, 1
-    // % 169 = getelementptr[1024 x half], [1024 x half] addrspace(3) * null, i32 0, i32 % 168
-    // % 170 = load half, half addrspace(3) * %169, align 2
-    // % 171 = or i32 % 165, 2
-    // % 172 = getelementptr[1024 x half], [1024 x half] addrspace(3) * null, i32 0, i32 % 171
-    // % 173 = load half, half addrspace(3) * %172, align 4
-    // to
-    // % 164 = add i32 % 114, 1020
-    // % 165 = and i32 % 164, 1020
-    // % 166 = getelementptr[1024 x half], [1024 x half] addrspace(3) * null, i32 0, i32 % 165
-    // %167 = load half, half addrspace(3) * %166, align 8
-    // % 168 = or i32 % 165, 1
-    // % 169 = getelementptr[1024 x half], [1024 x half] addrspace(3) * null, i32 0, i32 % 168
-    // % 170 = load half, half addrspace(3) * %169, align 2
-    // % 171 = or i32 % 165, 2
-    // % 172 = getelementptr[1024 x half], [1024 x half] addrspace(3) * null, i32 0, i32 % 171
-    // % 173 = load half, half addrspace(3) * %172, align 4
-    // % 174 = add i32 % 165, 3
-    // % 175 = getelementptr[1024 x half], [1024 x half] addrspace(3) * null, i32 0, i32 % 174
-    // % 176 = load half, half addrspace(3) * %175, align 2
-    int size = Loads.size();
-    LdStInfo LastLoad = Loads[size - 1];
-    uint32_t LastLoadSize = (uint32_t)m_DL->getTypeStoreSize(LastLoad.Inst->getType());
-    uint32_t currLoadSize = LastLoadSize + LastLoad.ByteOffset;
-    if (currLoadSize % 4)
-    {
-        //Replicating the last load to make it DWORD aligned
-        uint32_t newLoadSize = LastLoadSize;
-        if (!((currLoadSize + newLoadSize) % 4))
-        {
-            LoadInst* lead = static_cast<LoadInst*>(LastLoad.Inst);
-            Value* ldPtr = lead->getPointerOperand();
-            if (auto gep = dyn_cast<GetElementPtrInst>(ldPtr))
-            {
-                if ((gep->getNumOperands() == 3) && (isa<ConstantPointerNull>(gep->getPointerOperand())))
-                {
-                    IRBuilder<> irBuilder(LastLoad.Inst);
-                    Value* AddInst = irBuilder.CreateAdd(gep->getOperand(2), irBuilder.getInt32(1));
-                    Value* gepArg[] = { gep->getOperand(1), AddInst };
-                    Value* Addr = irBuilder.CreateInBoundsGEP(gep->getSourceElementType(),
-                        gep->getOperand(0), gepArg);
-                    Instruction* dummyLoad = static_cast<Instruction*>
-                        (irBuilder.CreateLoad(IGCLLVM::getNonOpaquePtrEltTy(Addr->getType()), Addr));
-                    Loads.push_back(LdStInfo(dummyLoad, LastLoad.ByteOffset + newLoadSize));
-                }
-            }
-
-        }
-    }
-    return;
 }
 
 // A member of layout struct can be a vector type. This function will decide
