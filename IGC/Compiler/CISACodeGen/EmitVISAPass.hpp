@@ -319,13 +319,6 @@ public:
         bool negate,
         CVariable* src,
         CVariable* dst);
-    void emitReductionAllAdd(
-        e_opcode op,
-        uint64_t identityValue,
-        VISA_Type type,
-        bool negate,
-        CVariable* src,
-        CVariable* dst);
     void emitReductionClustered(
         const e_opcode op,
         const uint64_t identityValue,
