@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #endif
 
 #include <string>
+#include <cstdint>
 #include "../../common/EmUtils.h"
 #include "../../Compiler/CodeGenPublicEnums.h"
 // TODO: add all external declarations so that external projects only need
