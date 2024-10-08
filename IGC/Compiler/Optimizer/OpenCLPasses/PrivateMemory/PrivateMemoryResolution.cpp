@@ -214,16 +214,7 @@ void PrivateMemoryResolution::expandPrivateMemoryForVla(uint32_t &maxPrivateMem)
         "Greater values can affect performance, and lower ones may lead to incorrect results of your program.\n"
         "To make sure your program runs correctly you can set environmental variable IGC_StackOverflowDetection=1. "
         "This flag will print \"Stack overflow detected!\" if insufficient memory value has led to stack overflow. "
-        "It should be used for debugging only as it affects performance."
-        "Compiling with IGC_StackOverflowDetection may change the target SIMD width of the compiled program - "
-        "which leads to different amounts of total memory being available \"per thread\". "
-        "To prevent this, we can force our targeted SIMD width like this: IGC_ForceOCLSIMDWidth=32. "
-        "To figure out which SIMD width is used automatically when IGC_StackOverflowDetection isn't used we can investigate shader dumps - "
-        "files generated with .asm extension (but without \"Intel_Symbol_Table_Void_Program\" suffix) reveal which SIMD target was generated - "
-        "for example, \"OCL_asm197f4f38f02d7ea6_simd32_entry_0001.asm\" reveals that the compilation targeted SIMD32. "
-        "More about shader dumps can be read here: https://github.com/intel/intel-graphics-compiler/blob/master/documentation/shader_dumps_instruction.md\n"
-        "The documentation for setting flags through environmental variables as well as available flags can be found at: "
-        "https://github.com/intel/intel-graphics-compiler/blob/master/documentation/configuration_flags.md";
+        "It should be used for debugging only as it affects performance.";
 
     getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitWarning(fullWarningMessage.c_str());
 }
