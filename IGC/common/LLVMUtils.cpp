@@ -744,7 +744,9 @@ bool IGCPassManager::isPrintAfter(Pass* P)
 void IGCPassManager::addPrintPass(Pass* P, bool isBefore)
 {
     std::string passName =
-        m_name + (isBefore ? "_before_" : "_after_") + std::string(P->getPassName());
+        m_name + (isBefore ? "_before_" : "_after_") +
+        (P->getPassName().startswith("Unnamed pass") ? "UnnamedPass" : std::string{P->getPassName()});
+
     auto name =
         IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName())
         .Type(m_pContext->type)
