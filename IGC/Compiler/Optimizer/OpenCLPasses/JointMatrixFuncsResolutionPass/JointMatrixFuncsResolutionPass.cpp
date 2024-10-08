@@ -679,6 +679,8 @@ static const char *nameLayout(unsigned layout) {
     }
 }
 
+// TODO: Get rid of this function and update ValidateLoadStore and Validate2DBlockLoadStore
+// accordingly.
 static bool isSupprtedLargeSlice(const JointMatrixTypeDescription *desc, bool useSG16) {
     if (!useSG16) {
         if(desc->layout == LayoutPackedA) {
@@ -697,14 +699,17 @@ static bool isSupprtedLargeSlice(const JointMatrixTypeDescription *desc, bool us
     }
 
     if (desc->layout == LayoutPackedA) {
-        if (desc->rows == 16 && desc->columns == 16 && desc->bitWidth == 16)
-            return true;
-        if (desc->rows == 32 && desc->columns == 16 && desc->bitWidth == 16)
-            return true;
+        if (desc->bitWidth != 16) return false;
+        if (desc->rows ==  1 && desc->columns == 32) return true;
+        if (desc->rows == 16 && desc->columns == 16) return true;
+        if (desc->rows == 32 && desc->columns == 16) return true;
+        if (desc->rows == 32 && desc->columns == 32) return true;
     }
 
     if (desc->layout == LayoutPackedB) {
         if (desc->rows == 16 && desc->columns == 64 && desc->bitWidth == 16)
+            return true;
+        if (desc->rows == 32 && desc->columns == 64 && desc->bitWidth == 16)
             return true;
     }
 
@@ -720,6 +725,8 @@ static bool isSupprtedLargeSlice(const JointMatrixTypeDescription *desc, bool us
     return false;
 }
 
+// TODO: Currently this function doesn't take into account large slices, when reporting
+// supported parameters. This should be fixed.
 bool JointMatrixFuncsResolutionPass::ValidateLoadStore
         (bool isLoad, unsigned operationLayout, const JointMatrixTypeDescription *desc, Value *ctx) {
     if (isSupprtedLargeSlice(desc, m_Ctx->platform.hasExecSize16DPAS())) {
@@ -1172,11 +1179,12 @@ static Type* getAccFloatVec64Type(LLVMContext &ctx) {
     return IGCLLVM::FixedVectorType::get(Type::getFloatTy(ctx), 64);
 }
 
-// Check if it is one off special case: Accumulator 32x64.
+// Check if it is special case: Accumulator 32x64.
 static bool isAccumulator32x64(const JointMatrixTypeDescription &desc) {
     return (desc.layout == LayoutRowMajor && desc.rows == 32 && desc.columns == 64);
 }
-// Check if it is one off special case: Accumulator 32x32.
+
+// Check if it is special case: Accumulator 32x32.
 static bool isAccumulator32x32(const JointMatrixTypeDescription &desc) {
     return (desc.layout == LayoutRowMajor && desc.rows == 32 && desc.columns == 32);
 }
@@ -1213,7 +1221,7 @@ Type *JointMatrixFuncsResolutionPass::ResolveType(Type *opaqueType, JointMatrixT
     if (outDesc != nullptr)
         *outDesc = desc;
 
-    // One off special case: this should ideally be a vector of <float x 128>. However since IGC
+    // Special case: this should ideally be a vector of <float x 128>. However since IGC
     // code gen supports vector operations only on vectors up to 64
     // entries, we model this slice as structure of {<float x 64>, <float x 64>}.
     // Alternative approaches summary:
@@ -1531,14 +1539,12 @@ static const char *getElementName(PrecisionType P) {
 }
 
 static bool isMADSupportedAsBuiltin(unsigned M, unsigned N, unsigned K) {
-    if (M == 16 && N == 16 && K == 16)
-        return true;
-    if (M == 32 && N == 32 && K == 16)
-        return true;
-    if (M == 32 && N == 64 && K == 16)
-        return true;
-    if (M == 1 && N == 64 && K == 16)
-        return true;
+    if (M == 1  && N == 64 && K == 16) return true;
+    if (M == 1  && N == 64 && K == 32) return true;
+    if (M == 16 && N == 16 && K == 16) return true;
+    if (M == 32 && N == 32 && K == 16) return true;
+    if (M == 32 && N == 64 && K == 16) return true;
+    if (M == 32 && N == 64 && K == 32) return true;
     return false;
 }
 
@@ -1700,8 +1706,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveMad(CallInst *CI, unsigned O
 
 template <class BuilderT>
 static Type *getResolvedVectorElementType(Type *matrixType, BuilderT *builder) {
-    IGCLLVM::FixedVectorType *ty = dyn_cast<IGCLLVM::FixedVectorType>(matrixType);
-    if (ty && ty->getNumElements() <= 32)
+    if (IGCLLVM::FixedVectorType *ty = dyn_cast<IGCLLVM::FixedVectorType>(matrixType))
         return ty->getElementType();
     if (matrixType->isIntegerTy() || matrixType->isFloatingPointTy())
         return matrixType;

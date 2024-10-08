@@ -1005,9 +1005,14 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
             {
                 tileWidth = 2;
             }
+            // equals is used to differentiate between k1 and k1[0-9], if needed
+            else if (funcName.equals_insensitive("k1"))
+            {
+                tileWidth = 1;
+            }
             else
             {
-                IGC_ASSERT_MESSAGE(0, "Transpose with 32 bit element size only supports width 8.");
+                IGC_ASSERT_MESSAGE(0, "Transpose with 32 bit element size only supports width: 1, 2, 4, 8.");
                 return nullptr;
             }
         }
