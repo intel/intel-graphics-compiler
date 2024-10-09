@@ -3594,15 +3594,23 @@ namespace IGC
                     }
                     else
                     {
-                        std::string errorMsg =
-                            "total scratch space exceeds HW "
-                            "supported limit for kernel " +
-                            shader->entry->getName().str() + ": " +
-                            std::to_string(getScratchUse(shader, ctx)) + " bytes (max permitted PTSS " +
-                            std::to_string(shader->ProgramOutput()->m_scratchSpaceSizeLimit) +
-                            " bytes)";
+                        if(IGC_GET_FLAG_VALUE(ForceSIMDRPELimit) != 0) {
+                            IGC_SET_FLAG_VALUE(ForceSIMDRPELimit, 0);
+                            ctx->m_retryManager.kernelSet.insert(shader->entry->getName().str());
+                            ctx->EmitWarning("we couldn't compile without exceeding max permitted PTSS, drop SIMD \n", nullptr);
+                        }
+                        else {
 
-                        ctx->EmitError(errorMsg.c_str(), nullptr);
+                            std::string errorMsg =
+                                "total scratch space exceeds HW "
+                                "supported limit for kernel " +
+                                shader->entry->getName().str() + ": " +
+                                std::to_string(getScratchUse(shader, ctx)) + " bytes (max permitted PTSS " +
+                                std::to_string(shader->ProgramOutput()->m_scratchSpaceSizeLimit) +
+                                " bytes)";
+
+                            ctx->EmitError(errorMsg.c_str(), nullptr);
+                        }
                     }
                 }
             }
