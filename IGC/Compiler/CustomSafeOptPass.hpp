@@ -179,9 +179,7 @@ namespace IGC
         void visitTruncInst(llvm::TruncInst& I);
         void visitBitCastInst(llvm::BitCastInst& I);
         void visitLoadInst(llvm::LoadInst& I);
-#if LLVM_VERSION_MAJOR >= 10
         void visitFNeg(llvm::UnaryOperator& I);
-#endif
 
         void createBitcastExtractInsertPattern(llvm::BinaryOperator& I,
             llvm::Value* Op1, llvm::Value* Op2, unsigned extractNum1, unsigned extractNum2);

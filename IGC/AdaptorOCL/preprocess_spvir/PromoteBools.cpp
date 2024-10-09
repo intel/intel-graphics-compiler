@@ -533,7 +533,6 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
 
 void PromoteBools::setPromotedAttributes(Function* newFunction, AttributeList& attributeList)
 {
-#if LLVM_VERSION_MAJOR >= 12
     auto getPromoted = [this, &newFunction](llvm::Attribute attr)
         {
             if (attr.isTypeAttribute())
@@ -578,7 +577,6 @@ void PromoteBools::setPromotedAttributes(Function* newFunction, AttributeList& a
         }
         newFunction->addParamAttrs(i, attrBuilder);
     }
-#endif // LLVM_VERSION_MAJOR >= 12
 }
 
 Function* PromoteBools::promoteFunction(Function* function)

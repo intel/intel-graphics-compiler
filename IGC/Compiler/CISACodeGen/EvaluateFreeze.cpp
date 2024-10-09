@@ -36,13 +36,11 @@ public:
     }
 
 private:
-#if LLVM_VERSION_MAJOR >= 10
     void evaluateInBasicBlock(
         BasicBlock *,
         std::vector<llvm::FreezeInst *> &RemList);
     void evaluateFreezeInstUndef(FreezeInst*) const;
     void evaluateFreezeInstNotUndef(FreezeInst*) const;
-#endif // LLVM_VERSION_MAJOR >= 10
 };
 
 char EvaluateFreeze::ID = 0;
@@ -62,7 +60,6 @@ llvm::FunctionPass* IGC::createEvaluateFreezePass()
 }
 
 bool EvaluateFreeze::runOnFunction(Function& F) {
-#if LLVM_VERSION_MAJOR >= 10
     std::vector<llvm::FreezeInst *> RemList;
 
     for (auto& BB : F)
@@ -72,12 +69,8 @@ bool EvaluateFreeze::runOnFunction(Function& F) {
         FI->eraseFromParent();
 
     return !RemList.empty();
-#else // LLVM_VERSION_MAJOR >= 10
-    return false;
-#endif // LLVM_VERSION_MAJOR >= 10
 }
 
-#if LLVM_VERSION_MAJOR >= 10
 // A freeze is idempotent on anything that is not %poison or %undef
 // For those we return an arbitrary value.  We actually make it deterministic
 // for all cases just for sanity sake.
@@ -136,4 +129,3 @@ void EvaluateFreeze::evaluateFreezeInstNotUndef(FreezeInst* FI) const
     llvm::Value *Op = FI->getOperand(0);
     FI->replaceAllUsesWith(Op);
 }
-#endif // LLVM_VERSION_MAJOR >= 10

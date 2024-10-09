@@ -196,9 +196,7 @@ namespace {
         bool visitInvoke(InvokeInst&) { return false; }
         bool visitResume(ResumeInst&) { return false; }
         bool visitUnreachable(UnreachableInst&) { return false; }
-#if LLVM_VERSION_MAJOR >= 10
         bool visitFreeze(FreezeInst&);
-#endif
 
         bool visitAdd(BinaryOperator&);
         bool visitFAdd(BinaryOperator&) { return false; }
@@ -694,7 +692,6 @@ bool InstExpander::visitRet(ReturnInst& RI) {
     return false;
 }
 
-#if LLVM_VERSION_MAJOR >= 10
 bool InstExpander::visitFreeze(FreezeInst& FI) {
     IGC_ASSERT(nullptr != Emu);
     // Skip if it's not 64-bit integer.
@@ -712,7 +709,6 @@ bool InstExpander::visitFreeze(FreezeInst& FI) {
     Emu->setExpandedValues(&FI, newLo, newHi);
     return true;
 }
-#endif
 
 bool InstExpander::visitAdd(BinaryOperator& BinOp) {
     IGC_ASSERT(nullptr != Emu);
@@ -1916,7 +1912,6 @@ bool InstExpander::visitCall(CallInst& Call) {
         case Intrinsic::invariant_start:
         case Intrinsic::invariant_end:
             return false;
-#if LLVM_VERSION_MAJOR >= 12
         // emulate @llvm.abs.i64
         case Intrinsic::abs:
         {
@@ -1985,7 +1980,6 @@ bool InstExpander::visitCall(CallInst& Call) {
             Call.replaceAllUsesWith(IRB->CreateSelect(Cmp, LHS, RHS));
             return true;
         }
-#endif
         }
     }
 

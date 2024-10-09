@@ -289,13 +289,6 @@ static bool PHIsEqualValue(PHINode* PN, Value* NonPhiInVal,
 
 bool DynamicRayManagementPass::TryProceedBasedApproach(Function& F)
 {
-
-#if LLVM_VERSION_MAJOR < 10
-    // LLVM 9 doesn't have the necessary API for testing if the loop is guarded
-    // none of the titles that use LLVM 9 use rayquery, so we just return instead of providing our own implementation
-    return false;
-#else
-
     // this approach assumes all traffic between private memory and RTStack happens on Proceed calls
     // will be removed once RayQuery will be overhauled to minimize shadowstack usage
 
@@ -575,8 +568,6 @@ bool DynamicRayManagementPass::TryProceedBasedApproach(Function& F)
     );
 
     return true;
-
-#endif // LLVM_VERSION_MAJOR >= 10
 }
 
 bool DynamicRayManagementPass::AddDynamicRayManagement(Function& F)
@@ -973,13 +964,7 @@ void DynamicRayManagementPass::HandleComplexControlFlow(Function& F)
         {
             auto [rayQueryCheckIntrinsic, rayQueryReleaseIntrinsic] = m_RayQueryCheckReleasePairs[rayQueryCheckReleasePairIndex];
 
-            if (m_DT->dominates(rayQueryCheckIntrinsic, &I) &&
-#if LLVM_VERSION_MAJOR <= 9
-                PDT_dominates(*m_PDT, rayQueryReleaseIntrinsic, &I)
-#else
-                m_PDT->dominates(rayQueryReleaseIntrinsic, &I)
-#endif
-                )
+            if (m_DT->dominates(rayQueryCheckIntrinsic, &I) && m_PDT->dominates(rayQueryReleaseIntrinsic, &I))
             {
                 // If the DisableRayQueryDynamicRayManagementMechanismForExternalFunctionsCalls flag
                 // is enabled, remove Check/Release pairs which encapsulates any external function call.

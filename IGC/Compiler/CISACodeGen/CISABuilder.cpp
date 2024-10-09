@@ -859,7 +859,6 @@ namespace IGC
             uint64_t immediate = CalculateImmediateValue(var, mod.mod);
             auto isaType = var->GetType();
 
-#if LLVM_VERSION_MAJOR >= 14
             // :bf type is not supported for immediate values.
             if (var->GetType() == ISA_TYPE_BF) {
                 APFloat immBF(APFloat::BFloat(), APInt(16, immediate));
@@ -871,7 +870,6 @@ namespace IGC
                 immediate = immBF.bitcastToAPInt().getZExtValue();
                 isaType = ISA_TYPE_F;
             }
-#endif
             V(vKernel->CreateVISAImmediate(operand, &immediate,
                                            isaType));
         }

@@ -11,17 +11,11 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/Config/llvm-config.h"
 #include "llvm/ADT/STLExtras.h"
-#if LLVM_VERSION_MAJOR > 9
 #include <memory>
-#endif
 
 namespace IGCLLVM
 {
-#if LLVM_VERSION_MAJOR <= 9
-    using llvm::make_unique;
-#else
     using std::make_unique;
-#endif
 }
 
 #endif

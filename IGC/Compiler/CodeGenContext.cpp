@@ -18,9 +18,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "Probe/Assertion.h"
-#if LLVM_VERSION_MAJOR >= 11
 #include <llvm/IR/LLVMRemarkStreamer.h>
-#endif
 
 namespace IGC
 {
@@ -771,24 +769,7 @@ namespace IGC
             // symbol name
             name = rawName;
         }
-#if LLVM_VERSION_MAJOR >= 10
         return llvm::demangle(name);
-#else
-        char *demangled = nullptr;
-
-        demangled = llvm::itaniumDemangle(name.c_str(), nullptr, nullptr, nullptr);
-        if (demangled == nullptr) {
-            demangled = llvm::microsoftDemangle(name.c_str(), nullptr, nullptr, nullptr);
-        }
-
-        if (demangled == nullptr) {
-            return name;
-        }
-
-        std::string result = demangled;
-        std::free(demangled);
-        return result;
-#endif
     }
 
     void CodeGenContext::EmitMessage(std::ostream &OS, const char* messagestr, const llvm::Value* context) const
@@ -1048,7 +1029,6 @@ namespace IGC
         return MI->second;
     }
     void CodeGenContext::initializeRemarkEmitter(const ShaderHash & hash) {
-#if LLVM_VERSION_MAJOR >= 11
         //setting up optimization remark emitter
         if (IGC_IS_FLAG_ENABLED(EnableRemarks))
         {
@@ -1063,6 +1043,5 @@ namespace IGC
             this->RemarksFile = std::move(*RemarksFileOrErr);
             this->RemarksFile->keep();
         }
-#endif
     }
 }

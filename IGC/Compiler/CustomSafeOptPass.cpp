@@ -3839,7 +3839,6 @@ void GenSpecificPattern::visitTruncInst(llvm::TruncInst& I)
     }
 }
 
-#if LLVM_VERSION_MAJOR >= 10
 void GenSpecificPattern::visitFNeg(llvm::UnaryOperator& I)
 {
     // from
@@ -3875,7 +3874,6 @@ void GenSpecificPattern::visitFNeg(llvm::UnaryOperator& I)
 
     I.replaceAllUsesWith(fsub);
 }
-#endif
 
 static cl::opt<bool> overrideEnableSimplifyGEP(
     "override-enable-simplify-gep", cl::init(false), cl::Hidden,

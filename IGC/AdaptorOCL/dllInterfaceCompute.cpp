@@ -457,9 +457,7 @@ bool TranslateSPIRVToLLVM(
     // This option has to be enabled since SPIRV-Translator for LLVM13 because of:
     // https://github.com/KhronosGroup/SPIRV-LLVM-Translator/commit/835eb7e. This change
     // has been also backported to SPIRV-Translator for LLVM11.
-#if LLVM_VERSION_MAJOR >= 13
     Opts.setPreserveOCLKernelArgTypeMetadataThroughString(true);
-#endif
 
     // Unpack specialization constants passed from OCL Runtime (Acquired from
     // clSetProgramSpecializationConstant API call). It is also passed as a

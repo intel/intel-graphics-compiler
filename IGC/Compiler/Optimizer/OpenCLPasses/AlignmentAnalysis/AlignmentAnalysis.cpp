@@ -468,7 +468,7 @@ void AlignmentAnalysis::SetInstAlignment(MemSetInst& I)
 {
     // Set the align attribute of the memset according to the detected
     // alignment of its operand.
-    auto alignment = IGCLLVM::Max(IGCLLVM::getDestAlign(I), IGCLLVM::Align(getAlignValue(I.getRawDest())));
+    auto alignment = IGCLLVM::Max(IGCLLVM::getDestAlign(I), llvm::Align(getAlignValue(I.getRawDest())));
     I.setDestAlignment(alignment);
 }
 
@@ -495,14 +495,14 @@ void AlignmentAnalysis::SetInstAlignment(MemCpyInst& I)
     // In this case, we can set the alignment of memcpy to the alignment of its destination only.
     if (isConstGlobalZero(I.getRawSource()))
     {
-        auto alignment = IGCLLVM::Max(IGCLLVM::getDestAlign(I), IGCLLVM::Align(getAlignValue(I.getRawDest())));
+        auto alignment = IGCLLVM::Max(IGCLLVM::getDestAlign(I), llvm::Align(getAlignValue(I.getRawDest())));
         I.setDestAlignment(alignment);
         return;
     }
 
     // Set the align attribute of the memcpy based on the minimum alignment of its source and dest fields
     auto minRawAlignment = iSTD::Min(getAlignValue(I.getRawDest()), getAlignValue(I.getRawSource()));
-    auto alignment = IGCLLVM::Max(IGCLLVM::getDestAlign(I), IGCLLVM::Align(minRawAlignment));
+    auto alignment = IGCLLVM::Max(IGCLLVM::getDestAlign(I), llvm::Align(minRawAlignment));
     I.setDestAlignment(alignment);
 }
 
@@ -510,6 +510,6 @@ void AlignmentAnalysis::SetInstAlignment(MemMoveInst& I)
 {
     // Set the align attribute of the memmove based on the minimum alignment of its source and dest fields
     auto minRawAlignment = iSTD::Min(getAlignValue(I.getRawDest()), getAlignValue(I.getRawSource()));
-    auto alignment = IGCLLVM::Max(IGCLLVM::getDestAlign(I), IGCLLVM::Align(minRawAlignment));
+    auto alignment = IGCLLVM::Max(IGCLLVM::getDestAlign(I), llvm::Align(minRawAlignment));
     I.setDestAlignment(alignment);
 }

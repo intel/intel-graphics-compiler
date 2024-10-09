@@ -676,11 +676,7 @@ bool CGen8OpenCLProgram::GetZEBinary(
 
                 if (IGC_IS_FLAG_DISABLED(UseMTInLLD))
                 {
-#if LLVM_VERSION_MAJOR >= 11
                     std::string elfLinkerOpt1 = "--threads=1";
-#else
-                    std::string elfLinkerOpt1 = "--no-threads";
-#endif
                     elfVecNames.push_back(elfLinkerOpt1);
                     elfVecPtrs.push_back(elfVecNames.back().c_str());
                 }

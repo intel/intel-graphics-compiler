@@ -9321,9 +9321,7 @@ void EmitPass::EmitIntrinsicMessage(llvm::IntrinsicInst* inst)
     case Intrinsic::lifetime_end:
     case Intrinsic::fabs:
     case Intrinsic::trap:
-#if LLVM_VERSION_MAJOR >= 12
     case Intrinsic::experimental_noalias_scope_decl:
-#endif
         // do nothing
         break;
     case Intrinsic::stacksave:
@@ -9348,7 +9346,6 @@ void EmitPass::EmitIntrinsicMessage(llvm::IntrinsicInst* inst)
         emitSqrt(inst);
         break;
 
-#if LLVM_VERSION_MAJOR >= 12
     case Intrinsic::umax:
         emitUmax(inst);
         break;
@@ -9364,7 +9361,6 @@ void EmitPass::EmitIntrinsicMessage(llvm::IntrinsicInst* inst)
     case Intrinsic::smin:
         emitSmin(inst);
         break;
-#endif
 
     default:
         inst->print(IGC::Debug::ods());

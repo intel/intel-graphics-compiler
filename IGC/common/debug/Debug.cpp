@@ -228,11 +228,7 @@ void Warning(
 }
 
 namespace {
-#if LLVM_VERSION_MAJOR >= 14
     void FatalErrorHandler(void *user_data, const char* reason, bool gen_crash_diag)
-#else
-    void FatalErrorHandler(void *user_data, const std::string& reason, bool gen_crash_diag)
-#endif
     {
         const std::string reasonStrWrapper(reason);
         (void)user_data;

@@ -649,7 +649,6 @@ public:
 
           DISubrange* subrange;
           (void) loExpr;
-#if LLVM_VERSION_MAJOR >= 11
           if (loExpr)
           {
               if (!countExpr)
@@ -659,9 +658,7 @@ public:
               }
               subrange = Builder.getOrCreateSubrange(nullptr, loExpr, countExpr, nullptr);
           }
-          else
-#endif
-          if (countExpr)
+          else if (countExpr)
               subrange = Builder.getOrCreateSubrange(loConst, countExpr);
           else
           {

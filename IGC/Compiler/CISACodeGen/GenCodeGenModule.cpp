@@ -1425,11 +1425,7 @@ InlineCost SubroutineInliner::getInlineCost(IGCLLVM::CallSiteRef CS)
 
     // Inline direct calls to functions with always inline attribute or a function
     // whose estimated size is under certain predefined limit.
-    if (Callee && !Callee->isDeclaration() && isInlineViable(*Callee)
-#if LLVM_VERSION_MAJOR >= 11
-        .isSuccess()
-#endif
-        )
+    if (Callee && !Callee->isDeclaration() && isInlineViable(*Callee).isSuccess())
     {
         if (CS.hasFnAttr(llvm::Attribute::AlwaysInline))
             return llvm::InlineCost::getAlways("Per AlwaysInline function attribute");

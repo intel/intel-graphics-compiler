@@ -27,9 +27,7 @@ public:
     static char ID;
     bool runOnFunction(Function& F) override;
     void visitInstruction(Instruction& I);
-#if LLVM_VERSION_MAJOR >= 10
     void visitFNeg(Instruction& I);
-#endif
     void visitFDiv(Instruction& I);
     virtual llvm::StringRef getPassName() const override { return "Fast Math Constant Handling"; }
 

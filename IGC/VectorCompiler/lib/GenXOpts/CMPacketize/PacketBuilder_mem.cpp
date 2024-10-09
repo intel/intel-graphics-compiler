@@ -48,7 +48,7 @@ LoadInst *PacketBuilder::LOAD(Type *Ty, Value *BasePtr,
   return PacketBuilder::LOAD(GEPInst->getSourceElementType(), GEPInst, Name);
 }
 
-LoadInst *PacketBuilder::ALIGNED_LOAD(Type *Ty, Value *Ptr, IGCLLVM::Align Align,
+LoadInst *PacketBuilder::ALIGNED_LOAD(Type *Ty, Value *Ptr, llvm::Align Align,
                                       const Twine &Name) {
   return IRB->CreateAlignedLoad(Ty, Ptr, Align, Name);
 }

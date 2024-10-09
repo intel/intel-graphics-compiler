@@ -181,22 +181,13 @@ void GenerateFrequencyData::updateStaticFuncFreq(DenseMap<Function*, ScaledNumbe
     // parameter.
     auto GetCallSiteProfCount = [&](const CallGraphNode*,
         const CallGraphNode::CallRecord& Edge) {
-#if LLVM_VERSION_MAJOR < 11
-            llvm::Optional<Scaled64> Res = llvm::None;
-            if (!Edge.first)
-                return Res;
-            assert(isa<Instruction>(Edge.first));
-            CallSite CS(cast<Instruction>(Edge.first));
-            Function* Caller = CS.getCaller();
-            BasicBlock* CSBB = CS.getInstruction()->getParent();
-#else
             llvm::Optional<Scaled64> Res = llvm::None;
             if (!Edge.first)
                 return Res;
             CallBase& CB = *cast<CallBase>(*Edge.first);
             Function* Caller = CB.getCaller();
             BasicBlock* CSBB = CB.getParent();
-#endif
+
             // Now compute the callsite count from relative frequency and
             // entry count:
             Scaled64 EntryFreq = entryFreqs[Caller];

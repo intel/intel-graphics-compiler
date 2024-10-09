@@ -72,10 +72,10 @@ public:
   bool runOnModule(Module &M) override;
 
 private:
-  IGCLLVM::Align getSLMArgAlign(const Argument &A) const;
-  IGCLLVM::Align getGlobalVarAlign(const GlobalVariable &GV) const;
+  llvm::Align getSLMArgAlign(const Argument &A) const;
+  llvm::Align getGlobalVarAlign(const GlobalVariable &GV) const;
   Constant *allocateOnSLM(const GlobalVariable &GV, unsigned &SLMSize) const;
-  Constant *getNextOffset(IGCLLVM::Align Alignment, LLVMContext &Ctx,
+  Constant *getNextOffset(llvm::Align Alignment, LLVMContext &Ctx,
                           unsigned &SLMSize) const;
   void
   replaceSLMVariablesWithOffsets(SmallVectorImpl<GlobalVariable *> &Workload,
@@ -176,22 +176,22 @@ static SmallVector<GlobalVariable *, 4> collectSLMVariables(Module &M) {
   return SLMVars;
 }
 
-IGCLLVM::Align GenXSLMResolution::getSLMArgAlign(const Argument &A) const {
+llvm::Align GenXSLMResolution::getSLMArgAlign(const Argument &A) const {
   auto *TypeToAlign = IGCLLVM::getNonOpaquePtrEltTy(A.getType());
   return IGCLLVM::getABITypeAlign(*DL, TypeToAlign);
 }
 
-IGCLLVM::Align
+llvm::Align
 GenXSLMResolution::getGlobalVarAlign(const GlobalVariable &GV) const {
   if (GV.getAlignment())
     return IGCLLVM::getAlign(GV);
   return IGCLLVM::getABITypeAlign(*DL, GV.getValueType());
 }
 
-Constant *GenXSLMResolution::getNextOffset(IGCLLVM::Align Alignment,
+Constant *GenXSLMResolution::getNextOffset(llvm::Align Alignment,
                                            LLVMContext &Ctx,
                                            unsigned &SLMSize) const {
-  SLMSize = IGCLLVM::alignTo(SLMSize, Alignment);
+  SLMSize = llvm::alignTo(SLMSize, Alignment);
   unsigned SLMOffset = SLMSize ? SLMSize : genx::SlmNullProtection;
   auto *Offset = ConstantInt::get(Type::getInt32Ty(Ctx), SLMOffset);
   return Offset;

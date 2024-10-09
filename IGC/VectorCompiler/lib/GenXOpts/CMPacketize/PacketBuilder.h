@@ -167,7 +167,7 @@ public:
   LoadInst *LOAD(Type *Ty, Value *BasePtr,
                  const std::initializer_list<uint32_t> &IndexList,
                  const llvm::Twine &Name = "");
-  LoadInst *ALIGNED_LOAD(Type *Ty, Value *Ptr, IGCLLVM::Align Align,
+  LoadInst *ALIGNED_LOAD(Type *Ty, Value *Ptr, llvm::Align Align,
                          const Twine &Name = "");
   AllocaInst *ALLOCA(Type *Ty, Value *ArraySize = nullptr,
                      const Twine &Name = "");

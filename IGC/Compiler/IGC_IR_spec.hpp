@@ -91,22 +91,16 @@ IGC_IR_LLVM_INTRINSIC(lround)
 IGC_IR_LLVM_INTRINSIC(llround)
 IGC_IR_LLVM_INTRINSIC(fshl)
 IGC_IR_LLVM_INTRINSIC(fshr)
-#if LLVM_VERSION_MAJOR >= 9
 IGC_IR_LLVM_INTRINSIC(usub_sat)
 IGC_IR_LLVM_INTRINSIC(ssub_sat)
-#endif
-#if LLVM_VERSION_MAJOR >= 10
 IGC_IR_LLVM_INTRINSIC(uadd_sat)
 IGC_IR_LLVM_INTRINSIC(sadd_sat)
-#endif
-#if LLVM_VERSION_MAJOR >= 12
 IGC_IR_LLVM_INTRINSIC(abs)
 IGC_IR_LLVM_INTRINSIC(smax)
 IGC_IR_LLVM_INTRINSIC(smin)
 IGC_IR_LLVM_INTRINSIC(umax)
 IGC_IR_LLVM_INTRINSIC(umin)
 IGC_IR_LLVM_INTRINSIC(experimental_noalias_scope_decl)
-#endif
 
 // LLVM instructions allowed in IGC IR
 //------------------------------------
@@ -120,10 +114,8 @@ IGC_IR_LLVM_INSTRUCTION(ExtractValue)
 IGC_IR_LLVM_INSTRUCTION(InsertValue)
 IGC_IR_LLVM_INSTRUCTION(Unreachable)
 IGC_IR_LLVM_INSTRUCTION(AddrSpaceCast)
-#if LLVM_VERSION_MAJOR >= 10
 IGC_IR_LLVM_INSTRUCTION(FNeg)
 IGC_IR_LLVM_INSTRUCTION(Freeze)
-#endif
 
 // Specific verification for LLVM Instructions
 //--------------------------------------------

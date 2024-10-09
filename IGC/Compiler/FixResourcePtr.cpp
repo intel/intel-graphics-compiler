@@ -115,9 +115,7 @@ void FixResourcePtr::RemoveGetBufferPtr(GenIntrinsicInst* bufPtr, Value* bufIdx)
         PointerType* ptrType = nullptr;
         if (IGCLLVM::isOpaquePointerTy(instType))
         {
-#if LLVM_VERSION_MAJOR >= 14
             ptrType = PointerType::get(bufPtr->getContext(), outAS);
-#endif
         }
         else
         {

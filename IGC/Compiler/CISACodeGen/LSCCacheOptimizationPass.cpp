@@ -326,7 +326,7 @@ void LSCCacheOptimizationPass::visitStoreInst(StoreInst& storeInst)
         auto* final_vector_left = insert_elements(builder, intermediate_vector_left, blue_elements_left, num_green_blocks_left, num_total_blocks_left);
 
         auto* final_vector_pointer_left = builder.CreateBitCast(left_green_address, IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_total_blocks_left)->getPointerTo(addrspace));
-        builder.CreateAlignedStore(final_vector_left, final_vector_pointer_left, IGCLLVM::Align(LSC_WRITE_GRANULARITY));
+        builder.CreateAlignedStore(final_vector_left, final_vector_pointer_left, llvm::Align(LSC_WRITE_GRANULARITY));
 
         auto* right_part_address = builder.CreateGEP(builder.getInt8Ty(), bitcast1, builder.getInt64(32 - offset));
 
@@ -344,7 +344,7 @@ void LSCCacheOptimizationPass::visitStoreInst(StoreInst& storeInst)
         auto* final_vector_right = insert_elements(builder, intermediate_vector_right, green_elements_right, num_blue_blocks_right, num_total_blocks_right);
 
         auto* final_vector_pointer_right = builder.CreateBitCast(right_part_address, IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_total_blocks_right)->getPointerTo(addrspace));
-        builder.CreateAlignedStore(final_vector_right, final_vector_pointer_right, IGCLLVM::Align(LSC_WRITE_GRANULARITY));
+        builder.CreateAlignedStore(final_vector_right, final_vector_pointer_right, llvm::Align(LSC_WRITE_GRANULARITY));
     }
     // If the data straddles across one or two 16 byte size chunks,
     // we do only one load or store, but we can optimize it to
@@ -382,7 +382,7 @@ void LSCCacheOptimizationPass::visitStoreInst(StoreInst& storeInst)
             auto* final_vector = insert_elements(builder, intermediate_vector, green_elements, num_blue_blocks, num_elements);
 
             auto* final_vector_pointer = builder.CreateBitCast(initial_pointer, IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_elements)->getPointerTo(addrspace));
-            builder.CreateAlignedStore(final_vector, final_vector_pointer, IGCLLVM::Align(LSC_WRITE_GRANULARITY));
+            builder.CreateAlignedStore(final_vector, final_vector_pointer, llvm::Align(LSC_WRITE_GRANULARITY));
         }
         // the red blocks are on the right side, contiguous green blocks on the left side
         // load only the contiguous green blocks
@@ -415,7 +415,7 @@ void LSCCacheOptimizationPass::visitStoreInst(StoreInst& storeInst)
             auto* final_vector = insert_elements(builder, intermediate_vector, blue_elements, num_green_blocks, num_elements);
 
             auto* final_vector_pointer = builder.CreateBitCast(green_address, IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_elements)->getPointerTo(addrspace));
-            builder.CreateAlignedStore(final_vector, final_vector_pointer, IGCLLVM::Align(LSC_WRITE_GRANULARITY));
+            builder.CreateAlignedStore(final_vector, final_vector_pointer, llvm::Align(LSC_WRITE_GRANULARITY));
         }
         // the red blocks in the middle, around them discontinuous green blocks
         // load the green blocks on the left, red blocks in the middle, and green blocks on the right
@@ -442,7 +442,7 @@ void LSCCacheOptimizationPass::visitStoreInst(StoreInst& storeInst)
             extract_elements(builder, value, blue_elements, num_blue_blocks);
 
             auto* final_vector = insert_elements(builder, full_vector_rvalue, blue_elements, left_padding_size_blocks, left_padding_size_blocks + num_blue_blocks);
-            builder.CreateAlignedStore(final_vector, full_vector_pointer, IGCLLVM::Align(LSC_WRITE_GRANULARITY));
+            builder.CreateAlignedStore(final_vector, full_vector_pointer, llvm::Align(LSC_WRITE_GRANULARITY));
         }
     }
 

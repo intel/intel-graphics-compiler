@@ -44,33 +44,17 @@ namespace llvm
 
         void getUnrollingPreferences(Loop* L,
             ScalarEvolution & SE,
-            TTI::UnrollingPreferences & UP
-#if LLVM_VERSION_MAJOR >= 14
-        , OptimizationRemarkEmitter* ORE
-#endif
+            TTI::UnrollingPreferences & UP, 
+            OptimizationRemarkEmitter* ORE
         );
 
-#if LLVM_VERSION_MAJOR >= 11
         void getPeelingPreferences(Loop* L, ScalarEvolution& SE,
             TTI::PeelingPreferences& PP);
-#endif
 
         bool isProfitableToHoist(Instruction* I);
 
-#if LLVM_VERSION_MAJOR <= 10
-        using BaseT::getCallCost;
-        unsigned getCallCost(const Function* F, ArrayRef<const Value*> Args
-#if LLVM_VERSION_MAJOR >= 9
-            , const User * U
-#endif
-        );
-#elif LLVM_VERSION_MAJOR <= 12
-       int getUserCost(const User *U, ArrayRef<const Value *> Operands,
-                      TTI::TargetCostKind CostKind);
-#else
        llvm::InstructionCost getUserCost(const User* U, ArrayRef<const Value*> Operands,
            TTI::TargetCostKind CostKind);
-#endif
 
     };
 

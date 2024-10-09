@@ -436,7 +436,7 @@ void CMABI::LocalizeGlobals(LocalizationInfo &LI) {
     LLVM_DEBUG(dbgs() << "Localizing global: " << *GV << "\n  ");
 
     Instruction &FirstI = *Fn->getEntryBlock().begin();
-    IGCLLVM::Align GVAlign = IGCLLVM::getCorrectAlign(GV->getAlignment());
+    llvm::Align GVAlign = IGCLLVM::getCorrectAlign(GV->getAlignment());
     AllocaInst *Alloca = new AllocaInst(
         GV->getValueType(), vc::AddrSpace::Private,
         /*ArraySize=*/nullptr, GVAlign, GV->getName() + ".local", &FirstI);

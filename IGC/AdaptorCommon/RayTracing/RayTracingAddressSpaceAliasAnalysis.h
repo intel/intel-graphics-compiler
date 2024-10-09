@@ -40,10 +40,7 @@ public:
     RayTracingAddressSpaceAAResult& operator=(RayTracingAddressSpaceAAResult&&) = delete;
 
     IGCLLVM::AliasResultEnum alias(
-        const llvm::MemoryLocation& LocA, const llvm::MemoryLocation& LocB
-#if LLVM_VERSION_MAJOR >= 9
-        , llvm::AAQueryInfo& AAQI
-#endif
+        const llvm::MemoryLocation& LocA, const llvm::MemoryLocation& LocB, llvm::AAQueryInfo& AAQI
     );
 
     llvm::ModRefInfo getModRefInfo(

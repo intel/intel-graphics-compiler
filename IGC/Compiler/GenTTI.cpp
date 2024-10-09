@@ -153,10 +153,8 @@ namespace llvm {
 
     void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop* L,
         ScalarEvolution& SE,
-        TTI::UnrollingPreferences& UP
-#if LLVM_VERSION_MAJOR >= 14
-        , OptimizationRemarkEmitter* ORE
-#endif
+        TTI::UnrollingPreferences& UP, 
+        OptimizationRemarkEmitter* ORE
         )
     {
         bool IsJointMatrixApplyLoop = false;

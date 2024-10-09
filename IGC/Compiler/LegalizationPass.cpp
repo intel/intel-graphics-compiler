@@ -1881,11 +1881,7 @@ Type* Legalization::LegalAllocaType(Type* type) const
             LegalAllocaType(cast<ArrayType>(type)->getElementType()),
             type->getArrayNumElements());
         break;
-#if LLVM_VERSION_MAJOR >= 11
     case Type::FixedVectorTyID:
-#else
-    case Type::VectorTyID:
-#endif
         legalType = IGCLLVM::FixedVectorType::get(
             LegalAllocaType(cast<VectorType>(type)->getElementType()),
             (unsigned)cast<IGCLLVM::FixedVectorType>(type)->getNumElements());
@@ -1927,22 +1923,17 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
 
     switch (intrinsicID)
     {
-#if LLVM_VERSION_MAJOR >= 9
     case Intrinsic::usub_sat:
     case Intrinsic::ssub_sat:
-#if LLVM_VERSION_MAJOR >= 10
     case Intrinsic::uadd_sat:
     case Intrinsic::sadd_sat:
-#endif
     {
         llvm::Intrinsic::ID OverflowIntrinID = Intrinsic::not_intrinsic;
         switch (I.getIntrinsicID()) {
         case Intrinsic::usub_sat: OverflowIntrinID = Intrinsic::usub_with_overflow; break;
         case Intrinsic::ssub_sat: OverflowIntrinID = Intrinsic::ssub_with_overflow; break;
-#if LLVM_VERSION_MAJOR >= 10
         case Intrinsic::uadd_sat: OverflowIntrinID = Intrinsic::uadd_with_overflow; break;
         case Intrinsic::sadd_sat: OverflowIntrinID = Intrinsic::sadd_with_overflow; break;
-#endif
         default: IGC_ASSERT_MESSAGE(0, "Incorrect intrinsic"); break;
         }
 
@@ -1966,7 +1957,6 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
             Boundary = Builder.CreateSelect(isMaxOrMinOverflow, Builder.getInt(MinVal), Builder.getInt(MaxVal));
         }
             break;
-#if LLVM_VERSION_MAJOR >= 10
         case Intrinsic::uadd_sat:
             Boundary = Builder.getInt(APInt::getMaxValue(BitWidth));
             break;
@@ -1977,7 +1967,6 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
             Boundary = Builder.CreateSelect(isMaxOrMinOverflow, Builder.getInt(MaxVal), Builder.getInt(MinVal));
         }
             break;
-#endif
         default:
             IGC_ASSERT_MESSAGE(0, "Incorrect intrinsic");
             break;
@@ -1989,7 +1978,7 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
         visit(*OverFlowIntrin);
     }
     break;
-#endif
+
     case Intrinsic::sadd_with_overflow:
     case Intrinsic::usub_with_overflow:
     case Intrinsic::ssub_with_overflow:
@@ -2830,15 +2819,10 @@ bool IGC::expandFDIVInstructions(llvm::Function &F, ShaderType ShaderTy) {
                 if (Inst->hasAllowReciprocal()) {
                     APFloat Val(1.0f);
                     bool ignored;
-#if LLVM_VERSION_MAJOR >= 14
                     Val.convert((Inst->getType()->isHalfTy())
                                     ? APFloat::IEEEhalf()
                                     : APFloat::BFloat(),
                                 APFloat::rmTowardZero, &ignored);
-#else
-                    Val.convert(APFloat::IEEEhalf(), APFloat::rmTowardZero,
-                                &ignored);
-#endif
                     ConstantFP* C1 = ConstantFP::get(Ctx, Val);
                     Y = Builder.CreateFDiv(C1, Y);
                     V = Builder.CreateFMul(Y, X);

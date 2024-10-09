@@ -64,9 +64,7 @@ FunctionPass* createFreezeIntDivPass()
 bool FreezeIntDiv::runOnFunction(Function& F)
 {
     changed = false;
-#if LLVM_VERSION_MAJOR >= 14
     visit(F);
-#endif // LLVM_VERSION_MAJOR >= 14
     return changed;
 }
 

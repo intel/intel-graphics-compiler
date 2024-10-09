@@ -1791,9 +1791,7 @@ uint CShader::GetNbElementAndMask(llvm::Value* value, uint32_t& mask)
     {
     case llvm::Type::FloatTyID:
     case llvm::Type::HalfTyID:
-#if LLVM_VERSION_MAJOR >= 14
     case llvm::Type::BFloatTyID:
-#endif
         nbElement = GetIsUniform(value) ? 1 : numLanes(m_SIMDSize);
         break;
     case llvm::Type::IntegerTyID:
@@ -2423,10 +2421,8 @@ VISA_Type IGC::GetType(llvm::Type* type, CodeGenContext* pContext)
         return ISA_TYPE_DF;
     case llvm::Type::HalfTyID:
         return ISA_TYPE_HF;
-#if LLVM_VERSION_MAJOR >= 14
     case llvm::Type::BFloatTyID:
         return ISA_TYPE_BF;
-#endif
     case llvm::Type::StructTyID:
         // Structs are always internally represented as BYTES
         return ISA_TYPE_B;

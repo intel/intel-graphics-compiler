@@ -75,7 +75,6 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
 {
     // This loop is just a workaround till we add support for DIArgList metadata.
     // If we implement DIArgList support, it should be deleted.
-#if LLVM_VERSION_MAJOR > 12
     for (auto &F : M) {
       for (auto &BB : F) {
         for (auto &I : BB) {
@@ -87,7 +86,6 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
         }
       }
     }
-#endif
     // Early out
     if (kernels.empty())
        return false;
@@ -373,11 +371,7 @@ void DebugInfoData::extractAddressClass(llvm::Function& F)
                 if (newElements.size() < DIExpr->getNumElements())
                 {
                     DIExpression* newDIExpr = di.createExpression(newElements);
-#if LLVM_VERSION_MAJOR < 13
-                    DI->setArgOperand(2, MetadataAsValue::get(newDIExpr->getContext(), newDIExpr));
-#else
                     DI->setExpression(newDIExpr);
-#endif
                 }
             }
         }
