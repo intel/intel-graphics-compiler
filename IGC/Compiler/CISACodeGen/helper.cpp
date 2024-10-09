@@ -2086,51 +2086,6 @@ namespace IGC
         }
     }
 
-    void ScalarizeAggregateMemberAddresses(IGCLLVM::IRBuilder<>& builder, llvm::Type* type, llvm::Value* val, llvm::SmallVectorImpl<llvm::Value*> & instList, llvm::SmallVector<llvm::Value*, 16> indices)
-    {
-        unsigned num = 0;
-        switch (type->getTypeID())
-        {
-        case llvm::Type::FloatTyID:
-        case llvm::Type::HalfTyID:
-        case llvm::Type::IntegerTyID:
-        case llvm::Type::DoubleTyID:
-            instList.push_back(builder.CreateInBoundsGEP(type, val, makeArrayRef(indices)));
-            break;
-        case llvm::Type::StructTyID:
-            num = type->getStructNumElements();
-            for (unsigned i = 0; i < num; i++)
-            {
-                indices.push_back(builder.getInt32(i));
-                ScalarizeAggregateMemberAddresses(builder, type->getStructElementType(i), val, instList, indices);
-                indices.pop_back();
-            }
-            break;
-        case IGCLLVM::VectorTyID:
-            num = (unsigned)cast<IGCLLVM::FixedVectorType>(type)->getNumElements();
-            for (unsigned i = 0; i < num; i++)
-            {
-                indices.push_back(builder.getInt32(i));
-                ScalarizeAggregateMemberAddresses(builder, cast<VectorType>(type)->getElementType(), val, instList, indices);
-                indices.pop_back();
-            }
-            break;
-        case llvm::Type::ArrayTyID:
-            //fix this if one API could support an array with length > 2^32
-            num = static_cast<uint32_t>(type->getArrayNumElements());
-            for (unsigned i = 0; i < num; i++)
-            {
-                indices.push_back(builder.getInt32(i));
-                ScalarizeAggregateMemberAddresses(builder, type->getArrayElementType(), val, instList, indices);
-                indices.pop_back();
-            }
-            break;
-        default:
-            IGC_ASSERT_EXIT_MESSAGE(0, "Unsupported type in ScalarizeAggregateMemberAddresses of helper! Please enhance this function first.");
-            break;
-        }
-    }
-
     bool IsUnsignedCmp(const llvm::CmpInst::Predicate Pred)
     {
         switch (Pred) {
