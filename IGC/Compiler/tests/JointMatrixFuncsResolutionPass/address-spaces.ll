@@ -63,24 +63,19 @@ define void @load_store_generic(i8* %src, i8* %dst) {
 define void @load_store_large_generic(i8* %src, i8* %dst) {
 
 ; Allocas:
-; CHECK: [[TMP4:%.*]] = alloca [2 x <64 x float>]
-; CHECK: [[PTR:%.*]] = alloca [2 x <64 x float>]
+; CHECK: [[TMP4:%.*]] = alloca { <64 x float>, <64 x float> }
+; CHECK: [[PTR:%.*]] = alloca { <64 x float>, <64 x float> }
 
 ; Matrix load sequence:
-; CHECK: [[MATPTR:%.*]] = bitcast [2 x <64 x float>]* [[PTR]] to i8*
+; CHECK: [[MATPTR:%.*]] = bitcast { <64 x float>, <64 x float> }* [[PTR]] to i8*
 ; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_32x64_i32_128_generic_v8i8_pi32_i32(i8* [[MATPTR]], i8* %src, i64 16, i32 0)
-; CHECK: [[HALF_PTR_0:%.*]] = bitcast [2 x <64 x float>]* [[PTR]] to <64 x float>*
-; CHECK: [[HALF_VAL_0:%.*]] = load <64 x float>, <64 x float>* [[HALF_PTR_0]]
-; CHECK: [[HALF_PTR_1:%.*]] = getelementptr <64 x float>, <64 x float>* [[HALF_PTR_0]], i32 1
-; CHECK: [[HALF_VAL_1:%.*]] = load <64 x float>, <64 x float>* [[HALF_PTR_1]]
-; CHECK: [[MATRIX_PARTIAL:%.*]] = insertvalue [2 x <64 x float>] undef, <64 x float> [[HALF_VAL_0]], 0
-; CHECK: [[MATRIX:%.*]] = insertvalue [2 x <64 x float>] [[MATRIX_PARTIAL]], <64 x float> [[HALF_VAL_1]], 1
+; CHECK: [[MATRIX:%.*]] = load { <64 x float>, <64 x float> }, { <64 x float>, <64 x float> }* [[PTR]]
 
   %1 = call spir_func %intel.joint_matrix_acc_32x64_f32_t* @__builtin_spirv_OpJointMatrixLoadINTELacc_32x64_f32_p1i8_i64_i32_generic(i8* %src, i64 16, i32 0)
 
 ; Matrix store sequence:
-; CHECK: store [2 x <64 x float>] [[MATRIX]], [2 x <64 x float>]* [[TMP4]]
-; CHECK: [[TMP5:%.*]] = bitcast [2 x <64 x float>]* [[TMP4]] to i8*
+; CHECK: store { <64 x float>, <64 x float> } [[MATRIX]], { <64 x float>, <64 x float> }* [[TMP4]]
+; CHECK: [[TMP5:%.*]] = bitcast { <64 x float>, <64 x float> }* [[TMP4]] to i8*
 ; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_32x64_i32_128_generic_pi64_v8i8(i8* %dst, i8* [[TMP5]], i64 8, i32 0)
 
   call spir_func void @__builtin_spirv_OpJointMatrixStoreINTELacc_32x64_f32_p1i8_acc_32x64_f32_i64_i32_generic(i8* %dst, %intel.joint_matrix_acc_32x64_f32_t* %1, i64 8, i32 0)
@@ -120,24 +115,19 @@ define void @load_store_global(i8 addrspace(1)* %src, i8 addrspace(1)* %dst) {
 define void @load_store_large_global(i8 addrspace(1)* %src, i8 addrspace(1)* %dst) {
 
 ; Allocas:
-; CHECK: [[TMP4:%.*]] = alloca [2 x <64 x float>]
-; CHECK: [[PTR:%.*]] = alloca [2 x <64 x float>]
+; CHECK: [[TMP4:%.*]] = alloca { <64 x float>, <64 x float> }
+; CHECK: [[PTR:%.*]] = alloca { <64 x float>, <64 x float> }
 
 ; Matrix load sequence:
-; CHECK: [[MATPTR:%.*]] = bitcast [2 x <64 x float>]* [[PTR]] to i8*
+; CHECK: [[MATPTR:%.*]] = bitcast { <64 x float>, <64 x float> }* [[PTR]] to i8*
 ; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_32x64_i32_128_global_v8i8_pi32_i32(i8* [[MATPTR]], i8 addrspace(1)* %src, i64 16, i32 0)
-; CHECK: [[HALF_PTR_0:%.*]] = bitcast [2 x <64 x float>]* [[PTR]] to <64 x float>*
-; CHECK: [[HALF_VAL_0:%.*]] = load <64 x float>, <64 x float>* [[HALF_PTR_0]]
-; CHECK: [[HALF_PTR_1:%.*]] = getelementptr <64 x float>, <64 x float>* [[HALF_PTR_0]], i32 1
-; CHECK: [[HALF_VAL_1:%.*]] = load <64 x float>, <64 x float>* [[HALF_PTR_1]]
-; CHECK: [[MATRIX_PARTIAL:%.*]] = insertvalue [2 x <64 x float>] undef, <64 x float> [[HALF_VAL_0]], 0
-; CHECK: [[MATRIX:%.*]] = insertvalue [2 x <64 x float>] [[MATRIX_PARTIAL]], <64 x float> [[HALF_VAL_1]], 1
+; CHECK: [[MATRIX:%.*]] = load { <64 x float>, <64 x float> }, { <64 x float>, <64 x float> }* [[PTR]]
 
   %1 = call spir_func %intel.joint_matrix_acc_32x64_f32_t* @__builtin_spirv_OpJointMatrixLoadINTELacc_32x64_f32_p1i8_i64_i32_global(i8 addrspace(1)* %src, i64 16, i32 0)
 
 ; Matrix store sequence:
-; CHECK: store [2 x <64 x float>] [[MATRIX]], [2 x <64 x float>]* [[TMP4]]
-; CHECK: [[TMP5:%.*]] = bitcast [2 x <64 x float>]* [[TMP4]] to i8*
+; CHECK: store { <64 x float>, <64 x float> } [[MATRIX]], { <64 x float>, <64 x float> }* [[TMP4]]
+; CHECK: [[TMP5:%.*]] = bitcast { <64 x float>, <64 x float> }* [[TMP4]] to i8*
 ; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_32x64_i32_128_global_pi64_v8i8(i8 addrspace(1)* %dst, i8* [[TMP5]], i64 8, i32 0)
 
   call spir_func void @__builtin_spirv_OpJointMatrixStoreINTELacc_32x64_f32_p1i8_acc_32x64_f32_i64_i32_global(i8 addrspace(1)* %dst, %intel.joint_matrix_acc_32x64_f32_t* %1, i64 8, i32 0)
@@ -177,24 +167,19 @@ define void @load_store_local(i8 addrspace(3)* %src, i8 addrspace(3)* %dst) {
 define void @load_store_large_local(i8 addrspace(3)* %src, i8 addrspace(3)* %dst) {
 
 ; Allocas:
-; CHECK: [[TMP4:%.*]] = alloca [2 x <64 x float>]
-; CHECK: [[PTR:%.*]] = alloca [2 x <64 x float>]
+; CHECK: [[TMP4:%.*]] = alloca { <64 x float>, <64 x float> }
+; CHECK: [[PTR:%.*]] = alloca { <64 x float>, <64 x float> }
 
 ; Matrix load sequence:
-; CHECK: [[MATPTR:%.*]] = bitcast [2 x <64 x float>]* [[PTR]] to i8*
+; CHECK: [[MATPTR:%.*]] = bitcast { <64 x float>, <64 x float> }* [[PTR]] to i8*
 ; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_32x64_i32_128_local_v8i8_pi32_i32(i8* [[MATPTR]], i8 addrspace(3)* %src, i64 16, i32 0)
-; CHECK: [[HALF_PTR_0:%.*]] = bitcast [2 x <64 x float>]* [[PTR]] to <64 x float>*
-; CHECK: [[HALF_VAL_0:%.*]] = load <64 x float>, <64 x float>* [[HALF_PTR_0]]
-; CHECK: [[HALF_PTR_1:%.*]] = getelementptr <64 x float>, <64 x float>* [[HALF_PTR_0]], i32 1
-; CHECK: [[HALF_VAL_1:%.*]] = load <64 x float>, <64 x float>* [[HALF_PTR_1]]
-; CHECK: [[MATRIX_PARTIAL:%.*]] = insertvalue [2 x <64 x float>] undef, <64 x float> [[HALF_VAL_0]], 0
-; CHECK: [[MATRIX:%.*]] = insertvalue [2 x <64 x float>] [[MATRIX_PARTIAL]], <64 x float> [[HALF_VAL_1]], 1
+; CHECK: [[MATRIX:%.*]] = load { <64 x float>, <64 x float> }, { <64 x float>, <64 x float> }* [[PTR]]
 
   %1 = call spir_func %intel.joint_matrix_acc_32x64_f32_t* @__builtin_spirv_OpJointMatrixLoadINTELacc_32x64_f32_p1i8_i64_i32_local(i8 addrspace(3)* %src, i64 16, i32 0)
 
 ; Matrix store sequence:
-; CHECK: store [2 x <64 x float>] [[MATRIX]], [2 x <64 x float>]* [[TMP4]]
-; CHECK: [[TMP5:%.*]] = bitcast [2 x <64 x float>]* [[TMP4]] to i8*
+; CHECK: store { <64 x float>, <64 x float> } [[MATRIX]], { <64 x float>, <64 x float> }* [[TMP4]]
+; CHECK: [[TMP5:%.*]] = bitcast { <64 x float>, <64 x float> }* [[TMP4]] to i8*
 ; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_SG16_32x64_i32_128_local_pi64_v8i8(i8 addrspace(3)* %dst, i8* [[TMP5]], i64 8, i32 0)
 
   call spir_func void @__builtin_spirv_OpJointMatrixStoreINTELacc_32x64_f32_p1i8_acc_32x64_f32_i64_i32_local(i8 addrspace(3)* %dst, %intel.joint_matrix_acc_32x64_f32_t* %1, i64 8, i32 0)

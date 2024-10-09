@@ -182,7 +182,7 @@ static bool isAnyFunctionArgMatrixType(Function* F)
 template <typename F>
 static bool isAnyOperand(const User& U, F&& lambda)
 {
-    return llvm::any_of(U.operands(), [&lambda](const Use& op) {
+    return any_of(U.operands(), [&lambda](const Use& op) {
         return lambda(op->getType());
     });
 }
@@ -713,7 +713,7 @@ static bool isSupprtedLargeSlice(const JointMatrixTypeDescription *desc, bool us
 }
 
 bool JointMatrixFuncsResolutionPass::ValidateLoadStore
-        (bool isLoad, unsigned operationLayout, const JointMatrixTypeDescription *desc, llvm::Value *ctx) {
+        (bool isLoad, unsigned operationLayout, const JointMatrixTypeDescription *desc, Value *ctx) {
     if (isSupprtedLargeSlice(desc, m_Ctx->platform.hasExecSize16DPAS())) {
         return true;
     }
@@ -1159,7 +1159,7 @@ unsigned JointMatrixFuncsResolutionPass::getNumRowsPerWI(const JointMatrixTypeDe
     return totalBits / canHandleBits + (totalBits % canHandleBits ? 1 : 0);
 }
 
-// Create <float x 64> type used for Accumulator 32x64 and 32x32 in array [2 x <float x 64>].
+// Create <float x 64> type used for Accumulator 32x64 and 32x32 in structure {<float x 64>, <float x 64>}.
 static Type* getAccFloatVec64Type(LLVMContext &ctx) {
     return IGCLLVM::FixedVectorType::get(Type::getFloatTy(ctx), 64);
 }
@@ -1207,9 +1207,17 @@ Type *JointMatrixFuncsResolutionPass::ResolveType(Type *opaqueType, JointMatrixT
 
     // One off special case: this should ideally be a vector of <float x 128>. However since IGC
     // code gen supports vector operations only on vectors up to 64
-    // entries, we model this slice as array of [2 x <float x 64>].
+    // entries, we model this slice as structure of {<float x 64>, <float x 64>}.
+    // Alternative approaches summary:
+    // 1. [2 x <64 x float>] does not always work because ArrayTy is not supported in IGC code gen.
+    // 2. Replacing [2 x <64 x float>] later or implementing support for ArrayTy in IGC code gen looks more complicated
+    // and doesn't bring benefits comparing to selected option to use structure.
+
     if (isAccumulator32x64(desc) || isAccumulator32x32(desc))
-        resolvedType = ArrayType::get(getAccFloatVec64Type(ctx), 2);
+    {
+        Type *memberType = getAccFloatVec64Type(ctx);
+        resolvedType = StructType::get(ctx, ArrayRef<Type*>({memberType, memberType}));
+    }
     else
     {
         unsigned vectorSize = getNumRowsPerWI(&desc);
@@ -1229,36 +1237,13 @@ static uint64_t constIntValue(const Value *v) {
     return cast<ConstantInt>(v)->getLimitedValue();
 }
 
-// create value [2 x type] with val0 and val1 as values of each element
+// create value {type, type} with val0 and val1 as values of each element
 template <class BuilderT>
 static Value *createPair(BuilderT *builder, Type* type, Value* val0, Value* val1) {
-    Value *pair = UndefValue::get(ArrayType::get(type, 2));
+    Value *pair = UndefValue::get(StructType::get(builder->getContext(), ArrayRef<Type*>({type, type})));
     pair = builder->CreateInsertValue(pair, val0, {0});
     pair = builder->CreateInsertValue(pair, val1, {1});
     return pair;
-}
-
-template <class BuilderT>
-static Instruction *loadSlice(BuilderT *builder, Type *matTy, Value *sliceArray) {
-    IGCLLVM::FixedVectorType *sliceTy = dyn_cast<IGCLLVM::FixedVectorType>(matTy);
-    if ((sliceTy && sliceTy->getNumElements() <= 32)
-          || matTy->isIntegerTy() || matTy->isFloatingPointTy()) {
-        return builder->CreateLoad(matTy, sliceArray);
-    } else if (matTy->isArrayTy() && matTy->getArrayNumElements() == 2) {
-        Type *halfTy = getAccFloatVec64Type(builder->getContext());
-        Type *halfPtrTy = halfTy->getPointerTo(ADDRESS_SPACE_PRIVATE);
-
-        Value *ptr0 = builder->CreateBitCast(sliceArray, halfPtrTy);
-        Value *slice0 = builder->CreateLoad(halfTy, ptr0);
-
-        Value *ptr1 = builder->CreateGEP(halfTy, ptr0, { builder->getInt32(1) });
-        Value *slice1 = builder->CreateLoad(halfTy, ptr1);
-
-        return dyn_cast<Instruction>(createPair(builder, halfTy, slice0, slice1));
-    }
-
-    IGC_ASSERT_MESSAGE(false, "Unexpected number of elements in matrix slice.");
-    return nullptr;
 }
 
 template <typename T>
@@ -1406,7 +1391,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
     Instruction *newCall = builder.CreateCall(M->getOrInsertFunction(funcName, funcType), Args);
     newCall->setDebugLoc(CI->getDebugLoc());
 
-    newCall = loadSlice(&builder, matTy, sliceArray);
+    newCall = builder.CreateLoad(matTy, sliceArray);
 
     return newCall;
 }
@@ -1668,7 +1653,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveMad(CallInst *CI, unsigned O
         Value* args[4] = { ptrA, ptrB, ptrC, ptrD };
 
         builder.CreateCall(madFunc, args);
-        dpasCall = loadSlice(&builder, cMat->getType(), sliceD);
+        dpasCall = builder.CreateLoad(cMat->getType(), sliceD);
     } else {
         int SD = 8; // systolic depth, only 8 supported currently
         int RC = aDesc.rows; // repeat count, from 1 to 8
@@ -1712,7 +1697,7 @@ static Type *getResolvedVectorElementType(Type *matrixType, BuilderT *builder) {
         return ty->getElementType();
     if (matrixType->isIntegerTy() || matrixType->isFloatingPointTy())
         return matrixType;
-    if (matrixType->isArrayTy() && matrixType->getArrayNumElements() == 2) {
+    if(matrixType->isStructTy() && matrixType->getNumContainedTypes() == 2) {
         return Type::getFloatTy(builder->getContext());
     }
 
@@ -1791,7 +1776,7 @@ Value *JointMatrixFuncsResolutionPass::ResolveFill(CallInst *CI) {
             slice = builder.CreateInsertElement(slice, fillValue, i);
         }
     }
-    // Special cases Accumulator 32x64 and 32x32 is represented as [2 x <float x 64>].
+    // Special cases Accumulator 32x64 and 32x32 is represented as {<float x 64>, <float x 64>}.
     else if (isAccumulator32x64(desc) || isAccumulator32x32(desc))
     {
         Type *halfTy = getAccFloatVec64Type(builder.getContext());
@@ -1847,7 +1832,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveFillChecked(CallInst *CI)
 
     Instruction *newCall = CallInst::Create(M->getOrInsertFunction(funcName, funcType), Args, "", CI);
     newCall->setDebugLoc(CI->getDebugLoc());
-    newCall = loadSlice(&builder, matTy, sliceArray);
+    newCall = builder.CreateLoad(matTy, sliceArray);
 
     return newCall;
 }
@@ -1954,7 +1939,7 @@ static Value *mergeComponentToPackedValue(BuilderT *builder, Value *value, Value
 }
 
 // Gets pointer to element to process in joint_matrix_apply loop for Accumulator 32x64 and 32x32
-// Also updates MatPtr to point to alloca of [2 x <float x 64>] used inside joint_matrix_apply loop
+// Also updates MatPtr to point to alloca of {<float x 64>, <float x 64>} used inside joint_matrix_apply loop
 Value *JointMatrixFuncsResolutionPass::getAcc2x64xFloatElementPtr(CallInst *CI, Value *matrix, Value *index, IRBuilder<> *builder, Value **MatPtr) {
     if (LoadInst *loadInst = dyn_cast<LoadInst>(matrix)) {
         *MatPtr = Resolve(loadInst->getPointerOperand());
@@ -2006,7 +1991,7 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceInsert(CallInst *CI) {
     else if (IntegerType *vectorElementType = dyn_cast<IntegerType>(getResolvedVectorElementType(matTy, &builder)))
         component = builder.CreateBitCast(component, vectorElementType);
 
-    // Special case Accumulator 32x64 and 32x32 is represented as [2 x <float x 64>].
+    // Special case Accumulator 32x64 and 32x32 is represented as {<float x 64>, <float x 64>}.
     if (isAccumulator32x64(desc) || isAccumulator32x32(desc))
     {
         Value *MatPtr = nullptr;
@@ -2168,7 +2153,7 @@ bool JointMatrixFuncsResolutionPass::preprocessAccessChain(Function *F) {
     for (const auto &InstPair : replaces) {
         InstPair.first->replaceAllUsesWith(InstPair.second);
     }
-    for (Instruction *I : llvm::reverse(toErase)) {
+    for (Instruction *I : reverse(toErase)) {
         I->dropAllReferences();
     }
     for (Instruction *I : toErase) {
@@ -2198,7 +2183,7 @@ void JointMatrixFuncsResolutionPass::InsertPlaceholder(Value *v) {
     }
 
     Instruction *placeholder = nullptr;
-    if (!type->isArrayTy()) {
+    if (!type->isStructTy()) {
         /* Using bit-casts as placeholder values. Undefs of each type are unique per
          * module and cannot be used as unique placeholders. */
         LLVM_DEBUG(dbgs() << "   -- CREATE UNDEF BITCAST TO: " << *type << "\n");
@@ -2206,11 +2191,13 @@ void JointMatrixFuncsResolutionPass::InsertPlaceholder(Value *v) {
             BitCastInst::Create(Instruction::BitCast, UndefValue::get(type),
                                 type, "tmp.value", predecesor);
     } else {
-        /* Array types cannot be bitcasted. Use instert element with two undefs
-         * to create unique placeholder for array value.*/
-        Value *array = UndefValue::get(type);
-        Value *element = UndefValue::get(type->getArrayElementType());
-        placeholder = InsertValueInst::Create(array, element, { 0 }, "tmp.value", predecesor);
+        /* Structure types cannot be bitcasted. Use insert element with two undefs
+         * to create unique placeholder for structure value.*/
+        LLVMContext &ctx = v->getContext();
+        Type *memberType = getAccFloatVec64Type(ctx);
+        Value *memberValue = UndefValue::get(memberType);
+        Value *structValue = UndefValue::get(StructType::get(ctx, ArrayRef<Type*>({memberType, memberType})));
+        placeholder = InsertValueInst::Create(structValue, memberValue, { 0 }, "tmp.value", predecesor);
     }
     ResolvedValues[v] = placeholder;
     PlaceholderInstructions[v] = placeholder;
@@ -2348,7 +2335,7 @@ Value *JointMatrixFuncsResolutionPass::ResolveGeneric(Instruction *OldInst)
     return NewInst;
 }
 
-Type *JointMatrixFuncsResolutionPass::ResolveTypes(llvm::Type *t)
+Type *JointMatrixFuncsResolutionPass::ResolveTypes(Type *t)
 {
     if (ResolvedTypes.count(t) > 0)
         return ResolvedTypes[t];
@@ -2375,11 +2362,24 @@ Type *JointMatrixFuncsResolutionPass::ResolveStructType(Type *oldType)
         return ResolvedTypes[oldType];
 
     StructType *structType = cast<StructType>(oldType);
-    SmallString<28> name;
-    StructType *newType = StructType::create(oldType->getContext(),
-                                             (structType->getName() +
-                                              ".resolved")
-                                                 .toStringRef(name));
+
+    // Check if any element in the structure is a matrix type and needs to be resolved
+    bool membersNeedResolve = std::any_of(structType->elements().begin(), structType->elements().end(),
+                                          [](Type *t) {
+                                                return isOrContainsMatrixType(t);
+                                            });
+
+    if (!membersNeedResolve)
+        return oldType;
+
+    StructType *newType = nullptr;
+    if (!structType->isLiteral()) {
+        SmallString<28> name;
+        newType = StructType::create(oldType->getContext(),
+            (structType->getName() + ".resolved").toStringRef(name));
+    } else {
+        newType = StructType::create(oldType->getContext());
+    }
 
     // caching now to avoid recursion, in case struct contains itself as an element
     CacheResolvedTypes(oldType, newType);
@@ -2673,7 +2673,7 @@ DIType* getOrCreateType(Type* T, Module* M) {
             align = IGCLLVM::getPrefTypeAlign(Layout, T).value();
         #endif
 
-        llvm::Optional<unsigned int> opt(llvm::None);
+        Optional<unsigned int> opt(llvm::None);
         diType = Builder.createPointerType(
                 nullptr, Layout.getPointerTypeSizeInBits(T),
                 align * CHAR_BIT, /*DWARFAddressSpace=*/opt,
@@ -2681,11 +2681,11 @@ DIType* getOrCreateType(Type* T, Module* M) {
     }
     else
     {
-        int encoding = llvm::dwarf::DW_ATE_signed;
+        int encoding = dwarf::DW_ATE_signed;
         if (T->isIntegerTy())
-            encoding = llvm::dwarf::DW_ATE_unsigned;
+            encoding = dwarf::DW_ATE_unsigned;
         else if (T->isFloatingPointTy())
-            encoding = llvm::dwarf::DW_ATE_float;
+            encoding = dwarf::DW_ATE_float;
 
         diType = Builder.createBasicType(getTypeName(T), T->getPrimitiveSizeInBits(), encoding);
     }
@@ -2723,7 +2723,7 @@ void JointMatrixFuncsResolutionPass::visitAllocaInst(AllocaInst &I)
 
             auto type = getOrCreateType(newInst->getType(), I.getModule());
 
-            llvm::DIBuilder builder(*(I.getModule()));
+            DIBuilder builder(*(I.getModule()));
             auto created = builder.createAutoVariable(scope, var->getName(), file, lineNo, type);
             builder.insertDbgValueIntrinsic(newInst, created, builder.createExpression(), loc, ddi);
             ddi->eraseFromParent();
@@ -2731,7 +2731,7 @@ void JointMatrixFuncsResolutionPass::visitAllocaInst(AllocaInst &I)
     }
 }
 
-void JointMatrixFuncsResolutionPass::visitAddrSpaceCastInst(llvm::AddrSpaceCastInst& I)
+void JointMatrixFuncsResolutionPass::visitAddrSpaceCastInst(AddrSpaceCastInst& I)
 {
     LLVM_DEBUG(dbgs() << " - VISIT: " << I << "\n");
     if (ResolvedValues.count(&I) > 0)
@@ -2744,7 +2744,7 @@ void JointMatrixFuncsResolutionPass::visitAddrSpaceCastInst(llvm::AddrSpaceCastI
     ResolveGeneric(&I);
 }
 
-void JointMatrixFuncsResolutionPass::visitLoadInst(llvm::LoadInst& I)
+void JointMatrixFuncsResolutionPass::visitLoadInst(LoadInst& I)
 {
     LLVM_DEBUG(dbgs() << " - VISIT: " << I << "\n");
     if (ResolvedValues.count(&I) > 0)
@@ -2757,7 +2757,7 @@ void JointMatrixFuncsResolutionPass::visitLoadInst(llvm::LoadInst& I)
     ResolveGeneric(&I);
 }
 
-void JointMatrixFuncsResolutionPass::visitPHINode(llvm::PHINode& I)
+void JointMatrixFuncsResolutionPass::visitPHINode(PHINode& I)
 {
     LLVM_DEBUG(dbgs() << " - VISIT: " << I << "\n");
     if (ResolvedValues.count(&I) > 0)
@@ -2770,7 +2770,7 @@ void JointMatrixFuncsResolutionPass::visitPHINode(llvm::PHINode& I)
     ResolveGeneric(&I);
 }
 
-void JointMatrixFuncsResolutionPass::visitReturnInst(llvm::ReturnInst& I)
+void JointMatrixFuncsResolutionPass::visitReturnInst(ReturnInst& I)
 {
     LLVM_DEBUG(dbgs() << " - VISIT: " << I << "\n");
     if (ResolvedValues.count(&I) > 0)
