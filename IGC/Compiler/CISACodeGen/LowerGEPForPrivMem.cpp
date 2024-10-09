@@ -527,7 +527,7 @@ bool SOALayoutChecker::checkStruct(StructType* StTy)
     for (int ix = 0; ix < nElts; ++ix) {
         Type* ty = StTy->getElementType(ix);
         uint32_t eTyBytes = (uint32_t)pDL->getTypeStoreSize(ty);
-        IGC_ASSERT(SOAPartitionBytes >= eTyBytes);
+        IGC_ASSERT(SOAPartitionBytes >= eTyBytes || ty->isAggregateType());
         if (!isPowerOf2_32(eTyBytes))
             return false;
 
