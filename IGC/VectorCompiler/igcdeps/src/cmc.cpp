@@ -997,7 +997,8 @@ getDataAnnotation(const GenXOCLRuntimeInfo::DataInfo &Data) {
 static void
 fillOCLProgramInfo(IGC::SOpenCLProgramInfo &ProgramInfo,
                    const GenXOCLRuntimeInfo::ModuleInfoT &ModuleInfo,
-                   bool HasCrossThreadOffsetRelocations) {
+                   bool HasCrossThreadOffsetRelocations,
+                   bool HasPerThreadOffsetRelocations) {
   auto ConstantAnnotation = getDataAnnotation<iOpenCL::InitConstantAnnotation>(
       ModuleInfo.Constant.Data);
   if (ConstantAnnotation)
@@ -1033,6 +1034,7 @@ fillOCLProgramInfo(IGC::SOpenCLProgramInfo &ProgramInfo,
       ModuleInfo.ConstString.Relocations.empty(),
       "relocations inside constant string section are not supported");
   ProgramInfo.m_hasCrossThreadOffsetRelocations = HasCrossThreadOffsetRelocations;
+  ProgramInfo.m_hasPerThreadOffsetRelocations  = HasPerThreadOffsetRelocations;
 };
 
 void vc::createBinary(
@@ -1045,5 +1047,6 @@ void vc::createBinary(
     CMProgram.m_kernels.push_back(std::move(K));
   }
   fillOCLProgramInfo(*CMProgram.m_programInfo, CompiledModule.ModuleInfo,
-      CMProgram.HasCrossThreadOffsetRelocations());
+      CMProgram.HasCrossThreadOffsetRelocations(),
+      CMProgram.HasPerThreadOffsetRelocations());
 }

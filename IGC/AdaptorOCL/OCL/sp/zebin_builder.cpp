@@ -420,6 +420,9 @@ void ZEBinaryBuilder::addRuntimeSymbols(const IGC::SOpenCLProgramInfo& annotatio
     if (annotations.m_hasCrossThreadOffsetRelocations)
         mBuilder.addSymbol(vISA::CROSS_THREAD_OFF_R0_RELOCATION_NAME, /*addr*/0, /*size*/0,
             llvm::ELF::STB_GLOBAL, llvm::ELF::STT_NOTYPE, /*sectionId*/-1);
+    if (annotations.m_hasPerThreadOffsetRelocations)
+        mBuilder.addSymbol(vISA::PER_THREAD_OFF_RELOCATION_NAME, /*addr*/0, /*size*/0,
+            llvm::ELF::STB_GLOBAL, llvm::ELF::STT_NOTYPE, /*sectionId*/-1);
 }
 
 void ZEBinaryBuilder::addProgramSymbols(const IGC::SOpenCLProgramInfo& annotations)
@@ -883,12 +886,12 @@ void ZEBinaryBuilder::addElfSections(void* elfBin, size_t elfSize)
                                 }
 
                                 unsigned int relocType = relocEntry.r_info & 0xF;
-                                zebin::R_TYPE_ZEBIN zebinType = R_ZE_NONE;
+                                zebin::R_TYPE_ZEBIN zebinType = R_NONE;
 
                                 if (relocType == ELF::R_X86_64_64)
-                                    zebinType = R_ZE_SYM_ADDR;
+                                    zebinType = R_SYM_ADDR;
                                 else if (relocType == ELF::R_X86_64_32)
-                                    zebinType = R_ZE_SYM_ADDR_32;
+                                    zebinType = R_SYM_ADDR_32;
                                 else
                                     IGC_ASSERT_MESSAGE(false, "Unsupported ELF relocation type");
 

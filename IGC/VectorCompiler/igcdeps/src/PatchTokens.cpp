@@ -236,3 +236,14 @@ bool CGen8CMProgram::HasCrossThreadOffsetRelocations() {
   }
   return false;
 }
+
+bool CGen8CMProgram::HasPerThreadOffsetRelocations() {
+  for (const auto &kernel : m_kernels) {
+    for (const auto &reloc : kernel->getProgramOutput().m_relocs) {
+      if (reloc.r_symbol == vISA::PER_THREAD_OFF_RELOCATION_NAME) {
+        return true;
+      }
+    }
+  }
+  return false;
+}

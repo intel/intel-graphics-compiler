@@ -6866,7 +6866,11 @@ namespace IGC
                     IGC_ASSERT(context->type == ShaderType::OPENCL_SHADER);
                     auto cl_context = static_cast<OpenCLProgramContext*>(context);
                     cl_context->m_programInfo.m_hasCrossThreadOffsetRelocations = true;
-                    break;
+                }
+                else if (reloc.r_symbol == vISA::PER_THREAD_OFF_RELOCATION_NAME) {
+                    IGC_ASSERT(context->type == ShaderType::OPENCL_SHADER);
+                    auto cl_context = static_cast<OpenCLProgramContext*>(context);
+                    cl_context->m_programInfo.m_hasPerThreadOffsetRelocations = true;
                 }
             }
         }
