@@ -1597,6 +1597,12 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
                 if (PN->getIncomingBlock(i) == bb)
                 {
                     Value* Src = PN->getOperand(i);
+
+                    if (isa<UndefValue>(Src))
+                    {
+                        continue;
+                    }
+
                     Value* dstRootV = m_deSSA ? m_deSSA->getRootValue(PN) : PN;
                     Value* srcRootV = m_deSSA ? m_deSSA->getRootValue(Src) : Src;
                     dstRootV = dstRootV ? dstRootV : PN;
