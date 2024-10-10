@@ -2104,18 +2104,12 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const VAArgInst* inst)
 
 void WIAnalysisRunner::CS_checkLocalIDs(Function *F)
 {
-    CS_WALK_ORDER walkOrder = CS_WALK_ORDER::WO_XYZ;
-    ThreadIDLayout idLayout = ThreadIDLayout::X;
+    if (IGC_IS_FLAG_DISABLED(OverrideCsWalkOrderEnable) ||
+        IGC_IS_FLAG_DISABLED(OverrideCsTileLayoutEnable))
+        return;
 
-    {
-        if (IGC_IS_FLAG_DISABLED(OverrideCsWalkOrderEnable) ||
-            IGC_IS_FLAG_DISABLED(OverrideCsTileLayoutEnable))
-            return;
-
-        walkOrder = (CS_WALK_ORDER)IGC_GET_FLAG_VALUE(OverrideCsWalkOrder);
-        idLayout = (ThreadIDLayout)IGC_GET_FLAG_VALUE(OverrideCsTileLayout);
-    }
-
+    auto walkOrder = (CS_WALK_ORDER)IGC_GET_FLAG_VALUE(OverrideCsWalkOrder);
+    auto idLayout = (ThreadIDLayout)IGC_GET_FLAG_VALUE(OverrideCsTileLayout);
     if (idLayout == ThreadIDLayout::TileY ||
         idLayout == ThreadIDLayout::QuadTile) {
         // Need clarification on semantics. Skip for now.
