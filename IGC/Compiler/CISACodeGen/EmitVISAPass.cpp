@@ -7921,34 +7921,6 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
         doIntercept = false;
     }
 
-    if (IGC_IS_FLAG_ENABLED(EnableFastSampleD) &&
-        m_currShader->GetShaderType() == ShaderType::PIXEL_SHADER &&
-        opCode == llvm_sample_dptr)
-    {
-        Type* textureType = IGCLLVM::getNonOpaquePtrEltTy(inst->getTextureValue()->getType());
-        llvm::Module* M = inst->getModule();
-        if (textureType == GetResourceDimensionType(*M, RESOURCE_DIMENSION_TYPE::DIM_2D_TYPE) ||
-            textureType == GetResourceDimensionType(*M, RESOURCE_DIMENSION_TYPE::DIM_2D_ARRAY_TYPE))
-        {
-            for (int srci = 1; srci < 6; srci++)
-            {
-                // src1=dudx, src2=dudy, src4=dvdx, src5=dvdy. skip src3 which is coord v.
-                if (srci == 3)
-                    continue;
-
-                if (dyn_cast<Instruction>(inst->getOperand(srci)))
-                {
-                    CVariable* src = GetSymbol(inst->getOperand(srci));
-                    m_encoder->SetSimdSize(m_currShader->m_SIMDSize);
-                    m_encoder->SetSrcSubReg(0, 0);
-                    m_encoder->SetSrcSubVar(0, 0);
-                    m_encoder->SetSrcRegion(0, 4, 4, 0);
-                    m_encoder->Copy(src, src);
-                    m_encoder->Push();
-                }
-            }
-        }
-    }
 
     uint numSources = 0;
     const uint numParts = m_CE->GetNumSplitParts(inst);
