@@ -393,6 +393,26 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
 
     pIgcMDUtils->save(M.getContext());
 
+    WA_ForceUseBindfulModeIfSpecificKernelExistsInModule(M);
+
     return true;
 }
 
+void SPIRMetaDataTranslation::WA_ForceUseBindfulModeIfSpecificKernelExistsInModule(Module& M)
+{
+    bool forceUseBindful = std::any_of(M.begin(), M.end(), [](auto const& it) { return StatelessToStateful::WA_ForcedUsedOfBindfulMode(it); });
+    if (forceUseBindful)
+    {
+        auto modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+        auto ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+        auto clContext = static_cast<OpenCLProgramContext*>(ctx);
+        auto internalOptions = const_cast<InternalOptions*>(&clContext->m_InternalOptions);
+
+        modMD->compOpt.UseBindlessMode = false;
+        modMD->compOpt.UseLegacyBindlessMode = true;
+
+        internalOptions->UseBindlessMode = false;
+        internalOptions->UseBindlessLegacyMode = true;
+        internalOptions->PromoteStatelessToBindless = false;
+    }
+}
