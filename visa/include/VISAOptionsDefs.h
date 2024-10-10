@@ -179,7 +179,7 @@ DEF_VISA_OPTION(vISA_dynamicAddrForExDescInLscSend, ET_BOOL_TRUE,
                 "-dynamicAddrForExDescInLscSend",
                 "Use unfixed address which is assigned by RA instead of a0.2 as "
                 "the extend messaged descriptor in LSC send messages",
-                true)
+                false)
 
 //=== code gen options ===
 DEF_VISA_OPTION(vISA_noSrc1Byte, ET_BOOL, "-nosrc1byte", UNUSED, false)
