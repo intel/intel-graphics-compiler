@@ -457,7 +457,6 @@ public:
   PreDefined_Surface stackSurface() const { return StackSurf; }
 
   bool isIntrinsicSupported(unsigned ID) const;
-  bool isValidGRFSize(unsigned Size) const;
 };
 
 } // namespace llvm

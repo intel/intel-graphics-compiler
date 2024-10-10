@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2024 Intel Corporation
+Copyright (C) 2021-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -46,12 +46,6 @@ static MDNode *findExternalNode(const Function &F) {
                   genx::KernelMDOp::FunctionRef,
                   genx::KernelMDOp::ArgTypeDescs);
 }
-
-static MDNode *findSpirvExecutionModeNode(const Function &F) {
-  constexpr unsigned FunctionRef = 0;
-  constexpr unsigned MinNumOps = 3;
-  return findNode(F, "spirv.ExecutionMode", FunctionRef, MinNumOps);
-};
 
 void vc::internal::createInternalMD(Function &F) {
   IGC_ASSERT_MESSAGE(!findInternalNode(F),
@@ -106,13 +100,6 @@ void vc::replaceFunctionRefMD(const Function &From, Function &To) {
 template <typename RetTy = unsigned>
 static RetTy extractConstantIntMD(const MDOperand &Op) {
   const auto *V = getValueAsMetadata<ConstantInt>(Op);
-  IGC_ASSERT_MESSAGE(V, "Unexpected null value in metadata");
-  return static_cast<RetTy>(V->getZExtValue());
-}
-
-template <typename RetTy = unsigned>
-static RetTy extractConstantIntMD(const Metadata &Op) {
-  const auto *V = getValueAsMetadata<ConstantInt>(&Op);
   IGC_ASSERT_MESSAGE(V, "Unexpected null value in metadata");
   return static_cast<RetTy>(V->getZExtValue());
 }
@@ -260,11 +247,6 @@ vc::KernelMetadata::KernelMetadata(const Function *F) {
   }
   if (LinearizationNode)
     Linearization = extractLinearizationMD(*F, LinearizationNode);
-
-  MDNode *SpirvExecutionMode = findSpirvExecutionModeNode(*F);
-  if (!SpirvExecutionMode)
-    return;
-  parseExecutionMode(SpirvExecutionMode);
 }
 
 static MDNode *createArgLinearizationMD(const ImplicitLinearizationInfo &Info) {
@@ -366,32 +348,6 @@ void vc::KernelMetadata::updateSLMSizeMD(unsigned Size) {
   auto *C = ConstantInt::get(Ty, SLMSize);
   ExternalNode->replaceOperandWith(genx::KernelMDOp::SLMSize,
                                    ValueAsMetadata::get(C));
-}
-
-void vc::KernelMetadata::parseExecutionMode(MDNode *SpirvExecutionMode) {
-  IGC_ASSERT(SpirvExecutionMode->getNumOperands() >= 3);
-
-  auto &EMode = SpirvExecutionMode->getOperand(1);
-  auto &EModeVal = SpirvExecutionMode->getOperand(2);
-  auto EModeId = static_cast<ExecutionMode>(extractConstantIntMD(EMode));
-  switch (EModeId) {
-  case ExecutionMode::MaximumRegistersINTEL:
-    GRFSize = extractConstantIntMD(*(EModeVal.get()));
-    return;
-  case ExecutionMode::MaximumRegistersIdINTEL: {
-    auto *GRFSizeNode = cast<MDNode>(EModeVal.get());
-    GRFSize = extractConstantIntMD(*(GRFSizeNode->getOperand(0)));
-    return;
-  }
-  case ExecutionMode::NamedMaximumRegistersINTEL: {
-    auto *NamedExecMode = cast<MDString>(EModeVal.get());
-    IGC_ASSERT_EXIT_MESSAGE(!NamedExecMode->getString().compare("AutoINTEL"),
-                            "Unhandled NamedMaximumRegisters value");
-    GRFSize = 0;
-    return;
-  }
-  }
-  IGC_ASSERT_EXIT_MESSAGE(0, "Unhandled execution mode!");
 }
 
 bool vc::hasKernel(const Module &M) {
