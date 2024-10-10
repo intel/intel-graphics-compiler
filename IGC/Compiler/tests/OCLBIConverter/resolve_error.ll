@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -10,9 +10,10 @@
 ; built-ins like __builtin_IB_get_image_width are still erased after resolving
 ; for bindless images
 
-; RUN: igc_opt -platformdg1 -igc-error-check -igc-conv-ocl-to-common -S %s 2>&1 | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -platformdg1 -igc-error-check -igc-conv-ocl-to-common -S %s 2>&1 | FileCheck %s
 
-; CHECK: define spir_kernel void @kernel(%spirv.Image._void_1_0_0_0_0_0_0 addrspace(1)* %img) {
+; CHECK: define spir_kernel void @kernel(ptr addrspace(1) %img) {
 ; CHECK-NOT: __builtin_IB_get_image_width
 ; CHECK-NOT: __builtin_IB_get_image_height
 ; CHECK: ret void
@@ -25,8 +26,8 @@ define void @test_error(double %src) {
   ret void
 }
 
-define spir_kernel void @kernel(%spirv.Image._void_1_0_0_0_0_0_0 addrspace(1)* %img) {
-  %data = ptrtoint %spirv.Image._void_1_0_0_0_0_0_0 addrspace(1)* %img to i64
+define spir_kernel void @kernel(ptr addrspace(1) %img) {
+  %data = ptrtoint ptr addrspace(1) %img to i64
   %1 = trunc i64 %data to i32
   %call.i.i.i = call spir_func i32 @__builtin_IB_get_image_width(i32 %1)
   %call1.i.i.i = call spir_func i32 @__builtin_IB_get_image_height(i32 %1)
@@ -39,12 +40,12 @@ declare spir_func i32 @__builtin_IB_get_image_height(i32)
 !igc.functions = !{!0}
 !IGCMetadata = !{!3}
 
-!0 = !{void (%spirv.Image._void_1_0_0_0_0_0_0 addrspace(1)*)* @kernel, !1}
+!0 = !{ptr @kernel, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"ModuleMD", !4, !15, !18}
 !4 = !{!"FuncMD", !5, !6}
-!5 = distinct !{!"FuncMDMap[0]", void (%spirv.Image._void_1_0_0_0_0_0_0 addrspace(1)*)* @kernel}
+!5 = distinct !{!"FuncMDMap[0]", ptr @kernel}
 !6 = !{!"FuncMDValue[0]", !7, !8, !9}
 !7 = !{!"funcArgs"}
 !8 = !{!"functionType", !"KernelFunction"}

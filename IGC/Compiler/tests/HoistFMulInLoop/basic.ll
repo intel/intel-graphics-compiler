@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -igc-hoist-fmul-in-loop-pass -S < %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-hoist-fmul-in-loop-pass -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; HoistFMulInLoopPass
 ; ------------------------------------------------
@@ -26,11 +27,11 @@
 ;    }
 ;    sum = sum * loopinvirant
 
-define void @test_loop(float* %a, float* %b, float %c) {
+define void @test_loop(ptr %a, ptr %b, float %c) {
 ; CHECK-LABEL: @test_loop(
 ; CHECK:  entry:
-; CHECK:    [[TMP0:%[A-z0-9]*]] = load float, float* [[A:%[A-z0-9]*]], align 4
-; CHECK:    [[TMP1:%[A-z0-9]*]] = load float, float* [[B:%[A-z0-9]*]], align 4
+; CHECK:    [[TMP0:%[A-z0-9]*]] = load float, ptr [[A:%[A-z0-9]*]], align 4
+; CHECK:    [[TMP1:%[A-z0-9]*]] = load float, ptr [[B:%[A-z0-9]*]], align 4
 ; CHECK:    [[TMP2:%[A-z0-9]*]] = fcmp olt float [[TMP0]], [[TMP1]]
 ; CHECK:    br i1 [[TMP2]], label %[[END:[A-z0-9.]*]], label %[[FOR_BODY:[A-z0-9.]*]]
 ; CHECK:  [[FOR_BODY]]:
@@ -48,12 +49,12 @@ define void @test_loop(float* %a, float* %b, float %c) {
 ; CHECK:    br label %[[END]]
 ; CHECK:  [[END]]:
 ; CHECK:    [[TMP10:%[A-z0-9]*]] = phi float [ [[TMP0]], [[ENTRY]] ], [ [[TMP9]], %[[FOR_END]] ]
-; CHECK:    store float [[TMP10]], float* [[A]], align 4
+; CHECK:    store float [[TMP10]], ptr [[A]], align 4
 ; CHECK:    ret void
 ;
 entry:
-  %0 = load float, float* %a, align 4
-  %1 = load float, float* %b, align 4
+  %0 = load float, ptr %a, align 4
+  %1 = load float, ptr %b, align 4
   %2 = fcmp olt float %0, %1
   br i1 %2, label %end, label %for.body
 
@@ -71,7 +72,7 @@ for.end:
   br label %end
 end:
   %10 = phi float [ %0, %entry ], [ %9, %for.end ]
-  store float %10, float* %a, align 4
+  store float %10, ptr %a, align 4
   ret void
 }
 

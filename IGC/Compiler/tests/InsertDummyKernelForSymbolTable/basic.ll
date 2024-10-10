@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-insert-dummy-kernel-for-symbol-table -S < %s | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --igc-insert-dummy-kernel-for-symbol-table -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; InsertDummyKernelForSymbolTable
 ; ------------------------------------------------
@@ -19,26 +20,26 @@ define spir_kernel void @test(i32 %a) #0 {
 ; CHECK:    [[A_ADDR:%.*]] = alloca i32, align 4
 ; CHECK:    [[SUBID:%.*]] = alloca i32, align 4
 ; CHECK:    [[SUM:%.*]] = alloca i32, align 4
-; CHECK:    store i32 [[A:%.*]], i32* [[A_ADDR]], align 4
+; CHECK:    store i32 [[A:%.*]], ptr [[A_ADDR]], align 4
 ; CHECK:    [[CALL:%.*]] = call spir_func i32 @__builtin_spirv_BuiltInSubgroupId() #1
-; CHECK:    store i32 [[CALL]], i32* [[SUBID]], align 4
-; CHECK:    [[TMP0:%.*]] = load i32, i32* [[SUBID]], align 4
-; CHECK:    [[TMP1:%.*]] = load i32, i32* [[A_ADDR]], align 4
+; CHECK:    store i32 [[CALL]], ptr [[SUBID]], align 4
+; CHECK:    [[TMP0:%.*]] = load i32, ptr [[SUBID]], align 4
+; CHECK:    [[TMP1:%.*]] = load i32, ptr [[A_ADDR]], align 4
 ; CHECK:    [[ADD:%.*]] = add nsw i32 [[TMP0]], [[TMP1]]
-; CHECK:    store i32 [[ADD]], i32* [[SUM]], align 4
+; CHECK:    store i32 [[ADD]], ptr [[SUM]], align 4
 ; CHECK:    ret void
 ;
 entry:
   %a.addr = alloca i32, align 4
   %subid = alloca i32, align 4
   %sum = alloca i32, align 4
-  store i32 %a, i32* %a.addr, align 4
+  store i32 %a, ptr %a.addr, align 4
   %call = call spir_func i32 @__builtin_spirv_BuiltInSubgroupId() #2
-  store i32 %call, i32* %subid, align 4
-  %0 = load i32, i32* %subid, align 4
-  %1 = load i32, i32* %a.addr, align 4
+  store i32 %call, ptr %subid, align 4
+  %0 = load i32, ptr %subid, align 4
+  %1 = load i32, ptr %a.addr, align 4
   %add = add nsw i32 %0, %1
-  store i32 %add, i32* %sum, align 4
+  store i32 %add, ptr %sum, align 4
   ret void
 }
 
@@ -57,7 +58,7 @@ attributes #2 = { nounwind readnone }
 
 !2 = !{!"ModuleMD", !3, !13}
 !3 = !{!"FuncMD", !4, !5}
-!4 = !{!"FuncMDMap[0]", void (i32)* @test}
+!4 = !{!"FuncMDMap[0]", ptr @test}
 !5 = !{!"FuncMDValue[0]", !6, !7, !11, !12}
 !6 = !{!"localOffsets"}
 !7 = !{!"workGroupWalkOrder", !8, !9, !10}
@@ -67,8 +68,8 @@ attributes #2 = { nounwind readnone }
 !11 = !{!"funcArgs"}
 !12 = !{!"functionType", !"KernelFunction"}
 !13 = !{!"inlineProgramScopeOffsets", !14, !15}
-!14 = !{!"inlineProgramScopeOffsetsMap[0]", i32 addrspace(1)* @b}
+!14 = !{!"inlineProgramScopeOffsetsMap[0]", ptr addrspace(1) @b}
 !15 = !{!"inlineProgramScopeOffsetsValue[0]", i32 0}
-!16 = !{void (i32)* @test, !17}
+!16 = !{ptr @test, !17}
 !17 = !{!18}
 !18 = !{!"function_type", i32 0}

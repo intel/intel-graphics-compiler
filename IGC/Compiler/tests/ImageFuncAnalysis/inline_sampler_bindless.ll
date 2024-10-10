@@ -8,7 +8,8 @@
 
 ; Check new implicit arg is added for bindless inline sampler.
 
-; RUN: igc_opt -igc-image-func-analysis -S %s -o - | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-image-func-analysis -S %s -o - | FileCheck %s
 
 source_filename = "inline_sampler_bindless.ll"
 
@@ -27,7 +28,7 @@ declare spir_func i32 @__builtin_IB_get_snap_wa_reqd(i32)
 !igc.functions = !{!0}
 !IGCMetadata = !{!2}
 
-!0 = !{void ()* @test, !1}
+!0 = !{ptr @test, !1}
 !1 = !{}
 !2 = !{!"ModuleMD", !3, !6, !7}
 !3 = !{!"compOpt", !4, !5}

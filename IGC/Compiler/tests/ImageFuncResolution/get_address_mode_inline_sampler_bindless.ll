@@ -9,7 +9,8 @@
 ; Check address mode of bindless inline sampler is parsed from implicit arg and
 ; inlineSamplersMD metadata.
 
-; RUN: igc_opt -igc-image-func-resolution -S %s -o - | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -igc-image-func-resolution -S %s -o - | FileCheck %s
 
 define spir_kernel void @test(i32 %inlineSampler) {
 entry:
@@ -28,14 +29,14 @@ declare spir_func i32 @__builtin_IB_get_address_mode(i32)
 !igc.functions = !{!0}
 !IGCMetadata = !{!5}
 
-!0 = !{void (i32)* @test, !1}
+!0 = !{ptr @test, !1}
 !1 = !{!2}
 !2 = !{!"implicit_arg_desc", !3}
 !3 = !{i32 32, !4}
 !4 = !{!"explicit_arg_num", i32 19}
 !5 = !{!"ModuleMD", !6}
 !6 = !{!"FuncMD", !7, !8}
-!7 = !{!"FuncMDMap[0]", void (i32)* @test}
+!7 = !{!"FuncMDMap[0]", ptr @test}
 !8 = !{!"FuncMDValue[0]", !9}
 !9 = !{!"resAllocMD", !10, !15}
 !10 = !{!"argAllocMDList", !11}

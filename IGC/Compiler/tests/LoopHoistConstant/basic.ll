@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -debugify -igc-loop-hoist-constant -S < %s 2>&1 | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -debugify -igc-loop-hoist-constant -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; LoopHoistConstant
 ; ------------------------------------------------
@@ -16,17 +17,17 @@
 ; and uses outside of body replaced by corresponding phi's
 ; Debugify used to check that debug intrinsics don't affect pass
 
-define void @test_loop(float %a, float %lsize, float* %b) {
+define void @test_loop(float %a, float %lsize, ptr %b) {
 
 ; Prehead is not modified
 ;
 ; CHECK: @test_loop(
 ; CHECK:  prehead:
-; CHECK:    [[TMP0:%.*]] = load float, float* %b
+; CHECK:    [[TMP0:%.*]] = load float, ptr %b
 ; CHECK:    br label %[[BODY:[A-z0-9.]*]]
 
 prehead:
-  %0 = load float, float* %b
+  %0 = load float, ptr %b
   br label %body
 
 ; Loop body is split to if-then-else
@@ -65,11 +66,11 @@ body:
 ; End block is not modified
 ;
 ; CHECK:  [[END]]:
-; CHECK:    store float [[TMP12]], float* %b
+; CHECK:    store float [[TMP12]], ptr %b
 ; CHECK:    ret void
 
  end:
-  store float %5, float* %b
+  store float %5, ptr %b
   ret void
 }
 declare float @llvm.minnum.f32(float, float)

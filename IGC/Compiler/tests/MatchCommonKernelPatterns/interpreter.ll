@@ -7,25 +7,26 @@
 ;============================ end_copyright_notice =============================
 ;
 
-; RUN: igc_opt --match-common-kernel-patterns --print-codegencontext --platformdg2 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-V1
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers --match-common-kernel-patterns --print-codegencontext --platformdg2 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-V1
 ; CHECK-V1: Kernel with forced retry: kernel_interpreter_v1
 
-; RUN: igc_opt --match-common-kernel-patterns --print-codegencontext --platformdg2 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-V2
+; RUN: igc_opt --opaque-pointers --match-common-kernel-patterns --print-codegencontext --platformdg2 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-V2
 ; CHECK-V2: Kernel with forced retry: kernel_interpreter_v2
 
-define spir_kernel void @kernel_interpreter_v1(i32 addrspace(4)* align 4 %addr1, i32 %op1, <8 x i32> %r0, <8 x i32> %payloadHeader) #0 {
+define spir_kernel void @kernel_interpreter_v1(ptr addrspace(4) align 4 %addr1, i32 %op1, <8 x i32> %r0, <8 x i32> %payloadHeader) #0 {
 Entry:
-  %0 = addrspacecast i32 addrspace(4)* %addr1 to i32 addrspace(1)*
-  %load1 = load i32, i32 addrspace(1)* %0, align 4
+  %0 = addrspacecast ptr addrspace(4) %addr1 to ptr addrspace(1)
+  %load1 = load i32, ptr addrspace(1) %0, align 4
   %ind1 = add nsw i32 %load1, %op1
   br label %BB1
 
 BB1:                                              ; preds = %Backedge, %Entry
   %phi1 = phi i32 [ %ind1, %Entry ], [ %phi2, %Backedge ]
   %1 = ashr i32 %phi1, 31
-  %2 = call i32 addrspace(4)* @llvm.genx.GenISA.pair.to.ptr.p4i32(i32 %phi1, i32 %1)
-  %3 = addrspacecast i32 addrspace(4)* %2 to <4 x i32> addrspace(1)*
-  %load2 = load <4 x i32>, <4 x i32> addrspace(1)* %3, align 4
+  %2 = call ptr addrspace(4) @llvm.genx.GenISA.pair.to.ptr.p4(i32 %phi1, i32 %1)
+  %3 = addrspacecast ptr addrspace(4) %2 to ptr addrspace(1)
+  %load2 = load <4 x i32>, ptr addrspace(1) %3, align 4
   %extrel = extractelement <4 x i32> %load2, i32 0
   %Pivot120 = icmp slt i32 %extrel, 32
   br i1 %Pivot120, label %NodeBlock55, label %NodeBlock117
@@ -531,19 +532,19 @@ Default:                                          ; preds = %LeafBlock.Default_c
   ret void
 }
 
-define spir_kernel void @kernel_interpreter_v2(i32 addrspace(4)* align 4 %addr1, i32 %op1, <8 x i32> %r0, <8 x i32> %payloadHeader) #0 {
+define spir_kernel void @kernel_interpreter_v2(ptr addrspace(4) align 4 %addr1, i32 %op1, <8 x i32> %r0, <8 x i32> %payloadHeader) #0 {
 Entry:
-  %0 = addrspacecast i32 addrspace(4)* %addr1 to i32 addrspace(1)*
-  %load1 = load i32, i32 addrspace(1)* %0, align 4
+  %0 = addrspacecast ptr addrspace(4) %addr1 to ptr addrspace(1)
+  %load1 = load i32, ptr addrspace(1) %0, align 4
   %ind1 = add nsw i32 %load1, %op1
   br label %BB1
 
 BB1:                                              ; preds = %Backedge, %Entry
   %phi1 = phi i32 [ %ind1, %Entry ], [ %phi2, %Backedge ]
   %1 = ashr i32 %phi1, 31
-  %2 = call i32 addrspace(4)* @llvm.genx.GenISA.pair.to.ptr.p4i32(i32 %phi1, i32 %1)
-  %3 = addrspacecast i32 addrspace(4)* %2 to i32 addrspace(1)*
-  %load2 = load i32, i32 addrspace(1)* %3, align 4
+  %2 = call ptr addrspace(4) @llvm.genx.GenISA.pair.to.ptr.p4(i32 %phi1, i32 %1)
+  %3 = addrspacecast ptr addrspace(4) %2 to ptr addrspace(1)
+  %load2 = load i32, ptr addrspace(1) %3, align 4
   %Pivot120 = icmp slt i32 %load2, 32
   br i1 %Pivot120, label %NodeBlock55, label %NodeBlock117
 
@@ -1048,4 +1049,4 @@ Default:                                          ; preds = %LeafBlock.Default_c
   ret void
 }
 
-declare i32 addrspace(4)* @llvm.genx.GenISA.pair.to.ptr.p4i32(i32, i32)
+declare ptr addrspace(4) @llvm.genx.GenISA.pair.to.ptr.p4(i32, i32)

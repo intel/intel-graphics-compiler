@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -debugify -logicalAndToBranch -check-debugify -S < %s 2>&1 | FileCheck %s
+; REQUIRES: llvm-14-plus
+; RUN: igc_opt --opaque-pointers -debugify -logicalAndToBranch -check-debugify -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; LogicalAndToBranch
 ; ------------------------------------------------
@@ -22,7 +23,7 @@
 ; CHECK-NOT: WARNING
 ; CHECK: CheckModuleDebugify: PASS
 
-define void @test_logicaland(i32 %a, i32 %b, i32* %c) {
+define void @test_logicaland(i32 %a, i32 %b, ptr %c) {
 ; CHECK-LABEL: @test_logicaland(
 ; CHECK:  entry:
 ; CHECK:    [[TMP0:%[A-z0-9]*]] = add i32 [[A:%[A-z0-9]*]], [[A]]
@@ -70,9 +71,9 @@ define void @test_logicaland(i32 %a, i32 %b, i32* %c) {
 ; CHECK:  if.end:
 ; CHECK:    [[TMP35:%[A-z0-9]*]] = phi i1 [ [[CMP2]], [[IF_THEN]] ], [ false, [[IF_ELSE]] ]
 ; CHECK:    [[RESULT:%[A-z0-9]*]] = select i1 [[TMP35]], i32 13, i32 [[TMP34]]
-; CHECK:    store i32 [[RESULT]], i32* [[C:%[A-z0-9]*]]
+; CHECK:    store i32 [[RESULT]], ptr [[C:%[A-z0-9]*]]
 ; CHECK:    [[TMP36:%[A-z0-9]*]] = add i32 [[TMP33]], 13
-; CHECK:    store i32 [[TMP36]], i32* [[C]]
+; CHECK:    store i32 [[TMP36]], ptr [[C]]
 ; CHECK:    ret void
 ;
 entry:
@@ -115,8 +116,8 @@ entry:
   %cmp2 = icmp sgt i32 %33, %b
   %and = and i1 %cmp1, %cmp2
   %result = select i1 %and, i32 13, i32 %34
-  store i32 %result, i32* %c
+  store i32 %result, ptr %c
   %35 = add i32 %33, 13
-  store i32 %35, i32* %c
+  store i32 %35, ptr %c
   ret void
 }
