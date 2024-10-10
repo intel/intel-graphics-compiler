@@ -366,6 +366,13 @@ bool NeedResetA0forVxHA0() const
     return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE);
 }
 
+
+unsigned int GetBindlessSamplerSize() const
+{
+    // Samplers are 16 bytes
+    return 16;
+}
+
 unsigned int GetLogBindlessSamplerSize() const
 {
     // Samplers are 16 bytes
