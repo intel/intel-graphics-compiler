@@ -127,6 +127,9 @@ struct GenXBackendOptions {
   // Use bindless mode for buffers.
   bool UseBindlessBuffers = false;
 
+  // Use bindless mode for images.
+  bool UseBindlessImages = false;
+
   // Output binary format
   vc::BinaryKind Binary = vc::BinaryKind::OpenCL;
 
@@ -351,6 +354,8 @@ public:
   bool doStructSplitting() const { return !Options.DisableStructSplitting; }
 
   bool useBindlessBuffers() const { return Options.UseBindlessBuffers; }
+
+  bool useBindlessImages() const { return Options.UseBindlessImages; }
 
   bool emitZebinVisaSections() const { return Options.EmitZebinVisaSections; }
 

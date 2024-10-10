@@ -84,9 +84,6 @@ defm force_emu_sp_int32divrem : CommonFlag<"force-emu-sp-int32divrem">;
 // -cl-intel-force-disable-4GB-buffer
 defm force_disable_4GB_buffer : CommonFlag<"force-disable-4GB-buffer">;
 
-// -cl-intel-use-bindless-images
-defm use_bindless_images : CommonFlag<"use-bindless-images">;
-
 // -cl-intel-use-bindless-mode
 defm use_bindless_mode : CommonFlag<"use-bindless-mode">;
 

@@ -1022,6 +1022,49 @@ Imported_Intrinsics = {
                                ],
                                "attributes" : "WriteMem", },
 
+## ``llvm.vc.internal.lsc.*2d.typed.bss.*`` : LSC typed 2d block bindless intrinsics
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+## * arg0: vNi8, Cache controls, where N is the number of supported cache levels [MBC]
+## * arg1: i32, Surface BSS
+## * arg2: i32, Block height [MBC]
+## * arg3: i32, Block width (in elements) [MBC]
+## * arg4: i32, Memory block X position (in bytes)
+## * arg5: i32, Memory block Y position
+## * arg6: data to write (store only)
+##
+## * Return value: the value read or void
+##
+    "lsc_load_2d_tgm_bss" : { "result" : "anyvector",
+                              "arguments" : [
+                                  "anyvector", # cache controls
+                                  "int",       # i32 BSS
+                                  "int",       # block height
+                                  "int",       # block width
+                                  "int",       # X offset
+                                  "int"        # Y offset
+                              ],
+                              "target" : [
+                                  "hasLSCMessages",
+                                  "hasLSCTypedMessages",
+                              ],
+                              "attributes" : "ReadMem", },
+    "lsc_store_2d_tgm_bss" : { "result" : "void",
+                               "arguments" : [
+                                  "anyvector", # cache controls
+                                  "int",       # i32 BSS
+                                  "int",       # block height
+                                  "int",       # block width
+                                  "int",       # X offset
+                                  "int",       # Y offset
+                                  "anyvector"
+                               ],
+                               "target" : [
+                                   "hasLSCMessages",
+                                   "hasLSCTypedMessages",
+                               ],
+                               "attributes" : "WriteMem", },
+
+
 
 ## ``llvm.vc.internal.lsc.*.quad.tgm`` : Typed LSC load BTI intrinsic
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1088,6 +1131,72 @@ Imported_Intrinsics = {
                                    "hasLSCTypedMessages",
                                ],
                                "attributes": "SideEffects", },
+
+## ``llvm.vc.internal.lsc.*.quad.tgm.bss`` : Typed LSC load bindless intrinsic
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+## * arg0: vNi1, Predicate (overloaded)
+## * arg1: vNi8, Cache controls, where N is the number of supported cache levels [MBC]
+## * arg2: i8, Channel mask [MBC]
+## * arg3: i32, Surface BSS
+## * arg4: vNi32, U pixel indices (overloaded)
+## * arg5: vNi32, V pixel indices
+## * arg6: vNi32, R pixel indices
+## * arg7: vNi32, LOD pixel indices
+## * arg8: vector to take values for masked simd lanes from (load)
+##         vector to take values to write (store)
+##
+## * Return value: the value read from memory (load) or void (store, prefetch)
+##
+    "lsc_load_quad_tgm_bss": { "result": "anyvector",
+                               "arguments": [
+                                   "anyint",    # vNxi1, predicate
+                                   "anyvector", # cache controls
+                                   "char",      # channel mask
+                                   "int",       # i32 BSS
+                                   "anyint",    # vNi32 U pixel index
+                                   3,           # vNi32 V pixel index
+                                   3,           # vNi32 R pixel index
+                                   3,           # vNi32 LOD pixel index
+                                   0,           # passthru value
+                               ],
+                               "target" : [
+                                   "hasLSCMessages",
+                                   "hasLSCTypedMessages",
+                               ],
+                               "attributes": "ReadMem", },
+    "lsc_store_quad_tgm_bss": { "result": "void",
+                                "arguments": [
+                                    "anyint",    # vNxi1, predicate
+                                    "anyvector", # cache controls
+                                    "char",      # channel mask
+                                    "int",       # i32 BSS
+                                    "anyint",    # vNi32 U pixel index
+                                    2,           # vNi32 V pixel index
+                                    2,           # vNi32 R pixel index
+                                    2,           # vNi32 LOD pixel index
+                                    "anyvector", # data to write
+                                ],
+                                "target" : [
+                                    "hasLSCMessages",
+                                    "hasLSCTypedMessages",
+                                ],
+                                "attributes": "WriteMem", },
+    "lsc_prefetch_quad_tgm_bss": { "result": "void",
+                                   "arguments": [
+                                       "anyint",    # vNxi1, predicate
+                                       "anyvector", # cache controls
+                                       "char",      # channel mask
+                                       "int",       # i32 BSS
+                                       "anyint",    # vNi32 U pixel index
+                                       2,           # vNi32 V pixel index
+                                       2,           # vNi32 R pixel index
+                                       2,           # vNi32 LOD pixel index
+                                   ],
+                                   "target" : [
+                                       "hasLSCMessages",
+                                       "hasLSCTypedMessages",
+                                   ],
+                                   "attributes": "SideEffects", },
 
 
 ### ----------------------------

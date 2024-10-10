@@ -123,7 +123,7 @@ bool GenXBTIAssignment::runOnModule(Module &M) {
   auto &BC = getAnalysis<GenXBackendConfig>();
   bool emitDebuggableKernels = BC.emitDebuggableKernelsForLegacyPath();
   bool useBindlessBuffers = BC.useBindlessBuffers();
-  bool useBindlessImages = false;
+  bool useBindlessImages = BC.useBindlessImages();
   bool useBindlessSamplers = false;
 
   BTIAssignment BA(M, emitDebuggableKernels, useBindlessBuffers,

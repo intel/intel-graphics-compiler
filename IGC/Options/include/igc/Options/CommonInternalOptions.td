@@ -17,6 +17,10 @@ let Flags = InternalHelper.CommonInternalFlags in {
 defm use_bindless_buffers : CommonFlag<"use-bindless-buffers">,
   HelpText<"Use bindless mode for buffers">;
 
+// -cl-intel-use-bindless-images
+defm use_bindless_images : CommonFlag<"use-bindless-images">,
+  HelpText<"Use bindless mode for images">;
+
 defm emit_zebin_visa_sections : CommonFlag<"emit-zebin-visa-sections">,
   HelpText<"Add vISA asm as sections in ZeBin">;
 

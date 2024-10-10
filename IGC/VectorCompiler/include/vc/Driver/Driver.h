@@ -130,6 +130,7 @@ struct CompileOptions {
   std::string StatsFile;
   std::string LLVMOptions;
   bool UseBindlessBuffers = false;
+  bool UseBindlessImages = false;
   bool EmitZebinVisaSections = false;
   bool HasL1ReadOnlyCache = false;
   bool HasLocalMemFenceSupress = false;

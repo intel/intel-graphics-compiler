@@ -138,11 +138,13 @@ struct GrfParamZone {
 // CMKernelArgOffset pass
 class CMKernelArgOffset : public ModulePass {
   vc::KernelMetadata *KM = nullptr;
+  bool UseBindlessImages;
 
 public:
   static char ID;
-  CMKernelArgOffset(unsigned GrfByteSize = 32)
-      : ModulePass(ID), GrfByteSize(GrfByteSize) {
+  CMKernelArgOffset(unsigned GrfByteSize = 32, bool UseBindlessImages = false)
+      : ModulePass(ID), GrfByteSize(GrfByteSize),
+        UseBindlessImages(UseBindlessImages) {
     initializeCMKernelArgOffsetPass(*PassRegistry::getPassRegistry());
     GrfMaxCount = 256;
     GrfStartOffset = GrfByteSize;
@@ -178,8 +180,9 @@ INITIALIZE_PASS_BEGIN(CMKernelArgOffset, "cmkernelargoffset",
 INITIALIZE_PASS_END(CMKernelArgOffset, "cmkernelargoffset",
                     "CM kernel arg offset determination", false, false)
 
-Pass *llvm::createCMKernelArgOffsetPass(unsigned GrfByteSize) {
-  return new CMKernelArgOffset(GrfByteSize);
+Pass *llvm::createCMKernelArgOffsetPass(unsigned GrfByteSize,
+                                        bool UseBindlessImages) {
+  return new CMKernelArgOffset(GrfByteSize, UseBindlessImages);
 }
 
 // Check whether there is an input/output argument attribute.
@@ -342,7 +345,9 @@ void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
     // Second scan, assign normal arguments.
     unsigned Idx = 0;
     for (auto &&[Arg, ArgKind] : zip(F->args(), KM->getArgKinds())) {
-      bool IsBuffer = KM->isBufferType(Idx++);
+      auto Desc = KM->getArgTypeDesc(Idx++);
+      bool IsBuffer = vc::isDescBufferType(Desc) ||
+                      (UseBindlessImages && vc::isDescImageType(Desc));
 
       // Skip alaready assigned arguments.
       if (PlacedArgs.count(&Arg))

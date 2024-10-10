@@ -93,7 +93,6 @@ private:
   CallInst *createBindlessSurfaceDataportIntrinsicChain(CallInst &CI);
   void rewriteStatefulIntrinsic(CallInst &CI);
   bool rewriteStatefulIntrinsics();
-  bool rewriteIntrinsics();
 };
 
 class GenXPromoteStatefulToBindless final : public ModulePass {
@@ -154,6 +153,9 @@ unsigned PromoteToBindless::convertSingleArg(unsigned Kind, StringRef Desc) {
     return Kind;
 
   if (BC.useBindlessBuffers() && vc::isDescBufferType(Desc))
+    return vc::KernelMetadata::AK_NORMAL;
+
+  if (BC.useBindlessImages() && vc::isDescImageType(Desc))
     return vc::KernelMetadata::AK_NORMAL;
 
   return Kind;
@@ -275,8 +277,12 @@ static bool isStatefulIntrinsic(const Instruction &I) {
   case vc::InternalIntrinsic::lsc_prefetch_quad_bti:
   case vc::InternalIntrinsic::lsc_store_bti:
   case vc::InternalIntrinsic::lsc_store_quad_bti:
+  case vc::InternalIntrinsic::lsc_load_2d_tgm_bti:
+  case vc::InternalIntrinsic::lsc_store_2d_tgm_bti:
+  case vc::InternalIntrinsic::lsc_load_quad_tgm:
+  case vc::InternalIntrinsic::lsc_store_quad_tgm:
+  case vc::InternalIntrinsic::lsc_prefetch_quad_tgm:
     return true;
-
   // DWORD binary atomics.
   case GenXIntrinsic::genx_dword_atomic2_add:
   case GenXIntrinsic::genx_dword_atomic2_sub:
@@ -440,23 +446,34 @@ PromoteToBindless::createBindlessSurfaceDataportIntrinsicChain(CallInst &CI) {
 static vc::InternalIntrinsic::ID
 getBindlessLscIntrinsicID(unsigned IID, const GenXSubtarget &ST) {
 
-#define MAP(INTR)                                                              \
-  case vc::InternalIntrinsic::INTR##_bti:                                      \
-    return vc::InternalIntrinsic::INTR##_bss
-
   switch (IID) {
-    MAP(lsc_atomic);
-    MAP(lsc_load);
-    MAP(lsc_load_quad);
-    MAP(lsc_prefetch);
-    MAP(lsc_prefetch_quad);
-    MAP(lsc_store);
-    MAP(lsc_store_quad);
+  case vc::InternalIntrinsic::lsc_atomic_bti:
+    return vc::InternalIntrinsic::lsc_atomic_bss;
+  case vc::InternalIntrinsic::lsc_load_bti:
+    return vc::InternalIntrinsic::lsc_load_bss;
+  case vc::InternalIntrinsic::lsc_load_quad_bti:
+    return vc::InternalIntrinsic::lsc_load_quad_bss;
+  case vc::InternalIntrinsic::lsc_prefetch_bti:
+    return vc::InternalIntrinsic::lsc_prefetch_bss;
+  case vc::InternalIntrinsic::lsc_prefetch_quad_bti:
+    return vc::InternalIntrinsic::lsc_prefetch_quad_bss;
+  case vc::InternalIntrinsic::lsc_store_bti:
+    return vc::InternalIntrinsic::lsc_store_bss;
+  case vc::InternalIntrinsic::lsc_store_quad_bti:
+    return vc::InternalIntrinsic::lsc_store_quad_bss;
+  case vc::InternalIntrinsic::lsc_load_2d_tgm_bti:
+    return vc::InternalIntrinsic::lsc_load_2d_tgm_bss;
+  case vc::InternalIntrinsic::lsc_store_2d_tgm_bti:
+    return vc::InternalIntrinsic::lsc_store_2d_tgm_bss;
+  case vc::InternalIntrinsic::lsc_load_quad_tgm:
+    return vc::InternalIntrinsic::lsc_load_quad_tgm_bss;
+  case vc::InternalIntrinsic::lsc_store_quad_tgm:
+    return vc::InternalIntrinsic::lsc_store_quad_tgm_bss;
+  case vc::InternalIntrinsic::lsc_prefetch_quad_tgm:
+    return vc::InternalIntrinsic::lsc_prefetch_quad_tgm_bss;
   default:
     return vc::InternalIntrinsic::not_any_intrinsic;
   }
-#undef MAP
-
 }
 
 // Create bindless version of lsc bti intrinsic.
@@ -511,7 +528,8 @@ void PromoteToBindless::rewriteStatefulIntrinsic(CallInst &CI) {
   case GenXIntrinsic::genx_oword_ld:
   case GenXIntrinsic::genx_oword_ld_unaligned:
   case GenXIntrinsic::genx_oword_st:
-    BindlessCI = createBindlessSurfaceDataportIntrinsicChain(CI);
+    if (BC.useBindlessBuffers())
+      BindlessCI = createBindlessSurfaceDataportIntrinsicChain(CI);
     break;
   case vc::InternalIntrinsic::lsc_atomic_bti:
   case vc::InternalIntrinsic::lsc_load_bti:
@@ -520,11 +538,22 @@ void PromoteToBindless::rewriteStatefulIntrinsic(CallInst &CI) {
   case vc::InternalIntrinsic::lsc_prefetch_quad_bti:
   case vc::InternalIntrinsic::lsc_store_bti:
   case vc::InternalIntrinsic::lsc_store_quad_bti:
-    BindlessCI = createBindlessLscIntrinsic(CI, ST);
+    if (BC.useBindlessBuffers())
+      BindlessCI = createBindlessLscIntrinsic(CI, ST);
+    break;
+  case vc::InternalIntrinsic::lsc_load_2d_tgm_bti:
+  case vc::InternalIntrinsic::lsc_store_2d_tgm_bti:
+  case vc::InternalIntrinsic::lsc_load_quad_tgm:
+  case vc::InternalIntrinsic::lsc_store_quad_tgm:
+  case vc::InternalIntrinsic::lsc_prefetch_quad_tgm:
+    if (BC.useBindlessImages())
+      BindlessCI = createBindlessLscIntrinsic(CI, ST);
     break;
   }
 
-  IGC_ASSERT_MESSAGE(BindlessCI, "Expected created bindless instruction");
+  if (!BindlessCI)
+    return;
+
   if (!CI.getType()->isVoidTy()) {
     CI.replaceAllUsesWith(BindlessCI);
     BindlessCI->takeName(&CI);
@@ -544,20 +573,10 @@ bool PromoteToBindless::rewriteStatefulIntrinsics() {
   return true;
 }
 
-// Second part of transformation: rewriting of memory intrinsics.
-// Return true if there were changes.
-// Currently only buffer intrinsics are supported.
-bool PromoteToBindless::rewriteIntrinsics() {
-  if (!BC.useBindlessBuffers())
-    return false;
-
-  return rewriteStatefulIntrinsics();
-}
-
 bool PromoteToBindless::run() {
   bool Changed = convertArguments();
 
-  Changed |= rewriteIntrinsics();
+  Changed |= rewriteStatefulIntrinsics();
 
   return Changed;
 }

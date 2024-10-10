@@ -726,6 +726,9 @@ bool InternalIntrinsic::isInternalMemoryIntrinsic(InternalIntrinsic::ID id) {
   case InternalIntrinsic::lsc_load_quad_tgm:
   case InternalIntrinsic::lsc_prefetch_quad_tgm:
   case InternalIntrinsic::lsc_store_quad_tgm:
+  case InternalIntrinsic::lsc_load_quad_tgm_bss:
+  case InternalIntrinsic::lsc_prefetch_quad_tgm_bss:
+  case InternalIntrinsic::lsc_store_quad_tgm_bss:
   case InternalIntrinsic::lsc_load_block_2d_ugm:
   case InternalIntrinsic::lsc_load_block_2d_ugm_transposed:
   case InternalIntrinsic::lsc_load_block_2d_ugm_vnni:
@@ -738,6 +741,8 @@ bool InternalIntrinsic::isInternalMemoryIntrinsic(InternalIntrinsic::ID id) {
   case InternalIntrinsic::lsc_store_2d_ugm_desc:
   case InternalIntrinsic::lsc_load_2d_tgm_bti:
   case InternalIntrinsic::lsc_store_2d_tgm_bti:
+  case InternalIntrinsic::lsc_load_2d_tgm_bss:
+  case InternalIntrinsic::lsc_store_2d_tgm_bss:
   case InternalIntrinsic::sample_bti:
   case InternalIntrinsic::sampler_load_bti:
     return true;
@@ -820,6 +825,9 @@ bool InternalIntrinsic::isMemoryBlockIntrinsic(const llvm::Instruction *I) {
   case InternalIntrinsic::lsc_load_quad_tgm:
   case InternalIntrinsic::lsc_prefetch_quad_tgm:
   case InternalIntrinsic::lsc_store_quad_tgm:
+  case InternalIntrinsic::lsc_load_quad_tgm_bss:
+  case InternalIntrinsic::lsc_prefetch_quad_tgm_bss:
+  case InternalIntrinsic::lsc_store_quad_tgm_bss:
     return false;
   }
 
@@ -891,6 +899,9 @@ InternalIntrinsic::getMemoryVectorSizePerLane(const llvm::Instruction *I) {
   case InternalIntrinsic::lsc_load_quad_tgm:
   case InternalIntrinsic::lsc_prefetch_quad_tgm:
   case InternalIntrinsic::lsc_store_quad_tgm:
+  case InternalIntrinsic::lsc_load_quad_tgm_bss:
+  case InternalIntrinsic::lsc_prefetch_quad_tgm_bss:
+  case InternalIntrinsic::lsc_store_quad_tgm_bss:
   case InternalIntrinsic::sample_bti:
   case InternalIntrinsic::sampler_load_bti: {
     auto *ChannelMask = cast<ConstantInt>(I->getOperand(2));
@@ -911,6 +922,8 @@ unsigned InternalIntrinsic::getMemorySimdWidth(const Instruction *I) {
   switch (IID) {
   case InternalIntrinsic::lsc_load_2d_tgm_bti:
   case InternalIntrinsic::lsc_store_2d_tgm_bti:
+  case InternalIntrinsic::lsc_load_2d_tgm_bss:
+  case InternalIntrinsic::lsc_store_2d_tgm_bss:
     return 1;
   default: {
     auto *Pred = I->getOperand(0);
@@ -937,6 +950,9 @@ InternalIntrinsic::getMemoryRegisterElementSize(const llvm::Instruction *I) {
   case InternalIntrinsic::lsc_load_quad_tgm:
   case InternalIntrinsic::lsc_prefetch_quad_tgm:
   case InternalIntrinsic::lsc_store_quad_tgm:
+  case InternalIntrinsic::lsc_load_quad_tgm_bss:
+  case InternalIntrinsic::lsc_prefetch_quad_tgm_bss:
+  case InternalIntrinsic::lsc_store_quad_tgm_bss:
     return 32;
   case InternalIntrinsic::lsc_atomic_bti:
   case InternalIntrinsic::lsc_atomic_slm:
@@ -959,14 +975,16 @@ InternalIntrinsic::getMemoryRegisterElementSize(const llvm::Instruction *I) {
     auto *Ty = LastArg->getType();
     return Ty->getScalarType()->getPrimitiveSizeInBits();
   } break;
-  case InternalIntrinsic::lsc_store_2d_tgm_bti: {
+  case InternalIntrinsic::lsc_store_2d_tgm_bti:
+  case InternalIntrinsic::lsc_store_2d_tgm_bss: {
     auto *LastArg = I->getOperand(6);
     auto *Ty = LastArg->getType();
     return Ty->getScalarType()->getPrimitiveSizeInBits();
   } break;
   case InternalIntrinsic::sample_bti:
   case InternalIntrinsic::sampler_load_bti:
-  case InternalIntrinsic::lsc_load_2d_tgm_bti: {
+  case InternalIntrinsic::lsc_load_2d_tgm_bti:
+  case InternalIntrinsic::lsc_load_2d_tgm_bss: {
     auto *Ty = I->getType();
     return Ty->getScalarType()->getPrimitiveSizeInBits();
   } break;
@@ -1009,9 +1027,14 @@ int InternalIntrinsic::getMemoryCacheControlOperandIndex(unsigned IID) {
   case InternalIntrinsic::lsc_load_quad_tgm:
   case InternalIntrinsic::lsc_store_quad_tgm:
   case InternalIntrinsic::lsc_prefetch_quad_tgm:
+  case InternalIntrinsic::lsc_load_quad_tgm_bss:
+  case InternalIntrinsic::lsc_store_quad_tgm_bss:
+  case InternalIntrinsic::lsc_prefetch_quad_tgm_bss:
     return 1;
   case InternalIntrinsic::lsc_load_2d_tgm_bti:
   case InternalIntrinsic::lsc_store_2d_tgm_bti:
+  case InternalIntrinsic::lsc_load_2d_tgm_bss:
+  case InternalIntrinsic::lsc_store_2d_tgm_bss:
     return 0;
   case InternalIntrinsic::sample_bti:
   case InternalIntrinsic::sampler_load_bti:
@@ -1035,10 +1058,15 @@ int InternalIntrinsic::getMemorySurfaceOperandIndex(unsigned IID) {
     return 5;
   case vc::InternalIntrinsic::lsc_load_2d_tgm_bti:
   case vc::InternalIntrinsic::lsc_store_2d_tgm_bti:
+  case vc::InternalIntrinsic::lsc_load_2d_tgm_bss:
+  case vc::InternalIntrinsic::lsc_store_2d_tgm_bss:
     return 1;
   case vc::InternalIntrinsic::lsc_load_quad_tgm:
   case vc::InternalIntrinsic::lsc_store_quad_tgm:
   case vc::InternalIntrinsic::lsc_prefetch_quad_tgm:
+  case vc::InternalIntrinsic::lsc_load_quad_tgm_bss:
+  case vc::InternalIntrinsic::lsc_store_quad_tgm_bss:
+  case vc::InternalIntrinsic::lsc_prefetch_quad_tgm_bss:
     return 3;
   case vc::InternalIntrinsic::sampler_load_bti:
   case vc::InternalIntrinsic::sample_bti:
@@ -1094,6 +1122,9 @@ int InternalIntrinsic::getMemoryAddressOperandIndex(unsigned IID) {
   case InternalIntrinsic::lsc_load_quad_tgm:
   case InternalIntrinsic::lsc_prefetch_quad_tgm:
   case InternalIntrinsic::lsc_store_quad_tgm:
+  case InternalIntrinsic::lsc_load_quad_tgm_bss:
+  case InternalIntrinsic::lsc_prefetch_quad_tgm_bss:
+  case InternalIntrinsic::lsc_store_quad_tgm_bss:
   case InternalIntrinsic::lsc_load_block_2d_ugm:
   case InternalIntrinsic::lsc_load_block_2d_ugm_transposed:
   case InternalIntrinsic::lsc_load_block_2d_ugm_vnni:

@@ -3799,26 +3799,28 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
   auto CreateLscTypedLoadQuad =
       [&](VISA_PredOpnd *Pred, VISA_Exec_Size ExecSize,
           VISA_EMask_Ctrl ExecMask, LSC_CACHE_OPTS CacheOpts,
-          LSC_DATA_CHMASK ChMask, LSC_ADDR_TYPE AddrType, VISA_VectorOpnd *Surface, VISA_RawOpnd *Dst,
-          VISA_RawOpnd *AddrsU, VISA_RawOpnd *AddrsV, VISA_RawOpnd *AddrsR,
-          VISA_RawOpnd *AddrsLOD) {
+          LSC_DATA_CHMASK ChMask, LSC_ADDR_TYPE AddrType,
+          VISA_VectorOpnd *Surface, VISA_RawOpnd *Dst, VISA_RawOpnd *AddrsU,
+          VISA_RawOpnd *AddrsV, VISA_RawOpnd *AddrsR, VISA_RawOpnd *AddrsLOD) {
         LLVM_DEBUG(dbgs() << "CreateLscTypedLoadQuad: " << *CI << "\n");
-        IGC_ASSERT(AddrType == LSC_ADDR_TYPE_BTI);
+        IGC_ASSERT(AddrType == LSC_ADDR_TYPE_BTI ||
+                   AddrType == LSC_ADDR_TYPE_BSS);
         LSC_DATA_SHAPE Shape = {LSC_DATA_SIZE_32b, LSC_DATA_ORDER_NONTRANSPOSE};
         Shape.chmask = ChMask;
         CISA_CALL(Kernel->AppendVISALscTypedLoad(
             LSC_OP::LSC_LOAD_QUAD, Pred, ExecSize, ExecMask, CacheOpts,
-            AddrType, LSC_ADDR_SIZE_32b, Shape, Surface, 0, Dst,
-            AddrsU, 0, AddrsV, 0, AddrsR, 0, AddrsLOD));
+            AddrType, LSC_ADDR_SIZE_32b, Shape, Surface, 0, Dst, AddrsU, 0,
+            AddrsV, 0, AddrsR, 0, AddrsLOD));
       };
   auto CreateLscTypedStoreQuad =
       [&](VISA_PredOpnd *Pred, VISA_Exec_Size ExecSize,
           VISA_EMask_Ctrl ExecMask, LSC_CACHE_OPTS CacheOpts,
-          LSC_DATA_CHMASK ChMask, LSC_ADDR_TYPE AddrType, VISA_VectorOpnd *Surface,
-          VISA_RawOpnd *AddrsU, VISA_RawOpnd *AddrsV, VISA_RawOpnd *AddrsR,
-          VISA_RawOpnd *AddrsLOD, VISA_RawOpnd *Data) {
+          LSC_DATA_CHMASK ChMask, LSC_ADDR_TYPE AddrType,
+          VISA_VectorOpnd *Surface, VISA_RawOpnd *AddrsU, VISA_RawOpnd *AddrsV,
+          VISA_RawOpnd *AddrsR, VISA_RawOpnd *AddrsLOD, VISA_RawOpnd *Data) {
         LLVM_DEBUG(dbgs() << "CreateLscTypedStoreQuad: " << *CI << "\n");
-        IGC_ASSERT(AddrType == LSC_ADDR_TYPE_BTI);
+        IGC_ASSERT(AddrType == LSC_ADDR_TYPE_BTI ||
+                   AddrType == LSC_ADDR_TYPE_BSS);
         LSC_DATA_SHAPE Shape = {LSC_DATA_SIZE_32b, LSC_DATA_ORDER_NONTRANSPOSE};
         Shape.chmask = ChMask;
         CISA_CALL(Kernel->AppendVISALscTypedStore(

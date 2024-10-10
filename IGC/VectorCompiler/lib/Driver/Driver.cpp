@@ -230,7 +230,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   // disabled because mixed bindless and bindful addressing is not supported
   // by NEO (kernel debug leverages BTI #0)
   BackendOpts.DebuggabilityEmitDebuggableKernels =
-      Opts.EmitDebuggableKernels && !Opts.UseBindlessBuffers;
+      Opts.EmitDebuggableKernels && !Opts.UseBindlessBuffers && !Opts.UseBindlessImages;
   BackendOpts.DebuggabilityForLegacyPath =
       (Opts.Binary != vc::BinaryKind::CM) && Opts.EmitDebuggableKernels;
   BackendOpts.DebuggabilityZeBinCompatibleDWARF =
@@ -261,6 +261,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
     BackendOpts.GRFSize = IGCLLVM::makeOptional(Opts.GRFSize).value();
   BackendOpts.AutoLargeGRF = Opts.EnableAutoLargeGRF;
   BackendOpts.UseBindlessBuffers = Opts.UseBindlessBuffers;
+  BackendOpts.UseBindlessImages = Opts.UseBindlessImages;
   if (Opts.SaveStackCallLinkage)
     BackendOpts.SaveStackCallLinkage = true;
   BackendOpts.UsePlain2DImages = Opts.UsePlain2DImages;
@@ -733,6 +734,8 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
     Opts.UsePlain2DImages = true;
   if (ApiOptions.hasArg(OPT_vc_use_bindless_buffers))
     Opts.UseBindlessBuffers = true;
+  if (ApiOptions.hasArg(OPT_vc_use_bindless_images))
+    Opts.UseBindlessImages = true;
   if (ApiOptions.hasArg(OPT_vc_enable_preemption))
     Opts.EnablePreemption = true;
   if (ApiOptions.hasArg(OPT_library_compilation_common))
@@ -822,6 +825,8 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
   Opts.StatsFile = InternalOptions.getLastArgValue(OPT_stats_file).str();
   if (InternalOptions.hasArg(OPT_use_bindless_buffers_common))
     Opts.UseBindlessBuffers = true;
+  if (InternalOptions.hasArg(OPT_use_bindless_images_common))
+    Opts.UseBindlessImages = true;
   if (InternalOptions.hasArg(OPT_emit_zebin_visa_sections_common))
     Opts.EmitZebinVisaSections = true;
   if (InternalOptions.hasArg(OPT_fdisable_debuggable_kernels))

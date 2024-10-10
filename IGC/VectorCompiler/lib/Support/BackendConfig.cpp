@@ -105,6 +105,9 @@ static cl::opt<bool> AutoLargeGRFOpt(
 static cl::opt<bool> UseBindlessBuffersOpt("vc-use-bindless-buffers",
                                            cl::desc("Use bindless buffers"));
 
+static cl::opt<bool> UseBindlessImagesOpt("vc-use-bindless-images",
+                                          cl::desc("Use bindless images"));
+
 static cl::opt<bool> EnablePreemptionOpt("vc-enable-preemption",
                                          cl::desc("Enable preemption"));
 
@@ -181,6 +184,7 @@ void GenXBackendOptions::enforceLLVMOptions() {
   enforceOptionIfSpecified(GRFSize, GRFSizeOpt);
   enforceOptionIfSpecified(AutoLargeGRF, AutoLargeGRFOpt);
   enforceOptionIfSpecified(UseBindlessBuffers, UseBindlessBuffersOpt);
+  enforceOptionIfSpecified(UseBindlessImages, UseBindlessImagesOpt);
   enforceOptionIfSpecified(StatelessPrivateMemSize, StatelessPrivateMemSizeOpt);
   enforceOptionIfSpecified(SaveStackCallLinkage, SaveStackCallLinkageOpt);
   enforceOptionIfSpecified(UsePlain2DImages, UsePlain2DImagesOpt);
