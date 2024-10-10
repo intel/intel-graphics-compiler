@@ -1403,7 +1403,8 @@ private:
 
   // TODO: this should be merged and re-worked to fit into the symbol table
   // scheme
-  std::unordered_set<std::string> varNames;
+  // Save variable name and its next free sufix
+  std::unordered_map <std::string, size_t> varNames;
   std::unordered_set<std::string> reservedNames;
 
   int m_vISAInstCount;

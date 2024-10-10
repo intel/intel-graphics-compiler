@@ -863,16 +863,16 @@ void VISAKernelImpl::ensureVariableNameUnique(const char *&varName) {
 
   // case 4: if "x" already exists, then use "x_#" where # is 0,1,..
   std::string varNameS = escdName.str();
-  if (varNames.find(varNameS) != varNames.end()) {
-    // not unqiue, add a counter until it is unique
-    int instance = 0;
-    do {
-      std::stringstream ss;
-      ss << escdName.str() << '_' << instance++;
-      varNameS = ss.str();
-    } while (varNames.find(varNameS) != varNames.end());
+  if (auto it = varNames.find(varNameS); it != varNames.end()) {
+    size_t instanceNumber = it->second;
+    varNames[varNameS] = instanceNumber + 1;
+
+    std::stringstream ss;
+    ss << escdName.str() << '_' << instanceNumber;
+    varNameS = ss.str();
+  } else {
+    varNames.emplace(varNameS, 0);
   }
-  varNames.insert(varNameS);
 
   char *buf = (char *)m_mem.alloc(varNameS.size() + 1);
   memcpy_s(buf, varNameS.size(), varNameS.c_str(), varNameS.size());
