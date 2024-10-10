@@ -143,7 +143,26 @@ namespace IGC
         bool abortPass = false;
         const std::vector<bool> m_argumentsOfLocalMemoryBarrier{ true, false, false, false, false, false, true };
     };
+    class TrivialUnnecessaryTGMFenceElimination : public llvm::FunctionPass, public llvm::InstVisitor<TrivialUnnecessaryTGMFenceElimination>
+    {
+    public:
+        static char ID;
 
+        TrivialUnnecessaryTGMFenceElimination();
+
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
+        {
+            AU.addRequired<CodeGenContextWrapper>();
+            AU.setPreservesCFG();
+        }
+
+        virtual bool runOnFunction(llvm::Function& F) override;
+
+        virtual llvm::StringRef getPassName() const override
+        {
+            return "TrivialUnnecessaryTGMFenceElimination";
+        }
+    };
     class GenSpecificPattern : public llvm::FunctionPass, public llvm::InstVisitor<GenSpecificPattern>
     {
     public:

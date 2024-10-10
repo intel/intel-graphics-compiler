@@ -2554,6 +2554,91 @@ void TrivialLocalMemoryOpsElimination::visitCallInst(CallInst& I)
     }
  }
 
+////////////////////////////////////////////////////////////////////////////////
+IGC_INITIALIZE_PASS_BEGIN(TrivialUnnecessaryTGMFenceElimination, "TrivialUnnecessaryTGMFenceElimination", "TrivialUnnecessaryTGMFenceElimination", false, false)
+IGC_INITIALIZE_PASS_END(TrivialUnnecessaryTGMFenceElimination, "TrivialUnnecessaryTGMFenceElimination", "TrivialUnnecessaryTGMFenceElimination", false, false)
+
+char TrivialUnnecessaryTGMFenceElimination::ID = 0;
+
+TrivialUnnecessaryTGMFenceElimination::TrivialUnnecessaryTGMFenceElimination() : FunctionPass(ID)
+{
+    initializeTrivialUnnecessaryTGMFenceEliminationPass(*PassRegistry::getPassRegistry());
+}
+
+static inline bool IsTypedReadOperation(const Instruction* pInst)
+{
+    const GenIntrinsicInst* pIntr = dyn_cast<GenIntrinsicInst>(pInst);
+
+    if (pIntr && pIntr->isGenIntrinsic(GenISAIntrinsic::GenISA_typedread))
+    {
+        return true;
+    }
+    return false;
+}
+
+static inline bool IsTypedWriteOperation(const Instruction* pInst)
+{
+    const GenIntrinsicInst* pIntr = dyn_cast<GenIntrinsicInst>(pInst);
+
+    if (pIntr && pIntr->isGenIntrinsic(GenISAIntrinsic::GenISA_typedwrite))
+    {
+        return true;
+    }
+    return false;
+}
+
+static inline bool IsLscTGMFenceOperation(const Instruction* pInst)
+{
+    const GenIntrinsicInst* pIntr = dyn_cast<GenIntrinsicInst>(pInst);
+    if (pIntr && pIntr->isGenIntrinsic(GenISAIntrinsic::GenISA_LSCFence))
+    {
+        LSC_SFID lscMem = getImmValueEnum<LSC_SFID>(pInst->getOperand(0));
+        if(lscMem == LSC_TGM)
+            return true;
+    }
+    return false;
+}
+// Looks for TGM writes and removes the Fence instruction if there is no TGM read
+bool TrivialUnnecessaryTGMFenceElimination::runOnFunction(Function& F)
+{
+    bool change = false;
+    bool foundTypedWrite = false;
+    std::vector<Instruction*> removeFence;
+
+    for (llvm::BasicBlock& bb : F)
+    {
+        for (llvm::Instruction& inst : bb)
+        {
+            if (IsTypedWriteOperation(&inst))
+            {
+                foundTypedWrite = true;
+            }
+            else if (foundTypedWrite && IsLscTGMFenceOperation(&inst))
+            {
+                removeFence.push_back(&inst);
+                foundTypedWrite = false;
+            }
+            else if (IsTypedReadOperation(&inst))
+            {
+                removeFence.clear();
+                // Since the Basic Blocks may not be in order, skip removing
+                // TGM Fences if there's even one typed read in a function
+                return change;
+            }
+        }
+    }
+    for (Instruction* Inst : removeFence)
+    {
+        if (Inst->use_empty())
+        {
+            Inst->eraseFromParent();
+            change = true;
+        }
+    }
+    return change;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Register pass to igc-opt
 #define PASS_FLAG2 "igc-gen-specific-pattern"
 #define PASS_DESCRIPTION2 "LastPatternMatch Pass"

@@ -1842,6 +1842,11 @@ void OptimizeIR(CodeGenContext* const pContext)
         }
 
         mpm.add(new TrivialLocalMemoryOpsElimination());
+        if (pContext->type == ShaderType::COMPUTE_SHADER)
+        {
+            mpm.add(new TrivialUnnecessaryTGMFenceElimination());
+        }
+
         mpm.add(createGenSimplificationPass());
 
         if (pContext->m_instrTypes.hasLoadStore)
