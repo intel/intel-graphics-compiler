@@ -172,7 +172,6 @@ namespace IGC
         void Send(CVariable* dst, CVariable* src, uint ffid, CVariable* exDesc, CVariable* messDescriptor, bool isSendc = false);
         void Sends(CVariable* dst, CVariable* src0, CVariable* src1, uint ffid, CVariable* exDesc, CVariable* messDescriptor, bool isSendc = false, bool hasEOT = false);
 
-
         void RenderTargetWrite(CVariable* var[],
             bool isUndefined[],
             bool lastRenderTarget,
