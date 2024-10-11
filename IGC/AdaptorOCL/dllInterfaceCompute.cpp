@@ -432,13 +432,23 @@ spv_result_t DisassembleSPIRV(
 #endif // defined(IGC_SPIRV_TOOLS_ENABLED)
 
 #if defined(IGC_SPIRV_ENABLED)
+bool CheckForImageUsage(const std::string & SPIRVBinary) {
+    std::istringstream repIS(SPIRVBinary);
+    llvm::Optional<SPIRV::SPIRVModuleReport> report = SPIRV::getSpirvReport(repIS);
+    SPIRV::SPIRVModuleTextReport textReport = SPIRV::formatSpirvReport(*report);
+
+    auto it = std::find(textReport.Capabilities.begin(), textReport.Capabilities.end(), "ImageBasic");
+    return it != textReport.Capabilities.end();
+}
+
 // Translate SPIR-V binary to LLVM Module
 bool TranslateSPIRVToLLVM(
     const STB_TranslateInputArgs& InputArgs,
     llvm::LLVMContext& Context,
     llvm::StringRef SPIRVBinary,
     llvm::Module*& LLVMModule,
-    std::string& stringErrMsg)
+    std::string& stringErrMsg,
+    const PLATFORM& platform)
 {
     bool success = true;
     std::istringstream IS(SPIRVBinary.str());
@@ -467,6 +477,14 @@ bool TranslateSPIRVToLLVM(
         for (const auto& SC : specIDToSpecValueMap)
             Opts.setSpecConst(SC.first, SC.second);
     }
+
+    if (platform.eProductFamily == IGFX_PVC) {
+        if (CheckForImageUsage(SPIRVBinary.str())) {
+            stringErrMsg = "For PVC platform images should not be used";
+            return false;
+        }
+    }
+
 
     // Actual translation from SPIR-V to LLVM
     success = llvm::readSpirv(Context, Opts, IS, LLVMModule, stringErrMsg);
@@ -693,7 +711,7 @@ bool ProcessElfInput(
                 Context.setAsSPIRV();
                 std::string stringErrMsg;
                 llvm::StringRef buf(SpvPair.second.pInput, SpvPair.second.InputSize);
-                success = TranslateSPIRVToLLVM(SpvPair.second, *Context.getLLVMContext(), buf, pKernelModule, stringErrMsg);
+                success = TranslateSPIRVToLLVM(SpvPair.second, *Context.getLLVMContext(), buf, pKernelModule, stringErrMsg, platform);
                 if (!success)
                 {
                     SetErrorMessage(stringErrMsg, OutputArgs);
@@ -891,7 +909,8 @@ bool ParseInput(
     const STB_TranslateInputArgs* pInputArgs,
     STB_TranslateOutputArgs* pOutputArgs,
     llvm::LLVMContext& oclContext,
-    TB_DATA_FORMAT inputDataFormatTemp)
+    TB_DATA_FORMAT inputDataFormatTemp,
+    const IGC::CPlatform& IGCPlatform)
 {
     pKernelModule = nullptr;
 
@@ -955,7 +974,7 @@ bool ParseInput(
 #if defined(IGC_SPIRV_ENABLED)
         // convert SPIR-V binary to LLVM module
         std::string stringErrMsg;
-        bool success = TranslateSPIRVToLLVM(*pInputArgs, oclContext, strInput, pKernelModule, stringErrMsg);
+        bool success = TranslateSPIRVToLLVM(*pInputArgs, oclContext, strInput, pKernelModule, stringErrMsg, (PLATFORM&)IGCPlatform);
 #else
         std::string stringErrMsg{"SPIRV consumption not enabled for the TARGET."};
         bool success = false;
@@ -1339,7 +1358,7 @@ bool TranslateBuildSPMD(
         DumpShaderFile(pOutputFolder, outputstr.str().c_str(), outputstr.str().size(), hash, "_cmd.txt");
     }
 
-    if (!ParseInput(pKernelModule, pInputArgs, pOutputArgs, *llvmContext, inputDataFormatTemp))
+    if (!ParseInput(pKernelModule, pInputArgs, pOutputArgs, *llvmContext, inputDataFormatTemp, IGCPlatform))
     {
         return false;
     }
@@ -1521,7 +1540,7 @@ bool TranslateBuildSPMD(
 
                 IGC::Debug::RegisterComputeErrHandlers(*oclContext.getLLVMContext());
 
-                if (!ParseInput(pKernelModule, pInputArgs, pOutputArgs, *oclContext.getLLVMContext(), inputDataFormatTemp))
+                if (!ParseInput(pKernelModule, pInputArgs, pOutputArgs, *oclContext.getLLVMContext(), inputDataFormatTemp, IGCPlatform))
                 {
                     return false;
                 }
