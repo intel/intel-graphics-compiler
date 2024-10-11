@@ -12,8 +12,24 @@ SPDX-License-Identifier: MIT
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Option/OptTable.h"
 #include "llvm/Support/raw_ostream.h"
+#include <llvm/ADT/ArrayRef.h>
 
 namespace IGCLLVM {
+
+using GenericOptTable =
+#if LLVM_VERSION_MAJOR >= 16
+    llvm::opt::GenericOptTable;
+#else // LLVM_VERSION_MAJOR
+    llvm::opt::OptTable;
+#endif // LLVM_VERSION_MAJOR
+
+using OptPrefixUnionTy =
+#if LLVM_VERSION_MAJOR >= 16
+    llvm::ArrayRef<llvm::StringLiteral>;
+#else // LLVM_VERSION_MAJOR
+    const char* const [];
+#endif // LLVM_VERSION_MAJOR
+
 inline void printHelp(const llvm::opt::OptTable &Options, llvm::raw_ostream &OS,
                       const char *Usage, const char *Title,
                       unsigned FlagsToInclude, unsigned FlagsToExclude,

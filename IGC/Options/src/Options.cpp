@@ -7,18 +7,18 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "igc/Options/Options.h"
-
 #include <llvm/Option/Option.h>
+#include <llvmWrapper/Option/OptTable.h>
 
 using namespace IGC::options;
 using namespace llvm::opt;
 using llvm::raw_ostream;
 
-#define PREFIX(NAME, VALUE) static const char *const API_##NAME[] = VALUE;
+#define PREFIX(NAME, VALUE) static IGCLLVM::OptPrefixUnionTy API_##NAME = VALUE;
 #include "igc/Options/ApiOptions.inc"
 #undef PREFIX
 
-#define PREFIX(NAME, VALUE) static const char *const INTERNAL_##NAME[] = VALUE;
+#define PREFIX(NAME, VALUE) static IGCLLVM::OptPrefixUnionTy INTERNAL_##NAME = VALUE;
 #include "igc/Options/InternalOptions.inc"
 #undef PREFIX
 
@@ -52,9 +52,9 @@ static const OptTable::Info InternalInfoTable[] = {
 };
 
 namespace {
-class IGCApiOptTable : public OptTable {
+class IGCApiOptTable : public IGCLLVM::GenericOptTable {
 public:
-  IGCApiOptTable() : OptTable(ApiInfoTable) {
+  IGCApiOptTable() : IGCLLVM::GenericOptTable(ApiInfoTable) {
     OptTable &Opt = *this;
     (void)Opt;
 #define OPTTABLE_ARG_INIT
@@ -63,9 +63,9 @@ public:
   }
 };
 
-class IGCInternalOptTable : public OptTable {
+class IGCInternalOptTable : public IGCLLVM::GenericOptTable {
 public:
-  IGCInternalOptTable() : OptTable(InternalInfoTable) {
+  IGCInternalOptTable() : IGCLLVM::GenericOptTable(InternalInfoTable) {
     OptTable &Opt = *this;
     (void)Opt;
 #define OPTTABLE_ARG_INIT
