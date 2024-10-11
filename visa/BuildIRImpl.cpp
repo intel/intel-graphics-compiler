@@ -2639,8 +2639,12 @@ G4_InstSend *IR_Builder::createLscSendInst(
         // The payload keeps reusing fixed a0.2 serializes loads. To improve the
         // the performance issue caused by this, we create temp address
         // variables and let RA to assign to spread out a0 usage.
-        if (getOption(vISA_dynamicAddrForExDescInLscSend))
+        if (useDynamicAddrForExDesc()) {
           addrDecl = createTempAddress(1);
+          // Due to encoding restriction, address sub register number must be
+          // even value if it's used as extended message descriptor.
+          addrDecl->setSubRegAlign(Four_Word);
+        }
         G4_DstRegRegion *addrDstOpnd = createDstRegRegion(addrDecl, 1);
         if ((addrType == LSC_ADDR_TYPE_BSS) || (addrType == LSC_ADDR_TYPE_SS)) {
           if (ssIdx == 0x0) {

@@ -919,4 +919,8 @@ bool needTGMDoubleFenceWA() const {
   return VISA_WA_CHECK(getPWaTable(), Wa_14021891663) &&
       getOption(vISA_TGMDoubleFenceWA);
 }
+
+bool useDynamicAddrForExDesc() const {
+  return getOption(vISA_dynamicAddrForExDescInLscSend);
+}
 // end HW capabilities
