@@ -1440,7 +1440,6 @@ Value* RTBuilder::getLeafType(
 
 
 
-
 CallInst* RTBuilder::CreateLSCFence(
     LSC_SFID SFID, LSC_SCOPE Scope, LSC_FENCE_OP FenceOp)
 {

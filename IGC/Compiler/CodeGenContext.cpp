@@ -936,7 +936,6 @@ namespace IGC
 
 
 
-
     bool CodeGenContext::isBufferBoundsChecking() const
     {
         return false;
