@@ -375,14 +375,6 @@ class GenXKernelBuilder final {
   Function *KernFunc = nullptr;
   PreDefined_Surface StackSurf = PreDefined_Surface::PREDEFINED_SURFACE_INVALID;
 
-  // The default float control from kernel attribute. Each subroutine may
-  // overrride this control mask, but it should revert back to the default float
-  // control mask before exiting from the subroutine.
-  uint32_t FloatControlKernel = 0;
-  uint32_t FloatControlMask = 0;
-
-  // The hardware-initialization value for the float control register.
-  static constexpr uint32_t FloatControlDefault = 0x0;
 
   // normally false, set to true if there is any SIMD CF in the func or this is
   // (indirectly) called inside any SIMD CF.
@@ -417,7 +409,6 @@ private:
   bool buildInstruction(Instruction *Inst);
   bool buildMainInst(Instruction *Inst, genx::BaleInfo BI, unsigned Mod,
                      const DstOpndDesc &DstDesc);
-  void buildControlRegUpdate(unsigned Mask, bool Clear);
   void buildJoin(CallInst *Join, BranchInst *Branch);
   bool buildBranch(BranchInst *Branch);
   void buildIndirectBr(IndirectBrInst *Br);
@@ -1112,17 +1103,6 @@ bool GenXKernelBuilder::run() {
   GrfByteSize = Subtarget->getGRFByteSize();
   StackSurf = Subtarget->stackSurface();
 
-  using namespace visa;
-  FloatControlMask = CRBits::DoublePrecisionDenorm |
-                     CRBits::SinglePrecisionDenorm |
-                     CRBits::HalfPrecisionDenorm | CRBits::RoundingBitMask;
-  FloatControlKernel = CRBits::RTNE;
-
-  // If the subtarget supports systolic denorm control, retain denormals for the
-  // systolic.
-  if (Subtarget->hasSystolicDenormControl())
-    FloatControlKernel |= CRBits::SystolicDenorm;
-
   StackCallExecSize =
       getExecSizeFromValue(BackendConfig->getInteropSubgroupSize());
 
@@ -1313,33 +1293,6 @@ void GenXKernelBuilder::buildInstructions() {
                           "SubRoutine");
 
     beginFunctionLight(Func);
-
-    // If a float control is specified, emit code to make that happen.
-    // Float control contains rounding mode and denorm behaviour. Relevant bits
-    // are already set as defined for VISA control reg in header definition on
-    // enums.
-    uint32_t FloatControl = FloatControlKernel;
-
-    if (Func->hasFnAttribute(genx::FunctionMD::CMFloatControl)) {
-      Func->getFnAttribute(genx::FunctionMD::CMFloatControl)
-          .getValueAsString()
-          .getAsInteger(0, FloatControl);
-
-      // Set rounding mode to required state if that isn't zero
-      FloatControl &= FloatControlMask;
-      FloatControl |= FloatControlKernel & ~FloatControlMask;
-      if (FloatControl != (FloatControlKernel & FloatControlMask) &&
-          vc::isKernel(Func)) {
-        FloatControlKernel &= ~FloatControlMask;
-        FloatControlKernel |= FloatControl;
-      }
-    }
-
-    if ((vc::isKernel(Func) && FloatControlKernel != 0) ||
-        FloatControl != (FloatControlKernel & FloatControlMask)) {
-      buildControlRegUpdate(FloatControlMask, true);
-      buildControlRegUpdate(FloatControl, false);
-    }
 
     // Only output a label for the initial basic block if it is used from
     // somewhere else.
@@ -4061,39 +4014,6 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
 #include "GenXIntrinsicsBuildMap.inc"
 }
 
-/**************************************************************************************************
- * buildControlRegUpdate : generate an instruction to apply a mask to
- *                         the control register (V14).
- *
- * Enter:   Mask = the mask to apply
- *          Clear = false if bits set in Mask should be set in V14,
- *                  true if bits set in Mask should be cleared in V14.
- */
-void GenXKernelBuilder::buildControlRegUpdate(unsigned Mask, bool Clear) {
-  ISA_Opcode Opcode;
-  // write opcode
-  if (Clear) {
-    Opcode = ISA_AND;
-    Mask = ~Mask;
-  } else
-    Opcode = ISA_OR;
-
-  Region Single = Region(1, 4);
-
-  VISA_GenVar *Decl = nullptr;
-  CISA_CALL(Kernel->GetPredefinedVar(Decl, PREDEFINED_CR0));
-  VISA_VectorOpnd *dst =
-      createRegionOperand(&Single, Decl, DONTCARESIGNED, 0, true);
-  VISA_VectorOpnd *src0 =
-      createRegionOperand(&Single, Decl, DONTCARESIGNED, 0, false);
-
-  VISA_VectorOpnd *src1 = nullptr;
-  CISA_CALL(Kernel->CreateVISAImmediate(src1, &Mask, ISA_TYPE_UD));
-
-  appendVISALogicOrShiftInst(Opcode, nullptr, false, vISA_EMASK_M1, EXEC_SIZE_1,
-                             dst, src0, src1);
-}
-
 /***********************************************************************
  * buildBranch : build a conditional or unconditional branch
  *
@@ -5493,17 +5413,6 @@ void GenXKernelBuilder::buildCall(CallInst *CI, const DstOpndDesc &DstDesc) {
 }
 
 void GenXKernelBuilder::buildRet(ReturnInst *RI) {
-  uint32_t FloatControl = 0;
-  auto F = RI->getFunction();
-  F->getFnAttribute(genx::FunctionMD::CMFloatControl)
-      .getValueAsString()
-      .getAsInteger(0, FloatControl);
-  FloatControl &= FloatControlMask;
-  if (FloatControl != (FloatControlKernel & FloatControlMask)) {
-    buildControlRegUpdate(FloatControlMask, true);
-    if (FloatControlKernel & FloatControlMask)
-      buildControlRegUpdate(FloatControlKernel, false);
-  }
   if (vc::requiresStackCall(Func)) {
     appendVISACFFunctionRetInst(nullptr, vISA_EMASK_M1, StackCallExecSize);
   } else {

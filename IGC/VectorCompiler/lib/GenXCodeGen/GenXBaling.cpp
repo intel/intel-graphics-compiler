@@ -328,6 +328,18 @@ bool GenXBaling::isSafeToMove(Instruction *Op, Instruction *From, Instruction *T
   if (!genx::isSafeToSink_CheckAVLoadKill(Op, To, this))
     return false;
 
+  // Do not move cr0 reads
+  if (GenXIntrinsic::isRdRegion(Op)) {
+    auto *ReadPredef = dyn_cast<Instruction>(
+        Op->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum));
+    if (ReadPredef && GenXIntrinsic::isReadPredefReg(ReadPredef)) {
+      uint32_t RegId =
+          cast<ConstantInt>(ReadPredef->getOperand(0))->getZExtValue();
+      if (RegId == PreDefined_Vars::PREDEFINED_CR0)
+        return false;
+    }
+  }
+
   if (DisableMemOrderCheck || !Op->mayReadOrWriteMemory())
     return true;
 

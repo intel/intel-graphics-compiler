@@ -211,6 +211,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXLscAddrCalcFoldingPass(registry);
   initializeGenXDetectPointerArgPass(registry);
   initializeGenXLCECalculationPass(registry);
+  initializeGenXFloatControlPass(registry);
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
 
@@ -756,6 +757,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// eliminates unreachable internal globals.
   ///
   vc::addPass(PM, createGlobalDCEPass());
+  vc::addPass(PM, createGenXFloatControlPass());
   /// .. include:: GenXModule.h
   vc::addPass(PM, createGenXModulePass());
   /// .. include:: GenXLiveness.h

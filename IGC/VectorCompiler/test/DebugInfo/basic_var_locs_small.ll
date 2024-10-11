@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -112,8 +112,6 @@ attributes #1 = { nounwind readnone speculatable willreturn }
 attributes #2 = { nounwind readnone }
 attributes #3 = { nounwind readonly }
 attributes #4 = { nounwind }
-attributes #5 = { noinline nounwind "CMFloatControl"="0" }
-attributes #6 = { noinline nounwind "CMFloatControl"="48" }
 
 !llvm.module.flags = !{!0, !1}
 !llvm.dbg.cu = !{!2}
