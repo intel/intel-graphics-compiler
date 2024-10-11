@@ -402,20 +402,6 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
         std::replace(s.begin(), s.end(), '>', '_');
         std::replace(s.begin(), s.end(), '|', '_');
 
-        // vISA does not support string of length >= 255. Truncate if this
-        // exceeds the limit. Note that vISA may append an extension, so relax
-        // it to a random number 240 here. And this assumes postfix string is
-        // the last chunk to compose the dump name before adding the extension.
-        // TODO: The existing WA does not guarantee the uniqueness of the
-        // filename when truncating the postfix. Will need to fix it.
-        const size_t MAX_VISA_STRING_LENGTH = 240;
-        const size_t curLen = static_cast<size_t>(ss.tellp());
-        const size_t extSize =
-            !m_extension.has_value() ? 0 : 1 + m_extension.value().size();
-        if (curLen + 1 + s.size() + extSize > MAX_VISA_STRING_LENGTH)
-        {
-            s.resize(MAX_VISA_STRING_LENGTH - curLen - 1 - extSize);
-        }
         ss << "_"
             << s;
     }
