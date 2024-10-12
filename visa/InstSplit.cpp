@@ -164,37 +164,18 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it,
     return false;
   };
 
-  // Check destination
-  bool isDstCross2GRF = cross2GRFDst(inst->getDst());
-  if (inst->getDst() && isDstCross2GRF && !AllowCross2GRF(inst->getDst())) {
-    doSplit = true;
-  }
-
   // Check sources
   for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i) {
     if (!inst->getSrc(i)->isSrcRegRegion())
       continue;
-    G4_SrcRegRegion *src = inst->getSrc(i)->asSrcRegRegion();
-
-    // If dst spans 4 GRFs(dst must be 64b datatype and execSize == 32), src
-    // operand must be broadcast regioning or flat regioning (dst/src is
-    // aligned). In other words if src is not 64b datatype, we must fix src
-    // with >1 stride. In this way src also spans 4 GRFs after fixing.
-    // Although this is allowed by HW but it's not allowed by vISA as vISA
-    // requires contiguous regioning for 4 GRFs operand. So, we have to split
-    // for such case. For example:
-    //   mov (32|M0)   r48.0<1>:q    r12.0<1;1,0>:d
-    //   =>
-    //   mov (16|M0)   r48.0<1>:q    r12.0<1;1,0>:d
-    //   mov (16|M16)  r50.0<1>:q    r13.0<1;1,0>:d
-    if ((isDstCross2GRF && src->getTypeSize() != 8 && !src->isScalarSrc()) ||
-        (cross2GRF(src) && !AllowCross2GRF(src))) {
+    if (cross2GRF(inst->getSrc(i)) && !AllowCross2GRF(inst->getSrc(i))) {
       doSplit = true;
       break;
     }
     if (m_builder->getPlatform() >= Xe_XeHPSDV) {
       // Instructions whose operands are 64b and have 2D regioning need to be
       // split up front to help fixUnalignedRegions(..) covering 2D cases.
+      G4_SrcRegRegion *src = inst->getSrc(i)->asSrcRegRegion();
       if ((src->getType() == Type_DF || IS_QTYPE(src->getType())) &&
           !src->getRegion()->isSingleStride(execSize)) {
         // Try splitting the inst if it's a mov. Otherwise, legalize
@@ -210,6 +191,12 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it,
         inst->setSrc(tmpSrc, i);
       }
     }
+  }
+
+  // Check destination
+  if (inst->getDst() && cross2GRFDst(inst->getDst()) &&
+      !AllowCross2GRF(inst->getDst())) {
+    doSplit = true;
   }
 
   // Handle split exceptions
