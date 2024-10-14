@@ -2676,8 +2676,11 @@ void __attribute__((overloadable)) intel_sub_group_2d_block_prefetch_8b_32r32x2c
 // 2D Block Load / Prefetch, 8-bit data, Rows in [1*, 2*, 4*, 8, 16*, 32*], Columns in [16x4]:
 
 void __attribute__((overloadable)) intel_sub_group_2d_block_read_8b_8r16x4c(__global void* base_address, int width, int height, int pitch, int2 coord, __private uchar* destination);
+void __attribute__((overloadable)) intel_sub_group_2d_block_read_8b_16r16x4c(__global void* base_address, int width, int height, int pitch, int2 coord, __private uchar* destination);
+void __attribute__((overloadable)) intel_sub_group_2d_block_read_8b_32r16x4c(__global void* base_address, int width, int height, int pitch, int2 coord, __private uchar* destination);
 
 void __attribute__((overloadable)) intel_sub_group_2d_block_prefetch_8b_8r16x4c(__global void* base_address, int width, int height, int pitch, int2 coord);
+void __attribute__((overloadable)) intel_sub_group_2d_block_prefetch_8b_16r16x4c(__global void* base_address, int width, int height, int pitch, int2 coord);
 
 ////////////////////////////////////////////////////////////////
 

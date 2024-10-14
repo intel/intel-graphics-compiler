@@ -1049,7 +1049,9 @@ DEFN_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_8b_32r32x1c,   
 DEFN_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_8b_16r32x2c,             ushort,  ushort32,  __builtin_IB_subgroup_block_read_cacheopts_u8_m16k32v2)
 DEFN_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_8b_32r32x2c,             ushort,  ushort64,  __builtin_IB_subgroup_block_read_cacheopts_u8_m32k32v2)
 
-DEFN_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_8b_8r16x4c,              uchar, uchar32, __builtin_IB_subgroup_block_read_cacheopts_u8_m8k16v4)
+DEFN_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_8b_8r16x4c,              uchar, uchar32,  __builtin_IB_subgroup_block_read_cacheopts_u8_m8k16v4)
+DEFN_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_8b_16r16x4c,             uchar, uchar64,  __builtin_IB_subgroup_block_read_cacheopts_u8_m16k16v4)
+DEFN_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_8b_32r16x4c,             uchar, uchar128, __builtin_IB_subgroup_block_read_cacheopts_u8_m32k16v4)
 
 DEFN_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_16b_16r16x2c,             ushort,  ushort32,  __builtin_IB_subgroup_block_read_cacheopts_u16_m16k16v2)
 DEFN_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_16b_32r16x2c,             ushort,  ushort64,  __builtin_IB_subgroup_block_read_cacheopts_u16_m32k16v2)
@@ -1126,6 +1128,7 @@ DEFN_INTEL_SUB_GROUP_2D_BLOCK_PREFETCH(intel_sub_group_2d_block_prefetch_8b_16r3
 DEFN_INTEL_SUB_GROUP_2D_BLOCK_PREFETCH(intel_sub_group_2d_block_prefetch_8b_32r32x2c,   __builtin_IB_subgroup_block_read_prefetch_u8_m32k32v2)
 
 DEFN_INTEL_SUB_GROUP_2D_BLOCK_PREFETCH(intel_sub_group_2d_block_prefetch_8b_8r16x4c,    __builtin_IB_subgroup_block_read_prefetch_u8_m8k16v4)
+DEFN_INTEL_SUB_GROUP_2D_BLOCK_PREFETCH(intel_sub_group_2d_block_prefetch_8b_16r16x4c,   __builtin_IB_subgroup_block_read_prefetch_u8_m16k16v4)
 
 DEFN_INTEL_SUB_GROUP_2D_BLOCK_PREFETCH(intel_sub_group_2d_block_prefetch_16b_16r16x2c,  __builtin_IB_subgroup_block_read_prefetch_u16_m16k16v2)
 DEFN_INTEL_SUB_GROUP_2D_BLOCK_PREFETCH(intel_sub_group_2d_block_prefetch_16b_32r16x2c,  __builtin_IB_subgroup_block_read_prefetch_u16_m32k16v2)
