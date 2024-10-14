@@ -730,7 +730,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     bool IsEntry = isEntryFunc(pMdUtils, &F);
     bool PassedThreshold = MaxRegPressure >= Threshold;
     bool IsRecompilationRequestForced = m_currShader->IsRecompilationRequestForced();
-    bool DoEarlyRetry = PassedThreshold || IsRecompilationRequestForced;
+    bool IsRecompilationEnabled = !IGC_GET_FLAG_VALUE(DisableRecompilation);
+    bool DoEarlyRetry = (PassedThreshold || IsRecompilationRequestForced) && IsRecompilationEnabled;
 
     if (DoEarlyRetry && IsFirstStage && IsEntry)
     {
