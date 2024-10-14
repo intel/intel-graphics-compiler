@@ -311,7 +311,7 @@ DECLARE_IGC_REGKEY(bool, EnableGEPLSR, true, "Enables GEP Loop Strength Reductio
 DECLARE_IGC_REGKEY(bool, RunGEPLSRAfterLICM, false, "Runs GEP Loop Strength Reduction pass after first LICM", true)
 DECLARE_IGC_REGKEY(DWORD, GEPLSRThresholdRatio, 100, "Ratio for register pressure threshold in GEP Loop Strength Reduction pass", true)
 DECLARE_IGC_REGKEY(bool, EnableGEPLSRToPreheader, true, "Enables reduction to loop's preheader in GEP Loop Strength Reduction pass", true)
-DECLARE_IGC_REGKEY(bool, EnableGEPLSRAnyIntBitWidth, false, "Experimental: Enables reduction of SCEV with illegal integers. Requires legalization pass to clear up expanded code.", true)
+DECLARE_IGC_REGKEY(bool, EnableGEPLSRAnyIntBitWidth, true, "Enables reduction of SCEV with illegal integers. Requires legalization pass to clear up expanded code.", true)
 DECLARE_IGC_REGKEY(bool, EnableGEPLSRMulExpr, false, "Experimental: Enables reduction of SCEV with mul expression.", true)
 DECLARE_IGC_REGKEY(bool, EnableGEPLSRUnknownConstantStep, false, "Experimental: Enables reduction of SCEV with step expressed with constant value unknown at compilation time.", true)
 DECLARE_IGC_REGKEY(bool, PrintWaveClusteredInterleave, false, "(Debug) Print if WaveClusteredInterleave pattern was found.", true)
