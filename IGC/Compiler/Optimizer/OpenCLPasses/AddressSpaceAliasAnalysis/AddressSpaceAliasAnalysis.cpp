@@ -39,7 +39,13 @@ namespace {
         AddressSpaceAAResult& operator=(AddressSpaceAAResult&&) = delete;
 
         IGCLLVM::AliasResultEnum alias(const MemoryLocation& LocA, const MemoryLocation& LocB,
-            AAQueryInfo & AAQI)
+            AAQueryInfo & AAQI,
+#if LLVM_VERSION_MAJOR < 16
+            const llvm::Instruction* CtxI = nullptr
+#else
+            const llvm::Instruction* CtxI
+#endif
+        )
         {
             // DO NOT strip any casting as the address space is encoded in pointer
             // type. For `addrspacecast`, the current implementation in LLVM is too
@@ -132,8 +138,7 @@ namespace {
                 }
             }
 
-
-            return AAResultBase::alias(LocA, LocB, AAQI);
+            return BaseT::alias(LocA, LocB, AAQI, CtxI);
         }
 
         bool pointsToConstantMemory(const llvm::MemoryLocation& Loc,
@@ -153,9 +158,7 @@ namespace {
                     return true;
             }
 
-            return AAResultBase::pointsToConstantMemory(Loc,
-                AAQI,
-                OrLocal);
+            return BaseT::pointsToConstantMemory(Loc, AAQI, OrLocal);
         }
     };
 

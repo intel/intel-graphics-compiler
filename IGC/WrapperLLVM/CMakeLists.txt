@@ -16,6 +16,7 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/ADT/StringExtras.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/ADT/StringRef.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/AliasAnalysis.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/AliasSetTracker.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/CallGraph.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/InstructionSimplify.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/MemoryLocation.h"

@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include <llvmWrapper/Analysis/InstructionSimplify.h>
 #include <llvmWrapper/Analysis/MemoryLocation.h>
 #include <llvmWrapper/Analysis/TargetLibraryInfo.h>
+#include <llvmWrapper/Analysis/AliasSetTracker.h>
 #include <llvm/Analysis/AliasAnalysis.h>
 #include "llvm/Analysis/AliasSetTracker.h"
 #include <llvm/Analysis/InstructionSimplify.h>
@@ -3295,7 +3296,8 @@ void LdStCombine::combineStores()
 
             // Keep store candidates for checking alias to see if those
             // stores can be moved to the place of the last store.
-            AliasSetTracker AST(*m_AA);
+            AliasSetTracker AST = IGCLLVM::createAliasSetTracker(m_AA);
+
             AST.add(base);
             for (auto JI = std::next(II); JI != IE; ++JI) {
                 Instruction* I = &*JI;
@@ -3405,7 +3407,7 @@ void LdStCombine::combineLoads()
 
             // Keep store/maywritemem/fence insts for checking alias to see if those
             // stores block load candidates from moving to the first (leading) load.
-            AliasSetTracker AST(*m_AA);
+            AliasSetTracker AST = IGCLLVM::createAliasSetTracker(m_AA);
 
             for (auto JI = std::next(II); JI != IE; ++JI) {
                 Instruction* I = &*JI;

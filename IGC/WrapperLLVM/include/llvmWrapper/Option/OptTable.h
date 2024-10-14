@@ -15,7 +15,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/ArrayRef.h>
 
 namespace IGCLLVM {
-
 using GenericOptTable =
 #if LLVM_VERSION_MAJOR >= 16
     llvm::opt::GenericOptTable;

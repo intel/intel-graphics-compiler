@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/BasicAliasAnalysis.h>
 #include <llvmWrapper/Analysis/TargetLibraryInfo.h>
 #include "llvmWrapper/Analysis/AliasAnalysis.h"
+#include "llvm/IR/Instruction.h"
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC {
@@ -40,7 +41,13 @@ public:
     RayTracingAddressSpaceAAResult& operator=(RayTracingAddressSpaceAAResult&&) = delete;
 
     IGCLLVM::AliasResultEnum alias(
-        const llvm::MemoryLocation& LocA, const llvm::MemoryLocation& LocB, llvm::AAQueryInfo& AAQI
+        const llvm::MemoryLocation& LocA, const llvm::MemoryLocation& LocB,
+        llvm::AAQueryInfo& AAQI,
+#if LLVM_VERSION_MAJOR < 16
+        const llvm::Instruction* CtxI = nullptr
+#else
+        const llvm::Instruction* CtxI
+#endif
     );
 
     llvm::ModRefInfo getModRefInfo(
