@@ -82,7 +82,7 @@ SPDX-License-Identifier: MIT
 char IGCVectorizer::ID = 0;
 
 #define PASS_FLAG2 "igc-vectorizer"
-#define PASS_DESCRIPTION2 "prints register pressure estimation"
+#define PASS_DESCRIPTION2 "Vectorizes scalar path around igc vector intrinsics like dpas"
 #define PASS_CFG_ONLY2 false
 #define PASS_ANALYSIS2 false
 IGC_INITIALIZE_PASS_BEGIN(IGCVectorizer, PASS_FLAG2, PASS_DESCRIPTION2,
@@ -91,11 +91,12 @@ IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(IGCVectorizer, PASS_FLAG2, PASS_DESCRIPTION2,
                         PASS_CFG_ONLY2, PASS_ANALYSIS2)
 
+#define OutputLogStreamM OutputLogStream
 #define DEBUG IGC_IS_FLAG_ENABLED(VectorizerLog)
-#define PRINT_LOG(Str) if (DEBUG) OutputLogStream << Str;
-#define PRINT_LOG_NL(Str) if (DEBUG) OutputLogStream << Str << "\n";
-#define PRINT_INST(I) if (DEBUG) { I->print(OutputLogStream, false); }
-#define PRINT_INST_NL(I) if (DEBUG) { I->print(OutputLogStream, false); OutputLogStream << "\n"; }
+#define PRINT_LOG(Str) if (DEBUG) OutputLogStreamM << Str;
+#define PRINT_LOG_NL(Str) if (DEBUG) OutputLogStreamM << Str << "\n";
+#define PRINT_INST(I) if (DEBUG) { I->print(OutputLogStreamM, false); }
+#define PRINT_INST_NL(I) if (DEBUG) { I->print(OutputLogStreamM, false); OutputLogStreamM << "\n"; }
 #define PRINT_DS(Str, DS) if (DEBUG) { for (auto DS_EL : DS) { { PRINT_LOG(Str); } { PRINT_INST_NL(DS_EL); } } }
 
 IGCVectorizer::IGCVectorizer() : FunctionPass(ID) {
@@ -181,13 +182,18 @@ unsigned int getVectorSize(Instruction *I) {
 bool isSafeToVectorize(Instruction *I) {
     // this is a very limited approach for vectorizing
     // but it's safe
-    bool Result = llvm::isa<PHINode>(I) || llvm::isa<ExtractElementInst>(I) ||
-                  llvm::isa<InsertElementInst>(I);
+    bool Result =
+        llvm::isa<PHINode>(I) ||
+        llvm::isa<ExtractElementInst>(I) ||
+        llvm::isa<InsertElementInst>(I) ||
+        llvm::isa<CastInst>(I);
 
     return Result;
 }
 
 bool IGCVectorizer::compareOperands(Value *A, Value *B) {
+
+    PRINT_INST(A); PRINT_LOG(" & "); PRINT_INST(B);
     Constant *ConstA = llvm::dyn_cast<Constant>(A);
     Constant *ConstB = llvm::dyn_cast<Constant>(B);
 
@@ -195,8 +201,13 @@ bool IGCVectorizer::compareOperands(Value *A, Value *B) {
     Instruction *InstB = llvm::dyn_cast<Instruction>(B);
 
     if (ConstA && ConstB) {
+
+        PRINT_LOG(" --> Const ");
         bool BothZero = ConstA->isZeroValue() && ConstB->isZeroValue();
-        BothZero &= !(ConstA->isNegativeZeroValue() || ConstB->isNegativeZeroValue());
+        PRINT_LOG(" --> " << BothZero << " ");
+        // negative zero value returns true for 0 int
+        BothZero &= llvm::isa<ConstantInt>(ConstA) || !(ConstA->isNegativeZeroValue() || ConstB->isNegativeZeroValue());
+        PRINT_LOG_NL(" Negative Zero --> " << BothZero << " ");
         return BothZero;
     } else if (InstA && InstB) {
         if (!ScalarToVector.count(InstA)) {
@@ -204,6 +215,8 @@ bool IGCVectorizer::compareOperands(Value *A, Value *B) {
             return false;
         }
         bool Same = ScalarToVector[InstA] == ScalarToVector[InstB];
+        PRINT_LOG("A: "); PRINT_INST_NL(ScalarToVector[InstA]);
+        PRINT_LOG("B: "); PRINT_INST_NL(ScalarToVector[InstB]);
         return Same;
     }
     return false;
@@ -263,6 +276,48 @@ bool IGCVectorizer::handleInsertElement(VecArr &Slice, Instruction* Final) {
     return true;
 }
 
+
+bool IGCVectorizer::handleCastInstruction(VecArr &Slice) {
+
+    Instruction *First = Slice.front();
+
+    if (!ScalarToVector.count(First->getOperand(0))) {
+        PRINT_LOG_NL("some elements weren't even vectorized");
+        return false;
+    }
+
+    Value *Compare = ScalarToVector[First->getOperand(0)];
+    for (auto &El : Slice) {
+        Value *Val = El->getOperand(0);
+        Value *ValCompare = ScalarToVector[Val];
+        if (ValCompare != Compare) {
+            PRINT_LOG("UnaryCompare: "); PRINT_INST_NL(Compare);
+            PRINT_LOG("UnaryVal: "); PRINT_INST_NL(ValCompare);
+            PRINT_LOG_NL("Insert Element, operands do not converge");
+            return false;
+        }
+    }
+
+    auto VectorSize = getVectorSize((Instruction* )Compare);
+    auto Type = IGCLLVM::FixedVectorType::get(First->getType(), VectorSize);
+    auto CastOpcode = llvm::cast<CastInst>(First)->getOpcode();
+
+    CastInst* CreatedCast = CastInst::Create(CastOpcode, Compare, Type);
+    CreatedCast->setName("vectorized_cast");
+
+    CreatedCast->setDebugLoc(First->getDebugLoc());
+    CreatedCast->insertBefore(First);
+    CreatedVectorInstructions.push_back(CreatedCast);
+
+    PRINT_LOG("Cast instruction created: ");
+    PRINT_INST_NL(CreatedCast);
+
+    for (auto &el : Slice)
+        ScalarToVector[el] = CreatedCast;
+
+    return true;
+}
+
 // this basicaly seeds the chain
 bool IGCVectorizer::handleExtractElement(VecArr &Slice) {
     Instruction *First = Slice.front();
@@ -289,6 +344,8 @@ bool IGCVectorizer::processChain(InsertStruct &InSt) {
         Instruction *First = Slice[0];
         if (llvm::isa<PHINode>(First)) {
             if (!handlePHI(Slice, InSt.Final->getType())) return false;
+        } else if (llvm::isa<CastInst>(First)) {
+            if (!handleCastInstruction(Slice)) return false;
         } else if (llvm::isa<ExtractElementInst>(First)) {
             if (!handleExtractElement(Slice)) return false;
         } else if (llvm::isa<InsertElementInst>(First)) {
@@ -584,8 +641,10 @@ bool IGCVectorizer::runOnFunction(llvm::Function &F) {
 
             CreatedVectorInstructions.clear();
             if (!processChain(InSt)) {
+                writeLog();
+                std::reverse(CreatedVectorInstructions.begin(), CreatedVectorInstructions.end());
                 for (auto& el : CreatedVectorInstructions) {
-                    PRINT_LOG("Cleaned: "); PRINT_INST_NL(el);
+                    PRINT_LOG("Cleaned: "); PRINT_INST_NL(el); writeLog();
                     el->eraseFromParent();
                 }
             }
