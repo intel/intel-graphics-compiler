@@ -922,7 +922,8 @@ void BIImport::removeFunctionBitcasts(Module& M)
                                         castInsts.push_back(newASC);
                                         destVal = newASC;
                                     }
-                                    if (!IGCLLVM::isOpaqueOrPointeeTypeEquals(srcType, destType))
+                                    PointerType* pSrcType = cast<PointerType>(srcType);
+                                    if (!pSrcType->isOpaqueOrPointeeTypeMatches(destType))
                                     {
                                         BitCastInst *newBT = new BitCastInst(destVal, srcType, destVal->getName() + ".bcast");
                                         castInsts.push_back(newBT);

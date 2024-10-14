@@ -78,15 +78,6 @@ namespace IGCLLVM
         return llvm::PointerType::getWithSamePointeeType(PT, AddressSpace);
 #endif
     }
-
-    inline bool isOpaqueOrPointeeTypeEquals(llvm::Type* tyA, llvm::Type* tyB) {
-#if LLVM_VERSION_MAJOR < 14
-        return IGCLLVM::getNonOpaquePtrEltTy(tyA) == IGCLLVM::getNonOpaquePtrEltTy(tyB);
-#else
-        llvm::PointerType* pTyA = llvm::dyn_cast<llvm::PointerType>(tyA);
-        return pTyA && pTyA->isOpaqueOrPointeeTypeMatches(tyB);
-#endif
-    }
 }
 
 #endif

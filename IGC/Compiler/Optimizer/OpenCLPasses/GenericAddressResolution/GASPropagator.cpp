@@ -105,7 +105,7 @@ bool GASPropagator::visitAddrSpaceCastInst(AddrSpaceCastInst& I) {
         return false;
 
     Value* Src = TheVal;
-    if (!IGCLLVM::isOpaqueOrPointeeTypeEquals(SrcPtrTy, DstPtrTy)) {
+    if (!SrcPtrTy->isOpaqueOrPointeeTypeMatches(DstPtrTy)) {
         BuilderType::InsertPointGuard Guard(IRB);
         IRB.SetInsertPoint(&I);
         Src = IRB.CreateBitCast(Src, DstPtrTy);

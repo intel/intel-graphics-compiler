@@ -113,7 +113,7 @@ bool AggregateArgumentsAnalysis::runOnModule(Module& M)
             }
             m_argList.clear();
 
-            Type* type = IGCLLVM::getNonOpaquePtrEltTy(arg->getType());
+            Type* type = arg->getParamByValType();
             IGC_ASSERT(m_pDL->getStructLayout(cast<StructType>(type))->getSizeInBytes() < UINT_MAX);
             addImplictArgs(type, 0);
             ImplicitArgs::addStructArgs(F, arg, m_argList, m_pMdUtils);
@@ -247,7 +247,7 @@ bool ResolveAggregateArguments::runOnFunction(Function& F)
             continue;
         }
 
-        StructType* structType = cast<StructType>(IGCLLVM::getNonOpaquePtrEltTy(arg->getType()));
+        StructType* structType = cast<StructType>(arg->getParamByValType());
 
         // LLVM assumes the caller has create an alloca and pushed the contents
         // of the struct on the stack.  Since we dont have a caller, create
