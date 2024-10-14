@@ -637,7 +637,10 @@ static void CommonOCLBasedPasses(OpenCLProgramContext* pContext)
 
     mpm.add(new ScalarArgAsPointerAnalysis());
 
-    mpm.add(createScalarizerPass(SelectiveScalarizer::Auto));
+    if (IGC_IS_FLAG_DISABLED(DisableOCLScalarizer))
+    {
+        mpm.add(createScalarizerPass(SelectiveScalarizer::Auto));
+    }
 
     // Create a dummy kernel to attach the symbol table if necessary
     // Only needed if function pointers, externally linked functions, or relocatable global variables are present
