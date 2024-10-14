@@ -51,6 +51,18 @@ SPDX-License-Identifier: MIT
 // CHECK-VISAASM-8B-8R-16X4C: lsc_load_block2d.ugm (M1, 1)  V{{[0-9]+}}:d8.4x16x8nn  flat[{{.+}},0x1FF,0x2D,0x1FF,V{{[0-9]+}},V{{[0-9]+}}
 
 // RUN: ocloc compile -file %s -device pvc -options "-igc_opts 'DumpVISAASMToConsole=1' \
+// RUN: -DINPUT_TYPE=uchar -DOUTPUT_TYPE=uchar -DFUNCTION=intel_sub_group_2d_block_read_8b_16r16x4c -DDST_ARRAY_EL_TYPE=uchar -DDST_ARRAY_EL_NUM=64" \
+// RUN: -internal_options "-cl-ext=-all,+cl_intel_subgroup_2d_block_io" | FileCheck %s --check-prefix=CHECK-VISAASM-8B-16R-16X4C
+
+// CHECK-VISAASM-8B-16R-16X4C: lsc_load_block2d.ugm (M1, 1)  V{{[0-9]+}}:d8.4x16x16nn  flat[{{.+}},0x1FF,0x2D,0x1FF,V{{[0-9]+}},V{{[0-9]+}}
+
+// RUN: ocloc compile -file %s -device pvc -options "-igc_opts 'DumpVISAASMToConsole=1' \
+// RUN: -DINPUT_TYPE=uchar -DOUTPUT_TYPE=uchar -DFUNCTION=intel_sub_group_2d_block_read_8b_32r16x4c -DDST_ARRAY_EL_TYPE=uchar -DDST_ARRAY_EL_NUM=128" \
+// RUN: -internal_options "-cl-ext=-all,+cl_intel_subgroup_2d_block_io" | FileCheck %s --check-prefix=CHECK-VISAASM-8B-32R-16X4C
+
+// CHECK-VISAASM-8B-32R-16X4C: lsc_load_block2d.ugm (M1, 1)  V{{[0-9]+}}:d8.4x16x32nn  flat[{{.+}},0x1FF,0x2D,0x1FF,V{{[0-9]+}},V{{[0-9]+}}
+
+// RUN: ocloc compile -file %s -device pvc -options "-igc_opts 'DumpVISAASMToConsole=1' \
 // RUN: -DINPUT_TYPE=ushort -DOUTPUT_TYPE=ushort -DFUNCTION=intel_sub_group_2d_block_read_16b_1r16x1c -DDST_ARRAY_EL_TYPE=ushort -DDST_ARRAY_EL_NUM=1" \
 // RUN: -internal_options "-cl-ext=-all,+cl_intel_subgroup_2d_block_io" | FileCheck %s --check-prefix=CHECK-VISAASM-16B-1R-16X1C
 
