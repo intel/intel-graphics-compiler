@@ -49,6 +49,8 @@ SPDX-License-Identifier: MIT
 #include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 #include "GenXVectorDecomposer.h"
+
+#include "llvm/ADT/IntervalMap.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/ConstantFolding.h"
@@ -62,7 +64,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/InstVisitor.h"
-#include "llvmWrapper/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/PatternMatch.h"
@@ -77,9 +78,10 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/ADT/APInt.h"
 #include "llvmWrapper/IR/Constants.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/TypeSize.h"
-#include "llvmWrapper/Transforms/Utils/Local.h"
 #include "llvmWrapper/Transforms/Utils/BasicBlockUtils.h"
+#include "llvmWrapper/Transforms/Utils/Local.h"
 
 #include "vc/Utils/GenX/Intrinsics.h"
 #include "vc/Utils/General/InstRebuilder.h"
@@ -184,7 +186,7 @@ private:
   bool foldBoolAnd(Instruction *Inst);
   bool simplifyPredRegion(CallInst *Inst);
   bool simplifyWrRegion(CallInst *Inst);
-  bool simplifyRdRegion(CallInst* Inst);
+  bool simplifyRdRegion(CallInst *Inst);
   bool simplifyTruncSat(CallInst *Inst);
   bool simplifySelect(Function *F);
   bool mergeLscLoad(Function *F);
@@ -206,6 +208,15 @@ private:
   bool matchPredAny(CallInst *Inst) const;
 
   bool matchBFN(Function &F);
+
+  bool simplifyWriteRegion(Function &F);
+  bool propagateWriteRegionChain(CallInst *Inst, ArrayRef<CallInst *> Chain);
+  SmallVector<CallInst *, 4> getFullOverrideChain(CallInst *Inst);
+
+  using IntervalMapTy =
+      IntervalMap<unsigned, bool, 8, IntervalMapHalfOpenInfo<unsigned>>;
+  IntervalMapTy::Allocator Alloc;
+  SmallPtrSet<Instruction *, 8> VisitedWrRegions;
 };
 
 } // namespace
@@ -241,6 +252,7 @@ bool GenXPatternMatch::runOnFunction(Function &F) {
     loadPhiConstants(F, DT, *ST, *DL, true);
     Changed |= distributeIntegerMul(&F);
     Changed |= propagateFoldableRegion(&F);
+    Changed |= simplifyWriteRegion(F);
     Changed |= reassociateIntegerMad(&F);
   }
 
@@ -2935,6 +2947,152 @@ bool GenXPatternMatch::simplifyWrRegion(CallInst *Inst) {
   }
 
   return false;
+}
+
+bool GenXPatternMatch::simplifyWriteRegion(Function &F) {
+  using namespace GenXIntrinsic::GenXRegion;
+  bool Changed = false;
+
+  SmallVector<Instruction *> ToErase;
+
+  for (auto &BB : F) {
+    for (auto &I : reverse(BB)) {
+      if (!GenXIntrinsic::isWrRegion(&I))
+        continue;
+
+      auto *Inst = cast<CallInst>(&I);
+
+      auto WholeChain = getFullOverrideChain(Inst);
+      if (WholeChain.empty())
+        continue;
+
+      Changed = true;
+
+      // Break the chain
+      auto *Ty = Inst->getType();
+      auto *TopInst = WholeChain.back();
+      IGC_ASSERT(GenXIntrinsic::isWrRegion(TopInst));
+
+      TopInst->setArgOperand(OldValueOperandNum, UndefValue::get(Ty));
+      LLVM_DEBUG(dbgs() << "Overwrite detected, breaking the chain!\n"
+                        << "Updated inst: " << *TopInst << "\n");
+
+      // Check if the whole chain is inserted into some other region
+      if (propagateWriteRegionChain(Inst, WholeChain)) {
+        auto *User = cast<CallInst>(*Inst->user_begin());
+        ToErase.push_back(User);
+        append_range(ToErase, WholeChain);
+      }
+    }
+  }
+
+  for (auto *I : ToErase)
+    I->eraseFromParent();
+
+  VisitedWrRegions.clear();
+  return Changed;
+}
+
+bool GenXPatternMatch::propagateWriteRegionChain(CallInst *Inst,
+                                                 ArrayRef<CallInst *> Chain) {
+  using namespace GenXIntrinsic::GenXRegion;
+  IGC_ASSERT(GenXIntrinsic::isWrRegion(Inst) && Inst == Chain.front());
+  if (!Inst->hasOneUse())
+    return false;
+
+  auto *User = dyn_cast<CallInst>(*Inst->user_begin());
+  if (!User || !GenXIntrinsic::isWrRegion(User))
+    return false;
+
+  auto R = genx::makeRegionWithOffset(User);
+  if (R.Indirect || !R.isContiguous())
+    return false;
+
+  auto *Pred = dyn_cast<Constant>(User->getOperand(PredicateOperandNum));
+  if (!Pred || !Pred->isAllOnesValue())
+    return false;
+
+  auto *Insert = User->getOperand(OldValueOperandNum);
+
+  for (auto *I : reverse(Chain)) {
+    auto *Src = I->getOperand(NewValueOperandNum);
+    auto Rgn = genx::makeRegionWithOffset(I);
+    Rgn.Offset += R.Offset;
+
+    Insert = Rgn.createWrRegion(Insert, Src, "", User, User->getDebugLoc());
+    VisitedWrRegions.insert(cast<CallInst>(Insert));
+    LLVM_DEBUG(dbgs() << "Propagating wrregion instruction: " << *Insert
+                      << "\n");
+  }
+
+  User->replaceAllUsesWith(Insert);
+  return true;
+}
+
+SmallVector<CallInst *, 4>
+GenXPatternMatch::getFullOverrideChain(CallInst *Inst) {
+  using namespace GenXIntrinsic::GenXRegion;
+
+  SmallVector<CallInst *, 4> Chain;
+
+  IGC_ASSERT(GenXIntrinsic::isWrRegion(Inst));
+  if (Inst->use_empty())
+    return {};
+
+  auto *Ty = Inst->getType();
+  auto Size = DL->getTypeStoreSize(Ty);
+
+  // Stores the intevals, that are overwritten by each particular wrregion
+  IntervalMapTy Intervals(Alloc);
+
+  bool IsOverwrite = false;
+  do {
+    if (VisitedWrRegions.contains(Inst))
+      break;
+
+    LLVM_DEBUG(dbgs() << "Looking for wrregion chain: " << *Inst << "\n");
+    auto R = genx::makeRegionWithOffset(Inst);
+    if (R.Indirect || !R.isContiguous())
+      break;
+
+    auto *Cond = dyn_cast<Constant>(Inst->getOperand(PredicateOperandNum));
+    if (!Cond || !Cond->isAllOnesValue())
+      break;
+
+    unsigned Start = R.Offset;
+    unsigned End = Start + R.NumElements * R.ElementBytes;
+
+    // Do not allow overlapping regions
+    if (Intervals.overlaps(Start, End))
+      break;
+
+    LLVM_DEBUG(dbgs() << "  Overwriting [" << Start << ", " << End << ")\n");
+    Intervals.insert(Start, End, true);
+
+    VisitedWrRegions.insert(Inst);
+    Chain.push_back(Inst);
+
+    auto *Next = Inst->getOperand(OldValueOperandNum);
+
+    // Assume that the undef value is fully overwritten
+    if (isa<UndefValue>(Next)) {
+      IsOverwrite = true;
+      break;
+    }
+
+    Inst = dyn_cast<CallInst>(Next);
+
+    // Whole region is covered, no need to continue
+    if (auto FirstIt = Intervals.begin();
+        FirstIt.start() == 0 && FirstIt.stop() == Size)
+      IsOverwrite = true;
+  } while (!IsOverwrite && Inst && GenXIntrinsic::isWrRegion(Inst) &&
+           Inst->hasOneUse());
+
+  if (!IsOverwrite)
+    return {};
+
+  return Chain;
 }
 
 // Simplify (trunc.sat (ext V)) to (trunc.sat V). Even if the source and
