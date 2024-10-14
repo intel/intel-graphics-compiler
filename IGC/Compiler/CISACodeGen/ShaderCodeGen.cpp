@@ -1904,7 +1904,10 @@ void OptimizeIR(CodeGenContext* const pContext)
         if (IGC_IS_FLAG_ENABLED(EnableMadLoopSlice)) {
             mpm.add(createMadLoopSlicePass());
         }
-        mpm.add(new IGCVectorizer());
+        if (IGC_IS_FLAG_ENABLED(EnableVectorizer))
+        {
+            mpm.add(new IGCVectorizer());
+        }
 
         mpm.run(*pContext->getModule());
     } // end scope

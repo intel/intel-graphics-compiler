@@ -487,6 +487,8 @@ DECLARE_IGC_REGKEY(bool,  DisableMergeStore,            false, "[temp]If EnableL
 DECLARE_IGC_REGKEY(DWORD,MaxLiveOutThreshold,           0,     "Max LiveOut Threshold in MemOpt2", false)
 DECLARE_IGC_REGKEY(bool, DisableScalarAtomics,          false, "Disable the Scalar Atomics optimization", false)
 DECLARE_IGC_REGKEY(bool, EnableScalarTypedAtomics,      true, "Enable the Scalar Typed Atomics optimization", false)
+DECLARE_IGC_REGKEY(bool, EnableVectorizer,              true, "Enable IGCVectorizer pass", false)
+DECLARE_IGC_REGKEY(bool, DisableOCLScalarizer,          false, "Disable ScalarizeFunction pass in OCL pipeline", true)
 DECLARE_IGC_REGKEY(bool, EnableSelectiveScalarizer,     false,  "enable selective scalarizer on GPGPU path", true)
 DECLARE_IGC_REGKEY(bool, HoistPSConstBufferValues,      true,  "Hoists up down converts for contant buffer accesses, so they an be vectorized more easily.", false)
 DECLARE_IGC_REGKEY(bool, EnableSingleVertexDispatch,    false, "Vertex Shader Single Patch Dispatch Regkey", false)
