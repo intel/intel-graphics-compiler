@@ -16156,10 +16156,14 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
 
 void EmitPass::emitThreadGroupNamedBarriersSignal(llvm::Instruction* inst)
 {
-    CVariable* barrierID = m_currShader->GetSymbol(inst->getOperand(0));
-    CVariable* barrierType = m_currShader->GetSymbol(inst->getOperand(1));
-    CVariable* producerCnt = m_currShader->GetSymbol(inst->getOperand(2));
-    CVariable* consumerCnt = m_currShader->GetSymbol(inst->getOperand(3));
+    CVariable* barrierID = m_currShader->ImmToVariable(
+        cast<llvm::ConstantInt>(inst->getOperand(0))->getSExtValue(), ISA_TYPE_UD);
+    CVariable* barrierType = m_currShader->ImmToVariable(
+        cast<llvm::ConstantInt>(inst->getOperand(1))->getSExtValue(), ISA_TYPE_UW);
+    CVariable* producerCnt = m_currShader->ImmToVariable(
+        cast<llvm::ConstantInt>(inst->getOperand(2))->getSExtValue(), ISA_TYPE_UD);
+    CVariable* consumerCnt = m_currShader->ImmToVariable(
+        cast<llvm::ConstantInt>(inst->getOperand(3))->getSExtValue(), ISA_TYPE_UD);
     m_encoder->NamedBarrier(EBARRIER_SIGNAL, barrierID, barrierType, producerCnt, consumerCnt);
 
     m_encoder->Push();
@@ -16167,7 +16171,8 @@ void EmitPass::emitThreadGroupNamedBarriersSignal(llvm::Instruction* inst)
 
 void EmitPass::emitThreadGroupNamedBarriersWait(llvm::Instruction* inst)
 {
-    CVariable* barrierID = m_currShader->GetSymbol(inst->getOperand(0));
+    CVariable* barrierID = m_currShader->ImmToVariable(
+        cast<llvm::ConstantInt>(inst->getOperand(0))->getSExtValue(), ISA_TYPE_UD);
 
     m_encoder->NamedBarrier(EBARRIER_WAIT, barrierID, nullptr, nullptr, nullptr);
     m_encoder->Push();

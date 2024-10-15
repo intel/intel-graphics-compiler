@@ -212,10 +212,9 @@ void NamedBarriersResolution::HandleNamedBarrierInitHW(CallInst& NBarrierInitCal
 #ifndef VK_ONLY_IGC
     m_CountNamedBarriers++;
     IGC_ASSERT_MESSAGE(m_CountNamedBarriers <= GetMaxNamedBarriers(), "NamedBarriersResolution : We crossed the max of amount of named barriers!");
+    Module* module = NBarrierInitCall.getModule();
 
-    IGCLLVM::IRBuilder<> builder(&NBarrierInitCall);
-
-    Value* threadGroupNBarrierID = builder.getInt8(m_CountNamedBarriers);
+    Value* threadGroupNBarrierID = (Value*)getInt32(module, m_CountNamedBarriers);
     Value* pointerToNBarrierStruct = FindAllocStructNBarrier((Value*)(&NBarrierInitCall), true);
 
     s_namedBarrierInfo structNb;
