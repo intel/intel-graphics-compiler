@@ -16,6 +16,7 @@ list(APPEND IGC_LLVM_PATHS
   ${CMAKE_CURRENT_SOURCE_DIR}/../../../llvm-project_${IGC_OPTION__LLVM_PREFERRED_VERSION}
   ${CMAKE_CURRENT_SOURCE_DIR}/../../../../llvm-project_${IGC_OPTION__LLVM_PREFERRED_VERSION}
   ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../llvm-project_${IGC_OPTION__LLVM_PREFERRED_VERSION}
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../llvm-project_interim
   )
 
 find_path(DEFAULT_IGC_LLVM_SOURCES_DIR

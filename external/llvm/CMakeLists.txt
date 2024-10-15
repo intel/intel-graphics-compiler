@@ -51,11 +51,15 @@ build_llvm_project(LLVM ${IGC_LLVM_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/src)
 
 # Sanity check for version matching.
 get_directory_property(LLVM_VERSION  DIRECTORY ${LLVM_SOURCE_DIR} DEFINITION "LLVM_VERSION")
-if(NOT ("${LLVM_VERSION}" VERSION_EQUAL "${IGC_OPTION__LLVM_PREFERRED_VERSION}"))
-  message(FATAL_ERROR "Found LLVM version: ${LLVM_VERSION};"
-    " however preferred was: ${IGC_OPTION__LLVM_PREFERRED_VERSION}\n"
-    "Please set IGC_OPTION__LLVM_PREFERRED_VERSION to ${LLVM_VERSION}"
-    " or pass IGC_OPTION__LLVM_SOURCES_DIR with preferred version")
+if ($ENV{IGC_LLVM_INTERIM})
+    message(STATUS "[LLVM] : IGC_LLVM_INTERIM mode is enabled, we don't need to check version matching")
+else()
+    if(NOT ("${LLVM_VERSION}" VERSION_EQUAL "${IGC_OPTION__LLVM_PREFERRED_VERSION}"))
+      message(FATAL_ERROR "Found LLVM version: ${LLVM_VERSION};"
+        " however preferred was: ${IGC_OPTION__LLVM_PREFERRED_VERSION}\n"
+        "Please set IGC_OPTION__LLVM_PREFERRED_VERSION to ${LLVM_VERSION}"
+        " or pass IGC_OPTION__LLVM_SOURCES_DIR with preferred version")
+    endif()
 endif()
 
 # Get version of LLVM that we are currently using.

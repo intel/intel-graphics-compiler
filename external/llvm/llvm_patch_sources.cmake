@@ -35,11 +35,19 @@ endif()
 
 message(STATUS "[LLVM] : Applying patches for LLVM from version ${DIR_WITH_PATCHES}")
 
+# For Interim mode, dir with patches set to /trunk
+if($ENV{IGC_LLVM_INTERIM})
+    set(IGC_LLVM_PATCHES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/trunk)
+    message(STATUS "[LLVM] : IGC_LLVM_INTERIM mode is enabled, apply patches from /trunk dir")
+else()
+    set(IGC_LLVM_PATCHES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/releases)
+endif()
+
 execute_process(COMMAND
   ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/apply_patches.py
   --llvm-version ${IGC_OPTION__LLVM_PREFERRED_VERSION}
   --llvm-project-dir ${IGC_LLVM_WORKSPACE_SRC}
-  --patches-dir ${CMAKE_CURRENT_SOURCE_DIR}/releases
+  --patches-dir ${IGC_LLVM_PATCHES_DIR}
   --patch-executable ${Patch_EXECUTABLE}
   --patch-disable ${PATCH_DISABLE}
   RESULT_VARIABLE PATCH_SCRIPT_RESULT
