@@ -3237,6 +3237,7 @@ void SpillManagerGRF::insertFillGRFRangeCode(G4_SrcRegRegion *filledRegion,
 
   bool optimizeSplitLLR = false;
   G4_INST *inst = *filledInstIter;
+  vISA_ASSERT(!inst->isSpillIntrinsic(), "must take send path");
   auto dstRegion = inst->getDst();
   G4_INST *fillSendInst = nullptr;
   auto spillDcl = filledRegion->getTopDcl()->getRootDeclare();
@@ -4255,13 +4256,11 @@ bool SpillManagerGRF::insertSpillFillCode(G4_Kernel *kernel,
               (*it)->erase(jt);
               break;
             }
-            bool mayExceedTwoGRF = (inst->isSend() && i == 0) ||
-                                   inst->isDpas() ||
-                                   (inst->isSplitSend() && i == 1) ||
-                                   (inst->isSpillIntrinsic() &&
-                                    inst->asSpillIntrinsic()->getNumRows() > 2);
+            bool useSendFill = (inst->isSend() && i == 0) || inst->isDpas() ||
+                               (inst->isSplitSend() && i == 1) ||
+                               (inst->isSpillIntrinsic());
 
-            if (mayExceedTwoGRF) {
+            if (useSendFill) {
               // this path may be taken if current instruction is a spill
               // intrinsic. for eg, V81 below is not spilled in 1st RA
               // iteration:
@@ -4288,8 +4287,13 @@ bool SpillManagerGRF::insertSpillFillCode(G4_Kernel *kernel,
               //
               // V81 appears in spill intrinsic instruction as an optimization
               // earlier even though it wasnt spilled in 1st RA iteration.
-              // however, since it spills in later RA iteration and its
-              // coalesced size > 2, we should handle it like send.
+              // however, since it spills in later RA iteration, we should
+              // handle it like send.
+              //
+              // If we don't handle it like send then the intrinsic.fill would
+              // use incorrect size as non-send fill code only looks at filled
+              // region properties like hstride, exec size, elem size. See:
+              // getSegmentByteSize().
               insertSendFillRangeCode(srcRR, jt, *it);
               BBhasSpillCode = true;
             } else if (getRFType(regVar) == G4_GRF) {
