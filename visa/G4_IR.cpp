@@ -1900,7 +1900,7 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum,
   // If the operand to be copied is acc register, need to check if the use
   // operand can use acc register
   if (src->isAccReg()) {
-    if (!useInst->canSrcBeAccBeforeHWConform(opndNum)) {
+    if (!useInst->canSrcBeAcc(opndNum)) {
       return false;
     }
   }
