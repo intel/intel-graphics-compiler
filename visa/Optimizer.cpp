@@ -3331,6 +3331,16 @@ bool Optimizer::foldCmpToCondMod(G4_BB *bb, INST_LIST_ITER &iter) {
     return false;
   }
 
+  // and/or/xor/not opcodes support only the conditional modifiers
+  // .e/.z or .ne.nz
+  auto opcode = inst->opcode();
+  bool isLogicOp = (opcode == G4_xor || opcode == G4_or || opcode == G4_and ||
+                    opcode == G4_not);
+  bool isSupportedCondModForLogicOp =
+      (mod == Mod_e || mod == Mod_z || mod == Mod_ne || mod == Mod_nz);
+  if (isLogicOp && !isSupportedCondModForLogicOp)
+    return false;
+
   if (kernel.getKernelType() == VISA_3D || !bb->isAllLaneActive()) {
     // Make sure masks of both instructions are same
     if (inst->getMaskOption() != cmpInst->getMaskOption()) {
