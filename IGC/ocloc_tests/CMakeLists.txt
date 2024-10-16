@@ -48,6 +48,7 @@ endif()
     not
     llvm-as
     llvm-dwarfdump
+    split-file
     "${IGC_BUILD__PROJ__ocloc}"
     "${IGC_BUILD__PROJ__ocloc_lib}"
     "${IGC_BUILD__PROJ__igc_dll}"
