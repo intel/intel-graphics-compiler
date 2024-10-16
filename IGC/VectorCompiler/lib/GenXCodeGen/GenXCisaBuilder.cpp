@@ -425,6 +425,7 @@ private:
   VISA_PredVar *getPredicateVar(Value *V);
   VISA_PredVar *getZeroedPredicateVar(Value *V);
   VISA_SurfaceVar *getPredefinedSurfaceVar(GlobalVariable &GV);
+  VISA_SamplerVar *getPredefinedSamplerVar(GlobalVariable &GV);
   VISA_GenVar *getPredefinedGeneralVar(GlobalVariable &GV);
   VISA_EMask_Ctrl getExecMaskFromWrPredRegion(Instruction *WrPredRegion,
                                               bool IsNoMask);
@@ -464,6 +465,7 @@ private:
   void buildLoneReadVariableRegion(CallInst &CI);
   void buildLoneWriteVariableRegion(CallInst &CI);
   void buildWritePredefSurface(CallInst &CI);
+  void buildWritePredefSampler(CallInst &CI);
   void addWriteRegionLifetimeStartInst(Instruction *WrRegion);
   void addLifetimeStartInst(Instruction *Inst);
   void AddGenVar(Register &Reg);
@@ -2706,6 +2708,9 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
       case GenXIntrinsic::genx_write_predef_surface:
         buildWritePredefSurface(*CI);
         break;
+      case vc::InternalIntrinsic::write_predef_sampler:
+        buildWritePredefSampler(*CI);
+        break;
       case GenXIntrinsic::genx_get_hwid:
         IGC_ASSERT_MESSAGE(0, "genx_get_hwid should be lowered earlier");
         break;
@@ -3277,6 +3282,15 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     VISA_SurfaceVar *SurfVar = getPredefinedSurfaceVar(*Arg);
     VISA_StateOpndHandle *ResultOperand = nullptr;
     CISA_CALL(Kernel->CreateVISAStateOperandHandle(ResultOperand, SurfVar));
+    return ResultOperand;
+  };
+
+  auto CreatePredefSamplerOperand = [&](II::ArgInfo AI) {
+    LLVM_DEBUG(dbgs() << "CreatePredefinedSamplerOperand\n");
+    auto *Arg = cast<GlobalVariable>(CI->getArgOperand(AI.getArgIdx()));
+    VISA_SamplerVar *SamplerVar = getPredefinedSamplerVar(*Arg);
+    VISA_StateOpndHandle *ResultOperand = nullptr;
+    CISA_CALL(Kernel->CreateVISAStateOperandHandle(ResultOperand, SamplerVar));
     return ResultOperand;
   };
 
@@ -4454,6 +4468,25 @@ GenXKernelBuilder::getPredefinedSurfaceVar(GlobalVariable &GV) {
   return SurfVar;
 }
 
+/***********************************************************************
+ * buildWritePredefSampler : get predefined visa sampler variable
+ *
+ * Enter:   GV = global that denotes predefined variable
+ *
+ * Return:  visa sampler variable, non-null
+ *
+ */
+VISA_SamplerVar *
+GenXKernelBuilder::getPredefinedSamplerVar(GlobalVariable &GV) {
+  StringRef SamplerName = GV.getName();
+  IGC_ASSERT_MESSAGE(SamplerName == vc::PredefVar::BindlessSamplerName,
+                     "Unexpected predefined sampler");
+  VISA_SamplerVar *SamplerVar = nullptr;
+  CISA_CALL(Kernel->GetBindlessSampler(SamplerVar));
+  return SamplerVar;
+}
+
+
 // Returns vISA predefined variable corresponding to the provided global
 // variable \p GV.
 VISA_GenVar *GenXKernelBuilder::getPredefinedGeneralVar(GlobalVariable &GV) {
@@ -4547,6 +4580,26 @@ void GenXKernelBuilder::buildWritePredefSurface(CallInst &CI) {
   VISA_VectorOpnd *SrcOpnd = createSource(CI.getArgOperand(1), genx::UNSIGNED, CI.getModule()->getDataLayout());
   appendVISADataMovementInst(ISA_MOVS, /*pred=*/nullptr, /*satMod=*/false,
                              vISA_EMASK_M1_NM, EXEC_SIZE_1, SurfOpnd, SrcOpnd);
+}
+
+/***********************************************************************
+ * buildWritePredefSampler : build code to write to predefined sampler
+ *
+ * Enter:   CI = write_predef_sampler intrinsic
+ *
+ */
+void GenXKernelBuilder::buildWritePredefSampler(CallInst &CI) {
+  IGC_ASSERT_MESSAGE(vc::getAnyIntrinsicID(&CI) ==
+                         vc::InternalIntrinsic::write_predef_sampler,
+                     "Expected predefined sampler write intrinsic");
+  auto *PredefSampler = cast<GlobalVariable>(CI.getArgOperand(0));
+  VISA_SamplerVar *SamplerVar = getPredefinedSamplerVar(*PredefSampler);
+  VISA_VectorOpnd *SamplerOpnd = nullptr;
+  CISA_CALL(Kernel->CreateVISAStateOperand(SamplerOpnd, SamplerVar, /*offset=*/0,
+                                           /*useAsDst=*/true));
+  VISA_VectorOpnd *SrcOpnd = createSource(CI.getArgOperand(1), genx::UNSIGNED, CI.getModule()->getDataLayout());
+  appendVISADataMovementInst(ISA_MOVS, /*pred=*/nullptr, /*satMod=*/false,
+                             vISA_EMASK_M1_NM, EXEC_SIZE_1, SamplerOpnd, SrcOpnd);
 }
 
 /***********************************************************************

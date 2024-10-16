@@ -43,6 +43,11 @@ constexpr const char Attribute[] = "VCPredefinedVariable";
 constexpr const char BSSName[] = "llvm.vc.predef.var.bss";
 
 // The name of a global variable that represents predefined VISA variable
+// bindless Sampler.
+constexpr const char BindlessSamplerName[] =
+    "llvm.vc.predef.var.bindless.sampler";
+
+// The name of a global variable that represents predefined VISA variable
 // IMPL_ARG_BUF_PTR.
 constexpr const char ImplicitArgsBufferName[] =
     "llvm.vc.predef.var.impl.args.buf";
@@ -53,6 +58,7 @@ constexpr const char LocalIDBufferName[] = "llvm.vc.predef.var.loc.id.buf";
 
 enum class ID {
   BSS,
+  BindlessSampler,
   ImplicitArgsBuffer,
   LocalIDBuffer,
 };
@@ -61,6 +67,10 @@ enum class ID {
 template <enum ID PVID> const char *getName();
 
 template <> inline const char *getName<ID::BSS>() { return BSSName; }
+
+template <> inline const char *getName<ID::BindlessSampler>() {
+  return BindlessSamplerName;
+}
 
 template <> inline const char *getName<ID::ImplicitArgsBuffer>() {
   return ImplicitArgsBufferName;
@@ -74,6 +84,11 @@ template <> inline const char *getName<ID::LocalIDBuffer>() {
 template <enum ID PVID> llvm::Type *getType(llvm::LLVMContext &C);
 
 template <> inline llvm::Type *getType<ID::BSS>(llvm::LLVMContext &C) {
+  return llvm::Type::getInt32Ty(C);
+}
+
+template <>
+inline llvm::Type *getType<ID::BindlessSampler>(llvm::LLVMContext &C) {
   return llvm::Type::getInt32Ty(C);
 }
 
@@ -117,6 +132,11 @@ template <enum ID PVID> llvm::GlobalVariable &createPV(llvm::Module &M) {
 // Creates BSS predefined variable. Matches \p createPV restrictions.
 inline llvm::GlobalVariable &createBSS(llvm::Module &M) {
   return createPV<ID::BSS>(M);
+}
+
+// Creates BindlessSampler predefined variable. Matches \p createPV restrictions.
+inline llvm::GlobalVariable &createBindlessSampler(llvm::Module &M) {
+  return createPV<ID::BindlessSampler>(M);
 }
 
 // Creates ImplicitArgsBuffer predefined variable. Matches \p createPV

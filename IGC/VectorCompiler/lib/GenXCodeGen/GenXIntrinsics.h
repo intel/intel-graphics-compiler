@@ -141,6 +141,9 @@ public:
     GENERAL_CTSIGN =        GENERAL,
     // A predefined surface operand
     PREDEF_SURFACE =        GENX_ITR_CATVAL(0x2f),
+    // A predefined sampler operand
+    PREDEF_SAMPLER =        GENX_ITR_CATVAL(0x30),
+
     // Modifiers for destination or source, 7 bits used
     UNSIGNED =              GENX_ITR_FLAGVAL(0), // int type forced to unsigned
     SIGNED =                GENX_ITR_FLAGVAL(1), // int type forced to signed

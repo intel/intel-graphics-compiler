@@ -210,6 +210,8 @@ KernelArgBuilder::getOCLArgKind(ArrayRef<StringRef> Tokens,
       return ArgKindType::SVM;
     if (ArgTy->isPointerTy() && vc::getAddrSpace(ArgTy) == vc::AddrSpace::Local)
       return ArgKindType::SLM;
+    if (any_of(Tokens, getStrPred(OCLAttributes::Sampler)))
+      return ArgKindType::Sampler;
     LLVM_FALLTHROUGH;
   case vc::RegCategory::Surface:
     if (any_of(Tokens, getStrPred(OCLAttributes::Image1d)))
@@ -356,7 +358,9 @@ void GenXOCLRuntimeInfo::FunctionInfo::initInstructionLevelProperties(
       break;
     case GenXIntrinsic::genx_sample_unorm:
     case vc::InternalIntrinsic::sample_bti:
+    case vc::InternalIntrinsic::sample_predef_surface:
     case vc::InternalIntrinsic::sampler_load_bti:
+    case vc::InternalIntrinsic::sampler_load_predef_surface:
       UsesSample = true;
       LLVM_DEBUG(dbgs() << ">> UsesSample: true\n");
       break;

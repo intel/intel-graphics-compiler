@@ -74,6 +74,7 @@ class PromoteToBindless {
   Module &M;
   const GenXBackendConfig &BC;
   GlobalVariable *BSS = nullptr;
+  GlobalVariable *BindlessSampler = nullptr;
   const GenXSubtarget &ST;
 
 public:
@@ -89,7 +90,10 @@ private:
   bool convertArguments();
 
   GlobalVariable &getOrCreateBSSVariable();
+  GlobalVariable &getOrCreateBindlessSamplerVariable();
 
+  vc::InternalIntrinsic::ID getBindlessLscIntrinsicID(unsigned IID);
+  CallInst *createBindlessLscIntrinsic(CallInst &CI);
   CallInst *createBindlessSurfaceDataportIntrinsicChain(CallInst &CI);
   void rewriteStatefulIntrinsic(CallInst &CI);
   bool rewriteStatefulIntrinsics();
@@ -149,13 +153,17 @@ bool GenXPromoteStatefulToBindless::runOnModule(Module &M) {
 // extra objects can be easily added here later.
 unsigned PromoteToBindless::convertSingleArg(unsigned Kind, StringRef Desc) {
 
-  if (Kind != vc::KernelMetadata::AK_SURFACE)
+  if (Kind != vc::KernelMetadata::AK_SURFACE &&
+      Kind != vc::KernelMetadata::AK_SAMPLER)
     return Kind;
 
   if (BC.useBindlessBuffers() && vc::isDescBufferType(Desc))
     return vc::KernelMetadata::AK_NORMAL;
 
   if (BC.useBindlessImages() && vc::isDescImageType(Desc))
+    return vc::KernelMetadata::AK_NORMAL;
+
+  if (BC.useBindlessImages() && vc::isDescSamplerType(Desc))
     return vc::KernelMetadata::AK_NORMAL;
 
   return Kind;
@@ -200,6 +208,14 @@ GlobalVariable &PromoteToBindless::getOrCreateBSSVariable() {
   return *BSS;
 }
 
+// Lazily get BindlessSampler variable if this is needed. Create if nothing
+// was here before.
+GlobalVariable &PromoteToBindless::getOrCreateBindlessSamplerVariable() {
+  if (!BindlessSampler)
+    BindlessSampler = &vc::PredefVar::createBindlessSampler(M);
+  return *BindlessSampler;
+}
+
 // Get surface operand number for given intrinsic.
 static int getSurfaceOperandNo(unsigned Id) {
   using namespace GenXIntrinsic;
@@ -239,6 +255,33 @@ static int getSurfaceOperandNo(unsigned Id) {
 
   case genx_oword_st:
     return 0;
+
+  case genx_media_ld:
+  case genx_media_st:
+    return 1;
+
+  case genx_typed_atomic_add:
+  case genx_typed_atomic_sub:
+  case genx_typed_atomic_min:
+  case genx_typed_atomic_max:
+  case genx_typed_atomic_xchg:
+  case genx_typed_atomic_and:
+  case genx_typed_atomic_or:
+  case genx_typed_atomic_xor:
+  case genx_typed_atomic_imin:
+  case genx_typed_atomic_imax:
+  case genx_typed_atomic_inc:
+  case genx_typed_atomic_dec:
+  case genx_typed_atomic_cmpxchg:
+    return 1;
+
+  case genx_gather4_typed:
+  case genx_scatter4_typed:
+    return 2;
+
+  case vc::InternalIntrinsic::sampler_load_bti:
+  case vc::InternalIntrinsic::sample_bti:
+    return 4;
 
   default:
     return -1;
@@ -282,7 +325,10 @@ static bool isStatefulIntrinsic(const Instruction &I) {
   case vc::InternalIntrinsic::lsc_load_quad_tgm:
   case vc::InternalIntrinsic::lsc_store_quad_tgm:
   case vc::InternalIntrinsic::lsc_prefetch_quad_tgm:
+  case vc::InternalIntrinsic::sampler_load_bti:
+  case vc::InternalIntrinsic::sample_bti:
     return true;
+
   // DWORD binary atomics.
   case GenXIntrinsic::genx_dword_atomic2_add:
   case GenXIntrinsic::genx_dword_atomic2_sub:
@@ -314,6 +360,27 @@ static bool isStatefulIntrinsic(const Instruction &I) {
   case GenXIntrinsic::genx_gather4_masked_scaled2:
   case GenXIntrinsic::genx_scatter_scaled:
   case GenXIntrinsic::genx_scatter4_scaled:
+
+  // Media image operations.
+  case GenXIntrinsic::genx_media_ld:
+  case GenXIntrinsic::genx_media_st:
+
+    // Typed images operations.
+  case GenXIntrinsic::genx_typed_atomic_add:
+  case GenXIntrinsic::genx_typed_atomic_sub:
+  case GenXIntrinsic::genx_typed_atomic_min:
+  case GenXIntrinsic::genx_typed_atomic_max:
+  case GenXIntrinsic::genx_typed_atomic_xchg:
+  case GenXIntrinsic::genx_typed_atomic_and:
+  case GenXIntrinsic::genx_typed_atomic_or:
+  case GenXIntrinsic::genx_typed_atomic_xor:
+  case GenXIntrinsic::genx_typed_atomic_imin:
+  case GenXIntrinsic::genx_typed_atomic_imax:
+  case GenXIntrinsic::genx_typed_atomic_inc:
+  case GenXIntrinsic::genx_typed_atomic_dec:
+  case GenXIntrinsic::genx_typed_atomic_cmpxchg:
+  case GenXIntrinsic::genx_gather4_typed:
+  case GenXIntrinsic::genx_scatter4_typed:
 
   // OWORD operations.
   case GenXIntrinsic::genx_oword_ld:
@@ -355,9 +422,19 @@ static void createSurfaceStateOffsetWrite(Value &SSO, IRBuilder<> &IRB,
   IRB.CreateCall(Decl->getFunctionType(), Decl, Args);
 }
 
+// Make first part of transformation: create write of Sampler state to %bss.
+static void createSamplerStateOffsetWrite(Value &SSO, IRBuilder<> &IRB,
+                                          Module &M, GlobalVariable &BSS) {
+  Type *Tys[] = {BSS.getType()};
+  auto *Decl =
+      vc::getAnyDeclaration(&M, vc::InternalIntrinsic::write_predef_sampler, Tys);
+  Value *Args[] = {&BSS, &SSO};
+  IRB.CreateCall(Decl->getFunctionType(), Decl, Args);
+}
+
 // For given intrinsic ID get version with predefined surface variable
 // that allows to use it with %bss variable.
-static GenXIntrinsic::ID getBindlessDataportIntrinsicID(unsigned Id) {
+static unsigned getBindlessDataportIntrinsicID(unsigned Id) {
   using namespace GenXIntrinsic;
 
 #define MAP(intr)                                                              \
@@ -395,29 +472,56 @@ static GenXIntrinsic::ID getBindlessDataportIntrinsicID(unsigned Id) {
     MAP(genx_oword_ld);
     MAP(genx_oword_ld_unaligned);
     MAP(genx_oword_st);
+#undef MAP
+
+#define MAP(intr)                                                              \
+  case genx_##intr:                                                            \
+    return vc::InternalIntrinsic::intr##_predef_surface;
+
+    MAP(media_ld);
+    MAP(media_st);
+    MAP(typed_atomic_add);
+    MAP(typed_atomic_sub);
+    MAP(typed_atomic_min);
+    MAP(typed_atomic_max);
+    MAP(typed_atomic_xchg);
+    MAP(typed_atomic_and);
+    MAP(typed_atomic_or);
+    MAP(typed_atomic_xor);
+    MAP(typed_atomic_imin);
+    MAP(typed_atomic_imax);
+    MAP(typed_atomic_inc);
+    MAP(typed_atomic_dec);
+    MAP(typed_atomic_cmpxchg);
+    MAP(gather4_typed);
+    MAP(scatter4_typed);
+#undef MAP
+
+  case vc::InternalIntrinsic::sampler_load_bti:
+    return vc::InternalIntrinsic::sampler_load_predef_surface;
+  case vc::InternalIntrinsic::sample_bti:
+    return vc::InternalIntrinsic::sample_predef_surface;
+
   default:
     return not_genx_intrinsic;
   }
-#undef MAP
-
 }
 
 // Second part of transformation for dataport intrinsic: create bindless version
 // that uses %bss. Mostly it is a copy of original intrinsic with a little
 // change: BSS global is used instead of BTI.
-static CallInst *createBindlessSurfaceDataportIntrinsic(
-    CallInst &CI, IRBuilder<> &IRB, Module &M, GlobalVariable &BSS,
-    unsigned Id, unsigned SurfaceOpNo) {
+static CallInst *
+createBindlessSurfaceDataportIntrinsic(CallInst &CI, IRBuilder<> &IRB,
+                                       Module &M, GlobalVariable &BSS,
+                                       unsigned Id, unsigned SurfaceOpNo) {
   using namespace GenXIntrinsic;
 
-  SmallVector<Value *, 8> Args{CI.arg_begin(), CI.arg_end()};
+  SmallVector<Value *, 8> Args{CI.args()};
   Args[SurfaceOpNo] = &BSS;
 
   const auto NewId = getBindlessDataportIntrinsicID(Id);
 
-  auto *Decl =
-      vc::getGenXDeclarationForIdFromArgs(CI.getType(), Args, NewId, M);
-
+  auto *Decl = vc::getAnyDeclarationForArgs(&M, NewId, CI.getType(), Args);
   return IRB.CreateCall(Decl->getFunctionType(), Decl, Args, CI.getName());
 }
 
@@ -438,13 +542,30 @@ PromoteToBindless::createBindlessSurfaceDataportIntrinsicChain(CallInst &CI) {
   IGC_ASSERT_MESSAGE(M, "Instruction expected to be in module");
   createSurfaceStateOffsetWrite(*SSO, IRB, *M, BSS);
 
+  if (auto SamplerOpNo =
+          vc::InternalIntrinsic::getMemorySamplerOperandIndex(ID);
+      SamplerOpNo >= 0) {
+    GlobalVariable &BindlessSampler = getOrCreateBindlessSamplerVariable();
+    Value *SamplerStateOp = CI.getArgOperand(SamplerOpNo);
+    createSamplerStateOffsetWrite(*SamplerStateOp, IRB, *M, BindlessSampler);
+
+    SmallVector<Value *, 19> Args{CI.args()};
+    Args[SurfaceOpNo] = &BSS;
+    Args[SamplerOpNo] = &BindlessSampler;
+
+    const auto NewId = getBindlessDataportIntrinsicID(ID);
+
+    auto *Decl = vc::getAnyDeclarationForArgs(M, NewId, CI.getType(), Args);
+    return IRB.CreateCall(Decl->getFunctionType(), Decl, Args, CI.getName());
+  }
+
   return createBindlessSurfaceDataportIntrinsic(CI, IRB, *M, BSS, ID,
                                                 SurfaceOpNo);
 }
 
 // Get bindless version of given bti lsc intrinsic.
-static vc::InternalIntrinsic::ID
-getBindlessLscIntrinsicID(unsigned IID, const GenXSubtarget &ST) {
+vc::InternalIntrinsic::ID
+PromoteToBindless::getBindlessLscIntrinsicID(unsigned IID) {
 
   switch (IID) {
   case vc::InternalIntrinsic::lsc_atomic_bti:
@@ -482,10 +603,9 @@ getBindlessLscIntrinsicID(unsigned IID, const GenXSubtarget &ST) {
 // intrinsics. Lsc intrinsics have special addressing mode operand so
 // there is no need to use %bss variable and SSO goes directly to lsc
 // instruction.
-static CallInst *createBindlessLscIntrinsic(CallInst &CI,
-                                            const GenXSubtarget &ST) {
+CallInst *PromoteToBindless::createBindlessLscIntrinsic(CallInst &CI) {
   const auto ID = vc::getAnyIntrinsicID(&CI);
-  const auto NewId = getBindlessLscIntrinsicID(ID, ST);
+  const auto NewId = getBindlessLscIntrinsicID(ID);
 
   SmallVector<Value *, 16> Args{CI.args()};
   IRBuilder<> IRB{&CI};
@@ -501,7 +621,7 @@ void PromoteToBindless::rewriteStatefulIntrinsic(CallInst &CI) {
   CallInst *BindlessCI = nullptr;
   switch (ID) {
   default:
-    IGC_ASSERT_MESSAGE(0, "Unhandled buffer intrinsic");
+    IGC_ASSERT_MESSAGE(0, "Unhandled intrinsic");
     break;
   case GenXIntrinsic::genx_dword_atomic2_add:
   case GenXIntrinsic::genx_dword_atomic2_sub:
@@ -531,6 +651,26 @@ void PromoteToBindless::rewriteStatefulIntrinsic(CallInst &CI) {
     if (BC.useBindlessBuffers())
       BindlessCI = createBindlessSurfaceDataportIntrinsicChain(CI);
     break;
+  case GenXIntrinsic::genx_media_ld:
+  case GenXIntrinsic::genx_media_st:
+  case GenXIntrinsic::genx_typed_atomic_add:
+  case GenXIntrinsic::genx_typed_atomic_sub:
+  case GenXIntrinsic::genx_typed_atomic_min:
+  case GenXIntrinsic::genx_typed_atomic_max:
+  case GenXIntrinsic::genx_typed_atomic_xchg:
+  case GenXIntrinsic::genx_typed_atomic_and:
+  case GenXIntrinsic::genx_typed_atomic_or:
+  case GenXIntrinsic::genx_typed_atomic_xor:
+  case GenXIntrinsic::genx_typed_atomic_imin:
+  case GenXIntrinsic::genx_typed_atomic_imax:
+  case GenXIntrinsic::genx_typed_atomic_inc:
+  case GenXIntrinsic::genx_typed_atomic_dec:
+  case GenXIntrinsic::genx_typed_atomic_cmpxchg:
+  case GenXIntrinsic::genx_gather4_typed:
+  case GenXIntrinsic::genx_scatter4_typed:
+    if (BC.useBindlessImages())
+      BindlessCI = createBindlessSurfaceDataportIntrinsicChain(CI);
+    break;
   case vc::InternalIntrinsic::lsc_atomic_bti:
   case vc::InternalIntrinsic::lsc_load_bti:
   case vc::InternalIntrinsic::lsc_load_quad_bti:
@@ -539,7 +679,7 @@ void PromoteToBindless::rewriteStatefulIntrinsic(CallInst &CI) {
   case vc::InternalIntrinsic::lsc_store_bti:
   case vc::InternalIntrinsic::lsc_store_quad_bti:
     if (BC.useBindlessBuffers())
-      BindlessCI = createBindlessLscIntrinsic(CI, ST);
+      BindlessCI = createBindlessLscIntrinsic(CI);
     break;
   case vc::InternalIntrinsic::lsc_load_2d_tgm_bti:
   case vc::InternalIntrinsic::lsc_store_2d_tgm_bti:
@@ -547,8 +687,14 @@ void PromoteToBindless::rewriteStatefulIntrinsic(CallInst &CI) {
   case vc::InternalIntrinsic::lsc_store_quad_tgm:
   case vc::InternalIntrinsic::lsc_prefetch_quad_tgm:
     if (BC.useBindlessImages())
-      BindlessCI = createBindlessLscIntrinsic(CI, ST);
+      BindlessCI = createBindlessLscIntrinsic(CI);
     break;
+  case vc::InternalIntrinsic::sampler_load_bti:
+  case vc::InternalIntrinsic::sample_bti: {
+    if (BC.useBindlessImages())
+      BindlessCI = createBindlessSurfaceDataportIntrinsicChain(CI);
+    break;
+  }
   }
 
   if (!BindlessCI)

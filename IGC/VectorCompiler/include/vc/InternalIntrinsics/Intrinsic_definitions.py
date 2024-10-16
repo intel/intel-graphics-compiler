@@ -1233,6 +1233,37 @@ Imported_Intrinsics = {
                            ],
                            "attributes" : "ReadMem", },
 
+## ``llvm.vc.internal.sampler.load.predef.surface.*`` : Sampler load predefined surface intrinsic
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: vNi1 Predicate (overloaded)
+## * arg1: i16, Opcode [MBC]
+## * arg2: i8, Channel mask [MBC]
+## * arg3: i16, Address offset packed immediates (aoffimmi) [MBC]
+## * arg4: ptr predefined surface (overloaded)
+## * arg5: vector to take values for masked simd lanes from
+## * arg6: vNi32 or vNi16, first sampler message parameter (overloaded)
+## * arg7-arg14: sampler message parameters, same type as arg6
+##
+## * Return value: the value read from image (overloaded)
+##
+
+    "sampler_load_predef_surface" : { "result" : "anyvector",
+                                      "arguments" : [
+                                          "anyint", # vNxi1, predicate
+                                          "short",  # opcode
+                                          "char",   # channel mask
+                                          "short",  # aoffimmi
+                                          "anyptr", # ptr predefined surface
+                                          0,        # passthru
+                                          "anyint", # first sampler message parameter
+                                          3, 3, 3, 3, 3, 3, 3, 3, # sampler message parameters
+                                      ],
+                                      "target" : [
+                                          "hasSampler",
+                                      ],
+                                      "attributes" : "ReadMem", },
+
 ## ``llvm.vc.internal.sample.bti.*`` : Sampler load intrinsic
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ##
@@ -1264,6 +1295,39 @@ Imported_Intrinsics = {
                          "hasSampler",
                      ],
                      "attributes" : "ReadMem", },
+
+## ``llvm.vc.internal.sample.predef.surface.*`` : Sampler load predefined surface intrinsic
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: vNi1 Predicate (overloaded)
+## * arg1: i16, Opcode [MBC]
+## * arg2: i8, Channel mask [MBC]
+## * arg3: i16, Address offset packed immediates (aoffimmi) [MBC]
+## * arg4: ptr predefined surface (overloaded)
+## * arg5: ptr predefined sampler (overloaded)
+## * arg6: vector to take values for masked simd lanes from
+## * arg7: vNi32 or vNi16, first sampler message parameter (overloaded)
+## * arg8-arg18: sampler message parameters, same type as arg7
+##
+## * Return value: the value read from image (overloaded)
+##
+    "sample_predef_surface" : { "result" : "anyvector",
+                                "arguments" : [
+                                    "anyint", # vNxi1, predicate
+                                    "short",  # opcode
+                                    "char",   # channel mask
+                                    "short",  # aoffimmi
+                                    "anyptr", # ptr predefined surface
+                                    "anyptr", # ptr predefined sampler
+                                    0,        # passthru
+                                    "anyint", # first sampler message parameter
+                                    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, # sampler message parameters
+                                ],
+                                "target" : [
+                                    "hasSampler",
+                                ],
+                                "attributes" : "ReadMem", },
+
 
 
 ### --------------------
@@ -1324,4 +1388,371 @@ Imported_Intrinsics = {
     "print_format_index" : { "result" : "int",
                              "arguments" : ["anyptr"],
                              "attributes" : "NoMem", },
+
+## ``llvm.vc.internal.media.ld.predef.surface.*`` : legacy media load predefined surface
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: i32 modifiers, constant
+## * arg1: ptr predefined surface (overloaded)
+## * arg2: i32 plane, constant
+## * arg3: i32 block width in bytes, constant
+## * (block height inferred from return type size and block width)
+## * arg4: i32 x byte offset
+## * arg5: i32 y byte offset
+##
+## * Return value: the data read.
+##
+    "media_ld_predef_surface": { "result" : "anyvector",
+                                 "arguments" : [
+                                   "int",       # modifiers, constant
+                                   "anyptr",    # ptr predefined surface
+                                   "int",       # plane, constant
+                                   "int",       # block width in bytes, constant
+                                   "int",       # x byte offset
+                                   "int"        # y byte offset
+                                 ],
+                                 "target" : [
+                                     "!noLegacyDataport"
+                                 ],
+                                 "attributes" : "ReadMem" },
+
+## ``llvm.vc.internal.media.st.predef.surface.*`` : legacy media store predefined surface
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: i32 modifiers, constant
+## * arg1: ptr predefined surface (overloaded)
+## * arg2: i32 plane, constant
+## * arg3: i32 block width in bytes, constant
+## * (block height inferred from data type size and block width)
+## * arg4: i32 x byte offset
+## * arg5: i32 y byte offset
+## * arg6: data to write (overloaded)
+##
+    "media_st_predef_surface" : { "result" : "void",
+                                  "arguments" : [
+                                      "int",       # modifiers, constant
+                                      "anyptr",    # ptr predefined surface
+                                      "int",       # plane, constant
+                                      "int",       # block width in bytes, constant
+                                      "int",       # x byte offset
+                                      "int",       # y byte offset
+                                      "anyvector"  # data to write
+                                  ],
+                                  "target" : [
+                                     "!noLegacyDataport"
+                                  ],
+                                  "attributes" : "WriteMem" },
+
+
+## ``llvm.vc.internal.typed.atomic.*.predef.surface.*`` : legacy atomic typed predefined surface
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+## * (Exec_size inferred from element offset type)
+## * arg0: vXi1 predicate (overloaded)
+## * arg1: ptr predefined surface (overloaded)
+## * arg2: vXT src
+## * arg3: vXi32 u (overloaded)
+## * arg4: vXi32 v - can be a constant 0 and becomes undef in lowering
+## * arg5: vXi32 r - can be a constant 0 and becomes undef in lowering
+## * arg6: vXi32 LOD - can be constant 0 and becomes undef in lowering
+##
+## * Return value: vXi32 the old value read
+##
+## Predicate, element offset, src, and the return value must all have the
+## same vector width (which in reality must be 8)
+##
+    "typed_atomic_add_predef_surface" : { "result" : "anyvector",
+                                          "arguments" : [
+                                              "anyvector",  # predicate
+                                              "anyptr",     # ptr predefined surface
+                                              0,            # source
+                                              "anyint",     # u coordinate
+                                              3,            # v coordinate
+                                              3,            # r coordinate
+                                              3             # lod coordinate
+                                            ],
+                                          "target" : [
+                                             "!noLegacyDataport"
+                                          ],
+                                          "attributes" : "SideEffects" },
+    "typed_atomic_sub_predef_surface" : { "result" : "anyvector",
+                                          "arguments" : [
+                                              "anyvector",
+                                              "anyptr",
+                                              0,
+                                              "anyint",
+                                              3,
+                                              3,
+                                              3
+                                            ],
+                                          "target" : [
+                                             "!noLegacyDataport"
+                                          ],
+                                          "attributes" : "SideEffects" },
+    "typed_atomic_min_predef_surface" : { "result" : "anyvector",
+                                          "arguments" : [
+                                              "anyvector",
+                                              "anyptr",
+                                              0,
+                                              "anyint",
+                                              3,
+                                              3,
+                                              3
+                                            ],
+                                          "target" : [
+                                             "!noLegacyDataport"
+                                          ],
+                                          "attributes" : "SideEffects" },
+    "typed_atomic_max_predef_surface" : { "result" : "anyvector",
+                                          "arguments" : [
+                                              "anyvector",
+                                              "anyptr",
+                                              0,
+                                              "anyint",
+                                              3,
+                                              3,
+                                              3
+                                            ],
+                                          "target" : [
+                                             "!noLegacyDataport"
+                                          ],
+                                          "attributes" : "SideEffects" },
+
+    "typed_atomic_xchg_predef_surface" : { "result" : "anyvector",
+                                          "arguments" : [
+                                              "anyvector",
+                                              "anyptr",
+                                              0,
+                                              "anyint",
+                                              3,
+                                              3,
+                                              3
+                                            ],
+                                          "target" : [
+                                             "!noLegacyDataport"
+                                          ],
+                                          "attributes" : "SideEffects" },
+    "typed_atomic_and_predef_surface" : { "result" : "anyvector",
+                                          "arguments" : [
+                                              "anyvector",
+                                              "anyptr",
+                                              0,
+                                              "anyint",
+                                              3,
+                                              3,
+                                              3
+                                            ],
+                                          "target" : [
+                                             "!noLegacyDataport"
+                                          ],
+                                          "attributes" : "SideEffects" },
+    "typed_atomic_or_predef_surface" : { "result" : "anyvector",
+                                          "arguments" : [
+                                              "anyvector",
+                                              "anyptr",
+                                              0,
+                                              "anyint",
+                                              3,
+                                              3,
+                                              3
+                                            ],
+                                          "target" : [
+                                             "!noLegacyDataport"
+                                          ],
+                                          "attributes" : "SideEffects" },
+
+
+    "typed_atomic_xor_predef_surface" : { "result" : "anyvector",
+                                          "arguments" : [
+                                              "anyvector",
+                                              "anyptr",
+                                              0,
+                                              "anyint",
+                                              3,
+                                              3,
+                                              3
+                                            ],
+                                          "target" : [
+                                             "!noLegacyDataport"
+                                          ],
+                                          "attributes" : "SideEffects" },
+    "typed_atomic_imin_predef_surface" : { "result" : "anyvector",
+                                          "arguments" : [
+                                              "anyvector",
+                                              "anyptr",
+                                              0,
+                                              "anyint",
+                                              3,
+                                              3,
+                                              3
+                                            ],
+                                          "target" : [
+                                             "!noLegacyDataport"
+                                          ],
+                                          "attributes" : "SideEffects" },
+    "typed_atomic_imax_predef_surface" : { "result" : "anyvector",
+                                          "arguments" : [
+                                              "anyvector",
+                                              "anyptr",
+                                              0,
+                                              "anyint",
+                                              3,
+                                              3,
+                                              3
+                                            ],
+                                          "target" : [
+                                             "!noLegacyDataport"
+                                          ],
+                                          "attributes" : "SideEffects" },
+
+## ``llvm.vc.internal.typed.atomic.*.predef.surface.*`` : legacy atomic typed predefined surface
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * (Exec_size inferred from element offset type)
+## * arg0: vXi1 predicate (overloaded)
+## * arg1: ptr predefined surface (overloaded)
+## * arg2: vXi32 u (overloaded)
+## * arg3: vXi32 v - can be a constant 0 and becomes undef in lowering
+## * arg4: vXi32 r - can be a constant 0 and becomes undef in lowering
+## * arg5: vXi32 LOD - can be a constant 0 and becomes undef in lowering
+##
+## * Return value: vXi32 the old value read
+##
+## Predicate, element offset, src, and the return value must all have the
+## same vector width (which in reality must be 8)
+##
+    "typed_atomic_inc_predef_surface" : { "result" : "anyvector",
+                                          "arguments" : [
+                                              "anyvector",  # predicate
+                                              "anyptr",     # ptr predefined surface
+                                              "anyint",     # u coordinate
+                                              3,            # v coordinate
+                                              3,            # r coordinate
+                                              3             # lod coordinate
+                                            ],
+                                          "target" : [
+                                              "!noLegacyDataport"
+                                          ],
+                                          "attributes" : "SideEffects" },
+    "typed_atomic_dec_predef_surface" : { "result" : "anyvector",
+                                          "arguments" : [
+                                              "anyvector",  # predicate
+                                              "anyptr",     # ptr predefined surface
+                                              "anyint",     # u coordinate
+                                              3,            # v coordinate
+                                              3,            # r coordinate
+                                              3             # lod coordinate
+                                            ],
+                                          "target" : [
+                                              "!noLegacyDataport"
+                                          ],
+                                          "attributes" : "SideEffects" },
+
+## ``llvm.vc.internal.typed.atomic.*.predef.surface.cmpxchg.*`` : legacy atomic typed CMPXCHG predefined surface
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * (Exec_size inferred from element offset type)
+## * arg0: vXi1 predicate (overloaded)
+## * arg1: ptr predefined surface (overloaded)
+## * arg2: vXT src0
+## * arg3: vXT src1
+## * arg4: vXi32 u (overloaded)
+## * arg5: vXi32 v - can be a constant 0 and becomes undef in lowering
+## * arg6: vXi32 r - can be a constant 0 and becomes undef in lowering
+## * arg7: vXi32 LOD - can be a constant 0 and becomes undef in lowering
+##
+## * Return value: vXi32 the old value read
+##
+## Predicate, element offset, src, and the return value must all have the
+## same vector width (which in reality must be 8)
+##
+    "typed_atomic_cmpxchg_predef_surface" : { "result" : "anyvector",
+                                              "arguments" : [
+                                                  "anyvector",  # predicate
+                                                  "anyptr",     # ptr predefined surface
+                                                  0,            # src1
+                                                  0,            # src2
+                                                  "anyint",     # u coordinate
+                                                  3,            # v coordinate
+                                                  3,            # r coordinate
+                                                  3             # lod coordinate
+                                                ],
+                                              "target" : [
+                                                  "!noLegacyDataport"
+                                              ],
+                                              "attributes" : "SideEffects" },
+
+## ``llvm.vc.internal.gather4.typed.predef.surface.*`` : legacy cmask typed load predefined surface
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: i32 channel mask, constant
+## * arg1: vXi1 predicate (Num_elts inferred from element offset type) (overloaded)
+## * arg2: ptr predefined surface (overloaded)
+## * arg3: vXi32 U pixel address (overloaded)
+## * arg4: vXi32 V pixel address
+## * arg5: vXi32 R pixel address
+## * arg6: old value of the data read
+##
+## * Return value: the data read
+##
+
+    "gather4_typed_predef_surface" : { "result" : "anyvector",
+                                       "arguments" : [
+                                           "int",       # cmask
+                                           "anyvector", # predicate
+                                           "anyptr",    # ptr predefined surface
+                                           "anyvector", # u pixel address
+                                           3,           # v pixel address
+                                           3,           # r pixel address
+                                           0            # passthru value
+                                        ],
+                                        "target" : [
+                                            "!noLegacyDataport"
+                                        ],
+                                        "attributes" : "ReadMem" },
+
+## ``llvm.vc.internal.scatter4.typed.predef.surface.*`` : legacy cmask typed store predefined surface
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: i32 channel mask, constant
+## * arg1: vXi1 predicate (Num_elts inferred from U pixel address type) (overloaded)
+## * arg2: ptr predefined surface (overloaded)
+## * arg3: v8Xi32 U pixel address (overloaded)
+## * arg4: v8Xi32 V pixel address
+## * arg5: v8Xi32 R pixel address
+## * arg6: data to write (overloaded)
+##
+    "scatter4_typed_predef_surface" : { "result" : "void",
+                                        "arguments" : [
+                                            "int",       # cmask
+                                            "anyvector", # predicate
+                                            "anyptr",    # ptr predefined surface
+                                            "anyvector", # u pixel address
+                                            2,           # v pixel address
+                                            2,           # r pixel address
+                                            "anyvector"  # data
+                                        ],
+                                        "target" : [
+                                            "!noLegacyDataport"
+                                        ],
+                                        "attributes" : "WriteMem" },
+
+## ``llvm.vc.internal.write.predef.sampler`` : write predefined sampler variable
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: ptr predefined surface variable
+## * arg1: i32 value to write
+##
+## This corresponds to MOVS visa instruction and utilizes technique of using
+## global variable in LLVM IR for predefined surfaces.
+##
+    "write_predef_sampler" : { "result": "void",
+                               "arguments" : [
+                                   "anyptr",
+                                   "int"
+                                ],
+                                "target" : [
+                                    "hasSampler",
+                                ],
+                                "attributes" : "WriteMem" },
+
 }

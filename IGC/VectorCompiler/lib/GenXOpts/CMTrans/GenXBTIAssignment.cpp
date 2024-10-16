@@ -124,7 +124,7 @@ bool GenXBTIAssignment::runOnModule(Module &M) {
   bool emitDebuggableKernels = BC.emitDebuggableKernelsForLegacyPath();
   bool useBindlessBuffers = BC.useBindlessBuffers();
   bool useBindlessImages = BC.useBindlessImages();
-  bool useBindlessSamplers = false;
+  bool useBindlessSamplers = BC.useBindlessImages();
 
   BTIAssignment BA(M, emitDebuggableKernels, useBindlessBuffers,
                    useBindlessImages, useBindlessSamplers);
@@ -143,13 +143,13 @@ std::pair<int, int> BTIAssignment::assignSRV(int SurfaceID, int SamplerID,
   // SRV (read only) and samplers.
   for (auto &&[Idx, Kind, Desc] : Zippy) {
     if (Kind == vc::KernelMetadata::AK_SAMPLER) {
-      Idx = SamplerID++;
+      Idx = useBindlessSamplers ? StatelessBti : SamplerID++;
       continue;
     }
     if (Kind == vc::KernelMetadata::AK_SURFACE && vc::isDescReadOnly(Desc)) {
       IGC_ASSERT_MESSAGE(vc::isDescImageType(Desc),
                          "RW qualifiers are allowed on images only");
-      Idx = SurfaceID++;
+      Idx = useBindlessImages ? StatelessBti : SurfaceID++;
       continue;
     }
   }
@@ -165,7 +165,12 @@ int BTIAssignment::assignUAV(int SurfaceID, ZipTy &&Zippy) {
       continue;
 
     if (Kind == vc::KernelMetadata::AK_SURFACE) {
-      Idx = useBindlessBuffers ? StatelessBti : SurfaceID++;
+      if (vc::isDescBufferType(Desc) && useBindlessBuffers)
+        Idx = StatelessBti;
+      else if (vc::isDescImageType(Desc) && useBindlessImages)
+        Idx = StatelessBti;
+      else
+        Idx = SurfaceID++;
       continue;
     }
     if (Kind == vc::KernelMetadata::AK_NORMAL && vc::isDescSvmPtr(Desc)) {

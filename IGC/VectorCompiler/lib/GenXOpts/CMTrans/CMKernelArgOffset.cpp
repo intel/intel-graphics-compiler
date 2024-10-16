@@ -346,8 +346,10 @@ void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
     unsigned Idx = 0;
     for (auto &&[Arg, ArgKind] : zip(F->args(), KM->getArgKinds())) {
       auto Desc = KM->getArgTypeDesc(Idx++);
-      bool IsBuffer = vc::isDescBufferType(Desc) ||
-                      (UseBindlessImages && vc::isDescImageType(Desc));
+      // Buffer is treated as stateless global pointer!
+      bool IsPtr = vc::isDescBufferType(Desc) ||
+                      (UseBindlessImages && (vc::isDescImageType(Desc) ||
+                                             vc::isDescSamplerType(Desc)));
 
       // Skip alaready assigned arguments.
       if (PlacedArgs.count(&Arg))
@@ -355,7 +357,7 @@ void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
 
       // image/sampler arguments do not allocate vISA inputs
       // buffer arguments do allocate unused vISA inputs
-      if (!vc::isNormalCategoryArgKind(ArgKind) && !IsBuffer) {
+      if (!vc::isNormalCategoryArgKind(ArgKind) && !IsPtr) {
         PlacedArgs[&Arg] = vc::KernelMetadata::SKIP_OFFSET_VAL;
         continue;
       }
@@ -364,8 +366,7 @@ void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
       auto &DL = F->getParent()->getDataLayout();
       unsigned Alignment = 0;
       unsigned Bytes = 0;
-      if (IsBuffer) {
-        // Buffer is treated as stateless global pointer!
+      if (IsPtr) {
         Bytes = DL.getPointerSize();
         Alignment = IGCLLVM::getAlignmentValue(DL.getPointerABIAlignment(0));
       } else if (Ty->isPointerTy()) {

@@ -99,6 +99,7 @@ static vc::RegCategory getCategoryForPredefinedVariable(SimpleValue SV) {
   const vc::RegCategory Category =
       llvm::StringSwitch<vc::RegCategory>(SV.getValue()->getName())
           .Case(vc::PredefVar::BSSName, vc::RegCategory::Surface)
+          .Case(vc::PredefVar::BindlessSamplerName, vc::RegCategory::Sampler)
           .Case(vc::PredefVar::ImplicitArgsBufferName, vc::RegCategory::General)
           .Case(vc::PredefVar::LocalIDBufferName, vc::RegCategory::General)
           .Default(vc::RegCategory::None);

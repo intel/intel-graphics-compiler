@@ -234,7 +234,7 @@ void CMKernel::createSamplerAnnotation(const KernelArgInfo &ArgInfo,
   const auto Kind = ArgInfo.getKind();
   const auto Access = ArgInfo.getAccessKind();
   const auto AddrMode = ArgInfo.getAddressMode();
-  const auto BTI = ArgInfo.getBTI();
+  auto BTI = ArgInfo.getBTI();
   auto Size = ArgInfo.getSizeInBytes();
 
   IGC_ASSERT(AddrMode == ArgAddressMode::Stateful ||
@@ -247,6 +247,12 @@ void CMKernel::createSamplerAnnotation(const KernelArgInfo &ArgInfo,
   if (!IsBindless) {
     Size = 0;
     Offset = 0;
+  } else {
+    // BTI should be -1 in order to be omitted
+    // however LevelZero runtime still requires sampler index to be set
+    // so this is a incomplete workaround as it has to be incremented
+    // if more than one sampler index exists
+    BTI = 0;
   }
 
   auto SamplerArg = std::make_unique<SamplerArgumentAnnotation>();
