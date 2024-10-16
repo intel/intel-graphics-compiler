@@ -487,6 +487,7 @@ DECLARE_IGC_REGKEY(bool, DisableScalarAtomics,          false, "Disable the Scal
 DECLARE_IGC_REGKEY(bool, EnableScalarTypedAtomics,      true, "Enable the Scalar Typed Atomics optimization", false)
 DECLARE_IGC_REGKEY(bool, EnableVectorizer,              true, "Enable IGCVectorizer pass", false)
 DECLARE_IGC_REGKEY(bool, DisableOCLScalarizer,          false, "Disable ScalarizeFunction pass in OCL pipeline", true)
+DECLARE_IGC_REGKEY(bool, DisablePHIScalarization,       false, "Disable scalarization of PHINode instructions", true)
 DECLARE_IGC_REGKEY(bool, EnableSelectiveScalarizer,     false,  "enable selective scalarizer on GPGPU path", true)
 DECLARE_IGC_REGKEY(bool, HoistPSConstBufferValues,      true,  "Hoists up down converts for contant buffer accesses, so they an be vectorized more easily.", false)
 DECLARE_IGC_REGKEY(bool, EnableSingleVertexDispatch,    false, "Vertex Shader Single Patch Dispatch Regkey", false)
