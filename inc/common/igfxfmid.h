@@ -724,6 +724,9 @@ typedef enum __NATIVEGTTYPE
 #define DEV_ID_56C1                             0x56C1
 #define DEV_ID_56C2                             0x56C2
 #define DEV_ID_56CF                             0x56CF
+#define DEV_ID_56BA                             0x56BA
+#define DEV_ID_56BC                             0x56BC
+#define DEV_ID_56BE                             0x56BE
 
 // ARL
 #define DEV_ID_7D67                             0x7D67
