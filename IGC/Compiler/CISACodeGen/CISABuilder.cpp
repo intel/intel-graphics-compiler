@@ -6361,6 +6361,19 @@ namespace IGC
         // Use the same build options as before, except that we enable vISA
         // verifier to catch potential errors in user inline assembly
         SetBuilderOptions(vAsmTextBuilder);
+
+        switch (context->type)
+        {
+        case ShaderType::OPENCL_SHADER:
+        {
+            OpenCLProgramContext* const csCtx = static_cast<OpenCLProgramContext*>(context);
+            vAsmTextBuilder->SetOption(vISA_autoLoadLocalID, csCtx->m_walkOrderStruct.m_enableHWGenerateLID);
+            break;
+        }
+        default:
+            break;
+        }
+
         vAsmTextBuilder->SetOption(vISA_NoVerifyvISA, false);
 
         bool vISAAsmParseError = false;
