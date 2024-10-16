@@ -338,6 +338,8 @@ namespace IGC
         virtual bool supportsRaytracingDispatchComputeWalkerAlongYFirst() const { return false; }
         // Will the UMD patch the call stack handler with KSP pointers?
         virtual bool supportsCallStackHandlerPatching() const { return false; }
+        // Support checkLocalIDs in WIA
+        virtual bool supportWIALocalIDs() const { return false; }
 
         // Enable LSC on DG2 for the following:
         //   GenISAIntrinsic::GenISA_ldraw_indexed
