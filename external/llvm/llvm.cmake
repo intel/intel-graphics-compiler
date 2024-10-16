@@ -19,7 +19,7 @@
 #   LLVM_ROOT -- additional paths to search for LLVM (separated by ';') -- these are searched before system paths
 #
 # LLVM version can be specified using the following variable:
-# IGC_OPTION__LLVM_PREFERRED_VERSION (default is 10.0.0)
+# IGC_OPTION__LLVM_PREFERRED_VERSION
 #
 # From cmake writing perspective there will be defined the following
 # variables that can be used by IGC:
