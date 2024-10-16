@@ -954,29 +954,23 @@ void InlineHelper::InlineAndOptimize(CallInst* callInst)
     // Merge static array allocas to reduce the use of private
     // memory. This is a similar optimization that exists in
     // the inliner, see mergeInlinedArrayAllocas().
-    if (perFnAllocas.empty())
-    {
-        for (AllocaInst* allocaInst : IFI.StaticAllocas)
+    llvm::erase_if(
+        IFI.StaticAllocas,
+        [](AllocaInst* I)
         {
-            if (!allocaInst->isArrayAllocation() &&
-                allocaInst->getAllocatedType()->isArrayTy())
-            {
-                perFnAllocas.push_back(allocaInst);
-            }
+            return I->isArrayAllocation() || !I->getAllocatedType()->isArrayTy();
         }
-    }
-    else
+    );
+
+    auto staticAlloca = IFI.StaticAllocas.begin();
+    for (auto* fnAlloca : perFnAllocas)
     {
-        auto it = perFnAllocas.begin();
-        for (AllocaInst* allocaInst : IFI.StaticAllocas)
-        {
-            if (!allocaInst->isArrayAllocation() &&
-                allocaInst->getAllocatedType()->isArrayTy())
-            {
-                IGC_ASSERT((*it)->getAllocatedType() == allocaInst->getAllocatedType());
-                allocaInst->replaceAllUsesWith(*it);
-                ++it;
-            }
-        }
+        if ((*staticAlloca)->getAllocatedType() == fnAlloca->getAllocatedType())
+            (*staticAlloca)->replaceAllUsesWith(fnAlloca);
+
+        if (++staticAlloca == IFI.StaticAllocas.end())
+            return;
     }
+
+    perFnAllocas.append(staticAlloca, IFI.StaticAllocas.end());
 }
