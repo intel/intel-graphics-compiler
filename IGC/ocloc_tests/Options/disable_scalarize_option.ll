@@ -10,13 +10,14 @@
 
 ; RUN: llvm-as %s -o %t.bc
 ; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -options " -ze-opt-large-register-file -igc_opts 'DisableOCLScalarizer=1,EnableVectorizer=0,PrintToConsole=1,PrintAfter=EmitPass'" 2>&1 | FileCheck %s --check-prefixes=CHECK
+; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -options " -ze-opt-large-register-file -igc_opts 'DisablePHIScalarization=1,EnableVectorizer=0,PrintToConsole=1,PrintAfter=EmitPass'" 2>&1 | FileCheck %s --check-prefixes=CHECK
 
-; Check that scalarizer is disabled when DisableOCLScalarizer=1 is passed to IGC
+; Check that phi is not scalarized when DisableOCLScalarizer=1 or DisablePHIScalarization=1 is passed to IGC
 ; Disabling vectorizer as well in order to check that scalarizer is disabled and not vectorizer transformed the code
 
 ; CHECK-LABEL: @foo(
-; CHECK:       [[VEC_PHI:%.*]] = phi <8 x [[TYPE:[A-Za-z0-9]+]]> [ zeroinitializer, [[BB1:%.*]] ], [ [[V:%.*]], [[BB2:%.*]] ]
-; CHECK-NOT:   [[SCALAR_FLOAT_PHI:%.*]] = phi float [ [[ZERO:.*]], [[BB1:%.*]] ], [ [[TMP:%.*]], [[BB2:%.*]] ]
+; CHECK:       [[VEC_PHI:%.*]] = phi <8 x [[TYPE:[A-Za-z0-9]+]]>
+; CHECK-NOT:   [[SCALAR_FLOAT_PHI:%.*]] = phi float
 ; CHECK:       ret void
 
 

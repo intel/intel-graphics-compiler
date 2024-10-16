@@ -383,7 +383,10 @@ void ScalarizeFunction::dispatchInstructionToScalarize(Instruction* I)
         scalarizeInstruction(dyn_cast<CastInst>(I));
         break;
     case Instruction::PHI:
-        scalarizeInstruction(dyn_cast<PHINode>(I));
+        if (IGC_IS_FLAG_DISABLED(DisablePHIScalarization))
+            scalarizeInstruction(dyn_cast<PHINode>(I));
+        else
+            recoverNonScalarizableInst(I);
         break;
     case Instruction::Select:
         scalarizeInstruction(dyn_cast<SelectInst>(I));
