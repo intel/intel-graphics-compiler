@@ -116,12 +116,12 @@ References and Related Information
 ==================================
 
 \[1\] Intel Graphics Media Accelerator Developer's Guide,
-<http://software.intel.com/en-us/articles/intel-graphics-media-accelerator-developers-guide/>.
+<https://www.intel.com/content/dam/develop/external/us/en/documents/intel-integrated-graphics-performance-developer-s-guide-v2-6-7-166010.pdf>
 
 \[2\] United States Patent 7257695, 2007.
 
 \[3\] Intel C++ Compiler User and Reference Guides,
-<http://www.intel.com/cd/software/products/asmo-na/eng/347618.htm>.
+<https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-10/overview.html>
 
 \[4\] Intel Media SDK Reference Manual, Supplement A: Frame VME
 Emulation Library for Intel SNB Graphics, April 8, 2009 (Version 1.21s).

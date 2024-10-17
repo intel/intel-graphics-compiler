@@ -57,6 +57,7 @@ SPDX-License-Identifier: MIT
 |IFCALL              | Y | Y | Y | Y   | Y   |
 |INFO                | Y | Y | Y | Y   | Y   |
 |INV                 | Y | Y | Y | Y   | Y   |
+|INVM                |   | Y |   |     |     |
 |JMP                 | Y | Y | Y | Y   | Y   |
 |LABEL               | Y | Y | Y | Y   | Y   |
 |LIFETIME            | Y | Y | Y | Y   | Y   |
@@ -83,7 +84,7 @@ SPDX-License-Identifier: MIT
 |OWORD_LD            | Y | Y | Y | Y   | Y   |
 |OWORD_LD_UNALIGNED  | Y | Y | Y | Y   | Y   |
 |OWORD_ST            | Y | Y | Y | Y   | Y   |
-|PLN                 | Y | Y | Y | Y   |     |
+|PLN                 | Y | Y | Y |     |     |
 |POW                 | Y | Y | Y | Y   | Y   |
 |QW_GATHER           |   |   |   |     |     |
 |QW_SCATTER          |   |   |   |     |     |
@@ -97,6 +98,7 @@ SPDX-License-Identifier: MIT
 |ROL                 |   |   |   | Y   | Y   |
 |ROR                 |   |   |   | Y   | Y   |
 |RSQRT               | Y | Y | Y | Y   | Y   |
+|RSQTM               |   | Y |   |     |     |
 |RT_WRITE            | Y | Y | Y | Y   | Y   |
 |SAD2                | Y | Y | Y |     |     |
 |SAD2ADD             | Y | Y | Y |     |     |

@@ -8,13 +8,13 @@ SPDX-License-Identifier: MIT
 
 ## Opcode
 
-  RSQRT = 0x1a
+  INVM = 0x9b
 
 ## Format
 
-| | | | | |
-| --- | --- | --- | --- | --- |
-| 0x1a(RSQRT) | Exec_size | Pred | Dst | Src0 |
+| | | | | | | |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0x9b(INVM) | Exec_size | Pred | Dst | PredDst | Src0 | Src1 |
 
 
 ## Semantics
@@ -24,7 +24,8 @@ SPDX-License-Identifier: MIT
 
                     for (i = 0; i < exec_size; ++i){
                       if (ChEn[i]) {
-                        dst[i] = 1.0 / sqrt(src0[i]);
+                        dst[i] = invm(src0[i], src1[i])
+                        preddst[i] = (invm(src0[i], src1[i]) == NAN/INF/ZERO)
                       }
                     }
 ```
@@ -36,7 +37,11 @@ SPDX-License-Identifier: MIT
 
 
 ```
-    Computes component-wise the square root of <src0>, then takes the inverse of the value and stores the results in <dst>.
+    Use invm math macro to compute component-wise divide of src0 by src1 and stores the results in <dst> and set <preddst>
+    to EO (early out) of invm. If a bit in <preddst> is set, its corresponding <dst> is a special number (NAN/INF/ZERO); otherwise
+    <dst> is an initial approximation of the division, and the further refinement on the apporoximation is needed to get
+    a result of expected precision.
+
 ```
 
 
@@ -75,31 +80,38 @@ SPDX-License-Identifier: MIT
 - **Dst(vec_operand):** The destination operand. Operand class: general,indirect
 
 
+- **PredDst(vec_operand):** The predicate destination operand. Operand class: predicate
+
+
 - **Src0(vec_operand):** The first source operand. Operand class: general,indirect,immediate
 
 
+- **Src1(vec_operand):** The second source operand. Operand class: general,indirect,immediate
+
+
 #### Properties
-- **Supported Types:** F,HF
-- **Saturation:** Yes
+- **Supported Types:** DF,F
 - **Source Modifier:** arithmetic
 
 
-#### Operand type maps
-- **Type map**
-  -  **Dst types:** F, HF
-  -  **Src types:** F, HF
 
 
 ## Text
 ```
-[(<P>)] RSQRT[.sat] (<exec_size>) <dst> <src0>
-```
 
+
+
+    [(<P>)] INVM  (<exec_size>) <dst> <preddst> <src0> <src1>
+```
 ## Notes
 
 
 
 
 
-    In ALT mode RSQ is computed as RSQ(abs (src0)).
+```
+    The instruction is intended to be used in a library function to provide variant implementations of some math functions.
+    Saturation is not supported.
+
+```
 

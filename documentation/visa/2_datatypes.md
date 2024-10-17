@@ -191,8 +191,9 @@ Float to Float with Lower Precision
 -----------------------------------
 
 Converting a floating-point number to another type with lower precision
-(DF -&gt; F, DF -&gt; HF, F -&gt; HF) uses the round to zero rounding
-mode.
+(DF -&gt; F, DF -&gt; HF, F -&gt; HF) uses the rounding mode set in the
+control register, which can be RTNE (Round to Nearest or Even), RU
+(Round Up), RD (Round Down), or RTZ (Round Toward Zero).
 
 | Source Float (F, DF)    |  Destination Float (HF, F) |
 | --- | --- |

@@ -146,7 +146,29 @@ SPDX-License-Identifier: MIT
 
 [(<P>)] RT_WRITE[.<Mode>] (<Exec_size>) <Surface> [<CPS>] [<RT_index>] [<sOA>] [<oM>] <R> <G> <B> <A> [<Depth>] [<Stencil>]
 
+
+[(<P>)] RT_WRITE[.<Mode>] (<Exec_size>) <Surface base> [<CPS>] [<RT_index>] [<sOA>] [<oM>] <R> <G> <B> <A> [<Depth>] [<Stencil>]
+
+
 // <Mode> is of the form [<A><O><CPS><PS><CM><SI><ST><LRTW><RTI><Z><NULLRT>] and may be in any order
+```
+## Examples
+
+
+
+```
+      // RT write with per-sample enable with r, g, b, a operands
+      // .decl SRFC v_type=T  num_elts=77  v_name=TEST
+      rt_write_3d.<PS> (8) SRFC UD42.0 F43.0 F40.0 F41.0 F42.0
+
+      // .decl rtvSurfaceStatePointer64 v_type=G type=uq num_elts=1 align=qword
+      rt_write_3d (M1, 16) rtvSurfaceStatePointer64 %null.0 V0032.0 V0033.0 V0034.0 V0035.0
+
+      // .decl rtvSurfaceStatePointer64 v_type=G type=uq num_elts=1 align=qword
+      rt_write_3d.<Z> (M1, 16) rtvSurfaceStatePointer64 %null.0 V0032.0 V0033.0 V0034.0 V0035.0 V0048.0
+
+      // .decl rtvSurfaceStatePointer64 v_type=G type=uq num_elts=1 align=qword
+      rt_write_3d.<A><O><Z> (M1, 16) rtvSurfaceStatePointer64 %null.0 V0051.0 V0038.0 V0032.0 V0033.0 V0034.0 V0035.0 V0048.0
 ```
 ## Notes
 

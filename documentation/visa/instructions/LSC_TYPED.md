@@ -250,20 +250,20 @@ a Typed 2D surface. The message header contains the block parameters
             // typed load from BTI surface 0x4 with U = V12, V = V13, R = V14 (and no LOD)
             lsc_load_quad.tgm      V20:d32.xyzw  bti(0x4)[V12,V13,V14]:a64
 
-            // typed store of channels x and z to BTI surface 0x4
+            // Typed store of channels x and z to BTI surface 0x4
             // with U = V12, V = V13 (and no R or LOD)
             // (uses default caching)
             lsc_store_quad.tgm     bti(0x4)[V12,V13]:a64  V13:d32.xz
 
             // Atomically increment the values in V13.
-            lsc_atomic_inc.tgm     V14:d32  bti(0x0)[V12,V13]:a64  V0  V0
+            lsc_atomic_inc.tgm     V14:d32  bti(0x0)[V12,V13]:a64  %null  %null
 
             // Typed 2d block load with height 64 bytes and height 2 bytes from BIT surface 0x0
             // The block's top coordinate (Y) is OFF_Y and the left (X) is OFF_X.
             lsc_load_block2d.tgm    VDATA:64x2    bti(0x0)[OFF_X,OFF_Y]
             //
-            // Typed 2d block store operation. The parameters are similar to above.
-            lsc_store_block2d.tgm   bit(0x0)[OFF_X,OFF_Y]   VDATA:64x2
+            // Typed 2d block store operation.  The parameters are similar to above.
+            lsc_store_block2d.tgm   bti(0x0)[OFF_X,OFF_Y]   VDATA:64x2
 
 
 ## Notes

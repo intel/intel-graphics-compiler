@@ -96,8 +96,9 @@ ADDR_ADD (<exec_size>) <dst> <src0> <src1>
 
 
 ```
-    If src0 is a general operand, the byte address of the general variable is taken and the row and column offset are added to it to produce the address value. In this scenario Src0's region must be <0;1,0>, implying that all channels receive the same value for Src0. If src0 is a state operand, the byte address of the state variable (one of surface/sampler) is taken and the offset is then added to it to produce the address value. The result value in Dst must point to the same variable as Src0 (i.e., if src0 points to an element in v1, src0 + src1 must point to another element in v1). Predication is not supported for this instruction. Src0 must neither be a pre-defined variable nor a pre-defined surface, except for V13(%arg) and V14(%retval).
+    If src0 is a general operand, the byte address of the general variable is taken and the row and column offset are added to it to produce the address value. In this scenario Src0's region must be <0;1,0>, implying that all channels receive the same value for Src0. If src0 is a state operand, the byte address of the state variable (one of surface/sampler) is taken and the offset is then added to it to produce the address value. The resulting address in Dst may be arbitrary value, but the behavior of accessing an out-of-range or unaligned address is undefined (i.e., if src0 points to an element in v1, src0 + src1 may go out of bound for v1, but using such address in an indirect operand is undefined). As far as the finalizer is concerned, the ADDR_ADD instruction is just adding two integers representing GRF byte offsets.
 
-    It is up to the front-end compiler to ensure that resulting address has the right alignment before it is used in an indirect operand. As far as the finalizer is concerned it is just adding two integers representing GRF byte offsets.
+    Predication is not supported for this instruction. Src0 must neither be a pre-defined variable nor a pre-defined surface, except for V13(%arg) and V14(%retval).
+
 ```
 

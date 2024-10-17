@@ -34,11 +34,14 @@ SPDX-License-Identifier: MIT
 
 
 ```
-  Supported rounding:  HF -> BF8;  F -> HF.  Note that BF8 is denoted as UB as vISA has no BF8 type.
+  Supported rounding:
+      HF -> BF8
+      F -> HF
+  Note that BF8 is denoted as UB and HF8 is denoted as B since vISA has no BF8/HF8 types.
 
   The srnd instruction takes component-wise source data and performs rounding with a random number. The key of this rounding algorithm is to add a random number to the source data mantissa and get an intermedia result. The intermediate result (mantissa)will be normalized and truncate to get detination mantissa and exponent.
 
-  The acutal random bit used in HW is Src1[7:0] for HF to BF8 and Src1[12:0] for F to HF, respectively. Those 8 or 13 bits are added to mantissa of Src0 (Src1[0:0] alignes with Mantisa[0:0]). NaN and Inf handling conforms to IEEE. Denoms are retained always.
+  The acutal random bit used in HW is Src1[7:0] for HF/BF to BF8/HF8 and Src1[12:0] for F to HF, respectively. Those 8 or 13 bits are added to mantissa of Src0 (Src1[0:0] alignes with Mantisa[0:0]). NaN and Inf handling conforms to IEEE. Denoms are retained always.
 
 ```
 
@@ -85,7 +88,7 @@ SPDX-License-Identifier: MIT
 
 
 #### Properties
-- **Supported Types:**  F, HF,UB
+- **Supported Types:**  B, BF, F, HF,UB
 - **Source Modifier:** false
 
 
@@ -109,6 +112,7 @@ SRND (<exec_size>) <dst> <src0> <src1>
 
 
 
-  - Dst type is eithetr UB (as BF8) or HF; Src0 and Src1 have the same type: HF or F.
-  - No predicate, no saturation, no source modifier, no mask.
+    - For HF to conversion BF8, src1 type is UB. For F to HF conversion, src1 type is UW.
+
+    - No predicate, no saturation, no source modifier, no mask.
 

@@ -84,6 +84,8 @@ Arithmetic Instructions
 
 - [INV - reciprocal](instructions/INV.md)
 
+- [INVM - Div macro {SKL,XEHP+}](instructions/INVM.md)
+
 - [LOG - logarithm](instructions/LOG.md)
 
 - [LRP - linear interpolation {-ICLLP}](instructions/LRP.md)
@@ -100,7 +102,7 @@ Arithmetic Instructions
 
 - [MULH - multiply high](instructions/MULH.md)
 
-- [PLN - plane {-TGLLP}](instructions/PLN.md)
+- [PLN - plane {-ICLLP}](instructions/PLN.md)
 
 - [POW - power](instructions/POW.md)
 
@@ -113,6 +115,8 @@ Arithmetic Instructions
 - [RNDZ - round to zero](instructions/RNDZ.md)
 
 - [RSQRT - inverse square root](instructions/RSQRT.md)
+
+- [RSQTM - Inverse square root macro {SKL,XEHP+}](instructions/RSQTM.md)
 
 - [SAD2 - two-wide sum of absolute {-ICLLP}](instructions/SAD2.md)
 
@@ -158,7 +162,7 @@ Control Flow Instructions
 
 - [SUBROUTINE - subroutine](instructions/SUBROUTINE.md)
 
-- [SWITCHJMP - switch jump table {PVC+,-TGLLP}](instructions/SWITCHJMP.md)
+- [SWITCHJMP - switch jump table {-TGLLP,PVC+}](instructions/SWITCHJMP.md)
 
 
 Data Movement Instructions
@@ -292,19 +296,19 @@ Surface-based Memory Access Instructions
 SVM - Shared Virtual Memory Access
 ----------------------------------
 
-- [SVM_BLOCK_ST - SMV Block Store](instructions/SVM_BLOCK_ST.md)
-
-- [SVM_ATOMIC - SVM atomic operations](instructions/SVM_ATOMIC.md)
+- [SVM_SCATTER - SMV scatter](instructions/SVM_SCATTER.md)
 
 - [SVM_BLOCK_LD - SMV Block Load](instructions/SVM_BLOCK_LD.md)
 
-- [SVM_GATHER4_SCALED - SVM gather4 with scaling pitch](instructions/SVM_GATHER4_SCALED.md)
+- [SVM_ATOMIC - SVM atomic operations](instructions/SVM_ATOMIC.md)
 
-- [SVM_GATHER - SMV gather](instructions/SVM_GATHER.md)
+- [SVM_GATHER4_SCALED - SVM gather4 with scaling pitch](instructions/SVM_GATHER4_SCALED.md)
 
 - [SVM_SCATTER4_SCALED - SVM scatter4 with scaling pitch](instructions/SVM_SCATTER4_SCALED.md)
 
-- [SVM_SCATTER - SMV scatter](instructions/SVM_SCATTER.md)
+- [SVM_GATHER - SMV gather](instructions/SVM_GATHER.md)
+
+- [SVM_BLOCK_ST - SMV Block Store](instructions/SVM_BLOCK_ST.md)
 
 
 Synchronization Instructions

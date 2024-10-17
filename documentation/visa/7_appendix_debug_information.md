@@ -231,7 +231,7 @@ Debug information header format is as follows:
       VarLiveIntervalsGenISA retAddr;
       uw numCalleeSaveEntries;
       PhyRegSaveInfoPerIP calleeSaveEntry[numCalleeSaveEntries];
-      uw numCallerSaveEntries;
+      ud numCallerSaveEntries;
       PhyRegSaveInfoPerIP callerSaveEntry[numCallerSaveEntries];
     }
 ```

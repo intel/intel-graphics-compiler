@@ -166,5 +166,7 @@ SPDX-License-Identifier: MIT
     Each table row represents one GRF, and A0[0] corresponds to the
     first element in <dst> in all of the above tables. The operand's
     type must be the same size as <block_size>.
+
+    Note that: When num_blocks > 1, exec_size must >= 8.
 ```
 

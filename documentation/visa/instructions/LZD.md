@@ -87,7 +87,7 @@ SPDX-License-Identifier: MIT
 #### Properties
 - **Supported Types:** UD
 - **Saturation:** Yes
-- **Source Modifier:** arithmetic
+- **Source Modifier:** false
 
 
 

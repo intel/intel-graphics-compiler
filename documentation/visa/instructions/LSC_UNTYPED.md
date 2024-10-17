@@ -45,10 +45,10 @@ SPDX-License-Identifier: MIT
 
 | | | | | | | |
 | --- | --- | --- | --- | --- | --- | --- |
-| 0x89(LSC_UNTYPED) | LscSubOp              | Exec_size   | Pred         | LscSFID       | CachingL1    | CachingL3 |
-|                   | DataSize              | DataOrder   | Blocks\*     | BlockWidth\*  | BlockHeight\* | VNNI\*    |
-|                   | DstData               | SurfaceBase\* | SurfaceWidth\* | SurfaceHeight\* | SurfacePitch\* | Src0AddrX\* |
-|                   | Src0AddrY\*           | Src1Data\*  |              |               |              |           |
+| 0x89(LSC_UNTYPED) | LscSubOp              | Exec_size       | Pred         | LscSFID       | CachingL1    | CachingL3 |
+|                   | DataSize              | DataOrder       | Blocks\*     | BlockWidth\*  | BlockHeight\* | VNNI\*    |
+|                   | DstData               | SurfaceBaseAddr\* | SurfaceWidth\* | SurfaceHeight\* | SurfacePitch\* | Src0AddrX\* |
+|                   | Src0AddrY\*           | Src1Data\*      |              |               |              |           |
 
 
 ### CONDITION
@@ -73,15 +73,22 @@ SPDX-License-Identifier: MIT
                        DataSize elems[GRF_SIZE_BYTES/sizeof(DataSize)];
                     } DstData, Src1Data, Src2Data;
                     union grf_addr_size {
-                       // 8 elements for :a64, 16 for :a32, 32 for :a16 (half of this for DG2)
+                       // 8 elements for :a64, 16 for :a32 (half of this for DG2)
                        AddrSize addrs[GRF_SIZE_BYTES/sizeof(AddrSize)];
                     } src0;
 
+                    Base =
+                        AddrType == flat ? 0 :
+                        AddrType == bss ? BindlessSurfaceStateHeap[Surface].BaseAddr :
+                        AddrType == ss ? SurfaceStateHeap[Surface].BaseAddr :
+                        AddrType == bti ? BindingTable[Surface]->BaseAddr :
+                        AddrType == arg ? IndirectDataBase :
+                undefined
       LOAD:
                     for (n = 0; n < ExecSize; n++) {
                       if (Msg.ChEn[n]) {
                         for (v = 0; v < vect_size; v++) {
-                          grf_sized src = AddrScale*(Surface + Src0Addrs[n]) + AddrImmOffset
+                          grf_sized src = Base + AddrScale*Src0Addrs[n] + AddrImmOffset
                           auto datum = src.elems[v];
                           if (DataOrder == LSC_DATA_ORDER_TRANSPOSED) {
                             DstData[n].elems[v] = datum
@@ -97,7 +104,7 @@ SPDX-License-Identifier: MIT
                       if (Msg.ChEn[n]) {
                         for (m = v = 0; v < 4; v++) {
                           if (ChMask[v]) {
-                            grf_sized src = AddrScale*(Surface + Src0Addrs[n]) + AddrImmOffset
+                            grf_sized src = Base + AddrScale*Src0Addrs[n] + AddrImmOffset
                             DstData[m].elems[n] = src.elems[v]
                             m++;
                           }
@@ -123,7 +130,7 @@ SPDX-License-Identifier: MIT
                     for (n = 0; n < ExecSize; n++) {
                       s = 1;
                       if (Msg.ChEn[n]) {
-                        auto addr = AddrScale*(Surface + Src0Addrs[n] + AddrImmOffset)
+                        auto addr = Base + AddrScale*Src0Addrs[n] + AddrImmOffset
                         for (v = 0; v < vect_size; v++) {
                           if (s) {
                             s = IsTRTT_VALID_PAGE(addr.elems[v])
@@ -150,7 +157,7 @@ SPDX-License-Identifier: MIT
 
           // 'b' is the block, 'u' represents the Y-axis, and 'v' the X-axis
           auto load_elem = [&](int dst_off, int b, int y, int x) {
-            T *row = (T *)(SurfaceBase + y * SurfacePitch);
+            T *row = (T *)(src0.SurfaceBaseAddr + y * src0.SurfacePitch);
             store_elem_to_grf(dst_off, row[X + b * W + x]);
           };
 
@@ -223,7 +230,7 @@ SPDX-License-Identifier: MIT
                     for (n = 0; n < ExecSize; n++) {
                       if (Msg.ChEn[n]) {
                         for (v = 0; v < vect_size; v++) {
-                          auto addr = AddrScale*(Surface + Src0Addrs[n] + AddrImmOffset)
+                          auto addr = Base + AddrScale*Src0Addrs[n] + AddrImmOffset
                           if (DataOrder == LSC_DATA_ORDER_TRANSPOSED) {
                             *addr = DstData[n].elems[v]
                           } else {
@@ -238,7 +245,8 @@ SPDX-License-Identifier: MIT
                       if (Msg.ChEn[n]) {
                         for (m = v = 0; v < 4; v++) {
                           if (ChMask[v]) {
-                            (*(AddrScale*(Surface + Src0Addrs[n] + AddrImmOffset))).elems[v] = Src1Data[m].elems[n]
+                            auto addr = Base + AddrScale*Src0Addrs[n] + AddrImmOffset
+                            (*addr).elems[v] = Src1Data[m].elems[n]
                             m++
                           }
                         }
@@ -250,7 +258,7 @@ SPDX-License-Identifier: MIT
                     for (n = 0; n < ExecSize; n++) {
                       if (Msg.ChEn[n]) {
                         for (v = 0; v < vect_size; v++) {
-                          auto addr = AddrScale*(Surface + Src0Addrs[n] + AddrImmOffset) + n*Src0AddrPitch + AddrImmOffset
+                          auto addr = Base + AddrScale*Src0Addrs[n] + n*Src0AddrPitch + AddrImmOffset
                           if (DataOrder == LSC_DATA_ORDER_TRANSPOSED) {
                             addr.elems[v] = Src1Data[n].elems[v];
                           } else {
@@ -266,7 +274,7 @@ SPDX-License-Identifier: MIT
                     for (n = 0; n < BlockHeight; n++) {
                       for (v = 0; v < BlockWidth; v++) {
                         reg_pitch = round_up_pow2(BlockHeight);
-                        (SurfaceBase+(Src0AddrY+(n*SurfacePitch)+Src0AddrX)).elems[v] =
+                        (SurfaceBaseAddr+(Src0AddrY+(n*SurfacePitch)+Src0AddrX)).elems[v] =
                           Src1Data.elems[(v*reg_pitch)+n];
                       }
                     }
@@ -302,8 +310,8 @@ SPDX-License-Identifier: MIT
 This set of instructions performs an LSC operation on a set of addresses
 on from a given surface (if applicable) or set of address and either stores
 the result into `DstData` (for a load) or writes it out (for a store)
-from `Src1Data`.  Unused operands will be set to the null register `V0`
-in the binary format.  Most load operations permit the null register `V0`
+from `Src1Data`.  Unused operands will be set to the null register `%null`
+in the binary format.  Most load operations permit the null register `%null`
 to implement a prefetch only (the load stops at the cache).  Most operations
 support an immediate offset and scaling factor.  In some cases, hardware can
 fuse this into the operation.
@@ -320,6 +328,11 @@ These messages support a special alternate `transpose` mode (data order flag)
 and enables one to emulate block loads and stores.
 In this mode a single address is taken and loads successive vector components
 across a regster (or block of them).  Note, transpose only supports SIMD1.
+
+Kernel payload arguments can be read in a program using `AddrType` == `arg`.
+Here is spec defining implicit arguments that may be read using this
+`AddrType`:
+https://github.com/intel-innersource/drivers.gpu.abi/blob/master/internal/implicit-args.md
 
 Atomic operations (except for append counter atomic) are also gather/scatter
 operation.  They operate on the addresses in `Src0Addrs` and possibly with data
@@ -372,7 +385,6 @@ regarding the LSC messages to understand the per-platform behavior.
 
 
 
-
 - **LscSubOp(ub):** The specific LSC operation being called
 
       .. _table_LSC_SubOp:
@@ -409,7 +421,7 @@ regarding the LSC messages to understand the per-platform behavior.
         | lsc_atomic_or          | 0x19  | logical (bitwise) OR        | 1                      |
         | lsc_atomic_xor         | 0x1A  | logical (bitwise) XOR       | 1                      |
         | lsc_load_status        | 0x1B  | load address status bitset  | N/A                    |
-        | lsc_store_uncompressed | 0x1C  | load address status bitset  | N/A                    |
+        | lsc_store_uncompressed | 0x1C  | store uncompressed          | N/A                    |
         | lsc_apndctr_atomic_add | 0x28  | append counter atomic add   | 1                      |
         | lsc_apndctr_atomic_sub | 0x29  | append counter atomic sub   | 1                      |
 
@@ -455,7 +467,7 @@ regarding the LSC messages to understand the per-platform behavior.
         Symbol          vISA Enum           Notes
         ==============  ==================  =======================================================
         `.ugm`          `LSC_UGM`           Untyped global memory.
-        `.ugml`         `LSC_UGML`          Low-bandwidth untyped global memory (cross tile).
+        `.ugml`         `LSC_UGML`          Low-bandwidth untyped global memory (cross tile). (PVC only)
         `.slm`          `LSC_SLM`           Shared local memory.
         ==============  ==================  =======================================================
 
@@ -509,6 +521,7 @@ regarding the LSC messages to understand the per-platform behavior.
   - 2: bss
   - 3: ss
   - 4: bti
+  - 5: arg
 
 - **AddrScale(uw):** An optional scale factor. The compiler may be able to fuse this into the message if it is the data type size (times the vector), otherwise additional instructions are generated to honor the semantics
 
@@ -570,7 +583,7 @@ regarding the LSC messages to understand the per-platform behavior.
 - **VNNI(ub):** Only present in block2d operations.  This performs a VNNI transform during the access
 
 
-- **Surface(vec_operand):** An optional surface to use for this operation.  This can be an immediate or a register.  Use the immediate value 0 for flat operations.  BTIs with known values can use an immediate.
+- **Surface(vec_operand):** An optional surface or base offset to use for this operation.  This can be an immediate or a register.  Use the immediate value 0 for flat operations unless the platforms supports an a64 base value in which case it can be a nonzero register or immediate.
 
 
 - **DstData(raw_operand):** The register to store data loaded into for loads.  The null register may be used in case of a prefetch-load where none is needed.  This is null for stores or atomics without a return value
@@ -585,7 +598,7 @@ regarding the LSC messages to understand the per-platform behavior.
 - **Src0AddrPitch(vec_operand):** Only for strided; this holds the offset of successive elements relative to base address.  A value of 0 would be a broadcast load.  A value equal to the data type size would emulate a block (packed) load
 
 
-- **SurfaceBase(vec_operand):** Surface state 64b surface base address (in bytes) (for block2d only).
+- **SurfaceBaseAddr(vec_operand):** Surface state 64b surface base address (in bytes) (for block2d only).
 
 
 - **SurfaceWidth(vec_operand):** Surface state surface width (in bytes) minus 1 (for block2d only).
@@ -633,7 +646,7 @@ regarding the LSC messages to understand the per-platform behavior.
 
       [ ( Pred ) ] lsc_load_block2d.SFID [ .CachingL1 [ .CachingL3 ] ] ( ExecSize )
                 DstData : DataSize . Blocks x BlockWidth x BlockHeight [ nt ] [ nt ]
-                AddrType [ SurfaceBase , SurfaceWidth , SurfaceHeight , SurfacePitch , Src0AddrX , Src0AddrY ]
+                AddrType [ SurfaceBaseAddr , SurfaceWidth , SurfaceHeight , SurfacePitch , Src0AddrX , Src0AddrY ]
 
       [ ( Pred ) ] lsc_store. SFID [ .CachingL1 [ .CachingL3 ] ] [ ( ExecSize ) ]
                 AddrType [ [ AddrScale * ] Src0Addrs [ + AddrImmOffset ] ]: AddrSize
@@ -644,7 +657,7 @@ regarding the LSC messages to understand the per-platform behavior.
                 Src1Data :  (DataSize x DataElemsPerAddr DataOrder)
 
       [ ( Pred ) ] lsc_store_block2d.SFID [ .CachingL1 [ .CachingL3 ] ] ( ExecSize )
-                AddrType [ SurfaceBase , SurfaceWidth , SurfaceHeight , SurfacePitch , Src0AddrX , Src0AddrY ]
+                AddrType [ SurfaceBaseAddr , SurfaceWidth , SurfaceHeight , SurfacePitch , Src0AddrX , Src0AddrY ]
                 Src1Data : DataSize . [ 1x ] BlockWidth x BlockHeight [ nt ] [ nt ]
 
       [ ( Pred ) ] lsc_atomic*.SFID [ .CachingL1 [ .CachingL3 ] ] ( ExecSize )
@@ -667,57 +680,79 @@ regarding the LSC messages to understand the per-platform behavior.
 
 
 ```
+            ///////////////////////////////////////////////////////////////////
+            // FLAT/STATELESS operations
 
-            // flat (stateless) 64b address load from V12 of 32b values (:d32) into V13,
+            // A flat (stateless) 64b address load from VOFF of 32b values (:d32) into VVAL,
             // bypassing L1 and L3 (.uc); add 0x100 to each address
-            lsc_load.ugm.uc.uc  (M1,32) V13:d32    flat[V12+0x100]:a64
+            lsc_load.ugm.uc.uc  (M1,32) VVAL:d32    flat[VOFF+0x100]:a64
 
+            // A prefetch command from 64b flat (stateless) addresses given in VOFF
+            // of 32b data values (1 per channel) using default caching rules as
+            // defined in machine state (no cache options implies default).
+            lsc_load.ugm  (M1,32) %null:d32  flat[VOFF]:a64
 
+            // A load from shared local memory (.slm) of d32x4 (e.g. float4 in OpenCL) data
+            // from a32 offsets given in VOFF.
+            // For each offset, the value is scaled by 0x4 and 0x10 subtracted.
+            lsc_load.slm   (M1,32) VVAL:d32x4  flat[0x4*VOFF-0x10]:a32
 
-            // SLM load using 16b addresses from V12; each address loads a vector of
-            // 4 x 32b elements (e.g. float4).
-            // Vector elements are stored in successive registers (SIMT).
-            lsc_load.slm   (M1,32) V13:d32x4  flat[V12]:a16
+            // Load one 32-bit element from kernel argument payload space using VOFF as offset.
+            // The load ignores the execution mask (the _NM suffix).
+            lsc_load.ugm (M1_NM, 1)  VVAL:d32t  arg[VOFF]:a32
 
-            // A prefetch command from 64b flat (stateless) addresses given in V12 of 32b
-            // data values (1 per channel).
+            // A flat (stateless) 64b address store to VOFF of 32b data elements from V13.
             // (uses default caching)
-            lsc_load.ugm  (M1,32) null:d32  flat[V12]:a64
-            lsc_load.ugm  (M1,32) V0:d32    flat[V12]:a64 // V0 is the null register in vISA
+            lsc_store.ugm     (M1,32) flat[VOFF]:a64  VVAL:d32
 
-            // A32 transposed (array-of-struct order) load of 16 x 32b elements into V13
-            // from binding table (bti) surface #4.
-            // (uses default caching)
-            lsc_load.ugm          (M1_NM,1)  V13:d32x16t  bti(0x4)[V12]:a32
-            //
-            // identical to the above
-            lsc_load_strided.ugm  (M1_NM,16) V13:d32      bti(0x4)[V12]:a32
-            //
-            // A "block" load using a single DW address in V12, loads ExecSize elements
-            // into V13.  A strided load only passes out a single register, thus improving
-            // bandwidth from EU to LSC over the regular gathering load.
-            lsc_load_strided.ugm   (M1,32) V13:d32  flat[V12]:a32
-            // As above, but using a custom stride of 0x100 between elements.
-            lsc_load_strided.ugm   (M1,32) V13:d32  flat[V12,0x100]:a32
-            // A broadcast load from SLM (each channel loads the same 32b value)
-            lsc_load_strided.slm   (M1,32) V13:d32  flat[V12,0x0]:a32
-
-
-
-            // A flat (stateless) 64b address store to V12 of 32b data elements from V13.
-            // (uses default caching)
-            lsc_store.ugm     (M1,32) flat[V12]:a64  V13:d32
-
-
-            // An SLM store to V12 of four SIMT 32b data elements from V13.
+            // An SLM store to V12 of four SIMT 32b data elements from VOFF.
             // This is similar to an HDC untyped surface write with all four
             // channels enabled.
-            lsc_store.slm     (M1,32) flat[V12]:a32  V13:d32x4
+            lsc_store.slm     (M1,32) flat[VOFF]:a32  VVAL:d32x4
+
+            // An atomic integer increment of 64b addresses given in VOFF.
+            // The old value is not returned (dst is %null).
+            // Caches are bypassed (.uc.uc).
+            lsc_atomic_iinc.ugm.uc.uc  (M1,32) %null:d32  flat[VOFF]:a64 %null %null
+
+            // An atomic single precision floating-point add of VADDEND to the values
+            // in shared local memory reference by the 32b addresses given in VOFF.
+            // The prior value is returned in the destination (VOLD).
+            lsc_atomic_fadd.slm  (M1,32) VOLD:d32  flat[VOFF]:a32 VADDEND %null
+
+            // An atomic integer compare and swap with 64b addresses given in VOFF.
+            // The new value will be (atomically) be set to VIFEQ only if (VCMP == [VOFF]).
+            // The prior value is returned in VOLD.
+            // The .uc.ca cache option skips L1, but writes back at the next level(s).
+            lsc_atomic_icas.ugm.uc.wb  (M1,32) VOLD:d32  flat[VOFF]:a64 VCMP VIFEQ
 
 
-            // A 2d block load of two 2d blocks of bytes with height 16 and width 32
+
+
+            ///////////////////////////////////////////////////////////////////
+            // STATEFUL operations
+
+            // A bss (stateful) load from V12 of 32b values (:d32) into VOFF.
+            // The offsets are given in V12 and added to the 64b surface base address.
+            // The surface state comes from the BindlessSurfaceState plus the 26b bindless offset
+            // offset given in BSSO.
+            lsc_load.ugm.uc.uc (M1,32) V13:d32 bss(BSSO(0,0))[VOFF]:a64
+
+            // Similar to above, but the SurfaceState pointer is added to the 26b bindless offset
+            lsc_load.ugm.uc.uc (M1,32) V13:d32 ss(BSSO(0,0))[VOFF]:a64
+
+            // A32 transposed (array-of-struct order) load of 16 x 32b elements into VOFF
+            // from binding table (bti) surface index 4.  This uses state caching options.
+            lsc_load.ugm          (M1_NM,1)  V13:d32x16t  bti(0x4)[VOFF]:a32
+
+
+
+            ///////////////////////////////////////////////////////////////////
+            // OTHER operations
+
+            // A 2d block load of two blocks (...2x...) of bytes (d8...) with height 16 (...x16...) and width 32 (...x32...)
             // The data is loaded (n)on-transposed and (n)on-VNNI transformed.
-            // The block's top coordinate (Y) is OFF_Y and the left (X) is OFF_X.
+            // The top coordinate of the block (Y) is OFF_Y and the left (X) is OFF_X.
             // The 64b surface base is VSURF_BASE, V_SURF_W is the surface width,
             // V_SURF_H is the surface height, and VSURF_P is the surface pitch.
             lsc_load_block2d.ugm  (M1_NM,1)  VDATA:d8.2x16x32nn    flat[VSURF_BASE,VSURF_W,V_SURF_H,SURF_P,OFF_X,OFF_Y]
@@ -733,9 +768,12 @@ regarding the LSC messages to understand the per-platform behavior.
             // An LSC store block2d operation.  The address parameters are similar to above.
             lsc_store_block2d.ugm (M1_NM,1)  flat[VSURF_BASE,VSURF_W,V_SURF_H,SURF_P,OFF_X,OFF_Y]  VDATA:d16.16x32nn
 
-            // Atomic add unsigned int of V10 to Surface(BTI is 0xA0)'s append_counter in memory and returns
-            // the old value to VDATA.
-      lsc_apndctr_atomic_add.ugm  (M1,32) VDATA:d32 bti(0xA0) V10:d32
+            // Atomic add unsigned int of VADDEND to the surface given in binding table index 0xA0.
+            // The old value is returned in VDATA.
+            lsc_apndctr_atomic_add.ugm  (M1,32) VDATA:d32 bti(0xA0) VADDEND:d32
+
+            // Similar to above, but to the surface given in BindlessSurfaceState + BSSO (the latter a 26b offset).
+            lsc_apndctr_atomic_add.ugm.uc.uc (M1, 32) VDATA:d32 bss(BSSO(0,0)) VADDEND:d32
 ```
 ## Notes
 

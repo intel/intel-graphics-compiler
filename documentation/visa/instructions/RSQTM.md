@@ -8,13 +8,13 @@ SPDX-License-Identifier: MIT
 
 ## Opcode
 
-  RSQRT = 0x1a
+  RSQTM = 0x9c
 
 ## Format
 
-| | | | | |
-| --- | --- | --- | --- | --- |
-| 0x1a(RSQRT) | Exec_size | Pred | Dst | Src0 |
+| | | | | | |
+| --- | --- | --- | --- | --- | --- |
+| 0x9c(RSQTM) | Exec_size | Pred | Dst | PredDst | Src0 |
 
 
 ## Semantics
@@ -24,7 +24,8 @@ SPDX-License-Identifier: MIT
 
                     for (i = 0; i < exec_size; ++i){
                       if (ChEn[i]) {
-                        dst[i] = 1.0 / sqrt(src0[i]);
+                        dst[i] = rsqtm(src0[i])
+                        preddst[i] = (rsqtm(src0[i]) == NAN/INF/ZERO)
                       }
                     }
 ```
@@ -36,7 +37,11 @@ SPDX-License-Identifier: MIT
 
 
 ```
-    Computes component-wise the square root of <src0>, then takes the inverse of the value and stores the results in <dst>.
+    Use rsqtm math macro to computes component-wise reciprocal square root of src0 and stores the results in <dst> and set <preddst>
+    to EO (early out) of rsqtm. If a bit in <preddst> is set, its corresponding <dst> is a special number (NAN/INF/ZERO); otherwise
+    <dst> is an initial approximation of the reciprocal sqaure root, and the further refinement on the apporoximation is needed to get
+    a result of expected precision.
+
 ```
 
 
@@ -75,31 +80,36 @@ SPDX-License-Identifier: MIT
 - **Dst(vec_operand):** The destination operand. Operand class: general,indirect
 
 
+- **PredDst(vec_operand):** The predicate destination operand. Operand class: predicate
+
+
 - **Src0(vec_operand):** The first source operand. Operand class: general,indirect,immediate
 
 
 #### Properties
-- **Supported Types:** F,HF
-- **Saturation:** Yes
+- **Supported Types:** DF,F
 - **Source Modifier:** arithmetic
 
 
-#### Operand type maps
-- **Type map**
-  -  **Dst types:** F, HF
-  -  **Src types:** F, HF
 
 
 ## Text
 ```
-[(<P>)] RSQRT[.sat] (<exec_size>) <dst> <src0>
-```
 
+
+
+    [(<P>)] RSQTM (<exec_size>) <dst> <preddst> <src0>
+```
 ## Notes
 
 
 
 
 
-    In ALT mode RSQ is computed as RSQ(abs (src0)).
+```
+    The instruction is intended to be used in a library function to provide different implementations of some math functions,
+    such as, a double reciprocal square root of precision 2ulp.
+    Saturation is not supported.
+
+```
 

@@ -84,6 +84,10 @@ SPDX-License-Identifier: MIT
 - **Source Modifier:** arithmetic
 
 
+#### Operand type maps
+- **Type map**
+  -  **Dst types:** F, HF
+  -  **Src types:** F, HF
 
 
 ## Text

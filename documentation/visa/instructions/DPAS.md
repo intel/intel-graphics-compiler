@@ -39,7 +39,7 @@ SPDX-License-Identifier: MIT
                  1 : for TF32
                  2 : for 16-bit precision(BF, HF)
                  4 : for 8-bit precision (FP8, UB, B)
-                 8 : for less-then 8 bit precision (U4/S4, U2/S2).
+                 8 : for less-then 8 bit precision (such as 4-bit data type, 2-bit data type).
 
               If depth is 8, K would be 8, 16, 32, or 64 (basd on OPS_PER_CHAN).
 
@@ -139,14 +139,6 @@ SPDX-License-Identifier: MIT
 
        Dst, Src0 are advanced one GRF for each repeat advance; Src2 is advanced 8*OPS_PER_CHAN for
        each repeat advance. Src1 stays the same for each repeat count advance.
-
-
-
-
-
-
-
-
 ```
 
 ## Description
@@ -157,7 +149,7 @@ SPDX-License-Identifier: MIT
 
     Integer DPAS is a element wise multiply add and accumulate operation of multiple elements
     in a systolic pipeline with low precision (<= 8 bits) inputs. Src1 is also refered to
-    as Weights, and Src2 as Activation. Src1 and Src2's element types are defined by
+    as Weights, and Src2 as Activation. the element types of Src1 and Src2 are defined by
     Precision W and A, respectively. Src1 is divided into elements along each 32-bit SIMD channel.
 
     Float DPAS is the same, except its elements are always 16 bits. So each 32-bit channel has
@@ -173,34 +165,35 @@ SPDX-License-Identifier: MIT
     .. table:: The following table lists all operand precisions:
       :align: center
 
-      +-------------------+-------------+--------+--------+
-      | Operand Precision |  Range      | Binary | Text   |
-      |                   |             | Format | Format |
-      +-------------------+-------------+--------+--------+
-      | unused            |             | 0000b  |        |
-      +-------------------+-------------+--------+--------+
-      | Unsigned 1-bit    | [0, 1]      | 0001b  | u1     |
-      +-------------------+-------------+--------+--------+
-      | Signed 1-bit      | [-1, 0]     | 0010b  | s1     |
-      +-------------------+-------------+--------+--------+
-      | Unsigned 2-bits   | [0, 3]      | 0011b  | u2     |
-      +-------------------+-------------+--------+--------+
-      | Signed 2-bits     | [-2, 1]     | 0100b  | s2     |
-      +-------------------+-------------+--------+--------+
-      | Unsigned 4-bits   | [0, 15]     | 0101b  | u4     |
-      +-------------------+-------------+--------+--------+
-      | Signed 4-bits     | [-8, 7]     | 0110b  | s4     |
-      +-------------------+-------------+--------+--------+
-      | Unsigned 8-bits   | [0, 255]    | 0111b  | u8     |
-      +-------------------+-------------+--------+--------+
-      | Signed 8-bits     | [-128, 127] | 1000b  | s8     |
-      +-------------------+-------------+--------+--------+
-      | bfloat            | bfloat16    | 1001b  | bf     |
-      +-------------------+-------------+--------+--------+
-      | half              | fp16        | 1010b  | hf     |
-      +-------------------+-------------+--------+--------+
-      | tf32              | tf32        | 1100b  | tf32   |
-      +-------------------+-------------+--------+--------+
+        +-------------------+-------------+--------+--------+
+        | Operand Precision |  Range      | Binary | Text   |
+        |                   |             | Format | Format |
+        +-------------------+-------------+--------+--------+
+        | unused            |             |  0x00  |        |
+        +-------------------+-------------+--------+--------+
+        | Unsigned 1-bit    | [0, 1]      |  0x01  | u1     |
+        +-------------------+-------------+--------+--------+
+        | Signed 1-bit      | [-1, 0]     |  0x02  | s1     |
+        +-------------------+-------------+--------+--------+
+        | Unsigned 2-bits   | [0, 3]      |  0x03  | u2     |
+        +-------------------+-------------+--------+--------+
+        | Signed 2-bits     | [-2, 1]     |  0x04  | s2     |
+        +-------------------+-------------+--------+--------+
+        | Unsigned 4-bits   | [0, 15]     |  0x05  | u4     |
+        +-------------------+-------------+--------+--------+
+        | Signed 4-bits     | [-8, 7]     |  0x06  | s4     |
+        +-------------------+-------------+--------+--------+
+        | Unsigned 8-bits   | [0, 255]    |  0x07  | u8     |
+        +-------------------+-------------+--------+--------+
+        | Signed 8-bits     | [-128, 127] |  0x08  | s8     |
+        +-------------------+-------------+--------+--------+
+        | bfloat            | bfloat16    |  0x09  | bf     |
+        +-------------------+-------------+--------+--------+
+        | half              | fp16        |  0x0a  | hf     |
+        +-------------------+-------------+--------+--------+
+        | tf32              | tf32        |  0x0b  | tf32   |
+        +-------------------+-------------+--------+--------+
+
 
 
     The bfloat16 is a 16-bit float type (E8M7, aka truncated IEEE 754 single-precision 32-bit float,
@@ -228,20 +221,20 @@ SPDX-License-Identifier: MIT
     .. table:: All legal combinations of types and precisions.
       :align: center
 
-      +--------+---------+-----------+----------+
-      | Dst    |  Src0   | Src1      | Src2     |
-      |        |         | Precision | Preision |
-      +--------+---------+-----------+----------+
-      | UD, D  |  UD,D   | int       | int      |
-      +--------+---------+-----------+----------+
-      | F, BF  |  F, BF  | BF        | BF       |
-      +--------+---------+-----------+----------+
-      | F, HF  |  F, HF  | HF        | HF       |
-      +--------+---------+-----------+----------+
-      | F      |  F      | TF32      | TF32     |
-      +--------+---------+-----------+----------+
-      | F      |  F      | BF8, HF8  | BF8, HF8 |
-      +--------+---------+-----------+----------+
+       +--------+---------+------------+------------+
+       | Dst    |  Src0   | Src1       | Src2       |
+       |        |         | Precision  | Preision   |
+       +--------+---------+------------+------------+
+       | UD, D  |  UD,D   | int        | int        |
+       +--------+---------+------------+------------+
+       | F, BF  |  F, BF  | BF         | BF         |
+       +--------+---------+------------+------------+
+       | F, HF  |  F, HF  | HF         | HF         |
+       +--------+---------+------------+------------+
+       | F      |  F      | TF32       | TF32       |
+       +--------+---------+------------+------------+
+       | F      |  F      | BF8, HF8   | BF8, HF8   |
+       +--------+---------+------------+------------+
 
 
     SD can be encoded as 1, 2, 4, and 8. XEHP+ only supports a systolic depth of 8.
@@ -326,15 +319,11 @@ SPDX-License-Identifier: MIT
         src2 would be 8 DWORD aligned for s8/u8 precision; 4 DWORD aligned for s4/u4; and 2 DWORD aligned
         for s2/u2.
 
-      Src2 type should be consistent with Src1's, that is, if Src1 is an integer type, Src2 must be an integer
-      type; if Src1 is bf, Src2 must be bf; if Src1 is hf, Src2 must be hf too.
       Here are some examples:
 
       -  DPAS.u4.s8.8.8  (Exec_size) <dst> <src0> <src1> <src2>   // int DPAS with u4 for src1 and s8 for src1
       -  DPAS.bf.bf.8.8  (Exec_size) <dst> <src0> <src1> <src2>   // float DPAS with bfloat as element type
       -  DPAS.hf.hf.8.8  (Exec_size) <dst> <src0> <src1> <src2>   // float DPAS with half as element type
-
-      Also note that Src2 Should be uniform, meaning the entire Src2 is used by every simd lanes.
 
       Exec_size is 16 for PVC and 8 otherwise for int or float DPAS.
 

@@ -40,23 +40,12 @@ SPDX-License-Identifier: MIT
 
     Dst stores the full 64-bit of the results of multiplying two 32-bit integers and adding 32-bit integer(32b*32b+32b->64b). The low 32b of results are
     stored in the lower GRFs and the high 32b of results are stored in the high GRFs.
-
-    It should be mapped to GEN mul/mach/addc/add instructions. Specifically:
-        if src2 is not imme0, then expand MADW((dst_hi32, dst_lo32) = src0 * src1 + src2) to:
-            mul  (16) acc0.0<1>:d    src0<1;1,0>:d    src1<2;1,0>:uw
-            mach (16) dst_hi32<1>:d  src0<1;1,0>:d    src1<1;1,0>:d
-            addc (16) dst_lo32<1>:d  acc0.0<1;1,0>:d  src2<1;1,0>:d     // Low 32 bit results. dst_lo32 is GRF-aligned.
-            add  (16) dst_hi32<1>:d  acc0.0<1;1,0>:d  dst_hi32<1;1,0>:d // High 32 bit results. dst_hi32 is GRF-aligned.
-        otherwise, expand to:
-            mul  (16) acc0.0<1>:d    src0<1;1,0>:d    src1<2;1,0>:uw
-            mach (16) dst_hi32<1>:d  src0<1;1,0>:d    src1<1;1,0>:d // Low 32 bit results. dst_lo32 is GRF-aligned.
-            mov  (16) dst_lo32<1>:d  acc0.0<1;1,0>:d                // High 32 bit results. dst_lo32 is GRF-aligned.
 ```
 
 
 - **Exec_size(ub):** Execution size
 
-  - Bit[2..0]: size of the region for source and destination operands. Max supported execution size for PVC+ is SIMD16, and for pre-PVC is SIMD8.
+  - Bit[2..0]: size of the region for source and destination operands. Max supported execution size is SIMD16.
 
     - 0b000:  1 element(scalar)
     - 0b001:  2 elements

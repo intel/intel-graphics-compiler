@@ -87,7 +87,7 @@ SPDX-License-Identifier: MIT
 
 
 
-    [(<P>)] IFCALL.[uniform] (<exec_size>) <func_id> <arg_size> <return_size>
+    [(<P>)] IFCALL[.uniform] (<exec_size>) <func_id> <arg_size> <return_size>
 ```
 ## Notes
 

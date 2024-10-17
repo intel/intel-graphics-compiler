@@ -82,11 +82,21 @@ SPDX-License-Identifier: MIT
 
 
 #### Properties
-- **Supported Types:** B,D,F,HF,UB,UD,UW,W
+- **Supported Types:** B,D,DF,F,HF,UB,UD,UW,W
 - **Saturation:** Only when type is float
 - **Source Modifier:** arithmetic
 
 
+#### Operand type maps
+- **Type map**
+  -  **Dst types:** DF
+  -  **Src types:** DF
+- **Type map**
+  -  **Dst types:** F, HF
+  -  **Src types:** F, HF
+- **Type map**
+  -  **Dst types:** UD, D, UW, W, UB, B
+  -  **Src types:** UD, D, UW, W, UB, B
 
 
 ## Text
@@ -100,7 +110,7 @@ SPDX-License-Identifier: MIT
 
 
 
-
+```
 
 
 Integer divide with signed inputs follow the rules below for the signs of the quotient and remainder.
@@ -116,4 +126,5 @@ Integer divide with signed inputs follow the rules below for the signs of the qu
   +------------+------------------+-----+-----+-----+-----+
 
 Floating point divide (x/y) is implemented as x * INV(y).  DIVM provides the IEEE-conforming correctly rounded results.
+```
 
