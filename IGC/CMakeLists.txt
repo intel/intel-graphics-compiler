@@ -1365,6 +1365,9 @@ endif()
 # ==================================== LLVM package ====================================================
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/../external/llvm/llvm_deps.cmake")
+set(IGC_BUILD__CLANG_VERSION ${IGC_OPTION__LLVM_PREFERRED_VERSION} CACHE STRING "Preferred version of OpenCL Clang to use")
+string(REPLACE "." ";" CLANG_VERSION_LIST "${IGC_BUILD__CLANG_VERSION}")
+list(GET CLANG_VERSION_LIST 0 IGC_BUILD__CLANG_VERSION_MAJOR)
 include(igc_llvm)
 
 # ==================================== LLD package =====================================================
