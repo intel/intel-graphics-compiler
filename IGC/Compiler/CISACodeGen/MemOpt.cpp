@@ -522,17 +522,7 @@ bool MemOpt::runOnFunction(Function& F) {
     CGC = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     TLI = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
 
-    auto isKernelWithForcedRetry = [this](Function* F) -> bool {
-        auto it = std::find(CGC->m_kernelsWithForcedRetry.begin(), CGC->m_kernelsWithForcedRetry.end(), F);
-        return (it != CGC->m_kernelsWithForcedRetry.end()) && !CGC->m_retryManager.IsFirstTry();
-    };
-    bool shouldMemOptWindowSizeBeReduced = isKernelWithForcedRetry(&F);
 
-    if (shouldMemOptWindowSizeBeReduced) {
-        Limit = 1;
-    } else {
-        Limit = IGC_GET_FLAG_VALUE(MemOptWindowSize);
-    }
 
     if (ProfitVectorLengths.empty())
         buildProfitVectorLengths(F);
