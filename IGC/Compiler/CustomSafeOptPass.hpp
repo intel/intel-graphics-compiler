@@ -69,7 +69,7 @@ namespace IGC
         void visitLdRawVec(llvm::CallInst* inst);
         void visitLoadInst(llvm::LoadInst& I);
         void dp4WithIdentityMatrix(llvm::ExtractElementInst& I);
-        bool isIdentityMatrix(llvm::ExtractElementInst& I);
+        std::optional<bool> getSignIfIdentityMatrix(llvm::ExtractElementInst& I);
         void visitAnd(llvm::BinaryOperator& I);
         void visitXor(llvm::Instruction& XorInstr);
         void visitLSC2DBlockPrefetch(llvm::CallInst* I);

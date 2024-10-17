@@ -2133,46 +2133,48 @@ void IGC::CustomSafeOptPass::visitSampleBptr(llvm::SampleIntrinsic* sampleInst)
     }
 }
 
-bool CustomSafeOptPass::isIdentityMatrix(ExtractElementInst& I)
-{
-    bool found = false;
-    auto extractType = cast<IGCLLVM::FixedVectorType>(I.getVectorOperandType());
-    auto extractTypeVecSize = (uint32_t)extractType->getNumElements();
-    if (extractTypeVecSize == 20 ||
-        extractTypeVecSize == 16)
-    {
-        if (Constant * C = dyn_cast<Constant>(I.getVectorOperand()))
-        {
-            found = true;
 
-            // found = true if the extractelement is like this:
-            // %189 = extractelement <20 x float>
-            //    <float 1.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00,
-            //     float 0.000000e+00, float 1.000000e+00, float 0.000000e+00, float 0.000000e+00,
-            //     float 0.000000e+00, float 0.000000e+00, float 1.000000e+00, float 0.000000e+00,
-            //     float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 1.000000e+00,
-            //     float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00>, i32 %188
-            for (unsigned int i = 0; i < extractTypeVecSize; i++)
-            {
-                if (i == 0 || i == 5 || i == 10 || i == 15)
-                {
-                    ConstantFP* fpC = dyn_cast<ConstantFP>(C->getAggregateElement(i));
-                    ConstantInt* intC = dyn_cast<ConstantInt>(C->getAggregateElement(i));
-                    if((fpC && !fpC->isExactlyValue(1.f)) || (intC && !intC->isAllOnesValue()))
-                    {
-                        found = false;
-                        break;
-                    }
-                }
-                else if (!C->getAggregateElement(i)->isZeroValue())
-                {
-                    found = false;
-                    break;
-                }
-            }
+std::optional<bool> CustomSafeOptPass::getSignIfIdentityMatrix(ExtractElementInst& I)
+{
+    auto ExtractType = cast<IGCLLVM::FixedVectorType>(I.getVectorOperandType());
+    auto ExtractTypeVecSize = (uint32_t)ExtractType->getNumElements();
+
+    if (!(ExtractTypeVecSize == 20 || ExtractTypeVecSize == 16))
+        return std::nullopt;
+
+    Constant * C = dyn_cast<Constant>(I.getVectorOperand());
+    if (C == nullptr)
+        return std::nullopt;
+
+    bool PositiveSign = true;
+    // IsIdentity = true if the extractelement is like this:
+    // %189 = extractelement <20 x float>
+    //    <float 1.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00,
+    //     float 0.000000e+00, float 1.000000e+00, float 0.000000e+00, float 0.000000e+00,
+    //     float 0.000000e+00, float 0.000000e+00, float 1.000000e+00, float 0.000000e+00,
+    //     float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 1.000000e+00,
+    //     float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00>, i32 %188
+
+    for (unsigned int i = 0; i < ExtractTypeVecSize; i++)
+    {
+        if ( i % 5 == 0)
+        {
+            ConstantFP* FpC = dyn_cast<ConstantFP>(C->getAggregateElement(i));
+            ConstantInt* IntC = dyn_cast<ConstantInt>(C->getAggregateElement(i));
+            bool IsPlusMinusOne = false;
+            IsPlusMinusOne |= FpC && (FpC->isExactlyValue(1.f) || FpC->isExactlyValue(-1.f));
+            IsPlusMinusOne |= IntC && (IntC->isOne() || IntC->isMinusOne());
+
+            if(!IsPlusMinusOne)
+                return std::nullopt;
+            //we are assuming that the identity matrix does not have mixed values ones
+            PositiveSign = !((FpC && FpC->isNegative()) || (IntC && IntC->isNegative()));
         }
+        else if (!C->getAggregateElement(i)->isZeroValue())
+            return std::nullopt;
     }
-    return found;
+
+    return std::optional<bool>(PositiveSign);
 }
 
 void CustomSafeOptPass::dp4WithIdentityMatrix(ExtractElementInst& I)
@@ -2206,7 +2208,8 @@ void CustomSafeOptPass::dp4WithIdentityMatrix(ExtractElementInst& I)
     */
 
     // check %190 = extractelement <20 x float> <float 1.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00 ...
-    if (!I.hasOneUse() || !isIdentityMatrix(I))
+    auto IsPositive = getSignIfIdentityMatrix(I);
+    if (!I.hasOneUse() || !IsPositive.has_value())
         return;
 
     Instruction* offset[4] = {nullptr, nullptr, nullptr, nullptr};
@@ -2217,6 +2220,7 @@ void CustomSafeOptPass::dp4WithIdentityMatrix(ExtractElementInst& I)
     offset[0] = dyn_cast<BinaryOperator>(I.getOperand(1));
     if (!offset[0] ||
         offset[0]->getOpcode() != Instruction::Shl ||
+        !offset[0]->hasNoUnsignedWrap() ||
         offset[0]->getOperand(1) != ConstantInt::get(offset[0]->getOperand(1)->getType(), 2))
     {
         return;
@@ -2260,7 +2264,7 @@ void CustomSafeOptPass::dp4WithIdentityMatrix(ExtractElementInst& I)
     for (int i = 1; i < 4; i++)
     {
         eeInst[i] = dyn_cast<ExtractElementInst>(*offset[i]->user_begin());
-        if (!eeInst[i] || !isIdentityMatrix(*eeInst[i]))
+        if (!eeInst[i] || !getSignIfIdentityMatrix(*eeInst[i]).has_value())
         {
             return;
         }
@@ -2268,14 +2272,19 @@ void CustomSafeOptPass::dp4WithIdentityMatrix(ExtractElementInst& I)
 
     // check dp4 and put them in mulI[] and addI[]
     Instruction* mulI[4] = { nullptr, nullptr, nullptr, nullptr };
+    auto isCorrectMulInst = [](Instruction* I) {
+        return I->getOpcode() == Instruction::Mul || (I->getOpcode() == Instruction::FMul && I->isFast());
+    };
+
     for (int i = 0; i < 4; i++)
     {
         mulI[i] = dyn_cast<Instruction>(*eeInst[i]->user_begin());
-        if (mulI[i] == nullptr || !mulI[i]->hasOneUse())
+        if (mulI[i] == nullptr || !mulI[i]->hasOneUse() || !isCorrectMulInst(mulI[i]))
         {
             return;
         }
     }
+
     int inputInSrcIndex = 0;
     if (mulI[0]->getOperand(0) == eeInst[0])
         inputInSrcIndex = 1;
@@ -2290,9 +2299,16 @@ void CustomSafeOptPass::dp4WithIdentityMatrix(ExtractElementInst& I)
     addI[1] = dyn_cast<Instruction>(*mulI[2]->user_begin());
     addI[2] = dyn_cast<Instruction>(*mulI[3]->user_begin());
 
-    if( addI[0] == nullptr ||
+    auto isAddInst = [](Instruction* I) {
+        return (I->getOpcode() == Instruction::Add || I->getOpcode() == Instruction::FAdd);
+    };
+
+    if ( addI[0] == nullptr ||
         addI[1] == nullptr ||
         addI[2] == nullptr ||
+        !isAddInst(addI[0]) ||
+        !isAddInst(addI[1]) ||
+        !isAddInst(addI[2]) ||
         !addI[0]->hasOneUse() ||
         !addI[1]->hasOneUse() ||
         *addI[0]->user_begin() != *mulI[2]->user_begin() ||
@@ -2309,13 +2325,31 @@ void CustomSafeOptPass::dp4WithIdentityMatrix(ExtractElementInst& I)
     Value* cond2 = builder.CreateICmp(ICmpInst::ICMP_EQ, offset[0]->getOperand(0), ConstantInt::get(offset[0]->getOperand(0)->getType(), 2));
     Value* cond3 = builder.CreateICmp(ICmpInst::ICMP_EQ, offset[0]->getOperand(0), ConstantInt::get(offset[0]->getOperand(0)->getType(), 3));
 
-    Value* zero = ConstantFP::get(Type::getFloatTy(I.getContext()), 0);
+    Value* zero = Constant::getNullValue(I.getType());
     Value* sel0 = builder.CreateSelect(cond0, mulI[0]->getOperand(inputInSrcIndex), zero);
     Value* sel1 = builder.CreateSelect(cond1, mulI[1]->getOperand(inputInSrcIndex), sel0);
     Value* sel2 = builder.CreateSelect(cond2, mulI[2]->getOperand(inputInSrcIndex), sel1);
     Value* sel3 = builder.CreateSelect(cond3, mulI[3]->getOperand(inputInSrcIndex), sel2);
 
-    addI[2]->replaceAllUsesWith(sel3);
+    if(I.getType()->isFloatingPointTy())
+    {
+        cast<Instruction>(sel0)->copyFastMathFlags(mulI[3]);
+        cast<Instruction>(sel1)->copyFastMathFlags(mulI[3]);
+        cast<Instruction>(sel2)->copyFastMathFlags(mulI[3]);
+        cast<Instruction>(sel3)->copyFastMathFlags(mulI[3]);
+    }
+
+    if(IsPositive.value())
+    {
+        addI[2]->replaceAllUsesWith(sel3);
+        return;
+    }
+
+    if(I.getType()->isFloatingPointTy())
+        addI[2]->replaceAllUsesWith(builder.CreateFNeg(sel3));
+    else
+        addI[2]->replaceAllUsesWith(builder.CreateNeg(sel3));
+
 }
 
 void CustomSafeOptPass::visitExtractElementInst(ExtractElementInst& I)
