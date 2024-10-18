@@ -344,13 +344,6 @@ namespace IGC
 
         NUM_ARG_SPACE_RESERVATION_SLOTS
     };
-
-    enum class SYNC_DISPATCH_RAYS_MODE : unsigned char {
-        DISABLED,
-        FULLY_INLINED,
-        INDIRECT_CALLS,
-        BTD_PER_SHADER_RECORD,
-    };
 }
 
 #endif //CODE_GEN_PUBLIC_ENUMS_H_
