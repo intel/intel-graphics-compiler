@@ -276,24 +276,11 @@ static void setAlwaysInlineRecursive(Function* F)
 
 static void addAlwaysInlineForImageBuiltinUserFunctions(Module &M)
 {
-    StringRef ImageBuiltinPrefixes[] = {
-        "__builtin_IB_get_image",        "__builtin_IB_get_sampler",
-        "__builtin_IB_get_snap_wa_reqd", "__builtin_IB_OCL_1d_",
-        "__builtin_IB_OCL_2d_",          "__builtin_IB_OCL_3d_"};
-    SmallVector<Function *, 16> ImageBuiltins;
     SmallVector<Function *, 16> SampledImageFunctions;
     for (auto &F : M)
     {
         if (F.isDeclaration())
         {
-            for (StringRef Prefix : ImageBuiltinPrefixes)
-            {
-                if (F.getName().startswith(Prefix))
-                {
-                    ImageBuiltins.push_back(&F);
-                    break;
-                }
-            }
             continue;
         }
         // Check if return type is image.
@@ -302,30 +289,6 @@ static void addAlwaysInlineForImageBuiltinUserFunctions(Module &M)
             if (isImageType(IGCLLVM::getNonOpaquePtrEltTy(PTy)))
             {
                 SampledImageFunctions.push_back(&F);
-            }
-        }
-    }
-
-    // Add always inline recursively for user functions of each image builtin.
-    DenseSet<Function *> Visited;
-    for (auto *Builtin : ImageBuiltins)
-    {
-        SmallVector<Function *, 16> WorkList{Builtin};
-        Visited.insert(Builtin);
-        while (!WorkList.empty())
-        {
-            Function *F = WorkList.pop_back_val();
-            for (User *U : F->users())
-            {
-                if (auto *CI = dyn_cast<CallInst>(U))
-                {
-                    auto *Caller = CI->getFunction();
-                    if (Visited.insert(Caller).second)
-                    {
-                        setAlwaysInline(Caller);
-                        WorkList.push_back(Caller);
-                    }
-                }
             }
         }
     }

@@ -14,18 +14,18 @@
 ;============================ end_copyright_notice =============================
 
 ; Check alwaysinline attribute is added to following functions:
-; 1. users of image builtin functions, e.g. _ZZZ4mainENKUlRN4sycl3_V17handlerEE_clES2_ENKUlNS0_7nd_itemILi3EEEE_clES5_
-; 2. function that is returning an image type, e.g. _ZN4sycl3_V13ext6oneapi12experimental6detail31convert_handle_to_sampled_imageI14ocl_image3d_roNS3_17spirv_handle_typeEEEDaT0_
+; 1. function that is returning an image type and its' users, e.g. _ZN4sycl3_V13ext6oneapi12experimental6detail31convert_handle_to_sampled_imageI14ocl_image3d_roNS3_17spirv_handle_typeEEEDaT0_
 
 ; RUN: igc_opt -igc-process-func-attributes -S %s -o - | FileCheck %s
 
 ; CHECK: define internal spir_func void @_ZZZ4mainENKUlRN4sycl3_V17handlerEE_clES2_ENKUlNS0_7nd_itemILi3EEEE_clES5_() [[MD0:#[0-9]+]]
 ; CHECK: define internal spir_func void @_ZN4sycl3_V13ext6oneapi12experimental10read_imageINS0_3vecIfLi4EEES6_S6_EET_RKNS3_20sampled_image_handleERKT1_({{.*}}) [[MD0]]
-; CHECK: define internal spir_func {{.*}} @_ZN4sycl3_V13ext6oneapi12experimental6detail31convert_handle_to_sampled_imageI14ocl_image3d_roNS3_17spirv_handle_typeEEEDaT0_({{.*}}) [[MD0]]
-; CHECK: define internal spir_func void @_ZL19__invoke__ImageReadIN4sycl3_V13vecIfLi4EEE32__spirv_SampledImage__image3d_roS3_ET_T0_T1_({{.*}}) [[MD0]]
-; CHECK: define internal spir_func {{.*}} @_Z25__spirv_ImageRead_Rfloat4PU3AS140__spirv_SampledImage__void_2_0_0_0_0_0_0Dv4_f({{.*}}) [[MD1:#[0-9]+]]
-; CHECK: attributes [[MD0]] = {{.*}} alwaysinline
+; CHECK: define internal spir_func {{.*}} @_ZN4sycl3_V13ext6oneapi12experimental6detail31convert_handle_to_sampled_imageI14ocl_image3d_roNS3_17spirv_handle_typeEEEDaT0_({{.*}}) [[MD1:#[0-9]+]]
+; CHECK: define internal spir_func void @_ZL19__invoke__ImageReadIN4sycl3_V13vecIfLi4EEE32__spirv_SampledImage__image3d_roS3_ET_T0_T1_({{.*}}) [[MD1]]
+; CHECK: define internal spir_func {{.*}} @_Z25__spirv_ImageRead_Rfloat4PU3AS140__spirv_SampledImage__void_2_0_0_0_0_0_0Dv4_f({{.*}}) [[MD2:#[0-9]+]]
+; CHECK: attributes [[MD0]] = {{.*}} noinline
 ; CHECK: attributes [[MD1]] = {{.*}} alwaysinline
+; CHECK: attributes [[MD2]] = {{.*}} alwaysinline
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
 target triple = "spir64-unknown-unknown"
