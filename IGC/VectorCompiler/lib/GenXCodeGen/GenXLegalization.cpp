@@ -588,8 +588,17 @@ bool GenXLegalization::checkInst(const Instruction *Inst) const {
     return false; // ignore terminator
   if (isa<PHINode>(Inst))
     return false; // ignore phi node
-  if (GenXIntrinsic::isReadWritePredefReg(Inst))
-    return false; // ignore predef regs
+
+  // ignore predef regs
+  switch (auto IID = vc::getAnyIntrinsicID(Inst)) {
+  default:
+    if (GenXIntrinsic::isReadWritePredefReg(IID))
+      return false;
+    break;
+  case GenXIntrinsic::genx_r0:
+  case GenXIntrinsic::genx_sr0:
+    return false;
+  }
 
   // Sanity check for illegal operand type
   const auto *ScalarType = Inst->getType()->getScalarType();
