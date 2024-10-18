@@ -656,7 +656,6 @@ static_assert(offsetof(RTStack2<Xe>, ray1)         == 64 + 64, "unexpected offse
 static_assert(offsetof(RTStack2<Xe>, travStack)    == 192, "unexpected offset!");
 
 
-
 /////////////// BVH structures ///////////////
 
 enum NodeType : uint8_t
@@ -1114,6 +1113,7 @@ enum CANDIDATE_TYPE : uint32_t
     CANDIDATE_NON_OPAQUE_TRIANGLE,
     CANDIDATE_PROCEDURAL_PRIMITIVE
 };
+
 
 } // namespace RTStackFormat
 
