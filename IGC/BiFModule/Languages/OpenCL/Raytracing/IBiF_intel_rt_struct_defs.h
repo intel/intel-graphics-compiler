@@ -177,14 +177,14 @@ inline uint MemHit_getPrimIndexDelta(MemHit* memhit)
     return __getBits32(memhit->data0, 0, 16);
 }
 
-inline ulong MemHit_getPrimLeafAddr(MemHit* memhit)
+inline long MemHit_getPrimLeafAddr(MemHit* memhit)
 {
-    return __getBits64(memhit->data1[0], 0, 42);
+    return __getSignExtendedBits64(memhit->data1[0], 0, 42);
 }
 
-inline ulong MemHit_getInstLeafAddr(MemHit* memhit)
+inline long MemHit_getInstLeafAddr(MemHit* memhit)
 {
-    return __getBits64(memhit->data1[1], 0, 42);
+    return __getSignExtendedBits64(memhit->data1[1], 0, 42);
 }
 
 inline intel_float2 MemHit_getUV(MemHit* memhit)
@@ -220,12 +220,12 @@ inline void MemHit_setDone(MemHit* memhit, bool value)  { memhit->data0 = __setB
 // === MemHit methods
 inline global void* MemHit_getPrimLeafPtr(MemHit* memhit)
 {
-    return to_global((void*)((ulong)MemHit_getPrimLeafAddr(memhit) * 64));
+    return to_global((void*)(MemHit_getPrimLeafAddr(memhit) * 64));
 }
 
 inline global void* MemHit_getInstanceLeafPtr(MemHit* memhit)
 {
-    return to_global((void*)((ulong)MemHit_getInstLeafAddr(memhit) * 64));
+    return to_global((void*)(MemHit_getInstLeafAddr(memhit) * 64));
 }
 
 

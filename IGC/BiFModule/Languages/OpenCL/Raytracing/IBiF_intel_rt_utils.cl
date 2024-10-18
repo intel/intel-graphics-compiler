@@ -36,6 +36,26 @@ ulong __getBits64(ulong value, uint startBit, uint width)
     return value_aligned & mask;
 }
 
+short __getSignExtendedBits16(ushort value, uint startBit, uint width)
+{
+    uint shiftR = sizeofbits(ushort) - width;
+    uint shiftL = shiftR - startBit;
+    return ((short)value << shiftL) >> shiftR;
+}
+
+int __getSignExtendedBits32(uint value, uint startBit, uint width)
+{
+    uint shiftR = sizeofbits(uint) - width;
+    uint shiftL = shiftR - startBit;
+    return ((int)value << shiftL) >> shiftR;
+}
+
+long __getSignExtendedBits64(ulong value, uint startBit, uint width)
+{
+    uint shiftR = sizeofbits(ulong) - width;
+    uint shiftL = shiftR - startBit;
+    return ((long)value << shiftL) >> shiftR;
+}
 
 // === --------------------------------------------------------------------===
 // === Bitfield setters
