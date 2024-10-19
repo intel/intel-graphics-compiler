@@ -348,6 +348,9 @@ class GenXDepressurizer : public FGPassImplInterface,
   // loop backedge. The converse is not necessarily true.
   std::map<Instruction *, unsigned> InstNumbers;
   std::map<Value *, CallInst *> TwoAddrValueMap;
+
+  SmallDenseMap<Instruction *, unsigned> InstFenceDomain;
+
   unsigned SunkCount = 0;
 
 public:
@@ -453,6 +456,23 @@ void GenXDepressurizer::processFunction(Function *F) {
   SubroutinePressures[F] = MaxPressure;
 }
 
+static bool isSchedulerFence(Instruction *Inst) {
+  auto *CI = dyn_cast<CallInst>(Inst);
+  if (!CI)
+    return false;
+
+  if (CI->isInlineAsm())
+    return true;
+
+  auto IID = vc::getAnyIntrinsicID(CI);
+  if (IID != GenXIntrinsic::genx_fence)
+    return false;
+
+  auto FenceKind = cast<ConstantInt>(CI->getArgOperand(0))->getZExtValue();
+
+  return FenceKind & 0x80;
+}
+
 /***********************************************************************
  * orderAndNumber : order and number the instructions
  *
@@ -472,15 +492,21 @@ void GenXDepressurizer::processFunction(Function *F) {
  * number.
  */
 void GenXDepressurizer::orderAndNumber(Function *F) {
-  unsigned InstNum = 1000000000;
+  unsigned InstNum = std::numeric_limits<unsigned>::max();
+  unsigned FenceNum = InstNum;
   for (auto fi = PCFG->rbegin(), fe = PCFG->rend(); fi != fe; ++fi) {
     BasicBlock *BB = *fi;
-    auto Inst = &BB->back();
+    auto *Inst = &BB->back();
     for (;;) {
-      --InstNum;
-      if (isa<PHINode>(Inst))
+      InstNum--;
+
+      if (isSchedulerFence(Inst))
+        FenceNum--;
+
+      if (isa<PHINode>(Inst)) {
         InstNumbers[Inst] = InstNum;
-      else {
+        InstFenceDomain[Inst] = FenceNum;
+      } else {
         Bale B;
         Baling->buildBale(Inst, &B);
         auto InsertBefore = Inst;
@@ -489,6 +515,7 @@ void GenXDepressurizer::orderAndNumber(Function *F) {
         for (auto ii = B.begin(), ie = B.end(); ii != ie; ++ii) {
           Inst = ii->Inst;
           InstNumbers[Inst] = InstNum;
+          InstFenceDomain[Inst] = FenceNum;
           if (Inst == InsertBefore)
             continue;
           switch (GenXIntrinsic::getGenXIntrinsicID(Inst)) {
@@ -534,10 +561,10 @@ void GenXDepressurizer::orderAndNumber(Function *F) {
           for (auto ui = Users.begin(), ue = Users.end(); ui != ue; ++ui) {
             Instruction *User = *ui;
             if (!isa<VectorType>(User->getType())) {
-              // Skip the use that is in the bale. We are relying on the use in
-              // the bale being the only extractvalue that is scalar; the other
-              // two (for goto) or one (for join) are vector (the EM and RM
-              // values).
+              // Skip the use that is in the bale. We are relying on the use
+              // in the bale being the only extractvalue that is scalar; the
+              // other two (for goto) or one (for join) are vector (the EM and
+              // RM values).
               continue;
             }
             if (User->getParent() == GotoJoin->getParent()) {
@@ -545,6 +572,7 @@ void GenXDepressurizer::orderAndNumber(Function *F) {
               User->removeFromParent();
               User->insertBefore(InsertBefore);
               InstNumbers[User] = InstNum;
+              InstFenceDomain[User] = FenceNum;
             }
           }
         }
@@ -576,8 +604,8 @@ void GenXDepressurizer::orderAndNumber(Function *F) {
             }
           }
         }
-        // On to the previous instruction, which is now the one before the first
-        // instruction in the current bale.
+        // On to the previous instruction, which is now the one before the
+        // first instruction in the current bale.
         Inst = B.begin()->Inst;
       }
       if (Inst == &BB->front())
@@ -660,8 +688,8 @@ void GenXDepressurizer::getLiveOut(BasicBlock *BB, Liveness *Live) {
     MaxPressure = Live->getPressure();
     LLVM_DEBUG(dbgs() << "max pressure now " << MaxPressure << '\n');
   }
-  LLVM_DEBUG(dbgs() << "getLiveOut(" << BB->getName() << "): "; Live->print(dbgs());
-        dbgs() << '\n');
+  LLVM_DEBUG(dbgs() << "getLiveOut(" << BB->getName() << "): ";
+             Live->print(dbgs()); dbgs() << '\n');
   // Copy the liveness to the LiveOut entry for this BB.
   LiveOut[BB].copyFrom(Live);
 }
@@ -684,9 +712,9 @@ void GenXDepressurizer::processInstruction(Instruction *Inst) {
   Bale B;
   Baling->buildBale(Inst, &B);
   LLVM_DEBUG(dbgs() << '[' << InstNumbers[Inst] << ']';
-    if (Inst->getDebugLoc())
-      dbgs() << " {line " << Inst->getDebugLoc().getLine() << '}';
-    B.print(dbgs()));
+             if (Inst->getDebugLoc()) dbgs()
+             << " {line " << Inst->getDebugLoc().getLine() << '}';
+             B.print(dbgs()));
   unsigned OldFlagPressure = Live->getPressure(Liveness::FLAG);
   // Remove the result of the bale from liveness.
   Live->removeValue(Inst);
@@ -694,7 +722,8 @@ void GenXDepressurizer::processInstruction(Instruction *Inst) {
   if (auto CI = dyn_cast<CallInst>(Inst)) {
     if (!GenXIntrinsic::isAnyNonTrivialIntrinsic(CI)) {
       LLVM_DEBUG(dbgs() << "pressure inside subroutine: "
-                   << SubroutinePressures[CI->getCalledFunction()] << '\n');
+                        << SubroutinePressures[CI->getCalledFunction()]
+                        << '\n');
       unsigned AddedPressure =
           Live->getPressure() + SubroutinePressures[CI->getCalledFunction()];
       if (MaxPressure < AddedPressure) {
@@ -782,10 +811,11 @@ void GenXDepressurizer::attemptSinking(Instruction *InsertBefore,
                                        std::set<Value *> *Exclude,
                                        Liveness::Category Cat,
                                        bool AllowClone) {
-  LLVM_DEBUG(dbgs() << "attemptSinking(Cat=" << (Cat == Liveness::FLAG ? "flag" :
-                                            Cat == Liveness::ADDR ? "addr" :
-                                                                    "general")
-               << ", AllowClone=" << AllowClone << ")\n");
+  LLVM_DEBUG(dbgs() << "attemptSinking(Cat="
+                    << (Cat == Liveness::FLAG   ? "flag"
+                        : Cat == Liveness::ADDR ? "addr"
+                                                : "general")
+                    << ", AllowClone=" << AllowClone << ")\n");
   if (!InsertBefore)
     return;
   // Gather the currently live superbales with a sink benefit.
@@ -794,6 +824,7 @@ void GenXDepressurizer::attemptSinking(Instruction *InsertBefore,
   SmallVector<SinkCandidate, 8> SecondRound;
   std::map<Instruction *, Superbale> Superbales;
   unsigned CurNumber = InstNumbers[InsertBefore];
+  unsigned FenceDomain = InstFenceDomain[InsertBefore];
   int Headroom = 0;
   switch (Cat) {
   case Liveness::FLAG:
@@ -859,6 +890,16 @@ void GenXDepressurizer::attemptSinking(Instruction *InsertBefore,
     IGC_ASSERT(SB->Bales.empty());
     if (!fillSuperbale(SB, Inst, IsFlag))
       continue;
+
+    // The compiler shouldn't sink instructions through a software fence. When
+    // a user puts a fence into the code, the compiler assumes that the user has
+    // a reason to do so. The compiler should respect the user's intention.
+    if (FenceDomain != InstFenceDomain[SB->getHead()]) {
+      LLVM_DEBUG(
+          dbgs() << "could not sink/clone as it will cross the fence!\n");
+      continue;
+    }
+
     // Check whether the sink of this SB will cross its operands' two-addr
     // instructions, i.e.
     //
@@ -872,8 +913,8 @@ void GenXDepressurizer::attemptSinking(Instruction *InsertBefore,
     // overlapping between v0 and v1; otherwise, additional copy of v0 has to
     // be inserted. That won't alleviate the register pressure.
     bool CrossTwoAddr = false;
-    for (auto OI = SB->Operands.begin(),
-              OE = SB->Operands.end(); OI != OE; ++OI) {
+    for (auto OI = SB->Operands.begin(), OE = SB->Operands.end(); OI != OE;
+         ++OI) {
       Value *Opnd = *OI;
       if (!TwoAddrValueMap.count(Opnd))
         continue;
@@ -886,8 +927,9 @@ void GenXDepressurizer::attemptSinking(Instruction *InsertBefore,
       // Skip sinking/cloning if the current sinking point is beyond where the
       // two-addr instruction overwriting the same register.
       if (CurNumber > TwoAddrNum) {
-        LLVM_DEBUG(dbgs() << "could not sink/clone as it will cross the two-addr "
-                     << "instruction sharing the same operand!");
+        LLVM_DEBUG(
+            dbgs() << "could not sink/clone as it will cross the two-addr "
+                   << "instruction sharing the same operand!");
         CrossTwoAddr = true;
         break;
       }
@@ -897,9 +939,9 @@ void GenXDepressurizer::attemptSinking(Instruction *InsertBefore,
     // Add the candidate.
     int Benefit = getSinkBenefit(SB, Cat, Headroom);
     LLVM_DEBUG(dbgs() << "candidate " << SB->getHead()->getName()
-                 << " with benefit " << Benefit
-                 << " and AllUsesDominatedByHere " << AllUsesDominatedByHere
-                 << '\n');
+                      << " with benefit " << Benefit
+                      << " and AllUsesDominatedByHere "
+                      << AllUsesDominatedByHere << '\n');
     if (Benefit > 0)
       Candidates.push_back(SinkCandidate(SB, Benefit, AllUsesDominatedByHere));
     else if (AllUsesDominatedByHere)
@@ -1026,13 +1068,13 @@ void GenXDepressurizer::fillTwoAddrValueMap(BasicBlock *BB) {
   // Build two-addr operand -> instruction map for checking against two-addr
   // instructions.
   for (auto I = BB->rbegin(), E = BB->rend(); I != E; ++I) {
-      auto CI = dyn_cast<CallInst>(&*I);
-      if (!CI)
-        continue;
-      auto OpndNum = getTwoAddressOperandNum(CI);
-      if (!OpndNum)
-        continue;
-      TwoAddrValueMap[I->getOperand(*OpndNum)] = CI;
+    auto CI = dyn_cast<CallInst>(&*I);
+    if (!CI)
+      continue;
+    auto OpndNum = getTwoAddressOperandNum(CI);
+    if (!OpndNum)
+      continue;
+    TwoAddrValueMap[I->getOperand(*OpndNum)] = CI;
   }
 }
 
@@ -1059,13 +1101,14 @@ bool GenXDepressurizer::sink(Instruction *InsertBefore, Superbale *SB,
     Use *U = &*ui;
     Instruction *user = cast<Instruction>(U->getUser());
     LLVM_DEBUG(dbgs() << " used in [" << InstNumbers[user] << "] "
-                 << user->getName() << '\n');
+                      << user->getName() << '\n');
     unsigned UserNumber = InstNumbers[user];
     if (UserNumber < CurNumber) {
       // Skip this user if cloning is allowed.
       if (AllowClone)
         continue;
-      LLVM_DEBUG(dbgs() << "  rejecting: less than CurNumber " << CurNumber << '\n');
+      LLVM_DEBUG(dbgs() << "  rejecting: less than CurNumber " << CurNumber
+                        << '\n');
       // This code was originally designed to cope with some uses not being
       // dominated by the sink site by cloning the superbale. But this gives an
       // assertion test on frc_iteration6_4x8_ipa. So I am disabling the cloning
@@ -1112,11 +1155,10 @@ bool GenXDepressurizer::sink(Instruction *InsertBefore, Superbale *SB,
 bool GenXDepressurizer::sinkOnce(Instruction *InsertBefore, Superbale *SB,
                                  ArrayRef<Use *> Uses) {
   LLVM_DEBUG(dbgs() << "sinkOnce with uses:";
-    for (auto i = Uses.begin(), e = Uses.end(); i != e; ++i)
-      dbgs() << " ["
-          << InstNumbers[cast<Instruction>((*i)->getUser())]
-          << ']' << (*i)->getUser()->getName();
-    dbgs() << '\n');
+             for (auto i = Uses.begin(), e = Uses.end(); i != e; ++i) dbgs()
+             << " [" << InstNumbers[cast<Instruction>((*i)->getUser())] << ']'
+             << (*i)->getUser()->getName();
+             dbgs() << '\n');
 
   for (auto *I : SB->Bales) {
     Bale B;
@@ -1192,7 +1234,7 @@ bool GenXDepressurizer::sinkOnce(Instruction *InsertBefore, Superbale *SB,
 
   if (Changed)
     LLVM_DEBUG(dbgs() << "Sunk/cloned superbale head is " << Changed->getName()
-               << '\n');
+                      << '\n');
   else
     LLVM_DEBUG(dbgs() << "Warning: Changed is nullptr\n");
 
@@ -1224,7 +1266,8 @@ int GenXDepressurizer::getSuperbaleKillSize(Superbale *SB) {
   int sum = 0;
   for (auto i = SB->Bales.rbegin(), e = SB->Bales.rend(); i != e; ++i) {
     if (GenXIntrinsic::isWrRegion(*i))
-      sum += Liveness::getValueSize((*i)->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum));
+      sum += Liveness::getValueSize(
+          (*i)->getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum));
     else
       sum += Liveness::getValueSize(*i);
   }
@@ -1308,11 +1351,12 @@ bool GenXDepressurizer::fillSuperbale(Superbale *SB, Instruction *Inst,
   for (auto bi = B.rbegin(), be = B.rend(); bi != be; ++bi) {
     BaleInst *BI = &*bi;
     if (BI->Inst->mayHaveSideEffects() || BI->Inst->mayReadOrWriteMemory())
-      return false; // not safe to sink
+      return false;       // not safe to sink
     if (OnlyRdWrRegion && // Only chk the following conds if still required.
-        !GenXIntrinsic::isWrRegion(BI->Inst) && !GenXIntrinsic::isRdRegion(BI->Inst) &&
-        !isa<BitCastInst>(BI->Inst) &&
-        GenXIntrinsic::getGenXIntrinsicID(BI->Inst) != GenXIntrinsic::genx_add_addr)
+        !GenXIntrinsic::isWrRegion(BI->Inst) &&
+        !GenXIntrinsic::isRdRegion(BI->Inst) && !isa<BitCastInst>(BI->Inst) &&
+        GenXIntrinsic::getGenXIntrinsicID(BI->Inst) !=
+            GenXIntrinsic::genx_add_addr)
       OnlyRdWrRegion = false;
     for (unsigned oi = 0, oe = BI->Inst->getNumOperands(); oi != oe; ++oi) {
       if (BI->Info.isOperandBaled(oi))
@@ -1509,8 +1553,9 @@ void Liveness::print(raw_ostream &OS) {
      << ",flagpressure=" << Pressures[FLAG] << ",pressure=" << Pressure << ']';
   for (int Cat = NUMCATS; Cat-- > 0; /*EMPTY*/) {
     if (!Values[Cat].empty()) {
-      const char *CatName = (Cat == FLAG ? "flag." :
-                             Cat == ADDR ? "addr." : "");
+      const char *CatName = (Cat == FLAG   ? "flag."
+                             : Cat == ADDR ? "addr."
+                                           : "");
       OS << ' ' << CatName << "live:";
       for (auto i = begin(Cat), e = end(Cat); i != e; ++i)
         OS << ' ' << (*i)->getName();
@@ -1584,7 +1629,8 @@ void PseudoCFG::compute(Function *F, DominatorTree *DT,
     BasicBlock *BB = Backedges[i];
     auto BBNode = getNode(BB);
     IGC_ASSERT_MESSAGE(BBNode->Succs.size() == 1,
-      "expecting backedge to have one successor as we have split critical edges");
+                       "expecting backedge to have one successor as we have "
+                       "split critical edges");
     BasicBlock *Header = BBNode->Succs[0];
     BBNode->LoopHeader = Header;
     BBNode->Succs.clear(); // This removes Header as BB's only successor.
@@ -1637,14 +1683,15 @@ void PseudoCFG::compute(Function *F, DominatorTree *DT,
     // For each successor, decrement the pending count. If it becomes 0, the
     // successor becomes ready.
     auto BBNode = getNode(BB);
-    for (auto si = BBNode->succ_begin(), se = BBNode->succ_end();
-         si != se; ++si) {
+    for (auto si = BBNode->succ_begin(), se = BBNode->succ_end(); si != se;
+         ++si) {
       BasicBlock *Succ = *si;
       auto PendingEntry = &Pending[Succ];
       if (!*PendingEntry) {
         // New entry in the pending map. Count the predecessors.
         for (auto pi = getNode(Succ)->pred_begin(),
-                  pe = getNode(Succ)->pred_end(); pi != pe; ++pi)
+                  pe = getNode(Succ)->pred_end();
+             pi != pe; ++pi)
           ++*PendingEntry;
       }
       if (--*PendingEntry)
