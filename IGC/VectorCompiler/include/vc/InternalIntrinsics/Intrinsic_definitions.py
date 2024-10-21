@@ -22,8 +22,9 @@
 #FloatingPointTypes = ["half", "float", "double"]
 #IntegerTypes = ["bool", "char", "short", "int", "long"]
 #AdditionalTypes = ["vararg"]
-#IntrinsicsProperties = ["None", "NoMem", "ReadArgMem", "ReadMem", "ReadWriteArgMem", "NoReturn", "NoDuplicate", "Convergent"]
-#IntrinsicsProperties may be specified as a comma separated list(e.g., "Convergent,NoMem")
+#AttributeEntries = ["None", "NoReturn", "NoDuplicate", "Convergent", "SideEffects"]
+#FIXME: It should be possible to specify multiple attribute entries as a comma separated list
+#       (e.g., "Convergent,NoDuplicate")
 #
 # EX. "blah": {"result" : {return_type}, "arguments" : [arg1_type, arg2_type.....], "attributes" : Property }
 #
@@ -48,7 +49,9 @@ Imported_Intrinsics = {
 ##
     "jump_table" : { "result" : "anyptr",
                      "arguments" :  ["anyint", "vararg"],
-                     "attributes" :  "NoMem" },
+                     "attributes":  "None",
+                     "memory_effects":
+                         { "access": "NoModRef" } },
 
 ## ``llvm.vc.internal.read.variable.region`` : read a vISA variable region
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -69,7 +72,9 @@ Imported_Intrinsics = {
     "read_variable_region" : { "result": "any",
                                "arguments" : ["anyptr", "int", "int", "int",
                                               "int"],
-                               "attributes" : "ReadMem", },
+                               "attributes" : "None",
+                               "memory_effects":
+                                   { "access": "Ref" }, },
 
 ## ``llvm.vc.internal.write.variable.region`` : write a vISA variable region
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -88,7 +93,9 @@ Imported_Intrinsics = {
     "write_variable_region" : { "result": "void",
                                 "arguments" : ["anyptr", "any", "int",
                                                "int", "anyint"],
-                                "attributes" : "WriteMem", },
+                                "attributes" : "None",
+                                "memory_effects":
+                                    { "access": "Mod" }, },
 
 ## ``llvm.vc.internal.cast.to.ptr.explicit`` : convert ptr_generic to
 ## private/local/global ptr.
@@ -102,7 +109,9 @@ Imported_Intrinsics = {
 ##  private/local/global ptr. If the cast fails the intrisic returns null pointer.
     "cast_to_ptr_explicit" : { "result": "anyptr",
                                "arguments": ["ptr_generic"],
-                               "attributes": "NoMem", },
+                               "attributes": "None",
+                               "memory_effects":
+                                   { "access": "NoModRef" }, },
 
 ### --------------
 ### ALU intrinsics
@@ -118,7 +127,9 @@ Imported_Intrinsics = {
 ## This intrinsic represents float -> bfloat16 conversion operation
     "cast_to_bf16" : { "result": "anyint",
                        "arguments": ["anyfloat"],
-                       "attributes": "NoMem", },
+                       "attributes": "None",
+                       "memory_effects":
+                           { "access": "NoModRef" }, },
 ## ``llvm.vc.internal.cast.from.bf16`` : convert bfloat16 into float
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ##
@@ -129,7 +140,9 @@ Imported_Intrinsics = {
 ## This intrinsic represents float -> bfloat16 conversion operation
     "cast_from_bf16" : { "result": "anyfloat",
                          "arguments": ["anyint"],
-                         "attributes": "NoMem", },
+                         "attributes": "None",
+                         "memory_effects":
+                             { "access": "NoModRef" }, },
 
 ## ``llvm.vc.internal.round.to.tf32`` : round float into tfloat32
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -141,7 +154,9 @@ Imported_Intrinsics = {
 ## This intrinsic represents float -> tfloat32 conversion operation
     "round_to_tf32" : { "result": "anyfloat",
                         "arguments": ["anyint"],
-                        "attributes": "NoMem", },
+                        "attributes": "None",
+                        "memory_effects":
+                            { "access": "NoModRef" }, },
 
 ## ``llvm.vc.internal.stochastic.round.to.f16`` : half stochastic rounding operation
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -154,7 +169,9 @@ Imported_Intrinsics = {
 ## This intrinsic represents float -> half stochastic rounding operation
     "stochastic_round_to_f16" : { "result": "anyfloat",
                                   "arguments": ["anyfloat", "anyint"],
-                                  "attributes": "NoMem", },
+                                  "attributes": "None",
+                                  "memory_effects":
+                                      { "access": "NoModRef" }, },
 
 ## ``llvm.vc.internal.atomic.`` : intrinsics to represent SPIR-V atomic instructions
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -189,7 +206,9 @@ Imported_Intrinsics = {
     "rsqrtm": { "result": ["anyfloat", "anyint"],
                 "arguments": [0],
                 "target" : ["hasIEEEDivSqrt"],
-                "attributes": "NoMem", },
+                "attributes": "None",
+                "memory_effects":
+                    { "access": "NoModRef" }, },
 
 ## ``llvm.vc.internal.invm`` : compute component-wise divide
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -205,7 +224,9 @@ Imported_Intrinsics = {
     "invm": { "result": ["anyfloat", "anyint"],
               "arguments": [0, 0],
               "target" : ["hasIEEEDivSqrt"],
-              "attributes": "NoMem", },
+              "attributes": "None",
+              "memory_effects":
+                  { "access": "NoModRef" }, },
 
 
 ### ---------------------------
@@ -344,7 +365,9 @@ Imported_Intrinsics = {
                       "target" : [
                           "hasLSCMessages",
                       ],
-                      "attributes": "ReadMem", },
+                      "attributes": "None",
+                      "memory_effects":
+                          { "access": "Ref" }, },
     "lsc_load_bss": { "result": "anyvector",
                       "arguments": [
                           "anyint", # vNxi1, predicate
@@ -361,7 +384,9 @@ Imported_Intrinsics = {
                       "target" : [
                           "hasLSCMessages",
                       ],
-                      "attributes": "ReadMem", },
+                      "attributes": "None",
+                      "memory_effects":
+                          { "access": "Ref" }, },
     "lsc_load_slm": { "result": "anyvector",
                       "arguments": [
                           "anyint", # vNxi1, predicate
@@ -378,7 +403,9 @@ Imported_Intrinsics = {
                       "target" : [
                           "hasLSCMessages",
                       ],
-                      "attributes": "ReadMem", },
+                      "attributes": "None",
+                      "memory_effects":
+                          { "access": "Ref" }, },
     "lsc_load_ugm": { "result": "anyvector",
                       "arguments": [
                           "anyint", # vNxi1, predicate
@@ -395,7 +422,9 @@ Imported_Intrinsics = {
                       "target" : [
                           "hasLSCMessages",
                       ],
-                      "attributes": "ReadMem", },
+                      "attributes": "None",
+                      "memory_effects":
+                          { "access": "Ref" }, },
 
     "lsc_load_quad_bti": { "result": "anyvector",
                            "arguments": [
@@ -413,7 +442,9 @@ Imported_Intrinsics = {
                            "target" : [
                                "hasLSCMessages",
                            ],
-                           "attributes": "ReadMem", },
+                           "attributes": "None",
+                           "memory_effects":
+                               { "access": "Ref" }, },
     "lsc_load_quad_bss": { "result": "anyvector",
                            "arguments": [
                                "anyint", # vNxi1, predicate
@@ -430,7 +461,9 @@ Imported_Intrinsics = {
                            "target" : [
                                "hasLSCMessages",
                            ],
-                           "attributes": "ReadMem", },
+                           "attributes": "None",
+                           "memory_effects":
+                               { "access": "Ref" }, },
     "lsc_load_quad_slm": { "result": "anyvector",
                            "arguments": [
                                "anyint", # vNxi1, predicate
@@ -447,7 +480,9 @@ Imported_Intrinsics = {
                            "target" : [
                                "hasLSCMessages",
                            ],
-                           "attributes": "ReadMem", },
+                           "attributes": "None",
+                           "memory_effects":
+                               { "access": "Ref" }, },
     "lsc_load_quad_ugm": { "result": "anyvector",
                            "arguments": [
                                "anyint", # vNxi1, predicate
@@ -464,7 +499,9 @@ Imported_Intrinsics = {
                            "target" : [
                                "hasLSCMessages",
                            ],
-                           "attributes": "ReadMem", },
+                           "attributes": "None",
+                           "memory_effects":
+                               { "access": "Ref" }, },
 
 ## ``llvm.vc.internal.lsc.prefetch.*`` : LSC prefetch intrinsics
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -615,7 +652,9 @@ Imported_Intrinsics = {
                        "target" : [
                            "hasLSCMessages",
                        ],
-                       "attributes": "WriteMem", },
+                       "attributes": "None",
+                       "memory_effects":
+                           { "access": "Mod" }, },
     "lsc_store_bss": { "result": "void",
                        "arguments": [
                            "anyint", # vNxi1, predicate
@@ -632,7 +671,9 @@ Imported_Intrinsics = {
                        "target" : [
                            "hasLSCMessages",
                        ],
-                       "attributes": "WriteMem", },
+                       "attributes": "None",
+                       "memory_effects":
+                           { "access": "Mod" }, },
     "lsc_store_slm": { "result": "void",
                        "arguments": [
                            "anyint", # vNxi1, predicate
@@ -649,7 +690,9 @@ Imported_Intrinsics = {
                        "target" : [
                            "hasLSCMessages",
                        ],
-                       "attributes": "WriteMem", },
+                       "attributes": "None",
+                       "memory_effects":
+                           { "access": "Mod" }, },
     "lsc_store_ugm": { "result": "void",
                        "arguments": [
                            "anyint", # vNxi1, predicate
@@ -666,7 +709,9 @@ Imported_Intrinsics = {
                        "target" : [
                            "hasLSCMessages",
                        ],
-                       "attributes": "WriteMem", },
+                       "attributes": "None",
+                       "memory_effects":
+                           { "access": "Mod" }, },
 
     "lsc_store_quad_bti": { "result": "void",
                             "arguments": [
@@ -684,7 +729,9 @@ Imported_Intrinsics = {
                             "target" : [
                                 "hasLSCMessages",
                             ],
-                            "attributes": "WriteMem", },
+                            "attributes": "None",
+                            "memory_effects":
+                                { "access": "Mod" }, },
     "lsc_store_quad_bss": { "result": "void",
                             "arguments": [
                                 "anyint", # vNxi1, predicate
@@ -701,7 +748,9 @@ Imported_Intrinsics = {
                             "target" : [
                                 "hasLSCMessages",
                             ],
-                            "attributes": "WriteMem", },
+                            "attributes": "None",
+                            "memory_effects":
+                                { "access": "Mod" }, },
     "lsc_store_quad_slm": { "result": "void",
                             "arguments": [
                                 "anyint", # vNxi1, predicate
@@ -718,7 +767,9 @@ Imported_Intrinsics = {
                             "target" : [
                                 "hasLSCMessages",
                             ],
-                            "attributes": "WriteMem", },
+                            "attributes": "None",
+                            "memory_effects":
+                                { "access": "Mod" }, },
     "lsc_store_quad_ugm": { "result": "void",
                             "arguments": [
                                 "anyint", # vNxi1, predicate
@@ -735,7 +786,9 @@ Imported_Intrinsics = {
                             "target" : [
                                 "hasLSCMessages",
                             ],
-                            "attributes": "WriteMem", },
+                            "attributes": "None",
+                            "memory_effects":
+                                { "access": "Mod" }, },
 
 ## ``llvm.vc.internal.lsc.*.block.2d.ugm.*`` : LSC untyped 2d block intrinsics
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -780,7 +833,9 @@ Imported_Intrinsics = {
                                "target" : [
                                    "hasLSCMessages",
                                ],
-                               "attributes": "ReadMem", },
+                               "attributes": "None",
+                               "memory_effects":
+                                   { "access": "Ref" }, },
     "lsc_load_block_2d_ugm_transposed": { "result": "anyvector",
                                           "arguments": [
                                               "bool",   # i1, predicate
@@ -802,7 +857,9 @@ Imported_Intrinsics = {
                                           "target" : [
                                               "hasLSCMessages",
                                           ],
-                                          "attributes": "ReadMem", },
+                                          "attributes": "None",
+                                          "memory_effects":
+                                              { "access": "Ref" }, },
     "lsc_load_block_2d_ugm_vnni": { "result": "anyvector",
                                     "arguments": [
                                         "bool",   # i1, predicate
@@ -824,7 +881,9 @@ Imported_Intrinsics = {
                                     "target" : [
                                        "hasLSCMessages",
                                     ],
-                                    "attributes": "ReadMem", },
+                                    "attributes": "None",
+                                    "memory_effects":
+                                        { "access": "Ref" }, },
     "lsc_prefetch_block_2d_ugm": { "result": "void",
                                    "arguments": [
                                        "bool",   # i1, predicate
@@ -867,7 +926,9 @@ Imported_Intrinsics = {
                                 "target" : [
                                     "hasLSCMessages",
                                 ],
-                                "attributes": "WriteMem", },
+                                "attributes": "None",
+                                "memory_effects":
+                                    { "access": "Mod" }, },
 
 ## ``llvm.vc.internal.lsc.*.2d.ugm.desc.*`` : 2d block load/store/prefetch instructions
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -914,7 +975,9 @@ Imported_Intrinsics = {
                                 "target" : [
                                    "hasLSCMessages",
                                 ],
-                                "attributes" : "ReadMem", },
+                                "attributes" : "None",
+                                "memory_effects":
+                                    { "access": "Ref" }, },
     "lsc_load_2d_ugm_desc_transpose" : { "result" : "anyvector",
                                          "arguments" : [
                                              "bool",      # i1, predicate
@@ -930,7 +993,9 @@ Imported_Intrinsics = {
                                           "target" : [
                                              "hasLSCMessages",
                                           ],
-                                          "attributes" : "ReadMem", },
+                                          "attributes" : "None",
+                                          "memory_effects":
+                                              { "access": "Ref" }, },
     "lsc_load_2d_ugm_desc_vnni" : { "result" : "anyvector",
                                     "arguments" : [
                                         "bool",      # i1, predicate
@@ -946,7 +1011,9 @@ Imported_Intrinsics = {
                                      "target" : [
                                          "hasLSCMessages",
                                      ],
-                                     "attributes" : "ReadMem", },
+                                     "attributes" : "None",
+                                     "memory_effects":
+                                         { "access": "Ref" }, },
     "lsc_prefetch_2d_ugm_desc" : { "result" : "void",
                                    "arguments" : [
                                        "bool",      # i1, predicate
@@ -978,7 +1045,9 @@ Imported_Intrinsics = {
                                  "target" : [
                                      "hasLSCMessages",
                                  ],
-                                 "attributes" : "WriteMem", },
+                                 "attributes" : "None",
+                                 "memory_effects":
+                                     { "access": "Mod" }, },
 
 ## ``llvm.vc.internal.lsc.*2d.typed.bti.*`` : LSC typed 2d block BTI intrinsics
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1005,7 +1074,9 @@ Imported_Intrinsics = {
                                   "hasLSCMessages",
                                   "hasLSCTypedMessages",
                               ],
-                              "attributes" : "ReadMem", },
+                              "attributes" : "None",
+                              "memory_effects":
+                                  { "access": "Ref" }, },
     "lsc_store_2d_tgm_bti" : { "result" : "void",
                                "arguments" : [
                                   "anyvector", # cache controls
@@ -1020,7 +1091,9 @@ Imported_Intrinsics = {
                                    "hasLSCMessages",
                                    "hasLSCTypedMessages",
                                ],
-                               "attributes" : "WriteMem", },
+                               "attributes" : "None",
+                               "memory_effects":
+                                   { "access": "Mod" }, },
 
 ## ``llvm.vc.internal.lsc.*2d.typed.bss.*`` : LSC typed 2d block bindless intrinsics
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1047,7 +1120,9 @@ Imported_Intrinsics = {
                                   "hasLSCMessages",
                                   "hasLSCTypedMessages",
                               ],
-                              "attributes" : "ReadMem", },
+                              "attributes" : "None",
+                              "memory_effects":
+                                  { "access": "Ref" }, },
     "lsc_store_2d_tgm_bss" : { "result" : "void",
                                "arguments" : [
                                   "anyvector", # cache controls
@@ -1062,7 +1137,9 @@ Imported_Intrinsics = {
                                    "hasLSCMessages",
                                    "hasLSCTypedMessages",
                                ],
-                               "attributes" : "WriteMem", },
+                               "attributes" : "None",
+                               "memory_effects":
+                                   { "access": "Mod" }, },
 
 
 
@@ -1097,7 +1174,9 @@ Imported_Intrinsics = {
                                "hasLSCMessages",
                                "hasLSCTypedMessages",
                            ],
-                           "attributes": "ReadMem", },
+                           "attributes": "None",
+                           "memory_effects":
+                               { "access": "Ref" }, },
     "lsc_store_quad_tgm": { "result": "void",
                             "arguments": [
                                 "anyint",    # vNxi1, predicate
@@ -1114,7 +1193,9 @@ Imported_Intrinsics = {
                                 "hasLSCMessages",
                                 "hasLSCTypedMessages",
                             ],
-                            "attributes": "WriteMem", },
+                            "attributes": "None",
+                            "memory_effects":
+                                { "access": "Mod" }, },
     "lsc_prefetch_quad_tgm": { "result": "void",
                                "arguments": [
                                    "anyint",    # vNxi1, predicate
@@ -1163,7 +1244,9 @@ Imported_Intrinsics = {
                                    "hasLSCMessages",
                                    "hasLSCTypedMessages",
                                ],
-                               "attributes": "ReadMem", },
+                               "attributes": "None",
+                               "memory_effects":
+                                   { "access": "Ref" }, },
     "lsc_store_quad_tgm_bss": { "result": "void",
                                 "arguments": [
                                     "anyint",    # vNxi1, predicate
@@ -1180,7 +1263,9 @@ Imported_Intrinsics = {
                                     "hasLSCMessages",
                                     "hasLSCTypedMessages",
                                 ],
-                                "attributes": "WriteMem", },
+                                "attributes": "None",
+                                "memory_effects":
+                                    { "access": "Mod" }, },
     "lsc_prefetch_quad_tgm_bss": { "result": "void",
                                    "arguments": [
                                        "anyint",    # vNxi1, predicate
@@ -1231,7 +1316,9 @@ Imported_Intrinsics = {
                            "target" : [
                                "hasSampler",
                            ],
-                           "attributes" : "ReadMem", },
+                           "attributes" : "None",
+                           "memory_effects":
+                               { "access": "Ref" }, },
 
 ## ``llvm.vc.internal.sampler.load.predef.surface.*`` : Sampler load predefined surface intrinsic
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1262,7 +1349,9 @@ Imported_Intrinsics = {
                                       "target" : [
                                           "hasSampler",
                                       ],
-                                      "attributes" : "ReadMem", },
+                                      "attributes" : "None",
+                                      "memory_effects":
+                                          { "access": "Ref" }, },
 
 ## ``llvm.vc.internal.sample.bti.*`` : Sampler load intrinsic
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1294,7 +1383,9 @@ Imported_Intrinsics = {
                      "target" : [
                          "hasSampler",
                      ],
-                     "attributes" : "ReadMem", },
+                     "attributes" : "None",
+                     "memory_effects":
+                         { "access": "Ref" }, },
 
 ## ``llvm.vc.internal.sample.predef.surface.*`` : Sampler load predefined surface intrinsic
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1326,8 +1417,9 @@ Imported_Intrinsics = {
                                 "target" : [
                                     "hasSampler",
                                 ],
-                                "attributes" : "ReadMem", },
-
+                                "attributes" : "None",
+                                "memory_effects":
+                                    { "access": "Ref" }, },
 
 
 ### --------------------
@@ -1342,7 +1434,9 @@ Imported_Intrinsics = {
 ##
     "sync_buffer" : { "result" : "long",
                       "arguments": [],
-                      "attributes": "ReadMem", },
+                      "attributes": "None",
+                      "memory_effects":
+                          { "access": "Ref" }, },
 
 ## ``llvm.vc.internal.logical.thread.id`` : logical global thread ID
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1351,7 +1445,9 @@ Imported_Intrinsics = {
 ##
     "logical_thread_id" : { "result": "int",
                             "arguments": [],
-                            "attributes": "NoMem", },
+                            "attributes": "None",
+                            "memory_effects":
+                                { "access": "NoModRef" }, },
 
 ### ---------------------------
 ### Print and assert intrinsics
@@ -1365,7 +1461,9 @@ Imported_Intrinsics = {
 ##
     "assert_buffer" : { "result" : "long",
                         "arguments" : [],
-                        "attributes" : "ReadMem", },
+                        "attributes" : "None",
+                        "memory_effects":
+                            { "access": "Ref" }, },
 
 ## ``llvm.vc.internal.print.buffer`` : read stateless pointer to print buffer
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1375,7 +1473,9 @@ Imported_Intrinsics = {
 ##
     "print_buffer" : { "result" : "long",
                        "arguments" : [],
-                       "attributes" : "ReadMem", },
+                       "attributes" : "None",
+                       "memory_effects":
+                           { "access": "Ref" }, },
 
 ## ``llvm.vc.internal.print.format.index`` : add printf format string to collection
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1387,7 +1487,9 @@ Imported_Intrinsics = {
 ##
     "print_format_index" : { "result" : "int",
                              "arguments" : ["anyptr"],
-                             "attributes" : "NoMem", },
+                             "attributes": "None",
+                             "memory_effects":
+                                 { "access": "NoModRef" }, },
 
 ## ``llvm.vc.internal.media.ld.predef.surface.*`` : legacy media load predefined surface
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1414,8 +1516,9 @@ Imported_Intrinsics = {
                                  "target" : [
                                      "!noLegacyDataport"
                                  ],
-                                 "attributes" : "ReadMem" },
-
+                                 "attributes" : "None",
+                                 "memory_effects":
+                                     { "access": "Ref" }, },
 ## ``llvm.vc.internal.media.st.predef.surface.*`` : legacy media store predefined surface
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ##
@@ -1441,8 +1544,9 @@ Imported_Intrinsics = {
                                   "target" : [
                                      "!noLegacyDataport"
                                   ],
-                                  "attributes" : "WriteMem" },
-
+                                  "attributes" : "None",
+                                  "memory_effects":
+                                      { "access": "Mod" }, },
 
 ## ``llvm.vc.internal.typed.atomic.*.predef.surface.*`` : legacy atomic typed predefined surface
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1708,8 +1812,9 @@ Imported_Intrinsics = {
                                         "target" : [
                                             "!noLegacyDataport"
                                         ],
-                                        "attributes" : "ReadMem" },
-
+                                        "attributes" : "None",
+                                        "memory_effects":
+                                            { "access": "Ref" }, },
 ## ``llvm.vc.internal.scatter4.typed.predef.surface.*`` : legacy cmask typed store predefined surface
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ##
@@ -1734,7 +1839,9 @@ Imported_Intrinsics = {
                                         "target" : [
                                             "!noLegacyDataport"
                                         ],
-                                        "attributes" : "WriteMem" },
+                                        "attributes" : "None",
+                                        "memory_effects":
+                                            { "access": "Mod" }, },
 
 ## ``llvm.vc.internal.write.predef.sampler`` : write predefined sampler variable
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1753,6 +1860,8 @@ Imported_Intrinsics = {
                                 "target" : [
                                     "hasSampler",
                                 ],
-                                "attributes" : "WriteMem" },
+                                "attributes" : "None",
+                                "memory_effects":
+                                    { "access": "Mod" }, },
 
 }

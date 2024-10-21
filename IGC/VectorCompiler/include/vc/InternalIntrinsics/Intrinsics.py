@@ -62,17 +62,14 @@ any_map = \
 
 vararg_val = "<29>"
 
+# FIXME: Once multiple attribute entries per intrinsic are supported within
+# 'createAttributeTable()', drop this translation table as well as the caller function,
+# turning to explicit specification of "NoUnwind" in the intrinsic definitions.
 attribute_map = {
     "None":                set(["NoUnwind"]),
-    "NoMem":               set(["NoUnwind","ReadNone"]),
-    "ReadMem":             set(["NoUnwind","ReadOnly"]),
-    "ReadArgMem":          set(["NoUnwind","ReadOnly","ArgMemOnly"]),
-    "ReadWriteArgMem":     set(["NoUnwind","ArgMemOnly"]),
     "NoReturn":            set(["NoUnwind","NoReturn"]),
     "NoDuplicate":         set(["NoUnwind","NoDuplicate"]),
     "Convergent":          set(["NoUnwind","Convergent"]),
-    "InaccessibleMemOnly": set(["NoUnwind","InaccessibleMemOnly"]),
-    "WriteMem":            set(["NoUnwind","WriteOnly"]),
     "SideEffects":         set(["NoUnwind"]),
 }
 
@@ -371,6 +368,11 @@ def createTypeTable():
 
 def createAttributeTable():
     f = open(outputFile,"a")
+    # FIXME: Re-implement without the restriction on the number of explicit attrkind
+    # specifications per intrinsic. Nothing blocks us from creating an in-scope 'static'
+    # map of ArrayRef<AttrKind> per intrinsic ID. AttrBuilder / AttributeList classes
+    # provide enough capabilities for convenient LLVMContext-ualization of that array,
+    # and subsequent addition of memory attribute(s).
     f.write("// Add parameter attributes that are not common to all intrinsics.\n"
             "#ifdef GET_INTRINSIC_ATTRIBUTES\n"
             "AttributeList InternalIntrinsic::getAttributes(LLVMContext &C, InternalIntrinsic::ID id) {\n"
@@ -389,14 +391,34 @@ def createAttributeTable():
             attribute_Array.append(intrinsic_attribute)
     f.write("  };\n\n")
 
+    f.write("  using MemoryEffectsTy = IGCLLVM::MemoryEffects;\n"
+            "  static const MemoryEffectsTy MemoryFXPerIntrinsicMap[] = {\n")
+    # Iterate over intrinsic definitions
+    for i in range(len(ID_array)):
+        memory_effects_entry = Intrinsics[ID_array[i]].get('memory_effects')
+        if not memory_effects_entry:
+            memory_effects_def = "MemoryEffectsTy::unknown()"
+        else:
+            # TODO: Extend the code for LLVM 16+ support of multiple access-per-location entries
+            memory_effects_def = "MemoryEffectsTy("
+            memory_location = memory_effects_entry.get('location')
+            memory_access = memory_effects_entry.get('access')
+            if memory_location:
+                memory_effects_def += "IGCLLVM::ExclusiveIRMemLoc::{loc}".format(loc=memory_location)
+                if memory_access:
+                    memory_effects_def += ", "
+            if memory_access:
+                memory_effects_def += "IGCLLVM::ModRefInfo::{acc})".format(acc=memory_access)
+        f.write("    " + memory_effects_def + ", // llvm.vc.internal." + ID_array[i].replace("_",".") + "\n")
+    f.write("  };\n\n")
+
     f.write("  unsigned AttrIdx = id - 1 - InternalIntrinsic::not_internal_intrinsic;\n"
             "  #ifndef NDEBUG\n"
             "  const size_t AttrMapNum = sizeof(IntrinsicsToAttributesMap)/sizeof(IntrinsicsToAttributesMap[0]);\n"
             "  IGC_ASSERT(AttrIdx < AttrMapNum && \"invalid attribute index\");\n"
             "  #endif // NDEBUG\n")
 
-    f.write("  AttributeList AS[1];\n" #Currently only allowed to have one attribute per instrinsic
-            "  unsigned NumAttrs = 0;\n"
+    f.write("  AttributeSet AS;\n"
             "  if (id != 0) {\n"
             "    switch(IntrinsicsToAttributesMap[AttrIdx]) {\n"
             "    default: IGC_ASSERT_EXIT_MESSAGE(0, \"Invalid attribute number\");\n")
@@ -404,14 +426,17 @@ def createAttributeTable():
     for i in range(len(attribute_Array)): #Building case statements
         Attrs = getAttributeList([x.strip() for x in attribute_Array[i].split(',')])
         f.write("""    case {num}: {{
-      const Attribute::AttrKind Atts[] = {{{attrs}}};
-      AS[0] = AttributeList::get(C, AttributeList::FunctionIndex, Atts);
-      NumAttrs = 1;
+      const Attribute::AttrKind Attrs[] = {{{attrs}}};
+      for (auto Kind : Attrs) {{
+        AS = AS.addAttribute(C, Kind);
+      }}
       break;
       }}\n""".format(num=i+1, attrs=','.join(Attrs)))
     f.write("    }\n"
             "  }\n"
-            "  return AttributeList::get(C, makeArrayRef(AS, NumAttrs));\n"
+            "  MemoryEffectsTy ME = MemoryFXPerIntrinsicMap[AttrIdx];\n"
+            "  AS = AS.addAttributes(C, ME.getAsAttributeSet(C));\n"
+            "  return AttributeList::get(C, AttributeList::FunctionIndex, AS);\n"
             "}\n"
             "#endif // GET_INTRINSIC_ATTRIBUTES\n\n")
     f.close()

@@ -35,6 +35,7 @@ See LICENSE.TXT for details.
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Type.h"
+#include "llvmWrapper/Support/ModRef.h"
 #include "llvmWrapper/Support/TypeSize.h"
 
 using namespace llvm;
