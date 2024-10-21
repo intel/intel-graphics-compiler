@@ -1085,7 +1085,7 @@ void ScalarizeFunction::scalarizeInstruction(GetElementPtrInst* GI)
         auto op1 = baseValue->getType()->isVectorTy() ? operand1[i] : baseValue;
         auto op2 = indexValue->getType()->isVectorTy() ? operand2[i] : indexValue;
 
-        Type* BaseTy = IGCLLVM::getNonOpaquePtrEltTy(op1->getType());
+        Type* BaseTy = GI->getSourceElementType();
         Value* newGEP = GetElementPtrInst::Create(BaseTy, op1, op2,
             VALUE_NAME(GI->getName()), GI);
         Value* constIndex = ConstantInt::get(Type::getInt32Ty(context()), i);
