@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/ScaledNumber.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Process.h"
+#include "llvmWrapper/ADT/Optional.h"
 #include "common/LLVMWarningsPop.hpp"
 
 #include <cstring>
@@ -434,8 +435,12 @@ spv_result_t DisassembleSPIRV(
 #if defined(IGC_SPIRV_ENABLED)
 bool CheckForImageUsage(const std::string & SPIRVBinary) {
     std::istringstream repIS(SPIRVBinary);
-    llvm::Optional<SPIRV::SPIRVModuleReport> report = SPIRV::getSpirvReport(repIS);
-    SPIRV::SPIRVModuleTextReport textReport = SPIRV::formatSpirvReport(*report);
+    std::optional<SPIRV::SPIRVModuleReport> report = IGCLLVM::makeOptional(SPIRV::getSpirvReport(repIS));
+
+    if (!report.has_value())
+      return false;
+
+    SPIRV::SPIRVModuleTextReport textReport = SPIRV::formatSpirvReport(report.value());
 
     auto it = std::find(textReport.Capabilities.begin(), textReport.Capabilities.end(), "ImageBasic");
     return it != textReport.Capabilities.end();
