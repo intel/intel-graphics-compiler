@@ -404,7 +404,7 @@ void __global_barrier_nonatomic()
 }
 
 void global_barrier() {
-    __global_barrier_nonatomic();
+    __global_barrier_atomic();
 }
 
 void system_memfence(char fence_typed_memory)
