@@ -1243,8 +1243,11 @@ SBFootprint *G4_BB_SB::getFootprintForA0(G4_Operand *opnd,
   LB = (unsigned short)(subRegOff * TypeSize(addrType));
   RB = (unsigned short)(LB + opnd->getRightBound() - opnd->getLeftBound());
 
-  LB += builder.kernel.getNumRegTotal() * builder.numEltPerGRF<Type_UB>();
-  RB += builder.kernel.getNumRegTotal() * builder.numEltPerGRF<Type_UB>();
+  // Updated to the bucket footprint
+  LB += (builder.kernel.getNumRegTotal() + builder.getNumScalarRegisters()) *
+        builder.numEltPerGRF<Type_UB>();
+  RB += (builder.kernel.getNumRegTotal() + builder.getNumScalarRegisters()) *
+        builder.numEltPerGRF<Type_UB>();
 
   void *allocedMem = mem.alloc(sizeof(SBFootprint));
   SBFootprint *footprint =
@@ -7050,7 +7053,8 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
         }
 
         if (builder.needA0WARForSend() &&
-            curBucket == builder.kernel.getNumRegTotal()) {
+            curBucket == builder.kernel.getNumRegTotal() +
+                             builder.getNumScalarRegisters()) {
           if (!tokenHonourInstruction(liveInst) || dep != WAR ||
               hasSameFunctionID(liveInst, curInst)) {
             ++bn_it;
@@ -7881,7 +7885,7 @@ void SWSB::addGlobalDependence(unsigned globalSendNum,
     //    For token dependence, there is only implicit RAR and WAR dependencies.
     //    the order of the operands are scanned is not an issue anymore.
     //    i.e explicit RAW and WAW can cover all other dependences.
-    LiveGRFBuckets send_use_kills(kernel.getNumRegTotal());
+    LiveGRFBuckets send_use_kills(globalRegisterNum);
     for (unsigned i : send_kill.dst) {
       for (SBBucketNode *sBucketNode : globalDstSBSendNodes[i]) {
         SBNode *sNode = sBucketNode->node;
@@ -8179,7 +8183,7 @@ void SWSB::addGlobalDependenceWithReachingDef(
     //    For token dependence, there is only implicit RAR and WAR dependencies.
     //    the order of the operands are scanned is not an issue anymore.
     //    i.e explicit RAW and WAW can cover all other dependences.
-    LiveGRFBuckets send_use_kills(kernel.getNumRegTotal());
+    LiveGRFBuckets send_use_kills(globalRegisterNum);
     for (size_t j = 0; j < globalSendOpndList->size(); j++) {
       SBBucketNode *sBucketNode = (*globalSendOpndList)[j];
       SBNode *sNode = sBucketNode->node;
