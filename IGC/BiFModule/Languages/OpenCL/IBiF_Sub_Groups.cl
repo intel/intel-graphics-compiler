@@ -1010,8 +1010,14 @@ DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_LSC_CACHEOPTS(intel_subgroup_block_write_cacheo
 
 #if defined(cl_intel_subgroup_2d_block_io)
 
-#define  DEFN_INTEL_SUB_GROUP_2D_BLOCK_READ(FUNC_NAME, DST_PTR_TYPE, INTERNAL_DST_TYPE, INTERNAL_FUNC)                                        \
-INLINE void __internal_##FUNC_NAME##_cache_controls(__global void* base_address, int width, int height, int pitch, int2 coord, __private DST_PTR_TYPE* destination, enum LSC_LDCC cache_controls) \
+// To define new cl_intel_subgroup_2d_block_io built-in + support new matching SPV_INTEL_2d_block_io built-in together, use
+// DEFN_INTEL_SUB_GROUP_2D_BLOCK_ macros
+
+// To support new SPV_INTEL_2d_block_io only without matching cl_intel_subgroup_2d_block_io built-in, use
+// DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_ macros
+
+#define DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(FUNC_NAME, INTERNAL_DST_TYPE, INTERNAL_FUNC)                                              \
+INLINE void __internal_##FUNC_NAME##_cache_controls(__global void* base_address, int width, int height, int pitch, int2 coord, __private void* destination, enum LSC_LDCC cache_controls) \
 {                                                                                                                                             \
     long baseoffset = as_long(base_address);                                                                                                  \
     int width_minus_one = width - 1;                                                                                                          \
@@ -1019,10 +1025,13 @@ INLINE void __internal_##FUNC_NAME##_cache_controls(__global void* base_address,
     int pitch_minus_one = pitch - 1;                                                                                                          \
     INTERNAL_DST_TYPE ret = INTERNAL_FUNC(baseoffset, width_minus_one, height_minus_one, pitch_minus_one, coord, cache_controls);             \
     *(__private INTERNAL_DST_TYPE*)destination = ret;                                                                                         \
-}                                                                                                                                             \
+}
+
+#define  DEFN_INTEL_SUB_GROUP_2D_BLOCK_READ(FUNC_NAME, DST_PTR_TYPE, INTERNAL_DST_TYPE, INTERNAL_FUNC)                                        \
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(FUNC_NAME, INTERNAL_DST_TYPE, INTERNAL_FUNC)                                                      \
 INLINE void OVERLOADABLE FUNC_NAME(__global void* base_address, int width, int height, int pitch, int2 coord, __private DST_PTR_TYPE* destination) \
 {                                                                                                                                             \
-    __internal_##FUNC_NAME##_cache_controls(base_address, width, height, pitch, coord, destination, LSC_LDCC_DEFAULT);                        \
+    __internal_##FUNC_NAME##_cache_controls(base_address, width, height, pitch, coord, (__private void *)destination, LSC_LDCC_DEFAULT);      \
 }
 
 DEFN_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_8b_1r32x2c,             ushort,  ushort2,  __builtin_IB_subgroup_block_read_cacheopts_u8_m1k32v2)
@@ -1090,7 +1099,7 @@ DEFN_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_transform_16b_3
 DEFN_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_transform_8b_32r16x2c,  uint,    uint16,    __builtin_IB_subgroup_block_read_cacheopts_transform_u8_k32v2)
 DEFN_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_transform_8b_32r16x4c,  uint,    uint32,    __builtin_IB_subgroup_block_read_cacheopts_transform_u8_k32v4)
 
-#define  DEFN_INTEL_SUB_GROUP_2D_BLOCK_PREFETCH(FUNC_NAME, INTERNAL_FUNC)                                                                            \
+#define  DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_PREFETCH(FUNC_NAME, INTERNAL_FUNC)                                                                   \
 INLINE void __internal_##FUNC_NAME##_cache_controls( __global void* base_address, int width, int height, int pitch, int2 coord, enum LSC_LDCC cache_controls) \
 {                                                                                                                                                    \
     long baseoffset = as_long(base_address);                                                                                                         \
@@ -1098,7 +1107,10 @@ INLINE void __internal_##FUNC_NAME##_cache_controls( __global void* base_address
     int height_minus_one = height - 1;                                                                                                               \
     int pitch_minus_one = pitch - 1;                                                                                                                 \
     return INTERNAL_FUNC(baseoffset, width_minus_one, height_minus_one, pitch_minus_one, coord, cache_controls);                                     \
-}                                                                                                                                                    \
+}
+
+#define  DEFN_INTEL_SUB_GROUP_2D_BLOCK_PREFETCH(FUNC_NAME, INTERNAL_FUNC)                                                                            \
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_PREFETCH(FUNC_NAME, INTERNAL_FUNC)                                                                            \
 INLINE void OVERLOADABLE FUNC_NAME( __global void* base_address, int width, int height, int pitch, int2 coord)                                       \
 {                                                                                                                                                    \
     return __internal_##FUNC_NAME##_cache_controls(base_address, width, height, pitch, coord, LSC_LDCC_DEFAULT);                                              \
@@ -1162,18 +1174,21 @@ DEFN_INTEL_SUB_GROUP_2D_BLOCK_PREFETCH(intel_sub_group_2d_block_prefetch_32b_32r
 DEFN_INTEL_SUB_GROUP_2D_BLOCK_PREFETCH(intel_sub_group_2d_block_prefetch_8b_32r16x2c,   __builtin_IB_subgroup_block_read_prefetch_u8_m32k16v2)
 DEFN_INTEL_SUB_GROUP_2D_BLOCK_PREFETCH(intel_sub_group_2d_block_prefetch_8b_32r16x4c,   __builtin_IB_subgroup_block_read_prefetch_u8_m32k16v4)
 
-#define  DEFN_INTEL_SUB_GROUP_2D_BLOCK_WRITE(FUNC_NAME, DST_PTR_TYPE, INTERNAL_DST_TYPE, INTERNAL_FUNC)                 \
-INLINE void __internal_##FUNC_NAME##_cache_controls(__global void* base_address, int width, int height, int pitch, int2 coord, private DST_PTR_TYPE* val, enum LSC_LDCC cache_controls) \
+#define  DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_WRITE(FUNC_NAME, INTERNAL_DST_TYPE, INTERNAL_FUNC)                      \
+INLINE void __internal_##FUNC_NAME##_cache_controls(__global void* base_address, int width, int height, int pitch, int2 coord, private void* val, enum LSC_LDCC cache_controls) \
 {                                                                                                                       \
     long baseoffset = as_long(base_address);                                                                            \
     int width_minus_one = width - 1;                                                                                    \
     int height_minus_one = height - 1;                                                                                  \
     int pitch_minus_one = pitch - 1;                                                                                    \
     INTERNAL_FUNC(baseoffset, width_minus_one, height_minus_one, pitch_minus_one, coord, *(private INTERNAL_DST_TYPE*)val, cache_controls); \
-}                                                                                                                       \
+}
+
+#define  DEFN_INTEL_SUB_GROUP_2D_BLOCK_WRITE(FUNC_NAME, DST_PTR_TYPE, INTERNAL_DST_TYPE, INTERNAL_FUNC)                 \
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_WRITE(FUNC_NAME, INTERNAL_DST_TYPE, INTERNAL_FUNC)                               \
 INLINE void OVERLOADABLE FUNC_NAME(__global void* base_address, int width, int height, int pitch, int2 coord, private DST_PTR_TYPE* val) \
 {                                                                                                                       \
-    __internal_##FUNC_NAME##_cache_controls(base_address, width, height, pitch, coord, val, LSC_LDCC_DEFAULT);          \
+    __internal_##FUNC_NAME##_cache_controls(base_address, width, height, pitch, coord, (private void*) val, LSC_LDCC_DEFAULT); \
 }
 
 DEFN_INTEL_SUB_GROUP_2D_BLOCK_WRITE(intel_sub_group_2d_block_write_8b_1r32x1c,   ushort, ushort,  __builtin_IB_subgroup_block_write_cacheopts_u8_m1k32v1)
@@ -1196,6 +1211,9 @@ DEFN_INTEL_SUB_GROUP_2D_BLOCK_WRITE(intel_sub_group_2d_block_write_32b_2r16x1c, 
 DEFN_INTEL_SUB_GROUP_2D_BLOCK_WRITE(intel_sub_group_2d_block_write_32b_4r16x1c,   uint, uint4,  __builtin_IB_subgroup_block_write_cacheopts_u32_m4k16v1)
 DEFN_INTEL_SUB_GROUP_2D_BLOCK_WRITE(intel_sub_group_2d_block_write_32b_8r16x1c,   uint, uint8,  __builtin_IB_subgroup_block_write_cacheopts_u32_m8k16v1)
 #endif // defined(cl_intel_subgroup_2d_block_io)
+
+//OpSubgroup2DBlockPrefetchINTEL Element size: 1, Block Width: 8, Block Height: 16, Block Count: 4
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_PREFETCH(intel_sub_group_2d_block_prefetch_8b_16r8x4c,   __builtin_IB_subgroup_block_read_prefetch_u8_m16k8v4)
 
 #if defined(cl_khr_subgroup_shuffle)
 #define DEFN_SUB_GROUP_SHUFFLE(TYPE, SPV_TYPE, TYPE_ABBR)                                                             \
