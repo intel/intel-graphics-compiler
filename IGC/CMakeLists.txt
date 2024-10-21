@@ -1490,15 +1490,16 @@ add_subdirectory(common)
 igc_sg_define(IGC__common)
 igc_sg_define(IGC__Common_CLElfLib)
 
+set(IGC_OPTION__LLVM_INTERIM OFF CACHE BOOL "Configure IGC to build with a provisional LLVM revision")
+message(STATUS "[IGC] IGC_OPTION__LLVM_INTERIM = ${IGC_OPTION__LLVM_INTERIM}")
+
 # Recognize if we need to use LLVM interim mode and set appropriate definition
-if (DEFINED IGC_LLVM_INTERIM)
-    # Switch on IGC_BUILD_LLVM_INTERIM when -DIGC_LLVM_INTERIM=1 option is provided for locally build
+if (IGC_OPTION__LLVM_INTERIM)
+    # Switch on IGC_BUILD_LLVM_INTERIM when -DIGC_OPTION__LLVM_INTERIM=1 option is provided for locally build
     set(IGC_BUILD_LLVM_INTERIM ON)
 elseif($ENV{IGC_LLVM_INTERIM})
     # Switch on IGC_BUILD_LLVM_INTERIM when IGC_LLVM_INTERIM is set in environment e.g. yaml file
     set(IGC_BUILD_LLVM_INTERIM ON)
-else()
-    set(IGC_BUILD_LLVM_INTERIM OFF)
 endif()
 
 if(IGC_BUILD_LLVM_INTERIM)

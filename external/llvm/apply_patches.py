@@ -22,6 +22,8 @@ parser.add_argument('--patch-executable', required=True,
                     help='Path to patch program')
 parser.add_argument('--patch-disable', required=True,
                     help='Patch to disable')
+parser.add_argument('--patch-interim', required=True,
+                    help='Interim mode [ON/OFF]')
 parser.add_argument('--dry-run', action='store_true',
                     help='Only print list of patches that will be applied')
 
@@ -105,23 +107,31 @@ class Version:
 
 required_ver = Version(args.llvm_version)
 
-# Create mapping of version to directory with suitable
-# version range sorted in descending order.
-# All directories with same major version as required are suitable.
 patches_dir = os.listdir(args.patches_dir)
-ver_to_dir = [(Version(v), v) for v in patches_dir]
-ver_to_dir = filter(lambda tpl: tpl[0].major == required_ver.major, ver_to_dir)
-ver_to_dir = filter(lambda tpl: tpl[0] <= required_ver, ver_to_dir)
-ver_to_dir = sorted(ver_to_dir, key=lambda tpl: tpl[0], reverse=True)
-
-# Merge patches from suitable directories taking only patches from
-# newest versions if same patch is present in several directries.
 patches = {}
-for _, d in ver_to_dir:
-    dir_patches = get_dir_patches(d)
+
+if args.patch_interim == "ON":
+    print(f'Merge patches for IGC_LLVM_INTERIM mode, IGC_LLVM_INTERIM = {args.patch_interim}')
+    # Merge patches from trunk/ directory. Directory based on LLVM version doesn't exist for Interim mode
+    dir_patches = get_dir_patches('')
     dir_patches = {d.name : d for d in dir_patches}
-    dir_patches.update(patches)
     patches = dir_patches
+else:
+    # Create mapping of version to directory with suitable
+    # version range sorted in descending order.
+    # All directories with same major version as required are suitable.
+    ver_to_dir = [(Version(v), v) for v in patches_dir]
+    ver_to_dir = filter(lambda tpl: tpl[0].major == required_ver.major, ver_to_dir)
+    ver_to_dir = filter(lambda tpl: tpl[0] <= required_ver, ver_to_dir)
+    ver_to_dir = sorted(ver_to_dir, key=lambda tpl: tpl[0], reverse=True)
+    # Merge patches from suitable directories taking only patches from
+    # newest versions if same patch is present in several directries.
+    for _, d in ver_to_dir:
+        dir_patches = get_dir_patches(d)
+        dir_patches = {d.name : d for d in dir_patches}
+        dir_patches.update(patches)
+        patches = dir_patches
+
 patches = list(patches.values())
 patches.sort(key=lambda p: p.name)
 

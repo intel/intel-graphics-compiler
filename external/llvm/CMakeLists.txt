@@ -30,6 +30,11 @@ endforeach()
 message(STATUS "[LLVM] : LLVM_SOURCE_URL   = ${IGC_OPTION__LLVM_SOURCES_DIR}")
 message(STATUS "[LLVM] : LLVM_OPTIONS      = ${LLVM_OPTIONS}")
 
+set(IGC_OPTION__LLVM_INTERIM OFF CACHE BOOL "Configure IGC to build with a provisional LLVM revision")
+if (IGC_OPTION__LLVM_INTERIM)
+  message(STATUS "[LLVM] : IGC_OPTION__LLVM_INTERIM = ${IGC_OPTION__LLVM_INTERIM}")
+endif()
+
 if(NOT IGC_OPTION__LLVM_STOCK_SOURCES)
   include(llvm_patch_sources.cmake)
 else()
@@ -51,7 +56,7 @@ build_llvm_project(LLVM ${IGC_LLVM_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/src)
 
 # Sanity check for version matching.
 get_directory_property(LLVM_VERSION  DIRECTORY ${LLVM_SOURCE_DIR} DEFINITION "LLVM_VERSION")
-if ($ENV{IGC_LLVM_INTERIM})
+if (IGC_OPTION__LLVM_INTERIM)
     message(STATUS "[LLVM] : IGC_LLVM_INTERIM mode is enabled, we don't need to check version matching")
 else()
     if(NOT ("${LLVM_VERSION}" VERSION_EQUAL "${IGC_OPTION__LLVM_PREFERRED_VERSION}"))
