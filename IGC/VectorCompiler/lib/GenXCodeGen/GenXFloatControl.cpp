@@ -66,8 +66,10 @@ bool GenXFloatControl::runOnFunction(Function &F) {
          CRBits::SinglePrecisionDenorm | CRBits::HalfPrecisionDenorm;
   // Default float control:
   //   rounding mode = nearest even
-  //   denormals = flush
-  uint32_t FloatControl = CRBits::RTNE;
+  //   denormals = retain
+  uint32_t FloatControl = CRBits::RTNE | CRBits::DoublePrecisionDenorm |
+                          CRBits::SinglePrecisionDenorm |
+                          CRBits::HalfPrecisionDenorm;
   const auto *Subtarget = &getAnalysis<TargetPassConfig>()
                                .getTM<GenXTargetMachine>()
                                .getGenXSubtarget();
