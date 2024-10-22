@@ -958,11 +958,9 @@ void ZEBinaryBuilder::addKernelDebugEnv(const SOpenCLKernelInfo& annotations,
                                         const CBTILayout& layout,
                                         zeInfoKernel& zeinfoKernel)
 {
-    zeInfoDebugEnv& env = zeinfoKernel.debug_env;
-    env.sip_surface_bti = layout.GetSystemThreadBindingTableIndex();
-    // Now set the sip surface offset to 0 directly. Currently the surface offset
-    // is computed locally when creating patch tokens.
-    env.sip_surface_offset = 0;
+    // TODO: Check if we could remove sip surface related fields.
+    // Leave sip_surface_bti and sip_surface_offset unset as runtime does not
+    // require BTI 0 and bindless offset should be purely managed by driver.
 }
 
 void ZEBinaryBuilder::addKernelVISAAsm(const std::string& kernel,
