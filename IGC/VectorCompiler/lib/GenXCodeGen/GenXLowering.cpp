@@ -2166,6 +2166,10 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerHardwareThreadID(CI);
     case vc::InternalIntrinsic::logical_thread_id:
       return lowerLogicalThreadID(CI);
+    case vc::InternalIntrinsic::optimization_fence:
+      CI->replaceAllUsesWith(CI->getOperand(0));
+      ToErase.push_back(CI);
+      return true;
     case GenXIntrinsic::genx_nbarrier_arrive:
       return lowerNamedBarrierArrive(CI);
     case GenXIntrinsic::genx_dpas:

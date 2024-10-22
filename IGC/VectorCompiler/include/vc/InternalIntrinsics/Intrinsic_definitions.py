@@ -113,6 +113,20 @@ Imported_Intrinsics = {
                                "memory_effects":
                                    { "access": "NoModRef" }, },
 
+## ``llvm.vc.internal.optimization.fence`` : optimization fence
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: input value
+##
+## * Return value: the same as arg0
+##
+## The purpose of the intrinsic is to prevent the compiler from
+## optimizing the value.
+##
+    "optimization_fence" : { "result": "any",
+                             "arguments": [0],
+                             "attributes": "NoMem", },
+
 ### --------------
 ### ALU intrinsics
 ### --------------
