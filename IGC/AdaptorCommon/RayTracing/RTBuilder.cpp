@@ -30,6 +30,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/Alignment.h"
+#include "llvm/ADT/None.h"
 #include "common/LLVMWarningsPop.hpp"
 
 #include <optional>
@@ -1122,9 +1123,8 @@ GenIntrinsicInst* RTBuilder::getSr0_0()
     Module* module = this->GetInsertBlock()->getModule();
 
     auto* sr0_0 = this->CreateCall(
-        GenISAIntrinsic::getDeclaration(
-            module, GenISAIntrinsic::GenISA_getSR0_0),
-        None,
+        GenISAIntrinsic::getDeclaration(module, GenISAIntrinsic::GenISA_getSR0_0),
+        {},
         VALUE_NAME("sr0.0"));
     return cast<GenIntrinsicInst>(sr0_0);
 }
@@ -1222,7 +1222,7 @@ Value* RTBuilder::getGlobalDSSID()
             Module* module = GetInsertBlock()->getModule();
             return CreateCall(
                 GenISAIntrinsic::getDeclaration(module, GenISAIntrinsic::GenISA_logical_subslice_id),
-                None,
+                {},
                 VALUE_NAME("logical_subslice_id"));
         }
         else
@@ -1533,7 +1533,7 @@ Value* RTBuilder::getGlobalBufferPtr(IGC::ADDRESS_SPACE Addrspace)
         GenISAIntrinsic::GenISA_GlobalBufferPointer,
         PtrTy);
 
-    CallInst *CI = this->CreateCall(Func, None, VALUE_NAME("globalPtr"));
+    CallInst *CI = this->CreateCall(Func, {}, VALUE_NAME("globalPtr"));
 
     if (IGC_IS_FLAG_DISABLED(DisableRaytracingIntrinsicAttributes))
         this->setReturnAlignment(CI, RTGlobalsAlign);

@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #include "GenerateFrequencyData.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "llvmWrapper/IR/BasicBlock.h"
-#include <optional>
 #include "common/igc_regkeys.hpp"
 #include "Probe/Assertion.h"
 
@@ -19,10 +18,14 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/InstVisitor.h>
 
+#include "llvmWrapper/ADT/Optional.h"
+
 #include <llvm/Analysis/BlockFrequencyInfo.h>
 #include <llvm/Analysis/BranchProbabilityInfo.h>
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Analysis/SyntheticCountsUtils.h>
+#include <llvm/ADT/None.h>
+#include <llvm/ADT/Optional.h>
 
 #include <llvm/Support/ScaledNumber.h>
 #include <unordered_map>
@@ -181,9 +184,9 @@ void GenerateFrequencyData::updateStaticFuncFreq(DenseMap<Function*, ScaledNumbe
     // parameter.
     auto GetCallSiteProfCount = [&](const CallGraphNode*,
         const CallGraphNode::CallRecord& Edge) {
-            llvm::Optional<Scaled64> Res = llvm::None;
+            std::optional<Scaled64> Res = std::nullopt;
             if (!Edge.first)
-                return Res;
+                return IGCLLVM::makeLLVMOptional(Res);
             CallBase& CB = *cast<CallBase>(*Edge.first);
             Function* Caller = CB.getCaller();
             BasicBlock* CSBB = CB.getParent();
@@ -195,7 +198,7 @@ void GenerateFrequencyData::updateStaticFuncFreq(DenseMap<Function*, ScaledNumbe
             IGC_ASSERT(EntryFreq != 0);
             BBCount /= EntryFreq;
             BBCount *= Counts[Caller];
-            return llvm::Optional<Scaled64>(BBCount);
+            return IGCLLVM::makeLLVMOptional(std::optional<Scaled64>(BBCount));
     };
     CallGraph CG(*M);
     // Propgate the entry counts on the callgraph.

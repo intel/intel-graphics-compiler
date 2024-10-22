@@ -2673,10 +2673,10 @@ DIType* getOrCreateType(Type* T, Module* M) {
             align = IGCLLVM::getPrefTypeAlign(Layout, T).value();
         #endif
 
-        Optional<unsigned int> opt(llvm::None);
+        std::optional<unsigned int> opt(std::nullopt);
         diType = Builder.createPointerType(
                 nullptr, Layout.getPointerTypeSizeInBits(T),
-                align * CHAR_BIT, /*DWARFAddressSpace=*/opt,
+                align * CHAR_BIT, /*DWARFAddressSpace=*/IGCLLVM::makeLLVMOptional(opt),
                 getTypeName(T));
     }
     else

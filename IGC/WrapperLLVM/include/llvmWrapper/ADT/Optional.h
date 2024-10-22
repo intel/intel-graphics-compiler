@@ -21,6 +21,20 @@ template <typename T>
         return O.has_value() ? std::optional<T>(O.value()) : std::optional<T>(std::nullopt);
 #endif
     }
+
+template <typename T>
+#if LLVM_VERSION_MAJOR < 16
+    static llvm::Optional<T>
+#else
+    static std::optional<T>
+#endif
+      makeLLVMOptional(const std::optional<T>& O) {
+#if LLVM_VERSION_MAJOR < 16
+      return O.has_value() ? llvm::Optional<T>(O.value()) : llvm::Optional<T>();
+#else
+      return O;
+#endif
+    }
 } // namespace IGCLLVM
 
 #endif // IGCLLVM_ADT_OPTIONAL_H

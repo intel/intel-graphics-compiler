@@ -248,26 +248,26 @@ namespace IGC {
                 static unsigned L124[] = { 1, 2, 4 };
                 switch (EltTy->getTypeID()) {
                 case Type::HalfTyID:
-                    return makeArrayRef(L12);
+                    return {L12};
                 case Type::FloatTyID:
-                    return makeArrayRef(L1234);
+                    return {L1234};
                 case Type::DoubleTyID:
-                    return makeArrayRef(L12);
+                    return {L12};
                 case Type::PointerTyID:
                     // FIXME: In different addressing mode, the preferred vector length of
                     // pointer types is different.
-                    return makeArrayRef(L12);
+                    return {L12};
                 case Type::IntegerTyID: {
                     IntegerType* IEltTy = cast<IntegerType>(EltTy);
                     switch (IEltTy->getBitWidth()) {
                     case 8:
-                        return makeArrayRef(L124);
+                        return {L124};
                     case 16:
-                        return makeArrayRef(L12);
+                        return {L12};
                     case 32:
-                        return makeArrayRef(L1234);
+                        return {L1234};
                     case 64:
-                        return makeArrayRef(L12);
+                        return {L12};
                     default:
                         break;
                     }

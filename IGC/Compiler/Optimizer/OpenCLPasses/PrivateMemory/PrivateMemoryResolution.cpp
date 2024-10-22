@@ -1005,9 +1005,9 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     entryBuilder.SetCurrentDebugLocation(entryDebugLoc);
 
     // Creates intrinsics that will be lowered in the CodeGen and will handle the stack-pointer
-    Instruction* simdLaneId16 = entryBuilder.CreateCall(simdLaneIdFunc, llvm::None, VALUE_NAME("simdLaneId16"));
+    Instruction* simdLaneId16 = entryBuilder.CreateCall(simdLaneIdFunc, {}, VALUE_NAME("simdLaneId16"));
     Value* simdLaneId = entryBuilder.CreateIntCast(simdLaneId16, typeInt32, false, VALUE_NAME("simdLaneId"));
-    Instruction* simdSize = entryBuilder.CreateCall(simdSizeFunc, llvm::None, VALUE_NAME("simdSize"));
+    Instruction* simdSize = entryBuilder.CreateCall(simdSizeFunc, {}, VALUE_NAME("simdSize"));
 
     // Return thread offset. As it is per-thread, the calculation should be done in entry BB.
     auto createThreadOffset = [simdSize, typeInt32, typeInt64, safe32bitOffset](

@@ -1383,7 +1383,7 @@ Instruction* LSCFuncsResolution::CreateLSCFenceIntrinsicCallInst() {
     }
 
     Function *lscFunc = GenISAIntrinsic::getDeclaration(
-        m_pCurrInstFunc->getParent(), GenISAIntrinsic::GenISA_LSCFence, None);
+        m_pCurrInstFunc->getParent(), GenISAIntrinsic::GenISA_LSCFence, {});
     Instruction* lscCall = CallInst::Create(lscFunc, args, "", m_pCurrInst);
     return lscCall;
 }
@@ -1410,7 +1410,7 @@ Instruction* LSCFuncsResolution::CreateLSCFenceEvictToMemory()
     };
 
     Function* lscFunc = GenISAIntrinsic::getDeclaration(
-        m_pCurrInstFunc->getParent(), GenISAIntrinsic::GenISA_LSCFence, None);
+        m_pCurrInstFunc->getParent(), GenISAIntrinsic::GenISA_LSCFence, {});
     Instruction* lscCall = CallInst::Create(lscFunc, args, "", m_pCurrInst);
 
     if (context->platform.getPlatformInfo().eRenderCoreFamily == IGFX_XE_HPG_CORE)

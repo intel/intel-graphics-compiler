@@ -49,7 +49,7 @@ See LICENSE.TXT for details.
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
 
 #include "Probe/Assertion.h"
-
+#include <cmath>
 #define DEBUG_TYPE "dwarfdebug"
 
 using namespace llvm;

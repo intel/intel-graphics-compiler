@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "Types.hpp"
 #include "iStdLib/utility.h"
+#include <cmath>
 
 namespace IGC
 {

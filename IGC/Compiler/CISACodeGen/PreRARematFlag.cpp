@@ -20,9 +20,11 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Pass.h"
 #include "llvm/Transforms/Scalar.h"
+#include "llvmWrapper/ADT/Optional.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "Probe/Assertion.h"
+#include <optional>
 
 using namespace llvm;
 using namespace IGC;
@@ -39,7 +41,7 @@ namespace {
     public:
         DominatedSubgraph(DominatorTreeBasicBlock* D, BasicBlock* N) : DT(D), Entry(N) {}
 
-        bool preVisit(Optional<BasicBlock*> From, BasicBlock* To) {
+        bool preVisit(std::optional<BasicBlock*> From, BasicBlock* To) {
             // Skip BB not dominated by the specified entry.
             if (!DT->dominates(Entry, To))
                 return false;
@@ -57,8 +59,8 @@ namespace llvm {
     public:
         po_iterator_storage(DominatedSubgraph& G) : DSG(G) {}
 
-        bool insertEdge(Optional<BasicBlock*> From, BasicBlock* To) {
-            return DSG.preVisit(From, To);
+        bool insertEdge(llvm::Optional<BasicBlock*> From, BasicBlock* To) {
+            return DSG.preVisit(IGCLLVM::makeOptional(From), To);
         }
         void finishPostorder(BasicBlock* BB) { DSG.postVisit(BB); }
     };

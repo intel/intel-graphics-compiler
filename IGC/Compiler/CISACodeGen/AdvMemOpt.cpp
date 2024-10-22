@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Transforms/Utils/Local.h>
+#include <llvm/ADT/Optional.h>
 #include "llvmWrapper/Transforms/Utils/LoopUtils.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
@@ -243,7 +244,7 @@ namespace {
     public:
         RegionSubgraph(BasicBlock* E) : Exit(E) {}
 
-        bool preVisit(Optional<BasicBlock*> From, BasicBlock* To) {
+        bool preVisit(llvm::Optional<BasicBlock*> From, BasicBlock* To) {
             if (To == Exit)
                 return false;
             return Visited.insert(To).second;
@@ -259,7 +260,7 @@ namespace llvm {
     public:
         po_iterator_storage(RegionSubgraph& G) : RSG(G) {}
 
-        bool insertEdge(Optional<BasicBlock*> From, BasicBlock* To) {
+        bool insertEdge(llvm::Optional<BasicBlock*> From, BasicBlock* To) {
             return RSG.preVisit(From, To);
         }
         void finishPostorder(BasicBlock*) {}

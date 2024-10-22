@@ -727,7 +727,7 @@ public:
           elements.push_back(enumerator);
       }
 
-      auto nodeArray = Builder.getOrCreateArray(llvm::makeArrayRef(elements));
+      auto nodeArray = Builder.getOrCreateArray(ArrayRef<llvm::Metadata*>(elements));
 
       return addMDNode(inst, Builder.createEnumerationType(scope, name, file, line, size, 0, nodeArray, type));
   }

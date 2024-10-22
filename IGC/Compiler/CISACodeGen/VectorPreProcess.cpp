@@ -1044,7 +1044,7 @@ bool VectorPreProcess::splitVector3LoadStore(Instruction* Inst)
     std::optional<AbstractStoreInst> optionalASI = AbstractStoreInst::get(Inst, *m_DL);
     AbstractStoreInst* ASI = optionalASI.has_value() ? &optionalASI.value() : nullptr;
 
-    llvm::Optional<int> a;
+    std::optional<int> a;
     IGC_ASSERT_MESSAGE((optionalALI || optionalASI), "Inst should be either load or store");
     Type* Ty = ALI ? ALI->getInst()->getType() : ASI->getValueOperand()->getType();
     IGCLLVM::FixedVectorType *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
