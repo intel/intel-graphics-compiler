@@ -1673,8 +1673,8 @@ bool CustomSafeOptPass::isEmulatedAdd(BinaryOperator& I)
                     {
                         if (pConstOrVal->isNegative() == false)
                         {
-                            DWORD const_or_val = int_cast<DWORD>(pConstOrVal->getZExtValue());
-                            DWORD nextPowerOfTwo = iSTD::RoundPower2(const_or_val + 1);
+                            QWORD const_or_val = pConstOrVal->getZExtValue();
+                            QWORD nextPowerOfTwo = iSTD::RoundPower2(const_or_val + 1);
                             if (nextPowerOfTwo && (pConstMul->getZExtValue() % nextPowerOfTwo == 0))
                             {
                                 return true;

@@ -45,8 +45,8 @@ define i32 @test_customsafe_shl(i32 %a, i32 %b) {
 ;  %2 = add i64 %1, %b
 ;  %3 = add i64 %2, 1
 
-define i64 @test_customsafe_mul(i64 %a, i64 %b) {
-; CHECK-LABEL: @test_customsafe_mul(
+define i64 @test_customsafe_mul_1(i64 %a, i64 %b) {
+; CHECK-LABEL: @test_customsafe_mul_1(
 ; CHECK:    [[TMP1:%.*]] = mul nuw i64 [[A:%.*]], 6
 ; CHECK:    [[TMP2:%.*]] = add i64 [[TMP1]], [[B:%.*]]
 ; CHECK:    [[TMP3:%.*]] = add i64 [[TMP2]], 1
@@ -54,6 +54,19 @@ define i64 @test_customsafe_mul(i64 %a, i64 %b) {
 ;
   %1 = mul nuw i64 %a, 6
   %2 = or  i64 %1, 1
+  %3 = add nuw i64 %2, %b
+  ret i64 %3
+}
+
+define i64 @test_customsafe_mul_2(i64 %a, i64 %b) {
+; CHECK-LABEL: @test_customsafe_mul_2(
+; CHECK:    [[TMP1:%.*]] = mul nuw i64 [[A:%.*]], 144115188075855872
+; CHECK:    [[TMP2:%.*]] = add i64 [[TMP1]], [[B:%.*]]
+; CHECK:    [[TMP3:%.*]] = add i64 [[TMP2]], 92233720368547758
+; CHECK:    ret i64 [[TMP3]]
+;
+  %1 = mul nuw i64 %a, 144115188075855872
+  %2 = or  i64 %1, 92233720368547758
   %3 = add nuw i64 %2, %b
   ret i64 %3
 }
