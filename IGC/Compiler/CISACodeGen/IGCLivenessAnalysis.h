@@ -7,15 +7,18 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 #pragma once
 
+#include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "DebugInfo/VISAIDebugEmitter.hpp"
 #include "DebugInfo/VISAModule.hpp"
 #include "Probe/Assertion.h"
 #include "ShaderCodeGen.hpp"
+
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/Config/llvm-config.h"
-#include "llvm/ADT/PostOrderIterator.h"
-#include "llvm/IR/DIBuilder.h"
+#include <llvm/Config/llvm-config.h>
+#include <llvm/ADT/PostOrderIterator.h>
+#include <llvm/IR/DIBuilder.h>
+#include <llvm/IR/Function.h>
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace IGC;
@@ -190,12 +193,15 @@ class IGCFunctionExternalRegPressureAnalysis : public llvm::ModulePass, public I
     // contains all spir_func definitions inside our module, to check against
     // if we have 0 of them, we don't have to compute external pressure
     llvm::SmallPtrSet<llvm::Function *, 32> SetOfDefinitions;
+    // caches WIAnalysisRunner result for functions so it doesn't have to be
+    // recomputed in following passes.
+    std::unordered_map<llvm::Function*, WIAnalysisRunner> WIAnalysisMap;
 
     // already present in IGCLivenessAnalysisBase
     //IGC::CodeGenContext *CGCtx = nullptr;
     ModuleMetaData* ModMD = nullptr;
 
-    std::unique_ptr<WIAnalysisRunner> runWIAnalysis(Function &F);
+    WIAnalysisRunner& runWIAnalysis(Function &F);
     void generateTableOfPressure(Module &M);
 
   public:
@@ -239,6 +245,11 @@ class IGCFunctionExternalRegPressureAnalysis : public llvm::ModulePass, public I
         Out.clear();
         ExternalFunctionPressure.clear();
         CallSitePressure.clear();
+        WIAnalysisMap.clear();
+    }
+
+    WIAnalysisRunner& getWIAnalysis(Function* F) {
+        return WIAnalysisMap[F];
     }
 };
 

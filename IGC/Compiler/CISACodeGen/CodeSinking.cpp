@@ -802,12 +802,9 @@ namespace IGC {
 #define PASS_ANALYSIS1 false
     IGC_INITIALIZE_PASS_BEGIN(CodeLoopSinking, PASS_FLAG1, PASS_DESCRIPTION1, PASS_CFG_ONLY1, PASS_ANALYSIS1)
         IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
-        IGC_INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
         IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
         IGC_INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
-        IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
         IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-        IGC_INITIALIZE_PASS_DEPENDENCY(TranslationTable)
         IGC_INITIALIZE_PASS_DEPENDENCY(IGCLivenessAnalysis)
         IGC_INITIALIZE_PASS_DEPENDENCY(IGCFunctionExternalRegPressureAnalysis)
         IGC_INITIALIZE_PASS_END(CodeLoopSinking, PASS_FLAG1, PASS_DESCRIPTION1, PASS_CFG_ONLY1, PASS_ANALYSIS1)
@@ -872,18 +869,9 @@ namespace IGC {
         }
 
         DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
-        PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
         LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
         AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
-        MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-        ModMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
         TLI = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
-
-        TranslationTable TT;
-        TT.run(F);
-
-        WI = WIAnalysisRunner(&F, LI, DT, PDT, MDUtils, CTX, ModMD, &TT);
-        WI.run();
 
         // Note: FRPE is a Module analysis and currently it runs only once.
         // If function A calls function B then
@@ -893,6 +881,7 @@ namespace IGC {
 
         RPE = &getAnalysis<IGCLivenessAnalysis>();
         FRPE = &getAnalysis<IGCFunctionExternalRegPressureAnalysis>();
+        WI = &FRPE->getWIAnalysis(&F);
 
         // clear caching structures before handling the new function
         MemoizedStoresInLoops.clear();
@@ -946,7 +935,7 @@ namespace IGC {
             unsigned int &BBPressure = BBPressureEntry.first->second;
             if (BBPressureEntry.second)  // BB was not in the set, need to recompute
             {
-                BBPressure = RPE->getMaxRegCountForBB(*BB, SIMD, &WI);
+                BBPressure = RPE->getMaxRegCountForBB(*BB, SIMD, WI);
             }
             Max = std::max(BBPressure, Max);
         }
@@ -1054,7 +1043,7 @@ namespace IGC {
             return LoopSinkMode::NoSink;
         }
 
-        uint PreheaderDefsSizeInBytes = RPE->estimateSizeInBytes(PreheaderDefsCandidates, *F, SIMD, &WI);
+        uint PreheaderDefsSizeInBytes = RPE->estimateSizeInBytes(PreheaderDefsCandidates, *F, SIMD, WI);
         uint PreheaderDefsSizeInRegs = RPE->bytesToRegisters(PreheaderDefsSizeInBytes);
 
         // Estimate max pressure in the loop and the external pressure
@@ -1448,7 +1437,7 @@ namespace IGC {
                 {
                     InstsSet.insert(Pair.first);
                 }
-                uint SinkedSizeInBytes = RPE->estimateSizeInBytes(InstsSet, *F, SIMD, &WI);
+                uint SinkedSizeInBytes = RPE->estimateSizeInBytes(InstsSet, *F, SIMD, WI);
                 uint SinkedSizeInRegs = RPE->bytesToRegisters(SinkedSizeInBytes);
 
                 // Invoke LocalSink() to move def to its first use
@@ -2590,7 +2579,7 @@ namespace IGC {
                 int DstSize = getDstSize(V);
                 if (!DstSize)
                     return false;
-                if (WI.isUniform(V))
+                if (WI->isUniform(V))
                     continue;
                 AccSave -= DstSize / 8;
             }
@@ -2607,7 +2596,7 @@ namespace IGC {
                     int DstSize = getDstSize(V);
                     if (!DstSize)
                         return false;
-                    if (WI.isUniform(V))
+                    if (WI->isUniform(V))
                         continue;
                     AllUsersAreUniform = false;
                     AccSave += DstSize / 8;

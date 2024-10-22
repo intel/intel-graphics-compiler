@@ -17,9 +17,9 @@ See LICENSE.TXT for details.
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "Compiler/CISACodeGen/IGCLivenessAnalysis.h"
 #include "Compiler/CISACodeGen/TranslationTable.hpp"
+#include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
-#include "Compiler/CodeGenContextWrapper.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Analysis/PostDominators.h>
@@ -90,12 +90,10 @@ namespace IGC {
 
     class CodeLoopSinking : public llvm::FunctionPass {
         llvm::DominatorTree* DT = nullptr;
-        llvm::PostDominatorTree* PDT = nullptr;
         llvm::LoopInfo* LI = nullptr;
         llvm::AliasAnalysis* AA = nullptr;
-        WIAnalysisRunner WI;
+        WIAnalysisRunner* WI;
         IGCMD::MetaDataUtils* MDUtils = nullptr;
-        ModuleMetaData* ModMD = nullptr;
         IGCLivenessAnalysis* RPE = nullptr;
         IGCFunctionExternalRegPressureAnalysis* FRPE = nullptr;
         CodeGenContext* CTX = nullptr;
@@ -112,21 +110,16 @@ namespace IGC {
             AU.setPreservesCFG();
 
             AU.addRequired<llvm::DominatorTreeWrapperPass>();
-            AU.addRequired<llvm::PostDominatorTreeWrapperPass>();
             AU.addRequired<llvm::LoopInfoWrapperPass>();
             AU.addRequired<llvm::AAResultsWrapperPass>();
-            AU.addRequired<MetaDataUtilsWrapper>();
-            AU.addRequired<TranslationTable>();
             AU.addRequired<IGCLivenessAnalysis>();
             AU.addRequired<IGCFunctionExternalRegPressureAnalysis>();
             AU.addRequired<TargetLibraryInfoWrapperPass>();
             AU.addRequired<CodeGenContextWrapper>();
 
             AU.addPreserved<llvm::DominatorTreeWrapperPass>();
-            AU.addPreserved<llvm::PostDominatorTreeWrapperPass>();
             AU.addPreserved<llvm::LoopInfoWrapperPass>();
             AU.addPreserved<llvm::AAResultsWrapperPass>();
-            AU.addPreservedID(TranslationTable::ID);
         }
     private:
 

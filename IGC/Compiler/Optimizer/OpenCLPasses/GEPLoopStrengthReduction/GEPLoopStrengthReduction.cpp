@@ -1579,7 +1579,6 @@ void GEPLoopStrengthReduction::getAnalysisUsage(llvm::AnalysisUsage &AU) const
     AU.addRequired<IGCLivenessAnalysis>();
     AU.addRequired<llvm::LoopInfoWrapperPass>();
     AU.addRequired<MetaDataUtilsWrapper>();
-    AU.addRequired<PostDominatorTreeWrapperPass>();
     AU.addRequired<llvm::ScalarEvolutionWrapperPass>();
 }
 
@@ -1598,9 +1597,7 @@ bool GEPLoopStrengthReduction::runOnFunction(llvm::Function &F)
     auto &DL = F.getParent()->getDataLayout();
     auto &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
     auto &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
-    auto &MDU = *getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     auto &MMD = *getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-    auto &PDT = getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
     auto &RPE = getAnalysis<IGCLivenessAnalysis>();
     auto &SE = getAnalysis<ScalarEvolutionWrapperPass>().getSE();
 
@@ -1609,19 +1606,14 @@ bool GEPLoopStrengthReduction::runOnFunction(llvm::Function &F)
     // increases pressure so LSR reduction should not be applied in function B, but we don't
     // recompute FRPE to save compile time, so reduction might apply for loops in function B.
     auto &FRPE = getAnalysis<IGCFunctionExternalRegPressureAnalysis>();
-
-    TranslationTable TT;
-    TT.run(F);
-
-    WIAnalysisRunner WI = WIAnalysisRunner(&F, &LI, &DT, &PDT, &MDU, &CGC, &MMD, &TT);
-    WI.run();
+    auto *WI = &FRPE.getWIAnalysis(&F);
 
     // Using one SCEV expander between all reductions reduces number of duplicated new instructions.
     auto E = SCEVExpander(SE, DL, "gep-loop-strength-reduction");
 
     SmallVector<ReductionCandidateGroup, 32> Candidates;
 
-    RegisterPressureTracker RPT(F, CGC, RPE, FRPE, WI);
+    RegisterPressureTracker RPT(F, CGC, RPE, FRPE, *WI);
 
     for (Loop *L : LI.getLoopsInPreorder())
         Analyzer(DL, DT, *L, LI, SE, E).analyze(Candidates);
@@ -1629,7 +1621,7 @@ bool GEPLoopStrengthReduction::runOnFunction(llvm::Function &F)
     if (Candidates.empty())
         return false;
 
-    Scorer(DL, MMD, RPE, WI).score(Candidates);
+    Scorer(DL, MMD, RPE, *WI).score(Candidates);
 
     IGCLLVM::IRBuilder<> IRB(F.getContext());
 
@@ -1653,7 +1645,6 @@ IGC_INITIALIZE_PASS_DEPENDENCY(IGCFunctionExternalRegPressureAnalysis)
 IGC_INITIALIZE_PASS_DEPENDENCY(IGCLivenessAnalysis)
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass)
 IGC_INITIALIZE_PASS_END(GEPLoopStrengthReduction, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 

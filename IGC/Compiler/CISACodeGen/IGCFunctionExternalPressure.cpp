@@ -35,7 +35,7 @@ IGCFunctionExternalRegPressureAnalysis::IGCFunctionExternalRegPressureAnalysis()
 };
 
 
-std::unique_ptr<WIAnalysisRunner> IGCFunctionExternalRegPressureAnalysis::runWIAnalysis(Function &F) {
+WIAnalysisRunner& IGCFunctionExternalRegPressureAnalysis::runWIAnalysis(Function &F) {
 
     TranslationTable TT;
     TT.run(F);
@@ -44,9 +44,10 @@ std::unique_ptr<WIAnalysisRunner> IGCFunctionExternalRegPressureAnalysis::runWIA
     auto *PDT = &getAnalysis<PostDominatorTreeWrapperPass>(F).getPostDomTree();
     auto *LI = &getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
 
-    auto WI = std::make_unique<WIAnalysisRunner>(&F, LI, DT, PDT, MDUtils, CGCtx, ModMD, &TT);
-    WI->run();
-    return WI;
+    WIAnalysisMap.try_emplace(&F, &F, LI, DT, PDT, MDUtils, CGCtx, ModMD, &TT);
+    auto& Runner = WIAnalysisMap[&F];
+    Runner.run();
+    return Runner;
 }
 
 void IGCFunctionExternalRegPressureAnalysis::generateTableOfPressure(llvm::Module &M) {
@@ -58,7 +59,7 @@ void IGCFunctionExternalRegPressureAnalysis::generateTableOfPressure(llvm::Modul
 
         unsigned int SIMD = numLanes(bestGuessSIMDSize(&F));
         livenessAnalysis(F);
-        std::unique_ptr<WIAnalysisRunner> WI = runWIAnalysis(F);
+        auto WI = getWIAnalysis(&F);
 
         for (auto &BB : F) {
 
@@ -72,7 +73,7 @@ void IGCFunctionExternalRegPressureAnalysis::generateTableOfPressure(llvm::Modul
                 if (!SetOfDefinitions.count(Call->getCalledFunction())) continue;
 
                 if(!PressureMap)
-                    PressureMap = getPressureMapForBB(BB, SIMD, *WI);
+                    PressureMap = getPressureMapForBB(BB, SIMD, WI);
 
                 CallSitePressure[Call] = (*PressureMap)[&I];
             }
@@ -136,6 +137,12 @@ bool IGCFunctionExternalRegPressureAnalysis::runOnModule(llvm::Module &M) {
         if(F.isDeclaration()) continue;
         if(F.getCallingConv() != CallingConv::SPIR_FUNC) continue;
         SetOfDefinitions.insert(&F);
+    }
+
+    // Collect WIAnalysis results for all functions
+    for (auto &F : M) {
+        if(F.isDeclaration()) continue;
+        runWIAnalysis(F);
     }
 
     if(!SetOfDefinitions.size())
