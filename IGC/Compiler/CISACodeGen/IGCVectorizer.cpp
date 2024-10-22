@@ -145,13 +145,12 @@ void IGCVectorizer::findInsertElementsInDataFlow(llvm::Instruction *I,
 
             bool IsConstant = llvm::isa<llvm::Constant>(Op);
             bool IsExplored = Explored.count(Op);
-            bool SameBB = Op->getParent() == I->getParent();
             bool IsInsertElement = llvm::isa<InsertElementInst>(Op);
 
             if (IsInsertElement)
                 Chain.push_back(Op);
 
-            bool Skip = IsConstant || IsExplored || !SameBB || IsInsertElement;
+            bool Skip = IsConstant || IsExplored || IsInsertElement;
             if (Skip)
                 continue;
 
@@ -496,7 +495,7 @@ bool filterInstruction(GenIntrinsicInst *I) {
 }
 
 bool hasPotentialToBeVectorized(Instruction *I) {
-    bool Result = llvm::isa<InsertElementInst>(I) || llvm::isa<CastInst>(I);
+    bool Result = llvm::isa<InsertElementInst>(I) || llvm::isa<CastInst>(I) || llvm::isa<PHINode>(I);
     return Result;
 }
 
@@ -504,6 +503,7 @@ void IGCVectorizer::collectInstructionToProcess(VecArr &ToProcess,
                                                 Function &F) {
     for (BasicBlock &BB : F) {
         for (auto &I : BB) {
+
             GenIntrinsicInst *GenI = llvm::dyn_cast<GenIntrinsicInst>(&I);
             bool Pass = filterInstruction(GenI);
             if (!Pass)
@@ -572,6 +572,10 @@ bool IGCVectorizer::runOnFunction(llvm::Function &F) {
         for (auto el : VecOfInsert) {
             InsertStruct InSt;
             clusterInsertElement(static_cast<InsertElementInst*>(el), InSt);
+            if (InSt.Vec.size() != getVectorSize(InSt.Final)) {
+                PRINT_LOG_NL("partial insert -> rejected");
+                continue;
+            }
             writeLog();
 
             collectScalarPath(InSt.Vec, InSt.Chain);
