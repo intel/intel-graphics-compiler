@@ -1642,12 +1642,13 @@ bool LoopSplitWidePHIs::processPHI(SmallVectorImpl<PHINode*> &WL, Loop *L)
     // We check the required conditions, populating lists of uses
     // to be replaced with the split components or their joined result.
     PHINode *PHI = WL.pop_back_val();
-    auto DefI = cast<Instruction>(PHI->getIncomingValueForBlock(Latch));
+    Value* DefI = PHI->getIncomingValueForBlock(Latch);
 
     // Identify whether the latch value's definition is a candidate
     // for splitting.
     CatenatedValue CV;
-    if (!getCatenatedValue(DefI, CV))
+    if (!isa<Instruction>(DefI) ||
+        !getCatenatedValue(cast<Instruction>(DefI), CV))
         return false;
 
     // If there is a bitcast of CV.Result, attempt to fold it away.
