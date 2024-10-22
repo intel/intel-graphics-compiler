@@ -125,7 +125,8 @@ Imported_Intrinsics = {
 ##
     "optimization_fence" : { "result": "any",
                              "arguments": [0],
-                             "attributes": "NoMem", },
+                             "attributes": "None",
+                             "memory_effects": { "access": "NoModRef" }, },
 
 ### --------------
 ### ALU intrinsics
