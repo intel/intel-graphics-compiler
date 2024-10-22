@@ -157,8 +157,7 @@ def printStructCalls(structDecl: DeclHeader, outputFile: TextIO):
         outputFile.write(f'"{item}"')
         outputFile.write("),\n")
     outputFile.write("    };\n")
-    outputFile.write("    MDNode* node = MDNode::get(module->getContext(), v);\n")
-    outputFile.write("    return node;\n")
+    outputFile.write("    return MDNode::get(module->getContext(), v);\n")
 
 def printEnumCalls(enumDecl: DeclHeader, outputFile: TextIO):
     outputFile.write("    StringRef enumName;\n")
@@ -176,32 +175,33 @@ def printEnumCalls(enumDecl: DeclHeader, outputFile: TextIO):
     outputFile.write("        MDString::get(module->getContext(), name),\n")
     outputFile.write("        MDString::get(module->getContext(), enumName),\n")
     outputFile.write("    };\n")
-    outputFile.write("    MDNode* node = MDNode::get(module->getContext(), v);\n")
-    outputFile.write("    return node;\n")
+    outputFile.write("    return MDNode::get(module->getContext(), v);\n")
 
 def printStructReadCalls(structDecl: DeclHeader, outputFile: TextIO):
      for item in structDecl.fields:
         item = item[:-1]
-        outputFile.write(f"    readNode({structDecl.declName}Var.{item}, node , ")
+        outputFile.write(f"    readNode({structDecl.declName}Var.{item}, node, ")
         outputFile.write(f'"{item}"')
         outputFile.write(");\n")
 
 def printEnumReadCalls(enumDecl: DeclHeader, outputFile: TextIO):
     outputFile.write("    StringRef s = cast<MDString>(node->getOperand(1))->getString();\n")
-    outputFile.write("    std::string str = s.str();\n")
-    outputFile.write(f"    {enumDecl.declName}Var = (IGC::{enumDecl.declName})(0);\n")
 
+    first = True
     for item in enumDecl.fields:
-        outputFile.write(f'    if((str.size() == sizeof("{item}")-1) && (::memcmp(str.c_str(),')
+        outputFile.write(f'    {"" if first else "else "}if(s.compare(')
         outputFile.write(f'"{item}"')
-        outputFile.write(",str.size())==0))\n")
+        outputFile.write(") == 0)\n")
         outputFile.write("    {\n")
-        outputFile.write(f"            {enumDecl.declName}Var = IGC::{enumDecl.declName}::{item};\n")
-        outputFile.write("    } else\n")
+        outputFile.write(f"        {enumDecl.declName}Var = IGC::{enumDecl.declName}::{item};\n")
+        outputFile.write("    }\n")
+        first = False
 
+    outputFile.write("    else\n")
     outputFile.write("    {\n")
-    outputFile.write(f"            {enumDecl.declName}Var = (IGC::{enumDecl.declName})(0);\n")
+    outputFile.write(f"        {enumDecl.declName}Var = (IGC::{enumDecl.declName})(0);\n")
     outputFile.write("    }\n")
+
 
 def emitCodeBlock(names: List[DeclHeader], fmtFn: Callable[[str], str], printFn: Callable[[DeclHeader, TextIO], None], outputFile: TextIO):
     for item in names:
@@ -222,12 +222,12 @@ def emitStructCreateNode(outputFile: TextIO):
 
 def emitEnumReadNode(outputFile: TextIO):
     def fmtFn(item: str):
-        return f"void readNode( IGC::{item} &{item}Var, MDNode* node)\n"
+        return f"void readNode(IGC::{item}& {item}Var, MDNode* node)\n"
     emitCodeBlock(enumNames, fmtFn, printEnumReadCalls, outputFile)
 
 def emitStructReadNode(outputFile: TextIO):
     def fmtFn(item: str):
-        return f"void readNode( IGC::{item} &{item}Var, MDNode* node)\n"
+        return f"void readNode(IGC::{item}& {item}Var, MDNode* node)\n"
     emitCodeBlock(structureNames, fmtFn, printStructReadCalls, outputFile)
 
 def genCode(fileName: str):
