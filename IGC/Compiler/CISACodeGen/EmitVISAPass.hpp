@@ -901,19 +901,22 @@ public:
                 // need a temp (iter > 0) to save the unroll dst result to avoid shared SBID
                 Fn(flagSameLaneFlag, currentDestination, resource, needLoop);
 
-                m_encoder->SetNoMask();
-                // Sum lanes that did something (for correct goto at the end)
-                m_encoder->Or(flagSumMask, flagSumMask, flagSameLaneFlag);
-                m_encoder->Push();
-
-                // Last iteration does not need this
-                if ((iter < (iterations - 1)) && flagExecMask)
+                if (flagSameLaneFlag)
                 {
                     m_encoder->SetNoMask();
-                    // mask out handled lanes out of remaining ExecMask
-                    m_encoder->Xor(flagExecMask, flagExecMask, flagSameLaneFlag);
-                    m_encoder->Cast(dwordPrevFlag, flagExecMask);
+                    // Sum lanes that did something (for correct goto at the end)
+                    m_encoder->Or(flagSumMask, flagSumMask, flagSameLaneFlag);
                     m_encoder->Push();
+
+                    // Last iteration does not need this
+                    if ((iter < (iterations - 1)) && flagExecMask)
+                    {
+                        m_encoder->SetNoMask();
+                        // mask out handled lanes out of remaining ExecMask
+                        m_encoder->Xor(flagExecMask, flagExecMask, flagSameLaneFlag);
+                        m_encoder->Cast(dwordPrevFlag, flagExecMask);
+                        m_encoder->Push();
+                    }
                 }
             }
 
