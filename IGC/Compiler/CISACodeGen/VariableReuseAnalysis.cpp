@@ -1168,12 +1168,7 @@ void VariableReuseAnalysis::InsertElementAliasing(Function* F)
     //            =0x2: subvec aliasing for both isolated and non-isolated value)
     const auto control = (m_pCtx->getVectorCoalescingControl() & 0x3);
     // To avoid increasing GRF pressure, skip if F is too large or not an entry
-    // We remove the threshold when the code comes from CUTLASS,
-    // which often generates a large number of basic blocks.
-    const int32_t NumBBThreshold =
-        F->getName().str().substr(0, 2) == "_Z" && F->getName().str().find("cutlass") != std::string::npos
-        ? std::numeric_limits<int32_t>::max()
-        : static_cast<int32_t>(IGC_GET_FLAG_VALUE(VectorAliasBBThreshold));
+    const int32_t NumBBThreshold = IGC_GET_FLAG_VALUE(VectorAliasBBThreshold);
     MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     if (control == 0 || !isEntryFunc(pMdUtils, F) || getNumBBs(F) > NumBBThreshold) {
         return;
