@@ -78,6 +78,9 @@ config.available_features.update(devices)
 if not config.regkeys_disabled:
   config.available_features.add('regkeys')
 
+if config.has_vc != "1":
+  config.excludes = ['VC']
+
 if config.spirv_as_enabled:
   config.available_features.add('spirv-as')
   llvm_config.add_tool_substitutions([ToolSubst('spirv-as', unresolved='fatal')], tool_dirs)
