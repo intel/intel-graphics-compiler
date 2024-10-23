@@ -599,6 +599,7 @@ typedef std::list<G4_BB_SB *> BB_SWSB_LIST;
 typedef BB_SWSB_LIST::iterator BB_SWSB_LIST_ITER;
 
 typedef struct _SWSB_INDEXES {
+  int setFirstA0 = 0;
   int instIndex = 0;
   int ALUIndex = 0;
   int integerIndex = 0;
@@ -661,7 +662,6 @@ public:
 
   int send_start = -1;
   int send_end = -1;
-
   unsigned loopStartBBID = -1; // The start BB ID of live range
   unsigned loopEndBBID = -1;   // The start BB ID of live range
 
@@ -712,8 +712,8 @@ public:
     last_send_node = -1;
     totalGRFNum = builder.kernel.getNumRegTotal();
     globalRegisterNum = totalGRFNum + builder.getNumScalarRegisters();
-    if (builder.needA0WARForSend()) {
-      globalRegisterNum += builder.getGRFNumOfAddrRegisters();
+    if (builder.needA0WAR()) {
+      globalRegisterNum += builder.getNumAddrRegistersInGRFSizeSWSB();
     }
 
     SBDDD(bb, lb, globalLB, GRFAlignedGlobalSendsLB, SBNodes, SBSendNodes,
@@ -1152,8 +1152,8 @@ public:
   {
     globalRegisterNum =
         kernel.getNumRegTotal() + k.fg.builder->getNumScalarRegisters();
-    if (k.fg.builder->needA0WARForSend()) {
-      globalRegisterNum += k.fg.builder->getGRFNumOfAddrRegisters();
+    if (k.fg.builder->needA0WAR()) {
+      globalRegisterNum += k.fg.builder->getNumAddrRegistersInGRFSizeSWSB();
     }
 
     indexes.instIndex = 0;

@@ -464,9 +464,13 @@ uint32_t getNumAddrRegisters() const {
     return 16;
 }
 
-uint32_t getGRFNumOfAddrRegisters() const {
-    // The element size of address register is 16 bits
-    return ((getNumAddrRegisters() * 2 - 1) / numEltPerGRF<Type_UB>() + 1);
+// each address register is 16 bits
+uint32_t getNumAddrRegistersInGRFSizeSWSB() const {
+    if (hasThreeALUPipes() || hasFourALUPipes()) {
+      return ((16 * G4_WSIZE) + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>();
+    } else {
+      return 0;
+    }
 }
 
 uint32_t getNumScalarRegisters(void) {
@@ -735,7 +739,7 @@ bool hasWriteCombine() const {
 }
 
 bool hasA0WARHWissue() {
-  return getPlatform() >= Xe_XeHPSDV;
+  return getPlatform() >= Xe_XeHPSDV && getPlatform() < Xe2;
 }
 
 bool hasFtoPackedHFMove() const { return getPlatform() >= Xe_DG2; }
@@ -884,8 +888,8 @@ bool supports4GRFAlign() const {
   return false;
 }
 
-bool needA0WARForSend() const {
-  return false;
+bool needA0WAR() const {
+  return (getPlatform() >= Xe2);
 }
 
 bool alwaysAllowGlobalFlagOpt() const {
