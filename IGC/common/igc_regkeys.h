@@ -31,7 +31,6 @@ SPDX-License-Identifier: MIT
 #define SHADER_TYPE_MASK(Name, Val) #Name "=" #Val ","
 #define TRIBOOL_OPTION(Name, Val) #Name "=" #Val ","
 #define RTMEMORY_STYLE_OPTION(Name, Val) #Name "=" #Val ","
-#define SYNC_DISPATCH_RAYS_SHADER_INVOKE_METHOD(Name, Val) #Name "=" #Val ","
 
 #include "igc_regkeys_enums_defs.h"
 
@@ -54,9 +53,6 @@ SPDX-License-Identifier: MIT
 
 #undef RTMEMORY_STYLE_OPTION
 #undef RTMEMORY_STYLE_OPTIONS
-
-#undef SYNC_DISPATCH_RAYS_SHADER_INVOKE_METHOD
-#undef SYNC_DISPATCH_RAYS_SHADER_INVOKE_METHODS
 
 #undef DECLARE_IGC_GROUP
 #undef DECLARE_IGC_REGKEY_ENUM
