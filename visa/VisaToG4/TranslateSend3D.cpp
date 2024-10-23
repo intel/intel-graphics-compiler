@@ -1637,6 +1637,7 @@ IR_Builder::constructSrcPayloadRenderTarget(vISA_RT_CONTROLS cntrls,
                     ((B && !B->isNullReg() ? 0x1 : 0) << 0x2) |
                     (((A && !A->isNullReg() || cntrls.s0aPresent) ? 0x1 : 0) << 0x3);
 
+
   return std::make_tuple(srcToUse, numRows, chMask);
 }
 
