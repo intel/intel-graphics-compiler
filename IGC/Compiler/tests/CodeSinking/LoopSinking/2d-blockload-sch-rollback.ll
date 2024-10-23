@@ -25,7 +25,7 @@
 ; So in this case we cannot create a candidate, checking it in the dumps
 
 ; CHECK: Function bar
-; CHECK: Successfully created 0 candidates.
+; CHECK: Not all the uses are dominated by the UndoPoint, skipping.
 ; CHECK: No changes were made in this loop.
 
 

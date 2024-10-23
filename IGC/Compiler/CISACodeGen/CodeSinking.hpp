@@ -131,6 +131,7 @@ namespace IGC {
     private:
 
         typedef llvm::SmallPtrSet<llvm::Instruction*, 32> InstSet;
+        typedef llvm::SmallVector<llvm::Instruction*, 16> InstrVec;
 
         // Candidate for a sinking - POD structure to describe instructions to be sinked in a loop
 
@@ -146,7 +147,6 @@ namespace IGC {
         //         or scheduled within the basic block
 
         struct Candidate {
-            typedef llvm::SmallVector<llvm::Instruction*, 16> InstrVec;
 
             Candidate(const InstrVec& Instructions, BasicBlock* TgtBB, LoopSinkWorthiness Worthiness, llvm::Instruction* UndoPos)
                 : Instructions(Instructions), TgtBB(TgtBB), Worthiness(Worthiness), UndoPos(UndoPos) {}

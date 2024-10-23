@@ -855,6 +855,7 @@ namespace IGC {
                 LogStream << "LoopSinkThresholdDelta: " << IGC_GET_FLAG_VALUE(LoopSinkThresholdDelta) << "\n";
                 LogStream << "LoopSinkRollbackThreshold: " << IGC_GET_FLAG_VALUE(LoopSinkRollbackThreshold) << "\n";
                 LogStream << "LoopSinkEnableLoadsRescheduling: " << IGC_GET_FLAG_VALUE(LoopSinkEnableLoadsRescheduling) << "\n";
+                LogStream << "LoopSinkCoarserLoadsRescheduling: " << IGC_GET_FLAG_VALUE(LoopSinkCoarserLoadsRescheduling) << "\n";
                 LogStream << "LoopSinkEnable2dBlockReads: " << IGC_GET_FLAG_VALUE(LoopSinkEnable2dBlockReads) << "\n";
                 LogStream << "LoopSinkEnableVectorShuffle: " << IGC_GET_FLAG_VALUE(LoopSinkEnableVectorShuffle) << "\n";
                 LogStream << "LoopSinkForceRollback: " << IGC_GET_FLAG_VALUE(LoopSinkForceRollback) << "\n";
@@ -1625,7 +1626,7 @@ namespace IGC {
 
         bool Start = false;
 
-        SmallVector<llvm::Instruction *, 16> CandidateInsts;
+        InstrVec CandidateInsts;
         BasicBlock *TgtBB = nullptr;
 
         // Traversing the PH or the BB in the loop in reverse order
@@ -1747,14 +1748,13 @@ namespace IGC {
         }
 
         // Check that all the uses are dominated by the remaining uses
-        // We avoid changing the order of the loads for now
 
         // We have a number of current candidates, they will be placed before their uses.
-        // The remaining instructions are initially places earlier than the current candidates.
+        // The remaining instructions are initially placed earlier than the current candidates.
         // If the remaining instructions are dominated by the current candidates, we can split the current candidates
         // So that they are scheduled separately, because in this case the order will be not changed.
-        auto allUsesAreDominatedByRemainingUses = [&](SmallVector<Instruction *, 16> &CurrentCandidateInsts,
-            SmallPtrSet<Instruction *, 16> &RemainingCandidateInsts)
+        auto allUsesAreDominatedByRemainingUses = [&](InstrVec &CurrentCandidateInsts,
+            InstSet &RemainingCandidateInsts)
         {
             auto instUsesDominateAllCurrentCandidateUses = [&](Instruction *RI)
             {
@@ -1778,16 +1778,13 @@ namespace IGC {
                 return true;
             };
 
-            if (IGC_IS_FLAG_ENABLED(LoopSinkCoarserLoadsRescheduling))
-                return std::all_of(RemainingCandidateInsts.begin(), RemainingCandidateInsts.end(), instUsesDominateAllCurrentCandidateUses);
-            else
-                return std::any_of(RemainingCandidateInsts.begin(), RemainingCandidateInsts.end(), instUsesDominateAllCurrentCandidateUses);
+            return std::all_of(RemainingCandidateInsts.begin(), RemainingCandidateInsts.end(), instUsesDominateAllCurrentCandidateUses);
         };
 
         // If the uses are not dominated by the UndoPoint
         // It's possible that we put some instructions after their uses on rollback
         // So it needs to be checked if we sink not from PH
-        auto allUsesAreDominatedByUndoPoint = [&](SmallVector<Instruction *, 16> &CurrentCandidateInsts, Instruction *UndoPoint)
+        auto allUsesAreDominatedByUndoPoint = [&](InstrVec &CurrentCandidateInsts, Instruction *UndoPoint)
         {
             for (Instruction *CI : CurrentCandidateInsts)
             {
@@ -1803,12 +1800,76 @@ namespace IGC {
             return true;
         };
 
+        auto assertOneLoad = [&](InstrVec &CurrentCandidateInsts)
+        {
+            int NumLoads = 0;
+            for (Instruction *CI : CurrentCandidateInsts)
+            {
+                GenIntrinsicInst *CurIntr = cast<GenIntrinsicInst>(CI);
+                if (CurIntr->getIntrinsicID() == GenISAIntrinsic::GenISA_LSC2DBlockReadAddrPayload)
+                {
+                    NumLoads++;
+                }
+            }
+            IGC_ASSERT(NumLoads == 1);
+        };
+
+        typedef SmallSet<int, 16> FieldIndicesSet;
+
+        auto getAllSetFieldIndices = [&](InstrVec &CurrentCandidateInsts)
+        {
+            FieldIndicesSet AllSetFieldIndices;
+            for (Instruction *CI : CurrentCandidateInsts)
+            {
+                GenIntrinsicInst *CurIntr = cast<GenIntrinsicInst>(CI);
+                if (CurIntr->getIntrinsicID() == GenISAIntrinsic::GenISA_LSC2DBlockSetAddrPayloadField)
+                {
+                    int FieldIndex = cast<ConstantInt>(CurIntr->getOperand(1))->getZExtValue();
+                    AllSetFieldIndices.insert(FieldIndex);
+                }
+            }
+            return AllSetFieldIndices;
+        };
+
+
         // All the uses are a candidate
-        // Try splitting then into separate candidates for better scheduling within a BB
+        // Try splitting them into separate candidates for better scheduling within a BB
         bool SinkFromPH = I->getParent() == PH;
         auto Worthiness = SinkFromPH ? LoopSinkWorthiness::Sink : LoopSinkWorthiness::IntraLoopSink;
-        SmallVector<Instruction *, 16> CurrentCandidateInsts;
-        SmallPtrSet<Instruction *, 16> RemainingCandidateInsts(CandidateInsts.begin(), CandidateInsts.end());
+
+        DenseMap<Instruction *, DenseMap<int, Value *>> AddrPayloadFieldValues;
+        DenseMap<int, Value *> CurrentAddrPayloadFieldValues;
+
+        // Collect information about what fields are set before the load
+        // AddrPayloadFieldValues can then be used to create more SetField intrinsics enabling finer scheduling
+        // in case different fields are set before the load
+
+        // iterate SinkCandidates in reverse order - so the instruction appear in the direct order in the BB
+        for (auto II = CandidateInsts.rbegin(), IE = CandidateInsts.rend(); II != IE; II++)
+        {
+            GenIntrinsicInst *CurIntr = cast<GenIntrinsicInst>(*II);
+
+            if (CurIntr->getIntrinsicID() == GenISAIntrinsic::GenISA_LSC2DBlockSetAddrPayloadField)
+            {
+                int FieldIndex = cast<ConstantInt>(CurIntr->getOperand(1))->getZExtValue();
+                CurrentAddrPayloadFieldValues[FieldIndex] = CurIntr->getOperand(2);
+            }
+            else if (CurIntr->getIntrinsicID() == GenISAIntrinsic::GenISA_LSC2DBlockReadAddrPayload)
+            {
+                AddrPayloadFieldValues[*II] = DenseMap<int, Value *>(CurrentAddrPayloadFieldValues);
+            }
+        }
+
+        // keys of map CurrentAddrPayloadFieldValues contain all fields
+        // that were set at least by one SetField instruction
+        FieldIndicesSet AllFields;
+        for (auto &Pair : CurrentAddrPayloadFieldValues)
+        {
+            AllFields.insert(Pair.first);
+        }
+
+        InstrVec CurrentCandidateInsts;
+        InstSet RemainingCandidateInsts(CandidateInsts.begin(), CandidateInsts.end());
 
         uint NCandidates = 0;
         for (Instruction *I : CandidateInsts)
@@ -1820,17 +1881,73 @@ namespace IGC {
             auto Id = CurIntr->getIntrinsicID();
 
             if (CurrentCandidateInsts.size() > 0 &&
-                Id == GenISAIntrinsic::GenISA_LSC2DBlockReadAddrPayload &&
-                allUsesAreDominatedByRemainingUses(CurrentCandidateInsts, RemainingCandidateInsts) &&
-                (SinkFromPH || allUsesAreDominatedByUndoPoint(CurrentCandidateInsts, CurrentCandidateInsts[0]->getNextNode())))
+                Id == GenISAIntrinsic::GenISA_LSC2DBlockReadAddrPayload)
             {
-                NCandidates++;
-                SinkCandidates.push_back(std::make_unique<Candidate>(CurrentCandidateInsts, TgtBB, Worthiness, CurrentCandidateInsts[0]->getNextNode()));
-                CurrentCandidateInsts.clear();
+                if (!SinkFromPH && !allUsesAreDominatedByUndoPoint(CurrentCandidateInsts, CurrentCandidateInsts[0]->getNextNode()))
+                {
+                    PrintDump("Not all the uses are dominated by the UndoPoint, skipping.\n");
+                    return false;
+                }
+
+                if (IGC_IS_FLAG_ENABLED(LoopSinkCoarserLoadsRescheduling))
+                {
+                    if (allUsesAreDominatedByRemainingUses(CurrentCandidateInsts, RemainingCandidateInsts))
+                    {
+                        NCandidates++;
+                        SinkCandidates.push_back(std::make_unique<Candidate>(CurrentCandidateInsts, TgtBB, Worthiness, CurrentCandidateInsts[0]->getNextNode()));
+                        CurrentCandidateInsts.clear();
+                    }
+                }
+                else
+                {
+                    // We are going to create a separate Candidate for every load
+
+                    if (getAllSetFieldIndices(CurrentCandidateInsts) != AllFields)
+                    {
+                        /*
+                        The SetField intrinsics are not in SSA form and the order of them is important,
+                        as when we schedule the load together with the previous SetFields changing the order may affect the result
+
+                        For example, if we change the order of the 2 loads in the following example then load2 will no more have the field #2 == 80
+
+                        call void @llvm.genx.GenISA.LSC2DBlockSetAddrPayloadField.p0i8.i32(i8* %Block2D_AddrPayload, i32 2, i32 80, i1 false)
+                        call void @llvm.genx.GenISA.LSC2DBlockSetAddrPayloadField.p0i8.i32(i8* %Block2D_AddrPayload, i32 5, i32 3, i1 false)
+                        call void @llvm.genx.GenISA.LSC2DBlockSetAddrPayloadField.p0i8.i32(i8* %Block2D_AddrPayload, i32 6, i32 3, i1 false)
+                        %load3 = call <32 x i16> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v32i16.p0i8(i8* %Block2D_AddrPayload, i32 0, i32 0, i32 16, i32 16, i32 16, i32 2, i1 false, i1 false, i32 4)
+
+                        call void @llvm.genx.GenISA.LSC2DBlockSetAddrPayloadField.p0i8.i32(i8* %Block2D_AddrPayload, i32 5, i32 2, i1 false)
+                        call void @llvm.genx.GenISA.LSC2DBlockSetAddrPayloadField.p0i8.i32(i8* %Block2D_AddrPayload, i32 6, i32 2, i1 false)
+                        %load2 = call <32 x i16> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v32i16.p0i8(i8* %Block2D_AddrPayload, i32 0, i32 0, i32 16, i32 16, i32 16, i32 2, i1 false, i1 false, i32 4)
+
+                        It's possible to create more GenISA_LSC2DBlockSetAddrPayloadField intrinsic calls, in this example
+                        Create SetField to set field 2 to 80 before load2.
+
+                        For this AddrPayloadFieldValues[BlockRead] can be used. If the field is not set in the AddrPayloadFieldValues[BlockRead]
+                        then the field should be taken from AddrPayload operands.
+
+                        For now it's unsupported as we can only have fields 5 and 6, so we skip the candidate creations for this AddrPayload completely.
+                        */
+
+                        PrintDump("Not all the fields are set, skipping the payload.\n");
+                        PrintDump("2d Block read:")
+                        Instruction *BlockRead = cast<Instruction>(CurrentCandidateInsts[0]);
+                        PrintInstructionDump(BlockRead);
+                        PrintDump("AddrPayload:");
+                        PrintInstructionDump(AddrPayload);
+
+                        return false;
+                    }
+
+                    assertOneLoad(CurrentCandidateInsts);
+                    NCandidates++;
+                    SinkCandidates.push_back(std::make_unique<Candidate>(CurrentCandidateInsts, TgtBB, Worthiness, CurrentCandidateInsts[0]->getNextNode()));
+                    CurrentCandidateInsts.clear();
+                }
             }
             CurrentCandidateInsts.push_back(I);
             RemainingCandidateInsts.erase(I);
         }
+
         if (CurrentCandidateInsts.size() > 0 &&
             (SinkFromPH || allUsesAreDominatedByUndoPoint(CurrentCandidateInsts, CurrentCandidateInsts[0]->getNextNode())))
         {
@@ -1849,7 +1966,7 @@ namespace IGC {
         // if all the stores for this loop are not memoized yet, do it first
         if (!MemoizedStoresInLoops.count(L))
         {
-            llvm::SmallVector<Instruction *, 32>& StoresInLoop = MemoizedStoresInLoops[L];
+            StoresVec& StoresInLoop = MemoizedStoresInLoops[L];
             for (BasicBlock *BB: L->blocks())
             {
                 for (Instruction &I : *BB)
@@ -2040,7 +2157,7 @@ namespace IGC {
                     PrintDump("DestVector used in the loop:\n");
                     PrintInstructionDump(DestVec);
 
-                    ShuffleCandidates.emplace_back(Candidate::InstrVec{}, TgtBB, LoopSinkWorthiness::Sink, nullptr);
+                    ShuffleCandidates.emplace_back(InstrVec{}, TgtBB, LoopSinkWorthiness::Sink, nullptr);
                     Changed = true;
 
                     for (Instruction *I : ShuffleInst)
