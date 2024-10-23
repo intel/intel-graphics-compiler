@@ -3596,7 +3596,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDFloor(llvm::Value
         "  %39 = ashr i64 %1, 31                                                    \n"
         "  %.op = and i64 %39, -4616189618054758400                                 \n"
         "  %40 = bitcast i64 %.op to double                                         \n"
-        "  %41 = select i1 %38, double 0.000000e+00, double %40                     \n"
+        "  %41 = select i1 %38, double -0.000000e+00, double %40                    \n"
         "  %42 = fadd double %33, %41                                               \n"
         "  ret double %42                                                           \n"
         "}";
@@ -3688,7 +3688,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDCeil(llvm::Value 
         "  %40 = and i64 %39, -4607182418800017408                                  \n"
         "  %.op = add nsw i64 %40, 4607182418800017408                              \n"
         "  %41 = bitcast i64 %.op to double                                         \n"
-        "  %42 = select i1 %38, double 0.000000e+00, double %41                     \n"
+        "  %42 = select i1 %38, double -0.000000e+00, double %41                    \n"
         "  %43 = fadd double %33, %42                                               \n"
         "  ret double %43                                                           \n"
         "}";
