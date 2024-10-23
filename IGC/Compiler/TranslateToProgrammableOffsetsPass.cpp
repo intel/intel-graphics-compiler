@@ -450,7 +450,7 @@ inline bool needsSampleDEmulation(const SampleIntrinsic* inst)
     Type* volumeTextureType = GetResourceDimensionType(M, RESOURCE_DIMENSION_TYPE::DIM_3D_TYPE);
     Type* cubeTextureType = GetResourceDimensionType(M, RESOURCE_DIMENSION_TYPE::DIM_CUBE_TYPE);
     Type* cubeArrayTextureType = GetResourceDimensionType(M, RESOURCE_DIMENSION_TYPE::DIM_CUBE_ARRAY_TYPE);
-    Type* textureType = IGCLLVM::getNonOpaquePtrEltTy(inst->getTextureValue()->getType());
+    Type* textureType = inst->getTexturePtrEltTy();
     if (textureType == cubeTextureType ||
         textureType == cubeArrayTextureType ||
         textureType == volumeTextureType)

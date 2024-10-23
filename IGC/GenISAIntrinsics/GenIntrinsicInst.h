@@ -46,6 +46,7 @@ See LICENSE.TXT for details.
 
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/Alignment.h"
+#include "llvmWrapper/IR/Type.h"
 #include "usc_gen7_types.h"
 
 namespace llvm {
@@ -499,6 +500,11 @@ public:
             return false;
         }
     }
+
+    Type* getTexturePtrEltTy() const {
+        Value* textureVal = this->getTextureValue();
+        return textureVal ? IGCLLVM::getNonOpaquePtrEltTy(textureVal->getType()) : nullptr;
+    }
 };
 
 class LdMSIntrinsic : public SamplerLoadIntrinsic {
@@ -850,6 +856,11 @@ public:
             break;
         }
         return false;
+    }
+
+    Type* getTexturePtrEltTy() const {
+        Value* textureVal = this->getTextureValue();
+        return textureVal ? IGCLLVM::getNonOpaquePtrEltTy(textureVal->getType()) : nullptr;
     }
 };
 

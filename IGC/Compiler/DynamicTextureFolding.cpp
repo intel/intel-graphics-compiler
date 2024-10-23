@@ -44,7 +44,7 @@ void DynamicTextureFolding::FoldSingleTextureValue(CallInst& I)
    if (SamplerLoadIntrinsic * lInst = dyn_cast<SamplerLoadIntrinsic>(&I))
     {
         addrSpace = lInst->getTextureValue()->getType()->getPointerAddressSpace();
-        Type* textureType = IGCLLVM::getNonOpaquePtrEltTy(lInst->getTextureValue()->getType());
+        Type* textureType = lInst->getTexturePtrEltTy();
         if (textureType == type1DArray || textureType == type2DArray || textureType == typeCubeArray)
         {
             skipBoundaryCheck = 0;

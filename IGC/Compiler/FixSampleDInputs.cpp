@@ -61,7 +61,7 @@ IGC_INITIALIZE_PASS_END(FixSampleDInputsPass, PASS_FLAG, PASS_DESCRIPTION, PASS_
             for (Instruction& inst : BB)
             {
                 SampleIntrinsic* sampleInst = dyn_cast<SampleIntrinsic>(&inst);
-                Type* textureType = sampleInst ? IGCLLVM::getNonOpaquePtrEltTy(sampleInst->getTextureValue()->getType()) : nullptr;
+                Type* textureType = sampleInst ? sampleInst->getTexturePtrEltTy() : nullptr;
                 // 3D/Cube/CubeArray access is emulated in CodeGen, see EmitPass::emulateSampleD()
                 if (sampleInst &&
                     (textureType != volumeTextureType && textureType != cubeTextureType && textureType != cubeArrayTextureType))
@@ -97,7 +97,7 @@ IGC_INITIALIZE_PASS_END(FixSampleDInputsPass, PASS_FLAG, PASS_DESCRIPTION, PASS_
                         uint mlodParamIndex = 11;
                         Value* mlod_r = sampleInst->getArgOperand(mlodParamIndex); // MLOD
                         Type* type2DArray = GetResourceDimensionType(*M, RESOURCE_DIMENSION_TYPE::DIM_2D_ARRAY_TYPE);
-                        Type* typeTex = IGCLLVM::getNonOpaquePtrEltTy(sampleInst->getTextureValue()->getType());
+                        Type* typeTex = sampleInst->getTexturePtrEltTy();
                         if (typeTex == type2DArray)
                         {
                             // combine MLOD and R
