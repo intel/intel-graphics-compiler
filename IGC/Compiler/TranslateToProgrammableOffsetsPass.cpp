@@ -299,7 +299,10 @@ struct TranslateIntrinsicImpl<GenISAIntrinsic::GenISA_sampleBptr>
 
     static llvm::CallInst* TranslateDetail(SampleIntrinsic* sampleIntr)
     {
-        uint aiOffset = 4;
+        // sampleB args:   bias,        u, v, r, ai, minLod, paired texture, texture, sampler, immOffU, immOffV, immOffR
+        // samplePOB args: bias_offuvr, u, v, r,     minLod, paired texture, texture, sampler, immOffU, immOffV, immOffR
+        // SamplerPerfOptPass copies minLod into ai
+        uint skipParamOffset = 5;
         uint biasOffset = 0;
 
         llvm::Value* packedBiasOffsetUVR = PackBiasOffsetUVR(sampleIntr);
@@ -314,7 +317,7 @@ struct TranslateIntrinsicImpl<GenISAIntrinsic::GenISA_sampleBptr>
                 continue;
             }
 
-            if (i == aiOffset)
+            if (i == skipParamOffset)
                 continue;
 
             args.push_back(sampleIntr->getArgOperand(i));
