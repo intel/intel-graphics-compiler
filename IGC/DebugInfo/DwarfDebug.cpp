@@ -496,7 +496,7 @@ DIE *DwarfDebug::updateSubprogramScopeDIE(CompileUnit *SPCU, DISubprogram *SP) {
     }
   }
 
-  if (m_pModule && m_pModule->getFunction() &&
+  if (m_pModule->getFunction() &&
       m_pModule->getFunction()->getSubprogram() == SP &&
       m_pModule->GetType() == VISAModule::ObjectType::SUBROUTINE) {
     SPCU->addUInt(SPDie, dwarf::DW_AT_calling_convention, dwarf::DW_FORM_data1,
