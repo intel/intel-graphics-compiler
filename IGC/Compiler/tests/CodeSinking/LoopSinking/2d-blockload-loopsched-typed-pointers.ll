@@ -15,6 +15,8 @@ declare void @llvm.genx.GenISA.LSC2DBlockSetAddrPayloadField.p0i8.i32(i8*, i32, 
 
 declare <32 x i16> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v32i16.p0i8(i8*, i32, i32, i32, i32, i32, i32, i1, i1, i32) #0
 
+declare <32 x i16> @llvm.genx.GenISA.LSC2DBlockRead.v32i16(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32) #0
+
 
 define void @sink1(half addrspace(1)* %in0, <32 x i16> addrspace(1)* noalias %out0, i32 %count, i32 %offsetIn0, <8 x i32> %r0) {
 
@@ -261,6 +263,74 @@ loop:                                             ; preds = %loop, %entry_prehea
 afterloop:                                        ; preds = %loop
   ret void
 }
+
+
+define void @sink3_nonpayload(half addrspace(1)* %in0, <32 x i16> addrspace(1)* noalias %out0, i32 %count, i32 %offsetIn0, <8 x i32> %r0) {
+; CHECK-LABEL: @sink3_nonpayload(
+; CHECK:       entry_preheader:
+
+; CHECK:       loop:
+
+; CHECK:         mul
+; CHECK:         mul
+; CHECK:         mul
+
+; CHECK:         [[SINK_LOAD:%.*]] = call <32 x i16> @llvm.genx.GenISA.LSC2DBlockRead.v32i16(i64 [[BASE_ADDR:%.*]], i32 127, i32 1023, i32 127, i32 0, i32 0, i32 16, i32 16, i32 16, i32 2, i1 false, i1 false, i32 4)
+; CHECK:         store <32 x i16> [[SINK_LOAD]], <32 x i16> addrspace(1)* [[ADDR:%.*]], align 64
+
+; CHECK:         [[SINK_LOAD2:%.*]] = call <32 x i16> @llvm.genx.GenISA.LSC2DBlockRead.v32i16(i64 [[BASE_ADDR]], i32 127, i32 1023, i32 127, i32 32, i32 0, i32 16, i32 16, i32 16, i32 2, i1 false, i1 false, i32 4)
+; CHECK:         store <32 x i16> [[SINK_LOAD2]], <32 x i16> addrspace(1)* [[ADDR2:%.*]], align 64
+
+; CHECK:         [[SINK_LOAD3:%.*]] = call <32 x i16> @llvm.genx.GenISA.LSC2DBlockRead.v32i16(i64 [[BASE_ADDR]], i32 127, i32 1023, i32 127, i32 64, i32 0, i32 16, i32 16, i32 16, i32 2, i1 false, i1 false, i32 4)
+; CHECK:         store <32 x i16> [[SINK_LOAD3]], <32 x i16> addrspace(1)* [[ADDR3:%.*]], align 64
+
+; CHECK:         br
+
+
+entry_preheader:
+  %bc = bitcast <8 x i32> %r0 to <32 x i8>
+  %ee_thread = extractelement <32 x i8> %bc, i32 8
+
+  %base_addr = ptrtoint half addrspace(1)* %in0 to i64
+
+  br label %loop
+
+loop:                                             ; preds = %loop, %entry_preheader
+  %index = phi i32 [ 0, %entry_preheader ], [ %inc, %loop ]
+
+  %load = call <32 x i16> @llvm.genx.GenISA.LSC2DBlockRead.v32i16(i64 %base_addr, i32 127, i32 1023, i32 127, i32 0, i32 0, i32 16, i32 16, i32 16, i32 2, i1 false, i1 false, i32 4)
+
+  %x = add i32 %index, 5
+  %y = add i32 %index, 6
+  %z = add i32 %index, 12
+  %x1 = mul i32 %index, %x
+
+  %load3 = call <32 x i16> @llvm.genx.GenISA.LSC2DBlockRead.v32i16(i64 %base_addr, i32 127, i32 1023, i32 127, i32 64, i32 0, i32 16, i32 16, i32 16, i32 2, i1 false, i1 false, i32 4)
+
+  %load2 = call <32 x i16> @llvm.genx.GenISA.LSC2DBlockRead.v32i16(i64 %base_addr, i32 127, i32 1023, i32 127, i32 32, i32 0, i32 16, i32 16, i32 16, i32 2, i1 false, i1 false, i32 4)
+
+  %y1 = mul i32 %x1, %y
+  %z1 = mul i32 %y1, %z
+
+
+  %addr = getelementptr <32 x i16>, <32 x i16> addrspace(1)* %out0, i32 %index
+  store <32 x i16> %load, <32 x i16> addrspace(1)* %addr, align 64
+
+  %addr2 = getelementptr <32 x i16>, <32 x i16> addrspace(1)* %out0, i32 %x1
+  store <32 x i16> %load2, <32 x i16> addrspace(1)* %addr2, align 64
+
+  %addr3 = getelementptr <32 x i16>, <32 x i16> addrspace(1)* %out0, i32 %y1
+  store <32 x i16> %load3, <32 x i16> addrspace(1)* %addr3, align 64
+
+  %cmptmp = icmp ult i32 %index, %count
+  %inc = add i32 %index, 1
+  br i1 %cmptmp, label %loop, label %afterloop
+
+afterloop:                                        ; preds = %loop
+  ret void
+}
+
+
 
 attributes #0 = { argmemonly nounwind readonly willreturn }
 

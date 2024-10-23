@@ -1023,7 +1023,10 @@ namespace IGC {
                 for (auto &I : *BB)
                 {
                     GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(&I);
-                    if (GII && GII->getIntrinsicID() == GenISAIntrinsic::GenISA_LSC2DBlockReadAddrPayload)
+                    if (GII && (
+                                GII->getIntrinsicID() == GenISAIntrinsic::GenISA_LSC2DBlockReadAddrPayload ||
+                                GII->getIntrinsicID() == GenISAIntrinsic::GenISA_LSC2DBlockRead)
+                        )
                     {
                         PrintDump(">> Loop has 2D block reads. Enabling loads rescheduling and sinking.\n");
                         return LoopSinkMode::SinkWhileRegpressureIsHigh;
@@ -1258,7 +1261,9 @@ namespace IGC {
                     Worthiness = LoopSinkWorthiness::Sink;
                 }
 
-                if (isa<LoadInst>(I))
+                // if LoadInst or GenISA_LSC2DBlockRead (standalone, non-payload allowed 2d load)
+                GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(I);
+                if (isa<LoadInst>(I) || (GII && GII->getIntrinsicID() == GenISAIntrinsic::GenISA_LSC2DBlockRead))
                 {
                     if (!AllowLoadSinking)
                         continue;
@@ -1282,8 +1287,8 @@ namespace IGC {
 
                 IGC_ASSERT(Worthiness == LoopSinkWorthiness::Unknown);
 
-                // 2d block loads are usually large
-                // So the sinking are beneficial when it's safe
+                // Handle payload 2d loads separately as they go together with auxilary intrinsics
+                // 2d block loads are usually large, so the sinking is beneficial when it's safe
                 if (AllowLoadSinking && IGC_IS_FLAG_ENABLED(LoopSinkEnable2dBlockReads))
                     tryCreate2dBlockReadGroupSinkingCandidate(I, L, SkipInstructions, SinkCandidates);
 
@@ -1346,6 +1351,25 @@ namespace IGC {
                         for (auto BI = BB->rbegin(), BE = BB->rend(); BI != BE; BI++)
                         {
                             Instruction *I = &*BI;
+                            GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(I);
+
+                            // If it's a non-payload 2d block load we can create candidate if it's safe to move
+                            if (GII && GII->getIntrinsicID() == GenISAIntrinsic::GenISA_LSC2DBlockRead)
+                            {
+                                if (SkipInstructions.count(I))
+                                    continue;
+                                SkipInstructions.insert(I);
+
+                                if (!isSafeToLoopSinkLoad(I, L))
+                                    continue;
+
+                                PrintDump("Found 2D block read to reschedule:\n");
+                                PrintInstructionDump(I);
+
+                                CurrentSinkCandidates.push_back(std::make_unique<Candidate>(I, I->getParent(), LoopSinkWorthiness::IntraLoopSink, I->getNextNode()));
+                            }
+
+                            // Handle possible payload 2d block loads separately
                             tryCreate2dBlockReadGroupSinkingCandidate(I, L, SkipInstructions, CurrentSinkCandidates);
                         }
                     }
