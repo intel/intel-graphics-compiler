@@ -38,6 +38,8 @@ DpasScan::DpasScan() : FunctionPass(DpasScan::ID) {
 void DpasScan::getAnalysisUsage(AnalysisUsage& AU) const {
     AU.addRequired<WIAnalysis>();
     AU.addRequired<MetaDataUtilsWrapper>();
+
+    AU.addPreservedID(WIAnalysis::ID);
 }
 
 bool DpasScan::runOnFunction(Function& F) {
