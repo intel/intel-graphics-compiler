@@ -41,6 +41,7 @@ using namespace llvm;
 using namespace RTStackFormat;
 using namespace IGC;
 
+
 namespace {
     class VAdapt
     {
@@ -871,11 +872,11 @@ Value* RTBuilder::getPrimitiveIndex(
     }
 }
 
-PHINode* RTBuilder::getPrimitiveIndex(
+Value* RTBuilder::getPrimitiveIndex(
     RTBuilder::StackPointerVal* perLaneStackPtr, Value* leafType, bool Committed)
 {
-    switch (getMemoryStyle())
-    {
+        switch (getMemoryStyle())
+        {
 #define STYLE(X)                        \
     case RTMemoryStyle::X:              \
         return _getPrimitiveIndex_##X(  \
@@ -885,10 +886,11 @@ PHINode* RTBuilder::getPrimitiveIndex(
             VALUE_NAME("primitiveIndex"));
 #include "RayTracingMemoryStyle.h"
 #undef STYLE
-    }
-    IGC_ASSERT(0);
-    return {};
+        }
+        IGC_ASSERT(0);
+        return nullptr;
 }
+
 
 Value* RTBuilder::getGeometryIndex(
     RTBuilder::StackPointerVal* perLaneStackPtr,
@@ -904,37 +906,36 @@ Value* RTBuilder::getGeometryIndex(
         auto [ValidBB, PN] =
             validateInstanceLeafPtr(perLaneStackPtr, I, (ShaderTy == CallableShaderTypeMD::ClosestHit));
         this->SetInsertPoint(ValidBB->getTerminator());
-        Value* validGeomIndex = getGeometryIndex(perLaneStackPtr, &*BB->rbegin(), leafType, ShaderTy);
+        Value* validGeomIndex = getGeometryIndex(perLaneStackPtr, leafType, ShaderTy == CallableShaderTypeMD::ClosestHit);
         PN->addIncoming(validGeomIndex, getUnsetPhiBlock(PN));
         this->SetInsertPoint(I);
         return PN;
     }
     else
     {
-        return getGeometryIndex(perLaneStackPtr, I, leafType, ShaderTy);
+        return getGeometryIndex(perLaneStackPtr, leafType, ShaderTy == CallableShaderTypeMD::ClosestHit);
     }
 }
 
 Value* RTBuilder::getGeometryIndex(
     RTBuilder::StackPointerVal* perLaneStackPtr,
-    Instruction* I,
     Value* leafType,
-    IGC::CallableShaderTypeMD ShaderTy)
+    bool committed)
 {
-    switch (getMemoryStyle())
-    {
+        switch (getMemoryStyle())
+        {
 #define STYLE(X)                                     \
     case RTMemoryStyle::X:                           \
         return _getGeometryIndex_##X(                \
             perLaneStackPtr,                         \
             leafType,                                \
-            VAdapt{ *this, ShaderTy == ClosestHit }, \
+            VAdapt{ *this, committed }, \
             VALUE_NAME("geometryIndex"));
 #include "RayTracingMemoryStyle.h"
 #undef STYLE
-    }
-    IGC_ASSERT(0);
-    return {};
+        }
+        IGC_ASSERT(0);
+        return nullptr;
 }
 
 Value* RTBuilder::getInstanceContributionToHitGroupIndex(
