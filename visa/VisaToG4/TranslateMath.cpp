@@ -500,7 +500,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
 
   bool needsSrc0Move = src0RR->isScalar() ||
                        src0RR->getModifier() != Mod_src_undef ||
-                       !tryToAlignOperand(src0Opnd, getGRFSize());
+                       !tryToAlignOperand(src0RR, getGRFSize());
   if (needsSrc0Move) {
     if (opcode == ISA_DIV || opcode == ISA_DIVM) {
       G4_DstRegRegion *t6_dst_src0_opnd = createDstRegRegion(tdst_src0);
@@ -511,7 +511,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
   }
   bool needsSrc1Move = src1RR->isScalar() ||
                        src1RR->getModifier() != Mod_src_undef ||
-                       !tryToAlignOperand(src1Opnd, getGRFSize());
+                       !tryToAlignOperand(src1RR, getGRFSize());
   if (needsSrc1Move) {
     G4_DstRegRegion *t7_dst_src1_opnd = createDstRegRegion(tdst_src1);
     inst =
@@ -1029,13 +1029,15 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
   G4_SrcRegRegion *src1RR = operandToDirectSrcRegRegion(
       *this, src1Opnd, G4_ExecSize(element_size), instExecSize);
 
-  if (src0RR->isScalar() || src0RR->getModifier() != Mod_src_undef) {
+  if (src0RR->isScalar() || src0RR->getModifier() != Mod_src_undef ||
+      !tryToAlignOperand(src0RR, getGRFSize())) {
     G4_DstRegRegion *tmp = createDstRegRegion(t6, 1);
     inst = createMov(G4_ExecSize(element_size), tmp, src0RR, instOpt,
                      true); // mov (element_size) t6, src0RR {Q1/H1}
     src0RR = createSrcRegRegion(t6, getRegionStride1());
   }
-  if (src1RR->isScalar() || src1RR->getModifier() != Mod_src_undef) {
+  if (src1RR->isScalar() || src1RR->getModifier() != Mod_src_undef ||
+      !tryToAlignOperand(src1RR, getGRFSize())) {
     G4_DstRegRegion *tmp = createDstRegRegion(t4, 1);
     inst = createMov(G4_ExecSize(element_size), tmp, src1RR, instOpt,
                      true); // mov (element_size) t4, src1RR {Q1/H1}
@@ -1371,7 +1373,8 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
   G4_SrcRegRegion *src0RR =
       operandToDirectSrcRegRegion(*this, src0Opnd, element_size, instExecSize);
 
-  if (src0RR->isScalar() || src0RR->getModifier() != Mod_src_undef) {
+  if (src0RR->isScalar() || src0RR->getModifier() != Mod_src_undef ||
+      !tryToAlignOperand(src0RR, getGRFSize())) {
     // expand src0 to vector src
     G4_DstRegRegion *t6_dst_src0_opnd = createDstRegRegion(t6, 1);
     inst = createMov(element_size, t6_dst_src0_opnd, src0RR, instOpt,
@@ -1737,8 +1740,9 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
   G4_SrcRegRegion *src0RR =
       operandToDirectSrcRegRegion(*this, src0Opnd, element_size, instExecSize);
 
-  bool IsSrc0Moved =
-      src0RR->getRegion()->isScalar() || src0RR->getModifier() != Mod_src_undef;
+  bool IsSrc0Moved = src0RR->getRegion()->isScalar() ||
+                     src0RR->getModifier() != Mod_src_undef ||
+                     !tryToAlignOperand(src0RR, getGRFSize());
   if (IsSrc0Moved) {
     // expand scale src0 to vector src
     dst0 = createDstRegRegion(t6, 1);
