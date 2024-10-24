@@ -2150,6 +2150,7 @@ GRFMode::GRFMode(const TARGET_PLATFORM platform, Options *op) : options(op) {
 unsigned GRFMode::setModeByRegPressure(unsigned maxRP,
                                        unsigned largestInputReg) {
   unsigned size = configs.size(), i = 0;
+  bool spillAllowed = 0;
   // find appropiate GRF based on reg pressure
   for (; i < size; i++) {
     if (configs[i].VRTEnable && configs[i].numGRF >= lowerBoundGRF &&
@@ -2159,8 +2160,12 @@ unsigned GRFMode::setModeByRegPressure(unsigned maxRP,
           // Check that we've at least 8 GRFs over and above
           // those blocked for kernel input. This helps cases
           // where an 8 GRF variable shows up in entry BB.
-          (largestInputReg + 8) <= configs[i].numGRF)
-        return configs[currentMode].numGRF;
+          (largestInputReg + 8) <= configs[i].numGRF) {
+        if (spillAllowed && currentMode > 0)
+          return configs[--currentMode].numGRF;
+        else
+          return configs[currentMode].numGRF;
+      }
     }
   }
   // RP is greater than the maximum GRF available, so set the largest GRF
