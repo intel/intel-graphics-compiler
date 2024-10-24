@@ -1842,7 +1842,8 @@ void OptimizeIR(CodeGenContext* const pContext)
         }
 
         mpm.add(new TrivialLocalMemoryOpsElimination());
-        if (pContext->type == ShaderType::COMPUTE_SHADER)
+        if (pContext->type == ShaderType::COMPUTE_SHADER &&
+            IGC_IS_FLAG_ENABLED(RemoveUnusedTGMFence))
         {
             mpm.add(new TrivialUnnecessaryTGMFenceElimination());
         }
