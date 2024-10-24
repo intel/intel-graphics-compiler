@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: %opt %use_old_pass_manager% -GenXLegalization -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXLegalization -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXLegalization -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 ;
 ; ------------------------------------------------
 ; GenXLegalization
@@ -21,7 +22,8 @@ target triple = "genx64-unknown-unknown"
 define internal spir_func void @test_gvload_clone_per_split1() {
   %gvload1 = load volatile <64 x i16>, <64 x i16>* @g_global1, align 128
   %add = add <64 x i16> %gvload1, zeroinitializer
-; CHECK: %add.gvload_use_split_clone = load volatile <64 x i16>, <64 x i16>* @g_global1, align 128
+; CHECK-TYPED-PTRS: %add.gvload_use_split_clone = load volatile <64 x i16>, <64 x i16>* @g_global1, align 128
+; CHECK-OPAQUE-PTRS: %add.gvload_use_split_clone = load volatile <64 x i16>, ptr @g_global1, align 128
 ; CHECK: %add.gvload_use_split_clone.split32 = call <32 x i16> @llvm.genx.rdregioni.v32i16.v64i16.i16(<64 x i16> %add.gvload_use_split_clone, i32 32, i32 32, i32 1, i16 64, i32 undef)
 ; CHECK: %add.split32 = add <32 x i16> %add.gvload_use_split_clone.split32, zeroinitializer
   store volatile <64 x i16> %add, <64 x i16>* @g_global1, align 128
@@ -32,7 +34,8 @@ define internal spir_func void @test_gvload_clone_per_split2() {
   %gvload1 = load volatile <64 x i16>, <64 x i16>* @g_global1, align 128
   %gvload2 = load volatile <64 x i16>, <64 x i16>* @g_global2, align 128
   %add = add <64 x i16> %gvload1, %gvload2
-; CHECK: %add.gvload_use_split_clone = load volatile <64 x i16>, <64 x i16>* @g_global1, align 128
+; CHECK-TYPED-PTRS: %add.gvload_use_split_clone = load volatile <64 x i16>, <64 x i16>* @g_global1, align 128
+; CHECK-OPAQUE-PTRS: %add.gvload_use_split_clone = load volatile <64 x i16>, ptr @g_global1, align 128
 ; CHECK-NEXT: %add.gvload_use_split_clone.split32 = call <32 x i16> @llvm.genx.rdregioni.v32i16.v64i16.i16(<64 x i16> %add.gvload_use_split_clone, i32 32, i32 32, i32 1, i16 64, i32 undef)
 ; CHECK-NEXT: %gvload2.split32 = call <32 x i16> @llvm.genx.rdregioni.v32i16.v64i16.i16(<64 x i16> %gvload2, i32 32, i32 32, i32 1, i16 64, i32 undef)
 ; CHECK-NEXT: %add.split32 = add <32 x i16> %add.gvload_use_split_clone.split32, %gvload2.split32

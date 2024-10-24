@@ -1,13 +1,15 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -cmabi -march=genx64 -mcpu=Gen9 -S < %s | FileCheck --check-prefix=CHECK_S1 %s
-; RUN: %opt %use_old_pass_manager% -cmabi -march=genx64 -mcpu=Gen9 -S < %s | FileCheck --check-prefix=CHECK_K1 %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -cmabi -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK_S1,CHECK_S1-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -cmabi -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK_S1,CHECK_S1-OPAQUE-PTRS
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -cmabi -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK_K1,CHECK_K1-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -cmabi -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK_K1,CHECK_K1-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
 target triple = "spir64-unknown-unknown"
@@ -17,7 +19,8 @@ target triple = "spir64-unknown-unknown"
 ; CHECK_S1-LABEL: @S1
 ; CHECK_S1-SAME: (i32 %0, i32 %x.in)
 ; CHECK_S1: [[S1_ALLOCA:%[^ ]+]] = alloca i32
-; CHECK_S1: call void @llvm.dbg.declare(metadata i32* [[S1_ALLOCA]], metadata ![[#S1VAR:]], metadata !DIExpression()), !dbg ![[#S1LOC:]]
+; CHECK_S1-TYPED-PTRS: call void @llvm.dbg.declare(metadata i32* [[S1_ALLOCA]], metadata ![[#S1VAR:]], metadata !DIExpression()), !dbg ![[#S1LOC:]]
+; CHECK_S1-OPAQUE-PTRS: call void @llvm.dbg.declare(metadata ptr [[S1_ALLOCA]], metadata ![[#S1VAR:]], metadata !DIExpression()), !dbg ![[#S1LOC:]]
 ; CHECK_S1-DAG: ![[#S1_SP:]] = distinct !DISubprogram(name: "S1",
 ; CHECK_S1-DAG: ![[#S1VAR]] = !DILocalVariable(name: "x", scope: ![[#S1_SP]], file: ![[#]], type: ![[#S1TYPE:]], flags: DIFlagArtificial)
 ; CHECK_S1-DAG: ![[#S1TYPE]] = !DIBasicType(name: "unsigned int", size: 32, encoding: DW_ATE_unsigned)
@@ -31,7 +34,8 @@ define internal spir_func <8 x i32> @S1(i32 %0) #1 !dbg !17 {
 ; CHECK_K1-LABEL: @K1
 ; CHECK_K1-SAME: (i32 %0, i64 %privBase)
 ; CHECK_K1: [[K1_ALLOCA:%[^ ]+]] = alloca i32
-; CHECK_K1: call void @llvm.dbg.declare(metadata i32* [[K1_ALLOCA]], metadata ![[#K1VAR:]], metadata !DIExpression()), !dbg ![[#K1LOC:]]
+; CHECK_K1-TYPED-PTRS: call void @llvm.dbg.declare(metadata i32* [[K1_ALLOCA]], metadata ![[#K1VAR:]], metadata !DIExpression()), !dbg ![[#K1LOC:]]
+; CHECK_K1-OPAQUE-PTRS: call void @llvm.dbg.declare(metadata ptr [[K1_ALLOCA]], metadata ![[#K1VAR:]], metadata !DIExpression()), !dbg ![[#K1LOC:]]
 ; CHECK_K1-DAG: ![[#K1_SP:]] = distinct !DISubprogram(name: "K1",
 ; CHECK_K1-DAG: ![[#K1VAR]] = !DILocalVariable(name: "x", scope: ![[#K1_SP]], file: ![[#]], type: ![[#K1TYPE:]], flags: DIFlagArtificial)
 ; CHECK_K1-DAG: ![[#K1TYPE]] = !DIBasicType(name: "unsigned int", size: 32, encoding: DW_ATE_unsigned)

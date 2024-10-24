@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2023 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXLoadStoreLowering -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -enable-ldst-lowering=true -mattr=+ocl_runtime -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXLoadStoreLowering -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -enable-ldst-lowering=true -mattr=+ocl_runtime -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXLoadStoreLowering -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -enable-ldst-lowering=true -mattr=+ocl_runtime -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 
@@ -20,7 +21,8 @@ define void @test(float* %RET) {
   %ipt = inttoptr i64 %pti to <8 x i16>*
   store <8 x i16> <i16 2, i16 3, i16 4, i16 5, i16 6, i16 7, i16 8, i16 9>, <8 x i16>* %ipt
 
-; CHECK: [[ADDR:%.*]] = ptrtoint <8 x i16>* %ipt to i64
+; CHECK-TYPED-PTRS: [[ADDR:%.*]] = ptrtoint <8 x i16>* %ipt to i64
+; CHECK-OPAQUE-PTRS: [[ADDR:%.*]] = ptrtoint ptr %ipt to i64
 ; CHECK: call void @llvm.genx.svm.block.st.i64.v8i16(i64 [[ADDR]], <8 x i16> <i16 2, i16 3, i16 4, i16 5, i16 6, i16 7, i16 8, i16 9>)
   ret void
 }

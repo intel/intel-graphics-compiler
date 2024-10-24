@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -cmabi -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -cmabi -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -cmabi -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 
@@ -40,17 +41,23 @@ define dllexport void @simple_partial(i64 %provided_offset) {
 ; CHECK-DAG: %[[ALLOCA_VEC_A:[^ ]+]] = alloca <32 x i8>
 
   %gep.int.a = getelementptr inbounds i16, i16* @global.int.a, i64 0
-; CHECK: %gep.int.a = getelementptr inbounds i16, i16* %[[ALLOCA_INT_A]], i64 0
+; CHECK-TYPED-PTRS: %gep.int.a = getelementptr inbounds i16, i16* %[[ALLOCA_INT_A]], i64 0
+; CHECK-OPAQUE-PTRS: %gep.int.a = getelementptr inbounds i16, ptr %[[ALLOCA_INT_A]], i64 0
   %gep.int.b = getelementptr inbounds i32, i32* @global.int.b, i64 0
-; CHECK-NEXT: %gep.int.b = getelementptr inbounds i32, i32* %[[ALLOCA_INT_B]], i64 0
+; CHECK-TYPED-PTRS-NEXT: %gep.int.b = getelementptr inbounds i32, i32* %[[ALLOCA_INT_B]], i64 0
+; CHECK-OPAQUE-PTRS-NEXT: %gep.int.b = getelementptr inbounds i32, ptr %[[ALLOCA_INT_B]], i64 0
   %gep.arr.a = getelementptr inbounds [8 x i8], [8 x i8]* @global.arr.a, i64 0, i64 %provided_offset
-; CHECK-NEXT: %gep.arr.a = getelementptr inbounds [8 x i8], [8 x i8]* %[[ALLOCA_ARR_A]], i64 0, i64 %provided_offset
+; CHECK-TYPED-PTRS-NEXT: %gep.arr.a = getelementptr inbounds [8 x i8], [8 x i8]* %[[ALLOCA_ARR_A]], i64 0, i64 %provided_offset
+; CHECK-OPAQUE-PTRS-NEXT: %gep.arr.a = getelementptr inbounds [8 x i8], ptr %[[ALLOCA_ARR_A]], i64 0, i64 %provided_offset
   %gep.arr.b = getelementptr inbounds [16 x i8], [16 x i8]* @global.arr.b, i64 0, i64 %provided_offset
-; CHECK-NEXT: %gep.arr.b = getelementptr inbounds [16 x i8], [16 x i8]* %[[ALLOCA_ARR_B]], i64 0, i64 %provided_offset
+; CHECK-TYPED-PTRS-NEXT: %gep.arr.b = getelementptr inbounds [16 x i8], [16 x i8]* %[[ALLOCA_ARR_B]], i64 0, i64 %provided_offset
+; CHECK-OPAQUE-PTRS-NEXT: %gep.arr.b = getelementptr inbounds [16 x i8], ptr %[[ALLOCA_ARR_B]], i64 0, i64 %provided_offset
   %ld.vec.a = load <32 x i8>, <32 x i8>* @global.vec.a
-; CHECK-NEXT: %ld.vec.a = load <32 x i8>, <32 x i8>* %[[ALLOCA_VEC_A]]
+; CHECK-TYPED-PTRS-NEXT: %ld.vec.a = load <32 x i8>, <32 x i8>* %[[ALLOCA_VEC_A]]
+; CHECK-OPAQUE-PTRS-NEXT: %ld.vec.a = load <32 x i8>, ptr %[[ALLOCA_VEC_A]]
   %ld.vec.c = call <16 x i8> @llvm.genx.vload.v15i8.p0v15i8(<16 x i8>* @volatile.vec.c)
-; CHECK: %ld.vec.c = call <16 x i8> @llvm.genx.vload.v15i8.p0v15i8(<16 x i8>* @volatile.vec.c)
+; CHECK-TYPED-PTRS: %ld.vec.c = call <16 x i8> @llvm.genx.vload.v15i8.p0v15i8(<16 x i8>* @volatile.vec.c)
+; CHECK-OPAQUE-PTRS: %ld.vec.c = call <16 x i8> @llvm.genx.vload.v15i8.p0v15i8(ptr @volatile.vec.c)
 ; CHECK-NOT: @global.int.a
 ; CHECK-NOT: @global.int.b
 ; CHECK-NOT: @global.arr.a

@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -cmabi -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -cmabi -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -cmabi -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
 target triple = "spir64-unknown-unknown"
@@ -16,7 +17,8 @@ target triple = "spir64-unknown-unknown"
 ; CHECK-LABEL: @K1
 ; CHECK-SAME: (i32 %0, i64 %privBase)
 ; CHECK: [[K1_ALLOCA:%[^ ]+]] = alloca i32
-; CHECK: call void @llvm.dbg.declare(metadata i32* [[K1_ALLOCA]], metadata ![[#K1VAR:]], metadata !DIExpression()), !dbg ![[#K1LOC:]]
+; CHECK-TYPED-PTRS: call void @llvm.dbg.declare(metadata i32* [[K1_ALLOCA]], metadata ![[#K1VAR:]], metadata !DIExpression()), !dbg ![[#K1LOC:]]
+; CHECK-OPAQUE-PTRS: call void @llvm.dbg.declare(metadata ptr [[K1_ALLOCA]], metadata ![[#K1VAR:]], metadata !DIExpression()), !dbg ![[#K1LOC:]]
 ; CHECK-DAG: ![[#K1_SP:]] = distinct !DISubprogram(name: "K1",
 ; CHECK-DAG: ![[#K1VAR]] = !DILocalVariable(name: "x", scope: ![[#K1_SP]], file: ![[#]], type: ![[#TYPE:]], flags: DIFlagArtificial)
 ; CHECK-DAG: ![[#TYPE]] = !DIBasicType(name: "int", size: 32, encoding: DW_ATE_signed)

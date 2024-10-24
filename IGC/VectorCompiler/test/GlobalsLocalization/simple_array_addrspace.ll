@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2021 Intel Corporation
+; Copyright (C) 2020-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -cmabi -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -cmabi -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -cmabi -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 
@@ -17,11 +18,14 @@ target datalayout = "e-p:64:64-i64:64-n8:16:32"
 ; Function Attrs: noinline nounwind
 define dllexport void @simple_array(i64 %provided_offset) {
   %ptr = getelementptr inbounds [8 x i32], [8 x i32] addrspace(2)* @simple_global_array, i64 0, i64 %provided_offset
-; CHECK: %ptr = getelementptr inbounds [8 x i32], [8 x i32] addrspace(2)* @simple_global_array, i64 0, i64 %provided_offset
+; CHECK-TYPED-PTRS: %ptr = getelementptr inbounds [8 x i32], [8 x i32] addrspace(2)* @simple_global_array, i64 0, i64 %provided_offset
+; CHECK-OPAQUE-PTRS: %ptr = getelementptr inbounds [8 x i32], ptr addrspace(2) @simple_global_array, i64 0, i64 %provided_offset
   %ptr.cast = bitcast i32 addrspace(2)* %ptr to i8 addrspace(2)*
-; CHECK: %ptr.cast = bitcast i32 addrspace(2)* %ptr to i8 addrspace(2)*
+; CHECK-TYPED-PTRS: %ptr.cast = bitcast i32 addrspace(2)* %ptr to i8 addrspace(2)*
+; CHECK-OPAQUE-PTRS: %ptr.cast = bitcast ptr addrspace(2) %ptr to ptr addrspace(2)
   %val = load i8, i8 addrspace(2)* %ptr.cast, align 4
-; CHECK: %val = load i8, i8 addrspace(2)* %ptr.cast, align 4
+; CHECK-TYPED-PTRS: %val = load i8, i8 addrspace(2)* %ptr.cast, align 4
+; CHECK-OPAQUE-PTRS: %val = load i8, ptr addrspace(2) %ptr.cast, align 4
   %val.use = add i8 %val, 1
 ; CHECK: %val.use = add i8 %val, 1
   ret void

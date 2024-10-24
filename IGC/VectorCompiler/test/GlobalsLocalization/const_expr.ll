@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2021 Intel Corporation
+; Copyright (C) 2020-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -cmabi -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -cmabi -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -cmabi -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 
@@ -15,11 +16,13 @@ target datalayout = "e-p:64:64-i64:64-n8:16:32"
 
 define dllexport void @const_expr() {
 ; CHECK: %[[ALLOCA:[^ ]+]] = alloca <256 x i8>, align 256
-; CHECK: store <256 x i8> zeroinitializer, <256 x i8>* %[[ALLOCA]]
+; CHECK-TYPED-PTRS: store <256 x i8> zeroinitializer, <256 x i8>* %[[ALLOCA]]
+; CHECK-OPAQUE-PTRS: store <256 x i8> zeroinitializer, ptr %[[ALLOCA]]
 
   %ld = load <64 x i32>, <64 x i32>* bitcast (<256 x i8>* @gvec to <64 x i32>*), align 256
-; CHECK: %[[BC:[^ ]+]] = bitcast <256 x i8>* %[[ALLOCA]] to <64 x i32>*
-; CHECK: %ld = load <64 x i32>, <64 x i32>* %[[BC]], align 256
+; CHECK-TYPED-PTRS: %[[BC:[^ ]+]] = bitcast <256 x i8>* %[[ALLOCA]] to <64 x i32>*
+; CHECK-TYPED-PTRS: %ld = load <64 x i32>, <64 x i32>* %[[BC]], align 256
+; CHECK-OPAQUE-PTRS: %ld = load <64 x i32>, ptr %[[ALLOCA]], align 256
   ret void
 }
 

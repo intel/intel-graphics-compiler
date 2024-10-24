@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: %opt %use_old_pass_manager% -GenXGlobalValueLowering -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXGlobalValueLowering -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXGlobalValueLowering -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 ; ------------------------------------------------
 ; GenXGlobalValueLowering
 ; ------------------------------------------------
@@ -16,17 +17,22 @@
 ; Debug MD for this test was created with debugify pass.
 
 ; CHECK: void @test_gvlower{{.*}} !dbg [[SCOPE:![0-9]*]]
-; CHECK: [[VAL1_V:%[A-z0-9.]*]] = load i32 addrspace(1)*{{.*}}, !dbg [[VAL1_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 addrspace(1)* [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
+; CHECK-TYPED-PTRS: [[VAL1_V:%[A-z0-9.]*]] = load i32 addrspace(1)*{{.*}}, !dbg [[VAL1_LOC:![0-9]*]]
+; CHECK-TYPED-PTRS: void @llvm.dbg.value(metadata i32 addrspace(1)* [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
+; CHECK-OPAQUE-PTRS: [[VAL1_V:%[A-z0-9.]*]] = load ptr addrspace(1){{.*}}, !dbg [[VAL1_LOC:![0-9]*]]
+; CHECK-OPAQUE-PTRS: void @llvm.dbg.value(metadata ptr addrspace(1) [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
 ; CHECK: [[VAL2_V:%[A-z0-9.]*]] = getelementptr {{.*}}, !dbg [[VAL2_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 addrspace(1)* [[VAL2_V]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC]]
+; CHECK-TYPED-PTRS: void @llvm.dbg.value(metadata i32 addrspace(1)* [[VAL2_V]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC]]
+; CHECK-OPAQUE-PTRS: void @llvm.dbg.value(metadata ptr addrspace(1) [[VAL2_V]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC]]
 ; CHECK: [[VAL3_V:%[A-z0-9.]*]] = call i32 {{.*}}, !dbg [[VAL3_LOC:![0-9]*]]
 ; CHECK: void @llvm.dbg.value(metadata i32 [[VAL3_V]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC]]
 ; CHECK: store i32 {{.*}}, !dbg [[STORE1_LOC:![0-9]*]]
 ; CHECK: [[VAL4_V:%[A-z0-9.]*]] = extractvalue {{.*}}, !dbg [[VAL4_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata [8 x i32]* [[VAL4_V]], metadata [[VAL4_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL4_LOC]]
+; CHECK-TYPED-PTRS: void @llvm.dbg.value(metadata [8 x i32]* [[VAL4_V]], metadata [[VAL4_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL4_LOC]]
+; CHECK-OPAQUE-PTRS: void @llvm.dbg.value(metadata ptr [[VAL4_V]], metadata [[VAL4_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL4_LOC]]
 ; CHECK: [[VAL5_V:%[A-z0-9.]*]] = getelementptr {{.*}}, !dbg [[VAL5_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32* [[VAL5_V]], metadata [[VAL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL5_LOC]]
+; CHECK-TYPED-PTRS: void @llvm.dbg.value(metadata i32* [[VAL5_V]], metadata [[VAL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL5_LOC]]
+; CHECK-OPAQUE-PTRS: void @llvm.dbg.value(metadata ptr [[VAL5_V]], metadata [[VAL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL5_LOC]]
 ; CHECK: [[VAL6_V:%[A-z0-9.]*]] = load {{.*}}, !dbg [[VAL6_LOC:![0-9]*]]
 ; CHECK: void @llvm.dbg.value(metadata i32 [[VAL6_V]], metadata [[VAL6_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL6_LOC]]
 ; CHECK: store i32 {{.*}}, !dbg [[STORE2_LOC:![0-9]*]]

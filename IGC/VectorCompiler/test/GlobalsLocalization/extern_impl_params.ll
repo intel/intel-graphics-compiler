@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2023 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -cmabi -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -cmabi -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -cmabi -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
 target triple = "spir64-unknown-unknown"
@@ -32,10 +33,12 @@ define dllexport spir_kernel void @loc_sz_overlap(i64 %privBase, <3 x i32> %__ar
 ; CHECK-NOT: alloca
 
   store <3 x i32> %__arg_llvm.genx.local.size, <3 x i32>* @__imparg_llvm.genx.local.size
-; CHECK: store <3 x i32> %__arg_llvm.genx.local.size, <3 x i32>* %__imparg_llvm.genx.local.size.local
+; CHECK-TYPED-PTRS: store <3 x i32> %__arg_llvm.genx.local.size, <3 x i32>* %__imparg_llvm.genx.local.size.local
+; CHECK-OPAQUE-PTRS: store <3 x i32> %__arg_llvm.genx.local.size, ptr %__imparg_llvm.genx.local.size.local
 
   call void @internal_loc_sz()
-; CHECK: %__imparg_llvm.genx.local.size.val = load <3 x i32>, <3 x i32>* %__imparg_llvm.genx.local.size.local
+; CHECK-TYPED-PTRS: %__imparg_llvm.genx.local.size.val = load <3 x i32>, <3 x i32>* %__imparg_llvm.genx.local.size.local
+; CHECK-OPAQUE-PTRS: %__imparg_llvm.genx.local.size.val = load <3 x i32>, ptr %__imparg_llvm.genx.local.size.local
 ; CHECK: call {{.*}} @internal_loc_sz(<3 x i32> %__imparg_llvm.genx.local.size.val)
 
   call void @external_loc_size_loc_id()
@@ -53,13 +56,17 @@ define spir_func void @external_loc_size_loc_id() #0 {
   %elsli.get.loc.sz = call <3 x i32> @get_loc_sz()
   store <3 x i16> %elsli.get.loc.id, <3 x i16>* @__imparg_llvm.genx.local.id16
   store <3 x i32> %elsli.get.loc.sz, <3 x i32>* @__imparg_llvm.genx.local.size
-; CHECK: store <3 x i16> %elsli.get.loc.id, <3 x i16>* %__imparg_llvm.genx.local.id16.local
-; CHECK: store <3 x i32> %elsli.get.loc.sz, <3 x i32>* %__imparg_llvm.genx.local.size.local
+; CHECK-TYPED-PTRS: store <3 x i16> %elsli.get.loc.id, <3 x i16>* %__imparg_llvm.genx.local.id16.local
+; CHECK-TYPED-PTRS: store <3 x i32> %elsli.get.loc.sz, <3 x i32>* %__imparg_llvm.genx.local.size.local
+; CHECK-OPAQUE-PTRS: store <3 x i16> %elsli.get.loc.id, ptr %__imparg_llvm.genx.local.id16.local
+; CHECK-OPAQUE-PTRS: store <3 x i32> %elsli.get.loc.sz, ptr %__imparg_llvm.genx.local.size.local
 
   %elsli.loc.id = load <3 x i16>, <3 x i16>* @__imparg_llvm.genx.local.id16
   %elsli.loc.sz = load <3 x i32>, <3 x i32>* @__imparg_llvm.genx.local.size
-; CHECK: %elsli.loc.id = load <3 x i16>, <3 x i16>* %__imparg_llvm.genx.local.id16.local
-; CHECK: %elsli.loc.sz = load <3 x i32>, <3 x i32>* %__imparg_llvm.genx.local.size.local
+; CHECK-TYPED-PTRS: %elsli.loc.id = load <3 x i16>, <3 x i16>* %__imparg_llvm.genx.local.id16.local
+; CHECK-TYPED-PTRS: %elsli.loc.sz = load <3 x i32>, <3 x i32>* %__imparg_llvm.genx.local.size.local
+; CHECK-OPAQUE-PTRS: %elsli.loc.id = load <3 x i16>, ptr %__imparg_llvm.genx.local.id16.local
+; CHECK-OPAQUE-PTRS: %elsli.loc.sz = load <3 x i32>, ptr %__imparg_llvm.genx.local.size.local
   ret void
 }
 
@@ -84,15 +91,19 @@ define spir_func void @external_indir_use() #0 {
   %eiu.get.loc.sz = call <3 x i32> @get_loc_sz()
   store <3 x i16> %eiu.get.loc.id, <3 x i16>* @__imparg_llvm.genx.local.id16
   store <3 x i32> %eiu.get.loc.sz, <3 x i32>* @__imparg_llvm.genx.local.size
-; CHECK: store <3 x i16> %eiu.get.loc.id, <3 x i16>* %__imparg_llvm.genx.local.id16.local
-; CHECK: store <3 x i32> %eiu.get.loc.sz, <3 x i32>* %__imparg_llvm.genx.local.size.local
+; CHECK-TYPED-PTRS: store <3 x i16> %eiu.get.loc.id, <3 x i16>* %__imparg_llvm.genx.local.id16.local
+; CHECK-TYPED-PTRS: store <3 x i32> %eiu.get.loc.sz, <3 x i32>* %__imparg_llvm.genx.local.size.local
+; CHECK-OPAQUE-PTRS: store <3 x i16> %eiu.get.loc.id, ptr %__imparg_llvm.genx.local.id16.local
+; CHECK-OPAQUE-PTRS: store <3 x i32> %eiu.get.loc.sz, ptr %__imparg_llvm.genx.local.size.local
 
   call void @internal_loc_sz()
-; CHECK: %__imparg_llvm.genx.local.size.val = load <3 x i32>, <3 x i32>* %__imparg_llvm.genx.local.size.local
+; CHECK-TYPED-PTRS: %__imparg_llvm.genx.local.size.val = load <3 x i32>, <3 x i32>* %__imparg_llvm.genx.local.size.local
+; CHECK-OPAQUE-PTRS: %__imparg_llvm.genx.local.size.val = load <3 x i32>, ptr %__imparg_llvm.genx.local.size.local
 ; CHECK: call {{.*}} @internal_loc_sz(<3 x i32> %__imparg_llvm.genx.local.size.val)
 
   call void @internal_loc_id()
-; CHECK: %__imparg_llvm.genx.local.id16.val = load <3 x i16>, <3 x i16>* %__imparg_llvm.genx.local.id16.local
+; CHECK-TYPED-PTRS: %__imparg_llvm.genx.local.id16.val = load <3 x i16>, <3 x i16>* %__imparg_llvm.genx.local.id16.local
+; CHECK-OPAQUE-PTRS: %__imparg_llvm.genx.local.id16.val = load <3 x i16>, ptr %__imparg_llvm.genx.local.id16.local
 ; CHECK: call {{.*}} @internal_loc_id(<3 x i16> %__imparg_llvm.genx.local.id16.val)
   ret void
 }
@@ -106,14 +117,18 @@ define spir_func void @external_mixed_use() #0 {
   %emu.get.grp.cnt = call <3 x i32> @get_grp_cnt()
   store i64 %emu.get.printf.ptr, i64* @__imparg_llvm.vc.internal.print.buffer
   store <3 x i32> %emu.get.grp.cnt, <3 x i32>* @__imparg_llvm.genx.group.count
-; CHECK: store i64 %emu.get.printf.ptr, i64* %__imparg_llvm.vc.internal.print.buffer.local
-; CHECK: store <3 x i32> %emu.get.grp.cnt, <3 x i32>* %__imparg_llvm.genx.group.count.local
+; CHECK-TYPED-PTRS: store i64 %emu.get.printf.ptr, i64* %__imparg_llvm.vc.internal.print.buffer.local
+; CHECK-TYPED-PTRS: store <3 x i32> %emu.get.grp.cnt, <3 x i32>* %__imparg_llvm.genx.group.count.local
+; CHECK-OPAQUE-PTRS: store i64 %emu.get.printf.ptr, ptr %__imparg_llvm.vc.internal.print.buffer.local
+; CHECK-OPAQUE-PTRS: store <3 x i32> %emu.get.grp.cnt, ptr %__imparg_llvm.genx.group.count.local
 
   %emu.printf.ptr = load i64, i64* @__imparg_llvm.vc.internal.print.buffer
-; CHECK: %emu.printf.ptr = load i64, i64* %__imparg_llvm.vc.internal.print.buffer.local
+; CHECK-TYPED-PTRS: %emu.printf.ptr = load i64, i64* %__imparg_llvm.vc.internal.print.buffer.local
+; CHECK-OPAQUE-PTRS: %emu.printf.ptr = load i64, ptr %__imparg_llvm.vc.internal.print.buffer.local
 
   call void @internal_grp_cnt()
-; CHECK: %__imparg_llvm.genx.group.count.val = load <3 x i32>, <3 x i32>* %__imparg_llvm.genx.group.count.local
+; CHECK-TYPED-PTRS: %__imparg_llvm.genx.group.count.val = load <3 x i32>, <3 x i32>* %__imparg_llvm.genx.group.count.local
+; CHECK-OPAQUE-PTRS: %__imparg_llvm.genx.group.count.val = load <3 x i32>, ptr %__imparg_llvm.genx.group.count.local
 ; CHECK: call {{.*}} @internal_grp_cnt(<3 x i32> %__imparg_llvm.genx.group.count.val)
   ret void
 }
@@ -121,30 +136,36 @@ define spir_func void @external_mixed_use() #0 {
 define internal spir_func void @internal_loc_sz() #0 {
 ; CHECK-LABEL: define internal spir_func {{.*}} @internal_loc_sz(<3 x i32> %__imparg_llvm.genx.local.size.in)
 ; CHECK: %__imparg_llvm.genx.local.size.local = alloca <3 x i32>
-; CHECK: store <3 x i32> %__imparg_llvm.genx.local.size.in, <3 x i32>* %__imparg_llvm.genx.local.size.local
+; CHECK-TYPED-PTRS: store <3 x i32> %__imparg_llvm.genx.local.size.in, <3 x i32>* %__imparg_llvm.genx.local.size.local
+; CHECK-OPAQUE-PTRS: store <3 x i32> %__imparg_llvm.genx.local.size.in, ptr %__imparg_llvm.genx.local.size.local
 
   %ils.loc.sz = load <3 x i32>, <3 x i32>* @__imparg_llvm.genx.local.size
-; CHECK: %ils.loc.sz = load <3 x i32>, <3 x i32>* %__imparg_llvm.genx.local.size.local
+; CHECK-TYPED-PTRS: %ils.loc.sz = load <3 x i32>, <3 x i32>* %__imparg_llvm.genx.local.size.local
+; CHECK-OPAQUE-PTRS: %ils.loc.sz = load <3 x i32>, ptr %__imparg_llvm.genx.local.size.local
   ret void
 }
 
 define internal spir_func void @internal_loc_id() #0 {
 ; CHECK-LABEL: define internal spir_func {{.*}} @internal_loc_id(<3 x i16> %__imparg_llvm.genx.local.id16.in)
 ; CHECK: %__imparg_llvm.genx.local.id16.local = alloca <3 x i16>
-; CHECK: store <3 x i16> %__imparg_llvm.genx.local.id16.in, <3 x i16>* %__imparg_llvm.genx.local.id16.local
+; CHECK-TYPED-PTRS: store <3 x i16> %__imparg_llvm.genx.local.id16.in, <3 x i16>* %__imparg_llvm.genx.local.id16.local
+; CHECK-OPAQUE-PTRS: store <3 x i16> %__imparg_llvm.genx.local.id16.in, ptr %__imparg_llvm.genx.local.id16.local
 
   %ili.loc.id = load <3 x i16>, <3 x i16>* @__imparg_llvm.genx.local.id16
-; CHECK: %ili.loc.id = load <3 x i16>, <3 x i16>* %__imparg_llvm.genx.local.id16.local
+; CHECK-TYPED-PTRS: %ili.loc.id = load <3 x i16>, <3 x i16>* %__imparg_llvm.genx.local.id16.local
+; CHECK-OPAQUE-PTRS: %ili.loc.id = load <3 x i16>, ptr %__imparg_llvm.genx.local.id16.local
   ret void
 }
 
 define internal spir_func void @internal_grp_cnt() #0 {
 ; CHECK-LABEL: define internal spir_func {{.*}} @internal_grp_cnt(<3 x i32> %__imparg_llvm.genx.group.count.in)
 ; CHECK: %__imparg_llvm.genx.group.count.local = alloca <3 x i32>
-; CHECK: store <3 x i32> %__imparg_llvm.genx.group.count.in, <3 x i32>* %__imparg_llvm.genx.group.count.local
+; CHECK-TYPED-PTRS: store <3 x i32> %__imparg_llvm.genx.group.count.in, <3 x i32>* %__imparg_llvm.genx.group.count.local
+; CHECK-OPAQUE-PTRS: store <3 x i32> %__imparg_llvm.genx.group.count.in, ptr %__imparg_llvm.genx.group.count.local
 
   %igc.loc.id = load <3 x i32>, <3 x i32>* @__imparg_llvm.genx.group.count
-; CHECK: %igc.loc.id = load <3 x i32>, <3 x i32>* %__imparg_llvm.genx.group.count.local
+; CHECK-TYPED-PTRS: %igc.loc.id = load <3 x i32>, <3 x i32>* %__imparg_llvm.genx.group.count.local
+; CHECK-OPAQUE-PTRS: %igc.loc.id = load <3 x i32>, ptr %__imparg_llvm.genx.group.count.local
   ret void
 }
 

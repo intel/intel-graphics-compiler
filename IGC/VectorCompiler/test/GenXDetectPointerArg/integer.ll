@@ -6,7 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: %opt %use_old_pass_manager% -GenXDetectPointerArg -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=XeHPC -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXDetectPointerArg -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=XeHPC -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXDetectPointerArg -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=XeHPC -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 @data = internal global <8 x i64> undef, align 64, !spirv.Decorations !0 #0
 
@@ -39,7 +40,8 @@ attributes #3 = { nofree nounwind readonly "target-cpu"="XeHPC" }
 !llvm.module.flags = !{!20}
 
 ; CHECK: !genx.kernels = !{![[KERNEL:[0-9]+]]}
-; CHECK: ![[KERNEL]] = !{void (i64, i64)* @kernel, !"kernel", !{{[0-9]+}}, i32 0, !{{[0-9]+}}, !{{[0-9]+}}, ![[NODE:[0-9]+]], i32 0}
+; CHECK-TYPED-PTRS: ![[KERNEL]] = !{void (i64, i64)* @kernel, !"kernel", !{{[0-9]+}}, i32 0, !{{[0-9]+}}, !{{[0-9]+}}, ![[NODE:[0-9]+]], i32 0}
+; CHECK-OPAQUE-PTRS: ![[KERNEL]] = !{ptr @kernel, !"kernel", !{{[0-9]+}}, i32 0, !{{[0-9]+}}, !{{[0-9]+}}, ![[NODE:[0-9]+]], i32 0}
 ; CHECK: ![[NODE]] = !{!"svmptr_t", !""}
 
 !0 = !{!1, !2, !3, !4}

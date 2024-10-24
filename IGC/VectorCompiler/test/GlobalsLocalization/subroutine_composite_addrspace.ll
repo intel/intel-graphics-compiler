@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2021 Intel Corporation
+; Copyright (C) 2020-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -cmabi -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -cmabi -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -cmabi -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 
@@ -18,7 +19,8 @@ target datalayout = "e-p:64:64-i64:64-n8:16:32"
 define internal spir_func i32 @bar(i64 %passed.offset) {
 ; CHECK: define internal spir_func i32 @bar(i64 %passed.offset) {
   %elem.ptr = getelementptr inbounds [8 x i32], [8 x i32] addrspace(2)* @simple_global_array, i64 0, i64 %passed.offset
-; CHECK: %elem.ptr = getelementptr inbounds [8 x i32], [8 x i32] addrspace(2)* @simple_global_array, i64 0, i64 %passed.offset
+; CHECK-TYPED-PTRS: %elem.ptr = getelementptr inbounds [8 x i32], [8 x i32] addrspace(2)* @simple_global_array, i64 0, i64 %passed.offset
+; CHECK-OPAQUE-PTRS: %elem.ptr = getelementptr inbounds [8 x i32], ptr addrspace(2) @simple_global_array, i64 0, i64 %passed.offset
   %elem = load i32, i32 addrspace(2)* %elem.ptr, align 4
   ret i32 %elem
 }

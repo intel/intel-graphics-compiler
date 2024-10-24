@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: %opt %use_old_pass_manager% -GenXIMadLegalization -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXIMadLegalization -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXIMadLegalization -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 ; ------------------------------------------------
 ; GenXIMadPostLegalization
 ; ------------------------------------------------
@@ -66,8 +67,10 @@ entry:
   %call4.i.i.i.esimd = call <32 x double> @llvm.genx.wrregionf.v32f64.f64.i16.i1(<32 x double> %call.i.i.i123.esimd69, double %mad18, i32 0, i32 1, i32 1, i16 0, i32 undef, i1 true)
   store volatile <32 x double> %call4.i.i.i.esimd, <32 x double>* @_ZL1A
   %call.i.i.i.i170.esimd73 = load volatile <32 x double>, <32 x double>* @_ZL1A
-; CHECK: store volatile <32 x double> %call4.i.i.i.esimd, <32 x double>* @_ZL1A
-; CHECK-NEXT: %call.i.i.i.i170.esimd73 = load volatile <32 x double>, <32 x double>* @_ZL1A
+; CHECK-TYPED-PTRS: store volatile <32 x double> %call4.i.i.i.esimd, <32 x double>* @_ZL1A
+; CHECK-TYPED-PTRS-NEXT: %call.i.i.i.i170.esimd73 = load volatile <32 x double>, <32 x double>* @_ZL1A
+; CHECK-OPAQUE-PTRS: store volatile <32 x double> %call4.i.i.i.esimd, ptr @_ZL1A
+; CHECK-OPAQUE-PTRS-NEXT: %call.i.i.i.i170.esimd73 = load volatile <32 x double>, ptr @_ZL1A
 ; CHECK-NOT:  %vecext.i1.regioncollapsed[[POST_BALING_CLONE_IDX0:[0-9]+]] = tail call double @llvm.genx.rdregionf.f64.v32f64.i16(<32 x double> %call.i.i.i123.esimd69, i32 0, i32 1, i32 1, i16 0, i32 undef)
 ; CHECK-NOT:  %mul25 = fmul double %vecext.i1.regioncollapsed[[POST_BALING_CLONE_IDX0:[0-9]+]], %mul17
 ; CHECK-NOT:  %vecext.i1503.regioncollapsed[[POST_BALING_CLONE_IDX1:[0-9]+]] = tail call double @llvm.genx.rdregionf.f64.v32f64.i16(<32 x double> %call.i.i.i123.esimd69, i32 0, i32 1, i32 1, i16 8, i32 undef)

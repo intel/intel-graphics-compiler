@@ -6,7 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXDetectPointerArg -march=genx64 -mcpu=XeHPC -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXDetectPointerArg -march=genx64 -mcpu=XeHPC -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXDetectPointerArg -march=genx64 -mcpu=XeHPC -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
 
@@ -59,7 +60,8 @@ attributes #2 = { "target-cpu"="XeHPC" }
 !genx.kernel.internal = !{!10}
 
 ; CHECK: !genx.kernels = !{![[KERNEL:[0-9]+]]}
-; CHECK: ![[KERNEL]] = !{void (%struct.state*, i32 addrspace(1)*, i64, i8, i64, i64, i64, float)* @foo, !"foo", !{{[0-9]+}}, i32 0, !{{[0-9]+}}, !{{[0-9]+}}, ![[NODE:[0-9]+]], i32 0}
+; CHECK-TYPED-PTRS: ![[KERNEL]] = !{void (%struct.state*, i32 addrspace(1)*, i64, i8, i64, i64, i64, float)* @foo, !"foo", !{{[0-9]+}}, i32 0, !{{[0-9]+}}, !{{[0-9]+}}, ![[NODE:[0-9]+]], i32 0}
+; CHECK-OPAQUE-PTRS: ![[KERNEL]] = !{ptr @foo, !"foo", !{{[0-9]+}}, i32 0, !{{[0-9]+}}, !{{[0-9]+}}, ![[NODE:[0-9]+]], i32 0}
 ; CHECK: ![[NODE]] = !{!"svmptr_t", !"svmptr_t", !"", !"", !"", !"", !"svmptr_t", !""}
 
 !0 = !{i32 0, i32 100000}

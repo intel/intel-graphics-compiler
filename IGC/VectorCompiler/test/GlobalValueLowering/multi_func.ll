@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2021 Intel Corporation
+; Copyright (C) 2020-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXGlobalValueLowering -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXGlobalValueLowering -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXGlobalValueLowering -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 
@@ -17,8 +18,10 @@ target datalayout = "e-p:64:64-i64:64-n8:16:32"
 ; CHECK-LABEL: define dllexport spir_kernel void @multi_func
 define dllexport spir_kernel void @multi_func(i64 %provided.offset) #1 {
 ; COM: all the lowered globals are at the function entry
-; CHECK-DAG: %[[KERN_ALL_GADDR:[^ ]+]] = call i64 @llvm.genx.gaddr.i64.p0a8i32([8 x i32]* @array_all)
-; CHECK-DAG: %[[KERN_FOO_GADDR:[^ ]+]] = call i64 @llvm.genx.gaddr.i64.p0a8i32([8 x i32]* @array_foo)
+; CHECK-TYPED-PTRS-DAG: %[[KERN_ALL_GADDR:[^ ]+]] = call i64 @llvm.genx.gaddr.i64.p0a8i32([8 x i32]* @array_all)
+; CHECK-TYPED-PTRS-DAG: %[[KERN_FOO_GADDR:[^ ]+]] = call i64 @llvm.genx.gaddr.i64.p0a8i32([8 x i32]* @array_foo)
+; CHECK-OPAQUE-PTRS-DAG: %[[KERN_ALL_GADDR:[^ ]+]] = call i64 @llvm.genx.gaddr.i64.p0(ptr @array_all)
+; CHECK-OPAQUE-PTRS-DAG: %[[KERN_FOO_GADDR:[^ ]+]] = call i64 @llvm.genx.gaddr.i64.p0(ptr @array_foo)
 
   %all.ptrtoint = ptrtoint [8 x i32]* @array_all to i64
   %all.user = add i64 %all.ptrtoint, 3
@@ -35,7 +38,8 @@ define dllexport spir_kernel void @multi_func(i64 %provided.offset) #1 {
 
 ; CHECK-LABEL: define internal spir_func void @foo
 define internal spir_func void @foo(i64 %provided.offset) {
-; CHECK: %array_foo.gaddr = call i64 @llvm.genx.gaddr.i64.p0a8i32([8 x i32]* @array_foo)
+; CHECK-TYPED-PTRS: %array_foo.gaddr = call i64 @llvm.genx.gaddr.i64.p0a8i32([8 x i32]* @array_foo)
+; CHECK-OPAQUE-PTRS: %array_foo.gaddr = call i64 @llvm.genx.gaddr.i64.p0(ptr @array_foo)
 
   %foo.ptrtoint = ptrtoint [8 x i32]* @array_foo to i64
   %foo.user = add i64 %foo.ptrtoint, 7
@@ -46,7 +50,8 @@ define internal spir_func void @foo(i64 %provided.offset) {
 
 ; CHECK-LABEL: define internal spir_func void @bar
 define internal spir_func void @bar(i64 %provided.offset) {
-; CHECK: %[[BAR_GADDR:[^ ]+]] = call i64 @llvm.genx.gaddr.i64.p0a8i32([8 x i32]* @array_bar)
+; CHECK-TYPED-PTRS: %[[BAR_GADDR:[^ ]+]] = call i64 @llvm.genx.gaddr.i64.p0a8i32([8 x i32]* @array_bar)
+; CHECK-OPAQUE-PTRS: %[[BAR_GADDR:[^ ]+]] = call i64 @llvm.genx.gaddr.i64.p0(ptr @array_bar)
 
   %bar.ptrtoint = ptrtoint [8 x i32]* @array_bar to i64
   %bar.user = add i64 %bar.ptrtoint, 9

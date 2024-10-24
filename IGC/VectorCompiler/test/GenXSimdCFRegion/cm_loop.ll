@@ -1,13 +1,15 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: %opt %use_old_pass_manager% -simdcf-region -simdcf-skip-search-preds \
-; RUN: -simdcf-rm-loop-mask -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -simdcf-region -simdcf-skip-search-preds \
+; RUN: -simdcf-rm-loop-mask -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -simdcf-region -simdcf-skip-search-preds \
+; RUN: -simdcf-rm-loop-mask -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 ; ------------------------------------------------
 ; GenXSimdCFRegion
 ; ------------------------------------------------
@@ -30,7 +32,8 @@ entry:
 ; CHECK-SAME: i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true,
 ; CHECK-SAME: i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true,
 ; CHECK-SAME: i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>,
-; CHECK-SAME: <32 x i1>* %[[EM]]
+; CHECK-TYPED-PTRS-SAME: <32 x i1>* %[[EM]]
+; CHECK-OPAQUE-PTRS-SAME: ptr %[[EM]]
   br label %while.cond
 
 ; CHECK: while.cond:
@@ -40,19 +43,22 @@ while.cond:                                       ; preds = %while.body, %entry
   %out.0 = phi <32 x i32> [ <i32 0, i32 29785766, i32 26004755, i32 22223744, i32 18442733, i32 14661722, i32 10880711, i32 7099700, i32 3318689, i32 33092110, i32 29311099, i32 25530088, i32 21749077, i32 17968066, i32 14187055, i32 10406044, i32 6625033, i32 2844022, i32 32617443, i32 28836432, i32 25055421, i32 21274410, i32 17493399, i32 13712388, i32 9931377, i32 6150366, i32 2369355, i32 32142776, i32 28361765, i32 24580754, i32 20799743, i32 17018732>, %entry ], [ %merge29, %while.body ]
 
   %cmp18 = icmp ne <32 x i16> %mask.0, zeroinitializer
-; CHECK: %[[PRED_1:.*]] = load <32 x i1>, <32 x i1>* %[[EM]]
+; CHECK-TYPED-PTRS: %[[PRED_1:.*]] = load <32 x i1>, <32 x i1>* %[[EM]]
+; CHECK-OPAQUE-PTRS: %[[PRED_1:.*]] = load <32 x i1>, ptr %[[EM]]
 
   %allany = tail call i1 @llvm.genx.any.v32i1(<32 x i1> %cmp18)
 ; CHECK: %[[GOTO_PRE:.*]] = tail call {{.*}} @llvm.genx.simdcf.goto
 ; CHECK: %[[EM_TO_STORE:.*]] = extractvalue { <32 x i1>, <32 x i1>, i1 } %[[GOTO_PRE]], 0
-; CHECK: store <32 x i1> %[[EM_TO_STORE]], <32 x i1>* %[[EM]], align 4
+; CHECK-TYPED-PTRS: store <32 x i1> %[[EM_TO_STORE]], <32 x i1>* %[[EM]], align 4
+; CHECK-OPAQUE-PTRS: store <32 x i1> %[[EM_TO_STORE]], ptr %[[EM]], align 4
   br i1 %allany, label %while.body, label %while.end
 
 
 ; CHECK: while.body:
 while.body:                                       ; preds = %while.cond
 ; COM:        Here apply SIMD CF and change predicate from loop-predicate to execution mask
-; CHECK: %[[EM_BODY:.*]] = load <32 x i1>, <32 x i1>* %[[EM]]
+; CHECK-TYPED-PTRS: %[[EM_BODY:.*]] = load <32 x i1>, <32 x i1>* %[[EM]]
+; CHECK-OPAQUE-PTRS: %[[EM_BODY:.*]] = load <32 x i1>, ptr %[[EM]]
   %.not = icmp eq <32 x i16> %mask.0, zeroinitializer
 ; CHECK-NOT: %{{.*}} = icmp eq <32 x i16>
   %mul21 = mul <32 x i32> %random.0, <i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245, i32 1103515245>

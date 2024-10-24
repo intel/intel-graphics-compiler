@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: %opt %use_old_pass_manager% -simdcf-region -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -simdcf-region -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -simdcf-region -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 ; ------------------------------------------------
 ; GenXSimdCFRegion
 ; ------------------------------------------------
@@ -30,9 +31,11 @@ if.entry:
 ; CHECK: [[IF_AFTER_ENTRY:[A-z0-9.]*]]:
 ; CHECK: %[[GOTO:[A-z0-9.]*]] = tail call { <32 x i1>, <16 x i1>, i1 } @llvm.genx.simdcf.goto
 ; CHECK: %[[BASIC_EM:[A-z0-9.]*]] = extractvalue { <32 x i1>, <16 x i1>, i1 } %[[GOTO]], 0
-; CHECK-DAG: store <32 x i1> %[[BASIC_EM]], <32 x i1>* %[[EM_ALLOCA]]
+; CHECK-TYPED-PTRS-DAG: store <32 x i1> %[[BASIC_EM]], <32 x i1>* %[[EM_ALLOCA]]
+; CHECK-OPAQUE-PTRS-DAG: store <32 x i1> %[[BASIC_EM]], ptr %[[EM_ALLOCA]]
 ; CHECK: %[[BASIC_RM:[A-z0-9.]*]] = extractvalue { <32 x i1>, <16 x i1>, i1 } %[[GOTO]], 1
-; CHECK-DAG: store <16 x i1> %[[BASIC_RM]], <16 x i1>* %[[RM_ALLOCA]]
+; CHECK-TYPED-PTRS-DAG: store <16 x i1> %[[BASIC_RM]], <16 x i1>* %[[RM_ALLOCA]]
+; CHECK-OPAQUE-PTRS-DAG: store <16 x i1> %[[BASIC_RM]], ptr %[[RM_ALLOCA]]
 ; CHECK: %[[BASIC_COND:[A-z0-9.]*]] = extractvalue { <32 x i1>, <16 x i1>, i1 } %[[GOTO]], 2
 ; CHECK: br i1 %[[BASIC_COND]], label %[[AFTERTHEN:[A-z0-9.]*]], label %[[IF_THEN:[A-z0-9.]*]]
 

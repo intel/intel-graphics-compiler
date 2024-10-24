@@ -1,13 +1,15 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXRegionCollapsing \
-; RUN:     -march=genx64 -mcpu=Gen9 -mtriple=spir64 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXRegionCollapsing \
+; RUN:     -march=genx64 -mcpu=Gen9 -mtriple=spir64 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXRegionCollapsing \
+; RUN:     -march=genx64 -mcpu=Gen9 -mtriple=spir64 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 ; ModuleID = 'bugpoint-reduced-simplified.bc'
 source_filename = "the_file.ll"
@@ -20,12 +22,13 @@ target triple = "genx64-unknown-unknown"
 ; COM: the check that collapsing succesfully operates on aggregate types
 
 ; CHECK-LABEL: @wobble
-; CHECK-NEXT: [[TOPTR:%[^ ]+]] = inttoptr <1 x i64> %arg to <1 x %struct.hoge addrspace(4)*>
-; CHECK-NEXT: [[RECAST:%[^ ]+]] = bitcast <1 x %struct.hoge addrspace(4)*> [[TOPTR]] to %struct.hoge addrspace(4)*
-; CHECK-NEXT: [[BITCAST:%[^ ]+]] = bitcast %struct.hoge addrspace(4)* [[RECAST]] to %struct.bar addrspace(4)*
-; CHECK-NEXT: [[RDREGION:%[^ ]+]] = bitcast %struct.bar addrspace(4)* [[BITCAST]] to <1 x %struct.bar addrspace(4)*>
-; CHECK-NEXT: [[ICAST:%[^ ]+]] = ptrtoint <1 x %struct.bar addrspace(4)*> [[RDREGION]] to <1 x i64>
-; CHECK-NEXT:  call void @llvm.genx.svm.scatter.v1i1.v1i64.v1i64(<1 x i1> <i1 true>, i32 0, <1 x i64> undef, <1 x i64>  [[ICAST]])
+; CHECK-TYPED-PTRS-NEXT: [[TOPTR:%[^ ]+]] = inttoptr <1 x i64> %arg to <1 x %struct.hoge addrspace(4)*>
+; CHECK-TYPED-PTRS-NEXT: [[RECAST:%[^ ]+]] = bitcast <1 x %struct.hoge addrspace(4)*> [[TOPTR]] to %struct.hoge addrspace(4)*
+; CHECK-TYPED-PTRS-NEXT: [[BITCAST:%[^ ]+]] = bitcast %struct.hoge addrspace(4)* [[RECAST]] to %struct.bar addrspace(4)*
+; CHECK-TYPED-PTRS-NEXT: [[RDREGION:%[^ ]+]] = bitcast %struct.bar addrspace(4)* [[BITCAST]] to <1 x %struct.bar addrspace(4)*>
+; CHECK-TYPED-PTRS-NEXT: [[ICAST:%[^ ]+]] = ptrtoint <1 x %struct.bar addrspace(4)*> [[RDREGION]] to <1 x i64>
+; CHECK-TYPED-PTRS-NEXT:  call void @llvm.genx.svm.scatter.v1i1.v1i64.v1i64(<1 x i1> <i1 true>, i32 0, <1 x i64> undef, <1 x i64> [[ICAST]])
+; CHECK-OPAQUE-PTRS-NEXT:  call void @llvm.genx.svm.scatter.v1i1.v1i64.v1i64(<1 x i1> <i1 true>, i32 0, <1 x i64> undef, <1 x i64> %arg)
 
 define internal spir_func void @wobble(<1 x i64> %arg) #0 {
   %tmp = inttoptr <1 x i64> %arg to <1 x %struct.hoge addrspace(4)*>

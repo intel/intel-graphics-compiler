@@ -6,13 +6,15 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXLoadStoreLowering -march=genx64 -mcpu=XeHPC -mtriple=spir64-unknown-unknown -enable-ldst-lowering=true -mattr=+ocl_runtime -S < %s 2>&1 | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXLoadStoreLowering -march=genx64 -mcpu=XeHPC -mtriple=spir64-unknown-unknown -enable-ldst-lowering=true -mattr=+ocl_runtime -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXLoadStoreLowering -march=genx64 -mcpu=XeHPC -mtriple=spir64-unknown-unknown -enable-ldst-lowering=true -mattr=+ocl_runtime -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 declare float @llvm.vc.internal.atomic.fmin.f32.p1f32.f32(float addrspace(1)*, i32, i32, float) #0
 declare float @llvm.vc.internal.atomic.fmax.f32.p1f32.f32(float addrspace(1)*, i32, i32, float) #0
 
 define float @fmin_float(float addrspace(1)* %ptr, float %arg) {
-  ; CHECK: [[FMIN_ADDR:%[^ ]+]] = ptrtoint float addrspace(1)* %ptr to i64
+  ; CHECK-TYPED-PTRS: [[FMIN_ADDR:%[^ ]+]] = ptrtoint float addrspace(1)* %ptr to i64
+  ; CHECK-OPAQUE-PTRS: [[FMIN_ADDR:%[^ ]+]] = ptrtoint ptr addrspace(1) %ptr to i64
   ; CHECK: [[FMIN_VADDR:%[^ ]+]] = bitcast i64 [[FMIN_ADDR]] to <1 x i64>
   ; CHECK: [[FMIN_VDATA:%[^ ]+]] = bitcast float %arg to <1 x float>
   ; CHECK: call void @llvm.genx.lsc.fence.i1(i1 true, i8 0, i8 0, i8 2)
@@ -24,7 +26,8 @@ define float @fmin_float(float addrspace(1)* %ptr, float %arg) {
 }
 
 define float @fmax_float(float addrspace(1)* %ptr, float %arg) {
-  ; CHECK: [[FMAX_ADDR:%[^ ]+]] = ptrtoint float addrspace(1)* %ptr to i64
+  ; CHECK-TYPED-PTRS: [[FMAX_ADDR:%[^ ]+]] = ptrtoint float addrspace(1)* %ptr to i64
+  ; CHECK-OPAQUE-PTRS: [[FMAX_ADDR:%[^ ]+]] = ptrtoint ptr addrspace(1) %ptr to i64
   ; CHECK: [[FMAX_VADDR:%[^ ]+]] = bitcast i64 [[FMAX_ADDR]] to <1 x i64>
   ; CHECK: [[FMAX_VDATA:%[^ ]+]] = bitcast float %arg to <1 x float>
   ; CHECK-NOT: call void @llvm.genx.lsc.fence

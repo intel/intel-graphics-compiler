@@ -1,13 +1,15 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2021 Intel Corporation
+; Copyright (C) 2020-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXLowerJmpTableSwitch -march=genx64 -mtriple=spir64-unknown-unknown \
-; RUN: -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXLowerJmpTableSwitch -march=genx64 -mtriple=spir64-unknown-unknown \
+; RUN: -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXLowerJmpTableSwitch -march=genx64 -mtriple=spir64-unknown-unknown \
+; RUN: -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 ; CHECK: [[JTCOND:%.new.jt.cond]] = sub i32 %2, 1
 ; CHECK-NEXT: [[JTDEFAULT:%.jt.default]] = icmp ule i32 [[JTCOND]], 4
@@ -16,7 +18,8 @@
 ; CHECK-LABEL: .jt:
 ; CHECK: [[JTIDX:%switch.jt]] =
 ; CHECK-SAME: @llvm.vc.internal.jump.table
-; CHECK-NEXT: indirectbr i8* [[JTIDX]]
+; CHECK-TYPED-PTRS-NEXT: indirectbr i8* [[JTIDX]]
+; CHECK-OPAQUE-PTRS-NEXT: indirectbr ptr [[JTIDX]]
 
 define dllexport spir_kernel void @foo(i32* %0) {
   %2 = load i32, i32* %0

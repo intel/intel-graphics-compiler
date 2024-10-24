@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2023 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -9,12 +9,14 @@
 ; This is a test for vc-function-control option also available
 ; as IGC_FunctionControl environment
 
-; RUN: %opt %use_old_pass_manager% -GenXLinkageCorruptor -march=genx64 -vc-function-control=stackcall -save-stack-call-linkage=true -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXLinkageCorruptor -march=genx64 -vc-function-control=stackcall -save-stack-call-linkage=true -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXLinkageCorruptor -march=genx64 -vc-function-control=stackcall -save-stack-call-linkage=true -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 
 
-; CHECK: define spir_func void @foo(<8 x i32>* %vec.ref) [[ATTR:#[0-9]+]] {
+; CHECK-TYPED-PTRS: define spir_func void @foo(<8 x i32>* %vec.ref) [[ATTR:#[0-9]+]] {
+; CHECK-OPAQUE-PTRS: define spir_func void @foo(ptr %vec.ref) [[ATTR:#[0-9]+]] {
 define spir_func void @foo(<8 x i32>* %vec.ref) #0 {
   %vec.ref.ld = load <8 x i32>, <8 x i32>* %vec.ref
   ret void
@@ -25,7 +27,8 @@ define dllexport void @kernel() {
 
   call spir_func void @foo(<8 x i32>* nonnull %kernel.vec.ref)
 ; CHECK: call spir_func void @foo
-; CHECK-SAME: <8 x i32>* nonnull
+; CHECK-TYPED-PTRS-SAME: <8 x i32>* nonnull
+; CHECK-OPAQUE-PTRS-SAME: ptr nonnull
 
   ret void
 }
