@@ -6721,12 +6721,46 @@ namespace IGC
             std::string binFileName = name.overridePath();
 
             overrideShaderIGA(context->platform.getPlatformInfo(), genxbin, binSize, binFileName, binOverride);
-
+            if (binOverride && m_enableVISAdump)
+            {
+                // Dump overriden .asm
+                std::ifstream src(binFileName, std::ios::binary | std::ios::in);
+                std::ofstream dst(name.str(), std::ios::binary | std::ios::out);
+                if (src.is_open() && dst.is_open())
+                {
+                    dst << src.rdbuf();
+                    IGC_ASSERT_MESSAGE(dst.good() && src.good(), "Failed dumping overriden .asm");
+                    src.close();
+                    dst.close();
+                }
+                // Dump created binary
+                Debug::DumpName datName = IGC::Debug::GetDumpNameObj(m_program, "dat");
+                dst.open(datName.str(), std::ios::binary | std::ios::out);
+                if (dst.is_open())
+                {
+                    dst.write(reinterpret_cast<const char*>(genxbin), binSize);
+                    IGC_ASSERT_MESSAGE(dst.good(), "Failed dumping .dat generated from override");
+                    dst.close();
+                }
+            }
             if (!binOverride)
             {
                 name = IGC::Debug::GetDumpNameObj(m_program, "dat");
                 binFileName = name.overridePath();
                 overrideShaderBinary(genxbin, binSize, binFileName, binOverride);
+                if (binOverride && m_enableVISAdump)
+                {
+                    // Dump overriden .dat
+                    std::ifstream src(binFileName, std::ios::binary | std::ios::in);
+                    std::ofstream dst(name.str(), std::ios::binary | std::ios::out);
+                    if (src.is_open() && dst.is_open())
+                    {
+                        dst << src.rdbuf();
+                        IGC_ASSERT_MESSAGE(dst.good() && src.good(), "Failed dumping overriden .dat");
+                        src.close();
+                        dst.close();
+                    }
+                }
             }
 
         }
