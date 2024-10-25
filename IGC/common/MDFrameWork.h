@@ -763,6 +763,9 @@ namespace IGC
         //when true, compiler disables scratch space slot0/slot1 sizes workaround
         bool disableSeparateScratchWA = false;
 
+        // When true, runs TrivialUnnecessaryTGMFenceElimination optimization
+        bool enableRemoveUnusedTGMFence = false;
+
         unsigned int privateMemoryPerWI = 0;
 
         llvm::MapVector<llvm::Function*, unsigned int> PrivateMemoryPerFG;
