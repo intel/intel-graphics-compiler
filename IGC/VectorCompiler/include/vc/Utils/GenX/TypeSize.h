@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2023 Intel Corporation
+Copyright (C) 2021-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -108,7 +108,7 @@ private:
 
   template <unsigned UnitBitSize, bool Strict> SzType asIntegral() const {
     IGC_ASSERT(!TS.isScalable());
-    uint64_t BitsAsUI = TS.getFixedSize();
+    uint64_t BitsAsUI = TS.getFixedValue();
     IGC_ASSERT_MESSAGE(BitsAsUI <= std::numeric_limits<SzType>::max(),
                        "Type is too large to operate on");
     IGC_ASSERT_MESSAGE(BitsAsUI >= 0, "Could not determine size of Type");

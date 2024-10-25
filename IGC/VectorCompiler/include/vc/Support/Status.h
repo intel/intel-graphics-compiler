@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 
 #include <llvm/Support/Error.h>
 
+#include <string>
 #include <system_error>
 
 namespace vc {

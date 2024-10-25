@@ -69,7 +69,9 @@ public:
                            bool /*DisableVerify*/ = true,
                            MachineModuleInfo *MMI = nullptr) override;
 
+#if LLVM_VERSION_MAJOR < 16
   void adjustPassManager(PassManagerBuilder &PMBuilder) override;
+#endif
 
   TargetPassConfig *createPassConfig(PassManagerBase &PM) override;
 

@@ -849,6 +849,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   return false;
 }
 
+#if LLVM_VERSION_MAJOR < 16
 void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
   // Fix function names.
   PMBuilder.addExtension(
@@ -1022,3 +1023,4 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
   };
   PMBuilder.addExtension(PassManagerBuilder::EP_Peephole, AddGenXPeephole);
 }
+#endif

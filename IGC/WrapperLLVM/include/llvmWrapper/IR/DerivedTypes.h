@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -35,7 +35,7 @@ namespace IGCLLVM
 #if LLVM_VERSION_MAJOR <= 10
         return llvm::cast<llvm::VectorType>(pType)->getBitWidth();
 #else
-        return (uint32_t)pType->getPrimitiveSizeInBits().getFixedSize();
+      return (uint32_t)pType->getPrimitiveSizeInBits().getFixedValue();
 #endif
     }
 

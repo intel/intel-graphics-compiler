@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022-2023 Intel Corporation
+Copyright (C) 2022-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -82,8 +82,8 @@ createTargetMachine(Triple &TheTriple, std::string CPUStr) {
   CodeGenOpt::Level OptLevel = CodeGenOpt::Default;
 
   std::unique_ptr<TargetMachine> TM{TheTarget->createTargetMachine(
-      TheTriple.getTriple(), CPUStr, FeaturesStr, Options, /*RelocModel=*/llvm::None,
-      /*CodeModel=*/llvm::None, OptLevel)};
+      TheTriple.getTriple(), CPUStr, FeaturesStr, Options, /*RelocModel=*/{},
+      /*CodeModel=*/{}, OptLevel)};
   if (!TM)
     return make_error<vc::TargetMachineError>();
   return {std::move(TM)};

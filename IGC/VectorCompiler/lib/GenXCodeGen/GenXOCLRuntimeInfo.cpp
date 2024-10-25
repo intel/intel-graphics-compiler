@@ -112,8 +112,11 @@ getAlignment(const Argument &Arg,
 
   Type *TypeToAlign = Arg.getType();
   TypeToAlign = IGCLLVM::getNonOpaquePtrEltTy(TypeToAlign);
-  return Arg.getParent()->getParent()->getDataLayout().getABITypeAlignment(
-      TypeToAlign);
+  return Arg.getParent()
+      ->getParent()
+      ->getDataLayout()
+      .getABITypeAlign(TypeToAlign)
+      .value();
 }
 
 KernelArgBuilder::ArgAccessKindType
@@ -647,7 +650,10 @@ static alignment_t getAlignment(const GlobalVariable &GV) {
   auto Align = GV.getAlignment();
   if (Align)
     return Align;
-  return GV.getParent()->getDataLayout().getABITypeAlignment(GV.getValueType());
+  return GV.getParent()
+      ->getDataLayout()
+      .getABITypeAlign(GV.getValueType())
+      .value();
 }
 
 static void appendGlobalVariableData(RawSectionInfo &Sect,

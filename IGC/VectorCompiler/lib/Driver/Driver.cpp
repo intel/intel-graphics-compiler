@@ -342,7 +342,7 @@ createTargetMachine(const vc::CompileOptions &Opts,
       createBackendData(ExtData, vc::is32BitArch(TheTriple) ? 32 : 64));
   std::unique_ptr<TargetMachine> TM{vc::createGenXTargetMachine(
       *TheTarget, TheTriple, Opts.CPUStr, FeaturesStr, Options,
-      /*RelocModel=*/llvm::None, /*CodeModel=*/llvm::None, OptLevel, std::move(BC))};
+      /*RelocModel=*/{}, /*CodeModel=*/{}, OptLevel, std::move(BC))};
   if (!TM)
     return make_error<vc::TargetMachineError>();
   return {std::move(TM)};
@@ -380,9 +380,12 @@ static void optimizeIR(const vc::CompileOptions &Opts,
   PMBuilder.PrepareForThinLTO = false;
   PMBuilder.PrepareForLTO = false;
 #endif
+
+#if LLVM_VERSION_MAJOR < 16
   PMBuilder.RerollLoops = true;
 
   TM.adjustPassManager(PMBuilder);
+#endif
 
   PMBuilder.populateFunctionPassManager(PerFunctionPasses);
   PMBuilder.populateModulePassManager(PerModulePasses);
@@ -754,7 +757,7 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
     auto MaybeGRFSize = StringSwitch<llvm::Optional<unsigned>>(V)
                             .Case("128", 128)
                             .Case("256", 256)
-                            .Default(llvm::None);
+                            .Default({});
     if (!MaybeGRFSize)
       return makeOptionError(*A, ApiOptions, /*IsInternal=*/false);
     Opts.GRFSize = MaybeGRFSize;

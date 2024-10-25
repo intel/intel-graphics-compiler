@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2023 Intel Corporation
+Copyright (C) 2021-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1220,7 +1220,7 @@ alignment_t
 GenXPrologEpilogInsertion::getAllocaAlignment(AllocaInst *AI) const {
   auto Align = IGCLLVM::getAlignmentValue(AI);
   if (Align == 0)
-    Align = DL->getPrefTypeAlignment(AI->getAllocatedType());
+    Align = DL->getPrefTypeAlign(AI->getAllocatedType()).value();
   return Align;
 }
 } // namespace

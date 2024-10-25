@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -199,6 +199,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/Debug.h"
 
 #include <algorithm>
+#include <cmath>
 #include <map>
 #include <vector>
 

@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 // need to disable this to use INFINITY and NAN values
 #pragma warning(disable : 4756 4056)
 
-//#include <math.h>
+#include <math.h>
 
 namespace pktz {
 //////////////////////////////////////////////////////////////////////////

@@ -802,8 +802,8 @@ void GenXPromoteArray::replaceAggregatedStore(StoreInst *SI) {
     auto *ElemVal = Builder.CreateExtractValue(Val, Idx);
     Value *Indices[2] = {ConstantInt::get(IdxType, 0),
                          ConstantInt::get(IdxType, Idx)};
-    auto *ElemPtr =
-        Builder.CreateInBoundsGEP(Val->getType(), Ptr, makeArrayRef(Indices));
+    auto *ElemPtr = Builder.CreateInBoundsGEP(Val->getType(), Ptr,
+                                              MutableArrayRef(Indices));
     auto *ElemSI = Builder.CreateStore(ElemVal, ElemPtr);
     if (ElemVal->getType()->isAggregateType())
       AggregatesToReplace.push_back(ElemSI);
@@ -825,7 +825,8 @@ void GenXPromoteArray::replaceAggregatedLoad(LoadInst *LI) {
     auto *ElemTy = ArrTy ? ArrTy->getElementType() : Ty->getContainedType(Idx);
     Value *Indices[2] = {ConstantInt::get(IdxType, 0),
                          ConstantInt::get(IdxType, Idx)};
-    auto *ElemPtr = Builder.CreateInBoundsGEP(Ty, Ptr, makeArrayRef(Indices));
+    auto *ElemPtr =
+        Builder.CreateInBoundsGEP(Ty, Ptr, MutableArrayRef(Indices));
     auto *ElemLI = Builder.CreateLoad(ElemTy, ElemPtr);
     if (ElemTy->isAggregateType())
       AggregatesToReplace.push_back(ElemLI);

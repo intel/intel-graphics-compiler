@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -34,6 +34,7 @@ See LICENSE.TXT for details.
 #include "llvm/MC/MCSymbol.h"
 #include "llvm/MC/MCSymbolELF.h"
 #include "llvm/MC/MachineLocation.h"
+#include <cmath>
 #include <optional>
 #include "common/LLVMWarningsPop.hpp"
 // clang-format on
@@ -1241,8 +1242,9 @@ void CompileUnit::addSimdLane(IGC::DIEBlock *Block, const DbgVariable &DV,
         (isPacked || varSizeInBits > 32) ? (uint32_t)varSizeInBits : 32;
     uint32_t variablesInSingleGRF =
         (VISAMod->getGRFSizeInBits()) / bitsUsedByVar;
-    uint32_t valForSubRegLit =
-        variablesInSingleGRF > 0 ? (uint32_t)log2(variablesInSingleGRF) : 0;
+    uint32_t valForSubRegLit = variablesInSingleGRF > 0
+                                   ? (uint32_t)std::log2(variablesInSingleGRF)
+                                   : 0;
 
     // TODO: missing case lr->getGRF().subRegNum > 0
     // unsigned int subReg = lr->getGRF().subRegNum;

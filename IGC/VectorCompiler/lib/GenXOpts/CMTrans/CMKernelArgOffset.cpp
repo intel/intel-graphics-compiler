@@ -382,10 +382,10 @@ void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
       } else if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty)) {
         auto *ETy = VTy->getElementType();
         Bytes = DL.getTypeSizeInBits(Ty) / 8;
-        Alignment = IGCLLVM::getAlignmentValue(DL.getABITypeAlignment(ETy));
+        Alignment = IGCLLVM::getAlignmentValue(DL.getABITypeAlign(ETy));
       } else {
         Bytes = DL.getTypeSizeInBits(Ty) / 8;
-        Alignment = IGCLLVM::getAlignmentValue(DL.getABITypeAlignment(Ty));
+        Alignment = IGCLLVM::getAlignmentValue(DL.getABITypeAlign(Ty));
       }
       placeArg(&Arg, Bytes, Alignment);
     }

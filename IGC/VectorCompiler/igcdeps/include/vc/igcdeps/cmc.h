@@ -138,7 +138,7 @@ public:
 
   explicit CGen8CMProgram(const CompileOptions &Opts, PLATFORM platform,
                           const WA_TABLE &WATable,
-                          llvm::ArrayRef<char> SPIRV = llvm::None);
+                          llvm::ArrayRef<char> SPIRV = {});
 
   // Produce the final ELF binary with the given CM kernels
   // in OpenCL format.

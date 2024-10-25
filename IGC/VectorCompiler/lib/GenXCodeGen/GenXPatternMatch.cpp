@@ -90,6 +90,7 @@ SPDX-License-Identifier: MIT
 #include "IGC/common/StringMacros.hpp"
 #include "IGC/common/debug/DebugMacros.hpp"
 
+#include <cmath>
 #include <functional>
 #include <limits>
 #include <optional>

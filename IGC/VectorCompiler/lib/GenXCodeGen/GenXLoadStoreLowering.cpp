@@ -840,7 +840,7 @@ Instruction *GenXLoadStoreLowering::createLSCLoadStore(
   auto Align = IsLoad ? IGCLLVM::getAlignmentValue(&cast<LoadInst>(I))
                       : IGCLLVM::getAlignmentValue(&cast<StoreInst>(I));
   if (Align == 0)
-    Align = DL_->getPrefTypeAlignment(Ty);
+    Align = DL_->getPrefTypeAlign(Ty).value();
 
   bool IsSLM = IID == vc::InternalIntrinsic::lsc_load_slm ||
                IID == vc::InternalIntrinsic::lsc_store_slm;
@@ -2018,7 +2018,7 @@ Instruction *GenXLoadStoreLowering::createLegacyLoadStore(Instruction &I,
   auto Align = IsLoad ? IGCLLVM::getAlignmentValue(&cast<LoadInst>(I))
                       : IGCLLVM::getAlignmentValue(&cast<StoreInst>(I));
   if (Align == 0)
-    Align = DL_->getPrefTypeAlignment(VTy);
+    Align = DL_->getPrefTypeAlign(VTy).value();
 
   if (!IsLoad)
     Data = Builder.CreateBitCast(Data, VTy);
