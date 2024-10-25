@@ -851,7 +851,9 @@ public:
             ResourceLoopHeader(resource, sampler, flag, label, ResourceLoopMarker, &subInteration);
         }
 
-        if (subInteration == 0)
+        // subInteration == 0 could mean no resource loop tag indicated
+        // iterations == 1 could mean no subiteration unroll
+        if (subInteration == 0 || iterations == 1)
         {
             // get exclusive load info from nested loop unroll meta data
             if (m_encoder->GetUniqueExclusiveLoad() && m_destination &&
