@@ -1,13 +1,15 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXPrologEpilogInsertion -vc-arg-reg-size=32 -vc-ret-reg-size=12 \
-; RUN: -mattr=+ocl_runtime -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXPrologEpilogInsertion -vc-arg-reg-size=32 -vc-ret-reg-size=12 \
+; RUN: -mattr=+ocl_runtime -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXPrologEpilogInsertion -vc-arg-reg-size=32 -vc-ret-reg-size=12 \
+; RUN: -mattr=+ocl_runtime -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 ; COM: This test checks only the current state of prologepilog transformation.
 ; COM: So, quite strange things can be observed here such as the absence of SP
@@ -29,16 +31,22 @@ target triple = "spir64-unknown-unknown"
 ; CHECK: %[[ARGBEGIN:[^ ]+]] = sub i64 %[[SP]], 1072
 
 ; COM: Other args are passed in stack. Check that simple llvm loads are generated.
-; CHECK: %[[SP1PTR:[^ ]+]] = inttoptr i64 %[[ARGBEGIN]] to i32*
-; CHECK: %[[ARG1:[^ ]+]] = load i32, i32* %[[SP1PTR]]
+; CHECK-TYPED-PTRS: %[[SP1PTR:[^ ]+]] = inttoptr i64 %[[ARGBEGIN]] to i32*
+; CHECK-TYPED-PTRS: %[[ARG1:[^ ]+]] = load i32, i32* %[[SP1PTR]]
+; CHECK-OPAQUE-PTRS: %[[SP1PTR:[^ ]+]] = inttoptr i64 %[[ARGBEGIN]] to ptr
+; CHECK-OPAQUE-PTRS: %[[ARG1:[^ ]+]] = load i32, ptr %[[SP1PTR]]
 
 ; CHECK: %[[SP2:[^ ]+]] = add i64 %[[ARGBEGIN]], 16
-; CHECK: %[[SP2PTR:[^ ]+]] = inttoptr i64 %[[SP2]] to <256 x i32>*
-; CHECK: %[[ARG2:[^ ]+]] =  load <256 x i32>, <256 x i32>* %[[SP2PTR]]
+; CHECK-TYPED-PTRS: %[[SP2PTR:[^ ]+]] = inttoptr i64 %[[SP2]] to <256 x i32>*
+; CHECK-TYPED-PTRS: %[[ARG2:[^ ]+]] =  load <256 x i32>, <256 x i32>* %[[SP2PTR]]
+; CHECK-OPAQUE-PTRS: %[[SP2PTR:[^ ]+]] = inttoptr i64 %[[SP2]] to ptr
+; CHECK-OPAQUE-PTRS: %[[ARG2:[^ ]+]] =  load <256 x i32>, ptr %[[SP2PTR]]
 
 ; CHECK: %[[SP3:[^ ]+]] = add i64 %[[SP2]], 1024
-; CHECK: %[[SP3PTR:[^ ]+]] = inttoptr i64 %[[SP3]] to <31 x i8>*
-; CHECK: %[[ARG3:[^ ]+]] =  load <31 x i8>, <31 x i8>* %[[SP3PTR]]
+; CHECK-TYPED-PTRS: %[[SP3PTR:[^ ]+]] = inttoptr i64 %[[SP3]] to <31 x i8>*
+; CHECK-TYPED-PTRS: %[[ARG3:[^ ]+]] =  load <31 x i8>, <31 x i8>* %[[SP3PTR]]
+; CHECK-OPAQUE-PTRS: %[[SP3PTR:[^ ]+]] = inttoptr i64 %[[SP3]] to ptr
+; CHECK-OPAQUE-PTRS: %[[ARG3:[^ ]+]] =  load <31 x i8>, ptr %[[SP3PTR]]
 
 define internal spir_func i32 @foo(<256 x i32> %0, i32 %1, <256 x i32> %2, <31 x i8> %3) #0 {
 entry:
@@ -77,16 +85,22 @@ declare spir_func <31 x i8> @get_arg2()
 ; CHECK: call i64 @llvm.genx.write.predef.reg.i64.i64(i32 10, i64 %[[NEWSPWRR]])
 
 ; COM: Other args are passed in stack. Check that simple llvm stores are generated.
-; CHECK: %[[SP1PTR:[^ ]+]] = inttoptr i64 %[[SP]] to i32*
-; CHECK: store i32 %arg2, i32* %[[SP1PTR]]
+; CHECK-TYPED-PTRS: %[[SP1PTR:[^ ]+]] = inttoptr i64 %[[SP]] to i32*
+; CHECK-TYPED-PTRS: store i32 %arg2, i32* %[[SP1PTR]]
+; CHECK-OPAQUE-PTRS: %[[SP1PTR:[^ ]+]] = inttoptr i64 %[[SP]] to ptr
+; CHECK-OPAQUE-PTRS: store i32 %arg2, ptr %[[SP1PTR]]
 
 ; CHECK: %[[SP2:[^ ]+]] = add i64 %[[SP]], 16
-; CHECK: %[[SP2PTR:[^ ]+]] = inttoptr i64 %[[SP2]] to <256 x i32>*
-; CHECK:  store <256 x i32> %arg1and3, <256 x i32>* %[[SP2PTR]]
+; CHECK-TYPED-PTRS: %[[SP2PTR:[^ ]+]] = inttoptr i64 %[[SP2]] to <256 x i32>*
+; CHECK-TYPED-PTRS:  store <256 x i32> %arg1and3, <256 x i32>* %[[SP2PTR]]
+; CHECK-OPAQUE-PTRS: %[[SP2PTR:[^ ]+]] = inttoptr i64 %[[SP2]] to ptr
+; CHECK-OPAQUE-PTRS:  store <256 x i32> %arg1and3, ptr %[[SP2PTR]]
 
 ; CHECK: %[[SP3:[^ ]+]] = add i64 %[[SP2]], 1024
-; CHECK: %[[SP3PTR:[^ ]+]] = inttoptr i64 %[[SP3]] to <31 x i8>*
-; CHECK: store <31 x i8> %arg4, <31 x i8>* %[[SP3PTR]]
+; CHECK-TYPED-PTRS: %[[SP3PTR:[^ ]+]] = inttoptr i64 %[[SP3]] to <31 x i8>*
+; CHECK-TYPED-PTRS: store <31 x i8> %arg4, <31 x i8>* %[[SP3PTR]]
+; CHECK-OPAQUE-PTRS: %[[SP3PTR:[^ ]+]] = inttoptr i64 %[[SP3]] to ptr
+; CHECK-OPAQUE-PTRS: store <31 x i8> %arg4, ptr %[[SP3PTR]]
 
 ; COM: Restore FP and SP: SP = FP; FP = tmpFP.
 ; CHECK: %[[FPREAD:[^ ]+]] = call <1 x i64> @llvm.genx.read.predef.reg.v1i64.i64(i32 11, i64 undef)

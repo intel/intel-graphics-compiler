@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXPrintfResolution -vc-printf-bif-path=%VC_PRITF_OCL_BIF% -march=genx32 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXPrintfResolution -vc-printf-bif-path=%VC_PRITF_OCL_BIF% -march=genx32 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXPrintfResolution -vc-printf-bif-path=%VC_PRITF_OCL_BIF% -march=genx32 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:32:32-i64:64-n8:16:32:64"
 
@@ -20,8 +21,10 @@ define dllexport spir_kernel void @print_ptr(i32* %ptr.arg) {
   %printf = call spir_func i32 (i8 addrspace(2)*, ...) @printf(i8 addrspace(2)* %ptr.str.ptr, i32* %ptr.arg)
 ; COM:                                                                           |Total|64-bit|  ptr | str  |fmt len|
 ; CHECK: %[[PTR_PRINTF_INIT:[^ ]+]] = call <4 x i32> @__vc_printf_init(<5 x i32> <i32 1, i32 0, i32 1, i32 0, i32 3>)
-; CHECK: %[[PTR_PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[PTR_PRINTF_INIT]], i8 addrspace(2)* %ptr.str.ptr)
-; CHECK: %[[PTR_ARG_P2I:[^ ]+]] = ptrtoint i32* %ptr.arg to i32
+; CHECK-TYPED-PTRS: %[[PTR_PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[PTR_PRINTF_INIT]], i8 addrspace(2)* %ptr.str.ptr)
+; CHECK-TYPED-PTRS: %[[PTR_ARG_P2I:[^ ]+]] = ptrtoint i32* %ptr.arg to i32
+; CHECK-OPAQUE-PTRS: %[[PTR_PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[PTR_PRINTF_INIT]], ptr addrspace(2) %ptr.str.ptr)
+; CHECK-OPAQUE-PTRS: %[[PTR_ARG_P2I:[^ ]+]] = ptrtoint ptr %ptr.arg to i32
 ; CHECK: %[[PTR_VEC_ARG:[^ ]+]] = insertelement <2 x i32> zeroinitializer, i32 %[[PTR_ARG_P2I]], i32 0
 ; COM: ArgKind::Long = 6
 ; CHECK: %[[PTR_PRINTF_ARG:[^ ]+]] = call <4 x i32> @__vc_printf_arg(<4 x i32> %[[PTR_PRINTF_FMT]], i32 6, <2 x i32> %[[PTR_VEC_ARG]])

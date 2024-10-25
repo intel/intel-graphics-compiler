@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXStructSplitter -vc-struct-splitting=1 -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXStructSplitter -vc-struct-splitting=1 -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXStructSplitter -vc-struct-splitting=1 -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 ; Order of elements in structure defines order of new instruction to be placed.
 ; Intermediate structure B_BS should be B_BS = type { Ai, Af, float }
@@ -29,16 +30,20 @@ define dllexport spir_kernel void @order_test() #1 {
   ; CHECK:  %[[di:[^ ]+]] = alloca %[[D_I]]
   %d = alloca %D, align 4
 
-  ; CHECK:  %[[p:[^ ]+]] = getelementptr %[[D_I]], %[[D_I]]* %[[di]], i32 0, i32 0, i32 0
-  ; CHECK:  %user_of_p = ptrtoint i32*  %[[p]] to i64
+  ; CHECK-TYPED-PTRS:  %[[p:[^ ]+]] = getelementptr %[[D_I]], %[[D_I]]* %[[di]], i32 0, i32 0, i32 0
+  ; CHECK-TYPED-PTRS:  %user_of_p = ptrtoint i32*  %[[p]] to i64
+  ; CHECK-OPAQUE-PTRS:  %[[p:[^ ]+]] = getelementptr %[[D_I]], ptr %[[di]], i32 0, i32 0, i32 0
+  ; CHECK-OPAQUE-PTRS:  %user_of_p = ptrtoint ptr %[[p]] to i64
   %p = getelementptr inbounds %D, %D* %d, i32 0, i32 0, i32 1
   %user_of_p = ptrtoint i32* %p to i64
 
   ; CHECK:  %[[bi:[^ ]+]] = alloca %[[A_I]]
   ; CHECK:  %[[bf:[^ ]+]] = alloca %[[B_F]]
   %b = alloca %B, align 4
-  ; CHECK:  %[[j:[^ ]+]] = getelementptr %[[A_I]], %[[A_I]]* %[[bi]], i32 0, i32 0
-  ; CHECK:  %user_of_j = ptrtoint i32* %[[j]] to i64
+  ; CHECK-TYPED-PTRS:  %[[j:[^ ]+]] = getelementptr %[[A_I]], %[[A_I]]* %[[bi]], i32 0, i32 0
+  ; CHECK-TYPED-PTRS:  %user_of_j = ptrtoint i32* %[[j]] to i64
+  ; CHECK-OPAQUE-PTRS:  %[[j:[^ ]+]] = getelementptr %[[A_I]], ptr %[[bi]], i32 0, i32 0
+  ; CHECK-OPAQUE-PTRS:  %user_of_j = ptrtoint ptr %[[j]] to i64
   %j = getelementptr inbounds %B, %B* %b, i32 0, i32 0, i32 0
   %user_of_j = ptrtoint i32* %j to i64
 

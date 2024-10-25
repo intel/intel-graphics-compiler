@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXPrintfResolution -vc-printf-bif-path=%VC_PRITF_OCL_BIF% -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXPrintfResolution -vc-printf-bif-path=%VC_PRITF_OCL_BIF% -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXPrintfResolution -vc-printf-bif-path=%VC_PRITF_OCL_BIF% -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
 
@@ -21,9 +22,12 @@ define dllexport spir_kernel void @hello_world() {
   %printf = call spir_func i32 (i8 addrspace(2)*, ...) @printf(i8 addrspace(2)* %fmt.str.ptr, i8 addrspace(2)* %arg.str.ptr, i8 addrspace(2)* %arg.str.ptr)
 ; COM:                                                                       |Total|64-bit|  ptr | str  |fmt str|
 ; CHECK: %[[PRINTF_INIT:[^ ]+]] = call <4 x i32> @__vc_printf_init(<5 x i32> <i32 2, i32 0, i32 1, i32 1, i32 6>)
-; CHECK: %[[PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[PRINTF_INIT]], i8 addrspace(2)* %fmt.str.ptr)
-; CHECK: %[[PRINTF_STR_ARG:[^ ]+]] = call <4 x i32> @__vc_printf_arg_str(<4 x i32> %[[PRINTF_FMT]], i8 addrspace(2)* %arg.str.ptr)
-; CHECK: %[[PRINTF_ARG_P2I:[^ ]+]] = ptrtoint i8 addrspace(2)* %arg.str.ptr to i64
+; CHECK-TYPED-PTRS: %[[PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[PRINTF_INIT]], i8 addrspace(2)* %fmt.str.ptr)
+; CHECK-TYPED-PTRS: %[[PRINTF_STR_ARG:[^ ]+]] = call <4 x i32> @__vc_printf_arg_str(<4 x i32> %[[PRINTF_FMT]], i8 addrspace(2)* %arg.str.ptr)
+; CHECK-TYPED-PTRS: %[[PRINTF_ARG_P2I:[^ ]+]] = ptrtoint i8 addrspace(2)* %arg.str.ptr to i64
+; CHECK-OPAQUE-PTRS: %[[PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[PRINTF_INIT]], ptr addrspace(2) %fmt.str.ptr)
+; CHECK-OPAQUE-PTRS: %[[PRINTF_STR_ARG:[^ ]+]] = call <4 x i32> @__vc_printf_arg_str(<4 x i32> %[[PRINTF_FMT]], ptr addrspace(2) %arg.str.ptr)
+; CHECK-OPAQUE-PTRS: %[[PRINTF_ARG_P2I:[^ ]+]] = ptrtoint ptr addrspace(2) %arg.str.ptr to i64
 ; CHECK: %[[PRINTF_VEC_ARG:[^ ]+]] = bitcast i64 %[[PRINTF_ARG_P2I]] to <2 x i32>
 ; COM: ArgKind::Pointer = 6
 ; CHECK: %[[PRINTF_PTR_ARG:[^ ]+]] = call <4 x i32> @__vc_printf_arg(<4 x i32> %[[PRINTF_STR_ARG]], i32 6, <2 x i32> %[[PRINTF_VEC_ARG]])
