@@ -18,7 +18,8 @@ PointsToAnalysis::PointsToAnalysis(const DECLARE_LIST &declares,
   for (auto decl : declares) {
     if ((decl->getRegFile() == G4_ADDRESS || decl->getRegFile() == G4_SCALAR) &&
         !decl->getAliasDeclare()) {
-      regVars.emplace(decl->getRegVar(), regVars.size());
+      auto regVarsSize = (unsigned)regVars.size();
+      regVars.emplace(decl->getRegVar(), regVarsSize);
     }
   }
 
@@ -626,13 +627,14 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
 void PointsToAnalysis::insertAndMergeFilledAddr(const G4_RegVar *addr1,
                                               G4_RegVar *a2) {
   G4_RegVar *addr2 = getRootRegVar(a2);
+  auto regVarsSize = (unsigned)regVars.size();
   vISA_ASSERT(
-      regVars.size() == numAddrs,
+      regVarsSize == numAddrs,
       "Inconsistency found between size of regvars and number of addr vars");
 
   resizePointsToSet(numAddrs + 1);
   // add2 is the new one
-  regVars.emplace(addr2, regVars.size());
+  regVars.emplace(addr2, regVarsSize);
 
   mergePointsToSet(addr1, addr2);
 }
