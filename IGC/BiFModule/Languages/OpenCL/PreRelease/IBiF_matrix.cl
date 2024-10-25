@@ -1169,8 +1169,10 @@ the argument of get_coord() call. And each WI has index running 0-15 in this
 case, as they hold 16 elements (8x2))
 
 So the calculation becomes:
-row: (wi_id*pack_factor)/K + index/pack_factor*skip_factor  --> (0*2)/32 + 3/2*1 = 0 + 1 = 1
-col: (wi_id*pack_factor)%K + index%pack_factor --> (0*2)%32 + 3%2 = 0 + 1 = 1
+sg_cols = (C * VF) / pack_factor --> (32 * 1) / 2 = 16
+skip_factor = sg_size / sg_cols --> 16 / 16  = 1
+row: (wi_id / sg_cols + index / pack_factor * skip_factor) * VF + index % VF --> (0 / 16 + 3 / 2 * 1) * 1 + 3 % 1 = 1
+col: (wi_id % sg_cols * pack_factor + index % pack_factor) / VF --> (0 % 16 * 2 + 3 % 2) / 1 = 1
 
 Now, why the index for this particular item is 3 and not 9? That is because
 the slice is stored in row-major fashion. So if we have the slice like
@@ -1196,10 +1198,10 @@ The storage in memory will be: 0 0 1 1 2 2 ... 7 7
     int sg_size = get_sub_group_size(); \
     int wi_id = get_sub_group_local_id(); \
     int pack_factor = contrib_bitwidth / elem_bitwidth; \
-    int sg_cols = (C*VF) / pack_factor; \
+    int sg_cols = (C * VF) / pack_factor; \
     int skip_factor = sg_size / sg_cols; \
-    int row = ((wi_id*pack_factor)/(C*VF) + index/pack_factor*skip_factor)* VF; \
-    int col = ((wi_id * pack_factor) % (C*VF) + index % pack_factor)/ VF; \
+    int row = (wi_id / sg_cols + index / pack_factor * skip_factor) * VF + index % VF; \
+    int col = (wi_id % sg_cols * pack_factor + index % pack_factor) / VF; \
     int2 result = (int2)(row, col); \
     return result; \
   }
