@@ -371,7 +371,7 @@ namespace IGC
 
         auto alignment = IGCLLVM::getAlignmentValue(inst);
         if (alignment == 0)
-            alignment = DL.getABITypeAlignment(inst->getType());
+            alignment = DL.getABITypeAlign(inst->getType()).value();
 
         IRBuilder<> builder(inst);
 
@@ -418,7 +418,7 @@ namespace IGC
         IRBuilder<> builder(inst);
         auto alignment = IGCLLVM::getAlignmentValue(inst);
         if (alignment == 0)
-            alignment = DL.getABITypeAlignment(storeVal->getType());
+            alignment = DL.getABITypeAlign(storeVal->getType()).value();
         Value* attr[] =
         {
             bufPtr,

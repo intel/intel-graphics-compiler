@@ -366,9 +366,9 @@ void ModuleAllocaAnalysis::analyze(Function* F, unsigned& Offset, alignment_t& M
 
     // Group by alignment and smallest first.
     auto getAlignment = [=](AllocaInst* AI) {
-        alignment_t Alignment = IGCLLVM::getAlignmentValue(AI);
+        auto Alignment = IGCLLVM::getAlignmentValue(AI);
         if (Alignment == 0)
-            Alignment = DL->getABITypeAlignment(AI->getAllocatedType());
+            Alignment = DL->getABITypeAlign(AI->getAllocatedType()).value();
         return Alignment;
     };
 
@@ -380,7 +380,7 @@ void ModuleAllocaAnalysis::analyze(Function* F, unsigned& Offset, alignment_t& M
     for (auto AI : Allocas) {
         // Align alloca offset.
         auto Alignment = getAlignment(AI);
-        Offset = iSTD::Align(Offset, (size_t)Alignment);
+        Offset = iSTD::Align(Offset, Alignment);
 
         // Keep track of the maximal alignment seen so far.
         if (Alignment > MaxAlignment)
@@ -401,7 +401,7 @@ void ModuleAllocaAnalysis::analyze(Function* F, unsigned& Offset, alignment_t& M
             isPackedStruct = st->isPacked();
         }
         if (!isPackedStruct) {
-            CurSize = iSTD::Align(CurSize, (size_t)Alignment);
+            CurSize = iSTD::Align(CurSize, Alignment);
         }
 
         AllocaInfo->setAllocaDesc(AI, Offset, CurSize);

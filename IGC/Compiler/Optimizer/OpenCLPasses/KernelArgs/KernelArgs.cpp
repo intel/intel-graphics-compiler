@@ -110,7 +110,7 @@ alignment_t KernelArg::calcAlignment(const Argument* arg, const DataLayout* DL) 
         typeToAlign = IGCLLVM::getNonOpaquePtrEltTy(typeToAlign);
     }
 
-    return DL->getABITypeAlignment(typeToAlign);
+    return DL->getABITypeAlign(typeToAlign).value();
 }
 
 unsigned int KernelArg::calcElemAllocateSize(const Argument* arg, const DataLayout* DL) const

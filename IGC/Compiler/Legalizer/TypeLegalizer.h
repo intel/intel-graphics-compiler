@@ -610,7 +610,7 @@ namespace IGC {
             alignment_t TypeLegalizer::getAlignment(LoadInst* Ld) const {
             auto Align = IGCLLVM::getAlignmentValue(Ld);
             if (Align == 0)
-                Align = DL->getABITypeAlignment(Ld->getType());
+                Align = DL->getABITypeAlign(Ld->getType()).value();
             return Align;
         }
 
@@ -618,7 +618,7 @@ namespace IGC {
             alignment_t TypeLegalizer::getAlignment(StoreInst* St) const {
             auto Align = IGCLLVM::getAlignmentValue(St);
             if (Align == 0)
-                Align = DL->getABITypeAlignment(St->getValueOperand()->getType());
+                Align = DL->getABITypeAlign(St->getValueOperand()->getType()).value();
             return Align;
         }
 

@@ -126,7 +126,7 @@ namespace {
         alignment_t getAlignment(LoadInst* LD) const {
             auto Align = IGCLLVM::getAlignmentValue(LD);
             if (Align == 0)
-                Align = DL->getABITypeAlignment(LD->getType());
+                Align = DL->getABITypeAlign(LD->getType()).value();
             return Align;
         }
 

@@ -132,7 +132,7 @@ auto AlignmentAnalysis::getAlignValue(Value* V) const
             // If the globalvariable uses the default alignment, pull it from the datalayout
             if (!align)
             {
-                return m_DL->getABITypeAlignment(GV->getValueType());
+                return m_DL->getABITypeAlign(GV->getValueType()).value();
             }
             else
             {
@@ -151,7 +151,7 @@ auto AlignmentAnalysis::getAlignValue(Value* V) const
             Type* pointedTo = IGCLLVM::getNonOpaquePtrEltTy(arg->getType());
             if (pointedTo->isSized())
             {
-                return m_DL->getABITypeAlignment(pointedTo);
+                return m_DL->getABITypeAlign(pointedTo).value();
             }
             else
             {
@@ -224,7 +224,7 @@ alignment_t AlignmentAnalysis::visitAllocaInst(AllocaInst& I)
     // If the alloca uses the default alignment, pull it from the datalayout
     if (!newAlign)
     {
-        newAlign = m_DL->getABITypeAlignment(I.getAllocatedType());
+        newAlign = m_DL->getABITypeAlign(I.getAllocatedType()).value();
     }
 
     return newAlign;
@@ -441,11 +441,11 @@ alignment_t AlignmentAnalysis::visitCallInst(CallInst& I)
         MemCpyInst* memCpy = dyn_cast<MemCpyInst>(&I);
         IGC_ASSERT(memCpy);
         if (memCpy) {
-            alignment = std::min((alignment_t)memCpy->getDestAlignment(),
-                (alignment_t)memCpy->getSourceAlignment());
+            alignment = std::min(memCpy->getDestAlign().valueOrOne().value(),
+                memCpy->getSourceAlign().valueOrOne().value());
         }
     } else if (ID == Intrinsic::memset) {
-        alignment = std::max((alignment_t)memIntr->getDestAlignment(),
+        alignment = std::max(memIntr->getDestAlign().valueOrOne().value(),
             MinimumAlignment);
     }
 

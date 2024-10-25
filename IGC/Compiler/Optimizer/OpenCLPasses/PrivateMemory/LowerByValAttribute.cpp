@@ -75,7 +75,7 @@ void LowerByValAttribute::visitCallInst(CallInst& CI)
             IGCLLVM::IRBuilder<> builder(&CI);
             Value* AI = builder.CreateAlloca(ElTy);
             builder.CreateMemCpy(
-                AI, OpI, DL.getTypeAllocSize(ElTy), DL.getABITypeAlignment(ElTy));
+                AI, OpI, DL.getTypeAllocSize(ElTy), DL.getABITypeAlign(ElTy).value());
             auto AC = builder.CreateAddrSpaceCast(AI, OpITy);
             CI.replaceUsesOfWith(OpI, AC);
             m_changed = true;

@@ -412,7 +412,7 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
     DataVector& inlineProgramScopeBuffer = m_pModuleMd->inlineBuffers[inlineProgramScopeBufferType].Buffer;
 
     // Initial alignment padding before insert the current constant into the buffer.
-    alignment_t typeAlignment = forceAlignmentOne ? 1 : m_DL->getABITypeAlignment(initializer->getType());
+    alignment_t typeAlignment = forceAlignmentOne ? 1 : m_DL->getABITypeAlign(initializer->getType()).value();
     alignBuffer(inlineProgramScopeBuffer, typeAlignment);
 
     // If the initializer is packed struct make sure, that every variable inside

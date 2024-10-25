@@ -392,7 +392,7 @@ bool StatelessToStateful::pointerIsPositiveOffsetFromKernelArgument(
             if (!pointeeTy->isSized()) {
                 return 0;
             }
-            return DL->getABITypeAlignment(pointeeTy);
+            return DL->getABITypeAlign(pointeeTy).value();
         }
         return 0;
     };
