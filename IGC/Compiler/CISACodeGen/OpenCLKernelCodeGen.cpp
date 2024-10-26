@@ -3443,7 +3443,8 @@ namespace IGC
 
         if (ctx->platform.getMinDispatchMode() == SIMDMode::SIMD16)
         {
-            AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD32, false);
+            bool abortOnSpills = ctx->platform.isCoreXE2() && (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32);
+            AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD32, abortOnSpills);
             AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD16, false);
 
             ctx->SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD8, ShaderDispatchMode::NOT_APPLICABLE);
@@ -3748,9 +3749,24 @@ namespace IGC
             return SIMDStatus::SIMD_FUNC_FAIL;
         }
 
-        EP.m_canAbortOnSpill = false; // spill is always allowed since we don't do SIMD size lowering
         // Next we check if there is a required sub group size specified
         CodeGenContext* pCtx = GetContext();
+
+        CShader* simd16Program = m_parent->GetShader(SIMDMode::SIMD16);
+        CShader* simd32Program = m_parent->GetShader(SIMDMode::SIMD32);
+
+        EP.m_canAbortOnSpill = false || pCtx->platform.isCoreXE2();
+        bool compileFunctionVariants = pCtx->m_enableSimdVariantCompilation &&
+            (m_FGA && IGC::isIntelSymbolTableVoidProgram(m_FGA->getGroupHead(&F)));
+
+        if((simd16Program && simd16Program->ProgramOutput()->m_programSize > 0) ||
+                (simd32Program && simd32Program->ProgramOutput()->m_programSize > 0))
+        {
+            bool canCompileMultipleSIMD = compileFunctionVariants;
+            if (!(canCompileMultipleSIMD && (pCtx->getModuleMetaData()->csInfo.forcedSIMDSize == 0)))
+                return SIMDStatus::SIMD_FUNC_FAIL;
+        }
+
         MetaDataUtils* pMdUtils = EP.getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
         FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(&F);
         uint32_t simd_size = getReqdSubGroupSize(F, pMdUtils);
@@ -3853,7 +3869,7 @@ namespace IGC
                 return SIMDStatus::SIMD_PASS;
             }
 
-            if (simdMode == SIMDMode::SIMD16 && !hasSubGroupForce && !forceLowestSIMDForStackCalls && !hasSubroutine)
+            if (simdMode == SIMDMode::SIMD16 && !pCtx->platform.isCoreXE2() && !hasSubGroupForce && !forceLowestSIMDForStackCalls && !hasSubroutine)
             {
                 pCtx->SetSIMDInfo(SIMD_SKIP_PERF, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
                 return SIMDStatus::SIMD_FUNC_FAIL;
