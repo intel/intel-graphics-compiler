@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2024 Intel Corporation
+; Copyright (C) 2021 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -15,13 +15,11 @@
 ; COM: these checks are potentially brittle. Though, the size of the test is
 ; COM: small and it should be easy to modify if problem arise
 ; RUN: FileCheck %s --input-file=%basename_t_M_.regalloc
-; CHECK:      [t7] (4 bytes, length 31) arg1:[0,31)
-; CHECK-NEXT: [t6] (4 bytes, length 27) arg:[0,27)
-; CHECK-NEXT: [v34] (64 bytes, length 4) :[25,29)
-; CHECK-NEXT: [v32] (16 bytes, length 3) :[10,13)
-; CHECK-NEXT: [v33] (16 bytes, length 3) :[20,23)
-; CHECK-NEXT: [v35] (64 bytes, length 2) :[27,29)
-; CHECK-NEXT: [v36] (64 bytes, length 2) :[29,31)
+; CHECK: [t7] (4 bytes, length 11) arg1:[0,11)
+; CHECK-NEXT: [t6] (4 bytes, length 7) arg:[0,7)
+; CHECK-NEXT: [v32] (64 bytes, length 4) :[5,9)
+; CHECK-NEXT: [v33] (64 bytes, length 2) :[7,9)
+; CHECK-NEXT: [v34] (64 bytes, length 2) :[9,11)
 ; CHECK: Register pressure (bytes):
 ; CHECK: Flag pressure (bytes):
 
