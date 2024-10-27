@@ -143,5 +143,5 @@ bool IGCFunctionExternalRegPressureAnalysis::runOnModule(llvm::Module &M) {
 
     generateTableOfPressure(M);
 
-    return false;
+    return true;
 }
