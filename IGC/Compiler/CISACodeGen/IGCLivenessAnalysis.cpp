@@ -321,7 +321,7 @@ bool IGCLivenessAnalysis::runOnFunction(llvm::Function &F) {
     MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     livenessAnalysis(F, nullptr);
-    return true;
+    return false;
 }
 
 char IGCRegisterPressurePrinter::ID = 0;
@@ -579,6 +579,6 @@ bool IGCRegisterPressurePrinter::runOnFunction(llvm::Function &F) {
         Output.clear();
     }
 
-    return true;
+    return false;
 }
 
