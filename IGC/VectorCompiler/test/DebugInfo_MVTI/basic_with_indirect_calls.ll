@@ -33,14 +33,14 @@ declare <16 x float> @llvm.genx.svm.block.ld.v16f32.i64(i64) #1
 declare void @llvm.genx.svm.block.st.i64.v16f32(i64, <16 x float>) #2
 
 ; Function Attrs: noinline nounwind readnone
-define internal spir_func <16 x float> @foo___vyfvyf(<16 x float> %a, <16 x float> %b, <16 x i1> %__mask) #3 !FuncArgSize !156 !FuncRetSize !157 {
+define internal spir_func <16 x float> @foo___vyfvyf(<16 x float> %a, <16 x float> %b, <16 x i1> %__mask) addrspace(9) #3 !FuncArgSize !156 !FuncRetSize !157 {
 allocas:
   %add_a_load_b_load = fadd <16 x float> %a, %b
   ret <16 x float> %add_a_load_b_load
 }
 
 ; Function Attrs: noinline nounwind
-define internal spir_func <16 x float> @bar___vyfvyf(<16 x float> %a, <16 x float> %b, <16 x i1> %__mask) #4 !FuncArgSize !156 !FuncRetSize !157 {
+define internal spir_func <16 x float> @bar___vyfvyf(<16 x float> %a, <16 x float> %b, <16 x i1> %__mask) addrspace(9) #4 !FuncArgSize !156 !FuncRetSize !157 {
 allocas:
   %add_a_load_b_load = fsub <16 x float> %a, %b
   ret <16 x float> %add_a_load_b_load
@@ -53,15 +53,15 @@ declare i1 @llvm.genx.any.v16i1(<16 x i1>) #5
 define dllexport void @f_f(float* noalias %RET, float* noalias %aFOO, i64 %privBase) #6 {
   %svm_ld_ptrtoint = ptrtoint float* %aFOO to i64
   %src1 = call <16 x float> @llvm.genx.svm.block.ld.v16f32.i64(i64 %svm_ld_ptrtoint)
-  %foo_raw = ptrtoint <16 x float> (<16 x float>, <16 x float>, <16 x i1>)* @bar___vyfvyf to i64
-  %bar_raw = ptrtoint <16 x float> (<16 x float>, <16 x float>, <16 x i1>)* @foo___vyfvyf to i64
+  %foo_raw = ptrtoint <16 x float> (<16 x float>, <16 x float>, <16 x i1>) addrspace(9)* @bar___vyfvyf to i64
+  %bar_raw = ptrtoint <16 x float> (<16 x float>, <16 x float>, <16 x i1>) addrspace(9)* @foo___vyfvyf to i64
   %foo_raw_vect = insertelement <1 x i64> undef, i64 %foo_raw, i32 0
   %bar_raw_vect = insertelement <1 x i64> undef, i64 %bar_raw, i32 0
   %cmp = icmp eq i64 %privBase, 0
   %rawaddr_v = select i1 %cmp, <1 x i64> %foo_raw_vect, <1 x i64> %bar_raw_vect
   %rawaddr = extractelement <1 x i64> %rawaddr_v, i32 0
-  %fptr = inttoptr i64 %rawaddr to <16 x float> (<16 x float>, <16 x float>, <16 x i1>)*
-  %calltmp = call spir_func <16 x float> %fptr(<16 x float> %src1, <16 x float> %src1, <16 x i1> zeroinitializer) #7, !FuncArgSize !156, !FuncRetSize !157
+  %fptr = inttoptr i64 %rawaddr to <16 x float> (<16 x float>, <16 x float>, <16 x i1>) addrspace(9)*
+  %calltmp = call spir_func addrspace(9) <16 x float> %fptr(<16 x float> %src1, <16 x float> %src1, <16 x i1> zeroinitializer) #7, !FuncArgSize !156, !FuncRetSize !157
   %svm_st_ptrtoint = ptrtoint float* %RET to i64
   call void @llvm.genx.svm.block.st.i64.v16f32(i64 %svm_st_ptrtoint, <16 x float> %calltmp)
   ret void

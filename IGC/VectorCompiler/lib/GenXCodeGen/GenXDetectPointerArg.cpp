@@ -378,7 +378,7 @@ void GenXDetectPointerArg::analyzeValue(Value *V) {
     auto *Ty = Curr->getType()->getScalarType();
     if (Ty->isPointerTy()) {
       auto AS = Ty->getPointerAddressSpace();
-      if (AS == vc::AddrSpace::Local || AS == vc::AddrSpace::Program ||
+      if (AS == vc::AddrSpace::Local || AS == vc::AddrSpace::CodeSectionINTEL ||
           AS == vc::AddrSpace::GlobalA32)
         continue;
     } else if (!Ty->isIntegerTy(64))

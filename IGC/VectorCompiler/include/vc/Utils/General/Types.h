@@ -24,12 +24,12 @@ enum Enum {
   Constant = 2,
   Local = 3,
   Generic = 4,
-  // Program addrspace is an addrspace where executable code should be stored.
-  Program = 5,
   // Global A32 addrspace is for 32-bit pointers to global memory (global
   // pointers may be 32 or 64 bit, but global A32 pointers are always 32 bit
   // and can coexist with 64 bit pointers).
   GlobalA32 = 6,
+  // CodeSectionINTEL addrspace is used for function pointers
+  CodeSectionINTEL = 9,
 };
 } // namespace AddrSpace
 

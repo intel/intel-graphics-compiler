@@ -114,6 +114,7 @@ int spirvReadVerify(const char *pIn, size_t InSz, const uint32_t *SpecConstIds,
     Opts.enableAllExtensions();
     Opts.setFPContractMode(SPIRV::FPContractMode::On);
     Opts.setDesiredBIsRepresentation(SPIRV::BIsRepresentation::SPIRVFriendlyIR);
+    Opts.setEmitFunctionPtrAddrSpace(true);
     // Add specialization constants
     for (unsigned i = 0; i < SpecConstSz; ++i)
       Opts.setSpecConst(SpecConstIds[i], SpecConstVals[i]);

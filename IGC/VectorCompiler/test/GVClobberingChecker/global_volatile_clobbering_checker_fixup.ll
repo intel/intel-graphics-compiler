@@ -89,8 +89,8 @@ define spir_kernel void @TestGVClobberingFixupStoreInCallIndirect() #1 {
 entry:
   %call.i.i.i8.i.esimd6 = load volatile <4 x i32>, <4 x i32>* @_ZL8g_global, align 16
   %int_val = sub i64 867, 5309
-  %func_ptr = inttoptr i64 %int_val to void ()*
-  tail call spir_func void %func_ptr()
+  %func_ptr = inttoptr i64 %int_val to void () addrspace(9)*
+  tail call spir_func addrspace(9) void %func_ptr()
   %vecext.i.i1.regioncollapsed = tail call i32 @llvm.genx.rdregioni.i32.v4i32.i16(<4 x i32> %call.i.i.i8.i.esimd6, i32 0, i32 1, i32 1, i16 0, i32 undef)
   %cmp.i.i = icmp eq i32 %vecext.i.i1.regioncollapsed, 55
   %conv.i.i4 = select i1 %cmp.i.i, i32 0, i32 0
@@ -104,7 +104,7 @@ entry:
 ; CHECK-TYPED-PTRS: %call.i.i.i8.i.esimd6 = load volatile <4 x i32>, <4 x i32>* @_ZL8g_global, align 16
 ; CHECK-OPAQUE-PTRS: %call.i.i.i8.i.esimd6 = load volatile <4 x i32>, ptr @_ZL8g_global, align 16
 ; CHECK:   %vecext.i.i1.regioncollapsed = tail call i32 @llvm.genx.rdregioni.i32.v4i32.i16(<4 x i32> %call.i.i.i8.i.esimd6, i32 0, i32 1, i32 1, i16 0, i32 undef)
-; CHECK:   tail call spir_func void %func_ptr()
+; CHECK:   tail call spir_func addrspace(9) void %func_ptr()
 
 define spir_kernel void @TestGVClobberingFixupLocalStore() #1 {
 entry:
