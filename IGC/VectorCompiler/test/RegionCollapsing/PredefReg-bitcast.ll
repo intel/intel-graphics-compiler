@@ -1,24 +1,20 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2024 Intel Corporation
+; Copyright (C) 2021 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXRegionCollapsing -march=genx64 -mcpu=Gen9 -mtriple=spir64 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXRegionCollapsing -march=genx64 -mcpu=Gen9 -mtriple=spir64 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
+; RUN: %opt %use_old_pass_manager% -GenXRegionCollapsing -march=genx64 -mcpu=Gen9 -mtriple=spir64 -S < %s | FileCheck %s
 
 target datalayout = "e-p:32:32-i64:64-n8:16:32"
 
 ; CHECK-LABEL: foo
-; CHECK-TYPED-PTRS-SAME: (i32* %[[PTR:[^ ]+]])
-; CHECK-TYPED-PTRS: %[[BC:[^ ]+]] = bitcast i32* %[[PTR]] to i8*
-; CHECK-TYPED-PTRS-NEXT: %[[READ:[^ ]+]] = call <128 x i8*> @llvm.genx.read.predef.reg.v128p4i8.v128p4i8(i32 10, <128 x i8*> undef)
-; CHECK-TYPED-PTRS-NEXT: %[[WR:[^ ]+]] =  call <128 x i8*> @llvm.genx.wrregioni.v128p4i8.p4i8.i16.i1(<128 x i8*> %[[READ]], i8* %[[BC]]
-; CHECK-OPAQUE-PTRS-SAME: (ptr %[[PTR:[^ ]+]])
-; CHECK-OPAQUE-PTRS-NEXT: %[[READ:[^ ]+]] = call <128 x ptr> @llvm.genx.read.predef.reg.v128p4i8.v128p4i8(i32 10, <128 x ptr> undef)
-; CHECK-OPAQUE-PTRS-NEXT: %[[WR:[^ ]+]] =  call <128 x ptr> @llvm.genx.wrregioni.v128p4i8.p4i8.i16.i1(<128 x ptr> %[[READ]], ptr %[[PTR]]
+; CHECK-SAME: (i32* %[[PTR:[^ ]+]])
+; CHECK: %[[BC:[^ ]+]] = bitcast i32* %[[PTR]] to i8*
+; CHECK-NEXT: %[[READ:[^ ]+]] = call <128 x i8*> @llvm.genx.read.predef.reg.v128p4i8.v128p4i8(i32 10, <128 x i8*> undef)
+; CHECK-NEXT: %[[WR:[^ ]+]] =  call <128 x i8*> @llvm.genx.wrregioni.v128p4i8.p4i8.i16.i1(<128 x i8*> %[[READ]], i8* %[[BC]]
 
 define internal <128 x i8*> @foo(i32* %ptr) local_unnamed_addr {
   %bc = bitcast i32* %ptr to i8*

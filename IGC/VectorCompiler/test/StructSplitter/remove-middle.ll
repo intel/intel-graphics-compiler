@@ -1,13 +1,12 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2024 Intel Corporation
+; Copyright (C) 2021 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXStructSplitter -vc-struct-splitting=1 -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXStructSplitter -vc-struct-splitting=1 -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
+; RUN: %opt %use_old_pass_manager% -GenXStructSplitter -vc-struct-splitting=1 -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
 
 ; This test is amied on proper GEP generation
 ; and checking PlainTyIdx and Size relationship.
@@ -32,12 +31,10 @@ entry:
   ; CHECK-DAG:  %[[C3_I_AL:[^ ]+]] = alloca i32, align 4
   %c = alloca %C3, align 4
 
-  ; CHECK-TYPED-PTRS:  %[[F:[^ ]+]] = getelementptr %[[C3_F]], %[[C3_F]]* %[[C3_F_AL]], i32 0, i32 0, i32 0, i32 1, i32 1, i32 1
-  ; CHECK-OPAQUE-PTRS:  %[[F:[^ ]+]] = getelementptr %[[C3_F]], ptr %[[C3_F_AL]], i32 0, i32 0, i32 0, i32 1, i32 1, i32 1
+  ; CHECK:  %[[F:[^ ]+]] = getelementptr %[[C3_F]], %[[C3_F]]* %[[C3_F_AL]], i32 0, i32 0, i32 0, i32 1, i32 1, i32 1
   %f = getelementptr inbounds %C3, %C3* %c, i32 0, i32 0, i32 0, i32 0, i32 0, i32 1, i32 1, i32 1
 
-  ; CHECK-TYPED-PTRS:  %[[U_F:[^ ]+]] = ptrtoint float* %[[F]] to i64
-  ; CHECK-OPAQUE-PTRS:  %[[U_F:[^ ]+]] = ptrtoint ptr %[[F]] to i64
+  ; CHECK:  %[[U_F:[^ ]+]] = ptrtoint float* %[[F]] to i64
   %user_of_f = ptrtoint float* %f to i64
 
   ret void

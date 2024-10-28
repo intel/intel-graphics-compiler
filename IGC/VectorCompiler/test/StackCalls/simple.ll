@@ -1,15 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2024 Intel Corporation
+; Copyright (C) 2021-2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXPrologEpilogInsertion -dce -mattr=+ocl_runtime -march=genx64 \
-; RUN: -mcpu=Gen9 -S -vc-arg-reg-size=32 -vc-ret-reg-size=12 < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXPrologEpilogInsertion -dce -mattr=+ocl_runtime -march=genx64 \
-; RUN: -mcpu=Gen9 -S -vc-arg-reg-size=32 -vc-ret-reg-size=12 < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
+; RUN: %opt %use_old_pass_manager% -GenXPrologEpilogInsertion -dce -mattr=+ocl_runtime -march=genx64 \
+; RUN: -mcpu=Gen9 -S -vc-arg-reg-size=32 -vc-ret-reg-size=12 < %s | FileCheck %s
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
 target triple = "spir64-unknown-unknown"
@@ -67,10 +65,8 @@ define <8 x float>* @replace_alloca(i8* %p) {
 ; CHECK: %[[ALLOCATE:[^ ]+]] = add i64 %[[SP4SCALAR]], 32
 ; CHECK: %[[SP4WRR:[^ ]+]] = call i64 @llvm.genx.wrregioni.i64.i64.i16.i1(i64 undef, i64 %[[ALLOCATE]], i32 0, i32 1, i32 1, i16 0, i32 undef, i1 true)
 ; CHECK: call i64 @llvm.genx.write.predef.reg.i64.i64(i32 10, i64 %[[SP4WRR]])
-; CHECK-TYPED-PTRS: %[[USE:[^ ]+]] = inttoptr i64 %[[SP4SCALAR]] to %class.A*
-; CHECK-TYPED-PTRS: getelementptr inbounds %class.A, %class.A* %[[USE]], i64 0, i32 0
-; CHECK-OPAQUE-PTRS: %[[USE:[^ ]+]] = inttoptr i64 %[[SP4SCALAR]] to ptr
-; CHECK-OPAQUE-PTRS: getelementptr inbounds %class.A, ptr %[[USE]], i64 0, i32 0
+; CHECK: %[[USE:[^ ]+]] = inttoptr i64 %[[SP4SCALAR]] to %class.A*
+; CHECK: getelementptr inbounds %class.A, %class.A* %[[USE]], i64 0, i32 0
 
   %alc = alloca %"class.A", align 32
   %elt = getelementptr inbounds %"class.A", %"class.A"* %alc, i64 0, i32 0

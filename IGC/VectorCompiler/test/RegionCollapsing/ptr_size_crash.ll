@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2024 Intel Corporation
+; Copyright (C) 2021 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -10,12 +10,10 @@
 ; COM: that we had a division by zero during an attempt to collapse a region
 ; COM: that have a pointers as an element type. This test is essentially checks
 ; COM: that we don't crash/trigger an assert
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXRegionCollapsing -march=genx64 -mcpu=Gen9 -mtriple=spir64 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXRegionCollapsing -march=genx64 -mcpu=Gen9 -mtriple=spir64 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
+; RUN: %opt %use_old_pass_manager% -GenXRegionCollapsing -march=genx64 -mcpu=Gen9 -mtriple=spir64 -S < %s | FileCheck %s
 
 ; CHECK: pluto
-; CHECK-TYPED-PTRS-NEXT: call spir_func void @foo(%0 addrspace(4)* null, i64 undef)
-; CHECK-OPAQUE-PTRS-NEXT: call spir_func void @foo(ptr addrspace(4) null, i64 undef)
+; CHECK-NEXT: call spir_func void @foo(%0 addrspace(4)* null, i64 undef)
 ; CHECK-NEXT: ret void
 
 source_filename = "/test.ll"

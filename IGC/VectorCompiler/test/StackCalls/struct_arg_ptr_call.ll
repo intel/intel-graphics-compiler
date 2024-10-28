@@ -1,15 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2024 Intel Corporation
+; Copyright (C) 2022 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXPrologEpilogInsertion -mattr=+ocl_runtime -march=genx64 \
-; RUN: -mcpu=Gen9 -S -vc-arg-reg-size=32 -vc-ret-reg-size=12 < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXPrologEpilogInsertion -mattr=+ocl_runtime -march=genx64 \
-; RUN: -mcpu=Gen9 -S -vc-arg-reg-size=32 -vc-ret-reg-size=12 < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
+; RUN: %opt %use_old_pass_manager% -GenXPrologEpilogInsertion -mattr=+ocl_runtime -march=genx64 \
+; RUN: -mcpu=Gen9 -S -vc-arg-reg-size=32 -vc-ret-reg-size=12 < %s | FileCheck %s
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
 target triple = "spir64-unknown-unknown"
@@ -39,10 +37,8 @@ define void @sum_impl(%struct %s) #0 {
 ; CHECK: %[[callee_predef_read_2:[^ ]+]] = call <1024 x i8> @llvm.genx.read.predef.reg.v1024i8.v1024i8(i32 8, <1024 x i8> undef)
 ; CHECK: %[[callee_read_elem_2_bytes:[^ ]+]] = call <8 x i8> @llvm.genx.rdregioni.v8i8.v1024i8.i16(<1024 x i8> %[[callee_predef_read_2]], i32 0, i32 8, i32 1, i16 32, i32 undef)
 ; CHECK: %[[callee_elem_2_int:[^ ]+]] = bitcast <8 x i8> %[[callee_read_elem_2_bytes]] to i64
-; CHECK-TYPED-PTRS: %[[callee_elem_2:[^ ]+]] = inttoptr i64 %[[callee_elem_2_int]] to float*
-; CHECK-TYPED-PTRS: %[[str:[^ ]+]] = insertvalue %struct %[[str_init_2]], float* %[[callee_elem_2]], 2
-; CHECK-OPAQUE-PTRS: %[[callee_elem_2:[^ ]+]] = inttoptr i64 %[[callee_elem_2_int]] to ptr
-; CHECK-OPAQUE-PTRS: %[[str:[^ ]+]] = insertvalue %struct %[[str_init_2]], ptr %[[callee_elem_2]], 2
+; CHECK: %[[callee_elem_2:[^ ]+]] = inttoptr i64 %[[callee_elem_2_int]] to float*
+; CHECK: %[[str:[^ ]+]] = insertvalue %struct %[[str_init_2]], float* %[[callee_elem_2]], 2
 
 ; COM: users
 ; CHECK: extractvalue %struct %[[str]], 0
@@ -90,8 +86,7 @@ define void @sum(float* %RET, float* %aFOO, i64 %privBase) #1 {
 
 ; COM: elem 2 (ptr)
 ; CHECK: %[[str_elem_2:[^ ]+]] = extractvalue %struct %struct_arg, 2
-; CHECK-TYPED-PTRS: %[[ptr_to_int:[^ ]+]] = ptrtoint float* %[[str_elem_2]] to i64
-; CHECK-OPAQUE-PTRS: %[[ptr_to_int:[^ ]+]] = ptrtoint ptr %[[str_elem_2]] to i64
+; CHECK: %[[ptr_to_int:[^ ]+]] = ptrtoint float* %[[str_elem_2]] to i64
 ; CHECK: %[[str_elem_2_bytes:[^ ]+]] = bitcast i64 %[[ptr_to_int]] to <8 x i8>
 ; CHECK: %[[predef_read_2:[^ ]+]] = call <1024 x i8> @llvm.genx.read.predef.reg.v1024i8.v1024i8(i32 8, <1024 x i8> undef)
 ; CHECK: %[[write_elem_2:[^ ]+]] = call <1024 x i8> @llvm.genx.wrregioni.v1024i8.v8i8.i16.i1(<1024 x i8> %[[predef_read_2]], <8 x i8> %[[str_elem_2_bytes]], i32 0, i32 8, i32 1, i16 32, i32 undef, i1 true)

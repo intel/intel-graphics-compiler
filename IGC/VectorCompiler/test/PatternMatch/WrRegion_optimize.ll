@@ -1,13 +1,12 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2024 Intel Corporation
+; Copyright (C) 2021-2023 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXPatternMatch -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXPatternMatch -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
+; RUN: %opt %use_old_pass_manager% -GenXPatternMatch -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
 declare <16 x i32> @llvm.genx.rdregioni.v16i32.v64i32.i16(<64 x i32>, i32, i32, i32, i16, i32)
 declare <16 x i32> @llvm.genx.wrregioni.v16i32.v16i32.i16.v16i1(<16 x i32>, <16 x i32>, i32, i32, i32, i16, i32, <16 x i1>)
@@ -26,12 +25,9 @@ declare <16 x i8 addrspace(1)*> @llvm.genx.wrregioni.v16p1i8.i16.i1(<16 x i8 add
 
 ; CHECK-LABEL: @test_ptr_vector
 define <16 x i8 addrspace(1)*> @test_ptr_vector(i8 addrspace(1)* %p) {
-  ; CHECK-TYPED-PTRS: [[CAST:%[^ ]+]] = bitcast i8 addrspace(1)* %p to <1 x i8 addrspace(1)*>
-  ; CHECK-TYPED-PTRS: [[SPLAT:%[^ ]+]] = call <16 x i8 addrspace(1)*> @llvm.genx.rdregioni.v16p1i8.v1p1i8.i16(<1 x i8 addrspace(1)*> [[CAST]], i32 0, i32 16, i32 0, i16 0, i32 undef)
-  ; CHECK-TYPED-PTRS: ret <16 x i8 addrspace(1)*> [[SPLAT]]
+  ; CHECK: [[CAST:%[^ ]+]] = bitcast i8 addrspace(1)* %p to <1 x i8 addrspace(1)*>
+  ; CHECK: [[SPLAT:%[^ ]+]] = call <16 x i8 addrspace(1)*> @llvm.genx.rdregioni.v16p1i8.v1p1i8.i16(<1 x i8 addrspace(1)*> [[CAST]], i32 0, i32 16, i32 0, i16 0, i32 undef)
+  ; CHECK: ret <16 x i8 addrspace(1)*> [[SPLAT]]
   %broadcast = call <16 x i8 addrspace(1)*> @llvm.genx.wrregioni.v16p1i8.i16.i1(<16 x i8 addrspace(1)*> undef, i8 addrspace(1)* %p, i32 0, i32 1, i32 0, i16 0, i32 undef, i1 true)
-  ; CHECK-OPAQUE-PTRS: [[CAST:%[^ ]+]] = bitcast ptr addrspace(1) %p to <1 x ptr addrspace(1)>
-  ; CHECK-OPAQUE-PTRS: [[SPLAT:%[^ ]+]] = call <16 x ptr addrspace(1)> @llvm.genx.rdregioni.v16p1.v1p1.i16(<1 x ptr addrspace(1)> [[CAST]], i32 0, i32 16, i32 0, i16 0, i32 undef)
-  ; CHECK-OPAQUE-PTRS: ret <16 x ptr addrspace(1)> [[SPLAT]]
   ret <16 x i8 addrspace(1)*> %broadcast
 }
