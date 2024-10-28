@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2021 Intel Corporation
+; Copyright (C) 2020-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXPatternMatch -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXPatternMatch -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXPatternMatch -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 define dllexport spir_kernel void @test(<16 x i32>* %val, i1 %cond) {
 ; CHECK: [[CONSTANT:%.*]] = call <1 x i32> @llvm.genx.constanti.v1i32(<1 x i32> <i32 1>)
@@ -21,7 +22,8 @@ bb2:
 
 bb3:
 ; CHECK: bb3:
-; CHECK-NEXT: store <16 x i32> [[CONSTANT_SPLAT]], <16 x i32>* %val
+; CHECK-TYPED-PTRS-NEXT: store <16 x i32> [[CONSTANT_SPLAT]], <16 x i32>* %val
+; CHECK-OPAQUE-PTRS-NEXT: store <16 x i32> [[CONSTANT_SPLAT]], ptr %val
   %.sink101 = phi <16 x i32> [ <i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1>,  %bb1 ], [ <i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1>, %bb2 ]
   store <16 x i32> %.sink101,  <16 x i32>* %val
   ret void

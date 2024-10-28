@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXPrintfResolution -vc-printf-bif-path=%VC_PRITF_OCL_BIF% -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXPrintfResolution -vc-printf-bif-path=%VC_PRITF_OCL_BIF% -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXPrintfResolution -vc-printf-bif-path=%VC_PRITF_OCL_BIF% -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
 
@@ -34,7 +35,8 @@ define dllexport spir_kernel void @print_int(i32 %int.arg) {
   %printf = call spir_func i32 (i8 addrspace(2)*, ...) @printf(i8 addrspace(2)* %int.str.ptr, i32 %int.arg)
 ; COM:                                                                           |Total|64-bit|  ptr | str  |fmt len|
 ; CHECK: %[[INT_PRINTF_INIT:[^ ]+]] = call <4 x i32> @__vc_printf_init(<5 x i32> <i32 1, i32 0, i32 0, i32 0, i32 3>)
-; CHECK: %[[INT_PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[INT_PRINTF_INIT]], i8 addrspace(2)* %int.str.ptr)
+; CHECK-TYPED-PTRS: %[[INT_PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[INT_PRINTF_INIT]], i8 addrspace(2)* %int.str.ptr)
+; CHECK-OPAQUE-PTRS: %[[INT_PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[INT_PRINTF_INIT]], ptr addrspace(2) %int.str.ptr)
 ; CHECK: %[[INT_VEC_ARG:[^ ]+]] = insertelement <2 x i32> zeroinitializer, i32 %int.arg, i32 0
 ; COM: ArgKind::Int == 2
 ; CHECK: %[[INT_PRINTF_ARG:[^ ]+]] = call <4 x i32> @__vc_printf_arg(<4 x i32> %[[INT_PRINTF_FMT]], i32 2, <2 x i32> %[[INT_VEC_ARG]])
@@ -48,7 +50,8 @@ define dllexport spir_kernel void @print_float(float %float.arg) {
   %printf = call spir_func i32 (i8 addrspace(2)*, ...) @printf(i8 addrspace(2)* %float.str.ptr, float %float.arg)
 ; COM:                                                                           |Total|64-bit|  ptr | str  |fmt len|
 ; CHECK: %[[FLT_PRINTF_INIT:[^ ]+]] = call <4 x i32> @__vc_printf_init(<5 x i32> <i32 1, i32 0, i32 0, i32 0, i32 3>)
-; CHECK: %[[FLT_PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[FLT_PRINTF_INIT]], i8 addrspace(2)* %float.str.ptr)
+; CHECK-TYPED-PTRS: %[[FLT_PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[FLT_PRINTF_INIT]], i8 addrspace(2)* %float.str.ptr)
+; CHECK-OPAQUE-PTRS: %[[FLT_PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[FLT_PRINTF_INIT]], ptr addrspace(2) %float.str.ptr)
 ; CHECK: %[[FLT_ARG_BC:[^ ]+]] = bitcast float %float.arg to i32
 ; CHECK: %[[FLT_VEC_ARG:[^ ]+]] = insertelement <2 x i32> zeroinitializer, i32 %[[FLT_ARG_BC]], i32 0
 ; COM: ArgKind::Float == 4
@@ -64,7 +67,8 @@ define dllexport spir_kernel void @print_char(i8 %char.arg) {
   %printf = call spir_func i32 (i8 addrspace(2)*, ...) @printf(i8 addrspace(2)* %char.str.ptr, i8 %char.arg)
 ; COM:                                                                            |Total|64-bit|  ptr | str  |fmt len|
 ; CHECK: %[[CHAR_PRINTF_INIT:[^ ]+]] = call <4 x i32> @__vc_printf_init(<5 x i32> <i32 1, i32 0, i32 0, i32 0, i32 5>)
-; CHECK: %[[CHAR_PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[CHAR_PRINTF_INIT]], i8 addrspace(2)* %char.str.ptr)
+; CHECK-TYPED-PTRS: %[[CHAR_PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[CHAR_PRINTF_INIT]], i8 addrspace(2)* %char.str.ptr)
+; CHECK-OPAQUE-PTRS: %[[CHAR_PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[CHAR_PRINTF_INIT]], ptr addrspace(2) %char.str.ptr)
 ; CHECK: %[[CHAR_ARG_ZEXT:[^ ]+]] = zext i8 %char.arg to i32
 ; CHECK: %[[CHAR_VEC_ARG:[^ ]+]] = insertelement <2 x i32> zeroinitializer, i32 %[[CHAR_ARG_ZEXT]], i32 0
 ; COM: ArgKind::Char = 0
@@ -80,7 +84,8 @@ define dllexport spir_kernel void @print_short(i16 %short.arg) {
   %printf = call spir_func i32 (i8 addrspace(2)*, ...) @printf(i8 addrspace(2)* %short.str.ptr, i16 %short.arg)
 ; COM:                                                                             |Total|64-bit|  ptr | str  |fmt len|
 ; CHECK: %[[SHORT_PRINTF_INIT:[^ ]+]] = call <4 x i32> @__vc_printf_init(<5 x i32> <i32 1, i32 0, i32 0, i32 0, i32 4>)
-; CHECK: %[[SHORT_PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[SHORT_PRINTF_INIT]], i8 addrspace(2)* %short.str.ptr)
+; CHECK-TYPED-PTRS: %[[SHORT_PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[SHORT_PRINTF_INIT]], i8 addrspace(2)* %short.str.ptr)
+; CHECK-OPAQUE-PTRS: %[[SHORT_PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[SHORT_PRINTF_INIT]], ptr addrspace(2) %short.str.ptr)
 ; CHECK: %[[SHORT_ARG_ZEXT:[^ ]+]] = zext i16 %short.arg to i32
 ; CHECK: %[[SHORT_VEC_ARG:[^ ]+]] = insertelement <2 x i32> zeroinitializer, i32 %[[SHORT_ARG_ZEXT]], i32 0
 ; COM: ArgKind::Short = 1
@@ -96,7 +101,8 @@ define dllexport spir_kernel void @print_long(i64 %long.arg) {
   %printf = call spir_func i32 (i8 addrspace(2)*, ...) @printf(i8 addrspace(2)* %long.str.ptr, i64 %long.arg)
 ; COM:                                                                            |Total|64-bit|  ptr | str  |fmt len|
 ; CHECK: %[[LONG_PRINTF_INIT:[^ ]+]] = call <4 x i32> @__vc_printf_init(<5 x i32> <i32 1, i32 1, i32 0, i32 0, i32 4>)
-; CHECK: %[[LONG_PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[LONG_PRINTF_INIT]], i8 addrspace(2)* %long.str.ptr)
+; CHECK-TYPED-PTRS: %[[LONG_PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[LONG_PRINTF_INIT]], i8 addrspace(2)* %long.str.ptr)
+; CHECK-OPAQUE-PTRS: %[[LONG_PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[LONG_PRINTF_INIT]], ptr addrspace(2) %long.str.ptr)
 ; CHECK: %[[LONG_VEC_ARG:[^ ]+]] = bitcast i64 %long.arg to <2 x i32>
 ; COM: ArgKind::Long = 3
 ; CHECK: %[[LONG_PRINTF_ARG:[^ ]+]] = call <4 x i32> @__vc_printf_arg(<4 x i32> %[[LONG_PRINTF_FMT]], i32 3, <2 x i32> %[[LONG_VEC_ARG]])
@@ -111,7 +117,8 @@ define dllexport spir_kernel void @print_double(double %double.arg) {
   %printf = call spir_func i32 (i8 addrspace(2)*, ...) @printf(i8 addrspace(2)* %double.str.ptr, double %double.arg)
 ; COM:                                                                              |Total|64-bit|  ptr | str  |fmt len|
 ; CHECK: %[[DOUBLE_PRINTF_INIT:[^ ]+]] = call <4 x i32> @__vc_printf_init(<5 x i32> <i32 1, i32 1, i32 0, i32 0, i32 3>)
-; CHECK: %[[DOUBLE_PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[DOUBLE_PRINTF_INIT]], i8 addrspace(2)* %double.str.ptr)
+; CHECK-TYPED-PTRS: %[[DOUBLE_PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[DOUBLE_PRINTF_INIT]], i8 addrspace(2)* %double.str.ptr)
+; CHECK-OPAQUE-PTRS: %[[DOUBLE_PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[DOUBLE_PRINTF_INIT]], ptr addrspace(2) %double.str.ptr)
 ; CHECK: %[[DOUBLE_VEC_ARG:[^ ]+]] = bitcast double %double.arg to <2 x i32>
 ; COM: ArgKind::Double = 5
 ; CHECK: %[[DOUBLE_PRINTF_ARG:[^ ]+]] = call <4 x i32> @__vc_printf_arg(<4 x i32> %[[DOUBLE_PRINTF_FMT]], i32 5, <2 x i32> %[[DOUBLE_VEC_ARG]])
@@ -126,8 +133,10 @@ define dllexport spir_kernel void @print_ptr(i32* %ptr.arg) {
   %printf = call spir_func i32 (i8 addrspace(2)*, ...) @printf(i8 addrspace(2)* %ptr.str.ptr, i32* %ptr.arg)
 ; COM:                                                                           |Total|64-bit|  ptr | str  |fmt len|
 ; CHECK: %[[PTR_PRINTF_INIT:[^ ]+]] = call <4 x i32> @__vc_printf_init(<5 x i32> <i32 1, i32 0, i32 1, i32 0, i32 3>)
-; CHECK: %[[PTR_PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[PTR_PRINTF_INIT]], i8 addrspace(2)* %ptr.str.ptr)
-; CHECK: %[[PTR_ARG_P2I:[^ ]+]] = ptrtoint i32* %ptr.arg to i64
+; CHECK-TYPED-PTRS: %[[PTR_PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[PTR_PRINTF_INIT]], i8 addrspace(2)* %ptr.str.ptr)
+; CHECK-TYPED-PTRS: %[[PTR_ARG_P2I:[^ ]+]] = ptrtoint i32* %ptr.arg to i64
+; CHECK-OPAQUE-PTRS: %[[PTR_PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[PTR_PRINTF_INIT]], ptr addrspace(2) %ptr.str.ptr)
+; CHECK-OPAQUE-PTRS: %[[PTR_ARG_P2I:[^ ]+]] = ptrtoint ptr %ptr.arg to i64
 ; CHECK: %[[PTR_VEC_ARG:[^ ]+]] = bitcast i64 %[[PTR_ARG_P2I]] to <2 x i32>
 ; COM: ArgKind::Pointer = 6
 ; CHECK: %[[PTR_PRINTF_ARG:[^ ]+]] = call <4 x i32> @__vc_printf_arg(<4 x i32> %[[PTR_PRINTF_FMT]], i32 6, <2 x i32> %[[PTR_VEC_ARG]])
@@ -144,7 +153,8 @@ define dllexport spir_kernel void @print_multi(i32 %int.arg, double %dbl.arg, i8
   %printf = call spir_func i32 (i8 addrspace(2)*, ...) @printf(i8 addrspace(2)* %multi.str.ptr, i32 %int.arg, i32 %int.arg, double %dbl.arg, double %dbl.arg, i32 %int.arg, i8 addrspace(2)* %str.arg, i8* %ptr.arg)
 ; COM:                                                                             |Total|64-bit|  ptr | str  |fmt len|
 ; CHECK: %[[MULTI_PRINTF_INIT:[^ ]+]] = call <4 x i32> @__vc_printf_init(<5 x i32> <i32 7, i32 2, i32 1, i32 1, i32 44>)
-; CHECK: %[[MULTI_PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[MULTI_PRINTF_INIT]], i8 addrspace(2)* %multi.str.ptr)
+; CHECK-TYPED-PTRS: %[[MULTI_PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[MULTI_PRINTF_INIT]], i8 addrspace(2)* %multi.str.ptr)
+; CHECK-OPAQUE-PTRS: %[[MULTI_PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[MULTI_PRINTF_INIT]], ptr addrspace(2) %multi.str.ptr)
 ; COM: ArgKind::Int == 2
 ; CHECK: %[[MULTI_PRINTF_INT_ARG:[^ ]+]] = call <4 x i32> @__vc_printf_arg(<4 x i32> %[[MULTI_PRINTF_FMT]], i32 2, <2 x i32> %{{[^ ]+}})
 ; CHECK: %[[MULTI_PRINTF_UINT_ARG:[^ ]+]] = call <4 x i32> @__vc_printf_arg(<4 x i32> %[[MULTI_PRINTF_INT_ARG]], i32 2, <2 x i32> %{{[^ ]+}})
@@ -153,7 +163,8 @@ define dllexport spir_kernel void @print_multi(i32 %int.arg, double %dbl.arg, i8
 ; CHECK: %[[MULTI_PRINTF_GDBL_ARG:[^ ]+]] = call <4 x i32> @__vc_printf_arg(<4 x i32> %[[MULTI_PRINTF_DBL_ARG]], i32 5, <2 x i32> %{{[^ ]+}})
 ; COM: ArgKind::Int == 2, %c requires int, not char
 ; CHECK: %[[MULTI_PRINTF_CHAR_ARG:[^ ]+]] = call <4 x i32> @__vc_printf_arg(<4 x i32> %[[MULTI_PRINTF_GDBL_ARG]], i32 2, <2 x i32> %{{[^ ]+}})
-; CHECK: %[[MULTI_PRINTF_STR_ARG:[^ ]+]] = call <4 x i32> @__vc_printf_arg_str(<4 x i32> %[[MULTI_PRINTF_CHAR_ARG]], i8 addrspace(2)* %str.arg)
+; CHECK-TYPED-PTRS: %[[MULTI_PRINTF_STR_ARG:[^ ]+]] = call <4 x i32> @__vc_printf_arg_str(<4 x i32> %[[MULTI_PRINTF_CHAR_ARG]], i8 addrspace(2)* %str.arg)
+; CHECK-OPAQUE-PTRS: %[[MULTI_PRINTF_STR_ARG:[^ ]+]] = call <4 x i32> @__vc_printf_arg_str(<4 x i32> %[[MULTI_PRINTF_CHAR_ARG]], ptr addrspace(2) %str.arg)
 ; COM: ArgKind::Pointer = 6
 ; CHECK: %[[MULTI_PRINTF_PTR_ARG:[^ ]+]] = call <4 x i32> @__vc_printf_arg(<4 x i32> %[[MULTI_PRINTF_STR_ARG]], i32 6, <2 x i32> %{{[^ ]+}})
 ; CHECK: %printf = call i32 @__vc_printf_ret(<4 x i32> %[[MULTI_PRINTF_PTR_ARG]])

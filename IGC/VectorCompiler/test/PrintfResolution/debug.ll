@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: %opt %use_old_pass_manager% -GenXPrintfResolution -vc-printf-bif-path=%VC_PRITF_OCL_BIF% -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXPrintfResolution -vc-printf-bif-path=%VC_PRITF_OCL_BIF% -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXPrintfResolution -vc-printf-bif-path=%VC_PRITF_OCL_BIF% -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 ; ------------------------------------------------
 ; GenXPrintfResolution
 ; ------------------------------------------------
@@ -14,27 +15,34 @@
 ; 'How to Update Debug Info' llvm guideline.
 
 ; CHECK: void @resolution{{.*}} !dbg [[SCOPE:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata i8 addrspace(2)* [[INT_V:%[A-z0-9.]*]], metadata [[INT_MD:![0-9]*]], metadata !DIExpression()), !dbg [[INT_LOC:![0-9]*]]
+; CHECK-TYPED-PTRS-DAG: void @llvm.dbg.value(metadata i8 addrspace(2)* [[INT_V:%[A-z0-9.]*]], metadata [[INT_MD:![0-9]*]], metadata !DIExpression()), !dbg [[INT_LOC:![0-9]*]]
+; CHECK-OPAQUE-PTRS-DAG: void @llvm.dbg.value(metadata ptr addrspace(2) [[INT_V:%[A-z0-9.]*]], metadata [[INT_MD:![0-9]*]], metadata !DIExpression()), !dbg [[INT_LOC:![0-9]*]]
 ; CHECK-DAG: [[INT_V]] = {{.*}}, !dbg [[INT_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata i32 [[VAL1_V:%[A-z0-9.]*]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC:![0-9]*]]
+; CHECK-TYPED-PTRS-DAG: void @llvm.dbg.value(metadata i32 [[VAL1_V:%[A-z0-9.]*]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC:![0-9]*]]
+; CHECK-OPAQUE-PTRS-DAG: void @llvm.dbg.value(metadata i32 [[VAL1_V:%[A-z0-9.]*]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC:![0-9]*]]
 ; CHECK-DAG: [[VAL1_V]] = {{.*}}, !dbg [[VAL1_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata i8 addrspace(2)* [[FLOAT_V:%[A-z0-9.]*]], metadata [[FLOAT_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FLOAT_LOC:![0-9]*]]
+; CHECK-TYPED-PTRS-DAG: void @llvm.dbg.value(metadata i8 addrspace(2)* [[FLOAT_V:%[A-z0-9.]*]], metadata [[FLOAT_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FLOAT_LOC:![0-9]*]]
+; CHECK-OPAQUE-PTRS-DAG: void @llvm.dbg.value(metadata ptr addrspace(2) [[FLOAT_V:%[A-z0-9.]*]], metadata [[FLOAT_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FLOAT_LOC:![0-9]*]]
 ; CHECK-DAG: [[FLOAT_V]] = {{.*}}, !dbg [[FLOAT_LOC]]
 ; CHECK-DAG: void @llvm.dbg.value(metadata i32 [[VAL2_V:%[A-z0-9.]*]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC:![0-9]*]]
 ; CHECK-DAG: [[VAL2_V]] = {{.*}}, !dbg [[VAL2_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata i8 addrspace(2)* [[CHAR_V:%[A-z0-9.]*]], metadata [[CHAR_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CHAR_LOC:![0-9]*]]
+; CHECK-TYPED-PTRS-DAG: void @llvm.dbg.value(metadata i8 addrspace(2)* [[CHAR_V:%[A-z0-9.]*]], metadata [[CHAR_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CHAR_LOC:![0-9]*]]
+; CHECK-OPAQUE-PTRS-DAG: void @llvm.dbg.value(metadata ptr addrspace(2) [[CHAR_V:%[A-z0-9.]*]], metadata [[CHAR_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CHAR_LOC:![0-9]*]]
 ; CHECK-DAG: [[CHAR_V]] = {{.*}}, !dbg [[CHAR_LOC]]
 ; CHECK-DAG: void @llvm.dbg.value(metadata i32 [[VAL3_V:%[A-z0-9.]*]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC:![0-9]*]]
 ; CHECK-DAG: [[VAL3_V]] = {{.*}}, !dbg [[VAL3_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata i8 addrspace(2)* [[SHORT_V:%[A-z0-9.]*]], metadata [[SHORT_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SHORT_LOC:![0-9]*]]
+; CHECK-TYPED-PTRS-DAG: void @llvm.dbg.value(metadata i8 addrspace(2)* [[SHORT_V:%[A-z0-9.]*]], metadata [[SHORT_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SHORT_LOC:![0-9]*]]
+; CHECK-OPAQUE-PTRS-DAG: void @llvm.dbg.value(metadata ptr addrspace(2) [[SHORT_V:%[A-z0-9.]*]], metadata [[SHORT_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SHORT_LOC:![0-9]*]]
 ; CHECK-DAG: [[SHORT_V]] = {{.*}}, !dbg [[SHORT_LOC]]
 ; CHECK-DAG: void @llvm.dbg.value(metadata i32 [[VAL4_V:%[A-z0-9.]*]], metadata [[VAL4_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL4_LOC:![0-9]*]]
 ; CHECK-DAG: [[VAL4_V]] = {{.*}}, !dbg [[VAL4_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata i8 addrspace(2)* [[LONG_V:%[A-z0-9.]*]], metadata [[LONG_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LONG_LOC:![0-9]*]]
+; CHECK-TYPED-PTRS-DAG: void @llvm.dbg.value(metadata i8 addrspace(2)* [[LONG_V:%[A-z0-9.]*]], metadata [[LONG_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LONG_LOC:![0-9]*]]
+; CHECK-OPAQUE-PTRS-DAG: void @llvm.dbg.value(metadata ptr addrspace(2) [[LONG_V:%[A-z0-9.]*]], metadata [[LONG_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LONG_LOC:![0-9]*]]
 ; CHECK-DAG: [[LONG_V]] = {{.*}}, !dbg [[LONG_LOC]]
 ; CHECK-DAG: void @llvm.dbg.value(metadata i32 [[VAL5_V:%[A-z0-9.]*]], metadata [[VAL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL5_LOC:![0-9]*]]
 ; CHECK-DAG: [[VAL5_V]] = {{.*}}, !dbg [[VAL5_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata i8 addrspace(2)* [[PTR_V:%[A-z0-9.]*]], metadata [[PTR_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PTR_LOC:![0-9]*]]
+; CHECK-TYPED-PTRS-DAG: void @llvm.dbg.value(metadata i8 addrspace(2)* [[PTR_V:%[A-z0-9.]*]], metadata [[PTR_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PTR_LOC:![0-9]*]]
+; CHECK-OPAQUE-PTRS-DAG: void @llvm.dbg.value(metadata ptr addrspace(2) [[PTR_V:%[A-z0-9.]*]], metadata [[PTR_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PTR_LOC:![0-9]*]]
 ; CHECK-DAG: [[PTR_V]] = {{.*}}, !dbg [[PTR_LOC]]
 ; CHECK-DAG: void @llvm.dbg.value(metadata i32 [[VAL6_V:%[A-z0-9.]*]], metadata [[VAL6_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL6_LOC:![0-9]*]]
 ; CHECK-DAG: [[VAL6_V]] = {{.*}}, !dbg [[VAL6_LOC]]

@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXTranslateSPIRVBuiltins -vc-spirv-builtins-bif-path=%VC_SPIRV_OCL_BIF% -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXTranslateSPIRVBuiltins -vc-spirv-builtins-bif-path=%VC_SPIRV_OCL_BIF% -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXTranslateSPIRVBuiltins -vc-spirv-builtins-bif-path=%VC_SPIRV_OCL_BIF% -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 ; COM: datalayout should stay the same
@@ -20,7 +21,8 @@ define spir_func float @spirv_atomic_float_load(float addrspace(3)* %ptr) {
 }
 
 ; COM: Check that no generic address space used and no integer-floating point conversion present.
-; CHECK: define internal spir_func {{(noundef )?}}float @_Z18__spirv_AtomicLoadPU3AS3fii(float addrspace(3)*
+; CHECK-TYPED-PTRS: define internal spir_func {{(noundef )?}}float @_Z18__spirv_AtomicLoadPU3AS3fii(float addrspace(3)*
+; CHECK-OPAQUE-PTRS: define internal spir_func {{(noundef )?}}float @_Z18__spirv_AtomicLoadPU3AS3fii(ptr addrspace(3)
 ; CHECK-NOT: addrspacecast
 ; CHECK-NOT: sitofp
 ; CHECK-NOT: fptosi

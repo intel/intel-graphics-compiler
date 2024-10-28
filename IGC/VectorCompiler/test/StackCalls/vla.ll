@@ -1,13 +1,15 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXPrologEpilogInsertion -vc-arg-reg-size=32 -vc-ret-reg-size=12 \
-; RUN: -mattr=+ocl_runtime -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXPrologEpilogInsertion -vc-arg-reg-size=32 -vc-ret-reg-size=12 \
+; RUN: -mattr=+ocl_runtime -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXPrologEpilogInsertion -vc-arg-reg-size=32 -vc-ret-reg-size=12 \
+; RUN: -mattr=+ocl_runtime -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
 target triple = "spir64-unknown-unknown"
@@ -64,18 +66,22 @@ entry:
 ; CHECK-NEXT: [[A1_13:[^ ]+]] = call i64 @llvm.genx.wrregioni.i64.i64.i16.i1(i64 undef, i64 [[A1_12]], i32 0, i32 1, i32 1, i16 0, i32 undef, i1 true)
 ; CHECK-NEXT: [[A1_14:[^ ]+]] = call i64 @llvm.genx.write.predef.reg.i64.i64(i32 10, i64 [[A1_13]])
 
-; CHECK: [[A1:[^ ]+]] = inttoptr i64 [[A1_6]] to i32*
+; CHECK-TYPED-PTRS: [[A1:[^ ]+]] = inttoptr i64 [[A1_6]] to i32*
+; CHECK-OPAQUE-PTRS: [[A1:[^ ]+]] = inttoptr i64 [[A1_6]] to ptr
   %a1 = alloca i32, i32 %n1
-; CHECK: [[A2:[^ ]+]] = inttoptr i64 [[A2_3]] to %struct*
+; CHECK-TYPED-PTRS: [[A2:[^ ]+]] = inttoptr i64 [[A2_3]] to %struct*
+; CHECK-OPAQUE-PTRS: [[A2:[^ ]+]] = inttoptr i64 [[A2_3]] to ptr
   %a2 = alloca %struct, align 32
-; CHECK: [[A3:[^ ]+]] = inttoptr i64 [[A3_6]] to i8*
+; CHECK-TYPED-PTRS: [[A3:[^ ]+]] = inttoptr i64 [[A3_6]] to i8*
+; CHECK-OPAQUE-PTRS: [[A3:[^ ]+]] = inttoptr i64 [[A3_6]] to ptr
   %a3 = alloca i8, i8 %n2, align 64
   br label %loop
 
 ; CHECK-LABEL: loop
 loop:
   %i = phi i32 [ 0, %entry ], [ %i.next, %loop ]
-; CHECK: [[STACK:[^ ]+]] = tail call i8* @llvm.stacksave()
+; CHECK-TYPED-PTRS: [[STACK:[^ ]+]] = tail call i8* @llvm.stacksave()
+; CHECK-OPAQUE-PTRS: [[STACK:[^ ]+]] = tail call ptr @llvm.stacksave()
   %stack = tail call i8* @llvm.stacksave()
   %i.next = add i32 %i, 1
 ; CHECK:       [[A4_0:[^ ]+]] = call <1 x i64> @llvm.genx.read.predef.reg.v1i64.i64(i32 10, i64 undef)
@@ -97,7 +103,8 @@ loop:
 ; CHECK-NEXT: [[A4_16:[^ ]+]] = add i64 [[A4_15]], [[A4_11]]
 ; CHECK-NEXT: [[A4_17:[^ ]+]] = call i64 @llvm.genx.wrregioni.i64.i64.i16.i1(i64 undef, i64 [[A4_16]], i32 0, i32 1, i32 1, i16 0, i32 undef, i1 true)
 ; CHECK-NEXT: [[A4_18:[^ ]+]] = call i64 @llvm.genx.write.predef.reg.i64.i64(i32 10, i64 [[A4_17]])
-; CHECK-NEXT: [[A4:[^ ]+]] = inttoptr i64 [[A4_15]] to i32*
+; CHECK-TYPED-PTRS-NEXT: [[A4:[^ ]+]] = inttoptr i64 [[A4_15]] to i32*
+; CHECK-OPAQUE-PTRS-NEXT: [[A4:[^ ]+]] = inttoptr i64 [[A4_15]] to ptr
   %a4 = alloca i32, i32 %n4
 ; CHECK:       [[A5_0:[^ ]+]] = call <1 x i64> @llvm.genx.read.predef.reg.v1i64.i64(i32 10, i64 undef)
 ; CHECK-NEXT:  [[A5_1:[^ ]+]] = call i64 @llvm.genx.rdregioni.i64.v1i64.i16(<1 x i64> [[A5_0]], i32 0, i32 1, i32 1, i16 0, i32 undef)
@@ -116,10 +123,12 @@ loop:
 ; CHECK-NEXT: [[A5_14:[^ ]+]] = add i64 [[A5_13]], 12
 ; CHECK-NEXT: [[A5_15:[^ ]+]] = call i64 @llvm.genx.wrregioni.i64.i64.i16.i1(i64 undef, i64 [[A5_14]], i32 0, i32 1, i32 1, i16 0, i32 undef, i1 true)
 ; CHECK-NEXT: [[A5_16:[^ ]+]] = call i64 @llvm.genx.write.predef.reg.i64.i64(i32 10, i64 [[A5_15]])
-; CHECK-NEXT: [[A5:[^ ]+]] = inttoptr i64 [[A5_13]] to %struct*
+; CHECK-TYPED-PTRS-NEXT: [[A5:[^ ]+]] = inttoptr i64 [[A5_13]] to %struct*
+; CHECK-OPAQUE-PTRS-NEXT: [[A5:[^ ]+]] = inttoptr i64 [[A5_13]] to ptr
   %a5 = alloca %struct, align 32
   %cond = icmp slt i32 %i.next, %n3
-; CHECK: tail call void @llvm.stackrestore(i8* [[STACK]])
+; CHECK-TYPED-PTRS: tail call void @llvm.stackrestore(i8* [[STACK]])
+; CHECK-OPAQUE-PTRS: tail call void @llvm.stackrestore(ptr [[STACK]])
   tail call void @llvm.stackrestore(i8* %stack)
   br i1 %cond, label %loop, label %exit
 

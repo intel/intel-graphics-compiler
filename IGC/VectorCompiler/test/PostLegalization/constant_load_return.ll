@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2021 Intel Corporation
+; Copyright (C) 2020-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXPostLegalization -march=genx64 -mcpu=Gen9 -mtriple=spir64 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXPostLegalization -march=genx64 -mcpu=Gen9 -mtriple=spir64 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXPostLegalization -march=genx64 -mcpu=Gen9 -mtriple=spir64 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 ;; Test legalization of constants as return values (constant loader).
 
@@ -30,9 +31,12 @@ define <3 x double> @legalize_return_double() {
 
 define <3 x i8*> @legalize_return_nullptr_vec() {
 ; CHECK-LABEL: @legalize_return_nullptr_vec(
-; CHECK-NEXT:    [[SPLIT1:%.+]] = call <3 x i8*> @llvm.genx.wrregioni.v3p0i8.v2p0i8.i16.i1(<3 x i8*> undef, <2 x i8*> zeroinitializer, i32 2, i32 2, i32 1, i16 0, i32 undef, i1 true)
-; CHECK-NEXT:    [[SPLIT2:%.+]] = call <3 x i8*> @llvm.genx.wrregioni.v3p0i8.v1p0i8.i16.i1(<3 x i8*> [[SPLIT1]], <1 x i8*> zeroinitializer, i32 1, i32 1, i32 1, i16 16, i32 undef, i1 true)
-; CHECK-NEXT:    ret <3 x i8*> [[SPLIT2]]
+; CHECK-TYPED-PTRS-NEXT:    [[SPLIT1:%.+]] = call <3 x i8*> @llvm.genx.wrregioni.v3p0i8.v2p0i8.i16.i1(<3 x i8*> undef, <2 x i8*> zeroinitializer, i32 2, i32 2, i32 1, i16 0, i32 undef, i1 true)
+; CHECK-TYPED-PTRS-NEXT:    [[SPLIT2:%.+]] = call <3 x i8*> @llvm.genx.wrregioni.v3p0i8.v1p0i8.i16.i1(<3 x i8*> [[SPLIT1]], <1 x i8*> zeroinitializer, i32 1, i32 1, i32 1, i16 16, i32 undef, i1 true)
+; CHECK-TYPED-PTRS-NEXT:    ret <3 x i8*> [[SPLIT2]]
+; CHECK-OPAQUE-PTRS-NEXT:    [[SPLIT1:%.+]] = call <3 x ptr> @llvm.genx.wrregioni.v3p0.v2p0.i16.i1(<3 x ptr> undef, <2 x ptr> zeroinitializer, i32 2, i32 2, i32 1, i16 0, i32 undef, i1 true)
+; CHECK-OPAQUE-PTRS-NEXT:    [[SPLIT2:%.+]] = call <3 x ptr> @llvm.genx.wrregioni.v3p0.v1p0.i16.i1(<3 x ptr> [[SPLIT1]], <1 x ptr> zeroinitializer, i32 1, i32 1, i32 1, i16 16, i32 undef, i1 true)
+; CHECK-OPAQUE-PTRS-NEXT:    ret <3 x ptr> [[SPLIT2]]
   ret <3 x i8*> zeroinitializer
 }
 

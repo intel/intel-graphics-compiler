@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -8,7 +8,8 @@
 
 ; Test shows wrong behavior of dbg support when types in structure are in mess.
 
-; RUN: %opt %use_old_pass_manager% -GenXStructSplitter -vc-struct-splitting=1 -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXStructSplitter -vc-struct-splitting=1 -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXStructSplitter -vc-struct-splitting=1 -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 %v8_varying_B = type { i32, %v8_uniform_A, float }
 %v8_uniform_A = type { i32, float, float, i32 }
@@ -19,8 +20,10 @@
 
 define void @mixup_test___() !dbg !3 {
   ; CHECK-DAG:  %[[MX_I:[^ ]+]] = alloca %[[B_I]], align 8
-  ; CHECK-DAG:  call void @llvm.dbg.declare(metadata %[[B_I]]* %[[MX_I]], metadata !9, metadata !DIExpression(DW_OP_LLVM_fragment, 0, 32))
-  ; CHECK-DAG:  call void @llvm.dbg.declare(metadata %[[B_I]]* %[[MX_I]], metadata !9, metadata !DIExpression(DW_OP_LLVM_fragment, 32, 64))
+  ; CHECK-TYPED-PTRS-DAG:  call void @llvm.dbg.declare(metadata %[[B_I]]* %[[MX_I]], metadata !9, metadata !DIExpression(DW_OP_LLVM_fragment, 0, 32))
+  ; CHECK-TYPED-PTRS-DAG:  call void @llvm.dbg.declare(metadata %[[B_I]]* %[[MX_I]], metadata !9, metadata !DIExpression(DW_OP_LLVM_fragment, 32, 64))
+  ; CHECK-OPAQUE-PTRS-DAG:  call void @llvm.dbg.declare(metadata ptr %[[MX_I]], metadata !9, metadata !DIExpression(DW_OP_LLVM_fragment, 0, 32))
+  ; CHECK-OPAQUE-PTRS-DAG:  call void @llvm.dbg.declare(metadata ptr %[[MX_I]], metadata !9, metadata !DIExpression(DW_OP_LLVM_fragment, 32, 64))
   ; should be:
   ;  dbg.declare(..., fragment(0, 32))
   ;  dbg.declare(..., fragment(32, 32))
@@ -29,8 +32,10 @@ define void @mixup_test___() !dbg !3 {
   ;  dbg.declare(..., fragment(0, 64))
   ;  dbg.declare(..., fragment(128, 32))
   ; CHECK-DAG:  %[[MX_F:[^ ]+]] = alloca %[[B_F]], align 8
-  ; CHECK-DAG:  call void @llvm.dbg.declare(metadata %[[B_F]]* %[[MX_F]], metadata !9, metadata !DIExpression(DW_OP_LLVM_fragment, 64, 64))
-  ; CHECK-DAG:  call void @llvm.dbg.declare(metadata %[[B_F]]* %[[MX_F]], metadata !9, metadata !DIExpression(DW_OP_LLVM_fragment, 160, 32))
+  ; CHECK-TYPED-PTRS-DAG:  call void @llvm.dbg.declare(metadata %[[B_F]]* %[[MX_F]], metadata !9, metadata !DIExpression(DW_OP_LLVM_fragment, 64, 64))
+  ; CHECK-TYPED-PTRS-DAG:  call void @llvm.dbg.declare(metadata %[[B_F]]* %[[MX_F]], metadata !9, metadata !DIExpression(DW_OP_LLVM_fragment, 160, 32))
+  ; CHECK-OPAQUE-PTRS-DAG:  call void @llvm.dbg.declare(metadata ptr %[[MX_F]], metadata !9, metadata !DIExpression(DW_OP_LLVM_fragment, 64, 64))
+  ; CHECK-OPAQUE-PTRS-DAG:  call void @llvm.dbg.declare(metadata ptr %[[MX_F]], metadata !9, metadata !DIExpression(DW_OP_LLVM_fragment, 160, 32))
   ; Two declares above are correct.
 
   %mx = alloca %v8_varying_B, align 8, !dbg !22
