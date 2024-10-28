@@ -229,8 +229,7 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
 
   // disabled because mixed bindless and bindful addressing is not supported
   // by NEO (kernel debug leverages BTI #0)
-  BackendOpts.DebuggabilityEmitDebuggableKernels =
-      Opts.EmitDebuggableKernels && !Opts.UseBindlessBuffers && !Opts.UseBindlessImages;
+  BackendOpts.DebuggabilityEmitDebuggableKernels = Opts.EmitDebuggableKernels;
   BackendOpts.DebuggabilityForLegacyPath =
       (Opts.Binary != vc::BinaryKind::CM) && Opts.EmitDebuggableKernels;
   BackendOpts.DebuggabilityZeBinCompatibleDWARF =
