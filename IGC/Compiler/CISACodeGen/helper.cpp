@@ -1274,7 +1274,7 @@ namespace IGC
     void GetResourceOperand(Instruction* inst,
         Value*& resValue, Value*& pairTexValue, Value*& texValue, Value*& sampleValue)
     {
-        llvm::GenIntrinsicInst* pIntr = llvm::dyn_cast<llvm::GenIntrinsicInst>(inst);
+        auto* pIntr = llvm::cast<llvm::GenIntrinsicInst>(inst);
 
         if (dyn_cast<LdRawIntrinsic>(pIntr))
         {
