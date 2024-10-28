@@ -624,9 +624,34 @@ uint32_t VectorPreProcess::getSplitByteSize(Instruction* I, WIAnalysisRunner& WI
     }
     else if (isa<LdRawIntrinsic>(I) || isa<StoreRawIntrinsic>(I))
     {
+        uint32_t alignment = isa<LdRawIntrinsic>(I) ? 
+            cast<LdRawIntrinsic>(I)->getAlignment() : cast<StoreRawIntrinsic>(I)->getAlignment();
+        Value* bufferAddr = isa<LdRawIntrinsic>(I) ?
+            cast<LdRawIntrinsic>(I)->getResourceValue() : cast<StoreRawIntrinsic>(I)->getResourceValue();
+        Value* offset = isa<LdRawIntrinsic>(I) ?
+            cast<LdRawIntrinsic>(I)->getOffsetValue() : cast<StoreRawIntrinsic>(I)->getOffsetValue();
+        Value* data = isa<LdRawIntrinsic>(I) ?
+            nullptr : cast<StoreRawIntrinsic>(I)->getStoreValue();
         bytes = (uint32_t)VPConst::RAW_SPLIT_SIZE;
         if (EmitPass::shouldGenerateLSCQuery(*m_CGCtx, I) == Tristate::True)
-            bytes = (uint32_t)VPConst::SPLIT_SIZE;
+        {
+            if (WI.isUniform(bufferAddr) && WI.isUniform(offset) &&
+                (data == nullptr || WI.isUniform(data)))
+            {
+                if (alignment >= 8)
+                {
+                    bytes = (uint32_t)VPConst::LSC_D64_UNIFORM_SPLIT_SIZE;
+                }
+                else if (alignment >= 4)
+                {
+                    bytes = (uint32_t)VPConst::LSC_D32_UNIFORM_SPLIT_SIZE;
+                }
+            }
+            else
+            {
+                bytes = (uint32_t)VPConst::SPLIT_SIZE;
+            }
+        }
         else
         {
             Type* ValueTy = nullptr;
