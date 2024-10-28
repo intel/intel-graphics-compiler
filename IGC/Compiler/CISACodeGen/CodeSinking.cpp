@@ -1029,7 +1029,7 @@ namespace IGC {
                         )
                     {
                         PrintDump(">> Loop has 2D block reads. Enabling loads rescheduling and sinking.\n");
-                        return LoopSinkMode::SinkWhileRegpressureIsHigh;
+                        return LoopSinkMode::FullSink;
                     }
                 }
             }
