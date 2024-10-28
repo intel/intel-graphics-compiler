@@ -346,7 +346,6 @@ public:
   unsigned int m_size;
   unsigned int m_offset;
 };
-typedef llvm::DenseMap<const llvm::Instruction *, InstructionInfo> InstInfoMap;
 
 /// @brief VISAModule holds information on LLVM function from which
 ///     visa function was constructed.
@@ -363,6 +362,13 @@ public:
   using InstList = std::vector<const llvm::Instruction *>;
   using iterator = InstList::iterator;
   using const_iterator = InstList::const_iterator;
+  using GenISARange =
+      llvm::SmallVector<std::pair<unsigned int, unsigned int>, 4>;
+  using GenISARanges = llvm::SmallVector<GenISARange, 32>;
+  using GenISARangeIndex =
+      llvm::DenseMap<const llvm::Instruction *, std::size_t>;
+  using InstInfoMap =
+      llvm::DenseMap<const llvm::Instruction *, InstructionInfo>;
 
   /// Constants represents VISA register encoding in DWARF
   static constexpr unsigned int LOCAL_SURFACE_BTI = (254);
@@ -407,6 +413,8 @@ private:
   unsigned int m_catchAllVisaId = 0;
 
   InstInfoMap m_instInfoMap;
+  GenISARangeIndex m_genISARangeIndex;
+  GenISARanges m_genISARanges;
 
   ObjectType m_objectType = ObjectType::UNKNOWN;
 
@@ -532,8 +540,10 @@ public:
 
   void rebuildVISAIndexes();
 
-  std::vector<std::pair<unsigned int, unsigned int>>
-  getGenISARange(const VISAObjectDebugInfo &VD, const InsnRange &Range) const;
+  const GenISARanges &getAllGenISARanges(const VISAObjectDebugInfo &VD);
+
+  GenISARange getGenISARange(const VISAObjectDebugInfo &VD,
+                             const InsnRange &Range);
 
   // Given %ip range and variable location, returns vector of locations where
   // variable is available in memory due to caller save sequence. Return format
@@ -583,8 +593,7 @@ public:
   void SetType(ObjectType t) { m_objectType = t; }
 
   // This function coalesces GenISARange which is a vector of <start ip, end ip>
-  static void coalesceRanges(
-      std::vector<std::pair<unsigned int, unsigned int>> &GenISARange);
+  static void coalesceRanges(GenISARange &GenISARange);
 
   llvm::Function *getFunction() const { return m_Func; }
   uint64_t GetFuncId() const { return (uint64_t)m_Func; }

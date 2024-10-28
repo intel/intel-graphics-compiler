@@ -24,12 +24,13 @@ See LICENSE.TXT for details.
 #include "common/LLVMWarningsPop.hpp"
 // clang-format on
 
-#include "LexicalScopes.hpp"
-#include "VISADebugInfo.hpp"
 #include "VISAModule.hpp"
+#include "LexicalScopes.hpp"
 #include "Utils.hpp"
+#include "VISADebugInfo.hpp"
 
 #include <algorithm>
+#include <cstddef>
 #include <unordered_map>
 #include <vector>
 
@@ -308,8 +309,7 @@ VISAModule::getAllCallerSave(const VISAObjectDebugInfo &VDI,
   return std::move(callerSaveIPs);
 }
 
-void VISAModule::coalesceRanges(
-    std::vector<std::pair<unsigned int, unsigned int>> &GenISARange) {
+void VISAModule::coalesceRanges(GenISARange &GenISARange) {
   // Treat 2 sub-intervals as coalesceable as long %ip end of first interval
   // and %ip start of second interval is within a threshold.
   // 0x10 is equivalent to 1 asm instruction.
@@ -380,79 +380,113 @@ void VISAModule::print(raw_ostream &OS) const {
 const llvm::Instruction *getNextInst(const llvm::Instruction *start) {
   // Return consecutive instruction in llvm IR.
   // Iterate to next BB if required.
-  if (start->getNextNode())
-    return start->getNextNode();
-  else if (start->getParent()->getNextNode())
-    return &(start->getParent()->getNextNode()->front());
+  if (const auto *next = start->getNextNode()) {
+    return next;
+  }
+  if (const auto *nextNode = start->getParent()->getNextNode()) {
+    return &(nextNode->front());
+  }
   return (const llvm::Instruction *)nullptr;
 }
 
-std::vector<std::pair<unsigned int, unsigned int>>
-VISAModule::getGenISARange(const VISAObjectDebugInfo &VDI,
-                           const InsnRange &Range) const {
-  // Given a range, return vector of start-end range for corresponding Gen ISA
-  // instructions
-  auto start = Range.first;
-  auto end = Range.second;
-
-  // Range consists of a sequence of LLVM IR instructions. This function needs
-  // to return a range of corresponding Gen ISA instructions. Instruction
-  // scheduling in Gen ISA means several independent sub-ranges will be present.
-  std::vector<std::pair<unsigned int, unsigned int>> GenISARange;
-  bool endNextInst = false;
+const VISAModule::GenISARanges &
+VISAModule::getAllGenISARanges(const VISAObjectDebugInfo &VDI) {
+  // Return vector of GenISARange elements for each instruction in module.
+  // Corresponding index of instruction in resulting vector can be retrieved
+  // from m_genISARangeIndex.
+  if (!m_genISARanges.empty()) {
+    return m_genISARanges;
+  }
 
   const auto &VisaToGenMapping = VDI.getVisaToGenLUT();
   const auto &GenToSizeInBytes = VDI.getGenToSizeInBytesLUT();
+  std::size_t currentRangeIndex = 0;
 
-  while (1) {
-    if (!start || !end || endNextInst)
-      break;
-
-    if (start == end)
-      endNextInst = true;
-
-    // Get VISA index/size for "start" LLVM IR inst
-    InstInfoMap::const_iterator itr = m_instInfoMap.find(start);
-    if (itr == m_instInfoMap.end()) {
-      start = getNextInst(start);
-      continue;
+  llvm::for_each(m_instList, [&](const auto *entry) {
+    GenISARange GenISARange;
+    m_genISARangeIndex[entry] = currentRangeIndex;
+    currentRangeIndex++;
+    auto entryInfoIt = m_instInfoMap.find(entry);
+    if (entryInfoIt == m_instInfoMap.end()) {
+      m_genISARanges.emplace_back(std::move(GenISARange));
+      return;
     }
-    IGC_ASSERT_MESSAGE(itr->second.m_size != INVALID_SIZE, "Invalid Size");
 
-    auto startVISAOffset = itr->second.m_offset;
+    const auto startVISAOffset = entryInfoIt->second.m_offset;
     // VISASize indicated # of VISA insts emitted for this
     // LLVM IR inst
-    auto VISASize = itr->second.m_size;
+    const auto VISASize = entryInfoIt->second.m_size;
 
-    for (unsigned int i = 0; i != VISASize; i++) {
-      auto VISAIndex = startVISAOffset + i;
+    if (VISASize == INVALID_SIZE) {
+      m_genISARanges.emplace_back(std::move(GenISARange));
+      return;
+    }
+    // Range consists of a sequence of LLVM IR instructions. This function needs
+    // to return a range of corresponding Gen ISA instructions. Instruction
+    // scheduling in Gen ISA means several independent sub-ranges will be
+    // present.
+    for (auto VISAIndex = startVISAOffset;
+         VISAIndex != (startVISAOffset + VISASize); VISAIndex++) {
       auto it = VisaToGenMapping.find(VISAIndex);
       if (it == VisaToGenMapping.end())
         continue;
       int lastEnd = -1;
       for (const auto &genInst : it->second) {
-        unsigned int sizeGenInst = GenToSizeInBytes.lookup(genInst);
+        const auto sizeGenInst = GenToSizeInBytes.lookup(genInst);
 
-        if (GenISARange.size() > 0)
+        if (!GenISARange.empty())
           lastEnd = GenISARange.back().second;
 
         if (lastEnd == genInst) {
           GenISARange.back().second += sizeGenInst;
         } else {
-          GenISARange.push_back(std::make_pair(genInst, genInst + sizeGenInst));
+          GenISARange.emplace_back(genInst, genInst + sizeGenInst);
         }
         lastEnd = GenISARange.back().second;
       }
     }
+    m_genISARanges.emplace_back(std::move(GenISARange));
+  });
+  return m_genISARanges;
+}
 
-    start = getNextInst(start);
+VISAModule::GenISARange
+VISAModule::getGenISARange(const VISAObjectDebugInfo &VDI,
+                           const InsnRange &Range) {
+  // Given a range, return vector of start-end range for corresponding Gen ISA
+  // instructions
+  const auto *start = Range.first;
+  const auto *end = Range.second;
+
+  const auto &VisaToGenMapping = VDI.getVisaToGenLUT();
+  const auto &GenToSizeInBytes = VDI.getGenToSizeInBytesLUT();
+  const VISAModule::GenISARanges &GenISARanges = getAllGenISARanges(VDI);
+
+  // Range consists of a sequence of LLVM IR instructions. This function needs
+  // to return a range of corresponding Gen ISA instructions. Instruction
+  // scheduling in Gen ISA means several independent sub-ranges will be present.
+  GenISARange GenISARange;
+
+  if (!end || !start || !HasVisaOffset(start) || !HasVisaOffset(end)) {
+    return GenISARange;
   }
 
-  if (GenISARange.size() == 0)
-    return GenISARange;
+  auto startIndex = m_genISARangeIndex.find(start)->second;
+  const auto endIndex = m_genISARangeIndex.find(end)->second;
+  while (startIndex != (endIndex + 1)) {
+    if (!GenISARanges[startIndex].empty()) {
+      GenISARange.insert(GenISARange.end(), GenISARanges[startIndex].begin(),
+                         GenISARanges[startIndex].end());
+    }
+    ++startIndex;
+  }
 
-  llvm::DenseMap<unsigned, unsigned> unassignedGenOffset;
+  if (GenISARange.empty()) {
+    return GenISARange;
+  }
+
   if (m_catchAllVisaId != 0) {
+    llvm::DenseMap<unsigned, unsigned> unassignedGenOffset;
     auto it = VisaToGenMapping.find(m_catchAllVisaId);
     if (it != VisaToGenMapping.end()) {
       for (const auto &genInst : it->second) {

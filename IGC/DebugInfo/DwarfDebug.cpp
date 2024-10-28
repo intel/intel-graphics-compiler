@@ -39,7 +39,6 @@ See LICENSE.TXT for details.
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/LEB128.h"
-#include <optional>
 #include "common/LLVMWarningsPop.hpp"
 // clang-format on
 
@@ -52,6 +51,7 @@ See LICENSE.TXT for details.
 #include "VISAModule.hpp"
 
 #include <list>
+#include <optional>
 #include <unordered_set>
 
 #include "Probe/Assertion.h"
@@ -613,7 +613,7 @@ void DwarfDebug::encodeRange(CompileUnit *TheCU, DIE *ScopeDIE,
     return;
 
   // Resolve VISA index to Gen IP here.
-  std::vector<std::pair<unsigned int, unsigned int>> AllGenISARanges;
+  VISAModule::GenISARange AllGenISARanges;
   for (SmallVectorImpl<InsnRange>::const_iterator RI = PrunedRanges.begin(),
                                                   RE = PrunedRanges.end();
        RI != RE; ++RI) {
@@ -1662,19 +1662,21 @@ void DwarfDebug::collectVariableInfo(
 
       if (HI + 1 != HE)
         end = HI[1];
-      else {
+      else if (auto lastIATit =
+                   SameIATInsts.find(start->getDebugLoc().getInlinedAt());
+               lastIATit != SameIATInsts.end()) {
         // Find loc of last instruction in current function (same IAT)
-        auto lastIATit = SameIATInsts.find(start->getDebugLoc().getInlinedAt());
-        if (lastIATit != SameIATInsts.end())
-          end = (*lastIATit).second.back();
+        end = (*lastIATit).second.back();
       }
 
-      IGC::InsnRange InsnRange(start, end);
-      auto GenISARange = m_pModule->getGenISARange(*VisaDbgInfo, InsnRange);
+      if (start == end) {
+        continue;
+      }
 
+      auto GenISARange = m_pModule->getGenISARange(*VisaDbgInfo, {start, end});
       for (const auto &range : GenISARange) {
-        DbgValuesWithGenIP[RegVar].push_back(
-            std::make_tuple(range.first, range.second, RegVar, pInst));
+        DbgValuesWithGenIP[RegVar].emplace_back(range.first, range.second,
+                                                RegVar, pInst);
       }
     }
 
