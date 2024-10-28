@@ -3865,7 +3865,7 @@ void LdStCombine::AllowDummyLoadCoalescing(InstAndOffsetPairs Loads)
                     Value* Addr = irBuilder.CreateInBoundsGEP(gep->getSourceElementType(),
                         gep->getOperand(0), gepArg);
                     Instruction* dummyLoad = static_cast<Instruction*>
-                        (irBuilder.CreateLoad(IGCLLVM::getNonOpaquePtrEltTy(Addr->getType()), Addr));
+                        (irBuilder.CreateLoad(cast<GetElementPtrInst>(Addr)->getResultElementType(), Addr));
                     Loads.push_back(LdStInfo(dummyLoad, LastLoad.ByteOffset + newLoadSize));
                 }
             }

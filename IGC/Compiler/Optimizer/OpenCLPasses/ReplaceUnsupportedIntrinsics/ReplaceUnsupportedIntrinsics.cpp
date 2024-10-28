@@ -804,7 +804,9 @@ void ReplaceUnsupportedIntrinsics::replaceMemset(IntrinsicInst* I)
     // BaseSize == 32 if we want to handle algorithm in general way
     // or different value if want to keep size of base type to further optimizations
     uint32_t BaseSize = 0;
-    Type* RawDstType = IGCLLVM::getNonOpaquePtrEltTy(Dst->stripPointerCasts()->getType());
+    PointerType* ptrTy = cast<PointerType>(Dst->stripPointerCasts()->getType());
+    Type* RawDstType = IGCLLVM::isOpaquePointerTy(ptrTy) ? Builder.getInt8Ty() : IGCLLVM::getNonOpaquePtrEltTy(ptrTy);  // Legacy code: getNonOpaquePtrEltTy
+
     if (Type* BaseType = GetBaseType(RawDstType))
         BaseSize = BaseType->getScalarSizeInBits();
 

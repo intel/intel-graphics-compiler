@@ -23886,6 +23886,24 @@ void EmitPass::emitLSCFence(llvm::GenIntrinsicInst* inst)
     m_encoder->Push();
 }
 
+unsigned short getLSCAtomicBitWidth(llvm::GenIntrinsicInst* inst)
+{
+    llvm::StringRef name = inst->getName();
+    unsigned short bitwidth = 0;
+    if (name.startswith("llvm.genx.GenISA.LSCAtomicInts.i64") || name.startswith("llvm.genx.GenISA.LSCAtomicInts.u64")
+        || name.startswith("llvm.genx.GenISA.LSCAtomicFP64"))
+        bitwidth = 64;
+    else if (name.startswith("llvm.genx.GenISA.LSCAtomicInts.i32") || name.startswith("llvm.genx.GenISA.LSCAtomicInts.u32")
+        || name.startswith("llvm.genx.GenISA.LSCAtomicFP32"))
+        bitwidth = 32;
+    else if (name.startswith("llvm.genx.GenISA.LSCAtomicInts.i16") || name.startswith("llvm.genx.GenISA.LSCAtomicInts.u16")
+        )
+        bitwidth = 16;
+    else
+        IGC_ASSERT_MESSAGE(0, "Intrinsic support is not implemented.");
+    return bitwidth;
+}
+
 void EmitPass::emitLSCAtomic(llvm::GenIntrinsicInst* inst)
 {
     // Intrinsic format:
@@ -23928,10 +23946,9 @@ void EmitPass::emitLSCAtomic(llvm::GenIntrinsicInst* inst)
         GetSymbol(inst->getArgOperand(3)) : nullptr;
     pAtomicCmp = (pAtomicCmp != nullptr) ? BroadcastIfUniform(pAtomicCmp) : pAtomicCmp;
 
-    // take the bitwidth from the pointer type since the return type might
+    // take the bitwidth from the intrinsic name, the return type might
     // differ; e.g. uint lsc_atomic_add(ushort *, uint) D16U32
-    unsigned short bitwidth =
-        IGCLLVM::getNonOpaquePtrEltTy(ptrType)->getScalarSizeInBits();
+    unsigned short bitwidth = getLSCAtomicBitWidth(inst);
     pDstAddr = ReAlignUniformVariable(pDstAddr, EALIGN_GRF);
 
     auto cacheOpts = translateLSCCacheControlsFromValue(inst->getOperand(5), false);
