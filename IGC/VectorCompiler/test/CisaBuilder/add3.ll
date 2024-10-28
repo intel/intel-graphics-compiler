@@ -8,7 +8,9 @@
 
 ; COM: ;;;;;;;;;; RUNNERS ;;;;;;;;;;
 
-; RUN: %opt %use_old_pass_manager% -GenXModule -GenXCategoryWrapper -GenXCisaBuilderPass -GenXFinalizer -o /dev/null \
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXModule -GenXCategoryWrapper -GenXCisaBuilderPass -GenXFinalizer -o /dev/null \
+; RUN: -march=genx64 -mtriple=spir64-unknown-unknown -finalizer-opts="-dumpcommonisa -isaasmToConsole" -mcpu=Gen9 < %s | FileCheck %s
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXModule -GenXCategoryWrapper -GenXCisaBuilderPass -GenXFinalizer -o /dev/null \
 ; RUN: -march=genx64 -mtriple=spir64-unknown-unknown -finalizer-opts="-dumpcommonisa -isaasmToConsole" -mcpu=Gen9 < %s | FileCheck %s
 
 ; COM: ;;;;;;;;;; CHECKERS ;;;;;;;;;;

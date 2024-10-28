@@ -9,7 +9,8 @@
 target datalayout = "e-p:64:64-p3:32:32-p6:32:32-i64:64-n8:16:32:64"
 target triple = "genx64-unknown-unknown"
 
-; RUN: %opt %use_old_pass_manager% -GenXPatternMatch -march=genx64 -mcpu=XeHPC -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXPatternMatch -march=genx64 -mcpu=XeHPC -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXPatternMatch -march=genx64 -mcpu=XeHPC -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
 declare !internal_intrinsic_id !20 <1 x float> @llvm.vc.internal.lsc.load.ugm.v1f32.v1i1.v2i8.i64(<1 x i1>, i8, i8, i8, <2 x i8>, i64, i64, i16, i32, <1 x float>) #1
 declare !internal_intrinsic_id !21 void @llvm.vc.internal.lsc.store.ugm.v1i1.v2i8.i64.v1f32(<1 x i1>, i8, i8, i8, <2 x i8>, i64, i64, i16, i32, <1 x float>) #2

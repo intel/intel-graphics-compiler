@@ -6,10 +6,14 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=Gen9 \
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=Gen9 \
+; RUN: -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=Gen9 \
 ; RUN: -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
-; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeHPC \
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeHPC \
+; RUN: -mtriple=spir64-unknown-unknown -S < %s | FileCheck --check-prefix=CHECK-ADD3 %s
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeHPC \
 ; RUN: -mtriple=spir64-unknown-unknown -S < %s | FileCheck --check-prefix=CHECK-ADD3 %s
 
 ; CHECK-LABEL: alu_kernel

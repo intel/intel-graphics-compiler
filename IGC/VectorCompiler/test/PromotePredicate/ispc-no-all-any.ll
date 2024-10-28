@@ -6,13 +6,19 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXPromotePredicate -march=genx64 -mtriple=spir64-unknown-unknown \
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXPromotePredicate -march=genx64 -mtriple=spir64-unknown-unknown \
+; RUN: -mcpu=Gen9 -logical-ops-threshold=2 -S < %s | FileCheck %s
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXPromotePredicate -march=genx64 -mtriple=spir64-unknown-unknown \
 ; RUN: -mcpu=Gen9 -logical-ops-threshold=2 -S < %s | FileCheck %s
 
-; RUN: %opt %use_old_pass_manager% -GenXPromotePredicate -march=genx64 -mtriple=spir64-unknown-unknown \
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXPromotePredicate -march=genx64 -mtriple=spir64-unknown-unknown \
+; RUN: -mcpu=XeHPG -logical-ops-threshold=2 -S < %s | FileCheck %s
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXPromotePredicate -march=genx64 -mtriple=spir64-unknown-unknown \
 ; RUN: -mcpu=XeHPG -logical-ops-threshold=2 -S < %s | FileCheck %s
 
-; RUN: %opt %use_old_pass_manager% -GenXPromotePredicate -march=genx64 -mtriple=spir64-unknown-unknown \
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXPromotePredicate -march=genx64 -mtriple=spir64-unknown-unknown \
+; RUN: -mcpu=XeHPC -logical-ops-threshold=2 -S < %s | FileCheck %s
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXPromotePredicate -march=genx64 -mtriple=spir64-unknown-unknown \
 ; RUN: -mcpu=XeHPC -logical-ops-threshold=2 -S < %s | FileCheck %s
 
 ; CHECK-LABEL: f_f

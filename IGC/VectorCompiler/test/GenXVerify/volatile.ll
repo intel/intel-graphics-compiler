@@ -6,7 +6,11 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXVerify -genx-verify-terminate=no \
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXVerify -genx-verify-terminate=no \
+; RUN: -genx-verify-all-fatal=1 -march=genx64 -mtriple=spir64-unknown-unknown \
+; RUN: -mcpu=Gen9 -genx-verify-stage=post-ir-adaptors -S < %s 2>&1 | FileCheck \
+; RUN: --check-prefixes=CHECK %s
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXVerify -genx-verify-terminate=no \
 ; RUN: -genx-verify-all-fatal=1 -march=genx64 -mtriple=spir64-unknown-unknown \
 ; RUN: -mcpu=Gen9 -genx-verify-stage=post-ir-adaptors -S < %s 2>&1 | FileCheck \
 ; RUN: --check-prefixes=CHECK %s

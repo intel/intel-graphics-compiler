@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2021 Intel Corporation
+; Copyright (C) 2020-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-;RUN: %opt %use_old_pass_manager% -GenXReduceIntSize -march=genx64 -mcpu=XeHPC -S < %s | FileCheck %s
+;RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXReduceIntSize -march=genx64 -mcpu=XeHPC -S < %s | FileCheck %s
+;RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXReduceIntSize -march=genx64 -mcpu=XeHPC -S < %s | FileCheck %s
 
 @b = internal global <4 x i8> undef, align 4
 

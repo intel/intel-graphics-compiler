@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -8,7 +8,10 @@
 
 ; COM: ;;;;;;;;;; RUNNERS ;;;;;;;;;;
 
-; RUN: %opt %use_old_pass_manager% -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=XeHPC \
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=XeHPC \
+; RUN: -GenXModule -GenXNumberingWrapper -GenXLiveRangesWrapper -GenXCoalescingWrapper -GenXCisaBuilderPass -GenXFinalizer \
+; RUN: -disable-verify -finalizer-opts="-dumpcommonisa -isaasmToConsole" < %s | FileCheck %s
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=XeHPC \
 ; RUN: -GenXModule -GenXNumberingWrapper -GenXLiveRangesWrapper -GenXCoalescingWrapper -GenXCisaBuilderPass -GenXFinalizer \
 ; RUN: -disable-verify -finalizer-opts="-dumpcommonisa -isaasmToConsole" < %s | FileCheck %s
 

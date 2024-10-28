@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -13,11 +13,17 @@
 ; COM: opt instead of llc
 ; COM: It ensures that "-vc-disabled-coalescing" option is working with opt
 
-; RUN: %opt %use_old_pass_manager% -GenXModule -GenXNumberingWrapper -GenXLiveRangesWrapper -GenXCoalescingWrapper \
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXModule -GenXNumberingWrapper -GenXLiveRangesWrapper -GenXCoalescingWrapper \
+; RUN:  -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -vc-disable-coalescing -S \
+; RUN:  < %s | FileCheck %s --check-prefix=CHECK_DISABLED_COALESCING
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXModule -GenXNumberingWrapper -GenXLiveRangesWrapper -GenXCoalescingWrapper \
 ; RUN:  -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -vc-disable-coalescing -S \
 ; RUN:  < %s | FileCheck %s --check-prefix=CHECK_DISABLED_COALESCING
 
-; RUN: %opt %use_old_pass_manager% -GenXModule -GenXNumberingWrapper -GenXLiveRangesWrapper -GenXCoalescingWrapper \
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXModule -GenXNumberingWrapper -GenXLiveRangesWrapper -GenXCoalescingWrapper \
+; RUN:  -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S \
+; RUN:  < %s | FileCheck %s --check-prefix=CHECK_ENABLED_COALESCING
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXModule -GenXNumberingWrapper -GenXLiveRangesWrapper -GenXCoalescingWrapper \
 ; RUN:  -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S \
 ; RUN:  < %s | FileCheck %s --check-prefix=CHECK_ENABLED_COALESCING
 

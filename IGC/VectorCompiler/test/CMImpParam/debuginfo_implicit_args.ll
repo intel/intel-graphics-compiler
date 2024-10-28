@@ -1,24 +1,36 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2023 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -cmimpparam \
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -cmimpparam \
+; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
+; RUN: -S < %s | FileCheck %s --check-prefix CHECK_LOCAL_ID
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -cmimpparam \
 ; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
 ; RUN: -S < %s | FileCheck %s --check-prefix CHECK_LOCAL_ID
 
-; RUN: %opt %use_old_pass_manager% -cmimpparam \
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -cmimpparam \
+; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
+; RUN: -S < %s | FileCheck %s --check-prefix CHECK_LOCAL_SIZE
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -cmimpparam \
 ; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
 ; RUN: -S < %s | FileCheck %s --check-prefix CHECK_LOCAL_SIZE
 
-; RUN: %opt %use_old_pass_manager% -cmimpparam \
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -cmimpparam \
+; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
+; RUN: -S < %s | FileCheck %s --check-prefix CHECK_GROUP_COUNT
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -cmimpparam \
 ; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
 ; RUN: -S < %s | FileCheck %s --check-prefix CHECK_GROUP_COUNT
 
-; RUN: %opt %use_old_pass_manager% -cmimpparam \
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -cmimpparam \
+; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
+; RUN: -S < %s | FileCheck %s --check-prefix CHECK_PRINT_BUFFER
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -cmimpparam \
 ; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
 ; RUN: -S < %s | FileCheck %s --check-prefix CHECK_PRINT_BUFFER
 
