@@ -123,6 +123,13 @@ namespace IGC {
         }
     private:
 
+        typedef enum VerbosityLevel {
+            None = 0,
+            Low,
+            Medium,
+            High
+        } VerbosityLevel;
+
         typedef llvm::SmallPtrSet<llvm::Instruction*, 32> InstSet;
         typedef llvm::SmallVector<llvm::Instruction*, 16> InstrVec;
 
@@ -203,6 +210,7 @@ namespace IGC {
 
         /// candidates creation
         bool tryCreateShufflePatternCandidates(
+            llvm::BasicBlock* BB,
             llvm::Loop* L,
             InstSet& SkipInstructions,
             CandidateVec& SinkCandidates

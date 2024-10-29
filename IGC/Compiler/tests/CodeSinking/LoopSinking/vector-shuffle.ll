@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys, llvm-14-plus
-; RUN: igc_opt --regkey LoopSinkMinSave=1 --regkey ForceLoopSink=1 --regkey LoopSinkEnableVectorShuffle=1 --regkey CodeLoopSinkingMinSize=10 --regkey DumpLoopSink=1 --regkey PrintToConsole=1 %enable-basic-aa% --igc-code-loop-sinking -S %s 2>&1 | FileCheck %s
+; RUN: igc_opt --regkey LoopSinkMinSave=1 --regkey ForceLoopSink=1 --regkey LoopSinkEnableVectorShuffle=1 --regkey CodeLoopSinkingMinSize=10 --regkey DumpLoopSink=1 --regkey LoopSinkDumpLevel=2 --regkey PrintToConsole=1 %enable-basic-aa% --igc-code-loop-sinking -S %s 2>&1 | FileCheck %s
 define void @foo(<16 x i32> addrspace(1)* %in0, <8 x i32> addrspace(1)* noalias %out0, i32 %count, i32 %offsetIn0) {
 
 ; Recognizing the shuffle vector pattern can be useful to enable the block load sinking
