@@ -1069,7 +1069,7 @@ private:
     void emitSetMessagePhaseType_legacy(llvm::GenIntrinsicInst* inst, VISA_Type type);
 
     void emitScan(llvm::Value* Src, IGC::WaveOps Op,
-        bool isInclusiveScan, llvm::Value* Mask, bool isQuad);
+        bool isInclusiveScan, llvm::Value* Mask, bool isQuad, bool noMask = false);
 
     // Cached per lane offset variables. This is a per basic block data
     // structure. For each entry, the first item is the scalar type size in

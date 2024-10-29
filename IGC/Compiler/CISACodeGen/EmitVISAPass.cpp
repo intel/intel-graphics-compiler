@@ -21755,7 +21755,10 @@ static void GetReductionOp(WaveOps op, Type* opndTy, uint64_t& identity, e_opcod
 
 void EmitPass::emitWavePrefix(WavePrefixIntrinsic* I)
 {
-    bool disableHelperLanes = int_cast<int>(cast<ConstantInt>(I->getArgOperand(4))->getSExtValue()) == 2;
+    auto helperLanes = int_cast<int>( cast<ConstantInt>( I->getArgOperand( 4 ) )->getSExtValue() );
+    bool disableHelperLanes = (helperLanes == 2);
+    bool getFullPrefix = ( helperLanes == 4 );
+
     if (disableHelperLanes)
     {
         ForceDMask();
@@ -21771,7 +21774,7 @@ void EmitPass::emitWavePrefix(WavePrefixIntrinsic* I)
     }
     m_encoder->SetSubSpanDestination(false);
     emitScan(
-        I->getSrc(), I->getOpKind(), I->isInclusiveScan(), Mask, false);
+        I->getSrc(), I->getOpKind(), I->isInclusiveScan(), Mask, false, getFullPrefix );
     if (disableHelperLanes)
     {
         ResetVMask();
@@ -21786,7 +21789,7 @@ void EmitPass::emitQuadPrefix(QuadPrefixIntrinsic* I)
 
 void EmitPass::emitScan(
     Value* Src, IGC::WaveOps Op,
-    bool isInclusiveScan, Value* Mask, bool isQuad)
+    bool isInclusiveScan, Value* Mask, bool isQuad, bool noMask)
 {
     VISA_Type type;
     e_opcode opCode;
@@ -21801,11 +21804,19 @@ void EmitPass::emitScan(
         false, src, dst, Flag,
         !isInclusiveScan, isQuad);
 
-    // Now that we've computed the result in temporary registers,
-    // make sure we only write the results to lanes participating in the
-    // scan as specified by 'mask'.
-    if (Flag)
-        m_encoder->SetPredicate(Flag);
+    if(noMask)
+    {
+        m_encoder->SetNoMask();
+    }
+    else
+    {
+        // Now that we've computed the result in temporary registers,
+        // make sure we only write the results to lanes participating in the
+        // scan as specified by 'mask'.
+        if (Flag)
+            m_encoder->SetPredicate(Flag);
+    }
+
     m_encoder->Copy(m_destination, dst[0]);
     if (m_currShader->m_numberInstance == 2)
     {
