@@ -18,6 +18,7 @@ PURPOSE: Defines meta data for holding/defining regkey variables
 #include "common/shaderHash.hpp"
 #include "Probe/Assertion.h"
 #include <string>
+#include <regex>
 #include "CommonMacros.h"
 
 typedef char debugString[1024];
@@ -154,6 +155,11 @@ void setImpliedRegkey(SRegKeyVariableMetaData& name,
     SRegKeyVariableMetaData& subname,
     const unsigned value);
 
+inline bool doesRegexMatch(const std::string& src, const char* regex)
+{
+    return (regex && *regex != '\0') ? std::regex_search(src, std::regex(regex)) : true;
+}
+
 extern SRegKeysList g_RegKeyList;
 #if defined(LINUX_RELEASE_MODE)
 #define IGC_GET_FLAG_VALUE(name)                 \
@@ -267,6 +273,7 @@ bool IsEnabled(const T& value)
   (IGC_IS_FLAG_ENABLED(name) || IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::flag))
 #define IGC_SET_IMPLIED_REGKEY(name, setOnValue, subname, subvalue) {}
 #define IGC_SET_IMPLIED_REGKEY_ANY(name, subname, subvalue) {}
+inline bool doesRegexMatch(const std::string& src, const char* regex) { return false; }
 #endif
 
 // unset: Unlimited/Enable - return true

@@ -357,7 +357,8 @@ namespace IGC
                    GetDebugFlag(DebugFlag::VISA_BINARY)         ||
                    GetDebugFlag(DebugFlag::VISA_DUMPCOMMONISA)  ||
                    IGC_IS_FLAG_ENABLED(EnableCapsDump)          ||
-                   IGC_IS_FLAG_ENABLED(ShaderOverride);
+                   IGC_IS_FLAG_ENABLED(ShaderOverride)          ||
+                   IGC_IS_FLAG_ENABLED(GenerateOptionsFile);
         }
 
         OutputFolderName IGC_DEBUG_API_CALL GetBaseIGCOutputFolder()
@@ -494,7 +495,7 @@ namespace IGC
         {
             static std::mutex m;
             std::lock_guard<std::mutex> lck(m);
-            if(g_shaderOutputFolder != "")
+            if(g_shaderOutputFolder != "" && doesRegexMatch(g_shaderOutputFolder, IGC_GET_REGKEYSTRING(ShaderDumpFilter)))
             {
                 return g_shaderOutputFolder.c_str();
             }
@@ -525,12 +526,19 @@ namespace IGC
                     sprintf_s(dumpPath, "%sunknownProcess_%d\\", dumpPath, _getpid());
                 }
 
-                if (GetFileAttributesA(dumpPath) != FILE_ATTRIBUTE_DIRECTORY && needMkDir())
+                if (needMkDir() && doesRegexMatch(dumpPath, IGC_GET_REGKEYSTRING(ShaderDumpFilter)))
                 {
-                    _mkdir(dumpPath);
+                    if (GetFileAttributesA(dumpPath) != FILE_ATTRIBUTE_DIRECTORY)
+                    {
+                        _mkdir(dumpPath);
+                    }
+                    g_shaderOutputFolder = dumpPath;
                 }
-
-                g_shaderOutputFolder = dumpPath;
+                else
+                {
+                    // To make the path always invalid.
+                    g_shaderOutputFolder = "NUL\\";
+                }
             }
             else if (IGC_IS_FLAG_ENABLED(DumpToCustomDir))
             {
@@ -550,7 +558,7 @@ namespace IGC
 #elif defined __linux__
             if (!IGC_IS_FLAG_ENABLED(DumpToCurrentDir) && g_shaderOutputFolder == "" && !IGC_IS_FLAG_ENABLED(DumpToCustomDir))
             {
-                bool needMkdir = needMkDir();
+                bool needMkdir = needMkDir() && doesRegexMatch(GetBaseIGCOutputFolder(), IGC_GET_REGKEYSTRING(ShaderDumpFilter));
 
                 char path[MAX_PATH] = { 0 };
                 bool pidEnabled = IGC_IS_FLAG_DISABLED(ShaderDumpPidDisable);
@@ -564,9 +572,13 @@ namespace IGC
                         false,
                         true,
                         pidEnabled);
+                    g_shaderOutputFolder = path;
                 }
-
-                g_shaderOutputFolder = path;
+                else
+                {
+                    // To make the path always invalid.
+                    g_shaderOutputFolder = "/dev/null/";
+                }
             }
             else if (IGC_IS_FLAG_ENABLED(DumpToCustomDir))
             {

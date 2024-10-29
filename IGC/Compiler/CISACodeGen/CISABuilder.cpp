@@ -6774,12 +6774,15 @@ namespace IGC
                 if (dbgSize > 0)
                 {
                     // dump dbg file only if it not empty
-                    std::string debugFileNameStr = IGC::Debug::GetDumpName(m_program, "dbg");
-                    FILE* const dbgFile = fopen(debugFileNameStr.c_str(), "wb+");
-                    if (nullptr != dbgFile)
+                    auto debugFileNameObj = IGC::Debug::GetDumpNameObj(m_program, "dbg");
+                    if (debugFileNameObj.allow())
                     {
-                        fwrite(genxdbgInfo, dbgSize, 1, dbgFile);
-                        fclose(dbgFile);
+                        FILE* const dbgFile = fopen(debugFileNameObj.str().c_str(), "wb+");
+                        if (nullptr != dbgFile)
+                        {
+                            fwrite(genxdbgInfo, dbgSize, 1, dbgFile);
+                            fclose(dbgFile);
+                        }
                     }
                 }
             }
@@ -8426,7 +8429,7 @@ namespace IGC
 
     std::string CEncoder::GetDumpFileName(std::string extension)
     {
-        std::string filename = IGC::Debug::GetDumpName(m_program, extension.c_str());
+        std::string filename = IGC::Debug::GetDumpNameObj(m_program, extension.c_str()).str();
         return filename;
     }
 

@@ -363,15 +363,15 @@ void DumpShaderFile(
     const UINT bufferSize,
     const QWORD hash,
     const std::string& ext,
-    std::string* fileName = nullptr)
+    std::string* fullFilePath = nullptr)
 {
     if (!pBuffer || bufferSize == 0)
     {
         return;
     }
 
-    std::ostringstream fullPath(dstDir, std::ostringstream::ate);
-    fullPath << "OCL_asm"
+    std::ostringstream fileName(std::ostringstream::ate);
+    fileName << "OCL_asm"
         << std::hex
         << std::setfill('0')
         << std::setw(sizeof(hash) * CHAR_BIT / 4)
@@ -379,18 +379,22 @@ void DumpShaderFile(
         << std::dec
         << std::setfill(' ')
         << ext;
+    std::string fullFilePathStr = dstDir + fileName.str();
 
-    FILE* pFile = NULL;
-    fopen_s(&pFile, fullPath.str().c_str(), "wb");
-    if (pFile)
+    if (doesRegexMatch(fileName.str(), IGC_GET_REGKEYSTRING(ShaderDumpFilter)))
     {
-        fwrite(pBuffer, 1, bufferSize, pFile);
-        fclose(pFile);
+        FILE* pFile = NULL;
+        fopen_s(&pFile, fullFilePathStr.c_str(), "wb");
+        if (pFile)
+        {
+            fwrite(pBuffer, 1, bufferSize, pFile);
+            fclose(pFile);
+        }
     }
 
-    if (fileName != nullptr)
+    if (fullFilePath != nullptr)
     {
-        *fileName = fullPath.str();
+        *fullFilePath = std::move(fullFilePathStr);
     }
 }
 
@@ -1159,7 +1163,10 @@ void dumpOCLProgramBinary(OpenCLProgramContext &Ctx, const char *binaryOutput,
                   .Type(ShaderType::OPENCL_SHADER)
                   .Extension("progbin");
 
-  dumpOCLProgramBinary(name.str().data(), binaryOutput, binarySize);
+  if (name.allow())
+  {
+      dumpOCLProgramBinary(name.str().data(), binaryOutput, binarySize);
+  }
 }
 
 static void WriteSpecConstantsDump(

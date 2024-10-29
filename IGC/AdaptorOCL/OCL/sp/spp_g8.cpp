@@ -281,8 +281,10 @@ static void dumpZEInfo(const IGC::CodeGenContext &Ctx,
         .Hash(Ctx.hash)
         .Type(ShaderType::OPENCL_SHADER)
         .Extension("zeinfo");
-
-    ZEBuilder.printZEInfo(filename.str());
+    if (filename.allow())
+    {
+        ZEBuilder.printZEInfo(filename.str());
+    }
 }
 
 void dumpOCLKernelBinary(
@@ -306,10 +308,13 @@ void dumpOCLKernelBinary(
     const auto &KernBin = data.kernelBinary;
     IGC_ASSERT(KernBin);
 
-    std::error_code EC;
-    llvm::raw_fd_ostream f(name.str(), EC);
-    if (!EC)
-        f.write(KernBin->GetLinearPointer(), (size_t)KernBin->Size());
+    if (name.allow())
+    {
+        std::error_code EC;
+        llvm::raw_fd_ostream f(name.str(), EC);
+        if (!EC)
+            f.write(KernBin->GetLinearPointer(), (size_t)KernBin->Size());
+    }
 }
 
 void overrideOCLKernelBinary(

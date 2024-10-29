@@ -103,9 +103,6 @@ private:
 };
 
 /// return the name of the file to dump
-std::string GetDumpName(const CShader* pProgram, const char* ext);
-
-/// return the name of the file to dump
 DumpName GetDumpNameObj(const CShader* pProgram, const char* ext);
 
 /// return the name of the file to dump for llvm IR
@@ -211,12 +208,11 @@ inline FILE* OpenDumpFile(
     const ShaderHash& hash,
     const char* flag)
 {
-    std::string name =
+    auto name =
         IGC::Debug::DumpName(fileNamePrefix)
         .Hash(hash)
-        .Extension(fileNameExt)
-        .str();
-    FILE* fp = fopen(name.c_str(), flag);
+        .Extension(fileNameExt);
+    FILE* fp = name.allow() ? fopen(name.str().c_str(), flag) : NULL;
     return fp;
 }
 

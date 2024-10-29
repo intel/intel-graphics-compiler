@@ -3319,15 +3319,18 @@ namespace IGC
 
                 dumpName = dumpName.PostFix(shaderName);
 
-                std::ostringstream FullPath(dumpName.str(), std::ostringstream::ate);
-                FullPath << "_previous_kernel_pick.txt";
+                if (dumpName.allow())
+                {
+                    std::ostringstream FullPath(dumpName.str(), std::ostringstream::ate);
+                    FullPath << "_previous_kernel_pick.txt";
 
-                std::ofstream OutF(FullPath.str(), std::ofstream::out);
+                    std::ofstream OutF(FullPath.str(), std::ofstream::out);
 
 
-                if (OutF)
-                    OutF.write(reason.str().c_str(),
-                        reason.str().length());
+                    if (OutF)
+                        OutF.write(reason.str().c_str(),
+                            reason.str().length());
+                }
             }
 
             pSelectedKernel =

@@ -886,7 +886,6 @@ static void setImpliedIGCKeys()
 
     IGC_SET_IMPLIED_REGKEY(ShaderDumpEnableAll, 1, ShaderDumpEnable, true);
     IGC_SET_IMPLIED_REGKEY(ShaderDumpEnableAll, 1, EnableVISASlowpath, true);
-    IGC_SET_IMPLIED_REGKEY(ShaderDumpEnableAll, 1, EnableVISADumpCommonISA, true);
     IGC_SET_IMPLIED_REGKEY(ShaderDumpEnable, 1, DumpLLVMIR, true);
     IGC_SET_IMPLIED_REGKEY(ShaderDumpEnable, 1, EnableCosDump, true);
     IGC_SET_IMPLIED_REGKEY(ShaderDumpEnable, 1, DumpOCLProgramInfo, true);

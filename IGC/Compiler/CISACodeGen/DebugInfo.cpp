@@ -306,12 +306,16 @@ static void debugDump(const CShader* Shader, llvm::StringRef Ext,
         DumpNameObj = DumpNameObj.Hash(hash);
         DumpName = DumpNameObj.AbsolutePath(IGC_GET_REGKEYSTRING(DebugDumpNamePrefix));
     }
-    FILE* const DumpFile = fopen(DumpName.c_str(), "wb+");
-    if (nullptr == DumpFile)
-        return;
 
-    fwrite(Blob.data(), Blob.size(), 1, DumpFile);
-    fclose(DumpFile);
+    if (DumpNameObj.allow())
+    {
+        FILE* const DumpFile = fopen(DumpName.c_str(), "wb+");
+        if (nullptr == DumpFile)
+            return;
+
+        fwrite(Blob.data(), Blob.size(), 1, DumpFile);
+        fclose(DumpFile);
+    }
 }
 
 void DebugInfoPass::EmitDebugInfo(bool finalize,
