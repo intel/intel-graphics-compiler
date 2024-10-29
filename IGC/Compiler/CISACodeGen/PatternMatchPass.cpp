@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -3887,6 +3887,70 @@ namespace IGC
         return found;
     }
 
+    // Helper function for MatchGenericPointersCmp, not to be used anywhere else.
+    // It searches recursively for its arg origin until it tracks it down to
+    // ExtractValueInst (where author assumed that there's no need to search further)
+    // or reaches the depth limit (the default value of 3 should be deep enough).
+    // The tag is contained in 3 highest bits of the pointer, so we're interested
+    // only in the half containing high bits, hence the HIGH_ADDR_INDEX check.
+    // The function returns pair where first tells whether any emulated 64bit pointer
+    // was found, second tells whether any of the emulated pointers found needs its tag
+    // cleared.
+    // The following example is to show why we're looking for any emu ptr, without
+    // requiring all of them to be that:
+    // Let's say that someone hardcoded a 64bit generic ptr as an unsigned int value
+    // and wants to assign it to an operand based on a condition, to then compare it
+    // with another operand.
+    //
+    //      unsigned generic_ptr_val = 0xFF00FFFFFFDF0000
+    //      ptr = min(&some_val, generic_ptr_val)
+    //      if (ptr < other_generic_ptr)
+    //      {
+    //          ...
+    //      }
+    //
+    // In such case we still need to treat it as a regular generic ptr and clear the tag.
+    static std::pair<bool, bool> tracksDownToEmu(const Value* op, const unsigned depth=3)
+    {
+        if (depth == 0)
+        {
+            return std::make_pair(false, false);
+        }
+
+        constexpr unsigned HIGH_ADDR_INDEX = 1;
+        static auto hasGenericPtrTy = [](const Value* V) {
+            const Type* Ty = V->getType();
+            return isa<PointerType>(Ty) && Ty->getPointerAddressSpace() == ADDRESS_SPACE_GENERIC;
+        };
+
+        if (const auto* e = dyn_cast<ExtractValueInst>(op))
+        {
+            if (e->getNumIndices() != 1 || e->getIndices()[0] != HIGH_ADDR_INDEX)
+            {
+                return std::make_pair(false, false);
+            }
+            if (const auto* GII = dyn_cast<GenIntrinsicInst>(e->getAggregateOperand()))
+            {
+                if (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_ptr_to_pair)
+                {
+                    const Value* ptr = GII->getOperand(0);
+                    if (hasGenericPtrTy(ptr))
+                    {
+                        return std::make_pair(true, !isa<ConstantPointerNull>(ptr));
+                    }
+                }
+            }
+        }
+        else if (const auto* selectInst = dyn_cast<SelectInst>(op))
+        {
+            auto [op1EmuFound, op1NeedsTagClearing] = tracksDownToEmu(selectInst->getOperand(1), depth - 1);
+            auto [op2EmuFound, op2NeedsTagClearing] = tracksDownToEmu(selectInst->getOperand(2), depth - 1);
+            return std::make_pair(op1EmuFound | op2EmuFound,
+                                  op1NeedsTagClearing | op2NeedsTagClearing);
+        }
+        return std::make_pair(false, false);
+    }
+
     // When a NULL pointer is directly assigned to a generic pointer, then
     // it doesn't have a pointer tag, so comparing it with NULL pointers that
     // were firstly assigned to a named addrspace and then casted to a
@@ -3948,27 +4012,11 @@ namespace IGC
             for (uint8_t i = 0; i < 2; ++i)
             {
                 Value* src = I.getOperand(i);
-                auto e = dyn_cast<ExtractValueInst>(src);
-
-                if (!e) continue;
-                if (e->getNumIndices() != 1) continue;
-
-                unsigned index = e->getIndices()[0];
-                static const unsigned HIGH_ADDR_INDEX = 1;
-
-                if (index != HIGH_ADDR_INDEX) continue;
-
-                if (GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(e->getAggregateOperand()))
+                auto [emuFound, needsTagClearing] = tracksDownToEmu(src);
+                if (emuFound)
                 {
-                    if (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_ptr_to_pair)
-                    {
-                        Value* ptr = GII->getOperand(0);
-                        if (hasGenericPtrTy(ptr))
-                        {
-                            clearTagMask |= (!isa<ConstantPointerNull>(ptr) << i);
-                            found = true;
-                        }
-                    }
+                    found = true;
+                    clearTagMask |= (needsTagClearing << i);
                 }
             }
         }
