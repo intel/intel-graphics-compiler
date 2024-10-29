@@ -3855,6 +3855,19 @@ CVariable* CShader::GetNewAlias(
     return alias;
 }
 
+// Create a multi-instance alias of a single-instance variable.
+CVariable* CShader::GetNewAlias(CVariable* var, uint16_t numInstances)
+{
+    IGC_ASSERT_MESSAGE(false == var->IsImmediate(), "Trying to create an alias of an immediate");
+    IGC_ASSERT(var->GetNumberInstance() == 1);
+    IGC_ASSERT(var->GetSingleInstanceAlias() == nullptr);
+    IGC_ASSERT(var->GetAlias() == nullptr);
+    IGC_ASSERT(numInstances > 1);
+    CVariable* alias = new (Allocator)CVariable(var, numInstances);
+    encoder.CreateVISAVar(alias);
+    return alias;
+}
+
 // createAliasIfNeeded() returns the Var that is either BaseVar or
 // its alias of the same size.
 //

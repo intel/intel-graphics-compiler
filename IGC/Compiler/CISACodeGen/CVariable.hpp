@@ -174,6 +174,11 @@ namespace IGC {
             CVariable* var, VISA_Type type, uint16_t offset,
             uint16_t numElements, UniformArgWrap uniform);
 
+        // Create a multi-instance alias of single-instance variable. Instances
+        // of the alias variable point to consecutive sub-regions of the parent
+        // variable.
+        CVariable(CVariable* var, uint16_t numInstances);
+
         // general variable
         CVariable(
             uint16_t nbElement,
@@ -189,6 +194,7 @@ namespace IGC {
         CVariable(const CVariable& V, const CName& name = CName()) :
             m_immediateValue(V.m_immediateValue),
             m_alias(nullptr),
+            m_singleInstanceAlias(nullptr),
             m_nbElement(V.m_nbElement),
             m_aliasOffset(0),
             m_numberOfInstance(V.m_numberOfInstance),
@@ -225,6 +231,7 @@ namespace IGC {
         uint GetElemSize() const { return GetCISADataTypeSize(m_type); }
 
         CVariable* GetAlias() const { return m_alias; }
+        CVariable* GetSingleInstanceAlias() const { return m_singleInstanceAlias; }
         uint16_t GetAliasOffset() const { return m_aliasOffset; }
         VISA_Type GetType() const { return m_type; }
         e_varType GetVarType() const { return m_varType; }
@@ -342,6 +349,7 @@ namespace IGC {
         const uint64_t      m_immediateValue;
 
         CVariable*          m_alias;
+        CVariable*          m_singleInstanceAlias;
 
         uint16_t            m_nbElement;
         uint16_t            m_aliasOffset;

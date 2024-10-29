@@ -47,6 +47,7 @@ CVariable::CVariable(
     const CName &name) :
     m_immediateValue(0),
     m_alias(nullptr),
+    m_singleInstanceAlias(nullptr),
     m_nbElement(nbElement),
     m_aliasOffset(0),
     m_numberOfInstance(int_cast<uint8_t>(numberOfInstance)),
@@ -100,6 +101,7 @@ CVariable::CVariable(
     UniformArgWrap uniform) :
     m_immediateValue(0),
     m_alias(var),
+    m_singleInstanceAlias(var->m_singleInstanceAlias),
     m_aliasOffset(offset),
     m_numberOfInstance(var->m_numberOfInstance),
     m_type(type),
@@ -134,12 +136,43 @@ CVariable::CVariable(
     IGC_ASSERT_MESSAGE(var->m_varType == EVARTYPE_GENERAL, "only general variable can have alias");
 }
 
+/// CVariable constructor for multi-instance alias of a single-instance variable
+///
+CVariable::CVariable(
+    CVariable* var,
+    uint16_t numInstances) :
+    m_immediateValue(0),
+    m_alias(nullptr),
+    m_singleInstanceAlias(var),
+    m_aliasOffset(0),
+    m_nbElement(var->m_nbElement / numInstances),
+    m_numberOfInstance(numInstances),
+    m_type(var->m_type),
+    m_varType(EVARTYPE_GENERAL),
+    m_align(var->m_align),
+    m_uniform(var->m_uniform),
+    m_isImmediate(false),
+    m_subspanUse(var->m_subspanUse),
+    m_uniformVector(false),
+    m_undef(false),
+    m_isUnpacked(false),
+    m_llvmName(var->m_llvmName)
+{
+    IGC_ASSERT(var->m_varType == EVARTYPE_GENERAL);
+    IGC_ASSERT(var->GetNumberInstance() == 1);
+    IGC_ASSERT(var->GetSingleInstanceAlias() == nullptr);
+    IGC_ASSERT(var->GetAlias() == nullptr);
+    IGC_ASSERT(numInstances > 1);
+    IGC_ASSERT((var->m_nbElement % numInstances) == 0);
+}
+
 /// CVariable constructor, for immediate
 ///
 CVariable::CVariable(
     uint64_t immediate, VISA_Type type, uint16_t nbElem, bool undef) :
     m_immediateValue(immediate),
     m_alias(nullptr),
+    m_singleInstanceAlias(nullptr),
     m_aliasOffset(0),
     m_nbElement(nbElem),
     m_numberOfInstance(1),

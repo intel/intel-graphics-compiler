@@ -5870,6 +5870,30 @@ namespace IGC
                 }
             }
         }
+        else if (var->GetSingleInstanceAlias() != NULL)
+        {
+            CVariable* singleInstanceVar = var->GetSingleInstanceAlias();
+            IGC_ASSERT(singleInstanceVar->GetNumberInstance() == 1);
+            IGC_ASSERT((singleInstanceVar->GetNumberElement() % var->GetNumberInstance()) == 0);
+            IGC_ASSERT(singleInstanceVar->GetNumberElement() == var->GetNumberElement() * var->GetNumberInstance());
+            for (uint i = 0; i < var->GetNumberInstance(); i++)
+            {
+                // Multi-instance aliases use VISA offset mechanism for the
+                // second instance.
+                int instanceOffset =
+                    i * var->GetNumberElement() *
+                    CEncoder::GetCISADataTypeSize(var->GetType());
+
+                V(vKernel->CreateVISAGenVar(
+                    var->visaGenVariable[i],
+                    var->getVisaCString(),
+                    var->GetNumberElement(),
+                    var->GetType(),
+                    GetVISAAlign(singleInstanceVar), // Use parent's align as we create an alias of the parent.
+                    singleInstanceVar->visaGenVariable[0],
+                    instanceOffset));
+            }
+        }
         else
         {
             uint num_elts = var->GetNumberElement();
