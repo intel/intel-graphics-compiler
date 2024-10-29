@@ -112,7 +112,6 @@ private:
     Value* emitProceedMainBody(RTBuilder& builder, Value* queryObjIndex);
 
     bool forceShortCurcuitingOR_CommittedGeomIdx(RTBuilder& builder, Instruction* I);
-
 };
 
 char TraceRayInlineLoweringPass::ID = 0;
@@ -153,7 +152,6 @@ bool TraceRayInlineLoweringPass::runOnFunction(Function& F)
     DumpLLVMIR(m_CGCtx, "TraceRayInlineLoweringPass");
     return true;
 }
-
 
 
 void TraceRayInlineLoweringPass::LowerAllocateRayQuery(
