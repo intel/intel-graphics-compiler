@@ -9147,17 +9147,20 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
             true);
         m_encoder->Push();
         break;
-    }
+    }    
     case GenISAIntrinsic::GenISA_mul_rtz:
-    case GenISAIntrinsic::GenISA_fma_rtz:
+    case GenISAIntrinsic::GenISA_mul_rte:
+    case GenISAIntrinsic::GenISA_mul_rtp:
+    case GenISAIntrinsic::GenISA_mul_rtn:
     case GenISAIntrinsic::GenISA_add_rtz:
-        emitFPOrtz(inst);
-        break;
+    case GenISAIntrinsic::GenISA_add_rte:
+    case GenISAIntrinsic::GenISA_add_rtp:
+    case GenISAIntrinsic::GenISA_add_rtn:
+    case GenISAIntrinsic::GenISA_fma_rtz:
+    case GenISAIntrinsic::GenISA_fma_rte:
     case GenISAIntrinsic::GenISA_fma_rtp:
-        emitFMArtp(inst);
-        break;
     case GenISAIntrinsic::GenISA_fma_rtn:
-        emitFMArtn(inst);
+        emitFPOWithNonDefaultRoundingMode(inst);
         break;
     case GenISAIntrinsic::GenISA_CatchAllDebugLine:
         emitDebugPlaceholder(inst);
@@ -16942,8 +16945,8 @@ void EmitPass::emitfitof(llvm::GenIntrinsicInst* inst)
     ResetRoundingMode(inst);
 }
 
-// Emit FP Operations (FPO) using round-to-zero (rtz)
-void EmitPass::emitFPOrtz(llvm::GenIntrinsicInst* inst)
+// Emit FP Operations (FPO) using a non-default rounding mode 
+void EmitPass::emitFPOWithNonDefaultRoundingMode(llvm::GenIntrinsicInst* inst)
 {
     IGC_ASSERT_MESSAGE(IGCLLVM::getNumArgOperands(inst) >= 2, "ICE: incorrect gen intrinsic");
 
@@ -16952,7 +16955,7 @@ void EmitPass::emitFPOrtz(llvm::GenIntrinsicInst* inst)
     CVariable* src1 = GetSymbol(inst->getOperand(1));
     CVariable* dst = m_destination;
 
-    SetRoundingMode_FP(ERoundingMode::ROUND_TO_ZERO);
+    SetRoundingMode_FP(GetRoundingMode_FP(m_pCtx->getModuleMetaData(), inst));
 
     switch (GID)
     {
@@ -16960,14 +16963,23 @@ void EmitPass::emitFPOrtz(llvm::GenIntrinsicInst* inst)
         IGC_ASSERT_MESSAGE(0, "ICE: unexpected Gen Intrinsic");
         break;
     case GenISAIntrinsic::GenISA_mul_rtz:
+    case GenISAIntrinsic::GenISA_mul_rte:
+    case GenISAIntrinsic::GenISA_mul_rtp:
+    case GenISAIntrinsic::GenISA_mul_rtn:
         m_encoder->Mul(dst, src0, src1);
         m_encoder->Push();
         break;
-    case  GenISAIntrinsic::GenISA_add_rtz:
+    case GenISAIntrinsic::GenISA_add_rtz:
+    case GenISAIntrinsic::GenISA_add_rte:
+    case GenISAIntrinsic::GenISA_add_rtp:
+    case GenISAIntrinsic::GenISA_add_rtn:
         m_encoder->Add(dst, src0, src1);
         m_encoder->Push();
         break;
     case GenISAIntrinsic::GenISA_fma_rtz:
+    case GenISAIntrinsic::GenISA_fma_rte:
+    case GenISAIntrinsic::GenISA_fma_rtp:
+    case GenISAIntrinsic::GenISA_fma_rtn:
     {
         CVariable* src2 = GetSymbol(inst->getOperand(2));
         m_encoder->Mad(dst, src0, src1, src2);
@@ -16977,40 +16989,6 @@ void EmitPass::emitFPOrtz(llvm::GenIntrinsicInst* inst)
     }
 
     ResetRoundingMode(inst);
-}
-
-// Emit FP mad (FMA) using round-to-positive-infinity (rtp)
-void EmitPass::emitFMArtp(llvm::GenIntrinsicInst *inst) {
-  IGC_ASSERT_MESSAGE(IGCLLVM::getNumArgOperands(inst) == 3, "ICE: incorrect gen intrinsic");
-
-  CVariable *src0 = GetSymbol(inst->getOperand(0));
-  CVariable *src1 = GetSymbol(inst->getOperand(1));
-  CVariable *src2 = GetSymbol(inst->getOperand(2));
-  CVariable *dst = m_destination;
-
-  SetRoundingMode_FP(ERoundingMode::ROUND_TO_POSITIVE);
-
-  m_encoder->Mad(dst, src0, src1, src2);
-  m_encoder->Push();
-
-  ResetRoundingMode(inst);
-}
-
-// Emit FP mad (FMA) using round-to-negative-infinity (rtn)
-void EmitPass::emitFMArtn(llvm::GenIntrinsicInst *inst) {
-  IGC_ASSERT_MESSAGE(IGCLLVM::getNumArgOperands(inst) == 3, "ICE: incorrect gen intrinsic");
-
-  CVariable *src0 = GetSymbol(inst->getOperand(0));
-  CVariable *src1 = GetSymbol(inst->getOperand(1));
-  CVariable *src2 = GetSymbol(inst->getOperand(2));
-  CVariable *dst = m_destination;
-
-  SetRoundingMode_FP(ERoundingMode::ROUND_TO_NEGATIVE);
-
-  m_encoder->Mad(dst, src0, src1, src2);
-  m_encoder->Push();
-
-  ResetRoundingMode(inst);
 }
 
 void EmitPass::emitftoi(llvm::GenIntrinsicInst* inst)
