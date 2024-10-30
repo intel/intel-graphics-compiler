@@ -4654,7 +4654,7 @@ namespace IGC
             }
         }
 
-        if (m_program->m_Platform->hasFusedEU() && IGC_IS_FLAG_ENABLED(EnableCallWA))
+        if (m_program->m_Platform->hasFusedEU() && !pCtx->getModuleMetaData()->compOpt.DisableEUFusion && IGC_IS_FLAG_ENABLED(EnableCallWA))
         {
             bool forceNoWA = false;
             if (context->type == ShaderType::OPENCL_SHADER) {

@@ -3944,8 +3944,22 @@ namespace IGC
             bool hasIndirectCall = FG && FG->hasIndirectCall();
             if (hasNestedCall || hasIndirectCall || isIndirectGroup)
             {
-                pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
-                return SIMDStatus::SIMD_FUNC_FAIL;
+                // Disable EU fusion if SIMD32 is requested
+                if (getReqdSubGroupSize(F, pMdUtils) == numLanes(SIMDMode::SIMD32))
+                {
+                    pCtx->getModuleMetaData()->compOpt.DisableEUFusion = true;
+                    if (FG->getHead() == &F)
+                    {
+                        pCtx->EmitWarning(
+                            std::string("EU fusion is disabled, it does not work on the current platform if SIMD32 mode specified by intel_reqd_sub_group_size(32)").c_str(),
+                            &F);
+                    }
+                }
+                else
+                {
+                    pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
+                    return SIMDStatus::SIMD_FUNC_FAIL;
+                }
             }
         }
 
