@@ -259,17 +259,6 @@ inline MemHit* get_query_hit(intel_ray_query_t rayquery, intel_hit_type_t ty)
     return &rtStack->hit[ty];
 }
 
-inline MemHit* get_rt_stack_hit(void* rtstack, intel_hit_type_t ty)
-{
-    RTStack* rtStack = rtstack;
-    return &rtStack->hit[ty];
-}
-
-inline MemRay* get_rt_stack_ray(void* rtstack, uchar raynum)
-{
-    RTStack* rtStack = rtstack;
-    return &rtStack->ray[raynum];
-}
 
 // === --------------------------------------------------------------------===
 // === PrimLeafDesc
