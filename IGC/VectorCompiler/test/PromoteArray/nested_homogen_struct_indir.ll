@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2023 Intel Corporation
+; Copyright (C) 2020-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXPromoteArray -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXPromoteArray -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXPromoteArray -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 
@@ -25,9 +26,11 @@ define dllexport void @f_f(i64 %offset_a, i64 %offset_b, i64 %offset_c) {
 ; CHECK: %[[SCALE_OFF_A:[^ ]+]] = mul i32 %[[TRUNC_OFF_A]], 1
 ; CHECK: %[[ADD_INIT_OFF_A:[^ ]+]] = add i32 3, %[[SCALE_OFF_A]]
 ; CHECK: %[[USELESS_ADD_OFF_A:[^ ]+]] = add i32 %[[ADD_INIT_OFF_A]], 0
-; CHECK: %[[VB:[^ ]+]] = load <15 x i32>, <15 x i32>* %[[BUF]]
+; CHECK-TYPED-PTRS: %[[VB:[^ ]+]] = load <15 x i32>, <15 x i32>* %[[BUF]]
+; CHECK-OPAQUE-PTRS: %[[VB:[^ ]+]] = load <15 x i32>, ptr %[[BUF]]
 ; CHECK: %[[NEW_VB:[^ ]+]] = insertelement <15 x i32> %[[VB]], i32 43, i32 %[[USELESS_ADD_OFF_A]]
-; CHECK: store <15 x i32> %[[NEW_VB]], <15 x i32>* %[[BUF]]
+; CHECK-TYPED-PTRS: store <15 x i32> %[[NEW_VB]], <15 x i32>* %[[BUF]]
+; CHECK-OPAQUE-PTRS: store <15 x i32> %[[NEW_VB]], ptr %[[BUF]]
 
 ; COM: %homogen.struct = type { i32, { i32, i32, [4 x i32] }, [2 x [2 x [2 x i32]]] }
 ; COM:                                                                     ^
@@ -44,8 +47,10 @@ define dllexport void @f_f(i64 %offset_a, i64 %offset_b, i64 %offset_c) {
 ; CHECK: %[[C_SCALE_OFF_C:[^ ]+]] = mul i32 %[[C_TRUNC_OFF_C]], 1
 ; CHECK: %[[C_ADD_PREV_OFF_C:[^ ]+]] = add i32 %[[C_ADD_PREV_OFF_B]], %[[C_SCALE_OFF_C]]
 ; CHECK: %[[C_USELESS_ADD_OFF_C:[^ ]+]] = add i32 %[[C_ADD_PREV_OFF_C]], 0
-; CHECK: %[[VECC:[^ ]+]] = load <15 x i32>, <15 x i32>* %[[BUF]]
+; CHECK-TYPED-PTRS: %[[VECC:[^ ]+]] = load <15 x i32>, <15 x i32>* %[[BUF]]
+; CHECK-OPAQUE-PTRS: %[[VECC:[^ ]+]] = load <15 x i32>, ptr %[[BUF]]
 ; CHECK: %[[NEW_VECC:[^ ]+]] = insertelement <15 x i32> %[[VECC]], i32 44, i32 %[[C_USELESS_ADD_OFF_C]]
-; CHECK: store <15 x i32> %[[NEW_VECC]], <15 x i32>* %[[BUF]]
+; CHECK-TYPED-PTRS: store <15 x i32> %[[NEW_VECC]], <15 x i32>* %[[BUF]]
+; CHECK-OPAQUE-PTRS: store <15 x i32> %[[NEW_VECC]], ptr %[[BUF]]
   ret void
 }

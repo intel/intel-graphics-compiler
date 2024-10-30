@@ -1114,7 +1114,7 @@ void GenXPromoteArray::handleAllocaInst(AllocaInst *Alloca) {
   if (!VecAlloca)
     return;
   // skip processing of allocas that are already fine
-  if (VecAlloca->getType() == Alloca->getType())
+  if (VecAlloca->getAllocatedType() == Alloca->getAllocatedType())
     return;
 
   IRBuilder<> IRB(VecAlloca);
