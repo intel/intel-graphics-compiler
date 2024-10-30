@@ -83,7 +83,7 @@ struct IDriverInvocation {
 };
 
 // this number should be increased whenever the public interface changes
-static const int InterfaceVersion = 10;
+static const int InterfaceVersion = 11;
 
 } // namespace ClangFE
 } // namespace CM

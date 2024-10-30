@@ -11,7 +11,6 @@ SPDX-License-Identifier: MIT
 
 #include "Interface.h"
 
-#include <llvm/ADT/Optional.h>
 #include <llvm/ADT/StringExtras.h>
 #include <llvm/ADT/StringRef.h>
 #include <llvm/ADT/Twine.h>
@@ -20,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/Process.h>
 
 #include <memory>
+#include <optional>
 #include <sstream>
 
 namespace IGC {
@@ -117,8 +117,8 @@ template <typename Fn> class FEWrapper {
     constexpr auto CustomPathEnv = "CM_FE_DIR";
 
     std::string LibDir;
-    if (auto EnvDir = llvm::sys::Process::GetEnv(CustomPathEnv))
-      LibDir = EnvDir.getValue();
+    if (const char *EnvDir = std::getenv(CustomPathEnv))
+      LibDir = std::string(EnvDir);
     else
       LibDir = DefaultDir;
 
@@ -145,7 +145,7 @@ template <typename Fn> class FEWrapper {
       : ErrHandler(std::forward<ErrFn>(ErrH)), Lib(loadLibrary(DefaultPath)) {}
 
   template <typename ErrFn, typename ErrFnTy>
-  friend llvm::Optional<FEWrapper<ErrFnTy>>
+  friend std::optional<FEWrapper<ErrFnTy>>
   makeFEWrapper(ErrFn &&ErrH, const std::string &DefaultDir);
 
 public:
@@ -212,16 +212,15 @@ public:
 // absolute path to directory with FE wrapper. Defaults to empty string
 // that is expanded to plain FE wrapper name.
 // Return Optional as it can fail during loading.
-template <typename ErrFn,
-          typename ErrFnTy = typename std::decay<ErrFn>::type>
-inline llvm::Optional<FEWrapper<ErrFnTy>>
+template <typename ErrFn, typename ErrFnTy = typename std::decay<ErrFn>::type>
+inline std::optional<FEWrapper<ErrFnTy>>
 makeFEWrapper(ErrFn &&ErrH, const std::string &DefaultDir = std::string{}) {
   FEWrapper<ErrFnTy> IFace{std::forward<ErrFn>(ErrH), DefaultDir};
 
   if (!IFace.Lib.isValid())
-    return llvm::None;
+    return std::nullopt;
   if (!IFace.isCompatibleABI())
-    return llvm::None;
+    return std::nullopt;
   return IFace;
 }
 
