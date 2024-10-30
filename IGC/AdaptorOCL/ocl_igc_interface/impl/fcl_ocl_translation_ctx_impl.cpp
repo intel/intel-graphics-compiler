@@ -552,8 +552,7 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
     };
 
     auto MaybeFE =
-        IGCLLVM::makeOptional(
-          IGC::AdaptorCM::Frontend::makeFEWrapper(ErrFn, getCMFEWrapperDir()));
+        IGC::AdaptorCM::Frontend::makeFEWrapper(ErrFn, getCMFEWrapperDir());
 
     if (!MaybeFE)
         return outputInterface;
