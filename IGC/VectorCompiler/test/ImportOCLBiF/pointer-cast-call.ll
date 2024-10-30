@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXImportOCLBiF -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXImportOCLBiF -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXImportOCLBiF -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
 
 ; To run GenXImportOCLBiF there is must be at least 1 func decl.
 declare spir_func i8 @dummy()

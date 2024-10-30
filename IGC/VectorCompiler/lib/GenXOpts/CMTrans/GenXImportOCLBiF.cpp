@@ -335,112 +335,106 @@ static void removeFunctionBitcasts(Module &M) {
         CallInst *pInstCall = dyn_cast<CallInst>(I);
         if (!pInstCall || pInstCall->getCalledFunction())
           continue;
-        if (auto constExpr = dyn_cast<llvm::ConstantExpr>(
-                IGCLLVM::getCalledValue(pInstCall))) {
-          if (auto funcTobeChanged =
-                  dyn_cast<llvm::Function>(constExpr->stripPointerCasts())) {
-            if (funcTobeChanged->isDeclaration())
-              continue;
-            // Map between values (functions) in source of bitcast
-            // to their counterpart values in destination
-            llvm::ValueToValueMapTy operandMap;
-            Function *pDstFunc = nullptr;
-            auto BCFMI = bitcastFunctionMap.find(funcTobeChanged);
-            bool notExists = BCFMI == bitcastFunctionMap.end();
-            if (!notExists) {
-              auto funcVec = bitcastFunctionMap[funcTobeChanged];
-              notExists = true;
-              for (Function *F : funcVec) {
-                if (pInstCall->getFunctionType() == F->getFunctionType()) {
-                  notExists = false;
-                  pDstFunc = F;
-                  break;
-                }
-              }
+        auto *funcToBeChanged = dyn_cast<Function>(
+            IGCLLVM::getCalledValue(pInstCall)->stripPointerCasts());
+        if (!funcToBeChanged || funcToBeChanged->isDeclaration())
+          continue;
+        // Map between values (functions) in source of bitcast
+        // to their counterpart values in destination
+        llvm::ValueToValueMapTy operandMap;
+        Function *pDstFunc = nullptr;
+        auto BCFMI = bitcastFunctionMap.find(funcToBeChanged);
+        bool notExists = BCFMI == bitcastFunctionMap.end();
+        if (!notExists) {
+          auto funcVec = bitcastFunctionMap[funcToBeChanged];
+          notExists = true;
+          for (Function *F : funcVec) {
+            if (pInstCall->getFunctionType() == F->getFunctionType()) {
+              notExists = false;
+              pDstFunc = F;
+              break;
             }
-
-            if (notExists) {
-              pDstFunc = Function::Create(pInstCall->getFunctionType(),
-                                          funcTobeChanged->getLinkage(),
-                                          funcTobeChanged->getName(), &M);
-              if (pDstFunc->arg_size() != funcTobeChanged->arg_size())
-                continue;
-              // Need to copy the attributes over too.
-              auto FuncAttrs = funcTobeChanged->getAttributes();
-              pDstFunc->setAttributes(FuncAttrs);
-
-              // Go through and convert function arguments over, remembering the
-              // mapping.
-              Function::arg_iterator itSrcFunc = funcTobeChanged->arg_begin();
-              Function::arg_iterator eSrcFunc = funcTobeChanged->arg_end();
-              llvm::Function::arg_iterator itDest = pDstFunc->arg_begin();
-
-              for (; itSrcFunc != eSrcFunc; ++itSrcFunc, ++itDest) {
-                itDest->setName(itSrcFunc->getName());
-                operandMap[&(*itSrcFunc)] = &(*itDest);
-              }
-
-              // Clone the body of the function into the dest function.
-              SmallVector<ReturnInst *, 8> Returns;
-              IGCLLVM::CloneFunctionInto(pDstFunc, funcTobeChanged, operandMap,
-                  IGCLLVM::CloneFunctionChangeType::LocalChangesOnly, Returns, "");
-
-              // Update returns to match a new function ret type.
-              Instruction::CastOps castOp = Instruction::BitCast;
-              Type *oldRetTy =
-                  funcTobeChanged->getFunctionType()->getReturnType();
-              Type *newRetTy = pInstCall->getFunctionType()->getReturnType();
-              if (oldRetTy == newRetTy) {
-                // Do nothing.
-              } else if (oldRetTy->isIntOrIntVectorTy() &&
-                         newRetTy->isIntOrIntVectorTy()) {
-                unsigned oldRetTypeSize = oldRetTy->getScalarSizeInBits();
-                unsigned newRetTypeSize = newRetTy->getScalarSizeInBits();
-                if (oldRetTypeSize > newRetTypeSize)
-                  castOp = Instruction::Trunc;
-                else {
-                  auto attrSet =
-                      IGCLLVM::getRetAttrs(funcTobeChanged->getAttributes());
-                  if (attrSet.hasAttribute(Attribute::ZExt))
-                    castOp = Instruction::ZExt;
-                  else if (attrSet.hasAttribute(Attribute::SExt))
-                    castOp = Instruction::SExt;
-                  else
-                    llvm_unreachable("Expected ext attribute on return type.");
-                }
-              } else
-                vc::diagnose(pInstCall->getContext(), "GenXImportOCLBiF",
-                             "Unhandled function pointer cast.", pInstCall);
-
-              if (oldRetTy != newRetTy)
-                llvm::for_each(Returns, [castOp, newRetTy](ReturnInst *RI) {
-                  auto *CI = CastInst::Create(castOp, RI->getReturnValue(),
-                                              newRetTy, ".rvc", RI);
-                  RI->setOperand(0, CI);
-                });
-
-              pDstFunc->setCallingConv(funcTobeChanged->getCallingConv());
-              bitcastFunctionMap[funcTobeChanged].push_back(pDstFunc);
-            }
-
-            std::vector<Value *> Args;
-            for (unsigned I = 0, E = IGCLLVM::getNumArgOperands(pInstCall); I != E;
-                 ++I) {
-              Args.push_back(pInstCall->getArgOperand(I));
-            }
-            auto newCI = CallInst::Create(pDstFunc, Args, "", pInstCall);
-            newCI->takeName(pInstCall);
-            newCI->setCallingConv(pInstCall->getCallingConv());
-            pInstCall->replaceAllUsesWith(newCI);
-            pInstCall->dropAllReferences();
-            if (constExpr->use_empty())
-              constExpr->dropAllReferences();
-            if (funcTobeChanged->use_empty())
-              funcTobeChanged->eraseFromParent();
-
-            list_delete.push_back(pInstCall);
           }
         }
+
+        if (notExists) {
+          pDstFunc = Function::Create(pInstCall->getFunctionType(),
+                                      funcToBeChanged->getLinkage(),
+                                      funcToBeChanged->getName(), &M);
+          if (pDstFunc->arg_size() != funcToBeChanged->arg_size())
+            continue;
+          // Need to copy the attributes over too.
+          auto FuncAttrs = funcToBeChanged->getAttributes();
+          pDstFunc->setAttributes(FuncAttrs);
+
+          // Go through and convert function arguments over, remembering the
+          // mapping.
+          Function::arg_iterator itSrcFunc = funcToBeChanged->arg_begin();
+          Function::arg_iterator eSrcFunc = funcToBeChanged->arg_end();
+          llvm::Function::arg_iterator itDest = pDstFunc->arg_begin();
+
+          for (; itSrcFunc != eSrcFunc; ++itSrcFunc, ++itDest) {
+            itDest->setName(itSrcFunc->getName());
+            operandMap[&(*itSrcFunc)] = &(*itDest);
+          }
+
+          // Clone the body of the function into the dest function.
+          SmallVector<ReturnInst *, 8> Returns;
+          IGCLLVM::CloneFunctionInto(
+              pDstFunc, funcToBeChanged, operandMap,
+              IGCLLVM::CloneFunctionChangeType::LocalChangesOnly, Returns, "");
+
+          // Update returns to match a new function ret type.
+          Instruction::CastOps castOp = Instruction::BitCast;
+          Type *oldRetTy = funcToBeChanged->getFunctionType()->getReturnType();
+          Type *newRetTy = pInstCall->getFunctionType()->getReturnType();
+          if (oldRetTy == newRetTy) {
+            // Do nothing.
+          } else if (oldRetTy->isIntOrIntVectorTy() &&
+                     newRetTy->isIntOrIntVectorTy()) {
+            unsigned oldRetTypeSize = oldRetTy->getScalarSizeInBits();
+            unsigned newRetTypeSize = newRetTy->getScalarSizeInBits();
+            if (oldRetTypeSize > newRetTypeSize)
+              castOp = Instruction::Trunc;
+            else {
+              auto attrSet =
+                  IGCLLVM::getRetAttrs(funcToBeChanged->getAttributes());
+              if (attrSet.hasAttribute(Attribute::ZExt))
+                castOp = Instruction::ZExt;
+              else if (attrSet.hasAttribute(Attribute::SExt))
+                castOp = Instruction::SExt;
+              else
+                llvm_unreachable("Expected ext attribute on return type.");
+            }
+          } else
+            vc::diagnose(pInstCall->getContext(), "GenXImportOCLBiF",
+                         "Unhandled function pointer cast.", pInstCall);
+
+          if (oldRetTy != newRetTy)
+            llvm::for_each(Returns, [castOp, newRetTy](ReturnInst *RI) {
+              auto *CI = CastInst::Create(castOp, RI->getReturnValue(),
+                                          newRetTy, ".rvc", RI);
+              RI->setOperand(0, CI);
+            });
+
+          pDstFunc->setCallingConv(funcToBeChanged->getCallingConv());
+          bitcastFunctionMap[funcToBeChanged].push_back(pDstFunc);
+        }
+
+        std::vector<Value *> Args;
+        for (unsigned I = 0, E = IGCLLVM::getNumArgOperands(pInstCall); I != E;
+             ++I) {
+          Args.push_back(pInstCall->getArgOperand(I));
+        }
+        auto newCI = CallInst::Create(pDstFunc, Args, "", pInstCall);
+        newCI->takeName(pInstCall);
+        newCI->setCallingConv(pInstCall->getCallingConv());
+        pInstCall->replaceAllUsesWith(newCI);
+        pInstCall->dropAllReferences();
+        if (funcToBeChanged->use_empty())
+          funcToBeChanged->eraseFromParent();
+
+        list_delete.push_back(pInstCall);
       }
     }
   }
