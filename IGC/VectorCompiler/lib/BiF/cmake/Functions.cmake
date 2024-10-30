@@ -6,6 +6,11 @@
 #
 #============================ end_copyright_notice =============================
 
+set(OPT_OPAQUE_ARG ${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_OPT})
+if ((${LLVM_VERSION_MAJOR} GREATER 15))
+  set(OPT_OPAQUE_ARG "")
+endif()
+
 # Args:
 #   RES_LIST - generated list
 #   REQUIRED_TARGET - target to link with
@@ -108,7 +113,7 @@ function(vc_build_bif TARGET RES_FILE CMCL_SRC_PATH BIF_NAME PTR_BIT_SIZE)
   add_custom_target(${TARGET}
     COMMENT "vc_build_bif: Translating CMCL builtins:  ${BIF_CLANG_BC_NAME_FINAL} -> ${BIF_OPT_BC_NAME}"
     COMMAND CMCLTranslatorTool -o ${BIF_CMCL_BC_NAME} ${BIF_CLANG_BC_NAME_FINAL}
-    COMMAND ${LLVM_OPT_EXE} ${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_OPT} --O2 -o ${BIF_OPT_BC_NAME} ${BIF_CMCL_BC_NAME}
+    COMMAND ${LLVM_OPT_EXE} ${OPT_OPAQUE_ARG} --O2 -o ${BIF_OPT_BC_NAME} ${BIF_CMCL_BC_NAME}
     DEPENDS CMCLTranslatorTool ${LLVM_OPT_EXE} ${BIF_CLANG_BC_PATH_FINAL}
     BYPRODUCTS ${BIF_OPT_BC_PATH}
     SOURCES ${CMCL_SRC_PATH})
@@ -167,12 +172,13 @@ function(vc_generate_optimized_bif TARGET RES_FILE BIF_OPT_BC_NAME MANGLED_BIF_N
   set(BIF_CONF_PATH  ${CMAKE_CURRENT_BINARY_DIR}/${BIF_CONF_NAME})
   set(PLTF_BC_PATH_LIST "")
 
+
   foreach(PLTF IN LISTS SUPPORTED_VC_PLATFORMS)
     set(PLTF_BC_NAME "${MANGLED_BIF_NAME}_${PLTF}.vccg.bc")
     set(PLTF_BC_PATH ${CMAKE_CURRENT_BINARY_DIR}/${PLTF_BC_NAME})
     add_custom_target("${TARGET}-${PLTF}-BC"
       COMMENT "vc_generate_optimized_bif: compile optimized BiF for ${PLTF}"
-      COMMAND ${VCB_EXE} ${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_OPT} -o ${PLTF_BC_NAME} -cpu ${PLTF} ${BIF_OPT_BC_NAME}
+      COMMAND ${VCB_EXE} ${OPT_OPAQUE_ARG} -o ${PLTF_BC_NAME} -cpu ${PLTF} ${BIF_OPT_BC_NAME}
       DEPENDS ${VCB_EXE} ${BIF_OPT_BC_PATH}
       BYPRODUCTS ${PLTF_BC_NAME})
     list(APPEND PLTF_BC_PATH_LIST ${PLTF_BC_PATH})
