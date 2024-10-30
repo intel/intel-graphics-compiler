@@ -2180,7 +2180,10 @@ void CompileUnit::constructEnumTypeDIE(DIE &Buffer, DICompositeType *CTy) {
   DIType *DTy = resolve(CTy->getBaseType());
   if (DTy) {
     addType(&Buffer, DTy);
-    addFlag(&Buffer, dwarf::DW_AT_enum_class);
+    // Add DW_AT_enum_class when FlagEnumClass exists
+    if (CTy->getFlags() & DINode::FlagEnumClass) {
+      addFlag(&Buffer, dwarf::DW_AT_enum_class);
+    }
   }
 }
 
