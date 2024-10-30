@@ -150,6 +150,7 @@ DECLARE_IGC_REGKEY(bool, EnableLoadChainLoopSink,       true, "Allow sinking of 
 DECLARE_IGC_REGKEY(DWORD, LoopSinkRegpressureMargin,    10,  "Sink into the loop until the pressure becomes less than #grf-margin", false)
 DECLARE_IGC_REGKEY(DWORD, CodeLoopSinkingMinSize,       100,  "Don't sink in the loop if the number of instructions in the kernel is less", false)
 DECLARE_IGC_REGKEY(DWORD, CodeSinkingLoadSchedulingInstr, 20,  "Instructions number to step to schedule loads in advance before the load use to cover latency. 1 to insert it immediately before use", false)
+DECLARE_IGC_REGKEY(DWORD, CodeSinking2dLoadSchedulingInstr, 5,  "Instructions number to step to schedule 2d loads in advance before the load use to cover latency. 1 to insert it immediately before use", false)
 DECLARE_IGC_REGKEY(DWORD, LoopSinkMinSaveUniform,       6,  "If loop sink can have save more scalar (uniform) values than this Minimum, do it; otherwise, skip", false)
 DECLARE_IGC_REGKEY(DWORD, LoopSinkMinSave,              1,  "If loop sink can have save more 32-bit values than this Minimum, do it; otherwise, skip", false)
 DECLARE_IGC_REGKEY(DWORD, LoopSinkThresholdDelta,       30,  "Do loop sink If the estimated register pressure is higher than this + #avaialble registers", false)

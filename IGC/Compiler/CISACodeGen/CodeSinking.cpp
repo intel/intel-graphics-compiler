@@ -91,23 +91,31 @@ namespace IGC {
         }
     }
 
+    // Check the instruction is a 2d block read
+    static bool is2dBlockRead(Instruction *I)
+    {
+        if (GenIntrinsicInst *Intr = dyn_cast<GenIntrinsicInst>(I))
+        {
+            switch (Intr->getIntrinsicID())
+            {
+            case GenISAIntrinsic::GenISA_LSC2DBlockRead:
+            case GenISAIntrinsic::GenISA_LSC2DBlockReadAddrPayload:
+                return true;
+            default:
+                break;
+            }
+        }
+        return false;
+    }
+
     // Check if the instruction is a load or an allowed intrinsic that reads memory
     static bool isAllowedLoad(Instruction *I)
     {
         if (isa<LoadInst>(I))
             return true;
 
-        if (GenIntrinsicInst *Intr = dyn_cast<GenIntrinsicInst>(I))
-        {
-            switch (Intr->getIntrinsicID())
-            {
-                case GenISAIntrinsic::GenISA_LSC2DBlockRead:
-                case GenISAIntrinsic::GenISA_LSC2DBlockReadAddrPayload:
-                    return true;
-                default:
-                    break;
-            }
-        }
+        if (is2dBlockRead(I))
+            return true;
 
         return false;
     }
@@ -1011,11 +1019,7 @@ namespace IGC {
             {
                 for (auto &I : *BB)
                 {
-                    GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(&I);
-                    if (GII && (
-                                GII->getIntrinsicID() == GenISAIntrinsic::GenISA_LSC2DBlockReadAddrPayload ||
-                                GII->getIntrinsicID() == GenISAIntrinsic::GenISA_LSC2DBlockRead)
-                        )
+                    if (is2dBlockRead(&I))
                     {
                         PrintDump(VerbosityLevel::Low, ">> Loop has 2D block reads. Enabling loads rescheduling and sinking.\n");
                         return LoopSinkMode::FullSink;
@@ -2841,7 +2845,7 @@ namespace IGC {
             if (!BreakAfterGroup && !isAllowedLoad(InstToMove))
                 return StartInsertPoint;
 
-            int Cnt = IGC_GET_FLAG_VALUE(CodeSinkingLoadSchedulingInstr);
+            int Cnt = is2dBlockRead(InstToMove) ? IGC_GET_FLAG_VALUE(CodeSinking2dLoadSchedulingInstr) : IGC_GET_FLAG_VALUE(CodeSinkingLoadSchedulingInstr);
 
             Instruction *InsertPoint = StartInsertPoint;
             Instruction *I = StartInsertPoint->getPrevNode();
