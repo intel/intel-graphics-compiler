@@ -481,17 +481,15 @@ private:
                       const DepSet::RegRangeType &rr2) const;
 
     // If rr1 and rr2 footprint are all the same, return true.
-    // If rr1 and rr2 has intersect but not entirely the same, then return
-    // false. If no dependency, return true
-    bool hasEntireOverlapOrNoOverlap(const DepSet::RegRangeType &rr1,
-                                     const DepSet::RegRangeType &rr2) const;
+    bool hasEntireOverlap(const DepSet::RegRangeType &rr1,
+                          const DepSet::RegRangeType &rr2) const;
 
     // check if the instruction having internal dependency
     // Instruction having internal dependency on dst to src is not allowed
     // to be in a macro. Only for dpas8x8, insternal dep on dst and src0 is
     // allowed, but only when src0 and dst memory footprint is entirely the
     // same
-    bool hasInternalDep(const DstRegRangeType &dst_range,
+    bool hasInternalDep(const Instruction &cur, const DstRegRangeType &dst_range,
                         const SrcRegRangeType &src_range, bool isDepth8) const;
 
     // check if the dst_range/src_range have producer-consumer (RAW)

@@ -569,7 +569,7 @@ size_t DepSetBuilder::DpasMacroBuilder::formSrcSuppressionBlock(
     DstRegRangeType dst_range;
     m_inps.getDpasSrcDependency(**it, src_range, src_extra_range, m_model);
     m_inps.getDpasDstDependency(**it, dst_range);
-    if (hasInternalDep(dst_range, src_range,
+    if (hasInternalDep(**it, dst_range, src_range,
                        GetDpasSystolicDepth((*it)->getDpasFc()) == 8))
       break;
 
@@ -647,7 +647,7 @@ DepSetBuilder::DpasMacroBuilder::getSuppressionBlockCandidate(
     DstRegRangeType dst_range;
     m_inps.getDpasSrcDependency(**it, src_range, src_extra_range, m_model);
     m_inps.getDpasDstDependency(**it, dst_range);
-    if (hasInternalDep(dst_range, src_range,
+    if (hasInternalDep(**it, dst_range, src_range,
                        GetDpasSystolicDepth((*it)->getDpasFc()) == 8))
       return nullptr;
 
@@ -851,14 +851,8 @@ bool DepSetBuilder::DpasMacroBuilder::hasIntersect(
 }
 
 // If rr1 and rr2 footprint are all the same, return true.
-// If rr1 and rr2 has intersect but not entirely the same, then return
-// false. If no dependency, return true
-bool DepSetBuilder::DpasMacroBuilder::hasEntireOverlapOrNoOverlap(
+bool DepSetBuilder::DpasMacroBuilder::hasEntireOverlap(
     const DepSet::RegRangeType &rr1, const DepSet::RegRangeType &rr2) const {
-
-  // no overlap
-  if (!hasIntersect(rr1, rr2))
-    return true;
 
   // overlap, check if it's completely overlap
   BitSet<> rr1bits(m_dsBuilder.getGRF_LEN());
@@ -873,8 +867,12 @@ bool DepSetBuilder::DpasMacroBuilder::hasEntireOverlapOrNoOverlap(
 // a macro. Only for depth 8 dpas, internal dep on dst and src0 is allowed, but
 // only when src0 and dst memory footprint is entirely the same
 bool DepSetBuilder::DpasMacroBuilder::hasInternalDep(
-    const DstRegRangeType &dst_range, const SrcRegRangeType &src_range,
-    bool isDepth8) const {
+    const Instruction &dpas, const DstRegRangeType &dst_range,
+    const SrcRegRangeType &src_range, bool isDepth8) const {
+
+  const auto &dstOp = dpas.getDestination();
+  const auto &src0Op = dpas.getSource(0);
+
   if (hasIntersect(dst_range, src_range[1]))
     return true;
 
@@ -889,8 +887,16 @@ bool DepSetBuilder::DpasMacroBuilder::hasInternalDep(
     // for depth 8 dpas, sr0 and dst having the same footprint is
     // treated as no internal dependency for other rep_count, having
     // intersect is internal dependency
-    if (isDepth8 && !hasEntireOverlapOrNoOverlap(dst_range, src_range[0]))
-      return true;
+    if (isDepth8) {
+      // if the ranges entirely overlap but the subregisters are different, we
+      // have an internal dependency and hence, cannot form a macro
+      if (hasEntireOverlap(dst_range, src_range[0])) {
+          if (dstOp.getDirRegRef().subRegNum != src0Op.getDirRegRef().subRegNum)
+            return true;
+      // if there is partial overlap in registers, we cannot form a macro
+      } else if (hasIntersect(dst_range, src_range[0]))
+        return true;
+    }
   }
   return false;
 }
