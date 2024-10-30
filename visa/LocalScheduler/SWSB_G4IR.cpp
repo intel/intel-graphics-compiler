@@ -1465,35 +1465,6 @@ void SWSB::handleFuncCall() {
   }
 }
 
-void SWSB::SWSBInitializeGlobalSends(
-    SparseBitVector &allDstGlobalIDs, // node global ID bit vector in buckets
-                                      // touched by dst operands
-    SparseBitVector &allSrcGlobalIDs, // node global ID bit vector in buckets
-                                      // touched by src operands
-    LiveGRFBuckets &globalSendsLB) { // live buckets of global sends
-
-
-  // Scan the global send LB to set the node bit in dst or src bit set of each
-  // bucket that node touches.
-  for (unsigned curBucket = 0;
-       curBucket <
-       kernel.getNumRegTotal() + fg.builder->getNumScalarRegisters();
-       curBucket++) {
-
-    for (LiveGRFBuckets::BN_iterator bn_it = globalSendsLB.begin(curBucket);
-         bn_it != globalSendsLB.end(curBucket); ++bn_it) {
-      SBBucketNode *liveBN = (*bn_it);
-      SBNode *curLiveNode = liveBN->node;
-
-      if (liveBN->opndNum == Opnd_dst) {
-        allDstGlobalIDs.set(curLiveNode->globalID);
-      } else {
-        allSrcGlobalIDs.set(curLiveNode->globalID);
-      }
-    }
-  }
-}
-
 //
 // Set the global ID bit vector of each bucket touched by corresponding
 // operands
@@ -1562,12 +1533,6 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
 
   std::vector<SparseBitVector> dstGlobalIDs;
   std::vector<SparseBitVector> srcGlobalIDs;
-  SparseBitVector allDstGlobalIDs;
-  SparseBitVector allSrcGlobalIDs;
-
-  //Get all the global sends bitvector
-  SWSBInitializeGlobalSends(allDstGlobalIDs, allSrcGlobalIDs, globalSendsLB);
-
   if (!fg.builder->hasReadSuppressionOrSharedLocalMemoryWAs()) {
     // Initialilze for setSendGlobalIDMayKilledByCurrentBB only
     SWSBInitializeGlobalNodesInBuckets(dstGlobalIDs, srcGlobalIDs,
@@ -1614,9 +1579,7 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
         bb->setSendOpndMayKilled(&globalSendsLB, SBNodes, p);
       }
     } else {
-      if (!bb->handleCallForMayKilled(&allDstGlobalIDs, &allSrcGlobalIDs)) {
-        bb->setSendOpndMayKilled(&globalSendsLB, SBNodes, p);
-      }
+      bb->setSendOpndMayKilled(&globalSendsLB, SBNodes, p);
     }
 
 #ifdef DEBUG_VERBOSE_ON
@@ -4445,23 +4408,6 @@ void SWSB::insertTokenSync() {
         continue;
       }
 
-      if (inst->isCall() || inst->isFCall() || inst->isReturn() ||
-          inst->isFReturn()) {
-        G4_INST *synAllInst = insertSyncAllWRInstruction(bb, 0, inst_it);
-        // In case previous inst need force A@1 in following inst
-        synAllInst->setDistance(1);
-        if (kernel.fg.builder->hasThreeALUPipes() ||
-            kernel.fg.builder->hasFourALUPipes()) {
-          synAllInst->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
-        }
-        synAllInst->setLexicalId(newInstID);
-        synAllInst = insertSyncAllRDInstruction(bb, 0, inst_it);
-        synAllInst->setLexicalId(newInstID);
-        newInstID++;
-        node_it++;
-        continue;
-      }
-
       auto jitInfo = kernel.fg.builder->getJitInfo();
       if (inst->getDistance() == 1) {
         if (kernel.fg.builder->hasThreeALUPipes() ||
@@ -5437,26 +5383,6 @@ void G4_BB_SB::getLiveOutToken(unsigned allSendNum,
   for (size_t i = 0; i < totalTokenNum; i++) {
     liveOutTokenNodes |= tokeNodesMap[i];
   }
-}
-
-// All global dependencies will be resolved in function call
-bool G4_BB_SB::handleCallForMayKilled(SparseBitVector *allDstGlobalIDs,
-                                      SparseBitVector *allSrcGlobalIDs) {
-  if (!bb->size()) {
-    return false;
-  }
-
-  G4_INST *lastInst = bb->back();
-  if (!lastInst->isReturn() && !lastInst->isCall() && !lastInst->isFReturn() &&
-      !lastInst->isFCall()) {
-    return false;
-  }
-
-  send_may_kill.dst = *allDstGlobalIDs;
-  send_may_kill.src = *allSrcGlobalIDs;
-  send_WAW_may_kill = *allDstGlobalIDs;
-
-  return true;
 }
 
 //
