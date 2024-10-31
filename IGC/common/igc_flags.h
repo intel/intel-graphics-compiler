@@ -844,7 +844,7 @@ DECLARE_IGC_REGKEY(DWORD, RegPressureVerbocity,   0,  "Different printing types"
 DECLARE_IGC_REGKEY(DWORD, RetryRevertExcessiveSpillingKernelThreshold, 10000,  "Sets the threshold for Retry Manager to know which kernel is considered as Excessive Spilling and applies different set of rules", false)
 DECLARE_IGC_REGKEY(DWORD, RetryRevertExcessiveSpillingKernelCoefficient, 102,  "Sets the coefficient for Retry Manager to know whether we should revert back to a previously compiled kernel", false)
 DECLARE_IGC_REGKEY(DWORD, ForceSIMDRPELimit, 1000, "Cutoff value for register estimator, when higher than that kernel is switched to lower SIMD when possible", false)
-DECLARE_IGC_REGKEY(DWORD, EarlyRetryRPEThreshold, 500, "Cutoff value for register estimation, when highter than that kernel skips first compilation stage and goes to retry immediately", false)
+DECLARE_IGC_REGKEY(DWORD, EarlyRetryRPEThreshold, 380, "Cutoff value for register estimation, when highter than that kernel skips first compilation stage and goes to retry immediately", false)
 DECLARE_IGC_REGKEY(bool, ForceNoFP64bRegioning, false, "force regioning rules for FP and 64b FPU instructions", false)
 DECLARE_IGC_REGKEY(bool, EnableA64WA, true, "Guarantee A64 load/store addres-hi is uniform", true)
 DECLARE_IGC_REGKEY(bool, EnableSamplerSplit, false, "Split Sampler 3d message to odd and even", false)

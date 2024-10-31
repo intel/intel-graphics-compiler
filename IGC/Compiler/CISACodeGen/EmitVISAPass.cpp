@@ -8,10 +8,9 @@ SPDX-License-Identifier: MIT
 
 #include "IGC/common/StringMacros.hpp"
 #include "EmitVISAPass.hpp"
-#include "CISABuilder.hpp"
 #include "OpenCLKernelCodeGen.hpp"
+#include "Compiler/CodeGenPublic.h"
 #include "Compiler/Optimizer/OpenCLPasses/NamedBarriers/NamedBarriersResolution.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/StackOverflowDetection/StackOverflowDetection.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/LSCFuncs/LSCFuncsResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/Decompose2DBlockFuncs/Decompose2DBlockFuncs.hpp"
 #include "Compiler/CISACodeGen/GenerateFrequencyData.hpp"
@@ -22,14 +21,12 @@ SPDX-License-Identifier: MIT
 #include "VectorProcess.hpp"
 #include "ShaderCodeGen.hpp"
 #include "MemOpt.h"           // helper functions related struct value.
-#include "common/allocator.h"
 #include "common/debug/Dump.hpp"
 #include "common/debug/Dump.hpp"
 #include "common/igc_regkeys.hpp"
 #include "common/Stats.hpp"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/DebugInfo/ScalarVISAModule.h"
-#include "common/secure_mem.h"
 #include "DebugInfo/VISAIDebugEmitter.hpp"
 #include "DebugInfo/EmitterOpts.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
@@ -43,14 +40,12 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/Path.h"
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/IR/AssemblyAnnotationWriter.h"
-#include "llvmWrapper/IR/Intrinsics.h"
-#include <optional>
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
-#include "ZEBinWriter/zebin/source/ZEELFObjectBuilder.hpp"
 #include "Compiler/CISACodeGen/LoopCountAnalysis.hpp"
 
 #include <fstream>
+#include <optional>
 
 using namespace llvm;
 using namespace IGC;
@@ -664,6 +659,28 @@ void EmitPass::CreateKernelShaderMap(CodeGenContext* ctx, MetaDataUtils* pMdUtil
     }
 }
 
+bool EmitPass::shouldForceEarlyRecompile(MetaDataUtils *pMdUtils,
+                                         llvm::Function *F) {
+  // we only skip first compilation stage, if compilation pipeline
+  // was configured to start from retry already, otherwise we do nothing
+  bool IsFirstStage = m_pCtx->m_retryManager.GetRetryId() == 0;
+  if (!isEntryFunc(pMdUtils, F) || IGC_GET_FLAG_VALUE(DisableRecompilation) ||
+      !IsFirstStage) {
+    return false;
+  }
+  auto Threshold = IGC_GET_FLAG_VALUE(EarlyRetryRPEThreshold);
+  auto GRFPerThread = m_pCtx->getNumGRFPerThread();
+  // If we are not in large GRF mode and auto GRF is disabled we can lower the
+  // threshold.
+  if (GRFPerThread <= CodeGenContext::DEFAULT_TOTAL_GRF_NUM &&
+      !m_pCtx->isAutoGRFSelectionEnabled()) {
+    Threshold = Threshold / 2;
+  }
+  auto MaxRegPressure = getMaxRegPressureInFunctionGroup(F, pMdUtils);
+  bool PassedThreshold = MaxRegPressure >= Threshold;
+  return PassedThreshold || m_currShader->IsRecompilationRequestForced();
+}
+
 bool EmitPass::runOnFunction(llvm::Function& F)
 {
     m_currFuncHasSubroutine = false;
@@ -721,18 +738,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         return false;
     }
 
-    unsigned int Threshold = IGC_GET_FLAG_VALUE(EarlyRetryRPEThreshold);
-    unsigned MaxRegPressure = getMaxRegPressureInFunctionGroup(&F, pMdUtils);
-    // we only skip first compilation stage, if compilation pipeline
-    // was configured to start from retry already, we do nothing
-    bool IsFirstStage = m_pCtx->m_retryManager.GetRetryId() == 0;
-    bool IsEntry = isEntryFunc(pMdUtils, &F);
-    bool PassedThreshold = MaxRegPressure >= Threshold;
-    bool IsRecompilationRequestForced = m_currShader->IsRecompilationRequestForced();
-    bool IsRecompilationEnabled = !IGC_GET_FLAG_VALUE(DisableRecompilation);
-    bool DoEarlyRetry = (PassedThreshold || IsRecompilationRequestForced) && IsRecompilationEnabled;
-
-    if (DoEarlyRetry && IsFirstStage && IsEntry)
+    if (shouldForceEarlyRecompile(pMdUtils, &F))
     {
         // we can't reuse kernelSet because EmitPass assumes that if we have
         // something in kernelSet, it was added by previous compilation stage and passed to this one

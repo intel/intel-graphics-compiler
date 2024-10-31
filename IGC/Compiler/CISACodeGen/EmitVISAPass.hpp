@@ -19,17 +19,17 @@ SPDX-License-Identifier: MIT
 #include "CastToGASAnalysis.h"
 #include "ResourceLoopAnalysis.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
+#include "Probe/Assertion.h"
+
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/InlineAsm.h>
-#include "llvm/IR/GetElementPtrTypeIterator.h"
-#include "llvm/Analysis/CallGraph.h"
-#include <optional>
+#include <llvm/IR/GetElementPtrTypeIterator.h>
+#include <llvm/Analysis/CallGraph.h>
 #include "common/LLVMWarningsPop.hpp"
-#include "Compiler/IGCPassSupport.h"
-#include "Probe/Assertion.h"
-#include <functional>
 
+#include <functional>
+#include <optional>
 #include <type_traits>
 
 namespace llvm
@@ -1143,6 +1143,8 @@ private:
 
     // Helper function to check if A64 WA is required
     bool hasA64WAEnable() const;
+
+    bool shouldForceEarlyRecompile(IGCMD::MetaDataUtils* pMdUtils, llvm::Function* F);
 
     bool isHalfGRFReturn(CVariable* dst, SIMDMode simdMode);
 

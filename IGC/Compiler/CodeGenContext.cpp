@@ -868,17 +868,19 @@ namespace IGC
             return m_NumGRFPerThread;
         }
 
-        // read value from CompOptions first
-        DWORD GRFNum4RQToUse = getModuleMetaData()->compOpt.ForceLargeGRFNum4RQ ? 256 : 0;
+        if (hasSyncRTCalls()) {
+          // read value from CompOptions first
+          DWORD GRFNum4RQToUse =
+              getModuleMetaData()->compOpt.ForceLargeGRFNum4RQ ? 256 : 0;
 
-        // override if reg key value is set
-        GRFNum4RQToUse = IGC_IS_FLAG_ENABLED( TotalGRFNum4RQ ) ?
-            IGC_GET_FLAG_VALUE( TotalGRFNum4RQ ) : GRFNum4RQToUse;
-
-        if (hasSyncRTCalls() && GRFNum4RQToUse != 0)
-        {
+          // override if reg key value is set
+          GRFNum4RQToUse = IGC_IS_FLAG_ENABLED(TotalGRFNum4RQ)
+                               ? IGC_GET_FLAG_VALUE(TotalGRFNum4RQ)
+                               : GRFNum4RQToUse;
+          if (GRFNum4RQToUse != 0) {
             m_NumGRFPerThread = GRFNum4RQToUse;
             return m_NumGRFPerThread;
+          }
         }
         if (this->type == ShaderType::COMPUTE_SHADER && IGC_GET_FLAG_VALUE(TotalGRFNum4CS) != 0)
         {
