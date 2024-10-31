@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/IR/InstrTypes.h"
-#include "llvmWrapper/IR/Attributes.h"
+#include "llvm/IR/Attributes.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
 #include "Probe/Assertion.h"
@@ -97,7 +97,7 @@ void AccuracyDecoratedCallsBiFResolution::visitBinaryOperator(BinaryOperator& in
 
     CallInst* newCall = CallInst::Create(newFunc, args, inst.getName(), &inst);
     llvm::Attribute attr = llvm::Attribute::get(inst.getContext(), "fpbuiltin-max-error", maxErrorStr);
-    IGCLLVM::addFnAttr(newCall, attr);
+    newCall->addFnAttr(attr);
 
     inst.replaceAllUsesWith(newCall);
     inst.eraseFromParent();
@@ -106,7 +106,7 @@ void AccuracyDecoratedCallsBiFResolution::visitBinaryOperator(BinaryOperator& in
 void AccuracyDecoratedCallsBiFResolution::visitCallInst(CallInst& callInst)
 {
     AttributeList attributeList = callInst.getAttributes();
-    AttributeSet callAttributes = IGCLLVM::getFnAttrs(attributeList);
+    AttributeSet callAttributes = attributeList.getFnAttrs();
 
     if (!callAttributes.hasAttribute("fpbuiltin-max-error"))
         return;

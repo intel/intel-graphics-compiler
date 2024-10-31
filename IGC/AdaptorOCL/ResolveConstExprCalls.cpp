@@ -12,7 +12,6 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 
-#include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/IR/Function.h"
 
@@ -110,8 +109,7 @@ bool transformConstExprCastCall(CallInst& Call) {
         if (!CastInst::isBitOrNoopPointerCastable(ActTy, ParamTy, DL))
             return false;   // Cannot transform this parameter value.
 
-        auto AB = IGCLLVM::makeAttrBuilder(
-            FT->getContext(), IGCLLVM::getParamAttrs(CallerPAL, i));
+        AttrBuilder AB(FT->getContext(), CallerPAL.getParamAttrs(i));
         if (AB.overlaps(AttributeFuncs::typeIncompatible(ParamTy)))
             return false;   // Attribute not compatible with transformed value.
 
@@ -124,7 +122,7 @@ bool transformConstExprCastCall(CallInst& Call) {
 
         // If the parameter is passed as a byval argument, then we have to have a
         // sized type and the sized type has to have the same size as the old type.
-        if (ParamTy != ActTy && IGCLLVM::hasParamAttr(CallerPAL, i, llvm::Attribute::ByVal)) {
+        if (ParamTy != ActTy && CallerPAL.hasParamAttr(i, llvm::Attribute::ByVal)) {
             PointerType* ParamPTy = dyn_cast<PointerType>(ParamTy);
             if (!ParamPTy || !IGCLLVM::getArg(*Callee, i)->getParamByValType()->isSized())
                 return false;
@@ -159,9 +157,7 @@ bool transformConstExprCastCall(CallInst& Call) {
     ArgAttrs.reserve(NumActualArgs);
 
     // Get any return attributes.
-    auto RAttrs = IGCLLVM::makeAttrBuilder(
-        FT->getContext(), CallerPAL.getAttributes(AttributeList::ReturnIndex));
-
+    AttrBuilder RAttrs(FT->getContext(), CallerPAL.getRetAttrs());
     // If the return value is not being used, the type may not be compatible
     // with the existing attributes.  Wipe out any problematic attributes.
     RAttrs.remove(AttributeFuncs::typeIncompatible(NewRetTy));
@@ -178,17 +174,14 @@ bool transformConstExprCastCall(CallInst& Call) {
         Args.push_back(NewArg);
 
         // Add any parameter attributes.
-        if (IGCLLVM::hasParamAttr(CallerPAL, i, llvm::Attribute::ByVal)) {
-            auto AB = IGCLLVM::makeAttrBuilder(
-                FT->getContext(), IGCLLVM::getParamAttrs(CallerPAL, i));
-            AB.addByValAttr(IGCLLVM::getArg(*Callee, i)->getParamByValType());
-            ArgAttrs.push_back(AttributeSet::get(Ctx, AB));
+        AttrBuilder AB(Ctx, CallerPAL.getParamAttrs(i));
+        if (CallerPAL.hasParamAttr(i, llvm::Attribute::ByVal)) {
+            AB.addByValAttr(Callee->getArg(i)->getParamByValType());
         }
-        else
-            ArgAttrs.push_back(IGCLLVM::getParamAttrs(CallerPAL, i));
+        ArgAttrs.push_back(AttributeSet::get(Ctx, AB));
     }
 
-    AttributeSet FnAttrs = IGCLLVM::getFnAttrs(CallerPAL);
+    AttributeSet FnAttrs = CallerPAL.getFnAttrs();
 
     if (NewRetTy->isVoidTy())
         Caller->setName("");   // Void type should not have a name.

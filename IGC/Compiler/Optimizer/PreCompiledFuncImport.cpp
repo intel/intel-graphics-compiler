@@ -1348,7 +1348,7 @@ void PreCompiledFuncImport::processInt32Divide(BinaryOperator& inst, Int32Emulat
             funcName,
             m_pModule);
     }
-    IGCLLVM::addRetAttr(func, llvm::Attribute::AlwaysInline);
+    func->addRetAttr(llvm::Attribute::AlwaysInline);
 
 
 

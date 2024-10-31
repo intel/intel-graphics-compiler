@@ -49,7 +49,6 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "ZEBinWriter/zebin/source/ZEELFObjectBuilder.hpp"
 #include "Compiler/CISACodeGen/LoopCountAnalysis.hpp"
-#include "IGC/WrapperLLVM/include/llvmWrapper/IR/Attributes.h"
 
 #include <fstream>
 
@@ -6724,7 +6723,7 @@ void EmitPass::emitLegacySimdBlockRead(llvm::Instruction* inst, llvm::Value* ptr
 // This function extracts alignment requirements from the attributes of the call instruction.
 uint32_t EmitPass::getReqBlkBitsForBlockStLd(CallInst *call) {
     llvm::AttributeList attrs = call->getAttributes();
-    llvm::AttributeSet set = IGCLLVM::getFnAttrs(attrs);
+    llvm::AttributeSet set = attrs.getFnAttrs();
 
     if (set.hasAttribute("alignmentrequirements")) {
         llvm::Attribute attr = set.getAttribute("alignmentrequirements");

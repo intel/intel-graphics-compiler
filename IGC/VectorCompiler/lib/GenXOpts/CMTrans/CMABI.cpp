@@ -23,7 +23,6 @@ SPDX-License-Identifier: MIT
 
 
 #include "llvmWrapper/Analysis/CallGraph.h"
-#include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/Alignment.h"
@@ -55,6 +54,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
+#include "llvm/IR/Attributes.h"
 #include "llvm/IR/CFG.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DiagnosticInfo.h"
@@ -526,11 +526,8 @@ CallGraphNode *CMABI::TransformKernel(Function *F) {
         ArgTys.push_back(Ty);
     } else {
       // Unchanged argument
-      AttributeSet attrs = IGCLLVM::getParamAttrs(PAL, ArgIndex);
-      if (attrs.hasAttributes()) {
-        auto B = IGCLLVM::makeAttrBuilder(Context, attrs);
-        AttrVec = AttrVec.addParamAttributes(Context, ArgTys.size(), B);
-      }
+      AttrBuilder ArgAttrB(Context, PAL.getParamAttrs(ArgIndex));
+      AttrVec = AttrVec.addParamAttributes(Context, ArgTys.size(), ArgAttrB);
       ArgTys.push_back(I->getType());
     }
   }
@@ -540,11 +537,8 @@ CallGraphNode *CMABI::TransformKernel(Function *F) {
     "type out of sync, expect bool arguments");
 
   // Add any function attributes.
-  AttributeSet FnAttrs = IGCLLVM::getFnAttrs(PAL);
-  if (FnAttrs.hasAttributes()) {
-    auto B = IGCLLVM::makeAttrBuilder(Context, FnAttrs);
-    AttrVec = IGCLLVM::addAttributesAtIndex(AttrVec, Context, AttributeList::FunctionIndex, B);
-  }
+  AttrBuilder B(Context, PAL.getFnAttrs());
+  AttrVec = AttrVec.addFnAttributes(Context, B);
 
   // Create the new function body and insert it into the module.
   Function *NF = Function::Create(NFTy, F->getLinkage(), F->getName());

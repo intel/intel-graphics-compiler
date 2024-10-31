@@ -13,7 +13,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvmWrapper/IR/IRBuilder.h>
-#include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvm/IR/Function.h>
 #include <llvmWrapper/IR/Instructions.h>
@@ -729,8 +728,7 @@ bool BIImport::runOnModule(Module& M)
                 {
                     Function* calledF = dyn_cast<Function>(CI->getArgOperand(0));
                     IGC_ASSERT(calledF && CI->hasFnAttr("vector-variant"));
-                    StringRef VariantName = IGCLLVM::getAttribute(CI->getAttributes(), AttributeList::FunctionIndex, "vector-variant")
-                        .getValueAsString();
+                    StringRef VariantName = CI->getFnAttr("vector-variant").getValueAsString();
 
                     // Parse the variant string, and create a function declaration that represents a variant of the called function.
                     auto [symStr, fName, vecLen] = IGC::ParseVectorVariantFunctionString(VariantName);
@@ -773,7 +771,7 @@ bool BIImport::runOnModule(Module& M)
                     if (CI->hasFnAttr("vector-variants"))
                     {
                         // Get the list of metadata strings indicating the function variant per index
-                        StringRef VariantsStr = IGCLLVM::getAttribute(CI->getAttributes(), AttributeList::FunctionIndex, "vector-variants")
+                        StringRef VariantsStr = CI->getAttributes().getAttributeAtIndex(AttributeList::FunctionIndex, "vector-variants")
                             .getValueAsString();
                         SmallVector<StringRef, 8> VariantsTable;
                         VariantsStr.split(VariantsTable, ',');

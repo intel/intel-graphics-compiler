@@ -22,7 +22,6 @@ SPDX-License-Identifier: MIT
 
 #include "GenerateBlockMemOpsPass.hpp"
 #include "IGCIRBuilder.h"
-#include "IGC/WrapperLLVM/include/llvmWrapper/IR/Attributes.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -722,12 +721,8 @@ bool GenerateBlockMemOpsPass::changeToBlockInst(Instruction *I) {
 }
 
 void GenerateBlockMemOpsPass::setAlignmentAttr(CallInst *CI, const unsigned &Alignment) {
-    llvm::Attribute CustomAttr = llvm::Attribute::get(CI->getContext(), "alignmentrequirements", std::to_string(Alignment));
-    auto B = IGCLLVM::makeAttrBuilder(CI->getContext());
-    B.addAttribute("alignmentrequirements", std::to_string(Alignment));
-    llvm::AttributeList CurrentAttrs = CI->getAttributes();
-    llvm::AttributeList NewAttrs = IGCLLVM::addFnAttributes(CurrentAttrs, CI->getContext(), B);
-    CI->setAttributes(NewAttrs);
+    auto CustomAttr = llvm::Attribute::get(CI->getContext(), "alignmentrequirements", std::to_string(Alignment));
+    CI->addFnAttr(CustomAttr);
 }
 
 Value *GenerateBlockMemOpsPass::checkGep(Instruction *PtrInstr) {

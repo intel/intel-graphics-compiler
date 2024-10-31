@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 #include "GenIntrinsicDefinition.h"
 #include "GenIntrinsicLookup.h"
 #include "Probe/Assertion.h"
-#include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/IR/Module.h"
@@ -225,11 +224,10 @@ private:
         constexpr auto& attributeKinds = IntrinsicDefinitionT::scAttributeKinds;
         auto mainAttrList = llvm::AttributeList::get(
             ctx, llvm::AttributeList::FunctionIndex, attributeKinds);
-        // 2. Gather the memory attribute(s) in a separate WrapperLLVM-based routine
-        auto memoryAttributeSet = IntrinsicDefinitionT::scMemoryEffects.getAsAttributeSet(ctx);
-        auto memoryAB = IGCLLVM::makeAttrBuilder(ctx, memoryAttributeSet);
+        // 2. Gather the memory attribute(s) in a separate routine
+        auto memoryAB = IntrinsicDefinitionT::scMemoryEffects.getAsAttrBuilder(ctx);
         // Return a merged collection
-        return IGCLLVM::addFnAttributes(mainAttrList, ctx, memoryAB);
+        return mainAttrList.addFnAttributes(ctx, memoryAB);
     }
 };
 

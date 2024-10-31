@@ -13,7 +13,6 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/IR/Function.h"
-#include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include <llvm/IR/Module.h>
@@ -548,19 +547,19 @@ void PromoteBools::setPromotedAttributes(Function* newFunction, AttributeList& a
 
     // set function attributes
     AttrBuilder attrBuilder(newFunction->getContext());
-    for (const auto& attr : IGCLLVM::getFnAttrs(attributeList))
+    for (const auto& attr : attributeList.getFnAttrs())
     {
         attrBuilder.addAttribute(getPromoted(attr));
     }
-    IGCLLVM::addFnAttrs(newFunction, attrBuilder);
+    newFunction->addFnAttrs(attrBuilder);
 
     // set return attributes
     attrBuilder.clear();
-    for (const auto &attr : IGCLLVM::getRetAttrs(attributeList))
+    for (const auto &attr : attributeList.getRetAttrs())
     {
         attrBuilder.addAttribute(getPromoted(attr));
     }
-    IGCLLVM::addRetAttrs(newFunction, attrBuilder);
+    newFunction->addRetAttrs(attrBuilder);
 
     // set params' attributes
     for (size_t i = 0; i < newFunction->arg_size(); i++)
@@ -571,7 +570,7 @@ void PromoteBools::setPromotedAttributes(Function* newFunction, AttributeList& a
         }
 
         attrBuilder.clear();
-        for (const auto& attr : IGCLLVM::getParamAttrs(attributeList, i))
+        for (const auto& attr : attributeList.getParamAttrs(i))
         {
             attrBuilder.addAttribute(getPromoted(attr));
         }

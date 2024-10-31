@@ -26,7 +26,6 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/MC/MCContext.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/MC/MCStreamer.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/MC/MCObjectFileInfo.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Attributes.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/IRBuilder.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/CallSite.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/CFG.h"

@@ -10,10 +10,10 @@ SPDX-License-Identifier: MIT
 #define IGCLLVM_IR_INSTRUCTIONS_H
 
 #include "llvm/Config/llvm-config.h"
+#include "llvm/IR/Attributes.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/User.h"
-#include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/Support/ModRef.h"
 
 #if LLVM_VERSION_MAJOR < 11
@@ -201,10 +201,9 @@ inline unsigned getArgOperandNo(llvm::CallInst &CI, const llvm::Use *U) {
 // We repeat the implementation for llvm::Function here - trying to proxy the
 // calls through CB.getCalledFunction() would leave indirect calls unhandled.
 inline void setMemoryEffects(llvm::CallBase &CB, IGCLLVM::MemoryEffects ME) {
-  for (auto Kind : ME.getOverridenAttrKinds())
-    IGCLLVM::removeFnAttr(CB, Kind);
+  CB.removeFnAttrs(ME.getOverridenAttrKinds());
   for (auto MemAttr : ME.getAsAttributeSet(CB.getContext()))
-    IGCLLVM::addFnAttr(CB, MemAttr);
+    CB.addFnAttr(MemAttr);
 }
 
 inline void setDoesNotAccessMemory(llvm::CallBase &CB) {

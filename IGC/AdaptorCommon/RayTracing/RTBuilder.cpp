@@ -27,7 +27,6 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvmWrapper/ADT/Optional.h>
 #include "llvmWrapper/IR/Argument.h"
-#include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvm/ADT/None.h"
@@ -1494,24 +1493,13 @@ Value* RTBuilder::canonizePointer(Value* Ptr)
 
 void RTBuilder::setReturnAlignment(CallInst* CI, uint32_t AlignVal)
 {
-    auto Attrs = CI->getAttributes();
-    auto AB =
-        IGCLLVM::makeAttrBuilder(CI->getContext(), Attrs.getAttributes(AttributeList::ReturnIndex));
-    AB.addAlignmentAttr(AlignVal);
-    auto AL =
-        IGCLLVM::addAttributesAtIndex(Attrs, CI->getContext(), AttributeList::ReturnIndex, AB);
-    CI->setAttributes(AL);
+    Align Alt(AlignVal);
+    CI->addRetAttr(Attribute::getWithAlignment(CI->getContext(), Alt));
 }
 
 void RTBuilder::setDereferenceable(CallInst* CI, uint32_t Size)
 {
-    auto Attrs = CI->getAttributes();
-    auto AB =
-        IGCLLVM::makeAttrBuilder(CI->getContext(), Attrs.getAttributes(AttributeList::ReturnIndex));
-    AB.addDereferenceableAttr(Size);
-    auto AL =
-        IGCLLVM::addAttributesAtIndex(Attrs, CI->getContext(), AttributeList::ReturnIndex, AB);
-    CI->setAttributes(AL);
+    CI->addRetAttr(Attribute::getWithDereferenceableBytes(CI->getContext(), Size));
 }
 
 Value* RTBuilder::getGlobalBufferPtr(IGC::ADDRESS_SPACE Addrspace)

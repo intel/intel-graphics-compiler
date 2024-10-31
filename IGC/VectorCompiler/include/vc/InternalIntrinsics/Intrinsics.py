@@ -418,7 +418,7 @@ def createAttributeTable():
             "  IGC_ASSERT(AttrIdx < AttrMapNum && \"invalid attribute index\");\n"
             "  #endif // NDEBUG\n")
 
-    f.write("  AttributeSet AS;\n"
+    f.write("  AttrBuilder AB(C);\n"
             "  if (id != 0) {\n"
             "    switch(IntrinsicsToAttributesMap[AttrIdx]) {\n"
             "    default: IGC_ASSERT_EXIT_MESSAGE(0, \"Invalid attribute number\");\n")
@@ -428,15 +428,15 @@ def createAttributeTable():
         f.write("""    case {num}: {{
       const Attribute::AttrKind Attrs[] = {{{attrs}}};
       for (auto Kind : Attrs) {{
-        AS = AS.addAttribute(C, Kind);
+        AB.addAttribute(Kind);
       }}
       break;
       }}\n""".format(num=i+1, attrs=','.join(Attrs)))
     f.write("    }\n"
             "  }\n"
             "  MemoryEffectsTy ME = MemoryFXPerIntrinsicMap[AttrIdx];\n"
-            "  AS = AS.addAttributes(C, ME.getAsAttributeSet(C));\n"
-            "  return AttributeList::get(C, AttributeList::FunctionIndex, AS);\n"
+            "  AB.merge(ME.getAsAttrBuilder(C));\n"
+            "  return AttributeList::get(C, AttributeList::FunctionIndex, AB);\n"
             "}\n"
             "#endif // GET_INTRINSIC_ATTRIBUTES\n\n")
     f.close()

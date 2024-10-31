@@ -440,12 +440,12 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 // Go through call sites and remove NoInline atrributes.
                 // Verifier fails if a call has optnone but not noinline, so if we remove noinline, we must also remove optnone
                 if (callInst->hasFnAttr(llvm::Attribute::NoInline)) {
-                    IGCLLVM::removeFnAttr(callInst, llvm::Attribute::NoInline);
-                    IGCLLVM::removeFnAttr(callInst, llvm::Attribute::OptimizeNone);
+                    callInst->removeFnAttr(llvm::Attribute::NoInline);
+                    callInst->removeFnAttr(llvm::Attribute::OptimizeNone);
                 }
                 // Remove AlwaysInline at callsites
                 if (isOptDisable && callInst->hasFnAttr(llvm::Attribute::AlwaysInline)) {
-                    IGCLLVM::removeFnAttr(callInst, llvm::Attribute::AlwaysInline);
+                    callInst->removeFnAttr(llvm::Attribute::AlwaysInline);
                 }
             }
         }

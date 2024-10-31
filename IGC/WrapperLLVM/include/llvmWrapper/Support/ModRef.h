@@ -204,26 +204,37 @@ public:
 #endif // LLVM_VERSION_MAJOR
     }
 
-    using AttrVector = std::vector<llvm::Attribute::AttrKind>;
+    /// Returns an AttrBuilder based on the static memory effects' info.
+    llvm::AttrBuilder getAsAttrBuilder(llvm::LLVMContext& C) const {
+        return llvm::AttrBuilder(C, getAsAttributeSet(C));
+    }
+
     /// Pre-LLVM 16, returns a list of attribute kinds that would conflict with
     /// underlying memory effect attributes for the given
     /// IGCLLVM::MemoryEffects instance. The list is empty for LLVM 16+.
-    AttrVector getOverridenAttrKinds() const {
+    llvm::AttributeMask getOverridenAttrKinds() const {
 #if LLVM_VERSION_MAJOR >= 16
         // The list is empty for LLVM 16+, which corresponds to the standard LLORG
         // practice of retaining old instances of Attribute::Memory and relying on
         // the internal logic to merge the memory effects correctly.
         return {};
 #else // LLVM_VERSION_MAJOR
+        using AttrVector = std::vector<llvm::Attribute::AttrKind>;
         AttrVector ModRefList { llvm::Attribute::ReadNone,
             llvm::Attribute::ReadOnly, llvm::Attribute::WriteOnly };
         AttrVector LocsList { llvm::Attribute::ArgMemOnly,
             llvm::Attribute::InaccessibleMemOnly,
             llvm::Attribute::InaccessibleMemOrArgMemOnly };
+        llvm::AttributeMask Result;
 
-        AttrVector Result(ModRefList.begin(), ModRefList.end());
-        if (Loc != ExclusiveIRMemLoc::Any || MR == ModRefInfo::NoModRef)
-            Result.insert(Result.end(), LocsList.begin(), LocsList.end());
+        AttrVector ResultVec(ModRefList.begin(), ModRefList.end());
+        for (auto ModRefKind : ModRefList)
+            Result.addAttribute(ModRefKind);
+        if (Loc != ExclusiveIRMemLoc::Any || MR == ModRefInfo::NoModRef) {
+            for (auto LocKind : LocsList)
+                Result.addAttribute(LocKind);
+        }
+
         return Result;
 #endif // LLVM_VERSION_MAJOR
     }

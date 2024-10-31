@@ -45,7 +45,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Transforms/Utils/ValueMapper.h>
 
-#include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
 
@@ -397,11 +396,11 @@ static void removeFunctionBitcasts(Module &M) {
             if (oldRetTypeSize > newRetTypeSize)
               castOp = Instruction::Trunc;
             else {
-              auto attrSet =
-                  IGCLLVM::getRetAttrs(funcToBeChanged->getAttributes());
-              if (attrSet.hasAttribute(Attribute::ZExt))
+              AttributeSet retAttrs = funcToBeChanged->getAttributes()
+                                          .getRetAttrs();
+              if (retAttrs.hasAttribute(Attribute::ZExt))
                 castOp = Instruction::ZExt;
-              else if (attrSet.hasAttribute(Attribute::SExt))
+              else if (retAttrs.hasAttribute(Attribute::SExt))
                 castOp = Instruction::SExt;
               else
                 llvm_unreachable("Expected ext attribute on return type.");

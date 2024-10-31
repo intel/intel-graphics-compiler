@@ -12,7 +12,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CodeGenPublic.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvmWrapper/IR/Instructions.h>
 #include "llvmWrapper/IR/Function.h"
@@ -458,8 +457,8 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
                 // Add the 'noalias' and 'sret' attribute to arg0
                 auto retArg = pNewFunc->arg_begin();
                 retArg->addAttr(llvm::Attribute::NoAlias);
-                retArg->addAttr(IGCLLVM::getWithStructRetType(M.getContext(),
-                                                              IGCLLVM::getNonOpaquePtrEltTy(retArg->getType())));
+                retArg->addAttr(llvm::Attribute::getWithStructRetType(
+                                    M.getContext(), IGCLLVM::getNonOpaquePtrEltTy(retArg->getType())));
 
                 // Loop through all return instructions and store the old return value into the arg0 pointer
                 const auto ptrSize = DL.getPointerSize();
@@ -590,9 +589,9 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
         returnPtr = builder.CreateAlloca(callInst->getType());
         callArgs.push_back(returnPtr);
         // Add "noalias" and "sret" to return value operand at callsite
-        auto ArgAttrs = IGCLLVM::makeAttrBuilder(M.getContext());
+        AttrBuilder ArgAttrs(M.getContext());
         ArgAttrs.addAttribute(llvm::Attribute::NoAlias);
-        IGCLLVM::addStructRetAttr(ArgAttrs, callInst->getType());
+        ArgAttrs.addStructRetAttr(callInst->getType());
         ArgAttrVec.push_back(AttributeSet::get(M.getContext(), ArgAttrs));
         retTypeOption = ReturnOpt::RETURN_BY_REF;
     }
@@ -632,16 +631,16 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
             Value* allocaV = builder.CreateAlloca(arg->getType());
             builder.CreateStore(arg, allocaV);
             callArgs.push_back(allocaV);
-            auto ArgAttrs = IGCLLVM::makeAttrBuilder(M.getContext());
-            ArgAttrs.addByValAttr(arg->getType());
-            ArgAttrVec.push_back(AttributeSet::get(M.getContext(), ArgAttrs));
+            auto byValAttr = llvm::Attribute::getWithByValType(M.getContext(), arg->getType());
+            auto argAttrs = AttributeSet::get(M.getContext(), { byValAttr });
+            ArgAttrVec.push_back(argAttrs);
             fixArgType = true;
         }
         else
         {
             // legal argument
             callArgs.push_back(arg);
-            ArgAttrVec.push_back(IGCLLVM::getParamAttrs(PAL, opNum));
+            ArgAttrVec.push_back(PAL.getParamAttrs(opNum));
         }
     }
 
@@ -678,7 +677,7 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
         // Create the new call instruction
         CallInst* newCallInst = builder.CreateCall(newFnTy, newCalledValue, callArgs);
         newCallInst->setCallingConv(callInst->getCallingConv());
-        newCallInst->setAttributes(AttributeList::get(M.getContext(), IGCLLVM::getFnAttrs(PAL), IGCLLVM::getRetAttrs(PAL), ArgAttrVec));
+        newCallInst->setAttributes(AttributeList::get(M.getContext(), PAL.getFnAttrs(), PAL.getRetAttrs(), ArgAttrVec));
         newCallInst->setDebugLoc(callInst->getDebugLoc());
 
         if (retTypeOption == ReturnOpt::RETURN_BY_REF)

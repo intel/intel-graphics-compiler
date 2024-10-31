@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #define DEBUG_TYPE "vc-transform-arg-copy"
 
 #include "llvmWrapper/Analysis/CallGraph.h"
-#include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/IR/CallSite.h"
 #include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/IR/Instructions.h"
@@ -385,20 +384,15 @@ vc::TransformedFuncInfo::gatherAttributes(LLVMContext &Context,
     if (OrigArgInfoEntry.getKind() == ArgKind::General) {
       IGC_ASSERT_MESSAGE(!OrigArgInfoEntry.isOmittedArg(),
                          "unexpected omitted argument");
-      AttributeSet ArgAttrs = IGCLLVM::getParamAttrs(AL, OrigIdx);
-      if (ArgAttrs.hasAttributes())
-        GatheredAttrs = GatheredAttrs.addParamAttributes(
-            Context, OrigArgInfoEntry.getNewIdx(),
-            IGCLLVM::makeAttrBuilder(Context, ArgAttrs));
+      AttrBuilder ArgAttrB(Context, AL.getParamAttrs(OrigIdx));
+      GatheredAttrs = GatheredAttrs.addParamAttributes(
+          Context, OrigArgInfoEntry.getNewIdx(), ArgAttrB);
     }
   }
 
   // Gather function attributes.
-  AttributeSet FnAttrs = IGCLLVM::getFnAttrs(AL);
-  if (FnAttrs.hasAttributes()) {
-    auto B = IGCLLVM::makeAttrBuilder(Context, FnAttrs);
-    GatheredAttrs = IGCLLVM::addAttributesAtIndex(GatheredAttrs, Context, AttributeList::FunctionIndex, B);
-  }
+  AttrBuilder B(Context, AL.getFnAttrs());
+  GatheredAttrs = GatheredAttrs.addFnAttributes(Context, B);
 
   return GatheredAttrs;
 }
