@@ -12,7 +12,7 @@ SPDX-License-Identifier: MIT
 #if defined(cl_intel_rt_production)
 
 void __basic_rtstack_init(
-    global RTStack* rtStack,
+    global void* rtStack,
     global HWAccel* hwaccel,
     intel_float3 origin,
     intel_float3 direction,
@@ -23,38 +23,41 @@ void __basic_rtstack_init(
 {
     unsigned int    bvh_level = 0;
     /* init ray */
-    rtStack->ray[bvh_level].org[0] = origin.x;
-    rtStack->ray[bvh_level].org[1] = origin.y;
-    rtStack->ray[bvh_level].org[2] = origin.z;
-    rtStack->ray[bvh_level].dir[0] = direction.x;
-    rtStack->ray[bvh_level].dir[1] = direction.y;
-    rtStack->ray[bvh_level].dir[2] = direction.z;
-    rtStack->ray[bvh_level].tnear  = tmin;
-    rtStack->ray[bvh_level].tfar   = tmax;
+    MemRay* memRay = get_rt_stack_ray(rtStack, bvh_level);
+    memRay->org[0] = origin.x;
+    memRay->org[1] = origin.y;
+    memRay->org[2] = origin.z;
+    memRay->dir[0] = direction.x;
+    memRay->dir[1] = direction.y;
+    memRay->dir[2] = direction.z;
+    memRay->tnear  = tmin;
+    memRay->tfar   = tmax;
 
-    rtStack->ray[bvh_level].data[1] = 0;
-    rtStack->ray[bvh_level].data[2] = 0;
-    rtStack->ray[bvh_level].data[3] = 0;
+    memRay->data[1] = 0;
+    memRay->data[2] = 0;
+    memRay->data[3] = 0;
 
-    MemRay_setRootNodePtr(&rtStack->ray[bvh_level], (ulong)hwaccel + 128);
-    MemRay_setRayFlags(&rtStack->ray[bvh_level],    flags);
-    MemRay_setRayMask(&rtStack->ray[bvh_level],     mask);
+    MemRay_setRootNodePtr(memRay, (ulong)hwaccel + 128);
+    MemRay_setRayFlags(memRay,    flags);
+    MemRay_setRayMask(memRay,     mask);
 
-    MemHit_clearUV(&rtStack->hit[COMMITTED]);
-    rtStack->hit[COMMITTED].t = INFINITY;
-    rtStack->hit[COMMITTED].data0 = 0;
-    MemHit_setValid(&rtStack->hit[COMMITTED], 0);
-    MemHit_setDone(&rtStack->hit[COMMITTED], 0);
+    MemHit* commitedHit = get_rt_stack_hit(rtStack, intel_hit_type_committed_hit);
+    MemHit_clearUV(commitedHit);
+    commitedHit->t = INFINITY;
+    commitedHit->data0 = 0;
+    MemHit_setValid(commitedHit, 0);
+    MemHit_setDone(commitedHit, 0);
 
-    MemHit_clearUV(&rtStack->hit[POTENTIAL]);
-    rtStack->hit[POTENTIAL].t = INFINITY;
-    rtStack->hit[POTENTIAL].data0 = 0;
-    MemHit_setValid(&rtStack->hit[POTENTIAL], 1);
-    MemHit_setDone(&rtStack->hit[POTENTIAL], 1);
+    MemHit* potentialHit = get_rt_stack_hit(rtStack, intel_hit_type_potential_hit);
+    MemHit_clearUV(potentialHit);
+    potentialHit->t = INFINITY;
+    potentialHit->data0 = 0;
+    MemHit_setValid(potentialHit, 1);
+    MemHit_setDone(potentialHit, 1);
 }
 
 void __basic_ray_forward(
-    global RTStack* rtStack,
+    global void* rtStack,
     HWAccel* hwaccel,
     uint bvhLevel,
     intel_float3 origin,
@@ -64,22 +67,23 @@ void __basic_ray_forward(
     uint mask,
     intel_ray_flags_t flags)
 {
-    rtStack->ray[bvhLevel].org[0] = origin.x;
-    rtStack->ray[bvhLevel].org[1] = origin.y;
-    rtStack->ray[bvhLevel].org[2] = origin.z;
-    rtStack->ray[bvhLevel].dir[0] = direction.x;
-    rtStack->ray[bvhLevel].dir[1] = direction.y;
-    rtStack->ray[bvhLevel].dir[2] = direction.z;
-    rtStack->ray[bvhLevel].tnear  = tmin;
-    rtStack->ray[bvhLevel].tfar   = tmax;
+    MemRay* memRay = get_rt_stack_ray(rtStack, bvhLevel);
+    memRay->org[0] = origin.x;
+    memRay->org[1] = origin.y;
+    memRay->org[2] = origin.z;
+    memRay->dir[0] = direction.x;
+    memRay->dir[1] = direction.y;
+    memRay->dir[2] = direction.z;
+    memRay->tnear  = tmin;
+    memRay->tfar   = tmax;
 
-    rtStack->ray[bvhLevel].data[1] = 0;
-    rtStack->ray[bvhLevel].data[2] = 0;
-    rtStack->ray[bvhLevel].data[3] = 0;
+    memRay->data[1] = 0;
+    memRay->data[2] = 0;
+    memRay->data[3] = 0;
 
-    MemRay_setRootNodePtr(&rtStack->ray[bvhLevel], (ulong)hwaccel + 128);
-    MemRay_setRayFlags(&rtStack->ray[bvhLevel],    flags);
-    MemRay_setRayMask(&rtStack->ray[bvhLevel],     mask);
+    MemRay_setRootNodePtr(memRay, (ulong)hwaccel + 128);
+    MemRay_setRayFlags(memRay,    flags);
+    MemRay_setRayMask(memRay,     mask);
 }
 
 typedef enum
@@ -97,8 +101,7 @@ intel_ray_query_t intel_ray_query_init(
 {
     global HWAccel* hwaccel   = to_global((HWAccel*)accel);
     rtglobals_t     dispatchGlobalsPtr = (rtglobals_t) __getImplicitDispatchGlobals();
-    global RTStack* rtStack =
-        to_global((RTStack*)__builtin_IB_intel_get_rt_stack(dispatchGlobalsPtr));
+    global void* rtStack = to_global(__builtin_IB_intel_get_rt_stack(dispatchGlobalsPtr));
 
     __basic_rtstack_init(rtStack, hwaccel, ray.origin, ray.direction, ray.tmin, ray.tmax, ray.mask, ray.flags);
 
@@ -119,7 +122,7 @@ void intel_ray_query_forward_ray(
     intel_raytracing_acceleration_structure_t accel_i)
 {
     HWAccel* hwaccel = (HWAccel*)accel_i;
-    global RTStack* rtStack = __builtin_IB_intel_query_rt_stack(rayquery);
+    global void* rtStack = __builtin_IB_intel_query_rt_stack(rayquery);
 
     /* init ray */
     uint bvh_level = __builtin_IB_intel_query_bvh_level(rayquery) + 1;
@@ -139,15 +142,18 @@ void intel_ray_query_forward_ray(
 
 void intel_ray_query_commit_potential_hit(intel_ray_query_t rayquery)
 {
-    global RTStack* rtStack = __builtin_IB_intel_query_rt_stack(rayquery);
+    global void* rtStack = __builtin_IB_intel_query_rt_stack(rayquery);
 
     uint bvh_level = __builtin_IB_intel_query_bvh_level(rayquery);
-    uint rflags    = MemRay_getRayFlags(&rtStack->ray[bvh_level]);
+    MemRay* memRay    = get_rt_stack_ray(rtStack, bvh_level);
+    uint rflags    = MemRay_getRayFlags(memRay);
 
+    MemHit* commitedHit = get_rt_stack_hit(rtStack, intel_hit_type_committed_hit);
+    MemHit* potentialHit = get_rt_stack_hit(rtStack, intel_hit_type_potential_hit);
     if (rflags & intel_ray_flags_accept_first_hit_and_end_search)
     {
-        rtStack->hit[COMMITTED] = rtStack->hit[POTENTIAL];
-        MemHit_setValid(&rtStack->hit[COMMITTED], 1);
+        *commitedHit = *potentialHit;
+        MemHit_setValid(commitedHit, 1);
 
         __builtin_IB_intel_update_ray_query(
             rayquery,
@@ -160,7 +166,7 @@ void intel_ray_query_commit_potential_hit(intel_ray_query_t rayquery)
     }
     else
     {
-        MemHit_setValid(&rtStack->hit[POTENTIAL], 1); // FIXME: is this required?
+        MemHit_setValid(potentialHit, 1); // FIXME: is this required?
 
         __builtin_IB_intel_update_ray_query(
             rayquery,
@@ -176,19 +182,20 @@ void intel_ray_query_commit_potential_hit(intel_ray_query_t rayquery)
 void intel_ray_query_commit_potential_hit_override(
     intel_ray_query_t rayquery, float override_hit_distance, intel_float2 override_uv)
 {
-    global RTStack*         rtStack  = __builtin_IB_intel_query_rt_stack(rayquery);
-    rtStack->hit[POTENTIAL].t = override_hit_distance;
-    MemHit_setUV(&rtStack->hit[POTENTIAL], override_uv.x, override_uv.y);
+    global void*         rtStack  = __builtin_IB_intel_query_rt_stack(rayquery);
+    MemHit* potentialHit = get_rt_stack_hit(rtStack, intel_hit_type_potential_hit);
+    potentialHit->t = override_hit_distance;
+    MemHit_setUV(potentialHit, override_uv.x, override_uv.y);
     intel_ray_query_commit_potential_hit(rayquery);
 }
 
 void intel_ray_query_start_traversal(intel_ray_query_t rayquery)
 {
     rtglobals_t             dispatchGlobalsPtr = __builtin_IB_intel_query_rt_globals(rayquery);
-    global RTStack*         rtStack            = __builtin_IB_intel_query_rt_stack(rayquery);
-
-    MemHit_setDone(&rtStack->hit[POTENTIAL], 1);
-    MemHit_setValid(&rtStack->hit[POTENTIAL], 1);
+    global void*            rtStack            = __builtin_IB_intel_query_rt_stack(rayquery);
+    MemHit* potentialHit = get_rt_stack_hit(rtStack, intel_hit_type_potential_hit);
+    MemHit_setDone(potentialHit, 1);
+    MemHit_setValid(potentialHit, 1);
 
     TraceRayCtrl ctrl = __builtin_IB_intel_query_ctrl(rayquery);
 
@@ -214,9 +221,9 @@ void intel_ray_query_sync(intel_ray_query_t rayquery)
     rtfence_t fence = __builtin_IB_intel_query_rt_fence(rayquery);
     __builtin_IB_intel_rt_sync(fence);
 
-    global RTStack* rtStack = __builtin_IB_intel_query_rt_stack(rayquery);
-
-    uint bvh_level = MemHit_getBvhLevel(&rtStack->hit[POTENTIAL]);
+    global void* rtStack = __builtin_IB_intel_query_rt_stack(rayquery);
+    MemHit* potentialHit = get_rt_stack_hit(rtStack, intel_hit_type_potential_hit);
+    uint bvh_level = MemHit_getBvhLevel(potentialHit);
 
      __builtin_IB_intel_update_ray_query(
         rayquery,
@@ -397,39 +404,42 @@ void intel_get_hit_triangle_vertices(
 // during any-hit or intersection shader execution.
 intel_float3 intel_get_ray_origin(intel_ray_query_t rayquery, uint bvh_level)
 {
-    global RTStack*         rtStack  = __builtin_IB_intel_query_rt_stack(rayquery);
+    global void*         rtStack  = __builtin_IB_intel_query_rt_stack(rayquery);
 
-    global MemRay* ray = &rtStack->ray[bvh_level];
-    return (intel_float3){ray->org[0], ray->org[1], ray->org[2]};
+    MemRay* memRay = get_rt_stack_ray(rtStack, bvh_level);
+    return (intel_float3){memRay->org[0], memRay->org[1], memRay->org[2]};
 }
 
 intel_float3 intel_get_ray_direction(intel_ray_query_t rayquery, uint bvh_level)
 {
     global RTStack*         rtStack  = __builtin_IB_intel_query_rt_stack(rayquery);
 
-    global MemRay* ray = &rtStack->ray[bvh_level];
-    return (intel_float3){ray->dir[0], ray->dir[1], ray->dir[2]};
+    MemRay* memRay = get_rt_stack_ray(rtStack, bvh_level);
+    return (intel_float3){memRay->dir[0], memRay->dir[1], memRay->dir[2]};
 }
 
 float intel_get_ray_tmin(intel_ray_query_t rayquery, uint bvh_level)
 {
-    global RTStack*         rtStack  = __builtin_IB_intel_query_rt_stack(rayquery);
+    global void*         rtStack  = __builtin_IB_intel_query_rt_stack(rayquery);
 
-    return rtStack->ray[bvh_level].tnear;
+    MemRay* memRay = get_rt_stack_ray(rtStack, bvh_level);
+    return memRay->tnear;
 }
 
 intel_ray_flags_t intel_get_ray_flags(intel_ray_query_t rayquery, uint bvh_level)
 {
-    global RTStack*         rtStack  = __builtin_IB_intel_query_rt_stack(rayquery);
+    global void*         rtStack  = __builtin_IB_intel_query_rt_stack(rayquery);
 
-    return (intel_ray_flags_t)MemRay_getRayFlags(&rtStack->ray[bvh_level]);
+    MemRay* memRay = get_rt_stack_ray(rtStack, bvh_level);
+    return (intel_ray_flags_t)MemRay_getRayFlags(memRay);
 }
 
 int intel_get_ray_mask(intel_ray_query_t rayquery, uint bvh_level)
 {
-    global RTStack*         rtStack  = __builtin_IB_intel_query_rt_stack(rayquery);
+    global void*         rtStack  = __builtin_IB_intel_query_rt_stack(rayquery);
 
-    return MemRay_getRayMask(&rtStack->ray[bvh_level]);
+    MemRay* memRay = get_rt_stack_ray(rtStack, bvh_level);
+    return MemRay_getRayMask(memRay);
 }
 
 // Test whether traversal has terminated.  If false, the ray has reached
