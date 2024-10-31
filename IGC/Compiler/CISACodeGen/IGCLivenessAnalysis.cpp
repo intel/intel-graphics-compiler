@@ -96,20 +96,14 @@ ValueSet IGCLivenessAnalysisBase::getDefs(llvm::BasicBlock &BB) {
     return Difference;
 }
 
-// for every successor we take all of it's IN values
-// and the PHI values that are coming from our BB
-void IGCLivenessAnalysisBase::mergeSets(ValueSet *OutSet, llvm::BasicBlock *Succ) {
-    for (auto elem : In[Succ])
-        OutSet->insert(elem);
-}
-
 // we scan through all successors and merge their INSETs as our OUTSET
-void IGCLivenessAnalysisBase::combineOut(llvm::BasicBlock *BB, ValueSet *Set) {
+void IGCLivenessAnalysisBase::combineOut(llvm::BasicBlock *BB) {
     ValueSet *OutSet = &Out[BB];
     for (llvm::succ_iterator SI = llvm::succ_begin(BB), SE = llvm::succ_end(BB);
          SI != SE; ++SI) {
-        llvm::BasicBlock *Successor = *SI;
-        mergeSets(OutSet, Successor);
+        // for every successor we take all of it's IN values
+        // and the PHI values that are coming from our BB
+        OutSet->insert(In[*SI].begin(),In[*SI].end());
     }
 }
 
@@ -251,7 +245,7 @@ void IGCLivenessAnalysisBase::livenessAnalysis(llvm::Function &F, BBSet *StartBB
         ValueSet *OutSet = &Out[BB];
         PhiSet *InPhiSet = &InPhi[BB];
 
-        combineOut(BB, OutSet);
+        combineOut(BB);
 
         unsigned int SizeBefore = InSet->size();
         unsigned int SizeBeforePhi = InPhiSet->size();

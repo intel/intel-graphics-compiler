@@ -77,7 +77,7 @@ namespace IGC {
 
         unsigned int registerSizeInBytes();
         void mergeSets(ValueSet *OutSet, llvm::BasicBlock *Succ);
-        void combineOut(llvm::BasicBlock *BB, ValueSet *Set);
+        void combineOut(llvm::BasicBlock *BB);
         void addToPhiSet(llvm::PHINode *Phi, PhiSet *InPhiSet);
         unsigned int addOperandsToSet(llvm::Instruction *Inst, ValueSet &Set, unsigned int SIMD, WIAnalysisRunner* WI, const DataLayout& DL);
         void addNonLocalOperandsToSet(llvm::Instruction *Inst, ValueSet &Set);
