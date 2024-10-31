@@ -82,8 +82,16 @@ LoopCountExpr vc::restoreLCEFromMetadata(const llvm::Loop &L) {
   auto *TI = Latch->getTerminator();
   IGC_ASSERT(TI);
   auto *ExprNode = TI->getMetadata(VCLoopExprMetaKind);
-  if (!ExprNode)
-    return LoopCountExpr{};
+  if (!ExprNode) {
+    // When hitting a critical_edge it is possible that
+    // a metadata could remain in an exiting block.
+    if (auto *Exit = Latch->getSinglePredecessor()) {
+      auto *ExitTI = Exit->getTerminator();
+      ExprNode = ExitTI->getMetadata(VCLoopExprMetaKind);
+    }
+    if (!ExprNode)
+      return LoopCountExpr{};
+  }
 
   LoopCountExpr LCE;
   LCE.IsUndef = false;
