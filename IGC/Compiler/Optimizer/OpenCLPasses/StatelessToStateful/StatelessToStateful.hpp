@@ -32,7 +32,7 @@ namespace IGC
         BINDLESS
     };
 
-    class StatelessToStateful : public llvm::ModulePass, public llvm::InstVisitor<StatelessToStateful>
+    class StatelessToStateful : public llvm::FunctionPass, public llvm::InstVisitor<StatelessToStateful>
     {
     public:
         typedef llvm::DenseMap<const KernelArg*, int> ArgInfoMap;
@@ -57,7 +57,7 @@ namespace IGC
             return "StatelessToStateful";
         }
 
-        virtual bool runOnModule(llvm::Module &M) override;
+        virtual bool runOnFunction(llvm::Function& F) override;
 
         void visitLoadInst(llvm::LoadInst& I);
         void visitStoreInst(llvm::StoreInst& I);
@@ -85,11 +85,6 @@ namespace IGC
             unsigned baseArgIndex = 0;
             std::optional<unsigned> statefulAddrSpace;
         };
-
-        void handleFunction(llvm::Function& F);
-
-        void setModuleUsesBindless();
-        bool getModuleUsesBindless();
 
         void findPromotableInstructions();
         void addToPromotionMap(llvm::Instruction& I, llvm::Value* Ptr);

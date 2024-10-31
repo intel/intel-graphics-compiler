@@ -785,11 +785,6 @@ namespace IGC
         uint8_t SIMD32_SpillThreshold = 0;
 
         CacheControlOverride m_CacheControlOption;
-
-        // Set to true by StatelessToStateful(Bindless) if any instruction in
-        // a module was promoted to stateless. Used to avoid bindless and bindful
-        // mode in one module.
-        bool ModuleUsesBindless = false;
     };
 
     void serialize(const IGC::ModuleMetaData &moduleMD, llvm::Module* module);
