@@ -32,6 +32,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/DynamicLibrary.h>
 #include <llvm/Support/StringSaver.h>
 #include <llvm/Support/Host.h>
+#include <llvmWrapper/ADT/Optional.h>
 #pragma warning(default:4242)
 #pragma warning(default:4146)
 #pragma warning(default:4141)
@@ -393,9 +394,9 @@ static std::vector<const char*>
 
     // this was old hack before FE can pass platform, now we prefer to use argument
     // but if it is null, it may be still useful, so let it be for a while
-    auto cmfeDefaultArchOpt = llvm::sys::Process::GetEnv("IGC_CMFE_DEFAULT_ARCH");
+    auto cmfeDefaultArchOpt = IGCLLVM::makeOptional(llvm::sys::Process::GetEnv("IGC_CMFE_DEFAULT_ARCH"));
     const std::string& cmfeDefaultArch =
-        cmfeDefaultArchOpt ? cmfeDefaultArchOpt.getValue() : "";
+        cmfeDefaultArchOpt ? cmfeDefaultArchOpt.value() : "";
 
     std::string inputFile = "src.cm";
     isMemFile = processCmSrcOptions(userArgs, "-cm-src", inputFile) ||
@@ -421,10 +422,10 @@ static std::vector<const char*>
     result.push_back(stringSaver.save(inputFile).data());
     result.insert(result.end(), userArgs.begin(), userArgs.end());
 
-    auto ExtraCMOpts = llvm::sys::Process::GetEnv("IGC_ExtraCMOptions");
+    auto ExtraCMOpts = IGCLLVM::makeOptional(llvm::sys::Process::GetEnv("IGC_ExtraCMOptions"));
     if (ExtraCMOpts) {
         llvm::SmallVector<const char *, 8> Argv;
-        llvm::cl::TokenizeGNUCommandLine(ExtraCMOpts.getValue(), stringSaver, Argv);
+        llvm::cl::TokenizeGNUCommandLine(ExtraCMOpts.value(), stringSaver, Argv);
         result.insert(result.end(), Argv.begin(), Argv.end());
     }
 
@@ -549,14 +550,17 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
     auto ErrFn = [&Out](const std::string& Err) {
         Out.GetImpl()->SetError(TranslationErrorType::Internal, Err.c_str());
     };
+
     auto MaybeFE =
-        IGC::AdaptorCM::Frontend::makeFEWrapper(ErrFn, getCMFEWrapperDir());
+        IGCLLVM::makeOptional(
+          IGC::AdaptorCM::Frontend::makeFEWrapper(ErrFn, getCMFEWrapperDir()));
+
     if (!MaybeFE)
         return outputInterface;
 
     llvm::BumpPtrAllocator A;
     llvm::StringSaver Saver(A);
-    auto& FE = MaybeFE.getValue();
+    auto& FE = MaybeFE.value();
     bool isMemFile = false;
     auto FeArgs = processFeOptions(FE.LibInfo(), src, Out,
                                    options, Saver, platformStr,
