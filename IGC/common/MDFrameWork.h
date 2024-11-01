@@ -59,6 +59,10 @@ namespace IGC
     };
 
 #include "RaytracingShaderTypes.h" // ^MDFramework^: .
+enum class ShaderTypeMD
+{
+#include "ShaderTypesIncl.h" // ^MDFramework^: .
+};
 
     enum ResourceTypeEnum
     {

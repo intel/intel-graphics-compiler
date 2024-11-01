@@ -119,19 +119,7 @@ inline SIMDMode lanesToSIMDMode(unsigned lanes) {
 
 enum class ShaderType
 {
-    UNKNOWN,
-    VERTEX_SHADER,
-    HULL_SHADER,
-    DOMAIN_SHADER,
-    GEOMETRY_SHADER,
-    TASK_SHADER,
-    MESH_SHADER,
-    PIXEL_SHADER,
-    COMPUTE_SHADER,
-    OPENCL_SHADER,
-    RAYTRACING_SHADER,
-    END,
-    BEGIN = 0
+#include "ShaderTypesIncl.h"
 };
 
 enum class ShaderDispatchMode
