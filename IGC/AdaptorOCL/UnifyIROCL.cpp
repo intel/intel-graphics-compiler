@@ -132,6 +132,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/BufferBoundsChecking/BufferBoundsCheckingPatcher.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/MinimumValidAddressChecking/MinimumValidAddressChecking.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/Spv2dBlockIOResolution/Spv2dBlockIOResolution.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/SpvSubgroupMMAResolution/SpvSubgroupMMAResolution.hpp"
 
 #include "common/debug/Debug.hpp"
 #include "common/igc_regkeys.hpp"
@@ -412,6 +413,8 @@ static void CommonOCLBasedPasses(OpenCLProgramContext* pContext)
 
     // This pass should be run before BuiltInImport and before Inlining to allow cache control to be resolved
     mpm.add(new Spv2dBlockIOResolution());
+
+    mpm.add(new SpvSubgroupMMAResolution());
 
     mpm.add(new PreBIImportAnalysis());
     mpm.add(createTimeStatsCounterPass(pContext, TIME_Unify_BuiltinImport, STATS_COUNTER_START));
