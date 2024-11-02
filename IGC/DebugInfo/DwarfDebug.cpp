@@ -727,10 +727,7 @@ DIE *DwarfDebug::createScopeChildrenDIE(CompileUnit *TheCU, LexicalScope *Scope,
 
   {
     // Collect lexical scope variables.
-    DbgVariablesVect Variables = ScopeVariables.lookup(Scope);
-    // Reverse the vector of the variables to unify locals order
-    // printed by cpu & gpu under debugger.
-    std::reverse(Variables.begin(), Variables.end());
+    const DbgVariablesVect &Variables = ScopeVariables.lookup(Scope);
     std::copy(Variables.begin(), Variables.end(),
               std::back_inserter(dbgVariables));
   }
