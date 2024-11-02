@@ -1499,10 +1499,7 @@ void RTBuilder::setReturnAlignment(CallInst* CI, uint32_t AlignVal)
 
 void RTBuilder::setDereferenceable(CallInst* CI, uint32_t Size)
 {
-    if (Size)
-    {
-        CI->addRetAttr(Attribute::getWithDereferenceableBytes(CI->getContext(), Size));
-    }
+    CI->addRetAttr(Attribute::getWithDereferenceableBytes(CI->getContext(), Size));
 }
 
 Value* RTBuilder::getGlobalBufferPtr(IGC::ADDRESS_SPACE Addrspace)
