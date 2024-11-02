@@ -466,6 +466,7 @@ enum class ShaderTypeMD
         bool DisableLscSamplerRouting                   = false;
         bool UseBarrierControlFlowOptimization          = false;
         bool disableDynamicRQManagement                 = false;
+        unsigned Quad8InputThreshold                    = 0;
     };
 
     enum class ThreadIDLayout
