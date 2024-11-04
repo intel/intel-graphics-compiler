@@ -74,7 +74,7 @@ if (MSVC)
               DESTINATION ../Test_Tools/Debug/x64/Standalones            CONFIGURATIONS Debug)
   endif(CMAKE_SIZEOF_VOID_P EQUAL 8)
 elseif (UNIX)
-  install(TARGETS FC_EXE RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT igc-media)
+  install(TARGETS FC_EXE RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT igc-opencl-devel)
 endif (MSVC)
 
 set_target_properties(FC_EXE PROPERTIES
