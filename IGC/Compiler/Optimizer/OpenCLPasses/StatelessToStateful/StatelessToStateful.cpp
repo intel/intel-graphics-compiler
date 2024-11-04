@@ -138,16 +138,33 @@ static cl::opt<TargetAddressing> targetAddressingMode(
 
 char StatelessToStateful::ID = 0;
 
-StatelessToStateful::StatelessToStateful() : FunctionPass(ID), m_targetAddressing(targetAddressingMode) {}
+StatelessToStateful::StatelessToStateful() : ModulePass(ID), m_targetAddressing(targetAddressingMode) {}
 
 StatelessToStateful::StatelessToStateful(TargetAddressing addressing)
-    : FunctionPass(ID),
+    : ModulePass(ID),
     m_targetAddressing(addressing)
 {
     initializeStatelessToStatefulPass(*PassRegistry::getPassRegistry());
 }
 
-bool StatelessToStateful::runOnFunction(llvm::Function& F)
+bool StatelessToStateful::runOnModule(llvm::Module& M)
+{
+    m_Module = &M;
+
+    if (m_targetAddressing == TargetAddressing::BINDFUL && getModuleUsesBindless() == true)
+    {
+        return false;
+    }
+
+    for (auto& it : M.functions())
+    {
+        handleFunction(it);
+    }
+
+    return m_changed;
+}
+
+void StatelessToStateful::handleFunction(llvm::Function& F)
 {
     MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
@@ -155,16 +172,15 @@ bool StatelessToStateful::runOnFunction(llvm::Function& F)
     if (modMD->compOpt.OptDisable)
     {
         IGC_ASSERT_MESSAGE(0, "StatelessToStateful should be disabled for -O0!");
-        return false;
+        return;
     }
 
     // skip non-entry functions
     if (!isEntryFunc(pMdUtils, &F))
     {
-        return false;
+        return;
     }
 
-    m_Module = F.getParent();
     m_F = &F;
 
     if (IGC_IS_FLAG_ENABLED(EnableCodeAssumption))
@@ -200,7 +216,6 @@ bool StatelessToStateful::runOnFunction(llvm::Function& F)
     delete m_pImplicitArgs;
     delete m_pKernelArgs;
     m_promotionMap.clear();
-    return m_changed;
 }
 
 Argument* StatelessToStateful::getBufferOffsetArg(Function* F, uint32_t ArgNumber)
@@ -579,6 +594,8 @@ void StatelessToStateful::promoteIntrinsic(InstructionInfo& II)
             newBlockRead->setDebugLoc(I->getDebugLoc());
             I->replaceAllUsesWith(newBlockRead);
             I->eraseFromParent();
+
+            setModuleUsesBindless();
         }
         else if (intrinID == GenISAIntrinsic::GenISA_simdBlockWrite)
         {
@@ -589,6 +606,8 @@ void StatelessToStateful::promoteIntrinsic(InstructionInfo& II)
             newBlockWrite->setDebugLoc(I->getDebugLoc());
             I->replaceAllUsesWith(newBlockWrite);
             I->eraseFromParent();
+
+            setModuleUsesBindless();
         }
         return;
     }
@@ -695,6 +714,7 @@ void StatelessToStateful::promoteLoad(InstructionInfo& II)
 
         I->replaceAllUsesWith(bindlessLoad);
         I->eraseFromParent();
+        setModuleUsesBindless();
     }
     else if (m_targetAddressing == TargetAddressing::BINDFUL || WA_ForcedUsedOfBindfulMode(*m_F))
     {
@@ -748,6 +768,7 @@ void StatelessToStateful::promoteStore(InstructionInfo& II)
         bindlessStore->setDebugLoc(DL);
 
         I->eraseFromParent();
+        setModuleUsesBindless();
     }
     else if (m_targetAddressing == TargetAddressing::BINDFUL || WA_ForcedUsedOfBindfulMode(*m_F))
     {
@@ -811,6 +832,7 @@ void StatelessToStateful::promote()
                     *UndefValue::get(Type::getInt32Ty(m_Module->getContext())),
                     IGC::BINDLESS);
             setPointerSizeTo32bit(statefullAddrspace, m_Module);
+            setModuleUsesBindless();
         }
         else
         {
@@ -1097,4 +1119,16 @@ void StatelessToStateful::finalizeArgInitialValue(Function* F)
         AddInst->replaceAllUsesWith(AddInst->getOperand(1));
         AddInst->eraseFromParent();
     }
+}
+
+void StatelessToStateful::setModuleUsesBindless()
+{
+    auto MD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    MD->ModuleUsesBindless = true;
+    IGC::serialize(*MD, m_Module);
+}
+
+bool StatelessToStateful::getModuleUsesBindless()
+{
+    return getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->ModuleUsesBindless;
 }
