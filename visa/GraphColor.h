@@ -325,6 +325,9 @@ typedef struct Interval {
   Interval() = default;
   Interval(const Interval &) = default;
   Interval &operator=(const Interval &) = default;
+  bool operator!=(const Interval &Other) {
+    return start != Other.start || end != Other.end;
+  }
   Interval(G4_INST *s, G4_INST *e) {
     start = s;
     end = e;
@@ -544,6 +547,10 @@ private:
   void handlePred(FuncInfo* funcInfo, G4_INST *inst);
   void handleNonReducibleExtension(FuncInfo *funcInfo);
   void handleLoopExtension(FuncInfo *funcInfo);
+  std::unordered_set<G4_BB *> getAllJIPTargetBBs(FuncInfo *funcInfo);
+  std::vector<std::pair<G4_BB *, G4_BB *>>
+  getNonLoopBackEdges(FuncInfo *funcInfo);
+  void handleNonLoopBackEdges(FuncInfo *funcInfo);
   void extendVarLiveness(FuncInfo *funcInfo, G4_BB *bb, G4_INST *inst);
   unsigned getEnd(const G4_Declare *dcl) const;
   bool isNoMask(const G4_Declare *dcl, unsigned size) const;

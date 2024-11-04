@@ -4250,6 +4250,163 @@ void Augmentation::handleNonReducibleExtension(FuncInfo *funcInfo) {
   }
 }
 
+std::unordered_set<G4_BB *>
+Augmentation::getAllJIPTargetBBs(FuncInfo *funcInfo) {
+  // Any BB that has join as first non-label instruction is a JIP target.
+  std::unordered_set<G4_BB *> JIPTargetBBs;
+
+  for (auto *BB : funcInfo->getBBList()) {
+    if (BB->empty())
+      continue;
+    auto InstIt = BB->begin();
+    if ((*InstIt)->isLabel())
+      ++InstIt;
+    if (InstIt != BB->end() && (*InstIt)->opcode() == G4_join)
+      JIPTargetBBs.insert(BB);
+  }
+
+  return JIPTargetBBs;
+}
+
+std::vector<std::pair<G4_BB *, G4_BB *>>
+Augmentation::getNonLoopBackEdges(FuncInfo *funcInfo) {
+  auto &LoopBackEdges = kernel.fg.getAllNaturalLoops();
+  std::vector<std::pair<G4_BB *, G4_BB *>> NonLoopBackEdges;
+
+  for (auto *BB : funcInfo->getBBList()) {
+    if (BB->empty())
+      continue;
+    if (BB->back()->opcode() != G4_jmpi && BB->back()->opcode() != G4_goto)
+      continue;
+    auto LastInstLexId = BB->back()->getLexicalId();
+    for (auto *Succ : BB->Succs) {
+      vISA_ASSERT(!Succ->empty(), "expecting non-empty succ BB");
+      auto SuccInstLexId = Succ->front()->getLexicalId();
+      // Forward edge
+      if (SuccInstLexId > LastInstLexId)
+        continue;
+      // Check if this is a loop edge
+      auto Edge = std::pair(BB, Succ);
+      if (LoopBackEdges.find(Edge) == LoopBackEdges.end())
+        NonLoopBackEdges.push_back(Edge);
+    }
+  }
+
+  return NonLoopBackEdges;
+}
+
+void Augmentation::handleNonLoopBackEdges(FuncInfo *funcInfo) {
+
+  // up:
+  // (W) P5 =
+  // ...
+  // goto Later
+  // ...
+  // <other BBs>
+  // join down
+  //
+  // BB1:
+  // P21 = ...
+  // (P38) goto down
+  //
+  // otherBB:
+  // ...
+  // (W) jmpi (M1, 1) up
+  //
+  // down:
+  // = P21
+  //
+  // Later:
+  //
+  // In above snippet, following path may be taken:
+  // BB1, otherBB, up, down, Later
+  //
+  // P21 is defined in BB1. If P5 uses same register
+  // then it can clobber P21 before it gets used in
+  // down. So P5 and P21 intervals must overlap.
+  //
+  // If we've a non-loop backedge in an interval and if
+  // there's an incoming JIP edge within that interval
+  // then it means we should extend the interval up to
+  // the backedge destination. In above snippet, it means
+  // extending P21 to "up" so that it overlaps with P5.
+
+  auto AllJIPTargetBBs = getAllJIPTargetBBs(funcInfo);
+
+  // Return true if there's any JIP incoming edge within interval
+  auto hasIncomingJIPEdge = [&AllJIPTargetBBs](const vISA::Interval &Interval) {
+    for (auto *JIPTargetBB : AllJIPTargetBBs) {
+      vISA::Interval Temp(JIPTargetBB->front(), JIPTargetBB->front());
+      if (Interval.intervalsOverlap(Temp))
+        return true;
+    }
+    return false;
+  };
+
+  auto NonLoopBackEdges = getNonLoopBackEdges(funcInfo);
+  if (NonLoopBackEdges.empty()) {
+    VISA_DEBUG_VERBOSE({ std::cout << "No non-loop backedges found\n"; });
+    return;
+  }
+
+  auto getNonLoopBackEdgesInInterval =
+      [&NonLoopBackEdges](const vISA::Interval &Interval) {
+        std::vector<std::pair<G4_BB *, G4_BB *>> NonLoopBackEdgesInInterval;
+
+        for (auto &NonLoopBackEdge : NonLoopBackEdges) {
+          vISA::Interval Temp(NonLoopBackEdge.first->back(),
+                              NonLoopBackEdge.first->back());
+          if (Interval.intervalsOverlap(Temp))
+            NonLoopBackEdgesInInterval.push_back(NonLoopBackEdge);
+        }
+
+        return NonLoopBackEdgesInInterval;
+      };
+
+  for (G4_Declare *Dcl : kernel.Declares) {
+    auto &All = gra.getAllIntervals(Dcl);
+    // We shouldn't need to consider special variables like args, retval.
+    // Because such variables are not defined/used in same function.
+    if (All.size() != 1)
+      continue;
+    auto &Interval = All[0];
+    bool Change = false;
+    // Handle transitive backwards branches
+    // TODO: Handle forward branch from interval that later jump backwards
+    // and cause JIP edge to be taken in the middle of the interval.
+    do {
+      Change = false;
+      auto Start = Interval.start;
+      if (hasSubroutines && instToFunc[Start->getLexicalId()] != funcInfo)
+        continue;
+      if (!hasIncomingJIPEdge(Interval))
+        continue;
+      std::vector<std::pair<G4_BB *, G4_BB *>> NonLoopBackEdges =
+          getNonLoopBackEdgesInInterval(Interval);
+
+      for (auto &NonLoopBackEdge : NonLoopBackEdges) {
+        if (NonLoopBackEdge.second) {
+          vISA_ASSERT(NonLoopBackEdge.second->size() > 0,
+                      "expecting backedge target to be non-empty");
+          auto StartLexId = Interval.start->getLexicalId();
+          if (StartLexId > NonLoopBackEdge.second->front()->getLexicalId()) {
+            VISA_DEBUG_VERBOSE({
+              std::cout << "Updating start interval for " << Dcl->getName()
+                        << " from " << StartLexId << " to "
+                        << NonLoopBackEdge.second->front()->getLexicalId()
+                        << " - ";
+              NonLoopBackEdge.second->front()->dump();
+            });
+            auto OldInterval = Interval;
+            updateStartInterval(Dcl, NonLoopBackEdge.second->front());
+            Change = (OldInterval != Interval);
+          }
+        }
+      }
+    } while (Change);
+  }
+}
+
 void Augmentation::handleLoopExtension(FuncInfo *funcInfo) {
   // process each natural loop
   for (auto &iter : kernel.fg.getAllNaturalLoops()) {
@@ -4383,6 +4540,8 @@ void Augmentation::buildLiveIntervals(FuncInfo* funcInfo) {
       handlePred(funcInfo, inst);
     }
   }
+
+  handleNonLoopBackEdges(funcInfo);
 
   // A variable may be defined in each divergent loop iteration and used
   // outside the loop. SIMT liveness can detect the variable as KILL and
