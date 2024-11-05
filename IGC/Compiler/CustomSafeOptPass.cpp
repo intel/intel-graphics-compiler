@@ -62,6 +62,8 @@ cmp+sel to avoid expensive VxH mov.
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "common/IGCConstantFolder.h"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvm/Config/llvm-config.h"
+#include <llvmWrapper/ADT/APInt.h>
 #include "llvmWrapper/IR/IntrinsicInst.h"
 #include <llvmWrapper/IR/DIBuilder.h>
 #include <llvmWrapper/IR/DerivedTypes.h>
@@ -71,7 +73,6 @@ cmp+sel to avoid expensive VxH mov.
 #include <llvm/ADT/Statistic.h>
 #include <llvm/ADT/SetVector.h>
 #include <llvm/Analysis/ConstantFolding.h>
-#include <llvm/Analysis/InstructionSimplify.h>
 #include <llvm/IR/Constants.h>
 #include "llvm/IR/DebugInfo.h"
 #include <llvm/IR/Function.h>
@@ -2736,80 +2737,50 @@ void GenSpecificPattern::visitMul(llvm::BinaryOperator& I)
     Value* ValOp = nullptr;
     const APInt* ConstOp = nullptr;
     using namespace llvm::PatternMatch;
-    if (!match(&I, m_c_Mul(m_Value(ValOp), m_APInt(ConstOp))))
-        return;
-
-    const bool HasNUW = I.hasNoUnsignedWrap();
-    const bool HasNSW = I.hasNoSignedWrap();
-    IRBuilder<> builder(&I);
-    // 0. Skip the optimization for mul(x, {1; -1}) - in most cases, such
-    // instances are generated within i64 emulation sequences, and the emitter
-    // is geared toward such patterns.
-    if (ConstOp->isOne() || ConstOp->isAllOnes())
-        return;
-
-    // 1. 2^n case
-    if (ConstOp->isPowerOf2())
+    if (match(&I, m_c_Mul(m_Value(ValOp), m_APInt(ConstOp))))
     {
+        IRBuilder<> builder(&I);
+        if (ConstOp->isPowerOf2())
+        {
+            I.replaceAllUsesWith(
+                builder.CreateShl(ValOp, (uint64_t)ConstOp->exactLogBase2()));
+            I.eraseFromParent();
+            return;
+        }
+        else if (!IGCLLVM::isNegatedPowerOf2(*ConstOp))
+            return;
+
+        APInt ConstOpAbs = ConstOp->abs();
         Value* Shl = builder.CreateShl(
-            ValOp, (uint64_t)ConstOp->exactLogBase2(), "",
-            /*bool NUW=*/HasNUW, /*bool NSW=*/HasNSW);
-        I.replaceAllUsesWith(Shl);
+            ValOp, (uint64_t)ConstOpAbs.exactLogBase2());
+        for (User* UI : I.users())
+        {
+            // We're going a little further and making sure that we merge the
+            // shift result's negation with any subsequent adds:
+            //   '%shift = shl i64 %x, n'
+            //   '%res' = sub %var, %shift
+            // preventing the additional negation in between the shift and the
+            // `var` addition. This kind of a peephole optimization may not be
+            // available later down the pipeline.
+            // TODO: Consider moving this logic to add/sub visitors once the
+            // whole GenSpecificPattern iteration logic is guaranteed to allow
+            // deferred instructions.
+            Value* Addend = nullptr;
+            if (match(UI, m_c_Add(m_Specific(&I), m_Value(Addend))))
+            {
+                // Propagate the 'shl' <- 'sub' results instead. No way to
+                // erase the original adds within this pass just yet, as we'd
+                // be invalidating the InstVisitor iteration, but subsequent
+                // DCE instances will handle the orphaned instructions anyway.
+                builder.SetInsertPoint(cast<Instruction>(UI));
+                UI->replaceAllUsesWith(builder.CreateSub(Addend, Shl));
+            }
+        }
+        // Make sure to reset the insertion point for the shl negation after
+        // the possible transformations above
+        builder.SetInsertPoint(&I);
+        I.replaceAllUsesWith(builder.CreateNeg(Shl));
         I.eraseFromParent();
-        return;
-    }
-
-    // 2. -2^n case
-    if (!ConstOp->isNegatedPowerOf2())
-        return;
-    APInt ConstOpAbs = ConstOp->abs();
-    Value* Shl = builder.CreateShl(
-        ValOp, (uint64_t)ConstOpAbs.exactLogBase2(), "",
-        /*bool NUW=*/HasNUW, /*bool NSW=*/HasNSW);
-    // NB: We should retain NUW infromation in our case, so a simpler
-    // IRBuilder<>::CreateNeg doesn't cut it.
-    Value* Sub = builder.CreateSub(Constant::getNullValue(Shl->getType()), Shl,
-        "", /*bool NUW=*/HasNUW,/*bool NSW=*/HasNSW);
-    I.replaceAllUsesWith(Sub);
-    I.eraseFromParent();
-
-    // Go a little further and make sure to merge the shift result's negation
-    // with any subsequent adds:
-    //   '%shift = shl i64 %x, n'
-    //   '%res' = sub %var, %shift
-    // preventing the additional negation in between the shift and `var`
-    // addition.
-    //
-    // TODO: Consider also folding sdiv/srem uses with a constant operand by
-    // negating said operand and using the 'shl' result directly. No reason to
-    // consider 'mul's though - in case of matching overflow flags, we'd expect
-    // these to be constant-folded with the original 'mul' earlier in the
-    // pipeline.
-    //
-    // TODO: Consider re-using an LLVM routine of some sort for this
-    // optimization. That said, on LLVM 14, llvm::SimplifyBinOp() and
-    // higher-level IRBuilder<InstSimplifyFolder>::CreateAdd()/CreateBinOp()
-    // replacements fail to work out of the box.
-    // Alternatively, move this logic to add/sub visitors once the whole
-    // GenSpecificPattern iteration logic allows for deferred instructions.
-    for (User* UI : Sub->users())
-    {
-        Value* Addend = nullptr;
-        if (!match(UI, m_c_Add(m_Specific(Sub), m_Value(Addend))))
-            continue;
-        // Propagate the 'shl' <- 'sub' results instead. No way to erase the
-        // original adds within this pass just yet, as we'd invalidate the
-        // ongoing InstVisitor iteration, however subsequent DCE instances will
-        // handle the orphaned instructions anyway.
-        auto* AddI = cast<Instruction>(UI);
-        if (AddI->hasNoUnsignedWrap() != HasNUW ||
-            AddI->hasNoSignedWrap() != HasNSW)
-            continue;
-
-        builder.SetInsertPoint(AddI);
-        Value* Sub = builder.CreateSub(
-            Addend, Shl, "", /*bool NUW=*/HasNUW, /*bool NSW=*/HasNSW);
-        AddI->replaceAllUsesWith(Sub);
     }
 }
 

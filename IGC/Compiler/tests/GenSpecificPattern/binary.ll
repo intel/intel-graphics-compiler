@@ -104,5 +104,50 @@ define void @test_and64(double %src1) {
   ret void
 }
 
+define void @test_simple_mul_pow2(i32 %arg) {
+  %1 = mul i32 %arg, 16
+  call void @use.i32(i32 %1)
+  ret void
+}
+; CHECK-LABEL: @test_simple_mul_pow2(i32 %arg
+; CHECK:       %[[SHL:.+]] = shl i32 %arg, 4
+; CHECK:       call void @use.i32(i32 %[[SHL]])
+; CHECK:       ret void
+
+define void @test_mul_neg_pow2_with_adds(i32 %arg0, i32 %arg1, i32 %arg2) {
+entry:
+; COM: The mul itself + simple use
+  %0 = mul i32 %arg0, -1024
+  call void @use.i32(i32 %0)
+  br label %.add1
+.add1:
+; COM: mul + addend
+  %1 = add i32 %0, %arg1
+  call void @use.i32(i32 %1)
+  br label %.add2
+.add2:
+; COM: addend + mul
+  %2 = add i32 %arg2, %0
+  call void @use.i32(i32 %2)
+  ret void
+}
+; CHECK-LABEL: @test_mul_neg_pow2_with_adds(i32 %arg0, i32 %arg1, i32 %arg2
+; COM: The mul itself + simple use
+; CHECK:     entry:
+; CHECK:       %[[SHL:.+]] = shl i32 %arg0, 10
+; CHECK:       %[[NEG:.+]] = sub i32 0, %[[SHL]]
+; CHECK:       call void @use.i32(i32 %[[NEG]])
+; CHECK:     br label %.add1
+; COM: mul + addend -> addend - shl
+; CHECK:     .add1:
+; CHECK:       %[[SUB1:.+]] = sub i32 %arg1, %[[SHL]]
+; CHECK:       call void @use.i32(i32 %[[SUB1]])
+; CHECK:       br label %.add2
+; COM: addend + mul -> addend - shl
+; CHECK:     .add2:
+; CHECK:       %[[SUB2:.+]] = sub i32 %arg2, %[[SHL]]
+; CHECK:       call void @use.i32(i32 %[[SUB2]])
+; CHECK:       ret void
+
 declare void @use.i64(i64)
 declare void @use.i32(i32)
