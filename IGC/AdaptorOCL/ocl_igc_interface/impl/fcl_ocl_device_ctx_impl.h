@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -93,44 +93,30 @@ __except (ex_filter(GetExceptionCode(), GetExceptionInformation()))           \
 #else
 OCL_API_CALL void signalHandler(int sig, siginfo_t* info, void* ucontext);
 
-#define SET_SIG_HANDLER(SIG)                                                  \
-struct sigaction saold_##SIG;                                                 \
-sigaction(SIG, NULL, &saold_##SIG);                                           \
-if (saold_##SIG.sa_handler == SIG_DFL)                                        \
-{                                                                             \
-    sigaction(SIG, &sa, NULL);                                                \
-}                                                                             \
+#include "igc_signal_guard.h"
 
-#define REMOVE_SIG_HANDLER(SIG)                                               \
-if (saold_##SIG.sa_handler == SIG_DFL)                                        \
-{                                                                             \
-    sigaction(SIG, &saold_##SIG, NULL);                                       \
-}                                                                             \
+#define EX_GUARD_BEGIN                                                         \
+  do {                                                                         \
+    SET_SIG_HANDLER(SIGABRT)                                                   \
+    SET_SIG_HANDLER(SIGFPE)                                                    \
+    SET_SIG_HANDLER(SIGILL)                                                    \
+    SET_SIG_HANDLER(SIGINT)                                                    \
+    SET_SIG_HANDLER(SIGSEGV)                                                   \
+    SET_SIG_HANDLER(SIGTERM)                                                   \
+    int sig = setjmp(sig_jmp_buf);                                             \
+    if (sig == 0) {
 
-#define EX_GUARD_BEGIN                                                        \
-struct sigaction sa;                                                          \
-sigemptyset(&sa.sa_mask);                                                     \
-sa.sa_sigaction = signalHandler;                                              \
-sa.sa_flags = 0;                                                              \
-SET_SIG_HANDLER(SIGABRT)                                                      \
-SET_SIG_HANDLER(SIGFPE)                                                       \
-SET_SIG_HANDLER(SIGILL)                                                       \
-SET_SIG_HANDLER(SIGINT)                                                       \
-SET_SIG_HANDLER(SIGSEGV)                                                      \
-SET_SIG_HANDLER(SIGTERM)                                                      \
-int sig = setjmp(sig_jmp_buf);                                                \
-if (sig == 0) {                                                               \
-
-#define EX_GUARD_END                                                          \
-} else {                                                                      \
-    return nullptr;                                                            \
-}                                                                             \
-REMOVE_SIG_HANDLER(SIGABRT)                                                   \
-REMOVE_SIG_HANDLER(SIGFPE)                                                    \
-REMOVE_SIG_HANDLER(SIGILL)                                                    \
-REMOVE_SIG_HANDLER(SIGINT)                                                    \
-REMOVE_SIG_HANDLER(SIGSEGV)                                                   \
-REMOVE_SIG_HANDLER(SIGTERM)                                                   \
+#define EX_GUARD_END                                                           \
+    } else {                                                                   \
+      return nullptr;                                                          \
+    }                                                                          \
+    REMOVE_SIG_HANDLER(SIGABRT)                                                \
+    REMOVE_SIG_HANDLER(SIGFPE)                                                 \
+    REMOVE_SIG_HANDLER(SIGILL)                                                 \
+    REMOVE_SIG_HANDLER(SIGINT)                                                 \
+    REMOVE_SIG_HANDLER(SIGSEGV)                                                \
+    REMOVE_SIG_HANDLER(SIGTERM)                                                \
+  } while (0);
 
 #endif
 #else
