@@ -71,6 +71,9 @@ bool vc::isConstantStringFirstElementGEP(const GEPOperator &GEP) {
 }
 
 bool vc::isConstantStringFirstElementGEP(const Value &V) {
+  // GEP can be missing in case of opaque pointers
+  if (isConstantString(V))
+    return true;
   if (!isa<GEPOperator>(V))
     return false;
   return isConstantStringFirstElementGEP(cast<GEPOperator>(V));
@@ -86,6 +89,9 @@ const GlobalVariable *vc::getConstStringGVFromOperandOptional(const Value &Op) {
   IGC_ASSERT_MESSAGE(Op.getType()->isPointerTy(),
                      "wrong argument: pointer was expected");
   auto &MaybeGEP = ignoreCastToGenericAS(Op);
+  // GEP can be missing in case of opaque pointers
+  if (isConstantString(MaybeGEP))
+    return &cast<GlobalVariable>(MaybeGEP);;
   if (!isa<GEPOperator>(MaybeGEP))
     return nullptr;
   auto &GEP = cast<GEPOperator>(MaybeGEP);
@@ -208,10 +214,13 @@ bool vc::isLegalPrintFormatIndexGEP(const GEPOperator &GEP) {
                      [](const User *Usr) { return isPrintFormatIndex(*Usr); });
 }
 
-bool vc::isLegalPrintFormatIndexGEP(const Value &V) {
-  if (!isa<GEPOperator>(V))
+bool vc::isLegalPrintFormatIndexGEP(const User &Usr) {
+  // GEP can be missing in case of opaque pointers
+  if (isPrintFormatIndex(Usr))
+    return true;
+  if (!isa<GEPOperator>(Usr))
     return false;
-  return isLegalPrintFormatIndexGEP(cast<GEPOperator>(V));
+  return isLegalPrintFormatIndexGEP(cast<GEPOperator>(Usr));
 }
 
 bool vc::isPrintFormatIndexGEP(const GEPOperator &GEP) {
@@ -221,8 +230,11 @@ bool vc::isPrintFormatIndexGEP(const GEPOperator &GEP) {
                      [](const User *Usr) { return isPrintFormatIndex(*Usr); });
 }
 
-bool vc::isPrintFormatIndexGEP(const Value &V) {
-  if (!isa<GEPOperator>(V))
+bool vc::isPrintFormatIndexGEP(const User &Usr) {
+  // GEP can be missing in case of opaque pointers
+  if (isPrintFormatIndex(Usr))
+    return true;
+  if (!isa<GEPOperator>(Usr))
     return false;
-  return isPrintFormatIndexGEP(cast<GEPOperator>(V));
+  return isPrintFormatIndexGEP(cast<GEPOperator>(Usr));
 }

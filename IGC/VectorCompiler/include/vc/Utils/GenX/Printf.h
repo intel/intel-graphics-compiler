@@ -75,13 +75,13 @@ llvm::CallInst &createPrintFormatIndex(llvm::Value &Pointer,
 // and then handled as part of the intrinsic. This function checks whether \p
 // GEP is a such GEP.
 bool isLegalPrintFormatIndexGEP(const llvm::GEPOperator &GEP);
-bool isLegalPrintFormatIndexGEP(const llvm::Value &V);
+bool isLegalPrintFormatIndexGEP(const llvm::User &Usr);
 
 // Checks whether GEP with some format index users is provided.
 // Unlike isLegalPrintFormatIndexGEP this function doesn't require all users to
 // be format indices.
-bool isPrintFormatIndexGEP(const llvm::Value &V);
-bool isPrintFormatIndexGEP(const llvm::GEPOperator &V);
+bool isPrintFormatIndexGEP(const llvm::GEPOperator &GEP);
+bool isPrintFormatIndexGEP(const llvm::User &Usr);
 
 static inline bool isPrintfName(llvm::StringRef Name) {
   return Name == "printf" || Name.contains("__spirv_ocl_printf");

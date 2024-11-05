@@ -1,12 +1,13 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXPrintfResolution -vc-printf-bif-path=%VC_PRITF_OCL_BIF% -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXPrintfResolution -vc-printf-bif-path=%VC_PRITF_OCL_BIF% -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXPrintfResolution -vc-printf-bif-path=%VC_PRITF_OCL_BIF% -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-p6:32:32-i64:64-n8:16:32:64"
 
@@ -24,9 +25,12 @@ define dllexport spir_kernel void @cast_then_gep() {
   %printf = call spir_func i32 (i8 addrspace(2)*, ...) @_Z18__spirv_ocl_printfPU3AS2c(i8 addrspace(2)* %fmt.str.ptr, i8 addrspace(4)* %arg.str.ptr)
 ; COM:                                                                       |Total|64-bit|  ptr | str  |fmt str|
 ; CHECK: %[[PRINTF_INIT:[^ ]+]] = call <4 x i32> @__vc_printf_init(<5 x i32> <i32 1, i32 0, i32 0, i32 1, i32 3>)
-; CHECK: %[[PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[PRINTF_INIT]], i8 addrspace(2)* %fmt.str.ptr)
+; CHECK-TYPED-PTRS: %[[PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[PRINTF_INIT]], i8 addrspace(2)* %fmt.str.ptr)
 ; COM: Note, generic address space was resolved.
-; CHECK: %[[PRINTF_ARG:[^ ]+]] = call <4 x i32> @__vc_printf_arg_str_global(<4 x i32> %[[PRINTF_FMT]], i8 addrspace(1)* getelementptr inbounds ([5 x i8], [5 x i8] addrspace(1)* @arg.str, i32 0, i32 0))
+; CHECK-TYPED-PTRS: %[[PRINTF_ARG:[^ ]+]] = call <4 x i32> @__vc_printf_arg_str_global(<4 x i32> %[[PRINTF_FMT]], i8 addrspace(1)* getelementptr inbounds ([5 x i8], [5 x i8] addrspace(1)* @arg.str, i32 0, i32 0))
+; CHECK-OPAQUE-PTRS: %[[PRINTF_FMT:[^ ]+]] = call <4 x i32> @__vc_printf_fmt(<4 x i32> %[[PRINTF_INIT]], ptr addrspace(2) %fmt.str.ptr)
+; COM: Note, generic address space was resolved.
+; CHECK-OPAQUE-PTRS: %[[PRINTF_ARG:[^ ]+]] = call <4 x i32> @__vc_printf_arg_str_global(<4 x i32> %[[PRINTF_FMT]], {{.*}}ptr addrspace(1) @arg.str
 ; CHECK: %printf = call i32 @__vc_printf_ret(<4 x i32> %[[PRINTF_ARG]])
   %user = add i32 %printf, 1
   ret void
@@ -39,7 +43,8 @@ define dllexport spir_kernel void @gep_then_cast() {
   %arg.str.ptr = addrspacecast i8 addrspace(1)* %arg.str.gep to i8 addrspace(4)*
   %printf = call spir_func i32 (i8 addrspace(2)*, ...) @_Z18__spirv_ocl_printfPU3AS2c(i8 addrspace(2)* %fmt.str.ptr, i8 addrspace(4)* %arg.str.ptr)
 ; COM: Note, generic address space was resolved.
-; CHECK: call <4 x i32> @__vc_printf_arg_str_global(<4 x i32> %{{[^ ,]+}}, i8 addrspace(1)* getelementptr inbounds ([5 x i8], [5 x i8] addrspace(1)* @arg.str, i32 0, i32 0))
+; CHECK-TYPED-PTRS: call <4 x i32> @__vc_printf_arg_str_global(<4 x i32> %{{[^ ,]+}}, i8 addrspace(1)* getelementptr inbounds ([5 x i8], [5 x i8] addrspace(1)* @arg.str, i32 0, i32 0))
+; CHECK-OPAQUE-PTRS: call <4 x i32> @__vc_printf_arg_str_global(<4 x i32> %{{[^ ,]+}}, {{.*}}ptr addrspace(1) @arg.str
   %user = add i32 %printf, 1
   ret void
 }
@@ -51,7 +56,8 @@ define dllexport spir_kernel void @cast_then_gep_const() {
   %arg.str.ptr = addrspacecast i8 addrspace(1)* %arg.str.gep to i8 addrspace(4)*
   %printf = call spir_func i32 (i8 addrspace(2)*, ...) @_Z18__spirv_ocl_printfPU3AS2c(i8 addrspace(2)* %fmt.str.ptr, i8 addrspace(4)* getelementptr inbounds ([5 x i8], [5 x i8] addrspace(4)* addrspacecast ([5 x i8] addrspace(1)* @arg.str to [5 x i8] addrspace(4)*), i64 0, i64 0))
 ; COM: Note, generic address space was resolved.
-; CHECK: call <4 x i32> @__vc_printf_arg_str_global(<4 x i32> %{{[^ ,]+}}, i8 addrspace(1)* getelementptr inbounds ([5 x i8], [5 x i8] addrspace(1)* @arg.str, i32 0, i32 0))
+; CHECK-TYPED-PTRS: call <4 x i32> @__vc_printf_arg_str_global(<4 x i32> %{{[^ ,]+}}, i8 addrspace(1)* getelementptr inbounds ([5 x i8], [5 x i8] addrspace(1)* @arg.str, i32 0, i32 0))
+; CHECK-OPAQUE-PTRS: call <4 x i32> @__vc_printf_arg_str_global(<4 x i32> %{{[^ ,]+}}, {{.*}}ptr addrspace(1) @arg.str
   %user = add i32 %printf, 1
   ret void
 }
@@ -63,7 +69,8 @@ define dllexport spir_kernel void @gep_then_cast_const() {
   %arg.str.ptr = addrspacecast i8 addrspace(1)* %arg.str.gep to i8 addrspace(4)*
   %printf = call spir_func i32 (i8 addrspace(2)*, ...) @_Z18__spirv_ocl_printfPU3AS2c(i8 addrspace(2)* %fmt.str.ptr, i8 addrspace(4)* addrspacecast (i8 addrspace(1)* getelementptr inbounds ([5 x i8], [5 x i8] addrspace(1)* @arg.str, i64 0, i64 0) to i8 addrspace(4)*))
 ; COM: Note, generic address space was resolved.
-; CHECK: call <4 x i32> @__vc_printf_arg_str_global(<4 x i32> %{{[^ ,]+}}, i8 addrspace(1)* getelementptr inbounds ([5 x i8], [5 x i8] addrspace(1)* @arg.str, i32 0, i32 0))
+; CHECK-TYPED-PTRS: call <4 x i32> @__vc_printf_arg_str_global(<4 x i32> %{{[^ ,]+}}, i8 addrspace(1)* getelementptr inbounds ([5 x i8], [5 x i8] addrspace(1)* @arg.str, i32 0, i32 0))
+; CHECK-OPAQUE-PTRS: call <4 x i32> @__vc_printf_arg_str_global(<4 x i32> %{{[^ ,]+}}, {{.*}}ptr addrspace(1) @arg.str
   %user = add i32 %printf, 1
   ret void
 }

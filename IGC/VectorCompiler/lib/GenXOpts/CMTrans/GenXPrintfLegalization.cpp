@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2023 Intel Corporation
+Copyright (C) 2021-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -98,19 +98,32 @@ using FormatIndexGEPInfoSeq = std::vector<FormatIndexGEPInfo>;
 struct IndexedStringInfo {
   GlobalVariable *GV;
   FormatIndexGEPInfoSeq GEPs;
+  FormatIndexSeq FormatIndices;
 
   IndexedStringInfo(GlobalVariable &GVIn) : GV{&GVIn} {
     // Using additional copy_if instead of make_filter_range as workaround,
     // because user_iterator returns pointer instead of reference.
-    std::vector<User *> TMP;
-    std::copy_if(GVIn.user_begin(), GVIn.user_end(), std::back_inserter(TMP),
-                 [](User *Usr) { return isPrintFormatIndexGEP(*Usr); });
-    std::transform(TMP.begin(), TMP.end(), std::back_inserter(GEPs),
+    std::vector<User *> TempGEPs;
+    std::vector<User *> TempFormatIndices;
+    std::copy_if(GVIn.user_begin(), GVIn.user_end(),
+                 std::back_inserter(TempGEPs), [](User *Usr) {
+                   return isPrintFormatIndexGEP(*Usr) && isa<GEPOperator>(Usr);
+                 });
+    std::copy_if(GVIn.user_begin(), GVIn.user_end(),
+                 std::back_inserter(TempFormatIndices), [](User *Usr) {
+                   return isPrintFormatIndexGEP(*Usr) &&
+                          isPrintFormatIndex(*Usr);
+                 });
+    std::transform(TempGEPs.begin(), TempGEPs.end(), std::back_inserter(GEPs),
                    [](User *Usr) -> FormatIndexGEPInfo {
                      return {*cast<GEPOperator>(Usr)};
                    });
+    std::transform(
+        TempFormatIndices.begin(), TempFormatIndices.end(),
+        std::back_inserter(FormatIndices),
+        [](User *Usr) -> CallInstRef { return *cast<CallInst>(Usr); });
     IGC_ASSERT_MESSAGE(
-        !GEPs.empty(),
+        !GEPs.empty() || !FormatIndices.empty(),
         "indexed string should have some format index GEP users");
   }
 };
@@ -205,6 +218,8 @@ static void legalizeIndexedString(const IndexedStringInfo &IndexedString) {
   auto &ClonedGV = cloneString(*IndexedString.GV);
   for (auto &GEPInfo : IndexedString.GEPs)
     handleGEP(GEPInfo, ClonedGV);
+  for (CallInst &FormatIndex : IndexedString.FormatIndices)
+    FormatIndex.setArgOperand(0, &ClonedGV);
 }
 
 static bool legalizeIndexedStrings(Module &M) {
