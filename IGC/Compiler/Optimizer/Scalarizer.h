@@ -249,6 +249,19 @@ namespace IGC
         } DRLEntry;
         llvm::SmallVector<DRLEntry, 4> m_DRL;
 
+        /*! \name Pre-Scalarization function arguments scan
+         *  \{ */
+
+         /// @brief Data structure for holding "real" inputs/output of function call
+         //   first - arguments of function
+         //   second - retuns of function. There may be more than one return value, e.g. sincos
+        typedef std::pair< llvm::SmallVector<llvm::Value*, 4>, llvm::SmallVector<llvm::Value*, 4>    > funcRootsVect;
+        /// @brief Some getters which access funcRootsVect and make the code more readable
+        static llvm::SmallVectorImpl<llvm::Value*>& getReturns(funcRootsVect& FRV) { return FRV.second; }
+        static const llvm::SmallVectorImpl<llvm::Value*>& getReturns(const funcRootsVect& FRV) { return FRV.second; }
+        static llvm::SmallVectorImpl<llvm::Value*>& getArgs(funcRootsVect& FRV) { return FRV.first; }
+        static const llvm::SmallVectorImpl<llvm::Value*>& getArgs(const funcRootsVect& FRV) { return FRV.first; }
+
         /// @brief flag for selective scalarization
         bool m_SelectiveScalarization;
 
