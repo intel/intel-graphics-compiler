@@ -43,6 +43,7 @@ if(UNIX)
   if (NOT CCLANG_FROM_SYSTEM)
     install(FILES $<TARGET_SONAME_FILE:opencl-clang-lib> DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT igc-opencl)
 
+
     # Get header opencl-c.h directory
     get_filename_component(opencl-headers-dir ${opencl-header} DIRECTORY)
 
