@@ -419,7 +419,9 @@ public:
 
     void emitf32tof16_rtz(llvm::GenIntrinsicInst* inst);
     void emitfitof(llvm::GenIntrinsicInst* inst);
-    void emitFPOWithNonDefaultRoundingMode(llvm::GenIntrinsicInst* inst);
+    void emitFPOrtz(llvm::GenIntrinsicInst* inst);
+    void emitFMArtp(llvm::GenIntrinsicInst* inst);
+    void emitFMArtn(llvm::GenIntrinsicInst* inst);
     void emitftoi(llvm::GenIntrinsicInst* inst);
     void emitCtlz(const SSource& source);
 

@@ -23,7 +23,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/Linker/Linker.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/IRReader/IRReader.h"
-#include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "AdaptorCommon/AddImplicitArgs.hpp"
@@ -597,7 +596,6 @@ inline bool isPrecompiledEmulationFunction(Function* func)
         func->getName().contains("precompiled_u32divrem") ||
         func->getName().contains("precompiled_s32divrem_sp") ||
         func->getName().contains("precompiled_u32divrem_sp") ||
-        func->getName().contains("precompiled_convert_f64_to_f16") ||
         func->getName().contains("__igcbuiltin_sp_div") ||
         func->getName().contains("__igcbuiltin_dp_div_nomadm_ieee");
 }
@@ -767,29 +765,44 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
                             {
                                 createIntrinsicCall(CI, GenISAIntrinsic::GenISA_fma_rtn);
                             }
-                            else if (calledFunc->getName().startswith("GenISA_add_rte"))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    //post-process the Int32 precompiled emulation function for div/rem
+    if (isI32DivRem() || isI32DivRemSP() || isSPDiv())
+    {
+        for (auto FI = M.begin(), FE = M.end(); FI != FE; )
+        {
+            llvm::Function* func = &(*FI);
+            ++FI;
+            if (isPrecompiledEmulationFunction(func))
+            {
+                for (auto BBI = func->begin(), BBE = func->end(); BBI != BBE; )
+                {
+                    llvm::BasicBlock* BB = &(*BBI);
+                    ++BBI;
+                    for (auto I = BB->begin(), IE = BB->end(); I != IE; I++)
+                    {
+                        if (CallInst * CI = dyn_cast<CallInst>(I))
+                        {
+                            if (Function* calledFunc = CI->getCalledFunction())
                             {
-                                createIntrinsicCall(CI, GenISAIntrinsic::GenISA_add_rte);
-                            }
-                            else if (calledFunc->getName().startswith("GenISA_add_rtz"))
-                            {
-                                createIntrinsicCall(CI, GenISAIntrinsic::GenISA_add_rtz);
-                            }
-                            else if (calledFunc->getName().startswith("GenISA_add_rtn"))
-                            {
-                                createIntrinsicCall(CI, GenISAIntrinsic::GenISA_add_rtn);
-                            }
-                            else if (calledFunc->getName().startswith("GenISA_add_rtp"))
-                            {
-                                createIntrinsicCall(CI, GenISAIntrinsic::GenISA_add_rtp);
-                            }
-                            else if (calledFunc->getName().startswith("GenISA_mul_rtz"))
-                            {
-                                createIntrinsicCall(CI, GenISAIntrinsic::GenISA_mul_rtz);
-                            }
-                            else if (calledFunc->getName().startswith("GenISA_uitof_rtz"))
-                            {
-                                createIntrinsicCall(CI, GenISAIntrinsic::GenISA_uitof_rtz);
+                                if (calledFunc->getName().startswith("GenISA_mul_rtz"))
+                                {
+                                    createIntrinsicCall(CI, GenISAIntrinsic::GenISA_mul_rtz);
+                                }
+                                else if (calledFunc->getName().startswith("GenISA_add_rtz"))
+                                {
+                                    createIntrinsicCall(CI, GenISAIntrinsic::GenISA_add_rtz);
+                                }
+                                else if (calledFunc->getName().startswith("GenISA_uitof_rtz"))
+                                {
+                                    createIntrinsicCall(CI, GenISAIntrinsic::GenISA_uitof_rtz);
+                                }
                             }
                         }
                     }
@@ -1540,9 +1553,12 @@ void PreCompiledFuncImport::visitFPTruncInst(llvm::FPTruncInst& inst)
                 m_pModule);
         }
 
-        CallInst* funcCall = CallInst::Create(func, inst.getOperand(0));
+        CallInst* funcCall = CallInst::Create(func, inst.getOperand(0), inst.getName(), &inst);
         addCallInst(funcCall);
-        ReplaceInstWithInst(&inst, funcCall);
+        funcCall->setDebugLoc(inst.getDebugLoc());
+
+        inst.replaceAllUsesWith(funcCall);
+        inst.eraseFromParent();
 
         m_libModuleToBeImported[LIBMOD_INT_DIV_REM] = true;
         m_changed = true;
@@ -2291,8 +2307,11 @@ As a result, we reduce 2x necessary work
         m_CallRemDiv.push_back(&I);
     }
 
-    if ((isDPEmu() || isDPDivSqrtEmu()) &&
-        resTy->isDoubleTy() &&
+    if (!isDPEmu() && !isDPDivSqrtEmu()) {
+        return;
+    }
+
+    if (resTy->isDoubleTy() &&
         (II && II->getIntrinsicID() == Intrinsic::sqrt))
     {
         FunctionIDs sqrtType = FUNCTION_DP_SQRT;
@@ -2327,8 +2346,12 @@ As a result, we reduce 2x necessary work
         return;
     }
 
+    if (!isDPEmu()) {
+        return;
+    }
+
     // llvm.fma.f64
-    if (isDPEmu() && resTy->isDoubleTy() && II && II->getIntrinsicID() == Intrinsic::fma)
+    if (resTy->isDoubleTy() && II && II->getIntrinsicID() == Intrinsic::fma)
     {
         Function* newFunc = getOrCreateFunction(FUNCTION_DP_FMA);
         Function* CurrFunc = I.getParent()->getParent();
@@ -2355,7 +2378,7 @@ As a result, we reduce 2x necessary work
     // llvm.fma.rtn.f64
     // llvm.fma.rtp.f64
     // llvm.fma.rtz.f64
-    if (isDPEmu() && resTy->isDoubleTy() && GII &&
+    if (resTy->isDoubleTy() && GII &&
         (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_fma_rtn ||
          GII->getIntrinsicID() == GenISAIntrinsic::GenISA_fma_rtp ||
          GII->getIntrinsicID() == GenISAIntrinsic::GenISA_fma_rtz))
@@ -2398,52 +2421,8 @@ As a result, we reduce 2x necessary work
         return;
     }
 
-    if ((isFP64toFP16() || isDPEmu() || isDPConvEmu()) &&
-        GII &&
-        (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_ftof_rte ||
-            GII->getIntrinsicID() == GenISAIntrinsic::GenISA_ftof_rtz ||
-            GII->getIntrinsicID() == GenISAIntrinsic::GenISA_ftof_rtn ||
-            GII->getIntrinsicID() == GenISAIntrinsic::GenISA_ftof_rtp) &&
-        resTy->isHalfTy() && GII->getOperand(0)->getType()->isDoubleTy())
-    {
-        const StringRef funcName =
-            GII->getIntrinsicID() == GenISAIntrinsic::GenISA_ftof_rte ?
-                "__precompiled_convert_f64_to_f16_rte" :
-            GII->getIntrinsicID() == GenISAIntrinsic::GenISA_ftof_rtz ?
-                "__precompiled_convert_f64_to_f16_rtz" :
-            GII->getIntrinsicID() == GenISAIntrinsic::GenISA_ftof_rtn ?
-                "__precompiled_convert_f64_to_f16_rtn" :
-                "__precompiled_convert_f64_to_f16_rtp";
-        Function* func = m_pModule->getFunction(funcName);
-
-        // Try to look up the function in the module's symbol
-        // table first, else add it.
-        if (func == NULL)
-        {
-            FunctionType* FuncIntrType = FunctionType::get(
-                resTy,
-                I.getOperand(0)->getType(),
-                false);
-
-            func = Function::Create(
-                FuncIntrType,
-                GlobalValue::ExternalLinkage,
-                funcName,
-                m_pModule);
-        }
-
-        CallInst* funcCall = CallInst::Create(func, GII->getOperand(0));
-        ReplaceInstWithInst(GII, funcCall);
-        addCallInst(funcCall);
-
-        m_libModuleToBeImported[LIBMOD_INT_DIV_REM] = true;
-        m_changed = true;
-        m_pCtx->metrics.StatEndEmuFunc(funcCall);
-        return;
-    }
-
     // llvm.fabs.f64
-    if (isDPEmu() && resTy->isDoubleTy() && II && II->getIntrinsicID() == Intrinsic::fabs)
+    if (resTy->isDoubleTy() && II && II->getIntrinsicID() == Intrinsic::fabs)
     {
         // bit 63 is sign bit, set it to zero. Don't use int64.
         VectorType* vec2Ty = IGCLLVM::FixedVectorType::get(intTy, 2);
