@@ -96,6 +96,10 @@ CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(GTSystemInfo, 4, 3) {
     OCL_API_CALL virtual void SetSLMSizeInKb(uint32_t v);
 };
 
+CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(GTSystemInfo, 5, 4) {
+    CIF_INHERIT_CONSTRUCTOR();
+};
+
 CIF_GENERATE_VERSIONS_LIST(GTSystemInfo);
 CIF_MARK_LATEST_VERSION(GTSystemInfoLatest, GTSystemInfo);
 using GTSystemInfoTagOCL = GTSystemInfo<4>;    // Note : can tag with different version for
