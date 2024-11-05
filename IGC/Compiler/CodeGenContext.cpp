@@ -948,7 +948,7 @@ namespace IGC
 
     // Returns the SIMD mode of a kernel based on a platform and settings flags.
     // VS, DS, HS, GS currently supported only.
-    SIMDMode CodeGenContext::GetSIMDMode()
+    SIMDMode CodeGenContext::GetSIMDMode() const
     {
         SIMDMode simdMode = SIMDMode::UNKNOWN;
 
