@@ -1599,7 +1599,14 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
 
                     if (isa<UndefValue>(Src))
                     {
-                        continue;
+                        if (IGC_IS_FLAG_ENABLED(AssignZeroToUndefPhiNodes))
+                        {
+                            Src = Constant::getNullValue(Src->getType());
+                        }
+                        else
+                        {
+                            continue;
+                        }
                     }
 
                     Value* dstRootV = m_deSSA ? m_deSSA->getRootValue(PN) : PN;
