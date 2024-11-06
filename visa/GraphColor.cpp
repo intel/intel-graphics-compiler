@@ -4945,23 +4945,14 @@ void Augmentation::handleSIMDIntf(G4_Declare *firstDcl, G4_Declare *secondDcl,
     return;
   }
 
-  auto contain = [](const auto &C, auto pred) {
-    return std::find_if(C.cbegin(), C.cend(), pred) != C.cend();
-  };
-
   bool isFirstDcl = true;
+  bool isPseudoVCADcl = kernel.fg.isPseudoVCADcl(firstDcl);
+  if (!isPseudoVCADcl){
+    isPseudoVCADcl = kernel.fg.isPseudoVCADcl(secondDcl);
+    isFirstDcl = false;
+  }
 
-  auto pred = [firstDcl, secondDcl, &isFirstDcl](const auto &el) {
-    if (el.second.VCA == firstDcl)
-      return true;
-    if (el.second.VCA == secondDcl) {
-      isFirstDcl = false;
-      return true;
-    }
-    return false;
-  };
-
-  if (contain(kernel.fg.fcallToPseudoDclMap, pred)) {
+  if (isPseudoVCADcl) {
     // Mark intf for following pattern:
     // V33 =
     // ...

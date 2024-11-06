@@ -8,32 +8,19 @@ SPDX-License-Identifier: MIT
 
 
 #include "FlowGraph.h"
-#include "BitSet.h"
 #include "BuildIR.h"
 #include "CFGStructurizer.h"
 #include "DebugInfo.h"
 #include "G4_Kernel.hpp"
 #include "Option.h"
-#include "PhyRegUsage.h"
 #include "visa_wa.h"
-
-#include "BinaryEncodingIGA.h"
-#include "iga/IGALibrary/api/iga.h"
-#include "iga/IGALibrary/api/iga.hpp"
 
 #include <algorithm>
 #include <chrono>
 #include <cstdlib>
-#include <fstream>
-#include <functional>
 #include <iostream>
 #include <iterator>
 #include <random>
-#include <set>
-#include <sstream>
-#include <string>
-#include <unordered_map>
-#include <unordered_set>
 
 using namespace vISA;
 
@@ -3678,6 +3665,7 @@ void FlowGraph::addSaveRestorePseudoDeclares(IR_Builder &builder) {
     pseudoVCEDcl = builder.createDeclare(
         "VCE_SAVE", G4_GRF, builder.numEltPerGRF<Type_UD>(),
         static_cast<unsigned short>(numRowsVCE), Type_UD);
+    pseudoDcls.insert(pseudoVCEDcl);
   } else {
     pseudoVCEDcl->getRegVar()->setPhyReg(NULL, 0);
   }
@@ -3710,9 +3698,20 @@ void FlowGraph::addSaveRestorePseudoDeclares(IR_Builder &builder) {
     name = builder.getNameString(64, "SFLAG_%d", i);
     G4_Declare *saveFLAG = builder.createDeclare(
         name, G4_FLAG, (uint16_t)builder.getNumFlagRegisters(), 1, Type_UW);
-    fcallToPseudoDclMap[callSite->asCFInst()] = {VCA, saveA0, saveFLAG};
+    fillPseudoDclMap(callSite->asCFInst(), VCA, saveA0, saveFLAG);
     i++;
   }
+}
+
+void FlowGraph::fillPseudoDclMap(G4_InstCF *cfInst, G4_Declare *VCA,
+                                 G4_Declare *saveA0, G4_Declare *saveFlag) {
+  fcallToPseudoDclMap[cfInst] = {VCA, saveA0, saveFlag};
+  pseudoDcls.insert({VCA, saveA0, saveFlag});
+  pseudoVCADcls.insert(VCA);
+  vISA_ASSERT((3 * fcallToPseudoDclMap.size() + 1) == pseudoDcls.size(),
+              "Found inconsistency between fcallToPseudoDclMap and pseudoDcls");
+  vISA_ASSERT(fcallToPseudoDclMap.size() == pseudoVCADcls.size(),
+              "Found inconsistency between fcallToPseudoDclMap and pseudoVCADcls");
 }
 
 //

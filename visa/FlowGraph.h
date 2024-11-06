@@ -11,9 +11,9 @@ SPDX-License-Identifier: MIT
 
 #include "Assertions.h"
 #include "G4_BB.hpp"
+#include "G4_Declare.h"
 #include "G4_IR.hpp"
 #include "LoopAnalysis.h"
-#include "RelocationInfo.h"
 
 #include <list>
 #include <map>
@@ -257,6 +257,10 @@ class FlowGraph {
   // TODO: remove this in favor of LoopAnalysis.
   Loop naturalLoops;
 
+  // Caches to speed up the lookup of pseudo declares
+  std::unordered_set<const G4_Declare *> pseudoDcls;
+  std::unordered_set<const G4_Declare *> pseudoVCADcls;
+
 public:
   Mem_Manager &mem; // mem mananger for creating BBs & starting IP table
   INST_LIST_NODE_ALLOCATOR &instListAlloc;
@@ -293,7 +297,7 @@ public:
     G4_Declare *Flag;
   };
 
-  std::unordered_map<G4_InstCF *, struct PseudoDcls> fcallToPseudoDclMap;
+  std::unordered_map<G4_InstCF *, PseudoDcls> fcallToPseudoDclMap;
 
   // offset in unit of OW
   unsigned callerSaveAreaOffset = 0;
@@ -376,12 +380,7 @@ public:
     return dcl == pseudoVCEDcl;
   }
   bool isPseudoVCADcl(const G4_Declare *dcl) const {
-    for (const auto &iter : fcallToPseudoDclMap) {
-      if (iter.second.VCA == dcl) {
-        return true;
-      }
-    }
-    return false;
+   return pseudoVCADcls.count(dcl) == 1;
   }
   bool isPseudoA0Dcl(const G4_Declare *dcl) const {
     for (const auto &iter : fcallToPseudoDclMap) {
@@ -403,16 +402,7 @@ public:
     if (!getHasStackCalls() && !getIsStackCallFunc()) {
       return false;
     }
-    if (isPseudoVCEDcl(dcl)) {
-      return true;
-    }
-    for (const auto &iter : fcallToPseudoDclMap) {
-      if (iter.second.A0 == dcl || iter.second.Flag == dcl ||
-          iter.second.VCA == dcl) {
-        return true;
-      }
-    }
-    return false;
+    return pseudoDcls.count(dcl) == 1;
   }
 
   //
@@ -681,6 +671,8 @@ private:
   using BBPrePostIDMap = std::unordered_map<G4_BB *, std::array<uint32_t, 2>>;
   void DFSTraverse(G4_BB *bb, unsigned &preId, unsigned &postId, FuncInfo *fn,
                    BBPrePostIDMap &BBIdMap);
+  void fillPseudoDclMap(G4_InstCF *cfInst, G4_Declare *VCA, G4_Declare *saveA0,
+                        G4_Declare *saveFlag);
 
 }; // FlowGraph
 
