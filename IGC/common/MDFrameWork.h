@@ -795,6 +795,8 @@ enum class ShaderTypeMD
         // a module was promoted to stateless. Used to avoid bindless and bindful
         // mode in one module.
         bool ModuleUsesBindless = false;
+
+        llvm::MapVector<llvm::Value*, llvm::Value*> predicationMap;
     };
 
     void serialize(const IGC::ModuleMetaData &moduleMD, llvm::Module* module);

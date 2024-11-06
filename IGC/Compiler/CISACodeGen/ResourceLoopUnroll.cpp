@@ -138,7 +138,7 @@ bool ResourceLoopUnroll::emitResourceLoop(llvm::CallInst* CI)
     LLVM3DBuilder<> builder(context, platform);
 
     auto createResLoopIter = [&builder, this]
-    (Instruction* inst, BasicBlock* checkBB, BasicBlock* sendBB, BasicBlock* nextBB, BasicBlock* exitBB)
+    (Instruction* inst, BasicBlock* checkBB, BasicBlock* nextBB, BasicBlock* exitBB)
         {
             Value* resource = nullptr;
             Value* sampler = nullptr;
@@ -176,9 +176,8 @@ bool ResourceLoopUnroll::emitResourceLoop(llvm::CallInst* CI)
                 textureNew = texture;
                 pairTextureNew = pairTexture;
 
-                // initially, they are true in CreateICmpEQ
-                Value* textureCond = builder.getTrue();
-                Value* samplerCond = builder.getTrue();
+                Value* textureCond = nullptr;
+                Value* samplerCond = nullptr;
 
                 // need care about pairTexture uniform???
                 if (!m_WIAnalysis->isUniform(pairTexture))
@@ -211,20 +210,32 @@ bool ResourceLoopUnroll::emitResourceLoop(llvm::CallInst* CI)
                     samplerCond = builder.CreateICmpEQ(sampler, samplerNew);
                 }
 
-                // if textureNew == uniform && samplerNew == uniform
-                cond = builder.CreateAnd(textureCond, samplerCond);
+                if (textureCond && samplerCond)
+                {
+                    // if textureNew == uniform && samplerNew == uniform
+                    cond = builder.CreateAnd(textureCond, samplerCond);
+                }
+                else if (textureCond)
+                {
+                    cond = textureCond;
+                }
+                else if (samplerCond)
+                {
+                    cond = samplerCond;
+                }
             }
 
-            builder.CreateCondBr(cond, sendBB, nextBB);
+            llvm::Instruction* predSendInstr = inst->clone();
+            SetResourceOperand(predSendInstr, resourceNew, pairTextureNew, textureNew, samplerNew);
+            predSendInstr->setName("resLoopSubIterSend");
+            builder.Insert(predSendInstr);
 
-            // Fill sendBB
-            builder.SetInsertPoint(sendBB);
-            llvm::Instruction* clonedSend = inst->clone();
-            SetResourceOperand(clonedSend, resourceNew, pairTextureNew, textureNew, samplerNew);
-            clonedSend->setName("resLoopSubIterSend");
-            builder.Insert(clonedSend);
-            builder.CreateBr(exitBB);
-            return clonedSend;
+            // add the cmp/instruction combo to our predication map
+            m_pCodeGenContext->getModuleMetaData()->predicationMap[predSendInstr] = cond;
+
+            builder.CreateCondBr(cond, exitBB, nextBB);
+
+            return predSendInstr;
         };
 
     //////////////////////////////////////////////////////////////////////////
@@ -243,13 +254,13 @@ bool ResourceLoopUnroll::emitResourceLoop(llvm::CallInst* CI)
     {
         // Basicblocks for loop
         BasicBlock* partialCheckBB = BasicBlock::Create(context, "partial_check", BB->getParent(), before);
-        BasicBlock* partialSendBB = BasicBlock::Create(context, "partial_send", BB->getParent(), before);
 
-        auto send = createResLoopIter(CI, partialCheckBB, partialSendBB, before, mergeBB);
+        auto send = createResLoopIter(CI, partialCheckBB, before, mergeBB);
 
-        PN->addIncoming(send, partialSendBB);
+        PN->addIncoming(send, partialCheckBB);
         before = partialCheckBB;
     }
+
     // latch goes back to last created BB, which actually will be first BB due to ordering of creating and "before" poitner
     builder.SetInsertPoint(latch);
     builder.CreateBr(before);

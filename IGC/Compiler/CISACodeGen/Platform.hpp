@@ -1444,9 +1444,17 @@ bool hasBarrierControlFlowOpt() const
     return enabled;
 }
 
+bool needWaSamplerNoMask() const
+{
+    return m_WaTable.Wa_22011157800 && !IGC_IS_FLAG_DISABLED(DiableWaSamplerNoMask);
+}
+
 bool hasSlowSameSBIDLoad() const
 {
-    return isCoreChildOf(IGFX_XE2_HPG_CORE);
+    bool bYes = false;
+    bYes = isCoreChildOf(IGFX_XE_HPG_CORE);
+
+    return bYes && !needWaSamplerNoMask();
 }
 
 bool canDoMultipleLineMOVOpt() const

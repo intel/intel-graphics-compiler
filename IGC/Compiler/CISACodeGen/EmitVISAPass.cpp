@@ -7993,6 +7993,9 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
     bool zeroLOD = m_currShader->m_Platform->supportSampleAndLd_lz() && inst->ZeroLOD() &&
                    !m_currShader->m_Platform->WaDisableSampleLz();
 
+    ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    auto& predicationMap = modMD->predicationMap;
+
     ResourceLoop(resource, sampler, [&](CVariable* flag, CVariable*& destination,
         ResourceDescriptor resource, bool needLoop) {
 
@@ -8003,13 +8006,20 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
                     destination->GetNumberElement() * 2, ISA_TYPE_HF, EALIGN_GRF, false, CName::NONE);
             }
 
-        if (m_currShader->m_Platform->getWATable().Wa_22011157800 && !IGC_IS_FLAG_DISABLED(DiableWaSamplerNoMask))
+        if (m_currShader->m_Platform->needWaSamplerNoMask())
         {
             m_encoder->SetNoMask();
         }
         else
         {
-            m_encoder->SetPredicate(flag);
+            if (predicationMap.count(inst))
+            {
+                m_encoder->SetPredicate(m_currShader->GetSymbol(cast<Instruction>(predicationMap[inst])));
+            }
+            else
+            {
+                m_encoder->SetPredicate(flag);
+            }
         }
         m_encoder->Sample(
             opCode,
@@ -19082,6 +19092,9 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
 
     eOffset = BroadcastIfUniform(eOffset);
 
+    ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    auto& predicationMap = modMD->predicationMap;
+
     SamplerDescriptor sampler;
     ResourceLoop(resource, sampler, [&](CVariable* flag, CVariable*& destination,
         ResourceDescriptor resource, bool needLoop) {
@@ -19138,7 +19151,14 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
                     dVisaTy, (uint16_t)eltOffBytes, (uint16_t)nbelts);
             }
 
-            m_encoder->SetPredicate(IGC_IS_FLAG_ENABLED(UseVMaskPredicateForLoads) ? GetCombinedVMaskPred(flag) : flag);
+            if (predicationMap.count(inst))
+            {
+                m_encoder->SetPredicate(m_currShader->GetSymbol(cast<Instruction>(predicationMap[inst])));
+            }
+            else
+            {
+                m_encoder->SetPredicate(IGC_IS_FLAG_ENABLED(UseVMaskPredicateForLoads) ? GetCombinedVMaskPred(flag) : flag);
+            }
 
             VectorMessage::MESSAGE_KIND messageType = VecMessInfo.insts[i].kind;
             IGC_ASSERT_MESSAGE(

@@ -22,47 +22,39 @@ define spir_kernel void @test1(i32 %src1, i32 %val, i32 addrspace(1)* %dst) {
 ; CHECK-NEXT:    [[NONUNIFORM:%.*]] = zext i16 [[SVN]] to i32
 ; CHECK-NEXT:    [[NONUNIFORMRESOURCE:%.*]] = inttoptr i32 [[NONUNIFORM]] to <4 x float> addrspace(2621440)*
 ; CHECK-NEXT:    [[OFFSET:%.*]] = add i32 [[SRC1:%.*]], 1
-; CHECK-NEXT:    br label [[PARTIAL_CHECK7:%.*]]
-; CHECK:       partial_check7:
+; CHECK-NEXT:    br label [[PARTIAL_CHECK5:%.*]]
+; CHECK:       partial_check5:
 ; CHECK-NEXT:    [[TMP1:%.*]] = call i32 @llvm.genx.GenISA.WaveBallot(i1 true, i32 0)
 ; CHECK-NEXT:    [[TMP2:%.*]] = call i32 @llvm.genx.GenISA.firstbitLo(i32 [[TMP1]])
-; CHECK-NEXT:    [[FIRSTACTIVERES9:%.*]] = call <4 x float> addrspace(2621440)* @llvm.genx.GenISA.WaveShuffleIndex.p2621440v4f32(<4 x float> addrspace(2621440)* [[NONUNIFORMRESOURCE]], i32 [[TMP2]], i32 0)
-; CHECK-NEXT:    [[TMP3:%.*]] = icmp eq <4 x float> addrspace(2621440)* [[NONUNIFORMRESOURCE]], [[FIRSTACTIVERES9]]
-; CHECK-NEXT:    br i1 [[TMP3]], label [[PARTIAL_SEND8:%.*]], label [[PARTIAL_CHECK4:%.*]]
-; CHECK:       partial_send8:
-; CHECK-NEXT:    [[TMP4:%.*]] = call <3 x i32> @llvm.genx.GenISA.ldrawvector.indexed.v3i32.p2621440v4f32(<4 x float> addrspace(2621440)* [[FIRSTACTIVERES9]], i32 [[OFFSET]], i32 4, i1 false)
-; CHECK-NEXT:    br label [[UNROLL_MERGE:%.*]]
-; CHECK:       partial_check4:
+; CHECK-NEXT:    [[FIRSTACTIVERES6:%.*]] = call <4 x float> addrspace(2621440)* @llvm.genx.GenISA.WaveShuffleIndex.p2621440v4f32(<4 x float> addrspace(2621440)* [[NONUNIFORMRESOURCE]], i32 [[TMP2]], i32 0)
+; CHECK-NEXT:    [[TMP3:%.*]] = icmp eq <4 x float> addrspace(2621440)* [[NONUNIFORMRESOURCE]], [[FIRSTACTIVERES6]]
+; CHECK-NEXT:    [[TMP4:%.*]] = call <3 x i32> @llvm.genx.GenISA.ldrawvector.indexed.v3i32.p2621440v4f32(<4 x float> addrspace(2621440)* [[FIRSTACTIVERES6]], i32 [[OFFSET]], i32 4, i1 false)
+; CHECK-NEXT:    br i1 [[TMP3]], label [[UNROLL_MERGE:%.*]], label [[PARTIAL_CHECK3:%.*]]
+; CHECK:       partial_check3:
 ; CHECK-NEXT:    [[TMP5:%.*]] = call i32 @llvm.genx.GenISA.WaveBallot(i1 true, i32 0)
 ; CHECK-NEXT:    [[TMP6:%.*]] = call i32 @llvm.genx.GenISA.firstbitLo(i32 [[TMP5]])
-; CHECK-NEXT:    [[FIRSTACTIVERES6:%.*]] = call <4 x float> addrspace(2621440)* @llvm.genx.GenISA.WaveShuffleIndex.p2621440v4f32(<4 x float> addrspace(2621440)* [[NONUNIFORMRESOURCE]], i32 [[TMP6]], i32 0)
-; CHECK-NEXT:    [[TMP7:%.*]] = icmp eq <4 x float> addrspace(2621440)* [[NONUNIFORMRESOURCE]], [[FIRSTACTIVERES6]]
-; CHECK-NEXT:    br i1 [[TMP7]], label [[PARTIAL_SEND5:%.*]], label [[PARTIAL_CHECK1:%.*]]
-; CHECK:       partial_send5:
-; CHECK-NEXT:    [[TMP8:%.*]] = call <3 x i32> @llvm.genx.GenISA.ldrawvector.indexed.v3i32.p2621440v4f32(<4 x float> addrspace(2621440)* [[FIRSTACTIVERES6]], i32 [[OFFSET]], i32 4, i1 false)
-; CHECK-NEXT:    br label [[UNROLL_MERGE]]
+; CHECK-NEXT:    [[FIRSTACTIVERES4:%.*]] = call <4 x float> addrspace(2621440)* @llvm.genx.GenISA.WaveShuffleIndex.p2621440v4f32(<4 x float> addrspace(2621440)* [[NONUNIFORMRESOURCE]], i32 [[TMP6]], i32 0)
+; CHECK-NEXT:    [[TMP7:%.*]] = icmp eq <4 x float> addrspace(2621440)* [[NONUNIFORMRESOURCE]], [[FIRSTACTIVERES4]]
+; CHECK-NEXT:    [[TMP8:%.*]] = call <3 x i32> @llvm.genx.GenISA.ldrawvector.indexed.v3i32.p2621440v4f32(<4 x float> addrspace(2621440)* [[FIRSTACTIVERES4]], i32 [[OFFSET]], i32 4, i1 false)
+; CHECK-NEXT:    br i1 [[TMP7]], label [[UNROLL_MERGE]], label [[PARTIAL_CHECK1:%.*]]
 ; CHECK:       partial_check1:
 ; CHECK-NEXT:    [[TMP9:%.*]] = call i32 @llvm.genx.GenISA.WaveBallot(i1 true, i32 0)
 ; CHECK-NEXT:    [[TMP10:%.*]] = call i32 @llvm.genx.GenISA.firstbitLo(i32 [[TMP9]])
-; CHECK-NEXT:    [[FIRSTACTIVERES3:%.*]] = call <4 x float> addrspace(2621440)* @llvm.genx.GenISA.WaveShuffleIndex.p2621440v4f32(<4 x float> addrspace(2621440)* [[NONUNIFORMRESOURCE]], i32 [[TMP10]], i32 0)
-; CHECK-NEXT:    [[TMP11:%.*]] = icmp eq <4 x float> addrspace(2621440)* [[NONUNIFORMRESOURCE]], [[FIRSTACTIVERES3]]
-; CHECK-NEXT:    br i1 [[TMP11]], label [[PARTIAL_SEND2:%.*]], label [[PARTIAL_CHECK:%.*]]
-; CHECK:       partial_send2:
-; CHECK-NEXT:    [[TMP12:%.*]] = call <3 x i32> @llvm.genx.GenISA.ldrawvector.indexed.v3i32.p2621440v4f32(<4 x float> addrspace(2621440)* [[FIRSTACTIVERES3]], i32 [[OFFSET]], i32 4, i1 false)
-; CHECK-NEXT:    br label [[UNROLL_MERGE]]
+; CHECK-NEXT:    [[FIRSTACTIVERES2:%.*]] = call <4 x float> addrspace(2621440)* @llvm.genx.GenISA.WaveShuffleIndex.p2621440v4f32(<4 x float> addrspace(2621440)* [[NONUNIFORMRESOURCE]], i32 [[TMP10]], i32 0)
+; CHECK-NEXT:    [[TMP11:%.*]] = icmp eq <4 x float> addrspace(2621440)* [[NONUNIFORMRESOURCE]], [[FIRSTACTIVERES2]]
+; CHECK-NEXT:    [[TMP12:%.*]] = call <3 x i32> @llvm.genx.GenISA.ldrawvector.indexed.v3i32.p2621440v4f32(<4 x float> addrspace(2621440)* [[FIRSTACTIVERES2]], i32 [[OFFSET]], i32 4, i1 false)
+; CHECK-NEXT:    br i1 [[TMP11]], label [[UNROLL_MERGE]], label [[PARTIAL_CHECK:%.*]]
 ; CHECK:       partial_check:
 ; CHECK-NEXT:    [[TMP13:%.*]] = call i32 @llvm.genx.GenISA.WaveBallot(i1 true, i32 0)
 ; CHECK-NEXT:    [[TMP14:%.*]] = call i32 @llvm.genx.GenISA.firstbitLo(i32 [[TMP13]])
 ; CHECK-NEXT:    [[FIRSTACTIVERES:%.*]] = call <4 x float> addrspace(2621440)* @llvm.genx.GenISA.WaveShuffleIndex.p2621440v4f32(<4 x float> addrspace(2621440)* [[NONUNIFORMRESOURCE]], i32 [[TMP14]], i32 0)
 ; CHECK-NEXT:    [[TMP15:%.*]] = icmp eq <4 x float> addrspace(2621440)* [[NONUNIFORMRESOURCE]], [[FIRSTACTIVERES]]
-; CHECK-NEXT:    br i1 [[TMP15]], label [[PARTIAL_SEND:%.*]], label [[LATCH:%.*]]
-; CHECK:       partial_send:
 ; CHECK-NEXT:    [[TMP16:%.*]] = call <3 x i32> @llvm.genx.GenISA.ldrawvector.indexed.v3i32.p2621440v4f32(<4 x float> addrspace(2621440)* [[FIRSTACTIVERES]], i32 [[OFFSET]], i32 4, i1 false)
-; CHECK-NEXT:    br label [[UNROLL_MERGE]]
+; CHECK-NEXT:    br i1 [[TMP15]], label [[UNROLL_MERGE]], label [[LATCH:%.*]]
 ; CHECK:       latch:
-; CHECK-NEXT:    br label [[PARTIAL_CHECK7]]
+; CHECK-NEXT:    br label [[PARTIAL_CHECK5]]
 ; CHECK:       unroll-merge:
-; CHECK-NEXT:    [[TMP17:%.*]] = phi <3 x i32> [ [[TMP16]], [[PARTIAL_SEND]] ], [ [[TMP12]], [[PARTIAL_SEND2]] ], [ [[TMP8]], [[PARTIAL_SEND5]] ], [ [[TMP4]], [[PARTIAL_SEND8]] ], !MyUniqueExclusiveLoadMetadata !24
+; CHECK-NEXT:    [[TMP17:%.*]] = phi <3 x i32> [ [[TMP16]], [[PARTIAL_CHECK]] ], [ [[TMP12]], [[PARTIAL_CHECK1]] ], [ [[TMP8]], [[PARTIAL_CHECK3]] ], [ [[TMP4]], [[PARTIAL_CHECK5]] ], !MyUniqueExclusiveLoadMetadata !24
 ; CHECK-NEXT:    [[OUT:%.*]] = extractelement <3 x i32> [[TMP17]], i32 [[VAL:%.*]]
 ; CHECK-NEXT:    store i32 [[OUT]], i32 addrspace(1)* [[DST:%.*]], align 1
 ; CHECK-NEXT:    ret void

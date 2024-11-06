@@ -26,52 +26,40 @@ define spir_kernel void @test1(<64 x i32> %src, float addrspace(1)* %dst) {
 ; CHECK-NEXT:    [[SVN1:%.*]] = extractelement <64 x i32> %src, i32 40
 ; CHECK-NEXT:    [[TEXTURE:%.*]] = add i32 %svn1, 1280
 ; CHECK-NEXT:    [[NONUNIFORMTEXTURE:%.*]] = inttoptr i32 [[TEXTURE]] to %__2D_DIM_Resource.0 addrspace(2621450)*
-; CHECK-NEXT:    br label [[PARTIAL_CHECK7:%.*]]
-; CHECK:       partial_check7:
+; CHECK-NEXT:    br label [[PARTIAL_CHECK5:%.*]]
+; CHECK:       partial_check5:
 ; CHECK-NEXT:    [[TMP1:%.*]] = call i32 @llvm.genx.GenISA.WaveBallot(i1 true, i32 0)
 ; CHECK-NEXT:    [[TMP2:%.*]] = call i32 @llvm.genx.GenISA.firstbitLo(i32 [[TMP1]])
-; CHECK-NEXT:    [[FIRSTACTIVESAMPLER9:%.*]] = call <4 x float> addrspace(2752518)* @llvm.genx.GenISA.WaveShuffleIndex.p2752518v4f32(<4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], i32 [[TMP2]], i32 0)
-; CHECK-NEXT:    [[TMP3:%.*]] = icmp eq <4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], [[FIRSTACTIVESAMPLER9]]
-; CHECK-NEXT:    [[TMP4:%.*]] = and i1 true, [[TMP3:%.*]]
-; CHECK-NEXT:    br i1 [[TMP4]], label [[PARTIAL_SEND8:%.*]], label [[PARTIAL_CHECK4:%.*]]
-; CHECK:       partial_send8:
-; CHECK-NEXT:    [[TMP5:%.*]] = tail call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621443__2D_DIM_Resource.p2621443__2D_DIM_Resource.p2752518v4f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621450)* undef, %__2D_DIM_Resource.0 addrspace(2621450)* [[NONUNIFORMTEXTURE]], <4 x float> addrspace(2752518)* [[FIRSTACTIVESAMPLER9]], i32 0, i32 0, i32 0)
-; CHECK-NEXT:    br label [[UNROLL_MERGE:%.*]]
-; CHECK:       partial_check4:
-; CHECK-NEXT:    [[TMP6:%.*]] = call i32 @llvm.genx.GenISA.WaveBallot(i1 true, i32 0)
-; CHECK-NEXT:    [[TMP7:%.*]] = call i32 @llvm.genx.GenISA.firstbitLo(i32 [[TMP6]])
-; CHECK-NEXT:    [[FIRSTACTIVESAMPLER6:%.*]] = call <4 x float> addrspace(2752518)* @llvm.genx.GenISA.WaveShuffleIndex.p2752518v4f32(<4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], i32 [[TMP7]], i32 0)
-; CHECK-NEXT:    [[TMP8:%.*]] = icmp eq <4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], [[FIRSTACTIVESAMPLER6]]
-; CHECK-NEXT:    [[TMP9:%.*]] = and i1 true, [[TMP8:%.*]]
-; CHECK-NEXT:    br i1 [[TMP9]], label [[PARTIAL_SEND5:%.*]], label [[PARTIAL_CHECK1:%.*]]
-; CHECK:       partial_send5:
-; CHECK-NEXT:    [[TMP10:%.*]] = tail call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621443__2D_DIM_Resource.p2621443__2D_DIM_Resource.p2752518v4f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621450)* undef, %__2D_DIM_Resource.0 addrspace(2621450)* [[NONUNIFORMTEXTURE]], <4 x float> addrspace(2752518)* [[FIRSTACTIVESAMPLER6]], i32 0, i32 0, i32 0)
-; CHECK-NEXT:    br label [[UNROLL_MERGE]]
+; CHECK-NEXT:    [[FIRSTACTIVESAMPLER6:%.*]] = call <4 x float> addrspace(2752518)* @llvm.genx.GenISA.WaveShuffleIndex.p2752518v4f32(<4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], i32 [[TMP2]], i32 0)
+; CHECK-NEXT:    [[TMP3:%.*]] = icmp eq <4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], [[FIRSTACTIVESAMPLER6]]
+; CHECK-NEXT:    [[TMP4:%.*]] = tail call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621443__2D_DIM_Resource.p2621443__2D_DIM_Resource.p2752518v4f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621450)* undef, %__2D_DIM_Resource.0 addrspace(2621450)* [[NONUNIFORMTEXTURE]], <4 x float> addrspace(2752518)* [[FIRSTACTIVESAMPLER6]], i32 0, i32 0, i32 0)
+; CHECK-NEXT:    br i1 [[TMP3]], label [[UNROLL_MERGE:%.*]], label [[PARTIAL_CHECK3:%.*]]
+; CHECK:       partial_check3:
+; CHECK-NEXT:    [[TMP5:%.*]] = call i32 @llvm.genx.GenISA.WaveBallot(i1 true, i32 0)
+; CHECK-NEXT:    [[TMP6:%.*]] = call i32 @llvm.genx.GenISA.firstbitLo(i32 [[TMP5]])
+; CHECK-NEXT:    [[FIRSTACTIVESAMPLER4:%.*]] = call <4 x float> addrspace(2752518)* @llvm.genx.GenISA.WaveShuffleIndex.p2752518v4f32(<4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], i32 [[TMP6]], i32 0)
+; CHECK-NEXT:    [[TMP7:%.*]] = icmp eq <4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], [[FIRSTACTIVESAMPLER4]]
+; CHECK-NEXT:    [[TMP8:%.*]] = tail call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621443__2D_DIM_Resource.p2621443__2D_DIM_Resource.p2752518v4f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621450)* undef, %__2D_DIM_Resource.0 addrspace(2621450)* [[NONUNIFORMTEXTURE]], <4 x float> addrspace(2752518)* [[FIRSTACTIVESAMPLER4]], i32 0, i32 0, i32 0)
+; CHECK-NEXT:    br i1 [[TMP7]], label [[UNROLL_MERGE]], label [[PARTIAL_CHECK1:%.*]]
 ; CHECK:       partial_check1:
-; CHECK-NEXT:    [[TMP11:%.*]] = call i32 @llvm.genx.GenISA.WaveBallot(i1 true, i32 0)
-; CHECK-NEXT:    [[TMP12:%.*]] = call i32 @llvm.genx.GenISA.firstbitLo(i32 [[TMP11]])
-; CHECK-NEXT:    [[FIRSTACTIVESAMPLER3:%.*]] = call <4 x float> addrspace(2752518)* @llvm.genx.GenISA.WaveShuffleIndex.p2752518v4f32(<4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], i32 [[TMP12]], i32 0)
-; CHECK-NEXT:    [[TMP13:%.*]] = icmp eq <4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], [[FIRSTACTIVESAMPLER3]]
-; CHECK-NEXT:    [[TMP14:%.*]] = and i1 true, [[TMP13:%.*]]
-; CHECK-NEXT:    br i1 [[TMP14]], label [[PARTIAL_SEND2:%.*]], label [[PARTIAL_CHECK:%.*]]
-; CHECK:       partial_send2:
-; CHECK-NEXT:    [[TMP15:%.*]] = tail call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621443__2D_DIM_Resource.p2621443__2D_DIM_Resource.p2752518v4f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621450)* undef, %__2D_DIM_Resource.0 addrspace(2621450)* [[NONUNIFORMTEXTURE]], <4 x float> addrspace(2752518)* [[FIRSTACTIVESAMPLER3]], i32 0, i32 0, i32 0)
-; CHECK-NEXT:    br label [[UNROLL_MERGE]]
+; CHECK-NEXT:    [[TMP9:%.*]] = call i32 @llvm.genx.GenISA.WaveBallot(i1 true, i32 0)
+; CHECK-NEXT:    [[TMP10:%.*]] = call i32 @llvm.genx.GenISA.firstbitLo(i32 [[TMP9]])
+; CHECK-NEXT:    [[FIRSTACTIVESAMPLER2:%.*]] = call <4 x float> addrspace(2752518)* @llvm.genx.GenISA.WaveShuffleIndex.p2752518v4f32(<4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], i32 [[TMP10]], i32 0)
+; CHECK-NEXT:    [[TMP11:%.*]] = icmp eq <4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], [[FIRSTACTIVESAMPLER2]]
+; CHECK-NEXT:    [[TMP12:%.*]] = tail call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621443__2D_DIM_Resource.p2621443__2D_DIM_Resource.p2752518v4f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621450)* undef, %__2D_DIM_Resource.0 addrspace(2621450)* [[NONUNIFORMTEXTURE]], <4 x float> addrspace(2752518)* [[FIRSTACTIVESAMPLER2]], i32 0, i32 0, i32 0)
+; CHECK-NEXT:    br i1 [[TMP11]], label [[UNROLL_MERGE]], label [[PARTIAL_CHECK:%.*]]
 ; CHECK:       partial_check:
-; CHECK-NEXT:    [[TMP16:%.*]] = call i32 @llvm.genx.GenISA.WaveBallot(i1 true, i32 0)
-; CHECK-NEXT:    [[TMP17:%.*]] = call i32 @llvm.genx.GenISA.firstbitLo(i32 [[TMP16]])
-; CHECK-NEXT:    [[FIRSTACTIVESAMPLER:%.*]] = call <4 x float> addrspace(2752518)* @llvm.genx.GenISA.WaveShuffleIndex.p2752518v4f32(<4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], i32 [[TMP17]], i32 0)
-; CHECK-NEXT:    [[TMP18:%.*]] = icmp eq <4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], [[FIRSTACTIVESAMPLER]]
-; CHECK-NEXT:    [[TMP19:%.*]] = and i1 true, [[TMP18:%.*]]
-; CHECK-NEXT:    br i1 [[TMP19]], label [[PARTIAL_SEND:%.*]], label [[LATCH:%.*]]
-; CHECK:       partial_send:
-; CHECK-NEXT:    [[TMP20:%.*]] = tail call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621443__2D_DIM_Resource.p2621443__2D_DIM_Resource.p2752518v4f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621450)* undef, %__2D_DIM_Resource.0 addrspace(2621450)* [[NONUNIFORMTEXTURE]], <4 x float> addrspace(2752518)* [[FIRSTACTIVESAMPLER]], i32 0, i32 0, i32 0)
-; CHECK-NEXT:    br label [[UNROLL_MERGE]]
+; CHECK-NEXT:    [[TMP13:%.*]] = call i32 @llvm.genx.GenISA.WaveBallot(i1 true, i32 0)
+; CHECK-NEXT:    [[TMP14:%.*]] = call i32 @llvm.genx.GenISA.firstbitLo(i32 [[TMP13]])
+; CHECK-NEXT:    [[FIRSTACTIVESAMPLER:%.*]] = call <4 x float> addrspace(2752518)* @llvm.genx.GenISA.WaveShuffleIndex.p2752518v4f32(<4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], i32 [[TMP14]], i32 0)
+; CHECK-NEXT:    [[TMP15:%.*]] = icmp eq <4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], [[FIRSTACTIVESAMPLER]]
+; CHECK-NEXT:    [[TMP16:%.*]] = tail call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621443__2D_DIM_Resource.p2621443__2D_DIM_Resource.p2752518v4f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621450)* undef, %__2D_DIM_Resource.0 addrspace(2621450)* [[NONUNIFORMTEXTURE]], <4 x float> addrspace(2752518)* [[FIRSTACTIVESAMPLER]], i32 0, i32 0, i32 0)
+; CHECK-NEXT:    br i1 [[TMP15]], label [[UNROLL_MERGE]], label [[LATCH:%.*]]
 ; CHECK:       latch:
-; CHECK-NEXT:    br label [[PARTIAL_CHECK7]]
+; CHECK-NEXT:    br label [[PARTIAL_CHECK5]]
 ; CHECK:       unroll-merge:
-; CHECK-NEXT:    [[TMP21:%.*]] = phi <4 x float> [ [[TMP20]], [[PARTIAL_SEND]] ], [ [[TMP15]], [[PARTIAL_SEND2]] ], [ [[TMP10]], [[PARTIAL_SEND5]] ], [ [[TMP5]], [[PARTIAL_SEND8]] ], !MyUniqueExclusiveLoadMetadata !24
-; CHECK-NEXT:    [[OUT:%.*]] = extractelement <4 x float> [[TMP21]], i32 0
+; CHECK-NEXT:    [[TMP17:%.*]] = phi <4 x float> [ [[TMP16]], [[PARTIAL_CHECK]] ], [ [[TMP12]], [[PARTIAL_CHECK1]] ], [ [[TMP8]], [[PARTIAL_CHECK3]] ], [ [[TMP4]], [[PARTIAL_CHECK5]] ], !MyUniqueExclusiveLoadMetadata !24
+; CHECK-NEXT:    [[OUT:%.*]] = extractelement <4 x float> [[TMP17]], i32 0
 ; CHECK-NEXT:    store float [[OUT]], float addrspace(1)* [[DST:%.*]], align 4
 ; CHECK-NEXT:    ret void
 ;
