@@ -1029,7 +1029,6 @@ namespace IGC
         // Map to store global offsets in original global buffer
         std::map<std::string, uint64_t> inlineProgramScopeGlobalOffsets;
         std::vector<std::string> entry_names;
-        uint m_spillAllowed = 0;
     private:
         //For storing error message
         std::stringstream oclErrorMessage;
@@ -1279,11 +1278,6 @@ namespace IGC
                 return true;
 
             return false;
-        }
-
-        bool hasSpills(uint mscratchSpaceUsedBySpills)
-        {
-            return (mscratchSpaceUsedBySpills > m_spillAllowed);
         }
     };
 
