@@ -557,7 +557,7 @@ OclTranslationOutputBase* CIF_PIMPL(FclOclTranslationCtx)::TranslateCM(
 
     llvm::BumpPtrAllocator A;
     llvm::StringSaver Saver(A);
-    auto& FE = MaybeFE.getValue();
+    auto &FE = MaybeFE.value();
     bool isMemFile = false;
     auto FeArgs = processFeOptions(FE.LibInfo(), src, Out,
                                    options, Saver, platformStr,
