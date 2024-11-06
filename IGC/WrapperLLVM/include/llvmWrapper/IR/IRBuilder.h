@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 namespace IGCLLVM
 {
 
+// FIXME: Clean up pre-LLVM 14 wrappers
 #if LLVM_VERSION_MAJOR <= 10
 #define InserterTyDef() Inserter
 #else
@@ -59,6 +60,26 @@ namespace IGCLLVM
             return llvm::IRBuilder<T, InserterTyDef()>::getFolder();
 #else
             return static_cast<const T&>(llvm::IRBuilderBase::Folder);
+#endif
+        }
+
+        /// See https://github.com/llvm/llvm-project/commit/caa22582
+        inline llvm::Value *CreateNegNoNUW(llvm::Value *V, const llvm::Twine &Name = "", bool HasNSW = false)
+        {
+#if LLVM_VERSION_MAJOR < 19
+            return llvm::IRBuilder<T, InserterTy>::CreateNeg(V, Name, /*bool NUW=*/false, HasNSW);
+#else // LLVM_VERSION_MAJOR >= 19
+            return llvm::IRBuilder<T, InserterTy>::CreateNeg(V, Name, HasNSW);
+#endif
+        }
+
+        /// See https://github.com/llvm/llvm-project/commit/caa22582
+        inline llvm::Value *CreateNSWNegNoNUW(llvm::Value *V, const llvm::Twine &Name = "")
+        {
+#if LLVM_VERSION_MAJOR < 19
+            return llvm::IRBuilder<T, InserterTy>::CreateNeg(V, Name, /*bool NUW=*/false, /*HasNSW=*/true);
+#else // LLVM_VERSION_MAJOR >= 19
+            return llvm::IRBuilder<T, InserterTy>::CreateNeg(V, Name, /*HasNSW=*/true);
 #endif
         }
 

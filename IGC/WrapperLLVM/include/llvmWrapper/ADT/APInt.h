@@ -47,21 +47,6 @@ inline UnsignedDivisionByConstantInfo getAPIntMagicUnsigned(const llvm::APInt &v
 #endif
 }
 
-inline bool isNegatedPowerOf2(const llvm::APInt &value) {
-#if LLVM_VERSION_MAJOR >= 14
-    return value.isNegatedPowerOf2();
-#else // Implementation from LLVM.org, released version 14
-    unsigned BitWidth = value.getBitWidth();
-    IGC_ASSERT_MESSAGE(BitWidth, "zero width values not allowed");
-    if (value.isNonNegative())
-      return false;
-    // NegatedPowerOf2 - shifted mask in the top bits.
-    unsigned LO = value.countLeadingOnes();
-    unsigned TZ = value.countTrailingZeros();
-    return (LO + TZ) == BitWidth;
-#endif
-}
-
 inline bool IsAddition(const UnsignedDivisionByConstantInfo &mu) {
 #if LLVM_VERSION_MAJOR >= 14
     return mu.IsAdd;
