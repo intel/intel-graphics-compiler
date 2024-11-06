@@ -169,17 +169,20 @@ void CImagesBI::prepareColor(Value* Color)
     if (VTy)
     {
         unsigned NumElts = static_cast<unsigned>(VTy->getNumElements());
-        IGC_ASSERT(NumElts == 2 || NumElts == 4);
+        IGC_ASSERT(NumElts == 2 || NumElts == 3 || NumElts == 4);
         if (NumElts >= 2)
         {
             ColorY = ExtractElementInst::Create(TmpColor, ConstantInt::get(m_pIntType, COORD_Y), "ColorY", m_pCallInst); // color y
             cast<Instruction>(ColorY)->setDebugLoc(m_DL);
         }
-        if (NumElts == 4)
+        if (NumElts >= 3)
         {
             ColorZ = ExtractElementInst::Create(TmpColor, ConstantInt::get(m_pIntType, COORD_Z), "ColorZ", m_pCallInst); // color z
-            ColorW = ExtractElementInst::Create(TmpColor, ConstantInt::get(m_pIntType, COORD_W), "ColorW", m_pCallInst); // color w
             cast<Instruction>(ColorZ)->setDebugLoc(m_DL);
+        }
+        if (NumElts == 4)
+        {
+            ColorW = ExtractElementInst::Create(TmpColor, ConstantInt::get(m_pIntType, COORD_W), "ColorW", m_pCallInst); // color w
             cast<Instruction>(ColorW)->setDebugLoc(m_DL);
         }
     }
@@ -1445,18 +1448,23 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap* paramMap, CImagesBI::I
     // Write Image
     m_CommandMap["__builtin_IB_write_1d_u1i"] = initImageClass<CWrite>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D);
     m_CommandMap["__builtin_IB_write_1d_u2i"] = initImageClass<CWrite>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D);
+    m_CommandMap["__builtin_IB_write_1d_u3i"] = initImageClass<CWrite>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D);
     m_CommandMap["__builtin_IB_write_1d_u4i"] = initImageClass<CWrite>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D);
     m_CommandMap["__builtin_IB_write_1darr_u1i"] = initImageClass<CWrite>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D_ARRAY);
     m_CommandMap["__builtin_IB_write_1darr_u2i"] = initImageClass<CWrite>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D_ARRAY);
+    m_CommandMap["__builtin_IB_write_1darr_u3i"] = initImageClass<CWrite>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D_ARRAY);
     m_CommandMap["__builtin_IB_write_1darr_u4i"] = initImageClass<CWrite>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D_ARRAY);
     m_CommandMap["__builtin_IB_write_2d_u1i"] = initImageClass<CWrite>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D);
     m_CommandMap["__builtin_IB_write_2d_u2i"] = initImageClass<CWrite>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D);
+    m_CommandMap["__builtin_IB_write_2d_u3i"] = initImageClass<CWrite>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D);
     m_CommandMap["__builtin_IB_write_2d_u4i"] = initImageClass<CWrite>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D);
     m_CommandMap["__builtin_IB_write_2darr_u1i"] = initImageClass<CWrite>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D_ARRAY);
     m_CommandMap["__builtin_IB_write_2darr_u2i"] = initImageClass<CWrite>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D_ARRAY);
+    m_CommandMap["__builtin_IB_write_2darr_u3i"] = initImageClass<CWrite>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D_ARRAY);
     m_CommandMap["__builtin_IB_write_2darr_u4i"] = initImageClass<CWrite>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D_ARRAY);
     m_CommandMap["__builtin_IB_write_3d_u1i"] = initImageClass<CWrite>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_3D);
     m_CommandMap["__builtin_IB_write_3d_u2i"] = initImageClass<CWrite>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_3D);
+    m_CommandMap["__builtin_IB_write_3d_u3i"] = initImageClass<CWrite>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_3D);
     m_CommandMap["__builtin_IB_write_3d_u4i"] = initImageClass<CWrite>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_3D);
     m_CommandMap["__builtin_IB_write_2d_f"] = initImageClass<CWrite>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D);
     m_CommandMap["__builtin_IB_write_2darr_f"] = initImageClass<CWrite>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D_ARRAY);

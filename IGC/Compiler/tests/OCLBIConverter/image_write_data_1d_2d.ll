@@ -32,6 +32,12 @@ define spir_kernel void @kernel_1d(ptr addrspace(1) %img_1d) {
   ; CHECK: [[IMG1D2:%.*]] = call ptr addrspace(196608) @llvm.genx.GenISA.GetBufferPtr.p196608(i32 0, i32 2)
   ; CHECK: call void @llvm.genx.GenISA.typedwrite.p196608(ptr addrspace(196608) [[IMG1D2]], i32 0, i32 0, i32 0, i32 0, float %ColorX, float %ColorY, float undef, float undef)
   call spir_func void @__builtin_IB_write_1d_u2i(i32 %trunc, i32 0, <2 x i32> zeroinitializer, i32 0)
+
+  ; CHECK-NOT: __builtin_IB_write_1d_u3i
+  ; CHECK: [[IMG1D3:%.*]] = call ptr addrspace(196608) @llvm.genx.GenISA.GetBufferPtr.p196608(i32 0, i32 2)
+  ; CHECK: call void @llvm.genx.GenISA.typedwrite.p196608(ptr addrspace(196608) [[IMG1D3]], i32 0, i32 0, i32 0, i32 0, float %ColorX3, float %ColorY4, float %ColorZ, float undef)
+  call spir_func void @__builtin_IB_write_1d_u3i(i32 %trunc, i32 0, <3 x i32> zeroinitializer, i32 0)
+
   ret void
 }
 
@@ -50,6 +56,11 @@ define spir_kernel void @kernel_1d_arr(ptr addrspace(1) %img_1d_arr) {
   ; CHECK: [[IMG1DARR2:%.*]] = call ptr addrspace(196608) @llvm.genx.GenISA.GetBufferPtr.p196608(i32 0, i32 2)
   ; CHECK: call void @llvm.genx.GenISA.typedwrite.p196608(ptr addrspace(196608) [[IMG1DARR2]], i32 %{{.*}}, i32 %{{.*}}, i32 0, i32 0, float %ColorX, float %ColorY, float undef, float undef)
   call spir_func void @__builtin_IB_write_1darr_u2i(i32 %trunc, <2 x i32> zeroinitializer, <2 x i32> zeroinitializer, i32 0)
+
+  ; CHECK-NOT: __builtin_IB_write_1darr_u3i
+  ; CHECK: [[IMG1DARR3:%.*]] = call ptr addrspace(196608) @llvm.genx.GenISA.GetBufferPtr.p196608(i32 0, i32 2)
+  ; CHECK: call void @llvm.genx.GenISA.typedwrite.p196608(ptr addrspace(196608) [[IMG1DARR3]], i32 %CoordX4, i32 %CoordY5, i32 0, i32 0, float %ColorX7, float %ColorY8, float %ColorZ, float undef)
+  call spir_func void @__builtin_IB_write_1darr_u3i(i32 %trunc, <2 x i32> zeroinitializer, <3 x i32> zeroinitializer, i32 0)
 
   ret void
 }
@@ -70,6 +81,11 @@ define spir_kernel void @kernel_2d(ptr addrspace(1) %img_2d) {
   ; CHECK: call void @llvm.genx.GenISA.typedwrite.p196608(ptr addrspace(196608) [[IMG2D2]], i32 %{{.*}}, i32 %{{.*}}, i32 0, i32 0, float %ColorX, float %ColorY, float undef, float undef)
   call spir_func void @__builtin_IB_write_2d_u2i(i32 %trunc, <2 x i32> zeroinitializer, <2 x i32> zeroinitializer, i32 0)
 
+  ; CHECK-NOT: __builtin_IB_write_2d_u3i
+  ; CHECK: [[IMG2D3:%.*]] = call ptr addrspace(196608) @llvm.genx.GenISA.GetBufferPtr.p196608(i32 0, i32 2)
+  ; CHECK: call void @llvm.genx.GenISA.typedwrite.p196608(ptr addrspace(196608) [[IMG2D3]], i32 %CoordX4, i32 %CoordY5, i32 0, i32 0, float %ColorX7, float %ColorY8, float %ColorZ, float undef)
+  call spir_func void @__builtin_IB_write_2d_u3i(i32 %trunc, <2 x i32> zeroinitializer, <3 x i32> zeroinitializer, i32 0)
+
   ret void
 }
 
@@ -88,6 +104,11 @@ define spir_kernel void @kernel_2d_arr(ptr addrspace(1) %img_2d_arr) {
   ; CHECK: [[IMG2DARR2:%.*]] = call ptr addrspace(196608) @llvm.genx.GenISA.GetBufferPtr.p196608(i32 0, i32 2)
   ; CHECK: call void @llvm.genx.GenISA.typedwrite.p196608(ptr addrspace(196608) [[IMG2DARR2]], i32 %{{.*}}, i32 %{{.*}}, i32 %{{.*}}, i32 0, float %ColorX, float %ColorY, float undef, float undef)
   call spir_func void @__builtin_IB_write_2darr_u2i(i32 %trunc, <3 x i32> zeroinitializer, <2 x i32> zeroinitializer, i32 0)
+
+  ; CHECK-NOT: __builtin_IB_write_2darr_u3i
+  ; CHECK: [[IMG2DARR3:%.*]] = call ptr addrspace(196608) @llvm.genx.GenISA.GetBufferPtr.p196608(i32 0, i32 2)
+  ; CHECK: call void @llvm.genx.GenISA.typedwrite.p196608(ptr addrspace(196608) [[IMG2DARR3]], i32 %CoordX6, i32 %CoordY7, i32 %CoordZ5, i32 0, float %ColorX9, float %ColorY10, float %ColorZ, float undef)
+  call spir_func void @__builtin_IB_write_2darr_u3i(i32 %trunc, <3 x i32> zeroinitializer, <3 x i32> zeroinitializer, i32 0)
 
   ret void
 }
@@ -108,23 +129,33 @@ define spir_kernel void @kernel_3d(ptr addrspace(1) %img_3d) {
   ; CHECK: call void @llvm.genx.GenISA.typedwrite.p196608(ptr addrspace(196608) [[IMG3D2]], i32 %{{CoordX.*}}, i32 %{{CoordY.*}}, i32 %{{CoordZ.*}}, i32 0, float %ColorX, float %ColorY, float undef, float undef)
   call spir_func void @__builtin_IB_write_3d_u2i(i32 %trunc, <3 x i32> zeroinitializer, <2 x i32> zeroinitializer, i32 0)
 
+  ; CHECK-NOT: __builtin_IB_write_3d_u3i
+  ; CHECK: [[IMG3D3:%.*]] = call ptr addrspace(196608) @llvm.genx.GenISA.GetBufferPtr.p196608(i32 0, i32 2)
+  ; CHECK: call void @llvm.genx.GenISA.typedwrite.p196608(ptr addrspace(196608) [[IMG3D3]], i32 %CoordX6, i32 %CoordY7, i32 %CoordZ5, i32 0, float %ColorX9, float %ColorY10, float %ColorZ, float undef)
+  call spir_func void @__builtin_IB_write_3d_u3i(i32 %trunc, <3 x i32> zeroinitializer, <3 x i32> zeroinitializer, i32 0)
+
   ret void
 }
 
 declare spir_func void @__builtin_IB_write_1d_u1i(i32, i32, i32, i32)
 declare spir_func void @__builtin_IB_write_1d_u2i(i32, i32, <2 x i32>, i32)
+declare spir_func void @__builtin_IB_write_1d_u3i(i32, i32, <3 x i32>, i32)
 
 declare spir_func void @__builtin_IB_write_1darr_u1i(i32, <2 x i32>, i32, i32)
 declare spir_func void @__builtin_IB_write_1darr_u2i(i32, <2 x i32>, <2 x i32>, i32)
+declare spir_func void @__builtin_IB_write_1darr_u3i(i32, <2 x i32>, <3 x i32>, i32)
 
 declare spir_func void @__builtin_IB_write_2d_u1i(i32, <2 x i32>, i32, i32)
 declare spir_func void @__builtin_IB_write_2d_u2i(i32, <2 x i32>, <2 x i32>, i32)
+declare spir_func void @__builtin_IB_write_2d_u3i(i32, <2 x i32>, <3 x i32>, i32)
 
 declare spir_func void @__builtin_IB_write_2darr_u1i(i32, <3 x i32>, i32, i32)
 declare spir_func void @__builtin_IB_write_2darr_u2i(i32, <3 x i32>, <2 x i32>, i32)
+declare spir_func void @__builtin_IB_write_2darr_u3i(i32, <3 x i32>, <3 x i32>, i32)
 
 declare spir_func void @__builtin_IB_write_3d_u1i(i32, <3 x i32>, i32, i32)
 declare spir_func void @__builtin_IB_write_3d_u2i(i32, <3 x i32>, <2 x i32>, i32)
+declare spir_func void @__builtin_IB_write_3d_u3i(i32, <3 x i32>, <3 x i32>, i32)
 
 !igc.functions = !{!0, !2, !3, !4, !5}
 !IGCMetadata = !{!6}

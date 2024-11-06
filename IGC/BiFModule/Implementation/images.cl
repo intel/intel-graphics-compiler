@@ -1105,6 +1105,30 @@ RET_TYPE##4 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(__spirv_S
 {                                                                                                                                                           \
     return __spirv_ImageSampleExplicitLod_R##RET_TYPE##4(Image, Coordinate, DefaultImageOperands, DefaultLod);                                              \
 }                                                                                                                                                           \
+RET_TYPE##3 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##3(__spirv_SampledImage_##DIM##D##ARRAY Image, float##COORD_DIM Coordinate, int ImageOperands, float Lod) \
+{                                                                                                                                                           \
+    return convert_##RET_TYPE##3(__spirv_ImageSampleExplicitLod_R##LOAD_TYPE(Image, Coordinate, ImageOperands, Lod).xyz);                                   \
+}                                                                                                                                                           \
+RET_TYPE##3 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##3(__spirv_SampledImage_##DIM##D##ARRAY Image, int##COORD_DIM Coordinate, int ImageOperands, float Lod) \
+{                                                                                                                                                           \
+    return convert_##RET_TYPE##3(__spirv_ImageSampleExplicitLod_R##LOAD_TYPE(Image, Coordinate, ImageOperands, Lod).xyz);                                   \
+}                                                                                                                                                           \
+RET_TYPE##3 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##3(__spirv_SampledImage_##DIM##D##ARRAY Image, float##COORD_DIM Coordinate, int ImageOperands) \
+{                                                                                                                                                           \
+    return __spirv_ImageSampleExplicitLod_R##RET_TYPE##3(Image, Coordinate, ImageOperands, DefaultLod);                                                     \
+}                                                                                                                                                           \
+RET_TYPE##3 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##3(__spirv_SampledImage_##DIM##D##ARRAY Image, int##COORD_DIM Coordinate, int ImageOperands)   \
+{                                                                                                                                                           \
+    return __spirv_ImageSampleExplicitLod_R##RET_TYPE##3(Image, Coordinate, ImageOperands, DefaultLod);                                                     \
+}                                                                                                                                                           \
+RET_TYPE##3 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##3(__spirv_SampledImage_##DIM##D##ARRAY Image, float##COORD_DIM Coordinate)             \
+{                                                                                                                                                           \
+    return __spirv_ImageSampleExplicitLod_R##RET_TYPE##3(Image, Coordinate, DefaultImageOperands, DefaultLod);                                              \
+}                                                                                                                                                           \
+RET_TYPE##3 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##3(__spirv_SampledImage_##DIM##D##ARRAY Image, int##COORD_DIM Coordinate)               \
+{                                                                                                                                                           \
+    return __spirv_ImageSampleExplicitLod_R##RET_TYPE##3(Image, Coordinate, DefaultImageOperands, DefaultLod);                                              \
+}                                                                                                                                                           \
 RET_TYPE##2 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##2(__spirv_SampledImage_##DIM##D##ARRAY Image, float##COORD_DIM Coordinate, int ImageOperands, float Lod) \
 {                                                                                                                                                           \
     return convert_##RET_TYPE##2(__spirv_ImageSampleExplicitLod_R##LOAD_TYPE(Image, Coordinate, ImageOperands, Lod).xy);                                    \
@@ -1155,6 +1179,10 @@ RET_TYPE OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE(__spirv_Sampled
 }
 
 #define DEF_SYCL_BINDLESS_SAMPLED_IMAGE_EXPLICIT_LOD_DX_DY_TY(DIM, RET_TYPE, LOAD_TYPE, COORD_DIM)                                                                                       \
+RET_TYPE##3 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##3(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate, int ImageOperands, float##COORD_DIM dx, float##COORD_DIM dy) \
+{                                                                                                                                                                                        \
+    return convert_##RET_TYPE##3(__spirv_ImageSampleExplicitLod_R##LOAD_TYPE(Image, Coordinate, ImageOperands, dx, dy).xyz);                                                             \
+}                                                                                                                                                                                        \
 RET_TYPE##2 OVERLOADABLE __spirv_ImageSampleExplicitLod_R##RET_TYPE##2(__spirv_SampledImage_##DIM##D Image, float##COORD_DIM Coordinate, int ImageOperands, float##COORD_DIM dx, float##COORD_DIM dy) \
 {                                                                                                                                                                                        \
     return convert_##RET_TYPE##2(__spirv_ImageSampleExplicitLod_R##LOAD_TYPE(Image, Coordinate, ImageOperands, dx, dy).xy);                                                              \
@@ -1526,6 +1554,14 @@ TY##2 OVERLOADABLE __spirv_ImageRead_R##TY##2(global Img##DIM##d_##ARRAY_ACC_QUA
 TY##2 OVERLOADABLE __spirv_ImageRead_R##TY##2(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate, int ImageOperands) \
 {                                                                                                                                       \
     return __spirv_ImageRead_R##TY##2(Image, Coordinate);                                                                               \
+}                                                                                                                                       \
+TY##3 OVERLOADABLE __spirv_ImageRead_R##TY##3(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate)                    \
+{                                                                                                                                       \
+    return __spirv_ImageRead_R##TY##4(Image, Coordinate).xyz;                                                                           \
+}                                                                                                                                       \
+TY##3 OVERLOADABLE __spirv_ImageRead_R##TY##3(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate, int ImageOperands) \
+{                                                                                                                                       \
+    return __spirv_ImageRead_R##TY##3(Image, Coordinate);                                                                               \
 }
 
 #define DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_READ(DIM, ARRAY_ACC_QUAL, COORD_DIM)   \
@@ -1552,6 +1588,14 @@ TY##2 OVERLOADABLE __spirv_ImageRead_R##TY##2(global Img##DIM##d_##ARRAY_ACC_QUA
 TY##2 OVERLOADABLE __spirv_ImageRead_R##TY##2(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate, int ImageOperands) \
 {                                                                                                                                       \
     return __spirv_ImageRead_R##TY##2(Image, Coordinate);                                                                               \
+}                                                                                                                                       \
+TY##3 OVERLOADABLE __spirv_ImageRead_R##TY##3(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate)                    \
+{                                                                                                                                       \
+    return convert_##TY##3(__spirv_ImageRead_R##UNSIGNED##int3(Image, Coordinate));                                                     \
+}                                                                                                                                       \
+TY##3 OVERLOADABLE __spirv_ImageRead_R##TY##3(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate, int ImageOperands) \
+{                                                                                                                                       \
+    return __spirv_ImageRead_R##TY##3(Image, Coordinate);                                                                               \
 }                                                                                                                                       \
 TY##4 OVERLOADABLE __spirv_ImageRead_R##TY##4(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate)                    \
 {                                                                                                                                       \
@@ -1665,6 +1709,11 @@ void OVERLOADABLE __spirv_ImageWrite(global Img2d_##ACC_QUAL* Image, int2 Coordi
     int id = (int)__builtin_astype(Image, __global void*);                                                                        \
     __builtin_IB_write_2d_u2i(id, Coordinate, Texel, 0);                                                                          \
 }                                                                                                                                 \
+void OVERLOADABLE __spirv_ImageWrite(global Img2d_##ACC_QUAL* Image, int2 Coordinate, uint3 Texel)                                \
+{                                                                                                                                 \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                        \
+    __builtin_IB_write_2d_u3i(id, Coordinate, Texel, 0);                                                                          \
+}                                                                                                                                 \
 void OVERLOADABLE __spirv_ImageWrite(global Img2d_##ACC_QUAL* Image, int2 Coordinate, uint4 Texel)                                \
 {                                                                                                                                 \
     int id = (int)__builtin_astype(Image, __global void*);                                                                        \
@@ -1701,6 +1750,11 @@ void OVERLOADABLE __spirv_ImageWrite(global Img2d_array_##ACC_QUAL* Image, int3 
 {                                                                                                                                            \
     int id = (int)__builtin_astype(Image, __global void*);                                                                                   \
     __builtin_IB_write_2darr_u2i(id, Coordinate, Texel, 0);                                                                                  \
+}                                                                                                                                            \
+void OVERLOADABLE __spirv_ImageWrite(global Img2d_array_##ACC_QUAL* Image, int3 Coordinate, uint3 Texel)                                     \
+{                                                                                                                                            \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                                   \
+    __builtin_IB_write_2darr_u3i(id, Coordinate, Texel, 0);                                                                                  \
 }                                                                                                                                            \
 void OVERLOADABLE __spirv_ImageWrite(global Img2d_array_##ACC_QUAL* Image, int3 Coordinate, uint4 Texel)                                     \
 {                                                                                                                                            \
@@ -1762,6 +1816,11 @@ void OVERLOADABLE __spirv_ImageWrite(global Img1d_##ACC_QUAL* Image, int Coordin
 {                                                                                                                            \
     int id = (int)__builtin_astype(Image, __global void*);                                                                   \
     __builtin_IB_write_1d_u2i(id, Coordinate, Texel, 0);                                                                     \
+}                                                                                                                            \
+void OVERLOADABLE __spirv_ImageWrite(global Img1d_##ACC_QUAL* Image, int Coordinate, uint3 Texel)                            \
+{                                                                                                                            \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                   \
+    __builtin_IB_write_1d_u3i(id, Coordinate, Texel, 0);                                                                     \
 }                                                                                                                            \
 void OVERLOADABLE __spirv_ImageWrite(global Img1d_##ACC_QUAL* Image, int Coordinate, uint4 Texel)                            \
 {                                                                                                                            \
@@ -1827,6 +1886,11 @@ void OVERLOADABLE __spirv_ImageWrite(global Img1d_array_##ACC_QUAL* Image, int2 
     int id = (int)__builtin_astype(Image, __global void*);                                                                                  \
     __builtin_IB_write_1darr_u2i(id, Coordinate, Texel, 0);                                                                                 \
 }                                                                                                                                           \
+void OVERLOADABLE __spirv_ImageWrite(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate, uint3 Texel)                                    \
+{                                                                                                                                           \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                                  \
+    __builtin_IB_write_1darr_u3i(id, Coordinate, Texel, 0);                                                                                 \
+}                                                                                                                                           \
 void OVERLOADABLE __spirv_ImageWrite(global Img1d_array_##ACC_QUAL* Image, int2 Coordinate, uint4 Texel)                                    \
 {                                                                                                                                           \
     int id = (int)__builtin_astype(Image, __global void*);                                                                                  \
@@ -1885,6 +1949,11 @@ void OVERLOADABLE __spirv_ImageWrite(global Img3d_##ACC_QUAL* Image, int3 Coordi
 {                                                                                                                                                     \
     int id = (int)__builtin_astype(Image, __global void*);                                                                                            \
     __builtin_IB_write_3d_u2i(id, Coordinate, Texel, 0);                                                                                              \
+}                                                                                                                                                     \
+void OVERLOADABLE __spirv_ImageWrite(global Img3d_##ACC_QUAL* Image, int3 Coordinate, uint3 Texel)                                                    \
+{                                                                                                                                                     \
+    int id = (int)__builtin_astype(Image, __global void*);                                                                                            \
+    __builtin_IB_write_3d_u3i(id, Coordinate, Texel, 0);                                                                                              \
 }                                                                                                                                                     \
 void OVERLOADABLE __spirv_ImageWrite(global Img3d_##ACC_QUAL* Image, int3 Coordinate, uint4 Texel)                                                    \
 {                                                                                                                                                     \
@@ -2049,6 +2118,14 @@ void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image,
 void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate, TY##2 color, int ImageOperands) \
 {                                                                                                                                           \
     __spirv_ImageWrite(Image, Coordinate, color);                                                                                           \
+}                                                                                                                                           \
+void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate, TY##3 color)                    \
+{                                                                                                                                           \
+    __spirv_ImageWrite(Image, Coordinate, as_uint3(color));                                                                                 \
+}                                                                                                                                           \
+void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate, TY##3 color, int ImageOperands) \
+{                                                                                                                                           \
+    __spirv_ImageWrite(Image, Coordinate, color);                                                                                           \
 }
 
 #define DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_OP(DIM, ARRAY_ACC_QUAL, COORD_DIM, TY)                                                      \
@@ -2057,6 +2134,10 @@ void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image,
     __spirv_ImageWrite(Image, Coordinate, color);                                                                                           \
 }                                                                                                                                           \
 void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate, TY##2 color, int ImageOperands) \
+{                                                                                                                                           \
+    __spirv_ImageWrite(Image, Coordinate, color);                                                                                           \
+}                                                                                                                                           \
+void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate, TY##3 color, int ImageOperands) \
 {                                                                                                                                           \
     __spirv_ImageWrite(Image, Coordinate, color);                                                                                           \
 }
@@ -2080,6 +2161,14 @@ void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image,
     __spirv_ImageWrite(Image, Coordinate, convert_##UNSIGNED##int2(color));                                                                 \
 }                                                                                                                                           \
 void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate, TY##2 color, int ImageOperands) \
+{                                                                                                                                           \
+    return __spirv_ImageWrite(Image, Coordinate, color);                                                                                    \
+}                                                                                                                                           \
+void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate, TY##3 color)                    \
+{                                                                                                                                           \
+    __spirv_ImageWrite(Image, Coordinate, convert_##UNSIGNED##int3(color));                                                                 \
+}                                                                                                                                           \
+void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate, TY##3 color, int ImageOperands) \
 {                                                                                                                                           \
     return __spirv_ImageWrite(Image, Coordinate, color);                                                                                    \
 }                                                                                                                                           \
@@ -2122,7 +2211,7 @@ DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_SC(3, rw, 3)
 
 #ifdef cl_khr_fp16
 
-#define DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_HALF_1_2(DIM, ARRAY_ACC_QUAL, COORD_DIM)                                 \
+#define DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_HALF_1_2_3(DIM, ARRAY_ACC_QUAL, COORD_DIM)                               \
 void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate, half Texel)  \
 {                                                                                                                        \
     __spirv_ImageWrite(Image, Coordinate, SPIRV_BUILTIN(FConvert, _v1f32_v1f16, _Rfloat)(Texel));                        \
@@ -2130,10 +2219,14 @@ void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image,
 void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate, half2 Texel) \
 {                                                                                                                        \
     __spirv_ImageWrite(Image, Coordinate, SPIRV_BUILTIN(FConvert, _v2f32_v2f16, _Rfloat2)(Texel));                       \
+}                                                                                                                        \
+void OVERLOADABLE __spirv_ImageWrite(global Img##DIM##d_##ARRAY_ACC_QUAL* Image, int##COORD_DIM Coordinate, half3 Texel) \
+{                                                                                                                        \
+    __spirv_ImageWrite(Image, Coordinate, SPIRV_BUILTIN(FConvert, _v3f32_v3f16, _Rfloat3)(Texel));                       \
 }
 
 #define DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_HALF(DIM, ARRAY_ACC_QUAL, COORD_DIM) \
-DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_HALF_1_2(DIM, ARRAY_ACC_QUAL, COORD_DIM)     \
+DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_HALF_1_2_3(DIM, ARRAY_ACC_QUAL, COORD_DIM)   \
 DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_OP(DIM, ARRAY_ACC_QUAL, COORD_DIM, half)
 
 DEF_SYCL_BINDLESS_UNSAMPLED_IMAGE_WRITE_HALF(1, wo, )
