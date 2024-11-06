@@ -14,8 +14,7 @@ SPDX-License-Identifier: MIT
 #include "GraphColor.h"
 #include "PointsToAnalysis.h"
 
-#include <fstream>
-#include <math.h>
+#include <cmath>
 #include <sstream>
 #include <unordered_set>
 #include <optional>
@@ -353,8 +352,8 @@ void SpillManagerGRF::getOverlappingIntervals(
     }
   }
 
-  for (auto &dcl : overlappingDcls)
-    intervals.push_back(dcl);
+  intervals.insert(intervals.end(), overlappingDcls.begin(),
+                   overlappingDcls.end());
 }
 
 // Calculate the spill memory displacement for the regvar.
@@ -4721,15 +4720,8 @@ unsigned int GlobalRA::GRFSizeToOwords(unsigned int numGRFs,
 unsigned int GlobalRA::getHWordByteSize() { return HWORD_BYTE_SIZE; }
 
 bool Interval::intervalsOverlap(const Interval &second) const {
-  auto firstStart = start->getLexicalId();
-  auto firstEnd = end->getLexicalId();
-  auto secondStart = second.start->getLexicalId();
-  auto secondEnd = second.end->getLexicalId();
-
-  if (firstStart > secondEnd || secondStart > firstEnd)
-    return false;
-
-  return true;
+  return !(start->getLexicalId() > second.end->getLexicalId() ||
+           second.start->getLexicalId() > end->getLexicalId());
 }
 
 static G4_INST *createSpillFillAddr(IR_Builder &builder, G4_Declare *addr,
