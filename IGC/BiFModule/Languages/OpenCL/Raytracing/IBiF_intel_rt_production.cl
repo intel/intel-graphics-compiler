@@ -446,7 +446,8 @@ int intel_get_ray_mask(intel_ray_query_t rayquery, uint bvh_level)
 // a procedural leaf or a non-opaque triangle leaf, and requires shader processing.
 bool intel_is_traversal_done(intel_ray_query_t rayquery)
 {
-    return MemHit_getDone(get_query_hit(rayquery, intel_hit_type_potential_hit));
+    bool isTraversalDone = MemHit_getDone(get_query_hit(rayquery, intel_hit_type_potential_hit));
+    return isTraversalDone;
 }
 
 // if traversal is done one can test for the presence of a committed hit to either invoke miss or closest hit shader
