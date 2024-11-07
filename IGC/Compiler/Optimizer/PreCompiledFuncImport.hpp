@@ -40,7 +40,7 @@ namespace IGC
         EMU_SP_DIV = 0x10,        // bit 4: IEEE-complaint float div emulation (float)
         EMU_I32DIVREM = 0x20,     // bit 5: emulation lib for i32 div/rem
         EMU_I32DIVREM_SP = 0x40,  // bit 6: emulation lib for i32 div/rem using fp32
-        EMU_FP64_FP16_CONV = 0x80 // bit 7: fp64 to fp32 conversion
+        EMU_FP64_FP16_CONV = 0x80 // bit 7: fp64 to fp32 rte conversion
     };
 
     class PreCompiledFuncImport : public llvm::ModulePass, public llvm::InstVisitor<PreCompiledFuncImport>
@@ -284,7 +284,7 @@ namespace IGC
         bool isI32DivRem() const { return (m_emuKind & EmuKind::EMU_I32DIVREM) > 0; }
         bool isI32DivRemSP() const { return (m_emuKind & EmuKind::EMU_I32DIVREM_SP) > 0; }
         bool isSPDiv() const { return (m_emuKind & EmuKind::EMU_SP_DIV) > 0; }
-        bool isFP64toFP16() const { return (m_emuKind & EmuKind::EMU_FP64_FP16_CONV) > 0; }
+        bool isRTEFP64toFP16() const { return (m_emuKind & EmuKind::EMU_FP64_FP16_CONV) > 0; }
 
         bool m_libModuleToBeImported[NUM_LIBMODS];
         bool m_libModuleAlreadyImported[NUM_LIBMODS];

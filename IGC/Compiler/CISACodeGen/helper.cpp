@@ -2300,16 +2300,23 @@ namespace IGC
             case GenISAIntrinsic::GenISA_ftof_rtn:
             case GenISAIntrinsic::GenISA_itof_rtn:
             case GenISAIntrinsic::GenISA_uitof_rtn:
+            case GenISAIntrinsic::GenISA_add_rtn:
+            case GenISAIntrinsic::GenISA_mul_rtn:
             case GenISAIntrinsic::GenISA_fma_rtn:
                 RM = ERoundingMode::ROUND_TO_NEGATIVE;
                 break;
             case GenISAIntrinsic::GenISA_ftof_rtp:
             case GenISAIntrinsic::GenISA_itof_rtp:
             case GenISAIntrinsic::GenISA_uitof_rtp:
+            case GenISAIntrinsic::GenISA_add_rtp:
+            case GenISAIntrinsic::GenISA_mul_rtp:
             case GenISAIntrinsic::GenISA_fma_rtp:
                 RM = ERoundingMode::ROUND_TO_POSITIVE;
                 break;
             case GenISAIntrinsic::GenISA_ftof_rte:
+            case GenISAIntrinsic::GenISA_add_rte:
+            case GenISAIntrinsic::GenISA_mul_rte:
+            case GenISAIntrinsic::GenISA_fma_rte:
                 RM = ERoundingMode::ROUND_TO_NEAREST_EVEN;
                 break;
             case GenISAIntrinsic::GenISA_ftobf:

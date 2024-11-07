@@ -2445,6 +2445,66 @@ intrinsics:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
+        name: "GenISA_add_rte"
+        comment: ""
+        return_definition: !<ReturnDefinition>
+            type_definition: *any_float
+            comment: ""
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *ref_0_
+                comment: ""
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *ref_0_
+                comment: ""
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_add_rtp"
+        comment: ""
+        return_definition: !<ReturnDefinition>
+            type_definition: *any_float
+            comment: ""
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *ref_0_
+                comment: ""
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *ref_0_
+                comment: ""
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_add_rtn"
+        comment: ""
+        return_definition: !<ReturnDefinition>
+            type_definition: *any_float
+            comment: ""
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *ref_0_
+                comment: ""
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *ref_0_
+                comment: ""
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
         name: "GenISA_atomiccounterinc"
         comment: ""
         return_definition: !<ReturnDefinition>
@@ -3190,6 +3250,30 @@ intrinsics:
             - !AttributeID "NoUnwind"
     - !<IntrinsicDefinition>
         name: "GenISA_fma_rtz"
+        comment: ""
+        return_definition: !<ReturnDefinition>
+            type_definition: *any_float
+            comment: ""
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *ref_0_
+                comment: ""
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *ref_0_
+                comment: ""
+            - !<ArgumentDefinition>
+                name: Arg2
+                type_definition: *ref_0_
+                comment: ""
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_fma_rte"
         comment: ""
         return_definition: !<ReturnDefinition>
             type_definition: *any_float
@@ -6531,6 +6615,66 @@ intrinsics:
                 memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
         name: "GenISA_mul_rtz"
+        comment: ""
+        return_definition: !<ReturnDefinition>
+            type_definition: *any_float
+            comment: ""
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *ref_0_
+                comment: ""
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *ref_0_
+                comment: ""
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_mul_rte"
+        comment: ""
+        return_definition: !<ReturnDefinition>
+            type_definition: *any_float
+            comment: ""
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *ref_0_
+                comment: ""
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *ref_0_
+                comment: ""
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_mul_rtp"
+        comment: ""
+        return_definition: !<ReturnDefinition>
+            type_definition: *any_float
+            comment: ""
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *ref_0_
+                comment: ""
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *ref_0_
+                comment: ""
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_mul_rtn"
         comment: ""
         return_definition: !<ReturnDefinition>
             type_definition: *any_float
