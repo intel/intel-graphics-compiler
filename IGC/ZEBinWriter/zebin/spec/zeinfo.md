@@ -144,6 +144,7 @@ If an attribute is **Required**, it must be present in exection_env. If it's **O
 | eu_thread_count | int32 | Optional | 0 | Number of threads per EU. If not specified, the information can be derived from grf_count. |
 | has_sample | bool | Optional | false | |
 | has_rtcalls | bool | Optional | false | |
+| generate_local_id | bool | Optional | false | Flag of HW local ID capable info in cross-thread-payload. |
 <!--- ExecutionEnv -->
 
 ### Supported thread scheduling mode:

@@ -86,6 +86,7 @@ void MappingTraits<zeInfoExecutionEnv>::mapping(IO& io, zeInfoExecutionEnv& info
     io.mapOptional("eu_thread_count", info.eu_thread_count, 0);
     io.mapOptional("has_sample", info.has_sample, false);
     io.mapOptional("has_rtcalls", info.has_rtcalls, false);
+    io.mapOptional("generate_local_id", info.generate_local_id, false);
 }
 void MappingTraits<zeInfoPayloadArgument>::mapping(IO& io, zeInfoPayloadArgument& info)
 {
