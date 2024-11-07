@@ -35,24 +35,25 @@ define internal spir_func i32 @bar(i32 addrspace(3)* %arg) #1 {
   ret i32 %arg.ld
 }
 
-; CHECK: define internal spir_func i32 @foo
-; CHECK: %bar.res = call spir_func i32 @bar(i32 addrspace(3)* getelementptr inbounds ([4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 268435456 to [4 x i32] addrspace(3)*), i64 0, i64 1))
+; CHECK-LABEL: define internal spir_func i32 @foo
 define internal spir_func i32 @foo(i32 addrspace(3)* %arg) #1 {
+  ; CHECK: [[SPLIT_FOO:%[^ ]+]] = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 268435456 to [4 x i32] addrspace(3)*), i64 0, i64 1
+  ; CHECK: %bar.res = call spir_func i32 @bar(i32 addrspace(3)* [[SPLIT_FOO]])
   %arg.ld = load i32, i32 addrspace(3)* %arg, align 4
   %bar.res = call spir_func i32 @bar(i32 addrspace(3)* getelementptr inbounds ([4 x i32], [4 x i32] addrspace(3)* @SLM_GV, i64 0, i64 1))
   %res = add i32 %bar.res, %arg.ld
   ret i32 %res
 }
 
-; CHECK: define internal spir_func i32 @f1
-; CHECK: %gv.p3 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 268435456 to [4 x i32] addrspace(3)*), i64 0, i64 2
+; CHECK-LABEL: define internal spir_func i32 @f1
 define internal spir_func i32 @f1() #1 {
+  ; CHECK: %gv.p3 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 268435456 to [4 x i32] addrspace(3)*), i64 0, i64 2
   %gv.p3 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* @SLM_GV, i64 0, i64 2
   %foo.res = call spir_func i32 @foo(i32 addrspace(3)* %gv.p3)
   ret i32 %foo.res
 }
 
-; CHECK: define internal spir_func i32 @f2
+; CHECK-LABEL: define internal spir_func i32 @f2
 define internal spir_func i32 @f2() #1 {
   ; CHECK: %gv.p3.0 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 268435456 to [4 x i32] addrspace(3)*), i64 0, i64
   %gv.p3.0 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* @SLM_GV, i64 0, i64 0
@@ -71,7 +72,7 @@ define internal spir_func i32 @f2() #1 {
   ret i32 %sum.res
 }
 
-; CHECK: define internal spir_func i32 @f0
+; CHECK-LABEL: define internal spir_func i32 @f0
 define internal spir_func i32 @f0(i32 addrspace(3)* %arg) #1 {
   %arg.ld = load i32, i32 addrspace(3)* %arg, align 4
 
@@ -93,25 +94,28 @@ exit:
   ret i32 %f0.res
 }
 
-; CHECK: define internal spir_func i32 @f3
-; CHECK: %bar.res = call spir_func i32 @bar(i32 addrspace(3)* getelementptr inbounds ([4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 268435456 to [4 x i32] addrspace(3)*), i64 0, i64 0))
+; CHECK-LABEL: define internal spir_func i32 @f3
 define internal spir_func i32 @f3(i32 addrspace(3)* %arg) #1 {
+  ; CHECK: [[SPLIT_F3:%[^ ]+]] = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 64 to [4 x i32] addrspace(3)*), i64 0, i64 0
+  ; CHECK: %bar.res = call spir_func i32 @bar(i32 addrspace(3)* [[SPLIT_F3]])
   %bar.res = call spir_func i32 @bar(i32 addrspace(3)* getelementptr inbounds ([4 x i32], [4 x i32] addrspace(3)* @SLM_GV, i64 0, i64 0))
   %arg.ld = load i32, i32 addrspace(3)* %arg, align 4
   %sum = add i32 %bar.res, %arg.ld
   ret i32 %sum
 }
 
-; CHECK: define dllexport spir_kernel void @kernelA
-; CHECK: %res = call spir_func i32 @f0(i32 addrspace(3)* getelementptr inbounds ([4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 268435456 to [4 x i32] addrspace(3)*), i64 0, i64 0))
+; CHECK-LABEL: define dllexport spir_kernel void @kernelA
 define dllexport spir_kernel void @kernelA() #2 {
+  ; CHECK: [[SPLIT_KA:%[^ ]+]] = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 268435456 to [4 x i32] addrspace(3)*), i64 0, i64 0
+  ; CHECK: %res = call spir_func i32 @f0(i32 addrspace(3)* [[SPLIT_KA]])
   %res = call spir_func i32 @f0(i32 addrspace(3)* getelementptr inbounds ([4 x i32], [4 x i32] addrspace(3)* @SLM_GV, i64 0, i64 0))
   ret void
 }
 
-; CHECK: define dllexport spir_kernel void @kernelB
-; CHECK: %res = call spir_func i32 @f3(i32 addrspace(3)* getelementptr inbounds ([4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 64 to [4 x i32] addrspace(3)*), i64 0, i64 3))
+; CHECK-LABEL: define dllexport spir_kernel void @kernelB
 define dllexport spir_kernel void @kernelB() #2 {
+  ; CHECK: [[SPLIT_KB:%[^ ]+]] = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 64 to [4 x i32] addrspace(3)*), i64 0, i64 3
+  ; CHECK: %res = call spir_func i32 @f3(i32 addrspace(3)* [[SPLIT_KB]])
   %res = call spir_func i32 @f3(i32 addrspace(3)* getelementptr inbounds ([4 x i32], [4 x i32] addrspace(3)* @SLM_GV, i64 0, i64 3))
   ret void
 }

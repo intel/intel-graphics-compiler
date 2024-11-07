@@ -38,6 +38,7 @@ SPDX-License-Identifier: MIT
 #include "GenXUtil.h"
 
 #include "vc/Support/GenXDiagnostic.h"
+#include "vc/Utils/GenX/BreakConst.h"
 #include "vc/Utils/GenX/GlobalVariable.h"
 #include "vc/Utils/GenX/KernelInfo.h"
 #include "vc/Utils/General/Types.h"
@@ -123,16 +124,11 @@ static void lowerSlmInit(Instruction &I) {
 
 static bool isUserInList(const User &U,
                          const SmallPtrSetImpl<Function *> &FunctionSet) {
-  if (auto *I = dyn_cast<Instruction>(&U)) {
-    auto *F = I->getFunction();
-    return FunctionSet.count(F);
-  }
-  IGC_ASSERT_MESSAGE(isa<Constant>(&U), "unexpected SLM variable user");
-  // For constant user continue recursively traversing until instruction
-  // is met.
-  return llvm::any_of(U.users(), [&FunctionSet](const User *U) {
-    return isUserInList(*U, FunctionSet);
-  });
+  auto *UserInst = dyn_cast<Instruction>(&U);
+  if (!UserInst)
+    return false;
+  auto *F = UserInst->getFunction();
+  return FunctionSet.count(F);
 }
 
 static bool isBelongToKernel(const GlobalVariable &GV,
@@ -281,6 +277,11 @@ bool GenXSLMResolution::runOnModule(Module &M) {
   llvm::for_each(SLMInitToErase, [](Instruction *I) { I->eraseFromParent(); });
 
   auto SLMVars = collectSLMVariables(M);
+  if (!SLMVars.empty())
+    for (auto &F : M.functions())
+      Modified |=
+          vc::breakConstantExprs(&F, vc::LegalizationStage::NotLegalized);
+
   for (auto &F : M.functions())
     if (vc::isKernel(&F))
       Modified |= runForKernel(F, M, SLMVars);
