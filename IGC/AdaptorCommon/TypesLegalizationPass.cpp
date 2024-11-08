@@ -115,12 +115,6 @@ Value* TypesLegalizationPass::CreateGEP(IGCLLVM::IRBuilder<>& builder, Type* Ty,
     return builder.CreateGEP(Ty, ptr, gepIndices);
 }
 
-// Depricated because it uses typed pointers and
-// should no longer be used in LLVM 14+ compatible code.
-Value* TypesLegalizationPass::CreateGEP( IGCLLVM::IRBuilder<> &builder,Value *ptr,SmallVector<unsigned,8> &indices ) {
-  return CreateGEP(builder, IGCLLVM::getNonOpaquePtrEltTy(ptr->getType()), ptr, indices);
-}
-
 ///////////////////////////////////////////////////////////////////////
 /// @brief Resolves a PHI node to alloca store and load.
 /// @param phi instruction to resolve
