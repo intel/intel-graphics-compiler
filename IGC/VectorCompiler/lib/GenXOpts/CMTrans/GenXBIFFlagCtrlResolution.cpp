@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include <map>
 
 using namespace llvm;
+#define DEBUG_TYPE "GenXBIFFlagCtrlResolution"
 
 #define BIF_FLAG_CONTROL(BIF_FLAG_TYPE, BIF_FLAG_NAME)                            \
   BIF_FLAG_CTRL_N_S(BIF_FLAG_NAME),
@@ -144,7 +145,6 @@ bool GenXBIFFlagCtrlResolution::replace(T Value, GlobalVariable *GV) {
 }
 
 char GenXBIFFlagCtrlResolution::ID = 0;
-
 
 INITIALIZE_PASS_BEGIN(GenXBIFFlagCtrlResolution, "GenXBIFFlagCtrlResolution",
                       "GenXBIFFlagCtrlResolution", false, false)

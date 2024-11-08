@@ -100,7 +100,7 @@ SPDX-License-Identifier: MIT
 ///
 //===----------------------------------------------------------------------===//
 
-#define DEBUG_TYPE "cmimpparam"
+#define DEBUG_TYPE "CMImpParam"
 
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/Utils/GenX/KernelInfo.h"
@@ -1198,14 +1198,16 @@ CMImpParam::processKernelParameters(Function *F,
 }
 
 char CMImpParam::ID = 0;
-INITIALIZE_PASS_BEGIN(CMImpParam, "cmimpparam",
+INITIALIZE_PASS_BEGIN(CMImpParam, "CMImpParam",
                       "Transformations required to support implicit arguments",
                       false, false)
 INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
-INITIALIZE_PASS_END(CMImpParam, "cmimpparam",
+INITIALIZE_PASS_END(CMImpParam, "CMImpParam",
                     "Transformations required to support implicit arguments",
                     false, false)
 
-Pass *llvm::createCMImpParamPass(bool HasPayloadInMemory) {
+namespace llvm {
+Pass *createCMImpParamPass(bool HasPayloadInMemory) {
   return new CMImpParam{HasPayloadInMemory};
 }
+} // namespace llvm

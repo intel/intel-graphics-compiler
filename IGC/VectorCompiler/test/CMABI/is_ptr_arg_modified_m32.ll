@@ -1,12 +1,12 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -cmabi -march=genx32 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -CMABI -march=genx32 -mcpu=Gen9 -S < %s | FileCheck %s
 
 target datalayout = "e-p:32:32-i64:64-n8:16:32"
 

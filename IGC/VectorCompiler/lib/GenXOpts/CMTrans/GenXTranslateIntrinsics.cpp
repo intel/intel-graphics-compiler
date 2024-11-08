@@ -25,7 +25,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include <llvm/Support/Debug.h>
 
-#define DEBUG_TYPE "genx-translate-intrinsics"
+#define DEBUG_TYPE "GenXTranslateIntrinsics"
 
 using namespace llvm;
 

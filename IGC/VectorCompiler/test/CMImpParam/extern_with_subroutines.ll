@@ -6,9 +6,9 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -cmimpparam -march=genx64 -mcpu=XeHP -S < %s \
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -CMImpParam -march=genx64 -mcpu=XeHP -S < %s \
 ; RUN:    | FileCheck %s --check-prefixes=XeHP-OCL,XeHP-OCL-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -cmimpparam -march=genx64 -mcpu=XeHP -S < %s \
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -CMImpParam -march=genx64 -mcpu=XeHP -S < %s \
 ; RUN:    | FileCheck %s --check-prefixes=XeHP-OCL,XeHP-OCL-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"

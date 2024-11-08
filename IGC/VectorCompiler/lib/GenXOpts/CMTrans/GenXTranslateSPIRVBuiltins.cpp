@@ -36,7 +36,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include <optional>
 
-#define DEBUG_TYPE "GENX_SPIRV_BUILTINS"
+#define DEBUG_TYPE "GenXTranslateSPIRVBuiltins"
 
 using namespace llvm;
 

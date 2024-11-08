@@ -6,9 +6,9 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -genx-simplify -mcpu=Gen9 -march=genx64 -mtriple=spir64 -S < %s | \
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXSimplify -mcpu=Gen9 -march=genx64 -mtriple=spir64 -S < %s | \
 ; RUN:   FileCheck --check-prefixes=FIXED,FIXED-TYPED-PTRS %s
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -genx-simplify -mcpu=Gen9 -march=genx64 -mtriple=spir64 -S < %s | \
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXSimplify -mcpu=Gen9 -march=genx64 -mtriple=spir64 -S < %s | \
 ; RUN:   FileCheck --check-prefixes=FIXED,FIXED-OPAQUE-PTRS %s
 
 target datalayout = "e-p:64:64-p3:32:32-p6:32:32-i64:64-n8:16:32:64"

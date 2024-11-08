@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022-2023 Intel Corporation
+Copyright (C) 2022-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -65,6 +65,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/Utils/Cloning.h>
 
 using namespace llvm;
+#define DEBUG_TYPE "GenXCloneIndirectFunctions"
 
 static cl::opt<bool> EnableCloneIndirectFunctions(
     "vc-enable-clone-indirect-functions",

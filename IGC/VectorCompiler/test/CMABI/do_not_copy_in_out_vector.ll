@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -cmabi -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -CMABI -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
 
 declare void @llvm.genx.svm.scatter.v16i1.v16i64.v16f32(<16 x i1>, i32, <16 x i64>, <16 x float>) #0
 

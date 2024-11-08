@@ -32,7 +32,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/Pass.h>
 
-#define DEBUG_TYPE "GENX_TYPE_LEGALIZATION"
+#define DEBUG_TYPE "GenXTypeLegalization"
 
 using namespace llvm;
 

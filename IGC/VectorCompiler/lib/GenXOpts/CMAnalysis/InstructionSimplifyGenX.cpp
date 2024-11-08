@@ -44,7 +44,7 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 
-#define DEBUG_TYPE "genx-simplify"
+#define DEBUG_TYPE "GenXSimplify"
 
 using namespace llvm;
 
@@ -505,10 +505,10 @@ bool GenXSimplify::runOnFunction(Function &F) {
 }
 
 char GenXSimplify::ID = 0;
-INITIALIZE_PASS_BEGIN(GenXSimplify, "genx-simplify",
+INITIALIZE_PASS_BEGIN(GenXSimplify, "GenXSimplify",
                       "simplify genx specific instructions", false, false)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
-INITIALIZE_PASS_END(GenXSimplify, "genx-simplify",
+INITIALIZE_PASS_END(GenXSimplify, "GenXSimplify",
                     "simplify genx specific instructions", false, false)
 
 FunctionPass *llvm::createGenXSimplifyPass() { return new GenXSimplify; }

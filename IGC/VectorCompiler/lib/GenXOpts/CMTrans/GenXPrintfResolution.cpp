@@ -54,6 +54,8 @@ SPDX-License-Identifier: MIT
 #include <sstream>
 #include <vector>
 
+#define DEBUG_TYPE "GenXPrintfResolution"
+
 using namespace llvm;
 using namespace vc;
 using namespace vc::bif::printf;

@@ -84,7 +84,7 @@ SPDX-License-Identifier: MIT
 #include <unordered_set>
 #include <vector>
 
-#define DEBUG_TYPE "cmabi"
+#define DEBUG_TYPE "CMABI"
 
 using namespace llvm;
 
@@ -317,10 +317,10 @@ private:
 } // namespace
 
 char CMABIAnalysis::ID = 0;
-INITIALIZE_PASS_BEGIN(CMABIAnalysis, "cmabi-analysis",
+INITIALIZE_PASS_BEGIN(CMABIAnalysis, "CMABIAnalysis",
                       "helper analysis pass to get info for CMABI", false, true)
 INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
-INITIALIZE_PASS_END(CMABIAnalysis, "cmabi-analysis",
+INITIALIZE_PASS_END(CMABIAnalysis, "CMABIAnalysis",
                     "Fix ABI issues for the genx backend", false, true)
 
 bool CMABIAnalysis::runOnModule(Module &M) {
@@ -936,10 +936,12 @@ void CMABI::diagnoseOverlappingArgs(CallInst *CI)
 }
 
 char CMABI::ID = 0;
-INITIALIZE_PASS_BEGIN(CMABI, "cmabi", "Fix ABI issues for the genx backend", false, false)
+INITIALIZE_PASS_BEGIN(CMABI, "CMABI", "Fix ABI issues for the genx backend",
+                      false, false)
 INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(CMABIAnalysis)
-INITIALIZE_PASS_END(CMABI, "cmabi", "Fix ABI issues for the genx backend", false, false)
+INITIALIZE_PASS_END(CMABI, "CMABI", "Fix ABI issues for the genx backend",
+                    false, false)
 
 Pass *llvm::createCMABIPass() { return new CMABI(); }
 
@@ -1005,12 +1007,12 @@ private:
 
 char CMLowerVLoadVStore::ID = 0;
 INITIALIZE_PASS_BEGIN(CMLowerVLoadVStore, "CMLowerVLoadVStore",
-                      "Lower CM reference vector loads and stores", false, false)
+                      "Lower CM reference vector loads and stores", false,
+                      false)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
 INITIALIZE_PASS_END(CMLowerVLoadVStore, "CMLowerVLoadVStore",
                     "Lower CM reference vector loads and stores", false, false)
-
 
 bool CMLowerVLoadVStore::runOnFunction(Function &F) {
   bool Changed = false;
