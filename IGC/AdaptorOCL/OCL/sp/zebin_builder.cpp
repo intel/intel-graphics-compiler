@@ -553,6 +553,7 @@ void ZEBinaryBuilder::addKernelExecEnv(const SOpenCLKernelInfo& annotations,
     env.inline_data_payload_size = annotations.m_threadPayload.PassInlineDataSize;
     env.offset_to_skip_per_thread_data_load = annotations.m_threadPayload.OffsetToSkipPerThreadDataLoad;;
     env.offset_to_skip_set_ffid_gp = annotations.m_threadPayload.OffsetToSkipSetFFIDGP;
+    env.generate_local_id = annotations.m_threadPayload.generateLocalID;
 
     // extract required_sub_group_size from kernel attribute list
     // it will be in the format of "intel_reqd_sub_group_size(16)"
