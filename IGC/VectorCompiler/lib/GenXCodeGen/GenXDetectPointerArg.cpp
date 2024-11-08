@@ -413,6 +413,25 @@ void GenXDetectPointerArg::analyzeValue(Value *V) {
       continue;
     }
 
+    // Skip function calls and intrinsics.
+    if (isa<CallInst>(Inst))
+      continue;
+
+    switch (Inst->getOpcode()) {
+    default:
+      break;
+    case Instruction::Mul:
+    case Instruction::UDiv:
+    case Instruction::SDiv:
+    case Instruction::URem:
+    case Instruction::SRem:
+    case Instruction::Shl:
+    case Instruction::LShr:
+    case Instruction::AShr:
+      // Mul-like and div-like instructions cannot produce a pointer.
+      continue;
+    }
+
     for (auto &Op : Inst->operands())
       WorkList.push(Op.get());
   }
