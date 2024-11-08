@@ -55,9 +55,9 @@ private:
     //m_ShMemRTCtrls  is an array of RTStackFormat::RTCtrl in ShadowMemory
     //together, they are RayQueryObjects[n]
     //RTStack2/SMStack2 m_ShMemRTStacks[n]
-    Value* m_ShMemRTStacks = nullptr;
+    AllocaInst* m_ShMemRTStacks = nullptr;
     //RayQueryStateInfo m_ShMemRTCtrls[n]
-    Value* m_ShMemRTCtrls = nullptr;
+    AllocaInst* m_ShMemRTCtrls = nullptr;
     CodeGenContext* m_CGCtx = nullptr;
     bool singleRQMemRayStore = false;
     //if there is only one Proceed and it's not in a loop, then, we only need to prepare data for Proceed() once
@@ -78,14 +78,14 @@ private:
     void LowerCommitProceduralPrimitiveHit(Function& F);
 
     //return m_ShMemRTCtrls[index]
-    Value* getShMemRTCtrl(RTBuilder& builder, unsigned queryIndex) {
+    GetElementPtrInst* getShMemRTCtrl(RTBuilder& builder, unsigned queryIndex) {
         return getShMemRTCtrl(builder, builder.getInt32(queryIndex));
     }
 
     //return m_ShMemRTCtrls[index]
-    Value* getShMemRTCtrl(RTBuilder& builder, Value* queryIndex) {
-        return builder.CreateGEP(cast<llvm::AllocaInst>(m_ShMemRTCtrls)->getAllocatedType(),
-            m_ShMemRTCtrls, { builder.getInt32(0), queryIndex }, VALUE_NAME("&shadowMem.RTCtrl"));
+    GetElementPtrInst* getShMemRTCtrl(RTBuilder& builder, Value* queryIndex) {
+        return GetElementPtrInst::Create(m_ShMemRTCtrls->getAllocatedType(),
+            m_ShMemRTCtrls, { builder.getInt32(0), queryIndex }, VALUE_NAME("&shadowMem.RTCtrl"), &(*builder.GetInsertPoint()));
     }
 
     //return rtStacks[index]
@@ -96,7 +96,7 @@ private:
     //return rtStacks[index]
     RTBuilder::SyncStackPointerVal* getShMemRayQueryRTStack(RTBuilder& builder, Value* queryIndex) {
         return static_cast<RTBuilder::SyncStackPointerVal*>(
-            builder.CreateGEP(cast<llvm::AllocaInst>(m_ShMemRTStacks)->getAllocatedType(),
+            builder.CreateGEP(m_ShMemRTStacks->getAllocatedType(),
                 m_ShMemRTStacks, { builder.getInt32(0), queryIndex }, VALUE_NAME("&shadowMem.RTStack")));
     }
 
@@ -360,8 +360,8 @@ Value* TraceRayInlineLoweringPass::emitProceedMainBody(
     builder.copyMemHitInProceed(HWStackPointer, ShadowMemStackPointer, singleRQProceed, usesDeprecatedCopyMemHitInRQProceed);
 
     //get ray Current ray control for object
-    Value* ShdowMemRTCtrlPtr = getShMemRTCtrl(builder, queryObjIndex);
-    Value* traceRayCtrl = builder.getSyncTraceRayControl(ShdowMemRTCtrlPtr);
+    GetElementPtrInst* ShdowMemRTCtrlPtr = getShMemRTCtrl(builder, queryObjIndex);
+    LoadInst* traceRayCtrl = builder.getSyncTraceRayControl(ShdowMemRTCtrlPtr);
 
     if (IGC_IS_FLAG_ENABLED(DisableLoadAsFenceOpInRaytracing))
     {

@@ -272,7 +272,7 @@ public:
 
     std::pair<BasicBlock*, PHINode*>
         validateInstanceLeafPtr(RTBuilder::StackPointerVal* perLaneStackPtr, Instruction* I, bool forCommitted);
-    std::pair<Value*, Value*> createAllocaRayQueryObjects(unsigned int size, bool bShrinkSMStack, const llvm::Twine& Name = "");
+    std::pair<AllocaInst*, AllocaInst*> createAllocaRayQueryObjects(unsigned int size, bool bShrinkSMStack, const llvm::Twine& Name = "");
 
     void setDoneBit(StackPointerVal* StackPointer, bool Committed);
     Value* alignVal(Value* V, uint64_t Align);
@@ -356,8 +356,8 @@ public:
         bool Committed);
     Value* getHitValid(StackPointerVal* StackPointer, bool CommittedHit);
     void   setHitValid(StackPointerVal* StackPointer, bool CommittedHit);
-    Value* getSyncTraceRayControl(Value* ptrCtrl);
-    void   setSyncTraceRayControl(Value* ptrCtrl, RTStackFormat::TraceRayCtrl ctrl);
+    LoadInst* getSyncTraceRayControl(GetElementPtrInst* ptrCtrl);
+    void   setSyncTraceRayControl(GetElementPtrInst* ptrCtrl, RTStackFormat::TraceRayCtrl ctrl);
     Value* getHitBaryCentric(StackPointerVal* StackPointer, uint32_t idx, bool CommittedHit);
 
 

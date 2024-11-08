@@ -497,7 +497,7 @@ std::pair<BasicBlock*, PHINode*> RTBuilder::validateInstanceLeafPtr(
 //      % "&ShadowMemory.RayQueryObjects".first = alloca[5 x % "struct.RTStackFormat::RTStack2"]
 //  % "&ShadowMemory.RayQueryObjects".second = alloca[5 x int8]
 //
-std::pair<Value*, Value*> RTBuilder::createAllocaRayQueryObjects(unsigned int size, bool bShrinkSMStack, const llvm::Twine& Name)
+std::pair<AllocaInst*, AllocaInst*> RTBuilder::createAllocaRayQueryObjects(unsigned int size, bool bShrinkSMStack, const llvm::Twine& Name)
 {
     //FIXME: Temp solution: to shrink ShadowMemory, if ShrinkShadowMemoryIfNoSpillfill is true (we know no spillfill), then,
     //we alloca SMStack instead of RTStack to reduce the size. Also, here, we simply cast SMStack pointer to RTStack which is risky
@@ -505,7 +505,7 @@ std::pair<Value*, Value*> RTBuilder::createAllocaRayQueryObjects(unsigned int si
     //But don't shrink data in the middle of RTStack which will lead to holes.
     auto* RTStackTy = bShrinkSMStack ? getSMStack2Ty() : getRTStack2Ty();
 
-    Value* rtStacks = this->CreateAlloca(
+    AllocaInst* rtStacks = this->CreateAlloca(
         ArrayType::get(RTStackTy, size),
         nullptr,
         Name);
@@ -516,7 +516,7 @@ std::pair<Value*, Value*> RTBuilder::createAllocaRayQueryObjects(unsigned int si
     //to WA this, let's temporily use DW, but sure, this won't solve all other issues.
     //  %0 = alloca <3 x float>
     //  store <3 x float> zeroinitializer, <3 x float>* %0
-    Value* rtCtrls = this->CreateAlloca(
+    AllocaInst* rtCtrls = this->CreateAlloca(
         ArrayType::get(this->getInt32Ty(), size),
         nullptr,
         Name);
@@ -1388,15 +1388,14 @@ void RTBuilder::setHitValid(StackPointerVal* StackPointer, bool CommittedHit)
     }
 }
 
-Value* RTBuilder::getSyncTraceRayControl(Value* ptrCtrl)
+LoadInst* RTBuilder::getSyncTraceRayControl(GetElementPtrInst* ptrCtrl)
 {
-    return this->CreateLoad(ptrCtrl, VALUE_NAME("rayQueryObject.traceRayControl"));
+    return this->CreateLoad(ptrCtrl->getResultElementType(), ptrCtrl, VALUE_NAME("rayQueryObject.traceRayControl"));
 }
 
-void RTBuilder::setSyncTraceRayControl(Value* ptrCtrl, RTStackFormat::TraceRayCtrl ctrl)
+void RTBuilder::setSyncTraceRayControl(GetElementPtrInst* ptrCtrl, RTStackFormat::TraceRayCtrl ctrl)
 {
-    Type* eleType = IGCLLVM::getNonOpaquePtrEltTy(ptrCtrl->getType());
-    this->CreateStore(llvm::ConstantInt::get(eleType, (uint32_t)ctrl), ptrCtrl);
+    this->CreateStore(llvm::ConstantInt::get(ptrCtrl->getResultElementType(), (uint32_t)ctrl), ptrCtrl);
 }
 
 Value* RTBuilder::getHitBaryCentric(
