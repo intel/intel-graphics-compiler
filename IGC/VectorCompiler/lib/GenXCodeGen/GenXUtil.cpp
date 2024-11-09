@@ -495,43 +495,6 @@ bool ShuffleVectorAnalyzer::isReplicatedSlice() const {
   return true;
 }
 
-bool ShuffleVectorAnalyzer::isVNNIShuffle(unsigned ExecSize) const {
-  IGC_ASSERT(SI);
-
-  if (!SI->isSingleSource())
-    return false;
-
-  auto *Ty = cast<IGCLLVM::FixedVectorType>(SI->getType());
-  auto *EltTy = Ty->getElementType();
-  auto EltSize = EltTy->getPrimitiveSizeInBits();
-
-  if (EltSize != genx::WordBits && EltSize != genx::ByteBits)
-    return false;
-
-  auto VNNIFactor = genx::DWordBits / EltSize;
-
-  auto RowSize = ExecSize * VNNIFactor;
-  auto NumElts = Ty->getNumElements();
-
-  if (NumElts % ExecSize * VNNIFactor != 0)
-    return false;
-
-  auto Rows = NumElts / RowSize;
-
-  for (unsigned R = 0; R < Rows; ++R) {
-    for (unsigned I = 0; I < ExecSize; ++I) {
-      for (unsigned J = 0; J < VNNIFactor; ++J) {
-        auto Idx = R * RowSize + I * VNNIFactor + J;
-        auto ExpectedVal = R * RowSize + ExecSize * J + I;
-        if (SI->getMaskValue(Idx) != ExpectedVal)
-          return false;
-      }
-    }
-  }
-
-  return true;
-}
-
 Value *genx::getMaskOperand(const Instruction *Inst) {
   IGC_ASSERT(Inst);
 
