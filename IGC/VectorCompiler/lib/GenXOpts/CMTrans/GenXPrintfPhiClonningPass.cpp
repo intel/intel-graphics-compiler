@@ -84,10 +84,24 @@ INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_END(GenXPrintfPhiClonning, "GenXPrintfPhiClonning",
                     "GenXPrintfPhiClonning", false, false)
 
-ModulePass *llvm::createGenXPrintfPhiClonningPass() {
+namespace llvm {
+ModulePass *createGenXPrintfPhiClonningPass() {
   initializeGenXPrintfPhiClonningPass(*PassRegistry::getPassRegistry());
   return new GenXPrintfPhiClonning;
 }
+} // namespace llvm
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses
+GenXPrintfPhiClonningPass::run(llvm::Module &M,
+                               llvm::AnalysisManager<llvm::Module> &) {
+  GenXPrintfPhiClonning GenXPhi;
+  if (GenXPhi.runOnModule(M)) {
+    return PreservedAnalyses::all();
+  }
+  return PreservedAnalyses::none();
+}
+#endif
 
 void GenXPrintfPhiClonning::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<GenXBackendConfig>();

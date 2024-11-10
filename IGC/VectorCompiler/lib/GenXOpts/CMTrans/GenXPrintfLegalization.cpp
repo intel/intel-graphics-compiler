@@ -146,10 +146,24 @@ INITIALIZE_PASS_BEGIN(GenXPrintfLegalization, "GenXPrintfLegalization",
 INITIALIZE_PASS_END(GenXPrintfLegalization, "GenXPrintfLegalization",
                     "GenXPrintfLegalization", false, false)
 
-ModulePass *llvm::createGenXPrintfLegalizationPass() {
+namespace llvm {
+ModulePass *createGenXPrintfLegalizationPass() {
   initializeGenXPrintfLegalizationPass(*PassRegistry::getPassRegistry());
   return new GenXPrintfLegalization;
 };
+} // namespace llvm
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses
+GenXPrintfLegalizationPass::run(llvm::Module &M,
+                                llvm::AnalysisManager<llvm::Module> &) {
+  GenXPrintfLegalization GenXPrint;
+  if (GenXPrint.runOnModule(M)) {
+    return PreservedAnalyses::all();
+  }
+  return PreservedAnalyses::none();
+}
+#endif
 
 void GenXPrintfLegalization::getAnalysisUsage(AnalysisUsage &AU) const {}
 

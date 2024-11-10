@@ -132,10 +132,24 @@ INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_END(GenXPrintfResolution, "GenXPrintfResolution",
                     "GenXPrintfResolution", false, false)
 
-ModulePass *llvm::createGenXPrintfResolutionPass() {
+namespace llvm {
+ModulePass *createGenXPrintfResolutionPass() {
   initializeGenXPrintfResolutionPass(*PassRegistry::getPassRegistry());
   return new GenXPrintfResolution;
 }
+} // namespace llvm
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses
+GenXPrintfResolutionPass::run(llvm::Module &M,
+                              llvm::AnalysisManager<llvm::Module> &) {
+  GenXPrintfResolution GenXPrint;
+  if (GenXPrint.runOnModule(M)) {
+    return PreservedAnalyses::all();
+  }
+  return PreservedAnalyses::none();
+}
+#endif
 
 void GenXPrintfResolution::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<GenXBackendConfig>();

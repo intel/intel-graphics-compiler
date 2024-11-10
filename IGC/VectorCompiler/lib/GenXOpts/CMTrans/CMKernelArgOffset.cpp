@@ -99,6 +99,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/Module.h"
+#include "llvm/IR/PassManager.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
@@ -186,6 +187,18 @@ Pass *createCMKernelArgOffsetPass(unsigned GrfByteSize,
   return new CMKernelArgOffset(GrfByteSize, UseBindlessImages);
 }
 } // namespace llvm
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses
+CMKernelArgOffsetPass::run(llvm::Module &M,
+                           llvm::AnalysisManager<llvm::Module> &) {
+  CMKernelArgOffset CMKern;
+  if (CMKern.runOnModule(M)) {
+    return PreservedAnalyses::all();
+  }
+  return PreservedAnalyses::none();
+}
+#endif
 
 // Check whether there is an input/output argument attribute.
 static bool canReorderArguments(const vc::KernelMetadata &KM) {

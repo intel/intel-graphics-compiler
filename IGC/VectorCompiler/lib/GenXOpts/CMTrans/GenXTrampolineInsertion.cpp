@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2023 Intel Corporation
+Copyright (C) 2021-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -233,6 +233,19 @@ INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_END(GenXTrampolineInsertion, "GenXTrampolineInsertion",
                     "GenXTrampolineInsertion", false, false)
 
-ModulePass *llvm::createGenXTrampolineInsertionPass() {
+namespace llvm {
+ModulePass *createGenXTrampolineInsertionPass() {
   return new GenXTrampolineInsertion();
 }
+} // namespace llvm
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses
+GenXTrampolineInsertionPass::run(Module &M, AnalysisManager<llvm::Module> &) {
+  GenXTrampolineInsertion GenXTramp;
+  if (GenXTramp.runOnModule(M)) {
+    return PreservedAnalyses::all();
+  }
+  return PreservedAnalyses::none();
+}
+#endif

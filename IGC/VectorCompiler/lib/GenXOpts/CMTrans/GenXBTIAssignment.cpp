@@ -119,6 +119,18 @@ ModulePass *createGenXBTIAssignmentPass() {
 }
 } // namespace llvm
 
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses
+GenXBTIAssignmentPass::run(llvm::Module &M,
+                           llvm::AnalysisManager<llvm::Module> &) {
+  GenXBTIAssignment GenXBTI;
+  if (GenXBTI.runOnModule(M)) {
+    return PreservedAnalyses::all();
+  }
+  return PreservedAnalyses::none();
+}
+#endif
+
 bool GenXBTIAssignment::runOnModule(Module &M) {
   auto &BC = getAnalysis<GenXBackendConfig>();
   bool emitDebuggableKernels = BC.emitDebuggableKernelsForLegacyPath();

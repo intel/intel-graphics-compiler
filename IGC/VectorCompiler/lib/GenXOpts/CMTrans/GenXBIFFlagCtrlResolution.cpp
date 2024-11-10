@@ -158,3 +158,16 @@ ModulePass *createGenXBIFFlagCtrlResolutionPass() {
   return new GenXBIFFlagCtrlResolution;
 }
 } // namespace llvm
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses
+GenXBIFFlagCtrlResolutionPass::run(llvm::Module &M,
+                                   llvm::AnalysisManager<llvm::Module> &) {
+  GenXBIFFlagCtrlResolution GenXBiF;
+  if (GenXBiF.runOnModule(M)) {
+    return PreservedAnalyses::all();
+  }
+  return PreservedAnalyses::none();
+}
+// TODO: No lit-tests
+#endif

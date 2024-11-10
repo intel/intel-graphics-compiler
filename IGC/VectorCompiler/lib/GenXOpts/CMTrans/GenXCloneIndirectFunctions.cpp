@@ -208,6 +208,20 @@ INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_END(GenXCloneIndirectFunctions, "GenXCloneIndirectFunctions",
                     "GenXCloneIndirectFunctions", false, false)
 
-ModulePass *llvm::createGenXCloneIndirectFunctionsPass() {
+namespace llvm {
+ModulePass *createGenXCloneIndirectFunctionsPass() {
   return new GenXCloneIndirectFunctions();
 }
+} // namespace llvm
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses
+GenXCloneIndirectFunctionsPass::run(llvm::Module &M,
+                                    llvm::AnalysisManager<llvm::Module> &) {
+  GenXCloneIndirectFunctions GenXClone;
+  if (GenXClone.runOnModule(M)) {
+    return PreservedAnalyses::all();
+  }
+  return PreservedAnalyses::none();
+}
+#endif

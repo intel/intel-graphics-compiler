@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2023 Intel Corporation
+Copyright (C) 2021-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -41,10 +41,24 @@ INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_END(GenXLinkageCorruptor, "GenXLinkageCorruptor",
                     "GenXLinkageCorruptor", false, false)
 
-ModulePass *llvm::createGenXLinkageCorruptorPass() {
+namespace llvm {
+ModulePass *createGenXLinkageCorruptorPass() {
   initializeGenXLinkageCorruptorPass(*PassRegistry::getPassRegistry());
   return new GenXLinkageCorruptor;
 }
+} // namespace llvm
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses
+GenXLinkageCorruptorPass::run(llvm::Module &M,
+                              llvm::AnalysisManager<llvm::Module> &) {
+  GenXLinkageCorruptor GenXLink;
+  if (GenXLink.runOnModule(M)) {
+    return PreservedAnalyses::all();
+  }
+  return PreservedAnalyses::none();
+}
+#endif
 
 void GenXLinkageCorruptor::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<GenXBackendConfig>();

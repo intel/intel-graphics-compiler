@@ -943,8 +943,6 @@ INITIALIZE_PASS_DEPENDENCY(CMABIAnalysis)
 INITIALIZE_PASS_END(CMABI, "CMABI", "Fix ABI issues for the genx backend",
                     false, false)
 
-Pass *llvm::createCMABIPass() { return new CMABI(); }
-
 namespace {
 
 // A well-formed passing argument by reference pattern.
@@ -1383,4 +1381,28 @@ bool CMLowerVLoadVStore::promoteAllocas(Function &F) {
   return Modified;
 }
 
-Pass *llvm::createCMLowerVLoadVStorePass() { return new CMLowerVLoadVStore; }
+namespace llvm {
+Pass *createCMABIPass() { return new CMABI(); }
+Pass *createCMLowerVLoadVStorePass() { return new CMLowerVLoadVStore; }
+} // namespace llvm
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses
+CMABIAnalysisPass::run(llvm::Module &M, llvm::AnalysisManager<llvm::Module> &) {
+  CMABIAnalysis CMAbiAn;
+  if (CMAbiAn.runOnModule(M)) {
+    return PreservedAnalyses::all();
+  }
+  return PreservedAnalyses::none();
+}
+PreservedAnalyses CMABIPass::run(llvm::Module &M,
+                                 llvm::AnalysisManager<llvm::Module> &) {
+  CMABI CMAbi;
+  CallGraph CG(M);
+  CallGraphSCC CGSCC(CG, &M.getContext());
+  if (CMAbi.runOnSCC(CGSCC)) {
+    return PreservedAnalyses::all();
+  }
+  return PreservedAnalyses::none();
+}
+#endif

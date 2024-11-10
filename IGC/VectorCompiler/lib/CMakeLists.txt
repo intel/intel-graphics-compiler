@@ -1,6 +1,6 @@
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2019-2021 Intel Corporation
+# Copyright (C) 2019-2024 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -15,3 +15,4 @@ add_subdirectory(Driver)
 add_subdirectory(Utils)
 
 add_subdirectory(BackendPlugin)
+add_subdirectory(PassPluginLibrary)

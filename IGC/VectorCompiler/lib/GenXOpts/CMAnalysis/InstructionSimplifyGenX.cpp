@@ -511,4 +511,17 @@ INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_END(GenXSimplify, "GenXSimplify",
                     "simplify genx specific instructions", false, false)
 
-FunctionPass *llvm::createGenXSimplifyPass() { return new GenXSimplify; }
+namespace llvm {
+FunctionPass *createGenXSimplifyPass() { return new GenXSimplify; }
+} // namespace llvm
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses GenXSimplifyPass::run(Function &F,
+                                        FunctionAnalysisManager &AM) {
+  GenXSimplify GenXSimpl;
+  if (GenXSimpl.runOnFunction(F)) {
+    return PreservedAnalyses::all();
+  }
+  return PreservedAnalyses::none();
+}
+#endif

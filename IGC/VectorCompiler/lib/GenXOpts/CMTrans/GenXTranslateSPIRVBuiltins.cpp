@@ -380,10 +380,24 @@ INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_END(GenXTranslateSPIRVBuiltins, "GenXTranslateSPIRVBuiltins",
                     "GenXTranslateSPIRVBuiltins", false, false)
 
-ModulePass *llvm::createGenXTranslateSPIRVBuiltinsPass() {
+namespace llvm {
+ModulePass *createGenXTranslateSPIRVBuiltinsPass() {
   initializeGenXTranslateSPIRVBuiltinsPass(*PassRegistry::getPassRegistry());
   return new GenXTranslateSPIRVBuiltins;
 }
+} // namespace llvm
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses
+GenXTranslateSPIRVBuiltinsPass::run(llvm::Module &M,
+                                    llvm::AnalysisManager<llvm::Module> &) {
+  GenXTranslateSPIRVBuiltins GenXPrint;
+  if (GenXPrint.runOnModule(M)) {
+    return PreservedAnalyses::all();
+  }
+  return PreservedAnalyses::none();
+}
+#endif
 
 void GenXTranslateSPIRVBuiltins::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<GenXBackendConfig>();

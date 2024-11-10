@@ -1211,3 +1211,15 @@ Pass *createCMImpParamPass(bool HasPayloadInMemory) {
   return new CMImpParam{HasPayloadInMemory};
 }
 } // namespace llvm
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses CMImpParamPass::run(llvm::Module &M,
+                                      llvm::AnalysisManager<llvm::Module> &) {
+  CMImpParam cmip;
+  if (cmip.runOnModule(M)) {
+    return PreservedAnalyses::all();
+  }
+  return PreservedAnalyses::none();
+}
+// TODO: No lit-tests
+#endif

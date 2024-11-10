@@ -470,10 +470,24 @@ INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_END(GenXImportOCLBiF, "GenXImportOCLBiF", "GenXImportOCLBiF",
                     false, false)
 
-ModulePass *llvm::createGenXImportOCLBiFPass() {
+namespace llvm {
+ModulePass *createGenXImportOCLBiFPass() {
   initializeGenXImportOCLBiFPass(*PassRegistry::getPassRegistry());
   return new GenXImportOCLBiF;
 }
+} // namespace llvm
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses
+GenXImportOCLBiFPass::run(llvm::Module &M,
+                          llvm::AnalysisManager<llvm::Module> &) {
+  GenXImportOCLBiF GenXImportOCL;
+  if (GenXImportOCL.runOnModule(M)) {
+    return PreservedAnalyses::all();
+  }
+  return PreservedAnalyses::none();
+}
+#endif
 
 void GenXImportOCLBiF::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<GenXBackendConfig>();

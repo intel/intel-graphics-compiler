@@ -44,6 +44,7 @@ class MDNode;
 class ModulePass;
 class ShuffleVectorInst;
 class TargetOptions;
+class TargetMachine;
 class Twine;
 class Value;
 class raw_ostream;

@@ -17,9 +17,9 @@ SPDX-License-Identifier: MIT
 #ifndef GENXTARGETMACHINE_H
 #define GENXTARGETMACHINE_H
 
-#include "llvmWrapper/Target/TargetMachine.h"
-#include <llvmWrapper/ADT/Optional.h>
+#include "llvmWrapper/ADT/Optional.h"
 #include "llvmWrapper/Analysis/TargetTransformInfo.h"
+#include "llvmWrapper/Target/TargetMachine.h"
 
 #include "GenXIntrinsics.h"
 #include "GenXSubtarget.h"
@@ -216,7 +216,6 @@ void initializeGenXLowerAggrCopiesPass(PassRegistry &);
 void initializeGenXLoweringPass(PassRegistry &);
 void initializeGenXModulePass(PassRegistry &);
 void initializeGenXNumberingWrapperPass(PassRegistry &);
-void initializeGenXPacketizePass(PassRegistry &);
 void initializeGenXPatternMatchPass(PassRegistry &);
 void initializeGenXPostLegalizationPass(PassRegistry &);
 void initializeGenXPostLegalizationPass(PassRegistry &);
@@ -236,7 +235,6 @@ void initializeGenXAggregatePseudoLoweringPass(PassRegistry &);
 void initializeGenXVectorCombinerPass(PassRegistry &);
 void initializeGenXPromoteStatefulToBindlessPass(PassRegistry &);
 void initializeGenXStackUsagePass(PassRegistry &);
-void initializeCMLowerVLoadVStorePass(PassRegistry &);
 void initializeGenXStructSplitterPass(PassRegistry &);
 void initializeGenXPredRegionLoweringPass(PassRegistry &);
 void initializeGenXPredToSimdCFPass(PassRegistry &);

@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
 
+#include "vc/GenXOpts/GenXOpts.h"
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/Region.h"
 
@@ -1813,3 +1814,14 @@ ModulePass *createGenXPacketizePass() {
   return new GenXPacketize();
 }
 } // namespace llvm
+
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses
+GenXPacketizePass::run(llvm::Module &M, llvm::AnalysisManager<llvm::Module> &) {
+  GenXPacketize GenXPack;
+  if (GenXPack.runOnModule(M)) {
+    return PreservedAnalyses::all();
+  }
+  return PreservedAnalyses::none();
+}
+#endif

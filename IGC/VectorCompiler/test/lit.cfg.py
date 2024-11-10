@@ -1,6 +1,6 @@
 # ========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2020-2023 Intel Corporation
+# Copyright (C) 2020-2024 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -60,7 +60,10 @@ tool_dirs = [
   config.llvm_tools_dir]
 
 # Add extra args for opt to remove boilerplate from tests.
-vc_extra_args = ['-load', config.llvm_plugin]
+if int(config.llvm_version) < 16:
+  vc_extra_args = ['-load', config.llvm_plugin]
+else:
+  vc_extra_args = ['-load-pass-plugin', config.llvm_new_pm_plugin]
 
 # Use one of the %opt version explicitly to override the default setting in the
 # course of LITs' migration to opaque pointers.
