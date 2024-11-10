@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022 Intel Corporation
+Copyright (C) 2022-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -13,7 +13,6 @@ SPDX-License-Identifier: MIT
 
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/ADT/SetVector.h>
-#include <llvm/ADT/SmallPtrSet.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/Analysis/CallGraph.h>
 #include <llvm/IR/Argument.h>
@@ -30,7 +29,7 @@ SPDX-License-Identifier: MIT
 namespace vc {
 
 // Collect arguments that should be transformed.
-llvm::SmallPtrSet<llvm::Argument *, 8>
+llvm::SmallDenseMap<llvm::Argument *, llvm::Type *>
 collectArgsToTransform(llvm::Function &F, vc::TypeSizeWrapper MaxStructSize);
 
 void replaceUsesWithinFunction(
@@ -140,8 +139,9 @@ class TransformedFuncInfo {
   GlobalArgsInfo GlobalArgs;
 
 public:
-  TransformedFuncInfo(llvm::Function &OrigFunc,
-                      llvm::SmallPtrSetImpl<llvm::Argument *> &ArgsToTransform);
+  TransformedFuncInfo(
+      llvm::Function &OrigFunc,
+      llvm::SmallDenseMap<llvm::Argument *, llvm::Type *> &ArgsToTransform);
   void appendGlobals(llvm::SetVector<llvm::GlobalVariable *> &Globals);
   // Gather attributes for new function type according to transformations.
   llvm::AttributeList gatherAttributes(llvm::LLVMContext &Context,
@@ -157,9 +157,9 @@ public:
   const GlobalArgsInfo &getGlobalArgsInfo() const { return GlobalArgs; }
 
 private:
-  void
-  fillOrigArgInfo(llvm::Function &OrigFunc,
-                  llvm::SmallPtrSetImpl<llvm::Argument *> &ArgsToTransform);
+  void fillOrigArgInfo(
+      llvm::Function &OrigFunc,
+      llvm::SmallDenseMap<llvm::Argument *, llvm::Type *> &ArgsToTransform);
 
   void inheritAttributes(llvm::Function &OrigFunc);
 

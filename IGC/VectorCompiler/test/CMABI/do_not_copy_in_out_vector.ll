@@ -6,11 +6,13 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -CMABI -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -CMABI -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -CMABI -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK-OPAQUE-PTRS
 
 declare void @llvm.genx.svm.scatter.v16i1.v16i64.v16f32(<16 x i1>, i32, <16 x i64>, <16 x float>) #0
 
-; CHECK: define internal spir_func void @test(<16 x float>*
+; CHECK-TYPED-PTRS: define internal spir_func void @test(<16 x float>*
+; CHECK-OPAQUE-PTRS: define internal spir_func void @test(ptr
 define internal spir_func void @test(<16 x float>* noalias nocapture %a) #3 {
   %a_load_offset = getelementptr <16 x float>, <16 x float>* %a, i64 5
   %ptr_to_int.i.i = ptrtoint <16 x float>* %a_load_offset to i64

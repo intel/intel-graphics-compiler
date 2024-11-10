@@ -6,7 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -CMABI -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -CMABI -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -CMABI -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 
@@ -89,19 +90,22 @@ define dllexport void @kernel() {
   %vec1.mem = alloca <8 x i32>, align 32
   call spir_func void @use_store(<8 x i32>* nonnull %vec1.mem)
 ; CHECK: %[[RET1:[^ ]+]] = call spir_func <8 x i32> @use_store(<8 x i32> %vec1.mem.val)
-; CHECK: store <8 x i32> %[[RET1]], <8 x i32>* %vec1.mem
+; CHECK-TYPED-PTRS: store <8 x i32> %[[RET1]], <8 x i32>* %vec1.mem
+; CHECK-OPAQUE-PTRS: store <8 x i32> %[[RET1]], ptr %vec1.mem
   %vec1 = load <8 x i32>, <8 x i32>* %vec1.mem, align 32
   call void @llvm.genx.oword.st.v8i32(i32 0, i32 0, <8 x i32> %vec1)
 
   %vec2.mem = alloca <1 x double>, align 32
   call spir_func void @use_svm_scatter(<1 x double>* %vec2.mem)
 ; CHECK: %[[RET2:[^ ]+]] = call spir_func <1 x double> @use_svm_scatter(<1 x double> %vec2.mem.val)
-; CHECK: store <1 x double> %[[RET2]], <1 x double>* %vec2.mem
+; CHECK-TYPED-PTRS: store <1 x double> %[[RET2]], <1 x double>* %vec2.mem
+; CHECK-OPAQUE-PTRS: store <1 x double> %[[RET2]], ptr %vec2.mem
 
   %vec3.mem = alloca <4 x double>, align 32
   call spir_func void @use_svm_scatter2(<4 x double>* %vec3.mem)
 ; CHECK: %[[RET3:[^ ]+]] = call spir_func <4 x double> @use_svm_scatter2(<4 x double> %vec3.mem.val)
-; CHECK: store <4 x double> %[[RET3]], <4 x double>* %vec3.mem
+; CHECK-TYPED-PTRS: store <4 x double> %[[RET3]], <4 x double>* %vec3.mem
+; CHECK-OPAQUE-PTRS: store <4 x double> %[[RET3]], ptr %vec3.mem
 
   %vec4.mem = alloca <1 x double>, align 32
   call spir_func void @use_svm_gather(<1 x double>* %vec4.mem)
@@ -114,7 +118,8 @@ define dllexport void @kernel() {
   %vec6.mem = alloca <16 x double>
   call spir_func void @use_store_after_bitcast(<16 x double>* %vec6.mem)
 ; CHECK: %[[RET6:[^ ]+]] = call spir_func <16 x double> @use_store_after_bitcast(<16 x double> %vec6.mem.val)
-; CHECK: store <16 x double> %[[RET6]], <16 x double>* %vec6.mem
+; CHECK-TYPED-PTRS: store <16 x double> %[[RET6]], <16 x double>* %vec6.mem
+; CHECK-OPAQUE-PTRS: store <16 x double> %[[RET6]], ptr %vec6.mem
 
   %vec7.mem = alloca <16 x double>
   call spir_func void @use_load_after_bitcast(<16 x double>* %vec7.mem)
@@ -123,7 +128,8 @@ define dllexport void @kernel() {
   %vec8.mem = alloca <1 x double>, align 32
   call spir_func void @use_gather_and_scatter(<1 x double>* %vec8.mem)
 ; CHECK: %[[RET8:[^ ]+]] = call spir_func <1 x double> @use_gather_and_scatter(<1 x double> %vec8.mem.val)
-; CHECK: store <1 x double> %[[RET8]], <1 x double>* %vec8.mem
+; CHECK-TYPED-PTRS: store <1 x double> %[[RET8]], <1 x double>* %vec8.mem
+; CHECK-OPAQUE-PTRS: store <1 x double> %[[RET8]], ptr %vec8.mem
 
   ret void
 }

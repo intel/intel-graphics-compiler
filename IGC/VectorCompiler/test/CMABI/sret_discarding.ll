@@ -7,15 +7,20 @@
 ;============================ end_copyright_notice =============================
 
 ; UNSUPPORTED: llvm_11_or_less
-; RUN: %opt %use_old_pass_manager% -CMABI -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -CMABI -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -CMABI -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK-OPAQUE-PTRS
 
 ; Checks below ensure that sret attribute is discarded in cases function's
 ; retun type is transformed
 
-; CHECK: call spir_func <3 x i16> @calle_1(%TestType addrspace(4)* noalias %ret.1.cast, <3 x i16> %{{[^ )]+}})
-; CHECK: call spir_func void @calle_2(%TestType addrspace(4)* noalias sret(%TestType) %ret.2.cast)
-; CHECK: define internal spir_func <3 x i16> @calle_1(%TestType addrspace(4)* noalias %0, <3 x i16> %{{[^ )]+}})
-; CHECK: define spir_func void @calle_2(%TestType addrspace(4)* noalias sret(%TestType) %0)
+; CHECK-TYPED-PTRS: call spir_func <3 x i16> @calle_1(%TestType addrspace(4)* noalias %ret.1.cast, <3 x i16> %{{[^ )]+}})
+; CHECK-TYPED-PTRS: call spir_func void @calle_2(%TestType addrspace(4)* noalias sret(%TestType) %ret.2.cast)
+; CHECK-TYPED-PTRS: define internal spir_func <3 x i16> @calle_1(%TestType addrspace(4)* noalias %0, <3 x i16> %{{[^ )]+}})
+; CHECK-TYPED-PTRS: define spir_func void @calle_2(%TestType addrspace(4)* noalias sret(%TestType) %0)
+; CHECK-OPAQUE-PTRS: call spir_func <3 x i16> @calle_1(ptr addrspace(4) noalias %ret.1.cast, <3 x i16> %{{[^ )]+}})
+; CHECK-OPAQUE-PTRS: call spir_func void @calle_2(ptr addrspace(4) noalias sret(%TestType) %ret.2.cast)
+; CHECK-OPAQUE-PTRS: define internal spir_func <3 x i16> @calle_1(ptr addrspace(4) noalias %0, <3 x i16> %{{[^ )]+}})
+; CHECK-OPAQUE-PTRS: define spir_func void @calle_2(ptr addrspace(4) noalias sret(%TestType) %0)
 
 ; ModuleID = 'Deserialized LLVM Module'
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"

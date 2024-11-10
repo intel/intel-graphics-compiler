@@ -6,13 +6,16 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -CMABI -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -CMABI -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -CMABI -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 
 ; CHECK: define internal spir_func void @_Z6do_addPfS_S_
-; CHECK-SAME: float addrspace(4)*
-; CHECK-SAME: float addrspace(4)*
+; CHECK-TYPED-PTRS-SAME: float addrspace(4)*
+; CHECK-TYPED-PTRS-SAME: float addrspace(4)*
+; CHECK-OPAQUE-PTRS-SAME: ptr addrspace(4)
+; CHECK-OPAQUE-PTRS-SAME: ptr addrspace(4)
 
 ; CHECK-NOT: alloca
 
@@ -30,6 +33,9 @@ entry:
   %add.i = fadd <32 x float> %call.i.esimd, zeroinitializer
   %1 = ptrtoint float addrspace(4)* %C to i64
   call void @llvm.genx.svm.block.st.i64.v32f32(i64 %1, <32 x float> %add.i)
+; COM: dummy uses for opaque pointers case
+  %2 = getelementptr float, float addrspace(4)* %A, i32 0
+  %3 = getelementptr float, float addrspace(4)* %C, i32 0
   ret void
 }
 

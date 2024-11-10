@@ -49,6 +49,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/SCCIterator.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SetVector.h"
+#include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/CallGraphSCCPass.h"
 #include "llvm/Analysis/PostDominators.h"
@@ -299,9 +300,9 @@ private:
   CallGraphNode *TransformKernel(Function *F);
 
   // Major work is done in this method.
-  CallGraphNode *TransformNode(Function &F,
-                               SmallPtrSet<Argument *, 8> &ArgsToTransform,
-                               LocalizationInfo &LI);
+  CallGraphNode *
+  TransformNode(Function &F, SmallDenseMap<Argument *, Type *> &ArgsToTransform,
+                LocalizationInfo &LI);
 
   // \brief Create allocas for globals and replace their uses.
   void LocalizeGlobals(LocalizationInfo &LI);
@@ -493,8 +494,7 @@ CallGraphNode *CMABI::ProcessNode(CallGraphNode *CGN) {
 
   // Check transformable arguments.
   vc::TypeSizeWrapper MaxStructSize = vc::ByteSize * MaxCMABIByvalSize;
-  SmallPtrSet<Argument *, 8> ArgsToTransform =
-      vc::collectArgsToTransform(*F, MaxStructSize);
+  auto ArgsToTransform = vc::collectArgsToTransform(*F, MaxStructSize);
 
   if (ArgsToTransform.empty() && LI.empty())
     return 0;
@@ -621,7 +621,7 @@ CallGraphNode *CMABI::TransformKernel(Function *F) {
 // written to in the subprogram.
 //
 CallGraphNode *CMABI::TransformNode(Function &OrigFunc,
-                                    SmallPtrSet<Argument *, 8> &ArgsToTransform,
+                                    SmallDenseMap<Argument *, Type *> &ArgsToTransform,
                                     LocalizationInfo &LI) {
   NumArgumentsTransformed += ArgsToTransform.size();
   vc::TransformedFuncInfo NewFuncInfo{OrigFunc, ArgsToTransform};

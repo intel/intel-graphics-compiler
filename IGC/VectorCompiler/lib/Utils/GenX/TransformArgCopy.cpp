@@ -112,10 +112,7 @@ static bool isPtrArgModified(const Value &Arg) {
 }
 
 // Check if it is safe to pass structure by value.
-static bool structSafeToPassByVal(const Argument &Arg) {
-  StructType *StrTy =
-      cast<StructType>(IGCLLVM::getNonOpaquePtrEltTy(Arg.getType()));
-
+static bool structSafeToPassByVal(const Argument &Arg, StructType *StrTy) {
   if (!containsOnlySuitableTypes(*StrTy))
     return false;
 
@@ -149,13 +146,99 @@ static bool structSafeToPassByVal(const Argument &Arg) {
   return llvm::all_of(Arg.users(), UserChecker) && !isPtrArgModified(Arg);
 }
 
+static Type *getPtrArgElementType(const Argument &PtrArg) {
+  auto *PtrArgTy = cast<PointerType>(PtrArg.getType());
+  if (!PtrArgTy->isOpaque())
+    return IGCLLVM::getNonOpaquePtrEltTy(PtrArgTy);
+  if (auto *ByValTy = PtrArg.getParamByValType())
+    return ByValTy;
+  if (auto *StructRetTy = PtrArg.getParamStructRetType())
+    return StructRetTy;
+  SmallPtrSet<Type *, 2> ElemTys;
+  for (auto *U : PtrArg.users()) {
+    if (ElemTys.size() > 1)
+      return nullptr;
+    auto *I = dyn_cast<Instruction>(U);
+    if (!I)
+      continue;
+    if (auto *LI = dyn_cast<LoadInst>(I)) {
+      if (&PtrArg == LI->getPointerOperand())
+        ElemTys.insert(LI->getType());
+    } else if (auto *SI = dyn_cast<StoreInst>(I)) {
+      if (&PtrArg == SI->getPointerOperand())
+        ElemTys.insert(SI->getValueOperand()->getType());
+    } else if (auto *GEPI = dyn_cast<GetElementPtrInst>(I)) {
+      if (&PtrArg == GEPI->getPointerOperand())
+        ElemTys.insert(GEPI->getSourceElementType());
+    } else if (auto *PTII = dyn_cast<PtrToIntInst>(I)) {
+      const Value *Addr = PTII;
+      for (auto *AddrUser : Addr->users()) {
+        switch (GenXIntrinsic::getAnyIntrinsicID(AddrUser)) {
+        case GenXIntrinsic::genx_gather_scaled:
+          if (Addr != AddrUser->getOperand(4))
+            continue;
+          ElemTys.insert(AddrUser->getType());
+          break;
+        case GenXIntrinsic::genx_scatter_scaled:
+          if (Addr != AddrUser->getOperand(4))
+            continue;
+          ElemTys.insert(AddrUser->getOperand(6)->getType());
+          break;
+        case GenXIntrinsic::genx_svm_block_ld:
+        case GenXIntrinsic::genx_svm_block_ld_unaligned:
+          if (Addr != AddrUser->getOperand(0))
+            continue;
+          ElemTys.insert(AddrUser->getType());
+          break;
+        case GenXIntrinsic::genx_svm_block_st:
+          if (Addr != AddrUser->getOperand(0))
+            continue;
+          ElemTys.insert(AddrUser->getOperand(1)->getType());
+          break;
+        default:
+          break;
+        }
+      }
+      if (!PTII->hasOneUse())
+        continue;
+      auto *IEI = dyn_cast<InsertElementInst>(PTII->user_back());
+      if (!IEI)
+        continue;
+      const Value *AddrVec = IEI;
+      if (IEI->hasOneUse())
+        if (auto *SVI = dyn_cast<ShuffleVectorInst>(IEI->user_back()))
+          if (SVI->hasOneUse())
+            if (auto *BO = dyn_cast<BinaryOperator>(SVI->user_back()))
+              AddrVec = BO;
+      for (auto *AddrVecUser : AddrVec->users()) {
+        switch (GenXIntrinsic::getAnyIntrinsicID(AddrVecUser)) {
+        case GenXIntrinsic::genx_svm_gather:
+          if (AddrVec != AddrVecUser->getOperand(2))
+            continue;
+          ElemTys.insert(AddrVecUser->getType());
+          break;
+        case GenXIntrinsic::genx_svm_scatter:
+          if (AddrVec != AddrVecUser->getOperand(2))
+            continue;
+          ElemTys.insert(AddrVecUser->getOperand(3)->getType());
+          break;
+        default:
+          break;
+        }
+      }
+    }
+  }
+  return ElemTys.empty() ? nullptr : *ElemTys.begin();
+}
+
 // Check if argument should be transformed.
-static bool argToTransform(const Argument &Arg,
-                           vc::TypeSizeWrapper MaxStructSize) {
-  auto *PtrTy = dyn_cast<PointerType>(Arg.getType());
-  if (!PtrTy)
-    return false;
-  Type *ElemTy = IGCLLVM::getNonOpaquePtrEltTy(PtrTy);
+static Type *argToTransform(const Argument &Arg,
+                            vc::TypeSizeWrapper MaxStructSize) {
+  if (!isa<PointerType>(Arg.getType()))
+    return nullptr;
+  auto *ElemTy = getPtrArgElementType(Arg);
+  if (!ElemTy)
+    return nullptr;
   if (ElemTy->isIntOrIntVectorTy() || ElemTy->isFPOrFPVectorTy()) {
     if (ElemTy->isVectorTy()) {
       for (auto *U : Arg.users()) {
@@ -166,28 +249,28 @@ static bool argToTransform(const Argument &Arg,
           continue;
         auto *ConstIdx = dyn_cast<ConstantInt>(*GEP->idx_begin());
         if (!ConstIdx || ConstIdx->getZExtValue() != 0)
-          return false;
+          return nullptr;
       }
-      return true;
-    }
-    return onlyUsedBySimpleValueLoadStore(Arg);
+    } else if (!onlyUsedBySimpleValueLoadStore(Arg))
+      return nullptr;
+    return ElemTy;
   }
   if (auto *StrTy = dyn_cast<StructType>(ElemTy)) {
     const DataLayout &DL = Arg.getParent()->getParent()->getDataLayout();
-    if (structSafeToPassByVal(Arg) &&
+    if (structSafeToPassByVal(Arg, StrTy) &&
         vc::getTypeSize(StrTy, &DL) <= MaxStructSize)
-      return true;
+      return ElemTy;
   }
-  return false;
+  return nullptr;
 }
 
 // Collect arguments that should be transformed.
-SmallPtrSet<Argument *, 8>
+SmallDenseMap<Argument *, Type *>
 vc::collectArgsToTransform(Function &F, vc::TypeSizeWrapper MaxStructSize) {
-  SmallPtrSet<Argument *, 8> ArgsToTransform;
+  SmallDenseMap<Argument *, Type *> ArgsToTransform;
   for (auto &Arg : F.args())
-    if (argToTransform(Arg, MaxStructSize))
-      ArgsToTransform.insert(&Arg);
+    if (auto *ArgElemTy = argToTransform(Arg, MaxStructSize))
+      ArgsToTransform.insert(std::make_pair(&Arg, ArgElemTy));
   return ArgsToTransform;
 }
 
@@ -286,7 +369,7 @@ int vc::OrigArgInfo::getNewIdx() const {
 }
 
 vc::TransformedFuncInfo::TransformedFuncInfo(
-    Function &OrigFunc, SmallPtrSetImpl<Argument *> &ArgsToTransform) {
+    Function &OrigFunc, SmallDenseMap<Argument *, Type *> &ArgsToTransform) {
   fillOrigArgInfo(OrigFunc, ArgsToTransform);
   inheritAttributes(OrigFunc);
 
@@ -335,7 +418,7 @@ void vc::TransformedFuncInfo::appendGlobals(
 }
 
 void vc::TransformedFuncInfo::fillOrigArgInfo(
-    Function &OrigFunc, SmallPtrSetImpl<Argument *> &ArgsToTransform) {
+    Function &OrigFunc, SmallDenseMap<Argument *, Type *> &ArgsToTransform) {
   IGC_ASSERT_MESSAGE(OrigArgs.empty(),
                      "shouldn't be filled before this method");
 
@@ -358,7 +441,9 @@ void vc::TransformedFuncInfo::fillOrigArgInfo(
 
     // Update type for transformed arguments.
     if (Kind != ArgKind::General) {
-      Ty = IGCLLVM::getNonOpaquePtrEltTy(Ty);
+      auto It = ArgsToTransform.find(&Arg);
+      IGC_ASSERT_EXIT(It != ArgsToTransform.end());
+      Ty = It->second;
     }
 
     if (Kind == ArgKind::CopyOut) {
@@ -489,8 +574,8 @@ getTransformedFuncCallArgs(CallInst &OrigCall,
       IGC_ASSERT_MESSAGE(Kind == ArgKind::CopyIn || Kind == ArgKind::CopyInOut,
                          "unexpected arg kind");
       LoadInst *Load =
-          new LoadInst(IGCLLVM::getNonOpaquePtrEltTy(OrigArg.get()->getType()),
-                       OrigArg.get(), OrigArg.get()->getName() + ".val",
+          new LoadInst(OrigArgData.getTransformedOrigType(), OrigArg.get(),
+                       OrigArg.get()->getName() + ".val",
                        /* isVolatile */ false, &OrigCall);
       NewCallOps.push_back(Load);
       break;
