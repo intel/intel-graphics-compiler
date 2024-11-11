@@ -141,6 +141,9 @@ void IGC::DbgDecoder::CallFrameInfo::print(llvm::raw_ostream &OS) const {
   PrintItems(OS, retAddr, "\n        ");
   OS << "    ]\n";
 
+  OS << "    CEOffsetFromFPOff: " << CEOffsetFromFPOff << "\n";
+  OS << "    CEStoreIP: " << CEStoreIP << "\n";
+
   OS << "    callee save entry list: [\n    ";
   PrintItems(OS, calleeSaveEntry, "\n        ");
   OS << "    ]\n";

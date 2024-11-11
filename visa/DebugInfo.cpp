@@ -424,6 +424,24 @@ int DbgDecoder::ddDbg() {
 
     std::cout << "\n";
 
+    uint16_t CEOffset = 0;
+    uint16_t CEIP = 0;
+    retval = fread(&CEOffset, sizeof(uint16_t), 1, dbgFile);
+    if (!retval)
+      return -1;
+    retval = fread(&CEIP, sizeof(uint16_t), 1, dbgFile);
+    if (!retval)
+      return -1;
+
+    if (CEOffset != 0xffff) {
+      std::cout << "CE saved at: FP + " << (uint16_t)CEOffset << " from IP "
+                << CEIP << "\n";
+    }
+    else
+      std::cout << "CE not saved\n";
+
+    std::cout << "\n";
+
     std::cout << "Callee save:\n";
     ddCalleeCallerSave(reloc_offset, CALLEE);
     std::cout << "\n";
@@ -1352,6 +1370,21 @@ void emitDataCallFrameInfo(VISAKernelImpl *visaKernel, T &t) {
     emitDataUInt8((uint8_t)0, t);
   }
 
+  if (kernel->getOption(vISA_storeCE) &&
+      kernel->getKernelDebugInfo()->getCESaveInst()) {
+    uint16_t FPOffset = kernel->getKernelDebugInfo()->getCESaveOffset();
+    emitDataUInt16(FPOffset, t);
+    auto GenOffset =
+        kernel->getKernelDebugInfo()->getCESaveInst()->getGenOffset() +
+        getBinInstSize(kernel->getKernelDebugInfo()->getCESaveInst());
+    vISA_ASSERT(GenOffset <= std::numeric_limits<uint16_t>::max(),
+                "GenOffset is OOB");
+    emitDataUInt16((uint16_t)GenOffset, t);
+  } else {
+    emitDataUInt16(-1, t);
+    emitDataUInt16(0, t);
+  }
+
   emitDataCalleeSave(visaKernel, t);
 
   emitDataCallerSave(visaKernel, t);
@@ -1522,6 +1555,8 @@ KernelDebugInfo::KernelDebugInfo() : varNameMapAlloc(4096) {
   fretVar = nullptr;
   reloc_offset = 0;
   missingVISAIdsComputed = false;
+  saveCE = nullptr;
+  CEStoreOffset = 0;
 }
 
 void KernelDebugInfo::updateRelocOffset() {
@@ -1942,6 +1977,10 @@ void KernelDebugInfo::updateExpandedIntrinsic(G4_InstIntrinsic *spillOrFill,
 
   if (spillOrFill == getCallerBEFPSaveInst()) {
     setCallerBEFPSaveInst(inst);
+  }
+
+  if (spillOrFill == getCESaveInst()) {
+    setSaveCEInst(inst);
   }
 }
 

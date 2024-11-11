@@ -2042,6 +2042,7 @@ public:
   void addCallerSavePseudoCode();
   void addCalleeSavePseudoCode();
   void addStoreRestoreToReturn();
+  void storeCEInProlog();
   void markGraphBlockLocalVars();
   void verifyRA(LivenessAnalysis &liveAnalysis);
   void verifySpillFill();

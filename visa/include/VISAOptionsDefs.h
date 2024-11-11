@@ -61,6 +61,7 @@ DEF_VISA_OPTION(vISA_disableInstDebugInfo, ET_BOOL, "-disableInstDebugInfo",
                 UNUSED, false)
 DEF_VISA_OPTION(vISA_analyzeMove, ET_BOOL, "-analyzeMove", UNUSED, false)
 DEF_VISA_OPTION(vISA_skipFDE, ET_BOOL, "-skipFDE", UNUSED, false)
+DEF_VISA_OPTION(vISA_storeCE, ET_BOOL, "-storeCE", UNUSED, false)
 // setting this flag makes VISA emit matching name for variable wrt visaasm file
 // but this makes it impossible to emit correct elf, so this is strictly for
 // debugging

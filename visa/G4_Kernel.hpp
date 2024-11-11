@@ -463,6 +463,10 @@ public:
   uint32_t getSpillHeaderGRF() const;
 
   uint32_t getThreadHeaderGRF() const;
+
+  uint32_t getFrameDescriptorByteSize() const {
+    return (version == StackCallABIVersion::VER_3) ? 64 : 32;
+  }
 };
 
 // represents an argument placement

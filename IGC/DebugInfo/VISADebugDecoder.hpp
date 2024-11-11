@@ -182,6 +182,8 @@ public:
     std::vector<LiveIntervalGenISA> callerbefp;
     bool retAddrValid = false;
     std::vector<LiveIntervalGenISA> retAddr;
+    uint16_t CEOffsetFromFPOff;
+    uint16_t CEStoreIP;
     uint16_t numCalleeSaveEntries = 0;
     std::vector<PhyRegSaveInfoPerIP> calleeSaveEntry;
     uint32_t numCallerSaveEntries = 0;
@@ -377,6 +379,8 @@ private:
           f.cfi.retAddr.push_back(lv);
         }
       }
+      f.cfi.CEOffsetFromFPOff = read<uint16_t>(dbg);
+      f.cfi.CEStoreIP = read<uint16_t>(dbg);
       f.cfi.numCalleeSaveEntries = read<uint16_t>(dbg);
       for (unsigned int j = 0; j != f.cfi.numCalleeSaveEntries; j++) {
         PhyRegSaveInfoPerIP phyRegSave;

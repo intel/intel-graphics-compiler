@@ -9224,6 +9224,59 @@ void GlobalRA::addCalleeSavePseudoCode() {
   builder.instList.clear();
 }
 
+void GlobalRA::storeCEInProlog() {
+  if (!kernel.getOption(vISA_storeCE))
+    return;
+
+  // If we've to store CE in prolog, we emit:
+  // TmpReg (GRF_Aligned) = CE0.0
+  // Store TmpReg @ FP+Offset
+  //
+  // Where Offset = 1 GRF size in bytes
+
+  // Create new variable equal to GRF size so it's always GRF aligned.
+  // It's transitory so shouldn't impact register pressure. We want to
+  // write CE0.0 in 0th location of this variable so that it can be
+  // used as send payload.
+  auto TmpReg = builder.createDeclare(
+      "TmpCEReg", G4_GRF, builder.numEltPerGRF<Type_UD>(), 1, Type_UD);
+  auto *DstRgn = builder.createDstRegRegion(TmpReg, 1);
+  auto *CEReg = regPool.getMask0Reg();
+  auto *SrcOpnd = builder.createSrc(
+      CEReg, 0, 0, kernel.fg.builder->getRegionScalar(), Type_UD);
+  auto Mov = builder.createMov(g4::SIMD1, DstRgn, SrcOpnd,
+                               G4_InstOption::InstOpt_WriteEnable, false);
+  auto nextPos = kernel.fg.getEntryBB()->insertBefore(
+      kernel.fg.getEntryBB()->getFirstInsertPos(), Mov);
+
+  auto payloadSrc =
+      builder.createSrcRegRegion(TmpReg, builder.getRegionStride1());
+  const unsigned execSize = 8;
+  G4_DstRegRegion *postDst = builder.createNullDst(Type_UD);
+  G4_INST *store = nullptr;
+  unsigned int HWOffset = builder.numEltPerGRF<Type_UB>() / getHWordByteSize();
+  vISA_ASSERT(kernel.stackCall.getFrameDescriptorByteSize() <=
+                  builder.numEltPerGRF<Type_UB>(),
+              "ce0 overwrote FDE");
+  kernel.getKernelDebugInfo()->setCESaveOffset(HWOffset * getHWordByteSize());
+
+  if (builder.supportsLSC()) {
+    auto headerOpnd = getSpillFillHeader(*kernel.fg.builder, nullptr);
+    store = builder.createSpill(postDst, headerOpnd, payloadSrc,
+                                G4_ExecSize(execSize), 1, HWOffset,
+                                builder.getBEFP(), InstOpt_WriteEnable, false);
+  } else {
+    store = builder.createSpill(postDst, payloadSrc, G4_ExecSize(execSize), 1,
+                                HWOffset, builder.getBEFP(),
+                                InstOpt_WriteEnable, false);
+  }
+  kernel.fg.getEntryBB()->insertAfter(nextPos, store);
+
+  if (builder.kernel.getOption(vISA_GenerateDebugInfo)) {
+    builder.kernel.getKernelDebugInfo()->setSaveCEInst(store);
+  }
+}
+
 //
 // Insert store r125.[0-4] at entry and restore before return.
 // Dst of store will be a hardwired temp at upper end of caller save area.
@@ -10622,6 +10675,7 @@ void GlobalRA::stackCallSaveRestore(bool hasStackCall) {
     // Only GENX sub-graphs require callee-save code.
 
     if (builder.getIsKernel() == false) {
+      storeCEInProlog();
       addCalleeSavePseudoCode();
       addStoreRestoreToReturn();
     }
@@ -11205,8 +11259,13 @@ int GlobalRA::coloringRegAlloc() {
 
   if (kernel.fg.getIsStackCallFunc()) {
     // Allocate space to store Frame Descriptor
-    nextSpillOffset += 32;
-    scratchOffset += 32;
+    nextSpillOffset += builder.numEltPerGRF<Type_UB>();
+    scratchOffset += builder.numEltPerGRF<Type_UB>();
+
+    if (kernel.getOption(vISA_storeCE)) {
+      nextSpillOffset += builder.numEltPerGRF<Type_UB>();
+      scratchOffset += builder.numEltPerGRF<Type_UB>();
+    }
   }
 
   // Global linear scan RA
