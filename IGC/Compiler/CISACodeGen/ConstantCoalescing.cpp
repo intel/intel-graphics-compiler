@@ -598,13 +598,6 @@ void ConstantCoalescing::ProcessBlock(
     } // loop over inst in block
 }
 
-// sort the CB loads with index order
-bool sortFunction(BufChunk* buf1, BufChunk* buf2)
-{
-    return (buf1->addrSpace < buf2->addrSpace ||
-        (buf1->addrSpace == buf2->addrSpace && buf1->chunkStart < buf2->chunkStart));
-}
-
 bool ConstantCoalescing::profitableChunkSize(
     uint32_t ub, uint32_t lb, uint32_t eltSizeInBytes)
 {
@@ -2082,6 +2075,7 @@ bool ConstantCoalescing::IsSamplerAlignedAddress(Value* addr) const
         (inst->getOpcode() == Instruction::Shl ||
             inst->getOpcode() == Instruction::Mul ||
             inst->getOpcode() == Instruction::And ||
+            inst->getOpcode() == Instruction::Or ||
             inst->getOpcode() == Instruction::Add))
     {
         ConstantInt* src1ConstVal = dyn_cast<ConstantInt>(inst->getOperand(1));
