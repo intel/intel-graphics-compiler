@@ -202,7 +202,6 @@ private:
   bool simplifyCmp(CmpInst *Cmp);
   CmpInst *reduceCmpWidth(CmpInst *Cmp);
   bool simplifyNullDst(CallInst *Inst);
-  bool simplifyNullSrc(CallInst *Inst);
   bool simplifyDpasNullSrc(CallInst *Inst);
   // Transform logic operation with a mask from <N x iM> to <N/(32/M) x i32>
   bool extendMask(BinaryOperator *BO);
@@ -820,7 +819,7 @@ void GenXPatternMatch::visitBinaryOperator(BinaryOperator &I) {
 }
 
 void GenXPatternMatch::visitCallInst(CallInst &I) {
-  if (I.use_empty() && !I.getType()->isVoidTy())
+  if (I.use_empty())
     return;
 
   auto IID = vc::getAnyIntrinsicID(&I);
@@ -865,15 +864,6 @@ void GenXPatternMatch::visitCallInst(CallInst &I) {
   case GenXIntrinsic::genx_uutrunc_sat:
     Changed |= simplifyTruncSat(&I);
     break;
-
-  case vc::InternalIntrinsic::lsc_load_quad_tgm:
-    Changed |= simplifyNullDst(&I);
-    LLVM_FALLTHROUGH;
-  case vc::InternalIntrinsic::lsc_prefetch_quad_tgm:
-  case vc::InternalIntrinsic::lsc_store_quad_tgm:
-    Changed |= simplifyNullSrc(&I);
-    break;
-
   case vc::InternalIntrinsic::lsc_atomic_ugm:
   case vc::InternalIntrinsic::lsc_load_ugm:
   case vc::InternalIntrinsic::lsc_load_quad_ugm:
@@ -893,6 +883,7 @@ void GenXPatternMatch::visitCallInst(CallInst &I) {
   case vc::InternalIntrinsic::lsc_load_quad_slm:
   case vc::InternalIntrinsic::lsc_store_slm:
   case vc::InternalIntrinsic::lsc_store_quad_slm:
+  case vc::InternalIntrinsic::lsc_load_quad_tgm:
   case GenXIntrinsic::genx_dword_atomic_fadd:
   case GenXIntrinsic::genx_dword_atomic_fsub:
   case GenXIntrinsic::genx_dword_atomic_add:
@@ -4292,31 +4283,6 @@ bool GenXPatternMatch::simplifyNullDst(CallInst *Inst) {
   }
 
   return false;
-}
-
-bool GenXPatternMatch::simplifyNullSrc(CallInst *Inst) {
-  if (!vc::InternalIntrinsic::isInternalMemoryIntrinsic(Inst))
-    return false;
-
-  bool Changed = false;
-
-  auto IID = vc::getAnyIntrinsicID(Inst);
-  GenXIntrinsicInfo Info(IID);
-
-  for (unsigned I = 0; I < Inst->arg_size(); ++I) {
-    auto *Arg = dyn_cast<Constant>(Inst->getArgOperand(I));
-    if (!Arg || !Arg->isNullValue())
-      continue;
-
-    auto ArgInfo = Info.getArgInfo(I);
-    if (!ArgInfo.isRaw() || !ArgInfo.isNullAllowed())
-      continue;
-
-    Inst->setArgOperand(I, UndefValue::get(Arg->getType()));
-    Changed = true;
-  }
-
-  return Changed;
 }
 
 bool GenXPatternMatch::simplifyDpasNullSrc(CallInst *Inst) {
