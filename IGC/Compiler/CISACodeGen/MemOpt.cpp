@@ -2716,7 +2716,7 @@ namespace {
             return splitVectorType(V, LdStKind::IS_LOAD);
         }
 
-        void AllowDummyLoadCoalescing(InstAndOffsetPairs Loads);
+        void AllowDummyLoadCoalescing(const InstAndOffsetPairs& Loads);
 
         // GatherCopy:
         //   copy multiple values (arg: Vals) into a single Dst (return value)
@@ -3816,7 +3816,7 @@ void LdStCombine::createBundles(BasicBlock* BB, InstAndOffsetPairs& LoadStores)
     markVisited(LoadStores);
 }
 
-void LdStCombine::AllowDummyLoadCoalescing(InstAndOffsetPairs Loads)
+void LdStCombine::AllowDummyLoadCoalescing(const InstAndOffsetPairs& Loads)
 {
     // Currently supports only this pattern.
     // % 164 = add i32 % 114, 1020
@@ -3866,7 +3866,7 @@ void LdStCombine::AllowDummyLoadCoalescing(InstAndOffsetPairs Loads)
                         gep->getOperand(0), gepArg);
                     Instruction* dummyLoad = static_cast<Instruction*>
                         (irBuilder.CreateLoad(cast<GetElementPtrInst>(Addr)->getResultElementType(), Addr));
-                    Loads.push_back(LdStInfo(dummyLoad, LastLoad.ByteOffset + newLoadSize));
+                    (void)dummyLoad;
                 }
             }
         }
