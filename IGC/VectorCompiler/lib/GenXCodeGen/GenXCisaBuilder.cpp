@@ -5800,8 +5800,12 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
 
   const WA_TABLE *WATable = BC.getWATable();
   // enable preemption if subtarget supports it
-  if (ST.hasPreemption())
-    addArgument("-enablePreemption");
+  if (ST.hasPreemption()) {
+    if (ST.getVisaPlatform() >= TARGET_PLATFORM::Xe2)
+      addArgument("-enablePreemptionR0Only");
+    else
+      addArgument("-enablePreemption");
+  }
 
   if (ST.hasHalfSIMDLSC())
     addArgument("-enableHalfLSC");
