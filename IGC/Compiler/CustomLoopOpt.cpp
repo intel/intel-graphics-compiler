@@ -586,7 +586,7 @@ bool CustomLoopVersioning::processLoop(Loop* loop)
     FMF.setFast();
     irb.setFastMathFlags(FMF);
     Value* cond0 = irb.CreateFCmpOGT(
-        var_CBLoad_preHdr, ConstantFP::get(irb.getFloatTy(), 1.0));
+        var_CBLoad_preHdr, ConstantFP::get(var_CBLoad_preHdr->getType(), 1.0));
 
     Value* cond1 = irb.CreateFCmpOLT(
         irb.CreateFMul(var_range_x, var_CBLoad_preHdr),
