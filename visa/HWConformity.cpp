@@ -5460,11 +5460,21 @@ void HWConformity::avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB *bb,
           insertMovAfter(it, inst->getDst(), inst->getDst()->getType(), bb);
       newDst->setAccRegSel(accSel);
       inst->setDest(newDst);
-    }
-  }
 
-  if (!builder.supportFloatOr64bRegioning()) {
-    fixUnalignedRegions(it, bb);
+      // After inserting temp to avoid dst/src overlapping, need to check
+      // additional region rules to ensure both the new instruction and the
+      // inserted mov instruction are legitimate. For example:
+      // mov (M1, 4) V67(0,0)<1>:df (-)V67(0,5)<1;1,0>:df
+      // After fixing dst/src overlapping =>
+      // mov (M1, 4) TV1(0,0)<1>:df (-)V67(0,5)<1;1,0>:df
+      // (W) mov (M1, 4) V67(0,0)<1>:df TV1(0,0)<1;1,0>:df
+      // Both instructions are illegal.
+      if (!builder.supportFloatOr64bRegioning()) {
+        auto nextIt = std::next(it);
+        fixUnalignedRegions(it, bb);
+        fixUnalignedRegions(nextIt, bb);
+      }
+    }
   }
 }
 
