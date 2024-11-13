@@ -25,7 +25,7 @@ namespace GenISAIntrinsic
 
 /// Intrinsic::getName(ID) - Return the LLVM name for an intrinsic, such as
 /// "llvm.ppc.altivec.lvx".
-std::string getName(ID id, ArrayRef<Type*> Tys = {});
+std::string getName(ID id, ArrayRef<Type*> Tys = {}, ArrayRef<Type*> OverloadedPointeeTys = {});
 
 
 struct IntrinsicComments
@@ -53,9 +53,9 @@ IntrinsicComments getIntrinsicComments(ID id);
 ///    Type Ts[2]{int2, int2}: to resolve to the first instance.
 ///    Type Ts[2]{int4, int4}: to resolve to the second.
 #if defined(ANDROID) || defined(__linux__)
-__attribute__ ((visibility ("default"))) Function *getDeclaration(Module *M, ID id, ArrayRef<Type*> OverloadedTys = {});
+__attribute__ ((visibility ("default"))) Function *getDeclaration(Module *M, ID id, ArrayRef<Type*> OverloadedTys = {}, ArrayRef<Type*> OverloadedPointeeTys = {});
 #else
-Function *getDeclaration(Module *M, ID id, ArrayRef<Type*> OverloadedTys = {});
+Function *getDeclaration(Module *M, ID id, ArrayRef<Type*> OverloadedTys = {}, ArrayRef<Type*> OverloadedPointeeTys = {});
 #endif
 
 //Override of isIntrinsic method defined in Function.h
