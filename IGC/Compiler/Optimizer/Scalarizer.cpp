@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -400,9 +400,9 @@ void ScalarizeFunction::dispatchInstructionToScalarize(Instruction* I)
     case Instruction::ShuffleVector:
         scalarizeInstruction(dyn_cast<ShuffleVectorInst>(I));
         break;
-        //case Instruction::Call :
-        //  scalarizeInstruction(dyn_cast<CallInst>(I));
-        //  break;
+    case Instruction::Call :
+        scalarizeInstruction(dyn_cast<CallInst>(I));
+        break;
     case Instruction::Alloca:
         scalarizeInstruction(dyn_cast<AllocaInst>(I));
         break;
@@ -1024,7 +1024,52 @@ void ScalarizeFunction::scalarizeInstruction(CallInst* CI)
     V_PRINT(scalarizer, "\t\tCall instruction\n");
     IGC_ASSERT_MESSAGE(CI, "instruction type dynamic cast failed");
 
-    recoverNonScalarizableInst(CI);
+    Function* CalledFunc = CI->getCalledFunction();
+    if (CalledFunc && CalledFunc->getName().startswith("llvm.fshl"))
+    {
+        V_PRINT(scalarizer, "\t\tScalarizing fshl intrinsic\n");
+
+        IGCLLVM::FixedVectorType* instType = dyn_cast<IGCLLVM::FixedVectorType>(CI->getType());
+        if (!instType) {
+            recoverNonScalarizableInst(CI);
+            return;
+        }
+
+        SCMEntry* newEntry = getSCMEntry(CI);
+
+        unsigned numElements = int_cast<unsigned>(instType->getNumElements());
+
+        SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH> operand0;
+        SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH> operand1;
+        SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH> operand2;
+        bool op0IsConst, op1IsConst, op2IsConst;
+
+        obtainScalarizedValues(operand0, &op0IsConst, CI->getOperand(0), CI);
+        obtainScalarizedValues(operand1, &op1IsConst, CI->getOperand(1), CI);
+        obtainScalarizedValues(operand2, &op2IsConst, CI->getOperand(2), CI);
+
+        SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH> newScalarizedInsts;
+        newScalarizedInsts.resize(numElements);
+        for (unsigned i = 0; i < numElements; i++)
+        {
+            Type* scalarType = operand0[i]->getType();
+            Value* scalarFshl = CallInst::Create(
+                Intrinsic::getDeclaration(CI->getModule(), Intrinsic::fshl, { scalarType }),
+                { operand0[i], operand1[i], operand2[i] },
+                CI->getName() + ".scalar",
+                CI
+            );
+            newScalarizedInsts[i] = scalarFshl;
+        }
+
+        updateSCMEntryWithValues(newEntry, &(newScalarizedInsts[0]), CI, true);
+
+        m_removedInsts.insert(CI);
+    }
+    else
+    {
+        recoverNonScalarizableInst(CI);
+    }
 }
 
 void ScalarizeFunction::scalarizeInstruction(AllocaInst* AI)
