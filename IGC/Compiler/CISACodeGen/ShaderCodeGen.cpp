@@ -655,6 +655,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
     // There's no particular reason for this exact place, but it should be after LowerGEPForPrivMem
     if (IGC_IS_FLAG_ENABLED(EnableSplitIndirectEEtoSel))
     {
+        mpm.add(createIGCInstructionCombiningPass());
         mpm.add(createSplitIndirectEEtoSelPass());
     }
 
