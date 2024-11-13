@@ -15,7 +15,7 @@
 
 ; RUN: %opt %use_old_pass_manager% -GenXModule -GenXNumberingWrapper -GenXLiveRangesWrapper -GenXCoalescingWrapper \
 ; RUN:  -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -vc-disable-coalescing -S \
-; RUN:  < %s
+; RUN:  -disable-output < %s
 
 ; ModuleID = 'test.ll'
 source_filename = "test.ll"

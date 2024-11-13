@@ -5,7 +5,7 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; RUN: igc_opt -igc-opencl-printf-resolution -S  < %s
+; RUN: igc_opt -igc-opencl-printf-resolution -S -disable-output < %s
 ; ------------------------------------------------
 ; OpenCLPrintfResolution
 ; ------------------------------------------------

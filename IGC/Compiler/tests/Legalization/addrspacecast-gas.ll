@@ -8,7 +8,7 @@
 ; REQUIRES: llvm-14-plus
 ;
 ; Default test run w/o AddImplicitArgs is for sanity reasons(so module won't break)
-; RUN: igc_opt -opaque-pointers -igc-legalization -S -dce < %s
+; RUN: igc_opt -opaque-pointers -igc-legalization -S -dce -disable-output < %s
 ;
 ; AddImplicitArgs is expected to be present in pipeline
 ; RUN: igc_opt -opaque-pointers -igc-add-implicit-args -igc-legalization -S -dce < %s | FileCheck %s

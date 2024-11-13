@@ -9,9 +9,9 @@
 ; COM: Check that GenXCoalescing does not fail on bitcast with constants
 
 ; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXModule -GenXNumberingWrapper -GenXLiveRangesWrapper -GenXCoalescingWrapper \
-; RUN:  -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s
+; RUN:  -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S -disable-output < %s
 ; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXModule -GenXNumberingWrapper -GenXLiveRangesWrapper -GenXCoalescingWrapper \
-; RUN:  -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s
+; RUN:  -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S -disable-output < %s
 
 ; ModuleID = 'reduced.bc'
 source_filename = "before_coalesc_0.ll"

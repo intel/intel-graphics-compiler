@@ -5,7 +5,7 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-
+; REQUIRES: oneapi-readelf
 ; RUN: llc %s -march=genx64 -mcpu=Gen9 \
 ; RUN: -vc-skip-ocl-runtime-info \
 ; RUN: -vc-enable-dbginfo-dumps \
@@ -13,10 +13,7 @@
 ; RUN: -finalizer-opts='-generateDebugInfo' -o /dev/null
 
 ; COM: we just check that files exist and can be decoded
-; RUN: readelf --debug-dump dbginfo_%basename_t_test_kernel_dwarf.elf
-
-; COM: just check that a file exists
-; RUN: test -f dbginfo_%basename_t_test_kernel_gen.dump
+; RUN: oneapi-readelf --debug-dump dbginfo_%basename_t_test_kernel_dwarf.elf &> dbginfo_%basename_t_test_kernel_gen.dump
 
 ; COM: check that the file contains expected sections
 ; RUN: FileCheck --input-file dbginfo_%basename_t_test_kernel_gen.decoded.dump --check-prefix=CHECK_GEN_DEBUG_DECODED %s

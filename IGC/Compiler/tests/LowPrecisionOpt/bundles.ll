@@ -1,21 +1,23 @@
-
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -igc-low-precision-opt -inputps -S < %s
+; RUN: igc_opt --opaque-pointers -igc-low-precision-opt -inputps -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; LowPrecisionOpt
 ; ------------------------------------------------
 ; This test checks that fptrunc bundle works
 
 
-
-; CHECK:   %0 = alloca half, align 4
-; CHECK:   %1 = call float @llvm.genx.GenISA.RuntimeValue.f32(i32 2)
-; CHECK:   %2 = fptrunc float %1 to half
-; CHECK:   %3 = call float @llvm.genx.GenISA.RuntimeValue.f32(i32 1)
-; CHECK:   %4 = fptrunc float %3 to half
-; CHECK:   store half %4, half* %0
-
 define void @test_low(float %src) {
+; CHECK-LABEL: define void @test_low(
+; CHECK-SAME: float [[SRC:%.*]]) {
+; CHECK-NEXT:  [[ENTRY:.*:]]
+; CHECK-NEXT:    [[TMP0:%.*]] = call float @llvm.genx.GenISA.RuntimeValue.f32(i32 1)
+; CHECK-NEXT:    [[TMP1:%.*]] = fptrunc float [[TMP0]] to half
+; CHECK-NEXT:    [[TMP2:%.*]] = call float @llvm.genx.GenISA.RuntimeValue.f32(i32 2)
+; CHECK-NEXT:    [[TMP3:%.*]] = fptrunc float [[TMP2]] to half
+; CHECK-NEXT:    [[TMP4:%.*]] = alloca half, align 4
+; CHECK-NEXT:    store half [[TMP1]], ptr [[TMP4]], align 2
+; CHECK-NEXT:    ret void
+;
 entry:
 ; bundles sort GenISA_RuntimeValue + fptrunc
   %0 = alloca half, align 4

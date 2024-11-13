@@ -8,7 +8,7 @@
 
 ; RUN: %opt %use_old_pass_manager% -GenXModule -GenXUnbalingWrapper -GenXNumberingWrapper \
 ; RUN: -GenXLiveRangesWrapper -GenXCoalescingWrapper -march=genx64 \
-; RUN: -mcpu=XeHPC -mtriple=spir64-unknown-unknown -S < %s
+; RUN: -mcpu=XeHPC -mtriple=spir64-unknown-unknown -S -disable-output < %s
 
 ; Check that undoing copy elimination doesn't cause a crash caused by LR deletion
 

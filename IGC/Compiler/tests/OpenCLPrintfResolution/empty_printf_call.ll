@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -igc-opencl-printf-resolution -S  < %s
+; RUN: igc_opt --opaque-pointers -igc-opencl-printf-resolution -S -disable-output < %s
 ; ------------------------------------------------
 ; OpenCLPrintfResolution
 ; ------------------------------------------------
