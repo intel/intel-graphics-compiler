@@ -102,6 +102,8 @@ alignment_t KernelArg::calcAlignment(const Argument* arg, const DataLayout* DL) 
     // If we don't need to allocate, we certainly don't need alignment
     if (!needsAllocation()) return 0;
 
+    if (arg->hasAttribute(llvm::Attribute::Alignment))
+        return arg->getParamAlign().valueOrOne().value();
     Type* typeToAlign = arg->getType();
     // Usually, we return the alignment of the parameter type.
     // For local pointers, we need the alignment of the *contained* type.
