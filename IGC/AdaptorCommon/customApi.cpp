@@ -235,6 +235,7 @@ namespace IGC
                 if (!strcmp(flagName, name))
                 {
                     pRegKeyVariable[i].m_Value = value;
+                    pRegKeyVariable[i].Set();
                     break;
                 }
             }
@@ -256,6 +257,7 @@ namespace IGC
                 if (!strcmp(flagName, name))
                 {
                     strcpy_s(pRegKeyVariable[i].m_string,sizeof(debugString), s);
+                    pRegKeyVariable[i].Set();
                     break;
                 }
             }
