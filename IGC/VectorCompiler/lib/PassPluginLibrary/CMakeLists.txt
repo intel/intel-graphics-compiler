@@ -10,17 +10,31 @@ if((${LLVM_VERSION_MAJOR} LESS 16))
     return()
 endif()
 
-set(PLUGIN_SOURCES
-    Plugin.cpp
-)
+# TODO: Fix ext
+set(LLVM_PLUGIN_EXT ".so")
 
-add_library(NewPMPlugin MODULE ${PLUGIN_SOURCES})
+add_llvm_library(
+  NewPMPlugin
+  COMPONENT_LIB
+  Plugin.cpp
+
+  $<TARGET_OBJECTS:VCCodeGen>
+  $<TARGET_OBJECTS:Probe>
+  $<TARGET_OBJECTS:VCSupport>
+  $<TARGET_OBJECTS:LLVMGenXIntrinsics>
+  $<TARGET_OBJECTS:VCGenXUtils>
+  $<TARGET_OBJECTS:VCTransforms>
+  $<TARGET_OBJECTS:VCGeneralUtils>
+  MODULE
+  PLUGIN_TOOL opt
+)
 
 install(TARGETS NewPMPlugin
   LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
   COMPONENT igc-core
   )
 
+# TODO: Fix path
 target_include_directories(NewPMPlugin
   PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/../../include/"

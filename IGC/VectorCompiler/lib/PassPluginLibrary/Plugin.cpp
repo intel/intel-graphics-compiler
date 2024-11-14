@@ -10,11 +10,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Passes/PassPlugin.h"
 
 #include "vc/GenXOpts/GenXOptsNewPM.h"
-#include "vc/Support/PassManager.h"
-#include "vc/Support/PassPrinters.h"
 
 using namespace llvm;
-// using namespace genx;
 
 namespace {
 void registerPluginPasses(PassBuilder &PB) {
@@ -49,10 +46,15 @@ PassPluginLibraryInfo getNewPMPluginInfo() {
   return {LLVM_PLUGIN_API_VERSION, "NewPMPlugin", "v0.1", registerPluginPasses};
 }
 
-// #if defined(_MSC_VER)
-// #pragma comment(linker, "/EXPORT:llvmGetPassPluginInfo")
-// #endif // defined(_MSC_VER)
+#ifdef __GNUC__
+#define DLL_PUBLIC __attribute__((visibility("default")))
+#else
+#define DLL_PUBLIC __declspec(dllexport)
+#endif
 
-extern "C" LLVM_ATTRIBUTE_WEAK PassPluginLibraryInfo llvmGetPassPluginInfo() {
+// TODO: Fix visibility
+extern "C" {
+LLVM_ATTRIBUTE_WEAK DLL_PUBLIC PassPluginLibraryInfo llvmGetPassPluginInfo() {
   return getNewPMPluginInfo();
+}
 }
