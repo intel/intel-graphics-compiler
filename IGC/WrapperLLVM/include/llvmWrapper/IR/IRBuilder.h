@@ -217,6 +217,14 @@ namespace IGCLLVM
 
         // This wrapper function is deprecated because it uses typed pointer and
         // should no longer be used in LLVM 14+ compatible code.
+        inline llvm::LoadInst* CreateLoad(llvm::Value* Ptr, const char *Name)
+        {
+            llvm::Type* ptrType = IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType());
+            return llvm::IRBuilder<T, InserterTyDef()>::CreateLoad(ptrType, Ptr, Name);
+        }
+
+        // This wrapper function is deprecated because it uses typed pointer and
+        // should no longer be used in LLVM 14+ compatible code.
         inline llvm::LoadInst* CreateLoad(llvm::Value* Ptr, const llvm::Twine &Name = "")
         {
             llvm::Type* ptrType = IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType());
