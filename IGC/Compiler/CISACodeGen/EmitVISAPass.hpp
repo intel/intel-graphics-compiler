@@ -142,6 +142,7 @@ public:
     void EmitMulPair(llvm::GenIntrinsicInst* GII, const SSource Sources[4], const DstModifier& DstMod);
     void EmitPtrToPair(llvm::GenIntrinsicInst* GII, const SSource Sources[1], const DstModifier& DstMod);
     void EmitInlineAsm(llvm::CallInst* inst);
+    void EmitInitializePHI(llvm::PHINode* phi);
 
     void emitPairToPtr(llvm::GenIntrinsicInst* GII);
 
@@ -713,7 +714,8 @@ public:
     template<size_t N>
     void JoinSIMD(CVariable* (&tempdst)[N], uint responseLength, SIMDMode mode);
     CVariable* BroadcastIfUniform(CVariable* pVar, bool nomask = false);
-    bool IsNoMaskAllowed(SDAG& sdag);
+    bool IsNoMaskAllowed(llvm::Instruction* inst);
+    bool IsSubspanDestination(llvm::Instruction* inst);
     uint DecideInstanceAndSlice(const llvm::BasicBlock& blk, SDAG& sdag, bool& slicing);
     bool IsUndefOrZeroImmediate(const llvm::Value* value);
     inline bool isUndefOrConstInt0(const llvm::Value* val)
