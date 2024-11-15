@@ -103,22 +103,6 @@ private:
 };
 } // namespace llvm
 
-static alignment_t
-getAlignment(const Argument &Arg,
-             GenXOCLRuntimeInfo::KernelArgInfo::KindType Kind) {
-  using ArgKindType = GenXOCLRuntimeInfo::KernelArgInfo::KindType;
-  if (Kind != ArgKindType::SLM)
-    return 0;
-
-  Type *TypeToAlign = Arg.getType();
-  TypeToAlign = IGCLLVM::getNonOpaquePtrEltTy(TypeToAlign);
-  return Arg.getParent()
-      ->getParent()
-      ->getDataLayout()
-      .getABITypeAlign(TypeToAlign)
-      .value();
-}
-
 KernelArgBuilder::ArgAccessKindType
 KernelArgBuilder::getOCLArgAccessKind(ArrayRef<StringRef> Tokens,
                                       ArgKindType Kind) const {
@@ -301,7 +285,12 @@ KernelArgBuilder::translateArgument(const Argument &Arg) const {
   // Linearization arguments have a non-zero offset in the original explicit
   // byval arg.
   Info.OffsetInArg = KM.getOffsetInArg(ArgNo);
-  Info.Alignment = (unsigned)getAlignment(Arg, Info.Kind);
+  if (Info.Kind == GenXOCLRuntimeInfo::KernelArgInfo::KindType::SLM)
+    // Max SLM alignment is 16 or 8 bytes and depends on what memory
+    // messages are used: legacy or LSC.
+    Info.Alignment = ST.translateLegacyMessages() ? 8 : 16;
+  else
+    Info.Alignment = 0;
 
   return Info;
 }

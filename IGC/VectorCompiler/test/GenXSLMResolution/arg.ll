@@ -1,21 +1,24 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXSLMResolution -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXSLMResolution -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s --check-prefix=CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXSLMResolution -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s --check-prefix=CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 
 define dllexport void @kernel(i32 addrspace(3)* align 1 %out, i32 addrspace(3)* nocapture readonly %in) local_unnamed_addr #0 {
 entry:
-  ; CHECK: %ld = load i32, i32 addrspace(3)* %in, align 4
+  ; CHECK-TYPED-PTRS: %ld = load i32, i32 addrspace(3)* %in, align 4
+  ; CHECK-OPAQUE-PTRS: %ld = load i32, ptr addrspace(3) %in, align 4
   %ld = load i32, i32 addrspace(3)* %in, align 4
 
-  ; CHECK: store i32 %ld, i32 addrspace(3)* inttoptr (i32 12 to i32 addrspace(3)*), align 4
+  ; CHECK-TYPED-PTRS: store i32 %ld, i32 addrspace(3)* inttoptr (i32 16 to i32 addrspace(3)*), align 4
+  ; CHECK-OPAQUE-PTRS: store i32 %ld, ptr addrspace(3) inttoptr (i32 16 to ptr addrspace(3)), align 4
   store i32 %ld, i32 addrspace(3)* %out, align 4
   ret void
 }

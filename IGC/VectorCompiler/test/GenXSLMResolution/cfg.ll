@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2023 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -23,7 +23,8 @@
 ;              \      /
 ;                bar
 
-; RUN: %opt %use_old_pass_manager% -GenXSLMResolution -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXSLMResolution -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXSLMResolution -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 
@@ -37,8 +38,10 @@ define internal spir_func i32 @bar(i32 addrspace(3)* %arg) #1 {
 
 ; CHECK-LABEL: define internal spir_func i32 @foo
 define internal spir_func i32 @foo(i32 addrspace(3)* %arg) #1 {
-  ; CHECK: [[SPLIT_FOO:%[^ ]+]] = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 268435456 to [4 x i32] addrspace(3)*), i64 0, i64 1
-  ; CHECK: %bar.res = call spir_func i32 @bar(i32 addrspace(3)* [[SPLIT_FOO]])
+  ; CHECK-TYPED-PTRS: [[SPLIT_FOO:%[^ ]+]] = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 268435456 to [4 x i32] addrspace(3)*), i64 0, i64 1
+  ; CHECK-TYPED-PTRS: %bar.res = call spir_func i32 @bar(i32 addrspace(3)* [[SPLIT_FOO]])
+  ; CHECK-OPAQUE-PTRS: [[SPLIT_FOO:%[^ ]+]] = getelementptr inbounds [4 x i32], ptr addrspace(3) inttoptr (i32 268435456 to ptr addrspace(3)), i64 0, i64 1
+  ; CHECK-OPAQUE-PTRS: %bar.res = call spir_func i32 @bar(ptr addrspace(3) [[SPLIT_FOO]])
   %arg.ld = load i32, i32 addrspace(3)* %arg, align 4
   %bar.res = call spir_func i32 @bar(i32 addrspace(3)* getelementptr inbounds ([4 x i32], [4 x i32] addrspace(3)* @SLM_GV, i64 0, i64 1))
   %res = add i32 %bar.res, %arg.ld
@@ -47,7 +50,8 @@ define internal spir_func i32 @foo(i32 addrspace(3)* %arg) #1 {
 
 ; CHECK-LABEL: define internal spir_func i32 @f1
 define internal spir_func i32 @f1() #1 {
-  ; CHECK: %gv.p3 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 268435456 to [4 x i32] addrspace(3)*), i64 0, i64 2
+  ; CHECK-TYPED-PTRS: %gv.p3 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 268435456 to [4 x i32] addrspace(3)*), i64 0, i64 2
+  ; CHECK-OPAQUE-PTRS: %gv.p3 = getelementptr inbounds [4 x i32], ptr addrspace(3) inttoptr (i32 268435456 to ptr addrspace(3)), i64 0, i64 2
   %gv.p3 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* @SLM_GV, i64 0, i64 2
   %foo.res = call spir_func i32 @foo(i32 addrspace(3)* %gv.p3)
   ret i32 %foo.res
@@ -55,11 +59,13 @@ define internal spir_func i32 @f1() #1 {
 
 ; CHECK-LABEL: define internal spir_func i32 @f2
 define internal spir_func i32 @f2() #1 {
-  ; CHECK: %gv.p3.0 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 268435456 to [4 x i32] addrspace(3)*), i64 0, i64
+  ; CHECK-TYPED-PTRS: %gv.p3.0 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 268435456 to [4 x i32] addrspace(3)*), i64 0, i64
+  ; CHECK-OPAQUE-PTRS: %gv.p3.0 = getelementptr inbounds [4 x i32], ptr addrspace(3) inttoptr (i32 268435456 to ptr addrspace(3)), i64 0, i64
   %gv.p3.0 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* @SLM_GV, i64 0, i64 0
   %gv.ld.0 = load i32, i32 addrspace(3)* %gv.p3.0, align 4
 
-  ; CHECK: %gv.p3.3 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 268435456 to [4 x i32] addrspace(3)*), i64 0, i64 3
+  ; CHECK-TYPED-PTRS: %gv.p3.3 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 268435456 to [4 x i32] addrspace(3)*), i64 0, i64 3
+  ; CHECK-OPAQUE-PTRS: %gv.p3.3 = getelementptr inbounds [4 x i32], ptr addrspace(3) inttoptr (i32 268435456 to ptr addrspace(3)), i64 0, i64 3
   %gv.p3.3 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* @SLM_GV, i64 0, i64 3
   %gv.ld.3 = load i32, i32 addrspace(3)* %gv.p3.3, align 4
 
@@ -76,7 +82,8 @@ define internal spir_func i32 @f2() #1 {
 define internal spir_func i32 @f0(i32 addrspace(3)* %arg) #1 {
   %arg.ld = load i32, i32 addrspace(3)* %arg, align 4
 
-  ; CHECK: %gv.p3 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 268435456 to [4 x i32] addrspace(3)*), i64 0, i64 0
+  ; CHECK-TYPED-PTRS: %gv.p3 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 268435456 to [4 x i32] addrspace(3)*), i64 0, i64 0
+  ; CHECK-OPAQUE-PTRS: %gv.p3 = getelementptr inbounds [4 x i32], ptr addrspace(3) inttoptr (i32 268435456 to ptr addrspace(3)), i64 0, i64 0
   %gv.p3 = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* @SLM_GV, i64 0, i64 0
   %gv.ld = load i32, i32 addrspace(3)* %gv.p3, align 4
 
@@ -96,8 +103,9 @@ exit:
 
 ; CHECK-LABEL: define internal spir_func i32 @f3
 define internal spir_func i32 @f3(i32 addrspace(3)* %arg) #1 {
-  ; CHECK: [[SPLIT_F3:%[^ ]+]] = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 64 to [4 x i32] addrspace(3)*), i64 0, i64 0
-  ; CHECK: %bar.res = call spir_func i32 @bar(i32 addrspace(3)* [[SPLIT_F3]])
+  ; CHECK-TYPED-PTRS: [[SPLIT_F3:%[^ ]+]] = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 64 to [4 x i32] addrspace(3)*), i64 0, i64 0
+  ; CHECK-TYPED-PTRS: %bar.res = call spir_func i32 @bar(i32 addrspace(3)* [[SPLIT_F3]])
+  ; CHECK-OPAQUE-PTRS: ptr addrspace(3) inttoptr (i32 64 to ptr addrspace(3))
   %bar.res = call spir_func i32 @bar(i32 addrspace(3)* getelementptr inbounds ([4 x i32], [4 x i32] addrspace(3)* @SLM_GV, i64 0, i64 0))
   %arg.ld = load i32, i32 addrspace(3)* %arg, align 4
   %sum = add i32 %bar.res, %arg.ld
@@ -106,22 +114,27 @@ define internal spir_func i32 @f3(i32 addrspace(3)* %arg) #1 {
 
 ; CHECK-LABEL: define dllexport spir_kernel void @kernelA
 define dllexport spir_kernel void @kernelA() #2 {
-  ; CHECK: [[SPLIT_KA:%[^ ]+]] = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 268435456 to [4 x i32] addrspace(3)*), i64 0, i64 0
-  ; CHECK: %res = call spir_func i32 @f0(i32 addrspace(3)* [[SPLIT_KA]])
+  ; CHECK-TYPED-PTRS: [[SPLIT_KA:%[^ ]+]] = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 268435456 to [4 x i32] addrspace(3)*), i64 0, i64 0
+  ; CHECK-TYPED-PTRS: %res = call spir_func i32 @f0(i32 addrspace(3)* [[SPLIT_KA]])
+  ; CHECK-OPAQUE-PTRS: ptr addrspace(3) inttoptr (i32 268435456 to ptr addrspace(3))
   %res = call spir_func i32 @f0(i32 addrspace(3)* getelementptr inbounds ([4 x i32], [4 x i32] addrspace(3)* @SLM_GV, i64 0, i64 0))
   ret void
 }
 
 ; CHECK-LABEL: define dllexport spir_kernel void @kernelB
 define dllexport spir_kernel void @kernelB() #2 {
-  ; CHECK: [[SPLIT_KB:%[^ ]+]] = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 64 to [4 x i32] addrspace(3)*), i64 0, i64 3
-  ; CHECK: %res = call spir_func i32 @f3(i32 addrspace(3)* [[SPLIT_KB]])
+  ; CHECK-TYPED-PTRS: [[SPLIT_KB:%[^ ]+]] = getelementptr inbounds [4 x i32], [4 x i32] addrspace(3)* inttoptr (i32 64 to [4 x i32] addrspace(3)*), i64 0, i64 3
+  ; CHECK-TYPED-PTRS: %res = call spir_func i32 @f3(i32 addrspace(3)* [[SPLIT_KB]])
+  ; CHECK-OPAQUE-PTRS: [[SPLIT_KB:%[^ ]+]] = getelementptr inbounds [4 x i32], ptr addrspace(3) inttoptr (i32 64 to ptr addrspace(3)), i64 0, i64 3
+  ; CHECK-OPAQUE-PTRS: %res = call spir_func i32 @f3(ptr addrspace(3) [[SPLIT_KB]])
   %res = call spir_func i32 @f3(i32 addrspace(3)* getelementptr inbounds ([4 x i32], [4 x i32] addrspace(3)* @SLM_GV, i64 0, i64 3))
   ret void
 }
 
-; CHECK: !{{[[:digit:]]}} = !{void ()* @kernelA, !"kernelA", !{{[[:digit:]]}}, i32 16, !{{[[:digit:]]}}, !{{[[:digit:]]}}, !{{[[:digit:]]}}, i32 0}
-; CHECK: !{{[[:digit:]]}} = !{void ()* @kernelB, !"kernelB", !{{[[:digit:]]}}, i32 80, !{{[[:digit:]]}}, !{{[[:digit:]]}}, !{{[[:digit:]]}}, i32 0}
+; CHECK-TYPED-PTRS: !{{[[:digit:]]}} = !{void ()* @kernelA, !"kernelA", !{{[[:digit:]]}}, i32 16, !{{[[:digit:]]}}, !{{[[:digit:]]}}, !{{[[:digit:]]}}, i32 0}
+; CHECK-TYPED-PTRS: !{{[[:digit:]]}} = !{void ()* @kernelB, !"kernelB", !{{[[:digit:]]}}, i32 80, !{{[[:digit:]]}}, !{{[[:digit:]]}}, !{{[[:digit:]]}}, i32 0}
+; CHECK-OPAQUE-PTRS: !{{[[:digit:]]}} = !{ptr @kernelA, !"kernelA", !{{[[:digit:]]}}, i32 16, !{{[[:digit:]]}}, !{{[[:digit:]]}}, !{{[[:digit:]]}}, i32 0}
+; CHECK-OPAQUE-PTRS: !{{[[:digit:]]}} = !{ptr @kernelB, !"kernelB", !{{[[:digit:]]}}, i32 80, !{{[[:digit:]]}}, !{{[[:digit:]]}}, !{{[[:digit:]]}}, i32 0}
 
 attributes #0 = { "VCGlobalVariable" }
 attributes #1 = { noinline nounwind }

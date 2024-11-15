@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXSLMResolution -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXSLMResolution -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK-OPAQUE-PTRS
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXSLMResolution -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s --check-prefix=CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXSLMResolution -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s --check-prefix=CHECK-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 

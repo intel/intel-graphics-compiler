@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2023 Intel Corporation
+Copyright (C) 2023-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -35,6 +35,7 @@ SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 
 #include "GenX.h"
+#include "GenXTargetMachine.h"
 #include "GenXUtil.h"
 
 #include "vc/Support/GenXDiagnostic.h"
@@ -47,6 +48,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Value.h"
 #include "llvmWrapper/Support/Alignment.h"
 
+#include <llvm/CodeGen/TargetPassConfig.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/InstIterator.h>
@@ -68,12 +70,12 @@ public:
   StringRef getPassName() const override { return "GenX SLM Resolution"; }
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<CallGraphWrapperPass>();
+    AU.addRequired<TargetPassConfig>();
     AU.setPreservesCFG();
   }
   bool runOnModule(Module &M) override;
 
 private:
-  llvm::Align getSLMArgAlign(const Argument &A) const;
   llvm::Align getGlobalVarAlign(const GlobalVariable &GV) const;
   Constant *allocateOnSLM(const GlobalVariable &GV, unsigned &SLMSize) const;
   Constant *getNextOffset(llvm::Align Alignment, LLVMContext &Ctx,
@@ -172,11 +174,6 @@ static SmallVector<GlobalVariable *, 4> collectSLMVariables(Module &M) {
   return SLMVars;
 }
 
-llvm::Align GenXSLMResolution::getSLMArgAlign(const Argument &A) const {
-  auto *TypeToAlign = IGCLLVM::getNonOpaquePtrEltTy(A.getType());
-  return IGCLLVM::getABITypeAlign(*DL, TypeToAlign);
-}
-
 llvm::Align
 GenXSLMResolution::getGlobalVarAlign(const GlobalVariable &GV) const {
   if (GV.getAlignment())
@@ -251,8 +248,12 @@ bool GenXSLMResolution::runForKernel(Function &Head, Module &M,
   if (Arg == Head.arg_end())
     return Modified;
 
-  auto Align = getSLMArgAlign(*Arg);
-  auto *Offset = getNextOffset(Align, Head.getContext(), SLMSize);
+  const auto &ST = getAnalysis<TargetPassConfig>()
+                       .getTM<GenXTargetMachine>()
+                       .getGenXSubtarget();
+  auto Alignment =
+      ST.translateLegacyMessages() ? llvm::Align(8) : llvm::Align(16);
+  auto *Offset = getNextOffset(Alignment, Head.getContext(), SLMSize);
   auto *NewPtr = ConstantExpr::getIntToPtr(Offset, Arg->getType());
   Arg->replaceAllUsesWith(NewPtr);
   return true;
