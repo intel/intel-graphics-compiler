@@ -553,7 +553,9 @@ public:
   ~LiveGRFBuckets() {}
   bool isEmpty() {return empty;}
   int getNumOfBuckets() const { return numOfBuckets; }
-
+  const std::vector<SBBUCKET_VECTOR> &getAllBuckets() const {
+    return nodeBucketsArray;
+  }
   // The iterator which is used to scan the node vector of each bucket
   class BN_iterator {
   public:
@@ -774,7 +776,7 @@ public:
   bool hasInternalDependence(SBNode *nodeFirst, SBNode *nodeNext);
 
   bool is2xFPBlockCandidate(G4_INST *inst, bool accDST);
-  bool hasExtraOverlap(G4_INST *liveInst, G4_INST *curInst,
+  bool hasExtraOverlap(const G4_INST *liveInst, const G4_INST *curInst,
                        const SBFootprint *liveFootprint,
                        const SBFootprint *curFootprint,
                        const Gen4_Operand_Number curOpnd, IR_Builder *builder);
