@@ -1009,12 +1009,6 @@ namespace IGC
         uint32_t HdcEnableIndexSize = 0;
         std::vector<RoutingIndex> HdcEnableIndexValues;
 
-        // Flag per function/kernel informing about if it has
-        // expensive loops and needs trigger retry compilation
-        std::unordered_map<llvm::Function*, bool> m_FuncHasExpensiveLoops;
-
-        bool HasFuncExpensiveLoop(llvm::Function* pFunc);
-
         // Raytracing (any shader type)
         BVHInfo bvhInfo;
         // Immediate constant buffer promotion is enabled for all optimization except for Direct storage case

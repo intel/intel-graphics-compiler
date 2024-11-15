@@ -7048,9 +7048,8 @@ namespace IGC
         {
             auto funcInfoMD = context->getMetaDataUtils()->getFunctionsInfoItem(m_program->entry);
             int subGrpSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
-            bool noRetry = ((subGrpSize > 0 || jitInfo->stats.spillMemUsed < 1000) &&
-                context->m_instrTypes.mayHaveIndirectOperands) &&
-                !context->HasFuncExpensiveLoop(m_program->entry);
+            bool noRetry = (subGrpSize > 0 || jitInfo->stats.spillMemUsed < 1000) &&
+                context->m_instrTypes.mayHaveIndirectOperands;
 
             if (context->type == ShaderType::OPENCL_SHADER)
             {
@@ -7079,12 +7078,11 @@ namespace IGC
             std::stringstream ss;
             ss << endl << "Stack Function Spill Info:" << endl;
             ss << "KERNEL: " << m_program->entry->getName().str() << endl;
-            if (m_program->m_spillCost > threshold || context->HasFuncExpensiveLoop(m_program->entry))
+            if (m_program->m_spillCost > threshold)
             {
                 // First check the kernel
                 noRetryForStack = false;
                 context->m_retryManager.PerFuncRetrySet.insert(m_program->entry->getName().str());
-                ss << "  HasFuncExpensiveLoop = " << context->HasFuncExpensiveLoop(m_program->entry) << std::endl;
                 ss << "  numGRFSpill = " << jitInfo->stats.numGRFSpillFillWeighted << std::endl;
                 ss << "  TotalInsts = " << jitInfo->stats.numAsmCountUnweighted << std::endl;
             }
@@ -7093,14 +7091,13 @@ namespace IGC
                 vISA::FINALIZER_INFO* f_jitInfo = nullptr;
                 func.second->GetJitInfo(f_jitInfo);
                 //float spillCost = float(f_jitInfo->stats.numGRFSpillFillWeighted) / f_jitInfo->stats.numAsmCountUnweighted;
-                if (f_jitInfo->stats.numGRFSpillFillWeighted > 0 || context->HasFuncExpensiveLoop(func.first))
+                if (f_jitInfo->stats.numGRFSpillFillWeighted > 0)
                 {
                     // Check each stackcall function
                     noRetryForStack = false;
                     string FName = StripCloneName(func.first->getName().str());
                     context->m_retryManager.PerFuncRetrySet.insert(FName);
                     ss << "  STACK_FUNC Retry: " << FName << std::endl;
-                    ss << "    HasFuncExpensiveLoop = " << context->HasFuncExpensiveLoop(func.first) << std::endl;
                     ss << "    numGRFSpill = " << f_jitInfo->stats.numGRFSpillFillWeighted << std::endl;
                     ss << "    TotalInsts = " << f_jitInfo->stats.numAsmCountUnweighted << std::endl;
                 }

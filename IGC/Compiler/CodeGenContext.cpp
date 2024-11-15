@@ -749,17 +749,6 @@ namespace IGC
         return true;
     }
 
-    bool CodeGenContext::HasFuncExpensiveLoop(llvm::Function* pFunc)
-    {
-        if (m_FuncHasExpensiveLoops.find(pFunc) !=
-            m_FuncHasExpensiveLoops.end())
-        {
-            return m_FuncHasExpensiveLoops[pFunc];
-        }
-        return false;
-    }
-
-
     static std::string demangleFuncName(const std::string &rawName) {
         // OpenMP adds additional prefix and suffix to the mangling scheme,
         // remove it if present.
