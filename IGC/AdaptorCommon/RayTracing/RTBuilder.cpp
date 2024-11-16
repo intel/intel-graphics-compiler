@@ -1913,32 +1913,16 @@ void RTBuilder::emitSingleRQMemRayWrite(
 void RTBuilder::copyMemHitInProceed(
     SyncStackPointerVal* HWStackPtr,
     SyncStackPointerVal* SMStackPtr,
-    bool singleRQProceed,
-    bool useDeprecated)
+    bool singleRQProceed)
 {
-    if (useDeprecated)
+    switch (getMemoryStyle())
     {
-        switch (getMemoryStyle())
-        {
-        case RTMemoryStyle::Xe:
-            _copyMemHitInProceed_deprecated_Xe(
-                HWStackPtr,
-                SMStackPtr,
-                VAdapt{ *this, singleRQProceed });
-            break;
-        }
-    }
-    else
-    {
-        switch (getMemoryStyle())
-        {
-        case RTMemoryStyle::Xe:
-            _copyMemHitInProceed_Xe(
-                HWStackPtr,
-                SMStackPtr,
-                VAdapt{ *this, singleRQProceed });
-            break;
-        }
+    case RTMemoryStyle::Xe:
+        _copyMemHitInProceed_Xe(
+            HWStackPtr,
+            SMStackPtr,
+            VAdapt{ *this, singleRQProceed });
+        break;
     }
 }
 
