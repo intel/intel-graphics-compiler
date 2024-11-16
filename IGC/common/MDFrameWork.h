@@ -220,8 +220,6 @@ enum class ShaderTypeMD
     // when generating structured accesses to the Raytracing SW Stack.
     struct RayTracingSWTypes
     {
-        std::vector<llvm::StructType*> FrameStartTys;
-        std::vector<llvm::StructType*> ArgumentTys;
         std::vector<llvm::StructType*> FullFrameTys;
     };
 
