@@ -1991,7 +1991,7 @@ namespace IGC {
             if (CurrentCandidateInsts.size() > 0 &&
                 Id == GenISAIntrinsic::GenISA_LSC2DBlockReadAddrPayload)
             {
-                if (!SinkFromPH && !allUsesAreDominatedByUndoPoint(CurrentCandidateInsts, CurrentCandidateInsts[0]))
+                if (!SinkFromPH && !allUsesAreDominatedByUndoPoint(CurrentCandidateInsts, CurrentCandidateInsts[0]->getNextNode()))
                 {
                     PrintDump(VerbosityLevel::High, "Not all the uses are dominated by the UndoPoint, skipping.\n");
                     return false;
@@ -2229,7 +2229,7 @@ namespace IGC {
         }
 
         DenseMap<InsertElementInst *, InstSet> DestVecToShuffleInst;
-        SmallVector<Candidate, 16> ShuffleCandidates;
+        CandidateVec ShuffleCandidates;
         DenseMap<Instruction *, Candidate *> ShuffleInstToCandidate;
 
         for (auto &VecIEs : SourceVectors)
@@ -2279,12 +2279,12 @@ namespace IGC {
                     PrintDump(VerbosityLevel::Medium, "DestVector used in the loop:\n");
                     PrintInstructionDump(VerbosityLevel::Medium, DestVec);
 
-                    ShuffleCandidates.emplace_back(InstrVec{}, TgtBB, SinkFromPH ? LoopSinkWorthiness::Sink : LoopSinkWorthiness::IntraLoopSink, nullptr);
+                    ShuffleCandidates.push_back(std::make_unique<Candidate>(InstrVec{}, TgtBB, SinkFromPH ? LoopSinkWorthiness::Sink : LoopSinkWorthiness::IntraLoopSink, nullptr));
                     Changed = true;
 
                     for (Instruction *I : ShuffleInst)
                     {
-                        ShuffleInstToCandidate[I] = &ShuffleCandidates.back();
+                        ShuffleInstToCandidate[I] = ShuffleCandidates.back().get();
                     }
                 }
             }
