@@ -291,6 +291,7 @@ KernelArgBuilder::translateArgument(const Argument &Arg) const {
   Info.BTI = KM.getBTI(ArgNo);
   // For implicit arguments that are byval argument linearization, index !=
   // ArgNo in the IR function.
+  Info.ArgNo = ArgNo;
   Info.Index = KM.getArgIndex(ArgNo);
   // Linearization arguments have a non-zero offset in the original explicit
   // byval arg.
