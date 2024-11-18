@@ -66,6 +66,7 @@ public:
     enum class AddressModeType { None, Stateful, Bindless, Stateless };
 
   private:
+    unsigned ArgNo;
     unsigned Index;
     KindType Kind;
     AccessKindType AccessKind;
@@ -82,6 +83,7 @@ public:
     KernelArgInfo() = default;
 
   public:
+    unsigned getArgNo() const { return ArgNo; }
     unsigned getIndex() const { return Index; }
     KindType getKind() const { return Kind; }
     AccessKindType getAccessKind() const { return AccessKind; }
