@@ -6,13 +6,14 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-spv-subgroup-mma-resolution -S --platformdg2 %s 2>&1 | FileCheck %s
+; RUN: igc_opt -igc-spv-subgroup-mma-resolution -S --platformdg2 %s 2>&1 | FileCheck %s --implicit-check-not _Z45__spirv_SubgroupMatrixMultiplyAccumulateINTEL_to_be_removed
 ; ------------------------------------------------
 ; SpvSubgroupMMAResolution - basic test
 ; ------------------------------------------------
 
 target triple = "spir64-unknown-unknown"
 declare spir_func i32 @_Z45__spirv_SubgroupMatrixMultiplyAccumulateINTEL_all_correct(i32, i32, <8 x i32>, i32, i32)
+declare spir_func i32 @_Z45__spirv_SubgroupMatrixMultiplyAccumulateINTEL_to_be_removed(i32, i32, <8 x i32>, i32, i32)
 declare spir_func i32 @_Z45__spirv_SubgroupMatrixMultiplyAccumulateINTEL_check_arg_num(i32, i32, <8 x i32>, i32)
 declare spir_func i32 @_Z45__spirv_SubgroupMatrixMultiplyAccumulateINTEL_check_C_type(i32, i32, <8 x i32>, i16, i32)
 declare spir_func i8 @_Z45__spirv_SubgroupMatrixMultiplyAccumulateINTEL_check_Res_type(i32, i32, <8 x i32>, i8, i32)
@@ -38,16 +39,16 @@ entry:
 ;CHECK: error: __spirv_SubgroupMatrixMultiplyAccumulateINTEL: Operands argument must be a constant scalar 32-bit integer
   %call2 = call spir_func i32 @_Z45__spirv_SubgroupMatrixMultiplyAccumulateINTEL_all_correct(i32 32, i32 %iMa, <8 x i32> %iM8b, i32 %iMc, i32 %iMa)
 
-;CHECK: error: __spirv_SubgroupMatrixMultiplyAccumulateINTEL: Result type must match type of Matrix C. Result type: i32, Matrix C type: i16
+;CHECK: error: __spirv_SubgroupMatrixMultiplyAccumulateINTEL: expected Result type to match type of Matrix C for targeted HW. Result type: i32, Matrix C type: i16
   %call3 = call spir_func i32 @_Z45__spirv_SubgroupMatrixMultiplyAccumulateINTEL_check_C_type(i32 32, i32 %iMa, <8 x i32> %iM8b, i16 0, i32 51)
 
-;CHECK: error: __spirv_SubgroupMatrixMultiplyAccumulateINTEL: expected Result element type to be int32_t, int16_t, float32_t, or float16_t for targeted HW
+;CHECK: error: __spirv_SubgroupMatrixMultiplyAccumulateINTEL: expected Result to be a scalar or vector of int32_t, int16_t, float32_t, or float16_t for targeted HW
   %call4 = call spir_func i8 @_Z45__spirv_SubgroupMatrixMultiplyAccumulateINTEL_check_Res_type(i32 32, i32 %iMa, <8 x i32> %iM8b, i8 0, i32 51)
 
-;CHECK: error: __spirv_SubgroupMatrixMultiplyAccumulateINTEL: expected Matrix A element type to be int32_t, int16_t, float32_t, or float16_t for targeted HW
+;CHECK: error: __spirv_SubgroupMatrixMultiplyAccumulateINTEL: expected Matrix A to be a scalar or vector of int32_t, int16_t, float32_t, or float16_t for targeted HW
   %call5 = call spir_func i32 @_Z45__spirv_SubgroupMatrixMultiplyAccumulateINTEL_check_A_type(i32 32, i8 0, <8 x i32> %iM8b, i32 %iMc, i32 51)
 
-;CHECK: error: __spirv_SubgroupMatrixMultiplyAccumulateINTEL: expected Matrix B element type to be int32_t, int16_t, float32_t, or float16_t for targeted HW
+;CHECK: error: __spirv_SubgroupMatrixMultiplyAccumulateINTEL: expected Matrix B to be a scalar or vector of int32_t, int16_t, float32_t, or float16_t for targeted HW
   %call6 = call spir_func i32 @_Z45__spirv_SubgroupMatrixMultiplyAccumulateINTEL_check_B_type(i32 32, i32 %iMa, <8 x i8> %badB, i32 %iMc, i32 51)
 
 ;CHECK: error: __spirv_SubgroupMatrixMultiplyAccumulateINTEL: M dimension must be 1, 2, 4 or 8 for targeted HW. Actual: 3
@@ -85,6 +86,12 @@ entry:
 ;CHECK: for K Dim = 32, for Result element type int32_t, for A element type int32_t, for B element type int32_t, for targeted HW.
 ;CHECK-NEXT: Actual: 52: MatrixCBFloat16INTEL | MatrixAPackedInt8INTEL | MatrixBPackedInt8INTEL
   %call16 = call spir_func i32 @_Z45__spirv_SubgroupMatrixMultiplyAccumulateINTEL_all_correct(i32 32, i32 %iMa, <8 x i32> %iM8b, i32 %iMc, i32 52)
+
+; tests that not-used function is removed
+  %call17 = call spir_func i32 @_Z45__spirv_SubgroupMatrixMultiplyAccumulateINTEL_to_be_removed(i32 32, i32 %iMa, <8 x i32> %iM8b, i32 %iMc, i32 51)
+
+;CHECK: Actual: 0: None
+  %call18 = call spir_func i32 @_Z45__spirv_SubgroupMatrixMultiplyAccumulateINTEL_all_correct(i32 32, i32 %iMa, <8 x i32> %iM8b, i32 %iMc, i32 0)
 
   ret void
 }

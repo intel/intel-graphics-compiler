@@ -216,7 +216,7 @@ bool SpvSubgroupMMAResolution::validateCType(const Type* ResultTy, const Type* C
 
     std::string msg;
     raw_string_ostream rso(msg);
-    rso << "__spirv_SubgroupMatrixMultiplyAccumulateINTEL: Result type must match type of Matrix C. Result type: ";
+    rso << "__spirv_SubgroupMatrixMultiplyAccumulateINTEL: expected Result type to match type of Matrix C for targeted HW. Result type: ";
 
     ResultTy->print(rso);
     rso << ", Matrix C type: ";
@@ -231,7 +231,7 @@ bool SpvSubgroupMMAResolution::validateElementType(const ElType ElemTy, StringRe
         return true;
 
     emitError(Twine("__spirv_SubgroupMatrixMultiplyAccumulateINTEL: expected ") + ParamName +
-              " element type to be int32_t, int16_t, float32_t, or float16_t for targeted HW", CI);
+              " to be a scalar or vector of int32_t, int16_t, float32_t, or float16_t for targeted HW", CI);
     return false;
 }
 
