@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1931,53 +1931,6 @@ bool InstExpander::visitCall(CallInst& Call) {
             Value* SelectHo = IRB->CreateSelect(Cmp, SubHi, Hi);
 
             Emu->setExpandedValues(&Call, SelectLo, SelectHo);
-            return true;
-        }
-        // emulate LLVM min/max intrinsics
-        case Intrinsic::smax:
-        case Intrinsic::smin:
-        case Intrinsic::umax:
-        case Intrinsic::umin:
-        {
-            // The least significant halves' comparison is dependent on that
-            // for the most significant halves, so we gain nothing by lowering
-            // this into i32 min/max calls. Basic cmp/sel sequence should
-            // suffice
-            const DenseMap<Intrinsic::ID, CmpInst::Predicate> CmpPredMap {
-                {Intrinsic::smax, CmpInst::Predicate::ICMP_SGT},
-                {Intrinsic::smin, CmpInst::Predicate::ICMP_SLT},
-                {Intrinsic::umax, CmpInst::Predicate::ICMP_UGT},
-                {Intrinsic::umin, CmpInst::Predicate::ICMP_ULT}
-            };
-            Value* LHS = Call.getArgOperand(0), * RHS = Call.getArgOperand(1);
-            // FIXME: Note that we aren't producing expanded/emulated values
-            // here, but rather replacing the call uses with the result of a
-            // newly generated i64 instruction. To make that work, 2 criteria
-            // should be satisfied from the perspective of Emu64Ops::expandInsts
-            // algorithm:
-            // 1. Inst-over-BB iterators cannot be invalidated
-            // 2. Due to averse inst-over-BB iteration order, the cmp/sel
-            //    sequence must be inserted after the current min/max call,
-            //    before its first use - regardless of the fact that the call
-            //    itself will be unlinked from those uses and marked for
-            //    deletion.
-            // For 1, we're entirely relying on IRBuilder's internal validation
-            // of instruction numbering within the BB. For 2, we're basically
-            // exploiting the knowledge that the inst-over-BB iteration in the
-            // parent method strictly heeds the averse order.
-            // TODO: Instead of hacking the iteration logic from within the
-            // helper InstExpander method, we should encapsulate this use-case
-            // (inserting new i64 insts into the emulation queue) at the
-            // Emu64Ops class level. One of the options is implementing a util
-            // akin to LLVM's InstructionWorklist, which would support averse
-            // iteration order and handle the deferred instructions upon their
-            // creation. Such a worklist class might have its use in a broader
-            // set of IGC passes, hence implementing this a "global" IGC util
-            // could be an idea.
-            IRB->SetInsertPoint(&*std::next(BasicBlock::iterator(Call)));
-            auto* Cmp = cast<Instruction>(
-                IRB->CreateICmp(CmpPredMap.lookup(IntrID), LHS, RHS));
-            Call.replaceAllUsesWith(IRB->CreateSelect(Cmp, LHS, RHS));
             return true;
         }
         }

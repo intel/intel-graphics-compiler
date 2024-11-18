@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -109,6 +109,7 @@ namespace
         void replaceLRound(IntrinsicInst* I);
         void replaceLRint(IntrinsicInst* I);
         void replaceCountTheLeadingZeros(IntrinsicInst* I);
+        void replaceI64MinMax(IntrinsicInst* I);
 
         static const std::map< Intrinsic::ID, MemFuncPtr_t > m_intrinsicToFunc;
     };
@@ -137,7 +138,11 @@ const std::map< Intrinsic::ID, ReplaceUnsupportedIntrinsics::MemFuncPtr_t > Repl
     { Intrinsic::llround,    &ReplaceUnsupportedIntrinsics::replaceLRound },
     { Intrinsic::lrint,      &ReplaceUnsupportedIntrinsics::replaceLRint },
     { Intrinsic::llrint,     &ReplaceUnsupportedIntrinsics::replaceLRint },
-    { Intrinsic::ctlz,       &ReplaceUnsupportedIntrinsics::replaceCountTheLeadingZeros }
+    { Intrinsic::ctlz,       &ReplaceUnsupportedIntrinsics::replaceCountTheLeadingZeros },
+    { Intrinsic::smax,       &ReplaceUnsupportedIntrinsics::replaceI64MinMax },
+    { Intrinsic::smin,       &ReplaceUnsupportedIntrinsics::replaceI64MinMax },
+    { Intrinsic::umax,       &ReplaceUnsupportedIntrinsics::replaceI64MinMax },
+    { Intrinsic::umin,       &ReplaceUnsupportedIntrinsics::replaceI64MinMax }
 };
 
 ReplaceUnsupportedIntrinsics::ReplaceUnsupportedIntrinsics() : FunctionPass(ID)
@@ -1028,6 +1033,30 @@ void ReplaceUnsupportedIntrinsics::replaceLRint(IntrinsicInst* I) {
     Value* FPToInt = Builder.CreateFPToSI(inVal, dstType, inValName + suffix);
     I->replaceAllUsesWith(FPToInt);
     I->eraseFromParent();
+}
+
+/*
+    Replaces i64 calls to llvm.smax, llvm.smin, llvm.umax, llvm.umin to
+    icmp + select instructionc that can be emulated.
+*/
+void ReplaceUnsupportedIntrinsics::replaceI64MinMax(IntrinsicInst* I)
+{
+    if(!I->getType()->isIntegerTy(64))
+        return;
+
+    const SmallDenseMap<Intrinsic::ID, CmpInst::Predicate, 4> CmpPredMap {
+        {Intrinsic::smax, CmpInst::Predicate::ICMP_SGT},
+        {Intrinsic::smin, CmpInst::Predicate::ICMP_SLT},
+        {Intrinsic::umax, CmpInst::Predicate::ICMP_UGT},
+        {Intrinsic::umin, CmpInst::Predicate::ICMP_ULT}
+    };
+
+    IGCLLVM::IRBuilder<> Builder(I);
+
+    Value* LHS = I->getArgOperand(0), * RHS = I->getArgOperand(1);
+    auto Cmp = cast<Instruction>(
+        Builder.CreateICmp(CmpPredMap.lookup(I->getIntrinsicID()), LHS, RHS));
+    I->replaceAllUsesWith(Builder.CreateSelect(Cmp, LHS, RHS));
 }
 
 /*
