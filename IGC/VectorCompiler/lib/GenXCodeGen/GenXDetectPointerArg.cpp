@@ -112,7 +112,7 @@ bool GenXDetectPointerArg::handleKernel(Function &F) {
     NewDescs.resize(F.arg_size(), "");
 
   for (auto *Arg : PointerArgs) {
-    if (!Arg->getType()->isIntegerTy(64))
+    if (!Arg->getType()->isIntegerTy(64) && !Arg->getType()->isPointerTy())
       continue;
 
     auto ArgNo = Arg->getArgNo();
@@ -409,8 +409,8 @@ void GenXDetectPointerArg::analyzeValue(Value *V) {
       WorkList.push(Inst->getOperand(1));
       continue;
     }
-    if (isa<GetElementPtrInst>(Inst)) {
-      WorkList.push(Inst->getOperand(0));
+    if (auto *GEP = dyn_cast<GetElementPtrInst>(Inst)) {
+      WorkList.push(GEP->getPointerOperand());
       continue;
     }
 
