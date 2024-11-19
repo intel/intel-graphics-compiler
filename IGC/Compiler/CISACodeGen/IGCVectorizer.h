@@ -70,7 +70,6 @@ class IGCVectorizer : public llvm::FunctionPass {
     bool handleInsertElement(VecArr& Slice, Instruction* Final);
     bool checkExtractElement(Instruction* Compare, VecArr& Slice);
     bool handleExtractElement(VecArr& Slice);
-    bool handleCastInstruction(VecArr& Slice);
 
     bool compareOperands(Value* A, Value* B);
 
