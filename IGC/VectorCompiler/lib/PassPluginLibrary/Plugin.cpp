@@ -16,6 +16,10 @@ using namespace llvm;
 namespace {
 void registerPluginPasses(PassBuilder &PB) {
 
+  PB.registerAnalysisRegistrationCallback([=](ModuleAnalysisManager &MAM) {
+    MAM.registerPass([&] { return CMABIAnalysisPass(); });
+  });
+
 #define ADD_PASS(NAME, CREATE_PASS)                                            \
   if (Name == NAME) {                                                          \
     PM.addPass(CREATE_PASS);                                                   \

@@ -100,8 +100,6 @@ SPDX-License-Identifier: MIT
 ///
 //===----------------------------------------------------------------------===//
 
-#define DEBUG_TYPE "CMImpParam"
-
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/Utils/GenX/KernelInfo.h"
 
@@ -152,6 +150,8 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include <llvmWrapper/ADT/Optional.h>
+
+#define DEBUG_TYPE "CMImpParam"
 
 using namespace llvm;
 

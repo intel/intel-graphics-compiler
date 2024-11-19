@@ -853,6 +853,65 @@ CallInst *vc::FuncUsersUpdater::updateFuncDirectUser(CallInst &OrigCall) {
   return NewCall;
 }
 
+void vc::FuncUsersUpdaterNewPM::run() {
+  std::vector<CallInst *> DirectUsers;
+
+  for (auto *U : OrigFunc.users()) {
+    IGC_ASSERT_MESSAGE(
+        isa<CallInst>(U),
+        "the transformation is not applied to indirectly called functions");
+    DirectUsers.push_back(cast<CallInst>(U));
+  }
+
+  std::vector<CallInst *> NewDirectUsers;
+  // Loop over all of the callers of the function, transforming the call sites
+  // to pass in the loaded pointers.
+  for (auto *OrigCall : DirectUsers) {
+    IGC_ASSERT(OrigCall->getCalledFunction() == &OrigFunc);
+    auto *NewCall = updateFuncDirectUser(*OrigCall);
+    NewDirectUsers.push_back(NewCall);
+  }
+
+  for (auto *OrigCall : DirectUsers)
+    OrigCall->eraseFromParent();
+}
+
+CallInst *vc::FuncUsersUpdaterNewPM::updateFuncDirectUser(CallInst &OrigCall) {
+  std::vector<Value *> NewCallOps =
+      getTransformedFuncCallArgs(OrigCall, NewFuncInfo);
+
+  AttributeList NewCallAttrs = inheritCallAttributes(
+      OrigCall, OrigFunc.getFunctionType()->getNumParams(), NewFuncInfo);
+
+  // Push any localized globals.
+  IGC_ASSERT_MESSAGE(NewCallOps.size() ==
+                         NewFuncInfo.getGlobalArgsInfo().FirstGlobalArgIdx,
+                     "call operands and called function info are inconsistent");
+  llvm::transform(NewFuncInfo.getGlobalArgsInfo().Globals,
+                  std::back_inserter(NewCallOps),
+                  [&OrigCall](GlobalArgInfo GAI) {
+                    return passGlobalAsCallArg(GAI, OrigCall);
+                  });
+
+  IGC_ASSERT_EXIT_MESSAGE(!isa<InvokeInst>(OrigCall),
+                          "InvokeInst not supported");
+
+  CallInst *NewCall = CallInst::Create(&NewFunc, NewCallOps, "", &OrigCall);
+  IGC_ASSERT(nullptr != NewCall);
+  NewCall->setCallingConv(OrigCall.getCallingConv());
+  NewCall->setAttributes(NewCallAttrs);
+  if (cast<CallInst>(OrigCall).isTailCall())
+    NewCall->setTailCall();
+  NewCall->setDebugLoc(OrigCall.getDebugLoc());
+  NewCall->takeName(&OrigCall);
+
+  IRBuilder<> Builder(&OrigCall);
+  for (auto &RetToArg : enumerate(NewFuncInfo.getRetToArgInfo()))
+    handleRetValuePortion(RetToArg.index(), RetToArg.value(), OrigCall,
+                          *NewCall, Builder, NewFuncInfo);
+  return NewCall;
+}
+
 void vc::FuncBodyTransfer::run() {
   // Since we have now created the new function, splice the body of the old
   // function right into the new function.

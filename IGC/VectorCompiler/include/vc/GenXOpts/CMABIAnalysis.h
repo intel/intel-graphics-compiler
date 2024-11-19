@@ -10,8 +10,24 @@ SPDX-License-Identifier: MIT
 
 // void initializeCMABIAnalysis(PassRegistry &);
 
-struct CMABIAnalysisPass : public llvm::PassInfoMixin<CMABIAnalysisPass> {
-  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+class LocalizationInfo;
+
+struct CMABIAnalysisPassResult {
+  llvm::SmallPtrSet<llvm::Function *, 8> Kernels;
+  llvm::SmallDenseMap<llvm::Function *, LocalizationInfo *> GlobalInfo;
+
+  // TODO: Fill invalidator
+  template <class IR, class Analysis, class Invalidator>
+  bool invalidate(IR &, Analysis &, Invalidator &) {
+    return true;
+  }
 };
 
+#if LLVM_VERSION_MAJOR >= 16
+struct CMABIAnalysisPass : public llvm::AnalysisInfoMixin<CMABIAnalysisPass> {
+  using Result = CMABIAnalysisPassResult;
+  Result run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::AnalysisKey Key;
+};
+#endif
 #endif // GENX_OPTS_CMABIANALYSIS

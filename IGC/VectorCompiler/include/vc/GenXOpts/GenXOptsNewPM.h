@@ -15,9 +15,11 @@ SPDX-License-Identifier: MIT
 #ifndef VC_GENXOPTS_GENXOPTSNEWPM_H
 #define VC_GENXOPTS_GENXOPTSNEWPM_H
 
+#include "llvm/Analysis/CGSCCPassManager.h"
 #include "llvm/IR/PassManager.h"
 
 namespace llvm {
+
 class FunctionPass;
 class ModulePass;
 class Pass;

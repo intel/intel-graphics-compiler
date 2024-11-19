@@ -12,9 +12,10 @@ SPDX-License-Identifier: MIT
 #define MODULE_PASS(NAME, CREATE_PASS)
 #endif
 
-MODULE_PASS("GenXPacketize", GenXPacketizePass())
+MODULE_PASS("CMABI", CMABIPass())
 MODULE_PASS("CMImpParam", CMImpParamPass())
 MODULE_PASS("CMKernelArgOffset", CMKernelArgOffsetPass())
+MODULE_PASS("GenXPacketize", GenXPacketizePass())
 MODULE_PASS("GenXBIFFlagCtrlResolution", GenXBIFFlagCtrlResolutionPass())
 MODULE_PASS("GenXBTIAssignment", GenXBTIAssignmentPass())
 MODULE_PASS("GenXImportOCLBiF", GenXImportOCLBiFPass())
@@ -24,7 +25,6 @@ MODULE_PASS("GenXPrintfPhiClonning", GenXPrintfPhiClonningPass())
 MODULE_PASS("GenXPrintfResolution", GenXPrintfResolutionPass())
 MODULE_PASS("GenXTrampolineInsertion", GenXTrampolineInsertionPass())
 MODULE_PASS("GenXTranslateSPIRVBuiltins", GenXTranslateSPIRVBuiltinsPass())
-MODULE_PASS("CMABI", CMABIPass())
 MODULE_PASS("GenXCloneIndirectFunctions", GenXCloneIndirectFunctionsPass())
 
 #undef MODULE_PASS

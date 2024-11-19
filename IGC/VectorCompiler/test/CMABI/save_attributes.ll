@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -CMABI -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -CMABI -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% %pass_pref%CMABI -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% %pass_pref%CMABI -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 
@@ -35,6 +35,8 @@ define dllexport void @kernel(float %kernel.flt.val, i32 %kernel.int.val) {
 attributes #0 = { noinline }
 ; CHECK: attributes #0 = { noinline }
 attributes #1 = { readonly }
+; -LLVM-16
+; C HECK: attributes #1 = { memory(read) }
 ; CHECK: attributes #1 = { readonly }
 
 !genx.kernels = !{!0}

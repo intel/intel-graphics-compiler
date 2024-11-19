@@ -38,7 +38,7 @@ Pass *createCMKernelArgOffsetPass(unsigned GrfByteSize, bool UseBindlessImages);
 //
 // CMABI - Fix ABI issues for the genx backend.
 //
-Pass *createCMABIPass();
+Pass *createCMABILegacyPass();
 
 //===----------------------------------------------------------------------===//
 //
@@ -55,7 +55,7 @@ ModulePass *createGenXPacketizePass();
 void initializeGenXPacketizePass(PassRegistry &);
 
 void initializeGenXSimplifyPass(PassRegistry &);
-void initializeCMABIPass(PassRegistry &);
+void initializeCMABILegacyPass(PassRegistry &);
 void initializeCMImpParamPass(PassRegistry &);
 void initializeCMKernelArgOffsetPass(PassRegistry &);
 

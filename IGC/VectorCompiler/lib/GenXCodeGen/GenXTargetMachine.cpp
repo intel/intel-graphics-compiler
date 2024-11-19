@@ -175,7 +175,11 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXImportOCLBiFPass(registry);
   initializeGenXBIFFlagCtrlResolutionPass(registry);
   initializeGenXSimplifyPass(registry);
+#if LLVM_VERSION_MAJOR < 16
+  initializeCMABILegacyPass(registry);
+#else
   initializeCMABIPass(registry);
+#endif
   initializeCMLowerVLoadVStorePass(registry);
   initializeGenXLowerJmpTableSwitchPass(registry);
   initializeGenXGlobalValueLoweringPass(registry);
@@ -990,7 +994,7 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
 
   // CM ABI.
   auto AddCMABI = [](const PassManagerBuilder &Builder, PassManagerBase &PM) {
-    PM.add(createCMABIPass());
+    PM.add(createCMABILegacyPass());
   };
   PMBuilder.addExtension(PassManagerBuilder::EP_ModuleOptimizerEarly, AddCMABI);
   PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0, AddCMABI);

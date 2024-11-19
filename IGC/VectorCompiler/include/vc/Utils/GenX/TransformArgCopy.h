@@ -15,6 +15,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/SetVector.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/Analysis/CallGraph.h>
+#include <llvm/Analysis/CallGraphSCCPass.h>
+#include <llvm/Analysis/LazyCallGraph.h>
 #include <llvm/IR/Argument.h>
 #include <llvm/IR/Attributes.h>
 #include <llvm/IR/Function.h>
@@ -185,6 +187,25 @@ public:
                    llvm::CallGraphNode &NewFuncCGNIn, llvm::CallGraph &CGIn)
       : OrigFunc{OrigFuncIn}, NewFunc{NewFuncIn}, NewFuncInfo{NewFuncInfoIn},
         NewFuncCGN{NewFuncCGNIn}, CG{CGIn} {}
+
+  void run();
+
+private:
+  llvm::CallInst *updateFuncDirectUser(llvm::CallInst &OrigCall);
+};
+
+class FuncUsersUpdaterNewPM {
+  llvm::Function &OrigFunc;
+  llvm::Function &NewFunc;
+  const TransformedFuncInfo &NewFuncInfo;
+  llvm::LazyCallGraph &CG;
+
+public:
+  FuncUsersUpdaterNewPM(llvm::Function &OrigFuncIn, llvm::Function &NewFuncIn,
+                        const TransformedFuncInfo &NewFuncInfoIn,
+                        llvm::LazyCallGraph &CGIn)
+      : OrigFunc{OrigFuncIn}, NewFunc{NewFuncIn},
+        NewFuncInfo{NewFuncInfoIn}, CG{CGIn} {}
 
   void run();
 

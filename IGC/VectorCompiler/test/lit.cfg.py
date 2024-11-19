@@ -87,6 +87,11 @@ else:
   config.substitutions.append(('%not_for_vc_diag%', 'not --crash'))
   config.substitutions.append(('%use_old_pass_manager%', '-enable-new-pm=0'))
 
+if int(config.llvm_version) < 16:
+  config.substitutions.append(('%pass_pref%', '-'))
+else:
+  config.substitutions.append(('%pass_pref%', '-passes='))
+
 if int(config.llvm_version) < 12:
   config.available_features.add('llvm_11_or_less')
 else:
