@@ -865,7 +865,7 @@ DECLARE_IGC_REGKEY(bool, PrintStackCallDebugInfo, false, "Print all debug info t
 DECLARE_IGC_REGKEY(DWORD, StripDebugInfo, 0,
     "Strip debug info from llvm IR lowered from input to IGC ."\
     "Possible values: 0 - dont strip, 1 - strip all, 2 - strip non-line info",
-    false)
+    true)
 DECLARE_IGC_REGKEY(bool, EmitPreDefinedForAllFunctions, false, "When enabled, pre-defined variables for gid, grid, lid are emitted for all functions. This causes those functions to be inlined even when stack calls is enabled.", true)
 DECLARE_IGC_REGKEY(bool, EnableGPUFenceScopeOnSingleTileGPUs, false, "Allow the use of `GPU` fence scope on single-tile GPUs. By default the `TILE` scope is used instead of `GPU` scope on single-tile GPUs.", true)
 DECLARE_IGC_REGKEY(bool, EnableLocalIdCalculationInShader, false,
