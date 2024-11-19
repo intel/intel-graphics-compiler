@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -32,6 +32,8 @@ SPDX-License-Identifier: MIT
 #define TRIBOOL_OPTION(Name, Val) #Name "=" #Val ","
 #define RTMEMORY_STYLE_OPTION(Name, Val) #Name "=" #Val ","
 
+#define INJECT_PRINTF_OPTION(Name, Val) #Name "=" #Val ","
+
 #include "igc_regkeys_enums_defs.h"
 
 
@@ -53,6 +55,9 @@ SPDX-License-Identifier: MIT
 
 #undef RTMEMORY_STYLE_OPTION
 #undef RTMEMORY_STYLE_OPTIONS
+
+#undef INJECT_PRINTF_OPTION
+#undef INJECT_PRINTF_OPTIONS
 
 #undef DECLARE_IGC_GROUP
 #undef DECLARE_IGC_REGKEY_ENUM

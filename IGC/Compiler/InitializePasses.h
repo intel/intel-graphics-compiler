@@ -272,3 +272,4 @@ void initializeLoopCountAnalysisPass(llvm::PassRegistry&);
 void initializeCollectLoopCountPass(llvm::PassRegistry&);
 void initializeRemoveLoopDependencyPass(llvm::PassRegistry&);
 void initializeResourceLoopUnrollPass(llvm::PassRegistry&);
+void initializeInjectPrintfPass(llvm::PassRegistry&);

@@ -1,6 +1,6 @@
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2017-2021 Intel Corporation
+# Copyright (C) 2017-2024 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -12,12 +12,14 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 set(IGC_BUILD__SRC__OpenCLPrintf
     "${CMAKE_CURRENT_SOURCE_DIR}/OpenCLPrintfAnalysis.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/OpenCLPrintfResolution.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/InjectPrintf.cpp"
   )
 set(IGC_BUILD__SRC__OpenCLPasses_OpenCLPrintf ${IGC_BUILD__SRC__OpenCLPrintf} PARENT_SCOPE)
 
 set(IGC_BUILD__HDR__OpenCLPrintf
     "${CMAKE_CURRENT_SOURCE_DIR}/OpenCLPrintfAnalysis.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/OpenCLPrintfResolution.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/InjectPrintf.hpp"
   )
 set(IGC_BUILD__HDR__OpenCLPasses_OpenCLPrintf ${IGC_BUILD__HDR__OpenCLPrintf} PARENT_SCOPE)
 

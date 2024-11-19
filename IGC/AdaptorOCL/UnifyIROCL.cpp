@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -75,6 +75,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/WGFuncs/WGFuncResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/AlignmentAnalysis/AlignmentAnalysis.hpp"
 #include "Compiler/Optimizer/PreCompiledFuncImport.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/OpenCLPrintf/InjectPrintf.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/OpenCLPrintf/OpenCLPrintfAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/OpenCLPrintf/OpenCLPrintfResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/AggregateArguments/AggregateArguments.hpp"
@@ -545,6 +546,7 @@ static void CommonOCLBasedPasses(OpenCLProgramContext* pContext)
     // Analysis passes
     mpm.add(new WIFuncsAnalysis());
     mpm.add(new ImageFuncsAnalysis());
+    mpm.add(new InjectPrintf());
     mpm.add(new OpenCLPrintfAnalysis());
     mpm.add(createDeadCodeEliminationPass());
     mpm.add(new ProgramScopeConstantAnalysis());

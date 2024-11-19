@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022-2023 Intel Corporation
+Copyright (C) 2022-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -101,3 +101,11 @@ SPDX-License-Identifier: MIT
     TRIBOOL_OPTION(Enabled,  1)
 #endif // TRIBOOL_OPTION
 
+
+#ifdef INJECT_PRINTF_OPTION
+#define INJECT_PRINTF_OPTIONS                        \
+    INJECT_PRINTF_OPTION(InjectPrintfNone, 0)\
+    INJECT_PRINTF_OPTION(InjectPrintfLoads, 1)\
+    INJECT_PRINTF_OPTION(InjectPrintfStores, 2)\
+    INJECT_PRINTF_OPTION(InjectPrintfLoadsAndStores, 3)
+#endif // INJECT_PRINTF_OPTION
