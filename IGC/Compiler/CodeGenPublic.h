@@ -769,6 +769,7 @@ namespace IGC
         bool AllowConstantCoalescing(llvm::Function* F = nullptr) const;
         bool AllowLargeGRF(llvm::Function* F = nullptr) const;
         bool ForceIndirectCallsInSyncRT() const;
+        bool AllowRaytracingSpillCompaction() const;
         bool AllowLoadSinking(llvm::Function* F = nullptr) const;
         void SetFirstStateId(int id);
         bool IsFirstTry() const;
