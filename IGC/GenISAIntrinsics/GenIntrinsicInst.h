@@ -1205,6 +1205,25 @@ public:
     }
 };
 
+class WaveShuffleIndexIntrinsic : public GenIntrinsicInst
+{
+public:
+    Value* getSrc() const { return getOperand( 0 ); }
+    Value* getChannel() const { return getOperand( 1 ); }
+
+    void setSrc( Value* src ) { setOperand( 0, src ); }
+
+    // Methods for support type inquiry through isa, cast, and dyn_cast:
+    static inline bool classof( const GenIntrinsicInst* I )
+    {
+        return I->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveShuffleIndex;
+    }
+    static inline bool classof( const Value* V )
+    {
+        return isa<GenIntrinsicInst>( V ) && classof( cast<GenIntrinsicInst>( V ) );
+    }
+};
+
 class QuadPrefixIntrinsic : public GenIntrinsicInst
 {
 public:

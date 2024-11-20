@@ -101,6 +101,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/SynchronizationObjectCoalescing.hpp"
 #include "Compiler/Optimizer/BarrierControlFlowOptimization.hpp"
 #include "Compiler/Optimizer/RuntimeValueVectorExtractPass.h"
+#include "Compiler/Optimizer/WaveShuffleIndexSinking.hpp"
 #include "Compiler/MetaDataApi/PurgeMetaDataUtils.hpp"
 #include "Compiler/HandleLoadStoreInstructions.hpp"
 #include "Compiler/CustomSafeOptPass.hpp"
@@ -1424,6 +1425,10 @@ void OptimizeIR(CodeGenContext* const pContext)
         }
 
         mpm.add(createIGCInstructionCombiningPass());
+        if( IGC_IS_FLAG_ENABLED( EnableWaveShuffleIndexSinking ) )
+        {
+            mpm.add( createWaveShuffleIndexSinking() );
+        }
         mpm.add(new FCmpPaternMatch());
         mpm.add(llvm::createDeadCodeEliminationPass()); // this should be done both before/after constant propagation
 

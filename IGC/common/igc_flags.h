@@ -321,6 +321,8 @@ DECLARE_IGC_REGKEY(DWORD, FPRoundingModeCoalescingMaxDistance, 20, "Max distance
 DECLARE_IGC_REGKEY(bool, DisableDotAddToDp4aMerge, false, "Disable Dot and Add ops to Dp4a merge optimization.", false)
 DECLARE_IGC_REGKEY(bool, DisableLoopSplitWidePHIs, false, "Disable splitting of loop PHI values to eliminate subvector extract operations", false)
 DECLARE_IGC_REGKEY(bool, EnableBarrierControlFlowOptimizationPass, false, "Enable barrier control flow optimization pass", false)
+DECLARE_IGC_REGKEY(bool, EnableWaveShuffleIndexSinking, false, "Hoist identical instructions operating on WaveShuffleIndex instructions with the same source and a constant lane/channel", false)
+DECLARE_IGC_REGKEY(DWORD, WaveShuffleIndexSinkingMaxIterations, 3, "Max number of iterations to run iterative WaveShuffleIndexSinking", false)
 
 DECLARE_IGC_GROUP("Shader debugging")
 DECLARE_IGC_REGKEY(bool, CopyA0ToDBG0,                  false, " Copy a0 used for extended msg descriptor to dbg0 to help debug", false)
