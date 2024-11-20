@@ -20,7 +20,7 @@ namespace IGCLLVM {
 #if LLVM_VERSION_MAJOR >= 14
 using SignedDivisionByConstantInfo = llvm::SignedDivisionByConstantInfo;
 using UnsignedDivisionByConstantInfo =
-#if LLVM_VERSION_MAJOR == 14
+#if (LLVM_VERSION_MAJOR == 14) || defined(IGC_LLVM_TRUNK_REVISION)
     // Account for a typo
     llvm::UnsignedDivisonByConstantInfo;
 #else // LLVM_VERSION_MAJOR == 14

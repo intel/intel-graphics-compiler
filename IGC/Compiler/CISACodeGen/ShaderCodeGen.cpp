@@ -507,10 +507,10 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         if (IGC_IS_FLAG_ENABLED(allowLICM) && ctx.m_retryManager.AllowLICM())
         {
             mpm.add(createSpecialCasesDisableLICM());
-#if LLVM_VERSION_MAJOR >= 14
+#if !defined(IGC_LLVM_TRUNK_REVISION)
             mpm.add(llvm::createLICMPass(100, 500, true));
 #else
-            mpm.add(llvm::createLICMPass());
+            mpm.add(llvm::createLICMPass(100, 500));
 #endif
         }
         mpm.add(llvm::createLoopSimplifyPass());
@@ -901,10 +901,10 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         if (!fastCompile && !highAllocaPressure && !isPotentialHPCKernel && IGC_IS_FLAG_ENABLED(allowLICM) && ctx.m_retryManager.AllowLICM())
         {
             mpm.add(createSpecialCasesDisableLICM());
-#if LLVM_VERSION_MAJOR >= 14
+#if !defined(IGC_LLVM_TRUNK_REVISION)
             mpm.add(llvm::createLICMPass(100, 500, true));
 #else
-            mpm.add(llvm::createLICMPass());
+            mpm.add(llvm::createLICMPass(100, 500));
 #endif
             mpm.add(llvm::createEarlyCSEPass());
         }
@@ -1510,10 +1510,10 @@ void OptimizeIR(CodeGenContext* const pContext)
                     mpm.add(createSpecialCasesDisableLICM());
                     int licmTh = IGC_GET_FLAG_VALUE(LICMStatThreshold);
                     mpm.add(new InstrStatistic(pContext, LICM_STAT, InstrStatStage::BEGIN, licmTh));
-#if LLVM_VERSION_MAJOR >= 14
+#if !defined(IGC_LLVM_TRUNK_REVISION)
                     mpm.add(llvm::createLICMPass(100, 500, true));
 #else
-                    mpm.add(llvm::createLICMPass());
+                    mpm.add(llvm::createLICMPass(100, 500));
 #endif
                     mpm.add(new InstrStatistic(pContext, LICM_STAT, InstrStatStage::END, licmTh));
                 }
@@ -1581,10 +1581,10 @@ void OptimizeIR(CodeGenContext* const pContext)
                 if (allowLICM)
                 {
                     mpm.add(createSpecialCasesDisableLICM());
-#if LLVM_VERSION_MAJOR >= 14
+#if !defined(IGC_LLVM_TRUNK_REVISION)
                     mpm.add(llvm::createLICMPass(100, 500, true));
 #else
-                    mpm.add(llvm::createLICMPass());
+                    mpm.add(llvm::createLICMPass(100, 500));
 #endif
                 }
 

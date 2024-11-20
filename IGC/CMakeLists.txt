@@ -409,6 +409,25 @@ set(IGC_BUILD__PROJ_NAME_PREFIX "")
 set(IGC_BUILD__SPIRV_ENABLED ON)
 
 
+set(IGC_OPTION__LLVM_INTERIM OFF CACHE BOOL "Configure IGC to build with a provisional LLVM revision")
+message(STATUS "[IGC] IGC_OPTION__LLVM_INTERIM = ${IGC_OPTION__LLVM_INTERIM}")
+
+# Recognize if we need to use LLVM interim mode and set appropriate definition
+if (IGC_OPTION__LLVM_INTERIM)
+    # Switch on IGC_BUILD_LLVM_INTERIM when -DIGC_OPTION__LLVM_INTERIM=1 option is provided for locally build
+    set(IGC_BUILD_LLVM_INTERIM ON)
+elseif($ENV{IGC_LLVM_INTERIM})
+    # Switch on IGC_BUILD_LLVM_INTERIM when IGC_LLVM_INTERIM is set in environment e.g. yaml file
+    set(IGC_BUILD_LLVM_INTERIM ON)
+endif()
+
+if(IGC_BUILD_LLVM_INTERIM)
+  message(STATUS "[IGC] IGC_BUILD_LLVM_INTERIM = ${IGC_BUILD_LLVM_INTERIM}")
+  add_compile_definitions(IGC_LLVM_TRUNK_REVISION)
+  # Temporary disable VC for Interim
+  set(IGC_BUILD__VC_ENABLED OFF)
+endif()
+
 # Enable vector compiler for Linux and Windows
 # If user already defined this, honor decision
 if(NOT DEFINED IGC_BUILD__VC_ENABLED)
@@ -1496,23 +1515,6 @@ set(IGC_BUILD__PROJ_LABEL__GenX_IR        "${IGC_BUILD__PROJ_NAME_PREFIX}vISA")
 add_subdirectory(common)
 igc_sg_define(IGC__common)
 igc_sg_define(IGC__Common_CLElfLib)
-
-set(IGC_OPTION__LLVM_INTERIM OFF CACHE BOOL "Configure IGC to build with a provisional LLVM revision")
-message(STATUS "[IGC] IGC_OPTION__LLVM_INTERIM = ${IGC_OPTION__LLVM_INTERIM}")
-
-# Recognize if we need to use LLVM interim mode and set appropriate definition
-if (IGC_OPTION__LLVM_INTERIM)
-    # Switch on IGC_BUILD_LLVM_INTERIM when -DIGC_OPTION__LLVM_INTERIM=1 option is provided for locally build
-    set(IGC_BUILD_LLVM_INTERIM ON)
-elseif($ENV{IGC_LLVM_INTERIM})
-    # Switch on IGC_BUILD_LLVM_INTERIM when IGC_LLVM_INTERIM is set in environment e.g. yaml file
-    set(IGC_BUILD_LLVM_INTERIM ON)
-endif()
-
-if(IGC_BUILD_LLVM_INTERIM)
-  message(STATUS "[IGC] IGC_BUILD_LLVM_INTERIM = ${IGC_BUILD_LLVM_INTERIM}")
-  add_compile_definitions(IGC_LLVM_TRUNK_REVISION)
-endif()
 
 
 # Add protobuf

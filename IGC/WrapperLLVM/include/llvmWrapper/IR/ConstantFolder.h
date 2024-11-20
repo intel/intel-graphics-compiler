@@ -104,7 +104,7 @@ namespace IGCLLVM
         /// up to LLVM 14.
         /// -------------------------------------------------------------------
 
-#if LLVM_VERSION_MAJOR < 15
+#if (LLVM_VERSION_MAJOR < 15) || defined(IGC_LLVM_TRUNK_REVISION)
 
         // Note: for direct usage in code, prefer `CreateBinOp` wrapper for all
         // LLVM versions up to 15.
@@ -283,14 +283,14 @@ namespace IGCLLVM
             llvm::ArrayRef<unsigned> IdxList) const override {
             return m_baseConstantFolder.CreateInsertValue(Agg, Val, IdxList);
         }
-#endif // LLVM_VERSION_MAJOR < 15
+#endif // (LLVM_VERSION_MAJOR < 15) || defined(IGC_LLVM_TRUNK_REVISION)
 
         /// -------------------------------------------------------------------
         /// This block defines virtual methods that are present in the base
         /// llvm::IRBuilderFolder class starting from LLVM 15.
         /// -------------------------------------------------------------------
 
-#if LLVM_VERSION_MAJOR >= 15
+#if (LLVM_VERSION_MAJOR >= 15) && !defined(IGC_LLVM_TRUNK_REVISION)
         inline llvm::Value* FoldBinOp(llvm::Instruction::BinaryOps Opc,
             llvm::Value* LHS, llvm::Value* RHS) const override {
             return m_baseConstantFolder.FoldBinOp(Opc, LHS, RHS);
@@ -354,7 +354,7 @@ namespace IGCLLVM
 
         inline llvm::Constant* CreateBinOp(llvm::Instruction::BinaryOps Opc,
             llvm::Constant* LHS, llvm::Constant* RHS) const
-#if LLVM_VERSION_MAJOR < 15
+#if (LLVM_VERSION_MAJOR < 15) || defined(IGC_LLVM_TRUNK_REVISION)
         override {
             return m_baseConstantFolder.CreateBinOp(Opc, LHS, RHS);
         }

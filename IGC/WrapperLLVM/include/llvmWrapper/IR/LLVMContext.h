@@ -19,7 +19,7 @@ namespace IGCLLVM
     inline void setOpaquePointers(llvm::LLVMContext* Ctx, const bool Enable)
     {
         IGC_ASSERT_MESSAGE(Ctx, "Null LLVMContext pointer!");
-#if LLVM_VERSION_MAJOR == 14
+#if (LLVM_VERSION_MAJOR == 14) || defined(IGC_LLVM_TRUNK_REVISION)
         if (Enable)
             Ctx->enableOpaquePointers();
 #elif LLVM_VERSION_MAJOR >= 15
@@ -35,7 +35,7 @@ namespace IGC
         IGC_ASSERT_MESSAGE(Ctx, "Null LLVMContext pointer!");
 #if LLVM_VERSION_MAJOR < 14
         return false;
-#elif LLVM_VERSION_MAJOR == 14
+#elif (LLVM_VERSION_MAJOR == 14) || defined(IGC_LLVM_TRUNK_REVISION)
         // With LLVM 14, we invoke a proper check for the -opaque-pointers CL
         // option. Regardless of whether it's false by LLVM 14's default, or
         // through an explicit setting, we deem it acceptable for IGC to

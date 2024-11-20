@@ -14,14 +14,33 @@ SPDX-License-Identifier: MIT
 
 namespace IGCLLVM
 {
-#if LLVM_VERSION_MAJOR >= 15
-    using llvm::simplifyInstruction;
-#else
+#if (LLVM_VERSION_MAJOR < 15) || defined (IGC_LLVM_TRUNK_REVISION)
     inline llvm::Value* simplifyInstruction(
         llvm::Instruction* I, const llvm::SimplifyQuery& Q,
         llvm::OptimizationRemarkEmitter* ORE = nullptr) {
         return llvm::SimplifyInstruction(I, Q, ORE);
     }
+#else
+    using llvm::simplifyInstruction;
+#endif
+
+#if (LLVM_VERSION_MAJOR < 15) || defined (IGC_LLVM_TRUNK_REVISION)
+    inline llvm::Value* simplifyBinOp(
+        unsigned Opcode, llvm::Value* LHS, llvm::Value* RHS,
+        const llvm::SimplifyQuery& Q) {
+        return llvm::SimplifyBinOp(Opcode, LHS, RHS, Q);
+    }
+#else
+    using llvm::simplifyBinOp;
+#endif
+
+#if (LLVM_VERSION_MAJOR < 15) || defined (IGC_LLVM_TRUNK_REVISION)
+    inline llvm::Value* simplifyCall(
+        llvm::CallBase* Call, const llvm::SimplifyQuery& Q) {
+        return llvm::SimplifyCall(Call, Q);
+    }
+#else
+    using llvm::simplifyCall;
 #endif
 }
 

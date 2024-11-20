@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Transforms/Utils/SSAUpdater.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/Analysis/InstructionSimplify.h"
 
 using namespace IGC;
 using namespace llvm;
@@ -517,11 +518,7 @@ bool DynamicRayManagementPass::TryProceedBasedApproach(Function& F)
         Value* flag = I->getOperand(0);
         if (auto* flagAsBinOp = dyn_cast<BinaryOperator>(flag))
             flag =
-#if LLVM_VERSION_MAJOR >= 15
-            simplifyBinOp(
-#else
-            SimplifyBinOp(
-#endif
+            IGCLLVM::simplifyBinOp(
                 flagAsBinOp->getOpcode(),
                 flagAsBinOp->getOperand(0),
                 flagAsBinOp->getOperand(1),

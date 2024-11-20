@@ -24,7 +24,7 @@ namespace IGCLLVM
     {
         IGC_ASSERT(SE);
         IGC_ASSERT(SCEVE);
-#if LLVM_VERSION_MAJOR < 15
+#if (LLVM_VERSION_MAJOR < 15) || defined (IGC_LLVM_TRUNK_REVISION)
         return isSafeToExpand(S, *SE);
 #else
         return SCEVE->isSafeToExpand(S);
@@ -35,7 +35,7 @@ namespace IGCLLVM
     {
         IGC_ASSERT(SE);
         IGC_ASSERT(SCEVE);
-#if LLVM_VERSION_MAJOR < 15
+#if (LLVM_VERSION_MAJOR < 15) || defined (IGC_LLVM_TRUNK_REVISION)
         return isSafeToExpandAt(S, InsertionPoint, *SE);
 #else
         return SCEVE->isSafeToExpandAt(S, InsertionPoint);
