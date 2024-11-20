@@ -31,25 +31,25 @@ SPDX-License-Identifier: MIT
 //===--------------------------------------------------------------------===
 namespace llvm {
 
-    template<typename T = ConstantFolder, typename InserterTyDef() = IRBuilderDefaultInserter >
-    class IGCIRBuilder : public IGCLLVM::IRBuilder<T, InserterTyDef()>
+    template<typename T = ConstantFolder, typename InserterTy = IRBuilderDefaultInserter >
+    class IGCIRBuilder : public IGCLLVM::IRBuilder<T, InserterTy>
     {
     public:
-        IGCIRBuilder(LLVMContext &C, const T &F, InserterTyDef() I = InserterTyDef()(),
+        IGCIRBuilder(LLVMContext &C, const T &F, InserterTy I = InserterTy(),
             MDNode *FPMathTag = nullptr,
             ArrayRef<OperandBundleDef> OpBundles = {})
-            : IGCLLVM::IRBuilder<T, InserterTyDef()>(C, F, I, FPMathTag, OpBundles){}
+            : IGCLLVM::IRBuilder<T, InserterTy>(C, F, I, FPMathTag, OpBundles){}
 
         explicit IGCIRBuilder(LLVMContext &C, MDNode *FPMathTag = nullptr,
             ArrayRef<OperandBundleDef> OpBundles = {})
-            : IGCLLVM::IRBuilder<T, InserterTyDef()>(C, FPMathTag, OpBundles){}
+            : IGCLLVM::IRBuilder<T, InserterTy>(C, FPMathTag, OpBundles){}
 
         explicit IGCIRBuilder(BasicBlock *TheBB, MDNode *FPMathTag = nullptr)
-            : IGCLLVM::IRBuilder<T, InserterTyDef()>(TheBB, FPMathTag){}
+            : IGCLLVM::IRBuilder<T, InserterTy>(TheBB, FPMathTag){}
 
         explicit IGCIRBuilder(Instruction *IP, MDNode *FPMathTag = nullptr,
             ArrayRef<OperandBundleDef> OpBundles = {})
-            : IGCLLVM::IRBuilder<T, InserterTyDef()>(IP, FPMathTag, OpBundles) {}
+            : IGCLLVM::IRBuilder<T, InserterTy>(IP, FPMathTag, OpBundles) {}
 
         CallInst *CreateCall2(Value *Callee, Value *Arg1, Value *Arg2,
             const Twine &Name = "") {

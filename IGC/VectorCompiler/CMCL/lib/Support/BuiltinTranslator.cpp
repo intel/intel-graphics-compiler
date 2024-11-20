@@ -21,13 +21,13 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Module.h>
+#include <llvm/Support/Alignment.h>
 #include <llvm/Support/Casting.h>
 #include <llvm/Support/ErrorHandling.h>
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/Type.h"
-#include "llvmWrapper/Support/Alignment.h"
 
 #include <algorithm>
 #include <array>
@@ -737,9 +737,8 @@ createMainInst<BuiltinID::AtomicRMW>(const std::vector<Value *> &Operands,
   auto BinOp = getLLVMAtomicBinOpFromCMCL(static_cast<CMCLOperation>(
       cast<ConstantInt>(Operands[AtomicRMWOperand::Operation])
           ->getSExtValue()));
-  return *IGCLLVM::createAtomicRMW(
-      IRB, BinOp, Ptr, Operands[AtomicRMWOperand::Operand], Ordering,
-      Ctx.getOrInsertSyncScopeID(ScopeName));
+  return *IRB.CreateAtomicRMW(BinOp, Ptr, Operands[AtomicRMWOperand::Operand],
+      llvm::MaybeAlign{}, Ordering, Ctx.getOrInsertSyncScopeID(ScopeName));
 }
 
 template <>
@@ -761,10 +760,10 @@ Value &createMainInst<BuiltinID::CmpXchg>(const std::vector<Value *> &Operands,
   auto ScopeName = cmcl::atomic::MemoryScope::getScopeNameFromCMCL(
       static_cast<CMCLMemoryScope>(
           cast<ConstantInt>(Operands[CmpXchgOperand::Scope])->getZExtValue()));
-  auto *CmpXchgInst = IGCLLVM::createAtomicCmpXchg(
-      IRB, Ptr, Operands[CmpXchgOperand::Operand0],
-      Operands[CmpXchgOperand::Operand1], OrderingSuccess, OrderingFalilure,
-      Ctx.getOrInsertSyncScopeID(ScopeName));
+  auto *CmpXchgInst = IRB.CreateAtomicCmpXchg(
+      Ptr, Operands[CmpXchgOperand::Operand0],
+      Operands[CmpXchgOperand::Operand1], llvm::MaybeAlign{}, OrderingSuccess,
+      OrderingFalilure, Ctx.getOrInsertSyncScopeID(ScopeName));
   return *IRB.CreateExtractValue(CmpXchgInst, 0 /*CmpXchg result*/,
                                  ".cmpxchg.res");
 }

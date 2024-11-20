@@ -12,7 +12,6 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/InstVisitor.h"
 #include "llvm/IR/IRBuilder.h"
-#include "llvmWrapper/IR/IRBuilder.h"
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
@@ -70,8 +69,8 @@ bool FreezeIntDiv::runOnFunction(Function& F)
 
 void FreezeIntDiv::freezeIntDiv(BinaryOperator& I)
 {
-    IGCLLVM::IRBuilder<> builder(I.getNextNode());
-    Value* FI = builder.CreateFreezeIfSupported(&I, "freeze");
+    llvm::IRBuilder<> builder(I.getNextNode());
+    Value* FI = builder.CreateFreeze(&I, "freeze");
     I.replaceAllUsesWith(FI);
     cast<Instruction>(FI)->setOperand(0, &I);
 }

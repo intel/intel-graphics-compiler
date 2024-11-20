@@ -703,8 +703,8 @@ bool InstExpander::visitFreeze(FreezeInst& FI) {
 
     auto [Lo, Hi] = Emu->getExpandedValues(Src);
 
-    Value* newLo = IRB->CreateFreezeIfSupported(Lo);
-    Value* newHi = IRB->CreateFreezeIfSupported(Hi);
+    Value* newLo = IRB->CreateFreeze(Lo);
+    Value* newHi = IRB->CreateFreeze(Hi);
 
     Emu->setExpandedValues(&FI, newLo, newHi);
     return true;
