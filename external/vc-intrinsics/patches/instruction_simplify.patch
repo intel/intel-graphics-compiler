@@ -1,0 +1,39 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2024 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
+diff --git a/GenXIntrinsics/include/llvmVCWrapper/Analysis/InstructionSimplify.h b/GenXIntrinsics/include/llvmVCWrapper/Analysis/InstructionSimplify.h
+index d6eaf74..2573f32 100644
+--- a/GenXIntrinsics/include/llvmVCWrapper/Analysis/InstructionSimplify.h
++++ b/GenXIntrinsics/include/llvmVCWrapper/Analysis/InstructionSimplify.h
+@@ -26,7 +26,7 @@ inline llvm::Value *SimplifyInsertElementInst(llvm::Value *Vec,
+                                               llvm::Value *Elt,
+                                               llvm::Value *Idx,
+                                               const llvm::SimplifyQuery &Q) {
+-#if VC_INTR_LLVM_VERSION_MAJOR <= 14
++#if (VC_INTR_LLVM_VERSION_MAJOR <= 14) || defined (IGC_LLVM_TRUNK_REVISION)
+   return llvm::SimplifyInsertElementInst(Vec, Elt, Idx, Q);
+ #else
+   return llvm::simplifyInsertElementInst(Vec, Elt, Idx, Q);
+@@ -36,7 +36,7 @@ inline llvm::Value *SimplifyInsertElementInst(llvm::Value *Vec,
+ inline llvm::Value *SimplifyExtractElementInst(llvm::Value *Vec,
+                                                llvm::Value *Idx,
+                                                const llvm::SimplifyQuery &Q) {
+-#if VC_INTR_LLVM_VERSION_MAJOR <= 14
++#if (VC_INTR_LLVM_VERSION_MAJOR <= 14) || defined (IGC_LLVM_TRUNK_REVISION)
+   return llvm::SimplifyExtractElementInst(Vec, Idx, Q);
+ #else
+   return llvm::simplifyExtractElementInst(Vec, Idx, Q);
+@@ -46,7 +46,7 @@ inline llvm::Value *SimplifyExtractElementInst(llvm::Value *Vec,
+ inline llvm::Value *SimplifyCastInst(unsigned CastOpc, llvm::Value *Op,
+                                      llvm::Type *Ty,
+                                      const llvm::SimplifyQuery &Q) {
+-#if VC_INTR_LLVM_VERSION_MAJOR <= 14
++#if (VC_INTR_LLVM_VERSION_MAJOR <= 14) || defined (IGC_LLVM_TRUNK_REVISION)
+   return llvm::SimplifyCastInst(CastOpc, Op, Ty, Q);
+ #else
+   return llvm::simplifyCastInst(CastOpc, Op, Ty, Q);

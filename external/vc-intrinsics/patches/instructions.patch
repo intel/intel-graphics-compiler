@@ -1,0 +1,30 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2024 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
+diff --git a/GenXIntrinsics/include/llvmVCWrapper/IR/Instructions.h b/GenXIntrinsics/include/llvmVCWrapper/IR/Instructions.h
+index 074efe0..bc188bb 100644
+--- a/GenXIntrinsics/include/llvmVCWrapper/IR/Instructions.h
++++ b/GenXIntrinsics/include/llvmVCWrapper/IR/Instructions.h
+@@ -54,7 +54,7 @@ inline llvm::ArrayRef<int> getShuffleMask(llvm::ArrayRef<int> Mask,
+ 
+ template <class ArgKind>
+ inline ArgKind &getValue(VCINTR::Optional<ArgKind> &opt) {
+-#if VC_INTR_LLVM_VERSION_MAJOR < 15
++#if (VC_INTR_LLVM_VERSION_MAJOR < 15) || defined (IGC_LLVM_TRUNK_REVISION)
+   return opt.getValue();
+ #else
+   return opt.value();
+@@ -63,7 +63,7 @@ inline ArgKind &getValue(VCINTR::Optional<ArgKind> &opt) {
+ 
+ template <class ArgKind>
+ inline const ArgKind &getValue(const VCINTR::Optional<ArgKind> &opt) {
+-#if VC_INTR_LLVM_VERSION_MAJOR < 15
++#if (VC_INTR_LLVM_VERSION_MAJOR < 15) || defined (IGC_LLVM_TRUNK_REVISION)
+   return opt.getValue();
+ #else
+   return opt.value();

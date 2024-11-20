@@ -424,8 +424,6 @@ endif()
 if(IGC_BUILD_LLVM_INTERIM)
   message(STATUS "[IGC] IGC_BUILD_LLVM_INTERIM = ${IGC_BUILD_LLVM_INTERIM}")
   add_compile_definitions(IGC_LLVM_TRUNK_REVISION)
-  # Temporary disable VC for Interim
-  set(IGC_BUILD__VC_ENABLED OFF)
 endif()
 
 # Enable vector compiler for Linux and Windows
@@ -436,6 +434,11 @@ if(NOT DEFINED IGC_BUILD__VC_ENABLED)
   endif()
 endif()
 
+
+if(IGC_BUILD_LLVM_INTERIM AND IGC_BUILD__VC_ENABLED)
+  # Add vc-intrinsics patcher for Interim mode
+  include("${IGC_SOURCE_DIR}/../external/vc-intrinsics/CMakeLists.txt")
+endif()
 
 # ======================================== Path helper variables =======================================
 
