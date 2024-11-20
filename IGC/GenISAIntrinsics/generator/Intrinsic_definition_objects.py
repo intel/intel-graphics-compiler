@@ -151,36 +151,6 @@ def AttributeID_constructor(loader, node):
 
 yaml.SafeLoader.add_constructor(u'!AttributeID', AttributeID_constructor)
 
-class ParamAttributeID(Enum):
-    ByRef = 0
-    ByVal = 1
-    StructRet = 2
-
-    def __str__(self):
-        return self.name
-
-    def __repr__(self):
-        return '%s("%s")' % (self.__class__.__name__, self)
-
-    @classmethod
-    def from_str(cls, value : str):
-        for key, val in cls.__members__.items():
-            if key == value:
-                return val
-        else:
-            raise ValueError("{value} is not present in {cls.__name__}")
-
-def ParamAttributeID_representer(dumper, data):
-    return dumper.represent_scalar(u'!ParamAttributeID', u'%s' % str(data), style='"')
-
-yaml.add_representer(ParamAttributeID, ParamAttributeID_representer)
-
-def ParamAttributeID_constructor(loader, node):
-    value = loader.construct_scalar(node)
-    return ParamAttributeID.from_str(value)
-
-yaml.SafeLoader.add_constructor(u'!ParamAttributeID', ParamAttributeID_constructor)
-
 class MemoryLocation(Enum):
     ArgMem = 0
     InaccessibleMem = 1
@@ -490,21 +460,14 @@ class ArgumentDefinition(SafeYAMLObject):
         arg_dict = loader.construct_mapping(node, deep=True)
         return cls(**arg_dict)
 
-    def __init__(self, name : str, type_definition : TypeDefinition, comment : str, param_attr : ParamAttributeID = None):
+    def __init__(self, name : str, type_definition : TypeDefinition, comment : str):
         self.name = name
         self.type_definition = type_definition
         self.comment = QuotedString(comment)
-        if param_attr:
-            self.param_attr = param_attr
 
     def __repr__(self):
-        repr_str = "name=%r" % (self.name)
-        repr_str += ", type_definition=%r" % (self.type_definition)
-        repr_str += ", comment=%r" % (self.comment)
-        if hasattr(self, 'param_attr'):
-            repr_str += ", param_attr=%r" % str(self.param_attr)
-        return "%s(%r)" % (
-            self.__class__.__name__, repr_str)
+        return "%s(name=%r, type_definition=%r, comment=%r)" % (
+            self.__class__.__name__, self.name, self.type_definition, self.comment)
 
     def to_dict(self):
         res =  {
@@ -512,14 +475,12 @@ class ArgumentDefinition(SafeYAMLObject):
             "type_definition": self.type_definition.to_dict(),
             "comment": self.comment
         }
-        if hasattr(self, 'param_attr'):
-            res["param_attr"] = str(self.param_attr)
         return res
 
     @staticmethod
     def from_dict(json_dct : dict):
         type_definition = TypeDefinition.from_dict(json_dct['type_definition'])
-        return ArgumentDefinition(json_dct['name'], type_definition, json_dct['comment'], json_dct['param_attr'])
+        return ArgumentDefinition(json_dct['name'], type_definition, json_dct['comment'])
 
 class MemoryRestriction(SafeYAMLObject):
 

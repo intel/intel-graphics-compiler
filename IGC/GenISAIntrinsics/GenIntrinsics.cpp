@@ -75,9 +75,9 @@ namespace llvm
 namespace GenISAIntrinsic
 {
 
-std::string getName(ID id, ArrayRef<Type*> OverloadedTys /*= None*/, ArrayRef<Type*> OverloadedPointeeTys /*= None*/)
+std::string getName(ID id, ArrayRef<Type*> OverloadedTys /*= None*/)
 {
-    return IGC::GetName(id, OverloadedTys, OverloadedPointeeTys);
+    return IGC::GetName(id, OverloadedTys);
 }
 
 IntrinsicComments getIntrinsicComments(ID id)
@@ -85,9 +85,9 @@ IntrinsicComments getIntrinsicComments(ID id)
     return IGC::GetIntrinsicComments(id);
 }
 
-Function* getDeclaration(Module* M, ID id, ArrayRef<Type*> OverloadedTys /*= None*/, ArrayRef<Type*> OverloadedPointeeTys /*= None*/)
+Function* getDeclaration(Module* M, ID id, ArrayRef<Type*> OverloadedTys /*= None*/)
 {
-    return IGC::GetDeclaration(M, id, OverloadedTys, OverloadedPointeeTys);
+    return IGC::GetDeclaration(M, id, OverloadedTys);
 }
 
 ID getIntrinsicID(const Function* F, bool useContextWrapper /*= true*/)

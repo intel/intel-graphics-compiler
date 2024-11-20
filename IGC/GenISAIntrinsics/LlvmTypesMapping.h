@@ -11,7 +11,6 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/ArrayRef.h"
-#include "llvm/IR/Attributes.h"
 #include "common/LLVMWarningsPop.hpp"
 
 namespace llvm
@@ -408,18 +407,6 @@ struct TypeDescription
     };
 
     const TypeID m_ID;
-};
-
-struct ArgumentDescription
-{
-    constexpr ArgumentDescription(const TypeDescription& type, llvm::Attribute::AttrKind attrKind = llvm::Attribute::None) :
-        m_Type(type),
-        m_AttrKind(attrKind)
-    {
-    }
-
-    const TypeDescription& m_Type;
-    llvm::Attribute::AttrKind m_AttrKind;
 };
 
 constexpr bool IsOverloadable(const TypeDescription& type)

@@ -18,7 +18,6 @@ SPDX-License-Identifier: MIT
 
 #include <string_view>
 #include <array>
-#include <utility>
 
 namespace IGC
 {
@@ -47,10 +46,9 @@ public:
     };
     % if hasattr(el, 'arguments') and el.arguments and len(el.arguments) > 0:
 
-    ## All comments are stored in another member due to preserve `constexpr`
-    static constexpr std::array<ArgumentDescription, static_cast<uint32_t>(Argument::Count)> scArguments{
+    static constexpr std::array<TypeDescription, static_cast<uint32_t>(Argument::Count)> scArgumentTypes{
         % for arg in el.arguments:
-        ${IntrinsicFormatter.get_argument_entry(arg, loop.last)}
+        ${IntrinsicFormatter.get_argument_type_entry(arg.type_definition, loop.last)}
         % endfor
     };
     % endif
@@ -68,16 +66,8 @@ public:
         % endfor
     };
     % endif
-    % if hasattr(el, 'param_attributes') and el.param_attributes and len(el.param_attributes) > 0:
 
-    static constexpr std::array scParamAttributeKinds = {
-        % for attr in el.param_attributes:
-        ${IntrinsicFormatter.get_param_attributes_entry(attr, loop.last)}
-        % endfor
-    };
-    % endif
     % if hasattr(el, 'memory_effects'):
-
     static constexpr auto scMemoryEffects =
         ${IntrinsicFormatter.get_memory_effects_from_restrictions(el.memory_effects)};
     % endif

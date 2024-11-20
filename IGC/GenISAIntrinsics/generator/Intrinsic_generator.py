@@ -122,16 +122,10 @@ class IntrinsicFormatter:
                 output = "AnyTypeHolderT<>"
         return output
 
-    @classmethod
-    def get_argument_entry(cls, arg, is_last):
-        output = cls.get_type_definition(arg.type_definition)
+    @staticmethod
+    def get_argument_type_entry(type_def, is_last):
+        output = IntrinsicFormatter.get_type_definition(type_def)
         output = "{}::scType".format(output)
-        if hasattr(arg, 'param_attr'):
-            # a param attribute is supported only for pointer function arguments to preserve their pointee types
-            if arg.type_definition.ID != TypeID.Pointer:
-                sys.exit(1)
-            output += ", {}".format(cls.get_attribute_entry(arg.param_attr, is_last=True))
-        output = "ArgumentDescription({})".format(output)
         if not is_last:
             output = "{},".format(output)
         return output
@@ -153,13 +147,6 @@ class IntrinsicFormatter:
     @staticmethod
     def get_attribute_entry(attribute, is_last):
         output = 'llvm::Attribute::{}'.format(attribute)
-        if not is_last:
-            output = "{},".format(output)
-        return output
-
-    @staticmethod
-    def get_param_attribute_entry(param_attribute, is_last):
-        output = 'std::make_pair(llvm::Attribute::{}, {})'.format(param_attribute.name, param_attribute.index)
         if not is_last:
             output = "{},".format(output)
         return output
