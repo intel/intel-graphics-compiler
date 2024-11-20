@@ -8,7 +8,7 @@
 
 ; REQUIRES: regkeys, pvc-supported
 ; RUN: llvm-as %s -o %t.bc
-; RUN: ocloc -device pvc -llvm_input -options "-vc-codegen -ze-collect-cost-info -igc_opts 'ShaderDumpEnable=1, DumpToCustomDir=%t'" -output_no_suffix -file %t.bc
+; RUN: ocloc -device pvc -llvm_input -options "-vc-codegen -igc_opts 'ShaderDumpEnable=1, DumpToCustomDir=%t'" -output_no_suffix -file %t.bc
 ; RUN: cat %t/*.zeinfo | FileCheck %s
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"

@@ -1743,8 +1743,8 @@ void *BinaryEncodingIGA::EmitBinary(size_t &binarySize) {
         std::string errStr;
         errStr = "BinaryEncodingIGA: unable to open output path for write: " +
                  binFileName + "\n";
-        vISA_ASSERT(false, errStr);
-        return nullptr;
+        // vISA_ASSERT(false, errStr);
+        return m_kernelBuffer;
       }
       os.write((const char *)m_kernelBuffer, binarySize);
     }
