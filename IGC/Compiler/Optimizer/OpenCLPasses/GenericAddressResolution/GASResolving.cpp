@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/InitializePasses.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Argument.h"
 
 // Generic address space (GAS) pointer resolving is done in two steps:
 // 1) Find cast from non-GAS pointer to GAS pointer
@@ -266,7 +267,12 @@ bool GASResolving::checkGenericArguments(Function& F) const {
         if (auto Ty = dyn_cast<PointerType>(FT->getParamType(p))) {
             if (Ty->getAddressSpace() != ADDRESS_SPACE_GLOBAL)
                 continue;
-            auto PteeTy = IGCLLVM::getNonOpaquePtrEltTy(Ty);
+            auto PteeTy = IGCLLVM::getArgAttrEltTy(F.getArg(p));
+            if (PteeTy == nullptr && !IGCLLVM::isOpaquePointerTy(Ty))
+                PteeTy = IGCLLVM::getNonOpaquePtrEltTy(Ty);    // Legacy code: getNonOpaquePtrEltTy
+            if (PteeTy == nullptr)
+                // go to slow path
+                return true;
             if (auto PTy = dyn_cast<PointerType>(PteeTy)) {
                 if (PTy->getAddressSpace() == ADDRESS_SPACE_GENERIC)
                     return true;
