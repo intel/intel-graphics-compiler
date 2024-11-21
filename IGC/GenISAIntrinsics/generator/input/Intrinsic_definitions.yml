@@ -10929,6 +10929,7 @@ intrinsics:
                 name: Arg2
                 type_definition: *p_any_
                 comment: "User defined intersection attributes struct"
+                param_attr: !ParamAttributeID "ByRef"
         attributes:
             - !AttributeID "NoUnwind"
     - !<IntrinsicDefinition>
