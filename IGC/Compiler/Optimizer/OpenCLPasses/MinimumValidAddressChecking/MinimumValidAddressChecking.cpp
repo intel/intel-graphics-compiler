@@ -89,7 +89,8 @@ bool MinimumValidAddressChecking::runOnModule(Module& M)
 
 void MinimumValidAddressChecking::visitLoadInst(LoadInst& load)
 {
-    if (load.getPointerOperandType()->getPointerAddressSpace() == ADDRESS_SPACE_GLOBAL)
+    if (load.getPointerOperandType()->getPointerAddressSpace() == ADDRESS_SPACE_GLOBAL ||
+        load.getPointerOperandType()->getPointerAddressSpace() == ADDRESS_SPACE_GENERIC)
     {
         loadsAndStoresToCheck.push_back(&load);
     }
@@ -97,7 +98,8 @@ void MinimumValidAddressChecking::visitLoadInst(LoadInst& load)
 
 void MinimumValidAddressChecking::visitStoreInst(StoreInst& store)
 {
-    if (store.getPointerOperandType()->getPointerAddressSpace() == ADDRESS_SPACE_GLOBAL)
+    if (store.getPointerOperandType()->getPointerAddressSpace() == ADDRESS_SPACE_GLOBAL ||
+        store.getPointerOperandType()->getPointerAddressSpace() == ADDRESS_SPACE_GENERIC)
     {
         loadsAndStoresToCheck.push_back(&store);
     }
@@ -119,15 +121,40 @@ void MinimumValidAddressChecking::handleLoadStore(Instruction* instruction)
         IGC_ASSERT(0);
     }
 
-    // Condition
-    const auto minimum = ConstantInt::get(Type::getInt64Ty(instruction->getContext()), minimumValidAddress);
-    auto address = new PtrToIntInst(pointer, Type::getInt64Ty(instruction->getContext()), "", instruction);
-    auto condition = new ICmpInst(instruction, ICmpInst::ICMP_UGE, address, minimum);
+    auto addressSpace = pointer->getType()->getPointerAddressSpace();
+
+    // Address is valid if it is greater or equal to the minimum valid address
+    // and the address space is global or generic=global.
+    IRBuilder<> builder(instruction);
+    auto address = builder.CreatePtrToInt(pointer, builder.getInt64Ty());
+    Value* isValid = nullptr;
+
+    if (addressSpace == ADDRESS_SPACE_GLOBAL)
+    {
+        isValid = builder.CreateICmpUGE(address, builder.getInt64(minimumValidAddress));
+    }
+    else if (addressSpace == ADDRESS_SPACE_GENERIC)
+    {
+        // Check the pointer's address space tag.
+        auto tag = builder.CreateLShr(address, builder.getInt64(61));
+        auto tagIsZero = builder.CreateICmpEQ(tag, builder.getInt64(0b000));
+        auto tagIsSeven = builder.CreateICmpEQ(tag, builder.getInt64(0b111));
+        auto isGlobalAddressSpace = builder.CreateOr(tagIsZero, tagIsSeven);
+
+        // Remove the address space tag.
+        address = builder.CreateShl(address, 4);
+        address = builder.CreateAShr(address, 4);
+
+        isValid = builder.CreateOr(
+            builder.CreateNot(isGlobalAddressSpace),
+            builder.CreateICmpUGE(address, builder.getInt64(minimumValidAddress))
+        );
+    }
 
     // Generate if-then-else
     Instruction* thenTerminator = nullptr;
     Instruction* elseTerminator = nullptr;
-    SplitBlockAndInsertIfThenElse(condition, instruction, &thenTerminator, &elseTerminator);
+    SplitBlockAndInsertIfThenElse(isValid, instruction, &thenTerminator, &elseTerminator);
 
     // Merge block
     auto mergeBlock = instruction->getParent();
