@@ -226,6 +226,14 @@ bool JointMatrixFuncsResolutionPass::runOnModule(Module &M)
         Changed |= runOnFunction(F);
     }
 
+    for (const auto& ResolvedFunctionPair : ResolvedFuncSignatures) {
+        Function *OriginalFunction = ResolvedFunctionPair.first;
+
+        if (OriginalFunction->use_empty()) {
+            OriginalFunction->eraseFromParent();
+        }
+    }
+
     return Changed;
 }
 
