@@ -1376,7 +1376,8 @@ void emitDataCallFrameInfo(VISAKernelImpl *visaKernel, T &t) {
     emitDataUInt16(FPOffset, t);
     auto GenOffset =
         kernel->getKernelDebugInfo()->getCESaveInst()->getGenOffset() +
-        getBinInstSize(kernel->getKernelDebugInfo()->getCESaveInst());
+        getBinInstSize(kernel->getKernelDebugInfo()->getCESaveInst()) -
+        kernel->getKernelDebugInfo()->getRelocOffset();
     vISA_ASSERT(GenOffset <= std::numeric_limits<uint16_t>::max(),
                 "GenOffset is OOB");
     emitDataUInt16((uint16_t)GenOffset, t);
@@ -1979,7 +1980,8 @@ void KernelDebugInfo::updateExpandedIntrinsic(G4_InstIntrinsic *spillOrFill,
     setCallerBEFPSaveInst(inst);
   }
 
-  if (spillOrFill == getCESaveInst()) {
+  if (spillOrFill == getCESaveInst() &&
+      inst->isSend()) {
     setSaveCEInst(inst);
   }
 }
