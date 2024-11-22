@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/MathExtras.h"
 #include "llvm/IR/GetElementPtrTypeIterator.h"
 #include "llvmWrapper/Support/Alignment.h"
+#include "llvmWrapper/IR/Argument.h"
 #include "common/LLVMWarningsPop.hpp"
 #include <deque>
 #include <set>
@@ -147,9 +148,20 @@ auto AlignmentAnalysis::getAlignValue(Value* V) const
     {
         if (arg->getType()->isPointerTy())
         {
+
+            if (arg->hasAttribute(llvm::Attribute::Alignment)) {
+                uint64_t align = arg->getParamAlign().valueOrOne().value();
+                // Note that align 1 has no effect on non-byval, non-preallocated arguments.
+                if (align != 1 || arg->hasPreallocatedAttr() || arg->hasByValAttr())
+                    return align;
+            }
+
+            Type* pointedTo = IGCLLVM::getArgAttrEltTy(arg);
+            if (pointedTo == nullptr && !IGCLLVM::isOpaquePointerTy(arg->getType()))
+                pointedTo = IGCLLVM::getNonOpaquePtrEltTy(arg->getType());
+
             // Pointer arguments are guaranteed to be aligned on the ABI alignment
-            Type* pointedTo = IGCLLVM::getNonOpaquePtrEltTy(arg->getType());
-            if (pointedTo->isSized())
+            if (pointedTo != nullptr && pointedTo->isSized())
             {
                 return m_DL->getABITypeAlign(pointedTo).value();
             }

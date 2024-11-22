@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/KernelArgs/KernelArgs.hpp"
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Argument.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Argument.h>
 #include <llvm/IR/DataLayout.h>
@@ -102,15 +103,26 @@ alignment_t KernelArg::calcAlignment(const Argument* arg, const DataLayout* DL) 
     // If we don't need to allocate, we certainly don't need alignment
     if (!needsAllocation()) return 0;
 
+    if (arg->hasAttribute(llvm::Attribute::Alignment)) {
+        uint64_t align = arg->getParamAlign().valueOrOne().value();
+        // Note that align 1 has no effect on non-byval, non-preallocated arguments.
+        if (align != 1 || arg->hasPreallocatedAttr() || arg->hasByValAttr())
+            return align;
+    }
+
     Type* typeToAlign = arg->getType();
     // Usually, we return the alignment of the parameter type.
     // For local pointers, we need the alignment of the *contained* type.
     if (m_argType == ArgType::PTR_LOCAL)
     {
-        typeToAlign = IGCLLVM::getNonOpaquePtrEltTy(typeToAlign);
+        typeToAlign = IGCLLVM::getArgAttrEltTy(arg);
+        if (typeToAlign == nullptr && !IGCLLVM::isOpaquePointerTy(arg->getType()))
+            typeToAlign = IGCLLVM::getNonOpaquePtrEltTy(arg->getType());
     }
 
-    return DL->getABITypeAlign(typeToAlign).value();
+    if (typeToAlign != nullptr)
+        return DL->getABITypeAlign(typeToAlign).value();
+    return /*MinimumAlignment*/1;
 }
 
 unsigned int KernelArg::calcElemAllocateSize(const Argument* arg, const DataLayout* DL) const
