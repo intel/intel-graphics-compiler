@@ -124,6 +124,15 @@ public:
 };
 
 //===----------------------------------------------------------------------===//
+/// \brief This enum is used to describe whether a register represents one of
+/// the SIMD32 register halves.
+enum class DbgRegisterType : uint8_t {
+  Regular = 0,   // Represents all SIMD channels for a source variable, no slice
+  FirstHalf = 1, // SIMD32 sliced - lower channels
+  SecondHalf = 2 // SIMD32 sliced - upper channels
+};
+
+//===----------------------------------------------------------------------===//
 /// \brief This class is used to track local variable information.
 class DbgVariable {
 public:
@@ -142,6 +151,12 @@ private:
   DbgVariable *AbsVar = nullptr;
   // DBG_VALUE instruction of the variable
   const llvm::DbgVariableIntrinsic *m_pDbgInst = nullptr;
+
+  // isLocationInlined is true when we expect location to be inlined in
+  // DW_AT_location.
+  bool isLocationInlined = false;
+
+  DbgRegisterType RegType = DbgRegisterType::Regular;
 
 public:
   // AbsVar may be NULL.
@@ -196,6 +211,16 @@ public:
   bool currentLocationIsSimpleIndirectValue() const;
   bool currentLocationIsVector() const;
 
+  bool currentLocationIsInlined() const { return isLocationInlined; }
+  void setLocationInlined(bool isInlined = true) {
+    isLocationInlined = isInlined;
+  }
+
+  DbgRegisterType getLocationRegisterType() const { return RegType; }
+  void setLocationRegisterType(DbgRegisterType RegType) {
+    this->RegType = RegType;
+  }
+
   void emitExpression(CompileUnit *CU, IGC::DIEBlock *Block) const;
 
   // Translate tag to proper Dwarf tag.
@@ -222,10 +247,6 @@ public:
       return true;
     return false;
   }
-
-  // isLocationInlined is true when we expect location to be inlined in
-  // DW_AT_location.
-  bool isLocationInlined = false;
 
   bool isBlockByrefVariable() const;
 

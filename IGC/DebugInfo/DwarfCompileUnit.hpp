@@ -524,7 +524,7 @@ public:
   // buildSLM - Build expression for location described as offset in SLM memory.
   DIEBlock *buildSLM(const DbgVariable &, const VISAVariableLocation &,
                      IGC::DIE *);
-  DIEBlock *buildGeneral(const DbgVariable &, const VISAVariableLocation &,
+  DIEBlock *buildGeneral(DbgVariable &, const VISAVariableLocation &,
                          const std::vector<DbgDecoder::LiveIntervalsVISA> *,
                          IGC::DIE *);
 
@@ -533,12 +533,13 @@ private:
                                 const VISAVariableLocation &);
   bool buildFpBasedLoc(const DbgVariable &, IGC::DIEBlock *,
                        const VISAVariableLocation &);
-  bool buildSlicedLoc(const DbgVariable &, IGC::DIEBlock *,
+  bool buildSlicedLoc(DbgVariable &, IGC::DIEBlock *,
                       const VISAVariableLocation &,
                       const std::vector<DbgDecoder::LiveIntervalsVISA> *);
-  bool buildValidVar(const DbgVariable &, IGC::DIEBlock *,
+  bool buildValidVar(DbgVariable &, IGC::DIEBlock *,
                      const VISAVariableLocation &,
-                     const std::vector<DbgDecoder::LiveIntervalsVISA> *, bool);
+                     const std::vector<DbgDecoder::LiveIntervalsVISA> *,
+                     DbgRegisterType);
 
   // Variables, used in buildGeneral-algorithm:
   bool emitLocation = false;
