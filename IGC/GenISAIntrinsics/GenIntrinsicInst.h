@@ -49,6 +49,10 @@ See LICENSE.TXT for details.
 #include "llvmWrapper/IR/Type.h"
 #include "usc_gen7_types.h"
 
+namespace IGC {
+    enum CallableShaderTypeMD : uint8_t;
+} // namespace IGC
+
 namespace llvm {
 /// IntrinsicInst - A useful wrapper class for inspecting calls to intrinsic
 /// functions.  This allows the standard isa/dyncast/cast functionality to
@@ -1275,6 +1279,7 @@ public:
         {
         case GenISAIntrinsic::GenISA_TraceRayAsyncHL:
         case GenISAIntrinsic::GenISA_CallShaderHL:
+        case GenISAIntrinsic::GenISA_SyncDispatchRaysSplitPoint:
             return true;
         default:
             break;
@@ -1372,6 +1377,45 @@ public:
 
     Value* getShaderIndex()         const { return getOperand(2); }
     Value* getParameter()           const { return getOperand(3); }
+};
+
+class SyncDispatchRaysSplitPointIntrinsic : public ContinuationHLIntrinsic {
+public:
+    // Methods for support type inquiry through isa, cast, and dyn_cast:
+    static inline bool classof(const ContinuationHLIntrinsic* I) {
+        GenISAIntrinsic::ID ID = I->getIntrinsicID();
+        return ID == GenISAIntrinsic::GenISA_SyncDispatchRaysSplitPoint;
+    }
+
+    static inline bool classof(const Value* V) {
+        return isa<ContinuationHLIntrinsic>(V) &&
+            classof(cast<ContinuationHLIntrinsic>(V));
+    }
+
+    Value* getRTStack()
+    {
+        return getOperand(2);
+    }
+
+    Value* getPayload()
+    {
+        return getOperand(3);
+    }
+
+    Value* getState()
+    {
+        return getOperand(4);
+    }
+
+    Value* getShaderRecordAddress()
+    {
+        return getOperand(5);
+    }
+
+    IGC::CallableShaderTypeMD getShaderType()
+    {
+        return static_cast<IGC::CallableShaderTypeMD>(cast<ConstantInt>(getOperand(6))->getZExtValue());
+    }
 };
 
 

@@ -10485,6 +10485,43 @@ intrinsics:
         attributes:
             - !AttributeID "NoUnwind"
     - !<IntrinsicDefinition>
+        name: "GenISA_SyncDispatchRaysSplitPoint"
+        comment: "Raytracing: Dedicated intrinsic for handling continuations in sync dispatch rays"
+        return_definition: !<ReturnDefinition>
+            type_definition: *void
+            comment: ""
+        arguments:
+            - !<ArgumentDefinition>
+                name: ContinuationID
+                type_definition: *i32
+                comment: "Continuation ID"
+            - !<ArgumentDefinition>
+                name: ContinuationFn
+                type_definition: *p_any_
+                comment: "Continuation function"
+            - !<ArgumentDefinition>
+                name: RTStack
+                type_definition: *p_any_
+                comment: "Mirror of the RTStack in the SWStack"
+            - !<ArgumentDefinition>
+                name: Payload
+                type_definition: *p_any_
+                comment: "Payload"
+            - !<ArgumentDefinition>
+                name: State
+                type_definition: *p_any_
+                comment: "Sync dispatch rays state object"
+            - !<ArgumentDefinition>
+                name: ShaderRecordAddress
+                type_definition: *i64
+                comment: "Address of the shader record to BTD into"
+            - !<ArgumentDefinition>
+                name: ShaderType
+                type_definition: *i32
+                comment: "Type of the shader that caused the split point"
+        attributes:
+            - !AttributeID "NoUnwind"
+    - !<IntrinsicDefinition>
         name: "GenISA_DispatchDimensions"
         comment: "Raytracing: Dispatch Dimensions"
         return_definition: !<ReturnDefinition>

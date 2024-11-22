@@ -82,7 +82,7 @@ static void setupRegionBTIs(CodeGenContext* pContext)
     uint32_t BaseOffset = 0;
     if (pContext->type == ShaderType::RAYTRACING_SHADER)
     {
-        auto doSyncDispatchRays = false;
+        auto disableStatefulSWStack = false;
 
 
         if (IGC_IS_FLAG_DISABLED(DisableStatefulRTStackAccess))
@@ -97,7 +97,7 @@ static void setupRegionBTIs(CodeGenContext* pContext)
             rtInfo.SWHotZoneSurfaceStateOffset = BaseOffset++;
         }
 
-        if (IGC_IS_FLAG_DISABLED(DisableStatefulSWStackAccess) && !doSyncDispatchRays)
+        if (IGC_IS_FLAG_DISABLED(DisableStatefulSWStackAccess) && !disableStatefulSWStack)
         {
             rtInfo.SWStackAddrspace = getAddrspace();
             rtInfo.SWStackSurfaceStateOffset = BaseOffset++;

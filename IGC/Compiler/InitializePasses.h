@@ -179,6 +179,7 @@ void initializeSplitPreparePassPass(llvm::PassRegistry&);
 void initializeSplitAsyncPassPass(llvm::PassRegistry&);
 void initializePrepareSyncRTHelpersPass(llvm::PassRegistry&);
 void initializeSyncHandlingPassPass(llvm::PassRegistry&);
+void initializeSyncDispatchRaysFinalizePass(llvm::PassRegistry&);
 void initializeBindlessInlineDataPassPass(llvm::PassRegistry&);
 void initializeRayTracingConstantCoalescingPassPass(llvm::PassRegistry&);
 void initializeStackIDSchedulingPassPass(llvm::PassRegistry&);
