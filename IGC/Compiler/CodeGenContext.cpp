@@ -36,14 +36,13 @@ namespace IGC
         bool allowLargeGRF;
         bool allowLoadSinking;
         bool forceIndirectCallsInSyncRT;
-        bool allowRaytracingSpillCompaction;
         unsigned nextState;
     };
 
     static const RetryState RetryTable[] = {
-       // adrCl  licm   codSk AdrSk  Slice  PrivM  VISAP  URBWr  Coals  GRF    loadSk, SyncRT, compactspills
-        { false, true,  true, false, false, true,  true,  true,  true,  false, false,  false,  true,         1 },
-        { true,  false, true, true,  true,  false, false, false, false, true,  true,   true,   false,        500 }
+       // adrCl  licm   codSk AdrSk  Slice  PrivM  VISAP  URBWr  Coals  GRF    loadSk, SyncRT
+        { false, true,  true, false, false, true,  true,  true,  true,  false, false,  false, 1 },
+        { true,  false, true, true,  true,  false, false, false, false, true,  true,   true, 500 }
     };
 
     static constexpr size_t RetryTableSize = sizeof(RetryTable) / sizeof(RetryState);
@@ -161,13 +160,6 @@ namespace IGC
         unsigned id = GetRetryId();
         IGC_ASSERT(id < RetryTableSize);
         return RetryTable[id].forceIndirectCallsInSyncRT;
-    }
-
-    bool RetryManager::AllowRaytracingSpillCompaction() const
-    {
-        unsigned id = GetRetryId();
-        IGC_ASSERT(id < RetryTableSize);
-        return RetryTable[id].allowRaytracingSpillCompaction;
     }
 
     bool RetryManager::AllowLoadSinking(Function* F) const
