@@ -6,10 +6,10 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -CMImpParam \
+; RUN: %opt_typed_ptrs %use_old_pass_manager% %pass_pref%CMImpParam \
 ; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
 ; RUN: -S < %s | FileCheck %s --check-prefix=CHECK-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -CMImpParam \
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% %pass_pref%CMImpParam \
 ; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
 ; RUN: -S < %s | FileCheck %s --check-prefix=CHECK-OPAQUE-PTRS
 

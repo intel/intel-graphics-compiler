@@ -210,6 +210,18 @@ struct CMImpParam : public ModulePass {
   bool HasPayloadInMemory = false;
   const DataLayout *DL = nullptr;
 
+#if LLVM_VERSION_MAJOR >= 16
+  CallGraph &CG;
+  CMImpParam(CallGraph &CG, bool HasPayloadInMemoryIn)
+      : ModulePass{ID}, HasPayloadInMemory{HasPayloadInMemoryIn}, CG(CG) {
+    initializeCMImpParamPass(*PassRegistry::getPassRegistry());
+  }
+
+  CMImpParam(CallGraph &CG)
+      : ModulePass{ID}, HasPayloadInMemory{PayloadInMemoryOpt}, CG(CG) {
+    initializeCMImpParamPass(*PassRegistry::getPassRegistry());
+  }
+#else  // LLVM_VERSION_MAJOR
   CMImpParam(bool HasPayloadInMemoryIn)
       : ModulePass{ID}, HasPayloadInMemory{HasPayloadInMemoryIn} {
     initializeCMImpParamPass(*PassRegistry::getPassRegistry());
@@ -218,6 +230,7 @@ struct CMImpParam : public ModulePass {
   CMImpParam() : ModulePass{ID}, HasPayloadInMemory{PayloadInMemoryOpt} {
     initializeCMImpParamPass(*PassRegistry::getPassRegistry());
   }
+#endif // LLVM_VERSION_MAJOR
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<CallGraphWrapperPass>();
@@ -556,7 +569,9 @@ bool CMImpParam::runOnModule(Module &M) {
 void CMImpParam::processKernels(
     const std::vector<FunctionRef> &Kernels, const IntrIDMap &UsedIntrInfo,
     const std::unordered_set<Function *> &RequireImplArgsBuffer) {
+#if LLVM_VERSION_MAJOR < 16
   CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
+#endif
 
   for (Function &Kernel : Kernels) {
     // Traverse the call graph to determine what the total implicit uses are for
@@ -610,14 +625,16 @@ CMImpParam::analyzeFixedSignatureFunctions(Module &M,
                                            const IntrIDMap &UsedIntrInfo) {
   IntrIDMap FixedSignFuncInfo;
   std::unordered_set<Function *> RequireImplArgsBuffer;
+#if LLVM_VERSION_MAJOR < 16
   CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
-
+#endif
   auto FixedSignatureDefinitions = make_filter_range(
       M, [](const Function &F) { return vc::isFixedSignatureDefinition(F); });
 
   for (Function &F : FixedSignatureDefinitions) {
     auto [RequiredImplArgs, CalledFixedSignFuncs] =
         CallGraphTraverser{CG, UsedIntrInfo}.collectIndirectlyUsedImplArgs(F);
+
     // Function should be marked if it uses implicit args or it calls some
     // function that may use it via implicit args buffer.
     if (!RequiredImplArgs.empty() || !CalledFixedSignFuncs.has_value() ||
@@ -1013,6 +1030,9 @@ template <bool IsEntry> void CallGraphTraverser::visitFunction(Function &F) {
     // Skipping inline asm.
     if (isa<CallInst>(CI) && cast<CallInst>(CI)->isInlineAsm())
       continue;
+    if (!isa<CallInst>(CI) || (GenXIntrinsic::getAnyIntrinsicID(CI) !=
+                               GenXIntrinsic::not_any_intrinsic))
+      continue;
     // Returns nullptr in case of indirect call or inline asm which was already
     // considered.
     auto *Child = CallEdge.second->getFunction();
@@ -1160,7 +1180,9 @@ CMImpParam::processKernelParameters(Function *F,
     }
   }
 
+#if LLVM_VERSION_MAJOR < 16
   CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
+#endif
   CallGraphNode *NF_CGN = CG.getOrInsertFunction(NF);
 
   if (F->hasDLLExportStorageClass())
@@ -1206,20 +1228,22 @@ INITIALIZE_PASS_END(CMImpParam, "CMImpParam",
                     "Transformations required to support implicit arguments",
                     false, false)
 
+#if LLVM_VERSION_MAJOR < 16
 namespace llvm {
 Pass *createCMImpParamPass(bool HasPayloadInMemory) {
   return new CMImpParam{HasPayloadInMemory};
 }
 } // namespace llvm
 
-#if LLVM_VERSION_MAJOR >= 16
+#else // LLVM_VERSION_MAJOR < 16
 PreservedAnalyses CMImpParamPass::run(llvm::Module &M,
-                                      llvm::AnalysisManager<llvm::Module> &) {
-  CMImpParam cmip;
+                                      llvm::AnalysisManager<llvm::Module> &AM) {
+  auto &CG = AM.getResult<CallGraphAnalysis>(M);
+  CMImpParam cmip(CG);
   if (cmip.runOnModule(M)) {
     return PreservedAnalyses::all();
   }
   return PreservedAnalyses::none();
 }
-// TODO: No lit-tests
-#endif
+CMImpParamPass::CMImpParamPass() : HasPayloadInMemory{PayloadInMemoryOpt} {};
+#endif // LLVM_VERSION_MAJOR < 16

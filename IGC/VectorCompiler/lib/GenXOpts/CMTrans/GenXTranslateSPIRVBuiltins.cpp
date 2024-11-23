@@ -357,9 +357,18 @@ Value *SPIRVExpander::visitCallInst(CallInst &CI) {
 }
 
 class GenXTranslateSPIRVBuiltins final : public ModulePass {
+#if LLVM_VERSION_MAJOR >= 16
+  GenXBackendConfigPass::Result &BC;
+#endif
 public:
   static char ID;
+
+#if LLVM_VERSION_MAJOR >= 16
+  GenXTranslateSPIRVBuiltins(GenXBackendConfigPass::Result &BC)
+      : BC(BC), ModulePass(ID), Expander(nullptr) {}
+#else  // LLVM_VERSION_MAJOR >= 16
   GenXTranslateSPIRVBuiltins() : ModulePass(ID), Expander(nullptr) {}
+#endif // LLVM_VERSION_MAJOR >= 16
   StringRef getPassName() const override {
     return "GenX translate SPIR-V builtins";
   }
@@ -380,19 +389,22 @@ INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_END(GenXTranslateSPIRVBuiltins, "GenXTranslateSPIRVBuiltins",
                     "GenXTranslateSPIRVBuiltins", false, false)
 
+#if LLVM_VERSION_MAJOR < 16
 namespace llvm {
 ModulePass *createGenXTranslateSPIRVBuiltinsPass() {
   initializeGenXTranslateSPIRVBuiltinsPass(*PassRegistry::getPassRegistry());
   return new GenXTranslateSPIRVBuiltins;
 }
 } // namespace llvm
+#endif
 
 #if LLVM_VERSION_MAJOR >= 16
 PreservedAnalyses
 GenXTranslateSPIRVBuiltinsPass::run(llvm::Module &M,
-                                    llvm::AnalysisManager<llvm::Module> &) {
-  GenXTranslateSPIRVBuiltins GenXPrint;
-  if (GenXPrint.runOnModule(M)) {
+                                    llvm::AnalysisManager<llvm::Module> &AM) {
+  auto &Res = AM.getResult<GenXBackendConfigPass>(M);
+  GenXTranslateSPIRVBuiltins GenXTrans(Res);
+  if (GenXTrans.runOnModule(M)) {
     return PreservedAnalyses::all();
   }
   return PreservedAnalyses::none();
@@ -531,7 +543,11 @@ bool GenXTranslateSPIRVBuiltins::runOnFunction(Function &F) {
 
 std::unique_ptr<Module>
 GenXTranslateSPIRVBuiltins::getBiFModule(BiFKind Kind, LLVMContext &Ctx) {
+#if LLVM_VERSION_MAJOR >= 16
+  MemoryBufferRef BiFModuleBuffer = BC.getBiFModule(Kind);
+#else
   MemoryBufferRef BiFModuleBuffer =
       getAnalysis<GenXBackendConfig>().getBiFModule(Kind);
+#endif
   return vc::getLazyBiFModuleOrReportError(BiFModuleBuffer, Ctx);
 }

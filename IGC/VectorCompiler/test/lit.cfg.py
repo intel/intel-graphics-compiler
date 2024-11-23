@@ -68,13 +68,22 @@ else:
 # Use one of the %opt version explicitly to override the default setting in the
 # course of LITs' migration to opaque pointers.
 opt_tool = ToolSubst('%opt', extra_args=vc_extra_args+[config.opaque_pointers_default_arg_opt], command=FindTool('opt'))
-opt_tool_typed_ptrs = ToolSubst('%opt_typed_ptrs', extra_args=vc_extra_args+['-opaque-pointers=0'], command=FindTool('opt'))
+if int(config.llvm_version) >= 16:
+  opt_tool_typed_ptrs = ToolSubst('%opt_typed_ptrs', extra_args=vc_extra_args+['not supported test'], command='true ||')
+  opt_tool_old_pm = ToolSubst('%opt_llvm-15', extra_args=vc_extra_args+['not supported test'], command='true ||')
+  opt_tool_new_pm = ToolSubst('%opt_llvm-16', extra_args=vc_extra_args+['-opaque-pointers=1'], command=FindTool('opt'))
+else:
+  opt_tool_typed_ptrs = ToolSubst('%opt_typed_ptrs', extra_args=vc_extra_args+['-opaque-pointers=0'], command=FindTool('opt'))
+  opt_tool_old_pm = ToolSubst('%opt_llvm-15', extra_args=vc_extra_args+['-opaque-pointers=1'], command=FindTool('opt'))
+  opt_tool_new_pm = ToolSubst('%opt_llvm-16', extra_args=vc_extra_args+['not supported test'], command='true ||')
 opt_tool_opaque_ptrs = ToolSubst('%opt_opaque_ptrs', extra_args=vc_extra_args+['-opaque-pointers=1'], command=FindTool('opt'))
 
 tools = [ToolSubst('not'),
          opt_tool,
          opt_tool_typed_ptrs,
          opt_tool_opaque_ptrs,
+         opt_tool_old_pm,
+         opt_tool_new_pm,
          ToolSubst('llc', extra_args=vc_extra_args),
          ToolSubst('oneapi-readelf', unresolved='ignore'),
          ToolSubst('llvm-dwarfdump'),

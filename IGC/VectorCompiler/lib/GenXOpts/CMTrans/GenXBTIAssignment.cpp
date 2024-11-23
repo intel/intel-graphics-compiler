@@ -89,10 +89,19 @@ private:
 
 class GenXBTIAssignment final : public ModulePass {
 
+#if LLVM_VERSION_MAJOR >= 16
+  GenXBackendConfigPass::Result &BC;
+#endif
+
 public:
   static char ID;
 
+#if LLVM_VERSION_MAJOR >= 16
+  GenXBTIAssignment(GenXBackendConfigPass::Result &BC)
+      : BC(BC), ModulePass(ID) {}
+#else  // LLVM_VERSION_MAJOR >= 16
   GenXBTIAssignment() : ModulePass(ID) {}
+#endif // LLVM_VERSION_MAJOR >= 16
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<GenXBackendConfig>();
@@ -112,18 +121,21 @@ INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_END(GenXBTIAssignment, "GenXBTIAssignment", "GenXBTIAssignment",
                     false, false);
 
+#if LLVM_VERSION_MAJOR < 16
 namespace llvm {
 ModulePass *createGenXBTIAssignmentPass() {
   initializeGenXBTIAssignmentPass(*PassRegistry::getPassRegistry());
   return new GenXBTIAssignment();
 }
 } // namespace llvm
+#endif
 
 #if LLVM_VERSION_MAJOR >= 16
 PreservedAnalyses
 GenXBTIAssignmentPass::run(llvm::Module &M,
-                           llvm::AnalysisManager<llvm::Module> &) {
-  GenXBTIAssignment GenXBTI;
+                           llvm::AnalysisManager<llvm::Module> &AM) {
+  auto &Res = AM.getResult<GenXBackendConfigPass>(M);
+  GenXBTIAssignment GenXBTI(Res);
   if (GenXBTI.runOnModule(M)) {
     return PreservedAnalyses::all();
   }
@@ -132,7 +144,9 @@ GenXBTIAssignmentPass::run(llvm::Module &M,
 #endif
 
 bool GenXBTIAssignment::runOnModule(Module &M) {
+#if LLVM_VERSION_MAJOR < 16
   auto &BC = getAnalysis<GenXBackendConfig>();
+#endif
   bool emitDebuggableKernels = BC.emitDebuggableKernelsForLegacyPath();
   bool useBindlessBuffers = BC.useBindlessBuffers();
   bool useBindlessImages = BC.useBindlessImages();

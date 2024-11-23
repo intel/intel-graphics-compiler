@@ -230,19 +230,20 @@ private:
                             std::unique_ptr<MemoryBuffer> ModuleBuffer);
 };
 
-class GenXBackendConfig : public ImmutablePass {
-public:
-  static char ID;
-
-private:
+struct GenXBackendConfigResult {
+protected:
   GenXBackendOptions Options;
   GenXBackendData Data;
 
-public:
-  GenXBackendConfig();
-  explicit GenXBackendConfig(GenXBackendOptions &&OptionsIn,
-                             GenXBackendData &&DataIn);
+  GenXBackendConfigResult(GenXBackendOptions &&OptionsIn,
+                          GenXBackendData &&DataIn)
+      : Options(std::move(OptionsIn)), Data(std::move(DataIn)){};
 
+  GenXBackendConfigResult()
+      : Options{GenXBackendOptions::InitFromLLVMOpts{}},
+        Data{GenXBackendData::InitFromLLMVOpts{}} {};
+
+public:
   // Return whether regalloc results should be printed.
   bool enableRegAllocDump() const { return Options.DumpRegAlloc; }
 
@@ -396,6 +397,30 @@ public:
 
   vc::BinaryKind getBinaryFormat() const { return Options.Binary; }
 };
+
+class GenXBackendConfig : public ImmutablePass, public GenXBackendConfigResult {
+public:
+  static char ID;
+
+public:
+  GenXBackendConfig();
+  explicit GenXBackendConfig(GenXBackendOptions &&OptionsIn,
+                             GenXBackendData &&DataIn);
+
+  GenXBackendConfigResult &getResult() { return *this; };
+};
 } // namespace llvm
+
+#if LLVM_VERSION_MAJOR >= 16
+
+#include "llvm/IR/PassManager.h"
+
+struct GenXBackendConfigPass
+    : public llvm::AnalysisInfoMixin<GenXBackendConfigPass> {
+  using Result = llvm::GenXBackendConfigResult;
+  Result run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::AnalysisKey Key;
+};
+#endif
 
 #endif

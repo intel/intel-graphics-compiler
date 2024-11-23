@@ -10,8 +10,9 @@
 
 ; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXBTIAssignment -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS,RAW,RAW-TYPED-PTRS
 ; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXBTIAssignment -instcombine -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS,CLEAN
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXBTIAssignment -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS,RAW,RAW-OPAQUE-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXBTIAssignment -instcombine -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS,CLEAN
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% %pass_pref%GenXBTIAssignment -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS,RAW,RAW-OPAQUE-PTRS
+; RUN: %opt_llvm-15 %use_old_pass_manager% -GenXBTIAssignment -instcombine -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS,CLEAN
+; RUN: %opt_llvm-16 %use_old_pass_manager% --passes=GenXBTIAssignment,instcombine -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS,CLEAN
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
 target triple = "spir64-unknown-unknown"

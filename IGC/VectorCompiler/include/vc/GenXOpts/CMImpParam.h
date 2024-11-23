@@ -13,6 +13,12 @@ void initializeCMImpParamPass(PassRegistry &);
 }
 
 struct CMImpParamPass : public llvm::PassInfoMixin<CMImpParamPass> {
+  bool HasPayloadInMemory = false;
+  CMImpParamPass(bool HasPayloadInMemoryIn)
+      : HasPayloadInMemory{HasPayloadInMemoryIn} {};
+
+  CMImpParamPass();
+
   llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
 };
 

@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Passes/PassPlugin.h"
 
 #include "vc/GenXOpts/GenXOptsNewPM.h"
+#include "vc/Support/BackendConfig.h"
 
 using namespace llvm;
 
@@ -18,6 +19,7 @@ void registerPluginPasses(PassBuilder &PB) {
 
   PB.registerAnalysisRegistrationCallback([=](ModuleAnalysisManager &MAM) {
     MAM.registerPass([&] { return CMABIAnalysisPass(); });
+    MAM.registerPass([&] { return GenXBackendConfigPass(); });
   });
 
 #define ADD_PASS(NAME, CREATE_PASS)                                            \
@@ -25,6 +27,15 @@ void registerPluginPasses(PassBuilder &PB) {
     PM.addPass(CREATE_PASS);                                                   \
     return true;                                                               \
   }
+
+  PB.registerPipelineParsingCallback(
+      [=](StringRef Name, CGSCCPassManager &PM,
+          ArrayRef<PassBuilder::PipelineElement>) {
+#define CGSCC_PASS(NAME, CREATE_PASS) ADD_PASS(NAME, CREATE_PASS)
+#include "GenXPassRegistry.def"
+#undef CGSCC_PASS
+        return false;
+      });
 
   PB.registerPipelineParsingCallback(
       [=](StringRef Name, ModulePassManager &PM,

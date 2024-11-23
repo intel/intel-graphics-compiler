@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXImportOCLBiF -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXImportOCLBiF -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% %pass_pref%GenXImportOCLBiF -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% %pass_pref%GenXImportOCLBiF -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
 
 ; To run GenXImportOCLBiF there is must be at least 1 func decl.
 declare spir_func i8 @dummy()

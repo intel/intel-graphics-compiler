@@ -1552,8 +1552,6 @@ llvm::PreservedAnalyses CMABIPass::run(llvm::Module &M,
                                        llvm::ModuleAnalysisManager &AM) {
 
   auto &LCG = AM.getResult<LazyCallGraphAnalysis>(M);
-  CGSCCAnalysisManager &CGAM =
-      AM.getResult<CGSCCAnalysisManagerModuleProxy>(M).getManager();
   LCG.buildRefSCCs();
   bool Changed = false;
   PreservedAnalyses PassPA;
@@ -1577,4 +1575,5 @@ PreservedAnalyses CMLowerVLoadVStorePass::run(Function &F,
   }
   return PreservedAnalyses::none();
 }
+
 #endif

@@ -234,17 +234,30 @@ void GenXBackendData::setOwningBiFModuleIf(
     setOwningBiFModule(Kind, std::move(ModuleBuffer));
 }
 
-GenXBackendConfig::GenXBackendConfig()
-    : ImmutablePass(ID), Options{GenXBackendOptions::InitFromLLVMOpts{}},
-      Data{GenXBackendData::InitFromLLMVOpts{}} {
+GenXBackendConfig::GenXBackendConfig() : ImmutablePass(ID) {
   initializeGenXBackendConfigPass(*PassRegistry::getPassRegistry());
 }
 
 GenXBackendConfig::GenXBackendConfig(GenXBackendOptions &&OptionsIn,
                                      GenXBackendData &&DataIn)
-    : ImmutablePass(ID), Options(std::move(OptionsIn)),
-      Data(std::move(DataIn)) {
+    : ImmutablePass(ID),
+      GenXBackendConfigResult(std::move(OptionsIn), std::move(DataIn)) {
   initializeGenXBackendConfigPass(*PassRegistry::getPassRegistry());
 }
 
 INITIALIZE_PASS(GenXBackendConfig, DEBUG_TYPE, DEBUG_TYPE, false, true)
+
+#if LLVM_VERSION_MAJOR >= 16
+
+AnalysisKey GenXBackendConfigPass::Key;
+
+GenXBackendConfigPass::Result
+GenXBackendConfigPass::run(llvm::Module &M,
+                           llvm::AnalysisManager<llvm::Module> &AM) {
+
+  GenXBackendConfig BC;
+  BC.runOnModule(M);
+  return std::move(BC.getResult());
+}
+
+#endif

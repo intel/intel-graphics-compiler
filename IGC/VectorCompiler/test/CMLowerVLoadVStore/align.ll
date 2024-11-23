@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -CMLowerVLoadVStore -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=XeHPC -S < %s | FileCheck %s --check-prefix=CHECK-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -CMLowerVLoadVStore -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=XeHPC -S < %s | FileCheck %s --check-prefix=CHECK-OPAQUE-PTRS
+; RUN: %opt_typed_ptrs %use_old_pass_manager% %pass_pref%CMLowerVLoadVStore -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=XeHPC -S < %s | FileCheck %s --check-prefix=CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% %pass_pref%CMLowerVLoadVStore -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=XeHPC -S < %s | FileCheck %s --check-prefix=CHECK-OPAQUE-PTRS
 
 declare <16 x float> @llvm.genx.vload.v16f32.p0v16f32(<16 x float>*)
 declare void @llvm.genx.vstore.v16f32.p0v16f32(<16 x float>, <16 x float>*)

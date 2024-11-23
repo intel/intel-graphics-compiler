@@ -25,6 +25,9 @@ add_llvm_library(
   $<TARGET_OBJECTS:VCGenXUtils>
   $<TARGET_OBJECTS:VCTransforms>
   $<TARGET_OBJECTS:VCGeneralUtils>
+  $<TARGET_OBJECTS:VCInternalIntrinsics>
+  $<TARGET_OBJECTS:${IGC_BUILD__PROJ__BiFManager}>
+  $<TARGET_OBJECTS:${IGC_BUILD__PROJ__BiFLib_OCL}>
   MODULE
   PLUGIN_TOOL opt
 )
