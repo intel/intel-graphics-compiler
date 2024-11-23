@@ -1055,11 +1055,6 @@ namespace IGC
                 // If a phi is used in a subspan we cannot propagate the subspan use and need to use VMask
                 m_NeedVMask = true;
 
-                if (isSampleSource && isa<PHINode>(v))
-                {
-                    m_sampleSource.insert(v);
-                }
-
                 if (Instruction* I = dyn_cast<Instruction>(v))
                 {
                     // this is WA for situation where application has early return (not discard) from shader
@@ -1565,60 +1560,7 @@ namespace IGC
 
     void CodeGenPatternMatch::visitPHINode(PHINode& I)
     {
-        struct PHIPattern : Pattern
-        {
-            //bool isInDivergentLoop = false;
-            llvm::PHINode* phi = nullptr;
-            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
-            {
-                IGC_ASSERT(modifier.sat == false);
-                IGC_ASSERT(modifier.flag == nullptr);
-                pass->EmitInitializePHI(phi);
-            }
-        };
-
-        if (Loop* L = LI->getLoopFor(I.getParent()))
-        {
-            SmallVector<BasicBlock*, 4> exitingBlocks;
-            SmallPtrSet<Instruction*, 8> visitedInstructions;
-            L->getExitingBlocks(exitingBlocks);
-            for (auto exitingBlock : exitingBlocks)
-            {
-                if (!isUniform(exitingBlock->getTerminator()))
-                {
-                    std::vector<Instruction*> worklist;
-                    worklist.push_back(&I);
-                    while (!worklist.empty())
-                    {
-                        Instruction* currentInst = worklist.back();
-                        worklist.pop_back();
-                        for (auto operand : currentInst->operand_values())
-                        {
-                            if (auto nextInst = dyn_cast<Instruction>(operand))
-                            {
-                                if (nextInst == &I)
-                                {
-                                    return;
-                                }
-                                if(L->contains(nextInst->getParent()) && !visitedInstructions.contains(nextInst))
-                                {
-                                    worklist.push_back(nextInst);
-                                    visitedInstructions.insert(nextInst);
-                                }
-                            }
-                        }
-                    }
-                    break;
-                }
-            }
-        }
-        if (IsSourceOfSample(&I))
-        {
-            PHIPattern* pattern = new (m_allocator) PHIPattern();
-            pattern->phi = &I;
-            //pattern->isInDivergentLoop = isInDivergentLoop;
-            AddPattern(pattern);
-        }
+        // nothing to do
     }
 
     void CodeGenPatternMatch::visitBitCastInst(BitCastInst& I)
@@ -3660,11 +3602,6 @@ namespace IGC
                 // without improve code quality this may be refined in the future
                 if (inst->hasOneUse() && SupportsSaturate(inst))
                 {
-                    bool isSourceOfSample = IsSourceOfSample(&I);
-                    if (isSourceOfSample)
-                    {
-                        m_sampleSource.insert(inst);
-                    }
                     auto *pattern = Match(*inst);
                     IGC_ASSERT_MESSAGE(pattern, "Failed to match pattern");
                     // Even though the original `inst` may support saturate,
@@ -3674,10 +3611,6 @@ namespace IGC
                     {
                         satPattern->pattern = pattern;
                         match = true;
-                    }
-                    else if (isSourceOfSample)
-                    {
-                        m_sampleSource.erase(inst);
                     }
                 }
             }

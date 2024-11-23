@@ -273,9 +273,9 @@ static bool DefReachUseWithinLevel(llvm::Value* def, const llvm::Instruction* us
     return false;
 }
 
-bool EmitPass::IsNoMaskAllowed(Instruction* inst)
+bool EmitPass::IsNoMaskAllowed(SDAG& sdag)
 {
-    if (auto* I = dyn_cast<LoadInst>(inst))
+    if (auto* I = dyn_cast<LoadInst>(sdag.m_root))
     {
         if (IGC_IS_FLAG_ENABLED(UseVMaskPredicateForLoads) && shouldGenerateLSC(I))
             return true;
@@ -288,15 +288,6 @@ bool EmitPass::IsNoMaskAllowed(Instruction* inst)
     }
 
     return true;
-}
-
-bool EmitPass::IsSubspanDestination(Instruction* inst)
-{
-    return m_pattern->IsSubspanUse(inst) && IsNoMaskAllowed(inst) &&
-           (!m_pattern->IsSourceOfSample(inst) ||
-            (m_pattern->IsSourceOfSample(inst) && m_pCtx->getModule()->getNamedMetadata(NAMED_METADATA_COARSE_PHASE) != nullptr) ||
-            (m_pattern->IsSourceOfSample(inst) && !m_pattern->NeedVMask()) ||
-            (m_pattern->IsSourceOfSample(inst) && m_pattern->NeedVMask() && m_pattern->IsSourceOfSampleUnderCF(inst)));
 }
 
 uint EmitPass::DecideInstanceAndSlice(const llvm::BasicBlock& blk, SDAG& sdag, bool& slicing)
@@ -326,7 +317,11 @@ uint EmitPass::DecideInstanceAndSlice(const llvm::BasicBlock& blk, SDAG& sdag, b
         m_destination = GetSymbol(sdag.m_root);
         numInstance = m_destination->GetNumberInstance();
 
-        if (IsSubspanDestination(sdag.m_root))
+        if (m_pattern->IsSubspanUse(sdag.m_root) && IsNoMaskAllowed(sdag) &&
+            (!m_pattern->IsSourceOfSample(sdag.m_root) ||
+            (m_pattern->IsSourceOfSample(sdag.m_root) && m_pCtx->getModule()->getNamedMetadata(NAMED_METADATA_COARSE_PHASE) != nullptr) ||
+            (m_pattern->IsSourceOfSample(sdag.m_root) && !m_pattern->NeedVMask()) ||
+            (m_pattern->IsSourceOfSample(sdag.m_root) &&  m_pattern->NeedVMask() && m_pattern->IsSourceOfSampleUnderCF(sdag.m_root))))
         {
             m_encoder->SetSubSpanDestination(true);
         }
@@ -9630,75 +9625,6 @@ void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
     str << asmStr;
     if (asmStr.back() != '\n') str << endl;
     str << "/// End Inlined ASM" << endl << endl;
-}
-
-void EmitPass::EmitInitializePHI(llvm::PHINode* phi)
-{
-    if (m_destination->IsUniform())
-    {
-        return;
-    }
-    if (m_deSSA && m_deSSA->getRootValue(phi) != nullptr)
-    {
-        // If this phi is not isolated, it can be safely initialized only if no
-        // other values it is coalesced with use NoMask on their destinations.
-        // NoMask could be used if the other value is:
-        //  - uniform(handled above)
-        //  - also a phi that is being initialized
-        //  - emitted with m_SubSpanDestination set to true
-        {
-            SmallVector<Value*, 16> coalescedValues;
-            m_deSSA->getAllCoalescedValues(phi, coalescedValues);
-            for (auto val : coalescedValues)
-            {
-                if (val != phi &&
-                    (isa<PHINode>(val) && m_pattern->IsSourceOfSample(val)) ||
-                    (isa<Instruction>(val) && IsSubspanDestination(cast<Instruction>(val))))
-                {
-                    return;
-                }
-            }
-        }
-    }
-
-    if (m_destination->GetType() == ISA_TYPE_BOOL)
-    {
-        CVariable* initializedTempVar = m_currShader->GetNewVariable(m_destination->GetNumberElement(), ISA_TYPE_UD, EALIGN_GRF, CName::NONE);
-        m_encoder->SetNoMask();
-        m_encoder->Copy(initializedTempVar, m_currShader->ImmToVariable(0, ISA_TYPE_UD));
-        m_encoder->Push();
-
-        m_encoder->Select(m_destination, initializedTempVar, m_currShader->ImmToVariable(0xFFFFFFFFULL, ISA_TYPE_UD), m_currShader->ImmToVariable(0, ISA_TYPE_UD));
-        m_encoder->Push();
-
-        CVariable* initializedFlag = m_currShader->GetNewVariable(m_destination);
-        VISA_Type type = GetTypeFromSize(m_destination->GetNumberElement() / BITS_PER_BYTE);
-        m_encoder->SetNoMask();
-        m_encoder->SetP(initializedFlag, m_currShader->ImmToVariable(0, type));
-        m_encoder->Push();
-
-        m_encoder->Cmp(EPREDICATE_EQ, initializedFlag, initializedTempVar, m_currShader->ImmToVariable(0xFFFFFFFFULL, ISA_TYPE_UD));
-        m_encoder->Push();
-
-        m_encoder->Copy(m_destination, initializedFlag);
-        m_encoder->Push();
-    }
-    else
-    {
-        VISA_Type unsignedType = GetUnsignedIntegerType(m_destination->GetType());
-        CVariable* initializedVar = m_currShader->GetNewVariable(m_destination);
-        CVariable* udAlias = m_currShader->GetNewAlias(initializedVar, unsignedType, 0, m_destination->GetNumberElement());
-        m_encoder->SetNoMask();
-        m_encoder->Copy(udAlias, m_currShader->ImmToVariable(0, unsignedType));
-        m_encoder->Push();
-
-        m_encoder->Copy(initializedVar, m_destination);
-        m_encoder->Push();
-
-        m_encoder->SetNoMask();
-        m_encoder->Copy(m_destination, initializedVar);
-        m_encoder->Push();
-    }
 }
 
 CVariable* EmitPass::Mul(CVariable* Src0, CVariable* Src1, const CVariable* DstPrototype)
