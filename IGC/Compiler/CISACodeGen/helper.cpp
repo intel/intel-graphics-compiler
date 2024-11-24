@@ -3476,36 +3476,4 @@ bool SeparateSpillAndScratch(const CodeGenContext* ctx)
 
     return (ctx->platform.hasScratchSurface() && separate);
 }
-
-bool UsedWithoutImmInMemInst( Value* varOffset )
-{
-    // If varOffset was used as the bare base operand for a load/store/ldraw/ldraw_vector/storeraw/storeraw_vector
-    // then it must be positive.
-    for( auto* user : varOffset->users() )
-    {
-        if( auto* loadInst = dyn_cast<LoadInst>( user ) )
-        {
-            if( loadInst->getOperand( 0 ) == varOffset )
-            {
-                return true;
-            }
-        }
-        else if( auto* storeInst = dyn_cast<StoreInst>( user ) )
-        {
-            if( storeInst->getOperand( 1 ) == varOffset )
-            {
-                return true;
-            }
-        }
-        else if( auto* genInst = dyn_cast<GenIntrinsicInst>( user ) )
-        {
-            if( genInst->getOperand( 1 ) == varOffset )
-            {
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
 } // namespace IGC
