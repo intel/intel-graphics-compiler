@@ -200,6 +200,7 @@ namespace IGC {
 
         typedef llvm::SmallVector<std::unique_ptr<Candidate>, 64> CandidateVec;
         typedef llvm::SmallVector<Candidate*, 64> CandidatePtrVec;
+        typedef llvm::DenseSet<Candidate*> CandidatePtrSet;
         typedef llvm::DenseMap<Instruction*, Candidate*> InstToCandidateMap;
 
         /// sinking
