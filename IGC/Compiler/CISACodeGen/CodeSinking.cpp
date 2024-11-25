@@ -1647,6 +1647,8 @@ namespace IGC {
         {
             PrintDump(VerbosityLevel::Low, ">> Reverting the changes.\n");
 
+            CandidatePtrSet RevertedCandidates;
+
             for (auto CI = SinkedCandidates.rbegin(), CE = SinkedCandidates.rend(); CI != CE; CI++)
             {
                 Candidate *C = CI->get();
@@ -1654,6 +1656,8 @@ namespace IGC {
                 IGC_ASSERT(UndoPos);
                 while (InstToCandidate.count(UndoPos))
                 {
+                    if (RevertedCandidates.count(InstToCandidate[UndoPos]))
+                        break;
                     UndoPos = InstToCandidate[UndoPos]->UndoPos;
                 }
                 for (Instruction *I : *C)
@@ -1661,6 +1665,7 @@ namespace IGC {
                     I->moveBefore(UndoPos);
                     UndoPos = I;
                 }
+                RevertedCandidates.insert(C);
             }
 
             rerunLiveness();
@@ -1991,7 +1996,7 @@ namespace IGC {
             if (CurrentCandidateInsts.size() > 0 &&
                 Id == GenISAIntrinsic::GenISA_LSC2DBlockReadAddrPayload)
             {
-                if (!SinkFromPH && !allUsesAreDominatedByUndoPoint(CurrentCandidateInsts, CurrentCandidateInsts[0]->getNextNode()))
+                if (!SinkFromPH && !allUsesAreDominatedByUndoPoint(CurrentCandidateInsts, CurrentCandidateInsts[0]))
                 {
                     PrintDump(VerbosityLevel::High, "Not all the uses are dominated by the UndoPoint, skipping.\n");
                     return false;
