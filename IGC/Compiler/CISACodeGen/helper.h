@@ -689,4 +689,5 @@ namespace IGC
             std::function<void(llvm::Value*)>());
 
     bool SeparateSpillAndScratch(const CodeGenContext* ctx);
+    bool UsedWithoutImmInMemInst( llvm::Value* v );
 } // namespace IGC
