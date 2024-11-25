@@ -11,7 +11,7 @@
 cmake_minimum_required(VERSION 3.13.4 FATAL_ERROR)
 
 set(IGC_VC_INTRINSICS_PATCHES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../external/vc-intrinsics/patches")
-set(IGC_VC_INTRINSICS_SOURCE_DIR "${BS_DIR_EXTERNAL_COMPONENTS}/vc-intrinsics")
+set(IGC_VC_INTRINSICS_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../vc-intrinsics")
 
 message(STATUS "[VC-INTRINSICS PATCHER] Applying patches from ${IGC_VC_INTRINSICS_PATCHES_DIR}")
 message(STATUS "[VC-INTRINSICS PATCHER] Applying patches to = ${IGC_VC_INTRINSICS_SOURCE_DIR}")
