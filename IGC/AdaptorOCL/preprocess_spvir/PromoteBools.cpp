@@ -589,7 +589,8 @@ Function* PromoteBools::promoteFunction(Function* function)
     }
 
 #if !defined(WDDM_ANDROID_IGC)
-    if (BiFManager::BiFManagerHandler::IsBiF(function))
+    if (BiFManager::BiFManagerHandler::IsBiF(function)
+        || function->getName().startswith("__builtin_IB_"))
     {
         return function;
     }
