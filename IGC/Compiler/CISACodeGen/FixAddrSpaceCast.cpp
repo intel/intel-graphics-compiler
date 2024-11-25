@@ -96,7 +96,7 @@ bool AddrSpaceCastFixing::fixCase1(Instruction* I, BasicBlock::iterator& BI) con
     // Find the eligible pair of `ptrtoint`/`inttoptr` and convert them back
     // to `addrspacecast`.
     IntToPtrInst* I2P = dyn_cast<IntToPtrInst>(I);
-    if (!I2P)
+    if (!I2P || !I2P->getType()->isPointerTy())
         return false;
     PointerType* DstPtrTy = cast<PointerType>(I2P->getType());
     PtrToIntInst* P2I = dyn_cast<PtrToIntInst>(I2P->getOperand(0));

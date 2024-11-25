@@ -275,7 +275,7 @@ void Legalization::visitUnaryInstruction(UnaryInstruction &I) {
 
 void Legalization::visitBinaryOperator(llvm::BinaryOperator& I)
 {
-    if (I.getOpcode() == Instruction::FRem)
+    if (I.getOpcode() == Instruction::FRem && I.getType()->isFloatTy())
     {
         Function* floorFunc =
             Intrinsic::getDeclaration(m_ctx->getModule(), Intrinsic::floor, I.getType());
