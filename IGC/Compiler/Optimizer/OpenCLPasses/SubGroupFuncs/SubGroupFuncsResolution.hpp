@@ -89,6 +89,13 @@ namespace IGC
         static const llvm::StringRef SUB_GROUP_BROADCAST_C;
         static const llvm::StringRef SUB_GROUP_BROADCAST_B;
         static const llvm::StringRef SUB_GROUP_BROADCAST_DF;
+        static const llvm::StringRef SUB_GROUP_CLUSTERED_BROADCAST;
+        static const llvm::StringRef SUB_GROUP_CLUSTERED_BROADCAST_US;
+        static const llvm::StringRef SUB_GROUP_CLUSTERED_BROADCAST_F;
+        static const llvm::StringRef SUB_GROUP_CLUSTERED_BROADCAST_H;
+        static const llvm::StringRef SUB_GROUP_CLUSTERED_BROADCAST_C;
+        static const llvm::StringRef SUB_GROUP_CLUSTERED_BROADCAST_B;
+        static const llvm::StringRef SUB_GROUP_CLUSTERED_BROADCAST_DF;
 
         static const llvm::StringRef SIMD_BLOCK_READ_1_GBL;
         static const llvm::StringRef SIMD_BLOCK_READ_2_GBL;

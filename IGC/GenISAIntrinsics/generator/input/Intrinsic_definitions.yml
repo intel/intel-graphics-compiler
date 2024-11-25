@@ -2384,6 +2384,37 @@ intrinsics:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
+        name: "GenISA_WaveClusteredBroadcast"
+        comment: "Broadcasts from specific lane to all lanes in cluster.\
+            \ Works in non-uniform threads, but result is undefined if\
+            \ broadcasted lane is inactive."
+        return_definition: !<ReturnDefinition>
+            type_definition: *any_int
+            comment: "result"
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *ref_0_
+                comment: "value"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *i32
+                comment: "cluster size - must be a compile time constant 8 or 16"
+            - !<ArgumentDefinition>
+                name: Arg2
+                type_definition: *i32
+                comment: "cluster lane - lane inside cluster to broadcast"
+            - !<ArgumentDefinition>
+                name: Arg3
+                type_definition: *i32
+                comment: "helperLaneMode"
+        attributes:
+            - !AttributeID "Convergent"
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
         name: "GenISA_WorkGroupAny"
         comment: "This intrinsic implies a barrier"
         return_definition: !<ReturnDefinition>

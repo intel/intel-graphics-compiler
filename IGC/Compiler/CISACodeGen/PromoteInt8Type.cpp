@@ -1113,6 +1113,7 @@ void PromoteInt8Type::promoteIntrinsic()
             continue;
         if (GII->isGenIntrinsic(GenISAIntrinsic::GenISA_WaveShuffleIndex) ||
             GII->isGenIntrinsic(GenISAIntrinsic::GenISA_WaveBroadcast) ||
+            GII->isGenIntrinsic(GenISAIntrinsic::GenISA_WaveClusteredBroadcast) ||
             GII->isGenIntrinsic(GenISAIntrinsic::GenISA_simdShuffleDown))
         {
             // Those are mov insts. Need to promote if its operand is
@@ -1166,6 +1167,7 @@ void PromoteInt8Type::promoteIntrinsic()
                 gid == GenISAIntrinsic::GenISA_QuadPrefix ||
                 gid == GenISAIntrinsic::GenISA_WaveShuffleIndex ||
                 gid == GenISAIntrinsic::GenISA_WaveBroadcast ||
+                gid == GenISAIntrinsic::GenISA_WaveClusteredBroadcast ||
                 gid == GenISAIntrinsic::GenISA_simdShuffleDown)
             {
                 //
@@ -1204,10 +1206,12 @@ void PromoteInt8Type::promoteIntrinsic()
                 }
                 case GenISAIntrinsic::GenISA_WaveClustered:
                 case GenISAIntrinsic::GenISA_WaveInterleave:
+                case GenISAIntrinsic::GenISA_WaveClusteredBroadcast:
                 {
                     // prototype:
                     //     Ty <clustered> (Ty, char, int, int)
                     //     Ty <interleave> (Ty, char, int, int)
+                    //     Ty <clusteredbroadcast> (Ty, int, int, int)
                     iArgs.push_back(GII->getArgOperand(1));
                     iArgs.push_back(GII->getArgOperand(2));
                     iArgs.push_back(GII->getArgOperand(3));

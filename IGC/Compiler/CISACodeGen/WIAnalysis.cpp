@@ -1411,6 +1411,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         intrinsic_name == llvm_cycleCounter ||
         intrinsic_name == llvm_waveShuffleIndex ||
         intrinsic_name == llvm_waveBroadcast ||
+        intrinsic_name == llvm_waveClusteredBroadcast ||
         intrinsic_name == llvm_waveBallot ||
         intrinsic_name == llvm_waveAll ||
         intrinsic_name == llvm_waveClustered ||

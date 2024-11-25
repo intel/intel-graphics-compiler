@@ -571,6 +571,15 @@ half    __builtin_IB_simd_broadcast_h(     half,   uint );
 double  __builtin_IB_simd_broadcast_df(    double, uint );
 void    __builtin_IB_sub_group_barrier();
 
+// SubGroup clustered broadcast - for internal use
+uint   __builtin_IB_simd_clustered_broadcast(    uint,   uint, uint );
+bool   __builtin_IB_simd_clustered_broadcast_b(  bool,   uint, uint );
+uchar  __builtin_IB_simd_clustered_broadcast_c(  uchar,  uint, uint );
+ushort __builtin_IB_simd_clustered_broadcast_us( ushort, uint, uint );
+float  __builtin_IB_simd_clustered_broadcast_f(  float,  uint, uint );
+half   __builtin_IB_simd_clustered_broadcast_h(  half,   uint, uint );
+double __builtin_IB_simd_clustered_broadcast_df( double, uint, uint );
+
 // Block read : global address space
 uint    __builtin_IB_simd_block_read_1_global( const __global uint* );
 uint2   __builtin_IB_simd_block_read_2_global( const __global uint* );

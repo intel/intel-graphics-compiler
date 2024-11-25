@@ -243,6 +243,7 @@ public:
     void emitSimdLaneIdReplicate(llvm::Instruction* inst);
     void emitSimdSize(llvm::Instruction* inst);
     void emitSimdShuffle(llvm::Instruction* inst);
+    void emitSimdClusteredBroadcast(llvm::Instruction* inst);
     void emitCrossInstanceMov(const SSource& source, const DstModifier& modifier);
     void emitSimdShuffleDown(llvm::Instruction* inst);
     void emitSimdShuffleXor(llvm::Instruction* inst);

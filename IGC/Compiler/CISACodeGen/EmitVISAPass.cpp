@@ -5732,6 +5732,48 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
     }
 }
 
+void EmitPass::emitSimdClusteredBroadcast(llvm::Instruction* inst)
+{
+    CVariable* data = GetSymbol(inst->getOperand(0));
+
+    // If input is uniform, just copy to all lanes.
+    if (data->IsUniform())
+    {
+        m_encoder->Copy(m_destination, data);
+        if (!m_destination->IsUniform() && m_currShader->m_numberInstance > 1)
+        {
+            m_encoder->SetSecondHalf(true);
+            m_encoder->Copy(m_destination, data);
+            m_encoder->SetSecondHalf(false);
+        }
+        m_encoder->Push();
+        return;
+    }
+
+    IGC_ASSERT_MESSAGE(!m_destination->IsUniform(), "Unsupported: dst must be non-uniform");
+
+    IGC_ASSERT_MESSAGE(isa<llvm::ConstantInt>(inst->getOperand(1)), "Unsupported: cluster size must be constant");
+    const unsigned int clusterSize = int_cast<uint32_t>(cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue());
+
+    IGC_ASSERT_MESSAGE(isa<llvm::ConstantInt>(inst->getOperand(2)), "Unsupported: cluster lane must be constant");
+    const unsigned int clusterLane = int_cast<uint32_t>(cast<llvm::ConstantInt>(inst->getOperand(2))->getZExtValue());
+
+    IGC_ASSERT_MESSAGE(clusterSize < numLanes(m_currShader->m_dispatchSize), "cluster size must be smaller than SIMD");
+    IGC_ASSERT_MESSAGE(clusterSize == 8 || clusterSize == 16, "cluster size must be 8 or 16");
+    IGC_ASSERT_MESSAGE(clusterLane < clusterSize, "cluster lane does not fit in cluster size");
+
+    m_encoder->SetSrcRegion(0, clusterSize, clusterSize, 0);
+    m_encoder->SetSrcSubReg(0, clusterLane);
+    m_encoder->Copy(m_destination, data);
+    if (m_currShader->m_numberInstance > 1)
+    {
+        m_encoder->SetSecondHalf(true);
+        m_encoder->Copy(m_destination, data);
+        m_encoder->SetSecondHalf(false);
+    }
+    m_encoder->Push();
+}
+
 void EmitPass::emitSimdShuffleDown(llvm::Instruction* inst)
 {
     CVariable* pCurrentData = GetSymbol(inst->getOperand(0));
@@ -9132,6 +9174,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_WaveShuffleIndex:
     case GenISAIntrinsic::GenISA_WaveBroadcast:
         emitSimdShuffle(inst);
+        break;
+    case GenISAIntrinsic::GenISA_WaveClusteredBroadcast:
+        emitSimdClusteredBroadcast(inst);
         break;
     case GenISAIntrinsic::GenISA_WavePrefix:
         emitWavePrefix(cast<WavePrefixIntrinsic>(inst));

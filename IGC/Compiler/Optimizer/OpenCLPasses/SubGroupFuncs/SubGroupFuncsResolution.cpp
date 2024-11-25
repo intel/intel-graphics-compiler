@@ -51,6 +51,13 @@ const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_BROADCAST_US = "__built
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_BROADCAST_F = "__builtin_IB_simd_broadcast_f";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_BROADCAST_H = "__builtin_IB_simd_broadcast_h";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_BROADCAST_DF = "__builtin_IB_simd_broadcast_df";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_CLUSTERED_BROADCAST = "__builtin_IB_simd_clustered_broadcast";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_CLUSTERED_BROADCAST_B = "__builtin_IB_simd_clustered_broadcast_b";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_CLUSTERED_BROADCAST_C = "__builtin_IB_simd_clustered_broadcast_c";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_CLUSTERED_BROADCAST_US = "__builtin_IB_simd_clustered_broadcast_us";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_CLUSTERED_BROADCAST_F = "__builtin_IB_simd_clustered_broadcast_f";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_CLUSTERED_BROADCAST_H = "__builtin_IB_simd_clustered_broadcast_h";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_CLUSTERED_BROADCAST_DF = "__builtin_IB_simd_clustered_broadcast_df";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_1_GBL = "__builtin_IB_simd_block_read_1_global";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_2_GBL = "__builtin_IB_simd_block_read_2_global";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_4_GBL = "__builtin_IB_simd_block_read_4_global";
@@ -678,6 +685,41 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
         Instruction* simdBroadcast = CallInst::Create(simdBroadcastFunc, args, "simdBroadcast", &CI);
         updateDebugLoc(&CI, simdBroadcast);
         CI.replaceAllUsesWith(simdBroadcast);
+        CI.eraseFromParent();
+    }
+    else if (funcName.equals(SubGroupFuncsResolution::SUB_GROUP_CLUSTERED_BROADCAST) ||
+        funcName.equals(SubGroupFuncsResolution::SUB_GROUP_CLUSTERED_BROADCAST_US) ||
+        funcName.equals(SubGroupFuncsResolution::SUB_GROUP_CLUSTERED_BROADCAST_F) ||
+        funcName.equals(SubGroupFuncsResolution::SUB_GROUP_CLUSTERED_BROADCAST_H) ||
+        funcName.equals(SubGroupFuncsResolution::SUB_GROUP_CLUSTERED_BROADCAST_C) ||
+        funcName.equals(SubGroupFuncsResolution::SUB_GROUP_CLUSTERED_BROADCAST_B) ||
+        funcName.equals(SubGroupFuncsResolution::SUB_GROUP_CLUSTERED_BROADCAST_DF)
+        )
+    {
+        // Creates intrinsics that will be lowered in the CodeGen and will handle the sub_group_clustered_broadcast function
+        IRBuilder<> IRB(&CI);
+        Value* args[4];
+        args[0] = CI.getArgOperand(0);
+        args[1] = CI.getArgOperand(1);
+        args[2] = CI.getArgOperand(2);
+        args[3] = IRB.getInt32(0);
+
+        if (!isa<ConstantInt>(args[1]))
+        {
+            m_pCtx->EmitError("cluster_size argument in clustered_broadcast must be constant.", &CI);
+            return;
+        }
+        if (!isa<ConstantInt>(args[2]))
+        {
+            m_pCtx->EmitError("in_cluster_lane argument in clustered_broadcast must be constant.", &CI);
+            return;
+        }
+
+        Function* simdClusteredBroadcastFunc = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(),
+            GenISAIntrinsic::GenISA_WaveClusteredBroadcast, args[0]->getType());
+        Instruction* simdClusteredBroadcast = CallInst::Create(simdClusteredBroadcastFunc, args, "simdClusteredBroadcast", &CI);
+        updateDebugLoc(&CI, simdClusteredBroadcast);
+        CI.replaceAllUsesWith(simdClusteredBroadcast);
         CI.eraseFromParent();
     }
     else if (funcName.equals(SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN) ||
