@@ -22,7 +22,9 @@ config.ocloc_dir = "@IGC_OCLOC_BINARY_DIR@"
 config.ocloc_lib_dir = "@IGC_OCLOC_LIBRARY_DIR@"
 config.igc_lib_dir = "@IGC_LIBRARY_DIR@"
 config.cclang_lib_dir = "@OPENCL_CLANG_LIB_DIR@"
-config.regkeys_disabled = $<CONFIG:Release>
+# Mimic the c++ (define) IGC_DEBUG_VARIABLES
+# so the regkeys are supported on Linux release build too
+config.regkeys_disabled = $<AND:$<CONFIG:Release>,$<BOOL:"@MSVC@">>
 config.spirv_as_enabled = "@IGC_BUILD__PROJ__spirv_as@"
 config.spirv_as_dir = "@IGC_SPIRV_AS_DIR@"
 config.llvm_spirv_enabled = "@IGC_BUILD__PROJ__llvm_spirv@"

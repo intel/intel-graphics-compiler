@@ -172,7 +172,7 @@ void Banner(raw_ostream & OS, std::string const& message)
 
 raw_ostream &ods()
 {
-#if defined( _DEBUG ) || defined( _INTERNAL )
+#if defined(IGC_DEBUG_VARIABLES)
     if ( IGC_IS_FLAG_ENABLED(PrintToConsole) )
     {
 #    if defined _WIN32 || WIN64
