@@ -369,6 +369,8 @@ namespace IGC
         unsigned int num1DAccesses{};
         unsigned int num2DAccesses{};
         unsigned int numSLMAccesses{};
+        unsigned int numSLMStores{};
+        unsigned int numSLMLoads{};
     };
 
     struct SSimplePushInfo

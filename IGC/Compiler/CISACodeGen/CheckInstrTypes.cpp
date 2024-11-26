@@ -192,7 +192,9 @@ void CheckInstrTypes::print(llvm::raw_ostream& OS) const
     OS << "\nnumUntyped: " << g_InstrTypes.numUntyped;
     OS << "\nnum1DAccesses: " << g_InstrTypes.num1DAccesses;
     OS << "\nnum2DAccesses: " << g_InstrTypes.num2DAccesses;
-    OS << "\nnumSLMAccesses: " << g_InstrTypes.numSLMAccesses << "\n\n";
+    OS << "\nnumSLMAccesses: " << g_InstrTypes.numSLMAccesses;
+    OS << "\nnumSLMStores: " << g_InstrTypes.numSLMStores;
+    OS << "\nnumSLMLoads: " << g_InstrTypes.numSLMLoads << "\n\n";
 }
 
 void CheckInstrTypes::checkGlobalLocal(llvm::Instruction& I)
@@ -574,6 +576,7 @@ void CheckInstrTypes::visitLoadInst(LoadInst& I)
         g_InstrTypes.numUntyped++;
         g_InstrTypes.hasSLM = true;
         g_InstrTypes.numSLMAccesses++;
+        g_InstrTypes.numSLMLoads++;
         break;
     case IGC::CONSTANT_BUFFER:
     case IGC::POINTER:
@@ -646,6 +649,7 @@ void CheckInstrTypes::visitStoreInst(StoreInst& I)
         g_InstrTypes.numUntyped++;
         g_InstrTypes.hasSLM = true;
         g_InstrTypes.numSLMAccesses++;
+        g_InstrTypes.numSLMStores++;
         break;
     case IGC::CONSTANT_BUFFER:
     case IGC::POINTER:
