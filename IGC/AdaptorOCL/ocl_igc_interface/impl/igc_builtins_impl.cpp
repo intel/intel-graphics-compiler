@@ -59,8 +59,14 @@ bool CIF_GET_INTERFACE_CLASS(IgcBuiltins, 1)::GetBuiltinMemoryRequired(IGCBuilti
     switch(algorithm)
     {
     case BuiltinAlgorithm::sort:
+    case BuiltinAlgorithm::clusteredSort:
     {
         const size_t bits_per_pass = 4;
+
+        if ((algorithm == BuiltinAlgorithm::clusteredSort) && (scope != BuiltinMemoryScope::subGroup))
+        {
+            return false;
+        }
 
         if (scope == BuiltinMemoryScope::subGroup)
         {

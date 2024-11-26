@@ -1425,3 +1425,43 @@ DEFN_DEFAULT_WORK_GROUP_SORT_KEY_VALUE_ALL(half, f16, double, f64)
 DEFN_DEFAULT_WORK_GROUP_SORT_KEY_VALUE_ALL(float, f32, double, f64)
 DEFN_DEFAULT_WORK_GROUP_SORT_KEY_VALUE_ALL(double, f64, double, f64)
 #endif  //cl_khr_fp64
+
+
+// Expose the sub-group sort functions functions as clustered sub-group sort.
+#define DEFN_CLUSTERED_SUB_GROUP_SORT_KEY_ONLY(type,type_abbr, direction, is_asc) \
+type __builtin_IB_sub_group_clustered_sort_##direction##_##type_abbr(             \
+    type value,uint cluster_size)                                                 \
+{                                                                                 \
+    type sorted;                                                                  \
+    switch (cluster_size)                                                         \
+    {                                                                             \
+    case 8:                                                                       \
+        sorted = __builtin_sub_group_sort8(value, is_asc);                        \
+        break;                                                                    \
+    case 16:                                                                      \
+        sorted = __builtin_sub_group_sort16(value, is_asc);                       \
+        break;                                                                    \
+    case 32:                                                                      \
+        sorted = __builtin_sub_group_sort32(value, is_asc);                       \
+        break;                                                                    \
+    default:                                                                      \
+        break;                                                                    \
+    }                                                                             \
+    return sorted;                                                                \
+}
+
+#define DEFN_CLUSTERED_SUB_GROUP_SORT(type, type_abbr)                      \
+    DEFN_CLUSTERED_SUB_GROUP_SORT_KEY_ONLY(type, type_abbr, ascend, true)   \
+    DEFN_CLUSTERED_SUB_GROUP_SORT_KEY_ONLY(type, type_abbr, descend, false)
+
+DEFN_CLUSTERED_SUB_GROUP_SORT(char, i8)
+DEFN_CLUSTERED_SUB_GROUP_SORT(short, i16)
+DEFN_CLUSTERED_SUB_GROUP_SORT(int, i32)
+DEFN_CLUSTERED_SUB_GROUP_SORT(long, i64)
+DEFN_CLUSTERED_SUB_GROUP_SORT(float, f32)
+#if defined(cl_khr_fp64)
+DEFN_CLUSTERED_SUB_GROUP_SORT(double, f64)
+#endif // defined(cl_khr_fp64)
+#if defined(cl_khr_fp16)
+DEFN_CLUSTERED_SUB_GROUP_SORT(half, f16)
+#endif // defined(cl_khr_fp16)
