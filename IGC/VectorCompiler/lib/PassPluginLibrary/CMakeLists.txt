@@ -19,7 +19,6 @@ add_llvm_library(
   Plugin.cpp
 
   $<TARGET_OBJECTS:VCCodeGen>
-  $<TARGET_OBJECTS:Probe>
   $<TARGET_OBJECTS:VCSupport>
   $<TARGET_OBJECTS:LLVMGenXIntrinsics>
   $<TARGET_OBJECTS:VCGenXUtils>
