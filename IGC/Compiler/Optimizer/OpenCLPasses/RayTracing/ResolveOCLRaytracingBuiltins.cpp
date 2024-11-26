@@ -158,6 +158,7 @@ void ResolveOCLRaytracingBuiltins::defineOpaqueTypes() {
 
     IGC_ASSERT(rtFenceTy && rtGlobalsTy);
 
+
     SmallVector<Type*, 4> Tys{
         PointerType::get(rtFenceTy, ADDRESS_SPACE_PRIVATE),
         PointerType::get(rtGlobalsTy, ADDRESS_SPACE_GLOBAL),
@@ -361,6 +362,7 @@ void ResolveOCLRaytracingBuiltins::handleGetRTGlobalBuffer(llvm::CallInst& callI
     callInst.eraseFromParent();
 }
 
+
 /*
 Handler for
 void __builtin_IB_intel_init_ray_query(
@@ -382,6 +384,7 @@ void ResolveOCLRaytracingBuiltins::handleInitRayQuery(llvm::CallInst& callInst) 
 
     m_builder->SetInsertPoint(&callInst);
 
+
     auto storeToAlloca = [&](unsigned argIndex)
     {
         auto ptr = m_builder->CreateGEP(alloca->getAllocatedType(), alloca, { m_builder->getInt32(0), m_builder->getInt32(argIndex) });
@@ -391,6 +394,7 @@ void ResolveOCLRaytracingBuiltins::handleInitRayQuery(llvm::CallInst& callInst) 
 
     for (unsigned argIndex = 0; argIndex < numArgs; argIndex++)
         storeToAlloca(argIndex);
+
 
     callInst.replaceAllUsesWith(alloca);
     callInst.eraseFromParent();
