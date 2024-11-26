@@ -57,7 +57,6 @@ private:
     //TODO: this is hardcoded string, we might want to put all "printf" of different adaptors to one place eventually
     static constexpr char *PrintfFuncName = "printf";
 
-
     bool isChildOfXe2 = false;
 
     // Field for explicit GlobalBufferPtr - used on OpenCL path.
@@ -401,8 +400,8 @@ private:
     Value* getRTStackSize(uint32_t Align);
     SyncStackPointerVal* getSyncStackPointer(Value* syncStackOffset, RTBuilder::RTMemoryAccessMode Mode);
     Value* getGeometryIndex(
-        StackPointerVal* perLaneStackPtr, Value* leafType, bool committed);
-    Value* getPrimitiveIndex(
+        StackPointerVal* perLaneStackPtr, Instruction* I, Value* leafType, IGC::CallableShaderTypeMD ShaderTy);
+    PHINode* getPrimitiveIndex(
         StackPointerVal* perLaneStackPtr, Value* leafType, bool Committed);
     Value* getInstanceIndex(
         StackPointerVal* perLaneStackPtr, IGC::CallableShaderTypeMD ShaderTy);
