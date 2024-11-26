@@ -928,7 +928,10 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         (!ctx.platform.supportFP16() && IGC_IS_FLAG_ENABLED(EnableHalfPromotion)))
     {
         mpm.add(new HalfPromotion());
-        mpm.add(createGVNPass());
+        if (IGC_IS_FLAG_ENABLED(EnableGVN))
+        {
+            mpm.add(createGVNPass());
+        }
         mpm.add(createDeadCodeEliminationPass());
     }
 

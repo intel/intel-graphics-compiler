@@ -688,7 +688,6 @@ static void setRegkeyFromOption(
     }
 }
 
-
 static const std::string GetOptionFilePath()
 {
 #if defined(_WIN64) || defined(_WIN32)
@@ -757,6 +756,7 @@ detectEntryPoints(llvm::StringRef &line)
 
     return { std::make_pair(isEntryPoint, line.substr(Loc + 1)) };
 }
+
 // parses this syntax:
 // Each hash may be optionally prefixed with "0x" (e.g., 0xaaaaaaaaaaaaaaaa)
 // hash:abcdabcdabcdabcd-ffffffffffffffff,aaaaaaaaaaaaaaaa
@@ -814,6 +814,7 @@ static void ParseEntryPoint(llvm::StringRef line, std::vector<EntryPoint>& entry
         vString = RHS;
     } while (!vString.empty());
 }
+
 static void setIGCKeyOnHash(
     std::vector<HashRange>& hashes, const unsigned value,
     SRegKeyVariableMetaData* var)
@@ -824,6 +825,7 @@ static void setIGCKeyOnHash(
     var->Set();
     var->m_Value = value;
 }
+
 static void setIGCKeyOnEntryPoints(
     std::vector<EntryPoint>& entry_points, const unsigned value,
     SRegKeyVariableMetaData* var)
@@ -833,6 +835,7 @@ static void setIGCKeyOnEntryPoints(
     var->Set();
     var->m_Value = value;
 }
+
 // Implicitly set the subkeys
 static void setImpliedIGCKeys()
 {
