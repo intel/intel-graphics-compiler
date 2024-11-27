@@ -339,81 +339,7 @@ void ScalarizeFunction::dispatchInstructionToScalarize(Instruction* I)
         return;
     }
 
-    switch (I->getOpcode())
-    {
-    case Instruction::FNeg:
-        scalarizeInstruction(dyn_cast<UnaryOperator>(I));
-        break;
-    case Instruction::Add:
-    case Instruction::Sub:
-    case Instruction::Mul:
-    case Instruction::FAdd:
-    case Instruction::FSub:
-    case Instruction::FMul:
-    case Instruction::UDiv:
-    case Instruction::SDiv:
-    case Instruction::FDiv:
-    case Instruction::URem:
-    case Instruction::SRem:
-    case Instruction::FRem:
-    case Instruction::Shl:
-    case Instruction::LShr:
-    case Instruction::AShr:
-    case Instruction::And:
-    case Instruction::Or:
-    case Instruction::Xor:
-        scalarizeInstruction(dyn_cast<BinaryOperator>(I));
-        break;
-    case Instruction::ICmp:
-    case Instruction::FCmp:
-        scalarizeInstruction(dyn_cast<CmpInst>(I));
-        break;
-    case Instruction::Trunc:
-    case Instruction::ZExt:
-    case Instruction::SExt:
-    case Instruction::FPToUI:
-    case Instruction::FPToSI:
-    case Instruction::UIToFP:
-    case Instruction::SIToFP:
-    case Instruction::FPTrunc:
-    case Instruction::FPExt:
-    case Instruction::PtrToInt:
-    case Instruction::IntToPtr:
-    case Instruction::BitCast:
-        scalarizeInstruction(dyn_cast<CastInst>(I));
-        break;
-    case Instruction::PHI:
-        if (IGC_IS_FLAG_DISABLED(DisablePHIScalarization))
-            scalarizeInstruction(dyn_cast<PHINode>(I));
-        else
-            recoverNonScalarizableInst(I);
-        break;
-    case Instruction::Select:
-        scalarizeInstruction(dyn_cast<SelectInst>(I));
-        break;
-    case Instruction::ExtractElement:
-        scalarizeInstruction(dyn_cast<ExtractElementInst>(I));
-        break;
-    case Instruction::InsertElement:
-        scalarizeInstruction(dyn_cast<InsertElementInst>(I));
-        break;
-    case Instruction::ShuffleVector:
-        scalarizeInstruction(dyn_cast<ShuffleVectorInst>(I));
-        break;
-    case Instruction::Call :
-        scalarizeInstruction(dyn_cast<CallInst>(I));
-        break;
-    case Instruction::Alloca:
-        scalarizeInstruction(dyn_cast<AllocaInst>(I));
-        break;
-    case Instruction::GetElementPtr:
-        scalarizeInstruction(dyn_cast<GetElementPtrInst>(I));
-        break;
-        // The remaining instructions are not supported for scalarization. Keep "as is"
-    default:
-        recoverNonScalarizableInst(I);
-        break;
-    }
+    visit(*I);
 }
 
 void ScalarizeFunction::recoverNonScalarizableInst(Instruction* Inst)
@@ -452,20 +378,20 @@ void ScalarizeFunction::recoverNonScalarizableInst(Instruction* Inst)
     }
 }
 
-void ScalarizeFunction::scalarizeInstruction(UnaryOperator* UI)
+void ScalarizeFunction::visitUnaryOperator(UnaryOperator& UI)
 {
     V_PRINT(scalarizer, "\t\tUnary instruction\n");
-    IGC_ASSERT_MESSAGE(UI, "instruction type dynamic cast failed");
-    IGCLLVM::FixedVectorType* instType = dyn_cast<IGCLLVM::FixedVectorType>(UI->getType());
+    IGC_ASSERT_MESSAGE(&UI, "instruction type dynamic cast failed");
+    IGCLLVM::FixedVectorType* instType = dyn_cast<IGCLLVM::FixedVectorType>(UI.getType());
     // Do not apply if optnone function
-    if (UI->getFunction()->hasOptNone())
-        return recoverNonScalarizableInst(UI);
+    if (UI.getFunction()->hasOptNone())
+        return recoverNonScalarizableInst(&UI);
 
     // Only need handling for vector binary ops
     if (!instType) return;
 
     // Prepare empty SCM entry for the instruction
-    SCMEntry* newEntry = getSCMEntry(UI);
+    SCMEntry* newEntry = getSCMEntry(&UI);
 
     // Get additional info from instruction
     unsigned numElements = int_cast<unsigned>(instType->getNumElements());
@@ -474,7 +400,7 @@ void ScalarizeFunction::scalarizeInstruction(UnaryOperator* UI)
     SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>operand0;
     bool op0IsConst;
 
-    obtainScalarizedValues(operand0, &op0IsConst, UI->getOperand(0), UI);
+    obtainScalarizedValues(operand0, &op0IsConst, UI.getOperand(0), UI);
 
     // If argument is constant, don't bother Scalarizing inst
     if (op0IsConst) return;
@@ -485,36 +411,36 @@ void ScalarizeFunction::scalarizeInstruction(UnaryOperator* UI)
     for (unsigned dup = 0; dup < numElements; dup++)
     {
         Value* Val = UnaryOperator::Create(
-            UI->getOpcode(),
+            UI.getOpcode(),
             operand0[dup],
-            UI->getName(),
-            UI
+            UI.getName(),
+            &UI
         );
         if (UnaryOperator* UO = dyn_cast<UnaryOperator>(Val)) {
             // Copy fast math flags if any.
             if (isa<FPMathOperator>(UO))
-                UO->setFastMathFlags(UI->getFastMathFlags());
+                UO->setFastMathFlags(UI.getFastMathFlags());
         }
         newScalarizedInsts[dup] = Val;
     }
 
     // Add new value/s to SCM
-    updateSCMEntryWithValues(newEntry, &(newScalarizedInsts[0]), UI, true);
+    updateSCMEntryWithValues(newEntry, &(newScalarizedInsts[0]), &UI, true);
 
     // Remove original instruction
-    m_removedInsts.insert(UI);
+    m_removedInsts.insert(&UI);
 }
 
-void ScalarizeFunction::scalarizeInstruction(BinaryOperator* BI)
+void ScalarizeFunction::visitBinaryOperator(BinaryOperator& BI)
 {
     V_PRINT(scalarizer, "\t\tBinary instruction\n");
-    IGC_ASSERT_MESSAGE(BI, "instruction type dynamic cast failed");
-    IGCLLVM::FixedVectorType* instType = dyn_cast<IGCLLVM::FixedVectorType>(BI->getType());
+    IGC_ASSERT_MESSAGE(&BI, "instruction type dynamic cast failed");
+    IGCLLVM::FixedVectorType* instType = dyn_cast<IGCLLVM::FixedVectorType>(BI.getType());
     // Only need handling for vector binary ops
     if (!instType) return;
 
     // Prepare empty SCM entry for the instruction
-    SCMEntry* newEntry = getSCMEntry(BI);
+    SCMEntry* newEntry = getSCMEntry(&BI);
 
     // Get additional info from instruction
     unsigned numElements = int_cast<unsigned>(instType->getNumElements());
@@ -524,8 +450,8 @@ void ScalarizeFunction::scalarizeInstruction(BinaryOperator* BI)
     SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>operand1;
     bool op0IsConst, op1IsConst;
 
-    obtainScalarizedValues(operand0, &op0IsConst, BI->getOperand(0), BI);
-    obtainScalarizedValues(operand1, &op1IsConst, BI->getOperand(1), BI);
+    obtainScalarizedValues(operand0, &op0IsConst, BI.getOperand(0), BI);
+    obtainScalarizedValues(operand1, &op1IsConst, BI.getOperand(1), BI);
 
     // If both arguments are constants, don't bother Scalarizing inst
     if (op0IsConst && op1IsConst) return;
@@ -536,45 +462,45 @@ void ScalarizeFunction::scalarizeInstruction(BinaryOperator* BI)
     for (unsigned dup = 0; dup < numElements; dup++)
     {
         Value* Val = BinaryOperator::Create(
-            BI->getOpcode(),
+            BI.getOpcode(),
             operand0[dup],
             operand1[dup],
-            BI->getName(),
-            BI
+            BI.getName(),
+            &BI
         );
         if (BinaryOperator* BO = dyn_cast<BinaryOperator>(Val)) {
             // Copy overflow flags if any.
             if (isa<OverflowingBinaryOperator>(BO)) {
-                BO->setHasNoSignedWrap(BI->hasNoSignedWrap());
-                BO->setHasNoUnsignedWrap(BI->hasNoUnsignedWrap());
+                BO->setHasNoSignedWrap(BI.hasNoSignedWrap());
+                BO->setHasNoUnsignedWrap(BI.hasNoUnsignedWrap());
             }
             // Copy exact flag if any.
             if (isa<PossiblyExactOperator>(BO))
-                BO->setIsExact(BI->isExact());
+                BO->setIsExact(BI.isExact());
             // Copy fast math flags if any.
             if (isa<FPMathOperator>(BO))
-                BO->setFastMathFlags(BI->getFastMathFlags());
+                BO->setFastMathFlags(BI.getFastMathFlags());
         }
         newScalarizedInsts[dup] = Val;
     }
 
     // Add new value/s to SCM
-    updateSCMEntryWithValues(newEntry, &(newScalarizedInsts[0]), BI, true);
+    updateSCMEntryWithValues(newEntry, &(newScalarizedInsts[0]), &BI, true);
 
     // Remove original instruction
-    m_removedInsts.insert(BI);
+    m_removedInsts.insert(&BI);
 }
 
-void ScalarizeFunction::scalarizeInstruction(CmpInst* CI)
+void ScalarizeFunction::visitCmpInst(CmpInst& CI)
 {
     V_PRINT(scalarizer, "\t\tCompare instruction\n");
-    IGC_ASSERT_MESSAGE(CI, "instruction type dynamic cast failed");
-    IGCLLVM::FixedVectorType* instType = dyn_cast<IGCLLVM::FixedVectorType>(CI->getType());
+    IGC_ASSERT_MESSAGE(&CI, "instruction type dynamic cast failed");
+    IGCLLVM::FixedVectorType* instType = dyn_cast<IGCLLVM::FixedVectorType>(CI.getType());
     // Only need handling for vector compares
     if (!instType) return;
 
     // Prepare empty SCM entry for the instruction
-    SCMEntry* newEntry = getSCMEntry(CI);
+    SCMEntry* newEntry = getSCMEntry(&CI);
 
     // Get additional info from instruction
     unsigned numElements = int_cast<unsigned>(instType->getNumElements());
@@ -585,8 +511,8 @@ void ScalarizeFunction::scalarizeInstruction(CmpInst* CI)
     SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>operand1;
     bool op0IsConst, op1IsConst;
 
-    obtainScalarizedValues(operand0, &op0IsConst, CI->getOperand(0), CI);
-    obtainScalarizedValues(operand1, &op1IsConst, CI->getOperand(1), CI);
+    obtainScalarizedValues(operand0, &op0IsConst, CI.getOperand(0), CI);
+    obtainScalarizedValues(operand1, &op1IsConst, CI.getOperand(1), CI);
 
     // If both arguments are constants, don't bother Scalarizing inst
     if (op0IsConst && op1IsConst) return;
@@ -597,36 +523,41 @@ void ScalarizeFunction::scalarizeInstruction(CmpInst* CI)
     for (unsigned dup = 0; dup < numElements; dup++)
     {
         newScalarizedInsts[dup] = CmpInst::Create(
-            CI->getOpcode(),
-            CI->getPredicate(),
+            CI.getOpcode(),
+            CI.getPredicate(),
             operand0[dup],
             operand1[dup],
-            CI->getName(),
-            CI
+            CI.getName(),
+            &CI
         );
     }
 
     // Add new value/s to SCM
-    updateSCMEntryWithValues(newEntry, &(newScalarizedInsts[0]), CI, true);
+    updateSCMEntryWithValues(newEntry, &(newScalarizedInsts[0]), &CI, true);
 
     // Remove original instruction
-    m_removedInsts.insert(CI);
+    m_removedInsts.insert(&CI);
 }
 
-void ScalarizeFunction::scalarizeInstruction(CastInst* CI)
+void ScalarizeFunction::visitCastInst(CastInst& CI)
 {
     V_PRINT(scalarizer, "\t\tCast instruction\n");
-    IGC_ASSERT_MESSAGE(CI, "instruction type dynamic cast failed");
-    IGCLLVM::FixedVectorType* instType = dyn_cast<IGCLLVM::FixedVectorType>(CI->getType());
+    IGC_ASSERT_MESSAGE(&CI, "instruction type dynamic cast failed");
+    IGCLLVM::FixedVectorType* instType = dyn_cast<IGCLLVM::FixedVectorType>(CI.getType());
+
+    if (isa<AddrSpaceCastInst>(CI))
+    {
+        return recoverNonScalarizableInst(&CI);
+    }
 
     // For BitCast - we only scalarize if src and dst types have same vector length
     if (isa<BitCastInst>(CI))
     {
-        if (!instType) return recoverNonScalarizableInst(CI);
-        IGCLLVM::FixedVectorType* srcType = dyn_cast<IGCLLVM::FixedVectorType>(CI->getOperand(0)->getType());
+        if (!instType) return recoverNonScalarizableInst(&CI);
+        IGCLLVM::FixedVectorType* srcType = dyn_cast<IGCLLVM::FixedVectorType>(CI.getOperand(0)->getType());
         if (!srcType || (instType->getNumElements() != srcType->getNumElements()))
         {
-            return recoverNonScalarizableInst(CI);
+            return recoverNonScalarizableInst(&CI);
         }
     }
 
@@ -634,15 +565,15 @@ void ScalarizeFunction::scalarizeInstruction(CastInst* CI)
     if (!instType) return;
 
     // Prepare empty SCM entry for the instruction
-    SCMEntry* newEntry = getSCMEntry(CI);
+    SCMEntry* newEntry = getSCMEntry(&CI);
 
     // Get additional info from instruction
     unsigned numElements = int_cast<unsigned>(instType->getNumElements());
     IGC_ASSERT_MESSAGE(
-        isa<IGCLLVM::FixedVectorType>(CI->getOperand(0)->getType()),
+        isa<IGCLLVM::FixedVectorType>(CI.getOperand(0)->getType()),
         "unexpected type!");
     IGC_ASSERT_MESSAGE(
-        cast<IGCLLVM::FixedVectorType>(CI->getOperand(0)->getType())
+        cast<IGCLLVM::FixedVectorType>(CI.getOperand(0)->getType())
         ->getNumElements() == numElements,
         "unexpected vector width");
 
@@ -650,7 +581,7 @@ void ScalarizeFunction::scalarizeInstruction(CastInst* CI)
     SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>operand0;
     bool op0IsConst;
 
-    obtainScalarizedValues(operand0, &op0IsConst, CI->getOperand(0), CI);
+    obtainScalarizedValues(operand0, &op0IsConst, CI.getOperand(0), CI);
 
     // If argument is a constant, don't bother Scalarizing inst
     if (op0IsConst) return;
@@ -664,148 +595,155 @@ void ScalarizeFunction::scalarizeInstruction(CastInst* CI)
     for (unsigned dup = 0; dup < numElements; dup++)
     {
         newScalarizedInsts[dup] = CastInst::Create(
-            CI->getOpcode(),
+            CI.getOpcode(),
             operand0[dup],
             scalarDestType,
-            CI->getName(),
-            CI
+            CI.getName(),
+            &CI
         );
     }
 
     // Add new value/s to SCM
-    updateSCMEntryWithValues(newEntry, &(newScalarizedInsts[0]), CI, true);
+    updateSCMEntryWithValues(newEntry, &(newScalarizedInsts[0]), &CI, true);
 
     // Remove original instruction
-    m_removedInsts.insert(CI);
+    m_removedInsts.insert(&CI);
 }
 
-void ScalarizeFunction::scalarizeInstruction(PHINode* PI)
+void ScalarizeFunction::visitPHINode(PHINode& PI)
 {
-    V_PRINT(scalarizer, "\t\tPHI instruction\n");
-    IGC_ASSERT_MESSAGE(PI, "instruction type dynamic cast failed");
-    IGCLLVM::FixedVectorType* instType = dyn_cast<IGCLLVM::FixedVectorType>(PI->getType());
-    // Only need handling for vector PHI
-    if (!instType) return;
-
-    // Obtain number of incoming nodes \ PHI values
-    unsigned numValues = PI->getNumIncomingValues();
-
-    // Normally, a phi would be scalarized and a collection of
-    // extractelements would be emitted for each value.  Since
-    // VME payload CVariables don't necessarily match the size
-    // of the llvm type, keep these phis vectorized here so we
-    // can emit the appropriate movs in emitVectorCopy() when
-    // emitting movs for phis.
-    for (unsigned i = 0; i < numValues; i++)
+    if (IGC_IS_FLAG_DISABLED(DisablePHIScalarization))
     {
-        auto* Op = PI->getIncomingValue(i);
+        V_PRINT(scalarizer, "\t\tPHI instruction\n");
+        IGC_ASSERT_MESSAGE(&PI, "instruction type dynamic cast failed");
+        IGCLLVM::FixedVectorType* instType = dyn_cast<IGCLLVM::FixedVectorType>(PI.getType());
+        // Only need handling for vector PHI
+        if (!instType) return;
 
-        if (auto* GII = dyn_cast<GenIntrinsicInst>(Op))
+        // Obtain number of incoming nodes \ PHI values
+        unsigned numValues = PI.getNumIncomingValues();
+
+        // Normally, a phi would be scalarized and a collection of
+        // extractelements would be emitted for each value.  Since
+        // VME payload CVariables don't necessarily match the size
+        // of the llvm type, keep these phis vectorized here so we
+        // can emit the appropriate movs in emitVectorCopy() when
+        // emitting movs for phis.
+        for (unsigned i = 0; i < numValues; i++)
         {
-            switch (GII->getIntrinsicID())
-            {
-            case GenISAIntrinsic::GenISA_vmeSendIME2:
-            case GenISAIntrinsic::GenISA_vmeSendFBR2:
-            case GenISAIntrinsic::GenISA_vmeSendSIC2:
-                recoverNonScalarizableInst(PI);
-                return;
+            auto* Op = PI.getIncomingValue(i);
 
-            default: break;
+            if (auto* GII = dyn_cast<GenIntrinsicInst>(Op))
+            {
+                switch (GII->getIntrinsicID())
+                {
+                case GenISAIntrinsic::GenISA_vmeSendIME2:
+                case GenISAIntrinsic::GenISA_vmeSendFBR2:
+                case GenISAIntrinsic::GenISA_vmeSendSIC2:
+                    recoverNonScalarizableInst(&PI);
+                    return;
+
+                default: break;
+                }
             }
         }
-    }
 
-    {
-        // If PHI is used in insts that take vector as operands, keep this vector phi.
-        // With the vector phi, variable alias can do a better job. Otherwise, more mov
-        // insts could be generated.
-        DenseMap<PHINode*, int> visited;
-        SmallVector<PHINode*, 8> phis;
-        phis.push_back(PI);
-        while (!phis.empty())
         {
-            PHINode* PN = phis.back();
-            phis.pop_back();
-            for (auto U : PN->users())
+            // If PHI is used in insts that take vector as operands, keep this vector phi.
+            // With the vector phi, variable alias can do a better job. Otherwise, more mov
+            // insts could be generated.
+            DenseMap<PHINode*, int> visited;
+            SmallVector<PHINode*, 8> phis;
+            phis.push_back(&PI);
+            while (!phis.empty())
             {
-                if (GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(U))
+                PHINode* PN = phis.back();
+                phis.pop_back();
+                for (auto U : PN->users())
                 {
-                    switch (GII->getIntrinsicID())
+                    if (GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(U))
                     {
-                    default:
-                        break;
-                    case GenISAIntrinsic::GenISA_sub_group_dpas:
-                    case GenISAIntrinsic::GenISA_dpas:
-                    case GenISAIntrinsic::GenISA_simdBlockWrite:
-                    case GenISAIntrinsic::GenISA_simdBlockWriteBindless:
-                    case GenISAIntrinsic::GenISA_simdMediaBlockWrite:
-                    case GenISAIntrinsic::GenISA_LSC2DBlockWrite:
-                    case GenISAIntrinsic::GenISA_LSC2DBlockWriteAddrPayload:
-                    case GenISAIntrinsic::GenISA_LSCStoreBlock:
-                        recoverNonScalarizableInst(PI);
-                        return;
+                        switch (GII->getIntrinsicID())
+                        {
+                        default:
+                            break;
+                        case GenISAIntrinsic::GenISA_sub_group_dpas:
+                        case GenISAIntrinsic::GenISA_dpas:
+                        case GenISAIntrinsic::GenISA_simdBlockWrite:
+                        case GenISAIntrinsic::GenISA_simdBlockWriteBindless:
+                        case GenISAIntrinsic::GenISA_simdMediaBlockWrite:
+                        case GenISAIntrinsic::GenISA_LSC2DBlockWrite:
+                        case GenISAIntrinsic::GenISA_LSC2DBlockWriteAddrPayload:
+                        case GenISAIntrinsic::GenISA_LSCStoreBlock:
+                            recoverNonScalarizableInst(&PI);
+                            return;
+                        }
                     }
-                }
-                else if (PHINode* N = dyn_cast<PHINode>(U))
-                {
-                    if (visited.count(N) == 0) {
-                        visited[N] = 1;
-                        phis.push_back(N);
+                    else if (PHINode* N = dyn_cast<PHINode>(U))
+                    {
+                        if (visited.count(N) == 0) {
+                            visited[N] = 1;
+                            phis.push_back(N);
+                        }
                     }
                 }
             }
+            visited.clear();
+            phis.clear();
         }
-        visited.clear();
-        phis.clear();
-    }
 
-    // Prepare empty SCM entry for the instruction
-    SCMEntry* newEntry = getSCMEntry(PI);
+        // Prepare empty SCM entry for the instruction
+        SCMEntry* newEntry = getSCMEntry(&PI);
 
-    // Get additional info from instruction
-    Type* scalarType = instType->getElementType();
-    unsigned numElements = int_cast<unsigned>(instType->getNumElements());
+        // Get additional info from instruction
+        Type* scalarType = instType->getElementType();
+        unsigned numElements = int_cast<unsigned>(instType->getNumElements());
 
-    // Create new (empty) PHI nodes, and place them.
-    SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>newScalarizedPHI;
-    newScalarizedPHI.resize(numElements);
-    for (unsigned i = 0; i < numElements; i++)
-    {
-        newScalarizedPHI[i] = PHINode::Create(scalarType, numValues, PI->getName(), PI);
-    }
-
-    // Iterate over incoming values in vector PHI, and fill scalar PHI's accordingly
-    SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>operand;
-
-    for (unsigned j = 0; j < numValues; j++)
-    {
-        // Obtain scalarized arguments
-        obtainScalarizedValues(operand, NULL, PI->getIncomingValue(j), PI);
-
-        // Fill all scalarized PHI nodes with scalar arguments
+        // Create new (empty) PHI nodes, and place them.
+        SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>newScalarizedPHI;
+        newScalarizedPHI.resize(numElements);
         for (unsigned i = 0; i < numElements; i++)
         {
-            cast<PHINode>(newScalarizedPHI[i])->addIncoming(operand[i], PI->getIncomingBlock(j));
+            newScalarizedPHI[i] = PHINode::Create(scalarType, numValues, PI.getName(), &PI);
         }
+
+        // Iterate over incoming values in vector PHI, and fill scalar PHI's accordingly
+        SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>operand;
+
+        for (unsigned j = 0; j < numValues; j++)
+        {
+            // Obtain scalarized arguments
+            obtainScalarizedValues(operand, NULL, PI.getIncomingValue(j), PI);
+
+            // Fill all scalarized PHI nodes with scalar arguments
+            for (unsigned i = 0; i < numElements; i++)
+            {
+                cast<PHINode>(newScalarizedPHI[i])->addIncoming(operand[i], PI.getIncomingBlock(j));
+            }
+        }
+
+        // Add new value/s to SCM
+        updateSCMEntryWithValues(newEntry, &(newScalarizedPHI[0]), &PI, true);
+
+        // Remove original instruction
+        m_removedInsts.insert(&PI);
     }
-
-    // Add new value/s to SCM
-    updateSCMEntryWithValues(newEntry, &(newScalarizedPHI[0]), PI, true);
-
-    // Remove original instruction
-    m_removedInsts.insert(PI);
+    else
+    {
+        recoverNonScalarizableInst(&PI);
+    }
 }
 
-void ScalarizeFunction::scalarizeInstruction(SelectInst* SI)
+void ScalarizeFunction::visitSelectInst(SelectInst& SI)
 {
     V_PRINT(scalarizer, "\t\tSelect instruction\n");
-    IGC_ASSERT_MESSAGE(SI, "instruction type dynamic cast failed");
-    IGCLLVM::FixedVectorType* instType = dyn_cast<IGCLLVM::FixedVectorType>(SI->getType());
+    IGC_ASSERT_MESSAGE(&SI, "instruction type dynamic cast failed");
+    IGCLLVM::FixedVectorType* instType = dyn_cast<IGCLLVM::FixedVectorType>(SI.getType());
     // Only need handling for vector select
     if (!instType) return;
 
     // Prepare empty SCM entry for the instruction
-    SCMEntry* newEntry = getSCMEntry(SI);
+    SCMEntry* newEntry = getSCMEntry(&SI);
 
     // Get additional info from instruction
     unsigned numElements = int_cast<unsigned>(instType->getNumElements());
@@ -815,11 +753,11 @@ void ScalarizeFunction::scalarizeInstruction(SelectInst* SI)
     SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>trueValOp;
     SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>falseValOp;
 
-    obtainScalarizedValues(trueValOp, NULL, SI->getTrueValue(), SI);
-    obtainScalarizedValues(falseValOp, NULL, SI->getFalseValue(), SI);
+    obtainScalarizedValues(trueValOp, NULL, SI.getTrueValue(), SI);
+    obtainScalarizedValues(falseValOp, NULL, SI.getFalseValue(), SI);
 
     // Check if condition is a vector.
-    Value* conditionVal = SI->getCondition();
+    Value* conditionVal = SI.getCondition();
     if (isa<VectorType>(conditionVal->getType()))
     {
         // Obtain scalarized breakdowns of condition
@@ -844,8 +782,8 @@ void ScalarizeFunction::scalarizeInstruction(SelectInst* SI)
                 condOp[dup],
                 trueValOp[dup],
                 falseValOp[dup],
-                SI->getName(),
-                SI
+                SI.getName(),
+                &SI
             );
         }
         else
@@ -856,25 +794,25 @@ void ScalarizeFunction::scalarizeInstruction(SelectInst* SI)
     }
 
     // Add new value/s to SCM
-    updateSCMEntryWithValues(newEntry, &(newScalarizedInsts[0]), SI, true);
+    updateSCMEntryWithValues(newEntry, &(newScalarizedInsts[0]), &SI, true);
 
     // Remove original instruction
-    m_removedInsts.insert(SI);
+    m_removedInsts.insert(&SI);
 }
 
-void ScalarizeFunction::scalarizeInstruction(ExtractElementInst* EI)
+void ScalarizeFunction::visitExtractElementInst(ExtractElementInst& EI)
 {
     V_PRINT(scalarizer, "\t\tExtractElement instruction\n");
-    IGC_ASSERT_MESSAGE(EI, "instruction type dynamic cast failed");
+    IGC_ASSERT_MESSAGE(&EI, "instruction type dynamic cast failed");
 
     // Proper scalarization makes "extractElement" instructions redundant
     // Only need to "follow" the scalar element (as the input vector was
     // already scalarized)
-    Value* vectorValue = EI->getOperand(0);
-    Value* scalarIndexVal = EI->getOperand(1);
+    Value* vectorValue = EI.getOperand(0);
+    Value* scalarIndexVal = EI.getOperand(1);
 
     // If the index is not a constant - we cannot statically remove this inst
-    if (!isa<ConstantInt>(scalarIndexVal)) return recoverNonScalarizableInst(EI);
+    if (!isa<ConstantInt>(scalarIndexVal)) return recoverNonScalarizableInst(&EI);
 
     // Obtain the scalarized operands
     SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>operand;
@@ -887,31 +825,31 @@ void ScalarizeFunction::scalarizeInstruction(ExtractElementInst* EI)
     {
         IGC_ASSERT_MESSAGE(NULL != operand[static_cast<unsigned int>(scalarIndex)], "SCM error");
         // Replace all users of this inst, with the extracted scalar value
-        EI->replaceAllUsesWith(operand[static_cast<unsigned int>(scalarIndex)]);
+        EI.replaceAllUsesWith(operand[static_cast<unsigned int>(scalarIndex)]);
     }
     else
     {
         IGC_ASSERT_MESSAGE(0, "The instruction extractElement is out of bounds.");
-        EI->replaceAllUsesWith(UndefValue::get(valueVType->getElementType()));
+        EI.replaceAllUsesWith(UndefValue::get(valueVType->getElementType()));
     }
 
     // Remove original instruction
-    m_removedInsts.insert(EI);
+    m_removedInsts.insert(&EI);
 }
 
-void ScalarizeFunction::scalarizeInstruction(InsertElementInst* II)
+void ScalarizeFunction::visitInsertElementInst(InsertElementInst& II)
 {
     V_PRINT(scalarizer, "\t\tInsertElement instruction\n");
-    IGC_ASSERT_MESSAGE(II, "instruction type dynamic cast failed");
+    IGC_ASSERT_MESSAGE(&II, "instruction type dynamic cast failed");
 
     // Proper scalarization makes "InsertElement" instructions redundant.
     // Only need to "follow" the scalar elements and update in SCM
-    Value* sourceVectorValue = II->getOperand(0);
-    Value* sourceScalarValue = II->getOperand(1);
-    Value* scalarIndexVal = II->getOperand(2);
+    Value* sourceVectorValue = II.getOperand(0);
+    Value* sourceScalarValue = II.getOperand(1);
+    Value* scalarIndexVal = II.getOperand(2);
 
     // If the index is not a constant - we cannot statically remove this inst
-    if (!isa<ConstantInt>(scalarIndexVal)) return recoverNonScalarizableInst(II);
+    if (!isa<ConstantInt>(scalarIndexVal)) return recoverNonScalarizableInst(&II);
 
     // Obtain breakdown of input vector
     SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>scalarValues;
@@ -940,37 +878,37 @@ void ScalarizeFunction::scalarizeInstruction(InsertElementInst* II)
     uint64_t scalarIndex = cast<ConstantInt>(scalarIndexVal)->getZExtValue();
 
     if (scalarIndex <
-        dyn_cast<IGCLLVM::FixedVectorType>(II->getType())->getNumElements())
+        dyn_cast<IGCLLVM::FixedVectorType>(II.getType())->getNumElements())
     {
         // Add the new element
         scalarValues[static_cast<unsigned int>(scalarIndex)] = sourceScalarValue;
     }
 
     // Prepare empty SCM entry for the instruction
-    SCMEntry* newEntry = getSCMEntry(II);
+    SCMEntry* newEntry = getSCMEntry(&II);
 
     // Add new value/s to SCM
-    updateSCMEntryWithValues(newEntry, &(scalarValues[0]), II, true, false);
+    updateSCMEntryWithValues(newEntry, &(scalarValues[0]), &II, true, false);
 
     // Remove original instruction
-    m_removedInsts.insert(II);
+    m_removedInsts.insert(&II);
 }
 
-void ScalarizeFunction::scalarizeInstruction(ShuffleVectorInst* SI)
+void ScalarizeFunction::visitShuffleVectorInst(ShuffleVectorInst& SI)
 {
     V_PRINT(scalarizer, "\t\tShuffleVector instruction\n");
-    IGC_ASSERT_MESSAGE(nullptr != SI, "instruction type dynamic cast failed");
+    IGC_ASSERT_MESSAGE(&SI, "instruction type dynamic cast failed");
 
     // Proper scalarization makes "ShuffleVector" instructions redundant.
     // Only need to "follow" the scalar elements and update in SCM
 
     // Grab input vectors types and width
-    Value* sourceVector0Value = SI->getOperand(0);
-    IGC_ASSERT(nullptr != sourceVector0Value);
-    Value* sourceVector1Value = SI->getOperand(1);
-    IGC_ASSERT(nullptr != sourceVector1Value);
+    Value* sourceVector0Value = SI.getOperand(0);
+    IGC_ASSERT(sourceVector0Value);
+    Value* sourceVector1Value = SI.getOperand(1);
+    IGC_ASSERT(sourceVector1Value);
     IGCLLVM::FixedVectorType* const inputType = dyn_cast<IGCLLVM::FixedVectorType>(sourceVector0Value->getType());
-    IGC_ASSERT_MESSAGE(nullptr != inputType, "vector input error");
+    IGC_ASSERT_MESSAGE(inputType, "vector input error");
     IGC_ASSERT_MESSAGE(inputType == sourceVector1Value->getType(), "vector input error");
     unsigned sourceVectorWidth = int_cast<unsigned>(inputType->getNumElements());
 
@@ -991,7 +929,7 @@ void ScalarizeFunction::scalarizeInstruction(ShuffleVectorInst* SI)
 
     // Generate array for shuffled scalar values
     SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>newVector;
-    unsigned width = int_cast<unsigned>(cast<IGCLLVM::FixedVectorType>(SI->getType())->getNumElements());
+    unsigned width = int_cast<unsigned>(cast<IGCLLVM::FixedVectorType>(SI.getType())->getNumElements());
 
     // Generate undef value, which may be needed as some scalar elements
     UndefValue* undef = UndefValue::get(inputType->getElementType());
@@ -1000,7 +938,7 @@ void ScalarizeFunction::scalarizeInstruction(ShuffleVectorInst* SI)
     // Go over shuffle order, and place scalar values in array
     for (unsigned i = 0; i < width; i++)
     {
-        int maskValue = SI->getMaskValue(i);
+        int maskValue = SI.getMaskValue(i);
         if (maskValue >= 0 && NULL != allValues[maskValue])
         {
             newVector[i] = allValues[maskValue];
@@ -1012,30 +950,30 @@ void ScalarizeFunction::scalarizeInstruction(ShuffleVectorInst* SI)
     }
 
     // Create the new SCM entry
-    SCMEntry* newEntry = getSCMEntry(SI);
-    updateSCMEntryWithValues(newEntry, &(newVector[0]), SI, true, false);
+    SCMEntry* newEntry = getSCMEntry(&SI);
+    updateSCMEntryWithValues(newEntry, &(newVector[0]), &SI, true, false);
 
     // Remove original instruction
-    m_removedInsts.insert(SI);
+    m_removedInsts.insert(&SI);
 }
 
-void ScalarizeFunction::scalarizeInstruction(CallInst* CI)
+void ScalarizeFunction::visitCallInst(CallInst& CI)
 {
     V_PRINT(scalarizer, "\t\tCall instruction\n");
-    IGC_ASSERT_MESSAGE(CI, "instruction type dynamic cast failed");
+    IGC_ASSERT_MESSAGE(&CI, "instruction type dynamic cast failed");
 
-    Function* CalledFunc = CI->getCalledFunction();
+    Function* CalledFunc = CI.getCalledFunction();
     if (CalledFunc && CalledFunc->getName().startswith("llvm.fshl"))
     {
         V_PRINT(scalarizer, "\t\tScalarizing fshl intrinsic\n");
 
-        IGCLLVM::FixedVectorType* instType = dyn_cast<IGCLLVM::FixedVectorType>(CI->getType());
+        IGCLLVM::FixedVectorType* instType = dyn_cast<IGCLLVM::FixedVectorType>(CI.getType());
         if (!instType) {
-            recoverNonScalarizableInst(CI);
+            recoverNonScalarizableInst(&CI);
             return;
         }
 
-        SCMEntry* newEntry = getSCMEntry(CI);
+        SCMEntry* newEntry = getSCMEntry(&CI);
 
         unsigned numElements = int_cast<unsigned>(instType->getNumElements());
 
@@ -1044,9 +982,9 @@ void ScalarizeFunction::scalarizeInstruction(CallInst* CI)
         SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH> operand2;
         bool op0IsConst, op1IsConst, op2IsConst;
 
-        obtainScalarizedValues(operand0, &op0IsConst, CI->getOperand(0), CI);
-        obtainScalarizedValues(operand1, &op1IsConst, CI->getOperand(1), CI);
-        obtainScalarizedValues(operand2, &op2IsConst, CI->getOperand(2), CI);
+        obtainScalarizedValues(operand0, &op0IsConst, CI.getOperand(0), CI);
+        obtainScalarizedValues(operand1, &op1IsConst, CI.getOperand(1), CI);
+        obtainScalarizedValues(operand2, &op2IsConst, CI.getOperand(2), CI);
 
         SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH> newScalarizedInsts;
         newScalarizedInsts.resize(numElements);
@@ -1054,49 +992,41 @@ void ScalarizeFunction::scalarizeInstruction(CallInst* CI)
         {
             Type* scalarType = operand0[i]->getType();
             Value* scalarFshl = CallInst::Create(
-                Intrinsic::getDeclaration(CI->getModule(), Intrinsic::fshl, { scalarType }),
+                Intrinsic::getDeclaration(CI.getModule(), Intrinsic::fshl, { scalarType }),
                 { operand0[i], operand1[i], operand2[i] },
-                CI->getName() + ".scalar",
-                CI
+                CI.getName() + ".scalar",
+                &CI
             );
             newScalarizedInsts[i] = scalarFshl;
         }
 
-        updateSCMEntryWithValues(newEntry, &(newScalarizedInsts[0]), CI, true);
+        updateSCMEntryWithValues(newEntry, &(newScalarizedInsts[0]), &CI, true);
 
-        m_removedInsts.insert(CI);
+        m_removedInsts.insert(&CI);
     }
     else
     {
-        recoverNonScalarizableInst(CI);
+        recoverNonScalarizableInst(&CI);
     }
 }
 
-void ScalarizeFunction::scalarizeInstruction(AllocaInst* AI)
-{
-    V_PRINT(scalarizer, "\t\tAlloca instruction\n");
-    IGC_ASSERT_MESSAGE(AI, "instruction type dynamic cast failed");
-
-    return recoverNonScalarizableInst(AI);
-}
-
-void ScalarizeFunction::scalarizeInstruction(GetElementPtrInst* GI)
+void ScalarizeFunction::visitGetElementPtrInst(GetElementPtrInst& GI)
 {
     V_PRINT(scalarizer, "\t\tGEP instruction\n");
-    IGC_ASSERT_MESSAGE(GI, "instruction type dynamic cast failed");
+    IGC_ASSERT_MESSAGE(&GI, "instruction type dynamic cast failed");
 
     // If it has more than one index, leave it as is.
-    if (GI->getNumIndices() != 1)
+    if (GI.getNumIndices() != 1)
     {
-        return recoverNonScalarizableInst(GI);
+        return recoverNonScalarizableInst(&GI);
     }
-    Value* baseValue = GI->getOperand(0);
-    Value* indexValue = GI->getOperand(1);
+    Value* baseValue = GI.getOperand(0);
+    Value* indexValue = GI.getOperand(1);
 
     // If it's not a vector instruction, leave it as is.
     if (!baseValue->getType()->isVectorTy() && !indexValue->getType()->isVectorTy())
     {
-        return recoverNonScalarizableInst(GI);
+        return recoverNonScalarizableInst(&GI);
     }
     SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>operand1;
     SmallVector<Value*, MAX_INPUT_VECTOR_WIDTH>operand2;
@@ -1130,13 +1060,13 @@ void ScalarizeFunction::scalarizeInstruction(GetElementPtrInst* GI)
         auto op1 = baseValue->getType()->isVectorTy() ? operand1[i] : baseValue;
         auto op2 = indexValue->getType()->isVectorTy() ? operand2[i] : indexValue;
 
-        Type* BaseTy = GI->getSourceElementType();
+        Type* BaseTy = GI.getSourceElementType();
         Value* newGEP = GetElementPtrInst::Create(BaseTy, op1, op2,
-            VALUE_NAME(GI->getName()), GI);
+            VALUE_NAME(GI.getName()), &GI);
         Value* constIndex = ConstantInt::get(Type::getInt32Ty(context()), i);
         Instruction* insert = InsertElementInst::Create(assembledVector,
             newGEP, constIndex,
-            VALUE_NAME(GI->getName() + ".assembled.vect"), GI);
+            VALUE_NAME(GI.getName() + ".assembled.vect"), &GI);
         assembledVector = insert;
         scalarValues[i] = newGEP;
 
@@ -1147,14 +1077,20 @@ void ScalarizeFunction::scalarizeInstruction(GetElementPtrInst* GI)
     SCMEntry* newEntry = getSCMEntry(assembledVector);
     // Add new value/s to SCM
     updateSCMEntryWithValues(newEntry, &(scalarValues[0]), assembledVector, true);
-    GI->replaceAllUsesWith(assembledVector);
+    GI.replaceAllUsesWith(assembledVector);
 
     // Remove original instruction
-    m_removedInsts.insert(GI);
+    m_removedInsts.insert(&GI);
+}
+
+void ScalarizeFunction::visitInstruction(Instruction& I)
+{
+    // The remaining instructions are not supported for scalarization. Keep "as is"
+    recoverNonScalarizableInst(&I);
 }
 
 void ScalarizeFunction::obtainScalarizedValues(SmallVectorImpl<Value*>& retValues, bool* retIsConstant,
-    Value* origValue, Instruction* origInst, int destIdx)
+    Value* origValue, Instruction& origInst, int destIdx)
 {
     V_PRINT(scalarizer, "\t\t\tObtaining scalar value... " << *origValue << "\n");
 
@@ -1222,7 +1158,7 @@ void ScalarizeFunction::obtainScalarizedValues(SmallVectorImpl<Value*>& retValue
         // Generate a DRL: dummy values, which will be resolved after all scalarization is complete.
         V_PRINT(scalarizer, "\t\t\t*** Not found. Setting DRL. \n");
         Type* dummyType = origType->getElementType();
-        Function* dummy_function = getOrCreateDummyFunc(dummyType, origInst->getModule());
+        Function* dummy_function = getOrCreateDummyFunc(dummyType, origInst.getModule());
         DRLEntry newDRLEntry;
         newDRLEntry.unresolvedInst = origValue;
         newDRLEntry.dummyVals.resize(width);

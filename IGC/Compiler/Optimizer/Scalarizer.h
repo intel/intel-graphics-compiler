@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DataLayout.h>
+#include <llvm/IR/InstVisitor.h>
 #include <llvm/ADT/DenseSet.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <set>
@@ -52,7 +53,7 @@ namespace IGC
 ///  Functions are also replaced (similar to instructions), according
 ///  to data received from RuntimeServices.
 
-    class ScalarizeFunction : public llvm::FunctionPass
+    class ScalarizeFunction : public llvm::FunctionPass, public llvm::InstVisitor<ScalarizeFunction>
     {
     public:
         static char ID; // Pass identification, replacement for typeid
@@ -80,6 +81,23 @@ namespace IGC
         virtual bool doFinalization(llvm::Module& M) override;
         virtual bool runOnFunction(llvm::Function& F) override;
 
+        /*! \name Scalarizarion Functions
+         *  \{ */
+         /// @brief Scalarize an instruction
+         /// @param I Instruction to scalarize
+        void visitUnaryOperator(llvm::UnaryOperator& UI);
+        void visitBinaryOperator(llvm::BinaryOperator& BI);
+        void visitCmpInst(llvm::CmpInst& CI);
+        void visitCastInst(llvm::CastInst& CI);
+        void visitPHINode(llvm::PHINode& CI);
+        void visitSelectInst(llvm::SelectInst& SI);
+        void visitExtractElementInst(llvm::ExtractElementInst& SI);
+        void visitInsertElementInst(llvm::InsertElementInst& II);
+        void visitShuffleVectorInst(llvm::ShuffleVectorInst& SI);
+        void visitCallInst(llvm::CallInst& CI);
+        void visitGetElementPtrInst(llvm::GetElementPtrInst& GI);
+        void visitInstruction(llvm::Instruction& I);
+
     private:
 
         /// @brief select an exclusive set that would not be scalarized
@@ -95,22 +113,7 @@ namespace IGC
         /// @param Inst instruction to work on
         void recoverNonScalarizableInst(llvm::Instruction* Inst);
 
-        /*! \name Scalarizarion Functions
-         *  \{ */
-         /// @brief Scalarize an instruction
-         /// @param I Instruction to scalarize
-        void scalarizeInstruction(llvm::UnaryOperator* UI);
-        void scalarizeInstruction(llvm::BinaryOperator* BI);
-        void scalarizeInstruction(llvm::CmpInst* CI);
-        void scalarizeInstruction(llvm::CastInst* CI);
-        void scalarizeInstruction(llvm::PHINode* CI);
-        void scalarizeInstruction(llvm::SelectInst* SI);
-        void scalarizeInstruction(llvm::ExtractElementInst* SI);
-        void scalarizeInstruction(llvm::InsertElementInst* II);
-        void scalarizeInstruction(llvm::ShuffleVectorInst* SI);
-        void scalarizeInstruction(llvm::CallInst* CI);
-        void scalarizeInstruction(llvm::AllocaInst* CI);
-        void scalarizeInstruction(llvm::GetElementPtrInst* CI);
+
 
         /*! \name Scalarizarion Utility Functions
          *  \{ */
@@ -121,7 +124,7 @@ namespace IGC
          /// @param origValue Vector value to obtain elements from
          /// @param origInst Instruction for which service is requested (may be used as insertion point)
         void obtainScalarizedValues(llvm::SmallVectorImpl<llvm::Value*>& retValues, bool* retIsConstant,
-            llvm::Value* origValue, llvm::Instruction* origInst, int dstIdx = -1);
+            llvm::Value* origValue, llvm::Instruction& origInst, int dstIdx = -1);
 
 
         /// @brief a set contains vector from original kernel that need to be used after sclarization
