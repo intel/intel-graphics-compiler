@@ -9104,7 +9104,7 @@ namespace IGC
             predOpnd,
             visaExecSize(offset->IsUniform() ?
                 lanesToSIMDMode(offset->GetNumberElement()) : m_encoderState.m_simdSize),
-            ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask),
+            ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask || offset->IsUniform()),
             cacheOpts,
             addr,
             dataShape,
