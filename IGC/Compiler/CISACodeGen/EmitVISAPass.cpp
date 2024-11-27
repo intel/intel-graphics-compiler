@@ -23914,7 +23914,7 @@ void EmitPass::emitLSCFence(llvm::GenIntrinsicInst* inst)
 
 unsigned short getLSCAtomicBitWidth(llvm::GenIntrinsicInst* inst)
 {
-    llvm::StringRef name = inst->getName();
+    llvm::StringRef name = inst->getCalledFunction()->getName();
     unsigned short bitwidth = 0;
     if (name.startswith("llvm.genx.GenISA.LSCAtomicInts.i64") || name.startswith("llvm.genx.GenISA.LSCAtomicInts.u64")
         || name.startswith("llvm.genx.GenISA.LSCAtomicFP64"))
