@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXTranslateIntrinsics -mcpu=Xe2 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% %pass_pref%GenXTranslateIntrinsics -mcpu=Xe2 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
 declare <16 x i8> @llvm.genx.lsc.load2d.typed.bti.v16i8(i8, i8, i32, i32, i32, i32, i32)
 declare void @llvm.genx.lsc.store2d.typed.bti.v16i8(i8, i8, i32, i32, i32, i32, i32, <16 x i8>)

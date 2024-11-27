@@ -13,6 +13,9 @@ SPDX-License-Identifier: MIT
 // This pass contains GenX-specific IR validity checks.
 //
 #include "GenXVerify.h"
+#if LLVM_VERSION_MAJOR >= 16
+#include "vc/GenXCodeGen/GenXVerify.h"
+#endif
 
 bool GenXVerify::doInitialization(Module &M) {
   Ctx = &M.getContext();
@@ -109,3 +112,12 @@ ModulePass *llvm::createGenXVerifyPass(GenXVerifyStage ValidityInvariantsSet) {
   initializeGenXVerifyPass(*PassRegistry::getPassRegistry());
   return new GenXVerify(ValidityInvariantsSet);
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses GenXVerifyPass::run(llvm::Module &M,
+                                      llvm::AnalysisManager<llvm::Module> &) {
+  GenXVerify GenXVer;
+  GenXVer.runOnModule(M);
+  return PreservedAnalyses::all();
+}
+#endif

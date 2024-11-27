@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Passes/PassPlugin.h"
 
+#include "vc/GenXCodeGen/GenXVerify.h"
 #include "vc/GenXOpts/GenXOptsNewPM.h"
 #include "vc/Support/BackendConfig.h"
 

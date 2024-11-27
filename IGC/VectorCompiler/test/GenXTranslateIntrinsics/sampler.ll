@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXTranslateIntrinsics -mcpu=XeHPG -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% %pass_pref%GenXTranslateIntrinsics -mcpu=XeHPG -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
 declare <16 x float> @llvm.genx.load.v16f32.v16i32(i32, i32, <16 x i32>, <16 x i32>, <16 x i32>)
 declare <64 x float> @llvm.genx.3d.load.v64f32.v16i1.v16i32.v16i32.v16i32.v16f32.v16f32.v16f32.v16f32.v16f32.v16f32.v16f32.v16f32.v16f32.v16f32.v16f32.v16f32(i32, <16 x i1>, i32, i16, i32, <16 x i32>, <16 x i32>, <16 x i32>, <16 x float>, <16 x float>, <16 x float>, <16 x float>, <16 x float>, <16 x float>, <16 x float>, <16 x float>, <16 x float>, <16 x float>, <16 x float>, <16 x float>)

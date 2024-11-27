@@ -25,8 +25,16 @@ using namespace llvm;
 
 namespace {
 struct GenXLinkageCorruptor final : public ModulePass {
+#if LLVM_VERSION_MAJOR >= 16
+  GenXBackendConfigPass::Result &BCfg;
+#endif
   static char ID;
+#if LLVM_VERSION_MAJOR >= 16
+  GenXLinkageCorruptor(GenXBackendConfigPass::Result &BC)
+      : BCfg(BC), ModulePass(ID) {}
+#else
   GenXLinkageCorruptor() : ModulePass(ID) {}
+#endif
   StringRef getPassName() const override { return "GenX linkage corruptor"; }
   void getAnalysisUsage(AnalysisUsage &AU) const override;
   bool runOnModule(Module &M) override;
@@ -41,18 +49,19 @@ INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_END(GenXLinkageCorruptor, "GenXLinkageCorruptor",
                     "GenXLinkageCorruptor", false, false)
 
+#if LLVM_VERSION_MAJOR < 16
 namespace llvm {
 ModulePass *createGenXLinkageCorruptorPass() {
   initializeGenXLinkageCorruptorPass(*PassRegistry::getPassRegistry());
   return new GenXLinkageCorruptor;
 }
 } // namespace llvm
-
-#if LLVM_VERSION_MAJOR >= 16
+#else
 PreservedAnalyses
 GenXLinkageCorruptorPass::run(llvm::Module &M,
-                              llvm::AnalysisManager<llvm::Module> &) {
-  GenXLinkageCorruptor GenXLink;
+                              llvm::AnalysisManager<llvm::Module> &AM) {
+  auto &Res = AM.getResult<GenXBackendConfigPass>(M);
+  GenXLinkageCorruptor GenXLink(Res);
   if (GenXLink.runOnModule(M)) {
     return PreservedAnalyses::all();
   }
@@ -65,7 +74,9 @@ void GenXLinkageCorruptor::getAnalysisUsage(AnalysisUsage &AU) const {
 }
 
 bool GenXLinkageCorruptor::runOnModule(Module &M) {
+#if LLVM_VERSION_MAJOR < 16
   auto &&BCfg = getAnalysis<GenXBackendConfig>();
+#endif
   FunctionControl FCtrl = BCfg.getFCtrl();
   bool SaveStackCallLinkage = BCfg.saveStackCallLinkage();
   bool Changed = false;

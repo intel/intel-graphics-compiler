@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXSimplify -mcpu=Gen9 -march=genx64 -mtriple=spir64 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% %pass_pref%GenXSimplify -mcpu=Gen9 -march=genx64 -mtriple=spir64 -S < %s | FileCheck %s
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 

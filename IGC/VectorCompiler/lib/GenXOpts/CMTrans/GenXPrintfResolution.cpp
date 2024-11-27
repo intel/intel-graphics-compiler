@@ -93,9 +93,18 @@ class GenXPrintfResolution final : public ModulePass {
   const DataLayout *DL = nullptr;
   std::array<FunctionCallee, PrintfImplFunc::Size> PrintfImplDecl;
 
+#if LLVM_VERSION_MAJOR >= 16
+  GenXBackendConfigPass::Result &BC;
+#endif
+
 public:
   static char ID;
+#if LLVM_VERSION_MAJOR < 16
   GenXPrintfResolution() : ModulePass(ID) {}
+#else
+  GenXPrintfResolution(GenXBackendConfigPass::Result &BC)
+      : BC(BC), ModulePass(ID) {}
+#endif
   StringRef getPassName() const override { return "GenX printf resolution"; }
   void getAnalysisUsage(AnalysisUsage &AU) const override;
   bool runOnModule(Module &M) override;
@@ -132,18 +141,19 @@ INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_END(GenXPrintfResolution, "GenXPrintfResolution",
                     "GenXPrintfResolution", false, false)
 
+#if LLVM_VERSION_MAJOR < 16
 namespace llvm {
 ModulePass *createGenXPrintfResolutionPass() {
   initializeGenXPrintfResolutionPass(*PassRegistry::getPassRegistry());
   return new GenXPrintfResolution;
 }
 } // namespace llvm
-
-#if LLVM_VERSION_MAJOR >= 16
+#else
 PreservedAnalyses
 GenXPrintfResolutionPass::run(llvm::Module &M,
-                              llvm::AnalysisManager<llvm::Module> &) {
-  GenXPrintfResolution GenXPrint;
+                              llvm::AnalysisManager<llvm::Module> &AM) {
+  auto &Res = AM.getResult<GenXBackendConfigPass>(M);
+  GenXPrintfResolution GenXPrint(Res);
   if (GenXPrint.runOnModule(M)) {
     return PreservedAnalyses::all();
   }
@@ -255,7 +265,12 @@ bool GenXPrintfResolution::runOnModule(Module &M) {
 
 std::unique_ptr<Module> GenXPrintfResolution::getBiFModule(LLVMContext &Ctx) {
   MemoryBufferRef PrintfBiFModuleBuffer =
+#if LLVM_VERSION_MAJOR < 16
       getAnalysis<GenXBackendConfig>().getBiFModule(BiFKind::VCPrintf);
+#else
+      BC.getBiFModule(BiFKind::VCPrintf);
+#endif
+
   if (!PrintfBiFModuleBuffer.getBufferSize()) {
     IGC_ASSERT_MESSAGE(0, "printf implementation module is absent");
   }

@@ -1,12 +1,12 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXTranslateIntrinsics -mcpu=XeHPC -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% %pass_pref%GenXTranslateIntrinsics -mcpu=XeHPC -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
 declare <16 x i32> @llvm.genx.lsc.load2d.stateless.v16i32.v1i1.i64(<1 x i1>, i8, i8, i8, i8, i8, i16, i16, i8, i64, i32, i32, i32, i32, i32)
 declare <32 x i16> @llvm.genx.lsc.load2d.stateless.v32i16.v1i1.i64(<1 x i1>, i8, i8, i8, i8, i8, i16, i16, i8, i64, i32, i32, i32, i32, i32)

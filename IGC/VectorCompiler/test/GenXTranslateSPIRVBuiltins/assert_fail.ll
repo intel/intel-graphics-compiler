@@ -1,12 +1,12 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: not %opt %use_old_pass_manager% -GenXTranslateSPIRVBuiltins \
+; RUN: not %opt %use_old_pass_manager% %pass_pref%GenXTranslateSPIRVBuiltins  \
 ; RUN: -vc-spirv-builtins-bif-path=%VC_SPIRV_OCL_BIF% -march=genx64 \
 ; RUN: -mtriple=spir64-unknown-unknown -mcpu=XeHPC -S %s 2>&1 | FileCheck %s
 ; ------------------------------------------------

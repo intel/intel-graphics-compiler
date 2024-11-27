@@ -26,6 +26,7 @@ MODULE_PASS("GenXPrintfResolution", GenXPrintfResolutionPass())
 MODULE_PASS("GenXTrampolineInsertion", GenXTrampolineInsertionPass())
 MODULE_PASS("GenXTranslateSPIRVBuiltins", GenXTranslateSPIRVBuiltinsPass())
 MODULE_PASS("GenXCloneIndirectFunctions", GenXCloneIndirectFunctionsPass())
+MODULE_PASS("GenXVerify", GenXVerifyPass())
 
 #undef MODULE_PASS
 

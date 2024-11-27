@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXTranslateIntrinsics -mcpu=XeHPC -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% %pass_pref%GenXTranslateIntrinsics -mcpu=XeHPC -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
 declare <16 x i32> @llvm.genx.lsc.load.2d.ugm.desc.v16i32.v2i8(i1, <2 x i8>, i8, i16, i16, <16 x i32>, i32, i32, <16 x i32>)
 declare <32 x i16> @llvm.genx.lsc.load.2d.ugm.desc.v32i16.v2i8(i1, <2 x i8>, i8, i16, i16, <16 x i32>, i32, i32, <32 x i16>)

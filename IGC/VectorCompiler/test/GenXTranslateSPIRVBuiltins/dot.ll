@@ -6,10 +6,10 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXTranslateSPIRVBuiltins \
+; RUN: %opt_typed_ptrs %use_old_pass_manager% %pass_pref%GenXTranslateSPIRVBuiltins  \
 ; RUN:  -vc-spirv-builtins-bif-path=%VC_SPIRV_OCL_BIF% -march=genx64 \
 ; RUN:  -mtriple=spir64-unknown-unknown -mcpu=XeHPC -S < %s | FileCheck %s
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXTranslateSPIRVBuiltins \
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% %pass_pref%GenXTranslateSPIRVBuiltins  \
 ; RUN:  -vc-spirv-builtins-bif-path=%VC_SPIRV_OCL_BIF% -march=genx64 \
 ; RUN:  -mtriple=spir64-unknown-unknown -mcpu=XeHPC -S < %s | FileCheck %s
 ; ------------------------------------------------

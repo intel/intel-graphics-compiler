@@ -77,9 +77,18 @@ class GenXTrampolineInsertion : public ModulePass,
   std::vector<Function *> ExternalFuncs;
   std::vector<Function *> InternalIndirectFuncs;
 
+#if LLVM_VERSION_MAJOR >= 16
+  GenXBackendConfigPass::Result &BECfg;
+#endif
+
 public:
   static char ID;
+#if LLVM_VERSION_MAJOR < 16
   GenXTrampolineInsertion() : ModulePass(ID) {
+#else
+  GenXTrampolineInsertion(GenXBackendConfigPass::Result &BC)
+      : BECfg(BC), ModulePass(ID) {
+#endif
     initializeGenXTrampolineInsertionPass(*PassRegistry::getPassRegistry());
   }
 
@@ -171,8 +180,9 @@ bool GenXTrampolineInsertion::runOnModule(Module &M) {
     return false;
 
   bool Modified = false;
-
+#if LLVM_VERSION_MAJOR < 16
   auto &&BECfg = getAnalysis<GenXBackendConfig>();
+#endif
   IGC_ASSERT_MESSAGE(
       llvm::none_of(M.functions(),
         [&](const Function& F) { return F.hasAddressTaken() && BECfg.directCallsOnly(F.getName()); }),
@@ -233,16 +243,17 @@ INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_END(GenXTrampolineInsertion, "GenXTrampolineInsertion",
                     "GenXTrampolineInsertion", false, false)
 
+#if LLVM_VERSION_MAJOR < 16
 namespace llvm {
 ModulePass *createGenXTrampolineInsertionPass() {
   return new GenXTrampolineInsertion();
 }
 } // namespace llvm
-
-#if LLVM_VERSION_MAJOR >= 16
+#else
 PreservedAnalyses
-GenXTrampolineInsertionPass::run(Module &M, AnalysisManager<llvm::Module> &) {
-  GenXTrampolineInsertion GenXTramp;
+GenXTrampolineInsertionPass::run(Module &M, AnalysisManager<llvm::Module> &AM) {
+  auto &Res = AM.getResult<GenXBackendConfigPass>(M);
+  GenXTrampolineInsertion GenXTramp(Res);
   if (GenXTramp.runOnModule(M)) {
     return PreservedAnalyses::all();
   }
