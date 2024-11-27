@@ -28,7 +28,7 @@ namespace IGC
     ///         are always aligned on their data type.
     ///         The result is an underapproximation of the actual alignment, so it
     ///         is always safe.
-    class AlignmentAnalysis : public llvm::FunctionPass, public llvm::InstVisitor<AlignmentAnalysis, alignment_t>
+    class AlignmentAnalysis : public llvm::FunctionPass, public llvm::InstVisitor<AlignmentAnalysis, llvm::Align>
     {
     public:
         // Pass identification, replacement for typeid
@@ -55,31 +55,36 @@ namespace IGC
         virtual bool runOnFunction(llvm::Function& F) override;
 
         // @ brief Instruction visitors
-        alignment_t visitInstruction(llvm::Instruction& I);
-        alignment_t visitAllocaInst(llvm::AllocaInst& I);
-        alignment_t visitIntToPtrInst(llvm::IntToPtrInst& I);
-        alignment_t visitPtrToIntInst(llvm::PtrToIntInst& I);
-        alignment_t visitSelectInst(llvm::SelectInst& I);
-        alignment_t visitGetElementPtrInst(llvm::GetElementPtrInst& I);
-        alignment_t visitPHINode(llvm::PHINode& I);
-        alignment_t visitBitCastInst(llvm::BitCastInst& I);
-        alignment_t visitAdd(llvm::BinaryOperator& I);
-        alignment_t visitMul(llvm::BinaryOperator& I);
-        alignment_t visitShl(llvm::BinaryOperator& I);
-        alignment_t visitAnd(llvm::BinaryOperator& I);
-        alignment_t visitTruncInst(llvm::TruncInst& I);
-        alignment_t visitZExtInst(llvm::ZExtInst& I);
-        alignment_t visitSExtInst(llvm::SExtInst& I);
-        alignment_t visitCallInst(llvm::CallInst& I);
+        llvm::Align visitInstruction(llvm::Instruction& I);
+        llvm::Align visitAllocaInst(llvm::AllocaInst& I);
+        llvm::Align visitIntToPtrInst(llvm::IntToPtrInst& I);
+        llvm::Align visitPtrToIntInst(llvm::PtrToIntInst& I);
+        llvm::Align visitSelectInst(llvm::SelectInst& I);
+        llvm::Align visitGetElementPtrInst(llvm::GetElementPtrInst& I);
+        llvm::Align visitPHINode(llvm::PHINode& I);
+        llvm::Align visitBitCastInst(llvm::BitCastInst& I);
+        llvm::Align visitAdd(llvm::BinaryOperator& I);
+        llvm::Align visitMul(llvm::BinaryOperator& I);
+        llvm::Align visitShl(llvm::BinaryOperator& I);
+        llvm::Align visitAnd(llvm::BinaryOperator& I);
+        llvm::Align visitTruncInst(llvm::TruncInst& I);
+        llvm::Align visitZExtInst(llvm::ZExtInst& I);
+        llvm::Align visitSExtInst(llvm::SExtInst& I);
+        llvm::Align visitCallInst(llvm::CallInst& I);
 
-        void SetInstAlignment(llvm::Instruction& I);
-        void SetInstAlignment(llvm::LoadInst& I);
-        void SetInstAlignment(llvm::StoreInst& I);
-        void SetInstAlignment(llvm::MemSetInst& I);
-        void SetInstAlignment(llvm::MemCpyInst& I);
-        void SetInstAlignment(llvm::MemMoveInst& I);
+        bool SetInstAlignment(llvm::Instruction& I);
+        bool SetInstAlignment(llvm::LoadInst& I);
+        bool SetInstAlignment(llvm::StoreInst& I);
+        bool SetInstAlignment(llvm::MemSetInst& I);
+        bool SetInstAlignment(llvm::MemCpyInst& I);
+        bool SetInstAlignment(llvm::MemMoveInst& I);
 
     protected:
+        // Check if the function has OpenCL metadata that specifies the alignment of
+        // its arguments. If it does, set the LLVM alignment attribute of the
+        // arguments accordingly. This is helpful for passes like InferAlignment.
+        void setArgumentAlignmentBasedOnOptionalMetadata(llvm::Function& F);
+
         /// @breif Evaluates the alignment of I based on its operands.
         ///        For Load and Store instructions, also sets the alignment
         ///        of the operation itself.
@@ -89,17 +94,15 @@ namespace IGC
         /// @brief Returns the alignment for V, if it is known.
         ///        Otherwise, returns the maximum alignment.
         /// @param V the value the alignment of which we're interested in
-        auto getAlignValue(llvm::Value* V) const;
+        llvm::Align getAlignValue(llvm::Value* V) const;
 
         /// @brief Returns the alignment of a constant integer.
         ///        This is normally 1 << ctz(C) (the highest power of 2 that divides C),
         ///        except when C is 0, when it is the max alignment
-        auto getConstantAlignment(uint64_t C) const;
+        llvm::Align getConstantAlignment(uint64_t C) const;
 
         /// @brief This map stores the known alignment of every value.
-        llvm::MapVector<llvm::Value*, alignment_t> m_alignmentMap;
-
-        static const alignment_t MinimumAlignment = 1;
+        llvm::MapVector<llvm::Value*, llvm::Align> m_alignmentMap;
 
         const llvm::DataLayout* m_DL = nullptr;
     };
