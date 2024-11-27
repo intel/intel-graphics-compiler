@@ -469,7 +469,7 @@ DECLARE_IGC_REGKEY(bool, UseVMaskPredicate,             false, "Use VMask as pre
 DECLARE_IGC_REGKEY(bool, UseVMaskPredicateForLoads, true, "Use VMask as predicate for subspan usage (loads only)", true)
 DECLARE_IGC_REGKEY(bool, UseVMaskPredicateForIndirectMove, true, "Use VMask as predicate for subspan usage (indirect mov only)", true)
 DECLARE_IGC_REGKEY(bool, StackOverflowDetection,        false, "Inserts checks for stack overflow when stack calls are used.", true)
-DECLARE_IGC_REGKEY(bool, BufferBoundsChecking,          false, "Setting this to 1 (true) enables buffer bounds checking", false)
+DECLARE_IGC_REGKEY(bool, BufferBoundsChecking,          false, "Setting this to 1 (true) enables buffer bounds checking", true)
 DECLARE_IGC_REGKEY(DWORD, MinimumValidAddress, 0, "If it's greater than 0, it enables minimal valid address checking where the threshold is the given value (in hex).", true)
 DECLARE_IGC_REGKEY(bool, AssignZeroToUndefPhiNodes, false, "Assigns a null value to such a phi node which has an undefined value during emitting vISA", false)
 DECLARE_IGC_REGKEY_ENUM(InjectPrintfFlag, 0, "Inject printf debugging flag", INJECT_PRINTF_OPTIONS, true)
