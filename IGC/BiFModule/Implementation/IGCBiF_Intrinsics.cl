@@ -521,6 +521,7 @@ uint  __builtin_IB_get_image_bti(uint img);
 
 // ballot intrinsic
 uint __builtin_IB_WaveBallot(bool p);
+uint __builtin_IB_clustered_WaveBallot(bool p, uint cluster_size);
 
 // VA
 void   __builtin_IB_va_erode_64x4( __local uchar* dst, float2 coords, int srcImgId, int i_accelerator );

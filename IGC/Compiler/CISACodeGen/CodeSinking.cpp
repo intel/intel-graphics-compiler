@@ -2492,6 +2492,7 @@ namespace IGC {
                         case GenISAIntrinsic::GenISA_WaveClusteredBroadcast:
                         case GenISAIntrinsic::GenISA_WaveBallot:
                         case GenISAIntrinsic::GenISA_WaveInverseBallot:
+                        case GenISAIntrinsic::GenISA_WaveClusteredBallot:
                         case GenISAIntrinsic::GenISA_WaveAll:
                         case GenISAIntrinsic::GenISA_WaveClustered:
                         case GenISAIntrinsic::GenISA_WaveInterleave:

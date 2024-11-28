@@ -2172,6 +2172,34 @@ intrinsics:
             - !<MemoryRestriction>
                 memory_location: !MemoryLocation InaccessibleMem
     - !<IntrinsicDefinition>
+        name: "GenISA_WaveClusteredBallot"
+        comment: "Same as WaveBallot, but result includes only lanes for current cluster.\
+            \ Works in non-uniform context."
+        return_definition: !<ReturnDefinition>
+            type_definition: *i32
+            comment: "return a bitfield with 1 for active lane in cluster with input true,\
+                \ 0 for the rest."
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *i1
+                comment: "predicate"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *i32
+                comment: "cluster size - must be a compile time constant 8 or 16"
+            - !<ArgumentDefinition>
+                name: Arg2
+                type_definition: *i32
+                comment: "helperLaneMode : 0: not used; 1: helper lanes participatein\
+                    \ wave ops, 2: helper lanes do not participate in wave ops."
+        attributes:
+            - !AttributeID "Convergent"
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation InaccessibleMem
+    - !<IntrinsicDefinition>
         name: "GenISA_WaveClustered"
         comment: "Accumulate all active lanes within consecutive input clusters and\
             \ broadcast the result to associated output clusters. A k-cluster is a\
