@@ -30,13 +30,20 @@ define dllexport spir_kernel void @kernel() #0 {
   ; CHECK-OPAQUE-PTRS: %load_struct_i64i8 = load { i64, i8 }, ptr addrspace(3) inttoptr (i32 8 to ptr addrspace(3))
   %load_struct_i64i8 = load { i64, i8 }, { i64, i8 } addrspace(3)* @slm_struct_i64i8
 
+  ; CHECK-TYPED-PTRS: call void @llvm.genx.barrier()
+  ; CHECK-OPAQUE-PTRS: call void @llvm.genx.barrier()
+  call void @llvm.genx.barrier()
+
   ; CHECK-TYPED-PTRS: %load_struct_align = load { i1 }, { i1 } addrspace(3)* inttoptr (i32 268435456 to { i1 } addrspace(3)*)
   ; CHECK-OPAQUE-PTRS: %load_struct_align = load { i1 }, ptr addrspace(3) inttoptr (i32 268435456 to ptr addrspace(3))
   %load_struct_align = load { i1 }, { i1 } addrspace(3)* @slm_struct_align
   ret void
 }
 
+declare void @llvm.genx.barrier() #1
+
 attributes #0 = { noinline nounwind "CMGenxMain" }
+attributes #1 = { nounwind convergent }
 
 !genx.kernels = !{!0}
 !genx.kernel.internal = !{!3}
