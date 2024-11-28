@@ -5013,6 +5013,8 @@ bool GenXLowering::lowerReduction(CallInst *CI, Value *Src, Value *Start,
     IGC_ASSERT_EXIT(TailIndex);
     TailWidth = SrcWidth % TailIndex;
     SrcWidth = TailIndex;
+  } else {
+    TailWidth = 0;
   }
 
   for (SrcWidth /= 2; SrcWidth > 0; SrcWidth /= 2) {

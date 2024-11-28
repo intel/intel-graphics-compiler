@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeHPG -mtriple=spir64-unknown-unknown -S < %s | FileCheck --check-prefix=SIMD16 %s
-; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeHPC -mtriple=spir64-unknown-unknown -S < %s | FileCheck --check-prefix=SIMD32 %s
+; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeHPG -mtriple=spir64-unknown-unknown -S < %s | FileCheck --check-prefixes=SIMD16,CHECK %s
+; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeHPC -mtriple=spir64-unknown-unknown -S < %s | FileCheck --check-prefixes=SIMD32,CHECK %s
 ; REQUIRES: llvm_12_or_greater
 
 declare i32 @llvm.vector.reduce.add.v96i32(<96 x i32>)
@@ -19,6 +19,8 @@ declare float @llvm.vector.reduce.fmax.v96f32(<96 x float>)
 
 declare i32 @llvm.vector.reduce.add.v14i32(<14 x i32>)
 declare i32 @llvm.vector.reduce.add.v73i32(<73 x i32>)
+
+declare float @llvm.vector.reduce.fadd.v16f32(float, <16 x float>)
 
 define i32 @test_add(<96 x i32> %src) {
 ; SIMD16-LABEL: @test_add(
@@ -454,5 +456,26 @@ define float @test_fmin(<96 x float> %src) {
 ; SIMD32-NEXT:    ret float [[TMP21]]
 ;
   %reduce = call reassoc float @llvm.vector.reduce.fmin.v96f32(<96 x float> %src)
+  ret float %reduce
+}
+
+define float @test_fadd_legal(<16 x float> %src) {
+; CHECK-LABEL: @test_fadd_legal(
+; CHECK-NEXT:    [[TMP1:%.*]] = call <8 x float> @llvm.genx.rdregionf.v8f32.v16f32.i16(<16 x float> [[SRC:%.*]], i32 0, i32 8, i32 1, i16 0, i32 undef)
+; CHECK-NEXT:    [[TMP2:%.*]] = call <8 x float> @llvm.genx.rdregionf.v8f32.v16f32.i16(<16 x float> [[SRC]], i32 0, i32 8, i32 1, i16 32, i32 undef)
+; CHECK-NEXT:    [[TMP3:%.*]] = fadd <8 x float> [[TMP1]], [[TMP2]]
+; CHECK-NEXT:    [[TMP4:%.*]] = call <4 x float> @llvm.genx.rdregionf.v4f32.v8f32.i16(<8 x float> [[TMP3]], i32 0, i32 4, i32 1, i16 0, i32 undef)
+; CHECK-NEXT:    [[TMP5:%.*]] = call <4 x float> @llvm.genx.rdregionf.v4f32.v8f32.i16(<8 x float> [[TMP3]], i32 0, i32 4, i32 1, i16 16, i32 undef)
+; CHECK-NEXT:    [[TMP6:%.*]] = fadd <4 x float> [[TMP4]], [[TMP5]]
+; CHECK-NEXT:    [[TMP7:%.*]] = call <2 x float> @llvm.genx.rdregionf.v2f32.v4f32.i16(<4 x float> [[TMP6]], i32 0, i32 2, i32 1, i16 0, i32 undef)
+; CHECK-NEXT:    [[TMP8:%.*]] = call <2 x float> @llvm.genx.rdregionf.v2f32.v4f32.i16(<4 x float> [[TMP6]], i32 0, i32 2, i32 1, i16 8, i32 undef)
+; CHECK-NEXT:    [[TMP9:%.*]] = fadd <2 x float> [[TMP7]], [[TMP8]]
+; CHECK-NEXT:    [[TMP10:%.*]] = call <1 x float> @llvm.genx.rdregionf.v1f32.v2f32.i16(<2 x float> [[TMP9]], i32 0, i32 1, i32 1, i16 0, i32 undef)
+; CHECK-NEXT:    [[TMP11:%.*]] = call <1 x float> @llvm.genx.rdregionf.v1f32.v2f32.i16(<2 x float> [[TMP9]], i32 0, i32 1, i32 1, i16 4, i32 undef)
+; CHECK-NEXT:    [[TMP12:%.*]] = fadd <1 x float> [[TMP10]], [[TMP11]]
+; CHECK-NEXT:    [[TMP13:%.*]] = bitcast <1 x float> [[TMP12]] to float
+; CHECK-NEXT:    [[RES:%.*]] = fadd float [[TMP13]], 0.000000e+00
+; CHECK-NEXT:    ret float [[RES]]
+  %reduce = call reassoc float @llvm.vector.reduce.fadd.v16f32(float 0.0, <16 x float> %src)
   ret float %reduce
 }
