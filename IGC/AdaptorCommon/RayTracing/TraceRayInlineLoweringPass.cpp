@@ -116,7 +116,7 @@ private:
 char TraceRayInlineLoweringPass::ID = 0;
 
 // Register pass to igc-opt
-#define PASS_FLAG "tracerayinline-lowering"
+#define PASS_FLAG "igc-tracerayinline-lowering-pass"
 #define PASS_DESCRIPTION "Lower tracerayinline intrinsics"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false

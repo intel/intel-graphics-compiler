@@ -1932,6 +1932,7 @@ Value* RTBuilder::syncStackToShadowMemory(
     Value* ProceedReturnVal,
     Value* ShadowMemRTCtrlPtr)
 {
+
     switch (getMemoryStyle())
     {
 #define STYLE(X)                             \
