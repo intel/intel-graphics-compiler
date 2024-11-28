@@ -1479,6 +1479,16 @@ auto* _getGeometryIndex_Xe(Value* arg_0, Value* arg_1, Value* arg_2, const Twine
   return V_18;
 }
 
+auto* _getPrimitiveIndexDelta_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
+{
+  auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(3) });
+  auto* V_3 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(3) });
+  auto* V_4 = CreateSelect(arg_1, V_2, V_3);
+  auto* V_5 = CreateLoad(getInt32Ty(), V_4);
+  auto* V_6 = CreateAnd(V_5, getInt32(65535), _ReturnName);
+  return V_6;
+}
+
 void _createPotentialHit2CommittedHit_Xe(Value* arg_0)
 {
   auto* V_1 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(0) });
