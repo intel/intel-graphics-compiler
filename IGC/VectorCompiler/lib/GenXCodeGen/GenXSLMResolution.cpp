@@ -279,9 +279,12 @@ bool GenXSLMResolution::runOnModule(Module &M) {
 
   auto SLMVars = collectSLMVariables(M);
   if (!SLMVars.empty())
-    for (auto &F : M.functions())
+    for (auto &F : M.functions()) {
+      if (F.isDeclaration())
+        continue;
       Modified |=
           vc::breakConstantExprs(&F, vc::LegalizationStage::NotLegalized);
+    }
 
   for (auto &F : M.functions())
     if (vc::isKernel(&F))
