@@ -319,6 +319,9 @@ public:
   }
   void addRetRegs(unsigned int f) { retGRFs[f] = true; }
   const bool *getRetGRFs() { return retGRFs; }
+  void clearRetGRF(unsigned GRFSize) {
+      memset(retGRFs, false, GRFSize);
+  }
   void clearForbiddenGRF(unsigned GRFSize) {
     if (retGRFs) {
       memset(retGRFs, false, GRFSize);
@@ -359,7 +362,7 @@ class globalLinearScan {
 private:
   GlobalRA &gra;
   IR_Builder &builder;
-  Mem_Manager GLSMem;
+  Mem_Manager *GLSMem;
   PhyRegsManager &pregManager;
   std::vector<LSLiveRange *> &liveIntervals;
   std::vector<LSLiveRange *> *preAssignedIntervals;
@@ -404,7 +407,7 @@ public:
                        &inputLivelIntervals,
                    PhyRegsManager &pregMgr, unsigned int numReg,
                    unsigned int numEOT, unsigned int lastLexID,
-                   bool bankConflict, bool internalConflict);
+                   bool bankConflict, bool internalConflict, Mem_Manager* GLSMem);
 
   void getCalleeSaveGRF(std::vector<unsigned int> &regNum, G4_Kernel *kernel);
 

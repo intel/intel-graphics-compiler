@@ -14,8 +14,6 @@ SPDX-License-Identifier: MIT
 #include "SpillManagerGMRF.h"
 #include "common.h"
 #include <optional>
-#include <fstream>
-#include <tuple>
 
 using namespace vISA;
 
@@ -45,10 +43,15 @@ void LinearScanRA::allocForbiddenVector(LSLiveRange *lr) {
 }
 
 void globalLinearScan::allocRetRegsVector(LSLiveRange *lr) {
-  unsigned size = builder.kernel.getNumRegTotal();
-  bool *forbidden = (bool *)GLSMem.alloc(sizeof(bool) * size);
-  memset(forbidden, false, size);
-  lr->setRegGRFs(forbidden);
+  auto size = builder.kernel.getNumRegTotal();
+  if (lr->getRetGRFs() == nullptr) {
+    bool *forbidden = (bool *)GLSMem->alloc(sizeof(bool) * size);
+    memset(forbidden, false, size);
+    lr->setRegGRFs(forbidden);
+  } else {
+    // If we are vector is preallocated, simply clear it
+    lr->clearRetGRF(size);
+  }
 }
 
 LSLiveRange *LinearScanRA::GetOrCreateLocalLiveRange(G4_Declare *topdcl) {
@@ -865,7 +868,7 @@ int LinearScanRA::linearScanRA() {
     PhyRegsManager pregManager(builder, initPregs, doBCR);
     globalLinearScan ra(gra, &l, globalLiveIntervals, &preAssignedLiveIntervals,
                         inputIntervals, pregManager, numRegLRA, numRowsEOT,
-                        latestLexID, doBCR, highInternalConflict);
+                        latestLexID, doBCR, highInternalConflict, &LSMem);
 
     // Run linear scan RA
     bool success = ra.runLinearScan(builder, globalLiveIntervals, spillLRs);
@@ -1783,8 +1786,8 @@ globalLinearScan::globalLinearScan(
     std::list<LSInputLiveRange *, std_arena_based_allocator<LSInputLiveRange *>>
         &inputLivelIntervals,
     PhyRegsManager &pregMgr, unsigned int numReg, unsigned int numEOT,
-    unsigned int lastLexID, bool bankConflict, bool internalConflict)
-    : gra(g), builder(g.builder), GLSMem(4096), pregManager(pregMgr),
+    unsigned int lastLexID, bool bankConflict, bool internalConflict, Mem_Manager* GLSMem)
+    : gra(g), builder(g.builder), GLSMem(GLSMem), pregManager(pregMgr),
       liveIntervals(lv), preAssignedIntervals(assignedLiveIntervals),
       inputIntervals(inputLivelIntervals), numRowsEOT(numEOT),
       lastLexicalID(lastLexID), numRegLRA(numReg), doBankConflict(bankConflict),
@@ -1943,8 +1946,9 @@ bool globalLinearScan::runLinearScan(IR_Builder &builder,
     lr->getFirstRef(idx);
     if (!lr->isEOT() && !lr->getAssigned()) {
       // Add forbidden for preAssigned registers
+      auto isTopDclPseudoVCA = builder.kernel.fg.isPseudoVCADcl(lr->getTopDcl());
       for (auto preAssginedLI : *preAssignedIntervals) {
-        if (builder.kernel.fg.isPseudoVCADcl(lr->getTopDcl()) &&
+        if (isTopDclPseudoVCA &&
             (builder.isPreDefRet(preAssginedLI->getTopDcl()) ||
              builder.isPreDefArg(preAssginedLI->getTopDcl()))) {
           continue;
