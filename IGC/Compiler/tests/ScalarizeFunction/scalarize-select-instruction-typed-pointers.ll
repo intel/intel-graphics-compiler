@@ -52,8 +52,6 @@ define <2 x float> @should_work_with_different_value_type(<2 x i1> %switch, <2 x
   ret <2 x float> %result
 }
 
-; triangulating with @should_work_with_different_value_type
-; update checks if fast will be preserved
 define <2 x float> @should_work_with_fast_math_flags(<2 x i1> %switch, <2 x float> %src1, <2 x float> %src2) {
 ; CHECK-LABEL: define <2 x float> @should_work_with_fast_math_flags(
 ; CHECK-SAME: <2 x i1> [[SWITCH:%.*]], <2 x float> [[SRC1:%.*]], <2 x float> [[SRC2:%.*]]) {
@@ -63,8 +61,8 @@ define <2 x float> @should_work_with_fast_math_flags(<2 x i1> %switch, <2 x floa
 ; CHECK-NEXT:    [[SRC2_SCALAR2:%.*]] = extractelement <2 x float> [[SRC2]], i32 1
 ; CHECK-NEXT:    [[SRC1_SCALAR:%.*]] = extractelement <2 x float> [[SRC1]], i32 0
 ; CHECK-NEXT:    [[SRC1_SCALAR1:%.*]] = extractelement <2 x float> [[SRC1]], i32 1
-; CHECK-NEXT:    [[RESULT4:%.*]] = select i1 [[SWITCH_SCALAR]], float [[SRC1_SCALAR]], float [[SRC2_SCALAR]]
-; CHECK-NEXT:    [[RESULT5:%.*]] = select i1 [[SWITCH_SCALAR3]], float [[SRC1_SCALAR1]], float [[SRC2_SCALAR2]]
+; CHECK-NEXT:    [[RESULT4:%.*]] = select fast i1 [[SWITCH_SCALAR]], float [[SRC1_SCALAR]], float [[SRC2_SCALAR]]
+; CHECK-NEXT:    [[RESULT5:%.*]] = select fast i1 [[SWITCH_SCALAR3]], float [[SRC1_SCALAR1]], float [[SRC2_SCALAR2]]
 ; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <2 x float> undef, float [[RESULT4]], i32 0
 ; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT6:%.*]] = insertelement <2 x float> [[RESULT_ASSEMBLED_VECT]], float [[RESULT5]], i32 1
 ; CHECK-NEXT:    ret <2 x float> [[RESULT_ASSEMBLED_VECT6]]

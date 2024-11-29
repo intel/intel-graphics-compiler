@@ -76,7 +76,6 @@ define spir_kernel void @should_work_with_exact_flag(<2 x i32> %src1, <2 x i32> 
   ret void
 }
 
-; triangulating with @should_work_with_different_instruction_type
 define spir_kernel void @should_work_with_fast_math_flags(<2 x float> %src1, <2 x float> %src2) {
 ; CHECK-LABEL: define spir_kernel void @should_work_with_fast_math_flags(
 ; CHECK-SAME: <2 x float> [[SRC1:%.*]], <2 x float> [[SRC2:%.*]]) {

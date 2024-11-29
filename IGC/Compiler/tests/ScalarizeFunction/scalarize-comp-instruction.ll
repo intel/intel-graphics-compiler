@@ -49,8 +49,6 @@ define <2 x i1> @should_work_with_different_instruction_type(<2 x float> %src1, 
   ret <2 x i1> %1
 }
 
-; triangulating with @should_work_with_different_instruction_type
-; update checks if fast will be preserved
 define <2 x i1> @should_work_with_fast_math_flags(<2 x float> %src1, <2 x float> %src2) {
 ; CHECK-LABEL: define <2 x i1> @should_work_with_fast_math_flags(
 ; CHECK-SAME: <2 x float> [[SRC1:%.*]], <2 x float> [[SRC2:%.*]]) {
@@ -58,8 +56,8 @@ define <2 x i1> @should_work_with_fast_math_flags(<2 x float> %src1, <2 x float>
 ; CHECK-NEXT:    [[SRC2_SCALAR2:%.*]] = extractelement <2 x float> [[SRC2]], i32 1
 ; CHECK-NEXT:    [[SRC1_SCALAR:%.*]] = extractelement <2 x float> [[SRC1]], i32 0
 ; CHECK-NEXT:    [[SRC1_SCALAR1:%.*]] = extractelement <2 x float> [[SRC1]], i32 1
-; CHECK-NEXT:    [[TMP1:%.*]] = fcmp ueq float [[SRC1_SCALAR]], [[SRC2_SCALAR]]
-; CHECK-NEXT:    [[TMP2:%.*]] = fcmp ueq float [[SRC1_SCALAR1]], [[SRC2_SCALAR2]]
+; CHECK-NEXT:    [[TMP1:%.*]] = fcmp fast ueq float [[SRC1_SCALAR]], [[SRC2_SCALAR]]
+; CHECK-NEXT:    [[TMP2:%.*]] = fcmp fast ueq float [[SRC1_SCALAR1]], [[SRC2_SCALAR2]]
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x i1> undef, i1 [[TMP1]], i32 0
 ; CHECK-NEXT:    [[DOTASSEMBLED_VECT3:%.*]] = insertelement <2 x i1> [[DOTASSEMBLED_VECT]], i1 [[TMP2]], i32 1
 ; CHECK-NEXT:    ret <2 x i1> [[DOTASSEMBLED_VECT3]]

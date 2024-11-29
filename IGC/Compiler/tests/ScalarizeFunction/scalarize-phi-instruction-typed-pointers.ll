@@ -76,8 +76,6 @@ exit:
   ret <2 x float> %result
 }
 
-; triangulating with @should_work_with_different_value_type
-; update checks if fast will be preserved
 define <2 x float> @should_work_with_fast_math_flags(i1 %switch, <2 x float> %src1, <2 x float> %src2) {
 ; CHECK-LABEL: define <2 x float> @should_work_with_fast_math_flags(
 ; CHECK-SAME: i1 [[SWITCH:%.*]], <2 x float> [[SRC1:%.*]], <2 x float> [[SRC2:%.*]]) {
@@ -92,8 +90,8 @@ define <2 x float> @should_work_with_fast_math_flags(i1 %switch, <2 x float> %sr
 ; CHECK:       [[SECOND]]:
 ; CHECK-NEXT:    br label %[[EXIT]]
 ; CHECK:       [[EXIT]]:
-; CHECK-NEXT:    [[RESULT1:%.*]] = phi float [ [[SRC1_SCALAR]], %[[FIRST]] ], [ [[SRC2_SCALAR]], %[[SECOND]] ]
-; CHECK-NEXT:    [[RESULT2:%.*]] = phi float [ [[SRC1_SCALAR3]], %[[FIRST]] ], [ [[SRC2_SCALAR4]], %[[SECOND]] ]
+; CHECK-NEXT:    [[RESULT1:%.*]] = phi fast float [ [[SRC1_SCALAR]], %[[FIRST]] ], [ [[SRC2_SCALAR]], %[[SECOND]] ]
+; CHECK-NEXT:    [[RESULT2:%.*]] = phi fast float [ [[SRC1_SCALAR3]], %[[FIRST]] ], [ [[SRC2_SCALAR4]], %[[SECOND]] ]
 ; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <2 x float> undef, float [[RESULT1]], i32 0
 ; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT5:%.*]] = insertelement <2 x float> [[RESULT_ASSEMBLED_VECT]], float [[RESULT2]], i32 1
 ; CHECK-NEXT:    ret <2 x float> [[RESULT_ASSEMBLED_VECT5]]

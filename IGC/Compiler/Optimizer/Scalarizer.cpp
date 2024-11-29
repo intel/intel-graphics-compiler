@@ -522,7 +522,7 @@ void ScalarizeFunction::visitCmpInst(CmpInst& CI)
     newScalarizedInsts.resize(numElements);
     for (unsigned dup = 0; dup < numElements; dup++)
     {
-        newScalarizedInsts[dup] = CmpInst::Create(
+        CmpInst* Val = CmpInst::Create(
             CI.getOpcode(),
             CI.getPredicate(),
             operand0[dup],
@@ -530,6 +530,11 @@ void ScalarizeFunction::visitCmpInst(CmpInst& CI)
             CI.getName(),
             &CI
         );
+        if (isa<FPMathOperator>(Val))
+        {
+            Val->setFastMathFlags(CI.getFastMathFlags());
+        }
+        newScalarizedInsts[dup] = Val;
     }
 
     // Add new value/s to SCM
@@ -704,7 +709,13 @@ void ScalarizeFunction::visitPHINode(PHINode& PI)
         newScalarizedPHI.resize(numElements);
         for (unsigned i = 0; i < numElements; i++)
         {
-            newScalarizedPHI[i] = PHINode::Create(scalarType, numValues, PI.getName(), &PI);
+            PHINode* tmp = PHINode::Create(scalarType, numValues, PI.getName(), &PI);
+            if (isa<FPMathOperator>(tmp))
+            {
+                tmp->setFastMathFlags(PI.getFastMathFlags());
+            }
+
+            newScalarizedPHI[i] = tmp;
         }
 
         // Iterate over incoming values in vector PHI, and fill scalar PHI's accordingly
@@ -778,13 +789,18 @@ void ScalarizeFunction::visitSelectInst(SelectInst& SI)
         // Small optimization: Some scalar selects may be redundant (trueVal == falseVal)
         if (trueValOp[dup] != falseValOp[dup])
         {
-            newScalarizedInsts[dup] = SelectInst::Create(
+            SelectInst* Val = SelectInst::Create(
                 condOp[dup],
                 trueValOp[dup],
                 falseValOp[dup],
                 SI.getName(),
                 &SI
             );
+            if (isa<FPMathOperator>(Val))
+            {
+                Val->setFastMathFlags(SI.getFastMathFlags());
+            }
+            newScalarizedInsts[dup] = Val;
         }
         else
         {
