@@ -263,7 +263,7 @@ void BiFManagerHandler::preapareBiFSections(llvm::Module& pMainModule, TFunction
 
             // Attach a MemoryBuffer in this place
             auto bifMemBuffer = llvm::MemoryBuffer::getMemBuffer(
-                llvm::StringRef(bifModuleBegin, record->bufferSize), "", false).release();
+                llvm::StringRef(bifModuleBegin, record->bufferSize), "", false);
 
             // Read this llvm module
             llvm::Expected<std::unique_ptr<llvm::Module>> ModuleOrErr =
