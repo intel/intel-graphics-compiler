@@ -211,19 +211,14 @@ void DbgVariable::emitExpression(CompileUnit *CU, IGC::DIEBlock *Block) const {
     }
     I->appendToVector(Elements);
   }
-  const bool isSimpleIndirect = currentLocationIsSimpleIndirectValue();
-  if (isSimpleIndirect)
-    // drop OP_deref
+  bool isStackValueNeeded = false;
+  if (currentLocationIsSimpleIndirectValue()) {
+    // drop OP_deref and don't emit DW_OP_stack_value.
     Elements.erase(Elements.begin());
-  bool shouldResetStackValue = currentLocationIsImplicit();
-  if (shouldResetStackValue && !Elements.empty() &&
-      *Elements.rbegin() == dwarf::DW_OP_stack_value) {
-    Elements.pop_back();
+  } else if (!currentLocationIsMemoryAddress() &&
+             !currentLocationIsImplicit() && !currentLocationIsVector()) {
+    isStackValueNeeded = true;
   }
-  const bool isFirstHalf = this->RegType == DbgRegisterType::FirstHalf;
-  bool isStackValueNeeded = !isSimpleIndirect &&
-                            !currentLocationIsMemoryAddress() &&
-                            !currentLocationIsVector() && !isFirstHalf;
 
   for (auto elem : Elements) {
     auto BF = DIEInteger::BestForm(false, elem);
@@ -1653,7 +1648,7 @@ void DwarfDebug::collectVariableInfo(
                                   (pInst->getMetadata("StorageOffset") ||
                                    Loc.HasSurface() || Loc.IsSLM()))) {
           RegVar->setDbgInst(pInst);
-          RegVar->setLocationInlined(true);
+          RegVar->isLocationInlined = true;
           break;
         }
       }
