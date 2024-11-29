@@ -49,7 +49,6 @@ bool GenerateBlockMemOpsPass::runOnFunction(Function &F) {
         return false;
 
     bool Changed = false;
-
     // Load / store instructions which are not in code divergence and can be optimized.
     SmallVector<Instruction*, 32> LoadStoreToProcess;
     // Load / store instructions which are inside the loop and can be optimized.
@@ -94,7 +93,6 @@ bool GenerateBlockMemOpsPass::runOnFunction(Function &F) {
             } else if (Loop *L = LI->getLoopFor(I.getParent())) {
                 // In some cases IGC can't proof that there is no code divergence in the loop.
                 // Handle these cases here.
-
                 // Check that the loop has been already analyzed.
                 if (LoadStoreInLoop.find(L) == LoadStoreInLoop.end()) {
                     if (!isLoopPattern(L))
@@ -515,12 +513,12 @@ bool GenerateBlockMemOpsPass::doesLoopHaveExternUse(Loop *L) {
     return false;
 }
 
-bool GenerateBlockMemOpsPass::isAddressAligned(Value *Ptr, const alignment_t &CurrentAlignment, Type *DataType) {
+bool GenerateBlockMemOpsPass::isDataTypeSupported(Value *Ptr, Type *DataType) {
     unsigned ScalarSize = DataType->getScalarSizeInBits();
 
     // The list of possible alignments should be expanded.
     if (CGCtx->platform.isProductChildOf(IGFX_PVC))
-        if ((ScalarSize == 32) && (CurrentAlignment == 4))
+        if (ScalarSize == 32 || ScalarSize == 64)
             return true;
 
     return false;
@@ -569,17 +567,19 @@ bool GenerateBlockMemOpsPass::isIndexContinuous(Value *Indx) {
                 }
                 VisitedPhi = Phi;
             } else if (Instruction *Inst = dyn_cast<Instruction>(NonUnifOp)) {
-                if (Inst->getOpcode() != Instruction::Add)
+                if (Inst->getOpcode() != Instruction::Add && Inst->getOpcode() != Instruction::Sub)
                     return false;
 
                 Value *Op0 = Inst->getOperand(0);
                 Value *Op1 = Inst->getOperand(1);
 
-
                 if (!WI->isUniform(Op1) && !WI->isUniform(Op0))
                     return false;
 
                 if (WI->isUniform(Op0)) {
+                    if (Inst->getOpcode() == Instruction::Sub)
+                        return false;
+
                     NonUniformInstVector.push_back(Op1);
                 } else {
                     NonUniformInstVector.push_back(Op0);
@@ -629,17 +629,14 @@ bool GenerateBlockMemOpsPass::canOptLoadStore(Instruction *I) {
     Value *Ptr = nullptr;
     Value *ValOp = nullptr;
     Type *DataType = nullptr;
-    alignment_t CurrentAlignment = 0;
 
     if (LoadInst *LI = dyn_cast<LoadInst>(I)) {
         Ptr = LI->getPointerOperand();
-        CurrentAlignment = IGCLLVM::getAlignmentValue(LI);
         DataType = cast<Value>(LI)->getType();
     } else {
         StoreInst* SI = cast<StoreInst>(I);
         Ptr = SI->getPointerOperand();
         ValOp = SI->getValueOperand();
-        CurrentAlignment = IGCLLVM::getAlignmentValue(SI);
         DataType = ValOp->getType();
     }
 
@@ -647,7 +644,7 @@ bool GenerateBlockMemOpsPass::canOptLoadStore(Instruction *I) {
         return false;
 
     // Need to check what alignment block load/store requires for the specific architecture.
-    if (!isAddressAligned(Ptr, CurrentAlignment, DataType))
+    if (!isDataTypeSupported(Ptr, DataType))
         return false;
 
     // Get the last index from the getelementptr instruction if it is not uniform in the subgroup.

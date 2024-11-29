@@ -11,6 +11,9 @@
 ; RUN: igc_opt --opaque-pointers %s -S -o - -generate-block-mem-ops -platformpvc | FileCheck %s
 
 define spir_kernel void @testYZUnif(ptr addrspace(1) %out, ptr addrspace(1) %in, <8 x i32> %r0, <8 x i32> %payloadHeader, <3 x i32> %localSize, i16 %localIdX, i16 %localIdY, i16 %localIdZ, i32 %bufferOffset, i32 %bufferOffset1) {
+
+; CHECK-LABEL: @testYZUnif(
+
 entry:
   %0 = extractelement <3 x i32> %localSize, i64 0
   %1 = extractelement <3 x i32> %localSize, i64 1
@@ -25,12 +28,12 @@ entry:
   %arrayidx = getelementptr inbounds float, ptr addrspace(1) %in, i64 %conv.i
   %2 = load float, ptr addrspace(1) %arrayidx, align 4
 
-  ; CHECK: [[TMP0:%.*]] = call float @llvm.genx.GenISA.simdBlockRead.f32.p1(ptr addrspace(1) %arrayidx) [[ATTR_NUM:#.*]]
+  ; CHECK: [[TMP0:%.*]] = call float @llvm.genx.GenISA.simdBlockRead.f32.p1(ptr addrspace(1) %arrayidx) [[ATTR_NUM1:#.*]]
 
   %arrayidx1 = getelementptr inbounds float, ptr addrspace(1) %out, i64 %conv.i
   store float %2, ptr addrspace(1) %arrayidx1, align 4
 
-  ; CHECK: call void @llvm.genx.GenISA.simdBlockWrite.p1.f32(ptr addrspace(1) %arrayidx1, float [[TMP0]]) [[ATTR_NUM]]
+  ; CHECK: call void @llvm.genx.GenISA.simdBlockWrite.p1.f32(ptr addrspace(1) %arrayidx1, float [[TMP0]]) [[ATTR_NUM1]]
 
   ret void
 }
@@ -65,15 +68,47 @@ entry:
 
   ret void
 
-; CHECK: ret void
+  ; CHECK: ret void
 
 }
 
+; Check that 8-byte block loads/writes are supproted by the optimization.
+
+define spir_kernel void @test8ByteBlockOps(ptr addrspace(1) %0, ptr addrspace(1) %1, <8 x i32> %r0, <8 x i32> %payloadHeader, <3 x i32> %enqueuedLocalSize, i16 %localIdX, i16 %localIdY, i16 %localIdZ, i32 %bufferOffset, i32 %bufferOffset1) {
+
+  ; CHECK-LABEL: @test8ByteBlockOps(
+
+entry:
+  %extr1 = extractelement <8 x i32> %payloadHeader, i64 0
+  %extr2 = extractelement <8 x i32> %r0, i64 1
+  %shl1 = shl i32 %extr2, 5
+  %localIdX2 = zext i16 %localIdX to i32
+  %add1 = add i32 %shl1, %localIdX2
+  %add2 = add i32 %add1, %extr1
+  %z1 = zext i32 %add1 to i64
+  %z2 = zext i32 %extr1 to i64
+  %sub1 = sub nsw i64 %z1, %z2
+  %gep1 = getelementptr inbounds double, ptr addrspace(1) %0, i64 %sub1
+  %ld1 = load double, ptr addrspace(1) %gep1, align 8
+
+  ; CHECK: [[TMP1:%.*]] = call double @llvm.genx.GenISA.simdBlockRead.f64.p1(ptr addrspace(1) %gep1) [[ATTR_NUM2:#.*]]
+
+  %gep2 = getelementptr inbounds double, ptr addrspace(1) %1, i64 %sub1
+  store double %ld1, ptr addrspace(1) %gep2, align 8
+
+  ; CHECK: call void @llvm.genx.GenISA.simdBlockWrite.p1.f64(ptr addrspace(1) %gep2, double [[TMP1]]) [[ATTR_NUM2]]
+
+  ret void
+}
+
 define spir_kernel void @testYZUnifLoop(ptr addrspace(1) %out, ptr addrspace(1) %in, <8 x i32> %r0, <8 x i32> %payloadHeader, <3 x i32> %localSize, i16 %localIdX, i16 %localIdY, i16 %localIdZ, i32 %bufferOffset, i64 %limit) {
+
+; CHECK-LABEL: @testYZUnifLoop(
 ; CHECK: %{{.*}} = load
 ; CHECK: store
-; CHECK: [[TMP0:%.*]] = call float @llvm.genx.GenISA.simdBlockRead.f32.p1(ptr addrspace(1) %{{.*}}) [[ATTR_NUM]]
-; CHECK: call void @llvm.genx.GenISA.simdBlockWrite.p1.f32(ptr addrspace(1) %{{.*}}, float [[TMP0]]) [[ATTR_NUM]]
+; CHECK: [[TMP0:%.*]] = call float @llvm.genx.GenISA.simdBlockRead.f32.p1(ptr addrspace(1) %{{.*}}) [[ATTR_NUM1]]
+; CHECK: call void @llvm.genx.GenISA.simdBlockWrite.p1.f32(ptr addrspace(1) %{{.*}}, float [[TMP0]]) [[ATTR_NUM1]]
+
 entry:
   %offset = extractelement <8 x i32> %payloadHeader, i64 0
   %groupNumX = extractelement <8 x i32> %r0, i64 1
@@ -101,17 +136,21 @@ terminator:
   ret void
 }
 
-; CHECK: attributes #2 = { "alignmentrequirements"="4" }
+; CHECK: attributes [[ATTR_NUM1]] = { "alignmentrequirements"="4" }
+; CHECK: attributes [[ATTR_NUM2]] = { "alignmentrequirements"="8" }
 
-!igc.functions = !{!1, !2, !3}
+
+!igc.functions = !{!1, !2, !3, !4}
 !IGCMetadata = !{!19}
 
 !1 = !{ptr @testYZUnif, !41}
 !2 = !{ptr @testNoUnif, !42}
 !3 = !{ptr @testYZUnifLoop, !43}
+!4 = !{ptr @test8ByteBlockOps, !44}
 !41 = !{!5, !6, !17}
 !42 = !{!5, !6}
 !43 = !{!5, !6, !17}
+!44 = !{!5, !6, !17}
 !5 = !{!"function_type", i32 0}
 !6 = !{!"implicit_arg_desc", !7, !8, !9, !10, !11, !12, !13, !15}
 !7 = !{i32 0}
@@ -135,13 +174,15 @@ terminator:
 
 !18 = !{!"thread_group_size", i32 16, i32 32, i32 32}
 !19 = !{!"ModuleMD", !112}
-!112 = !{!"FuncMD", !113, !114, !333, !334, !335, !336}
+!112 = !{!"FuncMD", !113, !114, !333, !334, !335, !336, !337, !338}
 !113 = !{!"FuncMDMap[0]", ptr @testYZUnif}
 !114 = !{!"FuncMDValue[0]", !116}
 !333 = !{!"FuncMDMap[1]", ptr @testNoUnif}
 !334 = !{!"FuncMDValue[1]", !116}
 !335 = !{!"FuncMDMap[2]", ptr @testYZUnifLoop}
 !336 = !{!"FuncMDValue[2]", !116}
+!337 = !{!"FuncMDMap[3]", ptr @test8ByteBlockOps}
+!338 = !{!"FuncMDValue[3]", !116}
 !116 = !{!"workGroupWalkOrder", !117, !118, !119}
 !117 = !{!"dim0", i32 0}
 !118 = !{!"dim1", i32 1}

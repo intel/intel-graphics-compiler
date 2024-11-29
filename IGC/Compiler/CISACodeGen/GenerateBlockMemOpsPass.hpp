@@ -44,7 +44,7 @@ class GenerateBlockMemOpsPass : public llvm::FunctionPass
         llvm::Value *checkGep(llvm::Instruction *Gep);
         bool isLocalIdX(const llvm::Value *InputVal);
         bool isR0(const llvm::Value *InputVal);
-        bool isAddressAligned(llvm::Value *Ptr, const alignment_t &CurrentAlignment, llvm::Type *DataType);
+        bool isDataTypeSupported(llvm::Value *Ptr, llvm::Type *DataType);
         bool isIndexContinuous(llvm::Value *Addr);
         bool checkVectorizationAlongX(llvm::Function *F);
         bool checkLoopPhiVals(llvm::Loop *L);

@@ -6788,9 +6788,11 @@ uint32_t EmitPass::getReqBlkBitsForBlockStLd(CallInst *call) {
     if (set.hasAttribute("alignmentrequirements")) {
         llvm::Attribute attr = set.getAttribute("alignmentrequirements");
         llvm::StringRef attrValue = attr.getValueAsString();
-        // 4-byte alignment is requied
+        // Get required alignment from metadata.
         if (attrValue == "4") {
             return 32;
+        } else if (attrValue == "8") {
+            return 64;
         }
     }
 
