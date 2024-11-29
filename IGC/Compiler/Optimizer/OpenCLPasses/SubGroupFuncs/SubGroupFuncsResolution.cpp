@@ -187,6 +187,7 @@ const llvm::StringRef SubGroupFuncsResolution::GET_IMAGE_BTI = "__builtin_IB_get
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_REDUCE = "__builtin_IB_sub_group_reduce";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SCAN = "__builtin_IB_sub_group_scan";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_CLUSTERED_REDUCE = "__builtin_IB_sub_group_clustered_reduce";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_CLUSTERED_SCAN = "__builtin_IB_sub_group_clustered_scan";
 
 const std::array<std::pair<std::string, WaveOps>, 13> SubGroupFuncsResolution::m_spvOpToWaveOpMap =
 {
@@ -579,6 +580,14 @@ void SubGroupFuncsResolution::subGroupArithmetic(CallInst& CI, WaveOps op, Group
             GenISAIntrinsic::GenISA_WavePrefix,
             arg->getType());
         waveCall = IRB.CreateCall(waveScan, args);
+    }
+    else if (groupType == GroupOperationClusteredScan)
+    {
+        Value* args[4] = { arg, opVal, CI.getArgOperand(1) , IRB.getInt32(0) };
+        Function* waveClusteredScan = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(),
+            GenISAIntrinsic::GenISA_WaveClusteredPrefix,
+            arg->getType());
+        waveCall = IRB.CreateCall(waveClusteredScan, args);
     }
     else if (groupType == GroupOperationClusteredReduce)
     {
@@ -1027,6 +1036,10 @@ void SubGroupFuncsResolution::visitCallInst(CallInst& CI)
     else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_CLUSTERED_REDUCE))
     {
         return subGroupArithmetic( CI, GetWaveOp(funcName), GroupOperationClusteredReduce);
+    }
+    else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_CLUSTERED_SCAN))
+    {
+        return subGroupArithmetic(CI, GetWaveOp(funcName), GroupOperationClusteredScan);
     }
     else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_BARRIER))
     {

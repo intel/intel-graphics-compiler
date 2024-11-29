@@ -220,6 +220,7 @@ namespace IGC
         static const llvm::StringRef SUB_GROUP_REDUCE;
         static const llvm::StringRef SUB_GROUP_SCAN;
         static const llvm::StringRef SUB_GROUP_CLUSTERED_REDUCE;
+        static const llvm::StringRef SUB_GROUP_CLUSTERED_SCAN;
 
     private:
         /// @brief  Container for instructions to be deleted after visiting a function.

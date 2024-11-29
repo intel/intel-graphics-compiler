@@ -1378,6 +1378,7 @@ namespace IGC
             case GenISAIntrinsic::GenISA_WaveInterleave:
             case GenISAIntrinsic::GenISA_WaveClusteredInterleave:
             case GenISAIntrinsic::GenISA_WavePrefix:
+            case GenISAIntrinsic::GenISA_WaveClusteredPrefix:
                 match = MatchWaveInstruction(*GII);
                 break;
             case GenISAIntrinsic::GenISA_simdBlockRead:
@@ -5303,6 +5304,7 @@ namespace IGC
             break;
         case GenISAIntrinsic::GenISA_WaveInterleave:
         case GenISAIntrinsic::GenISA_WaveClustered:
+        case GenISAIntrinsic::GenISA_WaveClusteredPrefix:
             helperLaneIndex = 3;
             break;
         case GenISAIntrinsic::GenISA_WavePrefix:

@@ -1138,7 +1138,8 @@ void PromoteInt8Type::promoteIntrinsic()
             GII->isGenIntrinsic(GenISAIntrinsic::GenISA_WaveInterleave) ||
             GII->isGenIntrinsic(GenISAIntrinsic::GenISA_WaveClusteredInterleave) ||
             GII->isGenIntrinsic(GenISAIntrinsic::GenISA_WavePrefix) ||
-            GII->isGenIntrinsic(GenISAIntrinsic::GenISA_QuadPrefix))
+            GII->isGenIntrinsic(GenISAIntrinsic::GenISA_QuadPrefix) ||
+            GII->isGenIntrinsic(GenISAIntrinsic::GenISA_WaveClusteredPrefix))
         {
             // Those are scan or reduce functions. If the operand type
             // is of I8, need to promote it to avoid ALU on I8 type.
@@ -1165,6 +1166,7 @@ void PromoteInt8Type::promoteIntrinsic()
                 gid == GenISAIntrinsic::GenISA_WaveClusteredInterleave ||
                 gid == GenISAIntrinsic::GenISA_WavePrefix ||
                 gid == GenISAIntrinsic::GenISA_QuadPrefix ||
+                gid == GenISAIntrinsic::GenISA_WaveClusteredPrefix ||
                 gid == GenISAIntrinsic::GenISA_WaveShuffleIndex ||
                 gid == GenISAIntrinsic::GenISA_WaveBroadcast ||
                 gid == GenISAIntrinsic::GenISA_WaveClusteredBroadcast ||
@@ -1207,6 +1209,7 @@ void PromoteInt8Type::promoteIntrinsic()
                 case GenISAIntrinsic::GenISA_WaveClustered:
                 case GenISAIntrinsic::GenISA_WaveInterleave:
                 case GenISAIntrinsic::GenISA_WaveClusteredBroadcast:
+                case GenISAIntrinsic::GenISA_WaveClusteredPrefix:
                 {
                     // prototype:
                     //     Ty <clustered> (Ty, char, int, int)

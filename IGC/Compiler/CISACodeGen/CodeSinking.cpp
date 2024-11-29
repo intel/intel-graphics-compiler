@@ -2497,6 +2497,7 @@ namespace IGC {
                         case GenISAIntrinsic::GenISA_WaveClustered:
                         case GenISAIntrinsic::GenISA_WaveInterleave:
                         case GenISAIntrinsic::GenISA_WavePrefix:
+                        case GenISAIntrinsic::GenISA_WaveClusteredPrefix:
                             PrintDump(VerbosityLevel::High, "Not a real store instruction, may not alias\n");
                             continue;
 

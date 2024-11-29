@@ -190,6 +190,7 @@ namespace IGC
     enum GroupOpType
     {
         GroupOperationScan,
+        GroupOperationClusteredScan,
         GroupOperationReduce,
         GroupOperationClusteredReduce,
         GroupOperationInterleaveReduce

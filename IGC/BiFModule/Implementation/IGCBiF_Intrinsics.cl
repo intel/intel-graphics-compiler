@@ -903,6 +903,26 @@ DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, LogicalXorKHR)
 
 DECL_LOGICAL_OPERATIONS(bool, i1)
 
+// __builtin_IB_sub_group_clustered_scan_IAdd/FAdd
+//
+// At the moment only Add operation is supported for clustered scan.
+// If functionality is extended to match (non-clustered) scan, the macro
+// should be moved to DECL_SUB_GROUP_ALL_GROUPS.
+#define DECL_SUB_GROUP_CLUSTERED_ADD(type, type_abbr, type_sign) \
+type __builtin_IB_sub_group_clustered_scan_##type_sign##Add_##type_abbr(type x, uint cluster_size) __attribute__((const));
+
+DECL_SUB_GROUP_CLUSTERED_ADD(char,   i8,  I)
+DECL_SUB_GROUP_CLUSTERED_ADD(short,  i16, I)
+DECL_SUB_GROUP_CLUSTERED_ADD(int,    i32, I)
+DECL_SUB_GROUP_CLUSTERED_ADD(long,   i64, I)
+DECL_SUB_GROUP_CLUSTERED_ADD(float,  f32, F)
+#if defined(cl_khr_fp64)
+DECL_SUB_GROUP_CLUSTERED_ADD(double, f64, F)
+#endif // defined(cl_khr_fp64)
+#if defined(cl_khr_fp16)
+DECL_SUB_GROUP_CLUSTERED_ADD(half,   f16, F)
+#endif // defined(cl_khr_fp16)
+
 // The following mul/fma with rtz is used internally for int div/rem emulation
 // x * y, using round-to-zero
 double __builtin_IB_mul_rtz_f64(double x, double y) __attribute__((const));

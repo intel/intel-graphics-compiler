@@ -377,7 +377,8 @@ public:
         CVariable* result[2],
         CVariable* Flag = nullptr,
         bool isPrefix = false,
-        bool isQuad = false);
+        bool isQuad = false,
+        int clusterSize = 0);
     void emitPreOrPostFixOpScalar(
         e_opcode op,
         uint64_t identityValue,
@@ -386,7 +387,8 @@ public:
         CVariable* src,
         CVariable* result[2],
         CVariable* Flag,
-        bool isPrefix);
+        bool isPrefix,
+        int clusterSize = 0);
 
     bool IsUniformAtomic(llvm::Instruction* pInst);
     void emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *varOffset,
@@ -473,6 +475,7 @@ public:
     void emitWaveShuffleIndex(llvm::GenIntrinsicInst* inst);
     void emitWavePrefix(llvm::WavePrefixIntrinsic* I);
     void emitQuadPrefix(llvm::QuadPrefixIntrinsic* I);
+    void emitWaveClusteredPrefix(llvm::GenIntrinsicInst* I);
     void emitWaveAll(llvm::GenIntrinsicInst* inst);
     void emitWaveClustered(llvm::GenIntrinsicInst* inst);
     void emitWaveInterleave(llvm::GenIntrinsicInst* inst);

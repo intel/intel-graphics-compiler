@@ -113,6 +113,7 @@ void IGC::HalfPromotion::handleGenIntrinsic(llvm::GenIntrinsicInst& I)
     GenISAIntrinsic::ID id = I.getIntrinsicID();
     if (id == GenISAIntrinsic::GenISA_WaveAll ||
         id == GenISAIntrinsic::GenISA_WavePrefix ||
+        id == GenISAIntrinsic::GenISA_WaveClusteredPrefix ||
         id == GenISAIntrinsic::GenISA_WaveClustered ||
         id == GenISAIntrinsic::GenISA_WaveInterleave ||
         id == GenISAIntrinsic::GenISA_WaveClusteredInterleave)

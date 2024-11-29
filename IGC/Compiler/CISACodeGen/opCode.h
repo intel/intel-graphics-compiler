@@ -288,6 +288,7 @@ DECLARE_OPCODE(GenISA_WaveInterleave, GenISAIntrinsic, llvm_waveInterleave, fals
 DECLARE_OPCODE(GenISA_WaveClusteredInterleave, GenISAIntrinsic, llvm_waveClusteredInterleave, false, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_WavePrefix, GenISAIntrinsic, llvm_wavePrefix, false, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_QuadPrefix, GenISAIntrinsic, llvm_quadPrefix, false, false, false, false, false, false, false)
+DECLARE_OPCODE(GenISA_WaveClusteredPrefix, GenISAIntrinsic, llvm_waveClusteredPrefix, false, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_WaveShuffleIndex, GenISAIntrinsic, llvm_waveShuffleIndex, false, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_WaveBroadcast, GenISAIntrinsic, llvm_waveBroadcast, false, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_WaveClusteredBroadcast, GenISAIntrinsic, llvm_waveClusteredBroadcast, false, false, false, false, false, false, false)

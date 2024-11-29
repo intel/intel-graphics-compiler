@@ -2359,6 +2359,39 @@ intrinsics:
             - !<MemoryRestriction>
                 memory_location: !MemoryLocation InaccessibleMem
     - !<IntrinsicDefinition>
+        name: "GenISA_WaveClusteredPrefix"
+        comment: "WavePrefix with clusters. Accumulate and keep the intermediate results\
+            \ in each lane in cluster. At the moment only exclusive add is implemented.\
+            \ Compared to WavePrefix, arguments 'type' and 'mask' are removed, as  they\
+            \ are unsupported in current implementation."
+        return_definition: !<ReturnDefinition>
+            type_definition: *any_int
+            comment: "result"
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *ref_0_
+                comment: "value"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *i8
+                comment: "IGC::WaveOps"
+            - !<ArgumentDefinition>
+                name: Arg2
+                type_definition: *i32
+                comment: "cluster size - must be a compile time constant 8 or 16"
+            - !<ArgumentDefinition>
+                name: Arg3
+                type_definition: *i32
+                comment: "helperLaneMode : 0: not used; 1: helper lanes participate in\
+                    \ wave ops, 2: helper lanes do not participate in wave ops."
+        attributes:
+            - !AttributeID "Convergent"
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_location: !MemoryLocation InaccessibleMem
+    - !<IntrinsicDefinition>
         name: "GenISA_WaveShuffleIndex"
         comment: "Read from a specific lane"
         return_definition: !<ReturnDefinition>

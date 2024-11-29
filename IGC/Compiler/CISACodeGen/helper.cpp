@@ -1881,6 +1881,7 @@ namespace IGC
             opcode == llvm_waveInterleave ||
             opcode == llvm_waveClusteredInterleave ||
             opcode == llvm_wavePrefix ||
+            opcode == llvm_waveClusteredPrefix ||
             opcode == llvm_waveShuffleIndex ||
             opcode == llvm_waveBroadcast ||
             opcode == llvm_waveClusteredBroadcast ||

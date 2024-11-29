@@ -9194,6 +9194,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_QuadPrefix:
         emitQuadPrefix(cast<QuadPrefixIntrinsic>(inst));
         break;
+    case GenISAIntrinsic::GenISA_WaveClusteredPrefix:
+        emitWaveClusteredPrefix(inst);
+        break;
     case GenISAIntrinsic::GenISA_WaveAll:
         emitWaveAll(inst);
         break;
@@ -14431,8 +14434,18 @@ void EmitPass::emitReductionClusteredInterleave(const e_opcode op, const uint64_
 void EmitPass::emitPreOrPostFixOp(
     e_opcode op, uint64_t identityValue, VISA_Type type, bool negateSrc,
     CVariable* pSrc, CVariable* pSrcsArr[2], CVariable* Flag,
-    bool isPrefix, bool isQuad)
+    bool isPrefix, bool isQuad, int clusterSize)
 {
+    // TODO Arguments isQuad and clusterSize have similar function: both split subgroup into
+    // smaller sets of lanes processed separately. isQuad could be considered clusterSize == 4,
+    // but there is a significant difference in implementation: when shifting input by one lane
+    // to the right for exclusive scan (isPrefix == true), isQuad inserts identity value only
+    // to the first lane in subgroup, where clusterSize == 8/16 inserts identity value to the
+    // first lane of each cluster.
+    //
+    // isQuad/clusterSize could be replaced with one argument, but the code must be refactored
+    // to not break QuadPrefix intrinsic.
+
     const bool isInt64Mul = ScanReduceIsInt64Mul(op, type);
     const bool int64EmulationNeeded = ScanReduceIsInt64EmulationNeeded(op, type);
 
@@ -14442,12 +14455,12 @@ void EmitPass::emitPreOrPostFixOp(
         emitPreOrPostFixOpScalar(
             op, identityValue, type, negateSrc,
             pSrc, pSrcsArr, Flag,
-            isPrefix);
+            isPrefix, clusterSize);
         return;
     }
 
-    bool isSimd32 = m_currShader->m_numberInstance == 2;
-    int counter = isSimd32 ? 2 : 1;
+    bool isSimd32AsTwoInstances = m_currShader->m_numberInstance == 2;
+    int counter = isSimd32AsTwoInstances ? 2 : 1;
 
     CVariable* maskedSrc[2] = { 0 };
     for (int i = 0; i < counter; ++i)
@@ -14466,7 +14479,9 @@ void EmitPass::emitPreOrPostFixOp(
             // Copy identity
             m_encoder->SetSimdSize(SIMDMode::SIMD1);
             m_encoder->SetNoMask();
-            if (i == 0)
+            // Before shift, insert identity value to the first lane
+            // in subgroup (or cluster).
+            if (i == 0 || clusterSize > 0)
             {
                 CVariable* pIdentityValue = m_currShader->ImmToVariable(identityValue, type);
                 m_encoder->Copy(pSrcCopy, pIdentityValue);
@@ -14496,7 +14511,25 @@ void EmitPass::emitPreOrPostFixOp(
                 }
                 offset += simdsize;
             }
+
+            // After shifting the input by one lane, in each cluster that starts in
+            // the middle of GRF, set the first lane to the identity value.
+            if (clusterSize > 0)
+            {
+                m_encoder->SetSimdSize(SIMDMode::SIMD1);
+                m_encoder->SetNoMask();
+                CVariable* pIdentityValue = m_currShader->ImmToVariable(identityValue, type);
+
+                for (int i = clusterSize; i < pSrcCopy->GetNumberElement(); i += clusterSize)
+                {
+                    m_encoder->SetDstSubReg(i);
+                    m_encoder->Copy(pSrcCopy, pIdentityValue);
+                }
+
+                m_encoder->Push();
+            }
         }
+
         pSrcsArr[i] = pSrcCopy;
     }
 
@@ -14593,7 +14626,7 @@ void EmitPass::emitPreOrPostFixOp(
         }
     };
 
-    if (m_currShader->m_dispatchSize == SIMDMode::SIMD32 && !isSimd32)
+    if (m_currShader->m_dispatchSize == SIMDMode::SIMD32 && !isSimd32AsTwoInstances)
     {
         // handling the single SIMD32 size case in PVC
         // the logic is mostly similar to the legacy code sequence below, except that
@@ -14647,6 +14680,12 @@ void EmitPass::emitPreOrPostFixOp(
                 (loop_counter * 8 + 4) /*dst subreg*/, 1 /*dst region*/);
         }
 
+        if (clusterSize == 8)
+        {
+            // With SIMD8 clusters, stop at SIMD8 prefix.
+            return;
+        }
+
         // Merge: 2 SIMD8's to get 2 SIMD16 prefix sequence
         for (uint loop_counter = 0; loop_counter < 2; ++loop_counter)
         {
@@ -14657,6 +14696,12 @@ void EmitPass::emitPreOrPostFixOp(
                 loop_counter * 16 + 7 /*src0 subreg*/, src0Region /*src0 region*/,
                 loop_counter * 16 + 8 /*src1 subreg*/, src1Region /*src1 region*/,
                 loop_counter * 16 + 8 /*dst subreg*/, 1 /*dst region*/);
+        }
+
+        if (clusterSize == 16)
+        {
+            // With SIMD16 clusters, stop at SIMD16 prefix.
+            return;
         }
 
         // final merge to get 1 SIMD32 prefix sequence and viola!
@@ -14783,7 +14828,13 @@ void EmitPass::emitPreOrPostFixOp(
                 (loop_counter * 8 + 4) /*dst subreg*/, 1 /*dst region*/);
         }
 
-        if (m_currShader->m_SIMDSize == SIMDMode::SIMD16 || isSimd32)
+        if (clusterSize == 8)
+        {
+            // Stop ALU ops at SIMD8 lanes.
+            continue;
+        }
+
+        if (m_currShader->m_SIMDSize == SIMDMode::SIMD16 || isSimd32AsTwoInstances)
         {
             // Add the last element of the 1st GRF to all the elements of the 2nd GRF
             const uint src0Region[3] = { 0, 1, 0 };
@@ -14796,7 +14847,8 @@ void EmitPass::emitPreOrPostFixOp(
         }
     }
 
-    if (isSimd32 && !isQuad)
+    bool hasClusters = isQuad || clusterSize > 0;
+    if (isSimd32AsTwoInstances && !hasClusters)
     {
         // For SIMD32 we need to write the last element of the prev element to the next 16 elements
         const uint src0Region[3] = { 0, 1, 0 };
@@ -14820,13 +14872,14 @@ void EmitPass::emitPreOrPostFixOpScalar(
     CVariable* src,
     CVariable* result[2],
     CVariable* Flag,
-    bool isPrefix)
+    bool isPrefix,
+    int clusterSize)
 {
     const bool isInt64Mul = ScanReduceIsInt64Mul(op, type);
     const bool int64EmulationNeeded = ScanReduceIsInt64EmulationNeeded(op, type);
 
-    bool isSimd32 = m_currShader->m_numberInstance == 2;
-    int counter = isSimd32 ? 2 : 1;
+    bool isSimd32AsTwoInstances = m_currShader->m_numberInstance == 2;
+    int counter = isSimd32AsTwoInstances ? 2 : 1;
     CVariable* pSrcCopy[2] = {};
     for (int i = 0; i < counter; ++i)
     {
@@ -14849,7 +14902,7 @@ void EmitPass::emitPreOrPostFixOpScalar(
         if (isPrefix)
         {
             // For case where we need the prefix shift the source by 1 lane.
-            if (i == 0)
+            if (i == 0 || clusterSize == 8 || clusterSize == 16)
             {
                 // (W) mov (1) result[0] identity
                 CVariable* pIdentityValue = m_currShader->ImmToVariable(identityValue, type);
@@ -14884,6 +14937,23 @@ void EmitPass::emitPreOrPostFixOpScalar(
 
         for (int dstIdx = 1; dstIdx < numLanes(m_currShader->m_SIMDSize); ++dstIdx, ++srcIdx)
         {
+            // Scan is done one by one. With clusters, start each cluster with
+            // initial value.
+            if ((clusterSize == 8 || clusterSize == 16) && dstIdx % clusterSize == 0)
+            {
+                // For case where we need the prefix, start cluster with
+                // identity value.
+                if (isPrefix)
+                {
+                    m_encoder->SetSimdSize(SIMDMode::SIMD1);
+                    m_encoder->SetNoMask();
+                    m_encoder->SetDstSubReg(dstIdx);
+                    CVariable* pIdentityValue = m_currShader->ImmToVariable(identityValue, type);
+                    m_encoder->Copy(result[i], pIdentityValue);
+                    continue;
+                }
+            }
+
             // do the scan one by one
             // (W) op (1) result[dstIdx] srcCopy[srcIdx] result[dstIdx-1]
             if (!int64EmulationNeeded)
@@ -14924,7 +14994,7 @@ void EmitPass::emitPreOrPostFixOpScalar(
         m_encoder->SetSecondHalf(false);
     }
 
-    if (isSimd32)
+    if (isSimd32AsTwoInstances && !clusterSize)
     {
         const SIMDMode simd = SIMDMode::SIMD16;
 
@@ -22155,6 +22225,68 @@ void EmitPass::emitScan(
         m_encoder->Copy(m_destination, dst[1]);
     }
     m_encoder->Push();
+}
+
+void EmitPass::emitWaveClusteredPrefix(GenIntrinsicInst* I)
+{
+    auto helperLanes = int_cast<int>(cast<ConstantInt>(I->getArgOperand(3))->getSExtValue());
+    bool disableHelperLanes = (helperLanes == 2);
+
+    IGC_ASSERT_MESSAGE(isa<llvm::ConstantInt>(I->getOperand(2)), "Unsupported: cluster size must be constant");
+    const unsigned int clusterSize = int_cast<uint32_t>(cast<llvm::ConstantInt>(I->getOperand(2))->getZExtValue());
+
+    IGC_ASSERT_MESSAGE(clusterSize <= numLanes(m_currShader->m_dispatchSize), "Cluster size must be smaller or equal to SIMD");
+    IGC_ASSERT_MESSAGE(clusterSize == 8 || clusterSize == 16 || clusterSize == 32, "Cluster size must be 8/16/32");
+
+    IGC::WaveOps Op = static_cast<IGC::WaveOps>(I->getImm64Operand(1));
+    IGC_ASSERT_MESSAGE(Op == IGC::WaveOps::SUM || Op == IGC::WaveOps::FSUM, "Unsupported op type");
+
+    if (disableHelperLanes)
+    {
+        ForceDMask();
+    }
+
+    Value* Src = I->getOperand(0);
+
+    if (clusterSize == numLanes(m_currShader->m_dispatchSize))
+    {
+        // If cluster size is equal to SIMD size, just run normal scan.
+        emitScan(Src, Op, false, nullptr, false);
+    }
+    else
+    {
+        // Run scan with clusters.
+
+        VISA_Type type;
+        e_opcode opCode;
+        uint64_t identity = 0;
+        GetReductionOp(Op, Src->getType(), identity, opCode, type);
+
+        IGC_ASSERT_MESSAGE((CEncoder::GetCISADataTypeSize(type) == 8 && ScanReduceIsInt64EmulationNeeded(opCode, type)) == false,
+            "Unsupported: 64b data type");
+
+        CVariable* src = GetSymbol(Src);
+        CVariable* dst[2] = { nullptr, nullptr };
+
+        emitPreOrPostFixOp(
+            opCode, identity, type,
+            false, src, dst, nullptr,
+            true, false, clusterSize);
+
+        m_encoder->Copy(m_destination, dst[0]);
+        if (m_currShader->m_numberInstance == 2)
+        {
+            m_encoder->SetSecondHalf(true);
+            m_encoder->Copy(m_destination, dst[1]);
+            m_encoder->SetSecondHalf(false);
+        }
+        m_encoder->Push();
+    }
+
+    if (disableHelperLanes)
+    {
+        ResetVMask();
+    }
 }
 
 void EmitPass::emitWaveAll(llvm::GenIntrinsicInst* inst)
