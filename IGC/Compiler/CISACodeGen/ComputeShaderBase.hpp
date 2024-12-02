@@ -21,6 +21,8 @@ namespace IGC
     public:
         CComputeShaderBase(llvm::Function* pFunc, CShaderProgram* pProgram);
         virtual ~CComputeShaderBase();
+
+        GenericShaderState m_State;
     protected:
         // Determines if HW can handle auto generating local IDs with this
         // order

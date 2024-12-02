@@ -2400,8 +2400,8 @@ namespace IGC
         }
 
 
-        m_ConstantBufferLength = 0;
-        m_NOSBufferSize = 0;
+        m_State.m_ConstantBufferLength = 0;
+        m_State.m_NOSBufferSize = 0;
 
         uint offset = 0;
 
@@ -2612,7 +2612,7 @@ namespace IGC
 
             if (arg.isConstantBuf())
             {
-                m_ConstantBufferLength += offset - prevOffset;
+                m_State.m_ConstantBufferLength += offset - prevOffset;
             }
         }
 
@@ -2645,7 +2645,7 @@ namespace IGC
         m_kernelInfo.m_threadPayload.OffsetToSkipPerThreadDataLoad = 0;
         m_kernelInfo.m_threadPayload.OffsetToSkipSetFFIDGP = 0;
 
-        m_ConstantBufferLength = iSTD::Align(m_ConstantBufferLength, getGRFSize());
+        m_State.m_ConstantBufferLength = iSTD::Align(m_State.m_ConstantBufferLength, getGRFSize());
 
         // FIXME: skip this function when EnableZEBinary
         CreateInlineSamplerAnnotations();
@@ -2833,8 +2833,8 @@ namespace IGC
         m_kernelInfo.m_executionEnvironment.PerThreadScratchSpace = pOutput->getScratchSpaceUsageInSlot0();
         m_kernelInfo.m_executionEnvironment.PerThreadScratchSpaceSlot1 = pOutput->getScratchSpaceUsageInSlot1();
         m_kernelInfo.m_executionEnvironment.PerThreadPrivateOnStatelessSize = m_perWIStatelessPrivateMemSize;
-        m_kernelInfo.m_kernelProgram.NOSBufferSize = m_NOSBufferSize / getMinPushConstantBufferAlignmentInBytes(); // in 256 bits
-        m_kernelInfo.m_kernelProgram.ConstantBufferLength = m_ConstantBufferLength / getMinPushConstantBufferAlignmentInBytes(); // in 256 bits
+        m_kernelInfo.m_kernelProgram.NOSBufferSize = m_State.m_NOSBufferSize / getMinPushConstantBufferAlignmentInBytes(); // in 256 bits
+        m_kernelInfo.m_kernelProgram.ConstantBufferLength = m_State.m_ConstantBufferLength / getMinPushConstantBufferAlignmentInBytes(); // in 256 bits
         m_kernelInfo.m_kernelProgram.MaxNumberOfThreads = m_Platform->getMaxGPGPUShaderThreads() / GetShaderThreadUsageRate();
 
         m_kernelInfo.m_executionEnvironment.SumFixedTGSMSizes = getSumFixedTGSMSizes(entry);
@@ -2847,7 +2847,7 @@ namespace IGC
             m_Context->getModuleMetaData()->compOpt.SubgroupIndependentForwardProgressRequired;
         m_kernelInfo.m_executionEnvironment.CompiledForGreaterThan4GBBuffers =
             m_Context->getModuleMetaData()->compOpt.GreaterThan4GBBufferRequired;
-        IGC_ASSERT(gatherMap.size() == 0);
+        IGC_ASSERT(m_State.gatherMap.size() == 0);
         m_kernelInfo.m_kernelProgram.gatherMapSize = 0;
         m_kernelInfo.m_kernelProgram.bindingTableEntryCount = 0;
 

@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CISACodeGen/CISACodeGen.h"
 #include "Compiler/CISACodeGen/CISABuilder.hpp"
+#include "Compiler/CISACodeGen/GenericShaderState.hpp"
 #include "Compiler/CISACodeGen/LiveVars.hpp"
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "Compiler/CISACodeGen/CoalescingEngine.hpp"
@@ -95,7 +96,7 @@ public:
     };
     bool IsRecompilationRequestForced();
 
-    CShader(llvm::Function*, CShaderProgram* pProgram);
+    CShader(llvm::Function *, CShaderProgram *pProgram, GenericShaderState &GState);
     virtual ~CShader();
     CShader(const CShader&) = delete;
     CShader& operator=(const CShader&) = delete;
@@ -164,6 +165,8 @@ public:
     void        AddPatchTempSetup(CVariable* var);
     void        AddPatchPredSetup(CVariable* var);
     void        AddPatchConstantSetup(uint index, CVariable* var);
+
+    unsigned getSetupSize() const { return unsigned(setup.size()); }
 
     // TODO: simplify calls to GetNewVariable to these shorter and more
     // expressive cases where possible.
@@ -282,8 +285,10 @@ public:
     CVariable* BitCast(CVariable* var, VISA_Type newType);
     void        CacheArgumentsList();
     virtual void MapPushedInputs();
-    void        CreateGatherMap();
-    void        CreateConstantBufferOutput(SKernelProgram* pKernelProgram);
+    void        CreateGatherMap() { m_State.CreateGatherMap(); }
+    void        CreateConstantBufferOutput(SKernelProgram* pKernelProgram) {
+        m_State.CreateConstantBufferOutput(pKernelProgram);
+    }
     CVariable*  CreateFunctionSymbol(llvm::Function* pFunc);
     CVariable*  CreateGlobalSymbol(llvm::GlobalVariable* pGlobal);
 
@@ -291,7 +296,6 @@ public:
 
     void        CreateImplicitArgs();
     void        CreateAliasVars();
-    uint        GetNumSBlocks() { return m_numBlocks; }
 
     void        SetUniformHelper(WIAnalysis* WI) { m_WI = WI; }
     void        SetDeSSAHelper(DeSSA* deSSA) { m_deSSA = deSSA; }
@@ -403,8 +407,6 @@ public:
     uint8_t m_numberInstance = 0;
     PushInfo pushInfo;
     EmitPass* m_EmitPass;
-    bool isInputsPulled; //true if any input is pulled, false otherwise
-    bool isMessageTargetDataCacheDataPort;
     uint m_sendStallCycle = 0;
     uint m_staticCycle = 0;
     uint m_loopNestedStallCycle = 0;
@@ -423,6 +425,7 @@ public:
     CVariable* m_ScratchSurfaceAddress = nullptr;
 
     ShaderStats* m_shaderStats = nullptr;
+    GenericShaderState &m_State;
 
     // Number of binding table entries per cache line.
     static constexpr DWORD cBTEntriesPerCacheLine = 32;
@@ -467,20 +470,14 @@ public:
     /// Evaluate constant expression and return the result immediate value.
     uint64_t GetConstantExpr(llvm::ConstantExpr* C);
 
-
     uint32_t GetMaxUsedBindingTableEntryCount(void) const
     {
-        if (m_BindingTableUsedEntriesBitmap != 0)
-        {
-            // m_BindingTableEntryCount is index; '+ 1' due to calculate total used count.
-            return (m_BindingTableEntryCount + 1);
-        }
-        return 0;
+        return m_State.GetMaxUsedBindingTableEntryCount();
     }
 
     uint32_t GetBindingTableEntryBitmap(void) const
     {
-        return m_BindingTableUsedEntriesBitmap;
+        return m_State.GetBindingTableEntryBitmap();
     }
 
     void SetBindingTableEntryCountAndBitmap(bool directIdx, BufferType bufType, uint32_t typeBti, uint32_t bti)
@@ -489,63 +486,60 @@ public:
         {
             if (directIdx)
             {
-                m_BindingTableEntryCount = (bti <= m_pBtiLayout->GetBindingTableEntryCount()) ? (std::max(bti, m_BindingTableEntryCount)) : m_BindingTableEntryCount;
-                m_BindingTableUsedEntriesBitmap |= BIT(bti / cBTEntriesPerCacheLine);
+                m_State.m_BindingTableEntryCount = (bti <= m_pBtiLayout->GetBindingTableEntryCount()) ? (std::max(bti, m_State.m_BindingTableEntryCount)) : m_State.m_BindingTableEntryCount;
+                m_State.m_BindingTableUsedEntriesBitmap |= BIT(bti / cBTEntriesPerCacheLine);
 
                 if (bufType == RESOURCE)
                 {
-                    m_shaderResourceLoaded[typeBti / 32] |= BIT(typeBti % 32);
+                    m_State.m_shaderResourceLoaded[typeBti / 32] |= BIT(typeBti % 32);
                 }
                 else if (bufType == CONSTANT_BUFFER)
                 {
-                    m_constantBufferLoaded |= BIT(typeBti);
+                    m_State.m_constantBufferLoaded |= BIT(typeBti);
                 }
                 else if (bufType == UAV)
                 {
-                    m_uavLoaded |= QWBIT(typeBti);
+                    m_State.m_uavLoaded |= QWBIT(typeBti);
                 }
                 else if (bufType == RENDER_TARGET)
                 {
-                    m_renderTargetLoaded |= BIT(typeBti);
+                    m_State.m_renderTargetLoaded |= BIT(typeBti);
                 }
             }
             else
             {
                 // Indirect addressing, set the maximum BTI.
-                m_BindingTableEntryCount = m_pBtiLayout->GetBindingTableEntryCount();
-                m_BindingTableUsedEntriesBitmap |= BITMASK_RANGE(0, (m_BindingTableEntryCount / cBTEntriesPerCacheLine));
+                m_State.m_BindingTableEntryCount = m_pBtiLayout->GetBindingTableEntryCount();
+                m_State.m_BindingTableUsedEntriesBitmap |= BITMASK_RANGE(0, (m_State.m_BindingTableEntryCount / cBTEntriesPerCacheLine));
 
                 if (bufType == RESOURCE || bufType == BINDLESS_TEXTURE)
                 {
                     unsigned int MaxArray = m_pBtiLayout->GetTextureIndexSize() / 32;
                     for (unsigned int i = 0; i < MaxArray; i++)
                     {
-                        m_shaderResourceLoaded[i] = 0xffffffff;
+                        m_State.m_shaderResourceLoaded[i] = 0xffffffff;
                     }
 
                     for (unsigned int i = MaxArray * 32; i < m_pBtiLayout->GetTextureIndexSize(); i++)
                     {
-                        m_shaderResourceLoaded[MaxArray] = BIT(i % 32);
+                        m_State.m_shaderResourceLoaded[MaxArray] = BIT(i % 32);
                     }
                 }
                 else if (bufType == CONSTANT_BUFFER || bufType == BINDLESS_CONSTANT_BUFFER)
                 {
-                    m_constantBufferLoaded |= BITMASK_RANGE(0, m_pBtiLayout->GetConstantBufferIndexSize());
+                    m_State.m_constantBufferLoaded |= BITMASK_RANGE(0, m_pBtiLayout->GetConstantBufferIndexSize());
                 }
                 else if (bufType == UAV || bufType == BINDLESS)
                 {
-                    m_uavLoaded |= QWBITMASK_RANGE(0, m_pBtiLayout->GetUavIndexSize());
+                    m_State.m_uavLoaded |= QWBITMASK_RANGE(0, m_pBtiLayout->GetUavIndexSize());
                 }
                 else if (bufType == RENDER_TARGET)
                 {
-                    m_renderTargetLoaded |= BITMASK_RANGE(0, m_pBtiLayout->GetRenderTargetIndexSize());
+                    m_State.m_renderTargetLoaded |= BITMASK_RANGE(0, m_pBtiLayout->GetRenderTargetIndexSize());
                 }
             }
         }
     }
-
-    /// Evaluate the Sampler Count field value.
-    unsigned int GetSamplerCount(unsigned int samplerCount);
 
     static unsigned GetIMEReturnPayloadSize(llvm::GenIntrinsicInst* I);
 
@@ -573,8 +567,7 @@ public:
     bool GetHasGlobalAtomics() const { return m_HasGlobalAtomics; }
     bool GetHasDPAS() const { return m_HasDPAS; }
     void SetHasDPAS() { m_HasDPAS = true; }
-    bool GetHasEval() const { return m_HasEval; }
-    void SetHasEval() { m_HasEval = true; }
+    bool GetHasEval() const { return m_State.GetHasEval(); }
     bool GetHasSample() const { return m_HasSample; }
     void SetHasSample() { m_HasSample = true; }
     void IncStatelessWritesCount() { ++m_StatelessWritesCount; }
@@ -596,7 +589,7 @@ public:
     }
 
     // in DWORDs
-    uint32_t getMinPushConstantBufferAlignmentInBytes() const { return m_Platform->getMinPushConstantBufferAlignment() * sizeof(DWORD); }
+    uint32_t getMinPushConstantBufferAlignmentInBytes() const { return m_State.getMinPushConstantBufferAlignmentInBytes(); }
 
     // Note that for PVC A0 simd16, PVCLSCEnabled() returns true
     // but no LSC is generated!
@@ -690,7 +683,6 @@ protected:
     VariableReuseAnalysis* m_VRA;
     ResourceLoopAnalysis* m_RLA;
 
-    uint m_numBlocks;
     IGC::IGCMD::MetaDataUtils* m_pMdUtils;
 
 #if defined(_DEBUG) || defined(_INTERNAL)
@@ -750,29 +742,11 @@ protected:
     CVariable* m_LocalIdBufPtr;
     CVariable* m_GlobalBufferArg;
 
-    std::vector<USC::SConstantGatherEntry> gatherMap;
-    uint     m_ConstantBufferLength;
-    uint     m_constantBufferMask;
-    uint     m_constantBufferLoaded;
-    uint64_t m_uavLoaded;
-    uint     m_shaderResourceLoaded[4];
-    uint     m_renderTargetLoaded;
-
-    int  m_cbSlot;
-    uint m_statelessCBPushedSize;
-    uint m_NOSBufferSize = 0;
-
     /// holds max number of inputs that can be pushed for this shader unit
     static const uint32_t m_pMaxNumOfPushedInputs;
 
     int m_BarrierNumber;
     SProgramOutput m_simdProgram;
-
-    // Holds max used binding table entry index.
-    uint32_t m_BindingTableEntryCount;
-
-    // Holds binding table entries bitmap.
-    uint32_t m_BindingTableUsedEntriesBitmap;
 
     // for each vector BCI whose uses are all extractElt with imm offset,
     // we store the CVariables for each index
@@ -787,7 +761,6 @@ protected:
     bool m_HasGlobalAtomics = false;
 
     bool m_HasDPAS = false;
-    bool m_HasEval = false;
     bool m_passNOSInlinedata = false;
 
     uint32_t m_StatelessWritesCount = 0;

@@ -10839,7 +10839,7 @@ void EmitPass::emitLoadRawIndexed(
 
     ResourceDescriptor resource = GetResourceVariable(bufPtrv);
     LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
-    m_currShader->isMessageTargetDataCacheDataPort = true;
+    m_currShader->m_State.isMessageTargetDataCacheDataPort = true;
     if (shouldGenerateLSC(inst))
     {
         if ((IGC_GET_FLAG_VALUE(RovOpt) & 2) && useRasterizerOrderedByteAddressBuffer(inst))
@@ -12314,7 +12314,7 @@ void EmitPass::emitStoreRawIndexed(
     Value* pBufPtr = inst->getResourceValue();
     Value* pValToStore = inst->getStoreValue();
 
-    m_currShader->isMessageTargetDataCacheDataPort = true;
+    m_currShader->m_State.isMessageTargetDataCacheDataPort = true;
 
     if (shouldGenerateLSC(inst))
     {
@@ -15970,7 +15970,7 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *dstAddr,
 
     }
     ResetVMask();
-    m_currShader->isMessageTargetDataCacheDataPort = true;
+    m_currShader->m_State.isMessageTargetDataCacheDataPort = true;
 }
 
 void EmitPass::emitAtomicTyped(GenIntrinsicInst* pInsn)
@@ -16168,7 +16168,7 @@ void EmitPass::emitAtomicTyped(GenIntrinsicInst* pInsn)
         }
     }
     ResetVMask();
-    m_currShader->isMessageTargetDataCacheDataPort = true;
+    m_currShader->m_State.isMessageTargetDataCacheDataPort = true;
 }
 
 void setSIMDSizeMask(CEncoder* m_encoder, const CShader* m_currShader, int i)
@@ -16324,7 +16324,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
             JoinSIMD(tempdst, numChannels, instWidth);
         }
     }
-    m_currShader->isMessageTargetDataCacheDataPort = true;
+    m_currShader->m_State.isMessageTargetDataCacheDataPort = true;
 }
 
 void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
@@ -16524,7 +16524,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
         ResourceLoopBackEdge(needLoop, flag, label);
     }
     ResetVMask();
-    m_currShader->isMessageTargetDataCacheDataPort = true;
+    m_currShader->m_State.isMessageTargetDataCacheDataPort = true;
 }
 
 void EmitPass::emitThreadGroupNamedBarriersSignal(llvm::Instruction* inst)
@@ -16970,7 +16970,7 @@ void EmitPass::emitUniformAtomicCounter(llvm::GenIntrinsicInst* pInsn)
     }
 
     ResetVMask();
-    m_currShader->isMessageTargetDataCacheDataPort = true;
+    m_currShader->m_State.isMessageTargetDataCacheDataPort = true;
 }
 
 void EmitPass::emitAtomicCounter(llvm::GenIntrinsicInst* pInsn)
@@ -17076,7 +17076,7 @@ void EmitPass::emitAtomicCounter(llvm::GenIntrinsicInst* pInsn)
 
     ResourceLoopBackEdge(needLoop, flag, label);
     ResetVMask();
-    m_currShader->isMessageTargetDataCacheDataPort = true;
+    m_currShader->m_State.isMessageTargetDataCacheDataPort = true;
 }
 
 void EmitPass::CmpBoolOp(Pattern* cmpPattern,
@@ -19952,7 +19952,7 @@ void EmitPass::emitLSCTypedRead(llvm::Instruction* pInsn)
             JoinSIMD(tempdst, numChannels, instWidth);
         }
     }
-    m_currShader->isMessageTargetDataCacheDataPort = true;
+    m_currShader->m_State.isMessageTargetDataCacheDataPort = true;
 }
 
 void EmitPass::emitLSCTypedWrite(llvm::Instruction* pInsn)
@@ -20102,7 +20102,7 @@ void EmitPass::emitLSCTypedWrite(llvm::Instruction* pInsn)
     ResourceLoopBackEdge(needLoop, flag, label);
 
     ResetVMask();
-    m_currShader->isMessageTargetDataCacheDataPort = true;
+    m_currShader->m_State.isMessageTargetDataCacheDataPort = true;
 }
 
 
@@ -20293,7 +20293,7 @@ void EmitPass::emitLSCAtomicTyped(llvm::GenIntrinsicInst* inst)
         }
     }
     ResetVMask();
-    m_currShader->isMessageTargetDataCacheDataPort = true;
+    m_currShader->m_State.isMessageTargetDataCacheDataPort = true;
 }
 
 void EmitPass::emitLscUniformAtomicCounter(llvm::GenIntrinsicInst* pInst)
@@ -20367,7 +20367,7 @@ void EmitPass::emitLscUniformAtomicCounter(llvm::GenIntrinsicInst* pInst)
     }
 
     ResetVMask();
-    m_currShader->isMessageTargetDataCacheDataPort = true;
+    m_currShader->m_State.isMessageTargetDataCacheDataPort = true;
 }
 
 // DstSubRegOffset and SrcSubRegOffset are in unit of element size.
