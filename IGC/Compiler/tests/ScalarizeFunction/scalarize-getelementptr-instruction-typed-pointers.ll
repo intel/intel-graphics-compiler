@@ -38,6 +38,30 @@ define double @basic(<2 x double*> %pointers) {
   ret double %return
 }
 
+define double @should_preserve_metadata(<2 x double*> %pointers) {
+; CHECK-LABEL: define double @should_preserve_metadata(
+; CHECK-SAME: <2 x double*> [[POINTERS:%.*]]) {
+; CHECK-NEXT:    [[POINTERS_SCALAR:%.*]] = extractelement <2 x double*> [[POINTERS]], i32 0
+; CHECK-NEXT:    [[POINTERS_SCALAR1:%.*]] = extractelement <2 x double*> [[POINTERS]], i32 1
+; CHECK-NEXT:    [[POINTER_TO_DOUBLE2:%.*]] = getelementptr double, double* [[POINTERS_SCALAR]], i32 1, !any_metadata [[META0:![0-9]+]]
+; CHECK-NEXT:    [[POINTER_TO_DOUBLE_ASSEMBLED_VECT:%.*]] = insertelement <2 x double*> undef, double* [[POINTER_TO_DOUBLE2]], i32 0
+; CHECK-NEXT:    [[POINTER_TO_DOUBLE3:%.*]] = getelementptr double, double* [[POINTERS_SCALAR1]], i32 1, !any_metadata [[META0]]
+; CHECK-NEXT:    [[POINTER_TO_DOUBLE_ASSEMBLED_VECT4:%.*]] = insertelement <2 x double*> [[POINTER_TO_DOUBLE_ASSEMBLED_VECT]], double* [[POINTER_TO_DOUBLE3]], i32 1
+; CHECK-NEXT:    [[VAL0:%.*]] = load double, double* [[POINTER_TO_DOUBLE2]], align 8
+; CHECK-NEXT:    [[VAL1:%.*]] = load double, double* [[POINTER_TO_DOUBLE3]], align 8
+; CHECK-NEXT:    [[RETURN:%.*]] = fadd double [[VAL0]], [[VAL1]]
+; CHECK-NEXT:    ret double [[RETURN]]
+;
+  %pointer_to_double = getelementptr double, <2 x double*> %pointers, i32 1, !any_metadata !{i32 0}
+
+  %ptr0 = extractelement <2 x double*> %pointer_to_double, i32 0
+  %ptr1 = extractelement <2 x double*> %pointer_to_double, i32 1
+  %val0 = load double, double* %ptr0
+  %val1 = load double, double* %ptr1
+  %return = fadd double %val0, %val1
+  ret double %return
+}
+
 define double @should_work_with_vector_of_indices(<2 x double*> %pointers) {
 ; CHECK-LABEL: define double @should_work_with_vector_of_indices(
 ; CHECK-SAME: <2 x double*> [[POINTERS:%.*]]) {
@@ -188,3 +212,5 @@ define i64 @should_scalarize_only_vectors(%some_type* %pointer) {
   %return = add i64 %val0, %val1
   ret i64 %return
 }
+
+; CHECK: [[META0]] = !{i32 0}

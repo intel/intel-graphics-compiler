@@ -410,17 +410,16 @@ void ScalarizeFunction::visitUnaryOperator(UnaryOperator& UI)
     newScalarizedInsts.resize(numElements);
     for (unsigned dup = 0; dup < numElements; dup++)
     {
-        Value* Val = UnaryOperator::Create(
+        UnaryOperator* Val = UnaryOperator::Create(
             UI.getOpcode(),
             operand0[dup],
             UI.getName(),
             &UI
         );
-        if (UnaryOperator* UO = dyn_cast<UnaryOperator>(Val)) {
-            // Copy fast math flags if any.
-            if (isa<FPMathOperator>(UO))
-                UO->setFastMathFlags(UI.getFastMathFlags());
-        }
+        // Copy fast math flags if any.
+        if (isa<FPMathOperator>(Val))
+            Val->setFastMathFlags(UI.getFastMathFlags());
+        Val->copyMetadata(UI);
         newScalarizedInsts[dup] = Val;
     }
 
@@ -461,26 +460,27 @@ void ScalarizeFunction::visitBinaryOperator(BinaryOperator& BI)
     newScalarizedInsts.resize(numElements);
     for (unsigned dup = 0; dup < numElements; dup++)
     {
-        Value* Val = BinaryOperator::Create(
+        BinaryOperator* Val = BinaryOperator::Create(
             BI.getOpcode(),
             operand0[dup],
             operand1[dup],
             BI.getName(),
             &BI
         );
-        if (BinaryOperator* BO = dyn_cast<BinaryOperator>(Val)) {
-            // Copy overflow flags if any.
-            if (isa<OverflowingBinaryOperator>(BO)) {
-                BO->setHasNoSignedWrap(BI.hasNoSignedWrap());
-                BO->setHasNoUnsignedWrap(BI.hasNoUnsignedWrap());
-            }
-            // Copy exact flag if any.
-            if (isa<PossiblyExactOperator>(BO))
-                BO->setIsExact(BI.isExact());
-            // Copy fast math flags if any.
-            if (isa<FPMathOperator>(BO))
-                BO->setFastMathFlags(BI.getFastMathFlags());
+
+        // Copy overflow flags if any.
+        if (isa<OverflowingBinaryOperator>(Val)) {
+            Val->setHasNoSignedWrap(BI.hasNoSignedWrap());
+            Val->setHasNoUnsignedWrap(BI.hasNoUnsignedWrap());
         }
+        // Copy exact flag if any.
+        if (isa<PossiblyExactOperator>(Val))
+            Val->setIsExact(BI.isExact());
+        // Copy fast math flags if any.
+        if (isa<FPMathOperator>(Val))
+            Val->setFastMathFlags(BI.getFastMathFlags());
+
+        Val->copyMetadata(BI);
         newScalarizedInsts[dup] = Val;
     }
 
@@ -534,6 +534,7 @@ void ScalarizeFunction::visitCmpInst(CmpInst& CI)
         {
             Val->setFastMathFlags(CI.getFastMathFlags());
         }
+        Val->copyMetadata(CI);
         newScalarizedInsts[dup] = Val;
     }
 
@@ -599,13 +600,15 @@ void ScalarizeFunction::visitCastInst(CastInst& CI)
     newScalarizedInsts.resize(numElements);
     for (unsigned dup = 0; dup < numElements; dup++)
     {
-        newScalarizedInsts[dup] = CastInst::Create(
+        CastInst* tmp = CastInst::Create(
             CI.getOpcode(),
             operand0[dup],
             scalarDestType,
             CI.getName(),
             &CI
         );
+        tmp->copyMetadata(CI);
+        newScalarizedInsts[dup] = tmp;
     }
 
     // Add new value/s to SCM
@@ -715,6 +718,8 @@ void ScalarizeFunction::visitPHINode(PHINode& PI)
                 tmp->setFastMathFlags(PI.getFastMathFlags());
             }
 
+            tmp->copyMetadata(PI);
+
             newScalarizedPHI[i] = tmp;
         }
 
@@ -800,6 +805,7 @@ void ScalarizeFunction::visitSelectInst(SelectInst& SI)
             {
                 Val->setFastMathFlags(SI.getFastMathFlags());
             }
+            Val->copyMetadata(SI);
             newScalarizedInsts[dup] = Val;
         }
         else
@@ -1007,12 +1013,13 @@ void ScalarizeFunction::visitCallInst(CallInst& CI)
         for (unsigned i = 0; i < numElements; i++)
         {
             Type* scalarType = operand0[i]->getType();
-            Value* scalarFshl = CallInst::Create(
+            CallInst* scalarFshl = CallInst::Create(
                 Intrinsic::getDeclaration(CI.getModule(), Intrinsic::fshl, { scalarType }),
                 { operand0[i], operand1[i], operand2[i] },
                 CI.getName() + ".scalar",
                 &CI
             );
+            scalarFshl->copyMetadata(CI);
             newScalarizedInsts[i] = scalarFshl;
         }
 
@@ -1077,8 +1084,9 @@ void ScalarizeFunction::visitGetElementPtrInst(GetElementPtrInst& GI)
         auto op2 = indexValue->getType()->isVectorTy() ? operand2[i] : indexValue;
 
         Type* BaseTy = GI.getSourceElementType();
-        Value* newGEP = GetElementPtrInst::Create(BaseTy, op1, op2,
+        GetElementPtrInst* newGEP = GetElementPtrInst::Create(BaseTy, op1, op2,
             VALUE_NAME(GI.getName()), &GI);
+        newGEP->copyMetadata(GI);
         Value* constIndex = ConstantInt::get(Type::getInt32Ty(context()), i);
         Instruction* insert = InsertElementInst::Create(assembledVector,
             newGEP, constIndex,

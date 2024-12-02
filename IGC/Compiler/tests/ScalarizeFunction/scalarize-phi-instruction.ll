@@ -46,6 +46,37 @@ exit:
   ret <2 x i32> %result
 }
 
+define <2 x i32> @should_preserve_metadata(i1 %switch, <2 x i32> %src1, <2 x i32> %src2) {
+; CHECK-LABEL: define <2 x i32> @should_preserve_metadata(
+; CHECK-SAME: i1 [[SWITCH:%.*]], <2 x i32> [[SRC1:%.*]], <2 x i32> [[SRC2:%.*]]) {
+; CHECK-NEXT:  [[ENTRY:.*:]]
+; CHECK-NEXT:    [[SRC2_SCALAR:%.*]] = extractelement <2 x i32> [[SRC2]], i32 0
+; CHECK-NEXT:    [[SRC2_SCALAR4:%.*]] = extractelement <2 x i32> [[SRC2]], i32 1
+; CHECK-NEXT:    [[SRC1_SCALAR:%.*]] = extractelement <2 x i32> [[SRC1]], i32 0
+; CHECK-NEXT:    [[SRC1_SCALAR3:%.*]] = extractelement <2 x i32> [[SRC1]], i32 1
+; CHECK-NEXT:    br i1 [[SWITCH]], label %[[FIRST:.*]], label %[[SECOND:.*]]
+; CHECK:       [[FIRST]]:
+; CHECK-NEXT:    br label %[[EXIT:.*]]
+; CHECK:       [[SECOND]]:
+; CHECK-NEXT:    br label %[[EXIT]]
+; CHECK:       [[EXIT]]:
+; CHECK-NEXT:    [[RESULT1:%.*]] = phi i32 [ [[SRC1_SCALAR]], %[[FIRST]] ], [ [[SRC2_SCALAR]], %[[SECOND]] ], !any_metadata [[META0:![0-9]+]]
+; CHECK-NEXT:    [[RESULT2:%.*]] = phi i32 [ [[SRC1_SCALAR3]], %[[FIRST]] ], [ [[SRC2_SCALAR4]], %[[SECOND]] ], !any_metadata [[META0]]
+; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT:%.*]] = insertelement <2 x i32> undef, i32 [[RESULT1]], i32 0
+; CHECK-NEXT:    [[RESULT_ASSEMBLED_VECT5:%.*]] = insertelement <2 x i32> [[RESULT_ASSEMBLED_VECT]], i32 [[RESULT2]], i32 1
+; CHECK-NEXT:    ret <2 x i32> [[RESULT_ASSEMBLED_VECT5]]
+;
+entry:
+  br i1 %switch, label %first, label %second
+first:
+  br label %exit
+second:
+  br label %exit
+exit:
+  %result = phi <2 x i32> [ %src1, %first], [ %src2, %second], !any_metadata !{i32 0}
+  ret <2 x i32> %result
+}
+
 define <2 x float> @should_work_with_different_value_type(i1 %switch, <2 x float> %src1, <2 x float> %src2) {
 ; CHECK-LABEL: define <2 x float> @should_work_with_different_value_type(
 ; CHECK-SAME: i1 [[SWITCH:%.*]], <2 x float> [[SRC1:%.*]], <2 x float> [[SRC2:%.*]]) {
@@ -585,3 +616,5 @@ declare void @llvm.genx.GenISA.simdMediaBlockWrite.v16i16(i32, i32, i32, i32, <1
 declare void @llvm.genx.GenISA.LSC2DBlockWrite.p0i32(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32, <8 x i32>)
 declare void @llvm.genx.GenISA.LSC2DBlockWriteAddrPayload.p0i32.v16i16(ptr, i32, i32, i32, i32, i32, i32, i1, i1, i32, <16 x i16>)
 declare spir_func <8 x i32> @do_math_v8i32_v8i32(<8 x i32>) #1
+
+; CHECK: [[META0]] = !{i32 0}

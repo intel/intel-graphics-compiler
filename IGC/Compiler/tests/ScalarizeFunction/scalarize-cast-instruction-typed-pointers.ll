@@ -29,6 +29,21 @@ define <2 x i8> @basic(<2 x i32> %src1) {
   ret <2 x i8> %1
 }
 
+define <2 x i8> @should_preserve_metadata(<2 x i32> %src1) {
+; CHECK-LABEL: define <2 x i8> @should_preserve_metadata(
+; CHECK-SAME: <2 x i32> [[SRC1:%.*]]) {
+; CHECK-NEXT:    [[SRC1_SCALAR:%.*]] = extractelement <2 x i32> [[SRC1]], i32 0
+; CHECK-NEXT:    [[SRC1_SCALAR1:%.*]] = extractelement <2 x i32> [[SRC1]], i32 1
+; CHECK-NEXT:    [[TMP1:%.*]] = trunc i32 [[SRC1_SCALAR]] to i8, !any_metadata [[META0:![0-9]+]]
+; CHECK-NEXT:    [[TMP2:%.*]] = trunc i32 [[SRC1_SCALAR1]] to i8, !any_metadata [[META0]]
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x i8> undef, i8 [[TMP1]], i32 0
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT2:%.*]] = insertelement <2 x i8> [[DOTASSEMBLED_VECT]], i8 [[TMP2]], i32 1
+; CHECK-NEXT:    ret <2 x i8> [[DOTASSEMBLED_VECT2]]
+;
+  %1 = trunc <2 x i32> %src1 to <2 x i8>, !any_metadata !{i32 0}
+  ret <2 x i8> %1
+}
+
 define <2 x float> @should_work_with_different_instruction_type(<2 x double> %src1) {
 ; CHECK-LABEL: define <2 x float> @should_work_with_different_instruction_type(
 ; CHECK-SAME: <2 x double> [[SRC1:%.*]]) {
@@ -193,3 +208,5 @@ define i8 @should_not_scalarize_scalar() {
   %1 = trunc i32 4 to i8
   ret i8 %1
 }
+
+; CHECK: [[META0]] = !{i32 0}

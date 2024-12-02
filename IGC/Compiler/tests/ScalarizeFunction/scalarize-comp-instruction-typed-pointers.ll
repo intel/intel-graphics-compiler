@@ -31,6 +31,23 @@ define <2 x i1> @basic(<2 x i32> %src1, <2 x i32> %src2) {
   ret <2 x i1> %1
 }
 
+define <2 x i1> @should_preserve_metadata(<2 x i32> %src1, <2 x i32> %src2) {
+; CHECK-LABEL: define <2 x i1> @should_preserve_metadata(
+; CHECK-SAME: <2 x i32> [[SRC1:%.*]], <2 x i32> [[SRC2:%.*]]) {
+; CHECK-NEXT:    [[SRC2_SCALAR:%.*]] = extractelement <2 x i32> [[SRC2]], i32 0
+; CHECK-NEXT:    [[SRC2_SCALAR2:%.*]] = extractelement <2 x i32> [[SRC2]], i32 1
+; CHECK-NEXT:    [[SRC1_SCALAR:%.*]] = extractelement <2 x i32> [[SRC1]], i32 0
+; CHECK-NEXT:    [[SRC1_SCALAR1:%.*]] = extractelement <2 x i32> [[SRC1]], i32 1
+; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq i32 [[SRC1_SCALAR]], [[SRC2_SCALAR]], !any_metadata [[META0:![0-9]+]]
+; CHECK-NEXT:    [[TMP2:%.*]] = icmp eq i32 [[SRC1_SCALAR1]], [[SRC2_SCALAR2]], !any_metadata [[META0]]
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x i1> undef, i1 [[TMP1]], i32 0
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT3:%.*]] = insertelement <2 x i1> [[DOTASSEMBLED_VECT]], i1 [[TMP2]], i32 1
+; CHECK-NEXT:    ret <2 x i1> [[DOTASSEMBLED_VECT3]]
+;
+  %1 = icmp eq <2 x i32> %src1, %src2, !any_metadata !{i32 0}
+  ret <2 x i1> %1
+}
+
 define <2 x i1> @should_work_with_different_instruction_type(<2 x float> %src1, <2 x float> %src2) {
 ; CHECK-LABEL: define <2 x i1> @should_work_with_different_instruction_type(
 ; CHECK-SAME: <2 x float> [[SRC1:%.*]], <2 x float> [[SRC2:%.*]]) {
@@ -212,3 +229,5 @@ define <2 x i1> @should_not_scalarize_two_constants() {
   %1 = icmp eq <2 x i32> <i32 4, i32 4>, <i32 4, i32 8>
   ret <2 x i1> %1
 }
+
+; CHECK: [[META0]] = !{i32 0}

@@ -33,6 +33,25 @@ define spir_kernel void @basic(<2 x float> %src1) {
   ret void
 }
 
+define spir_kernel void @should_preserve_metadata(<2 x float> %src1) {
+; CHECK-LABEL: define spir_kernel void @should_preserve_metadata(
+; CHECK-SAME: <2 x float> [[SRC1:%.*]]) {
+; CHECK-NEXT:    [[SRC1_SCALAR:%.*]] = extractelement <2 x float> [[SRC1]], i32 0
+; CHECK-NEXT:    [[SRC1_SCALAR1:%.*]] = extractelement <2 x float> [[SRC1]], i32 1
+; CHECK-NEXT:    [[TMP1:%.*]] = alloca <2 x float>, align 8
+; CHECK-NEXT:    [[TMP2:%.*]] = fneg float [[SRC1_SCALAR]], !any_metadata [[META0:![0-9]+]]
+; CHECK-NEXT:    [[TMP3:%.*]] = fneg float [[SRC1_SCALAR1]], !any_metadata [[META0]]
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT:%.*]] = insertelement <2 x float> undef, float [[TMP2]], i32 0
+; CHECK-NEXT:    [[DOTASSEMBLED_VECT2:%.*]] = insertelement <2 x float> [[DOTASSEMBLED_VECT]], float [[TMP3]], i32 1
+; CHECK-NEXT:    store <2 x float> [[DOTASSEMBLED_VECT2]], <2 x float>* [[TMP1]], align 8
+; CHECK-NEXT:    ret void
+;
+  %1 = alloca <2 x float>
+  %2 = fneg <2 x float> %src1, !any_metadata !{i32 0}
+  store <2 x float> %2, <2 x float>* %1
+  ret void
+}
+
 define spir_kernel void @should_work_with_different_type(<2 x double> %src1) {
 ; CHECK-LABEL: define spir_kernel void @should_work_with_different_type(
 ; CHECK-SAME: <2 x double> [[SRC1:%.*]]) {
@@ -185,3 +204,5 @@ define void @test_fneg_optnone(<4 x float> %src, <3 x float> addrspace(1)* %out)
 }
 
 attributes #0 = { noinline optnone }
+
+; CHECK: [[META0]] = !{i32 0}
