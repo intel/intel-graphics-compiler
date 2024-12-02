@@ -41,8 +41,24 @@ define void @test_store_constvec(ptr %sptr) {
   ret void
 }
 
-!igc.functions = !{!0, !2}
+define void @test_store_constaggrzero(ptr %sptr) {
+; CHECK-LABEL: define void @test_store_constaggrzero(
+; CHECK-SAME: ptr [[SPTR:%.*]]) {
+; CHECK-NEXT:    [[TMP1:%.*]] = insertelement <4 x i32> undef, i32 0, i32 0
+; CHECK-NEXT:    [[TMP2:%.*]] = insertelement <4 x i32> [[TMP1]], i32 0, i32 1
+; CHECK-NEXT:    [[TMP3:%.*]] = insertelement <4 x i32> [[TMP2]], i32 0, i32 2
+; CHECK-NEXT:    [[TMP4:%.*]] = insertelement <4 x i32> [[TMP3]], i32 0, i32 3
+; CHECK-NEXT:    store <4 x i32> [[TMP4]], ptr [[SPTR]], align 16
+; CHECK-NEXT:    ret void
+;
+  store <4 x i32> zeroinitializer, ptr %sptr, align 16
+  ret void
+}
+
+
+!igc.functions = !{!0, !2, !3}
 
 !0 = !{ptr @test_store_constdatavec, !1}
 !1 = !{}
 !2 = !{ptr @test_store_constvec, !1}
+!3 = !{ptr @test_store_constaggrzero, !1}

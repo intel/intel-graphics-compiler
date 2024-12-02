@@ -1391,8 +1391,10 @@ void Legalization::visitStoreInst(StoreInst& I)
     }
     else if (ConstantAggregateZero * vec = dyn_cast<ConstantAggregateZero>(I.getOperand(0)))
     {
-        Value* newVec = UndefValue::get(vec->getType());
-        unsigned int nbElement = (unsigned)cast<IGCLLVM::FixedVectorType>(vec->getType())->getNumElements();
+        auto* vecTy = vec->getType();
+        IGC_ASSERT_MESSAGE(isa<FixedVectorType>(vecTy), "Unexpected aggregate type");
+        Value* newVec = UndefValue::get(vecTy);
+        unsigned nbElement = cast<FixedVectorType>(vecTy)->getNumElements();
         for (unsigned int i = 0; i < nbElement; i++)
         {
             Constant* cst = vec->getElementValue(i);
