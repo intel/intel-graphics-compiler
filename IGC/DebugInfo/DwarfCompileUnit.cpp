@@ -2257,7 +2257,7 @@ IGC::DIE *CompileUnit::constructVariableDIE(DbgVariable &DV,
 
   // Check if variable is described by a DBG_VALUE instruction.
   const Instruction *pDbgInst = DV.getDbgInst();
-  if (!pDbgInst || !DV.isLocationInlined) {
+  if (!pDbgInst || !DV.currentLocationIsInlined()) {
     DV.setDIE(VariableDie);
     LLVM_DEBUG(dbgs() << " done. No dbg.inst assotiated\n");
     return VariableDie;
@@ -2603,8 +2603,7 @@ bool CompileUnit::buildFpBasedLoc(const DbgVariable &var, IGC::DIEBlock *Block,
 }
 
 bool CompileUnit::buildSlicedLoc(
-    const DbgVariable &var, IGC::DIEBlock *Block,
-    const VISAVariableLocation &loc,
+    DbgVariable &var, IGC::DIEBlock *Block, const VISAVariableLocation &loc,
     const std::vector<DbgDecoder::LiveIntervalsVISA> *vars) {
   LLVM_DEBUG(dbgs() << "  sliced variable, pushing lane \n");
   // DW_OP_push_simd_lane
@@ -2628,7 +2627,7 @@ bool CompileUnit::buildSlicedLoc(
   unsigned int offsetNotTaken = Block->ComputeSizeOnTheFly(Asm);
 
   // Emit first register
-  if (!buildValidVar(var, Block, loc, vars, true))
+  if (!buildValidVar(var, Block, loc, vars, DbgRegisterType::FirstHalf))
     return false;
 
   // Emit second half register
@@ -2645,16 +2644,16 @@ bool CompileUnit::buildSlicedLoc(
   // register in buildValidVar(), which always processes the 1st register only.
   VISAVariableLocation second_loc(loc);
   second_loc.SetRegister(loc.GetSecondReg());
-  if (!buildValidVar(var, Block, second_loc, vars, false))
+  if (!buildValidVar(var, Block, second_loc, vars, DbgRegisterType::SecondHalf))
     return false;
 
   return true;
 }
 
 bool CompileUnit::buildValidVar(
-    const DbgVariable &var, IGC::DIEBlock *Block,
-    const VISAVariableLocation &loc,
-    const std::vector<DbgDecoder::LiveIntervalsVISA> *vars, bool firstHalf) {
+    DbgVariable &var, IGC::DIEBlock *Block, const VISAVariableLocation &loc,
+    const std::vector<DbgDecoder::LiveIntervalsVISA> *vars,
+    DbgRegisterType regType) {
   const DbgDecoder::VarInfo *VarInfo = nullptr;
   const auto *VISAMod = loc.GetVISAModule();
 
@@ -2671,11 +2670,26 @@ bool CompileUnit::buildValidVar(
       LLVM_DEBUG(dbgs() << "  warning: could not get vISA Variable info\n");
   }
 
-  if (VarInfo || (vars && vars->size() >= (firstHalf ? 1u : 2u))) {
-    const auto &lrToUse =
-        vars ? vars->at(firstHalf ? 0 : 1) : VarInfo->lrs.front();
+  const bool isSecondHalf = regType == DbgRegisterType::SecondHalf;
+  const unsigned NumVarsExpected = isSecondHalf ? 2 : 1;
+  // TODO: If neither condition is fulfilled, should we do an early
+  // 'return false' as in "invalid variable"? In that case, we could improve
+  // the logic in the following way:
+  //
+  //  DbgDecoder::LiveIntervalsVISA *lrToUse = nullptr;
+  //  if (vars && vars->size() >= NumVarsExpected)
+  //    lrToUse = vars->at(LRIndex);
+  //  else if (VarInfo)
+  //    lrToUse = VarInfo->lrs.front();
+  //  if (!lrToUse)
+  //    return false;
+  //  /* remaining code from the if block */
+  if (VarInfo || (vars && vars->size() >= NumVarsExpected)) {
+    const unsigned LRIndex = isSecondHalf ? 1 : 0;
+    const auto &lrToUse = vars ? vars->at(LRIndex) : VarInfo->lrs.front();
     LLVM_DEBUG(dbgs() << "  emitting variable location at LR: <";
                lrToUse.print(dbgs()); dbgs() << ">\n");
+    var.setLocationRegisterType(regType);
     emitLocation = true;
     if (lrToUse.isGRF()) {
       if (loc.IsVectorized() == false) {
@@ -2702,7 +2716,7 @@ bool CompileUnit::buildValidVar(
                      SimdOffset < MaxUI16);
           if (loc.IsRegister())
             addSimdLane(Block, var, loc, &lrToUse, (uint16_t)(SimdOffset),
-                        false, !firstHalf);
+                        false, isSecondHalf);
         }
       }
     } else if (lrToUse.isSpill()) {
@@ -2738,7 +2752,7 @@ bool CompileUnit::buildValidVar(
                              static_cast<int32_t>(VectorOffset));
           addBE_FP(Block);
           addSimdLane(Block, var, loc, &lrToUse, 0, false,
-                      !firstHalf); // Emit SIMD lane for spill (unpacked)
+                      isSecondHalf); // Emit SIMD lane for spill (unpacked)
         }
       }
     } else {
@@ -2751,7 +2765,7 @@ bool CompileUnit::buildValidVar(
 }
 
 IGC::DIEBlock *CompileUnit::buildGeneral(
-    const DbgVariable &var, const VISAVariableLocation &loc,
+    DbgVariable &var, const VISAVariableLocation &loc,
     const std::vector<DbgDecoder::LiveIntervalsVISA> *vars,
     IGC::DIE *VariableDie) {
   IGC::DIEBlock *Block = new (DIEValueAllocator) IGC::DIEBlock();
@@ -2788,7 +2802,7 @@ IGC::DIEBlock *CompileUnit::buildGeneral(
     if (loc.HasLocationSecondReg()) {
       buildSlicedLoc(var, Block, loc, vars);
     } else {
-      buildValidVar(var, Block, loc, vars, true);
+      buildValidVar(var, Block, loc, vars, DbgRegisterType::Regular);
     }
   }
 
