@@ -1246,6 +1246,24 @@ public:
     }
 };
 
+class WaveAllIntrinsic : public GenIntrinsicInst
+{
+public:
+    Value *getSrc() const { return getOperand(0); }
+    IGC::WaveOps getOpKind() const
+    {
+        return static_cast<IGC::WaveOps>(getImm64Operand(1));
+    }
+
+    // Methods for support type inquiry through isa, cast, and dyn_cast:
+    static inline bool classof(const GenIntrinsicInst *I) {
+        return I->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveAll;
+    }
+    static inline bool classof(const Value *V) {
+        return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
+    }
+};
+
 // This is just a meta intrinsic that encapsulates the idea of intrinsics
 // that contain continuation IDs.
 class ContinuationHLIntrinsic : public GenIntrinsicInst {

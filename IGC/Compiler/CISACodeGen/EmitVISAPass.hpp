@@ -320,6 +320,19 @@ public:
         bool negate,
         CVariable* src,
         CVariable* dst);
+    void emitReductionTree(
+        e_opcode op,
+        VISA_Type type,
+        CVariable* src,
+        CVariable* dst );
+    void emitReductionTrees(
+        e_opcode op,
+        VISA_Type type,
+        SIMDMode simdMode,
+        CVariable* src,
+        CVariable* dst,
+        unsigned int startIdx,
+        unsigned int endIdx );
     void emitReductionClustered(
         const e_opcode op,
         const uint64_t identityValue,
