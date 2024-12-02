@@ -450,6 +450,7 @@ enum class ShaderTypeMD
         bool WaEnableALTModeVisaWA                      = false;
         bool EnableLdStCombineforLoad                   = false;
         bool EnableLdStCombinewithDummyLoad             = false;
+        bool EnableIndependentSharedMemoryFenceFunctionality = false;
         bool NewSpillCostFunction                       = false;
         bool ForceLargeGRFNum4RQ                        = false;
         bool DisableEUFusion                            = false;

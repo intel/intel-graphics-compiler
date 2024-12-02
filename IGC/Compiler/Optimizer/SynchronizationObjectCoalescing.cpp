@@ -563,8 +563,10 @@ bool SynchronizationObjectCoalescing::runOnFunction(llvm::Function& F)
 {
     m_CurrentFunction = &F;
     const CodeGenContext* const ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    const ModuleMetaData* const md = ctx->getModuleMetaData();
     m_HasIndependentSharedMemoryFenceFunctionality = !ctx->platform.hasSLMFence() ||
         (ctx->platform.hasSLMFence() && ctx->platform.hasIndependentSharedMemoryFenceFunctionality()) ||
+        md->compOpt.EnableIndependentSharedMemoryFenceFunctionality ||
         IGC_IS_FLAG_ENABLED(EnableIndependentSharedMemoryFenceFunctionality);
     m_ShaderType = ctx->type;
     m_HasTypedMemoryFenceFunctionality = ctx->platform.hasLSC() && ctx->platform.LSCEnabled();
