@@ -185,6 +185,7 @@ namespace IGC
     bool IsSIMDBlockIntrinsic(const llvm::Instruction* inst);
     bool isSubGroupIntrinsic(const llvm::Instruction* I);
     bool isSubGroupIntrinsicPVC(const llvm::Instruction* I);
+    bool isSubGroupShuffleVariant(const llvm::Instruction* I);
     bool hasSubGroupIntrinsicPVC(llvm::Function& F);
 
     bool isBarrierIntrinsic(const llvm::Instruction* I);

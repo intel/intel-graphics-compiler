@@ -1928,6 +1928,42 @@ void CustomSafeOptPass::visitBinaryOperator(BinaryOperator& I)
     }
 }
 
+void CustomSafeOptPass::visitTruncInst(TruncInst& I)
+{
+    /*
+    From:
+    %334 = zext i16 %orig to i32
+    %335 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %334, i32 %333, i32 0)
+    %336 = trunc i32 %335 to i16
+    To:
+    %335 = call i16 @llvm.genx.GenISA.WaveShuffleIndex.i16(i16 %orig, i32 %333, i32 0)
+    */
+    if( I.getSrcTy()->isIntegerTy( 32 ) && I.getDestTy()->isIntegerTy( 16 ) )
+    {
+        // We know all variants of shuffle from zext are safe to demote. (unlike WaveAll which might not be)
+        if( auto* genIntr = dyn_cast<GenIntrinsicInst>( I.getOperand( 0 ) ); genIntr && isSubGroupShuffleVariant( genIntr ) && genIntr->hasOneUse() )
+        {
+            if( auto* ZI = dyn_cast<ZExtInst>( genIntr->getOperand( 0 ) ); ZI && ZI->getSrcTy()->isIntegerTy( 16 ) && ZI->getDestTy()->isIntegerTy( 32 ) )
+            {
+                IRBuilder<> builder( &I );
+
+                llvm::SmallVector<Value*> newArgs( genIntr->args().begin(), genIntr->args().end() );
+
+                // Override first arg (same position for all enabled intrinsics here) with lower type
+                newArgs[ 0 ] = ZI->getOperand( 0 );
+
+                // We do it this way, so that module will get proper func declaration of demoted type
+                Function* demotedFuncDeclaration = GenISAIntrinsic::getDeclaration( I.getModule(), genIntr->getIntrinsicID(), builder.getInt16Ty() );
+                Value* replacementCall = builder.CreateCall( demotedFuncDeclaration, newArgs );
+
+                I.replaceAllUsesWith( replacementCall );
+                I.eraseFromParent();
+                genIntr->eraseFromParent();
+            }
+        }
+    }
+}
+
 void IGC::CustomSafeOptPass::visitLdptr(llvm::SamplerLoadIntrinsic* inst)
 {
     if (!IGC_IS_FLAG_ENABLED(UseHDCTypedReadForAllTextures) &&

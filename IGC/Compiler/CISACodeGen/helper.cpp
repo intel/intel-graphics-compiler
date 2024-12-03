@@ -1627,6 +1627,25 @@ namespace IGC
         }
     }
 
+    // This returns true for all the sub-group shuffle optimized intrinsics
+    bool isSubGroupShuffleVariant(const llvm::Instruction* I)
+    {
+        const GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(I);
+        if(!GII)
+            return false;
+
+        switch(GII->getIntrinsicID())
+        {
+        case GenISAIntrinsic::GenISA_WaveShuffleIndex:
+        case GenISAIntrinsic::GenISA_WaveBroadcast:
+        case GenISAIntrinsic::GenISA_WaveClusteredBroadcast:
+        case GenISAIntrinsic::GenISA_simdShuffleXor:
+            return true;
+        default:
+            return false;
+        }
+    }
+
     bool hasSubGroupIntrinsicPVC(llvm::Function& F)
     {
         for (auto& BB : F)

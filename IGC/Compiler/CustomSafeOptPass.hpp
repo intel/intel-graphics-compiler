@@ -76,6 +76,7 @@ namespace IGC
         void visitShuffleIndex(llvm::CallInst* I);
         void visitSelectInst(llvm::SelectInst& S);
         void mergeDotAddToDp4a(llvm::CallInst* I);
+        void visitTruncInst( llvm::TruncInst& I );
 
         //
         // IEEE Floating point arithmetic is not associative.  Any pattern
