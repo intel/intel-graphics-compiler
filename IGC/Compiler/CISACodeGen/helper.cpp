@@ -1885,7 +1885,6 @@ namespace IGC
             opcode == llvm_waveBroadcast ||
             opcode == llvm_waveClusteredBroadcast ||
             opcode == llvm_waveBallot ||
-            opcode == llvm_waveClusteredBallot ||
             opcode == llvm_simdShuffleDown ||
             opcode == llvm_simdBlockRead||
             opcode == llvm_simdBlockReadBindless);

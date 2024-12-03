@@ -1206,12 +1206,6 @@ public:
         }
 
         m_args.push_back(truncInst);
-
-        if (isaId == GenISAIntrinsic::GenISA_WaveClusteredBallot)
-        {
-            m_args.push_back(m_pCallInst->getArgOperand(1));
-        }
-
         m_args.push_back(IRB.getInt32(0));
         replaceGenISACallInst(isaId);
     }
@@ -1767,7 +1761,6 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap* paramMap, CImagesBI::I
 
     // Ballot builtins
     m_CommandMap["__builtin_IB_WaveBallot"] = CWaveBallotIntrinsic::create(GenISAIntrinsic::GenISA_WaveBallot);
-    m_CommandMap["__builtin_IB_clustered_WaveBallot"] = CWaveBallotIntrinsic::create(GenISAIntrinsic::GenISA_WaveClusteredBallot);
 
     m_CommandMap[StringRef("__builtin_IB_samplepos")] = CSamplePos::create();
 

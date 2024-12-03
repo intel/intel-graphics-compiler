@@ -1367,7 +1367,6 @@ namespace IGC
                 break;
             case GenISAIntrinsic::GenISA_WaveBallot:
             case GenISAIntrinsic::GenISA_WaveInverseBallot:
-            case GenISAIntrinsic::GenISA_WaveClusteredBallot:
             case GenISAIntrinsic::GenISA_WaveAll:
             case GenISAIntrinsic::GenISA_WaveClustered:
             case GenISAIntrinsic::GenISA_WaveInterleave:
@@ -5227,7 +5226,6 @@ namespace IGC
         switch (I.getIntrinsicID())
         {
         case GenISAIntrinsic::GenISA_WaveAll:
-        case GenISAIntrinsic::GenISA_WaveClusteredBallot:
             helperLaneIndex = 2;
             break;
         case GenISAIntrinsic::GenISA_WaveBallot:

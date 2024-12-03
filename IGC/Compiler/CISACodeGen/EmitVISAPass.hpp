@@ -453,8 +453,6 @@ public:
 
     // CrossLane Instructions
     void emitWaveBallot(llvm::GenIntrinsicInst* inst);
-    void emitWaveClusteredBallot(llvm::GenIntrinsicInst* inst);
-    void emitBallotUniform(llvm::GenIntrinsicInst* inst, CVariable* destination, bool disableHelperLanes);
     void emitWaveInverseBallot(llvm::GenIntrinsicInst* inst);
     void emitWaveShuffleIndex(llvm::GenIntrinsicInst* inst);
     void emitWavePrefix(llvm::WavePrefixIntrinsic* I);
