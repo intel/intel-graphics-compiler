@@ -210,7 +210,7 @@ DECLARE_IGC_REGKEY(bool, DisableIRVerification,         false, "Setting this to 
 DECLARE_IGC_REGKEY(bool, EnableJumpThreading,           true,  "Setting this to 1/true adds a compiler switch to enable llvm jumpThreading pass.", true)
 DECLARE_IGC_REGKEY(bool, DisableLoopUnroll,             false, "Setting this to 1/true adds a compiler switch to disable loop unrolling.", true)
 DECLARE_IGC_REGKEY(DWORD, RuntimeLoopUnrolling,         0, "Setting this to switch on/off runtime loop unrolling. 0: default (on), 1: force on, 2: force off", false)
-DECLARE_IGC_REGKEY(bool, EnableIndVarSimplification,    true, "Enables IndVarSimplification pass.", true)
+DECLARE_IGC_REGKEY(bool, EnableIndVarSimplification,    false, "Enables IndVarSimplification pass.", true)
 DECLARE_IGC_REGKEY(bool, DisableBranchSwaping,          false, "Setting this to 1/true adds a compiler switch to disable branch swapping.", false)
 DECLARE_IGC_REGKEY(bool, DisableSynchronizationObjectCoalescingPass, false, "Disable SynchronizationObjectCoalescing pass", false)
 DECLARE_IGC_REGKEY(bool, EnableIndependentSharedMemoryFenceFunctionality, false, "Enable treating global memory fences as shared memory fences in SynchronizationObjectCoalescing pass", false)
