@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "common/debug/Debug.hpp"
 #include "common/igc_regkeys.hpp"
+#include "llvmWrapper/IR/Function.h"
 
 #include <fstream>
 #include <queue>
@@ -232,8 +233,9 @@ void IGCLivenessAnalysisBase::livenessAnalysis(llvm::Function &F, BBSet *StartBB
     {
         // Start with adding all BBs to the Worklist
         // to make sure In set is populated for every BB
-        for (BasicBlock &BB : F)
-            Worklist.push(&BB);
+        for (auto BBIt = IGCLLVM::rbegin(&F); BBIt != IGCLLVM::rend(&F); ++BBIt) {
+            Worklist.push(&*BBIt);
+        }
     }
 
     while (!Worklist.empty()) {
