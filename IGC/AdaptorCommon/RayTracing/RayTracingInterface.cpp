@@ -141,7 +141,7 @@ void RayTracingInlineLowering(CodeGenContext* pContext)
     if (IGC_IS_FLAG_ENABLED(OverrideTMax))
         mpm.add(createOverrideTMaxPass(IGC_GET_FLAG_VALUE(OverrideTMax)));
 
-    if (pContext->platform.isDynamicRayQueryDynamicRayManagementMechanismEnabled() && !pContext->getModuleMetaData()->compOpt.disableDynamicRQManagement)
+    if (pContext->platform.isDynamicRayQueryDynamicRayManagementMechanismEnabled() && !pContext->getModuleMetaData()->compOpt.DisableDynamicRQManagement)
     {
         mpm.add(CreateDynamicRayManagementPass());
     }
