@@ -795,11 +795,17 @@ void DumpLLVMIR(IGC::CodeGenContext* pContext, const char* dumpName)
             //from the ValueSymTab by overriding the x variable to _x
             for (auto& F : module->getFunctionList())
                 for (BasicBlock& BB : F)
+                {
                     for (Instruction& I : BB)
                         if (I.getName().startswith("x"))
                             I.setName("_x");
+
+                    if (BB.getName().startswith("bb"))
+                        BB.setName("_bb");
+                }
             //Now we rewrite the variables using a counter
             unsigned int counter = 1;
+            unsigned int bb_counter = 0;
             for (auto& F : module->getFunctionList())
                 for (BasicBlock& BB : F)
                 {
@@ -808,11 +814,12 @@ void DumpLLVMIR(IGC::CodeGenContext* pContext, const char* dumpName)
                         if ((!I.hasName() && !I.getType()->isVoidTy()) ||
                             I.getName().startswith("_x"))
                         {
-                            I.setName("x" + std::to_string(counter));
-                            counter++;
+                            I.setName("x" + std::to_string(counter++));
                         }
                     }
-                    counter++;
+
+                    if (!BB.hasName() || BB.getName().startswith("_bb"))
+                        BB.setName("bb" + std::to_string(bb_counter++));
                 }
         }
 
