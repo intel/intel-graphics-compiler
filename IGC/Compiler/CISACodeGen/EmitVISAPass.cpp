@@ -9178,6 +9178,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_WaveInverseBallot:
         emitWaveInverseBallot(inst);
         break;
+    case GenISAIntrinsic::GenISA_WaveClusteredBallot:
+        emitWaveClusteredBallot(inst);
+        break;
     case GenISAIntrinsic::GenISA_WaveShuffleIndex:
     case GenISAIntrinsic::GenISA_WaveBroadcast:
         emitSimdShuffle(inst);
@@ -21726,6 +21729,23 @@ void EmitPass::emitWaveBallot(llvm::GenIntrinsicInst* inst)
         destination = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_GRF, true, CName::NONE);
     }
 
+    emitBallotUniform(inst, &destination, disableHelperLanes);
+
+    if (destination != m_destination)
+    {
+        m_encoder->Cast(m_destination, destination);
+        m_encoder->Push();
+    }
+    if (disableHelperLanes)
+    {
+        ResetVMask();
+    }
+}
+
+void EmitPass::emitBallotUniform(llvm::GenIntrinsicInst* inst, CVariable** destination, bool disableHelperLanes)
+{
+    IGC_ASSERT_MESSAGE((*destination)->IsUniform(), "Unsupported: dst must be uniform");
+
     bool uniform_active_lane = false;
     if (ConstantInt * pConst = dyn_cast<ConstantInt>(inst->getOperand(0)))
     {
@@ -21741,9 +21761,9 @@ void EmitPass::emitWaveBallot(llvm::GenIntrinsicInst* inst)
         if (m_currShader->m_dispatchSize == SIMDMode::SIMD8 && m_currShader->HasFullDispatchMask())
         {
             // for SIMD8 make sure the higher 8 bits of the flag are not copied
-            destination = m_currShader->GetNewVariable(1, ISA_TYPE_UB, EALIGN_BYTE, true, CName::NONE);
+            *destination = m_currShader->GetNewVariable(1, ISA_TYPE_UB, EALIGN_BYTE, true, CName::NONE);
         }
-        m_encoder->BoolToInt(destination, f0);
+        m_encoder->BoolToInt(*destination, f0);
         if (!m_currShader->HasFullDispatchMask())
         {
             CVariable* dispatchMask = m_currShader->GetNewAlias(
@@ -21751,7 +21771,7 @@ void EmitPass::emitWaveBallot(llvm::GenIntrinsicInst* inst)
                 ISA_TYPE_UD,
                 (m_pattern->NeedVMask() && !disableHelperLanes ? 3 : 2) * SIZE_DWORD,
                 1);
-            m_encoder->And(destination, dispatchMask, destination);
+            m_encoder->And(*destination, dispatchMask, *destination);
         }
     }
     else
@@ -21770,21 +21790,99 @@ void EmitPass::emitWaveBallot(llvm::GenIntrinsicInst* inst)
 
             m_encoder->SetSimdSize(SIMDMode::SIMD1);
             m_encoder->SetNoMask();
-            m_encoder->And(destination, exeMask, vf0);
+            m_encoder->And(*destination, exeMask, vf0);
             m_encoder->Push();
         }
         else
         {
-            m_encoder->Cast(destination, exeMask);
+            m_encoder->Cast(*destination, exeMask);
             m_encoder->Push();
         }
     }
+}
 
-    if (destination != m_destination)
+void EmitPass::emitWaveClusteredBallot(llvm::GenIntrinsicInst* inst)
+{
+    IGC_ASSERT_MESSAGE(!m_destination->IsUniform(), "Unsupported: dst must be non-uniform");
+
+    IGC_ASSERT_MESSAGE(isa<llvm::ConstantInt>(inst->getOperand(1)), "Unsupported: cluster size must be constant");
+    const unsigned int clusterSize = int_cast<uint32_t>(cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue());
+
+    IGC_ASSERT_MESSAGE(clusterSize <= numLanes(m_currShader->m_dispatchSize), "cluster size must be smaller or equal to SIMD");
+    IGC_ASSERT_MESSAGE(clusterSize % 8 == 0, "cluster size must be 8/16/32");
+
+    bool disableHelperLanes = int_cast<int>(cast<ConstantInt>(inst->getArgOperand(2))->getSExtValue()) == 2;
+    if (disableHelperLanes)
     {
-        m_encoder->Cast(m_destination, destination);
+        ForceDMask();
+    }
+
+    // Run ballot.
+    CVariable* ballotResult = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_GRF, true, "ballotResult");
+    emitBallotUniform(inst, &ballotResult, disableHelperLanes);
+
+    // In case cluster takes full SIMD size, then just propagate result.
+    if (clusterSize == numLanes(m_currShader->m_dispatchSize))
+    {
+        m_encoder->Copy(m_destination, ballotResult);
+        if (m_currShader->m_numberInstance > 1)
+        {
+            m_encoder->SetSecondHalf(true);
+            m_encoder->Copy(m_destination, ballotResult);
+            m_encoder->SetSecondHalf(false);
+        }
+        m_encoder->Push();
+        return;
+    }
+
+    // ballotResult contains result from all lanes. Cluster can be either 8 or 16 lanes, so clusters in
+    // ballotResult are byte-aligned. Extract clusters from the result.
+
+    CVariable* zero = m_currShader->ImmToVariable(0, ISA_TYPE_UD);
+    m_encoder->Copy(m_destination, zero);
+    if (m_currShader->m_numberInstance > 1)
+    {
+        m_encoder->SetSecondHalf(true);
+        m_encoder->Copy(m_destination, zero);
+        m_encoder->SetSecondHalf(false);
+    }
+    m_encoder->Push();
+
+    if (clusterSize == 8)
+    {
+        CVariable* ballotAlias = m_currShader->GetNewAlias(ballotResult, ISA_TYPE_B, 0, 4, false);
+        CVariable* dstAlias = m_currShader->GetNewAlias(m_destination, ISA_TYPE_B, 0, numLanes(m_currShader->m_SIMDSize) * 4);
+
+        m_encoder->SetSrcRegion(0, 1, 8, 0);
+        m_encoder->SetDstRegion(4);
+        m_encoder->Copy(dstAlias, ballotAlias);
+        if (m_currShader->m_numberInstance > 1)
+        {
+            m_encoder->SetSecondHalf(true);
+            m_encoder->SetSrcSubReg(0, 2);
+            m_encoder->Copy(dstAlias, ballotAlias);
+            m_encoder->SetSecondHalf(false);
+        }
         m_encoder->Push();
     }
+    else if (clusterSize == 16)
+    {
+        CVariable* ballotAlias = m_currShader->GetNewAlias(ballotResult, ISA_TYPE_UW, 0, 2, false);
+        CVariable* dstAlias = m_currShader->GetNewAlias(m_destination, ISA_TYPE_UW, 0, numLanes(m_currShader->m_SIMDSize) * 2);
+
+        m_encoder->SetSrcRegion(0, 1, 16, 0);
+        m_encoder->SetDstRegion(2);
+        m_encoder->Copy(dstAlias, ballotAlias);
+        if (m_currShader->m_numberInstance > 1)
+        {
+            m_encoder->SetSecondHalf(true);
+            m_encoder->SetSrcSubReg(0, 1);
+            m_encoder->Copy(dstAlias, ballotAlias);
+            m_encoder->SetSecondHalf(false);
+        }
+        m_encoder->Push();
+    }
+
     if (disableHelperLanes)
     {
         ResetVMask();
