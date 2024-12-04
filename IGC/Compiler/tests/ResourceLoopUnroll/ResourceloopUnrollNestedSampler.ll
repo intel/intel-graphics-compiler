@@ -7,10 +7,10 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: llvm-14-plus, regkeys
-; RUN: igc_opt -platformbmg -igc-resource-loop-unroll -regkey ResourceLoopUnrollNested=4 -verify -S < %s | FileCheck %s
+; RUN: igc_opt -platformbmg -igc-resource-loop-unroll -regkey ResourceLoopUnrollNested=4 -verify -S < %s | FileCheck %s --check-prefix=CHECK-LL
+; RUN: igc_opt -platformbmg -igc-resource-loop-unroll -igc-emit-visa -simd-mode 16 -inputrt -regkey ResourceLoopUnrollNested=4 -regkey DumpVISAASMToConsole -S < %s | FileCheck %s --check-prefix=CHECK-VISAASM
 ;
 ; Test checks how we emit ResourceLoop
-
 
 @ThreadGroupSize_X = constant i32 64
 @ThreadGroupSize_Y = constant i32 1
@@ -19,51 +19,137 @@
 %__2D_DIM_Resource = type opaque
 
 define spir_kernel void @test1(<64 x i32> %src, float addrspace(1)* %dst) {
-; CHECK-LABEL: @test1(
-; CHECK-NEXT:    [[SVN0:%.*]] = call i16 @llvm.genx.GenISA.DCL.SystemValue.i16(i32 7)
-; CHECK-NEXT:    [[SAMPLER:%.*]] = zext i16 [[SVN0]] to i32
-; CHECK-NEXT:    [[NONUNIFORMSAMPLER:%.*]] = inttoptr i32 [[SAMPLER]] to <4 x float> addrspace(2752518)*
-; CHECK-NEXT:    [[SVN1:%.*]] = extractelement <64 x i32> %src, i32 40
-; CHECK-NEXT:    [[TEXTURE:%.*]] = add i32 %svn1, 1280
-; CHECK-NEXT:    [[NONUNIFORMTEXTURE:%.*]] = inttoptr i32 [[TEXTURE]] to %__2D_DIM_Resource.0 addrspace(2621450)*
-; CHECK-NEXT:    br label [[PARTIAL_CHECK5:%.*]]
-; CHECK:       partial_check5:
-; CHECK-NEXT:    [[TMP1:%.*]] = call i32 @llvm.genx.GenISA.WaveBallot(i1 true, i32 0)
-; CHECK-NEXT:    [[TMP2:%.*]] = call i32 @llvm.genx.GenISA.firstbitLo(i32 [[TMP1]])
-; CHECK-NEXT:    [[FIRSTACTIVESAMPLER6:%.*]] = call <4 x float> addrspace(2752518)* @llvm.genx.GenISA.WaveShuffleIndex.p2752518v4f32(<4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], i32 [[TMP2]], i32 0)
-; CHECK-NEXT:    [[TMP3:%.*]] = icmp eq <4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], [[FIRSTACTIVESAMPLER6]]
-; CHECK-NEXT:    [[TMP4:%.*]] = tail call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621443__2D_DIM_Resource.p2621443__2D_DIM_Resource.p2752518v4f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621450)* undef, %__2D_DIM_Resource.0 addrspace(2621450)* [[NONUNIFORMTEXTURE]], <4 x float> addrspace(2752518)* [[FIRSTACTIVESAMPLER6]], i32 0, i32 0, i32 0)
-; CHECK-NEXT:    br i1 [[TMP3]], label [[UNROLL_MERGE:%.*]], label [[PARTIAL_CHECK3:%.*]]
-; CHECK:       partial_check3:
-; CHECK-NEXT:    [[TMP5:%.*]] = call i32 @llvm.genx.GenISA.WaveBallot(i1 true, i32 0)
-; CHECK-NEXT:    [[TMP6:%.*]] = call i32 @llvm.genx.GenISA.firstbitLo(i32 [[TMP5]])
-; CHECK-NEXT:    [[FIRSTACTIVESAMPLER4:%.*]] = call <4 x float> addrspace(2752518)* @llvm.genx.GenISA.WaveShuffleIndex.p2752518v4f32(<4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], i32 [[TMP6]], i32 0)
-; CHECK-NEXT:    [[TMP7:%.*]] = icmp eq <4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], [[FIRSTACTIVESAMPLER4]]
-; CHECK-NEXT:    [[TMP8:%.*]] = tail call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621443__2D_DIM_Resource.p2621443__2D_DIM_Resource.p2752518v4f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621450)* undef, %__2D_DIM_Resource.0 addrspace(2621450)* [[NONUNIFORMTEXTURE]], <4 x float> addrspace(2752518)* [[FIRSTACTIVESAMPLER4]], i32 0, i32 0, i32 0)
-; CHECK-NEXT:    br i1 [[TMP7]], label [[UNROLL_MERGE]], label [[PARTIAL_CHECK1:%.*]]
-; CHECK:       partial_check1:
-; CHECK-NEXT:    [[TMP9:%.*]] = call i32 @llvm.genx.GenISA.WaveBallot(i1 true, i32 0)
-; CHECK-NEXT:    [[TMP10:%.*]] = call i32 @llvm.genx.GenISA.firstbitLo(i32 [[TMP9]])
-; CHECK-NEXT:    [[FIRSTACTIVESAMPLER2:%.*]] = call <4 x float> addrspace(2752518)* @llvm.genx.GenISA.WaveShuffleIndex.p2752518v4f32(<4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], i32 [[TMP10]], i32 0)
-; CHECK-NEXT:    [[TMP11:%.*]] = icmp eq <4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], [[FIRSTACTIVESAMPLER2]]
-; CHECK-NEXT:    [[TMP12:%.*]] = tail call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621443__2D_DIM_Resource.p2621443__2D_DIM_Resource.p2752518v4f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621450)* undef, %__2D_DIM_Resource.0 addrspace(2621450)* [[NONUNIFORMTEXTURE]], <4 x float> addrspace(2752518)* [[FIRSTACTIVESAMPLER2]], i32 0, i32 0, i32 0)
-; CHECK-NEXT:    br i1 [[TMP11]], label [[UNROLL_MERGE]], label [[PARTIAL_CHECK:%.*]]
-; CHECK:       partial_check:
-; CHECK-NEXT:    [[TMP13:%.*]] = call i32 @llvm.genx.GenISA.WaveBallot(i1 true, i32 0)
-; CHECK-NEXT:    [[TMP14:%.*]] = call i32 @llvm.genx.GenISA.firstbitLo(i32 [[TMP13]])
-; CHECK-NEXT:    [[FIRSTACTIVESAMPLER:%.*]] = call <4 x float> addrspace(2752518)* @llvm.genx.GenISA.WaveShuffleIndex.p2752518v4f32(<4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], i32 [[TMP14]], i32 0)
-; CHECK-NEXT:    [[TMP15:%.*]] = icmp eq <4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], [[FIRSTACTIVESAMPLER]]
-; CHECK-NEXT:    [[TMP16:%.*]] = tail call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621443__2D_DIM_Resource.p2621443__2D_DIM_Resource.p2752518v4f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621450)* undef, %__2D_DIM_Resource.0 addrspace(2621450)* [[NONUNIFORMTEXTURE]], <4 x float> addrspace(2752518)* [[FIRSTACTIVESAMPLER]], i32 0, i32 0, i32 0)
-; CHECK-NEXT:    br i1 [[TMP15]], label [[UNROLL_MERGE]], label [[LATCH:%.*]]
-; CHECK:       latch:
-; CHECK-NEXT:    br label [[PARTIAL_CHECK5]]
-; CHECK:       unroll-merge:
-; CHECK-NEXT:    [[TMP17:%.*]] = phi <4 x float> [ [[TMP16]], [[PARTIAL_CHECK]] ], [ [[TMP12]], [[PARTIAL_CHECK1]] ], [ [[TMP8]], [[PARTIAL_CHECK3]] ], [ [[TMP4]], [[PARTIAL_CHECK5]] ], !MyUniqueExclusiveLoadMetadata !24
-; CHECK-NEXT:    [[OUT:%.*]] = extractelement <4 x float> [[TMP17]], i32 0
-; CHECK-NEXT:    store float [[OUT]], float addrspace(1)* [[DST:%.*]], align 4
-; CHECK-NEXT:    ret void
+; CHECK-LL-LABEL: @test1(
+; CHECK-LL-NEXT:    [[SVN0:%.*]] = call i16 @llvm.genx.GenISA.DCL.SystemValue.i16(i32 17)
+; CHECK-LL-NEXT:    [[SAMPLER:%.*]] = zext i16 [[SVN0]] to i32
+; CHECK-LL-NEXT:    [[NONUNIFORMSAMPLER:%.*]] = inttoptr i32 [[SAMPLER]] to <4 x float> addrspace(2752518)*
+; CHECK-LL-NEXT:    [[SVN1:%.*]] = extractelement <64 x i32> %src, i32 40
+; CHECK-LL-NEXT:    [[TEXTURE:%.*]] = add i32 %svn1, 1280
+; CHECK-LL-NEXT:    [[NONUNIFORMTEXTURE:%.*]] = inttoptr i32 [[TEXTURE]] to %__2D_DIM_Resource.0 addrspace(2621450)*
+; CHECK-LL-NEXT:    br label [[PARTIAL_CHECK5:%.*]]
+; CHECK-LL:       partial_check5:
+; CHECK-LL-NEXT:    [[TMP1:%.*]] = call i32 @llvm.genx.GenISA.WaveBallot(i1 true, i32 0)
+; CHECK-LL-NEXT:    [[TMP2:%.*]] = call i32 @llvm.genx.GenISA.firstbitLo(i32 [[TMP1]])
+; CHECK-LL-NEXT:    [[FIRSTACTIVESAMPLER6:%.*]] = call <4 x float> addrspace(2752518)* @llvm.genx.GenISA.WaveShuffleIndex.p2752518v4f32(<4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], i32 [[TMP2]], i32 0)
+; CHECK-LL-NEXT:    [[TMP3:%.*]] = icmp eq <4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], [[FIRSTACTIVESAMPLER6]]
+; CHECK-LL-NEXT:    [[TMP4:%.*]] = tail call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621443__2D_DIM_Resource.p2621443__2D_DIM_Resource.p2752518v4f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621450)* undef, %__2D_DIM_Resource.0 addrspace(2621450)* [[NONUNIFORMTEXTURE]], <4 x float> addrspace(2752518)* [[FIRSTACTIVESAMPLER6]], i32 0, i32 0, i32 0)
+; CHECK-LL-NEXT:    br i1 [[TMP3]], label [[UNROLL_MERGE:%.*]], label [[PARTIAL_CHECK3:%.*]]
+; CHECK-LL:       partial_check3:
+; CHECK-LL-NEXT:    [[TMP5:%.*]] = call i32 @llvm.genx.GenISA.WaveBallot(i1 true, i32 0)
+; CHECK-LL-NEXT:    [[TMP6:%.*]] = call i32 @llvm.genx.GenISA.firstbitLo(i32 [[TMP5]])
+; CHECK-LL-NEXT:    [[FIRSTACTIVESAMPLER4:%.*]] = call <4 x float> addrspace(2752518)* @llvm.genx.GenISA.WaveShuffleIndex.p2752518v4f32(<4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], i32 [[TMP6]], i32 0)
+; CHECK-LL-NEXT:    [[TMP7:%.*]] = icmp eq <4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], [[FIRSTACTIVESAMPLER4]]
+; CHECK-LL-NEXT:    [[TMP8:%.*]] = tail call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621443__2D_DIM_Resource.p2621443__2D_DIM_Resource.p2752518v4f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621450)* undef, %__2D_DIM_Resource.0 addrspace(2621450)* [[NONUNIFORMTEXTURE]], <4 x float> addrspace(2752518)* [[FIRSTACTIVESAMPLER4]], i32 0, i32 0, i32 0)
+; CHECK-LL-NEXT:    br i1 [[TMP7]], label [[UNROLL_MERGE:%.*]], label [[PARTIAL_CHECK1:%.*]]
+; CHECK-LL:       partial_check1:
+; CHECK-LL-NEXT:    [[TMP9:%.*]] = call i32 @llvm.genx.GenISA.WaveBallot(i1 true, i32 0)
+; CHECK-LL-NEXT:    [[TMP10:%.*]] = call i32 @llvm.genx.GenISA.firstbitLo(i32 [[TMP9]])
+; CHECK-LL-NEXT:    [[FIRSTACTIVESAMPLER2:%.*]] = call <4 x float> addrspace(2752518)* @llvm.genx.GenISA.WaveShuffleIndex.p2752518v4f32(<4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], i32 [[TMP10]], i32 0)
+; CHECK-LL-NEXT:    [[TMP11:%.*]] = icmp eq <4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], [[FIRSTACTIVESAMPLER2]]
+; CHECK-LL-NEXT:    [[TMP12:%.*]] = tail call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621443__2D_DIM_Resource.p2621443__2D_DIM_Resource.p2752518v4f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621450)* undef, %__2D_DIM_Resource.0 addrspace(2621450)* [[NONUNIFORMTEXTURE]], <4 x float> addrspace(2752518)* [[FIRSTACTIVESAMPLER2]], i32 0, i32 0, i32 0)
+; CHECK-LL-NEXT:    br i1 [[TMP11]], label [[UNROLL_MERGE:%.*]], label [[PARTIAL_CHECK:%.*]]
+; CHECK-LL:       partial_check:
+; CHECK-LL-NEXT:    [[TMP13:%.*]] = call i32 @llvm.genx.GenISA.WaveBallot(i1 true, i32 0)
+; CHECK-LL-NEXT:    [[TMP14:%.*]] = call i32 @llvm.genx.GenISA.firstbitLo(i32 [[TMP13]])
+; CHECK-LL-NEXT:    [[FIRSTACTIVESAMPLER:%.*]] = call <4 x float> addrspace(2752518)* @llvm.genx.GenISA.WaveShuffleIndex.p2752518v4f32(<4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], i32 [[TMP14]], i32 0)
+; CHECK-LL-NEXT:    [[TMP15:%.*]] = icmp eq <4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], [[FIRSTACTIVESAMPLER]]
+; CHECK-LL-NEXT:    br i1 [[TMP15]], label [[LAST_SEND:%.*]], label [[LATCH:%.*]]
+; CHECK-LL:       last_send:
+; CHECK-LL-NEXT:    [[TMP16:%.*]] = tail call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621443__2D_DIM_Resource.p2621443__2D_DIM_Resource.p2752518v4f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621450)* undef, %__2D_DIM_Resource.0 addrspace(2621450)* [[NONUNIFORMTEXTURE]], <4 x float> addrspace(2752518)* [[FIRSTACTIVESAMPLER]], i32 0, i32 0, i32 0)
+; CHECK-LL-NEXT:    br label [[UNROLL_MERGE]]
+; CHECK-LL:       latch:
+; CHECK-LL-NEXT:    br label [[PARTIAL_CHECK5]]
+; CHECK-LL:       unroll-merge:
+; CHECK-LL-NEXT:    [[TMP17:%.*]] = phi <4 x float> [ [[TMP16]], [[LAST_SEND]] ], [ [[TMP12]], [[PARTIAL_CHECK1]] ], [ [[TMP8]], [[PARTIAL_CHECK3]] ], [ [[TMP4]], [[PARTIAL_CHECK5]] ], !MyUniqueExclusiveLoadMetadata !24
+; CHECK-LL-NEXT:    [[OUT:%.*]] = extractelement <4 x float> [[TMP17]], i32 0
+; CHECK-LL-NEXT:    store float [[OUT]], float addrspace(1)* [[DST:%.*]], align 4
+; CHECK-LL-NEXT:    ret void
 ;
-  %svn0 = call i16 @llvm.genx.GenISA.DCL.SystemValue.i16(i32 7)
+; COM: check predicate load and lifetime.start
+; CHECK-VISAASM:  _main_0:
+; CHECK-VISAASM-NEXT:  mov (M1, 16) svn0(0,0)<1> threadIdInGroupX(0,0)<1;1,0>
+; CHECK-VISAASM-NEXT:  mov (M1, 16) sampler(0,0)<1> svn0_0(0,0)<1;1,0>
+; CHECK-VISAASM-NEXT:  add (M1_NM, 1) texture(0,0)<1> src(2,8)<0;1,0> 0x500:w
+;
+; CHECK-VISAASM:  _test1_001_partial_check5:
+; CHECK-VISAASM-NEXT:  setp (M1_NM, 16) P1 0x0:ud
+; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P1 V0034(0,0)<0;1,0> V0034(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0035(0,0)<1> P1
+; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0033(0,0)<1> V0035(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  fbl (M1_NM, 1) V0037(0,0)<1> V0033(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  shl (M1_NM, 1) ShuffleTmp(0,0)<1> V0038(0,0)<0;1,0> 0x2:uw
+; CHECK-VISAASM-NEXT:  addr_add (M1_NM, 1) A0(0)<1> &sampler_0 ShuffleTmp(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) firstActiveSampler6(0,0)<1> r[A0(0),0]<0;1,0>:ud
+; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P2 sampler_0(0,0)<1;1,0> firstActiveSampler6(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  mov (M1, 16) V0040(0,0)<1> 0x0:f
+; CHECK-VISAASM-NEXT:  lifetime.start V0039
+; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) S31(0) firstActiveSampler6(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  (P2) sample_lz.RGBA (M1, 16)  0x0:uw S31 %bss V0039.0 %null.0 V0040.0
+; CHECK-VISAASM-NEXT:  (P2) goto (M1, 16) _test1_007_unroll_merge
+;
+; CHECK-VISAASM:  _test1_002_partial_check3:
+; CHECK-VISAASM-NEXT:  setp (M1_NM, 16) P3 0x0:ud
+; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P3 V0043(0,0)<0;1,0> V0043(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0044(0,0)<1> P3
+; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0042(0,0)<1> V0044(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  fbl (M1_NM, 1) V0046(0,0)<1> V0042(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  shl (M1_NM, 1) ShuffleTmp_0(0,0)<1> V0047(0,0)<0;1,0> 0x2:uw
+; CHECK-VISAASM-NEXT:  addr_add (M1_NM, 1) A1(0)<1> &sampler_0 ShuffleTmp_0(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) firstActiveSampler4(0,0)<1> r[A1(0),0]<0;1,0>:ud
+; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P4 sampler_0(0,0)<1;1,0> firstActiveSampler4(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  mov (M1, 16) V0048(0,0)<1> 0x0:f
+; CHECK-VISAASM-NEXT:  lifetime.start V0039
+; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) S31(0) firstActiveSampler4(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  (P4) sample_lz.RGBA (M1, 16)  0x0:uw S31 %bss V0039.0 %null.0 V0048.0
+; CHECK-VISAASM-NEXT:  (P4) goto (M1, 16) _test1_007_unroll_merge
+;
+; CHECK-VISAASM:  _test1_003_partial_check1:
+; CHECK-VISAASM-NEXT:  setp (M1_NM, 16) P5 0x0:ud
+; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P5 V0051(0,0)<0;1,0> V0051(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0052(0,0)<1> P5
+; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0050(0,0)<1> V0052(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  fbl (M1_NM, 1) V0054(0,0)<1> V0050(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  shl (M1_NM, 1) ShuffleTmp_1(0,0)<1> V0055(0,0)<0;1,0> 0x2:uw
+; CHECK-VISAASM-NEXT:  addr_add (M1_NM, 1) A2(0)<1> &sampler_0 ShuffleTmp_1(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) firstActiveSampler2(0,0)<1> r[A2(0),0]<0;1,0>:ud
+; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P6 sampler_0(0,0)<1;1,0> firstActiveSampler2(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  mov (M1, 16) V0056(0,0)<1> 0x0:f
+; CHECK-VISAASM-NEXT:  lifetime.start V0039
+; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) S31(0) firstActiveSampler2(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  (P6) sample_lz.RGBA (M1, 16)  0x0:uw S31 %bss V0039.0 %null.0 V0056.0
+; CHECK-VISAASM-NEXT:  (P6) goto (M1, 16) _test1_007_unroll_merge
+;
+; CHECK-VISAASM:  _test1_004_partial_check:
+; CHECK-VISAASM-NEXT:  setp (M1_NM, 16) P7 0x0:ud
+; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P7 V0059(0,0)<0;1,0> V0059(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0060(0,0)<1> P7
+; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0058(0,0)<1> V0060(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  fbl (M1_NM, 1) V0062(0,0)<1> V0058(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  shl (M1_NM, 1) ShuffleTmp_2(0,0)<1> V0063(0,0)<0;1,0> 0x2:uw
+; CHECK-VISAASM-NEXT:  addr_add (M1_NM, 1) A3(0)<1> &sampler_0 ShuffleTmp_2(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) firstActiveSampler(0,0)<1> r[A3(0),0]<0;1,0>:ud
+; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P8 sampler_0(0,0)<1;1,0> firstActiveSampler(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  (!P8) goto (M1, 16) _test1_001_partial_check5
+;
+; CHECK-VISAASM:  _test1_005_last_send:
+; CHECK-VISAASM-NEXT:  mov (M1, 16) V0064(0,0)<1> 0x0:f
+; CHECK-VISAASM-NEXT:  lifetime.start V0039
+; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) S31(0) firstActiveSampler(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  (P8) sample_lz.RGBA (M1, 16)  0x0:uw S31 %bss V0039.0 %null.0 V0064.0
+;
+; CHECK-VISAASM:  _test1_007_unroll_merge:
+; CHECK-VISAASM-NEXT:  mov (M1, 16) out(0,0)<1> V0039(0,0)<1;1,0>
+; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) dst_0(0,0)<1> dst(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  mov (M1, 16) dstBroadcast_0(0,0)<2> dst_1(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  mov (M1, 16) dstBroadcast_0(0,1)<2> dst_1(0,1)<0;1,0>
+; CHECK-VISAASM-NEXT:  lsc_store.ugm.wb.wb (M1, 16)  flat[dstBroadcast]:a64  out:d32
+; CHECK-VISAASM-NEXT:  ret (M1, 1)
+
+  %svn0 = call i16 @llvm.genx.GenISA.DCL.SystemValue.i16(i32 17)
   %sampler = zext i16 %svn0 to i32
   %NonUniformSampler = inttoptr i32 %sampler to <4 x float> addrspace(2752518)*
 
@@ -88,7 +174,6 @@ declare i32 @llvm.genx.GenISA.WaveBallot(i1, i32)
 declare i32 @llvm.genx.GenISA.firstbitLo(i32)
 
 attributes #4 = { argmemonly nounwind readonly }
-
 
 !IGCMetadata = !{!0}
 !igc.functions = !{!21}

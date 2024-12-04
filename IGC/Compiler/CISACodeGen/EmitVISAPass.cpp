@@ -8117,6 +8117,7 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
             if (predicationMap.count(inst))
             {
                 m_encoder->SetPredicate(m_currShader->GetSymbol(cast<Instruction>(predicationMap[inst])));
+                m_encoder->Lifetime(LIFETIME_START, dst);
             }
             else
             {
@@ -19481,6 +19482,7 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
             if (predicationMap.count(inst))
             {
                 m_encoder->SetPredicate(m_currShader->GetSymbol(cast<Instruction>(predicationMap[inst])));
+                m_encoder->Lifetime(LIFETIME_START, destCVar);
             }
             else
             {
