@@ -10,6 +10,7 @@ readonly LINKER_SCRIPT=$1
 readonly BIF_LIBRARY=$2
 readonly DX10_LIBRARY=$3
 readonly DXIL_LIBRARY=$4
+readonly VULKAN_FE_LIBRARY=$5
 
 shift
 
@@ -30,6 +31,17 @@ echo -e "{\n\t global:" > ${SCRIPT_DIR}/${LINKER_SCRIPT}
 if [[ "$BIF_LIBRARY" != "null" ]]; then
     symbolsBIF=$(objdump -t $BIF_LIBRARY | grep " O " | grep " g " | grep -v hidden)
     formatAndWriteSymbols "$symbolsBIF"
+fi
+
+if [[ "$VULKAN_FE_LIBRARY" != "null" ]]; then
+    symbolsVFE=$(objdump -t $VULKAN_FE_LIBRARY | grep " F " | grep " g " | grep -v hidden)
+    formatAndWriteSymbols "$symbolsVFE"
+
+    symbolsVFE=$(objdump -t $VULKAN_FE_LIBRARY | grep " w " | grep -v hidden)
+    formatAndWriteSymbols "$symbolsVFE"
+
+    symbolsVFE=$(objdump -t $VULKAN_FE_LIBRARY | grep " W " | grep -v hidden)
+    formatAndWriteSymbols "$symbolsVFE"
 fi
 
 for obj_file in "$@"; do
