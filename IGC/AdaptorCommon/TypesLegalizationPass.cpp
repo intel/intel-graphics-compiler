@@ -34,44 +34,27 @@ TypesLegalizationPass::TypesLegalizationPass()
   initializeTypesLegalizationPassPass( *PassRegistry::getPassRegistry() );
 }
 
-TypesLegalizationPass::TypesLegalizationPass(bool legalizePhi, bool legalizeExtractValue, bool legalizeStore)
-  : FunctionPass( TypesLegalizationPass::ID ),
-    m_LegalizePhi(legalizePhi),
-    m_LegalizeExtractValue(legalizeExtractValue),
-    m_LegalizeStore(legalizeStore) {
-  initializeTypesLegalizationPassPass( *PassRegistry::getPassRegistry() );
-}
-
 void TypesLegalizationPass::visitExtractValueInst( ExtractValueInst &ev ) {
-  if(m_LegalizeExtractValue)
-  {
-    m_ExtractValueInst.push_back(&ev);
-  }
+  m_ExtractValueInst.push_back(&ev);
 }
 
 void TypesLegalizationPass::visitStoreInst( StoreInst &storeInst ) {
-  if(m_LegalizeStore)
+  Value *arg = storeInst.getOperand( 0 );
+  if(arg != NULL)
   {
-    Value *arg = storeInst.getOperand( 0 );
-    if(arg != NULL)
-    {
-      Type *type = arg->getType();
+    Type *type = arg->getType();
 
-      if((type != NULL) && type->isAggregateType()) {
-        m_StoreInst.push_back( &storeInst );
-      }
+    if((type != NULL) && type->isAggregateType()) {
+      m_StoreInst.push_back( &storeInst );
     }
   }
 }
 
 void TypesLegalizationPass::visitPHINode( PHINode &phi ) {
-  if(m_LegalizePhi)
-  {
-    Type *type = phi.getType();
+  Type *type = phi.getType();
 
-    if((type != NULL) && type->isAggregateType()) {
-      m_PhiNodes.push_back( &phi );
-    }
+  if((type != NULL) && type->isAggregateType()) {
+    m_PhiNodes.push_back( &phi );
   }
 }
 
@@ -268,17 +251,6 @@ TypesLegalizationPass::ResolveValue( Instruction *ip,Value *val,SmallVector<unsi
     // Handle struct and array types of arguments or call instructions return value
     IRBuilder<> builder(ip);
     return builder.CreateExtractValue(val, indices);
-  }
-  else if (PHINode* phi = dyn_cast<PHINode>(val))
-  {
-      IRBuilder<> builder(phi);
-      PHINode* newPhi = builder.CreatePHI(ip->getType(), phi->getNumIncomingValues());
-      for (unsigned i = 0; i < phi->getNumIncomingValues(); i++)
-      {
-          Value* v = ResolveValue(ip, phi->getIncomingValue(i), indices);
-          newPhi->addIncoming(v, phi->getIncomingBlock(i));
-      }
-      return newPhi;
   }
   else if (SelectInst* select = dyn_cast<SelectInst>(val))
   {

@@ -21,7 +21,6 @@ class TypesLegalizationPass: public llvm::FunctionPass,public llvm::InstVisitor<
 public:
 
   TypesLegalizationPass();
-  TypesLegalizationPass(bool legalizePhi, bool legalizeExtractValue, bool legalizeStore);
   ~TypesLegalizationPass()
   {}
 
@@ -50,11 +49,6 @@ public:
   llvm::SmallVector<llvm::ExtractValueInst*,10> m_ExtractValueInst;
   llvm::SmallVector<llvm::PHINode*,10> m_PhiNodes;
   llvm::SmallVector<unsigned, 8> Indicies;
-
-protected:
-  bool m_LegalizePhi = true;
-  bool m_LegalizeExtractValue = true;
-  bool m_LegalizeStore = true;
 };
 
 
