@@ -42,9 +42,8 @@ InjectPrintf::InjectPrintf() : FunctionPass(ID) {
 GlobalVariable* InjectPrintf::createGlobalFormatStr(Module* Module, LLVMContext& Context) {
     IGC_ASSERT(Module != nullptr);
 
-    const char* FormatStrLiteral = "Pointer: %p, Type: %s\n";
-    size_t MaxLength = 256;
-    size_t FormatStrSize = strnlen(FormatStrLiteral, MaxLength) + 1;
+    const std::string FormatStrLiteral = "Pointer: %p, Type: %s\n";
+    size_t FormatStrSize = FormatStrLiteral.length() + 1;
 
     GlobalVariable* FormatStrGlobal = new GlobalVariable(
         *Module,
