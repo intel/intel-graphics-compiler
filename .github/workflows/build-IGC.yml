@@ -20,28 +20,58 @@ jobs:
   download-OpenCL-Clang: # openCL Clang is downloaded from intel/intel-graphics-compiler releases
     if: github.repository == 'intel/intel-graphics-compiler'
     runs-on: ubuntu-latest
+    env:
+      CLANG_CACHE_VALID: true
+      CLANG_CACHE_KEY: none
+      ORIGINAL_CLANG_CACHE_KEY: none
+    outputs:
+      CLANG_CACHE_KEY: ${{ env.CLANG_CACHE_KEY }}
     steps:
       - uses: oprypin/find-latest-tag@v1
         with:
           repository: intel/intel-graphics-compiler
           releases-only: true
         id: get-latest-IGC-release-tag
+      - name: set initial cache key
+        run: |
+          LOC_CLANG_CACHE_KEY="${{ steps.get-latest-IGC-release-tag.outputs.tag }}"
+          echo "CLANG_CACHE_KEY=$LOC_CLANG_CACHE_KEY" >> $GITHUB_ENV
+          echo "ORIGINAL_CLANG_CACHE_KEY=$LOC_CLANG_CACHE_KEY" >> $GITHUB_ENV
       - name: caching downloaded OpenCL Clang # Downloading a new OpenCL Clang only after the new IGC is released
         id: cache-igc-release
         uses: actions/cache@v3
         with:
           path: ./igc-official-release
-          key: ${{ steps.get-latest-IGC-release-tag.outputs.tag }}
+          key: ${{ env.CLANG_CACHE_KEY }}
+      - name: checking for valid cache hit
+        if: steps.cache-igc-release.outputs.cache-hit == 'true'
+        run: |
+         if [[ $(ls ./igc-official-release | wc -c)  == "0" ]]; then
+           echo "CLANG_CACHE_VALID=false" >> $GITHUB_ENV
+           echo "CLANG_CACHE_KEY=${{ steps.get-latest-IGC-release-tag.outputs.tag }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}" >> $GITHUB_ENV
+         fi
       - name: creating a folder for downloaded deb files
-        if: steps.cache-igc-release.outputs.cache-hit != 'true'
-        run: mkdir igc-official-release
+        if: ${{ steps.cache-igc-release.outputs.cache-hit != 'true' || env.CLANG_CACHE_VALID != 'true' }}
+        run: mkdir -p igc-official-release
       - name: download latest igc release
-        if: steps.cache-igc-release.outputs.cache-hit != 'true'
+        if:  ${{ steps.cache-igc-release.outputs.cache-hit != 'true' || env.CLANG_CACHE_VALID != 'true' }}
         working-directory: ./igc-official-release
         # To install openCL clang from Deb package, IGC must also be installed. Therefore, the last IGC release is also downloaded.
-        run: curl -s https://api.github.com/repos/intel/intel-graphics-compiler/releases/latest | grep browser_download_url | egrep 'opencl_|core_' | cut -d '"' -f 4 | wget -qi -
+        run: curl -s https://api.github.com/repos/intel/intel-graphics-compiler/releases/latest | grep browser_download_url | egrep 'opencl-|core-' | cut -d '"' -f 4 | wget -qi -
       - name: checking if downloaded deb files are here
-        run: ls ./igc-official-release
+        run: |
+          ls ./igc-official-release
+          if [[ $(ls ./igc-official-release | wc -c) == "0" ]]; then
+            exit 1
+          fi
+      - name: force redownload if invalid cache
+        if: env.CLANG_CACHE_VALID != 'true'
+        id: force-redownload
+        uses: actions/cache@v3
+        with:
+          path: ./igc-official-release
+          key: ${{ env.CLANG_CACHE_KEY }}
+          restore-keys: ${{ env.ORIGINAL_CLANG_CACHE_KEY }}
 
   build-SPIRV-LLVM-Translator:
     if: github.repository == 'intel/intel-graphics-compiler'
@@ -113,10 +143,13 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ./igc-official-release
-          key: ${{ steps.get-latest-IGC-release-tag.outputs.tag }}
+          key: ${{ needs.download-OpenCL-Clang.outputs.CLANG_CACHE_KEY }}
       - name: checking if deb files are here
-        run: ls ./igc-official-release
-
+        run: |
+          ls ./igc-official-release
+          if [[ $(ls ./igc-official-release | wc -c) == "0" ]]; then
+            exit 1
+          fi
 #Get SPIRV-LLVM-Translator
       - name: cloning SPIRV-LLVM-Translator repository
         run: git clone --branch llvm_release_${{ matrix.llvm_ver }}0 https://github.com/KhronosGroup/SPIRV-LLVM-Translator
