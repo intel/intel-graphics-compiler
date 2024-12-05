@@ -5763,20 +5763,62 @@ void EmitPass::emitSimdClusteredBroadcast(llvm::Instruction* inst)
     IGC_ASSERT_MESSAGE(isa<llvm::ConstantInt>(inst->getOperand(2)), "Unsupported: cluster lane must be constant");
     const unsigned int clusterLane = int_cast<uint32_t>(cast<llvm::ConstantInt>(inst->getOperand(2))->getZExtValue());
 
-    IGC_ASSERT_MESSAGE(clusterSize < numLanes(m_currShader->m_dispatchSize), "cluster size must be smaller than SIMD");
-    IGC_ASSERT_MESSAGE(clusterSize == 8 || clusterSize == 16, "cluster size must be 8 or 16");
+    IGC_ASSERT_MESSAGE(clusterSize <= numLanes(m_currShader->m_dispatchSize), "cluster size must be smaller or equal to SIMD");
+    IGC_ASSERT_MESSAGE(clusterSize % 8 == 0, "cluster size must be 8 or 16");
     IGC_ASSERT_MESSAGE(clusterLane < clusterSize, "cluster lane does not fit in cluster size");
 
-    m_encoder->SetSrcRegion(0, clusterSize, clusterSize, 0);
-    m_encoder->SetSrcSubReg(0, clusterLane);
-    m_encoder->Copy(m_destination, data);
-    if (m_currShader->m_numberInstance > 1)
+    if (clusterSize == numLanes(m_currShader->m_dispatchSize))
     {
-        m_encoder->SetSecondHalf(true);
-        m_encoder->Copy(m_destination, data);
-        m_encoder->SetSecondHalf(false);
+        // There is actually no cluster, just do subgroup broadcast instead.
+        if (m_currShader->m_numberInstance > 1)
+        {
+            // Use an intermediate uniform variable
+            CVariable* uniformTemp = m_currShader->GetNewVariable(
+                1,
+                data->GetType(),
+                m_encoder->GetCISADataTypeAlignment(data->GetType()),
+                true, // isUniform
+                "ClusteredBroadcastTmp");
+
+            // Copy from source to the uniform temp...
+            m_encoder->SetSecondHalf(clusterLane >= 16);
+            m_encoder->SetNoMask();
+            m_encoder->SetSrcRegion(0, 0, 1, 0);
+            m_encoder->SetSrcSubReg(0, clusterLane % numLanes(m_encoder->GetSimdSize()));
+            m_encoder->Copy(uniformTemp, data);
+            m_encoder->Push();
+            m_encoder->SetSecondHalf(false);
+
+            // ...and broadcast.
+            m_encoder->Copy(m_destination, uniformTemp);
+            m_encoder->Push();
+            m_encoder->SetSecondHalf(true);
+            m_encoder->Copy(m_destination, uniformTemp);
+            m_encoder->SetSecondHalf(false);
+        }
+        else
+        {
+            m_encoder->SetSrcRegion(0, 0, 1, 0);
+            m_encoder->SetSrcSubReg(0, clusterLane);
+            m_encoder->Copy(m_destination, data);
+            m_encoder->Push();
+        }
     }
-    m_encoder->Push();
+    else
+    {
+        // Clustered broadcast.
+        m_encoder->SetSrcRegion(0, clusterSize, clusterSize, 0);
+        m_encoder->SetSrcSubReg(0, clusterLane);
+        m_encoder->Copy(m_destination, data);
+        if (m_currShader->m_numberInstance > 1)
+        {
+            m_encoder->SetSecondHalf(true);
+            m_encoder->Copy(m_destination, data);
+            m_encoder->SetSecondHalf(false);
+        }
+        m_encoder->Push();
+    }
+
 }
 
 void EmitPass::emitSimdShuffleDown(llvm::Instruction* inst)
