@@ -246,11 +246,20 @@ TypesLegalizationPass::ResolveValue( Instruction *ip,Value *val,SmallVector<unsi
           break;
       }
   }
-  else if ((isa<Argument>(val) || isa<CallInst>(val)) &&
-    (val->getType()->isStructTy() || val->getType()->isArrayTy())) {
-    // Handle struct and array types of arguments or call instructions return value
+  else if (isa<CallInst>(val) && (val->getType()->isStructTy() || val->getType()->isArrayTy())) {
+    // Handle struct and array types of call instructions return value
     IRBuilder<> builder(ip);
     return builder.CreateExtractValue(val, indices);
+  }
+  else if (isa<Argument>(val)) {
+
+    IGC_ASSERT_MESSAGE(!val->getType()->isStructTy(), "Illegal IR. Structures are passed as a pointer to a struct with the byval attribute.!");
+
+    if ((val->getType()->isArrayTy()))
+    {
+      IRBuilder<> builder(ip);
+      return builder.CreateExtractValue(val, indices);
+    }
   }
   else if (SelectInst* select = dyn_cast<SelectInst>(val))
   {

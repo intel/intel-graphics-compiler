@@ -121,3 +121,16 @@ define float @cover.ResolveValue.cast.to.SelectInst.ExtractValue(%nested.struct.
   %result = fmul float %float, 4.0
   ret float %result
 }
+
+define spir_kernel void @cover.ResolveValue.cast.to.Argument.Array.ExtractValue([2 x float] %arg.array)
+; CHECK-LABEL: define spir_kernel void @cover.ResolveValue.cast.to.Argument.Array.ExtractValue(
+; CHECK-SAME: [2 x float] [[ARG_ARRAY:%.*]]) {
+; CHECK-NEXT:    [[TMP1:%.*]] = extractvalue [2 x float] [[ARG_ARRAY]], 1
+; CHECK-NEXT:    [[RESULT:%.*]] = fmul float [[TMP1]], 4.000000e+00
+; CHECK-NEXT:    ret void
+;
+{
+  %float = extractvalue [2 x float] %arg.array, 1
+  %result = fmul float %float, 4.0
+  ret void
+}
