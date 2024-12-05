@@ -138,6 +138,7 @@ struct SBFootprint {
   const unsigned short RightB;
   unsigned short offset = 0;
   bool isPrecision = false;
+  bool isFcvtByteType = false;;
   G4_INST *inst;
 
   // FIXME: The choice of C-style linked list seems suspect given that there are
@@ -153,13 +154,14 @@ struct SBFootprint {
     isPrecision = false;
   }
   SBFootprint(FOOTPRINT_TYPE ft, G4_Type t, unsigned short LB,
-              unsigned short RB, G4_INST *i)
-      : fType(ft), type((unsigned short)t), LeftB(LB), RightB(RB), inst(i) {
+              unsigned short RB, G4_INST *i, bool isByteType = false)
+      : fType(ft), type((unsigned short)t), LeftB(LB), RightB(RB), inst(i), isFcvtByteType(isByteType) {
     isPrecision = false;
   }
   SBFootprint(FOOTPRINT_TYPE ft, GenPrecision p, unsigned short LB,
-              unsigned short RB, G4_INST *i)
-      : fType(ft), type((unsigned short)p), LeftB(LB), RightB(RB), inst(i), isPrecision(true) {
+              unsigned short RB, G4_INST *i, bool isByteType = false)
+      : fType(ft), type((unsigned short)p), LeftB(LB), RightB(RB), inst(i),
+        isPrecision(true), isFcvtByteType(isByteType) {
   }
 
   void setOffset(unsigned short o) { offset = o; }

@@ -232,11 +232,13 @@ bool SBFootprint::hasOverlap(const SBFootprint *liveFootprint,
         if (curFootprintPtr->LeftB <= curFootprint2Ptr->RightB &&
             curFootprintPtr->RightB >= curFootprint2Ptr->LeftB) {
           internalOffset = curFootprint2Ptr->offset;
-          if (curFType == GRF_T && !isPrecision && IS_BTYPE(curType)) {
+          if (curFType == GRF_T && !isPrecision &&
+              (IS_BTYPE(curType) || isFcvtByteType)) {
             isRMWOverlap = true;
           }
           return true;
-        } else if (curFType == GRF_T && !isPrecision && IS_BTYPE(curType)) {
+        } else if (curFType == GRF_T && !isPrecision &&
+                   (IS_BTYPE(curType) || isFcvtByteType)) {
           unsigned short w_LeftB = curFootprintPtr->LeftB / 2;
           unsigned short w_RightB = curFootprintPtr->RightB / 2;
           unsigned short w_curLeftB = curFootprint2Ptr->LeftB / 2;
@@ -1006,11 +1008,15 @@ SBFootprint *G4_BB_SB::getFootprintForGRF(G4_Operand *opnd,
   int aregOffset = totalGRFNum;
   G4_Type type = opnd->getType();
   GenPrecision precision = GenPrecision::INVALID;
+  bool isFcvtByteType = false;
   bool isPrecision = false;
 
   if (inst->opcode() == G4_fcvt &&
       (IS_BTYPE(type) ||
        (type == Type_UD && builder.hasPartialInt64Support()))) {
+    if (IS_BTYPE(type)) {
+      isFcvtByteType = true;
+    }
     type = Type_F;
   }
   if (inst->opcode() == G4_srnd) { // srnd ub  hf  hf | srnd hf f f
@@ -1131,8 +1137,11 @@ SBFootprint *G4_BB_SB::getFootprintForGRF(G4_Operand *opnd,
   }
 
   SBFootprint *footprint =
-      isPrecision ? new (allocedMem) SBFootprint(GRF_T, precision, LB, RB, inst) :
-      new (allocedMem) SBFootprint(GRF_T, type, LB, RB, inst);
+      isPrecision
+          ? new (allocedMem)
+                SBFootprint(GRF_T, precision, LB, RB, inst, isFcvtByteType)
+          : new (allocedMem)
+                SBFootprint(GRF_T, type, LB, RB, inst, isFcvtByteType);
 
   return footprint;
 }
