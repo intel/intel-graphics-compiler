@@ -66,12 +66,32 @@ namespace IGC
         /// @param  CI The binary op
         void visitCallInst(llvm::CallInst& CI);
 
+        /// @brief  LoadInst instructions visitor.
+        ///         Analyzes if there are struct types loaded.
+        /// @param  LI The load instruction.
+        void visitLoadInst(llvm::LoadInst& LI);
+
+        /// @brief  StoreInst instructions visitor.
+        ///         Analyzes if there are struct types stored.
+        /// @param  SI The store instruction.
+        void visitStoreInst(llvm::StoreInst& SI);
+
+        /// @brief  GetElementPtrInst instructions visitor.
+        ///         Analyzes if there are struct types accessed.
+        /// @param  GEP The GEP instruction.
+        void visitGetElementPtrInst(llvm::GetElementPtrInst& GEP);
+
     private:
         /// @brief  Function entry point.
         ///         Finds all alloca instructions in this function, analyzes them and adds
         ///         private base implicit argument if needed.
         /// @param  F The destination function.
         bool runOnFunction(llvm::Function& F);
+
+        /// @brief  Type visitor.
+        ///         Checks if the type is a non-opaque struct.
+        /// @param  Ty The type to inspect.
+        inline void visitType(llvm::Type* Ty);
 
         /// @brief  A flag signaling if the current function uses private memory
         bool m_hasPrivateMem;

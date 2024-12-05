@@ -31,7 +31,6 @@ PrivateMemoryUsageAnalysis::PrivateMemoryUsageAnalysis()
     : ModulePass(ID), m_hasPrivateMem(false)
 {
     initializePrivateMemoryUsageAnalysisPass(*PassRegistry::getPassRegistry());
-
 }
 
 bool PrivateMemoryUsageAnalysis::runOnModule(Module& M)
@@ -45,20 +44,20 @@ bool PrivateMemoryUsageAnalysis::runOnModule(Module& M)
     m_hasDPDivSqrtEmu = !pCtx->platform.hasNoFP64Inst() && !pCtx->platform.hasCorrectlyRoundedMacros() && pCtx->m_DriverInfo.NeedFP64DivSqrt();
 
     // Run on all functions defined in this module
-    for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
+    for (Function &F : M)
     {
-        Function* pFunc = &(*I);
         // Skip functions called from function marked with stackcall attribute
-        if (AddImplicitArgs::hasStackCallInCG(pFunc))
+        if (AddImplicitArgs::hasStackCallInCG(&F))
         {
             hasStackCall = true;
             continue;
         }
-        if (pFunc->isDeclaration())
+        if (F.isDeclaration())
             continue;
-        if (m_pMDUtils->findFunctionsInfoItem(pFunc) == m_pMDUtils->end_FunctionsInfo())
+        if (m_pMDUtils->findFunctionsInfoItem(&F) == m_pMDUtils->end_FunctionsInfo())
             continue;
-        if (runOnFunction(*pFunc))
+
+        if (runOnFunction(F))
         {
             changed = true;
         }
@@ -71,14 +70,13 @@ bool PrivateMemoryUsageAnalysis::runOnModule(Module& M)
         IGC_IS_FLAG_ENABLED(ForceAddingStackcallKernelPrerequisites) ||
         IGC_IS_FLAG_ENABLED(StackOverflowDetection))
     {
-        for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
+        for (Function &F : M)
         {
-            Function* pFunc = &(*I);
-            if (isEntryFunc(m_pMDUtils, pFunc))
+            if (isEntryFunc(m_pMDUtils, &F))
             {
                 SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
                 implicitArgs.push_back(ImplicitArg::PRIVATE_BASE);
-                ImplicitArgs::addImplicitArgs(*pFunc, implicitArgs, m_pMDUtils);
+                ImplicitArgs::addImplicitArgs(F, implicitArgs, m_pMDUtils);
                 changed = true;
             }
         }
@@ -99,27 +97,22 @@ bool PrivateMemoryUsageAnalysis::runOnFunction(Function& F)
     visit(F);
 
     // Struct types always use private memory unless regtomem can
-    // promote them.  Check the function signature to see if any
-    // structs are passesed as arguments.
+    // promote them. Check the function signature to see if any
+    // structs are passed as arguments.
     if (!m_hasPrivateMem)
     {
-        Function::arg_iterator argument = F.arg_begin();
-        for (; argument != F.arg_end(); ++argument)
+        for (auto &Arg : F.args())
         {
-            Argument* arg = &(*argument);
-
-            if (arg->getType()->isPointerTy())
+            if (Arg.hasAttribute(llvm::Attribute::ByVal))
             {
-                Type* type = IGCLLVM::getNonOpaquePtrEltTy(arg->getType());
-
-                if (StructType * structType = dyn_cast<StructType>(type))
-                {
-                    if (!structType->isOpaque())
-                    {
-                        m_hasPrivateMem = true;
-                    }
-                }
+                Type* ByValTy = Arg.getParamByValType();
+                visitType(ByValTy);
+                if (m_hasPrivateMem)
+                    break;
             }
+
+            // Argument uses (which could signal they are of struct type) are
+            // inspected in instruction visitors.
         }
     }
 
@@ -148,6 +141,18 @@ bool PrivateMemoryUsageAnalysis::runOnFunction(Function& F)
     ImplicitArgs::addImplicitArgs(F, implicitArgs, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
 
     return true;
+}
+
+inline void PrivateMemoryUsageAnalysis::visitType(Type* Ty)
+{
+    // Struct types always use private memory unless regtomem can promote them.
+    if (auto *ST = dyn_cast<StructType>(Ty))
+    {
+        if (!ST->isOpaque())
+        {
+            m_hasPrivateMem = true;
+        }
+    }
 }
 
 void PrivateMemoryUsageAnalysis::visitAllocaInst(llvm::AllocaInst& AI)
@@ -199,4 +204,40 @@ void PrivateMemoryUsageAnalysis::visitCallInst(llvm::CallInst& CI)
             m_hasPrivateMem = true;
         }
     }
+
+    // Check byval arguments for struct usage
+    Function* CalledF = CI.getCalledFunction();
+    if (CalledF)
+    {
+        unsigned ArgNo = 0;
+        for (auto It = CI.arg_begin(), End = CI.arg_end(); It != End; ++It)
+        {
+            if (CI.paramHasAttr(ArgNo, llvm::Attribute::ByVal))
+            {
+                Type* ByValTy = CI.getParamByValType(ArgNo);
+                visitType(ByValTy);
+                if (m_hasPrivateMem)
+                    return;
+            }
+            ArgNo++;
+        }
+    }
+}
+
+void PrivateMemoryUsageAnalysis::visitLoadInst(LoadInst& LI)
+{
+    Type *LoadTy = LI.getType();
+    visitType(LoadTy);
+}
+
+void PrivateMemoryUsageAnalysis::visitStoreInst(StoreInst& SI)
+{
+    Type* ValTy = SI.getValueOperand()->getType();
+    visitType(ValTy);
+}
+
+void PrivateMemoryUsageAnalysis::visitGetElementPtrInst(GetElementPtrInst& GEP)
+{
+    Type *SrcTy = GEP.getSourceElementType();
+    visitType(SrcTy);
 }
