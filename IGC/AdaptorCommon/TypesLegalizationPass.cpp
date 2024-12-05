@@ -200,13 +200,6 @@ TypesLegalizationPass::ResolveValue( Instruction *ip,Value *val,SmallVector<unsi
     }
     return ResolveValue( civ,civ->getAggregateOperand(),indices );
   }
-  else if(InsertElementInst* ie =
-    dyn_cast<InsertElementInst>(val))
-  {
-    IRBuilder<> builder( ie );
-    IGC_ASSERT(indices.size() == 1);
-    return builder.CreateExtractElement( ie,builder.getInt32( indices[0] ) );
-  }
   else if(LoadInst* ld = dyn_cast<LoadInst>(val))
   {
     IGCLLVM::IRBuilder<> builder( ld );
