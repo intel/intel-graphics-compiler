@@ -8499,7 +8499,8 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic* inst)
             PackSIMD8HFRet(dst);
         }
 
-        if (feedbackEnable)
+        if (feedbackEnable
+            )
         {
             emitFeedbackEnable();
         }
