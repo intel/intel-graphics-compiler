@@ -11,7 +11,8 @@ SPDX-License-Identifier: MIT
 constant uint RADIX_SORT_BITS_PER_PASS = 4;
 constant uint RADIX_SORT_CHAR_BIT = 8;
 
-/* Default devicelib sub-group sort - bitonic sorting network, value-only */
+/* Default devicelib sub-group sort - bitonic sorting network.
+   Two versions: key-value and value only. */
 
 uint __builtin_sub_group_sort_mirror(uint idx, uint base)
 {
@@ -100,6 +101,87 @@ type OVERLOADABLE __builtin_sub_group_sort32(const type aa, const bool is_asc) \
         __builtin_sub_group_sort_rotate(slotID, 2),                            \
         __builtin_sub_group_sort_sel(slotID, 2), is_asc);                      \
     return gg;                                                                 \
+}                                                                              \
+                                                                               \
+void OVERLOADABLE __builtin_sub_group_sort_compare_exchange_kv(                \
+    type *key0, uint *val0, const uint shuffleMask, const uint selectMask,     \
+    const bool is_asc)                                                         \
+{                                                                              \
+    type key1 = sub_group_shuffle(*key0, shuffleMask);                         \
+    type val1 = sub_group_shuffle(*val0, shuffleMask);                         \
+    type key_min = min(*key0, key1);                                           \
+    type key_max = max(*key0, key1);                                           \
+    type val_min = (*key0 <  key1) ? *val0 :  val1;                            \
+    type val_max = (*key0 <= key1) ?  val1 : *val0;                            \
+    if (selectMask) {                                                          \
+        *key0 = is_asc ? key_max : key_min;                                    \
+        *val0 = is_asc ? val_max : val_min;                                    \
+    } else {                                                                   \
+        *key0 = is_asc ? key_min : key_max;                                    \
+        *val0 = is_asc ? val_min : val_max;                                    \
+    }                                                                          \
+}                                                                              \
+void OVERLOADABLE __builtin_sub_group_sort8_kv(                                \
+    type *key, uint *val, const bool is_asc)                                   \
+{                                                                              \
+    const uint slotID = get_sub_group_local_id();                              \
+    __builtin_sub_group_sort_compare_exchange_kv(key, val,                     \
+        __builtin_sub_group_sort_mirror(slotID, 2),                            \
+        __builtin_sub_group_sort_sel(slotID, 2), is_asc);                      \
+    __builtin_sub_group_sort_compare_exchange_kv(key, val,                     \
+        __builtin_sub_group_sort_mirror(slotID, 4),                            \
+        __builtin_sub_group_sort_sel(slotID, 4), is_asc);                      \
+    __builtin_sub_group_sort_compare_exchange_kv(key, val,                     \
+        __builtin_sub_group_sort_mirror(slotID, 2),                            \
+        __builtin_sub_group_sort_sel(slotID, 2), is_asc);                      \
+    __builtin_sub_group_sort_compare_exchange_kv(key, val,                     \
+        __builtin_sub_group_sort_mirror(slotID, 8),                            \
+        __builtin_sub_group_sort_sel(slotID, 8), is_asc);                      \
+    __builtin_sub_group_sort_compare_exchange_kv(key, val,                     \
+        __builtin_sub_group_sort_rotate(slotID, 4),                            \
+        __builtin_sub_group_sort_sel(slotID, 4), is_asc);                      \
+    __builtin_sub_group_sort_compare_exchange_kv(key, val,                     \
+        __builtin_sub_group_sort_rotate(slotID, 2),                            \
+        __builtin_sub_group_sort_sel(slotID, 2), is_asc);                      \
+}                                                                              \
+void OVERLOADABLE __builtin_sub_group_sort16_kv(                               \
+    type *key, uint *val, const bool is_asc)                                   \
+{                                                                              \
+    const uint slotID = get_sub_group_local_id();                              \
+    __builtin_sub_group_sort8_kv(key, val, is_asc);                            \
+    __builtin_sub_group_sort_compare_exchange_kv(key, val,                     \
+        __builtin_sub_group_sort_mirror(slotID, 16),                           \
+        __builtin_sub_group_sort_sel(slotID, 16),is_asc);                      \
+    __builtin_sub_group_sort_compare_exchange_kv(key, val,                     \
+        __builtin_sub_group_sort_rotate(slotID, 8),                            \
+        __builtin_sub_group_sort_sel(slotID, 8), is_asc);                      \
+    __builtin_sub_group_sort_compare_exchange_kv(key, val,                     \
+        __builtin_sub_group_sort_rotate(slotID, 4),                            \
+        __builtin_sub_group_sort_sel(slotID, 4), is_asc);                      \
+    __builtin_sub_group_sort_compare_exchange_kv(key, val,                     \
+        __builtin_sub_group_sort_rotate(slotID, 2),                            \
+        __builtin_sub_group_sort_sel(slotID, 2), is_asc);                      \
+}                                                                              \
+void OVERLOADABLE __builtin_sub_group_sort32_kv(                               \
+    type *key, uint *val, const bool is_asc)                                   \
+{                                                                              \
+    const uint slotID = get_sub_group_local_id();                              \
+    __builtin_sub_group_sort16_kv(key, val, is_asc);                           \
+    __builtin_sub_group_sort_compare_exchange_kv(key, val,                     \
+        __builtin_sub_group_sort_mirror(slotID, 32),                           \
+        __builtin_sub_group_sort_sel(slotID, 32), is_asc);                     \
+    __builtin_sub_group_sort_compare_exchange_kv(key, val,                     \
+        __builtin_sub_group_sort_rotate(slotID, 16),                           \
+        __builtin_sub_group_sort_sel(slotID, 16), is_asc);                     \
+    __builtin_sub_group_sort_compare_exchange_kv(key, val,                     \
+        __builtin_sub_group_sort_rotate(slotID, 8),                            \
+        __builtin_sub_group_sort_sel(slotID, 8), is_asc);                      \
+    __builtin_sub_group_sort_compare_exchange_kv(key, val,                     \
+        __builtin_sub_group_sort_rotate(slotID, 4),                            \
+        __builtin_sub_group_sort_sel(slotID, 4), is_asc);                      \
+    __builtin_sub_group_sort_compare_exchange_kv(key, val,                     \
+        __builtin_sub_group_sort_rotate(slotID, 2),                            \
+        __builtin_sub_group_sort_sel(slotID, 2), is_asc);                      \
 }
 
 
@@ -1450,9 +1532,43 @@ type __builtin_IB_sub_group_clustered_sort_##direction##_##type_abbr(           
     return sorted;                                                                \
 }
 
+// clustered sorted ordinal - returns cluster lane when value is sorted
+// Example: SIMD16 input:
+//   0, 2,19, 4, 1, 5, 7, 9,    19, 7,18, 4,10, 5, 2, 3
+// Result after sorted_ordinal_descend, cluster_size=8:
+//   7, 5, 0, 4, 6, 3, 2, 1,     0, 3, 1, 5, 2, 4, 7, 6
+#define DEFN_CLUSTERED_SUB_GROUP_SORTED_ORDINAL(type, type_abbr, direction, is_asc) \
+type __builtin_IB_sub_group_clustered_sorted_ordinal_##direction##_##type_abbr(     \
+    type value,uint cluster_size)                                                   \
+{                                                                                   \
+    type k = value;                                                                 \
+    uint v = get_sub_group_local_id();                                              \
+    uint result = get_sub_group_local_id();                                         \
+    switch (cluster_size)                                                           \
+    {                                                                               \
+    case 8:                                                                         \
+        __builtin_sub_group_sort8_kv(&k, &v, is_asc);                               \
+        __builtin_sub_group_sort8_kv(&v, &result, true);                            \
+        break;                                                                      \
+    case 16:                                                                        \
+        __builtin_sub_group_sort16_kv(&k, &v, is_asc);                              \
+        __builtin_sub_group_sort16_kv(&v, &result, true);                           \
+        break;                                                                      \
+    case 32:                                                                        \
+        __builtin_sub_group_sort32_kv(&k, &v, is_asc);                              \
+        __builtin_sub_group_sort32_kv(&v, &result, true);                           \
+        break;                                                                      \
+    default:                                                                        \
+        break;                                                                      \
+    }                                                                               \
+    return result % cluster_size;                                                   \
+}
+
 #define DEFN_CLUSTERED_SUB_GROUP_SORT(type, type_abbr)                      \
     DEFN_CLUSTERED_SUB_GROUP_SORT_KEY_ONLY(type, type_abbr, ascend, true)   \
-    DEFN_CLUSTERED_SUB_GROUP_SORT_KEY_ONLY(type, type_abbr, descend, false)
+    DEFN_CLUSTERED_SUB_GROUP_SORT_KEY_ONLY(type, type_abbr, descend, false) \
+    DEFN_CLUSTERED_SUB_GROUP_SORTED_ORDINAL(type, type_abbr, ascend, true)  \
+    DEFN_CLUSTERED_SUB_GROUP_SORTED_ORDINAL(type, type_abbr, descend, false)
 
 DEFN_CLUSTERED_SUB_GROUP_SORT(char, i8)
 DEFN_CLUSTERED_SUB_GROUP_SORT(short, i16)

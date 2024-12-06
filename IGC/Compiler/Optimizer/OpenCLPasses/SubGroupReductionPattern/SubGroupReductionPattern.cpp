@@ -269,6 +269,9 @@ void SubGroupReductionPattern::matchShufflePattern(GenIntrinsicInst &ShuffleOp, 
         return matchVectorShufflePattern(ShuffleOp, Lane);
     }
 
+    if (getWaveOp(Op) == WaveOps::UNDEF)
+        return;
+
     Value *InputValue = ShuffleOp.getOperand(0);
     if (((Op->getOperand(0) == InputValue && Op->getOperand(1) == &ShuffleOp) || (Op->getOperand(0) == &ShuffleOp && Op->getOperand(1) == InputValue)) == false)
         return;
