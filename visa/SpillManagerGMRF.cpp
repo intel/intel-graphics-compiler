@@ -4840,10 +4840,8 @@ void GlobalRA::expandSpillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
   }
 
   if (inst->getFP() && kernel.getOption(vISA_GenerateDebugInfo)) {
-    for (auto newInst : builder->instList) {
-      kernel.getKernelDebugInfo()->updateExpandedIntrinsic(
-          inst->asSpillIntrinsic(), newInst);
-    }
+    kernel.getKernelDebugInfo()->updateExpandedIntrinsic(
+        inst->asSpillIntrinsic(), builder->instList);
   }
 
   // Call WA and NoMask WA are mutual exclusive.
@@ -4950,10 +4948,8 @@ void GlobalRA::expandScatterSpillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
       payload->getTopDcl()->getName(), builder->getGRFSize()));
 
   if (inst->getFP() && kernel.getOption(vISA_GenerateDebugInfo)) {
-    for (auto newInst : builder->instList) {
-      kernel.getKernelDebugInfo()->updateExpandedIntrinsic(
-          inst->asSpillIntrinsic(), newInst);
-    }
+    kernel.getKernelDebugInfo()->updateExpandedIntrinsic(
+        inst->asSpillIntrinsic(), builder->instList);
   }
 
   splice(bb, instIt, builder->instList, inst->getVISAId());
@@ -5046,10 +5042,8 @@ void GlobalRA::expandFillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
   }
 
   if (inst->getFP() && kernel.getOption(vISA_GenerateDebugInfo)) {
-    for (auto newInst : builder->instList) {
-      kernel.getKernelDebugInfo()->updateExpandedIntrinsic(
-          inst->asFillIntrinsic(), newInst);
-    }
+    kernel.getKernelDebugInfo()->updateExpandedIntrinsic(
+        inst->asFillIntrinsic(), builder->instList);
   }
 
   // Call WA and NoMask WA are mutual exclusive.
@@ -5323,10 +5317,9 @@ void GlobalRA::expandSpillStackcall(uint32_t numRows, uint32_t offset,
     }
 
     if (kernel.getOption(vISA_GenerateDebugInfo)) {
+      INST_LIST expandedInsts = {hdrSetInst, spillSends};
       kernel.getKernelDebugInfo()->updateExpandedIntrinsic(
-          inst->asSpillIntrinsic(), hdrSetInst);
-      kernel.getKernelDebugInfo()->updateExpandedIntrinsic(
-          inst->asSpillIntrinsic(), spillSends);
+          inst->asSpillIntrinsic(), expandedInsts);
     }
 
     numRowsOword -= payloadSizeInOwords;
@@ -5583,10 +5576,9 @@ void GlobalRA::expandFillStackcall(uint32_t numRows, uint32_t offset,
     bb->insertBefore(fillIt, fillSends);
 
     if (kernel.getOption(vISA_GenerateDebugInfo)) {
+      INST_LIST expandedInsts = {hdrSetInst, fillSends};
       kernel.getKernelDebugInfo()->updateExpandedIntrinsic(
-          inst->asFillIntrinsic(), hdrSetInst);
-      kernel.getKernelDebugInfo()->updateExpandedIntrinsic(
-          inst->asFillIntrinsic(), fillSends);
+          inst->asFillIntrinsic(), expandedInsts);
     }
 
     numRowsOword -= respSizeInOwords;

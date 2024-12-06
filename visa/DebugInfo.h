@@ -314,7 +314,7 @@ public:
   void setCESaveOffset(uint16_t Off) { CEStoreOffset = Off; }
   uint16_t getCESaveOffset() const { return CEStoreOffset; }
 
-  void updateExpandedIntrinsic(G4_InstIntrinsic *spillOrFill, G4_INST *inst);
+  void updateExpandedIntrinsic(G4_InstIntrinsic *spillOrFill, INST_LIST &insts);
   void addCallerSaveInst(G4_BB *fcallBB, G4_INST *inst);
   void addCallerRestoreInst(G4_BB *fcallBB, G4_INST *inst);
   void addCalleeSaveInst(G4_INST *inst);

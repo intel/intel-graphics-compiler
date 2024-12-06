@@ -1926,7 +1926,7 @@ void KernelDebugInfo::updateCallStackLiveIntervals() {
 }
 
 void KernelDebugInfo::updateExpandedIntrinsic(G4_InstIntrinsic *spillOrFill,
-                                              G4_INST *inst) {
+                                              INST_LIST &insts) {
   // This function looks up all caller/callee save code added.
   // Once it finds "spillOrFill", it adds inst to it. This is
   // because VISA now uses spill/fill intrinsics to model
@@ -1936,14 +1936,14 @@ void KernelDebugInfo::updateExpandedIntrinsic(G4_InstIntrinsic *spillOrFill,
   for (auto &k : callerSaveRestore) {
     for (auto it = k.second.first.begin(); it != k.second.first.end(); ++it) {
       if ((*it) == spillOrFill) {
-        k.second.first.insert(it, inst);
+        k.second.first.insert(it, insts.begin(), insts.end());
         return;
       }
     }
 
     for (auto it = k.second.second.begin(); it != k.second.second.end(); ++it) {
       if ((*it) == spillOrFill) {
-        k.second.second.insert(it, inst);
+        k.second.second.insert(it, insts.begin(), insts.end());
         return;
       }
     }
@@ -1952,7 +1952,7 @@ void KernelDebugInfo::updateExpandedIntrinsic(G4_InstIntrinsic *spillOrFill,
   for (auto it = calleeSaveRestore.first.begin();
        it != calleeSaveRestore.first.end(); ++it) {
     if ((*it) == spillOrFill) {
-      calleeSaveRestore.first.insert(it, inst);
+      calleeSaveRestore.first.insert(it, insts.begin(), insts.end());
       return;
     }
   }
@@ -1960,7 +1960,7 @@ void KernelDebugInfo::updateExpandedIntrinsic(G4_InstIntrinsic *spillOrFill,
   for (auto it = calleeSaveRestore.second.begin();
        it != calleeSaveRestore.second.end(); ++it) {
     if ((*it) == spillOrFill) {
-      calleeSaveRestore.second.insert(it, inst);
+      calleeSaveRestore.second.insert(it, insts.begin(), insts.end());
       return;
     }
   }
@@ -1969,20 +1969,23 @@ void KernelDebugInfo::updateExpandedIntrinsic(G4_InstIntrinsic *spillOrFill,
     // caller be fp restore is a fill intrinsic that reads from FDE. it is
     // expanded to a regular fill instruction. so update the pointer to new
     // instruction.
-    setCallerBEFPRestoreInst(inst);
+    setCallerBEFPRestoreInst(insts.back());
   }
 
   if (spillOrFill == getCallerSPRestoreInst()) {
-    setCallerSPRestoreInst(inst);
+    setCallerSPRestoreInst(insts.back());
   }
 
   if (spillOrFill == getCallerBEFPSaveInst()) {
-    setCallerBEFPSaveInst(inst);
+    setCallerBEFPSaveInst(insts.back());
   }
 
-  if (spillOrFill == getCESaveInst() &&
-      inst->isSend()) {
-    setSaveCEInst(inst);
+  if (spillOrFill == getCESaveInst()) {
+    for (auto *inst: insts) {
+      if (inst->isSend()){
+        setSaveCEInst(inst);
+      }
+    }
   }
 }
 
