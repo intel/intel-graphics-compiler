@@ -134,3 +134,169 @@ define spir_kernel void @cover.ResolveValue.cast.to.Argument.Array.ExtractValue(
   %result = fmul float %float, 4.0
   ret void
 }
+
+declare {i32, i1} @llvm.sadd.with.overflow.i32(i32 %a, i32 %b)
+
+define i32 @cover.ResolveValue.cast.to.IntrinsicInst.llvm.sadd(i32 %a, i32 %b)
+; CHECK-LABEL: define i32 @cover.ResolveValue.cast.to.IntrinsicInst.llvm.sadd(
+; CHECK-SAME: i32 [[A:%.*]], i32 [[B:%.*]]) {
+; CHECK-NEXT:  [[ENTRY:.*:]]
+; CHECK-NEXT:    [[RES:%.*]] = call { i32, i1 } @llvm.sadd.with.overflow.i32(i32 [[A]], i32 [[B]])
+; CHECK-NEXT:    [[TMP0:%.*]] = extractvalue { i32, i1 } [[RES]], 1
+; CHECK-NEXT:    br i1 [[TMP0]], label %[[OVERFLOW:.*]], label %[[NORMAL:.*]]
+; CHECK:       [[OVERFLOW]]:
+; CHECK-NEXT:    br label %[[EXIT:.*]]
+; CHECK:       [[NORMAL]]:
+; CHECK-NEXT:    [[TMP1:%.*]] = extractvalue { i32, i1 } [[RES]], 0
+; CHECK-NEXT:    br label %[[EXIT]]
+; CHECK:       [[EXIT]]:
+; CHECK-NEXT:    [[END_VALUE:%.*]] = phi i32 [ [[A]], %[[OVERFLOW]] ], [ [[TMP1]], %[[NORMAL]] ]
+; CHECK-NEXT:    ret i32 [[END_VALUE]]
+;
+{
+entry:
+  %res = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %a, i32 %b)
+  %obit = extractvalue {i32, i1} %res, 1
+  br i1 %obit, label %overflow, label %normal
+overflow:
+  br label %exit
+normal:
+  %sum = extractvalue {i32, i1} %res, 0
+  br label %exit
+exit:
+  %end.value = phi i32 [%a, %overflow], [%sum, %normal]
+  ret i32 %end.value
+}
+
+declare {i32, i1} @llvm.ssub.with.overflow.i32(i32 %a, i32 %b)
+
+define i32 @cover.ResolveValue.cast.to.IntrinsicInst.llvm.ssub(i32 %a, i32 %b)
+; CHECK-LABEL: define i32 @cover.ResolveValue.cast.to.IntrinsicInst.llvm.ssub(
+; CHECK-SAME: i32 [[A:%.*]], i32 [[B:%.*]]) {
+; CHECK-NEXT:  [[ENTRY:.*:]]
+; CHECK-NEXT:    [[RES:%.*]] = call { i32, i1 } @llvm.ssub.with.overflow.i32(i32 [[A]], i32 [[B]])
+; CHECK-NEXT:    [[TMP0:%.*]] = extractvalue { i32, i1 } [[RES]], 1
+; CHECK-NEXT:    br i1 [[TMP0]], label %[[OVERFLOW:.*]], label %[[NORMAL:.*]]
+; CHECK:       [[OVERFLOW]]:
+; CHECK-NEXT:    br label %[[EXIT:.*]]
+; CHECK:       [[NORMAL]]:
+; CHECK-NEXT:    [[TMP1:%.*]] = extractvalue { i32, i1 } [[RES]], 0
+; CHECK-NEXT:    br label %[[EXIT]]
+; CHECK:       [[EXIT]]:
+; CHECK-NEXT:    [[END_VALUE:%.*]] = phi i32 [ [[A]], %[[OVERFLOW]] ], [ [[TMP1]], %[[NORMAL]] ]
+; CHECK-NEXT:    ret i32 [[END_VALUE]]
+;
+{
+entry:
+  %res = call {i32, i1} @llvm.ssub.with.overflow.i32(i32 %a, i32 %b)
+  %obit = extractvalue {i32, i1} %res, 1
+  br i1 %obit, label %overflow, label %normal
+overflow:
+  br label %exit
+normal:
+  %sum = extractvalue {i32, i1} %res, 0
+  br label %exit
+exit:
+  %end.value = phi i32 [%a, %overflow], [%sum, %normal]
+  ret i32 %end.value
+}
+
+declare {i32, i1} @llvm.usub.with.overflow.i32(i32 %a, i32 %b)
+
+define i32 @cover.ResolveValue.cast.to.IntrinsicInst.llvm.usub(i32 %a, i32 %b)
+; CHECK-LABEL: define i32 @cover.ResolveValue.cast.to.IntrinsicInst.llvm.usub(
+; CHECK-SAME: i32 [[A:%.*]], i32 [[B:%.*]]) {
+; CHECK-NEXT:  [[ENTRY:.*:]]
+; CHECK-NEXT:    [[RES:%.*]] = call { i32, i1 } @llvm.usub.with.overflow.i32(i32 [[A]], i32 [[B]])
+; CHECK-NEXT:    [[TMP0:%.*]] = extractvalue { i32, i1 } [[RES]], 1
+; CHECK-NEXT:    br i1 [[TMP0]], label %[[OVERFLOW:.*]], label %[[NORMAL:.*]]
+; CHECK:       [[OVERFLOW]]:
+; CHECK-NEXT:    br label %[[EXIT:.*]]
+; CHECK:       [[NORMAL]]:
+; CHECK-NEXT:    [[TMP1:%.*]] = extractvalue { i32, i1 } [[RES]], 0
+; CHECK-NEXT:    br label %[[EXIT]]
+; CHECK:       [[EXIT]]:
+; CHECK-NEXT:    [[END_VALUE:%.*]] = phi i32 [ [[A]], %[[OVERFLOW]] ], [ [[TMP1]], %[[NORMAL]] ]
+; CHECK-NEXT:    ret i32 [[END_VALUE]]
+;
+{
+entry:
+  %res = call {i32, i1} @llvm.usub.with.overflow.i32(i32 %a, i32 %b)
+  %obit = extractvalue {i32, i1} %res, 1
+  br i1 %obit, label %overflow, label %normal
+overflow:
+  br label %exit
+normal:
+  %sum = extractvalue {i32, i1} %res, 0
+  br label %exit
+exit:
+  %end.value = phi i32 [%a, %overflow], [%sum, %normal]
+  ret i32 %end.value
+}
+
+
+declare {i32, i1} @llvm.smul.with.overflow.i32(i32 %a, i32 %b)
+
+define i32 @cover.ResolveValue.cast.to.IntrinsicInst.llvm.smul(i32 %a, i32 %b)
+; CHECK-LABEL: define i32 @cover.ResolveValue.cast.to.IntrinsicInst.llvm.smul(
+; CHECK-SAME: i32 [[A:%.*]], i32 [[B:%.*]]) {
+; CHECK-NEXT:  [[ENTRY:.*:]]
+; CHECK-NEXT:    [[RES:%.*]] = call { i32, i1 } @llvm.smul.with.overflow.i32(i32 [[A]], i32 [[B]])
+; CHECK-NEXT:    [[TMP0:%.*]] = extractvalue { i32, i1 } [[RES]], 1
+; CHECK-NEXT:    br i1 [[TMP0]], label %[[OVERFLOW:.*]], label %[[NORMAL:.*]]
+; CHECK:       [[OVERFLOW]]:
+; CHECK-NEXT:    br label %[[EXIT:.*]]
+; CHECK:       [[NORMAL]]:
+; CHECK-NEXT:    [[TMP1:%.*]] = extractvalue { i32, i1 } [[RES]], 0
+; CHECK-NEXT:    br label %[[EXIT]]
+; CHECK:       [[EXIT]]:
+; CHECK-NEXT:    [[END_VALUE:%.*]] = phi i32 [ [[A]], %[[OVERFLOW]] ], [ [[TMP1]], %[[NORMAL]] ]
+; CHECK-NEXT:    ret i32 [[END_VALUE]]
+;
+{
+entry:
+  %res = call {i32, i1} @llvm.smul.with.overflow.i32(i32 %a, i32 %b)
+  %obit = extractvalue {i32, i1} %res, 1
+  br i1 %obit, label %overflow, label %normal
+overflow:
+  br label %exit
+normal:
+  %sum = extractvalue {i32, i1} %res, 0
+  br label %exit
+exit:
+  %end.value = phi i32 [%a, %overflow], [%sum, %normal]
+  ret i32 %end.value
+}
+
+declare {i32, i1} @llvm.umul.with.overflow.i32(i32 %a, i32 %b)
+
+define i32 @cover.ResolveValue.cast.to.IntrinsicInst.llvm.umul(i32 %a, i32 %b)
+; CHECK-LABEL: define i32 @cover.ResolveValue.cast.to.IntrinsicInst.llvm.umul(
+; CHECK-SAME: i32 [[A:%.*]], i32 [[B:%.*]]) {
+; CHECK-NEXT:  [[ENTRY:.*:]]
+; CHECK-NEXT:    [[RES:%.*]] = call { i32, i1 } @llvm.umul.with.overflow.i32(i32 [[A]], i32 [[B]])
+; CHECK-NEXT:    [[TMP0:%.*]] = extractvalue { i32, i1 } [[RES]], 1
+; CHECK-NEXT:    br i1 [[TMP0]], label %[[OVERFLOW:.*]], label %[[NORMAL:.*]]
+; CHECK:       [[OVERFLOW]]:
+; CHECK-NEXT:    br label %[[EXIT:.*]]
+; CHECK:       [[NORMAL]]:
+; CHECK-NEXT:    [[TMP1:%.*]] = extractvalue { i32, i1 } [[RES]], 0
+; CHECK-NEXT:    br label %[[EXIT]]
+; CHECK:       [[EXIT]]:
+; CHECK-NEXT:    [[END_VALUE:%.*]] = phi i32 [ [[A]], %[[OVERFLOW]] ], [ [[TMP1]], %[[NORMAL]] ]
+; CHECK-NEXT:    ret i32 [[END_VALUE]]
+;
+{
+entry:
+  %res = call {i32, i1} @llvm.umul.with.overflow.i32(i32 %a, i32 %b)
+  %obit = extractvalue {i32, i1} %res, 1
+  br i1 %obit, label %overflow, label %normal
+overflow:
+  br label %exit
+normal:
+  %sum = extractvalue {i32, i1} %res, 0
+  br label %exit
+exit:
+  %end.value = phi i32 [%a, %overflow], [%sum, %normal]
+  ret i32 %end.value
+}

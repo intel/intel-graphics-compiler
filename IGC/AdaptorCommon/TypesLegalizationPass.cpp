@@ -230,12 +230,18 @@ TypesLegalizationPass::ResolveValue( Instruction *ip,Value *val,SmallVector<unsi
       switch (II->getIntrinsicID())
       {
       case Intrinsic::uadd_with_overflow:
+      case Intrinsic::sadd_with_overflow:
+      case Intrinsic::ssub_with_overflow:
+      case Intrinsic::usub_with_overflow:
+      case Intrinsic::smul_with_overflow:
+      case Intrinsic::umul_with_overflow:
       {
           // This gets handled in the legalizer.
           IRBuilder<> builder(ip);
           return builder.CreateExtractValue(val, indices);
       }
       default:
+          IGC_ASSERT_MESSAGE(0, "Unsupported intrinsic instruction!");
           break;
       }
   }
