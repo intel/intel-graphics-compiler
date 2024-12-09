@@ -219,6 +219,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXDetectPointerArgPass(registry);
   initializeGenXLCECalculationPass(registry);
   initializeGenXFloatControlPass(registry);
+  initializeGenXCountIndirectStatelessPass(registry);
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
 
@@ -514,6 +515,8 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   vc::addPass(PM, createPromoteMemoryToRegisterPass());
   /// .. include:: GenXDetectPointerArg.cpp
   vc::addPass(PM, createGenXDetectPointerArgPass());
+  /// .. include:: GenXCountIndirectStateless.cpp
+  vc::addPass(PM, createGenXCountIndirectStatelessPass());
 
   // All passes which modify the LLVM IR are now complete; run the verifier
   // to ensure that the IR is valid.

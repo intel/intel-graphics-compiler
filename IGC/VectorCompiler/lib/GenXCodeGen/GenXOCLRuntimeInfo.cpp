@@ -322,6 +322,7 @@ GenXOCLRuntimeInfo::FunctionInfo::FunctionInfo(const FunctionGroup &FG,
     vc::KernelMetadata KernelMD(FG.getHead());
     Name = KernelMD.getName().str();
     SLMSize = KernelMD.getSLMSize();
+    IndirectCount = KernelMD.getIndirectCount();
 
     if (ST.hasNBarrier())
       NumBarriers = KernelMD.getAlignedBarrierCnt(NumBarriers);

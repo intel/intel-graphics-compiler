@@ -832,6 +832,7 @@ static void setExecutionInfo(const GenXOCLRuntimeInfo::KernelInfo &BackendInfo,
   ExecEnv.SubgroupIndependentForwardProgressRequired = true;
   ExecEnv.NumGRFRequired = JitterInfo.stats.numGRFTotal;
   ExecEnv.RequireDisableEUFusion = BackendInfo.requireDisableEUFusion();
+  ExecEnv.IndirectStatelessCount = BackendInfo.getIndirectCount();
 
   // Allocate spill-fill buffer
   if (JitterInfo.hasStackcalls) {

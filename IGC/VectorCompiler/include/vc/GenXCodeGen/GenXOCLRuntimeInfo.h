@@ -185,6 +185,7 @@ public:
     unsigned SLMSize = 0;
     unsigned StatelessPrivateMemSize = 0;
     unsigned ThreadPrivateMemSize = 0;
+    unsigned IndirectCount = 0;
 
   private:
     void initInstructionLevelProperties(const FunctionGroup &FG,
@@ -252,6 +253,7 @@ public:
     // SIMD size is always set by igcmc to one. Preserve this here.
     unsigned getSIMDSize() const { return 1; }
     unsigned getSLMSize() const { return FuncInfo.SLMSize; }
+    unsigned getIndirectCount() const { return FuncInfo.IndirectCount; }
 
     // Deduced from actual function instructions.
     unsigned getTPMSize() const { return FuncInfo.ThreadPrivateMemSize; }

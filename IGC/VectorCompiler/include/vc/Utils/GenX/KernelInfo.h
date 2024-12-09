@@ -219,6 +219,7 @@ private:
   llvm::StringRef Name;
   unsigned SLMSize = 0;
   unsigned NBarrierCnt = 0;
+  unsigned IndirectCount = 0;
   llvm::SmallVector<unsigned, 4> ArgKinds;
   llvm::SmallVector<unsigned, 4> ArgOffsets;
   llvm::SmallVector<ArgIOKind, 4> ArgIOKinds;
@@ -257,6 +258,7 @@ public:
   void updateLinearizationMD(ArgToImplicitLinearization &&Lin);
   void updateBTIndicesMD(std::vector<int> &&BTIs);
   void updateSLMSizeMD(unsigned Size);
+  void updateIndirectCountMD(unsigned Count);
 
   void parseExecutionMode(llvm::MDNode *SpirvExecutionMode);
 
@@ -295,6 +297,7 @@ public:
       return alignBarrierCnt(NBarrierCnt + (HasBarrier ? 1 : 0));
     return HasBarrier;
   }
+  unsigned getIndirectCount() const { return IndirectCount; }
   llvm::ArrayRef<unsigned> getArgKinds() const { return ArgKinds; }
   llvm::ArrayRef<ArgIOKind> getArgIOKinds() const { return ArgIOKinds; }
   llvm::ArrayRef<llvm::StringRef> getArgTypeDescs() const {

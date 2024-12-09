@@ -35,10 +35,44 @@ static MDNode *findNode(const Function &F, StringRef KernelsMDName,
   return Res != Named->op_end() ? *Res : nullptr;
 }
 
+static MDNode *extendInternalNode(MDNode *Node) {
+  using namespace vc::internal;
+  if (Node->getNumOperands() == KernelMDOp::LastOptional)
+    return Node;
+
+  IGC_ASSERT_MESSAGE(Node->getNumOperands() == KernelMDOp::Last,
+                     "Unexpected number of operands in internal node");
+  SmallVector<Metadata *, KernelMDOp::LastOptional> NewNode(Node->op_begin(),
+                                                            Node->op_end());
+  NewNode.resize(KernelMDOp::LastOptional, nullptr);
+
+  auto &Ctx = Node->getContext();
+  auto *Ty = Type::getInt32Ty(Ctx);
+  auto *CZero = ConstantInt::get(Ty, 0);
+  NewNode[KernelMDOp::IndirectCount] = ValueAsMetadata::get(CZero);
+
+  auto *NewMD = MDNode::get(Node->getContext(), NewNode);
+
+  auto *F = cast<Function>(
+      getValueAsMetadata(Node->getOperand(KernelMDOp::FunctionRef)));
+  auto *M = F->getParent();
+  auto *KernelMDs = M->getOrInsertNamedMetadata(FunctionMD::GenXKernelInternal);
+
+  for (unsigned I = 0; I < KernelMDs->getNumOperands(); ++I) {
+    if (KernelMDs->getOperand(I) == Node) {
+      KernelMDs->setOperand(I, NewMD);
+      break;
+    }
+  }
+
+  return NewMD;
+}
+
 static MDNode *findInternalNode(const Function &F) {
-  return findNode(F, FunctionMD::GenXKernelInternal,
-                  internal::KernelMDOp::FunctionRef,
-                  internal::KernelMDOp::Last);
+  using namespace vc::internal;
+  auto *Node = findNode(F, FunctionMD::GenXKernelInternal,
+                        KernelMDOp::FunctionRef, KernelMDOp::Last);
+  return Node ? extendInternalNode(Node) : nullptr;
 }
 
 static MDNode *findExternalNode(const Function &F) {
@@ -58,22 +92,25 @@ void vc::internal::createInternalMD(Function &F) {
                      "Internal node has already been created!");
 
   auto &Ctx = F.getContext();
+  auto *M = F.getParent();
 
   // Create nullptr values by default.
-  SmallVector<Metadata *, internal::KernelMDOp::Last> KernelInternalMD(
-      internal::KernelMDOp::Last, nullptr);
-  KernelInternalMD[internal::KernelMDOp::FunctionRef] =
-      ValueAsMetadata::get(&F);
+  SmallVector<Metadata *, KernelMDOp::LastOptional> KernelInternalMD(
+      KernelMDOp::LastOptional, nullptr);
+  KernelInternalMD[KernelMDOp::FunctionRef] = ValueAsMetadata::get(&F);
 
-  MDNode *InternalNode = MDNode::get(Ctx, KernelInternalMD);
-  NamedMDNode *KernelMDs =
-      F.getParent()->getOrInsertNamedMetadata(FunctionMD::GenXKernelInternal);
+  auto *Ty = Type::getInt32Ty(Ctx);
+  auto *CZero = ConstantInt::get(Ty, 0);
+  KernelInternalMD[KernelMDOp::IndirectCount] = ValueAsMetadata::get(CZero);
+
+  auto *InternalNode = MDNode::get(Ctx, KernelInternalMD);
+  auto *KernelMDs = M->getOrInsertNamedMetadata(FunctionMD::GenXKernelInternal);
   KernelMDs->addOperand(InternalNode);
 }
 
 void vc::internal::replaceInternalFunctionRef(const Function &From,
                                               Function &To) {
-  MDNode *Node = findInternalNode(From);
+  auto *Node = findInternalNode(From);
   IGC_ASSERT_MESSAGE(Node, "Replacement was called for non existing in kernel "
                            "internal metadata function");
   Node->replaceOperandWith(internal::KernelMDOp::FunctionRef,
@@ -230,6 +267,10 @@ vc::KernelMetadata::KernelMetadata(const Function *F) {
   BTIndicesNode = cast_or_null<MDNode>(
       InternalNode->getOperand(internal::KernelMDOp::BTIndices));
 
+  auto &MD = InternalNode->getOperand(internal::KernelMDOp::IndirectCount);
+  if (auto *Count = getValueAsMetadata<ConstantInt>(MD))
+    IndirectCount = Count->getZExtValue();
+
   IGC_ASSERT(KindsNode);
 
   // These should have the same number of operands if they exist.
@@ -366,6 +407,14 @@ void vc::KernelMetadata::updateSLMSizeMD(unsigned Size) {
   auto *C = ConstantInt::get(Ty, SLMSize);
   ExternalNode->replaceOperandWith(genx::KernelMDOp::SLMSize,
                                    ValueAsMetadata::get(C));
+}
+
+void vc::KernelMetadata::updateIndirectCountMD(unsigned Count) {
+  IndirectCount = Count;
+  auto *Ty = Type::getInt32Ty(F->getContext());
+  auto *C = ConstantInt::get(Ty, Count);
+  auto *MD = ValueAsMetadata::get(C);
+  InternalNode->replaceOperandWith(internal::KernelMDOp::IndirectCount, MD);
 }
 
 void vc::KernelMetadata::parseExecutionMode(MDNode *SpirvExecutionMode) {

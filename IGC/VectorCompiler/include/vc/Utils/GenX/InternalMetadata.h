@@ -48,7 +48,9 @@ enum {
                 // in the case of linearization
   LinearizationArgs,
   BTIndices,
-  Last
+  Last,                 // Last mandatory operand
+  IndirectCount = Last, // Indirect stateless access count
+  LastOptional,
 };
 }
 namespace ArgLinearizationMDOp {

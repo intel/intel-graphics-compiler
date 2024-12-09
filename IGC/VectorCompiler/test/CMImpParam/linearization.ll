@@ -68,8 +68,8 @@ attributes #0 = { nounwind "CMGenxMain" "oclrt"="1" }
 !6 = !{i32 0, i32 0}
 !7 = !{!"svmptr_t", !"svmptr_t"}
 !8 = !{i32 1}
-; CHECK-TYPED-PTRS: [[INTERNAL]] = !{[[FTYPE]] ([[EXPARG1]], [[EXPARG2]], [[PRIVBASE]], [[IMPLIN1]], [[IMPLIN2]], [[IMPLIN3]], [[IMPLIN4]], [[IMPLIN5]])* @[[FNAME]], null, null, [[LINMD:![0-9]+]], null}
-; CHECK-OPAQUE-PTRS: [[INTERNAL]] = !{ptr @[[FNAME]], null, null, [[LINMD:![0-9]+]], null}
+; CHECK-TYPED-PTRS: [[INTERNAL]] = !{[[FTYPE]] ([[EXPARG1]], [[EXPARG2]], [[PRIVBASE]], [[IMPLIN1]], [[IMPLIN2]], [[IMPLIN3]], [[IMPLIN4]], [[IMPLIN5]])* @[[FNAME]], null, null, [[LINMD:![0-9]+]], null, i32 0}
+; CHECK-OPAQUE-PTRS: [[INTERNAL]] = !{ptr @[[FNAME]], null, null, [[LINMD:![0-9]+]], null, i32 0}
 ; CHECK: [[LINMD]] = !{[[ARG1LINMD:![0-9]+]]}
 ; CHECK: [[ARG1LINMD]] = !{i32 0, [[IMPLIN:![0-9]+]]}
 ; CHECK: [[IMPLIN]] = !{[[IMPLINMD1:![0-9]+]], [[IMPLINMD2:![0-9]+]], [[IMPLINMD3:![0-9]+]], [[IMPLINMD4:![0-9]+]], [[IMPLINMD5:![0-9]+]]}

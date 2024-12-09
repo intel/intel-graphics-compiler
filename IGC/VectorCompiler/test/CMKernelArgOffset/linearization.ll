@@ -100,8 +100,8 @@ attributes #0 = { nounwind "CMGenxMain" "oclrt"="1" }
 !8 = !{!"svmptr_t", !"svmptr_t"}
 !9 = !{void (%struct.state*, i32 addrspace(1)*, i64, i8, i32, i32, i32, float)* @foo, null, null, !10, null}
 ; COM: Check OffsetInArgs and ArgIndexes
-; CHECK-TYPED-PTRS: [[INTERNAL]] = !{[[FTYPE]] ([[STRUCT]]*, [[EXPARG2]], [[PRIVBASE]], [[IMPLIN1]], [[IMPLIN2]], [[IMPLIN3]], [[IMPLIN4]], [[IMPLIN5]])* @[[FNAME]], [[OFFSETINARGS:![0-9]+]], [[ARGINDEXES:![0-9]+]], [[LINMD:![0-9]+]], null}
-; CHECK-OPAQUE-PTRS: [[INTERNAL]] = !{ptr @[[FNAME]], [[OFFSETINARGS:![0-9]+]], [[ARGINDEXES:![0-9]+]], [[LINMD:![0-9]+]], null}
+; CHECK-TYPED-PTRS: [[INTERNAL]] = !{[[FTYPE]] ([[STRUCT]]*, [[EXPARG2]], [[PRIVBASE]], [[IMPLIN1]], [[IMPLIN2]], [[IMPLIN3]], [[IMPLIN4]], [[IMPLIN5]])* @[[FNAME]], [[OFFSETINARGS:![0-9]+]], [[ARGINDEXES:![0-9]+]], [[LINMD:![0-9]+]], null, i32 0}
+; CHECK-OPAQUE-PTRS: [[INTERNAL]] = !{ptr @[[FNAME]], [[OFFSETINARGS:![0-9]+]], [[ARGINDEXES:![0-9]+]], [[LINMD:![0-9]+]], null, i32 0}
 ; CHECK: [[OFFSETINARGS]] = !{i32 0, i32 0, i32 0, i32 0, i32 4, i32 8, i32 12, i32 16}
 ; CHECK: [[ARGINDEXES]] = !{i32 0, i32 1, i32 2, i32 0, i32 0, i32 0, i32 0, i32 0}
 !10 = !{!11}

@@ -85,11 +85,11 @@ attributes #0 = { "CMGenxMain" }
 !genx.kernels = !{!0, !5}
 !genx.kernel.internal = !{!4, !9}
 ; CHECK: !genx.kernel.internal = !{[[SIMPLE_NODE:![0-9]+]], [[MIXED_NODE:![0-9]+]]}
-; CHECK-TYPED-PTRS-DAG: [[SIMPLE_NODE]] = !{void (%buf_rw_t*, %ocl.sampler_t*)* @simple, null, null, null, [[SIMPLE_BTIS:![0-9]+]]}
-; CHECK-OPAQUE-PTRS-DAG: [[SIMPLE_NODE]] = !{ptr @simple, null, null, null, [[SIMPLE_BTIS:![0-9]+]]}
+; CHECK-TYPED-PTRS-DAG: [[SIMPLE_NODE]] = !{void (%buf_rw_t*, %ocl.sampler_t*)* @simple, null, null, null, [[SIMPLE_BTIS:![0-9]+]], i32 0}
+; CHECK-OPAQUE-PTRS-DAG: [[SIMPLE_NODE]] = !{ptr @simple, null, null, null, [[SIMPLE_BTIS:![0-9]+]], i32 0}
 ; CHECK-DAG: [[SIMPLE_BTIS]] = !{i32 0, i32 0}
-; CHECK-TYPED-PTRS-DAG: [[MIXED_NODE]] = !{void (%ocl.image2d_ro_t*, %ocl.image2d_rw_t*, %buf_rw_t*, %ocl.image2d_ro_t*)* @mixed_srv_uav, null, null, null, [[MIXED_BTIS:![0-9]+]]}
-; CHECK-OPAQUE-PTRS-DAG: [[MIXED_NODE]] = !{ptr @mixed_srv_uav, null, null, null, [[MIXED_BTIS:![0-9]+]]}
+; CHECK-TYPED-PTRS-DAG: [[MIXED_NODE]] = !{void (%ocl.image2d_ro_t*, %ocl.image2d_rw_t*, %buf_rw_t*, %ocl.image2d_ro_t*)* @mixed_srv_uav, null, null, null, [[MIXED_BTIS:![0-9]+]], i32 0}
+; CHECK-OPAQUE-PTRS-DAG: [[MIXED_NODE]] = !{ptr @mixed_srv_uav, null, null, null, [[MIXED_BTIS:![0-9]+]], i32 0}
 ; CHECK-DAG: [[MIXED_BTIS]] = !{i32 0, i32 2, i32 3, i32 1}
 
 !0 = !{void (%buf_rw_t*, %ocl.sampler_t*)* @simple, !"simple", !1, i32 0, i32 0, !2, !3, i32 0}
@@ -103,4 +103,3 @@ attributes #0 = { "CMGenxMain" }
 !7 = !{i32 0, i32 0, i32 0, i32 0}
 !8 = !{!"image2d_t read_only", !"image2d_t read_write", !"buffer_t", !"image2d_t read_only"}
 !9 = !{void (%ocl.image2d_ro_t*, %ocl.image2d_rw_t*, %buf_rw_t*, %ocl.image2d_ro_t*)* @mixed_srv_uav, null, null, null, null}
-

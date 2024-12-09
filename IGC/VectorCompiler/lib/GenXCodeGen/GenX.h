@@ -161,6 +161,7 @@ FunctionPass *createGenXLscAddrCalcFoldingPass();
 ModulePass *createGenXDetectPointerArgPass();
 FunctionPass *createGenXLCECalculationPass();
 FunctionPass *createGenXFloatControlPass();
+ModulePass *createGenXCountIndirectStatelessPass();
 
 namespace genx {
 
