@@ -100,10 +100,9 @@ struct Xe2DebugSurfaceLayout
     static constexpr size_t TDR_ALIGN = 16;
 
     static constexpr size_t ACC_COUNT = 4;
-    static constexpr size_t ACC_ELEMENTS = 8;
+    static constexpr size_t ACC_ELEMENTS = 16;
     static constexpr size_t ACC_ELEMENT_SIZE = 4;
-    // Aligning 128 bytes to accomodate 33th bit in acc regs
-    static constexpr size_t ACC_ALIGN = 128;
+    static constexpr size_t ACC_ALIGN = 0;
 
     // Need to read msg registers to get mme register values
     static constexpr size_t MSG_COUNT = 2;
