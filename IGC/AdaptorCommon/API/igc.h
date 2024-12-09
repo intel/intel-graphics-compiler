@@ -92,7 +92,15 @@ typedef enum CG_FLAG_t {
     FLAG_CG_STAGE1_FAST_COMPILE = 1,
     FLAG_CG_STAGE1_BEST_PERF = 2,
     FLAG_CG_STAGE1_FASTEST_COMPILE = 3,
+    CG_FLAG_size = 4,
 } CG_FLAG_t;
+
+static const char *CG_FLAG_STR[CG_FLAG_size] = {
+    "RestStage2",
+    "FastStage1",
+    "BestStage1",
+    "FastestStage1"
+};
 
 #define IsSupportedForStagedCompilation(platform, product) (true)
 #define IsSupportedForDX12StaticSampler(platform, product) (true)

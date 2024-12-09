@@ -307,6 +307,22 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
 
         underscore = true;
     }
+
+    if (m_retryId.has_value() && m_retryId.value())
+    {
+            ss << "_" << m_retryId.value();
+    }
+
+    if (m_cgFlag.has_value())
+    {
+        const auto cgfv = m_cgFlag.value();
+
+        IGC_ASSERT(cgfv < CG_FLAG_size);
+        ss << (underscore ? "_" : "");
+        ss << CG_FLAG_STR[cgfv];
+        underscore = true;
+    }
+
     if(m_pass.has_value())
     {
         if(m_pass->m_index.has_value())
@@ -323,39 +339,6 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
         underscore = true;
     }
 
-    if (m_cgFlag.has_value() && m_cgFlag.value() != FLAG_CG_ALL_SIMDS)
-    {
-        ss << (underscore ? "_" : "");
-        if (m_cgFlag.value() == FLAG_CG_STAGE1_FAST_COMPILE)
-        {
-            ss << "FastStage1";
-        }
-        else if (m_cgFlag.value() == FLAG_CG_STAGE1_BEST_PERF)
-        {
-            ss << "BestStage1";
-        }
-        else
-        {
-            IGC_ASSERT(m_cgFlag.value() == FLAG_CG_STAGE1_FASTEST_COMPILE);
-            ss << "FastestStage1";
-        }
-
-        underscore = true;
-    }
-    else if (m_cgFlag.has_value())
-    {
-        ss << (underscore ? "_" : "");
-        ss << "RestStage2";
-        underscore = true;
-    }
-
-    if (m_retryId.has_value())
-    {
-        if (m_retryId.value())
-        {
-            ss << "_" << m_retryId.value();
-        }
-    }
     if(m_simdWidth.has_value())
     {
         ss << (underscore ? "_" : "")
