@@ -15,9 +15,7 @@ SPDX-License-Identifier: MIT
 #include "PointsToAnalysis.h"
 
 #include <cmath>
-#include <sstream>
 #include <unordered_set>
-#include <optional>
 
 using namespace vISA;
 
@@ -426,14 +424,13 @@ unsigned SpillManagerGRF::calculateSpillDispForLS(G4_RegVar *regVar) const {
   // Locate the blocked locations calculated from the interfering
   // spilled live ranges and put them into a list in ascending order.
 
-  typedef std::deque<G4_RegVar *> LocList;
-  LocList locList;
+  std::vector<G4_RegVar *> locList;
   unsigned lrId = (regVar->getId() >= varIdCount_)
                       ? regVar->getBaseRegVar()->getId()
                       : regVar->getId();
   vASSERT(lrId < varIdCount_);
 
-  for (auto lr : (*spilledLSLRs_)) {
+  for (auto* lr : (*spilledLSLRs_)) {
     G4_Declare* dcl = regVar->getDeclare();
     while (dcl->getAliasDeclare()) {
       dcl = dcl->getAliasDeclare();
@@ -452,17 +449,13 @@ unsigned SpillManagerGRF::calculateSpillDispForLS(G4_RegVar *regVar) const {
       unsigned iDisp = intfRegVar->getDisp();
       if (iDisp == UINT_MAX)
         continue;
-
-      LocList::iterator loc;
-      for (loc = locList.begin();
-        loc != locList.end() && (*loc)->getDisp() < iDisp; ++loc)
-        ;
-      if (loc != locList.end())
-        locList.insert(loc, intfRegVar);
-      else
-        locList.push_back(intfRegVar);
+      locList.push_back(intfRegVar);
     }
   }
+
+  std::sort(locList.begin(), locList.end(), [](G4_RegVar *v1, G4_RegVar *v2) {
+    return v1->getDisp() < v2->getDisp();
+  });
 
   // Find a spill slot for lRange within the locList.
   // we always start searching from nextSpillOffset_ to facilitate
@@ -472,12 +465,11 @@ unsigned SpillManagerGRF::calculateSpillDispForLS(G4_RegVar *regVar) const {
       ROUND(nextSpillOffset_, builder_->numEltPerGRF<Type_UB>());
   unsigned regVarSize = getByteSize(regVar);
 
-  for (LocList::iterator curLoc = locList.begin(), end = locList.end();
-       curLoc != end; ++curLoc) {
-    unsigned curLocDisp = (*curLoc)->getDisp();
+  for (auto* curLoc : locList) {
+    unsigned curLocDisp = curLoc->getDisp();
     if (regVarLocDisp < curLocDisp && regVarLocDisp + regVarSize <= curLocDisp)
       break;
-    unsigned curLocEnd = curLocDisp + getByteSize(*curLoc);
+    unsigned curLocEnd = curLocDisp + getByteSize(curLoc);
     {
       if (curLocEnd % builder_->numEltPerGRF<Type_UB>() != 0)
         curLocEnd = ROUND(curLocEnd, builder_->numEltPerGRF<Type_UB>());
