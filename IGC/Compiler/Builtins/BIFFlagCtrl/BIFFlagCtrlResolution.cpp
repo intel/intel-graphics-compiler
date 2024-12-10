@@ -40,6 +40,7 @@ void BIFFlagCtrlResolution::FillFlagCtrl() {
   // inserted for this flag. If needed feed class BIFFlagCtrlResolution
   // with new value from outside.
   BIF_FLAG_CTRL_SET(PlatformType, PtrCGC->platform.GetProductFamily());
+  BIF_FLAG_CTRL_SET(RenderFamily, PtrCGC->platform.getPlatformInfo().eRenderCoreFamily);
   BIF_FLAG_CTRL_SET(
       FlushDenormals,
       ((PtrCGC->m_floatDenormMode32 == FLOAT_DENORM_FLUSH_TO_ZERO) ||

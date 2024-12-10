@@ -63,6 +63,8 @@ void GenXBIFFlagCtrlResolution::FillFlagCtrl() {
 
   // Need to feed this correctly
   BIF_FLAG_CTRL_SET(PlatformType, 0 /*platform.GetProductFamily()*/);
+  BIF_FLAG_CTRL_SET(RenderFamily, 0 /*platform.eRenderCoreFamily*/);
+
   BIF_FLAG_CTRL_SET(FlushDenormals, true);
   BIF_FLAG_CTRL_SET(DashGSpecified, false);
   BIF_FLAG_CTRL_SET(FastRelaxedMath, false);
