@@ -67,6 +67,8 @@ DEF_VISA_OPTION(vISA_storeCE, ET_BOOL, "-storeCE", UNUSED, false)
 // debugging
 DEF_VISA_OPTION(vISA_UseFriendlyNameInDbg, ET_BOOL, "-useFriendlyNameInDbg",
                 UNUSED, false)
+DEF_VISA_OPTION(vISA_EmitSrcFileLineToRPE, ET_BOOL, "-emitsrclinetorpe",
+                "makes finalizer emit src line as comment to RPE dump", false)
 DEF_VISA_OPTION(vISA_addSWSBInfo, ET_BOOL, "-addSWSBInfo", UNUSED, true)
 DEF_VISA_OPTION(vISA_DumpRAIntfGraph, ET_BOOL, "-dumpintf", UNUSED, false)
 DEF_VISA_OPTION(vISA_dumpRAMetadata, ET_BOOL_TRUE, "-dumpRAMetadata",

@@ -11396,8 +11396,9 @@ int GlobalRA::coloringRegAlloc() {
     GraphColor coloring(liveAnalysis, false, forceSpill);
 
     if (builder.getOption(vISA_dumpRPE) && iterationNo == 0 && !rematDone) {
+      coloring.dumpRPEToFile();
       // dump pressure the first time we enter global RA
-      coloring.dumpRegisterPressure();
+      coloring.dumpRegisterPressure(std::cerr);
     }
 
     // Get the size of register which are reserved for spill
@@ -11648,23 +11649,37 @@ void GlobalRA::insertPhyRegDecls() {
   VISA_DEBUG(std::cout << "Local RA used " << numGRFsUsed << " GRFs\n");
 }
 
-void GraphColor::dumpRegisterPressure() {
+void GraphColor::dumpRPEToFile() {
+  // Dump RPE output to file if asmName is set
+  auto *asmOutput = builder.getOptions()->getOptionCstr(VISA_AsmFileName);
+  if (asmOutput) {
+    std::string FN(asmOutput);
+    FN += ".rpe";
+    std::ofstream OF;
+    OF.open(FN, std::ofstream::out);
+    dumpRegisterPressure(OF);
+    OF.close();
+  }
+}
+
+void GraphColor::dumpRegisterPressure(std::ostream &OS) {
   RPE rpe(gra, &liveAnalysis);
   uint32_t max = 0;
   std::vector<G4_INST *> maxInst;
   rpe.run();
 
   for (auto bb : builder.kernel.fg) {
-    std::cerr << "BB " << bb->getId() << ": (Pred: ";
+    OS << "BB " << bb->getId() << ": (Pred: ";
     for (auto pred : bb->Preds) {
-      std::cerr << pred->getId() << ",";
+      OS << pred->getId() << ",";
     }
-    std::cerr << " Succ: ";
+    OS << " Succ: ";
     for (auto succ : bb->Succs) {
-      std::cerr << succ->getId() << ",";
+      OS << succ->getId() << ",";
     }
-    std::cerr << ")\n";
-    for (auto inst : *bb) {
+    OS << ")\n";
+    for (auto instIt = bb->begin(); instIt != bb->end(); ++instIt) {
+      auto *inst = *instIt;
       uint32_t pressure = rpe.getRegisterPressure(inst);
       if (pressure > max) {
         max = pressure;
@@ -11674,14 +11689,15 @@ void GraphColor::dumpRegisterPressure() {
         maxInst.push_back(inst);
       }
 
-      std::cerr << "[" << pressure << "] ";
-      inst->dump();
+      if (kernel.getOption(vISA_EmitSrcFileLineToRPE))
+        bb->emitInstructionSourceLineMapping(OS, instIt);
+      OS << "[" << pressure << "] ";
+      inst->print(OS);
     }
   }
-  std::cerr << "max pressure: " << max << ", " << maxInst.size()
-            << " inst(s)\n";
+  OS << "max pressure: " << max << ", " << maxInst.size() << " inst(s)\n";
   for (auto inst : maxInst) {
-    inst->dump();
+    inst->print(OS);
   }
 }
 

@@ -1186,7 +1186,8 @@ public:
   void addFlagSaveRestoreCode();
   void getSaveRestoreRegister();
   void getCallerSaveRegisters();
-  void dumpRegisterPressure();
+  void dumpRegisterPressure(std::ostream&);
+  void dumpRPEToFile();
   GlobalRA &getGRA() { return gra; }
   G4_SrcRegRegion *getScratchSurface() const;
   unsigned int getNumVars() const { return numVar; }

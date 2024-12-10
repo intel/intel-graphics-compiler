@@ -273,15 +273,24 @@ void G4_BB::emitInstructionSourceLineMapping(std::ostream &output,
   // (i.e., debugging) only.
   static const char *prevFilename = nullptr;
   static int prevSrcLineNo = 0;
+  static bool resetOnEntry = false;
 
   const char *curFilename = (*it)->getSrcFilename();
   int curSrcLineNo = (*it)->getLineNo();
 
   // Reset source locations for each function so that we will always emit them
   // at function entry.
-  if (getParent().getEntryBB() == this) {
+  if (getParent().getEntryBB() == this && !resetOnEntry) {
     prevFilename = nullptr;
     prevSrcLineNo = 0;
+    // First time we process entry BB, we must reset state
+    resetOnEntry = true;
+  }
+
+  if (getParent().getEntryBB() != this) {
+    // Once we see some other BB, we should reset state only when we see entry
+    // again next time.
+    resetOnEntry = false;
   }
 
   if ((*it)->isLabel())
