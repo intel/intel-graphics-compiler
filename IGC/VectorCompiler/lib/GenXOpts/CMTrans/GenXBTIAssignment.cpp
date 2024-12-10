@@ -136,10 +136,9 @@ GenXBTIAssignmentPass::run(llvm::Module &M,
                            llvm::AnalysisManager<llvm::Module> &AM) {
   auto &Res = AM.getResult<GenXBackendConfigPass>(M);
   GenXBTIAssignment GenXBTI(Res);
-  if (GenXBTI.runOnModule(M)) {
-    return PreservedAnalyses::all();
-  }
-  return PreservedAnalyses::none();
+  if (GenXBTI.runOnModule(M))
+    return PreservedAnalyses::none();
+  return PreservedAnalyses::all();
 }
 #endif
 

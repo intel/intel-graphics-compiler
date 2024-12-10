@@ -193,10 +193,9 @@ PreservedAnalyses
 CMKernelArgOffsetPass::run(llvm::Module &M,
                            llvm::AnalysisManager<llvm::Module> &) {
   CMKernelArgOffset CMKern;
-  if (CMKern.runOnModule(M)) {
-    return PreservedAnalyses::all();
-  }
-  return PreservedAnalyses::none();
+  if (CMKern.runOnModule(M))
+    return PreservedAnalyses::none();
+  return PreservedAnalyses::all();
 }
 #endif
 

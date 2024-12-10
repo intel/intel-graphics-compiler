@@ -36,6 +36,8 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/Support/Alignment.h"
 
+#include "vc/GenXCodeGen/GenXLowerAggrCopies.h"
+
 #include <tuple>
 #include <vector>
 
@@ -59,7 +61,13 @@ struct GenXLowerAggrCopies : public FunctionPass {
   const int ExpandLimit;
   static char ID;
 
+#if LLVM_VERSION_MAJOR < 16
   GenXLowerAggrCopies() : FunctionPass(ID), ExpandLimit(ExpandLimitOpt) {}
+#else  // LLVM_VERSION_MAJOR < 16
+  const TargetTransformInfo *TTIp = nullptr;
+  explicit GenXLowerAggrCopies(const TargetTransformInfo *TTIp = nullptr)
+      : TTIp(TTIp), FunctionPass(ID), ExpandLimit(ExpandLimitOpt) {}
+#endif // LLVM_VERSION_MAJOR < 16
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addPreserved<StackProtector>();
@@ -179,8 +187,10 @@ static void setMemorySliceWithVecStore(SliceInfo Slice, Value &SetVal,
 bool GenXLowerAggrCopies::runOnFunction(Function &F) {
   SmallVector<MemIntrinsic *, 4> MemCalls;
 
+#if LLVM_VERSION_MAJOR < 16
   const TargetTransformInfo &TTI =
       getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
+#endif
 
   // Collect all aggregate loads and mem* calls.
   for (Function::iterator BI = F.begin(), BE = F.end(); BI != BE; ++BI) {
@@ -213,7 +223,11 @@ bool GenXLowerAggrCopies::runOnFunction(Function &F) {
       if (doLinearExpand) {
         expandMemMov2VecLoadStore(Memcpy);
       } else {
+#if LLVM_VERSION_MAJOR < 16
         expandMemCpyAsLoop(Memcpy, TTI);
+#else
+        expandMemCpyAsLoop(Memcpy, *TTIp);
+#endif
       }
     } else if (MemMoveInst *Memmove = dyn_cast<MemMoveInst>(MemCall)) {
       if (doLinearExpand) {
@@ -278,6 +292,17 @@ INITIALIZE_PASS_DEPENDENCY(TargetTransformInfoWrapperPass)
 INITIALIZE_PASS_END(
     GenXLowerAggrCopies, "genx-lower-aggr-copies",
     "Lower aggregate copies, and llvm.mem* intrinsics into loops", false, false)
+
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses
+GenXLowerAggrCopiesPass::run(Function &F, FunctionAnalysisManager &AM) {
+  auto &TT = AM.getResult<TargetIRAnalysis>(F);
+  GenXLowerAggrCopies GenXLowAggrCop(&TT);
+  if (GenXLowAggrCop.runOnFunction(F))
+    return PreservedAnalyses::none();
+  return PreservedAnalyses::all();
+}
+#endif
 
 FunctionPass *llvm::createGenXLowerAggrCopiesPass() {
   initializeGenXLowerAggrCopiesPass(*PassRegistry::getPassRegistry());

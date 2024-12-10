@@ -10,6 +10,10 @@ if((${LLVM_VERSION_MAJOR} LESS 16))
     return()
 endif()
 
+if (NOT LLVM_ON_UNIX)
+    return()
+endif()
+
 # TODO: Fix ext
 set(LLVM_PLUGIN_EXT ".so")
 
@@ -30,11 +34,6 @@ add_llvm_library(
   MODULE
   PLUGIN_TOOL opt
 )
-
-install(TARGETS NewPMPlugin
-  LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
-  COMPONENT igc-core
-  )
 
 # TODO: Fix path
 target_include_directories(NewPMPlugin

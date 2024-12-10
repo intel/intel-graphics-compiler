@@ -482,10 +482,9 @@ PreservedAnalyses
 GenXImportOCLBiFPass::run(llvm::Module &M,
                           llvm::AnalysisManager<llvm::Module> &) {
   GenXImportOCLBiF GenXImportOCL;
-  if (GenXImportOCL.runOnModule(M)) {
-    return PreservedAnalyses::all();
-  }
-  return PreservedAnalyses::none();
+  if (GenXImportOCL.runOnModule(M))
+    return PreservedAnalyses::none();
+  return PreservedAnalyses::all();
 }
 #endif
 

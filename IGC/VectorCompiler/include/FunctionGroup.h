@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -163,6 +163,7 @@ private:
   class FGMap {
     using ElementType = std::map<const Function *, FunctionGroup *>;
     std::array<ElementType, static_cast<size_t>(FGType::MAX)> data = {};
+
   public:
     ElementType &operator[](FGType type) {
       auto index = static_cast<size_t>(type);
@@ -192,9 +193,7 @@ public:
     M = &ArgM;
     return false;
   }
-  void releaseMemory() override {
-    clear();
-  }
+  void releaseMemory() override { clear(); }
   // getModule : get the Module that this FunctionGroupAnalysis is for
   Module *getModule() { return M; }
   // clear : clear out the FunctionGroupAnalysis

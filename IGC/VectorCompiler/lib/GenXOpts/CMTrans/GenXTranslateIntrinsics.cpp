@@ -84,10 +84,9 @@ FunctionPass *createGenXTranslateIntrinsicsPass() {
 PreservedAnalyses
 GenXTranslateIntrinsicsPass::run(Function &F, FunctionAnalysisManager &AM) {
   GenXTranslateIntrinsics GenXTrans;
-  if (GenXTrans.runOnFunction(F)) {
-    return PreservedAnalyses::all();
-  }
-  return PreservedAnalyses::none();
+  if (GenXTrans.runOnFunction(F))
+    return PreservedAnalyses::none();
+  return PreservedAnalyses::all();
 }
 #endif
 

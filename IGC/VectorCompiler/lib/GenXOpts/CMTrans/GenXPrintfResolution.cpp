@@ -154,10 +154,9 @@ GenXPrintfResolutionPass::run(llvm::Module &M,
                               llvm::AnalysisManager<llvm::Module> &AM) {
   auto &Res = AM.getResult<GenXBackendConfigPass>(M);
   GenXPrintfResolution GenXPrint(Res);
-  if (GenXPrint.runOnModule(M)) {
-    return PreservedAnalyses::all();
-  }
-  return PreservedAnalyses::none();
+  if (GenXPrint.runOnModule(M))
+    return PreservedAnalyses::none();
+  return PreservedAnalyses::all();
 }
 #endif
 

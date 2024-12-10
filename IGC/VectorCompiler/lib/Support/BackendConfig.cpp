@@ -256,7 +256,6 @@ GenXBackendConfigPass::run(llvm::Module &M,
                            llvm::AnalysisManager<llvm::Module> &AM) {
 
   GenXBackendConfig BC;
-  BC.runOnModule(M);
   return std::move(BC.getResult());
 }
 

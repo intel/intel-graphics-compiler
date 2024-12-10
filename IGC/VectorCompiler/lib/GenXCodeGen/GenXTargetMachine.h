@@ -71,6 +71,8 @@ public:
 
 #if LLVM_VERSION_MAJOR < 16
   void adjustPassManager(PassManagerBuilder &PMBuilder) override;
+#else
+  void registerPassBuilderCallbacks(PassBuilder &PB) override;
 #endif
 
   TargetPassConfig *createPassConfig(PassManagerBase &PM) override;

@@ -8,7 +8,7 @@
 
 set(OPT_OPAQUE_ARG ${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_OPT})
 if ((${LLVM_VERSION_MAJOR} GREATER 15))
-  set(OPT_OPAQUE_ARG "")
+  set(OPT_OPAQUE_ARG "--opaque-pointers")
 endif()
 
 # Args:

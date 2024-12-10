@@ -66,6 +66,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils/Local.h"
 #include "Probe/Assertion.h"
 
+#include "vc/GenXCodeGen/GenXReduceIntSize.h"
+
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 
@@ -90,7 +92,9 @@ class GenXReduceIntSize : public FunctionPass {
   bool Modified = false;
 public:
   static char ID;
-  explicit GenXReduceIntSize() : FunctionPass(ID) { }
+  explicit GenXReduceIntSize(DominatorTree *DT = nullptr)
+      : DT(DT), FunctionPass(ID) {}
+
   StringRef getPassName() const override { return "GenX reduce integer size"; }
   void getAnalysisUsage(AnalysisUsage &AU) const override;
   bool runOnFunction(Function &F) override;
@@ -108,6 +112,17 @@ private:
 
 char GenXReduceIntSize::ID = 0;
 namespace llvm { void initializeGenXReduceIntSizePass(PassRegistry &); }
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses
+GenXReduceIntSizePass::run(Function &F, FunctionAnalysisManager &AM) {
+  auto &DT = AM.getResult<DominatorTreeAnalysis>(F);
+  GenXReduceIntSize GenXReduce(&DT);
+  if (GenXReduce.runOnFunction(F))
+    return PreservedAnalyses::none();
+  return PreservedAnalyses::all();
+}
+#endif
+
 INITIALIZE_PASS_BEGIN(GenXReduceIntSize, "GenXReduceIntSize", "GenXReduceIntSize", false, false)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_END(GenXReduceIntSize, "GenXReduceIntSize", "GenXReduceIntSize", false, false)
@@ -148,8 +163,8 @@ void GenXReduceIntSize::getAnalysisUsage(AnalysisUsage &AU) const
  */
 bool GenXReduceIntSize::runOnFunction(Function &F)
 {
-  DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
-
+  if (!DT)
+    DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   // Reverse scan: This does a postordered depth first traversal of the CFG,
   // processing instructions within a basic block in reverse, to ensure that we
   // see a def after its uses (ignoring phi node uses).

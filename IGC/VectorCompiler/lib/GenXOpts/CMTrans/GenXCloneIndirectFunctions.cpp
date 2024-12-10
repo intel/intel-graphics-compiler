@@ -84,7 +84,8 @@ class GenXCloneIndirectFunctions
 public:
   static char ID;
 #if LLVM_VERSION_MAJOR >= 16
-  GenXCloneIndirectFunctions(GenXBackendConfigPass::Result &BC) : BECfg(BC), ModulePass(ID) {
+  GenXCloneIndirectFunctions(GenXBackendConfigPass::Result &BC)
+      : BECfg(BC), ModulePass(ID) {
 #else  // LLVM_VERSION_MAJOR >= 16
   GenXCloneIndirectFunctions() : ModulePass(ID) {
 #endif // LLVM_VERSION_MAJOR >= 16
@@ -228,9 +229,8 @@ GenXCloneIndirectFunctionsPass::run(llvm::Module &M,
                                     llvm::AnalysisManager<llvm::Module> &AM) {
   auto &Res = AM.getResult<GenXBackendConfigPass>(M);
   GenXCloneIndirectFunctions GenXClone(Res);
-  if (GenXClone.runOnModule(M)) {
-    return PreservedAnalyses::all();
-  }
-  return PreservedAnalyses::none();
+  if (GenXClone.runOnModule(M))
+    return PreservedAnalyses::none();
+  return PreservedAnalyses::all();
 }
 #endif

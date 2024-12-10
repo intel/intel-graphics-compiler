@@ -1820,9 +1820,8 @@ ModulePass *createGenXPacketizePass() {
 llvm::PreservedAnalyses
 GenXPacketizePass::run(llvm::Module &M, llvm::AnalysisManager<llvm::Module> &) {
   GenXPacketize GenXPack;
-  if (GenXPack.runOnModule(M)) {
-    return PreservedAnalyses::all();
-  }
-  return PreservedAnalyses::none();
+  if (GenXPack.runOnModule(M))
+    return PreservedAnalyses::none();
+  return PreservedAnalyses::all();
 }
 #endif

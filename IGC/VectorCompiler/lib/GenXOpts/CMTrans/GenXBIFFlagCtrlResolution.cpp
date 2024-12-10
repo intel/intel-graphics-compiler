@@ -164,10 +164,9 @@ PreservedAnalyses
 GenXBIFFlagCtrlResolutionPass::run(llvm::Module &M,
                                    llvm::AnalysisManager<llvm::Module> &) {
   GenXBIFFlagCtrlResolution GenXBiF;
-  if (GenXBiF.runOnModule(M)) {
-    return PreservedAnalyses::all();
-  }
-  return PreservedAnalyses::none();
+  if (GenXBiF.runOnModule(M))
+    return PreservedAnalyses::none();
+  return PreservedAnalyses::all();
 }
 // TODO: No lit-tests
 #endif

@@ -91,10 +91,9 @@ FunctionPass *createGenXTypeLegalizationPass() {
 PreservedAnalyses GenXTypeLegalizationPass::run(Function &F,
                                                 FunctionAnalysisManager &AM) {
   GenXTypeLegalization GenXType;
-  if (GenXType.runOnFunction(F)) {
-    return PreservedAnalyses::all();
-  }
-  return PreservedAnalyses::none();
+  if (GenXType.runOnFunction(F))
+    return PreservedAnalyses::none();
+  return PreservedAnalyses::all();
 }
 #endif
 

@@ -38,6 +38,7 @@ class PassRegistry;
 #include "GenXBTIAssignment.h"
 #include "GenXCloneIndirectFunctions.h"
 #include "GenXImportOCLBiF.h"
+#include "GenXLegalizeGVLoadUses.h"
 #include "GenXLinkageCorruptor.h"
 #include "GenXPacketize.h"
 #include "GenXPrintfLegalization.h"

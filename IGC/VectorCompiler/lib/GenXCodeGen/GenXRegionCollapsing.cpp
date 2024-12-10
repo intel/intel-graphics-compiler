@@ -54,6 +54,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils/Local.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "vc/GenXCodeGen/GenXRegionCollapsing.h"
 
 #define DEBUG_TYPE "GENX_RegionCollapsing"
 
@@ -70,7 +71,8 @@ class GenXRegionCollapsing : public FunctionPass {
 
 public:
   static char ID;
-  explicit GenXRegionCollapsing() : FunctionPass(ID) {}
+  explicit GenXRegionCollapsing(DominatorTree *DT = nullptr)
+      : DT(DT), FunctionPass(ID) {}
   StringRef getPassName() const override { return "GenX Region Collapsing"; }
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<DominatorTreeWrapperPass>();
@@ -109,6 +111,16 @@ char GenXRegionCollapsing::ID = 0;
 namespace llvm {
 void initializeGenXRegionCollapsingPass(PassRegistry &);
 }
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses
+GenXRegionCollapsingPass::run(Function &F, FunctionAnalysisManager &AM) {
+  auto &DT = AM.getResult<DominatorTreeAnalysis>(F);
+  GenXRegionCollapsing GenXRegCollaps(&DT);
+  if (GenXRegCollaps.runOnFunction(F))
+    return PreservedAnalyses::none();
+  return PreservedAnalyses::all();
+}
+#endif
 INITIALIZE_PASS_BEGIN(GenXRegionCollapsing, "GenXRegionCollapsing",
                       "GenXRegionCollapsing", false, false)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
@@ -126,7 +138,8 @@ FunctionPass *llvm::createGenXRegionCollapsingPass() {
  */
 bool GenXRegionCollapsing::runOnFunction(Function &F) {
   DL = &F.getParent()->getDataLayout();
-  DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+  if (!DT)
+    DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 
   // Track if there is any modification to the function.
   bool Changed = false;

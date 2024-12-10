@@ -23,6 +23,8 @@ void registerPluginPasses(PassBuilder &PB) {
     MAM.registerPass([&] { return GenXBackendConfigPass(); });
   });
 
+  auto *BC = new GenXBackendConfig;
+
 #define ADD_PASS(NAME, CREATE_PASS)                                            \
   if (Name == NAME) {                                                          \
     PM.addPass(CREATE_PASS);                                                   \

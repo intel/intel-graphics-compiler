@@ -13,17 +13,17 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringRef.h"
+#include "llvm/Analysis/LoopInfo.h"
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/InlineAsm.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
-#include "llvm/IR/InlineAsm.h"
 #include "llvm/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/Analysis/LoopInfo.h"
 
-#include "vc/Utils/GenX/TypeSize.h"
 #include "vc/Utils/GenX/IntrinsicsWrapper.h"
+#include "vc/Utils/GenX/TypeSize.h"
 
 #include <string>
 
@@ -57,8 +57,8 @@ enum BalingKind {
 };
 
 enum class PatternMatchKind {
-  PreLegalization,   // pattern match before legalization
-  PostLegalization,  // pattern match after legalization
+  PreLegalization,  // pattern match before legalization
+  PostLegalization, // pattern match after legalization
 };
 
 enum class BuiltinFunctionKind {
@@ -165,10 +165,9 @@ ModulePass *createGenXCountIndirectStatelessPass();
 
 namespace genx {
 
-// A local encoding (not part of vISA or GenX) of whether an operand should be signed.
-enum Signedness {
-  DONTCARESIGNED = 3, SIGNED = 1, UNSIGNED = 2
-};
+// A local encoding (not part of vISA or GenX) of whether an operand should be
+// signed.
+enum Signedness { DONTCARESIGNED = 3, SIGNED = 1, UNSIGNED = 2 };
 constexpr unsigned BoolBits = vc::BoolBits;
 constexpr unsigned ByteBits = vc::ByteBits;
 constexpr unsigned WordBits = vc::WordBits;
@@ -208,7 +207,7 @@ constexpr unsigned SlmNullProtectionMask = 0xf0000000u;
 
 // describe integer vector immediate (V, UV)
 enum ImmIntVec : int8_t {
-  Width = 8, // num elem in vector
+  Width = 8,    // num elem in vector
   ElemSize = 4, // in bits
   MaxUInt = (1 << ElemSize) - 1,
   MinUInt = 0,
@@ -216,7 +215,7 @@ enum ImmIntVec : int8_t {
   MinSInt = -(1 << (ElemSize - 1))
 };
 
-} // End genx namespace
-} // End llvm namespace
+} // namespace genx
+} // namespace llvm
 
 #endif

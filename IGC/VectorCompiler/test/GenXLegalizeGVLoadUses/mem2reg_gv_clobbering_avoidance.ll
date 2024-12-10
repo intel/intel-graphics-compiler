@@ -25,12 +25,14 @@
 ;
 ; RUN: %opt_typed_ptrs %use_old_pass_manager% -mem2reg -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | \
 ; RUN:     FileCheck %s --check-prefixes=UNFIXED,UNFIXED-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -mem2reg -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | \
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% %pass_pref%mem2reg -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | \
 ; RUN:     FileCheck %s --check-prefixes=UNFIXED,UNFIXED-OPAQUE-PTRS
 ;
 ; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXLegalizeGVLoadUses -mem2reg -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | \
 ; RUN:     FileCheck %s --check-prefixes=FIXED,FIXED-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXLegalizeGVLoadUses -mem2reg -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | \
+; RUN: %opt_llvm-15 %use_old_pass_manager% -GenXLegalizeGVLoadUses -mem2reg -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | \
+; RUN:     FileCheck %s --check-prefixes=FIXED,FIXED-OPAQUE-PTRS
+; RUN: %opt_llvm-16 %use_old_pass_manager% --passes=GenXLegalizeGVLoadUses,mem2reg -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | \
 ; RUN:     FileCheck %s --check-prefixes=FIXED,FIXED-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-p3:32:32-p6:32:32-i64:64-n8:16:32:64"

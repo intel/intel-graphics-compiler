@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -14,11 +14,11 @@ namespace llvm {
 
 // Configuration for ValueMap that ignores RAUW, instead of moving the map
 // entry.
-template<typename ValueTy>
+template <typename ValueTy>
 struct IgnoreRAUWValueMapConfig : public ValueMapConfig<ValueTy> {
   enum { FollowRAUW = false };
 };
 
-} // End llvm namespace
+} // namespace llvm
 
 #endif // ndef IGNORERAUWVALUEMAP_H

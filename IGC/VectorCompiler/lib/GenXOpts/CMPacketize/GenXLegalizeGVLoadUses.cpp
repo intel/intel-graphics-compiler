@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/Debug.h"
 
 #include "GenXRegionUtils.h"
+#include "vc/GenXOpts/GenXOpts.h"
 
 #define DEBUG_TYPE "GENX_LEGALIZE_GVLOAD_USES"
 
@@ -51,8 +52,21 @@ char GenXLegalizeGVLoadUses::ID = 0;
 namespace llvm {
 void initializeGenXLegalizeGVLoadUsesPass(PassRegistry &);
 }
-INITIALIZE_PASS_BEGIN(GenXLegalizeGVLoadUses, "GenXLegalizeGVLoadUses", "GenXLegalizeGVLoadUses", false, false)
-INITIALIZE_PASS_END(GenXLegalizeGVLoadUses, "GenXLegalizeGVLoadUses", "GenXLegalizeGVLoadUses", false, false)
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses
+GenXLegalizeGVLoadUsesPass::run(llvm::Module &M,
+                                llvm::AnalysisManager<llvm::Module> &) {
+  GenXLegalizeGVLoadUses GenXLegal;
+  if (GenXLegal.runOnModule(M))
+    return PreservedAnalyses::none();
+  return PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
+
+INITIALIZE_PASS_BEGIN(GenXLegalizeGVLoadUses, "GenXLegalizeGVLoadUses",
+                      "GenXLegalizeGVLoadUses", false, false)
+INITIALIZE_PASS_END(GenXLegalizeGVLoadUses, "GenXLegalizeGVLoadUses",
+                    "GenXLegalizeGVLoadUses", false, false)
 ModulePass *llvm::createGenXLegalizeGVLoadUsesPass() {
   initializeGenXLegalizeGVLoadUsesPass(*PassRegistry::getPassRegistry());
   return new GenXLegalizeGVLoadUses;

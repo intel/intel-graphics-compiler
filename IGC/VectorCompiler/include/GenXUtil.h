@@ -46,8 +46,7 @@ class Bale;
 
 // Utility function to get the integral log base 2 of an integer, or -1 if
 // the input is not a power of 2.
-inline int exactLog2(unsigned Val)
-{
+inline int exactLog2(unsigned Val) {
   unsigned CLZ = llvm::countLeadingZeros(Val);
   if (CLZ != 32 && 1U << (31 - CLZ) == Val)
     return 31 - CLZ;
@@ -56,9 +55,7 @@ inline int exactLog2(unsigned Val)
 
 // Utility function to get the log base 2 of an integer, truncated to an
 // integer, or -1 if the number is 0 or negative.
-template<typename T>
-inline int log2(T Val)
-{
+template <typename T> inline int log2(T Val) {
   if (Val <= 0)
     return -1;
   unsigned CLZ = llvm::countLeadingZeros<uint32_t>(Val);
@@ -186,7 +183,7 @@ class Bale;
 bool isGlobalStore(Instruction *I);
 bool isGlobalStore(StoreInst *ST);
 bool isGlobalLoad(Instruction *I);
-bool isGlobalLoad(LoadInst* LI);
+bool isGlobalLoad(LoadInst *LI);
 
 const Value *getAVLoadSrcOrNull(const Instruction *const I,
                                 const Value *const CmpSrc = nullptr);
@@ -413,11 +410,10 @@ class IVSplitter {
                                          const Twine &Name1, RegionType RT2,
                                          const Twine &Name2,
                                          bool FoldConstants);
-  Value* combineSplit(Value &V1, Value &V2, RegionType RT1, RegionType RT2,
-                      const Twine& Name, bool Scalarize);
+  Value *combineSplit(Value &V1, Value &V2, RegionType RT1, RegionType RT2,
+                      const Twine &Name, bool Scalarize);
 
 public:
-
   struct LoHiSplit {
     Value *Lo;
     Value *Hi;
@@ -557,8 +553,7 @@ bool isSupportedFloatingPointType(const Type *Ty);
 
 // Get type that represents OldType as vector of NewScalarType, e.g.
 // <4 x i16> -> <2 x i32>, returns nullptr if it's inpossible.
-IGCLLVM::FixedVectorType *changeVectorType(Type *OldType,
-                                           Type *NewScalarType,
+IGCLLVM::FixedVectorType *changeVectorType(Type *OldType, Type *NewScalarType,
                                            const DataLayout *DL);
 
 // Check if V is reading form predfined register.
@@ -586,12 +581,12 @@ CastInst *scalarizeOrVectorizeIfNeeded(Instruction *Inst, ConstIter FirstType,
                                        ConstIter LastType) {
   IGC_ASSERT_MESSAGE(Inst, "wrong argument");
   IGC_ASSERT_MESSAGE(std::all_of(FirstType, LastType,
-                     [Inst](Type *Ty) {
-                       return Ty == Inst->getType() ||
-                              Ty == getCorrespondingVectorOrScalar(
-                                        Inst->getType());
-                     }),
-         "wrong arguments: type of instructions must correspond");
+                                 [Inst](Type *Ty) {
+                                   return Ty == Inst->getType() ||
+                                          Ty == getCorrespondingVectorOrScalar(
+                                                    Inst->getType());
+                                 }),
+                     "wrong arguments: type of instructions must correspond");
 
   if (Inst->getType()->isVectorTy() &&
       cast<IGCLLVM::FixedVectorType>(Inst->getType())->getNumElements() > 1)

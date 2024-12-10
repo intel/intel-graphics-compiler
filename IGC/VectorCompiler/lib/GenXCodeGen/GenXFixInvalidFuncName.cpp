@@ -24,6 +24,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Pass.h"
 #include "llvm/Support/Debug.h"
 
+#include "vc/GenXCodeGen/GenXFixInvalidFuncName.h"
+
 #define DEBUG_TYPE "GENX_FIX_INVALID_FUNC_NAMES"
 
 using namespace llvm;
@@ -87,6 +89,17 @@ char GenXFixInvalidFuncName::ID = 0;
 namespace llvm {
 void initializeGenXFixInvalidFuncNamePass(PassRegistry &);
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses
+GenXFixInvalidFuncNamePass::run(Function &F, FunctionAnalysisManager &AM) {
+  GenXFixInvalidFuncName GenXFixInvFunc;
+  if (GenXFixInvFunc.runOnFunction(F))
+    return PreservedAnalyses::none();
+  return PreservedAnalyses::all();
+}
+#endif
+
 INITIALIZE_PASS_BEGIN(GenXFixInvalidFuncName, "GenXFixInvalidFuncName", "GenXFixInvalidFuncName", false, false)
 INITIALIZE_PASS_END(GenXFixInvalidFuncName, "GenXFixInvalidFuncName", "GenXFixInvalidFuncName", false, false)
 FunctionPass *llvm::createGenXFixInvalidFuncNamePass() {

@@ -1239,11 +1239,10 @@ Pass *createCMImpParamPass(bool HasPayloadInMemory) {
 PreservedAnalyses CMImpParamPass::run(llvm::Module &M,
                                       llvm::AnalysisManager<llvm::Module> &AM) {
   auto &CG = AM.getResult<CallGraphAnalysis>(M);
-  CMImpParam cmip(CG);
-  if (cmip.runOnModule(M)) {
-    return PreservedAnalyses::all();
-  }
-  return PreservedAnalyses::none();
+  CMImpParam CMIP(CG);
+  if (CMIP.runOnModule(M))
+    return PreservedAnalyses::none();
+  return PreservedAnalyses::all();
 }
 CMImpParamPass::CMImpParamPass() : HasPayloadInMemory{PayloadInMemoryOpt} {};
 #endif // LLVM_VERSION_MAJOR < 16

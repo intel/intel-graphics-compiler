@@ -38,12 +38,18 @@ SPDX-License-Identifier: MIT
 #include "GenXDebugInfo.h"
 #include "GenXModule.h"
 
+#include "vc/GenXCodeGen/GenXFixInvalidFuncName.h"
+#include "vc/GenXCodeGen/GenXLowerAggrCopies.h"
 #include "vc/GenXCodeGen/GenXOCLRuntimeInfo.h"
+#include "vc/GenXCodeGen/GenXReduceIntSize.h"
+#include "vc/GenXCodeGen/GenXRegionCollapsing.h"
+#include "vc/GenXCodeGen/GenXVerify.h"
 #include "vc/GenXCodeGen/TargetMachine.h"
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/Support/BackendConfig.h"
 #include "vc/Support/PassManager.h"
 
+#include "llvmWrapper/ADT/Optional.h"
 #include "llvmWrapper/Support/TargetRegistry.h"
 #include "llvm/Analysis/BasicAliasAnalysis.h"
 #include "llvm/Analysis/Passes.h"
@@ -62,11 +68,26 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
+#include "llvm/Transforms/IPO/GlobalDCE.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/Scalar/CorrelatedValuePropagation.h"
+#include "llvm/Transforms/Scalar/DCE.h"
+#include "llvm/Transforms/Scalar/EarlyCSE.h"
+#include "llvm/Transforms/Scalar/IndVarSimplify.h"
+#include "llvm/Transforms/Scalar/InferAddressSpaces.h"
+#include "llvm/Transforms/Scalar/JumpThreading.h"
+#include "llvm/Transforms/Scalar/LICM.h"
+#include "llvm/Transforms/Scalar/LoopDeletion.h"
+#include "llvm/Transforms/Scalar/LoopIdiomRecognize.h"
+#include "llvm/Transforms/Scalar/LoopRotation.h"
+#include "llvm/Transforms/Scalar/LoopUnrollPass.h"
+#include "llvm/Transforms/Scalar/Reassociate.h"
+#include "llvm/Transforms/Scalar/SROA.h"
+#include "llvm/Transforms/Scalar/SimplifyCFG.h"
 #include "llvm/Transforms/Utils.h"
-#include <llvmWrapper/ADT/Optional.h>
+#include "llvm/Transforms/Utils/Mem2Reg.h"
 
 using namespace llvm;
 
@@ -177,9 +198,9 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXSimplifyPass(registry);
 #if LLVM_VERSION_MAJOR < 16
   initializeCMABILegacyPass(registry);
-#else
+#else  // LLVM_VERSION_MAJOR < 16
   initializeCMABIPass(registry);
-#endif
+#endif // LLVM_VERSION_MAJOR < 16
   initializeCMLowerVLoadVStorePass(registry);
   initializeGenXLowerJmpTableSwitchPass(registry);
   initializeGenXGlobalValueLoweringPass(registry);
@@ -1033,4 +1054,134 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
   };
   PMBuilder.addExtension(PassManagerBuilder::EP_Peephole, AddGenXPeephole);
 }
+
+#else // LLVM_VERSION_MAJOR < 16
+
+void GenXTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
+
+  PB.registerAnalysisRegistrationCallback([=](ModuleAnalysisManager &MAM) {
+    MAM.registerPass([&] { return CMABIAnalysisPass(); });
+    MAM.registerPass([&] { return GenXBackendConfigPass(); });
+  });
+
+  PB.registerOptimizerEarlyEPCallback([this](ModulePassManager &PM,
+                                             OptimizationLevel Level) {
+    // Fix function names.
+    PM.addPass(createModuleToFunctionPassAdaptor(GenXFixInvalidFuncNamePass()));
+
+    // Lower aggr copies.
+    PM.addPass(createModuleToFunctionPassAdaptor(GenXLowerAggrCopiesPass()));
+
+    // Packetize.
+#ifndef NDEBUG
+    // PM.addPass(GenXVerifyPass(GenXVerifyStage::PostSPIRVReader));
 #endif
+    PM.addPass(
+        createModuleToFunctionPassAdaptor(GenXTranslateIntrinsicsPass()));
+    PM.addPass(GenXTranslateSPIRVBuiltinsPass(BC->getResult()));
+    PM.addPass(AlwaysInlinerPass());
+    PM.addPass(AlwaysInlinerPass());
+    PM.addPass(GenXPrintfPhiClonningPass());
+    PM.addPass(createModuleToFunctionPassAdaptor(InstCombinePass()));
+    PM.addPass(GenXPrintfResolutionPass());
+    PM.addPass(GenXImportOCLBiFPass());
+    PM.addPass(GenXBIFFlagCtrlResolutionPass());
+    PM.addPass(createModuleToFunctionPassAdaptor(GenXTypeLegalizationPass()));
+    PM.addPass(GenXPacketizePass());
+    PM.addPass(AlwaysInlinerPass());
+    PM.addPass(GenXPrintfLegalizationPass());
+    PM.addPass(GlobalDCEPass());
+    PM.addPass(createModuleToFunctionPassAdaptor(PromotePass()));
+
+    PM.addPass(createModuleToFunctionPassAdaptor(InferAddressSpacesPass()));
+    PM.addPass(createModuleToFunctionPassAdaptor(EarlyCSEPass(true)));
+    PM.addPass(createModuleToFunctionPassAdaptor(
+        SimplifyCFGPass(SimplifyCFGOptions().hoistCommonInsts(true))));
+    PM.addPass(createModuleToFunctionPassAdaptor(InstCombinePass()));
+    PM.addPass(createModuleToFunctionPassAdaptor(DCEPass()));
+    PM.addPass(
+        createModuleToFunctionPassAdaptor(SROAPass(SROAOptions::ModifyCFG)));
+    PM.addPass(createModuleToFunctionPassAdaptor(InferAddressSpacesPass()));
+    PM.addPass(createModuleToFunctionPassAdaptor(EarlyCSEPass(true)));
+    PM.addPass(createModuleToFunctionPassAdaptor(SimplifyCFGPass()));
+    PM.addPass(createModuleToFunctionPassAdaptor(InstCombinePass()));
+    PM.addPass(createModuleToFunctionPassAdaptor(DCEPass()));
+
+    // vldst.
+    if (EmitVLoadStore) {
+      // this->OptLevel > 0
+      // Inline
+      PM.addPass(
+          createModuleToFunctionPassAdaptor(SROAPass(SROAOptions::ModifyCFG)));
+      PM.addPass(createModuleToFunctionPassAdaptor(EarlyCSEPass(true)));
+      PM.addPass(createModuleToFunctionPassAdaptor(JumpThreadingPass()));
+      PM.addPass(createModuleToFunctionPassAdaptor(SimplifyCFGPass()));
+      PM.addPass(
+          createModuleToFunctionPassAdaptor(CorrelatedValuePropagationPass()));
+      PM.addPass(createModuleToFunctionPassAdaptor(GenXReduceIntSizePass()));
+      PM.addPass(createModuleToFunctionPassAdaptor(InstCombinePass()));
+      PM.addPass(AlwaysInlinerPass());
+      PM.addPass(GlobalDCEPass());
+      PM.addPass(createModuleToFunctionPassAdaptor(InstCombinePass()));
+
+      // Unroll
+      PM.addPass(createModuleToFunctionPassAdaptor(SimplifyCFGPass()));
+      PM.addPass(createModuleToFunctionPassAdaptor(ReassociatePass()));
+      PM.addPass(createModuleToFunctionPassAdaptor(
+          createFunctionToLoopPassAdaptor(LoopRotatePass())));
+      // TODO: Check LICM-options
+      PM.addPass(createModuleToFunctionPassAdaptor(
+          createFunctionToLoopPassAdaptor(LICMPass(llvm::LICMOptions()))));
+      PM.addPass(createModuleToFunctionPassAdaptor(InstCombinePass()));
+      //    if (!(BackendConfig.disableIndvarsOpt())) {
+      PM.addPass(createModuleToFunctionPassAdaptor(
+          createFunctionToLoopPassAdaptor(IndVarSimplifyPass())));
+      //    }
+      // TODO: LoopIdiom == LoopIdiomRecognize ?
+      PM.addPass(createModuleToFunctionPassAdaptor(
+          createFunctionToLoopPassAdaptor(LoopIdiomRecognizePass())));
+      PM.addPass(createModuleToFunctionPassAdaptor(
+          createFunctionToLoopPassAdaptor(LoopDeletionPass())));
+      // TODO: pass 'simple' options to LoopUnrollPass
+      PM.addPass(createModuleToFunctionPassAdaptor(LoopUnrollPass()));
+      PM.addPass(createModuleToFunctionPassAdaptor(InstCombinePass()));
+
+      // Simplify region accesses.
+      PM.addPass(createModuleToFunctionPassAdaptor(GenXRegionCollapsingPass()));
+      PM.addPass(createModuleToFunctionPassAdaptor(EarlyCSEPass(true)));
+      PM.addPass(createModuleToFunctionPassAdaptor(DCEPass()));
+      // }
+      PM.addPass(createModuleToFunctionPassAdaptor(CMLowerVLoadVStorePass()));
+    }
+
+    // AddIndirect
+    PM.addPass(GenXCloneIndirectFunctionsPass());
+    PM.addPass(GenXTrampolineInsertionPass());
+
+    // AddLinkageCorruptor
+    PM.addPass(GenXLinkageCorruptorPass());
+
+    // AddCMImpParam
+    // TODO: add parameters
+    PM.addPass(CMImpParamPass());
+
+    // CM ABI.
+    PM.addPass(CMABIPass());
+
+    // BTI assignment.
+    // TODO: add parameters
+    PM.addPass(GenXBTIAssignmentPass());
+
+    // CM kernel argument offset.
+    // TODO: add parameters
+    PM.addPass(CMKernelArgOffsetPass());
+  });
+
+  // AddGenXPeephole
+  PB.registerPeepholeEPCallback(
+      [this](FunctionPassManager &PM, OptimizationLevel Level) {
+        PM.addPass(GenXSimplifyPass());
+      });
+}
+
+#endif // LLVM_VERSION_MAJOR < 16

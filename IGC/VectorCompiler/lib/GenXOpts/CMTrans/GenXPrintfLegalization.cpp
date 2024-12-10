@@ -158,10 +158,9 @@ PreservedAnalyses
 GenXPrintfLegalizationPass::run(llvm::Module &M,
                                 llvm::AnalysisManager<llvm::Module> &) {
   GenXPrintfLegalization GenXPrint;
-  if (GenXPrint.runOnModule(M)) {
-    return PreservedAnalyses::all();
-  }
-  return PreservedAnalyses::none();
+  if (GenXPrint.runOnModule(M))
+    return PreservedAnalyses::none();
+  return PreservedAnalyses::all();
 }
 #endif
 

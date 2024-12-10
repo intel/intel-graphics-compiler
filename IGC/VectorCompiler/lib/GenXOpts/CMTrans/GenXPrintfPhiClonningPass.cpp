@@ -96,10 +96,9 @@ PreservedAnalyses
 GenXPrintfPhiClonningPass::run(llvm::Module &M,
                                llvm::AnalysisManager<llvm::Module> &) {
   GenXPrintfPhiClonning GenXPhi;
-  if (GenXPhi.runOnModule(M)) {
-    return PreservedAnalyses::all();
-  }
-  return PreservedAnalyses::none();
+  if (GenXPhi.runOnModule(M))
+    return PreservedAnalyses::none();
+  return PreservedAnalyses::all();
 }
 #endif
 

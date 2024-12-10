@@ -530,7 +530,7 @@ PreservedAnalyses GenXSimplifyPass::run(Function &F,
   auto &DT = AM.getResult<DominatorTreeAnalysis>(F);
   GenXSimplify GenXSimpl(DT);
   if (GenXSimpl.runOnFunction(F))
-    return PreservedAnalyses::all();
-  return PreservedAnalyses::none();
+    return PreservedAnalyses::none();
+  return PreservedAnalyses::all();
 }
 #endif

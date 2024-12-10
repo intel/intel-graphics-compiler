@@ -60,7 +60,6 @@ set(CODEGEN_SOURCES
   GenXLCECalculation.cpp
   GenXLegacyToLscTranslator.cpp
   GenXLegalization.cpp
-  GenXLegalizeGVLoadUses.cpp
   GenXLiveElements.cpp
   GenXLiveRanges.cpp
   GenXLiveness.cpp

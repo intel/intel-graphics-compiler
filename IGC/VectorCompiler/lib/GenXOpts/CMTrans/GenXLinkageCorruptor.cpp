@@ -62,10 +62,9 @@ GenXLinkageCorruptorPass::run(llvm::Module &M,
                               llvm::AnalysisManager<llvm::Module> &AM) {
   auto &Res = AM.getResult<GenXBackendConfigPass>(M);
   GenXLinkageCorruptor GenXLink(Res);
-  if (GenXLink.runOnModule(M)) {
-    return PreservedAnalyses::all();
-  }
-  return PreservedAnalyses::none();
+  if (GenXLink.runOnModule(M))
+    return PreservedAnalyses::none();
+  return PreservedAnalyses::all();
 }
 #endif
 

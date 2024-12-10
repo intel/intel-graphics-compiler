@@ -1562,7 +1562,7 @@ llvm::PreservedAnalyses CMABIPass::run(llvm::Module &M,
       Changed |= CMAbi.runOnCG(SCC);
     }
   }
-  return Changed ? PreservedAnalyses::all() : PreservedAnalyses::none();
+  return Changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
 }
 
 PreservedAnalyses CMLowerVLoadVStorePass::run(Function &F,
@@ -1570,10 +1570,9 @@ PreservedAnalyses CMLowerVLoadVStorePass::run(Function &F,
   auto &DT = AM.getResult<DominatorTreeAnalysis>(F);
   auto &PDT = AM.getResult<PostDominatorTreeAnalysis>(F);
   CMLowerVLoadVStore GenXLower(&DT, &PDT);
-  if (GenXLower.runOnFunction(F)) {
-    return PreservedAnalyses::all();
-  }
-  return PreservedAnalyses::none();
+  if (GenXLower.runOnFunction(F))
+    return PreservedAnalyses::none();
+  return PreservedAnalyses::all();
 }
 
 #endif

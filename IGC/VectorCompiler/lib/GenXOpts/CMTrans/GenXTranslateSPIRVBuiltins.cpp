@@ -402,12 +402,10 @@ ModulePass *createGenXTranslateSPIRVBuiltinsPass() {
 PreservedAnalyses
 GenXTranslateSPIRVBuiltinsPass::run(llvm::Module &M,
                                     llvm::AnalysisManager<llvm::Module> &AM) {
-  auto &Res = AM.getResult<GenXBackendConfigPass>(M);
-  GenXTranslateSPIRVBuiltins GenXTrans(Res);
-  if (GenXTrans.runOnModule(M)) {
-    return PreservedAnalyses::all();
-  }
-  return PreservedAnalyses::none();
+  GenXTranslateSPIRVBuiltins GenXTrans(BC);
+  if (GenXTrans.runOnModule(M))
+    return PreservedAnalyses::none();
+  return PreservedAnalyses::all();
 }
 #endif
 

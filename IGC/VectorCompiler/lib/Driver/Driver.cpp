@@ -21,13 +21,13 @@ SPDX-License-Identifier: MIT
 #include "llvm/GenXIntrinsics/GenXIntrOpts.h"
 #include "llvm/GenXIntrinsics/GenXSPIRVReaderAdaptor.h"
 
+#include <llvm/ADT/None.h>
 #include <llvm/ADT/ScopeExit.h>
 #include <llvm/ADT/SmallString.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/ADT/Statistic.h>
 #include <llvm/ADT/StringExtras.h>
 #include <llvm/ADT/Triple.h>
-#include <llvm/ADT/None.h>
 #include <llvm/Analysis/TargetLibraryInfo.h>
 #include <llvm/Analysis/TargetTransformInfo.h>
 #include <llvm/Bitcode/BitcodeReader.h>
@@ -39,6 +39,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/MC/SubtargetFeature.h>
 #include <llvm/Option/ArgList.h>
+#include <llvm/Passes/PassBuilder.h>
 #include <llvm/Support/Allocator.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/Error.h>
@@ -350,16 +351,6 @@ createTargetMachine(const vc::CompileOptions &Opts,
 static void optimizeIR(const vc::CompileOptions &Opts,
                        const vc::ExternalData &ExtData, TargetMachine &TM,
                        Module &M) {
-  vc::PassManager PerModulePasses;
-  legacy::FunctionPassManager PerFunctionPasses(&M);
-
-  PerModulePasses.add(
-      createTargetTransformInfoWrapperPass(TM.getTargetIRAnalysis()));
-  PerModulePasses.add(new GenXBackendConfig{createBackendOptions(Opts),
-                                            createBackendData(ExtData,
-                                                              TM.getPointerSizeInBits(0))});
-  PerFunctionPasses.add(
-      createTargetTransformInfoWrapperPass(TM.getTargetIRAnalysis()));
 
   unsigned OptLevel;
   if (Opts.IROptLevel == vc::OptimizerLevel::None)
@@ -367,6 +358,19 @@ static void optimizeIR(const vc::CompileOptions &Opts,
   else
     OptLevel = 2;
 
+#if LLVM_VERSION_MAJOR < 16
+  vc::PassManager PerModulePasses;
+  auto *BC = new GenXBackendConfig{
+      createBackendOptions(Opts),
+      createBackendData(ExtData, TM.getPointerSizeInBits(0))};
+  legacy::FunctionPassManager PerFunctionPasses(&M);
+
+  PerModulePasses.add(
+      createTargetTransformInfoWrapperPass(TM.getTargetIRAnalysis()));
+  PerModulePasses.add(BC);
+
+  PerFunctionPasses.add(
+      createTargetTransformInfoWrapperPass(TM.getTargetIRAnalysis()));
   PassManagerBuilder PMBuilder;
   PMBuilder.Inliner = createFunctionInliningPass(2, 2, false);
   PMBuilder.OptLevel = OptLevel;
@@ -379,12 +383,9 @@ static void optimizeIR(const vc::CompileOptions &Opts,
   PMBuilder.PrepareForThinLTO = false;
   PMBuilder.PrepareForLTO = false;
 #endif
-
-#if LLVM_VERSION_MAJOR < 16
   PMBuilder.RerollLoops = true;
 
   TM.adjustPassManager(PMBuilder);
-#endif
 
   PMBuilder.populateFunctionPassManager(PerFunctionPasses);
   PMBuilder.populateModulePassManager(PerModulePasses);
@@ -398,6 +399,35 @@ static void optimizeIR(const vc::CompileOptions &Opts,
   PerFunctionPasses.doFinalization();
 
   PerModulePasses.run(M);
+#else
+  // Create the analysis managers.
+  llvm::LoopAnalysisManager LAM;
+  llvm::FunctionAnalysisManager FAM;
+  llvm::CGSCCAnalysisManager CGAM;
+  llvm::ModuleAnalysisManager MAM;
+
+  llvm::PipelineTuningOptions PipelineTuneOpts;
+  // Disable vectorization.
+  PipelineTuneOpts.LoopVectorization = false;
+  PipelineTuneOpts.SLPVectorization = false;
+
+  PassBuilder PB(&TM, PipelineTuneOpts);
+
+  PB.registerModuleAnalyses(MAM);
+  PB.registerCGSCCAnalyses(CGAM);
+  PB.registerFunctionAnalyses(FAM);
+  PB.registerLoopAnalyses(LAM);
+  PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
+
+  TM.registerPassBuilderCallbacks(PB);
+
+  llvm::ModulePassManager MPM = PB.buildPerModuleDefaultPipeline(
+      OptLevel == 2 ? llvm::OptimizationLevel::O2
+                    : llvm::OptimizationLevel::O0);
+
+  MPM.run(M, MAM);
+
+#endif
 }
 
 static void populateCodeGenPassManager(const vc::CompileOptions &Opts,
@@ -428,7 +458,11 @@ static void populateCodeGenPassManager(const vc::CompileOptions &Opts,
 static vc::CompileOutput runCodeGen(const vc::CompileOptions &Opts,
                                     const vc::ExternalData &ExtData,
                                     TargetMachine &TM, Module &M) {
+#if LLVM_VERSION_MAJOR < 16
   vc::PassManager PM;
+#else
+  llvm::legacy::PassManager PM;
+#endif
 
   populateCodeGenPassManager(Opts, ExtData, TM, PM);
 
@@ -544,7 +578,11 @@ vc::Compile(ArrayRef<char> Input, const vc::CompileOptions &Opts,
   else if (Opts.StripDebugInfoCtrl == DebugInfoStripControl::NonLine)
     llvm::stripNonLineTableDebugInfo(M);
 
+#if LLVM_VERSION_MAJOR < 16
   vc::PassManager PerModulePasses;
+#else
+  llvm::legacy::PassManager PerModulePasses;
+#endif
   PerModulePasses.add(createGenXSPIRVReaderAdaptorPass());
   PerModulePasses.add(createGenXRestoreIntrAttrPass());
   PerModulePasses.run(M);

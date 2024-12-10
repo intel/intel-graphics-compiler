@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -47,7 +47,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 namespace llvm {
-  class raw_ostream;
+class raw_ostream;
 
 namespace genx {
 
@@ -92,19 +92,28 @@ public:
   bool isConstant() const {
     return !isUncomputed() && ConstBits != MaskForUnknown;
   }
-  unsigned getLogAlign() const { IGC_ASSERT(!isUncomputed()); return LogAlign; }
-  unsigned getExtraBits() const { IGC_ASSERT(!isUncomputed()); return ExtraBits; }
-  int64_t getConstBits() const { IGC_ASSERT(isConstant()); return ConstBits; }
+  unsigned getLogAlign() const {
+    IGC_ASSERT(!isUncomputed());
+    return LogAlign;
+  }
+  unsigned getExtraBits() const {
+    IGC_ASSERT(!isUncomputed());
+    return ExtraBits;
+  }
+  int64_t getConstBits() const {
+    IGC_ASSERT(isConstant());
+    return ConstBits;
+  }
   // comparison
   bool operator==(const Alignment &Rhs) const {
-    return (LogAlign == Rhs.LogAlign &&
-            ExtraBits == Rhs.ExtraBits &&
+    return (LogAlign == Rhs.LogAlign && ExtraBits == Rhs.ExtraBits &&
             ConstBits == Rhs.ConstBits);
   }
   static Alignment getAlignmentForConstant(Constant *C);
   // Debug dump/print
   void dump() const;
   void print(raw_ostream &OS) const;
+
 private:
   void setUncomputed() {
     LogAlign = UnsignedAllOnes;
@@ -119,8 +128,9 @@ private:
 
 // AlignmentInfo : cache of alignment of instructions in a function
 class AlignmentInfo {
-  ValueMap<const Value *, Alignment,
-          IgnoreRAUWValueMapConfig<const Value *>> InstMap;
+  ValueMap<const Value *, Alignment, IgnoreRAUWValueMapConfig<const Value *>>
+      InstMap;
+
 public:
   // AlignmentInfo constructor
   AlignmentInfo() {}
@@ -128,6 +138,7 @@ public:
   void clear() { InstMap.clear(); }
   // get the alignment of a Value
   Alignment get(Value *V);
+
 public:
   // return an Alignment for a value
   Alignment getFromInstMap(Value *V);

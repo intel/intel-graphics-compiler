@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -56,19 +56,19 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/SmallBitVector.h"
 
 namespace llvm {
-    class Constant;
-    class DataLayout;
-    class Value;
-    class Function;
-    class GenXBaling;
-    class GenXSubtarget;
-    class Module;
-    class Type;
-    class Instruction;
-    class raw_ostream;
-    class Twine;
-    class DebugLoc;
-    class TargetLibraryInfo;
+class Constant;
+class DataLayout;
+class Value;
+class Function;
+class GenXBaling;
+class GenXSubtarget;
+class Module;
+class Type;
+class Instruction;
+class raw_ostream;
+class Twine;
+class DebugLoc;
+class TargetLibraryInfo;
 
 namespace genx {
 
@@ -123,6 +123,7 @@ unsigned getLegalRegionSizeForTarget(const GenXSubtarget &ST, const Region &R,
 //
 class RdWrRegionSequence {
   Instruction *WaitingFor = nullptr;
+
 public:
   Value *Input = nullptr;
   Value *OldVal = nullptr;
@@ -170,7 +171,7 @@ bool simplifyRegionInsts(Function *F, const DataLayout *DL = nullptr,
                          const GenXSubtarget *ST = nullptr,
                          const DominatorTree *DT = nullptr);
 
-bool IsLinearVectorConstantInts(Value* v, int64_t& start, int64_t& stride);
+bool IsLinearVectorConstantInts(Value *v, int64_t &start, int64_t &stride);
 
 } // end namespace genx
 
