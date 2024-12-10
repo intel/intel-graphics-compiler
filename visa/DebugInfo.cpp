@@ -2039,11 +2039,10 @@ bool KernelDebugInfo::isFcallWithSaveRestore(G4_BB *bb) {
 // return a new list.
 INST_LIST KernelDebugInfo::getDeltaInstructions(G4_BB *bb) {
   INST_LIST deltaInsts;
-  for (auto instIt = bb->begin(); instIt != bb->end(); instIt++)
-    deltaInsts.push_back(*instIt);
-
-  for (auto oldInstsIt : oldInsts) {
-    deltaInsts.remove(oldInstsIt);
+  for (auto *inst : bb->getInstList()) {
+    if (oldInsts.count(inst) == 0) {
+      deltaInsts.push_back(inst);
+    }
   }
 
   return deltaInsts;

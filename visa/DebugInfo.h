@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace vISA {
@@ -223,7 +224,7 @@ private:
   std::unordered_map<G4_BB *, SaveRestore> callerSaveRestore;
   SaveRestore calleeSaveRestore;
 
-  INST_LIST oldInsts;
+  std::unordered_set<vISA::G4_INST *>  oldInsts;
 
   // Store pair of cisa byte offset and gen byte offset in vector
   std::vector<IDX_VDbgCisaByte2Gen> mapCISAOffsetGenOffset;
@@ -326,7 +327,7 @@ public:
   std::vector<G4_INST *> &getCalleeSaveInsts();
   std::vector<G4_INST *> &getCalleeRestoreInsts();
 
-  void setOldInstList(G4_BB *bb) { oldInsts.assign(bb->begin(), bb->end()); }
+  void setOldInstList(G4_BB *bb) { oldInsts.insert(bb->begin(), bb->end()); }
   void clearOldInstList() { oldInsts.clear(); }
   INST_LIST getDeltaInstructions(G4_BB *bb);
 
