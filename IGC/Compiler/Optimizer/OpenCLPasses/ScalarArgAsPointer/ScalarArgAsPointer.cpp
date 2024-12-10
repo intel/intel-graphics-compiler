@@ -224,11 +224,12 @@ ScalarArgAsPointerAnalysis::findArgs(llvm::Instruction* inst)
         {
             auto args = analyzeOperand(inst->getOperand(i));
 
-            if (!args)
-                return nullptr; // propagate fail
-
-            result->insert(args->begin(), args->end());
+            if (args)
+                result->insert(args->begin(), args->end());
         }
+
+        if (result->empty())
+            return nullptr; // propagate fail
     }
 
     m_visitedInst[inst] = result;
