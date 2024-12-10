@@ -16,12 +16,39 @@ constant uint RADIX_SORT_CHAR_BIT = 8;
 
 uint __builtin_sub_group_sort_mirror(uint idx, uint base)
 {
-    return base * (idx / base + 1) - 1 - (idx % base);
+    switch (base)
+    {
+    case 2:
+        return 0x01;
+    case 4:
+        return 0x03;
+    case 8:
+        return 0x07;
+    case 16:
+        return 0x0F;
+    case 32:
+        return 0x1F;
+    default:
+        return 0;
+    }
 }
 uint __builtin_sub_group_sort_rotate(uint idx, uint base)
 {
-    uint base2 = base / 2;
-    return base * (idx / base) + base2 * (idx / base2 + 1) % base + idx % base2;
+    switch (base)
+    {
+    case 2:
+        return 0x01;
+    case 4:
+        return 0x02;
+    case 8:
+        return 0x04;
+    case 16:
+        return 0x08;
+    case 32:
+        return 0x10;
+    default:
+        return 0;
+    }
 }
 uint __builtin_sub_group_sort_sel(uint idx, uint base)
 {
@@ -34,7 +61,7 @@ type OVERLOADABLE __builtin_sub_group_sort_compare_exchange(                   \
     const type a0, const uint shuffleMask, const uint selectMask,              \
     const bool is_asc)                                                         \
 {                                                                              \
-    const type a1 = sub_group_shuffle(a0, shuffleMask);                        \
+    const type a1 = sub_group_shuffle_xor(a0, shuffleMask);                    \
     const type a_min = min(a0,a1);                                             \
     const type a_max = max(a0,a1);                                             \
     return selectMask ?                                                        \
@@ -107,8 +134,8 @@ void OVERLOADABLE __builtin_sub_group_sort_compare_exchange_kv(                \
     type *key0, uint *val0, const uint shuffleMask, const uint selectMask,     \
     const bool is_asc)                                                         \
 {                                                                              \
-    type key1 = sub_group_shuffle(*key0, shuffleMask);                         \
-    type val1 = sub_group_shuffle(*val0, shuffleMask);                         \
+    type key1 = sub_group_shuffle_xor(*key0, shuffleMask);                     \
+    type val1 = sub_group_shuffle_xor(*val0, shuffleMask);                     \
     type key_min = min(*key0, key1);                                           \
     type key_max = max(*key0, key1);                                           \
     type val_min = (*key0 <  key1) ? *val0 :  val1;                            \
