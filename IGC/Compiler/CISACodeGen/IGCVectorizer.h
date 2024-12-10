@@ -27,20 +27,8 @@ class IGCVectorizer : public llvm::FunctionPass {
 
     typedef llvm::SmallPtrSet<Instruction*, 8> ValueSet;
     typedef llvm::SmallVector<Instruction*, 8> VecArr;
-    typedef llvm::SmallVector<Constant*, 8> VecConst;
-    typedef llvm::SmallVector<Value*, 8> VecVal;
     typedef llvm::SmallVector<VecArr, 8> VectorSliceChain;
-
-    struct Slice {
-        unsigned int OpNum;
-        VecArr Vector;
-        Slice* Parent;
-    };
-
-    typedef llvm::SmallVector<Slice, 8> VecOfSlices;
-    typedef llvm::SmallVector<VecOfSlices, 3> Tree;
     typedef std::unordered_map<Instruction*, VecArr*> InstructionToSliceMap;
-
 
     struct InsertStruct {
         Instruction* Final = nullptr;
@@ -48,7 +36,6 @@ class IGCVectorizer : public llvm::FunctionPass {
         VecArr Vec;
         // contains slices of vector tree
         VectorSliceChain Chain;
-        VecOfSlices SlChain;
     };
 
     CodeGenContext *CGCtx = nullptr;
@@ -67,20 +54,15 @@ class IGCVectorizer : public llvm::FunctionPass {
     std::unique_ptr<std::ofstream> OutputLogFile;
     std::string LogStr;
     llvm::raw_string_ostream OutputLogStream = raw_string_ostream(LogStr);
-    Module* M;
     void initializeLogFile(Function& F);
     void writeLog();
 
     void findInsertElementsInDataFlow(llvm::Instruction* I, VecArr& Chain);
     void collectScalarPath(VecArr& V, VectorSliceChain& Chain);
-    void canonicalizeSlices(VectorSliceChain& Chain);
     bool checkSlice(VecArr& Slice, InsertStruct& InSt);
     bool processChain(InsertStruct& InSt);
     void clusterInsertElement(InsertElementInst* VecOfInsert, InsertStruct& InSt);
     void collectInstructionToProcess(VecArr& ToProcess, Function& F);
-    void buildTree(VecArr &V, VecOfSlices& Chain);
-    void printSlice(Slice* S);
-
 
     bool checkPHI(Instruction* Compare, VecArr& Slice);
     bool handlePHI(VecArr& Slice, Type* VectorType);
@@ -88,16 +70,8 @@ class IGCVectorizer : public llvm::FunctionPass {
     bool handleInsertElement(VecArr& Slice, Instruction* Final);
     bool checkExtractElement(Instruction* Compare, VecArr& Slice);
     bool handleExtractElement(VecArr& Slice);
-    bool handleCastInstruction(VecArr& Slice);
-    bool handleBinaryInstruction(VecArr& Slice);
-    bool checkBinaryOperator(VecArr& Slice);
-    bool handleIntrinsicInstruction(VecArr& Slice);
-
-    Value* checkOperandsToBeVectorized(Instruction *First, unsigned int OperNum, VecArr &Slice);
-    Value* vectorizeSlice(VecArr& Slice, unsigned int OperNum);
 
     bool compareOperands(Value* A, Value* B);
-    InsertElementInst* createVector(VecArr& Slice, Instruction* InsertPoint);
 
     public:
     llvm::StringRef getPassName() const override { return "IGCVectorizer"; }

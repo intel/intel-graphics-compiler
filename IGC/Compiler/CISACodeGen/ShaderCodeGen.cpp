@@ -1930,9 +1930,6 @@ void OptimizeIR(CodeGenContext* const pContext)
         if (IGC_IS_FLAG_ENABLED(EnableVectorizer))
         {
             mpm.add(new IGCVectorizer());
-            mpm.add(llvm::createAggressiveDCEPass());
-            if (IGC_IS_FLAG_ENABLED(VectorizerCheckScalarizer))
-                mpm.add(createScalarizerPass(SelectiveScalarizer::Auto));
         }
 
         mpm.run(*pContext->getModule());

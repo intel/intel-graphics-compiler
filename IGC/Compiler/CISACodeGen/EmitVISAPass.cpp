@@ -4330,7 +4330,6 @@ void EmitPass::EmitGenericPointersCmp(llvm::Instruction* inst,
 
 void EmitPass::BinaryUnary(llvm::Instruction* inst, const SSource source[2], const DstModifier& modifier)
 {
-
     switch (inst->getOpcode())
     {
     case Instruction::FCmp:
@@ -4360,9 +4359,6 @@ void EmitPass::BinaryUnary(llvm::Instruction* inst, const SSource source[2], con
         Xor(source, modifier);
         break;
     case Instruction::Mul:
-        Mul(source, modifier);
-        break;
-    case Instruction::FMul:
         Mul(source, modifier);
         break;
     case Instruction::Call:
@@ -4576,43 +4572,12 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool 
     m_encoder->Push();
 }
 
-static unsigned int getVectorSize(Instruction *I) {
-    IGCLLVM::FixedVectorType *VecType =
-        llvm::dyn_cast<IGCLLVM::FixedVectorType>(I->getType());
-    if (!VecType)
-        return 0;
-    unsigned int NumElements = VecType->getNumElements();
-    return NumElements;
-}
-
 void EmitPass::Mul(const SSource sources[2], const DstModifier& modifier)
 {
     CVariable* src[2];
     for (int i = 0; i < 2; ++i)
     {
         src[i] = GetSrcVariable(sources[i]);
-    }
-
-    if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) && sources[0].value->getType()->isVectorTy() && sources[1].value->getType()->isVectorTy()) {
-
-        unsigned int VectorSize = 0;
-        if (llvm::isa<Instruction>(sources[0].value))
-            VectorSize = getVectorSize(llvm::cast<Instruction>(sources[0].value));
-
-        for (unsigned int i = 0; i < VectorSize; ++i) {
-            SetSourceModifiers(0, sources[0]);
-            SetSourceModifiers(1, sources[1]);
-
-            if (src[0]->IsUniform()) { m_encoder->SetSrcSubReg(0, i); }
-            else m_encoder->SetSrcSubVar(0, i);
-            if (src[1]->IsUniform()) { m_encoder->SetSrcSubReg(1, i); }
-            else m_encoder->SetSrcSubVar(1, i);
-
-            m_encoder->SetDstSubVar(i);
-            m_encoder->Mul(m_destination, src[0], src[1]);
-            m_encoder->Push();
-        }
-        return;
     }
 
     // Only i64 muls need special handling, otherwise go back to standard flow
