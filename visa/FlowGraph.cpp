@@ -3708,10 +3708,13 @@ void FlowGraph::fillPseudoDclMap(G4_InstCF *cfInst, G4_Declare *VCA,
   fcallToPseudoDclMap[cfInst] = {VCA, saveA0, saveFlag};
   pseudoDcls.insert({VCA, saveA0, saveFlag});
   pseudoVCADcls.insert(VCA);
+  pseudoA0Dcls.insert(saveA0);
   vISA_ASSERT((3 * fcallToPseudoDclMap.size() + 1) == pseudoDcls.size(),
               "Found inconsistency between fcallToPseudoDclMap and pseudoDcls");
   vISA_ASSERT(fcallToPseudoDclMap.size() == pseudoVCADcls.size(),
               "Found inconsistency between fcallToPseudoDclMap and pseudoVCADcls");
+  vISA_ASSERT(fcallToPseudoDclMap.size() == pseudoA0Dcls.size(),
+              "Found inconsistency between fcallToPseudoDclMap and pseudoA0Dcls");
 }
 
 //

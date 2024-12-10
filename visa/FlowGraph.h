@@ -260,7 +260,7 @@ class FlowGraph {
   // Caches to speed up the lookup of pseudo declares
   std::unordered_set<const G4_Declare *> pseudoDcls;
   std::unordered_set<const G4_Declare *> pseudoVCADcls;
-
+  std::unordered_set<const G4_Declare *> pseudoA0Dcls;
 public:
   Mem_Manager &mem; // mem mananger for creating BBs & starting IP table
   INST_LIST_NODE_ALLOCATOR &instListAlloc;
@@ -383,20 +383,7 @@ public:
    return pseudoVCADcls.count(dcl) == 1;
   }
   bool isPseudoA0Dcl(const G4_Declare *dcl) const {
-    for (const auto &iter : fcallToPseudoDclMap) {
-      if (iter.second.A0 == dcl) {
-        return true;
-      }
-    }
-    return false;
-  }
-  bool isPseudoFlagDcl(const G4_Declare *dcl) const {
-    for (const auto &iter : fcallToPseudoDclMap) {
-      if (iter.second.Flag == dcl) {
-        return true;
-      }
-    }
-    return false;
+    return pseudoA0Dcls.count(dcl) == 1;
   }
   bool isPseudoDcl(const G4_Declare *dcl) const {
     if (!getHasStackCalls() && !getIsStackCallFunc()) {
