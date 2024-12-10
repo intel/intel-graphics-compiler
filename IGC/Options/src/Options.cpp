@@ -14,13 +14,29 @@ using namespace IGC::options;
 using namespace llvm::opt;
 using llvm::raw_ostream;
 
-#define PREFIX(NAME, VALUE) static IGCLLVM::OptPrefixUnionTy API_##NAME = VALUE;
-#include "igc/Options/ApiOptions.inc"
+#if LLVM_VERSION_MAJOR >= 16
+#define PREFIX(NAME, VALUE)                                                       \
+  static constexpr llvm::StringLiteral API_INIT_##NAME[] = VALUE;                 \
+  static llvm::ArrayRef<llvm::StringLiteral> API_##NAME(                          \
+                           API_INIT_##NAME, std::size(API_INIT_##NAME) - 1);
+  #include "igc/Options/ApiOptions.inc"
 #undef PREFIX
 
-#define PREFIX(NAME, VALUE) static IGCLLVM::OptPrefixUnionTy INTERNAL_##NAME = VALUE;
-#include "igc/Options/InternalOptions.inc"
+#define PREFIX(NAME, VALUE)                                                            \
+  static constexpr llvm::StringLiteral INTERNAL_INIT_##NAME[] = VALUE;                 \
+  static llvm::ArrayRef<llvm::StringLiteral> INTERNAL_##NAME(                          \
+                           INTERNAL_INIT_##NAME, std::size(INTERNAL_INIT_##NAME) - 1);
+  #include "igc/Options/InternalOptions.inc"
 #undef PREFIX
+#else
+  #define PREFIX(NAME, VALUE) static const char* const API_##NAME[] = VALUE;
+  #include "igc/Options/ApiOptions.inc"
+  #undef PREFIX
+
+  #define PREFIX(NAME, VALUE) static const char* const INTERNAL_##NAME[] = VALUE;
+  #include "igc/Options/InternalOptions.inc"
+  #undef PREFIX
+#endif
 
 static const OptTable::Info ApiInfoTable[] = {
 #define OPTION(PREFIX, NAME, ID, KIND, GROUP, ALIAS, ALIASARGS, FLAGS, PARAM,  \
