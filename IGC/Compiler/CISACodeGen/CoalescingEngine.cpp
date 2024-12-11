@@ -1248,6 +1248,10 @@ namespace IGC
                 outProgram->GetContext()->platform.getGRFSize() == 64 ? EALIGN_32WORD : EALIGN_HWORD,
                 "CEExplicitPayload");
 
+            // insert explicit lifetime start in case some of the operands are undefs
+            // otherwise, VISA will see the variable as not fully initialized and will extend the lifetime all the way to the beginning of the kernel
+            encoder->Lifetime(VISAVarLifetime::LIFETIME_START, payload);
+
             for (uint i = 0; i < numOperands; i++)
             {
                 Value* val = m_PayloadMapping.GetPayloadElementToValueMapping(inst, i);
