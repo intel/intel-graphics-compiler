@@ -7,9 +7,6 @@
 #============================ end_copyright_notice =============================
 
 set(OPT_OPAQUE_ARG ${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_OPT})
-if ((${LLVM_VERSION_MAJOR} GREATER 15))
-  set(OPT_OPAQUE_ARG "--opaque-pointers")
-endif()
 
 # Args:
 #   RES_LIST - generated list
@@ -90,10 +87,15 @@ function(vc_build_bif TARGET RES_FILE CMCL_SRC_PATH BIF_NAME PTR_BIT_SIZE)
     set(BIF_CLANG_BC_PATH ${CMAKE_CURRENT_BINARY_DIR}/${BIF_CLANG_BC_NAME})
     get_filename_component(BIF_CLANG_BC_PATH_DIR ${BIF_CLANG_BC_PATH} DIRECTORY)
 
+    set(SPECIAL_CLANG_ARG "")
+    if (OPT_OPAQUE_ARG)
+      set(SPECIAL_CLANG_ARG -mllvm ${OPT_OPAQUE_ARG} )
+    endif()
+
     add_custom_command(OUTPUT "${BIF_CLANG_BC_PATH}"
       COMMAND ${CMAKE_COMMAND} -E make_directory ${BIF_CLANG_BC_PATH_DIR}
       COMMAND clang-tool -cc1 ${CMCL_INCLUDES} ${VC_INCLUDES}
-               ${EXTRA_CLANG_INCLUDES} ${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_CLANG} ${EXTRA_CLANG_FLAGS}
+               ${EXTRA_CLANG_INCLUDES} ${SPECIAL_CLANG_ARG} ${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_CLANG} ${EXTRA_CLANG_FLAGS}
                -x cl -cl-std=clc++ -triple=${SPIR_TARGET}
                -O2 -disable-llvm-passes -discard-value-names -emit-llvm-bc -o "${BIF_CLANG_BC_NAME}" ${CMCL_SRC}
       COMMENT "vc_build_bif: Compiling CMCL source ${CMCL_SRC} to BC ${BIF_CLANG_BC_NAME}"
@@ -104,7 +106,7 @@ function(vc_build_bif TARGET RES_FILE CMCL_SRC_PATH BIF_NAME PTR_BIT_SIZE)
 
   if (LENGTH_CMCL_SRC_PATH GREATER 1)
     add_custom_command(OUTPUT ${BIF_CLANG_BC_PATH_FINAL}
-      COMMAND ${LLVM_LINK_EXE} ${BC_PATH_LIST}  -o ${BIF_CLANG_BC_NAME_FINAL}
+      COMMAND ${LLVM_LINK_EXE} ${OPT_OPAQUE_ARG} ${BC_PATH_LIST} -o ${BIF_CLANG_BC_NAME_FINAL}
       COMMENT "vc_build_bif: Link ${BC_PATH_LIST}  together to BC ${BIF_CLANG_BC_NAME_FINAL}"
       DEPENDS ${LLVM_LINK_EXE} ${BC_PATH_LIST}
       COMMAND_EXPAND_LISTS)
@@ -112,7 +114,7 @@ function(vc_build_bif TARGET RES_FILE CMCL_SRC_PATH BIF_NAME PTR_BIT_SIZE)
 
   add_custom_target(${TARGET}
     COMMENT "vc_build_bif: Translating CMCL builtins:  ${BIF_CLANG_BC_NAME_FINAL} -> ${BIF_OPT_BC_NAME}"
-    COMMAND CMCLTranslatorTool -o ${BIF_CMCL_BC_NAME} ${BIF_CLANG_BC_NAME_FINAL}
+    COMMAND CMCLTranslatorTool ${OPT_OPAQUE_ARG} -o ${BIF_CMCL_BC_NAME} ${BIF_CLANG_BC_NAME_FINAL}
     COMMAND ${LLVM_OPT_EXE} ${OPT_OPAQUE_ARG} --O2 -o ${BIF_OPT_BC_NAME} ${BIF_CMCL_BC_NAME}
     DEPENDS CMCLTranslatorTool ${LLVM_OPT_EXE} ${BIF_CLANG_BC_PATH_FINAL}
     BYPRODUCTS ${BIF_OPT_BC_PATH}

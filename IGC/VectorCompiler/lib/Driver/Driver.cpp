@@ -40,6 +40,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/MC/SubtargetFeature.h>
 #include <llvm/Option/ArgList.h>
 #include <llvm/Passes/PassBuilder.h>
+#include <llvm/Passes/StandardInstrumentations.h>
 #include <llvm/Support/Allocator.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/Error.h>
@@ -400,18 +401,26 @@ static void optimizeIR(const vc::CompileOptions &Opts,
 
   PerModulePasses.run(M);
 #else
+
   // Create the analysis managers.
   llvm::LoopAnalysisManager LAM;
   llvm::FunctionAnalysisManager FAM;
   llvm::CGSCCAnalysisManager CGAM;
   llvm::ModuleAnalysisManager MAM;
 
+  PassInstrumentationCallbacks PIC;
+  // TODO: support 'print-after-all'
+  PrintPassOptions PrintPassOpts;
+  StandardInstrumentations SI(M.getContext(), false /*DebugLogging*/,
+                              false /*VerifyEachPass*/, PrintPassOpts);
+  SI.registerCallbacks(PIC);
+
   llvm::PipelineTuningOptions PipelineTuneOpts;
   // Disable vectorization.
   PipelineTuneOpts.LoopVectorization = false;
   PipelineTuneOpts.SLPVectorization = false;
 
-  PassBuilder PB(&TM, PipelineTuneOpts);
+  PassBuilder PB(&TM, PipelineTuneOpts, {}, &PIC);
 
   PB.registerModuleAnalyses(MAM);
   PB.registerCGSCCAnalyses(CGAM);
@@ -419,14 +428,11 @@ static void optimizeIR(const vc::CompileOptions &Opts,
   PB.registerLoopAnalyses(LAM);
   PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
 
-  TM.registerPassBuilderCallbacks(PB);
-
   llvm::ModulePassManager MPM = PB.buildPerModuleDefaultPipeline(
       OptLevel == 2 ? llvm::OptimizationLevel::O2
                     : llvm::OptimizationLevel::O0);
 
   MPM.run(M, MAM);
-
 #endif
 }
 

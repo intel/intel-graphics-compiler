@@ -1064,8 +1064,8 @@ void GenXTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
     MAM.registerPass([&] { return GenXBackendConfigPass(); });
   });
 
-  PB.registerOptimizerEarlyEPCallback([this](ModulePassManager &PM,
-                                             OptimizationLevel Level) {
+  PB.registerPipelineStartEPCallback([this](ModulePassManager &PM,
+                                            OptimizationLevel Level) {
     // Fix function names.
     PM.addPass(createModuleToFunctionPassAdaptor(GenXFixInvalidFuncNamePass()));
 
@@ -1073,6 +1073,7 @@ void GenXTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
     PM.addPass(createModuleToFunctionPassAdaptor(GenXLowerAggrCopiesPass()));
 
     // Packetize.
+    PM.addPass(GenXLegalizeGVLoadUsesPass());
 #ifndef NDEBUG
     // PM.addPass(GenXVerifyPass(GenXVerifyStage::PostSPIRVReader));
 #endif
