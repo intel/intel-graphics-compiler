@@ -194,6 +194,20 @@ static bool isExclusiveLoad(const SBNode *node1, const SBNode *node2, DepType ty
   return dcl1->isExclusiveLoad();
 }
 
+static bool isDclExclusiveLoad(const G4_Declare *declare1,
+                               const G4_Declare *declare2) {
+
+  if (declare1 == nullptr) {
+    return false;
+  }
+
+  if (declare1 != declare2) {
+    return false;
+  }
+
+  return declare1->isExclusiveLoad();
+}
+
 bool SBFootprint::hasOverlap(const SBFootprint *liveFootprint,
                              unsigned short &internalOffset) const {
   for (const SBFootprint *curFootprintPtr = this; curFootprintPtr;
@@ -1561,6 +1575,26 @@ void SWSB::SWSBInitializeGlobalNodesInBuckets(
   }
 }
 
+// Pre collect all relevant data from LiveGRFBuckets for setSendOpndMayKilled
+// to speed up processing.
+static BucketInfos generateBucketInfos(const LiveGRFBuckets &globalSendsLB){
+  BucketInfos bucketInfos(globalSendsLB.getNumOfBuckets());
+  for (size_t i = 0; i < static_cast<size_t>(globalSendsLB.getNumOfBuckets()); i++) {
+    for (const auto *liveBN : globalSendsLB.getAllBuckets()[i]) {
+      SBNode *curLiveNode = liveBN->node;
+      const auto *inst = curLiveNode->getLastInstruction();
+      G4_Declare *topDcl = nullptr;
+      if (!inst->isSend()) {
+        topDcl = inst->getDst()->getTopDcl();
+      }
+      bucketInfos[i].emplace_back(
+          BucketNodeInfo{curLiveNode->globalID, topDcl, liveBN->footprint,
+                         liveBN->footprint->inst, liveBN->opndNum});
+    }
+  }
+  return bucketInfos;
+}
+
 void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
                                     LiveGRFBuckets &globalSendsLB,
                                     LiveGRFBuckets &GRFAlignedGlobalSendsLB) {
@@ -1568,6 +1602,8 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
   for (TokenAllocation &nodeMap : allTokenNodesMap) {
     nodeMap.bitset = BitSet(SBSendNodes.size(), false);
   }
+
+  BucketInfos bucketInfos = generateBucketInfos(globalSendsLB);
 
   const bool enableGlobalTokenAllocation =
       fg.builder->getOptions()->getOption(vISA_GlobalTokenAllocation);
@@ -1620,7 +1656,7 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
                                               SBNodes, p);
     }
     if (!globalSendsLB.isEmpty()) {
-      bb->setSendOpndMayKilled(&globalSendsLB, SBNodes, p);
+      bb->setSendOpndMayKilled(SBNodes, p, bucketInfos);
     }
 
 #ifdef DEBUG_VERBOSE_ON
@@ -5443,8 +5479,8 @@ void G4_BB_SB::getLiveOutToken(unsigned allSendNum,
 // of BB.
 // !!! Note that: since this "may kill" info is used in global analysis, "may
 // kill" is not accurate, here we in fact record the "definitely kill".
-void G4_BB_SB::setSendOpndMayKilled(LiveGRFBuckets *globalSendsLB,
-                                    SBNODE_VECT &SBNodes, PointsToAnalysis &p) {
+void G4_BB_SB::setSendOpndMayKilled(SBNODE_VECT &SBNodes, PointsToAnalysis &p,
+                                    BucketInfos &bucketInfos) {
   if (first_node == INVALID_ID) {
     return;
   }
@@ -5454,6 +5490,9 @@ void G4_BB_SB::setSendOpndMayKilled(LiveGRFBuckets *globalSendsLB,
   for (int i = first_node; i <= last_node; i++) {
     auto *node = SBNodes[i];
     const auto *curInst = node->GetInstruction();
+    const auto *lastInst = node->getLastInstruction();
+    const auto isSend = node->getLastInstruction()->isSend();
+    const auto *topDcl = (!isSend) ? nullptr : lastInst->getDst()->getTopDcl();
 
     if (curInst->isLabel()) {
       continue;
@@ -5471,18 +5510,14 @@ void G4_BB_SB::setSendOpndMayKilled(LiveGRFBuckets *globalSendsLB,
       const auto &curOpnd = BD.opndNum;
       const auto *curFootprint = BD.footprint;
 
-      for (const auto *liveBN : globalSendsLB->getAllBuckets()[curBucket]) {
-        const auto *curLiveNode = liveBN->node;
-        const auto globalID = curLiveNode->globalID;
-        const auto liveOpnd = liveBN->opndNum;
-        const auto *liveFootprint = liveBN->footprint;
-        const auto *liveInst = liveFootprint->inst;
+      for (const auto &nodeInfo : bucketInfos[curBucket]) {
+        const auto& globalID = nodeInfo.globalID;
 
         // Send operands are all GRF aligned, there is no overlap checking
         // required. Fix me, this is not right, for math instruction, less than
         // 1 GRF may happen. Find DEP type
         unsigned short internalOffset = 0;
-        DepType dep = getDepForOpnd(liveOpnd, curOpnd);
+        DepType dep = getDepForOpnd(nodeInfo.liveOpnd, curOpnd);
 
         // Early exit if current live node is already marked as killed.
         if ((dep == WAR && send_may_kill.isSrcSet(globalID)) ||
@@ -5493,25 +5528,27 @@ void G4_BB_SB::setSendOpndMayKilled(LiveGRFBuckets *globalSendsLB,
         }
 
         auto hasOverlap =
-            curFootprint->hasOverlap(liveFootprint, internalOffset);
+            curFootprint->hasOverlap(nodeInfo.liveFootprint, internalOffset);
 
         if (!hasOverlap && dep == RAW) {
-          hasOverlap = hasExtraOverlap(liveInst, curInst, liveFootprint,
-                                       curFootprint, curOpnd, &builder);
+          hasOverlap = hasExtraOverlap(nodeInfo.liveInst, curInst,
+                                       nodeInfo.liveFootprint, curFootprint,
+                                       curOpnd, &builder);
         }
 
         if (!hasOverlap) {
           continue;
         }
-
         // For SBID global liveness analysis, both explicit and implicit kill
         // counted.
-        if (dep == WAR && WARDepRequired(liveInst, curFootprint->inst)) {
+        if (dep == WAR &&
+            WARDepRequired(nodeInfo.liveInst, curFootprint->inst)) {
           send_may_kill.src.set(globalID);
         } else if (dep == RAW) {
           send_may_kill.dst.set(globalID);
           // Exclusive WAW has no overlap
-        } else if (dep == WAW && !isExclusiveLoad(curLiveNode, node, dep)) {
+        } else if (dep == WAW && (isSend || !isDclExclusiveLoad(
+                                                nodeInfo.topDeclare, topDcl))) {
           send_may_kill.dst.set(globalID);
           send_WAW_may_kill.set(globalID);
         }
@@ -5541,15 +5578,14 @@ void G4_BB_SB::setSendOpndMayKilled(LiveGRFBuckets *globalSendsLB,
     if (!addGlobalSLMWARWA && builder.hasSLMWARIssue() && curInst->isSend() &&
         (isSLMMsg(curInst) &&
          (curInst->getDst() == nullptr || isFence(curInst)))) {
-      for (const auto &bucket : globalSendsLB->getAllBuckets()) {
-        for (SBBucketNode *liveBN : bucket) {
-          SBNode *curLiveNode = liveBN->node;
-          G4_INST *liveInst = liveBN->footprint->inst;
+      for (const auto &bucket : bucketInfos) {
+        for (const auto &nodeInfo : bucket) {
+          G4_INST *liveInst = nodeInfo.liveInst;
 
           if (liveInst->isSend() && isSLMMsg(liveInst) &&
               liveInst->getDst() != nullptr &&
               !liveInst->getDst()->isNullReg()) {
-            send_may_kill.setDst(curLiveNode->globalID, true);
+            send_may_kill.setDst(nodeInfo.globalID, true);
           }
         }
       }
