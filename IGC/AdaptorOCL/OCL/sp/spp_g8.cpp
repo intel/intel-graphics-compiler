@@ -374,7 +374,7 @@ void dumpOCLCos(const IGC::COpenCLKernel *Kernel, const std::string &stateDebugM
     dumpName = dumpName.PostFix(kernelName);
 
     dumpName = dumpName.DispatchMode(Kernel->m_ShaderDispatchMode);
-    dumpName = dumpName.SIMDSize(Kernel->m_dispatchSize).Retry(context->m_retryManager.GetRetryId()).Extension("cos");
+    dumpName = dumpName.SIMDSize(Kernel->m_State.m_dispatchSize).Retry(context->m_retryManager.GetRetryId()).Extension("cos");
 
     auto dump = IGC::Debug::Dump(dumpName, IGC::Debug::DumpType::COS_TEXT);
 

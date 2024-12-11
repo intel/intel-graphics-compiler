@@ -730,7 +730,7 @@ DumpName GetDumpNameObj(const IGC::CShader* pProgram, const char* ext)
 
     dumpName = dumpName.PostFix(shaderName);
     dumpName = dumpName.DispatchMode(pProgram->m_ShaderDispatchMode);
-    dumpName = dumpName.SIMDSize(pProgram->m_dispatchSize).Retry(context->m_retryManager.GetRetryId()).Extension(ext);
+    dumpName = dumpName.SIMDSize(pProgram->m_State.m_dispatchSize).Retry(context->m_retryManager.GetRetryId()).Extension(ext);
 
     return dumpName;
 }

@@ -388,7 +388,7 @@ void DebugInfoData::markVariableAsOutput(CShader *pShader, CVariable *pVariable)
 
     // Mark variable with "Output", to extend it's living time will be extended to the end of the function.
     pShader->GetEncoder().GetVISAKernel()->AddAttributeToVar(pVariable->visaGenVariable[0], "Output", 0, nullptr);
-    if (pShader->m_dispatchSize == SIMDMode::SIMD32 && pVariable->visaGenVariable[1])
+    if (pShader->m_State.m_dispatchSize == SIMDMode::SIMD32 && pVariable->visaGenVariable[1])
     {
         pShader->GetEncoder().GetVISAKernel()->AddAttributeToVar(pVariable->visaGenVariable[1], "Output", 0, nullptr);
     }
@@ -459,7 +459,7 @@ void DebugInfoData::transferMappings(const llvm::Function& F)
             {
                 unsigned int lower16Channels = (unsigned int)m_pShader->GetEncoder().GetVISAKernel()->getDeclarationID(CVar->visaGenVariable[0]);
                 unsigned int higher16Channels = 0;
-                if (numLanes(m_pShader->m_dispatchSize) == 32 && !CVar->IsUniform() && CVar->visaGenVariable[1])
+                if (numLanes(m_pShader->m_State.m_dispatchSize) == 32 && !CVar->IsUniform() && CVar->visaGenVariable[1])
                     higher16Channels = m_pShader->GetEncoder().GetVISAKernel()->getDeclarationID(CVar->visaGenVariable[1]);
                 CVarToVISADclId[CVar] = std::make_pair(lower16Channels, higher16Channels);
             }

@@ -169,7 +169,7 @@ void ScalarVisaModule::ValidateVisaId()
 
 uint16_t ScalarVisaModule::GetSIMDSize() const
 {
-    SIMDMode simdMode = m_pShader->m_dispatchSize;
+    SIMDMode simdMode = m_pShader->m_State.m_dispatchSize;
 
     return numLanes(simdMode);
 }

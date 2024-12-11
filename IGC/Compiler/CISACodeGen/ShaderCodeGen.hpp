@@ -95,8 +95,9 @@ public:
         uint16_t hasEM() const { return m_hasEM; }
     };
     bool IsRecompilationRequestForced();
-
+protected:
     CShader(llvm::Function *, CShaderProgram *pProgram, GenericShaderState &GState);
+public:
     virtual ~CShader();
     CShader(const CShader&) = delete;
     CShader& operator=(const CShader&) = delete;
@@ -347,11 +348,6 @@ public:
     ShaderType  GetShaderType() const { return GetContext()->type; }
     bool        IsPatchablePS();
 
-    bool        GetHasBarrier() const { return m_BarrierNumber > 0; }
-    void        SetHasBarrier() { if (m_BarrierNumber == 0) m_BarrierNumber = 1; }
-    void        SetBarrierNumber(int BarrierNumber) { m_BarrierNumber = BarrierNumber; }
-    int         GetBarrierNumber() const { return m_BarrierNumber; }
-
     void        GetSimdOffsetBase(CVariable*& pVar, bool dup = false);
     /// Returns a simd8 register filled with values [24, 20, 16, 12, 8, 4, 0]
     /// that are used to index subregisters of a GRF when counting offsets in bytes.
@@ -395,9 +391,6 @@ public:
     const CDriverInfo* m_DriverInfo = nullptr;
 
     ModuleMetaData* m_ModuleMetadata = nullptr;
-
-    /// Dispatch size is the number of logical threads running in one hardware thread
-    SIMDMode m_dispatchSize;
     /// SIMD Size is the default size of instructions
     ShaderDispatchMode m_ShaderDispatchMode;
     /// the default emit size for this shader. This is the default size for variables as well
@@ -565,11 +558,7 @@ public:
     bool GetHasConstantStatelessAccess() const { return m_HasConstantStatelessMemoryAccess; }
     void SetHasGlobalAtomics() { m_HasGlobalAtomics = true; }
     bool GetHasGlobalAtomics() const { return m_HasGlobalAtomics; }
-    bool GetHasDPAS() const { return m_HasDPAS; }
-    void SetHasDPAS() { m_HasDPAS = true; }
     bool GetHasEval() const { return m_State.GetHasEval(); }
-    bool GetHasSample() const { return m_HasSample; }
-    void SetHasSample() { m_HasSample = true; }
     void IncStatelessWritesCount() { ++m_StatelessWritesCount; }
     void IncIndirectStatelessCount() { ++m_IndirectStatelessCount; }
     void IncNumSampleBallotLoops() { ++m_NumSampleBallotLoops; }
@@ -636,18 +625,6 @@ public:
         SIMDMode Mode = SIMDMode::UNKNOWN);
     bool shouldGenerateLSC(llvm::Instruction* vectorLdStInst = nullptr, bool isTGM = false);
     bool forceCacheCtrl(llvm::Instruction* vectorLdStInst = nullptr);
-    // Shader has LSC store messages with cache controls specified in `ops`
-    void HasLscStoreCacheControls(const LSC_CACHE_OPTS& opts)
-    {
-        if (opts.l1 != LSC_CACHING_DEFAULT)
-        {
-            m_HasLscStoresWithNonDefaultL1CacheControls = true;
-        }
-    };
-    bool GetHasLscStoresWithNonDefaultL1CacheControls() const
-    {
-        return m_HasLscStoresWithNonDefaultL1CacheControls;
-    };
     uint32_t totalBytesToStoreOrLoad(llvm::Instruction* vectorLdStInst);
 
     void setShaderProgramID(int aID) { m_shaderProgramID = aID; }
@@ -745,7 +722,6 @@ protected:
     /// holds max number of inputs that can be pushed for this shader unit
     static const uint32_t m_pMaxNumOfPushedInputs;
 
-    int m_BarrierNumber;
     SProgramOutput m_simdProgram;
 
     // for each vector BCI whose uses are all extractElt with imm offset,
@@ -760,19 +736,12 @@ protected:
 
     bool m_HasGlobalAtomics = false;
 
-    bool m_HasDPAS = false;
-    bool m_passNOSInlinedata = false;
-
     uint32_t m_StatelessWritesCount = 0;
     uint32_t m_IndirectStatelessCount = 0;
 
     uint32_t m_NumSampleBallotLoops = 0;
 
     DebugInfoData diData;
-
-    // Shader has LSC store messages with non-default L1 cache control
-    bool m_HasLscStoresWithNonDefaultL1CacheControls = false;
-    bool m_HasSample = false;
 
     // Program function attributes
     bool m_HasStackCall = false;

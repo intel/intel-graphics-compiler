@@ -263,7 +263,7 @@ namespace IGC
     }
 
     COpenCLKernel::COpenCLKernel(OpenCLProgramContext* ctx, Function* pFunc, CShaderProgram* pProgram) :
-        CComputeShaderBase(pFunc, pProgram)
+        m_State(*pFunc, *pProgram->GetContext()), CComputeShaderBase(pFunc, pProgram, m_State)
     {
         m_HasTID = false;
         m_HasGlobalSize = false;
@@ -2302,7 +2302,7 @@ namespace IGC
                     break;
                 case GenISAIntrinsic::GenISA_dpas:
                 case GenISAIntrinsic::GenISA_sub_group_dpas:
-                    SetHasDPAS();
+                    m_State.SetHasDPAS();
                     break;
                 case GenISAIntrinsic::GenISA_ptr_to_pair:
                 case GenISAIntrinsic::GenISA_pair_to_ptr:
@@ -2315,7 +2315,7 @@ namespace IGC
             {
                 if (IA->getAsmString().find("dpas") != std::string::npos)
                 {
-                    SetHasDPAS();
+                    m_State.SetHasDPAS();
                 }
             }
             if (mayHasMemoryAccess)
@@ -2482,7 +2482,7 @@ namespace IGC
                     {
                         alignment = 64;
                         // generate a single SIMD32 variable in this case
-                        if (m_dispatchSize == SIMDMode::SIMD16 && m_Platform->getGRFSize() == 64)
+                        if (m_State.m_dispatchSize == SIMDMode::SIMD16 && m_Platform->getGRFSize() == 64)
                         {
                             allocSize = 64;
                         }
@@ -2631,8 +2631,8 @@ namespace IGC
         {
             if (loadThreadPayload)
             {
-                uint perThreadInputSize = SIZE_WORD * 3 * (m_dispatchSize == SIMDMode::SIMD32 ? 32 : 16);
-                if (m_dispatchSize == SIMDMode::SIMD16 && getGRFSize() == 64)
+                uint perThreadInputSize = SIZE_WORD * 3 * (m_State.m_dispatchSize == SIMDMode::SIMD32 ? 32 : 16);
+                if (m_State.m_dispatchSize == SIMDMode::SIMD16 && getGRFSize() == 64)
                 {
                     perThreadInputSize *= 2;
                 }
@@ -2840,8 +2840,8 @@ namespace IGC
         m_kernelInfo.m_executionEnvironment.SumFixedTGSMSizes = getSumFixedTGSMSizes(entry);
 
         // TODO: need to change misleading HasBarriers to NumberofBarriers
-        m_kernelInfo.m_executionEnvironment.HasBarriers = this->GetBarrierNumber();
-        m_kernelInfo.m_executionEnvironment.HasSample = this->GetHasSample();
+        m_kernelInfo.m_executionEnvironment.HasBarriers = m_State.GetBarrierNumber();
+        m_kernelInfo.m_executionEnvironment.HasSample = m_State.GetHasSample();
         m_kernelInfo.m_executionEnvironment.DisableMidThreadPreemption = GetDisableMidThreadPreemption();
         m_kernelInfo.m_executionEnvironment.SubgroupIndependentForwardProgressRequired =
             m_Context->getModuleMetaData()->compOpt.SubgroupIndependentForwardProgressRequired;
@@ -2903,7 +2903,7 @@ namespace IGC
 
         m_kernelInfo.m_executionEnvironment.NumGRFRequired = ProgramOutput()->m_numGRFTotal;
 
-        m_kernelInfo.m_executionEnvironment.HasDPAS = GetHasDPAS();
+        m_kernelInfo.m_executionEnvironment.HasDPAS = m_State.GetHasDPAS();
         m_kernelInfo.m_executionEnvironment.StatelessWritesCount = GetStatelessWritesCount();
         m_kernelInfo.m_executionEnvironment.IndirectStatelessCount = GetIndirectStatelessCount();
         m_kernelInfo.m_executionEnvironment.numThreads = ProgramOutput()->m_numThreads;
@@ -2995,7 +2995,7 @@ namespace IGC
         unsigned int groupSize = IGCMetaDataHelper::getThreadGroupSize(*m_pMdUtils, entry);
         if (groupSize != 0)
         {
-            if (groupSize % numLanes(m_dispatchSize) == 0)
+            if (groupSize % numLanes(m_State.m_dispatchSize) == 0)
             {
                 return true;
             }

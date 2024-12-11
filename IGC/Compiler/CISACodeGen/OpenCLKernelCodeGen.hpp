@@ -165,6 +165,8 @@ namespace IGC
         static bool IsVisaCompiledSuccessfullyForShader(COpenCLKernel* shader);
         static bool IsVisaCompileStatusFailureForShader(COpenCLKernel *shader);
 
+        GenericShaderState m_State;
+
     public:
         SOpenCLProgramInfo* m_programInfo;
         SOpenCLKernelInfo m_kernelInfo;

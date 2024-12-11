@@ -20,6 +20,8 @@ namespace IGC
     class GenericShaderState
     {
     public:
+        GenericShaderState(const llvm::Function& Entry, CodeGenContext& Ctx);
+
         uint m_constantBufferLoaded = 0;
         uint m_numBlocks = 0;
         uint64_t m_uavLoaded = 0;
@@ -39,8 +41,37 @@ namespace IGC
         uint32_t m_BindingTableUsedEntriesBitmap = 0;
         //true if any input is pulled, false otherwise
         bool isInputsPulled = false;
+        /// Dispatch size is the number of logical threads running in one hardware thread
+        SIMDMode m_dispatchSize = SIMDMode::UNKNOWN;
 
-        GenericShaderState(const llvm::Function& Entry, CodeGenContext& Ctx);
+        bool GetHasBarrier() const { return m_BarrierNumber > 0; }
+        void SetHasBarrier() {
+            if (m_BarrierNumber == 0)
+                m_BarrierNumber = 1;
+        }
+        void SetBarrierNumber(int BarrierNumber) { m_BarrierNumber = BarrierNumber; }
+        int  GetBarrierNumber() const { return m_BarrierNumber; }
+
+        bool GetHasSample() const { return m_HasSample; }
+        void SetHasSample() { m_HasSample = true; }
+
+        bool GetHasDPAS() const { return m_HasDPAS; }
+        void SetHasDPAS() { m_HasDPAS = true; }
+
+        uint32_t getGRFSize() const { return Ctx.platform.getGRFSize(); }
+
+        // Shader has LSC store messages with cache controls specified in `ops`
+        void HasLscStoreCacheControls(const LSC_CACHE_OPTS& opts)
+        {
+            if (opts.l1 != LSC_CACHING_DEFAULT)
+            {
+                m_HasLscStoresWithNonDefaultL1CacheControls = true;
+            }
+        };
+        bool GetHasLscStoresWithNonDefaultL1CacheControls() const
+        {
+            return m_HasLscStoresWithNonDefaultL1CacheControls;
+        };
 
         /// Evaluate the Sampler Count field value.
         unsigned int GetSamplerCount(unsigned int samplerCount) const;
@@ -76,5 +107,11 @@ namespace IGC
         CodeGenContext& Ctx;
 
         CodeGenContext& GetContext() const { return Ctx; }
+    private:
+        bool m_HasSample = false;
+        int m_BarrierNumber = 0;
+        bool m_HasDPAS = false;
+        // Shader has LSC store messages with non-default L1 cache control
+        bool m_HasLscStoresWithNonDefaultL1CacheControls = false;
     };
 } //namespace IGC

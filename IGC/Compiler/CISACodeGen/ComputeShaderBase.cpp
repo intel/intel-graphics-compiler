@@ -23,10 +23,10 @@ using namespace llvm;
 
 namespace IGC
 {
-CComputeShaderBase::CComputeShaderBase(llvm::Function *pFunc,
-                                       CShaderProgram *pProgram)
-    : m_State(*pFunc, *pProgram->GetContext()),
-      CShader(pFunc, pProgram, m_State) {}
+    CComputeShaderBase::CComputeShaderBase(Function* pFunc,
+        CShaderProgram* pProgram,
+        GenericShaderState& GState)
+    : CShader(pFunc, pProgram, GState) {}
 
     CComputeShaderBase::~CComputeShaderBase() {}
 

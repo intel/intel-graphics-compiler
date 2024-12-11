@@ -35,7 +35,6 @@ CShader::CShader(Function *pFunc, CShaderProgram *pProgram, GenericShaderState &
     , entry(pFunc)
     , m_parent(pProgram)
     , encoder()
-    , m_BarrierNumber(0)
 {
     m_ctx = m_parent->GetContext();
     m_WI = nullptr;
@@ -53,7 +52,6 @@ CShader::CShader(Function *pFunc, CShaderProgram *pProgram, GenericShaderState &
     // set this to ture if there is any stateless access.
     m_HasGlobalStatelessMemoryAccess = false;
     m_HasConstantStatelessMemoryAccess = false;
-    m_HasDPAS = false;
 
     m_SavedSRetPtr = nullptr;
     m_FP = nullptr;
@@ -110,7 +108,7 @@ void CShader::InitEncoder(SIMDMode simdSize, bool canAbortOnSpill, ShaderDispatc
         m_SIMDSize = simdSize;
         m_numberInstance = 1;
     }
-    m_dispatchSize = simdSize;
+    m_State.m_dispatchSize = simdSize;
     globalSymbolMapping.clear();
     symbolMapping.clear();
     ccTupleMapping.clear();
@@ -138,7 +136,7 @@ void CShader::PreAnalysisPass()
                 const uint32_t GRFSize = getGRFSize();
                 IGC_ASSERT(0 < GRFSize);
 
-                m_ScratchSpaceSize = funcMDItr->second.privateMemoryPerWI * numLanes(m_dispatchSize);
+                m_ScratchSpaceSize = funcMDItr->second.privateMemoryPerWI * numLanes(m_State.m_dispatchSize);
                 m_ScratchSpaceSize = std::max(m_ScratchSpaceSize, m_ctx->getIntelScratchSpacePrivateMemoryMinimalSizePerThread());
 
                 // Round up to GRF-byte aligned.
@@ -1141,7 +1139,7 @@ CVariable* CShader::ImmToVariable(uint64_t immediate, VISA_Type type, bool isCod
         // src-variable is no longer a boolean, V-ISA cannot take boolean-src immed.
 
         CVariable* dst = GetNewVariable(
-            numLanes(m_dispatchSize), ISA_TYPE_BOOL, EALIGN_BYTE, CName::NONE);
+            numLanes(m_State.m_dispatchSize), ISA_TYPE_BOOL, EALIGN_BYTE, CName::NONE);
         // FIXME: We need to pop/push the encoder context
         //encoder.save();
         if (isCodePatchCandidate)
@@ -1550,7 +1548,7 @@ void CShader::GetSimdOffsetBase(CVariable*& pVar, bool dup)
     encoder.Cast(pVar, ImmToVariable(0x76543210, ISA_TYPE_V));
     encoder.Push();
 
-    if (m_dispatchSize >= SIMDMode::SIMD16)
+    if (m_State.m_dispatchSize >= SIMDMode::SIMD16)
     {
         encoder.SetSimdSize(SIMDMode::SIMD8);
         encoder.SetDstSubReg(8);
@@ -3043,7 +3041,7 @@ unsigned int CShader::EvaluateSIMDConstExpr(Value* C)
     {
         if (genInst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdSize)
         {
-            return numLanes(m_dispatchSize);
+            return numLanes(m_State.m_dispatchSize);
 
         }
     }
