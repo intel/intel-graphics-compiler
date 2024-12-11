@@ -1813,7 +1813,6 @@ bool allowDivergentControlFlowRayQueryCheckRelease() const
 
 bool allowProceedBasedApproachForRayQueryDynamicRayManagementMechanism() const
 {
-
     return IGC_IS_FLAG_DISABLED(DisableProceedBasedApproachForRayQueryDynamicRayManagementMechanism);
 }
 
