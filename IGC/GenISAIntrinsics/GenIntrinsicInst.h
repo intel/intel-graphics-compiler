@@ -1444,6 +1444,7 @@ public:
     void setGlobalBufferPointer(Value* V) { return setOperand(0, V); }
 
     Value* getPayload()             const { return getOperand(1); }
+    void setPayload(Value* V)             { return setOperand(1, V); }
 };
 
 class TraceRayAsyncIntrinsic : public TraceRayIntrinsic {
