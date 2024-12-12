@@ -221,7 +221,7 @@ namespace IGC
         size_t                          getAlignment()          const;
         bool                            isConstantBuf()         const;
         bool                            needsAllocation()       const;
-        const llvm::Argument* getArg()                const;
+        const llvm::Argument*           getArg()                const;
         unsigned int                    getAssociatedArgNo()    const;
         unsigned int                    getStructArgOffset()    const;
         unsigned int                    getLocationIndex()      const;
@@ -262,6 +262,10 @@ namespace IGC
         /// @return true is the given argument is an image, false otherwise
         static bool isImage(const llvm::Argument* arg, const llvm::StringRef typeStr, ArgType& imageArgType);
         static bool isSampler(const llvm::Argument* arg, const llvm::StringRef typeStr);
+
+        /// @brief  Checks whether the given argument is a sampler
+        /// @return true is argument type is PTR_LOCAL | PTR_GLOBAL | PTR_CONSTANT | PTR_DEVICE_QUEUE
+        bool isArgPtrType();
 
     private:
         /// @brief  Calculates the allocation size needed for the given explicit argument
@@ -329,7 +333,7 @@ namespace IGC
         /// @brief  Indicates whether the argument is used in calculating the constant buffer length
         bool                            m_isConstantBuf;
         /// @brief  The LLVM argument that represents this kernel argument
-        const llvm::Argument* m_arg;
+        const llvm::Argument*           m_arg;
         /// @brief  The argument number of the associated argument
         ///         For image dimension/BUFFER_OFFSET arguments this will return the argument number
         ///         of the assocaited image.

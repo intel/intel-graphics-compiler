@@ -686,6 +686,13 @@ bool KernelArg::isBindlessSampler(const Argument* arg, const StringRef typeStr)
     return (typeStr.equals("bindless_sampler_t"));
 }
 
+bool KernelArg::isArgPtrType()
+{
+    return m_argType == ArgType::PTR_LOCAL || m_argType == ArgType::PTR_GLOBAL
+        || m_argType == ArgType::PTR_CONSTANT || m_argType == ArgType::PTR_DEVICE_QUEUE;
+}
+
+
 iOpenCL::DATA_PARAMETER_TOKEN KernelArg::getDataParamToken() const
 {
     auto iter = argTypeTokenMap.find(m_argType);
