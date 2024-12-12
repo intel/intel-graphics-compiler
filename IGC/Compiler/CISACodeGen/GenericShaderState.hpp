@@ -107,6 +107,14 @@ namespace IGC
         CodeGenContext& Ctx;
 
         CodeGenContext& GetContext() const { return Ctx; }
+
+        bool shouldDisablePreemption(unsigned NumInst) const
+        {
+            return (Ctx.platform.supportDisableMidThreadPreemptionSwitch() &&
+                IGC_IS_FLAG_ENABLED(EnableDisableMidThreadPreemptionOpt) &&
+                (Ctx.m_instrTypes.numLoopInsts == 0) &&
+                (NumInst < IGC_GET_FLAG_VALUE(MidThreadPreemptionDisableThreshold)));
+        }
     private:
         bool m_HasSample = false;
         int m_BarrierNumber = 0;
