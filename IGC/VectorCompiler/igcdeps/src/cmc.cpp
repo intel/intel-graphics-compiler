@@ -827,6 +827,7 @@ static void setExecutionInfo(const GenXOCLRuntimeInfo::KernelInfo &BackendInfo,
   ExecEnv.HasBarriers = BackendInfo.getNumBarriers();
   ExecEnv.HasSample = BackendInfo.usesSample();
   ExecEnv.HasDPAS = BackendInfo.usesDPAS();
+  ExecEnv.DisableMidThreadPreemption = BackendInfo.disableMidThreadPreemption();
   ExecEnv.numThreads = BackendInfo.getNumThreads();
   ExecEnv.HasReadWriteImages = BackendInfo.usesReadWriteImages();
   ExecEnv.SubgroupIndependentForwardProgressRequired = true;

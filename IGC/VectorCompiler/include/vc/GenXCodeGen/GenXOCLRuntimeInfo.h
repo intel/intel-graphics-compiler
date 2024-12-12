@@ -179,6 +179,7 @@ public:
     bool UsesGroupId = false;
     bool UsesReadWriteImages = false;
     bool UsesSample = false;
+    bool DisableMidThreadPreemption = false;
 
     unsigned GRFSizeInBytes;
     unsigned NumBarriers = 0;
@@ -267,6 +268,10 @@ public:
     bool usesDPAS() const { return FuncInfo.UsesDPAS; }
     // igcmc always sets this to zero. Preserve this here.
     unsigned getNumThreads() const { return 0; }
+
+    bool disableMidThreadPreemption() const {
+      return FuncInfo.DisableMidThreadPreemption;
+    }
 
     unsigned getNumBarriers() const { return FuncInfo.NumBarriers; }
     bool usesSample() const { return FuncInfo.UsesSample; }

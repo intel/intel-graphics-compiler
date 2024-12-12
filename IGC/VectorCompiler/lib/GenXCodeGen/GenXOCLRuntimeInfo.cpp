@@ -324,6 +324,11 @@ GenXOCLRuntimeInfo::FunctionInfo::FunctionInfo(const FunctionGroup &FG,
     SLMSize = KernelMD.getSLMSize();
     IndirectCount = KernelMD.getIndirectCount();
 
+    if (Func->getParent()->getNamedMetadata(
+            FunctionMD::VCDisableMidThreadPreemption)) {
+      DisableMidThreadPreemption = true;
+    }
+
     if (ST.hasNBarrier())
       NumBarriers = KernelMD.getAlignedBarrierCnt(NumBarriers);
   } else {

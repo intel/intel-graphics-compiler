@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -14,28 +14,28 @@
 ; COM:  - Xe2-like concatination (CHECK-Xe2): Xe2
 
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | \
-; RUN: FileCheck %s --check-prefix=CHECK-PREDEF
+; RUN: FileCheck %s --check-prefixes=CHECK-PREDEF,CHECK
 
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=Gen11 -mtriple=spir64-unknown-unknown -S < %s | \
-; RUN: FileCheck %s --check-prefix=CHECK-PREDEF
+; RUN: FileCheck %s --check-prefixes=CHECK-PREDEF,CHECK
 
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeLP -mtriple=spir64-unknown-unknown -S < %s | \
-; RUN: FileCheck %s --check-prefix=CHECK-PREDEF
+; RUN: FileCheck %s --check-prefixes=CHECK-PREDEF,CHECK
 
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeHP -mtriple=spir64-unknown-unknown -S < %s | \
-; RUN: FileCheck %s --check-prefix=CHECK-XeHP
+; RUN: FileCheck %s --check-prefixes=CHECK-XeHP,CHECK
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeHPG -mtriple=spir64-unknown-unknown -S < %s | \
-; RUN: FileCheck %s --check-prefix=CHECK-XeHP
+; RUN: FileCheck %s --check-prefixes=CHECK-XeHP,CHECK
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeLPG -mtriple=spir64-unknown-unknown -S < %s | \
-; RUN: FileCheck %s --check-prefix=CHECK-XeHP
+; RUN: FileCheck %s --check-prefixes=CHECK-XeHP,CHECK
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeLPGPlus -mtriple=spir64-unknown-unknown -S < %s | \
-; RUN: FileCheck %s --check-prefix=CHECK-XeHP
+; RUN: FileCheck %s --check-prefixes=CHECK-XeHP,CHECK
 
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeHPC -mtriple=spir64-unknown-unknown -S < %s | \
-; RUN: FileCheck %s --check-prefix=CHECK-XeHPC
+; RUN: FileCheck %s --check-prefixes=CHECK-XeHPC,CHECK
 
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=Xe2 -mtriple=spir64-unknown-unknown -S < %s | \
-; RUN: FileCheck %s --check-prefix=CHECK-Xe2
+; RUN: FileCheck %s --check-prefixes=CHECK-Xe2,CHECK
 
 ; CHECK-PREDEF: [[RES:%[^ ]+]] = call i32 @llvm.genx.read.predef.reg.i32.i32(i32 12, i32 undef)
 ; CHECK-PREDEF: ret i32 [[RES]]
@@ -79,6 +79,8 @@
 ; CHECK-Xe2: [[OR2:%[^ ]+]] = or i32 [[ANDNOT2]], [[AND2]]
 ; CHECK-Xe2: [[RES:%[^ ]+]] = and i32 [[OR2]], 8191
 ; CHECK-Xe2: ret i32 [[RES]]
+
+; CHECK: !vc.disable.mid.thread.preemption = !{}
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 target triple = "genx64-unknown-unknown"

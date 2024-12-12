@@ -122,6 +122,7 @@ SPDX-License-Identifier: MIT
 
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/GlobalVariable.h"
+#include "vc/Utils/GenX/InternalMetadata.h"
 
 #include "Probe/Assertion.h"
 #include <algorithm>
@@ -4797,6 +4798,9 @@ bool GenXLowering::lowerHardwareThreadID(CallInst *CI) {
     auto *MaskC = ConstantInt::get(Ty, MaxThread - 1);
     Res = IRB.CreateAnd(Res, MaskC);
   }
+
+  CI->getModule()->getOrInsertNamedMetadata(
+      vc::FunctionMD::VCDisableMidThreadPreemption);
 
   CI->replaceAllUsesWith(Res);
   ToErase.push_back(CI);
