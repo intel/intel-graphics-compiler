@@ -1617,10 +1617,6 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
                         {
                             Src = Constant::getNullValue(Src->getType());
                         }
-                        else
-                        {
-                            continue;
-                        }
                     }
 
                     Value* dstRootV = m_deSSA ? m_deSSA->getRootValue(PN) : PN;
