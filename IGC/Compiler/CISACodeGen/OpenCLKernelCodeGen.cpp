@@ -2475,6 +2475,9 @@ namespace IGC
                     // Align on the desired alignment for this argument
                     auto alignment = arg.getAlignment();
 
+                    if (arg.isArgPtrType())
+                        alignment = m_Context->getModule()->getDataLayout().getPointerTypeSize(arg.getArg()->getType());
+
                     // FIXME: move alignment checks to implicit arg creation
                     if ((arg.getArgType() == KernelArg::ArgType::IMPLICIT_LOCAL_IDS ||
                          arg.getArgType() == KernelArg::ArgType::RT_STACK_ID) &&
