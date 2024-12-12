@@ -2987,6 +2987,15 @@ bool Augmentation::updateDstMaskForGatherRaw(G4_INST *inst,
   SFID funcID = msgDesc->getFuncId();
 
   switch (funcID) {
+  case SFID::RTHW:
+    // Mark RT send dst to be NonDefault, even when it doesn't have WriteEnable
+    if (kernel.getPlatform() >= Xe2) {
+      for (auto &elem : mask)
+        elem = NOMASK_BYTE;
+      return true;
+    }
+    break;
+
   case SFID::DP_DC1:
     switch (msgDesc->getHdcMessageType()) {
     case DC1_A64_SCATTERED_READ: // a64 scattered read: svm_gather
