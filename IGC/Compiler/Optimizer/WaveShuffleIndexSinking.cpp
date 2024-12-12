@@ -95,7 +95,7 @@ namespace IGC
                     }
 
                     // Update ShuffleGroup members
-                    HoistOrAnchorInstsIdx = NewHoistOrAnchorInstsIdx;
+                    HoistOrAnchorInstsIdx = std::move(NewHoistOrAnchorInstsIdx);
                     InstChains.push_back( InstChainA );
                     InstChains.push_back( InstChainB );
                     ShuffleOps.push_back( shuffleInst );
@@ -123,7 +123,7 @@ namespace IGC
                     }
 
                     // Update ShuffleGroup members
-                    HoistOrAnchorInstsIdx = NewHoistOrAnchorInstsIdx; // this should be the same size as NewInstChain
+                    HoistOrAnchorInstsIdx = std::move(NewHoistOrAnchorInstsIdx); // this should be the same size as NewInstChain
                     InstChains.push_back( NewInstChain );
                     ShuffleOps.push_back( shuffleInst );
                     return true;
