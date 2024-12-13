@@ -202,7 +202,7 @@ inline unsigned getArgOperandNo(llvm::CallInst &CI, const llvm::Use *U) {
 // calls through CB.getCalledFunction() would leave indirect calls unhandled.
 inline void setMemoryEffects(llvm::CallBase &CB, IGCLLVM::MemoryEffects ME) {
   CB.removeFnAttrs(ME.getOverridenAttrKinds());
-  for (const auto& MemAttr : ME.getAsAttributeSet(CB.getContext()))
+  for (auto MemAttr : ME.getAsAttributeSet(CB.getContext()))
     CB.addFnAttr(MemAttr);
 }
 

@@ -399,7 +399,7 @@ public:
     SIMDMode m_SIMDSize{};
     uint8_t m_numberInstance = 0;
     PushInfo pushInfo;
-    EmitPass* m_EmitPass = nullptr;
+    EmitPass* m_EmitPass;
     uint m_sendStallCycle = 0;
     uint m_staticCycle = 0;
     uint m_loopNestedStallCycle = 0;
@@ -648,19 +648,19 @@ private:
         e_alignment preferredAlign);
 
 protected:
-    CShaderProgram* m_parent = nullptr;
-    CodeGenContext* m_ctx = nullptr;
-    WIAnalysis* m_WI = nullptr;
-    DeSSA* m_deSSA = nullptr;
-    CoalescingEngine* m_coalescingEngine = nullptr;
-    CodeGenPatternMatch* m_CG = nullptr;
-    llvm::DominatorTree* m_DT = nullptr;
-    const llvm::DataLayout* m_DL = nullptr;
-    GenXFunctionGroupAnalysis* m_FGA = nullptr;
-    VariableReuseAnalysis* m_VRA = nullptr;
-    ResourceLoopAnalysis* m_RLA = nullptr;
+    CShaderProgram* m_parent;
+    CodeGenContext* m_ctx;
+    WIAnalysis* m_WI;
+    DeSSA* m_deSSA;
+    CoalescingEngine* m_coalescingEngine;
+    CodeGenPatternMatch* m_CG;
+    llvm::DominatorTree* m_DT;
+    const llvm::DataLayout* m_DL;
+    GenXFunctionGroupAnalysis* m_FGA;
+    VariableReuseAnalysis* m_VRA;
+    ResourceLoopAnalysis* m_RLA;
 
-    IGC::IGCMD::MetaDataUtils* m_pMdUtils = nullptr;
+    IGC::IGCMD::MetaDataUtils* m_pMdUtils;
 
 #if defined(_DEBUG) || defined(_INTERNAL)
     llvm::SpecificBumpPtrAllocator<CVariable> Allocator;
@@ -698,26 +698,26 @@ protected:
 
     uint m_maxBlockId = 0;
 
-    CVariable* m_R0 = nullptr;
-    CVariable* m_NULL = nullptr;
-    CVariable* m_TSC = nullptr;
-    CVariable* m_SR0 = nullptr;
-    CVariable* m_CR0 = nullptr;
-    CVariable* m_CE0 = nullptr;
-    CVariable* m_MSG0 = nullptr;
-    CVariable* m_DBG = nullptr;
-    CVariable* m_HW_TID = nullptr;
-    CVariable* m_SP = nullptr;
-    CVariable* m_FP = nullptr;
-    CVariable* m_SavedFP = nullptr;
-    CVariable* m_ARGV = nullptr;
+    CVariable* m_R0;
+    CVariable* m_NULL;
+    CVariable* m_TSC;
+    CVariable* m_SR0;
+    CVariable* m_CR0;
+    CVariable* m_CE0;
+    CVariable* m_MSG0;
+    CVariable* m_DBG;
+    CVariable* m_HW_TID;
+    CVariable* m_SP;
+    CVariable* m_FP;
+    CVariable* m_SavedFP;
+    CVariable* m_ARGV;
     std::array<CVariable*, NUM_ARG_SPACE_RESERVATION_SLOTS> m_ARGVReservedVariables{};
     uint32_t m_ARGVReservedVariablesTotalSize = 0;
-    CVariable* m_RETV = nullptr;
-    CVariable* m_SavedSRetPtr = nullptr;
-    CVariable* m_ImplArgBufPtr = nullptr;
-    CVariable* m_LocalIdBufPtr = nullptr;
-    CVariable* m_GlobalBufferArg = nullptr;
+    CVariable* m_RETV;
+    CVariable* m_SavedSRetPtr;
+    CVariable* m_ImplArgBufPtr;
+    CVariable* m_LocalIdBufPtr;
+    CVariable* m_GlobalBufferArg;
 
     /// holds max number of inputs that can be pushed for this shader unit
     static const uint32_t m_pMaxNumOfPushedInputs;
@@ -731,11 +731,8 @@ protected:
     // Those two are for stateful token setup. It is a quick
     // special case checking. Once a generic approach is added,
     // this two fields shall be retired.
-    //
-    // [OCL] preAnalysis()/ParseShaderSpecificOpcode() must
-    // set this to true if there is any stateless access.
-    bool m_HasGlobalStatelessMemoryAccess = false;
-    bool m_HasConstantStatelessMemoryAccess = false;
+    bool m_HasGlobalStatelessMemoryAccess;
+    bool m_HasConstantStatelessMemoryAccess;
 
     bool m_HasGlobalAtomics = false;
 

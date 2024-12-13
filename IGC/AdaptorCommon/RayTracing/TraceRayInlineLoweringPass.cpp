@@ -34,7 +34,7 @@ using namespace RTStackFormat;
 //Lowering pass for Synchronous raytracing intrinsics known as TraceRayInline/RayQuery
 class TraceRayInlineLoweringPass : public FunctionPass
 {
-    LoopInfo* LI = nullptr;
+    LoopInfo* LI;
 public:
     TraceRayInlineLoweringPass() : FunctionPass(ID) {
         initializeTraceRayInlineLoweringPassPass(*PassRegistry::getPassRegistry());

@@ -152,6 +152,12 @@ bool ResourceLoopUnroll::emitResourceLoop(llvm::CallInst* CI)
 
             GetResourceOperand(inst, resource, pairTexture, texture, sampler);
 
+            // either resource (ld instr), or sample instr must be available
+            if (!resource && (!pairTexture || !texture || !sampler))
+            {
+                IGC_ASSERT(0);
+            }
+
             // Fill UniformSendBB
             builder.SetInsertPoint(checkBB);
 
@@ -164,7 +170,7 @@ bool ResourceLoopUnroll::emitResourceLoop(llvm::CallInst* CI)
                 resourceNew->setName("firstActiveRes");
                 cond = builder.CreateICmpEQ(resource, resourceNew);
             }
-            else if (pairTexture && texture && sampler) // then must be sampler
+            else // then must be sampler
             {
                 samplerNew = sampler;
                 textureNew = texture;
@@ -217,10 +223,6 @@ bool ResourceLoopUnroll::emitResourceLoop(llvm::CallInst* CI)
                 {
                     cond = samplerCond;
                 }
-            }
-            else
-            {
-                IGC_ASSERT(0);
             }
 
             // Here we swap the last loop load and goto, such as
