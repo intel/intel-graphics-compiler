@@ -2538,8 +2538,9 @@ bool SynchronizationObjectCoalescing::IsUrbWriteOperation(const llvm::Instructio
     return false;
 }
 
-////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescing::IsBufferReadOperation(const llvm::Instruction* pInst)
+////////////////////////////////////////////////////////////////////////////////
+inline llvm::Type* GetReadOperationPointerType(
+    const llvm::Instruction* pInst)
 {
     if (llvm::isa<llvm::GenIntrinsicInst>(pInst))
     {
@@ -2549,21 +2550,27 @@ bool SynchronizationObjectCoalescing::IsBufferReadOperation(const llvm::Instruct
         {
         case llvm::GenISAIntrinsic::GenISA_ldraw_indexed:
         case llvm::GenISAIntrinsic::GenISA_ldrawvector_indexed:
-            return IsGlobalResource(pGenIntrinsicInst->getOperand(0)->getType());
+        case llvm::GenISAIntrinsic::GenISA_simdBlockRead:
+        case llvm::GenISAIntrinsic::GenISA_simdBlockReadBindless:
+        case llvm::GenISAIntrinsic::GenISA_LSCLoad:
+        case llvm::GenISAIntrinsic::GenISA_LSCLoadWithSideEffects:
+        case llvm::GenISAIntrinsic::GenISA_LSCLoadBlock:
+        case llvm::GenISAIntrinsic::GenISA_LSCLoadCmask:
+            return pGenIntrinsicInst->getOperand(0)->getType();
         default:
             break;
         }
     }
     else if (llvm::isa<llvm::LoadInst>(pInst))
     {
-        return IsGlobalResource(llvm::cast<llvm::LoadInst>(pInst)->getPointerOperandType());
+        return llvm::cast<llvm::LoadInst>(pInst)->getPointerOperandType();
     }
-
-    return false;
+    return nullptr;
 }
 
-////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescing::IsBufferWriteOperation(const llvm::Instruction* pInst)
+////////////////////////////////////////////////////////////////////////////////
+inline llvm::Type* GetWriteOperationPointerType(
+    const llvm::Instruction* pInst)
 {
     if (llvm::isa<llvm::GenIntrinsicInst>(pInst))
     {
@@ -2573,38 +2580,61 @@ bool SynchronizationObjectCoalescing::IsBufferWriteOperation(const llvm::Instruc
         {
         case llvm::GenISAIntrinsic::GenISA_storeraw_indexed:
         case llvm::GenISAIntrinsic::GenISA_storerawvector_indexed:
-            return IsGlobalResource(pGenIntrinsicInst->getOperand(0)->getType());
+        case llvm::GenISAIntrinsic::GenISA_simdBlockWrite:
+        case llvm::GenISAIntrinsic::GenISA_simdBlockWriteBindless:
+        case llvm::GenISAIntrinsic::GenISA_LSCStore:
+        case llvm::GenISAIntrinsic::GenISA_LSCStoreBlock:
+        case llvm::GenISAIntrinsic::GenISA_LSCStoreCmask:
+            return pGenIntrinsicInst->getOperand(0)->getType();
         default:
             break;
         }
     }
     else if (llvm::isa<llvm::StoreInst>(pInst))
     {
-        return IsGlobalResource(llvm::cast<llvm::StoreInst>(pInst)->getPointerOperandType());
+        return llvm::cast<llvm::StoreInst>(pInst)->getPointerOperandType();
     }
 
+    return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////
+bool SynchronizationObjectCoalescing::IsBufferReadOperation(const llvm::Instruction* pInst)
+{
+    if (llvm::Type* pPtrType = GetReadOperationPointerType(pInst))
+    {
+        return IsGlobalResource(pPtrType);
+    }
+    return false;
+}
+
+////////////////////////////////////////////////////////////////////////
+bool SynchronizationObjectCoalescing::IsBufferWriteOperation(const llvm::Instruction* pInst)
+{
+    if (llvm::Type* pPtrType = GetWriteOperationPointerType(pInst))
+    {
+        return IsGlobalResource(pPtrType);
+    }
     return false;
 }
 
 ////////////////////////////////////////////////////////////////////////
 bool SynchronizationObjectCoalescing::IsSharedMemoryReadOperation(const llvm::Instruction* pInst)
 {
-    if (llvm::isa<llvm::LoadInst>(pInst))
+    if (llvm::Type* pPtrType = GetReadOperationPointerType(pInst))
     {
-        return IsSharedMemoryResource(llvm::cast<llvm::LoadInst>(pInst)->getPointerOperandType());
+        return IsSharedMemoryResource(pPtrType);
     }
-
     return false;
 }
 
 ////////////////////////////////////////////////////////////////////////
 bool SynchronizationObjectCoalescing::IsSharedMemoryWriteOperation(const llvm::Instruction* pInst)
 {
-    if (llvm::isa<llvm::StoreInst>(pInst))
+    if (llvm::Type* pPtrType = GetWriteOperationPointerType(pInst))
     {
-        return IsSharedMemoryResource(llvm::cast<llvm::StoreInst>(pInst)->getPointerOperandType());
+        return IsSharedMemoryResource(pPtrType);
     }
-
     return false;
 }
 
