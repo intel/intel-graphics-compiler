@@ -66,4 +66,5 @@ add_custom_target(VCBiFPreparation
 add_library(VCEmbeddedBiF OBJECT
   ${PRINTF_OCL_32} ${PRINTF_OCL_64} ${PRINTF_ZE_32} ${PRINTF_ZE_64}
   ${BUILTINS} ${SPIRV_BUILTINS})
+add_dependencies(VCEmbeddedBiF VCBiFPreparation)
 target_link_libraries(VCEmbeddedBiF VCHeaders)

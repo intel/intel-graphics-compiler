@@ -97,29 +97,34 @@ function(vc_build_bif TARGET RES_FILE CMCL_SRC_PATH BIF_NAME PTR_BIT_SIZE)
       COMMAND clang-tool -cc1 ${CMCL_INCLUDES} ${VC_INCLUDES}
                ${EXTRA_CLANG_INCLUDES} ${SPECIAL_CLANG_ARG} ${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_CLANG} ${EXTRA_CLANG_FLAGS}
                -x cl -cl-std=clc++ -triple=${SPIR_TARGET}
-               -O2 -disable-llvm-passes -discard-value-names -emit-llvm-bc -o "${BIF_CLANG_BC_NAME}" ${CMCL_SRC}
+               -O2 -disable-llvm-passes -discard-value-names -emit-llvm-bc -o "${BIF_CLANG_BC_PATH}" ${CMCL_SRC}
       COMMENT "vc_build_bif: Compiling CMCL source ${CMCL_SRC} to BC ${BIF_CLANG_BC_NAME}"
       DEPENDS clang-tool "${CMCL_SRC}" ${EXTRA_DEPENDS}
       COMMAND_EXPAND_LISTS)
-      list(APPEND BC_PATH_LIST ${BIF_CLANG_BC_PATH})
+    list(APPEND BC_PATH_LIST ${BIF_CLANG_BC_PATH})
   endforeach()
-
+  
+  set(OPT_BC_DEPENDS ${BC_PATH_LIST})
   if (LENGTH_CMCL_SRC_PATH GREATER 1)
     add_custom_command(OUTPUT ${BIF_CLANG_BC_PATH_FINAL}
-      COMMAND ${LLVM_LINK_EXE} ${OPT_OPAQUE_ARG} ${BC_PATH_LIST} -o ${BIF_CLANG_BC_NAME_FINAL}
+      COMMAND ${LLVM_LINK_EXE} ${OPT_OPAQUE_ARG} ${BC_PATH_LIST} -o ${BIF_CLANG_BC_PATH_FINAL}
       COMMENT "vc_build_bif: Link ${BC_PATH_LIST}  together to BC ${BIF_CLANG_BC_NAME_FINAL}"
       DEPENDS ${LLVM_LINK_EXE} ${BC_PATH_LIST}
       COMMAND_EXPAND_LISTS)
+    set(OPT_BC_DEPENDS ${BIF_CLANG_BC_PATH_FINAL})
   endif()
+  
+  add_custom_command(
+    OUTPUT ${BIF_OPT_BC_PATH}
+    COMMENT "vc_build_bif: Translating CMCL builtins:  ${BIF_CLANG_BC_NAME_FINAL} -> ${BIF_OPT_BC_NAME}"
+    COMMAND CMCLTranslatorTool ${OPT_OPAQUE_ARG} -o ${BIF_CMCL_BC_PATH} ${BIF_CLANG_BC_PATH_FINAL}
+    COMMAND ${LLVM_OPT_EXE} ${OPT_OPAQUE_ARG} --O2 -o ${BIF_OPT_BC_PATH} ${BIF_CMCL_BC_PATH}
+    DEPENDS CMCLTranslatorTool ${LLVM_OPT_EXE} ${OPT_BC_DEPENDS})
 
   add_custom_target(${TARGET}
-    COMMENT "vc_build_bif: Translating CMCL builtins:  ${BIF_CLANG_BC_NAME_FINAL} -> ${BIF_OPT_BC_NAME}"
-    COMMAND CMCLTranslatorTool ${OPT_OPAQUE_ARG} -o ${BIF_CMCL_BC_NAME} ${BIF_CLANG_BC_NAME_FINAL}
-    COMMAND ${LLVM_OPT_EXE} ${OPT_OPAQUE_ARG} --O2 -o ${BIF_OPT_BC_NAME} ${BIF_CMCL_BC_NAME}
-    DEPENDS CMCLTranslatorTool ${LLVM_OPT_EXE} ${BIF_CLANG_BC_PATH_FINAL}
-    BYPRODUCTS ${BIF_OPT_BC_PATH}
+    DEPENDS ${BIF_OPT_BC_PATH}
     SOURCES ${CMCL_SRC_PATH})
-  set(${RES_FILE} ${BIF_OPT_BC_NAME} PARENT_SCOPE)
+  set(${RES_FILE} ${BIF_OPT_BC_PATH} PARENT_SCOPE)
 endfunction()
 
 # Takes binary data as an input (LLVM bitcode is expected) and converts input
@@ -130,20 +135,23 @@ endfunction()
 #   The name for the variable is: {BIF_NAME, PTR_BIT_SIZE, "RawData_size" }.
 # Args:
 #   RES_FILE - variable name to put generated file path into.
-#   BIF_OPT_BC_NAME  - path to the binary data that needs to be embedded.
+#   BIF_OPT_BC_PATH  - path to the binary data that needs to be embedded.
 #   MANGLED_BIF_NAME - the desired name for the embeddable source file.
 # Path to resulting CPP source code is stored in the specified cmake variable.
-function(vc_generate_embeddable_source TARGET RES_FILE BIF_OPT_BC_NAME MANGLED_BIF_NAME)
+function(vc_generate_embeddable_source TARGET RES_FILE BIF_OPT_BC_PATH MANGLED_BIF_NAME)
   set(BIF_CPP_NAME ${MANGLED_BIF_NAME}.cpp)
   set(BIF_CPP_PATH ${CMAKE_CURRENT_BINARY_DIR}/${BIF_CPP_NAME})
-  set(BIF_OPT_BC_PATH ${CMAKE_CURRENT_BINARY_DIR}/${BIF_OPT_BC_NAME})
+  file(RELATIVE_PATH BIF_OPT_BC_NAME ${CMAKE_CURRENT_BINARY_DIR} ${BIF_OPT_BC_PATH})
   set(BIF_SYMBOL ${MANGLED_BIF_NAME}RawData)
 
-  add_custom_target(${TARGET}
+  add_custom_command(
+    OUTPUT ${BIF_CPP_PATH}
     COMMENT "vc_generate_embeddable_source: encoding LLVM IR as C array data: ${BIF_OPT_BC_NAME} -> ${BIF_CPP_NAME}"
-    COMMAND ${PYTHON_EXECUTABLE} ${RESOURCE_EMBEDDER_SCRIPT} ${BIF_OPT_BC_NAME} ${BIF_CPP_NAME} ${BIF_SYMBOL} no_attr
-    DEPENDS ${PYTHON_EXECUTABLE} ${RESOURCE_EMBEDDER_SCRIPT} ${BIF_OPT_BC_PATH}
-    BYPRODUCTS ${BIF_CPP_PATH})
+    COMMAND ${PYTHON_EXECUTABLE} ${RESOURCE_EMBEDDER_SCRIPT} ${BIF_OPT_BC_PATH} ${BIF_CPP_PATH} ${BIF_SYMBOL} no_attr
+    DEPENDS ${PYTHON_EXECUTABLE} ${RESOURCE_EMBEDDER_SCRIPT} ${BIF_OPT_BC_PATH})
+
+  add_custom_target(${TARGET}
+    DEPENDS ${BIF_CPP_PATH})
   set(${RES_FILE} ${BIF_CPP_PATH} PARENT_SCOPE)
 endfunction()
 
@@ -162,13 +170,12 @@ endfunction()
 #    done by VCB tool that is invoked with "-BiFUnique" argument.
 # Args:
 #   RES_FILE - variable name to put generated file path into.
-#   BIF_OPT_BC_NAME  - path to generic library (in a form of bitcode).
+#   BIF_OPT_BC_PATH  - path to generic library (in a form of bitcode).
 #   MANGLED_BIF_NAME - the desired name for the generated source file.
 # Path to resulting CPP source code is stored in the specified cmake variable.
-function(vc_generate_optimized_bif TARGET RES_FILE BIF_OPT_BC_NAME MANGLED_BIF_NAME)
+function(vc_generate_optimized_bif TARGET RES_FILE BIF_OPT_BC_PATH MANGLED_BIF_NAME)
   set(BIF_CPP_NAME ${MANGLED_BIF_NAME}.cpp)
   set(BIF_CPP_PATH ${CMAKE_CURRENT_BINARY_DIR}/${BIF_CPP_NAME})
-  set(BIF_OPT_BC_PATH ${CMAKE_CURRENT_BINARY_DIR}/${BIF_OPT_BC_NAME})
   set(BIF_SYMBOL ${MANGLED_BIF_NAME}RawData)
   set(BIF_CONF_NAME "${MANGLED_BIF_NAME}.conf")
   set(BIF_CONF_PATH  ${CMAKE_CURRENT_BINARY_DIR}/${BIF_CONF_NAME})
@@ -178,21 +185,25 @@ function(vc_generate_optimized_bif TARGET RES_FILE BIF_OPT_BC_NAME MANGLED_BIF_N
   foreach(PLTF IN LISTS SUPPORTED_VC_PLATFORMS)
     set(PLTF_BC_NAME "${MANGLED_BIF_NAME}_${PLTF}.vccg.bc")
     set(PLTF_BC_PATH ${CMAKE_CURRENT_BINARY_DIR}/${PLTF_BC_NAME})
-    add_custom_target("${TARGET}-${PLTF}-BC"
+    add_custom_command(
+      OUTPUT ${PLTF_BC_PATH}
       COMMENT "vc_generate_optimized_bif: compile optimized BiF for ${PLTF}"
-      COMMAND ${VCB_EXE} ${OPT_OPAQUE_ARG} -o ${PLTF_BC_NAME} -cpu ${PLTF} ${BIF_OPT_BC_NAME}
-      DEPENDS ${VCB_EXE} ${BIF_OPT_BC_PATH}
-      BYPRODUCTS ${PLTF_BC_NAME})
+      COMMAND ${VCB_EXE} ${OPT_OPAQUE_ARG} -o ${PLTF_BC_PATH} -cpu ${PLTF} ${BIF_OPT_BC_PATH}
+      DEPENDS ${VCB_EXE} ${BIF_OPT_BC_PATH})
+    add_custom_target("${TARGET}-${PLTF}-BC"
+        DEPENDS ${PLTF_BC_PATH})
     list(APPEND PLTF_BC_PATH_LIST ${PLTF_BC_PATH})
   endforeach()
 
   configure_file("${CMAKE_CURRENT_SOURCE_DIR}/builtins.conf.in"
       "${BIF_CONF_PATH}" @ONLY)
-  add_custom_target(${TARGET}
+  add_custom_command(
+      OUTPUT ${BIF_CPP_PATH}
       COMMENT "vc_generate_optimized_bif: create hashed version of optimized functions"
-      COMMAND ${VCB_EXE} -BiFUnique -symb ${BIF_SYMBOL} -o ${BIF_CPP_NAME} ${BIF_CONF_NAME}
-      DEPENDS ${VCB_EXE} ${BIF_CONF_PATH} ${PLTF_BC_PATH_LIST}
-      BYPRODUCTS ${BIF_CPP_PATH})
+      COMMAND ${VCB_EXE} -BiFUnique -symb ${BIF_SYMBOL} -o ${BIF_CPP_PATH} ${BIF_CONF_PATH}
+      DEPENDS ${VCB_EXE} ${BIF_CONF_PATH} ${PLTF_BC_PATH_LIST})
+  add_custom_target(${TARGET}
+      DEPENDS ${BIF_CPP_PATH})
   set(${RES_FILE} ${BIF_CPP_PATH} PARENT_SCOPE)
 endfunction()
 
