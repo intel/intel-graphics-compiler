@@ -9,7 +9,9 @@
 ; COM: This test verifies that spirv.ExecutionMode metadata is not corrupted
 ; COM: somewhere in VC pipeline.
 
-; RUN: llc %s -march=genx64 -mcpu=Xe2 -vc-skip-ocl-runtime-info -finalizer-opts='-dumpvisa -dumpcommonisa -isaasmToConsole' -o /dev/null | \
+; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=Xe2 -vc-skip-ocl-runtime-info -finalizer-opts='-dumpvisa -dumpcommonisa -isaasmToConsole' -o /dev/null | \
+; RUN: FileCheck %s
+; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=Xe2 -vc-skip-ocl-runtime-info -finalizer-opts='-dumpvisa -dumpcommonisa -isaasmToConsole' -o /dev/null | \
 ; RUN: FileCheck %s
 
 ; CHECK: .kernel_attr NumGRF=256

@@ -1,13 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
 ; COM: the test just checks that this IR can be compiled successfully
-; RUN: llc %s -march=genx64 -mcpu=Gen9 -mattr=+ocl_runtime -o /dev/null
+; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=Gen9 -mattr=+ocl_runtime -o /dev/null
+; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=Gen9 -mattr=+ocl_runtime -o /dev/null
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
 target triple = "genx64-unknown-unknown"

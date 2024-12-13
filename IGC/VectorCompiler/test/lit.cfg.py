@@ -78,6 +78,9 @@ else:
   opt_tool_new_pm = ToolSubst('%opt_llvm-16', extra_args=vc_extra_args+['not supported test'], command='true ||')
 opt_tool_opaque_ptrs = ToolSubst('%opt_opaque_ptrs', extra_args=vc_extra_args+['-opaque-pointers=1'], command=FindTool('opt'))
 
+llc_tool_typed_ptrs = ToolSubst('%llc_typed_ptrs', extra_args=vc_extra_args+['-opaque-pointers=0'], command=FindTool('llc'))
+llc_tool_opaque_ptrs = ToolSubst('%llc_opaque_ptrs', extra_args=vc_extra_args+['-opaque-pointers=1'], command=FindTool('llc'))
+
 tools = [ToolSubst('not'),
          opt_tool,
          opt_tool_typed_ptrs,
@@ -85,6 +88,8 @@ tools = [ToolSubst('not'),
          opt_tool_old_pm,
          opt_tool_new_pm,
          ToolSubst('llc', extra_args=vc_extra_args),
+         llc_tool_typed_ptrs,
+         llc_tool_opaque_ptrs,
          ToolSubst('oneapi-readelf', unresolved='ignore'),
          ToolSubst('llvm-dwarfdump'),
          ToolSubst('%igc-lld', command=FindTool('ld.lld'))]

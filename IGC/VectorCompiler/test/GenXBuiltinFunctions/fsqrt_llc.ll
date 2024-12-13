@@ -6,7 +6,9 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: llc %s -march=genx64 -mcpu=XeLPG -vc-builtins-bif-path=%VC_BUILTINS_BIF_XeLPG% \
+; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=XeLPG -vc-builtins-bif-path=%VC_BUILTINS_BIF_XeLPG% \
+; RUN: -vc-skip-ocl-runtime-info -finalizer-opts='-asmToConsole' -o /dev/null | FileCheck %s
+; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=XeLPG -vc-builtins-bif-path=%VC_BUILTINS_BIF_XeLPG% \
 ; RUN: -vc-skip-ocl-runtime-info -finalizer-opts='-asmToConsole' -o /dev/null | FileCheck %s
 
 ; CHECK-NOT: ERROR

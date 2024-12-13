@@ -6,7 +6,9 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: llc %s -march=genx64 -mcpu=XeHPG -vc-skip-ocl-runtime-info \
+; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=XeHPG -vc-skip-ocl-runtime-info \
+; RUN: -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null | FileCheck %s
+; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=XeHPG -vc-skip-ocl-runtime-info \
 ; RUN: -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null | FileCheck %s
 
 ; CHECK-NOT: (P{{[0-9]+}}) add (M1, 8) [[OUT:V[0-9]+]](0,0)<1> [[OUT]](0,0)<1;1,0> V{{[0-9]+}}(0,0)<1;1,0>

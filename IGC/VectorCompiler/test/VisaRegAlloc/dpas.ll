@@ -6,7 +6,9 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: llc %s -march=genx64 -mcpu=XeHPC -vc-skip-ocl-runtime-info \
+; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=XeHPC -vc-skip-ocl-runtime-info \
+; RUN: -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null | FileCheck %s
+; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=XeHPC -vc-skip-ocl-runtime-info \
 ; RUN: -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null | FileCheck %s
 
 ; CHECK: .decl [[DATA:V[0-9]+]] v_type=G type=f num_elts=128 align=GRF

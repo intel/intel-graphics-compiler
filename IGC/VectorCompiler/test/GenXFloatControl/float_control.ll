@@ -10,7 +10,10 @@
 ; RUN: -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 ; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXFloatControl -march=genx64 -mcpu=XeHPG \
 ; RUN: -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
-; RUN: llc %s -march=genx64 -mcpu=XeHPG -vc-skip-ocl-runtime-info \
+; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=XeHPG -vc-skip-ocl-runtime-info \
+; RUN: -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null | \
+; RUN: FileCheck %s --check-prefix=CHECK-VISA
+; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=XeHPG -vc-skip-ocl-runtime-info \
 ; RUN: -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null | \
 ; RUN: FileCheck %s --check-prefix=CHECK-VISA
 

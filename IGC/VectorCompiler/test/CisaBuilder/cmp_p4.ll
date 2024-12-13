@@ -9,7 +9,9 @@
 
 ; COM: ;;;;;;;;;; RUNNERS ;;;;;;;;;;
 
-; RUN: llc %s -march=genx64 -mcpu=Gen11 -vc-skip-ocl-runtime-info -finalizer-opts='-dumpvisa -dumpcommonisa -isaasmToConsole' -o /dev/null | \
+; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=Gen11 -vc-skip-ocl-runtime-info -finalizer-opts='-dumpvisa -dumpcommonisa -isaasmToConsole' -o /dev/null | \
+; RUN: FileCheck %s
+; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=Gen11 -vc-skip-ocl-runtime-info -finalizer-opts='-dumpvisa -dumpcommonisa -isaasmToConsole' -o /dev/null | \
 ; RUN: FileCheck %s
 
 ; COM: ;;;;;;;;;; CHECKERS ;;;;;;;;;;

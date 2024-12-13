@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2023 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -8,7 +8,11 @@
 
 ; COM: Test that regalloc dump does not crash with unified return.
 
-; RUN: llc %s -march=genx64 -mcpu=Gen9 \
+; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=Gen9 \
+; RUN: -vc-fg-dump-prefix=%basename_t_ -genx-dump-regalloc \
+; RUN: -vc-skip-ocl-runtime-info \
+; RUN: -o /dev/null
+; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=Gen9 \
 ; RUN: -vc-fg-dump-prefix=%basename_t_ -genx-dump-regalloc \
 ; RUN: -vc-skip-ocl-runtime-info \
 ; RUN: -o /dev/null

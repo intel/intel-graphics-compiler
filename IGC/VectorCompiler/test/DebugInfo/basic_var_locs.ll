@@ -13,7 +13,11 @@
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 target triple = "genx64-unknown-unknown"
 
-; RUN: llc %s -march=genx64 -mcpu=Gen9 \
+; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=Gen9 \
+; RUN: -vc-skip-ocl-runtime-info \
+; RUN: -vc-enable-dbginfo-dumps -vc-dbginfo-dumps-name-override=%basename_t \
+; RUN: -finalizer-opts='-generateDebugInfo' -o /dev/null
+; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=Gen9 \
 ; RUN: -vc-skip-ocl-runtime-info \
 ; RUN: -vc-enable-dbginfo-dumps -vc-dbginfo-dumps-name-override=%basename_t \
 ; RUN: -finalizer-opts='-generateDebugInfo' -o /dev/null

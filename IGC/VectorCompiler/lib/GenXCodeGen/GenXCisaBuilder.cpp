@@ -5684,7 +5684,10 @@ static void dumpGlobalAnnotations(Module &M) {
     auto *Struct = dyn_cast<ConstantStruct>(Op.get());
     if (!Struct)
       continue;
-    auto *Func = dyn_cast<Function>(Struct->getOperand(0)->getOperand(0));
+    Value *FuncPtr = Struct->getOperand(0);
+    if (auto *Bitcast = dyn_cast<BitCastOperator>(FuncPtr))
+      FuncPtr = Bitcast->getOperand(0);
+    auto *Func = dyn_cast<Function>(FuncPtr);
     if (!Func)
       continue;
     auto FuncName = Func->getName();

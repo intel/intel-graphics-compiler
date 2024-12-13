@@ -1,12 +1,15 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: llc %s -march=genx64 -mcpu=Gen9 -mattr=+ocl_runtime \
+; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=Gen9 -mattr=+ocl_runtime \
+; RUN: -vc-enable-dbginfo-dumps -vc-dbginfo-dumps-name-override=%basename_t \
+; RUN: -finalizer-opts='-generateDebugInfo' -o /dev/null
+; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=Gen9 -mattr=+ocl_runtime \
 ; RUN: -vc-enable-dbginfo-dumps -vc-dbginfo-dumps-name-override=%basename_t \
 ; RUN: -finalizer-opts='-generateDebugInfo' -o /dev/null
 

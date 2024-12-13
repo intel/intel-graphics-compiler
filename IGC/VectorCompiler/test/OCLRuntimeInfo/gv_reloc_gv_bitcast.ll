@@ -1,12 +1,14 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: llc %s -march=genx64 -mcpu=Gen9 -mattr=+ocl_runtime -vc-analyze=GenXOCLRuntimeInfo \
+; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=Gen9 -mattr=+ocl_runtime -vc-analyze=GenXOCLRuntimeInfo \
+; RUN: -vc-choose-pass-manager-override=false -o /dev/null 2>&1 | FileCheck %s
+; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=Gen9 -mattr=+ocl_runtime -vc-analyze=GenXOCLRuntimeInfo \
 ; RUN: -vc-choose-pass-manager-override=false -o /dev/null 2>&1 | FileCheck %s
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"

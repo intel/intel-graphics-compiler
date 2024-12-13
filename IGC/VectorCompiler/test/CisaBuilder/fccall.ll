@@ -6,7 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: llc %s -march=genx64 -mcpu=XeHPG -vc-skip-ocl-runtime-info -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null | FileCheck %s
+; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=XeHPG -vc-skip-ocl-runtime-info -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null | FileCheck %s
+; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=XeHPG -vc-skip-ocl-runtime-info -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null | FileCheck %s
 
 ; Function Attrs: nounwind
 declare !spirv.ParameterDecorations !17 spir_func void @AlphaSrcBlendG(<12 x i16>, <7 x i8>, i8 zeroext, i16 zeroext, i16 zeroext, i32, i32, <2 x i32>, <4 x i8>, i8 zeroext, i8 zeroext, i8 zeroext, i8 zeroext, i8 zeroext, i8 zeroext, i8 zeroext, i8 zeroext, <8 x float>, <8 x float>, <8 x float>, <8 x float>, <16 x i16>, <16 x i16>, <16 x i16>, <1536 x i16>, <16 x i16>, <12 x i16>, i16 zeroext, i16 zeroext, i8 zeroext, i8 zeroext, i8 zeroext, i8 zeroext) local_unnamed_addr #0

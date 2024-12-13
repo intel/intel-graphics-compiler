@@ -1,12 +1,18 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2024 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: llc %s -march=genx64 -mcpu=Gen9 \
+; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=Gen9 \
+; RUN: -vc-skip-ocl-runtime-info \
+; RUN: -genx-dump-regalloc \
+; RUN: -vc-disable-coalescing \
+; RUN: -vc-fg-dump-prefix=%basename_t_ \
+; RUN: -finalizer-opts='-generateDebugInfo' -o /dev/null
+; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=Gen9 \
 ; RUN: -vc-skip-ocl-runtime-info \
 ; RUN: -genx-dump-regalloc \
 ; RUN: -vc-disable-coalescing \
@@ -27,7 +33,12 @@
 ; CHECK_NOCOALESC: Register pressure (bytes):
 ; CHECK_NOCOALESC: Flag pressure (bytes):
 
-; RUN: llc %s -march=genx64 -mcpu=Gen9 \
+; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=Gen9 \
+; RUN: -vc-skip-ocl-runtime-info \
+; RUN: -genx-dump-regalloc \
+; RUN: -vc-fg-dump-prefix=%basename_t_ \
+; RUN: -finalizer-opts='-generateDebugInfo' -o /dev/null
+; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=Gen9 \
 ; RUN: -vc-skip-ocl-runtime-info \
 ; RUN: -genx-dump-regalloc \
 ; RUN: -vc-fg-dump-prefix=%basename_t_ \
