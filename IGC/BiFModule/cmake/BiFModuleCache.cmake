@@ -22,9 +22,6 @@ if(NOT EXISTS ${IGC_BUILD__BIF_ROOT_DIR})
     file(MAKE_DIRECTORY ${IGC_BUILD__BIF_ROOT_DIR})
 endif()
 
-file(REMOVE ${BiFModule_SRC_SHA_PATH})
-file(REMOVE ${BiFModule_Init})
-
 add_custom_command(
     OUTPUT ${BiFModule_Init}
     COMMAND ${CMAKE_COMMAND}
