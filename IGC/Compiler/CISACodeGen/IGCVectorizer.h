@@ -67,7 +67,7 @@ class IGCVectorizer : public llvm::FunctionPass {
     std::unique_ptr<std::ofstream> OutputLogFile;
     std::string LogStr;
     llvm::raw_string_ostream OutputLogStream = raw_string_ostream(LogStr);
-    Module* M;
+    Module* M = nullptr;
     void initializeLogFile(Function& F);
     void writeLog();
 

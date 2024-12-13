@@ -36,7 +36,7 @@ namespace IGC
         CodeGenContext* GetContext() { return m_context; }
 
         llvm::Function* getLLVMFunction() const { return m_kernel; }
-        ShaderStats* m_shaderStats;
+        ShaderStats* m_shaderStats = nullptr;
 
         // invoked to clear Func ptr when the current module is deleted (so is func within it).
         void clearBeforeRetry();
@@ -51,8 +51,8 @@ namespace IGC
         CShader*& GetShaderPtr(SIMDMode simd, ShaderDispatchMode mode);
         CShader* CreateNewShader(SIMDMode simd);
 
-        CodeGenContext* m_context;
-        llvm::Function* m_kernel;
+        CodeGenContext* m_context = nullptr;
+        llvm::Function* m_kernel = nullptr;
         std::array<CShader*, 9> m_SIMDshaders;
 
     public:

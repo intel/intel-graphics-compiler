@@ -392,11 +392,11 @@ public:
 
     ModuleMetaData* m_ModuleMetadata = nullptr;
     /// SIMD Size is the default size of instructions
-    ShaderDispatchMode m_ShaderDispatchMode;
+    ShaderDispatchMode m_ShaderDispatchMode{};
     /// the default emit size for this shader. This is the default size for variables as well
     /// as the default execution size for each instruction. encoder may override it explicitly
     /// via CEncoder::SetSIMDSize
-    SIMDMode m_SIMDSize;
+    SIMDMode m_SIMDSize{};
     uint8_t m_numberInstance = 0;
     PushInfo pushInfo;
     EmitPass* m_EmitPass = nullptr;
@@ -696,7 +696,7 @@ protected:
     std::vector<CVariable*> patchConstantSetup;
     std::vector<CVariable*> perPrimitiveSetup;
 
-    uint m_maxBlockId;
+    uint m_maxBlockId = 0;
 
     CVariable* m_R0 = nullptr;
     CVariable* m_NULL = nullptr;
