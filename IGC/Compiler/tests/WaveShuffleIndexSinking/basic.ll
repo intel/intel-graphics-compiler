@@ -11,7 +11,7 @@
 ;
 ; Verifies that four WaveShuffleIndex instructions with the same source and a constant channel get subsequent instructions checked and hoisted
 ; Each WaveShuffleIndex instruction is in turn fed into an add, and then a shl
-; The second operand of the add is not a constant, so the add is considered an anchor instruction
+; The first operand of the add is not a constant, so the add is considered an anchor instruction
 ; The second operand of the shl is a constant, so the shl is considered a hoistable instruction
 ; Due to distributive properties, the shl is allowed to be hoisted above the add, and afterwards, above all the WaveShuffleIndex instructions
 ; Since there are 4 WaveShuffleIndex instructions in the ShuffleGroup, we can trade a shl on the source of the WaveShuffleIndex and a shl on the second operand of the add for removing all 4 shl instructions operating on the result of each add
@@ -23,8 +23,8 @@ define void @test_wave_shuffle_index_sinking(i32* %dst0, i32* %dst1, i32* %dst2,
 ; CHECK: [[WS0:%.*]] = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 [[HOISTED]], i32 0, i32 0)
   %ws0 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %a, i32 0, i32 0)
 ; CHECK: [[ANCHOR_HOISTED:%.*]] = shl i32 %b, 2
-; CHECK-NEXT: [[ANCHOR0:%.*]] = add i32 [[WS0]], [[ANCHOR_HOISTED]]
-  %add0 = add i32 %ws0, %b
+; CHECK-NEXT: [[ANCHOR0:%.*]] = add i32 [[ANCHOR_HOISTED]], [[WS0]]
+  %add0 = add i32 %b, %ws0
   %shl0 = shl i32 %add0, 2
 ; CHECK: store i32 [[ANCHOR0]], i32* %dst0
   store i32 %shl0, i32* %dst0
@@ -37,8 +37,8 @@ define void @test_wave_shuffle_index_sinking(i32* %dst0, i32* %dst1, i32* %dst2,
   store i32 %shl1, i32* %dst1
 ; CHECK: [[WS2:%.*]] = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 [[HOISTED]], i32 2, i32 0)
   %ws2 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %a, i32 2, i32 0)
-; CHECK: [[ANCHOR2:%.*]] = add i32 [[WS2]], [[ANCHOR_HOISTED]]
-  %add2 = add i32 %ws2, %b
+; CHECK: [[ANCHOR2:%.*]] = add i32 [[ANCHOR_HOISTED]], [[WS2]]
+  %add2 = add i32 %b, %ws2
   %shl2 = shl i32 %add2, 2
 ; CHECK: store i32 [[ANCHOR2]], i32* %dst2
   store i32 %shl2, i32* %dst2

@@ -73,13 +73,6 @@ namespace IGC
             // Attempt to match a new WaveShuffleIndex instruction to this ShuffleGroup
             bool match( WaveShuffleIndexIntrinsic* shuffleInst )
             {
-                // ensure same source operand
-                if( shuffleInst->getSrc() != ShuffleOps.front()->getSrc() )
-                    return false;
-                // ensures lane/channel is uniform and WaveShuffleIndex is a broadcast operation
-                if( !isa<ConstantInt>( shuffleInst->getChannel() ) )
-                    return false;
-
                 if( ShuffleOps.size() == 1 )
                 {
                     // Attempting to match with fresh ShuffleGroup, match the maximal number of instructions
@@ -270,24 +263,31 @@ namespace IGC
                                 // %3 = shl i32 %1, 2 <- anchorHoistedInst (Anchor path)
                                 // %4 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %2, i32 0, i32 0)
                                 // %5 = add i32 %4, %2 <- Anchor
+                                // Find the operand that originates from outside the chain to use in anchorHoistedInst
                                 auto* anchorOp0 = InstChains.front()[ anchorIdx ]->getOperand( 0 );
                                 auto* anchorOp1 = InstChains.front()[ anchorIdx ]->getOperand( 1 );
                                 Instruction* anchorOpPrev = ( anchorIdx == 0 ) ? cast<Instruction>( ShuffleOps.front() ) : InstChains.front()[ anchorIdx - 1 ];
                                 if( anchorOp0 == anchorOpPrev )
                                 {
                                     anchorHoistedInst->setOperand( chainOpIdx, anchorOp1 );
-                                    for( auto& instChain : InstChains )
-                                    {
-                                        instChain[ anchorIdx ]->setOperand( 1, anchorHoistedInst );
-                                    }
-
                                 }
                                 else
                                 {
                                     anchorHoistedInst->setOperand( chainOpIdx, anchorOp0 );
-                                    for( auto& instChain : InstChains )
+                                }
+
+                                // Properly set the anchor instructions in all chains to use the new anchorHoistedInst
+                                for( unsigned i = 0; i < ShuffleOps.size(); i++ )
+                                {
+                                    auto* anchorOp0 = InstChains[ i ][ anchorIdx ]->getOperand( 0 );
+                                    Instruction* anchorOpPrev = ( anchorIdx == 0 ) ? cast<Instruction>( ShuffleOps[ i ] ) : InstChains[ i ][ anchorIdx - 1 ];
+                                    if( anchorOp0 == anchorOpPrev )
                                     {
-                                        instChain[ anchorIdx ]->setOperand( 0, anchorHoistedInst );
+                                        InstChains[ i ][ anchorIdx ]->setOperand( 1, anchorHoistedInst );
+                                    }
+                                    else
+                                    {
+                                        InstChains[ i ][ anchorIdx ]->setOperand( 0, anchorHoistedInst );
                                     }
                                 }
                             }
@@ -326,7 +326,7 @@ namespace IGC
                             Instruction* rewirePrev = ( rewireIdx == 0 ) ? cast<Instruction>(ShuffleOps[ i ]) : InstChains[ i ][ rewireIdx - 1 ];
                             unsigned rewireOpIdx = InstChains[ i ][ rewireIdx ]->getOperand( 0 ) == rewirePrev ? 0 : 1;
                             InstChains[ i ][ rewireIdx ]->setOperand( rewireOpIdx, lastAnchor );
-                            lastAnchorIdx++;
+                            lastAnchorIdx = rewireIdx;
                         }
                     }
 
@@ -586,25 +586,31 @@ unsigned WaveShuffleIndexSinkingImpl::compareWaveShuffleIndexes( WaveShuffleInde
             break;
 
         // Check that both operands match
-        // TODO: could be less restrictive for commutative instructions
         auto* opA0 = instA->getOperand( 0 );
         auto* opA1 = instA->getOperand( 1 );
         auto* opB0 = instB->getOperand( 0 );
         auto* opB1 = instB->getOperand( 1 );
 
-        if( opA0 == curInstA && opB0 == curInstB )
+        if( instA->isCommutative() )
         {
-            if( opA1 != opB1 )
-                break;
-        }
-        else if( opA1 == curInstA && opB1 == curInstB )
-        {
-            if( opA0 != opB0 )
+            // covers all four cases
+            // ex.
+            // add i32 %ws1, %a  | add i32 %a, %ws1
+            // ...               | ...
+            // add i32 %ws2, %a  | add i32 %a, %ws2
+            //-------------------|-----------------
+            // add i32 %ws1, %a  | add i32 %a, %ws1
+            // ...               | ...
+            // add i32 %a, %ws2  | add i32 %ws2, %a
+            if( !( opA0 == curInstA && opB0 == curInstB && opA1 == opB1 ) && !( opA0 == curInstA && opB1 == curInstB && opA1 == opB0 ) &&
+                !( opA1 == curInstA && opB0 == curInstB && opA0 == opB1 ) && !( opA1 == curInstA && opB1 == curInstB && opA0 == opB0 ) )
                 break;
         }
         else
         {
-            break;
+            // covers the 2 cases in row 1 above
+            if( !( opA0 == curInstA && opB0 == curInstB && opA1 == opB1 ) && !( opA1 == curInstA && opB1 == curInstB && opA0 == opB0 ) )
+                break;
         }
 
         if( isHoistable( instA ) )
@@ -666,6 +672,7 @@ bool WaveShuffleIndexSinkingImpl::isHoistableOverAnchor( BinaryOperator* instToH
 
         // X & (Y | Z) <--> (X & Y) | (X & Z)
         // X & (Y ^ Z) <--> (X & Y) ^ (X & Z)
+        // In practice, FirstOp is unlikely to be And, Or, or Xor as they would themselves be hoistable and thus, never an anchor inst
         if( SecondOp == Instruction::And )
             return FirstOp == Instruction::Or || FirstOp == Instruction::Xor;
 
