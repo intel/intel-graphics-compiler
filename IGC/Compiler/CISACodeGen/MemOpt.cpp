@@ -83,8 +83,6 @@ namespace {
         bool AllowNegativeSymPtrsForLoad = false;
         bool AllowVector8LoadStore = false;
 
-        unsigned Limit = IGC_GET_FLAG_VALUE(MemOptWindowSize);
-
         // Map of profit vector lengths per scalar type. Each entry specifies the
         // profit vector length of a given scalar type.
         // NOTE: Prepare the profit vector lengths in the *DESCENDING* order.
@@ -523,8 +521,6 @@ bool MemOpt::runOnFunction(Function& F) {
     CGC = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     TLI = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
 
-
-
     if (ProfitVectorLengths.empty())
         buildProfitVectorLengths(F);
 
@@ -641,6 +637,7 @@ bool MemOpt::removeRedBlockRead(GenIntrinsicInst* LeadingBlockRead,
     TrivialMemRefListTy& ToOpt, unsigned& sg_size)
 {
     MemRefListTy::iterator MI = aMI;
+    const unsigned Limit = IGC_GET_FLAG_VALUE(MemOptWindowSize);
     const unsigned windowEnd = Limit + MI->second;
     auto ME = MemRefs.end();
 
@@ -1212,6 +1209,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     // List of instructions need dependency check.
     SmallVector<Instruction*, 8> CheckList;
 
+    const unsigned Limit = IGC_GET_FLAG_VALUE(MemOptWindowSize);
     // Given the Start position of the Window is MI->second,
     // the End postion of the Window is "limit + Windows' start".
     const unsigned windowEnd = Limit + MI->second;
@@ -1565,6 +1563,7 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
     // List of instructions need dependency check.
     SmallVector<Instruction*, 8> CheckList;
 
+    const unsigned Limit = IGC_GET_FLAG_VALUE(MemOptWindowSize);
     // Given the Start position of the Window is MI->second,
     // the End postion of the Window is "limit + Windows' start".
     const unsigned windowEnd = Limit + MI->second;

@@ -369,6 +369,8 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
 
     mpm.add(new DpasScan());
 
+    mpm.add(new MatchCommonKernelPatterns());
+
     // let CleanPHINode be right before Layout
     mpm.add(createCleanPHINodePass());
     if(IGC_IS_FLAG_SET(DumpRegPressureEstimate)) mpm.add(new IGCRegisterPressurePrinter("final"));
@@ -725,7 +727,6 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
     }
     // Should help MemOpt pass to merge more loads
     mpm.add(createSinkCommonOffsetFromGEPPass());
-    mpm.add(new MatchCommonKernelPatterns());
 
     // Run MemOpt
     if (!isOptDisabled &&
