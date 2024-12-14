@@ -29,22 +29,22 @@ define void @test_split_sink_merge(i32 %a, i32 %b, i32 %c, i32 %d) {
   %use1_ws0 = shl i32 %ws0, 2
 ; CHECK: add i32 [[WS0]], %c
   %anchor1_ws0 = add i32 %use1_ws0, %c
-; CHECK: [[WS1C1:%.*]] = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 [[USE1_WS0_WS1C1_HOISTED]], i32 1, i32 0)
+; CHECK: [[USE2_WS1C2_WS2C1_HOISTED:%.*]] = shl i32 %a, 3
+; CHECK-DAG: [[WS1C1:%.*]] = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 [[USE1_WS0_WS1C1_HOISTED]], i32 1, i32 0)
+; CHECK-DAG: [[WS1C2:%.*]] = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 [[USE2_WS1C2_WS2C1_HOISTED]], i32 1, i32 0)
   %ws1 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %a, i32 1, i32 0)
   %use1_ws1 = shl i32 %ws1, 2
 ; CHECK: add i32 [[WS1C1]], %c
   %anchor1_ws1 = add i32 %use1_ws1, %c
-; CHECK: [[USE2_WS1C2_WS2C1_HOISTED:%.*]] = shl i32 %a, 3
-; CHECK: [[WS1C2:%.*]] = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 [[USE2_WS1C2_WS2C1_HOISTED]], i32 1, i32 0)
   %use2_ws1 = shl i32 %ws1, 3
 ; CHECK: add i32 [[WS1C2]], %d
   %anchor2_ws1 = add i32 %use2_ws1, %d
-; CHECK: [[WS2C1:%.*]] = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 [[USE2_WS1C2_WS2C1_HOISTED]], i32 2, i32 0)
+; CHECK-DAG: [[WS2C1:%.*]] = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 [[USE2_WS1C2_WS2C1_HOISTED]], i32 2, i32 0)
+; CHECK-DAG: [[WS2C2:%.*]] = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %a, i32 2, i32 0)
   %ws2 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %a, i32 2, i32 0)
   %use1_ws2 = shl i32 %ws2, 3
 ; CHECK: add i32 [[WS2C1]], %d
   %anchor1_ws2 = add i32 %use1_ws2, %d
-; CHECK: [[WS2C2:%.*]] = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %a, i32 2, i32 0)
 ; CHECK: [[USE2_WS2C2_NOT_HOISTED:%.*]] = shl i32 [[WS2C2]], 4
   %use2_ws2 = shl i32 %ws2, 4
 ; CHECK: add i32 [[USE2_WS2C2_NOT_HOISTED]], %d

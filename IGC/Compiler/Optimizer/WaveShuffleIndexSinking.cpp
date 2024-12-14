@@ -404,11 +404,15 @@ bool WaveShuffleIndexSinkingImpl::splitWaveShuffleIndexes()
         {
             if( auto* waveShuffleInst = dyn_cast<WaveShuffleIndexIntrinsic>( &I ) )
             {
-                if( !waveShuffleInst->getUniqueUndroppableUser() )
+                if( auto* constantChannel = dyn_cast<ConstantInt>( waveShuffleInst->getChannel() ) )
                 {
-                    // More than one user, split to potentially uncover more chances sink each individual WaveShuffleIndex
-                    Changed = true;
-                    InstsToSplit.push_back( waveShuffleInst );
+                    // Do not split WaveShuffleIndex insts that do not have a constant index since they cannot be optimized by this pass anyways
+                    if( !waveShuffleInst->getUniqueUndroppableUser() )
+                    {
+                        // More than one user, split to potentially uncover more chances sink each individual WaveShuffleIndex
+                        Changed = true;
+                        InstsToSplit.push_back( waveShuffleInst );
+                    }
                 }
             }
         }
@@ -423,7 +427,7 @@ bool WaveShuffleIndexSinkingImpl::splitWaveShuffleIndexes()
             auto* userInst = cast<Instruction>( user );
             auto* clonedWaveShuffleInst = instToSplit->clone();
             clonedWaveShuffleInst->setName( instToSplit->getName() + "_clone" );
-            clonedWaveShuffleInst->insertBefore( userInst );
+            clonedWaveShuffleInst->insertBefore( instToSplit );
             // Track replacement to perform after loop since iterators will be messed up if performed mid loop
             ReplacementPairs.emplace_back(userInst, clonedWaveShuffleInst );
         }
