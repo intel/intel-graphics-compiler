@@ -37,25 +37,6 @@ CShader::CShader(Function *pFunc, CShaderProgram *pProgram, GenericShaderState &
     , encoder()
 {
     m_ctx = m_parent->GetContext();
-    m_WI = nullptr;
-    m_deSSA = nullptr;
-    m_coalescingEngine = nullptr;
-    m_DL = nullptr;
-    m_FGA = nullptr;
-    m_VRA = nullptr;
-    m_RLA = nullptr;
-    m_EmitPass = nullptr;
-    m_HW_TID = nullptr;
-
-    m_shaderStats = nullptr;
-    // [OCL] preAnalysis()/ParseShaderSpecificOpcode() must
-    // set this to ture if there is any stateless access.
-    m_HasGlobalStatelessMemoryAccess = false;
-    m_HasConstantStatelessMemoryAccess = false;
-
-    m_SavedSRetPtr = nullptr;
-    m_FP = nullptr;
-    m_SavedFP = nullptr;
 
     bool SepSpillPvtSS = SeparateSpillAndScratch(m_ctx);
     bool SeparateScratchWA =
