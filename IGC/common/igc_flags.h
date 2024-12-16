@@ -149,8 +149,8 @@ DECLARE_IGC_REGKEY(bool, PrepopulateLoadChainLoopSink,  true, "Check the loop fo
 DECLARE_IGC_REGKEY(bool, EnableLoadChainLoopSink,       true, "Allow sinking of load address calculation when the load was sinked to the loop, even if the needed regpressure is achieved (only single use instructions)", false)
 DECLARE_IGC_REGKEY(DWORD, LoopSinkRegpressureMargin,    10,  "Sink into the loop until the pressure becomes less than #grf-margin", false)
 DECLARE_IGC_REGKEY(DWORD, CodeLoopSinkingMinSize,       100,  "Don't sink in the loop if the number of instructions in the kernel is less", false)
-DECLARE_IGC_REGKEY(DWORD, CodeSinkingLoadSchedulingInstr, 20,  "Instructions number to step to schedule loads in advance before the load use to cover latency. 1 to insert it immediately before use", false)
-DECLARE_IGC_REGKEY(DWORD, CodeSinking2dLoadSchedulingInstr, 5,  "Instructions number to step to schedule 2d loads in advance before the load use to cover latency. 1 to insert it immediately before use", false)
+DECLARE_IGC_REGKEY(DWORD, CodeSinkingLoadSchedulingInstr, 20,  "Instructions number to step to schedule loads in advance before the load use to cover latency. 0 to insert it immediately before use", false)
+DECLARE_IGC_REGKEY(DWORD, CodeSinking2dLoadSchedulingInstr, 5,  "Instructions number to step to schedule 2d loads in advance before the load use to cover latency. 0 to insert it immediately before use", false)
 DECLARE_IGC_REGKEY(DWORD, LoopSinkMinSaveUniform,       6,  "If loop sink can have save more scalar (uniform) values than this Minimum, do it; otherwise, skip", false)
 DECLARE_IGC_REGKEY(DWORD, LoopSinkMinSave,              1,  "If loop sink can have save more 32-bit values than this Minimum, do it; otherwise, skip", false)
 DECLARE_IGC_REGKEY(DWORD, LoopSinkThresholdDelta,       30,  "Do loop sink If the estimated register pressure is higher than this + #avaialble registers", false)
@@ -162,6 +162,9 @@ DECLARE_IGC_REGKEY(bool, LoopSinkEnableVectorShuffle,   true,  "Allow sinking of
 DECLARE_IGC_REGKEY(bool, LoopSinkForceRollback,         false,  "Rollback every loop sinking change (for debug purposes only)", false)
 DECLARE_IGC_REGKEY(bool, LoopSinkDisableRollback,       false, "Disable loopsink rollback completely (even in case of increased regpressure)", false)
 DECLARE_IGC_REGKEY(bool, LoopSinkAvoidSplittingDPAS,    true,  "Sink before the whole DPAS sequence if the first use of the sinked instruction is not the first DPAS", false)
+DECLARE_IGC_REGKEY(bool, LoopSinkForce2dBlockReadsMaxSink, true,  "Sink as much as possible in presence of 2d block loads", false)
+DECLARE_IGC_REGKEY(bool, LoopSinkEnableLateRescheduling, false,  "Schedule more aggressively in the end if the needed regpressure is still not achieved", false)
+
 
 DECLARE_IGC_REGKEY(bool, EnableLoopHoistConstant,       false, "Enables pass to check for specific loop patterns where variables are constant across all but the last iteration, and hoist them out of the loop.", false)
 DECLARE_IGC_REGKEY(bool, DisableCodeHoisting,           false, "Setting this to 1/true adds a compiler switch to disable code-hoisting", false)

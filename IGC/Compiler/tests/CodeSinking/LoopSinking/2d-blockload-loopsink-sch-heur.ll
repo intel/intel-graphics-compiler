@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys, llvm-14-plus
-; RUN: igc_opt --opaque-pointers --regkey CodeSinkingLoadSchedulingInstr=4 --regkey CodeSinking2dLoadSchedulingInstr=3 --regkey LoopSinkMinSave=1 --regkey LoopSinkEnable2dBlockReads=1 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 --regkey LoopSinkDisableRollback=1 %enable-basic-aa% --igc-code-loop-sinking -S %s 2>&1 | FileCheck %s
+; RUN: igc_opt --opaque-pointers --regkey CodeSinkingLoadSchedulingInstr=3 --regkey CodeSinking2dLoadSchedulingInstr=2 --regkey LoopSinkMinSave=1 --regkey LoopSinkEnable2dBlockReads=1 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 --regkey LoopSinkDisableRollback=1 %enable-basic-aa% --igc-code-loop-sinking -S %s 2>&1 | FileCheck %s
 
 define void @sink1(ptr addrspace(1) %in0, ptr addrspace(1) noalias %out0, i32 %count, i32 %offsetIn0, <8 x i32> %r0) {
 ; CHECK-LABEL: @sink1(
@@ -84,3 +84,5 @@ declare <32 x i16> @llvm.genx.GenISA.LSC2DBlockRead.v32i16(i64, i32, i32, i32, i
 attributes #0 = { argmemonly nounwind readonly willreturn }
 
 !igc.functions = !{}
+
+

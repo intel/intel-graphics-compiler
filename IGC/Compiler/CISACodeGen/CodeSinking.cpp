@@ -243,6 +243,22 @@ namespace IGC {
         return std::count_if(llvm::inst_begin(F), llvm::inst_end(F), [](const auto& I){ return !isDbgIntrinsic(&I); });
     }
 
+    static bool isDPAS(Value *V)
+    {
+        GenIntrinsicInst *Intr = dyn_cast<GenIntrinsicInst>(V);
+        if (!Intr)
+            return false;
+        switch (Intr->getIntrinsicID())
+        {
+        case GenISAIntrinsic::GenISA_dpas:
+        case GenISAIntrinsic::GenISA_sub_group_dpas:
+            return true;
+        default:
+            break;
+        }
+        return false;
+    };
+
     /// ===================== ///
     /// Non-loop code sinking ///
     /// ===================== ///
@@ -796,6 +812,7 @@ namespace IGC {
     // Sink in the loop if loop preheader's potential to sink covers at least 20% of registers delta
 // between grf number and max estimated pressure in the loop
 #define LOOPSINK_PREHEADER_IMPACT_THRESHOLD 0.2
+#define LOOPSINK_RESCHEDULE_ITERATIONS 5
 
     // Helper functions for loop sink debug dumps
 #define PrintDump(Level, Contents) if (IGC_IS_FLAG_ENABLED(DumpLoopSink) && (Level <= IGC_GET_FLAG_VALUE(LoopSinkDumpLevel))) {*LogStream << Contents;}
@@ -1022,7 +1039,7 @@ namespace IGC {
                     if (is2dBlockRead(&I))
                     {
                         PrintDump(VerbosityLevel::Low, ">> Loop has 2D block reads. Enabling loads rescheduling and sinking.\n");
-                        return LoopSinkMode::FullSink;
+                        return IGC_IS_FLAG_ENABLED(LoopSinkForce2dBlockReadsMaxSink) ? LoopSinkMode::FullSink : LoopSinkMode::SinkWhileRegpressureIsHigh;
                     }
                 }
             }
@@ -1265,7 +1282,37 @@ namespace IGC {
             return LeafInstToCandidate;
         };
 
+        auto rescheduleCandidates = [&] (BasicBlock *BB, CandidateVec &SinkedCandidates, InstToCandidateMap &CurrentInstToCandidate, const int MaxLocalSchedulingIterations, bool Aggressive = false)
+        {
+            bool Changed = false;
+
+            CandidatePtrVec SinkedCandidatesPtrs;
+            for (auto CI = SinkedCandidates.begin(), CE = SinkedCandidates.end(); CI != CE; CI++)
+            {
+                Candidate *C = CI->get();
+                if (C->TgtBB == BB)
+                    SinkedCandidatesPtrs.push_back(C);
+            }
+
+            // Sinking the candidates that don't use other candidates iteratively
+            // Should end with break, using max number of iterations (MaxLocalSchedulingIterations) just to avoid an infinite loop
+            for (int i = 0; i < MaxLocalSchedulingIterations; i++)
+            {
+                PrintDump(VerbosityLevel::Medium, "Local scheduling iteration " << i << "...\n");
+                InstToCandidateMap LeafCurrentInstToCandidate = getLeafInstToCandidateMap(BB, SinkedCandidatesPtrs, CurrentInstToCandidate);
+                if (LeafCurrentInstToCandidate.empty())
+                {
+                    PrintDump(VerbosityLevel::Medium, "No more candidates to schedule in this block.\n");
+                    break;
+                }
+                Changed |= localSink(BB, LeafCurrentInstToCandidate, Aggressive);
+            }
+
+            return Changed;
+        };
+
         bool ReschedulingIteration = IGC_IS_FLAG_ENABLED(LoopSinkEnableLoadsRescheduling);
+        bool LateReschedulingIteration = false;
 
         auto createSimpleCandidates = [&](
             InstSet &SkipInstructions,
@@ -1362,6 +1409,8 @@ namespace IGC {
 
         InstSet SkipInstructions;
 
+        int SinkIterations = 0;
+
         do
         {
             CurrentSinkCandidates.clear();
@@ -1430,9 +1479,10 @@ namespace IGC {
                     }
                 }
             }
-            else
+            else if (!LateReschedulingIteration)
             {
                 PrintDump(VerbosityLevel::Low, "Starting sinking iteration...\n");
+                SinkIterations++;
 
                 for (auto &Pair : InstToCandidate)
                     SkipInstructions.insert(Pair.first);
@@ -1446,48 +1496,57 @@ namespace IGC {
                 // Create simple (1-instr) candidates for sinking by traversing the preheader once
                 createSimpleCandidates(SkipInstructions, CurrentSinkCandidates);
             }
-
-            // Make decisions for "MaybeSink" candidates
-            CandidateVec ToSink = refineLoopSinkCandidates(CurrentSinkCandidates, LoadChains, L);
+            else
+            {
+                PrintDump(VerbosityLevel::Low, "Late rescheduling iteration...\n");
+            }
 
             // Sink the beneficial instructions
             bool IterChanged = false;
 
-            for (auto &C : ToSink)
+            IterChanged |= LateReschedulingIteration;
+
+            if (!LateReschedulingIteration)
             {
-                if (C->Worthiness == LoopSinkWorthiness::Sink || C->Worthiness == LoopSinkWorthiness::IntraLoopSink)
+                // Make decisions for "MaybeSink" candidates
+                CandidateVec ToSink = refineLoopSinkCandidates(CurrentSinkCandidates, LoadChains, L);
+
+                for (auto &C : ToSink)
                 {
-                    IGC_ASSERT(C->size() > 0);
+                    if (C->Worthiness == LoopSinkWorthiness::Sink || C->Worthiness == LoopSinkWorthiness::IntraLoopSink)
+                    {
+                        IGC_ASSERT(C->size() > 0);
 
-                    SinkedCandidates.push_back(std::move(C));
-                    Candidate *SC = SinkedCandidates.back().get();
+                        SinkedCandidates.push_back(std::move(C));
+                        Candidate *SC = SinkedCandidates.back().get();
 
-                    bool SinkFromPH = SC->Worthiness == LoopSinkWorthiness::Sink;
-                    Instruction *InsertPoint = SinkFromPH ?
-                        &*SC->TgtBB->getFirstInsertionPt() : SC->first()->getNextNode();
+                        bool SinkFromPH = SC->Worthiness == LoopSinkWorthiness::Sink;
+                        Instruction *InsertPoint = SinkFromPH ?
+                            &*SC->TgtBB->getFirstInsertionPt() : SC->first()->getNextNode();
 
-                    for (Instruction *I : *SC) {
-                        PrintDump(VerbosityLevel::Medium, (SinkFromPH ? "Sinking instruction:\n" : "Scheduling instruction for local sink:\n"));
-                        PrintInstructionDump(VerbosityLevel::Medium, I);
+                        for (Instruction *I : *SC) {
+                            PrintDump(VerbosityLevel::Medium, (SinkFromPH ? "Sinking instruction:\n" : "Scheduling instruction for local sink:\n"));
+                            PrintInstructionDump(VerbosityLevel::Medium, I);
 
-                        CurrentInstToCandidate[I] = SC;
-                        InstToCandidate[I] = SC;
+                            CurrentInstToCandidate[I] = SC;
+                            InstToCandidate[I] = SC;
 
-                        I->moveBefore(InsertPoint);
-                        InsertPoint = I;
+                            I->moveBefore(InsertPoint);
+                            InsertPoint = I;
 
-                        if (SinkFromPH)
-                        {
-                            if (isAllowedLoad(I) || isLoadChain(I, LoadChains))
-                                LoadChains.insert(I);
+                            if (SinkFromPH)
+                            {
+                                if (isAllowedLoad(I) || isLoadChain(I, LoadChains))
+                                    LoadChains.insert(I);
+                            }
                         }
+
+                        UndoBlkSet.insert(SC->UndoPos->getParent());
+                        LocalBlkSet.insert(SC->TgtBB);
+
+                        PrintDump(VerbosityLevel::Medium, "\n");
+                        IterChanged = true;
                     }
-
-                    UndoBlkSet.insert(SC->UndoPos->getParent());
-                    LocalBlkSet.insert(SC->TgtBB);
-
-                    PrintDump(VerbosityLevel::Medium, "\n");
-                    IterChanged = true;
                 }
             }
 
@@ -1506,37 +1565,29 @@ namespace IGC {
                 uint SinkedSizeInBytes = RPE->estimateSizeInBytes(InstsSet, *F, SIMD, WI);
                 uint SinkedSizeInRegs = RPE->bytesToRegisters(SinkedSizeInBytes);
 
+                if (LateReschedulingIteration)
+                {
+                    for (auto &C : SinkedCandidates)
+                    {
+                        LocalBlkSet.insert(C->TgtBB);
+                    }
+                }
+
                 // Invoke localSink() to move def to its first use
                 if (LocalBlkSet.size() > 0)
                 {
-                    CandidatePtrVec SinkedCandidatesPtrs;
                     for (auto BI = LocalBlkSet.begin(), BE = LocalBlkSet.end(); BI != BE; BI++)
                     {
                         BasicBlock *BB = *BI;
 
                         if (ReschedulingIteration)
                         {
-                            SinkedCandidatesPtrs.clear();
-                            for (auto CI = SinkedCandidates.begin(), CE = SinkedCandidates.end(); CI != CE; CI++)
-                            {
-                                Candidate *C = CI->get();
-                                if (C->TgtBB == BB)
-                                    SinkedCandidatesPtrs.push_back(C);
-                            }
-                            // Sinking the candidates that don't use other candidates iteratively
-                            // Should end with break, setting max number of iterations just to avoid an infinite loop
-                            const int MaxLocalSchedulingIterations = 5;
-                            for (int i = 0; i < MaxLocalSchedulingIterations; i++)
-                            {
-                                PrintDump(VerbosityLevel::Medium, "Local scheduling iteration " << i << "...\n");
-                                InstToCandidateMap LeafCurrentInstToCandidate = getLeafInstToCandidateMap(BB, SinkedCandidatesPtrs, CurrentInstToCandidate);
-                                if (LeafCurrentInstToCandidate.empty())
-                                {
-                                    PrintDump(VerbosityLevel::Medium, "No more candidates to schedule in this block.\n");
-                                    break;
-                                }
-                                localSink(BB, LeafCurrentInstToCandidate);
-                            }
+                            rescheduleCandidates(BB, SinkedCandidates, CurrentInstToCandidate, LOOPSINK_RESCHEDULE_ITERATIONS);
+                        }
+                        else if (LateReschedulingIteration)
+                        {
+                            InstToCandidateMap InstToCandidateCopy = InstToCandidate;
+                            rescheduleCandidates(BB, SinkedCandidates, InstToCandidateCopy, LOOPSINK_RESCHEDULE_ITERATIONS + SinkIterations, true);
                         }
                         else  // sinking iteration
                         {
@@ -1546,20 +1597,24 @@ namespace IGC {
                     LocalBlkSet.clear();
                 }
 
-                if (MaxLoopPressure - SinkedSizeInRegs > NeededRegpressure)
-                {
-                    // Heuristic to save recalculation of liveness
-                    // The size of the candidates set is not enough to reach the needed regpressure
-                    PrintDump(VerbosityLevel::Low, "Running one more iteration without recalculating liveness...\n");
-                    RecomputeMaxLoopPressure = true;
-                    ReschedulingIteration = false;
-                    continue;
-                }
+                if (!LateReschedulingIteration)  // do one more sinking iteration only if it's a sinking iteration
+                    if (MaxLoopPressure - SinkedSizeInRegs > NeededRegpressure)
+                    {
+                        // Heuristic to save recalculation of liveness
+                        // The size of the candidates set is not enough to reach the needed regpressure
+                        PrintDump(VerbosityLevel::Low, "Running one more iteration without recalculating liveness...\n");
+                        RecomputeMaxLoopPressure = true;
+                        ReschedulingIteration = false;
+                        continue;
+                    }
 
                 rerunLiveness();
                 MaxLoopPressure = getMaxRegCountForLoop(L);
                 RecomputeMaxLoopPressure = false;
                 PrintDump(VerbosityLevel::Low, "New max loop pressure = " << MaxLoopPressure << "\n");
+
+                if (LateReschedulingIteration)
+                    break;
 
                 if ((MaxLoopPressure < NeededRegpressure)
                         && (Mode == LoopSinkMode::SinkWhileRegpressureIsHigh))
@@ -1577,12 +1632,18 @@ namespace IGC {
                     }
                 }
             }
-            else if (!ReschedulingIteration)
+            else if (!ReschedulingIteration)  // sinking iteration
             {
                 if (!AllowLoadSinking && IGC_IS_FLAG_ENABLED(EnableLoadsLoopSink))
                 {
                     PrintDump(VerbosityLevel::Low, "Allowing loads...\n");
                     AllowLoadSinking = true;
+                }
+                else if (!AchievedNeededRegpressure &&
+                         Mode == LoopSinkMode::SinkWhileRegpressureIsHigh &&
+                         IGC_IS_FLAG_ENABLED(LoopSinkEnableLateRescheduling))
+                {
+                    LateReschedulingIteration = true;
                 }
                 else
                 {
@@ -2824,23 +2885,57 @@ namespace IGC {
     // Sink to the use within basic block
     bool CodeLoopSinking::localSink(
             BasicBlock *BB,
-            InstToCandidateMap &InstToCandidate
+            InstToCandidateMap &InstToCandidate,
+            bool Aggressive
         )
     {
-        auto isPartOfUnsplittableGroup = [](Instruction *Inst)
+        auto isPartOfUnsplittableGroup = [&](Instruction *Inst)
         {
-            if (GenIntrinsicInst *Intr = dyn_cast<GenIntrinsicInst>(Inst))
+            auto haveCommonParameter = [](Instruction *Inst, Instruction *PrevInst)
             {
-                switch (Intr->getIntrinsicID())
+                for (unsigned i = 0; i < Inst->getNumOperands(); ++i)
                 {
-                case GenISAIntrinsic::GenISA_dpas:
-                case GenISAIntrinsic::GenISA_sub_group_dpas:
-                    if (IGC_IS_FLAG_ENABLED(LoopSinkAvoidSplittingDPAS))
-                        return true;
-                default:
-                    break;
+                    for (unsigned j = 0; j < PrevInst->getNumOperands(); ++j)
+                    {
+                        Instruction *OpI = dyn_cast<Instruction>(Inst->getOperand(i));
+                        Instruction *OpPI = dyn_cast<Instruction>(PrevInst->getOperand(j));
+                        if (OpI && OpPI && OpI == OpPI)
+                            return true;
+                    }
                 }
+                return false;
+            };
+
+            if (IGC_IS_FLAG_ENABLED(LoopSinkAvoidSplittingDPAS) && isDPAS(Inst))
+            {
+                if (!Aggressive)
+                    return true;
+
+                // Aggressive local scheduling allows to sink in between DPASes
+                // But we place only between DPAS instructions that don't have common parameters
+                // (heuristic)
+                PrintDump(VerbosityLevel::High, "Checking DPAS:\n");
+                PrintInstructionDump(VerbosityLevel::High, Inst);
+
+                Instruction *PrevInst = Inst->getPrevNode();
+                if (!PrevInst || !isDPAS(PrevInst))
+                {
+                    if (PrevInst)
+                    {
+                        PrintDump(VerbosityLevel::High, "Previous instruction is not DPAS:\n");
+                        PrintInstructionDump(VerbosityLevel::High, PrevInst);
+                    }
+                    return false;
+                }
+
+                PrintDump(VerbosityLevel::High, "Checking previous DPAS:\n");
+                PrintInstructionDump(VerbosityLevel::High, PrevInst);
+
+                bool HCP = haveCommonParameter(Inst, PrevInst);
+                PrintDump(VerbosityLevel::High, "Have common parameter: " << HCP << "\n");
+                return HCP;
             }
+
             return false;
         };
 
@@ -2851,7 +2946,10 @@ namespace IGC {
 
             bool BreakAfterGroup = isPartOfUnsplittableGroup(StartInsertPoint);
             if (!BreakAfterGroup && !isAllowedLoad(InstToMove))
+            {
+                PrintDump(VerbosityLevel::High, "Not part of unsplittable group and not a load. Place immediately.\n");
                 return StartInsertPoint;
+            }
 
             int Cnt = is2dBlockRead(InstToMove) ? IGC_GET_FLAG_VALUE(CodeSinking2dLoadSchedulingInstr) : IGC_GET_FLAG_VALUE(CodeSinkingLoadSchedulingInstr);
 
@@ -2866,16 +2964,6 @@ namespace IGC {
                         [InstToMove](auto &U) {return llvm::cast<Instruction>(&U) == InstToMove;}))
                     break;
 
-                if (isPartOfUnsplittableGroup(I))
-                {
-                    BreakAfterGroup = true;
-                    InsertPoint = I;
-                    I = I->getPrevNode();
-                    continue;
-                }
-                else if (BreakAfterGroup)
-                    break;
-
                 if (I->mayWriteToMemory())
                 {
                     // At this point of the program we might have lost some information
@@ -2888,11 +2976,21 @@ namespace IGC {
                     }
                 }
 
-                if (--Cnt <= 0)
-                    break;
-
                 InsertPoint = I;
                 I = I->getPrevNode();
+
+                if (isPartOfUnsplittableGroup(InsertPoint))
+                {
+                    BreakAfterGroup = true;
+                    continue;
+                }
+                else
+                {
+                    if (BreakAfterGroup)
+                        break;
+                    else if (--Cnt <= 0)
+                        break;
+                }
             }
             return InsertPoint;
         };
