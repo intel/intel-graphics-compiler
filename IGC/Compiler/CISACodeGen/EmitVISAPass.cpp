@@ -19840,10 +19840,9 @@ void EmitPass::emitLSCVectorStore(Value *Ptr,
             {
                 rawAddrVar = eOffset;
             }
-            // no need for discard predicate if we are writing to scratch - this is our
-            // internal memory, shader output remain the same, but we avoid problems
-            // when, for example, texture coordinates are spilled
-            if (resource.m_surfaceType != ESURFACE_SCRATCH)
+            // no need for discard predicate if we are writing to internal memory surfaces
+            // those include scratch or raytracing-related allocations
+            if (resource.m_surfaceType != ESURFACE_SCRATCH && !dontForceDmask)
             {
                 setPredicateForDiscard(flag);
             }
