@@ -238,7 +238,8 @@ bool DynamicRayManagementPass::requiresSplittingCheckReleaseRegion(Instruction& 
     return
         isa<ContinuationHLIntrinsic>(I) ||
         isBarrierIntrinsic(&I) ||
-        isUserFunctionCall(&I);
+        isUserFunctionCall(&I) ||
+        isDiscardInstruction(&I);
 }
 
 void DynamicRayManagementPass::FindProceedsInOperands(Instruction* I, SetVector<TraceRaySyncProceedHLIntrinsic*>& proceeds, SmallPtrSetImpl<Instruction*>& cache)
@@ -982,6 +983,18 @@ void DynamicRayManagementPass::HandleComplexControlFlow(Function& F)
                 // is enabled, remove Check/Release pairs which encapsulates any Barrier.
                 if (IGC_IS_FLAG_ENABLED(DisableRayQueryDynamicRayManagementMechanismForBarriers) &&
                     isBarrierIntrinsic(&I))
+                {
+                    rayQueryReleaseIntrinsic->eraseFromParent();
+                    rayQueryCheckIntrinsic->eraseFromParent();
+
+                    // Remove the pair from the vector in case more Barriers or External
+                    // calls are between them.
+                    m_RayQueryCheckReleasePairs.erase(m_RayQueryCheckReleasePairs.begin() + rayQueryCheckReleasePairIndex);
+
+                    break;
+                }
+
+                if (isDiscardInstruction(&I) && !m_CGCtx->platform.allowDivergentControlFlowRayQueryCheckRelease())
                 {
                     rayQueryReleaseIntrinsic->eraseFromParent();
                     rayQueryCheckIntrinsic->eraseFromParent();

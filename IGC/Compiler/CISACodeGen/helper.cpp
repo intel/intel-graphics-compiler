@@ -1696,6 +1696,11 @@ namespace IGC
         return isUserFunction;
     }
 
+    bool isDiscardInstruction(const llvm::Instruction* I)
+    {
+        return isa<GenIntrinsicInst>(I) && cast<GenIntrinsicInst>(I)->getIntrinsicID() == GenISAIntrinsic::GenISA_discard;
+    }
+
     bool isURBWriteIntrinsic(const llvm::Instruction* I)
     {
         const GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(I);
