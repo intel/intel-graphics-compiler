@@ -103,6 +103,14 @@ namespace IGC
         bool doPromoteUntypedAtomics(const llvm::GenISAIntrinsic::ID intrinID, const llvm::GenIntrinsicInst* Inst);
         bool isUntypedAtomic(const llvm::GenISAIntrinsic::ID intrinID);
 
+        // LLVM InstCombine pass replaces multiple loads that have a single phi instruction as their user,
+        // with a phi on the addresses followed by a single load. This prevents StatelessToStateful from making loads
+        // statefull.
+        // These functions are aimed to revert this change which was made by InstCombine.
+        bool hoistLoad();
+        bool canWriteToMemoryTill(llvm::Instruction* Till);
+        bool isItSafeToHoistLoad(llvm::LoadInst* LI, llvm::PHINode* Phi);
+
         // pointerIsPositiveOffsetFromKernelArgument - check if V can trace back to a kernel argument and
         // has positive offset from that argument.
         // ignoreSyncBuffer - when set to true, return false directly if V is from the implicit kernel
