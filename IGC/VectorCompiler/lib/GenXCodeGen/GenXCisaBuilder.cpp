@@ -949,7 +949,8 @@ static void addKernelAttrsFromMetadata(VISAKernel &Kernel,
     Kernel.AddKernelAttribute("NBarrierCnt", sizeof(BarrierCnt), &BarrierCnt);
   }
 
-  int NumGRF = -1;
+  // Default number of registers.
+  unsigned NumGRF = 128;
   // Set by compile option.
   if (BC->isAutoLargeGRFMode())
     NumGRF = 0;
@@ -961,9 +962,7 @@ static void addKernelAttrsFromMetadata(VISAKernel &Kernel,
     if (NumGRFPerKernel == 0 || Subtarget->isValidGRFSize(NumGRFPerKernel))
       NumGRF = NumGRFPerKernel;
   }
-
-  if (NumGRF != -1)
-    Kernel.AddKernelAttribute("NumGRF", sizeof(NumGRF), &NumGRF);
+  Kernel.AddKernelAttribute("NumGRF", sizeof(NumGRF), &NumGRF);
 }
 
 // Legalize name for using as filename or in visa asm
