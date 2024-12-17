@@ -19,4 +19,5 @@ set(SUPPORTED_VC_PLATFORMS
     "XeHPC"
     "XeHPCVG"
     "Xe2"
+    "Xe3"
     )

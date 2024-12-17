@@ -527,6 +527,7 @@ typedef enum {
   Xe_PVC,
   Xe_PVCXT,
   Xe2,
+  Xe3,
   ALL
 } TARGET_PLATFORM;
 

@@ -40,6 +40,7 @@ typedef enum {
     IGFX_ARROWLAKE = 1273,
     IGFX_BMG = 1274,
     IGFX_LUNARLAKE = 1275,
+    IGFX_PTL = 1300,
     IGFX_MAX_PRODUCT,
 
 
@@ -92,6 +93,7 @@ typedef enum {
     IGFX_XE_HPG_CORE = 0x0c07,  // XE_HPG Family
     IGFX_XE_HPC_CORE = 0x0c08,  // XE_HPC Family
     IGFX_XE2_HPG_CORE = 0x0c09, // XE2_HPG Family
+    IGFX_XE3_CORE     = 0x1e00,  // XE3 Family
     IGFX_MAX_CORE,              // Max Family, for lookup table
 
     IGFX_GENNEXT_CORE          = 0x7ffffffe,  //GenNext
