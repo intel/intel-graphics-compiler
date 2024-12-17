@@ -235,6 +235,8 @@ namespace IGC
     {
         return t == BINDLESS ||
             t == BINDLESS_CONSTANT_BUFFER ||
+            t == BINDLESS_READONLY ||
+            t == BINDLESS_WRITEONLY ||
             t == BINDLESS_TEXTURE;
     }
     inline bool IsSSHbindless(BufferType t)
@@ -261,6 +263,8 @@ namespace IGC
             t == CONSTANT_BUFFER ||
             t == BINDLESS ||
             t == BINDLESS_CONSTANT_BUFFER ||
+            t == BINDLESS_READONLY ||
+            t == BINDLESS_WRITEONLY ||
             t == SSH_BINDLESS ||
             t == SSH_BINDLESS_CONSTANT_BUFFER;
     }
