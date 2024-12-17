@@ -196,6 +196,7 @@ bool isSafeToVectorize(Instruction *I) {
         llvm::isa<PHINode>(I) ||
         llvm::isa<ExtractElementInst>(I) ||
         llvm::isa<InsertElementInst>(I) ||
+        llvm::isa<FPTruncInst>(I) ||
         isBinarySafe(I);
 
     return Result;
@@ -208,7 +209,6 @@ bool IGCVectorizer::handlePHI(VecArr &Slice, Type *VectorType) {
         return false;
 
     PHINode *Phi = PHINode::Create(VectorType, 2);
-    CreatedVectorInstructions.push_back(Phi);
     Phi->setName("vectorized_phi");
 
     VecVal Operands;
@@ -273,6 +273,7 @@ bool IGCVectorizer::handlePHI(VecArr &Slice, Type *VectorType) {
 
     Phi->insertBefore(ScalarPhi);
     Phi->setDebugLoc(ScalarPhi->getDebugLoc());
+    CreatedVectorInstructions.push_back(Phi);
 
     for (auto &El : Slice)
         ScalarToVector[El] = Phi;
@@ -775,14 +776,17 @@ bool IGCVectorizer::runOnFunction(llvm::Function &F) {
             PRINT_LOG_NL("Print slices");
             for (auto& Slice : InSt.SlChain) { printSlice(&Slice); writeLog(); }
 
+
             CreatedVectorInstructions.clear();
             if (!processChain(InSt)) {
                 writeLog();
                 std::reverse(CreatedVectorInstructions.begin(), CreatedVectorInstructions.end());
+                PRINT_DS("To Clean: ", CreatedVectorInstructions);
                 for (auto& el : CreatedVectorInstructions) {
                     PRINT_LOG("Cleaned: "); PRINT_INST_NL(el); writeLog();
                     el->eraseFromParent();
                 }
+                ScalarToVector.clear();
             }
             else {
                 for (auto& el : CreatedVectorInstructions) { PRINT_LOG("Created: "); PRINT_INST_NL(el); writeLog(); }
