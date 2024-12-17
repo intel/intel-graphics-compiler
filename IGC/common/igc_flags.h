@@ -19,7 +19,7 @@ DECLARE_IGC_REGKEY(bool, EnablePreemption,              true,  "Enable generatin
 DECLARE_IGC_REGKEY(bool, ForcePreemptionWA,             false, "Force generating preemptable code across platforms", true)
 DECLARE_IGC_REGKEY(bool, EnableVISANoSchedule,          false, "Enable VISA No-Schedule", true)
 DECLARE_IGC_REGKEY(bool, EnableVISAPreSched,            true,  "Enable VISA Pre-RA Scheduler", true)
-DECLARE_IGC_REGKEY(DWORD, VISAPreSchedCtrl,             0,     "Configure Pre-RA Scheduler, default(0), logging(1), latency(2), pressure(4)", false)
+DECLARE_IGC_REGKEY(DWORD, VISAPreSchedCtrl,             0,     "Configure Pre-RA Scheduler, default(0), logging(1), latency(2), pressure(4)", true)
 DECLARE_IGC_REGKEY(bool, ForceVISAPreSched,             false, "Force enabling of VISA Pre-RA Scheduler", false)
 DECLARE_IGC_REGKEY(DWORD, VISAPreSchedRPThreshold,      0,     "Threshold to commit a pre-RA Scheduling without spills, 0 for the default", false)
 DECLARE_IGC_REGKEY(DWORD, VISAPreSchedExtraGRF,         0,     "Bump up GRF number to make pre-RA Scheduling more greedy, 0 for the default", false)
