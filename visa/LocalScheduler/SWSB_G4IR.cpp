@@ -6140,20 +6140,20 @@ void G4_BB_SB::footprintMerge(SBNode *node, const SBNode *nextNode) {
 bool G4_BB_SB::hasInternalDependenceWithinDPAS(SBNode *node) const {
   const SBFootprint *dstfp = node->getFirstFootprint(Opnd_dst);
 
+  auto isDstSrc0DepException = [&](const SBFootprint *dstfp,
+                                   const SBFootprint *src0fp) -> bool {
+    return dstfp->LeftB == src0fp->LeftB && dstfp->RightB == src0fp->RightB;
+  };
+
   for (Gen4_Operand_Number opndNum :
        {Opnd_src0, Opnd_src1, Opnd_src2, Opnd_src3, Opnd_src4}) {
     const SBFootprint *srcfp = node->getFirstFootprint(opndNum);
     unsigned short internalOffset = 0;
     if (dstfp->hasOverlap(srcfp, internalOffset)) {
-
       // It's allowed that dst and src0 share same registers (not internal dep).
       // But not including partial overlap.
-      if (opndNum == Opnd_src0) {
-        if ((dstfp->LeftB == srcfp->LeftB) &&
-            (dstfp->RightB == srcfp->RightB)) {
-          continue;
-        }
-      }
+      if (opndNum == Opnd_src0 && isDstSrc0DepException(dstfp, srcfp))
+        continue;
       return true;
     }
   }
