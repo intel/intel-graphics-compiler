@@ -20,8 +20,6 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/Alignment.h"
-#include "llvm/Analysis/ValueTracking.h"
-#include "llvm/Support/KnownBits.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
@@ -634,12 +632,6 @@ bool ConstantCoalescing::CompareBufferBase(
     return false;
 }
 
-bool ConstantCoalescing::IsDwordAligned(Value* val) const
-{
-    KnownBits knownBits = computeKnownBits(val, *dataLayout);
-    return knownBits.countMinTrailingZeros() >= 2;
-}
-
 void ConstantCoalescing::MergeScatterLoad(Instruction* load,
     Value* bufIdxV, uint addrSpace,
     Value* eltIdxV, uint offsetInBytes,
@@ -656,8 +648,7 @@ void ConstantCoalescing::MergeScatterLoad(Instruction* load,
     // Current assumption is that a chunk start needs to be DWORD aligned. In
     // the future we can consider adding support for merging 4 bytes or
     // 2 i16s/halfs into a single non-aligned DWORD.
-    const bool isDwordAligned = ((offsetInBytes % 4) == 0 &&
-        (alignment >= 4 || eltIdxV == nullptr || IsDwordAligned(eltIdxV)));
+    const bool isDwordAligned = ((offsetInBytes % 4) == 0 && (eltIdxV == nullptr || alignment >= 4));
 
     BufChunk* cov_chunk = nullptr;
     for (std::vector<BufChunk*>::reverse_iterator rit = chunk_vec.rbegin(),
@@ -1063,8 +1054,8 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
     // Current assumption is that a chunk start needs to be DWORD aligned. In
     // the future we can consider adding support for merging 4 bytes or
     // 2 i16s/halfs into a single non-aligned DWORD.
-    const bool isDwordAligned = ((offsetInBytes % 4) == 0 &&
-        (alignment >= 4 || eltIdxV == nullptr || IsDwordAligned(eltIdxV)));
+    const bool isDwordAligned =
+        ((offsetInBytes % 4) == 0 && (eltIdxV == nullptr || alignment >= 4));
 
     auto shouldMerge = [&](const BufChunk* cur_chunk)
     {

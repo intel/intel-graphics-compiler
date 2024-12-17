@@ -303,8 +303,6 @@ namespace IGC
         bool   IsSamplerAlignedAddress(Value* addr) const;
         Value* GetSamplerAlignedAddress(Value* inst);
 
-        bool IsDwordAligned(Value* val) const;
-
         alignment_t GetAlignment(Instruction* load) const;
         void SetAlignment(Instruction* load, uint alignment);
 
