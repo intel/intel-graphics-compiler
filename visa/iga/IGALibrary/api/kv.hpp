@@ -53,7 +53,7 @@ public:
       char *decodeLog = nullptr, size_t decodeLogLen = 0)
       : m_kv(nullptr), m_disasm_status(IGA_SUCCESS), m_gen(platf) {
     m_kv = kv_create(platf, bytes, bytesLength, &m_disasm_status, decodeLog,
-                     decodeLogLen, swsb_mode);
+                     decodeLogLen, static_cast<uint32_t>(swsb_mode));
   }
 
   // The destructor automatically deallocates the underlying kernel view
@@ -316,9 +316,9 @@ public:
     return static_cast<iga::ExecSize>(kv_get_execution_size(m_kv, pc));
   }
 
-  iga::SWSB getSWSBInfo(int32_t pc, iga::SWSB_ENCODE_MODE encdoe_mode) const {
+  iga::SWSB getSWSBInfo(int32_t pc, iga::SWSB_ENCODE_MODE encode_mode) const {
     iga::SWSB swsb;
-    kv_get_swsb_info(m_kv, pc, encdoe_mode, swsb);
+    kv_get_swsb_info(m_kv, pc, encode_mode, swsb);
     return swsb;
   }
 
