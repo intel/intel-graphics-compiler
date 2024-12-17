@@ -1182,6 +1182,7 @@ namespace IGC
             default:
                 break;
             }
+            IGC_ASSERT(offset < 64);
             return offset;
         }
 
