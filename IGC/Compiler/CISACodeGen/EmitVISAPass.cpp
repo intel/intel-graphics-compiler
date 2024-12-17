@@ -1215,6 +1215,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                     emitLifetimeStartAtEndOfBB(block.bb);
                     // insert the de-ssa movs.
                     MovPhiSources(block.bb);
+                    // insert lifetime start for resource loop unroll
+                    emitLifetimeStartResourceLoopUnroll(block.bb);
                 }
 
                 // If slicing happens, then recalculate the number of instances.
@@ -1777,6 +1779,22 @@ void EmitPass::InitConstant(llvm::BasicBlock* BB)
             m_encoder->Push();
         }
         m_currShader->addConstantInPool(C, Dst);
+    }
+}
+
+void EmitPass::emitLifetimeStartResourceLoopUnroll(BasicBlock* BB)
+{
+    // should insert the lifetime.start before the first unroll BB
+    if (BasicBlock* bb = BB->getNextNode(); bb)
+    {
+        ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+        auto& lifeTimeStartMap = modMD->lifeTimeStartMap;
+
+        if (lifeTimeStartMap.count(bb))
+        {
+            CVariable* dstCVar = m_currShader->GetSymbol(lifeTimeStartMap[bb]);
+            m_encoder->Lifetime(LIFETIME_START, dstCVar);
+        }
     }
 }
 
@@ -8146,7 +8164,6 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
             if (predicationMap.count(inst))
             {
                 m_encoder->SetPredicate(m_currShader->GetSymbol(cast<Instruction>(predicationMap[inst])));
-                m_encoder->Lifetime(LIFETIME_START, dst);
             }
             else
             {
@@ -19511,7 +19528,6 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
             if (predicationMap.count(inst))
             {
                 m_encoder->SetPredicate(m_currShader->GetSymbol(cast<Instruction>(predicationMap[inst])));
-                m_encoder->Lifetime(LIFETIME_START, destCVar);
             }
             else
             {

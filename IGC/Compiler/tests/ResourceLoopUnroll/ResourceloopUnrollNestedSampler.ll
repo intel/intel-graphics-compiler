@@ -70,22 +70,22 @@ define spir_kernel void @test1(<64 x i32> %src, float addrspace(1)* %dst) {
 ; CHECK-VISAASM-NEXT:  mov (M1, 16) svn0(0,0)<1> threadIdInGroupX(0,0)<1;1,0>
 ; CHECK-VISAASM-NEXT:  mov (M1, 16) sampler(0,0)<1> svn0_0(0,0)<1;1,0>
 ; CHECK-VISAASM-NEXT:  add (M1_NM, 1) texture(0,0)<1> src(2,8)<0;1,0> 0x500:w
+; CHECK-VISAASM-NEXT:  lifetime.start V0032
 ;
 ; CHECK-VISAASM:  _test1_001_partial_check5:
 ; CHECK-VISAASM-NEXT:  setp (M1_NM, 16) P1 0x0:ud
-; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P1 V0034(0,0)<0;1,0> V0034(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0035(0,0)<1> P1
-; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0033(0,0)<1> V0035(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  fbl (M1_NM, 1) V0037(0,0)<1> V0033(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  shl (M1_NM, 1) ShuffleTmp(0,0)<1> V0038(0,0)<0;1,0> 0x2:uw
+; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P1 V0035(0,0)<0;1,0> V0035(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0036(0,0)<1> P1
+; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0034(0,0)<1> V0036(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  fbl (M1_NM, 1) V0038(0,0)<1> V0034(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  shl (M1_NM, 1) ShuffleTmp(0,0)<1> V0039(0,0)<0;1,0> 0x2:uw
 ; CHECK-VISAASM-NEXT:  addr_add (M1_NM, 1) A0(0)<1> &sampler_0 ShuffleTmp(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) firstActiveSampler6(0,0)<1> r[A0(0),0]<0;1,0>:ud
 ; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P2 sampler_0(0,0)<1;1,0> firstActiveSampler6(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  mov (M1, 16) V0040(0,0)<1> 0x0:f
-; CHECK-VISAASM-NEXT:  lifetime.start V0039
 ; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) S31(0) firstActiveSampler6(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  (P2) sample_lz.RGBA (M1, 16)  0x0:uw S31 %bss V0039.0 %null.0 V0040.0
+; CHECK-VISAASM-NEXT:  (P2) sample_lz.RGBA (M1, 16)  0x0:uw S31 %bss V0032.0 %null.0 V0040.0
 ; CHECK-VISAASM-NEXT:  (P2) goto (M1, 16) _test1_007_unroll_merge
 ;
 ; CHECK-VISAASM:  _test1_002_partial_check3:
@@ -99,10 +99,9 @@ define spir_kernel void @test1(<64 x i32> %src, float addrspace(1)* %dst) {
 ; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) firstActiveSampler4(0,0)<1> r[A1(0),0]<0;1,0>:ud
 ; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P4 sampler_0(0,0)<1;1,0> firstActiveSampler4(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  mov (M1, 16) V0048(0,0)<1> 0x0:f
-; CHECK-VISAASM-NEXT:  lifetime.start V0039
 ; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) S31(0) firstActiveSampler4(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  (P4) sample_lz.RGBA (M1, 16)  0x0:uw S31 %bss V0039.0 %null.0 V0048.0
+; CHECK-VISAASM-NEXT:  (P4) sample_lz.RGBA (M1, 16)  0x0:uw S31 %bss V0032.0 %null.0 V0048.0
 ; CHECK-VISAASM-NEXT:  (P4) goto (M1, 16) _test1_007_unroll_merge
 ;
 ; CHECK-VISAASM:  _test1_003_partial_check1:
@@ -116,10 +115,9 @@ define spir_kernel void @test1(<64 x i32> %src, float addrspace(1)* %dst) {
 ; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) firstActiveSampler2(0,0)<1> r[A2(0),0]<0;1,0>:ud
 ; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P6 sampler_0(0,0)<1;1,0> firstActiveSampler2(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  mov (M1, 16) V0056(0,0)<1> 0x0:f
-; CHECK-VISAASM-NEXT:  lifetime.start V0039
 ; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) S31(0) firstActiveSampler2(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  (P6) sample_lz.RGBA (M1, 16)  0x0:uw S31 %bss V0039.0 %null.0 V0056.0
+; CHECK-VISAASM-NEXT:  (P6) sample_lz.RGBA (M1, 16)  0x0:uw S31 %bss V0032.0 %null.0 V0056.0
 ; CHECK-VISAASM-NEXT:  (P6) goto (M1, 16) _test1_007_unroll_merge
 ;
 ; CHECK-VISAASM:  _test1_004_partial_check:
@@ -136,13 +134,12 @@ define spir_kernel void @test1(<64 x i32> %src, float addrspace(1)* %dst) {
 ;
 ; CHECK-VISAASM:  _test1_005_last_send:
 ; CHECK-VISAASM-NEXT:  mov (M1, 16) V0064(0,0)<1> 0x0:f
-; CHECK-VISAASM-NEXT:  lifetime.start V0039
 ; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) S31(0) firstActiveSampler(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  (P8) sample_lz.RGBA (M1, 16)  0x0:uw S31 %bss V0039.0 %null.0 V0064.0
+; CHECK-VISAASM-NEXT:  (P8) sample_lz.RGBA (M1, 16)  0x0:uw S31 %bss V0032.0 %null.0 V0064.0
 ;
 ; CHECK-VISAASM:  _test1_007_unroll_merge:
-; CHECK-VISAASM-NEXT:  mov (M1, 16) out(0,0)<1> V0039(0,0)<1;1,0>
+; CHECK-VISAASM-NEXT:  mov (M1, 16) out(0,0)<1> V0032(0,0)<1;1,0>
 ; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) dst_0(0,0)<1> dst(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  mov (M1, 16) dstBroadcast_0(0,0)<2> dst_1(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  mov (M1, 16) dstBroadcast_0(0,1)<2> dst_1(0,1)<0;1,0>

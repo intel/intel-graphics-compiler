@@ -706,6 +706,7 @@ public:
     void MovPhiSources(llvm::BasicBlock* bb);
 
     void InitConstant(llvm::BasicBlock* BB);
+    void emitLifetimeStartResourceLoopUnroll(llvm::BasicBlock* BB);
     void emitLifetimeStartAtEndOfBB(llvm::BasicBlock* BB);
     void emitDebugPlaceholder(llvm::GenIntrinsicInst* I);
     void emitDummyInst(llvm::GenIntrinsicInst* GII);

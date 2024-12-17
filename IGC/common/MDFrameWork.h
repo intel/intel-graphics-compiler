@@ -796,6 +796,7 @@ enum class ShaderTypeMD
         bool ModuleUsesBindless = false;
 
         llvm::MapVector<llvm::Value*, llvm::Value*> predicationMap;
+        llvm::MapVector<llvm::Value*, llvm::Value*> lifeTimeStartMap;
     };
 
     void serialize(const IGC::ModuleMetaData &moduleMD, llvm::Module* module);

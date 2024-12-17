@@ -270,6 +270,7 @@ bool ResourceLoopUnroll::emitResourceLoop(llvm::CallInst* CI)
 
     //we create it "from the end", adding new blocks before previously inserted
     BasicBlock* before = latch;
+    Instruction* send = nullptr;
     for (int i = 0; i < LOOP_COUNT; i++)
     {
         // Basicblocks for loop
@@ -277,11 +278,14 @@ bool ResourceLoopUnroll::emitResourceLoop(llvm::CallInst* CI)
         // Since it's created from the end, the i == 0 is the last loop
         BasicBlock* lastSendBB = (i == 0) ? BasicBlock::Create(context, "last_send", BB->getParent(), before) : nullptr;
 
-        auto send = createResLoopIter(CI, partialCheckBB, lastSendBB, before, mergeBB);
+        send = createResLoopIter(CI, partialCheckBB, lastSendBB, before, mergeBB);
 
         PN->addIncoming(send, lastSendBB ? lastSendBB : partialCheckBB);
         before = partialCheckBB;
     }
+
+    // save the first unroll BB and the send use (the use is for all unroll BB in this loop)
+    m_pCodeGenContext->getModuleMetaData()->lifeTimeStartMap[before] = send;
 
     // latch goes back to last created BB, which actually will be first BB due to ordering of creating and "before" poitner
     builder.SetInsertPoint(latch);
