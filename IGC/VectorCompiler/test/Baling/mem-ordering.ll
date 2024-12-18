@@ -9,9 +9,9 @@
 ; RUN: %opt %use_old_pass_manager% -GenXFuncBaling -print-baling-info -disable-output \
 ; RUN: -march=genx64 -mcpu=Xe2 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
-declare <1 x i32> @llvm.genx.lsc.load.slm.v1i32.i1.i32(i1, i8, i8, i8, i16, i32, i8, i8, i8, i8, i32, i32) nounwind readonly
-declare void @llvm.genx.lsc.fence.v32i1(<32 x i1>) nounwind
-declare <16 x i32> @llvm.genx.wrregioni.v16i32.v1i32.i16.i1(<16 x i32>, <1 x i32>, i32, i32, i32, i16, i32, i1) nounwind readnone
+declare <1 x i32> @llvm.genx.lsc.load.slm.v1i32.i1.i32(i1, i8, i8, i8, i16, i32, i8, i8, i8, i8, i32, i32) nounwind readonly willreturn
+declare void @llvm.genx.lsc.fence.v32i1(<32 x i1>) nounwind willreturn
+declare <16 x i32> @llvm.genx.wrregioni.v16i32.v1i32.i16.i1(<16 x i32>, <1 x i32>, i32, i32, i32, i16, i32, i1) nounwind readnone willreturn
 
 ; CHECK-LABEL: test
 define <16 x i32> @test(<16 x i32> %val) {

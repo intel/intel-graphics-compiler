@@ -199,6 +199,7 @@ void initializeGenXPasses(PassRegistry &registry) {
 #if LLVM_VERSION_MAJOR < 16
   initializeCMABILegacyPass(registry);
 #else  // LLVM_VERSION_MAJOR < 16
+  initializeCMABILegacyPass(registry);
   initializeCMABIPass(registry);
 #endif // LLVM_VERSION_MAJOR < 16
   initializeCMLowerVLoadVStorePass(registry);

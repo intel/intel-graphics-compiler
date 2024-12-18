@@ -19,8 +19,7 @@ target triple = "genx64-unknown-unknown"
 ; CHECK: ([[P1]]) add3.o (M1, 8) [[VR1]](0,0)<1> [[VR2]](0,0)<1;1,0> [[VR2]](0,0)<1;1,0> [[VR2]](0,0)<1;1,0>
 
 declare <8 x i32> @llvm.genx.oword.ld.v8i32(i32, i32, i32) #0
-declare void @llvm.genx.oword.st.v8i32(i32, i32, <8 x i32>) #0
-declare void @llvm.genx.oword.st.v8i1(i32, i32, <8 x i1>) #0
+declare void @llvm.genx.oword.st.v8i32(i32, i32, <8 x i32>) #3
 
 declare { <8 x i1>, <8 x i32> } @llvm.genx.add3c.v8i1.v8i32(<8 x i32>, <8 x i32>, <8 x i32>)
 
@@ -29,15 +28,14 @@ define dllexport spir_kernel void @the_test(i32 %0, i32 %1) local_unnamed_addr #
   %vec = tail call <8 x i32> @llvm.genx.oword.ld.v8i32(i32 0, i32 %0, i32 0) #2
   %res = call { <8 x i1>, <8 x i32> } @llvm.genx.add3c.v8i1.v8i32(<8 x i32> %vec, <8 x i32> %vec, <8 x i32> %vec)
   %resx = extractvalue { <8 x i1>, <8 x i32> } %res, 1
-  %resc = extractvalue { <8 x i1>, <8 x i32> } %res, 0
-  tail call void @llvm.genx.oword.st.v8i32(i32 %1, i32 0, <8 x i32> %resx) #2
-  tail call void @llvm.genx.oword.st.v8i1(i32 %1, i32 0, <8 x i1> %resc) #2
+  tail call void @llvm.genx.oword.st.v8i32(i32 %1, i32 0, <8 x i32> %resx)
   ret void
 }
 
 attributes #0 = { nofree nosync nounwind readnone }
 attributes #1 = { mustprogress nofree noinline nosync nounwind willreturn "CMGenxMain" "oclrt"="1" }
 attributes #2 = { nounwind }
+attributes #3 = { nounwind writeonly }
 
 !spirv.MemoryModel = !{!9}
 !opencl.enable.FP_CONTRACT = !{}

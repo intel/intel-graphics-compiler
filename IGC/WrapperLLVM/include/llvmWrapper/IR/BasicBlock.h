@@ -40,7 +40,7 @@ inline void popBackInstruction(llvm::BasicBlock* BB) {
 #if LLVM_VERSION_MAJOR < 16
     BB->getInstList().pop_back();
 #else
-    BB->back().removeFromParent();
+    BB->back().eraseFromParent();
 #endif
 }
 

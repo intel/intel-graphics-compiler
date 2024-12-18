@@ -128,9 +128,7 @@ ModulePass *createGenXBTIAssignmentPass() {
   return new GenXBTIAssignment();
 }
 } // namespace llvm
-#endif
-
-#if LLVM_VERSION_MAJOR >= 16
+#else // LLVM_VERSION_MAJOR < 16
 PreservedAnalyses
 GenXBTIAssignmentPass::run(llvm::Module &M,
                            llvm::AnalysisManager<llvm::Module> &AM) {

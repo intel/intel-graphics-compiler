@@ -1065,11 +1065,11 @@ void CMABIBase<CallGraphImpl>::diagnoseOverlappingArgs(CallInst *CI) {
 
 char CMABILegacy::ID = 0;
 // Can't template CMABILegacy here
-INITIALIZE_PASS_BEGIN(CMABILegacy, "CMABI",
+INITIALIZE_PASS_BEGIN(CMABILegacy, "CMABILegacy",
                       "Fix ABI issues for the genx backend", false, false)
 INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(CMABIAnalysis)
-INITIALIZE_PASS_END(CMABILegacy, "CMABI", "Fix ABI issues for the genx backend",
+INITIALIZE_PASS_END(CMABILegacy, "CMABILegacy", "Fix ABI issues for the genx backend",
                     false, false)
 
 #if LLVM_VERSION_MAJOR >= 16

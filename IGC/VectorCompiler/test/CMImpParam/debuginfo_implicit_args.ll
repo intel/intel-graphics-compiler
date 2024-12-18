@@ -6,31 +6,60 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt_typed_ptrs %use_old_pass_manager% %pass_pref%CMImpParam \
+; RUN: %opt_legacy_typed %use_old_pass_manager% -CMImpParam \
 ; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
 ; RUN: -S < %s | FileCheck %s --check-prefix CHECK_LOCAL_ID
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% %pass_pref%CMImpParam \
+; RUN: %opt_legacy_opaque %use_old_pass_manager% -CMImpParam \
 ; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
 ; RUN: -S < %s | FileCheck %s --check-prefix CHECK_LOCAL_ID
 
-; RUN: %opt_typed_ptrs %use_old_pass_manager% %pass_pref%CMImpParam \
+; RUN: %opt_legacy_typed %use_old_pass_manager% -CMImpParam \
 ; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
 ; RUN: -S < %s | FileCheck %s --check-prefix CHECK_LOCAL_SIZE
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% %pass_pref%CMImpParam \
+; RUN: %opt_legacy_opaque %use_old_pass_manager% -CMImpParam \
 ; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
 ; RUN: -S < %s | FileCheck %s --check-prefix CHECK_LOCAL_SIZE
 
-; RUN: %opt_typed_ptrs %use_old_pass_manager% %pass_pref%CMImpParam \
+; RUN: %opt_legacy_typed %use_old_pass_manager% -CMImpParam \
 ; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
 ; RUN: -S < %s | FileCheck %s --check-prefix CHECK_GROUP_COUNT
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% %pass_pref%CMImpParam \
+; RUN: %opt_legacy_opaque %use_old_pass_manager% -CMImpParam \
 ; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
 ; RUN: -S < %s | FileCheck %s --check-prefix CHECK_GROUP_COUNT
 
-; RUN: %opt_typed_ptrs %use_old_pass_manager% %pass_pref%CMImpParam \
+; RUN: %opt_legacy_typed %use_old_pass_manager% -CMImpParam \
 ; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
 ; RUN: -S < %s | FileCheck %s --check-prefix CHECK_PRINT_BUFFER
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% %pass_pref%CMImpParam \
+; RUN: %opt_legacy_opaque %use_old_pass_manager% -CMImpParam \
+; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
+; RUN: -S < %s | FileCheck %s --check-prefix CHECK_PRINT_BUFFER
+
+
+; RUN: %opt_new_pm_typed -passes=CMImpParam \
+; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
+; RUN: -S < %s | FileCheck %s --check-prefix CHECK_LOCAL_ID
+; RUN: %opt_new_pm_opaque  -passes=CMImpParam \
+; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
+; RUN: -S < %s | FileCheck %s --check-prefix CHECK_LOCAL_ID
+
+; RUN: %opt_new_pm_typed -passes=CMImpParam \
+; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
+; RUN: -S < %s | FileCheck %s --check-prefix CHECK_LOCAL_SIZE
+; RUN: %opt_new_pm_opaque -passes=CMImpParam \
+; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
+; RUN: -S < %s | FileCheck %s --check-prefix CHECK_LOCAL_SIZE
+
+; RUN: %opt_new_pm_typed -passes=CMImpParam \
+; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
+; RUN: -S < %s | FileCheck %s --check-prefix CHECK_GROUP_COUNT
+; RUN: %opt_new_pm_opaque -passes=CMImpParam \
+; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
+; RUN: -S < %s | FileCheck %s --check-prefix CHECK_GROUP_COUNT
+
+; RUN: %opt_new_pm_typed -passes=CMImpParam \
+; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
+; RUN: -S < %s | FileCheck %s --check-prefix CHECK_PRINT_BUFFER
+; RUN: %opt_new_pm_opaque -passes=CMImpParam \
 ; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown \
 ; RUN: -S < %s | FileCheck %s --check-prefix CHECK_PRINT_BUFFER
 

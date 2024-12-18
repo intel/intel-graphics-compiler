@@ -9,16 +9,24 @@
 ; UNSUPPORTED: llvm_11_or_less
 ; COM: default behavior: structure is passed by value if possible + size is less then threshold (see vc-max-cmabi-byval-size option).
 ; COM: all structures of the test are supposed to be less then this threshold.
-; RUN: %opt_typed_ptrs %use_old_pass_manager% %pass_pref%CMABI -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=SMALL-ON,SMALL-ON-TYPED-PTRS,BIG-ON,BIG-ON-TYPED-PTRS,COMMON,COMMON-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% %pass_pref%CMABI -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=SMALL-ON,SMALL-ON-OPAQUE-PTRS,BIG-ON,BIG-ON-OPAQUE-PTRS,COMMON,COMMON-OPAQUE-PTRS
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -CMABILegacy -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=SMALL-ON,SMALL-ON-TYPED-PTRS,BIG-ON,BIG-ON-TYPED-PTRS,COMMON,COMMON-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -CMABILegacy -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=SMALL-ON,SMALL-ON-OPAQUE-PTRS,BIG-ON,BIG-ON-OPAQUE-PTRS,COMMON,COMMON-OPAQUE-PTRS
+; RUN: %opt_new_pm_typed -passes=CMABI -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=SMALL-ON,SMALL-ON-TYPED-PTRS,BIG-ON,BIG-ON-TYPED-PTRS,COMMON,COMMON-TYPED-PTRS
+; RUN: %opt_new_pm_opaque -passes=CMABI -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=SMALL-ON,SMALL-ON-OPAQUE-PTRS,BIG-ON,BIG-ON-OPAQUE-PTRS,COMMON,COMMON-OPAQUE-PTRS
+
 
 ; COM: vc-max-cmabi-byval-size=0: turn off byval generation for CM ABI.
-; RUN: %opt_typed_ptrs %use_old_pass_manager% %pass_pref%CMABI -vc-max-cmabi-byval-size=0 -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=SMALL-OFF,SMALL-OFF-TYPED-PTRS,BIG-OFF-TYPED-PTRS,COMMON,COMMON-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% %pass_pref%CMABI -vc-max-cmabi-byval-size=0 -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=SMALL-OFF,SMALL-OFF-OPAQUE-PTRS,BIG-OFF-OPAQUE-PTRS,COMMON,COMMON-OPAQUE-PTRS
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -CMABILegacy -vc-max-cmabi-byval-size=0 -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=SMALL-OFF,SMALL-OFF-TYPED-PTRS,BIG-OFF-TYPED-PTRS,COMMON,COMMON-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -CMABILegacy -vc-max-cmabi-byval-size=0 -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=SMALL-OFF,SMALL-OFF-OPAQUE-PTRS,BIG-OFF-OPAQUE-PTRS,COMMON,COMMON-OPAQUE-PTRS
+; RUN: %opt_new_pm_typed -passes=CMABI -vc-max-cmabi-byval-size=0 -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=SMALL-OFF,SMALL-OFF-TYPED-PTRS,BIG-OFF-TYPED-PTRS,COMMON,COMMON-TYPED-PTRS
+; RUN: %opt_new_pm_opaque -passes=CMABI -vc-max-cmabi-byval-size=0 -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=SMALL-OFF,SMALL-OFF-OPAQUE-PTRS,BIG-OFF-OPAQUE-PTRS,COMMON,COMMON-OPAQUE-PTRS
+
 
 ; COM: vc-max-cmabi-byval-size=8: very small threshold for byval generation for CM ABI.
-; RUN: %opt_typed_ptrs %use_old_pass_manager% %pass_pref%CMABI -vc-max-cmabi-byval-size=8 -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=SMALL-ON,SMALL-ON-TYPED-PTRS,BIG-OFF-TYPED-PTRS,COMMON,COMMON-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% %pass_pref%CMABI -vc-max-cmabi-byval-size=8 -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=SMALL-ON,SMALL-ON-OPAQUE-PTRS,BIG-OFF-OPAQUE-PTRS,COMMON,COMMON-OPAQUE-PTRS
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -CMABILegacy -vc-max-cmabi-byval-size=8 -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=SMALL-ON,SMALL-ON-TYPED-PTRS,BIG-OFF-TYPED-PTRS,COMMON,COMMON-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -CMABILegacy -vc-max-cmabi-byval-size=8 -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=SMALL-ON,SMALL-ON-OPAQUE-PTRS,BIG-OFF-OPAQUE-PTRS,COMMON,COMMON-OPAQUE-PTRS
+; RUN: %opt_new_pm_typed -passes=CMABI -vc-max-cmabi-byval-size=8 -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=SMALL-ON,SMALL-ON-TYPED-PTRS,BIG-OFF-TYPED-PTRS,COMMON,COMMON-TYPED-PTRS
+; RUN: %opt_new_pm_opaque -passes=CMABI -vc-max-cmabi-byval-size=8 -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=SMALL-ON,SMALL-ON-OPAQUE-PTRS,BIG-OFF-OPAQUE-PTRS,COMMON,COMMON-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
 target triple = "spir64-unknown-unknown"

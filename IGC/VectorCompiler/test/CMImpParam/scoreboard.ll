@@ -6,7 +6,10 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: not %opt %use_old_pass_manager% %pass_pref%CMImpParam -march=genx64 -mcpu=Gen9 -S \
+; RUN: %not_legacy %opt_legacy_typed %use_old_pass_manager% -CMImpParam -march=genx64 -mcpu=Gen9 -S \
+; RUN:    < %s 2>&1 | FileCheck --check-prefix=OCL-CHECK %s
+
+; RUN: %not_new_pm %opt_new_pm_typed -passes=CMImpParam -march=genx64 -mcpu=Gen9 -S \
 ; RUN:    < %s 2>&1 | FileCheck --check-prefix=OCL-CHECK %s
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"

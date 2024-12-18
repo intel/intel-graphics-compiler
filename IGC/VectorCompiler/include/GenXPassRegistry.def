@@ -40,5 +40,6 @@ FUNCTION_PASS("GenXStatePointerFence", GenXStatePointerFencePass())
 FUNCTION_PASS("CMLowerVLoadVStore", CMLowerVLoadVStorePass())
 FUNCTION_PASS("GenXTypeLegalization", GenXTypeLegalizationPass())
 FUNCTION_PASS("GenXTranslateIntrinsics", GenXTranslateIntrinsicsPass())
+FUNCTION_PASS("GenXLowerAggrCopies", GenXLowerAggrCopiesPass())
 
 #undef FUNCTION_PASS
