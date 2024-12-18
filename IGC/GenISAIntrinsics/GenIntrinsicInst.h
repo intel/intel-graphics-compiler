@@ -50,7 +50,7 @@ See LICENSE.TXT for details.
 #include "usc_gen7_types.h"
 
 namespace IGC {
-    enum CallableShaderTypeMD : uint8_t;
+    enum CallableShaderTypeMD : uint32_t;
 } // namespace IGC
 
 namespace llvm {
