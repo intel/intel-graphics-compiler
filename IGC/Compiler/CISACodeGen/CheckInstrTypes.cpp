@@ -368,9 +368,7 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
             g_InstrTypes.num1DAccesses++;
             BufferType bufferType = DecodeBufferType(
                 CI->getArgOperand(0)->getType()->getPointerAddressSpace());
-            if (bufferType == UAV ||
-                bufferType == BINDLESS ||
-                bufferType == BINDLESS_READONLY)
+            if (bufferType == UAV || bufferType == BINDLESS)
             {
                 g_InstrTypes.hasStorageBufferLoad = true;
             }
@@ -382,9 +380,7 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
             g_InstrTypes.num1DAccesses++;
             BufferType bufferType = DecodeBufferType(
                 CI->getArgOperand(0)->getType()->getPointerAddressSpace());
-            if (bufferType == UAV ||
-                bufferType == BINDLESS ||
-                bufferType == BINDLESS_WRITEONLY)
+            if (bufferType == UAV || bufferType == BINDLESS)
             {
                 g_InstrTypes.hasStorageBufferStore = true;
             }
@@ -568,7 +564,6 @@ void CheckInstrTypes::visitLoadInst(LoadInst& I)
         g_InstrTypes.num1DAccesses++;
         break;
     case IGC::BINDLESS:
-    case IGC::BINDLESS_READONLY:
     case IGC::SSH_BINDLESS:
         g_InstrTypes.hasStorageBufferLoad = true;
         break;
@@ -588,7 +583,6 @@ void CheckInstrTypes::visitLoadInst(LoadInst& I)
     case IGC::CONSTANT_BUFFER:
     case IGC::POINTER:
     case IGC::BINDLESS_CONSTANT_BUFFER:
-    case IGC::BINDLESS_WRITEONLY:
     case IGC::BINDLESS_TEXTURE:
     case IGC::SAMPLER:
     case IGC::BINDLESS_SAMPLER:
@@ -643,7 +637,6 @@ void CheckInstrTypes::visitStoreInst(StoreInst& I)
         g_InstrTypes.num1DAccesses++;
         break;
     case IGC::BINDLESS:
-    case IGC::BINDLESS_WRITEONLY:
     case IGC::SSH_BINDLESS:
         g_InstrTypes.hasStorageBufferStore = true;
         break;
@@ -663,7 +656,6 @@ void CheckInstrTypes::visitStoreInst(StoreInst& I)
     case IGC::CONSTANT_BUFFER:
     case IGC::POINTER:
     case IGC::BINDLESS_CONSTANT_BUFFER:
-    case IGC::BINDLESS_READONLY:
     case IGC::BINDLESS_TEXTURE:
     case IGC::SAMPLER:
     case IGC::BINDLESS_SAMPLER:
