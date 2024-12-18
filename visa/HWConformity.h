@@ -120,8 +120,6 @@ class HWConformity {
                         uint8_t numInFirstMov, bool rule4_11,
                         bool allowSrcCrossGRF);
   void splitSIMD32Inst(INST_LIST_ITER iter, G4_BB *bb);
-  bool evenlySplitInst(INST_LIST_ITER iter, G4_BB *bb,
-                       bool checkOverlap = true);
   void moveSrcToGRF(INST_LIST_ITER it, uint32_t srcNum, uint16_t numGRF,
                     G4_BB *bb);
   void saveDst(INST_LIST_ITER &it, uint8_t stride, G4_BB *bb);
@@ -259,6 +257,8 @@ public:
   void localizeForAcc(G4_BB *bb);
   void splitDWMULInst(INST_LIST_ITER &start, INST_LIST_ITER &end, G4_BB *bb);
   void fixMulSrc1(INST_LIST_ITER i, G4_BB *bb);
+  bool evenlySplitInst(INST_LIST_ITER iter, G4_BB *bb,
+                       bool checkOverlap = true);
 };
 } // namespace vISA
 // single entry point for HW conformity checks

@@ -3915,6 +3915,17 @@ void Optimizer::HWWorkaround() {
               LSC_FENCE_OP_NONE)
         bb->insertBefore(ii, inst->cloneInst());
 
+      // When destination is an address register the following apply:
+      // Destination must not span across the lower to upper 8 dword
+      // boundary of the register.
+      // Fix this restriction after RA instead of HWConformity just because
+      // RA(spill/fill, A0 save/restore) would generate such instructions.
+      if (inst->getExecSize() == g4::SIMD32 && inst->getDst() &&
+          inst->getDst()->isDirectA0()) {
+        HWConformity hwConf(builder, kernel);
+        hwConf.evenlySplitInst(ii, bb, /*checkOverlap*/ false);
+      }
+
       ii++;
     }
   }
