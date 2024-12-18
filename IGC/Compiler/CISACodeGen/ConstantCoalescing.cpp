@@ -20,6 +20,8 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/Alignment.h"
+#include "llvm/Analysis/ValueTracking.h"
+#include "llvm/Support/KnownBits.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
@@ -632,6 +634,31 @@ bool ConstantCoalescing::CompareBufferBase(
     return false;
 }
 
+bool ConstantCoalescing::IsDwordAligned(Value* val) const
+{
+    KnownBits knownBits = computeKnownBits(val, *dataLayout);
+    return knownBits.countMinTrailingZeros() >= 2;
+}
+
+// VectorProcess pass requires that:
+// - if a vector load size is greater than 4 bytes, then the size of the loaded
+//   vector must be a multiple of DWORD.
+// - if a vector load size is smaller than 4 bytes, then the size of the loaded
+//   vector must be 1 or 2
+inline uint RoundChunkSize(uint numElements, uint elementSizeInBytes)
+{
+    uint32_t vectorSizeInBytes = numElements * elementSizeInBytes;
+    if (vectorSizeInBytes > 4 && (vectorSizeInBytes % 4) != 0)
+    {
+        return iSTD::RoundNonPow2(vectorSizeInBytes, 4) / elementSizeInBytes;
+    }
+    else if (vectorSizeInBytes < 4 && numElements == 3)
+    {
+        return 4;
+    }
+    return numElements;
+}
+
 void ConstantCoalescing::MergeScatterLoad(Instruction* load,
     Value* bufIdxV, uint addrSpace,
     Value* eltIdxV, uint offsetInBytes,
@@ -648,7 +675,8 @@ void ConstantCoalescing::MergeScatterLoad(Instruction* load,
     // Current assumption is that a chunk start needs to be DWORD aligned. In
     // the future we can consider adding support for merging 4 bytes or
     // 2 i16s/halfs into a single non-aligned DWORD.
-    const bool isDwordAligned = ((offsetInBytes % 4) == 0 && (eltIdxV == nullptr || alignment >= 4));
+    const bool isDwordAligned = ((offsetInBytes % 4) == 0 &&
+        (alignment >= 4 || eltIdxV == nullptr || IsDwordAligned(eltIdxV)));
 
     BufChunk* cov_chunk = nullptr;
     for (std::vector<BufChunk*>::reverse_iterator rit = chunk_vec.rbegin(),
@@ -701,7 +729,7 @@ void ConstantCoalescing::MergeScatterLoad(Instruction* load,
             cov_chunk->baseIdxV = eltIdxV;
             cov_chunk->elementSize = scalarSizeInBytes;
             cov_chunk->chunkStart = eltid;
-            cov_chunk->chunkSize = maxEltPlus;
+            cov_chunk->chunkSize = RoundChunkSize(maxEltPlus, scalarSizeInBytes);
             const alignment_t chunkAlignment = std::max<alignment_t>(alignment, 4);
             cov_chunk->chunkIO = CreateChunkLoad(load, cov_chunk, eltid, chunkAlignment, Extension);
 
@@ -726,7 +754,7 @@ void ConstantCoalescing::MergeScatterLoad(Instruction* load,
         uint lb = std::min(eltid, cov_chunk->chunkStart);
         uint ub = std::max(eltid + maxEltPlus, cov_chunk->chunkStart + cov_chunk->chunkSize);
         uint start_adj = cov_chunk->chunkStart - lb;
-        uint size_adj = ub - lb - cov_chunk->chunkSize;
+        uint size_adj = RoundChunkSize(ub - lb, cov_chunk->elementSize) - cov_chunk->chunkSize;
         if (start_adj == 0)
         {
             if (size_adj)
@@ -748,11 +776,11 @@ void ConstantCoalescing::MergeScatterLoad(Instruction* load,
         if (eltid < cov_chunk->chunkStart)
         {
             start_adj = cov_chunk->chunkStart - eltid;
-            size_adj = start_adj;
+            size_adj = RoundChunkSize(start_adj, cov_chunk->elementSize);
         }
         else if (eltid >= cov_chunk->chunkStart + cov_chunk->chunkSize)
         {
-            size_adj = eltid - cov_chunk->chunkStart - cov_chunk->chunkSize + 1;
+            size_adj = RoundChunkSize(eltid - cov_chunk->chunkStart + 1, cov_chunk->elementSize) - cov_chunk->chunkSize;
         }
 
         if (start_adj == 0 && size_adj == 0)
@@ -841,7 +869,7 @@ void ConstantCoalescing::CombineTwoLoads(
     uint lb = std::min(eltid0, eltid);
     uint ub = std::max(eltid0, eltid + numelt - 1);
     cov_chunk->chunkStart = lb;
-    cov_chunk->chunkSize = ub - lb + 1;
+    cov_chunk->chunkSize = RoundChunkSize(ub - lb + 1, cov_chunk->elementSize);
     Instruction* load0 = cov_chunk->chunkIO;
     // remove redundant load
     if (cov_chunk->chunkSize <= 1)
@@ -1054,8 +1082,8 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
     // Current assumption is that a chunk start needs to be DWORD aligned. In
     // the future we can consider adding support for merging 4 bytes or
     // 2 i16s/halfs into a single non-aligned DWORD.
-    const bool isDwordAligned =
-        ((offsetInBytes % 4) == 0 && (eltIdxV == nullptr || alignment >= 4));
+    const bool isDwordAligned = ((offsetInBytes % 4) == 0 &&
+        (alignment >= 4 || eltIdxV == nullptr || IsDwordAligned(eltIdxV)));
 
     auto shouldMerge = [&](const BufChunk* cur_chunk)
     {
