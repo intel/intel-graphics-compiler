@@ -169,7 +169,7 @@ unsigned int getConstantValueAsInt(Value *I) {
     return Result;
 }
 
-unsigned int getVectorSize(Instruction *I) {
+unsigned int getVectorSize(Value *I) {
     IGCLLVM::FixedVectorType *VecType =
         llvm::dyn_cast<IGCLLVM::FixedVectorType>(I->getType());
     if (!VecType)
@@ -619,6 +619,11 @@ bool IGCVectorizer::checkInsertElement(Instruction *First, VecArr &Slice) {
 
 bool IGCVectorizer::checkExtractElement(Instruction *Compare, VecArr &Slice) {
     Value *CompareSource = Slice[0]->getOperand(0);
+
+    if (getVectorSize(CompareSource) != Slice.size()) {
+        PRINT_LOG_NL("Extract is wider than the slice, need additional handling, not implemented");
+        return false;
+    }
 
     if (!llvm::isa<Instruction>(CompareSource)) {
         PRINT_LOG_NL("Source is not an instruction");
