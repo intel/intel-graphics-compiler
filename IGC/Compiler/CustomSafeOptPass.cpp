@@ -6600,7 +6600,7 @@ namespace {
         StringRef getPassName() const override { return "InsertBranchOpt"; }
 
         bool runOnFunction(Function& F) override;
-        void atomicSpiltOpt(Function& F, int mode);
+        void atomicSplitOpt(Function& F, int mode);
         void ThreeWayLoadSpiltOpt(Function& F);
         void findOptCases(SelectInst* I);
         bool HasSrcFromEE(Instruction* I, uint selNum, Instruction*& loadInst);
@@ -7252,11 +7252,20 @@ void InsertBranchOpt::ThreeWayLoadSpiltOpt(Function& F)
     }
 }
 
-void InsertBranchOpt::atomicSpiltOpt(Function& F, int mode)
+void InsertBranchOpt::atomicSplitOpt(Function& F, int mode)
 {
+    enum Mode
+    {
+        Disable = 0x0,    // Disabled IGC\EnableAtomicBranch = 0x0
+        ZeroAdd = BIT(0), // Enabled IGC\EnableAtomicBranch = 0x1
+        UMax = BIT(1),    // Enabled IGC\EnableAtomicBranch = 0x2
+        UMin = BIT(2)     // Enabled IGC\EnableAtomicBranch = 0x4
+    };
+
     // Allow both modes to be applied
-    bool defaultMode = ( ( mode & 1 ) == 1 );
-    bool alternateUmaxMode = ( ( mode & 2 ) == 2 );
+    bool zeroAddMode = ( ( mode & ZeroAdd ) == ZeroAdd );
+    bool umaxMode = ( ( mode & UMax ) == UMax );
+    bool uminMode = ( ( mode & UMin ) == UMin );
 
     auto createReadFromAtomic = []( IRBuilder<>& builder, Instruction* inst, bool isTyped )
         {
@@ -7353,9 +7362,11 @@ void InsertBranchOpt::atomicSpiltOpt(Function& F, int mode)
 
                 AtomicOp atomicOp = static_cast<AtomicOp>(op->getZExtValue());
 
-                if( ( ( defaultMode ) && ( atomicOp == AtomicOp::EATOMIC_IADD || atomicOp == AtomicOp::EATOMIC_SUB ) )
-                    ||
-                    atomicOp == AtomicOp::EATOMIC_UMAX )
+                if( ( zeroAddMode && ( atomicOp == AtomicOp::EATOMIC_IADD ||
+                                       atomicOp == AtomicOp::EATOMIC_SUB ||
+                                       atomicOp == AtomicOp::EATOMIC_UMAX ) )
+                    || ( umaxMode && ( atomicOp == AtomicOp::EATOMIC_UMAX ) )
+                    || ( uminMode && ( atomicOp == AtomicOp::EATOMIC_UMIN ) ) )
                 {
                     atomicSplit.push_back( std::make_pair( inst, atomicOp ) );
                 }
@@ -7380,12 +7391,14 @@ void InsertBranchOpt::atomicSpiltOpt(Function& F, int mode)
         Instruction* ElseTerm = nullptr;
         BasicBlock* MergeBlock = nullptr;
 
+        bool isModified = false;
 
-        if( op != AtomicOp::EATOMIC_UMAX || !alternateUmaxMode )
+        if ( ( zeroAddMode && ( op == AtomicOp::EATOMIC_IADD || op == AtomicOp::EATOMIC_SUB ) )
+           || ( !umaxMode && ( op == AtomicOp::EATOMIC_UMAX ) ) )
         {
             // Create an if-then-else structure.
-            // if (cond!=0)
-            //    use the original atomic add inst
+            // if (cond != 0)
+            //    use the original atomic add/sub/umax inst
             // else
             //    use typedread or load
             Instruction* condInst = dyn_cast<Instruction>(builder.CreateICmp(ICmpInst::ICMP_NE, src, builder.getInt32(0)));
@@ -7394,20 +7407,27 @@ void InsertBranchOpt::atomicSpiltOpt(Function& F, int mode)
 
             builder.SetInsertPoint( ElseTerm );
             readI = createReadFromAtomic( builder, inst, isTyped);
+
+            isModified = true;
         }
-        else // ( op == AtomicOp::EATOMIC_UMAX && alternateUmaxMode )
+        else if ( ( umaxMode && ( op == AtomicOp::EATOMIC_UMAX ) )
+                || ( uminMode && ( op == AtomicOp::EATOMIC_UMIN ) ) )
         {
             // Create an if-then structure.
             // x = typedread or load
-            // if (x < src)
-            //    use the original atomic umax inst src
+            // if (src > (for UMax) or < (for Umin) x)
+            //    use the original atomic umax/umin inst src
             readI = createReadFromAtomic( builder, inst, isTyped );
-            Instruction* condInst = dyn_cast<Instruction>( builder.CreateICmp( ICmpInst::ICMP_UGT, src, readI ) );
+            CmpInst::Predicate predicate = umaxMode ? ICmpInst::ICMP_UGT : ICmpInst::ICMP_ULT;
+            Instruction* condInst = dyn_cast<Instruction>( builder.CreateICmp( predicate, src, readI ) );
 
             splitBBAndName( condInst, inst, &ThenTerm, nullptr, MergeBlock );
             inst->moveBefore( ThenTerm );
+
+            isModified = true;
         }
-        if( inst->getNumUses() )
+
+        if( isModified && inst->getNumUses() )
         {
             PHINode* newPhi = PHINode::Create(inst->getType(), 2, "", &MergeBlock->front());
             inst->replaceUsesOutsideBlock(newPhi, inst->getParent());
@@ -7666,7 +7686,7 @@ bool InsertBranchOpt::runOnFunction(Function& F)
     int mode = IGC_IS_FLAG_ENABLED( EnableAtomicBranch ) ? IGC_GET_FLAG_VALUE( EnableAtomicBranch ) : pContext->getModuleMetaData()->csInfo.atomicBranch;
     if( mode )
     {
-        atomicSpiltOpt( F, mode );
+        atomicSplitOpt( F, mode );
     }
 
     if (IGC_IS_FLAG_ENABLED(EnableThreeWayLoadSpiltOpt) || pContext->getModuleMetaData()->enableThreeWayLoadSpiltOpt)
