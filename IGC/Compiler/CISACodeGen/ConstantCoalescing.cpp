@@ -2580,6 +2580,7 @@ bool ConstantCoalescing::CheckForAliasingWrites(
         if (writeAccessType != STATELESS &&
             writeAccessType != UAV &&
             writeAccessType != BINDLESS &&
+            writeAccessType != BINDLESS_WRITEONLY &&
             writeAccessType != SSH_BINDLESS)
         {
             return false;
