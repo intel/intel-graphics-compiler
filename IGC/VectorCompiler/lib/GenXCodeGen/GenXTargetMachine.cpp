@@ -408,14 +408,14 @@ static std::unique_ptr<TargetLoweringObjectFile> createTLOF(const Triple &TT) {
 GenXTargetMachine::GenXTargetMachine(const Target &T, const Triple &TT,
                                      StringRef CPU, StringRef FS,
                                      const TargetOptions &Options,
-                                     llvm::Optional<Reloc::Model> RM,
-                                     llvm::Optional<CodeModel::Model> CM,
+                                     IGCLLVM::optional<Reloc::Model> RM,
+                                     IGCLLVM::optional<CodeModel::Model> CM,
                                      CodeGenOpt::Level OL, bool Is64Bit,
                                      std::unique_ptr<GenXBackendConfig> BC)
-    : IGCLLVM::LLVMTargetMachine(T, getDL(Is64Bit), TT, CPU, FS, Options,
-                                 RM ? IGCLLVM::makeOptional(RM).value() : Reloc::Model::Static,
-                                 CM ? IGCLLVM::makeOptional(CM).value() : CodeModel::Model::Small,
-                                 OL),
+    : IGCLLVM::LLVMTargetMachine(
+          T, getDL(Is64Bit), TT, CPU, FS, Options,
+          RM ? IGCLLVM::getValue(RM) : Reloc::Model::Static,
+          CM ? IGCLLVM::getValue(CM) : CodeModel::Model::Small, OL),
       TLOF(createTLOF(getTargetTriple())), BC(std::move(BC)), Is64Bit(Is64Bit),
       Subtarget(TT, CPU.str(), FS.str()) {}
 
@@ -433,8 +433,8 @@ TargetPassConfig *GenXTargetMachine::createPassConfig(PassManagerBase &PM) {
 GenXTargetMachine32::GenXTargetMachine32(const Target &T, const Triple &TT,
                                          StringRef CPU, StringRef FS,
                                          const TargetOptions &Options,
-                                         llvm::Optional<Reloc::Model> RM,
-                                         llvm::Optional<CodeModel::Model> CM,
+                                         IGCLLVM::optional<Reloc::Model> RM,
+                                         IGCLLVM::optional<CodeModel::Model> CM,
                                          CodeGenOpt::Level OL, bool JIT,
                                          std::unique_ptr<GenXBackendConfig> BC)
     : GenXTargetMachine(T, TT, CPU, FS, Options, RM, CM, OL, false,
@@ -443,20 +443,19 @@ GenXTargetMachine32::GenXTargetMachine32(const Target &T, const Triple &TT,
 GenXTargetMachine64::GenXTargetMachine64(const Target &T, const Triple &TT,
                                          StringRef CPU, StringRef FS,
                                          const TargetOptions &Options,
-                                         llvm::Optional<Reloc::Model> RM,
-                                         llvm::Optional<CodeModel::Model> CM,
+                                         IGCLLVM::optional<Reloc::Model> RM,
+                                         IGCLLVM::optional<CodeModel::Model> CM,
                                          CodeGenOpt::Level OL, bool JIT,
                                          std::unique_ptr<GenXBackendConfig> BC)
     : GenXTargetMachine(T, TT, CPU, FS, Options, RM, CM, OL, true,
                         std::move(BC)) {}
 
 namespace vc {
-std::unique_ptr<llvm::TargetMachine>
-createGenXTargetMachine(const Target &T, Triple TT, StringRef CPU,
-                        StringRef Features, const TargetOptions &Options,
-                        llvm::Optional<Reloc::Model> RM,
-                        llvm::Optional<CodeModel::Model> CM, CodeGenOpt::Level OL,
-                        std::unique_ptr<GenXBackendConfig> BC) {
+std::unique_ptr<llvm::TargetMachine> createGenXTargetMachine(
+    const Target &T, Triple TT, StringRef CPU, StringRef Features,
+    const TargetOptions &Options, IGCLLVM::optional<Reloc::Model> RM,
+    IGCLLVM::optional<CodeModel::Model> CM, CodeGenOpt::Level OL,
+    std::unique_ptr<GenXBackendConfig> BC) {
   if (is32BitArch(TT))
     return std::make_unique<GenXTargetMachine32>(T, TT, CPU, Features, Options,
                                                  RM, CM, OL, false /*JIT*/,
@@ -1149,7 +1148,8 @@ void GenXTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
       PM.addPass(createModuleToFunctionPassAdaptor(InstCombinePass()));
 
       // Simplify region accesses.
-      PM.addPass(createModuleToFunctionPassAdaptor(GenXRegionCollapsingPass()));
+      PM.addPass(
+          createModuleToFunctionPassAdaptor(GenXRegionCollapsingPass(this)));
       PM.addPass(createModuleToFunctionPassAdaptor(EarlyCSEPass(true)));
       PM.addPass(createModuleToFunctionPassAdaptor(DCEPass()));
       // }

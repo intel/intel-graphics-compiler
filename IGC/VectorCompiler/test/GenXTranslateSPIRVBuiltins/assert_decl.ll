@@ -15,7 +15,7 @@
 ; RUN: %opt_new_pm_typed -passes=GenXTranslateSPIRVBuiltins \
 ; RUN: -vc-spirv-builtins-bif-path=%VC_SPIRV_OCL_BIF% -march=genx64 \
 ; RUN: -mtriple=spir64-unknown-unknown -mcpu=XeHPC -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
-; RUN: %opt_new_pm_typed -passes=GenXTranslateSPIRVBuiltins \
+; RUN: %opt_new_pm_opaque -passes=GenXTranslateSPIRVBuiltins \
 ; RUN: -vc-spirv-builtins-bif-path=%VC_SPIRV_OCL_BIF% -march=genx64 \
 ; RUN: -mtriple=spir64-unknown-unknown -mcpu=XeHPC -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 ; ------------------------------------------------

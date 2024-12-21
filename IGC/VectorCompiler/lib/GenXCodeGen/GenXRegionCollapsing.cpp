@@ -120,7 +120,7 @@ GenXRegionCollapsingPass::run(Function &F, FunctionAnalysisManager &AM) {
     return PreservedAnalyses::none();
   return PreservedAnalyses::all();
 }
-#endif
+#endif // LLVM_VERSION_MAJOR >= 16
 INITIALIZE_PASS_BEGIN(GenXRegionCollapsing, "GenXRegionCollapsing",
                       "GenXRegionCollapsing", false, false)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)

@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
+#include "llvmWrapper/ADT/Optional.h"
 #include "vc/GenXCodeGen/GenXOCLRuntimeInfo.h"
 #include "vc/Support/BackendConfig.h"
 #include "vc/Support/ShaderDump.h"
@@ -92,8 +93,8 @@ struct CompileOptions {
   OptimizerLevel IROptLevel = OptimizerLevel::Full;
   OptimizerLevel CodegenOptLevel = OptimizerLevel::Full;
 
-  llvm::Optional<unsigned> StackMemSize;
-  llvm::Optional<unsigned> GRFSize;
+  IGCLLVM::optional<unsigned> StackMemSize;
+  IGCLLVM::optional<unsigned> GRFSize;
 
   bool EnableAutoLargeGRF = false;
 

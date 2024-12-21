@@ -41,5 +41,6 @@ FUNCTION_PASS("CMLowerVLoadVStore", CMLowerVLoadVStorePass())
 FUNCTION_PASS("GenXTypeLegalization", GenXTypeLegalizationPass())
 FUNCTION_PASS("GenXTranslateIntrinsics", GenXTranslateIntrinsicsPass())
 FUNCTION_PASS("GenXLowerAggrCopies", GenXLowerAggrCopiesPass())
+FUNCTION_PASS("GenXRegionCollapsing", GenXRegionCollapsingPass(TM))
 
 #undef FUNCTION_PASS

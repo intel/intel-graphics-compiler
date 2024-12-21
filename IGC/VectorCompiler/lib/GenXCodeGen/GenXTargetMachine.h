@@ -49,14 +49,16 @@ class GenXTargetMachine : public IGCLLVM::LLVMTargetMachine {
 public:
   GenXTargetMachine(const Target &T, const Triple &TT, StringRef CPU,
                     StringRef FS, const TargetOptions &Options,
-                    llvm::Optional<Reloc::Model> RM, llvm::Optional<CodeModel::Model> CM,
+                    IGCLLVM::optional<Reloc::Model> RM,
+                    IGCLLVM::optional<CodeModel::Model> CM,
                     CodeGenOpt::Level OL, bool Is64Bit)
       : GenXTargetMachine(T, TT, CPU, FS, Options, RM, CM, OL, Is64Bit,
                           std::make_unique<GenXBackendConfig>()) {}
 
   GenXTargetMachine(const Target &T, const Triple &TT, StringRef CPU,
                     StringRef FS, const TargetOptions &Options,
-                    llvm::Optional<Reloc::Model> RM, llvm::Optional<CodeModel::Model> CM,
+                    IGCLLVM::optional<Reloc::Model> RM,
+                    IGCLLVM::optional<CodeModel::Model> CM,
                     CodeGenOpt::Level OL, bool Is64Bit,
                     std::unique_ptr<GenXBackendConfig> BC);
 
@@ -93,14 +95,16 @@ class GenXTargetMachine32 : public GenXTargetMachine {
 public:
   GenXTargetMachine32(const Target &T, const Triple &TT, StringRef CPU,
                       StringRef FS, const TargetOptions &Options,
-                      llvm::Optional<Reloc::Model> RM, llvm::Optional<CodeModel::Model> CM,
+                      IGCLLVM::optional<Reloc::Model> RM,
+                      IGCLLVM::optional<CodeModel::Model> CM,
                       CodeGenOpt::Level OL, bool JIT)
       : GenXTargetMachine32(T, TT, CPU, FS, Options, RM, CM, OL, JIT,
                             std::make_unique<GenXBackendConfig>()) {}
 
   GenXTargetMachine32(const Target &T, const Triple &TT, StringRef CPU,
                       StringRef FS, const TargetOptions &Options,
-                      llvm::Optional<Reloc::Model> RM, llvm::Optional<CodeModel::Model> CM,
+                      IGCLLVM::optional<Reloc::Model> RM,
+                      IGCLLVM::optional<CodeModel::Model> CM,
                       CodeGenOpt::Level OL, bool JIT,
                       std::unique_ptr<GenXBackendConfig> BC);
 };
@@ -109,14 +113,16 @@ class GenXTargetMachine64 : public GenXTargetMachine {
 public:
   GenXTargetMachine64(const Target &T, const Triple &TT, StringRef CPU,
                       StringRef FS, const TargetOptions &Options,
-                      llvm::Optional<Reloc::Model> RM, llvm::Optional<CodeModel::Model> CM,
+                      IGCLLVM::optional<Reloc::Model> RM,
+                      IGCLLVM::optional<CodeModel::Model> CM,
                       CodeGenOpt::Level OL, bool JIT)
       : GenXTargetMachine64(T, TT, CPU, FS, Options, RM, CM, OL, JIT,
                             std::make_unique<GenXBackendConfig>()) {}
 
   GenXTargetMachine64(const Target &T, const Triple &TT, StringRef CPU,
                       StringRef FS, const TargetOptions &Options,
-                      llvm::Optional<Reloc::Model> RM, llvm::Optional<CodeModel::Model> CM,
+                      IGCLLVM::optional<Reloc::Model> RM,
+                      IGCLLVM::optional<CodeModel::Model> CM,
                       CodeGenOpt::Level OL, bool JIT,
                       std::unique_ptr<GenXBackendConfig> BC);
 };

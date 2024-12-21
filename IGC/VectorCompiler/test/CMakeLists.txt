@@ -36,6 +36,9 @@ if(LLVM_ON_UNIX)
     llc
     VCBackendPlugin
     )
+  if (${LLVM_VERSION_MAJOR} GREATER 15)
+    list(APPEND TEST_DEPS NewPMPlugin)
+  endif()
 endif()
 
 file(GLOB_RECURSE _tests "${VC_TEST_SOURCE_DIR}/*.ll" "${VC_TEST_SOURCE_DIR}/*.s")
