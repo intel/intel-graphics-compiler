@@ -580,6 +580,7 @@ DECLARE_IGC_REGKEY(DWORD, EnableMeshSLMCache,           0,     "Enables caching 
                                                                        enable caching of outputs that are read in the shader\
                                                                        data is only mirrored in SLM", true)
 DECLARE_IGC_REGKEY(bool, DisableShrinkArrayAllocaPass,  false, "Disables ShrinkArrayAllocaPass", true)
+DECLARE_IGC_REGKEY(bool, DisableAddRequiredMemoryFencesPass,  false, "Disables AddRequiredMemoryFencesPass", true)
 DECLARE_IGC_REGKEY(bool, EnableL3FlushForGlobal,        false, "Enable/disable flushing L3 cache for globals", false)
 DECLARE_IGC_REGKEY(bool, EnableCPSOmaskWA,              true,  "Enable workaround for oMask with CPS", false)
 DECLARE_IGC_REGKEY(bool, EnableCPSMSAAOMaskWA,          false, "Enable WA which forces rt writes to happen at pixel rate when cps, msaa, and omask are present.", true)

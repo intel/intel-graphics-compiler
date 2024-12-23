@@ -10,6 +10,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
 
 set(IGC_BUILD__SRC__Legalizer
+    "${CMAKE_CURRENT_SOURCE_DIR}/AddRequiredMemoryFences.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/InstLegalChecker.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/InstPromoter.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/TypeLegalizer.cpp"
@@ -18,6 +19,7 @@ set(IGC_BUILD__SRC__Legalizer
 set(IGC_BUILD__SRC__Compiler_Legalizer ${IGC_BUILD__SRC__Legalizer} PARENT_SCOPE)
 
 set(IGC_BUILD__HDR__Legalizer
+    "${CMAKE_CURRENT_SOURCE_DIR}/AddRequiredMemoryFences.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/InstLegalChecker.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/InstPromoter.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/TypeLegalizer.h"
