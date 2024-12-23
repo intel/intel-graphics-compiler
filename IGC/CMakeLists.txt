@@ -42,10 +42,8 @@ if(NOT DEFINED IGC_API_PATCH_VERSION)
 endif()
 
 # IGC_BUILD_ID
-if(DEFINED IGC_PACKAGE_RELEASE)
-      set(IGC_BUILD_ID ${IGC_PACKAGE_RELEASE})
-else()
-      set(IGC_BUILD_ID 0)
+if(NOT DEFINED IGC_BUILD_METADATA)
+      set(IGC_BUILD_METADATA 0)
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
@@ -2139,8 +2137,8 @@ endif()
 ########################################################################
 
 set(IGC_PC_PACKAGE_RELEASE "")
-if(DEFINED IGC_PACKAGE_RELEASE)
-  set(IGC_PC_PACKAGE_RELEASE "-${IGC_PACKAGE_RELEASE}")
+if(DEFINED IGC_BUILD_METADATA)
+  set(IGC_PC_PACKAGE_RELEASE "-${IGC_BUILD_METADATA}")
 endif()
 include(cmake/igc_version.cmake)
 
