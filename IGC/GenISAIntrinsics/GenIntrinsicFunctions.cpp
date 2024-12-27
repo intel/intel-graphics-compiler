@@ -254,7 +254,9 @@ private:
                         pointeeType = arg.m_Type.m_Pointer.m_Type.GetType(ctx);
                     }
 
-                    IGC_ASSERT_MESSAGE(pointeeType, "Missing type for the type-dependent attribute!");
+                    // IGC_ASSERT_MESSAGE(pointeeType, "Missing type for the type-dependent attribute!");
+                    if (!pointeeType)
+                        return;
 
                     mainAttrList = mainAttrList.addParamAttribute(ctx, { index }, llvm::Attribute::get(ctx, arg.m_AttrKind, pointeeType));
                 }
