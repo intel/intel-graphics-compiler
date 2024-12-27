@@ -43,7 +43,7 @@ const char* AddrModeEnumeration[3] =
 #endif // GED_ADDR_MODE_HIDDEN
 
 #ifndef GED_ARCH_REG_HIDDEN
-const char* ArchRegEnumeration[17] =
+const char* ArchRegEnumeration[18] =
 {
     "null", // 0
     "a0", // 1
@@ -61,7 +61,8 @@ const char* ArchRegEnumeration[17] =
     "fc", // 13
     "dbg0", // 14
     "n", // 15
-    NULL // 16
+    "s", // 16
+    NULL // 17
 }; // ArchRegEnumeration[]
 #endif // GED_ARCH_REG_HIDDEN
 
@@ -161,7 +162,7 @@ const char* CondModifierEnumeration[10] =
 #endif // GED_COND_MODIFIER_HIDDEN
 
 #ifndef GED_DATA_TYPE_HIDDEN
-const char* DataTypeEnumeration[20] =
+const char* DataTypeEnumeration[21] =
 {
     "ud", // 0
     "d", // 1
@@ -182,7 +183,8 @@ const char* DataTypeEnumeration[20] =
     "qf", // 16
     "bf8", // 17
     "tf32", // 18
-    NULL // 19
+    "hf8", // 19
+    NULL // 20
 }; // DataTypeEnumeration[]
 #endif // GED_DATA_TYPE_HIDDEN
 
@@ -273,7 +275,7 @@ const char* DPCacheStoreEnumeration[9] =
 #endif // GED_DPCACHE_STORE_HIDDEN
 
 #ifndef GED_DPCMASK_HIDDEN
-const char* DPCmaskEnumeration[15] =
+const char* DPCmaskEnumeration[16] =
 {
     "X", // 0
     "Y", // 1
@@ -285,11 +287,12 @@ const char* DPCmaskEnumeration[15] =
     "W", // 7
     "XW", // 8
     "YW", // 9
-    "ZW", // 10
-    "XYW", // 11
-    "YZW", // 12
-    "XYZW", // 13
-    NULL // 14
+    "XYW", // 10
+    "ZW", // 11
+    "XZW", // 12
+    "YZW", // 13
+    "XYZW", // 14
+    NULL // 15
 }; // DPCmaskEnumeration[]
 #endif // GED_DPCMASK_HIDDEN
 
@@ -343,7 +346,7 @@ const char* DPOneAddrRegEnumeration[2] =
 #endif // GED_DPONE_ADDR_REG_HIDDEN
 
 #ifndef GED_DP_OPCODE_HIDDEN
-const char* DpOpcodeEnumeration[33] =
+const char* DpOpcodeEnumeration[35] =
 {
     "LOAD", // 0
     "LOAD_CMASK", // 1
@@ -377,7 +380,9 @@ const char* DpOpcodeEnumeration[33] =
     "APPENDCOUNTER_ATOMIC_ADD", // 29
     "APPENDCOUNTER_ATOMIC_SUB", // 30
     "APPENDCOUNTER_ATOMIC_STORE", // 31
-    NULL // 32
+    "LOAD_CMASK_MSRT", // 32
+    "STORE_CMASK_MSRT", // 33
+    NULL // 34
 }; // DpOpcodeEnumeration[]
 #endif // GED_DP_OPCODE_HIDDEN
 
@@ -484,6 +489,15 @@ const char* HeaderPresentEnumeration[3] =
     NULL // 2
 }; // HeaderPresentEnumeration[]
 #endif // GED_HEADER_PRESENT_HIDDEN
+
+#ifndef GED_IS_IMM_HIDDEN
+const char* IsImmEnumeration[3] =
+{
+    "true", // 0
+    "false", // 1
+    NULL // 2
+}; // IsImmEnumeration[]
+#endif // GED_IS_IMM_HIDDEN
 
 #ifndef GED_MASK_CTRL_HIDDEN
 const char* MaskCtrlEnumeration[3] =
@@ -625,7 +639,7 @@ const char* NoSrcDepSetEnumeration[3] =
 #endif // GED_NO_SRC_DEP_SET_HIDDEN
 
 #ifndef GED_OPCODE_HIDDEN
-const char* OpcodeEnumeration[83] =
+const char* OpcodeEnumeration[84] =
 {
     "stub", // 0
     "illegal", // 1
@@ -706,15 +720,16 @@ const char* OpcodeEnumeration[83] =
     "bfn", // 76
     "macl", // 77
     "srnd", // 78
-    "f32to16", // 79
-    "f16to32", // 80
-    "dim", // 81
-    NULL // 82
+    "sdpas", // 79
+    "f32to16", // 80
+    "f16to32", // 81
+    "dim", // 82
+    NULL // 83
 }; // OpcodeEnumeration[]
 #endif // GED_OPCODE_HIDDEN
 
 #ifndef GED_PRECISION_HIDDEN
-const char* PrecisionEnumeration[14] =
+const char* PrecisionEnumeration[15] =
 {
     "u8", // 0
     "u4", // 1
@@ -729,7 +744,8 @@ const char* PrecisionEnumeration[14] =
     "bf8", // 10
     "df", // 11
     "tf32", // 12
-    NULL // 13
+    "hf8", // 13
+    NULL // 14
 }; // PrecisionEnumeration[]
 #endif // GED_PRECISION_HIDDEN
 

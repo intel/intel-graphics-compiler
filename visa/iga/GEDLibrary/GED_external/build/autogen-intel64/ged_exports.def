@@ -280,6 +280,12 @@ EXPORTS
   GED_SetSrc1Length
   GED_GetSrc2IsImm
   GED_SetSrc2IsImm
+  GED_GetMetaRegFile
+  GED_SetMetaRegFile
+  GED_GetMetaSubRegNum
+  GED_SetMetaSubRegNum
+  GED_GetMetaRegNum
+  GED_SetMetaRegNum
   GED_GetIndexedSrcAddrImm
   GED_SetIndexedSrcAddrImm
   GED_GetIndexedSrcAddrMode
@@ -450,6 +456,7 @@ EXPORTS
   GED_GetExecutionDataTypeString
   GED_GetFusionCtrlString
   GED_GetHeaderPresentString
+  GED_GetIsImmString
   GED_GetMaskCtrlString
   GED_GetMathFCString
   GED_GetMathMacroExtString

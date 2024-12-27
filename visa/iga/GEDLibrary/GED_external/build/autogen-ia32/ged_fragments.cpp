@@ -343,3 +343,9 @@ const ged_ins_field_position_fragment_t FragmentsTable57[4] =
     {  64,  65,   2, -15,        0x3 }, // 2
     {  80,  95,   2,  -1, 0xffff0000 } // 3
 }; // FragmentsTable57[]
+const ged_ins_field_position_fragment_t FragmentsTable58[3] =
+{
+    {  92,  95,   2,  28, 0xf0000000 }, // 0
+    {  96,  97,   3,  -4,        0x3 }, // 1
+    { 112, 113,   3,  10,    0x30000 } // 2
+}; // FragmentsTable58[]

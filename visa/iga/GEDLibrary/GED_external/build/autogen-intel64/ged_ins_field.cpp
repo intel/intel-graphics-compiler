@@ -15,7 +15,7 @@ SPDX-License-Identifier: MIT
 #include "ged_enumerations_internal.h"
 #include "ged_ins_field_internal.h"
 #include "ged_ins_field.h"
-GED_FIELD_TYPE fieldTypesByField[129] =
+GED_FIELD_TYPE fieldTypesByField[132] =
 {
     0x3, // 0
     0x0, // 1
@@ -145,11 +145,14 @@ GED_FIELD_TYPE fieldTypesByField[129] =
     0x100, // 125
     0x100, // 126
     0x100, // 127
-    0x100 // 128
+    0x100, // 128
+    0x103, // 129
+    0x100, // 130
+    0x100 // 131
 }; // fieldTypesByField[]
 
 #if GED_VALIDATION_API
-const char* fieldNameByField[129] =
+const char* fieldNameByField[132] =
 {
     "Opcode", // 0
     "CmptCtrl", // 1
@@ -279,7 +282,10 @@ const char* fieldNameByField[129] =
     "ExBSO", // 125
     "CPS", // 126
     "Src1Length", // 127
-    "Src2IsImm" // 128
+    "Src2IsImm", // 128
+    "MetaRegFile", // 129
+    "MetaSubRegNum", // 130
+    "MetaRegNum" // 131
 }; // fieldNameByField[]
 #endif // GED_VALIDATION_API
 GED_FIELD_TYPE pseudoFieldTypesByField[51] =

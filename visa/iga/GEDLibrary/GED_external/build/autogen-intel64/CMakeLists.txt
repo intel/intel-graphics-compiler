@@ -13,9 +13,9 @@ set(GED_autogenintel64_cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_compaction_tables.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_decoding_tables.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_encoding_masks_tables.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_enumerations.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_enum_interpreters.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_enum_tables.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_enumerations.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_fragments.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_ins_field.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_mapping_fragments.cpp
@@ -30,6 +30,7 @@ set(GED_autogenintel64_cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_none.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_tgl.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe2.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe3.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hp.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hpc.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hpc_a.cpp
@@ -46,10 +47,10 @@ set(GED_autogenintel64_h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_compaction_tables.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_decoding_tables.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_encoding_masks_tables.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_enumerations.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_enumerations_internal.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_enum_interpreters.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_enum_tables.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_enumerations.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_enumerations_internal.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_fragments.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_ins_field.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_ins_field_internal.h
@@ -65,6 +66,7 @@ set(GED_autogenintel64_h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_none.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_tgl.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe2.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe3.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hp.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hpc.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hpc_a.h

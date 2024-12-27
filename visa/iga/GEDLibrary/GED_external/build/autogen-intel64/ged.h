@@ -138,6 +138,12 @@ typedef enum
      * Supported CPUs: Xe2
      */
     GED_MODEL_XE2,
+
+    /*!
+     * GED Model Version: xe3
+     * Supported CPUs: Xe3
+     */
+    GED_MODEL_XE3,
     GED_MODEL_INVALID
 } GED_MODEL;
 
@@ -3452,6 +3458,80 @@ extern uint32_t GED_CALLCONV GED_GetSrc2IsImm(ged_ins_t* ins, GED_RETURN_VALUE* 
 extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc2IsImm(ged_ins_t* ins, const uint32_t value);
 
 /*!
+ * Get the value of the MetaRegFile field in the given instruction. The function returns an enumeration value. To obtain the enum
+ * entry's string representation, use @ref GED_GetRegFileString. See @ref GED_INS_FIELD_MetaRegFile for the field's description.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
+ *                         which caused the failure.
+ *
+ * @return      MetaRegFile's enumeration if the field is valid, GED_REG_FILE_INVALID otherwise.
+ *
+ * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
+ */
+extern GED_REG_FILE GED_CALLCONV GED_GetMetaRegFile(ged_ins_t* ins, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the MetaRegFile field in the given instruction. See @ref GED_INS_FIELD_MetaRegFile for the field's description.
+ *
+ * @param[in,out]   ins    Pointer to the instruction object for encoding.
+ * @param[in]       value  The value to encode.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMetaRegFile(ged_ins_t* ins, const GED_REG_FILE value);
+
+/*!
+ * Get the value of the MetaSubRegNum field in the given instruction. See @ref GED_INS_FIELD_MetaSubRegNum for the field's
+ * description.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
+ *                         which caused the failure.
+ *
+ * @return      The requested value if the field is valid, uint32_t equivalent of -1 otherwise. If -1 is a valid value for this field,
+ *              it is important to check the GED_RETURN_VALUE result.
+ *
+ * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
+ */
+extern uint32_t GED_CALLCONV GED_GetMetaSubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the MetaSubRegNum field in the given instruction. See @ref GED_INS_FIELD_MetaSubRegNum for the field's
+ * description.
+ *
+ * @param[in,out]   ins    Pointer to the instruction object for encoding.
+ * @param[in]       value  The value to encode.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMetaSubRegNum(ged_ins_t* ins, const uint32_t value);
+
+/*!
+ * Get the value of the MetaRegNum field in the given instruction. See @ref GED_INS_FIELD_MetaRegNum for the field's description.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
+ *                         which caused the failure.
+ *
+ * @return      The requested value if the field is valid, uint32_t equivalent of -1 otherwise. If -1 is a valid value for this field,
+ *              it is important to check the GED_RETURN_VALUE result.
+ *
+ * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
+ */
+extern uint32_t GED_CALLCONV GED_GetMetaRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the MetaRegNum field in the given instruction. See @ref GED_INS_FIELD_MetaRegNum for the field's description.
+ *
+ * @param[in,out]   ins    Pointer to the instruction object for encoding.
+ * @param[in]       value  The value to encode.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMetaRegNum(ged_ins_t* ins, const uint32_t value);
+
+/*!
  * Get the value of the AddrImm field which corresponds to an indexed Src operand in the given instruction. See @ref
  * GED_INS_FIELD_Src0AddrImm, @ref GED_INS_FIELD_Src1AddrImm for the fields' description.
  *
@@ -3488,7 +3568,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcAddrImm(ged_ins_t* ins, co
  *                         which caused the failure.
  * @param[in]       index  The index (number) of the source operand.
  *
- * @return      Src1SubBytePrecision's enumeration if the field is valid, GED_SUB_BYTE_PRECISION_INVALID otherwise.
+ * @return      MetaRegFile's enumeration if the field is valid, GED_REG_FILE_INVALID otherwise.
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
@@ -3571,7 +3651,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcChanSel(ged_ins_t* ins, co
  *                         which caused the failure.
  * @param[in]       index  The index (number) of the source operand.
  *
- * @return      Src1SubBytePrecision's enumeration if the field is valid, GED_SUB_BYTE_PRECISION_INVALID otherwise.
+ * @return      MetaRegFile's enumeration if the field is valid, GED_REG_FILE_INVALID otherwise.
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
@@ -3685,7 +3765,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcIsImm(ged_ins_t* ins, cons
  *                         which caused the failure.
  * @param[in]       index  The index (number) of the source operand.
  *
- * @return      Src1SubBytePrecision's enumeration if the field is valid, GED_SUB_BYTE_PRECISION_INVALID otherwise.
+ * @return      MetaRegFile's enumeration if the field is valid, GED_REG_FILE_INVALID otherwise.
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
@@ -3714,7 +3794,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcMathMacroExt(ged_ins_t* in
  *                         which caused the failure.
  * @param[in]       index  The index (number) of the source operand.
  *
- * @return      Src1SubBytePrecision's enumeration if the field is valid, GED_SUB_BYTE_PRECISION_INVALID otherwise.
+ * @return      MetaRegFile's enumeration if the field is valid, GED_REG_FILE_INVALID otherwise.
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
@@ -3769,7 +3849,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcRegNum(ged_ins_t* ins, con
  *                         which caused the failure.
  * @param[in]       index  The index (number) of the source operand.
  *
- * @return      Src1SubBytePrecision's enumeration if the field is valid, GED_SUB_BYTE_PRECISION_INVALID otherwise.
+ * @return      MetaRegFile's enumeration if the field is valid, GED_REG_FILE_INVALID otherwise.
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
@@ -3796,7 +3876,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcRepCtrl(ged_ins_t* ins, co
  *                         which caused the failure.
  * @param[in]       index  The index (number) of the source operand.
  *
- * @return      Src1SubBytePrecision's enumeration if the field is valid, GED_SUB_BYTE_PRECISION_INVALID otherwise.
+ * @return      MetaRegFile's enumeration if the field is valid, GED_REG_FILE_INVALID otherwise.
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
@@ -5640,6 +5720,15 @@ extern const char* GED_CALLCONV GED_GetFusionCtrlString(GED_FUSION_CTRL FusionCt
  * @return      The requested string.
  */
 extern const char* GED_CALLCONV GED_GetHeaderPresentString(GED_HEADER_PRESENT HeaderPresentValue);
+
+/*!
+ * Get the string representation for the given GED_IS_IMM enumerator. The function returns a NULL pointer for GED_IS_IMM_INVALID.
+ *
+ * @param[in]       IsImmValue The given GED_IS_IMM enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV GED_GetIsImmString(GED_IS_IMM IsImmValue);
 
 /*!
  * Get the string representation for the given GED_MASK_CTRL enumerator. The function returns a NULL pointer for
