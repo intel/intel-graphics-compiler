@@ -81,11 +81,15 @@ echo "[Build Status] LLVM_VERSION_PREFERRED = $LLVM_VERSION_PREFERRED"
 
 echo "[Build Status] Prepare install OpenCL Clang"
 dpkg -i ./igc-official-release/*.deb
+if [ -f "/usr/local/lib/libopencl-clang2.so.$LLVM_VERSION" ] && [ ! -f "/usr/local/lib/libopencl-clang2.so" ]; then
+    ln -s /usr/local/lib/libopencl-clang2.so.$LLVM_VERSION /usr/local/lib/libopencl-clang2.so
+fi
 if [ -f "/usr/local/lib/libopencl-clang2.so" ] && [ ! -f "/usr/local/lib/libopencl-clang.so" ]; then
     # Symlink to a library name CMake is set up to handle until either
     # CMake is updated or the library name is changed back.
     ln -s /usr/local/lib/libopencl-clang2.so /usr/local/lib/libopencl-clang.so
 fi
+ls /usr/local/lib/libopencl-clang*
 echo "[Build Status] OpenCL Clang INSTALLED"
 
 
@@ -100,7 +104,7 @@ cd workspace/igc
 echo "[Build Status] IGC commit hash below:"
 echo "[Build Status] All necessary repository Ready"
 
-CONFIG_VARS="-DIGC_OPTION__LLVM_MODE=Prebuilds -DIGC_OPTION__LLVM_PREFERRED_VERSION=$LLVM_VERSION_PREFERRED -DCCLANG_BUILD_PREBUILDS=ON"
+CONFIG_VARS="-DIGC_OPTION__LLVM_MODE=Prebuilds -DIGC_OPTION__LLVM_PREFERRED_VERSION=$LLVM_VERSION_PREFERRED"
 case $COMPILER in
     "clang")
         CONFIG_VARS="$CONFIG_VARS -DCMAKE_C_COMPILER=clang-$LLVM_VERSION -DCMAKE_CXX_COMPILER=clang++-$LLVM_VERSION"
