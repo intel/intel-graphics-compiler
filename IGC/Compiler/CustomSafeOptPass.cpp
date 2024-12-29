@@ -7264,7 +7264,7 @@ void InsertBranchOpt::atomicSplitOpt(Function& F, int mode)
     }
 }
 
-void typedWriteZeroStoreCheck(Function& F)
+void typedWriteZeroStoreCheck(Function& F, CodeGenContext* pCtx)
 {
     for (auto BI = F.begin(), BE = F.end(); BI != BE; ++BI)
     {
@@ -7521,7 +7521,7 @@ bool InsertBranchOpt::runOnFunction(Function& F)
         ThreeWayLoadSpiltOpt(F);
     }
 
-    typedWriteZeroStoreCheck(F);
+    typedWriteZeroStoreCheck(F, pContext);
 
     return false;
 }
