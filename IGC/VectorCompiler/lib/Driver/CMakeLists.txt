@@ -35,3 +35,11 @@ if(LLVM_ON_UNIX)
 endif()
 
 target_link_libraries(VCDriver LLVMSPIRVLib)
+
+if (LLVM_VERSION_MAJOR GREATER 15)
+target_include_directories(VCDriver
+  PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/../GenXCodeGen/"
+  "${CMAKE_CURRENT_BINARY_DIR}/../../lib/GenXCodeGen/"
+  )
+endif()

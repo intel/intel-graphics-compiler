@@ -84,7 +84,7 @@ SPDX-License-Identifier: MIT
 ///
 //===----------------------------------------------------------------------===//
 
-#include <llvmWrapper/IR/Type.h>
+#include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/Support/Alignment.h"
 
 #include "vc/GenXOpts/GenXOpts.h"
@@ -192,7 +192,7 @@ Pass *createCMKernelArgOffsetPass(unsigned GrfByteSize,
 PreservedAnalyses
 CMKernelArgOffsetPass::run(llvm::Module &M,
                            llvm::AnalysisManager<llvm::Module> &) {
-  CMKernelArgOffset CMKern;
+  CMKernelArgOffset CMKern(GrfByteSize, UseBindlessImages);
   if (CMKern.runOnModule(M))
     return PreservedAnalyses::none();
   return PreservedAnalyses::all();

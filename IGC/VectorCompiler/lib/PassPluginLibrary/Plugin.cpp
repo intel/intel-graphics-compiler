@@ -68,6 +68,8 @@ void registerPluginPasses(PassBuilder &PB) {
   llvm::TargetMachine *TM =
       GetTargetMachine(TheTriple, CPUStr, FeaturesStr, Options);
 
+  auto *GTM = static_cast<GenXTargetMachine *>(TM);
+
 #define ADD_PASS(NAME, CREATE_PASS)                                            \
   if (Name == NAME) {                                                          \
     PM.addPass(CREATE_PASS);                                                   \
@@ -78,7 +80,7 @@ void registerPluginPasses(PassBuilder &PB) {
       [=](StringRef Name, CGSCCPassManager &PM,
           ArrayRef<PassBuilder::PipelineElement>) {
 #define CGSCC_PASS(NAME, CREATE_PASS) ADD_PASS(NAME, CREATE_PASS)
-#include "GenXPassRegistry.def"
+#include "GenXPassRegistry.h"
 #undef CGSCC_PASS
         return false;
       });
@@ -87,7 +89,7 @@ void registerPluginPasses(PassBuilder &PB) {
       [=](StringRef Name, ModulePassManager &PM,
           ArrayRef<PassBuilder::PipelineElement>) {
 #define MODULE_PASS(NAME, CREATE_PASS) ADD_PASS(NAME, CREATE_PASS)
-#include "GenXPassRegistry.def"
+#include "GenXPassRegistry.h"
 #undef MODULE_PASS
         return false;
       });
@@ -96,7 +98,7 @@ void registerPluginPasses(PassBuilder &PB) {
       [=](StringRef Name, FunctionPassManager &PM,
           ArrayRef<PassBuilder::PipelineElement>) {
 #define FUNCTION_PASS(NAME, CREATE_PASS) ADD_PASS(NAME, CREATE_PASS)
-#include "GenXPassRegistry.def"
+#include "GenXPassRegistry.h"
 #undef FUNCTION_PASS
         return false;
       });

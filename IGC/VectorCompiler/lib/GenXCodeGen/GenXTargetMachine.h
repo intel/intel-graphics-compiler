@@ -89,6 +89,16 @@ public:
       LLVM_GET_TTI_API_QUAL override;
 
   const GenXSubtarget &getGenXSubtarget() const { return Subtarget; }
+
+  void setBackendConfig(GenXBackendConfig *pBC) {
+    IGC_ASSERT(!BC.get());
+    BC.reset(pBC);
+  }
+
+  GenXBackendConfig *getBackendConfig() const {
+    IGC_ASSERT(BC.get());
+    return BC.get();
+  }
 };
 
 class GenXTargetMachine32 : public GenXTargetMachine {

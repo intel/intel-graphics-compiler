@@ -9,6 +9,9 @@ SPDX-License-Identifier: MIT
 #include "SPIRVWrapper.h"
 #include "vc/Support/PassManager.h"
 
+#if LLVM_VERSION_MAJOR >= 16
+#include "GenXTargetMachine.h"
+#endif
 #include "vc/Driver/Driver.h"
 
 #include "igc/Options/Options.h"
@@ -383,7 +386,7 @@ static void optimizeIR(const vc::CompileOptions &Opts,
 #if LLVM_VERSION_MAJOR < 15
   PMBuilder.PrepareForThinLTO = false;
   PMBuilder.PrepareForLTO = false;
-#endif
+#endif // LLVM_VERSION_MAJOR < 15
   PMBuilder.RerollLoops = true;
 
   TM.adjustPassManager(PMBuilder);
@@ -400,7 +403,16 @@ static void optimizeIR(const vc::CompileOptions &Opts,
   PerFunctionPasses.doFinalization();
 
   PerModulePasses.run(M);
-#else
+#else  // LLVM_VERSION_MAJOR < 16
+
+  GenXTargetMachine *GXTM = static_cast<GenXTargetMachine *>(&TM);
+  IGC_ASSERT(GXTM);
+  if (!GXTM->getBackendConfig()) {
+    auto *BC = new GenXBackendConfig{
+        createBackendOptions(Opts),
+        createBackendData(ExtData, TM.getPointerSizeInBits(0))};
+    GXTM->setBackendConfig(BC);
+  }
 
   // Create the analysis managers.
   llvm::LoopAnalysisManager LAM;
@@ -433,7 +445,7 @@ static void optimizeIR(const vc::CompileOptions &Opts,
                     : llvm::OptimizationLevel::O0);
 
   MPM.run(M, MAM);
-#endif
+#endif // LLVM_VERSION_MAJOR < 16
 }
 
 static void populateCodeGenPassManager(const vc::CompileOptions &Opts,

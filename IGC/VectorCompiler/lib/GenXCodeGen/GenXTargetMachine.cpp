@@ -1084,7 +1084,7 @@ void GenXTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
     PM.addPass(AlwaysInlinerPass());
     PM.addPass(GenXPrintfPhiClonningPass());
     PM.addPass(createModuleToFunctionPassAdaptor(InstCombinePass()));
-    PM.addPass(GenXPrintfResolutionPass());
+    PM.addPass(GenXPrintfResolutionPass(this));
     PM.addPass(GenXImportOCLBiFPass());
     PM.addPass(GenXBIFFlagCtrlResolutionPass());
     PM.addPass(createModuleToFunctionPassAdaptor(GenXTypeLegalizationPass()));
@@ -1132,21 +1132,23 @@ void GenXTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
           createFunctionToLoopPassAdaptor(LoopRotatePass())));
       // TODO: Check LICM-options
       PM.addPass(createModuleToFunctionPassAdaptor(
-          createFunctionToLoopPassAdaptor(LICMPass(llvm::LICMOptions()))));
+          createFunctionToLoopPassAdaptor(LICMPass(100, 250, false),
+                                          /*UseMemorySSA=*/true,
+                                          /*UseBlockFrequencyInfo=*/true)));
       PM.addPass(createModuleToFunctionPassAdaptor(InstCombinePass()));
-      //    if (!(BackendConfig.disableIndvarsOpt())) {
-      PM.addPass(createModuleToFunctionPassAdaptor(
-          createFunctionToLoopPassAdaptor(IndVarSimplifyPass())));
-      //    }
-      // TODO: LoopIdiom == LoopIdiomRecognize ?
+
+      if (!BC->disableIndvarsOpt()) {
+        PM.addPass(createModuleToFunctionPassAdaptor(
+            createFunctionToLoopPassAdaptor(IndVarSimplifyPass())));
+      }
       PM.addPass(createModuleToFunctionPassAdaptor(
           createFunctionToLoopPassAdaptor(LoopIdiomRecognizePass())));
+
       PM.addPass(createModuleToFunctionPassAdaptor(
           createFunctionToLoopPassAdaptor(LoopDeletionPass())));
       // TODO: pass 'simple' options to LoopUnrollPass
       PM.addPass(createModuleToFunctionPassAdaptor(LoopUnrollPass()));
       PM.addPass(createModuleToFunctionPassAdaptor(InstCombinePass()));
-
       // Simplify region accesses.
       PM.addPass(
           createModuleToFunctionPassAdaptor(GenXRegionCollapsingPass(this)));
@@ -1164,19 +1166,16 @@ void GenXTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
     PM.addPass(GenXLinkageCorruptorPass());
 
     // AddCMImpParam
-    // TODO: add parameters
-    PM.addPass(CMImpParamPass());
+    PM.addPass(CMImpParamPass(Subtarget.hasThreadPayloadInMemory()));
 
     // CM ABI.
     PM.addPass(CMABIPass());
 
     // BTI assignment.
-    // TODO: add parameters
     PM.addPass(GenXBTIAssignmentPass());
 
-    // CM kernel argument offset.
-    // TODO: add parameters
-    PM.addPass(CMKernelArgOffsetPass());
+    PM.addPass(CMKernelArgOffsetPass(Subtarget.getGRFByteSize(),
+                                     BC->useBindlessImages()));
   });
 
   // AddGenXPeephole

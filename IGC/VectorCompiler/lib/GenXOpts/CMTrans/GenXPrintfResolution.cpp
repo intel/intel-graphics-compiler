@@ -33,6 +33,9 @@ SPDX-License-Identifier: MIT
 #include "vc/Utils/General/IRBuilder.h"
 #include "vc/Utils/General/Types.h"
 
+#include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/Operator.h"
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/iterator_range.h>
 #include <llvm/IR/Constants.h>
@@ -44,9 +47,10 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include <llvm/Support/ErrorHandling.h>
 #include <llvmWrapper/ADT/Optional.h>
-#include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvmWrapper/IR/Operator.h"
-#include "llvmWrapper/IR/Instructions.h"
+
+#if LLVM_VERSION_MAJOR >= 16
+#include "GenXTargetMachine.h"
+#endif
 
 #include <algorithm>
 #include <functional>
@@ -94,7 +98,7 @@ class GenXPrintfResolution final : public ModulePass {
   std::array<FunctionCallee, PrintfImplFunc::Size> PrintfImplDecl;
 
 #if LLVM_VERSION_MAJOR >= 16
-  GenXBackendConfigPass::Result &BC;
+  GenXBackendConfig *BC;
 #endif
 
 public:
@@ -102,8 +106,7 @@ public:
 #if LLVM_VERSION_MAJOR < 16
   GenXPrintfResolution() : ModulePass(ID) {}
 #else
-  GenXPrintfResolution(GenXBackendConfigPass::Result &BC)
-      : BC(BC), ModulePass(ID) {}
+  GenXPrintfResolution(GenXBackendConfig *BC) : BC(BC), ModulePass(ID) {}
 #endif
   StringRef getPassName() const override { return "GenX printf resolution"; }
   void getAnalysisUsage(AnalysisUsage &AU) const override;
@@ -152,8 +155,9 @@ ModulePass *createGenXPrintfResolutionPass() {
 PreservedAnalyses
 GenXPrintfResolutionPass::run(llvm::Module &M,
                               llvm::AnalysisManager<llvm::Module> &AM) {
-  auto &Res = AM.getResult<GenXBackendConfigPass>(M);
-  GenXPrintfResolution GenXPrint(Res);
+  const GenXTargetMachine *GXTM = static_cast<const GenXTargetMachine *>(TM);
+  IGC_ASSERT(GXTM);
+  GenXPrintfResolution GenXPrint(GXTM->getBackendConfig());
   if (GenXPrint.runOnModule(M))
     return PreservedAnalyses::none();
   return PreservedAnalyses::all();
@@ -267,7 +271,7 @@ std::unique_ptr<Module> GenXPrintfResolution::getBiFModule(LLVMContext &Ctx) {
 #if LLVM_VERSION_MAJOR < 16
       getAnalysis<GenXBackendConfig>().getBiFModule(BiFKind::VCPrintf);
 #else
-      BC.getBiFModule(BiFKind::VCPrintf);
+      BC->getBiFModule(BiFKind::VCPrintf);
 #endif
 
   if (!PrintfBiFModuleBuffer.getBufferSize()) {
@@ -299,9 +303,8 @@ static void fixFormatStringOperand(CallInst &CI) {
     return;
   auto *GV = cast<GlobalVariable>(Ptr);
   auto *Zero = Constant::getNullValue(Type::getInt32Ty(Ptr->getContext()));
-  Constant* Indices[2] = { Zero, Zero };
-  auto *GEP =
-      ConstantExpr::getGetElementPtr(GV->getValueType(), GV, Indices);
+  Constant *Indices[2] = {Zero, Zero};
+  auto *GEP = ConstantExpr::getGetElementPtr(GV->getValueType(), GV, Indices);
   CI.setOperand(0, GEP);
 }
 
@@ -464,10 +467,9 @@ void GenXPrintfResolution::preparePrintfImplForInlining() {
 }
 
 void GenXPrintfResolution::updatePrintfImplDeclarations(Module &M) {
-  std::transform(
-      std::begin(PrintfImplFunc::Name), std::end(PrintfImplFunc::Name),
-      PrintfImplDecl.begin(),
-      [&M](const char *Name) { return M.getFunction(Name); });
+  std::transform(std::begin(PrintfImplFunc::Name),
+                 std::end(PrintfImplFunc::Name), PrintfImplDecl.begin(),
+                 [&M](const char *Name) { return M.getFunction(Name); });
 }
 
 using ArgsInfoStorage = std::array<unsigned, ArgsInfoVector::Size>;

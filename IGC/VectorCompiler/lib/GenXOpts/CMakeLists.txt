@@ -64,3 +64,11 @@ target_link_libraries(VCTransforms
   LLVMGenXIntrinsics
   VCInternalIntrinsics
   )
+
+if (LLVM_VERSION_MAJOR GREATER 15)
+target_include_directories(VCTransforms
+  PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/../GenXCodeGen/"
+  "${CMAKE_CURRENT_BINARY_DIR}/../../lib/GenXCodeGen/"
+  )
+endif()
