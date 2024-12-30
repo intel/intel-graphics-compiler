@@ -121,16 +121,8 @@ AllocationBasedLivenessAnalysis::LivenessData* AllocationBasedLivenessAnalysis::
         case Instruction::Call:
         {
             auto* callI = cast<CallInst>(II);
-            if (auto* fn = callI->getCalledFunction())
-            {
-                if (!fn->getArg(use->getOperandNo())->hasAttribute(llvm::Attribute::NoCapture))
-                    hasNoLifetimeEnd = true;
-            }
-            else
-            {
-                // TODO: can indirect calls somehow pass nocapture?
+            if (!callI->doesNotCapture(use->getOperandNo()))
                 hasNoLifetimeEnd = true;
-            }
         }
             break;
         default:
