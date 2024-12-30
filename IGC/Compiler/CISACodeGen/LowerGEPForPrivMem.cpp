@@ -559,11 +559,6 @@ bool SOALayoutChecker::checkStruct(StructType* StTy)
 // TODO: Consider a worklist-based implementation instead.
 bool SOALayoutChecker::checkUsers(Instruction& I)
 {
-    if (IGC_IS_FLAG_ENABLED(DisableSOAPromotion))
-    {
-        return false;
-    }
-
     parentLevelInst = &I;
     for (Value::user_iterator userIt = I.user_begin(), userE = I.user_end(); userIt != userE; ++userIt)
     {

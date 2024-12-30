@@ -24,7 +24,7 @@ entry:
 ;; End of entryBuilder
 ;;
 ; CHECK:  [[BufferOffset:%[.A-z0-9]*]] = mul i32 [[simdSize]], 0
-; CHECK:  [[perLaneOffset:%[.A-z0-9]*]] = mul i32 [[simdLaneId]], 400
+; CHECK:  [[perLaneOffset:%[A-z0-9]*]] = mul i32 [[simdLaneId]], 400
 ; CHECK:  [[SIMDBufferOffset:%[.A-z0-9]*]] = add i32 [[BufferOffset]], [[perLaneOffset]]
 ; CHECK:  [[TotalOffset:%[.A-z0-9]*]] = add {{.*}} i32 [[perThreadOffset]], [[SIMDBufferOffset]]
 ; CHECK:  [[TotalOffsetExt:%[.A-z0-9]*]] = zext i32 [[TotalOffset]] to i64

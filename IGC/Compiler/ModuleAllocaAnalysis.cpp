@@ -247,131 +247,16 @@ bool ModuleAllocaAnalysis::safeToUseScratchSpace() const
     return true;
 }
 
-unsigned ModuleAllocaAnalysis::getBufferStride(AllocaInst* AI) const {
+unsigned ModuleAllocaAnalysis::getConstBufferOffset(AllocaInst* AI) const {
     IGC_ASSERT(isa<ConstantInt>(AI->getArraySize()));
     Function* F = AI->getParent()->getParent();
-    auto allocaInfo = getFuncAllocaInfo(F);
-    IGC_ASSERT(allocaInfo);
-    auto it = allocaInfo->NonUniformAllocaDesc.find(AI);
-    if (it != allocaInfo->NonUniformAllocaDesc.end())
-    {
-        return it->second.second;
-    }
-    return 0;
+    return getFuncAllocaInfo(F)->AllocaDesc[AI].first;
 }
 
-unsigned ModuleAllocaAnalysis::getBufferOffset(llvm::AllocaInst* AI) const
-{
+unsigned ModuleAllocaAnalysis::getConstBufferSize(AllocaInst* AI) const {
     IGC_ASSERT(isa<ConstantInt>(AI->getArraySize()));
     Function* F = AI->getParent()->getParent();
-    auto allocaInfo = getFuncAllocaInfo(F);
-    IGC_ASSERT(allocaInfo);
-    auto uit = allocaInfo->UniformAllocaDesc.find(AI);
-    if (uit != allocaInfo->UniformAllocaDesc.end())
-    {
-        return uit->second;
-    }
-    else
-    {
-        auto nit = allocaInfo->NonUniformAllocaDesc.find(AI);
-        IGC_ASSERT(nit != allocaInfo->NonUniformAllocaDesc.end());
-        return nit->second.first;
-    }
-}
-
-unsigned ModuleAllocaAnalysis::isUniform(llvm::AllocaInst* AI) const
-{
-    IGC_ASSERT(isa<ConstantInt>(AI->getArraySize()));
-    Function* F = AI->getParent()->getParent();
-    auto allocaInfo = getFuncAllocaInfo(F);
-    IGC_ASSERT(allocaInfo);
-    return allocaInfo->UniformAllocaDesc.count(AI) > 0;
-}
-
-llvm::Value* ModuleAllocaAnalysis::getPerThreadOffset(
-    IGCLLVM::IRBuilder<>& IRB,
-    llvm::AllocaInst* AI,
-    llvm::Value* simdSize,
-    llvm::Value* threadId,
-    bool return64bitOffset /*= false*/) const
-{
-    // Pseudo-code:
-    // totalStride = nonUniformBlockOffset + SIMDSize * nonUniformBlockStride
-    // totalStride = Align(totalStride, MaxAlignement)
-    // perThreadOffset = totalPrivateMemPerWI * HWTID
-    Function* F = AI->getParent()->getParent();
-    auto allocaInfo = getFuncAllocaInfo(F);
-    IGC_ASSERT(allocaInfo);
-    Value* nonUniformBlockOffset = IRB.getInt32(
-        allocaInfo->MemoryDescription->GetOffsetForNonUniformAllocas());
-    Value* nonUniformBlockStride = IRB.getInt32(
-        allocaInfo->MemoryDescription->GetStrideForNonUniformAllocas());
-    Value* nonUniformAllocaBlockSize = IRB.CreateMul(
-        nonUniformBlockStride, simdSize, VALUE_NAME(".NonUniformAllocasStride"));
-    Value* totalStride = IRB.CreateAdd(
-        nonUniformBlockOffset, nonUniformAllocaBlockSize, VALUE_NAME(".TotalPrivateMemPerWI"));
-    unsigned maskForTotalPrivateMemPerWI = allocaInfo->MemoryDescription->GetMaxAlignment() - 1u;
-    totalStride = IRB.CreateAdd(
-        totalStride, IRB.getInt32(maskForTotalPrivateMemPerWI));
-    totalStride = IRB.CreateAnd(
-        totalStride, IRB.getInt32(~maskForTotalPrivateMemPerWI),
-        VALUE_NAME("totalPrivateMemStride"));
-    if (return64bitOffset)
-    {
-        threadId = IRB.CreateZExt(threadId, IRB.getInt64Ty());
-        totalStride = IRB.CreateZExt(totalStride, IRB.getInt64Ty());
-    }
-    Value* perThreadOffset = IRB.CreateMul(threadId, totalStride);
-    return perThreadOffset;
-}
-
-llvm::Value* ModuleAllocaAnalysis::getOffset(
-    IGCLLVM::IRBuilder<>& IRB,
-    llvm::AllocaInst* AI,
-    llvm::Value* simdSize,
-    llvm::Value* simdLaneId,
-    std::optional<uint32_t> perLaneStride /*= std::nullopt*/) const
-
-{
-    IGC_ASSERT(isa<ConstantInt>(AI->getArraySize()));
-    Function* F = AI->getParent()->getParent();
-    auto allocaInfo = getFuncAllocaInfo(F);
-    IGC_ASSERT(allocaInfo);
-
-    Value* offset = nullptr;
-    auto uit = allocaInfo->UniformAllocaDesc.find(AI);
-    if (uit != allocaInfo->UniformAllocaDesc.end())
-    {
-        // Pseudo-code:
-        // offset = bufferOffset
-        Value* baseOffset = IRB.getInt32(
-            allocaInfo->MemoryDescription->GetOffsetForUniformAllocas());
-        Value* relativeOffset = IRB.getInt32(uit->second);
-        Value* bufferOffset = IRB.CreateAdd(baseOffset, relativeOffset, VALUE_NAME(AI->getName() + ".BufferOffset"));
-        offset = bufferOffset;
-    }
-    else
-    {
-        // Pseudo-code:
-        // offset = nonUniformPrivateMemoryBlockOffset + bufferOffset * SIMDSize + bufferStride * SIMDLane
-        auto nit = allocaInfo->NonUniformAllocaDesc.find(AI);
-        IGC_ASSERT(nit != allocaInfo->NonUniformAllocaDesc.end());
-        auto [localOffset, localStride] = nit->second;
-        if (perLaneStride.has_value())
-        {
-            localStride = *perLaneStride;
-        }
-        Value* simdBufferOffset = IRB.CreateMul(simdSize, IRB.getInt32(localOffset), VALUE_NAME(AI->getName() + ".BufferOffset"));
-        bool isUniform = AI->getMetadata("uniform") != nullptr;
-        if (!isUniform)
-        {
-            Value* localOffset = IRB.CreateMul(simdLaneId, IRB.getInt32(localStride), VALUE_NAME(AI->getName() + ".PerLaneOffset"));
-            simdBufferOffset = IRB.CreateAdd(simdBufferOffset, localOffset, VALUE_NAME(AI->getName() + ".SIMDBufferOffset"));
-        }
-        offset = simdBufferOffset;
-    }
-
-    return offset;
+    return getFuncAllocaInfo(F)->AllocaDesc[AI].second;
 }
 
 SmallVector<AllocaInst*, 8>& ModuleAllocaAnalysis::getAllocaInsts(Function* F) const {
@@ -379,40 +264,13 @@ SmallVector<AllocaInst*, 8>& ModuleAllocaAnalysis::getAllocaInsts(Function* F) c
 }
 
 unsigned ModuleAllocaAnalysis::getTotalPrivateMemPerWI(Function* F) const {
-    // Note that the total size is returned for SIMD1
-    // The value is multiplied by the correct SIMD size and
-    // reported to UMD. Uniform memory space is shared between
-    // all subgroup threads. Therefore, it is safe to divide
-    // the value by the smallest simd size.
-    // This could be improved if the total size is computed
-    // from simd size intrinsic calls instead.
     auto FI = getFuncAllocaInfo(F);
-    if (FI)
-    {
-        unsigned minSimdSize = getMinSimdSize(F);
-        uint64_t totalSize = FI->MemoryDescription->GetTotalSize(minSimdSize);
-        totalSize = iSTD::Align(totalSize, minSimdSize);
-        totalSize = totalSize / minSimdSize;
-        unsigned ret = int_cast<unsigned>(totalSize);
-
-        CodeGenContext& Ctx = *getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-        ModuleMetaData* const modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-        IGC_ASSERT(nullptr != modMD);
-        if (modMD->compOpt.UseScratchSpacePrivateMemory == false &&
-            Ctx.m_DriverInfo.supportsStatelessSpacePrivateMemory() &&
-            Ctx.m_DriverInfo.requiresPowerOfTwoStatelessSpacePrivateMemorySize())
-        {
-            ret = iSTD::RoundPower2(static_cast<DWORD>(ret));
-        }
-
-        return ret;
-    }
-    return 0;
+    return FI ? FI->TotalSize : 0;
 }
 
-unsigned ModuleAllocaAnalysis::getPrivateMemAlignment(Function* F) const {
+alignment_t ModuleAllocaAnalysis::getPrivateMemAlignment(Function* F) const {
     auto FI = getFuncAllocaInfo(F);
-    return FI ? FI->MemoryDescription->GetMaxAlignment() : 1;
+    return FI ? FI->MaximumAlignment : 1;
 }
 
 ModuleAllocaAnalysis::FunctionAllocaInfo* ModuleAllocaAnalysis::getFuncAllocaInfo(Function* F) const {
@@ -432,25 +290,7 @@ ModuleAllocaAnalysis::FunctionAllocaInfo* ModuleAllocaAnalysis::getOrCreateFuncA
     return AllocaInfo;
 }
 
-void ModuleAllocaAnalysis::analyze()
-{
-    IGC_ASSERT(M);
-    CodeGenContext& Ctx = *getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    const IGC::TriboolFlag ForceSupportUniformPrivateMemorySpace = static_cast<IGC::TriboolFlag>(
-        IGC_GET_FLAG_VALUE(SupportUniformPrivateMemorySpace));
-    switch (ForceSupportUniformPrivateMemorySpace)
-    {
-    case IGC::TriboolFlag::Enabled:
-        SupportsUniformPrivateMemory = true;
-        break;
-    case IGC::TriboolFlag::Disabled:
-        SupportsUniformPrivateMemory = false;
-        break;
-    case IGC::TriboolFlag::Default:
-        SupportsUniformPrivateMemory = Ctx.m_DriverInfo.supportsUniformPrivateMemorySpace();
-        break;
-    }
-
+void ModuleAllocaAnalysis::analyze() {
     if (FGA && FGA->getModule()) {
         IGC_ASSERT(FGA->getModule() == M);
         for (auto FG : *FGA)
@@ -461,8 +301,13 @@ void ModuleAllocaAnalysis::analyze()
             if (F.empty())
                 continue;
 
-            PrivateMemoryDescription& MemoryDescription = MemoryDescriptions.emplace_back();
-            analyze(&F, MemoryDescription);
+            unsigned Offset = 0;
+            alignment_t Alignment = 0;
+            analyze(&F, Offset, Alignment);
+            if (Alignment > 0)
+                Offset = iSTD::Align(Offset, (size_t)Alignment);
+            getOrCreateFuncAllocaInfo(&F)->TotalSize = Offset;
+            getOrCreateFuncAllocaInfo(&F)->MaximumAlignment = Alignment > 0 ? Alignment : 1;
         }
     }
 }
@@ -474,24 +319,37 @@ void ModuleAllocaAnalysis::analyze(IGC::FunctionGroup* FG)
     // a stack-call function.
     // Note that the function order does affect the final total amount of
     // private memory due to possible alignment constraints.
+    //
     for (auto SubG : FG->Functions) {
-        PrivateMemoryDescription& MemoryDescription = MemoryDescriptions.emplace_back();
+        unsigned Offset = 0;
+        alignment_t Alignment = 0;
         for (Function* F : *SubG) {
             if (F->empty())
                 continue;
-            analyze(F, MemoryDescription);
+            analyze(F, Offset, Alignment);
+        }
+
+        // Use the final offset as the total size.
+        if (Alignment > 0)
+            Offset = iSTD::Align(Offset, (size_t)Alignment);
+
+        // All functions in this group will get the same final size.
+        for (Function* F : *SubG) {
+            if (F->empty())
+                continue;
+            getOrCreateFuncAllocaInfo(F)->TotalSize = Offset;
+            getOrCreateFuncAllocaInfo(F)->MaximumAlignment = Alignment > 0 ? Alignment : 1;
         }
     }
 }
 
-void ModuleAllocaAnalysis::analyze(Function* F, PrivateMemoryDescription& MemoryDescription)
+void ModuleAllocaAnalysis::analyze(Function* F, unsigned& Offset, alignment_t& MaxAlignment)
 {
     const DataLayout* DL = &M->getDataLayout();
 
     // Create alloca info even when there is no alloca, so that each function gets
     // an info entry.
     FunctionAllocaInfo* AllocaInfo = getOrCreateFuncAllocaInfo(F);
-    AllocaInfo->MemoryDescription = &MemoryDescription;
 
     // Collect allocas.
     SmallVector<AllocaInst*, 8> Allocas;
@@ -506,121 +364,54 @@ void ModuleAllocaAnalysis::analyze(Function* F, PrivateMemoryDescription& Memory
     if (Allocas.empty())
         return;
 
+    // Group by alignment and smallest first.
+    auto getAlignment = [=](AllocaInst* AI) {
+        auto Alignment = IGCLLVM::getAlignmentValue(AI);
+        if (Alignment == 0)
+            Alignment = DL->getABITypeAlign(AI->getAllocatedType()).value();
+        return Alignment;
+    };
+
     std::sort(Allocas.begin(), Allocas.end(),
-        [&DL](AllocaInst* AI1, AllocaInst* AI2) {
-            return FunctionAllocaInfo::getAlignment(AI1, DL) < FunctionAllocaInfo::getAlignment(AI2, DL);
+        [=](AllocaInst* AI1, AllocaInst* AI2) {
+            return getAlignment(AI1) < getAlignment(AI2);
         });
 
     for (auto AI : Allocas) {
-        AllocaInfo->AssignAlloca(AI, DL, SupportsUniformPrivateMemory);
+        // Align alloca offset.
+        auto Alignment = getAlignment(AI);
+        Offset = iSTD::Align(Offset, Alignment);
+
+        // Keep track of the maximal alignment seen so far.
+        if (Alignment > MaxAlignment)
+            MaxAlignment = Alignment;
+
+        // Compute alloca size. We don't know the variable length
+        // alloca size so skip it.
+        if (!isa<ConstantInt>(AI->getArraySize())) {
+            continue;
+        }
+        ConstantInt* const SizeVal = cast<ConstantInt>(AI->getArraySize());
+        IGC_ASSERT(nullptr != SizeVal);
+        unsigned CurSize = (unsigned)(SizeVal->getZExtValue() *
+            DL->getTypeAllocSize(AI->getAllocatedType()));
+
+        bool isPackedStruct = false;
+        if (auto st = dyn_cast<StructType>(AI->getAllocatedType())) {
+            isPackedStruct = st->isPacked();
+        }
+        if (!isPackedStruct) {
+            CurSize = iSTD::Align(CurSize, Alignment);
+        }
+
+        AllocaInfo->setAllocaDesc(AI, Offset, CurSize);
+
+        // Increment the current offset for the next alloca.
+        Offset += CurSize;
     }
 
     // Update collected allocas into the function alloca info object.
     AllocaInfo->Allocas.swap(Allocas);
-}
-
-unsigned ModuleAllocaAnalysis::FunctionAllocaInfo::getAlignment(llvm::AllocaInst* AI, const llvm::DataLayout* DL)
-{
-    alignment_t Alignment = IGCLLVM::getAlignmentValue(AI);
-    if (Alignment == 0)
-        Alignment = DL->getABITypeAlign(AI->getAllocatedType()).value();
-    return std::max(int_cast<unsigned>(Alignment), 1u);
-}
-
-unsigned ModuleAllocaAnalysis::FunctionAllocaInfo::getSize(llvm::AllocaInst* AI, const llvm::DataLayout* DL)
-{
-    IGC_ASSERT(isa<ConstantInt>(AI->getArraySize()));
-    ConstantInt* const SizeVal = cast<ConstantInt>(AI->getArraySize());
-    IGC_ASSERT(nullptr != SizeVal);
-    unsigned CurSize = (unsigned)(SizeVal->getZExtValue() *
-        DL->getTypeAllocSize(AI->getAllocatedType()));
-    bool isPackedStruct = false;
-    if (auto st = dyn_cast<StructType>(AI->getAllocatedType())) {
-        isPackedStruct = st->isPacked();
-    }
-    if (!isPackedStruct) {
-        auto Alignment = getAlignment(AI, DL);
-        CurSize = iSTD::Align(CurSize, Alignment);
-    }
-    return CurSize;
-}
-
-void ModuleAllocaAnalysis::FunctionAllocaInfo::AssignAlloca(llvm::AllocaInst* AI, const llvm::DataLayout* DL, bool SupportsUniformPrivateMemory)
-{
-    // Dynamic allocas are handled by stack-related instructions
-    if (!isa<ConstantInt>(AI->getArraySize()))
-    {
-        return;
-    }
-    bool isUniform = AI->getMetadata("uniform") != nullptr;
-    if (SupportsUniformPrivateMemory && isUniform)
-    {
-        unsigned alignement = getAlignment(AI, DL);
-        MemoryDescription->MaximumAlignmentForUniformAllocas =
-            std::max(MemoryDescription->MaximumAlignmentForUniformAllocas, alignement);
-        MemoryDescription->TotalSizeForUniformAllocas =
-            iSTD::Align(MemoryDescription->TotalSizeForUniformAllocas, alignement);
-        UniformAllocaDesc[AI] = MemoryDescription->TotalSizeForUniformAllocas;
-        MemoryDescription->TotalSizeForUniformAllocas += getSize(AI, DL);
-    }
-    else
-    {
-        unsigned alignement = getAlignment(AI, DL);
-        MemoryDescription->MaximumAlignmentForNonUniformAllocas =
-            std::max(MemoryDescription->MaximumAlignmentForNonUniformAllocas, alignement);
-        unsigned stride = getSize(AI, DL);
-        MemoryDescription->TotalStrideForNonUniformAllocas =
-            iSTD::Align(MemoryDescription->TotalStrideForNonUniformAllocas, alignement);
-        NonUniformAllocaDesc[AI] =
-            std::make_pair(MemoryDescription->TotalStrideForNonUniformAllocas, stride);
-        MemoryDescription->TotalStrideForNonUniformAllocas += stride;
-    }
-}
-
-unsigned ModuleAllocaAnalysis::getMinSimdSize(llvm::Function* pFunc) const
-{
-    ModuleMetaData& modMD = *getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-    CodeGenContext& Ctx = *getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    uint32_t minSimdSize = numLanes(Ctx.platform.getMinDispatchMode());
-    switch (Ctx.type)
-    {
-    case ShaderType::VERTEX_SHADER:
-    case ShaderType::HULL_SHADER:
-    case ShaderType::DOMAIN_SHADER:
-    case ShaderType::GEOMETRY_SHADER:
-        minSimdSize = numLanes(Ctx.GetSIMDMode());
-        break;
-    case ShaderType::TASK_SHADER:
-        minSimdSize = modMD.taskInfo.SubgroupSize > 0 ? modMD.taskInfo.SubgroupSize : minSimdSize;
-        break;
-    case ShaderType::MESH_SHADER:
-        minSimdSize = modMD.msInfo.SubgroupSize > 0 ? modMD.msInfo.SubgroupSize : minSimdSize;
-        break;
-    case ShaderType::COMPUTE_SHADER:
-        minSimdSize = modMD.csInfo.waveSize > 0 ? modMD.csInfo.waveSize : minSimdSize;
-        minSimdSize = modMD.csInfo.forcedSIMDSize > 0 ? modMD.csInfo.forcedSIMDSize : minSimdSize;
-        break;
-    case ShaderType::PIXEL_SHADER:
-        minSimdSize = modMD.compOpt.forcePixelShaderSIMDMode > 0 ? BIT(iSTD::bsf(modMD.compOpt.forcePixelShaderSIMDMode)) << 3 : minSimdSize;
-        break;
-    case ShaderType::OPENCL_SHADER:
-    {
-        IGCMD::MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-        auto funcInfoMD = pMdUtils->getFunctionsInfoItem(pFunc);
-        const int32_t subGrpSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
-        if (subGrpSize > 0 && int_cast<uint16_t>(subGrpSize) > int_cast<uint16_t>(minSimdSize))
-            minSimdSize = std::min(int_cast<uint16_t>(subGrpSize), numLanes(SIMDMode::SIMD32));
-        int32_t groupSize = IGCMD::IGCMetaDataHelper::getThreadGroupSize(*pMdUtils, pFunc);
-        if (groupSize == 0)
-            groupSize = IGCMD::IGCMetaDataHelper::getThreadGroupSizeHint(*pMdUtils, pFunc);
-        if (groupSize > 0 && int_cast<uint16_t>(groupSize) > int_cast<uint16_t>(minSimdSize))
-            minSimdSize = std::min(int_cast<uint16_t>(groupSize), numLanes(SIMDMode::SIMD32));
-        break;
-    }
-    default:
-        break;
-    }
-    return minSimdSize;
 }
 
 char ModuleAllocaAnalysis::ID = 0;
