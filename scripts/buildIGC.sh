@@ -84,7 +84,7 @@ dpkg -i ./igc-official-release/*.deb
 if [ -f "/usr/local/lib/libopencl-clang2.so.$LLVM_VERSION" ] && [ ! -f "/usr/local/lib/libopencl-clang.so" ]; then
     # Symlink to a library name CMake is set up to handle until either
     # CMake is updated or the library name is changed back.
-    ln -s /usr/local/lib/libopencl-clang2.so /usr/local/lib/libopencl-clang.so
+    ln -s /usr/local/lib/libopencl-clang2.so.$LLVM_VERSION /usr/local/lib/libopencl-clang.so
 fi
 echo "[Build Status] OpenCL Clang INSTALLED"
 
