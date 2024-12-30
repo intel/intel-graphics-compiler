@@ -1749,11 +1749,9 @@ Instruction *ConstantLoader::loadBig(Instruction *InsertBefore) {
     // Load this subvector constant if necessary, and insert into the overall
     // value with wrregion.
     Constant *SubC = getConstantSubvector(C, Idx, Size);
+    Value *SubV = SubC;
     ConstantLoader SubLoader(SubC, Subtarget, DL);
-    Instruction *SubV = nullptr;
-    if (SubLoader.isSimple())
-      SubV = SubLoader.load(InsertBefore);
-    else
+    if (!SubLoader.isSimple())
       SubV = SubLoader.loadNonSimple(InsertBefore);
     Region R(C, &DL);
     R.getSubregion(Idx, Size);

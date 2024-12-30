@@ -15,39 +15,27 @@ target datalayout = "e-p:64:64-i64:64-n8:16:32"
 
 define <3 x i64> @legalize_return_integer() {
 ; CHECK-LABEL: @legalize_return_integer(
-; CHECK-NEXT:    [[CONST1:%.+]] = call <1 x i64> @llvm.genx.constanti.v1i64(<1 x i64> zeroinitializer)
-; CHECK-NEXT:    [[SPLAT1:%.+]] = call <2 x i64> @llvm.genx.rdregioni.v2i64.v1i64.i16(<1 x i64> [[CONST1]], i32 0, i32 2, i32 0, i16 0, i32 undef)
-; CHECK-NEXT:    [[SPLIT1:%.+]] = call <3 x i64> @llvm.genx.wrregioni.v3i64.v2i64.i16.i1(<3 x i64> undef, <2 x i64> [[SPLAT1]], i32 2, i32 2, i32 1, i16 0, i32 undef, i1 true)
-; CHECK-NEXT:    [[CONST2:%.+]] = call <1 x i64> @llvm.genx.constanti.v1i64(<1 x i64> zeroinitializer)
-; CHECK-NEXT:    [[SPLIT2:%.+]] = call <3 x i64> @llvm.genx.wrregioni.v3i64.v1i64.i16.i1(<3 x i64> [[SPLIT1:%.+]], <1 x i64> [[CONST2]], i32 1, i32 1, i32 1, i16 16, i32 undef, i1 true)
+; CHECK-NEXT:    [[SPLIT1:%.+]] = call <3 x i64> @llvm.genx.wrregioni.v3i64.v2i64.i16.i1(<3 x i64> undef, <2 x i64> zeroinitializer, i32 2, i32 2, i32 1, i16 0, i32 undef, i1 true)
+; CHECK-NEXT:    [[SPLIT2:%.+]] = call <3 x i64> @llvm.genx.wrregioni.v3i64.v1i64.i16.i1(<3 x i64> [[SPLIT1:%.+]], <1 x i64> zeroinitializer, i32 1, i32 1, i32 1, i16 16, i32 undef, i1 true)
 ; CHECK-NEXT:    ret <3 x i64> [[SPLIT2:%.+]]
   ret <3 x i64> zeroinitializer
 }
 
 define <3 x double> @legalize_return_double() {
 ; CHECK-LABEL: @legalize_return_double(
-; CHECK-NEXT:    [[CONST1:%.+]] = call <1 x double> @llvm.genx.constantf.v1f64(<1 x double> zeroinitializer)
-; CHECK-NEXT:    [[SPLAT1:%.+]] = call <2 x double> @llvm.genx.rdregionf.v2f64.v1f64.i16(<1 x double> [[CONST1]], i32 0, i32 2, i32 0, i16 0, i32 undef)
-; CHECK-NEXT:    [[SPLIT1:%.+]] = call <3 x double> @llvm.genx.wrregionf.v3f64.v2f64.i16.i1(<3 x double> undef, <2 x double> [[SPLAT1]], i32 2, i32 2, i32 1, i16 0, i32 undef, i1 true)
-; CHECK-NEXT:    [[CONST2:%.+]] = call <1 x double> @llvm.genx.constantf.v1f64(<1 x double> zeroinitializer)
-; CHECK-NEXT:    [[SPLIT2:%.+]] = call <3 x double> @llvm.genx.wrregionf.v3f64.v1f64.i16.i1(<3 x double> [[SPLIT1]], <1 x double> [[CONST2]], i32 1, i32 1, i32 1, i16 16, i32 undef, i1 true)
+; CHECK-NEXT:    [[SPLIT1:%.+]] = call <3 x double> @llvm.genx.wrregionf.v3f64.v2f64.i16.i1(<3 x double> undef, <2 x double> zeroinitializer, i32 2, i32 2, i32 1, i16 0, i32 undef, i1 true)
+; CHECK-NEXT:    [[SPLIT2:%.+]] = call <3 x double> @llvm.genx.wrregionf.v3f64.v1f64.i16.i1(<3 x double> [[SPLIT1]], <1 x double> zeroinitializer, i32 1, i32 1, i32 1, i16 16, i32 undef, i1 true)
 ; CHECK-NEXT:    ret <3 x double> [[SPLIT2]]
   ret <3 x double> zeroinitializer
 }
 
 define <3 x i8*> @legalize_return_nullptr_vec() {
 ; CHECK-LABEL: @legalize_return_nullptr_vec(
-; CHECK-TYPED-PTRS-NEXT:    [[CONST1:%.+]] = call <1 x i8*> @llvm.genx.constanti.v1p0i8(<1 x i8*> zeroinitializer)
-; CHECK-TYPED-PTRS-NEXT:    [[SPLAT1:%.+]] = call <2 x i8*> @llvm.genx.rdregioni.v2p0i8.v1p0i8.i16(<1 x i8*> [[CONST1]], i32 0, i32 2, i32 0, i16 0, i32 undef)
-; CHECK-TYPED-PTRS-NEXT:    [[SPLIT1:%.+]] = call <3 x i8*> @llvm.genx.wrregioni.v3p0i8.v2p0i8.i16.i1(<3 x i8*> undef, <2 x i8*> [[SPLAT1]], i32 2, i32 2, i32 1, i16 0, i32 undef, i1 true)
-; CHECK-TYPED-PTRS-NEXT:    [[CONST2:%.+]] = call <1 x i8*> @llvm.genx.constanti.v1p0i8(<1 x i8*> zeroinitializer)
-; CHECK-TYPED-PTRS-NEXT:    [[SPLIT2:%.+]] = call <3 x i8*> @llvm.genx.wrregioni.v3p0i8.v1p0i8.i16.i1(<3 x i8*> [[SPLIT1]], <1 x i8*> [[CONST2]], i32 1, i32 1, i32 1, i16 16, i32 undef, i1 true)
+; CHECK-TYPED-PTRS-NEXT:    [[SPLIT1:%.+]] = call <3 x i8*> @llvm.genx.wrregioni.v3p0i8.v2p0i8.i16.i1(<3 x i8*> undef, <2 x i8*> zeroinitializer, i32 2, i32 2, i32 1, i16 0, i32 undef, i1 true)
+; CHECK-TYPED-PTRS-NEXT:    [[SPLIT2:%.+]] = call <3 x i8*> @llvm.genx.wrregioni.v3p0i8.v1p0i8.i16.i1(<3 x i8*> [[SPLIT1]], <1 x i8*> zeroinitializer, i32 1, i32 1, i32 1, i16 16, i32 undef, i1 true)
 ; CHECK-TYPED-PTRS-NEXT:    ret <3 x i8*> [[SPLIT2]]
-; CHECK-OPAQUE-PTRS-NEXT:    [[CONST1:%.+]] = call <1 x ptr> @llvm.genx.constanti.v1p0(<1 x ptr> zeroinitializer)
-; CHECK-OPAQUE-PTRS-NEXT:    [[SPLAT1:%.+]] = call <2 x ptr> @llvm.genx.rdregioni.v2p0.v1p0.i16(<1 x ptr> [[CONST1]], i32 0, i32 2, i32 0, i16 0, i32 undef)
-; CHECK-OPAQUE-PTRS-NEXT:    [[SPLIT1:%.+]] = call <3 x ptr> @llvm.genx.wrregioni.v3p0.v2p0.i16.i1(<3 x ptr> undef, <2 x ptr> [[SPLAT1]], i32 2, i32 2, i32 1, i16 0, i32 undef, i1 true)
-; CHECK-OPAQUE-PTRS-NEXT:    [[CONST2:%.+]] = call <1 x ptr> @llvm.genx.constanti.v1p0(<1 x ptr> zeroinitializer)
-; CHECK-OPAQUE-PTRS-NEXT:    [[SPLIT2:%.+]] = call <3 x ptr> @llvm.genx.wrregioni.v3p0.v1p0.i16.i1(<3 x ptr> [[SPLIT1]], <1 x ptr> [[CONST2]], i32 1, i32 1, i32 1, i16 16, i32 undef, i1 true)
+; CHECK-OPAQUE-PTRS-NEXT:    [[SPLIT1:%.+]] = call <3 x ptr> @llvm.genx.wrregioni.v3p0.v2p0.i16.i1(<3 x ptr> undef, <2 x ptr> zeroinitializer, i32 2, i32 2, i32 1, i16 0, i32 undef, i1 true)
+; CHECK-OPAQUE-PTRS-NEXT:    [[SPLIT2:%.+]] = call <3 x ptr> @llvm.genx.wrregioni.v3p0.v1p0.i16.i1(<3 x ptr> [[SPLIT1]], <1 x ptr> zeroinitializer, i32 1, i32 1, i32 1, i16 16, i32 undef, i1 true)
 ; CHECK-OPAQUE-PTRS-NEXT:    ret <3 x ptr> [[SPLIT2]]
   ret <3 x i8*> zeroinitializer
 }
@@ -92,13 +80,12 @@ define { <16 x i32> } @const_big_undef_return() {
 }
 
 define { <3 x i32> } @legalize_struct_const_return() {
+; COM: ConstantLoader properly loads <3 x i32> vector, however PostLegalization
+; COM: also runs simplifyRegionInsts, thats folds the sequence of wrregioni O^o
+; COM: Though, the goal is archived, since ret does not have a constant as
+; COM: it's operand
 ; CHECK-LABEL: @legalize_struct_const_return
-; CHECK-NEXT: [[CONST1:%.+]] = call <1 x i32> @llvm.genx.constanti.v1i32(<1 x i32> <i32 1>)
-; CHECK-NEXT: [[SPLAT1:%.+]] = call <2 x i32> @llvm.genx.rdregioni.v2i32.v1i32.i16(<1 x i32> [[CONST1]], i32 0, i32 2, i32 0, i16 0, i32 undef)
-; CHECK-NEXT: [[SPLIT1:%.+]] = call <3 x i32> @llvm.genx.wrregioni.v3i32.v2i32.i16.i1(<3 x i32> undef, <2 x i32> [[SPLAT1]], i32 2, i32 2, i32 1, i16 0, i32 undef, i1 true)
-; CHECK-NEXT: [[CONST2:%.+]] = call <1 x i32> @llvm.genx.constanti.v1i32(<1 x i32> <i32 1>)
-; CHECK-NEXT: [[SPLIT2:%.+]] = call <3 x i32> @llvm.genx.wrregioni.v3i32.v1i32.i16.i1(<3 x i32> [[SPLIT1]], <1 x i32> [[CONST2]], i32 1, i32 1, i32 1, i16 8, i32 undef, i1 true)
-; CHECK-NEXT: [[STRUCT:%.+]] = insertvalue { <3 x i32> } undef, <3 x i32> [[SPLIT2]], 0
+; CHECK-NEXT: [[STRUCT:%.+]] = insertvalue { <3 x i32> } undef, <3 x i32> <i32 1, i32 1, i32 1>, 0
 ; CHECK-NEXT: ret { <3 x i32> } [[STRUCT]]
   ret { <3 x i32> } { <3 x i32> <i32 1, i32 1, i32 1> }
 }
