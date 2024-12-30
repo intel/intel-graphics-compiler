@@ -92,7 +92,7 @@ AllocationBasedLivenessAnalysis::LivenessData* AllocationBasedLivenessAnalysis::
     // figure out the potential accesses to the memory via GEP and bitcasts
     while (!worklist.empty() && !hasNoLifetimeEnd)
     {
-        auto* use = worklist.pop_back_val();;
+        auto* use = worklist.pop_back_val();
         auto* II = cast<Instruction>(use->getUser());
 
         if (allUsers.contains(II))
@@ -112,12 +112,26 @@ AllocationBasedLivenessAnalysis::LivenessData* AllocationBasedLivenessAnalysis::
             hasNoLifetimeEnd = true;
             break;
         case Instruction::Store:
-            if (cast<StoreInst>(II)->getValueOperand() == cast<Value>(use))
+        {
+            auto* storeI = cast<StoreInst>(II);
+            if (storeI->getValueOperand() == cast<Value>(use))
                 hasNoLifetimeEnd = true;
+        }
             break;
         case Instruction::Call:
-            if (!cast<CallInst>(II)->getCalledFunction()->getArg(use->getOperandNo())->hasAttribute(llvm::Attribute::NoCapture))
+        {
+            auto* callI = cast<CallInst>(II);
+            if (auto* fn = callI->getCalledFunction())
+            {
+                if (!fn->getArg(use->getOperandNo())->hasAttribute(llvm::Attribute::NoCapture))
+                    hasNoLifetimeEnd = true;
+            }
+            else
+            {
+                // TODO: can indirect calls somehow pass nocapture?
                 hasNoLifetimeEnd = true;
+            }
+        }
             break;
         default:
             break;
