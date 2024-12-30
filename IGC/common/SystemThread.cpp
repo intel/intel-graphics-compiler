@@ -39,12 +39,8 @@ SPDX-License-Identifier: MIT
 #include "common/SIPKernels/XeHPGSIPCSRDebugBindless.h"
 #include "common/SIPKernels/XeHPCSIPCSRDebugBindless.h"
 #include "common/SIPKernels/Xe2SIPCSRDebugBindless.h"
-#include "common/SIPKernels/wmtp/XE2_LNL_1x4_128.h"
-#include "common/SIPKernels/wmtp/XE2_LNL_2x4_128.h"
-#include "common/SIPKernels/wmtp/XE2_LNL_1x4_160.h"
-#include "common/SIPKernels/wmtp/XE2_LNL_2x4_160.h"
-#include "common/SIPKernels/wmtp/XE2_BMG_config4.h"
-#include "common/SIPKernels/wmtp/XE2_BMG_config5.h"
+#include "common/SIPKernels/wmtp/XE2_config_128.h"
+#include "common/SIPKernels/wmtp/XE2_config_160.h"
 
 
 using namespace llvm;
@@ -250,7 +246,7 @@ struct StateSaveAreaHeader Xe2SIPCSRDebugBindlessDebugHeader =
 };
 
 
-// wmtp LNL SIP
+// wmtp Xe2 SIP
 struct StateSaveAreaHeaderV4 Xe2SIP_WMTP_CSRDebugBindlessDebugHeader =
 {
     {"tssarea", 0, {4, 0, 0}, sizeof(StateSaveAreaHeaderV4) / 8, {0, 0, 0}}, // versionHeader
@@ -1102,37 +1098,16 @@ void populateSIPKernelInfo(const IGC::CPlatform &platform,
 
     // wmtp Xe2 SIP
     {
-        // LNL 1x4 128
-        SIPKernelInfo[XE2_CSR_DEBUG_BINDLESS_LNL_1x4_128] = std::make_tuple(
-            (void *)&XE2_LNL_1x4_128, (int)sizeof(XE2_LNL_1x4_128),
+        // Xe2 128
+        SIPKernelInfo[XE2_CSR_DEBUG_BINDLESS_config128] = std::make_tuple(
+            (void *)&XE2_config_128, (int)sizeof(XE2_config_128),
             (void *)&Xe2SIP_WMTP_CSRDebugBindlessDebugHeader,  (int)sizeof(Xe2SIP_WMTP_CSRDebugBindlessDebugHeader));
 
-        // LNL 1x4 160
-        SIPKernelInfo[XE2_CSR_DEBUG_BINDLESS_LNL_1x4_160] = std::make_tuple(
-            (void *)&XE2_LNL_1x4_160, (int)sizeof(XE2_LNL_1x4_160),
+        // Xe2 160
+        SIPKernelInfo[XE2_CSR_DEBUG_BINDLESS_config160] = std::make_tuple(
+            (void *)&XE2_config_160, (int)sizeof(XE2_config_160),
             (void *)&Xe2SIP_WMTP_CSRDebugBindlessDebugHeader,  (int)sizeof(Xe2SIP_WMTP_CSRDebugBindlessDebugHeader));
 
-
-
-        // LNL 2x4 128
-        SIPKernelInfo[XE2_CSR_DEBUG_BINDLESS_LNL_2x4_128] =
-            std::make_tuple((void *)&XE2_LNL_2x4_128,
-                            (int)sizeof(XE2_LNL_2x4_128),
-            (void *)&Xe2SIP_WMTP_CSRDebugBindlessDebugHeader,  (int)sizeof(Xe2SIP_WMTP_CSRDebugBindlessDebugHeader));
-
-        // LNL 2x4 160
-        SIPKernelInfo[XE2_CSR_DEBUG_BINDLESS_LNL_2x4_160] = std::make_tuple(
-            (void *)&XE2_LNL_2x4_160, (int)sizeof(XE2_LNL_2x4_160),
-            (void *)&Xe2SIP_WMTP_CSRDebugBindlessDebugHeader,  (int)sizeof(Xe2SIP_WMTP_CSRDebugBindlessDebugHeader));
-
-
-        SIPKernelInfo[XE2_CSR_DEBUG_BINDLESS_BMG_config4] = std::make_tuple(
-            (void *)&XE2_BMG_config4, (int)sizeof(XE2_BMG_config4),
-            (void *)&Xe2SIP_WMTP_CSRDebugBindlessDebugHeader,  (int)sizeof(Xe2SIP_WMTP_CSRDebugBindlessDebugHeader));
-
-        SIPKernelInfo[XE2_CSR_DEBUG_BINDLESS_BMG_config5] = std::make_tuple(
-            (void *)&XE2_BMG_config5, (int)sizeof(XE2_BMG_config5),
-            (void *)&Xe2SIP_WMTP_CSRDebugBindlessDebugHeader,  (int)sizeof(Xe2SIP_WMTP_CSRDebugBindlessDebugHeader));
      }
 
 }
@@ -1272,8 +1247,6 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
         }
         else if (mode == SYSTEM_THREAD_MODE_CSR)
         {
-            uint32_t slices = sysInfo.MaxSlicesSupported;
-            uint32_t subslices_per_slice =(sysInfo.MaxSlicesSupported > 0 ? (sysInfo.MaxSubSlicesSupported / sysInfo.MaxSlicesSupported) : sysInfo.MaxSubSlicesSupported);
             switch (platform.getPlatformInfo().eProductFamily)
             {
             case IGFX_TIGERLAKE_LP:
@@ -1292,63 +1265,22 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
             case IGFX_METEORLAKE:
             case IGFX_ARROWLAKE:
             case IGFX_LUNARLAKE:
-                if (slices == 1 && subslices_per_slice == 4)
+            case IGFX_BMG :
+                if (sysInfo.SLMSizeInKb == SLM_128)
                 {
-                    if (sysInfo.SLMSizeInKb == SLM_128)
-                    {
-                        SIPIndex = XE2_CSR_DEBUG_BINDLESS_LNL_1x4_128;
-                        Xe2SIP_WMTP_CSRDebugBindlessDebugHeader.total_wmtp_data_size = XE2_CSR_DEBUG_BINDLESS_LNL_1x4_128_WMTP_DATA_SIZE;
-                    }
-                    else if (sysInfo.SLMSizeInKb == SLM_160)
-                    {
-                        SIPIndex = XE2_CSR_DEBUG_BINDLESS_LNL_1x4_160;
-                        Xe2SIP_WMTP_CSRDebugBindlessDebugHeader.total_wmtp_data_size = XE2_CSR_DEBUG_BINDLESS_LNL_1x4_160_WMTP_DATA_SIZE;
-                    }
-                    else
-                    {
-                        IGC_ASSERT(false);
-                    }
+                    SIPIndex = XE2_CSR_DEBUG_BINDLESS_config128;
+                    Xe2SIP_WMTP_CSRDebugBindlessDebugHeader.total_wmtp_data_size = XE2_CSR_DEBUG_BINDLESS_config128_WMTP_DATA_SIZE;
                 }
-                else if (slices == 2 && subslices_per_slice == 4)
+                else if (sysInfo.SLMSizeInKb == SLM_160)
                 {
-                    if (sysInfo.SLMSizeInKb == SLM_128)
-                    {
-                        SIPIndex = XE2_CSR_DEBUG_BINDLESS_LNL_2x4_128;
-                        Xe2SIP_WMTP_CSRDebugBindlessDebugHeader.total_wmtp_data_size = XE2_CSR_DEBUG_BINDLESS_LNL_2x4_128_WMTP_DATA_SIZE;
-                    }
-                    else if (sysInfo.SLMSizeInKb == SLM_160)
-                    {
-                        SIPIndex = XE2_CSR_DEBUG_BINDLESS_LNL_2x4_160;
-                        Xe2SIP_WMTP_CSRDebugBindlessDebugHeader.total_wmtp_data_size = XE2_CSR_DEBUG_BINDLESS_LNL_2x4_160_WMTP_DATA_SIZE;
-                    }
-                    else
-                    {
-                        IGC_ASSERT(false);
-                    }
+                    SIPIndex = XE2_CSR_DEBUG_BINDLESS_config160;
+                    Xe2SIP_WMTP_CSRDebugBindlessDebugHeader.total_wmtp_data_size = XE2_CSR_DEBUG_BINDLESS_config160_WMTP_DATA_SIZE;
                 }
                 else
                 {
                     IGC_ASSERT(false);
                 }
                 break;
-
-                case IGFX_BMG :
-                {
-                    if (sysInfo.SLMSizeInKb == SLM_128)
-                    {
-                        SIPIndex = XE2_CSR_DEBUG_BINDLESS_BMG_config4;
-                        Xe2SIP_WMTP_CSRDebugBindlessDebugHeader.total_wmtp_data_size = XE2_CSR_DEBUG_BINDLESS_BMG_config4_WMTP_DATA_SIZE;
-                    }
-                    else if (sysInfo.SLMSizeInKb == SLM_160)
-                    {
-                        SIPIndex = XE2_CSR_DEBUG_BINDLESS_BMG_config5;
-                        Xe2SIP_WMTP_CSRDebugBindlessDebugHeader.total_wmtp_data_size = XE2_CSR_DEBUG_BINDLESS_BMG_config5_WMTP_DATA_SIZE;
-                    }
-                    else
-                    {
-                        IGC_ASSERT(false);
-                    }
-                }
 
             default:
                 break;
