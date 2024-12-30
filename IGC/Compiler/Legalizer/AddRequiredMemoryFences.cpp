@@ -102,12 +102,17 @@ inline bool IsSlmStoreOrAtomic(Instruction* inst)
     Instruction* store = nullptr;
     if (GenIntrinsicInst* intr = dyn_cast<GenIntrinsicInst>(inst))
     {
+        const GenISAIntrinsic::ID id = intr->getIntrinsicID();
+        if (id == GenISAIntrinsic::GenISA_LSCStore ||
+            id == GenISAIntrinsic::GenISA_LSCStoreBlock ||
+            id == GenISAIntrinsic::GenISA_simdBlockWrite)
+        {
+            store = intr;
+        }
         // This pass assumes that the input shader is optimized, only
         // instructions with no uses are considered as needing the fence.
-        const GenISAIntrinsic::ID id = intr->getIntrinsicID();
-        if (IsStatelessMemStoreIntrinsic(id) ||
-            (intr->getNumUses() == 0 &&
-             IsStatelessMemAtomicIntrinsic(*intr, id)))
+        else if (intr->getNumUses() == 0 &&
+             IsStatelessMemAtomicIntrinsic(*intr, id))
         {
             store = intr;
         }
