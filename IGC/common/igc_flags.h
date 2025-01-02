@@ -476,6 +476,7 @@ DECLARE_IGC_REGKEY(bool, BufferBoundsChecking,          false, "Setting this to 
 DECLARE_IGC_REGKEY(DWORD, MinimumValidAddress, 0, "If it's greater than 0, it enables minimal valid address checking where the threshold is the given value (in hex).", true)
 DECLARE_IGC_REGKEY(bool, AssignZeroToUndefPhiNodes, false, "Assigns a null value to such a phi node which has an undefined value during emitting vISA", false)
 DECLARE_IGC_REGKEY_ENUM(InjectPrintfFlag, 0, "Inject printf debugging flag", INJECT_PRINTF_OPTIONS, true)
+DECLARE_IGC_REGKEY(DWORD, AdHoc, 0, "Unassigned debug key that can be used for experiments. Do not commit usages of this regkey", false)
 
 DECLARE_IGC_GROUP("IGC Features")
 DECLARE_IGC_REGKEY(bool, EnableOCLSIMD16,               true,  "Enable OCL SIMD16 mode", true)
