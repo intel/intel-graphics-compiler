@@ -8,10 +8,16 @@
 
 ; Check that bti assignment starts from 1 if debuggable kernels needed.
 
-; RUN: %opt_typed_ptrs %use_old_pass_manager% %pass_pref%GenXBTIAssignment -vc-reserve-bti-zero -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK_RESERVE
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% %pass_pref%GenXBTIAssignment -vc-reserve-bti-zero -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK_RESERVE
-; RUN: %opt_typed_ptrs %use_old_pass_manager% %pass_pref%GenXBTIAssignment  -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK_NO_RESERVE
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% %pass_pref%GenXBTIAssignment  -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK_NO_RESERVE
+; RUN: %opt_legacy_typed %use_old_pass_manager% -GenXBTIAssignment -vc-reserve-bti-zero -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK_RESERVE
+; RUN: %opt_legacy_opaque %use_old_pass_manager% -GenXBTIAssignment -vc-reserve-bti-zero -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK_RESERVE
+; RUN: %opt_legacy_typed %use_old_pass_manager% -GenXBTIAssignment  -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK_NO_RESERVE
+; RUN: %opt_legacy_opaque %use_old_pass_manager% -GenXBTIAssignment  -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK_NO_RESERVE
+
+; RUN: %opt_new_pm_typed -passes=GenXBTIAssignment -vc-reserve-bti-zero -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK_RESERVE
+; RUN: %opt_new_pm_opaque -passes=GenXBTIAssignment -vc-reserve-bti-zero -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK_RESERVE
+; RUN: %opt_new_pm_typed -passes=GenXBTIAssignment -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK_NO_RESERVE
+; RUN: %opt_new_pm_opaque -passes=GenXBTIAssignment -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK_NO_RESERVE
+
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"
 target triple = "spir64-unknown-unknown"

@@ -629,13 +629,14 @@ namespace IGC
 
     BufferAccessType getDefaultAccessType(BufferType bufTy)
     {
-        static_assert(BufferType::BUFFER_TYPE_UNKNOWN == 17, "Please also update switch() below");
+        static_assert(BufferType::BUFFER_TYPE_UNKNOWN == 19, "Please also update switch() below");
         switch (bufTy)
         {
         case BufferType::CONSTANT_BUFFER:
         case BufferType::RESOURCE:
         case BufferType::BINDLESS_TEXTURE:
         case BufferType::BINDLESS_CONSTANT_BUFFER:
+        case BufferType::BINDLESS_READONLY:
         case BufferType::STATELESS_READONLY:
         case BufferType::SAMPLER:
         case BufferType::BINDLESS_SAMPLER:
@@ -652,6 +653,7 @@ namespace IGC
         case BufferType::STATELESS_A32:
             return BufferAccessType::ACCESS_READWRITE;
 
+        case BufferType::BINDLESS_WRITEONLY:
         case BufferType::RENDER_TARGET:
             return BufferAccessType::ACCESS_WRITE;
         default:
@@ -1694,6 +1696,11 @@ namespace IGC
             ((callInst->getCalledFunction() == nullptr) || !callInst->getCalledFunction()->isIntrinsic());
 
         return isUserFunction;
+    }
+
+    bool isDiscardInstruction(const llvm::Instruction* I)
+    {
+        return isa<GenIntrinsicInst>(I) && cast<GenIntrinsicInst>(I)->getIntrinsicID() == GenISAIntrinsic::GenISA_discard;
     }
 
     bool isURBWriteIntrinsic(const llvm::Instruction* I)

@@ -169,7 +169,7 @@ unsigned int getConstantValueAsInt(Value *I) {
     return Result;
 }
 
-unsigned int getVectorSize(Instruction *I) {
+unsigned int getVectorSize(Value *I) {
     IGCLLVM::FixedVectorType *VecType =
         llvm::dyn_cast<IGCLLVM::FixedVectorType>(I->getType());
     if (!VecType)
@@ -196,6 +196,7 @@ bool isSafeToVectorize(Instruction *I) {
         llvm::isa<PHINode>(I) ||
         llvm::isa<ExtractElementInst>(I) ||
         llvm::isa<InsertElementInst>(I) ||
+        llvm::isa<FPTruncInst>(I) ||
         isBinarySafe(I);
 
     return Result;
@@ -208,7 +209,6 @@ bool IGCVectorizer::handlePHI(VecArr &Slice, Type *VectorType) {
         return false;
 
     PHINode *Phi = PHINode::Create(VectorType, 2);
-    CreatedVectorInstructions.push_back(Phi);
     Phi->setName("vectorized_phi");
 
     VecVal Operands;
@@ -273,6 +273,7 @@ bool IGCVectorizer::handlePHI(VecArr &Slice, Type *VectorType) {
 
     Phi->insertBefore(ScalarPhi);
     Phi->setDebugLoc(ScalarPhi->getDebugLoc());
+    CreatedVectorInstructions.push_back(Phi);
 
     for (auto &El : Slice)
         ScalarToVector[El] = Phi;
@@ -620,6 +621,11 @@ bool IGCVectorizer::checkInsertElement(Instruction *First, VecArr &Slice) {
 bool IGCVectorizer::checkExtractElement(Instruction *Compare, VecArr &Slice) {
     Value *CompareSource = Slice[0]->getOperand(0);
 
+    if (getVectorSize(CompareSource) != Slice.size()) {
+        PRINT_LOG_NL("Extract is wider than the slice, need additional handling, not implemented");
+        return false;
+    }
+
     if (!llvm::isa<Instruction>(CompareSource)) {
         PRINT_LOG_NL("Source is not an instruction");
         return false;
@@ -770,14 +776,17 @@ bool IGCVectorizer::runOnFunction(llvm::Function &F) {
             PRINT_LOG_NL("Print slices");
             for (auto& Slice : InSt.SlChain) { printSlice(&Slice); writeLog(); }
 
+
             CreatedVectorInstructions.clear();
             if (!processChain(InSt)) {
                 writeLog();
                 std::reverse(CreatedVectorInstructions.begin(), CreatedVectorInstructions.end());
+                PRINT_DS("To Clean: ", CreatedVectorInstructions);
                 for (auto& el : CreatedVectorInstructions) {
                     PRINT_LOG("Cleaned: "); PRINT_INST_NL(el); writeLog();
                     el->eraseFromParent();
                 }
+                ScalarToVector.clear();
             }
             else {
                 for (auto& el : CreatedVectorInstructions) { PRINT_LOG("Created: "); PRINT_INST_NL(el); writeLog(); }

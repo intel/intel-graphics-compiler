@@ -6,8 +6,9 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt_llvm-15 %use_old_pass_manager% -GenXTranslateSPIRVBuiltins -GenXImportOCLBiF -vc-spirv-builtins-bif-path=%VC_SPIRV_OCL_BIF% -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=%SPV_CHECK_PREFIX%,CHECK
-; RUN: %opt_llvm-16 %use_old_pass_manager% --passes=GenXTranslateSPIRVBuiltins,GenXImportOCLBiF -vc-spirv-builtins-bif-path=%VC_SPIRV_OCL_BIF% -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=%SPV_CHECK_PREFIX%,CHECK
+; RUN: %opt_legacy_typed %use_old_pass_manager% -GenXTranslateSPIRVBuiltins -GenXImportOCLBiF -vc-spirv-builtins-bif-path=%VC_SPIRV_OCL_BIF% -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=%SPV_CHECK_PREFIX%,CHECK
+; TODO: Expected default spirv-builtins build w/o opaque pointers
+; RUN: %opt_new_pm_opaque -passes=GenXTranslateSPIRVBuiltins,GenXImportOCLBiF -vc-spirv-builtins-bif-path=%VC_SPIRV_OCL_BIF% -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=%SPV_CHECK_PREFIX%,CHECK
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 ; COM: datalayout should stay the same

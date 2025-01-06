@@ -208,6 +208,8 @@ void StatelessToStateful::handleFunction(llvm::Function& F)
     m_ctx = static_cast<OpenCLProgramContext*>(getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
     m_pKernelArgs = new KernelArgs(F, &(F.getParent()->getDataLayout()), pMdUtils, modMD, m_ctx->platform.getGRFSize());
 
+    m_changed = hoistLoad();
+
     findPromotableInstructions();
     promote();
 
@@ -216,6 +218,185 @@ void StatelessToStateful::handleFunction(llvm::Function& F)
     delete m_pImplicitArgs;
     delete m_pKernelArgs;
     m_promotionMap.clear();
+}
+
+bool StatelessToStateful::canWriteToMemoryTill(Instruction *Till) {
+    BasicBlock *BB = Till->getParent();
+    for (auto &I : *BB) {
+        // Stop checking when we reach the PHINode
+        if (&I == Till)
+            break;
+
+        if (I.mayWriteToMemory())
+            return true;
+    }
+
+    return false;
+}
+
+// This function checks if it is safe to hoist the load instruction over the phi instruction.
+// It supports the following cases (BB3 contains load and phi instructions):
+//
+// 1)
+//   BB1  BB2
+//   |   /
+//    BB3
+// Here the function will check that there are no instructions that can write to memory in BB3 (from phi instruction till load instruction).
+//
+// 2)
+//  BB1
+//  |  \
+//  |   BB2
+//  |  /
+//   BB3
+// Here the function will check that there are no instructions that can write to memory in the whole basic block BB2.
+bool StatelessToStateful::isItSafeToHoistLoad(LoadInst *LI, PHINode *Phi)
+{
+    BasicBlock *LoadBB = LI->getParent();
+
+    // Check that the load instruction is not carried over an instruction that can write to memory in basic block with phi instruction.
+    if (canWriteToMemoryTill(LI))
+        return false;
+
+    // Iterate over incoming basic blocks of the phi instruction.
+    for (unsigned i = 0; i < Phi->getNumIncomingValues(); ++i) {
+        BasicBlock *IncomingBlock = Phi->getIncomingBlock(i);
+
+        // Skip incoming block if it leads to the load block only.
+        if (IncomingBlock->getTerminator()->getNumSuccessors() == 1)
+            continue;
+
+        // Get the successor of the incoming block that is not the load block.
+        BasicBlock* TheOtherSuccessor = nullptr;
+        auto IncomingBlockTerminator = IncomingBlock->getTerminator();
+        for (unsigned j = 0; j < IncomingBlockTerminator->getNumSuccessors(); ++j) {
+            BasicBlock *Successor = IncomingBlockTerminator->getSuccessor(j);
+            if (Successor != LoadBB) {
+                TheOtherSuccessor = Successor;
+                break;
+            }
+        }
+
+        // Iterate over phi incoming values again to check that TheOtherSuccessor is incoming block of the phi instruction.
+        bool isSuccessorIncoming = false;
+        for (unsigned k = 0; k < Phi->getNumIncomingValues(); ++k) {
+            BasicBlock *BBToCheck = Phi->getIncomingBlock(k);
+            if (BBToCheck != TheOtherSuccessor)
+                continue;
+
+            isSuccessorIncoming = true;
+
+            // Check that TheOtherSuccessor does not have any instruction that can write to memory.
+            if (canWriteToMemoryTill(TheOtherSuccessor->getTerminator()))
+                return false;
+        }
+
+        // Check that TheOtherSuccessor is incomimg block of the phi instruction.
+        if (!isSuccessorIncoming)
+            return false;
+    }
+
+    return true;
+}
+
+bool StatelessToStateful::hoistLoad()
+{
+    bool Changed = false;
+    std::vector<std::tuple<PHINode*, LoadInst*>> Container;
+    Container.reserve(128);
+
+    // Collect all load instructions that can be hoisted.
+    for (auto &BB : *m_F)
+    {
+        for (auto &I : BB)
+        {
+            auto *LI = dyn_cast<LoadInst>(&I);
+            if (!LI)
+                continue;
+
+            Value *Addr = LI->getPointerOperand();
+            if (!Addr)
+                continue;
+
+            // StatelessToStateful works only with global and constant address space pointers.
+            PointerType *PtrType = cast<PointerType>(Addr->getType());
+            if (!PtrType || (PtrType->getAddressSpace() != ADDRESS_SPACE_GLOBAL &&
+                PtrType->getAddressSpace() != ADDRESS_SPACE_CONSTANT))
+            {
+                continue;
+            }
+
+            // Sometimes result of phi instruction can be casted before load instruction.
+            PHINode *Phi = nullptr;
+            if (isa<PHINode>(Addr))
+            {
+                Phi = cast<PHINode>(Addr);
+            }
+            else if (auto *BCI = dyn_cast<BitCastInst>(Addr))
+            {
+                if (!BCI->hasOneUser())
+                    continue;
+
+                if (isa<PHINode>(BCI->getOperand(0)))
+                    Phi = cast<PHINode>(BCI->getOperand(0));
+            }
+
+            // Check that PHINode and load instructions are in the same basic block
+            if (!Phi || Phi->getParent() != &BB)
+                continue;
+
+            if (!Phi->hasOneUser())
+                continue;
+
+            // Check that the instruction is not carried over an instruction that can write to memory.
+            if (isItSafeToHoistLoad(LI, Phi))
+                Container.push_back(std::make_tuple(Phi, LI));
+        }
+    }
+
+    // Iterate over phi nodes and load instructions.
+    // Hoist the load instructions to the incoming BBs.
+    // Create new phi instruction with the hoisted load instructions as incoming values.
+    // Update uses of the original load instruction with the new phi instruction.
+    // Remove the load instruction and the bitcast inst instruction (if it exists) from the original BB.
+    for (auto &[Phi, LI] : Container)
+    {
+        IRBuilder<> Builder(Phi->getContext());
+        Builder.SetInsertPoint(Phi);
+
+        Type *LoadType = LI->getType();
+        Align LoadAlign = LI->getAlign();
+        PHINode *NewPhi = Builder.CreatePHI(LoadType, Phi->getNumIncomingValues(), "new_phi");
+
+        // Iterate over phi incoming basic blocks.
+        for (unsigned i = 0; i < Phi->getNumIncomingValues(); ++i) {
+            Value *IncomingValue = Phi->getIncomingValue(i);
+            BasicBlock *IncomingBlock = Phi->getIncomingBlock(i);
+            Instruction *Terminator = IncomingBlock->getTerminator();
+
+            Builder.SetInsertPoint(Terminator);
+            Type *IncomingPtrType = IncomingValue->getType();
+            PointerType *LoadPtrType = dyn_cast<PointerType>(LI->getPointerOperand()->getType());
+
+            // Cast the incoming value to the type of the load if it is needed.
+            Value *Cast = IncomingValue;
+            if (IncomingPtrType != LoadPtrType)
+                Cast = Builder.CreateBitCast(IncomingValue, LoadPtrType);
+
+            LoadInst *NewLoad = Builder.CreateAlignedLoad(LoadType, Cast, LoadAlign, "hoisted_" + LI->getName());
+            NewPhi->addIncoming(NewLoad, IncomingBlock);
+        }
+
+        // Erase all old instructions and update uses.
+        LI->replaceAllUsesWith(NewPhi);
+        Value *Addr = LI->getPointerOperand();
+        LI->eraseFromParent();
+        if (auto *BCI = dyn_cast<BitCastInst>(Addr))
+            BCI->eraseFromParent();
+        Phi->eraseFromParent();
+    }
+
+    return Changed;
 }
 
 Argument* StatelessToStateful::getBufferOffsetArg(Function* F, uint32_t ArgNumber)

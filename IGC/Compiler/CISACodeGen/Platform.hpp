@@ -1620,10 +1620,8 @@ bool enableMultiGRFAccessWA() const
 // Return true if platform has structured control-flow instructions and IGC wants to use them.
 bool hasSCF() const
 {
-    bool doscf = true;
     // DG2 and PVC still has SCF, but igc will stop using them.
-    doscf = !isProductChildOf(IGFX_DG2);
-    return doscf;
+    return !isProductChildOf(IGFX_DG2);
 }
 
 const SCompilerHwCaps& GetCaps() { return m_caps; }

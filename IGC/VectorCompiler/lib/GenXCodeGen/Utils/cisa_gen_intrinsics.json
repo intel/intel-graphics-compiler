@@ -3652,6 +3652,20 @@
       "opc": "ISA_SBARRIER",
       "signal_flag": [ "BYTE", 1 ]
     },
+    "genx_qf_cvt": {
+      "opc": "ISA_FCVT",
+      "exec_size": [ "EXECSIZE_NOMASK" ],
+      "elementwise": [ "ELEMENTWISE" ],
+      "dst": [ "GENERAL", "UNSIGNED", "SATURATION_INTALLOWED", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "NOIMM", 1 ]
+    },
+    "genx_hf8_cvt": {
+      "opc": "ISA_FCVT",
+      "exec_size": [ "EXECSIZE_NOMASK" ],
+      "elementwise": [ "ELEMENTWISE" ],
+      "dst": [ "GENERAL", "SIGNED", "SATURATION_INTALLOWED", 0 ],
+      "src0": [ "GENERAL", "SIGNED", "NOIMM", 1 ]
+    },
     "genx_bfrev": {
       "opc": "ISA_BFREV",
       "exec_size": [ "EXECSIZE" ],

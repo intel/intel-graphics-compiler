@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "EmUtils.h"
 
-enum CallableShaderTypeMD : uint8_t
+enum CallableShaderTypeMD : uint32_t
 {
     AnyHit,
     ClosestHit,

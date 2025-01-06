@@ -6,7 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt_typed_ptrs %use_old_pass_manager% %pass_pref%GenXImportOCLBiF -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_legacy_typed %use_old_pass_manager% -GenXImportOCLBiF -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_new_pm_opaque -passes=GenXImportOCLBiF -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 ; COM: datalayout should stay the same

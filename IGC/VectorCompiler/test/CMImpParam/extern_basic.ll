@@ -6,13 +6,22 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt_typed_ptrs %use_old_pass_manager% %pass_pref%CMImpParam -march=genx64 -mcpu=XeHP -S < %s \
+; RUN: %opt_legacy_typed %use_old_pass_manager% -CMImpParam -march=genx64 -mcpu=XeHP -S < %s \
 ; RUN:    | FileCheck %s --check-prefixes=XeHP-OCL,XeHP-OCL-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% %pass_pref%CMImpParam -march=genx64 -mcpu=XeHP -S < %s \
+; RUN: %opt_legacy_opaque %use_old_pass_manager% -CMImpParam -march=genx64 -mcpu=XeHP -S < %s \
 ; RUN:    | FileCheck %s --check-prefixes=XeHP-OCL,XeHP-OCL-OPAQUE-PTRS
-; RUN: %opt_typed_ptrs %use_old_pass_manager% %pass_pref%CMImpParam -cmimpparam-payload-in-memory=false \
+; RUN: %opt_legacy_typed %use_old_pass_manager% -CMImpParam -cmimpparam-payload-in-memory=false \
 ; RUN:    -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=Gen9-OCL,Gen9-OCL-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% %pass_pref%CMImpParam -cmimpparam-payload-in-memory=false \
+; RUN: %opt_legacy_opaque %use_old_pass_manager% -CMImpParam -cmimpparam-payload-in-memory=false \
+; RUN:    -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=Gen9-OCL,Gen9-OCL-OPAQUE-PTRS
+
+; RUN: %opt_new_pm_typed -passes=CMImpParam -march=genx64 -mcpu=XeHP -S < %s \
+; RUN:    | FileCheck %s --check-prefixes=XeHP-OCL,XeHP-OCL-TYPED-PTRS
+; RUN: %opt_new_pm_opaque -passes=CMImpParam -march=genx64 -mcpu=XeHP -S < %s \
+; RUN:    | FileCheck %s --check-prefixes=XeHP-OCL,XeHP-OCL-OPAQUE-PTRS
+; RUN: %opt_new_pm_typed -passes=CMImpParam -cmimpparam-payload-in-memory=false \
+; RUN:    -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=Gen9-OCL,Gen9-OCL-TYPED-PTRS
+; RUN: %opt_new_pm_opaque -passes=CMImpParam -cmimpparam-payload-in-memory=false \
 ; RUN:    -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=Gen9-OCL,Gen9-OCL-OPAQUE-PTRS
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"

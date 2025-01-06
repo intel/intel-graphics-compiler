@@ -485,7 +485,7 @@ private:
     static bool IsFenceOperation(const llvm::Instruction* pInst);
 
     ////////////////////////////////////////////////////////////////////////
-    static bool IsGlobalResource(llvm::Type* pResourePointerType);
+    static bool IsGlobalWritableResource(llvm::Type* pResourePointerType);
 
     ////////////////////////////////////////////////////////////////////////
     static bool IsSharedMemoryResource(llvm::Type* pResourePointerType);
@@ -1865,7 +1865,7 @@ IGC::InstructionMask SynchronizationObjectCoalescing::GetAtomicInstructionMaskFr
         else
         {
             llvm::Type* pPointerType = pGenIntrinsicInst->getOperand(0)->getType();
-            if (IsGlobalResource(pPointerType))
+            if (IsGlobalWritableResource(pPointerType))
             {
                 result = static_cast<InstructionMask>(result | InstructionMask::BufferReadOperation);
                 result = static_cast<InstructionMask>(result | InstructionMask::BufferWriteOperation);
@@ -2466,7 +2466,7 @@ bool SynchronizationObjectCoalescing::IsTypedReadOperation(const llvm::Instructi
         switch (pGenIntrinsicInst->getIntrinsicID())
         {
         case llvm::GenISAIntrinsic::GenISA_typedread:
-            return true;
+            return IsGlobalWritableResource(pGenIntrinsicInst->getOperand(0)->getType());
         default:
             break;
         }
@@ -2603,7 +2603,7 @@ bool SynchronizationObjectCoalescing::IsBufferReadOperation(const llvm::Instruct
 {
     if (llvm::Type* pPtrType = GetReadOperationPointerType(pInst))
     {
-        return IsGlobalResource(pPtrType);
+        return IsGlobalWritableResource(pPtrType);
     }
     return false;
 }
@@ -2613,7 +2613,7 @@ bool SynchronizationObjectCoalescing::IsBufferWriteOperation(const llvm::Instruc
 {
     if (llvm::Type* pPtrType = GetWriteOperationPointerType(pInst))
     {
-        return IsGlobalResource(pPtrType);
+        return IsGlobalWritableResource(pPtrType);
     }
     return false;
 }
@@ -2920,7 +2920,10 @@ bool SynchronizationObjectCoalescing::IsFenceOperation(const llvm::Instruction* 
 }
 
 ////////////////////////////////////////////////////////////////////////
-bool SynchronizationObjectCoalescing::IsGlobalResource(llvm::Type* pResourePointerType)
+/// Returns true for resources in the global memory (storage buffers or
+/// storage images) that are not marked as ReadOnly in the shader.
+bool SynchronizationObjectCoalescing::IsGlobalWritableResource(
+    llvm::Type* pResourePointerType)
 {
     uint as = pResourePointerType->getPointerAddressSpace();
     switch (as)
@@ -2937,6 +2940,7 @@ bool SynchronizationObjectCoalescing::IsGlobalResource(llvm::Type* pResourePoint
         {
         case IGC::UAV:
         case IGC::BINDLESS:
+        case IGC::BINDLESS_WRITEONLY:
         case IGC::STATELESS:
         case IGC::SSH_BINDLESS:
             return true;
@@ -2946,6 +2950,7 @@ bool SynchronizationObjectCoalescing::IsGlobalResource(llvm::Type* pResourePoint
         case IGC::POINTER:
         case IGC::BINDLESS_CONSTANT_BUFFER:
         case IGC::BINDLESS_TEXTURE:
+        case IGC::BINDLESS_READONLY:
         case IGC::SAMPLER:
         case IGC::BINDLESS_SAMPLER:
         case IGC::RENDER_TARGET:

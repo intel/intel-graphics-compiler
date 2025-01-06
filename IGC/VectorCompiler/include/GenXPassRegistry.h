@@ -14,18 +14,22 @@ SPDX-License-Identifier: MIT
 
 MODULE_PASS("CMABI", CMABIPass())
 MODULE_PASS("CMImpParam", CMImpParamPass())
-MODULE_PASS("CMKernelArgOffset", CMKernelArgOffsetPass())
+MODULE_PASS("CMKernelArgOffset",
+            CMKernelArgOffsetPass(GTM->getGenXSubtarget().getGRFByteSize(),
+                                  BC->useBindlessImages()))
 MODULE_PASS("GenXPacketize", GenXPacketizePass())
 MODULE_PASS("GenXBIFFlagCtrlResolution", GenXBIFFlagCtrlResolutionPass())
 MODULE_PASS("GenXBTIAssignment", GenXBTIAssignmentPass())
+
 MODULE_PASS("GenXImportOCLBiF", GenXImportOCLBiFPass())
 MODULE_PASS("GenXLegalizeGVLoadUses", GenXLegalizeGVLoadUsesPass())
 MODULE_PASS("GenXLinkageCorruptor", GenXLinkageCorruptorPass())
 MODULE_PASS("GenXPrintfLegalization", GenXPrintfLegalizationPass())
 MODULE_PASS("GenXPrintfPhiClonning", GenXPrintfPhiClonningPass())
-MODULE_PASS("GenXPrintfResolution", GenXPrintfResolutionPass())
+MODULE_PASS("GenXPrintfResolution", GenXPrintfResolutionPass(TM))
 MODULE_PASS("GenXTrampolineInsertion", GenXTrampolineInsertionPass())
-MODULE_PASS("GenXTranslateSPIRVBuiltins", GenXTranslateSPIRVBuiltinsPass(BC->getResult()))
+MODULE_PASS("GenXTranslateSPIRVBuiltins",
+            GenXTranslateSPIRVBuiltinsPass(BC->getResult()))
 MODULE_PASS("GenXCloneIndirectFunctions", GenXCloneIndirectFunctionsPass())
 MODULE_PASS("GenXVerify", GenXVerifyPass())
 
@@ -40,5 +44,7 @@ FUNCTION_PASS("GenXStatePointerFence", GenXStatePointerFencePass())
 FUNCTION_PASS("CMLowerVLoadVStore", CMLowerVLoadVStorePass())
 FUNCTION_PASS("GenXTypeLegalization", GenXTypeLegalizationPass())
 FUNCTION_PASS("GenXTranslateIntrinsics", GenXTranslateIntrinsicsPass())
+FUNCTION_PASS("GenXLowerAggrCopies", GenXLowerAggrCopiesPass())
+FUNCTION_PASS("GenXRegionCollapsing", GenXRegionCollapsingPass(TM))
 
 #undef FUNCTION_PASS

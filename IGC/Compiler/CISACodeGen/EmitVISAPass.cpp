@@ -1215,6 +1215,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                     emitLifetimeStartAtEndOfBB(block.bb);
                     // insert the de-ssa movs.
                     MovPhiSources(block.bb);
+                    // insert lifetime start for resource loop unroll
+                    emitLifetimeStartResourceLoopUnroll(block.bb);
                 }
 
                 // If slicing happens, then recalculate the number of instances.
@@ -1777,6 +1779,22 @@ void EmitPass::InitConstant(llvm::BasicBlock* BB)
             m_encoder->Push();
         }
         m_currShader->addConstantInPool(C, Dst);
+    }
+}
+
+void EmitPass::emitLifetimeStartResourceLoopUnroll(BasicBlock* BB)
+{
+    // should insert the lifetime.start before the first unroll BB
+    if (BasicBlock* bb = BB->getNextNode(); bb)
+    {
+        ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+        auto& lifeTimeStartMap = modMD->lifeTimeStartMap;
+
+        if (lifeTimeStartMap.count(bb))
+        {
+            CVariable* dstCVar = m_currShader->GetSymbol(lifeTimeStartMap[bb]);
+            m_encoder->Lifetime(LIFETIME_START, dstCVar);
+        }
     }
 }
 
@@ -4324,9 +4342,14 @@ void EmitPass::EmitGenericPointersCmp(llvm::Instruction* inst,
 
 void EmitPass::BinaryUnary(llvm::Instruction* inst, const SSource source[2], const DstModifier& modifier)
 {
-
     switch (inst->getOpcode())
     {
+    case Instruction::FPTrunc:
+        if (inst->getType()->isVectorTy())
+            FPTrunc(source, modifier);
+        else
+            EmitSimpleAlu(inst, source, modifier);
+        break;
     case Instruction::FCmp:
     case Instruction::ICmp:
         Cmp(cast<CmpInst>(inst)->getPredicate(), source, modifier);
@@ -4577,6 +4600,40 @@ static unsigned int getVectorSize(Instruction *I) {
         return 0;
     unsigned int NumElements = VecType->getNumElements();
     return NumElements;
+}
+
+void EmitPass::FPTrunc(const SSource sources[2], const DstModifier& modifier) {
+
+    CVariable* src[2];
+    src[0] = GetSrcVariable(sources[0]);
+    if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) && sources[0].value->getType()->isVectorTy()) {
+
+        unsigned int VectorSize = 0;
+        if (llvm::isa<Instruction>(sources[0].value))
+            VectorSize = getVectorSize(llvm::cast<Instruction>(sources[0].value));
+
+        // float is 4 bytes --> divide by 4
+        unsigned int NumberOfFloatsThatFitInRegister = m_currShader->getGRFSize()/4;
+        for (unsigned int i = 0; i < VectorSize; ++i) {
+
+            // this is FPTrunc we move from 32bits to 16 this gives us factor of 2
+            unsigned int row = i / 2;
+            // now we can fit twice as many half floats into the same register:
+            // .decl vector331 v_type=G type=f num_elts=128 align=wordx32
+            // .decl vectorized_cast v_type=G type=hf num_elts=128 align=wordx32
+            // mov (M1, 16) vectorized_cast(0,0 <-- this is odd col)<1> vector331(0,0)<1;1,0>
+            // mov (M1, 16) vectorized_cast(0,16 <-- this is even col)<1> vector331(1,0)<1;1,0>
+            unsigned int col = (i%2) * NumberOfFloatsThatFitInRegister;
+            SetSourceModifiers(0, sources[0]);
+            if (src[0]->IsUniform()) { m_encoder->SetSrcSubReg(0, i); }
+            else m_encoder->SetSrcSubVar(0, i);
+            m_encoder->SetDstModifier(modifier);
+            m_encoder->SetDstSubVar(row);
+            m_encoder->SetDstSubReg(col);
+            m_encoder->Cast(m_destination, src[0]);
+            m_encoder->Push();
+        }
+    }
 }
 
 void EmitPass::Mul(const SSource sources[2], const DstModifier& modifier)
@@ -8146,7 +8203,6 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
             if (predicationMap.count(inst))
             {
                 m_encoder->SetPredicate(m_currShader->GetSymbol(cast<Instruction>(predicationMap[inst])));
-                m_encoder->Lifetime(LIFETIME_START, dst);
             }
             else
             {
@@ -19511,7 +19567,6 @@ void EmitPass::emitLSCVectorLoad(Instruction* inst,
             if (predicationMap.count(inst))
             {
                 m_encoder->SetPredicate(m_currShader->GetSymbol(cast<Instruction>(predicationMap[inst])));
-                m_encoder->Lifetime(LIFETIME_START, destCVar);
             }
             else
             {
@@ -19840,10 +19895,9 @@ void EmitPass::emitLSCVectorStore(Value *Ptr,
             {
                 rawAddrVar = eOffset;
             }
-            // no need for discard predicate if we are writing to scratch - this is our
-            // internal memory, shader output remain the same, but we avoid problems
-            // when, for example, texture coordinates are spilled
-            if (resource.m_surfaceType != ESURFACE_SCRATCH)
+            // no need for discard predicate if we are writing to internal memory surfaces
+            // those include scratch or raytracing-related allocations
+            if (resource.m_surfaceType != ESURFACE_SCRATCH && !dontForceDmask)
             {
                 setPredicateForDiscard(flag);
             }

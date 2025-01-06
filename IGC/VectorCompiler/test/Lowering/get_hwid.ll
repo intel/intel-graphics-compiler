@@ -12,6 +12,7 @@
 ; COM:  - XeHP-like concatination (CHECK-XeHP): XeHP+ excluding XeHPC
 ; COM:  - XeHPC-like concatination (CHECK-XeHPC): XeHPC
 ; COM:  - Xe2-like concatination (CHECK-Xe2): Xe2
+; COM:  - Xe3-like concatination (CHECK-Xe3): Xe3 and Xe3Pv2
 
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | \
 ; RUN: FileCheck %s --check-prefixes=CHECK-PREDEF,CHECK
@@ -36,6 +37,9 @@
 
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=Xe2 -mtriple=spir64-unknown-unknown -S < %s | \
 ; RUN: FileCheck %s --check-prefixes=CHECK-Xe2,CHECK
+
+; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=Xe3 -mtriple=spir64-unknown-unknown -S < %s | \
+; RUN: FileCheck %s --check-prefixes=CHECK-Xe3,CHECK
 
 ; CHECK-PREDEF: [[RES:%[^ ]+]] = call i32 @llvm.genx.read.predef.reg.i32.i32(i32 12, i32 undef)
 ; CHECK-PREDEF: ret i32 [[RES]]
@@ -79,6 +83,18 @@
 ; CHECK-Xe2: [[OR2:%[^ ]+]] = or i32 [[ANDNOT2]], [[AND2]]
 ; CHECK-Xe2: [[RES:%[^ ]+]] = and i32 [[OR2]], 8191
 ; CHECK-Xe2: ret i32 [[RES]]
+
+; CHECK-Xe3: [[PREDEF:%[^ ]+]] = call i32 @llvm.genx.read.predef.reg.i32.i32(i32 13, i32 undef)
+; CHECK-Xe3: [[SHIFT0:%[^ ]+]] = lshr i32 [[PREDEF]], 2
+; CHECK-Xe3: [[AND0:%[^ ]+]] = and i32 [[PREDEF]], 4095
+; CHECK-Xe3: [[ANDNOT0:%[^ ]+]] = and i32 [[SHIFT0]], -4096
+; CHECK-Xe3: [[OR0:%[^ ]+]] = or i32 [[ANDNOT0]], [[AND0]]
+; CHECK-Xe3: [[SHIFT1:%[^ ]+]] = lshr i32 [[OR0]], 1
+; CHECK-Xe3: [[AND1:%[^ ]+]] = and i32 [[OR0]], 127
+; CHECK-Xe3: [[ANDNOT1:%[^ ]+]] = and i32 [[SHIFT1]], -128
+; CHECK-Xe3: [[OR1:%[^ ]+]] = or i32 [[ANDNOT1]], [[AND1]]
+; CHECK-Xe3: [[RES:%[^ ]+]] = and i32 [[OR1]], 32767
+; CHECK-Xe3: ret i32 [[RES]]
 
 ; CHECK: !vc.disable.mid.thread.preemption = !{}
 

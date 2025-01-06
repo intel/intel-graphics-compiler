@@ -6,7 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% %pass_pref%GenXTranslateIntrinsics -mcpu=Xe2 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXTranslateIntrinsics -mcpu=Xe2 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt_new_pm_typed -passes=GenXTranslateIntrinsics -mcpu=Xe2 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
 declare void @llvm.genx.lsc.prefetch.quad.typed.bti.v4i1.v4i32(<4 x i1>, i8, i8, i8, i32, <4 x i32>, <4 x i32>, <4 x i32>, <4 x i32>)
 declare <16 x i32> @llvm.genx.lsc.load.merge.quad.typed.bti.v16i32.v4i1.v4i32(<4 x i1>, i8, i8, i8, i32, <4 x i32>, <4 x i32>, <4 x i32>, <4 x i32>, <16 x i32>)

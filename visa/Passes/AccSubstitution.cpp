@@ -1386,7 +1386,7 @@ void AccSubPass::multiAccSub(G4_BB *bb) {
         // Skip as src1 could use acc.
         if (U.second == Opnd_src1)
           continue;
-        vISA_ASSERT(U.second = Opnd_src2, "Only src1 or src2 is expected.");
+        vISA_ASSERT(U.second == Opnd_src2, "Only src1 or src2 is expected.");
         U.first->swapSrc(1, 2);
         U.first->swapDefUse(Opnd_src1, Opnd_src2);
         if (builder.getPlatform() == GENX_TGLLP) {

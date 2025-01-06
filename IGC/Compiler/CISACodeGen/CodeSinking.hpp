@@ -207,7 +207,7 @@ namespace IGC {
         bool loopSink(llvm::Function& F);
         bool loopSink(llvm::Loop* LoopWithPressure, LoopSinkMode Mode);
 
-        bool localSink(llvm::BasicBlock* BB, InstToCandidateMap& InstToCandidate);
+        bool localSink(llvm::BasicBlock* BB, InstToCandidateMap& InstToCandidate, bool Aggressive=false);
 
         /// candidates creation
         bool tryCreateShufflePatternCandidates(

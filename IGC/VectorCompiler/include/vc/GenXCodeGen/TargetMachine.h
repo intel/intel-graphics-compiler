@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #ifndef VC_LIB_GENXCODEGEN_TARGETMACHINE_H
 #define VC_LIB_GENXCODEGEN_TARGETMACHINE_H
 
+#include "llvmWrapper/ADT/Optional.h"
 #include "llvmWrapper/Support/TargetRegistry.h"
 
 #include "vc/Support/BackendConfig.h"
@@ -18,8 +19,8 @@ namespace vc {
 std::unique_ptr<llvm::TargetMachine> createGenXTargetMachine(
     const llvm::Target &T, llvm::Triple TT, llvm::StringRef CPU,
     llvm::StringRef Features, const llvm::TargetOptions &Options,
-    llvm::Optional<llvm::Reloc::Model> RM,
-    llvm::Optional<llvm::CodeModel::Model> CM, llvm::CodeGenOpt::Level OL,
+    IGCLLVM::optional<llvm::Reloc::Model> RM,
+    IGCLLVM::optional<llvm::CodeModel::Model> CM, llvm::CodeGenOpt::Level OL,
     std::unique_ptr<llvm::GenXBackendConfig> BC);
 
 inline bool is32BitArch(llvm::Triple TT) {

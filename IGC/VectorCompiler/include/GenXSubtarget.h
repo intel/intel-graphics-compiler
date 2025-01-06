@@ -62,6 +62,7 @@ public:
     XeHPC,
     XeHPCVG,
     Xe2,
+    Xe3,
     Invalid,
   };
 
@@ -224,6 +225,9 @@ private:
 
   /// True if subtarget supports large GRF mode
   bool HasLargeGRF = false;
+
+  /// True if subtarget supports VRT
+  bool HasVRT = false;
 
   // True if target supports local integer compare exchange 64-bit
   bool HasLocalIntegerCas64 = false;
@@ -422,6 +426,8 @@ public:
   bool hasMadSimd32() const { return HasMadSimd32; }
 
   bool hasLargeGRF() const { return HasLargeGRF; }
+
+  bool hasVRT() const { return HasVRT; }
 
   /// * getsHWTIDFromPredef - some subtargets get HWTID from
   // predefined variable instead of sr0, returns *true* for such ones.

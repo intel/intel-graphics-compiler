@@ -66,19 +66,19 @@ define spir_kernel void @test1(i32 %src1, i32 %val, i32 addrspace(1)* %dst) {
 ; CHECK-VISAASM-NEXT:  mov (M1, 16) svn(0,0)<1> threadIdInGroupX(0,0)<1;1,0>
 ; CHECK-VISAASM-NEXT:  mov (M1, 16) nonuniform(0,0)<1> svn_0(0,0)<1;1,0>
 ; CHECK-VISAASM-NEXT:  add (M1, 16) offset(0,0)<1> src1(0,0)<0;1,0> nonuniform(0,0)<1;1,0>
+; CHECK-VISAASM-NEXT:  lifetime.start V0032
 ;
 ; CHECK-VISAASM:  _test1_001_partial_check5:
 ; CHECK-VISAASM-NEXT:  setp (M1_NM, 16) P1 0x0:ud
-; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P1 V0034(0,0)<0;1,0> V0034(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0035(0,0)<1> P1
-; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0033(0,0)<1> V0035(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  fbl (M1_NM, 1) V0037(0,0)<1> V0033(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  shl (M1_NM, 1) ShuffleTmp(0,0)<1> V0038(0,0)<0;1,0> 0x2:uw
+; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P1 V0035(0,0)<0;1,0> V0035(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0036(0,0)<1> P1
+; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0034(0,0)<1> V0036(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  fbl (M1_NM, 1) V0038(0,0)<1> V0034(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  shl (M1_NM, 1) ShuffleTmp(0,0)<1> V0039(0,0)<0;1,0> 0x2:uw
 ; CHECK-VISAASM-NEXT:  addr_add (M1_NM, 1) A0(0)<1> &nonuniform_0 ShuffleTmp(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) firstActiveRes6(0,0)<1> r[A0(0),0]<0;1,0>:ud
 ; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P2 nonuniform_0(0,0)<1;1,0> firstActiveRes6(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  lifetime.start V0039
-; CHECK-VISAASM-NEXT:  (P2) lsc_load.ugm.ca.ca (M1, 16)  V0039:d32x3  bss(firstActiveRes6)[offset]:a32
+; CHECK-VISAASM-NEXT:  (P2) lsc_load.ugm.ca.ca (M1, 16)  V0032:d32x3  bss(firstActiveRes6)[offset]:a32
 ; CHECK-VISAASM-NEXT:  (P2) goto (M1, 16) _test1_007_unroll_merge
 ;
 ; CHECK-VISAASM:  _test1_002_partial_check3:
@@ -91,8 +91,7 @@ define spir_kernel void @test1(i32 %src1, i32 %val, i32 addrspace(1)* %dst) {
 ; CHECK-VISAASM-NEXT:  addr_add (M1_NM, 1) A1(0)<1> &nonuniform_0 ShuffleTmp_0(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) firstActiveRes4(0,0)<1> r[A1(0),0]<0;1,0>:ud
 ; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P4 nonuniform_0(0,0)<1;1,0> firstActiveRes4(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  lifetime.start V0039
-; CHECK-VISAASM-NEXT:  (P4) lsc_load.ugm.ca.ca (M1, 16)  V0039:d32x3  bss(firstActiveRes4)[offset]:a32
+; CHECK-VISAASM-NEXT:  (P4) lsc_load.ugm.ca.ca (M1, 16)  V0032:d32x3  bss(firstActiveRes4)[offset]:a32
 ; CHECK-VISAASM-NEXT:  (P4) goto (M1, 16) _test1_007_unroll_merge
 ;
 ; CHECK-VISAASM:  _test1_003_partial_check1:
@@ -105,8 +104,7 @@ define spir_kernel void @test1(i32 %src1, i32 %val, i32 addrspace(1)* %dst) {
 ; CHECK-VISAASM-NEXT:  addr_add (M1_NM, 1) A2(0)<1> &nonuniform_0 ShuffleTmp_1(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) firstActiveRes2(0,0)<1> r[A2(0),0]<0;1,0>:ud
 ; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P6 nonuniform_0(0,0)<1;1,0> firstActiveRes2(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  lifetime.start V0039
-; CHECK-VISAASM-NEXT:  (P6) lsc_load.ugm.ca.ca (M1, 16)  V0039:d32x3  bss(firstActiveRes2)[offset]:a32
+; CHECK-VISAASM-NEXT:  (P6) lsc_load.ugm.ca.ca (M1, 16)  V0032:d32x3  bss(firstActiveRes2)[offset]:a32
 ; CHECK-VISAASM-NEXT:  (P6) goto (M1, 16) _test1_007_unroll_merge
 ;
 ; CHECK-VISAASM:  _test1_004_partial_check:
@@ -122,12 +120,11 @@ define spir_kernel void @test1(i32 %src1, i32 %val, i32 addrspace(1)* %dst) {
 ; CHECK-VISAASM-NEXT:  (!P8) goto (M1, 16) _test1_001_partial_check5
 ;
 ; CHECK-VISAASM:  _test1_005_last_send:
-; CHECK-VISAASM-NEXT:  lifetime.start V0039
-; CHECK-VISAASM-NEXT:  (P8) lsc_load.ugm.ca.ca (M1, 16)  V0039:d32x3  bss(firstActiveRes)[offset]:a32
+; CHECK-VISAASM-NEXT:  (P8) lsc_load.ugm.ca.ca (M1, 16)  V0032:d32x3  bss(firstActiveRes)[offset]:a32
 ;
 ; CHECK-VISAASM:  _test1_007_unroll_merge:
 ; CHECK-VISAASM-NEXT:  mul (M1_NM, 1) V0061(0,0)<1> val_0(0,0)<0;1,0> 0x40:uw
-; CHECK-VISAASM-NEXT:  addr_add (M1_NM, 1) A4(0)<1> &V0039 V0061(0,0)<0;1,0>
+; CHECK-VISAASM-NEXT:  addr_add (M1_NM, 1) A4(0)<1> &V0032 V0061(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  mov (M1, 16) out(0,0)<1> r[A4(0),0]<8;8,1>:d
 ; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) dst_0(0,0)<1> dst(0,0)<0;1,0>
 ; CHECK-VISAASM-NEXT:  mov (M1, 16) dstBroadcast_0(0,0)<2> dst_1(0,0)<0;1,0>

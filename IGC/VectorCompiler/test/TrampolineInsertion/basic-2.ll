@@ -6,8 +6,11 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt_typed_ptrs %use_old_pass_manager% %pass_pref%GenXTrampolineInsertion  -vc-enable-trampoline-insertion=true -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% %pass_pref%GenXTrampolineInsertion  -vc-enable-trampoline-insertion=true -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_legacy_typed %use_old_pass_manager% -GenXTrampolineInsertion -vc-enable-trampoline-insertion=true -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_legacy_opaque %use_old_pass_manager% -GenXTrampolineInsertion -vc-enable-trampoline-insertion=true -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+
+; RUN: %opt_new_pm_typed -passes=GenXTrampolineInsertion -vc-enable-trampoline-insertion=true -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_new_pm_opaque -passes=GenXTrampolineInsertion -vc-enable-trampoline-insertion=true -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 

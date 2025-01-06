@@ -3268,6 +3268,11 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
     }
   };
 
+  auto writeUndefined = [](std::vector<uint8_t> &data, uint32_t srcReg) {
+    write(data, (uint8_t)llvm::dwarf::DW_CFA_undefined);
+    writeULEB128(data, srcReg);
+  };
+
   auto writeSameValue = [](std::vector<uint8_t> &data, uint32_t srcReg) {
     write(data, (uint8_t)llvm::dwarf::DW_CFA_same_value);
     writeULEB128(data, srcReg);
@@ -3398,9 +3403,22 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
   } else {
     if (m->GetType() == VISAModule::ObjectType::KERNEL) {
       // set return location to be undefined in top frame
-      write(cfaOps[0], (uint8_t)llvm::dwarf::DW_CFA_undefined);
-      writeULEB128(cfaOps[0], RegisterNumbering::IP);
+      writeUndefined(cfaOps[0], RegisterNumbering::IP);
     }
+  }
+
+  // write channel enable (currently only in -O0)
+  if (CFI.CEOffsetFromFPOff != 0xffff) {
+    write(cfaOps[CFI.CEStoreIP], (uint8_t)llvm::dwarf::DW_CFA_expression);
+    writeULEB128(cfaOps[CFI.CEStoreIP], RegisterNumbering::EMask);
+    writeCFAExpr(cfaOps[CFI.CEStoreIP], CFI.CEOffsetFromFPOff);
+
+    // set EMask to undefined when epilog starts to prevent
+    // dereferencing invalid CFA
+    writeUndefined(cfaOps[CFI.callerbefp.back().end + MovGenInstSizeInBytes],
+                   RegisterNumbering::EMask);
+  } else {
+    writeUndefined(cfaOps[0], RegisterNumbering::EMask);
   }
 
   // write callee save

@@ -6,8 +6,11 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt_typed_ptrs %use_old_pass_manager% %pass_pref%GenXPacketize -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% %pass_pref%GenXPacketize -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXPacketize -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXPacketize -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
+
+; RUN: %opt_new_pm_typed -passes=GenXPacketize -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_new_pm_opaque -passes=GenXPacketize -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 ; Function Attrs: nofree nosync nounwind readnone
 declare i32 @llvm.genx.lane.id() #0
@@ -54,8 +57,8 @@ do.body:
   %data.v = insertelement <1 x i32> undef, i32 %data, i64 0
   %ld.v = insertelement <1 x i32> undef, i32 %ld, i64 0
 
-  ; CHECK-TYPED-PTRS: [[LD:%[A-z0-9.]*]] = call <8 x i32> @llvm.masked.gather.v8i32.v8p1i32(<8 x i32 addrspace(1)*> {{.*}}, i32 4, <8 x i1> {{.*}}, <8 x i32> undef)
-  ; CHECK-OPAQUE-PTRS: [[LD:%[A-z0-9.]*]] = call <8 x i32> @llvm.masked.gather.v8i32.v8p1(<8 x ptr addrspace(1)> {{.*}}, i32 4, <8 x i1> {{.*}}, <8 x i32> undef)
+  ; CHECK-TYPED-PTRS: [[LD:%[A-z0-9.]*]] = call <8 x i32> @llvm.masked.gather.v8i32.v8p1i32(<8 x i32 addrspace(1)*> {{.*}}, i32 4, <8 x i1> {{.*}}, <8 x i32> {{(poison)?(undef)?}})
+  ; CHECK-OPAQUE-PTRS: [[LD:%[A-z0-9.]*]] = call <8 x i32> @llvm.masked.gather.v8i32.v8p1(<8 x ptr addrspace(1)> {{.*}}, i32 4, <8 x i1> {{.*}}, <8 x i32> {{(poison)?(undef)?}})
   ; CHECK-NEXT: call <8 x i32> @llvm.genx.wrregioni.v8i32.v8i32.i16.i1(<8 x i32> {{.*}}, <8 x i32> [[LD]], i32 0, i32 8, i32 1, i16 0, i32 undef, i1 true)
   ; CHECK-NOT: call <1 x i32> @llvm.genx.wrregioni.v1i32.v8i32.i16.i1(<1 x i32> undef, <8 x i32> [[LD]], i32 0, i32 1, i32 1, i16 0, i32 undef, i1 true)
   %res.v = call <1 x i32> @llvm.genx.wrregioni.v1i32.v1i32.i16.i1(<1 x i32> %data.v, <1 x i32> %ld.v, i32 0, i32 1, i32 0, i16 0, i32 undef, i1 true)

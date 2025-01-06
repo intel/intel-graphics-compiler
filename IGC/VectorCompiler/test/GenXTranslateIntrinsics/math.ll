@@ -6,7 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% %pass_pref%GenXTranslateIntrinsics -mcpu=XeHPC -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXTranslateIntrinsics -mcpu=XeHPC -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt_new_pm_typed -passes=GenXTranslateIntrinsics -mcpu=XeHPC -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
 declare <32 x float> @llvm.genx.absf.v32f32(<32 x float>)
 declare <32 x float> @llvm.genx.cos.v32f32(<32 x float>)

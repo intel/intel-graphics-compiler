@@ -137,9 +137,9 @@ SPDX-License-Identifier: MIT
 #include <iterator>
 #include <map>
 #include <numeric>
+#include <optional>
 #include <set>
 #include <stack>
-#include <optional>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>

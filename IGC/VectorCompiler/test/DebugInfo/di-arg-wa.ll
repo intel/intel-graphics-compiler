@@ -13,7 +13,7 @@
 ;
 ; CHECK:  call void @llvm.dbg.value(metadata !DIArgList(i32 %a)
 ; CHECK-NEXT:  call void @llvm.dbg.value(metadata !DIArgList(i32 %b)
-; CHECK-NEXT:  call void @llvm.dbg.value(metadata !DIArgList(i32 undef, i32 undef)
+; CHECK-NEXT:  call void @llvm.dbg.value(metadata !DIArgList(i32 {{(undef)?(poison)?}}, i32 {{(undef)?(poison)?}})
 
 define spir_kernel void @test_arglist(i32 %a, i32 %b) !dbg !5 {
 entry:

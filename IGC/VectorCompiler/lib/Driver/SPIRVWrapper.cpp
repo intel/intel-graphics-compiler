@@ -45,9 +45,11 @@ void PrepareModuleStructs(Module &M) {
     if (!F.isIntrinsic())
       continue;
     auto IID = vc::getAnyIntrinsicID(&F);
-    // Now expected only goto/join's
+    // It is necessary to correct all returned structures
     if (IID != GenXIntrinsic::genx_simdcf_goto &&
-        IID != GenXIntrinsic::genx_simdcf_join)
+        IID != GenXIntrinsic::genx_simdcf_join &&
+        IID != GenXIntrinsic::genx_addc && IID != GenXIntrinsic::genx_simad &&
+        IID != GenXIntrinsic::genx_uimad)
       continue;
     auto *ST = cast<StructType>(F.getReturnType());
     if (!ST->isLiteral() || ST->isPacked()) {

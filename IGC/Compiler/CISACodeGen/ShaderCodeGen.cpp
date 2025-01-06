@@ -74,6 +74,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/FPRoundingModeCoalescing.hpp"
 
 #include "Compiler/CISACodeGen/SLMConstProp.hpp"
+#include "Compiler/Legalizer/AddRequiredMemoryFences.h"
 #include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GenericAddressDynamicResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryUsageAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryResolution.hpp"
@@ -768,7 +769,8 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         bool AllowVector8LoadStore =
             IGC_IS_FLAG_ENABLED(EnableVector8LoadStore) ||
             ((ctx.type == ShaderType::RAYTRACING_SHADER || ctx.hasSyncRTCalls()) && ctx.platform.supports8DWLSCMessage()) ||
-            (ctx.platform.isCoreChildOf(IGFX_XE_HPC_CORE) && ctx.platform.supports8DWLSCMessage());
+            (ctx.platform.GetPlatformFamily() == IGFX_XE_HPC_CORE && ctx.platform.supports8DWLSCMessage() &&
+                ctx.type == ShaderType::OPENCL_SHADER);
 
         mpm.add(createMemOptPass(AllowNegativeSymPtrsForLoad, AllowVector8LoadStore));
 
@@ -1113,6 +1115,14 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
     {
         // Legalize RuntimeValue calls for push analysis
         mpm.add(new RuntimeValueLegalizationPass());
+    }
+
+    if (ctx.m_instrTypes.hasLocalLoadStore &&
+        ctx.platform.hasLSC() &&
+        !ctx.platform.NeedsLSCFenceUGMBeforeEOT() && // VISA will add the fence
+        IGC_IS_FLAG_DISABLED(DisableAddRequiredMemoryFencesPass))
+    {
+        mpm.add(createAddRequiredMemoryFencesPass());
     }
 
     mpm.add(createInstSimplifyLegacyPass());
@@ -1853,7 +1863,6 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.add(createSROAPass());
         }
 
-        mpm.add(new TrivialLocalMemoryOpsElimination());
         if (pContext->type == ShaderType::COMPUTE_SHADER &&
             (IGC_IS_FLAG_ENABLED(RemoveUnusedTGMFence) ||
                 pContext->getModuleMetaData()->enableRemoveUnusedTGMFence))

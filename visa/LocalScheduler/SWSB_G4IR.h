@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "FastSparseBitVector.h"
 #include "../FlowGraph.h"
 #include "../G4_IR.hpp"
+#include "G4_Declare.h"
 #include "LocalScheduler_G4IR.h"
 #include "../Mem_Manager.h"
 #include "../Timer.h"
@@ -619,6 +620,15 @@ typedef struct _SWSB_LOOP {
   int endBBID = -1;
 } SWSB_LOOP;
 
+struct BucketNodeInfo {
+  int globalID;
+  G4_Declare *topDeclare;
+  const SBFootprint *liveFootprint;
+  G4_INST *liveInst;
+  Gen4_Operand_Number liveOpnd;
+};
+using BucketInfos = std::vector<std::vector<BucketNodeInfo>>;
+
 class G4_BB_SB {
 private:
   const SWSB &swsb;
@@ -797,8 +807,8 @@ public:
                                     bool &sameDstSrc);
 
   // Global SBID dependence analysis
-  void setSendOpndMayKilled(LiveGRFBuckets *globalSendsLB, SBNODE_VECT &SBNodes,
-                            PointsToAnalysis &p);
+  void setSendOpndMayKilled(SBNODE_VECT &SBNodes, PointsToAnalysis &p,
+                            BucketInfos &bucketInfos);
   void
   setSendGlobalIDMayKilledByCurrentBB(std::vector<SparseBitVector> &dstTokenBit,
                                   std::vector<SparseBitVector> &srcTokenBit,

@@ -6,8 +6,10 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: %opt_typed_ptrs %use_old_pass_manager% %pass_pref%GenXTranslateSPIRVBuiltins  -vc-spirv-builtins-bif-path=%VC_SPIRV_OCL_BIF% -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=XeHPC -S < %s | FileCheck %s --check-prefix=CHECK-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% %pass_pref%GenXTranslateSPIRVBuiltins  -vc-spirv-builtins-bif-path=%VC_SPIRV_OCL_BIF% -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=XeHPC -S < %s | FileCheck %s --check-prefix=CHECK-OPAQUE-PTRS
+; RUN: %opt_legacy_typed %use_old_pass_manager% -GenXTranslateSPIRVBuiltins -vc-spirv-builtins-bif-path=%VC_SPIRV_OCL_BIF% -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=XeHPC -S < %s | FileCheck %s --check-prefix=CHECK-TYPED-PTRS
+; RUN: %opt_legacy_opaque %use_old_pass_manager% -GenXTranslateSPIRVBuiltins -vc-spirv-builtins-bif-path=%VC_SPIRV_OCL_BIF% -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=XeHPC -S < %s | FileCheck %s --check-prefix=CHECK-OPAQUE-PTRS
+; RUN: %opt_new_pm_typed -passes=GenXTranslateSPIRVBuiltins -vc-spirv-builtins-bif-path=%VC_SPIRV_OCL_BIF% -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=XeHPC -S < %s | FileCheck %s --check-prefix=CHECK-TYPED-PTRS
+; RUN: %opt_new_pm_opaque -passes=GenXTranslateSPIRVBuiltins -vc-spirv-builtins-bif-path=%VC_SPIRV_OCL_BIF% -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=XeHPC -S < %s | FileCheck %s --check-prefix=CHECK-OPAQUE-PTRS
 
 declare spir_func float @_Z21__spirv_AtomicFMinEXTPU3AS4fiif(float addrspace(4)*, i32, i32, float) #0
 declare spir_func float @_Z21__spirv_AtomicFMaxEXTPU3AS4fiif(float addrspace(4)*, i32, i32, float) #0

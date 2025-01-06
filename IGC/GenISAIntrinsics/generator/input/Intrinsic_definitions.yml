@@ -11184,6 +11184,7 @@ intrinsics:
                 name: Arg16
                 type_definition: *p_any_
                 comment: "payload"
+                param_attr: !ParamAttributeID "NoCapture"
             - !<ArgumentDefinition>
                 name: Arg17
                 type_definition: *i32

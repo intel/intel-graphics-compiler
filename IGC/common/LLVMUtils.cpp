@@ -951,12 +951,9 @@ void InlineHelper::InlineAndOptimize(CallInst* callInst)
         m_calledFunction = callInst->getCalledFunction();
 #endif
     auto* fn = callInst->getFunction();
-
     InlineFunctionInfo IFI;
     bool CanInline = IGCLLVM::InlineFunction(*callInst, IFI);
     IGC_ASSERT_MESSAGE(CanInline, "failed to inline?");
-
-    auto& perFnAllocas = m_InlinedStaticArrayAllocas[fn];
 
     // Merge static array allocas to reduce the use of private
     // memory. This is a similar optimization that exists in
@@ -965,19 +962,36 @@ void InlineHelper::InlineAndOptimize(CallInst* callInst)
         IFI.StaticAllocas,
         [](AllocaInst* I)
         {
-            return I->isArrayAllocation() || !I->getAllocatedType()->isArrayTy();
+            return I->getAllocatedType()->isArrayTy() || !isa<ConstantInt>(I->getArraySize());
         }
     );
 
-    auto staticAlloca = IFI.StaticAllocas.begin();
-    for (auto* fnAlloca : perFnAllocas)
+    AllocaMap localAllocas;
+    for (auto* I : IFI.StaticAllocas)
     {
-        if ((*staticAlloca)->getAllocatedType() == fnAlloca->getAllocatedType())
-            (*staticAlloca)->replaceAllUsesWith(fnAlloca);
-
-        if (++staticAlloca == IFI.StaticAllocas.end())
-            return;
+        localAllocas[
+            std::make_tuple(
+                I->getType(),
+                cast<ConstantInt>(I->getArraySize())->getZExtValue(),
+                I->getAddressSpace())
+        ].push_back(I);
     }
 
-    perFnAllocas.append(staticAlloca, IFI.StaticAllocas.end());
+    for (auto& [key, perTypeAllocas] :localAllocas)
+    {
+        auto localAlloca = perTypeAllocas.begin();
+        auto& globalAllocas = m_InlinedStaticArrayAllocas[fn][key];
+        for (auto globalAlloca : globalAllocas)
+        {
+            (*localAlloca)->replaceAllUsesWith(globalAlloca);
+            (*localAlloca)->eraseFromParent();
+
+            localAlloca++;
+
+            if (localAlloca == perTypeAllocas.end())
+                break;
+        }
+
+        globalAllocas.append(localAlloca, perTypeAllocas.end());
+    }
 }

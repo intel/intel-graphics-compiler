@@ -177,6 +177,10 @@ getPlatformName(const PLATFORM &Platform) {
     if (Product == IGFX_BMG)
       return {"Xe2", RevId};
     break;
+  case IGFX_XE3_CORE:
+    if (Product == IGFX_PTL)
+      return {"Xe3", RevId};
+    LLVM_FALLTHROUGH;
   default:
     break;
   }

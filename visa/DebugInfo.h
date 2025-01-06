@@ -220,9 +220,17 @@ private:
   // Caller save/restore
   // std::vector<std::pair<fcall inst BB, std::pair<first caller save, last
   // caller restore>>> One entry per fcall inst in current compilation unit
-  typedef std::pair<std::vector<G4_INST *>, std::vector<G4_INST *>> SaveRestore;
+  using SaveRestore = std::pair<std::vector<G4_INST *>, std::vector<G4_INST *>>;
   std::unordered_map<G4_BB *, SaveRestore> callerSaveRestore;
   SaveRestore calleeSaveRestore;
+
+  // Cache used to quickly check if intrinsic is in
+  // callerSaveRestore/calleeSaveRestore.
+  struct SaveRestoreIndex {
+    bool isSave;
+    G4_BB *bb;
+  };
+  std::unordered_map<vISA::G4_INST *, SaveRestoreIndex> isSaveRestoreInst;
 
   std::unordered_set<vISA::G4_INST *>  oldInsts;
 

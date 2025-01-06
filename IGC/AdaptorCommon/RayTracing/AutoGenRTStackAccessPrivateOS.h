@@ -1122,7 +1122,7 @@ auto* _getPrimLeaf_Xe(Value* arg_0, Value* arg_1)
 auto* _getInstanceLeaf_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
 {
   auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(5) });
-  auto* V_3 = CreateICmpEQ(arg_1, getInt8(1));
+  auto* V_3 = CreateICmpEQ(arg_1, getInt32(1));
   auto* V_4 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(5) });
   auto* V_5 = CreateSelect(V_3, V_4, V_2);
   auto* V_6 = CreateLoad(getInt64Ty(), V_5);
@@ -1136,7 +1136,7 @@ auto* _getInstanceLeaf_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName =
 auto* _getInstanceContributionToHitGroupIndex_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
 {
   auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(5) });
-  auto* V_3 = CreateICmpEQ(arg_1, getInt8(1));
+  auto* V_3 = CreateICmpEQ(arg_1, getInt32(1));
   auto* V_4 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(5) });
   auto* V_5 = CreateSelect(V_3, V_4, V_2);
   auto* V_6 = CreateLoad(getInt64Ty(), V_5);
@@ -1274,7 +1274,7 @@ auto* _TransformWorldToObject_Xe(Value* arg_0, Value* arg_1, Value* arg_2, Value
   auto* BB_6 = BasicBlock::Create(*Ctx.getLLVMContext(), VALUE_NAME("_TransformWorldToObject_Xe."), _JoinBB->getParent(), _JoinBB);
   SetInsertPoint(BB_4);
   auto* V_7 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(5) });
-  auto* V_8 = CreateICmpEQ(arg_3, getInt8(1));
+  auto* V_8 = CreateICmpEQ(arg_3, getInt32(1));
   auto* V_9 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(5) });
   auto* V_10 = CreateSelect(V_8, V_9, V_7);
   auto* V_11 = CreateLoad(getInt64Ty(), V_10);
@@ -1324,7 +1324,7 @@ auto* _TransformWorldToObject_Xe(Value* arg_0, Value* arg_1, Value* arg_2, Value
 auto* _getObjWorldAndWorldObj_Xe(Value* arg_0, Value* arg_1, Value* arg_2, Value* arg_3, const Twine& _ReturnName = "")
 {
   auto* V_4 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(5) });
-  auto* V_5 = CreateICmpEQ(arg_3, getInt8(1));
+  auto* V_5 = CreateICmpEQ(arg_3, getInt32(1));
   auto* V_6 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(5) });
   auto* V_7 = CreateSelect(V_5, V_6, V_4);
   auto* V_8 = CreateLoad(getInt64Ty(), V_7);
@@ -1350,10 +1350,10 @@ auto* _getObjWorldAndWorldObj_Xe(Value* arg_0, Value* arg_1, Value* arg_2, Value
 auto* _getRayTCurrent_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
 {
   auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(0) });
-  auto* V_3 = CreateICmpEQ(arg_1, getInt8(3));
+  auto* V_3 = CreateICmpEQ(arg_1, getInt32(3));
   auto* V_4 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2), getInt32(3) });
   auto* V_5 = CreateSelect(V_3, V_4, V_2);
-  auto* V_6 = CreateICmpEQ(arg_1, getInt8(1));
+  auto* V_6 = CreateICmpEQ(arg_1, getInt32(1));
   auto* V_7 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(0) });
   auto* V_8 = CreateSelect(V_6, V_7, V_5);
   auto* V_9 = CreateLoad(getFloatTy(), V_8, _ReturnName);
@@ -1381,7 +1381,7 @@ void _setHitT_Xe(Value* arg_0, Value* arg_1, Value* arg_2)
 auto* _getInstanceIndex_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
 {
   auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(5) });
-  auto* V_3 = CreateICmpEQ(arg_1, getInt8(1));
+  auto* V_3 = CreateICmpEQ(arg_1, getInt32(1));
   auto* V_4 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(5) });
   auto* V_5 = CreateSelect(V_3, V_4, V_2);
   auto* V_6 = CreateLoad(getInt64Ty(), V_5);
@@ -1397,7 +1397,7 @@ auto* _getInstanceIndex_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName 
 auto* _getInstanceID_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
 {
   auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(5) });
-  auto* V_3 = CreateICmpEQ(arg_1, getInt8(1));
+  auto* V_3 = CreateICmpEQ(arg_1, getInt32(1));
   auto* V_4 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(5) });
   auto* V_5 = CreateSelect(V_3, V_4, V_2);
   auto* V_6 = CreateLoad(getInt64Ty(), V_5);

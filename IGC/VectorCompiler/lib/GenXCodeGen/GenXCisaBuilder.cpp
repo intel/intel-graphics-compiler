@@ -949,7 +949,8 @@ static void addKernelAttrsFromMetadata(VISAKernel &Kernel,
     Kernel.AddKernelAttribute("NBarrierCnt", sizeof(BarrierCnt), &BarrierCnt);
   }
 
-  int NumGRF = -1;
+  // Default number of registers.
+  unsigned NumGRF = 128;
   // Set by compile option.
   if (BC->isAutoLargeGRFMode())
     NumGRF = 0;
@@ -961,9 +962,7 @@ static void addKernelAttrsFromMetadata(VISAKernel &Kernel,
     if (NumGRFPerKernel == 0 || Subtarget->isValidGRFSize(NumGRFPerKernel))
       NumGRF = NumGRFPerKernel;
   }
-
-  if (NumGRF != -1)
-    Kernel.AddKernelAttribute("NumGRF", sizeof(NumGRF), &NumGRF);
+  Kernel.AddKernelAttribute("NumGRF", sizeof(NumGRF), &NumGRF);
 }
 
 // Legalize name for using as filename or in visa asm
@@ -2226,7 +2225,7 @@ std::string GenXKernelBuilder::createInlineAsmSourceOperand(
       return Kernel->getVectorOperandName(ImmOp, false);
     } else {
       ConstantInt *CI = cast<ConstantInt>(C);
-      return llvm::to_string(CI->getSExtValue());
+      return std::to_string(CI->getSExtValue());
     }
   }
 
@@ -5360,7 +5359,7 @@ void GenXKernelBuilder::buildInlineAsm(CallInst *CI) {
   // Scan asm string in reverse direction to match larger numbers first
   for (int ArgNo = ConstraintsInfo.size() - 1; ArgNo >= 0; ArgNo--) {
     // Regexp to match number of operand
-    Regex R("\\$+" + llvm::to_string(ArgNo));
+    Regex R("\\$+" + std::to_string(ArgNo));
     if (!R.match(AsmStr))
       continue;
     // Operand that must be substituded into inline assembly string
@@ -5855,8 +5854,8 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
     uint32_t HashHi = Hash >> 32;
 
     addArgument("-hashmovs");
-    addArgument(to_string(HashHi));
-    addArgument(to_string(HashLo));
+    addArgument(std::to_string(HashHi));
+    addArgument(std::to_string(HashLo));
 
     if (BC.isHashMovsAtPrologueEnabled())
       addArgument("-hashatprologue");

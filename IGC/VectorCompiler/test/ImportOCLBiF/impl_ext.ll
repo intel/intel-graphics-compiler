@@ -6,7 +6,9 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% %pass_pref%GenXImportOCLBiF -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXImportOCLBiF -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+
+; RUN: %opt_new_pm_typed -passes=GenXImportOCLBiF -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
 
 declare spir_func double @_Z3expd(double)
 

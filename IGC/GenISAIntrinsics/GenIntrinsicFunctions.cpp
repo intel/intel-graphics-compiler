@@ -239,14 +239,10 @@ private:
                 {
                     return;
                 }
-                IGC_ASSERT_MESSAGE(
-                    arg.m_AttrKind == llvm::Attribute::ByRef ||
-                    arg.m_AttrKind == llvm::Attribute::ByVal ||
-                    arg.m_AttrKind == llvm::Attribute::StructRet,
-                    "Used an invalid(?) parameter attribute kind");
-                switch (arg.m_Type.m_ID)
-                {
-                case TypeID::Pointer:
+
+                IGC_ASSERT_MESSAGE(llvm::Attribute::canUseAsParamAttr(arg.m_AttrKind), "Not a param attribute!");
+
+                if (llvm::Attribute::isTypeAttrKind(arg.m_AttrKind))
                 {
                     llvm::Type* pointeeType = nullptr;
                     if (overloadedTypeIndex < overloadedPointeeTys.size() && arg.m_Type.IsOverloadable())
@@ -258,15 +254,15 @@ private:
                         pointeeType = arg.m_Type.m_Pointer.m_Type.GetType(ctx);
                     }
 
-                    if (pointeeType != nullptr)
-                    {
-                        mainAttrList = mainAttrList.addParamAttribute(ctx, { index }, llvm::Attribute::get(ctx, arg.m_AttrKind, pointeeType));
-                    }
-                    break;
+                    // IGC_ASSERT_MESSAGE(pointeeType, "Missing type for the type-dependent attribute!");
+                    if (!pointeeType)
+                        return;
+
+                    mainAttrList = mainAttrList.addParamAttribute(ctx, { index }, llvm::Attribute::get(ctx, arg.m_AttrKind, pointeeType));
                 }
-                default:
-                    IGC_ASSERT_MESSAGE(0, "A parameter attribute used for non-pointer function argument.");
-                    break;
+                else
+                {
+                    mainAttrList = mainAttrList.addParamAttribute(ctx, { index }, llvm::Attribute::get(ctx, arg.m_AttrKind));
                 }
             };
 

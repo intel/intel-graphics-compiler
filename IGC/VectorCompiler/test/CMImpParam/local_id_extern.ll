@@ -6,10 +6,17 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt_typed_ptrs %use_old_pass_manager% %pass_pref%CMImpParam -cmimpparam-payload-in-memory=false \
+; RUN: %opt_legacy_typed %use_old_pass_manager% -CMImpParam -cmimpparam-payload-in-memory=false \
 ; RUN:     -march=genx64 -mcpu=Gen9 -S < %s | \
 ; RUN:  FileCheck --check-prefixes=Gen9,Gen9-TYPED-PTRS --enable-var-scope %s
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% %pass_pref%CMImpParam -cmimpparam-payload-in-memory=false \
+; RUN: %opt_legacy_opaque %use_old_pass_manager% -CMImpParam -cmimpparam-payload-in-memory=false \
+; RUN:     -march=genx64 -mcpu=Gen9 -S < %s | \
+; RUN:  FileCheck --check-prefixes=Gen9,Gen9-OPAQUE-PTRS --enable-var-scope %s
+
+; RUN: %opt_new_pm_typed -passes=CMImpParam -cmimpparam-payload-in-memory=false \
+; RUN:     -march=genx64 -mcpu=Gen9 -S < %s | \
+; RUN:  FileCheck --check-prefixes=Gen9,Gen9-TYPED-PTRS --enable-var-scope %s
+; RUN: %opt_new_pm_opaque -passes=CMImpParam -cmimpparam-payload-in-memory=false \
 ; RUN:     -march=genx64 -mcpu=Gen9 -S < %s | \
 ; RUN:  FileCheck --check-prefixes=Gen9,Gen9-OPAQUE-PTRS --enable-var-scope %s
 

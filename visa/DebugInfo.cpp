@@ -9,10 +9,10 @@ SPDX-License-Identifier: MIT
 #include "DebugInfo.h"
 
 #include "Assertions.h"
-#include "BitSet.h"
 #include "BuildIR.h"
 #include "Common_ISA_framework.h"
 #include "FlowGraph.h"
+#include "G4_BB.hpp"
 #include "G4_IR.hpp"
 #include "VISAKernel.h"
 
@@ -1933,76 +1933,76 @@ void KernelDebugInfo::updateExpandedIntrinsic(G4_InstIntrinsic *spillOrFill,
   // save/restore. These intrinsics are expanded after RA is
   // done. So this method gets invoked after RA is done and
   // when intrinsics are expanded.
-  for (auto &k : callerSaveRestore) {
-    for (auto it = k.second.first.begin(); it != k.second.first.end(); ++it) {
-      if ((*it) == spillOrFill) {
-        k.second.first.insert(it, insts.begin(), insts.end());
-        return;
-      }
+
+  auto cacheIt = isSaveRestoreInst.find(spillOrFill);
+
+  if (cacheIt == isSaveRestoreInst.end()) {
+    if (spillOrFill == getCallerBEFPRestoreInst()) {
+      // caller be fp restore is a fill intrinsic that reads from FDE. it is
+      // expanded to a regular fill instruction. so update the pointer to new
+      // instruction.
+      setCallerBEFPRestoreInst(insts.back());
     }
 
-    for (auto it = k.second.second.begin(); it != k.second.second.end(); ++it) {
-      if ((*it) == spillOrFill) {
-        k.second.second.insert(it, insts.begin(), insts.end());
-        return;
+    if (spillOrFill == getCallerSPRestoreInst()) {
+      setCallerSPRestoreInst(insts.back());
+    }
+
+    if (spillOrFill == getCallerBEFPSaveInst()) {
+      setCallerBEFPSaveInst(insts.back());
+    }
+
+    if (spillOrFill == getCESaveInst()) {
+      for (auto *inst : insts) {
+        if (inst->isSend()) {
+          setSaveCEInst(inst);
+        }
       }
     }
+    return;
   }
 
-  for (auto it = calleeSaveRestore.first.begin();
-       it != calleeSaveRestore.first.end(); ++it) {
+  // We use isSaveRestoreInst map to determine if target spillOrFill instruction is part of
+  // callee/callerSaveRestore and is it in save or restore vector.
+  auto &[save, restore] = (cacheIt->second.bb == nullptr)
+                              ? calleeSaveRestore
+                              : callerSaveRestore[cacheIt->second.bb];
+  auto &target = (cacheIt->second.isSave) ? save : restore;
+
+  for (auto it = target.begin(); it != target.end(); ++it) {
     if ((*it) == spillOrFill) {
-      calleeSaveRestore.first.insert(it, insts.begin(), insts.end());
+      target.insert(it, insts.begin(), insts.end());
       return;
-    }
-  }
-
-  for (auto it = calleeSaveRestore.second.begin();
-       it != calleeSaveRestore.second.end(); ++it) {
-    if ((*it) == spillOrFill) {
-      calleeSaveRestore.second.insert(it, insts.begin(), insts.end());
-      return;
-    }
-  }
-
-  if (spillOrFill == getCallerBEFPRestoreInst()) {
-    // caller be fp restore is a fill intrinsic that reads from FDE. it is
-    // expanded to a regular fill instruction. so update the pointer to new
-    // instruction.
-    setCallerBEFPRestoreInst(insts.back());
-  }
-
-  if (spillOrFill == getCallerSPRestoreInst()) {
-    setCallerSPRestoreInst(insts.back());
-  }
-
-  if (spillOrFill == getCallerBEFPSaveInst()) {
-    setCallerBEFPSaveInst(insts.back());
-  }
-
-  if (spillOrFill == getCESaveInst()) {
-    for (auto *inst: insts) {
-      if (inst->isSend()){
-        setSaveCEInst(inst);
-      }
     }
   }
 }
 
 void KernelDebugInfo::addCallerSaveInst(G4_BB *fcallBB, G4_INST *inst) {
   callerSaveRestore[fcallBB].first.push_back(inst);
+  if (inst->isIntrinsic()) {
+    isSaveRestoreInst.insert({inst, {true, fcallBB}});
+  }
 }
 
 void KernelDebugInfo::addCallerRestoreInst(G4_BB *fcallBB, G4_INST *inst) {
   callerSaveRestore[fcallBB].second.push_back(inst);
+  if (inst->isIntrinsic()) {
+    isSaveRestoreInst.insert({inst, {false, fcallBB}});
+  }
 }
 
 void KernelDebugInfo::addCalleeSaveInst(G4_INST *inst) {
   calleeSaveRestore.first.push_back(inst);
+  if (inst->isIntrinsic()) {
+    isSaveRestoreInst.insert({inst, {true, nullptr}});
+  }
 }
 
 void KernelDebugInfo::addCalleeRestoreInst(G4_INST *inst) {
   calleeSaveRestore.second.push_back(inst);
+  if (inst->isIntrinsic()) {
+    isSaveRestoreInst.insert({inst, {false, nullptr}});
+  }
 }
 
 std::vector<G4_INST *> &KernelDebugInfo::getCallerSaveInsts(G4_BB *fcallBB) {

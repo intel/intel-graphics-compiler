@@ -34,6 +34,9 @@ const PlatformInfo PlatformInfo::ALL_PLATFORMS[] = {
     PlatformInfo(Xe2, PlatformGen::XE2, 18, 64,
                  "XE2",
                  "LNL"),
+    PlatformInfo(Xe3, PlatformGen::XE3, 19, 64,
+                 "XE3",
+                 "PTL"),
 }; // ALL_PLATFORMS
 
 const PlatformInfo *PlatformInfo::LookupPlatformInfo(TARGET_PLATFORM p) {

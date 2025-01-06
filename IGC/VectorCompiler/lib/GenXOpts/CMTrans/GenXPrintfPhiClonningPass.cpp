@@ -33,6 +33,7 @@ SPDX-License-Identifier: MIT
 ///    ret
 //===----------------------------------------------------------------------===//
 
+#include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/IR/Operator.h"
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/Support/BackendConfig.h"
@@ -41,7 +42,6 @@ SPDX-License-Identifier: MIT
 #include "vc/Utils/General/IRBuilder.h"
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <map>
-#include "llvmWrapper/IR/Function.h"
 
 #define DEBUG_TYPE "print-phi-clonning"
 

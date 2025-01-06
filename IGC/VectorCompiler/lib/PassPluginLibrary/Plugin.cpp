@@ -6,17 +6,49 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "llvm/ADT/Triple.h"
+#include "llvm/CodeGen/CommandFlags.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Passes/PassPlugin.h"
+#include "llvm/Target/TargetOptions.h"
 
+#include "vc/GenXCodeGen/GenXLowerAggrCopies.h"
 #include "vc/GenXCodeGen/GenXVerify.h"
 #include "vc/GenXOpts/GenXOptsNewPM.h"
 #include "vc/Support/BackendConfig.h"
 
+#include "vc/GenXCodeGen/GenXRegionCollapsing.h"
+#include "vc/GenXCodeGen/GenXTarget.h"
+#include "vc/GenXCodeGen/TargetMachine.h"
+
+#include "GenXTargetMachine.h"
+
 using namespace llvm;
 
 namespace {
+
+static TargetMachine *GetTargetMachine(Triple TheTriple, StringRef CPUStr,
+                                       StringRef FeaturesStr,
+                                       const TargetOptions &Options) {
+  std::string Error;
+  const Target *TheTarget =
+      TargetRegistry::lookupTarget(codegen::getMArch(), TheTriple, Error);
+  // Some modules don't specify a triple, and this is okay.
+  if (!TheTarget) {
+    llvm::errs() << Error << "\n";
+    return nullptr;
+  }
+
+  return TheTarget->createTargetMachine(
+      TheTriple.getTriple(), codegen::getCPUStr(), codegen::getFeaturesStr(),
+      Options, codegen::getExplicitRelocModel(),
+      codegen::getExplicitCodeModel(), CodeGenOpt::Default);
+}
+
 void registerPluginPasses(PassBuilder &PB) {
+
+  LLVMInitializeGenXTarget();
+  LLVMInitializeGenXTargetInfo();
 
   PB.registerAnalysisRegistrationCallback([=](ModuleAnalysisManager &MAM) {
     MAM.registerPass([&] { return CMABIAnalysisPass(); });
@@ -24,6 +56,19 @@ void registerPluginPasses(PassBuilder &PB) {
   });
 
   auto *BC = new GenXBackendConfig;
+
+  const TargetOptions Options;
+  auto TheTriple = Triple("genx64-unknown-unknown");
+  std::string Error = "";
+  std::string CPUStr = "";
+  std::string FeaturesStr = "";
+  const Target *TheTarget = TargetRegistry::lookupTarget(
+      TheTriple.getArchName().str(), TheTriple, Error);
+
+  llvm::TargetMachine *TM =
+      GetTargetMachine(TheTriple, CPUStr, FeaturesStr, Options);
+
+  auto *GTM = static_cast<GenXTargetMachine *>(TM);
 
 #define ADD_PASS(NAME, CREATE_PASS)                                            \
   if (Name == NAME) {                                                          \
@@ -35,7 +80,7 @@ void registerPluginPasses(PassBuilder &PB) {
       [=](StringRef Name, CGSCCPassManager &PM,
           ArrayRef<PassBuilder::PipelineElement>) {
 #define CGSCC_PASS(NAME, CREATE_PASS) ADD_PASS(NAME, CREATE_PASS)
-#include "GenXPassRegistry.def"
+#include "GenXPassRegistry.h"
 #undef CGSCC_PASS
         return false;
       });
@@ -44,7 +89,7 @@ void registerPluginPasses(PassBuilder &PB) {
       [=](StringRef Name, ModulePassManager &PM,
           ArrayRef<PassBuilder::PipelineElement>) {
 #define MODULE_PASS(NAME, CREATE_PASS) ADD_PASS(NAME, CREATE_PASS)
-#include "GenXPassRegistry.def"
+#include "GenXPassRegistry.h"
 #undef MODULE_PASS
         return false;
       });
@@ -53,7 +98,7 @@ void registerPluginPasses(PassBuilder &PB) {
       [=](StringRef Name, FunctionPassManager &PM,
           ArrayRef<PassBuilder::PipelineElement>) {
 #define FUNCTION_PASS(NAME, CREATE_PASS) ADD_PASS(NAME, CREATE_PASS)
-#include "GenXPassRegistry.def"
+#include "GenXPassRegistry.h"
 #undef FUNCTION_PASS
         return false;
       });

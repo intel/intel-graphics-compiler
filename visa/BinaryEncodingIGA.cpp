@@ -995,7 +995,7 @@ void BinaryEncodingIGA::SetSWSB(G4_INST *inst, SWSB &sw) {
   // - send has only distance     --> $0 and distance
   // This workaround can be removed once vISA doesn't produce such SWSB.
   // Currently this could happen only on EOT send.
-  if (inst->isSend() && !sw.hasBothDistAndToken() &&
+  if (inst->isSend() &&
       !sw.verify(getIGASWSBEncodeMode(), SWSB::InstType::SEND)) {
     sw.tokenType = SWSB::TokenType::SET;
     if (sw.hasDist()) {

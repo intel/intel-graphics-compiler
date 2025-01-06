@@ -101,6 +101,7 @@ public:
     void Select(const SSource sources[3], const DstModifier& modifier);
     void PredAdd(const SSource& pred, bool invert, const SSource sources[2], const DstModifier& modifier);
     void Mul(const SSource[2], const DstModifier& modifier);
+    void FPTrunc(const SSource[2], const DstModifier& modifier);
     void Powi(const SSource[2], const DstModifier& modifier);
     void Mov(const SSource& source, const DstModifier& modifier);
     void Unary(e_opcode opCode, const SSource sources[1], const DstModifier& modifier);
@@ -706,6 +707,7 @@ public:
     void MovPhiSources(llvm::BasicBlock* bb);
 
     void InitConstant(llvm::BasicBlock* BB);
+    void emitLifetimeStartResourceLoopUnroll(llvm::BasicBlock* BB);
     void emitLifetimeStartAtEndOfBB(llvm::BasicBlock* BB);
     void emitDebugPlaceholder(llvm::GenIntrinsicInst* I);
     void emitDummyInst(llvm::GenIntrinsicInst* GII);

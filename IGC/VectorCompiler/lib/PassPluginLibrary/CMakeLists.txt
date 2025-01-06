@@ -17,26 +17,36 @@ endif()
 # TODO: Fix ext
 set(LLVM_PLUGIN_EXT ".so")
 
-add_llvm_library(
-  NewPMPlugin
-  COMPONENT_LIB
-  Plugin.cpp
-
-  $<TARGET_OBJECTS:VCCodeGen>
-  $<TARGET_OBJECTS:VCSupport>
-  $<TARGET_OBJECTS:LLVMGenXIntrinsics>
-  $<TARGET_OBJECTS:VCGenXUtils>
-  $<TARGET_OBJECTS:VCTransforms>
-  $<TARGET_OBJECTS:VCGeneralUtils>
-  $<TARGET_OBJECTS:VCInternalIntrinsics>
-  $<TARGET_OBJECTS:${IGC_BUILD__PROJ__BiFManager}>
-  $<TARGET_OBJECTS:${IGC_BUILD__PROJ__BiFLib_OCL}>
+add_llvm_library(NewPMPlugin
+  COMPONENT_LIB Plugin.cpp
   MODULE
   PLUGIN_TOOL opt
-)
+  )
 
-# TODO: Fix path
+target_link_libraries(NewPMPlugin
+  PRIVATE
+  VCCodeGen
+  "${IGC_BUILD__WHOLE_ARCHIVE}"
+  "${IGC_BUILD__PROJ__BiFLib_OCL}"
+  "${IGC_BUILD__NO_WHOLE_ARCHIVE}"
+  )
+
+set(VCLinkBEPluginScript
+  ${CMAKE_CURRENT_SOURCE_DIR}/../BackendPlugin/LinkBackendPlugin.py
+  )
+
+set_target_properties(NewPMPlugin
+  PROPERTIES
+  LINK_DEPENDS ${VCLinkBEPluginScript}
+  )
+
+set_target_properties(NewPMPlugin
+  PROPERTIES
+  RULE_LAUNCH_LINK "${PYTHON_EXECUTABLE} ${VCLinkBEPluginScript}"
+  )
+
 target_include_directories(NewPMPlugin
   PRIVATE
-  "${CMAKE_CURRENT_SOURCE_DIR}/../../include/"
-)
+  "${CMAKE_CURRENT_SOURCE_DIR}/../GenXCodeGen/"
+  "${CMAKE_CURRENT_BINARY_DIR}/../../lib/GenXCodeGen/"
+  )

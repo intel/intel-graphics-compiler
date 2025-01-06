@@ -21,12 +21,11 @@ SPDX-License-Identifier: MIT
 ///
 //===----------------------------------------------------------------------===//
 
-
 #include "llvmWrapper/Analysis/CallGraph.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/Alignment.h"
-#include "llvmWrapper/IR/Function.h"
 
 #include "Probe/Assertion.h"
 
@@ -105,7 +104,7 @@ void initializeCMABIAnalysisPass(PassRegistry &);
 void initializeCMABILegacyPass(PassRegistry &);
 void initializeCMABIPass(PassRegistry &);
 void initializeCMLowerVLoadVStorePass(PassRegistry &);
-}
+} // namespace llvm
 
 // \brief Collect necessary information for global variable localization.
 class LocalizationInfo {
@@ -615,7 +614,7 @@ NodeType *CMABIBase<CallGraphImpl>::TransformKernel(Function *F) {
 
   FunctionType *NFTy = FunctionType::get(F->getReturnType(), ArgTys, false);
   IGC_ASSERT_MESSAGE((NFTy != F->getFunctionType()),
-    "type out of sync, expect bool arguments");
+                     "type out of sync, expect bool arguments");
 
   // Add any function attributes.
   AttrBuilder B(Context, PAL.getFnAttrs());
@@ -1065,12 +1064,12 @@ void CMABIBase<CallGraphImpl>::diagnoseOverlappingArgs(CallInst *CI) {
 
 char CMABILegacy::ID = 0;
 // Can't template CMABILegacy here
-INITIALIZE_PASS_BEGIN(CMABILegacy, "CMABI",
+INITIALIZE_PASS_BEGIN(CMABILegacy, "CMABILegacy",
                       "Fix ABI issues for the genx backend", false, false)
 INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(CMABIAnalysis)
-INITIALIZE_PASS_END(CMABILegacy, "CMABI", "Fix ABI issues for the genx backend",
-                    false, false)
+INITIALIZE_PASS_END(CMABILegacy, "CMABILegacy",
+                    "Fix ABI issues for the genx backend", false, false)
 
 #if LLVM_VERSION_MAJOR >= 16
 char CMABI::ID = 0;
@@ -1169,12 +1168,12 @@ bool CMLowerVLoadVStore::runOnFunction(Function &F) {
 // instructions.
 bool CMLowerVLoadVStore::lowerLoadStore(Function &F) {
   auto M = F.getParent();
-  DenseMap<AllocaInst*, GlobalVariable*> AllocaMap;
+  DenseMap<AllocaInst *, GlobalVariable *> AllocaMap;
   // collect all the allocas that store the address of genx-volatile variable
-  for (auto& G : M->getGlobalList()) {
+  for (auto &G : M->getGlobalList()) {
     if (!G.hasAttribute("genx_volatile"))
       continue;
-    std::vector<User*> WL;
+    std::vector<User *> WL;
     for (auto UI = G.user_begin(); UI != G.user_end();) {
       auto U = *UI++;
       WL.push_back(U);

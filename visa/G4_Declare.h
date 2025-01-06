@@ -127,7 +127,7 @@ public:
   void setPayloadLiveOut() { payloadLiveOut = true; }
 
   void setExclusiveLoad() { exclusiveLoad = true; }
-  bool isExclusiveLoad() { return exclusiveLoad; }
+  bool isExclusiveLoad() const { return exclusiveLoad; }
 
   void setDoNotWiden() { noWidening = true; }
   bool doNotWiden() const { return noWidening; }

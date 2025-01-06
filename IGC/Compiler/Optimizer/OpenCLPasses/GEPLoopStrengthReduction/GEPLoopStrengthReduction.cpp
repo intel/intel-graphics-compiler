@@ -1438,7 +1438,8 @@ bool SCEVHelper::isValid(const SCEV *S)
         if (!Ty->isIntegerTy())
             return false;
 
-        switch (Ty->getScalarSizeInBits())
+        auto bits = Ty->getScalarSizeInBits();
+        switch (bits)
         {
         case 8:
         case 16:
@@ -1446,7 +1447,7 @@ bool SCEVHelper::isValid(const SCEV *S)
         case 64:
             return false;
         default:
-            return true;
+            return bits > 8;
         }
     };
 

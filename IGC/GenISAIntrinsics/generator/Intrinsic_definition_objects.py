@@ -155,6 +155,7 @@ class ParamAttributeID(Enum):
     ByRef = 0
     ByVal = 1
     StructRet = 2
+    NoCapture = 3
 
     def __str__(self):
         return self.name

@@ -466,6 +466,7 @@ enum class ShaderTypeMD
         bool UseBarrierControlFlowOptimization          = false;
         bool DisableDynamicRQManagement                 = false;
         unsigned Quad8InputThreshold                    = 0;
+        bool UseResourceLoopUnrollNested                = false;
     };
 
     enum class ThreadIDLayout
@@ -796,6 +797,7 @@ enum class ShaderTypeMD
         bool ModuleUsesBindless = false;
 
         llvm::MapVector<llvm::Value*, llvm::Value*> predicationMap;
+        llvm::MapVector<llvm::Value*, llvm::Value*> lifeTimeStartMap;
     };
 
     void serialize(const IGC::ModuleMetaData &moduleMD, llvm::Module* module);

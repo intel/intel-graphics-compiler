@@ -6,8 +6,11 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt_typed_ptrs %use_old_pass_manager% %pass_pref%GenXPrintfLegalization -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% %pass_pref%GenXPrintfLegalization -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXPrintfLegalization -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXPrintfLegalization -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
+
+; RUN: %opt_new_pm_typed -passes=GenXPrintfLegalization -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_new_pm_opaque -passes=GenXPrintfLegalization -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 @str.true = internal unnamed_addr addrspace(2) constant [5 x i8] c"true\00", align 1 #0
 @str.false = internal unnamed_addr addrspace(2) constant [6 x i8] c"false\00", align 1 #0

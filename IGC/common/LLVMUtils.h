@@ -52,7 +52,14 @@ void DumpHashToOptions(const ShaderHash&, const ShaderType);
 class InlineHelper
 {
 private:
-    llvm::DenseMap<llvm::Function*, llvm::SmallVector<llvm::AllocaInst*, 4>> m_InlinedStaticArrayAllocas;
+    // create a map of (type, array size, address space to alloca instructions)
+    using AllocaMap = llvm::DenseMap<
+        std::tuple<llvm::Type*, uint64_t, uint32_t>,
+        llvm::SmallVector<llvm::AllocaInst*>
+    >;
+
+    llvm::DenseMap<llvm::Function*, AllocaMap> m_InlinedStaticArrayAllocas;
+
 #if defined(_RELEASE_INTERNAL) || defined(_DEBUG)
     llvm::Function* m_calledFunction = nullptr;
 #endif

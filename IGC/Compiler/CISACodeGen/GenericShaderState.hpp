@@ -39,8 +39,6 @@ namespace IGC
         uint32_t m_BindingTableEntryCount = 0;
         // Holds binding table entries bitmap.
         uint32_t m_BindingTableUsedEntriesBitmap = 0;
-        //true if any input is pulled, false otherwise
-        bool isInputsPulled = false;
         /// Dispatch size is the number of logical threads running in one hardware thread
         SIMDMode m_dispatchSize = SIMDMode::UNKNOWN;
 

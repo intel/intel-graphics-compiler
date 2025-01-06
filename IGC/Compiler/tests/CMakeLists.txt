@@ -58,8 +58,8 @@ file(GLOB_RECURSE _site_config_files "${CMAKE_CURRENT_BINARY_DIR}/*/lit.site.cfg
 # for copying them.
 if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
   igc_add_lit_target(check-igc "${IGC_TEST_BINARY_DIR}" "Running the IGC LIT tests"
-    DEPENDS ${IGC_LIT_TEST_DEPENDS} ${_tests}
-    SOURCES ${_tests} ${CMAKE_CURRENT_SOURCE_DIR}/lit.cfg.py ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.py.in ${IGC_LIT_CONFIG_FILE}
+    DEPENDS ${IGC_LIT_TEST_DEPENDS} ${_tests} ${CMAKE_CURRENT_SOURCE_DIR}/lit.cfg.py ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.py.in ${IGC_LIT_CONFIG_FILE}
+    SOURCES ${_tests} ${CMAKE_CURRENT_SOURCE_DIR}/lit.cfg.py ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.py.in ${_site_config_files}
     )
 else()
   add_lit_testsuite(check-igc "Running the IGC LIT tests"
