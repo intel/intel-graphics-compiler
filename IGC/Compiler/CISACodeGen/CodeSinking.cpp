@@ -915,15 +915,12 @@ namespace IGC {
 
         bool Changed = loopSink(F);
 
-        if (Changed)
-        {
-            IGC_ASSERT(false == verifyFunction(F, &dbgs()));
-        }
-
         if (IGC_IS_FLAG_ENABLED(DumpLoopSink) && IGC_IS_FLAG_DISABLED(PrintToConsole))
         {
             dumpToFile(Log);
         }
+
+        IGC_ASSERT(false == verifyFunction(F, &dbgs()));
 
         return Changed;
     }
@@ -1162,6 +1159,16 @@ namespace IGC {
         AffectedBBs.insert(Preheader);
         for (BasicBlock *BB: L->blocks())
             AffectedBBs.insert(BB);
+
+        // Save original positions for rollback
+        DenseMap<BasicBlock *, InstrVec> OriginalPositions;
+        for (BasicBlock *BB : AffectedBBs)
+        {
+            InstrVec BBInstructions;
+            for (Instruction &I : *BB)
+                BBInstructions.push_back(&I);
+            OriginalPositions[BB] = BBInstructions;
+        }
 
         auto rerunLiveness = [&]()
         {
@@ -1706,27 +1713,20 @@ namespace IGC {
 
         if (NeedToRollback && IGC_IS_FLAG_DISABLED(LoopSinkDisableRollback))
         {
-            PrintDump(VerbosityLevel::Low, ">> Reverting the changes.\n");
+            PrintDump(VerbosityLevel::Low, ">> Reverting the changes.\n\n");
 
-            CandidatePtrSet RevertedCandidates;
-
-            for (auto CI = SinkedCandidates.rbegin(), CE = SinkedCandidates.rend(); CI != CE; CI++)
+            for (auto &[BB, BBInstructions] : OriginalPositions)
             {
-                Candidate *C = CI->get();
-                Instruction *UndoPos = C->UndoPos;
-                IGC_ASSERT(UndoPos);
-                while (InstToCandidate.count(UndoPos))
+                Instruction *InsertPoint = nullptr;
+                for (Instruction *I : BBInstructions)
                 {
-                    if (RevertedCandidates.count(InstToCandidate[UndoPos]))
-                        break;
-                    UndoPos = InstToCandidate[UndoPos]->UndoPos;
+                    if (InsertPoint)
+                        I->moveAfter(InsertPoint);
+                    else
+                        I->moveBefore(&*BB->getFirstInsertionPt());
+
+                    InsertPoint = I;
                 }
-                for (Instruction *I : *C)
-                {
-                    I->moveBefore(UndoPos);
-                    UndoPos = I;
-                }
-                RevertedCandidates.insert(C);
             }
 
             rerunLiveness();
