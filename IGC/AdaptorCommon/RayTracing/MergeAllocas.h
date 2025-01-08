@@ -7,10 +7,17 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/Instruction.h>
+#include <llvm/Pass.h>
+#include <llvm/ADT/DenseSet.h>
 #include <llvm/ADT/SetVector.h>
-#include <llvm/ADT/MapVector.h>
 #include "common/LLVMWarningsPop.hpp"
+
+namespace llvm {
+    class BasicBlock;
+    class Function;
+    class Instruction;
+    class LoopInfo;
+}
 
 namespace IGC
 {
@@ -58,7 +65,7 @@ namespace IGC
             llvm::DenseSet<llvm::BasicBlock*> bbIn;
             llvm::DenseSet<llvm::BasicBlock*> bbOut;
 
-            LivenessData(llvm::Instruction* allocationInstruction, llvm::SetVector<llvm::Instruction*> usersOfAllocation, llvm::BasicBlock* userDominatorBlock = nullptr);
+            LivenessData(llvm::Instruction* allocationInstruction, const llvm::SetVector<llvm::Instruction*>& usersOfAllocation, const llvm::LoopInfo& LI, llvm::BasicBlock* userDominatorBlock = nullptr);
 
             bool OverlapsWith(const LivenessData& LD) const;
         };
@@ -78,5 +85,4 @@ namespace IGC
             }
         }
     };
-
 } // namespace IGC

@@ -14,10 +14,11 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/SetVector.h>
 #include <llvm/ADT/SetOperations.h>
+#include <llvm/Analysis/LoopInfo.h>
+#include <llvm/IR/Constants.h>
 #include <llvm/IR/Dominators.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Instructions.h>
-#include <llvm/IR/Constants.h>
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
@@ -26,6 +27,7 @@ using namespace IGC;
 // Register pass to igc-opt
 IGC_INITIALIZE_PASS_BEGIN(AllocationBasedLivenessAnalysis, "igc-allocation-based-liveness-analysis", "Analyze the lifetimes of instruction allocated by a specific intrinsic", false, true)
 IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
+IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
 IGC_INITIALIZE_PASS_END(AllocationBasedLivenessAnalysis, "igc-allocation-based-liveness-analysis", "Analyze the lifetimes of instruction allocated by a specific intrinsic", false, true)
 
 char AllocationBasedLivenessAnalysis::ID = 0;
@@ -34,6 +36,7 @@ void AllocationBasedLivenessAnalysis::getAnalysisUsage(llvm::AnalysisUsage& AU) 
 {
     AU.setPreservesAll();
     AU.addRequired<DominatorTreeWrapperPass>();
+    AU.addRequired<LoopInfoWrapperPass>();
 }
 
 AllocationBasedLivenessAnalysis::AllocationBasedLivenessAnalysis() : FunctionPass(ID)
@@ -68,6 +71,7 @@ AllocationBasedLivenessAnalysis::LivenessData* AllocationBasedLivenessAnalysis::
     // that's a practice, but we only care about the last block that dominates all uses
     BasicBlock* commonDominator = nullptr;
     auto* DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+    auto* LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
 
     bool hasNoLifetimeEnd = false;
 
@@ -142,10 +146,10 @@ AllocationBasedLivenessAnalysis::LivenessData* AllocationBasedLivenessAnalysis::
         );
     }
 
-    return new LivenessData(I, allUsers, commonDominator);
+    return new LivenessData(I, allUsers, *LI, commonDominator);
 }
 
-AllocationBasedLivenessAnalysis::LivenessData::LivenessData(Instruction* allocationInstruction, SetVector<Instruction*> usersOfAllocation, BasicBlock* userDominatorBlock)
+AllocationBasedLivenessAnalysis::LivenessData::LivenessData(Instruction* allocationInstruction, const SetVector<Instruction*>& usersOfAllocation, const LoopInfo& LI, BasicBlock* userDominatorBlock)
 {
     if (!userDominatorBlock)
         userDominatorBlock = allocationInstruction->getParent();
@@ -176,13 +180,39 @@ AllocationBasedLivenessAnalysis::LivenessData::LivenessData(Instruction* allocat
         }
     }
 
+    // if the lifetime escapes any loop, we should make sure all the loops blocks are included
+    for (const auto& loop : LI)
+    {
+        SmallVector<std::pair<BasicBlock*, BasicBlock*>> exitEdges;
+        loop->getExitEdges(exitEdges);
+
+        if (llvm::any_of(exitEdges, [&](auto edge) { return bbOut.contains(edge.first) && bbIn.contains(edge.second); }))
+        {
+            llvm::for_each(
+                loop->blocks(),
+                [&](auto* block) {
+                    bbOut.insert(block);
+                    if (block != loop->getHeader())
+                        bbIn.insert(block);
+                }
+            );
+        }
+    }
+
+    // substract the inflow blocks from the outflow blocks to find the block which starts the lifetime - there should be only one!
+    auto bbOutOnly = bbOut;
+    set_subtract(bbOutOnly, bbIn);
+
+    IGC_ASSERT_MESSAGE(bbOutOnly.size() == 1, "Multiple lifetime start blocks?");
+
+    auto* lifetimeStartBB = *bbOutOnly.begin();
+
     // fill out the lifetime start/ends instruction
-    for (auto& I : *userDominatorBlock)
+    for (auto& I : *lifetimeStartBB)
     {
         lifetimeStart = &I;
         if (usersOfAllocation.contains(&I))
             break;
-
     }
 
     // if bbIn is empty, the entire lifetime is contained within userDominatorBlock
