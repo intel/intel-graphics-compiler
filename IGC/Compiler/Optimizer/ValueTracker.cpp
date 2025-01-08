@@ -268,13 +268,6 @@ Value* ValueTracker::handleConstExpr(ConstantExpr* CE)
     }
 }
 
-// returns true if all GEP indices are 0 and constant.
-static bool GEP_is_bitcast(const GetElementPtrInst* GEP)
-{
-    // if all indices are zero, the gep is essentially a bitcast.
-    return GEP->hasAllZeroIndices();
-}
-
 // This function represents the second step of the overall algorithm. It goes
 // down through the tree and looks for the value stored in alloca. In most cases
 // it returns the final value (image, sampler or constant). For more complex cases,
@@ -296,11 +289,6 @@ Value* ValueTracker::findAllocaValue(Value* V, const uint depth)
         {
             if (!GEP->hasAllConstantIndices()) {
                 continue;
-            }
-
-            if (GEP_is_bitcast(GEP)) {
-                if (auto leaf = findAllocaValue(GEP, depth); isValidLeaf(leaf))
-                    return leaf;
             }
 
             unsigned numIndices = GEP->getNumIndices();
@@ -467,10 +455,8 @@ Value* ValueTracker::trackValue(Value* I)
         }
         else if (auto* I = dyn_cast<GetElementPtrInst>(baseValue))
         {
-            if (!GEP_is_bitcast(I)) {
-                for (unsigned int i = I->getNumIndices(); i > 1; --i)
-                    gepIndices.push_back(cast<ConstantInt>(I->getOperand(i)));
-            }
+            for (unsigned int i = I->getNumIndices(); i > 1; --i)
+                gepIndices.push_back(cast<ConstantInt>(I->getOperand(i)));
 
             baseValue = I->getOperand(0);
         }
