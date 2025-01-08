@@ -1559,6 +1559,7 @@ extern int CISAparse(CISA_IR_Builder *builder);
 extern YY_BUFFER_STATE CISA_scan_string(const char *yy_str);
 extern void CISA_delete_buffer(YY_BUFFER_STATE buf);
 static std::mutex mtx;
+extern void resetGlobalVariables();
 
 int CISA_IR_Builder::ParseVISAText(const std::string &visaText,
                                    const std::string &visaTextFile) {
@@ -1581,6 +1582,7 @@ int CISA_IR_Builder::ParseVISAText(const std::string &visaText,
     }
   }
 
+  resetGlobalVariables();
   YY_BUFFER_STATE visaBuf = CISA_scan_string(visaText.c_str());
   if (CISAparse(this) != 0) {
 #ifndef DLL_MODE
@@ -1622,6 +1624,7 @@ int CISA_IR_Builder::ParseVISAText(const std::string &visaFile) {
     return VISA_FAILURE;
   }
 
+  resetGlobalVariables();
   if (CISAparse(this) != 0) {
     vISA_ASSERT(false, "Parsing visa text failed");
     return VISA_FAILURE;
@@ -4011,6 +4014,30 @@ CISA_IR_Builder::get_input_class(Common_ISA_Var_Class var_class) {
   return INPUT_UNKNOWN;
 }
 void CISA_IR_Builder::CISA_post_file_parse() { return; }
+
+void CISA_IR_Builder::CISA_parse_build_options(const char* argStr) {
+  std::string args(argStr);
+  size_t first_quote = args.find_first_of('"');
+  size_t last_quote = args.find_last_of('"');
+
+  if (first_quote != std::string::npos &&
+      last_quote != std::string::npos &&
+      first_quote < last_quote) {
+    args = args.substr(first_quote + 1, last_quote - first_quote - 1);
+    std::vector<std::string> argvStrings;
+    std::vector<const char*> argv;
+    std::string token;
+    std::istringstream ss(args);
+    while (ss >> token) {
+      argvStrings.push_back(token);
+    }
+    argv.reserve(argvStrings.size());
+    for (const std::string& s : argvStrings) {
+        argv.push_back(s.c_str());
+    }
+    getOptions()->parseOptions(argv.size(), argv.data());
+  }
+}
 
 // place it here so that internal Gen_IR files don't have to include
 // VISAKernel.h

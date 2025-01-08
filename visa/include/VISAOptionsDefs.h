@@ -626,6 +626,8 @@ DEF_VISA_OPTION(
     "1 enables basic output, 2 enables with def/use dataflow information "
     "(may increase compile time significantly for large shaders)",
     0)
+DEF_VISA_OPTION(vISA_ParseBuildOptions, ET_BOOL, "-parseBuildOptions", UNUSED,
+                false)
 
 //=== misc options ===
 DEF_VISA_OPTION(vISA_PlatformSet, ET_INT32, NULLSTR, UNUSED, -1 /*GENX_NONE*/)

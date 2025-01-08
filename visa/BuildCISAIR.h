@@ -529,6 +529,8 @@ public:
 
   void CISA_post_file_parse();
 
+  void CISA_parse_build_options(const char* argStr);
+
   VISA_opnd *CISA_create_gen_src_operand(const char *var_name, short v_stride,
                                          short width, short h_stride,
                                          unsigned char row_offset,

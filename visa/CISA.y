@@ -397,6 +397,8 @@ std::vector<attr_gen_struct*> AttrOptVar;
 
 %token NEWLINE
 
+%token <string> BUILD_OPTION_LINE
+
 
 %token                     UNIFORM
 %token <string>            RTWRITE_OPTION
@@ -689,6 +691,7 @@ Statement:
     | Instruction
     | Label
     | Scope
+    | BuildOptions
 
 
 // ------------- Scope -------------
@@ -3164,6 +3167,12 @@ DataType: DataTypeIntOrVector
 DataTypeIntOrVector:
           ITYPE
         | VTYPE
+
+// --------- BuildOptions --------------------------------
+BuildOptions: BUILD_OPTION_LINE
+    {
+        pBuilder->CISA_parse_build_options($1);
+    }
 
 
 %%

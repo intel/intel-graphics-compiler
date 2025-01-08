@@ -190,8 +190,8 @@ int CISA_IR_Builder::isaDump(const char *combinedIsaasmName) const {
 #else
   const bool isaasmToConsole = m_options.getOption(vISA_ISAASMToConsole);
   const bool genIsaasm = m_options.getOption(vISA_GenerateISAASM);
-  const bool allowIsaasmDump = CisaFramework::allowDump(m_options,
-    combinedIsaasmName ? combinedIsaasmName : std::string());
+  const bool allowIsaasmDump = combinedIsaasmName && combinedIsaasmName[0] != '\0' &&
+      CisaFramework::allowDump(m_options, combinedIsaasmName);
   const bool genCombinedIsaasm =
     m_options.getOption(vISA_GenerateCombinedISAASM) &&
     (isaasmToConsole || allowIsaasmDump);

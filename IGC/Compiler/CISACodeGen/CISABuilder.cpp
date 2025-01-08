@@ -6403,6 +6403,7 @@ namespace IGC
         bool vISAAsmParseError = false;
         // Parse the generated VISA text
         if (visaAsmOverride) {
+            vAsmTextBuilder->SetOption(vISA_ParseBuildOptions, true);
             for (const std::string &tmpVisaFile : visaOverrideFiles) {
                 llvm::SmallVector<char, 1024> visaAsmNameVector;
                 std::string visaAsmName = GetDumpFileName("");
@@ -6424,6 +6425,7 @@ namespace IGC
                     break;
                 }
             }
+            vAsmTextBuilder->SetOption(vISA_ParseBuildOptions, false);
         } else {
             int result = 0;
             if (m_hasInlineAsm) {

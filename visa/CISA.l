@@ -53,6 +53,11 @@ static unsigned char           FENCEOptions(const char* str);
 static COMMON_ISA_VME_OP_MODE  VMEType(const char *str);
 static CHANNEL_OUTPUT_FORMAT   Get_Channel_Output(const char* str);
 static void                    appendStringLiteralChar(char c, char *buf, size_t *len);
+
+static bool buildOptionPresent = false;
+void resetGlobalVariables() {
+    buildOptionPresent = false;
+}
 %}
 
 %option yylineno
@@ -65,6 +70,17 @@ static void                    appendStringLiteralChar(char c, char *buf, size_t
 \n {
       return NEWLINE;
    }
+
+"//Build option:"[ \t]*\"([^\"\n]*)\"[ \t]* {
+    if(pBuilder->getOptions()->getOption(vISA_ParseBuildOptions)) {
+        if(buildOptionPresent)
+            YY_FATAL_ERROR("more then one instance of build options");
+        buildOptionPresent = true;
+        TRACE("** BUILD_OPTION\n");
+        CISAlval.string = strdup(yytext);
+        return BUILD_OPTION_LINE;
+    }
+}
 
 [ \t] { /*drop non-newline spaces*/}
 "//"[^\n]* {
