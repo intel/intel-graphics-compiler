@@ -25,13 +25,15 @@ define spir_kernel void @test_pmem(i32 addrspace(1)* %dst, i32 addrspace(1)* %sr
 ; CHECK:    [[SIMDSIZE:%.*]] = call i32 @llvm.genx.GenISA.simdSize()
 ; CHECK:    [[R0_5:%.*]] = extractelement <8 x i32> [[R0:%.*]], i32 5
 ; CHECK:    [[PRIVATEBASE1:%.*]] = and i32 [[R0_5]], -1024
-; CHECK:    [[DST_ADDR_SIMDBUFFEROFFSET:%.*]] = mul i32 [[SIMDSIZE]], 8
+; CHECK:    [[DST_ADDR_SECTIONBUFFEROFFSET:%.*]] = mul i32 [[SIMDSIZE]], 8
+; CHECK:    [[DST_ADDR_SIMDBUFFEROFFSET:%.*]] = add i32 0, [[DST_ADDR_SECTIONBUFFEROFFSET]]
 ; CHECK:    [[PERLANEOFFSET3:%.*]] = mul i32 [[SIMDLANEID]], 8
 ; CHECK:    [[DST_ADDR_TOTALOFFSET:%.*]] = add i32 [[DST_ADDR_SIMDBUFFEROFFSET]], [[PERLANEOFFSET3]]
 ; CHECK:    [[DST_ADDR_THREADOFFSET:%.*]] = add {{.*}} i32 [[PRIVATEBASE1]], [[DST_ADDR_TOTALOFFSET]]
 ; CHECK:    [[DST_ADDR_PRIVATEBUFFERPTR:%.*]] = inttoptr i32 [[DST_ADDR_THREADOFFSET]] to i32 addrspace(1)**
 ; CHECK:    store i32 addrspace(1)* [[DST:%.*]], i32 addrspace(1)** [[DST_ADDR_PRIVATEBUFFERPTR]], align 8
-; CHECK:    [[SRC_ADDR_SIMDBUFFEROFFSET:%.*]] = mul i32 [[SIMDSIZE]], 16
+; CHECK:    [[SRC_ADDR_SECTIONOFFSET:%.*]] = mul i32 [[SIMDSIZE]], 16
+; CHECK:    [[SRC_ADDR_SIMDBUFFEROFFSET:%.*]] = add i32 0, [[SRC_ADDR_SECTIONOFFSET]]
 ; CHECK:    [[PERLANEOFFSET4:%.*]] = mul i32 [[SIMDLANEID]], 8
 ; CHECK:    [[SRC_ADDR_TOTALOFFSET:%.*]] = add i32 [[SRC_ADDR_SIMDBUFFEROFFSET]], [[PERLANEOFFSET4]]
 ; CHECK:    [[SRC_ADDR_THREADOFFSET:%.*]] = add {{.*}} i32 [[PRIVATEBASE1]], [[SRC_ADDR_TOTALOFFSET]]
@@ -40,7 +42,8 @@ define spir_kernel void @test_pmem(i32 addrspace(1)* %dst, i32 addrspace(1)* %sr
 ; CHECK:    [[TMP0:%.*]] = load i32 addrspace(1)*, i32 addrspace(1)** [[SRC_ADDR_PRIVATEBUFFERPTR]], align 8
 ; CHECK:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, i32 addrspace(1)* [[TMP0]], i64 0
 ; CHECK:    [[TMP1:%.*]] = load i32, i32 addrspace(1)* [[ARRAYIDX]], align 4
-; CHECK:    [[AA_SIMDBUFFEROFFSET:%.*]] = mul i32 [[SIMDSIZE]], 0
+; CHECK:    [[AA_SECTIONOFFSET:%.*]] = mul i32 [[SIMDSIZE]], 0
+; CHECK:    [[AA_SIMDBUFFEROFFSET:%.*]] = add i32 0, [[AA_SECTIONOFFSET]]
 ; CHECK:    [[PERLANEOFFSET:%.*]] = mul i32 [[SIMDLANEID]], 4
 ; CHECK:    [[AA_TOTALOFFSET:%.*]] = add i32 [[AA_SIMDBUFFEROFFSET]], [[PERLANEOFFSET]]
 ; CHECK:    [[AA_THREADOFFSET:%.*]] = add {{.*}} i32 [[PRIVATEBASE1]], [[AA_TOTALOFFSET]]
@@ -49,7 +52,8 @@ define spir_kernel void @test_pmem(i32 addrspace(1)* %dst, i32 addrspace(1)* %sr
 ; CHECK:    [[TMP2:%.*]] = load i32 addrspace(1)*, i32 addrspace(1)** [[SRC_ADDR_PRIVATEBUFFERPTR]], align 8
 ; CHECK:    [[ARRAYIDX1:%.*]] = getelementptr inbounds i32, i32 addrspace(1)* [[TMP2]], i64 1
 ; CHECK:    [[TMP3:%.*]] = load i32, i32 addrspace(1)* [[ARRAYIDX1]], align 4
-; CHECK:    [[BB_SIMDBUFFEROFFSET:%.*]] = mul i32 [[SIMDSIZE]], 4
+; CHECK:    [[BB_SECTIONOFFSET:%.*]] = mul i32 [[SIMDSIZE]], 4
+; CHECK:    [[BB_SIMDBUFFEROFFSET:%.*]] = add i32 0, [[BB_SECTIONOFFSET]]
 ; CHECK:    [[PERLANEOFFSET2:%.*]] = mul i32 [[SIMDLANEID]], 4
 ; CHECK:    [[BB_TOTALOFFSET:%.*]] = add i32 [[BB_SIMDBUFFEROFFSET]], [[PERLANEOFFSET2]]
 ; CHECK:    [[BB_THREADOFFSET:%.*]] = add {{.*}} i32 [[PRIVATEBASE1]], [[BB_TOTALOFFSET]]

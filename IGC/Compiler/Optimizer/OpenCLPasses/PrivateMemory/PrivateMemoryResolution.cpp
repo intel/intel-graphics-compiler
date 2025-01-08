@@ -282,8 +282,8 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
         // FP takes 16 bytes, but padding may be added to satisfy allocas' alignment.
         if (IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack) && hasStackCall)
         {
-            alignment_t privateMemoryAlignment = m_ModAllocaInfo->getPrivateMemAlignment(m_currFunction);
-            unsigned allocasExtraOffset = iSTD::Align(SIZE_OWORD, size_t(privateMemoryAlignment));
+            unsigned privateMemoryAlignment = m_ModAllocaInfo->getPrivateMemAlignment(m_currFunction);
+            unsigned allocasExtraOffset = iSTD::Align(SIZE_OWORD, privateMemoryAlignment);
             modMD.FuncMD[m_currFunction].prevFPOffset = allocasExtraOffset;
         }
 
@@ -896,27 +896,9 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     // This change is only till the FuncMD is ported to new MD framework
     ModuleMetaData* const modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     IGC_ASSERT(nullptr != modMD);
-    if (modMD->compOpt.UseScratchSpacePrivateMemory == false &&
-        Ctx.m_DriverInfo.supportsStatelessSpacePrivateMemory() &&
-        Ctx.m_DriverInfo.requiresPowerOfTwoStatelessSpacePrivateMemorySize())
-    {
-        totalPrivateMemPerWI = iSTD::RoundPower2(static_cast<DWORD>(totalPrivateMemPerWI));
-    }
-
     modMD->FuncMD[m_currFunction].privateMemoryPerWI = totalPrivateMemPerWI;
 
-    // The implementation in this function implies that the total private memory
-    // for each thread is no larger than 4 GB, which implies that the total private
-    // memory for WI is no larger than 128MB. But the total private memory for a kernel
-    // could be larger than 4 GB, which needs to use 64bit offset from private base.
-    //
-    // 32 is max simd width
-    IGC_ASSERT_MESSAGE((totalPrivateMemPerWI * 32ull) <= (uint64_t)UINT32_MAX,
-        "Total private memory per work-item should not be over 128MB!");
-    bool safe32bitOffset = m_currFunction->getParent()->getDataLayout().getPointerSize() < 8
-        || (totalPrivateMemPerWI * 32ull * Ctx.platform.getMaxAddressedHWThreads()) <= (uint64_t)UINT32_MAX;
-
-    SmallVector<AllocaInst*, 8> & allocaInsts = m_ModAllocaInfo->getAllocaInsts(m_currFunction);
+    SmallVector<AllocaInst*, 8>& allocaInsts = m_ModAllocaInfo->getAllocaInsts(m_currFunction);
     if (allocaInsts.empty())
     {
         // No alloca instructions to process.
@@ -1009,37 +991,31 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     Value* simdLaneId = entryBuilder.CreateIntCast(simdLaneId16, typeInt32, false, VALUE_NAME("simdLaneId"));
     Instruction* simdSize = entryBuilder.CreateCall(simdSizeFunc, {}, VALUE_NAME("simdSize"));
 
+    // The implementation in this function implies that the total private memory
+    // for each thread is no larger than 4 GB, which implies that the total private
+    // memory for WI is no larger than 128MB. But the total private memory for a kernel
+    // could be larger than 4 GB, which needs to use 64bit offset from private base.
+    //
+    // 32 is max simd width
+    IGC_ASSERT_MESSAGE((totalPrivateMemPerWI * 32ull) <= (uint64_t)UINT32_MAX,
+        "Total private memory per work-item should not be over 128MB!");
+    bool safe32bitOffset = m_currFunction->getParent()->getDataLayout().getPointerSize() < 8
+        || (totalPrivateMemPerWI * 32ull * Ctx.platform.getMaxAddressedHWThreads()) <= (uint64_t)UINT32_MAX;
+
     // Return thread offset. As it is per-thread, the calculation should be done in entry BB.
     auto createThreadOffset = [simdSize, typeInt32, typeInt64, safe32bitOffset](
         IGCLLVM::IRBuilder<>& IRB, Value* ThreadID, uint32_t TotalPrivMemPerWI)
-    {
-        // Total PM per thread is no larger than 4GB
-        ConstantInt* totalPM = ConstantInt::get(typeInt32, TotalPrivMemPerWI);
-        Value* totalPMPerThread = IRB.CreateMul(simdSize, totalPM, VALUE_NAME("totalPrivateMemPerThread"));
-        if (!safe32bitOffset) {
-            totalPMPerThread = IRB.CreateZExt(totalPMPerThread, typeInt64);
-            ThreadID = IRB.CreateZExt(ThreadID, typeInt64);
-        }
-        Value* perThreadOffset = IRB.CreateMul(ThreadID, totalPMPerThread, VALUE_NAME("perThreadOffset"));
-        return perThreadOffset;
-    };
-
-    // Return simd buffer offset ( buffer offset + per-lane offset)
-    //             AI : AllocaInst that creates this buffer
-    //   BufferOffset : buffer offset in bytes (offset within each WI)
-    //     BufferSize : buffer size in bytes
-    //      IsUniform : true if buffer is uniform
-    //
-    auto createSIMDBufferOffset = [simdSize, simdLaneId, typeInt32](
-        IGCLLVM::IRBuilder<>& IRB, AllocaInst* AI,  uint32_t BufferOffset,
-        uint32_t BufferSize, bool IsUniform)
-    {
-        Value* bufferOffset = IRB.CreateMul(simdSize, ConstantInt::get(typeInt32, BufferOffset), VALUE_NAME(AI->getName() + ".bufferOffset"));
-        Value* perLaneOffset = IsUniform ? IRB.getInt32(0) : simdLaneId;
-        perLaneOffset = IRB.CreateMul(perLaneOffset, ConstantInt::get(typeInt32, BufferSize), VALUE_NAME("perLaneOffset"));
-        Value* simdBufferOffset = IRB.CreateAdd(bufferOffset, perLaneOffset, VALUE_NAME(AI->getName() + ".SIMDBufferOffset"));
-        return simdBufferOffset;
-    };
+        {
+            // Total PM per thread is no larger than 4GB
+            ConstantInt* totalPM = ConstantInt::get(typeInt32, TotalPrivMemPerWI);
+            Value* totalPMPerThread = IRB.CreateMul(simdSize, totalPM, VALUE_NAME("totalPrivateMemPerThread"));
+            if (!safe32bitOffset) {
+                totalPMPerThread = IRB.CreateZExt(totalPMPerThread, typeInt64);
+                ThreadID = IRB.CreateZExt(ThreadID, typeInt64);
+            }
+            Value* perThreadOffset = IRB.CreateMul(ThreadID, totalPMPerThread, VALUE_NAME("perThreadOffset"));
+            return perThreadOffset;
+        };
 
     if (privateOnStack)
     {
@@ -1070,13 +1046,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
             }
             else
             {
-                int scalarBufferOffset = m_ModAllocaInfo->getConstBufferOffset(pAI);
-                unsigned int bufferSize = m_ModAllocaInfo->getConstBufferSize(pAI);
-
-                Value* bufferOffset = builder.CreateMul(simdSize, ConstantInt::get(typeInt32, scalarBufferOffset), VALUE_NAME(pAI->getName() + ".SIMDBufferOffset"));
-                Value* increment = isUniform ? builder.getInt32(0) : simdLaneId;
-                Value* perLaneOffset = builder.CreateMul(increment, ConstantInt::get(typeInt32, bufferSize), VALUE_NAME("perLaneOffset"));
-                Value* totalOffset = builder.CreateAdd(bufferOffset, perLaneOffset, VALUE_NAME(pAI->getName() + ".totalOffset"));
+                Value* totalOffset = m_ModAllocaInfo->getOffset(builder, pAI, simdSize, simdLaneId);
                 Function* stackAllocaFunc = GenISAIntrinsic::getDeclaration(m_currFunction->getParent(), GenISAIntrinsic::GenISA_StackAlloca);
                 Value* stackAlloca = builder.CreateCall(stackAllocaFunc, totalOffset, VALUE_NAME("stackAlloca"));
                 privateBuffer = builder.CreatePointerCast(stackAlloca, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));
@@ -1085,6 +1055,9 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
                 {
                     if (auto DbgDcl = dyn_cast_or_null<DbgDeclareInst>(Use))
                     {
+                        unsigned scalarBufferOffset = m_ModAllocaInfo->getBufferOffset(pAI);
+                        unsigned bufferSize = m_ModAllocaInfo->getBufferStride(pAI);
+
                         // Attach metadata to instruction containing offset of storage
                         auto OffsetMD = MDNode::get(builder.getContext(), ConstantAsMetadata::get(builder.getInt32(scalarBufferOffset)));
                         DbgDcl->setMetadata("StorageOffset", OffsetMD);
@@ -1190,8 +1163,6 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
             // Note: As per Amjad, later LLVM version has a fix for this in llvm/lib/Transforms/Utils/InlineFunction.cpp.
             builder.SetCurrentDebugLocation(pAI->getDebugLoc());
 
-            // Get buffer information from the analysis
-            unsigned int scalarBufferOffset = m_ModAllocaInfo->getConstBufferOffset(pAI);
             // If we can use SOA layout transpose the memory
             IGC::SOALayoutChecker SOAChecker(*pAI, Ctx.type == ShaderType::OPENCL_SHADER);
             IGC::SOALayoutInfo SOAInfo = SOAChecker.getOrGatherInfo();
@@ -1199,7 +1170,8 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
             // Address space casting
             bool TransposeMemLayout =
                 ADDRESS_SPACE_PRIVATE == scratchMemoryAddressSpace &&
-                SOAInfo.canUseSOALayout;
+                SOAInfo.canUseSOALayout &&
+                !m_ModAllocaInfo->isUniform(pAI);
             Type* pTypeOfAccessedObject = SOAInfo.baseType;
             bool allUsesAreVector = SOAInfo.allUsesAreVector;
             Value* privateBufferPTR;
@@ -1207,7 +1179,8 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
             // New Algo handles both 64bit ptr and 32bi ptr.
             if (!isUniform && SOAInfo.canUseSOALayout && SOAChecker.useNewAlgo(pTypeOfAccessedObject))
             {
-                Value* simdBufferOffset = createSIMDBufferOffset(builder, pAI, scalarBufferOffset, SOAInfo.SOAPartitionBytes, isUniform);
+                Value* simdBufferOffset = m_ModAllocaInfo->getOffset(
+                    builder, pAI, simdSize, simdLaneId, SOAInfo.SOAPartitionBytes);
                 Value* bufferBase = addOffset(builder, DL, threadBase, simdBufferOffset);
                 privateBufferPTR = builder.CreateIntToPtr(bufferBase,
                     pAI->getAllocatedType()->getPointerTo(scratchMemoryAddressSpace),
@@ -1240,14 +1213,14 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
                 if (TransposeMemLayout)
                 {
                     bufferSize = (unsigned)DL.getTypeAllocSize(pTypeOfAccessedObject);
-                    IGC_ASSERT(testTransposedMemory(pAI->getAllocatedType(), pTypeOfAccessedObject, bufferSize, (m_ModAllocaInfo->getConstBufferSize(pAI))));
+                    IGC_ASSERT(testTransposedMemory(pAI->getAllocatedType(), pTypeOfAccessedObject, bufferSize, (m_ModAllocaInfo->getBufferStride(pAI))));
                 }
                 else
                 {
-                    bufferSize = m_ModAllocaInfo->getConstBufferSize(pAI);
+                    bufferSize = m_ModAllocaInfo->getBufferStride(pAI);
                 }
 
-                Value* simdBufferOffset = createSIMDBufferOffset(builder, pAI, scalarBufferOffset, bufferSize, isUniform);
+                Value* simdBufferOffset = m_ModAllocaInfo->getOffset(builder, pAI, simdSize, simdLaneId, bufferSize);
                 Value* bufferBase = addOffset(builder, DL, threadBase, simdBufferOffset);
                 privateBufferPTR = builder.CreateIntToPtr(bufferBase, pAI->getAllocatedType()->getPointerTo(scratchMemoryAddressSpace), VALUE_NAME(pAI->getName() + ".privateBufferPTR"));
                 //privateBuffer = builder.CreatePointerCast(privateBufferPTR, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));
@@ -1349,7 +1322,6 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
         builder.SetCurrentDebugLocation(entryDebugLoc);
         bool isUniform = pAI->getMetadata("uniform") != nullptr;
         // Get buffer information from the analysis
-        unsigned int scalarBufferOffset = m_ModAllocaInfo->getConstBufferOffset(pAI);
         Value* bufferBase;
 
         // If we can use SOA layout transpose the memory
@@ -1358,7 +1330,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
         if (!isUniform && SOAInfo.canUseSOALayout && SOAChecker.useNewAlgo(SOAInfo.baseType))
         {
             uint32_t chunksize = SOAInfo.SOAPartitionBytes;
-            Value* SIMDBufferOffset = createSIMDBufferOffset(builder, pAI, scalarBufferOffset, chunksize, isUniform);
+            Value* SIMDBufferOffset = m_ModAllocaInfo->getOffset(builder, pAI, simdSize, simdLaneId, chunksize);
             Value* totalOffset = addOffset(builder, DL, perThreadOffset, SIMDBufferOffset);
 
             // using offset, rather than ptr, is more efficient.
@@ -1375,8 +1347,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
             bufferBase = convertToPtr(builder, DL, baseOff, bTy);
         }
         else {
-            uint32_t bufferSize = m_ModAllocaInfo->getConstBufferSize(pAI);
-            Value* SIMDBufferOffset = createSIMDBufferOffset(builder, pAI, scalarBufferOffset, bufferSize, isUniform);
+            Value* SIMDBufferOffset = m_ModAllocaInfo->getOffset(builder, pAI, simdSize, simdLaneId);
             Value* totalOffset = addOffset(builder, DL, perThreadOffset, SIMDBufferOffset);
             if (m_currFunction->getParent()->getDataLayout().getPointerSize() == 8) {
                 // Manually zero-extend the offset to 64-bits to prevent it from being sign-extended by InstructionCombining
@@ -1392,6 +1363,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
             if (auto DbgDcl = dyn_cast_or_null<DbgDeclareInst>(Use))
             {
                 // Attach metadata to instruction containing offset of storage
+                unsigned int scalarBufferOffset = m_ModAllocaInfo->getBufferOffset(pAI);
                 auto OffsetMD = MDNode::get(builder.getContext(), ConstantAsMetadata::get(builder.getInt32(scalarBufferOffset)));
                 DbgDcl->setMetadata("StorageOffset", OffsetMD);
             }

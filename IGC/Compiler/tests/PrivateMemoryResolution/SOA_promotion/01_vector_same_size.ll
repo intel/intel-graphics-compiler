@@ -18,7 +18,8 @@ define spir_kernel void @test_pmem(i32 addrspace(1)* %dst, i32 addrspace(1)* %sr
 ; CHECK-NEXT:    [[SIMDSIZE:%.*]] = call i32 @llvm.genx.GenISA.simdSize()
 ; CHECK-NEXT:    [[R0_5:%.*]] = extractelement <8 x i32> [[R0:%.*]], i32 5
 ; CHECK-NEXT:    [[PRIVATEBASE1:%.*]] = and i32 [[R0_5]], -1024
-; CHECK-NEXT:    [[OUT_SIMDBUFFEROFFSET:%.*]] = mul i32 [[SIMDSIZE]], 0
+; CHECK-NEXT:    [[OUT_SECTIONBUFFEROFFSET:%.*]] = mul i32 [[SIMDSIZE]], 0
+; CHECK-NEXT:    [[OUT_SIMDBUFFEROFFSET:%.*]] = add i32 0, [[OUT_SECTIONBUFFEROFFSET]]
 ; CHECK-NEXT:    [[PERLANEOFFSET:%.*]] = mul i32 [[SIMDLANEID]], 16
 ; CHECK-NEXT:    [[OUT_TOTALOFFSET:%.*]] = add i32 [[OUT_SIMDBUFFEROFFSET]], [[PERLANEOFFSET]]
 ; CHECK-NEXT:    [[OUT_THREADOFFSET:%.*]] = add {{.*}} i32 [[PRIVATEBASE1]], [[OUT_TOTALOFFSET]]

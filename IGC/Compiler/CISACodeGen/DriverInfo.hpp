@@ -380,6 +380,8 @@ namespace IGC
 
         // Informs if the UMD understands atomic pull tile walk for raytracing
         virtual bool supportsAtomicPullSWTileWalk() const { return false; }
+
+        virtual bool supportsUniformPrivateMemorySpace() const { return false; }
 protected:
     bool autoGRFSelection = false;
     };

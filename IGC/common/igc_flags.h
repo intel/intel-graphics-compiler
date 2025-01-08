@@ -907,8 +907,15 @@ DECLARE_IGC_REGKEY(DWORD, EnablePrivMemNewSOATranspose,            1, "0 : disab
                                                                       "3 : 2 plus new algo for array of complicated struct.", true)
 DECLARE_IGC_REGKEY(bool, NewSOATransposeForOpenCL,    true, "If true, EnablePrivMemNewSOATranspose only applies to OpenCL kernels. For testing purpose", true)
 DECLARE_IGC_REGKEY(bool, EnableSOAPromotionDisablingHeuristic, false, "Enable heuristic to disable SOA promotion when it may be not beneficial", false)
+DECLARE_IGC_REGKEY(bool, DisableSOAPromotion, false, "If true, SOA cannot be used (private memory transposition). For testing purpose", true)
 DECLARE_IGC_REGKEY(bool, DisableCSContentCheck, false, "Disable CS content check that can force SIMD32", true)
 DECLARE_IGC_REGKEY(bool, DisableFastMathConstantHandling, false, "Disable Fast Math Constant Handling", true)
+DECLARE_IGC_REGKEY_ENUM(SupportUniformPrivateMemorySpace, -1, \
+    "Controls the behavior of PrivateMemoryResolution to emit uniform private memory allocas to reduce the memory consumption." \
+    "-1 - default behavior, the pass is enabled based on the API type or AILs" \
+    " 0 - force disabled" \
+    " 1 - force enabled", \
+    TRIBOOL_OPTIONS, true)
 
 DECLARE_IGC_GROUP("Generating precompiled headers")
 DECLARE_IGC_REGKEY(bool, ApplyConservativeRastWAHeader, true, "Apply WaConservativeRasterization for the platforms enabled", false)
