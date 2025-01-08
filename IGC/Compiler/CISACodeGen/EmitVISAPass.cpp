@@ -675,16 +675,16 @@ bool EmitPass::shouldForceEarlyRecompile(MetaDataUtils *pMdUtils,
   if (m_currShader->IsRecompilationRequestForced()) {
     return true;
   }
-  auto Threshold = IGC_GET_FLAG_VALUE(EarlyRetryRPEThreshold);
+  auto Threshold = IGC_GET_FLAG_VALUE(EarlyRetryLargeGRFThreshold);
   auto GRFPerThread = m_pCtx->getNumGRFPerThread();
-  // If we are not in large GRF mode and auto GRF is disabled we can lower the
-  // threshold. We also, as a workaround skip lowering the threshold if we have
-  // indirect operands in the kernel to avoid cases where recompilaton has
-  // higher spill count.
+  // If we are not in large GRF mode and auto GRF is disabled we use
+  // threshold set for default GRF size if it is lower. We also, as a workaround
+  // skip lowering the threshold if we have indirect operands in the kernel to
+  // avoid cases where recompilaton has higher spill count.
   if (GRFPerThread <= CodeGenContext::DEFAULT_TOTAL_GRF_NUM &&
       !m_pCtx->isAutoGRFSelectionEnabled() &&
       !m_pCtx->m_instrTypes.mayHaveIndirectOperands) {
-    Threshold = Threshold / 2;
+    Threshold = std::min(Threshold, IGC_GET_FLAG_VALUE(EarlyRetryDefaultGRFThreshold));
   }
   auto MaxRegPressure = getMaxRegPressureInFunctionGroup(F, pMdUtils);
   bool PassedThreshold = MaxRegPressure >= Threshold;
