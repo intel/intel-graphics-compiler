@@ -1117,7 +1117,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         mpm.add(new RuntimeValueLegalizationPass());
     }
 
-    if (ctx.m_instrTypes.hasLocalLoadStore &&
+    if ((ctx.m_instrTypes.hasLocalLoadStore || ctx.m_instrTypes.hasLocalAtomics) &&
         ctx.platform.hasLSC() &&
         !ctx.platform.NeedsLSCFenceUGMBeforeEOT() && // VISA will add the fence
         IGC_IS_FLAG_DISABLED(DisableAddRequiredMemoryFencesPass))

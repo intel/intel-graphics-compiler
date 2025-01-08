@@ -332,6 +332,7 @@ namespace IGC
         bool hasGenericAddressSpacePointers{};
         bool hasDebugInfo{};        //<! true only if module contains debug info !llvm.dbg.cu
         bool hasAtomics{};
+        bool hasLocalAtomics{};
         bool hasDiscard{};
         bool hasTypedRead{};
         bool hasTypedwrite{};

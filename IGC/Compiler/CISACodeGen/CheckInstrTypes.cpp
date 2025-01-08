@@ -159,6 +159,7 @@ void CheckInstrTypes::print(llvm::raw_ostream& OS) const
     OS << "\nhasGenericAddressSpacePointers: " << g_InstrTypes.hasGenericAddressSpacePointers;
     OS << "\nhasDebugInfo: " << g_InstrTypes.hasDebugInfo;
     OS << "\nhasAtomics: " << g_InstrTypes.hasAtomics;
+    OS << "\nhasLocalAtomics: " << g_InstrTypes.hasLocalAtomics;
     OS << "\nhasDiscard: " << g_InstrTypes.hasDiscard;
     OS << "\nhasTypedRead: " << g_InstrTypes.hasTypedRead;
     OS << "\nhasTypedwrite: " << g_InstrTypes.hasTypedwrite;
@@ -311,9 +312,18 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
         case GenISAIntrinsic::GenISA_LSCAtomicFP64:
         case GenISAIntrinsic::GenISA_LSCAtomicFP32:
         case GenISAIntrinsic::GenISA_LSCAtomicInts:
+        {
             g_InstrTypes.hasAtomics = true;
             g_InstrTypes.numAtomics++;
+            Value* bufPtr = GetBufferOperand(CI);
+            if (bufPtr &&
+                bufPtr->getType()->isPointerTy() &&
+                ADDRESS_SPACE_LOCAL == bufPtr->getType()->getPointerAddressSpace())
+            {
+                g_InstrTypes.hasLocalAtomics = true;
+            }
             break;
+        }
         case GenISAIntrinsic::GenISA_discard:
             g_InstrTypes.hasDiscard = true;
             break;
