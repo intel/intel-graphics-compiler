@@ -768,9 +768,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
 
         bool AllowVector8LoadStore =
             IGC_IS_FLAG_ENABLED(EnableVector8LoadStore) ||
-            ((ctx.type == ShaderType::RAYTRACING_SHADER || ctx.hasSyncRTCalls()) && ctx.platform.supports8DWLSCMessage()) ||
-            (ctx.platform.GetPlatformFamily() == IGFX_XE_HPC_CORE && ctx.platform.supports8DWLSCMessage() &&
-                ctx.type == ShaderType::OPENCL_SHADER);
+            ((ctx.type == ShaderType::RAYTRACING_SHADER || ctx.hasSyncRTCalls()) && ctx.platform.supports8DWLSCMessage());
 
         mpm.add(createMemOptPass(AllowNegativeSymPtrsForLoad, AllowVector8LoadStore));
 
