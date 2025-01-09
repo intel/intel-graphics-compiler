@@ -106,6 +106,7 @@ AllocationBasedLivenessAnalysis::LivenessData* AllocationBasedLivenessAnalysis::
 
         switch (II->getOpcode())
         {
+        case Instruction::PHI:
         case Instruction::GetElementPtr:
         case Instruction::BitCast:
             for (auto& use : II->uses())
@@ -116,20 +117,23 @@ AllocationBasedLivenessAnalysis::LivenessData* AllocationBasedLivenessAnalysis::
             hasNoLifetimeEnd = true;
             break;
         case Instruction::Store:
-        {
-            auto* storeI = cast<StoreInst>(II);
-            if (storeI->getValueOperand() == cast<Value>(use))
-                hasNoLifetimeEnd = true;
-        }
+            {
+                auto* storeI = cast<StoreInst>(II);
+                if (storeI->getValueOperand() == cast<Value>(use))
+                    hasNoLifetimeEnd = true;
+            }
             break;
         case Instruction::Call:
-        {
-            auto* callI = cast<CallInst>(II);
-            if (!callI->doesNotCapture(use->getOperandNo()))
-                hasNoLifetimeEnd = true;
-        }
+            {
+                auto* callI = cast<CallInst>(II);
+                if (!callI->doesNotCapture(use->getOperandNo()))
+                    hasNoLifetimeEnd = true;
+            }
             break;
-        default:
+        case Instruction::Load:
+            break;
+        default: // failsafe for handling "unapproved" instructions
+            hasNoLifetimeEnd = true;
             break;
         }
     }
