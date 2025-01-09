@@ -186,6 +186,7 @@ bool isBinarySafe(Instruction *I) {
     if (Binary) {
         auto OpCode = Binary->getOpcode();
         Result  |=  OpCode == Instruction::FMul;
+        Result  |=  OpCode == Instruction::FAdd;
     }
     return Result;
 }

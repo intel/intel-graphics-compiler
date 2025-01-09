@@ -4383,6 +4383,9 @@ void EmitPass::BinaryUnary(llvm::Instruction* inst, const SSource source[2], con
     case Instruction::FMul:
         Mul(source, modifier);
         break;
+    case Instruction::FAdd:
+        Add(source, modifier);
+        break;
     case Instruction::Call:
         EmitAluIntrinsic(cast<CallInst>(inst), source, modifier);
         break;
@@ -4635,6 +4638,44 @@ void EmitPass::FPTrunc(const SSource sources[2], const DstModifier& modifier) {
             m_encoder->Push();
         }
     }
+}
+
+
+void EmitPass::Add(const SSource sources[2], const DstModifier& modifier)
+{
+    CVariable* src[2];
+    for (int i = 0; i < 2; ++i)
+    {
+        src[i] = GetSrcVariable(sources[i]);
+    }
+
+    if (IGC_IS_FLAG_ENABLED(EnableVectorEmitter) && sources[0].value->getType()->isVectorTy() && sources[1].value->getType()->isVectorTy()) {
+
+        unsigned int VectorSize = 0;
+        if (llvm::isa<Instruction>(sources[0].value))
+            VectorSize = getVectorSize(llvm::cast<Instruction>(sources[0].value));
+
+        for (unsigned int i = 0; i < VectorSize; ++i) {
+            SetSourceModifiers(0, sources[0]);
+            SetSourceModifiers(1, sources[1]);
+
+            if (src[0]->IsUniform())
+                m_encoder->SetSrcSubReg(0, i);
+            else
+                m_encoder->SetSrcSubVar(0, i);
+            if (src[1]->IsUniform())
+                m_encoder->SetSrcSubReg(1, i);
+            else
+                m_encoder->SetSrcSubVar(1, i);
+
+            m_encoder->SetDstSubVar(i);
+            m_encoder->Add(m_destination, src[0], src[1]);
+            m_encoder->Push();
+        }
+        return;
+    }
+
+    Binary(EOPCODE_ADD, sources, modifier);
 }
 
 void EmitPass::Mul(const SSource sources[2], const DstModifier& modifier)
