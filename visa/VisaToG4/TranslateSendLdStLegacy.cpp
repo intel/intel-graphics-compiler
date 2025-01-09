@@ -2581,6 +2581,28 @@ int IR_Builder::translateVISASVMAtomicInst(
   // Fill remaining bits.
   FillSVMAtomicMsgDesc(bitwidth == 16, IsFloatAtomicOps(atomicOp), msgDesc);
 
+  auto dclSizeAtLeast = [](G4_SrcRegRegion *srcRgn, unsigned int numGRFs) {
+    // Verify that srcRgn contains at least as many rows as numGRFs.
+    // If not, extend size of underlying dcl to accommodate as many rows as
+    // numGRFs.
+    auto *dcl = srcRgn->getTopDcl();
+    auto totalNumRows = dcl->getNumRows();
+    auto curRow = srcRgn->getRegOff();
+    auto totalRowsNeeded = (curRow + numGRFs);
+    if (totalRowsNeeded <= totalNumRows)
+      return;
+    // atomic operations use src0 (address) size based on native execution
+    // size Even when SIMD size of instruction < min native execution size,
+    // size of address payload needs to be based on min native execution size.
+    // This means we could use r127 as src0 for a SIMD8 atomic operation. But
+    // since PVC's native execution size is SIMD16, address payload size must
+    // be 2 GRFs. r128 becomes OOB access, even though it may not be used.
+    // In order to ensure that we don't end up reading/writing beyond last GRF,
+    // we resize underlying dcl of src0 to accommodate worst case assignment.
+    dcl->resizeNumRows(totalRowsNeeded);
+  };
+  dclSizeAtLeast(msgs[0], sizes[0]);
+
   if (msgs[1] == 0) {
     createSendInst(pred, dst, msgs[0], sizes[0], dstLength, instExSize, msgDesc,
                    SFID::DP_DC1, false, SendAccess::READ_WRITE, NULL, NULL,
