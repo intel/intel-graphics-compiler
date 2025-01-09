@@ -166,10 +166,12 @@ inline raw_ostream &operator<<(raw_ostream &OS, const RdWrRegionSequence &RWS) {
 
 Value *simplifyRegionInst(Instruction *Inst, const DataLayout *DL = nullptr,
                           const GenXSubtarget *ST = nullptr,
-                          const DominatorTree *DT = nullptr);
+                          const DominatorTree *DT = nullptr,
+                          const Loop *L = nullptr);
 bool simplifyRegionInsts(Function *F, const DataLayout *DL = nullptr,
                          const GenXSubtarget *ST = nullptr,
-                         const DominatorTree *DT = nullptr);
+                         const DominatorTree *DT = nullptr,
+                         const LoopInfo *LI = nullptr);
 
 bool IsLinearVectorConstantInts(Value *v, int64_t &start, int64_t &stride);
 

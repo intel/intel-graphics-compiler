@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1132,7 +1132,7 @@ static Value *simplifyRegionRead(Instruction *Inst, const DataLayout *DL) {
 // Simplify a region read or write.
 Value *llvm::genx::simplifyRegionInst(Instruction *Inst, const DataLayout *DL,
                                       const GenXSubtarget *ST,
-                                      const DominatorTree *DT) {
+                                      const DominatorTree *DT, const Loop *L) {
   if (Inst->use_empty())
     return nullptr;
 
@@ -1161,7 +1161,11 @@ Value *llvm::genx::simplifyRegionInst(Instruction *Inst, const DataLayout *DL,
   }
 
   if (Constant *C = ConstantFoldGenX(Inst, *DL))
-    return C;
+    // The instruction can be folded to a constant, so other simplifications are
+    // not relevant. If the instruction is inside a loop it shouldn't be
+    // substituted with a constant here so it could be moved out from the loop
+    // later.
+    return L ? nullptr : C;
 
   if (auto *BCI = dyn_cast<BitCastInst>(Inst); BCI && DL && ST) {
     NewVal = simplifyBitCastFromRegionRead(BCI, *DL, *ST);
@@ -1194,12 +1198,14 @@ Value *llvm::genx::simplifyRegionInst(Instruction *Inst, const DataLayout *DL,
 
 bool llvm::genx::simplifyRegionInsts(Function *F, const DataLayout *DL,
                                      const GenXSubtarget *ST,
-                                     const DominatorTree *DT) {
+                                     const DominatorTree *DT,
+                                     const LoopInfo *LI) {
   bool Changed = false;
   for (auto &BB : *F) {
+    auto *L = LI->getLoopFor(&BB);
     for (auto I = BB.begin(); I != BB.end();) {
       Instruction *Inst = &*I++;
-      if (auto V = simplifyRegionInst(Inst, DL, ST, DT)) {
+      if (auto V = simplifyRegionInst(Inst, DL, ST, DT, L)) {
         if (isa<Instruction>(V) &&
             !genx::isSafeToReplace_CheckAVLoadKillOrForbiddenUser(
                 Inst, cast<Instruction>(V), DT))
