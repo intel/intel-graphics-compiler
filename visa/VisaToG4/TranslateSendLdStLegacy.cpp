@@ -2543,20 +2543,20 @@ int IR_Builder::translateVISASVMAtomicInst(
   unsigned len = 0;
 
   sources[len].opnd = addresses;
-  sources[len].numElts = instExSize;
+  sources[len].numElts = exSize;
   sources[len].instOpt = instOpt;
   ++len;
 
   if (src0 != NULL && !src0->isNullReg()) {
     sources[len].opnd = src0;
-    sources[len].numElts = instExSize;
+    sources[len].numElts = exSize;
     sources[len].instOpt = instOpt;
     ++len;
   }
 
   if (src1 != NULL && !src1->isNullReg()) {
     sources[len].opnd = src1;
-    sources[len].numElts = instExSize;
+    sources[len].numElts = exSize;
     sources[len].instOpt = instOpt;
     ++len;
   }
