@@ -42,8 +42,14 @@ if(NOT DEFINED IGC_API_PATCH_VERSION)
 endif()
 
 # IGC_BUILD_METADATA
+# Used as version suffix, to distinguish builds with the same semantic version
+# Eg. libigc-1.2.3+x and libigc-1.2.3+y
 if(NOT DEFINED IGC_BUILD_METADATA)
-      set(IGC_BUILD_METADATA 0)
+  if(DEFINED ENV{IGC_BUILD_METADATA})
+    set(IGC_BUILD_METADATA $ENV{IGC_BUILD_METADATA})
+  else()
+    set(IGC_BUILD_METADATA 0)
+  endif()
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
