@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: regkeys
+; REQUIRES: regkeys, vulkan-fe
 ; RUN: igc_opt -vulkan --inputps --opaque-pointers --regkey SupportUniformPrivateMemorySpace=0 --igc-private-mem-resolution --platformPtl -S %s 2>&1 | FileCheck %s --check-prefixes=CHECK,STATELESS_A64
 ; RUN: igc_opt -vulkan --inputps --opaque-pointers --regkey SupportUniformPrivateMemorySpace=1 --igc-private-mem-resolution --platformPtl -S %s 2>&1 | FileCheck %s --check-prefixes=CHECK,PRIVATE_A32,T_PRIVATE_A32
 ; RUN: igc_opt -vulkan --inputps --opaque-pointers --regkey SupportUniformPrivateMemorySpace=1  --regkey DisableSOAPromotion=1 --igc-private-mem-resolution --platformPtl -S %s 2>&1 | FileCheck %s --check-prefixes=CHECK,PRIVATE_A32,NT_PRIVATE_A32
