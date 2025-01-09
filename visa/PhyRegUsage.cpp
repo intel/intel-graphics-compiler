@@ -1023,6 +1023,24 @@ bool PhyRegUsage::assignRegs(bool highInternalConflict, LiveRange *varBasis,
     }
     return false;
   }
+  else if (kind == G4_SCALAR) // scalar register
+  {
+    vISA_ASSERT(decl->getNumRows() == 1, ERROR_UNKNOWN);
+    //
+    // determine alignment
+    // if the number of reg needed is more than 1, then we go ahead
+    //
+    unsigned regNeeded = numAllocUnit(decl->getNumElems(), decl->getElemType());
+    if (findContiguousAddrFlag(
+            FPR.availableScalars, forbidden, subAlign, regNeeded,
+            builder.kernel.getSRFInWords(), AS.startScalarReg, i)) {
+      // subregoffset should consider the declare data type
+      varBasis->setPhyReg(regPool.getScalarReg(),
+                          i * G4_WSIZE / decl->getElemSize());
+      return true;
+    }
+    return false;
+  }
   else // not handled yet
   {
     vISA_ASSERT(false, ERROR_UNKNOWN);
@@ -1190,4 +1208,5 @@ PhyRegAllocationState::PhyRegAllocationState(
       bank2_start(bank2_s), bank2_end(bank2_e), doBankConflict(doBC),
       doBundleConflict(doBundleReduction) {
   totalGRF = gra.kernel.getNumRegTotal();
+  startScalarReg = 0;
 }

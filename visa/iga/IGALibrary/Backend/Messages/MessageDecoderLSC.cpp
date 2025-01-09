@@ -54,6 +54,8 @@ enum LscOp : uint32_t {
   LSC_ATOMIC_APNDADD = 0x28,
   LSC_ATOMIC_APNDSUB = 0x29,
   LSC_ATOMIC_APNDSTORE = 0x2A,
+  LSC_LOAD_QUAD_MSRT = 0x31,
+  LSC_STORE_QUAD_MSRT = 0x32,
   //
   LSC_INVALID = 0xFFFFFFFF,
 };
@@ -704,6 +706,8 @@ struct MessageDecoderLSC : MessageDecoder {
                          lscOp == SendOp::STORE_QUAD ||
                          lscOp == SendOp::LOAD_BLOCK2D ||
                          lscOp == SendOp::STORE_BLOCK2D ||
+                         lscOp == SendOp::LOAD_QUAD_MSRT ||
+                         lscOp == SendOp::STORE_QUAD_MSRT ||
                          lscOp == SendOp::STORE_UNCOMPRESSED_QUAD ||
                          opInfo.isAtomic();
     if (sfid == SFID::TGM && opSupportsUvr) {
@@ -1073,6 +1077,16 @@ struct MessageDecoderLSC : MessageDecoder {
       addDocRefDESCXE2("DP_APPENDCTR_ATOMIC_ST", "68354");
       decodeLscAtomicAppendMessage("atomic counter append store",
                                    SendOp::ATOMIC_ACSTORE);
+      break;
+    case LSC_LOAD_QUAD_MSRT:
+      addDocRefDESCXE2("DP_LOAD_CMASK_MSRT", "73733");
+      decodeLscMessage("load quad from multi-sample render target",
+                       SendOp::LOAD_QUAD_MSRT);
+      break;
+    case LSC_STORE_QUAD_MSRT:
+      addDocRefDESCXE2("DP_STORE_CMASK_MSRT", "73734");
+      decodeLscMessage("store quad to multi-sample render target",
+                       SendOp::STORE_QUAD_MSRT);
       break;
     case LSC_CCS:
       decodeLscCcs();
@@ -1510,6 +1524,12 @@ static bool encLdStVec(Platform p, const VectorMessageArgs &vma,
     break;
   case SendOp::ATOMIC_ACSTORE:
     desc.imm |= LSC_ATOMIC_APNDSTORE;
+    break;
+  case SendOp::LOAD_QUAD_MSRT:
+    desc.imm |= LSC_LOAD_QUAD_MSRT;
+    break;
+  case SendOp::STORE_QUAD_MSRT:
+    desc.imm |= LSC_STORE_QUAD_MSRT;
     break;
   default:
     err = "unsupported op";

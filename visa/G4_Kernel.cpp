@@ -756,6 +756,9 @@ static iga_gen_t getIGAPlatform(TARGET_PLATFORM genPlatform) {
   case Xe2:
     platform = IGA_XE2;
     break;
+  case Xe3:
+    platform = IGA_XE3;
+    break;
   default:
     break;
   }
@@ -819,6 +822,8 @@ void StackCallABI::init(G4_Kernel *k) {
   setVersion();
   if (version == StackCallABIVersion::VER_3) {
     vISA_ASSERT(kernel->getGRFSize() == 64, "require 64-byte GRF for ABI v3");
+    vISA_ASSERT(kernel->getPlatform() >= TARGET_PLATFORM::Xe3,
+                "ABI v3 supported only for Xe3+");
   }
 
   switch (version) {
@@ -2103,6 +2108,11 @@ unsigned G4_Kernel::getComputeFFIDGP1NextOff() const {
   return getBinOffsetOfBB(next);
 }
 
+unsigned G4_Kernel::getSRFInWords() {
+  return (fg.builder->getNumScalarRegisters() *
+          fg.builder->getScalarRegisterSizeInBytes()) /
+         2;
+}
 
 // GRF modes supported by HW
 // There must be at least one Config that is VRTEnable for each platform
@@ -2126,6 +2136,18 @@ GRFMode::GRFMode(const TARGET_PLATFORM platform, Options *op) : options(op) {
     configs[0] = Config(128, 8, 16, 4);
     configs[1] = Config(256, 4, 32, 8);
     defaultMode = 0;
+    break;
+  case Xe3:
+    configs.resize(7);
+    // Configurations with <numGRF, numThreads, SWSBTokens, numAcc>
+    configs[0] = Config(32, 10, 32, 4);
+    configs[1] = Config(64, 10, 32, 4);
+    configs[2] = Config(96, 10, 32, 4);
+    configs[3] = Config(128, 8, 32, 4);
+    configs[4] = Config(160, 6, 32, 4);
+    configs[5] = Config(192, 5, 32, 4);
+    configs[6] = Config(256, 4, 32, 8);
+    defaultMode = 3;
     break;
   default:
     // platforms <= TGL
@@ -2151,6 +2173,7 @@ unsigned GRFMode::setModeByRegPressure(unsigned maxRP,
                                        unsigned largestInputReg) {
   unsigned size = configs.size(), i = 0;
   bool spillAllowed = 0;
+  spillAllowed = options->getuInt32Option(vISA_SpillAllowed) > 256;
   // find appropiate GRF based on reg pressure
   for (; i < size; i++) {
     if (configs[i].VRTEnable && configs[i].numGRF >= lowerBoundGRF &&

@@ -33,6 +33,10 @@ static MsgOp ConvertLSCOpToMsgOp(LSC_OP op) {
     return MsgOp::STORE_QUAD;
   case LSC_OP::LSC_STORE_BLOCK2D:
     return MsgOp::STORE_BLOCK2D;
+  case LSC_OP::LSC_LOAD_QUAD_MSRT:
+    return MsgOp::LOAD_QUAD_MSRT;
+  case LSC_OP::LSC_STORE_QUAD_MSRT:
+    return MsgOp::STORE_QUAD_MSRT;
   //
   case LSC_OP::LSC_ATOMIC_IINC:
     return MsgOp::ATOMIC_IINC;

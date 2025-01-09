@@ -72,6 +72,9 @@ DEFINE_LOAD_OP(LOAD_STRIDED, "load_strided", "load strided",
                ATTRS_SCALARADDR) // AKA load_block
 DEFINE_LOAD_OP(LOAD_QUAD, "load_quad", "load quad",
                ATTRS_CMASK) // AKA load_cmask
+DEFINE_LOAD_OP(LOAD_QUAD_MSRT, "load_quad_msrt",
+               "load quad from multi-sample render target",
+               ATTRS_CMASK)
 DEFINE_LOAD_OP(LOAD_STATUS, "load_status", "load status", ATTRS_NONE)
 DEFINE_LOAD_OP(LOAD_BLOCK2D, "load_block2d", "load array of 2d blocks",
                ATTRS_SCALARADDR)
@@ -80,6 +83,8 @@ DEFINE_STORE_OP(STORE_STRIDED, "store_strided", "store strided",
                 ATTRS_SCALARADDR) // AKA store_block
 DEFINE_STORE_OP(STORE_QUAD, "store_quad", "store quad",
                 ATTRS_CMASK) // AKA store_cmask
+DEFINE_STORE_OP(STORE_QUAD_MSRT, "store_quad_msrt",
+                "store quad to multi-sample render target", ATTRS_CMASK)
 
 DEFINE_STORE_OP(STORE_BLOCK2D, "store_block2d", "store 2d block",
                 ATTRS_SCALARADDR)

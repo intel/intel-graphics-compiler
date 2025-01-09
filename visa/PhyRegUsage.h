@@ -48,6 +48,7 @@ class PhyRegAllocationState {
   unsigned int bank2_end;
   bool doBankConflict;
   bool doBundleConflict;
+  unsigned int startScalarReg;
   // FIXME: Why do we need both totalGRF and maxGRFCanBeUsed?
   unsigned int totalGRF;
   const LiveRangeVec& lrs;
@@ -84,6 +85,7 @@ class FreePhyRegs {
   bool *availableAddrs;
   bool *availableFlags;
   std::vector<uint8_t> weakEdgeUsage;
+  bool *availableScalars;
 
 public:
   FreePhyRegs() = delete;
@@ -97,6 +99,8 @@ public:
     std::fill_n(availableFlags, K.fg.builder->getNumFlagRegisters(), true);
     // Note that unlike other fields this is initialized to false.
     weakEdgeUsage.resize(K.getNumRegTotal(), 0);
+    availableScalars = new bool[K.getSRFInWords()];
+    std::fill_n(availableScalars, K.getSRFInWords(), true);
   }
 
   FreePhyRegs(const FreePhyRegs&) = delete;
@@ -106,6 +110,7 @@ public:
     delete[] availableGregs;
     delete[] availableAddrs;
     delete[] availableFlags;
+    delete[] availableScalars;
   }
 
   void reset() {
@@ -114,6 +119,7 @@ public:
     std::fill_n(availableAddrs, K.fg.builder->getNumAddrRegisters(), true);
     std::fill_n(availableFlags, K.fg.builder->getNumFlagRegisters(), true);
     std::fill(weakEdgeUsage.begin(), weakEdgeUsage.end(), 0);
+    std::fill_n(availableScalars, K.getSRFInWords(), true);
   }
 };
 
@@ -261,6 +267,11 @@ public:
                     unsigned numRows) {
     for (unsigned i = regOff; i < regOff + nunits; i++)
       FPR.availableFlags[i] = false;
+  }
+  void markBusyScalar(unsigned regNum, unsigned regOff, unsigned nunits,
+                      unsigned numRows) {
+    for (unsigned i = regOff; i < regOff + nunits; i++)
+      FPR.availableScalars[i] = false;
   }
   static unsigned numAllocUnit(unsigned nelems, G4_Type ty) {
     //

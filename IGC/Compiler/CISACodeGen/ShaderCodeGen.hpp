@@ -145,6 +145,8 @@ public:
     virtual int getAnnotatedNumThreads() { return -1; }
     virtual bool IsRegularGRFRequested() { return false; }
     virtual bool IsLargeGRFRequested() { return false; }
+    virtual unsigned getNumGRFPerThread() { return 0; }
+    virtual bool getEnableVRT() { return false; }
     virtual bool hasReadWriteImage(llvm::Function& F)
     {
         IGC_UNUSED(F);

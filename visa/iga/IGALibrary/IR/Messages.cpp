@@ -536,10 +536,14 @@ const SendOpDefinition &iga::lookupSendOp(const char *mnemonic) {
   }
   if (mne == "load_cmask")
     return lookupSendOp(SendOp::LOAD_QUAD);
+  if (mne == "load_cmask_msrt")
+    return lookupSendOp(SendOp::LOAD_QUAD_MSRT);
   else if (mne == "load_block")
     return lookupSendOp(SendOp::LOAD_STRIDED);
   else if (mne == "store_cmask")
     return lookupSendOp(SendOp::STORE_QUAD);
+  else if (mne == "store_cmask_msrt")
+    return lookupSendOp(SendOp::STORE_QUAD_MSRT);
   else if (mne == "store_block")
     return lookupSendOp(SendOp::STORE_STRIDED);
   static constexpr SendOpDefinition INVALID {SendOp::INVALID, "?", "?"};
@@ -554,6 +558,7 @@ bool iga::sendOpSupportsSyntax(Platform p, SendOp op, SFID sfid) {
                op == SendOp::LOAD_BLOCK2D || op == SendOp::STORE_BLOCK2D ||
                op == SendOp::STORE_UNCOMPRESSED ||
                op == SendOp::STORE_UNCOMPRESSED_QUAD ||
+               op == SendOp::LOAD_QUAD_MSRT || op == SendOp::STORE_QUAD_MSRT ||
                // op == SendOp::LOAD_STATUS ||
                // op == SendOp::FENCE ||
                // op == SendOp::BARRIER ||

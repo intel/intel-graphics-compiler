@@ -324,6 +324,18 @@ private:
                                        // descriptor
   // pre-defined declare that binds to HWTid (R0.5:ud)
   G4_Declare *builtinHWTID = nullptr;
+  // pre-defined declare that binds to SR0.1:ud
+  G4_Declare *builtinSR0Dot1 = nullptr;
+
+  // pre-defined QWs of S0
+  // 0 and 1 are reserved for Gather (indirect) Send usage.
+  G4_Declare *builtinS0 = nullptr;
+
+  // for rotating through the high subregisters of s0 in QW
+  // we require QWs even for things like SLM or URB (which are a32 bases)
+  // since the sendg instruction requires QW s0 subregs
+  static const unsigned FIRST_SURFACE_S0_QW = 2; // s0.{0,1}:uq for ind. send
+  unsigned nextSurfaceS0QW = FIRST_SURFACE_S0_QW;
   // pre-defined bindless surface index (252, 1 UD)
   G4_Declare *builtinT252 = nullptr;
   // pre-defined bindless sampler index (31, 1 UD)
@@ -736,11 +748,18 @@ public:
   G4_Declare *getBuiltinA0() { return builtinA0; }
   G4_Declare *getBuiltinA0Dot2() { return builtinA0Dot2; }
   G4_Declare *getBuiltinHWTID() const { return builtinHWTID; }
+  G4_Declare *getBuiltinSR0Dot1() const { return builtinSR0Dot1; }
+
+  // The first part of s0 is reserved for Xe3+ Gather Send (indirect send)
+  // This tests if an operand refers to Gather Send or something else
+  bool isBuiltinSendIndirectS0(G4_Operand *op) const;
+
   G4_Declare *getBuiltinT252() const { return builtinT252; }
   G4_Declare *getBuiltinBindlessSampler() const {
     return builtinBindlessSampler;
   }
   G4_Declare *getBuiltinSamplerHeader() const { return builtinSamplerHeader; }
+  G4_Declare *getBuiltinS0() const { return builtinS0;}
   G4_Declare *getOldA0Dot2Temp() const { return oldA0Dot2Temp; }
   void setHasDFInst(bool b) { hasDF = b; }
   G4_Declare *getInputR1() { return inputR1; }

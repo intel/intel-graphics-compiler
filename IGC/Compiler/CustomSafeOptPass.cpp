@@ -2465,7 +2465,9 @@ static inline bool IsTypedReadOperation(const Instruction* pInst)
 {
     const GenIntrinsicInst* pIntr = dyn_cast<GenIntrinsicInst>(pInst);
 
-    if (pIntr && pIntr->isGenIntrinsic(GenISAIntrinsic::GenISA_typedread))
+    if (pIntr &&
+        (pIntr->isGenIntrinsic(GenISAIntrinsic::GenISA_typedread) ||
+            pIntr->isGenIntrinsic(GenISAIntrinsic::GenISA_typedreadMS)))
     {
         return true;
     }
@@ -2476,7 +2478,9 @@ static inline bool IsTypedWriteOperation(const Instruction* pInst)
 {
     const GenIntrinsicInst* pIntr = dyn_cast<GenIntrinsicInst>(pInst);
 
-    if (pIntr && pIntr->isGenIntrinsic(GenISAIntrinsic::GenISA_typedwrite))
+    if (pIntr &&
+        (pIntr->isGenIntrinsic(GenISAIntrinsic::GenISA_typedwrite) ||
+            pIntr->isGenIntrinsic(GenISAIntrinsic::GenISA_typedwriteMS)))
     {
         return true;
     }
@@ -6543,7 +6547,7 @@ void MergeMemFromBranchOpt::visitTypedWrite(llvm::CallInst* inst)
                     {
                         if (llvm::GenIntrinsicInst* giInst = llvm::dyn_cast<GenIntrinsicInst>(br->getPrevNode()))
                         {
-                            if (giInst->getIntrinsicID() == GenISAIntrinsic::GenISA_typedwrite)
+                            if (giInst->getIntrinsicID() == GenISAIntrinsic::GenISA_typedwrite || giInst->getIntrinsicID() == GenISAIntrinsic::GenISA_typedwriteMS)
                             {
                                 IntToPtrInst* itp0 = dyn_cast<IntToPtrInst>(inst->getOperand(0));
                                 IntToPtrInst* itp1 = dyn_cast<IntToPtrInst>(giInst->getOperand(0));
@@ -6612,7 +6616,8 @@ void MergeMemFromBranchOpt::visitCallInst(CallInst& C)
 {
     if (llvm::GenIntrinsicInst* inst = llvm::dyn_cast<GenIntrinsicInst>(&C))
     {
-        if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_typedwrite)
+        if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_typedwrite ||
+            inst->getIntrinsicID() == GenISAIntrinsic::GenISA_typedwriteMS)
         {
             visitTypedWrite(inst);
         }
@@ -7275,7 +7280,8 @@ void typedWriteZeroStoreCheck(Function& F, CodeGenContext* pCtx)
             //Obtain typedWrite
             if (GenIntrinsicInst* tyWrite = dyn_cast<GenIntrinsicInst>(&*II))
             {
-                if (tyWrite->getIntrinsicID() == GenISAIntrinsic::GenISA_typedwrite)
+                if (tyWrite->getIntrinsicID() == GenISAIntrinsic::GenISA_typedwrite ||
+                    tyWrite->getIntrinsicID() == GenISAIntrinsic::GenISA_typedwriteMS)
                 {
                     bool checksAreGreen = true;
 
@@ -7308,7 +7314,9 @@ void typedWriteZeroStoreCheck(Function& F, CodeGenContext* pCtx)
 
                         //Check if extract elem comes from a typedRead
                         GenIntrinsicInst* tyRead = dyn_cast<GenIntrinsicInst>(eeInst[i]->getOperand(0));
-                        if (!tyRead || tyRead->getIntrinsicID() != GenISAIntrinsic::GenISA_typedread)
+                        if (!tyRead ||
+                            (tyWrite->getIntrinsicID() == GenISAIntrinsic::GenISA_typedwrite && tyRead->getIntrinsicID() != GenISAIntrinsic::GenISA_typedread) ||
+                            (tyWrite->getIntrinsicID() == GenISAIntrinsic::GenISA_typedwriteMS && tyRead->getIntrinsicID() != GenISAIntrinsic::GenISA_typedreadMS))
                         {
                             checksAreGreen = false;
                             break;

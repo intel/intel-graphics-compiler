@@ -175,7 +175,7 @@ bool hasPartialMixMode() const {
 
 // whether EOT sources need to be assigned r112-r127
 bool hasEOTGRFBinding() const {
-  return true;
+  return getPlatformGeneration() < PlatformGen::XE3;
 }
 
 bool hasSmov() const { return getPlatformGeneration() < PlatformGen::XE; }
@@ -470,12 +470,21 @@ uint32_t getGRFNumOfAddrRegisters() const {
 }
 
 uint32_t getNumScalarRegisters(void) {
+  if (auto n = getuint32Option(vISA_ScalarPipe)) {
+    return n;
+  }
   if (enableSendIndirect()) {
     return 1;
   }
   return 0;
 }
 
+uint32_t getScalarRegisterSizeInBytes() {
+  if (getuint32Option(vISA_ScalarPipe)) {
+    return 64; // 64 Bytes in s0
+  }
+  return 32; // 32B in s0
+}
 
 bool encodeAccWrEn() const { return getPlatform() < Xe_PVC; }
 
@@ -747,7 +756,10 @@ bool hasQ2FInIntegerPipe() const {
 }
 
 bool enableSendIndirect() const {
-  return false;
+  return getuint32Option(vISA_EnableGatherWithImmPreRA) &&
+    (getuint32Option(vISA_EnableGatherWithImmPreRA) < 4) &&
+    (kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D) &&
+    getPlatform() >= Xe3;
 }
 
 unsigned int getMaxPTSS() const {

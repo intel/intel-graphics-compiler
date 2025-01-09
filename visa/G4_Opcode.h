@@ -429,6 +429,7 @@ enum G4_ArchRegKind {
   AREG_SP,       // SP register
   AREG_F2,       // flag register (PVC+)
   AREG_F3,       // flag register (PVC+)
+  AREG_S0,       // scalar register
   AREG_LAST
 };
 

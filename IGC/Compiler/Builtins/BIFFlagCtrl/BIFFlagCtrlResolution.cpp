@@ -104,6 +104,7 @@ void BIFFlagCtrlResolution::FillFlagCtrl() {
     BIF_FLAG_CTRL_SET(JointMatrixLoadStoreOpt, IGC_GET_FLAG_VALUE(JointMatrixLoadStoreOpt));
   }
 
+  BIF_FLAG_CTRL_SET(UseOOBChecks, PtrCGC->platform.needsOutOfBoundsBuiltinChecks());
 }
 
 #undef BIF_FLAG_CTRL_SET

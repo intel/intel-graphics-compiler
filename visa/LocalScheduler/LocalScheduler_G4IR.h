@@ -309,6 +309,7 @@ class DDD {
   int A0_BUCKET;
   int SEND_BUCKET;
   int SCRATCH_SEND_BUCKET;
+  int S0_BUCKET;
   int OTHER_ARF_BUCKET;
   int TOTAL_BUCKETS;
   int totalGRFNum;

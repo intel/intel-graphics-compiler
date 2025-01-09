@@ -81,6 +81,7 @@ public:
   bool isRegAllocPartaker() const;
 
   bool noScoreBoard() const;
+  bool isS0() const;
   G4_Areg *getAreg() const;
 
   virtual unsigned short ExRegNum(bool &valid) {
@@ -160,6 +161,7 @@ public:
   bool isTmReg() const { return getArchRegType() == AREG_TM0; }
   bool isTDRReg() const { return getArchRegType() == AREG_TDR0; }
   bool isSpReg() const { return getArchRegType() == AREG_SP; }
+  bool isS0() const { return getArchRegType() == AREG_S0; }
 
   unsigned short ExRegNum(bool &valid) override {
     unsigned short rNum = UNDEFINED_SHORT;
@@ -188,6 +190,9 @@ public:
     case AREG_ACC1:
     case AREG_N1:
       rNum = 1;
+      break;
+    case AREG_S0:
+      rNum = 0;
       break;
     default:
       valid = false;
@@ -296,6 +301,7 @@ public:
   bool isSpReg() const {
     return (reg.phyReg != NULL) && (reg.phyReg->isSpReg());
   }
+  bool isS0() const { return (reg.phyReg != NULL) && (reg.phyReg->isS0()); }
 
   bool isRegAllocPartaker() const { return id != UNDEFINED_VAL; }
   unsigned getRegAllocPartaker() const { return id; }
@@ -495,6 +501,11 @@ inline bool G4_VarBase::isAddress() const {
   if (isRegVar())
     return asRegVar()->isAddress();
   return isPhyAreg() && asAreg()->isA0();
+}
+inline bool G4_VarBase::isS0() const {
+  if (isRegVar())
+    return asRegVar()->isS0();
+  return isPhyAreg() && asAreg()->isS0();
 }
 
 inline bool G4_VarBase::isSpReg() const {

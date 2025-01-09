@@ -206,5 +206,20 @@ typedef enum
     FCEXP_DISABLED                      = FCEXP_TOBE_DESIGNED
 } FCEXP_FLAG_t;
 
+//////////////////////////////////////////////////////////////////////////
+/// @brief Structure for passing precompiled LLVM bytecode to IGC.
+namespace IGC
+{
+    struct BIFModule
+    {
+        uint64_t    m_ByteCodeSize = 0;
+            const void* m_pLLVMBytecode = nullptr;
+
+        // These bits are opaque to the IGC.
+        // They can be used to provide configuration data for
+        // the function(s) in the LLVM from the bytecode.
+        uint64_t    m_ConfigBits = 0;
+    };
+}
 #endif // __IGC_H
 

@@ -66,6 +66,7 @@ CompactionResult InstCompactor::tryToCompactImpl() {
   case Platform::XE_HPG:
   case Platform::XE_HPC:
   case Platform::XE2:
+  case Platform::XE3:
     return tryToCompactImplFamilyXE();
   case Platform::FUTURE:
   default:

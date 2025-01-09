@@ -3456,7 +3456,12 @@ static const ISA_SubInst_Desc LscUntypedSubOpcodeDescs[] {
       LSC_OP_INVALID,
       LSC_OP_INVALID,
       LSC_OP_INVALID,
-      LSC_OP_INVALID,
+      // msrt instructions need to be recorded under untyped as the parser logic
+      // by default queries the untyped table to get the opcode string
+      // todo: need to change this as this is uncessary for msrt instructions
+      // which are only applicable for typed surfaces
+      LSC_TYPED_OP(LSC_LOAD_QUAD_MSRT, "lsc_load_quad_msrt"),
+      LSC_TYPED_OP(LSC_STORE_QUAD_MSRT, "lsc_store_quad_msrt"),
       LSC_OP_INVALID,
 };
 
@@ -3511,6 +3516,8 @@ static const ISA_SubInst_Desc LscTypedSubOpcodeDescs[] {
       LSC_OP_INVALID,
       LSC_OP_INVALID,
       LSC_OP_INVALID,
+      LSC_TYPED_OP(LSC_LOAD_QUAD_MSRT, "lsc_load_quad_msrt"),
+      LSC_TYPED_OP(LSC_STORE_QUAD_MSRT, "lsc_store_quad_msrt"),
       LSC_OP_INVALID,
       LSC_OP_INVALID,
 };
@@ -3661,6 +3668,12 @@ bool LscOpInfoFind(LSC_OP op, LscOpInfo &opInfo) {
     atomicOp("lsc_apndctr_atomic_store", 0x30, 1);
     break;
 
+ case LSC_LOAD_QUAD_MSRT:
+    loadOp("lsc_load_quad_msrt", 0x31);
+    break;
+ case LSC_STORE_QUAD_MSRT:
+    storeOp("lsc_store_quad_msrt", 0x32);
+    break;
   default:
     return false;
   }

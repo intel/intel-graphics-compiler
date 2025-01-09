@@ -287,6 +287,14 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
           // It excludes the case where dst address register uses Type_UD as
           // that indicates msg descriptor initialization.
           if (inst->isMov() || inst->isPseudoAddrMovIntrinsic()) {
+            // PseudoAddrMoveIntrinsic may appear in G4 IR as:
+            // intrinsic.pseudo_addr_mov (1)  s0.0<1>:uq  &CCTuple+0 &CCTuple+64
+            // &M2+128  &M2+192  &M2+256  &M2+320  &CCTuple+0  &CCTuple+64
+            //
+            // Address of several general variables is taken and written to s0.0
+            // for use in sendi.
+            //
+            // We need to mark s0.0 -> [CCTuple, M2] in points-to set.
             for (int i = 0; i < inst->getNumSrc(); i++) {
               G4_Operand *src = inst->getSrc(i);
               if (!src || src->isNullReg()) {

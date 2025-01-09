@@ -141,6 +141,7 @@ static inline bool IsRegisterScaled(RegName regName, const Platform platform) {
   case RegName::ARF_TM:
   case RegName::ARF_CR:
   case RegName::ARF_SP:
+  case RegName::ARF_S:
   case RegName::ARF_F:
   case RegName::ARF_N:
   case RegName::ARF_DBG:
@@ -361,6 +362,8 @@ struct Model {
                                                       // (PVC-XT)
     else if (platform == Platform::XE2)
       return SWSB_ENCODE_MODE::FourDistPipeReduction;
+    else if (platform == Platform::XE3)
+      return SWSB_ENCODE_MODE::FiveDistPipe;
     return SWSB_ENCODE_MODE::SWSBInvalidMode;
   }
 
@@ -373,6 +376,8 @@ struct Model {
       return 16;
     case SWSB_ENCODE_MODE::FourDistPipe:
     case SWSB_ENCODE_MODE::FourDistPipeReduction:
+    case SWSB_ENCODE_MODE::FiveDistPipe:
+    case SWSB_ENCODE_MODE::FiveDistPipeReduction:
       return 32;
     default:
       break;

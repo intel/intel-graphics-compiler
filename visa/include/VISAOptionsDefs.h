@@ -145,6 +145,11 @@ DEF_VISA_OPTION(vISA_ChangeMoveType, ET_BOOL, "-ALTMode", UNUSED, true)
 DEF_VISA_OPTION(vISA_accSubstitution, ET_BOOL, "-noAccSub", UNUSED, true)
 DEF_VISA_OPTION(vISA_accSubBeforeRA, ET_BOOL, "-noAccSubBRA", UNUSED, true)
 DEF_VISA_OPTION(vISA_PreSchedForAcc, ET_BOOL, "-preSchedForAcc", UNUSED, false)
+DEF_VISA_OPTION(
+    vISA_EnableGatherWithImmPreRA, ET_INT32, "-gatherWithImmPreRA",
+    "USAGE: -gatherWithImmPreRA <0|1|2|3> where 0 is disabled, 1 sampler is "
+    "enabled, 2 other msg enabled, 3 always use s0.0 for send",
+    2)
 DEF_VISA_OPTION(vISA_doAccSubAfterSchedule, ET_BOOL, "-accSubPostSchedule",
                 UNUSED, true)
 DEF_VISA_OPTION(vISA_localizationForAccSub, ET_BOOL, "-localizeForACC", UNUSED,
@@ -157,6 +162,14 @@ DEF_VISA_OPTION(vISA_finiteMathOnly, ET_BOOL, "-finiteMathOnly",
 DEF_VISA_OPTION(vISA_ifCvt, ET_BOOL, "-noifcvt", UNUSED, true)
 DEF_VISA_OPTION(vISA_AutoGRFSelection, ET_BOOL_TRUE, "-autoGRFSelection",
                 "Enable compiler heuristics for GRF selection", false)
+DEF_VISA_OPTION(
+    vISA_SpillAllowed, ET_INT32, "-spillAllowed",
+    "USAGE: -spillAllowed <spillSize>.\n"
+    "Spill size allowed without increasing GRF number in VRT."
+    "0 means VRT will always bump up the GRF number to avoid spills",
+    256)
+DEF_VISA_OPTION(vISA_ScalarPipe, ET_INT32, "-scalarPipe",
+                "USAGE: -scalarPipe <num>\n", 0)
 DEF_VISA_OPTION(vISA_LVN, ET_BOOL, "-nolvn", UNUSED, true)
 // only affects acc substitution for now
 DEF_VISA_OPTION(vISA_numGeneralAcc, ET_INT32, "-numGeneralAcc",
@@ -501,6 +514,8 @@ DEF_VISA_OPTION(vISA_SWSBInstStall, ET_INT32, "-SWSBInstStall", UNUSED, 0)
 DEF_VISA_OPTION(vISA_SWSBInstStallEnd, ET_INT32, "-SWSBInstStallEnd", UNUSED, 0)
 DEF_VISA_OPTION(vISA_WARSWSBLocalStart, ET_INT32, "-WARSWSBLocalStart", UNUSED, 0)
 DEF_VISA_OPTION(vISA_WARSWSBLocalEnd, ET_INT32, "-WARSWSBLocalEnd", UNUSED, 0)
+DEF_VISA_OPTION(vISA_IndirectInstStart, ET_INT32, "-indirectInstStart", UNUSED, 0)
+DEF_VISA_OPTION(vISA_IndirectInstEnd, ET_INT32, "-indirectInstEnd", UNUSED, 0)
 DEF_VISA_OPTION(vISA_SWSBTokenBarrier, ET_INT32, "-SWSBTokenBarrier", UNUSED, 0)
 DEF_VISA_OPTION(vISA_EnableSwitch, ET_BOOL, "-enableSwitch", UNUSED, false)
 DEF_VISA_OPTION(vISA_EnableISBIDBUNDLE, ET_BOOL, "-SBIDBundle", UNUSED, false)

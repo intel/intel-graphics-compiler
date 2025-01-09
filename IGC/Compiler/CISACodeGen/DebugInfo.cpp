@@ -108,12 +108,14 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
     {
         auto shaderProgram = k.second;
         auto simd8 = isCandidate(shaderProgram, SIMDMode::SIMD8);
+        auto quadSimd8Dynamic = isCandidate(shaderProgram, SIMDMode::SIMD32, ShaderDispatchMode::QUAD_SIMD8_DYNAMIC);
         auto simd16 = isCandidate(shaderProgram, SIMDMode::SIMD16);
         auto simd32 = isCandidate(shaderProgram, SIMDMode::SIMD32);
 
         if (simd8) units.push_back(simd8);
         if (simd16) units.push_back(simd16);
         if (simd32) units.push_back(simd32);
+        if (quadSimd8Dynamic) units.push_back(quadSimd8Dynamic);
     }
 
     DwarfDISubprogramCache DISPCache;

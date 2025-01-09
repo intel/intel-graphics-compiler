@@ -168,6 +168,8 @@ static const WA_TABLE *CreateVisaWaTable(TARGET_PLATFORM platform,
 
   if (platform >= Xe_PVC)
     VISA_WA_ENABLE(pWaTable, Wa_13010473643);
+  if (platform >= Xe3)
+    VISA_WA_DISABLE(pWaTable, Wa_13010473643);
 
   switch (platform) {
   case GENX_ICLLP:
@@ -199,6 +201,15 @@ static const WA_TABLE *CreateVisaWaTable(TARGET_PLATFORM platform,
     break;
   case Xe_MTL:
     VISA_WA_ENABLE(pWaTable, Wa_14016880151);
+    break;
+  case Xe2:
+    VISA_WA_ENABLE(pWaTable, Wa_14020375314);
+    VISA_WA_ENABLE(pWaTable, Wa_18027439769);
+    VISA_WA_ENABLE(pWaTable, Wa_22017182272);
+    VISA_WA_ENABLE(pWaTable, Wa_14021891663);
+    break;
+  case Xe3:
+    VISA_WA_ENABLE(pWaTable, Wa_22017182272);
     break;
   default:
     break;
@@ -683,6 +694,8 @@ void CISA_IR_Builder::LinkTimeOptimization(
     redirectMap.insert(std::make_pair(callee->getBuiltinA0(), caller->getBuiltinA0()));
     redirectMap.insert(std::make_pair(callee->getBuiltinA0Dot2(), caller->getBuiltinA0Dot2()));
     redirectMap.insert(std::make_pair(callee->getBuiltinHWTID(), caller->getBuiltinHWTID()));
+    redirectMap.insert(std::make_pair(callee->getBuiltinSR0Dot1(), caller->getBuiltinSR0Dot1()));
+    redirectMap.insert(std::make_pair(callee->getBuiltinS0(), caller->getBuiltinS0()));
     redirectMap.insert(std::make_pair(callee->getBuiltinT252(), caller->getBuiltinT252()));
     redirectMap.insert(std::make_pair(callee->getBuiltinBindlessSampler(), caller->getBuiltinBindlessSampler()));
     redirectMap.insert(std::make_pair(callee->getBuiltinSamplerHeader(), caller->getBuiltinSamplerHeader()));
