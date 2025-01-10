@@ -617,6 +617,7 @@ static SupportedParams getSupportedParams(const JointMatrixTypeDescription *desc
         params.columns = maxSliceBitWidth / desc->bitWidth;
         params.bitWidth |= 16;
         params.layouts = 1 << LayoutRowMajor;
+        params.layouts |= 1 << LayoutColumnMajor;
     } else if (desc->layout == LayoutPackedB) {
         params.rows = maxSliceBitWidth / desc->bitWidth;
         params.columns = useSG16 ? 16 : 8;

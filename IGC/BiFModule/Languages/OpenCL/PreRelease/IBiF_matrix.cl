@@ -46,6 +46,7 @@ SPDX-License-Identifier: MIT
 #define _PackedB_PackedB 3
 #define _Accumulator_RowMajor 4
 #define _Accumulator_ColumnMajor 5
+#define _PackedA_ColumnMajor 6
 
 #define ATTRIBUTE_AS_GENERIC __global /* the branch using this will be dead,
                                          however we still need a valid address
@@ -179,9 +180,13 @@ typedef uint   __attribute__((ext_vector_type(32))) uint32;
 #define     MATH_8_DIV_4 2
 #define     MATH_8_DIV_2 4
 #define     MATH_8_DIV_1 8
+#define     MATH_7_DIV_1 7
+#define     MATH_6_DIV_1 6
+#define     MATH_5_DIV_1 5
 #define MATH_4_DIV_4 1
 #define MATH_4_DIV_2 2
 #define MATH_4_DIV_1 4
+#define MATH_3_DIV_1 3
 #define     MATH_2_DIV_2 1
 #define     MATH_2_DIV_1 2
 #define MATH_1_DIV_1 1
@@ -225,6 +230,7 @@ typedef uint   __attribute__((ext_vector_type(32))) uint32;
 #define SHAPE_CONCAT_VNNI(M, K, vnni_factor) SHAPE_CONCAT_VNNI__(MATH_MUL(M, vnni_factor), MATH_DIV(K, vnni_factor))
 
 #define SHAPE_PackedA_RowMajor(       M, K, elem_bitwidth, contrib_bitwidth) SHAPE_CONCAT(M, K)
+#define SHAPE_PackedA_ColumnMajor(    M, K, elem_bitwidth, contrib_bitwidth) SHAPE_CONCAT(M, K)
 #define SHAPE_PackedB_RowMajor(       M, K, elem_bitwidth, contrib_bitwidth) SHAPE_CONCAT_VNNI(M, K, MATH_DIV(contrib_bitwidth, elem_bitwidth))
 #define SHAPE_PackedB_ColumnMajor(    M, K, elem_bitwidth, contrib_bitwidth) SHAPE_CONCAT_VNNI(M, K, MATH_DIV(contrib_bitwidth, elem_bitwidth))
 #define SHAPE_PackedB_PackedB(        M, K, elem_bitwidth, contrib_bitwidth) SHAPE_CONCAT_VNNI(M, K, MATH_DIV(contrib_bitwidth, elem_bitwidth))
@@ -407,13 +413,13 @@ Each subgroup stores 16 of 8x16 slices. Hence, row_stride = R / 4 = 32 / 4 = 8 a
 
 /* For platforms without SG16 JointMatrix support block2d is not available. The
  * implementation remains empty, will fallthrough to vector implementation. */
-#define IMPLEMENT_BLOCK2D_LOAD_ROW_MAJOR_(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_M, contrib_K) \
+#define IMPLEMENT_BLOCK2D_LOAD_ROW_MAJOR_(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11) \
   /* not supported, fallthrough */
-#define IMPLEMENT_BLOCK2D_LOAD_COL_MAJOR_(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_M, contrib_K) \
+#define IMPLEMENT_BLOCK2D_LOAD_COL_MAJOR_(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11) \
   /* not supported, fallthrough */
-#define IMPLEMENT_BLOCK2D_LOAD_VNNI_TX_(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_M, contrib_K) \
+#define IMPLEMENT_BLOCK2D_LOAD_VNNI_TX_(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11) \
   /* not supported, fallthrough */
-#define IMPLEMENT_BLOCK2D_STORE(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_K) \
+#define IMPLEMENT_BLOCK2D_STORE(p1, p2, p3, p4, p5, p6, p7, p8) \
   /* not supported, fallthrough */
 
 // contrib_K - calculated in BLOCK2D loads; contrib_K = K/(contrib_bitwidth/elem_bitwidth);
@@ -422,7 +428,13 @@ Each subgroup stores 16 of 8x16 slices. Hence, row_stride = R / 4 = 32 / 4 = 8 a
 
 #define MAX_ROW_BYTES_2D_BLOCK_LOAD 64 // maximum per row size in bytes supported by 2D block load
 
-#define IMPLEMENT_BLOCK2D_LOAD_SG16_ROW_MAJOR_(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_M, contrib_K) \
+// M and K are the original tile dimensions for A and C.
+// M and K are the VNNI-ed dimensions for matrix B (hence the are also aliased as M_VNNI and K_VNNI in some places)
+// Hence, we also have orig_M, which can be used as non-VNNI'ed M dimension of matrix B
+// When smaller elements are packed into bigger types, contrib_M and contrib_K represent M and K dimensions of the packed matrix
+// Not all values (orig_M, contrib_M, contrib_K) are valid for all different layouts and macros, so before using any of it, please, check,
+// if it's valid for the current configuration
+#define IMPLEMENT_BLOCK2D_LOAD_SG16_ROW_MAJOR_(layout, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, orig_M, contrib_M, contrib_K) \
   if (contrib_K*sizeof(contrib_type) <= MAX_ROW_BYTES_2D_BLOCK_LOAD) { /* For 2D loads (block2d width)*(data size) must be <= MAX_ROW_BYTES_2D_BLOCK_LOAD */ \
     long offset = as_long(mem); \
     long baseoffset = offset & (~0x3f); /* align to 64-byte */ \
@@ -437,7 +449,8 @@ Each subgroup stores 16 of 8x16 slices. Hence, row_stride = R / 4 = 32 / 4 = 8 a
     return; \
   }
 
-#define IMPLEMENT_BLOCK2D_LOAD_SG16_COL_MAJOR_(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_M, contrib_K) \
+// 2D block read transpose builtin requires K value _after_ the transpose operation is done - which is equal to M before the transpose
+#define IMPLEMENT_BLOCK2D_LOAD_SG16_COL_MAJOR_(layout, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, orig_M, contrib_M, contrib_K) \
   if (M*sizeof(element_type) <= MAX_ROW_BYTES_2D_BLOCK_LOAD) { /* For 2D loads (block2d width)*(data size) must be <= MAX_ROW_BYTES_2D_BLOCK_LOAD */ \
     long offset = as_long(mem); \
     long baseoffset = offset & (~0x3f); /* align to 64-byte */ \
@@ -446,29 +459,45 @@ Each subgroup stores 16 of 8x16 slices. Hence, row_stride = R / 4 = 32 / 4 = 8 a
     int height = 16 - 1; /* taken from SG16 */ \
     long x = (offset - baseoffset) / (sizeof (contrib_type)); /* in elements */ \
     int2 coords = (int2)(x, 0); \
-    /* 2D block read transpose builtin requires K value _after_ the transpose operation is done - which is equal to M before the transpose */ \
-    OUT_VEC##M(u##contrib_type) DEFINE_BLOCK2D_TRANSPOSE_NAME(elem_bitwidth, M)(long, int, int, int, int2, int); \
-    OUT_VEC##M(u##contrib_type) res = DEFINE_BLOCK2D_TRANSPOSE_NAME(elem_bitwidth, M)(baseoffset, width, height, pitch, coords, cacheOpt); \
-    *(__private OUT_VEC##M(u##contrib_type) *)dst = *(__private OUT_VEC##M(u##contrib_type) *)&res; \
-    return; \
+\
+    if (elem_bitwidth == 32) { \
+      OUT_VEC##M(u##contrib_type) DEFINE_BLOCK2D_TRANSPOSE_NAME(contrib_bitwidth, M)(long, int, int, int, int2, int); \
+      OUT_VEC##M(u##contrib_type) res = DEFINE_BLOCK2D_TRANSPOSE_NAME(contrib_bitwidth, M)(baseoffset, width, height, pitch, coords, cacheOpt); \
+      *(__private OUT_VEC##M(u##contrib_type) *)dst = *(__private OUT_VEC##M(u##contrib_type) *)&res; \
+      return; \
+    } \
+ \
+    if (elem_bitwidth == 16 && _##layout == _PackedA_ColumnMajor) { \
+      OUT_VEC##contrib_M(u##contrib_type) DEFINE_BLOCK2D_TRANSPOSE_NAME(contrib_bitwidth, contrib_M)(long, int, int, int, int2, int); \
+      OUT_VEC##contrib_M(u##contrib_type) res = DEFINE_BLOCK2D_TRANSPOSE_NAME(contrib_bitwidth, contrib_M)(baseoffset, width, height, pitch, coords, cacheOpt); \
+      *(__private OUT_VEC##WI_rows(u##element_type) *)dst = *(__private OUT_VEC##WI_rows(u##element_type) *)&res; \
+      return; \
+    } \
+ \
+    if (elem_bitwidth == 16 && _##layout == _PackedB_ColumnMajor) { \
+      OUT_VEC##M(u##contrib_type) DEFINE_BLOCK2D_TRANSPOSE_NAME(contrib_bitwidth, M)(long, int, int, int, int2, int); \
+      OUT_VEC##M(u##contrib_type) res = DEFINE_BLOCK2D_TRANSPOSE_NAME(contrib_bitwidth, M)(baseoffset, width, height, pitch, coords, cacheOpt); \
+      *(__private OUT_VEC##M(u##contrib_type) *)dst = *(__private OUT_VEC##M(u##contrib_type) *)&res; \
+      return; \
+    } \
   }
 
-#define IMPLEMENT_BLOCK2D_LOAD_SG16_VNNI_TX_(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_M, contrib_K) \
+#define IMPLEMENT_BLOCK2D_LOAD_SG16_VNNI_TX_(layout, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M_VNNI, K_VNNI, WI_rows, orig_M, contrib_M, contrib_K) \
   if (contrib_K*sizeof(element_type) <= MAX_ROW_BYTES_2D_BLOCK_LOAD) { /* For 2D loads (block2d width)*(data size) must be <= MAX_ROW_BYTES_2D_BLOCK_LOAD */ \
     long offset = as_long(mem); \
     long baseoffset = offset & (~0x3f); /* align to 64-byte */ \
     int width = (sizeof (element_type)) * stride - 1; /* in bytes */ \
     int pitch = width; /* JointMatrices are expected to be contiguous in memory, without padding at the end of a row */ \
-    int height = contrib_M - 1; /* row count */ \
+    int height = orig_M - 1; /* row count */ \
     long x = (offset - baseoffset) / (sizeof (element_type)); /* in elements */ \
     int2 coords = (int2)(x, 0); \
-    OUT_VEC##M(u##contrib_type) DEFINE_BLOCK2D_VNNI_NAME(elem_bitwidth, contrib_M)(long, int, int, int, int2, int); \
-    OUT_VEC##M(u##contrib_type) res = DEFINE_BLOCK2D_VNNI_NAME(elem_bitwidth, contrib_M)(baseoffset, width, height, pitch, coords, cacheOpt); \
-    *(__private OUT_VEC##M(u##contrib_type) *)dst = res; \
+    OUT_VEC##WI_rows(u##contrib_type) DEFINE_BLOCK2D_VNNI_NAME(elem_bitwidth, orig_M)(long, int, int, int, int2, int); \
+    OUT_VEC##WI_rows(u##contrib_type) res = DEFINE_BLOCK2D_VNNI_NAME(elem_bitwidth, orig_M)(baseoffset, width, height, pitch, coords, cacheOpt); \
+    *(__private OUT_VEC##WI_rows(u##contrib_type) *)dst = res; \
     return; \
   }
 
-#define IMPLEMENT_BLOCK2D_LOAD_CHECKED_SG16_ROW_MAJOR_(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_M, contrib_K) \
+#define IMPLEMENT_BLOCK2D_LOAD_CHECKED_SG16_ROW_MAJOR_(layout, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, orig_M, contrib_M, contrib_K) \
   long offset = as_long(mem); \
   int width_size = sizeof (element_type) * width - 1; /* in bytes */ \
   int pitch = sizeof (element_type) * stride - 1; /* in bytes */ \
@@ -480,7 +509,7 @@ Each subgroup stores 16 of 8x16 slices. Hence, row_stride = R / 4 = 32 / 4 = 8 a
   *(__private OUT_VEC##WI_rows(u##contrib_type) *)dst = res; \
   return;
 
-#define IMPLEMENT_BLOCK2D_LOAD_CHECKED_SG16_COL_MAJOR_(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_M, contrib_K) \
+#define IMPLEMENT_BLOCK2D_LOAD_CHECKED_SG16_COL_MAJOR_(layout, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, orig_M, contrib_M, contrib_K) \
   long offset = as_long(mem); \
   int width_size = sizeof (element_type) * width - 1; /* in bytes */ \
   int pitch = sizeof (element_type) * stride - 1; /* in bytes */ \
@@ -492,25 +521,29 @@ Each subgroup stores 16 of 8x16 slices. Hence, row_stride = R / 4 = 32 / 4 = 8 a
   *(__private OUT_VEC##M(u##contrib_type) *)dst = *(__private OUT_VEC##M(u##contrib_type) *)&res; \
   return;
 
-#define IMPLEMENT_BLOCK2D_LOAD_CHECKED_SG16_VNNI_TX_(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_M, contrib_K) \
+#define IMPLEMENT_BLOCK2D_LOAD_CHECKED_SG16_VNNI_TX_(layout, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M_VNNI, K_VNNI, WI_rows, orig_M, contrib_M, contrib_K) \
   long offset = as_long(mem); \
   int width_size = sizeof (element_type) * width - 1; /* in bytes */ \
   int pitch = sizeof (element_type) * stride - 1; /* in bytes */ \
   int height_size = height - 1; \
   int2 coords = (int2)(x, y); \
-  OUT_VEC##M(u##contrib_type) DEFINE_BLOCK2D_VNNI_NAME(elem_bitwidth, contrib_M)(long, int, int, int, int2, int); \
-  OUT_VEC##M(u##contrib_type) res = DEFINE_BLOCK2D_VNNI_NAME(elem_bitwidth, contrib_M)(offset, width_size, height_size, pitch, coords, cacheOpt); \
+  OUT_VEC##WI_rows(u##contrib_type) DEFINE_BLOCK2D_VNNI_NAME(elem_bitwidth, orig_M)(long, int, int, int, int2, int); \
+  OUT_VEC##WI_rows(u##contrib_type) res = DEFINE_BLOCK2D_VNNI_NAME(elem_bitwidth, orig_M)(offset, width_size, height_size, pitch, coords, cacheOpt); \
   *(__private OUT_VEC##WI_rows(u##contrib_type) *)dst = res; \
   return;
 
-#define IMPLEMENT_BLOCK2D_LOAD__(checked, sg, order, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows) \
-  IMPLEMENT_BLOCK2D_LOAD##checked##sg##order(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, \
-                                    M, K, WI_rows, \
+#define IMPLEMENT_BLOCK2D_LOAD___(layout, checked, sg, order, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, orig_M, contrib_M, contrib_K) \
+  IMPLEMENT_BLOCK2D_LOAD##checked##sg##order(layout, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, \
+                                    M, K, WI_rows, orig_M, contrib_M, contrib_K)
+
+#define IMPLEMENT_BLOCK2D_LOAD__(layout, checked, sg, order, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows) \
+  IMPLEMENT_BLOCK2D_LOAD___(layout, checked, sg, order, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, \
                                     MATH_MUL(M, MATH_DIV(contrib_bitwidth, elem_bitwidth)), \
+                                    MATH_DIV(M, MATH_DIV(contrib_bitwidth, elem_bitwidth)), \
                                     MATH_DIV(K, MATH_DIV(contrib_bitwidth, elem_bitwidth)))
 
-#define IMPLEMENT_BLOCK2D_LOAD(checked, sg, order, element_type, contrib_type, M, K, WI_rows) \
-  IMPLEMENT_BLOCK2D_LOAD__(checked, sg, order, element_type, BITWIDTH(element_type), contrib_type, BITWIDTH(contrib_type), \
+#define IMPLEMENT_BLOCK2D_LOAD(layout, checked, sg, order, element_type, contrib_type, M, K, WI_rows) \
+  IMPLEMENT_BLOCK2D_LOAD__(layout, checked, sg, order, element_type, BITWIDTH(element_type), contrib_type, BITWIDTH(contrib_type), \
                            M, K, WI_rows)
 
 #define IMPLEMENT_BLOCK2D_STORE_SG16(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, WI_rows, contrib_K) \
@@ -557,13 +590,13 @@ Each subgroup stores 16 of 8x16 slices. Hence, row_stride = R / 4 = 32 / 4 = 8 a
 #define DEFINE_LOAD_BLOCK2D_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows) \
     if (BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= BLOCK2D_IMPL \
         && (M == 1 || M == 2 || M == 4 || M == 8 || M == 16 || M == 32) \
-        && (order == _ROW_MAJOR || order == _VNNI_TX || (order == _COL_MAJOR && contrib_bitwidth == 32 && WI_rows == M)) \
+        && (order == _ROW_MAJOR || order == _VNNI_TX || (order == _COL_MAJOR && WI_rows == M)) \
         ) { \
-        IMPLEMENT_BLOCK2D_LOAD(, sg, order##_, element_type, contrib_type, M, K, WI_rows) \
+        IMPLEMENT_BLOCK2D_LOAD(layout, , sg, order##_, element_type, contrib_type, M, K, WI_rows) \
     }
 
 #define DEFINE_LOAD_CHECKED_BLOCK2D_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows) \
-    IMPLEMENT_BLOCK2D_LOAD(_CHECKED, sg, order##_, element_type, contrib_type, M, K, WI_rows)
+    IMPLEMENT_BLOCK2D_LOAD(layout, _CHECKED, sg, order##_, element_type, contrib_type, M, K, WI_rows)
 
 #define DEFINE_LOAD_VECTORS_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows, address_space) \
     if (WI_rows >= M && BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_CONT_IMPL \
@@ -734,6 +767,10 @@ DEFINE_LOAD_AND_CHECKED(PackedA_RowMajor, _SG16, short, short, 2, 16, ROW_MAJOR,
 DEFINE_LOAD_AND_CHECKED(PackedA_RowMajor, _SG16, short, short, 1, 16, ROW_MAJOR, _us, 1)
 
 DEFINE_LOAD_AND_CHECKED(PackedA_RowMajor, _SG16, short, short, 1, 32, ROW_MAJOR, _us, 2)
+
+// This matrix is represented as <8xi16> in LLVM IR, but to be able to read it with 2d block load we have to use i32
+// so, contrib type is `int` here and we read <4xi32> from memory, but then we use it as <8xi16>
+DEFINE_LOAD_AND_CHECKED(PackedA_ColumnMajor, _SG16, short, int, 8, 16, COL_MAJOR, , 8)
 
 /* PackedA load i16 SG16 for sub group size = 32*/
 DEFINE_LOAD(PackedA_RowMajor, _SG16, short, short, 8, 16, ROW_MAJOR, _us, 4)
