@@ -1,14 +1,15 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2024 Intel Corporation
+; Copyright (C) 2021-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -dbgonly-enforce-privmem-stateless=128 -GenXStackUsage -march=genx64 -stack-analysis -mcpu=Gen9 -S %s -disable-output 2> %t.stderr-out
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -dbgonly-enforce-privmem-stateless=128 -GenXStackUsage -march=genx64 -stack-analysis -mcpu=Gen9 -S %s -disable-output 2> %t.stderr-out
-; RUN: FileCheck %s < %t.stderr-out
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -dbgonly-enforce-privmem-stateless=128 -GenXStackUsage -march=genx64 \
+; RUN: -stack-analysis -mcpu=Gen9 -S %s -disable-output 2>&1 | FileCheck %s
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -dbgonly-enforce-privmem-stateless=128 -GenXStackUsage -march=genx64 \
+; RUN: -stack-analysis -mcpu=Gen9 -S %s -disable-output 2>&1 | FileCheck %s
 ; CHECK: 1152
 ; CHECK: 1152
 ; CHECK: 720

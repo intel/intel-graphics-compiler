@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -9,8 +9,8 @@
 ; The only purpose of this test is to test warning when arg indirection can not happen
 ; It is convoluted enough for this purpose
 
-; RUN: %opt %use_old_pass_manager% -GenXModule -GenXLiveRangesWrapper -GenXArgIndirectionWrapper -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s >& %t
-; RUN: FileCheck %s < %t
+; RUN: %opt %use_old_pass_manager% -GenXModule -GenXLiveRangesWrapper -GenXArgIndirectionWrapper -march=genx64 -mcpu=Gen9 \
+; RUN: -mtriple=spir64-unknown-unknown -S %s 2>&1 | FileCheck %s
 
 ; CHECK: warning: GenXArgIndirection failed for: < Argument 1 in foo>: Use of argument cannot be indirected
 

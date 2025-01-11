@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2021 Intel Corporation
+Copyright (C) 2019-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -15,7 +15,7 @@ extern "C" void LLVMInitializeGenXTargetMC();
 extern "C" void LLVMInitializeGenXPasses();
 
 namespace llvm {
-void initializeGenX() {
+static inline void initializeGenX() {
   LLVMInitializeGenXTargetInfo();
   LLVMInitializeGenXTarget();
   LLVMInitializeGenXTargetMC();

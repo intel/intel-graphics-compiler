@@ -444,6 +444,9 @@ if(IGC_BUILD_LLVM_INTERIM AND IGC_BUILD__VC_ENABLED)
   include("${IGC_SOURCE_DIR}/../external/vc-intrinsics/CMakeLists.txt")
 endif()
 
+if(NOT IGC_BUILD__VC_ENABLED OR NOT DEFINED IGC_BUILD__VC_ENABLED)
+  set(IGC_BUILD__CMLIT_ENABLE OFF)
+endif()
 # ======================================== Path helper variables =======================================
 
 set(IGC_BUILD__IGC_SRC_DIR          "${IGC_SOURCE_DIR}")
