@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -166,12 +166,11 @@ inline raw_ostream &operator<<(raw_ostream &OS, const RdWrRegionSequence &RWS) {
 
 Value *simplifyRegionInst(Instruction *Inst, const DataLayout *DL = nullptr,
                           const GenXSubtarget *ST = nullptr,
-                          const DominatorTree *DT = nullptr,
-                          const Loop *L = nullptr);
+                          const DominatorTree *DT = nullptr);
 bool simplifyRegionInsts(Function *F, const DataLayout *DL = nullptr,
                          const GenXSubtarget *ST = nullptr,
                          const DominatorTree *DT = nullptr,
-                         const LoopInfo *LI = nullptr);
+                         DenseSet<Instruction *> *NeedLoadConstants = nullptr);
 
 bool IsLinearVectorConstantInts(Value *v, int64_t &start, int64_t &stride);
 

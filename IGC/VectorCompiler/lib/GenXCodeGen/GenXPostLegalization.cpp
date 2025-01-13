@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -60,7 +60,7 @@ namespace {
 class GenXPostLegalization : public FunctionPass {
   const DataLayout *DL = nullptr;
   const GenXSubtarget *ST = nullptr;
-  const LoopInfo *LI = nullptr;
+  const DominatorTree *DT = nullptr;
 public:
   static char ID;
   explicit GenXPostLegalization() : FunctionPass(ID) { }
@@ -78,7 +78,7 @@ char GenXPostLegalization::ID = 0;
 namespace llvm { void initializeGenXPostLegalizationPass(PassRegistry &); }
 INITIALIZE_PASS_BEGIN(GenXPostLegalization, "GenXPostLegalization",
                       "GenXPostLegalization", false, false)
-INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass);
+INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass);
 INITIALIZE_PASS_END(GenXPostLegalization, "GenXPostLegalization",
                     "GenXPostLegalization", false, false)
 
@@ -89,8 +89,8 @@ FunctionPass *llvm::createGenXPostLegalizationPass() {
 
 void GenXPostLegalization::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<TargetPassConfig>();
-  AU.addRequired<LoopInfoWrapperPass>();
-  AU.addPreserved<LoopInfoWrapperPass>();
+  AU.addRequired<DominatorTreeWrapperPass>();
+  AU.addPreserved<DominatorTreeWrapperPass>();
   AU.setPreservesCFG();
 }
 
@@ -103,7 +103,7 @@ bool GenXPostLegalization::runOnFunction(Function &F)
   ST = &getAnalysis<TargetPassConfig>()
             .getTM<GenXTargetMachine>()
             .getGenXSubtarget();
-  LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+  DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 
   VectorDecomposer VD(ST);
 
@@ -145,18 +145,19 @@ bool GenXPostLegalization::runOnFunction(Function &F)
   // Run the vector decomposer for this function.
   Modified |= VD.run(*DL);
   // Cleanup region reads and writes.
-  Modified |= simplifyRegionInsts(&F, DL, ST, nullptr, LI);
+  DenseSet<Instruction *> NeedLoadConstants;
+  Modified |= simplifyRegionInsts(&F, DL, ST, DT, &NeedLoadConstants);
   // Cleanup constant loads.
   std::vector<CallInst *> ConstList;
   Modified |= cleanupConstantLoads(&F, ConstList);
   // Replace shifted constants to add-instruction.
   Modified |= checkAddPattern(&F, ConstList, ST);
-  // Legalize constants in return.
+  // Legalize constants in return and where it's necessary (e.g. loops)
   for (auto FI = F.begin(), FE = F.end(); FI != FE; ++FI) {
     BasicBlock *BB = &*FI;
     for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI) {
       Instruction *Inst = &*BI;
-      if (isa<ReturnInst>(Inst)) {
+      if (isa<ReturnInst>(Inst) || NeedLoadConstants.contains(Inst)) {
         Modified |= loadNonSimpleConstants(Inst, *ST, *DL, nullptr);
         Modified |= loadConstants(Inst, *ST, *DL);
       }

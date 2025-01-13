@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1132,7 +1132,7 @@ static Value *simplifyRegionRead(Instruction *Inst, const DataLayout *DL) {
 // Simplify a region read or write.
 Value *llvm::genx::simplifyRegionInst(Instruction *Inst, const DataLayout *DL,
                                       const GenXSubtarget *ST,
-                                      const DominatorTree *DT, const Loop *L) {
+                                      const DominatorTree *DT) {
   if (Inst->use_empty())
     return nullptr;
 
@@ -1161,11 +1161,7 @@ Value *llvm::genx::simplifyRegionInst(Instruction *Inst, const DataLayout *DL,
   }
 
   if (Constant *C = ConstantFoldGenX(Inst, *DL))
-    // The instruction can be folded to a constant, so other simplifications are
-    // not relevant. If the instruction is inside a loop it shouldn't be
-    // substituted with a constant here so it could be moved out from the loop
-    // later.
-    return L ? nullptr : C;
+    return C;
 
   if (auto *BCI = dyn_cast<BitCastInst>(Inst); BCI && DL && ST) {
     NewVal = simplifyBitCastFromRegionRead(BCI, *DL, *ST);
@@ -1196,26 +1192,42 @@ Value *llvm::genx::simplifyRegionInst(Instruction *Inst, const DataLayout *DL,
   return NewVal;
 }
 
-bool llvm::genx::simplifyRegionInsts(Function *F, const DataLayout *DL,
-                                     const GenXSubtarget *ST,
-                                     const DominatorTree *DT,
-                                     const LoopInfo *LI) {
+bool llvm::genx::simplifyRegionInsts(
+    Function *F, const DataLayout *DL, const GenXSubtarget *ST,
+    const DominatorTree *DT, DenseSet<Instruction *> *NeedLoadConstants) {
+  LoopInfo *LI = DT ? new LoopInfo(*DT) : nullptr;
   bool Changed = false;
   for (auto &BB : *F) {
-    auto *L = LI->getLoopFor(&BB);
+    bool IsInLoop = LI && LI->getLoopFor(&BB);
     for (auto I = BB.begin(); I != BB.end();) {
       Instruction *Inst = &*I++;
-      if (auto V = simplifyRegionInst(Inst, DL, ST, DT, L)) {
+      if (auto* V = simplifyRegionInst(Inst, DL, ST, DT)) {
         if (isa<Instruction>(V) &&
             !genx::isSafeToReplace_CheckAVLoadKillOrForbiddenUser(
                 Inst, cast<Instruction>(V), DT))
           continue;
+        if (NeedLoadConstants && isa<Constant>(V) && IsInLoop) {
+          // The instruction can be substituted with a constant.
+          // However, if the instruction is inside a loop, only usages in PHI
+          // nodes are safe to substitute. Unfortunately due to logic inside
+          // simplifyRegionInst() we have to substitute them all. All constants
+          // of non-PHI users must be re-loaded in order to be moved outside the
+          // loops later.
+          for (auto *U : Inst->users()) {
+            auto *UserInst = dyn_cast<Instruction>(U);
+            if (UserInst && !isa<PHINode>(UserInst))
+              NeedLoadConstants->insert(UserInst);
+          }
+        }
         Inst->replaceAllUsesWith(V);
         Inst->eraseFromParent();
+        if (NeedLoadConstants)
+          NeedLoadConstants->erase(Inst);
         Changed = true;
       }
     }
   }
+  delete LI;
   return Changed;
 }
 
