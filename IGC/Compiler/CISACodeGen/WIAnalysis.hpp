@@ -133,7 +133,8 @@ namespace IGC
         void releaseMemory()
         {
             m_ctrlBranches.clear();
-            m_pChangedNew.clear();
+            m_changed1.clear();
+            m_changed2.clear();
             m_allocaDepMap.clear();
             m_storeDepMap.clear();
             m_depMap.clear();
@@ -231,7 +232,7 @@ namespace IGC
         bool isInstructionSimple(const llvm::Instruction* inst);
 
         /// @brief return true if all the source operands are defined outside the region
-        bool isRegionInvariant(const llvm::Instruction* inst, BranchInfo* brInfo);
+        bool isRegionInvariant(const llvm::Instruction* inst, BranchInfo* brInfo, unsigned level);
 
         /// @brief return true if instruction is used as lane ID in subgroup broadcast
         bool isUsedByWaveBroadcastAsLocalID(const llvm::Instruction* inst);
@@ -260,8 +261,13 @@ namespace IGC
         /// for each block, store the list of diverging branches that affect it
         llvm::DenseMap<const llvm::BasicBlock*, llvm::SmallPtrSet<const llvm::Instruction*, 4>> m_ctrlBranches;
 
-        /// Holds the changed values from the previous iteration
-        std::vector<const llvm::Value*> m_pChangedNew;
+        /// Iteratively one set holds the changed from the previous iteration and
+        /// the other holds the new changed values from the current iteration.
+        std::vector<const llvm::Value*> m_changed1{};
+        std::vector<const llvm::Value*> m_changed2{};
+        /// ptr to m_changed1, m_changed2
+        std::vector<const llvm::Value*>* m_pChangedOld = nullptr;
+        std::vector<const llvm::Value*>* m_pChangedNew = nullptr;
 
         /// <summary>
         ///  hold the vector-defs that are promoted from an uniform alloca

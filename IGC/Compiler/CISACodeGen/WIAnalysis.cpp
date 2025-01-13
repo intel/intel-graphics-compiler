@@ -16,7 +16,6 @@ SPDX-License-Identifier: MIT
 #include "common/igc_regkeys.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/ADT/SmallVector.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/CFG.h>
 #include <llvm/Support/CommandLine.h>
@@ -26,7 +25,6 @@ SPDX-License-Identifier: MIT
 
 #include <string>
 #include <sstream>
-#include <cstdint>
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -311,7 +309,10 @@ bool WIAnalysisRunner::run()
     m_depMap.Initialize(m_TT);
     m_TT->RegisterListener(&m_depMap);
 
-    m_pChangedNew.clear();
+    m_changed1.clear();
+    m_changed2.clear();
+    m_pChangedNew = &m_changed1;
+    m_pChangedOld = &m_changed2;
     m_ctrlBranches.clear();
 
     m_storeDepMap.clear();
@@ -325,10 +326,13 @@ bool WIAnalysisRunner::run()
         // Compute the  first iteration of the WI-dep according to ordering
         // instructions this ordering is generally good (as it ususally correlates
         // well with dominance).
-        for (auto& inst: llvm::instructions(F))
+        inst_iterator it = inst_begin(F);
+        inst_iterator  e = inst_end(F);
+        for (; it != e; ++it)
         {
-            calculate_dep(&inst);
+            calculate_dep(&*it);
         }
+
         // Recursively check if WI-dep changes and if so reclaculates
         // the WI-dep and marks the users for re-checking.
         // This procedure is guranteed to converge since WI-dep can only
@@ -348,13 +352,13 @@ bool WIAnalysisRunner::run()
                 const Value* use = (*UI);
                 if (!visited.count(use) && use->getType() == V->getType())
                 {
-                    if (auto* INS = dyn_cast<InsertElementInst>(use))
+                    if (auto INS = dyn_cast<InsertElementInst>(use))
                     {
                         if (!isUniform(use))
                             m_depMap.SetAttribute(INS, WIAnalysis::UNIFORM_THREAD);
                         m_forcedUniforms.push_back(use);
                     }
-                    else if (auto* PHI = dyn_cast<PHINode>(use))
+                    else if (auto PHI = dyn_cast<PHINode>(use))
                     {
                         if (!isUniform(use))
                             m_depMap.SetAttribute(PHI, WIAnalysis::UNIFORM_THREAD);
@@ -396,22 +400,23 @@ bool WIAnalysis::runOnFunction(Function& F)
 
 void WIAnalysisRunner::updateDeps()
 {
-    std::vector<const llvm::Value*> m_pChangedOld;
     // As lonst as we have values to update
-    while (!m_pChangedNew.empty())
+    while (!m_pChangedNew->empty())
     {
         // swap between changedSet pointers - recheck the newChanged(now old)
         std::swap(m_pChangedNew, m_pChangedOld);
         // clear the newChanged set so it will be filled with the users of
-        // instruction which their WI-dep changed during the current iteration
-        m_pChangedNew.clear();
+        // instruction which their WI-dep canged during the current iteration
+        m_pChangedNew->clear();
 
         // update all changed values
-        for (const auto* val: m_pChangedOld)
+        std::vector<const Value*>::iterator it = m_pChangedOld->begin();
+        std::vector<const Value*>::iterator e = m_pChangedOld->end();
+        for (; it != e; ++it)
         {
             // remove first instruction
             // calculate its new dependencey value
-            calculate_dep(val);
+            calculate_dep(*it);
         }
     }
 }
@@ -432,7 +437,7 @@ bool WIAnalysisRunner::isInstructionSimple(const Instruction* inst)
     {
         return true;
     }
-    if (IsMathIntrinsic(GetOpCode(inst)))
+    if (IsMathIntrinsic(GetOpCode((Instruction*)inst)))
     {
         return true;
     }
@@ -602,7 +607,7 @@ bool WIAnalysis::insideWorkgroupDivergentCF(const Value* val) const
 
 WIAnalysis::WIDependancy WIAnalysisRunner::whichDepend(const Value* val) const
 {
-    IGC_ASSERT_MESSAGE(m_pChangedNew.empty(), "set should be empty before query");
+    IGC_ASSERT_MESSAGE(m_pChangedNew->empty(), "set should be empty before query");
     IGC_ASSERT_MESSAGE(nullptr != val, "Bad value");
     if (isa<Constant>(val))
     {
@@ -724,7 +729,7 @@ void WIAnalysisRunner::calculate_dep(const Value* val)
     // is not uniform ?
     IGC_ASSERT_MESSAGE(isa<Instruction>(val), "Could we reach here with non instruction value?");
 
-    const auto* const inst = dyn_cast<Instruction>(val);
+    const Instruction* const inst = dyn_cast<Instruction>(val);
     IGC_ASSERT_MESSAGE(nullptr != inst, "This Value is not an Instruction");
     if (inst)
     {
@@ -789,7 +794,7 @@ void WIAnalysisRunner::calculate_dep(const Value* val)
             // This code could be extended further depending on requirements.
             if (inst->getOpcode() == Instruction::AShr)
             {
-                auto* op0 = dyn_cast<BinaryOperator>(inst->getOperand(0));
+                BinaryOperator* op0 = dyn_cast<BinaryOperator>(inst->getOperand(0));
                 if (op0 && op0->getOpcode() == Instruction::Add &&
                     !hasDependency(op0->getOperand(1)))
                 {
@@ -880,53 +885,40 @@ void WIAnalysisRunner::calculate_dep(const Value* val)
             // divergent branch, trigger updates due to control-dependence
             if (inst->isTerminator() && dep != WIAnalysis::UNIFORM_GLOBAL)
             {
-                update_cf_dep(cast<IGCLLVM::TerminatorInst>(inst));
+                update_cf_dep(dyn_cast<IGCLLVM::TerminatorInst>(inst));
             }
         }
     }
 }
 
-bool WIAnalysisRunner::isRegionInvariant(const llvm::Instruction* defi, BranchInfo* brInfo)
+bool WIAnalysisRunner::isRegionInvariant(const llvm::Instruction* defi, BranchInfo* brInfo, unsigned level)
 {
-    constexpr uint8_t MAX_DEPTH = 4;
-    struct RegionOperand{
-        const llvm::Instruction* inst;
-        uint8_t operandNum;
-    };
-
-    llvm::SmallVector<RegionOperand, MAX_DEPTH> operands;
-    operands.push_back({defi, 0});
-
-    while (!operands.empty())
+    if (level >= 4)
     {
-        auto& rop = operands.back();
-        if (isa<PHINode>(rop.inst))
+        return false;
+    }
+    if (isa<PHINode>(defi))
+    {
+        return false;
+    }
+    const unsigned nOps = defi->getNumOperands();
+    for (unsigned i = 0; i < nOps; ++i)
+    {
+        Value* op = defi->getOperand(i);
+        Instruction* srci = dyn_cast<Instruction>(op);
+        if (srci)
         {
-            return false;
-        }
-
-        if (rop.inst->getNumOperands() < rop.operandNum) {
-            Value* op = rop.inst->getOperand(rop.operandNum);
-            rop.operandNum++;
-            auto* srci = dyn_cast<Instruction>(op);
-            if (srci)
+            if (!brInfo->influence_region.count(srci->getParent()))
             {
-                if (!brInfo->influence_region.count(srci->getParent()))
-                {
-                    // go on to check the next operand
-                    continue;
-                }
-                if (operands.size() + 1 >= MAX_DEPTH)
-                {
-                    return false;
-                }
-                operands.push_back({srci, 0});
+                // go on to check the next operand
+                continue;
             }
-        } else {
-            operands.pop_back();
+            else if (!isRegionInvariant(srci, brInfo, level + 1))
+            {
+                return false;
+            }
         }
     }
-
     return true;
 }
 
@@ -947,7 +939,7 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst* inst)
     IGC_ASSERT(hasDependency(inst));
     WIBaseClass::WIDependancy instDep = getDependency(inst);
 
-    auto* blk = (BasicBlock*)(inst->getParent());
+    BasicBlock* blk = (BasicBlock*)(inst->getParent());
     BasicBlock* ipd = PDT->getNode(blk)->getIDom()->getBlock();
     // a branch can have NULL immediate post-dominator when a function
     // has multiple exits in llvm-ir
@@ -985,13 +977,13 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst* inst)
             IGC_ASSERT(!DT->isReachableFromEntry(PJ));
             continue;
         }
-        auto* PJDom = PJNode->getIDom()->getBlock();
+        auto PJDom = PJNode->getIDom()->getBlock();
 
         // If both partial-join and it IDom are in partial-join region
         // there are cases in which phi-nodes in partial-joins are not
         // relevant to the cbr under the investigation
-        auto* LoopA = LI->getLoopFor(PJDom);
-        auto* LoopB = LI->getLoopFor(PJ);
+        auto LoopA = LI->getLoopFor(PJDom);
+        auto LoopB = LI->getLoopFor(PJ);
         if (br_info.partial_joins.count(PJDom))
         {
             // both PJ and its IDom are outside the CBR loop
@@ -1038,7 +1030,7 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst* inst)
                 // because it might need to be RANDOM.
                 auto it = m_storeDepMap.find(st);
                 if (it != m_storeDepMap.end())
-                    m_pChangedNew.push_back(it->second);
+                    m_pChangedNew->push_back(it->second);
             }
 
             // This is an optimization that tries to detect instruction
@@ -1046,7 +1038,7 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst* inst)
             // all the sources are outside the region.
             // However this is only as good as we can get because we
             // only search limited depth
-            if (isRegionInvariant(defi, &br_info))
+            if (isRegionInvariant(defi, &br_info, 0))
             {
                 continue;
             }
@@ -1061,10 +1053,10 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst* inst)
             Value::use_iterator use_e = defi->use_end();
             for (; use_it != use_e; ++use_it)
             {
-                auto* user = dyn_cast<Instruction>((*use_it).getUser());
+                Instruction* user = dyn_cast<Instruction>((*use_it).getUser());
                 IGC_ASSERT(user);
                 BasicBlock* user_blk = user->getParent();
-                auto* phi = dyn_cast<PHINode>(user);
+                PHINode* phi = dyn_cast<PHINode>(user);
                 if (phi)
                 {
                     // another place we assume all critical edges have been
@@ -1076,8 +1068,8 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst* inst)
                     // local def-use, not related to control-dependence
                     continue; // skip
                 }
-                auto* DefLoop = LI->getLoopFor(def_blk);
-                auto* UseLoop = LI->getLoopFor(user_blk);
+                auto DefLoop = LI->getLoopFor(def_blk);
+                auto UseLoop = LI->getLoopFor(user_blk);
                 if (user_blk == br_info.full_join ||
                     !br_info.influence_region.count(user_blk) ||
                     (br_info.partial_joins.count(user_blk) &&
@@ -1106,7 +1098,7 @@ void WIAnalysisRunner::updatePHIDepAtJoin(BasicBlock* blk, BranchInfo* brInfo)
     for (BasicBlock::iterator I = blk->begin(), E = blk->end(); I != E; ++I)
     {
         Instruction* defi = &(*I);
-        auto* phi = dyn_cast<PHINode>(defi);
+        PHINode* phi = dyn_cast<PHINode>(defi);
         if (!phi)
         {
             break;
@@ -1120,7 +1112,7 @@ void WIAnalysisRunner::updatePHIDepAtJoin(BasicBlock* blk, BranchInfo* brInfo)
         for (unsigned predIdx = 0; predIdx < phi->getNumOperands(); ++predIdx)
         {
             Value* srcVal = phi->getOperand(predIdx);
-            auto* defi = dyn_cast<Instruction>(srcVal);
+            Instruction* defi = dyn_cast<Instruction>(srcVal);
             if (defi && brInfo->influence_region.count(defi->getParent()))
             {
                 updateDepMap(phi, brDep);
@@ -1160,25 +1152,25 @@ void WIAnalysisRunner::updateDepMap(const Instruction* inst, WIAnalysis::WIDepen
     Value::const_user_iterator e = inst->user_end();
     for (; it != e; ++it)
     {
-        m_pChangedNew.push_back(*it);
+        m_pChangedNew->push_back(*it);
     }
-    if (const auto * st = dyn_cast<StoreInst>(inst))
+    if (const StoreInst * st = dyn_cast<StoreInst>(inst))
     {
         auto it = m_storeDepMap.find(st);
         if (it != m_storeDepMap.end())
         {
-            m_pChangedNew.push_back(it->second);
+            m_pChangedNew->push_back(it->second);
         }
     }
 
     if (dep == WIAnalysis::RANDOM)
     {
-        EOPCODE eopcode = GetOpCode(inst);
+        EOPCODE eopcode = GetOpCode((Instruction*)inst);
         if (eopcode == llvm_insert)
         {
             updateInsertElements((const InsertElementInst*)inst);
         }
-        else if (const auto* IVI = dyn_cast<const InsertValueInst>(inst))
+        else if (const InsertValueInst* IVI = dyn_cast<const InsertValueInst>(inst))
         {
             updateInsertValues(IVI);
         }
@@ -1189,8 +1181,8 @@ void WIAnalysisRunner::updateDepMap(const Instruction* inst, WIAnalysis::WIDepen
 void WIAnalysisRunner::updateInsertElements(const InsertElementInst* inst)
 {
     /// find the first one in the sequence
-    auto* curInst = (InsertElementInst*)inst;
-    auto* srcInst = dyn_cast<InsertElementInst>(curInst->getOperand(0));
+    InsertElementInst* curInst = (InsertElementInst*)inst;
+    InsertElementInst* srcInst = dyn_cast<InsertElementInst>(curInst->getOperand(0));
     while (srcInst)
     {
         if (hasDependency(srcInst) && getDependency(srcInst) == WIAnalysis::RANDOM)
@@ -1205,7 +1197,7 @@ void WIAnalysisRunner::updateInsertElements(const InsertElementInst* inst)
         Value::user_iterator e = curInst->user_end();
         for (; it != e; ++it)
         {
-            m_pChangedNew.push_back(*it);
+            m_pChangedNew->push_back(*it);
         }
     }
 }
@@ -1223,7 +1215,7 @@ void WIAnalysisRunner::updateInsertValues(const InsertValueInst* Inst)
 {
     /// find the first one in the sequence
     const InsertValueInst* pI = Inst;
-    const auto* aI = dyn_cast<const InsertValueInst>(pI->getOperand(0));
+    const InsertValueInst* aI = dyn_cast<const InsertValueInst>(pI->getOperand(0));
     while (aI && aI->hasOneUse())
     {
         if (hasDependency(aI) && getDependency(aI) == WIAnalysis::RANDOM)
@@ -1238,7 +1230,7 @@ void WIAnalysisRunner::updateInsertValues(const InsertValueInst* Inst)
         auto e = pI->user_end();
         for (; it != e; ++it)
         {
-            m_pChangedNew.push_back(*it);
+            m_pChangedNew->push_back(*it);
         }
     }
 }
@@ -1394,7 +1386,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         GII_id = GII->getIntrinsicID();
     }
 
-    const auto* llvmintrin = dyn_cast<llvm::IntrinsicInst>(inst);
+    const llvm::IntrinsicInst* llvmintrin = dyn_cast<llvm::IntrinsicInst>(inst);
     if (llvmintrin != nullptr &&
         (llvmintrin->getIntrinsicID() == llvm::Intrinsic::stacksave ||
          llvmintrin->getIntrinsicID() == llvm::Intrinsic::stackrestore)) {
