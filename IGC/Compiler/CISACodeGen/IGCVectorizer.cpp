@@ -337,15 +337,15 @@ bool IGCVectorizer::handleBinaryInstruction(VecArr &Slice) {
             return true;
         }
     }
-    VecArr Operands;
+    VecVal Operands;
     for (unsigned int OperNum = 0; OperNum < First->getNumOperands(); ++OperNum) {
         Value* Vectorized = checkOperandsToBeVectorized(First, OperNum, Slice);
         if (Vectorized)
-            Operands.push_back(llvm::cast<Instruction>(Vectorized));
+            Operands.push_back(Vectorized);
         else {
             Value* VectorizedOperand = vectorizeSlice(Slice, OperNum);
             if (!VectorizedOperand) { PRINT_LOG_NL("Couldn't vectorize Slice"); return false; }
-            Operands.push_back(llvm::cast<Instruction>(VectorizedOperand));
+            Operands.push_back(VectorizedOperand);
         }
     }
 
