@@ -775,6 +775,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// This is a standard LLVM pass to hoist/sink the loop invariant code after
   /// legalization.
   vc::addPass(PM, createLICMPass());
+  vc::addPass(PM, createEarlyCSEPass());
   /// DeadCodeElimination
   /// -------------------
   /// This is a standard LLVM pass, run at this point in the GenX backend. It
@@ -1135,6 +1136,8 @@ void GenXTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
           createFunctionToLoopPassAdaptor(LICMPass(100, 250, false),
                                           /*UseMemorySSA=*/true,
                                           /*UseBlockFrequencyInfo=*/true)));
+      PM.addPass(createModuleToFunctionPassAdaptor(EarlyCSEPass(true)));
+
       PM.addPass(createModuleToFunctionPassAdaptor(InstCombinePass()));
 
       if (!BC->disableIndvarsOpt()) {
