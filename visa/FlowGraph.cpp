@@ -1316,6 +1316,15 @@ void FlowGraph::handleReturn(Label_BB_Map &labelMap,
         retAddr->removePredEdge(bb);
       }
     }
+
+    if (bb->isLastInstEOT() && !bb->back()->isReturn()) {
+      G4_BB *succ = bb->getPhysicalSucc();
+      if (succ && succ->Preds.empty() &&
+           succ->getBBType() != G4_BB_INIT_TYPE) {
+        succ->Preds.push_back(bb);
+        bb->Succs.push_back(succ);
+      }
+    }
   }
 }
 
