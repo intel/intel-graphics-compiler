@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvmWrapper/Transforms/Utils/LoopUtils.h>
 #include <llvm/Analysis/ScalarEvolutionAliasAnalysis.h>
+#include <llvm/Analysis/ScalarEvolution.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/InstrTypes.h>
 #include <optional>
