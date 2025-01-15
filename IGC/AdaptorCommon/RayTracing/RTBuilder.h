@@ -458,6 +458,7 @@ public:
 
     ConstantInt* supportStochasticLod();
 
+    ConstantInt* isRayQueryReturnOptimizationEnabled();
 
 
     GenIntrinsicInst* createDummyInstID(Value* pSrcVal);

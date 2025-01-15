@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include "FlowGraph.h"
 #include "Passes/AccSubstitution.hpp"
 #include "PointsToAnalysis.h"
+#include "Passes/SRSubstitution.hpp"
 #include "Passes/InstCombine.hpp"
 #include "Passes/LVN.hpp"
 #include "Passes/MergeScalars.hpp"
@@ -707,6 +708,7 @@ void Optimizer::initOptimizations() {
   OPT_INITIALIZE_PASS(changeMoveType, vISA_ChangeMoveType, TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(accSubBeforeRA, vISA_accSubBeforeRA, TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(accSubPostSchedule, vISA_accSubstitution, TimerID::OPTIMIZER);
+  OPT_INITIALIZE_PASS(s0SubAfterRA, vISA_EnableAlways, TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(removePseudoMov, vISA_EnableAlways,
                   TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(dce, vISA_EnableDCE, TimerID::OPTIMIZER);
@@ -821,6 +823,17 @@ void Optimizer::accSubPostSchedule() {
   accSub.run();
 }
 
+void Optimizer::s0SubAfterRA() {
+  if (!builder.enableSendIndirect()) {
+    return;
+  }
+
+  kernel.fg.resetLocalDataFlowData();
+  kernel.fg.localDataFlowAnalysis();
+
+  SRSubPassBeforeRA s0Sub(builder, kernel);
+  s0Sub.run();
+}
 
 void Optimizer::accSubBeforeRA() {
   if (!builder.doAccSub() || !builder.getOption(vISA_doAccSubAfterSchedule)) {
@@ -992,6 +1005,7 @@ int Optimizer::optimization() {
   runPass(PI_legalizeType);
 
   runPass(PI_changeMoveType);
+  runPass(PI_s0SubAfterRA);
 
   // No pass after this should expect def-use to be preserved as this pass
   // removes raw movs with identical src/dst physical GRFs.

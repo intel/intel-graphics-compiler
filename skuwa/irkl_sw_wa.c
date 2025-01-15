@@ -29,11 +29,3 @@ void InitRklSwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT
 
 
 }
-
-#ifdef __KCH
-void InitRklHASWaTable(PHW_DEVICE_EXTENSION pKchContext, PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
-{
-
-
-}
-#endif

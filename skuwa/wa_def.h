@@ -152,6 +152,7 @@ typedef struct _WaInitParam
     unsigned short  usRenderRevID;
     unsigned short  usMediaRevID;
     unsigned short  usDeviceID;
+    unsigned short  usWaIpShift;
 } WA_INIT_PARAM, *PWA_INIT_PARAM;
 
 
@@ -379,6 +380,14 @@ void InitGt_20_01HwWaTable(
        PSKU_FEATURE_TABLE              pSkuTable,
        PWA_INIT_PARAM                  pWaParam);
 void InitGt_20_04HwWaTable(
+       PWA_TABLE                       pWaTable,
+       PSKU_FEATURE_TABLE              pSkuTable,
+       PWA_INIT_PARAM                  pWaParam);
+void InitGt_30_00HwWaTable(
+       PWA_TABLE                       pWaTable,
+       PSKU_FEATURE_TABLE              pSkuTable,
+       PWA_INIT_PARAM                  pWaParam);
+void InitGt_30_01HwWaTable(
        PWA_TABLE                       pWaTable,
        PSKU_FEATURE_TABLE              pSkuTable,
        PWA_INIT_PARAM                  pWaParam);

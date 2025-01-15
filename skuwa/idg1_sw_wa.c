@@ -29,11 +29,3 @@ void InitDg1SwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT
 
 
 }
-
-#ifdef __KCH
-void InitDg1HASWaTable(PHW_DEVICE_EXTENSION pKchContext, PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
-{
-
-
-}
-#endif

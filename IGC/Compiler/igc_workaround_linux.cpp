@@ -205,6 +205,23 @@ namespace IGC
                 }
                 break;
             }
+            case IGFX_XE3_CORE:
+            {
+                stWaInitParam.usWaIpShift = WA_BIT_GT;
+                switch (GFX_GET_GMD_RELEASE_VERSION_RENDER(platform->getPlatformInfo()))
+                {
+                case GFX_GMD_ARCH_30_RELEASE_XE3_LPG_3000:
+                    InitGt_30_00HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+                    break;
+                case GFX_GMD_ARCH_30_RELEASE_XE3_LPG_3001:
+                    InitGt_30_01HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+                    break;
+                default:
+                    IGC_ASSERT_MESSAGE(0, "unknown IP");
+                    break;
+                }
+                break;
+            }
             default:
                 // SKUs with no GT IP. So do nothing.
                 break;

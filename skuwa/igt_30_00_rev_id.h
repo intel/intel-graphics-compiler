@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2023-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -10,13 +10,8 @@ SPDX-License-Identifier: MIT
 // If changes are needed here please reach out to the codeowners, thanks.
 
 
-#include "igt_12_70_rev_id.h"
+#include "wa_def.h"
 
+#define GT_30_00_REV_ID_A0   SI_REV_ID(0,0)
 
-void InitGt_12_70SwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
-{
-    int iGt_12_70_StepID = (int)pWaParam->usRenderRevID;
-    iGt_12_70_StepID = iGt_12_70_StepID;
-
-
-}
+#define GT_30_00_REV_ID_B0   SI_REV_ID(4,4)

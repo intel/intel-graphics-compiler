@@ -203,6 +203,8 @@ set(GenX_Common_Sources_G4_IRBuilder
 set(GenX_Common_Sources_G4_Passes
   Passes/AccSubstitution.cpp
   Passes/AccSubstitution.hpp
+  Passes/SRSubstitution.cpp
+  Passes/SRSubstitution.hpp
   Passes/InstCombine.cpp
   Passes/InstCombine.hpp
   Passes/LVN.cpp

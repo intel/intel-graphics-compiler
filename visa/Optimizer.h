@@ -192,6 +192,7 @@ class Optimizer {
 
   void HWDebug();
 
+  void s0SubAfterRA();
 
   // return true if BuiltInR0 gets a different allocation than r0
   bool R0CopyNeeded();
@@ -386,6 +387,7 @@ public:
     PI_changeMoveType,
     PI_accSubBeforeRA,
     PI_accSubPostSchedule,
+    PI_s0SubAfterRA,
     PI_removePseudoMov,
     PI_dce,
     PI_reassociateConst,

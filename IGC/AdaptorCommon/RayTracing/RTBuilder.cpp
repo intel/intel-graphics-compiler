@@ -1854,6 +1854,10 @@ ConstantInt* RTBuilder::supportStochasticLod()
     return getInt1(Ctx.platform.supportStochasticLod());
 }
 
+ConstantInt* RTBuilder::isRayQueryReturnOptimizationEnabled()
+{
+    return getInt1(Ctx.platform.isRayQueryReturnOptimizationEnabled());
+}
 
 
 GenIntrinsicInst* RTBuilder::createDummyInstID(Value* pSrcVal)

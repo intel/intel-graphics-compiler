@@ -4429,6 +4429,9 @@ namespace IGC
             // API check.
             bool enableForRetey = m_program->m_DriverInfo->enableVISAPreRASchedulerForRetry() ||
                 context->m_retryManager.AllowVISAPreRAScheduler();
+            // PreRA scheduler runs always when VRT is enabled
+            enableForRetey |= m_program->m_Platform->supportsVRT() && m_program->m_DriverInfo->supportsVRT() &&
+                (context->getModuleMetaData()->compOpt.EnableVRT || IGC_IS_FLAG_ENABLED(EnableVRT));
 
             if (IGC_IS_FLAG_ENABLED(EnableVISAPreSched) &&
                 m_program->m_DriverInfo->enableVISAPreRAScheduler() &&
@@ -4814,6 +4817,10 @@ namespace IGC
         {
             SaveOption(vISA_TotalGRFNum, NumGRFSetting);
         }
+        else if (m_program->getNumGRFPerThread() > 0)
+        {
+            SaveOption(vISA_TotalGRFNum, m_program->getNumGRFPerThread());
+        }
 
         if (context->getModuleMetaData()->compOpt.WaEnableALTModeVisaWA)
         {
@@ -4897,6 +4904,7 @@ namespace IGC
             } else if (m_program->m_Platform->supportsAutoGRFSelection() &&
                        context->m_DriverInfo.supportsAutoGRFSelection() &&
                        IGC_IS_FLAG_ENABLED(ForceSupportsAutoGRFSelection)
+                || m_program->m_Platform->supportsVRT() && m_program->m_DriverInfo->supportsVRT() && IGC_IS_FLAG_ENABLED(EnableVRT)
                 ) {
                 // When user hasn't specified number of threads, we can rely on
                 // compiler heuristics
@@ -5383,6 +5391,10 @@ namespace IGC
             SaveOption(vISA_EnableProgrammableOffsetsMessageBitInHeader, true);
         }
 
+        if (uint32_t Val = IGC_GET_FLAG_VALUE(EnableScalarPipe))
+        {
+            SaveOption(vISA_ScalarPipe, Val);
+        }
         if (IGC_IS_FLAG_ENABLED(NewSpillCostFunction) ||
             context->getCompilerOption().NewSpillCostFunction ||
             ( context->type == ShaderType::COMPUTE_SHADER &&
@@ -9452,7 +9464,7 @@ namespace IGC
         CVariable* pU,
         CVariable* pV,
         CVariable* pR,
-        CVariable* pLOD,
+        CVariable* pLODorSampleIdx,
         CVariable* pSrcDst,
         unsigned elemSize, // in bits
         unsigned numElems,
@@ -9465,7 +9477,7 @@ namespace IGC
         VISA_RawOpnd* pSrc = nullptr;
         VISA_RawOpnd* pDst = nullptr;
 
-        if (subOp == LSC_STORE_QUAD)
+        if (subOp == LSC_STORE_QUAD || subOp == LSC_STORE_QUAD_MSRT)
         {
             pSrc = GetRawSource(pSrcDst, 0);
         }
@@ -9479,7 +9491,7 @@ namespace IGC
         VISA_RawOpnd* pROffset = GetRawSource(pR, m_encoderState.m_srcOperand[2].subVar * getGRFSize());
 
         // LoD or whatever indexing is being used
-        VISA_RawOpnd* pIndex = GetRawSource(pLOD, m_encoderState.m_srcOperand[3].subVar * getGRFSize());
+        VISA_RawOpnd* pIndex = GetRawSource(pLODorSampleIdx, m_encoderState.m_srcOperand[3].subVar * getGRFSize());
 
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
         IGC_ASSERT(m_encoderState.m_dstOperand.subVar == 0);

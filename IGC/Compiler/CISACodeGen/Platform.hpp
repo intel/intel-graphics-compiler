@@ -1523,6 +1523,13 @@ bool isSWSubTriangleOpacityCullingEmulationEnabled() const
         IGC_IS_FLAG_DISABLED(DisableSWSubTriangleOpacityCullingEmulation));
 }
 
+bool isRayQueryReturnOptimizationEnabled() const
+{
+    return (isCoreChildOf(IGFX_XE2_HPG_CORE) &&
+        !getWATable().Wa_14018117913 &&
+        IGC_IS_FLAG_DISABLED(DisableRayQueryReturnOptimization));
+}
+
 // ***** Below go accessor methods for testing WA data from WA_TABLE *****
 
 bool WaDoNotPushConstantsForAllPulledGSTopologies() const

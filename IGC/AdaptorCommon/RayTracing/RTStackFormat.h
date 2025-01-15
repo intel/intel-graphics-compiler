@@ -1114,6 +1114,32 @@ enum CANDIDATE_TYPE : uint32_t
     CANDIDATE_PROCEDURAL_PRIMITIVE
 };
 
+struct RayQueryReturnData
+{
+    enum class Bits : uint8_t
+    {
+        proceed_further = 1,
+        committedStatus = 2,
+        candidateType = 1,
+        reserved = 28,
+    };
+
+    // This union is defined for futures use.
+    // It will replace writing the RayQuery Return Value
+    // to the MemHit in ShadowMemory.
+    union
+    {
+        uint32_t rayQueryReturnDWord;
+
+        struct
+        {
+            uint32_t PROCEED_FURTHER : (uint32_t)Bits::proceed_further; // This bit when set indicates that traversal is not complete i.e. all candidates have not been searched yet.
+            COMMITTED_STATUS committedStatus : (uint32_t)Bits::committedStatus; // This bit field provides the Committed Hit's Status / Type.
+            CANDIDATE_TYPE candidateType : (uint32_t)Bits::candidateType;   // This bit indicates the candidate type for a potential hit.
+            uint32_t reserved : (uint32_t)Bits::reserved;        // Reserved
+        };
+    };
+};
 
 } // namespace RTStackFormat
 

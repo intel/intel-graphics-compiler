@@ -29,11 +29,3 @@ void InitAcm_G11SwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_
 
 
 }
-
-#ifdef __KCH
-void InitAcm_G11HASWaTable(PHW_DEVICE_EXTENSION pKchContext, PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
-{
-
-
-}
-#endif

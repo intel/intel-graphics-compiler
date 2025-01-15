@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022-2024 Intel Corporation
+Copyright (C) 2022-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -37,6 +37,14 @@ void InitGt_20_01HwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA
 
     SI_WA_ENABLE(
         Wa_22016140776,
+        "No Link Provided",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_BETWEEN(iStepId_GT_20_01, GT_20_01_REV_ID_A0, FUTURE_PROJECT));
+
+
+    SI_WA_ENABLE(
+        Wa_14018117913,
         "No Link Provided",
         "No HWSightingLink provided",
         PLATFORM_ALL,

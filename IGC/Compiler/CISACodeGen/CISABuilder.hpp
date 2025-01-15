@@ -322,7 +322,7 @@ namespace IGC
         void LSC_TypedReadWrite(
             LSC_OP subOp, ResourceDescriptor* resource,
             CVariable* pU, CVariable* pV, CVariable* pR,
-            CVariable* pLOD,
+            CVariable* pLODorSampleIdx,
             CVariable* pSrcDst,
             unsigned elemSize, unsigned numElems,
             LSC_ADDR_SIZE addr_size, int chMask,

@@ -353,6 +353,15 @@ enum WA_BUG_TYPE
 #define WA_BUG_PERF_IMPACT(f) f
 #define WA_BUG_PERF_IMPACT_UNKNOWN -1
 
+enum WA_BIT_TYPE
+{
+    WA_BIT_LEGACY = 0,
+    WA_BIT_GT = 1,
+    WA_BIT_MEDIA = 2,
+    WA_BIT_DISPLAY = 3,
+    WA_BIT_MAX = WA_BIT_DISPLAY,
+};
+
 enum WA_COMPONENT
 {
     WA_COMPONENT_UNKNOWN = 0,
