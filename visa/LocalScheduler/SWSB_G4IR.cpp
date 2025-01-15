@@ -569,7 +569,8 @@ void SBNode::finalizeDistanceType1(IR_Builder &builder,
     return;
   }
 
-  if (builder.hasA0WARHWissue() && (builder.hasThreeALUPipes() || builder.hasFourALUPipes())) {
+  if (builder.hasA0WARHWissue() &&
+      (builder.hasThreeALUPipes() || builder.hasFourALUPipes())) {
     G4_INST *inst = GetInstruction();
 
     if (inst->getDst() && inst->getDst()->isDirectA0()) {
@@ -712,7 +713,8 @@ void SBNode::finalizeDistanceType2(IR_Builder &builder,
     return;
   }
 
-  if (builder.hasA0WARHWissue() && (builder.hasThreeALUPipes() || builder.hasFourALUPipes())) {
+  if (builder.hasA0WARHWissue() &&
+      (builder.hasThreeALUPipes() || builder.hasFourALUPipes())) {
     G4_INST *inst = GetInstruction();
 
     if (inst->getDst() && inst->getDst()->isDirectA0()) {
@@ -870,7 +872,8 @@ void SBNode::finalizeDistanceType3(IR_Builder &builder,
     return;
   }
 
-  if (builder.hasA0WARHWissue() && (builder.hasThreeALUPipes() || builder.hasFourALUPipes())) {
+  if (builder.hasA0WARHWissue() &&
+      (builder.hasThreeALUPipes() || builder.hasFourALUPipes())) {
     G4_INST *inst = GetInstruction();
 
     if (inst->getDst() && inst->getDst()->isDirectA0()) {
@@ -1258,18 +1261,33 @@ SBFootprint *G4_BB_SB::getFootprintForFlag(G4_Operand *opnd,
 SBFootprint *G4_BB_SB::getFootprintForA0(G4_Operand *opnd,
                                          Gen4_Operand_Number opnd_num,
                                          G4_INST *inst) {
+  bool valid = true;
+  unsigned subRegNum = 0;
+  if (opnd->isSrcRegRegion()) {
+    G4_SrcRegRegion *srcRegRegion = opnd->asSrcRegRegion();
+    if (srcRegRegion->getRegAccess() == Direct) {
+      subRegNum = srcRegRegion->ExSubRegNum(valid);
+    } else {
+      subRegNum = srcRegRegion->ExIndSubRegNum(valid);
+    }
+  } else if (opnd->isDstRegRegion()) {
+    G4_DstRegRegion *dstRegRegion = opnd->asDstRegRegion();
+    if (dstRegRegion->getRegAccess() == Direct) {
+      subRegNum = dstRegRegion->ExSubRegNum(valid);
+    } else {
+      subRegNum = dstRegRegion->ExIndSubRegNum(valid);
+    }
+  } else {
+    vISA_ASSERT_UNREACHABLE("invalid A0 operand");
+  }
+
   unsigned short LB = 0;
   unsigned short RB = 0;
   G4_Type type = opnd->getType();
+  G4_Type addrType = opnd->isIndirect() ? ADDR_REG_TYPE : opnd->getType();
+  LB = subRegNum * TypeSize(addrType);
+  RB = opnd->getRightBound() - opnd->getLeftBound() + LB;
 
-  bool valid = true;
-  unsigned subRegOff = opnd->getBase()->ExSubRegNum(valid);
-  G4_Type addrType = opnd->isIndirect() ? Type_UW : opnd->getType();
-
-  LB = (unsigned short)(subRegOff * TypeSize(addrType));
-  RB = (unsigned short)(LB + opnd->getRightBound() - opnd->getLeftBound());
-
-  // Updated to the bucket footprint
   LB += (builder.kernel.getNumRegTotal() + builder.getNumScalarRegisters()) *
         builder.numEltPerGRF<Type_UB>();
   RB += (builder.kernel.getNumRegTotal() + builder.getNumScalarRegisters()) *
@@ -4694,8 +4712,7 @@ void SWSB::insertTokenSync() {
           syncInst->setDistance(1);
           if (kernel.fg.builder->hasThreeALUPipes() ||
               kernel.fg.builder->hasFourALUPipes()) {
-            syncInst->setDistanceTypeXe(
-                G4_INST::DistanceType::DISTALL);
+            syncInst->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
           }
         }
       }
@@ -5729,9 +5746,15 @@ bool G4_BB_SB::getFootprintForOperand(SBNode *node, G4_INST *inst,
     }
   }
 
-  if (builder.needA0WARForSend() && isA0) {
+  if (builder.needA0WAR() && isA0) {
     footprint = getFootprintForA0(opnd, opndNum, inst);
-    node->setFootprint(footprint, opndNum);
+    if (opndNum == Opnd_dst && opnd->asDstRegRegion()->isIndirect()) {
+      // Indirect will only be used in the src0~src2, using Opnd_src4 as the
+      // indirect used in dst
+      node->setFootprint(footprint, Opnd_src4);
+    } else {
+      node->setFootprint(footprint, opndNum);
+    }
   }
 
   if (isS0Reg) {
@@ -6169,21 +6192,14 @@ void G4_BB_SB::setDistance(const SBFootprint *footprint, SBNode *node,
 }
 
 void G4_BB_SB::setSpecialDistance(SBNode *node) {
-  G4_INST *inst = node->GetInstruction();
-  if (!inst->getDst()) {
-    return;
-  }
-
-  if (inst->getDst()->isDirectA0()) {
-    SBDISTDEP_ITEM depItem;
-    depItem.liveNodePipe = PIPE_FLOAT;
-    depItem.nodePipe = node->ALUPipe;
-    depItem.operandType = PIPE_INT;
-    depItem.dstDep = false;
-    node->setDistance(1);
-    node->distDep.push_back(depItem);
-    node->setDistInfo(PIPE_FLOAT, 1);
-  }
+  SBDISTDEP_ITEM depItem;
+  depItem.liveNodePipe = PIPE_FLOAT;
+  depItem.nodePipe = node->ALUPipe;
+  depItem.operandType = PIPE_INT;
+  depItem.dstDep = false;
+  node->setDistance(1);
+  node->distDep.push_back(depItem);
+  node->setDistInfo(PIPE_FLOAT, 1);
 
   return;
 }
@@ -6675,8 +6691,17 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
 
     if (builder.hasA0WARHWissue() &&
         (builder.hasThreeALUPipes() || builder.hasFourALUPipes())) {
-      setSpecialDistance(node);
+      if (curInst->getDst() && curInst->getDst()->isDirectA0()) {
+        setSpecialDistance(node);
+      }
+    } else if (builder.needA0WAR()) {
+      if (!indexes->setFirstA0 && curInst->getDst() &&
+          curInst->getDst()->isDirectA0()) {
+        indexes->setFirstA0 = 1;
+        setSpecialDistance(node);
+      }
     }
+
     // Record the node IDs of the instructions in BB
     if (first_node == INVALID_ID) {
       first_node = nodeID;
@@ -7085,13 +7110,16 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
           continue;
         }
 
-        if (builder.needA0WARForSend() &&
-            curBucket == builder.kernel.getNumRegTotal() +
-                             builder.getNumScalarRegisters()) {
-          if (!tokenHonourInstruction(liveInst) || dep != WAR ||
-              hasSameFunctionID(liveInst, curInst)) {
-            ++bn_it;
-            continue;
+        if (builder.needA0WAR()) {
+          const int A0_start =
+              builder.kernel.getNumRegTotal() + builder.getNumScalarRegisters();
+          const int A0_end =
+              A0_start + builder.getNumAddrRegistersInGRFSizeSWSB() - 1;
+          if (curBucket >= A0_start && curBucket <= A0_end) {
+            if (dep != WAR) {
+              ++bn_it;
+              continue;
+            }
           }
         }
 
@@ -7204,7 +7232,7 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
         if (distanceHonourInstruction(liveInst)) {
           if (dep == RAW &&
               (curBucket < globalRegisterNum)) { // Only need track GRF
-                                                          // RAW dependence
+                                                 // RAW dependence
             LB->killOperand(bn_it);
             setDistance(curFootprint, node, liveNode, false);
             liveNode->setInstKilled(true); // Instrtuction level kill
