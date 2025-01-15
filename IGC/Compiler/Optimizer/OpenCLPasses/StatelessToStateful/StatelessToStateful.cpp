@@ -563,21 +563,69 @@ bool StatelessToStateful::pointerIsFromKernelArgument(Value& ptr)
     return false;
 }
 
+static alignment_t determinePointerAlignment(
+    Value *Ptr,
+    const DataLayout &DL,
+    AssumptionCache *AC,
+    Instruction *InsertionPt)
+{
+    alignment_t BestAlign = 0;
+
+    // 1) Examine uses: look for loads/stores (which may carry explicit
+    //    alignment) or a GEP that reveals an ABI alignment from its element
+    //    type.
+    for (User *U : Ptr->users()) {
+      if (auto *LI = dyn_cast<LoadInst>(U)) {
+        // Load has an explicit alignment.
+        alignment_t LdAlign = LI->getAlign().value();
+        if (LdAlign > BestAlign)
+          BestAlign = LdAlign;
+      } else if (auto *SI = dyn_cast<StoreInst>(U)) {
+        // Store sets alignment only if the pointer we store into is Ptr.
+        if (SI->getPointerOperand() == Ptr) {
+          alignment_t StAlign = SI->getAlign().value();
+          if (StAlign > BestAlign)
+            BestAlign = StAlign;
+        }
+      } else if (auto *GEP = dyn_cast<GetElementPtrInst>(U)) {
+        // If the GEP's source element type is sized, we can guess an ABI
+        // alignment.
+        Type *BaseTy = GEP->getSourceElementType();
+        if (BaseTy && BaseTy->isSized()) {
+          alignment_t GEPAlign = DL.getABITypeAlign(BaseTy).value();
+          if (GEPAlign > BestAlign)
+            BestAlign = GEPAlign;
+        }
+      }
+    }
+
+    // 2) If this pointer is actually a function parameter, see if it has an
+    //    alignment attribute.
+    if (auto *Arg = dyn_cast<Argument>(Ptr))
+    {
+        if (Arg->hasAttribute(llvm::Attribute::Alignment))
+        {
+            if (MaybeAlign ArgAlign = Arg->getParamAlign())
+            {
+                alignment_t ArgAlignOrOne = ArgAlign.valueOrOne().value();
+                if (ArgAlignOrOne > BestAlign)
+                    BestAlign = ArgAlignOrOne;
+            }
+        }
+    }
+
+    // 3) Fallback: use LLVM's built-in assumption-based alignment analysis
+    //    (based on a.o. llvm.assume intrinsics).
+    Align Known = getKnownAlignment(Ptr, DL, InsertionPt, AC);
+    if (Known > BestAlign)
+        BestAlign = Known.value();
+
+    return BestAlign;
+}
+
 bool StatelessToStateful::pointerIsPositiveOffsetFromKernelArgument(
     Function* F, Value* V, Value*& offset, unsigned int& argNumber, bool ignoreSyncBuffer)
 {
-    auto getPointeeAlign = [](const DataLayout* DL, Value* ptrVal)-> alignment_t {
-        if (PointerType* PTy = dyn_cast<PointerType>(ptrVal->getType()))
-        {
-            Type* pointeeTy = IGCLLVM::getNonOpaquePtrEltTy(PTy);
-            if (!pointeeTy->isSized()) {
-                return 0;
-            }
-            return DL->getABITypeAlign(pointeeTy).value();
-        }
-        return 0;
-    };
-
     const DataLayout* DL = &F->getParent()->getDataLayout();
 
     AssumptionCache* AC = getAC(F);
@@ -631,18 +679,11 @@ bool StatelessToStateful::pointerIsPositiveOffsetFromKernelArgument(
         // guarantted to be DW-aligned.)
         //
         // Note that implicit arg is always aligned.
-        bool isAlignedPointee = false;
-        if (arg->isImplicitArg())
-        {
-            isAlignedPointee = true;
-        }
-        else
-        {
-            isAlignedPointee = getPointeeAlign(DL, base) >= 4 ||
-                // The intent of getKnownAlignment below is to check if any llvm.assume intrinsic provides
-                // a hint about the base pointer alignment
-                getKnownAlignment((Value*)arg->getArg(), *DL, F->getEntryBlock().getFirstNonPHI(), AC) >= 4;
-        }
+        bool isAlignedPointee =
+            arg->isImplicitArg()
+                ? true
+                : determinePointerAlignment(
+                      base, *DL, AC, F->getEntryBlock().getFirstNonPHI()) >= 4;
 
         // When compiling with patch tokens, always assume that the address
         // is aligned. This is a workaround for old OneMKL Releases. Assuming
@@ -653,15 +694,6 @@ bool StatelessToStateful::pointerIsPositiveOffsetFromKernelArgument(
         //       versions is dropped.
         if (!m_ctx->enableZEBinary())
             isAlignedPointee = true;
-
-        // special handling
-        if (m_supportNonGEPPtr && gep == nullptr && !arg->isImplicitArg())
-        {
-            // For NonGEP ptr, do stateful only if arg isn't char*/short*
-            // (We hit bugs when allowing stateful for char*/short* arg without GEP.
-            //  Here, we simply avoid doing stateful for char*/short*.)
-            isAlignedPointee = (getPointeeAlign(DL, base) >= 4);
-        }
 
         // If m_hasBufferOffsetArg is true, the offset argument is added to
         // the final offset to make it definitely positive. Thus skip checking
