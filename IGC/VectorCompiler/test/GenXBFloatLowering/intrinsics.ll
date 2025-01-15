@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -29,6 +29,12 @@ declare <8 x bfloat> @llvm.fmuladd.v8bf16(<8 x bfloat>, <8 x bfloat>, <8 x bfloa
 
 declare <8 x i32> @llvm.fptosi.sat.v8i32.v8bf16(<8 x bfloat>)
 declare <8 x i32> @llvm.fptoui.sat.v8i32.v8bf16(<8 x bfloat>)
+
+declare <8 x bfloat> @llvm.ceil.v8bf16(<8 x bfloat>)
+declare <8 x bfloat> @llvm.floor.v8bf16(<8 x bfloat>)
+declare <8 x bfloat> @llvm.round.v8bf16(<8 x bfloat>)
+declare <8 x bfloat> @llvm.trunc.v8bf16(<8 x bfloat>)
+
 
 ; CHECK-LABEL: test_sat
 define <8 x bfloat> @test_sat(<8 x bfloat> %src) {
@@ -196,3 +202,45 @@ define <8 x i32> @test_fptoui_sat(<8 x bfloat> %src) {
   %res = call <8 x i32> @llvm.fptoui.sat.v8i32.v8bf16(<8 x bfloat> %src)
   ret <8 x i32> %res
 }
+
+; CHECK-LABEL: test_ceil
+define <8 x bfloat> @test_ceil(<8 x bfloat> %src) {
+  ; CHECK: [[EXT:%[^ ]+]] = fpext <8 x bfloat> %src to <8 x float>
+  ; CHECK: [[RES:%[^ ]+]] = call fast <8 x float> @llvm.ceil.v8f32(<8 x float> [[EXT]])
+  ; CHECK: [[TRUNC:%[^ ]+]] = fptrunc <8 x float> [[RES]] to <8 x bfloat>
+  ; CHECK: ret <8 x bfloat> [[TRUNC]]
+  %res = call fast <8 x bfloat> @llvm.ceil.v8bf16(<8 x bfloat> %src)
+  ret <8 x bfloat> %res
+}
+
+; CHECK-LABEL: test_floor
+define <8 x bfloat> @test_floor(<8 x bfloat> %src) {
+  ; CHECK: [[EXT:%[^ ]+]] = fpext <8 x bfloat> %src to <8 x float>
+  ; CHECK: [[RES:%[^ ]+]] = call fast <8 x float> @llvm.floor.v8f32(<8 x float> [[EXT]])
+  ; CHECK: [[TRUNC:%[^ ]+]] = fptrunc <8 x float> [[RES]] to <8 x bfloat>
+  ; CHECK: ret <8 x bfloat> [[TRUNC]]
+  %res = call fast <8 x bfloat> @llvm.floor.v8bf16(<8 x bfloat> %src)
+  ret <8 x bfloat> %res
+}
+
+; CHECK-LABEL: test_round
+define <8 x bfloat> @test_round(<8 x bfloat> %src) {
+  ; CHECK: [[EXT:%[^ ]+]] = fpext <8 x bfloat> %src to <8 x float>
+  ; CHECK: [[RES:%[^ ]+]] = call fast <8 x float> @llvm.round.v8f32(<8 x float> [[EXT]])
+  ; CHECK: [[TRUNC:%[^ ]+]] = fptrunc <8 x float> [[RES]] to <8 x bfloat>
+  ; CHECK: ret <8 x bfloat> [[TRUNC]]
+  %res = call fast <8 x bfloat> @llvm.round.v8bf16(<8 x bfloat> %src)
+  ret <8 x bfloat> %res
+}
+
+; CHECK-LABEL: test_trunc
+define <8 x bfloat> @test_trunc(<8 x bfloat> %src) {
+  ; CHECK: [[EXT:%[^ ]+]] = fpext <8 x bfloat> %src to <8 x float>
+  ; CHECK: [[RES:%[^ ]+]] = call fast <8 x float> @llvm.trunc.v8f32(<8 x float> [[EXT]])
+  ; CHECK: [[TRUNC:%[^ ]+]] = fptrunc <8 x float> [[RES]] to <8 x bfloat>
+  ; CHECK: ret <8 x bfloat> [[TRUNC]]
+  %res = call fast <8 x bfloat> @llvm.trunc.v8bf16(<8 x bfloat> %src)
+  ret <8 x bfloat> %res
+}
+
+

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2023-2024 Intel Corporation
+Copyright (C) 2023-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -239,6 +239,10 @@ void GenXBFloatLowering::visitCallInst(CallInst &Inst) {
   switch (IID) {
   default:
     return;
+  case Intrinsic::ceil:
+  case Intrinsic::floor:
+  case Intrinsic::round:
+  case Intrinsic::trunc:
   case GenXIntrinsic::genx_sat:
     break;
   case Intrinsic::cos:
