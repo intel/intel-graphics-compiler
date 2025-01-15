@@ -1306,8 +1306,6 @@ namespace IGC
             case GenISAIntrinsic::GenISA_icmpxchgatomictyped:
             case GenISAIntrinsic::GenISA_typedread:
             case GenISAIntrinsic::GenISA_typedwrite:
-            case GenISAIntrinsic::GenISA_typedreadMS:
-            case GenISAIntrinsic::GenISA_typedwriteMS:
             case GenISAIntrinsic::GenISA_floatatomictyped:
             case GenISAIntrinsic::GenISA_fcmpxchgatomictyped:
             case GenISAIntrinsic::GenISA_ldlptr:

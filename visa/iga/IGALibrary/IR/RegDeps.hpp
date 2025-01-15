@@ -47,7 +47,6 @@ enum class DEP_PIPE {
   SEND_UNKNOWN, // LSC desc is indirect, not sure if it's SLM
   // XeHPC+
   MATH_INORDER,
-  SCALAR // XE3+
 };
 
 enum class DEP_CLASS { NONE, IN_ORDER, OUT_OF_ORDER, OTHER };
@@ -85,12 +84,10 @@ public:
         : global(global_id), inOrder(in_order_id) {}
 
     InstIDs(uint32_t global_id, uint32_t in_order_id, uint32_t float_pipe_id,
-            uint32_t int_pipe_id, uint32_t long_pipe_id, uint32_t math_pipe_id,
-            uint32_t scalar_pipe_id
+            uint32_t int_pipe_id, uint32_t long_pipe_id, uint32_t math_pipe_id
             )
         : global(global_id), inOrder(in_order_id), floatPipe(float_pipe_id),
-          intPipe(int_pipe_id), longPipe(long_pipe_id), mathPipe(math_pipe_id),
-          scalarPipe(scalar_pipe_id)
+          intPipe(int_pipe_id), longPipe(long_pipe_id), mathPipe(math_pipe_id)
     {
     }
 
@@ -102,7 +99,6 @@ public:
       intPipe = 1;
       longPipe = 1;
       mathPipe = 1;
-      scalarPipe = 1;
     }
 
     // unique id for all instructions
@@ -117,8 +113,6 @@ public:
     uint32_t longPipe = 0;
     // id counter for in-order math pipe
     uint32_t mathPipe = 0;
-    // id counter for in-order scalar pipe
-    uint32_t scalarPipe = 0;
   };
 
   typedef std::pair<uint32_t, uint32_t> RegRangeType;
@@ -207,10 +201,6 @@ private:
   std::pair<uint32_t, uint32_t> setSrcRegion(
     RegName rn, RegRef rr, Region r, uint32_t execSize, uint32_t typeSizeBits);
 
-  // Set DepSet::bits for the send src with scalar register.
-  // rr: start offset of the scalar register
-  // numBytes: number of bytes read from this scalar register
-  void setSendSrcScalarRegRegion(const RegRef &rr, uint32_t numBytes);
 
   // Set the bits to this DepSet with the given reg_range
   void addDependency(const RegRangeType &reg_range);
@@ -281,10 +271,6 @@ public:
         ARF_A_BYTES_PER_REG(model.getBytesPerReg(RegName::ARF_A)),
         ARF_A_REGS(model.getRegCount(RegName::ARF_A)),
         ARF_F_REGS(model.getNumFlagReg()), mPlatformModel(model) {
-    if (model.platform >= Platform::XE3) {
-      ARF_SCALAR_REGS = model.getRegCount(RegName::ARF_S);
-      ARF_SCALAR_BYTES_PER_REG = model.getBytesPerReg(RegName::ARF_S);
-    }
   }
 
   ~DepSetBuilder() {
@@ -353,13 +339,6 @@ public:
     return ARF_SPECIAL_REGS * ARF_SPECIAL_BYTES_PER_REG;
   }
 
-  uint32_t getARF_SCALAR_REGS() const { return ARF_SCALAR_REGS; }
-  uint32_t getARF_SCALAR_BYTES_PER_REG() const {
-    return ARF_SCALAR_BYTES_PER_REG;
-  }
-  uint32_t getARF_SCALAR_LEN() const {
-    return ARF_SCALAR_REGS * ARF_SCALAR_BYTES_PER_REG;
-  }
 
   // align each register files to bucket size so the different register files
   // fall into different bucket
@@ -379,13 +358,9 @@ public:
     return ALIGN_UP_TO(getBYTES_PER_BUCKET(),
                        getARF_F_START() + getARF_F_LEN());
   }
-  uint32_t getARF_SCALAR_START() const {
-    return ALIGN_UP_TO(getBYTES_PER_BUCKET(),
-                       getARF_SPECIAL_START() + getARF_SPECIAL_LEN());
-  }
   uint32_t getTOTAL_END() const {
     return ALIGN_UP_TO(getBYTES_PER_BUCKET(),
-                       getARF_SCALAR_START() + getARF_SCALAR_LEN());
+                       getARF_SPECIAL_START() + getARF_SPECIAL_LEN());
   }
 
   uint32_t getTOTAL_BITS() const { return getTOTAL_END(); }
@@ -439,8 +414,6 @@ private:
   const uint32_t ARF_SPECIAL_REGS = 2;
   const uint32_t ARF_SPECIAL_BYTES_PER_REG = 4;
 
-  uint32_t ARF_SCALAR_REGS = 0;
-  uint32_t ARF_SCALAR_BYTES_PER_REG = 0;
 
 private:
   // DpasMacroBuilder - a helper class for building dpas macro

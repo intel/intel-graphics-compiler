@@ -636,22 +636,6 @@ bool preRA_Scheduler::run(unsigned &KernelPressure) {
 }
 
 bool preRA_Scheduler::runWithGRFSelection(unsigned &KernelPressure) {
-  // General algorithm for GRF selection in VRT:
-  //  1. Schedule for reg pressure reduction if needed
-  //      - Reg pressure might be reduced in this step
-  //  2. Re-compute reg pressure if there were any changes in step 1
-  //  3. Adjust kernel's GRF based on reg pressure
-  //  4. Schedule for latency hiding if needed
-  //      - If GRF was lowered in step 3, we try a larger GRF mode
-  //        as upper bound for latency hiding scheduling (+32).
-  //      - Different schedules are computed considering GRF modes
-  //        up to the upper bound. The best schedule is committed.
-  //      - Reg pressue might be increased in this step (bounded by
-  //        current upper bound).
-  //  5. Adjust kernel's GRF based on reg pressure
-  //      - In order to avoid spills, extra registers are added to
-  //        the reg pressure when GRF selected has the same number
-  //        of threads as the next larger one.
 
   if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_3D) {
     // Do not run pre-RA scheduler for CM unless user forces it.

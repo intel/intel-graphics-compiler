@@ -56,8 +56,6 @@ const static uint32_t DIST4_FOOTPRINT_SBID = 0x1F;
 // The valud of SpecialToken: NOACCSBSET for FourDistPipe
 const static uint32_t DIST4_NOACEESBSET = 0xF0;
 
-// FiveDistPipe
-const static uint32_t DIST5_REG_DIST_SCALAR = 0x30;
 
 namespace iga {
 
@@ -575,58 +573,6 @@ bool SWSB::verify<SWSB_ENCODE_MODE::FourDistPipe>(InstType instTy) const {
   return true;
 }
 
-// FiveDistPipe
-template <>
-SWSB_STATUS SWSB::decode<SWSB_ENCODE_MODE::FiveDistPipe>(uint32_t swsbBits,
-                                                         InstType instTy) {
-  // try if it's special token
-  if (swsbBits == DIST4_NOACEESBSET) {
-    clear();
-    spToken = SpecialToken::NOACCSBSET;
-    return SWSB_STATUS::SUCCESS;
-  }
-
-  // try if it's scalar dist first (new added pipe comparing to FourDistPipe
-  // mode)
-  distType = DistType::NO_DIST;
-  tokenType = TokenType::NOTOKEN;
-  uint32_t dist_head = swsbBits & (~DIST4_FOOTPRINT_DIST);
-  if (dist_head == DIST5_REG_DIST_SCALAR) {
-    minDist = (swsbBits & DIST4_FOOTPRINT_DIST);
-    distType = minDist == 0 ? DistType::NO_DIST : DistType::REG_DIST_SCALAR;
-    return SWSB_STATUS::SUCCESS;
-  } else {
-    return decode<SWSB_ENCODE_MODE::FourDistPipe>(swsbBits, instTy);
-  }
-  return SWSB_STATUS::ERROR_DECODE;
-}
-
-template <>
-uint32_t SWSB::encode<SWSB_ENCODE_MODE::FiveDistPipe>(InstType instTy) const {
-  uint32_t swsb = 0; // all 0's means no dependency
-
-  if (hasSpecialToken()) {
-    if (spToken == SpecialToken::NOACCSBSET)
-      swsb = DIST4_NOACEESBSET;
-    assert(!hasDist() && !hasToken());
-    return swsb;
-  }
-  // Try scalar dist first. Otherwise the encoding is the same as FourDistPipe
-  if (distType == DistType::REG_DIST_SCALAR) {
-    return DIST5_REG_DIST_SCALAR | minDist;
-  }
-  return encode<SWSB_ENCODE_MODE::FourDistPipe>(instTy);
-}
-
-template <>
-bool SWSB::verify<SWSB_ENCODE_MODE::FiveDistPipe>(InstType instTy) const {
-  // Try scalar dist first. Otherwise the encoding is the same as FourDistPipe
-  if (distType == DistType::REG_DIST_SCALAR) {
-    // REG_DIST_SCALAR cannot be combined with token
-    return !hasToken();
-  }
-  return verify<SWSB_ENCODE_MODE::FourDistPipe>(instTy);
-}
 
 template <>
 SWSB_STATUS SWSB::decode<SWSB_ENCODE_MODE::SWSBInvalidMode>(uint32_t,
@@ -658,9 +604,6 @@ SWSB_STATUS SWSB::decode(uint32_t swsbBits, SWSB_ENCODE_MODE enMode,
     return decode<SWSB_ENCODE_MODE::FourDistPipe>(swsbBits, instTy);
   case SWSB_ENCODE_MODE::ThreeDistPipeDPMath:
     return decode<SWSB_ENCODE_MODE::ThreeDistPipe>(swsbBits, instTy);
-  case SWSB_ENCODE_MODE::FiveDistPipe:
-  case SWSB_ENCODE_MODE::FiveDistPipeReduction:
-    return decode<SWSB_ENCODE_MODE::FiveDistPipe>(swsbBits, instTy);
   case SWSB_ENCODE_MODE::SWSBInvalidMode:
     return decode<SWSB_ENCODE_MODE::SWSBInvalidMode>(swsbBits, instTy);
 
@@ -682,9 +625,6 @@ uint32_t SWSB::encode(SWSB_ENCODE_MODE enMode, InstType instTy) const {
     return encode<SWSB_ENCODE_MODE::FourDistPipe>(instTy);
   case SWSB_ENCODE_MODE::ThreeDistPipeDPMath:
     return encode<SWSB_ENCODE_MODE::ThreeDistPipe>(instTy);
-  case SWSB_ENCODE_MODE::FiveDistPipe:
-  case SWSB_ENCODE_MODE::FiveDistPipeReduction:
-    return encode<SWSB_ENCODE_MODE::FiveDistPipe>(instTy);
   default:
     break;
   }
@@ -726,9 +666,6 @@ bool SWSB::verify(SWSB_ENCODE_MODE enMode, InstType instTy) const {
     return verify<SWSB_ENCODE_MODE::FourDistPipe>(instTy);
   case SWSB_ENCODE_MODE::ThreeDistPipeDPMath:
     return verify<SWSB_ENCODE_MODE::ThreeDistPipe>(instTy);
-  case SWSB_ENCODE_MODE::FiveDistPipe:
-  case SWSB_ENCODE_MODE::FiveDistPipeReduction:
-    return verify<SWSB_ENCODE_MODE::FiveDistPipe>(instTy);
   default:
     break;
   }

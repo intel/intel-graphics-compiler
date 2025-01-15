@@ -99,9 +99,7 @@ inline const char *getPlatformStr(PLATFORM Platform, unsigned &RevId) {
   case IGFX_BMG:
     return "bmg";
   case IGFX_LUNARLAKE:
-      return "lnl";
-  case IGFX_PTL:
-      return "ptl";
+    return "lnl";
   default:
     break;
   }

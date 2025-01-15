@@ -141,7 +141,6 @@ DispatchMode("dispatch-mode",
                         clEnumValN(ShaderDispatchMode::SINGLE_PATCH,   "single",      "single-dispatch mode"),
                         clEnumValN(ShaderDispatchMode::DUAL_PATCH,     "dual",        "dual-dispatch mode"),
                         clEnumValN(ShaderDispatchMode::EIGHT_PATCH,    "eight",       "eight-dispatch mode"),
-                        clEnumValN(ShaderDispatchMode::QUAD_SIMD8_DYNAMIC,     "quad-simd8-dynamic",  "quad-simd8-dynamic-dispatch mode"),
                         clEnumValN(ShaderDispatchMode::DUAL_SIMD8,     "dual-simd8",  "dual-simd8-dispatch mode")),
              cl::init(ShaderDispatchMode::NOT_APPLICABLE),
              cl::Hidden);
@@ -5626,21 +5625,6 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
         }
 
         CVariable* simdChannelUW = m_currShader->BitCast(simdChannel, ISA_TYPE_UW);
-        // With helper lanes active, all instructions are generated with NoMask
-        // bit set. Inactive lanes contain garbage data and may cause an
-        // out-of-bounds register access.
-        bool laneIdCanBeOOB = !m_currShader->m_DriverInfo->needsRegisterAccessBoundsChecks();
-        if (!m_currShader->m_Platform->supportsOutOfBoundsGrfAccess() &&
-            !channelUniform &&
-            (m_encoder->IsSubSpanDestination() || laneIdCanBeOOB))
-        {
-            uint maskOfValidLanes = numLanes(m_currShader->m_State.m_dispatchSize) - 1;
-            m_encoder->SetSrcRegion(0, 2, 1, 0);
-            m_encoder->SetDstRegion(2);
-            m_encoder->And(simdChannelUW, simdChannelUW,
-                m_currShader->ImmToVariable(maskOfValidLanes, ISA_TYPE_UW));
-            m_encoder->Push();
-        }
         CVariable* pSrcElm = m_currShader->GetNewVariable(
             simdChannel->GetNumberElement(),
             ISA_TYPE_UW,
@@ -9012,14 +8996,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         }
         emitTypedWrite(inst);
         break;
-    case GenISAIntrinsic::GenISA_typedreadMS:
-        IGC_ASSERT(shouldGenerateLSC(inst));
-        emitLSCTypedRead(inst);
-        break;
-    case GenISAIntrinsic::GenISA_typedwriteMS:
-        IGC_ASSERT(shouldGenerateLSC(inst));
-        emitLSCTypedWrite(inst);
-        break;
     case GenISAIntrinsic::GenISA_threadgroupbarrier:
     case GenISAIntrinsic::GenISA_threadgroupbarrier_signal:
     case GenISAIntrinsic::GenISA_threadgroupbarrier_wait:
@@ -9226,8 +9202,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
             emitStateRegID(12, 14);
         else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE2_HPG_CORE)
             emitStateRegID(11, 15);
-        else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE3_CORE)
-            emitStateRegID(14, 17);
         else
             emitStateRegID(12, 14);
         break;
@@ -9243,8 +9217,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         }
         else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE2_HPG_CORE)
             emitStateRegID(8, 9);
-        else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE3_CORE)
-          emitStateRegID(8, 11);
         else
             emitStateRegID(8, 8);
         break;
@@ -9294,7 +9266,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
           emitStateRegID(4, 8);
           m_currShader->RemoveBitRange(m_destination, 2, 2);
         }
-        else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE2_HPG_CORE || m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE3_CORE)
+        else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE2_HPG_CORE)
             emitStateRegID(4, 6);
         else
             emitStateRegID(4, 7);
@@ -9315,10 +9287,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         break;
     }
     case GenISAIntrinsic::GenISA_eu_thread_id:
-        if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE3_CORE) {
-            emitStateRegID(0, 3);
-            break;
-        }
         emitStateRegID(0, 2);
         break;
     case GenISAIntrinsic::GenISA_eu_thread_pause:
@@ -16344,7 +16312,6 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
 
         if (doLSC)
         {
-            IGC_ASSERT(dyn_cast<GenIntrinsicInst>(pInsn)->getIntrinsicID() != GenISAIntrinsic::GenISA_typedreadMS);
             m_encoder->LSC_TypedReadWrite(LSC_LOAD_QUAD, &resource, pU, pV, pR, pLOD, tempdst, 4 * 8,
                 numLanes(nativeDispatchMode), addrSize, writeMask.getEM(), cacheOpts);
         }
@@ -16390,7 +16357,6 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
 
             if (doLSC)
             {
-                IGC_ASSERT(dyn_cast<GenIntrinsicInst>(pInsn)->getIntrinsicID() != GenISAIntrinsic::GenISA_typedreadMS);
                 m_encoder->LSC_TypedReadWrite(LSC_LOAD_QUAD, &resource, pU, pV, pR, pLOD, m_destination, 4 * 8,
                     numLanes(SIMDMode::SIMD16), addrSize, writeMask.getEM(), cacheOpts);
             }
@@ -16425,7 +16391,6 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
 
                 if (doLSC)
                 {
-                    IGC_ASSERT(dyn_cast<GenIntrinsicInst>(pInsn)->getIntrinsicID() != GenISAIntrinsic::GenISA_typedreadMS);
                     m_encoder->LSC_TypedReadWrite(LSC_LOAD_QUAD, &resource, pU, pV, pR, pLOD, tempdst[i], 4 * 8,
                         numLanes(SIMDMode::SIMD16), addrSize, writeMask.getEM(), cacheOpts);
                 }
@@ -16543,7 +16508,6 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
             m_encoder->SetPredicate(flag);
             if (doLSC)
             {
-                IGC_ASSERT(dyn_cast<GenIntrinsicInst>(pInsn)->getIntrinsicID() != GenISAIntrinsic::GenISA_typedwriteMS);
                 m_encoder->LSC_TypedReadWrite(LSC_STORE_QUAD, &resource, pU, pV, pR, pLOD, pPayload, 4 * 8, parameterLength * numLanes(SIMDMode::SIMD16), addrSize, writeMask, cacheOpts);
             }
             else
@@ -16611,7 +16575,6 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
                     m_encoder->SetPredicate(flag);
                     if (doLSC)
                     {
-                        IGC_ASSERT(dyn_cast<GenIntrinsicInst>(pInsn)->getIntrinsicID() != GenISAIntrinsic::GenISA_typedwriteMS);
                         m_encoder->LSC_TypedReadWrite(LSC_STORE_QUAD, &resource, pU, pV, pR, pLOD, pPayload[i], 4 * 8, parameterLength * numLanes(SIMDMode::SIMD16), addrSize, writeMask, cacheOpts);
                     }
                     else
@@ -16633,7 +16596,6 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
                     m_encoder->SetPredicate(flag);
                     if (doLSC)
                     {
-                        IGC_ASSERT(dyn_cast<GenIntrinsicInst>(pInsn)->getIntrinsicID() != GenISAIntrinsic::GenISA_typedwriteMS);
                         m_encoder->LSC_TypedReadWrite(LSC_STORE_QUAD, &resource, pU, pV, pR, pLOD, pPayload[i], 4 * 8, parameterLength * numLanes(SIMDMode::SIMD16), addrSize, writeMask, cacheOpts);
                     }
                     else
@@ -19977,20 +19939,17 @@ void EmitPass::emitLSCTypedRead(llvm::Instruction* pInsn)
     llvm::Value* pllU = pInsn->getOperand(1);
     llvm::Value* pllV = pInsn->getOperand(2);
     llvm::Value* pllR = pInsn->getOperand(3);
-    llvm::Value* pllLODorSampleIdx = getOperandIfExist(pInsn, 4);
-    llvm::GenIntrinsicInst* pGenInst = cast<llvm::GenIntrinsicInst>(pInsn);
+    llvm::Value* pllLOD = getOperandIfExist(pInsn, 4);
 
-    // if this is writable MSAA, we must have sample idx in payload, even if it is 0
-    CVariable* pLODorSampleIdx =
-        (pGenInst->getIntrinsicID() != GenISAIntrinsic::GenISA_typedreadMS && isUndefOrConstInt0(pllLODorSampleIdx)) ? nullptr : GetSymbol(pllLODorSampleIdx);
-    CVariable* pR = (pLODorSampleIdx == nullptr && isUndefOrConstInt0(pllR)) ? nullptr : GetSymbol(pllR);
+    CVariable* pLOD = isUndefOrConstInt0(pllLOD) ? nullptr : GetSymbol(pllLOD);
+    CVariable* pR = (pLOD == nullptr && isUndefOrConstInt0(pllR)) ? nullptr : GetSymbol(pllR);
     CVariable* pV = (pR == nullptr && isUndefOrConstInt0(pllV)) ? nullptr : GetSymbol(pllV);
     CVariable* pU = GetSymbol(pllU);
 
     pU = BroadcastIfUniform(pU, m_currShader->GetIsUniform(pInsn));
     pV = pV ? BroadcastIfUniform(pV, m_currShader->GetIsUniform(pInsn)) : nullptr;
     pR = pR ? BroadcastIfUniform(pR, m_currShader->GetIsUniform(pInsn)) : nullptr;
-    pLODorSampleIdx = pLODorSampleIdx ? BroadcastIfUniform(pLODorSampleIdx, m_currShader->GetIsUniform(pInsn)) : nullptr;
+    pLOD = pLOD ? BroadcastIfUniform(pLOD, m_currShader->GetIsUniform(pInsn)) : nullptr;
 
     ResourceDescriptor resource = GetResourceVariable(pllSrcBuffer);
 
@@ -20011,11 +19970,7 @@ void EmitPass::emitLSCTypedRead(llvm::Instruction* pInsn)
         m_encoder->SetSimdSize(nativeDispatchMode);
         m_encoder->SetPredicate(nullptr);
         m_encoder->SetNoMask();
-        m_encoder->LSC_TypedReadWrite(
-            pGenInst->getIntrinsicID() == GenISAIntrinsic::GenISA_typedreadMS ?
-            LSC_LOAD_QUAD_MSRT : LSC_LOAD_QUAD,
-            &resource,
-            pU, pV, pR, pLODorSampleIdx, tempdst, eltBitSize,
+        m_encoder->LSC_TypedReadWrite(LSC_LOAD_QUAD, &resource, pU, pV, pR, pLOD, tempdst, eltBitSize,
             numLanes(nativeDispatchMode), addrSize, writeMask.getEM(), cacheOpts);
         m_encoder->Push();
 
@@ -20044,10 +19999,7 @@ void EmitPass::emitLSCTypedRead(llvm::Instruction* pInsn)
         if (!needsSplit)
         {
             m_encoder->SetPredicate(flag);
-            m_encoder->LSC_TypedReadWrite(
-                pGenInst->getIntrinsicID() == GenISAIntrinsic::GenISA_typedreadMS ?
-                LSC_LOAD_QUAD_MSRT : LSC_LOAD_QUAD,
-                &resource, pU, pV, pR, pLODorSampleIdx, m_destination, eltBitSize,
+            m_encoder->LSC_TypedReadWrite(LSC_LOAD_QUAD, &resource, pU, pV, pR, pLOD, m_destination, eltBitSize,
                 numLanes(instWidth), addrSize, writeMask.getEM(), cacheOpts);
             m_encoder->Push();
         }
@@ -20071,10 +20023,7 @@ void EmitPass::emitLSCTypedRead(llvm::Instruction* pInsn)
                 m_encoder->SetSrcSubVar(2, i);
                 m_encoder->SetSrcSubVar(3, i);
                 m_encoder->SetPredicate(flag);
-                m_encoder->LSC_TypedReadWrite(
-                    pGenInst->getIntrinsicID() == GenISAIntrinsic::GenISA_typedreadMS ?
-                    LSC_LOAD_QUAD_MSRT : LSC_LOAD_QUAD,
-                    &resource, pU, pV, pR, pLODorSampleIdx, tempdst[i], eltBitSize,
+                m_encoder->LSC_TypedReadWrite(LSC_LOAD_QUAD, &resource, pU, pV, pR, pLOD, tempdst[i], eltBitSize,
                     numLanes(instWidth), addrSize, writeMask.getEM(), cacheOpts);
                 m_encoder->Push();
             }
@@ -20096,17 +20045,14 @@ void EmitPass::emitLSCTypedWrite(llvm::Instruction* pInsn)
     llvm::Value* pllU = pInsn->getOperand(1);
     llvm::Value* pllV = pInsn->getOperand(2);
     llvm::Value* pllR = pInsn->getOperand(3);
-    llvm::GenIntrinsicInst* pGenInst = cast<llvm::GenIntrinsicInst>(pInsn);
-    llvm::Value* pllLODorSampleIdx = pInsn->getOperand(4);
+    llvm::Value* pllLOD = pInsn->getOperand(4);
     llvm::Value* pllSrc_X = pInsn->getOperand(5);
     llvm::Value* pllSrc_Y = pInsn->getOperand(6);
     llvm::Value* pllSrc_Z = pInsn->getOperand(7);
     llvm::Value* pllSrc_W = pInsn->getOperand(8);
 
-    // if this is writable MSAA, we must have sample idx in payload, even if it is 0
-    CVariable* pLODorSampleIdx =
-        (pGenInst->getIntrinsicID() != GenISAIntrinsic::GenISA_typedwriteMS && isUndefOrConstInt0(pllLODorSampleIdx)) ? nullptr : GetSymbol(pllLODorSampleIdx);
-    CVariable* pR = (pLODorSampleIdx == nullptr && isUndefOrConstInt0(pllR)) ? nullptr : GetSymbol(pllR);
+    CVariable* pLOD = isUndefOrConstInt0(pllLOD) ? nullptr : GetSymbol(pllLOD);
+    CVariable* pR = (pLOD == nullptr && isUndefOrConstInt0(pllR)) ? nullptr : GetSymbol(pllR);
     CVariable* pV = (pR == nullptr && isUndefOrConstInt0(pllV)) ? nullptr : GetSymbol(pllV);
     CVariable* pU = GetSymbol(pllU);
 
@@ -20118,7 +20064,7 @@ void EmitPass::emitLSCTypedWrite(llvm::Instruction* pInsn)
     pU = BroadcastIfUniform(pU);
     pV = pV ? BroadcastIfUniform(pV) : nullptr;
     pR = pR ? BroadcastIfUniform(pR) : nullptr;
-    pLODorSampleIdx = pLODorSampleIdx ? BroadcastIfUniform(pLODorSampleIdx) : nullptr;
+    pLOD = pLOD ? BroadcastIfUniform(pLOD) : nullptr;
 
     ResourceDescriptor resource = GetResourceVariable(pllDstBuffer);
     LSC_ADDR_SIZE addrSize = LSC_ADDR_SIZE_32b;
@@ -20178,10 +20124,7 @@ void EmitPass::emitLSCTypedWrite(llvm::Instruction* pInsn)
         }
 
         m_encoder->SetPredicate(flag);
-        m_encoder->LSC_TypedReadWrite(
-            pGenInst->getIntrinsicID() == GenISAIntrinsic::GenISA_typedwriteMS ?
-            LSC_STORE_QUAD_MSRT : LSC_STORE_QUAD,
-            &resource, pU, pV, pR, pLODorSampleIdx, pPayload, eltBitSize, parameterLength, addrSize, 0xF, cacheOpts);
+        m_encoder->LSC_TypedReadWrite(LSC_STORE_QUAD, &resource, pU, pV, pR, pLOD, pPayload, eltBitSize, parameterLength, addrSize, 0xF, cacheOpts);
         m_encoder->Push();
     }
     else
@@ -20235,10 +20178,7 @@ void EmitPass::emitLSCTypedWrite(llvm::Instruction* pInsn)
             m_encoder->SetSrcSubVar(2, i);
             m_encoder->SetSrcSubVar(3, i);
             m_encoder->SetPredicate(flag);
-            m_encoder->LSC_TypedReadWrite(
-                pGenInst->getIntrinsicID() == GenISAIntrinsic::GenISA_typedwriteMS ?
-                LSC_STORE_QUAD_MSRT : LSC_STORE_QUAD,
-                &resource, pU, pV, pR, pLODorSampleIdx, pPayload, eltBitSize, parameterLength, addrSize, 0xF, cacheOpts);
+            m_encoder->LSC_TypedReadWrite(LSC_STORE_QUAD, &resource, pU, pV, pR, pLOD, pPayload, eltBitSize, parameterLength, addrSize, 0xF, cacheOpts);
             m_encoder->Push();
         }
     }

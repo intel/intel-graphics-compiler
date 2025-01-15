@@ -372,9 +372,6 @@ BinaryEncodingIGA::getIGAInternalPlatform(TARGET_PLATFORM genxPlatform) {
   case Xe2:
     platform = Platform::XE2;
     break;
-  case Xe3:
-    platform = Platform::XE3;
-    break;
   default:
     break;
   }
@@ -969,9 +966,6 @@ void BinaryEncodingIGA::SetSWSB(G4_INST *inst, SWSB &sw) {
       case DistanceType::DISTMATH:
         sw.distType = SWSB::DistType::REG_DIST_MATH;
         break;
-      case DistanceType::DISTS0:
-        sw.distType = SWSB::DistType::REG_DIST_SCALAR;
-        break;
       default:
         break;
       }
@@ -1498,8 +1492,6 @@ void BinaryEncodingIGA::translateInstructionSrcs(G4_INST *inst,
         regRef.subRegNum = (uint8_t)srcRegion->ExIndSubRegNum(valid);
         // set to GRF for indirect register access
         iga::RegName regName = iga::RegName::GRF_R;
-        if (getIGARegName(srcRegion) == iga::RegName::ARF_S)
-          regName = iga::RegName::ARF_S;
 
         igaInst->setIndirectSource(opIx, srcMod, regName, regRef,
                                    srcRegion->getAddrImm(), region, type);
@@ -1844,8 +1836,6 @@ RegName BinaryEncodingIGA::getIGAARFName(G4_ArchRegKind areg) {
     return RegName::ARF_TDR;
   case AREG_SP:
     return RegName::ARF_SP;
-  case AREG_S0:
-    return RegName::ARF_S;
   default:
     vISA_ASSERT_UNREACHABLE("illegal ARF");
     return RegName::INVALID;

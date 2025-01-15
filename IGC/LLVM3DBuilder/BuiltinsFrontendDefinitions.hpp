@@ -311,64 +311,6 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_typedread(
 }
 
 template<bool preserveNames, typename T, typename Inserter>
-inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_typedwriteMS(
-    llvm::Value* dstBuffer,
-    llvm::Value* srcAddressU,
-    llvm::Value* srcAddressV,
-    llvm::Value* srcAddressW,
-    llvm::Value* sampleIdx,
-    llvm::Value* float_X,
-    llvm::Value* float_Y,
-    llvm::Value* float_Z,
-    llvm::Value* float_W)
-{
-    llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
-
-    llvm::Function* pFuncTypedWriteMS = llvm::GenISAIntrinsic::getDeclaration(
-        module, llvm::GenISAIntrinsic::GenISA_typedwriteMS, dstBuffer->getType());
-
-    llvm::Value* args[] = {
-        dstBuffer,
-        srcAddressU,
-        srcAddressV,
-        srcAddressW,
-        sampleIdx,
-        float_X,
-        float_Y,
-        float_Z,
-        float_W,
-    };
-
-    llvm::Value* typedwrite = this->CreateCall(pFuncTypedWriteMS, args);
-    return typedwrite;
-}
-
-template<bool preserveNames, typename T, typename Inserter>
-inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_typedreadMS(
-    llvm::Value* srcBuffer,
-    llvm::Value* srcAddressU,
-    llvm::Value* srcAddressV,
-    llvm::Value* srcAddressW,
-    llvm::Value* sampleIdx)
-{
-    llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
-
-    llvm::Function* pFuncTypedReadMS = llvm::GenISAIntrinsic::getDeclaration(
-        module, llvm::GenISAIntrinsic::GenISA_typedreadMS, srcBuffer->getType());
-
-    llvm::Value* args[] = {
-        srcBuffer,
-        srcAddressU,
-        srcAddressV,
-        srcAddressW,
-        sampleIdx
-    };
-
-    llvm::Value* typedread = this->CreateCall(pFuncTypedReadMS, args);
-    return typedread;
-}
-
-template<bool preserveNames, typename T, typename Inserter>
 inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_typedread_msaa2D(
     llvm::Value* srcBuffer,
     llvm::Value* sampleIdx,

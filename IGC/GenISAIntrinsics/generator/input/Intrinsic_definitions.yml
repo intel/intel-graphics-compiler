@@ -8392,39 +8392,6 @@ intrinsics:
                 memory_location: !MemoryLocation ArgMem
                 memory_access: !MemoryAccessType Ref
     - !<IntrinsicDefinition>
-        name: "GenISA_typedreadMS"
-        comment: "Typed read from multisample image, Xe3+"
-        return_definition: !<ReturnDefinition>
-            type_definition: *v4_f32_
-            comment: "Return type"
-        arguments:
-            - !<ArgumentDefinition>
-                name: Arg0
-                type_definition: *p_any_
-                comment: "Src Buffer"
-            - !<ArgumentDefinition>
-                name: Arg1
-                type_definition: *i32
-                comment: "coordinates u"
-            - !<ArgumentDefinition>
-                name: Arg2
-                type_definition: *i32
-                comment: "coordinates v"
-            - !<ArgumentDefinition>
-                name: Arg3
-                type_definition: *i32
-                comment: "coordinates r"
-            - !<ArgumentDefinition>
-                name: Arg4
-                type_definition: *i32
-                comment: "Sample Idx"
-        attributes:
-            - !AttributeID "NoUnwind"
-        memory_effects:
-            - !<MemoryRestriction>
-                memory_location: !MemoryLocation ArgMem
-                memory_access: !MemoryAccessType Ref
-    - !<IntrinsicDefinition>
         name: "GenISA_typedwrite"
         comment: ""
         return_definition: !<ReturnDefinition>
@@ -8451,55 +8418,6 @@ intrinsics:
                 name: Arg4
                 type_definition: *i32
                 comment: "LOD"
-            - !<ArgumentDefinition>
-                name: Arg5
-                type_definition: *f32
-                comment: "x"
-            - !<ArgumentDefinition>
-                name: Arg6
-                type_definition: *f32
-                comment: "y"
-            - !<ArgumentDefinition>
-                name: Arg7
-                type_definition: *f32
-                comment: "z"
-            - !<ArgumentDefinition>
-                name: Arg8
-                type_definition: *f32
-                comment: "w (4 elements since uav_typed will always write 4 destinations)"
-        attributes:
-            - !AttributeID "NoUnwind"
-        memory_effects:
-            - !<MemoryRestriction>
-                memory_location: !MemoryLocation ArgMem
-                memory_access: !MemoryAccessType Mod
-    - !<IntrinsicDefinition>
-        name: "GenISA_typedwriteMS"
-        comment: "Typed write to multisample image, Xe3+"
-        return_definition: !<ReturnDefinition>
-            type_definition: *void
-            comment: ""
-        arguments:
-            - !<ArgumentDefinition>
-                name: Arg0
-                type_definition: *p_any_
-                comment: "Dst Buffer to write to"
-            - !<ArgumentDefinition>
-                name: Arg1
-                type_definition: *i32
-                comment: "coordinates u"
-            - !<ArgumentDefinition>
-                name: Arg2
-                type_definition: *i32
-                comment: "coordinates v"
-            - !<ArgumentDefinition>
-                name: Arg3
-                type_definition: *i32
-                comment: "coordinates r"
-            - !<ArgumentDefinition>
-                name: Arg4
-                type_definition: *i32
-                comment: "Sample Idx"
             - !<ArgumentDefinition>
                 name: Arg5
                 type_definition: *f32

@@ -3219,9 +3219,6 @@ namespace IGC
         case IGFX_XE2_HPG_CORE:
             return Xe2;
             // fall-through
-        case IGFX_XE3_CORE:
-            return Xe3;
-            // fall-through
         default:
             IGC_ASSERT_MESSAGE(0, "unsupported platform");
             break;
@@ -4550,14 +4547,6 @@ namespace IGC
             SaveOption(vISA_ActiveThreadsOnlyBarrier, true);
         }
 
-        if (m_program->m_Platform->isCoreChildOf(IGFX_XE3_CORE))
-        {
-            if (uint Val = IGC_GET_FLAG_VALUE(VISASpillAllowed))
-            {
-                context->m_spillAllowed = Val;
-                SaveOption(vISA_SpillAllowed, Val);
-            }
-        }
         bool r0Reserved = false;
         if ((context->type == ShaderType::OPENCL_SHADER || context->type == ShaderType::COMPUTE_SHADER
             || context->type == ShaderType::RAYTRACING_SHADER) &&
@@ -5104,18 +5093,6 @@ namespace IGC
             SaveOption(vISA_Compaction, false);
         }
 
-        if (IGC_IS_FLAG_ENABLED(EnableGatherWithImmPreRA))
-        {
-            SaveOption(vISA_EnableGatherWithImmPreRA,
-                     IGC_GET_FLAG_VALUE(EnableGatherWithImmPreRA));
-        }
-
-        if (IGC_IS_FLAG_ENABLED(EnableIndirectInstStart)) {
-          SaveOption(vISA_IndirectInstStart,
-                     IGC_GET_FLAG_VALUE(EnableIndirectInstStart));
-          SaveOption(vISA_IndirectInstEnd,
-                     IGC_GET_FLAG_VALUE(EnableIndirectInstEnd));
-        }
 
         if (IGC_IS_FLAG_ENABLED(EnableGroupScheduleForBC))
         {

@@ -165,10 +165,6 @@ bool Instruction::isMovWithLabel() const {
   return (getOp() == Op::MOV && getSource(0).getKind() == Operand::Kind::LABEL);
 }
 
-bool Instruction::isGatherSend() const {
-  return getOpSpec().isAnySendFormat() &&
-         getSource(0).getDirRegName() == RegName::ARF_S;
-}
 
 void Instruction::setInlineBinary(const Instruction::InlineBinaryType &binary) {
 

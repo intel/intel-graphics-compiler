@@ -39,10 +39,6 @@ Region OpSpec::implicitDstRegion(bool isMacro) const {
 
 bool OpSpec::implicitDstRegion(Region &rgn, bool isMacro) const {
   if (isAnySendFormat()) {
-    if (platform >= Platform::XE3) {
-      rgn = Region::INVALID;
-      return true;
-    }
     rgn = Region::DST1;
     return true;
   } else if (isTypedBranch()) {
@@ -63,10 +59,6 @@ bool OpSpec::implicitDstRegion(Region &rgn, bool isMacro) const {
 }
 
 bool OpSpec::implicitDstTypeVal(Type &type) const {
-  if (isAnySendFormat() && platform >= Platform::XE3) {
-    type = Type::INVALID;
-    return true;
-  }
   if (isSendFormat() && platform >= Platform::GEN8) {
     type = Type::UD;
     if (platform >= Platform::XE) {
@@ -95,19 +87,11 @@ bool OpSpec::hasSrcSubregister(int srcOpIx, bool isMacro) const {
 
 bool OpSpec::hasImplicitSrcRegion(int srcOpIx, ExecSize es,
                                   bool isMacro) const {
-  if (isAnySendFormat() && platform >= Platform::XE3) {
-    // Xe3 uses INVALID as a "default"
-    // OpSpec::implicitSrcRegion uses Region::INVALID as no implicit
-    // src region ==> make an exception for this case
-    return true;
-  }
   return implicitSrcRegion(srcOpIx, es, isMacro) != Region::INVALID;
 }
 Region OpSpec::implicitSrcRegion(int srcOpIx, ExecSize execSize,
                                  bool isMacro) const {
   // TODO: fold this into implicitSrcRegionPtr and elide the macro hacking
-  if (isAnySendFormat() && platform >= Platform::XE3)
-    return Region::INVALID;
   //
   // TODO: this needs to work off the table from BXML
   if (isSendFormat() && platform < Platform::XE) {
@@ -251,9 +235,6 @@ bool OpSpec::isFixedLatency() const {
 
 bool OpSpec::implicitSrcTypeVal(int srcOpIx, bool isImmOrLbl,
                                 Type &type) const {
-  if (isAnySendFormat() && platform >= Platform::XE3) {
-    return false;
-  }
        // TODO: pull from BXML data (ideally somehow in the syntax)
   if (isTypedBranch()) {
     // branches no longer take types in XE

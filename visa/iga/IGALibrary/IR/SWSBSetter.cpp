@@ -214,17 +214,12 @@ void SWSBAnalyzer::checkAccFlagRAW(bool &isRAW, const DepSet &currDep,
     return check_dep_reg(in_dep, m_DB->getARF_SPECIAL_START(),
                          m_DB->getARF_SPECIAL_LEN());
   };
-  auto has_scalar_dep = [&](const DepSet &in_dep) {
-    return check_dep_reg(in_dep, m_DB->getARF_SCALAR_START(),
-                         m_DB->getARF_SCALAR_LEN());
-  };
 
   // is acc dependecy
   if (has_acc_dep(targetDep)) {
     // and no dependency on other registers
     if (!(has_grf_dep(targetDep) || has_arf_a_dep(targetDep) ||
         has_flag_dep(targetDep) || has_sp_dep(targetDep)))
-      if (!has_scalar_dep(targetDep))
         isRAW = false;
   }
 
@@ -233,13 +228,11 @@ void SWSBAnalyzer::checkAccFlagRAW(bool &isRAW, const DepSet &currDep,
     // and no dependency on other registers
     if (!(has_grf_dep(targetDep) || has_arf_a_dep(targetDep) ||
         has_acc_dep(targetDep) || has_sp_dep(targetDep)))
-      if (!has_scalar_dep(targetDep))
         isRAW = false;
     // flag and acc only
     if (has_acc_dep(targetDep))
       if (!(has_grf_dep(targetDep) || has_arf_a_dep(targetDep) ||
           has_sp_dep(targetDep)))
-        if (!has_scalar_dep(targetDep))
           isRAW = false;
   }
 }
@@ -422,10 +415,6 @@ void SWSBAnalyzer::setDistanceDependency(DepSet *dep, SWSB &swsb, bool isWAW,
     case DEP_PIPE::MATH_INORDER:
       newDistance = m_InstIdCounter.mathPipe - dep->getInstIDs().mathPipe;
       newDepPipe = SWSB::DistType::REG_DIST_MATH;
-      break;
-    case DEP_PIPE::SCALAR:
-      newDistance = m_InstIdCounter.scalarPipe - dep->getInstIDs().scalarPipe;
-      newDepPipe = SWSB::DistType::REG_DIST_SCALAR;
       break;
     default:
       IGA_ASSERT(0, "Unsupported DEP_PIPE for in-order instructions");
@@ -612,8 +601,6 @@ void SWSBAnalyzer::clearBuckets(DepSet *input, DepSet *output) {
         return dep_set.getInstIDs().longPipe;
       case DEP_PIPE::MATH_INORDER:
         return dep_set.getInstIDs().mathPipe;
-      case DEP_PIPE::SCALAR:
-        return dep_set.getInstIDs().scalarPipe;
       default:
         IGA_ASSERT(0, "SWSB: unhandled in-order DEP_PIPE for XeHP+ encoding");
         break;
@@ -756,9 +743,6 @@ uint32_t SWSBAnalyzer::getNumOfDistPipe(SWSB_ENCODE_MODE mode) {
   case SWSB_ENCODE_MODE::FourDistPipe:
   case SWSB_ENCODE_MODE::FourDistPipeReduction:
     return 4;
-  case SWSB_ENCODE_MODE::FiveDistPipe:
-  case SWSB_ENCODE_MODE::FiveDistPipeReduction:
-    return 5;
   default:
     break;
   }
@@ -782,9 +766,6 @@ void SWSBAnalyzer::advanceInorderInstCounter(DEP_PIPE dep_pipe) {
     break;
   case DEP_PIPE::MATH_INORDER:
     ++m_InstIdCounter.mathPipe;
-    break;
-  case DEP_PIPE::SCALAR:
-    ++m_InstIdCounter.scalarPipe;
     break;
   default:
     IGA_ASSERT(0, "unhandled in-order DEP_PIPE for XE_HP encoding");

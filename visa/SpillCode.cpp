@@ -115,20 +115,6 @@ G4_Declare *SpillManager::createNewTempAddrDeclare(G4_Declare *dcl,
   return sp;
 }
 
-G4_Declare *SpillManager::createNewTempScalarDeclare(G4_Declare *dcl) {
-  const char *name = builder.getNameString(32, "Temp_SCALAR_%d", tempDclId++);
-  G4_Declare *sp =
-      builder.createDeclare(name, G4_SCALAR, 1, 1, dcl->getElemType());
-  gra.setBBId(sp, bbId);
-  sp->copyAlign(dcl);
-  auto subAlign = Get_G4_SubRegAlign_From_Size((uint16_t)dcl->getElemSize(),
-                                               builder.getPlatform(),
-                                               builder.getGRFAlign());
-  sp->setSubRegAlign(subAlign);
-  gra.addAddrFlagSpillDcl(sp);
-
-  return sp;
-}
 
 //
 // generate a reg to reg mov inst for addr/flag spill

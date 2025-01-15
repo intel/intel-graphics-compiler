@@ -636,11 +636,6 @@ public:
     src.kind = Operand::Kind::INDIRECT;
     src.regOpSrcMod = srcMod;
     src.regOpName = RegName::GRF_R;
-    // specail case for handling sendg src0: r[s0.0]
-    // It's indirect register access to grf but the register file
-    // should be set to ARF_S
-    if (regName == RegName::ARF_S)
-      src.regOpName = RegName::ARF_S;
     src.regOpReg = addrReg;
     src.regOpIndOff = (uint16_t)addrOff;
     src.regOpRgn = rgn;

@@ -356,14 +356,6 @@ namespace IGC
         virtual bool sendSingleSourceRTWAfterDualSourceRTW() const { return true; }
 
 
-        virtual bool needsRegisterAccessBoundsChecks() const
-        {
-            // Disabled by default, can be enabled via registry key.
-            const IGC::TriboolFlag registerAccessBoundsCheckCtrl = static_cast<IGC::TriboolFlag>(
-                IGC_GET_FLAG_VALUE(ForceRegisterAccessBoundsChecks));
-            return registerAccessBoundsCheckCtrl == IGC::TriboolFlag::Enabled;
-        }
-
         // Specifies alignment of indirect data
         virtual unsigned getCrossThreadDataAlignment() const { return 32; }
 
@@ -388,8 +380,6 @@ namespace IGC
 
         // Informs if the UMD understands atomic pull tile walk for raytracing
         virtual bool supportsAtomicPullSWTileWalk() const { return false; }
-        virtual bool supportsDynamicPolyPackingPolicies() const { return true; }
-        virtual bool supportsVRT() const { return true; }
 
         virtual bool supportsUniformPrivateMemorySpace() const { return false; }
 protected:

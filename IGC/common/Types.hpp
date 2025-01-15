@@ -129,7 +129,6 @@ enum class ShaderDispatchMode
     DUAL_PATCH,
     EIGHT_PATCH,
     DUAL_SIMD8,
-    QUAD_SIMD8_DYNAMIC, // 3DTATE_PS_BODY::PolyPackingPolicy::POLY_PACK8_DYNAMIC
     END,
     BEGIN = 0
 };

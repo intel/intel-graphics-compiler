@@ -927,19 +927,6 @@ namespace IGC
             "IGC::PositionOnlyVertexShader") != nullptr;
     }
 
-    bool CodeGenContext::isSWSubTriangleOpacityCullingEmulationEnabled() const
-    {
-        // STOC level emulation is enabled only if:
-        // 1. Platform is Xe3.
-        // 2. 64bit RayTracing structures are used.
-        // 3. STOC level emulation is requested by UMD.
-        // 4. STOC level emulation routine binary is delivered by the UMD.
-        return platform.isSWSubTriangleOpacityCullingEmulationEnabled() &&
-            bvhInfo.uses64Bit &&
-            m_enableSubTriangleOpacityEmulation &&
-            (m_numBifModules != 0) &&
-            (m_bifModules != nullptr);
-    }
 
 
 

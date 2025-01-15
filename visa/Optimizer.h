@@ -121,7 +121,6 @@ class Optimizer {
   void reverseOffsetProp(AddrSubReg_Node addrRegInfo[8], int subReg,
                          unsigned int srcNum, INST_LIST_ITER lastIter,
                          INST_LIST_ITER iend);
-  void removePseudoMov();
   void FoldAddrImmediate();
   bool foldCmpSel(G4_BB *BB, G4_INST *selInst, INST_LIST_ITER &selInst_II);
   bool foldPseudoNot(G4_BB *bb, INST_LIST_ITER &iter);
@@ -386,7 +385,6 @@ public:
     PI_changeMoveType,
     PI_accSubBeforeRA,
     PI_accSubPostSchedule,
-    PI_removePseudoMov,
     PI_dce,
     PI_reassociateConst,
     PI_split4GRFVars,

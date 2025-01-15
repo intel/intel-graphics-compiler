@@ -90,7 +90,6 @@ enum SB_INST_PIPE {
   PIPE_FLOAT = 2,
   PIPE_LONG = 3,
   PIPE_MATH = 4,
-  PIPE_S0 = 5,
   PIPE_DPAS = 6,
   PIPE_SEND = 7,
   PIPE_ALL = 8
@@ -201,7 +200,6 @@ public:
     DISTINT,
     DISTFLOAT,
     DISTLONG,
-    DISTS0,
     DISTMATH
   };
   typedef struct _SWSBInfo {
@@ -271,7 +269,7 @@ public:
   bool isOperandTypeIndicated() const { return operandTypeIndicated; }
   bool isClosestALUType() const { return isClosestALUType_; }
 
-bool isDpas() const { return (op == G4_dpas || op == G4_dpasw); }
+  bool isDpas() const { return (op == G4_dpas || op == G4_dpasw); }
   G4_InstDpas *asDpasInst() const {
     vISA_ASSERT(isDpas(), ERROR_UNKNOWN);
     return (G4_InstDpas *)this;
@@ -386,12 +384,6 @@ public:
   }
   bool isSendConditional() const {
     return op == G4_sendc || op == G4_sendsc;
-  }
-  // a send is a indirect send (gather send) if its src0 is ARF Scalar
-  bool isSendi() const {
-      if (!isSend())
-          return false;
-    return getSrc(0)->isS0();
   }
   bool isRSWADivergentInst() const {
     return op == G4_goto || op == G4_while || op == G4_if || op == G4_break;
@@ -726,11 +718,9 @@ public:
   bool distanceHonourInstruction() const;
   bool tokenHonourInstruction() const;
   bool hasNoPipe() const;
-  bool isS0Opnd(G4_Operand *opnd) const;
   bool isLongPipeType(G4_Type type) const;
   bool isIntegerPipeType(G4_Type type) const;
   bool isJEUPipeInstructionXe() const;
-  bool isS0PipeInstructionXe() const;
   bool isLongPipeInstructionXe() const;
   bool isIntegerPipeInstructionXe() const;
   bool isFloatPipeInstructionXe() const;
@@ -1539,7 +1529,6 @@ public:
   G4_Areg *getSPReg() { return ARF_Table[AREG_SP]; }
   G4_Areg *getF2Reg() { return ARF_Table[AREG_F2]; }
   G4_Areg *getF3Reg() { return ARF_Table[AREG_F3]; }
-  G4_Areg *getScalarReg() { return ARF_Table[AREG_S0]; }
 
   // map int to flag areg
   G4_Areg *getFlagAreg(int flagNum) {

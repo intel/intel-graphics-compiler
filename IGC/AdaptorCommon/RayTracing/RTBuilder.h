@@ -59,7 +59,6 @@ private:
 
 
     bool isChildOfXe2 = false;
-    bool isChildOfXe3 = false;
 
     // Field for explicit GlobalBufferPtr - used on OpenCL path.
     Value* GlobalBufferPtr = nullptr;
@@ -76,36 +75,8 @@ private:
                 enabledSlices++;
             }
         }
-        isChildOfXe3 = Ctx.platform.isCoreChildOf(IGFX_XE3_CORE);
         isChildOfXe2 = Ctx.platform.isCoreChildOf(IGFX_XE2_HPG_CORE);
 
-        if (isChildOfXe3)
-        {
-            EuCountPerDSS = SysInfo.MaxEuPerSubSlice;
-            MaxDualSubSlicesSupported = 0;
-
-            IGC_ASSERT(NumDSSPerSlice <= GT_MAX_SUBSLICE_PER_SLICE);
-
-            for (unsigned int sliceID = 0; sliceID < GT_MAX_SLICE; ++sliceID)
-            {
-                if (SysInfo.SliceInfo[sliceID].Enabled)
-                {
-                    NumDSSPerSlice = SysInfo.SliceInfo[sliceID].SubSliceEnabledCount;
-
-                    // SubSliceInfo size is GT_MAX_SUBSLICE_PER_SLICE, but
-                    // actual number, calculated for given platform, of SubSlices is used
-                    // to iterate only through SubSlices present on the platform.
-                    for (unsigned int ssID = 0; ssID < NumDSSPerSlice; ++ssID)
-                    {
-                        if (SysInfo.SliceInfo[sliceID].SubSliceInfo[ssID].Enabled)
-                        {
-                            MaxDualSubSlicesSupported = std::max(MaxDualSubSlicesSupported, (sliceID * NumDSSPerSlice) + ssID + 1);
-                        }
-                    }
-                }
-            }
-        }
-        else // this will chain into if from Xe2 branch forming else if
         if (isChildOfXe2 || Ctx.platform.isProductChildOf(IGFX_PVC))
         {
             NumDSSPerSlice = SysInfo.MaxSubSlicesSupported / std::max(SysInfo.MaxSlicesSupported, enabledSlices);
@@ -283,8 +254,6 @@ public:
     Value* getStatelessScratchPtr(void);
     Value* getLeafType(StackPointerVal* StackPointer, bool CommittedHit);
     Value* getIsFrontFace(StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy);
-    // Xe3: memhit->leafNodeSubType
-    Value* getLeafNodeSubType(StackPointerVal* StackPointer, bool CommittedHit);
 
     Value* CreateSyncStackPtrIntrinsic(Value* Addr, Type* PtrTy, bool AddDecoration);
 

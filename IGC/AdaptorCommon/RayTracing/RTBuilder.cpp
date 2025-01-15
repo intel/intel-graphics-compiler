@@ -36,6 +36,7 @@ SPDX-License-Identifier: MIT
 
 
 
+
 using namespace llvm;
 using namespace RTStackFormat;
 using namespace IGC;
@@ -90,15 +91,6 @@ void RTBuilder::setInvariantLoad(LoadInst* LI)
 
 Value* RTBuilder::getRtMemBasePtr(void)
 {
-#define STYLE(X) {                                                      \
-    using T = std::conditional_t<                                       \
-        std::is_same_v<RTStackFormat::X, RTStackFormat::Xe>,            \
-        RayDispatchGlobalData::RT::Xe, RayDispatchGlobalData::RT::Xe3>; \
-    static_assert(                                                      \
-        offsetof(RayDispatchGlobalData::RT::Xe, rtMemBasePtr) ==        \
-        offsetof(T, rtMemBasePtr)); }
-#include "RayTracingMemoryStyle.h"
-#undef STYLE
     return _get_rtMemBasePtr_Xe(VALUE_NAME("rtMemBasePtr"));
 }
 
@@ -1178,10 +1170,6 @@ std::pair<uint32_t, uint32_t> RTBuilder::getSliceIDBitsInSR0() const {
     {
         return {11, 15};
     }
-    else if (Ctx.platform.GetPlatformFamily() == IGFX_XE3_CORE)
-    {
-        return {14, 17};
-    }
     else
     {
         return {12, 14};
@@ -1197,10 +1185,6 @@ std::pair<uint32_t, uint32_t> RTBuilder::getSubsliceIDBitsInSR0() const {
     else if (Ctx.platform.GetPlatformFamily() == IGFX_XE2_HPG_CORE)
     {
         return {8, 9};
-    }
-    else if (Ctx.platform.GetPlatformFamily() == IGFX_XE3_CORE)
-    {
-        return {8, 11};
     }
     else
     {
@@ -1251,13 +1235,6 @@ Value* RTBuilder::getGlobalDSSID()
             if (dssIDBits.first < sliceIDBits.first && sliceIDBits.first == dssIDBits.second + 1)
             {
                 return emitStateRegID(dssIDBits.first, sliceIDBits.second);
-            }
-            else if (isChildOfXe3)
-            {
-                Value* sliceID = emitStateRegID(sliceIDBits.first, sliceIDBits.second);
-                Value* dssID = emitStateRegID(dssIDBits.first, dssIDBits.second);
-                Value* globalDSSID = CreateMul(sliceID, getInt32(NumDSSPerSlice));
-                return CreateAdd(globalDSSID, dssID);
             }
             else
             {

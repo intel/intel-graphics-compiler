@@ -1076,8 +1076,6 @@ namespace IGC
         }
         case llvm::GenISAIntrinsic::GenISA_typedread:
         case llvm::GenISAIntrinsic::GenISA_typedwrite:
-        case llvm::GenISAIntrinsic::GenISA_typedreadMS:
-        case llvm::GenISAIntrinsic::GenISA_typedwriteMS:
         case llvm::GenISAIntrinsic::GenISA_ldstructured:
         case llvm::GenISAIntrinsic::GenISA_storestructured1:
         case llvm::GenISAIntrinsic::GenISA_storestructured2:
@@ -1218,8 +1216,6 @@ namespace IGC
             case llvm::GenISAIntrinsic::GenISA_sampleinfoptr:
             case llvm::GenISAIntrinsic::GenISA_typedwrite:
             case llvm::GenISAIntrinsic::GenISA_typedread:
-            case llvm::GenISAIntrinsic::GenISA_typedwriteMS:
-            case llvm::GenISAIntrinsic::GenISA_typedreadMS:
                 pTextureValue = pIntr->getOperand(0);
                 break;
             default:

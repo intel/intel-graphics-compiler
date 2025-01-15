@@ -900,16 +900,6 @@ auto* _get_numDSSRTStacks_Xe(const Twine& _ReturnName = "")
   return V_2;
 }
 
-auto* _get_maxBVHLevels_Xe3(const Twine& _ReturnName = "")
-{
-  auto* V_0 = getGlobalBufferPtr();
-  auto* V_1 = CreateInBoundsGEP(_struct_IGC__RayDispatchGlobalData(*Ctx.getModule()), V_0, { getInt64(0), getInt32(0), getInt32(0), getInt32(4), getInt32(0) });
-  auto* V_2 = CreateLoad(getInt32Ty(), V_1);
-  setInvariantLoad(V_2);
-  auto* V_3 = CreateAnd(V_2, getInt32(7), _ReturnName);
-  return V_3;
-}
-
 auto* _get_statelessScratchPtr(const Twine& _ReturnName = "")
 {
   auto* V_0 = getGlobalBufferPtr();

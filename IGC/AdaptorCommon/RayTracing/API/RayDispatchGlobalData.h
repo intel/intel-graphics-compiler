@@ -232,65 +232,11 @@ struct RayDispatchGlobalData
                 uint32_t bvhLevels : 3;
                 uint32_t MBZ3      : 29;
             } rt_data_info;
-            // In addition to the dword of padding to align `common`, we also
-            // add 8 dwords so Xe and Xe3 both have the same RTGlobals size.
             uint32_t paddingBits[1+6];          // padding
 
             // HW doesn't read anything below this point.
             RayDispatchGlobalDataCommon common;
         } xe;
-        struct Xe3
-        {
-            template<class TAPIAdaptor>
-            void populate(const TAPIAdaptor& umd)
-            {
-                rtMemBasePtr        = umd.GetRayStackBufferAddress();
-                callStackHandlerPtr = umd.GetCallStackHandlerPtr();
-                stack_size_info.stackSizePerRay = umd.GetStackSizePerRay();
-                num_stacks_info.numRTStacks = umd.GetNumDSSRTStacks();
-
-                // _pad1_mbz higher 16 bits must be zero.
-                num_stacks_info.numRTStacks = (num_stacks_info.numRTStacks & 0x0000FFFF);
-
-                constexpr uint32_t strideMask = (1 << 13) - 1;
-                const uint32_t hgs = umd.GetHitGroupStride() & strideMask;
-                const uint32_t mss = umd.GetMissStride()     & strideMask;
-                rt_data_info.packedData = (umd.GetMaxBVHLevels() << 0) | (hgs << 3) | (mss << 16);
-
-                hitGroupBasePtr   = umd.GetHitGroupTable();
-                missShaderBasePtr = umd.GetMissShaderTable();
-
-                common.populate(umd);
-            }
-
-            uint64_t rtMemBasePtr;              // base address of the allocated stack memory
-            uint64_t callStackHandlerPtr;       // this is the KSP of the continuation handler that is invoked by BTD when the read KSP is 0
-            union {
-                uint32_t stackSizePerRay;       // async-RT stack size in 64 byte blocks
-                uint32_t _pad0_mbz      : 32;
-            } stack_size_info;
-            union {
-                uint32_t numRTStacks;        // number of stacks per DSS
-                uint32_t numDSSRTStacks    : 16;   // number of asynch stacks per DSS
-                uint32_t _pad1_mbz : 16;
-
-            } num_stacks_info;
-            union {
-                uint32_t packedData;
-                uint32_t maxBVHLevels     : 3;  // the maximal number of supported instancing levels (0->8, 1->1, 2->2, ...)
-                uint32_t hitGroupStride   : 13; // stride of hit group shader records (16-bytes alignment)
-                uint32_t missShaderStride : 13; // stride of miss shader records (8-bytes alignment)
-                uint32_t _pad2_mbz        : 3;
-            } rt_data_info;
-            uint32_t flags   : 1;               // per context control flags
-            uint32_t pad_mbz : 31;
-            uint64_t hitGroupBasePtr;           // base pointer of hit group shader record array (16-bytes alignment)
-            uint64_t missShaderBasePtr;         // base pointer of miss shader record array (8-bytes alignment)
-            uint32_t _align_mbz[2];             // pad hardware section to 64 bytes
-
-            // HW doesn't read anything below this point.
-            RayDispatchGlobalDataCommon common;
-        } xe3;
     } rt;
 };
 
@@ -305,8 +251,6 @@ static_assert(RTStackAlign % RayDispatchGlobalData::StackChunkSize == 0, "no?");
 
 static_assert(sizeof(RayDispatchGlobalData) == 184, "unexpected size?");
 static_assert(sizeof(RayDispatchGlobalData::RT::Xe) == sizeof(RayDispatchGlobalData), "unexpected size?");
-static_assert(sizeof(RayDispatchGlobalData::RT::Xe3) == sizeof(RayDispatchGlobalData), "unexpected size?");
-static_assert(offsetof(RayDispatchGlobalData::RT::Xe, common) == offsetof(RayDispatchGlobalData::RT::Xe3, common), "unexpected size?");
 #ifdef HAS_INCLUDE_TYPE_TRAITS
 static_assert(std::is_standard_layout<RayDispatchGlobalData>::value, "no?");
 #endif // HAS_INCLUDE_TYPE_TRAITS

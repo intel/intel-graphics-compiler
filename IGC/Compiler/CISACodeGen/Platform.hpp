@@ -154,7 +154,7 @@ bool supportSimd32PerPixelPSWithNumSamples16() const
 bool canSupportWMTPWithoutBTD() const {
     // Returns true if the platform has the capability of supporting
     // WMTP but WMTP isn't supported for all shader types
-    return (isCoreChildOf(IGFX_XE2_HPG_CORE) && !isCoreChildOf(IGFX_XE3_CORE));
+    return isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
 
@@ -166,16 +166,6 @@ bool canSupportWMTP() const
 }
 
 bool supportsWMTPForShaderType(ShaderType type) const {
-    if (isCoreChildOf(IGFX_XE3_CORE)) {
-        switch(type) {
-        case ShaderType::COMPUTE_SHADER:
-        case ShaderType::OPENCL_SHADER:
-        case ShaderType::RAYTRACING_SHADER:
-            return true;
-        default:
-            return false;
-        }
-    }
 
     if (isCoreChildOf(IGFX_XE2_HPG_CORE)) {
         switch(type) {
@@ -917,7 +907,6 @@ bool isValidNumThreads(int32_t numThreadsPerEU) const
 {
     return numThreadsPerEU == 0 // "auto" mode - use compiler heuristic
         || numThreadsPerEU == 4
-        || numThreadsPerEU == 10
         || numThreadsPerEU == 8;
 }
 
@@ -930,8 +919,7 @@ bool supports3DAndCubeSampleD() const
         m_platformInfo.eProductFamily != IGFX_METEORLAKE &&
         m_platformInfo.eProductFamily != IGFX_ARROWLAKE &&
         m_platformInfo.eProductFamily != IGFX_BMG &&
-        m_platformInfo.eProductFamily != IGFX_LUNARLAKE &&
-        m_platformInfo.eRenderCoreFamily != IGFX_XE3_CORE
+        m_platformInfo.eProductFamily != IGFX_LUNARLAKE
         );
 }
 
@@ -1107,10 +1095,6 @@ bool typedReadSupportsAllRenderableFormats() const
 
 bool EnableNewTileYCheckDefault() const
 {
-    if (isCoreChildOf(IGFX_XE3_CORE))
-    {
-        return false;
-    }
     return true;
 }
 
@@ -1119,24 +1103,6 @@ bool EnableKeepTileYForFlattenedDefault() const
     return false;
 }
 
-bool supportsWriteableMSAATextures() const
-{
-    return isCoreChildOf(IGFX_XE3_CORE);
-}
-bool supportsVRT() const
-{
-    return isCoreChildOf(IGFX_XE3_CORE);
-}
-
-bool supportsOutOfBoundsGrfAccess() const
-{
-    return !isCoreChildOf(IGFX_XE3_CORE);
-}
-bool needsOutOfBoundsBuiltinChecks() const
-{
-    return !supportsOutOfBoundsGrfAccess() &&
-        IGC_IS_FLAG_ENABLED(EnableOutOfBoundsBuiltinChecks);
-}
 bool needsWAForThreadsUtilization() const
 {
     return (m_platformInfo.eProductFamily == IGFX_DG2 ||
@@ -1192,10 +1158,6 @@ unsigned int getMaxNumberHWThreadForEachWG() const
     else if (m_platformInfo.eRenderCoreFamily == IGFX_XE2_HPG_CORE)
     {
         // Each WG is dispatched into one subslice
-        return getMaxNumberThreadPerSubslice();
-    }
-    else if (m_platformInfo.eRenderCoreFamily == IGFX_XE3_CORE)
-    {
         return getMaxNumberThreadPerSubslice();
     }
     else {
@@ -1326,7 +1288,6 @@ bool hasCorrectlyRoundedMacros() const {
         m_platformInfo.eProductFamily != IGFX_ALDERLAKE_P &&
         m_platformInfo.eProductFamily != IGFX_ALDERLAKE_N &&
         m_platformInfo.eProductFamily != IGFX_DG2 &&
-        m_platformInfo.eRenderCoreFamily != IGFX_XE3_CORE &&
         m_platformInfo.eProductFamily != IGFX_METEORLAKE) &&
         m_platformInfo.eProductFamily != IGFX_ARROWLAKE &&
         m_platformInfo.eProductFamily != IGFX_BMG &&
@@ -1515,12 +1476,6 @@ bool isDynamicRayQueryDynamicRayManagementMechanismEnabled() const
 {
     return (isCoreChildOf(IGFX_XE2_HPG_CORE) &&
         IGC_IS_FLAG_DISABLED(DisableRayQueryDynamicRayManagementMechanism));
-}
-
-bool isSWSubTriangleOpacityCullingEmulationEnabled() const
-{
-    return (isCoreChildOf(IGFX_XE3_CORE) &&
-        IGC_IS_FLAG_DISABLED(DisableSWSubTriangleOpacityCullingEmulation));
 }
 
 // ***** Below go accessor methods for testing WA data from WA_TABLE *****
@@ -1734,7 +1689,7 @@ bool WaDisableD64ScratchMessage() const
 
 bool supportLargeGRF() const
 {
-    return (isCoreChildOf(IGFX_XE_HPG_CORE) && !isCoreChildOf(IGFX_XE3_CORE));
+    return isCoreChildOf(IGFX_XE_HPG_CORE);
 }
 
 bool supportCheckCSThreadsLimit() const
@@ -1848,11 +1803,6 @@ bool preferLSCCache() const
     return isCoreChildOf(IGFX_XE2_HPG_CORE);
 }
 
-
-bool usesDynamicPolyPackingPolicies() const
-{
-    return isCoreChildOf(IGFX_XE3_CORE) && IGC_IS_FLAG_DISABLED(DisableDynamicPolyPackingPolicies);
-}
 
 bool allowDivergentControlFlowRayQueryCheckRelease() const
 {

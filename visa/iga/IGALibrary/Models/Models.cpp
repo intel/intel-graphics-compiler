@@ -24,7 +24,6 @@ SPDX-License-Identifier: MIT
 #include "bxml/ModelXeHPC.hpp"
 #include "bxml/ModelXeHPG.hpp"
 #include "bxml/ModelXe2.hpp"
-#include "bxml/ModelXe3.hpp"
 #include "../Backend/Native/MInst.hpp"
 #include "../asserts.hpp"
 #include "../bits.hpp"
@@ -132,18 +131,12 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
     IGA_REGISTER_SPEC(Platform::GEN8, Platform::XE, RegName::ARF_SP, "sp",
                       "Stack Pointer", 0x6, 0, 4, 0,
                       (2 * 8)), // two subregisters of 8 bytes each
-    IGA_REGISTER_SPEC(Platform::XE3, Platform::XE3, RegName::ARF_S, "s",
-                      "Scalar Register", 0x6, 0, 1, 1, (32)),
 
     IGA_REGISTER_SPEC(Platform::GEN7P5, Platform::GEN11, RegName::ARF_SR, "sr",
                       "State Register", 0x7, 0, 1, 2,
                       (16, 16)), // sr{0,1}.{0..3}:d
-    IGA_REGISTER_SPEC(Platform::XE, Platform::XE2, RegName::ARF_SR, "sr",
-                      "State Register", 0x7, 0, 1, 1,
-                      (16)), // sr0.{0..3}:d
-    IGA_REGISTER_SPEC_GE(Platform::XE3, RegName::ARF_SR, "sr",
-                         "State Register", 0x7, 0, 1, 1,
-                         (20)), // sr0.{0..4}:d
+    IGA_REGISTER_SPEC_GE(Platform::XE, RegName::ARF_SR, "sr", "State Register",
+                         0x7, 0, 1, 1, (16)), // sr0.{0..3}:d
 
     IGA_REGISTER_SPEC_UNIFORM(RegName::ARF_CR, "cr", "Control Register", 0x8, 0,
                               4, 1, (3 * 4)), // cr0.{0..2}:d
@@ -158,12 +151,9 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
     IGA_REGISTER_SPEC_UNIFORM(RegName::ARF_IP, "ip", "Instruction Pointer", 0xA,
                               0, 4, 0, (4)), // ip
 
-    IGA_REGISTER_SPEC_LE(Platform::XE2, RegName::ARF_TDR,
-                      "tdr", "Thread Dependency Register", 0xB, 0, 2, 1,
-                      (16)), // tdr0.*
-    IGA_REGISTER_SPEC_GE(Platform::XE3, RegName::ARF_TDR,
-                      "tdr", "Thread Dependency Register", 0xB, 0, 2, 1,
-                      (20)), // tdr0.*
+    IGA_REGISTER_SPEC_UNIFORM(RegName::ARF_TDR, "tdr",
+                              "Thread Dependency Register", 0xB, 0, 2, 1,
+                              (16)), // tdr0.*
 
     IGA_REGISTER_SPEC_GE(Platform::GEN10, RegName::ARF_TM, "tm",
                          "Timestamp Register", 0xC, 0, 4, 1,
@@ -407,15 +397,11 @@ static constexpr Model
     MODEL_XE2(Platform::XE2, &MODEL_XE2_OPSPECS[0], "2", "xe2", "lnl"
     );
 
-static constexpr Model
-    MODEL_XE3(Platform::XE3, &MODEL_XE3_OPSPECS[0], "3", "xe3", "ptl"
-    );
 
 const Model *const iga::ALL_MODELS[] {
   &MODEL_GEN7P5, &MODEL_GEN8, &MODEL_GEN9, &MODEL_GEN10, &MODEL_GEN11,
       &MODEL_XE, &MODEL_XE_HP, &MODEL_XE_HPG, &MODEL_XE_HPC,
       &MODEL_XE2,
-      &MODEL_XE3,
 };
 const size_t iga::ALL_MODELS_LEN = sizeof(ALL_MODELS) / sizeof(ALL_MODELS[0]);
 
@@ -444,8 +430,6 @@ const Model *Model::LookupModel(Platform p) {
     return &MODEL_XE_HPC;
   case Platform::XE2:
     return &MODEL_XE2;
-  case Platform::XE3:
-    return &MODEL_XE3;
   default:
     return nullptr;
   }

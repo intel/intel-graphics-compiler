@@ -706,7 +706,6 @@ public:
     return static_cast<int>(numRegTotal * ratio);
   }
 
-  unsigned getSRFInWords();
 
   void setName(const char *n) { name = n; }
   const char *getName() const { return name; }

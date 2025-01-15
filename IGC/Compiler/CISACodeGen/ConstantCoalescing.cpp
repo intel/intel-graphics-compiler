@@ -610,10 +610,6 @@ bool ConstantCoalescing::profitableChunkSize(
 bool ConstantCoalescing::profitableChunkSize(
     uint32_t chunkSize, uint32_t eltSizeInBytes)
 {
-    // limit the size to one GRF due to scalar-RA limitation
-    if (IGC_GET_FLAG_VALUE(EnableScalarPipe))
-        return chunkSize * eltSizeInBytes <= 64 &&
-            chunkSize <= MAX_VECTOR_NUM_ELEMENTS;
     return chunkSize * eltSizeInBytes <= MAX_OWLOAD_SIZE &&
            chunkSize <= MAX_VECTOR_NUM_ELEMENTS;
 }

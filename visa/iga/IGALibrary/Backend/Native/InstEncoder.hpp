@@ -400,7 +400,6 @@ inline void InstEncoder::encodeForPlatform(const Instruction &i) {
   case Platform::XE_HPG:
   case Platform::XE_HPC:
   case Platform::XE2:
-  case Platform::XE3:
     break;
   case Platform::FUTURE:
   default:

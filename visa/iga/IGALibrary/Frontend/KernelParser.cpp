@@ -770,45 +770,7 @@ class KernelParser : GenParser {
                            // ensure the inst opt is given
 
 private:
-  void addNullGatherSendSrc1() {
-    bool checkForBadSrc1 = true;
-    if (checkForBadSrc1 && LookingAt(IDENT)) {
-      // friendly error if the user includes src1 on a gather send
-      // send... ... r[s0..]  null:0  ExDesc Desc
-      //                      ^^^^^^ oops
-      // send... ... r[s0..]  a0.2         Desc
-      //                      ^^^^ okay (a0.2 is the ExDesc not src1)
-      auto at = NextLoc();
-      const RegInfo *regInfo = nullptr;
-      int regNum = 0;
-      m_lexer.Mark();
-      if (ConsumeReg(regInfo, regNum) &&
-        (regInfo->regName == RegName::GRF_R ||
-          regInfo->regName == RegName::ARF_NULL))
-      {
-        FailAtT(at, "src1 operand forbidden for Gathering Sends");
-      }
-      m_lexer.Reset();
-    }
 
-    // For instructions those have implicit types, match the type to
-    // the expected one. Otherwise, ARF_NULL operand should have Type::INVALID
-    Type type = Type::INVALID;
-    m_opSpec->implicitSrcTypeVal(1, false, type);
-    m_builder.InstSrcOpRegDirect(1,
-                                 m_srcLocs[0], // use src0 loc
-                                 SrcModifier::NONE, RegName::ARF_NULL,
-                                 REGREF_ZERO_ZERO, Region::INVALID, type);
-  }
-
-  // A helper function to check if the instruction under parsing is a gather
-  // send. This function is only meaningful after opSpec and src0 is parsed
-  bool isParsingGatherSend() {
-    IGA_ASSERT(m_opSpec && m_srcKinds[0] != Operand::Kind::INVALID,
-               "isParsingGatherSend cannot be called before src0 is parsed");
-    return m_opSpec && m_opSpec->isAnySendFormat() &&
-           m_srcKinds[0] == Operand::Kind::INDIRECT;
-  }
 
 public:
   KernelParser(const Model &model, InstBuilder &handler, const std::string &inp,
@@ -1211,8 +1173,6 @@ public:
     case OpSpec::SEND_BINARY:
       if (platform() <= Platform::XE) {
         ParseSendInstructionLegacy();
-      } else if (platform() >= Platform::XE3) {
-        ParseSendInstructionXe3();
       } else if (platform() == Platform::XE2) {
         ParseSendInstructionXe2();
       } else if (platform() >= Platform::XE_HP) {
@@ -1344,36 +1304,6 @@ public:
     ParseSendSrcOp(0, false);
     int src1Len = -1;
     ParseSendSrc1OpWithOptLen(src1Len);
-    ParseSendDescsXe2(src1Len);
-  }
-
-  // backwards compatible send with Gather Send support
-  // same as Xe2, but allows gather send (src0 indirect operand)
-  void ParseSendInstructionXe3() {
-    ParseSendDstOpXe3(); // use dst type INVALID on >=XE3
-    bool isGathering = ParseSendSrc0OpXe3();
-    int src1Len = -1;
-    if (LookingAtSeq(COLON, IDENT)) {
-      // send ... r0:ud ...
-      //            ^^^ forbidden on XE3+
-      // send ... r[s0.0]:ud ...
-      //                 ^^^ forbidden on XE3
-      FailS(NextLoc(), "types are forbidden on send operands on this platform");
-    }
-    if (isGathering) {
-      if (LookingAtSeq(COLON, INTLIT10)) {
-        // send ... r[s0.0]:4 ...
-        //                 ^^ oops needs to be descriptor for this platform
-        FailS(NextLoc(), "Src0.Len should come from the descriptor");
-      }
-      m_srcLocs[1] = NextLoc();
-      // create null src1 for Gather Send (src1 won't be printed in asm)
-      addNullGatherSendSrc1();
-      // set src1Len to 0 to indicate ExBSO mode on
-      src1Len = 0;
-    } else {
-      ParseSendSrc1OpWithOptLen(src1Len);
-    }
     ParseSendDescsXe2(src1Len);
   }
 
@@ -1875,24 +1805,6 @@ public:
     }
   }
 
-  void ParseSendDstOpXe3() {
-    OperandInfo opInfo;
-    m_srcLocs[1] = NextLoc();
-    m_srcKinds[1] = opInfo.kind = Operand::Kind::DIRECT;
-    auto reg = ParseReg();
-    {
-    opInfo.regOpName = reg.first->regName;
-    opInfo.regOpReg.regNum = reg.second;
-    opInfo.regOpReg.subRegNum = 0;
-    }
-    m_builder.InstDstOp(opInfo);
-    if (LookingAtSeq(COLON, IDENT)) {
-      // send r10:ud ...
-      //         ^^^ forbidden on XE3+
-      FailS(NextLoc(), "types are forbidden on send operands on this platform");
-    }
-  }
-
   // (sat)
   bool ParseSatOpt() {
     // TODO: expand to tokens so (sat) can be imm expr
@@ -2112,7 +2024,6 @@ public:
     }
     regName = ri->regName;
     if (regNum != 0 || (ri->regName != RegName::ARF_A
-                        && ri->regName != RegName::ARF_S // r[s0.0]
                         )) {
       FailT("expected address register for indirect access (a0)");
     }
@@ -2900,10 +2811,6 @@ public:
       // parse the type
       Type sty = Type::INVALID;
       if (LookingAtSeq(COLON, IDENT)) {
-        if (platform() >= Platform::XE3) {
-          FailS(NextLoc(),
-                "types are forbidden on send operands on this platform");
-        }
        // this disables expressions for the length sizes
        //   send ... null:(2*0)
         sty = ParseSendOperandTypeWithDefault(1);
@@ -2991,38 +2898,6 @@ public:
 
     ParseSrcOp(srcOpIx);
   }
-  // e.g. "r13" or "r[s0.2]" (no suffix Src0Len)
-  // returns if the operand is indirect (gathering)
-  bool ParseSendSrc0OpXe3() {
-    m_srcLocs[0] = NextLoc();
-
-    OperandInfo opInfo;
-    if (ConsumeIdentEq("r")) {
-      m_srcKinds[0] = opInfo.kind = Operand::Kind::INDIRECT;
-      ConsumeOrFail(LBRACK, "expected [");
-      auto sreg = ParseReg();
-      if (sreg.first->regName != RegName::ARF_S) {
-        FailAtT(m_srcLocs[0], "gathering send expects s0.# index");
-      }
-      ConsumeOrFail(DOT, "expected subregister");
-      int subregNum = 0;
-      ConsumeIntLitOrFail(subregNum, "expected subregister");
-      opInfo.regOpIndOff = 0;
-      opInfo.regOpReg = RegRef(sreg.second, (uint16_t)subregNum);
-      opInfo.regOpName = RegName::ARF_S;
-      ConsumeOrFail(RBRACK, "expected ]");
-    } else {
-      m_srcKinds[0] = opInfo.kind = Operand::Kind::DIRECT;
-      auto reg = ParseReg();
-      opInfo.regOpName = reg.first->regName;
-      opInfo.regOpReg.regNum = reg.second;
-      opInfo.regOpReg.subRegNum = 0;
-    }
-
-    m_builder.InstSrcOp(0, opInfo);
-    return opInfo.kind == Operand::Kind::INDIRECT;
-  }
-
 
   std::pair<const RegInfo *, uint16_t> ParseReg() {
     const RegInfo *regInfo = nullptr;
@@ -3392,8 +3267,6 @@ public:
 
     bool src1LengthSuffixSet = m_sendSrcLens[1] != -1;
     if (instOpts.contains(InstOpt::EXBSO) && !src1LengthSuffixSet
-        && !isParsingGatherSend() // Gather Send must have ExBSO set but it has
-                                  // no explicit src1 length
     ) {
       // GOOD:  send ... r10:2  a0.# ... {ExBSO}
       // ERROR: send ... r10    a0.# ... {ExBSO}
@@ -3422,8 +3295,6 @@ public:
     m_builder.InstOptsAdd(instOpts);
 
     if (m_implicitExBSO && !instOpts.contains(InstOpt::EXBSO)
-        && !isParsingGatherSend() // gather-send must have ExBSO set but it has
-                                  // no explicit src1 length
         ) {
       WarningAtT(m_mnemonicLoc, "send src1 length implicitly added "
                                 "(include {ExBSO})");
@@ -3602,7 +3473,6 @@ public:
         };
         //
         bool parsedNamedPipe =
-            tryParsePipe("S", SWSB::DistType::REG_DIST_SCALAR) ||
             tryParsePipe("F", SWSB::DistType::REG_DIST_FLOAT) ||
             tryParsePipe("I", SWSB::DistType::REG_DIST_INT) ||
             tryParsePipe("L", SWSB::DistType::REG_DIST_LONG) ||
@@ -4106,8 +3976,6 @@ bool KernelParser::ParseLdStInst() {
   if (!sendOpSupportsSyntax(platform(), vma.op, vma.sfid)) {
     FailS(NextLoc(), "op not yet supported for ld/st parse");
   }
-  if (platform() >= Platform::XE3)
-    FailAtT(mneLoc, "load/store syntax not enabled yet for this platform");
 
   // IGA op
   m_opSpec =
@@ -4395,8 +4263,6 @@ bool KernelParser::ParseLdStInst() {
   bool hasUvrl =
       vma.sfid == SFID::TGM && (vma.op == SendOp::LOAD_QUAD ||
                                 vma.op == SendOp::STORE_QUAD ||
-                                vma.op == SendOp::LOAD_QUAD_MSRT ||
-                                vma.op == SendOp::STORE_QUAD_MSRT ||
                                 vma.isAtomic());
   hasUvrl |= vma.sfid == SFID::TGM && vma.op == SendOp::STORE_UNCOMPRESSED_QUAD;
   bool addrLenIsCorrect = src0Addr.payload.regLen == expectedAddrRegs;

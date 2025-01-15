@@ -26,9 +26,6 @@ CShader*& CShaderProgram::GetShaderPtr(SIMDMode simd, ShaderDispatchMode mode)
     {
     case ShaderDispatchMode::DUAL_PATCH:
         return m_SIMDshaders[3];
-    case ShaderDispatchMode::QUAD_SIMD8_DYNAMIC:
-        IGC_ASSERT(simd == SIMDMode::SIMD32);
-        return m_SIMDshaders[8];
     default:
         break;
     }

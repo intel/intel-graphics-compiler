@@ -1354,8 +1354,6 @@ void LiveRange::initializeForbidden() {
     setForbidden(forbiddenKind::FBD_ADDR);
   } else if (LivenessAnalysis::livenessClass(rf, G4_FLAG)) {
     setForbidden(forbiddenKind::FBD_FLAG);
-  } else if (LivenessAnalysis::livenessClass(rf, G4_SCALAR)) {
-    setForbidden(forbiddenKind::FBD_SCALAR);
   } else {
     setForbidden(forbiddenKind::FBD_RESERVEDGRF);
   };
@@ -2141,29 +2139,6 @@ void Interference::buildInterferenceForFcall(
   }
 }
 
-bool GlobalRA::canIncreaseGRF(unsigned spillSize, bool infCostSpilled) {
-  // If we estimate insufficient # GRFs early on, we may end up
-  // spilling an infinite spill cost variable. As last ditch effort,
-  // we bump up # GRFs and retry compilation. If we estimate GRF
-  // config well, then we should never see infCostSpilled == true.
-
-  // Conditions to increase #GRFs assuming first RA iteration did not succeed:
-  //  - Variable with inf spill cost, or
-  //  - #GRFs selected and next larger one has same number of threads, or
-  //  - Spill size is above threshold
-  if ((infCostSpilled || kernel.grfMode.hasLargerGRFSameThreads() ||
-       spillSize >= kernel.getuInt32Option(vISA_SpillAllowed)) &&
-      !didGRFIncrease) {
-    if (kernel.updateKernelToLargerGRF()) {
-      // GRF successfully increased
-      RA_TRACE(std::cout << "\t--new GRF size " << kernel.getNumRegTotal()
-                         << ". Re-run RA\n ");
-      didGRFIncrease = true;
-      return true;
-    }
-  }
-  return false;
-}
 
 void Interference::buildInterferenceForDst(
     G4_BB *bb, SparseBitVector &live, G4_INST *inst,
@@ -6895,12 +6870,6 @@ void PhyRegUsage::updateRegUsage(LiveRange *lr) {
         PhyRegUsage::numAllocUnit(dcl->getNumElems(), dcl->getElemType()),
         dcl->getNumRows());
   }
-  else if (pr->isS0()) {
-    markBusyScalar(
-        0, PhyRegUsage::offsetAllocUnit(lr->getPhyRegOff(), dcl->getElemType()),
-        PhyRegUsage::numAllocUnit(dcl->getNumElems(), dcl->getElemType()),
-        dcl->getNumRows());
-  }
   else {
     vISA_ASSERT(false, ERROR_GRAPHCOLOR); // un-handled reg type
   }
@@ -6947,8 +6916,6 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF,
     rFile = G4_FLAG;
   else if (liveAnalysis.livenessClass(G4_ADDRESS))
     rFile = G4_ADDRESS;
-  else if (liveAnalysis.livenessClass(G4_SCALAR))
-    rFile = G4_SCALAR;
 
   FreePhyRegs FPR(kernel);
 
@@ -9021,8 +8988,6 @@ unsigned ForbiddenRegs::getForbiddenVectorSize(G4_RegFileKind regKind) const {
     return builder.getNumAddrRegisters();
   case G4_FLAG:
     return builder.getNumFlagRegisters();
-  case G4_SCALAR:
-    return builder.kernel.getSRFInWords();
   default:
     vISA_ASSERT_UNREACHABLE("illegal reg file");
     return 0;
@@ -10444,89 +10409,6 @@ void GlobalRA::flagRegAlloc() {
 
   vISA_ASSERT(iterationNo < maxRAIterations, "Flag RA has failed.");
 }
-void GlobalRA::scalarRegAlloc() {
-  uint32_t scalarSpillId = 0;
-  unsigned maxRAIterations = builder.getuint32Option(vISA_MaxRAIterations);
-  unsigned iterationNo = 0;
-
-  std::set<G4_Declare *> PreAssigned;
-  for (auto dcl : kernel.Declares) {
-    if (dcl->getRegFile() == G4_SCALAR) {
-      auto regVar = dcl->getRegVar();
-      if (regVar->isS0())
-        PreAssigned.insert(dcl);
-    }
-  }
-  while (iterationNo < maxRAIterations) {
-    RA_TRACE(std::cout << "--scalar RA iteration " << iterationNo << "\n");
-    //
-    // choose reg vars whose reg file kind is ARF
-    //
-    LivenessAnalysis liveAnalysis(*this, G4_SCALAR);
-    liveAnalysis.computeLiveness();
-
-    //
-    // if no reg var needs to reg allocated, then skip reg allocation
-    //
-    if (liveAnalysis.getNumSelectedVar() > 0) {
-      GraphColor coloring(liveAnalysis, false, false);
-      if (!coloring.regAlloc(false, false, nullptr)) {
-        SpillManager spillScalar(*this, coloring.getSpilledLiveRanges(),
-                                 scalarSpillId);
-        spillScalar.insertSpillCode();
-        scalarSpillId = spillScalar.getNextTempDclId();
-
-        //
-        // if new scalar temps are created, we need to do RA again so that newly
-        // created temps can get registers. If there are no more newly created
-        // temps, we then commit reg assignments
-        //
-        if (spillScalar.isAnyNewTempCreated() == false) {
-          coloring.confirmRegisterAssignments();
-          if ((builder.kernel.fg.getHasStackCalls() ||
-               builder.kernel.fg.getIsStackCallFunc())) {
-            vASSERT(false &&
-                    "missing code"); // coloring.addA0SaveRestoreCode();
-          }
-          break; // no more new scalar temps; done with scalar allocation
-        }
-      } else // successfully allocate register without spilling
-      {
-        coloring.confirmRegisterAssignments();
-        if ((builder.kernel.fg.getHasStackCalls() ||
-             builder.kernel.fg.getIsStackCallFunc())) {
-          vASSERT(false && "missing code"); // coloring.addA0SaveRestoreCode();
-        }
-        VISA_DEBUG_VERBOSE(detectUndefinedUses(liveAnalysis, kernel));
-
-        break; // done with scalar allocation
-      }
-    } else {
-      break; // no scalar allocation needed
-    }
-    iterationNo++;
-  }
-  kernel.dumpToFile("after.Scalar_RA." + std::to_string(iterationNo));
-  constexpr unsigned ScalarRegisterGRFBase = 96;
-  // change scalar-register assignment back to fixed GRF location so that
-  // the code can be simulated on platform without scalar pipe
-  for (G4_Declare *dcl : kernel.Declares) {
-    if (dcl->getRegFile() == G4_SCALAR && !PreAssigned.count(dcl)) {
-      auto regVar = dcl->getRegVar();
-      if (regVar->isS0()) {
-        auto offset = regVar->getPhyRegOff() * dcl->getElemSize();
-        unsigned int regNum = offset / builder.getGRFSize();
-        unsigned int subRegNum =
-            (offset % builder.getGRFSize()) / dcl->getElemSize();
-        regVar->setPhyReg(regPool.getGreg(regNum + ScalarRegisterGRFBase),
-                        subRegNum);
-        dcl->setRegFile(G4_GRF);
-      }
-    }
-  }
-  kernel.dumpToFile("after.Scalar_Rename." + std::to_string(iterationNo));
-  vISA_ASSERT(iterationNo < maxRAIterations, "Scalar RA has failed.");
-}
 
 void GlobalRA::assignRegForAliasDcl() {
   //
@@ -10570,16 +10452,6 @@ void GlobalRA::assignRegForAliasDcl() {
         } else if (CurrentRegVar->getDeclare()->getRegFile() == G4_ADDRESS) {
           vISA_ASSERT(tempoffset < builder.getNumAddrRegisters() * 2,
                       ERROR_REGALLOC); // Must hold tempoffset in one A0 reg
-          CurrentRegVar->setPhyReg(
-              AliasRegVar->getPhyReg(),
-              tempoffset / CurrentRegVar->getDeclare()->getElemSize());
-        } else if (CurrentRegVar->getDeclare()->getRegFile() == G4_SCALAR) {
-          if (builder.getuint32Option(vISA_ScalarPipe))
-            vISA_ASSERT(tempoffset < kernel.getSRFInWords() *2,
-                        ERROR_REGALLOC);
-          else
-          vISA_ASSERT(tempoffset < builder.getScalarRegisterSizeInBytes(),
-                      ERROR_REGALLOC);
           CurrentRegVar->setPhyReg(
               AliasRegVar->getPhyReg(),
               tempoffset / CurrentRegVar->getDeclare()->getElemSize());
@@ -10725,163 +10597,6 @@ bool GlobalRA::hybridRA(LocalRA &lra) {
 }
 
 
-//
-// change single-element dcl for G4_GRF to G4_SCALAR
-//
-void GlobalRA::selectScalarCandidates() {
-  // collect root-declares that may be changed to scalar
-  std::set<G4_Declare *> candidates;
-  for (auto bb : kernel.fg) {
-    for (auto inst : *bb) {
-      G4_DstRegRegion *dst = inst->getDst();
-      if (dst && dst->getTopDcl()) {
-        auto rootDcl = dst->getTopDcl();
-        if (rootDcl->getRegFile() == G4_GRF && !candidates.count(rootDcl) &&
-            rootDcl->getNumRows() <= 1) {
-          bool isNoMaskInst =
-              (inst->isWriteEnableInst() || bb->isAllLaneActive());
-          if (inst->getExecSize() == g4::SIMD1 && isNoMaskInst) {
-            candidates.insert(rootDcl);
-          }
-        }
-      }
-    }
-  }
-  // filter candidates that we cannot handle
-  std::set<G4_Declare *> multiUseInputs;
-  std::set<G4_Declare *> visitedInputs;
-  for (auto bb : kernel.fg) {
-    for (auto inst : *bb) {
-      G4_DstRegRegion *dst = inst->getDst();
-      if (dst && dst->getTopDcl()) {
-        auto rootDcl = dst->getTopDcl();
-        if (candidates.count(rootDcl)) {
-          // when there is only one SRF, it is unrealistic to allow
-          // send to write to SRF
-          if (inst->isSend() && kernel.getSRFInWords()*2
-              <= builder.getScalarRegisterSizeInBytes()) {
-            candidates.erase(rootDcl);
-          }
-          bool isNoMaskInst =
-              (inst->isWriteEnableInst() || bb->isAllLaneActive());
-          // all writes to that top-dcl have to be simd1-nomask
-          if (!(inst->getExecSize() == g4::SIMD1 && isNoMaskInst)) {
-            candidates.erase(rootDcl);
-          }
-        }
-      }
-      // when there is only one SRF, it is also unrealistic to allow
-      // SRF as regular send source because it has to be 64-byte aligned
-      if (inst->isSend() && kernel.getSRFInWords() * 2 <=
-                                builder.getScalarRegisterSizeInBytes()) {
-        for (int i = 0; i < inst->getNumSrc(); i++) {
-          auto src = inst->getSrc(i);
-          if (!src || !src->isSrcRegRegion())
-            continue;
-          auto srcDcl = src->getTopDcl();
-          if (srcDcl && candidates.count(srcDcl))
-            candidates.erase(srcDcl);
-        }
-      }
-      // Also find all the input dcls that is used inside a loop,
-      // or used more than once. Skip moves and sends
-      if (inst->isRawMov() || inst->isSend())
-        continue;
-      for (int i = 0; i < inst->getNumSrc(); i++) {
-        auto src = inst->getSrc(i);
-        if (!src || !src->isSrcRegRegion())
-          continue;
-        G4_SrcRegRegion *origSrc = src->asSrcRegRegion();
-        auto srcDcl = src->getTopDcl();
-        if (srcDcl && srcDcl->getRegFile() == G4_INPUT &&
-            srcDcl->getTotalElems() == 1 && origSrc && origSrc->isScalar()) {
-          // mark multi-use
-          if (bb->getNestLevel() > 0)
-            multiUseInputs.insert(srcDcl);
-          else if (visitedInputs.find(srcDcl) != visitedInputs.end())
-            multiUseInputs.insert(srcDcl);
-          // mark any use
-          visitedInputs.insert(srcDcl);
-        }
-      }
-    }
-  }
-  // update declares
-  for (auto dcl : kernel.Declares) {
-    auto rootDcl = dcl->getRootDeclare();
-    if (candidates.count(rootDcl)) {
-      dcl->setRegFile(G4_SCALAR);
-    }
-  }
-  G4_BB *entryBB = kernel.fg.getEntryBB();
-  auto insertIt = entryBB->begin();
-  for (INST_LIST_ITER IB = entryBB->end(); insertIt != IB; ++insertIt) {
-    G4_INST *tI = (*insertIt);
-    if (tI->isFlowControl() || tI == entryBB->back())
-      break;
-  }
-  std::map<G4_Declare *, G4_Declare *> inputMap;
-  for (auto bb : kernel.fg) {
-    INST_LIST_ITER it = bb->begin(), iEnd = bb->end();
-    INST_LIST_ITER next_iter = it;
-    for (; it != iEnd; it = next_iter) {
-      ++next_iter;
-      G4_INST *inst = *it;
-      // skip moves and sends
-      if (inst->isRawMov() || inst->isSend())
-        continue;
-      // Add move for scalar-iput with multiple-uses to save power.
-      // The move should be inserted into the entry-block before the first use.
-      for (int i = 0; i < inst->getNumSrc(); i++) {
-        auto src = inst->getSrc(i);
-        if (!src || !src->isSrcRegRegion())
-          continue;
-        G4_SrcRegRegion *origSrc = src->asSrcRegRegion();
-        auto srcDcl = src->getTopDcl();
-        if (srcDcl && origSrc && origSrc->isScalar() &&
-            multiUseInputs.find(srcDcl) != multiUseInputs.end()) {
-          vISA_ASSERT(!candidates.count(srcDcl),
-                      "input-variable cannot be a scalar candidate");
-          // insert a move to a scalar-register candidate
-          auto subAlign = Get_G4_SubRegAlign_From_Size(
-              (uint16_t)origSrc->getElemSize(), builder.getPlatform(),
-              builder.getGRFAlign());
-          G4_Declare *tmpDcl = nullptr;
-          G4_SrcModifier modifier = origSrc->getModifier();
-          if (inputMap.find(srcDcl) != inputMap.end())
-            tmpDcl = inputMap[srcDcl];
-          else {
-            // create dcl for scalar
-            tmpDcl =
-                builder.createTempVar(g4::SIMD1, origSrc->getType(), subAlign);
-            tmpDcl->setRegFile(G4_SCALAR);
-            candidates.insert(tmpDcl);
-            inputMap[srcDcl] = tmpDcl;
-            addVarToRA(tmpDcl);
-            // create mov
-            origSrc->setModifier(Mod_src_undef);
-            G4_DstRegRegion *dst = builder.createDstRegRegion(tmpDcl, 1);
-            G4_INST *movInst = builder.createMov(g4::SIMD1, dst, origSrc,
-                                                 InstOpt_WriteEnable, false);
-            // insert mov
-            if (bb == entryBB)
-              bb->insertBefore(it, movInst);
-            else
-              entryBB->insertBefore(insertIt, movInst);
-          }
-          G4_SrcRegRegion *newSrc = builder.createSrcRegRegion(
-              modifier, Direct, tmpDcl->getRegVar(), 0, 0,
-              builder.getRegionScalar(), tmpDcl->getElemType());
-          inst->setSrc(newSrc, i);
-        }
-      }
-    }
-  }
-  // flag and address spill location now should be scalar registers.
-  // scalar registers can be spilled into GRF
-  // need this? addrFlagSpillDcls.clear();
-  kernel.dumpToFile("after.select_scalar.");
-}
 
 
 std::pair<unsigned, unsigned> GlobalRA::reserveGRFSpillReg(GraphColor &coloring) {
@@ -11193,22 +10908,6 @@ void GlobalRA::writeVerboseRPEStats(RPE &rpe) {
   }
 }
 
-bool GlobalRA::VRTIncreasedGRF(GraphColor &coloring) {
-  if (kernel.useAutoGRFSelection()) {
-    bool infCostSpilled =
-        coloring.getSpilledLiveRanges().end() !=
-        std::find_if(coloring.getSpilledLiveRanges().begin(),
-                     coloring.getSpilledLiveRanges().end(),
-                     [](const LiveRange *spilledLR) {
-                       return spilledLR->getSpillCost() == MAXSPILLCOST;
-                     });
-    // Check if GRF can be increased to avoid large spills
-    if (canIncreaseGRF(computeSpillSize(coloring.getSpilledLiveRanges()),
-                       infCostSpilled))
-      return true;
-  }
-  return false;
-}
 
 void GlobalRA::splitOnSpill(bool fastCompile, GraphColor &coloring,
                             LivenessAnalysis &liveAnalysis) {
@@ -11544,10 +11243,6 @@ int GlobalRA::coloringRegAlloc() {
 
     flagRegAlloc();
   }
-  if (builder.getuint32Option(vISA_ScalarPipe)) {
-    selectScalarCandidates();
-    scalarRegAlloc();
-  }
   // LSC messages are used when:
   // a. Stack call is used on PVC+,
   // b. Spill size exceeds what can be represented using hword msg on PVC+
@@ -11726,15 +11421,6 @@ int GlobalRA::coloringRegAlloc() {
     bool isColoringGood =
         coloring.regAlloc(doBankConflictReduction, highInternalConflict, &rpe);
     if (!isColoringGood) {
-      // When there are spills and -abortonspill is set, vISA will bump up the
-      // number of GRFs first and try to compile without spills under one of
-      // the following conditions:
-      //  - Variable with inf spill cost, or
-      //  - #GRFs selected and next larger one has same number of threads, or
-      //  - Spill ratio is above threshold
-      // If none of the conditions is met, vISA will abort and return VISA_SPILL.
-      if (VRTIncreasedGRF(coloring))
-        continue;
 
       bool rerunGRA1 = false, rerunGRA2 = false, rerunGRA3 = false,
            isEarlyExit = false, abort = false, success = false;
@@ -12584,9 +12270,6 @@ unsigned GraphColor::edgeWeightARF(const LiveRange *lr1, const LiveRange *lr2) {
           "Found unsupported subRegAlignment in address register allocation!");
       return 0;
     }
-  }
-  else if (lr1->getRegKind() == G4_SCALAR) {
-    return edgeWeightGRF<false>(lr1, lr2); // treat scalar just like GRF
   }
   vISA_ASSERT_UNREACHABLE(
       "Found unsupported ARF reg type in register allocation!");

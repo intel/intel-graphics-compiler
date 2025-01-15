@@ -83,52 +83,6 @@ struct SemanticChecker : LOCChecker {
   void checkExecSize(const Instruction &i) {
   }
 
-  // Scalar register on dst restrictions:
-  // - Opcode must be mov
-  // - Source and destination datatypes must be the same and must be integers
-  //   with sizes 16, 32 or 64 bits
-  // - When with immediate source, Execution size must be 1
-  void checkDstScalarReg(const Instruction &i, const Operand &op) {
-    if (op.getDirRegName() != RegName::ARF_S)
-      return;
-
-    if (i.getOp() != Op::MOV)
-      error("Opcode must be mov for scalar dst instructions");
-    if (op.getType() != i.getSource(0).getType() ||
-        TypeIsFloating(op.getType()) ||
-        (TypeSizeInBits(op.getType()) != 16 &&
-         TypeSizeInBits(op.getType()) != 32 &&
-         TypeSizeInBits(op.getType()) != 64))
-      error("Invalid type for scalar dst instructions");
-    if (i.getSource(0).isImm() && i.getExecSize() != ExecSize::SIMD1)
-      error("Invalid execution size for scalar dst instruction");
-  }
-
-  // Scalar register on src restrictions:
-  // - Opcode must be mov, send/send, sendg/sendgc. Cannot be sendgx
-  // - When opcode is mov the scalar (broadcast) regioning must be used
-  // - When opcode is send/sendc register-gather access must be used, and
-  //   Src1 must be NULL.
-  // - Scalar register operand must be on Source 0
-  // - Destination must not be a scalar register
-  void checkSrcScalarReg(const Instruction &i, const Operand &src) {
-    if (src.isImm() || src.getDirRegName() != RegName::ARF_S)
-      return;
-
-    if (src.getKind() == Operand::Kind::DIRECT) {
-      if (i.getOp() != Op::MOV)
-        error("Invalid Opcode for direct scalar src instructions");
-      if (src.getRegion() != Region::SRC010)
-        error("Invalid region for direct scalar src instructions");
-    } else if (src.getKind() == Operand::Kind::INDIRECT) {
-      if (!i.getOpSpec().isAnySendFormat())
-        error("Invalid Opcode for indirect scalar src instructions");
-      else if (!i.isGatherSend() || !i.getSource(1).isNull())
-        error("Invalid send format for indirect scalar src register");
-    }
-    if (i.getDestination().getDirRegName() == RegName::ARF_S)
-      error("Dst and src cannot both be scalar");
-  }
 
   void checkDst(const Instruction &i, const Operand &op) {
     switch (op.getKind()) {
@@ -141,7 +95,6 @@ struct SemanticChecker : LOCChecker {
           arfNeedsSwitch(op.getDirRegName()) && m_model.supportsHwDeps()) {
         warning("destination register ARF access requires {Switch} ThreadCtrl");
       }
-      checkDstScalarReg(i, op);
       break;
     case Operand::Kind::MACRO:
       if (!i.isMacro()) {
@@ -234,7 +187,6 @@ struct SemanticChecker : LOCChecker {
         instSpec.implicitSrcType(srcIx, lblArg) != srcType) {
       warning("src type is not binary normal form");
     }
-    checkSrcScalarReg(i, src);
     checkMathSource(i, srcIx);
   }
 

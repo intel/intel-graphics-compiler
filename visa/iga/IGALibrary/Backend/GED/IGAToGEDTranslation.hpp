@@ -311,9 +311,6 @@ static inline GED_MODEL lowerPlatform(Platform platform) {
   case Platform::XE2:
     pltf = GED_MODEL_XE2;
     break;
-  case Platform::XE3:
-    pltf = GED_MODEL_XE3;
-    break;
   default:
     break;
   }
@@ -1053,9 +1050,6 @@ static inline GED_ARCH_REG lowerArchReg(RegName type) {
     break;
   case RegName::ARF_SP:
     archReg = GED_ARCH_REG_sp;
-    break;
-  case RegName::ARF_S:
-    archReg = GED_ARCH_REG_s;
     break;
   case RegName::ARF_SR:
     archReg = GED_ARCH_REG_sr0;

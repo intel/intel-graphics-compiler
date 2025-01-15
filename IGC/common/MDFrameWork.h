@@ -300,15 +300,6 @@ enum class ShaderTypeMD
         // Shaders that satisfy `isPrimaryShaderIdentifier()` can also have
         // a collection of other names that they go by.
         std::vector<std::string> Aliases;
-        // Number of GRF registers available for this RT entry function.
-        // On platforms with VRT support it is possible to configure 32, 64, 96,
-        // 128, 160, 192, 224 and 256 registers per thread
-        // If this setting is greater than 0 than EnableVRT must be false.
-        uint32_t NumGRF = 0;
-        // Enables compiler heuristics to optimize GRF usage for this
-        // RT entry function.
-        // If this setting is "true", NumGRF must be set to 0.
-        bool EnableVRT = false;
     };
 
     struct ConstantAddress
@@ -461,7 +452,6 @@ enum class ShaderTypeMD
         bool EnableLdStCombinewithDummyLoad             = false;
         bool EnableIndependentSharedMemoryFenceFunctionality = false;
         bool NewSpillCostFunction                       = false;
-        bool EnableVRT                                  = false;
         bool ForceLargeGRFNum4RQ                        = false;
         bool DisableEUFusion                            = false;
         bool DisableFDivToFMulInvOpt                    = false;

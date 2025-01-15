@@ -123,7 +123,6 @@ namespace IGC
             (m_DriverInfo.supportsAutoGRFSelection() ||
                 m_InternalOptions.IntelEnableAutoLargeGRF ||
                 m_Options.IntelEnableAutoLargeGRF)
-            || platform.supportsVRT() && IGC_IS_FLAG_ENABLED(EnableVRT)
             ) && !m_InternalOptions.Intel128GRFPerThread &&
             !m_Options.Intel128GRFPerThread &&
             !m_InternalOptions.Intel256GRFPerThread &&

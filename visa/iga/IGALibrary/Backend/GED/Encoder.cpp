@@ -1052,10 +1052,6 @@ void Encoder::encodeSendDescsXeHPG(const Instruction &i) {
 void Encoder::encodeSendDescsXe2(const Instruction &i) {
   SendDesc exDesc = i.getExtMsgDescriptor();
   bool hasSrc1Length = true;
-  // Gather Send lacks Src1.Len
-  // (the same field [103:99] encoding field becomes Src0.SubRegNum)
-  if (i.isGatherSend())
-    hasSrc1Length = false;
   if (exDesc.isReg()) {
     GED_ENCODE(ExDescRegFile, GED_REG_FILE_ARF);
     // set ExBSO for non-UGM
@@ -1561,17 +1557,6 @@ void Encoder::encodeSendSource0(const Operand &src) {
       GED_ENCODE(Src0SubRegNum, src.getDirRegRef().subRegNum);
     }
   } else if (src.getKind() == Operand::Kind::INDIRECT) {
-    // Gather Send src0 operand
-    if (src.getDirRegName() == RegName::ARF_S) {
-      // Though src0 is indirect register access, its reg number and subreg
-      // number can be get from "DirRegRef" since it is not a0 access
-      encodeSrcReg<SourceIndex::SRC0>(src.getDirRegName(),
-                                      src.getDirRegRef().regNum);
-      auto subReg = src.getDirRegRef().subRegNum;
-      if (subReg % 2)
-        errorT("src0 subreg must be 16b aligned");
-      GED_ENCODE(Src0SubRegNum, subReg);
-    } else
     {
       // legacy send indirect src operand
       GED_ENCODE(Src0DataType, lowerDataType(t));

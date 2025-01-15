@@ -339,13 +339,11 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
             g_InstrTypes.hasUniformAssumptions = true;
             break;
         case GenISAIntrinsic::GenISA_typedread:
-        case GenISAIntrinsic::GenISA_typedreadMS:
             g_InstrTypes.hasTypedRead = true;
             g_InstrTypes.numTypedReadWrite++;
             g_InstrTypes.num2DAccesses++;
             break;
         case GenISAIntrinsic::GenISA_typedwrite:
-        case GenISAIntrinsic::GenISA_typedwriteMS:
             g_InstrTypes.hasTypedwrite = true;
             g_InstrTypes.numTypedReadWrite++;
             g_InstrTypes.num2DAccesses++;

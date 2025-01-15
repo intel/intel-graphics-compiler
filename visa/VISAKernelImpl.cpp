@@ -8100,13 +8100,6 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedInst(
 
   int status = VISA_SUCCESS;
 
-  if (subOpcode == LSC_LOAD_QUAD_MSRT || subOpcode == LSC_STORE_QUAD_MSRT) {
-    // (u, v, r, si)
-    vISA_ASSERT_INPUT(
-        coord0s != nullptr && coord1s != nullptr && coord2s != nullptr &&
-          features != nullptr,
-        "Incorrect parameters passed to lsc msrt instructions");
-  }
 
   LSC_CHECK_NULL_VECTOR_OPERAND(surface);
   LSC_CHECK_NULL_DST(dstData);

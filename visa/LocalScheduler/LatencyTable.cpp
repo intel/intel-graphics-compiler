@@ -335,7 +335,6 @@ LatencyTableXe<PlatformGen::XE>::getDPASLatency(uint8_t repeatCount) const {
   case Xe_PVCXT:
     return value_of(LI::DPAS) + repeatCount;
   case Xe2:
-  case Xe3:
     switch (repeatCount) {
     case 1:
       return 22;

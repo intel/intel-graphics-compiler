@@ -36,11 +36,6 @@ enum class SWSB_ENCODE_MODE : uint32_t {
   FourDistPipeReduction = 6,
   // MTL: 3 distance pipe with DP operations in Math pipe
   ThreeDistPipeDPMath = 7,
-  // XE3: 4 distance pipe + scalar pipe
-  FiveDistPipe = 8,
-  // Experimental (previously for XE2): Move Q to F conversion instruction
-  // to INT pipe (float pipe reduction)
-  FiveDistPipeReduction = 9,
 };
 
 static_assert((uint32_t)SWSB_ENCODE_MODE::SWSBInvalidMode == 0,
@@ -66,7 +61,6 @@ public:
     REG_DIST_INT,
     REG_DIST_LONG,
     REG_DIST_MATH,       // XeHPC
-    REG_DIST_SCALAR      // XE3
   };
 
   enum class TokenType {
@@ -129,7 +123,6 @@ public:
 
   constexpr static bool isMathPipeInOrder(SWSB_ENCODE_MODE enMode) {
     return
-        enMode >= SWSB_ENCODE_MODE::FiveDistPipe || // XE3
         enMode == SWSB_ENCODE_MODE::FourDistPipe ||
         enMode == SWSB_ENCODE_MODE::FourDistPipeReduction;
   }

@@ -1302,16 +1302,6 @@ void Decoder::decodeSendSource0(Instruction *inst) {
       rgn = *decodeSrcRegionVWH<SourceIndex::SRC0>();
     }
 
-    if (dri.regName == RegName::ARF_S) {
-      // Scalar src0 implies a gathering send.
-      //
-      // This is the only case that send can have subRegNum.
-      // Decode subRegNum separately here.
-      // (Scaling is always in bytes for all s0.# in sends)
-      dri.regRef.subRegNum = (uint16_t)decodeSrcSubRegNum<SourceIndex::SRC0>();
-      inst->setIndirectSource(SourceIndex::SRC0, SrcModifier::NONE,
-                              dri.regName, dri.regRef, 0, rgn, dri.type);
-    } else
       inst->setDirectSource(SourceIndex::SRC0, SrcModifier::NONE, dri.regName,
                             dri.regRef, rgn, dri.type);
   }

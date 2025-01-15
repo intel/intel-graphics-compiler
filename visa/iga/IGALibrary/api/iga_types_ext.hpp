@@ -35,9 +35,6 @@ enum class RegName {
   ARF_CE,  // ce        0100b
   ARF_MSG, // msg#      0101b
   ARF_SP,  // sp        0110b
-  // XE3 feature, scalar register for gather send
-  // Note that ARF_SP is removed since XE
-  ARF_S,   // s#.#      0110b
   ARF_SR,  // sr#       0111b
   ARF_CR,  // cr#       1000b
   ARF_N,   // n#        1001b

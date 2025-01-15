@@ -69,7 +69,6 @@ struct Dep {
 
 struct LiveCount {
   unsigned grfBytes = 0; // r*
-  unsigned scalarBytes = 0; // s0*
   unsigned flagBytes = 0;   // f*
   unsigned accBytes = 0;    // acc*
   unsigned indexBytes = 0;  // a0*

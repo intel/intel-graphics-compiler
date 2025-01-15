@@ -673,20 +673,6 @@ void IR_Builder::createBuiltinDecls() {
   builtinHWTID = createDeclare("hw_tid", G4_GRF, 1, 1, Type_UD);
   builtinHWTID->setBuiltin();
 
-  builtinSR0Dot1 = createDeclare("BuiltinSR0Dot1", G4_INPUT, 1, 1, Type_UD);
-  builtinSR0Dot1->getRegVar()->setPhyReg(phyregpool.getSr0Reg(), 1);
-  builtinSR0Dot1->setBuiltin();
-
-  if (getPlatform() >= Xe3) {
-    vISA_ASSERT(getScalarRegisterSizeInBytes() % 8 == 0,
-                "reg size should be multiple of 8");
-    builtinS0 =
-      createDeclare("BuiltinS0", G4_SCALAR,
-                    getScalarRegisterSizeInBytes() / 8, 1, Type_UQ);
-    builtinS0->getRegVar()->setPhyReg(phyregpool.getScalarReg(), 0);
-    builtinS0->setBuiltin();
-  }
-
   builtinT252 = createDeclare(vISAPreDefSurf[PREDEFINED_SURFACE_T252].name,
                               G4_GRF, 1, 1, Type_UD);
   builtinT252->setBuiltin();
@@ -1856,24 +1842,6 @@ G4_INST *IR_Builder::createInternalBfnInst(
                           src1, src2, options, false);
 
   return ii;
-}
-
-bool IR_Builder::isBuiltinSendIndirectS0(G4_Operand *op) const
-{
-  const G4_Declare *d = op->getTopDcl();
-  if (d == nullptr || d->getRegFile() != G4_SCALAR)
-    return false;
-  unsigned rightBound = 0;
-  if (op->isDstRegRegion()) {
-    G4_DstRegRegion *dst = op->asDstRegRegion();
-    rightBound = dst->getRightBound();
-  } else if (op->isSrcRegRegion()) {
-    G4_SrcRegRegion *dst = op->asSrcRegRegion();
-    rightBound = dst->getRightBound();
-  } else {
-    return false;
-  }
-  return rightBound < 8 * FIRST_SURFACE_S0_QW;
 }
 
 // scratch surfaces, write the content of T251 to extended message descriptor

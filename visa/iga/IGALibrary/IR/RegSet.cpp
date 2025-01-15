@@ -32,7 +32,7 @@ static size_t BytesForRegSet(RegName rn, const Model &m) {
 }
 
 static const RegName TRACKED[] {
-  RegName::GRF_R, RegName::ARF_A, RegName::ARF_ACC, RegName::ARF_F, RegName::ARF_S,
+  RegName::GRF_R, RegName::ARF_A, RegName::ARF_ACC, RegName::ARF_F,
 };
 
 BitSet<> *RegSet::bitSetForPtr(RegName rn) {
@@ -45,8 +45,6 @@ BitSet<> *RegSet::bitSetForPtr(RegName rn) {
     return &bitsAcc;
   case RegName::ARF_F:
     return &bitsF;
-  case RegName::ARF_S:
-    return &bitsS;
   default:
     break;
   }
@@ -90,14 +88,12 @@ RegSet::RegSet(const Model &m)
     : model(m), bitsR(BytesForRegSet(RegName::GRF_R, m)),
       bitsA(BytesForRegSet(RegName::ARF_A, m)),
       bitsAcc(BytesForRegSet(RegName::ARF_ACC, m)),
-      bitsF(BytesForRegSet(RegName::ARF_F, m)),
-      bitsS(BytesForRegSet(RegName::ARF_S, m))
+      bitsF(BytesForRegSet(RegName::ARF_F, m))
 {
 }
 RegSet::RegSet(const RegSet &rs)
     : model(rs.model), bitsR(rs.bitsR), bitsA(rs.bitsA), bitsAcc(rs.bitsAcc),
-      bitsF(rs.bitsF),
-      bitsS(rs.bitsS)
+      bitsF(rs.bitsF)
 {
 }
 RegSet &RegSet::operator=(const RegSet &rhs) {
@@ -456,18 +452,6 @@ bool RegSet::addSourceOperandInput(const Instruction &i, int srcIx) {
     // }
     break;
   case Operand::Kind::INDIRECT: {
-    if (i.isGatherSend()) {
-      // reads one byte per GRF from Src0.Length (rlen in old send)
-      int src0Len = i.getSrc0Length();
-      if (src0Len > 0) {
-        RegRef rr = i.getSource(0).getIndAddrReg();
-        for (int i = 0; i < src0Len; i++) {
-          added |= add(RegName::ARF_S, rr, Type::UB);
-          rr.subRegNum++;
-        }
-      }
-      break;
-    }
     added = true;
     auto rgn = op.getRegion();
     if (rgn.getVt() == Region::Vert::VT_VxH) {

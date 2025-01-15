@@ -169,8 +169,6 @@ iga_gen_t GetIGAPlatform(PLATFORM const & platform)
         }
         IGC_ASSERT_MESSAGE(0, "unsupported platform");
         break;
-    case IGFX_XE3_CORE:
-        return IGA_XE3;
     default:
         IGC_ASSERT_MESSAGE(0, "unsupported platform");
         break;

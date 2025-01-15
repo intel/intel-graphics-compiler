@@ -622,20 +622,6 @@ struct DepAnalysisComputer {
         IGA_ASSERT((size_t)i->getID() == instDstsUnion.size(),
                    "we assume block ids go from 0 ... n-1");
         instDstsUnion.emplace_back(InstDsts::compute(*i).unionOf());
-        // Given Gather Send this attempts to resolve the registers accessed
-        // indirectly; we expect the pattern:
-        //
-        //   (W) mov (1) s0.K<1>:{uq,q} 0x000000000105010A:{uq,q}
-        //   ... maybe an instruction or two
-        //   send ... r[s0.K]:4 ... // sends {r1,r5,r1,r10}
-        //
-        if (i->isGatherSend()) {
-          int src0Len = i->getSrc0Length();
-          auto gatheredGrfs =
-              findGatherSendMov(iitr, b->getInstList().begin(),
-                           i->getSource(0).getDirRegRef().subRegNum, src0Len);
-          instSrcs.back().sources.destructiveUnion(gatheredGrfs);
-        }
         iitr++;
       }
     }
@@ -690,90 +676,6 @@ struct DepAnalysisComputer {
     }
   } // DepAnalysisComputer::DepAnalysisComputer
 
-  RegSet findGatherSendMov(InstList::iterator iitr, InstList::iterator ibegin,
-                      uint16_t s0Subreg, int src0Len) {
-    RegSet grfs(model);
-    // The local match allows for kills of s0.K
-    //   (P) mov ... s0.K:T   IMM:T
-    //   (P) mov ... s0.K:T   IMM:T
-    //   send  r[s0.K]
-    if (iitr == ibegin)
-      return grfs; // first instruction of the block
-    // const Instruction *iSendg = *iitr;
-    //
-    if (src0Len <= 0)
-      return grfs;
-    //
-    RegSet rsPredFirstMov(model);
-    bool predFirstMovSign = false;
-
-    RegSet rsS0(model);
-    if (src0Len <= 4)
-      rsS0.add(RegName::ARF_S, RegRef((uint16_t)0, uint16_t(s0Subreg / 4)),
-               Type::UD);
-    else
-      rsS0.add(RegName::ARF_S, RegRef((uint16_t)0, uint16_t(s0Subreg / 8)),
-               Type::UQ);
-    //
-    do {
-      iitr--;
-      const Instruction *i = *iitr;
-      const Operand &dst = i->getDestination();
-      const Operand &src0 = i->getSource(0);
-
-      bool isS0Def =
-          i->is(Op::MOV) && dst.getKind() == Operand::Kind::DIRECT &&
-          dst.getDirRegName() == RegName::ARF_S && src0.isImm() &&
-          TypeSizeInBits(dst.getType()) >= 4 &&
-          TypeSizeInBits(dst.getType()) / 8 * dst.getDirRegRef().subRegNum ==
-              s0Subreg &&
-          TypeSizeInBits(src0.getType()) >= 4;
-      if (isS0Def) {
-        // (W) mov (1) s0.K:{q,uq}  IMM64:{q,uq,d,ud,w,uw}
-        // (W) mov (1) s0.K:{d,ud}  IMM64:{d,ud,w,uw}
-        // (W) mov (1) s0.K:{f}     IMM:{f}
-        uint64_t imm = src0.getImmediateValue().u64;
-        for (int i = 0; i < src0Len; i++, imm >>= 8) {
-          int grf = (imm & 0xFF);
-          grfs.addReg(RegName::GRF_R, grf);
-        }
-        if (!i->hasPredication()) {
-          break; // unpredicated is full def (hopfeully the normal case)
-        } else {
-          // we also allow for two predicated definitions
-          //   (W &  fX) mov .. s0.K:q   0x0201:q
-          //   (W & ~fX) mov .. s0.K:q   0x0304:q
-          if (rsPredFirstMov.empty()) {
-            rsPredFirstMov.add(RegName::ARF_F, i->getFlagReg(), Type::B);
-            predFirstMovSign = i->getPredication().inverse;
-          } else {
-            RegSet rsSecondPred{model};
-            rsSecondPred.add(RegName::ARF_F, i->getFlagReg(), Type::B);
-            if (rsSecondPred.intersects(rsPredFirstMov)) {
-              if (i->getPredication().inverse != predFirstMovSign) {
-                break; // full def
-              }
-              // else: dead def (continue to look for second)
-            }
-          }
-        }
-      } else {
-        // make sure it doesn't interfere with a partial definition's
-        // scalar or predication
-        const auto &rsDsts = instDstsUnion[i->getID()];
-        if (rsDsts.intersects(rsS0)) {
-          // some other jerk clobbered part of our s0.# with an
-          // instruction we don't deal with
-          break;
-        } else if (rsDsts.intersects(rsPredFirstMov)) {
-          // someone clobbered the predicate value we were tracking
-          break;
-        }
-      }
-    } while (iitr != ibegin);
-
-    return grfs;
-  } // findGatherSendMov
 
   static bool fallthroughPossible(const Instruction *i) {
     bool unconditionalJmp = i->getOp() == Op::JMPI && !i->hasPredication();
@@ -914,7 +816,6 @@ struct DepAnalysisComputer {
         LiveCount &lc = results.sums[i.getID()];
         lc.grfBytes = (unsigned)rs.bitSetFor(RegName::GRF_R).cardinality();
         lc.accBytes = (unsigned)rs.bitSetFor(RegName::ARF_ACC).cardinality();
-        lc.scalarBytes = (unsigned)rs.bitSetFor(RegName::ARF_S).cardinality();
         lc.flagBytes = (unsigned)rs.bitSetFor(RegName::ARF_F).cardinality();
         lc.indexBytes = (unsigned)rs.bitSetFor(RegName::ARF_A).cardinality();
       }

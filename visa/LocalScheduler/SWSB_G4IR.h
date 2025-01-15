@@ -39,7 +39,6 @@ class PointsToAnalysis;
 } // namespace vISA
 
 // FIXME, build a table for different platforms
-#define SWSB_MAX_S0_DEPENDENCE_DISTANCE 2
 #define SWSB_MAX_MATH_DEPENDENCE_DISTANCE 18
 #define SWSB_MAX_ALU_DEPENDENCE_DISTANCE_VALUE 7u
 
@@ -130,7 +129,6 @@ typedef enum _FOOTPRINT_TYPE {
   GRF_T = 1,
   ACC_T = 2,
   FLAG_T = 4,
-  S0_T = 8,
   A0_T = 16
 } FOOTPRINT_TYPE;
 
@@ -266,7 +264,6 @@ private:
   int integerID = -1;
   int floatID = -1;
   int longID = -1;
-  int s0ID = -1;
   int mathID = -1;
   int DPASID = -1;
   unsigned short DPASSize = 0;
@@ -354,7 +351,6 @@ public:
   int getIntegerID() const { return integerID; }
   int getFloatID() const { return floatID; }
   int getLongID() const { return longID; }
-  int getS0ID() const { return s0ID; }
   int getMathID() const { return mathID; }
   int getDPASID() const { return DPASID; }
   unsigned short getDPASSize() const { return DPASSize; }
@@ -362,7 +358,6 @@ public:
   void setIntegerID(int id) { integerID = id; }
   void setFloatID(int id) { floatID = id; }
   void setLongID(int id) { longID = id; }
-  void setS0ID(int id) { s0ID = id; }
   void setMathID(int id) { mathID = id; }
   void setDPASID(int id) { DPASID = id; }
   void addDPASSize(unsigned short size) { DPASSize += size; }
@@ -615,7 +610,6 @@ typedef struct _SWSB_INDEXES {
   int integerIndex = 0;
   int floatIndex = 0;
   int longIndex = 0;
-  int s0Index = 0;
   int DPASIndex = 0;
   int mathIndex = 0;
   unsigned latestDepALUID[PIPE_DPAS] = {0};
@@ -651,7 +645,6 @@ private:
   int integerID;
   int floatID;
   int longID;
-  int s0ID;
   int mathID;
   int DPASID;
   unsigned latestDepALUID[PIPE_DPAS];
@@ -762,8 +755,6 @@ public:
                                    Gen4_Operand_Number opnd_num, G4_INST *inst);
   SBFootprint *getFootprintForA0(G4_Operand *opnd, Gen4_Operand_Number opnd_num,
                                  G4_INST *inst);
-  SBFootprint *getFootprintForS0(G4_Operand *opnd, Gen4_Operand_Number opnd_num,
-                                 G4_INST *inst);
   bool getFootprintForOperand(SBNode *node, G4_INST *inst, G4_Operand *opnd,
                               Gen4_Operand_Number opnd_num);
   void getGRFBuckets(const SBFootprint *footprint, Gen4_Operand_Number opndNum,
@@ -830,7 +821,7 @@ public:
   void clearKilledBucketNodeXeLP(LiveGRFBuckets *LB, int ALUID);
 
   void clearKilledBucketNodeXeHP(LiveGRFBuckets *LB, int integerID, int floatID,
-                                 int longID, int mathID, int s0ID);
+                                 int longID, int mathID);
 
   bool hasInternalDependenceWithinDPAS(SBNode *node) const;
   bool hasRAWDependenceBetweenDPASNodes(SBNode *node, SBNode *nextNode) const;

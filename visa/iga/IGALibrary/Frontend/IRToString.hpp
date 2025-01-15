@@ -656,8 +656,6 @@ static inline std::string ToSyntax(RegName regName) {
     return "fc";
   case RegName::ARF_DBG:
     return "dbg";
-  case RegName::ARF_S:
-    return "s";
   case RegName::GRF_R:
     return "r";
   default:
