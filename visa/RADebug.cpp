@@ -1052,7 +1052,8 @@ bool Interference::dumpIntf(const char *s) const {
 // use temp allocations from lrs. Doesnt handle sub-routines yet.
 void RegChartDump::dumpRegChart(std::ostream &os, const LiveRangeVec &lrs,
                                 unsigned numLRs) {
-  constexpr unsigned N = 128;
+  constexpr unsigned N = 1024;
+  vISA_ASSERT(N >= gra.kernel.getNumRegTotal(), "more GRFs than N");
   std::unordered_map<G4_INST *, std::bitset<N>> busyGRFPerInst;
   bool dumpHex = false;
 
@@ -1091,7 +1092,15 @@ void RegChartDump::dumpRegChart(std::ostream &os, const LiveRangeVec &lrs,
     auto startInst = startEnd[dcl].first;
     auto endInst = startEnd[dcl].second;
 
-    bool start = (dcl->getRegFile() == G4_RegFileKind::G4_INPUT);
+    bool start = false;
+    if (gra.kernel.fg.getIsStackCallFunc()) {
+      start = (dcl->getRegFile() & G4_RegFileKind::G4_INPUT);
+    } else {
+      // Pre-defined %arg dcl uses G4_INPUT RegFileKind but it isn't live-in
+      // to a kernel. So make an exception.
+      if (!gra.kernel.fg.builder->isPreDefArg(dcl))
+        start = (dcl->getRegFile() & G4_RegFileKind::G4_INPUT);
+    }
     bool done = false;
     for (auto bb : gra.kernel.fg) {
       for (auto inst : *bb) {
@@ -1127,6 +1136,11 @@ void RegChartDump::dumpRegChart(std::ostream &os, const LiveRangeVec &lrs,
       inst->emit(ss);
       auto len = ss.str().length();
 
+      if (inst->isLabel()) {
+        os << ss.str() << "\n";
+        continue;
+      }
+
       if (len <= maxInstLen) {
         os << ss.str();
         for (unsigned i = 0; i != maxInstLen - ss.str().length(); i++)
@@ -1141,7 +1155,7 @@ void RegChartDump::dumpRegChart(std::ostream &os, const LiveRangeVec &lrs,
 
       if (!dumpHex) {
         // dump GRFs | - busy, * - free
-        for (unsigned i = 0; i != N; i++) {
+        for (unsigned i = 0; i != gra.kernel.getNumRegTotal(); i++) {
           // emit in groups of 10 GRFs
           if (i > 0 && (i % 10) == 0)
             os << "  ";
