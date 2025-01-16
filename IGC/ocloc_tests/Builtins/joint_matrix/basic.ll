@@ -193,16 +193,24 @@ entry:
 ; CHECK-VISAASM: lsc_load_block2d.ugm (M1, 1)  V{{[0-9]+}}:d32.8x16tn  flat[V{{[0-9]+}},0x3F,0xF,0x3F,V{{[0-9]+}},0x0]
   call void @__builtin_spriv_OpJointMatrixLoadINTEL_PackedB_ColumnMajor_SG16_16x16_i16_8_global_v8i8_pi32_i32(i8* %b1, i8 addrspace(1)* %src_b, i64 32, i32 0)
 
+; CHECK-VISAASM: lsc_load_block2d.ugm (M1, 1)  V{{[0-9]+}}:d32.2x32tn  flat[V{{[0-9]+}},0xF,0x1F,0xF,V{{[0-9]+}},0x0]
+  call void @__builtin_spriv_OpJointMatrixLoadINTEL_PackedA_ColumnMajor_SG16_8x32_i8_8_global_v8i8_pi32_i32(i8* %a2, i8 addrspace(1)* %src_a, i64 16, i32 0)
+
+; CHECK-VISAASM: lsc_load_block2d.ugm (M1, 1)  V{{[0-9]+}}:d32.8x16tn  flat[V{{[0-9]+}},0x1F,0xF,0x1F,V{{[0-9]+}},0x0]
+  call void @__builtin_spriv_OpJointMatrixLoadINTEL_PackedB_ColumnMajor_SG16_32x16_i8_8_global_v8i8_pi32_i32(i8* %b1, i8 addrspace(1)* %src_b, i64 32, i32 0)
+
   ret void
 }
 
 declare void @__builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_1x32_i16_2_global_v8i8_pi32_i32(i8*, i8 addrspace(1)*, i64, i32)
 declare void @__builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_32x32_i16_64_global_v8i8_pi32_i32(i8*, i8 addrspace(1)*, i64, i32)
 declare void @__builtin_spriv_OpJointMatrixLoadINTEL_PackedA_ColumnMajor_SG16_8x16_i16_8_global_v8i8_pi32_i32(i8*, i8 addrspace(1)*, i64, i32)
+declare void @__builtin_spriv_OpJointMatrixLoadINTEL_PackedA_ColumnMajor_SG16_8x32_i8_8_global_v8i8_pi32_i32(i8*, i8 addrspace(1)*, i64, i32)
 
 declare void @__builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_SG16_32x64_i16_64_global_v8i8_pi32_i32(i8*, i8 addrspace(1)*, i64, i32)
 declare void @__builtin_spriv_OpJointMatrixLoadINTEL_PackedB_RowMajor_SG16_32x64_i16_64_global_v8i8_pi32_i32(i8*, i8 addrspace(1)*, i64, i32)
 declare void @__builtin_spriv_OpJointMatrixLoadINTEL_PackedB_ColumnMajor_SG16_16x16_i16_8_global_v8i8_pi32_i32(i8*, i8 addrspace(1)*, i64, i32)
+declare void @__builtin_spriv_OpJointMatrixLoadINTEL_PackedB_ColumnMajor_SG16_32x16_i8_8_global_v8i8_pi32_i32(i8*, i8 addrspace(1)*, i64, i32)
 
 declare void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_1x64_i32_4_global_v8i8_pi32_i32(i8*, float addrspace(1)*, i64, i32)
 declare void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_32x64_i32_128_global_v8i8_pi32_i32(i8*, float addrspace(1)*, i64, i32)

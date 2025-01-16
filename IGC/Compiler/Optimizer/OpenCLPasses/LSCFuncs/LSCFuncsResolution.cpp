@@ -936,6 +936,10 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
         {
             tileWidth = 8;
         }
+        else if (funcName.consume_front("k4"))
+        {
+            tileWidth = 4;
+        }
         else
         {
             IGC_ASSERT_MESSAGE(0, "Unrecognized k element in __builtin_IB_subgroup_block_read/write.");
@@ -989,10 +993,13 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
                 // each SIMD lane gets two rows in SIMD16
                 tileHeight = 32;
             }
+            else if (funcName.consume_front("_m16"))
+            {
+                tileHeight = 16;
+            }
+
             tileWidth = 8;
-
             funcName.consume_front("_");
-
             if (funcName.consume_front("k8"))
             {
                 tileWidth = 8;

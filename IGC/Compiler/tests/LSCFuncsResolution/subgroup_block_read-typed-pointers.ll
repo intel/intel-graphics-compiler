@@ -63,6 +63,9 @@ define spir_kernel void @test_lsc(i64 %base, <2 x i32> %cord) {
 ; CHECK:    call i32 @llvm.genx.GenISA.LSC2DBlockRead.i32(i64 %base, i32 9, i32 15, i32 9, i32 %{{[A-Za-z0-9]+}}, i32 %{{[A-Za-z0-9]+}}, i32 32, i32 1, i32 16, i32 1, i1 true, i1 false, i32 0)
   %9 = call i32 @__builtin_IB_subgroup_block_read_flat_cacheopts_transpose_u32_k1(i64 %base, i32 9, i32 15, i32 9, <2 x i32> %cord, i32 0)
 
+; CHECK:    call <8 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v8i32(i64 %base, i32 9, i32 15, i32 9, i32 %{{[A-Za-z0-9]+}}, i32 %{{[A-Za-z0-9]+}}, i32 32, i32 8, i32 16, i32 1, i1 true, i1 false, i32 0)
+  %10 = call <8 x i32> @__builtin_IB_subgroup_block_read_flat_cacheopts_transpose_u32_wi8_m16_k8(i64 %base, i32 9, i32 15, i32 9, <2 x i32> %cord, i32 0)
+
 ; CHECK:    ret void
   ret void
 }
@@ -80,6 +83,7 @@ declare <32 x i16> @__builtin_IB_subgroup_block_read_flat_transform_u16_k32v2(i6
 declare <32 x i16> @__builtin_IB_subgroup_block_read_flat_cacheopts_u16_m16k16v2(i64, i32, i32, i32, <2 x i32>, i32)
 
 declare i32 @__builtin_IB_subgroup_block_read_flat_cacheopts_transpose_u32_k1(i64, i32, i32, i32, <2 x i32>, i32)
+declare <8 x i32> @__builtin_IB_subgroup_block_read_flat_cacheopts_transpose_u32_wi8_m16_k8(i64, i32, i32, i32, <2 x i32>, i32)
 
 !igc.functions = !{!0}
 
