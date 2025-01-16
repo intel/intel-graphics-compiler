@@ -21,9 +21,11 @@ namespace IGC
         bool hasFixedOffset = false;
         size_t offset = 0;
 
+        bool uses64Bit = false;
         inline bool operator==(const BVHInfo& RHS) const
         {
             return (
+                uses64Bit == RHS.uses64Bit &&
                 hasFixedOffset == RHS.hasFixedOffset &&
                 offset == RHS.offset
                 );

@@ -2229,6 +2229,10 @@ short SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBroadcast, _i32_i16_i32, )
 {
     if (Execution == Subgroup)
     {
+        if(BIF_FLAG_CTRL_GET(UseOOBChecks))
+        {
+            Id = Id & (get_max_sub_group_size() - 1);
+        }
         return as_ushort(__builtin_IB_simd_shuffle_h(as_half(Value), Id));
     }
     else
@@ -2292,6 +2296,10 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformBroadcast, _i32_f64_i32, 
 {
     if (Execution == Subgroup)
     {
+        if(BIF_FLAG_CTRL_GET(UseOOBChecks))
+        {
+            Id = Id & (get_max_sub_group_size() - 1);
+        }
         return __builtin_IB_simd_shuffle_df( Value, Id );
     }
     else
@@ -3221,6 +3229,10 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffle, _i32_f64_i32, )(
 {
     if (Execution == Subgroup)
     {
+        if(BIF_FLAG_CTRL_GET(UseOOBChecks))
+        {
+            c = c & (get_max_sub_group_size() - 1);
+        }
         return __builtin_IB_simd_shuffle_df(x, c);
     }
     return 0;
@@ -3232,6 +3244,10 @@ half SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffle, _i32_f16_i32, )(in
 {
     if (Execution == Subgroup)
     {
+        if(BIF_FLAG_CTRL_GET(UseOOBChecks))
+        {
+            c = c & (get_max_sub_group_size() - 1);
+        }
         return __builtin_IB_simd_shuffle_h(x, c);
     }
     return 0;
@@ -3264,6 +3280,10 @@ char SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffleDown, _i32_i8_i32, )
 {
     if (Execution == Subgroup)
     {
+        if(BIF_FLAG_CTRL_GET(UseOOBChecks))
+        {
+            c = c & (get_max_sub_group_size() - 1);
+        }
         return __builtin_IB_simd_shuffle_down_uc(x, 0, c);
     }
     return 0;
@@ -3273,6 +3293,10 @@ short SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffleDown, _i32_i16_i32,
 {
     if (Execution == Subgroup)
     {
+        if(BIF_FLAG_CTRL_GET(UseOOBChecks))
+        {
+            c = c & (get_max_sub_group_size() - 1);
+        }
         return __builtin_IB_simd_shuffle_down_us(x, 0, c);
     }
     return 0;
@@ -3282,6 +3306,10 @@ int SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffleDown, _i32_i32_i32, )
 {
     if (Execution == Subgroup)
     {
+        if(BIF_FLAG_CTRL_GET(UseOOBChecks))
+        {
+            c = c & (get_max_sub_group_size() - 1);
+        }
         return __builtin_IB_simd_shuffle_down(x, 0, c);
     }
     return 0;
@@ -3291,6 +3319,10 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffleDown, _i32_i64_i32, 
 {
     if (Execution == Subgroup)
     {
+        if(BIF_FLAG_CTRL_GET(UseOOBChecks))
+        {
+            c = c & (get_max_sub_group_size() - 1);
+        }
         uint2 X = as_uint2(x);
         uint2 result = (uint2)(__builtin_IB_simd_shuffle_down(X.s0, 0, c),
             __builtin_IB_simd_shuffle_down(X.s1, 0, c));
@@ -3303,6 +3335,10 @@ float SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffleDown, _i32_f32_i32,
 {
     if (Execution == Subgroup)
     {
+        if(BIF_FLAG_CTRL_GET(UseOOBChecks))
+        {
+            c = c & (get_max_sub_group_size() - 1);
+        }
         return as_float(__builtin_IB_simd_shuffle_down(as_uint(x), 0, c));
     }
     return 0;
@@ -3313,6 +3349,10 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffleDown, _i32_f64_i32
 {
     if (Execution == Subgroup)
     {
+        if(BIF_FLAG_CTRL_GET(UseOOBChecks))
+        {
+            c = c & (get_max_sub_group_size() - 1);
+        }
         uint2 X = as_uint2(x);
         uint2 result = (uint2)(__builtin_IB_simd_shuffle_down(X.s0, 0, c),
             __builtin_IB_simd_shuffle_down(X.s1, 0, c));
@@ -3327,6 +3367,10 @@ half SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffleDown, _i32_f16_i32, 
 {
     if (Execution == Subgroup)
     {
+        if(BIF_FLAG_CTRL_GET(UseOOBChecks))
+        {
+            c = c & (get_max_sub_group_size() - 1);
+        }
         return as_half(__builtin_IB_simd_shuffle_down_us(as_ushort(x), 0, c));
     }
     return 0;
@@ -3339,6 +3383,10 @@ TYPE SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupNonUniformShuffleUp, _i32_##TYPE_ABBR
 {                                                                                                                           \
     if (Execution == Subgroup)                                                                                              \
     {                                                                                                                       \
+        if(BIF_FLAG_CTRL_GET(UseOOBChecks))                                                                                 \
+        {                                                                                                                   \
+            c = c & (get_max_sub_group_size() - 1);                                                                         \
+        }                                                                                                                   \
         return intel_sub_group_shuffle_up((TYPE) 0, x, c);                                                                  \
     }                                                                                                                       \
     return 0;                                                                                                               \

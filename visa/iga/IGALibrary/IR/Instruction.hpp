@@ -214,6 +214,8 @@ public:
   bool isBranching() const { return getOpSpec().isBranching(); }
 
   bool isMovWithLabel() const;
+  // check if an instruction is an indirect send
+  bool isGatherSend() const;
 
   void setInlineBinary(const InlineBinaryType &binary);
   bool isInlineBinaryInstruction() const { return m_isInlineBinaryInst; }
@@ -292,6 +294,8 @@ private:
   // |           | CPS is gone (now ExDescImm[11])
   // |           | ExBSO is hardwired to 1, but the field persists.
   // |           | There is an ExDescImm available even with reg ExDesc
+  // +-----------+--------------------------------------------------------
+  // | XE3 Send  | Same as Xe2 regarding descriptors
   // +-----------+--------------------------------------------------------
   //
 

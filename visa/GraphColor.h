@@ -108,6 +108,7 @@ public:
 enum class forbiddenKind {
   FBD_ADDR = 0,
   FBD_FLAG = 1,
+  FBD_SCALAR,
   FBD_RESERVEDGRF,
   FBD_EOT,
   FBD_LASTGRF,
@@ -1307,6 +1308,8 @@ public:
         getForbiddenVectorSize(G4_ADDRESS));
     forbiddenVec[(size_t)forbiddenKind::FBD_FLAG].resize(
         getForbiddenVectorSize(G4_FLAG));
+    forbiddenVec[(size_t)forbiddenKind::FBD_SCALAR].resize(
+        getForbiddenVectorSize(G4_SCALAR));
   };
   ~ForbiddenRegs(){};
 
@@ -1535,7 +1538,7 @@ public:
   InterferenceMatrixStorage intfStorage;
   IncrementalRA incRA;
 
-
+  bool didGRFIncrease = false;
   bool avoidBundleConflict = false;
 
   unsigned getSubRetLoc(const G4_BB *bb) {
@@ -1979,6 +1982,7 @@ public:
   void reportSpillInfo(const LivenessAnalysis &liveness,
                        const GraphColor &coloring) const;
   static uint32_t getRefCount(int loopNestLevel);
+  bool canIncreaseGRF(unsigned spillSize, bool infCostSpilled);
   void updateSubRegAlignment(G4_SubReg_Align subAlign);
   bool isChannelSliced();
   // Used by LRA/GRA/hybrid RA
@@ -2005,6 +2009,8 @@ public:
                       std::unordered_set<G4_INST *> &group);
   void addrRegAlloc();
   void flagRegAlloc();
+  void scalarRegAlloc();
+  void selectScalarCandidates();
   void fastRADecision();
   bool tryHybridRA();
   bool hybridRA(LocalRA &lra);
@@ -2166,6 +2172,7 @@ private:
   void writeVerboseStatsNumVars(LivenessAnalysis &liveAnalysis,
                                 FINALIZER_INFO *jitInfo);
   void writeVerboseRPEStats(RPE &rpe);
+  bool VRTIncreasedGRF(GraphColor &coloring);
   void splitOnSpill(bool fastCompile, GraphColor &coloring,
                     LivenessAnalysis &livenessAnalysis);
   bool convertToFailSafe(bool reserveSpillReg, GraphColor &coloring,

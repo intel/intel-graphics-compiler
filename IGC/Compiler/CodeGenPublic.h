@@ -87,6 +87,7 @@ namespace IGCOpts
 
 namespace IGC
 {
+    struct BifLLVMModule;
     class CodeGenContext;
 
     struct SProgramOutput
@@ -453,6 +454,7 @@ namespace IGC
         SIMD16_OFFSET = SIMD_INFO_RESERVED,
         SIMD32_OFFSET = SIMD_INFO_RESERVED*2,
         DUAL_SIMD8_OFFSET = SIMD_INFO_RESERVED * 3,
+        QUAD_SIMD8_DYNAMIC_OFFSET = SIMD_INFO_RESERVED*6,
     };
 
     struct SKernelProgram
@@ -976,6 +978,12 @@ namespace IGC
         unsigned int        m_constantPayloadNextAvailableGRFOffset = 0;
         ConstantPayloadInfo m_constantPayloadOffsets;
 
+        // Contains the data (bytecode, enabling bit) for BIF functions
+        // provided externally.
+        size_t m_numBifModules = 0;
+        BifLLVMModule* m_bifModules = nullptr;
+        // If this flag is enabled, STOC level emulation will be added to every AnyHitShader.
+        bool m_enableSubTriangleOpacityEmulation = false;
         void* gtpin_init = nullptr;
         bool m_hasLegacyDebugInfo = false;
         bool m_hasEmu64BitInsts = false;
@@ -1154,6 +1162,7 @@ namespace IGC
             return llvmCtxWrapper->m_allLayoutStructTypes;
         }
 
+        bool isSWSubTriangleOpacityCullingEmulationEnabled() const;
 
         unsigned int GetSIMDInfoOffset(SIMDMode simd, ShaderDispatchMode mode)
         {
@@ -1178,6 +1187,9 @@ namespace IGC
 
             case ShaderDispatchMode::DUAL_SIMD8:
                 offset = DUAL_SIMD8_OFFSET;
+                break;
+            case ShaderDispatchMode::QUAD_SIMD8_DYNAMIC:
+                offset = QUAD_SIMD8_DYNAMIC_OFFSET;
                 break;
 
             default:

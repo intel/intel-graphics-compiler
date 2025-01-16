@@ -810,6 +810,7 @@ bool SIPSuppoertedOnPlatformFamily(const GFXCORE_FAMILY& family)
     case IGFX_XE_HPG_CORE:
     case IGFX_XE_HPC_CORE:
     case IGFX_XE2_HPG_CORE:
+    case IGFX_XE3_CORE:
         return true;
     default:
         return false;

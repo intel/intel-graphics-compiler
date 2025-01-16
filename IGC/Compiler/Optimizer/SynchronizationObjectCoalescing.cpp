@@ -2466,6 +2466,7 @@ bool SynchronizationObjectCoalescing::IsTypedReadOperation(const llvm::Instructi
         switch (pGenIntrinsicInst->getIntrinsicID())
         {
         case llvm::GenISAIntrinsic::GenISA_typedread:
+        case llvm::GenISAIntrinsic::GenISA_typedreadMS:
             return IsGlobalWritableResource(pGenIntrinsicInst->getOperand(0)->getType());
         default:
             break;
@@ -2484,6 +2485,7 @@ bool SynchronizationObjectCoalescing::IsTypedWriteOperation(const llvm::Instruct
         switch (pGenIntrinsicInst->getIntrinsicID())
         {
         case llvm::GenISAIntrinsic::GenISA_typedwrite:
+        case llvm::GenISAIntrinsic::GenISA_typedwriteMS:
             return true;
         default:
             break;

@@ -347,6 +347,14 @@ public:
       formatInstructionBodySendXe2(i);
       return;
     }
+    if (platform() >= Platform::XE3 && i.getOpSpec().isAnySendFormat()) {
+      // Xe3 backwards compatible (non-ld/st/raw) send syntax
+      //   send (..) dst  src0   src1:src1len  [exDescOff:]exDesc desc
+      // Gather send
+      //   send (..) dst  r[src0.x]            [exDescOff:]exDesc desc
+      formatInstructionBodySendXe3(i);
+      return;
+    }
 
     formatInstructionPrefix(i);
 
@@ -423,6 +431,10 @@ private:
     formatSendDstOp(i);
 
     emit("  ");
+    if (i.isGatherSend()) {
+      formatRegIndRef(i.getSource(SourceIndex::SRC0));
+      emit(ANSI_RESET);
+    } else
       formatSrcBare(i.getSource(SourceIndex::SRC0));
 
     emit("  ");
@@ -437,6 +449,52 @@ private:
       formatSrcBare(i.getSource(SourceIndex::SRC1));
 
     emit("  ");
+
+    auto immOff = i.getExtImmOffDescriptor();
+    if (immOff != 0) {
+      emitHex(immOff);
+      emit(":");
+    }
+    formatSendExDesc(i.getExtMsgDescriptor());
+    emit("  ");
+    formatSendDesc(i.getMsgDescriptor(), 8);
+
+    // instruction options
+    formatInstOpts(i);
+
+    // EOL comments
+    formatEolComments(i);
+  }
+
+  // xe3 backwards compatible send with Gather Send support
+  void formatInstructionBodySendXe3(const Instruction &i) {
+    formatInstructionPrefix(i);
+
+    emit("  ");
+    formatSendDstOp(i);
+
+    emit("  ");
+    if (i.isGatherSend()) {
+      formatRegIndRef(i.getSource(SourceIndex::SRC0));
+      emit(ANSI_RESET);
+    } else {
+      formatSrcBare(i.getSource(SourceIndex::SRC0));
+    }
+    emit("  ");
+
+    // Gather Send lacks src1 (implicitly null)
+    if (!i.isGatherSend()) {
+      auto src1NeedsLenSuffix = i.getExtMsgDescriptor().isImm() ||
+                                i.getSendFc() == SFID::UGM ||
+                                i.hasInstOpt(InstOpt::EXBSO);
+      if (src1NeedsLenSuffix)
+        formatSendSrcWithLength(i.getSource(SourceIndex::SRC1),
+                                i.getSrc1Length());
+      else
+        formatSrcBare(i.getSource(SourceIndex::SRC1));
+
+      emit("  ");
+    }
 
     auto immOff = i.getExtImmOffDescriptor();
     if (immOff != 0) {
@@ -772,6 +830,7 @@ private:
       ss << ",acc=" << live.accBytes;
       ss << ",f=" << live.flagBytes;
       ss << ",a=" << live.indexBytes;
+      ss << ",s=" << live.scalarBytes;
 #endif
     }
 
@@ -842,6 +901,9 @@ private:
   void formatRegIndRef(const Operand &op) {
     emitAnsi(ANSI_REGISTER_GRF, "r");
     emit("[");
+    if (op.getDirRegName() == RegName::ARF_S)
+      formatScalarRegRead(op.getDirRegName(), op.getDirRegRef());
+    else
       formatScalarRegRead(RegName::ARF_A, op.getIndAddrReg());
 
     if (op.getIndImmAddr() != 0) {
@@ -1258,6 +1320,10 @@ void Formatter::formatInstOpts(const Instruction &i,
       emit("M@");
       emit((int)di.minDist);
       break;
+    case SWSB::DistType::REG_DIST_SCALAR:
+      emit("S@");
+      emit((int)di.minDist);
+      break;
     default:
       break;
     }
@@ -1288,6 +1354,10 @@ void Formatter::formatInstOpts(const Instruction &i,
 } // end formatInstOpts
 
 bool Formatter::formatLoadStoreSyntax(const Instruction &i) {
+  // TODO: maybe re-enable this if we can find a way to make this non-ambiguous
+  if (platform() >= Platform::XE3) {
+    return false;
+  }
   if (platform() < Platform::XE_HPG) {
     // We will not even try on <=XeHPG
     return false;

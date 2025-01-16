@@ -153,6 +153,8 @@ DEFINE_G4_MSGOP_LSC_LOAD(LOAD_STRIDED,    "load_strided",   0x01,
                          MSGOP_ATTRS_EMPTY)
 DEFINE_G4_MSGOP_LSC_LOAD(LOAD_QUAD,       "load_quad",      0x02,
                          MSGOP_ATTRS_HAS_CMASK)
+DEFINE_G4_MSGOP_LSC_LOAD(LOAD_QUAD_MSRT,  "load_quad_msrt", 0x31,
+                         MSGOP_ATTRS_HAS_CMASK)
 DEFINE_G4_MSGOP_LSC_LOAD(LOAD_STATUS,     "load_status",    0x1B,
                          MSGOP_ATTRS_EMPTY)
 DEFINE_G4_MSGOP_LSC_LOAD(LOAD_BLOCK2D,    "load_block2d",   0x03,
@@ -165,6 +167,8 @@ DEFINE_G4_MSGOP_LSC_STORE(STORE,           "store",          0x04,
 DEFINE_G4_MSGOP_LSC_STORE(STORE_STRIDED,   "store_strided",  0x05,
                           MSGOP_ATTRS_EMPTY)
 DEFINE_G4_MSGOP_LSC_STORE(STORE_QUAD,      "store_quad",     0x06,
+                          MSGOP_ATTRS_HAS_CMASK)
+DEFINE_G4_MSGOP_LSC_STORE(STORE_QUAD_MSRT, "store_quad_msrt", 0x32,
                           MSGOP_ATTRS_HAS_CMASK)
 DEFINE_G4_MSGOP_LSC_STORE(STORE_BLOCK2D,   "store_block2d", 0x07,
                           MSGOP_ATTRS_EMPTY)

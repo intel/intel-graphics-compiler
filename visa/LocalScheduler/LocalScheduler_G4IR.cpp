@@ -484,6 +484,9 @@ void DDD::getBucketsForOperand(G4_INST *inst, Gen4_Operand_Number opnd_num,
     case AREG_A0:
       startingBucket = A0_BUCKET;
       break;
+    case AREG_S0:
+      startingBucket = S0_BUCKET;
+      break;
     case AREG_F0:
       startingBucket = FLAG0_BUCKET;
       break;
@@ -1291,7 +1294,8 @@ DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
   A0_BUCKET = FLAG3_BUCKET + 1;
   SEND_BUCKET = A0_BUCKET + 1;
   SCRATCH_SEND_BUCKET = SEND_BUCKET + 1;
-  OTHER_ARF_BUCKET = SCRATCH_SEND_BUCKET + 1;
+  S0_BUCKET = SCRATCH_SEND_BUCKET + 1;
+  OTHER_ARF_BUCKET = S0_BUCKET + 1;
   TOTAL_BUCKETS = OTHER_ARF_BUCKET + 1;
 
   LiveBuckets LB(this, GRF_BUCKET, TOTAL_BUCKETS);
@@ -1466,7 +1470,7 @@ DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
           if (curBucket < ACC_BUCKET) {
             dep = getDepForOpnd(curOpnd, liveOpnd);
           } else if (curBucket == ACC_BUCKET
-                     || curBucket == A0_BUCKET)
+                     || curBucket == A0_BUCKET || curBucket == S0_BUCKET)
           {
             dep = getDepForOpnd(curOpnd, liveOpnd);
             curKillsBucket = false;

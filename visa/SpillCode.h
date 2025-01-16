@@ -56,6 +56,7 @@ class SpillManager {
   G4_Declare *createNewTempAddrDeclare(G4_Declare *dcl);
   G4_Declare *createNewTempFlagDeclare(G4_Declare *dcl);
   G4_Declare *createNewTempAddrDeclare(G4_Declare *dcl, uint16_t num_reg);
+  G4_Declare *createNewTempScalarDeclare(G4_Declare *dcl);
   void replaceSpilledDst(G4_BB *bb,
                          INST_LIST_ITER it, // where new insts will be inserted
                          G4_INST *inst,

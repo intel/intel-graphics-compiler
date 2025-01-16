@@ -256,6 +256,7 @@ public:
   bool isDbgReg() const;
   bool isTmReg() const;
   bool isTDRReg() const;
+  bool isS0() const;
 
   const G4_AddrExp *asAddrExp() const {
 #ifdef _DEBUG
@@ -622,6 +623,7 @@ public:
   bool isDirectA0() const { return acc == Direct && base->isA0(); }
   bool isDirectAddress() const { return acc == Direct && base->isAddress(); }
   bool isScalar() const;
+  bool isS0() const { return base->isS0(); }
   bool isFlatRegRegion(
       uint8_t exChannelWidth,
       std::function<bool(uint8_t dstStrideInBytes, uint8_t dstSubRegOffInBytes,
@@ -779,6 +781,7 @@ public:
   // potential regressions in legacy code.
   bool isDirectA0() const { return acc == Direct && base->isA0(); }
   bool isDirectAddress() const { return acc == Direct && base->isAddress(); }
+  bool isS0() const { return base->isS0(); }
 
   unsigned short ExRegNum(bool &);
   unsigned short ExSubRegNum(bool &);
@@ -1079,6 +1082,9 @@ inline bool G4_Operand::isTmReg() const {
 }
 inline bool G4_Operand::isTDRReg() const {
   return isRegRegion() && const_cast<G4_VarBase *>(getBase())->isTDRReg();
+}
+inline bool G4_Operand::isS0() const {
+  return isRegRegion() && const_cast<G4_VarBase *>(getBase())->isS0();
 }
 
 inline bool G4_Operand::isScalarSrc() const {

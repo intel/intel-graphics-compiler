@@ -126,6 +126,8 @@ bool vISA::MsgOpHasChMask(MsgOp op) {
   switch (op) {
   case MsgOp::LOAD_QUAD:
   case MsgOp::STORE_QUAD:
+  case MsgOp::LOAD_QUAD_MSRT:
+  case MsgOp::STORE_QUAD_MSRT:
     return true;
   default:
     break;

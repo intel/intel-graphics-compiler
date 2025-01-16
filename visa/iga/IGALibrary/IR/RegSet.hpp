@@ -149,6 +149,7 @@ private:
   Bits bitsA;
   Bits bitsAcc;
   Bits bitsF;
+  Bits bitsS;
 };
 
 struct InstSrcs {

@@ -916,6 +916,55 @@ CVariable* CShader::GetHWTID()
                 return m_HW_TID;
             }
 
+            if (m_Platform->getPlatformInfo().eRenderCoreFamily == IGFX_XE3_CORE) {
+                // msg0.0:
+                // [7:0] : LogicalSSID
+                // sr0.0:
+                // [6:4] : EUID
+                // [3:0] : TID
+                // TID is 4 bits on XE3, but the max number of threads per EU
+                // is 10 (instead of 16) so cannot concatenate EUID and TID
+                // directly. HWTID is calculated by:
+                // TID + 10 * [EUID:LogicalSSID]
+
+                m_HW_TID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1,
+                                          "HWTID");
+                encoder.SetNoMask();
+                encoder.SetSrcSubReg(0, 0);
+
+                // m_HW_TID = msg0 & BITMASK(8)
+                encoder.And(m_HW_TID, GetMSG0(), ImmToVariable(BITMASK(8), ISA_TYPE_UD));
+                encoder.Push();
+
+                CVariable *euID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD,
+                                                 true, 1, "SR_4_6");
+                // euID = sr0 & BITMASK(7)
+                encoder.And(euID, GetSR0(), ImmToVariable(BITMASK(7), ISA_TYPE_UD));
+                encoder.Push();
+
+                // m_HW_TID  = m_HW_TID << 3
+                encoder.Shl(m_HW_TID, m_HW_TID, ImmToVariable(3, ISA_TYPE_UD));
+                encoder.Push();
+
+                // euID = euID >> 4
+                encoder.Shr(euID, euID, ImmToVariable(4, ISA_TYPE_UD));
+                encoder.Push();
+
+                CVariable *tID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD,
+                                                true, 1, "SR_0_3");
+                // tID = sr0 & BITMASK(4)
+                encoder.And(tID, GetSR0(), ImmToVariable(BITMASK(4), ISA_TYPE_UD));
+                encoder.Push();
+
+                // m_HW_TID = m_HW_TID | euID
+                encoder.Or(m_HW_TID, m_HW_TID, euID);
+                encoder.Push();
+
+                // m_HW_TID = m_HW_TID * 10 + tID
+                encoder.Mad(m_HW_TID, m_HW_TID, ImmToVariable(10, ISA_TYPE_UD), tID);
+                encoder.Push();
+                return m_HW_TID;
+            }
 
             // XeHP_SDV
             // [13:11] Slice ID.
@@ -1229,7 +1278,8 @@ uint CShader::GetNbVectorElementAndMask(llvm::Value* val, uint32_t& mask)
         // try to prune the destination size
         GenISAIntrinsic::ID IID = inst->getIntrinsicID();
         if (IID == GenISAIntrinsic::GenISA_ldstructured ||
-            IID == GenISAIntrinsic::GenISA_typedread)
+            IID == GenISAIntrinsic::GenISA_typedread ||
+            IID == GenISAIntrinsic::GenISA_typedreadMS)
         {
             // prune with write-mask if possible
             uint elemCnt = 0;
@@ -4121,6 +4171,8 @@ Tristate CShader::shouldGenerateLSCQuery(
     {
         if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_typedread ||
             inst->getIntrinsicID() == GenISAIntrinsic::GenISA_typedwrite ||
+            inst->getIntrinsicID() == GenISAIntrinsic::GenISA_typedwriteMS ||
+            inst->getIntrinsicID() == GenISAIntrinsic::GenISA_typedreadMS ||
             inst->getIntrinsicID() == GenISAIntrinsic::GenISA_floatatomictyped ||
             inst->getIntrinsicID() == GenISAIntrinsic::GenISA_fcmpxchgatomictyped ||
             inst->getIntrinsicID() == GenISAIntrinsic::GenISA_intatomictyped ||

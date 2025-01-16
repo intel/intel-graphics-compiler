@@ -262,7 +262,7 @@ struct LscOpInfo {
   // other queries
   bool hasChMask() const {
       return (op == LSC_LOAD_QUAD || op == LSC_STORE_QUAD
-             );
+              || op == LSC_LOAD_QUAD_MSRT || op == LSC_STORE_QUAD_MSRT);
   }
   bool isStrided() const {
     return op == LSC_LOAD_STRIDED || op == LSC_STORE_STRIDED;

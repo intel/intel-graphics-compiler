@@ -194,6 +194,7 @@ public:
       const auto &totals = opts.liveAnalysis->sums[i.getID()];
       emit("\"r\":", totals.grfBytes, ",");
       emit("\"acc\":", totals.accBytes, ",");
+      emit("\"s\":", totals.scalarBytes, ",");
       emit("\"f\":", totals.flagBytes, ",");
       emit("\"a\":", totals.indexBytes);
       emit("}");
@@ -954,6 +955,9 @@ public:
       break;
     case SWSB::DistType::REG_DIST_MATH:
       emitPipeDist("M");
+      break;
+    case SWSB::DistType::REG_DIST_SCALAR:
+      emitPipeDist("S");
       break;
     default:
       emit("null");

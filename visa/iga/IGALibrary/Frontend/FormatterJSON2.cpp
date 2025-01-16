@@ -273,6 +273,7 @@ public:
       const auto &totals = opts.liveAnalysis->sums[i.getID()];
       emit("\"r\":", totals.grfBytes, ",");
       emit("\"acc\":", totals.accBytes, ",");
+      emit("\"s\":", totals.scalarBytes, ",");
       emit("\"f\":", totals.flagBytes, ",");
       emit("\"a\":", totals.indexBytes);
       emit("}");
@@ -784,6 +785,8 @@ public:
     const auto &src0 = i.getSource(0);
     if (src0.getKind() == Operand::Kind::DIRECT) {
       emitRegValue(src0.getDirRegName(), src0.getDirRegRef().regNum);
+    } else if (src0.getKind() == Operand::Kind::INDIRECT) { // indirect send
+      emitRegValue(RegName::ARF_S, src0.getIndAddrReg());
     } else {
       emit("\"???\"");
     }
@@ -964,6 +967,9 @@ public:
       break;
     case SWSB::DistType::REG_DIST_MATH:
       emitPipeDist("M");
+      break;
+    case SWSB::DistType::REG_DIST_SCALAR:
+      emitPipeDist("S");
       break;
     default:
       emit("\"?\"");

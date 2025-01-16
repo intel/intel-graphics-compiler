@@ -36,6 +36,7 @@ static DEP_CLASS getClassFromPipeType(DEP_PIPE type, const OpSpec &opspec) {
   case DEP_PIPE::INTEGER:
   case DEP_PIPE::LONG64:
   case DEP_PIPE::MATH_INORDER:
+  case DEP_PIPE::SCALAR:
     return DEP_CLASS::IN_ORDER;
 
   case DEP_PIPE::DPAS:
@@ -295,6 +296,43 @@ static void setDEPPipeClass_FourDistPipeReduction(DepSet &dep,
   dep.setDepPipe(pipe_type);
 }
 
+static bool isScalarPipeInst(const Instruction &inst) {
+  return inst.getOp() == Op::MOV &&
+         inst.getDestination().getDirRegName() == RegName::ARF_S &&
+         inst.getSource(0).isImm();
+}
+
+static void setDEPPipeClass_FiveDistPipe(DepSet &dep, const Instruction &inst,
+                                         const Model &model) {
+  // TODO: Implement FiveDistPipe
+  setDEPPipeClass_FourDistPipeReduction(dep, inst, model);
+
+  // mov instructions with scalar dst and imm src goto SCALAR pipe
+  if (isScalarPipeInst(inst)) {
+    dep.setDepPipe(DEP_PIPE::SCALAR);
+    IGA_ASSERT(dep.getDepClass() == DEP_CLASS::IN_ORDER,
+               "dep class for mov should be set already");
+  }
+}
+
+static void setDEPPipeClass_FiveDistPipeReduction(DepSet &dep,
+                                                  const Instruction &inst,
+                                                  const Model &model) {
+  // The only difference between FiveDistPipeReduction and FiveDistPipe
+  // is that Q to F coversion instructions are now in INT pipe
+  setDEPPipeClass_FiveDistPipe(dep, inst, model);
+
+  if (dep.getDepClass() == DEP_CLASS::IN_ORDER) {
+    auto opsec = inst.getOpSpec();
+    if (opsec.supportsDestination() && inst.getSourceCount() > 1) {
+      Type dstType = inst.getDestination().getType();
+      Type src0Type = inst.getSource(0).getType();
+      if (dstType == Type::F && (src0Type == Type::Q || src0Type == Type::UQ)) {
+        dep.setDepPipe(DEP_PIPE::INTEGER);
+      }
+    }
+  }
+}
 
 
 static void setDEPPipeClass(SWSB_ENCODE_MODE enc_mode, DepSet &dep,
@@ -315,6 +353,12 @@ static void setDEPPipeClass(SWSB_ENCODE_MODE enc_mode, DepSet &dep,
   case SWSB_ENCODE_MODE::FourDistPipeReduction:
     setDEPPipeClass_FourDistPipeReduction(dep, inst, model);
     break;
+  case SWSB_ENCODE_MODE::FiveDistPipe:
+    setDEPPipeClass_FiveDistPipe(dep, inst, model);
+    break;
+  case SWSB_ENCODE_MODE::FiveDistPipeReduction:
+    setDEPPipeClass_FiveDistPipeReduction(dep, inst, model);
+    break;
   default:
     break;
   }
@@ -324,7 +368,8 @@ DepSet::DepSet(const InstIDs &instIdCntr, const DepSetBuilder &dsb)
     : m_instruction(nullptr), m_dType(DEP_TYPE::NONE), m_hasIndirect(false),
       m_hasSR(false), m_dPipe(DEP_PIPE::NONE), m_dClass(DEP_CLASS::NONE),
       m_InstIDs(instIdCntr.global, instIdCntr.inOrder, instIdCntr.floatPipe,
-                instIdCntr.intPipe, instIdCntr.longPipe, instIdCntr.mathPipe
+                instIdCntr.intPipe, instIdCntr.longPipe, instIdCntr.mathPipe,
+                instIdCntr.scalarPipe
                 ),
       m_DB(dsb) {
   m_bucketList.reserve(4);
@@ -516,6 +561,9 @@ uint32_t DepSetBuilder::getBucketStart(RegName regname) const {
   case RegName::ARF_CR:
   case RegName::ARF_SR:
     bucket = getARF_SPECIAL_START() / getBYTES_PER_BUCKET();
+    break;
+  case RegName::ARF_S:
+    bucket = getARF_SCALAR_START() / getBYTES_PER_BUCKET();
     break;
   default:
     // putting rest of archtecture registers in to same bucket
@@ -1172,6 +1220,14 @@ void DepSet::setInputsSrcDep() {
       setHasIndirect();
       setDepType(DEP_TYPE::READ_ALWAYS_INTERFERE);
 
+      if (op.getDirRegName() == RegName::ARF_S) {
+        IGA_ASSERT(m_instruction->isGatherSend(),
+                   "Non-send instruction has indirect scalar register src");
+        // Mark src access to 1 byte that we will insert force sync before and
+        // after gather send so the actual length doesn't matter.
+        setSendSrcScalarRegRegion(op.getIndAddrReg(), 1);
+        break;
+      }
 
       auto rgn = op.getRegion();
       if (rgn.getVt() == Region::Vert::VT_VxH) {
@@ -1470,6 +1526,21 @@ bool static const isSpecial(RegName rn) {
   return false;
 }
 
+void DepSet::setSendSrcScalarRegRegion(const RegRef &rr, uint32_t numBytes) {
+  uint32_t lowBound = addressOf(RegName::ARF_S, rr, 8);
+  uint32_t upperBound = lowBound + numBytes;
+  uint32_t startBucketNum = lowBound / m_DB.getBYTES_PER_BUCKET();
+  uint32_t upperBucketNum = (upperBound - 1) / m_DB.getBYTES_PER_BUCKET();
+
+  bits->set(lowBound, numBytes);
+  for (uint32_t i = startBucketNum; i <= upperBucketNum; i++) {
+    m_bucketList.push_back(i);
+  }
+
+  // Using one of the special registers to add read dependency in to special
+  // bucket This way it will always check that implicit dependency
+  m_bucketList.push_back(m_DB.getBucketStart(RegName::ARF_CR));
+}
 
 std::pair<uint32_t, uint32_t>
 DepSet::setSrcRegion(RegName rn, RegRef rr, Region rgn, uint32_t execSize,
@@ -1674,6 +1745,9 @@ uint32_t DepSet::addressOf(RegName rnm, const RegRef &rr,
   case RegName::ARF_FC:
     return getAddressOf(m_DB.getARF_SPECIAL_START(),
                         m_DB.getARF_SPECIAL_BYTES_PER_REG());
+  case RegName::ARF_S:
+    return getAddressOf(m_DB.getARF_SCALAR_START(),
+                        m_DB.getARF_SCALAR_BYTES_PER_REG());
   default:
     return m_DB.getTOTAL_BITS();
   }
@@ -1685,6 +1759,7 @@ bool DepSet::isRegTracked(RegName rnm) const {
   case RegName::ARF_A:
   case RegName::ARF_ACC:
   case RegName::ARF_F:
+  case RegName::ARF_S:
     return true;
   default:
     return false || isSpecial(rnm);
@@ -1802,6 +1877,12 @@ void DepSet::str(std::ostream &os) const {
                    m_DB.getARF_F_BYTES_PER_REG());
   }
 
+  for (uint32_t fi = 0; fi < m_DB.getARF_SCALAR_REGS(); fi++) {
+    formatShortReg(os, first, "s", fi,
+                   m_DB.getARF_SCALAR_START() +
+                       (size_t)fi * m_DB.getARF_SCALAR_BYTES_PER_REG(),
+                   m_DB.getARF_SCALAR_BYTES_PER_REG());
+  }
 
   os << "}";
 }

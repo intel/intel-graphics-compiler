@@ -138,6 +138,15 @@ namespace {
         ///    __builtin_IB_srnd_ftohf_<1|2|3|4|8|16> (a,  r)
         ///    __builtin_IB_srnd_hftobf8_<1|2|3|4|8|16>(a,  r)
         bool processSrnd(CallInst& CI);
+        ///  Naming convertion of sdpas builtin
+        /// __builtin_IB_sub_group16_sdpas__<retty>_<accty>_<aty>_<bty>_<depth>_<rcount>
+        ///     retty/accty :  f|hf|bf|d
+        ///     aty/bty     :  u8|s8|bf|bf8|hf8|hf|tf32
+        ///     depth       :  16
+        ///                    (b is compressed and is the half of the depth).
+        ///     rcount      :  7-8
+        ///  Only a limited set of combination of retty/accty/aty/bty is allowed.
+        bool processSdpas(CallInst& CI);
 
 
         ///////////////////////////////////////////////////////////////////
@@ -199,6 +208,7 @@ const StringRef DpasFuncsResolution::WI_PREFIX_HFDPAS =  "__builtin_IB_hfdpas";
 const StringRef DpasFuncsResolution::WI_PREFIX_BFDPAS =  "__builtin_IB_bfdpas";
 const StringRef DpasFuncsResolution::SG_PREFIX_HFDPAS =  "__builtin_IB_sub_group_hfdpas";
 const StringRef DpasFuncsResolution::SG_PREFIX_BFDPAS =  "__builtin_IB_sub_group_bfdpas";
+const StringRef DpasFuncsResolution::SG_PREFIX_SDPAS16 = "__builtin_IB_sub_group16_sdpas";
 
 // Register pass to igc-opt
 #define PASS_FLAG "igc-arith-funcs-translation" // This string was changed from "igc-dpas-funcs-translation" due to IP leaks concers.

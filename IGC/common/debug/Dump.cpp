@@ -161,6 +161,7 @@ DumpName DumpName::DispatchMode(ShaderDispatchMode mode) const
     case ShaderDispatchMode::SINGLE_PATCH:
     case ShaderDispatchMode::DUAL_PATCH:
     case ShaderDispatchMode::EIGHT_PATCH:
+    case ShaderDispatchMode::QUAD_SIMD8_DYNAMIC:
         copy.m_ShaderMode = mode;
         break;
     default:
@@ -365,6 +366,12 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
         {
             ss << (underscore ? "_" : "")
                 << "EightPatch";
+            underscore = true;
+        }
+        if (m_ShaderMode.value() == ShaderDispatchMode::QUAD_SIMD8_DYNAMIC)
+        {
+            ss << (underscore ? "_" : "")
+                << "QuadSIMD8Dynamic";
             underscore = true;
         }
     }

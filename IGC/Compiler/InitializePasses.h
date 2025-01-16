@@ -266,6 +266,8 @@ void initializeHandleSpirvDecorationMetadataPass(llvm::PassRegistry&);
 void initializeNontemporalLoadsAndStoresInAssertPass(llvm::PassRegistry&);
 void initializeHandleDevicelibAssertPass(llvm::PassRegistry&);
 void initializeStackOverflowDetectionPassPass(llvm::PassRegistry &);
+void initializeRayTracingBiFModuleInitializePassPass(llvm::PassRegistry&);
+void initializeRayTracingBiFModuleFinalizePassPass(llvm::PassRegistry&);
 void initializeBufferBoundsCheckingPass(llvm::PassRegistry&);
 void initializeBufferBoundsCheckingPatcherPass(llvm::PassRegistry&);
 void initializeBfloatFuncsResolutionPass(llvm::PassRegistry &);
