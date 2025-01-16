@@ -40,7 +40,10 @@ inline SignedDivisionByConstantInfo getAPIntMagic(const llvm::APInt &value) {
 }
 
 inline UnsignedDivisionByConstantInfo getAPIntMagicUnsigned(const llvm::APInt &value, const unsigned LeadingZeros = 0) {
-#if LLVM_VERSION_MAJOR >= 14
+#if LLVM_VERSION_MAJOR >= 16
+    // Basing on this: [https://reviews.llvm.org/D140924]
+    return UnsignedDivisionByConstantInfo::get(value, LeadingZeros, false);
+#elif LLVM_VERSION_MAJOR >= 14
     return UnsignedDivisionByConstantInfo::get(value, LeadingZeros);
 #else
     return value.magicu(LeadingZeros);
