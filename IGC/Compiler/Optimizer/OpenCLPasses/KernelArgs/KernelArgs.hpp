@@ -217,6 +217,7 @@ namespace IGC
         AccessQual                      getAccessQual()         const;
         unsigned int                    getNumComponents()      const;
         unsigned int                    getAllocateSize()       const;
+        unsigned int                    getSize()               const;
         unsigned int                    getElemAllocateSize()   const;
         size_t                          getAlignment()          const;
         bool                            isConstantBuf()         const;

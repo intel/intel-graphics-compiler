@@ -170,7 +170,7 @@ If an attribute is **Required**, it must be present in payload arguments. If it'
 | ------ | ------ | ------ | ------ | ----- |
 | arg_type | <argument_type> | Required | | |
 | offset | int32 | Required | | |
-| size | int32 | Required | | |
+| size | int32 | Required | | The number of bytes needed for allocating the argument. Allocated size is aligned to 4. |
 | arg_index | int32 | Optional | -1 | Present when arg_type is "arg_bypointer", "arg_byvalue", "buffer_offset", or other implicit *image_* and sampler_* types. The value is the index of the associated kernel argument. |
 | addrmode | <memory_addressing_mode> | Optional | | Present when arg_type is "arg_bypointer", or when arg_type is "const_base", "global_base", "inline_sampler" |
 | addrspace | <address_space> | Optional | | Present when arg_type is "arg_bypointer" or "inline_sampler" |

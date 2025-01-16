@@ -436,6 +436,11 @@ unsigned int KernelArg::getAllocateSize() const
     return int_cast<unsigned int>(llvm::alignTo(m_allocateSize, iOpenCL::DATA_PARAMETER_DATA_SIZE));
 }
 
+unsigned int KernelArg::getSize() const
+{
+    return m_allocateSize;
+}
+
 unsigned int KernelArg::getElemAllocateSize() const
 {
     return m_elemAllocateSize;

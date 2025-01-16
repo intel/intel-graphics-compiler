@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZEBIN Version
-Version 1.50
+Version 1.51
 =======
 
 ## Versioning
@@ -16,6 +16,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.51**: Attribute size in payload_arguments now shows the the number of bytes needed for allocating the argument. It is no longer aligned to 4.
 - **Version 1.50**: Add generateLocalID flag.
 - **Version 1.49**: Internal changes.
 - **Version 1.48**: Add relocation type "R_SYM_ADDR_16" and update supported relocation types.

@@ -917,7 +917,7 @@ namespace IGC
         case KernelArg::ArgType::IMPLICIT_PRIVATE_BASE:
             zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                 zebin::PreDefinedAttrGetter::ArgType::private_base_stateless,
-                payloadPosition, kernelArg->getAllocateSize());
+                payloadPosition, kernelArg->getSize());
             break;
 
         case KernelArg::ArgType::IMPLICIT_NUM_GROUPS:
@@ -1022,7 +1022,7 @@ namespace IGC
                 // this address will be accessed as a value and cannot be de-referenced
                 zebin::zeInfoPayloadArgument& arg = zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                     zebin::PreDefinedAttrGetter::ArgType::buffer_address,
-                    payloadPosition, kernelArg->getAllocateSize());
+                    payloadPosition, kernelArg->getSize());
                 arg.arg_index = arg_idx;
                 break;
             }
@@ -1039,14 +1039,14 @@ namespace IGC
 
             zebin::zeInfoPayloadArgument& arg =
                 zebin::ZEInfoBuilder::addPayloadArgumentByPointer(m_kernelInfo.m_zePayloadArgs,
-                    payloadPosition, kernelArg->getAllocateSize(), arg_idx, addr_mode,
+                    payloadPosition, kernelArg->getSize(), arg_idx, addr_mode,
                     addr_space, access_type);
             arg.is_pipe = arg_idx < funcMD.m_OpenCLArgTypeQualifiers.size() && funcMD.m_OpenCLArgTypeQualifiers[arg_idx] == "pipe";
             break;
         }
         case KernelArg::ArgType::PTR_LOCAL:
             zebin::ZEInfoBuilder::addPayloadArgumentByPointer(m_kernelInfo.m_zePayloadArgs,
-                payloadPosition, kernelArg->getAllocateSize(),
+                payloadPosition, kernelArg->getSize(),
                 kernelArg->getAssociatedArgNo(),
                 zebin::PreDefinedAttrGetter::ArgAddrMode::slm,
                 zebin::PreDefinedAttrGetter::ArgAddrSpace::local,
@@ -1056,7 +1056,7 @@ namespace IGC
         // by value arguments
         case KernelArg::ArgType::CONSTANT_REG:
             zebin::ZEInfoBuilder::addPayloadArgumentByValue(m_kernelInfo.m_zePayloadArgs,
-                payloadPosition, kernelArg->getAllocateSize(),
+                payloadPosition, kernelArg->getSize(),
                 kernelArg->getAssociatedArgNo(), kernelArg->getStructArgOffset(),
                 kernelArg->isScalarAsPointer());
             break;
@@ -1097,14 +1097,14 @@ namespace IGC
                 zebin::zeInfoPayloadArgument& arg =
                     zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
                         m_kernelInfo.m_zePayloadArgs, argTy, payloadPosition,
-                        kernelArg->getAllocateSize());
+                        kernelArg->getSize());
                 arg.addrmode = zebin::PreDefinedAttrGetter::get(zebin::PreDefinedAttrGetter::ArgAddrMode::bindless);
             }
             else
             {
                 zebin::ZEInfoBuilder::addPayloadArgumentByPointer(
                     m_kernelInfo.m_zePayloadArgs, payloadPosition,
-                    kernelArg->getAllocateSize(), argidx,
+                    kernelArg->getSize(), argidx,
                     zebin::PreDefinedAttrGetter::ArgAddrMode::bindless,
                     std::get<0>(attrs), std::get<1>(attrs));
             }
@@ -1156,7 +1156,7 @@ namespace IGC
                 arg_addrmode =
                     zebin::PreDefinedAttrGetter::ArgAddrMode::bindless;
                 arg_off = payloadPosition;
-                arg_size = kernelArg->getAllocateSize();
+                arg_size = kernelArg->getSize();
             } else {
                 // add bti index for this arg if it's stateful
                 SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(arg_idx);
@@ -1190,7 +1190,7 @@ namespace IGC
             zebin::zeInfoPayloadArgument& arg =
                 zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                     zebin::PreDefinedAttrGetter::ArgType::image_height,
-                    payloadPosition, kernelArg->getAllocateSize());
+                    payloadPosition, kernelArg->getSize());
             arg.arg_index = kernelArg->getAssociatedArgNo();
             break;
         }
@@ -1198,7 +1198,7 @@ namespace IGC
             zebin::zeInfoPayloadArgument& arg =
                 zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                     zebin::PreDefinedAttrGetter::ArgType::image_width,
-                    payloadPosition, kernelArg->getAllocateSize());
+                    payloadPosition, kernelArg->getSize());
             arg.arg_index = kernelArg->getAssociatedArgNo();
             break;
         }
@@ -1206,7 +1206,7 @@ namespace IGC
             zebin::zeInfoPayloadArgument& arg =
                 zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                     zebin::PreDefinedAttrGetter::ArgType::image_depth,
-                    payloadPosition, kernelArg->getAllocateSize());
+                    payloadPosition, kernelArg->getSize());
             arg.arg_index = kernelArg->getAssociatedArgNo();
             break;
         }
@@ -1214,7 +1214,7 @@ namespace IGC
             zebin::zeInfoPayloadArgument& arg =
                 zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                     zebin::PreDefinedAttrGetter::ArgType::image_num_mip_levels,
-                    payloadPosition, kernelArg->getAllocateSize());
+                    payloadPosition, kernelArg->getSize());
             arg.arg_index = kernelArg->getAssociatedArgNo();
             break;
         }
@@ -1222,7 +1222,7 @@ namespace IGC
             zebin::zeInfoPayloadArgument& arg =
                 zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                     zebin::PreDefinedAttrGetter::ArgType::image_channel_data_type,
-                    payloadPosition, kernelArg->getAllocateSize());
+                    payloadPosition, kernelArg->getSize());
             arg.arg_index = kernelArg->getAssociatedArgNo();
             break;
         }
@@ -1230,7 +1230,7 @@ namespace IGC
             zebin::zeInfoPayloadArgument& arg =
                 zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                     zebin::PreDefinedAttrGetter::ArgType::image_channel_order,
-                    payloadPosition, kernelArg->getAllocateSize());
+                    payloadPosition, kernelArg->getSize());
             arg.arg_index = kernelArg->getAssociatedArgNo();
             break;
         }
@@ -1238,7 +1238,7 @@ namespace IGC
             zebin::zeInfoPayloadArgument& arg =
                 zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                     zebin::PreDefinedAttrGetter::ArgType::image_srgb_channel_order,
-                    payloadPosition, kernelArg->getAllocateSize());
+                    payloadPosition, kernelArg->getSize());
             arg.arg_index = kernelArg->getAssociatedArgNo();
             break;
         }
@@ -1246,7 +1246,7 @@ namespace IGC
             zebin::zeInfoPayloadArgument& arg =
                 zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                     zebin::PreDefinedAttrGetter::ArgType::image_array_size,
-                    payloadPosition, kernelArg->getAllocateSize());
+                    payloadPosition, kernelArg->getSize());
             arg.arg_index = kernelArg->getAssociatedArgNo();
             break;
         }
@@ -1254,7 +1254,7 @@ namespace IGC
             zebin::zeInfoPayloadArgument& arg =
                 zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                     zebin::PreDefinedAttrGetter::ArgType::image_num_samples,
-                    payloadPosition, kernelArg->getAllocateSize());
+                    payloadPosition, kernelArg->getSize());
             arg.arg_index = kernelArg->getAssociatedArgNo();
             break;
         }
@@ -1262,7 +1262,7 @@ namespace IGC
             zebin::zeInfoPayloadArgument& arg =
                 zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                     zebin::PreDefinedAttrGetter::ArgType::flat_image_baseoffset,
-                    payloadPosition, kernelArg->getAllocateSize());
+                    payloadPosition, kernelArg->getSize());
             arg.arg_index = kernelArg->getAssociatedArgNo();
             break;
         }
@@ -1270,7 +1270,7 @@ namespace IGC
             zebin::zeInfoPayloadArgument& arg =
                 zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                     zebin::PreDefinedAttrGetter::ArgType::flat_image_height,
-                    payloadPosition, kernelArg->getAllocateSize());
+                    payloadPosition, kernelArg->getSize());
             arg.arg_index = kernelArg->getAssociatedArgNo();
             break;
         }
@@ -1278,7 +1278,7 @@ namespace IGC
             zebin::zeInfoPayloadArgument& arg =
                 zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                     zebin::PreDefinedAttrGetter::ArgType::flat_image_width,
-                    payloadPosition, kernelArg->getAllocateSize());
+                    payloadPosition, kernelArg->getSize());
             arg.arg_index = kernelArg->getAssociatedArgNo();
             break;
         }
@@ -1286,7 +1286,7 @@ namespace IGC
             zebin::zeInfoPayloadArgument& arg =
                 zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                     zebin::PreDefinedAttrGetter::ArgType::flat_image_pitch,
-                    payloadPosition, kernelArg->getAllocateSize());
+                    payloadPosition, kernelArg->getSize());
             arg.arg_index = kernelArg->getAssociatedArgNo();
             break;
         }
@@ -1305,7 +1305,7 @@ namespace IGC
                 arg_addrmode =
                     zebin::PreDefinedAttrGetter::ArgAddrMode::bindless;
                 arg_off = payloadPosition;
-                arg_size = kernelArg->getAllocateSize();
+                arg_size = kernelArg->getSize();
             }
 
             int arg_idx = kernelArg->getAssociatedArgNo();
@@ -1321,7 +1321,7 @@ namespace IGC
             zebin::zeInfoPayloadArgument& arg =
                 zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                     zebin::PreDefinedAttrGetter::ArgType::sampler_address,
-                    payloadPosition, kernelArg->getAllocateSize());
+                    payloadPosition, kernelArg->getSize());
             arg.arg_index = kernelArg->getAssociatedArgNo();
             break;
         }
@@ -1329,7 +1329,7 @@ namespace IGC
             zebin::zeInfoPayloadArgument& arg =
                 zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                     zebin::PreDefinedAttrGetter::ArgType::sampler_normalized,
-                    payloadPosition, kernelArg->getAllocateSize());
+                    payloadPosition, kernelArg->getSize());
             arg.arg_index = kernelArg->getAssociatedArgNo();
             break;
         }
@@ -1337,7 +1337,7 @@ namespace IGC
             zebin::zeInfoPayloadArgument& arg =
                 zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                     zebin::PreDefinedAttrGetter::ArgType::sampler_snap_wa,
-                    payloadPosition, kernelArg->getAllocateSize());
+                    payloadPosition, kernelArg->getSize());
             arg.arg_index = kernelArg->getAssociatedArgNo();
             break;
         }
@@ -1351,45 +1351,45 @@ namespace IGC
             IGC_ASSERT_MESSAGE(it != resAllocMD.inlineSamplersMD.end(), "Inline sampler isn't found in metadata.");
             zebin::ZEInfoBuilder::addPayloadArgumentImplicitInlineSampler(
                         m_kernelInfo.m_zePayloadArgs, zebin::PreDefinedAttrGetter::ArgType::inline_sampler, payloadPosition,
-                        kernelArg->getAllocateSize(), it->index);
+                        kernelArg->getSize(), it->index);
             break;
         }
 
         case KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET: {
             zebin::zeInfoPayloadArgument& arg = zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                 zebin::PreDefinedAttrGetter::ArgType::buffer_offset,
-                payloadPosition, kernelArg->getAllocateSize());
+                payloadPosition, kernelArg->getSize());
             arg.arg_index = kernelArg->getAssociatedArgNo();
             break;
         }
         case KernelArg::ArgType::IMPLICIT_PRINTF_BUFFER:
             zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                 zebin::PreDefinedAttrGetter::ArgType::printf_buffer,
-                payloadPosition, kernelArg->getAllocateSize());
+                payloadPosition, kernelArg->getSize());
             break;
 
         case KernelArg::ArgType::IMPLICIT_ARG_BUFFER:
             zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                 zebin::PreDefinedAttrGetter::ArgType::implicit_arg_buffer,
-                payloadPosition, kernelArg->getAllocateSize());
+                payloadPosition, kernelArg->getSize());
             break;
 
         case KernelArg::ArgType::IMPLICIT_SYNC_BUFFER:
             zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                 zebin::PreDefinedAttrGetter::ArgType::sync_buffer,
-                payloadPosition, kernelArg->getAllocateSize());
+                payloadPosition, kernelArg->getSize());
             break;
 
         case KernelArg::ArgType::IMPLICIT_RT_GLOBAL_BUFFER:
             zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                 zebin::PreDefinedAttrGetter::ArgType::rt_global_buffer,
-                payloadPosition, kernelArg->getAllocateSize());
+                payloadPosition, kernelArg->getSize());
             break;
 
         case KernelArg::ArgType::IMPLICIT_ASSERT_BUFFER:
             zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                 zebin::PreDefinedAttrGetter::ArgType::assert_buffer,
-                payloadPosition, kernelArg->getAllocateSize());
+                payloadPosition, kernelArg->getSize());
             break;
 
         case KernelArg::ArgType::IMPLICIT_CONSTANT_BASE:
@@ -1411,7 +1411,7 @@ namespace IGC
             zebin::zeInfoPayloadArgument& arg =
                 zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
                     m_kernelInfo.m_zePayloadArgs, zeArgType, payloadPosition,
-                    kernelArg->getAllocateSize(),
+                    kernelArg->getSize(),
                     kernelArg->isScalarAsPointer());
             SOpenCLKernelInfo::SResourceInfo resInfo =
                 getResourceInfo(kernelArg->getAssociatedArgNo());
@@ -1444,7 +1444,7 @@ namespace IGC
         case KernelArg::ArgType::IMPLICIT_BUFFER_SIZE: {
             zebin::zeInfoPayloadArgument& arg = zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                 zebin::PreDefinedAttrGetter::ArgType::buffer_size,
-                payloadPosition, kernelArg->getAllocateSize());
+                payloadPosition, kernelArg->getSize());
             arg.arg_index = kernelArg->getAssociatedArgNo();
             break;
         }
