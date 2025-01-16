@@ -2095,6 +2095,46 @@ LscUntypedBlock2dAddrOperand:
         $$ = {nullptr,0,{$3,$5,$7,$9,$11,$13},{0, 0},{LSC_ADDR_TYPE_FLAT,1,0,LSC_ADDR_SIZE_64b}};
     }
     |
+//  1            2
+    LSC_AM_FLAT  LBRACK
+//            3 (surfaceAddr)
+              LscVectorOpReg
+//      4     5 (surfaceWidth)
+        COMMA LscVectorOpRegOrImm32
+//      6     7 (surfaceHeight)
+        COMMA LscVectorOpRegOrImm32
+//      8     9 (surfacePitch)
+        COMMA LscVectorOpRegOrImm32
+//      10    11 (baseX)
+        COMMA LscVectorOpImm32
+//      12    13 (baseY)          14
+        COMMA LscVectorOpReg LscAddrImmOffsetOpt
+//      15
+        RBRACK
+    {
+        $$ = {nullptr,0,{$3,$5,$7,$9,$11,$13},{0, (int)$14},{LSC_ADDR_TYPE_FLAT,1,0,LSC_ADDR_SIZE_64b}};
+    }
+    |
+//  1            2
+    LSC_AM_FLAT  LBRACK
+//            3 (surfaceAddr)
+              LscVectorOpReg
+//      4     5 (surfaceWidth)
+        COMMA LscVectorOpRegOrImm32
+//      6     7 (surfaceHeight)
+        COMMA LscVectorOpRegOrImm32
+//      8     9 (surfacePitch)
+        COMMA LscVectorOpRegOrImm32
+//      10    11 (baseX)          12
+        COMMA LscVectorOpReg LscAddrImmOffsetOpt
+//      13    14 (baseY)
+        COMMA LscVectorOpImm32
+//      15
+        RBRACK
+    {
+        $$ = {nullptr,0,{$3,$5,$7,$9,$11,$14},{(int)$12, 0},{LSC_ADDR_TYPE_FLAT,1,0,LSC_ADDR_SIZE_64b}};
+    }
+    |
 //  1           2       3             4     5      6
     LSC_AM_FLAT LBRACK LscVectorOpReg PLUS LPAREN  IntExpUnr
 //  7     8               9        10
