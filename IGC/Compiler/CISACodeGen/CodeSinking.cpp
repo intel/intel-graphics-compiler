@@ -1167,7 +1167,7 @@ namespace IGC {
             InstrVec BBInstructions;
             for (Instruction &I : *BB)
                 BBInstructions.push_back(&I);
-            OriginalPositions[BB] = BBInstructions;
+            OriginalPositions[BB] = std::move(BBInstructions);
         }
 
         auto rerunLiveness = [&]()

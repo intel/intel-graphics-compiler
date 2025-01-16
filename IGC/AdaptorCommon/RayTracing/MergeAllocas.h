@@ -47,6 +47,9 @@ namespace IGC
             clearLivenessInfo();
         }
 
+        AllocationBasedLivenessAnalysis (const AllocationBasedLivenessAnalysis &) = delete;
+        AllocationBasedLivenessAnalysis & operator=(const AllocationBasedLivenessAnalysis &) = delete;
+
         bool runOnFunction(llvm::Function& F) override;
         llvm::StringRef getPassName() const override
         {
