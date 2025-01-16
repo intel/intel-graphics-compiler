@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2024 Intel Corporation
+Copyright (C) 2019-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -40,6 +40,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Support/ShaderDump.h"
 #include "vc/Utils/GenX/GlobalVariable.h"
+#include "vc/Utils/GenX/GRFSize.h"
 #include "vc/Utils/GenX/Intrinsics.h"
 #include "vc/Utils/GenX/IntrinsicsWrapper.h"
 #include "vc/Utils/GenX/KernelInfo.h"
@@ -949,19 +950,7 @@ static void addKernelAttrsFromMetadata(VISAKernel &Kernel,
     Kernel.AddKernelAttribute("NBarrierCnt", sizeof(BarrierCnt), &BarrierCnt);
   }
 
-  int NumGRF = -1;
-  // Set by compile option.
-  if (BC->isAutoLargeGRFMode())
-    NumGRF = 0;
-  if (BC->getGRFSize())
-    NumGRF = BC->getGRFSize();
-  // Set by kernel metadata.
-  if (KM.getGRFSize()) {
-    unsigned NumGRFPerKernel = *KM.getGRFSize();
-    if (NumGRFPerKernel == 0 || Subtarget->isValidGRFSize(NumGRFPerKernel))
-      NumGRF = NumGRFPerKernel;
-  }
-
+  int NumGRF = vc::getGRFSize(BC, Subtarget, KM);
   if (NumGRF != -1)
     Kernel.AddKernelAttribute("NumGRF", sizeof(NumGRF), &NumGRF);
 }

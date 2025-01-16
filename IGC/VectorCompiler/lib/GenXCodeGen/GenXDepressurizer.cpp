@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -109,11 +109,16 @@ SPDX-License-Identifier: MIT
 #include "GenXIntrinsics.h"
 #include "GenXLiveness.h"
 #include "GenXModule.h"
+#include "GenXTargetMachine.h"
 #include "GenXUtil.h"
+
+#include "vc/Utils/GenX/GRFSize.h"
 
 #include "llvm/ADT/SmallSet.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/LoopInfo.h"
+#include "llvm/CodeGen/TargetPassConfig.h"
+#include "llvm/InitializePasses.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
@@ -330,10 +335,15 @@ struct SinkCandidate {
 // GenX depressurizer pass
 class GenXDepressurizer : public FGPassImplInterface,
                           public IDMixin<GenXDepressurizer> {
-  enum { FlagThreshold = 6, AddrThreshold = 32, GRFThreshold = 2560,
-         FlagGRFTolerance = 3840 };
+  const unsigned FlagThreshold = 6;
+  const unsigned AddrThreshold = 32;
+  unsigned GRFThreshold = 0;
+  unsigned FlagGRFTolerance = 0;
   bool Modified = false;
   GenXGroupBaling *Baling = nullptr;
+  const GenXBackendConfig *BC = nullptr;
+  const GenXSubtarget *ST = nullptr;
+  const vc::KernelMetadata *KM = nullptr;
   DominatorTree *DT = nullptr;
   LoopInfoBase<BasicBlock, Loop> *LI = nullptr;
   PseudoCFG *PCFG = nullptr;
@@ -385,6 +395,8 @@ using GenXDepressurizerWrapper = FunctionGroupWrapperPass<GenXDepressurizer>;
 }
 INITIALIZE_PASS_BEGIN(GenXDepressurizerWrapper, "GenXDepressurizerWrapper",
                       "GenXDepressurizerWrapper", false, false)
+INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
+INITIALIZE_PASS_DEPENDENCY(TargetPassConfig)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPassWrapper)
 INITIALIZE_PASS_DEPENDENCY(GenXLivenessWrapper)
 INITIALIZE_PASS_DEPENDENCY(GenXGroupBalingWrapper)
@@ -399,10 +411,14 @@ ModulePass *llvm::createGenXDepressurizerWrapperPass() {
 void GenXDepressurizer::getAnalysisUsage(AnalysisUsage &AU) {
   AU.addRequired<DominatorTreeGroupWrapperPass>();
   AU.addRequired<GenXGroupBaling>();
+  AU.addRequired<GenXBackendConfig>();
+  AU.addRequired<TargetPassConfig>();
   AU.addPreserved<DominatorTreeGroupWrapperPass>();
   AU.addPreserved<GenXModule>();
   AU.addPreserved<GenXLiveness>();
   AU.addPreserved<GenXGroupBaling>();
+  AU.addPreserved<GenXBackendConfig>();
+  AU.addPreserved<TargetPassConfig>();
   AU.addPreserved<FunctionGroupAnalysis>();
   AU.setPreservesCFG();
 }
@@ -418,6 +434,20 @@ bool GenXDepressurizer::runOnFunctionGroup(FunctionGroup &FG) {
   Modified = false;
   SunkCount = 0;
   Baling = &getAnalysis<GenXGroupBaling>();
+  BC = &getAnalysis<GenXBackendConfig>();
+  ST = &getAnalysis<TargetPassConfig>()
+            .getTM<GenXTargetMachine>()
+            .getGenXSubtarget();
+  vc::KernelMetadata KM(FG.getHead());
+  // Minimal general register size is 32 bytes and GRF can consist of at least
+  // 32 registers. Thresholds should be set according to the actual GRF size.
+  unsigned RegSizeFactor = ST->getGRFByteSize() / 32;
+  int GRFSize = vc::getGRFSize(BC, ST, KM);
+  unsigned RegNumFactor = (GRFSize > 0 ? GRFSize : 128) / 32;
+  // Historically the general register pressure threshold was set to 2560 for
+  // 128*32 byte GRF case and the flag tolerance threshold was set to 1.5x of it.
+  GRFThreshold = 640 * RegSizeFactor * RegNumFactor;
+  FlagGRFTolerance = GRFThreshold * 3 / 2;
   // Process functions in the function group in reverse order, so we know the
   // max pressure in a subroutine when we see a call to it.
   for (auto fgi = FG.rbegin(), fge = FG.rend(); fgi != fge; ++fgi) {
@@ -882,7 +912,8 @@ void GenXDepressurizer::attemptSinking(Instruction *InsertBefore,
     bool IsFlag = Liveness::isFlag(Inst);
     bool IsAddr = Liveness::isAddr(Inst);
     if (!IsFlag && !IsAddr &&
-        Inst->getType()->getPrimitiveSizeInBits() < 32 * 8) {
+        Inst->getType()->getPrimitiveSizeInBits() <
+            ST->getGRFByteSize() * genx::ByteBits) {
       // don't bother with anything smaller than a GRF unless it is a flag
       continue;
     }
