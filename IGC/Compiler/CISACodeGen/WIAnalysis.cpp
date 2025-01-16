@@ -891,32 +891,47 @@ void WIAnalysisRunner::calculate_dep(const Value* val)
     }
 }
 
-bool WIAnalysisRunner::isRegionInvariant(const llvm::Instruction* defi, BranchInfo* brInfo, unsigned level)
+bool WIAnalysisRunner::isRegionInvariant(const llvm::Instruction* defi, BranchInfo* brInfo)
 {
-    if (level >= 4)
+    constexpr uint8_t MAX_DEPTH = 4;
+    struct RegionOperand{
+        const llvm::Instruction* inst;
+        uint8_t operandNum;
+    };
+
+    llvm::SmallVector<RegionOperand, MAX_DEPTH> operands;
+    operands.push_back({defi, 0});
+
+    while (!operands.empty())
     {
-        return false;
-    }
-    if (isa<PHINode>(defi))
-    {
-        return false;
-    }
-    const unsigned nOps = defi->getNumOperands();
-    for (unsigned i = 0; i < nOps; ++i)
-    {
-        Value* op = defi->getOperand(i);
-        Instruction* srci = dyn_cast<Instruction>(op);
-        if (srci)
+        auto& rop = operands.back();
+        if (isa<PHINode>(rop.inst))
         {
-            if (!brInfo->influence_region.count(srci->getParent()))
+            return false;
+        }
+
+        if (rop.inst->getNumOperands() < rop.operandNum)
+        {
+            Value* op = rop.inst->getOperand(rop.operandNum);
+            rop.operandNum++;
+            auto* srci = dyn_cast<Instruction>(op);
+            if (srci)
             {
-                // go on to check the next operand
-                continue;
+                if (!brInfo->influence_region.count(srci->getParent()))
+                {
+                    // go on to check the next operand
+                    continue;
+                }
+                if (operands.size() + 1 > MAX_DEPTH)
+                {
+                    return false;
+                }
+                operands.push_back({srci, 0});
             }
-            else if (!isRegionInvariant(srci, brInfo, level + 1))
-            {
-                return false;
-            }
+        }
+        else
+        {
+            operands.pop_back();
         }
     }
     return true;
@@ -1038,7 +1053,7 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst* inst)
             // all the sources are outside the region.
             // However this is only as good as we can get because we
             // only search limited depth
-            if (isRegionInvariant(defi, &br_info, 0))
+            if (isRegionInvariant(defi, &br_info))
             {
                 continue;
             }

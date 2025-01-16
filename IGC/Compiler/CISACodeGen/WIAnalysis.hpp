@@ -232,7 +232,7 @@ namespace IGC
         bool isInstructionSimple(const llvm::Instruction* inst);
 
         /// @brief return true if all the source operands are defined outside the region
-        bool isRegionInvariant(const llvm::Instruction* inst, BranchInfo* brInfo, unsigned level);
+        bool isRegionInvariant(const llvm::Instruction* inst, BranchInfo* brInfo);
 
         /// @brief return true if instruction is used as lane ID in subgroup broadcast
         bool isUsedByWaveBroadcastAsLocalID(const llvm::Instruction* inst);
