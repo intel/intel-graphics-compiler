@@ -2566,6 +2566,13 @@ bool ConstantCoalescing::CheckForAliasingWrites(
         {
             return true;
         }
+        // Treat all calls to user functions that can write to memory as if they
+        // could change results of subsequent loads.
+        if (isUserFunctionCall(inst) && inst->mayWriteToMemory())
+        {
+            return true;
+        }
+
         if (!inst->mayWriteToMemory())
         {
             return false;
