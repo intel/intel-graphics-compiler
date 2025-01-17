@@ -13,4 +13,4 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
-const uint32_t INDIRECT_ACCESS_DETECTION_VERSION = 9;
+const uint32_t INDIRECT_ACCESS_DETECTION_VERSION = 10;

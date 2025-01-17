@@ -201,28 +201,26 @@ ScalarArgAsPointerAnalysis::findArgs(llvm::Instruction* inst)
         if (!findStoredArgs(*LI, *result))
             return nullptr; // (1) Found indirect access, fail search
     }
-    else if (SelectInst* SI = dyn_cast<SelectInst>(inst))
-    {
-        auto args1 = analyzeOperand(inst->getOperand(1));
-        auto args2 = analyzeOperand(inst->getOperand(2));
-
-        if (!args1 && !args2)
-            return nullptr; // propagate fail only if both paths fails
-
-        if (args1)
-            result->insert(args1->begin(), args1->end());
-
-        if (args2)
-            result->insert(args2->begin(), args2->end());
-    }
     else
     {
-        // For any other type of instruction trace back operands.
-        unsigned int numOperands = isa<GetElementPtrInst>(inst) ? 1 : inst->getNumOperands();
+        // Iterate and trace back operands.
+        auto begin = inst->operands().begin();
+        auto end = inst->operands().end();
 
-        for (unsigned int i = 0; i < numOperands; ++i)
+        if (isa<SelectInst>(inst))
         {
-            auto args = analyzeOperand(inst->getOperand(i));
+            // For select, skip condition operand (first arg)
+            begin++;
+        }
+        else if (isa<GetElementPtrInst>(inst))
+        {
+            // For GEP, use only base pointer operand (first arg)
+            end = begin + 1;
+        }
+
+        for (auto it = begin; it != end; ++it)
+        {
+            auto args = analyzeOperand(*it);
 
             if (args)
                 result->insert(args->begin(), args->end());
