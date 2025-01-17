@@ -126,6 +126,9 @@ struct Score
 
     // Estimated increase in register pressure when reducing to loop's preheader.
     unsigned RegisterPressure;
+
+    // Flag to show presence of i64 mul instructions in the address calculation.
+    bool ContainsMuli64;
 };
 
 
@@ -266,7 +269,7 @@ private:
     void scoreReducedInstructions(ReductionCandidateGroup &Candidate);
     void scoreRegisterPressure(ReductionCandidateGroup &Candidate);
 
-    int estimateIndexInstructions(const Loop &L, GetElementPtrInst *GEP);
+    int estimateIndexInstructions(const Loop &L, GetElementPtrInst *GEP, bool &ContainsMuli64);
     int estimatePointerAddition(ReductionCandidateGroup &Candidate);
 
     const DataLayout &DL;
@@ -316,7 +319,7 @@ public:
 private:
 
     unsigned MaxAllowedPressure;
-    unsigned ExternalPressure;
+    unsigned FunctionExternalPressure;
 
     IGCLivenessAnalysis &RPE;
     WIAnalysisRunner &WI;
@@ -764,15 +767,13 @@ void Scorer::scoreReducedInstructions(ReductionCandidateGroup &Candidate)
 
     // Score "+ base_ptr"
     score += estimatePointerAddition(Candidate);
+    bool ContainsMuli64 = false;
 
-    // Only need to deduce if reduction is net positive, no need to continue if already confirmed.
-    if (score < 1)
-    {
-        // Score "index"
-        score += estimateIndexInstructions(*Candidate.getLoop(), Cheapest.GEP);
-    }
+    // Score "index"
+    score += estimateIndexInstructions(*Candidate.getLoop(), Cheapest.GEP, ContainsMuli64);
 
     Candidate.Score.ReducesInstructions = score > 0;
+    Candidate.Score.ContainsMuli64 = ContainsMuli64;
 }
 
 
@@ -805,7 +806,8 @@ int Scorer::estimatePointerAddition(ReductionCandidateGroup &Candidate)
 // Estimates how many instructions required to calculate index would be reduced to preheader.
 // This differs from checking SCEV expression size, which it might represent simplified index
 // calculation.
-int Scorer::estimateIndexInstructions(const Loop &L, GetElementPtrInst *GEP)
+// Sets ContainsMuli64 flag to show if i64 multiplication is present in the gep index calculation.
+int Scorer::estimateIndexInstructions(const Loop &L, GetElementPtrInst *GEP, bool &ContainsMuli64)
 {
     Instruction *Index = dyn_cast<Instruction>(*(GEP->operands().end() - 1));
     if (!Index)
@@ -836,6 +838,9 @@ int Scorer::estimateIndexInstructions(const Loop &L, GetElementPtrInst *GEP)
         default:
             instructions += 1;
         }
+
+        if (I->getOpcode() == Instruction::Mul && I->getType()->isIntegerTy(64))
+            ContainsMuli64 = true;
 
         for (auto *It = I->operands().begin(); It != I->operands().end(); ++It)
         {
@@ -1193,7 +1198,7 @@ RegisterPressureTracker::RegisterPressureTracker(Function &F, CodeGenContext &CG
 {
     MaxAllowedPressure = static_cast<unsigned>(CGC.getNumGRFPerThread() * IGC_GET_FLAG_VALUE(GEPLSRThresholdRatio) / 100.0f);
 
-    ExternalPressure = FRPE.getExternalPressureForFunction(&F);
+    FunctionExternalPressure = FRPE.getExternalPressureForFunction(&F);
 }
 
 
@@ -1218,14 +1223,31 @@ void RegisterPressureTracker::trackDeletedInstruction(Value *V)
 
 bool RegisterPressureTracker::fitsPressureThreshold(ReductionCandidateGroup &C)
 {
-    auto *F = C.getLoop()->getLoopPreheader()->getParent();
+    BasicBlock *Preheader = C.getLoop()->getLoopPreheader();
+    auto *F = Preheader->getParent();
     uint SIMD = numLanes(RPE.bestGuessSIMDSize(F));
 
-    unsigned InitialPressure = ExternalPressure + RPE.getMaxRegCountForLoop(*C.getLoop(), SIMD, &WI);
-    unsigned EstimatedPressure = InitialPressure + C.getScore().RegisterPressure;
+    unsigned MaxLoopPressure = RPE.getMaxRegCountForLoop(*C.getLoop(), SIMD, &WI);
+    unsigned AdditionalPressure = C.getScore().RegisterPressure;
 
+    InsideBlockPressureMap BBListing;
+    RPE.collectPressureForBB(*Preheader, BBListing, SIMD, &WI);
+    unsigned LoopExternalPressureInBytes = BBListing[cast<Value>(Preheader->getTerminator())];
+    unsigned LoopExternalPressure = RPE.bytesToRegisters(LoopExternalPressureInBytes);
+
+    unsigned InitialPressure = FunctionExternalPressure + MaxLoopPressure;
+    unsigned EstimatedPressure = InitialPressure + AdditionalPressure;
+
+    // Try not to increase register pressure above threshold.
     if (EstimatedPressure >= MaxAllowedPressure)
     {
+        // Even if the optimization icnreases register pressure, apply it in case we can move mul i64 to preheader.
+        // This heuristic is based on the fact that mul i64 is expensive instruction and potential spills are generated out of the loop.
+        unsigned NewInternalLoopPressure = LoopExternalPressure - MaxLoopPressure + AdditionalPressure;
+        if (C.getScore().ContainsMuli64 && NewInternalLoopPressure < MaxAllowedPressure) {
+            return true;
+        }
+
         LLVM_DEBUG(
             dbgs() << "  Estimated register pressure " << EstimatedPressure << " above threshold " << MaxAllowedPressure << "; can't fully reduce ";
             C.print(dbgs());
