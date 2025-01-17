@@ -690,12 +690,17 @@ Each subgroup stores 16 of 8x16 slices. Hence, row_stride = R / 4 = 32 / 4 = 8 a
         return; \
     }
 
-#define DEFINE_LOAD_SCALAR_IMPL(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, order, WI_rows) \
-    contrib_type *ptr = (contrib_type *)mem; \
+#define DEFINE_LOAD_SCALAR_IMPL(layout, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, order, WI_rows) \
     int slid = get_sub_group_local_id(); \
     int pack_factor = sizeof (contrib_type) / sizeof (element_type); \
-    long packed_stride = stride / pack_factor; \
     int sg_cols = K / pack_factor; \
+    if (_##layout == _PackedA_ColumnMajor && elem_bitwidth == 8 && contrib_bitwidth == 16) { \
+        for (int i = 0; i < M; i++) \
+            dst[i] = mem[((slid * pack_factor) % sg_size) * stride + (slid / sg_cols) + (i & ~1) + (i % pack_factor) * stride]; \
+        return; \
+    } \
+    contrib_type *ptr = (contrib_type *)mem; \
+    long packed_stride = stride / pack_factor; \
     __private contrib_type *wi_contrib = (__private contrib_type *)dst; \
     if (order == _VNNI_TX) { \
       GATHER_LOAD_PACK_##elem_bitwidth(element_type, M, wi_contrib, slid, stride) \
@@ -727,20 +732,20 @@ Each subgroup stores 16 of 8x16 slices. Hence, row_stride = R / 4 = 32 / 4 = 8 a
         } else { \
             DEFINE_LOAD_VECTORS_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, WI_rows, AS_LOCAL) \
         } \
-        DEFINE_LOAD_SCALAR_IMPL(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, _##order, WI_rows) \
+        DEFINE_LOAD_SCALAR_IMPL(layout, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, _##order, WI_rows) \
     }
 #define DEFINE_LOAD_IMPL_AS_LOCAL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows) \
     INLINE void MANGLE_LOAD_NAME_AS_LOCAL(layout, sg, elem_bitwidth, shape, WI_rows) (__private char *dst, char *mem, long stride, int cacheOpt) { \
         int sg_size = get_sub_group_size(); \
         DEFINE_LOAD_VECTORS_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, WI_rows, AS_LOCAL) \
-        DEFINE_LOAD_SCALAR_IMPL(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, _##order, WI_rows) \
+        DEFINE_LOAD_SCALAR_IMPL(layout, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, _##order, WI_rows) \
     }
 #define DEFINE_LOAD_IMPL_AS_GLOBAL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, order, us, WI_rows) \
     INLINE void MANGLE_LOAD_NAME_AS_GLOBAL(layout, sg, elem_bitwidth, shape, WI_rows) (__private char *dst, char *mem, long stride, int cacheOpt) { \
         int sg_size = get_sub_group_size(); \
         DEFINE_LOAD_BLOCK2D_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, WI_rows) \
         DEFINE_LOAD_VECTORS_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, shape, _##order, us, WI_rows, AS_GLOBAL) \
-        DEFINE_LOAD_SCALAR_IMPL(element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, _##order, WI_rows) \
+        DEFINE_LOAD_SCALAR_IMPL(layout, element_type, elem_bitwidth, contrib_type, contrib_bitwidth, M, K, _##order, WI_rows) \
     }
 
 #define DEFINE_LOAD_CHECKED_IMPL(layout, sg, element_type, elem_bitwidth, contrib_type, M, K, shape, order, WI_rows) \
@@ -836,13 +841,18 @@ DEFINE_LOAD_AND_CHECKED(PackedA_RowMajor, _SG16, short, short, 1, 16, ROW_MAJOR,
 
 DEFINE_LOAD_AND_CHECKED(PackedA_RowMajor, _SG16, short, short, 1, 32, ROW_MAJOR, _us, 2)
 
-// This matrix is represented as <8xi16> in LLVM IR, but to be able to read it with 2d block load we have to use i32
+// PackedA Column Major   -----
+//
+// These matrices are represented as <8xi16> in LLVM IR, but to be able to read it with 2d block load we have to use i32
 // so, contrib type is `int` here and we read <4xi32> from memory, but then we use it as <8xi16>
 DEFINE_LOAD_AND_CHECKED(PackedA_ColumnMajor, _SG16, short, int, 8, 16, COL_MAJOR, , 8)
 DEFINE_LOAD_AND_CHECKED(PackedA_ColumnMajor, _SG16, char, int, 8, 32, COL_MAJOR, , 8)
 
-// PackedA load i16 SG16 subgroup size 32
+// Sub-group size 32
 DEFINE_LOAD(PackedA_ColumnMajor, _SG16, short, short, 8, 16, COL_MAJOR, , 4)
+DEFINE_LOAD(PackedA_ColumnMajor, _SG16, char,  short, 8, 32, COL_MAJOR, , 4)
+//
+// end of PackedA Column Major -----
 
 /* PackedA load i16 SG16 for sub group size = 32*/
 DEFINE_LOAD(PackedA_RowMajor, _SG16, short, short, 8, 16, ROW_MAJOR, _us, 4)
@@ -910,6 +920,7 @@ DEFINE_LOAD_AND_CHECKED(PackedB_PackedB,     _SG16, char, int, 8, 64, ROW_MAJOR,
 DEFINE_LOAD_AND_CHECKED(PackedB_RowMajor,    _SG16, char, int, 8, 64, VNNI_TX,   , 8)
 
 /* PackedB load i8 SG16 for sub group size 32*/
+DEFINE_LOAD(PackedB_ColumnMajor, _SG16, char, int, 8, 64, COL_MAJOR, , 4)
 DEFINE_LOAD(PackedB_PackedB,     _SG16, char, int, 8, 64, ROW_MAJOR, , 4)
 
 /* B load tf32 SG16 */
