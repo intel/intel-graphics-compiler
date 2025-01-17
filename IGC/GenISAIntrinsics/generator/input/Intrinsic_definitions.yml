@@ -6480,6 +6480,7 @@ intrinsics:
                 comment: "volatile, must be an immediate"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_location: !MemoryLocation ArgMem
