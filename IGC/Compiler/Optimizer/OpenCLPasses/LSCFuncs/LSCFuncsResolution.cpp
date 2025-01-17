@@ -1032,11 +1032,19 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
     else if (isVnniTransform && !isTranspose)
     {
         numBlocksV = 1;
+        tileWidth = subGrpSize;
 
         if (elemSize == 8)
         {
             bool is32Height = funcName.consume_front("_k32");
             IGC_ASSERT_MESSAGE(is32Height, "Only k32 is supported for 8 bit element size, at the moment.");
+
+            // If sub-group size is 32, we still may want to use width = 16
+            // __builtin_IB_subgroup_block_read_flat_cacheopts_transform_u8_wi8_k32n16
+            if (funcName.consume_front("n16"))
+            {
+                tileWidth = 16;
+            }
 
             // __builtin_IB_subgroup_block_read_flat_transform_u8_k32v2
             if (funcName.consume_front("v2"))
@@ -1070,6 +1078,13 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
                 return nullptr;
             }
 
+            // If sub-group size is 32, we still may want to use width = 16
+            // __builtin_IB_subgroup_block_read_flat_transform_u16_k16n16
+            if (funcName.consume_front("n16"))
+            {
+                tileWidth = 16;
+            }
+
             // __builtin_IB_subgroup_block_read_flat_transform_u16_k16v2
             // __builtin_IB_subgroup_block_read_flat_transform_u16_k32v2
             if (funcName.consume_front("v2"))
@@ -1077,8 +1092,6 @@ Instruction* LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst& 
                 numBlocksV = 2;
             }
         }
-
-        tileWidth = subGrpSize;
     }
     else
     {
