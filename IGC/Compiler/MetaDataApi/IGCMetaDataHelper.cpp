@@ -43,6 +43,26 @@ void IGCMetaDataHelper::moveFunction(
     }
 }
 
+void IGCMetaDataHelper::copyFunction(
+    MetaDataUtils& mdUtils,
+    ModuleMetaData& MD,
+    llvm::Function* OldFunc, llvm::Function* NewFunc)
+{
+    auto oldFuncIter = mdUtils.findFunctionsInfoItem(OldFunc);
+    if (oldFuncIter != mdUtils.end_FunctionsInfo())
+    {
+        mdUtils.setFunctionsInfoItem(NewFunc, oldFuncIter->second);
+    }
+
+    auto& FuncMD = MD.FuncMD;
+    auto loc = FuncMD.find(OldFunc);
+    if (loc != FuncMD.end())
+    {
+        auto funcInfo = loc->second;
+        FuncMD[NewFunc] = funcInfo;
+    }
+}
+
 void IGCMetaDataHelper::removeFunction(
     MetaDataUtils& mdUtils,
     ModuleMetaData& MD,
