@@ -89,3 +89,11 @@ case4:
 declare <16 x i32> @llvm.genx.wrregionf.v16i32.v1i32.i16.i1(<16 x i32>, <1 x i32>, i32, i32, i32, i16, i32, i1)
 declare <16 x i32> @llvm.genx.wrregionf.v16i32.v2i32.i16.v2i1(<16 x i32>, <2 x i32>, i32, i32, i32, i16, i32, <2 x i1>)
 declare <16 x i32> @llvm.genx.wrregionf.v16i32.v1i32.i16.v16i1(<16 x i32>, <1 x i32>, i32, i32, i32, i16, i32, <16 x i1>)
+
+; CHECK-LABEL: test_addrspacecast
+define i1 @test_addrspacecast(i64 %in) {
+; CHECK: %res = icmp ne [17 x i8] addrspace(1)* %b,  null
+  %b = inttoptr i64 %in to [17 x i8] addrspace(1)*
+  %res = icmp ne [17 x i8] addrspace(1)* %b, addrspacecast ([17 x i8] addrspace(4)* null to [17 x i8] addrspace(1)*)
+  ret i1 %res
+}

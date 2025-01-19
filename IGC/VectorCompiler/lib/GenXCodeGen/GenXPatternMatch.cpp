@@ -4168,6 +4168,17 @@ bool GenXPatternMatch::placeConstants(Function *F) {
           continue;
         if (opMustBeConstant(Inst, i))
           continue;
+
+        // Match `addrspacecast (Ty1 null to Ty2)` pattern to `null`
+        if (auto *Const = dyn_cast<ConstantExpr>(C); Const && Const->isCast()) {
+          auto *NullVal = dyn_cast<Constant>(Const->getOperand(0));
+          if (NullVal && NullVal->isNullValue()) {
+            auto *Ty = cast<PointerType>(Const->getType());
+            auto *NewConst = llvm::ConstantPointerNull::get(Ty);
+            Inst->setOperand(i, NewConst);
+            Changed = true;
+          }
+        }
         auto Ty = C->getType();
         if (!Ty->isVectorTy() || C->getSplatValue())
           continue;
