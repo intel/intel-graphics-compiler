@@ -135,6 +135,7 @@ private:
 
   bool assigned;
   bool isSplit;
+  bool defined;
 
   IR_Builder &builder;
 
@@ -153,6 +154,7 @@ public:
     assigned = false;
     eot = false;
     isSplit = false;
+    defined = false;
 
     if (!builder.canWriteR0())
       addForbidden(0);
@@ -223,6 +225,9 @@ public:
 
   void markSplit() { isSplit = true; }
   bool getSplit() const { return isSplit; }
+
+  void markDefined() { defined = true; }
+  bool isDefined() const { return defined; }
 
   void addForbidden(unsigned int f) { forbiddenGRFs.insert(f); }
   std::unordered_set<unsigned int> &getForbidden() { return forbiddenGRFs; }
