@@ -4619,19 +4619,29 @@ namespace IGC
         pattern->sources[1] = GetSource(s1, false, false, IsSourceOfSample(&I));
         pattern->sources[2] = GetSource(s2, false, false, IsSourceOfSample(&I));
 
-        // BFN can use imm16 in src0 and src2, check for those;
+        // BFN can use imm16 in src0 and src2 (not src1).
+        // Directly pass such immediates (or when lossless conversion is possible);
         // otherwise try to add to constant pool even int32.
-        if (dyn_cast<ConstantInt>(s0) && !s0->getType()->isIntegerTy(16) )
+        if (ConstantInt *CI = dyn_cast<ConstantInt>(s0))
         {
-            AddToConstantPool(I.getParent(), s0); pattern->sources[0].fromConstantPool = true;
+            if (!s0->getType()->isIntegerTy(16) && !CI->getValue().isIntN(16))
+            {
+                AddToConstantPool(I.getParent(), s0);
+                pattern->sources[0].fromConstantPool = true;
+            }
         }
         if (dyn_cast<ConstantInt>(s1))
         {
-            AddToConstantPool(I.getParent(), s1); pattern->sources[1].fromConstantPool = true;
+            AddToConstantPool(I.getParent(), s1);
+            pattern->sources[1].fromConstantPool = true;
         }
-        if (dyn_cast<ConstantInt>(s2) && !s2->getType()->isIntegerTy(16))
+        if (ConstantInt *CI = dyn_cast<ConstantInt>(s2))
         {
-            AddToConstantPool(I.getParent(), s2); pattern->sources[2].fromConstantPool = true;
+            if (!s2->getType()->isIntegerTy(16) && !CI->getValue().isIntN(16))
+            {
+                AddToConstantPool(I.getParent(), s2);
+                pattern->sources[2].fromConstantPool = true;
+            }
         }
 
         AddPattern(pattern);
