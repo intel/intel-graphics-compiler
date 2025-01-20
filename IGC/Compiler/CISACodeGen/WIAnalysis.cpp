@@ -910,7 +910,7 @@ bool WIAnalysisRunner::isRegionInvariant(const llvm::Instruction* defi, BranchIn
             return false;
         }
 
-        if (rop.inst->getNumOperands() < rop.operandNum)
+        if (rop.operandNum < rop.inst->getNumOperands())
         {
             Value* op = rop.inst->getOperand(rop.operandNum);
             rop.operandNum++;
