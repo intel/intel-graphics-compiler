@@ -1233,7 +1233,7 @@ std::pair<uint32_t, uint32_t> RTBuilder::getDualSubsliceIDBitsInSR0() const {
 // globalDSSID is the combined value of sliceID and dssID on slice.
 Value* RTBuilder::getGlobalDSSID()
 {
-    if (isChildOfXe2)
+    if (Ctx.platform.isCoreChildOf(IGFX_XE2_HPG_CORE))
     {
         if (Ctx.platform.supportsWMTPForShaderType(Ctx.type))
         {
@@ -1252,7 +1252,7 @@ Value* RTBuilder::getGlobalDSSID()
             {
                 return emitStateRegID(dssIDBits.first, sliceIDBits.second);
             }
-            else if (isChildOfXe3)
+            else if (Ctx.platform.isCoreChildOf(IGFX_XE3_CORE))
             {
                 Value* sliceID = emitStateRegID(sliceIDBits.first, sliceIDBits.second);
                 Value* dssID = emitStateRegID(dssIDBits.first, dssIDBits.second);
