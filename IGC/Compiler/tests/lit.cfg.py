@@ -44,22 +44,17 @@ tools = [ToolSubst('not'), ToolSubst('split-file'), ToolSubst('igc_opt')]
 
 llvm_config.add_tool_substitutions(tools, tool_dirs)
 
-# Add substitutions for pass configuration options to account for
-# opt CLI changes between LLVM 10 and 11.
-# FIXME: Remove once older-than-11 LLVM versions go out of use.
-if int(config.llvm_version) < 11:
-  config.substitutions.append(('%LLVM_11_CHECK_PREFIX%', 'CHECK-PRE-LLVM-11'))
-  config.substitutions.append(('%enable-basic-aa%', '-basicaa'))
-else:
-  config.substitutions.append(('%LLVM_11_CHECK_PREFIX%', 'CHECK-LLVM-11-PLUS'))
-  config.substitutions.append(('%enable-basic-aa%', '--basic-aa'))
-# Add LLVM version-dependent check prefixes.
-# FIXME: Remove altogether after unifying all supported LLVM versions at 14+.
-if int(config.llvm_version) < 14:
-  config.substitutions.append(('%LLVM_DEPENDENT_CHECK_PREFIX%', 'CHECK-PRE-LLVM-14'))
-else:
-  config.substitutions.append(('%LLVM_DEPENDENT_CHECK_PREFIX%', 'CHECK-LLVM-14-PLUS'))
+
+llvm_version = int(config.llvm_version)
+
+config.substitutions.append(('%LLVM_DEPENDENT_CHECK_PREFIX%', f'CHECK-LLVM-{llvm_version}-PLUS'))
+config.substitutions.append(('%enable-basic-aa%', '--basic-aa'))
+
+if llvm_version >= 14:
   config.available_features.add('llvm-14-plus')
+
+if llvm_version >= 16:
+  config.available_features.add('llvm-16-plus')
 
 if config.use_khronos_spirv_translator_in_sc == "1":
   config.substitutions.append(('%SPV_CHECK_PREFIX%', 'CHECK-KHR'))

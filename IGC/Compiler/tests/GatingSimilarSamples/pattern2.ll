@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -enable-debugify -loop-gating -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,%LLVM_DEPENDENT_CHECK_PREFIX%
+; RUN: igc_opt --opaque-pointers -enable-debugify -loop-gating -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK
 ; ------------------------------------------------
 ; GatingSimilarSamples
 ; ------------------------------------------------
@@ -52,9 +52,9 @@ define void @test(float %src1, float %src2, float %src3, ptr %dst) {
 ; CHECK-PRE-LLVM-14:    [[TMP21:%[A-z0-9]*]] = phi{{.*}} float [ [[TMP15]], %[[TMP9]] ], [ [[TMP3]], [[TMP0:%[A-z0-9]*]] ]
 ; CHECK-PRE-LLVM-14:    [[TMP22:%[A-z0-9]*]] = phi{{.*}} float [ [[TMP17]], %[[TMP9]] ], [ [[TMP4]], [[TMP0]] ]
 ; CHECK-PRE-LLVM-14:    [[TMP23:%[A-z0-9]*]] = phi{{.*}} float [ [[TMP19]], %[[TMP9]] ], [ [[TMP5]], [[TMP0]] ]
-; CHECK-LLVM-14-PLUS:    [[TMP21:%[A-z0-9]*]] = phi fast float [ [[TMP15]], %[[TMP9]] ], [ [[TMP3]], [[TMP0:%[A-z0-9]*]] ]
-; CHECK-LLVM-14-PLUS:    [[TMP22:%[A-z0-9]*]] = phi fast float [ [[TMP17]], %[[TMP9]] ], [ [[TMP4]], [[TMP0]] ]
-; CHECK-LLVM-14-PLUS:    [[TMP23:%[A-z0-9]*]] = phi fast float [ [[TMP19]], %[[TMP9]] ], [ [[TMP5]], [[TMP0]] ]
+; CHECK:    [[TMP21:%[A-z0-9]*]] = phi fast float [ [[TMP15]], %[[TMP9]] ], [ [[TMP3]], [[TMP0:%[A-z0-9]*]] ]
+; CHECK:    [[TMP22:%[A-z0-9]*]] = phi fast float [ [[TMP17]], %[[TMP9]] ], [ [[TMP4]], [[TMP0]] ]
+; CHECK:    [[TMP23:%[A-z0-9]*]] = phi fast float [ [[TMP19]], %[[TMP9]] ], [ [[TMP5]], [[TMP0]] ]
 ; CHECK:    call void @llvm.genx.GenISA.OUTPUT.f32(float [[TMP21]], float [[TMP22]], float [[TMP23]], float 0.000000e+00, i32 1, i32 1, i32 15)
 ; CHECK:    ret void
 ;

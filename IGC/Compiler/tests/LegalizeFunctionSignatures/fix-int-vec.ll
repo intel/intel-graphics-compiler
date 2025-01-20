@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -enable-debugify --igc-legalize-function-signatures -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,%LLVM_DEPENDENT_CHECK_PREFIX%
+; RUN: igc_opt --opaque-pointers -enable-debugify --igc-legalize-function-signatures -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK
 ; ------------------------------------------------
 ; LegalizeFunctionSignatures
 ; ------------------------------------------------
@@ -19,7 +19,7 @@
 ; For llvm 14 check-debugify treats missing debug location on argument truncation to legal type
 ; at the begining of BB as a warning, while on earlier llvm versions its treated as an error.
 ;
-; CHECK-LLVM-14-PLUS: CheckModuleDebugify: PASS
+; CHECK: CheckModuleDebugify: PASS
 
 define spir_kernel void @test_k(i32 %src) {
 ; CHECK-LABEL: @test_k(

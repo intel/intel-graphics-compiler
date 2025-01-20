@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
 ;
-; RUN: igc_opt -enable-debugify --igc-programscope-constant-resolve -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,%LLVM_DEPENDENT_CHECK_PREFIX%
+; RUN: igc_opt -enable-debugify --igc-programscope-constant-resolve -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK
 ; ------------------------------------------------
 ; ProgramScopeConstantResolution
 ; ------------------------------------------------
@@ -17,7 +17,7 @@
 ; For llvm 14 check-debugify treats missing debug location on globalbase getter
 ; at the begining of BB as a warning, while on earlier llvm versions its treated as an error.
 ;
-; CHECK-LLVM-14-PLUS: CheckModuleDebugify: PASS
+; CHECK: CheckModuleDebugify: PASS
 
 @a = internal addrspace(2) constant [2 x i32] [i32 0, i32 1], align 4
 @d = internal addrspace(1) global i32 addrspace(2)* getelementptr inbounds ([2 x i32], [2 x i32] addrspace(2)* @a, i32 0, i32 0), align 8

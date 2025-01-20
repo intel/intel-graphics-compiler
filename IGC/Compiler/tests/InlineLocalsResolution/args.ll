@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --enable-debugify -igc-resolve-inline-locals -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,%LLVM_DEPENDENT_CHECK_PREFIX%
+; RUN: igc_opt --enable-debugify -igc-resolve-inline-locals -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK
 ; ------------------------------------------------
 ; InlineLocalsResolution
 ; ------------------------------------------------
@@ -16,7 +16,7 @@
 ; For llvm 14 check-debugify treats missing debug location on function arguments substitution
 ; at the begining of BB as a warning, while on earlier llvm versions its treated as an error.
 ;
-; CHECK-LLVM-14-PLUS: CheckModuleDebugify: PASS
+; CHECK: CheckModuleDebugify: PASS
 
 ; CHECK: [[EXT_SLM:@[A-z_-]*]] = external addrspace(3) global [0 x i8]
 

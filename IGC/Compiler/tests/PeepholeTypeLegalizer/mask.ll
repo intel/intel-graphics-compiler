@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -debugify --igc-int-type-legalizer -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,%LLVM_DEPENDENT_CHECK_PREFIX%
+; RUN: igc_opt -debugify --igc-int-type-legalizer -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK
 
 ; Debug-info related check
 ; CHECK: CheckModuleDebugify: PASS
@@ -48,8 +48,8 @@ entry:
 ; CHECK:               [[IDX0_BEFORE:%.*]] = extractelement <2 x i32> [[CASTVEC]], i64 0
 ; COM: Mask & 0xFFFFFFFF might be optimized out
 ; CHECK-PRE-LLVM-14:   [[VEC0:%.*]] = insertelement <2 x i32> undef, i32 [[IDX0_BEFORE]], i64 0
-; CHECK-LLVM-14-PLUS:  [[IDX0_AFTER:%.*]] = and i32 [[IDX0_BEFORE]], -1
-; CHECK-LLVM-14-PLUS:  [[VEC0:%.*]] = insertelement <2 x i32> undef, i32 [[IDX0_AFTER]], i64 0
+; CHECK:  [[IDX0_AFTER:%.*]] = and i32 [[IDX0_BEFORE]], -1
+; CHECK:  [[VEC0:%.*]] = insertelement <2 x i32> undef, i32 [[IDX0_AFTER]], i64 0
 ; CHECK:               [[IDX1_BEFORE:%.*]] = extractelement <2 x i32> [[CASTVEC]], i64 1
 ; CHECK:               [[IDX1_AFTER:%.*]] = and i32 [[IDX1_BEFORE]], 31
 ; CHECK:               [[VEC1:%.*]] = insertelement <2 x i32> [[VEC0]], i32 [[IDX1_AFTER]], i64 1
