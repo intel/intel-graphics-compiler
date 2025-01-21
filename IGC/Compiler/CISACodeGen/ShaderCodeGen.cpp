@@ -313,6 +313,10 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
             }
         }
         mpm.add(createPromoteMemoryToRegisterPass());
+        if (IGC_IS_FLAG_DISABLED(DisableMergeAllocasPrivateMemory))
+        {
+            mpm.add(createMergeAllocas());
+        }
         if (ctx.type == ShaderType::OPENCL_SHADER &&
             !isOptDisabled &&
             IGC_IS_FLAG_ENABLED(EnableExplicitCopyForByVal))
@@ -706,6 +710,10 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
     if (!(IGC_IS_FLAG_ENABLED(EnableUnmaskedFunctions) &&
           IGC_IS_FLAG_ENABLED(LateInlineUnmaskedFunc)))
     {
+        if (IGC_IS_FLAG_DISABLED(DisableMergeAllocasPrivateMemory))
+        {
+            mpm.add(createMergeAllocas());
+        }
         if (ctx.type == ShaderType::OPENCL_SHADER &&
             !isOptDisabled &&
             IGC_IS_FLAG_ENABLED(EnableExplicitCopyForByVal))

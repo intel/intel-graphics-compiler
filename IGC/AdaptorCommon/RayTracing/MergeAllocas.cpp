@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/SetVector.h>
 #include <llvm/ADT/SetOperations.h>
+#include <llvm/ADT/SmallSet.h>
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Dominators.h>
@@ -167,6 +168,17 @@ AllocationBasedLivenessAnalysis::LivenessData::LivenessData(Instruction* allocat
         worklist.push_back(I->getParent());
     }
 
+    // Keep track of loop header of blocks that contain allocation instruction
+    auto* allocationParent = allocationInstruction->getParent();
+    llvm::SmallPtrSet<llvm::BasicBlock*, 4> containedLoopHeaders;
+    if (const auto* parentLoop = LI.getLoopFor(allocationParent);
+        parentLoop != nullptr) {
+        containedLoopHeaders.insert(parentLoop->getHeader());
+        while (parentLoop->getParentLoop() != nullptr) {
+            parentLoop = parentLoop->getParentLoop();
+            containedLoopHeaders.insert(parentLoop->getHeader());
+        }
+    }
     // perform data flow analysis
     while (!worklist.empty())
     {
@@ -175,8 +187,17 @@ AllocationBasedLivenessAnalysis::LivenessData::LivenessData(Instruction* allocat
         if (bbIn.contains(currbb) || currbb == userDominatorBlock)
             continue;
 
-        bbIn.insert(currbb);
+        // If alloca is defined in the loop, we skip loop header
+        // so that we don't escape loop scope.
+        if (containedLoopHeaders.count(currbb) != 0)
+        {
+            continue;
+        }
 
+        if (currbb != allocationParent)
+        {
+            bbIn.insert(currbb);
+        }
         for (auto* pbb : llvm::predecessors(currbb))
         {
             bbOut.insert(pbb);
