@@ -270,6 +270,7 @@ public:
     bool hasFP() const { return m_FP != nullptr; }
 
     void InitializeStackVariables();
+    void InitializeSPFPForVLA();
     void SaveStackState();
     void RestoreStackState();
 

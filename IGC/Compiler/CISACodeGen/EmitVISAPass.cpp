@@ -11598,7 +11598,21 @@ void EmitPass::emitReturn(llvm::ReturnInst* inst)
 /// Initializes the kernel for stack call by initializing the SP and FP
 void EmitPass::InitializeKernelStack(Function* pKernel, CVariable* stackBufferBase)
 {
-    m_currShader->InitializeStackVariables();
+    if (m_currShader->HasStackCalls())
+    {
+        m_currShader->InitializeStackVariables();
+    }
+    else
+    {
+        // If there are no stack calls in pKernel, but it uses VLA,
+        // stack can be initialized in a limited scope, meaning that
+        // only SP and FP need to be initialized.
+        bool hasVLA = (m_FGA && m_FGA->getGroup(pKernel) &&
+            m_FGA->getGroup(pKernel)->hasVariableLengthAlloca()) || pKernel->hasFnAttribute("hasVLA");
+        IGC_ASSERT_MESSAGE(hasVLA, "Stack initialization, without presence of stack calls, is only allowed when VLA is used.");
+        m_currShader->InitializeSPFPForVLA();
+    }
+
     auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     auto pModMD = pCtx->getModuleMetaData();
 

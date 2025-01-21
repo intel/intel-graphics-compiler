@@ -320,6 +320,25 @@ void CShader::InitializeStackVariables()
     }
 }
 
+// This function initializes the stack in a limited scope, only for the purpose
+// of handling VLA. It is intended to be called when VLA is used but stack calls
+// are not present. Only SP and PF variables are initialized. Note that these
+// variables are not initialized to the predefined %sp and %fp VISA variables
+// because it's not necessary. All other stack-related variables like ARGV,
+// RETV, etc. are also not initialized as they are not needed for VLA handling.
+void CShader::InitializeSPFPForVLA()
+{
+    IGC_ASSERT_MESSAGE(!HasStackCalls(), "InitializeSPFPForVLA should only be called if stack calls are not present!");
+
+    // Set the SP/FP variable types to match the private pointer size defined in the data layout
+    bool isA64Private = (GetContext()->getRegisterPointerSizeInBits(ADDRESS_SPACE_PRIVATE) == 64);
+
+    // create stack-pointer register
+    m_SP = GetNewVariable(1, (isA64Private ? ISA_TYPE_UQ : ISA_TYPE_UD), (isA64Private ? EALIGN_QWORD : EALIGN_DWORD), true, 1, "SP");
+    // create frame-pointer register
+    m_FP = GetNewVariable(1, (isA64Private ? ISA_TYPE_UQ : ISA_TYPE_UD), (isA64Private ? EALIGN_QWORD : EALIGN_DWORD), true, 1, "FP");
+}
+
 /// save FP of previous frame when entering a stack-call function
 void CShader::SaveStackState()
 {
