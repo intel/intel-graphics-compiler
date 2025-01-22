@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
-#include "Compiler/Optimizer/OpenCLPasses/StatelessToStateful/StatelessToStateful.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -39,8 +38,6 @@ namespace IGC
             AU.addRequired<MetaDataUtilsWrapper>();
         }
 
-    private:
-        void WA_ForceUseBindfulModeIfSpecificKernelExistsInModule(llvm::Module& M);
     };
 
 } // namespace IGC

@@ -14,7 +14,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/DebugInfo/ScalarVISAModule.h"
 #include "Compiler/Optimizer/OCLBIUtils.h"
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
-#include "Compiler/Optimizer/OpenCLPasses/StatelessToStateful/StatelessToStateful.hpp"
 #include "LLVM3DBuilder/MetadataBuilder.h"
 
 #include "common/LLVMWarningsPush.hpp"
@@ -105,8 +104,7 @@ bool AddImplicitArgs::runOnModule(Module &M)
         }
 
         if (ctx->getModuleMetaData()->compOpt.UseBindlessMode &&
-            !ctx->getModuleMetaData()->compOpt.UseLegacyBindlessMode &&
-            !StatelessToStateful::WA_ForcedUsedOfBindfulMode(func))
+            !ctx->getModuleMetaData()->compOpt.UseLegacyBindlessMode)
         {
             ImplicitArgs::addBindlessOffsetArgs(func, m_pMdUtils, ctx->getModuleMetaData());
         }

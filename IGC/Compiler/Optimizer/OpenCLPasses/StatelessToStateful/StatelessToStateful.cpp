@@ -762,7 +762,7 @@ void StatelessToStateful::promoteIntrinsic(InstructionInfo& II)
     GenISAIntrinsic::ID const intrinID = I->getIntrinsicID();
     PointerType* pTy = IGCLLVM::getWithSamePointeeType(dyn_cast<PointerType>(II.ptr->getType()), II.getStatefulAddrSpace());
 
-    if (m_targetAddressing == TargetAddressing::BINDLESS && !WA_ForcedUsedOfBindfulMode(*m_F))
+    if (m_targetAddressing == TargetAddressing::BINDLESS)
     {
         Argument* srcOffset = m_pImplicitArgs->getNumberedImplicitArg(*m_F, ImplicitArg::BINDLESS_OFFSET, II.getBaseArgIndex());
         auto newBasePtr = IntToPtrInst::Create(Instruction::IntToPtr, srcOffset, pTy, "", I);
@@ -793,7 +793,7 @@ void StatelessToStateful::promoteIntrinsic(InstructionInfo& II)
         return;
     }
 
-    IGC_ASSERT(m_targetAddressing == TargetAddressing::BINDFUL || WA_ForcedUsedOfBindfulMode(*m_F));
+    IGC_ASSERT(m_targetAddressing == TargetAddressing::BINDFUL);
 
     Instruction* statefulPtr = IntToPtrInst::Create(Instruction::IntToPtr, II.offset, pTy, "", I);
     Instruction* statefulInst = nullptr;
@@ -884,7 +884,7 @@ void StatelessToStateful::promoteLoad(InstructionInfo& II)
 
     const DebugLoc& DL = I->getDebugLoc();
 
-    if (m_targetAddressing == TargetAddressing::BINDLESS && !WA_ForcedUsedOfBindfulMode(*m_F))
+    if (m_targetAddressing == TargetAddressing::BINDLESS)
     {
         Argument* srcOffset = m_pImplicitArgs->getNumberedImplicitArg(*m_F, ImplicitArg::BINDLESS_OFFSET, II.getBaseArgIndex());
         auto newBasePtr = IntToPtrInst::Create(Instruction::IntToPtr, srcOffset, pTy, "", I);
@@ -897,7 +897,7 @@ void StatelessToStateful::promoteLoad(InstructionInfo& II)
         I->eraseFromParent();
         setModuleUsesBindless();
     }
-    else if (m_targetAddressing == TargetAddressing::BINDFUL || WA_ForcedUsedOfBindfulMode(*m_F))
+    else if (m_targetAddressing == TargetAddressing::BINDFUL)
     {
         auto newBasePtr = IntToPtrInst::Create(Instruction::IntToPtr, II.offset, pTy, "", I);
         auto bindfulLoad = new LoadInst(
@@ -939,7 +939,7 @@ void StatelessToStateful::promoteStore(InstructionInfo& II)
 
     const DebugLoc& DL = I->getDebugLoc();
 
-    if (m_targetAddressing == TargetAddressing::BINDLESS && !WA_ForcedUsedOfBindfulMode(*m_F))
+    if (m_targetAddressing == TargetAddressing::BINDLESS)
     {
         Argument* srcOffset = m_pImplicitArgs->getNumberedImplicitArg(*m_F, ImplicitArg::BINDLESS_OFFSET, II.getBaseArgIndex());
         auto newBasePtr = IntToPtrInst::Create(Instruction::IntToPtr, srcOffset, pTy, "", I);
@@ -951,7 +951,7 @@ void StatelessToStateful::promoteStore(InstructionInfo& II)
         I->eraseFromParent();
         setModuleUsesBindless();
     }
-    else if (m_targetAddressing == TargetAddressing::BINDFUL || WA_ForcedUsedOfBindfulMode(*m_F))
+    else if (m_targetAddressing == TargetAddressing::BINDFUL)
     {
         auto newBasePtr = IntToPtrInst::Create(Instruction::IntToPtr, II.offset, pTy, "", I);
         auto bindfulStore = new StoreInst(
@@ -1006,7 +1006,7 @@ void StatelessToStateful::promote()
         IGC_ASSERT(bufferPos < maxPromotionCount);
 
         unsigned statefullAddrspace = 0;
-        if (m_targetAddressing == TargetAddressing::BINDLESS && !WA_ForcedUsedOfBindfulMode(*m_F))
+        if (m_targetAddressing == TargetAddressing::BINDLESS)
         {
             statefullAddrspace =
                 IGC::EncodeAS4GFXResource(
@@ -1190,15 +1190,6 @@ void StatelessToStateful::visitStoreInst(StoreInst& I)
         FunctionMetaData* funcMD = &modMD->FuncMD[m_F];
         funcMD->hasNonKernelArgStore = true;
     }
-}
-
-bool StatelessToStateful::WA_ForcedUsedOfBindfulMode(const Function& F)
-{
-    static const std::array kernels{
-        "_ZTSZ42oneapi_kernel_integrator_intersect_closestP16KernelGlobalsGPUyyRN4sycl3_V17handlerEPKiPfiEUlNS2_7nd_itemILi1EEENS2_14kernel_handlerEE_",
-    };
-
-    return std::any_of(kernels.begin(), kernels.end(), [&F](const auto& it) { return it == F.getName(); });
 }
 
 void StatelessToStateful::findPromotableInstructions()
