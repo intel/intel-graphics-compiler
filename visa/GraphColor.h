@@ -1405,6 +1405,7 @@ private:
   static const RAVarInfo defaultValues;
   std::vector<RAVarInfo> vars;
   std::vector<G4_Declare *> UndeclaredVars;
+  std::vector<G4_Declare *> UndefinedCmpVars;
 
   // fake declares for each GRF reg, used by HRA
   // note only GRFs that are used by LRA get a declare
@@ -1617,6 +1618,7 @@ public:
   void addSpillCodeInBB(G4_BB *bb) { BBsWithSpillCode.insert(bb); }
 
   void addUndefinedDcl(G4_Declare *dcl) { UndeclaredVars.push_back(dcl); }
+  void addUndefinedCmpDcl(G4_Declare *dcl) { UndefinedCmpVars.push_back(dcl); }
 
   bool isUndefinedDcl(const G4_Declare *dcl) const {
     return std::find(UndeclaredVars.begin(), UndeclaredVars.end(), dcl) !=
@@ -1689,6 +1691,7 @@ public:
       setBBId(dcl, UINT_MAX);
       resetLocalLR(dcl);
     }
+    UndefinedCmpVars.clear();
   }
 
   void clearLocalLiveRanges() {
@@ -2050,6 +2053,7 @@ public:
   void addCalleeSavePseudoCode();
   void addStoreRestoreToReturn();
   void storeCEInProlog();
+  void setUndefinedVarCmp();
   void markGraphBlockLocalVars();
   void verifyRA(LivenessAnalysis &liveAnalysis);
   void verifySpillFill();

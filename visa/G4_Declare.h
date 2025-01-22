@@ -93,6 +93,7 @@ class G4_Declare {
   uint16_t addrSpillFill : 1;
   uint16_t forceSpilled : 1;
   uint16_t exclusiveLoad : 1;
+  uint16_t isCmpUseOnly : 1;
 
   unsigned declId; // global decl id for this builder
 
@@ -329,6 +330,9 @@ public:
 
   void setPreDefinedVar(bool b) { PreDefinedVar = b; }
   bool isPreDefinedVar() const { return PreDefinedVar; }
+
+  void setIsCmpUseOnly(bool b) { isCmpUseOnly = b; }
+  bool getIsCmpUseOnly() const { return isCmpUseOnly; }
 
   unsigned getNumRegNeeded() const;
 
