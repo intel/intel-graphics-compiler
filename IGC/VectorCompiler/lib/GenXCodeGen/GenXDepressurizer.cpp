@@ -439,15 +439,16 @@ bool GenXDepressurizer::runOnFunctionGroup(FunctionGroup &FG) {
             .getTM<GenXTargetMachine>()
             .getGenXSubtarget();
   vc::KernelMetadata KM(FG.getHead());
-  // Minimal general register size is 32 bytes and GRF can consist of at least
-  // 32 registers. Thresholds should be set according to the actual GRF size.
-  unsigned RegSizeFactor = ST->getGRFByteSize() / 32;
-  int GRFSize = vc::getGRFSize(BC, ST, KM);
-  unsigned RegNumFactor = (GRFSize > 0 ? GRFSize : 128) / 32;
   // Historically the general register pressure threshold was set to 2560 for
-  // 128*32 byte GRF case and the flag tolerance threshold was set to 1.5x of it.
-  GRFThreshold = 640 * RegSizeFactor * RegNumFactor;
-  FlagGRFTolerance = GRFThreshold * 3 / 2;
+  // 128*32 byte GRF case, which means that only 48 registers are left for
+  // allocation. The flag tolerance threshold was set to 3840, which means 120
+  // registers. In case of different GRF size these thresholds should be
+  // calculated accordingly.
+  unsigned RegSize = ST->getGRFByteSize();
+  int GRFSize = vc::getGRFSize(BC, ST, KM);
+  unsigned NumRegs = (GRFSize > 0 ? GRFSize : 128);
+  GRFThreshold = NumRegs > 48 ? (NumRegs - 48) * RegSize : 0;
+  FlagGRFTolerance = 120 * RegSize;
   // Process functions in the function group in reverse order, so we know the
   // max pressure in a subroutine when we see a call to it.
   for (auto fgi = FG.rbegin(), fge = FG.rend(); fgi != fge; ++fgi) {
