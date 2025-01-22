@@ -510,11 +510,6 @@ bool EmitPass::setCurrentShader(llvm::Function* F)
         }
         Kernel = FG->getHead();
     }
-    else
-    {
-        // no analysis result avaliable.
-        m_FGA = nullptr;
-    }
 
     auto Iter = m_shaders.find(Kernel);
     if (Iter == m_shaders.end())
@@ -25515,15 +25510,17 @@ Function* EmitPass::findStackOverflowDetectionFunction(Function* ParentFunction,
     };
     const char *FunctionName = (FindInitFunction ? FunctionNames[0] : FunctionNames[1]);
 
-    auto FG = m_FGA->getGroup(ParentFunction);
     Function *StackOverflowFunction = nullptr;
-    // Function subgroup can contain clones of the subroutine.
-    for (auto F : *FG) {
-        if (F->getName().startswith(FunctionName) &&
-            m_FGA->getSubGroupMap(ParentFunction) ==
-                m_FGA->getSubGroupMap(F)) {
-            StackOverflowFunction = F;
-            break;
+    if (m_FGA) {
+        auto FG = m_FGA->getGroup(ParentFunction);
+        // Function subgroup can contain clones of the subroutine.
+        for (auto F : *FG) {
+            if (F->getName().startswith(FunctionName) &&
+                m_FGA->getSubGroupMap(ParentFunction) ==
+                    m_FGA->getSubGroupMap(F)) {
+                StackOverflowFunction = F;
+                break;
+            }
         }
     }
     return StackOverflowFunction;

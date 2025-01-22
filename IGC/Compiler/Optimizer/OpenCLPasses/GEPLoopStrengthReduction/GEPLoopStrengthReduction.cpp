@@ -118,7 +118,7 @@ enum ReductionType
 // Score used by heuristic for deciding what type of reduction to apply.
 struct Score
 {
-    Score() : ReducesInstructions(false), RegisterPressure(0) {}
+    Score() : ReducesInstructions(false), RegisterPressure(0), ContainsMuli64(false) {}
 
     // True if reduction to preheader would lower number of instructions in
     // loop. False otherwise.
