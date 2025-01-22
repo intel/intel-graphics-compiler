@@ -1470,8 +1470,7 @@ DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
           if (curBucket < ACC_BUCKET) {
             dep = getDepForOpnd(curOpnd, liveOpnd);
           } else if (curBucket == ACC_BUCKET
-                     || curBucket == A0_BUCKET || curBucket == S0_BUCKET)
-          {
+                     || curBucket == A0_BUCKET || curBucket == S0_BUCKET) {
             dep = getDepForOpnd(curOpnd, liveOpnd);
             curKillsBucket = false;
           } else if (curBucket == SEND_BUCKET) {
@@ -1484,10 +1483,8 @@ DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
             hasOverlap = (dep != NODEP);
             curKillsBucket = false;
             curKillsLive = false; // Disable kill
-          } else if (curBucket == FLAG0_BUCKET ||
-                     curBucket == FLAG1_BUCKET ||
-                     curBucket == FLAG2_BUCKET ||
-                     curBucket == FLAG3_BUCKET) {
+          } else if (curBucket == FLAG0_BUCKET || curBucket == FLAG1_BUCKET ||
+                     curBucket == FLAG2_BUCKET || curBucket == FLAG3_BUCKET) {
             dep = getDepForOpnd(curOpnd, liveOpnd);
             curKillsBucket = false;
           } else if (curBucket == OTHER_ARF_BUCKET) {

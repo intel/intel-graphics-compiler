@@ -1571,8 +1571,7 @@ void Encoder::encodeSendSource0(const Operand &src) {
       if (subReg % 2)
         errorT("src0 subreg must be 16b aligned");
       GED_ENCODE(Src0SubRegNum, subReg);
-    } else
-    {
+    } else {
       // legacy send indirect src operand
       GED_ENCODE(Src0DataType, lowerDataType(t));
       GED_ENCODE(Src0AddrSubRegNum, src.getIndAddrReg().subRegNum);

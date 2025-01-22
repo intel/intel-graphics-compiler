@@ -86,13 +86,10 @@ public:
 
     InstIDs(uint32_t global_id, uint32_t in_order_id, uint32_t float_pipe_id,
             uint32_t int_pipe_id, uint32_t long_pipe_id, uint32_t math_pipe_id,
-            uint32_t scalar_pipe_id
-            )
+            uint32_t scalar_pipe_id)
         : global(global_id), inOrder(in_order_id), floatPipe(float_pipe_id),
           intPipe(int_pipe_id), longPipe(long_pipe_id), mathPipe(math_pipe_id),
-          scalarPipe(scalar_pipe_id)
-    {
-    }
+          scalarPipe(scalar_pipe_id) {}
 
     // set all pipe ids to 1
     void init() {

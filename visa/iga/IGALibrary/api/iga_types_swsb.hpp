@@ -128,10 +128,9 @@ public:
   }
 
   constexpr static bool isMathPipeInOrder(SWSB_ENCODE_MODE enMode) {
-    return
-        enMode >= SWSB_ENCODE_MODE::FiveDistPipe || // XE3
-        enMode == SWSB_ENCODE_MODE::FourDistPipe ||
-        enMode == SWSB_ENCODE_MODE::FourDistPipeReduction;
+    return enMode >= SWSB_ENCODE_MODE::FiveDistPipe ||
+           enMode == SWSB_ENCODE_MODE::FourDistPipe ||
+           enMode == SWSB_ENCODE_MODE::FourDistPipeReduction;
   }
 
   /// decode swsb info to SWSB from the raw encoding into this object

@@ -4208,8 +4208,7 @@ static void printRegVarOff(std::ostream &output, G4_Operand *opnd,
           int elems = baseVar->getDeclare()->getNumElems();
 
           output << "]:" << elems;
-        } else
-        {
+        } else {
           output << ", " << immAddrOff << ']';
         }
       } else {
@@ -4226,8 +4225,7 @@ static void printRegVarOff(std::ostream &output, G4_Operand *opnd,
         int elems = baseVar->getDeclare()->getNumElems();
 
         output << "]:" << elems;
-      } else
-      {
+      } else {
         output << ", " << immAddrOff << ']';
       }
     } else {
@@ -4366,8 +4364,7 @@ void G4_DstRegRegion::computeLeftBound(const IR_Builder &builder) {
     }
 
     byteOffset = left_bound / 8;
-  }
-  else if (base && base->isS0()) {
+  } else if (base && base->isS0()) {
     if (base->isRegVar()) {
       if (base->asRegVar()->getPhyReg()) {
         left_bound = base->asRegVar()->getPhyRegOff() * TypeSize(type);
@@ -4380,8 +4377,7 @@ void G4_DstRegRegion::computeLeftBound(const IR_Builder &builder) {
     }
 
     byteOffset = left_bound;
-  }
-  else if (base != NULL && base->isAccReg()) {
+  } else if (base != NULL && base->isAccReg()) {
     left_bound = subRegOff * TypeSize(type);
     if (base->asAreg()->getArchRegType() == AREG_ACC1 || regOff == 1) {
       left_bound += builder.getACCSize();
@@ -5255,8 +5251,7 @@ void G4_Declare::emit(std::ostream &output) const {
       bool valid = false;
       output << " (f" << phyreg->asAreg()->ExRegNum(valid) << "."
              << regVar->getPhyRegOff() << ")";
-    }
-    else if (phyreg->isS0()) {
+    } else if (phyreg->isS0()) {
       output << " (s0." << regVar->getPhyRegOff() << ")";
     }
   } else if (isSpilled()) {
@@ -5856,8 +5851,7 @@ void G4_SrcRegRegion::computeLeftBound(const IR_Builder &builder) {
     }
 
     right_bound = 0;
-  }
-  else if (base != NULL && base->isS0()) {
+  } else if (base != NULL && base->isS0()) {
     if (base->isRegVar()) {
       if (base->asRegVar()->getPhyReg()) {
         left_bound = base->asRegVar()->getPhyRegOff() * TypeSize(type);
@@ -5870,8 +5864,7 @@ void G4_SrcRegRegion::computeLeftBound(const IR_Builder &builder) {
     }
 
     right_bound = 0;
-  }
-  else if (base != NULL && base->isAccReg()) {
+  } else if (base != NULL && base->isAccReg()) {
     left_bound = subRegOff * TypeSize(type);
     if (base->asAreg()->getArchRegType() == AREG_ACC1) {
       left_bound += builder.getACCSize();

@@ -64,9 +64,8 @@ public:
     else
       m_swsbMode = k.getModel().getSWSBEncodeMode();
 
-    if (m_swsbMode == SWSB_ENCODE_MODE::FourDistPipeReduction
-        || m_swsbMode >= SWSB_ENCODE_MODE::FiveDistPipe
-    ) {
+    if (m_swsbMode == SWSB_ENCODE_MODE::FourDistPipeReduction ||
+        m_swsbMode >= SWSB_ENCODE_MODE::FiveDistPipe) {
       m_LatencyLong64Pipe = 12;
     }
 

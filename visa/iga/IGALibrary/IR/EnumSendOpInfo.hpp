@@ -85,7 +85,6 @@ DEFINE_STORE_OP(STORE_QUAD, "store_quad", "store quad",
                 ATTRS_CMASK) // AKA store_cmask
 DEFINE_STORE_OP(STORE_QUAD_MSRT, "store_quad_msrt",
                 "store quad to multi-sample render target", ATTRS_CMASK)
-
 DEFINE_STORE_OP(STORE_BLOCK2D, "store_block2d", "store 2d block",
                 ATTRS_SCALARADDR)
 DEFINE_STORE_OP(STORE_UNCOMPRESSED, "store_uncompressed", "uncompressed store",

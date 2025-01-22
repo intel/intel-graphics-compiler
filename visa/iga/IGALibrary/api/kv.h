@@ -268,6 +268,40 @@ IGA_API kv_status_t kv_get_send_indirect_descs(const kv_t *kv, int32_t pc,
 IGA_API kv_status_t kv_get_send_exbso(const kv_t *kv, int32_t pc,
                                       int32_t *exbso);
 
+/*
+ * Returns the simplified/unified send 42b or 47b descriptor.
+ *
+ * RETURNS:
+ *    KV_SUCCESS               on success
+ *    KV_NON_SEND_INSTRUCTION  if called on a non-send instruction
+ *    KV_INVALID_PC            if passed an invalid PC
+ *    KV_INVALID_ARGUMENT      if given a null parameter
+ *    KV_INCAPABLE_PLATFORM    if called on unuspported platform
+ */
+IGA_API kv_status_t kv_get_sendg_desc(const kv_t *kv, int32_t pc,
+                                      uint64_t *desc);
+
+/*
+ * Returns the simplified/unified indirect descriptor subregister.
+ * subregPresent holds nonzero if this indirect descriptor is valid
+ * in the send instruction.  The subreg holds the s0.# subregister in bytes.
+ *
+ * RETURNS: similar to kv_get_sendg_desc
+ */
+IGA_API kv_status_t kv_get_sendg_ind_desc0(const kv_t *kv, int32_t pc,
+                                           uint32_t *subregPresent,
+                                           uint32_t *subreg);
+
+/*
+ * Returns the simplified/unified indirect descriptor subregister.
+ * subregPresent holds nonzero if this indirect descriptor is valid
+ * in the send instruction.  The subreg holds the s0.# subregister in bytes.
+ *
+ * RETURNS: similar to kv_get_sendg_desc
+ */
+IGA_API kv_status_t kv_get_sendg_ind_desc1(const kv_t *kv, int32_t pc,
+                                           uint32_t *subregPresent,
+                                           uint32_t *subreg);
 
 /*
  * A symbol to indicate an invalid send descriptor value.

@@ -6004,8 +6004,7 @@ void G4_BB_SB::clearKilledBucketNodeXeLP(LiveGRFBuckets *LB, int ALUID) {
 
 void G4_BB_SB::clearKilledBucketNodeXeHP(LiveGRFBuckets *LB, int integerID,
                                          int floatID, int longID, int mathID,
-                                         int s0ID)
-{
+                                         int s0ID) {
   for (int curBucket = 0; curBucket < LB->getNumOfBuckets(); curBucket++) {
     for (LiveGRFBuckets::BN_iterator it = LB->begin(curBucket);
          it != LB->end(curBucket);) {
@@ -8576,7 +8575,8 @@ void SWSB::addGlobalDependenceWithReachingDef(
 
       if (instKill) {
         if (fg.builder->hasThreeALUPipes() || fg.builder->hasFourALUPipes()) {
-          BBVector[i]->clearKilledBucketNodeXeHP(&send_use_kills, 0, 0, 0, 0, 0);
+          BBVector[i]->clearKilledBucketNodeXeHP(&send_use_kills, 0, 0, 0, 0,
+                                                 0);
         } else {
           BBVector[i]->clearKilledBucketNodeXeLP(&send_use_kills, 0);
         }

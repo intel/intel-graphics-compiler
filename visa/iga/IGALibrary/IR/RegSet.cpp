@@ -32,7 +32,8 @@ static size_t BytesForRegSet(RegName rn, const Model &m) {
 }
 
 static const RegName TRACKED[] {
-  RegName::GRF_R, RegName::ARF_A, RegName::ARF_ACC, RegName::ARF_F, RegName::ARF_S,
+  RegName::GRF_R, RegName::ARF_A, RegName::ARF_ACC, RegName::ARF_F,
+  RegName::ARF_S,
 };
 
 BitSet<> *RegSet::bitSetForPtr(RegName rn) {
@@ -96,8 +97,7 @@ RegSet::RegSet(const Model &m)
 }
 RegSet::RegSet(const RegSet &rs)
     : model(rs.model), bitsR(rs.bitsR), bitsA(rs.bitsA), bitsAcc(rs.bitsAcc),
-      bitsF(rs.bitsF),
-      bitsS(rs.bitsS)
+      bitsF(rs.bitsF), bitsS(rs.bitsS)
 {
 }
 RegSet &RegSet::operator=(const RegSet &rhs) {

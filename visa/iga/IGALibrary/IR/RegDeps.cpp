@@ -369,9 +369,7 @@ DepSet::DepSet(const InstIDs &instIdCntr, const DepSetBuilder &dsb)
       m_hasSR(false), m_dPipe(DEP_PIPE::NONE), m_dClass(DEP_CLASS::NONE),
       m_InstIDs(instIdCntr.global, instIdCntr.inOrder, instIdCntr.floatPipe,
                 instIdCntr.intPipe, instIdCntr.longPipe, instIdCntr.mathPipe,
-                instIdCntr.scalarPipe
-                ),
-      m_DB(dsb) {
+                instIdCntr.scalarPipe), m_DB(dsb) {
   m_bucketList.reserve(4);
   bits = new BitSet<>(dsb.getTOTAL_BITS());
 }

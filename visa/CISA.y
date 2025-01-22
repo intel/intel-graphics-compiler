@@ -658,6 +658,8 @@ std::vector<attr_gen_struct*> AttrOptVar;
 %token <lsc_subOpcode>         LSC_STORE_BLOCK2D_MNEMONIC
 %token <lsc_subOpcode>         LSC_ATOMIC_MNEMONIC
 %token <lsc_subOpcode>         LSC_READ_STATE_INFO_MNEMONIC
+%token <lsc_subOpcode>         LSC_LOAD_MSRT_MNEMONIC
+%token <lsc_subOpcode>         LSC_STORE_MSRT_MNEMONIC
 // fence is a top-level op (not a subop)
 %token <lsc_opcode>            LSC_FENCE_MNEMONIC
 %token <opcode>                FCVT_OP
@@ -1620,6 +1622,8 @@ LscInstruction:
   | LscTypedStore
   | LscTypedAtomic
   | LscTypedReadStateInfo
+  | LscTypedMSRTLoad
+  | LscTypedMSRTStore
   //
   | LscFence
 
@@ -1845,6 +1849,71 @@ LscUntypedAtomic:
             CISAlineno);
     }
 
+LscTypedMSRTLoad:
+//  1          2                       3                     4             5
+    Predicate  LSC_LOAD_MSRT_MNEMONIC  LSC_SFID_TYPED_TOKEN  LscCacheOpts  ExecSize
+//  6               7
+    LscDataOperand  LscTypedAddrOperandWithOffsets
+    {
+        $5.exec_size =
+            lscCheckExecSize(pBuilder, $3, $2, $6.shape.order, $5.exec_size);
+        pBuilder->CISA_create_lsc_typed_inst(
+            $1,  // predicate
+            $2,  // subop
+            $3,  // sfid
+            $4,  // caching settings
+            Get_VISA_Exec_Size_From_Raw_Size($5.exec_size),
+            $5.emask,
+            $7.addr.type,     // address model
+            $7.addr.size,     // address size
+            $6.shape,         // data type
+            $7.surface,       // surface array base
+            $7.surfaceIndex,  // surface index
+            $6.reg,           // dst data
+            $7.regs[0],       // src0_u
+            $7.uvrOffsets[0], // src0-u imm offsets
+            $7.regs[1],       // src0_v
+            $7.uvrOffsets[1], // src0-v imm offsets
+            $7.regs[2],       // src0_r
+            $7.uvrOffsets[2], // src0-r imm offsets
+            $7.regs[3],       // sample index
+            nullptr,          // src1 data
+            nullptr,          // src2 data
+            CISAlineno);
+    }
+
+LscTypedMSRTStore:
+//  1          2                        3                     4             5
+    Predicate  LSC_STORE_MSRT_MNEMONIC  LSC_SFID_TYPED_TOKEN  LscCacheOpts  ExecSize
+//  6                               7
+    LscTypedAddrOperandWithOffsets  LscDataOperand
+    {
+        $5.exec_size =
+            lscCheckExecSize(pBuilder, $3, $2, $7.shape.order, $5.exec_size);
+        pBuilder->CISA_create_lsc_typed_inst(
+            $1,  // predicate
+            $2,  // subop
+            $3,  // sfid
+            $4,  // caching settings
+            Get_VISA_Exec_Size_From_Raw_Size($5.exec_size),
+            $5.emask,
+            $6.addr.type,     // address model
+            $6.addr.size,     // address size
+            $7.shape,         // data type
+            $6.surface,       // surface array base
+            $6.surfaceIndex,  // surface index
+            nullptr,          // dst
+            $6.regs[0],       // src0-u
+            $6.uvrOffsets[0], // src0-u imm offsets
+            $6.regs[1],       // src0-v
+            $6.uvrOffsets[1], // src0-v imm offsets
+            $6.regs[2],       // src0-r
+            $6.uvrOffsets[2], // src0-r imm offsets
+            $6.regs[3],       // src0-sample-index
+            $7.reg,           // src1 data
+            nullptr,          // src2 data
+            CISAlineno);
+    }
 
 // EXAMPLES:
 // SS using only U:

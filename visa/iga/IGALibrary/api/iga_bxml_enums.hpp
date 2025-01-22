@@ -91,7 +91,7 @@ static const std::array<SFID,
         SFID::RC,    SFID::URB,  SFID::TS,   SFID::VME,  SFID::DCRO,
         SFID::DC0,   SFID::PIXI, SFID::DC1,  SFID::CRE,  SFID::SLM,
         SFID::UGM,   SFID::BTD,  SFID::RTA,  SFID::TGM,
-    };
+};
 
 
 // The sync instruction's subfunction
