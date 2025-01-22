@@ -141,8 +141,7 @@ struct SBFootprint {
   const unsigned short RightB;
   unsigned short offset = 0;
   bool isPrecision = false;
-  bool isFcvtByteType = false;
-  bool isCmpUseOnly = false;
+  bool isFcvtByteType = false;;
   G4_INST *inst;
 
   // FIXME: The choice of C-style linked list seems suspect given that there are

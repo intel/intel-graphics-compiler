@@ -1043,8 +1043,6 @@ SBFootprint *G4_BB_SB::getFootprintForGRF(G4_Operand *opnd,
   GenPrecision precision = GenPrecision::INVALID;
   bool isFcvtByteType = false;
   bool isPrecision = false;
-  bool isCmpUseOnly = inst->opcode() == G4_cmp && opnd_num == Opnd_src0 &&
-                      opnd->getTopDcl()->getIsCmpUseOnly();
 
   if (inst->opcode() == G4_fcvt &&
       (IS_BTYPE(type) ||
@@ -1177,7 +1175,7 @@ SBFootprint *G4_BB_SB::getFootprintForGRF(G4_Operand *opnd,
                 SBFootprint(GRF_T, precision, LB, RB, inst, isFcvtByteType)
           : new (allocedMem)
                 SBFootprint(GRF_T, type, LB, RB, inst, isFcvtByteType);
-  footprint->isCmpUseOnly = isCmpUseOnly;
+
   return footprint;
 }
 
@@ -5602,9 +5600,6 @@ void G4_BB_SB::setSendOpndMayKilled(SBNODE_VECT &SBNodes, PointsToAnalysis &p,
           send_may_kill.src.set(globalID);
         } else if (dep == RAW) {
           send_may_kill.dst.set(globalID);
-          if (curFootprint->isCmpUseOnly) {
-            send_WAW_may_kill.set(globalID);
-          }
           // Exclusive WAW has no overlap
         } else if (dep == WAW && (isSend || !isDclExclusiveLoad(
                                                 nodeInfo.topDeclare, topDcl))) {
@@ -8006,20 +8001,9 @@ void SWSB::addGlobalDependence(unsigned globalSendNum,
           unsigned short internalOffset = 0;
           bool hasOverlap =
               curFootprint->hasOverlap(liveFootprint, internalOffset);
-          DepType dep = getDepForOpnd(liveOpnd, curOpnd);
 
-          // Following special dependence checking is to handle following case
-          // in SIMD control follow:
-          // cmp.eq  v5444, v5444
-          // where v5444 is undefined and can be assigned with any register. As
-          // a result there may be RAW dependence in the SIMD control follow.
-          // For this special case, we treat it as a WAW dependence by checking
-          // if it's uninitialized declare used in cmp
-          if (!afterWrite && liveOpnd == Opnd_dst &&
-              curFootprint->isCmpUseOnly) {
-            dep = getDepForOpnd(liveOpnd, Opnd_dst);
-          }
           // Find DEP type
+          DepType dep = getDepForOpnd(liveOpnd, curOpnd);
           if (!hasOverlap && dep == RAW) {
             hasOverlap =
                 sb_bb->hasExtraOverlap(liveInst, curInst, liveFootprint,

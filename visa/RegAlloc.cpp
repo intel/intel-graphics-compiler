@@ -1923,23 +1923,6 @@ void GlobalRA::markBlockLocalVars() {
          it++) {
       G4_INST *inst = *it;
 
-      // Chjeck if there is undefine variable used in CMP instruction, which is
-      // used to detect the execution mask.
-      //     cmp.eq (M1, 16) P12 V0147(0,0)<0;1,0> V0147(0,0)<0;1,0>
-      if (inst->opcode() == G4_cmp) {
-        const bool isModEq =
-            inst->getCondMod() && inst->getCondMod()->getMod() == Mod_e;
-        const bool isNullDst = !inst->getDst() || inst->hasNULLDst();
-        const bool isSrc0SameAsSrc1 = inst->getSrc(0)->asSrcRegRegion() &&
-                                      inst->getSrc(1)->asSrcRegRegion() &&
-                                      *inst->getSrc(0)->asSrcRegRegion() ==
-                                          *inst->getSrc(1)->asSrcRegRegion();
-        if (isModEq && isNullDst && isSrc0SameAsSrc1) {
-          G4_Declare *topdcl = GetTopDclFromRegRegion(inst->getSrc(0));
-          addUndefinedCmpDcl(topdcl);
-        }
-      }
-
       // Track direct dst references.
 
       G4_DstRegRegion *dst = inst->getDst();
@@ -1962,7 +1945,6 @@ void GlobalRA::markBlockLocalVars() {
               lr->setFirstRef(inst, 0);
             }
             lr->recordRef(bb);
-            lr->markDefined();
             recordRef(topdcl);
           }
         }
@@ -2105,20 +2087,6 @@ bool GlobalRA::canSkipFDE() const {
   return !kernel.fg.getHasStackCalls() && kernel.getOption(vISA_skipFDE);
 }
 
-void GlobalRA::setUndefinedVarCmp() {
-  // Iterate over all dcls and remove those with 0
-  // ref count and not addressed. This is done only for
-  // GRF dcls.
-
-  // Propagate top dcl info to aliases
-  for (auto dcl : UndefinedCmpVars) {
-    LocalLiveRange *lr = getLocalLR(dcl);
-    if (!lr->isDefined()) {
-      dcl->setIsCmpUseOnly(true);
-    }
-  }
-}
-
 //
 // Mark block local (temporary) variables.
 //
@@ -2128,9 +2096,6 @@ void GlobalRA::markGraphBlockLocalVars() {
 
   // Create live ranges and record the reference info
   markBlockLocalVars();
-
-  // Set undefined variable used in cmp
-  setUndefinedVarCmp();
 
   VISA_DEBUG_VERBOSE({
     std::cout << "\t--LOCAL VARIABLES--\n";
