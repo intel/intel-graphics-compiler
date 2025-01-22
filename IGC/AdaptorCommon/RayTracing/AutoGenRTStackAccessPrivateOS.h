@@ -192,6 +192,127 @@ static Type* _struct_RTStackFormat__NodeInfo(Module &M)
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
+static Type* _struct_RTStackFormat__RTStack_8(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "struct.RTStackFormat::RTStack.8";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
+    Type* Tys[] = {
+      _struct_RTStackFormat__MemHit_9(M),
+      _struct_RTStackFormat__MemHit_9(M),
+      _struct_RTStackFormat__MemRay_10(M),
+      _struct_RTStackFormat__MemRay_10(M),
+      [&] {
+        auto *EltTy =
+          _struct_RTStackFormat__MemTravStack(M);
+        return ArrayType::get(EltTy, 2);
+      }(),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
+static Type* _struct_RTStackFormat__MemHit_9(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "struct.RTStackFormat::MemHit.9";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
+    Type* Tys[] = {
+      Type::getFloatTy(M.getContext()),
+      IntegerType::get(M.getContext(), 32),
+      IntegerType::get(M.getContext(), 32),
+      IntegerType::get(M.getContext(), 32),
+      IntegerType::get(M.getContext(), 64),
+      IntegerType::get(M.getContext(), 64),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
+static Type* _struct_RTStackFormat__MemRay_10(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "struct.RTStackFormat::MemRay.10";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
+    Type* Tys[] = {
+      [&] {
+        auto *EltTy =
+          Type::getFloatTy(M.getContext());
+        return ArrayType::get(EltTy, 3);
+      }(),
+      [&] {
+        auto *EltTy =
+          Type::getFloatTy(M.getContext());
+        return ArrayType::get(EltTy, 3);
+      }(),
+      Type::getFloatTy(M.getContext()),
+      Type::getFloatTy(M.getContext()),
+      IntegerType::get(M.getContext(), 64),
+      _igc_auto_union_anon_11(M),
+      _igc_auto_union_anon_14(M),
+      IntegerType::get(M.getContext(), 32),
+      IntegerType::get(M.getContext(), 32),
+      Type::getFloatTy(M.getContext()),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
+static Type* _igc_auto_union_anon_11(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "igc.auto.union.anon.11";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
+    Type* Tys[] = {
+      _igc_auto_struct_anon_13(M),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
+static Type* _igc_auto_struct_anon_13(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "igc.auto.struct.anon.13";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
+    Type* Tys[] = {
+      IntegerType::get(M.getContext(), 64),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
+static Type* _igc_auto_union_anon_14(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "igc.auto.union.anon.14";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
+    Type* Tys[] = {
+      _igc_auto_struct_anon_16(M),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
+static Type* _igc_auto_struct_anon_16(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "igc.auto.struct.anon.16";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
+    Type* Tys[] = {
+      IntegerType::get(M.getContext(), 32),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
 static Type* _struct_RTStackFormat__SMStack(Module &M)
 {
   return
@@ -204,6 +325,22 @@ static Type* _struct_RTStackFormat__SMStack(Module &M)
       _struct_RTStackFormat__MemHit(M),
       _struct_RTStackFormat__MemRay(M),
       _struct_RTStackFormat__MemRay(M),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
+static Type* _struct_RTStackFormat__SMStack_17(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "struct.RTStackFormat::SMStack.17";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
+    Type* Tys[] = {
+      _struct_RTStackFormat__MemHit_9(M),
+      _struct_RTStackFormat__MemHit_9(M),
+      _struct_RTStackFormat__MemRay_10(M),
+      _struct_RTStackFormat__MemRay_10(M),
     };
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
@@ -249,16 +386,16 @@ static Type* _struct_RTStackFormat__StackPtrAndBudges(Module &M)
       return Ty;
     Type* Tys[] = {
       IntegerType::get(M.getContext(), 16),
-      _igc_auto_union_anon_8(M),
+      _igc_auto_union_anon_18(M),
     };
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
-static Type* _igc_auto_union_anon_8(Module &M)
+static Type* _igc_auto_union_anon_18(Module &M)
 {
   return
   [&] {
-    StringRef StructName = "igc.auto.union.anon.8";
+    StringRef StructName = "igc.auto.union.anon.18";
     if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
       return Ty;
     Type* Tys[] = {
@@ -345,9 +482,9 @@ static Type* _struct_IGC__RayDispatchGlobalData__RT__Xe(Module &M)
     Type* Tys[] = {
       IntegerType::get(M.getContext(), 64),
       IntegerType::get(M.getContext(), 64),
-      _igc_auto_union_anon_10(M),
-      _igc_auto_union_anon_11(M),
-      _igc_auto_union_anon_12(M),
+      _igc_auto_union_anon_20(M),
+      _igc_auto_union_anon_21(M),
+      _igc_auto_union_anon_22(M),
       [&] {
         auto *EltTy =
           IntegerType::get(M.getContext(), 32);
@@ -358,11 +495,11 @@ static Type* _struct_IGC__RayDispatchGlobalData__RT__Xe(Module &M)
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
-static Type* _igc_auto_union_anon_10(Module &M)
+static Type* _igc_auto_union_anon_20(Module &M)
 {
   return
   [&] {
-    StringRef StructName = "igc.auto.union.anon.10";
+    StringRef StructName = "igc.auto.union.anon.20";
     if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
       return Ty;
     Type* Tys[] = {
@@ -371,11 +508,11 @@ static Type* _igc_auto_union_anon_10(Module &M)
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
-static Type* _igc_auto_union_anon_11(Module &M)
+static Type* _igc_auto_union_anon_21(Module &M)
 {
   return
   [&] {
-    StringRef StructName = "igc.auto.union.anon.11";
+    StringRef StructName = "igc.auto.union.anon.21";
     if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
       return Ty;
     Type* Tys[] = {
@@ -384,11 +521,11 @@ static Type* _igc_auto_union_anon_11(Module &M)
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
-static Type* _igc_auto_union_anon_12(Module &M)
+static Type* _igc_auto_union_anon_22(Module &M)
 {
   return
   [&] {
-    StringRef StructName = "igc.auto.union.anon.12";
+    StringRef StructName = "igc.auto.union.anon.22";
     if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
       return Ty;
     Type* Tys[] = {
@@ -407,18 +544,18 @@ static Type* _struct_IGC__RayDispatchGlobalData__RayDispatchGlobalDataCommon(Mod
     Type* Tys[] = {
       IntegerType::get(M.getContext(), 64),
       IntegerType::get(M.getContext(), 64),
-      _igc_auto_union_anon_13(M),
-      _igc_auto_union_anon_14(M),
+      _igc_auto_union_anon_23(M),
+      _igc_auto_union_anon_24(M),
       IntegerType::get(M.getContext(), 64),
       IntegerType::get(M.getContext(), 32),
       IntegerType::get(M.getContext(), 32),
-      _igc_auto_union_anon_15(M),
+      _igc_auto_union_anon_25(M),
       IntegerType::get(M.getContext(), 64),
       IntegerType::get(M.getContext(), 64),
       IntegerType::get(M.getContext(), 32),
       IntegerType::get(M.getContext(), 32),
       IntegerType::get(M.getContext(), 64),
-      _igc_auto_union_anon_16(M),
+      _igc_auto_union_anon_26(M),
       IntegerType::get(M.getContext(), 64),
       IntegerType::get(M.getContext(), 32),
       IntegerType::get(M.getContext(), 32),
@@ -432,11 +569,11 @@ static Type* _struct_IGC__RayDispatchGlobalData__RayDispatchGlobalDataCommon(Mod
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
-static Type* _igc_auto_union_anon_13(Module &M)
+static Type* _igc_auto_union_anon_23(Module &M)
 {
   return
   [&] {
-    StringRef StructName = "igc.auto.union.anon.13";
+    StringRef StructName = "igc.auto.union.anon.23";
     if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
       return Ty;
     Type* Tys[] = {
@@ -445,11 +582,11 @@ static Type* _igc_auto_union_anon_13(Module &M)
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
-static Type* _igc_auto_union_anon_14(Module &M)
+static Type* _igc_auto_union_anon_24(Module &M)
 {
   return
   [&] {
-    StringRef StructName = "igc.auto.union.anon.14";
+    StringRef StructName = "igc.auto.union.anon.24";
     if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
       return Ty;
     Type* Tys[] = {
@@ -458,11 +595,11 @@ static Type* _igc_auto_union_anon_14(Module &M)
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
-static Type* _igc_auto_union_anon_15(Module &M)
+static Type* _igc_auto_union_anon_25(Module &M)
 {
   return
   [&] {
-    StringRef StructName = "igc.auto.union.anon.15";
+    StringRef StructName = "igc.auto.union.anon.25";
     if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
       return Ty;
     Type* Tys[] = {
@@ -471,24 +608,24 @@ static Type* _igc_auto_union_anon_15(Module &M)
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
-static Type* _igc_auto_union_anon_16(Module &M)
+static Type* _igc_auto_union_anon_26(Module &M)
 {
   return
   [&] {
-    StringRef StructName = "igc.auto.union.anon.16";
+    StringRef StructName = "igc.auto.union.anon.26";
     if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
       return Ty;
     Type* Tys[] = {
-      _igc_auto_struct_anon_17(M),
+      _igc_auto_struct_anon_27(M),
     };
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
-static Type* _igc_auto_struct_anon_17(Module &M)
+static Type* _igc_auto_struct_anon_27(Module &M)
 {
   return
   [&] {
-    StringRef StructName = "igc.auto.struct.anon.17";
+    StringRef StructName = "igc.auto.struct.anon.27";
     if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
       return Ty;
     Type* Tys[] = {
@@ -822,16 +959,180 @@ static Type* _igc_auto_struct_anon(Module &M)
     return StructType::create(M.getContext(), Tys, StructName, false);
   }();
 }
+static Type* _struct_RTStackFormat__InstanceLeaf_31(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "struct.RTStackFormat::InstanceLeaf.31";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
+    Type* Tys[] = {
+      _struct_RTStackFormat__InstanceLeaf_RTStackFormat__Xe3___Part0(M),
+      _struct_RTStackFormat__InstanceLeaf_RTStackFormat__Xe3___Part1(M),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
+static Type* _struct_RTStackFormat__InstanceLeaf_RTStackFormat__Xe3___Part0(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "struct.RTStackFormat::InstanceLeaf<RTStackFormat::Xe3>::Part0";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
+    Type* Tys[] = {
+      IntegerType::get(M.getContext(), 32),
+      IntegerType::get(M.getContext(), 32),
+      IntegerType::get(M.getContext(), 64),
+      [&] {
+        auto *EltTy =
+          Type::getFloatTy(M.getContext());
+        return ArrayType::get(EltTy, 3);
+      }(),
+      [&] {
+        auto *EltTy =
+          Type::getFloatTy(M.getContext());
+        return ArrayType::get(EltTy, 3);
+      }(),
+      [&] {
+        auto *EltTy =
+          Type::getFloatTy(M.getContext());
+        return ArrayType::get(EltTy, 3);
+      }(),
+      [&] {
+        auto *EltTy =
+          Type::getFloatTy(M.getContext());
+        return ArrayType::get(EltTy, 3);
+      }(),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
+static Type* _struct_RTStackFormat__InstanceLeaf_RTStackFormat__Xe3___Part1(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "struct.RTStackFormat::InstanceLeaf<RTStackFormat::Xe3>::Part1";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
+    Type* Tys[] = {
+      IntegerType::get(M.getContext(), 64),
+      IntegerType::get(M.getContext(), 32),
+      IntegerType::get(M.getContext(), 32),
+      [&] {
+        auto *EltTy =
+          Type::getFloatTy(M.getContext());
+        return ArrayType::get(EltTy, 3);
+      }(),
+      [&] {
+        auto *EltTy =
+          Type::getFloatTy(M.getContext());
+        return ArrayType::get(EltTy, 3);
+      }(),
+      [&] {
+        auto *EltTy =
+          Type::getFloatTy(M.getContext());
+        return ArrayType::get(EltTy, 3);
+      }(),
+      [&] {
+        auto *EltTy =
+          Type::getFloatTy(M.getContext());
+        return ArrayType::get(EltTy, 3);
+      }(),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
+static Type* _struct_RTStackFormat__ProceduralLeaf_50(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "struct.RTStackFormat::ProceduralLeaf.50";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
+    Type* Tys[] = {
+      _struct_RTStackFormat__PrimLeafDesc_51(M),
+      IntegerType::get(M.getContext(), 32),
+      [&] {
+        auto *EltTy =
+          IntegerType::get(M.getContext(), 32);
+        return ArrayType::get(EltTy, 13);
+      }(),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
+static Type* _struct_RTStackFormat__PrimLeafDesc_51(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "struct.RTStackFormat::PrimLeafDesc.51";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
+    Type* Tys[] = {
+      IntegerType::get(M.getContext(), 32),
+      IntegerType::get(M.getContext(), 32),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
+static Type* _struct_RTStackFormat__QuadLeaf_52(Module &M)
+{
+  return
+  [&] {
+    StringRef StructName = "struct.RTStackFormat::QuadLeaf.52";
+    if (auto *Ty = IGCLLVM::getTypeByName(M, StructName))
+      return Ty;
+    Type* Tys[] = {
+      _struct_RTStackFormat__PrimLeafDesc_51(M),
+      IntegerType::get(M.getContext(), 32),
+      IntegerType::get(M.getContext(), 32),
+      [&] {
+        auto *EltTy =
+          Type::getFloatTy(M.getContext());
+        return ArrayType::get(EltTy, 3);
+      }(),
+      [&] {
+        auto *EltTy =
+          Type::getFloatTy(M.getContext());
+        return ArrayType::get(EltTy, 3);
+      }(),
+      [&] {
+        auto *EltTy =
+          Type::getFloatTy(M.getContext());
+        return ArrayType::get(EltTy, 3);
+      }(),
+      [&] {
+        auto *EltTy =
+          Type::getFloatTy(M.getContext());
+        return ArrayType::get(EltTy, 3);
+      }(),
+    };
+    return StructType::create(M.getContext(), Tys, StructName, false);
+  }();
+}
 static Type* _gettype_RTStack2_Xe(Module &M)
 {
   return
   _struct_RTStackFormat__RTStack(M);
 }
 
+static Type* _gettype_RTStack2_Xe3(Module &M)
+{
+  return
+  _struct_RTStackFormat__RTStack_8(M);
+}
+
 static Type* _gettype_SMStack2_Xe(Module &M)
 {
   return
   _struct_RTStackFormat__SMStack(M);
+}
+
+static Type* _gettype_SMStack2_Xe3(Module &M)
+{
+  return
+  _struct_RTStackFormat__SMStack_17(M);
 }
 
 static Type* _gettype_SWHotZone_v1(Module &M)
@@ -1048,6 +1349,14 @@ auto* _getWorldRayOrig_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName =
   return V_4;
 }
 
+auto* _getWorldRayOrig_Xe3(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
+{
+  auto* V_2 = CreateZExt(arg_1, getInt64Ty());
+  auto* V_3 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2), getInt32(0), V_2 });
+  auto* V_4 = CreateLoad(getFloatTy(), V_3, _ReturnName);
+  return V_4;
+}
+
 auto* _getMemRayOrig_Xe(Value* arg_0, Value* arg_1, Value* arg_2, const Twine& _ReturnName = "")
 {
   auto* V_3 = CreateICmpEQ(arg_2, getInt32(0));
@@ -1056,6 +1365,18 @@ auto* _getMemRayOrig_Xe(Value* arg_0, Value* arg_1, Value* arg_2, const Twine& _
   auto* V_6 = CreateSelect(V_3, V_4, V_5);
   auto* V_7 = CreateZExt(arg_1, getInt64Ty());
   auto* V_8 = CreateInBoundsGEP(_struct_RTStackFormat__MemRay(*Ctx.getModule()), V_6, { getInt64(0), getInt32(0), V_7 });
+  auto* V_9 = CreateLoad(getFloatTy(), V_8, _ReturnName);
+  return V_9;
+}
+
+auto* _getMemRayOrig_Xe3(Value* arg_0, Value* arg_1, Value* arg_2, const Twine& _ReturnName = "")
+{
+  auto* V_3 = CreateICmpEQ(arg_2, getInt32(0));
+  auto* V_4 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2) });
+  auto* V_5 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(3) });
+  auto* V_6 = CreateSelect(V_3, V_4, V_5);
+  auto* V_7 = CreateZExt(arg_1, getInt64Ty());
+  auto* V_8 = CreateInBoundsGEP(_struct_RTStackFormat__MemRay_10(*Ctx.getModule()), V_6, { getInt64(0), getInt32(0), V_7 });
   auto* V_9 = CreateLoad(getFloatTy(), V_8, _ReturnName);
   return V_9;
 }
@@ -1072,6 +1393,18 @@ auto* _getMemRayDir_Xe(Value* arg_0, Value* arg_1, Value* arg_2, const Twine& _R
   return V_9;
 }
 
+auto* _getMemRayDir_Xe3(Value* arg_0, Value* arg_1, Value* arg_2, const Twine& _ReturnName = "")
+{
+  auto* V_3 = CreateICmpEQ(arg_2, getInt32(0));
+  auto* V_4 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2) });
+  auto* V_5 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(3) });
+  auto* V_6 = CreateSelect(V_3, V_4, V_5);
+  auto* V_7 = CreateZExt(arg_1, getInt64Ty());
+  auto* V_8 = CreateInBoundsGEP(_struct_RTStackFormat__MemRay_10(*Ctx.getModule()), V_6, { getInt64(0), getInt32(1), V_7 });
+  auto* V_9 = CreateLoad(getFloatTy(), V_8, _ReturnName);
+  return V_9;
+}
+
 auto* _getWorldRayDir_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
 {
   auto* V_2 = CreateZExt(arg_1, getInt64Ty());
@@ -1080,9 +1413,24 @@ auto* _getWorldRayDir_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = 
   return V_4;
 }
 
+auto* _getWorldRayDir_Xe3(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
+{
+  auto* V_2 = CreateZExt(arg_1, getInt64Ty());
+  auto* V_3 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2), getInt32(1), V_2 });
+  auto* V_4 = CreateLoad(getFloatTy(), V_3, _ReturnName);
+  return V_4;
+}
+
 auto* _getRayTMin_Xe(Value* arg_0, const Twine& _ReturnName = "")
 {
   auto* V_1 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2), getInt32(2) });
+  auto* V_2 = CreateLoad(getFloatTy(), V_1, _ReturnName);
+  return V_2;
+}
+
+auto* _getRayTMin_Xe3(Value* arg_0, const Twine& _ReturnName = "")
+{
+  auto* V_1 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2), getInt32(2) });
   auto* V_2 = CreateLoad(getFloatTy(), V_1, _ReturnName);
   return V_2;
 }
@@ -1099,6 +1447,18 @@ auto* _getRayInfo_Xe(Value* arg_0, Value* arg_1, Value* arg_2, const Twine& _Ret
   return V_9;
 }
 
+auto* _getRayInfo_Xe3(Value* arg_0, Value* arg_1, Value* arg_2, const Twine& _ReturnName = "")
+{
+  auto* V_3 = CreateICmpEQ(arg_2, getInt32(0));
+  auto* V_4 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2) });
+  auto* V_5 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(3) });
+  auto* V_6 = CreateSelect(V_3, V_4, V_5);
+  auto* V_7 = CreateZExt(arg_1, getInt64Ty());
+  auto* V_8 = CreateInBoundsGEP(_struct_RTStackFormat__MemRay_10(*Ctx.getModule()), V_6, { getInt64(0), getInt32(0), V_7 });
+  auto* V_9 = CreateLoad(getFloatTy(), V_8, _ReturnName);
+  return V_9;
+}
+
 auto* _getRayFlagsSync_Xe(Value* arg_0, const Twine& _ReturnName = "")
 {
   auto* V_1 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2), getInt32(4) });
@@ -1108,12 +1468,28 @@ auto* _getRayFlagsSync_Xe(Value* arg_0, const Twine& _ReturnName = "")
   return V_4;
 }
 
+auto* _getRayFlagsSync_Xe3(Value* arg_0, const Twine& _ReturnName = "")
+{
+  auto* V_1 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2), getInt32(6) });
+  auto* V_2 = CreateBitCast(V_1, PointerType::get(getInt16Ty(), arg_0->getType()->getPointerAddressSpace()));
+  auto* V_3 = CreateLoad(getInt16Ty(), V_2, _ReturnName);
+  return V_3;
+}
+
 void _setRayFlagsSync_Xe(Value* arg_0, Value* arg_1)
 {
   auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2), getInt32(4) });
   auto* V_3 = CreateBitCast(V_2, PointerType::get(_igc_auto_struct_anon(*Ctx.getModule()), arg_0->getType()->getPointerAddressSpace()));
   auto* V_4 = CreateInBoundsGEP(_igc_auto_struct_anon(*Ctx.getModule()), V_3, { getInt64(0), getInt32(3) });
   CreateStore(arg_1, V_4);
+  return;
+}
+
+void _setRayFlagsSync_Xe3(Value* arg_0, Value* arg_1)
+{
+  auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2), getInt32(6) });
+  auto* V_3 = CreateBitCast(V_2, PointerType::get(getInt16Ty(), arg_0->getType()->getPointerAddressSpace()));
+  CreateStore(arg_1, V_3);
   return;
 }
 
@@ -1129,6 +1505,16 @@ auto* _getPrimLeaf_Xe(Value* arg_0, Value* arg_1)
   return V_8;
 }
 
+auto* _getPrimLeaf_Xe3(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
+{
+  auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(4) });
+  auto* V_3 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(4) });
+  auto* V_4 = CreateSelect(arg_1, V_2, V_3);
+  auto* V_5 = CreateLoad(getInt64Ty(), V_4);
+  auto* V_6 = CreateAnd(V_5, getInt64(18446744073709551552u), _ReturnName);
+  return V_6;
+}
+
 auto* _getInstanceLeaf_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
 {
   auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(5) });
@@ -1141,6 +1527,18 @@ auto* _getInstanceLeaf_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName =
   auto* V_9 = canonizePointer(V_8);
   auto* V_10 = CreateIntToPtr(V_9, PointerType::get(_struct_RTStackFormat__InstanceLeaf(*Ctx.getModule()), 1), _ReturnName);
   return V_10;
+}
+
+auto* _getInstanceLeaf_Xe3(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
+{
+  auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(5) });
+  auto* V_3 = CreateICmpEQ(arg_1, getInt32(1));
+  auto* V_4 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(5) });
+  auto* V_5 = CreateSelect(V_3, V_4, V_2);
+  auto* V_6 = CreateLoad(getInt64Ty(), V_5);
+  auto* V_7 = CreateAnd(V_6, getInt64(18446744073709551552u));
+  auto* V_8 = CreateIntToPtr(V_7, PointerType::get(_struct_RTStackFormat__InstanceLeaf_31(*Ctx.getModule()), 1), _ReturnName);
+  return V_8;
 }
 
 auto* _getInstanceContributionToHitGroupIndex_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
@@ -1160,6 +1558,21 @@ auto* _getInstanceContributionToHitGroupIndex_Xe(Value* arg_0, Value* arg_1, con
   return V_13;
 }
 
+auto* _getInstanceContributionToHitGroupIndex_Xe3(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
+{
+  auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(5) });
+  auto* V_3 = CreateICmpEQ(arg_1, getInt32(1));
+  auto* V_4 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(5) });
+  auto* V_5 = CreateSelect(V_3, V_4, V_2);
+  auto* V_6 = CreateLoad(getInt64Ty(), V_5);
+  auto* V_7 = CreateAnd(V_6, getInt64(18446744073709551552u));
+  auto* V_8 = CreateIntToPtr(V_7, PointerType::get(_struct_RTStackFormat__InstanceLeaf_31(*Ctx.getModule()), 1));
+  auto* V_9 = CreateInBoundsGEP(_struct_RTStackFormat__InstanceLeaf_31(*Ctx.getModule()), V_8, { getInt64(0), getInt32(0), getInt32(0) });
+  auto* V_10 = CreateLoad(getInt32Ty(), V_9);
+  auto* V_11 = CreateAnd(V_10, getInt32(16777215), _ReturnName);
+  return V_11;
+}
+
 auto* _getRayMask_Xe(Value* arg_0, const Twine& _ReturnName = "")
 {
   auto* V_1 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2), getInt32(7), getInt32(0), getInt32(0) });
@@ -1170,12 +1583,44 @@ auto* _getRayMask_Xe(Value* arg_0, const Twine& _ReturnName = "")
   return V_5;
 }
 
+auto* _getRayMask_Xe3(Value* arg_0, const Twine& _ReturnName = "")
+{
+  auto* V_1 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2), getInt32(6), getInt32(0), getInt32(0) });
+  auto* V_2 = CreateLoad(getInt32Ty(), V_1);
+  auto* V_3 = CreateLShr(V_2, getInt32(16));
+  auto* V_4 = CreateAnd(V_3, getInt32(255), _ReturnName);
+  return V_4;
+}
+
+auto* _getLeafNodeSubType_Xe3(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
+{
+  auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(3) });
+  auto* V_3 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(3) });
+  auto* V_4 = CreateSelect(arg_1, V_2, V_3);
+  auto* V_5 = CreateLoad(getInt32Ty(), V_4);
+  auto* V_6 = CreateLShr(V_5, getInt32(12));
+  auto* V_7 = CreateAnd(V_6, getInt32(15), _ReturnName);
+  return V_7;
+}
+
 auto* _isValid_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
 {
   auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0) });
   auto* V_3 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1) });
   auto* V_4 = CreateSelect(arg_1, V_2, V_3);
   auto* V_5 = CreateInBoundsGEP(_struct_RTStackFormat__MemHit(*Ctx.getModule()), V_4, { getInt64(0), getInt32(3) });
+  auto* V_6 = CreateLoad(getInt32Ty(), V_5);
+  auto* V_7 = CreateAnd(V_6, getInt32(65536));
+  auto* V_8 = CreateICmpNE(V_7, getInt32(0), _ReturnName);
+  return V_8;
+}
+
+auto* _isValid_Xe3(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
+{
+  auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0) });
+  auto* V_3 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1) });
+  auto* V_4 = CreateSelect(arg_1, V_2, V_3);
+  auto* V_5 = CreateInBoundsGEP(_struct_RTStackFormat__MemHit_9(*Ctx.getModule()), V_4, { getInt64(0), getInt32(3) });
   auto* V_6 = CreateLoad(getInt32Ty(), V_5);
   auto* V_7 = CreateAnd(V_6, getInt32(65536));
   auto* V_8 = CreateICmpNE(V_7, getInt32(0), _ReturnName);
@@ -1194,10 +1639,33 @@ auto* _createLeafType_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = 
   return V_8;
 }
 
+auto* _createLeafType_Xe3(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
+{
+  auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0) });
+  auto* V_3 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1) });
+  auto* V_4 = CreateSelect(arg_1, V_2, V_3);
+  auto* V_5 = CreateInBoundsGEP(_struct_RTStackFormat__MemHit_9(*Ctx.getModule()), V_4, { getInt64(0), getInt32(3) });
+  auto* V_6 = CreateLoad(getInt32Ty(), V_5);
+  auto* V_7 = CreateLShr(V_6, getInt32(17));
+  auto* V_8 = CreateAnd(V_7, getInt32(7), _ReturnName);
+  return V_8;
+}
+
 auto* _getIsFrontFace_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
 {
   auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(3) });
   auto* V_3 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(3) });
+  auto* V_4 = CreateSelect(arg_1, V_2, V_3);
+  auto* V_5 = CreateLoad(getInt32Ty(), V_4);
+  auto* V_6 = CreateAnd(V_5, getInt32(134217728));
+  auto* V_7 = CreateICmpNE(V_6, getInt32(0), _ReturnName);
+  return V_7;
+}
+
+auto* _getIsFrontFace_Xe3(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
+{
+  auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(3) });
+  auto* V_3 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(3) });
   auto* V_4 = CreateSelect(arg_1, V_2, V_3);
   auto* V_5 = CreateLoad(getInt32Ty(), V_4);
   auto* V_6 = CreateAnd(V_5, getInt32(134217728));
@@ -1216,10 +1684,32 @@ auto* _getBvhLevel_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
   return V_7;
 }
 
+auto* _getBvhLevel_Xe3(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
+{
+  auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(3) });
+  auto* V_3 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(3) });
+  auto* V_4 = CreateSelect(arg_1, V_2, V_3);
+  auto* V_5 = CreateLoad(getInt32Ty(), V_4);
+  auto* V_6 = CreateLShr(V_5, getInt32(24));
+  auto* V_7 = CreateAnd(V_6, getInt32(7), _ReturnName);
+  return V_7;
+}
+
 auto* _isDoneBitNotSet_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
 {
   auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(3) });
   auto* V_3 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(3) });
+  auto* V_4 = CreateSelect(arg_1, V_2, V_3);
+  auto* V_5 = CreateLoad(getInt32Ty(), V_4);
+  auto* V_6 = CreateAnd(V_5, getInt32(268435456));
+  auto* V_7 = CreateICmpEQ(V_6, getInt32(0), _ReturnName);
+  return V_7;
+}
+
+auto* _isDoneBitNotSet_Xe3(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
+{
+  auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(3) });
+  auto* V_3 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(3) });
   auto* V_4 = CreateSelect(arg_1, V_2, V_3);
   auto* V_5 = CreateLoad(getInt32Ty(), V_4);
   auto* V_6 = CreateAnd(V_5, getInt32(268435456));
@@ -1238,10 +1728,32 @@ void _setDoneBit_Xe(Value* arg_0, Value* arg_1)
   return;
 }
 
+void _setDoneBit_Xe3(Value* arg_0, Value* arg_1)
+{
+  auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(3) });
+  auto* V_3 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(3) });
+  auto* V_4 = CreateSelect(arg_1, V_3, V_2);
+  auto* V_5 = CreateLoad(getInt32Ty(), V_4);
+  auto* V_6 = CreateOr(V_5, getInt32(268435456));
+  CreateStore(V_6, V_4);
+  return;
+}
+
 void _setHitValid_Xe(Value* arg_0, Value* arg_1)
 {
   auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(3) });
   auto* V_3 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(3) });
+  auto* V_4 = CreateSelect(arg_1, V_3, V_2);
+  auto* V_5 = CreateLoad(getInt32Ty(), V_4);
+  auto* V_6 = CreateOr(V_5, getInt32(65536));
+  CreateStore(V_6, V_4);
+  return;
+}
+
+void _setHitValid_Xe3(Value* arg_0, Value* arg_1)
+{
+  auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(3) });
+  auto* V_3 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(3) });
   auto* V_4 = CreateSelect(arg_1, V_3, V_2);
   auto* V_5 = CreateLoad(getInt32Ty(), V_4);
   auto* V_6 = CreateOr(V_5, getInt32(65536));
@@ -1262,6 +1774,22 @@ auto* _getHitBaryCentric_Xe(Value* arg_0, Value* arg_1, Value* arg_2, const Twin
   return V_10;
 }
 
+auto* _getHitBaryCentric_Xe3(Value* arg_0, Value* arg_1, Value* arg_2, const Twine& _ReturnName = "")
+{
+  auto* V_3 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0) });
+  auto* V_4 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1) });
+  auto* V_5 = CreateSelect(arg_2, V_3, V_4);
+  auto* V_6 = CreateICmpEQ(arg_1, getInt32(0));
+  auto* V_7 = CreateInBoundsGEP(_struct_RTStackFormat__MemHit_9(*Ctx.getModule()), V_5, { getInt64(0), getInt32(1) });
+  auto* V_8 = CreateInBoundsGEP(_struct_RTStackFormat__MemHit_9(*Ctx.getModule()), V_5, { getInt64(0), getInt32(2) });
+  auto* V_9 = CreateSelect(V_6, V_7, V_8);
+  auto* V_10 = CreateLoad(getInt32Ty(), V_9);
+  auto* V_11 = CreateAnd(V_10, getInt32(16777215));
+  auto* V_12 = CreateUIToFP(V_11, getFloatTy());
+  auto* V_13 = CreateFMul(V_12, ConstantFP::get(*Ctx.getLLVMContext(), APFloat(APFloat::IEEEsingle(), APInt(32, 0x33800001))), _ReturnName);
+  return V_13;
+}
+
 void _writeBaryCentricToStorage_Xe(Value* arg_0, Value* arg_1, Value* arg_2)
 {
   auto* V_3 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(1) });
@@ -1271,6 +1799,27 @@ void _writeBaryCentricToStorage_Xe(Value* arg_0, Value* arg_1, Value* arg_2)
   auto* V_7 = CreateBitCast(arg_1, PointerType::get(getInt64Ty(), arg_1->getType()->getPointerAddressSpace()));
   auto* V_8 = CreateLoad(getInt64Ty(), V_6);
   CreateStore(V_8, V_7);
+  return;
+}
+
+void _writeBaryCentricToStorage_Xe3(Value* arg_0, Value* arg_1, Value* arg_2)
+{
+  auto* V_3 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0) });
+  auto* V_4 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1) });
+  auto* V_5 = CreateSelect(arg_2, V_3, V_4);
+  auto* V_6 = CreateInBoundsGEP(_struct_RTStackFormat__MemHit_9(*Ctx.getModule()), V_5, { getInt64(0), getInt32(1) });
+  auto* V_7 = CreateInBoundsGEP(_struct_RTStackFormat__MemHit_9(*Ctx.getModule()), V_5, { getInt64(0), getInt32(2) });
+  auto* V_8 = CreateLoad(getInt32Ty(), V_6);
+  auto* V_9 = CreateAnd(V_8, getInt32(16777215));
+  auto* V_10 = CreateUIToFP(V_9, getFloatTy());
+  auto* V_11 = CreateFMul(V_10, ConstantFP::get(*Ctx.getLLVMContext(), APFloat(APFloat::IEEEsingle(), APInt(32, 0x33800001))));
+  CreateStore(V_11, arg_1);
+  auto* V_12 = CreateLoad(getInt32Ty(), V_7);
+  auto* V_13 = CreateAnd(V_12, getInt32(16777215));
+  auto* V_14 = CreateUIToFP(V_13, getFloatTy());
+  auto* V_15 = CreateFMul(V_14, ConstantFP::get(*Ctx.getLLVMContext(), APFloat(APFloat::IEEEsingle(), APInt(32, 0x33800001))));
+  auto* V_16 = CreateInBoundsGEP(getFloatTy(), arg_1, getInt64(1));
+  CreateStore(V_15, V_16);
   return;
 }
 
@@ -1331,6 +1880,61 @@ auto* _TransformWorldToObject_Xe(Value* arg_0, Value* arg_1, Value* arg_2, Value
   return V_43;
 }
 
+auto* _TransformWorldToObject_Xe3(Value* arg_0, Value* arg_1, Value* arg_2, Value* arg_3, const Twine& _ReturnName = "")
+{
+  auto* BB_4 = GetInsertBlock();
+  auto* _CurIP = &*GetInsertPoint();
+  auto *_JoinBB = BB_4->splitBasicBlock(_CurIP, VALUE_NAME("_TransformWorldToObject_Xe3.join"));
+  BB_4->getTerminator()->eraseFromParent();
+  auto* BB_5 = BasicBlock::Create(*Ctx.getLLVMContext(), VALUE_NAME("_TransformWorldToObject_Xe3."), _JoinBB->getParent(), _JoinBB);
+  auto* BB_6 = BasicBlock::Create(*Ctx.getLLVMContext(), VALUE_NAME("_TransformWorldToObject_Xe3."), _JoinBB->getParent(), _JoinBB);
+  SetInsertPoint(BB_4);
+  auto* V_7 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(5) });
+  auto* V_8 = CreateICmpEQ(arg_3, getInt32(1));
+  auto* V_9 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(5) });
+  auto* V_10 = CreateSelect(V_8, V_9, V_7);
+  auto* V_11 = CreateLoad(getInt64Ty(), V_10);
+  auto* V_12 = CreateAnd(V_11, getInt64(18446744073709551552u));
+  auto* V_13 = CreateIntToPtr(V_12, PointerType::get(_struct_RTStackFormat__InstanceLeaf_31(*Ctx.getModule()), 1));
+  auto* V_14 = CreateZExt(arg_1, getInt64Ty());
+  CreateCondBr(arg_2, BB_5, BB_6);
+  SetInsertPoint(BB_5);
+  auto* V_15 = CreateInBoundsGEP(_struct_RTStackFormat__InstanceLeaf_31(*Ctx.getModule()), V_13, { getInt64(0), getInt32(1), getInt32(6), V_14 });
+  auto* V_16 = CreateLoad(getFloatTy(), V_15);
+  CreateBr(BB_6);
+  SetInsertPoint(BB_6);
+  auto* V_17 = CreatePHI(getFloatTy(), 2);
+  auto* V_18 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2), getInt32(0), getInt64(0) });
+  auto* V_19 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2), getInt32(1), getInt64(0) });
+  auto* V_20 = CreateSelect(arg_2, V_18, V_19);
+  auto* V_21 = CreateInBoundsGEP(_struct_RTStackFormat__InstanceLeaf_31(*Ctx.getModule()), V_13, { getInt64(0), getInt32(0), getInt32(3), V_14 });
+  auto* V_22 = CreateLoad(getFloatTy(), V_21);
+  auto* V_23 = CreateLoad(getFloatTy(), V_20);
+  auto* V_24 = CreateFMul(V_22, V_23);
+  auto* V_25 = CreateFAdd(V_17, V_24);
+  auto* V_26 = CreateAdd(arg_1, getInt32(3));
+  auto* V_27 = CreateZExt(V_26, getInt64Ty());
+  auto* V_28 = CreateInBoundsGEP(_struct_RTStackFormat__InstanceLeaf_31(*Ctx.getModule()), V_13, { getInt64(0), getInt32(0), getInt32(3), V_27 });
+  auto* V_29 = CreateLoad(getFloatTy(), V_28);
+  auto* V_30 = CreateInBoundsGEP(getFloatTy(), V_20, getInt64(1));
+  auto* V_31 = CreateLoad(getFloatTy(), V_30);
+  auto* V_32 = CreateFMul(V_29, V_31);
+  auto* V_33 = CreateFAdd(V_25, V_32);
+  auto* V_34 = CreateAdd(arg_1, getInt32(6));
+  auto* V_35 = CreateZExt(V_34, getInt64Ty());
+  auto* V_36 = CreateInBoundsGEP(_struct_RTStackFormat__InstanceLeaf_31(*Ctx.getModule()), V_13, { getInt64(0), getInt32(0), getInt32(3), V_35 });
+  auto* V_37 = CreateLoad(getFloatTy(), V_36);
+  auto* V_38 = CreateInBoundsGEP(getFloatTy(), V_20, getInt64(2));
+  auto* V_39 = CreateLoad(getFloatTy(), V_38);
+  auto* V_40 = CreateFMul(V_37, V_39);
+  auto* V_41 = CreateFAdd(V_33, V_40, _ReturnName);
+  CreateBr(_JoinBB);
+  V_17->addIncoming(V_16, BB_5);
+  V_17->addIncoming(ConstantFP::get(*Ctx.getLLVMContext(), APFloat(APFloat::IEEEsingle(), APInt(32, 0x0))), BB_4);
+  SetInsertPoint(_CurIP);
+  return V_41;
+}
+
 auto* _getObjWorldAndWorldObj_Xe(Value* arg_0, Value* arg_1, Value* arg_2, Value* arg_3, const Twine& _ReturnName = "")
 {
   auto* V_4 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(5) });
@@ -1357,6 +1961,30 @@ auto* _getObjWorldAndWorldObj_Xe(Value* arg_0, Value* arg_1, Value* arg_2, Value
   return V_24;
 }
 
+auto* _getObjWorldAndWorldObj_Xe3(Value* arg_0, Value* arg_1, Value* arg_2, Value* arg_3, const Twine& _ReturnName = "")
+{
+  auto* V_4 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(5) });
+  auto* V_5 = CreateICmpEQ(arg_3, getInt32(1));
+  auto* V_6 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(5) });
+  auto* V_7 = CreateSelect(V_5, V_6, V_4);
+  auto* V_8 = CreateLoad(getInt64Ty(), V_7);
+  auto* V_9 = CreateAnd(V_8, getInt64(18446744073709551552u));
+  auto* V_10 = CreateIntToPtr(V_9, PointerType::get(_struct_RTStackFormat__InstanceLeaf_31(*Ctx.getModule()), 1));
+  auto* V_11 = CreateZExt(arg_1, getInt64Ty());
+  auto* V_12 = CreateInBoundsGEP(_struct_RTStackFormat__InstanceLeaf_31(*Ctx.getModule()), V_10, { getInt64(0), getInt32(1), getInt32(3), V_11 });
+  auto* V_13 = CreateInBoundsGEP(_struct_RTStackFormat__InstanceLeaf_31(*Ctx.getModule()), V_10, { getInt64(0), getInt32(0), getInt32(3), V_11 });
+  auto* V_14 = CreateSelect(arg_2, V_12, V_13);
+  auto* V_15 = CreateICmpUGT(arg_1, getInt32(8));
+  auto* V_16 = CreateAdd(arg_1, getInt32(4294967287));
+  auto* V_17 = CreateZExt(V_16, getInt64Ty());
+  auto* V_18 = CreateInBoundsGEP(_struct_RTStackFormat__InstanceLeaf_31(*Ctx.getModule()), V_10, { getInt64(0), getInt32(0), getInt32(6), V_17 });
+  auto* V_19 = CreateInBoundsGEP(_struct_RTStackFormat__InstanceLeaf_31(*Ctx.getModule()), V_10, { getInt64(0), getInt32(1), getInt32(6), V_17 });
+  auto* V_20 = CreateSelect(arg_2, V_18, V_19);
+  auto* V_21 = CreateSelect(V_15, V_20, V_14);
+  auto* V_22 = CreateLoad(getFloatTy(), V_21, _ReturnName);
+  return V_22;
+}
+
 auto* _getRayTCurrent_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
 {
   auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(0) });
@@ -1365,6 +1993,19 @@ auto* _getRayTCurrent_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = 
   auto* V_5 = CreateSelect(V_3, V_4, V_2);
   auto* V_6 = CreateICmpEQ(arg_1, getInt32(1));
   auto* V_7 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(0) });
+  auto* V_8 = CreateSelect(V_6, V_7, V_5);
+  auto* V_9 = CreateLoad(getFloatTy(), V_8, _ReturnName);
+  return V_9;
+}
+
+auto* _getRayTCurrent_Xe3(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
+{
+  auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(0) });
+  auto* V_3 = CreateICmpEQ(arg_1, getInt32(3));
+  auto* V_4 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2), getInt32(3) });
+  auto* V_5 = CreateSelect(V_3, V_4, V_2);
+  auto* V_6 = CreateICmpEQ(arg_1, getInt32(1));
+  auto* V_7 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(0) });
   auto* V_8 = CreateSelect(V_6, V_7, V_5);
   auto* V_9 = CreateLoad(getFloatTy(), V_8, _ReturnName);
   return V_9;
@@ -1379,10 +2020,28 @@ auto* _getHitT_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
   return V_5;
 }
 
+auto* _getHitT_Xe3(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
+{
+  auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(0) });
+  auto* V_3 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(0) });
+  auto* V_4 = CreateSelect(arg_1, V_2, V_3);
+  auto* V_5 = CreateLoad(getFloatTy(), V_4, _ReturnName);
+  return V_5;
+}
+
 void _setHitT_Xe(Value* arg_0, Value* arg_1, Value* arg_2)
 {
   auto* V_3 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(0) });
   auto* V_4 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(0) });
+  auto* V_5 = CreateSelect(arg_2, V_4, V_3);
+  CreateStore(arg_1, V_5);
+  return;
+}
+
+void _setHitT_Xe3(Value* arg_0, Value* arg_1, Value* arg_2)
+{
+  auto* V_3 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(0) });
+  auto* V_4 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(0) });
   auto* V_5 = CreateSelect(arg_2, V_4, V_3);
   CreateStore(arg_1, V_5);
   return;
@@ -1404,6 +2063,20 @@ auto* _getInstanceIndex_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName 
   return V_12;
 }
 
+auto* _getInstanceIndex_Xe3(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
+{
+  auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(5) });
+  auto* V_3 = CreateICmpEQ(arg_1, getInt32(1));
+  auto* V_4 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(5) });
+  auto* V_5 = CreateSelect(V_3, V_4, V_2);
+  auto* V_6 = CreateLoad(getInt64Ty(), V_5);
+  auto* V_7 = CreateAnd(V_6, getInt64(18446744073709551552u));
+  auto* V_8 = CreateIntToPtr(V_7, PointerType::get(_struct_RTStackFormat__InstanceLeaf_31(*Ctx.getModule()), 1));
+  auto* V_9 = CreateInBoundsGEP(_struct_RTStackFormat__InstanceLeaf_31(*Ctx.getModule()), V_8, { getInt64(0), getInt32(1), getInt32(2) });
+  auto* V_10 = CreateLoad(getInt32Ty(), V_9, _ReturnName);
+  return V_10;
+}
+
 auto* _getInstanceID_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
 {
   auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(5) });
@@ -1418,6 +2091,20 @@ auto* _getInstanceID_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "
   auto* V_11 = CreateInBoundsGEP(_struct_RTStackFormat__InstanceLeaf(*Ctx.getModule()), V_10, { getInt64(0), getInt32(1), getInt32(1) });
   auto* V_12 = CreateLoad(getInt32Ty(), V_11, _ReturnName);
   return V_12;
+}
+
+auto* _getInstanceID_Xe3(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
+{
+  auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(5) });
+  auto* V_3 = CreateICmpEQ(arg_1, getInt32(1));
+  auto* V_4 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(5) });
+  auto* V_5 = CreateSelect(V_3, V_4, V_2);
+  auto* V_6 = CreateLoad(getInt64Ty(), V_5);
+  auto* V_7 = CreateAnd(V_6, getInt64(18446744073709551552u));
+  auto* V_8 = CreateIntToPtr(V_7, PointerType::get(_struct_RTStackFormat__InstanceLeaf_31(*Ctx.getModule()), 1));
+  auto* V_9 = CreateInBoundsGEP(_struct_RTStackFormat__InstanceLeaf_31(*Ctx.getModule()), V_8, { getInt64(0), getInt32(1), getInt32(1) });
+  auto* V_10 = CreateLoad(getInt32Ty(), V_9, _ReturnName);
+  return V_10;
 }
 
 auto* _getPrimitiveIndex_Xe(Value* arg_0, Value* arg_1, Value* arg_2, const Twine& _ReturnName = "")
@@ -1468,6 +2155,52 @@ auto* _getPrimitiveIndex_Xe(Value* arg_0, Value* arg_1, Value* arg_2, const Twin
   return V_25;
 }
 
+auto* _getPrimitiveIndex_Xe3(Value* arg_0, Value* arg_1, Value* arg_2, const Twine& _ReturnName = "")
+{
+  auto* BB_3 = GetInsertBlock();
+  auto* _CurIP = &*GetInsertPoint();
+  auto *_JoinBB = BB_3->splitBasicBlock(_CurIP, VALUE_NAME("_getPrimitiveIndex_Xe3.join"));
+  BB_3->getTerminator()->eraseFromParent();
+  auto* BB_4 = BasicBlock::Create(*Ctx.getLLVMContext(), VALUE_NAME("_getPrimitiveIndex_Xe3."), _JoinBB->getParent(), _JoinBB);
+  auto* BB_5 = BasicBlock::Create(*Ctx.getLLVMContext(), VALUE_NAME("_getPrimitiveIndex_Xe3."), _JoinBB->getParent(), _JoinBB);
+  auto* BB_6 = BasicBlock::Create(*Ctx.getLLVMContext(), VALUE_NAME("_getPrimitiveIndex_Xe3."), _JoinBB->getParent(), _JoinBB);
+  SetInsertPoint(BB_3);
+  auto* V_7 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(4) });
+  auto* V_8 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(4) });
+  auto* V_9 = CreateSelect(arg_2, V_7, V_8);
+  auto* V_10 = CreateLoad(getInt64Ty(), V_9);
+  auto* V_11 = CreateAnd(V_10, getInt64(18446744073709551552u));
+  auto* V_12 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(3) });
+  auto* V_13 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(3) });
+  auto* V_14 = CreateSelect(arg_2, V_12, V_13);
+  auto* V_15 = CreateLoad(getInt32Ty(), V_14);
+  auto* V_16 = CreateAnd(arg_1, getInt32(1));
+  auto* V_17 = CreateICmpEQ(V_16, getInt32(0));
+  CreateCondBr(V_17, BB_5, BB_4);
+  SetInsertPoint(BB_5);
+  auto* V_18 = CreateAnd(V_15, getInt32(31));
+  auto* V_19 = CreateIntToPtr(V_11, PointerType::get(_struct_RTStackFormat__QuadLeaf_52(*Ctx.getModule()), 1));
+  auto* V_20 = CreateInBoundsGEP(_struct_RTStackFormat__QuadLeaf_52(*Ctx.getModule()), V_19, { getInt64(0), getInt32(1) });
+  auto* V_21 = CreateLoad(getInt32Ty(), V_20);
+  auto* V_22 = CreateAdd(V_21, V_18);
+  CreateBr(BB_6);
+  SetInsertPoint(BB_6);
+  auto* V_23 = CreatePHI(getInt32Ty(), 2, _ReturnName);
+  CreateBr(_JoinBB);
+  SetInsertPoint(BB_4);
+  auto* V_24 = CreateLShr(V_15, getInt32(20));
+  auto* V_25 = CreateAnd(V_24, getInt32(15));
+  auto* V_26 = CreateIntToPtr(V_11, PointerType::get(_struct_RTStackFormat__ProceduralLeaf_50(*Ctx.getModule()), 1));
+  auto* V_27 = CreateZExt(V_25, getInt64Ty());
+  auto* V_28 = CreateInBoundsGEP(_struct_RTStackFormat__ProceduralLeaf_50(*Ctx.getModule()), V_26, { getInt64(0), getInt32(2), V_27 });
+  auto* V_29 = CreateLoad(getInt32Ty(), V_28);
+  CreateBr(BB_6);
+  V_23->addIncoming(V_29, BB_4);
+  V_23->addIncoming(V_22, BB_5);
+  SetInsertPoint(_CurIP);
+  return V_23;
+}
+
 auto* _getGeometryIndex_Xe(Value* arg_0, Value* arg_1, Value* arg_2, const Twine& _ReturnName = "")
 {
   auto* V_3 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(4) });
@@ -1487,6 +2220,25 @@ auto* _getGeometryIndex_Xe(Value* arg_0, Value* arg_1, Value* arg_2, const Twine
   auto* V_17 = CreateLoad(getInt32Ty(), V_16);
   auto* V_18 = CreateAnd(V_17, getInt32(536870911), _ReturnName);
   return V_18;
+}
+
+auto* _getGeometryIndex_Xe3(Value* arg_0, Value* arg_1, Value* arg_2, const Twine& _ReturnName = "")
+{
+  auto* V_3 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(4) });
+  auto* V_4 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(4) });
+  auto* V_5 = CreateSelect(arg_2, V_3, V_4);
+  auto* V_6 = CreateLoad(getInt64Ty(), V_5);
+  auto* V_7 = CreateAnd(V_6, getInt64(18446744073709551552u));
+  auto* V_8 = CreateAnd(arg_1, getInt32(1));
+  auto* V_9 = CreateICmpEQ(V_8, getInt32(0));
+  auto* V_10 = CreateIntToPtr(V_7, PointerType::get(_struct_RTStackFormat__ProceduralLeaf_50(*Ctx.getModule()), 1));
+  auto* V_11 = CreateInBoundsGEP(_struct_RTStackFormat__ProceduralLeaf_50(*Ctx.getModule()), V_10, { getInt64(0), getInt32(0), getInt32(1) });
+  auto* V_12 = CreateIntToPtr(V_7, PointerType::get(_struct_RTStackFormat__QuadLeaf_52(*Ctx.getModule()), 1));
+  auto* V_13 = CreateInBoundsGEP(_struct_RTStackFormat__QuadLeaf_52(*Ctx.getModule()), V_12, { getInt64(0), getInt32(0), getInt32(1) });
+  auto* V_14 = CreateSelect(V_9, V_13, V_11);
+  auto* V_15 = CreateLoad(getInt32Ty(), V_14);
+  auto* V_16 = CreateAnd(V_15, getInt32(16777215), _ReturnName);
+  return V_16;
 }
 
 void _createPotentialHit2CommittedHit_Xe(Value* arg_0)
@@ -1515,6 +2267,15 @@ void _createPotentialHit2CommittedHit_Xe(Value* arg_0)
   auto* V_17 = CreateLoad(getInt64Ty(), V_16);
   auto* V_18 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(5) });
   CreateStore(V_17, V_18);
+  return;
+}
+
+void _createPotentialHit2CommittedHit_Xe3(Value* arg_0)
+{
+  auto* V_1 = CreateBitCast(arg_0, PointerType::get(getInt8Ty(), arg_0->getType()->getPointerAddressSpace()));
+  auto* V_2 = CreateGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(0) });
+  auto* V_3 = CreateBitCast(V_2, PointerType::get(getInt8Ty(), arg_0->getType()->getPointerAddressSpace()));
+  CreateIntrinsic(Intrinsic::memcpy, { PointerType::get(getInt8Ty(), arg_0->getType()->getPointerAddressSpace()), PointerType::get(getInt8Ty(), arg_0->getType()->getPointerAddressSpace()), getInt64Ty() }, { V_1, V_3, getInt64(32), getFalse() }, nullptr);
   return;
 }
 
@@ -1565,6 +2326,44 @@ void _createTraceRayInlinePrologue_Xe(Value* arg_0, Value* arg_1, Value* arg_2, 
   CreateStore(getInt32(0), V_34);
   CreateBr(_JoinBB);
   SetInsertPoint(_CurIP);
+}
+
+void _createTraceRayInlinePrologue_Xe3(Value* arg_0, Value* arg_1, Value* arg_2, Value* arg_3, Value* arg_4, Value* arg_5, Value* arg_6)
+{
+  auto* V_7 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2) });
+  auto* V_8 = CreateBitCast(V_7, PointerType::get(IGCLLVM::FixedVectorType::get(getFloatTy(), 8), arg_0->getType()->getPointerAddressSpace()));
+  CreateStore(arg_1, V_8);
+  auto* V_9 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2), getInt32(6) });
+  auto* V_10 = CreateBitCast(V_9, PointerType::get(getInt16Ty(), arg_0->getType()->getPointerAddressSpace()));
+  auto* V_11 = CreateLoad(getInt16Ty(), V_10);
+  auto* V_12 = CreateZExt(V_11, getInt32Ty());
+  auto* V_13 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2), getInt32(4) });
+  CreateStore(arg_2, V_13);
+  auto* V_14 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2), getInt32(5), getInt32(0), getInt32(0) });
+  CreateStore(getInt64(0), V_14);
+  auto* V_15 = CreateGEP(_igc_auto_union_anon_14(*Ctx.getModule()), V_9, { getInt64(0), getInt32(0), getInt32(0) });
+  auto* V_16 = CreateAnd(arg_3, getInt32(65535));
+  auto* V_17 = CreateShl(arg_4, getInt32(16));
+  auto* V_18 = CreateAnd(V_17, getInt32(16711680));
+  auto* V_19 = CreateShl(arg_5, getInt32(24));
+  auto* V_20 = CreateAnd(V_19, getInt32(2130706432));
+  auto* V_21 = CreateOr(V_18, V_16);
+  auto* V_22 = CreateOr(V_21, V_20);
+  auto* V_23 = CreateOr(V_22, V_12);
+  CreateStore(V_23, V_15);
+  auto* V_24 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2), getInt32(7) });
+  CreateStore(getInt32(0), V_24);
+  auto* V_25 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2), getInt32(8) });
+  CreateStore(getInt32(0), V_25);
+  auto* V_26 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2), getInt32(9) });
+  CreateStore(ConstantFP::get(*Ctx.getLLVMContext(), APFloat(APFloat::IEEEsingle(), APInt(32, 0x0))), V_26);
+  auto* V_27 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(0) });
+  CreateStore(arg_6, V_27);
+  auto* V_28 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(3) });
+  CreateStore(getInt32(0), V_28);
+  auto* V_29 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(3) });
+  CreateStore(getInt32(0), V_29);
+  return;
 }
 
 void _emitSingleRQMemRayWrite_Xe(Value* arg_0, Value* arg_1, Value* arg_2)
@@ -1629,6 +2428,31 @@ void _emitSingleRQMemRayWrite_Xe(Value* arg_0, Value* arg_1, Value* arg_2)
   V_20->addIncoming(V_19, BB_4);
   V_20->addIncoming(V_46, BB_5);
   SetInsertPoint(_CurIP);
+}
+
+void _emitSingleRQMemRayWrite_Xe3(Value* arg_0, Value* arg_1)
+{
+  auto* V_2 = CreateGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2), getInt32(0), getInt64(0) });
+  auto* V_3 = CreateBitCast(V_2, PointerType::get(getInt8Ty(), arg_0->getType()->getPointerAddressSpace()));
+  auto* V_4 = CreateGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_1, { getInt64(0), getInt32(2), getInt32(0), getInt64(0) });
+  auto* V_5 = CreateBitCast(V_4, PointerType::get(getInt8Ty(), arg_1->getType()->getPointerAddressSpace()));
+  CreateIntrinsic(Intrinsic::memcpy, { PointerType::get(getInt8Ty(), arg_0->getType()->getPointerAddressSpace()), PointerType::get(getInt8Ty(), arg_1->getType()->getPointerAddressSpace()), getInt64Ty() }, { V_3, V_5, getInt64(32), getFalse() }, nullptr);
+  auto* V_6 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_1, { getInt64(0), getInt32(2), getInt32(0), getInt64(8) });
+  auto* V_7 = CreateBitCast(V_6, PointerType::get(getInt32Ty(), arg_1->getType()->getPointerAddressSpace()));
+  auto* V_8 = CreateLoad(getInt32Ty(), V_7);
+  auto* V_9 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_1, { getInt64(0), getInt32(2), getInt32(0), getInt64(9) });
+  auto* V_10 = CreateBitCast(V_9, PointerType::get(getInt32Ty(), arg_1->getType()->getPointerAddressSpace()));
+  auto* V_11 = CreateLoad(getInt32Ty(), V_10);
+  auto* V_12 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_1, { getInt64(0), getInt32(2), getInt32(0), getInt64(12) });
+  auto* V_13 = CreateBitCast(V_12, PointerType::get(getInt32Ty(), arg_1->getType()->getPointerAddressSpace()));
+  auto* V_14 = CreateLoad(getInt32Ty(), V_13);
+  auto* V_15 = CreateInsertElement(ConstantVector::get({ UndefValue::get(getInt32Ty()), UndefValue::get(getInt32Ty()), getInt32(0), getInt32(0), UndefValue::get(getInt32Ty()), getInt32(0), getInt32(0), getInt32(0) }), V_8, getInt64(0));
+  auto* V_16 = CreateInsertElement(V_15, V_11, getInt64(1));
+  auto* V_17 = CreateInsertElement(V_16, V_14, getInt64(4));
+  auto* V_18 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(2), getInt32(0), getInt64(8) });
+  auto* V_19 = CreateBitCast(V_18, PointerType::get(IGCLLVM::FixedVectorType::get(getInt32Ty(), 8), arg_0->getType()->getPointerAddressSpace()));
+  CreateStore(V_17, V_19);
+  return;
 }
 
 void _copyMemHitInProceed_Xe(Value* arg_0, Value* arg_1, Value* arg_2)
@@ -1726,6 +2550,97 @@ void _copyMemHitInProceed_Xe(Value* arg_0, Value* arg_1, Value* arg_2)
   SetInsertPoint(_CurIP);
 }
 
+void _copyMemHitInProceed_Xe3(Value* arg_0, Value* arg_1, Value* arg_2)
+{
+  auto* BB_3 = GetInsertBlock();
+  auto* _CurIP = &*GetInsertPoint();
+  auto *_JoinBB = BB_3->splitBasicBlock(_CurIP, VALUE_NAME("_copyMemHitInProceed_Xe3.join"));
+  BB_3->getTerminator()->eraseFromParent();
+  auto* BB_4 = BasicBlock::Create(*Ctx.getLLVMContext(), VALUE_NAME("_copyMemHitInProceed_Xe3."), _JoinBB->getParent(), _JoinBB);
+  auto* BB_5 = BasicBlock::Create(*Ctx.getLLVMContext(), VALUE_NAME("_copyMemHitInProceed_Xe3."), _JoinBB->getParent(), _JoinBB);
+  auto* BB_6 = BasicBlock::Create(*Ctx.getLLVMContext(), VALUE_NAME("_copyMemHitInProceed_Xe3."), _JoinBB->getParent(), _JoinBB);
+  SetInsertPoint(BB_3);
+  auto* V_7 = CreateBitCast(arg_1, PointerType::get(getInt32Ty(), arg_1->getType()->getPointerAddressSpace()));
+  CreateCondBr(arg_2, BB_4, BB_5);
+  SetInsertPoint(BB_4);
+  auto* V_8 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_1, { getInt64(0), getInt32(0), getInt32(3) });
+  auto* V_9 = CreateLoad(getInt32Ty(), V_8);
+  auto* V_10 = CreateInsertElement(ConstantVector::get({ getInt32(0), getInt32(0), getInt32(0), UndefValue::get(getInt32Ty()), getInt32(0), getInt32(0), getInt32(0), getInt32(0) }), V_9, getInt64(3));
+  auto* V_11 = CreateBitCast(arg_0, PointerType::get(IGCLLVM::FixedVectorType::get(getInt32Ty(), 8), arg_0->getType()->getPointerAddressSpace()));
+  CreateStore(V_10, V_11);
+  auto* V_12 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_1, { getInt64(0), getInt32(1) });
+  auto* V_13 = CreateBitCast(V_12, PointerType::get(getInt32Ty(), arg_1->getType()->getPointerAddressSpace()));
+  auto* V_14 = CreateLoad(getInt32Ty(), V_13);
+  auto* V_15 = CreateInsertElement(ConstantVector::get({ UndefValue::get(getInt32Ty()), getInt32(0), getInt32(0), UndefValue::get(getInt32Ty()), getInt32(0), getInt32(0), getInt32(0), getInt32(0) }), V_14, getInt64(0));
+  CreateBr(BB_6);
+  SetInsertPoint(BB_6);
+  auto* V_16 = CreatePHI(IGCLLVM::FixedVectorType::get(getInt32Ty(), 8), 2);
+  auto* V_17 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_1, { getInt64(0), getInt32(1), getInt32(3) });
+  auto* V_18 = CreateLoad(getInt32Ty(), V_17);
+  auto* V_19 = CreateOr(V_18, getInt32(268435456));
+  auto* V_20 = CreateInsertElement(V_16, V_19, getInt64(3));
+  auto* V_21 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1) });
+  auto* V_22 = CreateBitCast(V_21, PointerType::get(IGCLLVM::FixedVectorType::get(getInt32Ty(), 8), arg_0->getType()->getPointerAddressSpace()));
+  CreateStore(V_20, V_22);
+  CreateBr(_JoinBB);
+  SetInsertPoint(BB_5);
+  auto* V_23 = CreateLoad(getInt32Ty(), V_7);
+  auto* V_24 = CreateInsertElement(UndefValue::get(IGCLLVM::FixedVectorType::get(getInt32Ty(), 8)), V_23, getInt64(0));
+  auto* V_25 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_1, { getInt64(0), getInt32(0), getInt32(1) });
+  auto* V_26 = CreateLoad(getInt32Ty(), V_25);
+  auto* V_27 = CreateInsertElement(V_24, V_26, getInt64(1));
+  auto* V_28 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_1, { getInt64(0), getInt32(0), getInt32(2) });
+  auto* V_29 = CreateLoad(getInt32Ty(), V_28);
+  auto* V_30 = CreateInsertElement(V_27, V_29, getInt64(2));
+  auto* V_31 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_1, { getInt64(0), getInt32(0), getInt32(4) });
+  auto* V_32 = CreateBitCast(V_31, PointerType::get(getInt32Ty(), arg_1->getType()->getPointerAddressSpace()));
+  auto* V_33 = CreateLoad(getInt32Ty(), V_32);
+  auto* V_34 = CreateInsertElement(V_30, V_33, getInt64(4));
+  auto* V_35 = CreateInBoundsGEP(getInt32Ty(), V_7, getInt64(5));
+  auto* V_36 = CreateLoad(getInt32Ty(), V_35);
+  auto* V_37 = CreateInsertElement(V_34, V_36, getInt64(5));
+  auto* V_38 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_1, { getInt64(0), getInt32(0), getInt32(5) });
+  auto* V_39 = CreateBitCast(V_38, PointerType::get(getInt32Ty(), arg_1->getType()->getPointerAddressSpace()));
+  auto* V_40 = CreateLoad(getInt32Ty(), V_39);
+  auto* V_41 = CreateInsertElement(V_37, V_40, getInt64(6));
+  auto* V_42 = CreateInBoundsGEP(getInt32Ty(), V_7, getInt64(7));
+  auto* V_43 = CreateLoad(getInt32Ty(), V_42);
+  auto* V_44 = CreateInsertElement(V_41, V_43, getInt64(7));
+  auto* V_45 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_1, { getInt64(0), getInt32(0), getInt32(3) });
+  auto* V_46 = CreateLoad(getInt32Ty(), V_45);
+  auto* V_47 = CreateInsertElement(V_44, V_46, getInt64(3));
+  auto* V_48 = CreateBitCast(arg_0, PointerType::get(IGCLLVM::FixedVectorType::get(getInt32Ty(), 8), arg_0->getType()->getPointerAddressSpace()));
+  CreateStore(V_47, V_48);
+  auto* V_49 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_1, { getInt64(0), getInt32(1) });
+  auto* V_50 = CreateBitCast(V_49, PointerType::get(getInt32Ty(), arg_1->getType()->getPointerAddressSpace()));
+  auto* V_51 = CreateLoad(getInt32Ty(), V_50);
+  auto* V_52 = CreateInsertElement(UndefValue::get(IGCLLVM::FixedVectorType::get(getInt32Ty(), 8)), V_51, getInt64(0));
+  auto* V_53 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_1, { getInt64(0), getInt32(1), getInt32(1) });
+  auto* V_54 = CreateLoad(getInt32Ty(), V_53);
+  auto* V_55 = CreateInsertElement(V_52, V_54, getInt64(1));
+  auto* V_56 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_1, { getInt64(0), getInt32(1), getInt32(2) });
+  auto* V_57 = CreateLoad(getInt32Ty(), V_56);
+  auto* V_58 = CreateInsertElement(V_55, V_57, getInt64(2));
+  auto* V_59 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_1, { getInt64(0), getInt32(1), getInt32(4) });
+  auto* V_60 = CreateBitCast(V_59, PointerType::get(getInt32Ty(), arg_1->getType()->getPointerAddressSpace()));
+  auto* V_61 = CreateLoad(getInt32Ty(), V_60);
+  auto* V_62 = CreateInsertElement(V_58, V_61, getInt64(4));
+  auto* V_63 = CreateInBoundsGEP(getInt32Ty(), V_50, getInt64(5));
+  auto* V_64 = CreateLoad(getInt32Ty(), V_63);
+  auto* V_65 = CreateInsertElement(V_62, V_64, getInt64(5));
+  auto* V_66 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_1, { getInt64(0), getInt32(1), getInt32(5) });
+  auto* V_67 = CreateBitCast(V_66, PointerType::get(getInt32Ty(), arg_1->getType()->getPointerAddressSpace()));
+  auto* V_68 = CreateLoad(getInt32Ty(), V_67);
+  auto* V_69 = CreateInsertElement(V_65, V_68, getInt64(6));
+  auto* V_70 = CreateInBoundsGEP(getInt32Ty(), V_50, getInt64(7));
+  auto* V_71 = CreateLoad(getInt32Ty(), V_70);
+  auto* V_72 = CreateInsertElement(V_69, V_71, getInt64(7));
+  CreateBr(BB_6);
+  V_16->addIncoming(V_15, BB_4);
+  V_16->addIncoming(V_72, BB_5);
+  SetInsertPoint(_CurIP);
+}
+
 auto* _syncStackToShadowMemory_Xe(Value* arg_0, Value* arg_1, Value* arg_2, Value* arg_3, const Twine& _ReturnName = "")
 {
   auto* BB_4 = GetInsertBlock();
@@ -1811,6 +2726,91 @@ auto* _syncStackToShadowMemory_Xe(Value* arg_0, Value* arg_1, Value* arg_2, Valu
   return V_52;
 }
 
+auto* _syncStackToShadowMemory_Xe3(Value* arg_0, Value* arg_1, Value* arg_2, Value* arg_3, const Twine& _ReturnName = "")
+{
+  auto* BB_4 = GetInsertBlock();
+  auto* _CurIP = &*GetInsertPoint();
+  auto *_JoinBB = BB_4->splitBasicBlock(_CurIP, VALUE_NAME("_syncStackToShadowMemory_Xe3.join"));
+  BB_4->getTerminator()->eraseFromParent();
+  auto* BB_5 = BasicBlock::Create(*Ctx.getLLVMContext(), VALUE_NAME("_syncStackToShadowMemory_Xe3."), _JoinBB->getParent(), _JoinBB);
+  auto* BB_6 = BasicBlock::Create(*Ctx.getLLVMContext(), VALUE_NAME("_syncStackToShadowMemory_Xe3."), _JoinBB->getParent(), _JoinBB);
+  auto* BB_7 = BasicBlock::Create(*Ctx.getLLVMContext(), VALUE_NAME("_syncStackToShadowMemory_Xe3."), _JoinBB->getParent(), _JoinBB);
+  auto* BB_8 = BasicBlock::Create(*Ctx.getLLVMContext(), VALUE_NAME("_syncStackToShadowMemory_Xe3."), _JoinBB->getParent(), _JoinBB);
+  auto* BB_9 = BasicBlock::Create(*Ctx.getLLVMContext(), VALUE_NAME("_syncStackToShadowMemory_Xe3."), _JoinBB->getParent(), _JoinBB);
+  auto* BB_10 = BasicBlock::Create(*Ctx.getLLVMContext(), VALUE_NAME("_syncStackToShadowMemory_Xe3."), _JoinBB->getParent(), _JoinBB);
+  SetInsertPoint(BB_4);
+  auto* V_11 = CreateBitCast(arg_1, PointerType::get(getInt8Ty(), arg_1->getType()->getPointerAddressSpace()));
+  auto* V_12 = CreateBitCast(arg_0, PointerType::get(getInt8Ty(), arg_0->getType()->getPointerAddressSpace()));
+  auto* V_13 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_1, { getInt64(0), getInt32(1), getInt32(3) });
+  auto* V_14 = CreateLoad(getInt32Ty(), V_13);
+  auto* V_15 = CreateAnd(V_14, getInt32(268435456));
+  auto* V_16 = CreateICmpEQ(V_15, getInt32(0));
+  CreateCondBr(V_16, BB_5, BB_10);
+  SetInsertPoint(BB_5);
+  createReadSyncTraceRay(arg_2);
+  CreateStore(getInt32(3), arg_3);
+  auto* V_17 = CreateGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_1, { getInt64(0), getInt32(1), getInt32(0) });
+  auto* V_18 = CreateBitCast(V_17, PointerType::get(getInt8Ty(), arg_1->getType()->getPointerAddressSpace()));
+  auto* V_19 = CreateGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(0) });
+  auto* V_20 = CreateBitCast(V_19, PointerType::get(getInt8Ty(), arg_0->getType()->getPointerAddressSpace()));
+  CreateIntrinsic(Intrinsic::memcpy, { PointerType::get(getInt8Ty(), arg_1->getType()->getPointerAddressSpace()), PointerType::get(getInt8Ty(), arg_0->getType()->getPointerAddressSpace()), getInt64Ty() }, { V_18, V_20, getInt64(32), getFalse() }, nullptr);
+  auto* V_21 = CreateGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_1, { getInt64(0), getInt32(3), getInt32(0), getInt64(0) });
+  auto* V_22 = CreateBitCast(V_21, PointerType::get(getInt8Ty(), arg_1->getType()->getPointerAddressSpace()));
+  auto* V_23 = CreateGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(3), getInt32(0), getInt64(0) });
+  auto* V_24 = CreateBitCast(V_23, PointerType::get(getInt8Ty(), arg_0->getType()->getPointerAddressSpace()));
+  CreateIntrinsic(Intrinsic::memcpy, { PointerType::get(getInt8Ty(), arg_1->getType()->getPointerAddressSpace()), PointerType::get(getInt8Ty(), arg_0->getType()->getPointerAddressSpace()), getInt64Ty() }, { V_22, V_24, getInt64(24), getFalse() }, nullptr);
+  auto* V_25 = isRayQueryReturnOptimizationEnabled();
+  CreateCondBr(V_25, BB_6, BB_7);
+  SetInsertPoint(BB_6);
+  auto* V_26 = CreateLoad(getInt32Ty(), V_13);
+  auto* V_27 = CreateShl(arg_2, getInt32(28));
+  auto* V_28 = CreateAnd(V_27, getInt32(268435456));
+  auto* V_29 = CreateAnd(V_26, getInt32(4025614335));
+  auto* V_30 = CreateAnd(arg_2, getInt32(8));
+  auto* V_31 = CreateICmpEQ(V_30, getInt32(0));
+  auto* V_32 = CreateSelect(V_31, getInt32(524288), getInt32(393216));
+  auto* V_33 = CreateOr(V_32, V_28);
+  auto* V_34 = CreateOr(V_33, V_29);
+  auto* V_35 = CreateXor(V_34, getInt32(268435456));
+  CreateStore(V_35, V_13);
+  auto* V_36 = CreateAnd(arg_2, getInt32(6));
+  auto* V_37 = CreateICmpEQ(V_36, getInt32(0));
+  auto* V_38 = CreateICmpNE(V_28, getInt32(0));
+  CreateCondBr(V_37, BB_10, BB_9);
+  SetInsertPoint(BB_9);
+  CreateIntrinsic(Intrinsic::memcpy, { PointerType::get(getInt8Ty(), arg_1->getType()->getPointerAddressSpace()), PointerType::get(getInt8Ty(), arg_0->getType()->getPointerAddressSpace()), getInt64Ty() }, { V_11, V_12, getInt64(32), getFalse() }, nullptr);
+  auto* V_39 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_1, { getInt64(0), getInt32(0), getInt32(3) });
+  auto* V_40 = CreateLoad(getInt32Ty(), V_39);
+  auto* V_41 = CreateICmpEQ(V_36, getInt32(2));
+  auto* V_42 = CreateAnd(V_40, getInt32(4293984255));
+  auto* V_43 = CreateSelect(V_41, getInt32(589824), getInt32(458752));
+  auto* V_44 = CreateOr(V_42, V_43);
+  CreateStore(V_44, V_39);
+  CreateBr(BB_10);
+  SetInsertPoint(BB_7);
+  auto* V_45 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(3) });
+  auto* V_46 = CreateLoad(getInt32Ty(), V_45);
+  auto* V_47 = CreateAnd(V_46, getInt32(65536));
+  auto* V_48 = CreateLoad(getInt32Ty(), V_13);
+  auto* V_49 = CreateICmpEQ(V_47, getInt32(0));
+  auto* V_50 = CreateAnd(V_48, getInt32(268435456));
+  auto* V_51 = CreateICmpEQ(V_50, getInt32(0));
+  CreateCondBr(V_49, BB_10, BB_8);
+  SetInsertPoint(BB_8);
+  CreateIntrinsic(Intrinsic::memcpy, { PointerType::get(getInt8Ty(), arg_1->getType()->getPointerAddressSpace()), PointerType::get(getInt8Ty(), arg_0->getType()->getPointerAddressSpace()), getInt64Ty() }, { V_11, V_12, getInt64(32), getFalse() }, nullptr);
+  CreateBr(BB_10);
+  SetInsertPoint(BB_10);
+  auto* V_52 = CreatePHI(getInt1Ty(), 5, _ReturnName);
+  CreateBr(_JoinBB);
+  V_52->addIncoming(V_38, BB_9);
+  V_52->addIncoming(V_38, BB_6);
+  V_52->addIncoming(getFalse(), BB_4);
+  V_52->addIncoming(V_51, BB_7);
+  V_52->addIncoming(V_51, BB_8);
+  SetInsertPoint(_CurIP);
+  return V_52;
+}
+
 auto* _getCommittedStatus_Xe(Value* arg_0, const Twine& _ReturnName = "")
 {
   auto* V_1 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(3) });
@@ -1824,9 +2824,31 @@ auto* _getCommittedStatus_Xe(Value* arg_0, const Twine& _ReturnName = "")
   return V_8;
 }
 
+auto* _getCommittedStatus_Xe3(Value* arg_0, const Twine& _ReturnName = "")
+{
+  auto* V_1 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(3) });
+  auto* V_2 = CreateLoad(getInt32Ty(), V_1);
+  auto* V_3 = CreateLShr(V_2, getInt32(17));
+  auto* V_4 = CreateAnd(V_3, getInt32(1));
+  auto* V_5 = CreateAdd(V_4, getInt32(1));
+  auto* V_6 = CreateAnd(V_2, getInt32(65536));
+  auto* V_7 = CreateICmpEQ(V_6, getInt32(0));
+  auto* V_8 = CreateSelect(V_7, getInt32(0), V_5, _ReturnName);
+  return V_8;
+}
+
 auto* _getCandidateType_Xe(Value* arg_0, const Twine& _ReturnName = "")
 {
   auto* V_1 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(3) });
+  auto* V_2 = CreateLoad(getInt32Ty(), V_1);
+  auto* V_3 = CreateLShr(V_2, getInt32(17));
+  auto* V_4 = CreateAnd(V_3, getInt32(1), _ReturnName);
+  return V_4;
+}
+
+auto* _getCandidateType_Xe3(Value* arg_0, const Twine& _ReturnName = "")
+{
+  auto* V_1 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(3) });
   auto* V_2 = CreateLoad(getInt32Ty(), V_1);
   auto* V_3 = CreateLShr(V_2, getInt32(17));
   auto* V_4 = CreateAnd(V_3, getInt32(1), _ReturnName);
@@ -1859,6 +2881,37 @@ void _commitProceduralPrimitiveHit_Xe(Value* arg_0, Value* arg_1)
   auto* V_16 = CreateLoad(getInt64Ty(), V_15);
   auto* V_17 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(5) });
   CreateStore(V_16, V_17);
+  return;
+}
+
+void _commitProceduralPrimitiveHit_Xe3(Value* arg_0, Value* arg_1)
+{
+  auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(0) });
+  CreateStore(arg_1, V_2);
+  auto* V_3 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(0) });
+  CreateStore(arg_1, V_3);
+  auto* V_4 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(1) });
+  CreateStore(getInt32(0), V_4);
+  auto* V_5 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(2) });
+  CreateStore(getInt32(0), V_5);
+  auto* V_6 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(3) });
+  auto* V_7 = CreateLoad(getInt32Ty(), V_6);
+  auto* V_8 = CreateOr(V_7, getInt32(65536));
+  CreateStore(V_8, V_6);
+  auto* V_9 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(3) });
+  auto* V_10 = CreateLoad(getInt32Ty(), V_9);
+  auto* V_11 = CreateOr(V_10, getInt32(65536));
+  CreateStore(V_11, V_9);
+  auto* V_12 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(4) });
+  auto* V_13 = CreateLoad(getInt64Ty(), V_12);
+  auto* V_14 = CreateAnd(V_13, getInt64(18446744073709551552u));
+  auto* V_15 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(4) });
+  CreateStore(V_14, V_15);
+  auto* V_16 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1), getInt32(5) });
+  auto* V_17 = CreateLoad(getInt64Ty(), V_16);
+  auto* V_18 = CreateAnd(V_17, getInt64(18446744073709551552u));
+  auto* V_19 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0), getInt32(5) });
+  CreateStore(V_18, V_19);
   return;
 }
 
@@ -1905,10 +2958,31 @@ auto* _getSyncStackID_Xe2(const Twine& _ReturnName = "")
   return V_6;
 }
 
+auto* _getSyncStackID_Xe3(const Twine& _ReturnName = "")
+{
+  auto* V_0 = getSr0_0();
+  auto* V_1 = get32BitLaneIDReplicate();
+  auto* V_2 = CreateShl(V_0, getInt32(4));
+  auto* V_3 = CreateAnd(V_2, getInt32(1792));
+  auto* V_4 = CreateAnd(V_2, getInt32(240));
+  auto* V_5 = CreateOr(V_4, V_1);
+  auto* V_6 = CreateOr(V_5, V_3, _ReturnName);
+  return V_6;
+}
+
 auto* _getHitAddress_Xe(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
 {
   auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0) });
   auto* V_3 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1) });
+  auto* V_4 = CreateSelect(arg_1, V_2, V_3);
+  auto* V_5 = CreateBitCast(V_4, PointerType::get(getInt8Ty(), arg_0->getType()->getPointerAddressSpace()), _ReturnName);
+  return V_5;
+}
+
+auto* _getHitAddress_Xe3(Value* arg_0, Value* arg_1, const Twine& _ReturnName = "")
+{
+  auto* V_2 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(0) });
+  auto* V_3 = CreateInBoundsGEP(_struct_RTStackFormat__RTStack_8(*Ctx.getModule()), arg_0, { getInt64(0), getInt32(1) });
   auto* V_4 = CreateSelect(arg_1, V_2, V_3);
   auto* V_5 = CreateBitCast(V_4, PointerType::get(getInt8Ty(), arg_0->getType()->getPointerAddressSpace()), _ReturnName);
   return V_5;

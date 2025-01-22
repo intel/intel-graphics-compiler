@@ -749,6 +749,16 @@ typedef enum __NATIVEGTTYPE
 #define DEV_ID_0B69                            0x0B69
 #define DEV_ID_0B6E                            0x0B6E
 
+// PTL
+#define DEV_ID_B080                             0xB080
+#define DEV_ID_B081                             0xB081
+#define DEV_ID_B082                             0xB082
+#define DEV_ID_B083                             0xB083
+#define DEV_ID_B08F                             0xB08F
+#define DEV_ID_B090                             0xB090
+#define DEV_ID_B0A0                             0xB0A0
+#define DEV_ID_B0B0                             0xB0B0
+
 #define GFX_IS_DG2_G11_CONFIG(d) ( ( d == DEV_ID_56A5 )             ||   \
                                  ( d == DEV_ID_56A6 )             ||   \
                                  ( d == DEV_ID_5693 )             ||   \

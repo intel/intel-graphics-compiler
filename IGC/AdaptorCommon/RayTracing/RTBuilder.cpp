@@ -35,7 +35,6 @@ SPDX-License-Identifier: MIT
 #include <optional>
 
 
-
 using namespace llvm;
 using namespace RTStackFormat;
 using namespace IGC;
@@ -122,6 +121,8 @@ Value* RTBuilder::getMaxBVHLevels(void)
     {
     case RTMemoryStyle::Xe:
         return _get_maxBVHLevels_Xe(VALUE_NAME("maxBVHLevels"));
+    case RTMemoryStyle::Xe3:
+        return _get_maxBVHLevels_Xe3(VALUE_NAME("maxBVHLevels"));
     }
     IGC_ASSERT(0);
     return {};
@@ -1463,6 +1464,21 @@ Value* RTBuilder::getLeafType(
 
 
 
+Value* RTBuilder::getLeafNodeSubType(StackPointerVal* StackPointer, bool CommittedHit)
+{
+    switch (getMemoryStyle())
+    {
+    case RTMemoryStyle::Xe:
+        return this->getInt32(0);
+
+    case RTMemoryStyle::Xe3:
+        return _getLeafNodeSubType_Xe3(StackPointer, getInt1(CommittedHit),
+            VALUE_NAME("MemHit.LeafNodeSubType"));
+
+    }
+    IGC_ASSERT(0);
+    return nullptr;
+}
 
 
 CallInst* RTBuilder::CreateLSCFence(
@@ -1502,6 +1518,9 @@ Value* RTBuilder::canonizePointer(Value* Ptr)
     {
     case RTMemoryStyle::Xe:
         VA_MSB = 48 - 1;
+        break;
+    case RTMemoryStyle::Xe3:
+        VA_MSB = 57 - 1;
         break;
     }
     constexpr uint32_t MSB = 63;
@@ -1576,6 +1595,10 @@ Value* RTBuilder::getSyncStackID()
              PlatformInfo.eProductFamily == IGFX_LUNARLAKE)
     {
         return _getSyncStackID_Xe2(VALUE_NAME("SyncStackID"));
+    }
+    else if (PlatformInfo.eRenderCoreFamily == IGFX_XE3_CORE)
+    {
+        return _getSyncStackID_Xe3(VALUE_NAME("SyncStackID"));
     }
     else
     {
@@ -1919,6 +1942,16 @@ void RTBuilder::createTraceRayInlinePrologue(
             ComparisonValue,
             TMax);
         break;
+    case RTMemoryStyle::Xe3:
+        _createTraceRayInlinePrologue_Xe3(
+            StackPtr,
+            RayInfo,
+            RootNodePtr,
+            RayFlags,
+            InstanceInclusionMask,
+            ComparisonValue,
+            TMax);
+        break;
     }
 }
 
@@ -1935,6 +1968,11 @@ void RTBuilder::emitSingleRQMemRayWrite(
             SMStackPtr,
             VAdapt{ *this, singleRQProceed });
         break;
+    case RTMemoryStyle::Xe3:
+        _emitSingleRQMemRayWrite_Xe3(
+            HWStackPtr,
+            SMStackPtr);
+        break;
     }
 }
 
@@ -1947,6 +1985,12 @@ void RTBuilder::copyMemHitInProceed(
     {
     case RTMemoryStyle::Xe:
         _copyMemHitInProceed_Xe(
+            HWStackPtr,
+            SMStackPtr,
+            VAdapt{ *this, singleRQProceed });
+        break;
+    case RTMemoryStyle::Xe3:
+        _copyMemHitInProceed_Xe3(
             HWStackPtr,
             SMStackPtr,
             VAdapt{ *this, singleRQProceed });

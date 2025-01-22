@@ -14,6 +14,7 @@ namespace IGC
     {
         // This should be in sync with RayTracingMemoryStyle.h!
         Xe,
+        Xe3,
     };
 
     enum class RayDispatchInlinedDataStyle

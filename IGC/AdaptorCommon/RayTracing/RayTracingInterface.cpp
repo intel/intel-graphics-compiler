@@ -125,6 +125,10 @@ static void setupRTMemoryStyle(CodeGenContext* pContext)
 
     rtInfo.MemStyle = RTMemoryStyle::Xe;
 
+    if (pContext->bvhInfo.uses64Bit)
+    {
+        rtInfo.MemStyle = RTMemoryStyle::Xe3;
+    }
 }
 
 
