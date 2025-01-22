@@ -51,6 +51,7 @@ namespace IGC {
     // it is required for correct work of LiveVariables analysis and other
     static void ProcessDbgValueInst(BasicBlock& blk, DominatorTree *DT)
     {
+        llvm::DenseMap<Instruction *, Instruction *> PositionMap;
         for (auto I = blk.rbegin(), E = blk.rend(); I != E; ++I)
         {
             Instruction* inst = cast<Instruction>(&*I);
@@ -65,18 +66,15 @@ namespace IGC {
                     {
                         if (!DT->dominates(def, inst))
                         {
-                            auto* instClone = inst->clone();
                             if (isa<PHINode>(def)) {
                                 // If the instruction is a PHI node, insert the new instruction at the beginning of the block.
-                                instClone->insertBefore(&*def->getParent()->getFirstInsertionPt());
+                                PositionMap[inst] = &*def->getParent()->getFirstInsertionPt();
                             }
                             else {
                                 // Otherwise, insert the new instruction after the defining instruction.
-                                instClone->insertAfter(def);
+                                PositionMap[inst] = def->getNextNonDebugInstruction();
+                                IGC_ASSERT(!isa<BranchInst>(def));
                             }
-                            Value* undef = UndefValue::get(def->getType());
-                            MetadataAsValue* MAV = MetadataAsValue::get(inst->getContext(), ValueAsMetadata::get(undef));
-                            cast<CallInst>(inst)->setArgOperand(0, MAV);
                         }
                     }
                 }
@@ -88,6 +86,9 @@ namespace IGC {
                     cast<CallInst>(inst)->setArgOperand(0, MAV);
                 }
             }
+        }
+        for (auto &[I, Pos] : PositionMap) {
+            I->moveBefore(Pos);
         }
     }
 
