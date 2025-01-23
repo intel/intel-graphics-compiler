@@ -12,17 +12,32 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/AliasAnalysis.h"
 #include <llvm/Analysis/AliasSetTracker.h>
 
-namespace IGCLLVM
-{
-  llvm::AliasSetTracker createAliasSetTracker(llvm::AliasAnalysis *aliasAnalysis)
-  {
-#if LLVM_VERSION_MAJOR < 16
-    return llvm::AliasSetTracker(*aliasAnalysis);
-#else
-    llvm::BatchAAResults batchAAResult(*aliasAnalysis);
-    return llvm::AliasSetTracker(batchAAResult);
-#endif
-  }
+namespace IGCLLVM {
+  namespace AliasAnalysis {
+      #if LLVM_VERSION_MAJOR < 16
+        using BatchAAResults = llvm::AliasAnalysis*;
+      #else
+        using BatchAAResults = llvm::BatchAAResults;
+      #endif
+
+      BatchAAResults createAAresults(llvm::AliasAnalysis* AA)
+      {
+        #if LLVM_VERSION_MAJOR < 16
+          return AA;
+        #else
+          return llvm::BatchAAResults(*AA);
+        #endif
+      }
+    } // end namespace AliasAnalysis
+
+    llvm::AliasSetTracker createAliasSetTracker(AliasAnalysis::BatchAAResults AARes)
+    {
+      #if LLVM_VERSION_MAJOR < 16
+        return llvm::AliasSetTracker(*AARes);
+      #else
+        return llvm::AliasSetTracker(AARes);
+      #endif
+    }
 }
 
 #endif
