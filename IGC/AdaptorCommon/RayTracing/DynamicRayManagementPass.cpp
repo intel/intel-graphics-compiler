@@ -115,15 +115,24 @@ bool DynamicRayManagementPass::runOnFunction(Function& F)
 
     bool changed = false;
 
+    bool hasDiscard = llvm::any_of(
+        instructions(F),
+        [](auto& I) {
+            return isDiscardInstruction(&I);
+        }
+    );
+
     // Dot not process further if:
     // 1. RayTracing is not supported on this platform.
     // 2. Shader does not use RayQuery at all.
     // 3. There are more than 1 exit block.
     // 4. RayQuery needs splitting due to forced SIMD32
+    // 5. Shader has discards
     if ((m_CGCtx->platform.supportRayTracing() == false) ||
         (!m_CGCtx->hasSyncRTCalls()) ||
         (getNumberOfExitBlocks(F) > 1) ||
-        m_CGCtx->syncRTCallsNeedSplitting())
+        m_CGCtx->syncRTCallsNeedSplitting() ||
+        hasDiscard)
     {
         return false;
     }
