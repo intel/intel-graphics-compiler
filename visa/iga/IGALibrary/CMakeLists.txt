@@ -384,7 +384,7 @@ endif(ANDROID AND MEDIA_IGA)
 
   if(IGC_BUILD)
     set_target_properties(IGA_DLL PROPERTIES
-                          VERSION "${IGC_API_MAJOR_VERSION}.${IGC_API_MINOR_VERSION}.${IGC_API_PATCH_VERSION}"
+                          VERSION "${IGC_API_MAJOR_VERSION}.${IGC_API_MINOR_VERSION}.${IGC_API_PATCH_VERSION}+${IGC_BUILD_METADATA}"
                           SOVERSION "${IGC_API_MAJOR_VERSION}")
   endif()
 

@@ -1838,7 +1838,7 @@ if (FCL_ENABLED)
   endif()
   set_target_properties("${IGC_BUILD__PROJ__fcl_dll}" PROPERTIES OUTPUT_NAME "${FCL_LIBRARY_NAME}${_cpuSuffix}")
   set_target_properties("${IGC_BUILD__PROJ__fcl_dll}" PROPERTIES
-                        VERSION "${IGC_API_MAJOR_VERSION}.${IGC_API_MINOR_VERSION}.${IGC_API_PATCH_VERSION}"
+                        VERSION "${IGC_API_MAJOR_VERSION}.${IGC_API_MINOR_VERSION}.${IGC_API_PATCH_VERSION}+${IGC_BUILD_METADATA}"
                         SOVERSION "${IGC_API_MAJOR_VERSION}")
   unset(_cpuSuffix)
 endif()
