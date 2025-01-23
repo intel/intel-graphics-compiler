@@ -556,7 +556,7 @@ DEF_VISA_OPTION(vISA_has4DeepSystolic, ET_BOOL, "-has4DeepSystolic", UNUSED,
                 false)
 
 DEF_VISA_OPTION(vISA_PVCSendWARWA, ET_BOOL_TRUE, "-PVCSendWARWA",
-                "enable Send WAR walkaround for PVC", true)
+                "enable Send WAR walkaround for PVC", false)
 DEF_VISA_OPTION(vISA_SWSBMakeLocalWAR, ET_BOOL_TRUE, "-SWSBMakeLocalWAR",
                 "Enable WAR Sync at the end of BB", false)
 DEF_VISA_OPTION(vISA_SWSBReplaceARWithAW, ET_BOOL_TRUE, "-SWSBReplaceARWithAW",
