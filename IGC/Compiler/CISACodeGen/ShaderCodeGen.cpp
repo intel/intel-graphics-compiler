@@ -653,13 +653,6 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
             mpm.add(createPromoteMemoryToRegisterPass());
     }
 
-    // There's no particular reason for this exact place, but it should be after LowerGEPForPrivMem
-    if (IGC_IS_FLAG_ENABLED(EnableSplitIndirectEEtoSel))
-    {
-        mpm.add(createSplitIndirectEEtoSelPass());
-    }
-
-
     if (ctx.type == ShaderType::OPENCL_SHADER ||
         ctx.type == ShaderType::COMPUTE_SHADER)
     {
@@ -779,6 +772,8 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
 
         mpm.add(createIGCInstructionCombiningPass());
     }
+
+
 
     if (ctx.hasSyncRTCalls())
     {
