@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2023 Intel Corporation
+Copyright (C) 2020-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -189,6 +189,9 @@ struct GenXBackendOptions {
   uint64_t AsmHash = 0;
 
   bool EnableCostModel = false;
+
+  unsigned DepressurizerGRFThreshold = 2560;
+  unsigned DepressurizerFlagGRFTolerance = 3840;
 
   // Calling enforceLLVMOptions queries the state of LLVM options and
   // updates BackendOptions accordingly.
@@ -396,6 +399,13 @@ public:
   bool isCostModelEnabled() const { return Options.EnableCostModel; }
 
   vc::BinaryKind getBinaryFormat() const { return Options.Binary; }
+
+  unsigned getDepressurizerGRFThreshold() const {
+    return Options.DepressurizerGRFThreshold;
+  }
+  unsigned getDepressurizerFlagGRFTolerance() const {
+    return Options.DepressurizerFlagGRFTolerance;
+  }
 };
 
 class GenXBackendConfig : public ImmutablePass, public GenXBackendConfigResult {

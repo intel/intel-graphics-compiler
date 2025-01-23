@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2023 Intel Corporation
+Copyright (C) 2020-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -151,6 +151,13 @@ static cl::opt<bool>
                          cl::desc("Find, report and fixup clobbered GV load "
                                   "users before coalescing happened."));
 
+static cl::opt<unsigned> DepressurizerGRFThresholdOpt(
+    "depressurizer-grf-threshold", cl::Hidden,
+    cl::desc("Threshold for GRF pressure reduction"));
+static cl::opt<unsigned> DepressurizerFlagGRFToleranceOpt(
+    "depressurizer-flag-grf-tolerance", cl::Hidden,
+    cl::desc("Threshold for disabling flag pressure reduction"));
+
 //===----------------------------------------------------------------------===//
 //
 // Backend config related stuff.
@@ -198,6 +205,8 @@ void GenXBackendOptions::enforceLLVMOptions() {
                            VCIgnoreLoopUnrollThresholdOnPragma);
   enforceOptionIfSpecified(InteropSubgroupSize, InteropSubgroupSizeOpt);
   enforceOptionIfSpecified(CheckGVClobbering, CheckGVClobberingOpt);
+  enforceOptionIfSpecified(DepressurizerGRFThreshold, DepressurizerGRFThresholdOpt);
+  enforceOptionIfSpecified(DepressurizerFlagGRFTolerance, DepressurizerFlagGRFToleranceOpt);
 }
 
 static std::unique_ptr<MemoryBuffer>

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2024 Intel Corporation
+Copyright (C) 2020-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -165,6 +165,9 @@ struct CompileOptions {
 
   bool EnableOpaquePointers = false;
   bool CollectCostInfo = false;
+
+  unsigned DepressurizerGRFThreshold = 2560;
+  unsigned DepressurizerFlagGRFTolerance = 3840;
 };
 
 struct ExternalData {

@@ -40,7 +40,6 @@ SPDX-License-Identifier: MIT
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Support/ShaderDump.h"
 #include "vc/Utils/GenX/GlobalVariable.h"
-#include "vc/Utils/GenX/GRFSize.h"
 #include "vc/Utils/GenX/Intrinsics.h"
 #include "vc/Utils/GenX/IntrinsicsWrapper.h"
 #include "vc/Utils/GenX/KernelInfo.h"
@@ -950,7 +949,19 @@ static void addKernelAttrsFromMetadata(VISAKernel &Kernel,
     Kernel.AddKernelAttribute("NBarrierCnt", sizeof(BarrierCnt), &BarrierCnt);
   }
 
-  int NumGRF = vc::getGRFSize(BC, Subtarget, KM);
+  int NumGRF = -1;
+  // Set by compile option.
+  if (BC->isAutoLargeGRFMode())
+    NumGRF = 0;
+  if (BC->getGRFSize())
+    NumGRF = BC->getGRFSize();
+  // Set by kernel metadata.
+  if (KM.getGRFSize()) {
+    unsigned NumGRFPerKernel = *KM.getGRFSize();
+    if (NumGRFPerKernel == 0 || Subtarget->isValidGRFSize(NumGRFPerKernel))
+      NumGRF = NumGRFPerKernel;
+  }
+
   if (NumGRF != -1)
     Kernel.AddKernelAttribute("NumGRF", sizeof(NumGRF), &NumGRF);
 }

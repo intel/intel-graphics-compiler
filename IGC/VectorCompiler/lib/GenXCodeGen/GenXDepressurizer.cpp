@@ -109,16 +109,11 @@ SPDX-License-Identifier: MIT
 #include "GenXIntrinsics.h"
 #include "GenXLiveness.h"
 #include "GenXModule.h"
-#include "GenXTargetMachine.h"
 #include "GenXUtil.h"
-
-#include "vc/Utils/GenX/GRFSize.h"
 
 #include "llvm/ADT/SmallSet.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/LoopInfo.h"
-#include "llvm/CodeGen/TargetPassConfig.h"
-#include "llvm/InitializePasses.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
@@ -342,8 +337,6 @@ class GenXDepressurizer : public FGPassImplInterface,
   bool Modified = false;
   GenXGroupBaling *Baling = nullptr;
   const GenXBackendConfig *BC = nullptr;
-  const GenXSubtarget *ST = nullptr;
-  const vc::KernelMetadata *KM = nullptr;
   DominatorTree *DT = nullptr;
   LoopInfoBase<BasicBlock, Loop> *LI = nullptr;
   PseudoCFG *PCFG = nullptr;
@@ -395,11 +388,10 @@ using GenXDepressurizerWrapper = FunctionGroupWrapperPass<GenXDepressurizer>;
 }
 INITIALIZE_PASS_BEGIN(GenXDepressurizerWrapper, "GenXDepressurizerWrapper",
                       "GenXDepressurizerWrapper", false, false)
-INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
-INITIALIZE_PASS_DEPENDENCY(TargetPassConfig)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeGroupWrapperPassWrapper)
 INITIALIZE_PASS_DEPENDENCY(GenXLivenessWrapper)
 INITIALIZE_PASS_DEPENDENCY(GenXGroupBalingWrapper)
+INITIALIZE_PASS_DEPENDENCY(GenXBackendConfig)
 INITIALIZE_PASS_END(GenXDepressurizerWrapper, "GenXDepressurizerWrapper",
                     "GenXDepressurizerWrapper", false, false)
 
@@ -412,13 +404,11 @@ void GenXDepressurizer::getAnalysisUsage(AnalysisUsage &AU) {
   AU.addRequired<DominatorTreeGroupWrapperPass>();
   AU.addRequired<GenXGroupBaling>();
   AU.addRequired<GenXBackendConfig>();
-  AU.addRequired<TargetPassConfig>();
   AU.addPreserved<DominatorTreeGroupWrapperPass>();
   AU.addPreserved<GenXModule>();
   AU.addPreserved<GenXLiveness>();
   AU.addPreserved<GenXGroupBaling>();
   AU.addPreserved<GenXBackendConfig>();
-  AU.addPreserved<TargetPassConfig>();
   AU.addPreserved<FunctionGroupAnalysis>();
   AU.setPreservesCFG();
 }
@@ -435,20 +425,8 @@ bool GenXDepressurizer::runOnFunctionGroup(FunctionGroup &FG) {
   SunkCount = 0;
   Baling = &getAnalysis<GenXGroupBaling>();
   BC = &getAnalysis<GenXBackendConfig>();
-  ST = &getAnalysis<TargetPassConfig>()
-            .getTM<GenXTargetMachine>()
-            .getGenXSubtarget();
-  vc::KernelMetadata KM(FG.getHead());
-  // Historically the general register pressure threshold was set to 2560 for
-  // 128*32 byte GRF case, which means that only 48 registers are left for
-  // allocation. The flag tolerance threshold was set to 3840, which means 120
-  // registers. In case of different GRF size these thresholds should be
-  // calculated accordingly.
-  unsigned RegSize = ST->getGRFByteSize();
-  int GRFSize = vc::getGRFSize(BC, ST, KM);
-  unsigned NumRegs = (GRFSize > 0 ? GRFSize : 128);
-  GRFThreshold = NumRegs > 48 ? (NumRegs - 48) * RegSize : 0;
-  FlagGRFTolerance = 120 * RegSize;
+  GRFThreshold = BC->getDepressurizerGRFThreshold();
+  FlagGRFTolerance = BC->getDepressurizerFlagGRFTolerance();
   // Process functions in the function group in reverse order, so we know the
   // max pressure in a subroutine when we see a call to it.
   for (auto fgi = FG.rbegin(), fge = FG.rend(); fgi != fge; ++fgi) {
@@ -913,8 +891,7 @@ void GenXDepressurizer::attemptSinking(Instruction *InsertBefore,
     bool IsFlag = Liveness::isFlag(Inst);
     bool IsAddr = Liveness::isAddr(Inst);
     if (!IsFlag && !IsAddr &&
-        Inst->getType()->getPrimitiveSizeInBits() <
-            ST->getGRFByteSize() * genx::ByteBits) {
+        Inst->getType()->getPrimitiveSizeInBits() < 32 * 8) {
       // don't bother with anything smaller than a GRF unless it is a flag
       continue;
     }

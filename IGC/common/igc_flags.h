@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1067,4 +1067,6 @@ DECLARE_IGC_GROUP("VectorCompiler Options")
     DECLARE_IGC_REGKEY(bool, VCDirectCallsOnly, false, "Generate code under the assumption all unknown calls are direct", true)
     DECLARE_IGC_REGKEY(DWORD, VCLoopUnrollThreshold, 0, "Set the loop unroll threshold for VC. Value 0 will use the default threshold.", true)
     DECLARE_IGC_REGKEY(bool, VCIgnoreLoopUnrollThresholdOnPragma, false, "Ignore threshold for loop unrolling when pragma is used", true)
+    DECLARE_IGC_REGKEY(DWORD, VCDepressurizerGRFThreshold, 2560, "Threshold for GRF pressure reduction", true)
+    DECLARE_IGC_REGKEY(DWORD, VCDepressurizerFlagGRFTolerance, 3840, "Threshold for disabling flag pressure reduction", true)
 

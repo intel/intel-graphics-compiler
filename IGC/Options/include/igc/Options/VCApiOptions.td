@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -96,6 +96,15 @@ def : PlainFlag<"doubleGRF">,
 def : PlainFlag<"double-GRF">,
   Alias<exp_register_file_size_common>, AliasArgs<["256"]>,
   HelpText<"Alias for -ze-opt-large-register-file">;
+
+def depressurizer_grf_threshold : PlainSeparate<"depressurizer-grf-threshold">,
+  HelpText<"Threshold for GRF pressure reduction">;
+def : PlainJoined<"depressurizer-grf-threshold=">, Alias<depressurizer_grf_threshold>,
+  HelpText<"Alias for -depressurizer-grf-threshold <value>">;
+def depressurizer_flag_grf_tolerance : PlainSeparate<"depressurizer-flag-grf-tolerance">,
+  HelpText<"Threshold for disabling flag pressure reduction">;
+def : PlainJoined<"depressurizer-flag-grf-tolerance=">, Alias<depressurizer_flag_grf_tolerance>,
+  HelpText<"Alias for -depressurizer-flag-grf-tolerance <value>">;
 }
 // }} VC API options
 

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2024 Intel Corporation
+Copyright (C) 2020-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -301,6 +301,9 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   BackendOpts.AsmHash = Opts.AsmHash;
 
   BackendOpts.EnableCostModel = Opts.CollectCostInfo;
+
+  BackendOpts.DepressurizerGRFThreshold = Opts.DepressurizerGRFThreshold;
+  BackendOpts.DepressurizerFlagGRFTolerance = Opts.DepressurizerFlagGRFTolerance;
 
   return BackendOpts;
 }
@@ -862,6 +865,21 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
     if (Val.getAsInteger(/*Radix=*/0, Result))
       return makeOptionError(*A, ApiOptions, /*IsInternal=*/false);
     Opts.StackMemSize = Result;
+  }
+
+  if (opt::Arg *A = ApiOptions.getLastArg(OPT_depressurizer_grf_threshold)) {
+    StringRef Val = A->getValue();
+    unsigned Result;
+    if (Val.getAsInteger(/*Radix=*/0, Result))
+      return makeOptionError(*A, ApiOptions, /*IsInternal=*/false);
+    Opts.DepressurizerGRFThreshold = Result;
+  }
+  if (opt::Arg *A = ApiOptions.getLastArg(OPT_depressurizer_flag_grf_tolerance)) {
+    StringRef Val = A->getValue();
+    unsigned Result;
+    if (Val.getAsInteger(/*Radix=*/0, Result))
+      return makeOptionError(*A, ApiOptions, /*IsInternal=*/false);
+    Opts.DepressurizerFlagGRFTolerance = Result;
   }
 
   return Error::success();
