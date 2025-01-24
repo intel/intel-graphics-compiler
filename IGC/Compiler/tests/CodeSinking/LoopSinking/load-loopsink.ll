@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: llvm-14-plus, regkeys
-; RUN: igc_opt --opaque-pointers --regkey CodeSinkingLoadSchedulingInstr=1 --regkey LoopSinkMinSave=1 --regkey ForceLoadsLoopSink=1 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 %enable-basic-aa% --igc-code-loop-sinking -S %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --regkey CodeSinkingLoadSchedulingInstr=1 --regkey LoopSinkMinSave=1 --regkey ForceLoadsLoopSink=1 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 --basic-aa --igc-code-loop-sinking -S %s | FileCheck %s
 define void @foo(ptr addrspace(3) %in0, ptr addrspace(3) %in1, ptr addrspace(3) noalias %out0, i32 %count, i32 %offsetIn0, i32 %offsetIn2) {
 ; CHECK-LABEL: @foo(
 ;

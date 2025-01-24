@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys, llvm-14-plus
-; RUN: igc_opt --opaque-pointers -platformpvc --regkey LoopSinkMinSave=1 --regkey LoopSinkAvoidSplittingDPAS=0 --regkey LoopSinkEnable2dBlockReads=1 --regkey LoopSinkEnableLoadsRescheduling=1 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 --regkey CodeSinkingLoadSchedulingInstr=1 --regkey LoopSinkCoarserLoadsRescheduling=0 --regkey LoopSinkEnableVectorShuffle=1 %enable-basic-aa% --igc-code-loop-sinking -S %s 2>&1 | FileCheck %s
+; RUN: igc_opt --opaque-pointers -platformpvc --regkey LoopSinkMinSave=1 --regkey LoopSinkAvoidSplittingDPAS=0 --regkey LoopSinkEnable2dBlockReads=1 --regkey LoopSinkEnableLoadsRescheduling=1 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 --regkey CodeSinkingLoadSchedulingInstr=1 --regkey LoopSinkCoarserLoadsRescheduling=0 --regkey LoopSinkEnableVectorShuffle=1 --basic-aa --igc-code-loop-sinking -S %s 2>&1 | FileCheck %s
 
 define spir_kernel void @foo(ptr addrspace(1) %_arg_A, ptr addrspace(1) %_arg_B, i16 %localIdY) {
 ; Check that the order of the first loads and SetField calls is not changed after rollback

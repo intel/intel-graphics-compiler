@@ -91,14 +91,14 @@ exitBB:
 
  ; CHECK-LABEL: define <4 x float> @f2
  ; CHECK: %1 = call <1 x float> @llvm.genx.GenISA.ldrawvector.indexed.v1f32.p2490373i8(i8 addrspace(2490373)* %0, i32 %src, i32 4, i1 false)
- ; CHECK-LLVM-14-PLUS: %2 = extractelement <1 x float> %1, {{i[0-9]+}} 0
- ; CHECK-LLVM-15-PLUS: %2 = extractelement <1 x float> %1, {{i[0-9]+}} 0
+ ; CHECK-LLVM-14: %2 = extractelement <1 x float> %1, {{i[0-9]+}} 0
+ ; CHECK-LLVM-15: %2 = extractelement <1 x float> %1, {{i[0-9]+}} 0
  ; CHECK:  br label %storeBB
  ; CHECK-LABEL: storeBB:
  ; CHECK: call void @llvm.genx.GenISA.storeraw.indexed.p2490368i8.f32(i8 addrspace(2490373)* %0, i32 %src, float 0.000000e+00, i32 4, i1 false)
  ; CHECK: br label %exitBB
  ; CHECK-LABEL: exitBB:
- ; CHECK-LLVM-16-PLUS: %2 = extractelement <1 x float> %1, {{i[0-9]+}} 0
+ ; CHECK-LLVM-16: %2 = extractelement <1 x float> %1, {{i[0-9]+}} 0
  ; CHECK: %3 = add i32 %src, 4
  ; CHECK: %4 = call <16 x float> @llvm.genx.GenISA.ldrawvector.indexed.v16f32.p2490373i8(i8 addrspace(2490373)* %0, i32 %3, i32 4, i1 false)
  ; CHECK: %5 = extractelement <16 x float> %4, {{i[0-9]+}} 11

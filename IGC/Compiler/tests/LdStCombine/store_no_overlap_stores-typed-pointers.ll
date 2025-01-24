@@ -16,7 +16,7 @@
 
 ; REQUIRES: regkeys
 
-; RUN: igc_opt -S -inputocl %enable-basic-aa% -platformbmg \
+; RUN: igc_opt -S -inputocl --basic-aa -platformbmg \
 ; RUN:          -igc-ldstcombine -regkey=EnableLdStCombine=1 %s | FileCheck %s
 
 

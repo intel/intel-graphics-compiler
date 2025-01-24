@@ -12,7 +12,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
-; RUN: igc_opt --regkey LoopSinkMinSave=1 --regkey LoopSinkDisableRollback=1 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 %enable-basic-aa% --igc-code-loop-sinking -S %s | FileCheck %s
+; RUN: igc_opt --regkey LoopSinkMinSave=1 --regkey LoopSinkDisableRollback=1 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 --basic-aa --igc-code-loop-sinking -S %s | FileCheck %s
 
 ; check the inttoptr instructions are sinked
 

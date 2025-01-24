@@ -47,8 +47,7 @@ llvm_config.add_tool_substitutions(tools, tool_dirs)
 
 llvm_version = int(config.llvm_version)
 
-config.substitutions.append(('%LLVM_DEPENDENT_CHECK_PREFIX%', f'CHECK-LLVM-{llvm_version}-PLUS'))
-config.substitutions.append(('%enable-basic-aa%', '--basic-aa'))
+config.substitutions.append(('%LLVM_DEPENDENT_CHECK_PREFIX%', f'CHECK-LLVM-{llvm_version}'))
 
 if llvm_version >= 14:
   config.available_features.add('llvm-14-plus')

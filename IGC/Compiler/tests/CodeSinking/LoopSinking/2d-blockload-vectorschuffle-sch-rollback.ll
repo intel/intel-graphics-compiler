@@ -11,7 +11,7 @@
 ; RUN:         --regkey LoopSinkEnableVectorShuffle=1,ForceLoopSink=1,LoopSinkForceRollback=1 \
 ; RUN:         --regkey LoopSinkAvoidSplittingDPAS=0,LoopSinkEnable2dBlockReads=1,LoopSinkEnableLoadsRescheduling=1 \
 ; RUN:         --regkey CodeSinkingLoadSchedulingInstr=1,LoopSinkCoarserLoadsRescheduling=0,CodeLoopSinkingMinSize=10 \
-; RUN:         %enable-basic-aa% --igc-code-loop-sinking --verify -S %s 2>&1 | FileCheck %s
+; RUN:         --basic-aa --igc-code-loop-sinking --verify -S %s 2>&1 | FileCheck %s
 
 define spir_kernel void @foo(<8 x float> %0, <8 x float> %1, <8 x float> %2, <8 x float> %3, <8 x float> %4, <8 x float> %5) {
 
