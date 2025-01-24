@@ -110,6 +110,7 @@ namespace IGC {
             llvm::Instruction* inst,
             int& payloadOffset);
 
+
         CVariable* PrepareUniformUrbWritePayload(
             CShader* shader,
             CEncoder* encoder,
