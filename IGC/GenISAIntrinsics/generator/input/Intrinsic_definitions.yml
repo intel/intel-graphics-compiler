@@ -2872,10 +2872,6 @@ intrinsics:
                 name: Arg2
                 type_definition: *i32
                 comment: "b of char4"
-            - !<ArgumentDefinition>
-                name: Arg3
-                type_definition: *i1
-                comment: "bool isSaturated"
         attributes:
             - !AttributeID "NoUnwind"
         memory_effects:
@@ -2900,10 +2896,6 @@ intrinsics:
                 name: Arg2
                 type_definition: *i32
                 comment: "b of uchar4"
-            - !<ArgumentDefinition>
-                name: Arg3
-                type_definition: *i1
-                comment: "bool isSaturated"
         attributes:
             - !AttributeID "NoUnwind"
         memory_effects:
@@ -2928,10 +2920,6 @@ intrinsics:
                 name: Arg2
                 type_definition: *i32
                 comment: "b of char4"
-            - !<ArgumentDefinition>
-                name: Arg3
-                type_definition: *i1
-                comment: "bool isSaturated"
         attributes:
             - !AttributeID "NoUnwind"
         memory_effects:
@@ -2956,10 +2944,6 @@ intrinsics:
                 name: Arg2
                 type_definition: *i32
                 comment: "b of uchar4"
-            - !<ArgumentDefinition>
-                name: Arg3
-                type_definition: *i1
-                comment: "bool isSaturated"
         attributes:
             - !AttributeID "NoUnwind"
         memory_effects:

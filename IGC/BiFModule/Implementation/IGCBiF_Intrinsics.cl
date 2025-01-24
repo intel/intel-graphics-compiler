@@ -806,10 +806,10 @@ void __builtin_IB_media_block_write_ulong2(int image, int2 offset, int width, in
 void __builtin_IB_media_block_write_ulong4(int image, int2 offset, int width, int height, ulong4 pixels);
 void __builtin_IB_media_block_write_ulong8(int image, int2 offset, int width, int height, ulong8 pixels);
 
-int __builtin_IB_dp4a_ss(int c, int a, int b, bool isSaturated) __attribute__((const));
-int __builtin_IB_dp4a_uu(int c, int a, int b, bool isSaturated) __attribute__((const));
-int __builtin_IB_dp4a_su(int c, int a, int b, bool isSaturated) __attribute__((const));
-int __builtin_IB_dp4a_us(int c, int a, int b, bool isSaturated) __attribute__((const));
+int __builtin_IB_dp4a_ss(int c, int a, int b) __attribute__((const));
+int __builtin_IB_dp4a_uu(int c, int a, int b) __attribute__((const));
+int __builtin_IB_dp4a_su(int c, int a, int b) __attribute__((const));
+int __builtin_IB_dp4a_us(int c, int a, int b) __attribute__((const));
 
 #define DECL_SUB_GROUP_OPERATION(type, type_abbr, operation, group_type)  \
 type   __builtin_IB_sub_group_##group_type##_##operation##_##type_abbr(type x) __attribute__((const));
