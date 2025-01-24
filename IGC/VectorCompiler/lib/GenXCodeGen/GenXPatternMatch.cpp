@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1433,14 +1433,7 @@ bool GenXPatternMatch::foldBoolAnd(Instruction *Inst) {
     return false; // too small
   if (!Inst->hasOneUse())
     return false; // more than one use
-  auto user = cast<Instruction>(Inst->use_begin()->getUser());
-  if (user && user->getOperand(1)) {
-    auto *Ty = user->getOperand(1)->getType();
-    auto *DTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
-    if (!DTy || (DTy->getNumElements() == 1))
-      return false;
-  } else
-    return false;
+  auto *user = cast<Instruction>(Inst->use_begin()->getUser());
 
   if (auto Sel = dyn_cast<SelectInst>(user)) {
     // Fold and into sel.
